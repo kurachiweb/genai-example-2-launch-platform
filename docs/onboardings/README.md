@@ -11,9 +11,6 @@ brew install --cask claude-code
 brew install cloudflare-wrangler
 brew install gh
 brew install rtk
-claude
-/plugin marketplace add cloudflare/skills
-/plugin install cloudflare@cloudflare
 ```
 
 ### ローカルポート一覧

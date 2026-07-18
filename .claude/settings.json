@@ -23,8 +23,9 @@
       "Bash(rtk git commit *)"
     ]
   },
-  "showThinkingSummaries": true,
   "enabledPlugins": {
-    "cloudflare@cloudflare": true
-  }
+    "cloudflare@cloudflare": true,
+    "creem-api@creem-skills": true
+  },
+  "showThinkingSummaries": true
 }
