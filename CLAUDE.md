@@ -1,0 +1,247 @@
+# ローンチディレクトリ「Launch Stadium」
+
+Launch Stadiumのプログラム一式、及びドキュメント。
+dev版利用者側サイトURL(予定)：https://genai-example-2-client-dev.shortbook.workers.dev
+dev版開発者側サイトURL(予定)：https://genai-example-2-admin-dev.shortbook.workers.dev
+prod版利用者側サイトURL(予定)：https://genai-example-2-client.shortbook.workers.dev
+prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortbook.workers.dev
+
+## このサービスについて
+
+作った製品を投稿し、他のユーザーと投票数を競い合うローンチディレクトリ。
+各ユーザーは画面操作または公開APIを通じて自身のプロフィール、投稿した製品、コメントをCRUD操作できる。
+公開APIには1分あたりのリクエスト数制限(Rate Limit)が設けられている。
+詳細は[README.md](./README.md)を参照すること。
+
+## 作業ルール
+
+各種ドキュメント、Gitコミットメッセージ、コードコメントにおいて、全ての文章は日本語で記述すること。
+新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
+コード内にコメントは原則書かないが、難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
+車輪の再発明を許容し、簡易なユーティリティ関数のためにnpmパッケージをインストールしない。
+サブエージェントを起動する際、Claude Haikuを使うよう指示があれば必ずSonnetを使うこと。
+appsディレクトリ内の変更に基づき、docsディレクトリ内やREADME.mdも適時変更すること。
+テスト駆動開発(TDD)の実施を徹底すること。
+appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
+GitワークフローはTrunk-Based Developmentを採用する。
+
+## デプロイ方針
+
+mainブランチにpushした際、dev環境に自動でデプロイする。
+prod環境には、作業者が`git tag`コマンドでmainブランチにタグ付けするのをトリガーとしてデプロイが実行される。
+AIエージェントによるprod環境へのデプロイは禁止する。
+
+## どのように作るか
+
+TerraformでCloudflareインフラを構成する。
+FCP (First Contentful Paint)を重視する。
+フロントエンド側画面構成はサービス画面(client)と管理画面(admin)に大きく分かれる。
+サービス画面と管理画面、双方にReact及びNext.jsを使う。
+APIサーバーはNestJSを使い、クライアント側との通信はGraphQLを使う。
+
+## ディレクトリ構成
+
+```
+/
+├── .github/                    # GitHub Actionsのワークフロー、CI/CD
+├── .husky/                     # Huskyトリガー定義
+├── apps/                       # アプリケーション実装
+│   ├── infra/                  # インフラ構成定義 ... Terraformを使用、Cloudflareを主としてインフラを設計
+│   ├── backend-lib/            # バックエンド共通ファイル
+│   │   ├── db/                 # DBスキーマ定義やDBへの接続処理、マイグレーション履歴
+│   │   └── utilities/          # ユーティリティ
+│   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48041、ORMによるDB接続処理を含む
+│   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
+│   ├── public-api/             # 公開APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48044
+│   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
+│   ├── frontend-lib/           # フロントエンド共通ファイル
+│   │   ├── components/         # コンポーネント定義 ... Storybookによるプレビュー付き
+│   │   └── utilities/          # ユーティリティ
+│   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... Next.jsを利用、ローカル開発でのポート番号は48042
+│   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
+│   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... Next.jsを利用、ローカル開発でのポート番号は48043
+│       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
+├── docs/                       # ドキュメント ... 全てマークダウン形式
+│   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
+│   ├── adr/                    # Everything Claude Codeのecc-architecture-decision-recordsスキルによる自動生成ADR
+│   ├── tdd/                    # Everything Claude Codeのecc-tdd-workflowスキルのステップ8によるTDDエビデンスレポート
+│   ├── CODEMAPS/               # Everything Claude Codeのecc-doc-updaterエージェントによる自動生成コードマップ
+│   ├── GUIDES/                 # 開発者ドキュメント、Everything Claude Codeのecc-doc-updaterエージェントにより都度更新
+│   │   ├── infra/              # インフラ・ネットワーク構成図、デプロイ手順、ログ管理方針
+│   │   ├── db/                 # データベース設計原則、マイグレーション手順
+│   │   ├── api/                # APIドキュメント及び設計原則
+│   │   ├── coding/             # コーディングルール、アーキテクチャ設計
+│   │   ├── testing/            # テスト方針、カバレッジ設定
+│   │   ├── operations/         # 運用ガイド ... デプロイや障害対応、ロールバックや問い合わせ駆動調査手順
+│   │   └── security/           # 包括的なセキュリティガイド、認証認可設計、システム監視及び対応方針
+│   └── service/                # このサービスに関する資料
+│       ├── overview/           # サービス概要、コンセプト、どのユーザーがこのサービスを必要とするか、ユーザーストーリー
+│       ├── features/           # ビジネスルール(SSoT) ... 機能仕様、受け入れ条件一覧
+│       ├── design/             # デザインガイドライン ... 文字やパーツ配置に関するサービス固有の規則
+│       └── glossary.md         # サービス内用語集
+├── Dockerfile                  # パッケージ等をグローバルインストールするためのrootコンテナ
+├── compose.yaml                # rootコンテナと各アプリケーションのコンテナを定義しポート番号を指定
+├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化
+└── README.md                   # 作業者向け、サービスの基本的説明
+```
+
+## 技術選定
+
+それぞれ最新バージョンを用いる。
+
+### データベース
+
+ローカル環境 ... wranglerのD1ローカルモード(`wrangler dev` / `wrangler d1 execute --local`)、ポート番号は48040
+デプロイ先 ... Cloudflare D1
+
+### バックエンド (API)
+
+#### フレームワーク
+
+NestJS (クリーンアーキテクチャ)
+TypeScript
+Hono (Cloudflare Workers向け設定)
+
+#### スキーマ
+
+GraphQL
+@nestjs/graphql
+DataLoader (GraphQLのN+1問題対策)
+
+#### データベース・ORM
+
+MikroORM (D1向け連携は実験的サポート、Kysely D1ダイアレクトを`driverOptions`経由で使用)
+Kysely (クエリビルダ)
+
+#### 認証・認可
+
+HTTPS-Only Cookieによるユーザー認証。
+ロールベースのアクセス制御
+所有権ベースのアクセス制御（自ユーザー・全ユーザー・管理者）
+
+#### バリデーション・変換
+
+class-validator
+class-transformer
+
+### フロントエンド
+
+#### フレームワーク
+
+Next.js (App Router使用)
+React
+TypeScript
+
+#### スキーマ
+
+GraphQL Code Generator
+
+#### 状態管理・データフェッチング
+
+Apollo Client (GraphQL クライアント)
+Jotai (グローバル状態管理)
+React Query (キャッシュ・再取得制御の補完)
+
+#### UI・スタイリング
+
+Tailwind CSS
+shadcn/ui
+
+#### フォーム・バリデーション
+
+React Hook Form
+Zod
+
+### 決済サービス
+
+Creem (決済処理基盤、https://docs.creem.io)
+Creem Checkout (決済ページへの誘導)
+Creem Webhooks (都度支払いや定期課金イベントの受信、APIサーバー側で処理)
+Creem TypeScript SDK 及び Next.js アダプター
+
+### デプロイ先のインフラ構成
+
+#### アプリケーション実行環境
+
+Cloudflare Workers
+
+#### ストレージ
+
+Cloudflare R2 (画像・ファイルストレージ)
+
+#### セキュリティ
+
+専用の有償セキュリティ基盤は用いず、Cloudflareのプラットフォーム標準機能と既存ツールを重ねて多層防御を構成する。
+
+Cloudflare WAF Rate Limiting Rules (エッジでのレート制限 ... 制限閾値はTerraformで管理)
+Cloudflare Durable Objects (厳密なレート制限カウントに使用)
+@nestjs/throttler (アプリ層でのレート制限)
+
+#### 構造化ロギング
+
+LogTape
+
+#### メール送信
+
+Cloudflare Email Send
+MJML (HTMLメールコード生成、faire/mjml-reactを使用)
+
+#### モニタリング
+
+Sentry (`@sentry/bun`を使用、エラートラッキング)
+Cloudflare Analytics / Health Checks (可用性・死活監視)
+
+### 画像配信
+
+Cloudflare Images
+
+#### 画像モデレーション
+
+Amazon Rekognition (ローカル環境やCIプロセスでは、テスト結果を毎回同じにするため決定論的スタブの偽判定器を使用)
+
+#### CI/CD
+
+GitHubリポジトリでのmainブランチ及びprodブランチへのpushをトリガーにして、Workers Buildsにより以下のパイプラインを実行。
+TruffleHog (機密情報のpush防止)
+Bunによるパッケージインストール及び既知の脆弱性確認
+Wrangler Secretsによる環境変数変更
+Terraformによるインフラ構成変更
+WranglerによるDBマイグレーション
+
+### 開発環境・ツール
+
+#### コンテナ
+
+Docker (node@trixie-slim、ローカル環境のみ)
+
+#### パッケージマネージャー
+
+Bun
+
+#### コード品質
+
+ESLint + Prettier
+Husky + lint-staged (pre-commit)
+Commitlint (コミットメッセージ規約)
+
+#### セキュリティ
+
+Gitleaks (pre-commit、コマンドオプション `--staged` を使用)
+GitHub Dependabot (依存パッケージの脆弱性アラート及びバージョン更新PRの自動作成)
+
+#### テスト
+
+Bun (単体テスト、`bun test` コマンドを使用)
+React Testing Library (フロントエンド)
+Supertest (API統合テスト)
+Playwright (E2E)
+
+#### ブラウザ動作確認
+
+Playwright MCP
+
+#### ドキュメント
+
+Storybook (コンポーネントカタログ)
+GraphQL Playground (API探索)
+Swagger UI (公開API向け、OpenAPI形式)
