@@ -100,9 +100,11 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 
 #### フレームワーク
 
+HonoはNestJSのHTTPアダプター層として使い、Expressは使わない。
+
 NestJS (クリーンアーキテクチャ)
-TypeScript
 Hono (Cloudflare Workers向け設定)
+TypeScript
 
 #### スキーマ
 
@@ -117,7 +119,7 @@ Kysely (クエリビルダ)
 
 #### 認証・認可
 
-HTTPS-Only Cookieによるユーザー認証。
+HTTPS-Only Cookieによるユーザー認証
 ロールベースのアクセス制御
 所有権ベースのアクセス制御（自ユーザー・全ユーザー・管理者）
 
