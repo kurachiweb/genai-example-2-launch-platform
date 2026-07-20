@@ -65,8 +65,8 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
 │   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
-│   ├── adr/                    # Everything Claude Codeのecc-architecture-decision-recordsスキルによる自動生成ADR
-│   ├── tdd/                    # Everything Claude Codeのecc-tdd-workflowスキルのステップ8によるTDDエビデンスレポート
+│   ├── adr/                    # Everything Claude Codeのecc:architecture-decision-recordsスキルによる自動生成ADR
+│   ├── tdd/                    # Everything Claude Codeのecc:tdd-workflowスキルのステップ8によるTDDエビデンスレポート
 │   ├── CODEMAPS/               # Everything Claude Codeのecc-doc-updaterエージェントによる自動生成コードマップ
 │   ├── GUIDES/                 # 開発者ドキュメント、Everything Claude Codeのecc-doc-updaterエージェントにより都度更新
 │   │   ├── infra/              # インフラ・ネットワーク構成図、デプロイ手順、ログ管理方針

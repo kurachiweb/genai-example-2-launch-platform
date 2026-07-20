@@ -1,0 +1,23 @@
+{
+  "name": "ecc",
+  "version": "2.0.0",
+  "description": "Harness-native ECC workflows for Codex: shared skills, production-ready MCP configs, and selective-install-aligned conventions for TDD, security scanning, code review, and autonomous development.",
+  "author": {
+    "name": "Affaan Mustafa",
+    "email": "me@affaanmustafa.com",
+    "url": "https://x.com/affaanmustafa"
+  },
+  "homepage": "https://ecc.tools",
+  "repository": "https://github.com/affaan-m/ECC",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "agents",
+    "skills",
+    "tdd",
+    "code-review",
+    "security",
+    "workflow",
+    "automation"
+  ]
+}
