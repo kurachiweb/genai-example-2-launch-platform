@@ -1,0 +1,7 @@
+{
+  "name": "cloudflare",
+  "description": "Skills for teaching agents how to build on Cloudflare.",
+  "author": {
+    "name": "Cloudflare team"
+  }
+}

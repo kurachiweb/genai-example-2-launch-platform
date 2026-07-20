@@ -28,13 +28,13 @@ Agents that load skill bundles from `github.com/cloudflare/skills` will pick thi
 
 ```sh
 # Claude Code
-mkdir -p .claude/skills/turnstile-spin && \
+mkdir -p .claude/skills/cloudflare/skills/turnstile-spin && \
   curl -sSL https://developers.cloudflare.com/turnstile/spin.md \
-  -o .claude/skills/turnstile-spin/SKILL.md
+  -o .claude/skills/cloudflare/skills/turnstile-spin/SKILL.md
 
 # Or, install the whole skills bundle into a global location
 git clone https://github.com/cloudflare/skills ~/.config/cloudflare-skills
-ln -s ~/.config/cloudflare-skills/turnstile-spin ~/.claude/skills/turnstile-spin
+ln -s ~/.config/cloudflare-skills/turnstile-spin ~/.claude/skills/cloudflare/skills/turnstile-spin
 ```
 
 For other agents, see the table in [`SKILL.md`](./SKILL.md#step-11--persist-the-skill).
