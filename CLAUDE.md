@@ -24,13 +24,14 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 appsディレクトリ内の変更に基づき、docsディレクトリ内やREADME.mdも適時変更すること。
 テスト駆動開発(TDD)の実施を徹底すること。
 appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
-GitワークフローはTrunk-Based Developmentを採用する。
+GitワークフローはGitLab Flow(環境ブランチ)を採用する。開発のトランクは`main`ブランチとし、featureブランチは`main`から分岐して短命に保ち、PRレビューを経て`main`にマージする。本番反映は`main`から`prod`ブランチへのPRマージによって行い、コミットは`main → prod`の一方向にのみ流す。
 
 ## デプロイ方針
 
 mainブランチにpushした際、dev環境に自動でデプロイする。
-prod環境には、作業者が`git tag`コマンドでmainブランチにタグ付けするのをトリガーとしてデプロイが実行される。
-AIエージェントによるprod環境へのデプロイは禁止する。
+prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(push)をトリガーとしてデプロイが実行される。
+`prod`ブランチへのマージはGitHubのブランチ保護ルールにより人間のレビュー承認を必須とし、AIエージェントによるprod環境へのデプロイを技術的に禁止する。
+緊急のホットフィックスは`prod`から分岐した短命ブランチで行い、`prod`へ直接マージした後、`prod → main`へバックマージして両ブランチを同期する。
 
 ## どのように作るか
 
@@ -205,7 +206,7 @@ Amazon Rekognition (ローカル環境やCIプロセスでは、テスト結果�
 
 #### CI/CD
 
-GitHubリポジトリでのmainブランチ及びprodブランチへのpushをトリガーにして、Workers Buildsにより以下のパイプラインを実行。
+GitHubリポジトリでのmain/prodブランチへのpushをトリガーにして、Workers Buildsにより以下のパイプラインを実行しデプロイ。
 TruffleHog (機密情報のpush防止)
 Bunによるパッケージインストール及び既知の脆弱性確認
 Wrangler Secretsによる環境変数変更
