@@ -1,4 +1,16 @@
-> This file extends [ecc-common/testing.md](../ecc-common/testing.md) with web-specific testing content.
+---
+paths:
+  - "**/*.css"
+  - "**/*.scss"
+  - "**/*.sass"
+  - "**/*.less"
+  - "**/*.html"
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
+  - "**/*.svelte"
+---
+> This file extends [common/testing.md](../common/testing.md) with web-specific testing content.
 
 # Web Testing Rules
 

@@ -1,4 +1,16 @@
-> This file extends [ecc-common/patterns.md](../ecc-common/patterns.md) with web-specific patterns.
+---
+paths:
+  - "**/*.css"
+  - "**/*.scss"
+  - "**/*.sass"
+  - "**/*.less"
+  - "**/*.html"
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
+  - "**/*.svelte"
+---
+> This file extends [common/patterns.md](../common/patterns.md) with web-specific patterns.
 
 # Web Patterns
 

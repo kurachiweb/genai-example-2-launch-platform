@@ -9,7 +9,7 @@ paths:
 ---
 # React Patterns
 
-> This file extends [ecc-typescript/patterns.md](../ecc-typescript/patterns.md) and [ecc-common/patterns.md](../ecc-common/patterns.md) with React specific content. For hook-specific rules see [hooks.md](./hooks.md).
+> This file extends [typescript/patterns.md](../typescript/patterns.md) and [common/patterns.md](../common/patterns.md) with React specific content. For hook-specific rules see [hooks.md](./hooks.md).
 
 ## Container / Presentational Split
 
@@ -191,4 +191,4 @@ Older codebases on React 18 still need `forwardRef`.
 
 ## Skill Reference
 
-For React-specific deep dives see `skills/ecc-react-patterns/SKILL.md`. For cross-framework frontend concerns see `skills/ecc-frontend-patterns/SKILL.md`. For accessibility see `skills/accessibility/SKILL.md`.
+For React-specific deep dives see `skills/react-patterns/SKILL.md`. For cross-framework frontend concerns see `skills/frontend-patterns/SKILL.md`. For accessibility see `skills/accessibility/SKILL.md`.

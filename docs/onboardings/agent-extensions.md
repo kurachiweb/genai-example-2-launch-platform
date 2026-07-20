@@ -20,7 +20,7 @@
 
 エージェントは独立したコンテキストで動作するサブ AI。特定の専門タスクを委譲する際に Claude が自動または明示的に呼び出す。
 
-### ecc-architect.md
+### architect.md
 
 **概要**: システム設計・スケーラビリティ・技術的意思決定の専門家。Claude Opus モデルを使用。
 
@@ -37,7 +37,7 @@
 
 ---
 
-### ecc-build-error-resolver.md
+### build-error-resolver.md
 
 **概要**: ビルドエラー・TypeScript 型エラーの解決専門家。最小限の差分でビルドを通すことに集中する。
 
@@ -54,7 +54,7 @@
 
 ---
 
-### ecc-code-reviewer.md
+### code-reviewer.md
 
 **概要**: コード品質・セキュリティ・保守性を審査するシニアコードレビュアー。
 
@@ -71,7 +71,7 @@
 
 ---
 
-### ecc-doc-updater.md
+### doc-updater.md
 
 **概要**: コードマップ・ドキュメントの更新専門家。Claude Haiku モデルを使用（低コスト）。
 
@@ -87,7 +87,7 @@
 
 ---
 
-### ecc-e2e-runner.md
+### e2e-runner.md
 
 **概要**: E2E テスト専門家。Agent Browser（推奨）または Playwright を使用。
 
@@ -104,7 +104,7 @@
 
 ---
 
-### ecc-planner.md
+### planner.md
 
 **概要**: 複雑な機能実装・リファクタリングの計画立案専門家。Claude Opus モデルを使用。
 
@@ -120,7 +120,7 @@
 
 ---
 
-### ecc-react-build-resolver.md
+### react-build-resolver.md
 
 **概要**: React のビルド失敗解決専門家。Vite・webpack・Next.js・CRA・Parcel・esbuild・Bun に対応し、最小限の外科的修正でビルドを通すことに集中する。Claude Sonnet モデルを使用。
 
@@ -139,11 +139,11 @@
 
 ---
 
-### ecc-react-reviewer.md
+### react-reviewer.md
 
 **概要**: React/JSX 専門のシニアコードレビュアー。フック正当性・レンダリングパフォーマンス・サーバー/クライアント境界・アクセシビリティ・React 固有セキュリティを審査する。Claude Sonnet モデルを使用。
 
-**トリガー**: `.tsx`/`.jsx` ファイルや React コンポーネントロジックの変更時に必ず使用。汎用 TS/JS の観点は `ecc-typescript-reviewer` が担当するため、TSX/JSX の PR では両者を併用する。
+**トリガー**: `.tsx`/`.jsx` ファイルや React コンポーネントロジックの変更時に必ず使用。汎用 TS/JS の観点は `typescript-reviewer` が担当するため、TSX/JSX の PR では両者を併用する。
 
 **使用目的**:
 
@@ -158,7 +158,7 @@
 
 ---
 
-### ecc-refactor-cleaner.md
+### refactor-cleaner.md
 
 **概要**: デッドコード削除・コード統合専門家。
 
@@ -175,7 +175,7 @@
 
 ---
 
-### ecc-security-reviewer.md
+### security-reviewer.md
 
 **概要**: セキュリティ脆弱性の検出と修正専門家。
 
@@ -192,7 +192,7 @@
 
 ---
 
-### ecc-tdd-guide.md
+### tdd-guide.md
 
 **概要**: テスト駆動開発（TDD）専門家。テストファーストメソドロジーを強制する。
 
@@ -209,7 +209,7 @@
 
 ---
 
-### ecc-typescript-reviewer.md
+### typescript-reviewer.md
 
 **概要**: TypeScript/JavaScript の型安全性・非同期正確性・セキュリティ・慣用パターンの専門レビュアー。
 
@@ -273,11 +273,11 @@
 
 ---
 
-### ecc-react-build.md
+### react-build.md
 
-**呼び出し**: `/ecc-react-build`
+**呼び出し**: `/react-build`
 
-**概要**: React のビルド失敗を最小限の修正で段階的に解消する。`ecc-react-build-resolver` エージェントを起動する。
+**概要**: React のビルド失敗を最小限の修正で段階的に解消する。`react-build-resolver` エージェントを起動する。
 
 **対応ビルドシステム**: Vite・webpack・Next.js・CRA・Parcel・esbuild・Bun
 
@@ -292,11 +292,11 @@
 
 ---
 
-### ecc-react-review.md
+### react-review.md
 
-**呼び出し**: `/ecc-react-review`
+**呼び出し**: `/react-review`
 
-**概要**: React/JSX の包括的コードレビュー。`ecc-react-reviewer` エージェントを起動する。TSX/JSX の PR では `ecc-typescript-reviewer` も併せて実行し、それぞれ重複しない領域を担当する。
+**概要**: React/JSX の包括的コードレビュー。`react-reviewer` エージェントを起動する。TSX/JSX の PR では `typescript-reviewer` も併せて実行し、それぞれ重複しない領域を担当する。
 
 **レビュー観点**: フックルール・RSC 境界・アクセシビリティ・レンダリングパフォーマンス・React 固有セキュリティ
 
@@ -310,9 +310,9 @@
 
 ---
 
-### ecc-react-test.md
+### react-test.md
 
-**呼び出し**: `/ecc-react-test`
+**呼び出し**: `/react-test`
 
 **概要**: React 向けの TDD ワークフローを強制する。React Testing Library で振る舞い重視・アクセシビリティ優先のテストを先に書いてから実装する。Vitest または Jest を実行時に自動検出。
 
@@ -337,62 +337,62 @@ Claude が常時コンテキストとして参照するガイドライン。エ�
 
 **概要**: ルールディレクトリの構成説明とインストール方法。
 
-**内容**: ecc-common/ を基盤とし言語別ディレクトリが上書き拡張する層構造、インストールスクリプトの使い方、新言語追加手順、ルール優先順位（言語固有 > 共通）を説明。
+**内容**: common/ を基盤とし言語別ディレクトリが上書き拡張する層構造、インストールスクリプトの使い方、新言語追加手順、ルール優先順位（言語固有 > 共通）を説明。
 
 ---
 
-### rules/ecc-common/ — 共通ルール
+### rules/common/ — 共通ルール
 
 言語非依存の普遍的な原則。全プロジェクトに適用。
 
 | ファイル                      | 概要                             | 主な内容                                                                                           |
 | ----------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `ecc-coding-style.md`         | コーディングスタイル基準         | イミュータビリティ必須・KISS/DRY/YAGNI・ファイル上限 800 行・命名規約                              |
-| `ecc-git-workflow.md`         | Git ワークフロー                 | コミットメッセージフォーマット（Conventional Commits）・PR 作成手順                                |
-| `ecc-testing.md`              | テスト要件                       | カバレッジ 80% 以上必須・TDD ワークフロー・AAA パターン・テスト命名規約                            |
-| `ecc-performance.md`          | パフォーマンス最適化             | モデル選択戦略（Haiku/Sonnet/Opus の使い分け）・コンテキストウィンドウ管理・Extended Thinking 設定 |
-| `ecc-patterns.md`             | 共通パターン                     | スケルトンプロジェクトの活用・リポジトリパターン・API レスポンスフォーマット                       |
-| `ecc-hooks.md`                | フック設定                       | PreToolUse/PostToolUse/Stop フックの種類・TodoWrite の活用方針                                     |
-| `ecc-agents.md`               | エージェントオーケストレーション | 利用可能エージェント一覧・並列タスク実行の指針・マルチパースペクティブ分析                         |
-| `ecc-security.md`             | セキュリティガイドライン         | コミット前チェックリスト・シークレット管理・セキュリティ対応プロトコル                             |
-| `ecc-code-review.md`          | コードレビュー基準               | レビュートリガー・重大度レベル（CRITICAL/HIGH/MEDIUM/LOW）・承認基準                               |
-| `ecc-development-workflow.md` | 開発ワークフロー                 | Research → Plan → TDD → Code Review → Commit の 5 ステップフロー                                   |
+| `coding-style.md`         | コーディングスタイル基準         | イミュータビリティ必須・KISS/DRY/YAGNI・ファイル上限 800 行・命名規約                              |
+| `git-workflow.md`         | Git ワークフロー                 | コミットメッセージフォーマット（Conventional Commits）・PR 作成手順                                |
+| `testing.md`              | テスト要件                       | カバレッジ 80% 以上必須・TDD ワークフロー・AAA パターン・テスト命名規約                            |
+| `performance.md`          | パフォーマンス最適化             | モデル選択戦略（Haiku/Sonnet/Opus の使い分け）・コンテキストウィンドウ管理・Extended Thinking 設定 |
+| `patterns.md`             | 共通パターン                     | スケルトンプロジェクトの活用・リポジトリパターン・API レスポンスフォーマット                       |
+| `hooks.md`                | フック設定                       | PreToolUse/PostToolUse/Stop フックの種類・TodoWrite の活用方針                                     |
+| `agents.md`               | エージェントオーケストレーション | 利用可能エージェント一覧・並列タスク実行の指針・マルチパースペクティブ分析                         |
+| `security.md`             | セキュリティガイドライン         | コミット前チェックリスト・シークレット管理・セキュリティ対応プロトコル                             |
+| `code-review.md`          | コードレビュー基準               | レビュートリガー・重大度レベル（CRITICAL/HIGH/MEDIUM/LOW）・承認基準                               |
+| `development-workflow.md` | 開発ワークフロー                 | Research → Plan → TDD → Code Review → Commit の 5 ステップフロー                                   |
 
 ---
 
-### rules/ecc-typescript/ — TypeScript/JavaScript 固有ルール
+### rules/typescript/ — TypeScript/JavaScript 固有ルール
 
 `paths` フロントマターで `.ts`・`.tsx`・`.js`・`.jsx` ファイルに自動適用。
 
 | ファイル              | 概要                            | 主な内容                                                                       |
 | --------------------- | ------------------------------- | ------------------------------------------------------------------------------ |
-| `ecc-coding-style.md` | TypeScript コーディングスタイル | 型・インターフェース定義・`any` 禁止・`unknown` 使用・Zod によるバリデーション |
-| `ecc-patterns.md`     | TypeScript パターン             | `ApiResponse<T>` 型・カスタムフックパターン                                    |
-| `ecc-testing.md`      | TypeScript テスト               | Playwright を E2E フレームワークとして指定                                     |
-| `ecc-security.md`     | TypeScript セキュリティ         | 環境変数使用の徹底・ハードコードシークレット禁止の具体例                       |
-| `ecc-hooks.md`        | TypeScript フック設定           | Prettier・TypeScript チェック・`console.log` 警告の PostToolUse フック         |
+| `coding-style.md` | TypeScript コーディングスタイル | 型・インターフェース定義・`any` 禁止・`unknown` 使用・Zod によるバリデーション |
+| `patterns.md`     | TypeScript パターン             | `ApiResponse<T>` 型・カスタムフックパターン                                    |
+| `testing.md`      | TypeScript テスト               | Playwright を E2E フレームワークとして指定                                     |
+| `security.md`     | TypeScript セキュリティ         | 環境変数使用の徹底・ハードコードシークレット禁止の具体例                       |
+| `hooks.md`        | TypeScript フック設定           | Prettier・TypeScript チェック・`console.log` 警告の PostToolUse フック         |
 
 ---
 
-### rules/ecc-web/ — フロントエンド固有ルール
+### rules/web/ — フロントエンド固有ルール
 
 Web・フロントエンド開発全般に適用。
 
 | ファイル                | 概要                     | 主な内容                                                                                    |
 | ----------------------- | ------------------------ | ------------------------------------------------------------------------------------------- |
-| `ecc-coding-style.md`   | Web コーディングスタイル | フィーチャー別ファイル構成・CSS カスタムプロパティ（デザイントークン）・セマンティック HTML |
-| `ecc-design-quality.md` | デザイン品質基準         | テンプレートデザイン禁止・意図的なスタイル方向性の選択・コンポーネントチェックリスト        |
-| `ecc-hooks.md`          | Web フック設定           | Prettier・ESLint・TypeScript・Stylelint の PostToolUse フック・800 行超えブロックフック     |
-| `ecc-patterns.md`       | Web パターン             | Compound Components・Container/Presentational 分割・URL ステート・楽観的更新                |
-| `ecc-performance.md`    | Web パフォーマンス       | CWV 目標値（LCP < 2.5s 等）・バンドル予算・画像最適化・フォント読み込み戦略                 |
-| `ecc-security.md`       | Web セキュリティ         | ノンスベース CSP・XSS 防止・HTTPS セキュリティヘッダー・CSRF 保護                           |
-| `ecc-testing.md`        | Web テスト               | 視覚リグレッション・アクセシビリティ・クロスブラウザ・レスポンシブの優先順位                |
+| `coding-style.md`   | Web コーディングスタイル | フィーチャー別ファイル構成・CSS カスタムプロパティ（デザイントークン）・セマンティック HTML |
+| `design-quality.md` | デザイン品質基準         | テンプレートデザイン禁止・意図的なスタイル方向性の選択・コンポーネントチェックリスト        |
+| `hooks.md`          | Web フック設定           | Prettier・ESLint・TypeScript・Stylelint の PostToolUse フック・800 行超えブロックフック     |
+| `patterns.md`       | Web パターン             | Compound Components・Container/Presentational 分割・URL ステート・楽観的更新                |
+| `performance.md`    | Web パフォーマンス       | CWV 目標値（LCP < 2.5s 等）・バンドル予算・画像最適化・フォント読み込み戦略                 |
+| `security.md`       | Web セキュリティ         | ノンスベース CSP・XSS 防止・HTTPS セキュリティヘッダー・CSRF 保護                           |
+| `testing.md`        | Web テスト               | 視覚リグレッション・アクセシビリティ・クロスブラウザ・レスポンシブの優先順位                |
 
 ---
 
-### rules/ecc-react/ — React 固有ルール
+### rules/react/ — React 固有ルール
 
-`.tsx`・`.jsx`・`components/`・`hooks/`・`app/`・`pages/` 配下のファイルに `paths` フロントマターで自動適用。`typescript/` と `web/` のルールを React 向けに拡張する。ファイル名に `ecc-` プレフィックスは付かない。
+`.tsx`・`.jsx`・`components/`・`hooks/`・`app/`・`pages/` 配下のファイルに `paths` フロントマターで自動適用。`typescript/` と `web/` のルールを React 向けに拡張する。
 
 | ファイル          | 概要                       | 主な内容                                                                                                                                          |
 | ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -410,14 +410,14 @@ Web・フロントエンド開発全般に適用。
 
 ### React 系
 
-React 18/19 と Next.js に特化したスキル群。`rules/ecc-react/` のルールと、`ecc-react-reviewer`・`ecc-react-build-resolver` エージェント、`/ecc-react-*` コマンドと連携する。
+React 18/19 と Next.js に特化したスキル群。`rules/react/` のルールと、`react-reviewer`・`react-build-resolver` エージェント、`/react-*` コマンドと連携する。
 
 | スキル                | トリガー                                                                                                                                  | 概要                                                                                                                                                                                                                            |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ecc-react-patterns`  | React 18/19 コンポーネント・カスタムフック・コンポーネントツリーの作成／レビュー時、状態設計・合成設計時、Server/Client Component 利用時   | React 18/19 の慣用パターン集。レンダリングの純粋性・フック規律・状態配置デシジョンツリー・サーバー/クライアント境界・Suspense+Error Boundary・React 19 フォームアクション・データフェッチング判断表・複合コンポーネント・アクセシビリティ優先合成 |
-| `ecc-react-performance` | React/Next.js のパフォーマンス記述・レビュー・リファクタリング時、遅い読み込み／高 CPU の診断時、バンドルサイズや Core Web Vitals 監査時 | Vercel Engineering の React Best Practices を翻案。70 以上のルールを 8 つの優先度カテゴリ（ウォーターフォール除去・バンドルサイズ・サーバーサイド・クライアントフェッチ・再レンダリング・レンダリング・JS マイクロ最適化・高度パターン）に整理し、Lighthouse/Web Vitals との対応表を提供 |
-| `ecc-react-testing`   | React コンポーネント・フック・ページのテスト作成／修正時、Vitest/Jest セットアップ時、HTTP モック・a11y アサーション実装時                | React Testing Library による振る舞い重視のコンポーネントテスト。クエリ優先順位・`userEvent`・非同期パターン・MSW によるネットワークモック・`renderHook`・axe アサーション・RTL と Playwright/Cypress の使い分け・カバレッジ目標 |
-| `ecc-frontend-a11y`   | フォームや対話的要素（モーダル・ドロップダウン・タブ）の構築／レビュー時、`aria-*` 付与時、キーボード操作・フォーカス管理の実装時         | React/Next.js 向けの実践的アクセシビリティパターン。フォームのラベル接続・必須フィールド・エラーメッセージ連携・セマンティック HTML・ARIA 属性・キーボードナビゲーション・フォーカス管理・`prefers-reduced-motion` 対応・アンチパターンとチェックリスト |
+| `ecc:react-patterns`  | React 18/19 コンポーネント・カスタムフック・コンポーネントツリーの作成／レビュー時、状態設計・合成設計時、Server/Client Component 利用時   | React 18/19 の慣用パターン集。レンダリングの純粋性・フック規律・状態配置デシジョンツリー・サーバー/クライアント境界・Suspense+Error Boundary・React 19 フォームアクション・データフェッチング判断表・複合コンポーネント・アクセシビリティ優先合成 |
+| `ecc:react-performance` | React/Next.js のパフォーマンス記述・レビュー・リファクタリング時、遅い読み込み／高 CPU の診断時、バンドルサイズや Core Web Vitals 監査時 | Vercel Engineering の React Best Practices を翻案。70 以上のルールを 8 つの優先度カテゴリ（ウォーターフォール除去・バンドルサイズ・サーバーサイド・クライアントフェッチ・再レンダリング・レンダリング・JS マイクロ最適化・高度パターン）に整理し、Lighthouse/Web Vitals との対応表を提供 |
+| `ecc:react-testing`   | React コンポーネント・フック・ページのテスト作成／修正時、Vitest/Jest セットアップ時、HTTP モック・a11y アサーション実装時                | React Testing Library による振る舞い重視のコンポーネントテスト。クエリ優先順位・`userEvent`・非同期パターン・MSW によるネットワークモック・`renderHook`・axe アサーション・RTL と Playwright/Cypress の使い分け・カバレッジ目標 |
+| `ecc:frontend-a11y`   | フォームや対話的要素（モーダル・ドロップダウン・タブ）の構築／レビュー時、`aria-*` 付与時、キーボード操作・フォーカス管理の実装時         | React/Next.js 向けの実践的アクセシビリティパターン。フォームのラベル接続・必須フィールド・エラーメッセージ連携・セマンティック HTML・ARIA 属性・キーボードナビゲーション・フォーカス管理・`prefers-reduced-motion` 対応・アンチパターンとチェックリスト |
 
 ---
 
@@ -425,25 +425,25 @@ React 18/19 と Next.js に特化したスキル群。`rules/ecc-react/` のル�
 
 | スキル                            | トリガー                                                                                    | 概要                                                                                                                                                                             |
 | --------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ecc-accessibility`               | UI コンポーネント実装・アクセシビリティ監査時                                               | WCAG 2.2 Level AA 準拠の実装・セマンティック ARIA 生成・キーボードナビゲーション検証                                                                                             |
+| `ecc:accessibility`               | UI コンポーネント実装・アクセシビリティ監査時                                               | WCAG 2.2 Level AA 準拠の実装・セマンティック ARIA 生成・キーボードナビゲーション検証                                                                                             |
 | `anthropics-frontend-design`      | 視覚的方向性が重要な UI 構築時                                                              | 意図的・本番品質のフロントエンド UI を作成するデザイン指針                                                                                                                       |
-| `ecc-make-interfaces-feel-better` | UI が平坦・無骨・未完成に見える場面・ポリッシュレビュー時                                   | スペーシング・タイポグラフィ・角丸・シャドウ・モーション・ヒットエリア・アイコン整列・テキスト折り返しなどの細部を改善し、インターフェースの完成度を高める                       |
-| `ecc-frontend-patterns`           | React/Next.js パターン参照時                                                                | React・Next.js・状態管理・パフォーマンス最適化の実装パターン集                                                                                                                   |
-| `ecc-seo`                         | 検索最適化が必要な場面                                                                      | 技術的 SEO・Core Web Vitals・構造化データ・コンテンツ戦略の監査と実装                                                                                                            |
+| `ecc:make-interfaces-feel-better` | UI が平坦・無骨・未完成に見える場面・ポリッシュレビュー時                                   | スペーシング・タイポグラフィ・角丸・シャドウ・モーション・ヒットエリア・アイコン整列・テキスト折り返しなどの細部を改善し、インターフェースの完成度を高める                       |
+| `ecc:frontend-patterns`           | React/Next.js パターン参照時                                                                | React・Next.js・状態管理・パフォーマンス最適化の実装パターン集                                                                                                                   |
+| `ecc:seo`                         | 検索最適化が必要な場面                                                                      | 技術的 SEO・Core Web Vitals・構造化データ・コンテンツ戦略の監査と実装                                                                                                            |
 | `gh-copilot-web-design-reviewer`  | 「デザインを確認して」「UI のレイアウトを修正して」「デザインの問題を探して」と依頼された時 | ローカル・リモートの Web サイトを視覚的に検査してデザイン上の問題を特定・修正。レスポンシブ・アクセシビリティ・視覚一貫性の確認からソースコードレベルの修正まで 4 ステップで対応 |
 
 ---
 
 ### モーション・アニメーション系
 
-`motion/react`（旧 Framer Motion）を使った React / Next.js アニメーション実装向けのスキル群。依存関係順に `ecc-motion-foundations` → `ecc-motion-patterns` → `ecc-motion-advanced` の順で適用する。`ecc-motion-ui` は全体を俯瞰したい場合のエントリーポイント。
+`motion/react`（旧 Framer Motion）を使った React / Next.js アニメーション実装向けのスキル群。依存関係順に `ecc:motion-foundations` → `ecc:motion-patterns` → `ecc:motion-advanced` の順で適用する。`ecc:motion-ui` は全体を俯瞰したい場合のエントリーポイント。
 
 | スキル                   | トリガー                                                                                                                                                                                 | 概要                                                                                                                                                                                             |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ecc-motion-ui`          | アニメーション実装の全体方針を確認したい時・どのスキルを使うか迷う時                                                                                                                     | motion/react の包括的な UI モーションシステム。トークン・パフォーマンスルール・アクセシビリティ・AnimatePresence の `mode` 選択・デバッグ手順をまとめたエントリーポイント                        |
-| `ecc-motion-foundations` | アニメーション実装を新たに始める時・トークン／スプリング設定時・`prefers-reduced-motion` 対応時・SSR ハイドレーション不一致のデバッグ時                                                  | モーションシステムの基盤レイヤー。`motionTokens`・`springs` プリセット・`useSafeMotion` フック・SSR 安全な初期状態・ローエンドデバイス検出を定義。他の motion スキルはすべてこのスキルに依存する |
-| `ecc-motion-patterns`    | ボタン・モーダル・トースト・スタガーリスト・ページ遷移・スクロールリビール・アコーディオン・カード展開を実装する時                                                                       | `ecc-motion-foundations` のトークンとスプリングを使った標準 UI アニメーションのコピペパターン集。`AnimatePresence` ・`layout` ・`layoutId` の使い分けガイドを含む                                |
-| `ecc-motion-advanced`    | ドラッグ & ドロップ・スワイプジェスチャー・並び替えリスト・テキスト逐次表示・数値カウンター・SVG パス描画・カスタムアニメーションフック・`useAnimate` による命令的シーケンスを実装する時 | `ecc-motion-patterns` では対応できない高度な対話・物理・ジェスチャーパターン。`useMotionValue` ・`useTransform` ・`useSpring` ・`useAnimate` を活用したカスタムフック群も含む                    |
+| `ecc:motion-ui`          | アニメーション実装の全体方針を確認したい時・どのスキルを使うか迷う時                                                                                                                     | motion/react の包括的な UI モーションシステム。トークン・パフォーマンスルール・アクセシビリティ・AnimatePresence の `mode` 選択・デバッグ手順をまとめたエントリーポイント                        |
+| `ecc:motion-foundations` | アニメーション実装を新たに始める時・トークン／スプリング設定時・`prefers-reduced-motion` 対応時・SSR ハイドレーション不一致のデバッグ時                                                  | モーションシステムの基盤レイヤー。`motionTokens`・`springs` プリセット・`useSafeMotion` フック・SSR 安全な初期状態・ローエンドデバイス検出を定義。他の motion スキルはすべてこのスキルに依存する |
+| `ecc:motion-patterns`    | ボタン・モーダル・トースト・スタガーリスト・ページ遷移・スクロールリビール・アコーディオン・カード展開を実装する時                                                                       | `ecc:motion-foundations` のトークンとスプリングを使った標準 UI アニメーションのコピペパターン集。`AnimatePresence` ・`layout` ・`layoutId` の使い分けガイドを含む                                |
+| `ecc:motion-advanced`    | ドラッグ & ドロップ・スワイプジェスチャー・並び替えリスト・テキスト逐次表示・数値カウンター・SVG パス描画・カスタムアニメーションフック・`useAnimate` による命令的シーケンスを実装する時 | `ecc:motion-patterns` では対応できない高度な対話・物理・ジェスチャーパターン。`useMotionValue` ・`useTransform` ・`useSpring` ・`useAnimate` を活用したカスタムフック群も含む                    |
 
 ---
 
@@ -451,12 +451,12 @@ React 18/19 と Next.js に特化したスキル群。`rules/ecc-react/` のル�
 
 | スキル                              | トリガー                                                                           | 概要                                                                                                                                         |
 | ----------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ecc-architecture-decision-records` | アーキテクチャ上の決定をした場面                                                   | 決定の文脈・代替案・根拠を構造化した ADR ドキュメントとして記録                                                                              |
+| `ecc:architecture-decision-records` | アーキテクチャ上の決定をした場面                                                   | 決定の文脈・代替案・根拠を構造化した ADR ドキュメントとして記録                                                                              |
 | `clean-architecture`                | クリーンアーキテクチャ設計・実装時                                                 | Entity/UseCase/Interface Adapters/Frameworks の層構造・依存性ルール・フレームワーク非依存設計パターン                                        |
-| `ecc-api-design`                    | REST API 設計時                                                                    | リソース命名・ステータスコード・ページネーション・エラーレスポンス・バージョニング                                                           |
-| `ecc-nestjs-patterns`               | NestJS バックエンド実装時                                                          | モジュール・コントローラ・プロバイダ・DTO バリデーション・ガード・インターセプタ                                                             |
-| `ecc-content-hash-cache-pattern`    | 高コストなファイル処理のキャッシュ実装時                                           | SHA-256 コンテンツハッシュを使ったパス非依存・自動無効化キャッシュパターン                                                                   |
-| `ecc-error-handling`                | エラー型設計・リトライ実装・API エラーレスポンス設計・React エラーバウンダリ実装時 | TypeScript / Python / Go 向けの型付きエラークラス・Result パターン・指数バックオフリトライ・ユーザー向けエラーメッセージ設計の実践パターン集 |
+| `ecc:api-design`                    | REST API 設計時                                                                    | リソース命名・ステータスコード・ページネーション・エラーレスポンス・バージョニング                                                           |
+| `ecc:nestjs-patterns`               | NestJS バックエンド実装時                                                          | モジュール・コントローラ・プロバイダ・DTO バリデーション・ガード・インターセプタ                                                             |
+| `ecc:content-hash-cache-pattern`    | 高コストなファイル処理のキャッシュ実装時                                           | SHA-256 コンテンツハッシュを使ったパス非依存・自動無効化キャッシュパターン                                                                   |
+| `ecc:error-handling`                | エラー型設計・リトライ実装・API エラーレスポンス設計・React エラーバウンダリ実装時 | TypeScript / Python / Go 向けの型付きエラークラス・Result パターン・指数バックオフリトライ・ユーザー向けエラーメッセージ設計の実践パターン集 |
 
 ---
 
@@ -481,12 +481,12 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 
 | スキル                       | トリガー                                                                | 概要                                                                                                                                                   |
 | ---------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ecc-tdd-workflow`           | 新機能実装・バグ修正・リファクタリング時                                | 80% 以上カバレッジのユニット・統合・E2E テストを含む TDD ワークフロー                                                                                  |
-| `ecc-e2e-testing`            | Playwright E2E テスト実装時                                             | Page Object Model・設定・CI/CD 統合・フレーキーテスト対策                                                                                              |
-| `ecc-ai-regression-testing`  | AI 支援開発での回帰テスト実装時                                         | AI が書いて AI がレビューする盲点を補うサンドボックスモードの API テストパターン                                                                       |
-| `ecc-verification-loop`      | セッション終了前の包括的検証時                                          | Claude Code セッション向けの包括的検証システム                                                                                                         |
-| `ecc-santa-method`           | 出力を厳格に検証したい場面                                              | 2 つの独立したレビューエージェントが両方合格するまでループするマルチエージェント検証フレームワーク                                                     |
-| `ecc-coding-standards`       | クロスプロジェクトのコーディング規約参照時                              | 命名・可読性・イミュータビリティ・コード品質レビューのベースライン規約                                                                                 |
+| `ecc:tdd-workflow`           | 新機能実装・バグ修正・リファクタリング時                                | 80% 以上カバレッジのユニット・統合・E2E テストを含む TDD ワークフロー                                                                                  |
+| `ecc:e2e-testing`            | Playwright E2E テスト実装時                                             | Page Object Model・設定・CI/CD 統合・フレーキーテスト対策                                                                                              |
+| `ecc:ai-regression-testing`  | AI 支援開発での回帰テスト実装時                                         | AI が書いて AI がレビューする盲点を補うサンドボックスモードの API テストパターン                                                                       |
+| `ecc:verification-loop`      | セッション終了前の包括的検証時                                          | Claude Code セッション向けの包括的検証システム                                                                                                         |
+| `ecc:santa-method`           | 出力を厳格に検証したい場面                                              | 2 つの独立したレビューエージェントが両方合格するまでループするマルチエージェント検証フレームワーク                                                     |
+| `ecc:coding-standards`       | クロスプロジェクトのコーディング規約参照時                              | 命名・可読性・イミュータビリティ・コード品質レビューのベースライン規約                                                                                 |
 
 ---
 
@@ -494,9 +494,9 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 
 | スキル                | トリガー                                                   | 概要                                                                                       |
 | --------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `ecc-security-review` | 認証・ユーザー入力・シークレット・API エンドポイント実装時 | 包括的なセキュリティチェックリストとパターン集                                             |
-| `ecc-security-scan`   | Claude Code 設定のセキュリティ監査時                       | `.claude/` ディレクトリの脆弱性・設定ミス・インジェクションリスクを AgentShield でスキャン |
-| `ecc-safety-guard`    | 本番環境・自律エージェント実行時                           | 破壊的操作を防ぐためのガードレール                                                         |
+| `ecc:security-review` | 認証・ユーザー入力・シークレット・API エンドポイント実装時 | 包括的なセキュリティチェックリストとパターン集                                             |
+| `ecc:security-scan`   | Claude Code 設定のセキュリティ監査時                       | `.claude/` ディレクトリの脆弱性・設定ミス・インジェクションリスクを AgentShield でスキャン |
+| `ecc:safety-guard`    | 本番環境・自律エージェント実行時                           | 破壊的操作を防ぐためのガードレール                                                         |
 
 ---
 
@@ -504,13 +504,13 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 
 | スキル                     | トリガー                                                   | 概要                                                                                                                                                         |
 | -------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ecc-git-workflow`         | Git 操作・ブランチ戦略・コミット規約参照時                 | ブランチ戦略・コミット規約・マージ vs リベース・競合解決                                                                                                     |
-| `ecc-github-ops`           | GitHub Issue・PR・CI・リリース管理時                       | `gh` CLI を使った GitHub リポジトリ操作・自動化・管理                                                                                                        |
-| `ecc-deployment-patterns`  | デプロイ・CI/CD・Docker 実装時                             | デプロイワークフロー・ヘルスチェック・ロールバック戦略・本番準備チェックリスト                                                                               |
-| `ecc-production-audit`     | 「本番リリースできる状態か」「本番で何が壊れるか」の確認時 | ローカル証跡に基づく本番準備監査。セキュリティ・データ整合性・決済・運用・UX の各リスクレンズでスコアリング（0〜100）し、ブロッカーと次のアクションを提示    |
-| `ecc-database-migrations`  | DB スキーマ変更・マイグレーション実装時                    | ゼロダウンタイムの安全なマイグレーション（Prisma・Drizzle・Kysely 等対応）                                                                                   |
-| `ecc-search-first`         | 実装前の調査・既存ライブラリ探索時                         | コードを書く前に既存ツール・ライブラリ・パターンを検索する research-before-coding ワークフロー                                                               |
-| `ecc-agentic-engineering`  | AI エージェントとしての実装ワークフロー時                  | eval ファースト実行・タスク分解・コスト意識のモデルルーティング                                                                                              |
+| `ecc:git-workflow`         | Git 操作・ブランチ戦略・コミット規約参照時                 | ブランチ戦略・コミット規約・マージ vs リベース・競合解決                                                                                                     |
+| `ecc:github-ops`           | GitHub Issue・PR・CI・リリース管理時                       | `gh` CLI を使った GitHub リポジトリ操作・自動化・管理                                                                                                        |
+| `ecc:deployment-patterns`  | デプロイ・CI/CD・Docker 実装時                             | デプロイワークフロー・ヘルスチェック・ロールバック戦略・本番準備チェックリスト                                                                               |
+| `ecc:production-audit`     | 「本番リリースできる状態か」「本番で何が壊れるか」の確認時 | ローカル証跡に基づく本番準備監査。セキュリティ・データ整合性・決済・運用・UX の各リスクレンズでスコアリング（0〜100）し、ブロッカーと次のアクションを提示    |
+| `ecc:database-migrations`  | DB スキーマ変更・マイグレーション実装時                    | ゼロダウンタイムの安全なマイグレーション（Prisma・Drizzle・Kysely 等対応）                                                                                   |
+| `ecc:search-first`         | 実装前の調査・既存ライブラリ探索時                         | コードを書く前に既存ツール・ライブラリ・パターンを検索する research-before-coding ワークフロー                                                               |
+| `ecc:agentic-engineering`  | AI エージェントとしての実装ワークフロー時                  | eval ファースト実行・タスク分解・コスト意識のモデルルーティング                                                                                              |
 
 ---
 
@@ -518,7 +518,7 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 
 | スキル                 | トリガー                                       | 概要                                                                                  |
 | ---------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `ecc-council`          | 複数の有効な選択肢があって意思決定が難しい場面 | 4 つの異なる視点（Claude 内・楽観・悲観・野生）の構造化議論で意思決定を支援           |
+| `ecc:council`          | 複数の有効な選択肢があって意思決定が難しい場面 | 4 つの異なる視点（Claude 内・楽観・悲観・野生）の構造化議論で意思決定を支援           |
 
 ---
 
@@ -562,8 +562,8 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 
 | スキル                | トリガー                                       | 概要                                                                   |
 | --------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
-| `ecc-article-writing` | 記事・ガイド・ブログ投稿・チュートリアル作成時 | ブランドガイドラインに沿った独自の声・スタイルを持つ長文コンテンツ執筆 |
-| `ecc-market-research` | 市場規模・競合分析・技術スキャン等の調査時     | 情報源帰属付きの意思決定志向の市場調査・競合分析                       |
+| `ecc:article-writing` | 記事・ガイド・ブログ投稿・チュートリアル作成時 | ブランドガイドラインに沿った独自の声・スタイルを持つ長文コンテンツ執筆 |
+| `ecc:market-research` | 市場規模・競合分析・技術スキャン等の調査時     | 情報源帰属付きの意思決定志向の市場調査・競合分析                       |
 
 ---
 

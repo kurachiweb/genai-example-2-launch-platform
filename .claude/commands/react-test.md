@@ -13,11 +13,11 @@ This command enforces test-driven development for React using React Testing Libr
 3. **Run Tests**: Verify they fail for the right reason
 4. **Implement Minimal Code**: Just enough to pass — GREEN
 5. **Refactor**: Improve while keeping tests green
-6. **Check Coverage**: Hit the targets in [rules/ecc-react/testing.md](../rules/ecc-react/testing.md)
+6. **Check Coverage**: Hit the targets in [rules/react/testing.md](../rules/react/testing.md)
 
 ## When to Use
 
-Use `/ecc-react-test` when:
+Use `/react-test` when:
 
 - Implementing a new React component or custom hook
 - Adding test coverage to an untested component
@@ -46,7 +46,7 @@ Prefer Vitest for new Vite-based projects; respect Jest for existing setups.
 ## Example Session
 
 ````text
-User: /ecc-react-test I need a SearchInput component with debounced search
+User: /react-test I need a SearchInput component with debounced search
 
 Agent:
 # TDD Session: SearchInput
@@ -254,12 +254,12 @@ CI=true vitest run --coverage
 
 ## Related Commands
 
-- `/ecc-react-build` — fix build errors before running tests
-- `/ecc-react-review` — review after implementation
-- `ecc-verification-loop` skill — full verification loop
+- `/react-build` — fix build errors before running tests
+- `/react-review` — review after implementation
+- `verification-loop` skill — full verification loop
 
 ## Related
 
-- Skills: `skills/ecc-react-testing/`, `skills/ecc-tdd-workflow/`, `skills/ecc-accessibility/`, `skills/ecc-e2e-testing/`
-- Rules: `rules/ecc-react/testing.md`
-- Agents: `ecc-react-reviewer` (reviews test quality), `ecc-tdd-guide` (enforces TDD process)
+- Skills: `skills/react-testing/`, `skills/tdd-workflow/`, `skills/accessibility/`, `skills/e2e-testing/`
+- Rules: `rules/react/testing.md`
+- Agents: `react-reviewer` (reviews test quality), `tdd-guide` (enforces TDD process)

@@ -9,7 +9,7 @@ paths:
 ---
 # React Testing
 
-> This file extends [ecc-typescript/testing.md](../ecc-typescript/testing.md) and [ecc-common/testing.md](../ecc-common/testing.md) with React specific content.
+> This file extends [typescript/testing.md](../typescript/testing.md) and [common/testing.md](../common/testing.md) with React specific content.
 
 ## Library Choice
 
@@ -205,4 +205,4 @@ For those, use Playwright Component Testing or end-to-end Playwright/Cypress run
 
 ## Skill Reference
 
-See `skills/ecc-react-testing/SKILL.md` for end-to-end test examples, MSW patterns, and accessibility test scaffolding.
+See `skills/react-testing/SKILL.md` for end-to-end test examples, MSW patterns, and accessibility test scaffolding.

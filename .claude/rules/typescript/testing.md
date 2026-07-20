@@ -7,7 +7,7 @@ paths:
 ---
 # TypeScript/JavaScript Testing
 
-> This file extends [ecc-common/testing.md](../ecc-common/testing.md) with TypeScript/JavaScript specific content.
+> This file extends [common/testing.md](../common/testing.md) with TypeScript/JavaScript specific content.
 
 ## E2E Testing
 
@@ -15,4 +15,4 @@ Use **Playwright** as the E2E testing framework for critical user flows.
 
 ## Agent Support
 
-- **ecc-e2e-runner** - Playwright E2E testing specialist
+- **e2e-runner** - Playwright E2E testing specialist

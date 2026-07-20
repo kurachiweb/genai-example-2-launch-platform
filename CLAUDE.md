@@ -67,8 +67,8 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
 │   ├── adr/                    # Everything Claude Codeのecc:architecture-decision-recordsスキルによる自動生成ADR
 │   ├── tdd/                    # Everything Claude Codeのecc:tdd-workflowスキルのステップ8によるTDDエビデンスレポート
-│   ├── CODEMAPS/               # Everything Claude Codeのecc-doc-updaterエージェントによる自動生成コードマップ
-│   ├── GUIDES/                 # 開発者ドキュメント、Everything Claude Codeのecc-doc-updaterエージェントにより都度更新
+│   ├── CODEMAPS/               # Everything Claude Codeのdoc-updaterエージェントによる自動生成コードマップ
+│   ├── GUIDES/                 # 開発者ドキュメント、Everything Claude Codeのdoc-updaterエージェントにより都度更新
 │   │   ├── infra/              # インフラ・ネットワーク構成図、デプロイ手順、ログ管理方針
 │   │   ├── db/                 # データベース設計原則、マイグレーション手順
 │   │   ├── api/                # APIドキュメント及び設計原則

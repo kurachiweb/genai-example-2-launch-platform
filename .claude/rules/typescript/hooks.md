@@ -7,7 +7,7 @@ paths:
 ---
 # TypeScript/JavaScript Hooks
 
-> This file extends [ecc-common/hooks.md](../ecc-common/hooks.md) with TypeScript/JavaScript specific content.
+> This file extends [common/hooks.md](../common/hooks.md) with TypeScript/JavaScript specific content.
 
 ## PostToolUse Hooks
 

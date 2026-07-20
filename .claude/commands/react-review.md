@@ -16,7 +16,7 @@ This command invokes the **react-reviewer** agent for React-specific code review
 
 ## When to Use
 
-Use `/ecc-react-review` when:
+Use `/react-review` when:
 
 - A PR or commit touches `.tsx`/`.jsx` files
 - After writing or modifying React components, custom hooks, or pages
@@ -100,7 +100,7 @@ If `eslint-plugin-react-hooks` or `eslint-plugin-jsx-a11y` is not configured, th
 ## Example Usage
 
 ````text
-User: /ecc-react-review
+User: /react-review
 
 Agent:
 # React Code Review Report
@@ -157,14 +157,14 @@ Recommendation: FAIL: Block merge until CRITICAL issue is fixed
 
 ## Integration with Other Commands
 
-- Run `/ecc-react-build` first if the build is broken
-- Run `/ecc-react-test` to ensure component tests pass
-- Run `/ecc-react-review` before merging
+- Run `/react-build` first if the build is broken
+- Run `/react-test` to ensure component tests pass
+- Run `/react-review` before merging
 - Use `/code-review` for non-React-specific concerns on the same PR
 
 ## Related
 
-- Agent: `agents/ecc-react-reviewer.md`
+- Agent: `agents/react-reviewer.md`
 - Companion agent: `agents/typescript-reviewer.md` (run alongside for TSX/JSX PRs)
-- Skills: `skills/ecc-react-patterns/`, `skills/ecc-react-testing/`, `skills/accessibility/`
-- Rules: `rules/ecc-react/`
+- Skills: `skills/react-patterns/`, `skills/react-testing/`, `skills/accessibility/`
+- Rules: `rules/react/`

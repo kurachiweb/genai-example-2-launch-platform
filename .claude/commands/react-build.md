@@ -16,7 +16,7 @@ This command invokes the **react-build-resolver** agent to incrementally fix Rea
 
 ## When to Use
 
-Use `/ecc-react-build` when:
+Use `/react-build` when:
 
 - `npm run build` (or pnpm/yarn/bun equivalent) fails
 - JSX/TSX compile errors after a TypeScript or React upgrade
@@ -54,7 +54,7 @@ bun build ./src/index.tsx --outdir=dist
 ## Example Session
 
 ````text
-User: /ecc-react-build
+User: /react-build
 
 Agent:
 # React Build Resolution
@@ -175,13 +175,13 @@ The agent will stop and report if:
 
 ## Related Commands
 
-- `/ecc-react-test` — run tests after the build is green
-- `/ecc-react-review` — review code quality after the build succeeds
+- `/react-test` — run tests after the build is green
+- `/react-review` — review code quality after the build succeeds
 - `/build-fix` — generic build fixer (non-React)
 - `verification-loop` skill — full verification loop
 
 ## Related
 
-- Agent: `agents/ecc-react-build-resolver.md`
-- Skills: `skills/ecc-react-patterns/`, `skills/ecc-frontend-patterns/`
-- Rules: `rules/ecc-react/coding-style.md`, `rules/ecc-react/patterns.md`
+- Agent: `agents/react-build-resolver.md`
+- Skills: `skills/react-patterns/`, `skills/frontend-patterns/`
+- Rules: `rules/react/coding-style.md`, `rules/react/patterns.md`
