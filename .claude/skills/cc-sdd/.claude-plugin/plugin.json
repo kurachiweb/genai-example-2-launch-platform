@@ -1,0 +1,7 @@
+{
+  "name": "cc-sdd",
+  "description": "A minimal, adaptable SDD harness with Agent Skills for Claude Code etc.",
+  "author": {
+    "name": "Gota"
+  }
+}
