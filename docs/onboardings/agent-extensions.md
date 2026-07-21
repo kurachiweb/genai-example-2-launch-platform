@@ -567,6 +567,206 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 
 ---
 
+### 法務・コンプライアンス系
+
+世界各国のプライバシー関連法・同意管理・越境移転・保存期間・データ主体の権利対応を扱うスキル群。いずれも法務・DPO の指示のもとでエンジニアやプライバシー運用担当者が実装作業を行う際の技術ガイドとして機能する。
+
+#### consent-management-skills
+
+**プラグイン説明**: 有効な同意、同意撤回、プリファレンスセンター、研究/子ども/モバイルアプリの同意
+**想定使用者**: プライバシーエンジニア/同意運用リード、プロダクトマネージャー(DPO・法務の指示のもとで実装)。
+
+| スキル                                              | トリガー                                       | 概要                                                                                                                                                                     |
+| ---------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `consent-management-skills:gdpr-valid-consent`       | 同意取得フォームの設計・監査時                 | GDPR 第 4 条(11)・第 7 条に基づく有効な同意の 5 要件（自由・特定・情報提供・不明確でない・明確な積極的行為）を実装するガイド。Planet49 CJEU 判決（C-673/17）によるチェックボックス事前選択禁止、同意フォーム監査チェックリストを含む |
+| `consent-management-skills:consent-withdrawal`       | 同意撤回機能の実装時                           | GDPR 第 7 条(3)の同意撤回メカニズム実装ガイド。撤回が同意付与と同じくらい容易であることを保証する equal ease 要件、ワンクリック撤回、下流処理へのカスケード効果、第三者通知ワークフロー、リアルタイム失効の技術アーキテクチャを扱う |
+| `consent-management-skills:consent-pref-center`      | プリファレンスセンター構築時                   | マルチパーパスな同意プリファレンスセンター構築の技術アーキテクチャガイド。目的単位の粒度、第 7 条(3)に基づく容易な撤回、バージョン履歴、監査証跡、IAB TCF v2.2 連携を扱う。DB スキーマ・API 設計・UI コンポーネント仕様を含む |
+| `consent-management-skills:consent-record-keeping`   | 同意記録システムの構築時                       | GDPR 第 7 条(1)に基づく有効な同意を証明する同意記録保持システムの構築ガイド。タイムスタンプ・バージョン・目的・取得手段・本人 identity 等の必須フィールドを扱う。Kantara Initiative 同意レシート仕様に基づく監査対応レシートを実装 |
+| `consent-management-skills:consent-platform-eval`    | CMP の選定・ベンダー比較時                     | 同意管理プラットフォーム（CMP）の評価・選定フレームワーク。TCF v2.2 認定要件、Global Privacy Control 対応、マルチ規制対応（GDPR/CCPA/LGPD）、A/B テスト機能、API 連携、構造化されたベンダー比較手法を扱う             |
+| `consent-management-skills:cnil-compliant-cookies`   | Cookie バナー実装・CNIL 準拠監査時             | CNIL Cookie ガイドライン準拠の実装ガイド。Google への 1.5 億ユーロ、Meta への 6,000 万ユーロの制裁金を参照。同意/拒否ボタンの均等表示、Cookie ウォール禁止、6 ヶ月ごとの再同意間隔、必須 Cookie 免除、CNIL 決定 2020-091 号の詳細要件を扱う |
+| `consent-management-skills:cookie-consent-ab-audit`  | 同意バナーの A/B テスト実施・監査時            | 同意バナーの A/B テストを監査する手法。承諾と拒否の均等な容易性の遵守を確認。CNIL の Google への 1.5 億ユーロ制裁金などの執行事例、ダークパターン検出手法、操作的デザインの識別、規制準拠の実験境界を扱う                       |
+| `consent-management-skills:consent-for-transfers`    | 十分性認定のない国への移転で同意を根拠にする場合 | GDPR 第 49 条 1 項(a)に基づく国際データ移転の明示的同意取得ガイド。十分性認定や適切な保護措置なしの移転リスク開示を含むインフォームドコンセント要件、移転先国の具体的開示、derogation ベースの移転の狭い適用範囲を扱う           |
+| `consent-management-skills:global-privacy-control`   | GPC 信号への対応実装時                         | CPRA 第 1798.135 条(e)に基づく Global Privacy Control（GPC）自動オプトアウト信号の実装ガイド。Sec-GPC HTTP ヘッダー検出、`navigator.globalPrivacyControl` API、CA/CO/CT/MT/TX/OR 各州固有要件を扱う                |
+| `consent-management-skills:legit-interest-vs-consent`| 法的根拠（同意 vs 正当な利益）の選定時         | 処理の法的根拠として同意と正当な利益のどちらを選ぶかの意思決定フレームワーク。力の不均衡指標、第 7 条(4)の条件性禁止、粒度要件、3 段階 LIA テスト（目的・必要性・比較衡量）、実務上の意思決定ツリーを扱う                       |
+| `consent-management-skills:managing-consent-for-children` | 子ども向けサービスの同意設計時            | GDPR 第 8 条・COPPA に基づく子どもの個人データ同意管理ガイド。親権者同意メカニズム、年齢確認方法、国別年齢閾値（13〜16 歳）、親権者認可ワークフロー、英国 ICO Children's Code に基づく年齢に適したデザインを扱う           |
+| `consent-management-skills:managing-consent-for-research` | 研究目的データ処理の同意設計時             | GDPR 第 89 条・前文 33 項の broad consent 規定に基づく科学研究のための同意管理ガイド。倫理審査委員会との調整、目的の進化管理、仮名化などの適切な保護措置、同意と他の法的根拠の相互関係を扱う                                   |
+| `consent-management-skills:managing-mobile-app-consent` | モバイルアプリの同意フロー実装時            | モバイル特有の同意管理ガイド。iOS 向け Apple ATT フレームワーク、Android パーミッションモデル、アプリ内同意フロー、サードパーティ SDK への同意伝播、IDFA/GAID 取扱いを扱う。GDPR・ePrivacy 準拠と併せたプラットフォーム固有要件に対応 |
+| `consent-management-skills:double-opt-in-email`      | メールマーケティングの同意取得実装時           | ePrivacy 指令準拠のダブルオプトインメール同意取得の実装ガイド。確認メールワークフロー設計、トークン失効処理、記録保持要件、サプレッションリスト管理、CAN-SPAM 法・CASL との多法域連携を扱う                                   |
+
+#### cookie-consent-skills
+
+**プラグイン説明**: TCF v2、CNIL準拠、Cookie監査、GPC連携、サーバーサイドトラッキング、Cookieレス代替
+**想定使用者**: Web/マーテック・広告技術系のプライバシーエンジニア。バナー・タグ管理・同意信号連携が中心。
+
+| スキル                                            | トリガー                                     | 概要                                                                                                                                                       |
+| -------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cookie-consent-skills:cnil-cookie-banner`         | Cookie バナー実装時                           | フランス・EU ユーザー向け CNIL 準拠 Cookie 同意バナーの設計・実装。Google への 1 億ユーロ、Meta への 1.5 億ユーロの制裁金を参照。同意/拒否の均等表示、拒否ボタン、Cookie ウォール禁止、6 ヶ月ごとの再同意サイクルを扱う |
+| `cookie-consent-skills:cookie-audit`               | Cookie 監査実施時                             | Web サイトの Cookie・トラッキング技術の包括的監査手法。自動スキャン、Cookie 分類、ライフサイクル文書化、Planet49 CJEU 判決（C-673/17）を踏まえたコンプライアンスギャップ分析を扱う                          |
+| `cookie-consent-skills:cookie-lifetime-audit`      | Cookie 有効期間の監査時                       | 規制推奨値・ブラウザポリシーに対する Cookie 有効期間の監査。CNIL の 13 ヶ月上限推奨、セッション/永続 Cookie の分類、サードパーティ Cookie 廃止の影響、Safari ITP の期間上限を扱う                          |
+| `cookie-consent-skills:cookie-consent-testing`     | Cookie 同意の自動テスト構築時                 | Selenium と Playwright による Cookie 同意の自動検証。バナー操作テスト、同意状態の検証、同意選択後のタグ発火監査、Cookie コンプライアンスの回帰テスト、CI/CD パイプライン統合を扱う                          |
+| `cookie-consent-skills:eprivacy-essential-cookies` | 必須 Cookie の分類・免除判定時                 | ePrivacy 指令第 5 条(3)の必須 Cookie 免除を適用し、同意不要の Cookie を分類。免除基準・機能性 Cookie・負荷分散・セッション状態・非免除カテゴリを EDPB および各国 DPA のガイダンスとともに扱う                    |
+| `cookie-consent-skills:cross-jurisdiction-cookies` | 複数法域向け Cookie 同意の実装時               | EU ePrivacy 指令・英国 PECR・米国 CCPA/CPRA オプトアウトモデル・ブラジル LGPD を含む複数法域での Cookie コンプライアンス実装。要件マトリクスとジオロケーションベースの実装アプローチを提供                       |
+| `cookie-consent-skills:tcf-v2-implementation`      | TCF v2.2 対応 CMP 実装時                       | プログラマティック広告の同意管理向け IAB Transparency and Consent Framework v2.2 の実装。CMP 登録、Global Vendor List 連携、TC String エンコーディング、パブリッシャー制限、コンプライアンス検証を扱う          |
+| `cookie-consent-skills:gpc-cookie-integration`     | GPC 信号の CMP 連携実装時                      | Global Privacy Control（GPC）信号と Cookie 同意プラットフォームの連携。ブラウザでの GPC 信号検出、自動オプトアウトのトリガー、GPC と米国州法のマッピング、CCPA/CPA/CTDPA 対応の CMP 連携を扱う                  |
+| `cookie-consent-skills:server-side-tracking`       | サーバーサイドトラッキング導入時               | Google Tag Manager サーバーコンテナを使ったプライバシー配慮型サーバーサイドトラッキングの実装。ファーストパーティデータ収集、IP 匿名化、同意状態を考慮したイベント転送、クライアント側のサードパーティ Cookie 露出削減を扱う |
+| `cookie-consent-skills:cookieless-alternatives`    | Cookie レス計測への移行検討時                  | ポスト Cookie 時代に向けた Cookie レストラッキング代替手段の評価・実装。Privacy Sandbox API（Topics・Attribution Reporting・Protected Audiences）、サーバーサイド分析、プライバシー保護計測技術を扱う           |
+| `cookie-consent-skills:google-consent-mode-v2`     | Google Consent Mode v2 導入時                  | プライバシー準拠の計測・広告のための Google Consent Mode v2 設定。default/update コマンド、GA4・Google Ads への同意状態マッピング、Cookie レス ping によるコンバージョンモデリング、2024 年 3 月発効の EEA 要件を扱う |
+| `cookie-consent-skills:analytics-cookie-consent`   | アクセス解析ツール導入時の Cookie 同意設計時   | 分析 Cookie の同意管理とプライバシー保護計測の実装。GA4 のプライバシー設定、Consent Mode 時のフォールバック挙動、集計レポートによる代替手段、Cookie レス計測アプローチを扱う                                    |
+
+#### cross-border-transfers-skills
+
+**プラグイン説明**: SCC、BCR、十分性評価、TIA、データローカライゼーション、第49条の例外
+**想定使用者**: 越境データ移転を専門とするプライバシー/データ保護顧問(DPOや法務チーム内)。
+
+| スキル                                                    | トリガー                                          | 概要                                                                                                                                                        |
+| ----------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cross-border-transfers-skills:adequacy-assessment`         | 十分性認定国への移転可否評価時                    | GDPR 第 45 条に基づく第三国十分性認定の評価ガイド。現行の EC 十分性認定リスト、十分性評価基準、部分的十分性の取扱い、十分性認定見直しのモニタリングを扱う                              |
+| `cross-border-transfers-skills:eu-us-dpf-assessment`        | EU-US DPF を移転根拠として利用する場合            | 越大西洋データ移転向け EU-US データプライバシーフレームワーク十分性認定の評価・利用ガイド。商務省への DPF 自己認証、DPF 原則遵守、Data Protection Review Court、EC 年次レビューを扱う      |
+| `cross-border-transfers-skills:scc-implementation`          | SCC 締結・附属書作成時                            | 欧州委員会決定 2021/914 に基づく EU 標準契約条項（SCC）の 4 モジュール（C2C・C2P・P2P・P2C）全体の実装ガイド。条項ごとの記入方法、附属書 I〜III の作成、モジュール選定を扱う              |
+| `cross-border-transfers-skills:bcr-establishment`           | グループ内移転の BCR 策定時                       | GDPR 第 47 条に基づく企業グループ内国際データ移転のための拘束的企業準則（BCR）の策定・承認ガイド。第 47 条(2)(a)〜(n)の内容要件、リード監督機関による承認プロセス、WP256/WP257 を扱う      |
+| `cross-border-transfers-skills:art49-derogations`           | SCC 等が使えない移転の例外適用検討時              | 十分性認定や適切な保護措置がない場合の GDPR 第 49 条 derogation 要件の評価・適用ガイド。明示的同意・契約の必要性・公益・生命に関わる利益等、EDPB ガイドライン 2/2018 に基づく限定解釈を扱う  |
+| `cross-border-transfers-skills:transfer-impact-assessment`  | SCC 等での移転前の TIA 実施時                     | Schrems II 判決後の EDPB 勧告 01/2020 の 6 ステップ手法に基づく移転影響評価（TIA）プロセスガイド。移転先国のサーベイランス法評価、European Essential Guarantees 評価を扱う             |
+| `cross-border-transfers-skills:supplementary-measures`      | TIA の結果として補完的措置が必要な場合            | EDPB 勧告 01/2020 に基づく国際データ移転のための技術的・契約的・組織的補完的措置の実装ガイド。暗号化・仮名化・分割処理・監査権・透明性義務・内部方針を扱う                               |
+| `cross-border-transfers-skills:data-localization`           | データローカライゼーション要件への対応検討時      | ロシア(242-FZ)・中国(PIPL 第 40 条・CAC 措置)・インド(DPDP 法)・トルコ・ベトナム・インドネシア等の要件への準拠ガイド。ローカライゼーション評価、アーキテクチャ設計、適用除外手続きを扱う  |
+| `cross-border-transfers-skills:apac-transfers`              | APAC 地域への越境移転設計時                       | APEC CBPR・ASEAN モデル契約条項・日本 APPI 補足規則・韓国 PIPA 規定・タイ/シンガポール PDPA メカニズムを含むアジア太平洋地域の越境データ移転管理ガイド                                  |
+| `cross-border-transfers-skills:uk-transfer-mechanisms`      | 英国からの越境移転設計時                          | Brexit 後の英国国際データ移転メカニズムの実装ガイド。国際データ移転契約（IDTA）、EU SCC への英国附則、英国十分性評価、ICO 移転リスク評価ツールを扱う                                    |
+| `cross-border-transfers-skills:data-flow-mapping`           | 越境データフローの棚卸し・可視化時                | 組織全体の国際個人データフローの体系的マッピングガイド。システム単位の棚卸し手法、第三者の特定、移転メカニズムの割当、ギャップ分析、データフロー可視化を扱う                              |
+| `cross-border-transfers-skills:transfer-records`            | 移転記録・監査証跡の整備時                        | GDPR 第 30 条・第 46 条、EDPB の記録保持ガイダンス、監督機関の期待に基づく越境移転登録簿・監査証跡・コンプライアンス文書の維持ガイド                                                    |
+
+#### data-retention-skills
+
+**プラグイン説明**: 保存期間、自動削除、バックアップ消去、安全な破棄、訴訟ホールド
+**想定使用者**: DPO・記録/情報ガバナンス管理者、プライバシーコンプライアンスアナリスト、技術的破棄・クラウド設定を担うIT/セキュリティエンジニア。
+
+| スキル                                             | トリガー                                        | 概要                                                                                                                                                    |
+| ---------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-retention-skills:retention-schedule`          | 保存スケジュール策定時                            | GDPR 第 5 条(1)(e)の保存制限原則に準拠したデータ保存スケジュールの設計・実装。データカテゴリと保存期間のマッピング、法的根拠の正当化、規制上の最低保存期間、自動レビュートリガーを扱う                     |
+| `data-retention-skills:retention-impact-assess`      | 新規処理活動の保存期間を決定する場合              | 新規処理活動に適切な保存期間を決定するための保存影響評価の実施。規制要件の洗い出し、比例性レビュー、目的ベースの保存期間決定、GDPR 第 5 条(1)(e)・第 25 条に沿った文書化を扱う                             |
+| `data-retention-skills:retention-exception-mgmt`     | 保存期間の例外的延長を承認・管理する場合          | 申請・承認プロセス・期間上限・定期レビューサイクル・文書化要件・監査証跡維持を含む保存例外ワークフローの管理。データの野放図な蓄積を防ぐガバナンス統制を扱う                                                  |
+| `data-retention-skills:anonymization-alternative`    | 匿名化を保存代替策として検討時                    | GDPR 前文 26 項に基づき、保存期間の代替手段としての匿名化を評価。WP29 意見 05/2014 のランダム化・一般化などの技術を適用し、k-匿名性・l-多様性・t-近接性の指標で有効性を検証                            |
+| `data-retention-skills:auto-deletion-workflow`       | 自動削除・保存期間満了時の削除処理実装時          | GDPR 第 17 条の消去権および保存期間満了に対応する自動データ削除ワークフローの実装。依存システム間のカスケード削除、参照整合性の依存関係処理、確認ログ記録、監査証跡生成を扱う                                |
+| `data-retention-skills:backup-retention-erasure`     | バックアップ・アーカイブの消去対応時              | 保存スケジュールと消去義務下でのバックアップ・アーカイブデータの管理。バックアップ削除の技術的実行不能例外、保存期間とのサイクル整合、復元後削除手順、保持中の暫定的保護措置を扱う                            |
+| `data-retention-skills:secure-data-destruction`      | 記録媒体の安全な破棄実施時                        | 全メディア種別に対する NIST SP 800-88 Rev.1 のメディア無害化手順（Clear/Purge/Destroy）の実装。破棄証明書の発行、検証手続き、第三者破棄業者管理、chain of custody 文書化を扱う                       |
+| `data-retention-skills:litigation-hold-mgmt`         | 訴訟・調査に伴うリーガルホールド発動時            | 発生事由・保管者への通知・保持措置の技術的実装・解除手続きを含む法的ホールド・データ保全プロセスの管理。リーガルホールド登録簿・遵守モニタリング・第 17 条(3)(e)例外の文書化を扱う                            |
+| `data-retention-skills:search-engine-erasure`        | 検索結果の削除（忘れられる権利）対応時            | GDPR 第 17 条および CJEU Google Spain 判決（C-131/12）に基づく検索エンジンでの忘れられる権利の実装。削除リクエスト手続き、プライバシーと公益のバランス評価基準、地理的適用範囲の判定を扱う                 |
+| `data-retention-skills:cloud-retention-config`       | クラウドストレージの保存ポリシー設定時            | AWS S3・Azure Blob Storage・Google Cloud Storage 全体のクラウドストレージ保存ポリシー設定。ライフサイクルルール・オブジェクトロック・リーガルホールド・イミュータビリティポリシーを扱う                    |
+| `data-retention-skills:financial-retention`          | 財務・決済データの保存要件整理時                  | EU 指令(5〜7 年)・SOX 第 802 条(7 年)・MiFID II(5〜7 年)・税務記録・決済データ・AMLD 下の AML 義務を横断する財務記録保存要件の実装。法域間の整合を図る                                          |
+| `data-retention-skills:ccpa-right-to-delete`         | CCPA/CPRA 削除請求対応実装時                      | CCPA 第 1798.105 条の削除権と CPRA 改正への対応実装。サービスプロバイダの義務、法定除外事由、消費者本人確認手続き、45 日の対応期限管理を扱う                                                          |
+
+#### data-subject-rights-skills
+
+**プラグイン説明**: アクセス、消去、ポータビリティ、訂正、異議申立、オプトアウト信号
+**想定使用者**: DSAR/プライバシー運用アナリスト、プライバシープログラムマネージャー(DPO・法務のもとで日々の権利請求対応を実施)。
+
+| スキル                                                     | トリガー                                     | 概要                                                                                                                                                     |
+| ------------------------------------------------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data-subject-rights-skills:dsar-processing`                | DSAR/アクセス請求対応時                       | GDPR 第 15 条に基づくデータ主体アクセス請求（DSAR）の完全なワークフロー対応。本人確認、30 日期限（延長含む）の算定、回答フォーマット、適用除外、手数料規定を扱う                                          |
+| `data-subject-rights-skills:dsar-intake-system`             | DSAR 受付窓口の構築時                         | Web フォーム・メール・電話・対面を含むマルチチャネル DSAR 受付システムの構築。本人確認の階層、自動ルーティングロジック、SLA 追跡、回答生成を扱う                                                          |
+| `data-subject-rights-skills:right-to-erasure`                | 消去請求対応時                               | GDPR 第 17 条の消去権（忘れられる権利）ワークフローの実装。6 つの消去事由すべて、5 つの例外、技術的削除と匿名化の判断、第 19 条に基づく第三者通知を扱う                                                    |
+| `data-subject-rights-skills:right-to-rectification`         | 訂正請求対応時                               | GDPR 第 16 条の訂正権請求の処理。訂正後データの正確性検証、第 19 条に基づく受領者への通知、期限管理、不完全なデータの補完を扱う                                                                            |
+| `data-subject-rights-skills:data-portability`                | データポータビリティ請求対応時               | GDPR 第 20 条のデータポータビリティ請求の実行。機械可読形式（JSON/CSV/XML）要件、管理者間の直接転送メカニズム、同意・契約に基づき本人が提供したデータへの範囲限定を扱う                                            |
+| `data-subject-rights-skills:right-to-object`                 | 処理への異議申立て対応時                     | GDPR 第 21 条の処理への異議申立て対応。やむを得ない正当な事由の評価、処理停止義務、文書化要件、第 17 条(1)(c)の消去権との関係を扱う                                                                        |
+| `data-subject-rights-skills:restriction-of-processing`       | 処理制限請求対応時                           | GDPR 第 18 条の処理制限請求への対応。正確性の争い・違法な処理・消去への異議・正当利益判定待ちの 4 つの制限事由、技術的フラグ付けメカニズム、解除手続きを扱う                                                    |
+| `data-subject-rights-skills:automated-decision-rights`      | 自動意思決定・プロファイリングへの対応時     | 完全自動処理による意思決定・プロファイリングに関する GDPR 第 22 条の権利管理。自動意思決定の識別、人間による有意義な関与の実装、ロジック説明義務、異議申立てメカニズムを扱う                                            |
+| `data-subject-rights-skills:marketing-objection`             | マーケティングオプトアウト対応時             | GDPR 第 21 条(2)〜(3)のダイレクトマーケティングへの絶対的異議申立権の管理。全マーケティング処理の即時停止、サプレッションリスト管理、チャネル横断的な適用、プロファイリングを扱う                                        |
+| `data-subject-rights-skills:direct-collection-notice`       | 直接収集時のプライバシー通知作成時           | 直接データ収集時点での GDPR 第 13 条情報提供の実装。第 13 条(1)(a)〜(f)・(2)(a)〜(g)の全要素、階層型通知デザイン、タイミング要件を扱う                                                                        |
+| `data-subject-rights-skills:indirect-collection-notice`     | 間接取得データのプライバシー通知作成時       | 本人以外から取得した個人データに関する GDPR 第 14 条情報提供の実装。タイミング要件（合理的期間内、最長 1 ヶ月）、取得元の開示、第 14 条(5)の適用除外を扱う                                                        |
+| `data-subject-rights-skills:transparent-communication`      | プライバシー通知の平易な文章設計時           | GDPR 第 12 条の透明性ある情報提供・コミュニケーション要件の実装。簡潔・平易・分かりやすい言葉での提供義務、対応期限、手数料・拒否規定、階層型通知デザインを扱う                                                        |
+| `data-subject-rights-skills:regulatory-complaints`          | 監督機関への苦情申立て対応時                 | GDPR 第 77 条に基づき監督機関に提出された苦情への対応管理。内部エスカレーション手続き、DPA との対応調整、是正措置の追跡、コンプライアンス文書化を扱う                                                              |
+| `data-subject-rights-skills:ccpa-consumer-requests`         | CCPA 消費者請求対応時                        | CCPA（カリフォルニア州民法第 1798.100〜125 条）に基づく消費者権利請求の管理。知る権利・削除権・販売オプトアウト権・非差別の原則、45 日の対応期限と本人確認要件を扱う                                                    |
+| `data-subject-rights-skills:cpra-opt-out-signals`           | GPC 等オプトアウト信号への対応実装時         | CPRA 第 1798.135 条のオプトアウト選好信号対応の実装。GPC の技術的検知、自動信号の遵守、デバイス間の一貫性、ブラウザ信号と明示的な消費者選択の関係を扱う                                                              |
+
+#### gdpr-compliance-skills
+
+**プラグイン説明**: 監査、ギャップ分析、アカウンタビリティ、DPO、認証、DPA作成、監督機関協力
+**想定使用者**: DPOまたはGDPRコンプライアンス顧問。組織横断のGDPRコンプライアンスプログラム(監査、ギャップ分析、ガバナンス文書、規制対応)を構築・運用する。
+
+| スキル                                              | トリガー                                              | 概要                                                                                                                                       |
+| ------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `gdpr-compliance-skills:gdpr-compliance-audit`         | コンプライアンス監査・監督機関の査察準備時            | GDPR 第 5・24・25・28・30・32・35・37 条等の主要要件に対する包括的な組織監査ガイド。原則・アカウンタビリティ・セキュリティ・ガバナンスをカバーする 50 以上の管理項目を含む             |
+| `gdpr-compliance-skills:gdpr-gap-analysis`             | コンプライアンスプログラム開始・定期再評価時          | GDPR 全章に対する現状とのギャップの体系的評価と優先順位付けされた是正マトリクスの作成ガイド                                                                                        |
+| `gdpr-compliance-skills:gdpr-remediation-roadmap`      | コンプライアンスプログラム構築・予算配分時            | ギャップ分析の結果をマイルストーンとリスクベース優先順位付けを伴う段階的実装計画に変換するガイド                                                                                    |
+| `gdpr-compliance-skills:gdpr-self-assessment`          | 内部レビュー・成熟度ベンチマーク時                    | GDPR 第 5〜49 条を対象とするスコアリング手法・報告様式付きの管理者自己評価ガイド                                                                                                |
+| `gdpr-compliance-skills:gdpr-accountability`           | アカウンタビリティ体制の構築・監督機関への説明準備時  | GDPR 第 5 条(2)・第 24 条のアカウンタビリティ原則実装ガイド。方針・DPIA・処理活動記録（RoPA）・研修記録・侵害ログの文書化要件を扱う                                                        |
+| `gdpr-compliance-skills:gdpr-ropa-audit`               | RoPA の網羅性検証・査察準備時                         | 管理者・処理者双方の GDPR 第 30 条要件に対する処理活動記録（RoPA）の監査ガイド                                                                                                  |
+| `gdpr-compliance-skills:gdpr-doc-review`               | 文書監査・査察準備時                                  | GDPR 第 5・13〜14・24・28・30 条に対する処理文書の網羅性の体系的レビューガイド                                                                                                  |
+| `gdpr-compliance-skills:lawful-basis-assessment`       | 処理の法的根拠を評価・見直しする時                    | 各処理活動に対する GDPR 第 6 条(1)(a)〜(f)の正しい法的根拠を判定するガイド。同意 vs 正当な利益 vs 契約の必要性の決定木ロジックを含む                                                        |
+| `gdpr-compliance-skills:legitimate-interest-lia`       | 正当な利益を法的根拠として評価・文書化する時          | GDPR 第 6 条(1)(f)で必要となる 3 段階正当利益評価（LIA、目的テスト・必要性テスト・比較衡量テスト）ガイド                                                                                  |
+| `gdpr-compliance-skills:joint-controller-art26`        | 複数の管理者が共同で処理目的・手段を決定する場合      | GDPR 第 26 条の共同管理者体制の確立・管理ガイド。共同管理者性の判定・責任配分・透明性義務を扱う                                                                                          |
+| `gdpr-compliance-skills:gdpr-dpa-art28`                | 処理者のオンボーディング・DPA レビュー時              | GDPR 第 28 条(3)に基づくデータ処理契約（DPA）の作成・レビューガイド。8 つの必須条項全てを扱い、2021 年版標準契約条項を参照                                                                    |
+| `gdpr-compliance-skills:gdpr-policy-framework`         | ポリシーフレームワークの構築・更新時                  | GDPR 各章に沿った組織のプライバシーポリシー階層（上位方針・手順・運用ガイドライン・研修資料）作成ガイド                                                                                    |
+| `gdpr-compliance-skills:gdpr-prior-consultation`       | DPIA で高リスクが残存した場合の規制当局協議時         | DPIA が高い残存リスクを示した場合の GDPR 第 36 条事前協議プロセスガイド。期限要件・文書化・結果対応を扱う                                                                                    |
+| `gdpr-compliance-skills:gdpr-dpa-cooperation`          | 監督機関の調査・情報提供要求への対応時                | GDPR 第 31 条に基づく監督機関との協力ガイド。調査・情報提供要求・立入検査への対応手続きを扱う                                                                                              |
+| `gdpr-compliance-skills:gdpr-one-stop-shop`            | EU 域内複数国にまたがる処理を行う場合                 | GDPR 第 56 条のワンストップショップメカニズムに基づくリード監督機関の決定ガイド。主たる拠点の特定と協力を扱う                                                                                    |
+| `gdpr-compliance-skills:gdpr-eu-representative`        | 非 EU 事業者が EU データを処理する場合                | 非 EU 管理者・処理者向け GDPR 第 27 条の EU 代理人選任ガイド。選任基準・責任・文書化を扱う                                                                                          |
+| `gdpr-compliance-skills:gdpr-certification`            | プライバシー認証の取得・認証機関評価時                | GDPR 第 42〜43 条のデータ保護認証メカニズム実装ガイド。認定認証機関、認証基準の策定、定期審査を扱う                                                                                        |
+| `gdpr-compliance-skills:gdpr-codes-of-conduct`         | 業界行動規範の策定・モニタリング団体設立時            | GDPR 第 40〜41 条の業界別行動規範の策定ガイド。策定・提出・モニタリング団体要件を扱う                                                                                                    |
+
+#### global-privacy-regulations-skills
+
+**プラグイン説明**: LGPD、PIPL、PDPA、APPI、PIPA、DPDP法、豪州プライバシー法、多法域対応
+**想定使用者**: グローバルプライバシー顧問/多法域プログラムマネージャー。海外展開する組織のEU/US以外の各国法対応を担う。
+
+| スキル                                                         | トリガー                                        | 概要                                                                                                                                     |
+| ---------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `global-privacy-regulations-skills:japan-appi`                   | 日本向けサービスの APPI 対応・越境移転設計時    | 個人情報保護法（APPI、2022 年改正）の遵守ガイド。個人の権利拡大、移転前情報提供義務を含む越境移転制限、個人情報保護委員会（PPC）の執行、仮名加工情報・匿名加工情報を扱う              |
+| `global-privacy-regulations-skills:china-pipl`                   | 中国向けサービスのプライバシー対応・越境移転設計時 | 中国個人情報保護法（PIPL、2021 年 11 月 1 日施行）の遵守ガイド。同意要件、越境移転メカニズム（CAC セキュリティ評価・標準契約・認証）、個別同意のトリガー、重要情報インフラ事業者の義務を扱う |
+| `global-privacy-regulations-skills:brazil-lgpd`                  | ブラジル向けサービスのプライバシー対応時         | ブラジル一般データ保護法（LGPD、法律 13.709/2018）の遵守ガイド。第 7 条の 10 の法的根拠、DPO 選任、ANPD による執行、データ主体の権利、国際移転メカニズムを扱う                          |
+| `global-privacy-regulations-skills:india-dpdp-act`               | インド向けサービスのプライバシー対応時           | インドデジタル個人データ保護法 2023 の遵守ガイド。同意管理者登録、データ受託者義務、重要データ受託者要件、データ主体の権利、審議会の執行フレームワークを扱う                                |
+| `global-privacy-regulations-skills:korea-pipa`                   | 韓国向けサービスのプライバシー対応時             | 韓国個人情報保護法（PIPA）の遵守ガイド。仮名処理フレームワーク、通知要件、PIPC による執行、同意基準、2023 年改正下の越境移転規則を扱う                                            |
+| `global-privacy-regulations-skills:singapore-pdpa`               | シンガポール向けサービスのプライバシー対応時     | シンガポール個人データ保護法 2012（PDPA）の遵守ガイド。PDPC アドバイザリーガイドライン、Do Not Call 登録簿、データ仲介者の義務、みなし同意、2020〜2021 年改正を扱う                       |
+| `global-privacy-regulations-skills:thailand-pdpa`                | タイ向けサービスのプライバシー対応時             | タイ個人データ保護法 B.E.2562（2019 年）の遵守ガイド。同意フレームワーク、DPO 要件、PDPC 執行、処理の法的根拠、越境移転メカニズム、データ主体の権利を扱う                                  |
+| `global-privacy-regulations-skills:australia-privacy-act`        | 豪州向けサービスのプライバシー対応時             | 2024 年改正を含む豪州プライバシー法 1988 年の遵守ガイド。自動意思決定の透明性、子ども向けプライバシーコード、個人の権利拡大、執行強化、豪州プライバシー原則（APPs）を扱う                       |
+| `global-privacy-regulations-skills:multi-jurisdiction-matrix`    | 多法域コンプライアンスマトリクス構築時           | 複数国で事業展開する組織向けの多法域プライバシーコンプライアンスマトリクス構築ガイド。共通要件の特定、法域固有の差分、ギャップ分析、統一統制フレームワークを扱う                                     |
+| `global-privacy-regulations-skills:conflicting-laws-mgmt`        | 複数法域で要件が矛盾する場合の解決策検討時       | 法域間で矛盾するプライバシー要件の管理ガイド。データローカライゼーション対移転自由、同意基準の相違、年齢閾値、侵害通知期限、非両立な義務の解決フレームワークを扱う                                  |
+| `global-privacy-regulations-skills:privacy-law-gap-analysis`     | 新規法域への市場参入時のギャップ分析時           | 新規法域への市場参入に向けたプライバシー法ギャップ分析実施ガイド。対象法域の評価、既存コンプライアンスのマッピング、是正工数の見積もり、実装タイムライン策定を扱う                                  |
+| `global-privacy-regulations-skills:privacy-law-monitoring`       | プライバシー法改正の継続的モニタリング時         | 多法域組織向けプライバシー法改正モニタリング・影響評価ガイド。規制動向の追跡ソース、変更の分類、影響度スコアリング手法、実装優先順位付けを扱う                                            |
+
+#### privacy-engineering-skills
+
+**プラグイン説明**: 差分プライバシー、PII検出、NISTプライバシーフレームワーク、プライバシーAPI、データ共有、メトリクス
+**想定使用者**: プライバシー/ソフトウェア/データエンジニア(技術的プライバシー統制とNISTフレームワーク整合を実装)。メトリクス・ガバナンス部分はプライバシープログラムマネージャーも対象。
+
+| スキル                                                     | トリガー                                                | 概要                                                                                                                                                   |
+| ------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `privacy-engineering-skills:pii-detection-pipeline`           | PII 自動検出パイプライン構築時                          | spaCy NER・Microsoft Presidio・AWS Macie 連携による自動 PII 検出・削除（redaction）パイプラインの構築。信頼度スコアリング、カスタムエンティティ型定義、バッチ処理ワークフローを含む |
+| `privacy-engineering-skills:differential-privacy-prod`        | 統計データの差分プライバシー実装時                      | 本番システムへの差分プライバシー導入。ε の選定戦略、Laplace/Gaussian メカニズムによるノイズ較正、プライバシー予算の追跡、合成定理、Python 実装パターンを扱う                                     |
+| `privacy-engineering-skills:linddun-threat-model`             | プライバシー脅威モデリング実施時                        | LINDDUN プライバシー脅威モデリングの 7 カテゴリ（Linking・Identifying・Non-repudiation・Detecting・Data Disclosure・Unawareness・Non-compliance）全体を実施。STRIDE との統合を扱う |
+| `privacy-engineering-skills:purpose-based-access`              | 目的ベースアクセス制御の実装時                          | 目的ベースアクセス制御（PBAC）アーキテクチャの設計・実装。目的オントロジー定義、ポリシーエンジン設定、監査ログ、既存 IAM 連携を扱う。GDPR 第 5 条(1)(b)の目的制限を技術的に実施する               |
+| `privacy-engineering-skills:privacy-api-design`                | プライバシー関連 API 設計時                             | プライバシー API パターンの設計。DSAR エンドポイント向けデータ主体 API、選好管理向け同意 API、削除 API、監査 API を扱う。OpenAPI 仕様・エラー処理・レート制限・認証パターンを提供                  |
+| `privacy-engineering-skills:privacy-data-sharing`              | プライバシー保護データ共有基盤の構築時                  | SDV ライブラリによる合成データ生成、データクリーンルーム、セキュアエンクレーブ、有用性測定を用いたプライバシー保護データ共有基盤の構築。分析用データセット共有のエンドツーエンドアーキテクチャを扱う      |
+| `privacy-engineering-skills:privacy-record-linkage`            | 複数データセット間の名寄せをプライバシー保護しつつ行う時 | Bloom フィルタ符号化・セキュアハッシュマッチング・適合率/再現率の閾値調整・偽陽性管理を用いたプライバシー保護レコードリンケージの実装。生の PII を露出せずにエンティティ解決を可能にする              |
+| `privacy-engineering-skills:consent-receipt-spec`              | 監査対応の同意レシート実装時                            | Kantara Initiative 同意レシート仕様の実装。機械可読なレシート構造、JWT ベースの検証メカニズム、レシートのライフサイクル管理を扱う。ISO/IEC 27560 の同意記録情報構造に対応                     |
+| `privacy-engineering-skills:privacy-metrics-dashboard`         | プライバシープログラムの KPI ダッシュボード構築時       | DSAR 件数・対応時間、侵害件数・重大度、DPIA 完了率、研修受講率、同意率を追跡するプライバシー KPI ダッシュボードの構築。指標定義・可視化設計・経営層向け報告テンプレートを含む                     |
+| `privacy-engineering-skills:nist-pf-identify`                  | NIST PF の IDENTIFY 機能実装時                          | NIST プライバシーフレームワークの IDENTIFY 機能（ID.BE ビジネス環境・ID.DA データアクション・ID.IM 改善・ID.RA リスク評価）を実装。統制マッピング、ギャップ分析テンプレートを提供            |
+| `privacy-engineering-skills:nist-pf-govern`                    | NIST PF の GOVERN 機能実装時                            | NIST プライバシーフレームワークの GOVERN 機能（GV.AT 認知・研修、GV.MT モニタリング、GV.PO ポリシー策定、GV.RR 役割・責任）を実装。ガバナンス構造テンプレート、研修プログラムを提供             |
+| `privacy-engineering-skills:nist-pf-control`                   | NIST PF の CONTROL 機能実装時                           | NIST プライバシーフレームワークの CONTROL 機能（CT.DM データ管理・CT.DP データ処理方針・CT.PO 分離処理）を実装。技術的統制アーキテクチャ、非識別化実装ガイダンスを提供                      |
+| `privacy-engineering-skills:nist-pf-protect`                   | NIST PF の PROTECT 機能実装時                           | NIST プライバシーフレームワークの PROTECT 機能（PR.AC アクセス制御・PR.DS データセキュリティ・PR.PO 保護方針）を実装。暗号化基準、アクセス管理アーキテクチャを提供                          |
+| `privacy-engineering-skills:nist-pf-communicate`               | NIST PF の COMMUNICATE 機能実装時                       | NIST プライバシーフレームワークの COMMUNICATE 機能（CM.AW 認知向上・CM.PO コミュニケーション方針）を実装。透明性メカニズム、プライバシー通知テンプレートを提供                              |
+
+#### us-state-privacy-skills
+
+**プラグイン説明**: CCPA/CPRA、VCDPA、CPA、CTDPA、TDPSA、多州対応、ユニバーサルオプトアウト
+**想定使用者**: プライバシー法務・コンプライアンスアナリスト、GPC等の技術的仕組みを実装するエンジニア。米国州法ごとの差分対応を担う。
+
+| スキル                                                    | トリガー                                            | 概要                                                                                                                                                  |
+| ------------------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `us-state-privacy-skills:ccpa-cpra-compliance`               | CCPA/CPRA 全体対応の構築時                          | カリフォルニア州民法第 1798.100〜199 条を対象とする CCPA/CPRA 完全準拠実装。消費者権利フレームワーク、事業者の義務、執行メカニズム、CPPA の規則制定を含む                                        |
+| `us-state-privacy-skills:california-consumer-rights`        | カリフォルニア州消費者からの請求対応実装時          | CCPA/CPRA に基づくカリフォルニア州消費者プライバシー権利ワークフローの実装。知る権利・削除権・オプトアウト権・訂正権・機微 PI 処理制限権を扱う。45 日の対応期限、本人確認手続きを含む                              |
+| `us-state-privacy-skills:cpra-sensitive-pi`                  | 機微個人情報の取扱い制限対応時                      | CPRA 第 1798.121 条の機微個人情報制限への対応。SSN・正確な位置情報・人種民族的出自・生体情報・遺伝情報・健康情報等 9 カテゴリ全て、利用/開示制限権、許容目的を扱う                                       |
+| `us-state-privacy-skills:vcdpa-compliance`                   | バージニア州向けプライバシー対応実装時              | バージニア州消費者データ保護法（VCDPA）への準拠実装。5 つの消費者権利、管理者の義務、機微データのオプトイン、DPIA、AG 執行、是正期間規定を扱う。2023 年 1 月 1 日施行                                        |
+| `us-state-privacy-skills:colorado-cpa-compliance`            | コロラド州向けプライバシー対応実装時                | コロラド州プライバシー法（CPA）への準拠実装。2024 年 7 月以降必須のユニバーサルオプトアウトメカニズム、プロファイリングのオプトアウト権、機微データの同意要件、AG 規則制定を扱う。2023 年 7 月 1 日施行                     |
+| `us-state-privacy-skills:connecticut-ctdpa`                  | コネチカット州向けプライバシー対応実装時            | コネチカット州データプライバシー法（CTDPA）への準拠。ダークパターン禁止、ロイヤルティプログラムの適用除外、2025 年 1 月施行のユニバーサルオプトアウト要件、機微データの同意、AG 執行を扱う。2023 年 7 月 1 日施行             |
+| `us-state-privacy-skills:texas-tdpsa-compliance`             | テキサス州向けプライバシー対応実装時                | テキサス州データプライバシー・セキュリティ法（TDPSA）への準拠。収益閾値なしで全事業者に適用。データブローカー登録要件、生体識別子規定、AG 執行、30 日の是正期間を扱う。2024 年 7 月 1 日施行                            |
+| `us-state-privacy-skills:oregon-ocpa-compliance`             | オレゴン州向けプライバシー対応実装時                | オレゴン州消費者プライバシー法（OCPA）への準拠。非識別化データ要件、従業員データの部分的適用除外、非営利団体への適用、14 日の是正期間を扱う。2024 年 7 月 1 日施行、AG のみが執行                                  |
+| `us-state-privacy-skills:montana-mtdpa`                      | モンタナ州向けプライバシー対応実装時                | モンタナ州消費者データプライバシー法（MTDPA）への準拠。5 万消費者という米国最低水準の閾値。機微データの同意、ユニバーサルオプトアウトの承認、60 日の是正期間を扱う。2024 年 10 月 1 日施行                            |
+| `us-state-privacy-skills:kentucky-kppa`                      | ケンタッキー州向けプライバシー対応実装時            | ケンタッキー州消費者プライバシー保護法（KPPA）への準拠。2026 年 1 月 1 日施行。消費者権利、10 万消費者の管理者閾値、機微データ処理の同意、是正期間規定、AG 執行フレームワークを扱う                                  |
+| `us-state-privacy-skills:multi-state-compliance`             | 複数州にまたがるプライバシー対応の統一設計時        | 複数州にまたがる統一プライバシーコンプライアンスプログラム。米国全州プライバシー法にわたる共通要件マトリクス、州固有の差分、統一プライバシープログラムのアーキテクチャを扱う                                        |
+| `us-state-privacy-skills:state-law-applicability`            | 自社への州プライバシー法の適用可否判定時            | 米国州プライバシー法の適用可否評価ツール。収益閾値、データ量閾値、事業適用除外（GLBA・HIPAA・非営利団体）、従業員データの適用除外を、施行済みの全州プライバシー法にわたって評価する                                 |
+| `us-state-privacy-skills:universal-opt-out`                  | ユニバーサルオプトアウト対応実装時                  | 米国州プライバシー法全体にわたるユニバーサルオプトアウトメカニズムの実装。GPC 信号の技術実装、州ごとの承認要件、ブラウザ検出方法、認証済み/未認証ユーザーの扱いを扱う                                                |
+
+---
+
 ## ファイル種別の違い
 
 | 種別             | 場所        | 動作方式                                                    | 呼び出し方                                               |

@@ -343,6 +343,7 @@ GitHub
 
 - [Everything Claude Code](https://github.com/affaan-m/everything-claude-code) by Affaan Mustafa ... The agent harness performance optimization system.
 - [cc-sdd](https://github.com/gotalab/cc-sdd) by Gota ... Kiro-style Spec-Driven Development on an agentic SDLC for Claude Code etc.
+- [Privacy & Data Protection Skills for AI Agents](https://github.com/mukul975/Privacy-Data-Protection-Skills) by Mahipal ... 282+ structured privacy & data protection skills for AI agents.
 - [Skills](https://github.com/anthropics/skills) by Anthropics ... Skills that demonstrate what's possible with Claude's skills system.
 - [Cloudflare Skills](https://github.com/cloudflare/skills) by Cloudflare ... Skills for teaching agents how to build on Cloudflare.
 - [Awesome GitHub Copilot](https://github.com/github/awesome-copilot) by GitHub ... A community-created collection of custom agents, instructions, skills, hooks, workflows, and plugins to supercharge your GitHub Copilot experience.
