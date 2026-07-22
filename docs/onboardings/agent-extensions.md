@@ -418,6 +418,8 @@ React 18/19 と Next.js に特化したスキル群。`rules/react/` のルー�
 | `ecc:react-performance` | React/Next.js のパフォーマンス記述・レビュー・リファクタリング時、遅い読み込み／高 CPU の診断時、バンドルサイズや Core Web Vitals 監査時 | Vercel Engineering の React Best Practices を翻案。70 以上のルールを 8 つの優先度カテゴリ（ウォーターフォール除去・バンドルサイズ・サーバーサイド・クライアントフェッチ・再レンダリング・レンダリング・JS マイクロ最適化・高度パターン）に整理し、Lighthouse/Web Vitals との対応表を提供 |
 | `ecc:react-testing`   | React コンポーネント・フック・ページのテスト作成／修正時、Vitest/Jest セットアップ時、HTTP モック・a11y アサーション実装時                | React Testing Library による振る舞い重視のコンポーネントテスト。クエリ優先順位・`userEvent`・非同期パターン・MSW によるネットワークモック・`renderHook`・axe アサーション・RTL と Playwright/Cypress の使い分け・カバレッジ目標 |
 | `ecc:frontend-a11y`   | フォームや対話的要素（モーダル・ドロップダウン・タブ）の構築／レビュー時、`aria-*` 付与時、キーボード操作・フォーカス管理の実装時         | React/Next.js 向けの実践的アクセシビリティパターン。フォームのラベル接続・必須フィールド・エラーメッセージ連携・セマンティック HTML・ARIA 属性・キーボードナビゲーション・フォーカス管理・`prefers-reduced-motion` 対応・アンチパターンとチェックリスト |
+| `developer-kit-typescript:nextjs-app-router` | Next.js 16+ App Router でのプロジェクト構築・実装時                      | App Router のファイル規約・Server Actions・Route Handler・キャッシュディレクティブの実装パターン集 |
+| `developer-kit-typescript:nextjs-performance` | Next.js の Core Web Vitals 最適化・バンドルサイズ削減時                    | `next/image`・`next/font`・キャッシュ API 等 Next.js 固有 API の最適化コード例集。`ecc:react-performance` の汎用ルールを補完 |
 
 ---
 
@@ -431,6 +433,9 @@ React 18/19 と Next.js に特化したスキル群。`rules/react/` のルー�
 | `ecc:frontend-patterns`           | React/Next.js パターン参照時                                                                | React・Next.js・状態管理・パフォーマンス最適化の実装パターン集                                                                                                                   |
 | `ecc:seo`                         | 検索最適化が必要な場面                                                                      | 技術的 SEO・Core Web Vitals・構造化データ・コンテンツ戦略の監査と実装                                                                                                            |
 | `gh-copilot-web-design-reviewer`  | 「デザインを確認して」「UI のレイアウトを修正して」「デザインの問題を探して」と依頼された時 | ローカル・リモートの Web サイトを視覚的に検査してデザイン上の問題を特定・修正。レスポンシブ・アクセシビリティ・視覚一貫性の確認からソースコードレベルの修正まで 4 ステップで対応 |
+| `developer-kit-typescript:shadcn-ui` | shadcn/ui のセットアップ・コンポーネント実装時                            | shadcn/ui・Radix UI コンポーネント（ボタン・ダイアログ・フォーム等）の導入・実装パターン集 |
+| `developer-kit-typescript:tailwind-css-patterns` | Tailwind CSS でのスタイリング・レスポンシブレイアウト構築時                | Tailwind CSS v4.1+ のユーティリティファースト記法（レイアウト・スペーシング・レスポンシブ等）のリファレンス |
+| `developer-kit-typescript:tailwind-design-system` | Tailwind CSS + shadcn/ui でのデザインシステム構築時                        | デザイントークン・CSS 変数テーマを軸にした shadcn/ui ベースのデザインシステム構築ガイド |
 
 ---
 
@@ -452,11 +457,12 @@ React 18/19 と Next.js に特化したスキル群。`rules/react/` のルー�
 | スキル                              | トリガー                                                                           | 概要                                                                                                                                         |
 | ----------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ecc:architecture-decision-records` | アーキテクチャ上の決定をした場面                                                   | 決定の文脈・代替案・根拠を構造化した ADR ドキュメントとして記録                                                                              |
-| `clean-architecture`                | クリーンアーキテクチャ設計・実装時                                                 | Entity/UseCase/Interface Adapters/Frameworks の層構造・依存性ルール・フレームワーク非依存設計パターン                                        |
 | `ecc:api-design`                    | REST API 設計時                                                                    | リソース命名・ステータスコード・ページネーション・エラーレスポンス・バージョニング                                                           |
 | `ecc:nestjs-patterns`               | NestJS バックエンド実装時                                                          | モジュール・コントローラ・プロバイダ・DTO バリデーション・ガード・インターセプタ                                                             |
+| `developer-kit-typescript:clean-architecture` | NestJS でのクリーンアーキテクチャ・DDD・ヘキサゴナルアーキテクチャ設計時    | エンティティ・値オブジェクト・集約を用いたドメイン層設計とポート&アダプター実装パターン集 |
 | `ecc:content-hash-cache-pattern`    | 高コストなファイル処理のキャッシュ実装時                                           | SHA-256 コンテンツハッシュを使ったパス非依存・自動無効化キャッシュパターン                                                                   |
 | `ecc:error-handling`                | エラー型設計・リトライ実装・API エラーレスポンス設計・React エラーバウンダリ実装時 | TypeScript / Python / Go 向けの型付きエラークラス・Result パターン・指数バックオフリトライ・ユーザー向けエラーメッセージ設計の実践パターン集 |
+| `developer-kit-typescript:zod-validation-utilities` | Zod によるバリデーションスキーマ設計時                                     | Zod v4 による再利用可能なスキーマ・型安全なデータ変換・バリデーションエラーハンドリングのパターン集 |
 
 ---
 
@@ -490,11 +496,24 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 
 ---
 
+### コードレビュー系
+
+フレームワーク別に踏み込んだ実装パターン検証を行うコードレビュー用スキル群。`code-reviewer`・`typescript-reviewer`・`react-reviewer` エージェントによる汎用レビューを、NestJS／Next.js 固有の観点で補完する。
+
+| スキル                                          | トリガー                                                                    | 概要                                                                                                                                                       |
+| -------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `developer-kit-typescript:nestjs-code-review`   | NestJS コードのレビュー時                                                  | コントローラ・サービス・ガード・DI・DB 連携パターンを検証する NestJS 専用コードレビュー     |
+| `developer-kit-typescript:nextjs-code-review`   | Next.js App Router コードのレビュー時                                      | Server/Client 境界・Server Actions・キャッシュ戦略を検証する Next.js 専用コードレビュー |
+
+---
+
 ### セキュリティ系
 
 | スキル                | トリガー                                                   | 概要                                                                                       |
 | --------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `ecc:security-review` | 認証・ユーザー入力・シークレット・API エンドポイント実装時 | 包括的なセキュリティチェックリストとパターン集                                             |
+| `developer-kit-typescript:nextjs-authentication` | Auth.js 5（NextAuth.js）による認証フロー実装時                            | Auth.js 5 によるセッション管理・OAuth・ロールベースアクセス制御の実装パターン集 |
+| `developer-kit-typescript:typescript-security-review` | TypeScript/Node.js のセキュリティ監査時                                    | Express・NestJS・Next.js 向け XSS・インジェクション・JWT/OAuth2 脆弱性のコードレベルセキュリティレビュー |
 | `ecc:security-scan`   | Claude Code 設定のセキュリティ監査時                       | `.claude/` ディレクトリの脆弱性・設定ミス・インジェクションリスクを AgentShield でスキャン |
 | `ecc:safety-guard`    | 本番環境・自律エージェント実行時                           | 破壊的操作を防ぐためのガードレール                                                         |
 
