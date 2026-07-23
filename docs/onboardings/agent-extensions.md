@@ -4,23 +4,11 @@
 
 ---
 
-## ディレクトリ構成
-
-```
-.claude/
-├── agents/              # サブエージェント定義（Claudeが自律的に呼び出す）
-├── commands/            # スラッシュコマンド定義（/コマンド名 で明示的に呼び出す）
-├── rules/               # コーディングルール（Claudeが常時参照するガイドライン）
-└── skills/              # スキル定義（Claudeが自律的に呼び出すか、/コマンドで明示的に呼び出す）
-```
-
----
-
 ## agents/ — サブエージェント定義
 
 エージェントは独立したコンテキストで動作するサブ AI。特定の専門タスクを委譲する際に Claude が自動または明示的に呼び出す。
 
-### architect.md
+### ecc:architect
 
 **概要**: システム設計・スケーラビリティ・技術的意思決定の専門家。Claude Opus モデルを使用。
 
@@ -37,7 +25,7 @@
 
 ---
 
-### build-error-resolver.md
+### ecc:build-error-resolver
 
 **概要**: ビルドエラー・TypeScript 型エラーの解決専門家。最小限の差分でビルドを通すことに集中する。
 
@@ -54,7 +42,7 @@
 
 ---
 
-### code-reviewer.md
+### ecc:code-reviewer
 
 **概要**: コード品質・セキュリティ・保守性を審査するシニアコードレビュアー。
 
@@ -71,7 +59,7 @@
 
 ---
 
-### doc-updater.md
+### ecc:doc-updater
 
 **概要**: コードマップ・ドキュメントの更新専門家。Claude Haiku モデルを使用（低コスト）。
 
@@ -87,7 +75,7 @@
 
 ---
 
-### e2e-runner.md
+### ecc:e2e-runner
 
 **概要**: E2E テスト専門家。Agent Browser（推奨）または Playwright を使用。
 
@@ -104,7 +92,7 @@
 
 ---
 
-### planner.md
+### ecc:planner
 
 **概要**: 複雑な機能実装・リファクタリングの計画立案専門家。Claude Opus モデルを使用。
 
@@ -120,7 +108,7 @@
 
 ---
 
-### react-build-resolver.md
+### ecc:react-build-resolver
 
 **概要**: React のビルド失敗解決専門家。Vite・webpack・Next.js・CRA・Parcel・esbuild・Bun に対応し、最小限の外科的修正でビルドを通すことに集中する。Claude Sonnet モデルを使用。
 
@@ -139,7 +127,7 @@
 
 ---
 
-### react-reviewer.md
+### ecc:react-reviewer
 
 **概要**: React/JSX 専門のシニアコードレビュアー。フック正当性・レンダリングパフォーマンス・サーバー/クライアント境界・アクセシビリティ・React 固有セキュリティを審査する。Claude Sonnet モデルを使用。
 
@@ -158,7 +146,7 @@
 
 ---
 
-### refactor-cleaner.md
+### ecc:refactor-cleaner
 
 **概要**: デッドコード削除・コード統合専門家。
 
@@ -175,7 +163,7 @@
 
 ---
 
-### security-reviewer.md
+### ecc:security-reviewer
 
 **概要**: セキュリティ脆弱性の検出と修正専門家。
 
@@ -192,7 +180,7 @@
 
 ---
 
-### tdd-guide.md
+### ecc:tdd-guide
 
 **概要**: テスト駆動開発（TDD）専門家。テストファーストメソドロジーを強制する。
 
@@ -209,7 +197,7 @@
 
 ---
 
-### typescript-reviewer.md
+### ecc:typescript-reviewer
 
 **概要**: TypeScript/JavaScript の型安全性・非同期正確性・セキュリティ・慣用パターンの専門レビュアー。
 
@@ -284,9 +272,9 @@
 
 `/コマンド名` で明示的に呼び出すワークフロー定義。多くは対応するサブエージェントを起動するショートカットとして機能する。
 
-### build-agent.md
+### ecc:build-agent
 
-**呼び出し**: `/build-agent [エージェントの説明]`
+**呼び出し**: `/ecc:build-agent [エージェントの説明]`
 
 **概要**: Cloudflare Agents SDK を使ったステートフルな AI エージェントをスキャフォールディングする。`agents-sdk` スキルの `SKILL.md` と、実装内容に応じたリファレンス（ストリーミングチャット・状態管理・RPC・Workflows・MCP 連携・メール・Webhook・Human-in-the-loop・音声・ブラウザ操作等）を読み込み、必要に応じて Cloudflare 公式ドキュメント（`developers.cloudflare.com/agents/`）を取得する。
 
@@ -301,15 +289,15 @@
 
 **設計判断**: 用途に応じて `Agent`（カスタムステートフルロジック・RPC・スケジューリング）・`AIChatAgent`（ストリーミング対応の AI チャット）・`Think`（実験的、自動ツールループ＋組み込みワークスペース）を使い分ける。
 
-**使用例**: `/build-agent a customer support chatbot with tool calling`
+**使用例**: `/ecc:build-agent a customer support chatbot with tool calling`
 
 ---
 
-### build-mcp.md
+### ecc:build-mcp
 
-**呼び出し**: `/build-mcp [MCPサーバーの説明]`
+**呼び出し**: `/ecc:build-mcp [MCPサーバーの説明]`
 
-**概要**: Cloudflare 上で `McpAgent` を使ったリモート MCP サーバーをスキャフォールディングする。`agents-sdk` スキルの `SKILL.md`・`references/mcp.md`（MCP クライアント/サーバー API・トランスポート・セキュリティ）・`references/configuration.md`（wrangler 設定）を読み込み、`McpAgent` API と OAuth/セキュリティ周りは Cloudflare 公式ドキュメントで最新情報を確認する。
+**概要**: Cloudflare 上で `McpAgent` を使ったリモート MCP サーバーをスキャフォールディングする。`ecc:agents-sdk` スキルの `SKILL.md`・`references/mcp.md`（MCP クライアント/サーバー API・トランスポート・セキュリティ）・`references/configuration.md`（wrangler 設定）を読み込み、`McpAgent` API と OAuth/セキュリティ周りは Cloudflare 公式ドキュメントで最新情報を確認する。
 
 **スキャフォールド手順**:
 
@@ -323,15 +311,15 @@
 
 **トランスポート選択**: Streamable HTTP（外部/公開クライアント向け・推奨）・SSE（レガシークライアント専用、非推奨）・RPC（同一 Worker 内呼び出し、`addMcpServer()`）
 
-**使用例**: `/build-mcp a GitHub integration server with repo tools`
+**使用例**: `/ecc:build-mcp a GitHub integration server with repo tools`
 
 ---
 
-### react-build.md
+### ecc:react-build
 
-**呼び出し**: `/react-build`
+**呼び出し**: `/ecc:react-build`
 
-**概要**: React のビルド失敗を最小限の修正で段階的に解消する。`react-build-resolver` エージェントを起動する。
+**概要**: React のビルド失敗を最小限の修正で段階的に解消する。`ecc:react-build-resolver` エージェントを起動する。
 
 **対応ビルドシステム**: Vite・webpack・Next.js・CRA・Parcel・esbuild・Bun
 
@@ -346,11 +334,11 @@
 
 ---
 
-### react-review.md
+### ecc:react-review
 
-**呼び出し**: `/react-review`
+**呼び出し**: `/ecc:react-review`
 
-**概要**: React/JSX の包括的コードレビュー。`react-reviewer` エージェントを起動する。TSX/JSX の PR では `typescript-reviewer` も併せて実行し、それぞれ重複しない領域を担当する。
+**概要**: React/JSX の包括的コードレビュー。`ecc:react-reviewer` エージェントを起動する。TSX/JSX の PR では `typescript-reviewer` も併せて実行し、それぞれ重複しない領域を担当する。
 
 **レビュー観点**: フックルール・RSC 境界・アクセシビリティ・レンダリングパフォーマンス・React 固有セキュリティ
 
@@ -364,9 +352,9 @@
 
 ---
 
-### react-test.md
+### ecc:react-test
 
-**呼び出し**: `/react-test`
+**呼び出し**: `/ecc:react-test`
 
 **概要**: React 向けの TDD ワークフローを強制する。React Testing Library で振る舞い重視・アクセシビリティ優先のテストを先に書いてから実装する。Vitest または Jest を実行時に自動検出。
 
@@ -848,14 +836,3 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 | `us-state-privacy-skills:multi-state-compliance`             | 複数州にまたがるプライバシー対応の統一設計時        | 複数州にまたがる統一プライバシーコンプライアンスプログラム。米国全州プライバシー法にわたる共通要件マトリクス、州固有の差分、統一プライバシープログラムのアーキテクチャを扱う                                        |
 | `us-state-privacy-skills:state-law-applicability`            | 自社への州プライバシー法の適用可否判定時            | 米国州プライバシー法の適用可否評価ツール。収益閾値、データ量閾値、事業適用除外（GLBA・HIPAA・非営利団体）、従業員データの適用除外を、施行済みの全州プライバシー法にわたって評価する                                 |
 | `us-state-privacy-skills:universal-opt-out`                  | ユニバーサルオプトアウト対応実装時                  | 米国州プライバシー法全体にわたるユニバーサルオプトアウトメカニズムの実装。GPC 信号の技術実装、州ごとの承認要件、ブラウザ検出方法、認証済み/未認証ユーザーの扱いを扱う                                                |
-
----
-
-## ファイル種別の違い
-
-| 種別             | 場所        | 動作方式                                                    | 呼び出し方                                               |
-| ---------------- | ----------- | ----------------------------------------------------------- | -------------------------------------------------------- |
-| **エージェント** | `agents/`   | 独立コンテキストで実行                                      | Claude が自動、または `Agent` ツールで明示呼び出し       |
-| **コマンド**     | `commands/` | 定義されたワークフローを実行（多くは対応エージェントを起動） | `/コマンド名` で明示呼び出し                             |
-| **ルール**       | `rules/`    | 常時コンテキストに読み込まれる                              | 常時適用（`paths` フロントマターで対象ファイル絞り込み） |
-| **スキル**       | `skills/`   | 呼び出し時にコンテキストへ追加                              | `/スキル名` コマンドで明示呼び出し                       |
