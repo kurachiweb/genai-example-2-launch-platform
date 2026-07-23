@@ -679,7 +679,7 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 | `data-retention-skills:secure-data-destruction`      | 記録媒体の安全な破棄実施時                        | 全メディア種別に対する NIST SP 800-88 Rev.1 のメディア無害化手順（Clear/Purge/Destroy）の実装。破棄証明書の発行、検証手続き、第三者破棄業者管理、chain of custody 文書化を扱う                       |
 | `data-retention-skills:litigation-hold-mgmt`         | 訴訟・調査に伴うリーガルホールド発動時            | 発生事由・保管者への通知・保持措置の技術的実装・解除手続きを含む法的ホールド・データ保全プロセスの管理。リーガルホールド登録簿・遵守モニタリング・第 17 条(3)(e)例外の文書化を扱う                            |
 | `data-retention-skills:search-engine-erasure`        | 検索結果の削除（忘れられる権利）対応時            | GDPR 第 17 条および CJEU Google Spain 判決（C-131/12）に基づく検索エンジンでの忘れられる権利の実装。削除リクエスト手続き、プライバシーと公益のバランス評価基準、地理的適用範囲の判定を扱う                 |
-| `data-retention-skills:cloud-retention-config`       | クラウドストレージの保存ポリシー設定時            | AWS S3・Azure Blob Storage・Google Cloud Storage 全体のクラウドストレージ保存ポリシー設定。ライフサイクルルール・オブジェクトロック・リーガルホールド・イミュータビリティポリシーを扱う                    |
+| `data-retention-skills:cloud-retention-config`       | クラウドストレージの保存ポリシー設定時            | クラウドストレージ保存ポリシー設定。ライフサイクルルール・オブジェクトロック・リーガルホールド・イミュータビリティポリシーを扱う                                                                          |
 | `data-retention-skills:financial-retention`          | 財務・決済データの保存要件整理時                  | EU 指令(5〜7 年)・SOX 第 802 条(7 年)・MiFID II(5〜7 年)・税務記録・決済データ・AMLD 下の AML 義務を横断する財務記録保存要件の実装。法域間の整合を図る                                          |
 | `data-retention-skills:ccpa-right-to-delete`         | CCPA/CPRA 削除請求対応実装時                      | CCPA 第 1798.105 条の削除権と CPRA 改正への対応実装。サービスプロバイダの義務、法定除外事由、消費者本人確認手続き、45 日の対応期限管理を扱う                                                          |
 

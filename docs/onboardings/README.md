@@ -25,7 +25,7 @@ brew install rtk
 | Mailpit           | メール確認 Web UI                            | 48045  |
 | Valkey            | ログインセッション（Cloudflare KV の代わり） | 48046  |
 
-- ローカルでは D1 の代わりに wrangler のD1ローカルモード、Amazon SES の代わりに Mailpit、Cloudflare KV の代わりに Valkey を使う。Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48045）だけを公開する。Valkey はホスト側からのデバッグ用に 48046 を公開する（`redis-cli -p 48046` 等で接続可能）。
+- ローカルでは D1 の代わりに wrangler のD1ローカルモード、Cloudflare Email Send の代わりに Mailpit、Cloudflare KV の代わりに Valkey を使う。Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48045）だけを公開する。Valkey はホスト側からのデバッグ用に 48046 を公開する（`redis-cli -p 48046` 等で接続可能）。
 
 ## ドキュメント索引
 
