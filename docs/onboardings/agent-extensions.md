@@ -131,7 +131,7 @@
 
 **概要**: React/JSX 専門のシニアコードレビュアー。フック正当性・レンダリングパフォーマンス・サーバー/クライアント境界・アクセシビリティ・React 固有セキュリティを審査する。Claude Sonnet モデルを使用。
 
-**トリガー**: `.tsx`/`.jsx` ファイルや React コンポーネントロジックの変更時に必ず使用。汎用 TS/JS の観点は `typescript-reviewer` が担当するため、TSX/JSX の PR では両者を併用する。
+**トリガー**: `.tsx`/`.jsx` ファイルや React コンポーネントロジックの変更時に必ず使用。汎用 TS/JS の観点は `ecc:typescript-reviewer` が担当するため、TSX/JSX の PR では両者を併用する。
 
 **使用目的**:
 
@@ -272,49 +272,6 @@
 
 `/コマンド名` で明示的に呼び出すワークフロー定義。多くは対応するサブエージェントを起動するショートカットとして機能する。
 
-### ecc:build-agent
-
-**呼び出し**: `/ecc:build-agent [エージェントの説明]`
-
-**概要**: Cloudflare Agents SDK を使ったステートフルな AI エージェントをスキャフォールディングする。`agents-sdk` スキルの `SKILL.md` と、実装内容に応じたリファレンス（ストリーミングチャット・状態管理・RPC・Workflows・MCP 連携・メール・Webhook・Human-in-the-loop・音声・ブラウザ操作等）を読み込み、必要に応じて Cloudflare 公式ドキュメント（`developers.cloudflare.com/agents/`）を取得する。
-
-**スキャフォールド手順**:
-
-1. `npx create-cloudflare@latest --template cloudflare/agents-starter` でプロジェクト作成
-2. `wrangler.jsonc` の設定（DO バインディング・マイグレーション・AI バインディング・アセット）
-3. `Agent` または `AIChatAgent` を継承したエージェントクラスの実装
-4. デフォルトエクスポートで `routeAgentRequest` によるルーティングを配線
-5. `useAgent` + `useAgentChat` React フックでクライアントを構築
-6. `npx wrangler deploy` でデプロイ
-
-**設計判断**: 用途に応じて `Agent`（カスタムステートフルロジック・RPC・スケジューリング）・`AIChatAgent`（ストリーミング対応の AI チャット）・`Think`（実験的、自動ツールループ＋組み込みワークスペース）を使い分ける。
-
-**使用例**: `/ecc:build-agent a customer support chatbot with tool calling`
-
----
-
-### ecc:build-mcp
-
-**呼び出し**: `/ecc:build-mcp [MCPサーバーの説明]`
-
-**概要**: Cloudflare 上で `McpAgent` を使ったリモート MCP サーバーをスキャフォールディングする。`ecc:agents-sdk` スキルの `SKILL.md`・`references/mcp.md`（MCP クライアント/サーバー API・トランスポート・セキュリティ）・`references/configuration.md`（wrangler 設定）を読み込み、`McpAgent` API と OAuth/セキュリティ周りは Cloudflare 公式ドキュメントで最新情報を確認する。
-
-**スキャフォールド手順**:
-
-1. プロジェクト作成（`create-cloudflare` テンプレート、または新規）
-2. `@modelcontextprotocol/sdk`・`zod` のインストール
-3. `wrangler.jsonc` の設定（DO バインディング + `new_sqlite_classes` マイグレーション）
-4. `McpAgent` を継承し `McpServer` を実装、`init()` 内でツールを登録
-5. `MyMCP.serve("/mcp", { binding: "MyMCP" })` でトランスポートを提供（Streamable HTTP が推奨）
-6. `npx @modelcontextprotocol/inspector@latest` でテスト
-7. `npx wrangler deploy` でデプロイ
-
-**トランスポート選択**: Streamable HTTP（外部/公開クライアント向け・推奨）・SSE（レガシークライアント専用、非推奨）・RPC（同一 Worker 内呼び出し、`addMcpServer()`）
-
-**使用例**: `/ecc:build-mcp a GitHub integration server with repo tools`
-
----
-
 ### ecc:react-build
 
 **呼び出し**: `/ecc:react-build`
@@ -338,7 +295,7 @@
 
 **呼び出し**: `/ecc:react-review`
 
-**概要**: React/JSX の包括的コードレビュー。`ecc:react-reviewer` エージェントを起動する。TSX/JSX の PR では `typescript-reviewer` も併せて実行し、それぞれ重複しない領域を担当する。
+**概要**: React/JSX の包括的コードレビュー。`ecc:react-reviewer` エージェントを起動する。TSX/JSX の PR では `ecc:typescript-reviewer` も併せて実行し、それぞれ重複しない領域を担当する。
 
 **レビュー観点**: フックルール・RSC 境界・アクセシビリティ・レンダリングパフォーマンス・React 固有セキュリティ
 
@@ -551,7 +508,7 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 
 ### コードレビュー系
 
-フレームワーク別に踏み込んだ実装パターン検証を行うコードレビュー用スキル群。`code-reviewer`・`typescript-reviewer`・`react-reviewer` エージェントによる汎用レビューを、NestJS／Next.js 固有の観点で補完する。
+フレームワーク別に踏み込んだ実装パターン検証を行うコードレビュー用スキル群。`ecc:code-reviewer`・`ecc:typescript-reviewer`・`ecc:react-reviewer` エージェントによる汎用レビューを、NestJS／Next.js 固有の観点で補完する。
 
 | スキル                                          | トリガー                                                                    | 概要                                                                                                                                                       |
 | -------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
