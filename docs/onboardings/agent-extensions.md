@@ -226,6 +226,60 @@
 
 ---
 
+### developer-kit-typescript:nestjs-code-review-expert
+
+**概要**: NestJS/TypeScript のベストプラクティス・アーキテクチャ課題を分析する専門コードレビュアー。
+
+**トリガー**: NestJS コードの変更後・新機能実装時に自発的に使用。
+
+**使用目的**:
+
+- デコレータ・DI・モジュール構成など NestJS パターンの検証
+- SOLID 原則・クリーンアーキテクチャ準拠のチェック
+- REST API 規約（HTTP メソッド・ステータスコード・DTO・バリデーションパイプ）の検証
+- ガード・認証認可・入力検証などセキュリティ観点の確認
+- 重大度別（Critical/Warning/Suggestion）のレビュー報告と改善コード例の提示
+
+**利用可能ツール**: Read, Grep, Glob, Bash
+
+---
+
+### developer-kit-typescript:typescript-security-expert
+
+**概要**: TypeScript/Node.js アプリケーションのセキュリティ監査・DevSecOps 専門家。
+
+**トリガー**: TypeScript のセキュリティ監査・コンプライアンス実装が必要な場面で自発的に使用。
+
+**使用目的**:
+
+- JWT/OAuth2/OIDC 等の認証認可実装レビュー
+- OWASP Top 10 準拠チェックと脅威モデリング
+- Express・NestJS・Next.js 固有のセキュリティ設定（CORS・レート制限・CSP 等）の検証
+- npm 依存関係の脆弱性スキャン（`npm audit` 等）
+- Critical〜Low の重大度別に修正優先順位を付けた是正計画の提示
+
+**利用可能ツール**: Read, Write, Edit, Glob, Grep, Bash
+
+---
+
+### developer-kit-typescript:typescript-software-architect-review
+
+**概要**: クリーンアーキテクチャ・DDD（ドメイン駆動設計）・モダン Node.js パターンの専門アーキテクト。
+
+**トリガー**: アーキテクチャ上の意思決定・DDD モデリング・モダン JS/TS パターン適用時に自発的に使用。
+
+**使用目的**:
+
+- ドメイン→アプリケーション→インフラ→プレゼンテーションのレイヤー分離検証
+- 境界づけられたコンテキスト・集約・値オブジェクトなど DDD パターンの評価
+- SOLID 原則準拠と依存関係の方向性チェック
+- Express・Fastify・NestJS・Next.js 等フレームワーク別アーキテクチャパターンの助言
+- ADR 形式でのアーキテクチャ決定の文書化提案
+
+**利用可能ツール**: Read, Write, Edit, Glob, Grep, Bash
+
+---
+
 ## commands/ — スラッシュコマンド定義
 
 `/コマンド名` で明示的に呼び出すワークフロー定義。多くは対応するサブエージェントを起動するショートカットとして機能する。
