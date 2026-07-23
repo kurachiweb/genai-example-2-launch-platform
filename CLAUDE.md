@@ -24,10 +24,10 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 appsディレクトリ内の変更に基づき、docsディレクトリ内やREADME.mdも適時変更すること。
 テスト駆動開発(TDD)の実施を徹底すること。
 appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
-GitワークフローはGitLab Flow(環境ブランチ)を採用する。開発のトランクは`main`ブランチとし、featureブランチは`main`から分岐して短命に保ち、PRレビューを経て`main`にマージする。本番反映は`main`から`prod`ブランチへのPRマージによって行い、コミットは`main → prod`の一方向にのみ流す。
 
-## デプロイ方針
+## Git運用方針
 
+GitワークフローはGitLab Flow(環境ブランチ)を採用する。開発のトランクは`main`ブランチとし、featureブランチは`main`から分岐して短命に保ち、PRレビューを経て`main`にマージする。
 mainブランチにpushした際、dev環境に自動でデプロイする。
 prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(push)をトリガーとしてデプロイが実行される。
 `prod`ブランチへのマージはGitHubのブランチ保護ルールにより人間のレビュー承認を必須とし、AIエージェントによるprod環境へのデプロイを技術的に禁止する。
@@ -66,8 +66,8 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
 │   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
-│   ├── adr/                    # Everything Claude Codeのecc:architecture-decision-recordsスキルによる自動生成ADR
-│   ├── tdd/                    # Everything Claude Codeのecc:tdd-workflowスキルのステップ8によるTDDエビデンスレポート
+│   ├── adr/                    # ecc:architecture-decision-recordsスキルによる自動生成ADR
+│   ├── tdd/                    # ecc:tdd-workflowスキルのステップ8によるTDDエビデンスレポート
 │   ├── CODEMAPS/               # Everything Claude Codeのdoc-updaterエージェントによる自動生成コードマップ
 │   ├── GUIDES/                 # 開発者ドキュメント、Everything Claude Codeのdoc-updaterエージェントにより都度更新
 │   │   ├── infra/              # インフラ・ネットワーク構成図、デプロイ手順、ログ管理方針
@@ -87,6 +87,13 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 ├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化
 └── README.md                   # 作業者向け、サービスの基本的説明
 ```
+
+## Claude拡張設定間の矛盾について
+
+APIレスポンス形式やバリデーションエラー時ステータスコードは `ecc:api-design` スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards` や `ecc:nestjs-patterns` のAPIレスポンス形式は採用しない。
+npmパッケージの `framer-motion` は `motion` にリネームされているため、`motion/react` をインポートして利用する。`ecc:motion-ui` と `ecc:frontend-patterns` スキルが `framer-motion` に言及しているが、その点においては古い情報である。
+ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns` ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture` スキルではEntity層に書くよう指示しており、後者に従う。
+Next.jsのキャッシュ戦略には `"use cache"` を使う。`developer-kit-typescript:nextjs-performance` スキルでは `unstable_cache` が紹介されているが、それは古い記法である。
 
 ## 技術選定
 
