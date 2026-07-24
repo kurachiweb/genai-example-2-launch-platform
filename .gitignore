@@ -3,3 +3,18 @@
 .env.*
 !.env.example
 node_modules
+
+# OS生成ファイル
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+desktop.ini
+# Linux (KDE Plasma)
+.directory
+
+# 共通ディレクトリのエイリアス
+apps/api/lib
+apps/public-api/lib
+apps/client/lib
+apps/admin/lib
