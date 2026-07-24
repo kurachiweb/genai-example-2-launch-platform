@@ -17,15 +17,16 @@ brew install rtk
 
 | アプリ            | 役割                                         | ポート |
 | ----------------- | -------------------------------------------- | ------ |
-| `apps/db`         | DB（SQLite）                                 | 48040  |
+| Valkey            | インメモリストレージ（Cloudflare KV の代わり） | 48040  |
 | `apps/api`        | 内部 API（NestJS / GraphQL）                 | 48041  |
-| `apps/client`     | 利用者・閲覧者 Web（Next.js）                | 48042  |
-| `apps/admin`      | 管理者コンソール（Next.js）                  | 48043  |
-| `apps/public-api` | 公開 API（NestJS / REST）                    | 48044  |
+| `apps/public-api` | 公開 API（NestJS / REST）                    | 48042  |
+| `apps/client`     | 利用者側フロントエンド（Next.js）               | 48043  |
+| `apps/admin`      | 管理者側フロントエンド（Next.js）               | 48044  |
 | Mailpit           | メール確認 Web UI                            | 48045  |
-| Valkey            | ログインセッション（Cloudflare KV の代わり） | 48046  |
 
-- ローカルでは D1 の代わりに wrangler のD1ローカルモード、Cloudflare Email Send の代わりに Mailpit、Cloudflare KV の代わりに Valkey を使う。Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48045）だけを公開する。Valkey はホスト側からのデバッグ用に 48046 を公開する（`redis-cli -p 48046` 等で接続可能）。
+ローカルでは D1 の代わりに wrangler のD1ローカルモード、Cloudflare Email Send の代わりに Mailpit、Cloudflare KV の代わりに Valkey を使う。
+Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48045）だけを公開する。
+Valkey はホスト側からのデバッグ用に 48040 を公開することで、`redis-cli -p 48040` 等で接続できる。
 
 ## ドキュメント索引
 
