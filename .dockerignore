@@ -1,0 +1,29 @@
+# Gitメタデータはイメージビルドに不要
+.git
+.gitignore
+
+# 機密情報を含むためビルドコンテキストに含めない
+.env
+.env.*
+!.env.example
+
+# コンテナ内でbun installするため、ホスト側の依存パッケージは除外する
+node_modules
+**/node_modules
+
+# Git管理外のローカル開発専用データ
+apps/db/data
+apps/email
+
+# OS生成ファイル
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+desktop.ini
+# Linux (KDE Plasma)
+.directory
+
+# フロントエンドのビルド成果物
+.next
+**/.next

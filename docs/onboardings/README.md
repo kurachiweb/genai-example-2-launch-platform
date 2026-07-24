@@ -5,19 +5,15 @@
 ## ローカル開発環境クイックスタート
 
 ```zsh
-# 1) 必要なツールのインストール
-brew install oven-sh/bun/bun
-brew install --cask claude-code
-brew install cloudflare-wrangler
-brew install gh
-brew install rtk
+brew install docker # Docker 未インストールの場合のみ
+docker compose up -d --build
 ```
 
 ### ローカルポート一覧
 
 | アプリ            | 役割                                         | ポート |
-| ----------------- | -------------------------------------------- | ------ |
-| Valkey            | インメモリストレージ（Cloudflare KV の代わり） | 48040  |
+| ----------------- | ------------------------------------------- | ------ |
+| Valkey            | インメモリストレージ（Cloudflare KV の代わり）   | 48040  |
 | `apps/api`        | 内部 API（NestJS / GraphQL）                 | 48041  |
 | `apps/public-api` | 公開 API（NestJS / REST）                    | 48042  |
 | `apps/client`     | 利用者側フロントエンド（Next.js）               | 48043  |

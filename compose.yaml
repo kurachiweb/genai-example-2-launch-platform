@@ -1,0 +1,50 @@
+# 本番ランタイムは Cloudflare Workers のため、本 compose はローカル開発専用である。
+name: genai-ex-2-launch
+
+services:
+  root:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - ./apps/db:/workspace/apps/api/db
+      - ./apps/db:/workspace/apps/public-api/db
+      - ./apps/backend-lib:/workspace/apps/api/lib
+      - ./apps/backend-lib:/workspace/apps/public-api/lib
+      - ./apps/frontend-lib:/workspace/apps/client/lib
+      - ./apps/frontend-lib:/workspace/apps/admin/lib
+      # node_modules はホストと混ぜず、名前付きボリュームでコンテナ側に隔離する
+      - node_modules_root:/workspace/node_modules
+      - node_modules_api:/workspace/apps/api/node_modules
+      - node_modules_public_api:/workspace/apps/public-api/node_modules
+      - node_modules_client:/workspace/apps/client/node_modules
+      - node_modules_admin:/workspace/apps/admin/node_modules
+      - node_modules_frontend_lib:/workspace/apps/frontend-lib/node_modules
+    restart: unless-stopped
+    init: true
+    ports:
+      - "48040:48040" # インメモリストレージ
+      - "48041:48041" # 内部API
+      - "48042:48042" # 公開API
+      - "48043:48043" # 利用者側フロントエンド
+      - "48044:48044" # 管理者側フロントエンド
+      - "48045:48045" # ローカルでのメール確認UI
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: development
+      API_GRAPHQL_URL: http://localhost:48041/graphql
+      NEXT_TELEMETRY_DISABLED: "1"
+      MP_MAX_MESSAGES: "5000"
+      MP_DATABASE: /workspace/apps/email/mailpit.db
+
+volumes:
+  node_modules_root:
+  node_modules_api:
+  node_modules_public_api:
+  node_modules_client:
+  node_modules_admin:
+  node_modules_frontend_lib:
