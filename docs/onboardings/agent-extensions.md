@@ -538,6 +538,7 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 | `ecc:deployment-patterns`  | デプロイ・CI/CD・Docker 実装時                             | デプロイワークフロー・ヘルスチェック・ロールバック戦略・本番準備チェックリスト                                                                               |
 | `ecc:production-audit`     | 「本番リリースできる状態か」「本番で何が壊れるか」の確認時 | ローカル証跡に基づく本番準備監査。セキュリティ・データ整合性・決済・運用・UX の各リスクレンズでスコアリング（0〜100）し、ブロッカーと次のアクションを提示    |
 | `ecc:database-migrations`  | DB スキーマ変更・マイグレーション実装時                    | ゼロダウンタイムの安全なマイグレーション（Prisma・Drizzle・Kysely 等対応）                                                                                   |
+| `ecc:bun-runtime`          | Bun の導入・Node からの移行・Bun スクリプト/テストの記述時 | Bun をランタイム・パッケージマネージャー・バンドラー・テストランナーとして使う際の使い分けと移行方法                                                          |
 | `ecc:search-first`         | 実装前の調査・既存ライブラリ探索時                         | コードを書く前に既存ツール・ライブラリ・パターンを検索する research-before-coding ワークフロー                                                               |
 | `ecc:agentic-engineering`  | AI エージェントとしての実装ワークフロー時                  | eval ファースト実行・タスク分解・コスト意識のモデルルーティング                                                                                              |
 
