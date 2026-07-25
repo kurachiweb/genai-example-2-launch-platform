@@ -214,7 +214,7 @@ MJML (HTMLメールコード生成、faire/mjml-reactを使用)
 
 #### モニタリング
 
-Sentry (`@sentry/cloudflare`を使用、エラートラッキング)
+Sentry (エラートラッキング、`@sentry/cloudflare` を使用)
 Cloudflare Analytics / Health Checks (可用性・死活監視)
 FlareWarden (外部ステータスページ・死活監視)
 
@@ -272,7 +272,7 @@ Playwright MCP
 
 #### ドキュメント
 
-Storybook (コンポーネントカタログ)
+Storybook (コンポーネントカタログ、`@storybook/nextjs` を使用)
 GraphQL Playground (API探索)
 Swagger UI (公開API向け、OpenAPI形式)
 
