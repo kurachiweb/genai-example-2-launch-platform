@@ -50,7 +50,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 
 ```
 /
-├── .github/                    # GitHub Actionsのワークフロー、CI/CD
+├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・Terraform適用を含む)を担当
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
 ├── apps/                       # アプリケーション実装
@@ -229,12 +229,14 @@ Amazon Rekognition (ローカル環境やCIプロセスでは、テスト結果�
 
 #### CI/CD
 
-GitHubリポジトリでのmain/prodブランチへのpushをトリガーにして、Workers Buildsにより以下のパイプラインを実行しデプロイ。
-TruffleHog (機密情報のpush防止)
+main/prodブランチへのpushをトリガーにして、GitHub Actionsにより以下のパイプラインを実行する。
+
+TruffleHog (機密情報のpush防止。検知ならマージをブロック)
 Bunによるパッケージインストール及び既知の脆弱性確認
 Wrangler Secretsによる環境変数変更
 Terraformによるインフラ構成変更
 WranglerによるDBマイグレーション
+Wranglerによる各Workerのビルド・デプロイ
 
 ### 開発環境・ツール
 
