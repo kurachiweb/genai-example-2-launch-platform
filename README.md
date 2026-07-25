@@ -1,10 +1,5 @@
 # ローンチディレクトリ「Launch Stadium」
 
-Launch Stadiumのプログラム一式、及びドキュメント。
-サイトURL(予定)：https://genai-example-2-client.shortbook.workers.dev
-
----
-
 ## このサービスについて
 
 数々のユーザーが作ったプロダクト同士の1対1勝負を、日々開催するコミュニティ。ProductHuntやUneedの競合という立ち位置。
