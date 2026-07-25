@@ -153,7 +153,7 @@ class-transformer
 
 #### フレームワーク
 
-Next.js (App Router使用)
+Next.js (App Routerと`@opennextjs/cloudflare`アダプタを使用)
 React
 TypeScript
 
