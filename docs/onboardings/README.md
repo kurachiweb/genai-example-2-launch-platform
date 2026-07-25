@@ -5,8 +5,17 @@
 ## ローカル開発環境クイックスタート
 
 ```zsh
+# 1. ホスト環境で実行
 brew install --cask docker # Docker 未インストールの場合のみ（Macのみ）
 docker compose up -d --build
+
+# 2. コンテナ内: APIサーバーの起動
+cd apps/api && wrangler dev
+cd apps/public-api && wrangler dev
+
+# 3. コンテナ内: フロントエンドの起動
+cd apps/client && bun run dev
+cd apps/admin && bun run dev
 ```
 
 ### ローカルポート一覧

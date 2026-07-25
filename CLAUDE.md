@@ -214,7 +214,7 @@ MJML (HTMLメールコード生成、faire/mjml-reactを使用)
 
 #### モニタリング
 
-Sentry (`@sentry/bun`を使用、エラートラッキング)
+Sentry (`@sentry/cloudflare`を使用、エラートラッキング)
 Cloudflare Analytics / Health Checks (可用性・死活監視)
 FlareWarden (外部ステータスページ・死活監視)
 
