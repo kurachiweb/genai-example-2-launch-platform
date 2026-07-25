@@ -16,6 +16,23 @@ apps/db/data
 apps/files
 apps/email
 
+# コンテナ内バインドマウント用のエイリアス先
+apps/*/lib
+apps/*/db
+
+# Wranglerのローカルモードが生成するキャッシュ・状態ファイル
+.wrangler
+**/.wrangler
+
+# テストカバレッジレポート
+coverage
+**/coverage
+
+# AIエージェント設定
+.claude
+docs
+.kiro
+
 # OS生成ファイル
 # macOS
 .DS_Store
