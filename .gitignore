@@ -1,4 +1,3 @@
-.DS_Store
 .env
 .env.*
 !.env.example
@@ -14,7 +13,37 @@ desktop.ini
 .directory
 
 # 共通ディレクトリのエイリアス
+apps/api/db
+apps/public-api/db
 apps/api/lib
 apps/public-api/lib
 apps/client/lib
 apps/admin/lib
+
+# ローカル開発の蓄積データ
+apps/db/data
+apps/email
+# Wrangler(万が一`--persist-to`オプションを付け忘れた場合の実データ置き場)
+.wrangler
+
+# フロントエンドのビルド成果物
+.next
+dist
+build
+storybook-static
+
+# テスト成果物
+# Bun (`bun test --coverage`のデフォルト出力先)
+coverage
+# Playwright (スクリーンショット・動画・トレースの格納先)
+test-results
+# Playwright (HTMLレポートの出力先)
+playwright-report
+
+# Terraformの状態ファイル(平文シークレットを含み得るため厳重に除外)
+.terraform
+*.tfstate
+*.tfstate.backup
+
+# 生成AI用
+.claude/settings.local.json
