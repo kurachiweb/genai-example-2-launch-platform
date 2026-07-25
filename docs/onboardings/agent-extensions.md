@@ -514,7 +514,6 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 | スキル                | トリガー                                                   | 概要                                                                                       |
 | --------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `ecc:security-review` | 認証・ユーザー入力・シークレット・API エンドポイント実装時 | 包括的なセキュリティチェックリストとパターン集                                             |
-| `developer-kit-typescript:nextjs-authentication` | Auth.js 5（NextAuth.js）による認証フロー実装時                            | Auth.js 5 によるセッション管理・OAuth・ロールベースアクセス制御の実装パターン集 |
 | `developer-kit-typescript:typescript-security-review` | TypeScript/Node.js のセキュリティ監査時                                    | Express・NestJS・Next.js 向け XSS・インジェクション・JWT/OAuth2 脆弱性のコードレベルセキュリティレビュー |
 | `ecc:security-scan`   | Claude Code 設定のセキュリティ監査時                       | `.claude/` ディレクトリの脆弱性・設定ミス・インジェクションリスクを AgentShield でスキャン |
 | `ecc:safety-guard`    | 本番環境・自律エージェント実行時                           | 破壊的操作を防ぐためのガードレール                                                         |
