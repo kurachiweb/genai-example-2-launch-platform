@@ -59,18 +59,18 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │   │   └── data/               # SQLiteデータベースの実データ(Git管理に含めない)
 │   ├── backend-lib/            # バックエンド共通ファイル
 │   │   └── utilities/          # ユーティリティ
-│   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48041、ORMによるDB接続処理を含む
+│   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042、ORMによるDB接続処理を含む
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
-│   ├── public-api/             # 公開APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042
+│   ├── public-api/             # 公開APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48043
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
 │   ├── frontend-lib/           # フロントエンド共通ファイル
 │   │   ├── components/         # コンポーネント定義 ... Storybookによるプレビュー付き
 │   │   └── utilities/          # ユーティリティ
-│   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... Next.jsを利用、ローカル開発でのポート番号は48043
+│   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... Next.jsを利用、ローカル開発でのポート番号は48044
 │   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
-│   ├── admin/                  # Webサーバー兼フロントエンド(管理者側) ... Next.jsを利用、ローカル開発でのポート番号は48044
+│   ├── admin/                  # Webサーバー兼フロントエンド(管理者側) ... Next.jsを利用、ローカル開発でのポート番号は48045
 │   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
-│   └── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48045
+│   └── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48046
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
 │   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
 │   ├── adr/                    # ecc:architecture-decision-recordsスキルによる自動生成ADR
@@ -89,8 +89,8 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │       ├── features/           # ビジネスルール(SSoT) ... 機能仕様、受け入れ条件一覧
 │       ├── design/             # デザインガイドライン ... 文字やパーツ配置に関するサービス固有の規則
 │       └── glossary.md         # サービス内用語集
-├── Dockerfile                  # パッケージ等をグローバルインストールするためのrootコンテナ
-├── compose.yaml                # rootコンテナと各アプリケーションのコンテナを定義しポート番号を指定
+├── Dockerfile                  # AIエージェントによる自動作業を安全に進めるrootコンテナ
+├── compose.yaml                # コンテナの管理
 ├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化
 └── README.md                   # 作業者向け、サービスの基本的説明
 ```
@@ -108,7 +108,7 @@ Next.jsのキャッシュ戦略には `"use cache"` を使う。`developer-kit-t
 
 ### データベース
 
-ローカル環境 ... wranglerのD1ローカルモード(`wrangler dev` / `wrangler d1 execute --local`)、ポート番号は48040
+ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev` / `wrangler d1 execute --local`)、ポート番号は48040
 デプロイ先 ... Cloudflare D1
 
 ### バックエンド (API)
@@ -232,7 +232,7 @@ WranglerによるDBマイグレーション
 
 #### コンテナ
 
-Docker (node@trixie-slim、ローカル環境のみ)
+Docker (ローカル環境のみ)
 
 #### パッケージマネージャー
 

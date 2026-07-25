@@ -5,24 +5,25 @@
 ## ローカル開発環境クイックスタート
 
 ```zsh
-brew install docker # Docker 未インストールの場合のみ
+brew install --cask docker # Docker 未インストールの場合のみ（Macのみ）
 docker compose up -d --build
 ```
 
 ### ローカルポート一覧
 
-| アプリ            | 役割                                         | ポート |
-| ----------------- | ------------------------------------------- | ------ |
-| Valkey            | インメモリストレージ（Cloudflare KV の代わり）   | 48040  |
-| `apps/api`        | 内部 API（NestJS / GraphQL）                 | 48041  |
-| `apps/public-api` | 公開 API（NestJS / REST）                    | 48042  |
-| `apps/client`     | 利用者側フロントエンド（Next.js）               | 48043  |
-| `apps/admin`      | 管理者側フロントエンド（Next.js）               | 48044  |
-| Mailpit           | メール確認 Web UI                            | 48045  |
+| アプリ            | 役割                                          | ポート |
+| ----------------- | -------------------------------------------- | ------ |
+| WranglerのD1ローカルモード | データベース(Cloudflare D1 のローカル版) | 48040  |
+| Valkey            | インメモリストレージ（Cloudflare KV のローカル版） | 48041  |
+| `apps/api`        | 内部 API（NestJS / GraphQL）                  | 48042  |
+| `apps/public-api` | 公開 API（NestJS / REST）                     | 48043  |
+| `apps/client`     | 利用者側フロントエンド（Next.js）                | 48044  |
+| `apps/admin`      | 管理者側フロントエンド（Next.js）                | 48045  |
+| Mailpit           | メール確認 Web UI                             | 48046  |
 
-ローカルでは D1 の代わりに wrangler のD1ローカルモード、Cloudflare Email Send の代わりに Mailpit、Cloudflare KV の代わりに Valkey を使う。
-Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48045）だけを公開する。
-Valkey はホスト側からのデバッグ用に 48040 を公開することで、`redis-cli -p 48040` 等で接続できる。
+ローカルでは D1 の代わりに Wrangler のD1ローカルモード、Cloudflare Email Send の代わりに Mailpit、Cloudflare KV の代わりに Valkey を使う。
+Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48046）だけを公開する。
+Valkey はホスト側からのデバッグ用に 48041 を公開することで、`redis-cli -p 48041` 等で接続できる。
 
 ## ドキュメント索引
 
