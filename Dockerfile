@@ -50,4 +50,5 @@ RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/insta
   && brew install rtk \
   && HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch
 
-CMD ["sleep", "infinity"]
+# brewやパッケージの更新はDockerのレイヤーキャッシュにより`docker compose up --build`だけでは行われないため、明示的にアップデートする。
+CMD ["sh", "-c", "brew update && brew upgrade && sleep infinity"]
