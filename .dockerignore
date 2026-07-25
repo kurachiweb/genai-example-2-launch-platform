@@ -13,6 +13,7 @@ node_modules
 
 # Git管理外のローカル開発専用データ
 apps/db/data
+apps/files
 apps/email
 
 # OS生成ファイル

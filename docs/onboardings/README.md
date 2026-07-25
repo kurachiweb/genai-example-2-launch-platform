@@ -21,7 +21,7 @@ docker compose up -d --build
 | `apps/admin`      | 管理者側フロントエンド（Next.js）                | 48045  |
 | Mailpit           | メール確認 Web UI                             | 48046  |
 
-ローカルでは D1 の代わりに Wrangler のD1ローカルモード、Cloudflare Email Send の代わりに Mailpit、Cloudflare KV の代わりに Valkey を使う。
+ローカルでは D1 の代わりに Wrangler のD1ローカルモード、Cloudflare Email Send の代わりに Mailpit、Cloudflare KV の代わりに Valkey、Cloudflare R2 の代わりに Wrangler のR2ローカルモードを使う。
 Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48046）だけを公開する。
 Valkey はホスト側からのデバッグ用に 48041 を公開することで、`redis-cli -p 48041` 等で接続できる。
 

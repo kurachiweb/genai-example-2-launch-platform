@@ -22,6 +22,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 コード内にコメントは原則書かないが、難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
 車輪の再発明を許容し、簡易なユーティリティ関数のためにnpmパッケージをインストールしない。
 appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
+ローカル開発でCloudflare D1・R2の代わりにWranglerの各ローカルモードを使う際は、コンテナ再作成時にもデータを引き継げるよう`--persist-to`オプションを必ず付けること。D1代替であれば`apps/db/data`、R2代替であれば`apps/files`を指定先とする。
 
 ### Claude拡張設定よりも優先される本プロジェクト独自作業ルール・パターン
 
@@ -56,7 +57,8 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │   ├── infra/                  # インフラ構成定義 ... Terraformを使用、Cloudflareを主としてインフラを設計
 │   ├── db/                     # DBスキーマ定義やDBへの接続処理
 │   │   ├── migrations/         # マイグレーション履歴
-│   │   └── data/               # ローカル開発の永続データ(Git管理に含めない) ... SQLiteの実データやValkeyのスナップショット
+│   │   └── data/               # ローカル開発時の永続データ(Git管理に含めない) ... SQLiteの実データやValkeyのスナップショット
+│   ├── files/                  # ローカル開発時のアップロードファイル保存先(Git管理に含めない)
 │   ├── backend-lib/            # バックエンド共通ファイル
 │   │   └── utilities/          # ユーティリティ
 │   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042、ORMによるDB接続処理を含む
@@ -111,6 +113,9 @@ Next.jsのキャッシュ戦略には `"use cache"` を使う。`developer-kit-t
 
 ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev` / `wrangler d1 execute --local`)、ポート番号は48040
 デプロイ先 ... Cloudflare D1
+
+ローカル環境 ... Valkey(インメモリストレージ)
+デプロイ先 ... Cloudflare KV
 
 ### バックエンド (API)
 
@@ -187,8 +192,8 @@ Cloudflare Workers
 
 #### ストレージ
 
-ローカル環境 ... Valkey(インメモリストレージ)
-デプロイ先 ... Cloudflare KV
+ローカル環境 ... WranglerのR2ローカルモード(`wrangler dev` / `wrangler r2 *** --local`)
+デプロイ先 ... Cloudflare R2 (画像・ファイルストレージ)
 
 #### セキュリティ
 

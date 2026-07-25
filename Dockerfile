@@ -33,6 +33,8 @@ RUN mkdir -p /workspace/node_modules \
   && chown -R bun:bun /workspace/apps/frontend-lib/node_modules \
   && mkdir -p /workspace/apps/db/data \
   && chown -R bun:bun /workspace/apps/db \
+  && mkdir -p /workspace/apps/files \
+  && chown -R bun:bun /workspace/apps/files \
   && mkdir -p /workspace/apps/email \
   && chown -R bun:bun /workspace/apps/email
 
