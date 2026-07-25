@@ -187,7 +187,8 @@ Cloudflare Workers
 
 #### ストレージ
 
-Cloudflare R2 (画像・ファイルストレージ)
+ローカル環境 ... Valkey(インメモリストレージ)
+デプロイ先 ... Cloudflare KV
 
 #### セキュリティ
 
