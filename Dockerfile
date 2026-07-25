@@ -42,13 +42,19 @@ WORKDIR /workspace
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 
 # Homebrew のインストール時は NONINTERACTIVE=1 で確認プロンプトを抑止する。
+# ビルド毎に最新のbrewパッケージをインストールする。
 RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash \
   && brew tap hashicorp/tap \
-  && brew install hashicorp/tap/terraform cloudflare-wrangler \
+  && brew update \
+  && brew install hashicorp/tap/terraform cloudflare-wrangler gh rtk valkey mailpit \
   && brew install --cask claude-code \
-  && brew install gh \
-  && brew install rtk \
   && HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch
 
-# brewやパッケージの更新はDockerのレイヤーキャッシュにより`docker compose up --build`だけでは行われないため、明示的にアップデートする。
-CMD ["sh", "-c", "brew update && brew upgrade && sleep infinity"]
+# ローカル開発用常駐プロセスの起動処理はスクリプトへ切り出す。
+# bindマウントで隠れない/usr/local/binへ置くことで、マウントの有無に依らず同じ内容が使われる(スクリプト更新時は要`--build`)。
+COPY --chmod=755 scripts/start-local-services.sh /usr/local/bin/start-local-services.sh
+
+# スクリプトは`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1のshの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にValkeyへSIGTERMを転送できなくなる。
+# `sleep infinity`は「何もせず永遠に待ち続けるだけ」のコマンドで、これをバックグラウンドで動かし続けることでPID1のshを終了させず、コンテナを生かし続ける(ValkeyやMailpitが落ちてもコンテナは生存する)。
+# `wait $!`は直前にバックグラウンド実行した`sleep infinity`の終了を待つ組み込みコマンドで、シグナル(SIGTERMなど)を受けると即座に中断されるため、コンテナ停止時にスクリプト内の`trap`をすぐ発火できる。
+CMD ["sh", "-c", ". /usr/local/bin/start-local-services.sh; sleep infinity & wait $!"]

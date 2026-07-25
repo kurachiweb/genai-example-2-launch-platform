@@ -56,7 +56,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │   ├── infra/                  # インフラ構成定義 ... Terraformを使用、Cloudflareを主としてインフラを設計
 │   ├── db/                     # DBスキーマ定義やDBへの接続処理
 │   │   ├── migrations/         # マイグレーション履歴
-│   │   └── data/               # SQLiteデータベースの実データ(Git管理に含めない)
+│   │   └── data/               # ローカル開発の永続データ(Git管理に含めない) ... SQLiteの実データやValkeyのスナップショット
 │   ├── backend-lib/            # バックエンド共通ファイル
 │   │   └── utilities/          # ユーティリティ
 │   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042、ORMによるDB接続処理を含む
@@ -89,6 +89,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │       ├── features/           # ビジネスルール(SSoT) ... 機能仕様、受け入れ条件一覧
 │       ├── design/             # デザインガイドライン ... 文字やパーツ配置に関するサービス固有の規則
 │       └── glossary.md         # サービス内用語集
+├── scripts/                    # ローカル開発用シェルスクリプト ... コンテナの常駐プロセス起動など
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進めるrootコンテナ
 ├── compose.yaml                # コンテナの管理
 ├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化
