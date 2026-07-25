@@ -16,16 +16,11 @@
       "Bash(rtk du *)",
       "Bash(rtk jest *)",
       "Bash(rtk tsc *)",
-      "Bash(docker compose *)",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(rtk git add *)",
       "Bash(rtk git commit *)"
     ]
-  },
-  "enabledPlugins": {
-    "cloudflare@cloudflare": true,
-    "creem-api@creem-skills": true
   },
   "showThinkingSummaries": true
 }
