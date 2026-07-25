@@ -166,7 +166,6 @@ GraphQL Code Generator
 
 Apollo Client (GraphQL クライアント)
 Jotai (グローバル状態管理)
-React Query (キャッシュ・再取得制御の補完)
 
 #### UI・スタイリング
 
