@@ -7,6 +7,11 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates build-essential procps curl file git \
   && rm -rf /var/lib/apt/lists/*
 
+# Playwright・chrome-devtools MCPが起動するChromiumを、rootのうちにOS共有ライブラリも含め導入する。
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+RUN bunx --bun playwright@latest install --with-deps chromium \
+  && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH}
+
 # Homebrewは既定の/home/linuxbrew/.linuxbrewに置くことで、ビルド済みパッケージ(bottle)をそのまま使え、時間のかかる自前ビルドを避けられる。
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
 # RTKの初期化はClaudeの設定ディレクトリが無いと失敗するため、先に作成しておく。
