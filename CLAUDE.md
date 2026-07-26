@@ -26,7 +26,7 @@ appsディレクトリ内を編集した際は、docsディレクトリ内の関
 ### Claude拡張設定よりも優先される本プロジェクト独自作業ルール・パターン
 
 Claude拡張設定にはnpmやpnpm関連のコマンドがあるが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
-テストを実行する際、Claude拡張設定内でjestやvitest関連のコマンドが記載されていても、代わりに`bun test`コマンドを実行すること。
+Claude拡張設定内でJest関連のコマンドが記載されていても、Jestは使用しないこと。ユーティリティ関数等ロジック層の単体テストは`bun test`コマンドを、DOM・コンポーネントのテストはVitest及びVitest Browser Modeを、Cloudflare Workersバインディング(D1・KV・R2・DO)を含む統合テストは`@cloudflare/vitest-pool-workers`を使うVitestを実行すること。
 
 ## Git運用方針
 
@@ -103,6 +103,7 @@ npmパッケージの `framer-motion` は `motion` にリネームされてい�
 ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns` ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture` スキルではEntity層に書くよう指示しており、後者に従う。
 Next.jsのキャッシュ戦略には `"use cache"` を使う。`developer-kit-typescript:nextjs-performance` スキルでは `unstable_cache` が紹介されているが、それは古い記法である。
 E2Eテストツールとして `ecc:e2e-runner` エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
+`developer-kit-typescript:nestjs-code-review-expert` と `typescript-software-architect-review` はNestJSのE2E・統合テストにSupertestを挙げているが、Supertestはworkerdランタイム前提のD1・KV・R2・DOバインディングにアクセスできずWorkers環境の統合テストとして成立しないため採用しない。統合テストには`@cloudflare/vitest-pool-workers`を使用する。`ecc:react-testing` エージェントはコンポーネントテストのランタイムとしてVitestとJestを実行時自動検出するとしているが、本プロジェクトではJestを使わずVitest Browser Modeに固定する。
 
 ## 技術選定
 
@@ -258,10 +259,10 @@ GitHub Dependabot (依存パッケージの脆弱性アラート及びバージ�
 
 #### テスト
 
-Bun (単体テスト、`bun test` コマンドを使用)
-@happy-dom/global-registrator (フロントエンド)
-React Testing Library (フロントエンド)
-Supertest (API統合テスト)
+Bun (ロジック層の単体テスト、`bun test` コマンドを使用)
+Vitest + Vitest Browser Mode (DOM・コンポーネントテスト、フロントエンド)
+React Testing Library (フロントエンド、Vitest Browser Mode上で使用)
+@cloudflare/vitest-pool-workers (Cloudflare Workers統合テスト、D1・KV・R2・DOバインディングを含む)
 Playwright (E2E)
 
 #### ブラウザ動作確認
