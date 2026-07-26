@@ -554,7 +554,7 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                 | トリガー                                                             | 概要                                                                                                                                                                                        |
 | ----------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cc-sdd:kiro-discovery`       | ユーザーが `/kiro-discovery "アイデア"` を明示的に実行した時のみ（自動呼び出し不可）  | 既存 spec の状態を軽量スキャンし、既存 spec 拡張・spec 不要・新規単一 spec・複数 spec への分解・混在分解のいずれかの対応方針を判定。対話でアイデアを深掘りし、`brief.md`／`roadmap.md` をディスクに書き出してから次のコマンドを提案する |
+| `cc-sdd:kiro-discovery`       | ユーザーが `/cc-sdd:kiro-discovery "アイデア"` を明示的に実行した時のみ（自動呼び出し不可）  | 既存 spec の状態を軽量スキャンし、既存 spec 拡張・spec 不要・新規単一 spec・複数 spec への分解・混在分解のいずれかの対応方針を判定。対話でアイデアを深掘りし、`brief.md`／`roadmap.md` をディスクに書き出してから次のコマンドを提案する |
 | `cc-sdd:kiro-steering`        | `.kiro/steering/` の初期構築・同期時                                | プロジェクトの永続メモリ（`product.md`・`tech.md`・`structure.md`）をブートストラップ（初回生成）またはシンク（コードとの乖離検出・追記更新）する。ユーザーのカスタム内容は追記のみで保持   |
 | `cc-sdd:kiro-steering-custom` | ドメイン固有のステアリング文書（API 規約・テスト方針等）を作成したい時 | コアファイル以外の専門領域向けステアリング文書を、既存テンプレート（`api-standards.md`・`testing.md`・`security.md` 等）を基に生成                                                        |
 
@@ -562,25 +562,25 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                   | トリガー                                                            | 概要                                                                                                                                                                                                  |
 | ------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cc-sdd:kiro-spec-init`        | 新規 spec の初期化時（`/kiro-spec-init "説明"`）                    | プロジェクト説明からフィーチャー名を生成し、`spec.json`・`requirements.md` の雛形を作成する。要件・設計・タスクの生成はこの段階では行わない                                                        |
-| `cc-sdd:kiro-spec-requirements`| 要件定義時（`/kiro-spec-requirements {feature}`）                   | EARS 形式の受け入れ基準を含む要件書を生成。レビューゲート（`rules/requirements-review-gate.md`）を通過するまで `requirements.md` を書き込まない。曖昧なスコープはユーザーに確認する               |
-| `cc-sdd:kiro-spec-design`      | 要件から設計を作成する時（`/kiro-spec-design {feature} [-y]`）      | 要件（WHAT）を Discovery プロセス付きでアーキテクチャ（HOW）に変換。フィーチャー種別（新規／拡張／単純追加）に応じた調査の深さを使い分け、ファイル構成計画とテスト戦略を含む設計書を生成           |
-| `cc-sdd:kiro-spec-tasks`       | 実装タスク生成時（`/kiro-spec-tasks {feature} [-y] [--sequential]`）| 要件・設計から 1〜3 時間規模の実行可能タスクを生成し、`(P)` 並列マーカーや `_Boundary:_`／`_Depends:_` 注釈を付与。書き込み前にタスクグラフの健全性レビューを実施                                  |
-| `cc-sdd:kiro-spec-quick`       | 対話または自動モードでの一括 spec 生成時（`/kiro-spec-quick "説明" [--auto]`）| init → requirements → design → tasks の 4 フェーズを連続実行するショートカット。`--auto` で承認プロンプトを省略し、最後に軽量な整合性サニティレビューを実施                                 |
+| `cc-sdd:kiro-spec-init`        | 新規 spec の初期化時（`/cc-sdd:kiro-spec-init "説明"`）                    | プロジェクト説明からフィーチャー名を生成し、`spec.json`・`requirements.md` の雛形を作成する。要件・設計・タスクの生成はこの段階では行わない                                                        |
+| `cc-sdd:kiro-spec-requirements`| 要件定義時（`/cc-sdd:kiro-spec-requirements {feature}`）                   | EARS 形式の受け入れ基準を含む要件書を生成。レビューゲート（`rules/requirements-review-gate.md`）を通過するまで `requirements.md` を書き込まない。曖昧なスコープはユーザーに確認する               |
+| `cc-sdd:kiro-spec-design`      | 要件から設計を作成する時（`/cc-sdd:kiro-spec-design {feature} [-y]`）      | 要件（WHAT）を Discovery プロセス付きでアーキテクチャ（HOW）に変換。フィーチャー種別（新規／拡張／単純追加）に応じた調査の深さを使い分け、ファイル構成計画とテスト戦略を含む設計書を生成           |
+| `cc-sdd:kiro-spec-tasks`       | 実装タスク生成時（`/cc-sdd:kiro-spec-tasks {feature} [-y] [--sequential]`）| 要件・設計から 1〜3 時間規模の実行可能タスクを生成し、`(P)` 並列マーカーや `_Boundary:_`／`_Depends:_` 注釈を付与。書き込み前にタスクグラフの健全性レビューを実施                                  |
+| `cc-sdd:kiro-spec-quick`       | 対話または自動モードでの一括 spec 生成時（`/cc-sdd:kiro-spec-quick "説明" [--auto]`）| init → requirements → design → tasks の 4 フェーズを連続実行するショートカット。`--auto` で承認プロンプトを省略し、最後に軽量な整合性サニティレビューを実施                                 |
 | `cc-sdd:kiro-spec-batch`       | `roadmap.md` に基づく複数 spec の一括作成時                        | 依存関係の波（wave）ごとに並列サブエージェントを起動し、全フィーチャーの spec を生成。全 wave 完了後にクロス spec 整合性レビュー（データモデル・インターフェース・命名規則等）を実施              |
-| `cc-sdd:kiro-spec-status`      | 進捗確認時（`/kiro-spec-status {feature}`）                         | 現在のフェーズ・完了率・タスク内訳・境界コンテキスト（上流／下流依存）・再検証が必要な範囲を表示                                                                                                    |
+| `cc-sdd:kiro-spec-status`      | 進捗確認時（`/cc-sdd:kiro-spec-status {feature}`）                         | 現在のフェーズ・完了率・タスク内訳・境界コンテキスト（上流／下流依存）・再検証が必要な範囲を表示                                                                                                    |
 
 #### 実装・レビュー・検証
 
 | スキル                   | トリガー                                                                    | 概要                                                                                                                                                                                       |
 | ------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cc-sdd:kiro-impl`             | ユーザーが `/kiro-impl {feature} [task番号]` を明示的に実行した時のみ（自動呼び出し不可）                     | タスク番号なし＝自律モード（タスクごとに新規サブエージェントを起動し実装→独立レビュー→コミットを繰り返す）、番号指定＝手動モード（メインコンテキストで TDD サイクルを実行）。実装は Red-Green-Refactor を厳守し、行き詰まった場合は `cc-sdd:kiro-debug` に委譲する |
+| `cc-sdd:kiro-impl`             | ユーザーが `/cc-sdd:kiro-impl {feature} [task番号]` を明示的に実行した時のみ（自動呼び出し不可）                     | タスク番号なし＝自律モード（タスクごとに新規サブエージェントを起動し実装→独立レビュー→コミットを繰り返す）、番号指定＝手動モード（メインコンテキストで TDD サイクルを実行）。実装は Red-Green-Refactor を厳守し、行き詰まった場合は `cc-sdd:kiro-debug` に委譲する |
 | `cc-sdd:kiro-review`           | 実装者が `READY_FOR_REVIEW` を報告した後、タスクを `[x]` にする前                | タスクローカルな敵対的レビュー。`git diff` を自ら確認し、リグレッション・プレースホルダー残存・シークレット混入・境界逸脱・要件/設計整合性を機械的＋判断的チェックで検証し `APPROVED`／`REJECTED` を返す |
 | `cc-sdd:kiro-debug`            | 実装がブロックされた時、レビュー却下が繰り返される時、検証が予期せず失敗した時 | フレッシュコンテキストでの根本原因調査。ローカル証跡・ランタイム/設定・Web ドキュメント調査を組み合わせ、`ROOT_CAUSE`・`FIX_PLAN`・`NEXT_ACTION`（RETRY_TASK／BLOCK_TASK／STOP_FOR_HUMAN）を返す |
 | `cc-sdd:kiro-verify-completion`| タスク完了・修正完了・テスト成功・feature の GO 判定を主張する前                | フレッシュな証跡なしの完了主張を防ぐゲート。`VERIFIED`／`NOT_VERIFIED`／`MANUAL_VERIFY_REQUIRED` を返し、証跡が主張の範囲を下回る場合は却下する                                          |
-| `cc-sdd:kiro-validate-gap`     | 既存コードベースとの統合を計画する時（`/kiro-validate-gap {feature}`）          | 要件と既存実装のギャップを分析し、拡張／新規／ハイブリッドの実装アプローチを複数提示。結果は `research.md` に追記保存される                                                              |
-| `cc-sdd:kiro-validate-design`  | 実装着手前の設計品質レビュー時（`/kiro-validate-design {feature}`）             | 設計書の重大な懸念（最大 3 件）と強みを対話的にレビューし、GO/NO-GO を判定                                                                                                               |
-| `cc-sdd:kiro-validate-impl`    | 全タスク実装後の feature 全体統合検証時（`/kiro-validate-impl {feature} [task番号]`）| タスク単位のレビューでは検知できないクロスタスクの問題（インターフェース不整合・要件カバレッジの隙間・設計とのアーキテクチャ乖離・境界のスピルオーバー）を検証し、`GO`／`NO-GO`／`MANUAL_VERIFY_REQUIRED` を判定 |
+| `cc-sdd:kiro-validate-gap`     | 既存コードベースとの統合を計画する時（`/cc-sdd:kiro-validate-gap {feature}`）          | 要件と既存実装のギャップを分析し、拡張／新規／ハイブリッドの実装アプローチを複数提示。結果は `research.md` に追記保存される                                                              |
+| `cc-sdd:kiro-validate-design`  | 実装着手前の設計品質レビュー時（`/cc-sdd:kiro-validate-design {feature}`）             | 設計書の重大な懸念（最大 3 件）と強みを対話的にレビューし、GO/NO-GO を判定                                                                                                               |
+| `cc-sdd:kiro-validate-impl`    | 全タスク実装後の feature 全体統合検証時（`/cc-sdd:kiro-validate-impl {feature} [task番号]`）| タスク単位のレビューでは検知できないクロスタスクの問題（インターフェース不整合・要件カバレッジの隙間・設計とのアーキテクチャ乖離・境界のスピルオーバー）を検証し、`GO`／`NO-GO`／`MANUAL_VERIFY_REQUIRED` を判定 |
 
 ---
 
