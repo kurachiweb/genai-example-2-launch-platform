@@ -6,7 +6,8 @@
 
 ```zsh
 # 1. ホスト環境で実行
-brew install --cask docker # Docker 未インストールの場合のみ（Macのみ）
+brew install --cask docker-desktop # Macのみ
+brew install docker # Linuxのみ
 docker compose up -d --build
 
 # 2. コンテナ内: CloudflareにOAuthでログインする
