@@ -60,7 +60,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48041
 │   ├── backend-lib/            # バックエンド共通ファイル
 │   │   └── utilities/          # ユーティリティ
-│   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042、ORMによるDB接続処理を含む。処理はpublic-apiと独立だがD1・R2は共有(ローカルで`wrangler dev`を起動する唯一のアプリ)
+│   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
 │   ├── public-api/             # 公開APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48043
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能

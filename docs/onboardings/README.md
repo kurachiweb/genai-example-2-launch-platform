@@ -15,9 +15,9 @@ wrangler login --callback-host 0.0.0.0
 wrangler whoami # 認証確認
 
 # 3. コンテナ内: APIサーバーの起動
-# ローカルでは、`wrangler dev`コマンドでapiアプリと共に起動されたDBやストレージに、public-apiアプリもアクセスする
+# 両アプリで同一の`--persist-to`を指定することで、D1・R2ローカルモードの実データを共有する
 cd apps/api && wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
-cd apps/public-api && bun run dev
+cd apps/public-api && wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 
 # 4. コンテナ内: フロントエンドの起動
 cd apps/client && bun run dev
