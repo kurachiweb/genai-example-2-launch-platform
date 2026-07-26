@@ -476,7 +476,7 @@ React 18/19 と Next.js に特化したスキル群。`rules/react/` のルー�
 
 ### Cloudflare・インフラ系
 
-Cloudflare プラットフォーム（Workers・Durable Objects・Email Service・Sandbox・Turnstile・Wrangler CLI）を扱うスキル群。本プロジェクトは Cloudflare Workers 上に構築され、Durable Objects による厳密なレート制限カウントを採用しているため、実装・レビュー双方で参照頻度が高い。いずれも学習知識より公式ドキュメント・型定義からの再取得（Retrieval over pre-training）を優先する方針を明記している。
+Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turnstile・Wrangler CLI）を扱うスキル群。本プロジェクトは Cloudflare Workers 上に構築され、Durable Objects による厳密なレート制限カウントを採用しているため、実装・レビュー双方で参照頻度が高い。いずれも学習知識より公式ドキュメント・型定義からの再取得（Retrieval over pre-training）を優先する方針を明記している。
 
 | スキル                     | トリガー                                                                                                              | 概要                                                                                                                                                                                 |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -484,7 +484,6 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Email Service�
 | `cloudflare:wrangler`                 | `wrangler` コマンドを実行する前                                                                                       | Wrangler CLI の全リファレンス。`wrangler.jsonc` 設定例、KV/R2/D1/Vectorize/Hyperdrive/Queues/Containers/Workflows/Secrets Store 等の管理コマンド、ローカル開発・デプロイ・シークレット管理・トラブルシューティング |
 | `cloudflare:workers-best-practices`   | 新規 Worker 作成時・既存 Worker コードのレビュー時・`wrangler.jsonc` 設定時                                          | Workers のプロダクションベストプラクティスに基づくコード作成・レビュー基準。ストリーミング・floating promise・グローバル状態・シークレット管理・タイミングセーフ比較などのアンチパターンを検出 |
 | `cloudflare:durable-objects`          | ステートフルな協調処理（チャットルーム・予約システム等）の構築時、RPC メソッド・SQLite ストレージ・alarm・WebSocket の実装時、DO コードのレビュー時 | Durable Objects の作成・レビュー基準。コーディネーション単位の設計・`getByName()` によるルーティング・ストレージ操作・alarm・Vitest テストを網羅                                     |
-| `cloudflare:cloudflare-email-service` | Email Sending / Email Routing でのメール送受信実装時、デリバラビリティ改善時                                          | Workers バインディングまたは REST API でのメール送信、Agents SDK でのメールハンドリング、SPF/DKIM/DMARC 等のデリバラビリティ、wrangler/MCP でのドメインセットアップを網羅           |
 | `cloudflare:sandbox-sdk`              | AI によるコード実行・コードインタープリタ・CI/CD・対話的開発環境・未信頼コードの実行環境構築時                       | Sandbox SDK によるセキュアなコード実行環境構築。ライフサイクル・コマンド実行・ファイル操作・コードインタープリタ（`runCode()`）・プレビュー URL を網羅                              |
 | `cloudflare:turnstile-spin`           | 「Turnstile を追加して」「CAPTCHA を設定して」「フォームをボット対策したい」と依頼された時                            | Turnstile のエンドツーエンドセットアップ。コードベーススキャン・ウィジェット作成・フォームへの組み込み・サーバーサイド siteverify の配線・検証をウィザード形式で実行                |
 | `cloudflare:web-perf`                 | ページ読み込みパフォーマンスの監査・プロファイリング・デバッグ・最適化、Lighthouse スコアの相談時                     | Chrome DevTools MCP を使った Web パフォーマンス監査。Core Web Vitals（LCP/INP/CLS）と補助指標を測定し、レンダーブロッキング・ネットワーク依存チェーン・レイアウトシフト・アクセシビリティのギャップを特定 |
