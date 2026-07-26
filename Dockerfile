@@ -18,7 +18,6 @@ RUN mkdir -p /home/linuxbrew/.linuxbrew \
 # node_modules は名前付きボリューム(node_modules_***)で分離する。
 # 名前付きボリュームは中身が空だとマウント先ディレクトリの所有者をそのまま引き継ぐため、
 # 非rootに切り替える前にbun所有で作成しておき、bunユーザーのbun installが書き込めるようにする(権限エラー回避)。
-# その他Git管理に含まれていないディレクトリを作成し実行時エラーを回避する。
 RUN mkdir -p /workspace/node_modules \
   && chown -R bun:bun /workspace/node_modules \
   && mkdir -p /workspace/apps/api/node_modules \
@@ -30,13 +29,7 @@ RUN mkdir -p /workspace/node_modules \
   && mkdir -p /workspace/apps/admin/node_modules \
   && chown -R bun:bun /workspace/apps/admin/node_modules \
   && mkdir -p /workspace/apps/frontend-lib/node_modules \
-  && chown -R bun:bun /workspace/apps/frontend-lib/node_modules \
-  && mkdir -p /workspace/apps/db/data \
-  && chown -R bun:bun /workspace/apps/db \
-  && mkdir -p /workspace/apps/files \
-  && chown -R bun:bun /workspace/apps/files \
-  && mkdir -p /workspace/apps/email \
-  && chown -R bun:bun /workspace/apps/email
+  && chown -R bun:bun /workspace/apps/frontend-lib/node_modules
 
 USER bun
 WORKDIR /workspace
