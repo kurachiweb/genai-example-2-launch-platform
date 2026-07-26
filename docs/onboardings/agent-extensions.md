@@ -476,7 +476,7 @@ React 18/19 と Next.js に特化したスキル群。`rules/react/` のルー�
 
 ### Cloudflare・インフラ系
 
-Cloudflare プラットフォーム（Workers・Durable Objects・Email Service・Sandbox・Turnstile・Wrangler CLI）を扱うスキル群。本プロジェクトは Cloudflare Workers 上に構築され、Durable Objects による厳密なレート制限カウントや Cloudflare Email Service の Email Sending を採用しているため、実装・レビュー双方で参照頻度が高い。いずれも学習知識より公式ドキュメント・型定義からの再取得（Retrieval over pre-training）を優先する方針を明記している。
+Cloudflare プラットフォーム（Workers・Durable Objects・Email Service・Sandbox・Turnstile・Wrangler CLI）を扱うスキル群。本プロジェクトは Cloudflare Workers 上に構築され、Durable Objects による厳密なレート制限カウントを採用しているため、実装・レビュー双方で参照頻度が高い。いずれも学習知識より公式ドキュメント・型定義からの再取得（Retrieval over pre-training）を優先する方針を明記している。
 
 | スキル                     | トリガー                                                                                                              | 概要                                                                                                                                                                                 |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

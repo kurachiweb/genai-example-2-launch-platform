@@ -206,7 +206,8 @@ LogTape
 
 #### メール送信
 
-Cloudflare Email Service の Email Sending
+ローカル環境 ... Mailpit
+デプロイ先 ... Amazon SES
 MJML (HTMLメールコード生成、faire/mjml-reactを使用)
 
 #### モニタリング

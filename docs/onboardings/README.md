@@ -31,9 +31,9 @@ cd apps/admin && bun run dev
 | `apps/admin`        | 管理者側フロントエンド（Next.js）                  | 48045  |
 | `apps/frontend-lib` | Storybookフロントエンド（Next.js）                 | 48046  |
 
-ローカルでは D1 の代わりに Wrangler のD1ローカルモード、Cloudflare Email Service の代わりに Mailpit、Cloudflare KV の代わりに Valkey、Cloudflare R2 の代わりに Wrangler のR2ローカルモードを使う。
-Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48046）だけを公開する。
+ローカルでは D1 の代わりに Wrangler のD1ローカルモード、Amazon SES の代わりに Mailpit、Cloudflare KV の代わりに Valkey、Cloudflare R2 の代わりに Wrangler のR2ローカルモードを使う。
 Valkey はホスト側からのデバッグ用に 48040 を公開することで、`redis-cli -p 48040` 等で接続できる。
+Mailpit の SMTP（1025）はコンテナ内のみで到達可能で、ローカル開発ではメール送信処理がこの1025番ポートへSMTP接続し、送信結果は48041番のWeb UIで確認する。
 
 ## ドキュメント索引
 
