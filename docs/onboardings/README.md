@@ -21,15 +21,14 @@ cd apps/admin && bun run dev
 
 ### ローカルポート一覧
 
-| アプリ            | 役割                                          | ポート |
-| ----------------- | -------------------------------------------- | ------ |
-| WranglerのD1ローカルモード | データベース(Cloudflare D1 のローカル版) | 48040  |
+| アプリ            | 役割                                               | ポート |
+| ----------------- | -------------------------------------------------- | ------ |
 | Valkey            | インメモリストレージ（Cloudflare KV のローカル版） | 48041  |
-| `apps/api`        | 内部 API（NestJS / GraphQL）                  | 48042  |
-| `apps/public-api` | 公開 API（NestJS / REST）                     | 48043  |
-| `apps/client`     | 利用者側フロントエンド（Next.js）                | 48044  |
-| `apps/admin`      | 管理者側フロントエンド（Next.js）                | 48045  |
-| Mailpit           | メール確認 Web UI                             | 48046  |
+| `apps/api`        | 内部 API（NestJS / GraphQL）                       | 48042  |
+| `apps/public-api` | 公開 API（NestJS / REST）                          | 48043  |
+| `apps/client`     | 利用者側フロントエンド（Next.js）                  | 48044  |
+| `apps/admin`      | 管理者側フロントエンド（Next.js）                  | 48045  |
+| Mailpit           | メール確認 Web UI                                  | 48046  |
 
 ローカルでは D1 の代わりに Wrangler のD1ローカルモード、Cloudflare Email Send の代わりに Mailpit、Cloudflare KV の代わりに Valkey、Cloudflare R2 の代わりに Wrangler のR2ローカルモードを使う。
 Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48046）だけを公開する。

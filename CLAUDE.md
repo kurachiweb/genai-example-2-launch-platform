@@ -110,7 +110,7 @@ E2Eテストツールとして `ecc:e2e-runner` エージェントではVercel A
 
 ### データベース
 
-ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev` / `wrangler d1 execute --local`)、ポート番号は48040
+ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev` / `wrangler d1 execute --local`)
 デプロイ先 ... Cloudflare D1
 
 ローカル環境 ... Valkey(インメモリストレージ)

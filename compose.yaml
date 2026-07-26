@@ -25,7 +25,6 @@ services:
     restart: unless-stopped
     init: true
     ports:
-      - "48040:48040" # WranglerのD1ローカルモード
       - "48041:48041" # インメモリストレージ
       - "48042:48042" # 内部API
       - "48043:48043" # 公開API
