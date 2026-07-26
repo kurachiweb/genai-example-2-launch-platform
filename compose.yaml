@@ -32,6 +32,7 @@ services:
       - "48044:48044" # 利用者側フロントエンド
       - "48045:48045" # 管理者側フロントエンド
       - "48046:48046" # Storybookフロントエンド
+      - "8976:8976" # `wrangler login`のOAuthコールバック受信
     env_file:
       - path: .env
         required: false
