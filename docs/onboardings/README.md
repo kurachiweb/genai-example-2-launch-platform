@@ -21,18 +21,19 @@ cd apps/admin && bun run dev
 
 ### ローカルポート一覧
 
-| アプリ            | 役割                                               | ポート |
-| ----------------- | -------------------------------------------------- | ------ |
-| Valkey            | インメモリストレージ（Cloudflare KV のローカル版） | 48041  |
-| `apps/api`        | 内部 API（NestJS / GraphQL）                       | 48042  |
-| `apps/public-api` | 公開 API（NestJS / REST）                          | 48043  |
-| `apps/client`     | 利用者側フロントエンド（Next.js）                  | 48044  |
-| `apps/admin`      | 管理者側フロントエンド（Next.js）                  | 48045  |
-| Mailpit           | メール確認 Web UI                                  | 48046  |
+| アプリ              | 役割                                               | ポート |
+| ------------------- | -------------------------------------------------- | ------ |
+| Valkey              | インメモリストレージ（Cloudflare KV のローカル版） | 48040  |
+| Mailpit             | メール確認 Web UI                                  | 48041  |
+| `apps/api`          | 内部 API（NestJS / GraphQL）                       | 48042  |
+| `apps/public-api`   | 公開 API（NestJS / REST）                          | 48043  |
+| `apps/client`       | 利用者側フロントエンド（Next.js）                  | 48044  |
+| `apps/admin`        | 管理者側フロントエンド（Next.js）                  | 48045  |
+| `apps/frontend-lib` | Storybookフロントエンド（Next.js）                 | 48046  |
 
 ローカルでは D1 の代わりに Wrangler のD1ローカルモード、Cloudflare Email Send の代わりに Mailpit、Cloudflare KV の代わりに Valkey、Cloudflare R2 の代わりに Wrangler のR2ローカルモードを使う。
 Mailpit の SMTP（1025）はコンテナ間のみで、ホストには Web UI（48046）だけを公開する。
-Valkey はホスト側からのデバッグ用に 48041 を公開することで、`redis-cli -p 48041` 等で接続できる。
+Valkey はホスト側からのデバッグ用に 48040 を公開することで、`redis-cli -p 48040` 等で接続できる。
 
 ## ドキュメント索引
 

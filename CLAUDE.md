@@ -57,20 +57,20 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │   ├── db/                     # DBスキーマ定義やDBへの接続処理
 │   │   ├── migrations/         # DBマイグレーション履歴
 │   │   └── data/               # ローカル開発時の永続データ(Git管理に含めない) ... Valkeyのスナップショット。Wrangler D1ローカルモードのデータはリポジトリルートの`.wrangler`配下に持つため含まない
+│   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48041
 │   ├── backend-lib/            # バックエンド共通ファイル
 │   │   └── utilities/          # ユーティリティ
 │   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042、ORMによるDB接続処理を含む。処理はpublic-apiと独立だがD1・R2は共有(ローカルで`wrangler dev`を起動する唯一のアプリ)
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
 │   ├── public-api/             # 公開APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48043
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
-│   ├── frontend-lib/           # フロントエンド共通ファイル
+│   ├── frontend-lib/           # フロントエンド共通ファイル、ローカル開発におけるStorybookプレビューのためのポート番号は48046
 │   │   ├── components/         # コンポーネント定義 ... Storybookによるプレビュー付き
 │   │   └── utilities/          # ユーティリティ
 │   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... Next.jsを利用、ローカル開発でのポート番号は48044
 │   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
-│   ├── admin/                  # Webサーバー兼フロントエンド(管理者側) ... Next.jsを利用、ローカル開発でのポート番号は48045
-│   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
-│   └── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48046
+│   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... Next.jsを利用、ローカル開発でのポート番号は48045
+│       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
 │   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
 │   ├── adr/                    # ecc:architecture-decision-recordsスキルによる自動生成ADR
