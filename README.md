@@ -99,7 +99,7 @@ Launch Stadiumは、ProductHuntやUneedの競合として位置づけられる�
 #### 2.4 運用環境
 
 - **クライアント**: モダンWebブラウザ(Chrome, Firefox, Safari, Edge最新版)
-- **サーバー**: Cloudflare Workers (NestJS on Hono), Cloudflare D1
+- **サーバー**: Cloudflare Workers, Cloudflare D1
 - **インフラ**: Cloudflare各種サービス
 
 #### 2.5 設計・実装の制約
