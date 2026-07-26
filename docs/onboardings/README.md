@@ -11,7 +11,7 @@ docker compose up -d --build
 
 # 2. コンテナ内: APIサーバーの起動
 # ローカルでは、`wrangler dev`コマンドでapiアプリと共に起動されたDBやストレージに、public-apiアプリもアクセスする
-cd apps/api && wrangler dev
+cd apps/api && wrangler dev --port 48042 --ip 0.0.0.0
 cd apps/public-api && bun run dev
 
 # 3. コンテナ内: フロントエンドの起動
