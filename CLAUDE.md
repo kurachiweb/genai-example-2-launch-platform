@@ -22,7 +22,6 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 コード内にコメントは原則書かないが、難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
 車輪の再発明を許容し、簡易なユーティリティ関数のためにnpmパッケージをインストールしない。
 appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
-ローカル開発でCloudflare D1・R2の代わりにWranglerの各ローカルモードを使う際は、コンテナ再作成時にもデータを引き継げるよう`--persist-to`オプションを必ず付けること。D1代替であれば`apps/db/data`、R2代替であれば`apps/files`を指定先とする。
 
 ### Claude拡張設定よりも優先される本プロジェクト独自作業ルール・パターン
 
@@ -52,15 +51,15 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 ├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・Terraform適用を含む)を担当
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
+├── .wrangler/                  # WranglerのD1・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`の`wrangler dev`が生成
 ├── apps/                       # アプリケーション実装
 │   ├── infra/                  # インフラ構成定義 ... Terraformを使用、Cloudflareを主としてインフラを設計
 │   ├── db/                     # DBスキーマ定義やDBへの接続処理
-│   │   ├── migrations/         # マイグレーション履歴
-│   │   └── data/               # ローカル開発時の永続データ(Git管理に含めない) ... SQLiteの実データやValkeyのスナップショット
-│   ├── files/                  # ローカル開発時のアップロードファイル保存先(Git管理に含めない)
+│   │   ├── migrations/         # DBマイグレーション履歴
+│   │   └── data/               # ローカル開発時の永続データ(Git管理に含めない) ... Valkeyのスナップショット。Wrangler D1ローカルモードのデータはリポジトリルートの`.wrangler`配下に持つため含まない
 │   ├── backend-lib/            # バックエンド共通ファイル
 │   │   └── utilities/          # ユーティリティ
-│   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042、ORMによるDB接続処理を含む
+│   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042、ORMによるDB接続処理を含む。処理はpublic-apiと独立だがD1・R2は共有(ローカルで`wrangler dev`を起動する唯一のアプリ)
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能
 │   ├── public-api/             # 公開APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48043
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のエイリアス、Dockerコンテナ内で利用可能

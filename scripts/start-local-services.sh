@@ -7,12 +7,11 @@
 
 # DockerfileのRUN命令でホストに存在しないディレクトリを作成しても、bindマウントによって隠れてしまう。
 # ここはホストからのbindマウント後に実行されるため、確実にコンテナ内でディレクトリにアクセスできる。
-mkdir -p /workspace/apps/db/data /workspace/apps/files /workspace/apps/email
+mkdir -p /workspace/apps/db/data /workspace/apps/email
 
 # 各プロセスはDockerのポートフォワーディングが機能するよう0.0.0.0で待ち受ける(既定の127.0.0.1待受だとホストから48041/48046へ到達できない)。
 # Valkeyの代替元であるCloudflare KVは永続ストレージのため、Valkeyもスナップショット(dump.rdb)で永続化し、コンテナ再作成後もデータを引き継ぐ。
 # 書き出しの契機は定期スナップショット（900 秒で 1 件以上、300 秒で 10 件以上、60 秒で 10000 件以上の変更）と、コンテナの終了時である。
-# 出力先はWrangler D1ローカルモードのDBデータと同じ。
 valkey-server \
   --port 48041 \
   --bind 0.0.0.0 \

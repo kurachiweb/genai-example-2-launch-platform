@@ -22,9 +22,8 @@ apps/admin/lib
 
 # ローカル開発の蓄積データ
 apps/db/data
-apps/files
 apps/email
-# Wrangler(万が一`--persist-to`オプションを付け忘れた場合の実データ置き場)
+# Wrangler D1・R2ローカルモードの実データ置き場
 .wrangler
 
 # フロントエンドのビルド成果物
