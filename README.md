@@ -113,7 +113,6 @@ Launch Stadiumは、ProductHuntやUneedの競合として位置づけられる�
 
 - Cloudflare各種サービスの利用可能性
 - GitHubリポジトリとの連携
-- 外部認証サービス(将来的なOAuth対応の可能性)
 
 ---
 
