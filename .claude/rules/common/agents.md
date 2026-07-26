@@ -2,7 +2,7 @@
 
 ## Available Agents
 
-Located in `~/.claude/agents/`:
+Located in `~/.claude/ecc/skills/agents/`:
 
 | Agent | Purpose | When to Use |
 |-------|---------|-------------|
