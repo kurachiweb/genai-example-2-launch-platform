@@ -206,7 +206,7 @@ LogTape
 
 #### メール送信
 
-Cloudflare Email Send
+Cloudflare Email Service の Email Sending
 MJML (HTMLメールコード生成、faire/mjml-reactを使用)
 
 #### モニタリング
