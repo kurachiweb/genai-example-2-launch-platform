@@ -121,10 +121,8 @@ E2Eテストツールとして `ecc:e2e-runner` エージェントではVercel A
 
 #### フレームワーク
 
-HonoはNestJSのHTTPアダプター層として使い、Expressは使わない。
-
 NestJS (クリーンアーキテクチャ)
-Hono (Cloudflare Workers向け設定)
+@nestjs/platform-express (`httpServerHandler`でラップ)
 TypeScript
 
 #### スキーマ
