@@ -377,6 +377,7 @@ GitHub
 - [cc-sdd](https://github.com/gotalab/cc-sdd) by Gota ... Kiro-style Spec-Driven Development on an agentic SDLC for Claude Code etc.
 - [Developer Kit](https://github.com/giuseppe-trisciuoglio/developer-kit) by Giuseppe Trisciuoglio ... A modular AI plugin system that supercharges your development workflow across languages and frameworks.
 - [Privacy & Data Protection Skills for AI Agents](https://github.com/mukul975/Privacy-Data-Protection-Skills) by Mahipal ... 282+ structured privacy & data protection skills for AI agents.
-- [Skills](https://github.com/anthropics/skills) by Anthropics ... Skills that demonstrate what's possible with Claude's skills system.
+- [Skills](https://github.com/anthropics/skills) by Anthropic ... Skills that demonstrate what's possible with Claude's skills system.
 - [Cloudflare Skills](https://github.com/cloudflare/skills) by Cloudflare ... Skills for teaching agents how to build on Cloudflare.
 - [Awesome GitHub Copilot](https://github.com/github/awesome-copilot) by GitHub ... A community-created collection of custom agents, instructions, skills, hooks, workflows, and plugins to supercharge your GitHub Copilot experience.
+- [Creem Skills](https://github.com/armitage-labs/creem-skills) by Armitage Labs ... Official Creem payment integration skills for AI coding assistants like Claude Code, Cursor, and Windsurf.
