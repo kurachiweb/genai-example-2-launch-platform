@@ -229,10 +229,10 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 
 TruffleHog (機密情報のpush防止。検知ならマージをブロック)
 Bunによるパッケージインストール及び既知の脆弱性確認
-Wrangler Secretsによる環境変数変更
-Terraformによるインフラ構成変更
+Terraformによるインフラ構成変更（Wranglerの担当範囲を除く）
 WranglerによるDBマイグレーション
 Wranglerによる各Workerのビルド・デプロイ
+Wrangler Secretsによる環境変数変更
 
 ### 開発環境・ツール
 
