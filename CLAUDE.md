@@ -13,7 +13,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 公開APIには1分あたりのリクエスト数制限(Rate Limit)が設けられている。
 詳細は[README.md](./README.md)を参照すること。
 
-## 作業ルール
+## 本プロジェクト規則
 
 各種ドキュメント、Gitコミットメッセージ、コードコメントにおいて、全ての文章は日本語で記述すること。
 機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。（必読セクション: `Agentic SDLC and Spec-Driven Development` 及び参照しているファイル）
@@ -23,10 +23,19 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 車輪の再発明を許容し、簡易なユーティリティ関数のためにnpmパッケージをインストールしない。
 appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
 
-### Claude拡張設定よりも優先される本プロジェクト独自作業ルール・パターン
+## Claude拡張設定間の矛盾、あるいは本プロジェクト規則との不一致について
 
-Claude拡張設定にはnpmやpnpm関連のコマンドがあるが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
-Claude拡張設定内でJest関連のコマンドが記載されていても、Jestは使用しないこと。ユーティリティ関数等ロジック層の単体テストは`bun test`コマンドを、DOM・コンポーネントのテストはVitest及びVitest Browser Modeを、Cloudflare Workersバインディング(D1・KV・R2・DO)を含む統合テストは`@cloudflare/vitest-pool-workers`を使うVitestを実行すること。
+Claude拡張設定(エージェント・スキル・ルール・コマンド)と本プロジェクト規則に矛盾がある場合、後者を優先する。
+
+- Claude拡張設定にはnpmやpnpm関連のコマンドがあるが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
+- npmパッケージの `framer-motion` は `motion` にリネームされているため、`motion/react` をインポートして利用する。`ecc:motion-ui` と `ecc:frontend-patterns` スキルが `framer-motion` に言及しているが、それは古い情報である。
+- APIレスポンス形式やバリデーションエラー時ステータスコードは `ecc:api-design` スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards` や `ecc:nestjs-patterns` のAPIレスポンス形式や、ECC系プラグイン内ルール（`typescript/patterns.md`）の `ApiResponse<T>` 型は採用しない。
+- ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns` ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture` スキルではEntity層に書くよう指示しており、後者に従う。
+- Next.jsのキャッシュ戦略には `"use cache"` を使う。`developer-kit-typescript:nextjs-performance` スキルでは `unstable_cache` が紹介されているが、それは古い記法である。
+- テストについて
+  - E2Eテストツールとして `ecc:e2e-runner` エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
+  - Claude拡張設定内でJest関連のコマンドが記載されていても、Jestは使用しないこと。
+  - `developer-kit-typescript:nestjs-code-review-expert` と `typescript-software-architect-review` はNestJSのE2E・統合テストにSupertestを挙げているが、Supertestはworkerdランタイム前提のD1・KV・R2・DOバインディングにアクセスできずWorkers環境の統合テストとして成立しないため採用しない。
 
 ## Git運用方針
 
@@ -94,15 +103,6 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 ├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化
 └── README.md                   # 作業者向け、サービスの基本的説明
 ```
-
-## Claude拡張設定間の矛盾、あるいは本プロジェクト規則との不一致について
-
-APIレスポンス形式やバリデーションエラー時ステータスコードは `ecc:api-design` スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards` や `ecc:nestjs-patterns` のAPIレスポンス形式や、ECC系プラグイン内ルール（`typescript/patterns.md`）の `ApiResponse<T>` 型は採用しない。
-npmパッケージの `framer-motion` は `motion` にリネームされているため、`motion/react` をインポートして利用する。`ecc:motion-ui` と `ecc:frontend-patterns` スキルが `framer-motion` に言及しているが、その点においては古い情報である。
-ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns` ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture` スキルではEntity層に書くよう指示しており、後者に従う。
-Next.jsのキャッシュ戦略には `"use cache"` を使う。`developer-kit-typescript:nextjs-performance` スキルでは `unstable_cache` が紹介されているが、それは古い記法である。
-E2Eテストツールとして `ecc:e2e-runner` エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
-`developer-kit-typescript:nestjs-code-review-expert` と `typescript-software-architect-review` はNestJSのE2E・統合テストにSupertestを挙げているが、Supertestはworkerdランタイム前提のD1・KV・R2・DOバインディングにアクセスできずWorkers環境の統合テストとして成立しないため採用しない。統合テストには`@cloudflare/vitest-pool-workers`を使用する。`ecc:react-testing` エージェントはコンポーネントテストのランタイムとしてVitestとJestを実行時自動検出するとしているが、本プロジェクトではJestを使わずVitest Browser Modeに固定する。
 
 ## 技術選定
 
