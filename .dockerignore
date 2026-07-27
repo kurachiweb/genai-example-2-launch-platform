@@ -24,7 +24,6 @@ node_modules
 **/node_modules
 
 # Git管理外のローカル開発専用データ
-.wrangler
 apps/email
 
 # コンテナ内バインドマウント用のエイリアス先
