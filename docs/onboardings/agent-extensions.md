@@ -2,12 +2,6 @@
 
 このドキュメントは `.claude/` 配下のスキル・ルール・エージェント定義ファイルについて、概要・呼び出しトリガー・使用目的を説明する。
 
-## 前提条件: ワークスペースの信頼(trust)
-
-`ecc` / `cc-sdd` / `developer-kit-typescript` などの `.claude/skills/<plugin>/` はプラグイン形式(`.claude-plugin/plugin.json` を持ち、スキルが `skills/<name>/SKILL.md` に入れ子になっている)であり、Claude Codeからは「skills-directory plugins」として自動検出される。ただし、このワークスペースに対する信頼ダイアログが未承認だと一切ロードされない(`claude plugin list` で確認可能)。
-
-ローカル開発コンテナでは [scripts/claude-trust-plugins.sh](../../scripts/claude-trust-plugins.sh) が信頼済みフラグを自動的に書き込むため、コンテナ内での手動承認は不要。`~/.claude.json` はコンテナのファイルシステム上にありホストとバインドマウントされないため、この自動処理が無いとコンテナを再作成するたびに全プラグインが読み込まれなくなる。
-
 ---
 
 ## エージェント定義

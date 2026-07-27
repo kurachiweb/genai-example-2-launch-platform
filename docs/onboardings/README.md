@@ -5,18 +5,18 @@
 ## ローカル開発環境クイックスタート
 
 ```zsh
-# 1. ホスト環境で実行
+# 1. ホスト環境: Docker環境の作成
 brew install --cask docker-desktop # Macのみ
 brew install docker # Linuxのみ
 docker compose up -d
 
 # 2. VSCodeでコンテナにアタッチする
 
-# 3. コンテナ内: CloudflareにOAuthでログインする
+# 3. コンテナ内: CloudflareにOAuthでログインする（初回のみ）
 wrangler login --callback-host 0.0.0.0
 wrangler whoami # 認証確認
 
-# 4. Claude向けMCPを認証する
+# 4. Claude向けMCPを認証する（初回のみ）
 claude
 /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
 

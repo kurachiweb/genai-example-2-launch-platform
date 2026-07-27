@@ -16,10 +16,16 @@ RUN bunx --bun playwright@latest install --with-deps chromium \
 # Homebrewは既定の/home/linuxbrew/.linuxbrewに置くことで、ビルド済みパッケージ(bottle)をそのまま使え、時間のかかる自前ビルドを避けられる。
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
 # RTKの初期化はClaudeの設定ディレクトリが無いと失敗するため、先に作成しておく。
+# Claude(/home/bun/.claude)とCloudflare(/home/bun/.wrangler)のログイン情報を永続化し、コンテナ再作成時の再認証を不要にする。
+# 初回コンテナビルド時にClaudeのワークスペース信頼設定(hasTrustDialogAccepted等)を/home/bun/.claude.jsonに書き込むので、ユーザーは意識する必要がなくなる。
 RUN mkdir -p /home/linuxbrew/.linuxbrew \
   && chown -R bun:bun /home/linuxbrew/.linuxbrew \
   && mkdir -p /home/bun/.claude \
-  && chown -R bun:bun /home/bun/.claude
+  && printf '%s' '{"projects":{"/workspace":{"hasTrustDialogAccepted":true,"hasCompletedProjectOnboarding":true}}}' > /home/bun/.claude/.claude.json \
+  && ln -s /home/bun/.claude/.claude.json /home/bun/.claude.json \
+  && chown -R bun:bun /home/bun/.claude /home/bun/.claude.json \
+  && mkdir -p /home/bun/.wrangler \
+  && chown -R bun:bun /home/bun/.wrangler
 
 # node_modules は名前付きボリューム(node_modules_***)で分離する。
 # 名前付きボリュームは中身が空だとマウント先ディレクトリの所有者をそのまま引き継ぐため、
@@ -51,14 +57,10 @@ RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/insta
   && brew install --cask claude-code \
   && HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch
 
-# Claude Codeのワークスペース信頼設定はコンテナ起動のたびに必要なため、常駐プロセスの起動より前に実行する。
-# bindマウントで隠れない/usr/local/binへ置くことで、マウントの有無に依らず同じ内容が使われる(スクリプト更新時は要`--build`)。
-COPY --chmod=755 scripts/claude-trust-plugins.sh /usr/local/bin/claude-trust-plugins.sh
-
 # ローカル開発用常駐プロセスの起動処理はスクリプトへ切り出す。
 COPY --chmod=755 scripts/start-local-services.sh /usr/local/bin/start-local-services.sh
 
 # start-local-services.shは`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1のshの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にValkeyへSIGTERMを転送できなくなる。
 # `sleep infinity`は「何もせず永遠に待ち続けるだけ」のコマンドで、これをバックグラウンドで動かし続けることでPID1のshを終了させず、コンテナを生かし続ける(ValkeyやMailpitが落ちてもコンテナは生存する)。
 # `wait $!`は直前にバックグラウンド実行した`sleep infinity`の終了を待つ組み込みコマンドで、シグナル(SIGTERMなど)を受けると即座に中断されるため、コンテナ停止時にスクリプト内の`trap`をすぐ発火できる。
-CMD ["sh", "-c", "/usr/local/bin/claude-trust-plugins.sh; . /usr/local/bin/start-local-services.sh; sleep infinity & wait $!"]
+CMD ["sh", "-c", ". /usr/local/bin/start-local-services.sh; sleep infinity & wait $!"]
