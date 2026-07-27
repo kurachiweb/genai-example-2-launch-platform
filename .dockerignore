@@ -2,10 +2,22 @@
 .git
 .gitignore
 
-# 機密情報を含むためビルドコンテキストに含めない
+# 環境変数(シークレットを含む)
 .env
 .env.*
 !.env.example
+
+# Wranglerのローカルシークレットファイル
+.dev.vars
+.dev.vars.*
+
+# Terraformの状態ファイル・変数ファイル(シークレットを含む)
+.terraform
+**/.terraform
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.auto.tfvars
 
 # コンテナ内でbun installするため、ホスト側の依存パッケージは除外する
 node_modules
@@ -13,7 +25,6 @@ node_modules
 
 # Git管理外のローカル開発専用データ
 .wrangler
-apps/db/data
 apps/email
 
 # コンテナ内バインドマウント用のエイリアス先
@@ -24,9 +35,13 @@ apps/*/db
 .wrangler
 **/.wrangler
 
-# テストカバレッジレポート
+# テスト成果物
 coverage
 **/coverage
+test-results
+**/test-results
+playwright-report
+**/playwright-report
 
 # AIエージェント設定
 .claude
@@ -45,3 +60,9 @@ desktop.ini
 # フロントエンドのビルド成果物
 .next
 **/.next
+dist
+**/dist
+build
+**/build
+storybook-static
+**/storybook-static

@@ -1,6 +1,19 @@
+# 環境変数(シークレットを含む)
 .env
 .env.*
 !.env.example
+
+# Wranglerのローカルシークレットファイル
+.dev.vars
+.dev.vars.*
+
+# Terraformの状態ファイル・変数ファイル(シークレットを含む)
+.terraform
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.auto.tfvars
+
 node_modules
 
 # OS生成ファイル
@@ -38,11 +51,6 @@ coverage
 test-results
 # Playwright (HTMLレポートの出力先)
 playwright-report
-
-# Terraformの状態ファイル(平文シークレットを含み得るため厳重に除外)
-.terraform
-*.tfstate
-*.tfstate.backup
 
 # 生成AI用
 .claude/settings.local.json
