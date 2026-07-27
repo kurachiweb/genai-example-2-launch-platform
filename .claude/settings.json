@@ -8,16 +8,15 @@
   },
   "permissions": {
     "allow": [
+      "Bash(bun *)",
       "Bash(rtk find *)",
       "Bash(rtk grep *)",
       "Bash(rtk ls *)",
       "Bash(rtk tree *)",
       "Bash(rtk read *)",
       "Bash(rtk du *)",
-      "Bash(rtk bun *)",
       "Bash(rtk tsc *)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
+      "Bash(rtk proxy *)",
       "Bash(rtk git add *)",
       "Bash(rtk git commit *)",
       "WebSearch",
