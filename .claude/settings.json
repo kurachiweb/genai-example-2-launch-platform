@@ -33,5 +33,9 @@
     "cloudflare-bindings",
     "cloudflare-builds",
     "cloudflare-observability"
-  ]
+  ],
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  }
 }
