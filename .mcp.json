@@ -1,11 +1,11 @@
 {
   "mcpServers": {
     "chrome-devtools": {
-      "command": "npx",
+      "command": "bunx",
       "args": ["chrome-devtools-mcp@latest"]
     },
     "playwright": {
-      "command": "npx",
+      "command": "bunx",
       "args": ["@playwright/mcp@latest"]
     },
     "cloudflare-api": {
