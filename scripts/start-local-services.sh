@@ -1,33 +1,20 @@
 #!/bin/sh
-# ローカル開発用コンテナの常駐プロセス(Valkey・Mailpit)を起動する。
+# ローカル開発用コンテナの常駐プロセス(Mailpit)を起動する。
 # 単一コンテナ構成のため、DockerfileのCMDから読み込まれる。
 #
 # このスクリプトはCMDのshに`.`(source)で読み込ませる前提である。
-# 別プロセスとして実行すると、ここで登録したtrapと各プロセスの親子関係がスクリプト終了時に失われ、停止時にValkeyへSIGTERMを転送できなくなるため。
+# 別プロセスとして実行すると、ここで登録したtrapと各プロセスの親子関係がスクリプト終了時に失われ、停止時にMailpitへSIGTERMを転送できなくなるため。
 
 # DockerfileのRUN命令でホストに存在しないディレクトリを作成しても、bindマウントによって隠れてしまう。
 # ここはホストからのbindマウント後に実行されるため、確実にコンテナ内でディレクトリにアクセスできる。
-mkdir -p /workspace/apps/db/data /workspace/apps/email
+mkdir -p /workspace/apps/email
 
-# 各プロセスはDockerのポートフォワーディングが機能するよう0.0.0.0で待ち受ける(既定の127.0.0.1待受だとホストから48040/48041へ到達できない)。
-# Valkeyの代替元であるCloudflare KVは永続ストレージのため、Valkeyもスナップショット(dump.rdb)で永続化し、コンテナ再作成後もデータを引き継ぐ。
-# 書き出しの契機は定期スナップショット（900 秒で 1 件以上、300 秒で 10 件以上、60 秒で 10000 件以上の変更）と、コンテナの終了時である。
-valkey-server \
-  --port 48040 \
-  --bind 0.0.0.0 \
-  --dir /workspace/apps/db/data \
-  --dbfilename dump.rdb \
-  --save 900 1 300 10 60 10000 \
-  --daemonize no \
-  >/workspace/apps/db/data/valkey.log 2>&1 &
-valkey_pid=$!
-
+# Dockerのポートフォワーディングが機能するよう0.0.0.0で待ち受ける(既定の127.0.0.1待受だとホストから48041へ到達できない)。
 mailpit \
   --listen 0.0.0.0:48041 \
   --smtp 0.0.0.0:1025 \
   >/workspace/apps/email/mailpit.log 2>&1 &
 mailpit_pid=$!
 
-# `docker compose down`のSIGTERMはPID1のshにしか届かず、そのままではValkeyが終了時スナップショットを取れずに直近の書き込みを失うため、trapで子プロセスへ転送する。
-# スナップショット書き出しの完了を待つため、Valkeyの終了までwaitする。
-trap 'kill -TERM $valkey_pid $mailpit_pid 2>/dev/null; wait $valkey_pid 2>/dev/null' TERM INT
+# `docker compose down`のSIGTERMはPID1のshにしか届かないため、trapで子プロセスへ転送する。
+trap 'kill -TERM $mailpit_pid 2>/dev/null; wait $mailpit_pid 2>/dev/null' TERM INT

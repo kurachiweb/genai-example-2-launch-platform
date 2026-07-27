@@ -21,7 +21,6 @@ apps/client/lib
 apps/admin/lib
 
 # ローカル開発の蓄積データ
-apps/db/data
 apps/email
 # Wrangler D1・R2ローカルモードの実データ置き場
 .wrangler

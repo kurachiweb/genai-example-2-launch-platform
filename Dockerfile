@@ -47,7 +47,7 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash \
   && brew tap hashicorp/tap \
   && brew update \
-  && brew install hashicorp/tap/terraform cloudflare-wrangler gh rtk valkey mailpit \
+  && brew install hashicorp/tap/terraform cloudflare-wrangler gh rtk mailpit \
   && brew install --cask claude-code \
   && HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch
 

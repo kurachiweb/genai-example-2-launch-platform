@@ -51,12 +51,11 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 ├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・Terraform適用を含む)を担当
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
-├── .wrangler/                  # WranglerのD1・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
+├── .wrangler/                  # WranglerのD1・KV・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
 ├── apps/                       # アプリケーション実装
 │   ├── infra/                  # インフラ構成定義 ... Terraformを使用、Cloudflareを主としてインフラを設計
 │   ├── db/                     # DBスキーマ定義やDBへの接続処理
-│   │   ├── migrations/         # DBマイグレーション履歴
-│   │   └── data/               # ローカル開発時の永続データ(Git管理に含めない) ... Valkeyのスナップショット
+│   │   └── migrations/         # DBマイグレーション履歴
 │   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48041
 │   ├── backend-lib/            # バックエンド共通ファイル
 │   │   └── utilities/          # ユーティリティ
@@ -114,8 +113,8 @@ E2Eテストツールとして `ecc:e2e-runner` エージェントではVercel A
 ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev` / `wrangler d1 execute --local`)
 デプロイ先 ... Cloudflare D1
 
-ローカル環境 ... Valkey(インメモリストレージ)
-デプロイ先 ... Cloudflare KV
+ローカル環境 ... WranglerのKVローカルモード(`wrangler dev --persist-to`) ... namespace追加時は`wrangler kv namespace create <name> --preview`でプレビュー用IDを発行する
+デプロイ先 ... Cloudflare Workers KV
 
 ### バックエンド (API)
 

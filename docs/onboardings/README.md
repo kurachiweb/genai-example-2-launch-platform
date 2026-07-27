@@ -28,7 +28,6 @@ cd apps/admin && bun run dev
 
 | アプリ              | 役割                                               | ポート |
 | ------------------- | -------------------------------------------------- | ------ |
-| Valkey              | インメモリストレージ（Cloudflare KV のローカル版） | 48040  |
 | Mailpit             | メール確認 Web UI                                  | 48041  |
 | `apps/api`          | 内部 API（NestJS / GraphQL）                       | 48042  |
 | `apps/public-api`   | 公開 API（NestJS / REST）                          | 48043  |
@@ -37,9 +36,8 @@ cd apps/admin && bun run dev
 | `apps/frontend-lib` | Storybookフロントエンド（Next.js）                 | 48046  |
 | Wrangler            | `wrangler login` の OAuth コールバック受信         | 8976   |
 
-ローカルでは D1 の代わりに Wrangler のD1ローカルモード、Amazon SES の代わりに Mailpit、Cloudflare KV の代わりに Valkey、Cloudflare R2 の代わりに Wrangler のR2ローカルモードを使う。
+ローカルでは D1 の代わりに Wrangler のD1ローカルモード、Cloudflare Workers KV の代わりに Wrangler のKVローカルモード、Amazon SES の代わりに Mailpit、Cloudflare R2 の代わりに Wrangler のR2ローカルモードを使う。
 Wrangler の OAuth コールバックだけは、`redirect_uri` が `http://localhost:8976/oauth/callback` に固定されており変更できないため、他のポート番号と連続していない。
-Valkey はホスト側からのデバッグ用に 48040 を公開することで、`redis-cli -p 48040` 等で接続できる。
 Mailpit の SMTP（1025）はコンテナ内のみで到達可能で、ローカル開発ではメール送信処理がこの1025番ポートへSMTP接続し、送信結果は48041番のWeb UIで確認する。
 
 ## ドキュメント索引
