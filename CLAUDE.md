@@ -25,6 +25,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
 Wranglerのコマンドを実行する際、任意のディレクトリで動作するよう必ず`--persist-to /workspace/.wrangler/state`オプションを付けること。
 Cloudflare WorkersのFreeプランではCPU時間10ミリ秒までという制限があるため、それを超えないように処理方式を検討すること。特に多量データのサーバーサイドレンダリング、JSONパース、CSV出力、メール本文の組み立て、ファイルのハッシュ値算出、長大ユーザー入力のエスケープは、制限を超えてしまうことがあるため高速な処理方式を模索したり、実行時間の計測及びログ出力を行ったりすべき。
+テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はbun、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。
 
 ## Claude拡張設定間の矛盾、あるいは本プロジェクト規則との不一致について
 
