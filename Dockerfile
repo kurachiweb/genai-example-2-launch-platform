@@ -66,7 +66,7 @@ RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/insta
 # ローカル開発用常駐プロセスの起動処理はスクリプトへ切り出す。
 COPY --chmod=755 scripts/start-local-services.sh /usr/local/bin/start-local-services.sh
 
-# start-local-services.shは`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1のshの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にValkeyへSIGTERMを転送できなくなる。
-# `sleep infinity`は「何もせず永遠に待ち続けるだけ」のコマンドで、これをバックグラウンドで動かし続けることでPID1のshを終了させず、コンテナを生かし続ける(ValkeyやMailpitが落ちてもコンテナは生存する)。
+# start-local-services.shは`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1のshの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にMailpitへSIGTERMを転送できなくなる。
+# `sleep infinity`は「何もせず永遠に待ち続けるだけ」のコマンドで、これをバックグラウンドで動かし続けることでPID1のshを終了させず、コンテナを生かし続ける(Mailpitが落ちてもコンテナは生存する)。
 # `wait $!`は直前にバックグラウンド実行した`sleep infinity`の終了を待つ組み込みコマンドで、シグナル(SIGTERMなど)を受けると即座に中断されるため、コンテナ停止時にスクリプト内の`trap`をすぐ発火できる。
 CMD ["sh", "-c", ". /usr/local/bin/start-local-services.sh; sleep infinity & wait $!"]
