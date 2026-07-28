@@ -211,7 +211,7 @@ LogTape
 
 ローカル環境 ... Mailpit
 デプロイ先 ... Amazon SES
-MJML (HTMLメールコード生成、faire/mjml-reactを使用)
+JSX email (HTMLメールコード生成、https://jsx.email)
 
 #### モニタリング
 
