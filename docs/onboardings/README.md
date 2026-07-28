@@ -4,11 +4,10 @@
 
 ## ローカル開発環境クイックスタート
 
-1. ホスト環境: Docker環境の作成
+1. ホスト環境: Dockerのインストール及び環境の作成
 
 ```zsh
 brew install --cask docker-desktop # Macのみ
-brew install docker # Linuxのみ
 docker compose up -d
 ```
 
