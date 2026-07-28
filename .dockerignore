@@ -59,9 +59,15 @@ desktop.ini
 # フロントエンドのビルド成果物
 .next
 **/.next
+.open-next
+**/.open-next
+.vercel
+**/.vercel
 dist
 **/dist
 build
 **/build
 storybook-static
 **/storybook-static
+*.tsbuildinfo
+**/*.tsbuildinfo

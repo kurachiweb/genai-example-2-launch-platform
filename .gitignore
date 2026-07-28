@@ -40,9 +40,12 @@ apps/email
 
 # フロントエンドのビルド成果物
 .next
+.open-next
+.vercel
 dist
 build
 storybook-static
+*.tsbuildinfo
 
 # テスト成果物
 # Bun (`bun test --coverage`のデフォルト出力先)
