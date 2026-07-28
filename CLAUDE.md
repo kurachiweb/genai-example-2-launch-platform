@@ -200,8 +200,7 @@ Cloudflare Workers
 専用の有償セキュリティ基盤は用いず、Cloudflareのプラットフォーム標準機能と既存ツールを重ねて多層防御を構成する。
 
 Cloudflare WAF Rate Limiting Rules (エッジでのレート制限 ... 制限閾値はTerraformで管理)
-Cloudflare Durable Objects (厳密なレート制限カウントに使用)
-@nestjs/throttler (アプリ層でのレート制限)
+Cloudflare Durable Objects (`@nestjs/throttler`と組み合わせて厳密なレート制限カウントを実現)
 
 #### 構造化ロギング
 
