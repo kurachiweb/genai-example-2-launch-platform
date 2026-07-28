@@ -4,28 +4,44 @@
 
 ## ローカル開発環境クイックスタート
 
+1. ホスト環境: Docker環境の作成
+
 ```zsh
-# 1. ホスト環境: Docker環境の作成
 brew install --cask docker-desktop # Macのみ
 brew install docker # Linuxのみ
 docker compose up -d
+```
 
-# 2. VSCodeでコンテナにアタッチする
+2. VSCodeでコンテナにアタッチする
+3. コンテナ内: CloudflareにOAuthでログインする（初回のみ）
 
-# 3. コンテナ内: CloudflareにOAuthでログインする（初回のみ）
+```sh
 wrangler login --callback-host 0.0.0.0 --browser false
 wrangler whoami # 認証確認
+```
 
-# 4. Claude向けMCPを認証する（初回のみ）
+4. Claude向けMCPを認証する（初回のみ）
+
+```sh
 claude
 /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
+```
 
-# 5. コンテナ内: APIサーバーの起動
-# 両アプリで同一の`--persist-to`を指定することで、D1・R2ローカルモードの実データを共有する
+5. コンテナ内: APIサーバーの起動
+
+両アプリで同一の`--persist-to`を指定することで、D1・R2ローカルモードの実データを共有する
+
+```sh
 cd apps/api && wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
-cd apps/public-api && wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+```
 
-# 6. コンテナ内: フロントエンドの起動
+```sh
+cd apps/public-api && wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+```
+
+6. コンテナ内: フロントエンドの起動
+
+```sh
 cd apps/client && bun run dev
 cd apps/admin && bun run dev
 ```
