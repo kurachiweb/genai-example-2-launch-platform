@@ -258,7 +258,7 @@ ProductHuntやTinyLaunch、Uneedなど既存のローンチディレクトリは
 - **NFR-S-001**: システムは、HTTPS-Only Cookieによる認証を実装しなければならない
 - **NFR-S-002**: システムは、XSS、CSRF、SQLインジェクション等の主要な攻撃から保護されなければならない
 - **NFR-S-003**: システムは、Cloudflare WAFによる保護を実装しなければならない
-- **NFR-S-004**: システムは、Web Crypto APIの`crypto.subtle`によりパスワードをPBKDF2-HMAC-SHA512形式(反復回数210,000回以上)でハッシュ化しなければならない
+- **NFR-S-004**: システムは、Web Crypto APIの`crypto.subtle`によりパスワードをPBKDF2-HMAC-SHA512形式で、反復回数10万回かつペッパー付きでハッシュ化しなければならない — OWASPの推奨は21万回以上だが、Cloudflare Workersは[Dos対策として10万回以内に制限してしまう](https://github.com/cloudflare/workerd/issues/1346)ため
 - **NFR-S-005**: システムは、機密情報をCloudflare Workersのシークレットで管理しなければならない
 - **NFR-S-006**: システムは、ロールベースアクセス制御(RBAC)に加え、所有権ベースのアクセス制御(自ユーザー・全ユーザー・管理者)を全ての操作境界で適用しなければならない
 - **NFR-S-007**: システムは、スクリプト実行元を制限するため、リクエスト毎に生成するnonceを用いたコンテンツセキュリティポリシー(CSP)を設定しなければならない
