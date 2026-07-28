@@ -22,6 +22,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 コード内にコメントは原則書かないが、難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
 車輪の再発明を許容し、簡易なユーティリティ関数のためにnpmパッケージをインストールしない。
 appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
+任意のディレクトリでWranglerのコマンドを実行できるよう、必ず`--persist-to /workspace/.wrangler/state`オプションを付けること。
 
 ## Claude拡張設定間の矛盾、あるいは本プロジェクト規則との不一致について
 
@@ -110,10 +111,10 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 
 ### データベース
 
-ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev` / `wrangler d1 execute --local`)
+ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev --persist-to` / `wrangler d1 execute --local --persist-to`)
 デプロイ先 ... Cloudflare D1
 
-ローカル環境 ... WranglerのKVローカルモード(`wrangler dev --persist-to`) ... namespace追加時は`wrangler kv namespace create <name> --preview`でプレビュー用IDを発行する
+ローカル環境 ... WranglerのKVローカルモード(`wrangler dev --persist-to`) ... namespace追加時は`wrangler kv namespace create <name> --preview --persist-to`でプレビュー用IDを発行する
 デプロイ先 ... Cloudflare Workers KV
 
 ### バックエンド (API)
@@ -188,7 +189,7 @@ Cloudflare Workers
 
 #### ストレージ
 
-ローカル環境 ... WranglerのR2ローカルモード(`wrangler dev` / `wrangler r2 *** --local`)
+ローカル環境 ... WranglerのR2ローカルモード(`wrangler dev --persist-to` / `wrangler r2 *** --local --persist-to`)
 デプロイ先 ... Cloudflare R2 (画像・ファイルストレージ)
 
 #### セキュリティ
