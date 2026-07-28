@@ -2,11 +2,23 @@
   "mcpServers": {
     "chrome-devtools": {
       "command": "bunx",
-      "args": ["chrome-devtools-mcp@latest"]
+      "args": [
+        "chrome-devtools-mcp@latest",
+        "--executablePath",
+        "${CHROMIUM_PATH}",
+        "--headless",
+        "--chromeArg=--no-sandbox"
+      ]
     },
     "playwright": {
       "command": "bunx",
-      "args": ["@playwright/mcp@latest"]
+      "args": [
+        "@playwright/mcp@latest",
+        "--executable-path",
+        "${CHROMIUM_PATH}",
+        "--headless",
+        "--no-sandbox"
+      ]
     },
     "cloudflare-api": {
       "type": "http",
