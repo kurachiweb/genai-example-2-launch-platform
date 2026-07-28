@@ -13,7 +13,7 @@ docker compose up -d
 # 2. VSCodeでコンテナにアタッチする
 
 # 3. コンテナ内: CloudflareにOAuthでログインする（初回のみ）
-wrangler login --callback-host 0.0.0.0
+wrangler login --callback-host 0.0.0.0 --browser false
 wrangler whoami # 認証確認
 
 # 4. Claude向けMCPを認証する（初回のみ）

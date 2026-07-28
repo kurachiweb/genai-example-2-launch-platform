@@ -3,9 +3,8 @@
 FROM oven/bun:1.3-slim
 
 # Homebrewのインストールに必要なパッケージを導入する。
-# 併せて導入するxdg-utilsは、コンテナ内CLIがホスト側ブラウザを開くために必要。
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates build-essential procps curl file git xdg-utils \
+  && apt-get install -y --no-install-recommends ca-certificates build-essential procps curl file git \
   && rm -rf /var/lib/apt/lists/*
 
 # Playwright・chrome-devtools MCPが起動するChromiumを、rootのうちにOS共有ライブラリも含め導入する。
