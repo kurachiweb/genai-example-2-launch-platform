@@ -7,16 +7,16 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates build-essential procps curl file git \
   && rm -rf /var/lib/apt/lists/*
 
-# Playwright・chrome-devtools MCPが起動するChromiumを、rootのうちにOS共有ライブラリも含め導入する。
-# 実体は`chromium-<ビルド番号>`配下に置かれ、Playwrightの更新でビルド番号が変わる。
-# MCPサーバーへは実行ファイルを絶対パスで渡す必要があるため、版数ソート(`sort -V`)で得た最新バージョン番号から固定パスのシンボリックリンクを作り、環境変数CHROMIUM_PATHとして.mcp.jsonから参照する
-# なおコンテナでは非特権ユーザー名前空間が無効でChromiumのサンドボックスが起動できないため、.mcp.json側で--no-sandboxを渡している。
+# Playwright・chrome-devtools MCPが起動するChromiumを導入する。
+# ChromiumバイナリのOS側共有ライブラリ(libnss3等)はrootユーザーとして導入する。
+# Chromium本体は`bun install`後に確定する`@playwright/test`の実バージョンに一致させる必要があるため、start-local-services.sh側でbunユーザーが導入する(不一致は`Executable doesn't exist`エラーの原因になる)。
+# CHROMIUM_PATHはMCPサーバーへ実行ファイルを絶対パスで渡すための固定シンボリックリンク先。
+# コンテナでは非特権ユーザー名前空間が無効でサンドボックスが起動できないため、.mcp.json側で--no-sandboxを渡す。
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
-ENV CHROMIUM_PATH=/usr/local/bin/chromium
-RUN bunx --bun playwright@latest install --with-deps chromium \
-  && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} \
-  && ln -s "$(find ${PLAYWRIGHT_BROWSERS_PATH} -maxdepth 1 -type d -name 'chromium-*' | sort -V | tail -n 1)/chrome-linux/chrome" ${CHROMIUM_PATH} \
-  && test -x ${CHROMIUM_PATH}
+ENV CHROMIUM_PATH=/opt/ms-playwright-bin/chrome
+RUN bunx --bun playwright@latest install-deps chromium \
+  && mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin \
+  && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
 
 # Homebrewは既定の/home/linuxbrew/.linuxbrewに置くことで、ビルド済みパッケージ(bottle)をそのまま使え、時間のかかる自前ビルドを避けられる。
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
