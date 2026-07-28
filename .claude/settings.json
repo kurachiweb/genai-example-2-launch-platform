@@ -8,7 +8,17 @@
   },
   "permissions": {
     "allow": [
-      "Bash(bun *)",
+      "Bash(bun install)",
+      "Bash(bun install *)",
+      "Bash(bun add *)",
+      "Bash(bun remove *)",
+      "Bash(bun update *)",
+      "Bash(bun run *)",
+      "Bash(bun test)",
+      "Bash(bun test *)",
+      "Bash(bun exec *)",
+      "Bash(bunx *)",
+      "Bash(node -e *)",
       "Bash(rtk find *)",
       "Bash(rtk grep *)",
       "Bash(rtk ls *)",
@@ -21,6 +31,13 @@
       "Bash(rtk git commit *)",
       "WebSearch",
       "mcp__cloudflare-docs__search_cloudflare_documentation"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.dev.vars*)",
+      "Read(**/*.tfvars)",
+      "Read(**/*.tfstate)",
+      "Read(**/*.tfstate.backup)"
     ]
   },
   "showThinkingSummaries": true,
