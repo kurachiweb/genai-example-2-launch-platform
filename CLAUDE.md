@@ -33,6 +33,7 @@ Claude拡張設定(エージェント・スキル・ルール・コマンド)と
 - APIレスポンス形式やバリデーションエラー時ステータスコードは `ecc:api-design` スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards` や `ecc:nestjs-patterns` のAPIレスポンス形式や、ECC系プラグイン内ルール（`typescript/patterns.md`）の `ApiResponse<T>` 型は採用しない。
 - ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns` ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture` スキルではEntity層に書くよう指示しており、後者に従う。
 - Next.jsのキャッシュ戦略には `"use cache"` を使う。`developer-kit-typescript:nextjs-performance` スキルでは `unstable_cache` が紹介されているが、それは古い記法である。
+- `.claude/rules/common/git-workflow.md` はClaude設定ファイルに `includeCoAuthoredBy: false` を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりに `attribution` プロパティを指定する。
 - テストについて
   - E2Eテストツールとして `ecc:e2e-runner` エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
   - Claude拡張設定内でJest関連のコマンドが記載されていても、Jestは使用しないこと。
