@@ -1,4 +1,4 @@
-# 本番ランタイムは Cloudflare Workers のため、本 compose はローカル開発専用である。
+# 本番ランタイムはCloudflare Workersのため、本composeはローカル開発専用である。
 name: genai-ex-2-launch
 
 services:
@@ -15,7 +15,7 @@ services:
       - ./apps/backend-lib:/workspace/apps/public-api/lib
       - ./apps/frontend-lib:/workspace/apps/client/lib
       - ./apps/frontend-lib:/workspace/apps/admin/lib
-      # node_modules はホストと混ぜず、名前付きボリュームでコンテナ側に隔離する
+      # node_modulesはホストと混ぜず、名前付きボリュームでコンテナ側に隔離する
       - node_modules_root:/workspace/node_modules
       - node_modules_api:/workspace/apps/api/node_modules
       - node_modules_public_api:/workspace/apps/public-api/node_modules

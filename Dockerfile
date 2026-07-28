@@ -32,7 +32,7 @@ RUN mkdir -p /home/linuxbrew/.linuxbrew \
   && mkdir -p /home/bun/.wrangler \
   && chown -R bun:bun /home/bun/.wrangler
 
-# node_modules は名前付きボリューム(node_modules_***)で分離する。
+# node_modulesは名前付きボリューム(node_modules_***)で分離する。
 # 名前付きボリュームは中身が空だとマウント先ディレクトリの所有者をそのまま引き継ぐため、
 # 非rootに切り替える前にbun所有で作成しておき、bunユーザーのbun installが書き込めるようにする(権限エラー回避)。
 RUN mkdir -p /workspace/node_modules \
@@ -53,7 +53,7 @@ WORKDIR /workspace
 
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 
-# Homebrew のインストール時は NONINTERACTIVE=1 で確認プロンプトを抑止する。
+# Homebrewのインストール時は`NONINTERACTIVE=1`で確認プロンプトを抑止する。
 # ビルド毎に最新のbrewパッケージをインストールする。
 # `node`パッケージはWrangler CLIが必要としているため、バージョン管理しやすいよう明示的にインストールする。
 RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash \

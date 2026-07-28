@@ -1,6 +1,6 @@
 # エージェント拡張ファイル解説
 
-このドキュメントは `.claude/` 配下のスキル・ルール・エージェント定義ファイルについて、概要・呼び出しトリガー・使用目的を説明する。
+このドキュメントは`.claude/`配下のスキル・ルール・エージェント定義ファイルについて、概要・呼び出しトリガー・使用目的を説明する。
 
 ## 注意点
 
@@ -10,20 +10,20 @@
 
 ## エージェント定義
 
-エージェントは独立したコンテキストで動作するサブ AI。特定の専門タスクを委譲する際に Claude が自動または明示的に呼び出す。
+エージェントは独立したコンテキストで動作するサブAI。特定の専門タスクを委譲する際にClaudeが自動または明示的に呼び出す。
 
 ### ecc:architect
 
-**概要**: システム設計・スケーラビリティ・技術的意思決定の専門家。Claude Opus モデルを使用。
+**概要**: システム設計・スケーラビリティ・技術的意思決定の専門家。Claude Opusモデルを使用。
 
 **トリガー**: 新機能の設計・大規模リファクタリングの計画・アーキテクチャ上の意思決定が必要な場面で自発的に使用。
 
 **使用目的**:
 
 - 現状アーキテクチャのレビューと技術的負債の特定
-- コンポーネント責務・データフロー・API 契約の設計提案
-- トレードオフ分析（Pro/Con/代替案/決定根拠）の文書化
-- ADR（Architecture Decision Records）の作成
+- コンポーネント責務・データフロー・API契約の設計提案
+- トレードオフ分析(Pro/Con/代替案/決定根拠)の文書化
+- ADR(Architecture Decision Records)の作成
 
 **利用可能ツール**: Read, Grep, Glob
 
@@ -31,16 +31,16 @@
 
 ### ecc:build-error-resolver
 
-**概要**: ビルドエラー・TypeScript 型エラーの解決専門家。最小限の差分でビルドを通すことに集中する。
+**概要**: ビルドエラー・TypeScript型エラーの解決専門家。最小限の差分でビルドを通すことに集中する。
 
 **トリガー**: ビルド失敗・型エラー発生時に自発的に使用。
 
 **使用目的**:
 
-- `tsc --noEmit` エラーの解消
+- `tsc --noEmit`エラーの解消
 - モジュール解決エラー・依存関係の問題解決
-- tsconfig・webpack・Next.js 設定エラーの修正
-- アーキテクチャ変更や機能追加は行わない（エラー修正のみ）
+- tsconfig・webpack・Next.js設定エラーの修正
+- アーキテクチャ変更や機能追加は行わない(エラー修正のみ)
 
 **利用可能ツール**: Read, Write, Edit, Bash, Grep, Glob
 
@@ -54,10 +54,10 @@
 
 **使用目的**:
 
-- CRITICAL〜LOW の重大度別に問題を報告
-- セキュリティ（ハードコードされた認証情報・SQL インジェクション・XSS）の検出
-- React/Next.js・Node.js バックエンドのアンチパターン検出
-- レビューサマリー（重大度別件数・マージ可否）の出力
+- CRITICAL〜LOWの重大度別に問題を報告
+- セキュリティ(ハードコードされた認証情報・SQLインジェクション・XSS)の検出
+- React/Next.js・Node.jsバックエンドのアンチパターン検出
+- レビューサマリー(重大度別件数・マージ可否)の出力
 
 **利用可能ツール**: Read, Grep, Glob, Bash
 
@@ -65,13 +65,13 @@
 
 ### ecc:doc-updater
 
-**概要**: コードマップ・ドキュメントの更新専門家。Claude Haiku モデルを使用（低コスト）。
+**概要**: コードマップ・ドキュメントの更新専門家。Claude Haikuモデルを使用(低コスト)。
 
-**トリガー**: 新機能追加・API 変更・依存関係追加・アーキテクチャ変更・セットアッププロセス変更後に自発的に使用。`/update-codemaps`・`/update-docs` コマンドからも呼び出し。
+**トリガー**: 新機能追加・API変更・依存関係追加・アーキテクチャ変更・セットアッププロセス変更後に自発的に使用。`/update-codemaps`・`/update-docs`コマンドからも呼び出し。
 
 **使用目的**:
 
-- `docs/CODEMAPS/` 配下のコードマップ生成・更新
+- `docs/CODEMAPS/`配下のコードマップ生成・更新
 - README・開発者向けガイドの更新
 - ディレクトリ構造・エントリポイント・依存関係のマッピング
 
@@ -81,16 +81,16 @@
 
 ### ecc:e2e-runner
 
-**概要**: E2E テスト専門家。Agent Browser（推奨）または Playwright を使用。
+**概要**: E2Eテスト専門家。Agent Browser(推奨)またはPlaywrightを使用。
 
 **トリガー**: 重要なユーザーフローのテスト生成・保守・実行時に自発的に使用。
 
 **使用目的**:
 
-- 認証・CRUD・決済などの重要ユーザージャーニーの E2E テスト作成
-- フレーキーテストの特定と隔離（`test.fixme()`）
+- 認証・CRUD・決済などの重要ユーザージャーニーのE2Eテスト作成
+- フレーキーテストの特定と隔離(`test.fixme()`)
 - スクリーンショット・ビデオ・トレースアーティファクトの管理
-- CI/CD パイプラインへの統合
+- CI/CDパイプラインへの統合
 
 **利用可能ツール**: Read, Write, Edit, Bash, Grep, Glob
 
@@ -98,14 +98,14 @@
 
 ### ecc:planner
 
-**概要**: 複雑な機能実装・リファクタリングの計画立案専門家。Claude Opus モデルを使用。
+**概要**: 複雑な機能実装・リファクタリングの計画立案専門家。Claude Opusモデルを使用。
 
 **トリガー**: 機能実装リクエスト・アーキテクチャ変更・複雑なリファクタリング時に自発的に起動。
 
 **使用目的**:
 
 - 要件分析・既存コードベースのレビュー
-- フェーズ分割された実装計画（ファイルパス・依存関係・リスクを含む）の作成
+- フェーズ分割された実装計画(ファイルパス・依存関係・リスクを含む)の作成
 - テスト戦略・成功基準・リスクと緩和策の定義
 
 **利用可能ツール**: Read, Grep, Glob
@@ -114,18 +114,18 @@
 
 ### ecc:react-build-resolver
 
-**概要**: React のビルド失敗解決専門家。Vite・webpack・Next.js・CRA・Parcel・esbuild・Bun に対応し、最小限の外科的修正でビルドを通すことに集中する。Claude Sonnet モデルを使用。
+**概要**: Reactのビルド失敗解決専門家。Vite・webpack・Next.js・CRA・Parcel・esbuild・Bunに対応し、最小限の外科的修正でビルドを通すことに集中する。Claude Sonnetモデルを使用。
 
-**トリガー**: React のビルドが失敗した時に必ず使用。
+**トリガー**: Reactのビルドが失敗した時に必ず使用。
 
 **使用目的**:
 
-- ビルドシステムの自動検出（Next.js / Vite / Rsbuild / CRA / webpack / Parcel / Bun）
-- JSX/TSX コンパイルエラー（`@types/react` 不足・JSX トランスフォーム設定・import 漏れ）の修正
-- バンドラー設定エラー（Vite プラグイン・webpack ローダー・Next.js 設定）の解決
-- ハイドレーション不一致（サーバー出力とクライアント出力の差異）の診断
-- Next.js App Router のサーバー/クライアントコンポーネント境界エラーの修正
-- 純粋な型エラーは TypeScript 系へ委譲し、アーキテクチャ変更は行わない（同一エラーが 3 回続く・新規エラーが増える・設計変更が必要な場合は停止して報告）
+- ビルドシステムの自動検出(Next.js / Vite / Rsbuild / CRA / webpack / Parcel / Bun)
+- JSX/TSXコンパイルエラー(`@types/react`不足・JSXトランスフォーム設定・import漏れ)の修正
+- バンドラー設定エラー(Viteプラグイン・webpackローダー・Next.js設定)の解決
+- ハイドレーション不一致(サーバー出力とクライアント出力の差異)の診断
+- Next.js App Routerのサーバー/クライアントコンポーネント境界エラーの修正
+- 純粋な型エラーはTypeScript系へ委譲し、アーキテクチャ変更は行わない(同一エラーが3回続く・新規エラーが増える・設計変更が必要な場合は停止して報告)
 
 **利用可能ツール**: Read, Write, Edit, Bash, Grep, Glob
 
@@ -133,18 +133,18 @@
 
 ### ecc:react-reviewer
 
-**概要**: React/JSX 専門のシニアコードレビュアー。フック正当性・レンダリングパフォーマンス・サーバー/クライアント境界・アクセシビリティ・React 固有セキュリティを審査する。Claude Sonnet モデルを使用。
+**概要**: React/JSX専門のシニアコードレビュアー。フック正当性・レンダリングパフォーマンス・サーバー/クライアント境界・アクセシビリティ・React固有セキュリティを審査する。Claude Sonnetモデルを使用。
 
-**トリガー**: `.tsx`/`.jsx` ファイルや React コンポーネントロジックの変更時に必ず使用。汎用 TS/JS の観点は `ecc:typescript-reviewer` が担当するため、TSX/JSX の PR では両者を併用する。
+**トリガー**: `.tsx`/`.jsx`ファイルやReactコンポーネントロジックの変更時に必ず使用。汎用TS/JSの観点は`ecc:typescript-reviewer`が担当するため、TSX/JSXのPRでは両者を併用する。
 
 **使用目的**:
 
-- フックルール違反（条件付き呼び出し・依存配列漏れ・クリーンアップ漏れ・stale closure）の検出
-- React 固有セキュリティ（未サニタイズの `dangerouslySetInnerHTML`・危険な URL スキーム・クライアントバンドルへのシークレット流出・Server Action の入力検証漏れ）の検出
-- サーバー/クライアントコンポーネント境界侵犯・RSC からの機密データ漏洩の検出
-- アクセシビリティ（セマンティック HTML・ARIA・フォームラベル・キーボード操作）の検証
-- レンダリングパフォーマンス（過剰メモ化・`key={index}`・derived state in effect）の指摘
-- 重大度別（CRITICAL/HIGH/MEDIUM）のレビュー報告とマージ可否判定（コードの書き換えは行わず指摘のみ）
+- フックルール違反(条件付き呼び出し・依存配列漏れ・クリーンアップ漏れ・stale closure)の検出
+- React固有セキュリティ(未サニタイズの`dangerouslySetInnerHTML`・危険なURLスキーム・クライアントバンドルへのシークレット流出・Server Actionの入力検証漏れ)の検出
+- サーバー/クライアントコンポーネント境界侵犯・RSCからの機密データ漏洩の検出
+- アクセシビリティ(セマンティックHTML・ARIA・フォームラベル・キーボード操作)の検証
+- レンダリングパフォーマンス(過剰メモ化・`key={index}`・derived state in effect)の指摘
+- 重大度別(CRITICAL/HIGH/MEDIUM)のレビュー報告とマージ可否判定(コードの書き換えは行わず指摘のみ)
 
 **利用可能ツール**: Read, Grep, Glob, Bash
 
@@ -158,8 +158,8 @@
 
 **使用目的**:
 
-- `knip`・`depcheck`・`ts-prune` によるデッドコード分析
-- 未使用エクスポート・npm 依存関係の安全な削除
+- `knip`・`depcheck`・`ts-prune`によるデッドコード分析
+- 未使用エクスポート・npm依存関係の安全な削除
 - 重複コンポーネント・ユーティリティの統合
 - カテゴリ単位でのバッチ削除とテスト検証
 
@@ -171,14 +171,14 @@
 
 **概要**: セキュリティ脆弱性の検出と修正専門家。
 
-**トリガー**: ユーザー入力処理・認証・API エンドポイント・機密データ処理のコード作成後に自発的に使用。
+**トリガー**: ユーザー入力処理・認証・APIエンドポイント・機密データ処理のコード作成後に自発的に使用。
 
 **使用目的**:
 
-- OWASP Top 10 の全項目チェック
+- OWASP Top 10の全項目チェック
 - ハードコードされたシークレット・SSRF・インジェクション・危険な暗号化の検出
-- `npm audit`・`eslint-plugin-security` の実行
-- CRITICAL 脆弱性発見時の緊急対応（即時報告・修正・シークレットローテーション）
+- `npm audit`・`eslint-plugin-security`の実行
+- CRITICAL脆弱性発見時の緊急対応(即時報告・修正・シークレットローテーション)
 
 **利用可能ツール**: Read, Write, Edit, Bash, Grep, Glob
 
@@ -186,15 +186,15 @@
 
 ### ecc:tdd-guide
 
-**概要**: テスト駆動開発（TDD）専門家。テストファーストメソドロジーを強制する。
+**概要**: テスト駆動開発(TDD)専門家。テストファーストメソドロジーを強制する。
 
 **トリガー**: 新機能実装・バグ修正・リファクタリング時に自発的に使用。
 
 **使用目的**:
 
-- Red-Green-Refactor サイクルの実施
-- ユニット・統合・E2E テストの 3 種類すべての作成
-- 80% 以上のカバレッジ維持
+- Red-Green-Refactorサイクルの実施
+- ユニット・統合・E2Eテストの3種類すべての作成
+- 80%以上のカバレッジ維持
 - null/空/境界値/エラーパス・競合状態などのエッジケースのテスト
 
 **利用可能ツール**: Read, Write, Edit, Bash, Grep
@@ -203,16 +203,16 @@
 
 ### ecc:typescript-reviewer
 
-**概要**: TypeScript/JavaScript の型安全性・非同期正確性・セキュリティ・慣用パターンの専門レビュアー。
+**概要**: TypeScript/JavaScriptの型安全性・非同期正確性・セキュリティ・慣用パターンの専門レビュアー。
 
-**トリガー**: TypeScript/JavaScript のコード変更時に必ず使用。TypeScript/JavaScript プロジェクトでは必須。
+**トリガー**: TypeScript/JavaScriptのコード変更時に必ず使用。TypeScript/JavaScriptプロジェクトでは必須。
 
 **使用目的**:
 
-- `any` の不正使用・Non-null assertion 乱用・型キャストの問題検出
-- 未処理の Promise・`async forEach`・浮動 Promise の検出
-- React/Next.js のサーバー/クライアント境界侵犯の検出
-- PR マージ可否の判定（CRITICAL・HIGH があればブロック）
+- `any`の不正使用・Non-null assertion乱用・型キャストの問題検出
+- 未処理のPromise・`async forEach`・浮動Promiseの検出
+- React/Next.jsのサーバー/クライアント境界侵犯の検出
+- PRマージ可否の判定(CRITICAL・HIGHがあればブロック)
 
 **利用可能ツール**: Read, Grep, Glob, Bash
 
@@ -220,17 +220,17 @@
 
 ### developer-kit-typescript:nestjs-code-review-expert
 
-**概要**: NestJS/TypeScript のベストプラクティス・アーキテクチャ課題を分析する専門コードレビュアー。
+**概要**: NestJS/TypeScriptのベストプラクティス・アーキテクチャ課題を分析する専門コードレビュアー。
 
-**トリガー**: NestJS コードの変更後・新機能実装時に自発的に使用。
+**トリガー**: NestJSコードの変更後・新機能実装時に自発的に使用。
 
 **使用目的**:
 
-- デコレータ・DI・モジュール構成など NestJS パターンの検証
-- SOLID 原則・クリーンアーキテクチャ準拠のチェック
-- REST API 規約（HTTP メソッド・ステータスコード・DTO・バリデーションパイプ）の検証
+- デコレータ・DI・モジュール構成などNestJSパターンの検証
+- SOLID原則・クリーンアーキテクチャ準拠のチェック
+- REST API規約(HTTPメソッド・ステータスコード・DTO・バリデーションパイプ)の検証
 - ガード・認証認可・入力検証などセキュリティ観点の確認
-- 重大度別（Critical/Warning/Suggestion）のレビュー報告と改善コード例の提示
+- 重大度別(Critical/Warning/Suggestion)のレビュー報告と改善コード例の提示
 
 **利用可能ツール**: Read, Grep, Glob, Bash
 
@@ -238,17 +238,17 @@
 
 ### developer-kit-typescript:typescript-security-expert
 
-**概要**: TypeScript/Node.js アプリケーションのセキュリティ監査・DevSecOps 専門家。
+**概要**: TypeScript/Node.jsアプリケーションのセキュリティ監査・DevSecOps専門家。
 
-**トリガー**: TypeScript のセキュリティ監査・コンプライアンス実装が必要な場面で自発的に使用。
+**トリガー**: TypeScriptのセキュリティ監査・コンプライアンス実装が必要な場面で自発的に使用。
 
 **使用目的**:
 
-- JWT/OAuth2/OIDC 等の認証認可実装レビュー
-- OWASP Top 10 準拠チェックと脅威モデリング
-- Express・NestJS・Next.js 固有のセキュリティ設定（CORS・レート制限・CSP 等）の検証
-- npm 依存関係の脆弱性スキャン（`npm audit` 等）
-- Critical〜Low の重大度別に修正優先順位を付けた是正計画の提示
+- JWT/OAuth2/OIDC等の認証認可実装レビュー
+- OWASP Top 10準拠チェックと脅威モデリング
+- Express・NestJS・Next.js固有のセキュリティ設定(CORS・レート制限・CSP等)の検証
+- npm依存関係の脆弱性スキャン(`npm audit`等)
+- Critical〜Lowの重大度別に修正優先順位を付けた是正計画の提示
 
 **利用可能ツール**: Read, Write, Edit, Glob, Grep, Bash
 
@@ -256,17 +256,17 @@
 
 ### developer-kit-typescript:typescript-software-architect-review
 
-**概要**: クリーンアーキテクチャ・DDD（ドメイン駆動設計）・モダン Node.js パターンの専門アーキテクト。
+**概要**: クリーンアーキテクチャ・DDD(ドメイン駆動設計)・モダンNode.jsパターンの専門アーキテクト。
 
-**トリガー**: アーキテクチャ上の意思決定・DDD モデリング・モダン JS/TS パターン適用時に自発的に使用。
+**トリガー**: アーキテクチャ上の意思決定・DDDモデリング・モダンJS/TSパターン適用時に自発的に使用。
 
 **使用目的**:
 
 - ドメイン→アプリケーション→インフラ→プレゼンテーションのレイヤー分離検証
-- 境界づけられたコンテキスト・集約・値オブジェクトなど DDD パターンの評価
-- SOLID 原則準拠と依存関係の方向性チェック
-- Express・Fastify・NestJS・Next.js 等フレームワーク別アーキテクチャパターンの助言
-- ADR 形式でのアーキテクチャ決定の文書化提案
+- 境界づけられたコンテキスト・集約・値オブジェクトなどDDDパターンの評価
+- SOLID原則準拠と依存関係の方向性チェック
+- Express・Fastify・NestJS・Next.js等フレームワーク別アーキテクチャパターンの助言
+- ADR形式でのアーキテクチャ決定の文書化提案
 
 **利用可能ツール**: Read, Write, Edit, Glob, Grep, Bash
 
@@ -274,24 +274,24 @@
 
 ## コマンド定義
 
-`/[プラグイン名:]コマンド名` で明示的に呼び出すワークフロー定義。多くは対応するサブエージェントを起動するショートカットとして機能する。
+`/[プラグイン名:]コマンド名`で明示的に呼び出すワークフロー定義。多くは対応するサブエージェントを起動するショートカットとして機能する。
 
 ### ecc:react-build
 
 **呼び出し**: `/ecc:react-build`
 
-**概要**: React のビルド失敗を最小限の修正で段階的に解消する。`ecc:react-build-resolver` エージェントを起動する。
+**概要**: Reactのビルド失敗を最小限の修正で段階的に解消する。`ecc:react-build-resolver`エージェントを起動する。
 
 **対応ビルドシステム**: Vite・webpack・Next.js・CRA・Parcel・esbuild・Bun
 
 **使用する場面**:
 
-- `npm run build`（pnpm/yarn/bun 含む）が失敗した時
-- TypeScript や React のアップグレード後の JSX/TSX コンパイルエラー
-- Next.js のハイドレーション不一致・App Router のサーバー/クライアント境界エラー
+- `npm run build`(pnpm/yarn/bun含む)が失敗した時
+- TypeScriptやReactのアップグレード後のJSX/TSXコンパイルエラー
+- Next.jsのハイドレーション不一致・App Routerのサーバー/クライアント境界エラー
 - `react`・`react-dom`・`@types/react`・バンドラーのインストール／アップグレード後
 
-**修正戦略**: コンパイルエラー → ハイドレーションエラー → バンドラー設定の順で、1 件ずつ修正してビルドを再実行する。同一エラーが 3 回続く・新規エラーが増える・設計変更が必要な場合は停止して報告。
+**修正戦略**: コンパイルエラー → ハイドレーションエラー → バンドラー設定の順で、1件ずつ修正してビルドを再実行する。同一エラーが3回続く・新規エラーが増える・設計変更が必要な場合は停止して報告。
 
 ---
 
@@ -299,17 +299,17 @@
 
 **呼び出し**: `/ecc:react-review`
 
-**概要**: React/JSX の包括的コードレビュー。`ecc:react-reviewer` エージェントを起動する。TSX/JSX の PR では `ecc:typescript-reviewer` も併せて実行し、それぞれ重複しない領域を担当する。
+**概要**: React/JSXの包括的コードレビュー。`ecc:react-reviewer`エージェントを起動する。TSX/JSXのPRでは`ecc:typescript-reviewer`も併せて実行し、それぞれ重複しない領域を担当する。
 
-**レビュー観点**: フックルール・RSC 境界・アクセシビリティ・レンダリングパフォーマンス・React 固有セキュリティ
+**レビュー観点**: フックルール・RSC境界・アクセシビリティ・レンダリングパフォーマンス・React固有セキュリティ
 
 **使用する場面**:
 
-- PR やコミットが `.tsx`/`.jsx` に触れた時
-- React コンポーネント・カスタムフック・ページの作成／変更後
-- マージ前のレビュー、UI のアクセシビリティ監査
+- PRやコミットが`.tsx`/`.jsx`に触れた時
+- Reactコンポーネント・カスタムフック・ページの作成／変更後
+- マージ前のレビュー、UIのアクセシビリティ監査
 
-**自動チェック**: `eslint`（`eslint-plugin-react-hooks`・`eslint-plugin-jsx-a11y`）・`tsc --noEmit`・`npm audit` を実行。重大度別（CRITICAL/HIGH/MEDIUM）に分類し、CRITICAL・HIGH があればマージをブロックする。
+**自動チェック**: `eslint`(`eslint-plugin-react-hooks`・`eslint-plugin-jsx-a11y`)・`tsc --noEmit`・`npm audit`を実行。重大度別(CRITICAL/HIGH/MEDIUM)に分類し、CRITICAL・HIGHがあればマージをブロックする。
 
 ---
 
@@ -317,24 +317,24 @@
 
 **呼び出し**: `/ecc:react-test`
 
-**概要**: React 向けの TDD ワークフローを強制する。React Testing Library で振る舞い重視・アクセシビリティ優先のテストを先に書いてから実装する。Vitest または Jest を実行時に自動検出。
+**概要**: React向けのTDDワークフローを強制する。React Testing Libraryで振る舞い重視・アクセシビリティ優先のテストを先に書いてから実装する。VitestまたはJestを実行時に自動検出。
 
-**TDD サイクル**: RED（失敗するテストを書く）→ GREEN（最小実装で通す）→ REFACTOR（テストを保ったまま改善）→ REPEAT
+**TDDサイクル**: RED(失敗するテストを書く)→ GREEN(最小実装で通す)→ REFACTOR(テストを保ったまま改善)→ REPEAT
 
 **使用する場面**:
 
-- 新規 React コンポーネント・カスタムフックの実装
+- 新規Reactコンポーネント・カスタムフックの実装
 - 未テストコンポーネントへのカバレッジ追加
-- バグ修正（再現する失敗テストを先に書く）
-- フォーム・状態機械・アクセシビリティが重要な UI の構築
+- バグ修正(再現する失敗テストを先に書く)
+- フォーム・状態機械・アクセシビリティが重要なUIの構築
 
-**カバレッジ目標**: 純粋ユーティリティ ≧90%・カスタムフック ≧85%・表示コンポーネント ≧80%・コンテナコンポーネント ≧70%（ページは E2E で別途カバー）。`vitest.config.ts`／`jest.config.ts` で CI 閾値を強制する。
+**カバレッジ目標**: 純粋ユーティリティ ≧90%・カスタムフック ≧85%・表示コンポーネント ≧80%・コンテナコンポーネント ≧70%(ページはE2Eで別途カバー)。`vitest.config.ts`／`jest.config.ts`でCI閾値を強制する。
 
 ---
 
 ## コーディングルール
 
-Claude が常時コンテキストとして参照するガイドライン。エージェントのように動的に呼び出すのではなく、作業全体を通じて適用される。
+Claudeが常時コンテキストとして参照するガイドライン。エージェントのように動的に呼び出すのではなく、作業全体を通じて適用される。
 
 ### rules/common/ — 共通ルール
 
@@ -342,30 +342,30 @@ Claude が常時コンテキストとして参照するガイドライン。エ�
 
 | ファイル                      | 概要                             | 主な内容                                                                                           |
 | ----------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `coding-style.md`         | コーディングスタイル基準         | イミュータビリティ必須・KISS/DRY/YAGNI・ファイル上限 800 行・命名規約                              |
-| `git-workflow.md`         | Git ワークフロー                 | コミットメッセージフォーマット（Conventional Commits）・PR 作成手順                                |
-| `testing.md`              | テスト要件                       | カバレッジ 80% 以上必須・TDD ワークフロー・AAA パターン・テスト命名規約                            |
-| `performance.md`          | パフォーマンス最適化             | モデル選択戦略（Haiku/Sonnet/Opus の使い分け）・コンテキストウィンドウ管理・Extended Thinking 設定 |
-| `patterns.md`             | 共通パターン                     | スケルトンプロジェクトの活用・リポジトリパターン・API レスポンスフォーマット                       |
-| `hooks.md`                | フック設定                       | PreToolUse/PostToolUse/Stop フックの種類・TodoWrite の活用方針                                     |
+| `coding-style.md`         | コーディングスタイル基準         | イミュータビリティ必須・KISS/DRY/YAGNI・ファイル上限800行・命名規約                              |
+| `git-workflow.md`         | Gitワークフロー                 | コミットメッセージフォーマット(Conventional Commits)・PR作成手順                                |
+| `testing.md`              | テスト要件                       | カバレッジ80%以上必須・TDDワークフロー・AAAパターン・テスト命名規約                            |
+| `performance.md`          | パフォーマンス最適化             | モデル選択戦略(Haiku/Sonnet/Opusの使い分け)・コンテキストウィンドウ管理・Extended Thinking設定 |
+| `patterns.md`             | 共通パターン                     | スケルトンプロジェクトの活用・リポジトリパターン・APIレスポンスフォーマット                       |
+| `hooks.md`                | フック設定                       | PreToolUse/PostToolUse/Stopフックの種類・TodoWriteの活用方針                                     |
 | `agents.md`               | エージェントオーケストレーション | 利用可能エージェント一覧・並列タスク実行の指針・マルチパースペクティブ分析                         |
 | `security.md`             | セキュリティガイドライン         | コミット前チェックリスト・シークレット管理・セキュリティ対応プロトコル                             |
-| `code-review.md`          | コードレビュー基準               | レビュートリガー・重大度レベル（CRITICAL/HIGH/MEDIUM/LOW）・承認基準                               |
-| `development-workflow.md` | 開発ワークフロー                 | Research → Plan → TDD → Code Review → Commit の 5 ステップフロー                                   |
+| `code-review.md`          | コードレビュー基準               | レビュートリガー・重大度レベル(CRITICAL/HIGH/MEDIUM/LOW)・承認基準                               |
+| `development-workflow.md` | 開発ワークフロー                 | Research → Plan → TDD → Code Review → Commitの5ステップフロー                                   |
 
 ---
 
-### rules/typescript/ — TypeScript/JavaScript 固有ルール
+### rules/typescript/ — TypeScript/JavaScript固有ルール
 
-`paths` フロントマターで `.ts`・`.tsx`・`.js`・`.jsx` ファイルに自動適用。
+`paths`フロントマターで`.ts`・`.tsx`・`.js`・`.jsx`ファイルに自動適用。
 
 | ファイル              | 概要                            | 主な内容                                                                       |
 | --------------------- | ------------------------------- | ------------------------------------------------------------------------------ |
-| `coding-style.md` | TypeScript コーディングスタイル | 型・インターフェース定義・`any` 禁止・`unknown` 使用・Zod によるバリデーション |
-| `patterns.md`     | TypeScript パターン             | `ApiResponse<T>` 型・カスタムフックパターン                                    |
-| `testing.md`      | TypeScript テスト               | Playwright を E2E フレームワークとして指定                                     |
-| `security.md`     | TypeScript セキュリティ         | 環境変数使用の徹底・ハードコードシークレット禁止の具体例                       |
-| `hooks.md`        | TypeScript フック設定           | Prettier・TypeScript チェック・`console.log` 警告の PostToolUse フック         |
+| `coding-style.md` | TypeScriptコーディングスタイル | 型・インターフェース定義・`any`禁止・`unknown`使用・Zodによるバリデーション |
+| `patterns.md`     | TypeScriptパターン             | `ApiResponse<T>`型・カスタムフックパターン                                    |
+| `testing.md`      | TypeScriptテスト               | PlaywrightをE2Eフレームワークとして指定                                     |
+| `security.md`     | TypeScriptセキュリティ         | 環境変数使用の徹底・ハードコードシークレット禁止の具体例                       |
+| `hooks.md`        | TypeScriptフック設定           | Prettier・TypeScriptチェック・`console.log`警告のPostToolUseフック         |
 
 ---
 
@@ -375,46 +375,46 @@ Web・フロントエンド開発全般に適用。
 
 | ファイル                | 概要                     | 主な内容                                                                                    |
 | ----------------------- | ------------------------ | ------------------------------------------------------------------------------------------- |
-| `coding-style.md`   | Web コーディングスタイル | フィーチャー別ファイル構成・CSS カスタムプロパティ（デザイントークン）・セマンティック HTML |
+| `coding-style.md`   | Webコーディングスタイル | フィーチャー別ファイル構成・CSSカスタムプロパティ(デザイントークン)・セマンティックHTML |
 | `design-quality.md` | デザイン品質基準         | テンプレートデザイン禁止・意図的なスタイル方向性の選択・コンポーネントチェックリスト        |
-| `hooks.md`          | Web フック設定           | Prettier・ESLint・TypeScript・Stylelint の PostToolUse フック・800 行超えブロックフック     |
-| `patterns.md`       | Web パターン             | Compound Components・Container/Presentational 分割・URL ステート・楽観的更新                |
-| `performance.md`    | Web パフォーマンス       | CWV 目標値（LCP < 2.5s 等）・バンドル予算・画像最適化・フォント読み込み戦略                 |
-| `security.md`       | Web セキュリティ         | ノンスベース CSP・XSS 防止・HTTPS セキュリティヘッダー・CSRF 保護                           |
-| `testing.md`        | Web テスト               | 視覚リグレッション・アクセシビリティ・クロスブラウザ・レスポンシブの優先順位                |
+| `hooks.md`          | Webフック設定           | Prettier・ESLint・TypeScript・StylelintのPostToolUseフック・800行超えブロックフック     |
+| `patterns.md`       | Webパターン             | Compound Components・Container/Presentational分割・URLステート・楽観的更新                |
+| `performance.md`    | Webパフォーマンス       | CWV目標値(LCP < 2.5s等)・バンドル予算・画像最適化・フォント読み込み戦略                 |
+| `security.md`       | Webセキュリティ         | ノンスベースCSP・XSS防止・HTTPSセキュリティヘッダー・CSRF保護                           |
+| `testing.md`        | Webテスト               | 視覚リグレッション・アクセシビリティ・クロスブラウザ・レスポンシブの優先順位                |
 
 ---
 
-### rules/react/ — React 固有ルール
+### rules/react/ — React固有ルール
 
-`.tsx`・`.jsx`・`components/`・`hooks/`・`app/`・`pages/` 配下のファイルに `paths` フロントマターで自動適用。`typescript/` と `web/` のルールを React 向けに拡張する。
+`.tsx`・`.jsx`・`components/`・`hooks/`・`app/`・`pages/`配下のファイルに`paths`フロントマターで自動適用。`typescript/`と`web/`のルールをReact向けに拡張する。
 
 | ファイル          | 概要                       | 主な内容                                                                                                                                          |
 | ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `coding-style.md` | React コーディングスタイル | ファイル拡張子（`.tsx`/`.ts`）・命名規約・コンポーネント形状（`type Props`）・JSX 記法・サーバー/クライアント境界・クラスコンポーネント禁止       |
-| `hooks.md`        | React フック規約           | フックのルール・`useEffect` を使わない場面・依存配列・クリーンアップ必須・`useMemo`/`useCallback` の判断基準・React 19 追加フック・stale closure 対策 |
-| `patterns.md`     | React パターン             | Container/Presentational 分割・状態配置デシジョンツリー・RSC 境界・Suspense+Error Boundary・フォーム・データフェッチング・key 規約・複合コンポーネント |
-| `security.md`     | React セキュリティ         | `dangerouslySetInnerHTML` の XSS・危険な URL スキーム・`target="_blank"` の `rel`・Server Action 入力検証・env var 経由のシークレット流出・CSP    |
-| `testing.md`      | React テスト               | RTL/Vitest/Jest の選択・振る舞い重視・クエリ優先順位・`userEvent`・非同期アサーション・MSW・axe・カバレッジ目標                                   |
+| `coding-style.md` | Reactコーディングスタイル | ファイル拡張子(`.tsx`/`.ts`)・命名規約・コンポーネント形状(`type Props`)・JSX記法・サーバー/クライアント境界・クラスコンポーネント禁止       |
+| `hooks.md`        | Reactフック規約           | フックのルール・`useEffect`を使わない場面・依存配列・クリーンアップ必須・`useMemo`/`useCallback`の判断基準・React 19追加フック・stale closure対策 |
+| `patterns.md`     | Reactパターン             | Container/Presentational分割・状態配置デシジョンツリー・RSC境界・Suspense+Error Boundary・フォーム・データフェッチング・key規約・複合コンポーネント |
+| `security.md`     | Reactセキュリティ         | `dangerouslySetInnerHTML`のXSS・危険なURLスキーム・`target="_blank"`の`rel`・Server Action入力検証・env var経由のシークレット流出・CSP    |
+| `testing.md`      | Reactテスト               | RTL/Vitest/Jestの選択・振る舞い重視・クエリ優先順位・`userEvent`・非同期アサーション・MSW・axe・カバレッジ目標                                   |
 
 ---
 
 ## スキル定義
 
-`/スキル名` コマンドで明示的に呼び出す、或いはプロンプト内容に応じて自動で呼び出される専門知識集。エージェントと異なり参照ドキュメントとして機能し、Claude のコンテキストに読み込まれる。
+`/スキル名`コマンドで明示的に呼び出す、或いはプロンプト内容に応じて自動で呼び出される専門知識集。エージェントと異なり参照ドキュメントとして機能し、Claudeのコンテキストに読み込まれる。
 
-### React 系
+### React系
 
-React 18/19 と Next.js に特化したスキル群。`rules/react/` のルールと、`react-reviewer`・`react-build-resolver` エージェント、`/react-*` コマンドと連携する。
+React 18/19とNext.jsに特化したスキル群。`rules/react/`のルールと、`react-reviewer`・`react-build-resolver`エージェント、`/react-*`コマンドと連携する。
 
 | スキル                | トリガー                                                                                                                                  | 概要                                                                                                                                                                                                                            |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ecc:react-patterns`  | React 18/19 コンポーネント・カスタムフック・コンポーネントツリーの作成／レビュー時、状態設計・合成設計時、Server/Client Component 利用時   | React 18/19 の慣用パターン集。レンダリングの純粋性・フック規律・状態配置デシジョンツリー・サーバー/クライアント境界・Suspense+Error Boundary・React 19 フォームアクション・データフェッチング判断表・複合コンポーネント・アクセシビリティ優先合成 |
-| `ecc:react-performance` | React/Next.js のパフォーマンス記述・レビュー・リファクタリング時、遅い読み込み／高 CPU の診断時、バンドルサイズや Core Web Vitals 監査時 | Vercel Engineering の React Best Practices を翻案。70 以上のルールを 8 つの優先度カテゴリ（ウォーターフォール除去・バンドルサイズ・サーバーサイド・クライアントフェッチ・再レンダリング・レンダリング・JS マイクロ最適化・高度パターン）に整理し、Lighthouse/Web Vitals との対応表を提供 |
-| `ecc:react-testing`   | React コンポーネント・フック・ページのテスト作成／修正時、Vitest/Jest セットアップ時、HTTP モック・a11y アサーション実装時                | React Testing Library による振る舞い重視のコンポーネントテスト。クエリ優先順位・`userEvent`・非同期パターン・MSW によるネットワークモック・`renderHook`・axe アサーション・RTL と Playwright/Cypress の使い分け・カバレッジ目標 |
-| `ecc:frontend-a11y`   | フォームや対話的要素（モーダル・ドロップダウン・タブ）の構築／レビュー時、`aria-*` 付与時、キーボード操作・フォーカス管理の実装時         | React/Next.js 向けの実践的アクセシビリティパターン。フォームのラベル接続・必須フィールド・エラーメッセージ連携・セマンティック HTML・ARIA 属性・キーボードナビゲーション・フォーカス管理・`prefers-reduced-motion` 対応・アンチパターンとチェックリスト |
-| `developer-kit-typescript:nextjs-app-router` | Next.js 16+ App Router でのプロジェクト構築・実装時                      | App Router のファイル規約・Server Actions・Route Handler・キャッシュディレクティブの実装パターン集 |
-| `developer-kit-typescript:nextjs-performance` | Next.js の Core Web Vitals 最適化・バンドルサイズ削減時                    | `next/image`・`next/font`・キャッシュ API 等 Next.js 固有 API の最適化コード例集。`ecc:react-performance` の汎用ルールを補完 |
+| `ecc:react-patterns`  | React 18/19コンポーネント・カスタムフック・コンポーネントツリーの作成／レビュー時、状態設計・合成設計時、Server/Client Component利用時   | React 18/19の慣用パターン集。レンダリングの純粋性・フック規律・状態配置デシジョンツリー・サーバー/クライアント境界・Suspense+Error Boundary・React 19フォームアクション・データフェッチング判断表・複合コンポーネント・アクセシビリティ優先合成 |
+| `ecc:react-performance` | React/Next.jsのパフォーマンス記述・レビュー・リファクタリング時、遅い読み込み／高CPUの診断時、バンドルサイズやCore Web Vitals監査時 | Vercel EngineeringのReact Best Practicesを翻案。70以上のルールを8つの優先度カテゴリ(ウォーターフォール除去・バンドルサイズ・サーバーサイド・クライアントフェッチ・再レンダリング・レンダリング・JSマイクロ最適化・高度パターン)に整理し、Lighthouse/Web Vitalsとの対応表を提供 |
+| `ecc:react-testing`   | Reactコンポーネント・フック・ページのテスト作成／修正時、Vitest/Jestセットアップ時、HTTPモック・a11yアサーション実装時                | React Testing Libraryによる振る舞い重視のコンポーネントテスト。クエリ優先順位・`userEvent`・非同期パターン・MSWによるネットワークモック・`renderHook`・axeアサーション・RTLとPlaywright/Cypressの使い分け・カバレッジ目標 |
+| `ecc:frontend-a11y`   | フォームや対話的要素(モーダル・ドロップダウン・タブ)の構築／レビュー時、`aria-*`付与時、キーボード操作・フォーカス管理の実装時         | React/Next.js向けの実践的アクセシビリティパターン。フォームのラベル接続・必須フィールド・エラーメッセージ連携・セマンティックHTML・ARIA属性・キーボードナビゲーション・フォーカス管理・`prefers-reduced-motion`対応・アンチパターンとチェックリスト |
+| `developer-kit-typescript:nextjs-app-router` | Next.js 16+ App Routerでのプロジェクト構築・実装時                      | App Routerのファイル規約・Server Actions・Route Handler・キャッシュディレクティブの実装パターン集 |
+| `developer-kit-typescript:nextjs-performance` | Next.jsのCore Web Vitals最適化・バンドルサイズ削減時                    | `next/image`・`next/font`・キャッシュAPI等Next.js固有APIの最適化コード例集。`ecc:react-performance`の汎用ルールを補完 |
 
 ---
 
@@ -422,29 +422,29 @@ React 18/19 と Next.js に特化したスキル群。`rules/react/` のルー�
 
 | スキル                            | トリガー                                                                                    | 概要                                                                                                                                                                             |
 | --------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ecc:accessibility`               | UI コンポーネント実装・アクセシビリティ監査時                                               | WCAG 2.2 Level AA 準拠の実装・セマンティック ARIA 生成・キーボードナビゲーション検証                                                                                             |
-| `ecc:frontend-design-direction`   | UI 構築／改修時、デザインが平坦・汎用的に見える時                                           | コーディング前にデザイン方向性（目的・対象ユーザー・トーン・制約）を定めさせ、アンチパターンとレビューチェックリストで実装を統制する                       |
-| `anthropics-frontend-design`      | 視覚的方向性が重要な UI 構築時                                                              | ランディングページのような独創的 UI を作成するデザイン指針                                                                                                                       |
-| `ecc:make-interfaces-feel-better` | UI が平坦・無骨・未完成に見える場面・ポリッシュレビュー時                                   | スペーシング・タイポグラフィ・角丸・シャドウ・モーション・ヒットエリア・アイコン整列・テキスト折り返しなどの細部を改善し、インターフェースの完成度を高める                       |
-| `ecc:frontend-patterns`           | React/Next.js パターン参照時                                                                | React・Next.js・状態管理・パフォーマンス最適化の実装パターン集                                                                                                                   |
-| `ecc:seo`                         | 検索最適化が必要な場面                                                                      | 技術的 SEO・Core Web Vitals・構造化データ・コンテンツ戦略の監査と実装                                                                                                            |
-| `gh-copilot-web-design-reviewer`  | 「デザインを確認して」「UI のレイアウトを修正して」「デザインの問題を探して」と依頼された時 | ローカル・リモートの Web サイトを視覚的に検査してデザイン上の問題を特定・修正。レスポンシブ・アクセシビリティ・視覚一貫性の確認からソースコードレベルの修正まで 4 ステップで対応 |
-| `developer-kit-typescript:shadcn-ui` | shadcn/ui のセットアップ・コンポーネント実装時                            | shadcn/ui・Radix UI コンポーネント（ボタン・ダイアログ・フォーム等）の導入・実装パターン集 |
-| `developer-kit-typescript:tailwind-css-patterns` | Tailwind CSS でのスタイリング・レスポンシブレイアウト構築時                | Tailwind CSS v4.1+ のユーティリティファースト記法（レイアウト・スペーシング・レスポンシブ等）のリファレンス |
-| `developer-kit-typescript:tailwind-design-system` | Tailwind CSS + shadcn/ui でのデザインシステム構築時                        | デザイントークン・CSS 変数テーマを軸にした shadcn/ui ベースのデザインシステム構築ガイド |
+| `ecc:accessibility`               | UIコンポーネント実装・アクセシビリティ監査時                                               | WCAG 2.2 Level AA準拠の実装・セマンティックARIA生成・キーボードナビゲーション検証                                                                                             |
+| `ecc:frontend-design-direction`   | UI構築／改修時、デザインが平坦・汎用的に見える時                                           | コーディング前にデザイン方向性(目的・対象ユーザー・トーン・制約)を定めさせ、アンチパターンとレビューチェックリストで実装を統制する                       |
+| `anthropics-frontend-design`      | 視覚的方向性が重要なUI構築時                                                              | ランディングページのような独創的UIを作成するデザイン指針                                                                                                                       |
+| `ecc:make-interfaces-feel-better` | UIが平坦・無骨・未完成に見える場面・ポリッシュレビュー時                                   | スペーシング・タイポグラフィ・角丸・シャドウ・モーション・ヒットエリア・アイコン整列・テキスト折り返しなどの細部を改善し、インターフェースの完成度を高める                       |
+| `ecc:frontend-patterns`           | React/Next.jsパターン参照時                                                                | React・Next.js・状態管理・パフォーマンス最適化の実装パターン集                                                                                                                   |
+| `ecc:seo`                         | 検索最適化が必要な場面                                                                      | 技術的SEO・Core Web Vitals・構造化データ・コンテンツ戦略の監査と実装                                                                                                            |
+| `gh-copilot-web-design-reviewer`  | 「デザインを確認して」「UIのレイアウトを修正して」「デザインの問題を探して」と依頼された時 | ローカル・リモートのWebサイトを視覚的に検査してデザイン上の問題を特定・修正。レスポンシブ・アクセシビリティ・視覚一貫性の確認からソースコードレベルの修正まで4ステップで対応 |
+| `developer-kit-typescript:shadcn-ui` | shadcn/uiのセットアップ・コンポーネント実装時                            | shadcn/ui・Radix UIコンポーネント(ボタン・ダイアログ・フォーム等)の導入・実装パターン集 |
+| `developer-kit-typescript:tailwind-css-patterns` | Tailwind CSSでのスタイリング・レスポンシブレイアウト構築時                | Tailwind CSS v4.1+ のユーティリティファースト記法(レイアウト・スペーシング・レスポンシブ等)のリファレンス |
+| `developer-kit-typescript:tailwind-design-system` | Tailwind CSS + shadcn/uiでのデザインシステム構築時                        | デザイントークン・CSS変数テーマを軸にしたshadcn/uiベースのデザインシステム構築ガイド |
 
 ---
 
 ### モーション・アニメーション系
 
-`motion/react`（旧 Framer Motion）を使った React / Next.js アニメーション実装向けのスキル群。依存関係順に `ecc:motion-foundations` → `ecc:motion-patterns` → `ecc:motion-advanced` の順で適用する。`ecc:motion-ui` は全体を俯瞰したい場合のエントリーポイント。
+`motion/react`(旧Framer Motion)を使ったReact / Next.jsアニメーション実装向けのスキル群。依存関係順に`ecc:motion-foundations` → `ecc:motion-patterns` → `ecc:motion-advanced`の順で適用する。`ecc:motion-ui`は全体を俯瞰したい場合のエントリーポイント。
 
 | スキル                   | トリガー                                                                                                                                                                                 | 概要                                                                                                                                                                                             |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ecc:motion-ui`          | アニメーション実装の全体方針を確認したい時・どのスキルを使うか迷う時                                                                                                                     | motion/react の包括的な UI モーションシステム。トークン・パフォーマンスルール・アクセシビリティ・AnimatePresence の `mode` 選択・デバッグ手順をまとめたエントリーポイント                        |
-| `ecc:motion-foundations` | アニメーション実装を新たに始める時・トークン／スプリング設定時・`prefers-reduced-motion` 対応時・SSR ハイドレーション不一致のデバッグ時                                                  | モーションシステムの基盤レイヤー。`motionTokens`・`springs` プリセット・`useSafeMotion` フック・SSR 安全な初期状態・ローエンドデバイス検出を定義。他の motion スキルはすべてこのスキルに依存する |
-| `ecc:motion-patterns`    | ボタン・モーダル・トースト・スタガーリスト・ページ遷移・スクロールリビール・アコーディオン・カード展開を実装する時                                                                       | `ecc:motion-foundations` のトークンとスプリングを使った標準 UI アニメーションのコピペパターン集。`AnimatePresence` ・`layout` ・`layoutId` の使い分けガイドを含む                                |
-| `ecc:motion-advanced`    | ドラッグ & ドロップ・スワイプジェスチャー・並び替えリスト・テキスト逐次表示・数値カウンター・SVG パス描画・カスタムアニメーションフック・`useAnimate` による命令的シーケンスを実装する時 | `ecc:motion-patterns` では対応できない高度な対話・物理・ジェスチャーパターン。`useMotionValue` ・`useTransform` ・`useSpring` ・`useAnimate` を活用したカスタムフック群も含む                    |
+| `ecc:motion-ui`          | アニメーション実装の全体方針を確認したい時・どのスキルを使うか迷う時                                                                                                                     | motion/reactの包括的なUIモーションシステム。トークン・パフォーマンスルール・アクセシビリティ・AnimatePresenceの`mode`選択・デバッグ手順をまとめたエントリーポイント                        |
+| `ecc:motion-foundations` | アニメーション実装を新たに始める時・トークン／スプリング設定時・`prefers-reduced-motion`対応時・SSRハイドレーション不一致のデバッグ時                                                  | モーションシステムの基盤レイヤー。`motionTokens`・`springs`プリセット・`useSafeMotion`フック・SSR安全な初期状態・ローエンドデバイス検出を定義。他のmotionスキルはすべてこのスキルに依存する |
+| `ecc:motion-patterns`    | ボタン・モーダル・トースト・スタガーリスト・ページ遷移・スクロールリビール・アコーディオン・カード展開を実装する時                                                                       | `ecc:motion-foundations`のトークンとスプリングを使った標準UIアニメーションのコピペパターン集。`AnimatePresence`・`layout`・`layoutId`の使い分けガイドを含む                                |
+| `ecc:motion-advanced`    | ドラッグ & ドロップ・スワイプジェスチャー・並び替えリスト・テキスト逐次表示・数値カウンター・SVGパス描画・カスタムアニメーションフック・`useAnimate`による命令的シーケンスを実装する時 | `ecc:motion-patterns`では対応できない高度な対話・物理・ジェスチャーパターン。`useMotionValue`・`useTransform`・`useSpring`・`useAnimate`を活用したカスタムフック群も含む                    |
 
 ---
 
@@ -452,39 +452,39 @@ React 18/19 と Next.js に特化したスキル群。`rules/react/` のルー�
 
 | スキル                              | トリガー                                                                           | 概要                                                                                                                                         |
 | ----------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ecc:architecture-decision-records` | アーキテクチャ上の決定をした場面                                                   | 決定の文脈・代替案・根拠を構造化した ADR ドキュメントとして記録                                                                              |
-| `ecc:api-design`                    | REST API 設計時                                                                    | リソース命名・ステータスコード・ページネーション・エラーレスポンス・バージョニング                                                           |
-| `ecc:nestjs-patterns`               | NestJS バックエンド実装時                                                          | モジュール・コントローラ・プロバイダ・DTO バリデーション・ガード・インターセプタ                                                             |
-| `developer-kit-typescript:clean-architecture` | NestJS でのクリーンアーキテクチャ・DDD・ヘキサゴナルアーキテクチャ設計時    | エンティティ・値オブジェクト・集約を用いたドメイン層設計とポート&アダプター実装パターン集 |
-| `ecc:content-hash-cache-pattern`    | 高コストなファイル処理のキャッシュ実装時                                           | SHA-256 コンテンツハッシュを使ったパス非依存・自動無効化キャッシュパターン                                                                   |
-| `ecc:error-handling`                | エラー型設計・リトライ実装・API エラーレスポンス設計・React エラーバウンダリ実装時 | TypeScript / Python / Go 向けの型付きエラークラス・Result パターン・指数バックオフリトライ・ユーザー向けエラーメッセージ設計の実践パターン集 |
-| `developer-kit-typescript:zod-validation-utilities` | Zod によるバリデーションスキーマ設計時                                     | Zod v4 による再利用可能なスキーマ・型安全なデータ変換・バリデーションエラーハンドリングのパターン集 |
+| `ecc:architecture-decision-records` | アーキテクチャ上の決定をした場面                                                   | 決定の文脈・代替案・根拠を構造化したADRドキュメントとして記録                                                                              |
+| `ecc:api-design`                    | REST API設計時                                                                    | リソース命名・ステータスコード・ページネーション・エラーレスポンス・バージョニング                                                           |
+| `ecc:nestjs-patterns`               | NestJSバックエンド実装時                                                          | モジュール・コントローラ・プロバイダ・DTOバリデーション・ガード・インターセプタ                                                             |
+| `developer-kit-typescript:clean-architecture` | NestJSでのクリーンアーキテクチャ・DDD・ヘキサゴナルアーキテクチャ設計時    | エンティティ・値オブジェクト・集約を用いたドメイン層設計とポート&アダプター実装パターン集 |
+| `ecc:content-hash-cache-pattern`    | 高コストなファイル処理のキャッシュ実装時                                           | SHA-256コンテンツハッシュを使ったパス非依存・自動無効化キャッシュパターン                                                                   |
+| `ecc:error-handling`                | エラー型設計・リトライ実装・APIエラーレスポンス設計・Reactエラーバウンダリ実装時 | TypeScript / Python / Go向けの型付きエラークラス・Resultパターン・指数バックオフリトライ・ユーザー向けエラーメッセージ設計の実践パターン集 |
+| `developer-kit-typescript:zod-validation-utilities` | Zodによるバリデーションスキーマ設計時                                     | Zod v4による再利用可能なスキーマ・型安全なデータ変換・バリデーションエラーハンドリングのパターン集 |
 
 ---
 
 ### 決済系
 
-`docs/service/overview` で定める決済基盤 Creem（Merchant of Record）の実装スキル。本プロジェクトの都度払い・定期課金・Webhook 処理はこのスキルを参照する。
+`docs/service/overview`で定める決済基盤Creem(Merchant of Record)の実装スキル。本プロジェクトの都度払い・定期課金・Webhook処理はこのスキルを参照する。
 
 | スキル   | トリガー                                                     | 概要                                                                                                                                                                                                                             |
 | -------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `creem`  | Creem のチェックアウト・サブスクリプション・ライセンス・Webhook を実装する時 | Creem（MoR 決済基盤）統合スキル。チェックアウトセッション作成・Webhook 署名検証・ライセンスキーの activate/validate/deactivate・サブスクリプションの更新/アップグレード/解約・カスタマーポータルリンク発行の実装パターンとエンドポイント一覧を提供 |
+| `creem`  | Creemのチェックアウト・サブスクリプション・ライセンス・Webhookを実装する時 | Creem(MoR決済基盤)統合スキル。チェックアウトセッション作成・Webhook署名検証・ライセンスキーのactivate/validate/deactivate・サブスクリプションの更新/アップグレード/解約・カスタマーポータルリンク発行の実装パターンとエンドポイント一覧を提供 |
 
 ---
 
 ### Cloudflare・インフラ系
 
-Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turnstile・Wrangler CLI）を扱うスキル群。本プロジェクトは Cloudflare Workers 上に構築され、Durable Objects による厳密なレート制限カウントを採用しているため、実装・レビュー双方で参照頻度が高い。いずれも学習知識より公式ドキュメント・型定義からの再取得（Retrieval over pre-training）を優先する方針を明記している。
+Cloudflareプラットフォーム(Workers・Durable Objects・Sandbox・Turnstile・Wrangler CLI)を扱うスキル群。本プロジェクトはCloudflare Workers上に構築され、Durable Objectsによる厳密なレート制限カウントを採用しているため、実装・レビュー双方で参照頻度が高い。いずれも学習知識より公式ドキュメント・型定義からの再取得(Retrieval over pre-training)を優先する方針を明記している。
 
 | スキル                     | トリガー                                                                                                              | 概要                                                                                                                                                                                 |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cloudflare:cloudflare`               | Cloudflare の実装全般で、どのプロダクト（Workers・KV/D1/R2・Workers AI・WAF・Terraform 等）を使うべきか判断したい時   | Workers・ストレージ・AI・ネットワーキング・セキュリティ・IaC など全カテゴリを決定木とプロダクト索引でナビゲートする統合スキル。各プロダクトの詳細は `references/<product>/` に格納 |
-| `cloudflare:wrangler`                 | `wrangler` コマンドを実行する前                                                                                       | Wrangler CLI の全リファレンス。`wrangler.jsonc` 設定例、KV/R2/D1/Vectorize/Hyperdrive/Queues/Containers/Workflows/Secrets Store 等の管理コマンド、ローカル開発・デプロイ・シークレット管理・トラブルシューティング |
-| `cloudflare:workers-best-practices`   | 新規 Worker 作成時・既存 Worker コードのレビュー時・`wrangler.jsonc` 設定時                                          | Workers のプロダクションベストプラクティスに基づくコード作成・レビュー基準。ストリーミング・floating promise・グローバル状態・シークレット管理・タイミングセーフ比較などのアンチパターンを検出 |
-| `cloudflare:durable-objects`          | ステートフルな協調処理（チャットルーム・予約システム等）の構築時、RPC メソッド・SQLite ストレージ・alarm・WebSocket の実装時、DO コードのレビュー時 | Durable Objects の作成・レビュー基準。コーディネーション単位の設計・`getByName()` によるルーティング・ストレージ操作・alarm・Vitest テストを網羅                                     |
-| `cloudflare:sandbox-sdk`              | AI によるコード実行・コードインタープリタ・CI/CD・対話的開発環境・未信頼コードの実行環境構築時                       | Sandbox SDK によるセキュアなコード実行環境構築。ライフサイクル・コマンド実行・ファイル操作・コードインタープリタ（`runCode()`）・プレビュー URL を網羅                              |
-| `cloudflare:turnstile-spin`           | 「Turnstile を追加して」「CAPTCHA を設定して」「フォームをボット対策したい」と依頼された時                            | Turnstile のエンドツーエンドセットアップ。コードベーススキャン・ウィジェット作成・フォームへの組み込み・サーバーサイド siteverify の配線・検証をウィザード形式で実行                |
-| `cloudflare:web-perf`                 | ページ読み込みパフォーマンスの監査・プロファイリング・デバッグ・最適化、Lighthouse スコアの相談時                     | Chrome DevTools MCP を使った Web パフォーマンス監査。Core Web Vitals（LCP/INP/CLS）と補助指標を測定し、レンダーブロッキング・ネットワーク依存チェーン・レイアウトシフト・アクセシビリティのギャップを特定 |
+| `cloudflare:cloudflare`               | Cloudflareの実装全般で、どのプロダクト(Workers・KV/D1/R2・Workers AI・WAF・Terraform等)を使うべきか判断したい時   | Workers・ストレージ・AI・ネットワーキング・セキュリティ・IaCなど全カテゴリを決定木とプロダクト索引でナビゲートする統合スキル。各プロダクトの詳細は`references/<product>/`に格納 |
+| `cloudflare:wrangler`                 | `wrangler`コマンドを実行する前                                                                                       | Wrangler CLIの全リファレンス。`wrangler.jsonc`設定例、KV/R2/D1/Vectorize/Hyperdrive/Queues/Containers/Workflows/Secrets Store等の管理コマンド、ローカル開発・デプロイ・シークレット管理・トラブルシューティング |
+| `cloudflare:workers-best-practices`   | 新規Worker作成時・既存Workerコードのレビュー時・`wrangler.jsonc`設定時                                          | Workersのプロダクションベストプラクティスに基づくコード作成・レビュー基準。ストリーミング・floating promise・グローバル状態・シークレット管理・タイミングセーフ比較などのアンチパターンを検出 |
+| `cloudflare:durable-objects`          | ステートフルな協調処理(チャットルーム・予約システム等)の構築時、RPCメソッド・SQLiteストレージ・alarm・WebSocketの実装時、DOコードのレビュー時 | Durable Objectsの作成・レビュー基準。コーディネーション単位の設計・`getByName()`によるルーティング・ストレージ操作・alarm・Vitestテストを網羅                                     |
+| `cloudflare:sandbox-sdk`              | AIによるコード実行・コードインタープリタ・CI/CD・対話的開発環境・未信頼コードの実行環境構築時                       | Sandbox SDKによるセキュアなコード実行環境構築。ライフサイクル・コマンド実行・ファイル操作・コードインタープリタ(`runCode()`)・プレビューURLを網羅                              |
+| `cloudflare:turnstile-spin`           | 「Turnstileを追加して」「CAPTCHAを設定して」「フォームをボット対策したい」と依頼された時                            | Turnstileのエンドツーエンドセットアップ。コードベーススキャン・ウィジェット作成・フォームへの組み込み・サーバーサイドsiteverifyの配線・検証をウィザード形式で実行                |
+| `cloudflare:web-perf`                 | ページ読み込みパフォーマンスの監査・プロファイリング・デバッグ・最適化、Lighthouseスコアの相談時                     | Chrome DevTools MCPを使ったWebパフォーマンス監査。Core Web Vitals(LCP/INP/CLS)と補助指標を測定し、レンダーブロッキング・ネットワーク依存チェーン・レイアウトシフト・アクセシビリティのギャップを特定 |
 
 ---
 
@@ -492,23 +492,23 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                       | トリガー                                                                | 概要                                                                                                                                                   |
 | ---------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ecc:tdd-workflow`           | 新機能実装・バグ修正・リファクタリング時                                | 80% 以上カバレッジのユニット・統合・E2E テストを含む TDD ワークフロー                                                                                  |
-| `ecc:e2e-testing`            | Playwright E2E テスト実装時                                             | Page Object Model・設定・CI/CD 統合・フレーキーテスト対策                                                                                              |
-| `ecc:ai-regression-testing`  | AI 支援開発での回帰テスト実装時                                         | AI が書いて AI がレビューする盲点を補うサンドボックスモードの API テストパターン                                                                       |
-| `ecc:verification-loop`      | セッション終了前の包括的検証時                                          | Claude Code セッション向けの包括的検証システム                                                                                                         |
-| `ecc:santa-method`           | 出力を厳格に検証したい場面                                              | 2 つの独立したレビューエージェントが両方合格するまでループするマルチエージェント検証フレームワーク                                                     |
+| `ecc:tdd-workflow`           | 新機能実装・バグ修正・リファクタリング時                                | 80%以上カバレッジのユニット・統合・E2Eテストを含むTDDワークフロー                                                                                  |
+| `ecc:e2e-testing`            | Playwright E2Eテスト実装時                                             | Page Object Model・設定・CI/CD統合・フレーキーテスト対策                                                                                              |
+| `ecc:ai-regression-testing`  | AI支援開発での回帰テスト実装時                                         | AIが書いてAIがレビューする盲点を補うサンドボックスモードのAPIテストパターン                                                                       |
+| `ecc:verification-loop`      | セッション終了前の包括的検証時                                          | Claude Codeセッション向けの包括的検証システム                                                                                                         |
+| `ecc:santa-method`           | 出力を厳格に検証したい場面                                              | 2つの独立したレビューエージェントが両方合格するまでループするマルチエージェント検証フレームワーク                                                     |
 | `ecc:coding-standards`       | クロスプロジェクトのコーディング規約参照時                              | 命名・可読性・イミュータビリティ・コード品質レビューのベースライン規約                                                                                 |
 
 ---
 
 ### コードレビュー系
 
-フレームワーク別に踏み込んだ実装パターン検証を行うコードレビュー用スキル群。`ecc:code-reviewer`・`ecc:typescript-reviewer`・`ecc:react-reviewer` エージェントによる汎用レビューを、NestJS／Next.js 固有の観点で補完する。
+フレームワーク別に踏み込んだ実装パターン検証を行うコードレビュー用スキル群。`ecc:code-reviewer`・`ecc:typescript-reviewer`・`ecc:react-reviewer`エージェントによる汎用レビューを、NestJS／Next.js固有の観点で補完する。
 
 | スキル                                          | トリガー                                                                    | 概要                                                                                                                                                       |
 | -------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `developer-kit-typescript:nestjs-code-review`   | NestJS コードのレビュー時                                                  | コントローラ・サービス・ガード・DI・DB 連携パターンを検証する NestJS 専用コードレビュー     |
-| `developer-kit-typescript:nextjs-code-review`   | Next.js App Router コードのレビュー時                                      | Server/Client 境界・Server Actions・キャッシュ戦略を検証する Next.js 専用コードレビュー |
+| `developer-kit-typescript:nestjs-code-review`   | NestJSコードのレビュー時                                                  | コントローラ・サービス・ガード・DI・DB連携パターンを検証するNestJS専用コードレビュー     |
+| `developer-kit-typescript:nextjs-code-review`   | Next.js App Routerコードのレビュー時                                      | Server/Client境界・Server Actions・キャッシュ戦略を検証するNext.js専用コードレビュー |
 
 ---
 
@@ -516,9 +516,9 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                | トリガー                                                   | 概要                                                                                       |
 | --------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `ecc:security-review` | 認証・ユーザー入力・シークレット・API エンドポイント実装時 | 包括的なセキュリティチェックリストとパターン集                                             |
-| `developer-kit-typescript:typescript-security-review` | TypeScript/Node.js のセキュリティ監査時                                    | Express・NestJS・Next.js 向け XSS・インジェクション・JWT/OAuth2 脆弱性のコードレベルセキュリティレビュー |
-| `ecc:security-scan`   | Claude Code 設定のセキュリティ監査時                       | `.claude/` ディレクトリの脆弱性・設定ミス・インジェクションリスクを AgentShield でスキャン |
+| `ecc:security-review` | 認証・ユーザー入力・シークレット・APIエンドポイント実装時 | 包括的なセキュリティチェックリストとパターン集                                             |
+| `developer-kit-typescript:typescript-security-review` | TypeScript/Node.jsのセキュリティ監査時                                    | Express・NestJS・Next.js向けXSS・インジェクション・JWT/OAuth2脆弱性のコードレベルセキュリティレビュー |
+| `ecc:security-scan`   | Claude Code設定のセキュリティ監査時                       | `.claude/`ディレクトリの脆弱性・設定ミス・インジェクションリスクをAgentShieldでスキャン |
 | `ecc:safety-guard`    | 本番環境・自律エージェント実行時                           | 破壊的操作を防ぐためのガードレール                                                         |
 
 ---
@@ -527,14 +527,14 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                     | トリガー                                                   | 概要                                                                                                                                                         |
 | -------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ecc:git-workflow`         | Git 操作・ブランチ戦略・コミット規約参照時                 | ブランチ戦略・コミット規約・マージ vs リベース・競合解決                                                                                                     |
-| `ecc:github-ops`           | GitHub Issue・PR・CI・リリース管理時                       | `gh` CLI を使った GitHub リポジトリ操作・自動化・管理                                                                                                        |
-| `ecc:deployment-patterns`  | デプロイ・CI/CD・Docker 実装時                             | デプロイワークフロー・ヘルスチェック・ロールバック戦略・本番準備チェックリスト                                                                               |
-| `ecc:production-audit`     | 「本番リリースできる状態か」「本番で何が壊れるか」の確認時 | ローカル証跡に基づく本番準備監査。セキュリティ・データ整合性・決済・運用・UX の各リスクレンズでスコアリング（0〜100）し、ブロッカーと次のアクションを提示    |
-| `ecc:database-migrations`  | DB スキーマ変更・マイグレーション実装時                    | ゼロダウンタイムの安全なマイグレーション（Prisma・Drizzle・Kysely 等対応）                                                                                   |
-| `ecc:bun-runtime`          | Bun の導入・Node からの移行・Bun スクリプト/テストの記述時 | Bun をランタイム・パッケージマネージャー・バンドラー・テストランナーとして使う際の使い分けと移行方法                                                          |
-| `ecc:search-first`         | 実装前の調査・既存ライブラリ探索時                         | コードを書く前に既存ツール・ライブラリ・パターンを検索する research-before-coding ワークフロー                                                               |
-| `ecc:agentic-engineering`  | AI エージェントとしての実装ワークフロー時                  | eval ファースト実行・タスク分解・コスト意識のモデルルーティング                                                                                              |
+| `ecc:git-workflow`         | Git操作・ブランチ戦略・コミット規約参照時                 | ブランチ戦略・コミット規約・マージvsリベース・競合解決                                                                                                     |
+| `ecc:github-ops`           | GitHub Issue・PR・CI・リリース管理時                       | `gh` CLIを使ったGitHubリポジトリ操作・自動化・管理                                                                                                        |
+| `ecc:deployment-patterns`  | デプロイ・CI/CD・Docker実装時                             | デプロイワークフロー・ヘルスチェック・ロールバック戦略・本番準備チェックリスト                                                                               |
+| `ecc:production-audit`     | 「本番リリースできる状態か」「本番で何が壊れるか」の確認時 | ローカル証跡に基づく本番準備監査。セキュリティ・データ整合性・決済・運用・UXの各リスクレンズでスコアリング(0〜100)し、ブロッカーと次のアクションを提示    |
+| `ecc:database-migrations`  | DBスキーマ変更・マイグレーション実装時                    | ゼロダウンタイムの安全なマイグレーション(Prisma・Drizzle・Kysely等対応)                                                                                   |
+| `ecc:bun-runtime`          | Bunの導入・Nodeからの移行・Bunスクリプト/テストの記述時 | Bunをランタイム・パッケージマネージャー・バンドラー・テストランナーとして使う際の使い分けと移行方法                                                          |
+| `ecc:search-first`         | 実装前の調査・既存ライブラリ探索時                         | コードを書く前に既存ツール・ライブラリ・パターンを検索するresearch-before-codingワークフロー                                                               |
+| `ecc:agentic-engineering`  | AIエージェントとしての実装ワークフロー時                  | evalファースト実行・タスク分解・コスト意識のモデルルーティング                                                                                              |
 
 ---
 
@@ -542,43 +542,43 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                 | トリガー                                       | 概要                                                                                  |
 | ---------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `ecc:council`          | 複数の有効な選択肢があって意思決定が難しい場面 | 4 つの異なる視点（Claude 内・楽観・悲観・野生）の構造化議論で意思決定を支援           |
+| `ecc:council`          | 複数の有効な選択肢があって意思決定が難しい場面 | 4つの異なる視点(Claude内・楽観・悲観・野生)の構造化議論で意思決定を支援           |
 
 ---
 
-### cc-sdd 系（Kiro スタイルの仕様駆動開発）
+### cc-sdd系(Kiroスタイルの仕様駆動開発)
 
 #### エントリーポイント・ステアリング
 
 | スキル                 | トリガー                                                             | 概要                                                                                                                                                                                        |
 | ----------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cc-sdd:kiro-discovery`       | ユーザーが `/cc-sdd:kiro-discovery "アイデア"` を明示的に実行した時のみ（自動呼び出し不可）  | 既存 spec の状態を軽量スキャンし、既存 spec 拡張・spec 不要・新規単一 spec・複数 spec への分解・混在分解のいずれかの対応方針を判定。対話でアイデアを深掘りし、`brief.md`／`roadmap.md` をディスクに書き出してから次のコマンドを提案する |
-| `cc-sdd:kiro-steering`        | `.kiro/steering/` の初期構築・同期時                                | プロジェクトの永続メモリ（`product.md`・`tech.md`・`structure.md`）をブートストラップ（初回生成）またはシンク（コードとの乖離検出・追記更新）する。ユーザーのカスタム内容は追記のみで保持   |
-| `cc-sdd:kiro-steering-custom` | ドメイン固有のステアリング文書（API 規約・テスト方針等）を作成したい時 | コアファイル以外の専門領域向けステアリング文書を、既存テンプレート（`api-standards.md`・`testing.md`・`security.md` 等）を基に生成                                                        |
+| `cc-sdd:kiro-discovery`       | ユーザーが`/cc-sdd:kiro-discovery "アイデア"`を明示的に実行した時のみ(自動呼び出し不可)  | 既存specの状態を軽量スキャンし、既存spec拡張・spec不要・新規単一spec・複数specへの分解・混在分解のいずれかの対応方針を判定。対話でアイデアを深掘りし、`brief.md`／`roadmap.md`をディスクに書き出してから次のコマンドを提案する |
+| `cc-sdd:kiro-steering`        | `.kiro/steering/`の初期構築・同期時                                | プロジェクトの永続メモリ(`product.md`・`tech.md`・`structure.md`)をブートストラップ(初回生成)またはシンク(コードとの乖離検出・追記更新)する。ユーザーのカスタム内容は追記のみで保持   |
+| `cc-sdd:kiro-steering-custom` | ドメイン固有のステアリング文書(API規約・テスト方針等)を作成したい時 | コアファイル以外の専門領域向けステアリング文書を、既存テンプレート(`api-standards.md`・`testing.md`・`security.md`等)を基に生成                                                        |
 
-#### 仕様作成（Requirements → Design → Tasks）
+#### 仕様作成(Requirements → Design → Tasks)
 
 | スキル                   | トリガー                                                            | 概要                                                                                                                                                                                                  |
 | ------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cc-sdd:kiro-spec-init`        | 新規 spec の初期化時（`/cc-sdd:kiro-spec-init "説明"`）                    | プロジェクト説明からフィーチャー名を生成し、`spec.json`・`requirements.md` の雛形を作成する。要件・設計・タスクの生成はこの段階では行わない                                                        |
-| `cc-sdd:kiro-spec-requirements`| 要件定義時（`/cc-sdd:kiro-spec-requirements {feature}`）                   | EARS 形式の受け入れ基準を含む要件書を生成。レビューゲート（`rules/requirements-review-gate.md`）を通過するまで `requirements.md` を書き込まない。曖昧なスコープはユーザーに確認する               |
-| `cc-sdd:kiro-spec-design`      | 要件から設計を作成する時（`/cc-sdd:kiro-spec-design {feature} [-y]`）      | 要件（WHAT）を Discovery プロセス付きでアーキテクチャ（HOW）に変換。フィーチャー種別（新規／拡張／単純追加）に応じた調査の深さを使い分け、ファイル構成計画とテスト戦略を含む設計書を生成           |
-| `cc-sdd:kiro-spec-tasks`       | 実装タスク生成時（`/cc-sdd:kiro-spec-tasks {feature} [-y] [--sequential]`）| 要件・設計から 1〜3 時間規模の実行可能タスクを生成し、`(P)` 並列マーカーや `_Boundary:_`／`_Depends:_` 注釈を付与。書き込み前にタスクグラフの健全性レビューを実施                                  |
-| `cc-sdd:kiro-spec-quick`       | 対話または自動モードでの一括 spec 生成時（`/cc-sdd:kiro-spec-quick "説明" [--auto]`）| init → requirements → design → tasks の 4 フェーズを連続実行するショートカット。`--auto` で承認プロンプトを省略し、最後に軽量な整合性サニティレビューを実施                                 |
-| `cc-sdd:kiro-spec-batch`       | `roadmap.md` に基づく複数 spec の一括作成時                        | 依存関係の波（wave）ごとに並列サブエージェントを起動し、全フィーチャーの spec を生成。全 wave 完了後にクロス spec 整合性レビュー（データモデル・インターフェース・命名規則等）を実施              |
-| `cc-sdd:kiro-spec-status`      | 進捗確認時（`/cc-sdd:kiro-spec-status {feature}`）                         | 現在のフェーズ・完了率・タスク内訳・境界コンテキスト（上流／下流依存）・再検証が必要な範囲を表示                                                                                                    |
+| `cc-sdd:kiro-spec-init`        | 新規specの初期化時(`/cc-sdd:kiro-spec-init "説明"`)                    | プロジェクト説明からフィーチャー名を生成し、`spec.json`・`requirements.md`の雛形を作成する。要件・設計・タスクの生成はこの段階では行わない                                                        |
+| `cc-sdd:kiro-spec-requirements`| 要件定義時(`/cc-sdd:kiro-spec-requirements {feature}`)                   | EARS形式の受け入れ基準を含む要件書を生成。レビューゲート(`rules/requirements-review-gate.md`)を通過するまで`requirements.md`を書き込まない。曖昧なスコープはユーザーに確認する               |
+| `cc-sdd:kiro-spec-design`      | 要件から設計を作成する時(`/cc-sdd:kiro-spec-design {feature} [-y]`)      | 要件(WHAT)をDiscoveryプロセス付きでアーキテクチャ(HOW)に変換。フィーチャー種別(新規／拡張／単純追加)に応じた調査の深さを使い分け、ファイル構成計画とテスト戦略を含む設計書を生成           |
+| `cc-sdd:kiro-spec-tasks`       | 実装タスク生成時(`/cc-sdd:kiro-spec-tasks {feature} [-y] [--sequential]`)| 要件・設計から1〜3時間規模の実行可能タスクを生成し、`(P)`並列マーカーや`_Boundary:_`／`_Depends:_`注釈を付与。書き込み前にタスクグラフの健全性レビューを実施                                  |
+| `cc-sdd:kiro-spec-quick`       | 対話または自動モードでの一括spec生成時(`/cc-sdd:kiro-spec-quick "説明" [--auto]`)| init → requirements → design → tasksの4フェーズを連続実行するショートカット。`--auto`で承認プロンプトを省略し、最後に軽量な整合性サニティレビューを実施                                 |
+| `cc-sdd:kiro-spec-batch`       | `roadmap.md`に基づく複数specの一括作成時                        | 依存関係の波(wave)ごとに並列サブエージェントを起動し、全フィーチャーのspecを生成。全wave完了後にクロスspec整合性レビュー(データモデル・インターフェース・命名規則等)を実施              |
+| `cc-sdd:kiro-spec-status`      | 進捗確認時(`/cc-sdd:kiro-spec-status {feature}`)                         | 現在のフェーズ・完了率・タスク内訳・境界コンテキスト(上流／下流依存)・再検証が必要な範囲を表示                                                                                                    |
 
 #### 実装・レビュー・検証
 
 | スキル                   | トリガー                                                                    | 概要                                                                                                                                                                                       |
 | ------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cc-sdd:kiro-impl`             | ユーザーが `/cc-sdd:kiro-impl {feature} [task番号]` を明示的に実行した時のみ（自動呼び出し不可）                     | タスク番号なし＝自律モード（タスクごとに新規サブエージェントを起動し実装→独立レビュー→コミットを繰り返す）、番号指定＝手動モード（メインコンテキストで TDD サイクルを実行）。実装は Red-Green-Refactor を厳守し、行き詰まった場合は `cc-sdd:kiro-debug` に委譲する |
-| `cc-sdd:kiro-review`           | 実装者が `READY_FOR_REVIEW` を報告した後、タスクを `[x]` にする前                | タスクローカルな敵対的レビュー。`git diff` を自ら確認し、リグレッション・プレースホルダー残存・シークレット混入・境界逸脱・要件/設計整合性を機械的＋判断的チェックで検証し `APPROVED`／`REJECTED` を返す |
-| `cc-sdd:kiro-debug`            | 実装がブロックされた時、レビュー却下が繰り返される時、検証が予期せず失敗した時 | フレッシュコンテキストでの根本原因調査。ローカル証跡・ランタイム/設定・Web ドキュメント調査を組み合わせ、`ROOT_CAUSE`・`FIX_PLAN`・`NEXT_ACTION`（RETRY_TASK／BLOCK_TASK／STOP_FOR_HUMAN）を返す |
-| `cc-sdd:kiro-verify-completion`| タスク完了・修正完了・テスト成功・feature の GO 判定を主張する前                | フレッシュな証跡なしの完了主張を防ぐゲート。`VERIFIED`／`NOT_VERIFIED`／`MANUAL_VERIFY_REQUIRED` を返し、証跡が主張の範囲を下回る場合は却下する                                          |
-| `cc-sdd:kiro-validate-gap`     | 既存コードベースとの統合を計画する時（`/cc-sdd:kiro-validate-gap {feature}`）          | 要件と既存実装のギャップを分析し、拡張／新規／ハイブリッドの実装アプローチを複数提示。結果は `research.md` に追記保存される                                                              |
-| `cc-sdd:kiro-validate-design`  | 実装着手前の設計品質レビュー時（`/cc-sdd:kiro-validate-design {feature}`）             | 設計書の重大な懸念（最大 3 件）と強みを対話的にレビューし、GO/NO-GO を判定                                                                                                               |
-| `cc-sdd:kiro-validate-impl`    | 全タスク実装後の feature 全体統合検証時（`/cc-sdd:kiro-validate-impl {feature} [task番号]`）| タスク単位のレビューでは検知できないクロスタスクの問題（インターフェース不整合・要件カバレッジの隙間・設計とのアーキテクチャ乖離・境界のスピルオーバー）を検証し、`GO`／`NO-GO`／`MANUAL_VERIFY_REQUIRED` を判定 |
+| `cc-sdd:kiro-impl`             | ユーザーが`/cc-sdd:kiro-impl {feature} [task番号]`を明示的に実行した時のみ(自動呼び出し不可)                     | タスク番号なし＝自律モード(タスクごとに新規サブエージェントを起動し実装→独立レビュー→コミットを繰り返す)、番号指定＝手動モード(メインコンテキストでTDDサイクルを実行)。実装はRed-Green-Refactorを厳守し、行き詰まった場合は`cc-sdd:kiro-debug`に委譲する |
+| `cc-sdd:kiro-review`           | 実装者が`READY_FOR_REVIEW`を報告した後、タスクを`[x]`にする前                | タスクローカルな敵対的レビュー。`git diff`を自ら確認し、リグレッション・プレースホルダー残存・シークレット混入・境界逸脱・要件/設計整合性を機械的＋判断的チェックで検証し`APPROVED`／`REJECTED`を返す |
+| `cc-sdd:kiro-debug`            | 実装がブロックされた時、レビュー却下が繰り返される時、検証が予期せず失敗した時 | フレッシュコンテキストでの根本原因調査。ローカル証跡・ランタイム/設定・Webドキュメント調査を組み合わせ、`ROOT_CAUSE`・`FIX_PLAN`・`NEXT_ACTION`(RETRY_TASK／BLOCK_TASK／STOP_FOR_HUMAN)を返す |
+| `cc-sdd:kiro-verify-completion`| タスク完了・修正完了・テスト成功・featureのGO判定を主張する前                | フレッシュな証跡なしの完了主張を防ぐゲート。`VERIFIED`／`NOT_VERIFIED`／`MANUAL_VERIFY_REQUIRED`を返し、証跡が主張の範囲を下回る場合は却下する                                          |
+| `cc-sdd:kiro-validate-gap`     | 既存コードベースとの統合を計画する時(`/cc-sdd:kiro-validate-gap {feature}`)          | 要件と既存実装のギャップを分析し、拡張／新規／ハイブリッドの実装アプローチを複数提示。結果は`research.md`に追記保存される                                                              |
+| `cc-sdd:kiro-validate-design`  | 実装着手前の設計品質レビュー時(`/cc-sdd:kiro-validate-design {feature}`)             | 設計書の重大な懸念(最大3件)と強みを対話的にレビューし、GO/NO-GOを判定                                                                                                               |
+| `cc-sdd:kiro-validate-impl`    | 全タスク実装後のfeature全体統合検証時(`/cc-sdd:kiro-validate-impl {feature} [task番号]`)| タスク単位のレビューでは検知できないクロスタスクの問題(インターフェース不整合・要件カバレッジの隙間・設計とのアーキテクチャ乖離・境界のスピルオーバー)を検証し、`GO`／`NO-GO`／`MANUAL_VERIFY_REQUIRED`を判定 |
 
 ---
 
@@ -593,7 +593,7 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 ### 法務・コンプライアンス系
 
-世界各国のプライバシー関連法・同意管理・越境移転・保存期間・データ主体の権利対応を扱うスキル群。いずれも法務・DPO の指示のもとでエンジニアやプライバシー運用担当者が実装作業を行う際の技術ガイドとして機能する。
+世界各国のプライバシー関連法・同意管理・越境移転・保存期間・データ主体の権利対応を扱うスキル群。いずれも法務・DPOの指示のもとでエンジニアやプライバシー運用担当者が実装作業を行う際の技術ガイドとして機能する。
 
 #### consent-management-skills
 
@@ -602,20 +602,20 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                                              | トリガー                                       | 概要                                                                                                                                                                     |
 | ---------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `consent-management-skills:gdpr-valid-consent`       | 同意取得フォームの設計・監査時                 | GDPR 第 4 条(11)・第 7 条に基づく有効な同意の 5 要件（自由・特定・情報提供・不明確でない・明確な積極的行為）を実装するガイド。Planet49 CJEU 判決（C-673/17）によるチェックボックス事前選択禁止、同意フォーム監査チェックリストを含む |
-| `consent-management-skills:consent-withdrawal`       | 同意撤回機能の実装時                           | GDPR 第 7 条(3)の同意撤回メカニズム実装ガイド。撤回が同意付与と同じくらい容易であることを保証する equal ease 要件、ワンクリック撤回、下流処理へのカスケード効果、第三者通知ワークフロー、リアルタイム失効の技術アーキテクチャを扱う |
-| `consent-management-skills:consent-pref-center`      | プリファレンスセンター構築時                   | マルチパーパスな同意プリファレンスセンター構築の技術アーキテクチャガイド。目的単位の粒度、第 7 条(3)に基づく容易な撤回、バージョン履歴、監査証跡、IAB TCF v2.2 連携を扱う。DB スキーマ・API 設計・UI コンポーネント仕様を含む |
-| `consent-management-skills:consent-record-keeping`   | 同意記録システムの構築時                       | GDPR 第 7 条(1)に基づく有効な同意を証明する同意記録保持システムの構築ガイド。タイムスタンプ・バージョン・目的・取得手段・本人 identity 等の必須フィールドを扱う。Kantara Initiative 同意レシート仕様に基づく監査対応レシートを実装 |
-| `consent-management-skills:consent-platform-eval`    | CMP の選定・ベンダー比較時                     | 同意管理プラットフォーム（CMP）の評価・選定フレームワーク。TCF v2.2 認定要件、Global Privacy Control 対応、マルチ規制対応（GDPR/CCPA/LGPD）、A/B テスト機能、API 連携、構造化されたベンダー比較手法を扱う             |
-| `consent-management-skills:cnil-compliant-cookies`   | Cookie バナー実装・CNIL 準拠監査時             | CNIL Cookie ガイドライン準拠の実装ガイド。Google への 1.5 億ユーロ、Meta への 6,000 万ユーロの制裁金を参照。同意/拒否ボタンの均等表示、Cookie ウォール禁止、6 ヶ月ごとの再同意間隔、必須 Cookie 免除、CNIL 決定 2020-091 号の詳細要件を扱う |
-| `consent-management-skills:cookie-consent-ab-audit`  | 同意バナーの A/B テスト実施・監査時            | 同意バナーの A/B テストを監査する手法。承諾と拒否の均等な容易性の遵守を確認。CNIL の Google への 1.5 億ユーロ制裁金などの執行事例、ダークパターン検出手法、操作的デザインの識別、規制準拠の実験境界を扱う                       |
-| `consent-management-skills:consent-for-transfers`    | 十分性認定のない国への移転で同意を根拠にする場合 | GDPR 第 49 条 1 項(a)に基づく国際データ移転の明示的同意取得ガイド。十分性認定や適切な保護措置なしの移転リスク開示を含むインフォームドコンセント要件、移転先国の具体的開示、derogation ベースの移転の狭い適用範囲を扱う           |
-| `consent-management-skills:global-privacy-control`   | GPC 信号への対応実装時                         | CPRA 第 1798.135 条(e)に基づく Global Privacy Control（GPC）自動オプトアウト信号の実装ガイド。Sec-GPC HTTP ヘッダー検出、`navigator.globalPrivacyControl` API、CA/CO/CT/MT/TX/OR 各州固有要件を扱う                |
-| `consent-management-skills:legit-interest-vs-consent`| 法的根拠（同意 vs 正当な利益）の選定時         | 処理の法的根拠として同意と正当な利益のどちらを選ぶかの意思決定フレームワーク。力の不均衡指標、第 7 条(4)の条件性禁止、粒度要件、3 段階 LIA テスト（目的・必要性・比較衡量）、実務上の意思決定ツリーを扱う                       |
-| `consent-management-skills:managing-consent-for-children` | 子ども向けサービスの同意設計時            | GDPR 第 8 条・COPPA に基づく子どもの個人データ同意管理ガイド。親権者同意メカニズム、年齢確認方法、国別年齢閾値（13〜16 歳）、親権者認可ワークフロー、英国 ICO Children's Code に基づく年齢に適したデザインを扱う           |
-| `consent-management-skills:managing-consent-for-research` | 研究目的データ処理の同意設計時             | GDPR 第 89 条・前文 33 項の broad consent 規定に基づく科学研究のための同意管理ガイド。倫理審査委員会との調整、目的の進化管理、仮名化などの適切な保護措置、同意と他の法的根拠の相互関係を扱う                                   |
-| `consent-management-skills:managing-mobile-app-consent` | モバイルアプリの同意フロー実装時            | モバイル特有の同意管理ガイド。iOS 向け Apple ATT フレームワーク、Android パーミッションモデル、アプリ内同意フロー、サードパーティ SDK への同意伝播、IDFA/GAID 取扱いを扱う。GDPR・ePrivacy 準拠と併せたプラットフォーム固有要件に対応 |
-| `consent-management-skills:double-opt-in-email`      | メールマーケティングの同意取得実装時           | ePrivacy 指令準拠のダブルオプトインメール同意取得の実装ガイド。確認メールワークフロー設計、トークン失効処理、記録保持要件、サプレッションリスト管理、CAN-SPAM 法・CASL との多法域連携を扱う                                   |
+| `consent-management-skills:gdpr-valid-consent`       | 同意取得フォームの設計・監査時                 | GDPR第4条(11)・第7条に基づく有効な同意の5要件(自由・特定・情報提供・不明確でない・明確な積極的行為)を実装するガイド。Planet49 CJEU判決(C-673/17)によるチェックボックス事前選択禁止、同意フォーム監査チェックリストを含む |
+| `consent-management-skills:consent-withdrawal`       | 同意撤回機能の実装時                           | GDPR第7条(3)の同意撤回メカニズム実装ガイド。撤回が同意付与と同じくらい容易であることを保証するequal ease要件、ワンクリック撤回、下流処理へのカスケード効果、第三者通知ワークフロー、リアルタイム失効の技術アーキテクチャを扱う |
+| `consent-management-skills:consent-pref-center`      | プリファレンスセンター構築時                   | マルチパーパスな同意プリファレンスセンター構築の技術アーキテクチャガイド。目的単位の粒度、第7条(3)に基づく容易な撤回、バージョン履歴、監査証跡、IAB TCF v2.2連携を扱う。DBスキーマ・API設計・UIコンポーネント仕様を含む |
+| `consent-management-skills:consent-record-keeping`   | 同意記録システムの構築時                       | GDPR第7条(1)に基づく有効な同意を証明する同意記録保持システムの構築ガイド。タイムスタンプ・バージョン・目的・取得手段・本人identity等の必須フィールドを扱う。Kantara Initiative同意レシート仕様に基づく監査対応レシートを実装 |
+| `consent-management-skills:consent-platform-eval`    | CMPの選定・ベンダー比較時                     | 同意管理プラットフォーム(CMP)の評価・選定フレームワーク。TCF v2.2認定要件、Global Privacy Control対応、マルチ規制対応(GDPR/CCPA/LGPD)、A/Bテスト機能、API連携、構造化されたベンダー比較手法を扱う             |
+| `consent-management-skills:cnil-compliant-cookies`   | Cookieバナー実装・CNIL準拠監査時             | CNIL Cookieガイドライン準拠の実装ガイド。Googleへの1.5億ユーロ、Metaへの6,000万ユーロの制裁金を参照。同意/拒否ボタンの均等表示、Cookieウォール禁止、6ヶ月ごとの再同意間隔、必須Cookie免除、CNIL決定2020-091号の詳細要件を扱う |
+| `consent-management-skills:cookie-consent-ab-audit`  | 同意バナーのA/Bテスト実施・監査時            | 同意バナーのA/Bテストを監査する手法。承諾と拒否の均等な容易性の遵守を確認。CNILのGoogleへの1.5億ユーロ制裁金などの執行事例、ダークパターン検出手法、操作的デザインの識別、規制準拠の実験境界を扱う                       |
+| `consent-management-skills:consent-for-transfers`    | 十分性認定のない国への移転で同意を根拠にする場合 | GDPR第49条1項(a)に基づく国際データ移転の明示的同意取得ガイド。十分性認定や適切な保護措置なしの移転リスク開示を含むインフォームドコンセント要件、移転先国の具体的開示、derogationベースの移転の狭い適用範囲を扱う           |
+| `consent-management-skills:global-privacy-control`   | GPC信号への対応実装時                         | CPRA第1798.135条(e)に基づくGlobal Privacy Control(GPC)自動オプトアウト信号の実装ガイド。Sec-GPC HTTPヘッダー検出、`navigator.globalPrivacyControl` API、CA/CO/CT/MT/TX/OR各州固有要件を扱う                |
+| `consent-management-skills:legit-interest-vs-consent`| 法的根拠(同意vs正当な利益)の選定時         | 処理の法的根拠として同意と正当な利益のどちらを選ぶかの意思決定フレームワーク。力の不均衡指標、第7条(4)の条件性禁止、粒度要件、3段階LIAテスト(目的・必要性・比較衡量)、実務上の意思決定ツリーを扱う                       |
+| `consent-management-skills:managing-consent-for-children` | 子ども向けサービスの同意設計時            | GDPR第8条・COPPAに基づく子どもの個人データ同意管理ガイド。親権者同意メカニズム、年齢確認方法、国別年齢閾値(13〜16歳)、親権者認可ワークフロー、英国ICO Children's Codeに基づく年齢に適したデザインを扱う           |
+| `consent-management-skills:managing-consent-for-research` | 研究目的データ処理の同意設計時             | GDPR第89条・前文33項のbroad consent規定に基づく科学研究のための同意管理ガイド。倫理審査委員会との調整、目的の進化管理、仮名化などの適切な保護措置、同意と他の法的根拠の相互関係を扱う                                   |
+| `consent-management-skills:managing-mobile-app-consent` | モバイルアプリの同意フロー実装時            | モバイル特有の同意管理ガイド。iOS向けApple ATTフレームワーク、Androidパーミッションモデル、アプリ内同意フロー、サードパーティSDKへの同意伝播、IDFA/GAID取扱いを扱う。GDPR・ePrivacy準拠と併せたプラットフォーム固有要件に対応 |
+| `consent-management-skills:double-opt-in-email`      | メールマーケティングの同意取得実装時           | ePrivacy指令準拠のダブルオプトインメール同意取得の実装ガイド。確認メールワークフロー設計、トークン失効処理、記録保持要件、サプレッションリスト管理、CAN-SPAM法・CASLとの多法域連携を扱う                                   |
 
 #### cookie-consent-skills
 
@@ -624,18 +624,18 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                                            | トリガー                                     | 概要                                                                                                                                                       |
 | -------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cookie-consent-skills:cnil-cookie-banner`         | Cookie バナー実装時                           | フランス・EU ユーザー向け CNIL 準拠 Cookie 同意バナーの設計・実装。Google への 1 億ユーロ、Meta への 1.5 億ユーロの制裁金を参照。同意/拒否の均等表示、拒否ボタン、Cookie ウォール禁止、6 ヶ月ごとの再同意サイクルを扱う |
-| `cookie-consent-skills:cookie-audit`               | Cookie 監査実施時                             | Web サイトの Cookie・トラッキング技術の包括的監査手法。自動スキャン、Cookie 分類、ライフサイクル文書化、Planet49 CJEU 判決（C-673/17）を踏まえたコンプライアンスギャップ分析を扱う                          |
-| `cookie-consent-skills:cookie-lifetime-audit`      | Cookie 有効期間の監査時                       | 規制推奨値・ブラウザポリシーに対する Cookie 有効期間の監査。CNIL の 13 ヶ月上限推奨、セッション/永続 Cookie の分類、サードパーティ Cookie 廃止の影響、Safari ITP の期間上限を扱う                          |
-| `cookie-consent-skills:cookie-consent-testing`     | Cookie 同意の自動テスト構築時                 | Selenium と Playwright による Cookie 同意の自動検証。バナー操作テスト、同意状態の検証、同意選択後のタグ発火監査、Cookie コンプライアンスの回帰テスト、CI/CD パイプライン統合を扱う                          |
-| `cookie-consent-skills:eprivacy-essential-cookies` | 必須 Cookie の分類・免除判定時                 | ePrivacy 指令第 5 条(3)の必須 Cookie 免除を適用し、同意不要の Cookie を分類。免除基準・機能性 Cookie・負荷分散・セッション状態・非免除カテゴリを EDPB および各国 DPA のガイダンスとともに扱う                    |
-| `cookie-consent-skills:cross-jurisdiction-cookies` | 複数法域向け Cookie 同意の実装時               | EU ePrivacy 指令・英国 PECR・米国 CCPA/CPRA オプトアウトモデル・ブラジル LGPD を含む複数法域での Cookie コンプライアンス実装。要件マトリクスとジオロケーションベースの実装アプローチを提供                       |
-| `cookie-consent-skills:tcf-v2-implementation`      | TCF v2.2 対応 CMP 実装時                       | プログラマティック広告の同意管理向け IAB Transparency and Consent Framework v2.2 の実装。CMP 登録、Global Vendor List 連携、TC String エンコーディング、パブリッシャー制限、コンプライアンス検証を扱う          |
-| `cookie-consent-skills:gpc-cookie-integration`     | GPC 信号の CMP 連携実装時                      | Global Privacy Control（GPC）信号と Cookie 同意プラットフォームの連携。ブラウザでの GPC 信号検出、自動オプトアウトのトリガー、GPC と米国州法のマッピング、CCPA/CPA/CTDPA 対応の CMP 連携を扱う                  |
-| `cookie-consent-skills:server-side-tracking`       | サーバーサイドトラッキング導入時               | Google Tag Manager サーバーコンテナを使ったプライバシー配慮型サーバーサイドトラッキングの実装。ファーストパーティデータ収集、IP 匿名化、同意状態を考慮したイベント転送、クライアント側のサードパーティ Cookie 露出削減を扱う |
-| `cookie-consent-skills:cookieless-alternatives`    | Cookie レス計測への移行検討時                  | ポスト Cookie 時代に向けた Cookie レストラッキング代替手段の評価・実装。Privacy Sandbox API（Topics・Attribution Reporting・Protected Audiences）、サーバーサイド分析、プライバシー保護計測技術を扱う           |
-| `cookie-consent-skills:google-consent-mode-v2`     | Google Consent Mode v2 導入時                  | プライバシー準拠の計測・広告のための Google Consent Mode v2 設定。default/update コマンド、GA4・Google Ads への同意状態マッピング、Cookie レス ping によるコンバージョンモデリング、2024 年 3 月発効の EEA 要件を扱う |
-| `cookie-consent-skills:analytics-cookie-consent`   | アクセス解析ツール導入時の Cookie 同意設計時   | 分析 Cookie の同意管理とプライバシー保護計測の実装。GA4 のプライバシー設定、Consent Mode 時のフォールバック挙動、集計レポートによる代替手段、Cookie レス計測アプローチを扱う                                    |
+| `cookie-consent-skills:cnil-cookie-banner`         | Cookieバナー実装時                           | フランス・EUユーザー向けCNIL準拠Cookie同意バナーの設計・実装。Googleへの1億ユーロ、Metaへの1.5億ユーロの制裁金を参照。同意/拒否の均等表示、拒否ボタン、Cookieウォール禁止、6ヶ月ごとの再同意サイクルを扱う |
+| `cookie-consent-skills:cookie-audit`               | Cookie監査実施時                             | WebサイトのCookie・トラッキング技術の包括的監査手法。自動スキャン、Cookie分類、ライフサイクル文書化、Planet49 CJEU判決(C-673/17)を踏まえたコンプライアンスギャップ分析を扱う                          |
+| `cookie-consent-skills:cookie-lifetime-audit`      | Cookie有効期間の監査時                       | 規制推奨値・ブラウザポリシーに対するCookie有効期間の監査。CNILの13ヶ月上限推奨、セッション/永続Cookieの分類、サードパーティCookie廃止の影響、Safari ITPの期間上限を扱う                          |
+| `cookie-consent-skills:cookie-consent-testing`     | Cookie同意の自動テスト構築時                 | SeleniumとPlaywrightによるCookie同意の自動検証。バナー操作テスト、同意状態の検証、同意選択後のタグ発火監査、Cookieコンプライアンスの回帰テスト、CI/CDパイプライン統合を扱う                          |
+| `cookie-consent-skills:eprivacy-essential-cookies` | 必須Cookieの分類・免除判定時                 | ePrivacy指令第5条(3)の必須Cookie免除を適用し、同意不要のCookieを分類。免除基準・機能性Cookie・負荷分散・セッション状態・非免除カテゴリをEDPBおよび各国DPAのガイダンスとともに扱う                    |
+| `cookie-consent-skills:cross-jurisdiction-cookies` | 複数法域向けCookie同意の実装時               | EU ePrivacy指令・英国PECR・米国CCPA/CPRAオプトアウトモデル・ブラジルLGPDを含む複数法域でのCookieコンプライアンス実装。要件マトリクスとジオロケーションベースの実装アプローチを提供                       |
+| `cookie-consent-skills:tcf-v2-implementation`      | TCF v2.2対応CMP実装時                       | プログラマティック広告の同意管理向けIAB Transparency and Consent Framework v2.2の実装。CMP登録、Global Vendor List連携、TC Stringエンコーディング、パブリッシャー制限、コンプライアンス検証を扱う          |
+| `cookie-consent-skills:gpc-cookie-integration`     | GPC信号のCMP連携実装時                      | Global Privacy Control(GPC)信号とCookie同意プラットフォームの連携。ブラウザでのGPC信号検出、自動オプトアウトのトリガー、GPCと米国州法のマッピング、CCPA/CPA/CTDPA対応のCMP連携を扱う                  |
+| `cookie-consent-skills:server-side-tracking`       | サーバーサイドトラッキング導入時               | Google Tag Managerサーバーコンテナを使ったプライバシー配慮型サーバーサイドトラッキングの実装。ファーストパーティデータ収集、IP匿名化、同意状態を考慮したイベント転送、クライアント側のサードパーティCookie露出削減を扱う |
+| `cookie-consent-skills:cookieless-alternatives`    | Cookieレス計測への移行検討時                  | ポストCookie時代に向けたCookieレストラッキング代替手段の評価・実装。Privacy Sandbox API(Topics・Attribution Reporting・Protected Audiences)、サーバーサイド分析、プライバシー保護計測技術を扱う           |
+| `cookie-consent-skills:google-consent-mode-v2`     | Google Consent Mode v2導入時                  | プライバシー準拠の計測・広告のためのGoogle Consent Mode v2設定。default/updateコマンド、GA4・Google Adsへの同意状態マッピング、Cookieレスpingによるコンバージョンモデリング、2024年3月発効のEEA要件を扱う |
+| `cookie-consent-skills:analytics-cookie-consent`   | アクセス解析ツール導入時のCookie同意設計時   | 分析Cookieの同意管理とプライバシー保護計測の実装。GA4のプライバシー設定、Consent Mode時のフォールバック挙動、集計レポートによる代替手段、Cookieレス計測アプローチを扱う                                    |
 
 #### cross-border-transfers-skills
 
@@ -644,18 +644,18 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                                                    | トリガー                                          | 概要                                                                                                                                                        |
 | ----------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cross-border-transfers-skills:adequacy-assessment`         | 十分性認定国への移転可否評価時                    | GDPR 第 45 条に基づく第三国十分性認定の評価ガイド。現行の EC 十分性認定リスト、十分性評価基準、部分的十分性の取扱い、十分性認定見直しのモニタリングを扱う                              |
-| `cross-border-transfers-skills:eu-us-dpf-assessment`        | EU-US DPF を移転根拠として利用する場合            | 越大西洋データ移転向け EU-US データプライバシーフレームワーク十分性認定の評価・利用ガイド。商務省への DPF 自己認証、DPF 原則遵守、Data Protection Review Court、EC 年次レビューを扱う      |
-| `cross-border-transfers-skills:scc-implementation`          | SCC 締結・附属書作成時                            | 欧州委員会決定 2021/914 に基づく EU 標準契約条項（SCC）の 4 モジュール（C2C・C2P・P2P・P2C）全体の実装ガイド。条項ごとの記入方法、附属書 I〜III の作成、モジュール選定を扱う              |
-| `cross-border-transfers-skills:bcr-establishment`           | グループ内移転の BCR 策定時                       | GDPR 第 47 条に基づく企業グループ内国際データ移転のための拘束的企業準則（BCR）の策定・承認ガイド。第 47 条(2)(a)〜(n)の内容要件、リード監督機関による承認プロセス、WP256/WP257 を扱う      |
-| `cross-border-transfers-skills:art49-derogations`           | SCC 等が使えない移転の例外適用検討時              | 十分性認定や適切な保護措置がない場合の GDPR 第 49 条 derogation 要件の評価・適用ガイド。明示的同意・契約の必要性・公益・生命に関わる利益等、EDPB ガイドライン 2/2018 に基づく限定解釈を扱う  |
-| `cross-border-transfers-skills:transfer-impact-assessment`  | SCC 等での移転前の TIA 実施時                     | Schrems II 判決後の EDPB 勧告 01/2020 の 6 ステップ手法に基づく移転影響評価（TIA）プロセスガイド。移転先国のサーベイランス法評価、European Essential Guarantees 評価を扱う             |
-| `cross-border-transfers-skills:supplementary-measures`      | TIA の結果として補完的措置が必要な場合            | EDPB 勧告 01/2020 に基づく国際データ移転のための技術的・契約的・組織的補完的措置の実装ガイド。暗号化・仮名化・分割処理・監査権・透明性義務・内部方針を扱う                               |
-| `cross-border-transfers-skills:data-localization`           | データローカライゼーション要件への対応検討時      | ロシア(242-FZ)・中国(PIPL 第 40 条・CAC 措置)・インド(DPDP 法)・トルコ・ベトナム・インドネシア等の要件への準拠ガイド。ローカライゼーション評価、アーキテクチャ設計、適用除外手続きを扱う  |
-| `cross-border-transfers-skills:apac-transfers`              | APAC 地域への越境移転設計時                       | APEC CBPR・ASEAN モデル契約条項・日本 APPI 補足規則・韓国 PIPA 規定・タイ/シンガポール PDPA メカニズムを含むアジア太平洋地域の越境データ移転管理ガイド                                  |
-| `cross-border-transfers-skills:uk-transfer-mechanisms`      | 英国からの越境移転設計時                          | Brexit 後の英国国際データ移転メカニズムの実装ガイド。国際データ移転契約（IDTA）、EU SCC への英国附則、英国十分性評価、ICO 移転リスク評価ツールを扱う                                    |
+| `cross-border-transfers-skills:adequacy-assessment`         | 十分性認定国への移転可否評価時                    | GDPR第45条に基づく第三国十分性認定の評価ガイド。現行のEC十分性認定リスト、十分性評価基準、部分的十分性の取扱い、十分性認定見直しのモニタリングを扱う                              |
+| `cross-border-transfers-skills:eu-us-dpf-assessment`        | EU-US DPFを移転根拠として利用する場合            | 越大西洋データ移転向けEU-USデータプライバシーフレームワーク十分性認定の評価・利用ガイド。商務省へのDPF自己認証、DPF原則遵守、Data Protection Review Court、EC年次レビューを扱う      |
+| `cross-border-transfers-skills:scc-implementation`          | SCC締結・附属書作成時                            | 欧州委員会決定2021/914に基づくEU標準契約条項(SCC)の4モジュール(C2C・C2P・P2P・P2C)全体の実装ガイド。条項ごとの記入方法、附属書I〜IIIの作成、モジュール選定を扱う              |
+| `cross-border-transfers-skills:bcr-establishment`           | グループ内移転のBCR策定時                       | GDPR第47条に基づく企業グループ内国際データ移転のための拘束的企業準則(BCR)の策定・承認ガイド。第47条(2)(a)〜(n)の内容要件、リード監督機関による承認プロセス、WP256/WP257を扱う      |
+| `cross-border-transfers-skills:art49-derogations`           | SCC等が使えない移転の例外適用検討時              | 十分性認定や適切な保護措置がない場合のGDPR第49条derogation要件の評価・適用ガイド。明示的同意・契約の必要性・公益・生命に関わる利益等、EDPBガイドライン2/2018に基づく限定解釈を扱う  |
+| `cross-border-transfers-skills:transfer-impact-assessment`  | SCC等での移転前のTIA実施時                     | Schrems II判決後のEDPB勧告01/2020の6ステップ手法に基づく移転影響評価(TIA)プロセスガイド。移転先国のサーベイランス法評価、European Essential Guarantees評価を扱う             |
+| `cross-border-transfers-skills:supplementary-measures`      | TIAの結果として補完的措置が必要な場合            | EDPB勧告01/2020に基づく国際データ移転のための技術的・契約的・組織的補完的措置の実装ガイド。暗号化・仮名化・分割処理・監査権・透明性義務・内部方針を扱う                               |
+| `cross-border-transfers-skills:data-localization`           | データローカライゼーション要件への対応検討時      | ロシア(242-FZ)・中国(PIPL第40条・CAC措置)・インド(DPDP法)・トルコ・ベトナム・インドネシア等の要件への準拠ガイド。ローカライゼーション評価、アーキテクチャ設計、適用除外手続きを扱う  |
+| `cross-border-transfers-skills:apac-transfers`              | APAC地域への越境移転設計時                       | APEC CBPR・ASEANモデル契約条項・日本APPI補足規則・韓国PIPA規定・タイ/シンガポールPDPAメカニズムを含むアジア太平洋地域の越境データ移転管理ガイド                                  |
+| `cross-border-transfers-skills:uk-transfer-mechanisms`      | 英国からの越境移転設計時                          | Brexit後の英国国際データ移転メカニズムの実装ガイド。国際データ移転契約(IDTA)、EU SCCへの英国附則、英国十分性評価、ICO移転リスク評価ツールを扱う                                    |
 | `cross-border-transfers-skills:data-flow-mapping`           | 越境データフローの棚卸し・可視化時                | 組織全体の国際個人データフローの体系的マッピングガイド。システム単位の棚卸し手法、第三者の特定、移転メカニズムの割当、ギャップ分析、データフロー可視化を扱う                              |
-| `cross-border-transfers-skills:transfer-records`            | 移転記録・監査証跡の整備時                        | GDPR 第 30 条・第 46 条、EDPB の記録保持ガイダンス、監督機関の期待に基づく越境移転登録簿・監査証跡・コンプライアンス文書の維持ガイド                                                    |
+| `cross-border-transfers-skills:transfer-records`            | 移転記録・監査証跡の整備時                        | GDPR第30条・第46条、EDPBの記録保持ガイダンス、監督機関の期待に基づく越境移転登録簿・監査証跡・コンプライアンス文書の維持ガイド                                                    |
 
 #### data-retention-skills
 
@@ -664,18 +664,18 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                                             | トリガー                                        | 概要                                                                                                                                                    |
 | ---------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data-retention-skills:retention-schedule`          | 保存スケジュール策定時                            | GDPR 第 5 条(1)(e)の保存制限原則に準拠したデータ保存スケジュールの設計・実装。データカテゴリと保存期間のマッピング、法的根拠の正当化、規制上の最低保存期間、自動レビュートリガーを扱う                     |
-| `data-retention-skills:retention-impact-assess`      | 新規処理活動の保存期間を決定する場合              | 新規処理活動に適切な保存期間を決定するための保存影響評価の実施。規制要件の洗い出し、比例性レビュー、目的ベースの保存期間決定、GDPR 第 5 条(1)(e)・第 25 条に沿った文書化を扱う                             |
+| `data-retention-skills:retention-schedule`          | 保存スケジュール策定時                            | GDPR第5条(1)(e)の保存制限原則に準拠したデータ保存スケジュールの設計・実装。データカテゴリと保存期間のマッピング、法的根拠の正当化、規制上の最低保存期間、自動レビュートリガーを扱う                     |
+| `data-retention-skills:retention-impact-assess`      | 新規処理活動の保存期間を決定する場合              | 新規処理活動に適切な保存期間を決定するための保存影響評価の実施。規制要件の洗い出し、比例性レビュー、目的ベースの保存期間決定、GDPR第5条(1)(e)・第25条に沿った文書化を扱う                             |
 | `data-retention-skills:retention-exception-mgmt`     | 保存期間の例外的延長を承認・管理する場合          | 申請・承認プロセス・期間上限・定期レビューサイクル・文書化要件・監査証跡維持を含む保存例外ワークフローの管理。データの野放図な蓄積を防ぐガバナンス統制を扱う                                                  |
-| `data-retention-skills:anonymization-alternative`    | 匿名化を保存代替策として検討時                    | GDPR 前文 26 項に基づき、保存期間の代替手段としての匿名化を評価。WP29 意見 05/2014 のランダム化・一般化などの技術を適用し、k-匿名性・l-多様性・t-近接性の指標で有効性を検証                            |
-| `data-retention-skills:auto-deletion-workflow`       | 自動削除・保存期間満了時の削除処理実装時          | GDPR 第 17 条の消去権および保存期間満了に対応する自動データ削除ワークフローの実装。依存システム間のカスケード削除、参照整合性の依存関係処理、確認ログ記録、監査証跡生成を扱う                                |
+| `data-retention-skills:anonymization-alternative`    | 匿名化を保存代替策として検討時                    | GDPR前文26項に基づき、保存期間の代替手段としての匿名化を評価。WP29意見05/2014のランダム化・一般化などの技術を適用し、k-匿名性・l-多様性・t-近接性の指標で有効性を検証                            |
+| `data-retention-skills:auto-deletion-workflow`       | 自動削除・保存期間満了時の削除処理実装時          | GDPR第17条の消去権および保存期間満了に対応する自動データ削除ワークフローの実装。依存システム間のカスケード削除、参照整合性の依存関係処理、確認ログ記録、監査証跡生成を扱う                                |
 | `data-retention-skills:backup-retention-erasure`     | バックアップ・アーカイブの消去対応時              | 保存スケジュールと消去義務下でのバックアップ・アーカイブデータの管理。バックアップ削除の技術的実行不能例外、保存期間とのサイクル整合、復元後削除手順、保持中の暫定的保護措置を扱う                            |
-| `data-retention-skills:secure-data-destruction`      | 記録媒体の安全な破棄実施時                        | 全メディア種別に対する NIST SP 800-88 Rev.1 のメディア無害化手順（Clear/Purge/Destroy）の実装。破棄証明書の発行、検証手続き、第三者破棄業者管理、chain of custody 文書化を扱う                       |
-| `data-retention-skills:litigation-hold-mgmt`         | 訴訟・調査に伴うリーガルホールド発動時            | 発生事由・保管者への通知・保持措置の技術的実装・解除手続きを含む法的ホールド・データ保全プロセスの管理。リーガルホールド登録簿・遵守モニタリング・第 17 条(3)(e)例外の文書化を扱う                            |
-| `data-retention-skills:search-engine-erasure`        | 検索結果の削除（忘れられる権利）対応時            | GDPR 第 17 条および CJEU Google Spain 判決（C-131/12）に基づく検索エンジンでの忘れられる権利の実装。削除リクエスト手続き、プライバシーと公益のバランス評価基準、地理的適用範囲の判定を扱う                 |
+| `data-retention-skills:secure-data-destruction`      | 記録媒体の安全な破棄実施時                        | 全メディア種別に対するNIST SP 800-88 Rev.1のメディア無害化手順(Clear/Purge/Destroy)の実装。破棄証明書の発行、検証手続き、第三者破棄業者管理、chain of custody文書化を扱う                       |
+| `data-retention-skills:litigation-hold-mgmt`         | 訴訟・調査に伴うリーガルホールド発動時            | 発生事由・保管者への通知・保持措置の技術的実装・解除手続きを含む法的ホールド・データ保全プロセスの管理。リーガルホールド登録簿・遵守モニタリング・第17条(3)(e)例外の文書化を扱う                            |
+| `data-retention-skills:search-engine-erasure`        | 検索結果の削除(忘れられる権利)対応時            | GDPR第17条およびCJEU Google Spain判決(C-131/12)に基づく検索エンジンでの忘れられる権利の実装。削除リクエスト手続き、プライバシーと公益のバランス評価基準、地理的適用範囲の判定を扱う                 |
 | `data-retention-skills:cloud-retention-config`       | クラウドストレージの保存ポリシー設定時            | クラウドストレージ保存ポリシー設定。ライフサイクルルール・オブジェクトロック・リーガルホールド・イミュータビリティポリシーを扱う                                                                          |
-| `data-retention-skills:financial-retention`          | 財務・決済データの保存要件整理時                  | EU 指令(5〜7 年)・SOX 第 802 条(7 年)・MiFID II(5〜7 年)・税務記録・決済データ・AMLD 下の AML 義務を横断する財務記録保存要件の実装。法域間の整合を図る                                          |
-| `data-retention-skills:ccpa-right-to-delete`         | CCPA/CPRA 削除請求対応実装時                      | CCPA 第 1798.105 条の削除権と CPRA 改正への対応実装。サービスプロバイダの義務、法定除外事由、消費者本人確認手続き、45 日の対応期限管理を扱う                                                          |
+| `data-retention-skills:financial-retention`          | 財務・決済データの保存要件整理時                  | EU指令(5〜7年)・SOX第802条(7年)・MiFID II(5〜7年)・税務記録・決済データ・AMLD下のAML義務を横断する財務記録保存要件の実装。法域間の整合を図る                                          |
+| `data-retention-skills:ccpa-right-to-delete`         | CCPA/CPRA削除請求対応実装時                      | CCPA第1798.105条の削除権とCPRA改正への対応実装。サービスプロバイダの義務、法定除外事由、消費者本人確認手続き、45日の対応期限管理を扱う                                                          |
 
 #### data-subject-rights-skills
 
@@ -684,21 +684,21 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                                                     | トリガー                                     | 概要                                                                                                                                                     |
 | ------------------------------------------------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data-subject-rights-skills:dsar-processing`                | DSAR/アクセス請求対応時                       | GDPR 第 15 条に基づくデータ主体アクセス請求（DSAR）の完全なワークフロー対応。本人確認、30 日期限（延長含む）の算定、回答フォーマット、適用除外、手数料規定を扱う                                          |
-| `data-subject-rights-skills:dsar-intake-system`             | DSAR 受付窓口の構築時                         | Web フォーム・メール・電話・対面を含むマルチチャネル DSAR 受付システムの構築。本人確認の階層、自動ルーティングロジック、SLA 追跡、回答生成を扱う                                                          |
-| `data-subject-rights-skills:right-to-erasure`                | 消去請求対応時                               | GDPR 第 17 条の消去権（忘れられる権利）ワークフローの実装。6 つの消去事由すべて、5 つの例外、技術的削除と匿名化の判断、第 19 条に基づく第三者通知を扱う                                                    |
-| `data-subject-rights-skills:right-to-rectification`         | 訂正請求対応時                               | GDPR 第 16 条の訂正権請求の処理。訂正後データの正確性検証、第 19 条に基づく受領者への通知、期限管理、不完全なデータの補完を扱う                                                                            |
-| `data-subject-rights-skills:data-portability`                | データポータビリティ請求対応時               | GDPR 第 20 条のデータポータビリティ請求の実行。機械可読形式（JSON/CSV/XML）要件、管理者間の直接転送メカニズム、同意・契約に基づき本人が提供したデータへの範囲限定を扱う                                            |
-| `data-subject-rights-skills:right-to-object`                 | 処理への異議申立て対応時                     | GDPR 第 21 条の処理への異議申立て対応。やむを得ない正当な事由の評価、処理停止義務、文書化要件、第 17 条(1)(c)の消去権との関係を扱う                                                                        |
-| `data-subject-rights-skills:restriction-of-processing`       | 処理制限請求対応時                           | GDPR 第 18 条の処理制限請求への対応。正確性の争い・違法な処理・消去への異議・正当利益判定待ちの 4 つの制限事由、技術的フラグ付けメカニズム、解除手続きを扱う                                                    |
-| `data-subject-rights-skills:automated-decision-rights`      | 自動意思決定・プロファイリングへの対応時     | 完全自動処理による意思決定・プロファイリングに関する GDPR 第 22 条の権利管理。自動意思決定の識別、人間による有意義な関与の実装、ロジック説明義務、異議申立てメカニズムを扱う                                            |
-| `data-subject-rights-skills:marketing-objection`             | マーケティングオプトアウト対応時             | GDPR 第 21 条(2)〜(3)のダイレクトマーケティングへの絶対的異議申立権の管理。全マーケティング処理の即時停止、サプレッションリスト管理、チャネル横断的な適用、プロファイリングを扱う                                        |
-| `data-subject-rights-skills:direct-collection-notice`       | 直接収集時のプライバシー通知作成時           | 直接データ収集時点での GDPR 第 13 条情報提供の実装。第 13 条(1)(a)〜(f)・(2)(a)〜(g)の全要素、階層型通知デザイン、タイミング要件を扱う                                                                        |
-| `data-subject-rights-skills:indirect-collection-notice`     | 間接取得データのプライバシー通知作成時       | 本人以外から取得した個人データに関する GDPR 第 14 条情報提供の実装。タイミング要件（合理的期間内、最長 1 ヶ月）、取得元の開示、第 14 条(5)の適用除外を扱う                                                        |
-| `data-subject-rights-skills:transparent-communication`      | プライバシー通知の平易な文章設計時           | GDPR 第 12 条の透明性ある情報提供・コミュニケーション要件の実装。簡潔・平易・分かりやすい言葉での提供義務、対応期限、手数料・拒否規定、階層型通知デザインを扱う                                                        |
-| `data-subject-rights-skills:regulatory-complaints`          | 監督機関への苦情申立て対応時                 | GDPR 第 77 条に基づき監督機関に提出された苦情への対応管理。内部エスカレーション手続き、DPA との対応調整、是正措置の追跡、コンプライアンス文書化を扱う                                                              |
-| `data-subject-rights-skills:ccpa-consumer-requests`         | CCPA 消費者請求対応時                        | CCPA（カリフォルニア州民法第 1798.100〜125 条）に基づく消費者権利請求の管理。知る権利・削除権・販売オプトアウト権・非差別の原則、45 日の対応期限と本人確認要件を扱う                                                    |
-| `data-subject-rights-skills:cpra-opt-out-signals`           | GPC 等オプトアウト信号への対応実装時         | CPRA 第 1798.135 条のオプトアウト選好信号対応の実装。GPC の技術的検知、自動信号の遵守、デバイス間の一貫性、ブラウザ信号と明示的な消費者選択の関係を扱う                                                              |
+| `data-subject-rights-skills:dsar-processing`                | DSAR/アクセス請求対応時                       | GDPR第15条に基づくデータ主体アクセス請求(DSAR)の完全なワークフロー対応。本人確認、30日期限(延長含む)の算定、回答フォーマット、適用除外、手数料規定を扱う                                          |
+| `data-subject-rights-skills:dsar-intake-system`             | DSAR受付窓口の構築時                         | Webフォーム・メール・電話・対面を含むマルチチャネルDSAR受付システムの構築。本人確認の階層、自動ルーティングロジック、SLA追跡、回答生成を扱う                                                          |
+| `data-subject-rights-skills:right-to-erasure`                | 消去請求対応時                               | GDPR第17条の消去権(忘れられる権利)ワークフローの実装。6つの消去事由すべて、5つの例外、技術的削除と匿名化の判断、第19条に基づく第三者通知を扱う                                                    |
+| `data-subject-rights-skills:right-to-rectification`         | 訂正請求対応時                               | GDPR第16条の訂正権請求の処理。訂正後データの正確性検証、第19条に基づく受領者への通知、期限管理、不完全なデータの補完を扱う                                                                            |
+| `data-subject-rights-skills:data-portability`                | データポータビリティ請求対応時               | GDPR第20条のデータポータビリティ請求の実行。機械可読形式(JSON/CSV/XML)要件、管理者間の直接転送メカニズム、同意・契約に基づき本人が提供したデータへの範囲限定を扱う                                            |
+| `data-subject-rights-skills:right-to-object`                 | 処理への異議申立て対応時                     | GDPR第21条の処理への異議申立て対応。やむを得ない正当な事由の評価、処理停止義務、文書化要件、第17条(1)(c)の消去権との関係を扱う                                                                        |
+| `data-subject-rights-skills:restriction-of-processing`       | 処理制限請求対応時                           | GDPR第18条の処理制限請求への対応。正確性の争い・違法な処理・消去への異議・正当利益判定待ちの4つの制限事由、技術的フラグ付けメカニズム、解除手続きを扱う                                                    |
+| `data-subject-rights-skills:automated-decision-rights`      | 自動意思決定・プロファイリングへの対応時     | 完全自動処理による意思決定・プロファイリングに関するGDPR第22条の権利管理。自動意思決定の識別、人間による有意義な関与の実装、ロジック説明義務、異議申立てメカニズムを扱う                                            |
+| `data-subject-rights-skills:marketing-objection`             | マーケティングオプトアウト対応時             | GDPR第21条(2)〜(3)のダイレクトマーケティングへの絶対的異議申立権の管理。全マーケティング処理の即時停止、サプレッションリスト管理、チャネル横断的な適用、プロファイリングを扱う                                        |
+| `data-subject-rights-skills:direct-collection-notice`       | 直接収集時のプライバシー通知作成時           | 直接データ収集時点でのGDPR第13条情報提供の実装。第13条(1)(a)〜(f)・(2)(a)〜(g)の全要素、階層型通知デザイン、タイミング要件を扱う                                                                        |
+| `data-subject-rights-skills:indirect-collection-notice`     | 間接取得データのプライバシー通知作成時       | 本人以外から取得した個人データに関するGDPR第14条情報提供の実装。タイミング要件(合理的期間内、最長1ヶ月)、取得元の開示、第14条(5)の適用除外を扱う                                                        |
+| `data-subject-rights-skills:transparent-communication`      | プライバシー通知の平易な文章設計時           | GDPR第12条の透明性ある情報提供・コミュニケーション要件の実装。簡潔・平易・分かりやすい言葉での提供義務、対応期限、手数料・拒否規定、階層型通知デザインを扱う                                                        |
+| `data-subject-rights-skills:regulatory-complaints`          | 監督機関への苦情申立て対応時                 | GDPR第77条に基づき監督機関に提出された苦情への対応管理。内部エスカレーション手続き、DPAとの対応調整、是正措置の追跡、コンプライアンス文書化を扱う                                                              |
+| `data-subject-rights-skills:ccpa-consumer-requests`         | CCPA消費者請求対応時                        | CCPA(カリフォルニア州民法第1798.100〜125条)に基づく消費者権利請求の管理。知る権利・削除権・販売オプトアウト権・非差別の原則、45日の対応期限と本人確認要件を扱う                                                    |
+| `data-subject-rights-skills:cpra-opt-out-signals`           | GPC等オプトアウト信号への対応実装時         | CPRA第1798.135条のオプトアウト選好信号対応の実装。GPCの技術的検知、自動信号の遵守、デバイス間の一貫性、ブラウザ信号と明示的な消費者選択の関係を扱う                                                              |
 
 #### gdpr-compliance-skills
 
@@ -707,24 +707,24 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                                              | トリガー                                              | 概要                                                                                                                                       |
 | ------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `gdpr-compliance-skills:gdpr-compliance-audit`         | コンプライアンス監査・監督機関の査察準備時            | GDPR 第 5・24・25・28・30・32・35・37 条等の主要要件に対する包括的な組織監査ガイド。原則・アカウンタビリティ・セキュリティ・ガバナンスをカバーする 50 以上の管理項目を含む             |
-| `gdpr-compliance-skills:gdpr-gap-analysis`             | コンプライアンスプログラム開始・定期再評価時          | GDPR 全章に対する現状とのギャップの体系的評価と優先順位付けされた是正マトリクスの作成ガイド                                                                                        |
+| `gdpr-compliance-skills:gdpr-compliance-audit`         | コンプライアンス監査・監督機関の査察準備時            | GDPR第5・24・25・28・30・32・35・37条等の主要要件に対する包括的な組織監査ガイド。原則・アカウンタビリティ・セキュリティ・ガバナンスをカバーする50以上の管理項目を含む             |
+| `gdpr-compliance-skills:gdpr-gap-analysis`             | コンプライアンスプログラム開始・定期再評価時          | GDPR全章に対する現状とのギャップの体系的評価と優先順位付けされた是正マトリクスの作成ガイド                                                                                        |
 | `gdpr-compliance-skills:gdpr-remediation-roadmap`      | コンプライアンスプログラム構築・予算配分時            | ギャップ分析の結果をマイルストーンとリスクベース優先順位付けを伴う段階的実装計画に変換するガイド                                                                                    |
-| `gdpr-compliance-skills:gdpr-self-assessment`          | 内部レビュー・成熟度ベンチマーク時                    | GDPR 第 5〜49 条を対象とするスコアリング手法・報告様式付きの管理者自己評価ガイド                                                                                                |
-| `gdpr-compliance-skills:gdpr-accountability`           | アカウンタビリティ体制の構築・監督機関への説明準備時  | GDPR 第 5 条(2)・第 24 条のアカウンタビリティ原則実装ガイド。方針・DPIA・処理活動記録（RoPA）・研修記録・侵害ログの文書化要件を扱う                                                        |
-| `gdpr-compliance-skills:gdpr-ropa-audit`               | RoPA の網羅性検証・査察準備時                         | 管理者・処理者双方の GDPR 第 30 条要件に対する処理活動記録（RoPA）の監査ガイド                                                                                                  |
-| `gdpr-compliance-skills:gdpr-doc-review`               | 文書監査・査察準備時                                  | GDPR 第 5・13〜14・24・28・30 条に対する処理文書の網羅性の体系的レビューガイド                                                                                                  |
-| `gdpr-compliance-skills:lawful-basis-assessment`       | 処理の法的根拠を評価・見直しする時                    | 各処理活動に対する GDPR 第 6 条(1)(a)〜(f)の正しい法的根拠を判定するガイド。同意 vs 正当な利益 vs 契約の必要性の決定木ロジックを含む                                                        |
-| `gdpr-compliance-skills:legitimate-interest-lia`       | 正当な利益を法的根拠として評価・文書化する時          | GDPR 第 6 条(1)(f)で必要となる 3 段階正当利益評価（LIA、目的テスト・必要性テスト・比較衡量テスト）ガイド                                                                                  |
-| `gdpr-compliance-skills:joint-controller-art26`        | 複数の管理者が共同で処理目的・手段を決定する場合      | GDPR 第 26 条の共同管理者体制の確立・管理ガイド。共同管理者性の判定・責任配分・透明性義務を扱う                                                                                          |
-| `gdpr-compliance-skills:gdpr-dpa-art28`                | 処理者のオンボーディング・DPA レビュー時              | GDPR 第 28 条(3)に基づくデータ処理契約（DPA）の作成・レビューガイド。8 つの必須条項全てを扱い、2021 年版標準契約条項を参照                                                                    |
-| `gdpr-compliance-skills:gdpr-policy-framework`         | ポリシーフレームワークの構築・更新時                  | GDPR 各章に沿った組織のプライバシーポリシー階層（上位方針・手順・運用ガイドライン・研修資料）作成ガイド                                                                                    |
-| `gdpr-compliance-skills:gdpr-prior-consultation`       | DPIA で高リスクが残存した場合の規制当局協議時         | DPIA が高い残存リスクを示した場合の GDPR 第 36 条事前協議プロセスガイド。期限要件・文書化・結果対応を扱う                                                                                    |
-| `gdpr-compliance-skills:gdpr-dpa-cooperation`          | 監督機関の調査・情報提供要求への対応時                | GDPR 第 31 条に基づく監督機関との協力ガイド。調査・情報提供要求・立入検査への対応手続きを扱う                                                                                              |
-| `gdpr-compliance-skills:gdpr-one-stop-shop`            | EU 域内複数国にまたがる処理を行う場合                 | GDPR 第 56 条のワンストップショップメカニズムに基づくリード監督機関の決定ガイド。主たる拠点の特定と協力を扱う                                                                                    |
-| `gdpr-compliance-skills:gdpr-eu-representative`        | 非 EU 事業者が EU データを処理する場合                | 非 EU 管理者・処理者向け GDPR 第 27 条の EU 代理人選任ガイド。選任基準・責任・文書化を扱う                                                                                          |
-| `gdpr-compliance-skills:gdpr-certification`            | プライバシー認証の取得・認証機関評価時                | GDPR 第 42〜43 条のデータ保護認証メカニズム実装ガイド。認定認証機関、認証基準の策定、定期審査を扱う                                                                                        |
-| `gdpr-compliance-skills:gdpr-codes-of-conduct`         | 業界行動規範の策定・モニタリング団体設立時            | GDPR 第 40〜41 条の業界別行動規範の策定ガイド。策定・提出・モニタリング団体要件を扱う                                                                                                    |
+| `gdpr-compliance-skills:gdpr-self-assessment`          | 内部レビュー・成熟度ベンチマーク時                    | GDPR第5〜49条を対象とするスコアリング手法・報告様式付きの管理者自己評価ガイド                                                                                                |
+| `gdpr-compliance-skills:gdpr-accountability`           | アカウンタビリティ体制の構築・監督機関への説明準備時  | GDPR第5条(2)・第24条のアカウンタビリティ原則実装ガイド。方針・DPIA・処理活動記録(RoPA)・研修記録・侵害ログの文書化要件を扱う                                                        |
+| `gdpr-compliance-skills:gdpr-ropa-audit`               | RoPAの網羅性検証・査察準備時                         | 管理者・処理者双方のGDPR第30条要件に対する処理活動記録(RoPA)の監査ガイド                                                                                                  |
+| `gdpr-compliance-skills:gdpr-doc-review`               | 文書監査・査察準備時                                  | GDPR第5・13〜14・24・28・30条に対する処理文書の網羅性の体系的レビューガイド                                                                                                  |
+| `gdpr-compliance-skills:lawful-basis-assessment`       | 処理の法的根拠を評価・見直しする時                    | 各処理活動に対するGDPR第6条(1)(a)〜(f)の正しい法的根拠を判定するガイド。同意vs正当な利益vs契約の必要性の決定木ロジックを含む                                                        |
+| `gdpr-compliance-skills:legitimate-interest-lia`       | 正当な利益を法的根拠として評価・文書化する時          | GDPR第6条(1)(f)で必要となる3段階正当利益評価(LIA、目的テスト・必要性テスト・比較衡量テスト)ガイド                                                                                  |
+| `gdpr-compliance-skills:joint-controller-art26`        | 複数の管理者が共同で処理目的・手段を決定する場合      | GDPR第26条の共同管理者体制の確立・管理ガイド。共同管理者性の判定・責任配分・透明性義務を扱う                                                                                          |
+| `gdpr-compliance-skills:gdpr-dpa-art28`                | 処理者のオンボーディング・DPAレビュー時              | GDPR第28条(3)に基づくデータ処理契約(DPA)の作成・レビューガイド。8つの必須条項全てを扱い、2021年版標準契約条項を参照                                                                    |
+| `gdpr-compliance-skills:gdpr-policy-framework`         | ポリシーフレームワークの構築・更新時                  | GDPR各章に沿った組織のプライバシーポリシー階層(上位方針・手順・運用ガイドライン・研修資料)作成ガイド                                                                                    |
+| `gdpr-compliance-skills:gdpr-prior-consultation`       | DPIAで高リスクが残存した場合の規制当局協議時         | DPIAが高い残存リスクを示した場合のGDPR第36条事前協議プロセスガイド。期限要件・文書化・結果対応を扱う                                                                                    |
+| `gdpr-compliance-skills:gdpr-dpa-cooperation`          | 監督機関の調査・情報提供要求への対応時                | GDPR第31条に基づく監督機関との協力ガイド。調査・情報提供要求・立入検査への対応手続きを扱う                                                                                              |
+| `gdpr-compliance-skills:gdpr-one-stop-shop`            | EU域内複数国にまたがる処理を行う場合                 | GDPR第56条のワンストップショップメカニズムに基づくリード監督機関の決定ガイド。主たる拠点の特定と協力を扱う                                                                                    |
+| `gdpr-compliance-skills:gdpr-eu-representative`        | 非EU事業者がEUデータを処理する場合                | 非EU管理者・処理者向けGDPR第27条のEU代理人選任ガイド。選任基準・責任・文書化を扱う                                                                                          |
+| `gdpr-compliance-skills:gdpr-certification`            | プライバシー認証の取得・認証機関評価時                | GDPR第42〜43条のデータ保護認証メカニズム実装ガイド。認定認証機関、認証基準の策定、定期審査を扱う                                                                                        |
+| `gdpr-compliance-skills:gdpr-codes-of-conduct`         | 業界行動規範の策定・モニタリング団体設立時            | GDPR第40〜41条の業界別行動規範の策定ガイド。策定・提出・モニタリング団体要件を扱う                                                                                                    |
 
 #### global-privacy-regulations-skills
 
@@ -733,14 +733,14 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                                                         | トリガー                                        | 概要                                                                                                                                     |
 | ---------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `global-privacy-regulations-skills:japan-appi`                   | 日本向けサービスの APPI 対応・越境移転設計時    | 個人情報保護法（APPI、2022 年改正）の遵守ガイド。個人の権利拡大、移転前情報提供義務を含む越境移転制限、個人情報保護委員会（PPC）の執行、仮名加工情報・匿名加工情報を扱う              |
-| `global-privacy-regulations-skills:china-pipl`                   | 中国向けサービスのプライバシー対応・越境移転設計時 | 中国個人情報保護法（PIPL、2021 年 11 月 1 日施行）の遵守ガイド。同意要件、越境移転メカニズム（CAC セキュリティ評価・標準契約・認証）、個別同意のトリガー、重要情報インフラ事業者の義務を扱う |
-| `global-privacy-regulations-skills:brazil-lgpd`                  | ブラジル向けサービスのプライバシー対応時         | ブラジル一般データ保護法（LGPD、法律 13.709/2018）の遵守ガイド。第 7 条の 10 の法的根拠、DPO 選任、ANPD による執行、データ主体の権利、国際移転メカニズムを扱う                          |
-| `global-privacy-regulations-skills:india-dpdp-act`               | インド向けサービスのプライバシー対応時           | インドデジタル個人データ保護法 2023 の遵守ガイド。同意管理者登録、データ受託者義務、重要データ受託者要件、データ主体の権利、審議会の執行フレームワークを扱う                                |
-| `global-privacy-regulations-skills:korea-pipa`                   | 韓国向けサービスのプライバシー対応時             | 韓国個人情報保護法（PIPA）の遵守ガイド。仮名処理フレームワーク、通知要件、PIPC による執行、同意基準、2023 年改正下の越境移転規則を扱う                                            |
-| `global-privacy-regulations-skills:singapore-pdpa`               | シンガポール向けサービスのプライバシー対応時     | シンガポール個人データ保護法 2012（PDPA）の遵守ガイド。PDPC アドバイザリーガイドライン、Do Not Call 登録簿、データ仲介者の義務、みなし同意、2020〜2021 年改正を扱う                       |
-| `global-privacy-regulations-skills:thailand-pdpa`                | タイ向けサービスのプライバシー対応時             | タイ個人データ保護法 B.E.2562（2019 年）の遵守ガイド。同意フレームワーク、DPO 要件、PDPC 執行、処理の法的根拠、越境移転メカニズム、データ主体の権利を扱う                                  |
-| `global-privacy-regulations-skills:australia-privacy-act`        | 豪州向けサービスのプライバシー対応時             | 2024 年改正を含む豪州プライバシー法 1988 年の遵守ガイド。自動意思決定の透明性、子ども向けプライバシーコード、個人の権利拡大、執行強化、豪州プライバシー原則（APPs）を扱う                       |
+| `global-privacy-regulations-skills:japan-appi`                   | 日本向けサービスのAPPI対応・越境移転設計時    | 個人情報保護法(APPI、2022年改正)の遵守ガイド。個人の権利拡大、移転前情報提供義務を含む越境移転制限、個人情報保護委員会(PPC)の執行、仮名加工情報・匿名加工情報を扱う              |
+| `global-privacy-regulations-skills:china-pipl`                   | 中国向けサービスのプライバシー対応・越境移転設計時 | 中国個人情報保護法(PIPL、2021年11月1日施行)の遵守ガイド。同意要件、越境移転メカニズム(CACセキュリティ評価・標準契約・認証)、個別同意のトリガー、重要情報インフラ事業者の義務を扱う |
+| `global-privacy-regulations-skills:brazil-lgpd`                  | ブラジル向けサービスのプライバシー対応時         | ブラジル一般データ保護法(LGPD、法律13.709/2018)の遵守ガイド。第7条の10の法的根拠、DPO選任、ANPDによる執行、データ主体の権利、国際移転メカニズムを扱う                          |
+| `global-privacy-regulations-skills:india-dpdp-act`               | インド向けサービスのプライバシー対応時           | インドデジタル個人データ保護法2023の遵守ガイド。同意管理者登録、データ受託者義務、重要データ受託者要件、データ主体の権利、審議会の執行フレームワークを扱う                                |
+| `global-privacy-regulations-skills:korea-pipa`                   | 韓国向けサービスのプライバシー対応時             | 韓国個人情報保護法(PIPA)の遵守ガイド。仮名処理フレームワーク、通知要件、PIPCによる執行、同意基準、2023年改正下の越境移転規則を扱う                                            |
+| `global-privacy-regulations-skills:singapore-pdpa`               | シンガポール向けサービスのプライバシー対応時     | シンガポール個人データ保護法2012(PDPA)の遵守ガイド。PDPCアドバイザリーガイドライン、Do Not Call登録簿、データ仲介者の義務、みなし同意、2020〜2021年改正を扱う                       |
+| `global-privacy-regulations-skills:thailand-pdpa`                | タイ向けサービスのプライバシー対応時             | タイ個人データ保護法B.E.2562(2019年)の遵守ガイド。同意フレームワーク、DPO要件、PDPC執行、処理の法的根拠、越境移転メカニズム、データ主体の権利を扱う                                  |
+| `global-privacy-regulations-skills:australia-privacy-act`        | 豪州向けサービスのプライバシー対応時             | 2024年改正を含む豪州プライバシー法1988年の遵守ガイド。自動意思決定の透明性、子ども向けプライバシーコード、個人の権利拡大、執行強化、豪州プライバシー原則(APPs)を扱う                       |
 | `global-privacy-regulations-skills:multi-jurisdiction-matrix`    | 多法域コンプライアンスマトリクス構築時           | 複数国で事業展開する組織向けの多法域プライバシーコンプライアンスマトリクス構築ガイド。共通要件の特定、法域固有の差分、ギャップ分析、統一統制フレームワークを扱う                                     |
 | `global-privacy-regulations-skills:conflicting-laws-mgmt`        | 複数法域で要件が矛盾する場合の解決策検討時       | 法域間で矛盾するプライバシー要件の管理ガイド。データローカライゼーション対移転自由、同意基準の相違、年齢閾値、侵害通知期限、非両立な義務の解決フレームワークを扱う                                  |
 | `global-privacy-regulations-skills:privacy-law-gap-analysis`     | 新規法域への市場参入時のギャップ分析時           | 新規法域への市場参入に向けたプライバシー法ギャップ分析実施ガイド。対象法域の評価、既存コンプライアンスのマッピング、是正工数の見積もり、実装タイムライン策定を扱う                                  |
@@ -753,20 +753,20 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                                                     | トリガー                                                | 概要                                                                                                                                                   |
 | ------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `privacy-engineering-skills:pii-detection-pipeline`           | PII 自動検出パイプライン構築時                          | spaCy NER・Microsoft Presidio・AWS Macie 連携による自動 PII 検出・削除（redaction）パイプラインの構築。信頼度スコアリング、カスタムエンティティ型定義、バッチ処理ワークフローを含む |
-| `privacy-engineering-skills:differential-privacy-prod`        | 統計データの差分プライバシー実装時                      | 本番システムへの差分プライバシー導入。ε の選定戦略、Laplace/Gaussian メカニズムによるノイズ較正、プライバシー予算の追跡、合成定理、Python 実装パターンを扱う                                     |
-| `privacy-engineering-skills:linddun-threat-model`             | プライバシー脅威モデリング実施時                        | LINDDUN プライバシー脅威モデリングの 7 カテゴリ（Linking・Identifying・Non-repudiation・Detecting・Data Disclosure・Unawareness・Non-compliance）全体を実施。STRIDE との統合を扱う |
-| `privacy-engineering-skills:purpose-based-access`              | 目的ベースアクセス制御の実装時                          | 目的ベースアクセス制御（PBAC）アーキテクチャの設計・実装。目的オントロジー定義、ポリシーエンジン設定、監査ログ、既存 IAM 連携を扱う。GDPR 第 5 条(1)(b)の目的制限を技術的に実施する               |
-| `privacy-engineering-skills:privacy-api-design`                | プライバシー関連 API 設計時                             | プライバシー API パターンの設計。DSAR エンドポイント向けデータ主体 API、選好管理向け同意 API、削除 API、監査 API を扱う。OpenAPI 仕様・エラー処理・レート制限・認証パターンを提供                  |
-| `privacy-engineering-skills:privacy-data-sharing`              | プライバシー保護データ共有基盤の構築時                  | SDV ライブラリによる合成データ生成、データクリーンルーム、セキュアエンクレーブ、有用性測定を用いたプライバシー保護データ共有基盤の構築。分析用データセット共有のエンドツーエンドアーキテクチャを扱う      |
-| `privacy-engineering-skills:privacy-record-linkage`            | 複数データセット間の名寄せをプライバシー保護しつつ行う時 | Bloom フィルタ符号化・セキュアハッシュマッチング・適合率/再現率の閾値調整・偽陽性管理を用いたプライバシー保護レコードリンケージの実装。生の PII を露出せずにエンティティ解決を可能にする              |
-| `privacy-engineering-skills:consent-receipt-spec`              | 監査対応の同意レシート実装時                            | Kantara Initiative 同意レシート仕様の実装。機械可読なレシート構造、JWT ベースの検証メカニズム、レシートのライフサイクル管理を扱う。ISO/IEC 27560 の同意記録情報構造に対応                     |
-| `privacy-engineering-skills:privacy-metrics-dashboard`         | プライバシープログラムの KPI ダッシュボード構築時       | DSAR 件数・対応時間、侵害件数・重大度、DPIA 完了率、研修受講率、同意率を追跡するプライバシー KPI ダッシュボードの構築。指標定義・可視化設計・経営層向け報告テンプレートを含む                     |
-| `privacy-engineering-skills:nist-pf-identify`                  | NIST PF の IDENTIFY 機能実装時                          | NIST プライバシーフレームワークの IDENTIFY 機能（ID.BE ビジネス環境・ID.DA データアクション・ID.IM 改善・ID.RA リスク評価）を実装。統制マッピング、ギャップ分析テンプレートを提供            |
-| `privacy-engineering-skills:nist-pf-govern`                    | NIST PF の GOVERN 機能実装時                            | NIST プライバシーフレームワークの GOVERN 機能（GV.AT 認知・研修、GV.MT モニタリング、GV.PO ポリシー策定、GV.RR 役割・責任）を実装。ガバナンス構造テンプレート、研修プログラムを提供             |
-| `privacy-engineering-skills:nist-pf-control`                   | NIST PF の CONTROL 機能実装時                           | NIST プライバシーフレームワークの CONTROL 機能（CT.DM データ管理・CT.DP データ処理方針・CT.PO 分離処理）を実装。技術的統制アーキテクチャ、非識別化実装ガイダンスを提供                      |
-| `privacy-engineering-skills:nist-pf-protect`                   | NIST PF の PROTECT 機能実装時                           | NIST プライバシーフレームワークの PROTECT 機能（PR.AC アクセス制御・PR.DS データセキュリティ・PR.PO 保護方針）を実装。暗号化基準、アクセス管理アーキテクチャを提供                          |
-| `privacy-engineering-skills:nist-pf-communicate`               | NIST PF の COMMUNICATE 機能実装時                       | NIST プライバシーフレームワークの COMMUNICATE 機能（CM.AW 認知向上・CM.PO コミュニケーション方針）を実装。透明性メカニズム、プライバシー通知テンプレートを提供                              |
+| `privacy-engineering-skills:pii-detection-pipeline`           | PII自動検出パイプライン構築時                          | spaCy NER・Microsoft Presidio・AWS Macie連携による自動PII検出・削除(redaction)パイプラインの構築。信頼度スコアリング、カスタムエンティティ型定義、バッチ処理ワークフローを含む |
+| `privacy-engineering-skills:differential-privacy-prod`        | 統計データの差分プライバシー実装時                      | 本番システムへの差分プライバシー導入。ε の選定戦略、Laplace/Gaussianメカニズムによるノイズ較正、プライバシー予算の追跡、合成定理、Python実装パターンを扱う                                     |
+| `privacy-engineering-skills:linddun-threat-model`             | プライバシー脅威モデリング実施時                        | LINDDUNプライバシー脅威モデリングの7カテゴリ(Linking・Identifying・Non-repudiation・Detecting・Data Disclosure・Unawareness・Non-compliance)全体を実施。STRIDEとの統合を扱う |
+| `privacy-engineering-skills:purpose-based-access`              | 目的ベースアクセス制御の実装時                          | 目的ベースアクセス制御(PBAC)アーキテクチャの設計・実装。目的オントロジー定義、ポリシーエンジン設定、監査ログ、既存IAM連携を扱う。GDPR第5条(1)(b)の目的制限を技術的に実施する               |
+| `privacy-engineering-skills:privacy-api-design`                | プライバシー関連API設計時                             | プライバシーAPIパターンの設計。DSARエンドポイント向けデータ主体API、選好管理向け同意API、削除API、監査APIを扱う。OpenAPI仕様・エラー処理・レート制限・認証パターンを提供                  |
+| `privacy-engineering-skills:privacy-data-sharing`              | プライバシー保護データ共有基盤の構築時                  | SDVライブラリによる合成データ生成、データクリーンルーム、セキュアエンクレーブ、有用性測定を用いたプライバシー保護データ共有基盤の構築。分析用データセット共有のエンドツーエンドアーキテクチャを扱う      |
+| `privacy-engineering-skills:privacy-record-linkage`            | 複数データセット間の名寄せをプライバシー保護しつつ行う時 | Bloomフィルタ符号化・セキュアハッシュマッチング・適合率/再現率の閾値調整・偽陽性管理を用いたプライバシー保護レコードリンケージの実装。生のPIIを露出せずにエンティティ解決を可能にする              |
+| `privacy-engineering-skills:consent-receipt-spec`              | 監査対応の同意レシート実装時                            | Kantara Initiative同意レシート仕様の実装。機械可読なレシート構造、JWTベースの検証メカニズム、レシートのライフサイクル管理を扱う。ISO/IEC 27560の同意記録情報構造に対応                     |
+| `privacy-engineering-skills:privacy-metrics-dashboard`         | プライバシープログラムのKPIダッシュボード構築時       | DSAR件数・対応時間、侵害件数・重大度、DPIA完了率、研修受講率、同意率を追跡するプライバシーKPIダッシュボードの構築。指標定義・可視化設計・経営層向け報告テンプレートを含む                     |
+| `privacy-engineering-skills:nist-pf-identify`                  | NIST PFのIDENTIFY機能実装時                          | NISTプライバシーフレームワークのIDENTIFY機能(ID.BEビジネス環境・ID.DAデータアクション・ID.IM改善・ID.RAリスク評価)を実装。統制マッピング、ギャップ分析テンプレートを提供            |
+| `privacy-engineering-skills:nist-pf-govern`                    | NIST PFのGOVERN機能実装時                            | NISTプライバシーフレームワークのGOVERN機能(GV.AT認知・研修、GV.MTモニタリング、GV.POポリシー策定、GV.RR役割・責任)を実装。ガバナンス構造テンプレート、研修プログラムを提供             |
+| `privacy-engineering-skills:nist-pf-control`                   | NIST PFのCONTROL機能実装時                           | NISTプライバシーフレームワークのCONTROL機能(CT.DMデータ管理・CT.DPデータ処理方針・CT.PO分離処理)を実装。技術的統制アーキテクチャ、非識別化実装ガイダンスを提供                      |
+| `privacy-engineering-skills:nist-pf-protect`                   | NIST PFのPROTECT機能実装時                           | NISTプライバシーフレームワークのPROTECT機能(PR.ACアクセス制御・PR.DSデータセキュリティ・PR.PO保護方針)を実装。暗号化基準、アクセス管理アーキテクチャを提供                          |
+| `privacy-engineering-skills:nist-pf-communicate`               | NIST PFのCOMMUNICATE機能実装時                       | NISTプライバシーフレームワークのCOMMUNICATE機能(CM.AW認知向上・CM.POコミュニケーション方針)を実装。透明性メカニズム、プライバシー通知テンプレートを提供                              |
 
 #### us-state-privacy-skills
 
@@ -775,16 +775,16 @@ Cloudflare プラットフォーム（Workers・Durable Objects・Sandbox・Turn
 
 | スキル                                                    | トリガー                                            | 概要                                                                                                                                                  |
 | ------------------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `us-state-privacy-skills:ccpa-cpra-compliance`               | CCPA/CPRA 全体対応の構築時                          | カリフォルニア州民法第 1798.100〜199 条を対象とする CCPA/CPRA 完全準拠実装。消費者権利フレームワーク、事業者の義務、執行メカニズム、CPPA の規則制定を含む                                        |
-| `us-state-privacy-skills:california-consumer-rights`        | カリフォルニア州消費者からの請求対応実装時          | CCPA/CPRA に基づくカリフォルニア州消費者プライバシー権利ワークフローの実装。知る権利・削除権・オプトアウト権・訂正権・機微 PI 処理制限権を扱う。45 日の対応期限、本人確認手続きを含む                              |
-| `us-state-privacy-skills:cpra-sensitive-pi`                  | 機微個人情報の取扱い制限対応時                      | CPRA 第 1798.121 条の機微個人情報制限への対応。SSN・正確な位置情報・人種民族的出自・生体情報・遺伝情報・健康情報等 9 カテゴリ全て、利用/開示制限権、許容目的を扱う                                       |
-| `us-state-privacy-skills:vcdpa-compliance`                   | バージニア州向けプライバシー対応実装時              | バージニア州消費者データ保護法（VCDPA）への準拠実装。5 つの消費者権利、管理者の義務、機微データのオプトイン、DPIA、AG 執行、是正期間規定を扱う。2023 年 1 月 1 日施行                                        |
-| `us-state-privacy-skills:colorado-cpa-compliance`            | コロラド州向けプライバシー対応実装時                | コロラド州プライバシー法（CPA）への準拠実装。2024 年 7 月以降必須のユニバーサルオプトアウトメカニズム、プロファイリングのオプトアウト権、機微データの同意要件、AG 規則制定を扱う。2023 年 7 月 1 日施行                     |
-| `us-state-privacy-skills:connecticut-ctdpa`                  | コネチカット州向けプライバシー対応実装時            | コネチカット州データプライバシー法（CTDPA）への準拠。ダークパターン禁止、ロイヤルティプログラムの適用除外、2025 年 1 月施行のユニバーサルオプトアウト要件、機微データの同意、AG 執行を扱う。2023 年 7 月 1 日施行             |
-| `us-state-privacy-skills:texas-tdpsa-compliance`             | テキサス州向けプライバシー対応実装時                | テキサス州データプライバシー・セキュリティ法（TDPSA）への準拠。収益閾値なしで全事業者に適用。データブローカー登録要件、生体識別子規定、AG 執行、30 日の是正期間を扱う。2024 年 7 月 1 日施行                            |
-| `us-state-privacy-skills:oregon-ocpa-compliance`             | オレゴン州向けプライバシー対応実装時                | オレゴン州消費者プライバシー法（OCPA）への準拠。非識別化データ要件、従業員データの部分的適用除外、非営利団体への適用、14 日の是正期間を扱う。2024 年 7 月 1 日施行、AG のみが執行                                  |
-| `us-state-privacy-skills:montana-mtdpa`                      | モンタナ州向けプライバシー対応実装時                | モンタナ州消費者データプライバシー法（MTDPA）への準拠。5 万消費者という米国最低水準の閾値。機微データの同意、ユニバーサルオプトアウトの承認、60 日の是正期間を扱う。2024 年 10 月 1 日施行                            |
-| `us-state-privacy-skills:kentucky-kppa`                      | ケンタッキー州向けプライバシー対応実装時            | ケンタッキー州消費者プライバシー保護法（KPPA）への準拠。2026 年 1 月 1 日施行。消費者権利、10 万消費者の管理者閾値、機微データ処理の同意、是正期間規定、AG 執行フレームワークを扱う                                  |
+| `us-state-privacy-skills:ccpa-cpra-compliance`               | CCPA/CPRA全体対応の構築時                          | カリフォルニア州民法第1798.100〜199条を対象とするCCPA/CPRA完全準拠実装。消費者権利フレームワーク、事業者の義務、執行メカニズム、CPPAの規則制定を含む                                        |
+| `us-state-privacy-skills:california-consumer-rights`        | カリフォルニア州消費者からの請求対応実装時          | CCPA/CPRAに基づくカリフォルニア州消費者プライバシー権利ワークフローの実装。知る権利・削除権・オプトアウト権・訂正権・機微PI処理制限権を扱う。45日の対応期限、本人確認手続きを含む                              |
+| `us-state-privacy-skills:cpra-sensitive-pi`                  | 機微個人情報の取扱い制限対応時                      | CPRA第1798.121条の機微個人情報制限への対応。SSN・正確な位置情報・人種民族的出自・生体情報・遺伝情報・健康情報等9カテゴリ全て、利用/開示制限権、許容目的を扱う                                       |
+| `us-state-privacy-skills:vcdpa-compliance`                   | バージニア州向けプライバシー対応実装時              | バージニア州消費者データ保護法(VCDPA)への準拠実装。5つの消費者権利、管理者の義務、機微データのオプトイン、DPIA、AG執行、是正期間規定を扱う。2023年1月1日施行                                        |
+| `us-state-privacy-skills:colorado-cpa-compliance`            | コロラド州向けプライバシー対応実装時                | コロラド州プライバシー法(CPA)への準拠実装。2024年7月以降必須のユニバーサルオプトアウトメカニズム、プロファイリングのオプトアウト権、機微データの同意要件、AG規則制定を扱う。2023年7月1日施行                     |
+| `us-state-privacy-skills:connecticut-ctdpa`                  | コネチカット州向けプライバシー対応実装時            | コネチカット州データプライバシー法(CTDPA)への準拠。ダークパターン禁止、ロイヤルティプログラムの適用除外、2025年1月施行のユニバーサルオプトアウト要件、機微データの同意、AG執行を扱う。2023年7月1日施行             |
+| `us-state-privacy-skills:texas-tdpsa-compliance`             | テキサス州向けプライバシー対応実装時                | テキサス州データプライバシー・セキュリティ法(TDPSA)への準拠。収益閾値なしで全事業者に適用。データブローカー登録要件、生体識別子規定、AG執行、30日の是正期間を扱う。2024年7月1日施行                            |
+| `us-state-privacy-skills:oregon-ocpa-compliance`             | オレゴン州向けプライバシー対応実装時                | オレゴン州消費者プライバシー法(OCPA)への準拠。非識別化データ要件、従業員データの部分的適用除外、非営利団体への適用、14日の是正期間を扱う。2024年7月1日施行、AGのみが執行                                  |
+| `us-state-privacy-skills:montana-mtdpa`                      | モンタナ州向けプライバシー対応実装時                | モンタナ州消費者データプライバシー法(MTDPA)への準拠。5万消費者という米国最低水準の閾値。機微データの同意、ユニバーサルオプトアウトの承認、60日の是正期間を扱う。2024年10月1日施行                            |
+| `us-state-privacy-skills:kentucky-kppa`                      | ケンタッキー州向けプライバシー対応実装時            | ケンタッキー州消費者プライバシー保護法(KPPA)への準拠。2026年1月1日施行。消費者権利、10万消費者の管理者閾値、機微データ処理の同意、是正期間規定、AG執行フレームワークを扱う                                  |
 | `us-state-privacy-skills:multi-state-compliance`             | 複数州にまたがるプライバシー対応の統一設計時        | 複数州にまたがる統一プライバシーコンプライアンスプログラム。米国全州プライバシー法にわたる共通要件マトリクス、州固有の差分、統一プライバシープログラムのアーキテクチャを扱う                                        |
-| `us-state-privacy-skills:state-law-applicability`            | 自社への州プライバシー法の適用可否判定時            | 米国州プライバシー法の適用可否評価ツール。収益閾値、データ量閾値、事業適用除外（GLBA・HIPAA・非営利団体）、従業員データの適用除外を、施行済みの全州プライバシー法にわたって評価する                                 |
-| `us-state-privacy-skills:universal-opt-out`                  | ユニバーサルオプトアウト対応実装時                  | 米国州プライバシー法全体にわたるユニバーサルオプトアウトメカニズムの実装。GPC 信号の技術実装、州ごとの承認要件、ブラウザ検出方法、認証済み/未認証ユーザーの扱いを扱う                                                |
+| `us-state-privacy-skills:state-law-applicability`            | 自社への州プライバシー法の適用可否判定時            | 米国州プライバシー法の適用可否評価ツール。収益閾値、データ量閾値、事業適用除外(GLBA・HIPAA・非営利団体)、従業員データの適用除外を、施行済みの全州プライバシー法にわたって評価する                                 |
+| `us-state-privacy-skills:universal-opt-out`                  | ユニバーサルオプトアウト対応実装時                  | 米国州プライバシー法全体にわたるユニバーサルオプトアウトメカニズムの実装。GPC信号の技術実装、州ごとの承認要件、ブラウザ検出方法、認証済み/未認証ユーザーの扱いを扱う                                                |

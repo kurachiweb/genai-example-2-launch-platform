@@ -16,7 +16,8 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 ## 本プロジェクト規則
 
 各種ドキュメント、Gitコミットメッセージ、コードコメントにおいて、全ての文章は日本語で記述すること。
-機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。（必読セクション: `Agentic SDLC and Spec-Driven Development` 及び参照しているファイル）
+ドキュメントやコードコメントにおいて、日本語と英数字の間、そして日本語とインラインコードの間には半角スペースを入れないこと。例:「テストは Bun の `bun test` により 10% でも速くする」ではなく「テストはBunの`bun test`により10%でも速くする」
+機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。(必読セクション: `Agentic SDLC and Spec-Driven Development`及び参照しているファイル)
 テスト駆動開発(TDD)の実施を徹底すること。
 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
 コード内にコメントは原則書かないが、難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
@@ -29,15 +30,15 @@ appsディレクトリ内を編集した際は、docsディレクトリ内の関
 Claude拡張設定(エージェント・スキル・ルール・コマンド)と本プロジェクト規則に矛盾がある場合、後者を優先する。
 
 - Claude拡張設定にはnpmやpnpm関連のコマンドがあるが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
-- npmパッケージの `framer-motion` は `motion` にリネームされているため、`motion/react` をインポートして利用する。`ecc:motion-ui` と `ecc:frontend-patterns` スキルが `framer-motion` に言及しているが、それは古い情報である。
-- APIレスポンス形式やバリデーションエラー時ステータスコードは `ecc:api-design` スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards` や `ecc:nestjs-patterns` のAPIレスポンス形式や、ECC系プラグイン内ルール（`typescript/patterns.md`）の `ApiResponse<T>` 型は採用しない。
-- ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns` ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture` スキルではEntity層に書くよう指示しており、後者に従う。
-- Next.jsのキャッシュ戦略には `"use cache"` を使う。`developer-kit-typescript:nextjs-performance` スキルでは `unstable_cache` が紹介されているが、それは古い記法である。
-- `.claude/rules/common/git-workflow.md` はClaude設定ファイルに `includeCoAuthoredBy: false` を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりに `attribution` プロパティを指定する。
+- npmパッケージの`framer-motion`は`motion`にリネームされているため、`motion/react`をインポートして利用する。`ecc:motion-ui`と`ecc:frontend-patterns`スキルが`framer-motion`に言及しているが、それは古い情報である。
+- APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`や`ecc:nestjs-patterns`のAPIレスポンス形式や、ECC系プラグイン内ルール(`typescript/patterns.md`)の`ApiResponse<T>`型は採用しない。
+- ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns`ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture`スキルではEntity層に書くよう指示しており、後者に従う。
+- Next.jsのキャッシュ戦略には`"use cache"`を使う。`developer-kit-typescript:nextjs-performance`スキルでは`unstable_cache`が紹介されているが、それは古い記法である。
+- `.claude/rules/common/git-workflow.md`はClaude設定ファイルに`includeCoAuthoredBy: false`を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりに`attribution`プロパティを指定する。
 - テストについて
-  - E2Eテストツールとして `ecc:e2e-runner` エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
+  - E2Eテストツールとして`ecc:e2e-runner`エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
   - Claude拡張設定内でJest関連のコマンドが記載されていても、Jestは使用しないこと。
-  - `developer-kit-typescript:nestjs-code-review-expert` と `typescript-software-architect-review` はNestJSのE2E・統合テストにSupertestを挙げているが、Supertestはworkerdランタイム前提のD1・KV・R2・DOバインディングにアクセスできずWorkers環境の統合テストとして成立しないため採用しない。
+  - `developer-kit-typescript:nestjs-code-review-expert`と`typescript-software-architect-review`はNestJSのE2E・統合テストにSupertestを挙げているが、Supertestはworkerdランタイム前提のD1・KV・R2・DOバインディングにアクセスできずWorkers環境の統合テストとして成立しないため採用しない。
 
 ## Git運用方針
 
@@ -141,7 +142,7 @@ Kysely (クエリビルダ)
 
 HTTPS-Only Cookieによるユーザー認証
 ロールベースのアクセス制御
-所有権ベースのアクセス制御（自ユーザー・全ユーザー・管理者）
+所有権ベースのアクセス制御(自ユーザー・全ユーザー・管理者)
 
 #### バリデーション・変換
 
@@ -162,7 +163,7 @@ GraphQL Code Generator
 
 #### 状態管理・データフェッチング
 
-Apollo Client (GraphQL クライアント)
+Apollo Client (GraphQLクライアント)
 Jotai (グローバル状態管理)
 
 #### UI・スタイリング
@@ -180,7 +181,7 @@ Zod
 Creem (決済処理基盤、https://docs.creem.io)
 Creem Checkout (決済ページへの誘導)
 Creem Webhooks (都度支払いや定期課金イベントの受信、APIサーバー側で処理)
-Creem TypeScript SDK 及び Next.js アダプター
+Creem TypeScript SDK及びNext.jsアダプター
 
 ### デプロイ先のインフラ構成
 
@@ -213,7 +214,7 @@ MJML (HTMLメールコード生成、faire/mjml-reactを使用)
 
 #### モニタリング
 
-Sentry (エラートラッキング、`@sentry/cloudflare` を使用)
+Sentry (エラートラッキング、`@sentry/cloudflare`を使用)
 Cloudflare Analytics / Health Checks (可用性・死活監視)
 FlareWarden (外部ステータスページ・死活監視)
 
@@ -231,7 +232,7 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 
 TruffleHog (機密情報のpush防止。検知ならマージをブロック)
 Bunによるパッケージインストール及び既知の脆弱性確認
-Terraformによるインフラ構成変更（Wranglerの担当範囲を除く）
+Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
 WranglerによるDBマイグレーション
 Wranglerによる各Workerのビルド・デプロイ
 Wrangler Secretsによる環境変数変更
@@ -254,12 +255,12 @@ Commitlint (コミットメッセージ規約)
 
 #### セキュリティ
 
-Gitleaks (pre-commit、コマンドオプション `--staged` を使用)
+Gitleaks (pre-commit、コマンドオプション`--staged`を使用)
 GitHub Dependabot (依存パッケージの脆弱性アラート及びバージョン更新PRの自動作成)
 
 #### テスト
 
-Bun (ロジック層の単体テスト、`bun test` コマンドを使用)
+Bun (ロジック層の単体テスト、`bun test`コマンドを使用)
 Vitest + Vitest Browser Mode (DOM・コンポーネントテスト、フロントエンド)
 React Testing Library (フロントエンド、Vitest Browser Mode上で使用)
 @cloudflare/vitest-pool-workers (Cloudflare Workers統合テスト、D1・KV・R2・DOバインディングを含む)
@@ -271,7 +272,7 @@ Playwright MCP
 
 #### ドキュメント
 
-Storybook (コンポーネントカタログ、`@storybook/nextjs` を使用)
+Storybook (コンポーネントカタログ、`@storybook/nextjs`を使用)
 GraphQL Playground (API探索)
 Swagger UI (公開API向け、OpenAPI形式)
 
