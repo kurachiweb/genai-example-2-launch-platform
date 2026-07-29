@@ -29,6 +29,11 @@
       "Bash(rtk proxy *)",
       "Bash(rtk git add *)",
       "Bash(rtk git commit *)",
+      "Bash(rtk git grep *)",
+      "Bash(rtk git status)",
+      "Bash(rtk git diff*)",
+      "Bash(rtk git log*)",
+      "Bash(rtk git show*)",
       "WebSearch",
       "mcp__cloudflare-docs__search_cloudflare_documentation"
     ],
@@ -37,7 +42,8 @@
       "Read(**/.dev.vars*)",
       "Read(**/*.tfvars)",
       "Read(**/*.tfstate)",
-      "Read(**/*.tfstate.backup)"
+      "Read(**/*.tfstate.backup)",
+      "Read(**/.claude/.credentials.json)"
     ]
   },
   "showThinkingSummaries": true,
