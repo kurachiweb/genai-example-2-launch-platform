@@ -286,7 +286,7 @@ Playwright MCP
 
 #### ドキュメント
 
-Storybook (コンポーネントカタログ、`@storybook/nextjs`を使用)
+Storybook (コンポーネントカタログ、`@storybook/nextjs-vite`を使用)
 GraphQL Playground (API探索)
 Swagger UI (公開API向け、OpenAPI形式)
 
