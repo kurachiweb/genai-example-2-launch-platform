@@ -41,20 +41,23 @@ cd apps/public-api && wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /works
 6. コンテナ内: フロントエンドの起動
 
 ```sh
-cd apps/client && bun run dev
-cd apps/admin && bun run dev
+cd apps/client && bun run dev --port 48044 --hostname 0.0.0.0
+```
+
+```sh
+cd apps/admin && bun run dev --port 48045 --hostname 0.0.0.0
 ```
 
 ### ローカルポート一覧
 
-| アプリ              | 役割                                       | ポート |
-| ------------------- | ------------------------------------------ | ------ |
-| Mailpit             | メール確認Web UI                          | 48041  |
-| `apps/api`          | 内部API(NestJS / GraphQL)                 | 48042  |
-| `apps/public-api`   | 公開API(NestJS / REST)                    | 48043  |
-| `apps/client`       | 利用者側フロントエンド(Next.js)            | 48044  |
-| `apps/admin`        | 管理者側フロントエンド(Next.js)            | 48045  |
-| `apps/frontend-lib` | Storybookフロントエンド(Next.js)           | 48046  |
+| アプリ              | 役割                                    | ポート |
+| ------------------- | --------------------------------------- | ------ |
+| Mailpit             | メール確認Web UI                        | 48041  |
+| `apps/api`          | 内部API(NestJS / GraphQL)               | 48042  |
+| `apps/public-api`   | 公開API(NestJS / REST)                  | 48043  |
+| `apps/client`       | 利用者側フロントエンド(Next.js)         | 48044  |
+| `apps/admin`        | 管理者側フロントエンド(Next.js)         | 48045  |
+| `apps/frontend-lib` | Storybookフロントエンド(Next.js)        | 48046  |
 | Wrangler            | `wrangler login`のOAuthコールバック受信 | 8976   |
 
 ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Workers KVの代わりにWranglerのKVローカルモード、Amazon SESの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
@@ -65,6 +68,6 @@ MailpitのSMTP(1025)はコンテナ内のみで到達可能で、ローカル開
 
 ### エージェント・開発支援(`docs/onboardings/`)
 
-| ドキュメント                                 | 内容                                                              |
-| -------------------------------------------- | ----------------------------------------------------------------- |
+| ドキュメント                                 | 内容                                                             |
+| -------------------------------------------- | ---------------------------------------------------------------- |
 | [agent-extensions.md](./agent-extensions.md) | `.claude/`配下のスキル・コマンド・ルール・エージェント定義の解説 |
