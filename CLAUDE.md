@@ -129,7 +129,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev --persist-to` / `wrangler d1 execute --local --persist-to`)
 デプロイ先 ... Cloudflare D1
 
-ローカル環境 ... WranglerのKVローカルモード(`wrangler dev --persist-to`) ... namespace追加時は`wrangler kv namespace create <name> --preview --persist-to`でプレビュー用IDを発行する
+ローカル環境 ... WranglerのKVローカルモード(`wrangler dev --persist-to`) ... namespace追加時は`wrangler kv namespace create <name> --preview`でプレビュー用IDを発行する
 デプロイ先 ... Cloudflare Workers KV
 
 ### バックエンド (API)
