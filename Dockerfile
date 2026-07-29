@@ -9,7 +9,7 @@ RUN apt-get update \
 
 # Playwright・chrome-devtools MCPが起動するChromiumを導入する。
 # ChromiumバイナリのOS側共有ライブラリ(libnss3等)はrootユーザーとして導入する。
-# Chromium本体は`bun install`後に確定する`@playwright/test`の実バージョンに一致させる必要があるため、start-local-services.sh側でbunユーザーが導入する(不一致は`Executable doesn't exist`エラーの原因になる)。
+# Chromium本体は`bun install`後に確定する`@playwright/test`の実バージョンに一致させる必要があるため、entrypoint.sh側でbunユーザーが導入する(不一致は`Executable doesn't exist`エラーの原因になる)。
 # CHROMIUM_PATHはMCPサーバーへ実行ファイルを絶対パスで渡すための固定シンボリックリンク先。
 # コンテナでは非特権ユーザー名前空間が無効でサンドボックスが起動できないため、.mcp.json側で--no-sandboxを渡す。
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
@@ -61,10 +61,10 @@ RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/insta
   && brew install --cask claude-code \
   && HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch
 
-# ローカル開発用常駐プロセスの起動処理はスクリプトへ切り出す。
-COPY --chmod=755 scripts/start-local-services.sh /usr/local/bin/start-local-services.sh
+# コンテナ起動時のセットアップ処理はスクリプトへ切り出す。
+COPY --chmod=755 scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-# start-local-services.shは`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1のshの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にMailpitへSIGTERMを転送できなくなる。
+# entrypoint.shは`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1のshの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にMailpitへSIGTERMを転送できなくなる。
 # `sleep infinity`は「何もせず永遠に待ち続けるだけ」のコマンドで、これをバックグラウンドで動かし続けることでPID1のshを終了させず、コンテナを生かし続ける(Mailpitが落ちてもコンテナは生存する)。
 # `wait $!`は直前にバックグラウンド実行した`sleep infinity`の終了を待つ組み込みコマンドで、シグナル(SIGTERMなど)を受けると即座に中断されるため、コンテナ停止時にスクリプト内の`trap`をすぐ発火できる。
-CMD ["sh", "-c", ". /usr/local/bin/start-local-services.sh; sleep infinity & wait $!"]
+CMD ["sh", "-c", ". /usr/local/bin/entrypoint.sh; sleep infinity & wait $!"]
