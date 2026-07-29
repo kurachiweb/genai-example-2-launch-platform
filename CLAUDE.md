@@ -221,7 +221,7 @@ FlareWarden (外部ステータスページ・死活監視)
 
 ### 画像配信
 
-Cloudflare Images
+Cloudflare R2 (Cloudflare Imagesにより変換・リサイズ)
 
 #### 画像モデレーション
 
