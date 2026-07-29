@@ -32,6 +32,7 @@ NestJSはクリーンアーキテクチャに基づく実装を徹底するこ�
 コード内にコメントは原則書かないが、難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
 appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
 テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はbun、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。
+Next.jsの`"use cache"`を使う場合、キャッシュデータはCloudflare R2に永続化するとともに、読み取り高速化のため`@opennextjs/cloudflare`の`withRegionalCache`を併用すること。
 
 ### Claude拡張設定間の矛盾、あるいは本プロジェクト規則との不一致について
 
