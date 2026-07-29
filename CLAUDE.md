@@ -23,6 +23,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortboo
 Wranglerのコマンドを実行する際、任意のディレクトリで動作するよう必ず`--persist-to /workspace/.wrangler/state`オプションを付けること。
 Cloudflare WorkersのFreeプランではCPU時間10ミリ秒までという制限があるため、それを超えないように技術選定や処理方式を検討すること。特に多量データのサーバーサイドレンダリング、JSONパース、CSV出力、メール本文の組み立て、ファイルのハッシュ値算出、長大ユーザー入力のエスケープは、制限を超えてしまうことがあるため高速な処理方式を模索したり、実行時間の計測及びログ出力を行ったりすべき。
 Next.jsアプリは通常`bun run dev`で起動するが、デプロイ前は`opennextjs-cloudflare build && opennextjs-cloudflare preview`によりCloudflare Workers向けにビルドして、動作するかや10ミリ秒制限をクリアするかを確かめる。
+ビルドコマンドやデプロイ前確認コマンド、デプロイコマンドの先頭に`NODE_ENV=production`を加える。
 
 ### コード・ドキュメントの規則
 
