@@ -404,15 +404,15 @@ Claudeが常時コンテキストとして参照するガイドライン。エ�
 
 ### rules/react/ — React固有ルール
 
-`paths`フロントマターで`.tsx`・`.jsx`・`components/`・`hooks/`・`app/`・`pages/`配下のファイルに自動適用。`typescript/`と`web/`のルールをReact向けに拡張する。
+`typescript/`と`web/`のルールをReact向けに拡張する。`paths`フロントマターはファイルごとに異なる。
 
-| ファイル          | 概要                       | 主な内容                                                                                                                                          |
-| ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `coding-style.md` | Reactコーディングスタイル | ファイル拡張子(`.tsx`/`.ts`)・命名規約・コンポーネント形状(`type Props`)・JSX記法・サーバー/クライアント境界・クラスコンポーネント禁止       |
-| `hooks.md`        | Reactフック規約           | フックのルール・`useEffect`を使わない場面・依存配列・クリーンアップ必須・`useMemo`/`useCallback`の判断基準・React 19追加フック・stale closure対策 |
-| `patterns.md`     | Reactパターン             | Container/Presentational分割・状態配置デシジョンツリー・RSC境界・Suspense+Error Boundary・フォーム・データフェッチング・key規約・複合コンポーネント |
-| `security.md`     | Reactセキュリティ         | `dangerouslySetInnerHTML`のXSS・危険なURLスキーム・`target="_blank"`の`rel`・Server Action入力検証・env var経由のシークレット流出・CSP    |
-| `testing.md`      | Reactテスト               | RTL/Vitest/Jestの選択・振る舞い重視・クエリ優先順位・`userEvent`・非同期アサーション・MSW・axe・カバレッジ目標                                   |
+| ファイル          | 概要                       | 主な内容                                                                                                                                          | `paths`                                                                                              |
+| ----------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `coding-style.md` | Reactコーディングスタイル | ファイル拡張子(`.tsx`/`.ts`)・命名規約・コンポーネント形状(`type Props`)・JSX記法・サーバー/クライアント境界・クラスコンポーネント禁止       | `**/*.tsx`, `**/*.jsx`, `**/components/**/*.{ts,js}`, `**/hooks/**/*.{ts,js}`                          |
+| `hooks.md`        | Reactフック規約           | フックのルール・`useEffect`を使わない場面・依存配列・クリーンアップ必須・`useMemo`/`useCallback`の判断基準・React 19追加フック・stale closure対策 | `**/*.tsx`, `**/*.jsx`, `**/hooks/**/*.{ts,js}`, `**/use-*.{ts,tsx}`                                   |
+| `patterns.md`     | Reactパターン             | Container/Presentational分割・状態配置デシジョンツリー・RSC境界・Suspense+Error Boundary・フォーム・データフェッチング・key規約・複合コンポーネント | `**/*.tsx`, `**/*.jsx`, `**/components/**/*.{ts,js}`, `**/app/**/*.tsx`, `**/pages/**/*.tsx`           |
+| `security.md`     | Reactセキュリティ         | `dangerouslySetInnerHTML`のXSS・危険なURLスキーム・`target="_blank"`の`rel`・Server Action入力検証・env var経由のシークレット流出・CSP    | `**/*.tsx`, `**/*.jsx`, `**/components/**/*.ts`, `**/app/**/*.ts`, `**/pages/**/*.ts`                  |
+| `testing.md`      | Reactテスト               | RTL/Vitest/Jestの選択・振る舞い重視・クエリ優先順位・`userEvent`・非同期アサーション・MSW・axe・カバレッジ目標                                   | `**/*.test.{tsx,jsx}`, `**/*.spec.{tsx,jsx}`, `**/__tests__/**/*.{ts,tsx}`                             |
 
 ---
 
