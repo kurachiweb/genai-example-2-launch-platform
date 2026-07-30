@@ -6,6 +6,7 @@
 # Wranglerのローカルシークレットファイル
 .dev.vars
 .dev.vars.*
+!.dev.vars.example
 
 # Terraformの状態ファイル・変数ファイル(シークレットを含む)
 .terraform
@@ -35,7 +36,7 @@ apps/admin/lib
 
 # ローカル開発の蓄積データ
 apps/email
-# Wrangler D1・R2ローカルモードの実データ置き場
+# Wrangler D1・KV・R2ローカルモードの実データ置き場
 .wrangler
 
 # フロントエンドのビルド成果物
