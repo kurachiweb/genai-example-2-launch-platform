@@ -19,7 +19,7 @@ wrangler login --callback-host 0.0.0.0 --browser false
 wrangler whoami # 認証確認
 ```
 
-4. Claude向けMCPを認証する(初回のみ)
+4. コンテナ内: Claude向けMCPを認証する(初回のみ)
 
 ```sh
 claude
@@ -28,24 +28,32 @@ claude
 
 5. コンテナ内: APIサーバーの起動
 
-両アプリで同一の`--persist-to`を指定することで、D1・R2ローカルモードの実データを共有する
+両アプリで同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する
 
 ```sh
-cd apps/api && wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+cd apps/api
+bun install # 初回のみ
+wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
 ```sh
-cd apps/public-api && wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+cd apps/public-api
+bun install # 初回のみ
+wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
 6. コンテナ内: フロントエンドの起動
 
 ```sh
-cd apps/client && bun run dev --port 48044 --hostname 0.0.0.0
+cd apps/client
+bun install # 初回のみ
+bun run dev --port 48044 --hostname 0.0.0.0
 ```
 
 ```sh
-cd apps/admin && bun run dev --port 48045 --hostname 0.0.0.0
+cd apps/admin
+bun install # 初回のみ
+bun run dev --port 48045 --hostname 0.0.0.0
 ```
 
 ### ローカルポート一覧
