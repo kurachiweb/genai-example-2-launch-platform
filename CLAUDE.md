@@ -1,10 +1,10 @@
 # ローンチディレクトリ「Launch Stadium」
 
 Launch Stadiumのプログラム一式、及びドキュメント。
-dev版利用者側サイトURL(予定)：https://genai-example-2-client-dev.shortbook.workers.dev
-dev版開発者側サイトURL(予定)：https://genai-example-2-admin-dev.shortbook.workers.dev
-prod版利用者側サイトURL(予定)：https://genai-example-2-client.shortbook.workers.dev
-prod版開発者側サイトURL(予定)：https://genai-example-2-admin.shortbook.workers.dev
+dev版利用者側サイトURL(予定)：https://genai-example-2-client-dev.lab.kurachiweb.com
+dev版開発者側サイトURL(予定)：https://genai-example-2-admin-dev.lab.kurachiweb.com
+prod版利用者側サイトURL(予定)：https://genai-example-2-client.lab.kurachiweb.com
+prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kurachiweb.com
 
 ## このサービスについて
 
