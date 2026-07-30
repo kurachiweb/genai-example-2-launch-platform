@@ -92,7 +92,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │   ├── frontend-lib/           # フロントエンド共通ファイル、ローカル開発におけるStorybookプレビューのためのポート番号は48046
 │   │   ├── components/         # コンポーネント定義 ... Storybookによるプレビュー付き
 │   │   └── utilities/          # ユーティリティ
-│   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... Next.jsを利用、ローカル開発でのポート番号は48044
+│   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... Next.jsを利用、公開API向けSwagger UIページも含む、ローカル開発でのポート番号は48044
 │   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... Next.jsを利用、ローカル開発でのポート番号は48045
 │       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
@@ -112,8 +112,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 │   └── service/                # このサービスに関する資料
 │       ├── overview/           # サービス概要、コンセプト、どのユーザーがこのサービスを必要とするか、ユーザーストーリー
 │       ├── features/           # ビジネスルール(SSoT) ... 機能仕様、受け入れ条件一覧
-│       ├── design/             # デザインガイドライン ... 文字やパーツ配置に関するサービス固有の規則
-│       └── glossary.md         # サービス内用語集
+│       └── design/             # デザインガイドライン ... 文字やパーツ配置に関するサービス固有の規則
 ├── scripts/                    # ローカル開発用シェルスクリプト ... コンテナの常駐プロセス起動など
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進めるrootコンテナ
 ├── compose.yaml                # コンテナの管理
@@ -288,7 +287,7 @@ Playwright MCP
 
 Storybook (コンポーネントカタログ、`@storybook/nextjs-vite`を使用)
 GraphQL Playground (API探索)
-Swagger UI (公開API向け、OpenAPI形式)
+Swagger UI (公開APIサーバーが配信するOpenAPI仕様を閲覧)
 
 ---
 
