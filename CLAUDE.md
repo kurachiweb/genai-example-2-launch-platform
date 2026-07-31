@@ -36,11 +36,11 @@ appsディレクトリ内を編集した際は、docsディレクトリ内の関
 テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はbun、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。
 Next.jsの`"use cache"`を使う場合、キャッシュデータはCloudflare R2に永続化するとともに、読み取り高速化のため`@opennextjs/cloudflare`の`withRegionalCache`を併用すること。
 
-### Claude拡張設定間の矛盾、あるいは本プロジェクト規則との不一致について
+### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について
 
-Claude拡張設定(エージェント・スキル・ルール・コマンド)と本プロジェクト規則に矛盾がある場合、後者を優先する。
+Claude拡張ファイル(エージェント・スキル・ルール・コマンド)と本プロジェクト規則に矛盾がある場合、後者を優先する。
 
-- Claude拡張設定にはnpmやpnpm関連のコマンドがあるが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
+- Claude拡張ファイル内ではnpmやpnpm関連のコマンドが記載されているが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
 - npmパッケージの`framer-motion`は`motion`にリネームされているため、`motion/react`をインポートして利用する。`ecc:motion-ui`と`ecc:frontend-patterns`スキルが`framer-motion`に言及しているが、それは古い情報である。
 - APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`や`ecc:nestjs-patterns`のAPIレスポンス形式や、ECC系プラグイン内ルール(`typescript/patterns.md`)の`ApiResponse<T>`型は採用しない。
 - ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns`ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture`スキルではEntity層に書くよう指示しており、後者に従う。
@@ -48,7 +48,7 @@ Claude拡張設定(エージェント・スキル・ルール・コマンド)と
 - `.claude/rules/common/git-workflow.md`はClaude設定ファイルに`includeCoAuthoredBy: false`を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりに`attribution`プロパティを指定する。
 - テストについて
   - E2Eテストツールとして`ecc:e2e-runner`エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
-  - Claude拡張設定内でJest関連のコマンドが記載されていても、Jestは使用しないこと。
+  - Claude拡張ファイル内でJest関連のコマンドが記載されていても、Jestは使用しないこと。
   - `developer-kit-typescript:nestjs-code-review-expert`と`typescript-software-architect-review`はNestJSのE2E・統合テストにSupertestを挙げているが、Supertestはworkerdランタイム前提のD1・KV・R2・DOバインディングにアクセスできずWorkers環境の統合テストとして成立しないため採用しない。
 
 ## Git運用方針
@@ -71,7 +71,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 
 ```
 /
-├── .claude/                    # Claude拡張設定 ... 詳細はエージェント拡張ファイル解説(./docs/onboardings/agent-extensions.md)を参照
+├── .claude/                    # Claude拡張設定 ... 詳細はClaude拡張ファイル解説(./docs/onboardings/agent-extensions.md)を参照
 ├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・Terraform適用を含む)を担当
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
