@@ -3,8 +3,11 @@
 FROM oven/bun:1.3-slim
 
 # Homebrewのインストールに必要なパッケージを導入する。
+# Infisical(秘密情報管理サービス)のCLIはMacでなければHomebrewからインストールできないため、公式のAPTリポジトリを登録してからapt-getでインストールする。
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates build-essential procps curl file git \
+  && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+  && apt-get install -y --no-install-recommends infisical \
   && rm -rf /var/lib/apt/lists/*
 
 # Playwright・chrome-devtools MCPが起動するChromiumを導入する。
@@ -21,7 +24,7 @@ RUN bunx --bun playwright@latest install-deps chromium \
 # Homebrewは既定の/home/linuxbrew/.linuxbrewに置くことで、ビルド済みパッケージ(bottle)をそのまま使え、時間のかかる自前ビルドを避けられる。
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
 # RTKの初期化はClaudeの設定ディレクトリが無いと失敗するため、先に作成しておく。
-# Claude(/home/bun/.claude)とCloudflare(/home/bun/.wrangler)のログイン情報を永続化し、コンテナ再作成時の再認証を不要にする。
+# Claude、Infisical、Cloudflareのログイン情報を永続化し、コンテナ再作成時の再認証を不要にする。
 # 初回コンテナビルド時にClaudeのワークスペース信頼設定(hasTrustDialogAccepted等)を/home/bun/.claude.jsonに書き込むので、ユーザーは意識する必要がなくなる。
 RUN mkdir -p /home/linuxbrew/.linuxbrew \
   && chown -R bun:bun /home/linuxbrew/.linuxbrew \
@@ -29,6 +32,8 @@ RUN mkdir -p /home/linuxbrew/.linuxbrew \
   && printf '%s' '{"projects":{"/workspace":{"hasTrustDialogAccepted":true,"hasCompletedProjectOnboarding":true}}}' > /home/bun/.claude/.claude.json \
   && ln -s /home/bun/.claude/.claude.json /home/bun/.claude.json \
   && chown -R bun:bun /home/bun/.claude /home/bun/.claude.json \
+  && mkdir -p /home/bun/.infisical \
+  && chown -R bun:bun /home/bun/.infisical \
   && mkdir -p /home/bun/.wrangler \
   && chown -R bun:bun /home/bun/.wrangler
 

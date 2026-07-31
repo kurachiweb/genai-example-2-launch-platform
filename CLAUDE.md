@@ -271,6 +271,10 @@ Commitlint (コミットメッセージ規約)
 Gitleaks (pre-commit、コマンドオプション`--staged`を使用)
 GitHub Dependabot (依存パッケージの脆弱性アラート及びバージョン更新PRの自動作成)
 
+#### シークレット管理
+
+Infisical
+
 #### テスト
 
 Bun (ロジック層の単体テスト、`bun test`コマンドを使用)

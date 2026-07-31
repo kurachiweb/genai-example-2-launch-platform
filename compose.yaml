@@ -22,8 +22,9 @@ services:
       - node_modules_client:/workspace/apps/client/node_modules
       - node_modules_admin:/workspace/apps/admin/node_modules
       - node_modules_frontend_lib:/workspace/apps/frontend-lib/node_modules
-      # ClaudeとCloudflareのログイン情報を永続化し、コンテナ再作成時の再認証を不要にする
+      # Claude、Infisical、Cloudflareのログイン情報を永続化し、コンテナ再作成時の再認証を不要にする
       - config_claude:/home/bun/.claude
+      - config_infisical:/home/bun/.infisical
       - config_wrangler:/home/bun/.wrangler
     restart: unless-stopped
     init: true
@@ -54,4 +55,5 @@ volumes:
   node_modules_admin:
   node_modules_frontend_lib:
   config_claude:
+  config_infisical:
   config_wrangler:

@@ -39,17 +39,23 @@
     ],
     "deny": [
       "Read(**/.env)",
+      "Read(**/.env.local)",
       "Read(**/.dev.vars)",
       "Read(**/*.tfvars)",
       "Read(**/*.tfstate)",
       "Read(**/*.tfstate.backup)",
       "Read(~/.claude/.credentials.json)",
+      "Read(~/.infisical/secrets-backup/**)",
+      "Read(~/.wrangler/config/default.toml)",
       "Edit(**/.env)",
+      "Edit(**/.env.local)",
       "Edit(**/.dev.vars)",
       "Edit(**/*.tfvars)",
       "Edit(**/*.tfstate)",
       "Edit(**/*.tfstate.backup)",
-      "Edit(~/.claude/.credentials.json)"
+      "Edit(~/.claude/.credentials.json)",
+      "Edit(~/.infisical/secrets-backup/**)",
+      "Edit(~/.wrangler/config/default.toml)"
     ]
   },
   "showThinkingSummaries": true,

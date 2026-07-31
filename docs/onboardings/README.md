@@ -13,48 +13,55 @@ docker compose up -d
 ```
 
 3. VSCodeでコンテナにアタッチする
-4. コンテナ内: CloudflareにOAuthでログインする(初回のみ)
+4. コンテナ内: Infisicalアカウントにログインする
+
+```sh
+infisical --telemetry=false login
+# EUリージョンでログイン後、画面に表示されたトークンをこのターミナルに貼り付ける
+```
+
+5. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
 
 ```sh
 wrangler login --callback-host 0.0.0.0 --browser false
 wrangler whoami # 認証確認
 ```
 
-5. コンテナ内: Claude向けMCPを認証する(初回のみ)
+6. コンテナ内: Claude向けMCPを認証する(初回のみ)
 
 ```sh
 claude
 /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
 ```
 
-6. コンテナ内: APIサーバーの起動
+7. コンテナ内: APIサーバーの起動
 
 両アプリで同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する
 
 ```sh
 cd apps/api
 bun install # 初回のみ
-wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+infisical --telemetry=false run --env=dev -- wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
 ```sh
 cd apps/public-api
 bun install # 初回のみ
-wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+infisical --telemetry=false run --env=dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
-7. コンテナ内: フロントエンドの起動
+8. コンテナ内: フロントエンドの起動
 
 ```sh
 cd apps/client
 bun install # 初回のみ
-bun run dev --port 48044 --hostname 0.0.0.0
+infisical --telemetry=false run --env=dev -- bun run dev --port 48044 --hostname 0.0.0.0
 ```
 
 ```sh
 cd apps/admin
 bun install # 初回のみ
-bun run dev --port 48045 --hostname 0.0.0.0
+infisical --telemetry=false run --env=dev -- bun run dev --port 48045 --hostname 0.0.0.0
 ```
 
 ### ローカルポート一覧
