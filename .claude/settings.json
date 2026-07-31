@@ -39,11 +39,17 @@
     ],
     "deny": [
       "Read(**/.env)",
-      "Read(**/.dev.vars*)",
+      "Read(**/.dev.vars)",
       "Read(**/*.tfvars)",
       "Read(**/*.tfstate)",
       "Read(**/*.tfstate.backup)",
-      "Read(**/.claude/.credentials.json)"
+      "Read(~/.claude/.credentials.json)",
+      "Edit(**/.env)",
+      "Edit(**/.dev.vars)",
+      "Edit(**/*.tfvars)",
+      "Edit(**/*.tfstate)",
+      "Edit(**/*.tfstate.backup)",
+      "Edit(~/.claude/.credentials.json)"
     ]
   },
   "showThinkingSummaries": true,
