@@ -69,7 +69,7 @@ bun run dev --port 48045 --hostname 0.0.0.0
 | Wrangler            | `wrangler login`のOAuthコールバック受信 | 8976   |
 
 ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Workers KVの代わりにWranglerのKVローカルモード、Amazon SESの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
-WranglerのOAuthコールバックだけは、`redirect_uri`が`http://localhost:8976/oauth/callback`に固定されており変更できないため、他のポート番号と連続していない。
+WranglerのOAuthコールバックだけは、Cloudflareログイン後のリダイレクト先が`http://localhost:8976/oauth/callback`に固定されており、それは`--callback-port`でも変更できないため、他のポート番号と連続していない。
 MailpitのSMTP(1025)はコンテナ内のみで到達可能で、ローカル開発ではメール送信処理がこの1025番ポートへSMTP接続し、送信結果は48041番のWeb UIで確認する。
 
 ## ドキュメント索引
