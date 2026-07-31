@@ -116,7 +116,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 ├── scripts/                    # ローカル開発用シェルスクリプト ... コンテナの常駐プロセス起動など
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進めるrootコンテナ
 ├── compose.yaml                # コンテナの管理
-├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化
+├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化、及びPlaywrightによるE2Eテスト
 └── README.md                   # 作業者向け、サービスの基本的説明
 ```
 
@@ -281,7 +281,7 @@ Bun (ロジック層の単体テスト、`bun test`コマンドを使用)
 Vitest + Vitest Browser Mode (DOM・コンポーネントテスト、フロントエンド)
 React Testing Library (フロントエンド、Vitest Browser Mode上で使用)
 @cloudflare/vitest-pool-workers (Cloudflare Workers統合テスト、D1・KV・R2・DOバインディングを含む)
-Playwright (E2E)
+Playwright (複数アプリの横断E2E)
 
 #### ブラウザ動作確認
 
