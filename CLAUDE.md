@@ -222,7 +222,7 @@ LogTape
 #### メール送信
 
 ローカル環境 ... Mailpit
-デプロイ先 ... Amazon SES
+デプロイ先 ... Amazon SES (`aws4fetch`によりリクエストを署名)
 JSX email (HTMLメールコード生成、https://jsx.email)
 
 #### モニタリング
