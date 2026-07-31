@@ -27,5 +27,5 @@ mailpit \
   >/workspace/apps/email/mailpit.log 2>&1 &
 mailpit_pid=$!
 
-# `docker compose down`のSIGTERMはPID1のshにしか届かないため、trapで子プロセスへ転送する。
+# `docker compose down`のSIGTERMはPID1(docker-init)の子であるshに転送されるがその子(mailpit)には届かないため、trapで子プロセスへ転送する。
 trap 'kill -TERM $mailpit_pid 2>/dev/null; wait $mailpit_pid 2>/dev/null' TERM INT EXIT
