@@ -73,7 +73,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 
 ```
 /
-├── .claude/                    # Claude拡張設定 ... 詳細はClaude拡張ファイル解説(./docs/onboardings/agent-extensions.md)を参照
+├── .claude/                    # Claude拡張設定 ... 詳細はClaude拡張ファイル解説(./docs/onboardings/claude-extensions.md)を参照
 ├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・Terraform適用を含む)を担当
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
