@@ -3,7 +3,7 @@
 Launch Stadiumのプログラム一式、及びドキュメント。
 詳細は以下のソフトウェア要件定義書を参照すること。
 
-サービス開発に参加する際は[オンボーディングガイド](docs/onboardings/README.md)を読むこと。
+サービス開発に参加する際は[オンボーディングガイド](docs/onboardings/README.md)を、使用する主な技術は[技術選定](docs/onboardings/tech-stack.md)を読むこと。
 
 ---
 
