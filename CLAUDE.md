@@ -19,7 +19,6 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 
 機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。(必読セクション: `Agentic SDLC and Spec-Driven Development`及び参照しているファイル)
 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
-車輪の再発明を許容し、簡易なユーティリティ関数のためにnpmパッケージをインストールしない。
 Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1系コマンドでは`--local`オプションも付けること。
 Cloudflare WorkersのFreeプランではCPU時間10ミリ秒までという制限があるため、それを超えないように技術選定や処理方式を検討すること。特に多量データのサーバーサイドレンダリング、JSONパース、CSV出力、メール本文の組み立て、ファイルのハッシュ値算出、長大ユーザー入力のエスケープは、制限を超えてしまうことがあるため高速な処理方式を模索したり、実行時間の計測及びログ出力を行ったりすべき。
 Next.jsアプリは通常`bun run dev`で起動するが、デプロイ前は`opennextjs-cloudflare build && opennextjs-cloudflare preview`によりCloudflare Workers向けにビルドして、動作するかや10ミリ秒制限をクリアするかを確かめる。
