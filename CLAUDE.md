@@ -291,7 +291,7 @@ Playwright MCP
 #### ドキュメント
 
 Storybook (コンポーネントカタログ、`@storybook/nextjs-vite`を使用)
-GraphQL Playground (API探索)
+Apollo Sandbox (API探索、`ApolloServerPluginLandingPageLocalDefault`プラグインを使用)
 Swagger UI (公開APIサーバーが配信するOpenAPI仕様を閲覧)
 
 ---
