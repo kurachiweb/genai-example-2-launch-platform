@@ -77,7 +77,7 @@ APIサーバーはNestJSを使い、クライアント側との通信はGraphQL�
 ├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・Terraform適用を含む)を担当
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
-├── .wrangler/                  # WranglerのD1・KV・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
+├── .wrangler/                  # WranglerのD1・KV・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`や`apps/public-api`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
 ├── apps/                       # アプリケーション実装
 │   ├── infra/                  # インフラ構成定義 ... Terraformを使用、Cloudflareを主としてインフラを設計
 │   ├── db/                     # DBスキーマ定義やDBへの接続処理
@@ -230,12 +230,12 @@ JSX email (HTMLメールコード生成、https://jsx.email)
 #### モニタリング
 
 Sentry (エラートラッキング、`@sentry/cloudflare`を使用)
-Cloudflare Analytics / Health Checks (可用性・死活監視)
+Cloudflare Analytics (ユーザーの傾向・利用状況分析)
 FlareWarden (外部ステータスページ・死活監視)
 
 ### 画像配信
 
-Cloudflare R2 (Cloudflare Imagesにより変換・リサイズ)
+Cloudflare Images (R2に保存した画像をリサイズ・フォーマット変換・Exif削除)
 
 #### 画像モデレーション
 
