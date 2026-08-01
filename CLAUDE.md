@@ -41,6 +41,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 
 Claude拡張ファイル(エージェント・スキル・ルール・コマンド)と本プロジェクト規則に矛盾がある場合、後者を優先する。
 
+- Claude拡張ファイルが参照する別の拡張ファイルが存在しない場合は無視する。
 - Claude拡張ファイル内ではnpmやpnpm関連のコマンドが記載されているが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
 - npmパッケージの`framer-motion`は`motion`にリネームされているため、`motion/react`をインポートして利用する。`ecc:motion-ui`と`ecc:frontend-patterns`スキルが`framer-motion`に言及しているが、それは古い情報である。
 - APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`や`ecc:nestjs-patterns`のAPIレスポンス形式や、`rules/common/patterns.md`のAPIレスポンスフォーマット説明、`rules/typescript/patterns.md`の`ApiResponse<T>`型は採用しない。
