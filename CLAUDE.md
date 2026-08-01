@@ -154,7 +154,7 @@ Kysely (クエリビルダ)
 
 #### 認証・認可
 
-HTTPS-Only Cookieによるユーザー認証
+`HttpOnly`・`Secure`・`SameSite`属性付きCookieによるユーザー認証
 ロールベースのアクセス制御
 所有権ベースのアクセス制御(自ユーザー・全ユーザー・管理者)
 

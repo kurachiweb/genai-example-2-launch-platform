@@ -79,7 +79,7 @@ Launch Stadiumは、ProductHuntやUneedの競合として位置づけられる�
 #### 2.5 設計・実装の制約
 
 - FCPを最優先とした設計
-- HTTPS-Only Cookieによる認証
+- `HttpOnly`・`Secure`・`SameSite`属性付きCookieによる認証
 - GraphQL APIによる通信
 - マークダウン形式によるプロダクト説明
 
@@ -123,7 +123,7 @@ ProductHuntやTinyLaunch、Uneedなど既存のローンチディレクトリは
 #### 4.1 ユーザー管理機能
 
 - **FR-U-001**: システムは、ユーザー登録機能を提供しなければならない
-- **FR-U-002**: システムは、HTTPS-Only Cookieによる認証機能を提供しなければならない
+- **FR-U-002**: システムは、`HttpOnly`・`Secure`・`SameSite`属性付きCookieによる認証機能を提供しなければならない
 - **FR-U-003**: システムは、ロールベースアクセス制御(RBAC)を実装しなければならない
 - **FR-U-004**: システムは、ユーザープロフィール管理機能を提供しなければならない
 
@@ -260,7 +260,7 @@ ProductHuntやTinyLaunch、Uneedなど既存のローンチディレクトリは
 
 #### 6.2 セキュリティ要件
 
-- **NFR-S-001**: システムは、HTTPS-Only Cookieによる認証を実装しなければならない
+- **NFR-S-001**: システムは、`HttpOnly`・`Secure`・`SameSite`属性付きCookieによる認証を実装しなければならない
 - **NFR-S-002**: システムは、XSS、CSRF、SQLインジェクション等の主要な攻撃から保護されなければならない
 - **NFR-S-003**: システムは、Cloudflare WAFによる保護を実装しなければならない
 - **NFR-S-004**: システムは、Web Crypto APIの`crypto.subtle`によりパスワードをPBKDF2-HMAC-SHA512形式で、反復回数10万回かつペッパー付きでハッシュ化しなければならない — OWASPの推奨は21万回以上だが、Cloudflare Workersは[DoS対策として10万回以内に制限してしまう](https://github.com/cloudflare/workerd/issues/1346)ため
