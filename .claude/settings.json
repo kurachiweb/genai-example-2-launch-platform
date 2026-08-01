@@ -35,7 +35,7 @@
       "Bash(rtk git log*)",
       "Bash(rtk git show*)",
       "WebSearch",
-      "mcp__cloudflare-docs__search_cloudflare_documentation"
+      "mcp__cloudflare-api__docs"
     ],
     "deny": [
       "Read(**/.env)",
@@ -63,7 +63,6 @@
     "chrome-devtools",
     "playwright",
     "cloudflare-api",
-    "cloudflare-docs",
     "cloudflare-bindings",
     "cloudflare-builds",
     "cloudflare-observability"
