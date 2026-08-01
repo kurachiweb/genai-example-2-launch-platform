@@ -23,6 +23,7 @@ Wranglerコマンドのうち`--persist-to`オプションがあるものでは�
 Cloudflare WorkersのFreeプランではCPU時間10ミリ秒までという制限があるため、それを超えないように技術選定や処理方式を検討すること。特に多量データのサーバーサイドレンダリング、JSONパース、CSV出力、メール本文の組み立て、ファイルのハッシュ値算出、長大ユーザー入力のエスケープは、制限を超えてしまうことがあるため高速な処理方式を模索したり、実行時間の計測及びログ出力を行ったりすべき。
 Next.jsアプリは通常`bun run dev`で起動するが、デプロイ前は`opennextjs-cloudflare build && opennextjs-cloudflare preview`によりCloudflare Workers向けにビルドして、動作するかや10ミリ秒制限をクリアするかを確かめる。
 ビルドコマンドやデプロイ前確認コマンド、デプロイコマンドの先頭に`NODE_ENV=production`を加える。
+全ての環境変数は`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境変数を使うコマンドの先頭には`infisical --telemetry=false run --env=dev -- `を付けて注入する。
 
 ### コード・ドキュメントの規則
 
