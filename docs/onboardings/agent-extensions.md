@@ -43,10 +43,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - トレードオフ分析(Pro/Con/代替案/決定根拠)の文書化
 - ADR(Architecture Decision Records)の作成
 
-**利用可能ツール**: Read, Grep, Glob
-
----
-
 ### ecc:build-error-resolver
 
 **概要**: ビルドエラー・TypeScript型エラーの解決専門家。最小限の差分でビルドを通すことに集中する。
@@ -59,10 +55,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - モジュール解決エラー・依存関係の問題解決
 - tsconfig・webpack・Next.js設定エラーの修正
 - アーキテクチャ変更や機能追加は行わない(エラー修正のみ)
-
-**利用可能ツール**: Read, Write, Edit, Bash, Grep, Glob
-
----
 
 ### ecc:code-reviewer
 
@@ -77,10 +69,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - React/Next.js・Node.jsバックエンドのアンチパターン検出
 - レビューサマリー(重大度別件数・マージ可否)の出力
 
-**利用可能ツール**: Read, Grep, Glob, Bash
-
----
-
 ### ecc:doc-updater
 
 **概要**: コードマップ・ドキュメントの更新専門家。Claude Haikuモデルを使用(低コスト)。
@@ -92,10 +80,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - `docs/CODEMAPS/`配下のコードマップ生成・更新
 - README・開発者向けガイドの更新
 - ディレクトリ構造・エントリポイント・依存関係のマッピング
-
-**利用可能ツール**: Read, Write, Edit, Bash, Grep, Glob
-
----
 
 ### ecc:e2e-runner
 
@@ -110,10 +94,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - スクリーンショット・ビデオ・トレースアーティファクトの管理
 - CI/CDパイプラインへの統合
 
-**利用可能ツール**: Read, Write, Edit, Bash, Grep, Glob
-
----
-
 ### ecc:planner
 
 **概要**: 複雑な機能実装・リファクタリングの計画立案専門家。Claude Opusモデルを使用。
@@ -125,10 +105,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - 要件分析・既存コードベースのレビュー
 - フェーズ分割された実装計画(ファイルパス・依存関係・リスクを含む)の作成
 - テスト戦略・成功基準・リスクと緩和策の定義
-
-**利用可能ツール**: Read, Grep, Glob
-
----
 
 ### ecc:react-build-resolver
 
@@ -145,10 +121,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - Next.js App Routerのサーバー/クライアントコンポーネント境界エラーの修正
 - 純粋な型エラーはTypeScript系へ委譲し、アーキテクチャ変更は行わない(同一エラーが3回続く・新規エラーが増える・設計変更が必要な場合は停止して報告)
 
-**利用可能ツール**: Read, Write, Edit, Bash, Grep, Glob
-
----
-
 ### ecc:react-reviewer
 
 **概要**: React/JSX専門のシニアコードレビュアー。フック正当性・レンダリングパフォーマンス・サーバー/クライアント境界・アクセシビリティ・React固有セキュリティを審査する。Claude Sonnetモデルを使用。
@@ -164,10 +136,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - レンダリングパフォーマンス(過剰メモ化・`key={index}`・derived state in effect)の指摘
 - 重大度別(CRITICAL/HIGH/MEDIUM)のレビュー報告とマージ可否判定(コードの書き換えは行わず指摘のみ)
 
-**利用可能ツール**: Read, Grep, Glob, Bash
-
----
-
 ### ecc:refactor-cleaner
 
 **概要**: デッドコード削除・コード統合専門家。
@@ -180,10 +148,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - 未使用エクスポート・npm依存関係の安全な削除
 - 重複コンポーネント・ユーティリティの統合
 - カテゴリ単位でのバッチ削除とテスト検証
-
-**利用可能ツール**: Read, Write, Edit, Bash, Grep, Glob
-
----
 
 ### ecc:security-reviewer
 
@@ -198,10 +162,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - `npm audit`・`eslint-plugin-security`の実行
 - CRITICAL脆弱性発見時の緊急対応(即時報告・修正・シークレットローテーション)
 
-**利用可能ツール**: Read, Bash, Grep, Glob
-
----
-
 ### ecc:tdd-guide
 
 **概要**: テスト駆動開発(TDD)専門家。テストファーストメソドロジーを強制する。
@@ -215,10 +175,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - 80%以上のカバレッジ維持
 - null/空/境界値/エラーパス・競合状態などのエッジケースのテスト
 
-**利用可能ツール**: Read, Write, Edit, Bash, Grep
-
----
-
 ### ecc:typescript-reviewer
 
 **概要**: TypeScript/JavaScriptの型安全性・非同期正確性・セキュリティ・慣用パターンの専門レビュアー。
@@ -231,10 +187,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - 未処理のPromise・`async forEach`・浮動Promiseの検出
 - React/Next.jsのサーバー/クライアント境界侵犯の検出
 - PRマージ可否の判定(CRITICAL・HIGHがあればブロック)
-
-**利用可能ツール**: Read, Grep, Glob, Bash
-
----
 
 ### developer-kit-typescript:nestjs-code-review-expert
 
@@ -250,10 +202,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - ガード・認証認可・入力検証などセキュリティ観点の確認
 - 重大度別(Critical/Warning/Suggestion)のレビュー報告と改善コード例の提示
 
-**利用可能ツール**: Read, Grep, Glob, Bash
-
----
-
 ### developer-kit-typescript:typescript-security-expert
 
 **概要**: TypeScript/Node.jsアプリケーションのセキュリティ監査・DevSecOps専門家。
@@ -268,10 +216,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - npm依存関係の脆弱性スキャン(`npm audit`等)
 - Critical〜Lowの重大度別に修正優先順位を付けた是正計画の提示
 
-**利用可能ツール**: Read, Write, Edit, Glob, Grep, Bash
-
----
-
 ### developer-kit-typescript:typescript-software-architect-review
 
 **概要**: クリーンアーキテクチャ・DDD(ドメイン駆動設計)・モダンNode.jsパターンの専門アーキテクト。
@@ -285,8 +229,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - SOLID原則準拠と依存関係の方向性チェック
 - Express・Fastify・NestJS・Next.js等フレームワーク別アーキテクチャパターンの助言
 - ADR形式でのアーキテクチャ決定の文書化提案
-
-**利用可能ツール**: Read, Write, Edit, Glob, Grep, Bash
 
 ---
 
