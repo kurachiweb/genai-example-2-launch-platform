@@ -10,32 +10,32 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 
 作った製品を投稿し、他のユーザーと投票数を競い合うローンチディレクトリ。
 各ユーザーは画面操作または公開APIを通じて自身のプロフィール、投稿した製品、コメントをCRUD操作できる。
-公開APIには1分あたりのリクエスト数制限(Rate Limit)が設けられている。
+公開APIには1分あたりのリクエスト回数制限(レート制限)が設けられている。
 詳細は[README.md](./README.md)を参照すること。
 
 ## 本プロジェクト規則
 
 ### コーディングAI思考プロセスの規則
 
-機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。(必読セクション: `Agentic SDLC and Spec-Driven Development`及び参照しているファイル)
-新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
-Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1系コマンドでは`--local`オプションも付けること。
-Cloudflare WorkersのFreeプランにはCPU時間10ミリ秒までという制限があるため、それを超えないように技術選定や処理方式を検討すること。特にパスワードのハッシュ化、多量データのサーバーサイドレンダリング、JSONパース、CSV出力、メール本文の組み立て、ファイルのハッシュ値算出、長大ユーザー入力のエスケープは、制限を超えてしまうことがあるため高速な処理方式を模索したり、実行時間の計測及びログ出力を行ったりすべき。
-Next.jsアプリは通常`bun run dev`で起動するが、デプロイ前は`opennextjs-cloudflare build && opennextjs-cloudflare preview`によりCloudflare Workers向けにビルドして、動作するかや10ミリ秒制限をクリアするかを確かめること。
-ビルドコマンドやデプロイ前確認コマンド、デプロイコマンドの先頭に`NODE_ENV=production`を加えること。
-全ての環境変数は`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境変数を使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
+- 機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。(必読セクション: `Agentic SDLC and Spec-Driven Development`及び参照しているファイル)
+- 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
+- Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1系コマンドでは`--local`オプションも付けること。
+- Cloudflare WorkersのFreeプランにはCPU時間10ミリ秒までという制限があるため、それを超えないように技術選定や処理方式を検討すること。特にパスワードのハッシュ化、多量データのサーバーサイドレンダリング、JSONパース、CSV出力、メール本文の組み立て、ファイルのハッシュ値算出、長大ユーザー入力のエスケープは、制限を超えてしまうことがあるため高速な処理方式を模索したり、実行時間の計測及びログ出力を行ったりすべき。
+- Next.jsアプリは通常`bun run dev`で起動するが、デプロイ前は`opennextjs-cloudflare build && opennextjs-cloudflare preview`によりCloudflare Workers向けにビルドして、動作するかや10ミリ秒制限をクリアするかを確かめること。
+- ビルドコマンドやデプロイ前確認コマンド、デプロイコマンドの先頭に`NODE_ENV=production`を加えること。
+- 全ての環境変数は`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境変数を使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
 
 ### コード・ドキュメントの規則
 
-各種ドキュメント、コードコメント、Gitコミットメッセージにおいて、全ての文章は日本語で記述すること。
-ドキュメントやコードコメントにおいて、日本語と英数字の間、そして日本語とインラインコードの間には半角スペースを入れないこと。例:「テストは Bun の `bun test` により 10% でも速くする」ではなく「テストはBunの`bun test`により10%でも速くする」
-マークダウンドキュメント内で図が必要ならmermaid形式で記述すること。
-テスト駆動開発(TDD)の実施を徹底すること。
-NestJSはクリーンアーキテクチャに基づく実装を徹底すること。
-コード内にコメントは原則書かない。ただし難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
-appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
-テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はbun、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
-Next.jsの`"use cache"`を使う場合、キャッシュデータはCloudflare Workers KVに永続化するとともに、さらなる高速化のため`@opennextjs/cloudflare`の`withRegionalCache`(インメモリ)を併用すること。
+- 各種ドキュメント、コードコメント、Gitコミットメッセージにおいて、全ての文章は日本語で記述すること。
+- ドキュメントやコードコメントにおいて、日本語と英数字の間、そして日本語とインラインコードの間には半角スペースを入れないこと。例:「テストは Bun の `bun test` により 10% でも速くする」ではなく「テストはBunの`bun test`により10%でも速くする」
+- マークダウンドキュメント内で図が必要ならmermaid形式で記述すること。
+- テスト駆動開発(TDD)の実施を徹底すること。
+- NestJSはクリーンアーキテクチャに基づく実装を徹底すること。
+- コード内にコメントは原則書かない。ただし難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
+- appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
+- テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はbun、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
+- Next.jsの`"use cache"`を使う場合、キャッシュデータはCloudflare Workers KVに永続化するとともに、さらなる高速化のため`@opennextjs/cloudflare`の`withRegionalCache`(インメモリ)を併用すること。
 
 ### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について
 
@@ -213,7 +213,7 @@ Cloudflare Workers
 
 専用の有償セキュリティ基盤は用いず、Cloudflareのプラットフォーム標準機能と既存ツールを重ねて多層防御を構成する。
 
-Cloudflare WAF Rate Limiting Rules (エッジでのレート制限 ... 制限閾値はTerraformで管理)
+WorkerごとのRate limiterバインディング (リージョン別レート制限、閾値はTerraformで管理)
 Cloudflare Durable Objects (`@nestjs/throttler`と組み合わせて厳密なレート制限カウントを実現)
 
 #### 構造化ロギング
