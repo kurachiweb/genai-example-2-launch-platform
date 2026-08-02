@@ -1,173 +1,174 @@
-# 技術選定
+# 主な技術選定
 
 それぞれ最新バージョンを用いる。
 
 ## データベース
 
-ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev --persist-to` / `wrangler d1 execute --local --persist-to`)
-デプロイ先 ... Cloudflare D1
-
-ローカル環境 ... WranglerのKVローカルモード(`wrangler dev --persist-to`) ... namespace追加時は`wrangler kv namespace create <name> --preview`でプレビュー用IDを発行する
-デプロイ先 ... Cloudflare Workers KV
+- SQLデータベース
+  - ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev --persist-to` / `wrangler d1 execute --local --persist-to`)
+  - デプロイ先 ... Cloudflare D1
+- キーバリュー型データベース
+  - ローカル環境 ... WranglerのKVローカルモード(`wrangler dev --persist-to`) ... namespace追加時は`wrangler kv namespace create <name> --preview`でプレビュー用IDを発行する
+  - デプロイ先 ... Cloudflare Workers KV
 
 ## バックエンド (API)
 
 ### フレームワーク
 
-NestJS (tscによるビルド)
-@nestjs/platform-express (`httpServerHandler`でラップ)
-TypeScript
+- NestJS (tscによるビルド)
+- @nestjs/platform-express (`httpServerHandler`でラップ)
+- TypeScript
 
 ### スキーマ
 
-GraphQL
-@nestjs/graphql
-DataLoader (GraphQLのN+1問題対策)
+- GraphQL
+- @nestjs/graphql
+- DataLoader (GraphQLのN+1問題対策)
 
-### データベース・ORM
+### ORM
 
-MikroORM (D1向け連携は実験的サポート、Kysely D1ダイアレクトを`driverOptions`経由で使用)
-Kysely (クエリビルダ)
+- MikroORM (D1向け連携は実験的サポート、Kysely D1ダイアレクトを`driverOptions`経由で使用)
+- Kysely (クエリビルダ)
 
 ### 認証・認可
 
-`HttpOnly`・`Secure`・`SameSite`属性付きCookieによるユーザー認証
-ロールベースのアクセス制御
-所有権ベースのアクセス制御(自ユーザー・全ユーザー・管理者)
+- `HttpOnly`・`Secure`・`SameSite`属性付きCookieによるユーザー認証
+- ロールベースのアクセス制御
+- 所有権ベースのアクセス制御(自ユーザー・全ユーザー・管理者)
 
 ### バリデーション・変換
 
-class-validator
-class-transformer
+- class-validator
+- class-transformer
 
 ## フロントエンド
 
 ### フレームワーク
 
-Next.js (App Router)
-@opennextjs/cloudflare (`initOpenNextCloudflareForDev`関数を使用)
-React
-TypeScript
+- Next.js (App Router)
+- @opennextjs/cloudflare (`initOpenNextCloudflareForDev`関数を使用)
+- React
+- TypeScript
 
 ### スキーマ
 
-GraphQL Code Generator
+- GraphQL Code Generator
 
 ### 状態管理・データフェッチング
 
-Apollo Client (GraphQLクライアント)
-Jotai (グローバル状態管理)
+- Apollo Client (GraphQLクライアント)
+- Jotai (グローバル状態管理)
 
 ### UI・スタイリング
 
-Tailwind CSS
-shadcn/ui
+- Tailwind CSS
+- shadcn/ui
 
 ### フォーム・バリデーション
 
-React Hook Form
-Zod
+- React Hook Form
+- Zod
 
 ## 決済サービス
 
-Creem (決済処理基盤、https://docs.creem.io)
-Creem Checkout (決済ページへの誘導)
-Creem Webhooks (都度支払いや定期課金イベントの受信、APIサーバー側で処理)
-Creem TypeScript SDK及びNext.jsアダプター
+- Creem (決済処理基盤、https://docs.creem.io)
+- Creem Checkout (決済ページへの誘導)
+- Creem Webhooks (都度支払いや定期課金イベントの受信、APIサーバー側で処理)
+- Creem TypeScript SDK及びNext.jsアダプター
 
 ## デプロイ先のインフラ構成
 
 ### アプリケーション実行環境
 
-Cloudflare Workers
+- Cloudflare Workers
 
 ### ストレージ
 
-ローカル環境 ... WranglerのR2ローカルモード(`wrangler dev --persist-to` / `wrangler r2 *** --local --persist-to`)
-デプロイ先 ... Cloudflare R2 (画像・ファイルストレージ)
+- ローカル環境 ... WranglerのR2ローカルモード(`wrangler dev --persist-to` / `wrangler r2 *** --local --persist-to`)
+- デプロイ先 ... Cloudflare R2 (画像・ファイルストレージ)
 
 ### セキュリティ
 
 専用の有償セキュリティ基盤は用いず、Cloudflareのプラットフォーム標準機能と既存ツールを重ねて多層防御を構成する。
 レート制限にはDurable Objectsを使うが、その設定の範囲内で単一Cloudflareロケーションに高頻度リクエストがなされる場合を考慮し、Rate limiterバインディングでも防御する。
 
-Cloudflare Durable Objects (`@nestjs/throttler`と組み合わせて厳密なレート制限カウントを実現)
-WorkerごとのRate limiterバインディング (Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
+- Cloudflare Durable Objects (`@nestjs/throttler`と組み合わせて厳密なレート制限カウントを実現)
+- WorkerごとのRate limiterバインディング (Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
 
 ### 構造化ロギング
 
-LogTape
+- LogTape
 
 ### メール送信
 
-ローカル環境 ... Mailpit
-デプロイ先 ... Amazon SES (`aws4fetch`によりリクエストを署名)
-JSX email (HTMLメールコード生成、https://jsx.email)
+- ローカル環境 ... Mailpit
+- デプロイ先 ... Amazon SES (`aws4fetch`によりリクエストを署名)
+- JSX email (HTMLメールコード生成、https://jsx.email)
 
 ### モニタリング
 
-Sentry (エラートラッキング、`@sentry/cloudflare`を使用)
-Cloudflare Analytics (ユーザーの傾向・利用状況分析)
-FlareWarden (外部ステータスページ・死活監視)
+- Sentry (エラートラッキング、`@sentry/cloudflare`を使用)
+- Cloudflare Analytics (ユーザーの傾向・利用状況分析)
+- FlareWarden (外部ステータスページ・死活監視)
 
 ## 画像配信
 
-Cloudflare Images (R2に保存した画像をリサイズ・フォーマット変換・Exif削除)
+- Cloudflare Images (R2に保存した画像をリサイズ・フォーマット変換・Exif削除)
 
 ### 画像モデレーション
 
-Amazon Rekognition (ローカル環境やCIプロセスでは、テスト結果を毎回同じにするため決定論的スタブの偽判定器を使用)
+- Amazon Rekognition (ローカル環境やCIプロセスでは、テスト結果を毎回同じにするため決定論的スタブの偽判定器を使用)
 
 ### CI/CD
 
 main/prodブランチへのpushをトリガーにして、GitHub Actionsにより以下のパイプラインを実行する。
 
-TruffleHog (機密情報のpush防止。検知ならマージをブロック)
-Bunによるパッケージインストール及び既知の脆弱性確認
-Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
-WranglerによるDBマイグレーション
-Wranglerによる各Workerのビルド・デプロイ
-Wrangler Secretsによる環境変数変更
+- TruffleHog (機密情報のpush防止。検知ならマージをブロック)
+- Bunによるパッケージインストール及び既知の脆弱性確認
+- Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
+- WranglerによるDBマイグレーション
+- Wranglerによる各Workerのビルド・デプロイ
+- Wrangler Secretsによる環境変数変更
 
 ## 開発環境・ツール
 
 ### コンテナ
 
-Docker (ローカル環境のみ)
+- Docker (ローカル環境のみ)
 
 ### パッケージマネージャー
 
-Bun
+- Bun
 
 ### コード品質
 
-ESLint + Prettier
-Husky + lint-staged (pre-commit)
-Commitlint (コミットメッセージ規約)
+- ESLint + Prettier
+- Husky + lint-staged (pre-commit)
+- Commitlint (コミットメッセージ規約)
 
 ### セキュリティ
 
-Gitleaks (pre-commit、コマンドオプション`--staged`を使用)
-GitHub Dependabot (依存パッケージの脆弱性アラート及びバージョン更新PRの自動作成)
+- Gitleaks (pre-commit、コマンドオプション`--staged`を使用)
+- GitHub Dependabot (依存パッケージの脆弱性アラート及びバージョン更新PRの自動作成)
 
 ### シークレット管理
 
-Infisical
+- Infisical (Freeプラン)
 
 ### テスト
 
-Bun (ロジック層の単体テスト、`bun test`コマンドを使用)
-Vitest + Vitest Browser Mode (DOM・コンポーネントテスト、フロントエンド)
-React Testing Library (フロントエンド、Vitest Browser Mode上で使用)
-@cloudflare/vitest-pool-workers (Cloudflare Workers統合テスト、D1・KV・R2・DOバインディングを含む)
-Playwright (複数アプリの横断E2E)
+- Bun (ロジック層の単体テスト、`bun test`コマンドを使用)
+- Vitest + Vitest Browser Mode (DOM・コンポーネントテスト、フロントエンド)
+- React Testing Library (フロントエンド、Vitest Browser Mode上で使用)
+- @cloudflare/vitest-pool-workers (Cloudflare Workers統合テスト、D1・KV・R2・DOバインディングを含む)
+- Playwright (複数アプリの横断E2E)
 
 ### ブラウザ動作確認
 
-Playwright MCP
+- Playwright MCP
 
 ### ドキュメント
 
-Storybook (コンポーネントカタログ、`@storybook/nextjs-vite`を使用)
-Apollo Sandbox (API探索、`ApolloServerPluginLandingPageLocalDefault`プラグインを使用)
-Swagger UI (公開APIサーバーが配信するOpenAPI仕様を閲覧)
+- Storybook (コンポーネントカタログ、`@storybook/nextjs-vite`を使用)
+- Apollo Sandbox (API探索、`ApolloServerPluginLandingPageLocalDefault`プラグインを使用)
+- Swagger UI (公開APIサーバーが配信するOpenAPI仕様を閲覧)
