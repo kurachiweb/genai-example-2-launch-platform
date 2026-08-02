@@ -102,7 +102,7 @@
 ### メール送信
 
 - ローカル環境 ... Mailpit
-- デプロイ先 ... Amazon SES (`aws4fetch`によりリクエストを署名)
+- デプロイ先 ... Cloudflare Email ServiceのEmail Sending
 - JSX email (HTMLメールコード生成、https://jsx.email)
 
 ### モニタリング

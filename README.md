@@ -74,7 +74,7 @@ Launch Stadiumは、ProductHuntやUneedの競合として位置づけられる�
 #### 2.4 運用環境
 
 - **クライアント**: モダンWebブラウザ(Chrome, Firefox, Safari, Edge最新版)
-- **サーバー**: Cloudflare Workers
+- **サーバー**: Cloudflare Workers(Workers Paidプラン)
 - **インフラ**: Cloudflare各種サービス
 
 #### 2.5 設計・実装の制約
@@ -89,7 +89,7 @@ Launch Stadiumは、ProductHuntやUneedの競合として位置づけられる�
 - Cloudflare各種サービスの利用可能性
 - GitHubリポジトリとの連携
 - Creem(決済処理基盤)の利用可能性
-- Amazon SES(本番環境のメール送信基盤)の利用可能性
+- Cloudflare Email Service(本番環境のメール送信基盤)の利用可能性
 - Amazon Rekognition(プロダクト画像の自動モデレーション基盤)の利用可能性
 - Sentry(エラートラッキング基盤)の利用可能性
 - FlareWarden(外部ステータスページ・死活監視基盤)の利用可能性
@@ -238,7 +238,7 @@ ProductHuntやTinyLaunch、Uneedなど既存のローンチディレクトリは
 - **SW-005**: システムは、Cloudflare Durable Objectsによる状態管理(厳密なレート制限カウント等)をサポートしなければならない
 - **SW-006**: システムは、Cloudflare Imagesにより、R2に保存済みの画像をリクエストに応じたサイズ・フォーマットに変換し、Exif情報を除去して配信しなければならない
 - **SW-007**: システムは、Cloudflare R2を画像・ファイルのオブジェクトストレージとしてサポートしなければならない(NFR-A-008に対応)
-- **SW-008**: システムは、Amazon SES HTTPS API(`aws4fetch`によるSigV4署名)との連携により、各種通知メールの配信経路を提供しなければならない(FR-N-001〜003に対応)
+- **SW-008**: システムは、Cloudflare Email ServiceのEmail Sendingにより、各種通知メールの配信経路を提供しなければならない(FR-N-001〜003に対応)
 - **SW-009**: システムは、Creem API及びCreem Webhookによる決済処理連携を提供しなければならない(FR-PM-001〜006、NFR-S-010に対応)
 - **SW-010**: システムは、Amazon Rekognition APIを用いた画像自動判定処理を提供しなければならない(FR-A-005に対応)
 
@@ -246,7 +246,6 @@ ProductHuntやTinyLaunch、Uneedなど既存のローンチディレクトリは
 
 - **COM-001**: システムは、標準的なHTTP/HTTPSプロトコルをサポートしなければならない
 - **COM-002**: システムは、TLS 1.2以上による暗号化通信を使用しなければならない
-- **COM-003**: システムは、Amazon SES HTTPS API(本番環境、`aws4fetch`によるSigV4署名)またはMailpit(ローカル環境)を通じたメール送信インターフェースを提供しなければならない
 
 ---
 

@@ -76,7 +76,7 @@ infisical --telemetry=false run --env=dev -- bun run dev --port 48045 --hostname
 | `apps/frontend-lib` | Storybookフロントエンド(Next.js)        | 48046  |
 | Wrangler            | `wrangler login`のOAuthコールバック受信 | 8976   |
 
-ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Workers KVの代わりにWranglerのKVローカルモード、Amazon SESの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
+ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Workers KVの代わりにWranglerのKVローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
 WranglerのOAuthコールバックだけは、Cloudflareログイン後のリダイレクト先が`http://localhost:8976/oauth/callback`に固定されており、それは`--callback-port`でも変更できないため、他のポート番号と連続していない。
 MailpitのSMTP(1025)はコンテナ内のみで到達可能で、ローカル開発ではメール送信処理がこの1025番ポートへSMTP接続し、送信結果は48041番のWeb UIで確認する。
 
