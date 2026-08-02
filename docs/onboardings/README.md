@@ -33,9 +33,17 @@ claude
 /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
 ```
 
-6. コンテナ内: APIサーバーの起動
+6. コンテナ内: プロジェクトルートアプリのインストール
 
-両アプリで同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する
+Playwrightやchrome-devtools MCP等を利用できるようにする。
+
+```sh
+bun install # 初回のみ
+```
+
+7. コンテナ内: APIサーバーの起動
+
+両アプリで同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。
 
 ```sh
 cd apps/api
@@ -49,7 +57,7 @@ bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
-7. コンテナ内: フロントエンドの起動
+8. コンテナ内: フロントエンドの起動
 
 ```sh
 cd apps/client
