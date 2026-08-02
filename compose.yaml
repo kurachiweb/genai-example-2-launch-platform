@@ -36,9 +36,6 @@ services:
       - "48045:48045" # 管理者側フロントエンド
       - "48046:48046" # Storybookフロントエンド
       - "8976:8976" # `wrangler login`のOAuthコールバック受信
-    env_file:
-      - path: .env
-        required: false
     environment:
       NODE_ENV: development
       API_GRAPHQL_URL: http://localhost:48042/graphql

@@ -4,37 +4,36 @@
 
 ## ローカル開発環境クイックスタート
 
-1. ホスト環境: `.env.example`のコピー`.env`を作成し、値を記載する
-2. ホスト環境: Dockerのインストール及び環境の作成
+1. ホスト環境: Dockerのインストール及び環境の作成
 
 ```zsh
 brew install --cask docker-desktop # Macのみ
 docker compose up -d
 ```
 
-3. VSCodeでコンテナにアタッチする
-4. コンテナ内: Infisicalアカウントにログインする
+2. VSCodeでコンテナにアタッチする
+3. コンテナ内: Infisicalアカウントにログインする
 
 ```sh
 infisical --telemetry=false login
 # EUリージョンでログイン後、画面に表示されたトークンをこのターミナルに貼り付ける
 ```
 
-5. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
+4. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
 
 ```sh
 wrangler login --callback-host 0.0.0.0 --browser false
 wrangler whoami # 認証確認
 ```
 
-6. コンテナ内: Claude向けMCPを認証する(初回のみ)
+5. コンテナ内: Claude向けMCPを認証する(初回のみ)
 
 ```sh
 claude
 /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
 ```
 
-7. コンテナ内: APIサーバーの起動
+6. コンテナ内: APIサーバーの起動
 
 両アプリで同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する
 
@@ -50,7 +49,7 @@ bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
-8. コンテナ内: フロントエンドの起動
+7. コンテナ内: フロントエンドの起動
 
 ```sh
 cd apps/client
