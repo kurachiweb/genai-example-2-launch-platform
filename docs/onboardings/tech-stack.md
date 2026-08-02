@@ -89,9 +89,10 @@ Cloudflare Workers
 ### セキュリティ
 
 専用の有償セキュリティ基盤は用いず、Cloudflareのプラットフォーム標準機能と既存ツールを重ねて多層防御を構成する。
+レート制限にはDurable Objectsを使うが、その設定の範囲内で単一Cloudflareロケーションに高頻度リクエストがなされる場合を考慮し、Rate limiterバインディングでも防御する。
 
-WorkerごとのRate limiterバインディング (リージョン別レート制限、閾値はTerraformで管理)
 Cloudflare Durable Objects (`@nestjs/throttler`と組み合わせて厳密なレート制限カウントを実現)
+WorkerごとのRate limiterバインディング (Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
 
 ### 構造化ロギング
 
