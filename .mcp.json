@@ -7,6 +7,7 @@
         "--executablePath",
         "${CHROMIUM_PATH}",
         "--headless",
+        "--no-usage-statistics",
         "--chromeArg=--no-sandbox",
         "--chromeArg=--disable-dev-shm-usage"
       ]
