@@ -363,6 +363,11 @@ ProductHuntやTinyLaunch、Uneedなど既存のローンチディレクトリは
 - Git
 - GitHub
 
+### MCP
+
+- [Chrome DevTools for agents](https://github.com/ChromeDevTools/chrome-devtools-mcp) by Google ([Apache License 2.0](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/LICENSE)) ... It acts as a MCP server, giving your AI coding assistant access to the full power of Chrome DevTools.
+- [Playwright MCP](https://github.com/microsoft/playwright-mcp) by Microsoft ([Apache License 2.0](https://github.com/microsoft/playwright-mcp/blob/main/LICENSE)) ... A MCP server that provides browser automation capabilities using Playwright.
+
 ### Claude拡張機能
 
 - [Awesome GitHub Copilot](https://github.com/github/awesome-copilot) by GitHub ([MIT License](https://github.com/github/awesome-copilot/blob/main/LICENSE)) ... A community-created collection of custom agents, instructions, skills, hooks, workflows, and plugins to supercharge your GitHub Copilot experience.
