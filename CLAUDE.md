@@ -35,8 +35,11 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
 - テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はbun、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
 - Next.jsの`"use cache"`を使う場合、キャッシュデータはCloudflare Workers KVに永続化するとともに、さらなる高速化のため`@opennextjs/cloudflare`の`withRegionalCache`(インメモリ)を併用すること。
-- MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm compile`コマンドを`package.json`に定義し事前コンパイルすること。
-- データベースについて、Cloudflare D1及びベースとなるSQLite特有の制限に留意すること
+- ORMについて
+  - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm compile`コマンドを`package.json`に定義し事前コンパイルすること。
+  - テーブルの特定カラムに限りアルファベットの大文字小文字を問わず文字照合させたい場合、MikroORMのテーブル定義にて`@Property({ columnType: 'text collate nocase' })`を記載すること。URLスラッグとして使われるユーザーハンドルのカラムでは特に有用。
+- テーブル名は小文字で複数形にすること。
+- データベースについて、Cloudflare D1及びベースとなるSQLite特有の制限に留意すること。
   - D1ではトランザクションが使えないため、MikroORMの`defineConfig`メソッドで`implicitTransactions: false`を設定し、`EntityManager.transactional()`も使用しない。
     - 絞り込みと絞り込んだレコードの更新は1回のSQLで完結させる。
     - 複数テーブルに書き込む場合、整合性を保つためにMikroORMを介さずKyselyクエリで`D1Database.batch()`を使用する。
