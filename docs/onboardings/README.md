@@ -71,6 +71,14 @@ bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- bun run dev --port 48045 --hostname 0.0.0.0
 ```
 
+9. コンテナ内: Storybookの起動
+
+```sh
+cd apps/frontend-lib
+bun install # 初回のみ
+bun run storybook:dev --port 48046 --host 0.0.0.0
+```
+
 ### ローカルポート一覧
 
 | アプリ              | 役割                                    | ポート |
