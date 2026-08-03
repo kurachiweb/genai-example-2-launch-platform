@@ -364,11 +364,11 @@ ProductHuntやTinyLaunch、Uneedなど既存のローンチディレクトリは
 
 ### Claude拡張機能
 
-- [Everything Claude Code](https://github.com/affaan-m/everything-claude-code) by Affaan Mustafa ... The agent harness performance optimization system.
-- [cc-sdd](https://github.com/gotalab/cc-sdd) by Gota ... Kiro-style Spec-Driven Development on an agentic SDLC for Claude Code etc.
-- [Developer Kit](https://github.com/giuseppe-trisciuoglio/developer-kit) by Giuseppe Trisciuoglio ... A modular AI plugin system that supercharges your development workflow across languages and frameworks.
-- [Privacy & Data Protection Skills for AI Agents](https://github.com/mukul975/Privacy-Data-Protection-Skills) by Mahipal ... 282+ structured privacy & data protection skills for AI agents.
-- [Skills](https://github.com/anthropics/skills) by Anthropic ... Skills that demonstrate what's possible with Claude's skills system.
-- [Cloudflare Skills](https://github.com/cloudflare/skills) by Cloudflare ... Skills for teaching agents how to build on Cloudflare.
-- [Awesome GitHub Copilot](https://github.com/github/awesome-copilot) by GitHub ... A community-created collection of custom agents, instructions, skills, hooks, workflows, and plugins to supercharge your GitHub Copilot experience.
-- [Creem Skills](https://github.com/armitage-labs/creem-skills) by Armitage Labs ... Official Creem payment integration skills for AI coding assistants like Claude Code, Cursor, and Windsurf.
+- [Everything Claude Code](https://github.com/affaan-m/everything-claude-code) by Affaan Mustafa ([MIT License](https://github.com/affaan-m/ECC/blob/main/LICENSE)) ... The agent harness performance optimization system.
+- [cc-sdd](https://github.com/gotalab/cc-sdd) by Gota ([MIT License](https://github.com/gotalab/cc-sdd/blob/main/LICENSE)) ... Kiro-style Spec-Driven Development on an agentic SDLC for Claude Code etc.
+- [Developer Kit](https://github.com/giuseppe-trisciuoglio/developer-kit) by Giuseppe Trisciuoglio ([MIT License](https://github.com/giuseppe-trisciuoglio/developer-kit/blob/main/LICENSE)) ... A modular AI plugin system that supercharges your development workflow across languages and frameworks.
+- [Privacy & Data Protection Skills for AI Agents](https://github.com/mukul975/Privacy-Data-Protection-Skills) by Mahipal ([Apache License 2.0](https://github.com/mukul975/Privacy-Data-Protection-Skills/blob/main/LICENSE)) ... 282+ structured privacy & data protection skills for AI agents.
+- [Skills](https://github.com/anthropics/skills) by Anthropic ([Apache License 2.0](https://github.com/anthropics/skills/blob/main/README.md)) ... Skills that demonstrate what's possible with Claude's skills system.
+- [Cloudflare Skills](https://github.com/cloudflare/skills) by Cloudflare ([Apache License 2.0](https://github.com/cloudflare/skills/blob/main/LICENSE)) ... Skills for teaching agents how to build on Cloudflare.
+- [Awesome GitHub Copilot](https://github.com/github/awesome-copilot) by GitHub ([MIT License](https://github.com/github/awesome-copilot/blob/main/LICENSE)) ... A community-created collection of custom agents, instructions, skills, hooks, workflows, and plugins to supercharge your GitHub Copilot experience.
+- [Creem Skills](https://github.com/armitage-labs/creem-skills) by Armitage Labs ([MIT License](https://github.com/armitage-labs/creem-skills/blob/main/creem-api/.claude-plugin/plugin.json)) ... Official Creem payment integration skills for AI coding assistants like Claude Code, Cursor, and Windsurf.
