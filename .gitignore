@@ -23,7 +23,7 @@ node_modules
 # Windows
 Thumbs.db
 desktop.ini
-# Linux (KDE Plasma)
+# Linux(KDE Plasma)
 .directory
 
 # 共通ディレクトリのエイリアス
@@ -49,11 +49,11 @@ storybook-static
 *.tsbuildinfo
 
 # テスト成果物
-# Bun (`bun test --coverage`のデフォルト出力先)
+# Bun(`bun test --coverage`のデフォルト出力先)
 coverage
-# Playwright (スクリーンショット・動画・トレースの格納先)
+# Playwright(スクリーンショット・動画・トレースの格納先)
 test-results
-# Playwright (HTMLレポートの出力先)
+# Playwright(HTMLレポートの出力先)
 playwright-report
 
 # 生成AI用
