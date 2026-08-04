@@ -8,8 +8,7 @@
         "${CHROMIUM_PATH}",
         "--headless",
         "--no-usage-statistics",
-        "--chromeArg=--no-sandbox",
-        "--chromeArg=--disable-dev-shm-usage"
+        "--chromeArg=--no-sandbox"
       ]
     },
     "playwright": {
@@ -19,8 +18,7 @@
         "--executable-path",
         "${CHROMIUM_PATH}",
         "--headless",
-        "--no-sandbox",
-        "--disable-dev-shm-usage"
+        "--no-sandbox"
       ]
     },
     "cloudflare-api": {
