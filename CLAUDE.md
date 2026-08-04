@@ -59,6 +59,7 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 - APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`や`ecc:nestjs-patterns`のAPIレスポンス形式や、`rules/common/patterns.md`のAPIレスポンスフォーマット説明、`rules/typescript/patterns.md`の`ApiResponse<T>`型は採用しない。
 - ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns`ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture`スキルではEntity層に書くよう指示しており、後者に従う。
 - Next.jsのキャッシュ戦略には`"use cache"`を使う。`developer-kit-typescript:nextjs-performance`スキルでは`unstable_cache`が紹介されているが、それは古い記法である。
+- Stripe Payment Elementを使うためにはCheckout Sessions APIにて`ui_mode: 'elements'`オプションを使うこと。`stripe:stripe-best-practices`スキル内では`ui_mode: 'custom'`を使うよう案内しているが、それはリネーム前の古い情報である。
 - `.claude/rules/common/git-workflow.md`はClaude設定ファイルに`includeCoAuthoredBy: false`を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりに`attribution`プロパティを指定する。
 - テストについて
   - E2Eテストツールとして`ecc:e2e-runner`エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
