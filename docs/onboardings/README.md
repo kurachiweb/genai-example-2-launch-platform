@@ -26,19 +26,18 @@ wrangler login --callback-host 0.0.0.0 --browser false
 wrangler whoami # 認証確認
 ```
 
-5. コンテナ内: Claude向けMCPを認証する(初回のみ)
+5. コンテナ内: プロジェクトルートアプリのインストール(初回のみ)
+
+```sh
+bun install
+scripts/setup-chromium.sh # Chromiumを`bun install`で解決されたバージョンに合わせて導入
+```
+
+6. コンテナ内: Claude向けMCPを認証する(初回のみ)
 
 ```sh
 claude
 /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
-```
-
-6. コンテナ内: プロジェクトルートアプリのインストール
-
-Playwrightやchrome-devtools MCP等を利用できるようにする。
-
-```sh
-bun install # 初回のみ
 ```
 
 7. コンテナ内: APIサーバーの起動

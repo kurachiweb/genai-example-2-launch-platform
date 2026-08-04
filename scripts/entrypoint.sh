@@ -10,19 +10,9 @@ git config --global --add safe.directory /workspace
 # ここはホストからのbindマウント後に実行されるため、確実にコンテナ内でディレクトリにアクセスできる。
 mkdir -p /workspace/apps/email
 
-# Chromium本体は`bun install`で解決された`@playwright/test`の実際のバージョンに追従させる必要があるため、イメージビルド時ではなくここで都度インストールする(該当リビジョンが既にあれば再ダウンロードは走らない)。
-# `bun install`が未実行だとローカルにplaywrightが存在せず、bunxが版数不明のままレジストリの最新版を取得してしまいDockerfileと同じズレが再発するため、ローカルに実体がある場合のみ実行する。
-if [ -x /workspace/node_modules/.bin/playwright ]; then
-  if bunx --bun playwright install chromium \
-    && ln -sf "$(find "${PLAYWRIGHT_BROWSERS_PATH}" -maxdepth 1 -type d -name 'chromium-*' | sort -V | tail -n 1)/chrome-linux/chrome" "${CHROMIUM_PATH}" \
-    && test -x "${CHROMIUM_PATH}"; then
-    :
-  else
-    echo "Chromiumのセットアップに失敗しました。CHROMIUM_PATH=${CHROMIUM_PATH} が実行可能ファイルとして存在しません。" >&2
-  fi
-else
-  echo 'Playwrightが未インストールのためChromiumのセットアップをスキップしました。`bun install`後にコンテナを再起動してください。' >&2
-fi
+# Chromiumをインストールする。
+# ただし`bun install`前にコンテナが起動した場合はこのスクリプトがスキップされるので、後ほどクイックスタート手順(docs/onboardings/README.md参照)に従いそのスクリプトを手動実行する。
+/workspace/scripts/setup-chromium.sh
 
 # Dockerのポートフォワーディングが機能するよう0.0.0.0で待ち受ける(既定の127.0.0.1待受だとホストから48041へ到達できない)。
 mailpit \
