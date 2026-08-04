@@ -81,6 +81,17 @@
   - Creem Webhooks(都度支払いや定期課金イベントの受信、APIサーバー側で処理)
   - Creem TypeScript SDK及びNext.jsアダプター
 
+## CI/CD
+
+main/prodブランチへのpushをトリガーにして、GitHub Actionsにより以下のパイプラインを実行する。
+
+- TruffleHog(機密情報のpush防止。検知ならマージをブロック)
+- Bunによるパッケージインストール及び既知の脆弱性確認
+- Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
+- WranglerによるDBマイグレーション
+- Wranglerによる各Workerのビルド・デプロイ
+- Wrangler Secretsによる環境変数変更
+
 ## デプロイ先のインフラ構成
 
 ### アプリケーション実行環境
@@ -93,17 +104,17 @@
   - ローカル環境 ... WranglerのR2ローカルモード(`wrangler dev --persist-to` / `wrangler r2 *** --local --persist-to`)
   - デプロイ先 ... Cloudflare R2
 
-### セキュリティ
+### 画像配信
+
+- Cloudflare Images(R2に保存した画像をリサイズ・フォーマット変換・Exif削除)
+
+### 実行環境のセキュリティ
 
 専用の有償セキュリティ基盤は用いず、Cloudflareのプラットフォーム標準機能と既存ツールを重ねて多層防御を構成する。
 レート制限にはDurable Objectsを使うが、その設定の範囲内で単一Cloudflareロケーションに高頻度リクエストがなされる場合を考慮し、Rate limiterバインディングでも防御する。
 
 - Cloudflare Durable Objects(SQLiteストレージ、`@nestjs/throttler`と組み合わせて厳密なレート制限カウントを実現)
 - WorkerごとのRate limiterバインディング(Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
-
-### 構造化ロギング
-
-- LogTape
 
 ### メール
 
@@ -112,32 +123,21 @@
   - デプロイ先 ... Cloudflare Email ServiceのEmail Sending
 - JSX email(HTMLメールコード生成、https://jsx.email)
 
-### モニタリング
-
-- Sentry(エラートラッキング、`@sentry/cloudflare`を使用)
-- Cloudflare Analytics(ユーザーの傾向・利用状況分析)
-- FlareWarden(外部ステータスページ・死活監視)
-
-### 画像配信
-
-- Cloudflare Images(R2に保存した画像をリサイズ・フォーマット変換・Exif削除)
-
 ### 画像モデレーション
 
 ローカル環境やCIプロセスでは、テスト結果を毎回同じにするため決定論的スタブの偽判定器を使用する。
 
 - Amazon Rekognition(SigV4署名リクエストの生成に`aws4fetch`を使用)
 
-## CI/CD
+### 構造化ロギング
 
-main/prodブランチへのpushをトリガーにして、GitHub Actionsにより以下のパイプラインを実行する。
+- LogTape
 
-- TruffleHog(機密情報のpush防止。検知ならマージをブロック)
-- Bunによるパッケージインストール及び既知の脆弱性確認
-- Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
-- WranglerによるDBマイグレーション
-- Wranglerによる各Workerのビルド・デプロイ
-- Wrangler Secretsによる環境変数変更
+### モニタリング
+
+- Sentry(エラートラッキング、`@sentry/cloudflare`を使用)
+- Cloudflare Analytics(ユーザーの傾向・利用状況分析)
+- FlareWarden(外部ステータスページ・死活監視)
 
 ## 開発環境・ツール
 
@@ -155,7 +155,7 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 - Husky + lint-staged(pre-commit)
 - Commitlint(コミットメッセージ規約)
 
-### セキュリティ
+### 開発プロセスのセキュリティ
 
 - Gitleaks(pre-commit、コマンドオプション`--staged`を使用)
 - GitHub Dependabot(依存パッケージの脆弱性アラート及びバージョン更新PRの自動作成)
