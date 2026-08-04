@@ -118,15 +118,17 @@
 - Cloudflare Analytics(ユーザーの傾向・利用状況分析)
 - FlareWarden(外部ステータスページ・死活監視)
 
-## 画像配信
+### 画像配信
 
 - Cloudflare Images(R2に保存した画像をリサイズ・フォーマット変換・Exif削除)
 
 ### 画像モデレーション
 
-- Amazon Rekognition(ローカル環境やCIプロセスでは、テスト結果を毎回同じにするため決定論的スタブの偽判定器を使用)
+ローカル環境やCIプロセスでは、テスト結果を毎回同じにするため決定論的スタブの偽判定器を使用する。
 
-### CI/CD
+- Amazon Rekognition(SigV4署名リクエストの生成に`aws4fetch`を使用)
+
+## CI/CD
 
 main/prodブランチへのpushをトリガーにして、GitHub Actionsにより以下のパイプラインを実行する。
 
