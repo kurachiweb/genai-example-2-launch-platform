@@ -23,6 +23,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - Next.jsアプリは通常`bun run dev`で起動するが、デプロイ前は`opennextjs-cloudflare build && opennextjs-cloudflare preview`によりCloudflare Workers向けにビルドして動作確認すること。
 - ビルドコマンドやデプロイ前確認コマンド、デプロイコマンドの先頭に`NODE_ENV=production`を加えること。
 - 全ての環境変数は`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境変数を使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
+  - `wrangler dev`を起動する際、Infisicalから環境変数を注入するには上記手順だけでは不十分で、Wrangler設定の`secrets.required`に必要な環境変数を記載することで`process.env`経由で使用可能になる。
 
 ### コード・ドキュメントの規則
 
