@@ -267,7 +267,7 @@ ProductHuntやTinyLaunch、Uneedなど既存のローンチディレクトリは
 
 - **NFR-P-001**: システムは、FCP 1.8秒以内を達成しなければならない(Cloudflare Web Analyticsダッシュボードで確認)
 - **NFR-P-002**: システムは、同時接続ユーザー数100人をサポートしなければならない
-- **NFR-P-003**: GraphQL APIは、99パーセンタイルで300ms以内のレスポンスタイムを達成しなければならない(Cloudflare GraphQL Analytics APIの`workersInvocationsAdaptive`データセットで取得)
+- **NFR-P-003**: GraphQL APIは、クライアント観測で99パーセンタイル300ms以内のレスポンスタイムを達成しなければならない(`@sentry/nextjs`のBrowser Tracingを利用しリクエスト100回あたり1回計測)
 - **NFR-P-004**: システムは、GraphQLにおけるN+1問題を回避するためDataLoaderを使用しなければならない
 
 #### 6.2 セキュリティ要件
