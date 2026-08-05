@@ -84,23 +84,23 @@ bun install # 初回のみ
 bun run storybook:dev --port 48046 --host 0.0.0.0
 ```
 
-8. コンテナ内: デプロイ前チェック
+8. コンテナ内: デプロイ前動作確認
 
 ```sh
 cd apps/db
 bun install # 初回のみ
 # Cloudflare Workers上でも動作する形式でMikroORMアプリをビルド
-mikro-orm cache:generate --combined
-mikro-orm compile --out ./schema/dist/compiled-functions.js
+bunx mikro-orm cache:generate --combined
+bunx mikro-orm compile --out ./schema/dist/compiled-functions.js
 
 # Next.jsアプリをCloudflare Workers向けにビルドして動作確認
 cd ../client
-NODE_ENV=production infisical --telemetry=false run --env=dev -- opennextjs-cloudflare build
-NODE_ENV=production infisical --telemetry=false run --env=dev -- opennextjs-cloudflare preview --port=48044 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs-cloudflare build
+NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs-cloudflare preview --port=48044 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 
 cd ../admin
-NODE_ENV=production infisical --telemetry=false run --env=dev -- opennextjs-cloudflare build
-NODE_ENV=production infisical --telemetry=false run --env=dev -- opennextjs-cloudflare preview --port=48045 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs-cloudflare build
+NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs-cloudflare preview --port=48045 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
 ### ローカルポート一覧
