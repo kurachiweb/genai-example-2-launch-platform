@@ -26,7 +26,7 @@ wrangler login --callback-host 0.0.0.0 --browser false
 wrangler whoami # 認証確認
 ```
 
-5. コンテナ内: プロジェクトルートアプリのインストール(初回のみ)
+5. コンテナ内: ルートの依存パッケージをインストール(初回のみ)
 
 ```sh
 bun install
