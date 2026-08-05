@@ -40,9 +40,16 @@ claude
 /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
 ```
 
-7. コンテナ内: アプリケーションの起動
+7. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
-`apps/api`と`apps/public-api`の両方で同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。
+`apps/api`と`apps/public-api`は同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
+
+```sh
+cd apps/api
+infisical --telemetry=false run --env=dev -- wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
+```
+
+8. コンテナ内: アプリケーションの起動
 
 内部APIサーバー
 
@@ -84,7 +91,7 @@ bun install # 初回のみ
 bun run storybook:dev --port 48046 --host 0.0.0.0
 ```
 
-8. コンテナ内: デプロイ前動作確認
+9. コンテナ内: デプロイ前動作確認
 
 ```sh
 cd apps/db
