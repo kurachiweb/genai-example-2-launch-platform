@@ -9,12 +9,12 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Write",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "bun -e \"let d=\\\"\\\";process.stdin.on(\\\"data\\\",c=>d+=c);process.stdin.on(\\\"end\\\",()=>{const i=JSON.parse(d);const c=i.tool_input&&i.tool_input.content||\\\"\\\";const lines=c.split(\\\"\\n\\\").length;if(lines>800){console.error(\\\"[Hook] ブロック: ファイルが800行を超えています(\\\"+lines+\\\"行)\\\");console.error(\\\"[Hook] より小さなモジュールに分割してください\\\");process.exit(2)}console.log(d)})\"",
-            "description": "800行を超えるファイル書き込みをブロックする(rules/web/hooks.md準拠、bun版)"
+            "command": "bun -e \"let input=\\\"\\\";process.stdin.on(\\\"data\\\",chunk=>input+=chunk);process.stdin.on(\\\"end\\\",()=>{const payload=JSON.parse(input);const toolInput=payload.tool_input||{};let content=\\\"\\\";if(payload.tool_name===\\\"Write\\\"){content=toolInput.content||\\\"\\\"}else if(payload.tool_name===\\\"Edit\\\"){let existing=\\\"\\\";try{existing=require(\\\"fs\\\").readFileSync(toolInput.file_path,\\\"utf8\\\")}catch{}content=toolInput.replace_all?existing.split(toolInput.old_string||\\\"\\\").join(toolInput.new_string||\\\"\\\"):existing.replace(toolInput.old_string||\\\"\\\",toolInput.new_string||\\\"\\\")}const lineCount=content.split(\\\"\\n\\\").length;if(lineCount>800){console.error(\\\"[Hook] ブロック: ファイルが800行を超えています(\\\"+lineCount+\\\"行)\\\");console.error(\\\"[Hook] より小さなモジュールに分割してください\\\");process.exit(2)}})\"",
+            "description": "800行を超えるファイル書き込み・編集をブロックする。"
           }
         ]
       }
