@@ -136,7 +136,7 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 ### モニタリング
 
 - Sentry(エラートラッキング、`@sentry/cloudflare`を使用)
-- Cloudflare Analytics(ユーザーの傾向・利用状況分析)
+- Cloudflare Web Analytics(ユーザーの傾向・利用状況分析ダッシュボード)
 - FlareWarden(外部ステータスページ・死活監視)
 
 ## 開発環境・ツール
