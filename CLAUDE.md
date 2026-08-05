@@ -37,7 +37,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はbun、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
 - Next.jsの`"use cache"`を使う場合、キャッシュデータはCloudflare Workers KVに永続化するとともに、さらなる高速化のため`@opennextjs/cloudflare`の`withRegionalCache`(Cloudflare Cache API)を併用すること。
 - ORMについて
-  - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm compile`コマンドを`package.json`に定義し事前コンパイルすること。
+  - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm cache:generate --combined`及び`mikro-orm compile`コマンドをGitHub Actionsやapps/dbディレクトリの`package.json`に定義し事前コンパイルすること。
   - テーブルの特定カラムに限りアルファベットの大文字小文字を問わず文字照合させたい場合、MikroORMのテーブル定義にて`@Property({ columnType: 'text collate nocase' })`を記載すること。URLスラッグとして使われるユーザーハンドルのカラムでは特に有用。
 - テーブル名は小文字で複数形にすること。
 - データベースについて、Cloudflare D1及びベースとなるSQLite特有の制限に留意すること。
@@ -85,8 +85,9 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ├── .wrangler/                  # WranglerのD1・KV・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`や`apps/public-api`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
 ├── apps/                       # アプリケーション実装
 │   ├── infra/                  # インフラ構成定義 ... Terraformを使用、Cloudflareを主としてインフラを設計
-│   ├── db/                     # DBスキーマ定義やDBへの接続処理
-│   │   └── migrations/         # DBマイグレーション履歴
+│   ├── db/                     # DBへの接続処理を含む
+│   │   ├── migrations/         # DBマイグレーション履歴
+│   │   └── schema/             # DBスキーマ定義
 │   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48041
 │   ├── backend-lib/            # バックエンド共通ファイル
 │   │   └── utilities/          # ユーティリティ

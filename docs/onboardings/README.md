@@ -40,9 +40,11 @@ claude
 /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
 ```
 
-7. コンテナ内: APIサーバーの起動
+7. コンテナ内: アプリケーションの起動
 
 両アプリで同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。
+
+利用者側フロントエンド
 
 ```sh
 cd apps/api
@@ -50,13 +52,15 @@ bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
+管理者側フロントエンド
+
 ```sh
 cd apps/public-api
 bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
-8. コンテナ内: フロントエンドの起動
+内部APIサーバー
 
 ```sh
 cd apps/client
@@ -64,18 +68,39 @@ bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- bun run dev --port 48044 --hostname 0.0.0.0
 ```
 
+公開APIサーバー
+
 ```sh
 cd apps/admin
 bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- bun run dev --port 48045 --hostname 0.0.0.0
 ```
 
-9. コンテナ内: Storybookの起動
+Storybookプレビュー
 
 ```sh
 cd apps/frontend-lib
 bun install # 初回のみ
 bun run storybook:dev --port 48046 --host 0.0.0.0
+```
+
+8. コンテナ内: デプロイ前チェック
+
+```sh
+cd apps/db
+bun install # 初回のみ
+# Cloudflare Workers上でも動作する形式でMikroORMアプリをビルド
+mikro-orm cache:generate --combined
+mikro-orm compile --out ./schema/dist/compiled-functions.js
+
+# Next.jsアプリをCloudflare Workers向けにビルドして動作確認
+cd ../client
+NODE_ENV=production infisical --telemetry=false run --env=dev -- opennextjs-cloudflare build
+NODE_ENV=production infisical --telemetry=false run --env=dev -- opennextjs-cloudflare preview --port=48044 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+
+cd ../admin
+NODE_ENV=production infisical --telemetry=false run --env=dev -- opennextjs-cloudflare build
+NODE_ENV=production infisical --telemetry=false run --env=dev -- opennextjs-cloudflare preview --port=48045 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
 ### ローカルポート一覧

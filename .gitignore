@@ -39,6 +39,9 @@ apps/email
 # Wrangler D1・KV・R2ローカルモードの実データ置き場
 .wrangler
 
+# MikroORMのコンパイル成果物
+temp
+
 # フロントエンドのビルド成果物
 .next
 .open-next

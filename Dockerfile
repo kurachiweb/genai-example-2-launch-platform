@@ -46,6 +46,8 @@ RUN mkdir -p /workspace/node_modules \
   && chown -R bun:bun /workspace/apps/api/node_modules \
   && mkdir -p /workspace/apps/public-api/node_modules \
   && chown -R bun:bun /workspace/apps/public-api/node_modules \
+  && mkdir -p /workspace/apps/db/node_modules \
+  && chown -R bun:bun /workspace/apps/db/node_modules \
   && mkdir -p /workspace/apps/client/node_modules \
   && chown -R bun:bun /workspace/apps/client/node_modules \
   && mkdir -p /workspace/apps/admin/node_modules \
