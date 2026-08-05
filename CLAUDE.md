@@ -34,7 +34,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - NestJSはクリーンアーキテクチャに基づく実装を徹底すること。
 - コード内にコメントは原則書かない。ただし難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
 - appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
-- テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はbun、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
+- テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
 - Next.jsの`"use cache"`を使う場合、キャッシュデータはCloudflare Workers KVに永続化するとともに、さらなる高速化のため`@opennextjs/cloudflare`の`withRegionalCache`(Cloudflare Cache API)を併用すること。
 - ORMについて
   - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm cache:generate --combined`及び`mikro-orm compile`コマンドをGitHub Actionsやapps/dbディレクトリの`package.json`に定義し事前コンパイルすること。

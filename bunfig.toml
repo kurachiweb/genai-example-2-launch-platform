@@ -1,0 +1,3 @@
+[test]
+# Vitest向けの`*.browser.test.tsx`と@cloudflare/vitest-pool-workers向けの`*.worker.test.ts`はBunでは動作しないため除外する
+pathIgnorePatterns = ["**/*.browser.test.tsx", "**/*.worker.test.ts"]
