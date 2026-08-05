@@ -44,7 +44,7 @@ claude
 
 両アプリで同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。
 
-利用者側フロントエンド
+内部APIサーバー
 
 ```sh
 cd apps/api
@@ -52,7 +52,7 @@ bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
-管理者側フロントエンド
+公開APIサーバー
 
 ```sh
 cd apps/public-api
@@ -60,7 +60,7 @@ bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
 ```
 
-内部APIサーバー
+利用者側フロントエンド
 
 ```sh
 cd apps/client
@@ -68,7 +68,7 @@ bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- bun run dev --port 48044 --hostname 0.0.0.0
 ```
 
-公開APIサーバー
+管理者側フロントエンド
 
 ```sh
 cd apps/admin
@@ -108,8 +108,8 @@ NODE_ENV=production infisical --telemetry=false run --env=dev -- opennextjs-clou
 | アプリ              | 役割                                    | ポート |
 | ------------------- | --------------------------------------- | ------ |
 | Mailpit             | メール確認Web UI                        | 48041  |
-| `apps/api`          | 内部API(NestJS / GraphQL)               | 48042  |
-| `apps/public-api`   | 公開API(NestJS / REST)                  | 48043  |
+| `apps/api`          | 内部APIサーバー(NestJS / GraphQL)       | 48042  |
+| `apps/public-api`   | 公開APIサーバー(NestJS / REST)          | 48043  |
 | `apps/client`       | 利用者側フロントエンド(Next.js)         | 48044  |
 | `apps/admin`        | 管理者側フロントエンド(Next.js)         | 48045  |
 | `apps/frontend-lib` | Storybookフロントエンド(Next.js)        | 48046  |
