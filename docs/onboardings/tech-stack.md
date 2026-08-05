@@ -90,7 +90,7 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 - Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
 - WranglerによるDBマイグレーション
 - Wranglerによる各Workerのビルド・デプロイ
-- Wrangler Secretsによる環境変数変更
+- Wrangler Secretsによる環境変数(シークレットを含む)変更
 
 ## デプロイ先のインフラ構成
 
