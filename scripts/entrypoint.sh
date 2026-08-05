@@ -4,7 +4,8 @@
 # 別プロセスとして実行すると、ここで登録したtrapと各プロセスの親子関係がスクリプト終了時に失われ、停止時にMailpitへSIGTERMを転送できなくなるため。
 
 # プロジェクトルートディレクトリの非所有者でもgitコマンドを実行できるよう、安全なディレクトリとして設定する。
-git config --global --add safe.directory /workspace
+# `--add`ではコンテナ再起動のたびに重複行が増えるため、`--replace-all`で冪等にする。
+git config --global --replace-all safe.directory /workspace /workspace
 
 # DockerfileのRUN命令でホストに存在しないディレクトリを作成しても、bindマウントによって隠れてしまう。
 # ここはホストからのbindマウント後に実行されるため、確実にコンテナ内でディレクトリにアクセスできる。
