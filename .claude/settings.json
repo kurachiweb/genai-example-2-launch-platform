@@ -6,6 +6,20 @@
     "CLAUDE_CODE_HIDE_CWD": "1",
     "DISABLE_TELEMETRY": "1"
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun -e \"let d=\\\"\\\";process.stdin.on(\\\"data\\\",c=>d+=c);process.stdin.on(\\\"end\\\",()=>{const i=JSON.parse(d);const c=i.tool_input&&i.tool_input.content||\\\"\\\";const lines=c.split(\\\"\\n\\\").length;if(lines>800){console.error(\\\"[Hook] ブロック: ファイルが800行を超えています(\\\"+lines+\\\"行)\\\");console.error(\\\"[Hook] より小さなモジュールに分割してください\\\");process.exit(2)}console.log(d)})\"",
+            "description": "800行を超えるファイル書き込みをブロックする(rules/web/hooks.md準拠、bun版)"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(infisical --telemetry=false run *)",
