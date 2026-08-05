@@ -30,7 +30,6 @@
       "Bash(bun update *)",
       "Bash(bun test)",
       "Bash(bun test *)",
-      "Bash(bun exec *)",
       "Bash(bunx *)",
       "Bash(rtk find *)",
       "Bash(rtk grep *)",
