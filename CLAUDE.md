@@ -42,13 +42,11 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
   - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm cache:generate --combined`及び`mikro-orm compile`コマンドをGitHub Actionsやapps/dbディレクトリの`package.json`に定義し事前コンパイルすること。
   - テーブルの特定カラムに限りアルファベットの大文字小文字を問わず文字照合させたい場合、MikroORMのテーブル定義にて`@Property({ columnType: 'text collate nocase' })`を記載すること。URLスラッグとして使われるユーザーハンドルのカラムでは特に有用。
 - テーブル名は小文字で複数形にすること。
-- データベースについて、Cloudflare D1及びベースとなるSQLite特有の制限に留意すること。
+- データベースについて、Cloudflare D1特有の制限に留意すること。
   - D1ではトランザクションが使えないため、MikroORMの`defineConfig`メソッドで`implicitTransactions: false`を設定し、`EntityManager.transactional()`も使用しない。
     - 絞り込みと絞り込んだレコードの更新は1回のSQLで完結させる。
     - 複数テーブルに書き込む場合、整合性を保つためにMikroORMを介さずKyselyクエリで`D1Database.batch()`を使用する。
     - ユニーク制約付きテーブルにレコードを追加する場合、同一データの同時作成によるエラーを防ぐため、`INSERT ... ON CONFLICT DO NOTHING`(既存行を更新する場合は`DO UPDATE`)を付ける。
-  - SQLiteはカラム追加時や既存カラム変更時に`UNIQUE`・`FOREIGN KEY`・`CHECK`等の制約を追加することができないため、テーブルの再作成が必要。
-  - SQLiteは既存カラムの型を変更できないため、この場合もテーブルの再作成が必要。
   - SQLiteはFTS5という仮想テーブルモジュールによる全文検索をサポートするが、D1では仮想テーブルを含むデータベースをエクスポートできない。([参照:Cloudflare Docs](https://developers.cloudflare.com/d1/best-practices/import-export-data/#known-limitations-1))
 
 ### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について
