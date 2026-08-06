@@ -87,6 +87,10 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 
 - TruffleHog(機密情報のpush防止。検知ならマージをブロック)
 - Bunによるパッケージインストール及び既知の脆弱性確認
+- フォーマット検証
+- Lintチェック
+- tscによる型チェック
+- 単体テスト、Cloudflare Workers統合テスト、E2Eテスト、及びカバレッジ閾値チェック(テスト失敗またはカバレッジ目標未達ならマージをブロック)
 - Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
 - WranglerによるDBマイグレーション
 - Wranglerによる各Workerのビルド・デプロイ
