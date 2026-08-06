@@ -40,7 +40,6 @@ services:
     environment:
       NODE_ENV: development
       API_GRAPHQL_URL: http://localhost:48042/graphql
-      NEXT_TELEMETRY_DISABLED: "1"
       WRANGLER_SEND_METRICS: "false"
       MP_MAX_MESSAGES: "5000"
       MP_DATABASE: /workspace/apps/email/mailpit.db

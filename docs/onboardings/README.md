@@ -72,7 +72,7 @@ infisical --telemetry=false run --env=dev -- wrangler dev --port 48043 --ip 0.0.
 ```sh
 cd apps/client
 bun install # 初回のみ
-infisical --telemetry=false run --env=dev -- bun run dev --port 48044 --hostname 0.0.0.0
+infisical --telemetry=false run --env=dev -- bun run dev --port 48044 --host 0.0.0.0
 ```
 
 管理者側フロントエンド
@@ -80,7 +80,7 @@ infisical --telemetry=false run --env=dev -- bun run dev --port 48044 --hostname
 ```sh
 cd apps/admin
 bun install # 初回のみ
-infisical --telemetry=false run --env=dev -- bun run dev --port 48045 --hostname 0.0.0.0
+infisical --telemetry=false run --env=dev -- bun run dev --port 48045 --host 0.0.0.0
 ```
 
 Storybookコンポーネントカタログ
@@ -100,14 +100,14 @@ bun install # 初回のみ
 bunx mikro-orm cache:generate --combined
 bunx mikro-orm compile --out ./schema/dist/compiled-functions.js
 
-# Next.jsアプリをCloudflare Workers向けにビルドして動作確認
+# TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定済み)
 cd ../client
-NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs-cloudflare build
-NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs-cloudflare preview --port=48044 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite build
+NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite preview --port 48044 --host 0.0.0.0
 
 cd ../admin
-NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs-cloudflare build
-NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs-cloudflare preview --port=48045 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite build
+NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite preview --port 48045 --host 0.0.0.0
 ```
 
 ### ローカルポート一覧
@@ -117,8 +117,8 @@ NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs
 | Mailpit             | メール確認Web UI                        | 48041  |
 | `apps/api`          | 内部APIサーバー(Hono / GraphQL)         | 48042  |
 | `apps/public-api`   | 公開APIサーバー(Hono / REST)            | 48043  |
-| `apps/client`       | 利用者側フロントエンド(Next.js)         | 48044  |
-| `apps/admin`        | 管理者側フロントエンド(Next.js)         | 48045  |
+| `apps/client`       | 利用者側フロントエンド(TanStack Start)  | 48044  |
+| `apps/admin`        | 管理者側フロントエンド(TanStack Start)  | 48045  |
 | `apps/frontend-lib` | Storybookコンポーネントカタログ         | 48046  |
 | Wrangler            | `wrangler login`のOAuthコールバック受信 | 8976   |
 

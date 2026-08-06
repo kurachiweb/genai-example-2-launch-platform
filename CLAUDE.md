@@ -20,8 +20,8 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - 機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。(必読セクション: `Agentic SDLC and Spec-Driven Development`及び参照しているファイル)
 - 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
 - Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・KV・R2系コマンドでは`--local`オプションも付けること。
-  - Next.jsフロントエンドからWranglerに接続したい場合は`initOpenNextCloudflareForDev({ persist: { path: "/workspace/.wrangler/state/v3" } })`と記述する
-- Next.jsアプリは通常`bun run dev`で起動するが、デプロイ前は`opennextjs-cloudflare build && opennextjs-cloudflare preview`によりCloudflare Workers向けにビルドして動作確認すること。
+- TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
+  - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する
 - ビルドコマンドやデプロイ前確認コマンド、デプロイコマンドの先頭に`NODE_ENV=production`を加えること。
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
   - `wrangler dev`を起動する際、Infisicalから環境シークレットを注入するには上記手順だけでは不十分で、Wrangler設定の`secrets.required`に必要な環境シークレットを記載することで`process.env`経由で使用可能になる。
@@ -36,8 +36,6 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - コード内にコメントは原則書かない。ただし難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
 - appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
 - テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
-- Next.jsで`"use cache"`を使う場合、キャッシュデータはCloudflare Workers KVに永続化するとともに、さらなる高速化のため`@opennextjs/cloudflare`の`withRegionalCache`(Cloudflare Cache API)を併用すること。
-- nonce属性値のようなレンダリング毎に変化するランダム文字列を直接的または間接的(子孫コンポーネント)に含むコンポーネントには`"use cache"`を使ってはならない。`"use cache"`はコンポーネントの戻り値(描画結果)をまるごとキャッシュするため、特にnonceでは、CSPレスポンスヘッダーに設定した値とキャッシュから復元された要素内のnonce値が一致しなくなり、CSPによって該当スクリプト・スタイルの実行がブロックされる。
 - ORMについて
   - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm cache:generate --combined`及び`mikro-orm compile`コマンドをGitHub Actionsやapps/dbディレクトリの`package.json`に定義し事前コンパイルすること。
   - テーブルの特定カラムに限りアルファベットの大文字小文字を問わず文字照合させたい場合、MikroORMのテーブル定義にて`@Property({ columnType: 'text collate nocase' })`を記載すること。URLスラッグとして使われるユーザーハンドルのカラムでは特に有用。
@@ -57,7 +55,6 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 - Claude拡張ファイル内ではnpmやpnpm関連のコマンドが記載されているが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
 - npmパッケージの`framer-motion`は`motion`にリネームされているため、`motion/react`をインポートして利用する。`ecc:motion-ui`と`ecc:frontend-patterns`スキルが`framer-motion`に言及しているが、それは古い情報である。
 - APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`のAPIレスポンス形式や、`rules/common/patterns.md`のAPIレスポンスフォーマット説明、`rules/typescript/patterns.md`の`ApiResponse<T>`型は採用しない。
-- Next.jsのキャッシュ戦略には`"use cache"`を使う。`developer-kit-typescript:nextjs-performance`スキルでは`unstable_cache`が紹介されているが、それは古い記法である。
 - Stripe Payment Elementを使うためにはCheckout Sessions APIにて`ui_mode: 'elements'`オプションを使うこと。`stripe:stripe-best-practices`スキル内では`ui_mode: 'custom'`を使うよう案内しているが、それはリネーム前の古い情報である。
 - `.claude/rules/common/git-workflow.md`はClaude設定ファイルに`includeCoAuthoredBy: false`を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりに`attribution`プロパティを指定する。
 - `cloudflare:wrangler`スキルはローカル開発シークレットの管理に`.dev.vars`ファイルを作成するよう案内しているが、本プロジェクトでは`.dev.vars`や`.env`を使わず、Infisicalで一元管理する。
@@ -99,9 +96,9 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   ├── frontend-lib/           # フロントエンド共通ファイル、ローカル開発におけるStorybookプレビューのためのポート番号は48046
 │   │   ├── components/         # コンポーネント定義 ... Storybookによるプレビュー付き
 │   │   └── utilities/          # ユーティリティ
-│   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... Next.jsを利用、公開API向けSwagger UIページも含む、ローカル開発でのポート番号は48044
+│   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... TanStack Startを利用、公開API向けSwagger UIページも含む、ローカル開発でのポート番号は48044
 │   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... Next.jsを利用、ローカル開発でのポート番号は48045
+│   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... TanStack Startを利用、ローカル開発でのポート番号は48045
 │       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
 │   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引

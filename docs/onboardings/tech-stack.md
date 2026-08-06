@@ -48,8 +48,8 @@
 
 ### フレームワーク
 
-- Next.js(App Router)
-- @opennextjs/cloudflare(`initOpenNextCloudflareForDev`関数を使用)
+- TanStack Start(TanStack Routerベース)
+- @cloudflare/vite-plugin
 - React
 - TypeScript
 
@@ -82,7 +82,7 @@
 - Creem(二番手の決済処理基盤、https://docs.creem.io) ... Stripeがプラットフォーム障害やアカウントBAN等の理由で利用できない場合のフォールバックとして採用
   - Creem Checkout(Creemサーバー上の決済ページ)
   - Creem Webhooks(都度支払いや定期課金イベントの受信、APIサーバー側で処理)
-  - Creem TypeScript SDK及びNext.jsアダプター
+  - Creem TypeScript SDK
 
 ## CI/CD
 
@@ -142,7 +142,7 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 
 ### モニタリング
 
-- Sentry(レスポンスタイム計測やエラートラッキング、`@sentry/nextjs`、`@sentry/hono`及び`@sentry/cloudflare`を使用)
+- Sentry(レスポンスタイム計測やエラートラッキング、`@sentry/tanstackstart-react`、`@sentry/hono`及び`@sentry/cloudflare`を使用)
 - Cloudflare Web Analytics(ユーザーの傾向・利用状況分析ダッシュボード)
 - FlareWarden(外部ステータスページ・死活監視)
 
@@ -185,6 +185,6 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 
 ### ドキュメント
 
-- Storybook(コンポーネントカタログ、`@storybook/nextjs-vite`を使用)
+- Storybook(コンポーネントカタログ、`@storybook/tanstack-react`を使用)
 - Apollo Sandbox(API探索、`ApolloServerPluginLandingPageLocalDefault`プラグインを使用)
 - Swagger UI(公開APIサーバーが配信するOpenAPI仕様を閲覧)

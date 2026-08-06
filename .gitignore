@@ -43,9 +43,8 @@ apps/email
 temp
 
 # フロントエンドのビルド成果物
-.next
-.open-next
-.vercel
+.tanstack
+.output
 dist
 build
 storybook-static

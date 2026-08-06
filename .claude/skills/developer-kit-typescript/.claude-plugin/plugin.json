@@ -31,8 +31,6 @@
     "serverless"
   ],
   "skills": [
-    "./skills/nextjs-app-router",
-    "./skills/nextjs-performance",
     "./skills/shadcn-ui",
     "./skills/tailwind-css-patterns",
     "./skills/tailwind-design-system",
