@@ -83,7 +83,7 @@ bun install # 初回のみ
 infisical --telemetry=false run --env=dev -- bun run dev --port 48045 --hostname 0.0.0.0
 ```
 
-Storybookプレビュー
+Storybookコンポーネントカタログ
 
 ```sh
 cd apps/frontend-lib
@@ -119,7 +119,7 @@ NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs
 | `apps/public-api`   | 公開APIサーバー(NestJS / REST)          | 48043  |
 | `apps/client`       | 利用者側フロントエンド(Next.js)         | 48044  |
 | `apps/admin`        | 管理者側フロントエンド(Next.js)         | 48045  |
-| `apps/frontend-lib` | Storybookフロントエンド(Next.js)        | 48046  |
+| `apps/frontend-lib` | Storybookコンポーネントカタログ         | 48046  |
 | Wrangler            | `wrangler login`のOAuthコールバック受信 | 8976   |
 
 ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Workers KVの代わりにWranglerのKVローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
