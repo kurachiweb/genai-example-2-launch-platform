@@ -7,7 +7,7 @@
         "--executablePath",
         "${CHROMIUM_PATH}",
         "--headless",
-        "--no-usage-statistics",
+        "--usageStatistics=false",
         "--chromeArg=--no-sandbox"
       ]
     },
