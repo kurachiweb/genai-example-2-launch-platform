@@ -19,7 +19,8 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 ENV CHROMIUM_PATH=/opt/ms-playwright-bin/chrome
 RUN bunx --bun playwright@latest install-deps chromium \
   && mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin \
-  && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
+  && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin \
+  && rm -rf /var/lib/apt/lists/*
 
 # Homebrewは既定の/home/linuxbrew/.linuxbrewに置くことで、ビルド済みパッケージ(bottle)をそのまま使え、時間のかかる自前ビルドを避けられる。
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
