@@ -32,7 +32,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - ドキュメントやコードコメントにおいて、日本語と英数字の間、そして日本語とインラインコードの間には半角スペースを入れないこと。例:「テストは Bun の `bun test` により 10% でも速くする」ではなく「テストはBunの`bun test`により10%でも速くする」
 - マークダウンドキュメント内で図が必要ならmermaid形式で記述すること。
 - テスト駆動開発(TDD)の実施を徹底すること。
-- NestJSはクリーンアーキテクチャに基づく実装を徹底すること。
+- HonoはInversifyによる依存性注入を活用し、クリーンアーキテクチャに基づく実装を徹底すること。
 - コード内にコメントは原則書かない。ただし難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
 - appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
 - テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
@@ -56,8 +56,7 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 - Claude拡張ファイルが参照する別の拡張ファイルが存在しない場合は無視する。
 - Claude拡張ファイル内ではnpmやpnpm関連のコマンドが記載されているが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
 - npmパッケージの`framer-motion`は`motion`にリネームされているため、`motion/react`をインポートして利用する。`ecc:motion-ui`と`ecc:frontend-patterns`スキルが`framer-motion`に言及しているが、それは古い情報である。
-- APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`や`ecc:nestjs-patterns`のAPIレスポンス形式や、`rules/common/patterns.md`のAPIレスポンスフォーマット説明、`rules/typescript/patterns.md`の`ApiResponse<T>`型は採用しない。
-- ビジネスロジックはService層ではなくEntity層に書くこと。`ecc:nestjs-patterns`ではビジネスロジックはService層に書くよう指示しているが、`developer-kit-typescript:clean-architecture`スキルではEntity層に書くよう指示しており、後者に従う。
+- APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`のAPIレスポンス形式や、`rules/common/patterns.md`のAPIレスポンスフォーマット説明、`rules/typescript/patterns.md`の`ApiResponse<T>`型は採用しない。
 - Next.jsのキャッシュ戦略には`"use cache"`を使う。`developer-kit-typescript:nextjs-performance`スキルでは`unstable_cache`が紹介されているが、それは古い記法である。
 - Stripe Payment Elementを使うためにはCheckout Sessions APIにて`ui_mode: 'elements'`オプションを使うこと。`stripe:stripe-best-practices`スキル内では`ui_mode: 'custom'`を使うよう案内しているが、それはリネーム前の古い情報である。
 - `.claude/rules/common/git-workflow.md`はClaude設定ファイルに`includeCoAuthoredBy: false`を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりに`attribution`プロパティを指定する。
@@ -65,7 +64,6 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 - テストについて
   - E2Eテストツールとして`ecc:e2e-runner`エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
   - Claude拡張ファイル内でJest関連のコマンドが記載されていても、Jestは使用しないこと。
-  - `developer-kit-typescript:nestjs-code-review-expert`と`typescript-software-architect-review`はNestJSのE2E・統合テストにSupertestを挙げているが、Supertestはworkerdランタイム前提のD1・KV・R2・DOバインディングにアクセスできずWorkers環境の統合テストとして成立しないため採用しない。
 
 ## Git運用方針
 
@@ -92,10 +90,10 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48041
 │   ├── backend-lib/            # バックエンド共通ファイル
 │   │   └── utilities/          # ユーティリティ
-│   ├── api/                    # APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48042
+│   ├── api/                    # APIサーバー ... Honoを利用、ローカル開発でのポート番号は48042
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   ├── public-api/             # 公開APIサーバー ... NestJSを利用、ローカル開発でのポート番号は48043
+│   ├── public-api/             # 公開APIサーバー ... Honoを利用、ローカル開発でのポート番号は48043
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   ├── frontend-lib/           # フロントエンド共通ファイル、ローカル開発におけるStorybookプレビューのためのポート番号は48046

@@ -115,8 +115,8 @@ NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx opennextjs
 | アプリ              | 役割                                    | ポート |
 | ------------------- | --------------------------------------- | ------ |
 | Mailpit             | メール確認Web UI                        | 48041  |
-| `apps/api`          | 内部APIサーバー(NestJS / GraphQL)       | 48042  |
-| `apps/public-api`   | 公開APIサーバー(NestJS / REST)          | 48043  |
+| `apps/api`          | 内部APIサーバー(Hono / GraphQL)         | 48042  |
+| `apps/public-api`   | 公開APIサーバー(Hono / REST)            | 48043  |
 | `apps/client`       | 利用者側フロントエンド(Next.js)         | 48044  |
 | `apps/admin`        | 管理者側フロントエンド(Next.js)         | 48045  |
 | `apps/frontend-lib` | Storybookコンポーネントカタログ         | 48046  |

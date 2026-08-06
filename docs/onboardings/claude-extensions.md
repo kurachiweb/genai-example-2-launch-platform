@@ -16,6 +16,7 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
     ├── cloudflare/skills/
     ├── cc-sdd/skills/
     ├── creem/SKILL.md
+    ├── hono/SKILL.md
     └── ...
 ```
 
@@ -187,20 +188,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - 未処理のPromise・`async forEach`・浮動Promiseの検出
 - React/Next.jsのサーバー/クライアント境界侵犯の検出
 - PRマージ可否の判定(CRITICAL・HIGHがあればブロック)
-
-### developer-kit-typescript:nestjs-code-review-expert
-
-**概要**: NestJS/TypeScriptのベストプラクティス・アーキテクチャ課題を分析する専門コードレビュアー。
-
-**トリガー**: NestJSコードの変更後・新機能実装時に自発的に使用。
-
-**使用目的**:
-
-- デコレータ・DI・モジュール構成などNestJSパターンの検証
-- SOLID原則・クリーンアーキテクチャ準拠のチェック
-- REST API規約(HTTPメソッド・ステータスコード・DTO・バリデーションパイプ)の検証
-- ガード・認証認可・入力検証などセキュリティ観点の確認
-- 重大度別(Critical/Warning/Suggestion)のレビュー報告と改善コード例の提示
 
 ### developer-kit-typescript:typescript-security-expert
 
@@ -410,15 +397,14 @@ React 18/19とNext.jsに特化したスキル群。`rules/react/`のルールと
 
 ### アーキテクチャ・設計系
 
-| スキル                                              | トリガー                                                                         | 概要                                                                                                                                       |
-| --------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ecc:architecture-decision-records`                 | アーキテクチャ上の決定をした場面                                                 | 決定の文脈・代替案・根拠を構造化したADRドキュメントとして記録                                                                              |
-| `ecc:api-design`                                    | REST API設計時                                                                   | リソース命名・ステータスコード・ページネーション・エラーレスポンス・バージョニング                                                         |
-| `ecc:nestjs-patterns`                               | NestJSバックエンド実装時                                                         | モジュール・コントローラ・プロバイダ・DTOバリデーション・ガード・インターセプタ                                                            |
-| `developer-kit-typescript:clean-architecture`       | NestJSでのクリーンアーキテクチャ・DDD・ヘキサゴナルアーキテクチャ設計時          | エンティティ・値オブジェクト・集約を用いたドメイン層設計とポート&アダプター実装パターン集                                                  |
-| `ecc:content-hash-cache-pattern`                    | 高コストなファイル処理のキャッシュ実装時                                         | SHA-256コンテンツハッシュを使ったパス非依存・自動無効化キャッシュパターン                                                                  |
-| `ecc:error-handling`                                | エラー型設計・リトライ実装・APIエラーレスポンス設計・Reactエラーバウンダリ実装時 | TypeScript / Python / Go向けの型付きエラークラス・Resultパターン・指数バックオフリトライ・ユーザー向けエラーメッセージ設計の実践パターン集 |
-| `developer-kit-typescript:zod-validation-utilities` | Zodによるバリデーションスキーマ設計時                                            | Zod v4による再利用可能なスキーマ・型安全なデータ変換・バリデーションエラーハンドリングのパターン集                                         |
+| スキル                                              | トリガー                                                                              | 概要                                                                                                                                                |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ecc:architecture-decision-records`                 | アーキテクチャ上の決定をした場面                                                      | 決定の文脈・代替案・根拠を構造化したADRドキュメントとして記録                                                                                       |
+| `ecc:api-design`                                    | REST API設計時                                                                        | リソース命名・ステータスコード・ページネーション・エラーレスポンス・バージョニング                                                                  |
+| `hono`                                              | Honoアプリケーションの構築時、`hono`/`hono/*`からのインポートやHono関連の質問がある時 | ルーティング・ミドルウェア・バリデーション(Zod/Valibot)・JSX・ストリーミング・Hono ClientによるRPCなど、HonoのAPIリファレンスとベストプラクティス集 |
+| `ecc:content-hash-cache-pattern`                    | 高コストなファイル処理のキャッシュ実装時                                              | SHA-256コンテンツハッシュを使ったパス非依存・自動無効化キャッシュパターン                                                                           |
+| `ecc:error-handling`                                | エラー型設計・リトライ実装・APIエラーレスポンス設計・Reactエラーバウンダリ実装時      | TypeScript / Python / Go向けの型付きエラークラス・Resultパターン・指数バックオフリトライ・ユーザー向けエラーメッセージ設計の実践パターン集          |
+| `developer-kit-typescript:zod-validation-utilities` | Zodによるバリデーションスキーマ設計時                                                 | Zod v4による再利用可能なスキーマ・型安全なデータ変換・バリデーションエラーハンドリングのパターン集                                                  |
 
 ---
 
@@ -467,11 +453,10 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 
 ### コードレビュー系
 
-フレームワーク別に踏み込んだ実装パターン検証を行うコードレビュー用スキル群。`ecc:code-reviewer`・`ecc:typescript-reviewer`・`ecc:react-reviewer`エージェントによる汎用レビューを、NestJS／Next.js固有の観点で補完する。
+フレームワーク別に踏み込んだ実装パターン検証を行うコードレビュー用スキル群。`ecc:code-reviewer`・`ecc:typescript-reviewer`・`ecc:react-reviewer`エージェントによる汎用レビューを、Next.js固有の観点で補完する。
 
 | スキル                                        | トリガー                             | 概要                                                                                 |
 | --------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
-| `developer-kit-typescript:nestjs-code-review` | NestJSコードのレビュー時             | コントローラ・サービス・ガード・DI・DB連携パターンを検証するNestJS専用コードレビュー |
 | `developer-kit-typescript:nextjs-code-review` | Next.js App Routerコードのレビュー時 | Server/Client境界・Server Actions・キャッシュ戦略を検証するNext.js専用コードレビュー |
 
 ---

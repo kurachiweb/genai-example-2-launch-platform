@@ -31,8 +31,6 @@
     "serverless"
   ],
   "skills": [
-    "./skills/nestjs-code-review",
-    "./skills/clean-architecture",
     "./skills/nextjs-app-router",
     "./skills/nextjs-performance",
     "./skills/shadcn-ui",

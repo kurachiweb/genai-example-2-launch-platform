@@ -15,14 +15,17 @@
 
 ### フレームワーク
 
-- NestJS(tscによるビルド)
-- @nestjs/platform-express(`httpServerHandler`でラップ)
+- Hono
 - TypeScript
+
+### 依存性注入(DI)
+
+- Inversify
 
 ### スキーマ
 
 - GraphQL
-- @nestjs/graphql
+- GraphQL Yoga
 - DataLoader(GraphQLのN+1問題対策)
 
 ### ORM
@@ -38,8 +41,8 @@
 
 ### バリデーション・変換
 
-- class-validator
-- class-transformer
+- Zod
+- @hono/zod-validator
 
 ## フロントエンド
 
@@ -115,9 +118,9 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 ### 実行環境のセキュリティ
 
 専用の有償セキュリティ基盤は用いず、Cloudflareのプラットフォーム標準機能と既存ツールを重ねて多層防御を構成する。
-レート制限にはDurable Objectsを使うが、その設定の範囲内で単一Cloudflareロケーションに高頻度リクエストがなされる場合を考慮し、Rate limiterバインディングでも防御する。
+厳密なレート制限カウントレート制限にはDurable Objects及びHono向け自前レート制限ミドルウェアを使うが、その設定の範囲内で単一Cloudflareロケーションに高頻度リクエストがなされる場合を考慮し、Rate limiterバインディングでも防御する。
 
-- Cloudflare Durable Objects(SQLiteストレージ、`@nestjs/throttler`と組み合わせて厳密なレート制限カウントを実現)
+- Cloudflare Durable Objects(SQLiteストレージ)
 - WorkerごとのRate limiterバインディング(Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
 
 ### メール
@@ -139,7 +142,7 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 
 ### モニタリング
 
-- Sentry(レスポンスタイム計測やエラートラッキング、`@sentry/nextjs`及び`@sentry/cloudflare`を使用)
+- Sentry(レスポンスタイム計測やエラートラッキング、`@sentry/nextjs`、`@sentry/hono`及び`@sentry/cloudflare`を使用)
 - Cloudflare Web Analytics(ユーザーの傾向・利用状況分析ダッシュボード)
 - FlareWarden(外部ステータスページ・死活監視)
 
