@@ -32,8 +32,6 @@
       "Bash(bun remove *)",
       "Bash(bun update *)",
       "Bash(bun test*)",
-      "Bash(bunx mikro-orm compile*)",
-      "Bash(bunx mikro-orm cache:generate*)",
       "Bash(bunx playwright test*)",
       "Bash(rtk find *)",
       "Bash(rtk grep *)",
