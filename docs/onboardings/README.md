@@ -98,7 +98,7 @@ cd apps/db
 bun install # 初回のみ
 # Cloudflare Workers上でも動作する形式でMikroORMアプリをビルド
 bun run mikro-orm:generate # mikro-orm cache:generate --combined
-bun run mikro-orm:compile # mikro-orm compile --out ./schema/dist/compiled-functions.js
+bun run mikro-orm:compile # mikro-orm compile
 
 # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定済み)
 cd ../client
