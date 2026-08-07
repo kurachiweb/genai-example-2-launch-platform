@@ -46,7 +46,7 @@ claude
 
 ```sh
 cd apps/api
-infisical --telemetry=false run --env=dev -- wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
+wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
 ```
 
 8. コンテナ内: アプリケーションの起動
