@@ -16,6 +16,7 @@ services:
       - ./apps/frontend-lib:/workspace/apps/client/lib
       - ./apps/frontend-lib:/workspace/apps/admin/lib
       # node_modulesはホストと混ぜず、名前付きボリュームでコンテナ側に隔離する
+      # `apps/backend-lib`ディレクトリ内にBunプロジェクトは作らないため、`node_modules_backend_lib`は不要である
       - node_modules_root:/workspace/node_modules
       - node_modules_api:/workspace/apps/api/node_modules
       - node_modules_public_api:/workspace/apps/public-api/node_modules

@@ -90,7 +90,7 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   │   ├── migrations/         # DBマイグレーション履歴
 │   │   └── schema/             # DBスキーマ定義
 │   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48041
-│   ├── backend-lib/            # バックエンド共通ファイル
+│   ├── backend-lib/            # バックエンド共通ファイル(node_modulesディレクトリは無し)
 │   │   └── utilities/          # ユーティリティ
 │   ├── api/                    # APIサーバー ... Honoを利用、ローカル開発でのポート番号は48042
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
