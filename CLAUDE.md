@@ -19,10 +19,10 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 
 - 機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。(必読セクション: `Agentic SDLC and Spec-Driven Development`及び参照しているファイル)
 - 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
+- 既存のドキュメントやコードコメントはゼロベースで修正すること。例えば「Aをします」を「AをするのではなくBをします」と変更するのではなく、「Bをします」のみを記載すべきである。例外としてADRは変更後だけでなく変更前についても説明して良い。
 - Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・KV・R2系コマンドでは`--local`オプションも付けること。
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する
-- ビルドコマンドやデプロイ前確認コマンド、デプロイコマンドの先頭に`NODE_ENV=production`を加えること。
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
   - `wrangler dev`を起動する際、Infisicalから環境シークレットを注入するには上記手順だけでは不十分で、Wrangler設定の`secrets.required`に必要な環境シークレットを記載することで`process.env`経由で使用可能になる。
 
