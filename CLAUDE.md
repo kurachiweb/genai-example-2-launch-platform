@@ -25,6 +25,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
   - `wrangler dev`を起動する際、Infisicalから環境シークレットを注入するには上記手順だけでは不十分で、Wrangler設定の`secrets.required`に必要な環境シークレットを記載することで`process.env`経由で使用可能になる。
+- フロントエンド側でTanStack系ツールが使われる処理を作成・改修・調査・コードレビューしたい場合は[TanStack Agent Guidelines](docs/ai-extensions/tanstack-agent-guidelines.md)を参照すること。ただしそのガイドラインの「Repository Structure」セクションとは異なり、TanStack関連スキル群は`.claude/skills/tanstack-agent-skills/skills`ディレクトリ内にある。
 
 ### コード・ドキュメントの規則
 
