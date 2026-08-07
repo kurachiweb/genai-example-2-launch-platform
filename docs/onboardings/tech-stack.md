@@ -48,19 +48,20 @@
 
 ### フレームワーク
 
-- TanStack Start(TanStack Routerベース)
+- TanStack Start(ルーティングはTanStack Router)
 - @cloudflare/vite-plugin
 - React
 - TypeScript
 
 ### スキーマ
 
-- GraphQL Code Generator
+- GraphQL Code Generator(client-presetによりクエリからTypedDocumentNodeと型を生成)
 
 ### 状態管理・データフェッチング
 
-- Apollo Client(GraphQLクライアント)
-- Jotai(グローバル状態管理)
+- TanStack Query(サーバー状態のキャッシュ・データフェッチング、TypedDocumentNodeを`fetch`で送信)
+- `@tanstack/react-router-ssr-query`(TanStack RouterとのSSR連携)
+- Jotai(クライアント状態管理)
 
 ### UI・スタイリング
 
@@ -186,5 +187,5 @@ main/prodブランチへのpushをトリガーにして、GitHub Actionsによ�
 ### ドキュメント
 
 - Storybook(コンポーネントカタログ、`@storybook/tanstack-react`を使用)
-- Apollo Sandbox(API探索、`ApolloServerPluginLandingPageLocalDefault`プラグインを使用)
+- GraphiQL(GraphQLスキーマ探索・クエリ試行、GraphQL Yogaに内蔵)
 - Swagger UI(公開APIサーバーが配信するOpenAPI仕様を閲覧)
