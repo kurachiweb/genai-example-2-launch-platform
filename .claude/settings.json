@@ -1,4 +1,5 @@
 {
+  "$schema": "https://www.schemastore.org/claude-code-settings.json",
   "env": {
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
     "CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL": "1",
@@ -13,8 +14,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun -e \"let input=\\\"\\\";process.stdin.on(\\\"data\\\",chunk=>input+=chunk);process.stdin.on(\\\"end\\\",()=>{const payload=JSON.parse(input);const toolInput=payload.tool_input||{};let content=\\\"\\\";if(payload.tool_name===\\\"Write\\\"){content=toolInput.content||\\\"\\\"}else if(payload.tool_name===\\\"Edit\\\"){let existing=\\\"\\\";try{existing=require(\\\"fs\\\").readFileSync(toolInput.file_path,\\\"utf8\\\")}catch{}content=toolInput.replace_all?existing.split(toolInput.old_string||\\\"\\\").join(toolInput.new_string||\\\"\\\"):existing.replace(toolInput.old_string||\\\"\\\",toolInput.new_string||\\\"\\\")}const lineCount=content.split(\\\"\\n\\\").length;if(lineCount>800){console.error(\\\"[Hook] ブロック: ファイルが800行を超えています(\\\"+lineCount+\\\"行)\\\");console.error(\\\"[Hook] より小さなモジュールに分割してください\\\");process.exit(2)}})\"",
-            "description": "800行を超えるファイル書き込み・編集をブロックする。"
+            "command": "bun -e \"let input=\\\"\\\";process.stdin.on(\\\"data\\\",chunk=>input+=chunk);process.stdin.on(\\\"end\\\",()=>{const payload=JSON.parse(input);const toolInput=payload.tool_input||{};let content=\\\"\\\";if(payload.tool_name===\\\"Write\\\"){content=toolInput.content||\\\"\\\"}else if(payload.tool_name===\\\"Edit\\\"){let existing=\\\"\\\";try{existing=require(\\\"fs\\\").readFileSync(toolInput.file_path,\\\"utf8\\\")}catch{}content=toolInput.replace_all?existing.split(toolInput.old_string||\\\"\\\").join(toolInput.new_string||\\\"\\\"):existing.replace(toolInput.old_string||\\\"\\\",toolInput.new_string||\\\"\\\")}const lineCount=content.split(\\\"\\n\\\").length;if(lineCount>800){console.error(\\\"[Hook] ブロック: ファイルが800行を超えています(\\\"+lineCount+\\\"行)\\\");console.error(\\\"[Hook] より小さなモジュールに分割してください\\\");process.exit(2)}})\""
           }
         ]
       }
