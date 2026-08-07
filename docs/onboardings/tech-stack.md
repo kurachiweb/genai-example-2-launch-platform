@@ -87,18 +87,21 @@
 
 ## CI/CD
 
-main/prodブランチへのpushをトリガーにして、GitHub Actionsにより以下のパイプラインを実行する。
+main/prodブランチへのプルリクエストをトリガーにして、GitHub Actionsにより検査フェーズを実行する。
+main/prodブランチへのプッシュをトリガーにして、GitHub Actionsにより検査フェーズ及びデプロイフェーズを実行する。
 
-- TruffleHog(機密情報のpush防止。検知ならマージをブロック)
-- Bunによるパッケージインストール及び既知の脆弱性確認
-- フォーマット検証
-- Lintチェック
-- tscによる型チェック
-- 単体テスト、Cloudflare Workers統合テスト、E2Eテスト、及びカバレッジ閾値チェック(テスト失敗またはカバレッジ目標未達ならマージをブロック)
-- Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
-- WranglerによるDBマイグレーション
-- Wranglerによる各Workerのビルド・デプロイ
-- Wrangler Secretsによる環境変数(シークレットを含む)変更
+- 検査フェーズ ... 各段階のいずれかが失敗すれば後続タスクを実行せずに中止
+  - TruffleHog(機密情報のpush防止)
+  - Bunによるパッケージインストール及び既知の脆弱性確認
+  - フォーマット検証
+  - Lintチェック
+  - tscによる型チェック
+  - 単体テスト、Cloudflare Workers統合テスト、E2Eテスト、及びカバレッジ閾値チェック(テスト成功かつカバレッジ目標達成なら続行)
+- デプロイフェーズ
+  - Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
+  - WranglerによるDBマイグレーション
+  - Wranglerによる各Workerのビルド・デプロイ
+  - Wrangler Secretsによる環境変数(シークレットを含む)変更
 
 ## デプロイ先のインフラ構成
 
