@@ -8,6 +8,7 @@
         "${CHROMIUM_PATH}",
         "--headless",
         "--usageStatistics=false",
+        "--performanceCrux=false",
         "--chromeArg=--no-sandbox"
       ]
     },
