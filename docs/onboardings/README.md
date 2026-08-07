@@ -97,8 +97,8 @@ bun run storybook:dev --port 48046 --host 0.0.0.0
 cd apps/db
 bun install # 初回のみ
 # Cloudflare Workers上でも動作する形式でMikroORMアプリをビルド
-bunx mikro-orm cache:generate --combined
-bunx mikro-orm compile --out ./schema/dist/compiled-functions.js
+bun run mikro-orm:generate # mikro-orm cache:generate --combined
+bun run mikro-orm:compile # mikro-orm compile --out ./schema/dist/compiled-functions.js
 
 # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定済み)
 cd ../client
@@ -134,3 +134,9 @@ MailpitのSMTP(1025)はコンテナ内のみで到達可能で、ローカル開
 | ---------------------------------------------- | ---------------------------------------------------------------- |
 | [claude-extensions.md](./claude-extensions.md) | `.claude/`配下のスキル・コマンド・ルール・エージェント定義の解説 |
 | [tech-stack.md](./tech-stack.md)               | 技術選定(データベース・バックエンド・フロントエンド・インフラ等) |
+
+### AIエージェント向け外部ガイドライン(`docs/ai-extensions/`)
+
+| ドキュメント                                                                  | 内容                                                                     |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [tanstack-agent-guidelines.md](../ai-extensions/tanstack-agent-guidelines.md) | TanStack系ツールを扱うAIエージェント向けガイドライン(外部リポジトリ由来) |
