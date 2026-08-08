@@ -4,11 +4,14 @@ FROM oven/bun:1.3-slim
 
 # Homebrewのインストールに必要なパッケージを導入する。
 # Infisical(秘密情報管理サービス)のCLIはMacでなければHomebrewからインストールできないため、公式のAPTリポジトリを登録してからapt-getでインストールする。
-RUN apt-get update \
+# apt-getのダウンロードキャッシュはキャッシュマウントでビルド間永続化し再ダウンロードを避ける。公式Debianベースイメージが標準で有効化するdocker-cleanフックはapt-get実行直後にキャッシュを削除するため、キャッシュマウントを機能させるには無効化が必要。
+RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+  && apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates build-essential procps curl file git \
   && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-  && apt-get install -y --no-install-recommends infisical \
-  && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y --no-install-recommends infisical
 
 # Playwright・chrome-devtools MCPが起動するChromiumを導入する。
 # ChromiumバイナリのOS側共有ライブラリ(libnss3等)はrootユーザーとして導入する。
@@ -17,10 +20,11 @@ RUN apt-get update \
 # コンテナでは非特権ユーザー名前空間が無効でサンドボックスが起動できないため、.mcp.json側で--no-sandboxを渡す。
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 ENV CHROMIUM_PATH=/opt/ms-playwright-bin/chrome
-RUN bunx --bun playwright@latest install-deps chromium \
+RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    bunx --bun playwright@latest install-deps chromium \
   && mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin \
-  && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin \
-  && rm -rf /var/lib/apt/lists/*
+  && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
 
 # Homebrewは既定の/home/linuxbrew/.linuxbrewに置くことで、ビルド済みパッケージ(bottle)をそのまま使え、時間のかかる自前ビルドを避けられる。
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
@@ -60,7 +64,9 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 
 # Homebrewのインストール時は`NONINTERACTIVE=1`で確認プロンプトを抑止する。
 # `node`パッケージはアプリケーションコードの実行には使わないものの、Wrangler CLI、Vitest系テストランナーが必要とするため、明示的にインストールする。
-RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash \
+# キャッシュマウントは既定でroot所有で新規作成されるため、bunユーザーから書き込めるようuid・gidを明示する。
+RUN --mount=type=cache,target=/home/bun/.cache/Homebrew,sharing=locked,uid=1000,gid=1000 \
+    NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash \
   && brew tap hashicorp/tap \
   && brew install hashicorp/tap/terraform cloudflare-wrangler gh rtk mailpit node \
   && brew install --cask claude-code
