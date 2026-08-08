@@ -59,6 +59,8 @@ coverage
 test-results
 # Playwright(HTMLレポートの出力先)
 playwright-report
+# Playwright MCP・Chrome DevTools MCPの出力先
+.playwright-mcp
 
 # 生成AI用
 .claude/settings.local.json
