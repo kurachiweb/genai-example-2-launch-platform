@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 interface ClaudeConfig {
   projects?: Record<string, Record<string, unknown> | undefined>;
