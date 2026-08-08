@@ -79,12 +79,12 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ```
 /
 ├── .claude/                    # Claude拡張設定 ... 詳細はClaude拡張ファイル解説(./docs/onboardings/claude-extensions.md)を参照
-├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・Terraform適用を含む)を担当
+├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・OpenTofu適用を含む)を担当
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
 ├── .wrangler/                  # WranglerのD1・KV・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`や`apps/public-api`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
 ├── apps/                       # アプリケーション実装
-│   ├── infra/                  # インフラ構成定義 ... Terraformを使用、Cloudflareを主としてインフラを設計
+│   ├── infra/                  # インフラ構成定義 ... OpenTofuを使用、Cloudflareを主としてインフラを設計
 │   ├── db/                     # DBへの接続処理を含む
 │   │   ├── migrations/         # DBマイグレーション履歴
 │   │   └── schema/             # DBスキーマ定義

@@ -98,7 +98,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
   - tscによる型チェック
   - 単体テスト、Cloudflare Workers統合テスト、E2Eテスト、及びカバレッジ閾値チェック(テスト成功かつカバレッジ目標達成なら続行)
 - デプロイフェーズ
-  - Terraformによるインフラ構成変更(Wranglerの担当範囲を除く)
+  - OpenTofuによるインフラ構成変更(Wranglerの担当範囲を除く)
   - WranglerによるDBマイグレーション
   - Wranglerによる各Workerのビルド・デプロイ
   - Wrangler Secretsによる環境変数(シークレットを含む)変更
@@ -191,6 +191,10 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### インフラ運用
 
 - Cloudflare MCP
+
+### IaC(Infrastructure as Code)
+
+- OpenTofu
 
 ### ドキュメント
 
