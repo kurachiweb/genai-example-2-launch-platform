@@ -1,3 +1,7 @@
 [test]
-# Vitest向けの`*.browser.test.tsx`と@cloudflare/vitest-pool-workers向けの`*.worker.test.ts`はBunでは動作しないため除外する
-pathIgnorePatterns = ["**/*.browser.test.tsx", "**/*.worker.test.ts"]
+# Vitest向けの`*.browser.test.{ts,tsx}`と@cloudflare/vitest-pool-workers向けの`*.worker.test.{ts,tsx}`はBunでは動作しないため除外する
+pathIgnorePatterns = ["**/*.browser.test.{ts,tsx}", "**/*.worker.test.{ts,tsx}"]
+
+# NFR-M-003が要求するカバレッジ80%以上をBun側でも強制する
+coverage = true
+coverageThreshold = 0.8
