@@ -3,6 +3,12 @@
 # このスクリプトはCMDのshに`.`(source)で読み込ませる前提である。
 # 別プロセスとして実行すると、ここで登録したtrapと各プロセスの親子関係がスクリプト終了時に失われ、停止時にMailpitへSIGTERMを転送できなくなるため。
 
+# `/home/bun/.claude`は名前付きボリュームで永続化されており、イメージの内容がコピーされるのはボリュームが空の初回マウント時のみである。
+# そのためワークスペース信頼設定とRTKフックの登録はDockerfileのビルド時ではなくここで毎起動時に行うことで、将来の仕様変更が反映されるようにする。
+bun /workspace/scripts/merge-claude-trust-config.ts
+# RTKフックの登録
+HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch
+
 # プロジェクトルートディレクトリの非所有者でもgitコマンドを実行できるよう、安全なディレクトリとして設定する。
 # `--add`ではコンテナ再起動のたびに重複行が増えるため、`--replace-all`で冪等にする。
 git config --global --replace-all safe.directory /workspace /workspace

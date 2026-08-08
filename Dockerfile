@@ -24,14 +24,11 @@ RUN bunx --bun playwright@latest install-deps chromium \
 
 # Homebrewは既定の/home/linuxbrew/.linuxbrewに置くことで、ビルド済みパッケージ(bottle)をそのまま使え、時間のかかる自前ビルドを避けられる。
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
-# RTKの初期化はClaudeの設定ディレクトリが無いと失敗するため、先に作成しておく。
 # Claude、Infisical、Cloudflareのログイン情報を永続化し、コンテナ再作成時の再認証を不要にする。
-# 初回コンテナビルド時にClaudeのワークスペース信頼設定(hasTrustDialogAccepted等)を設定ファイルに書き込むので、ユーザーは意識する必要がなくなる。
 ENV CLAUDE_CONFIG_DIR=/home/bun/.claude
 RUN mkdir -p /home/linuxbrew/.linuxbrew \
   && chown -R bun:bun /home/linuxbrew/.linuxbrew \
   && mkdir -p /home/bun/.claude \
-  && printf '%s' '{"projects":{"/workspace":{"hasTrustDialogAccepted":true,"hasCompletedProjectOnboarding":true}}}' > /home/bun/.claude/.claude.json \
   && chown -R bun:bun /home/bun/.claude \
   && mkdir -p /home/bun/.infisical \
   && chown -R bun:bun /home/bun/.infisical \
@@ -66,8 +63,7 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash \
   && brew tap hashicorp/tap \
   && brew install hashicorp/tap/terraform cloudflare-wrangler gh rtk mailpit node \
-  && brew install --cask claude-code \
-  && HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch
+  && brew install --cask claude-code
 
 # コンテナ起動時のセットアップ処理はスクリプトへ切り出す。
 COPY --chmod=755 scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
