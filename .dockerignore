@@ -1,4 +1,5 @@
 # Dockerfileが`COPY`するファイルだけを明示的に許可する。
 *
 !scripts
+scripts/*
 !scripts/entrypoint.sh
