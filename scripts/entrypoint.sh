@@ -1,4 +1,5 @@
 #!/bin/sh
+set -u
 # ローカル開発用コンテナのセットアップ(ディレクトリ作成・Chromium導入)と、常駐プロセス(Mailpit)の起動を行う。
 # このスクリプトはCMDのshに`.`(source)で読み込ませる前提である。
 # 別プロセスとして実行すると、ここで登録したtrapと各プロセスの親子関係がスクリプト終了時に失われ、停止時にMailpitへSIGTERMを転送できなくなるため。
@@ -29,7 +30,10 @@ sleep 1
 if ! kill -0 "$mailpit_pid" 2>/dev/null; then
   echo 'Mailpitの起動に失敗しました。ログ末尾:' >&2
   tail -n 20 /workspace/apps/email/mailpit.log >&2
+  # trapが既に無効なPIDへkillを送ってしまうのを防ぐ。
+  mailpit_pid=
 fi
 
 # `docker compose down`のSIGTERMはPID1(docker-init)の子であるshに転送されるがその子(mailpit)には届かないため、trapで子プロセスへ転送する。
-trap 'kill -TERM $mailpit_pid 2>/dev/null; wait $mailpit_pid 2>/dev/null' TERM INT EXIT
+# `mailpit_pid`が空(起動失敗)の場合はkill・wait自体をスキップする。
+trap '[ -n "$mailpit_pid" ] && { kill -TERM $mailpit_pid 2>/dev/null; wait $mailpit_pid 2>/dev/null; }' TERM INT EXIT
