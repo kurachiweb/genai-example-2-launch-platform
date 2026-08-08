@@ -442,7 +442,6 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 | `cloudflare:workers-best-practices`   | 新規Worker作成時・既存Workerコードのレビュー時・`wrangler.jsonc`設定時                                                                        | Workersのプロダクションベストプラクティスに基づくコード作成・レビュー基準。ストリーミング・floating promise・グローバル状態・シークレット管理・タイミングセーフ比較などのアンチパターンを検出                   |
 | `cloudflare:durable-objects`          | ステートフルな協調処理(チャットルーム・予約システム等)の構築時、RPCメソッド・SQLiteストレージ・alarm・WebSocketの実装時、DOコードのレビュー時 | Durable Objectsの作成・レビュー基準。コーディネーション単位の設計・`getByName()`によるルーティング・ストレージ操作・alarm・Vitestテストを網羅                                                                   |
 | `cloudflare:cloudflare-email-service` | Email Sending/Email Routingでのメール送受信実装時、デリバラビリティ改善時                                                                     | WorkersバインディングまたはREST APIでのメール送信、Agents SDKでのメールハンドリング、SPF/DKIM/DMARC等のデリバラビリティ、wrangler/MCPでのドメインセットアップを網羅                                             |
-| `cloudflare:sandbox-sdk`              | AIによるコード実行・コードインタープリタ・CI/CD・対話的開発環境・未信頼コードの実行環境構築時                                                 | Sandbox SDKによるセキュアなコード実行環境構築。ライフサイクル・コマンド実行・ファイル操作・コードインタープリタ(`runCode()`)・プレビューURLを網羅                                                               |
 | `cloudflare:turnstile-spin`           | 「Turnstileを追加して」「CAPTCHAを設定して」「フォームをボット対策したい」と依頼された時                                                      | Turnstileのエンドツーエンドセットアップ。コードベーススキャン・ウィジェット作成・フォームへの組み込み・サーバーサイドsiteverifyの配線・検証をウィザード形式で実行                                               |
 | `cloudflare:web-perf`                 | ページ読み込みパフォーマンスの監査・プロファイリング・デバッグ・最適化、Lighthouseスコアの相談時                                              | Chrome DevTools MCPを使ったWebパフォーマンス監査。Core Web Vitals(LCP/INP/CLS)と補助指標を測定し、レンダーブロッキング・ネットワーク依存チェーン・レイアウトシフト・アクセシビリティのギャップを特定            |
 
@@ -588,16 +587,13 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 
 #### cross-border-transfers-skills
 
-**プラグイン説明**: SCC、BCR、十分性評価、TIA、データローカライゼーション、第49条の例外
+**プラグイン説明**: 十分性評価、TIA、データローカライゼーション、第49条の例外
 **想定使用者**: 越境データ移転を専門とするプライバシー/データ保護顧問(DPOや法務チーム内)。
 
 | スキル                                                     | トリガー                                     | 概要                                                                                                                                                                                |
 | ---------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `cross-border-transfers-skills:adequacy-assessment`        | 十分性認定国への移転可否評価時               | GDPR第45条に基づく第三国十分性認定の評価ガイド。現行のEC十分性認定リスト、十分性評価基準、部分的十分性の取扱い、十分性認定見直しのモニタリングを扱う                                |
 | `cross-border-transfers-skills:eu-us-dpf-assessment`       | EU-US DPFを移転根拠として利用する場合        | 越大西洋データ移転向けEU-USデータプライバシーフレームワーク十分性認定の評価・利用ガイド。商務省へのDPF自己認証、DPF原則遵守、Data Protection Review Court、EC年次レビューを扱う     |
-| `cross-border-transfers-skills:scc-implementation`         | SCC締結・附属書作成時                        | 欧州委員会決定2021/914に基づくEU標準契約条項(SCC)の4モジュール(C2C・C2P・P2P・P2C)全体の実装ガイド。条項ごとの記入方法、附属書I〜IIIの作成、モジュール選定を扱う                    |
-| `cross-border-transfers-skills:bcr-establishment`          | グループ内移転のBCR策定時                    | GDPR第47条に基づく企業グループ内国際データ移転のための拘束的企業準則(BCR)の策定・承認ガイド。第47条(2)(a)〜(n)の内容要件、リード監督機関による承認プロセス、WP256/WP257を扱う       |
-| `cross-border-transfers-skills:art49-derogations`          | SCC等が使えない移転の例外適用検討時          | 十分性認定や適切な保護措置がない場合のGDPR第49条derogation要件の評価・適用ガイド。明示的同意・契約の必要性・公益・生命に関わる利益等、EDPBガイドライン2/2018に基づく限定解釈を扱う  |
 | `cross-border-transfers-skills:transfer-impact-assessment` | SCC等での移転前のTIA実施時                   | Schrems II判決後のEDPB勧告01/2020の6ステップ手法に基づく移転影響評価(TIA)プロセスガイド。移転先国のサーベイランス法評価、European Essential Guarantees評価を扱う                    |
 | `cross-border-transfers-skills:supplementary-measures`     | TIAの結果として補完的措置が必要な場合        | EDPB勧告01/2020に基づく国際データ移転のための技術的・契約的・組織的補完的措置の実装ガイド。暗号化・仮名化・分割処理・監査権・透明性義務・内部方針を扱う                             |
 | `cross-border-transfers-skills:data-localization`          | データローカライゼーション要件への対応検討時 | ロシア(242-FZ)・中国(PIPL第40条・CAC措置)・インド(DPDP法)・トルコ・ベトナム・インドネシア等の要件への準拠ガイド。ローカライゼーション評価、アーキテクチャ設計、適用除外手続きを扱う |
@@ -669,11 +665,6 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 | `gdpr-compliance-skills:gdpr-dpa-art28`           | 処理者のオンボーディング・DPAレビュー時              | GDPR第28条(3)に基づくデータ処理契約(DPA)の作成・レビューガイド。8つの必須条項全てを扱い、2021年版標準契約条項を参照                                                   |
 | `gdpr-compliance-skills:gdpr-policy-framework`    | ポリシーフレームワークの構築・更新時                 | GDPR各章に沿った組織のプライバシーポリシー階層(上位方針・手順・運用ガイドライン・研修資料)作成ガイド                                                                  |
 | `gdpr-compliance-skills:gdpr-prior-consultation`  | DPIAで高リスクが残存した場合の規制当局協議時         | DPIAが高い残存リスクを示した場合のGDPR第36条事前協議プロセスガイド。期限要件・文書化・結果対応を扱う                                                                  |
-| `gdpr-compliance-skills:gdpr-dpa-cooperation`     | 監督機関の調査・情報提供要求への対応時               | GDPR第31条に基づく監督機関との協力ガイド。調査・情報提供要求・立入検査への対応手続きを扱う                                                                            |
-| `gdpr-compliance-skills:gdpr-one-stop-shop`       | EU域内複数国にまたがる処理を行う場合                 | GDPR第56条のワンストップショップメカニズムに基づくリード監督機関の決定ガイド。主たる拠点の特定と協力を扱う                                                            |
-| `gdpr-compliance-skills:gdpr-eu-representative`   | 非EU事業者がEUデータを処理する場合                   | 非EU管理者・処理者向けGDPR第27条のEU代理人選任ガイド。選任基準・責任・文書化を扱う                                                                                    |
-| `gdpr-compliance-skills:gdpr-certification`       | プライバシー認証の取得・認証機関評価時               | GDPR第42〜43条のデータ保護認証メカニズム実装ガイド。認定認証機関、認証基準の策定、定期審査を扱う                                                                      |
-| `gdpr-compliance-skills:gdpr-codes-of-conduct`    | 業界行動規範の策定・モニタリング団体設立時           | GDPR第40〜41条の業界別行動規範の策定ガイド。策定・提出・モニタリング団体要件を扱う                                                                                    |
 
 #### global-privacy-regulations-skills
 
