@@ -122,7 +122,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### 実行環境のセキュリティ
 
 専用の有償セキュリティ基盤は用いず、Cloudflareのプラットフォーム標準機能と既存ツールを重ねて多層防御を構成する。
-厳密なレート制限カウントレート制限にはDurable Objects及びHono向け自前レート制限ミドルウェアを使うが、その設定の範囲内で単一Cloudflareロケーションに高頻度リクエストがなされる場合を考慮し、Rate limiterバインディングでも防御する。
+厳密なレート制限カウントにはDurable Objects及びHono向け自前レート制限ミドルウェアを使うが、その設定の範囲内で単一Cloudflareロケーションに高頻度リクエストがなされる場合を考慮し、Rate limiterバインディングでも防御する。
 
 - Cloudflare Durable Objects(SQLiteストレージ)
 - WorkerごとのRate limiterバインディング(Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
@@ -152,9 +152,9 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ## 開発環境・ツール
 
-### コンテナ
+### コンテナ(ローカル環境のみ)
 
-- Docker(ローカル環境のみ)
+- Docker + Docker Compose
 
 ### パッケージマネージャー
 
@@ -186,6 +186,11 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### ブラウザ動作確認
 
 - Playwright MCP
+- Chrome DevTools MCP(Core Web Vitals計測に使用)
+
+### インフラ運用
+
+- Cloudflare MCP
 
 ### ドキュメント
 

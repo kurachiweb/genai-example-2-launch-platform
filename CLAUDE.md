@@ -1,4 +1,4 @@
-# ローンチディレクトリ「Launch Stadium」
+# ローンチプラットフォーム「Launch Stadium」
 
 Launch Stadiumのプログラム一式、及びドキュメント。
 dev版利用者側サイトURL(予定)：https://genai-example-2-client-dev.lab.kurachiweb.com
@@ -8,9 +8,8 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 
 ## このサービスについて
 
-作った製品を投稿し、他のユーザーと投票数を競い合うローンチディレクトリ。
+作った製品を投稿し、他のユーザーと投票数を競い合うローンチプラットフォーム。
 各ユーザーは画面操作または公開APIを通じて自身のプロフィール、投稿した製品、コメントをCRUD操作できる。
-公開APIには1分あたりのリクエスト回数制限(レート制限)が設けられている。
 詳細は[README.md](./README.md)を参照すること。
 
 ## 本プロジェクト規則
@@ -24,7 +23,7 @@ prod版開発者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
-  - `wrangler dev`を起動する際、Infisicalから環境シークレットを注入するには上記手順だけでは不十分で、Wrangler設定の`secrets.required`に必要な環境シークレットを記載することで`process.env`経由で使用可能になる。
+  - `wrangler dev`と`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定の`secrets.required`に当該シークレットキーを指定する必要がある。
 - フロントエンド側でTanStack系ツールが使われる処理を作成・改修・調査・コードレビューしたい場合は[TanStack Agent Guidelines](docs/ai-extensions/tanstack-agent-guidelines.md)を参照すること。ただしそのガイドラインの「Repository Structure」セクションとは異なり、TanStack関連スキル群は`.claude/skills/tanstack-agent-skills/skills`ディレクトリ内にある。
 
 ### コード・ドキュメントの規則
@@ -60,7 +59,7 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 - npmパッケージの`framer-motion`は`motion`にリネームされているため、`motion/react`をインポートして利用する。`ecc:motion-ui`と`ecc:frontend-patterns`スキルが`framer-motion`に言及しているが、それは古い情報である。
 - APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`のAPIレスポンス形式や、`rules/common/patterns.md`のAPIレスポンスフォーマット説明、`rules/typescript/patterns.md`の`ApiResponse<T>`型は採用しない。
 - Stripe Payment Elementを使うためにはCheckout Sessions APIにて`ui_mode: 'elements'`オプションを使うこと。`stripe:stripe-best-practices`スキル内では`ui_mode: 'custom'`を使うよう案内しているが、それはリネーム前の古い情報である。
-- `.claude/rules/common/git-workflow.md`はClaude設定ファイルに`includeCoAuthoredBy: false`を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりに`attribution`プロパティを指定する。
+- `.claude/rules/common/git-workflow.md`はClaude設定ファイルに`includeCoAuthoredBy: false`を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりとして`attribution`プロパティに空文字を指定して帰属表示を無効化する。
 - `cloudflare:wrangler`スキルはローカル開発シークレットの管理に`.dev.vars`ファイルを作成するよう案内しているが、本プロジェクトでは`.dev.vars`や`.env`を使わず、Infisicalで一元管理する。
 - テストについて
   - E2Eテストツールとして`ecc:e2e-runner`エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。

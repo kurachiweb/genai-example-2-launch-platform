@@ -59,7 +59,7 @@ WORKDIR /workspace
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 
 # Homebrewのインストール時は`NONINTERACTIVE=1`で確認プロンプトを抑止する。
-# `node`パッケージはアプリケーションコードの実行には使わないもののWrangler CLIが必要としているため、バージョン管理しやすいよう明示的にインストールする。
+# `node`パッケージはアプリケーションコードの実行には使わないものの、Wrangler CLI、Vitest系テストランナーが必要とするため、明示的にインストールする。
 RUN NONINTERACTIVE=1 curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash \
   && brew tap hashicorp/tap \
   && brew install hashicorp/tap/terraform cloudflare-wrangler gh rtk mailpit node \

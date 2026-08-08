@@ -18,7 +18,7 @@ git config --global --replace-all safe.directory /workspace /workspace
 mkdir -p /workspace/apps/email
 
 # Chromiumをインストールする。
-# ただし`bun install`前にコンテナが起動した場合はこのスクリプトがスキップされるので、後ほどクイックスタート手順(docs/onboardings/README.md参照)に従いそのスクリプトを手動実行する。
+# ただし`bun install`前にコンテナが起動した場合はそのスクリプトがスキップされるので、後ほどクイックスタート手順(docs/onboardings/README.md参照)に従いそのスクリプトを手動実行する。
 /workspace/scripts/setup-chromium.sh
 
 # Mailpitのポートをこのプロジェクトの規約通り48041に変更し、起動する。
