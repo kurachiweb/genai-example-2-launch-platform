@@ -55,10 +55,12 @@
     ],
     "deny": [
       "Bash(git config *)",
+      "Bash(gh pr merge*)",
       "Bash(gh repo delete*)",
       "Bash(wrangler deploy*)",
       "Bash(wrangler versions deploy*)",
       "Bash(terraform apply*)",
+      "Bash(terraform destroy*)",
       "Read(**/.env)",
       "Read(**/.env.local)",
       "Read(**/.dev.vars)",
