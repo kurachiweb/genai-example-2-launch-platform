@@ -49,7 +49,18 @@ cd apps/api
 wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
 ```
 
-8. コンテナ内: アプリケーションの起動
+8. コンテナ内: MikroORMアプリの事前コンパイル
+
+`apps/api`と`apps/public-api`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
+
+```sh
+cd apps/db
+bun install # 初回のみ
+bun run mikro-orm:generate # mikro-orm cache:generate --combined
+bun run mikro-orm:compile # mikro-orm compile
+```
+
+9. コンテナ内: アプリケーションの起動
 
 内部APIサーバー
 
@@ -91,17 +102,11 @@ bun install # 初回のみ
 bun run storybook:dev --port 48046 --host 0.0.0.0
 ```
 
-9. コンテナ内: デプロイ前動作確認
+10. コンテナ内: デプロイ前動作確認
 
 ```sh
-cd apps/db
-bun install # 初回のみ
-# Cloudflare Workers上でも動作する形式でMikroORMアプリをビルド
-bun run mikro-orm:generate # mikro-orm cache:generate --combined
-bun run mikro-orm:compile # mikro-orm compile
-
 # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定済み)
-cd ../client
+cd apps/client
 NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite build
 NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite preview --port 48044 --host 0.0.0.0
 
@@ -112,14 +117,14 @@ NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite previ
 
 ### ローカルポート一覧
 
-| アプリ              | 役割                                    | ポート |
-| ------------------- | --------------------------------------- | ------ |
-| Mailpit             | メール確認Web UI                        | 48041  |
-| `apps/api`          | 内部APIサーバー(Hono / GraphQL)         | 48042  |
-| `apps/public-api`   | 公開APIサーバー(Hono / REST)            | 48043  |
-| `apps/client`       | 利用者側フロントエンド(TanStack Start)  | 48044  |
-| `apps/admin`        | 管理者側フロントエンド(TanStack Start)  | 48045  |
-| `apps/frontend-lib` | Storybookコンポーネントカタログ         | 48046  |
+| アプリ              | 役割                                   | ポート |
+| ------------------- | -------------------------------------- | ------ |
+| Mailpit             | メール確認Web UI                       | 48041  |
+| `apps/api`          | 内部APIサーバー(Hono / GraphQL)        | 48042  |
+| `apps/public-api`   | 公開APIサーバー(Hono / REST)           | 48043  |
+| `apps/client`       | 利用者側フロントエンド(TanStack Start) | 48044  |
+| `apps/admin`        | 管理者側フロントエンド(TanStack Start) | 48045  |
+| `apps/frontend-lib` | Storybookコンポーネントカタログ        | 48046  |
 
 ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Workers KVの代わりにWranglerのKVローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
 MailpitのSMTP(1025)はコンテナ内のみで到達可能で、ローカル開発ではメール送信処理がこの1025番ポートへSMTP接続し、送信結果は48041番のWeb UIで確認する。
