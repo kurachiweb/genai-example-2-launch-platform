@@ -3,6 +3,7 @@
     "chrome-devtools": {
       "command": "bunx",
       "args": [
+        "--bun",
         "chrome-devtools-mcp@latest",
         "--executablePath",
         "${CHROMIUM_PATH}",
@@ -15,6 +16,7 @@
     "playwright": {
       "command": "bunx",
       "args": [
+        "--bun",
         "@playwright/mcp@latest",
         "--executable-path",
         "${CHROMIUM_PATH}",
