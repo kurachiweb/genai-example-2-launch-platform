@@ -365,16 +365,6 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 
 ## Special Thanks
 
-### 開発ツール
-
-- Claude Code
-- VSCode
-
-### ソースコード管理
-
-- Git
-- GitHub
-
 ### MCP
 
 - [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) by Google ([Apache License 2.0](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/LICENSE)) ... It acts as a MCP server, giving your AI coding assistant access to the full power of Chrome DevTools.
