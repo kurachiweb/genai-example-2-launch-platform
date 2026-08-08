@@ -160,6 +160,10 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Bun
 
+### AIエージェント向けトークン節約プロキシ
+
+- RTK ... Claude Codeが発行する特定のBashコマンドを`rtk`経由に書き換えてコマンド出力のトークン量を削減する
+
 ### コード品質
 
 - ESLint + Prettier
