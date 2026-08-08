@@ -43,7 +43,6 @@ services:
       - "48044:48044" # 利用者側フロントエンド
       - "48045:48045" # 管理者側フロントエンド
       - "48046:48046" # Storybookコンポーネントカタログ
-      - "8976:8976" # `wrangler login`のOAuthコールバック受信
     environment:
       NODE_ENV: development
       API_GRAPHQL_URL: http://localhost:48042/graphql

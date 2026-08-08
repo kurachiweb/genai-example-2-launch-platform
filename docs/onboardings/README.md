@@ -22,7 +22,7 @@ infisical --telemetry=false login
 4. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
 
 ```sh
-wrangler login --callback-host 0.0.0.0 --browser false
+wrangler login --device
 wrangler whoami # 認証確認
 ```
 
@@ -120,10 +120,8 @@ NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite previ
 | `apps/client`       | 利用者側フロントエンド(TanStack Start)  | 48044  |
 | `apps/admin`        | 管理者側フロントエンド(TanStack Start)  | 48045  |
 | `apps/frontend-lib` | Storybookコンポーネントカタログ         | 48046  |
-| Wrangler            | `wrangler login`のOAuthコールバック受信 | 8976   |
 
 ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Workers KVの代わりにWranglerのKVローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
-WranglerのOAuthコールバックだけは、Cloudflareログイン後のリダイレクト先が`http://localhost:8976/oauth/callback`に固定されており、それは`--callback-port`でも変更できないため、他のポート番号と連続していない。
 MailpitのSMTP(1025)はコンテナ内のみで到達可能で、ローカル開発ではメール送信処理がこの1025番ポートへSMTP接続し、送信結果は48041番のWeb UIで確認する。
 
 ## ドキュメント索引
