@@ -172,7 +172,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### 開発プロセスのセキュリティ
 
-- Gitleaks(pre-commit、コマンドオプション`--staged`を使用)
+- Betterleaks(pre-commit、コマンドオプション`--staged`を使用)
 - GitHub Dependabot(依存パッケージの脆弱性アラート及びバージョン更新PRの自動作成)
 
 ### シークレット管理

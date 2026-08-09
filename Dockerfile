@@ -1,27 +1,63 @@
 # syntax=docker/dockerfile:1
 
-# opentofu・wrangler・gh・gitleaks・mailpit・nodeを導入する専用ビルドステージ。
-# `node`パッケージはアプリケーションコードの実行には使わないものの、Wrangler CLI、Vitest系テストランナーが必要とするため、明示的に導入する。
-# nixpkgsのビルド済みキャッシュ(cache.nixos.org)を利用でき、自前ビルドを避けられる。
-# 最終イメージには`/nix`のクロージャと固定シンボリックリンク(`/opt/tools-profile`)だけをCOPYし、`nix`コマンド自体は含めない。
-FROM nixos/nix:2.35.1 AS nix-builder
+# gh・OpenTofu・Wranglerを導入する専用ビルドステージ。
+# 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
+# `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
+# バージョンは全てARGに切り出し、Dependabotによる更新検知の対象にする。
+FROM oven/bun:1.3-slim AS tools-builder
+ARG GH_VERSION=2.97.0
+ARG TOFU_VERSION=1.12.5
+ARG WRANGLER_VERSION=4.120.0
 
-# Nixのビルドサンドボックスは非特権ユーザー名前空間を要求するが、コンテナ内では無効なため利用できない(後述のChromiumサンドボックスと同じ制約)。
-# 対象パッケージは全てcache.nixos.orgにビルド済みキャッシュがあり実際のサンドボックスビルドが発生しないため、無効化しても差し支えない。
-# nixpkgsはリリースブランチを固定参照し、再現性のあるバージョンを取得する。
-ARG NIXPKGS_ARCHIVE_URL=https://github.com/NixOS/nixpkgs/archive/refs/heads/nixos-26.05.tar.gz
-# Nixストアのパスはパッケージ内容に応じたハッシュを含み事前に予測できないため、`-p`オプションで`/opt/tools-profile`という固定パスの世代シンボリックリンクを作成し、ハッシュを意識せずPATH指定やCOPY対象の指定を行えるようにする。
-RUN mkdir -p /etc/nix /opt \
-  && echo 'sandbox = false' >> /etc/nix/nix.conf \
-  && nix-env -p /opt/tools-profile -f "${NIXPKGS_ARCHIVE_URL}" -iA opentofu wrangler gh gitleaks mailpit nodejs
+# gh(公式リポジトリ: cli.github.com/packages)、OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+  && mkdir -p -m 755 /etc/apt/keyrings \
+  && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+  && curl -fsSL https://get.opentofu.org/opentofu.gpg -o /etc/apt/keyrings/opentofu.gpg \
+  && curl -fsSL https://packages.opentofu.org/opentofu/tofu/gpgkey | gpg --no-tty --batch --dearmor -o /etc/apt/keyrings/opentofu-repo.gpg \
+  && chmod a+r /etc/apt/keyrings/opentofu.gpg /etc/apt/keyrings/opentofu-repo.gpg \
+  && echo "deb [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main" > /etc/apt/sources.list.d/opentofu.list \
+  && apt-get update \
+  && apt-get download "gh=${GH_VERSION}" "tofu=${TOFU_VERSION}" \
+  && mkdir -p /out \
+  && for f in gh_*.deb tofu_*.deb; do dpkg -x "$f" /out; done \
+  && rm -f ./*.deb
 
-# 最終イメージへCOPYするクロージャ(依存パッケージ一式)と、固定パスのシンボリックリンク一式を`/closure`へ集約する。
-RUN mkdir -p /closure/nix/store \
-  && for p in $(nix-store -qR /opt/tools-profile); do \
-  cp -a --parents "$p" /closure/; \
-  done \
-  && cp -a --parents /opt/tools-profile /closure/ \
-  && cp -a --parents /opt/tools-profile-1-link /closure/
+# Wranglerを導入する。
+# BUN_INSTALLを固定パスにすることで、実行ファイルへのシンボリックリンク(`/usr/local/bin`配下)の参照先を`/out`へのCOPY後も維持する。
+ENV BUN_INSTALL=/opt/wrangler
+RUN bun install -g "wrangler@${WRANGLER_VERSION}"
+
+# BetterleaksとMailpitを導入する専用ビルドステージ。
+# いずれもAPT・npmレジストリのいずれにも公式パッケージが存在しないため、公式GitHub Releasesのバイナリを直接取得する。
+# bunを必要としないため、上記ステージとは別の軽量なベースイメージを使い、BuildKit上で並列にダウンロードできるようにする。
+FROM debian:trixie-slim AS release-binaries-builder
+ARG TARGETARCH
+ARG BETTERLEAKS_VERSION=1.7.3
+ARG MAILPIT_VERSION=1.30.7
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl
+
+# Betterleaksはchecksums.txtによるSHA256検証付きで取得する。
+RUN case "${TARGETARCH}" in \
+  amd64) BL_ARCH=x64 ;; \
+  arm64) BL_ARCH=arm64 ;; \
+  *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+  esac \
+  && cd /tmp \
+  && curl -fsSLO "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VERSION}/betterleaks_${BETTERLEAKS_VERSION}_linux_${BL_ARCH}.tar.gz" \
+  && curl -fsSL "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VERSION}/checksums.txt" -o checksums.txt \
+  && grep " betterleaks_${BETTERLEAKS_VERSION}_linux_${BL_ARCH}.tar.gz\$" checksums.txt | sha256sum -c - \
+  && mkdir -p /out/usr/local/bin \
+  && tar -xzf "betterleaks_${BETTERLEAKS_VERSION}_linux_${BL_ARCH}.tar.gz" -C /out/usr/local/bin betterleaks
+
+# Mailpitはチェックサムが非公開のため未検証で取得する。
+RUN mkdir -p /out/usr/local/bin \
+  && curl -fsSL "https://github.com/axllent/mailpit/releases/download/v${MAILPIT_VERSION}/mailpit-linux-${TARGETARCH}.tar.gz" -o /tmp/mailpit.tar.gz \
+  && tar -xzf /tmp/mailpit.tar.gz -C /out/usr/local/bin mailpit
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
 FROM oven/bun:1.3-slim
@@ -37,10 +73,16 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
   && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
   && apt-get install -y --no-install-recommends infisical
 
-# opentofu・wrangler・gh・gitleaks・mailpit・nodeのクロージャと、固定パスのシンボリックリンク(`/opt/tools-profile`)を導入する。
-COPY --from=nix-builder /closure/nix /nix
-COPY --from=nix-builder /closure/opt /opt
-ENV PATH="/opt/tools-profile/bin:${PATH}"
+# gh・OpenTofuを導入する。各バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
+COPY --from=tools-builder /out/ /
+
+# Wranglerを導入する。bunのグローバルインストールはパッケージ本体を`/opt/wrangler`へ、実行ファイルへのシンボリックリンクを`/usr/local/bin`へ配置するため、両方をコピーする。
+# `COPY`は単一ファイルを指定するとシンボリックリンクを実体化(参照先の内容へ展開)してしまうため、ディレクトリ単位でコピーしリンクを維持する。
+COPY --from=tools-builder /opt/wrangler /opt/wrangler
+COPY --from=tools-builder /usr/local/bin/ /usr/local/bin/
+
+# Betterleaks・Mailpitを導入する。各バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
+COPY --from=release-binaries-builder /out/ /
 
 # Playwright・chrome-devtools MCPが起動するChromiumを導入する。
 # ChromiumバイナリのOS側共有ライブラリ(libnss3等)はrootユーザーとして導入する。
@@ -87,7 +129,7 @@ USER bun
 WORKDIR /workspace
 
 # Claude Codeはコンテナ内で自動アップデートされるよう、公式ネイティブインストーラで導入する。
-# rtkはnixpkgsに未収録のため、公式install.shで導入する。
+# rtkはAPT・npmレジストリのいずれにも収録されていないため、公式install.shで導入する。
 ENV PATH="/home/bun/.local/bin:${PATH}"
 RUN curl -fsSL https://claude.ai/install.sh | bash \
   && curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
