@@ -1,5 +1,12 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-settings.json",
+  "showThinkingSummaries": true,
+  "skillListingBudgetFraction": 0.035,
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
   "env": {
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
     "CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL": "1",
@@ -92,8 +99,6 @@
       "Edit(~/.wrangler/config/default.toml)"
     ]
   },
-  "showThinkingSummaries": true,
-  "skillListingBudgetFraction": 0.035,
   "enabledMcpjsonServers": [
     "chrome-devtools",
     "playwright",
@@ -101,9 +106,5 @@
     "cloudflare-bindings",
     "cloudflare-builds",
     "cloudflare-observability"
-  ],
-  "attribution": {
-    "commit": "",
-    "pr": ""
-  }
+  ]
 }
