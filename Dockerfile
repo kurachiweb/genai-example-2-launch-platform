@@ -93,7 +93,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 ENV CHROMIUM_PATH=/opt/ms-playwright-bin/chrome
 RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  bunx --bun playwright@latest install-deps chromium \
+  bunx --bun playwright@1.62.1 install-deps chromium \
   && mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin \
   && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
 
