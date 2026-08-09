@@ -109,7 +109,7 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 
 ### ecc:react-build-resolver
 
-**概要**: Reactのビルド失敗解決専門家。Vite・webpack・Next.js・CRA・Parcel・esbuild・Bunに対応し、最小限の外科的修正でビルドを通すことに集中する。Claude Sonnetモデルを使用。
+**概要**: Reactのビルド失敗解決専門家。Vite・webpack・Next.js・Rsbuild・CRA・Parcel・esbuild・Bunに対応し、最小限の外科的修正でビルドを通すことに集中する。Claude Sonnetモデルを使用。
 
 **トリガー**: Reactのビルドが失敗した時に必ず使用。
 
@@ -229,7 +229,7 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 
 **概要**: Reactのビルド失敗を最小限の修正で段階的に解消する。`ecc:react-build-resolver`エージェントを起動する。
 
-**対応ビルドシステム**: Vite・webpack・Next.js・CRA・Parcel・esbuild・Bun
+**対応ビルドシステム**: Vite・webpack・Next.js・Rsbuild・CRA・Parcel・esbuild・Bun
 
 **使用する場面**:
 
@@ -275,7 +275,7 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 - バグ修正(再現する失敗テストを先に書く)
 - フォーム・状態機械・アクセシビリティが重要なUIの構築
 
-**カバレッジ目標**: 純粋ユーティリティ ≧90%・カスタムフック ≧85%・表示コンポーネント ≧80%・コンテナコンポーネント ≧70%(ページはE2Eで別途カバー)。`vitest.config.ts`／`jest.config.ts`でCI閾値を強制する。
+**カバレッジ目標**: 純粋ユーティリティ...≧90%、カスタムフック...≧85%、表示コンポーネント...≧80%、コンテナコンポーネント...≧70%(ページはE2Eで別途カバー)。`vitest.config.ts`／`jest.config.ts`でCI閾値を強制する。
 
 ---
 
@@ -387,7 +387,7 @@ TanStack Start、及びTanStack Router・TanStack Queryのベストプラクテ�
 | `ecc:seo`                                         | 検索最適化が必要な場面                                                                     | 技術的SEO・Core Web Vitals・構造化データ・コンテンツ戦略の監査と実装                                                                                                         |
 | `gh-copilot-web-design-reviewer`                  | 「デザインを確認して」「UIのレイアウトを修正して」「デザインの問題を探して」と依頼された時 | ローカル・リモートのWebサイトを視覚的に検査してデザイン上の問題を特定・修正。レスポンシブ・アクセシビリティ・視覚一貫性の確認からソースコードレベルの修正まで4ステップで対応 |
 | `developer-kit-typescript:shadcn-ui`              | shadcn/uiのセットアップ・コンポーネント実装時                                              | shadcn/ui・Radix UIコンポーネント(ボタン・ダイアログ・フォーム等)の導入・実装パターン集                                                                                      |
-| `developer-kit-typescript:tailwind-css-patterns`  | Tailwind CSSでのスタイリング・レスポンシブレイアウト構築時                                 | Tailwind CSS v4.1+ のユーティリティファースト記法(レイアウト・スペーシング・レスポンシブ等)のリファレンス                                                                    |
+| `developer-kit-typescript:tailwind-css-patterns`  | Tailwind CSSでのスタイリング・レスポンシブレイアウト構築時                                 | Tailwind CSS v4.1+のユーティリティファースト記法(レイアウト・スペーシング・レスポンシブ等)のリファレンス                                                                     |
 | `developer-kit-typescript:tailwind-design-system` | Tailwind CSS + shadcn/uiでのデザインシステム構築時                                         | デザイントークン・CSS変数テーマを軸にしたshadcn/uiベースのデザインシステム構築ガイド                                                                                         |
 
 ---
@@ -396,12 +396,12 @@ TanStack Start、及びTanStack Router・TanStack Queryのベストプラクテ�
 
 `motion/react`(旧Framer Motion)を使ったReact / Next.jsアニメーション実装向けのスキル群。依存関係順に`ecc:motion-foundations`→`ecc:motion-patterns`→`ecc:motion-advanced`の順で適用する。`ecc:motion-ui`は全体を俯瞰したい場合のエントリーポイント。
 
-| スキル                   | トリガー                                                                                                                                                                               | 概要                                                                                                                                                                                        |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ecc:motion-ui`          | アニメーション実装の全体方針を確認したい時・どのスキルを使うか迷う時                                                                                                                   | motion/reactの包括的なUIモーションシステム。トークン・パフォーマンスルール・アクセシビリティ・AnimatePresenceの`mode`選択・デバッグ手順をまとめたエントリーポイント                         |
-| `ecc:motion-foundations` | アニメーション実装を新たに始める時・トークン／スプリング設定時・`prefers-reduced-motion`対応時・SSRハイドレーション不一致のデバッグ時                                                  | モーションシステムの基盤レイヤー。`motionTokens`・`springs`プリセット・`useSafeMotion`フック・SSR安全な初期状態・ローエンドデバイス検出を定義。他のmotionスキルはすべてこのスキルに依存する |
-| `ecc:motion-patterns`    | ボタン・モーダル・トースト・スタガーリスト・ページ遷移・スクロールリビール・アコーディオン・カード展開を実装する時                                                                     | `ecc:motion-foundations`のトークンとスプリングを使った標準UIアニメーションのコピペパターン集。`AnimatePresence`・`layout`・`layoutId`の使い分けガイドを含む                                 |
-| `ecc:motion-advanced`    | ドラッグ & ドロップ・スワイプジェスチャー・並び替えリスト・テキスト逐次表示・数値カウンター・SVGパス描画・カスタムアニメーションフック・`useAnimate`による命令的シーケンスを実装する時 | `ecc:motion-patterns`では対応できない高度な対話・物理・ジェスチャーパターン。`useMotionValue`・`useTransform`・`useSpring`・`useAnimate`を活用したカスタムフック群も含む                    |
+| スキル                   | トリガー                                                                                                                                                                             | 概要                                                                                                                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ecc:motion-ui`          | アニメーション実装の全体方針を確認したい時・どのスキルを使うか迷う時                                                                                                                 | motion/reactの包括的なUIモーションシステム。トークン・パフォーマンスルール・アクセシビリティ・AnimatePresenceの`mode`選択・デバッグ手順をまとめたエントリーポイント                         |
+| `ecc:motion-foundations` | アニメーション実装を新たに始める時・トークン／スプリング設定時・`prefers-reduced-motion`対応時・SSRハイドレーション不一致のデバッグ時                                                | モーションシステムの基盤レイヤー。`motionTokens`・`springs`プリセット・`useSafeMotion`フック・SSR安全な初期状態・ローエンドデバイス検出を定義。他のmotionスキルはすべてこのスキルに依存する |
+| `ecc:motion-patterns`    | ボタン・モーダル・トースト・スタガーリスト・ページ遷移・スクロールリビール・アコーディオン・カード展開を実装する時                                                                   | `ecc:motion-foundations`のトークンとスプリングを使った標準UIアニメーションのコピペパターン集。`AnimatePresence`・`layout`・`layoutId`の使い分けガイドを含む                                 |
+| `ecc:motion-advanced`    | ドラッグ&ドロップ・スワイプジェスチャー・並び替えリスト・テキスト逐次表示・数値カウンター・SVGパス描画・カスタムアニメーションフック・`useAnimate`による命令的シーケンスを実装する時 | `ecc:motion-patterns`では対応できない高度な対話・物理・ジェスチャーパターン。`useMotionValue`・`useTransform`・`useSpring`・`useAnimate`を活用したカスタムフック群も含む                    |
 
 ---
 
@@ -694,7 +694,7 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 | スキル                                                 | トリガー                                                 | 概要                                                                                                                                                                                                |
 | ------------------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `privacy-engineering-skills:pii-detection-pipeline`    | PII自動検出パイプライン構築時                            | spaCy NER・Microsoft Presidio・AWS Macie連携による自動PII検出・削除(redaction)パイプラインの構築。信頼度スコアリング、カスタムエンティティ型定義、バッチ処理ワークフローを含む                      |
-| `privacy-engineering-skills:differential-privacy-prod` | 統計データの差分プライバシー実装時                       | 本番システムへの差分プライバシー導入。ε の選定戦略、Laplace/Gaussianメカニズムによるノイズ較正、プライバシー予算の追跡、合成定理、Python実装パターンを扱う                                          |
+| `privacy-engineering-skills:differential-privacy-prod` | 統計データの差分プライバシー実装時                       | 本番システムへの差分プライバシー導入。εの選定戦略、Laplace/Gaussianメカニズムによるノイズ較正、プライバシー予算の追跡、合成定理、Python実装パターンを扱う                                           |
 | `privacy-engineering-skills:linddun-threat-model`      | プライバシー脅威モデリング実施時                         | LINDDUNプライバシー脅威モデリングの7カテゴリ(Linking・Identifying・Non-repudiation・Detecting・Data Disclosure・Unawareness・Non-compliance)全体を実施。STRIDEとの統合を扱う                        |
 | `privacy-engineering-skills:purpose-based-access`      | 目的ベースアクセス制御の実装時                           | 目的ベースアクセス制御(PBAC)アーキテクチャの設計・実装。目的オントロジー定義、ポリシーエンジン設定、監査ログ、既存IAM連携を扱う。GDPR第5条(1)(b)の目的制限を技術的に実施する                        |
 | `privacy-engineering-skills:privacy-api-design`        | プライバシー関連API設計時                                | プライバシーAPIパターンの設計。DSARエンドポイント向けデータ主体API、選好管理向け同意API、削除API、監査APIを扱う。OpenAPI仕様・エラー処理・レート制限・認証パターンを提供                            |

@@ -82,7 +82,7 @@ Launch Stadiumは、Product HuntやUneedの競合として位置づけられる�
 
 - FCP(First Contentful Paint)を最優先とした設計
 - `HttpOnly`・`Secure`・`SameSite`属性付きCookieによる認証
-- GraphQL APIによる通信
+- GraphQL APIまたはRESTful APIによる通信
 - マークダウン形式で保存されているプロダクト説明本文の画面表示
 - Cloudflare Workers実行環境の制約(Worker起動時グローバルスコープ処理1秒以内、Paidプランの場合リクエスト毎CPU時間30秒以内が規定値)
 
@@ -244,7 +244,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 
 #### 5.3 ソフトウェアインターフェース
 
-- **SW-001**: システムは、GraphQL APIを提供しなければならない
+- **SW-001**: システムは、利用者・管理者向け画面との通信にGraphQL APIを提供しなければならない
 - **SW-002**: システムは、公開APIとしてRESTful APIを提供しなければならない
 - **SW-003**: システムは、Cloudflare D1(SQLiteベース)をサポートしなければならない
 - **SW-004**: システムは、Cloudflare Workers KVによるログインセッション・キャッシュ等のキー・バリューストレージをサポートしなければならない
@@ -268,7 +268,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 
 - **NFR-P-001**: システムは、FCP 1.6秒以内を達成しなければならない(CloudflareダッシュボードのSpeed>Observatoryで確認)
 - **NFR-P-002**: システムは、同時接続ユーザー数100人をサポートしなければならない
-- **NFR-P-003**: GraphQL APIは、クライアント観測で95パーセンタイル300ms以内のレスポンスタイムを達成しなければならない(`@sentry/tanstackstart-react`のBrowser Tracingを利用しリクエスト50回あたり1回計測)
+- **NFR-P-003**: GraphQL APIは、クライアント観測で95パーセンタイル300ms以内のレスポンスタイムを達成しなければならない(`@sentry/tanstackstart-react`のBrowser Tracingを利用しリクエスト10回あたり1回計測)
 - **NFR-P-004**: システムは、GraphQLにおけるN+1問題を回避するためDataLoaderを使用しなければならない
 
 #### 6.2 セキュリティ要件
@@ -321,7 +321,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 
 #### 6.7 監視・ログ要件
 
-- **NFR-L-001**: システムは、Cloudflare Analytics / FlareWardenによるメトリクス監視及び死活監視を実装しなければならない
+- **NFR-L-001**: システムは、Cloudflare Web Analytics / FlareWardenによるメトリクス監視及び死活監視を実装しなければならない
 - **NFR-L-002**: システムは、LogTapeによる構造化ログ(JSON形式)を出力しなければならない
 - **NFR-L-003**: システムは、Sentryによるエラートラッキング及びパフォーマンストレーシングを実装しなければならない
 

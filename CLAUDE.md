@@ -1,10 +1,17 @@
 # ローンチプラットフォーム「Launch Stadium」
 
 Launch Stadiumのプログラム一式、及びドキュメント。
-dev版利用者側サイトURL(予定)：https://genai-example-2-client-dev.lab.kurachiweb.com
-dev版管理者側サイトURL(予定)：https://genai-example-2-admin-dev.lab.kurachiweb.com
-prod版利用者側サイトURL(予定)：https://genai-example-2-client.lab.kurachiweb.com
-prod版管理者側サイトURL(予定)：https://genai-example-2-admin.lab.kurachiweb.com
+
+## 配信URL一覧(予定)
+
+dev版利用者側サイトURL：https://genai-example-2-client-dev.lab.kurachiweb.com
+dev版管理者側サイトURL：https://genai-example-2-admin-dev.lab.kurachiweb.com
+dev版内部APIサーバー：https://genai-example-2-api-dev.lab.kurachiweb.com
+dev版公開APIサーバー：https://genai-example-2-public-api-dev.lab.kurachiweb.com
+prod版利用者側サイトURL：https://genai-example-2-client.lab.kurachiweb.com
+prod版管理者側サイトURL：https://genai-example-2-admin.lab.kurachiweb.com
+prod版内部APIサーバー：https://genai-example-2-api.lab.kurachiweb.com
+prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb.com
 
 ## このサービスについて
 
@@ -23,7 +30,7 @@ prod版管理者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
-  - `wrangler dev`と`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定の`secrets.required`に当該シークレットキーを指定する必要がある。
+  - `wrangler dev`と`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定の環境別`secrets.required`に当該シークレットキーを指定する必要がある。
 - フロントエンド側でTanStack系ツールが使われる処理を作成・改修・調査・コードレビューしたい場合は[TanStack Agent Guidelines](docs/ai-extensions/tanstack-agent-guidelines.md)を参照すること。ただしそのガイドラインの「Repository Structure」セクションとは異なり、TanStack関連スキル群は`.claude/skills/tanstack-agent-skills/skills`ディレクトリ内にある。
 
 ### コード・ドキュメントの規則
@@ -37,7 +44,7 @@ prod版管理者側サイトURL(予定)：https://genai-example-2-admin.lab.kura
 - コード内にコメントは原則書かないこと。ただし難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
 - BunのWorkspaces機能は使用しないこと。
 - appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
-- テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.tsx`はVitest、`*.worker.test.ts`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
+- テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.{ts,tsx}`はVitest、`*.worker.test.{ts,tsx}`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
 - ORMについて
   - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm cache:generate --combined`及び`mikro-orm compile`コマンドをGitHub Actionsやapps/dbディレクトリの`package.json`に定義し事前コンパイルすること。
   - テーブルの特定カラムに限りアルファベットの大文字小文字を問わず文字照合させたい場合、MikroORMのテーブル定義にて`@Property({ columnType: 'text collate nocase' })`を記載すること。URLスラッグとして使われるユーザーハンドルのカラムでは特に有用。
