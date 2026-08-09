@@ -30,7 +30,7 @@
 
 ### ORM
 
-- MikroORM(D1向け連携は実験的サポート、Kysely D1ダイアレクトを`driverOptions`経由で使用)
+- MikroORM(Workers向けに事前コンパイル、`createKyselyDialect()`をD1ダイアレクトへ差し替えた独自Connectionを使用)
 - Kysely(クエリビルダ)
 
 ### 認証・認可
