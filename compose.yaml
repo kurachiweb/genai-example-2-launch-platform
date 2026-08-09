@@ -36,6 +36,7 @@ services:
       - playwright_browsers:/opt/ms-playwright
     restart: unless-stopped
     init: true
+    shm_size: "1gb"
     ports:
       - "48041:48041" # ローカルでのメール確認UI
       - "48042:48042" # 内部APIサーバー
