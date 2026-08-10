@@ -32,6 +32,8 @@ services:
       - config_claude:/home/bun/.claude
       - config_infisical:/home/bun/.infisical
       - config_wrangler:/home/bun/.wrangler
+      # Bunのグローバルインストールキャッシュを永続化し、コンテナ再作成時のMCPパッケージ再ダウンロードを不要にする
+      - config_bun:/home/bun/.bun
       # Playwright・chrome-devtools MCPが導入するChromiumを永続化し、コンテナ再作成時の再ダウンロードを不要にする
       - playwright_browsers:/opt/ms-playwright
     restart: unless-stopped
@@ -62,4 +64,5 @@ volumes:
   config_claude:
   config_infisical:
   config_wrangler:
+  config_bun:
   playwright_browsers:

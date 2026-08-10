@@ -61,6 +61,7 @@ RUN mkdir -p /out/usr/local/bin \
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
 FROM oven/bun:1.3-slim
+ARG PLAYWRIGHT_VERSION=1.62.1
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。
 # apt-getのダウンロードキャッシュはキャッシュマウントでビルド間永続化し再ダウンロードを避ける。公式Debianベースイメージが標準で有効化するdocker-cleanフックはapt-get実行直後にキャッシュを削除するため、キャッシュマウントを機能させるには無効化が必要。
@@ -93,19 +94,21 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 ENV CHROMIUM_PATH=/opt/ms-playwright-bin/chrome
 RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  bunx --bun playwright@1.62.1 install-deps chromium \
+  bunx --bun "playwright@${PLAYWRIGHT_VERSION}" install-deps chromium \
   && mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin \
   && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
 
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
-# Claude、Infisical、Cloudflareのログイン情報を永続化し、コンテナ再作成時の再認証を不要にする。
+# Claude・Infisical・Cloudflareのログイン情報、及びBunのグローバルインストールキャッシュを永続化し、コンテナ再作成時の再認証やMCPパッケージ再ダウンロードを不要にする。
 ENV CLAUDE_CONFIG_DIR=/home/bun/.claude
 RUN mkdir -p /home/bun/.claude \
   && chown -R bun:bun /home/bun/.claude \
   && mkdir -p /home/bun/.infisical \
   && chown -R bun:bun /home/bun/.infisical \
   && mkdir -p /home/bun/.wrangler \
-  && chown -R bun:bun /home/bun/.wrangler
+  && chown -R bun:bun /home/bun/.wrangler \
+  && mkdir -p /home/bun/.bun \
+  && chown -R bun:bun /home/bun/.bun
 
 # node_modulesは名前付きボリューム(node_modules_***)で分離する。
 # 名前付きボリュームは中身が空だとマウント先ディレクトリの所有者をそのまま引き継ぐため、
