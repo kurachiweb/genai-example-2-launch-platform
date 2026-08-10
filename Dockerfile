@@ -3,7 +3,6 @@
 # gh・OpenTofu・Wranglerを導入する専用ビルドステージ。
 # 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
-# バージョンは全てARGに切り出し、Dependabotによる更新検知の対象にする。
 FROM oven/bun:1.3-slim AS tools-builder
 ARG GH_VERSION=2.97.0
 ARG TOFU_VERSION=1.12.5
