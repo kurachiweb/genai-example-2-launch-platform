@@ -6,7 +6,11 @@ interface ClaudeConfig {
 
 // `.claude.json`にはセッション履歴やOAuth情報など実行時に蓄積されるデータが含まれるため、ファイル全体を上書きせず、
 // ワークスペース信頼設定のキーだけを既存内容を保持したまま冪等にマージする。
-const path = `${process.env.CLAUDE_CONFIG_DIR}/.claude.json`;
+const configDir = process.env.CLAUDE_CONFIG_DIR;
+if (!configDir) {
+  throw new Error("環境変数CLAUDE_CONFIG_DIRが未設定です。");
+}
+const path = `${configDir}/.claude.json`;
 const data: ClaudeConfig = existsSync(path)
   ? JSON.parse(readFileSync(path, "utf8"))
   : {};
