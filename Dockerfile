@@ -137,7 +137,7 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
   && curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
 
 # コンテナ起動時のセットアップ処理はスクリプトへ切り出す。
-COPY --chmod=755 scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # entrypoint.shは`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1(docker-init)の子であるshの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にMailpitへSIGTERMを転送できなくなる。
 # `sleep infinity`は「何もせず永遠に待ち続けるだけ」のコマンドで、これをバックグラウンドで動かし続けることでPID1のshを終了させず、コンテナを生かし続ける(Mailpitが落ちてもコンテナは生存する)。
