@@ -44,6 +44,10 @@
 - Zod
 - @hono/zod-validator
 
+### メールアドレス検証
+
+- [DISIFY API](https://disify.com/) ... 使い捨てメールアドレスの判定
+
 ## フロントエンド
 
 ### フレームワーク
@@ -91,7 +95,7 @@ main/prodブランチへのプルリクエストをトリガーにして、GitHu
 main/prodブランチへのプッシュをトリガーにして、GitHub Actionsにより検査フェーズ及びデプロイフェーズを実行する。
 
 - 検査フェーズ ... 各段階のいずれかが失敗すれば後続タスクを実行せずに中止
-  - TruffleHog(機密情報のpush防止)
+  - TruffleHogによるシークレット検出
   - Bunによるパッケージインストール及び既知の脆弱性確認
   - フォーマット検証
   - Lintチェック
@@ -126,6 +130,10 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Cloudflare Durable Objects(SQLiteストレージ)
 - WorkerごとのRate limiterバインディング(Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
+
+### bot対策・不正防止
+
+- Cloudflare Turnstile(ウィジェット埋め込み及びAPIサーバー側でのsiteverify検証)
 
 ### メール
 
@@ -167,12 +175,13 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### コード品質
 
 - ESLint + Prettier
-- Husky + lint-staged(pre-commit)
+- Husky + lint-staged(`pre-commit`フック)
 - Commitlint(コミットメッセージ規約)
 
 ### 開発プロセスのセキュリティ
 
-- Betterleaks(pre-commit、コマンドオプション`--staged`を使用)
+- Betterleaks(シークレット検出、`pre-commit`フック駆動でコマンドオプション`--staged`を添える)
+- TruffleHog(シークレット検出、CIプロセスでのみ使用)
 
 ### シークレット管理
 
@@ -182,7 +191,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Bun(ロジック層の単体テスト、`bun test`コマンドを使用)
 - Vitest + Vitest Browser Mode(DOM・コンポーネントテスト、フロントエンド)
-- React Testing Library(フロントエンド、Vitest Browser Mode上で使用)
+- vitest-browser-react(フロントエンド、Vitest Browser Mode上で使用)
 - @cloudflare/vitest-pool-workers(Cloudflare Workers統合テスト、D1・KV・R2・DOバインディングを含む)
 - Playwright(複数アプリの横断E2E)
 
@@ -202,5 +211,5 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### ドキュメント
 
 - Storybook(コンポーネントカタログ、`@storybook/tanstack-react`を使用)
-- GraphiQL(GraphQLスキーマ探索・クエリ試行、GraphQL Yogaに内蔵)
+- GraphiQL(GraphQLスキーマ探索・クエリ試行、GraphQL Yogaに内蔵、デプロイ先環境では`graphiql: false`かつintrospectionクエリも無効化)
 - Swagger UI(公開APIサーバーが配信するOpenAPI仕様を閲覧)

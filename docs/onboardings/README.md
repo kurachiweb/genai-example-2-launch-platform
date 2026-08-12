@@ -4,43 +4,49 @@
 
 ## ローカル開発環境クイックスタート
 
-1. ホスト環境: Dockerのインストール及び環境の作成
+1. ホスト環境: DockerをインストールしてDocker Desktopアプリを開く
 
 ```zsh
 brew install --cask docker-desktop # Macのみ
 docker compose up -d
 ```
 
-2. VSCodeでコンテナにアタッチする
-3. コンテナ内: Infisicalアカウントにログインする
+2. ホスト環境: コンテナ・イメージ・ボリュームの作成
+
+```zsh
+docker compose up -d
+```
+
+3. VSCodeでコンテナにアタッチし、`/workspace`ディレクトリを開く
+4. コンテナ内: Infisicalアカウントにログインする
 
 ```sh
 infisical --telemetry=false login
 # EUリージョンでログイン後、画面に表示されたトークンをこのターミナルに貼り付ける
 ```
 
-4. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
+5. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
 
 ```sh
 wrangler login --device
 wrangler whoami # 認証確認
 ```
 
-5. コンテナ内: ルートの依存パッケージをインストール(初回のみ)
+6. コンテナ内: ルートの依存パッケージをインストール(初回のみ)
 
 ```sh
 bun install
 scripts/setup-chromium.sh # Chromiumを`bun install`で解決されたバージョンに合わせて導入
 ```
 
-6. コンテナ内: Claude向けMCPを認証する(初回のみ)
+7. コンテナ内: Claude向けMCPを認証する(初回のみ)
 
 ```sh
 claude
 /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
 ```
 
-7. コンテナ内: ローカルDBの初期化(マイグレーション適用)
+8. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
 `apps/api`と`apps/public-api`は同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
 
@@ -49,7 +55,7 @@ cd apps/api
 wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
 ```
 
-8. コンテナ内: MikroORMアプリの事前コンパイル
+9. コンテナ内: MikroORMアプリの事前コンパイル
 
 `apps/api`と`apps/public-api`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
 
@@ -60,7 +66,7 @@ bun run mikro-orm:generate # mikro-orm cache:generate --combined
 bun run mikro-orm:compile # mikro-orm compile
 ```
 
-9. コンテナ内: アプリケーションの起動
+10. コンテナ内: アプリケーションの起動
 
 内部APIサーバー
 
@@ -102,10 +108,10 @@ bun install # 初回のみ
 bun run storybook:dev --port 48046 --host 0.0.0.0
 ```
 
-10. コンテナ内: デプロイ前動作確認
+11. コンテナ内: デプロイ前動作確認
 
 ```sh
-# TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定済み)
+# TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
 cd apps/client
 NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite build
 NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite preview --port 48044 --host 0.0.0.0
@@ -130,6 +136,12 @@ NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite previ
 MailpitのSMTP(1025)はコンテナ内のみで到達可能で、ローカル開発ではメール送信処理がこの1025番ポートへSMTP接続し、送信結果は48041番のWeb UIで確認する。
 
 ## ドキュメント索引
+
+### サービス仕様(ルートディレクトリ)
+
+| ドキュメント                 | 内容                                                 |
+| ---------------------------- | ---------------------------------------------------- |
+| [README.md](../../README.md) | サービス概要、ソフトウェア要件定義書(IEEE 29148準拠) |
 
 ### エージェント・開発支援(`docs/onboardings/`)
 

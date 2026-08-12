@@ -72,6 +72,7 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 - テストについて
   - E2Eテストツールとして`ecc:e2e-runner`エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
   - Claude拡張ファイル内でJest関連のコマンドが記載されていても、Jestは使用しないこと。
+  - `ecc:react-testing`スキルはコンポーネントレンダリングにReact Testing Libraryを使う前提で書かれているが、本プロジェクトでは代わりに採用する`vitest-browser-react`のAPIへ読み替える。
 
 ## Git運用方針
 
