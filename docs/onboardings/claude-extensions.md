@@ -426,7 +426,6 @@ TanStack Start、及びTanStack Router・TanStack Queryのベストプラクテ�
 | `stripe:connect-recommend`     | Stripe Connectの構成検討時・マーケットプレイスやプラットフォームでの出品者/提供者への支払い設計時            | 会社URLや事業内容の説明だけでStripe Connectの推奨アカウント構成(チャージパターン・Dashboardアクセス・オンボーディング/KYC要件)を判定するスキル                                                                                                |
 | `stripe:stripe-best-practices` | Stripe統合の実装・改修・レビュー全般(決済・Connect・サブスクリプション課金・税務・Treasury・APIキー管理等)時 | Checkout SessionsとPaymentIntentsの選定、Connectのアカウント設計、Billing、Stripe Tax、Treasury、Webhook・OAuthを含むセキュリティベストプラクティスを横断するStripe統合ガイド                                                                 |
 | `stripe:stripe-docs`           | Stripe公式ドキュメント(docs.stripe.com)を参照・検索する時                                                    | `curl`やWebFetchの代わりに`stripe docs`コマンドでStripeドキュメントをMarkdown取得する、エージェント・ターミナル向けスキル                                                                                                                     |
-| `stripe:stripe-projects`       | Stripe Projects経由でDB・認証・キャッシュ・監視等のサードパーティサービスをプロビジョニングする時            | Stripe Projectsのカタログからインフラ・サービスの契約/プロビジョニング/資格情報取得/一覧確認を行うスキル                                                                                                                                      |
 | `stripe:upgrade-stripe`        | Stripe APIバージョンやSDKをアップグレードする時                                                              | Stripeの日付ベースAPIバージョニングの仕組み、破壊的変更/非破壊的変更の見分け方、サーバーサイドSDK・Stripe.js・モバイルSDKのアップグレード手順を解説                                                                                           |
 
 ---
@@ -479,7 +478,6 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 | `ecc:github-ops`          | GitHub Issue・PR・CI・リリース管理時                       | `gh` CLIを使ったGitHubリポジトリ操作・自動化・管理                                                                                                     |
 | `ecc:deployment-patterns` | デプロイ・CI/CD・Docker実装時                              | デプロイワークフロー・ヘルスチェック・ロールバック戦略・本番準備チェックリスト                                                                         |
 | `ecc:production-audit`    | 「本番リリースできる状態か」「本番で何が壊れるか」の確認時 | ローカル証跡に基づく本番準備監査。セキュリティ・データ整合性・決済・運用・UXの各リスクレンズでスコアリング(0〜100)し、ブロッカーと次のアクションを提示 |
-| `ecc:database-migrations` | DBスキーマ変更・マイグレーション実装時                     | ゼロダウンタイムの安全なマイグレーション(Prisma・Drizzle・Kysely等対応)                                                                                |
 | `ecc:bun-runtime`         | Bunの導入・Nodeからの移行・Bunスクリプト/テストの記述時    | Bunをランタイム・パッケージマネージャー・バンドラー・テストランナーとして使う際の使い分けと移行方法                                                    |
 | `ecc:search-first`        | 実装前の調査・既存ライブラリ探索時                         | コードを書く前に既存ツール・ライブラリ・パターンを検索するresearch-before-codingワークフロー                                                           |
 | `ecc:agentic-engineering` | AIエージェントとしての実装ワークフロー時                   | evalファースト実行・タスク分解・コスト意識のモデルルーティング                                                                                         |
@@ -545,8 +543,8 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 
 #### consent-management-skills
 
-**プラグイン説明**: 有効な同意、同意撤回、プリファレンスセンター、研究/子ども/モバイルアプリの同意
-**想定使用者**: プライバシーエンジニア/同意運用リード、プロダクトマネージャー(DPO・法務の指示のもとで実装)。
+**プラグイン説明**: 有効な同意、同意撤回、プリファレンスセンター、子どもの同意
+**想定使用者**: プライバシーエンジニア、プロダクトマネージャー(DPO・法務の指示のもとで実装)。
 
 | スキル                                                    | トリガー                                         | 概要                                                                                                                                                                                                                           |
 | --------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -554,36 +552,22 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 | `consent-management-skills:consent-withdrawal`            | 同意撤回機能の実装時                             | GDPR第7条(3)の同意撤回メカニズム実装ガイド。撤回が同意付与と同じくらい容易であることを保証するequal ease要件、ワンクリック撤回、下流処理へのカスケード効果、第三者通知ワークフロー、リアルタイム失効の技術アーキテクチャを扱う |
 | `consent-management-skills:consent-pref-center`           | プリファレンスセンター構築時                     | マルチパーパスな同意プリファレンスセンター構築の技術アーキテクチャガイド。目的単位の粒度、第7条(3)に基づく容易な撤回、バージョン履歴、監査証跡、IAB TCF v2.2連携を扱う。DBスキーマ・API設計・UIコンポーネント仕様を含む        |
 | `consent-management-skills:consent-record-keeping`        | 同意記録システムの構築時                         | GDPR第7条(1)に基づく有効な同意を証明する同意記録保持システムの構築ガイド。タイムスタンプ・バージョン・目的・取得手段・本人identity等の必須フィールドを扱う。Kantara Initiative同意レシート仕様に基づく監査対応レシートを実装   |
-| `consent-management-skills:consent-platform-eval`         | CMPの選定・ベンダー比較時                        | 同意管理プラットフォーム(CMP)の評価・選定フレームワーク。TCF v2.2認定要件、Global Privacy Control対応、マルチ規制対応(GDPR/CCPA/LGPD)、A/Bテスト機能、API連携、構造化されたベンダー比較手法を扱う                              |
-| `consent-management-skills:cnil-compliant-cookies`        | Cookieバナー実装・CNIL準拠監査時                 | CNIL Cookieガイドライン準拠の実装ガイド。Googleへの1.5億ユーロ、Metaへの6,000万ユーロの制裁金を参照。同意/拒否ボタンの均等表示、Cookieウォール禁止、6ヶ月ごとの再同意間隔、必須Cookie免除、CNIL決定2020-091号の詳細要件を扱う  |
-| `consent-management-skills:cookie-consent-ab-audit`       | 同意バナーのA/Bテスト実施・監査時                | 同意バナーのA/Bテストを監査する手法。承諾と拒否の均等な容易性の遵守を確認。CNILのGoogleへの1.5億ユーロ制裁金などの執行事例、ダークパターン検出手法、操作的デザインの識別、規制準拠の実験境界を扱う                             |
 | `consent-management-skills:consent-for-transfers`         | 十分性認定のない国への移転で同意を根拠にする場合 | GDPR第49条1項(a)に基づく国際データ移転の明示的同意取得ガイド。十分性認定や適切な保護措置なしの移転リスク開示を含むインフォームドコンセント要件、移転先国の具体的開示、derogationベースの移転の狭い適用範囲を扱う               |
 | `consent-management-skills:global-privacy-control`        | GPC信号への対応実装時                            | CPRA第1798.135条(e)に基づくGlobal Privacy Control(GPC)自動オプトアウト信号の実装ガイド。Sec-GPC HTTPヘッダー検出、`navigator.globalPrivacyControl` API、CA/CO/CT/MT/TX/OR各州固有要件を扱う                                    |
 | `consent-management-skills:legit-interest-vs-consent`     | 法的根拠(同意vs正当な利益)の選定時               | 処理の法的根拠として同意と正当な利益のどちらを選ぶかの意思決定フレームワーク。力の不均衡指標、第7条(4)の条件性禁止、粒度要件、3段階LIAテスト(目的・必要性・比較衡量)、実務上の意思決定ツリーを扱う                             |
 | `consent-management-skills:managing-consent-for-children` | 子ども向けサービスの同意設計時                   | GDPR第8条・COPPAに基づく子どもの個人データ同意管理ガイド。親権者同意メカニズム、年齢確認方法、国別年齢閾値(13〜16歳)、親権者認可ワークフロー、英国ICO Children's Codeに基づく年齢に適したデザインを扱う                        |
-| `consent-management-skills:managing-consent-for-research` | 研究目的データ処理の同意設計時                   | GDPR第89条・前文33項のbroad consent規定に基づく科学研究のための同意管理ガイド。倫理審査委員会との調整、目的の進化管理、仮名化などの適切な保護措置、同意と他の法的根拠の相互関係を扱う                                          |
-| `consent-management-skills:managing-mobile-app-consent`   | モバイルアプリの同意フロー実装時                 | モバイル特有の同意管理ガイド。iOS向けApple ATTフレームワーク、Androidパーミッションモデル、アプリ内同意フロー、サードパーティSDKへの同意伝播、IDFA/GAID取扱いを扱う。GDPR・ePrivacy準拠と併せたプラットフォーム固有要件に対応  |
 | `consent-management-skills:double-opt-in-email`           | メールマーケティングの同意取得実装時             | ePrivacy指令準拠のダブルオプトインメール同意取得の実装ガイド。確認メールワークフロー設計、トークン失効処理、記録保持要件、サプレッションリスト管理、CAN-SPAM法・CASLとの多法域連携を扱う                                       |
 
 #### cookie-consent-skills
 
-**プラグイン説明**: TCF v2、CNIL準拠、Cookie監査、GPC連携、サーバーサイドトラッキング、Cookieレス代替
-**想定使用者**: Web/マーテック・広告技術系のプライバシーエンジニア。バナー・タグ管理・同意信号連携が中心。
+**プラグイン説明**: Cookie監査、GPC連携
+**想定使用者**: Cookieを扱うプライバシーエンジニア。
 
-| スキル                                             | トリガー                                   | 概要                                                                                                                                                                                                                     |
-| -------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `cookie-consent-skills:cnil-cookie-banner`         | Cookieバナー実装時                         | フランス・EUユーザー向けCNIL準拠Cookie同意バナーの設計・実装。Googleへの1億ユーロ、Metaへの1.5億ユーロの制裁金を参照。同意/拒否の均等表示、拒否ボタン、Cookieウォール禁止、6ヶ月ごとの再同意サイクルを扱う               |
-| `cookie-consent-skills:cookie-audit`               | Cookie監査実施時                           | WebサイトのCookie・トラッキング技術の包括的監査手法。自動スキャン、Cookie分類、ライフサイクル文書化、Planet49 CJEU判決(C-673/17)を踏まえたコンプライアンスギャップ分析を扱う                                             |
-| `cookie-consent-skills:cookie-lifetime-audit`      | Cookie有効期間の監査時                     | 規制推奨値・ブラウザポリシーに対するCookie有効期間の監査。CNILの13ヶ月上限推奨、セッション/永続Cookieの分類、サードパーティCookie廃止の影響、Safari ITPの期間上限を扱う                                                  |
-| `cookie-consent-skills:cookie-consent-testing`     | Cookie同意の自動テスト構築時               | SeleniumとPlaywrightによるCookie同意の自動検証。バナー操作テスト、同意状態の検証、同意選択後のタグ発火監査、Cookieコンプライアンスの回帰テスト、CI/CDパイプライン統合を扱う                                              |
-| `cookie-consent-skills:eprivacy-essential-cookies` | 必須Cookieの分類・免除判定時               | ePrivacy指令第5条(3)の必須Cookie免除を適用し、同意不要のCookieを分類。免除基準・機能性Cookie・負荷分散・セッション状態・非免除カテゴリをEDPBおよび各国DPAのガイダンスとともに扱う                                        |
-| `cookie-consent-skills:cross-jurisdiction-cookies` | 複数法域向けCookie同意の実装時             | EU ePrivacy指令・英国PECR・米国CCPA/CPRAオプトアウトモデル・ブラジルLGPDを含む複数法域でのCookieコンプライアンス実装。要件マトリクスとジオロケーションベースの実装アプローチを提供                                       |
-| `cookie-consent-skills:tcf-v2-implementation`      | TCF v2.2対応CMP実装時                      | プログラマティック広告の同意管理向けIAB Transparency and Consent Framework v2.2の実装。CMP登録、Global Vendor List連携、TC Stringエンコーディング、パブリッシャー制限、コンプライアンス検証を扱う                        |
-| `cookie-consent-skills:gpc-cookie-integration`     | GPC信号のCMP連携実装時                     | Global Privacy Control(GPC)信号とCookie同意プラットフォームの連携。ブラウザでのGPC信号検出、自動オプトアウトのトリガー、GPCと米国州法のマッピング、CCPA/CPA/CTDPA対応のCMP連携を扱う                                     |
-| `cookie-consent-skills:server-side-tracking`       | サーバーサイドトラッキング導入時           | Google Tag Managerサーバーコンテナを使ったプライバシー配慮型サーバーサイドトラッキングの実装。ファーストパーティデータ収集、IP匿名化、同意状態を考慮したイベント転送、クライアント側のサードパーティCookie露出削減を扱う |
-| `cookie-consent-skills:cookieless-alternatives`    | Cookieレス計測への移行検討時               | ポストCookie時代に向けたCookieレストラッキング代替手段の評価・実装。Privacy Sandbox API(Topics・Attribution Reporting・Protected Audiences)、サーバーサイド分析、プライバシー保護計測技術を扱う                          |
-| `cookie-consent-skills:google-consent-mode-v2`     | Google Consent Mode v2導入時               | プライバシー準拠の計測・広告のためのGoogle Consent Mode v2設定。default/updateコマンド、GA4・Google Adsへの同意状態マッピング、Cookieレスpingによるコンバージョンモデリング、2024年3月発効のEEA要件を扱う                |
-| `cookie-consent-skills:analytics-cookie-consent`   | アクセス解析ツール導入時のCookie同意設計時 | 分析Cookieの同意管理とプライバシー保護計測の実装。GA4のプライバシー設定、Consent Mode時のフォールバック挙動、集計レポートによる代替手段、Cookieレス計測アプローチを扱う                                                  |
+| スキル                                             | トリガー                     | 概要                                                                                                                                                                                 |
+| -------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `cookie-consent-skills:cookie-audit`               | Cookie監査実施時             | WebサイトのCookie・トラッキング技術の包括的監査手法。自動スキャン、Cookie分類、ライフサイクル文書化、Planet49 CJEU判決(C-673/17)を踏まえたコンプライアンスギャップ分析を扱う         |
+| `cookie-consent-skills:eprivacy-essential-cookies` | 必須Cookieの分類・免除判定時 | ePrivacy指令第5条(3)の必須Cookie免除を適用し、同意不要のCookieを分類。免除基準・機能性Cookie・負荷分散・セッション状態・非免除カテゴリをEDPBおよび各国DPAのガイダンスとともに扱う    |
+| `cookie-consent-skills:gpc-cookie-integration`     | GPC信号のCMP連携実装時       | Global Privacy Control(GPC)信号とCookie同意プラットフォームの連携。ブラウザでのGPC信号検出、自動オプトアウトのトリガー、GPCと米国州法のマッピング、CCPA/CPA/CTDPA対応のCMP連携を扱う |
 
 #### cross-border-transfers-skills
 
@@ -615,11 +599,7 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 | `data-retention-skills:anonymization-alternative` | 匿名化を保存代替策として検討時           | GDPR前文26項に基づき、保存期間の代替手段としての匿名化を評価。WP29意見05/2014のランダム化・一般化などの技術を適用し、k-匿名性・l-多様性・t-近接性の指標で有効性を検証               |
 | `data-retention-skills:auto-deletion-workflow`    | 自動削除・保存期間満了時の削除処理実装時 | GDPR第17条の消去権および保存期間満了に対応する自動データ削除ワークフローの実装。依存システム間のカスケード削除、参照整合性の依存関係処理、確認ログ記録、監査証跡生成を扱う          |
 | `data-retention-skills:backup-retention-erasure`  | バックアップ・アーカイブの消去対応時     | 保存スケジュールと消去義務下でのバックアップ・アーカイブデータの管理。バックアップ削除の技術的実行不能例外、保存期間とのサイクル整合、復元後削除手順、保持中の暫定的保護措置を扱う  |
-| `data-retention-skills:secure-data-destruction`   | 記録媒体の安全な破棄実施時               | 全メディア種別に対するNIST SP 800-88 Rev.1のメディア無害化手順(Clear/Purge/Destroy)の実装。破棄証明書の発行、検証手続き、第三者破棄業者管理、chain of custody文書化を扱う           |
-| `data-retention-skills:litigation-hold-mgmt`      | 訴訟・調査に伴うリーガルホールド発動時   | 発生事由・保管者への通知・保持措置の技術的実装・解除手続きを含む法的ホールド・データ保全プロセスの管理。リーガルホールド登録簿・遵守モニタリング・第17条(3)(e)例外の文書化を扱う    |
-| `data-retention-skills:search-engine-erasure`     | 検索結果の削除(忘れられる権利)対応時     | GDPR第17条およびCJEU Google Spain判決(C-131/12)に基づく検索エンジンでの忘れられる権利の実装。削除リクエスト手続き、プライバシーと公益のバランス評価基準、地理的適用範囲の判定を扱う |
 | `data-retention-skills:cloud-retention-config`    | クラウドストレージの保存ポリシー設定時   | クラウドストレージ保存ポリシー設定。ライフサイクルルール・オブジェクトロック・リーガルホールド・イミュータビリティポリシーを扱う                                                    |
-| `data-retention-skills:financial-retention`       | 財務・決済データの保存要件整理時         | EU指令(5〜7年)・SOX第802条(7年)・MiFID II(5〜7年)・税務記録・決済データ・AMLD下のAML義務を横断する財務記録保存要件の実装。法域間の整合を図る                                        |
 | `data-retention-skills:ccpa-right-to-delete`      | CCPA/CPRA削除請求対応実装時              | CCPA第1798.105条の削除権とCPRA改正への対応実装。サービスプロバイダの義務、法定除外事由、消費者本人確認手続き、45日の対応期限管理を扱う                                              |
 
 #### data-subject-rights-skills
@@ -691,22 +671,20 @@ Cloudflareプラットフォーム(Workers・Durable Objects・Email Service・S
 **プラグイン説明**: 差分プライバシー、PII検出、NISTプライバシーフレームワーク、プライバシーAPI、データ共有、メトリクス
 **想定使用者**: プライバシー/ソフトウェア/データエンジニア(技術的プライバシー統制とNISTフレームワーク整合を実装)。メトリクス・ガバナンス部分はプライバシープログラムマネージャーも対象。
 
-| スキル                                                 | トリガー                                                 | 概要                                                                                                                                                                                                |
-| ------------------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `privacy-engineering-skills:pii-detection-pipeline`    | PII自動検出パイプライン構築時                            | spaCy NER・Microsoft Presidio・AWS Macie連携による自動PII検出・削除(redaction)パイプラインの構築。信頼度スコアリング、カスタムエンティティ型定義、バッチ処理ワークフローを含む                      |
-| `privacy-engineering-skills:differential-privacy-prod` | 統計データの差分プライバシー実装時                       | 本番システムへの差分プライバシー導入。εの選定戦略、Laplace/Gaussianメカニズムによるノイズ較正、プライバシー予算の追跡、合成定理、Python実装パターンを扱う                                           |
-| `privacy-engineering-skills:linddun-threat-model`      | プライバシー脅威モデリング実施時                         | LINDDUNプライバシー脅威モデリングの7カテゴリ(Linking・Identifying・Non-repudiation・Detecting・Data Disclosure・Unawareness・Non-compliance)全体を実施。STRIDEとの統合を扱う                        |
-| `privacy-engineering-skills:purpose-based-access`      | 目的ベースアクセス制御の実装時                           | 目的ベースアクセス制御(PBAC)アーキテクチャの設計・実装。目的オントロジー定義、ポリシーエンジン設定、監査ログ、既存IAM連携を扱う。GDPR第5条(1)(b)の目的制限を技術的に実施する                        |
-| `privacy-engineering-skills:privacy-api-design`        | プライバシー関連API設計時                                | プライバシーAPIパターンの設計。DSARエンドポイント向けデータ主体API、選好管理向け同意API、削除API、監査APIを扱う。OpenAPI仕様・エラー処理・レート制限・認証パターンを提供                            |
-| `privacy-engineering-skills:privacy-data-sharing`      | プライバシー保護データ共有基盤の構築時                   | SDVライブラリによる合成データ生成、データクリーンルーム、セキュアエンクレーブ、有用性測定を用いたプライバシー保護データ共有基盤の構築。分析用データセット共有のエンドツーエンドアーキテクチャを扱う |
-| `privacy-engineering-skills:privacy-record-linkage`    | 複数データセット間の名寄せをプライバシー保護しつつ行う時 | Bloomフィルタ符号化・セキュアハッシュマッチング・適合率/再現率の閾値調整・偽陽性管理を用いたプライバシー保護レコードリンケージの実装。生のPIIを露出せずにエンティティ解決を可能にする               |
-| `privacy-engineering-skills:consent-receipt-spec`      | 監査対応の同意レシート実装時                             | Kantara Initiative同意レシート仕様の実装。機械可読なレシート構造、JWTベースの検証メカニズム、レシートのライフサイクル管理を扱う。ISO/IEC 27560の同意記録情報構造に対応                              |
-| `privacy-engineering-skills:privacy-metrics-dashboard` | プライバシープログラムのKPIダッシュボード構築時          | DSAR件数・対応時間、侵害件数・重大度、DPIA完了率、研修受講率、同意率を追跡するプライバシーKPIダッシュボードの構築。指標定義・可視化設計・経営層向け報告テンプレートを含む                           |
-| `privacy-engineering-skills:nist-pf-identify`          | NIST PFのIDENTIFY機能実装時                              | NISTプライバシーフレームワークのIDENTIFY機能(ID.BEビジネス環境・ID.DAデータアクション・ID.IM改善・ID.RAリスク評価)を実装。統制マッピング、ギャップ分析テンプレートを提供                            |
-| `privacy-engineering-skills:nist-pf-govern`            | NIST PFのGOVERN機能実装時                                | NISTプライバシーフレームワークのGOVERN機能(GV.AT認知・研修、GV.MTモニタリング、GV.POポリシー策定、GV.RR役割・責任)を実装。ガバナンス構造テンプレート、研修プログラムを提供                          |
-| `privacy-engineering-skills:nist-pf-control`           | NIST PFのCONTROL機能実装時                               | NISTプライバシーフレームワークのCONTROL機能(CT.DMデータ管理・CT.DPデータ処理方針・CT.PO分離処理)を実装。技術的統制アーキテクチャ、非識別化実装ガイダンスを提供                                      |
-| `privacy-engineering-skills:nist-pf-protect`           | NIST PFのPROTECT機能実装時                               | NISTプライバシーフレームワークのPROTECT機能(PR.ACアクセス制御・PR.DSデータセキュリティ・PR.PO保護方針)を実装。暗号化基準、アクセス管理アーキテクチャを提供                                          |
-| `privacy-engineering-skills:nist-pf-communicate`       | NIST PFのCOMMUNICATE機能実装時                           | NISTプライバシーフレームワークのCOMMUNICATE機能(CM.AW認知向上・CM.POコミュニケーション方針)を実装。透明性メカニズム、プライバシー通知テンプレートを提供                                             |
+| スキル                                                 | トリガー                                        | 概要                                                                                                                                                                           |
+| ------------------------------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `privacy-engineering-skills:pii-detection-pipeline`    | PII自動検出パイプライン構築時                   | spaCy NER・Microsoft Presidio・AWS Macie連携による自動PII検出・削除(redaction)パイプラインの構築。信頼度スコアリング、カスタムエンティティ型定義、バッチ処理ワークフローを含む |
+| `privacy-engineering-skills:differential-privacy-prod` | 統計データの差分プライバシー実装時              | 本番システムへの差分プライバシー導入。εの選定戦略、Laplace/Gaussianメカニズムによるノイズ較正、プライバシー予算の追跡、合成定理、Python実装パターンを扱う                      |
+| `privacy-engineering-skills:linddun-threat-model`      | プライバシー脅威モデリング実施時                | LINDDUNプライバシー脅威モデリングの7カテゴリ(Linking・Identifying・Non-repudiation・Detecting・Data Disclosure・Unawareness・Non-compliance)全体を実施。STRIDEとの統合を扱う   |
+| `privacy-engineering-skills:purpose-based-access`      | 目的ベースアクセス制御の実装時                  | 目的ベースアクセス制御(PBAC)アーキテクチャの設計・実装。目的オントロジー定義、ポリシーエンジン設定、監査ログ、既存IAM連携を扱う。GDPR第5条(1)(b)の目的制限を技術的に実施する   |
+| `privacy-engineering-skills:privacy-api-design`        | プライバシー関連API設計時                       | プライバシーAPIパターンの設計。DSARエンドポイント向けデータ主体API、選好管理向け同意API、削除API、監査APIを扱う。OpenAPI仕様・エラー処理・レート制限・認証パターンを提供       |
+| `privacy-engineering-skills:consent-receipt-spec`      | 監査対応の同意レシート実装時                    | Kantara Initiative同意レシート仕様の実装。機械可読なレシート構造、JWTベースの検証メカニズム、レシートのライフサイクル管理を扱う。ISO/IEC 27560の同意記録情報構造に対応         |
+| `privacy-engineering-skills:privacy-metrics-dashboard` | プライバシープログラムのKPIダッシュボード構築時 | DSAR件数・対応時間、侵害件数・重大度、DPIA完了率、研修受講率、同意率を追跡するプライバシーKPIダッシュボードの構築。指標定義・可視化設計・経営層向け報告テンプレートを含む      |
+| `privacy-engineering-skills:nist-pf-identify`          | NIST PFのIDENTIFY機能実装時                     | NISTプライバシーフレームワークのIDENTIFY機能(ID.BEビジネス環境・ID.DAデータアクション・ID.IM改善・ID.RAリスク評価)を実装。統制マッピング、ギャップ分析テンプレートを提供       |
+| `privacy-engineering-skills:nist-pf-govern`            | NIST PFのGOVERN機能実装時                       | NISTプライバシーフレームワークのGOVERN機能(GV.AT認知・研修、GV.MTモニタリング、GV.POポリシー策定、GV.RR役割・責任)を実装。ガバナンス構造テンプレート、研修プログラムを提供     |
+| `privacy-engineering-skills:nist-pf-control`           | NIST PFのCONTROL機能実装時                      | NISTプライバシーフレームワークのCONTROL機能(CT.DMデータ管理・CT.DPデータ処理方針・CT.PO分離処理)を実装。技術的統制アーキテクチャ、非識別化実装ガイダンスを提供                 |
+| `privacy-engineering-skills:nist-pf-protect`           | NIST PFのPROTECT機能実装時                      | NISTプライバシーフレームワークのPROTECT機能(PR.ACアクセス制御・PR.DSデータセキュリティ・PR.PO保護方針)を実装。暗号化基準、アクセス管理アーキテクチャを提供                     |
+| `privacy-engineering-skills:nist-pf-communicate`       | NIST PFのCOMMUNICATE機能実装時                  | NISTプライバシーフレームワークのCOMMUNICATE機能(CM.AW認知向上・CM.POコミュニケーション方針)を実装。透明性メカニズム、プライバシー通知テンプレートを提供                        |
 
 #### us-state-privacy-skills
 
