@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 
 interface ClaudeConfig {
   projects?: Record<string, Record<string, unknown> | undefined>;
@@ -11,13 +11,25 @@ if (!configDir) {
   throw new Error("環境変数CLAUDE_CONFIG_DIRが未設定です。");
 }
 const path = `${configDir}/.claude.json`;
-const data: ClaudeConfig = existsSync(path)
-  ? JSON.parse(readFileSync(path, "utf8"))
-  : {};
+
+let data: ClaudeConfig = {};
+if (existsSync(path)) {
+  try {
+    data = JSON.parse(readFileSync(path, "utf8")) as ClaudeConfig;
+  } catch {
+    // 破損時は既存内容を捨てず、バックアップを退避してから初期化する
+    renameSync(path, `${path}.broken-${Date.now()}`);
+  }
+}
+
 data.projects ??= {};
 data.projects["/workspace"] = {
   ...data.projects["/workspace"],
   hasTrustDialogAccepted: true,
   hasCompletedProjectOnboarding: true,
 };
-writeFileSync(path, JSON.stringify(data));
+
+// 一時ファイルへ書いてからリネームすることで書き込み中断時の破壊を防ぐ
+const mergedConfigTempPath = `${path}.tmp`;
+writeFileSync(mergedConfigTempPath, JSON.stringify(data));
+renameSync(mergedConfigTempPath, path);
