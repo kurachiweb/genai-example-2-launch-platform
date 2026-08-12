@@ -6,13 +6,13 @@ set -eu
 
 # `/home/bun/.claude`は名前付きボリュームで永続化されており、イメージの内容がコピーされるのはボリュームが空の初回マウント時のみである。
 # そのためワークスペース信頼設定とRTKフックの登録はDockerfileのビルド時ではなくここで毎起動時に行うことで、将来の仕様変更が反映されるようにする。
-bun /workspace/scripts/merge-claude-trust-config.ts
+bun /workspace/scripts/merge-claude-trust-config.ts || echo '[entrypoint] 信頼設定のマージに失敗しました' >&2
 # RTKフックの登録
-HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch
+HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch || echo '[entrypoint] rtkフックの登録に失敗しました' >&2
 
 # プロジェクトルートディレクトリの非所有者でもgitコマンドを実行できるよう、安全なディレクトリとして設定する。
 # `--add`ではコンテナ再起動のたびに重複行が増えるため、`--replace-all`で冪等にする。
-git config --global --replace-all safe.directory /workspace /workspace
+git config --global --replace-all safe.directory /workspace /workspace || echo '[entrypoint] safe.directoryの設定に失敗しました' >&2
 
 # DockerfileのRUN命令でホストに存在しないディレクトリを作成しても、bindマウントによって隠れてしまう。
 # ここはホストからのbindマウント後に実行されるため、確実にコンテナ内でディレクトリにアクセスできる。
@@ -20,7 +20,7 @@ mkdir -p /workspace/apps/email
 
 # Chromiumをインストールする。
 # ただし`bun install`前にコンテナが起動した場合はそのスクリプトがスキップされるので、後ほどクイックスタート手順(docs/onboardings/README.md参照)に従いそのスクリプトを手動実行する。
-/workspace/scripts/setup-chromium.sh
+/workspace/scripts/setup-chromium.sh || echo '[entrypoint] Chromium導入に失敗しました' >&2
 
 # Mailpitのポートをこのプロジェクトの規約通り48041に変更し、起動する。
 mailpit --listen 0.0.0.0:48041 >/workspace/apps/email/mailpit.log 2>&1 &
