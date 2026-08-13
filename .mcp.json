@@ -23,7 +23,9 @@
         "${CHROMIUM_PATH}",
         "--isolated",
         "--headless",
-        "--no-sandbox"
+        "--no-sandbox",
+        "--output-dir",
+        "/workspace/.playwright-mcp"
       ]
     },
     "cloudflare-api": {
