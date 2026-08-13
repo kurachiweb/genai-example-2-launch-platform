@@ -46,7 +46,7 @@
 
 ### メールアドレス検証
 
-- [DISIFY API](https://disify.com/) ... 使い捨てメールアドレスの判定
+- [DISIFY API](https://docs.disify.com/guide/introduction.html) ... 使い捨てメールアドレスの判定
 
 ## フロントエンド
 
@@ -79,12 +79,12 @@
 
 ## 決済サービス
 
-- Stripe(優先の決済処理基盤、https://docs.stripe.com)
+- Stripe(優先の決済処理基盤、[ドキュメント](https://docs.stripe.com))
   - Stripe Node.js SDK(APIサーバー側で使用)
   - Stripe Checkout Sessions API(決済セッションの管理)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
   - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
-- Creem(二番手の決済処理基盤、https://docs.creem.io) ... Stripeがプラットフォーム障害やアカウントBAN等の理由で利用できない場合のフォールバックとして採用
+- Creem(二番手の決済処理基盤、[ドキュメント](https://docs.creem.io)) ... Stripeがプラットフォーム障害やアカウントBAN等の理由で利用できない場合のフォールバックとして採用
   - Creem Checkout(Creemサーバー上の決済ページ)
   - Creem Webhooks(都度支払いや定期課金イベントの受信、APIサーバー側で処理)
   - Creem TypeScript SDK
@@ -130,6 +130,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Cloudflare Durable Objects(SQLiteストレージ)
 - WorkerごとのRate limiterバインディング(Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
+- Cloudflare WAF
 
 ### bot対策・不正防止
 
@@ -140,7 +141,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 - メール送信
   - ローカル環境 ... Mailpit
   - デプロイ先 ... Cloudflare Email ServiceのEmail Sending
-- JSX email(HTMLメールコード生成、https://jsx.email)
+- JSX email(HTMLメールコード生成、[ドキュメント](https://jsx.email/docs/introduction))
 
 ### 画像モデレーション
 
@@ -148,9 +149,10 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Amazon Rekognition(SigV4署名リクエストの生成に`aws4fetch`を使用)
 
-### 構造化ロギング
+### ロギング
 
-- LogTape
+- LogTape(構造化ログ出力)
+- Cloudflare Workers Logs(出力されたログの保持・閲覧)
 
 ### モニタリング
 

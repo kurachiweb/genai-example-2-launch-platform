@@ -109,13 +109,13 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 
 ### ecc:react-build-resolver
 
-**概要**: Reactのビルド失敗解決専門家。Vite・webpack・Next.js・Rsbuild・CRA・Parcel・esbuild・Bunに対応し、最小限の外科的修正でビルドを通すことに集中する。
+**概要**: Reactのビルド失敗解決専門家。Vite・webpack・Next.js・CRA・Parcel・esbuild・Bunに対応し、最小限の外科的修正でビルドを通すことに集中する。
 
 **トリガー**: Reactのビルドが失敗した時に必ず使用。
 
 **使用目的**:
 
-- ビルドシステムの自動検出(Next.js / Vite / Rsbuild / CRA / webpack / Parcel / Bun)
+- ビルドシステムの自動検出(Next.js / Vite / CRA / webpack / Parcel / Bun)
 - JSX/TSXコンパイルエラー(`@types/react`不足・JSXトランスフォーム設定・import漏れ)の修正
 - バンドラー設定エラー(Viteプラグイン・webpackローダー・Next.js設定)の解決
 - ハイドレーション不一致(サーバー出力とクライアント出力の差異)の診断

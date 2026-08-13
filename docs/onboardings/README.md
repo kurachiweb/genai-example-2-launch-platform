@@ -6,120 +6,119 @@
 
 1. ホスト環境: DockerをインストールしてDocker Desktopアプリを開く
 
-```zsh
-brew install --cask docker-desktop # Macのみ
-docker compose up -d
-```
+   ```zsh
+   brew install --cask docker-desktop # Macのみ
+   ```
 
 2. ホスト環境: コンテナ・イメージ・ボリュームの作成
 
-```zsh
-docker compose up -d
-```
+   ```zsh
+   docker compose up -d
+   ```
 
 3. VSCodeでコンテナにアタッチし、`/workspace`ディレクトリを開く
 4. コンテナ内: Infisicalアカウントにログインする
 
-```sh
-infisical --telemetry=false login
-# EUリージョンでログイン後、画面に表示されたトークンをこのターミナルに貼り付ける
-```
+   ```sh
+   infisical --telemetry=false login
+   # EUリージョンでログイン後、画面に表示されたトークンをこのターミナルに貼り付ける
+   ```
 
 5. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
 
-```sh
-wrangler login --device
-wrangler whoami # 認証確認
-```
+   ```sh
+   wrangler login --device
+   wrangler whoami # 認証確認
+   ```
 
 6. コンテナ内: ルートの依存パッケージをインストール(初回のみ)
 
-```sh
-bun install
-scripts/setup-chromium.sh # Chromiumを`bun install`で解決されたバージョンに合わせて導入
-```
+   ```sh
+   bun install
+   /workspace/scripts/setup-chromium.sh # Chromiumを`bun install`で解決されたバージョンに合わせて導入
+   ```
 
 7. コンテナ内: Claude向けMCPを認証する(初回のみ)
 
-```sh
-claude
-/mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
-```
+   ```sh
+   claude
+   /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
+   ```
 
 8. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
-`apps/api`と`apps/public-api`は同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
+   `apps/api`と`apps/public-api`は同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
 
-```sh
-cd apps/api
-wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
-```
+   ```sh
+   cd /workspace/apps/api
+   wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
+   ```
 
 9. コンテナ内: MikroORMアプリの事前コンパイル
 
-`apps/api`と`apps/public-api`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
+   `apps/api`と`apps/public-api`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
 
-```sh
-cd apps/db
-bun install # 初回のみ
-bun run mikro-orm:generate # mikro-orm cache:generate --combined
-bun run mikro-orm:compile # mikro-orm compile
-```
+   ```sh
+   cd /workspace/apps/db
+   bun install # 初回のみ
+   bun run mikro-orm:generate # mikro-orm cache:generate --combined
+   bun run mikro-orm:compile # mikro-orm compile
+   ```
 
 10. コンテナ内: アプリケーションの起動
 
-内部APIサーバー
+    内部APIサーバー
 
-```sh
-cd apps/api
-bun install # 初回のみ
-infisical --telemetry=false run --env=dev -- wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
-```
+    ```sh
+    cd /workspace/apps/api
+    bun install # 初回のみ
+    infisical --telemetry=false run --env=dev -- wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+    ```
 
-公開APIサーバー
+    公開APIサーバー
 
-```sh
-cd apps/public-api
-bun install # 初回のみ
-infisical --telemetry=false run --env=dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
-```
+    ```sh
+    cd /workspace/apps/public-api
+    bun install # 初回のみ
+    infisical --telemetry=false run --env=dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+    ```
 
-利用者側フロントエンド
+    利用者側フロントエンド
 
-```sh
-cd apps/client
-bun install # 初回のみ
-infisical --telemetry=false run --env=dev -- bun run dev --port 48044 --host 0.0.0.0
-```
+    ```sh
+    cd /workspace/apps/client
+    bun install # 初回のみ
+    infisical --telemetry=false run --env=dev -- bun run dev --port 48044 --host 0.0.0.0
+    ```
 
-管理者側フロントエンド
+    管理者側フロントエンド
 
-```sh
-cd apps/admin
-bun install # 初回のみ
-infisical --telemetry=false run --env=dev -- bun run dev --port 48045 --host 0.0.0.0
-```
+    ```sh
+    cd /workspace/apps/admin
+    bun install # 初回のみ
+    infisical --telemetry=false run --env=dev -- bun run dev --port 48045 --host 0.0.0.0
+    ```
 
-Storybookコンポーネントカタログ
+    Storybookコンポーネントカタログ
 
-```sh
-cd apps/frontend-lib
-bun install # 初回のみ
-bun run storybook:dev --port 48046 --host 0.0.0.0
-```
+    ```sh
+    cd /workspace/apps/frontend-lib
+    bun install # 初回のみ
+    bun run storybook:dev --port 48046 --host 0.0.0.0
+    ```
 
 11. コンテナ内: デプロイ前動作確認
 
-```sh
-# TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
-cd apps/client
-NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite build
-NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite preview --port 48044 --host 0.0.0.0
+    ```sh
+    # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
+    cd /workspace/apps/client
+    NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite build
+    NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite preview --port 48044 --host 0.0.0.0
 
-cd ../admin
-NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite build
-NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite preview --port 48045 --host 0.0.0.0
-```
+    cd /workspace/apps/admin
+    NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite build
+    NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite preview --port 48045 --host 0.0.0.0
+    ```
 
 ### ローカルポート一覧
 
