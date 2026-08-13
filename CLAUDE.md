@@ -28,9 +28,10 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - 既存のドキュメントやコードコメントはゼロベースで修正すること。例えば「Aをします」というコメントがある場合に、「AをするのではなくBをします」と変更するのではなく「Bをします」のみを記載すべきである。例外としてADRは変更後だけでなく変更前についても説明して良い。
 - Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・KV・R2系コマンドでは`--local`オプションも付けること。
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
-  - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する
+  - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
-  - `wrangler dev`と`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定の環境別`secrets.required`に当該シークレットキーを指定する必要がある。
+  - `wrangler dev`や、`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定の`env.(dev|staging|prod).secrets.required`プロパティに当該シークレットキーを指定する必要がある。
+  - シークレットではない環境変数をコード中で`env.(シークレットキー)`として使用するには、Wrangler設定の`env.(dev|staging|prod).vars`プロパティに当該環境変数を指定する必要がある。
 - フロントエンド側でTanStack系ツールが使われる処理を作成・改修・調査・コードレビューしたい場合は[TanStack Agent Guidelines](docs/ai-extensions/tanstack-agent-guidelines.md)を参照すること。ただしそのガイドラインの「Repository Structure」セクションとは異なり、TanStack関連スキル群は`.claude/skills/tanstack-agent-skills/skills`ディレクトリ内にある。
 
 ### コード・ドキュメントの規則
