@@ -45,6 +45,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - コード内にコメントは原則書かないこと。ただし難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
 - BunのWorkspaces機能は使用しないこと。
 - appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
+- 全アプリのWrangler設定で、`compatibility_date`は`2026-08-04`と定義すること。これにより互換性フラグの`nodejs_compat`及び`nodejs_compat_v2`が自動で有効になる。
 - テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.{ts,tsx}`はVitest、`*.worker.test.{ts,tsx}`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
 - CIプロセスではBunによるテスト時に`--coverage`というカバレッジ計測オプションを付け、`bunfig.toml`の`coverageThreshold`指定と合わせて閾値未達の場合にCIを失敗させる。
 - ORMについて
