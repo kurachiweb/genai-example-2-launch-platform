@@ -112,6 +112,10 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Cloudflare Workers
 
+### 定期実行基盤
+
+- Cloudflare Cron Triggers(内部APIサーバーのWrangler設定)
+
 ### ストレージ
 
 - ファイルストレージ
