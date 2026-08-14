@@ -16,7 +16,7 @@ git config --global --replace-all safe.directory /workspace /workspace || echo '
 
 # DockerfileのRUN命令でホストに存在しないディレクトリを作成しても、bindマウントによって隠れてしまう。
 # ここはホストからのbindマウント後に実行されるため、確実にコンテナ内でディレクトリにアクセスできる。
-mkdir -p /workspace/apps/email
+mkdir -p /workspace/apps/email || echo '[entrypoint] メールボックスディレクトリの作成に失敗しました' >&2
 
 # Chromiumをインストールする。
 # ただし`bun install`前にコンテナが起動した場合はそのスクリプトがスキップされるので、後ほどクイックスタート手順(docs/onboardings/README.md参照)に従いそのスクリプトを手動実行する。
