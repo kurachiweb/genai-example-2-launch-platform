@@ -25,7 +25,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 
 - 機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。(必読セクション: `Agentic SDLC and Spec-Driven Development`及び参照しているファイル)
 - 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
-- 既存のドキュメントやコードコメントはゼロベースで修正すること。例えば「Aをします」というコメントがある場合に、「AをするのではなくBをします」と変更するのではなく「Bをします」のみを記載すべきである。例外としてADRは変更後だけでなく変更前についても説明して良い。
+- 既存のドキュメントやコードコメントはゼロベースで修正すること。例えば「Aをします」というコメントがある場合に、「AをするのではなくBをします」と変更するのではなく「Bをします」のみを記載すべきである。この規則はADRや、cc-sddが生成するSpecには適用しない。
 - Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・KV・R2系コマンドでは`--local`オプションも付けること。
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
@@ -145,6 +145,8 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 主な技術選定の一覧は[tech-stack.md](./docs/onboardings/tech-stack.md)を参照すること。
 
 ---
+
+以下はcc-sddツールがセットアップ時に生成する基礎指示文である。
 
 # Agentic SDLC and Spec-Driven Development
 
