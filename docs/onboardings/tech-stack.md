@@ -122,6 +122,14 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
   - ローカル環境 ... WranglerのR2ローカルモード(`wrangler dev --persist-to` / `wrangler r2 *** --local --persist-to`)
   - デプロイ先 ... Cloudflare R2
 
+### イベント処理
+
+ファイルをR2への署名付きURLにより直接アップロード(SW-006)した後、R2 Event Notificationsで配信されるオブジェクト作成イベントをQueuesで受信し、内部APIサーバーでFR-P-003の上限値を超過したファイルを判定し削除する。
+R2 Event Notificationsをローカル環境で使う手段は無いため、当該イベント処理はデプロイ先でのみ有効化させる。
+
+- Cloudflare R2 Event Notifications
+- Cloudflare Queues
+
 ### 画像配信
 
 - Cloudflare Images(R2に保存した画像をリサイズ・フォーマット変換・Exif削除)
