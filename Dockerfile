@@ -3,10 +3,10 @@
 # gh・OpenTofu・Wranglerを導入する専用ビルドステージ。
 # 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
-FROM oven/bun:1.3-slim AS tools-builder
+FROM oven/bun:1.3.14-slim AS tools-builder
 ARG GH_VERSION=2.97.0
 ARG TOFU_VERSION=1.12.5
-ARG WRANGLER_VERSION=4.120.0
+ARG WRANGLER_VERSION=4.123.0
 
 # gh(公式リポジトリ: cli.github.com/packages)、OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
 RUN apt-get update \
@@ -59,7 +59,7 @@ RUN mkdir -p /out/usr/local/bin \
   && tar -xzf /tmp/mailpit.tar.gz -C /out/usr/local/bin mailpit
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
-FROM oven/bun:1.3-slim
+FROM oven/bun:1.3.14-slim
 ARG PLAYWRIGHT_VERSION=1.62.1
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。

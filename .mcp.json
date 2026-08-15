@@ -4,7 +4,7 @@
       "command": "bunx",
       "args": [
         "--bun",
-        "chrome-devtools-mcp@1.6.0",
+        "chrome-devtools-mcp@1.7.0",
         "--executablePath",
         "${CHROMIUM_PATH}",
         "--isolated",
