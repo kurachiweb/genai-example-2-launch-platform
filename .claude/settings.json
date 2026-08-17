@@ -2,7 +2,6 @@
   "$schema": "https://www.schemastore.org/claude-code-settings.json",
   "showThinkingSummaries": true,
   "skillListingBudgetFraction": 0.035,
-  "enableArtifact": false,
   "attribution": {
     "commit": "",
     "pr": "",
