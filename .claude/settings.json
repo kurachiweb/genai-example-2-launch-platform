@@ -82,7 +82,7 @@
       "Read(**/*.tfstate)",
       "Read(**/*.tfstate.backup)",
       "Read(~/.claude/.credentials.json)",
-      "Read(~/.infisical/secrets-backup/**)",
+      "Read(~/.infisical/**)",
       "Read(~/.wrangler/config/default.toml)",
       "Write(**/.env)",
       "Write(**/.env.local)",
@@ -92,7 +92,7 @@
       "Write(**/*.tfstate.backup)",
       "Write(.claude/**)",
       "Write(~/.claude/.credentials.json)",
-      "Write(~/.infisical/secrets-backup/**)",
+      "Write(~/.infisical/**)",
       "Write(~/.wrangler/config/default.toml)",
       "Edit(**/.env)",
       "Edit(**/.env.local)",
@@ -102,7 +102,7 @@
       "Edit(**/*.tfstate.backup)",
       "Edit(.claude/**)",
       "Edit(~/.claude/.credentials.json)",
-      "Edit(~/.infisical/secrets-backup/**)",
+      "Edit(~/.infisical/**)",
       "Edit(~/.wrangler/config/default.toml)"
     ]
   },
