@@ -27,6 +27,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
 - 既存のドキュメントやコードコメントはゼロベースで修正すること。例えば「Aをします」というコメントがある場合に、「AをするのではなくBをします」と変更するのではなく「Bをします」のみを記載すべきである。この規則はADRや、cc-sddが生成するSpecには適用しない。
 - Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・KV・R2系コマンドでは`--local`オプションも付けること。
+  - `apps/api`と`apps/public-api`のWrangler設定において、`database_id`・KV namespace ID・R2バケット名、及び`wrangler dev`が優先して使う`preview_database_id`・`preview_id`・`preview_bucket_name`は、両アプリで同一の値にすること。
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
@@ -57,7 +58,8 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
     - 絞り込みと絞り込んだレコードの更新は1回のSQLで完結させる。
     - 複数テーブルに書き込む場合、整合性を保つためにMikroORMを介さずKyselyクエリで`D1Database.batch()`を使用する。
     - ユニーク制約付きテーブルにレコードを追加する場合、同一データの同時作成によるエラーを防ぐため、`INSERT ... ON CONFLICT DO NOTHING`(既存行を更新する場合は`DO UPDATE`)を付ける。
-  - SQLiteはFTS5という仮想テーブルモジュールによる全文検索をサポートするが、D1では仮想テーブルを含むデータベースをエクスポートできない。([参照:Cloudflare Docs](https://developers.cloudflare.com/d1/best-practices/import-export-data/#known-limitations-1))
+  - D1では仮想テーブルを含むデータベースをエクスポートできないため、バックアップ・復旧は`wrangler d1 export`ではなくD1 Time Travelで行う。([参照:Cloudflare Docs](https://developers.cloudflare.com/d1/best-practices/import-export-data/#known-limitations-1))
+    - FTS5仮想テーブルは元テーブルへの書き込みに自動追随しないため、`external content`テーブル構成とSQLiteのトリガー(`CREATE TRIGGER`)によりインデックスを同期させる。
 
 ### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について
 

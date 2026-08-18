@@ -80,13 +80,13 @@
 ## 決済サービス
 
 - Stripe(優先の決済処理基盤、[ドキュメント](https://docs.stripe.com))
-  - Stripe Node.js SDK(APIサーバー側で使用、`createFetchHttpClient()`によるfetchベースの通信)
+  - Stripe Node.js SDK(内部APIサーバー側で使用、`createFetchHttpClient()`によるfetchベースの通信)
   - Stripe Checkout Sessions API(決済セッションの管理)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
   - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
 - Creem(二番手の決済処理基盤、[ドキュメント](https://docs.creem.io)) ... Stripeがプラットフォーム障害やアカウントBAN等の理由で利用できない場合のフォールバックとして採用
   - Creem Checkout(Creemサーバー上の決済ページ)
-  - Creem Webhooks(都度支払いや定期課金イベントの受信、APIサーバー側で処理)
+  - Creem Webhooks(都度支払いや定期課金イベントの受信、内部APIサーバー側で処理)
   - Creem TypeScript SDK
 
 ## CI/CD
@@ -124,7 +124,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### イベント処理
 
-ファイルをR2への署名付きURLにより直接アップロード(SW-006)した後、R2 Event Notificationsで配信されるオブジェクト作成イベントをQueuesで受信し、内部APIサーバーでFR-P-003の上限値を超過したファイルを判定し削除する。
+ファイルをR2への署名付きURLにより直接アップロード(SW-006)した後、R2 Event Notificationsで配信されるオブジェクト作成イベントをQueuesで受信し、内部APIサーバーで指定上限値を超過したファイルを判定し削除する。この指定上限値は後ほど決定しドキュメントに記載する。
 R2 Event Notificationsをローカル環境で使う手段は無いため、当該イベント処理はデプロイ先でのみ有効化させる。
 
 - Cloudflare R2 Event Notifications
