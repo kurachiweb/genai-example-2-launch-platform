@@ -36,4 +36,13 @@ fi
 
 # `docker compose down`のSIGTERMはPID1(docker-init)の子であるshに転送されるがその子(mailpit)には届かないため、trapで子プロセスへ転送する。
 # `mailpit_pid`が空(起動失敗)の場合はkill・wait自体をスキップする。
-trap '[ -n "$mailpit_pid" ] && { kill -TERM $mailpit_pid 2>/dev/null; wait $mailpit_pid 2>/dev/null; }' TERM INT EXIT
+terminate_mailpit() {
+  # waitはmailpitがSIGTERMで正常終了した場合でも非ゼロを返しうるが、それは停止成功の結果であり失敗ではない。
+  # このスクリプトは`.`でCMDのshに読み込まれ終了ステータスがそのままコンテナの終了コードになるため、trapが非ゼロで終わると`docker compose down`による正常停止がコンテナの異常終了として誤って扱われてしまう。
+  # それを防ぐため常に成功で終える。
+  [ -n "$mailpit_pid" ] || return 0
+  kill -TERM "$mailpit_pid" 2>/dev/null || true
+  wait "$mailpit_pid" 2>/dev/null || true
+  return 0
+}
+trap terminate_mailpit TERM INT EXIT
