@@ -4,6 +4,8 @@
 
 ## ローカル開発環境クイックスタート
 
+このクイックスタートはAIエージェント向けではなく、開発者向け手順書である。
+
 1. ホスト環境: DockerをインストールしてDocker Desktopアプリを開く
 
    ```zsh
@@ -24,28 +26,34 @@
    # EUリージョンでログイン後、画面に表示されたトークンをこのターミナルに貼り付ける
    ```
 
-5. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
+5. コンテナ内: GitHubアカウントにログインする
+
+   ```sh
+   gh auth login --web --clipboard # HTTPSを選択後、表示されたワンタイムコードをブラウザ画面に貼り付ける
+   ```
+
+6. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
 
    ```sh
    wrangler login --device
    wrangler whoami # 認証確認
    ```
 
-6. コンテナ内: ルートの依存パッケージをインストール(初回のみ)
+7. コンテナ内: ルートの依存パッケージをインストール(初回のみ)
 
    ```sh
    bun install
-   /workspace/scripts/setup-chromium.sh # Chromiumを`bun install`で解決されたバージョンに合わせて導入
+   /workspace/scripts/setup-chromium.sh # コンテナビルド時はこのスクリプトの実行をスキップしたので、ここでChromiumを`bun install`で解決されたバージョンに合わせて導入
    ```
 
-7. コンテナ内: Claude向けMCPを認証する(初回のみ)
+8. コンテナ内: Claude向けMCPを認証する(初回のみ)
 
    ```sh
    claude
    /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
    ```
 
-8. コンテナ内: ローカルDBの初期化(マイグレーション適用)
+9. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
    `apps/api`と`apps/public-api`は同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
 
@@ -54,18 +62,18 @@
    wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
    ```
 
-9. コンテナ内: MikroORMアプリの事前コンパイル
+10. コンテナ内: MikroORMアプリの事前コンパイル
 
-   `apps/api`と`apps/public-api`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
+    `apps/api`と`apps/public-api`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
 
-   ```sh
-   cd /workspace/apps/db
-   bun install # 初回のみ
-   bun run mikro-orm:generate # mikro-orm cache:generate --combined
-   bun run mikro-orm:compile # mikro-orm compile
-   ```
+    ```sh
+    cd /workspace/apps/db
+    bun install # 初回のみ
+    bun run mikro-orm:generate # mikro-orm cache:generate --combined
+    bun run mikro-orm:compile # mikro-orm compile
+    ```
 
-10. コンテナ内: アプリケーションの起動
+11. コンテナ内: アプリケーションの起動
 
     内部APIサーバー
 
@@ -107,7 +115,7 @@
     bun run storybook:dev --port 48046 --host 0.0.0.0
     ```
 
-11. コンテナ内: デプロイ前動作確認
+12. コンテナ内: デプロイ前動作確認
 
     ```sh
     # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
