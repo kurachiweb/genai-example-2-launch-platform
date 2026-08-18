@@ -1,4 +1,10 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 
 interface ClaudeConfig {
   projects?: Record<string, Record<string, unknown> | undefined>;
@@ -22,14 +28,26 @@ if (existsSync(path)) {
   }
 }
 
-data.projects ??= {};
-data.projects["/workspace"] = {
-  ...data.projects["/workspace"],
-  hasTrustDialogAccepted: true,
-  hasCompletedProjectOnboarding: true,
+data = {
+  ...data,
+  projects: {
+    ...data.projects,
+    "/workspace": {
+      ...data.projects?.["/workspace"],
+      hasTrustDialogAccepted: true,
+      hasCompletedProjectOnboarding: true,
+    },
+  },
 };
 
 // 一時ファイルへ書いてからリネームすることで書き込み中断時の破壊を防ぐ
 const mergedConfigTempPath = `${path}.tmp`;
-writeFileSync(mergedConfigTempPath, JSON.stringify(data));
-renameSync(mergedConfigTempPath, path);
+try {
+  writeFileSync(mergedConfigTempPath, JSON.stringify(data));
+  renameSync(mergedConfigTempPath, path);
+} catch (error) {
+  if (existsSync(mergedConfigTempPath)) {
+    rmSync(mergedConfigTempPath);
+  }
+  throw error;
+}
