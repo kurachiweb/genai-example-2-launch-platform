@@ -40,9 +40,9 @@ terminate_mailpit() {
   # waitはmailpitがSIGTERMで正常終了した場合でも非ゼロを返しうるが、それは停止成功の結果であり失敗ではない。
   # このスクリプトは`.`でCMDのshに読み込まれ終了ステータスがそのままコンテナの終了コードになるため、trapが非ゼロで終わると`docker compose down`による正常停止がコンテナの異常終了として誤って扱われてしまう。
   # それを防ぐため常に成功で終える。
-  [ -n "$mailpit_pid" ] || return 0
+  [ -n "$mailpit_pid" ] || exit 0
   kill -TERM "$mailpit_pid" 2>/dev/null || true
   wait "$mailpit_pid" 2>/dev/null || true
-  return 0
+  exit 0
 }
 trap terminate_mailpit TERM INT EXIT
