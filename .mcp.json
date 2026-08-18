@@ -11,7 +11,8 @@
         "--headless",
         "--usageStatistics=false",
         "--performanceCrux=false",
-        "--chromeArg=--no-sandbox"
+        "--chromeArg=--no-sandbox",
+        "--redactNetworkHeaders"
       ]
     },
     "playwright": {
