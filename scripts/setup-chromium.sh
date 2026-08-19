@@ -1,5 +1,5 @@
-#!/bin/sh
-set -eu
+#!/bin/bash
+set -euo pipefail
 
 # Playwright・chrome-devtools MCPが必要とするChromiumを導入する。
 # Chromium本体は`bun install`で解決された`@playwright/test`の実際のバージョンに追従させる必要があるため、イメージビルド時ではなくこのスクリプトの実行時に都度インストールする。該当リビジョンが既にあれば再ダウンロードは行われない。
