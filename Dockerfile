@@ -98,7 +98,7 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
   && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
 
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
-# Claude・Infisical・Cloudflareのログイン情報、及びBunのグローバルインストールキャッシュを永続化し、コンテナ再作成時の再認証やMCPパッケージ再ダウンロードを不要にする。
+# Claude・Infisical・Cloudflareのログイン情報、Bunのグローバルインストールキャッシュ、及びClaude Code・rtkの実行ファイルを永続化し、コンテナ再作成時の再認証やMCPパッケージ再ダウンロード、コンテナ内でのツール更新の巻き戻りを不要にする。
 ENV CLAUDE_CONFIG_DIR=/home/bun/.claude
 RUN mkdir -p /home/bun/.claude \
   && chown -R bun:bun /home/bun/.claude \
@@ -107,7 +107,9 @@ RUN mkdir -p /home/bun/.claude \
   && mkdir -p /home/bun/.wrangler \
   && chown -R bun:bun /home/bun/.wrangler \
   && mkdir -p /home/bun/.bun \
-  && chown -R bun:bun /home/bun/.bun
+  && chown -R bun:bun /home/bun/.bun \
+  && mkdir -p /home/bun/.local \
+  && chown -R bun:bun /home/bun/.local
 
 # node_modulesは名前付きボリューム(node_modules_***)で分離する。
 # 名前付きボリュームは中身が空だとマウント先ディレクトリの所有者をそのまま引き継ぐため、
@@ -132,6 +134,8 @@ WORKDIR /workspace
 
 # Claude Codeはコンテナ内で自動アップデートされるよう、公式ネイティブインストーラで導入する。
 # rtkはAPT・npmレジストリのいずれにも収録されていないため、公式install.shで導入する。
+# 導入先の`/home/bun/.local`は名前付きボリュームで永続化されており、イメージの内容がコピーされるのはボリュームが空の初回マウント時のみである。
+# そのためClaude Codeの自動アップデートはコンテナ再作成後も保持されるが、rtkはこのRUN命令の再実行(イメージ再ビルド)だけでは更新されない。Claude Code・rtkを明示的に更新したい場合はコンテナ内で`scripts/update-local.sh`を実行する。
 ENV PATH="/home/bun/.local/bin:${PATH}"
 RUN curl -fsSL https://claude.ai/install.sh | bash \
   && curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
