@@ -13,7 +13,7 @@ if [ ! -x /workspace/node_modules/.bin/playwright ]; then
 fi
 
 if ! { bunx --bun playwright install chromium \
-  && ln -sf "$(find "${PLAYWRIGHT_BROWSERS_PATH}" -maxdepth 1 -type d -name 'chromium-*' | sort -V | tail -n 1)/chrome-linux/chrome" "${CHROMIUM_PATH}" \
+  && ln -sf "$(bunx --bun node -e "process.stdout.write(require('playwright-core').chromium.executablePath())")" "${CHROMIUM_PATH}" \
   && test -x "${CHROMIUM_PATH}"; }; then
   echo "Chromiumのセットアップに失敗しました。CHROMIUM_PATH=${CHROMIUM_PATH} が実行可能ファイルとして存在しません。" >&2
   exit 1
