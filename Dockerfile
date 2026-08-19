@@ -98,7 +98,7 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
   && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
 
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
-# Claude・Infisical・Cloudflareのログイン情報、Bunのグローバルインストールキャッシュ、及びClaude Code・rtkの実行ファイルを永続化し、コンテナ再作成時の再認証やMCPパッケージ再ダウンロード、コンテナ内でのツール更新の巻き戻りを不要にする。
+# Claude・Infisical・Cloudflareのログイン情報、Bunのグローバルインストールキャッシュ、及びClaude Code・RTKの実行ファイルを永続化し、コンテナ再作成時の再認証やMCPパッケージ再ダウンロード、コンテナ内でのツール更新の巻き戻りを不要にする。
 ENV CLAUDE_CONFIG_DIR=/home/bun/.claude
 RUN mkdir -p /home/bun/.claude \
   && chown -R bun:bun /home/bun/.claude \
@@ -132,18 +132,16 @@ RUN mkdir -p /workspace/node_modules \
 USER bun
 WORKDIR /workspace
 
-# Claude Codeはコンテナ内で自動アップデートされるよう、公式ネイティブインストーラで導入する。
-# rtkはAPT・npmレジストリのいずれにも収録されていないため、公式install.shで導入する。
-# 導入先の`/home/bun/.local`は名前付きボリュームで永続化されており、イメージの内容がコピーされるのはボリュームが空の初回マウント時のみである。
-# そのためClaude Codeの自動アップデートはコンテナ再作成後も保持されるが、rtkはこのRUN命令の再実行(イメージ再ビルド)だけでは更新されない。Claude Code・rtkを明示的に更新したい場合はコンテナ内で`scripts/update-local.sh`を実行する。
+# Claude Code・RTKは`scripts/update-local.sh`により`/home/bun/.local`配下へ導入される。
+# 導入先は名前付きボリュームで永続化されており、イメージの内容がコピーされるのはボリュームが空の初回マウント時のみであるため、ビルド時ではなくコンテナ起動時(CMD)にインストーラを実行することで、再作成後も含め毎回両ツールを最新版へ更新する。
 ENV PATH="/home/bun/.local/bin:${PATH}"
-RUN curl -fsSL https://claude.ai/install.sh | bash \
-  && curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
 
 # コンテナ起動時のセットアップ処理はスクリプトへ切り出す。
+COPY scripts/update-local.sh /usr/local/bin/update-local.sh
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-# entrypoint.shは`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1(docker-init)の子であるbashの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にMailpitへSIGTERMを転送できなくなる。
+# 両スクリプトでエラーが発生しても、エラーメッセージ出力のみでコンテナ起動を継続する。
+# entrypoint.shはtrapや常駐プロセスを持つため、`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1(docker-init)の子であるbashの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にMailpitへSIGTERMを転送できなくなる。
 # `sleep infinity`は「何もせず永遠に待ち続けるだけ」のコマンドで、これをバックグラウンドで動かし続けることでPID1のbashを終了させず、コンテナを生かし続ける(Mailpitが落ちてもコンテナは生存する)。
 # `wait $!`は直前にバックグラウンド実行した`sleep infinity`の終了を待つ組み込みコマンドで、シグナル(SIGTERMなど)を受けると即座に中断されるため、コンテナ停止時にスクリプト内の`trap`をすぐ発火できる。
-CMD ["bash", "-c", ". /usr/local/bin/entrypoint.sh; sleep infinity & wait $!"]
+CMD ["bash", "-c", "/usr/local/bin/update-local.sh; . /usr/local/bin/entrypoint.sh; sleep infinity & wait $!"]
