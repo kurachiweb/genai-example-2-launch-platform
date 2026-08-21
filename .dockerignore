@@ -3,3 +3,4 @@
 !scripts
 scripts/*
 !scripts/entrypoint.sh
+!scripts/update-local.sh
