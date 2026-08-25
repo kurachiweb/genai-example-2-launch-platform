@@ -26,7 +26,10 @@
 
 - GraphQL
 - GraphQL Yoga
+- `@graphql-yoga/plugin-disable-introspection`(本番環境でのintrospectionクエリ無効化)
 - DataLoader(GraphQLのN+1問題対策)
+- GraphQL Armor(クエリ深度・複雑度・エイリアス数の上限設定によるDoS対策)
+- `@graphql-yoga/plugin-persisted-operations`(永続化クエリによる許可リスト方式のDoS対策)
 
 ### ORM
 
@@ -224,5 +227,5 @@ R2 Event Notificationsをローカル環境で使う手段は無いため、当�
 ### ドキュメント
 
 - Storybook(コンポーネントカタログ、`@storybook/tanstack-react`を使用)
-- GraphiQL(GraphQLスキーマ探索・クエリ試行、GraphQL Yogaに内蔵、デプロイ先環境では`graphiql: false`かつintrospectionクエリも無効化)
+- GraphiQL(GraphQLスキーマ探索・クエリ試行、GraphQL Yogaに内蔵、デプロイ先環境では`graphiql: false`)
 - Swagger UI(公開APIサーバーが配信するOpenAPI仕様を閲覧)
