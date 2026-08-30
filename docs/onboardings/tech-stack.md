@@ -82,15 +82,11 @@
 
 ## 決済サービス
 
-- Stripe(優先の決済処理基盤、[ドキュメント](https://docs.stripe.com))
+- Stripe(決済処理基盤、[ドキュメント](https://docs.stripe.com))
   - Stripe Node.js SDK(内部APIサーバー側で使用、`createFetchHttpClient()`によるfetchベースの通信)
   - Stripe Checkout Sessions API(決済セッションの管理)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
   - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
-- Creem(二番手の決済処理基盤、[ドキュメント](https://docs.creem.io)) ... Stripeがプラットフォーム障害やアカウントBAN等の理由で利用できない場合のフォールバックとして採用
-  - Creem Checkout(Creemサーバー上の決済ページ)
-  - Creem Webhooks(都度支払いや定期課金イベントの受信、内部APIサーバー側で処理)
-  - Creem TypeScript SDK
 
 ## CI/CD
 

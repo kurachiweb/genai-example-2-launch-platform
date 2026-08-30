@@ -15,7 +15,6 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
     ├── developer-kit-typescript/{agents,skills}/
     ├── cloudflare/skills/
     ├── cc-sdd/skills/
-    ├── creem/SKILL.md
     ├── hono/SKILL.md
     └── ...
 ```
@@ -420,13 +419,12 @@ TanStack Start、及びTanStack Router・TanStack Queryのベストプラクテ�
 
 ### 決済系
 
-| スキル                         | トリガー                                                                                                     | 概要                                                                                                                                                                                                                                          |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `creem`                        | Creemのチェックアウト・サブスクリプション・ライセンス・Webhookを実装する時                                   | Creem(MoR決済基盤)統合スキル。チェックアウトセッション作成・Webhook署名検証・ライセンスキーのactivate/validate/deactivate・サブスクリプションの更新/アップグレード/解約・カスタマーポータルリンク発行の実装パターンとエンドポイント一覧を提供 |
-| `stripe:connect-recommend`     | Stripe Connectの構成検討時・マーケットプレイスやプラットフォームでの出品者/提供者への支払い設計時            | 会社URLや事業内容の説明だけでStripe Connectの推奨アカウント構成(チャージパターン・Dashboardアクセス・オンボーディング/KYC要件)を判定するスキル                                                                                                |
-| `stripe:stripe-best-practices` | Stripe統合の実装・改修・レビュー全般(決済・Connect・サブスクリプション課金・税務・Treasury・APIキー管理等)時 | Checkout SessionsとPaymentIntentsの選定、Connectのアカウント設計、Billing、Stripe Tax、Treasury、Webhook・OAuthを含むセキュリティベストプラクティスを横断するStripe統合ガイド                                                                 |
-| `stripe:stripe-docs`           | Stripe公式ドキュメント(docs.stripe.com)を参照・検索する時                                                    | `curl`やWebFetchの代わりに`stripe docs`コマンドでStripeドキュメントをMarkdown取得する、エージェント・ターミナル向けスキル                                                                                                                     |
-| `stripe:upgrade-stripe`        | Stripe APIバージョンやSDKをアップグレードする時                                                              | Stripeの日付ベースAPIバージョニングの仕組み、破壊的変更/非破壊的変更の見分け方、サーバーサイドSDK・Stripe.js・モバイルSDKのアップグレード手順を解説                                                                                           |
+| スキル                         | トリガー                                                                                                     | 概要                                                                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stripe:connect-recommend`     | Stripe Connectの構成検討時・マーケットプレイスやプラットフォームでの出品者/提供者への支払い設計時            | 会社URLや事業内容の説明だけでStripe Connectの推奨アカウント構成(チャージパターン・Dashboardアクセス・オンボーディング/KYC要件)を判定するスキル                                |
+| `stripe:stripe-best-practices` | Stripe統合の実装・改修・レビュー全般(決済・Connect・サブスクリプション課金・税務・Treasury・APIキー管理等)時 | Checkout SessionsとPaymentIntentsの選定、Connectのアカウント設計、Billing、Stripe Tax、Treasury、Webhook・OAuthを含むセキュリティベストプラクティスを横断するStripe統合ガイド |
+| `stripe:stripe-docs`           | Stripe公式ドキュメント(docs.stripe.com)を参照・検索する時                                                    | `curl`やWebFetchの代わりに`stripe docs`コマンドでStripeドキュメントをMarkdown取得する、エージェント・ターミナル向けスキル                                                     |
+| `stripe:upgrade-stripe`        | Stripe APIバージョンやSDKをアップグレードする時                                                              | Stripeの日付ベースAPIバージョニングの仕組み、破壊的変更/非破壊的変更の見分け方、サーバーサイドSDK・Stripe.js・モバイルSDKのアップグレード手順を解説                           |
 
 ---
 

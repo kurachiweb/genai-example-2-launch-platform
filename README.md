@@ -117,7 +117,7 @@ Launch Stadiumは、Product HuntやUneedの競合として位置づけられる�
 - Cloudflare Cron Triggers(再ローンチ制限の期限管理、個人データ削除等の定期実行基盤)の利用可能性
 - Cloudflare Queues(データエクスポート・検索インデックス正規化等の非同期処理基盤)の利用可能性
 - GitHubリポジトリとの連携
-- Stripe(優先の決済処理基盤)及びCreem(二番手の決済処理基盤)の利用可能性
+- Stripe(決済処理基盤)の利用可能性
 - Cloudflare Email Service(本番環境のメール送信基盤)の利用可能性
 - Cloudflare Turnstile(bot対策・不正防止基盤)の利用可能性
 - Amazon Rekognition(画像の自動モデレーション基盤)の利用可能性
@@ -266,7 +266,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 #### 4.9 Product of the Week決定トーナメント機能
 
 この章での「トーナメント」は、断りが無い限りProduct of the Week決定トーナメントを指す。
-トーナメント参加資格の価格はStripe及びCreemのダッシュボード上で設定する。
+トーナメント参加資格の価格はStripeのダッシュボード上で設定する。
 
 - **FR-TOURW-001**: システムは、予選に勝利したプロダクトを対象に、Product of the Week選出のためのトーナメント機能を提供しなければならない
 - **FR-TOURW-002**: システムは、トーナメントへの参加資格を得るための都度決済(FR-PYMNT-001)の期限を、UTC-08:00時間でローンチ日を含む週の翌週月曜日23時30分としなければならない
@@ -292,7 +292,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 #### 4.10 Product of the Year決定トーナメント機能
 
 この章での「トーナメント」は、断りが無い限りProduct of the Year決定トーナメントを指す。
-トーナメント参加資格の価格はStripe及びCreemのダッシュボード上で設定する。
+トーナメント参加資格の価格はStripeのダッシュボード上で設定する。
 
 - **FR-TOURY-001**: システムは、前回のトーナメントの決済期限日(FR-TOURY-002)当日から今回のトーナメントの決済期限日の前日までにProduct of the Week決定トーナメントで優勝したプロダクトを対象に、Product of the Year選出のためのトーナメント機能を提供しなければならない
 - **FR-TOURY-002**: システムは、トーナメントへの参加資格を得るための都度決済(FR-PYMNT-001)の期限を、UTC-08:00時間でトーナメント決勝日(FR-ADMCF-001・FR-ADMCF-004)の6日前の23時30分としなければならない
@@ -369,7 +369,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 
 #### 4.16 スポンサーシップ機能
 
-掲載プランの価格はStripe及びCreemのダッシュボード上で設定する。
+掲載プランの価格はStripeのダッシュボード上で設定する。
 
 - **FR-SPONS-001**: システムは、ログインユーザー自身が過去にローンチしたプロダクトの中から1つ選択し、スポンサー広告を申し込める機能を提供しなければならない
 - **FR-SPONS-002**: システムは、スポンサー広告の掲載プランとして、価格が異なる複数のティア(Silver/Gold/Legend)を提供しなければならない
@@ -532,26 +532,26 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 
 #### 4.25 決済機能
 
-チャージバック(dispute)は係争が60〜120日程度長期化し得るため、有料プランの特典及び都度決済により付与された権利は自動的に変更しない。特典停止が必要と判断した場合は、既存の管理者機能(ユーザー停止、FR-ADMUG-020等)により個別に対応する。チャージバックに関する証拠提出(represent)は、Stripe(フォールバック時はCreem)のダッシュボード上で管理者が直接行う。
+チャージバック(dispute)は係争が60〜120日程度長期化し得るため、有料プランの特典及び都度決済により付与された権利は自動的に変更しない。特典停止が必要と判断した場合は、既存の管理者機能(ユーザー停止、FR-ADMUG-020等)により個別に対応する。チャージバックに関する証拠提出(represent)は、Stripeのダッシュボード上で管理者が直接行う。
 
-- **FR-PYMNT-001**: システムは、Stripe Checkout Sessions APIで発行したセッションに紐づくStripe Payment Elementによる決済情報入力機能(フォールバック時はCreem Checkoutの決済ページ)を提供しなければならない
-- **FR-PYMNT-002**: システムは、期間の長さに比例する都度決済を提供する際、Stripe及びCreemのダッシュボード上で設定した1日あたり単価をもとに、決済セッション作成時に日数を数量として指定しなければならない(FR-SPONS-004に対応)
-- **FR-PYMNT-003**: システムは、Stripe Webhook(フォールバック時はCreem Webhook)により都度決済/定期課金イベントを受信し、ユーザーの決済履歴へ反映しなければならない(DR-010、DR-011に対応)
+- **FR-PYMNT-001**: システムは、Stripe Checkout Sessions APIで発行したセッションに紐づくStripe Payment Elementによる決済情報入力機能を提供しなければならない
+- **FR-PYMNT-002**: システムは、期間の長さに比例する都度決済を提供する際、Stripeのダッシュボード上で設定した1日あたり単価をもとに、決済セッション作成時に日数を数量として指定しなければならない(FR-SPONS-004に対応)
+- **FR-PYMNT-003**: システムは、Stripe Webhookにより都度決済/定期課金イベントを受信し、ユーザーの決済履歴へ反映しなければならない(DR-010、DR-011に対応)
 - **FR-PYMNT-004**: システムは、ユーザーが自身の決済履歴を確認できる機能を提供しなければならない
-- **FR-PYMNT-005**: システムは、StripeまたはCreemのダッシュボード上で管理者が手動実行した返金処理をFR-PYMNT-003のWebhookにより受信し、ユーザーの決済履歴へ反映しなければならない(FR-ADMUG-020、FR-PPLAN-003に対応)
-- **FR-PYMNT-006**: システムは、Stripe(フォールバック時はCreem)からチャージバック(dispute)の発生通知をFR-PYMNT-003のWebhookにより受信し、ユーザーの決済履歴へ反映しなければならない
+- **FR-PYMNT-005**: システムは、Stripeのダッシュボード上で管理者が手動実行した返金処理をFR-PYMNT-003のWebhookにより受信し、ユーザーの決済履歴へ反映しなければならない(FR-ADMUG-020、FR-PPLAN-003に対応)
+- **FR-PYMNT-006**: システムは、Stripeからチャージバック(dispute)の発生通知をFR-PYMNT-003のWebhookにより受信し、ユーザーの決済履歴へ反映しなければならない
 - **FR-PYMNT-007**: システムは、FR-PYMNT-006のチャージバック通知を受信した場合であっても、有料プランの特典及び都度決済により付与された権利(トーナメント参加資格、スポンサー広告掲載等)を自動的に停止・剥奪・復元してはならない
 
 #### 4.26 有料プラン機能
 
-有料プランの価格はStripe及びCreemのダッシュボード上で設定する。
+有料プランの価格はStripeのダッシュボード上で設定する。
 
 - **FR-PPLAN-001**: システムは、月額有料プラン(Ultrasプラン)を購入するユーザーに対し、購入前に価格を表示し、FR-PYMNT-001による決済機能を提供しなければならない
 - **FR-PPLAN-002**: システムは、ユーザーが自身の現在のプラン状態を確認できる機能を提供しなければならない
 - **FR-PPLAN-003**: システムは、ユーザーが自身の定期課金を解約した場合、UTC-08:00時間で当該課金期間の末日まで特典の提供を継続しなければならない
 - **FR-PPLAN-004**: システムは、ユーザーが退会する際にそのユーザーの定期課金を解約するよう制御しなければならない
 - **FR-PPLAN-005**: システムは、有料プラン加入中のユーザーについて、トーナメント参加資格を得るための都度決済(FR-TOURW-003・FR-TOURY-003)を免除しなければならない
-- **FR-PPLAN-006**: システムは、Stripe Webhook(フォールバック時はCreem Webhook)上で定期課金の失敗イベントを受信した場合は、リトライを繰り返しても失敗したことを示すサブスクリプションステータスを読み取った上で、支払いを継続できないと判断して有料プラン特典の提供を終了しなければならない
+- **FR-PPLAN-006**: システムは、Stripe Webhook上で定期課金の失敗イベントを受信した場合は、リトライを繰り返しても失敗したことを示すサブスクリプションステータスを読み取った上で、支払いを継続できないと判断して有料プラン特典の提供を終了しなければならない
 
 #### 4.27 マークダウン文章入力機能
 
@@ -607,7 +607,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **SW-008**: システムは、R2の公開バケットに保存済みの非画像形式ファイルについて、Cloudflare R2のカスタムドメイン配信機能によるファイルの直接ダウンロード配信をサポートしなければならない
 - **SW-009**: システムは、R2の公開バケットに保存済みの画像について、Cloudflare Imagesによりリクエストに応じたサイズ・フォーマットに変換してExif情報を除去した上で、Cloudflare Imagesのカスタムドメイン配信機能により配信しなければならない。なおSVGは変換やExif除去をせず原本のまま配信しなければならない(FR-FILEU-002に対応)
 - **SW-010**: システムは、Cloudflare Email ServiceのEmail Sendingにより、各種通知メールの配信経路を提供しなければならない(FR-NOTIF-001〜011に対応)
-- **SW-011**: システムは、Stripe Checkout Sessions API及びStripe Webhook(フォールバック時はCreem API及びCreem Webhook)による決済処理連携を提供しなければならない
+- **SW-011**: システムは、Stripe Checkout Sessions API及びStripe Webhookによる決済処理連携を提供しなければならない
 - **SW-012**: システムは、Amazon Rekognition APIを用いた画像自動判定処理を提供しなければならない(FR-FILEU-009に対応)
 - **SW-013**: システムは、Cloudflare Turnstileによるウィジェット埋め込み及び内部APIサーバー側でのsiteverify検証機能を提供しなければならない(FR-USER-007、FR-FOLOW-009、FR-PRDCT-014、FR-VOTE-006、FR-COMNT-008、FR-REPOT-005、FR-SPONS-012、FR-INQRY-005に対応)
 - **SW-014**: システムは、Have I Been PwnedのPwned Passwords range API(k-Anonymity方式)によるパスワード漏洩照合を提供しなければならない(NFR-SECUR-026に対応)
@@ -693,7 +693,6 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **NFR-AVAIL-005**: システムは、デプロイ失敗時に直前の正常稼働バージョンへロールバックできなければならない
 - **NFR-AVAIL-006**: システムは、Cloudflare D1データについて、RPO(目標復旧時点)24時間以内・RTO(目標復旧時間)4時間以内を満たすバックアップ・復旧体制を整備しなければならない
 - **NFR-AVAIL-007**: システムは、Cloudflare D1データをD1 Time Travelにより過去30日以内の任意の時点へ復旧できなければならない
-- **NFR-AVAIL-008**: システムは、Stripeがプラットフォーム障害やアカウントBAN等の理由で利用できない場合、既存の有料プラン加入者の特典は維持し、新規決済フロー利用者には自動フォールバックとしてCreem API及びCreem Webhookによる決済を提供しなければならない(FR-PYMNT-001〜007、FR-TOURW-003、FR-TOURY-003、FR-PPLAN-001〜006、NFR-SECUR-013に対応)
 - **NFR-AVAIL-009**: システムは、DBマイグレーションを伴うデプロイにExpand/Contractパターンを適用し、スキーマ変更とコードデプロイを分離しなければならない(NFR-AVAIL-004、NFR-AVAIL-005に対応)
 
 #### 6.4 保守性要件
@@ -732,7 +731,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **DR-002**: システムは、ユーザーの退会に伴う削除リクエスト後、14日以内に個人データを完全に物理削除しなければならない
 - **DR-003**: システムは、データポータビリティ機能として、ユーザーが自身の投稿・プロフィール・アップロード済みファイル実体等のデータをエクスポートできる機能を提供しなければならない(FR-UDATA-001、FR-UDATA-002に対応)
 - **DR-004**: システムは、データポータビリティ機能により生成したZIPアーカイブを、生成完了から7日経過後に物理削除しなければならない
-- **DR-005**: システムは、決済情報(カード番号等)を自社サーバーに一切保持せずStripe(フォールバック時はCreem)に委任し、PCI DSS準拠範囲を最小化しなければならない
+- **DR-005**: システムは、決済情報(カード番号等)を自社サーバーに一切保持せずStripeに委任し、PCI DSS準拠範囲を最小化しなければならない
 - **DR-006**: システムは、画像の配信時にExif情報(撮影位置・GPS情報等)を除去しなければならない
 - **DR-007**: システムは、データの保存場所(データセンター所在地・リージョン)を明示し、GDPR等が定める国外移転規制に対応しなければならない
 - **DR-008**: システムは、アプリケーションログの保持期間をCloudflare Workers Logsの上限に合わせて7日と定め、ログ中に含まれる個人情報(IPアドレス・メールアドレス・Cookieデータ等)をマスキングしなければならない
@@ -744,7 +743,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 #### 7.2 法的要件
 
 - **LR-001**: システムは、利用者側の全ページで利用規約・プライバシーポリシー・法的通知ページへのリンクを表示しなければならない
-- **LR-002**: システムは、Stripe(フォールバック時はCreem)により有料プラン・決済機能を提供する際、特定商取引法に基づく事業者情報(事業者名・連絡先・価格・支払方法・返金ポリシー等)を表示しなければならない
+- **LR-002**: システムは、Stripeにより有料プラン・決済機能を提供する際、特定商取引法に基づく事業者情報(事業者名・連絡先・価格・支払方法・返金ポリシー等)を表示しなければならない
 - **LR-003**: システムは、プロダクト・Upvote・評価・コメント等の表示について、景品表示法(優良誤認表示の防止)の観点から、やらせ投票や不正な実績操作を防止する対策を講じなければならない
 - **LR-004**: システムは、ユーザー投稿コンテンツについて著作権の帰属を明確化し、情報流通プラットフォーム対処法(日本)に準拠した侵害コンテンツ削除請求フローを提供しなければならない
 - **LR-005**: システムは、通知メールについて、特定電子メール法(日本)及びCAN-SPAM法(米国)に基づく送信者情報の表示及び配信停止(オプトアウト)機能を提供しなければならない
@@ -775,7 +774,6 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - [Awesome GitHub Copilot](https://github.com/github/awesome-copilot) by GitHub ([MIT License](https://github.com/github/awesome-copilot/blob/main/LICENSE)) ... A community-created collection of custom agents, instructions, skills, hooks, workflows, and plugins to supercharge your GitHub Copilot experience.
 - [cc-sdd](https://github.com/gotalab/cc-sdd) by Gota ([MIT License](https://github.com/gotalab/cc-sdd/blob/main/LICENSE)) ... Kiro-style Spec-Driven Development on an agentic SDLC for Claude Code etc.
 - [Cloudflare Skills](https://github.com/cloudflare/skills) by Cloudflare ([Apache License 2.0](https://github.com/cloudflare/skills/blob/main/LICENSE)) ... Skills for teaching agents how to build on Cloudflare.
-- [Creem Skills](https://github.com/armitage-labs/creem-skills) by Armitage Labs ([MIT License](https://github.com/armitage-labs/creem-skills/blob/main/creem-api/.claude-plugin/plugin.json)) ... Official Creem payment integration skills for AI coding assistants like Claude Code, Cursor, and Windsurf.
 - [Developer Kit](https://github.com/giuseppe-trisciuoglio/developer-kit) by Giuseppe Trisciuoglio ([MIT License](https://github.com/giuseppe-trisciuoglio/developer-kit/blob/main/LICENSE)) ... A modular AI plugin system that supercharges your development workflow across languages and frameworks.
 - [Everything Claude Code](https://github.com/affaan-m/ECC) by Affaan Mustafa ([MIT License](https://github.com/affaan-m/ECC/blob/main/LICENSE)) ... The agent harness performance optimization system.
 - [Hono Skill](https://github.com/yusukebe/hono-skill) by Yusuke Wada ([MIT License](https://github.com/yusukebe/hono-skill/blob/main/README.md#license)) ... Agent Skill for developing Hono applications.
