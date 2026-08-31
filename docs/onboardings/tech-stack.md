@@ -7,9 +7,6 @@
 - SQLデータベース
   - ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev --persist-to` / `wrangler d1 execute --local --persist-to`)
   - デプロイ先 ... Cloudflare D1
-- キーバリュー型データベース
-  - ローカル環境 ... WranglerのKVローカルモード(`wrangler dev --persist-to`) ... namespace追加時は`wrangler kv namespace create <name> --preview`でプレビュー用IDを発行する
-  - デプロイ先 ... Cloudflare Workers KV
 
 ## バックエンド(API)
 
@@ -204,7 +201,7 @@ R2 Event Notificationsをローカル環境で使う手段は無いため、当�
 - Bun(ロジック層の単体テスト、`bun test`コマンドを使用)
 - Vitest + Vitest Browser Mode(DOM・コンポーネントテスト、フロントエンド)
 - vitest-browser-react(フロントエンド、Vitest Browser Mode上で使用)
-- @cloudflare/vitest-pool-workers(Cloudflare Workers統合テスト、D1・KV・R2・DOバインディングを含む)
+- @cloudflare/vitest-pool-workers(Cloudflare Workers統合テスト、D1・R2・DOバインディングを含む)
 - Playwright(複数アプリの横断E2E)
 
 ### ブラウザ動作確認

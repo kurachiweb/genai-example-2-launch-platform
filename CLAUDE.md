@@ -27,8 +27,8 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - 既存のドキュメントやコードコメントはゼロベースで修正すること。例えば「Aをします」というコメントがある場合に、「AをするのではなくBをします」と変更するのではなく「Bをします」のみを記載すべきである。この規則はADRや、cc-sddが生成するSpecには適用しない。
 - コマンドでパスを指定する場合は、必ず絶対パスで表記すること。
 - 必ず実行すべきコマンドがClaude設定のdenyにより拒否されてしまった場合は、開発者が後ほど手動で実行できるように報告すること。
-- Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・KV・R2系コマンドでは`--local`オプションも付けること。
-  - `apps/api`と`apps/public-api`のWrangler設定において、`database_id`・KV namespace ID・R2バケット名、及び`wrangler dev`が優先して使う`preview_database_id`・`preview_id`・`preview_bucket_name`は、両アプリで同一の値にすること。
+- Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・R2系コマンドでは`--local`オプションも付けること。
+  - `apps/api`と`apps/public-api`のWrangler設定において、`database_id`・R2バケット名、及び`wrangler dev`が優先して使う`preview_database_id`・`preview_id`・`preview_bucket_name`は、両アプリで同一の値にすること。
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
@@ -96,7 +96,7 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・OpenTofu適用を含む)を担当
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
-├── .wrangler/                  # WranglerのD1・KV・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`や`apps/public-api`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
+├── .wrangler/                  # WranglerのD1・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`や`apps/public-api`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
 ├── apps/                       # アプリケーション実装
 │   ├── infra/                  # インフラ構成定義 ... OpenTofuを使用、Cloudflareを主としてインフラを設計
 │   ├── db/                     # DBへの接続処理を含む

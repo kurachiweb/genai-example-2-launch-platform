@@ -36,7 +36,7 @@ apps/admin/lib
 
 # ローカル開発の蓄積データ
 apps/email
-# Wrangler D1・KV・R2ローカルモードの実データ置き場
+# Wrangler D1・R2ローカルモードの実データ置き場
 .wrangler
 
 # MikroORMのメタデータキャッシュ・コンパイル済み関数出力先

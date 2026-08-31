@@ -55,7 +55,7 @@
 
 9. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
-   `apps/api`と`apps/public-api`は同一の`--persist-to`を指定することで、D1・KV・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
+   `apps/api`と`apps/public-api`は同一の`--persist-to`を指定することで、D1・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
 
    ```sh
    cd /workspace/apps/api
@@ -118,7 +118,7 @@
 12. コンテナ内: デプロイ前動作確認
 
     ```sh
-    # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・KV・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
+    # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
     cd /workspace/apps/client
     NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite build
     NODE_ENV=production infisical --telemetry=false run --env=dev -- bunx vite preview --port 48044 --host 0.0.0.0
@@ -139,7 +139,7 @@
 | `apps/admin`        | 管理者側フロントエンド(TanStack Start) | 48045  |
 | `apps/frontend-lib` | Storybookコンポーネントカタログ        | 48046  |
 
-ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Workers KVの代わりにWranglerのKVローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
+ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
 MailpitのSMTP(1025)はコンテナ内のみで到達可能で、ローカル開発ではメール送信処理がこの1025番ポートへSMTP接続し、送信結果は48041番のWeb UIで確認する。
 
 ## ドキュメント索引
