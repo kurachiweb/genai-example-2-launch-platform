@@ -131,7 +131,7 @@ R2 Event Notificationsをローカル環境で使う手段は無いため、当�
 
 ### 画像配信
 
-- Cloudflare Images(R2に保存した画像をリサイズ・フォーマット変換・Exif削除)
+- Cloudflare Images(R2に保存した画像を名前付きバリアントによりリサイズ・フォーマット変換・Exif削除)
 
 ### 実行環境のセキュリティ
 
