@@ -48,6 +48,10 @@
 
 - [DISIFY API](https://docs.disify.com/guide/introduction.html) ... 使い捨てメールアドレスの判定
 
+### キーワード抽出
+
+- [Google Cloud Natural Language AI](https://cloud.google.com/natural-language/docs) ... 多言語に対応
+
 ## フロントエンド
 
 ### フレームワーク
