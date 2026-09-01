@@ -44,6 +44,10 @@
 - Zod
 - @hono/zod-validator
 
+### パスワード漏洩照合
+
+- Have I Been Pwnedの[Pwned Passwords API](https://haveibeenpwned.com/API/v3#PwnedPasswords)(k-Anonymity方式)
+
 ### メールアドレス検証
 
 - [DISIFY API](https://docs.disify.com/guide/introduction.html) ... 使い捨てメールアドレスの判定
