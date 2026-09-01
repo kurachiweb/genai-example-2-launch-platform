@@ -52,6 +52,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - WranglerやViteのバンドル処理はesbuildを用いており`emitDecoratorMetadata`が使えないため、Inversifyのコンストラクタ引数には`@inject`を必ず明示し、型からの自動解決を避けること。
 - 全アプリのWrangler設定で、`compatibility_date`は`2026-08-04`と定義すること。これにより互換性フラグの`nodejs_compat`及び`nodejs_compat_v2`が自動で有効になる。
 - テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.{ts,tsx}`はVitest、`*.worker.test.{ts,tsx}`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
+  - ルートディレクトリ以外で`bun test`を実行する場合は`--config=/workspace/bunfig.toml`オプションを明示的に指定すること。
 - CIプロセスではBunによるテスト時に`--coverage`というカバレッジ計測オプションを付け、`bunfig.toml`の`coverageThreshold`指定と合わせて閾値未達の場合にCIを失敗させる。
 - ORMについて
   - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm cache:generate --combined`及び`mikro-orm compile`コマンドをGitHub Actionsやapps/dbディレクトリの`package.json`に定義し事前コンパイルすること。
