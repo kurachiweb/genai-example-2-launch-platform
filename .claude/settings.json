@@ -58,7 +58,7 @@
       "Bash(rtk git log*)",
       "Bash(rtk git show*)",
       "WebSearch",
-      "mcp__cloudflare-api__docs"
+      "mcp__cloudflare-docs__search_cloudflare_documentation"
     ],
     "deny": [
       "Bash(*git config *)",
@@ -117,6 +117,7 @@
     "chrome-devtools",
     "playwright",
     "cloudflare-api",
+    "cloudflare-docs",
     "cloudflare-bindings",
     "cloudflare-builds",
     "cloudflare-observability"
