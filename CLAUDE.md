@@ -24,16 +24,9 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 
 - 機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。(必読セクション: `Agentic SDLC and Spec-Driven Development`及び参照しているファイル)
 - 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
-- 既存のドキュメントやコードコメントはゼロベースで修正すること。例えば「Aをします」というコメントがある場合に、「AをするのではなくBをします」と変更するのではなく「Bをします」のみを記載すべきである。この規則はADRや、cc-sddが生成するSpecには適用しない。
+- 既存のドキュメントやコードコメントはゼロベースで修正すること。例えば「Aをします」というコメントがある場合に、「AをするのではなくBをします」と変更するのではなく「Bをします」のみを記載すべきである。(この項目はADRや、cc-sddが生成するSpecには適用しない)
 - コマンドでパスを指定する場合は、必ず絶対パスで表記すること。
 - 必ず実行すべきコマンドがClaude設定のdenyにより拒否されてしまった場合は、開発者が後ほど手動で実行できるように報告すること。
-- Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・R2系コマンドでは`--local`オプションも付けること。
-  - `apps/api`と`apps/public-api`のWrangler設定において、`database_id`・R2バケット名、及び`wrangler dev`が優先して使う`preview_database_id`・`preview_id`・`preview_bucket_name`は、両アプリで同一の値にすること。
-- TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
-  - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
-- 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
-  - `wrangler dev`や、`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定の`env.(dev|staging|prod).secrets.required`プロパティに当該シークレットキーを指定する必要がある。
-  - シークレットではない環境変数をコード中で`env.(シークレットキー)`として使用するには、Wrangler設定の`env.(dev|staging|prod).vars`プロパティに当該環境変数を指定する必要がある。
 - フロントエンド側でTanStack系ツールが使われる処理を作成・改修・調査・コードレビューしたい場合は[TanStack Agent Guidelines](docs/ai-extensions/tanstack-agent-guidelines.md)を参照すること。ただしそのガイドラインの「Repository Structure」セクションとは異なり、TanStack関連スキル群は`.claude/skills/tanstack-agent-skills/skills`ディレクトリ内にある。
 
 ### コード・ドキュメントの規則
@@ -43,10 +36,20 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - マークダウンドキュメント内で図が必要ならmermaid形式で記述すること。
 - テスト駆動開発(TDD)の実施を徹底すること。
 - HonoはInversifyによる依存性注入を活用し、クリーンアーキテクチャに基づく実装を徹底すること。
-- WranglerやViteのバンドル処理はesbuildを用いており`emitDecoratorMetadata`が使えないため、Inversifyのコンストラクタ引数には`@inject`を必ず明示し、型からの自動解決を避けること。
 - コード内にコメントは原則書かないこと。ただし難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
-- BunのWorkspaces機能は使用しないこと。
 - appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
+- BunのWorkspaces機能は使用しないこと。
+
+### 後ほどdocs/GUIDESディレクトリに移す規則
+
+- Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・R2系コマンドでは`--local`オプションも付けること。
+  - `apps/api`と`apps/public-api`のWrangler設定において、`database_id`・R2バケット名、及び`wrangler dev`が優先して使う`preview_database_id`・`preview_id`・`preview_bucket_name`は、両アプリで同一の値にすること。
+- TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
+  - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
+- 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
+  - `wrangler dev`や、`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定の`env.(dev|staging|prod).secrets.required`プロパティに当該シークレットキーを指定する必要がある。
+  - シークレットではない環境変数をコード中で`env.(シークレットキー)`として使用するには、Wrangler設定の`env.(dev|staging|prod).vars`プロパティに当該環境変数を指定する必要がある。
+- WranglerやViteのバンドル処理はesbuildを用いており`emitDecoratorMetadata`が使えないため、Inversifyのコンストラクタ引数には`@inject`を必ず明示し、型からの自動解決を避けること。
 - 全アプリのWrangler設定で、`compatibility_date`は`2026-08-04`と定義すること。これにより互換性フラグの`nodejs_compat`及び`nodejs_compat_v2`が自動で有効になる。
 - テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.{ts,tsx}`はVitest、`*.worker.test.{ts,tsx}`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
 - CIプロセスではBunによるテスト時に`--coverage`というカバレッジ計測オプションを付け、`bunfig.toml`の`coverageThreshold`指定と合わせて閾値未達の場合にCIを失敗させる。
