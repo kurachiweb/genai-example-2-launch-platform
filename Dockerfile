@@ -3,10 +3,10 @@
 # gh・OpenTofu・Wranglerを導入する専用ビルドステージ。
 # 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
-FROM oven/bun:1.3.14-slim AS tools-builder
-ARG GH_VERSION=2.97.0
-ARG TOFU_VERSION=1.12.5
-ARG WRANGLER_VERSION=4.123.0
+FROM oven/bun:1.4.0-slim AS tools-builder
+ARG GH_VERSION=2.98.0
+ARG OPENTOFU_VERSION=1.12.6
+ARG WRANGLER_VERSION=4.127.1
 
 # gh(公式リポジトリ: cli.github.com/packages)、OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
 RUN apt-get update \
@@ -20,7 +20,7 @@ RUN apt-get update \
   && chmod a+r /etc/apt/keyrings/opentofu.gpg /etc/apt/keyrings/opentofu-repo.gpg \
   && echo "deb [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main" > /etc/apt/sources.list.d/opentofu.list \
   && apt-get update \
-  && apt-get download "gh=${GH_VERSION}" "tofu=${TOFU_VERSION}" \
+  && apt-get download "gh=${GH_VERSION}" "tofu=${OPENTOFU_VERSION}" \
   && mkdir -p /out \
   && for f in gh_*.deb tofu_*.deb; do dpkg -x "$f" /out; done \
   && rm -f ./*.deb
@@ -35,8 +35,8 @@ RUN bun install -g "wrangler@${WRANGLER_VERSION}"
 # bunを必要としないため、上記ステージとは別の軽量なベースイメージを使い、BuildKit上で並列にダウンロードできるようにする。
 FROM debian:trixie-slim AS release-binaries-builder
 ARG TARGETARCH
-ARG BETTERLEAKS_VERSION=1.7.3
-ARG MAILPIT_VERSION=1.30.7
+ARG BETTERLEAKS_VERSION=1.8.1
+ARG MAILPIT_VERSION=1.31.0
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl
 
@@ -59,7 +59,7 @@ RUN mkdir -p /out/usr/local/bin \
   && tar -xzf /tmp/mailpit.tar.gz -C /out/usr/local/bin mailpit
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
-FROM oven/bun:1.3.14-slim
+FROM oven/bun:1.4.0-slim
 ARG PLAYWRIGHT_VERSION=1.62.1
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。

@@ -4,7 +4,7 @@
       "command": "bunx",
       "args": [
         "--bun",
-        "chrome-devtools-mcp@1.7.0",
+        "chrome-devtools-mcp@1.8.0",
         "--executablePath",
         "${CHROMIUM_PATH}",
         "--isolated",
@@ -19,7 +19,7 @@
       "command": "bunx",
       "args": [
         "--bun",
-        "@playwright/mcp@0.0.79",
+        "@playwright/mcp@0.0.80",
         "--executable-path",
         "${CHROMIUM_PATH}",
         "--isolated",
