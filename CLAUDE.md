@@ -56,6 +56,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - CIプロセスではBunによるテスト時に`--coverage`というカバレッジ計測オプションを付け、`bunfig.toml`の`coverageThreshold`指定と合わせて閾値未達の場合にCIを失敗させる。
 - ORMについて
   - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm cache:generate --combined`及び`mikro-orm compile`コマンドをGitHub Actionsやapps/dbディレクトリの`package.json`に定義し事前コンパイルすること。
+  - MikroORMのクエリビルダには`createKyselyDialect()`をD1ダイアレクトへ差し替えた独自Connectionを使用すること。
   - テーブルの特定カラムに限りアルファベットの大文字小文字を問わず文字照合させたい場合、MikroORMのテーブル定義にて`@Property({ columnType: 'text collate nocase' })`を記載すること。URLスラッグとして使われるユーザーハンドルのカラムでは特に有用。
 - テーブル名は小文字で複数形にすること。
 - データベースについて、Cloudflare D1特有の制限に留意すること。

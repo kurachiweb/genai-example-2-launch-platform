@@ -30,7 +30,7 @@
 
 ### ORM
 
-- MikroORM ... Workers向けに事前コンパイル、`createKyselyDialect()`をD1ダイアレクトへ差し替えた独自Connectionを使用
+- MikroORM
 - Kysely(クエリビルダ)
 
 ### 認証・認可
