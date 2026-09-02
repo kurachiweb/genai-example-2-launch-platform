@@ -128,7 +128,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### イベント処理
 
-ファイルをR2への署名付きURLにより直接アップロード(SW-006)した後、R2 Event Notificationsで配信されるオブジェクト作成イベントをQueuesで受信し、内部APIサーバーで指定上限値を超過したファイルを判定し削除する。この指定上限値は後ほど決定しドキュメントに記載する。
+R2 Event Notificationsで配信されるオブジェクト作成イベントをQueuesで受信する。
 R2 Event Notificationsをローカル環境で使う手段は無いため、当該イベント処理はデプロイ先でのみ有効化させる。
 
 - Cloudflare R2 Event Notifications
@@ -154,7 +154,7 @@ R2 Event Notificationsをローカル環境で使う手段は無いため、当�
 ### メール
 
 - メール送信
-  - ローカル環境 ... Mailpit
+  - ローカル環境 ... MailpitのHTTP送信API
   - デプロイ先 ... Cloudflare Email ServiceのEmail Sending
 - JSX email(HTMLメールコード生成、[ドキュメント](https://jsx.email/docs/introduction))
 

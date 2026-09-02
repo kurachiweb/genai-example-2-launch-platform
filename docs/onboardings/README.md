@@ -132,7 +132,7 @@
 
 | アプリ              | 役割                                   | ポート |
 | ------------------- | -------------------------------------- | ------ |
-| Mailpit             | メール確認Web UI                       | 48041  |
+| Mailpit             | メール確認Web UI・HTTP送信API          | 48041  |
 | `apps/api`          | 内部APIサーバー(Hono / GraphQL)        | 48042  |
 | `apps/public-api`   | 公開APIサーバー(Hono / REST)           | 48043  |
 | `apps/client`       | 利用者側フロントエンド(TanStack Start) | 48044  |
@@ -140,7 +140,6 @@
 | `apps/frontend-lib` | Storybookコンポーネントカタログ        | 48046  |
 
 ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
-MailpitのSMTP(1025)はコンテナ内のみで到達可能で、ローカル開発ではメール送信処理がこの1025番ポートへSMTP接続し、送信結果は48041番のWeb UIで確認する。
 
 ## ドキュメント索引
 

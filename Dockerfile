@@ -1,9 +1,12 @@
 # syntax=docker/dockerfile:1
 
+# Debian 12(Bookworm)がベース
+ARG BUN_IMAGE_TAG=1.4.0-slim
+
 # gh・OpenTofu・Wranglerを導入する専用ビルドステージ。
 # 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
-FROM oven/bun:1.4.0-slim AS tools-builder
+FROM oven/bun:${BUN_IMAGE_TAG} AS tools-builder
 ARG GH_VERSION=2.98.0
 ARG OPENTOFU_VERSION=1.12.6
 ARG WRANGLER_VERSION=4.127.1
@@ -59,7 +62,7 @@ RUN mkdir -p /out/usr/local/bin \
   && tar -xzf /tmp/mailpit.tar.gz -C /out/usr/local/bin mailpit
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
-FROM oven/bun:1.4.0-slim
+FROM oven/bun:${BUN_IMAGE_TAG}
 ARG PLAYWRIGHT_VERSION=1.62.1
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。

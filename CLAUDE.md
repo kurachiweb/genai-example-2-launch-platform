@@ -78,6 +78,7 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 - Stripe Payment Elementを使うためにはCheckout Sessions APIにて`ui_mode: 'elements'`オプションを使うこと。`stripe:stripe-best-practices`スキル内では`ui_mode: 'custom'`を使うよう案内しているが、それはリネーム前の古い情報である。
 - `.claude/rules/common/git-workflow.md`はClaude設定ファイルに`includeCoAuthoredBy: false`を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりとして`attribution`プロパティに空文字を指定して帰属表示を無効化する。
 - `cloudflare:wrangler`スキルはローカル開発シークレットの管理に`.dev.vars`ファイルを作成するよう案内しているが、本プロジェクトでは`.dev.vars`や`.env`を使わず、Infisicalで一元管理する。
+- `.claude/rules/common/development-workflow.md`が「Library docs second: Use Context7」と必須手順に定めているが、今回Context7 MCPは利用しない。
 - テストについて
   - E2Eテストツールとして`ecc:e2e-runner`エージェントではVercel Agent Browserが先に挙げられているが、フォールバック扱いされているPlaywrightを本プロジェクトでは採用する。
   - Claude拡張ファイル内でJest関連のコマンドが記載されていても、Jestは使用しないこと。

@@ -29,7 +29,7 @@ mailpit_pid=$!
 sleep 1
 if ! kill -0 "$mailpit_pid" 2>/dev/null; then
   echo 'Mailpitの起動に失敗しました。ログ末尾:' >&2
-  tail -n 20 /workspace/apps/email/mailpit.log >&2
+  tail -n 20 /workspace/apps/email/mailpit.log >&2 || true
   # trapが既に無効なPIDへkillを送ってしまうのを防ぐ。
   mailpit_pid=
 fi
@@ -38,7 +38,7 @@ fi
 # `mailpit_pid`が空(起動失敗)の場合はkill・wait自体をスキップする。
 terminate_mailpit() {
   # waitはmailpitがSIGTERMで正常終了した場合でも非ゼロを返しうるが、それは停止成功の結果であり失敗ではない。
-  # このスクリプトは`.`でCMDのshに読み込まれ終了ステータスがそのままコンテナの終了コードになるため、trapが非ゼロで終わると`docker compose down`による正常停止がコンテナの異常終了として誤って扱われてしまう。
+  # このスクリプトは`.`でCMDのbashに読み込まれ終了ステータスがそのままコンテナの終了コードになるため、trapが非ゼロで終わると`docker compose down`による正常停止がコンテナの異常終了として誤って扱われてしまう。
   # それを防ぐため常に成功で終える。
   [ -n "$mailpit_pid" ] || exit 0
   kill -TERM "$mailpit_pid" 2>/dev/null || true
