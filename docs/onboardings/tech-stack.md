@@ -28,6 +28,10 @@
 - GraphQL Armor(クエリ深度・複雑度・エイリアス数の上限設定によるDoS対策)
 - `@graphql-yoga/plugin-persisted-operations`(永続化クエリによる許可リスト方式のDoS対策)
 
+### OpenAPI仕様
+
+- `@hono/zod-openapi` ... 公開APIサーバーのルート定義とZodスキーマを一体化し、OpenAPI仕様を生成
+
 ### ORM
 
 - MikroORM
@@ -35,10 +39,8 @@
 
 ### 認証・認可
 
-- `HttpOnly`・`Secure`・`SameSite`属性付きCookieによるユーザー認証
-- ロールベースのアクセス制御
-- 所有権ベースのアクセス制御(自ユーザー・全ユーザー・管理者)
 - OTPAuth(TOTP多要素認証)
+- uqr ... TOTP登録用のotpauth URIをQRコードのSVGへ変換
 
 ### ID採番
 
@@ -64,7 +66,7 @@
 ### 画像処理
 
 - @cf-wasm/photon(画像のデコード・フォーマット変換)
-- fast-xml-parser(SVGのパース、`<script>`要素やイベントハンドラ属性の検出)
+- fast-xml-parser(SVGのパース、スクリプトの検出)
 
 ### アーカイブ生成
 
@@ -72,9 +74,15 @@
 
 ### マークダウン処理
 
-- remark-parse + remark-gfm ... GFM準拠のマークダウンパース、AST(mdast)を生成
-- remark-rehype ... AST(mdast)からAST(hast)への変換
+- unified ... remark/rehypeプラグインを連結する処理パイプライン本体
+  - remark-parse + remark-gfm ... GFM準拠のマークダウンパース、AST(mdast)を生成
+  - remark-cjk-friendly
+  - remark-cjk-friendly-gfm-strikethrough
+  - remark-rehype ... AST(mdast)からAST(hast)への変換
 - rehype-sanitize ... AST(hast)上でのアローリスト方式HTMLサニタイズ、Raw HTMLの無効化に対応
+- rehype-slug ... 見出しへのアンカーID付与(CJK見出しのURLエンコード仕様のみ独自実装で補う)
+- rehype-stringify ... AST(hast)からHTML文字列への変換
+- hast-util-to-text ... サニタイズ済みAST(hast)からのプレーンテキスト抽出、全文検索インデックスの正規化に使用
 
 ## フロントエンド
 
@@ -99,6 +107,15 @@
 
 - Tailwind CSS
 - shadcn/ui
+
+### マークダウンエディタ
+
+- `@milkdown/crepe`(ProseMirrorベースのマークダウン向けWYSIWYGエディタ)
+- `@milkdown/react` ... Reactコンポーネント、SSRでは描画せずクライアント側でのみマウント
+
+### 画像編集UI
+
+- react-easy-crop
 
 ### フォーム・バリデーション
 
