@@ -148,10 +148,9 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### イベント処理
 
-R2 Event Notificationsで配信されるオブジェクト作成イベントをQueuesで受信する。
-R2 Event Notificationsをローカル環境で使う手段は無いため、当該イベント処理はデプロイ先でのみ有効化させる。
-
-- Cloudflare R2 Event Notifications
+- イベント配信
+  - ローカル環境 ... API内でR2への保存や削除操作を完了した直後に、Queueへメッセージを直接送信する
+  - デプロイ先 ... Cloudflare R2 Event Notifications
 - Cloudflare Queues
 
 ### 画像配信
