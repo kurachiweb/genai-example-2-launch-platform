@@ -43,7 +43,8 @@ data = {
 // 一時ファイルへ書いてからリネームすることで書き込み中断時の破壊を防ぐ
 const mergedConfigTempPath = `${path}.tmp`;
 try {
-  writeFileSync(mergedConfigTempPath, JSON.stringify(data));
+  // OAuth情報等の機密データを含むため、renameSync後もowner以外から読めないよう0600で作成する
+  writeFileSync(mergedConfigTempPath, JSON.stringify(data), { mode: 0o600 });
   renameSync(mergedConfigTempPath, path);
 } catch (error) {
   if (existsSync(mergedConfigTempPath)) {
