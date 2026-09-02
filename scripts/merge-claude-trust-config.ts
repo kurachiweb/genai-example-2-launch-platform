@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   readFileSync,
   renameSync,
@@ -24,7 +25,10 @@ if (existsSync(path)) {
     data = JSON.parse(readFileSync(path, "utf8")) as ClaudeConfig;
   } catch {
     // 破損時は既存内容を捨てず、バックアップを退避してから初期化する
-    renameSync(path, `${path}.broken-${Date.now()}`);
+    const brokenBackupPath = `${path}.broken`;
+    renameSync(path, brokenBackupPath);
+    // OAuth情報等の機密データを含むため、owner以外から読めないよう0600に固定する
+    chmodSync(brokenBackupPath, 0o600);
   }
 }
 
