@@ -341,6 +341,11 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 - **FR-NOTIF-009**: システムは、FR-NOTIF-001〜004の通知メール本文に配信停止用リンクを表示すると共に、ログイン不要かつリンク先表示と確認操作のみで当該通知種別の配信停止が完了する機能を提供しなければならない(LR-005に対応)
 - **FR-NOTIF-010**: システムは、配信停止用リンクのトークン(FR-NOTIF-008・FR-NOTIF-009)をユーザー及び通知種別ごとに発行し、NFR-SECUR-006の方式でハッシュ化して保存し、平文は送信するメール内のURLでのみ提示しなければならない
 - **FR-NOTIF-011**: システムは、配信停止用リンクのトークン(FR-NOTIF-008・FR-NOTIF-009)について、ユーザーが退会するまでの間有効としなければならない
+- **FR-NOTIF-012**: システムは、FR-NOTIF-001〜004の通知メール送信処理をCloudflare Queuesによる非同期処理として実行しなければならない(SW-004に対応)
+- **FR-NOTIF-013**: システムは、Cloudflare Email Serviceの送信レート・日次上限に到達した場合、超過分の通知メールを破棄せず、上限リセット後に送信しなければならない
+- **FR-NOTIF-014**: システムは、通知メール送信が一時的エラーで失敗した場合は再試行し、再試行後もなお失敗した場合はNFR-OBLOG-003のエラートラッキングにより検知しなければならない
+- **FR-NOTIF-015**: システムは、通知メールが恒久的にバウンスした、または苦情(complaint)を受けたメールアドレスを検知した場合、以降のFR-NOTIF-001〜004の送信対象から除外しなければならない
+- **FR-NOTIF-016**: システムは、FR-NOTIF-015により送信対象から除外されたメールアドレスについて、通知設定ページ(FR-NOTIF-005)にバウンス・苦情による配信停止中である旨を表示しなければならない
 
 #### 4.13 ローンチへのコメント機能
 
@@ -610,7 +615,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **SW-001**: システムは、利用者・管理者向け画面との通信にGraphQL APIを提供しなければならない
 - **SW-002**: システムは、公開APIとしてRESTful APIを提供しなければならない
 - **SW-003**: システムは、Cloudflare D1(SQLiteベース)をサポートしなければならない
-- **SW-004**: システムは、Cloudflare Queuesによる非同期処理をサポートしなければならない(FR-UDATA-003、FR-FTS-003に対応)
+- **SW-004**: システムは、Cloudflare Queuesによる非同期処理をサポートしなければならない(FR-UDATA-003、FR-FTS-003、FR-NOTIF-012〜014に対応)
 - **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-018、DR-002に対応)
 - **SW-006**: システムは、Cloudflare Web Analytics及びFlareWardenによるメトリクス監視・死活監視・外部ステータスページをサポートしなければならない(NFR-AVAIL-001、NFR-OBLOG-001に対応)
 - **SW-007**: システムは、Cloudflare Durable Objectsによる状態管理(厳密なレート制限カウント、ログイン試行の強制拒否クールダウン期間)をサポートしなければならない
@@ -619,7 +624,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **SW-010**: システムは、R2の公開バケットに保存済みの非画像形式ファイルについて、Cloudflare R2のカスタムドメイン配信機能によるファイルの直接ダウンロード配信をサポートしなければならない
 - **SW-011**: システムは、R2の公開バケットに保存済みのSVGを除く画像の配信経路として、Cloudflare ImagesのTransformationsによる変換配信をサポートしなければならない(FR-FILEU-014に対応)
 - **SW-012**: システムは、R2の公開バケットに保存済みのSVGの配信経路として、Cloudflare R2のカスタムドメイン配信機能による原本の配信をサポートしなければならない(FR-FILEU-015に対応)
-- **SW-013**: システムは、Cloudflare Email ServiceのEmail Sendingにより、各種通知メールの配信経路を提供しなければならない(FR-NOTIF-001〜011に対応)
+- **SW-013**: システムは、Cloudflare Email ServiceのEmail Sendingにより、各種通知メールの配信経路を提供しなければならない(FR-NOTIF-001〜016に対応)
 - **SW-014**: システムは、Stripe Checkout Sessions API及びStripe Webhookによる決済処理連携を提供しなければならない
 - **SW-015**: システムは、Amazon Rekognition APIを用いた画像自動判定処理を提供しなければならない(FR-FILEU-009に対応)
 - **SW-016**: システムは、Cloudflare Turnstileによるウィジェット埋め込み及び内部APIサーバー側でのsiteverify検証機能を提供しなければならない(FR-USER-011、FR-FOLOW-009、FR-PRDCT-014、FR-VOTE-006、FR-COMNT-008、FR-REPOT-005、FR-SPONS-012、FR-INQRY-005に対応)
