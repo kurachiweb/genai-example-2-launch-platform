@@ -30,7 +30,7 @@
 
 ### ORM
 
-- MikroORM(Workers向けに事前コンパイル、`createKyselyDialect()`をD1ダイアレクトへ差し替えた独自Connectionを使用)
+- MikroORM ... Workers向けに事前コンパイル、`createKyselyDialect()`をD1ダイアレクトへ差し替えた独自Connectionを使用
 - Kysely(クエリビルダ)
 
 ### 認証・認可
@@ -38,6 +38,11 @@
 - `HttpOnly`・`Secure`・`SameSite`属性付きCookieによるユーザー認証
 - ロールベースのアクセス制御
 - 所有権ベースのアクセス制御(自ユーザー・全ユーザー・管理者)
+- OTPAuth(TOTP多要素認証)
+
+### ID採番
+
+- ulidx
 
 ### バリデーション・変換
 
@@ -52,9 +57,24 @@
 
 - [DISIFY API](https://docs.disify.com/guide/introduction.html) ... 使い捨てメールアドレスの判定
 
-### キーワード抽出
+### 自然言語分析
 
-- [Google Cloud Natural Language AI](https://cloud.google.com/natural-language/docs) ... 多言語に対応
+- [Google Cloud Natural Language AI](https://cloud.google.com/natural-language/docs) ... 多言語対応のキーワード抽出
+
+### 画像処理
+
+- @cf-wasm/photon(画像のデコード・フォーマット変換)
+- fast-xml-parser(SVGのパース、`<script>`要素やイベントハンドラ属性の検出)
+
+### アーカイブ生成
+
+- fflate(ZIPアーカイブのストリーミング生成)
+
+### マークダウン処理
+
+- remark-parse + remark-gfm ... GFM準拠のマークダウンパース、AST(mdast)を生成
+- remark-rehype ... AST(mdast)からAST(hast)への変換
+- rehype-sanitize ... AST(hast)上でのアローリスト方式HTMLサニタイズ、Raw HTMLの無効化に対応
 
 ## フロントエンド
 
@@ -136,7 +156,7 @@ R2 Event Notificationsをローカル環境で使う手段は無いため、当�
 
 ### 画像配信
 
-- Cloudflare ImagesのTransformations(R2に保存した画像をリサイズ・フォーマット変換・Exif削除)
+- Cloudflare ImagesのTransformations ... R2に保存した画像をリサイズ・フォーマット変換・Exif削除
 
 ### 実行環境のセキュリティ
 
