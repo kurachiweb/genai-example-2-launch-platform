@@ -29,7 +29,7 @@
 5. コンテナ内: GitHubアカウントにログインする
 
    ```sh
-   gh auth login --web --clipboard # HTTPSを選択後、表示されたワンタイムコードをブラウザ画面に貼り付ける
+   gh auth login --web # HTTPSを選択後、表示されたワンタイムコードをブラウザ画面に貼り付ける
    ```
 
 6. コンテナ内: WranglerをCloudflareアカウントと紐づける(初回のみ)
