@@ -19,14 +19,14 @@
    ```
 
 3. VSCodeでコンテナにアタッチし、`/workspace`ディレクトリを開く
-4. コンテナ内: Infisicalアカウントにログインする
+4. コンテナ内: Infisicalアカウントにログインする(初回のみ)
 
    ```sh
    infisical --telemetry=false login
    # EUリージョンでログイン後、画面に表示されたトークンをこのターミナルに貼り付ける
    ```
 
-5. コンテナ内: GitHubアカウントにログインする
+5. コンテナ内: GitHubアカウントにログインする(初回のみ)
 
    ```sh
    gh auth login --web # HTTPSを選択後、表示されたワンタイムコードをブラウザ画面に貼り付ける

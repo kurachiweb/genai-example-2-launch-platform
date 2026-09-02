@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Debian 12(Bookworm)がベース
+# Debian 13(trixie)がベース
 ARG BUN_IMAGE_TAG=1.4.0-slim
 
 # gh・OpenTofu・Wranglerを導入する専用ビルドステージ。
@@ -101,12 +101,14 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
   && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
 
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
-# Claude・Infisical・Cloudflareのログイン情報、Bunのグローバルインストールキャッシュ、及びClaude Code・RTKの実行ファイルを永続化し、コンテナ再作成時の再認証やMCPパッケージ再ダウンロード、コンテナ内でのツール更新の巻き戻りを不要にする。
+# Claude・Infisical・GitHub・Cloudflareのログイン情報、Bunのグローバルインストールキャッシュ、及びClaude Code・RTKの実行ファイルを永続化し、コンテナ再作成時の再認証やMCPパッケージ再ダウンロード、コンテナ内でのツール更新の巻き戻りを不要にする。
 ENV CLAUDE_CONFIG_DIR=/home/bun/.claude
 RUN mkdir -p /home/bun/.claude \
   && chown -R bun:bun /home/bun/.claude \
   && mkdir -p /home/bun/.infisical \
   && chown -R bun:bun /home/bun/.infisical \
+  && mkdir -p /home/bun/.config/gh \
+  && chown -R bun:bun /home/bun/.config \
   && mkdir -p /home/bun/.wrangler \
   && chown -R bun:bun /home/bun/.wrangler \
   && mkdir -p /home/bun/.bun \
