@@ -51,7 +51,6 @@ services:
       - "48046:48046" # Storybookコンポーネントカタログ
     environment:
       NODE_ENV: development
-      API_GRAPHQL_URL: http://localhost:48042/graphql
       WRANGLER_SEND_METRICS: "false"
       MP_MAX_MESSAGES: "5000"
       MP_DATABASE: /workspace/apps/email/mailpit.db
