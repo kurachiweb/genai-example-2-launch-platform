@@ -13,7 +13,7 @@ if [ ! -x /workspace/node_modules/.bin/playwright ]; then
 fi
 
 if ! { bunx --bun playwright install chromium \
-  && ln -sf "$(bunx --bun node -e "process.stdout.write(require('playwright-core').chromium.executablePath())")" "${CHROMIUM_PATH}" \
+  && ln -sf "$(bun -e "process.stdout.write(require('playwright-core').chromium.executablePath())")" "${CHROMIUM_PATH}" \
   && "${CHROMIUM_PATH}" --version >/dev/null; }; then
   echo "Chromiumの起動確認に失敗しました。CHROMIUM_PATH=${CHROMIUM_PATH}" >&2
   echo "OS側共有ライブラリとChromium本体のバージョンが不整合の可能性があります。DockerfileのPLAYWRIGHT_VERSIONを@playwright/testの実バージョンに合わせて更新し、イメージを再ビルドしてください。" >&2
