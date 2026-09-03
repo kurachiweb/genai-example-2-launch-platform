@@ -1,7 +1,8 @@
 {
   "name": "cloudflare",
-  "description": "Skills for teaching agents how to build on Cloudflare.",
+  "description": "Build, test, and deploy applications on Cloudflare with platform guidance Skills and the Cloudflare MCP server.",
+  "version": "1.0.0",
   "author": {
-    "name": "Cloudflare team"
+    "name": "Cloudflare"
   }
 }

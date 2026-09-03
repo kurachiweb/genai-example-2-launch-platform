@@ -79,7 +79,6 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 - npmパッケージの`framer-motion`は`motion`にリネームされているため、`motion/react`をインポートして利用する。`ecc:motion-ui`と`ecc:frontend-patterns`スキルが`framer-motion`を使ったサンプルコードを掲載しているが、それは古い情報である。
 - APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`のAPIレスポンス形式や、`rules/common/patterns.md`のAPIレスポンスフォーマット説明、`rules/typescript/patterns.md`の`ApiResponse<T>`型は採用しない。
 - Stripe Payment Elementを使うためにはCheckout Sessions APIにて`ui_mode: 'elements'`オプションを使うこと。`stripe:stripe-best-practices`スキル内では`ui_mode: 'custom'`を使うよう案内しているが、それはリネーム前の古い情報である。
-- `.claude/rules/common/git-workflow.md`はClaude設定ファイルに`includeCoAuthoredBy: false`を設定するよう推奨しているが、そのプロパティは非推奨であり、代わりとして`attribution`プロパティに空文字を指定して帰属表示を無効化する。
 - `cloudflare:wrangler`スキルはローカル開発シークレットの管理に`.dev.vars`ファイルを作成するよう案内しているが、本プロジェクトでは`.dev.vars`や`.env`を使わず、Infisicalで一元管理する。
 - `.claude/rules/common/development-workflow.md`が「Library docs second: Use Context7」と必須手順に定めているが、今回Context7 MCPは利用しない。
 - テストについて
