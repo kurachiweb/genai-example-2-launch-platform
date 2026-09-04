@@ -3,29 +3,25 @@
 # Debian 13(trixie)がベース
 ARG BUN_IMAGE_TAG=1.4.1-slim
 
-# gh・OpenTofu・Wranglerを導入する専用ビルドステージ。
+# OpenTofu・Wranglerを導入する専用ビルドステージ。
 # 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
 FROM oven/bun:${BUN_IMAGE_TAG} AS tools-builder
-ARG GITHUB_CLI_VERSION=2.100.0
 ARG OPENTOFU_VERSION=1.12.6
 ARG WRANGLER_VERSION=4.129.0
 
-# gh(公式リポジトリ: cli.github.com/packages)、OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
+# OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
   && mkdir -p -m 755 /etc/apt/keyrings \
-  && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-  && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
   && curl -fsSL https://get.opentofu.org/opentofu.gpg -o /etc/apt/keyrings/opentofu.gpg \
   && curl -fsSL https://packages.opentofu.org/opentofu/tofu/gpgkey | gpg --no-tty --batch --dearmor -o /etc/apt/keyrings/opentofu-repo.gpg \
   && chmod a+r /etc/apt/keyrings/opentofu.gpg /etc/apt/keyrings/opentofu-repo.gpg \
   && echo "deb [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main" > /etc/apt/sources.list.d/opentofu.list \
   && apt-get update \
-  && apt-get download "gh=${GITHUB_CLI_VERSION}" "tofu=${OPENTOFU_VERSION}" \
+  && apt-get download "tofu=${OPENTOFU_VERSION}" \
   && mkdir -p /out \
-  && for f in gh_*.deb tofu_*.deb; do dpkg -x "$f" /out; done \
+  && for f in tofu_*.deb; do dpkg -x "$f" /out; done \
   && rm -f ./*.deb
 
 # Wranglerを導入する。
@@ -33,16 +29,29 @@ RUN apt-get update \
 ENV BUN_INSTALL=/opt/wrangler
 RUN bun install -g "wrangler@${WRANGLER_VERSION}"
 
-# BetterleaksとMailpitを導入する専用ビルドステージ。
-# いずれもAPT・npmレジストリのいずれにも公式パッケージが存在しないため、公式GitHub Releasesのバイナリを直接取得する。
+# GitHub CLI・Betterleaks・Mailpitを導入する専用ビルドステージ。
+# Betterleaks・MailpitはAPT・npmレジストリのいずれにも公式パッケージが存在せず、GitHub CLIはAPT公式リポジトリ(cli.github.com/packages)が最新版のみ保持しバージョン固定インストールができないため、いずれも公式GitHub Releasesのバイナリを直接取得する。
 # bunを必要としないため、上記ステージとは別の軽量なベースイメージを使い、BuildKit上で並列にダウンロードできるようにする。
 FROM debian:trixie-slim AS release-binaries-builder
 ARG TARGETARCH
+ARG GITHUB_CLI_VERSION=2.100.0
 ARG BETTERLEAKS_VERSION=1.8.1
 ARG MAILPIT_VERSION=1.31.0
 ARG RTK_VERSION=0.47.0
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl
+
+# GitHub CLIはchecksums.txtによるSHA256検証付きで取得する。tar.gz内は`gh_<バージョン>_linux_<アーキテクチャ>/bin/gh`という位置に配置されているため、`--strip-components`で実行ファイルのみ展開先へ平坦化する。
+RUN case "${TARGETARCH}" in \
+  amd64|arm64) ;; \
+  *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+  esac \
+  && cd /tmp \
+  && curl -fsSLO "https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}.tar.gz" \
+  && curl -fsSL "https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/gh_${GITHUB_CLI_VERSION}_checksums.txt" -o checksums.txt \
+  && grep " gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}.tar.gz\$" checksums.txt | sha256sum -c - \
+  && mkdir -p /out/usr/local/bin \
+  && tar -xzf "gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}.tar.gz" -C /out/usr/local/bin --strip-components=2 "gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}/bin/gh"
 
 # Betterleaksはchecksums.txtによるSHA256検証付きで取得する。
 RUN case "${TARGETARCH}" in \
@@ -91,7 +100,7 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
   && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
   && apt-get install -y --no-install-recommends infisical
 
-# gh・OpenTofuを導入する。各バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
+# OpenTofuを導入する。バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
 COPY --from=tools-builder /out/ /
 
 # Wranglerを導入する。bunのグローバルインストールはパッケージ本体を`/opt/wrangler`へ、実行ファイルへのシンボリックリンクを`/usr/local/bin`へ配置するため、両方をコピーする。
@@ -99,7 +108,7 @@ COPY --from=tools-builder /out/ /
 COPY --from=tools-builder /opt/wrangler /opt/wrangler
 COPY --from=tools-builder /usr/local/bin/ /usr/local/bin/
 
-# Betterleaks・Mailpitを導入する。各バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
+# GitHub CLI・Betterleaks・Mailpit・RTKを導入する。各バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
 COPY --from=release-binaries-builder /out/ /
 
 # Playwright・chrome-devtools MCPが起動するChromiumを導入する。
