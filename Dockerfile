@@ -34,7 +34,7 @@ RUN bun install -g "wrangler@${WRANGLER_VERSION}"
 # bunを必要としないため、上記ステージとは別の軽量なベースイメージを使い、BuildKit上で並列にダウンロードできるようにする。
 FROM debian:trixie-slim AS release-binaries-builder
 ARG TARGETARCH
-ARG GITHUB_CLI_VERSION=2.100.0
+ARG GITHUB_VERSION=2.100.0
 ARG BETTERLEAKS_VERSION=1.8.1
 ARG MAILPIT_VERSION=1.31.0
 ARG RTK_VERSION=0.47.0
@@ -45,10 +45,10 @@ WORKDIR /tmp
 
 # GitHub CLIはchecksums.txtによるSHA256検証付きで取得する。tar.gz内は`gh_<バージョン>_linux_<アーキテクチャ>/bin/gh`という位置に配置されているため、`--strip-components`で実行ファイルのみ展開先へ平坦化する。
 RUN case "${TARGETARCH}" in amd64|arm64) ;; *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; esac \
-  && ARCHIVE="gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}.tar.gz" \
-  && curl -fsSLO "https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/${ARCHIVE}" \
-  && curl -fsSL "https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/gh_${GITHUB_CLI_VERSION}_checksums.txt" | grep " ${ARCHIVE}\$" | sha256sum -c - \
-  && tar -xzf "${ARCHIVE}" -C /out/usr/local/bin --strip-components=2 "gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}/bin/gh"
+  && ARCHIVE="gh_${GITHUB_VERSION}_linux_${TARGETARCH}.tar.gz" \
+  && curl -fsSLO "https://github.com/cli/cli/releases/download/v${GITHUB_VERSION}/${ARCHIVE}" \
+  && curl -fsSL "https://github.com/cli/cli/releases/download/v${GITHUB_VERSION}/gh_${GITHUB_VERSION}_checksums.txt" | grep " ${ARCHIVE}\$" | sha256sum -c - \
+  && tar -xzf "${ARCHIVE}" -C /out/usr/local/bin --strip-components=2 "gh_${GITHUB_VERSION}_linux_${TARGETARCH}/bin/gh"
 
 # Betterleaksはchecksums.txtによるSHA256検証付きで取得する。
 RUN case "${TARGETARCH}" in amd64) BL_ARCH=x64 ;; arm64) BL_ARCH=arm64 ;; *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; esac \
@@ -70,6 +70,7 @@ RUN case "${TARGETARCH}" in amd64) RTK_TARGET=x86_64-unknown-linux-musl ;; arm64
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
 FROM oven/bun:${BUN_IMAGE_TAG}
+ARG INFISICAL_VERSION=0.43.129
 ARG PLAYWRIGHT_VERSION=1.62.1
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。
@@ -81,7 +82,7 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
   && apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates build-essential procps curl file git \
   && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-  && apt-get install -y --no-install-recommends infisical
+  && apt-get install -y --no-install-recommends "infisical=${INFISICAL_VERSION}"
 
 # OpenTofuを導入する。バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
 COPY --from=tools-builder /out/ /
