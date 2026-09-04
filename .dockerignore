@@ -1,6 +1,2 @@
-# Dockerfileが`COPY`するファイルだけを明示的に許可する。
+# Dockerfile内でCOPYしたいファイルは無く、`/workspace`はcompose.yamlのbindマウントでコンテナへ渡されるため、転送量削減のため全て除外する。
 *
-!scripts
-scripts/*
-!scripts/entrypoint.sh
-!scripts/update-local.sh

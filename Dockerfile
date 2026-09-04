@@ -141,12 +141,9 @@ WORKDIR /workspace
 # 導入先は名前付きボリュームで永続化されており、イメージの内容がコピーされるのはボリュームが空の初回マウント時のみであるため、ビルド時ではなくコンテナ起動時(CMD)にインストーラを実行することで、再作成後も含め毎回両ツールを最新版へ更新する。
 ENV PATH="/home/bun/.local/bin:${PATH}"
 
-# コンテナ起動時のセットアップ処理はスクリプトへ切り出す。
-COPY scripts/update-local.sh /usr/local/bin/update-local.sh
-COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
-
+# コンテナ起動時のセットアップ処理は`scripts/update-local.sh`・`scripts/entrypoint.sh`へ切り出している。
 # 両スクリプトでエラーが発生しても、エラーメッセージ出力のみでコンテナ起動を継続する。
 # entrypoint.shはtrapや常駐プロセスを持つため、`.`(source)で読み込む。別プロセスとして実行すると常駐プロセスがPID1(docker-init)の子であるbashの子でなくなり、スクリプト内のtrapもスクリプト終了時に失われるため、停止時にMailpitへSIGTERMを転送できなくなる。
 # `sleep infinity`は「何もせず永遠に待ち続けるだけ」のコマンドで、これをバックグラウンドで動かし続けることでPID1のbashを終了させず、コンテナを生かし続ける(Mailpitが落ちてもコンテナは生存する)。
 # `wait $!`は直前にバックグラウンド実行した`sleep infinity`の終了を待つ組み込みコマンドで、シグナル(SIGTERMなど)を受けると即座に中断されるため、コンテナ停止時にスクリプト内の`trap`をすぐ発火できる。
-CMD ["bash", "-c", "/usr/local/bin/update-local.sh; . /usr/local/bin/entrypoint.sh; sleep infinity & wait $!"]
+CMD ["bash", "-c", "/workspace/scripts/update-local.sh; . /workspace/scripts/entrypoint.sh; sleep infinity & wait $!"]
