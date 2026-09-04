@@ -4,3 +4,6 @@ pathIgnorePatterns = ["**/*.browser.test.{ts,tsx}", "**/*.worker.test.{ts,tsx}"]
 
 # カバレッジ計測が有効なら、NFR-MAINT-003が要求する80%以上を強制する
 coverageThreshold = 0.8
+
+# テストファイル自身は分母から除外し、プロダクションコードのカバレッジのみを計測する
+coverageSkipTestFiles = true
