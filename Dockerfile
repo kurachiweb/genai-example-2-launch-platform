@@ -1,15 +1,15 @@
 # syntax=docker/dockerfile:1
 
 # Debian 13(trixie)がベース
-ARG BUN_IMAGE_TAG=1.4.0-slim
+ARG BUN_IMAGE_TAG=1.4.1-slim
 
 # gh・OpenTofu・Wranglerを導入する専用ビルドステージ。
 # 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
 FROM oven/bun:${BUN_IMAGE_TAG} AS tools-builder
-ARG GH_VERSION=2.98.0
+ARG GITHUB_CLI_VERSION=2.100.0
 ARG OPENTOFU_VERSION=1.12.6
-ARG WRANGLER_VERSION=4.127.1
+ARG WRANGLER_VERSION=4.129.0
 
 # gh(公式リポジトリ: cli.github.com/packages)、OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
 RUN apt-get update \
@@ -23,7 +23,7 @@ RUN apt-get update \
   && chmod a+r /etc/apt/keyrings/opentofu.gpg /etc/apt/keyrings/opentofu-repo.gpg \
   && echo "deb [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main" > /etc/apt/sources.list.d/opentofu.list \
   && apt-get update \
-  && apt-get download "gh=${GH_VERSION}" "tofu=${OPENTOFU_VERSION}" \
+  && apt-get download "gh=${GITHUB_CLI_VERSION}" "tofu=${OPENTOFU_VERSION}" \
   && mkdir -p /out \
   && for f in gh_*.deb tofu_*.deb; do dpkg -x "$f" /out; done \
   && rm -f ./*.deb
