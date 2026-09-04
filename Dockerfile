@@ -40,6 +40,7 @@ FROM debian:trixie-slim AS release-binaries-builder
 ARG TARGETARCH
 ARG BETTERLEAKS_VERSION=1.8.1
 ARG MAILPIT_VERSION=1.31.0
+ARG RTK_VERSION=0.47.0
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl
 
@@ -60,6 +61,20 @@ RUN case "${TARGETARCH}" in \
 RUN mkdir -p /out/usr/local/bin \
   && curl -fsSL "https://github.com/axllent/mailpit/releases/download/v${MAILPIT_VERSION}/mailpit-linux-${TARGETARCH}.tar.gz" -o /tmp/mailpit.tar.gz \
   && tar -xzf /tmp/mailpit.tar.gz -C /out/usr/local/bin mailpit
+
+# RTKはバージョンを固定して導入するため、コンテナ起動毎の更新(scripts/update-local.sh)ではなくイメージビルド時に取得する。
+# checksums.txtによるSHA256検証付きで取得する。
+RUN case "${TARGETARCH}" in \
+  amd64) RTK_TARGET=x86_64-unknown-linux-musl ;; \
+  arm64) RTK_TARGET=aarch64-unknown-linux-gnu ;; \
+  *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+  esac \
+  && cd /tmp \
+  && curl -fsSLO "https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/rtk-${RTK_TARGET}.tar.gz" \
+  && curl -fsSL "https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/checksums.txt" -o checksums.txt \
+  && grep " rtk-${RTK_TARGET}.tar.gz\$" checksums.txt | sha256sum -c - \
+  && mkdir -p /out/usr/local/bin \
+  && tar -xzf "rtk-${RTK_TARGET}.tar.gz" -C /out/usr/local/bin rtk
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
 FROM oven/bun:${BUN_IMAGE_TAG}
@@ -101,7 +116,7 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
   && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
 
 # bunユーザーはsudo権限がなく自分でディレクトリを作れないため、rootのうちに作成してbun所有に変更しておく。
-# Claude・Infisical・GitHub・Cloudflareのログイン情報、Bunのグローバルインストールキャッシュ、及びClaude Code・RTKの実行ファイルを永続化し、コンテナ再作成時の再認証やMCPパッケージ再ダウンロード、コンテナ内でのツール更新の巻き戻りを不要にする。
+# Claude・Infisical・GitHub・Cloudflareのログイン情報、Bunのグローバルインストールキャッシュ、及びClaude Codeの実行ファイルを永続化し、コンテナ再作成時の再認証やMCPパッケージ再ダウンロード、コンテナ内でのツール更新の巻き戻りを不要にする。
 ENV CLAUDE_CONFIG_DIR=/home/bun/.claude
 RUN mkdir -p /home/bun/.claude \
   && chown -R bun:bun /home/bun/.claude \
@@ -137,8 +152,8 @@ RUN mkdir -p /workspace/node_modules \
 USER bun
 WORKDIR /workspace
 
-# Claude Code・RTKは`scripts/update-local.sh`により`/home/bun/.local`配下へ導入される。
-# 導入先は名前付きボリュームで永続化されており、イメージの内容がコピーされるのはボリュームが空の初回マウント時のみであるため、ビルド時ではなくコンテナ起動時(CMD)にインストーラを実行することで、再作成後も含め毎回両ツールを最新版へ更新する。
+# Claude Codeは`scripts/update-local.sh`により`/home/bun/.local`配下へ導入される。
+# 導入先は名前付きボリュームで永続化されており、イメージの内容がコピーされるのはボリュームが空の初回マウント時のみであるため、ビルド時ではなくコンテナ起動時(CMD)にインストーラを実行することで、再作成後も含め毎回最新版へ更新する。
 ENV PATH="/home/bun/.local/bin:${PATH}"
 
 # コンテナ起動時のセットアップ処理は`scripts/update-local.sh`・`scripts/entrypoint.sh`へ切り出している。
