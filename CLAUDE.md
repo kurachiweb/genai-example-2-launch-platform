@@ -22,7 +22,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 
 ### コーディングAI思考プロセスの規則
 
-- 機能追加や改修のように複数行のコードを変更する場合は、必ずcc-sddフレームワークに従うこと。(必読セクション: `Agentic SDLC and Spec-Driven Development`及び参照しているファイル)
+- 機能追加や改修のように複数行のコードを変更する場合は、必ず[cc-sddフレームワーク](docs/ai-extensions/cc-sdd.md)に従うこと。
 - 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
 - 複数の選択肢があって判断に迷うタスクや、既存のドキュメントを調べても実施方法が不明なタスクを進める場合は、都度質問をすること。
 - アプリケーション実装中に新しいパッケージが必要と分かった時、workerd環境で動作しメンテナンスが継続的に行われているパッケージをいくつか候補として質問すること。そして回答に基づきインストールしたツールを[tech-stack.md](./docs/onboardings/tech-stack.md)に記載すること。
@@ -153,77 +153,3 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ## 技術選定
 
 主な技術選定の一覧は[tech-stack.md](./docs/onboardings/tech-stack.md)を参照すること。
-
----
-
-以下はcc-sddツールがセットアップ時に生成する基礎指示文である。
-
-# Agentic SDLC and Spec-Driven Development
-
-Kiro-style Spec-Driven Development on an agentic SDLC
-
-## Project Context
-
-### Paths
-
-- Steering: `.kiro/steering/`
-- Specs: `.kiro/specs/`
-
-### Steering vs Specification
-
-**Steering** (`.kiro/steering/`) - Guide AI with project-wide rules and context
-**Specs** (`.kiro/specs/`) - Formalize development process for individual features
-
-### Active Specifications
-
-- Check `.kiro/specs/` for active specifications
-- Use `/cc-sdd:kiro-spec-status [feature-name]` to check progress
-
-## Development Guidelines
-
-- Think in English, generate responses in Japanese. All Markdown content written to project files (e.g., requirements.md, design.md, tasks.md, research.md, validation reports) MUST be written in the target language configured for this specification (see spec.json.language).
-
-## Minimal Workflow
-
-- Phase 0 (optional): `/cc-sdd:kiro-steering`, `/cc-sdd:kiro-steering-custom`
-- Discovery: `/cc-sdd:kiro-discovery "idea"` — determines action path, writes brief.md + roadmap.md for multi-spec projects
-- Phase 1 (Specification):
-  - Single spec: `/cc-sdd:kiro-spec-quick {feature} [--auto]` or step by step:
-    - `/cc-sdd:kiro-spec-init "description"`
-    - `/cc-sdd:kiro-spec-requirements {feature}`
-    - `/cc-sdd:kiro-validate-gap {feature}` (optional: for existing codebase)
-    - `/cc-sdd:kiro-spec-design {feature} [-y]`
-    - `/cc-sdd:kiro-validate-design {feature}` (optional: design review)
-    - `/cc-sdd:kiro-spec-tasks {feature} [-y]`
-  - Multi-spec: `/cc-sdd:kiro-spec-batch` — creates all specs from roadmap.md in parallel by dependency wave
-- Phase 2 (Implementation): `/cc-sdd:kiro-impl {feature} [tasks]`
-  - Without task numbers: autonomous mode (subagent per task + independent review + final validation)
-  - With task numbers: manual mode (selected tasks in main context, still reviewer-gated before completion)
-  - `/cc-sdd:kiro-validate-impl {feature}` (standalone re-validation)
-- Progress check: `/cc-sdd:kiro-spec-status {feature}` (use anytime)
-
-## Skills Structure
-
-Skills are located in `.claude/skills/cc-sdd/skills/kiro-*/SKILL.md`
-
-- Each skill is a directory with a `SKILL.md` file
-- Skills run inline with access to conversation context
-- Skills may delegate parallel research to subagents for efficiency
-- Additional files (templates, examples) can be added to skill directories
-- `cc-sdd:kiro-review` — task-local adversarial review protocol used by reviewer subagents
-- `cc-sdd:kiro-debug` — root-cause-first debug protocol used by debugger subagents
-- `cc-sdd:kiro-verify-completion` — fresh-evidence gate before success or completion claims
-- **If there is even a 1% chance a skill applies to the current task, invoke it.** Do not skip skills because the task seems simple.
-
-## Development Rules
-
-- 3-phase approval workflow: Requirements → Design → Tasks → Implementation
-- Human review required each phase; use `-y` only for intentional fast-track
-- Keep steering current and verify alignment with `/cc-sdd:kiro-spec-status`
-- Follow the user's instructions precisely, and within that scope act autonomously: gather the necessary context and complete the requested work end-to-end in this run, asking questions only when essential information is missing or the instructions are critically ambiguous.
-
-## Steering Configuration
-
-- Load entire `.kiro/steering/` as project memory
-- Default files: `product.md`, `tech.md`, `structure.md`
-- Custom files are supported (managed via `/cc-sdd:kiro-steering-custom`)
