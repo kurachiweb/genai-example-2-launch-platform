@@ -39,51 +39,34 @@ ARG BETTERLEAKS_VERSION=1.8.1
 ARG MAILPIT_VERSION=1.31.0
 ARG RTK_VERSION=0.47.0
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl
+  && apt-get install -y --no-install-recommends ca-certificates curl \
+  && mkdir -p /out/usr/local/bin
+WORKDIR /tmp
 
 # GitHub CLIはchecksums.txtによるSHA256検証付きで取得する。tar.gz内は`gh_<バージョン>_linux_<アーキテクチャ>/bin/gh`という位置に配置されているため、`--strip-components`で実行ファイルのみ展開先へ平坦化する。
-RUN case "${TARGETARCH}" in \
-  amd64|arm64) ;; \
-  *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
-  esac \
-  && cd /tmp \
-  && curl -fsSLO "https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}.tar.gz" \
-  && curl -fsSL "https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/gh_${GITHUB_CLI_VERSION}_checksums.txt" -o checksums.txt \
-  && grep " gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}.tar.gz\$" checksums.txt | sha256sum -c - \
-  && mkdir -p /out/usr/local/bin \
-  && tar -xzf "gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}.tar.gz" -C /out/usr/local/bin --strip-components=2 "gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}/bin/gh"
+RUN case "${TARGETARCH}" in amd64|arm64) ;; *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; esac \
+  && ARCHIVE="gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}.tar.gz" \
+  && curl -fsSLO "https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/${ARCHIVE}" \
+  && curl -fsSL "https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/gh_${GITHUB_CLI_VERSION}_checksums.txt" | grep " ${ARCHIVE}\$" | sha256sum -c - \
+  && tar -xzf "${ARCHIVE}" -C /out/usr/local/bin --strip-components=2 "gh_${GITHUB_CLI_VERSION}_linux_${TARGETARCH}/bin/gh"
 
 # Betterleaksはchecksums.txtによるSHA256検証付きで取得する。
-RUN case "${TARGETARCH}" in \
-  amd64) BL_ARCH=x64 ;; \
-  arm64) BL_ARCH=arm64 ;; \
-  *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
-  esac \
-  && cd /tmp \
-  && curl -fsSLO "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VERSION}/betterleaks_${BETTERLEAKS_VERSION}_linux_${BL_ARCH}.tar.gz" \
-  && curl -fsSL "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VERSION}/checksums.txt" -o checksums.txt \
-  && grep " betterleaks_${BETTERLEAKS_VERSION}_linux_${BL_ARCH}.tar.gz\$" checksums.txt | sha256sum -c - \
-  && mkdir -p /out/usr/local/bin \
-  && tar -xzf "betterleaks_${BETTERLEAKS_VERSION}_linux_${BL_ARCH}.tar.gz" -C /out/usr/local/bin betterleaks
+RUN case "${TARGETARCH}" in amd64) BL_ARCH=x64 ;; arm64) BL_ARCH=arm64 ;; *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; esac \
+  && ARCHIVE="betterleaks_${BETTERLEAKS_VERSION}_linux_${BL_ARCH}.tar.gz" \
+  && curl -fsSLO "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VERSION}/${ARCHIVE}" \
+  && curl -fsSL "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VERSION}/checksums.txt" | grep " ${ARCHIVE}\$" | sha256sum -c - \
+  && tar -xzf "${ARCHIVE}" -C /out/usr/local/bin betterleaks
 
 # Mailpitはチェックサムが非公開のため未検証で取得する。
-RUN mkdir -p /out/usr/local/bin \
-  && curl -fsSL "https://github.com/axllent/mailpit/releases/download/v${MAILPIT_VERSION}/mailpit-linux-${TARGETARCH}.tar.gz" -o /tmp/mailpit.tar.gz \
-  && tar -xzf /tmp/mailpit.tar.gz -C /out/usr/local/bin mailpit
+RUN curl -fsSLO "https://github.com/axllent/mailpit/releases/download/v${MAILPIT_VERSION}/mailpit-linux-${TARGETARCH}.tar.gz" \
+  && tar -xzf "mailpit-linux-${TARGETARCH}.tar.gz" -C /out/usr/local/bin mailpit
 
-# RTKはバージョンを固定して導入するため、コンテナ起動毎の更新(scripts/update-local.sh)ではなくイメージビルド時に取得する。
-# checksums.txtによるSHA256検証付きで取得する。
-RUN case "${TARGETARCH}" in \
-  amd64) RTK_TARGET=x86_64-unknown-linux-musl ;; \
-  arm64) RTK_TARGET=aarch64-unknown-linux-gnu ;; \
-  *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
-  esac \
-  && cd /tmp \
-  && curl -fsSLO "https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/rtk-${RTK_TARGET}.tar.gz" \
-  && curl -fsSL "https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/checksums.txt" -o checksums.txt \
-  && grep " rtk-${RTK_TARGET}.tar.gz\$" checksums.txt | sha256sum -c - \
-  && mkdir -p /out/usr/local/bin \
-  && tar -xzf "rtk-${RTK_TARGET}.tar.gz" -C /out/usr/local/bin rtk
+# RTKはバージョンを固定して導入するため、コンテナ起動毎の更新(scripts/update-local.sh)ではなくイメージビルド時に取得する。checksums.txtによるSHA256検証付きで取得する。
+RUN case "${TARGETARCH}" in amd64) RTK_TARGET=x86_64-unknown-linux-musl ;; arm64) RTK_TARGET=aarch64-unknown-linux-gnu ;; *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; esac \
+  && ARCHIVE="rtk-${RTK_TARGET}.tar.gz" \
+  && curl -fsSLO "https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/${ARCHIVE}" \
+  && curl -fsSL "https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/checksums.txt" | grep " ${ARCHIVE}\$" | sha256sum -c - \
+  && tar -xzf "${ARCHIVE}" -C /out/usr/local/bin rtk
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
 FROM oven/bun:${BUN_IMAGE_TAG}
