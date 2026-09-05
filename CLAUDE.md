@@ -16,7 +16,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 ## このサービスについて
 
 作った製品を投稿し、他のユーザーと投票数を競い合うローンチプラットフォーム。
-詳細は[README.md](./README.md)を参照すること。
+詳細は[README.md](README.md)を参照すること。
 
 ## 本プロジェクト規則
 
@@ -25,8 +25,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - 機能追加や改修のように複数行のコードを変更する場合は、必ず[cc-sddフレームワーク](docs/ai-extensions/cc-sdd.md)に従うこと。
 - 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
 - 複数の選択肢があって判断に迷うタスクや、既存のドキュメントを調べても実施方法が不明なタスクを進める場合は、都度質問をすること。
-- アプリケーション実装中に新しいパッケージが必要と分かった時、workerd環境で動作しメンテナンスが継続的に行われているパッケージをいくつか候補として質問すること。そして回答に基づきインストールしたツールを[tech-stack.md](./docs/onboardings/tech-stack.md)に記載すること。
-- 既存のドキュメントやコードコメントはゼロベースで修正すること。例えば「Aをします」というコメントがある場合に、「AをするのではなくBをします」と変更するのではなく「Bをします」のみを記載すべきである。(この項目はADRや、cc-sddが生成するSpecには適用しない)
+- アプリケーション実装中に新しいパッケージが必要と分かった時、workerd環境で動作しメンテナンスが継続的に行われているパッケージをいくつか候補として質問すること。そして回答に基づきインストールしたツールを[tech-stack.md](docs/onboardings/tech-stack.md)に記載すること。
 - コマンドでパスを指定する場合は、必ず絶対パスで表記すること。
 - 必ず実行すべきコマンドやファイル編集がClaude設定のdenyにより拒否されてしまった場合は、開発者が後ほど手動で実行できるように報告すること。
 - フロントエンド側でTanStack系ツールが使われる処理を作成・改修・調査・コードレビューしたい場合は[TanStack Agent Guidelines](docs/ai-extensions/tanstack-agent-guidelines.md)を参照すること。ただしそのガイドラインの「Repository Structure」セクションとは異なり、TanStack関連スキル群は`.claude/skills/tanstack-agent-skills/skills`ディレクトリ内にある。
@@ -39,6 +38,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - テスト駆動開発(TDD)の実施を徹底すること。
 - HonoはInversifyによる依存性注入を活用し、クリーンアーキテクチャに基づく実装を徹底すること。
 - コード内にコメントは原則書かないこと。ただし難易度の高いロジックには理解を早めるための「何をする処理か」コメントを添える。コードを読むだけでは分からない「なぜその処理が必要か」のコメントは書く。
+- コードコメントは新規追加・既存修正を問わず常にゼロベースで、現在のコードが成立するために必要な情報のみを記載すること。「以前は〜だったが」「〜をやめて」「〜を削除し」のように変更前の実装や修正の経緯を残してはならない。
 - appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
 - BunのWorkspaces機能は使用しないこと。
 
@@ -92,14 +92,14 @@ GitワークフローはGitLab Flow(環境ブランチ)を採用する。開発�
 mainブランチにpushした際、dev環境に自動でデプロイする。
 prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(push)をトリガーとしてデプロイが実行される。
 `main`及び`prod`ブランチへのプルリクエストでは、GitHubのブランチ保護ルールにより各種チェック・テストが失敗した場合にマージをブロックする。
-`prod`ブランチへのマージは、ブランチ保護ルールにより人間のレビュー承認を必須とし、AIエージェントによるprod環境へのデプロイを技術的に禁止する。
+`prod`ブランチへのマージは、ブランチ保護ルールにより人間のレビュー承認を必須とし、AIエージェントによるprod環境へのデプロイを禁止する。
 緊急のホットフィックスは`prod`から分岐した短命ブランチで行い、`prod`へ直接マージした後、`prod → main`へバックマージして両ブランチを同期する。
 
 ## ディレクトリ構成
 
 ```
 /
-├── .claude/                    # Claude拡張設定 ... 詳細はClaude拡張ファイル解説(./docs/onboardings/claude-extensions.md)を参照
+├── .claude/                    # Claude拡張設定 ... 詳細はClaude拡張ファイル解説(docs/onboardings/claude-extensions.md)を参照
 ├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・OpenTofu適用を含む)を担当
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
@@ -147,9 +147,9 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進める開発コンテナ
 ├── compose.yaml                # コンテナの管理
 ├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化、及びPlaywrightによるE2Eテスト
-└── README.md                   # 作業者向け、サービスの基本的説明
+└── README.md                   # サービス説明を含む要件定義書
 ```
 
 ## 技術選定
 
-主な技術選定の一覧は[tech-stack.md](./docs/onboardings/tech-stack.md)を参照すること。
+主な技術選定の一覧は[tech-stack.md](docs/onboardings/tech-stack.md)を参照すること。

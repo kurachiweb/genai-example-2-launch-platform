@@ -64,7 +64,7 @@
 ### 画像処理
 
 - @cf-wasm/photon(画像のデコード・フォーマット変換)
-- fast-xml-parser(SVGのパース、スクリプトの検出)
+- fast-xml-parser(SVGのパース、自前検索ルールによるスクリプトの検出)
 
 ### アーカイブ生成
 

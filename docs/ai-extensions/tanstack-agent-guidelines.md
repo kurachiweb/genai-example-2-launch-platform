@@ -38,6 +38,7 @@ description: Brief description of what this skill covers
 ```
 
 Followed by markdown sections:
+
 - When to Apply
 - Rule Categories by Priority
 - Quick Reference
@@ -46,6 +47,7 @@ Followed by markdown sections:
 ### Rule File Naming
 
 Rules use kebab-case with category prefixes:
+
 - `qk-` — Query keys
 - `cache-` — Caching
 - `mut-` — Mutations
@@ -108,40 +110,45 @@ Why this pattern matters and what problem it solves.
 Skills should activate when agents detect:
 
 ### tanstack-query
+
 - Data fetching code (`useQuery`, `useMutation`)
 - React Query imports
 - Cache management patterns
 - Server state handling
 
 ### tanstack-router
+
 - Route definitions
 - Navigation code
 - Search params handling
 - Code splitting setup
 
 ### tanstack-start
+
 - Server functions (`createServerFn`)
 - Middleware setup
 - SSR configuration
 - Authentication flows
 
 ### tanstack-integration
+
 - Combined Query + Router usage
 - Full-stack TanStack applications
 - SSR with data prefetching
 
 ## Priority Levels
 
-| Priority | Meaning |
-|----------|---------|
-| CRITICAL | Must follow - violations cause bugs or security issues |
-| HIGH | Strongly recommended - improves reliability and performance |
-| MEDIUM | Good practice - enhances maintainability and UX |
-| LOW | Nice to have - optimization and polish |
+| Priority | Meaning                                                     |
+| -------- | ----------------------------------------------------------- |
+| CRITICAL | Must follow - violations cause bugs or security issues      |
+| HIGH     | Strongly recommended - improves reliability and performance |
+| MEDIUM   | Good practice - enhances maintainability and UX             |
+| LOW      | Nice to have - optimization and polish                      |
 
 ## Context Efficiency
 
 To minimize token usage:
+
 - Keep individual rule files under 200 lines
 - Use concise code examples
 - Reference external docs for deep dives
@@ -159,24 +166,28 @@ When generating or reviewing code:
 ## Common Scenarios
 
 ### New TanStack Query Setup
+
 1. Load tanstack-query skill
 2. Apply `qk-factory-pattern` for query organization
 3. Apply `cache-stale-time` and `cache-gc-time`
 4. Set up error boundaries per `err-error-boundaries`
 
 ### New TanStack Router Setup
+
 1. Load tanstack-router skill
 2. Apply `ts-register-router` for type safety
 3. Apply `org-file-based-routing` conventions
 4. Configure preloading per `preload-intent`
 
 ### Adding Server Functions
+
 1. Load tanstack-start skill
 2. Apply `sf-create-server-fn` patterns
 3. Always apply `sf-input-validation`
 4. Consider `mw-request-middleware` for auth
 
 ### Full-Stack Data Flow
+
 1. Load tanstack-integration skill
 2. Apply `setup-query-client-context`
 3. Follow `flow-loader-query-pattern`
