@@ -48,7 +48,7 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
   - `apps/api`と`apps/public-api`のWrangler設定において、`database_id`・R2バケット名、及び`wrangler dev`が優先して使う`preview_database_id`・`preview_id`・`preview_bucket_name`は、両アプリで同一の値にすること。
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
-- 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env=dev -- `を付けて注入すること。
+- 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env dev -- `を付けて注入すること。
   - `wrangler dev`や、`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定の`env.(dev|staging|prod).secrets.required`プロパティに当該シークレットキーを指定する必要がある。
   - シークレットではない環境変数をコード中で`env.(シークレットキー)`として使用するには、Wrangler設定の`env.(dev|staging|prod).vars`プロパティに当該環境変数を指定する必要がある。
   - `env.(dev|staging|prod)`配下の設定は、Wranglerが環境を指定されない限り読み込まない。そのため`wrangler dev`・`wrangler d1 migrations apply`などのWranglerコマンドには必ず`--env dev`(prod環境作業時は`--env prod`)を付けること。`@cloudflare/vite-plugin`経由の`vite dev`・`vite build`・`vite preview`には`--env`オプションが無いため、代わりにコマンド先頭で`CLOUDFLARE_ENV=dev`環境変数を指定して環境を選択する。
