@@ -62,7 +62,9 @@
     ],
     "deny": [
       "Bash(*git config *)",
-      "Bash(*git push --force*)",
+      "Bash(*git push * -f*)",
+      "Bash(*git push *--force*)",
+      "Bash(*git push *--mirror*)",
       "Bash(*git push * prod*)",
       "Bash(*--no-verify*)",
       "Bash(*git commit *-n*)",
