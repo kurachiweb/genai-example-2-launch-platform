@@ -4,10 +4,10 @@ Launch Stadiumのプログラム一式、及びドキュメント。
 
 ## 配信URL一覧(予定)
 
-dev版利用者側サイトURL：https://genai-example-2-client-dev.lab.kurachiweb.com
-dev版管理者側サイトURL：https://genai-example-2-admin-dev.lab.kurachiweb.com
-dev版内部APIサーバー：https://genai-example-2-api-dev.lab.kurachiweb.com
-dev版公開APIサーバー：https://genai-example-2-public-api-dev.lab.kurachiweb.com
+staging版利用者側サイトURL：https://genai-example-2-client-staging.lab.kurachiweb.com
+staging版管理者側サイトURL：https://genai-example-2-admin-staging.lab.kurachiweb.com
+staging版内部APIサーバー：https://genai-example-2-api-staging.lab.kurachiweb.com
+staging版公開APIサーバー：https://genai-example-2-public-api-staging.lab.kurachiweb.com
 prod版利用者側サイトURL：https://genai-example-2-client.lab.kurachiweb.com
 prod版管理者側サイトURL：https://genai-example-2-admin.lab.kurachiweb.com
 prod版内部APIサーバー：https://genai-example-2-api.lab.kurachiweb.com
@@ -49,9 +49,11 @@ prod版公開APIサーバー：https://genai-example-2-public-api.lab.kurachiweb
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env dev -- `を付けて注入すること。
-  - `wrangler dev`や、`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定の`env.(dev|staging|prod).secrets.required`プロパティに当該シークレットキーを指定する必要がある。
-  - シークレットではない環境変数をコード中で`env.(シークレットキー)`として使用するには、Wrangler設定の`env.(dev|staging|prod).vars`プロパティに当該環境変数を指定する必要がある。
+  - `wrangler dev`や、`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定のルート及び`env.(staging|prod).secrets.required`プロパティに当該シークレットキーを指定する必要がある。
+  - シークレットではない環境変数をコード中で`env.(シークレットキー)`として使用するには、Wrangler設定のルート及び`env.(dev|staging|prod).vars`プロパティに当該環境変数を指定する必要がある。
   - OpenTofuで使う環境シークレットも`*.tfvars`や`*.tfstate`ファイルには書き出さずInfisicalで一元管理し、`infisical`プロバイダの`ephemeral`リソースをOIDC認証で呼び出す。
+- Cloudflare及びWranglerの環境種別は、デプロイ先検証環境を`staging`、本番環境を`prod`とする。
+- Infisicalの環境種別は、ローカル環境を`dev`、デプロイ先検証環境を`staging`、本番環境を`prod`とする。
 - WranglerやViteのバンドル処理はesbuildを用いており`emitDecoratorMetadata`が使えないため、Inversifyのコンストラクタ引数には`@inject`を必ず明示し、型からの自動解決を避けること。
 - 全アプリのWrangler設定で、`compatibility_date`は`2026-08-04`と定義すること。これにより互換性フラグの`nodejs_compat`及び`nodejs_compat_v2`が自動で有効になる。
 - テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.{ts,tsx}`はVitest、`*.worker.test.{ts,tsx}`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
@@ -90,7 +92,7 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 ## Git運用方針
 
 GitワークフローはGitLab Flow(環境ブランチ)を採用する。開発のトランクは`main`ブランチとし、featureブランチは`main`から分岐して短命に保ち、PRレビューを経て`main`にマージする。
-mainブランチにpushした際、dev環境に自動でデプロイする。
+mainブランチにpushした際、staging環境に自動でデプロイする。
 prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(push)をトリガーとしてデプロイが実行される。
 `main`及び`prod`ブランチへのプルリクエストでは、GitHubのブランチ保護ルールにより各種チェック・テストが失敗した場合にマージをブロックする。
 `prod`ブランチへのマージは、ブランチ保護ルールにより人間のレビュー承認を必須とし、AIエージェントによるprod環境へのデプロイを禁止する。
