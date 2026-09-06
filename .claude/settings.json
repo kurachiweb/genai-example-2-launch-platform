@@ -32,11 +32,11 @@
   },
   "permissions": {
     "allow": [
-      "Bash(CLOUDFLARE_ENV=dev infisical --telemetry=false run --env=dev -- bun run dev*)",
-      "Bash(CLOUDFLARE_ENV=dev infisical --telemetry=false run --env=dev -- bunx vite build*)",
-      "Bash(CLOUDFLARE_ENV=dev infisical --telemetry=false run --env=dev -- bunx vite preview*)",
-      "Bash(infisical --telemetry=false run --env=dev -- wrangler dev --env dev *)",
-      "Bash(wrangler d1 migrations apply genai-example-2-dev --env dev --local *)",
+      "Bash(infisical --telemetry=false run --env=dev -- bun run dev*)",
+      "Bash(infisical --telemetry=false run --env=dev -- bunx vite build*)",
+      "Bash(infisical --telemetry=false run --env=dev -- bunx vite preview*)",
+      "Bash(infisical --telemetry=false run --env=dev -- wrangler dev *)",
+      "Bash(wrangler d1 migrations apply genai-example-2-dev --local *)",
       "Bash(bun install*)",
       "Bash(bun add *)",
       "Bash(bun remove *)",

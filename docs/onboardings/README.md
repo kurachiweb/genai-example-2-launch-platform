@@ -59,7 +59,7 @@
 
    ```sh
    cd /workspace/apps/api
-   wrangler d1 migrations apply genai-example-2-dev --env dev --local --persist-to /workspace/.wrangler/state
+   wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
    ```
 
 10. コンテナ内: MikroORMアプリの事前コンパイル
@@ -80,7 +80,7 @@
     ```sh
     cd /workspace/apps/api
     bun install # 初回のみ
-    infisical --telemetry=false run --env dev -- wrangler dev --env dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+    infisical --telemetry=false run --env dev -- wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
     ```
 
     公開APIサーバー
@@ -88,7 +88,7 @@
     ```sh
     cd /workspace/apps/public-api
     bun install # 初回のみ
-    infisical --telemetry=false run --env dev -- wrangler dev --env dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+    infisical --telemetry=false run --env dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
     ```
 
     利用者側フロントエンド
@@ -96,7 +96,7 @@
     ```sh
     cd /workspace/apps/client
     bun install # 初回のみ
-    CLOUDFLARE_ENV=dev infisical --telemetry=false run --env dev -- bun run dev --port 48044 --host 0.0.0.0
+    infisical --telemetry=false run --env dev -- bun run dev --port 48044 --host 0.0.0.0
     ```
 
     管理者側フロントエンド
@@ -104,7 +104,7 @@
     ```sh
     cd /workspace/apps/admin
     bun install # 初回のみ
-    CLOUDFLARE_ENV=dev infisical --telemetry=false run --env dev -- bun run dev --port 48045 --host 0.0.0.0
+    infisical --telemetry=false run --env dev -- bun run dev --port 48045 --host 0.0.0.0
     ```
 
     Storybookコンポーネントカタログ
@@ -120,12 +120,12 @@
     ```sh
     # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
     cd /workspace/apps/client
-    NODE_ENV=production CLOUDFLARE_ENV=dev infisical --telemetry=false run --env dev -- bunx vite build
-    NODE_ENV=production CLOUDFLARE_ENV=dev infisical --telemetry=false run --env dev -- bunx vite preview --port 48044 --host 0.0.0.0
+    NODE_ENV=production infisical --telemetry=false run --env dev -- bunx vite build
+    NODE_ENV=production infisical --telemetry=false run --env dev -- bunx vite preview --port 48044 --host 0.0.0.0
 
     cd /workspace/apps/admin
-    NODE_ENV=production CLOUDFLARE_ENV=dev infisical --telemetry=false run --env dev -- bunx vite build
-    NODE_ENV=production CLOUDFLARE_ENV=dev infisical --telemetry=false run --env dev -- bunx vite preview --port 48045 --host 0.0.0.0
+    NODE_ENV=production infisical --telemetry=false run --env dev -- bunx vite build
+    NODE_ENV=production infisical --telemetry=false run --env dev -- bunx vite preview --port 48045 --host 0.0.0.0
     ```
 
 ### ローカルポート一覧
