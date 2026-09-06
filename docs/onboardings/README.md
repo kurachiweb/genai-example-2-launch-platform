@@ -50,7 +50,7 @@
 
    ```sh
    claude
-   /mcp # 上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
+   /mcp # 対話セッションにて、上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
    ```
 
 9. コンテナ内: ローカルDBの初期化(マイグレーション適用)
