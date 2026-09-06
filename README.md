@@ -107,7 +107,7 @@ Launch Stadiumは、Product HuntやUneedの競合として位置づけられる�
 
 - **クライアント**: モダンWebブラウザ(Chrome, Firefox, Safari, Edge最新版)
 - **サーバー**: Cloudflare Workers(Workers Paidプラン)
-- **インフラ**: Cloudflare各種サービス、AWS(Amazon Rekognition)
+- **インフラ**: Cloudflare各種サービス(ゾーンFreeプラン)、AWS(Amazon Rekognition)
 
 #### 2.5 設計・実装の制約
 
@@ -698,8 +698,8 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **NFR-SECUR-017**: システムは、内部APIサーバーのGraphQL APIについて、クエリの複雑度(コスト)を算出して上限を設定し、超過するクエリを拒否しなければならない(SW-001に対応)
 - **NFR-SECUR-018**: システムは、内部APIサーバーのGraphQL APIについて、本番環境ではintrospectionクエリを無効化しなければならない(SW-001に対応)
 - **NFR-SECUR-019**: システムは、内部APIサーバーのGraphQL APIについて、永続化クエリ(Persisted Queries)による許可リスト方式でクエリを制限しなければならない(SW-001に対応)
-- **NFR-SECUR-020**: システムは、内部APIサーバーのGraphQL APIについて、1リクエストあたりのバッチクエリ数の上限を1に、エイリアス数の上限を15に設定し、超過するリクエストを拒否しなければならない(SW-001、NFR-SECUR-021に対応)
-- **NFR-SECUR-021**: システムは、利用者側・管理者側それぞれのフロントエンドサーバーのドメインに対し、Cloudflareレート制限ルールによるリクエスト数制限を設定し、超過時は429 Too Many Requestsを返却しなければならない
+- **NFR-SECUR-020**: システムは、内部APIサーバーのGraphQL APIについて、1リクエストあたりのバッチクエリ数の上限を1に、エイリアス数の上限を15に設定し、超過するリクエストを拒否しなければならない(SW-001に対応)
+- **NFR-SECUR-021**: システムは、利用者側・管理者側の両フロントエンドサーバーが属する同一Cloudflareゾーンに対し、Cloudflareレート制限ルールによるGraphQLリクエスト数制限を設定し、超過時は429 Too Many Requestsを返却しなければならない
 - **NFR-SECUR-022**: システムは、同一ユーザーや同一管理者のアカウントに対しログイン試行が連続で失敗する場合、6回目以降の失敗時は指数的に伸びるクールダウン期間(初回1秒、失敗毎に2倍、最大5分、Durable Objectsで管理)を設定し、当該期間中の認証試行は直ちに429 Too Many Requestsを返却しなければならない
 - **NFR-SECUR-023**: システムは、同一IPアドレスからのログイン試行が連続で失敗する場合、ユーザーや管理者アカウントの異同を問わずNFR-SECUR-022と同設定のクールダウン期間を適用し、当該期間中の認証試行は直ちに429 Too Many Requestsを返却しなければならない(COM-005に対応)
 - **NFR-SECUR-024**: システムは、ユーザーや管理者アカウントのパスワードをNFR-SECUR-004及びNFR-SECUR-005の方式でハッシュ化して保存しなければならない
