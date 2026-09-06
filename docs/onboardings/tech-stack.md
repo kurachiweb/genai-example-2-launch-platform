@@ -224,7 +224,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### コード品質
 
-- ESLint + Prettier
+- ESLint + Prettier(`eslint-config-prettier`を使い`eslint-plugin-prettier`は使わない)
 - Husky + lint-staged(`pre-commit`フック)
 - Commitlint(コミットメッセージ規約)
 
