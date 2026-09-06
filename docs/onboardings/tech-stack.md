@@ -255,6 +255,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### IaC(Infrastructure as Code)
 
 - OpenTofu
+- `infisical`プロバイダ
 
 ### ドキュメント
 
