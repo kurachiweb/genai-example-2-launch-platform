@@ -139,11 +139,13 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
   - フォーマット検証
   - Lintチェック
   - tscによる型チェック
-  - 単体テスト、Cloudflare Workers統合テスト、E2Eテスト、及びカバレッジ閾値チェック(テスト成功かつカバレッジ目標達成なら続行)
+  - Infisical(staging環境)の環境変数を注入
+    - 単体テスト、Cloudflare Workers統合テスト、E2Eテスト、及びカバレッジ閾値チェックを実行(テスト成功かつカバレッジ目標達成なら続行)
 - デプロイフェーズ
   - OpenTofuによるインフラ構成変更(Wranglerの担当範囲を除く)
-  - WranglerによるDBマイグレーション
-  - Wranglerによる各Workerのビルド・デプロイ(`--secrets-file`で環境シークレットを同時反映)
+  - Infisical(pushされたブランチが`main`ならstaging環境、`prod`ならprod環境)の環境変数を注入
+    - WranglerによるDBマイグレーション
+    - Wranglerによる各Workerのビルド・デプロイ(`--secrets-file`で環境シークレットを同時反映)
 
 ## デプロイ先のインフラ構成
 
