@@ -680,8 +680,8 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 #### 6.2 セキュリティ要件
 
 - **NFR-SECUR-001**: システムは、`Domain`属性を付けず`HttpOnly`・`Secure`・`SameSite=Lax`属性を付けたCookieによる認証を実装しなければならない(COM-003、COM-004に対応)
-- **NFR-SECUR-002**: システムは、XSS、CSRF、SQLインジェクション等の主要な攻撃から保護されなければならない
-- **NFR-SECUR-003**: システムは、Cloudflare WAFによる保護を、利用者側・管理者側それぞれのフロントエンドサーバー及び公開APIサーバーの各ドメインに実装しなければならない
+- **NFR-SECUR-002**: システムは、CSRFから保護するため、状態変更を伴う全リクエストについて、`Sec-Fetch-Site`ヘッダーが存在する場合はその値が`same-origin`であることを検証し、存在しない場合は`Origin`ヘッダーの値が自サイトのオリジンと一致することを検証し、いずれの検証にも失敗したリクエストを拒否しなければならない
+- **NFR-SECUR-003**: システムは、XSSから保護するため、Reactの`dangerouslySetInnerHTML`や`innerHTML`への直接代入等の生HTML挿入処理を、FR-MDOWN-007のサニタイズ済みHTML出力を除き禁止しなければならない
 - **NFR-SECUR-004**: システムは、パスワードのような低エントロピー秘密をハッシュ化する場合、Web Crypto APIの`crypto.subtle`によりPBKDF2-HMAC-SHA512形式で、反復回数10万回、かつ固定ペッパー付きでハッシュ化しなければならない — OWASPの推奨は22万回以上だが、Cloudflare Workersは[DoS対策として10万回以内に制限してしまう](https://github.com/cloudflare/workerd/issues/1346)ため
 - **NFR-SECUR-005**: システムは、ユーザーや管理者アカウント毎に、Web Crypto APIの`crypto.getRandomValues()`により16バイト以上の暗号論的乱数のソルトを生成し、ハッシュ化パスワードと共に保存しなければならない
 - **NFR-SECUR-006**: システムは、十分なエントロピーを持つ乱数として発行される秘密情報をハッシュ化する場合、Web Crypto APIの`crypto.subtle`によりHMAC-SHA512形式(固定ペッパーを鍵として使用)でハッシュ化して保存し、検証時はタイミングセーフな比較を行わなければならない
@@ -724,6 +724,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **NFR-SECUR-043**: システムは、パスワードリセットのレスポンスについて、メールアドレスに紐付く対象アカウントの有無を問わず同一レスポンス内容にしなければならない(FR-USER-007、FR-USER-009、FR-ADMAC-012、FR-ADMAC-014に対応)
 - **NFR-SECUR-044**: システムは、アップロード用署名トークンによるR2への書き込み時に、アップロードリクエストの`Content-Length`・`Content-Type`ヘッダーを当該トークンのクレームと照合し、一致しない場合はR2への書き込み前にリクエストを拒否しなければならない(SW-009、FR-FILEU-006に対応)
 - **NFR-SECUR-045**: システムは、アップロード用署名トークンを、Web Crypto APIの`crypto.subtle`によりHMAC-SHA256形式で署名し、検証時は`crypto.subtle.verify()`により署名を検証しなければならない(SW-009、FR-FILEU-005に対応)
+- **NFR-SECUR-046**: システムは、SQLインジェクションから保護するため、ユーザー入力を生SQL文字列へ直接埋め込んではならず、全てのデータベースクエリをMikroORMまたはKyselyのクエリビルダによりパラメータ化しなければならない
 
 #### 6.3 可用性要件
 
