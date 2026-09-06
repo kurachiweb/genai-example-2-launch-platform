@@ -75,6 +75,10 @@ prod版非SVG画像配信用CDN：https://genai-example-2-images.lab.kurachiweb.
     - ユニーク制約付きテーブルにレコードを追加する場合、同一データの同時作成によるエラーを防ぐため、`INSERT ... ON CONFLICT DO NOTHING`(既存行を更新する場合は`DO UPDATE`)を付ける。
   - D1では仮想テーブルを含むデータベースをエクスポートできないため、バックアップ・復旧は`wrangler d1 export`ではなくD1 Time Travelで行う。([参照:Cloudflare Docs](https://developers.cloudflare.com/d1/best-practices/import-export-data/#known-limitations-1))
     - FTS5仮想テーブルは元テーブルへの書き込みに自動追随しないため、`external content`テーブル構成とSQLiteのトリガー(`CREATE TRIGGER`)によりインデックスを同期させる。
+- Playwright更新時に同期すべき3箇所
+  - `Dockerfile`の`PLAYWRIGHT_VERSION`(共有Chromiumの導入用OS依存パッケージ)
+  - ルートの`package.json`の`@playwright/test`(実際に使う共有Chromium本体のバージョンを決定、`.mcp.json`の両MCPサーバーは`CHROMIUM_PATH`経由でこれを共有利用)
+  - `.mcp.json`の`chrome-devtools-mcp`(同梱する`puppeteer-core`のChrome DevTools Protocol対応バージョンが共有Chromiumと乖離しないよう確認)
 
 ### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について
 
