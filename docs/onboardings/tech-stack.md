@@ -178,7 +178,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Cloudflare Durable Objects(SQLiteストレージ)
 - WorkerごとのRate limiterバインディング(Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
-- Cloudflare WAF
+- Cloudflare WAF(Managed Rulesによる既知の攻撃パターン検知)
 
 ### bot対策・不正防止
 
