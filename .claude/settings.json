@@ -32,10 +32,10 @@
   },
   "permissions": {
     "allow": [
-      "Bash(infisical --telemetry=false run --env=dev -- bun run dev*)",
-      "Bash(infisical --telemetry=false run --env=dev -- bunx vite build*)",
-      "Bash(infisical --telemetry=false run --env=dev -- bunx vite preview*)",
-      "Bash(infisical --telemetry=false run --env=dev -- wrangler dev *)",
+      "Bash(infisical --telemetry=false run --env dev -- bun run dev*)",
+      "Bash(infisical --telemetry=false run --env dev -- bunx vite build*)",
+      "Bash(infisical --telemetry=false run --env dev -- bunx vite preview*)",
+      "Bash(infisical --telemetry=false run --env dev -- wrangler dev *)",
       "Bash(wrangler d1 migrations apply genai-example-2-dev --local *)",
       "Bash(bun install*)",
       "Bash(bun add *)",
