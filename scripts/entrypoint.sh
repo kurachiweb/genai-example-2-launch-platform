@@ -12,7 +12,7 @@ HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch || echo '[entry
 
 # プロジェクトルートディレクトリの非所有者でもgitコマンドを実行できるよう、安全なディレクトリとして設定する。
 # `--add`ではコンテナ再起動のたびに重複行が増えるため、`--replace-all`で冪等にする。
-git config --global --replace-all safe.directory /workspace /workspace || echo '[entrypoint] safe.directoryの設定に失敗しました' >&2
+git config --global --replace-all safe.directory /workspace '^/workspace$' || echo '[entrypoint] safe.directoryの設定に失敗しました' >&2
 
 # DockerfileのRUN命令でホストに存在しないディレクトリを作成しても、bindマウントによって隠れてしまう。
 # ここはホストからのbindマウント後に実行されるため、確実にコンテナ内でディレクトリにアクセスできる。
@@ -34,7 +34,7 @@ if ! kill -0 "$mailpit_pid" 2>/dev/null; then
   mailpit_pid=
 fi
 
-# `docker compose down`のSIGTERMはPID1(docker-init)の子であるshに転送されるがその子(mailpit)には届かないため、trapで子プロセスへ転送する。
+# `docker compose down`のSIGTERMはPID1(docker-init)の子であるbashに転送されるがその子(mailpit)には届かないため、trapで子プロセスへ転送する。
 # `mailpit_pid`が空(起動失敗)の場合はkill・wait自体をスキップする。
 terminate_mailpit() {
   # waitはmailpitがSIGTERMで正常終了した場合でも非ゼロを返しうるが、それは停止成功の結果であり失敗ではない。
