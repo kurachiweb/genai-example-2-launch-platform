@@ -71,7 +71,7 @@ RUN case "${TARGETARCH}" in amd64) RTK_TARGET=x86_64-unknown-linux-musl ;; arm64
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
 FROM oven/bun:${BUN_IMAGE_TAG}
 ARG INFISICAL_VERSION=0.43.129
-ARG PLAYWRIGHT_VERSION=1.62.1
+ARG PLAYWRIGHT_VERSION=1.63.0
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。
 # apt-getのダウンロードキャッシュはキャッシュマウントでビルド間永続化し再ダウンロードを避ける。公式Debianベースイメージが標準で有効化するdocker-cleanフックはapt-get実行直後にキャッシュを削除するため、キャッシュマウントを機能させるには無効化が必要。
