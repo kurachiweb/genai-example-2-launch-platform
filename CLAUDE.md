@@ -126,21 +126,21 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   ├── db/                     # DBへの接続処理を含む
 │   │   ├── migrations/         # DBマイグレーション履歴
 │   │   └── schema/             # DBスキーマ定義
-│   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用しポート番号は48041
+│   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用
 │   ├── backend-lib/            # バックエンド共通ファイル(node_modulesディレクトリは無し)
 │   │   └── utilities/          # ユーティリティ
-│   ├── api/                    # 内部APIサーバー ... Honoを利用、ローカル開発でのポート番号は48042
+│   ├── api/                    # 内部APIサーバー ... Honoを利用
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   ├── public-api/             # 公開APIサーバー ... Honoを利用、ローカル開発でのポート番号は48043
+│   ├── public-api/             # 公開APIサーバー ... Honoを利用
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   ├── frontend-lib/           # フロントエンド共通ファイル、ローカル開発におけるStorybookプレビューのためのポート番号は48046
+│   ├── frontend-lib/           # フロントエンド共通ファイル
 │   │   ├── components/         # コンポーネント定義 ... Storybookによるプレビュー付き
 │   │   └── utilities/          # ユーティリティ
-│   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... TanStack Startを利用、公開API向けSwagger UIページも含む、ローカル開発でのポート番号は48044
+│   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... TanStack Startを利用、公開API向けSwagger UIページも含む
 │   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... TanStack Startを利用、ローカル開発でのポート番号は48045
+│   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... TanStack Startを利用
 │       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
 │   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
