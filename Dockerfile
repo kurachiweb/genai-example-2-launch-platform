@@ -11,7 +11,11 @@ ARG OPENTOFU_VERSION=1.12.6
 ARG WRANGLER_VERSION=4.129.0
 
 # OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
-RUN apt-get update \
+# apt-getのダウンロードキャッシュはキャッシュマウントでビルド間永続化し再ダウンロードを避ける。公式Debianベースイメージが標準で有効化するdocker-cleanフックはapt-get実行直後にキャッシュを削除するため、キャッシュマウントを機能させるには無効化が必要。
+RUN --mount=type=cache,id=apt-lists-tools-builder,target=/var/lib/apt/lists,sharing=locked \
+  --mount=type=cache,id=apt-cache-tools-builder,target=/var/cache/apt,sharing=locked \
+  rm -f /etc/apt/apt.conf.d/docker-clean \
+  && apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
   && mkdir -p -m 755 /etc/apt/keyrings \
   && curl -fsSL https://get.opentofu.org/opentofu.gpg -o /etc/apt/keyrings/opentofu.gpg \
@@ -38,7 +42,10 @@ ARG GITHUB_VERSION=2.100.0
 ARG BETTERLEAKS_VERSION=1.8.1
 ARG MAILPIT_VERSION=1.31.0
 ARG RTK_VERSION=0.47.0
-RUN apt-get update \
+RUN --mount=type=cache,id=apt-lists-release-binaries-builder,target=/var/lib/apt/lists,sharing=locked \
+  --mount=type=cache,id=apt-cache-release-binaries-builder,target=/var/cache/apt,sharing=locked \
+  rm -f /etc/apt/apt.conf.d/docker-clean \
+  && apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl \
   && mkdir -p /out/usr/local/bin
 WORKDIR /tmp
@@ -74,10 +81,10 @@ ARG INFISICAL_VERSION=0.43.129
 ARG PLAYWRIGHT_VERSION=1.63.0
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。
-# apt-getのダウンロードキャッシュはキャッシュマウントでビルド間永続化し再ダウンロードを避ける。公式Debianベースイメージが標準で有効化するdocker-cleanフックはapt-get実行直後にキャッシュを削除するため、キャッシュマウントを機能させるには無効化が必要。
 # Infisical(秘密情報管理サービス)のCLIは公式のAPTリポジトリを登録し、apt-getで導入する。
-RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+# idは他ステージのapt-getキャッシュマウントと衝突しないよう明示する。このステージ内の後続RUN(Playwright導入時)とは同じidにして、apt-getダウンロードキャッシュを共有させる。
+RUN --mount=type=cache,id=apt-lists-final,target=/var/lib/apt/lists,sharing=locked \
+  --mount=type=cache,id=apt-cache-final,target=/var/cache/apt,sharing=locked \
   rm -f /etc/apt/apt.conf.d/docker-clean \
   && apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates build-essential procps curl file git \
@@ -102,8 +109,8 @@ COPY --from=release-binaries-builder /out/ /
 # コンテナでは非特権ユーザー名前空間が無効でサンドボックスが起動できないため、.mcp.json側で--no-sandboxを渡す。
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 ENV CHROMIUM_PATH=/opt/ms-playwright-bin/chrome
-RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+RUN --mount=type=cache,id=apt-lists-final,target=/var/lib/apt/lists,sharing=locked \
+  --mount=type=cache,id=apt-cache-final,target=/var/cache/apt,sharing=locked \
   bunx --bun "playwright@${PLAYWRIGHT_VERSION}" install-deps chromium \
   && mkdir -p ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin \
   && chown -R bun:bun ${PLAYWRIGHT_BROWSERS_PATH} /opt/ms-playwright-bin
