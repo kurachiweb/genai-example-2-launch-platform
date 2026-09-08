@@ -650,7 +650,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **SW-010**: システムは、R2のカスタムドメイン配信またはSW-012の変換配信エンドポイントを通じて配信されたコンテンツについて、CloudflareのPurge Files by URL機能により当該コンテンツの配信URLを指定してエッジキャッシュを即時に無効化(パージ)する機能を提供しなければならない(FR-FILEU-014に対応)
 - **SW-011**: システムは、R2のファイル用公開バケットに保存済みの非画像形式ファイルについて、Cloudflare R2のカスタムドメイン配信機能によるファイルの直接ダウンロード配信をサポートしなければならない
 - **SW-012**: システムは、R2の画像用非公開バケットに保存済みの画像の配信経路として、非SVG画像はSW-013により変換したうえで、配信する機能をサポートしなければならない
-- **SW-013**: システムは、Cloudflare Workers上のImages Bindingによる非SVG画像の変換をサポートしなければならない(FR-FILEU-015に対応)
+- **SW-013**: システムは、Cloudflare WorkersのImages Bindingによる非SVG画像の変換をサポートしなければならない(FR-FILEU-015に対応)
 - **SW-014**: システムは、Cloudflare Email ServiceのEmail Sendingにより、各種通知メールの配信経路を提供しなければならない(FR-NOTIF-001〜014、016に対応)
 - **SW-015**: システムは、Cloudflare Queues Event SubscriptionsによりEmail Sendingのバウンス・苦情イベントをQueuesへ配信しなければならない(SW-014に対応)
 - **SW-016**: システムは、Stripe Checkout Sessions API及びStripe Webhookによる決済処理連携を提供しなければならない

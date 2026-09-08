@@ -59,7 +59,7 @@
 
 ### 自然言語分析
 
-- [Google Cloud Natural Language AI](https://cloud.google.com/natural-language/docs) ... 多言語対応のキーワード抽出
+- [Google Cloud Natural Language AI](https://cloud.google.com/natural-language/docs) ... 多言語対応のキーワード抽出、APIキーで認証
 
 ### 画像処理
 
@@ -167,9 +167,13 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Cloudflare Queues
 
+### フロントエンド〜内部API間通信
+
+- Cloudflare Service Bindings(HTTPインターフェース)
+
 ### 画像配信
 
-- Cloudflare ImagesのTransformations ... R2に保存した画像をリサイズ・フォーマット変換・Exif削除
+- Cloudflare WorkersのImages Binding ... R2に保存した画像をWorker内でフォーマット変換・リサイズ・Exif削除
 
 ### 実行環境のセキュリティ
 
@@ -178,7 +182,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Cloudflare Durable Objects(SQLiteストレージ)
 - WorkerごとのRate limiterバインディング(Cloudflareロケーション×設定閾値のレート制限、閾値はWranglerで管理)
-- Cloudflare WAF(Managed Rulesによる既知の攻撃パターン検知)
+- Cloudflare WAF(無償マネージドルールセットによる既知の攻撃パターン検知)
 
 ### bot対策・不正防止
 
