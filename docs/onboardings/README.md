@@ -55,7 +55,7 @@
 
 9. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
-   `apps/api`と`apps/public-api`は同一の`--persist-to`を指定することで、D1・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
+   `apps/api`と`apps/event`は同一の`--persist-to`を指定することで、D1・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
 
    ```sh
    cd /workspace/apps/api
@@ -64,7 +64,7 @@
 
 10. コンテナ内: MikroORMアプリの事前コンパイル
 
-    `apps/api`と`apps/public-api`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
+    `apps/api`と`apps/event`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
 
     ```sh
     cd /workspace/apps/db
@@ -75,7 +75,7 @@
 
 11. コンテナ内: アプリケーションの起動
 
-    内部APIサーバー
+    APIサーバー
 
     ```sh
     cd /workspace/apps/api
@@ -83,10 +83,10 @@
     infisical --telemetry=false run --env dev -- wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
     ```
 
-    公開APIサーバー
+    イベントサーバー
 
     ```sh
-    cd /workspace/apps/public-api
+    cd /workspace/apps/event
     bun install # 初回のみ
     infisical --telemetry=false run --env dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
     ```
@@ -133,8 +133,8 @@
 | アプリ              | 役割                                   | ポート |
 | ------------------- | -------------------------------------- | ------ |
 | Mailpit             | メール確認Web UI・HTTP送信API          | 48041  |
-| `apps/api`          | 内部APIサーバー(Hono / GraphQL)        | 48042  |
-| `apps/public-api`   | 公開APIサーバー(Hono / REST)           | 48043  |
+| `apps/api`          | APIサーバー(Hono)                      | 48042  |
+| `apps/event`        | イベントサーバー(Hono)                 | 48043  |
 | `apps/client`       | 利用者側フロントエンド(TanStack Start) | 48044  |
 | `apps/admin`        | 管理者側フロントエンド(TanStack Start) | 48045  |
 | `apps/frontend-lib` | Storybookコンポーネントカタログ        | 48046  |

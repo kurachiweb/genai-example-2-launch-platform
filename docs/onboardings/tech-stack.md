@@ -28,7 +28,7 @@
 
 ### OpenAPI仕様
 
-- `@hono/zod-openapi` ... 公開APIサーバーのルート定義とZodスキーマを一体化し、OpenAPI仕様を生成
+- `@hono/zod-openapi` ... 公開APIのルート定義とZodスキーマを一体化し、OpenAPI仕様を生成
 
 ### ORM
 
@@ -123,7 +123,7 @@
 ## 決済サービス
 
 - Stripe(決済処理基盤、[ドキュメント](https://docs.stripe.com))
-  - Stripe Node.js SDK(内部APIサーバー側で使用、`createFetchHttpClient()`によるfetchベースの通信)
+  - Stripe Node.js SDK(APIサーバー及びイベントサーバーで使用、`createFetchHttpClient()`によるfetchベースの通信)
   - Stripe Checkout Sessions API(決済セッションの管理)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
   - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
@@ -155,7 +155,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### 定期実行基盤
 
-- Cloudflare Cron Triggers(内部APIサーバーのWrangler設定)
+- Cloudflare Cron Triggers(APIサーバーのWrangler設定)
 
 ### ストレージ
 
@@ -165,9 +165,9 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### イベント処理
 
-- Cloudflare Queues
+- Cloudflare Queues(consumerはイベントサーバー)
 
-### フロントエンド〜内部API間通信
+### フロントエンド〜APIサーバー間通信
 
 - Cloudflare Service Bindings(HTTPインターフェース)
 
@@ -267,4 +267,4 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Storybook(コンポーネントカタログ、`@storybook/tanstack-react`を使用)
 - GraphiQL(GraphQLスキーマ探索・クエリ試行、GraphQL Yogaに内蔵、デプロイ先環境では`graphiql: false`)
-- Swagger UI(公開APIサーバーが配信するOpenAPI仕様を閲覧)
+- Swagger UI(APIサーバーが配信するOpenAPI仕様を閲覧)
