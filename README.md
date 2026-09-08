@@ -1,9 +1,25 @@
 # ローンチプラットフォーム「Launch Stadium」
 
 Launch Stadiumのプログラム一式、及びドキュメント。
-詳細は以下のソフトウェア要件定義書を参照すること。
 
 サービス開発に参加する際は[オンボーディングガイド](docs/onboardings/README.md)を、使用する主な技術は[技術選定](docs/onboardings/tech-stack.md)を読むこと。
+
+---
+
+## 配信URL一覧
+
+staging版利用者側サイトURL: https://genai-example-2-client-staging.lab.kurachiweb.com
+staging版管理者側サイトURL: https://genai-example-2-admin-staging.lab.kurachiweb.com
+staging版内部APIサーバー: 公開しない(Wrangler設定の環境名:genai-example-2-api-staging)
+staging版公開APIサーバー: https://genai-example-2-public-api-staging.lab.kurachiweb.com
+staging版画像配信用CDN: https://genai-example-2-images-staging.lab.kurachiweb.com
+staging版非画像ファイル配信用CDN: https://genai-example-2-files-staging.lab.kurachiweb.com
+prod版利用者側サイトURL: https://genai-example-2-client.lab.kurachiweb.com
+prod版管理者側サイトURL: https://genai-example-2-admin.lab.kurachiweb.com
+prod版内部APIサーバー: 公開しない(Wrangler設定の環境名:genai-example-2-api)
+prod版公開APIサーバー: https://genai-example-2-public-api.lab.kurachiweb.com
+prod版画像配信用CDN: https://genai-example-2-images.lab.kurachiweb.com
+prod版非画像ファイル配信用CDN: https://genai-example-2-files.lab.kurachiweb.com
 
 ---
 
@@ -113,7 +129,10 @@ Launch Stadiumは、Product HuntやUneedの競合として位置づけられる�
 #### 2.5 設計・実装の制約
 
 - FCP(First Contentful Paint)を最優先とした設計
-- Cloudflare Workers実行環境の制約(Worker起動時グローバルスコープ処理1秒以内、Paidプランの場合リクエスト毎CPU時間30秒以内が規定値)
+- Cloudflare Workers実行環境の制約
+  - Worker起動時のグローバルスコープ処理は1秒以内
+  - Workerのバンドルサイズは非圧縮で64MiB以内(参考:[2026年9月4日の仕様変更](https://developers.cloudflare.com/changelog/post/2026-09-04-increased-worker-size-limit/))
+  - Workers Paidプランの場合、規定値としてリクエスト毎CPU時間は30秒以内
 
 #### 2.6 前提と依存関係
 
@@ -555,8 +574,8 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **FR-FILEU-008**: システムは、アップロードリクエストの先頭バイト(マジックバイト)を読み取り、FR-FILEU-005で申告されたMIMEタイプと一致しない場合、R2への書き込みを行わずアップロードを拒否しなければならない(FR-FILEU-005、SW-009に対応)
 - **FR-FILEU-009**: システムは、非画像形式ファイルのR2への書き込み時に、オブジェクトメタデータとして`Content-Disposition: attachment`を設定しなければならない(FR-FILEU-017、SW-009に対応)
 - **FR-FILEU-010**: システムは、画像の原本をR2の画像用非公開バケットへ保存しなければならない(FR-FILEU-002に対応)
-- **FR-FILEU-011**: システムは、アップロードされた画像を、JPEGでもPNGでもない形式であればJPEGまたはPNGに変換し、長辺が640px超なら縦横比を維持するように長辺を640pxにリサイズした上で、Amazon Rekognitionによる自動判定により性的・暴力・犯罪など不適切と判定された画像を隔離バケットへ移動しなければならない(SW-009、SW-017、SW-022に対応)
-- **FR-FILEU-012**: システムは、FR-FILEU-010でアップロードされた画像のうちSVGについて、スクリプトが含まれていれば隔離バケットへ移動しなければならない(SW-022に対応)
+- **FR-FILEU-011**: システムは、アップロードされた画像を公開APIサーバー内で、JPEGでもPNGでもないフォーマットであればJPEGまたはPNGに変換し、長辺が640px超なら縦横比を維持するように長辺を640pxにリサイズした上で、Amazon Rekognitionによる自動判定により性的・暴力・犯罪など不適切と判定された画像を隔離バケットへ移動しなければならない(SW-009、SW-017、SW-022に対応)
+- **FR-FILEU-012**: システムは、FR-FILEU-010でアップロードされた画像のうちSVGについて、FR-FILEU-011の判定に加えてスクリプトが含まれているかも検査し、含まれていれば隔離バケットへ移動しなければならない(SW-022に対応)
 - **FR-FILEU-013**: システムは、FR-FILEU-011・FR-FILEU-012により隔離バケットへ移動された画像を、管理者による手動モデレーション(FR-ADMUG-013)の対象にしなければならない
 - **FR-FILEU-014**: システムは、FR-FILEU-011・FR-FILEU-012により画像を隔離バケットへ移動した場合、SW-010のキャッシュパージ機能により、当該画像の配信URL(SW-012の配信エンドポイント)を指定してエッジキャッシュを即時に無効化しなければならない
 - **FR-FILEU-015**: システムは、非SVG画像の配信時に、SW-012のWorkers Images Bindingによりあらかじめ定義したサイズ・フォーマットへ変換し、`metadata: "none"`指定によりExif情報を除去しなければならない(FR-FILEU-002、DR-006に対応)
@@ -685,10 +704,10 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 #### 6.2 セキュリティ要件
 
 - **NFR-SECUR-001**: システムは、`Domain`属性を付けず`HttpOnly`・`Secure`・`SameSite=Lax`属性を付けたCookieによる認証を実装しなければならない(COM-003、COM-004に対応)
-- **NFR-SECUR-002**: システムは、CSRFから保護するため、状態変更を伴う全リクエストについて、`Sec-Fetch-Site`ヘッダーが存在する場合はその値が`same-origin`であることを検証し、存在しない場合は`Origin`ヘッダーの値が自サイトのオリジンと一致することを検証し、いずれの検証にも失敗したリクエストを拒否しなければならない
-- **NFR-SECUR-003**: システムは、XSSから保護するため、Reactの`dangerouslySetInnerHTML`や`innerHTML`への直接代入等の生HTML挿入処理を、FR-MDOWN-007のサニタイズ済みHTML出力を除き禁止しなければならない
+- **NFR-SECUR-002**: システムは、セッション識別子をWeb Crypto APIの`crypto.getRandomValues()`により32バイトの暗号論的乱数として生成しなければならない(COM-004に対応)
+- **NFR-SECUR-003**: システムは、CSRFから保護するため、状態変更を伴う全リクエストについて、`Sec-Fetch-Site`ヘッダーが存在する場合はその値が`same-origin`であることを検証し、存在しない場合は`Origin`ヘッダーの値が自サイトのオリジンと一致することを検証し、いずれの検証にも失敗したリクエストを拒否しなければならない
 - **NFR-SECUR-004**: システムは、パスワードのような低エントロピー秘密をハッシュ化する場合、Web Crypto APIの`crypto.subtle`によりPBKDF2-HMAC-SHA512形式で、反復回数10万回、かつ固定ペッパー付きでハッシュ化しなければならない — OWASPの推奨は22万回以上だが、Cloudflare Workersは[DoS対策として10万回以内に制限してしまう](https://github.com/cloudflare/workerd/issues/1346)ため
-- **NFR-SECUR-005**: システムは、ユーザーや管理者アカウント毎に、Web Crypto APIの`crypto.getRandomValues()`により16バイト以上の暗号論的乱数のソルトを生成し、ハッシュ化パスワードと共に保存しなければならない
+- **NFR-SECUR-005**: システムは、ユーザーや管理者アカウント毎に、Web Crypto APIの`crypto.getRandomValues()`により16バイト以上の暗号論的乱数のソルトを生成してNFR-SECUR-004のハッシュ化に用い、ハッシュ化後のパスワードと共に保存しなければならない
 - **NFR-SECUR-006**: システムは、十分なエントロピーを持つ乱数として発行される秘密情報をハッシュ化する場合、Web Crypto APIの`crypto.subtle`によりHMAC-SHA512形式(固定ペッパーを鍵として使用)でハッシュ化して保存し、検証時はタイミングセーフな比較を行わなければならない
 - **NFR-SECUR-007**: システムは、機密情報をCloudflare Workersのシークレットで管理しなければならない
 - **NFR-SECUR-008**: システムは、ロールベースアクセス制御(RBAC)に加え、操作対象リソースの所有者本人であるかを判定する所有権ベースのアクセス制御を全ての操作境界で適用しなければならない
@@ -701,7 +720,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **NFR-SECUR-015**: システムは、フロントエンドサーバー〜内部APIサーバー間のサーバー間通信を内部認証で保護すると共に、内部APIサーバーはこの内部認証を伴うリクエストに限りCOM-005で付与されたクライアントIPアドレスを信頼しなければならない(COM-003、COM-005に対応)
 - **NFR-SECUR-016**: システムは、内部APIサーバーのGraphQL APIについて、クエリのネスト上限を8に設定し、超過するクエリを拒否しなければならない(SW-001に対応)
 - **NFR-SECUR-017**: システムは、内部APIサーバーのGraphQL APIについて、クエリの複雑度(コスト)を算出して上限を設定し、超過するクエリを拒否しなければならない(SW-001に対応)
-- **NFR-SECUR-018**: システムは、内部APIサーバーのGraphQL APIについて、本番環境ではintrospectionクエリを無効化しなければならない(SW-001に対応)
+- **NFR-SECUR-018**: システムは、内部APIサーバーのGraphQL APIについて、デプロイ先環境ではintrospectionクエリを無効化しなければならない(SW-001に対応)
 - **NFR-SECUR-019**: システムは、内部APIサーバーのGraphQL APIについて、永続化クエリ(Persisted Queries)による許可リスト方式でクエリを制限しなければならない(SW-001に対応)
 - **NFR-SECUR-020**: システムは、内部APIサーバーのGraphQL APIについて、1リクエストあたりのバッチクエリ数の上限を1に、エイリアス数の上限を15に設定し、超過するリクエストを拒否しなければならない(SW-001に対応)
 - **NFR-SECUR-021**: システムは、SQLインジェクションから保護するため、ユーザー入力を生SQL文字列へ直接埋め込んではならず、全てのデータベースクエリをMikroORMまたはKyselyのクエリビルダによりパラメータ化しなければならない
@@ -726,9 +745,10 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **NFR-SECUR-040**: システムは、ユーザーが投稿した画像及び添付ファイルの配信ドメインを、NFR-SECUR-001に基づき認証Cookieが送信されない別サブドメインとし、ストアドXSSを防止しなければならない(SW-011〜013、NFR-SECUR-041に対応)
 - **NFR-SECUR-041**: システムは、問い合わせ添付ファイルをR2の問い合わせ用非公開バケットに保存し、内部APIサーバーが発行する署名付きURLによってのみダウンロード可能としなければならない(FR-INQRY-012に対応)
 - **NFR-SECUR-042**: システムは、問い合わせ添付ファイルの表示・ダウンロード用署名付きURLの有効期限を発行から15分としなければならない(NFR-SECUR-041、FR-INQRY-012に対応)
-- **NFR-SECUR-043**: システムは、パスワードリセットのレスポンスについて、メールアドレスに紐付く対象アカウントの有無を問わず同一レスポンス内容にしなければならない(FR-USER-007、FR-USER-009、FR-ADMAC-012、FR-ADMAC-014に対応)
+- **NFR-SECUR-043**: システムは、メールアドレス変更及びパスワードリセットの要求に対するレスポンスについて、メールアドレスに紐付く対象アカウントの有無を問わず同一レスポンス内容にしなければならない(FR-USER-007、FR-USER-009、FR-ADMAC-012、FR-ADMAC-014に対応)
 - **NFR-SECUR-044**: システムは、アップロード用署名トークンによるR2への書き込み時に、アップロードリクエストに`Content-Length`ヘッダーが存在しない場合は411 Length Requiredで拒否し、存在する場合は同ヘッダー及び`Content-Type`ヘッダーを当該トークンのクレームと照合し、一致しない場合はR2への書き込み前にリクエストを拒否しなければならない(SW-009、FR-FILEU-006に対応)
 - **NFR-SECUR-045**: システムは、アップロード用署名トークンを、Web Crypto APIの`crypto.subtle`によりHMAC-SHA256形式で署名し、検証時は`crypto.subtle.verify()`により署名を検証しなければならない(SW-009、FR-FILEU-005に対応)
+- **NFR-SECUR-046**: システムは、XSSから保護するため、Reactの`dangerouslySetInnerHTML`や`innerHTML`への直接代入等の生HTML挿入処理を、FR-MDOWN-007のサニタイズ済みHTML出力を除き禁止しなければならない
 
 #### 6.3 可用性要件
 

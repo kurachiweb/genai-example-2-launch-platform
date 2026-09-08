@@ -1,22 +1,5 @@
 # ローンチプラットフォーム「Launch Stadium」
 
-Launch Stadiumのプログラム一式、及びドキュメント。
-
-## 配信URL一覧(予定)
-
-staging版利用者側サイトURL: https://genai-example-2-client-staging.lab.kurachiweb.com
-staging版管理者側サイトURL: https://genai-example-2-admin-staging.lab.kurachiweb.com
-staging版内部APIサーバー: 公開しない(Wrangler設定の環境名:genai-example-2-api-staging)
-staging版公開APIサーバー: https://genai-example-2-public-api-staging.lab.kurachiweb.com
-staging版画像配信用CDN: https://genai-example-2-images-staging.lab.kurachiweb.com
-staging版非画像ファイル配信用CDN: https://genai-example-2-files-staging.lab.kurachiweb.com
-prod版利用者側サイトURL: https://genai-example-2-client.lab.kurachiweb.com
-prod版管理者側サイトURL: https://genai-example-2-admin.lab.kurachiweb.com
-prod版内部APIサーバー: 公開しない(Wrangler設定の環境名:genai-example-2-api)
-prod版公開APIサーバー: https://genai-example-2-public-api.lab.kurachiweb.com
-prod版画像配信用CDN: https://genai-example-2-images.lab.kurachiweb.com
-prod版非画像ファイル配信用CDN: https://genai-example-2-files.lab.kurachiweb.com
-
 ## このサービスについて
 
 作った製品を投稿し、他のユーザーと投票数を競い合うローンチプラットフォーム。

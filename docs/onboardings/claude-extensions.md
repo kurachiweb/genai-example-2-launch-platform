@@ -83,7 +83,7 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
 
 ### ecc:e2e-runner
 
-**概要**: E2Eテスト専門家。Agent Browser(推奨)またはPlaywrightを使用。
+**概要**: E2Eテスト専門家。Agent BrowserまたはPlaywrightを使用。
 
 **トリガー**: 重要なユーザーフローのテスト生成・保守・実行時に自発的に使用。
 

@@ -9,7 +9,7 @@ curl -fsSL https://claude.ai/install.sh | bash \
   || echo '[update-local] Claude Codeの更新に失敗しました' >&2
 
 if command -v claude >/dev/null 2>&1; then
-  echo "Claude Code $(claude --version)"
+  echo "$(claude --version)"
 fi
 
 exit 0
