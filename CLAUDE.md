@@ -3,7 +3,11 @@
 ## このサービスについて
 
 作った製品を投稿し、他のユーザーと投票数を競い合うローンチプラットフォーム。
-詳細は[README.md](README.md)を参照すること。
+要件定義等の詳細は[README.md](README.md)を参照すること。
+
+## 技術選定
+
+主な技術選定の一覧は[tech-stack.md](docs/onboardings/tech-stack.md)を参照すること。
 
 ## 本プロジェクト規則
 
@@ -147,9 +151,5 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進める開発コンテナ
 ├── compose.yaml                # コンテナの管理
 ├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化、及びPlaywrightによるE2Eテスト
-└── README.md                   # サービス説明を含む要件定義書
+└── README.md                   # サービス説明を兼ねた要件定義書
 ```
-
-## 技術選定
-
-主な技術選定の一覧は[tech-stack.md](docs/onboardings/tech-stack.md)を参照すること。
