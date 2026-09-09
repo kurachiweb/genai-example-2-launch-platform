@@ -702,7 +702,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 
 - **NFR-SECUR-001**: システムは、認証Cookieの名前に`__Host-`プレフィックスを付け、`HttpOnly`・`SameSite=Lax`属性を付けたCookieによる認証を実装しなければならない(COM-003、COM-004に対応)
 - **NFR-SECUR-002**: システムは、セッション識別子をWeb Crypto APIの`crypto.getRandomValues()`により32バイトの暗号論的乱数として生成しなければならない(COM-004に対応)
-- **NFR-SECUR-003**: システムは、CSRFから保護するため、状態変更を伴う全リクエストについて、`Sec-Fetch-Site`ヘッダーが存在する場合はその値が`same-origin`であることを検証し、存在しない場合は`Origin`ヘッダーの値が自サイトのオリジンと一致することを検証し、いずれの検証にも失敗したリクエストを拒否しなければならない
+- **NFR-SECUR-003**: システムは、CSRFから保護するため、NFR-SECUR-001の認証を要する状態変更リクエストについて、利用者側・管理者側それぞれのフロントエンドサーバーにおいて、`Sec-Fetch-Site`ヘッダーが存在する場合はその値が`same-origin`であること、存在しない場合は`Origin`ヘッダーの値が自サイトのオリジンと一致することを検証し、いずれの検証にも失敗したリクエストを拒否しなければならない(COM-003に対応)
 - **NFR-SECUR-004**: システムは、パスワードのような低エントロピー秘密をハッシュ化する場合、Web Crypto APIの`crypto.subtle`によりPBKDF2-HMAC-SHA512形式で、反復回数10万回、かつ固定ペッパー付きでハッシュ化しなければならない — OWASPの推奨は22万回以上だが、Cloudflare Workersは[DoS対策として10万回以内に制限してしまう](https://github.com/cloudflare/workerd/issues/1346)ため
 - **NFR-SECUR-005**: システムは、ユーザーや管理者アカウント毎に、Web Crypto APIの`crypto.getRandomValues()`により16バイト以上の暗号論的乱数のソルトを生成してNFR-SECUR-004のハッシュ化に用い、ハッシュ化後のパスワードと共に保存しなければならない
 - **NFR-SECUR-006**: システムは、十分なエントロピーを持つ乱数として発行される秘密情報をハッシュ化する場合、Web Crypto APIの`crypto.subtle`によりHMAC-SHA512形式(固定ペッパーを鍵として使用)でハッシュ化して保存し、検証時はタイミングセーフな比較を行わなければならない
