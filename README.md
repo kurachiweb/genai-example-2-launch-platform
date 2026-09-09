@@ -578,7 +578,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **FR-FILEU-012**: システムは、FR-FILEU-010・FR-FILEU-011により隔離バケットへ移動された画像を、管理者による手動モデレーション(FR-ADMUG-013)の対象にしなければならない
 - **FR-FILEU-013**: システムは、FR-FILEU-010・FR-FILEU-011により画像を隔離バケットへ移動した場合、SW-010のキャッシュパージ機能により、当該画像の配信URL(SW-012の配信エンドポイント)を指定してエッジキャッシュを即時に無効化しなければならない
 - **FR-FILEU-014**: システムは、非SVG画像の配信時に、SW-012のWorkers Images Bindingによりあらかじめ定義したサイズ・フォーマットへ変換し、`metadata: "none"`指定によりExif情報を除去しなければならない(FR-FILEU-002、DR-006に対応)
-- **FR-FILEU-015**: システムは、SVGの配信時に、NFR-SECUR-010のセキュリティヘッダーに加えてCSPヘッダーを付与することで、FR-FILEU-011の判定をすり抜けたSVG内スクリプトの実行を防がなければならない(FR-FILEU-002、FR-FILEU-011に対応)
+- **FR-FILEU-015**: システムは、SVGの配信時に、NFR-SECUR-010のセキュリティヘッダーに加えてトークンなしのCSP`sandbox`ディレクティブ及び`frame-ancestors 'none'`を付与することで、FR-FILEU-011の判定をすり抜けたSVG内スクリプトの実行やクリックジャッキングを防がなければならない(FR-FILEU-002、NFR-SECUR-040に対応)
 - **FR-FILEU-016**: システムは、非画像形式ファイルの配信時に、FR-FILEU-008のオブジェクトメタデータによりブラウザでのインライン表示・実行を防止しなければならない(FR-INQRY-011、FR-INQRY-012に対応)
 
 #### 4.26 決済機能
@@ -702,7 +702,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 
 #### 6.2 セキュリティ要件
 
-- **NFR-SECUR-001**: システムは、`Domain`属性を付けず`HttpOnly`・`Secure`・`SameSite=Lax`属性を付けたCookieによる認証を実装しなければならない(COM-003、COM-004に対応)
+- **NFR-SECUR-001**: システムは、認証Cookieの名前に`__Host-`プレフィックスを付け、`HttpOnly`・`SameSite=Lax`属性を付けたCookieによる認証を実装しなければならない(COM-003、COM-004に対応)
 - **NFR-SECUR-002**: システムは、セッション識別子をWeb Crypto APIの`crypto.getRandomValues()`により32バイトの暗号論的乱数として生成しなければならない(COM-004に対応)
 - **NFR-SECUR-003**: システムは、CSRFから保護するため、状態変更を伴う全リクエストについて、`Sec-Fetch-Site`ヘッダーが存在する場合はその値が`same-origin`であることを検証し、存在しない場合は`Origin`ヘッダーの値が自サイトのオリジンと一致することを検証し、いずれの検証にも失敗したリクエストを拒否しなければならない
 - **NFR-SECUR-004**: システムは、パスワードのような低エントロピー秘密をハッシュ化する場合、Web Crypto APIの`crypto.subtle`によりPBKDF2-HMAC-SHA512形式で、反復回数10万回、かつ固定ペッパー付きでハッシュ化しなければならない — OWASPの推奨は22万回以上だが、Cloudflare Workersは[DoS対策として10万回以内に制限してしまう](https://github.com/cloudflare/workerd/issues/1346)ため
