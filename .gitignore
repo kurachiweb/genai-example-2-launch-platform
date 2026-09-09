@@ -26,9 +26,9 @@ desktop.ini
 
 # 共通ディレクトリのエイリアス
 apps/api/db
-apps/public-api/db
+apps/event/db
 apps/api/lib
-apps/public-api/lib
+apps/event/lib
 apps/client/lib
 apps/admin/lib
 
