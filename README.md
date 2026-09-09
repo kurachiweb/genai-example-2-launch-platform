@@ -8,18 +8,18 @@ Launch Stadiumのプログラム一式、及びドキュメント。
 
 ## 配信URL一覧
 
-staging版利用者側サイトURL: https://genai-example-2-client-staging.lab.kurachiweb.com
-staging版管理者側サイトURL: https://genai-example-2-admin-staging.lab.kurachiweb.com
-staging版APIサーバー: https://genai-example-2-api-staging.lab.kurachiweb.com(公開APIのエンドポイントのみ外部公開)
-staging版イベントサーバー: https://genai-example-2-event-staging.lab.kurachiweb.com
-staging版画像配信用CDN: https://genai-example-2-images-staging.lab.kurachiweb.com
-staging版非画像ファイル配信用CDN: https://genai-example-2-files-staging.lab.kurachiweb.com
-prod版利用者側サイトURL: https://genai-example-2-client.lab.kurachiweb.com
-prod版管理者側サイトURL: https://genai-example-2-admin.lab.kurachiweb.com
-prod版APIサーバー: https://genai-example-2-api.lab.kurachiweb.com(公開APIのエンドポイントのみ外部公開)
-prod版イベントサーバー: https://genai-example-2-event.lab.kurachiweb.com
-prod版画像配信用CDN: https://genai-example-2-images.lab.kurachiweb.com
-prod版非画像ファイル配信用CDN: https://genai-example-2-files.lab.kurachiweb.com
+- staging版利用者側サイトURL: https://genai-example-2-client-staging.lab.kurachiweb.com
+- staging版管理者側サイトURL: https://genai-example-2-admin-staging.lab.kurachiweb.com
+- staging版APIサーバー: https://genai-example-2-api-staging.lab.kurachiweb.com (公開APIのエンドポイントのみ外部公開)
+- staging版イベントサーバー: https://genai-example-2-event-staging.lab.kurachiweb.com
+- staging版画像配信用CDN: https://genai-example-2-images-staging.lab.kurachiweb.com
+- staging版非画像ファイル配信用CDN: https://genai-example-2-files-staging.lab.kurachiweb.com
+- prod版利用者側サイトURL: https://genai-example-2-client.lab.kurachiweb.com
+- prod版管理者側サイトURL: https://genai-example-2-admin.lab.kurachiweb.com
+- prod版APIサーバー: https://genai-example-2-api.lab.kurachiweb.com (公開APIのエンドポイントのみ外部公開)
+- prod版イベントサーバー: https://genai-example-2-event.lab.kurachiweb.com
+- prod版画像配信用CDN: https://genai-example-2-images.lab.kurachiweb.com
+- prod版非画像ファイル配信用CDN: https://genai-example-2-files.lab.kurachiweb.com
 
 ---
 
@@ -194,7 +194,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 - **FR-USER-015**: システムは、ユーザーが自身のログイン中セッションの一覧(端末情報・最終利用日時)を確認し、個別または一括で失効させられる機能を提供しなければならない(NFR-SECUR-028〜031に対応)
 - **FR-USER-016**: システムは、ユーザーが任意でTOTPによる多要素認証を有効化・無効化でき、リカバリコードを再発行できる機能を提供しなければならない(NFR-SECUR-031、NFR-SECUR-032に対応)
 - **FR-USER-017**: システムは、ユーザーが退会した場合、自身によるプロダクト・コメント・評価・通報の投稿、Upvote、自身に関連するフォロー・被フォロー一覧、スポンサー広告、問い合わせを論理削除しなければならない
-- **FR-USER-018**: システムは、ユーザーが退会した場合、DR-002に定める期間が経過する直前の日次バッチで、FR-USER-017により論理削除されたユーザーデータ及びそのユーザーによりアップロードされたファイルを物理削除しなければならない(SW-005に対応)
+- **FR-USER-018**: システムは、ユーザーが退会した場合、DR-002に定める期間が経過する直前の日次バッチで、FR-USER-017により論理削除されたユーザーデータと、そのユーザーに関するファイル(FR-UDATA-002、FR-INQRY-015、FR-FILEU-005〜008)を物理削除しなければならない(SW-005に対応)
 - **FR-USER-019**: システムは、退会または停止済みのユーザーアカウントへのログインや、当該ユーザーによる書き込み操作を拒否しなければならない
 
 #### 4.2 ユーザープロフィール機能
@@ -426,7 +426,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 - **FR-INQRY-012**: システムは、FR-INQRY-011においてファイルの表示またはダウンロード要求毎に、リクエストに含まれる閲覧トークンが対象の問い合わせに紐付くFR-INQRY-007の閲覧トークンと一致すること、またはログイン中の管理者アカウントであることを検証した上で、APIサーバーが短期間有効な署名付きURLを発行しなければならない(NFR-SECUR-041、NFR-SECUR-042に対応)
 - **FR-INQRY-013**: システムは、問い合わせチャットページにて、ユーザーがメッセージを入力して送信できる機能を提供しなければならない
 - **FR-INQRY-014**: システムは、チャットメッセージへの添付ファイルとして、画像は1ファイルあたり5MBまで、他ファイルを含め1メッセージあたり合計20MBまでの複数ファイル添付を受け付け、超過した場合は送信を拒否しなければならない
-- **FR-INQRY-015**: システムは、問い合わせメッセージやチャットメッセージでの添付ファイルのアップロードに、ファイルアップロード機能(FR-FILEU-005〜007)の検証の仕組みを利用しなければならない
+- **FR-INQRY-015**: システムは、問い合わせメッセージやチャットメッセージでの添付ファイルのアップロードに、ファイルアップロード機能(FR-FILEU-005〜008)の検証・保護の仕組みを利用しなければならない
 - **FR-INQRY-016**: システムは、問い合わせの送信時や管理者からの返信時のメールに、問い合わせチャットページへのリンクを含めなければならない
 - **FR-INQRY-017**: システムは、未ログイン状態での問い合わせがあった場合、送信するFR-INQRY-016のメールについて、受信者の身に覚えが無い場合を想定して、当該問い合わせへの通知配信停止を行える導線へのリンクを含めなければならない(FR-NOTIF-001〜011とは異なる仕組み)
 - **FR-INQRY-018**: システムは、FR-INQRY-017のリンク先ページが開かれ確認操作で了承された時は、当該メールアドレスへFR-INQRY-016のメールを14日間送らないよう制御しなければならない
