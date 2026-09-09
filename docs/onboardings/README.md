@@ -22,7 +22,7 @@
 4. コンテナ内: Infisicalアカウントにログインする(初回のみ)
 
    ```sh
-   infisical --telemetry=false login
+   infisical --telemetry=false login --domain https://eu.infisical.com
    # EUリージョンでログイン後、画面に表示されたトークンをこのターミナルに貼り付ける
    ```
 
