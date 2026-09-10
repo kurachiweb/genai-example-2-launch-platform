@@ -119,7 +119,7 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   ├── api/                    # APIサーバー ... Honoを利用、フロントエンド向け内部API(GraphQL)と公開API(REST・OpenAPI仕様書)を提供
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   ├── event/                  # イベントサーバー ... Honoを利用、Stripe Webhook・RFC 8058メール配信停止・Queuesのconsumerを担当
+│   ├── event/                  # イベントサーバー ... Honoを利用、Stripe Webhook・RFC 8058メール配信停止・Queuesのconsumer・画像配信ドメイン(SW-012)を担当
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   ├── frontend-lib/           # フロントエンド共通ファイル
