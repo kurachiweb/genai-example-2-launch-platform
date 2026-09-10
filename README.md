@@ -742,6 +742,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **NFR-SECUR-040**: システムは、FR-INQRY-016の問い合わせ・チャット添付ファイルを除くユーザー投稿画像の配信ドメインを、NFR-SECUR-001に基づき認証Cookieが送信されない別サブドメインとし、ストアドXSSを防止しなければならない(SW-012、SW-013に対応)
 - **NFR-SECUR-041**: システムは、メールアドレス変更及びパスワードリセットの要求に対するレスポンスについて、メールアドレスに紐付く対象アカウントの有無を問わず同一レスポンス内容にしなければならない(FR-USER-007、FR-USER-009、FR-ADMAC-012、FR-ADMAC-014に対応)
 - **NFR-SECUR-042**: システムは、アップロードリクエストに`Content-Length`ヘッダーが存在しない場合、411 Length Requiredで拒否しなければならない(SW-009、FR-FILEU-005に対応)
+- **NFR-SECUR-043**: システムは、認証をCookieではなくAPIキー(FR-PAPI-002)により行う公開API(SW-002)への全リクエスト(プリフライトリクエスト`OPTIONS`を含む)に対し、`Access-Control-Allow-Origin: *`・`Access-Control-Allow-Methods`(エンドポイントが受け付けるHTTPメソッド)・`Access-Control-Allow-Headers: Authorization`を返答しなければならない(COM-003、NFR-MAINT-007に対応)
 
 #### 6.3 可用性要件
 
