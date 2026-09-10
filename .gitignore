@@ -11,8 +11,15 @@
 *.tfstate
 *.tfstate.backup
 *.tfvars
+*.tfvars.json
 *.auto.tfvars
+*.auto.tfvars.json
 
+# OpenTofuのクラッシュログ(プロバイダへ渡した値を含み得る)
+crash.log
+crash.*.log
+
+# Bunでインストールしたパッケージ
 node_modules
 
 # OS生成ファイル
