@@ -393,11 +393,10 @@ TanStack Start、及びTanStack Router・TanStack Queryのベストプラクテ�
 
 ### モーション・アニメーション系
 
-`motion/react`(旧Framer Motion)を使ったReact / Next.jsアニメーション実装向けのスキル群。依存関係順に`ecc:motion-foundations`→`ecc:motion-patterns`→`ecc:motion-advanced`の順で適用する。`ecc:motion-ui`は全体を俯瞰したい場合のエントリーポイント。
+`motion/react`(旧Framer Motion)を使ったReact / Next.jsアニメーション実装向けのスキル群。依存関係順に`ecc:motion-foundations`→`ecc:motion-patterns`→`ecc:motion-advanced`の順で適用する。
 
 | スキル                   | トリガー                                                                                                                                                                             | 概要                                                                                                                                                                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ecc:motion-ui`          | アニメーション実装の全体方針を確認したい時・どのスキルを使うか迷う時                                                                                                                 | motion/reactの包括的なUIモーションシステム。トークン・パフォーマンスルール・アクセシビリティ・AnimatePresenceの`mode`選択・デバッグ手順をまとめたエントリーポイント                         |
 | `ecc:motion-foundations` | アニメーション実装を新たに始める時・トークン／スプリング設定時・`prefers-reduced-motion`対応時・SSRハイドレーション不一致のデバッグ時                                                | モーションシステムの基盤レイヤー。`motionTokens`・`springs`プリセット・`useSafeMotion`フック・SSR安全な初期状態・ローエンドデバイス検出を定義。他のmotionスキルはすべてこのスキルに依存する |
 | `ecc:motion-patterns`    | ボタン・モーダル・トースト・スタガーリスト・ページ遷移・スクロールリビール・アコーディオン・カード展開を実装する時                                                                   | `ecc:motion-foundations`のトークンとスプリングを使った標準UIアニメーションのコピペパターン集。`AnimatePresence`・`layout`・`layoutId`の使い分けガイドを含む                                 |
 | `ecc:motion-advanced`    | ドラッグ&ドロップ・スワイプジェスチャー・並び替えリスト・テキスト逐次表示・数値カウンター・SVGパス描画・カスタムアニメーションフック・`useAnimate`による命令的シーケンスを実装する時 | `ecc:motion-patterns`では対応できない高度な対話・物理・ジェスチャーパターン。`useMotionValue`・`useTransform`・`useSpring`・`useAnimate`を活用したカスタムフック群も含む                    |
