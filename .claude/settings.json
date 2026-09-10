@@ -23,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun -e \"let input=\\\"\\\";process.stdin.on(\\\"data\\\",chunk=>input+=chunk);process.stdin.on(\\\"end\\\",()=>{const payload=JSON.parse(input);const toolInput=payload.tool_input||{};const filePath=toolInput.file_path||\\\"\\\";if(/\\.(md|html|svg|json|jsonc|json5|yaml|yml|sql|csv|txt)\\$/.test(filePath)){process.exit(0)}let content=\\\"\\\";if(payload.tool_name===\\\"Write\\\"){content=toolInput.content||\\\"\\\"}else if(payload.tool_name===\\\"Edit\\\"){let existing=\\\"\\\";try{existing=require(\\\"fs\\\").readFileSync(toolInput.file_path,\\\"utf8\\\")}catch{}content=toolInput.replace_all?existing.split(toolInput.old_string||\\\"\\\").join(toolInput.new_string||\\\"\\\"):existing.replace(toolInput.old_string||\\\"\\\",()=>toolInput.new_string||\\\"\\\")}const lineCount=content.replace(/\\n\\$/,\\\"\\\").split(\\\"\\n\\\").length;if(lineCount>800){console.error(\\\"[Hook] ブロック: ファイルが800行を超えています(\\\"+lineCount+\\\"行)\\\");console.error(\\\"[Hook] より小さなモジュールに分割してください\\\");process.exit(2)}})\"",
+            "command": "bun -e \"let input=\\\"\\\";process.stdin.on(\\\"data\\\",chunk=>input+=chunk);process.stdin.on(\\\"end\\\",()=>{const payload=JSON.parse(input);const toolInput=payload.tool_input||{};const filePath=toolInput.file_path||\\\"\\\";if(/\\.(md|html|svg|json|jsonc|json5|yaml|yml|sql|csv|txt)\\$/i.test(filePath)){process.exit(0)}let content=\\\"\\\";if(payload.tool_name===\\\"Write\\\"){content=toolInput.content||\\\"\\\"}else if(payload.tool_name===\\\"Edit\\\"){let existing=\\\"\\\";try{existing=require(\\\"fs\\\").readFileSync(toolInput.file_path,\\\"utf8\\\")}catch{}content=toolInput.replace_all?existing.split(toolInput.old_string||\\\"\\\").join(toolInput.new_string||\\\"\\\"):existing.replace(toolInput.old_string||\\\"\\\",()=>toolInput.new_string||\\\"\\\")}const lineCount=content.replace(/\\n\\$/,\\\"\\\").split(\\\"\\n\\\").length;if(lineCount>800){console.error(\\\"[Hook] ブロック: ファイルが800行を超えています(\\\"+lineCount+\\\"行)\\\");console.error(\\\"[Hook] より小さなモジュールに分割してください\\\");process.exit(2)}})\"",
             "timeout": 10
           }
         ]
@@ -38,7 +38,6 @@
       "Bash(infisical --telemetry=false run --env dev -- wrangler dev *)",
       "Bash(wrangler d1 migrations apply genai-example-2-dev --local *)",
       "Bash(bun install*)",
-      "Bash(bun add *)",
       "Bash(bun remove *)",
       "Bash(bun update *)",
       "Bash(bun test*)",

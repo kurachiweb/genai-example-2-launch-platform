@@ -45,7 +45,7 @@
   - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
 - 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env dev -- `を付けて注入すること。
   - `wrangler dev`や、`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定のルート及び`env.(staging|prod).secrets.required`プロパティに当該シークレットキーを指定する必要がある。
-  - シークレットではない環境変数をコード中で`env.(シークレットキー)`として使用するには、Wrangler設定のルート及び`env.(dev|staging|prod).vars`プロパティに当該環境変数を指定する必要がある。
+  - シークレットではない環境変数をコード中で`env.(シークレットキー)`として使用するには、Wrangler設定のルート及び`env.(staging|prod).vars`プロパティに当該環境変数を指定する必要がある。
   - OpenTofuで使う環境シークレットも`*.tfvars`や`*.tfstate`ファイルには書き出さずInfisicalで一元管理し、`infisical`プロバイダの`ephemeral`リソースをOIDC認証で呼び出す。
 - Cloudflare及びWranglerの環境種別は、デプロイ先検証環境を`staging`、本番環境を`prod`とする。
 - Infisicalの環境種別は、ローカル環境を`dev`、デプロイ先検証環境を`staging`、本番環境を`prod`とする。
