@@ -13,13 +13,11 @@ Launch Stadiumのプログラム一式、及びドキュメント。
 - staging版APIサーバー: https://genai-example-2-api-staging.lab.kurachiweb.com (公開APIのエンドポイントのみ外部公開)
 - staging版イベントサーバー: https://genai-example-2-event-staging.lab.kurachiweb.com
 - staging版画像配信用CDN: https://genai-example-2-images-staging.lab.kurachiweb.com
-- staging版非画像ファイル配信用CDN: https://genai-example-2-files-staging.lab.kurachiweb.com
 - prod版利用者側サイトURL: https://genai-example-2-client.lab.kurachiweb.com
 - prod版管理者側サイトURL: https://genai-example-2-admin.lab.kurachiweb.com
 - prod版APIサーバー: https://genai-example-2-api.lab.kurachiweb.com (公開APIのエンドポイントのみ外部公開)
 - prod版イベントサーバー: https://genai-example-2-event.lab.kurachiweb.com
 - prod版画像配信用CDN: https://genai-example-2-images.lab.kurachiweb.com
-- prod版非画像ファイル配信用CDN: https://genai-example-2-files.lab.kurachiweb.com
 
 ---
 
