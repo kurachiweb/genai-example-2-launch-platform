@@ -3,7 +3,9 @@
 ## Table of contents
 
 - API keys
+
 - Restricted API keys (RAKs)
+
 - IP restrictions
 - Incident response
 - Webhook security
@@ -43,7 +45,7 @@ Never build API endpoints or error pages that dump environment variables. In add
 
 ## Restricted API keys (RAKs)
 
-Use [restricted API keys](https://docs.stripe.com/keys/restricted-api-keys.md) (prefix `rk_`) instead of secret keys (prefix `sk_`) wherever possible. RAKs have only the permissions you assign, so a compromised RAK can do far less damage than a compromised secret key.
+Use [restricted API keys](https://docs.stripe.com/keys.md#manage-your-api-keys) (prefix `rk_`) instead of secret keys (prefix `sk_`) wherever possible. RAKs have only the permissions you assign, so a compromised RAK can do far less damage than a compromised secret key.
 
 Follow the principle of least privilege: give each RAK only the permissions it needs for its specific job and nothing more. Create a separate RAK for each service or use case.
 
@@ -51,7 +53,7 @@ Preferred migration approach:
 
 1. Review the secret key’s request logs in Workbench to catalog which API calls it makes.
 2. Create a RAK in test mode with matching permissions.
-3. Use the [Stripe CLI](https://docs.stripe.com/stripe-cli.md)’s `stripe logs tail` command to watch logs.
+3. Use the [Stripe CLI](https://docs.stripe.com/cli.md)’s `stripe logs tail` command to watch logs.
 4. Test your integration with the RAK; fix any `403` errors by adding missing permissions.
 5. Create the equivalent live-mode RAK and replace the secret key.
 6. Rotate or expire the old secret key once confident.
