@@ -64,7 +64,7 @@
 ### 画像処理
 
 - wasm-image-optimization(画像のデコード・フォーマット変換・リサイズ)
-- fast-xml-parser(SVGのパース、自前検索ルールによるスクリプトの検出)
+- fast-xml-parser(SVGの構文チェック・自前検索ルールによるスクリプトの検出)
 
 ### アーカイブ生成
 
