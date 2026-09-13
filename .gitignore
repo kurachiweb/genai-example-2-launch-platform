@@ -57,6 +57,12 @@ apps/email
 storybook-static
 *.tsbuildinfo
 
+# Viteが設定ファイル読み込み時に一時生成するファイル
+vite.config.ts.timestamp-*
+
+# ESLintのキャッシュ
+.eslintcache
+
 # テスト成果物
 # Bun(`bun test --coverage`のデフォルト出力先)
 coverage
