@@ -78,9 +78,11 @@ Claude拡張ファイル(エージェント・スキル・ルール・コマン�
 
 - Claude拡張ファイルが参照する別の拡張ファイルが存在しない場合は無視する。
 - Claude拡張ファイル内でNext.jsやNestJS特有の記述が含まれている場合があり、無視するかTanStack StartやHonoでの記述に変換して判断する。
-- Claude拡張ファイル内ではnpmやpnpm関連のコマンドが記載されているが、このプロジェクト内では全て代わりのbunコマンドを実行すること。
+- Claude拡張ファイル内ではnpmやpnpm関連のコマンドが記載されているが、本プロジェクトでは全て代わりのbunコマンドを実行すること。
 - npmパッケージの`framer-motion`は`motion`にリネームされているため、`motion/react`をインポートして利用する。`ecc:frontend-patterns`スキルが`framer-motion`を使ったサンプルコードを掲載しているが、それは古い情報である。
 - APIレスポンス形式やバリデーションエラー時ステータスコードは`ecc:api-design`スキルの内容をベストプラクティスとして採用する。`ecc:coding-standards`のAPIレスポンス形式や、`rules/common/patterns.md`のAPIレスポンスフォーマット説明、`rules/typescript/patterns.md`の`ApiResponse<T>`型は採用しない。
+- workerd環境では環境シークレット及び環境変数をWrangler設定に記載`env`バインディング経由で取得するため、多数のエージェント・スキル・ルールに記載されている`process.env`指定は採用しない。ただしViteやWranglerがビルド時に静的置換する`process.env.NODE_ENV`参照はこの方針の対象外である。
+- `.claude/rules/typescript/hooks.md`がPostToolUseフックを`~/.claude/settings.json`に設定すべきと記載しているが、本プロジェクトでは`.claude/settings.json`に設定する。
 - Stripe Payment Elementを使うためにはCheckout Sessions APIにて`ui_mode: 'elements'`オプションを使うこと。`stripe:stripe-best-practices`スキル内では`ui_mode: 'custom'`を使うよう案内しているが、それはリネーム前の古い情報である。
 - `cloudflare:wrangler`スキルはローカル開発シークレットの管理に`.dev.vars`ファイルを作成するよう案内しているが、本プロジェクトでは`.dev.vars`や`.env`を使わず、Infisicalで一元管理する。
 - `.claude/rules/common/development-workflow.md`が「Library docs second: Use Context7」と必須手順に定めているが、今回Context7 MCPは利用しない。
