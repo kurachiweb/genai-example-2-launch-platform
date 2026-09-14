@@ -3,12 +3,13 @@
 # Debian 13(trixie)がベース
 ARG BUN_IMAGE_TAG=1.4.2-slim
 
-# OpenTofu・Wranglerを導入する専用ビルドステージ。
+# OpenTofu・Wrangler・Stripe CLIを導入する専用ビルドステージ。
 # 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
 FROM oven/bun:${BUN_IMAGE_TAG} AS tools-builder
 ARG OPENTOFU_VERSION=1.12.6
 ARG WRANGLER_VERSION=4.131.1
+ARG STRIPE_CLI_VERSION=1.50.11
 
 # OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
 # apt-getのダウンロードキャッシュはキャッシュマウントでビルド間永続化し再ダウンロードを避ける。公式Debianベースイメージが標準で有効化するdocker-cleanフックはapt-get実行直後にキャッシュを削除するため、キャッシュマウントを機能させるには無効化が必要。
@@ -30,8 +31,11 @@ RUN --mount=type=cache,id=apt-lists-tools-builder,target=/var/lib/apt/lists,shar
 
 # Wranglerを導入する。
 # BUN_INSTALLを固定パスにすることで、実行ファイルへのシンボリックリンク(`/usr/local/bin`配下)の参照先を`/out`へのCOPY後も維持する。
-ENV BUN_INSTALL=/opt/wrangler
-RUN bun install -g "wrangler@${WRANGLER_VERSION}"
+RUN BUN_INSTALL=/opt/wrangler bun install -g "wrangler@${WRANGLER_VERSION}"
+
+# Stripe CLIを導入する。
+# これは`stripe:stripe-docs`スキルが前提とする`stripe docs`コマンドに必要である。
+RUN BUN_INSTALL=/opt/stripe-cli bun install -g --trust "@stripe/cli@${STRIPE_CLI_VERSION}"
 
 # GitHub CLI・Betterleaks・Mailpitを導入する専用ビルドステージ。
 # Betterleaks・MailpitはAPT・npmレジストリのいずれにも公式パッケージが存在せず、GitHub CLIはAPT公式リポジトリ(cli.github.com/packages)が最新版のみ保持しバージョン固定インストールができないため、いずれも公式GitHub Releasesのバイナリを直接取得する。
@@ -94,9 +98,10 @@ RUN --mount=type=cache,id=apt-lists-final,target=/var/lib/apt/lists,sharing=lock
 # OpenTofuを導入する。バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
 COPY --from=tools-builder /out/ /
 
-# Wranglerを導入する。bunのグローバルインストールはパッケージ本体を`/opt/wrangler`へ、実行ファイルへのシンボリックリンクを`/usr/local/bin`へ配置するため、両方をコピーする。
+# Wrangler・Stripe CLIを導入する。bunのグローバルインストールはパッケージ本体を`/opt/wrangler`・`/opt/stripe-cli`へ、実行ファイルへのシンボリックリンクを`/usr/local/bin`へ配置するため、いずれもコピーする。
 # `COPY`は単一ファイルを指定するとシンボリックリンクを実体化(参照先の内容へ展開)してしまうため、ディレクトリ単位でコピーしリンクを維持する。
 COPY --from=tools-builder /opt/wrangler /opt/wrangler
+COPY --from=tools-builder /opt/stripe-cli /opt/stripe-cli
 COPY --from=tools-builder /usr/local/bin/ /usr/local/bin/
 
 # GitHub CLI・Betterleaks・Mailpit・RTKを導入する。各バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。

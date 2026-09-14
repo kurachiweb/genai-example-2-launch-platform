@@ -51,6 +51,7 @@ services:
       - "48046:48046" # Storybookコンポーネントカタログ
     environment:
       WRANGLER_SEND_METRICS: "false"
+      STRIPE_CLI_TELEMETRY_OPTOUT: "1"
       MP_MAX_MESSAGES: "5000"
       MP_DATABASE: /workspace/apps/email/mailpit.db
 
