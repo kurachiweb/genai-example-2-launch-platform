@@ -120,12 +120,12 @@
     ```sh
     # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
     cd /workspace/apps/client
-    NODE_ENV=production infisical --telemetry=false run --env dev -- bunx vite build
-    NODE_ENV=production infisical --telemetry=false run --env dev -- bunx vite preview --port 48044 --host 0.0.0.0
+    infisical --telemetry=false run --env dev -- bunx vite build
+    infisical --telemetry=false run --env dev -- bunx vite preview --port 48044 --host 0.0.0.0
 
     cd /workspace/apps/admin
-    NODE_ENV=production infisical --telemetry=false run --env dev -- bunx vite build
-    NODE_ENV=production infisical --telemetry=false run --env dev -- bunx vite preview --port 48045 --host 0.0.0.0
+    infisical --telemetry=false run --env dev -- bunx vite build
+    infisical --telemetry=false run --env dev -- bunx vite preview --port 48045 --host 0.0.0.0
     ```
 
 ### ローカルポート一覧
