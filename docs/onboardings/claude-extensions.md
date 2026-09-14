@@ -15,7 +15,7 @@ skillsディレクトリ内には通常のスキル定義があるほか、プ�
     ├── developer-kit-typescript/{agents,skills}/
     ├── cloudflare/skills/
     ├── cc-sdd/skills/
-    ├── hono/SKILL.md
+    ├── anthropics-frontend-design/SKILL.md
     └── ...
 ```
 
@@ -326,7 +326,7 @@ Claudeが常時コンテキストとして参照するガイドライン。エ�
 | `hooks.md`          | Webフック設定           | Prettier・ESLint・TypeScript・StylelintのPostToolUseフック・800行超えブロックフック     |
 | `patterns.md`       | Webパターン             | Compound Components・Container/Presentational分割・URLステート・楽観的更新              |
 | `performance.md`    | Webパフォーマンス       | CWV目標値(LCP < 2.5s等)・バンドル予算・画像最適化・フォント読み込み戦略                 |
-| `security.md`       | Webセキュリティ         | ノンスベースCSP・XSS防止・HTTPSセキュリティヘッダ・CSRF保護                           |
+| `security.md`       | Webセキュリティ         | ノンスベースCSP・XSS防止・HTTPSセキュリティヘッダ・CSRF保護                             |
 | `testing.md`        | Webテスト               | 視覚リグレッション・アクセシビリティ・クロスブラウザ・レスポンシブの優先順位            |
 
 ---

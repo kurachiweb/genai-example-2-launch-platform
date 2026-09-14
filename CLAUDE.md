@@ -38,7 +38,7 @@
 - ESLintなどの設定ファイルは`*.js`ではなく`*.ts`として作成すること。
 - シードデータやドキュメント内のサンプルデータにおいて、URLのgTLD部やメールアドレスのドメイン部は`.example`のみを使用すること。
 - JavaScriptにおいて`isNaN`ではなく`Number.isNaN`を使うなど新しい記法を選び、非推奨の記法は決して使わないこと。
-- 日時を表示するHTML要素には、title属性及びdate.toString()で文字列化した値を設定すること。
+- HTML要素で日時を表示する場合は必ず`<time>`要素を使い、`datetime`属性値としてISO形式の日時文字列を設定すること。
 - Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・R2系コマンドでは`--local`オプションも付けること。
   - `apps/api`と`apps/event`のWrangler設定において、`database_id`・R2バケット名、及び`wrangler dev`が優先して使う`preview_database_id`・`preview_id`・`preview_bucket_name`は、両アプリで同一の値にすること。
 - TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。

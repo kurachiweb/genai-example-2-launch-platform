@@ -6,9 +6,9 @@
   - ローカル環境 ... WranglerのD1ローカルモード(`wrangler dev --persist-to` / `wrangler d1 execute --local --persist-to`)
   - デプロイ先 ... Cloudflare D1
 
-## バックエンド(API)
+## バックエンド
 
-### フレームワーク
+### バックエンド側フレームワーク
 
 - Hono
 - TypeScript
@@ -17,7 +17,7 @@
 
 - Inversify
 
-### スキーマ
+### バックエンド側スキーマ
 
 - GraphQL
 - GraphQL Yoga
@@ -84,14 +84,14 @@
 
 ## フロントエンド
 
-### フレームワーク
+### フロントエンド側フレームワーク
 
 - TanStack Start(ルーティングはTanStack Router)
 - @cloudflare/vite-plugin
 - React
 - TypeScript
 
-### スキーマ
+### フロントエンド側スキーマ
 
 - GraphQL Code Generator(client-presetによりクエリからTypedDocumentNodeと型を生成)
 
