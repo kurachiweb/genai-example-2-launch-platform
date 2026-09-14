@@ -8,7 +8,7 @@ ARG BUN_IMAGE_TAG=1.4.2-slim
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
 FROM oven/bun:${BUN_IMAGE_TAG} AS tools-builder
 ARG OPENTOFU_VERSION=1.12.6
-ARG WRANGLER_VERSION=4.130.0
+ARG WRANGLER_VERSION=4.131.1
 
 # OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
 # apt-getのダウンロードキャッシュはキャッシュマウントでビルド間永続化し再ダウンロードを避ける。公式Debianベースイメージが標準で有効化するdocker-cleanフックはapt-get実行直後にキャッシュを削除するため、キャッシュマウントを機能させるには無効化が必要。
@@ -41,7 +41,7 @@ ARG TARGETARCH
 ARG GITHUB_VERSION=2.100.0
 ARG BETTERLEAKS_VERSION=1.8.1
 ARG MAILPIT_VERSION=1.31.1
-ARG RTK_VERSION=0.48.0
+ARG RTK_VERSION=0.49.0
 RUN --mount=type=cache,id=apt-lists-release-binaries-builder,target=/var/lib/apt/lists,sharing=locked \
   --mount=type=cache,id=apt-cache-release-binaries-builder,target=/var/cache/apt,sharing=locked \
   rm -f /etc/apt/apt.conf.d/docker-clean \
@@ -77,7 +77,7 @@ RUN case "${TARGETARCH}" in amd64) RTK_TARGET=x86_64-unknown-linux-musl ;; arm64
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
 FROM oven/bun:${BUN_IMAGE_TAG}
-ARG INFISICAL_VERSION=0.43.130
+ARG INFISICAL_VERSION=0.43.132
 ARG PLAYWRIGHT_VERSION=1.63.0
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。
