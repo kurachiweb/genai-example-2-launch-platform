@@ -28,8 +28,8 @@ flowchart LR
     L[ローンチ日を選び<br>プロダクトを投稿] --> Q[予選<br>ローンチ当日の1対1マッチ]
     Q -- 勝利 --> D[ディレクトリ掲載]
     Q -- 敗北 --> R[再ローンチ<br>7日後 / Ultrasは2日後]
-    D --> W[Product of the Week<br>決定トーナメント<br>参加費 or Ultras]
-    W -- 優勝 --> Y[Product of the Year<br>決定トーナメント<br>参加費 or Ultras]
+    D --> W[Product of the Week<br>決定トーナメント<br>参加費またはUltras]
+    W -- 優勝 --> Y[Product of the Year<br>決定トーナメント<br>参加費またはUltras]
     Y -- 優勝 --> POY[Product of the Year賞]
     W -- 優勝 --> POW[Product of the Week賞]
 ```
