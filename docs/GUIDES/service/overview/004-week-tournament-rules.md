@@ -151,25 +151,25 @@ Upvote数が多いBよりも、ローンチ日が早いIが先に並ぶ点に注
 
 ```mermaid
 flowchart LR
-    subgraph R1[1回戦・09-15(火)]
-        M1[M1: E×F]
-        M2[M2: G×H]
-        M3[M3: I×B]
-        M4[M4: J×K]
-        M5[M5: L×M]
+    subgraph R1["1回戦・09-15(火)"]
+        M1["M1: E×F"]
+        M2["M2: G×H"]
+        M3["M3: I×B"]
+        M4["M4: J×K"]
+        M5["M5: L×M"]
     end
-    subgraph R2[2回戦・09-16(水)]
-        M6[M6: A×C]
-        M7[M7: D×M1勝者]
-        M8[M8: M2勝者×M3勝者]
-        M9[M9: M4勝者×M5勝者]
+    subgraph R2["2回戦・09-16(水)"]
+        M6["M6: A×C"]
+        M7["M7: D×M1勝者"]
+        M8["M8: M2勝者×M3勝者"]
+        M9["M9: M4勝者×M5勝者"]
     end
-    subgraph R3[準決勝・09-17(木)]
-        M10[M10: M6勝者×M7勝者]
-        M11[M11: M8勝者×M9勝者]
+    subgraph R3["準決勝・09-17(木)"]
+        M10["M10: M6勝者×M7勝者"]
+        M11["M11: M8勝者×M9勝者"]
     end
-    subgraph R4[決勝・09-18(金)]
-        M12[M12: M10勝者×M11勝者]
+    subgraph R4["決勝・09-18(金)"]
+        M12["M12: M10勝者×M11勝者"]
     end
     M1 --> M7
     M2 --> M8
