@@ -5,14 +5,14 @@
 
 ## 全体方針
 
-| 項目               | 方針                                                                                                     |
-| ------------------ | -------------------------------------------------------------------------------------------------------- |
-| 形式               | ZIPアーカイブ1つ。JSONはUTF-8(BOMなし)、改行LF                                                           |
-| JSONの分割         | エンティティ種別ごとに1ファイル。`manifest.json`で一覧する                                               |
-| マークダウン本文   | JSONには相対パスのみを持ち、本文は`.md`ファイルへ分離する                                                |
-| 画像・添付ファイル | 原本をそのまま同梱する。ファイル名はアップロード時の元ファイル名                                         |
-| 日時               | ISO 8601のUTC表記(`2026-09-07T08:00:00.000Z`)。基準時刻(UTC-08:00)の「日付」は`YYYY-MM-DD`               |
-| ID                 | 各エンティティのULID。他ファイルからの参照はULIDで行う                                                   |
+| 項目               | 方針                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| 形式               | ZIPアーカイブ1つ。JSONはUTF-8(BOMなし)、改行LF                                                            |
+| JSONの分割         | エンティティ種別ごとに1ファイル。`manifest.json`で一覧する                                                |
+| マークダウン本文   | JSONには相対パスのみを持ち、本文は`.md`ファイルへ分離する                                                 |
+| 画像・添付ファイル | 原本をそのまま同梱する。ファイル名はアップロード時の元ファイル名                                          |
+| 日時               | ISO 8601のUTC表記(`2026-09-07T08:00:00.000Z`)。基準時刻(UTC-08:00)の「日付」は`YYYY-MM-DD`                |
+| ID                 | 各エンティティのULID。他ファイルからの参照はULIDで行う                                                    |
 | 秘密情報           | パスワードハッシュ、セッション、TOTPシークレット、リカバリコード、APIキー平文、配信停止トークンは含めない |
 | 論理削除済みデータ | 自身で削除したコメント等は`deletedAt`付きで含める。管理者により非公開化されたものは本文を含めない         |
 
@@ -110,15 +110,15 @@ Launch Stadiumをご利用いただきありがとうございます。
 }
 ```
 
-| 項目            | 型       | 説明                                                                 |
-| --------------- | -------- | -------------------------------------------------------------------- |
-| `schemaVersion` | 整数     | 本書で定義する構造のバージョン。後方互換性のない変更時に加算する     |
-| `service`       | 文字列   | 固定値`Launch Stadium`                                               |
-| `requestedAt`   | 日時     | ユーザーがエクスポートを要求した日時                                 |
-| `generatedAt`   | 日時     | ZIP生成が完了した日時                                                |
-| `user.id`       | ULID     | ユーザーの主キー                                                     |
-| `user.handle`   | 文字列   | エクスポート時点のハンドル文字列                                     |
-| `files[]`       | 配列     | 同梱するJSONファイルの一覧。`count`は配列要素数(単一オブジェクトは1) |
+| 項目            | 型     | 説明                                                                 |
+| --------------- | ------ | -------------------------------------------------------------------- |
+| `schemaVersion` | 整数   | 本書で定義する構造のバージョン。後方互換性のない変更時に加算する     |
+| `service`       | 文字列 | 固定値`Launch Stadium`                                               |
+| `requestedAt`   | 日時   | ユーザーがエクスポートを要求した日時                                 |
+| `generatedAt`   | 日時   | ZIP生成が完了した日時                                                |
+| `user.id`       | ULID   | ユーザーの主キー                                                     |
+| `user.handle`   | 文字列 | エクスポート時点のハンドル文字列                                     |
+| `files[]`       | 配列   | 同梱するJSONファイルの一覧。`count`は配列要素数(単一オブジェクトは1) |
 
 ## account.json
 
@@ -163,27 +163,27 @@ Launch Stadiumをご利用いただきありがとうございます。
 }
 ```
 
-| 項目                                   | 型             | 説明                                                                                       |
-| -------------------------------------- | -------------- | ------------------------------------------------------------------------------------------ |
-| `email`                                | 文字列         | 確認済みのメールアドレス                                                                   |
-| `emailVerifiedAt`                      | 日時           | メールアドレス確認完了日時                                                                 |
-| `registeredAt`                         | 日時           | ユーザー登録日時                                                                           |
-| `mfaEnabled`                           | 真偽値         | TOTP多要素認証の有効状態。シークレットやリカバリコードは含めない                           |
-| `plan`                                 | オブジェクト/null | Ultras加入履歴が無ければ`null`                                                          |
-| `plan.name`                            | 文字列         | 固定値`ultras`                                                                             |
-| `plan.status`                          | 文字列         | `active`(有効)、`canceled`(解約済みで期間末まで有効)、`ended`(終了)                        |
-| `plan.startedAt`                       | 日時           | 加入日時                                                                                   |
-| `plan.currentPeriodEndsAt`             | 日時           | 現在の課金期間の終了日時                                                                   |
-| `plan.canceledAt`                      | 日時/null      | 解約操作の日時                                                                             |
-| `notificationSettings.matchPreview`    | 真偽値         | マッチ開始予告メール(FR-NOTIF-001)の受信可否                                               |
-| `notificationSettings.matchResult`     | 真偽値         | 勝敗結果通知メール(FR-NOTIF-002)の受信可否                                                 |
-| `notificationSettings.followedUserMatch` | 真偽値       | フォロー中ユーザーのマッチ開催通知(FR-NOTIF-003)の受信可否                                 |
-| `notificationSettings.followedUserAward` | 真偽値       | フォロー中ユーザーの受賞結果通知(FR-NOTIF-004)の受信可否                                   |
-| `notificationSettings.suppressedReason` | 文字列/null   | バウンス等により送信対象外の場合`bounce`・`complaint`・`rejected`のいずれか。通常は`null`  |
-| `apiKeys[].id`                         | ULID           | APIキーのID                                                                                |
-| `apiKeys[].name`                       | 文字列         | ユーザーが付けたキーの名前                                                                 |
-| `apiKeys[].scopes`                     | オブジェクト   | 機能ごとの権限。値は`none`・`read`・`read_write`(`read_write`は`profile`と`productDescriptions`のみ) |
-| `apiKeys[].createdAt`                  | 日時           | 発行日時。キーの平文とハッシュは含めない                                                   |
+| 項目                                     | 型                | 説明                                                                                                 |
+| ---------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------- |
+| `email`                                  | 文字列            | 確認済みのメールアドレス                                                                             |
+| `emailVerifiedAt`                        | 日時              | メールアドレス確認完了日時                                                                           |
+| `registeredAt`                           | 日時              | ユーザー登録日時                                                                                     |
+| `mfaEnabled`                             | 真偽値            | TOTP多要素認証の有効状態。シークレットやリカバリコードは含めない                                     |
+| `plan`                                   | オブジェクト/null | Ultras加入履歴が無ければ`null`                                                                       |
+| `plan.name`                              | 文字列            | 固定値`ultras`                                                                                       |
+| `plan.status`                            | 文字列            | `active`(有効)、`canceled`(解約済みで期間末まで有効)、`ended`(終了)                                  |
+| `plan.startedAt`                         | 日時              | 加入日時                                                                                             |
+| `plan.currentPeriodEndsAt`               | 日時              | 現在の課金期間の終了日時                                                                             |
+| `plan.canceledAt`                        | 日時/null         | 解約操作の日時                                                                                       |
+| `notificationSettings.matchPreview`      | 真偽値            | マッチ開始予告メール(FR-NOTIF-001)の受信可否                                                         |
+| `notificationSettings.matchResult`       | 真偽値            | 勝敗結果通知メール(FR-NOTIF-002)の受信可否                                                           |
+| `notificationSettings.followedUserMatch` | 真偽値            | フォロー中ユーザーのマッチ開催通知(FR-NOTIF-003)の受信可否                                           |
+| `notificationSettings.followedUserAward` | 真偽値            | フォロー中ユーザーの受賞結果通知(FR-NOTIF-004)の受信可否                                             |
+| `notificationSettings.suppressedReason`  | 文字列/null       | バウンス等により送信対象外の場合`bounce`・`complaint`・`rejected`のいずれか。通常は`null`            |
+| `apiKeys[].id`                           | ULID              | APIキーのID                                                                                          |
+| `apiKeys[].name`                         | 文字列            | ユーザーが付けたキーの名前                                                                           |
+| `apiKeys[].scopes`                       | オブジェクト      | 機能ごとの権限。値は`none`・`read`・`read_write`(`read_write`は`profile`と`productDescriptions`のみ) |
+| `apiKeys[].createdAt`                    | 日時              | 発行日時。キーの平文とハッシュは含めない                                                             |
 
 ## profile.json
 
@@ -202,15 +202,15 @@ Launch Stadiumをご利用いただきありがとうございます。
 }
 ```
 
-| 項目           | 型          | 説明                                                             |
-| -------------- | ----------- | ---------------------------------------------------------------- |
-| `handle`       | 文字列      | ハンドル文字列(25文字以内)                                       |
-| `nickname`     | 文字列      | ニックネーム(25文字以内)                                         |
-| `headline`     | 文字列/null | ヘッドライン(50文字以内)                                         |
-| `bioPath`      | 文字列/null | 自己紹介マークダウンのパス。未設定なら`null`                     |
-| `avatarPath`   | 文字列/null | プロフィール画像のパス。未設定なら`null`                         |
-| `websites[]`   | 配列        | 外部WebサイトURLと表示名                                         |
-| `updatedAt`    | 日時        | プロフィール最終更新日時                                         |
+| 項目         | 型          | 説明                                         |
+| ------------ | ----------- | -------------------------------------------- |
+| `handle`     | 文字列      | ハンドル文字列(25文字以内)                   |
+| `nickname`   | 文字列      | ニックネーム(25文字以内)                     |
+| `headline`   | 文字列/null | ヘッドライン(50文字以内)                     |
+| `bioPath`    | 文字列/null | 自己紹介マークダウンのパス。未設定なら`null` |
+| `avatarPath` | 文字列/null | プロフィール画像のパス。未設定なら`null`     |
+| `websites[]` | 配列        | 外部WebサイトURLと表示名                     |
+| `updatedAt`  | 日時        | プロフィール最終更新日時                     |
 
 ## products.json
 
@@ -239,21 +239,21 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目                | 型          | 説明                                                                             |
-| ------------------- | ----------- | -------------------------------------------------------------------------------- |
-| `id`                | ULID        | プロダクトID                                                                     |
-| `handle`            | 文字列      | ハンドル文字列(50文字以内)                                                       |
-| `name`              | 文字列      | 名称(50文字以内)                                                                 |
-| `tagline`           | 文字列      | タグライン(100文字以内)                                                          |
-| `category`          | 文字列      | エクスポート時点のカテゴリ名                                                     |
-| `websiteUrl`        | 文字列      | 外部WebサイトURL                                                                 |
-| `descriptionPath`   | 文字列      | 説明文マークダウンのパス                                                         |
-| `logoPath`          | 文字列      | ロゴ画像のパス                                                                   |
-| `screenshotPaths[]` | 配列        | スクリーンショットのパス。表示順                                                 |
-| `createdAt`         | 日時        | 登録日時                                                                         |
-| `updatedAt`         | 日時        | 最終更新日時                                                                     |
-| `deletedAt`         | 日時/null   | 自身で論理削除した日時                                                           |
-| `hiddenByAdmin`     | 真偽値      | 管理者により非公開化中なら`true`。理由は含めない(通知メールで別途通知済み)       |
+| 項目                | 型        | 説明                                                                       |
+| ------------------- | --------- | -------------------------------------------------------------------------- |
+| `id`                | ULID      | プロダクトID                                                               |
+| `handle`            | 文字列    | ハンドル文字列(50文字以内)                                                 |
+| `name`              | 文字列    | 名称(50文字以内)                                                           |
+| `tagline`           | 文字列    | タグライン(100文字以内)                                                    |
+| `category`          | 文字列    | エクスポート時点のカテゴリ名                                               |
+| `websiteUrl`        | 文字列    | 外部WebサイトURL                                                           |
+| `descriptionPath`   | 文字列    | 説明文マークダウンのパス                                                   |
+| `logoPath`          | 文字列    | ロゴ画像のパス                                                             |
+| `screenshotPaths[]` | 配列      | スクリーンショットのパス。表示順                                           |
+| `createdAt`         | 日時      | 登録日時                                                                   |
+| `updatedAt`         | 日時      | 最終更新日時                                                               |
+| `deletedAt`         | 日時/null | 自身で論理削除した日時                                                     |
+| `hiddenByAdmin`     | 真偽値    | 管理者により非公開化中なら`true`。理由は含めない(通知メールで別途通知済み) |
 
 ## launches.json
 
@@ -295,21 +295,21 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目                           | 型            | 説明                                                                                                 |
-| ------------------------------ | ------------- | ---------------------------------------------------------------------------------------------------- |
-| `id`                           | ULID          | ローンチID                                                                                           |
-| `productId`                    | ULID          | `products.json`の`id`                                                                                |
-| `launchDate`                   | 日付          | 基準時刻でのローンチ日                                                                               |
-| `status`                       | 文字列        | `scheduled`(予定)、`paired`(ペアリング済み)、`in_progress`(マッチ中)、`finished`(終了)、`canceled`(取消) |
-| `matches[].kind`               | 文字列        | `qualifier`(予選)、`week`(Weekトーナメント)、`year`(Yearトーナメント)                                |
-| `matches[].round`              | 整数/null     | トーナメントのラウンド番号(1回戦=1)。予選は`null`                                                    |
-| `matches[].date`               | 日付          | マッチ実施日                                                                                         |
-| `matches[].opponent`           | オブジェクト/null | 対戦相手。不戦勝は`null`。相手の退会・非公開化後も当時の名称とハンドルを保持                     |
-| `matches[].upvoteCount`        | 整数          | 自プロダクトの確定Upvote数                                                                           |
-| `matches[].opponentUpvoteCount` | 整数         | 対戦相手の確定Upvote数。不戦勝は`0`                                                                  |
-| `matches[].lastUpvotedAt`      | 日時/null     | 自プロダクトの最終Upvote時刻                                                                         |
-| `matches[].result`             | 文字列        | `won`、`lost`、`bye`(不戦勝)、`walkover`(相手の退会・停止・非公開化による勝利)                       |
-| `awards[]`                     | 配列          | 受賞。`{"kind": "product_of_the_week", "period": "2026-W37"}`または`{"kind": "product_of_the_year", "period": "2026"}` |
+| 項目                            | 型                | 説明                                                                                                                   |
+| ------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `id`                            | ULID              | ローンチID                                                                                                             |
+| `productId`                     | ULID              | `products.json`の`id`                                                                                                  |
+| `launchDate`                    | 日付              | 基準時刻でのローンチ日                                                                                                 |
+| `status`                        | 文字列            | `scheduled`(予定)、`paired`(ペアリング済み)、`in_progress`(マッチ中)、`finished`(終了)、`canceled`(取消)               |
+| `matches[].kind`                | 文字列            | `qualifier`(予選)、`week`(Weekトーナメント)、`year`(Yearトーナメント)                                                  |
+| `matches[].round`               | 整数/null         | トーナメントのラウンド番号(1回戦=1)。予選は`null`                                                                      |
+| `matches[].date`                | 日付              | マッチ実施日                                                                                                           |
+| `matches[].opponent`            | オブジェクト/null | 対戦相手。不戦勝は`null`。相手の退会・非公開化後も当時の名称とハンドルを保持                                           |
+| `matches[].upvoteCount`         | 整数              | 自プロダクトの確定Upvote数                                                                                             |
+| `matches[].opponentUpvoteCount` | 整数              | 対戦相手の確定Upvote数。不戦勝は`0`                                                                                    |
+| `matches[].lastUpvotedAt`       | 日時/null         | 自プロダクトの最終Upvote時刻                                                                                           |
+| `matches[].result`              | 文字列            | `won`、`lost`、`bye`(不戦勝)、`walkover`(相手の退会・停止・非公開化による勝利)                                         |
+| `awards[]`                      | 配列              | 受賞。`{"kind": "product_of_the_week", "period": "2026-W37"}`または`{"kind": "product_of_the_year", "period": "2026"}` |
 
 ## comments.json
 
@@ -332,15 +332,15 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目              | 型          | 説明                                                                       |
-| ----------------- | ----------- | -------------------------------------------------------------------------- |
-| `launchId`        | ULID        | コメント先のローンチID                                                     |
-| `product`         | オブジェクト | コメント先プロダクトの名称とハンドル                                       |
-| `parentCommentId` | ULID/null   | 返信先コメントID。トップレベルは`null`(最大3階層)                          |
-| `bodyPath`        | 文字列/null | 本文マークダウンのパス。管理者非公開化中は`null`                           |
-| `ratingScore`     | 整数/null   | コメントと併せて付けた5段階評価(1〜5)。付けていなければ`null`              |
-| `deletedAt`       | 日時/null   | 自身で削除した日時                                                         |
-| `hiddenByAdmin`   | 真偽値      | 管理者により非公開化中なら`true`                                           |
+| 項目              | 型           | 説明                                                          |
+| ----------------- | ------------ | ------------------------------------------------------------- |
+| `launchId`        | ULID         | コメント先のローンチID                                        |
+| `product`         | オブジェクト | コメント先プロダクトの名称とハンドル                          |
+| `parentCommentId` | ULID/null    | 返信先コメントID。トップレベルは`null`(最大3階層)             |
+| `bodyPath`        | 文字列/null  | 本文マークダウンのパス。管理者非公開化中は`null`              |
+| `ratingScore`     | 整数/null    | コメントと併せて付けた5段階評価(1〜5)。付けていなければ`null` |
+| `deletedAt`       | 日時/null    | 自身で削除した日時                                            |
+| `hiddenByAdmin`   | 真偽値       | 管理者により非公開化中なら`true`                              |
 
 ## upvotes.json
 
@@ -359,14 +359,14 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目         | 型          | 説明                                                    |
-| ------------ | ----------- | ------------------------------------------------------- |
-| `matchId`    | ULID        | UpvoteしたマッチのID                                    |
-| `matchKind`  | 文字列      | `qualifier`・`week`・`year`                             |
-| `matchDate`  | 日付        | マッチ実施日                                            |
-| `product`    | オブジェクト | Upvoteしたプロダクトの名称とハンドル                    |
-| `upvotedAt`  | 日時        | Upvote日時                                              |
-| `canceledAt` | 日時/null   | 取り消した日時                                          |
+| 項目         | 型           | 説明                                 |
+| ------------ | ------------ | ------------------------------------ |
+| `matchId`    | ULID         | UpvoteしたマッチのID                 |
+| `matchKind`  | 文字列       | `qualifier`・`week`・`year`          |
+| `matchDate`  | 日付         | マッチ実施日                         |
+| `product`    | オブジェクト | Upvoteしたプロダクトの名称とハンドル |
+| `upvotedAt`  | 日時         | Upvote日時                           |
+| `canceledAt` | 日時/null    | 取り消した日時                       |
 
 ## ratings.json
 
@@ -384,10 +384,10 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目                 | 型      | 説明                                             |
-| -------------------- | ------- | ------------------------------------------------ |
-| `score`              | 整数    | 1〜5                                             |
-| `invalidatedByAdmin` | 真偽値  | 管理者により無効化中なら`true`                   |
+| 項目                 | 型     | 説明                           |
+| -------------------- | ------ | ------------------------------ |
+| `score`              | 整数   | 1〜5                           |
+| `invalidatedByAdmin` | 真偽値 | 管理者により無効化中なら`true` |
 
 ## follows.json
 
@@ -419,12 +419,12 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目         | 型     | 説明                                                                              |
-| ------------ | ------ | --------------------------------------------------------------------------------- |
-| `targetType` | 文字列 | `user`・`product`・`comment`                                                      |
-| `targetRef`  | 文字列 | ユーザーとプロダクトはハンドル文字列、コメントはコメントID                        |
-| `category`   | 文字列 | 通報時点の通報カテゴリ名                                                          |
-| `reason`     | 文字列 | 入力した理由                                                                      |
+| 項目         | 型     | 説明                                                       |
+| ------------ | ------ | ---------------------------------------------------------- |
+| `targetType` | 文字列 | `user`・`product`・`comment`                               |
+| `targetRef`  | 文字列 | ユーザーとプロダクトはハンドル文字列、コメントはコメントID |
+| `category`   | 文字列 | 通報時点の通報カテゴリ名                                   |
+| `reason`     | 文字列 | 入力した理由                                               |
 
 対応ステータスや管理者の判断結果は含めない。
 
@@ -467,14 +467,14 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目                       | 型          | 説明                                                                  |
-| -------------------------- | ----------- | --------------------------------------------------------------------- |
-| `category`                 | 文字列      | 問い合わせ時点のカテゴリ名                                            |
+| 項目                       | 型          | 説明                                                                        |
+| -------------------------- | ----------- | --------------------------------------------------------------------------- |
+| `category`                 | 文字列      | 問い合わせ時点のカテゴリ名                                                  |
 | `status`                   | 文字列      | `open`(未対応)、`in_progress`(対応中)、`resolved`(対応済)、`rejected`(却下) |
-| `messages[].sender`        | 文字列      | `user`(自身)、`admin`(管理者)                                         |
-| `messages[].adminNickname` | 文字列/null | 管理者返信時のニックネーム。管理者が削除済みなら`null`                |
-| `messages[].body`          | 文字列      | メッセージ本文(プレーンテキスト)                                      |
-| `messages[].attachments[]` | 配列        | 添付ファイルのパス・MIMEタイプ・バイト数。管理者の添付も含める        |
+| `messages[].sender`        | 文字列      | `user`(自身)、`admin`(管理者)                                               |
+| `messages[].adminNickname` | 文字列/null | 管理者返信時のニックネーム。管理者が削除済みなら`null`                      |
+| `messages[].body`          | 文字列      | メッセージ本文(プレーンテキスト)                                            |
+| `messages[].attachments[]` | 配列        | 添付ファイルのパス・MIMEタイプ・バイト数。管理者の添付も含める              |
 
 ## sponsorships.json
 
@@ -494,14 +494,14 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目        | 型     | 説明                                                                                   |
-| ----------- | ------ | -------------------------------------------------------------------------------------- |
-| `tier`      | 文字列 | `silver`・`gold`・`legend`                                                             |
-| `startsOn`  | 日付   | 掲載開始日(基準時刻)                                                                   |
-| `endsOn`    | 日付   | 掲載終了日(含む)                                                                       |
-| `days`      | 整数   | 掲載日数(決済の数量)                                                                   |
-| `status`    | 文字列 | `pending_payment`(未決済)、`scheduled`(掲載前)、`active`(掲載中)、`ended`(終了)、`terminated`(管理者による強制終了) |
-| `paymentId` | ULID/null | `payments.json`の`id`。未決済なら`null`                                             |
+| 項目        | 型        | 説明                                                                                                                |
+| ----------- | --------- | ------------------------------------------------------------------------------------------------------------------- |
+| `tier`      | 文字列    | `silver`・`gold`・`legend`                                                                                          |
+| `startsOn`  | 日付      | 掲載開始日(基準時刻)                                                                                                |
+| `endsOn`    | 日付      | 掲載終了日(含む)                                                                                                    |
+| `days`      | 整数      | 掲載日数(決済の数量)                                                                                                |
+| `status`    | 文字列    | `pending_payment`(未決済)、`scheduled`(掲載前)、`active`(掲載中)、`ended`(終了)、`terminated`(管理者による強制終了) |
+| `paymentId` | ULID/null | `payments.json`の`id`。未決済なら`null`                                                                             |
 
 ## payments.json
 
@@ -548,17 +548,17 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目              | 型          | 説明                                                                                                   |
-| ----------------- | ----------- | ------------------------------------------------------------------------------------------------------ |
-| `kind`            | 文字列      | `one_time`(都度決済)、`subscription`(定期課金の請求)、`refund`(返金)、`dispute`(チャージバック)       |
-| `purpose`         | 文字列      | `week_tournament_entry`・`year_tournament_entry`・`sponsorship`・`ultras`                              |
-| `amount`          | 整数        | 最小通貨単位の金額。返金・チャージバックは負数                                                         |
-| `currency`        | 文字列      | ISO 4217小文字。`usd`固定                                                                              |
-| `quantity`        | 整数/null   | 数量(スポンサー広告は日数)。返金等は`null`                                                             |
-| `status`          | 文字列      | `succeeded`・`failed`・`pending`・`disputed`・`dispute_won`・`dispute_lost`                            |
-| `stripeReference` | 文字列      | Stripe側のオブジェクトID(Checkout Session・Invoice・Refund・Dispute)。ユーザーがStripe領収書と突合するために持つ |
-| `relatedId`       | ULID/null   | 決済対象のローンチID(トーナメント参加費)またはスポンサー広告ID                                         |
-| `occurredAt`      | 日時        | Webhookイベントに含まれる発生時刻                                                                      |
+| 項目              | 型        | 説明                                                                                                             |
+| ----------------- | --------- | ---------------------------------------------------------------------------------------------------------------- |
+| `kind`            | 文字列    | `one_time`(都度決済)、`subscription`(定期課金の請求)、`refund`(返金)、`dispute`(チャージバック)                  |
+| `purpose`         | 文字列    | `week_tournament_entry`・`year_tournament_entry`・`sponsorship`・`ultras`                                        |
+| `amount`          | 整数      | 最小通貨単位の金額。返金・チャージバックは負数                                                                   |
+| `currency`        | 文字列    | ISO 4217小文字。`usd`固定                                                                                        |
+| `quantity`        | 整数/null | 数量(スポンサー広告は日数)。返金等は`null`                                                                       |
+| `status`          | 文字列    | `succeeded`・`failed`・`pending`・`disputed`・`dispute_won`・`dispute_lost`                                      |
+| `stripeReference` | 文字列    | Stripe側のオブジェクトID(Checkout Session・Invoice・Refund・Dispute)。ユーザーがStripe領収書と突合するために持つ |
+| `relatedId`       | ULID/null | 決済対象のローンチID(トーナメント参加費)またはスポンサー広告ID                                                   |
+| `occurredAt`      | 日時      | Webhookイベントに含まれる発生時刻                                                                                |
 
 ## 生成と提供の流れ
 
