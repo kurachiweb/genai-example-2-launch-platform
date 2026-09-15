@@ -135,6 +135,7 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
 │   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
 │   ├── ai-extensions/          # 外部由来のAIエージェント向けガイドライン(原文のまま配置)
+│   ├── ai-prompts/             # 開発中に使用した主なプロンプトの記録
 │   ├── adr/                    # ecc:architecture-decision-recordsスキルによる自動生成ADR
 │   ├── tdd/                    # ecc:tdd-workflowスキルのステップ8によるTDDエビデンスレポート
 │   ├── CODEMAPS/               # ecc:doc-updaterエージェントによる自動生成コードマップ

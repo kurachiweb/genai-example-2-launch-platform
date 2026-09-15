@@ -1,0 +1,19 @@
+これからdocsディレクトリの記載やappsディレクトリの実装に着手していくのですが、その前に現時点での以下のファイルの問題点があるかを調べてください。具体的には記述の矛盾、実現不可能な仕様、最新データとは異なる古い情報、記述の重複、不要なドキュメント、不要なClaude拡張、重大な記述不足、ベストプラクティス違反、セキュリティリスク、パフォーマンスの改善点、一般的な誤字脱字、マークダウンとしての構造誤り、Node.jsでは動くがBun環境では動かない点、Cloudflare Workersやローカルの`wrangler dev`により起動されるworkerd環境では動かない点があれば報告してください。
+.claude/settings.json
+docs/onboardings/claude-extensions.md
+docs/onboardings/tech-stack.md
+docs/onboardings/README.md
+scripts/entrypoint.sh
+scripts/merge-claude-trust-config.ts
+scripts/setup-chromium.sh
+scripts/update-local.sh
+.dockerignore
+.gitignore
+.mcp.json
+bunfig.toml
+CLAUDE.md
+compose.yaml
+Dockerfile
+README.md
+ただしappsディレクトリ内やdocsディレクトリ内、.kiro/settings/rulesディレクトリ内に何も無く未整備・未実装である点、インストール済みツールのバージョンが古い点については、問題無しとして無視してください。
+全ての問題点はCritical→High→Medium→Lowの順番でまとめ、マークダウン形式でxxxxx-report.mdに出力すること。なお問題無い点は内容に含めないこと。
