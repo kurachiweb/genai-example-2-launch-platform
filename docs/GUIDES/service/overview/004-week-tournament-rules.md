@@ -233,7 +233,7 @@ flowchart LR
 
 ## 受賞後
 
-- Product of the Week賞を受賞したプロダクトは、次回Yearトーナメント決勝日以前は再ローンチできない([再ローンチ規則](006-relaunch-rules.md))
+- Product of the Week賞を受賞したプロダクトは、次回Yearトーナメント決済期限日以前は再ローンチできない([再ローンチ規則](006-relaunch-rules.md))
 - Yearトーナメントの対象となる([Yearトーナメント規則](005-year-tournament-rules.md))
 - 決勝勝利時、投稿者のフォロワーへ受賞結果通知メールを送る
 
