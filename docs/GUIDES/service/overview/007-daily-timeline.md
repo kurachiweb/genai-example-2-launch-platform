@@ -45,6 +45,8 @@ Weekトーナメントの詳細は[Weekトーナメント規則](004-week-tourna
 | D − 5日〜D       | 参加数に応じた日に1回戦を開始し、1日1ラウンド                         |
 | D(日)23:40       | 決勝終了、Product of the Year確定。Week優勝プロダクトの再ローンチ解禁 |
 
+前回のトーナメントが存在しない初回は対象期間の起点を設けない([Yearトーナメント規則](005-year-tournament-rules.md#参加資格)を参照)。
+
 Yearトーナメントの詳細は[Yearトーナメント規則](005-year-tournament-rules.md)を参照。
 
 ## 同時刻に走る処理の順序
