@@ -6,7 +6,7 @@
 ## 配信URL
 
 ```
-https://{画像配信ドメイン}/{variant}/{objectKey}
+https://{画像配信ドメイン}/{variant}/{objectKey}.{ext}
 ```
 
 | 要素             | 内容                                                                                                            |
@@ -14,10 +14,11 @@ https://{画像配信ドメイン}/{variant}/{objectKey}
 | 画像配信ドメイン | staging: `genai-example-2-images-staging.lab.kurachiweb.com`、prod: `genai-example-2-images.lab.kurachiweb.com` |
 | `variant`        | 本書で定義するバリアント名。未定義の名前は404                                                                   |
 | `objectKey`      | アップロード時にサーバーが採番した推測不能な識別子(FR-FILEU-006)。画像用非公開バケットのキー                    |
+| `ext`            | [出力フォーマット](#出力フォーマット)で定義する拡張子。未定義の拡張子は404                                      |
 
-例: `https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2`
+例: `https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2.avif`
 
-バリアント名を先頭に置くのは、Purge Files by URL(SW-010)でバリアント別に列挙しやすく、パスのみでキャッシュキーが定まるためである。元画像そのもの(バリアント指定なし)は配信しない。
+出力フォーマットを`Accept`ヘッダーではなくURLで指定するのは、Cloudflareのエッジキャッシュがヘッダーによる分離(`Vary`)を本サービスの条件では行えないためである。Vary for ImagesはゾーンFreeプランでは利用できず、Workerが自ら生成するレスポンスをキャッシュするCache APIは`Vary`を考慮しない。URLに形式を含めることでパスのみでキャッシュキーが定まり、Purge Files by URL(SW-010)の対象もパスの列挙で確定する。元画像そのもの(バリアント指定なし)は配信しない。
 
 ## バリアント一覧
 
@@ -39,22 +40,25 @@ https://{画像配信ドメイン}/{variant}/{objectKey}
 
 ## 出力フォーマット
 
-リクエストの`Accept`ヘッダーにより出力フォーマットを自動選択する。
+URLの拡張子`ext`により出力フォーマットを指定する。配信サーバーはリクエストの`Accept`ヘッダーを参照しない。
 
-| `Accept`に含まれる値   | 出力                                    |
-| ---------------------- | --------------------------------------- |
-| `image/avif`           | AVIF                                    |
-| `image/webp`(AVIFなし) | WebP                                    |
-| いずれも無し           | 元画像がPNG・GIFならPNG、それ以外はJPEG |
+| `ext`  | 出力 | 対象となる原本                   |
+| ------ | ---- | -------------------------------- |
+| `avif` | AVIF | SVG以外                          |
+| `webp` | WebP | SVG以外                          |
+| `jpg`  | JPEG | SVG以外                          |
+| `png`  | PNG  | SVG以外                          |
+| `svg`  | SVG  | SVGのみ([SVGの扱い](#svgの扱い)) |
 
-- レスポンスには`Vary: Accept`を付与し、フォーマット別にキャッシュを分離する
+- 原本の種別と`ext`の組み合わせが上表に無い場合(SVG原本に`svg`以外、非SVG原本に`svg`)は404を返す
+- `jpg`と`png`は非対応ブラウザ向けのフォールバックであり、どちらを参照するかはフロントエンドがアップロード時に保存した原本のMIMEタイプで決める(原本がPNG・GIFなら`png`、それ以外は`jpg`)。透過を持つロゴがJPEGで塗り潰されるのを防ぐためである
 - GIFアニメーションは最初のフレームのみを静止画として出力する
 - 全バリアントで`metadata: "none"`を指定しExif等のメタデータを除去する(FR-FILEU-015、DR-006)
 - 品質はAVIF・WebP・JPEGとも`quality: 80`を基準とし、`review`のみ`quality: 90`とする
 
 ## SVGの扱い
 
-SVGはImages Bindingで変換せず、原本をそのまま配信する。バリアント名はURL構造を揃えるために受け付けるが、サイズ変換は行わない。
+SVGはImages Bindingで変換せず、原本をそのまま配信する。バリアント名はURL構造を揃えるために受け付けるが、サイズ変換は行わない。拡張子は`svg`のみを受け付ける。
 
 | ヘッダー                  | 値                                              |
 | ------------------------- | ----------------------------------------------- |
@@ -66,25 +70,40 @@ SVGは`<img>`要素からのみ参照し、`<object>`・`<iframe>`・インラ�
 
 ## キャッシュとパージ
 
-| 項目             | 方針                                                                                                                         |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `Cache-Control`  | `public, max-age=31536000, immutable`。オブジェクトキーは上書きされない(NFR-SECUR-039)ため長期キャッシュできる               |
-| エッジキャッシュ | Cloudflareのエッジキャッシュ(NFR-SCALE-002)を利用し、繰り返しアクセスの大半をWorkerに到達させない                            |
-| 画像の差し替え   | 新しいオブジェクトキーで再アップロードし、参照先を切り替える。同一URLの内容は変えない                                        |
-| 隔離時のパージ   | 隔離バケットへの移動時に、当該オブジェクトキーの全6バリアントのURLをPurge Files by URLで指定して即時無効化する(FR-FILEU-014) |
+| 項目             | 方針                                                                                                                                                                                                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Cache-Control`  | `public, max-age=31536000, immutable`。オブジェクトキーは上書きされない(NFR-SECUR-039)ため長期キャッシュできる                                                                                                                                                                |
+| エッジキャッシュ | Workerが自ら生成するレスポンスは自動ではエッジキャッシュ(NFR-SCALE-002)に載らないため、Cache API(`caches.default`)にリクエストURLをそのままキーとして保存する。ヒット時はR2の読み出しとImages Bindingの変換を省略する。Workerは毎回起動し、Tiered Cacheは効かない             |
+| `X-Image-Cache`  | Cache APIのヒット可否を`HIT`または`MISS`で返す独自ヘッダー。[パージ効果の検証](#パージ効果の検証)と障害調査に用いる                                                                                                                                                           |
+| `Cache-Tag`      | 全レスポンスに`Cache-Tag: {objectKey}`を付与する。パージ処理からは使わないが、Purge Files by URLがCache API保存資産に効かないと判明した場合の切替先、及び障害時にダッシュボードから手動でタグパージする手段として確保する。このヘッダーはCloudflareが訪問者へ返す前に除去する |
+| 画像の差し替え   | 新しいオブジェクトキーで再アップロードし、参照先を切り替える。同一URLの内容は変えない                                                                                                                                                                                         |
+| 隔離時のパージ   | 隔離バケットへの移動時に、当該オブジェクトキーの全バリアント×全拡張子のURLをPurge Files by URLで指定して即時無効化する(FR-FILEU-014)                                                                                                                                          |
 
-パージ対象URLの例(オブジェクトキー`01J9B2Y4D6F8H0K2M4P6R8T0V2`):
+Cache APIのキーにリクエストURLを加工せず用いるのは、Workerがカスタムキーを設定した資産をPurge Files by URLで無効化できないためである。またCache APIは`Vary`ヘッダーを考慮しないため、出力フォーマットの分離はURLの拡張子で行う。
+
+パージ対象URLは6バリアント×5拡張子の30件で、Purge Files by URLの1リクエスト上限(Freeプランで100件)に収まる。例(オブジェクトキー`01J9B2Y4D6F8H0K2M4P6R8T0V2`、`square-sm`のみ抜粋):
 
 ```
-https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2
-https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2
-https://genai-example-2-images.lab.kurachiweb.com/square-lg/01J9B2Y4D6F8H0K2M4P6R8T0V2
-https://genai-example-2-images.lab.kurachiweb.com/screenshot-thumb/01J9B2Y4D6F8H0K2M4P6R8T0V2
-https://genai-example-2-images.lab.kurachiweb.com/screenshot-full/01J9B2Y4D6F8H0K2M4P6R8T0V2
-https://genai-example-2-images.lab.kurachiweb.com/review/01J9B2Y4D6F8H0K2M4P6R8T0V2
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.avif
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.webp
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.jpg
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.png
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.svg
 ```
 
-スクリーンショットに`square-*`を、ロゴに`screenshot-*`を要求することは仕様上想定しないが、配信サーバーは対象画像の種別を判定しないため、全バリアントをパージ対象に含める。
+スクリーンショットに`square-*`を、ロゴに`screenshot-*`を、非SVG原本に`svg`を要求することは仕様上想定しないが、配信サーバーは対象画像の種別を判定せずにパージ対象を組み立てるため、全バリアント×全拡張子をパージ対象に含める。
+
+### パージ効果の検証
+
+Cloudflareの公式ドキュメントは、Cache APIで保存した資産に対してPurge EverythingとCache-Tagによるパージが効くことを明記する一方、Purge Files by URLについては「カスタムキーを設定した場合は不可」としか記載していない。またPurge APIは対象がキャッシュに存在しなくても成功を返すため、効いていなくても本番では検知できない。そのため、配信サーバーの初回デプロイ時及びキャッシュ処理の変更時に、staging環境で次の手順により効果を確認する。
+
+1. 任意のバリアントURLを2回取得し、2回目のレスポンスヘッダー`X-Image-Cache`が`HIT`であることを確認する
+2. 当該URLをPurge Files by URLで無効化する
+3. 同じURLを再取得し、`X-Image-Cache`が`MISS`に戻ることを確認する
+
+Cloudflareが付与する`CF-Cache-Status`は、Workerが`fetch`サブリクエストを送らずに生成した応答では`NONE/UNKNOWN`になる(Workerはキャッシュの手前に位置し、Cache APIのヒットはCloudflareから見てキャッシュヒットではない)。そのため判定には配信サーバー独自の`X-Image-Cache`を用いる。
+
+手順3で`HIT`のままの場合はPurge Files by URLが効いていないため、隔離時のパージを`Cache-Tag`によるタグパージ(オブジェクトキーを指定、Freeプランでは5リクエスト/分・1リクエスト100タグまで)へ切り替える。
 
 ## 画像種別ごとの利用バリアント
 
@@ -97,11 +116,37 @@ https://genai-example-2-images.lab.kurachiweb.com/review/01J9B2Y4D6F8H0K2M4P6R8T
 
 ## フロントエンドでの参照
 
+- 出力フォーマットの選択は`<picture>`要素と`<source type>`でブラウザに委ねる。`avif`・`webp`の順に`<source>`を並べ、`<img src>`にはフォールバックの`jpg`または`png`を指定する。SVG原本は`<picture>`を使わず`<img src="….svg">`のみで参照する
+
+  ```html
+  <picture>
+    <source
+      type="image/avif"
+      srcset="
+        https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2.avif
+      "
+    />
+    <source
+      type="image/webp"
+      srcset="
+        https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2.webp
+      "
+    />
+    <img
+      src="https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2.jpg"
+      width="96"
+      height="96"
+      alt="プロダクト名のロゴ"
+    />
+  </picture>
+  ```
+
 - `<img>`には表示サイズをCSSで指定し、`width`・`height`属性にはバリアントの出力サイズの半分(CSS px)を指定してレイアウトシフトを防ぐ
-- `srcset`は使わない。Accept交渉による形式選択と2xサイズ固定で十分とする
+- 解像度切り替え(`srcset`の複数候補と`sizes`)は使わず、2xサイズ固定で十分とする。`<source>`の`srcset`には候補を1つだけ指定する
+- 画像種別ごとのURL組み立てと`<picture>`の生成はフロントエンド共通ファイル(`apps/frontend-lib/components`)の共通コンポーネントに集約し、各ページで直接URLを組み立てない
 - 未読み込み時・404時はプロダクト名の頭文字またはユーザーのニックネームの頭文字を表示するプレースホルダーに置き換える([デザインガイドライン](../design/001-design-principles.md))
 
 ## バリアントの追加・変更
 
-- バリアントの追加は本書の一覧へ追記し、配信サーバーの許可リストへ同時に反映する
+- バリアントや拡張子の追加は本書の一覧へ追記し、配信サーバーの許可リストと隔離時のパージ対象URLの列挙へ同時に反映する
 - 既存バリアントのサイズ変更は、長期キャッシュされた旧サイズが残るため原則として行わず、新しい名前のバリアントを追加して参照を切り替える
