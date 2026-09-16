@@ -257,7 +257,7 @@ Launch Stadiumをご利用いただきありがとうございます。
 
 ## launches.json
 
-ローンチ履歴と、各ローンチに紐付くマッチ結果。対戦相手は公開情報である名称とハンドル文字列のみを持つ。
+ローンチ履歴と、各ローンチに紐付くマッチ結果。
 
 ```json
 [
@@ -272,7 +272,6 @@ Launch Stadiumをご利用いただきありがとうございます。
         "kind": "qualifier",
         "round": null,
         "date": "2026-09-07",
-        "opponent": { "name": "Tactics Board", "handle": "tactics-board" },
         "upvoteCount": 12,
         "opponentUpvoteCount": 9,
         "lastUpvotedAt": "2026-09-08T05:40:12.000Z",
@@ -283,7 +282,6 @@ Launch Stadiumをご利用いただきありがとうございます。
         "kind": "week",
         "round": 1,
         "date": "2026-09-15",
-        "opponent": { "name": "Formation Lab", "handle": "formation-lab" },
         "upvoteCount": 0,
         "opponentUpvoteCount": 0,
         "lastUpvotedAt": null,
@@ -304,7 +302,6 @@ Launch Stadiumをご利用いただきありがとうございます。
 | `matches[].kind`                | 文字列            | `qualifier`(予選)、`week`(Weekトーナメント)、`year`(Yearトーナメント)                                                  |
 | `matches[].round`               | 整数/null         | トーナメントのラウンド番号(1回戦=1)。予選は`null`                                                                      |
 | `matches[].date`                | 日付              | マッチ実施日                                                                                                           |
-| `matches[].opponent`            | オブジェクト/null | 対戦相手。不戦勝は`null`。相手の退会・非公開化後も当時の名称とハンドルを保持                                           |
 | `matches[].upvoteCount`         | 整数              | 自プロダクトの確定Upvote数                                                                                             |
 | `matches[].opponentUpvoteCount` | 整数              | 対戦相手の確定Upvote数。不戦勝は`0`                                                                                    |
 | `matches[].lastUpvotedAt`       | 日時/null         | 自プロダクトの最終Upvote時刻                                                                                           |
