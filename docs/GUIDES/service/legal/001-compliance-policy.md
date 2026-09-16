@@ -83,10 +83,13 @@
 
 ## Cookieとトラッキング
 
-- 使用するCookieは認証Cookie(`__Host-`プレフィックス)のみで、サービス提供に必須のため同意バナーを表示しない
+- 認証Cookie(`__Host-`プレフィックス)を使用する。サービス提供に必須のため同意バナーを表示しない
+- Stripe.js自体が不正検知(Stripe Radar)のため、本サービスのドメインへファーストパーティCookieとして設置する。[カードテスティング](https://docs.stripe.com/disputes/prevention/fraud-types#card-testing)等の不正決済防止に必須の措置で、同意バナーの対象外である
+  - `__stripe_mid`(デバイス識別用、有効期間1年)、`m.stripe.com`へ定期送信する
+  - `__stripe_sid`(決済セッション識別用、有効期間30分)
 - アクセス解析はCloudflare Web Analytics(Cookie・個人識別子を使用しない)を用いる
 - 広告トラッキング、サードパーティCookie、リターゲティングは行わない
-- Stripe Payment Elementはiframe内でStripeのCookieを使用する。プライバシーポリシーにStripeへの委託として記載する
+- Stripe Payment Elementのカード入力欄はiframe内でStripe側のCookieを扱う
 
 ## データ保持期間の一覧
 
