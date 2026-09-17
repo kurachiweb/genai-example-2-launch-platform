@@ -21,7 +21,7 @@
 ### 固定の用語
 
 要件定義書の用語(マッチ・ペアリング・予選・サポーター・ディレクトリ・ローンチ・再ローンチ・フォロー)はそのまま用いる。
-英語固有名詞のUpvote・Product of the Week・Product of the Year・Ultras・Silver/Gold/Legendは英語表記のまま使い、日本語に訳さない。ブラウザ翻訳でも固有名詞として残りやすい。
+英語固有名詞のUpvote・Product of the Week・Product of the Year・Ultras・Silver/Gold/Legendは英語表記のまま使う。
 
 ## カラー
 
