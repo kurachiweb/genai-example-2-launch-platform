@@ -679,7 +679,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **SW-002**: システムは、公開APIとしてRESTful APIを提供しなければならない
 - **SW-003**: システムは、データベースとしてCloudflare D1(SQLiteベース)をサポートしなければならない
 - **SW-004**: システムは、Cloudflare Queuesによる非同期処理をサポートしなければならない(FR-UDATA-004、FR-FTS-003、FR-NOTIF-012〜014、FR-SPONS-015、SW-009に対応)
-- **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-018、FR-GAME-004、FR-GAME-008〜012、FR-TOURW-004、FR-TOURW-007、FR-TOURW-010〜013、FR-TOURY-004、FR-TOURY-008、FR-TOURY-010〜013、FR-NOTIF-001、FR-NOTIF-002、FR-SPONS-013、FR-SPONS-014、DR-002、DR-004、DR-012、DR-013に対応)
+- **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-018、FR-GAME-004、FR-GAME-008〜012、FR-TOURW-004、FR-TOURW-007、FR-TOURW-010〜013、FR-TOURY-004、FR-TOURY-008、FR-TOURY-010〜013、FR-NOTIF-001、FR-NOTIF-002、FR-SPONS-013、FR-SPONS-014、DR-002、DR-004、DR-012〜015に対応)
 - **SW-006**: システムは、Cloudflare Web Analyticsによるメトリクス監視をサポートしなければならない(NFR-OBLOG-001に対応)
 - **SW-007**: システムは、FlareWardenによる死活監視・外部ステータスページをサポートしなければならない(NFR-AVAIL-001、NFR-OBLOG-001に対応)
 - **SW-008**: システムは、Cloudflare Durable Objectsによる状態管理(厳密なレート制限カウント、ログイン試行の強制拒否クールダウン期間)をサポートしなければならない
@@ -823,6 +823,8 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **DR-011**: システムは、決済Webhookイベントに含まれる発生時刻を保持し、同一対象について、既に反映済みのイベントより発生時刻が古い別イベントを受信した場合、その状態を巻き戻してはならない(DR-010、FR-PYMNT-003に対応)
 - **DR-012**: システムは、監査ログの保持期間を3年と定め、記録日時から3年以上経過した項目を日次バッチ処理により物理削除しなければならない(SW-005に対応)
 - **DR-013**: システムは、決済履歴の保持期間を7年と定め、記録日時から7年以上経過した項目を日次バッチ処理により物理削除しなければならない(SW-005に対応)
+- **DR-014**: システムは、日次バッチ処理により、NFR-SECUR-028に定める絶対有効期限を超過したログインセッションのレコードを物理削除しなければならない(SW-005に対応)
+- **DR-015**: システムは、日次バッチ処理により、NFR-SECUR-033に定める有効期限を経過した未使用の認証系トークンを物理削除しなければならない(SW-005に対応)
 
 #### 7.2 法的要件
 
