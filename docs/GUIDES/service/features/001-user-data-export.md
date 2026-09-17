@@ -5,6 +5,8 @@
 
 ## 全体方針
 
+エクスポートデータは、意図的にデータベースのスキーマやカラム名と一致させない。
+
 | 項目                           | 方針                                                                                                      |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------- |
 | 形式                           | ZIPアーカイブ1つ。JSONはUTF-8(BOMなし)、改行LF                                                            |
@@ -109,14 +111,16 @@ Launch Stadiumをご利用いただきありがとうございます。
 }
 ```
 
-| 項目            | 型     | 説明                                                                 |
-| --------------- | ------ | -------------------------------------------------------------------- |
-| `schemaVersion` | 整数   | 本書で定義する構造のバージョン。後方互換性のない変更時に加算する     |
-| `service`       | 文字列 | 固定値`Launch Stadium`                                               |
-| `requestedAt`   | 日時   | ユーザーがエクスポートを要求した日時                                 |
-| `generatedAt`   | 日時   | ZIP生成が完了した日時                                                |
-| `user.handle`   | 文字列 | エクスポート時点のハンドル文字列                                     |
-| `files[]`       | 配列   | 同梱するJSONファイルの一覧。`count`は配列要素数(単一オブジェクトは1) |
+| 項目            | 型     | 説明                                                             |
+| --------------- | ------ | ---------------------------------------------------------------- |
+| `schemaVersion` | 整数   | 本書で定義する構造のバージョン。後方互換性のない変更時に加算する |
+| `service`       | 文字列 | 固定値`Launch Stadium`                                           |
+| `requestedAt`   | 日時   | ユーザーがエクスポートを要求した日時                             |
+| `generatedAt`   | 日時   | ZIP生成が完了した日時                                            |
+| `user.handle`   | 文字列 | エクスポート時点のハンドル文字列                                 |
+| `files[].path`  | 文字列 | 同梱するJSONファイル名                                           |
+| `files[].kind`  | 文字列 | ファイルが表すエンティティ種別の識別子                           |
+| `files[].count` | 整数   | 同梱するJSONファイル内の配列要素数(単一オブジェクトは1)          |
 
 ## account.json
 
@@ -207,7 +211,8 @@ Launch Stadiumをご利用いただきありがとうございます。
 | `bioPath`           | 文字列/null | 自己紹介マークダウンのパス。未設定なら`null` |
 | `avatarPath`        | 文字列/null | プロフィール画像のパス。未設定なら`null`     |
 | `avatarQuarantined` | 真偽値      | 隔離フラグ、隔離バケットで判定待ちなら`true` |
-| `websites[]`        | 配列        | 外部WebサイトURLと表示名                     |
+| `websites[].name`   | 文字列      | 外部Webサイトの表示名                        |
+| `websites[].url`    | 文字列      | 外部WebサイトのURL                           |
 | `updatedAt`         | 日時        | プロフィール最終更新日時                     |
 
 ## products.json
@@ -244,22 +249,23 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目              | 型        | 説明                                                                                                |
-| ----------------- | --------- | --------------------------------------------------------------------------------------------------- |
-| `id`              | ULID      | プロダクトID                                                                                        |
-| `handle`          | 文字列    | ハンドル文字列(50文字以内)                                                                          |
-| `name`            | 文字列    | 名称(50文字以内)                                                                                    |
-| `tagline`         | 文字列    | タグライン(100文字以内)                                                                             |
-| `category`        | 文字列    | エクスポート時点のカテゴリ名                                                                        |
-| `websiteUrl`      | 文字列    | 外部WebサイトURL                                                                                    |
-| `descriptionPath` | 文字列    | 説明文マークダウンのパス。管理者により非公開化中でも含める                                          |
-| `logoPath`        | 文字列    | ロゴ画像のパス                                                                                      |
-| `logoQuarantined` | 真偽値    | ロゴが隔離バケットで判定待ちなら`true`                                                              |
-| `screenshots[]`   | 配列      | 表示順のスクリーンショット。各要素は`path`(パス)と`quarantined`(隔離バケットで判定待ちフラグ)を持つ |
-| `createdAt`       | 日時      | 登録日時                                                                                            |
-| `updatedAt`       | 日時      | 最終更新日時                                                                                        |
-| `deletedAt`       | 日時/null | 自身で論理削除した日時                                                                              |
-| `hiddenByAdmin`   | 真偽値    | 管理者により非公開化中なら`true`。理由は含めない                                                    |
+| 項目                        | 型        | 説明                                                       |
+| --------------------------- | --------- | ---------------------------------------------------------- |
+| `id`                        | ULID      | プロダクトID                                               |
+| `handle`                    | 文字列    | ハンドル文字列(50文字以内)                                 |
+| `name`                      | 文字列    | 名称(50文字以内)                                           |
+| `tagline`                   | 文字列    | タグライン(100文字以内)                                    |
+| `category`                  | 文字列    | エクスポート時点のカテゴリ名                               |
+| `websiteUrl`                | 文字列    | 外部WebサイトURL                                           |
+| `descriptionPath`           | 文字列    | 説明文マークダウンのパス。管理者により非公開化中でも含める |
+| `logoPath`                  | 文字列    | ロゴ画像のパス                                             |
+| `logoQuarantined`           | 真偽値    | ロゴが隔離バケットで判定待ちなら`true`                     |
+| `screenshots[].path`        | 文字列    | 表示順のスクリーンショット画像のパス                       |
+| `screenshots[].quarantined` | 真偽値    | 隔離バケットで判定待ちなら`true`                           |
+| `createdAt`                 | 日時      | 登録日時                                                   |
+| `updatedAt`                 | 日時      | 最終更新日時                                               |
+| `deletedAt`                 | 日時/null | 自身で論理削除した日時                                     |
+| `hiddenByAdmin`             | 真偽値    | 管理者により非公開化中なら`true`。理由は含めない           |
 
 ## launches.json
 
@@ -299,20 +305,21 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目                            | 型        | 説明                                                                                                                   |
-| ------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `id`                            | ULID      | ローンチID                                                                                                             |
-| `productId`                     | ULID      | `products.json`の`id`                                                                                                  |
-| `launchDate`                    | 日付      | 基準時刻でのローンチ日                                                                                                 |
-| `status`                        | 文字列    | `scheduled`(予定)、`paired`(ペアリング済み)、`in_progress`(マッチ中)、`finished`(終了)、`canceled`(取消)               |
-| `matches[].kind`                | 文字列    | `qualifier`(予選)、`week`(Weekトーナメント)、`year`(Yearトーナメント)                                                  |
-| `matches[].round`               | 整数/null | トーナメントのラウンド番号(1回戦=1)。予選は`null`                                                                      |
-| `matches[].date`                | 日付      | マッチ実施日                                                                                                           |
-| `matches[].upvoteCount`         | 整数      | 自プロダクトの確定Upvote数                                                                                             |
-| `matches[].opponentUpvoteCount` | 整数      | 対戦相手の確定Upvote数。不戦勝は`0`                                                                                    |
-| `matches[].lastUpvotedAt`       | 日時/null | 自プロダクトの最終Upvote時刻                                                                                           |
-| `matches[].result`              | 文字列    | `won`、`lost`、`bye`(不戦勝)、`walkover`(相手の退会・停止・非公開化による勝利)                                         |
-| `awards[]`                      | 配列      | 受賞。`{"kind": "product_of_the_week", "period": "2026-W37"}`または`{"kind": "product_of_the_year", "period": "2026"}` |
+| 項目                            | 型        | 説明                                                                                                     |
+| ------------------------------- | --------- | -------------------------------------------------------------------------------------------------------- |
+| `id`                            | ULID      | ローンチID                                                                                               |
+| `productId`                     | ULID      | `products.json`の`id`                                                                                    |
+| `launchDate`                    | 日付      | 基準時刻でのローンチ日                                                                                   |
+| `status`                        | 文字列    | `scheduled`(予定)、`paired`(ペアリング済み)、`in_progress`(マッチ中)、`finished`(終了)、`canceled`(取消) |
+| `matches[].kind`                | 文字列    | `qualifier`(予選)、`week`(Weekトーナメント)、`year`(Yearトーナメント)                                    |
+| `matches[].round`               | 整数/null | トーナメントのラウンド番号(1回戦=1)。予選は`null`                                                        |
+| `matches[].date`                | 日付      | マッチ実施日                                                                                             |
+| `matches[].upvoteCount`         | 整数      | 自プロダクトの確定Upvote数                                                                               |
+| `matches[].opponentUpvoteCount` | 整数      | 対戦相手の確定Upvote数。不戦勝は`0`                                                                      |
+| `matches[].lastUpvotedAt`       | 日時/null | 自プロダクトの最終Upvote時刻                                                                             |
+| `matches[].result`              | 文字列    | `won`、`lost`、`bye`(不戦勝)、`walkover`(相手の退会・停止・非公開化による勝利)                           |
+| `awards[].kind`                 | 文字列    | `product_of_the_week`(週間受賞)、`product_of_the_year`(年間受賞)                                         |
+| `awards[].period`               | 文字列    | 受賞対象期間。週間受賞は`2026-W37`形式(ISO週)、年間受賞は`2026`形式                                      |
 
 ## comments.json
 
@@ -433,7 +440,7 @@ Launch Stadiumをご利用いただきありがとうございます。
 
 ## inquiries.json
 
-ログイン状態で送信した問い合わせと、そのチャットメッセージ。添付ファイルは`inquiries/{inquiryId}/{messageId}/`へ同梱する。
+ログイン状態で送信した問い合わせと、そのチャットメッセージ。添付ファイルは`inquiries/{inquiryId}/{messageId}/`へ同梱する。メッセージや添付ファイルは管理者による投稿も含む。
 
 ```json
 [
@@ -470,14 +477,16 @@ Launch Stadiumをご利用いただきありがとうございます。
 ]
 ```
 
-| 項目                       | 型          | 説明                                                                        |
-| -------------------------- | ----------- | --------------------------------------------------------------------------- |
-| `category`                 | 文字列      | 問い合わせ時点のカテゴリ名                                                  |
-| `status`                   | 文字列      | `open`(未対応)、`in_progress`(対応中)、`resolved`(対応済)、`rejected`(却下) |
-| `messages[].sender`        | 文字列      | `user`(自身)、`admin`(管理者)                                               |
-| `messages[].adminNickname` | 文字列/null | 管理者返信時のニックネーム。管理者が削除済みなら`null`                      |
-| `messages[].body`          | 文字列      | メッセージ本文(プレーンテキスト)                                            |
-| `messages[].attachments[]` | 配列        | 添付ファイルのパス・MIMEタイプ・バイト数。管理者の添付も含める              |
+| 項目                                   | 型          | 説明                                                                        |
+| -------------------------------------- | ----------- | --------------------------------------------------------------------------- |
+| `category`                             | 文字列      | 問い合わせ時点のカテゴリ名                                                  |
+| `status`                               | 文字列      | `open`(未対応)、`in_progress`(対応中)、`resolved`(対応済)、`rejected`(却下) |
+| `messages[].sender`                    | 文字列      | `user`(自身)、`admin`(管理者)                                               |
+| `messages[].adminNickname`             | 文字列/null | 管理者返信時のニックネーム。管理者が削除済みなら`null`                      |
+| `messages[].body`                      | 文字列      | メッセージ本文(プレーンテキスト)                                            |
+| `messages[].attachments[].path`        | 文字列      | 添付ファイルのパス                                                          |
+| `messages[].attachments[].contentType` | 文字列      | 添付ファイルのMIMEタイプ                                                    |
+| `messages[].attachments[].size`        | 整数        | 添付ファイルのバイト数                                                      |
 
 ## sponsorships.json
 
