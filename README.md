@@ -401,6 +401,9 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 - **FR-SPONS-010**: システムは、各スポンサー広告に、広告であることを明示するラベルを表示しなければならない(LR-008に対応)
 - **FR-SPONS-011**: システムは、ユーザーが自身の申し込んだスポンサー広告の一覧及び掲載状況(掲載中/終了)を確認できる機能を提供しなければならない
 - **FR-SPONS-012**: システムは、APIサーバー経由のスポンサー広告申し込み操作時にはSW-018による検証に成功した場合のみ、その処理を許可しなければならない(LR-003に対応)
+- **FR-SPONS-013**: システムは、UTC-08:00時間で毎日0時7分に、当日を掲載開始日とするスポンサー広告について、申し込んだユーザーへ掲載開始通知メールを送信しなければならない(SW-005に対応)
+- **FR-SPONS-014**: システムは、UTC-08:00時間で毎日0時7分に、前日を掲載終了日とするスポンサー広告について、申し込んだユーザーへ掲載終了通知メールを送信しなければならない(SW-005に対応)
+- **FR-SPONS-015**: システムは、FR-SPONS-013・014の通知メール送信処理をイベントサーバーがCloudflare Queuesのconsumerとして非同期処理しなければならない(SW-004に対応)
 
 #### 4.16 ヘルプページ機能
 
@@ -675,8 +678,8 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **SW-001**: システムは、利用者側・管理者側それぞれのフロントエンドサーバーとの通信にGraphQL APIを提供しなければならない(COM-003に対応)
 - **SW-002**: システムは、公開APIとしてRESTful APIを提供しなければならない
 - **SW-003**: システムは、データベースとしてCloudflare D1(SQLiteベース)をサポートしなければならない
-- **SW-004**: システムは、Cloudflare Queuesによる非同期処理をサポートしなければならない(FR-UDATA-004、FR-FTS-003、FR-NOTIF-012〜014、SW-009に対応)
-- **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-018、FR-GAME-004、FR-GAME-008〜012、FR-TOURW-004、FR-TOURW-007、FR-TOURW-010〜013、FR-TOURY-004、FR-TOURY-008、FR-TOURY-010〜013、FR-NOTIF-001、FR-NOTIF-002、DR-002、DR-004、DR-012、DR-013に対応)
+- **SW-004**: システムは、Cloudflare Queuesによる非同期処理をサポートしなければならない(FR-UDATA-004、FR-FTS-003、FR-NOTIF-012〜014、FR-SPONS-015、SW-009に対応)
+- **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-018、FR-GAME-004、FR-GAME-008〜012、FR-TOURW-004、FR-TOURW-007、FR-TOURW-010〜013、FR-TOURY-004、FR-TOURY-008、FR-TOURY-010〜013、FR-NOTIF-001、FR-NOTIF-002、FR-SPONS-013、FR-SPONS-014、DR-002、DR-004、DR-012、DR-013に対応)
 - **SW-006**: システムは、Cloudflare Web Analyticsによるメトリクス監視をサポートしなければならない(NFR-OBLOG-001に対応)
 - **SW-007**: システムは、FlareWardenによる死活監視・外部ステータスページをサポートしなければならない(NFR-AVAIL-001、NFR-OBLOG-001に対応)
 - **SW-008**: システムは、Cloudflare Durable Objectsによる状態管理(厳密なレート制限カウント、ログイン試行の強制拒否クールダウン期間)をサポートしなければならない
