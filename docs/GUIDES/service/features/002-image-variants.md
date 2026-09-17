@@ -9,14 +9,14 @@
 https://{画像配信ドメイン}/{variant}/{objectKey}.{ext}
 ```
 
-| 要素             | 内容                                                                                                            |
-| ---------------- | --------------------------------------------------------------------------------------------------------------- |
-| 画像配信ドメイン | staging: `genai-example-2-images-staging.lab.kurachiweb.com`、prod: `genai-example-2-images.lab.kurachiweb.com` |
-| `variant`        | 本書で定義するバリアント名。未定義の名前は404                                                                   |
-| `objectKey`      | アップロード時にサーバーが採番した推測不能な識別子(FR-FILEU-006)。画像用非公開バケットのキー                    |
-| `ext`            | [出力フォーマット](#出力フォーマット)で定義する拡張子。未定義の拡張子は404                                      |
+| 要素             | 内容                                                                                                                                   |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 画像配信ドメイン | staging: `genai-example-2-images-staging.lab.kurachiweb.com`、prod: `genai-example-2-images.lab.kurachiweb.com`                        |
+| `variant`        | 本書で定義するバリアント名。未定義の名前は404                                                                                          |
+| `objectKey`      | アップロード時にサーバーが採番した推測不能な識別子(FR-FILEU-006)。画像用非公開バケットのキー。レコードID(DR-009のULID)とは別に採番する |
+| `ext`            | [出力フォーマット](#出力フォーマット)で定義する拡張子。未定義の拡張子は404                                                             |
 
-例: `https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2.avif`
+例: `https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.avif`
 
 出力フォーマットを`Accept`ヘッダーではなくURLで指定するのは、Cloudflareのエッジキャッシュがヘッダーによる分離(`Vary`)を本サービスの条件では行えないためである。Vary for ImagesはゾーンFreeプランでは利用できず、Workerが自ら生成するレスポンスをキャッシュするCache APIは`Vary`を考慮しない。URLに形式を含めることでパスのみでキャッシュキーが定まり、Purge Files by URL(SW-010)の対象もパスの列挙で確定する。元画像そのもの(バリアント指定なし)は配信しない。
 
@@ -82,14 +82,14 @@ SVGは`<img>`要素からのみ参照し、`<object>`・`<iframe>`・インラ�
 
 Cache APIのキーにリクエストURLを加工せず用いるのは、Workerがカスタムキーを設定した資産をPurge Files by URLで無効化できないためである。またCache APIは`Vary`ヘッダーを考慮しないため、出力フォーマットの分離はURLの拡張子で行う。
 
-パージ対象URLは6バリアント×5拡張子の30件で、Purge Files by URLの1リクエスト上限(Freeプランで100件)に収まる。例(オブジェクトキー`01J9B2Y4D6F8H0K2M4P6R8T0V2`、`square-sm`のみ抜粋):
+パージ対象URLは6バリアント×5拡張子の30件で、Purge Files by URLの1リクエスト上限(Freeプランで100件)に収まる。例(オブジェクトキー`f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48`、`square-sm`のみ抜粋):
 
 ```
-https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.avif
-https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.webp
-https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.jpg
-https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.png
-https://genai-example-2-images.lab.kurachiweb.com/square-sm/01J9B2Y4D6F8H0K2M4P6R8T0V2.svg
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.avif
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.webp
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.jpg
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.png
+https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.svg
 ```
 
 スクリーンショットに`square-*`を、ロゴに`screenshot-*`を、非SVG原本に`svg`を要求することは仕様上想定しないが、配信サーバーは対象画像の種別を判定せずにパージ対象を組み立てるため、全バリアント×全拡張子をパージ対象に含める。
@@ -124,17 +124,17 @@ Cloudflareが付与する`CF-Cache-Status`は、Workerが`fetch`サブリクエ�
     <source
       type="image/avif"
       srcset="
-        https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2.avif
+        https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.avif
       "
     />
     <source
       type="image/webp"
       srcset="
-        https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2.webp
+        https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.webp
       "
     />
     <img
-      src="https://genai-example-2-images.lab.kurachiweb.com/square-md/01J9B2Y4D6F8H0K2M4P6R8T0V2.jpg"
+      src="https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.jpg"
       width="96"
       height="96"
       alt="プロダクト名のロゴ"
