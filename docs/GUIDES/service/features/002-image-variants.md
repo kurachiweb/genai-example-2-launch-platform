@@ -22,21 +22,23 @@ https://{画像配信ドメイン}/{variant}/{objectKey}.{ext}
 
 ## バリアント一覧
 
-バリアントのサイズはDPR 2の表示を前提とし、CSS上の表示サイズの2倍で定義する。
+DPR 1端末とDPR 2端末の両方に対応するため、それぞれの画像バリアントを用意して`srcset`で出し分ける。
 
-| バリアント名       | 出力サイズ                 | fit          | 用途                                                                                                   | 対象画像               |
-| ------------------ | -------------------------- | ------------ | ------------------------------------------------------------------------------------------------------ | ---------------------- |
-| `square-sm`        | 96×96px                    | `cover`      | コメント一覧・Upvoteユーザー一覧・フォロー一覧のアバター、問い合わせチャットの管理者アバター(CSS 48px) | プロフィール画像、ロゴ |
-| `square-md`        | 192×192px                  | `cover`      | 予選・トーナメントのマッチカード、ディレクトリ一覧、スポンサー広告のロゴ(CSS 96px)                     | プロフィール画像、ロゴ |
-| `square-lg`        | 384×384px                  | `cover`      | プロダクト詳細ページのロゴ、公開プロフィールページのアバター(CSS 192px)                                | プロフィール画像、ロゴ |
-| `screenshot-thumb` | 幅640px(高さは縦横比維持)  | `scale-down` | プロダクト詳細ページのスクリーンショット一覧サムネイル(CSS 320px幅)                                    | スクリーンショット     |
-| `screenshot-full`  | 幅1920px(高さは縦横比維持) | `scale-down` | スクリーンショット拡大表示(ライトボックス)                                                             | スクリーンショット     |
-| `review`           | 長辺1280px(縦横比維持)     | `scale-down` | 管理者側の手動モデレーション画面・プロダクト管理画面での確認表示                                       | 全画像                 |
+| バリアント名          | 出力サイズ                  | fit          | 解像度    | 1xの用途                                                                                             | 2xの用途                                          |
+| --------------------- | --------------------------- | ------------ | --------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `square-xs`           | 32×32px                     | `cover`      | `1x`      | 各種一覧でのユーザープロフィール画像、ヘルプ記事の作成者・問い合わせチャットの管理者プロフィール画像 | ―                                                 |
+| `square-sm`           | 64×64px                     | `cover`      | `2x`/`1x` | 予選・トーナメント・ディレクトリ・スポンサー一覧のプロダクトロゴ                                     | `square-xs`での`1x`の用途と同じ(CSS 32px)         |
+| `square-md`           | 128×128px                   | `cover`      | `2x`/`1x` | プロダクトのロゴ、公開プロフィールページのユーザープロフィール画像                                   | `square-sm`での`1x`の用途と同じ(CSS 64px)         |
+| `square-lg`           | 256×256px                   | `cover`      | `2x`      | ―                                                                                                    | `square-md`での`1x`の用途と同じ(CSS 128px)        |
+| `screenshot-thumb`    | 480×480px以内(縦横比維持)   | `scale-down` | `1x`      | プロダクトのスクリーンショット一覧サムネイル、管理者側の確認表示サムネイル                           | ―                                                 |
+| `screenshot-thumb-2x` | 960×960px以内(縦横比維持)   | `scale-down` | `2x`      | ―                                                                                                    | `screenshot-thumb`での`1x`の用途と同じ(CSS 480px) |
+| `screenshot-full`     | 1920×1920px以内(縦横比維持) | `scale-down` | `1x`      | スクリーンショット拡大表示(ライトボックス)                                                           | ―                                                 |
 
 - `cover`は縦横比を維持して指定サイズを覆うように拡縮し、はみ出た部分を中央基準で切り取る。アップロード時のトリミング(FR-FILEU-003)で正方形に整えている前提だが、公開API等で非正方形が混入しても崩れないようにする
+- スクリーンショット系バリアントの`fit`は`scale-down`で、幅・高さの両方を上限として指定するため、原本の縦横比を保ったままいずれか一方が上限に達するまで縮小する
 - `scale-down`は指定サイズより小さい画像を拡大しない
 - ロゴとプロフィール画像は同じ正方形バリアントを共有する。用途別に名前を分けないのは、バリアント数を抑えてキャッシュ効率とパージ対象を単純にするためである
-- 隔離バケットへ移動された画像(FR-FILEU-011・012)はどのバリアントでも404を返す。`review`バリアントも例外ではなく、管理者の手動モデレーション画面は隔離バケットの原本を管理者側フロントエンドの同一オリジンからAPIサーバー経由で表示する(FR-ADMUG-021)
+- 隔離バケットへ移動された画像(FR-FILEU-011・012)はどのバリアントでも404を返す。管理者の手動モデレーション画面では隔離バケットの原本を管理者側フロントエンドの同一オリジンからAPIサーバー経由で表示する(FR-ADMUG-021)
 
 ## 出力フォーマット
 
@@ -54,7 +56,7 @@ URLの拡張子`ext`により出力フォーマットを指定する。配信サ
 - `jpg`と`png`は非対応ブラウザ向けのフォールバックであり、どちらを参照するかはフロントエンドがアップロード時に保存した原本のMIMEタイプで決める(原本がPNG・GIFなら`png`、それ以外は`jpg`)。透過を持つロゴがJPEGで塗り潰されるのを防ぐためである
 - GIFアニメーションは最初のフレームのみを静止画として出力する
 - 全バリアントで`metadata: "none"`を指定しExif等のメタデータを除去する(FR-FILEU-015、DR-006)
-- 品質はAVIF・WebP・JPEGとも`quality: 80`を基準とし、`review`のみ`quality: 90`とする
+- 品質はAVIF・WebP・JPEGとも`quality: 80`とする
 
 ## SVGの扱い
 
@@ -82,7 +84,7 @@ SVGは`<img>`要素からのみ参照し、`<object>`・`<iframe>`・インラ�
 
 Cache APIのキーにリクエストURLを加工せず用いるのは、Workerがカスタムキーを設定した資産をPurge Files by URLで無効化できないためである。またCache APIは`Vary`ヘッダーを考慮しないため、出力フォーマットの分離はURLの拡張子で行う。
 
-パージ対象URLは6バリアント×5拡張子の30件で、Purge Files by URLの1リクエスト上限(Freeプランで100件)に収まる。例(オブジェクトキー`f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48`、`square-sm`のみ抜粋):
+パージ対象URLは7バリアント×5拡張子の35件で、Purge Files by URLの1リクエスト上限(Freeプランで100件)に収まる。例(オブジェクトキー`f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48`、`square-sm`のみ抜粋):
 
 ```
 https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.avif
@@ -106,35 +108,33 @@ Cloudflareが付与する`CF-Cache-Status`は、Workerが`fetch`サブリクエ�
 
 手順3で`HIT`のままの場合はPurge Files by URLが効いていないため、隔離時のパージを`Cache-Tag`によるタグパージ(オブジェクトキーを指定、Freeプランでは5リクエスト/分・1リクエスト100タグまで)へ切り替える。
 
-## 画像種別ごとの利用バリアント
-
-| 画像種別               | アップロード上限         | 利用するバリアント                                                |
-| ---------------------- | ------------------------ | ----------------------------------------------------------------- |
-| プロフィール画像       | 500KB                    | `square-sm`、`square-md`、`square-lg`、`review`                   |
-| 管理者プロフィール画像 | 500KB                    | `square-sm`(問い合わせチャット・ヘルプ記事の作成者表示)、`review` |
-| プロダクトロゴ         | 500KB                    | `square-sm`、`square-md`、`square-lg`、`review`                   |
-| スクリーンショット     | 1枚5MB、プロダクト計10MB | `screenshot-thumb`、`screenshot-full`、`review`                   |
-
 ## フロントエンドでの参照
 
 - 出力フォーマットの選択は`<picture>`要素と`<source type>`でブラウザに委ねる。`avif`・`webp`の順に`<source>`を並べ、`<img src>`にはフォールバックの`jpg`または`png`を指定する。SVG原本は`<picture>`を使わず`<img src="….svg">`のみで参照する
+- 各`<source>`・`<img>`の`srcset`にはピクセル密度記述子(`1x`/`2x`)で1x・2xバリアントの両方を指定し、DPR 1端末には1xを、DPR 2以上には2xを配信する。幅は固定のため`sizes`属性・幅記述子(`w`)は使わない
 
   ```html
   <picture>
     <source
       type="image/avif"
       srcset="
-        https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.avif
+        https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.avif 1x,
+        https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.avif 2x
       "
     />
     <source
       type="image/webp"
       srcset="
-        https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.webp
+        https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.webp 1x,
+        https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.webp 2x
       "
     />
     <img
       src="https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.jpg"
+      srcset="
+        https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.jpg 1x,
+        https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.jpg 2x
+      "
       width="96"
       height="96"
       alt="プロダクト名のロゴ"
@@ -142,9 +142,9 @@ Cloudflareが付与する`CF-Cache-Status`は、Workerが`fetch`サブリクエ�
   </picture>
   ```
 
-- `<img>`には表示サイズをCSSで指定し、`width`・`height`属性にはバリアントの出力サイズの半分(CSS px)を指定してレイアウトシフトを防ぐ
-- 解像度切り替え(`srcset`の複数候補と`sizes`)は使わず、2xサイズ固定で十分とする。`<source>`の`srcset`には候補を1つだけ指定する
-- 画像種別ごとのURL組み立てと`<picture>`の生成はフロントエンド共通ファイル(`apps/frontend-lib/components`)の共通コンポーネントに集約し、各ページで直接URLを組み立てない
+- `<img>`には表示サイズをCSSで指定し、`width`・`height`属性には1xバリアントの出力サイズ(CSS px相当の値)をそのまま指定してレイアウトシフトを防ぐ
+- スクリーンショット系バリアント(`screenshot-thumb`/`screenshot-thumb-2x`、`screenshot-full`)は幅・高さの両方を上限とする縦横比維持のリサイズのため、実際の出力サイズが原本の縦横比によって画像ごとに異なる。画像表示時にはFR-FILEU-020で保存された原本画像の幅・高さも併せて取得し、`width`・`height`属性を設定する
+- 画像種別ごとのURL組み立てと`<picture>`の生成はフロントエンド共通ファイル(`apps/frontend-lib/components`)の共通コンポーネントに集約し、各ページで直接URLを組み立てない。コンポーネントはCSS表示サイズ(または`square-sm`のような`2x`側のバリアント名)を引数に受け取り、対応する`1x`バリアント名を内部で解決する
 - 未読み込み時・404時はプロダクト名の頭文字またはユーザーのニックネームの頭文字を表示するプレースホルダーに置き換える([デザインガイドライン](../design/001-design-principles.md))
 
 ## バリアントの追加・変更
