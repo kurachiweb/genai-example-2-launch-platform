@@ -23,7 +23,7 @@
 ZIPのファイル名は`launch-stadium-export-{handle}-{YYYYMMDD}.zip`(日付は基準時刻での要求日)とする。
 
 ```
-launch-stadium-export-kurachi_dev-20260915.zip
+launch-stadium-export-KurachiWeb-20260915.zip
 ├── README.txt
 ├── manifest.json
 ├── account.json
@@ -90,8 +90,7 @@ Launch Stadiumをご利用いただきありがとうございます。
   "requestedAt": "2026-09-15T10:12:30.000Z",
   "generatedAt": "2026-09-15T10:13:05.412Z",
   "user": {
-    "id": "01J8ZK2W4XN6YQ0V9F3P7HRD5A",
-    "handle": "kurachi_dev"
+    "handle": "KurachiWeb"
   },
   "files": [
     { "path": "account.json", "kind": "account", "count": 1 },
@@ -116,7 +115,6 @@ Launch Stadiumをご利用いただきありがとうございます。
 | `service`       | 文字列 | 固定値`Launch Stadium`                                               |
 | `requestedAt`   | 日時   | ユーザーがエクスポートを要求した日時                                 |
 | `generatedAt`   | 日時   | ZIP生成が完了した日時                                                |
-| `user.id`       | ULID   | ユーザーの主キー                                                     |
 | `user.handle`   | 文字列 | エクスポート時点のハンドル文字列                                     |
 | `files[]`       | 配列   | 同梱するJSONファイルの一覧。`count`は配列要素数(単一オブジェクトは1) |
 
@@ -146,7 +144,6 @@ Launch Stadiumをご利用いただきありがとうございます。
   },
   "apiKeys": [
     {
-      "id": "01J9A1Z3C5E7G9K1M3P5R7T9V1",
       "name": "My dashboard",
       "scopes": {
         "products": "read",
@@ -180,7 +177,6 @@ Launch Stadiumをご利用いただきありがとうございます。
 | `notificationSettings.followedUserMatch` | 真偽値            | フォロー中ユーザーのマッチ開催通知(FR-NOTIF-003)の受信可否                                           |
 | `notificationSettings.followedUserAward` | 真偽値            | フォロー中ユーザーの受賞結果通知(FR-NOTIF-004)の受信可否                                             |
 | `notificationSettings.suppressedReason`  | 文字列/null       | バウンス等により送信対象外の場合`bounce`・`complaint`・`rejected`のいずれか。通常は`null`            |
-| `apiKeys[].id`                           | ULID              | APIキーのID                                                                                          |
 | `apiKeys[].name`                         | 文字列            | ユーザーが付けたキーの名前                                                                           |
 | `apiKeys[].scopes`                       | オブジェクト      | 機能ごとの権限。値は`none`・`read`・`read_write`(`read_write`は`profile`と`productDescriptions`のみ) |
 | `apiKeys[].createdAt`                    | 日時              | 発行日時。キーの平文とハッシュは含めない                                                             |
@@ -189,7 +185,7 @@ Launch Stadiumをご利用いただきありがとうございます。
 
 ```json
 {
-  "handle": "kurachi_dev",
+  "handle": "KurachiWeb",
   "nickname": "Kurachi",
   "headline": "個人開発者。SaaSを週1でローンチ中",
   "bioPath": "profile/bio.md",
