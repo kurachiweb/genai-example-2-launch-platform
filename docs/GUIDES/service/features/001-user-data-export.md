@@ -519,6 +519,8 @@ Launch Stadiumをご利用いただきありがとうございます。
 
 決済履歴。返金・チャージバックも個別のレコードとして含める。金額はStripeと同じ最小通貨単位(USDならセント)の整数。
 
+チャージバックは資金移動を伴う異議申し立て(Stripeの`Dispute`オブジェクトの`needs_response`・`under_review`・`won`・`lost`)のみ`kind: dispute`としてレコード化し、資金移動を伴わない照会段階や、異議申し立てに発展せず阻止された場合は対象外とする。
+
 ```json
 [
   {
@@ -556,21 +558,45 @@ Launch Stadiumをご利用いただきありがとうございます。
     "stripeReference": "re_3PQRstUvWxYz0123456789",
     "relatedId": "01J9M3K5Q7S9U1W3Y5A7C9E1G3",
     "occurredAt": "2026-09-22T04:10:00.000Z"
+  },
+  {
+    "id": "01J9Q7O9U1W3Y5A7C9E1G3K7M9",
+    "kind": "dispute",
+    "purpose": "sponsorship",
+    "amount": -5600,
+    "currency": "usd",
+    "quantity": null,
+    "status": "disputed",
+    "stripeReference": "dp_1PQRstUvWxYz0123456789",
+    "relatedId": "01J9M3K5Q7S9U1W3Y5A7C9E1G3",
+    "occurredAt": "2026-09-25T11:30:00.000Z"
+  },
+  {
+    "id": "01J9R8P0V2X4Z6B8D0F2H4L8N0",
+    "kind": "dispute",
+    "purpose": "sponsorship",
+    "amount": 0,
+    "currency": "usd",
+    "quantity": null,
+    "status": "dispute_lost",
+    "stripeReference": "dp_1PQRstUvWxYz0123456789",
+    "relatedId": "01J9M3K5Q7S9U1W3Y5A7C9E1G3",
+    "occurredAt": "2026-10-09T02:00:00.000Z"
   }
 ]
 ```
 
-| 項目              | 型        | 説明                                                                                                             |
-| ----------------- | --------- | ---------------------------------------------------------------------------------------------------------------- |
-| `kind`            | 文字列    | `one_time`(都度決済)、`subscription`(定期課金の請求)、`refund`(返金)、`dispute`(チャージバック)                  |
-| `purpose`         | 文字列    | `week_tournament_entry`・`year_tournament_entry`・`sponsorship`・`ultras`                                        |
-| `amount`          | 整数      | 最小通貨単位の金額。返金・チャージバックは負数                                                                   |
-| `currency`        | 文字列    | ISO 4217小文字。`usd`固定                                                                                        |
-| `quantity`        | 整数/null | 数量(スポンサー広告は日数)。返金等は`null`                                                                       |
-| `status`          | 文字列    | `succeeded`・`failed`・`pending`・`disputed`・`dispute_won`・`dispute_lost`                                      |
-| `stripeReference` | 文字列    | Stripe側のオブジェクトID(Checkout Session・Invoice・Refund・Dispute)。ユーザーがStripe領収書と突合するために持つ |
-| `relatedId`       | ULID/null | 決済対象のローンチID(トーナメント参加費)またはスポンサー広告ID                                                   |
-| `occurredAt`      | 日時      | Webhookイベントに含まれる発生時刻                                                                                |
+| 項目              | 型        | 説明                                                                                                                                                                                                         |
+| ----------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `kind`            | 文字列    | `one_time`(都度決済)、`subscription`(定期課金の請求)、`refund`(返金)、`dispute`(チャージバック)                                                                                                              |
+| `purpose`         | 文字列    | `week_tournament_entry`・`year_tournament_entry`・`sponsorship`・`ultras`                                                                                                                                    |
+| `amount`          | 整数      | 最小通貨単位の金額。返金は負数。チャージバックはそのレコード時点で実際に動いた金額(異議申し立て開始時は引き落とし額として負数、`dispute_won`は返還額として正数、`dispute_lost`は追加の資金移動が無いため`0`) |
+| `currency`        | 文字列    | ISO 4217小文字。`usd`固定                                                                                                                                                                                    |
+| `quantity`        | 整数/null | 数量(スポンサー広告は日数)。返金等は`null`                                                                                                                                                                   |
+| `status`          | 文字列    | `succeeded`・`failed`・`pending`。`kind`が`dispute`の場合は`disputed`(係争中)・`dispute_won`(勝訴)・`dispute_lost`(敗訴)を取る                                                                               |
+| `stripeReference` | 文字列    | Stripe側のオブジェクトID(Checkout Session・Invoice・Refund・Dispute)。ユーザーがStripe領収書と突合するために持つ                                                                                             |
+| `relatedId`       | ULID/null | 決済対象のローンチID(トーナメント参加費)またはスポンサー広告ID                                                                                                                                               |
+| `occurredAt`      | 日時      | Webhookイベントに含まれる発生時刻                                                                                                                                                                            |
 
 ## 生成と提供の流れ
 
