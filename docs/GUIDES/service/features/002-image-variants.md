@@ -53,7 +53,7 @@ URLの拡張子`ext`により出力フォーマットを指定する。配信サ
 | `svg`  | SVG  | SVGのみ([SVGの扱い](#svgの扱い)) |
 
 - 原本の種別と`ext`の組み合わせが上表に無い場合(SVG原本に`svg`以外、非SVG原本に`svg`)は404を返す
-- `jpg`と`png`は非対応ブラウザ向けのフォールバックであり、どちらを参照するかはフロントエンドがアップロード時に保存した原本のMIMEタイプで決める(原本がPNG・GIFなら`png`、それ以外は`jpg`)。透過を持つロゴがJPEGで塗り潰されるのを防ぐためである
+- `jpg`と`png`は非対応ブラウザ向けのフォールバックであり、どちらを参照するかはフロントエンドがアップロード時に保存した原本のMIMEタイプで決める(原本がJPEGなら`jpg`、それ以外は`png`)。透過を持つロゴがJPEGで塗り潰されるのを防ぐためである
 - GIFアニメーションは最初のフレームのみを静止画として出力する
 - 全バリアントで`metadata: "none"`を指定しExif等のメタデータを除去する(FR-FILEU-015、DR-006)
 - 品質はAVIF・WebP・JPEGとも`quality: 80`とする
@@ -135,8 +135,8 @@ Cloudflareが付与する`CF-Cache-Status`は、Workerが`fetch`サブリクエ�
         https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.jpg 1x,
         https://genai-example-2-images.lab.kurachiweb.com/square-md/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.jpg 2x
       "
-      width="96"
-      height="96"
+      width="64"
+      height="64"
       alt="プロダクト名のロゴ"
     />
   </picture>
