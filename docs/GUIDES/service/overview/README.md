@@ -5,7 +5,7 @@ Launch Stadiumのコンセプト・料金・対戦ルールなど、サービス
 | ドキュメント                                                 | 内容                                                                          |
 | ------------------------------------------------------------ | ----------------------------------------------------------------------------- |
 | [001-service-concept.md](001-service-concept.md)             | サービスの位置づけ、世界観、勝ち上がりの全体像、収益モデル、略記              |
-| [002-pricing-and-plans.md](002-pricing-and-plans.md)         | 課金項目と参考価格、Ultras免除の判定時点、決済期限のUI表示を早める理由        |
+| [002-pricing-and-plans.md](002-pricing-and-plans.md)         | 課金項目と参考価格、Ultras免除の判定時点、UI表示において決済期限を早める理由  |
 | [003-qualifier-rules.md](003-qualifier-rules.md)             | 予選のペアリングと勝敗判定の意図と具体例                                      |
 | [004-week-tournament-rules.md](004-week-tournament-rules.md) | Product of the Week決定トーナメントのシード・組み合わせ決定の細部と具体例(正) |
 | [005-year-tournament-rules.md](005-year-tournament-rules.md) | Product of the Year決定トーナメントのWeekとの差分と具体例                     |
