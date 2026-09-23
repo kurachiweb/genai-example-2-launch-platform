@@ -188,5 +188,5 @@ flowchart LR
 
 ## 受賞後
 
-- 受賞プロダクトの再ローンチ制限はFR-RELCH-005([再ローンチ規則](006-relaunch-rules.md))
+- 受賞プロダクトの再ローンチ制限はFR-RELCH-004([再ローンチ規則](006-relaunch-rules.md))
 - Yearトーナメントの対象となる([Yearトーナメント規則](005-year-tournament-rules.md))
