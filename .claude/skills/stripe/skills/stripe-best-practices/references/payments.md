@@ -15,7 +15,7 @@
 
 Use the [Checkout Sessions API](https://docs.stripe.com/api/checkout/sessions.md) (`checkout.sessions.create`) for on-session payments. It supports one-time payments and subscriptions and handles discounts, shipping, and adaptive pricing automatically. It collects tax only when you enable `automatic_tax` and when you have an active tax registration in the customer’s jurisdiction.
 
-Use the [PaymentIntents API](https://docs.stripe.com/payments/paymentintents/lifecycle.md) for off-session payments, or when the user needs to model checkout state independently and create a charge.
+Use the [Payment Intents API](https://docs.stripe.com/payments/paymentintents/lifecycle.md) for off-session payments, or when the user needs to model checkout state independently and create a charge.
 
 **Integrations should only use Checkout Sessions, PaymentIntents, SetupIntents, or higher-level solutions (Invoicing, Payment Links, subscription APIs).**
 
@@ -79,7 +79,7 @@ See the [integration options guide](https://docs.stripe.com/payments/payment-met
 **Traps to avoid:**
 
 - Never hardcode `payment_method_types: ['card']` even if the user only mentions credit cards. Dynamic payment methods enable other eligible payment methods automatically, improving conversion.
-- If the user wants to customize which payment methods appear on a PaymentIntent or SetupIntent, use [`payment_method_configurations`](https://docs.stripe.com/payments/payment-method-configurations.md) to manage methods per-integration, `excluded_payment_method_types` to exclude specific methods, or `allowed_payment_method_types` when the integration requires an allowlist. Never use `payment_method_types`.
+- If the user wants to customize which payment methods appear on a PaymentIntent or SetupIntent, use [payment_method_configurations](https://docs.stripe.com/payments/payment-method-configurations.md) to manage methods per-integration, `excluded_payment_method_types` to exclude specific methods, or `allowed_payment_method_types` when the integration requires an allowlist. Never use `payment_method_types`.
 - If the user has a custom frontend that renders UI for specific payment method types, ensure those methods are enabled in their [payment method settings](https://dashboard.stripe.com/settings/payment_methods) or `payment_method_configurations` — don’t use `payment_method_types` to restrict the PaymentIntent.
 
 ## Deprecated APIs and migration paths
