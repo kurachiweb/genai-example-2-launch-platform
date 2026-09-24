@@ -75,12 +75,10 @@ launch-stadium-export-KurachiWeb-20260915.zip
 ```
 Launch Stadiumをご利用いただきありがとうございます。
 
-このアーカイブには、あなたがLaunch Stadiumで登録・投稿したデータと、
-あなたのプロダクトが受けた対戦成績が含まれています。
+このアーカイブには、あなたがLaunch Stadiumで登録・投稿したデータと、あなたのプロダクトが受けた対戦成績が含まれています。
 
-各JSONファイルの内容とファイル一覧はmanifest.jsonをご覧ください。
-プロダクトの説明文やコメントなどのマークダウン本文は、JSONから
-相対パスで参照される.mdファイルに保存されています。
+JSONファイル一覧はmanifest.jsonをご覧ください。
+プロダクトの説明文やコメントなどのマークダウン本文は、各JSONから相対パスで参照される.mdファイルに保存されています。
 ```
 
 ## manifest.json
@@ -551,13 +549,13 @@ Launch Stadiumをご利用いただきありがとうございます。
     "id": "01J9P6N8T0V2X4Z6B8D0F2H4K6",
     "kind": "refund",
     "purpose": "sponsorship",
-    "amount": -2400,
+    "amount": -4000,
     "currency": "usd",
     "quantity": null,
     "status": "succeeded",
     "stripeReference": "re_3PQRstUvWxYz0123456789",
     "relatedId": "01J9M3K5Q7S9U1W3Y5A7C9E1G3",
-    "occurredAt": "2026-09-22T04:10:00.000Z"
+    "occurredAt": "2026-09-23T04:10:00.000Z"
   },
   {
     "id": "01J9Q7O9U1W3Y5A7C9E1G3K7M9",
