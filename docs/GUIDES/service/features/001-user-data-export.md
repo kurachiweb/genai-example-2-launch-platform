@@ -14,6 +14,7 @@
 | マークダウン本文               | JSONには相対パスのみを持ち、本文は`.md`ファイルへ分離する                                                 |
 | 画像・添付ファイル             | 原本をそのまま同梱する。ファイル名はアップロード時の元ファイル名                                          |
 | ZIP圧縮方式                    | 画像・添付ファイルは圧縮せずそのまま格納し、テキストファイルのみ圧縮する                                  |
+| ZIP内のファイル名の文字コード  | ファイル名にUTF-8であることを示すフラグを立てて格納する。日本語ファイル名の文字化けを防ぐ                 |
 | 日時                           | ISO 8601のUTC表記(`2026-09-07T08:00:00.000Z`)。基準時刻(UTC-08:00)の「日付」は`YYYY-MM-DD`                |
 | ID                             | 各エンティティのULID。他ファイルからの参照はULIDで行う                                                    |
 | 秘密情報                       | パスワードハッシュ、セッション、TOTPシークレット、リカバリコード、APIキー平文、配信停止トークンは含めない |
@@ -33,7 +34,8 @@ launch-stadium-export-KurachiWeb-20260915.zip
 ├── profile.json
 ├── profile/
 │   ├── bio.md
-│   └── avatar.png
+│   └── avatar/
+│       └── {元ファイル名}
 ├── products.json
 ├── products/
 │   └── {productHandle}/
@@ -64,7 +66,11 @@ launch-stadium-export-KurachiWeb-20260915.zip
 ### ファイル名の規則
 
 - 画像・添付ファイルはアップロード時にクライアントが申告した元ファイル名(FR-FILEU-018によりサニタイズ済み)を用いる
-- 同一ディレクトリ内で名前が衝突する場合、2つ目以降に`-2`、`-3`のように拡張子の前へ連番を付ける(`shot.png`、`shot-2.png`)
+- ZIP内のファイル名を決める際、Windows・macOS・Linuxのいずれでも展開・作成できるよう元ファイル名に次の変換を順に適用する
+  - `:`・`*`・`?`・`"`・`<`・`>`・`|`を`-`に置換する
+  - 拡張子を除いた部分の末尾にある`.`・半角スペースを全て除去する
+  - 拡張子を除いた部分が大文字小文字を問わずWindowsの予約デバイス名(`CON`・`PRN`・`AUX`・`NUL`・`COM1〜COM9`・`LPT1〜LPT9`)のいずれかと一致する場合、末尾に`_`を付与する
+  - 同一ディレクトリ内で(上記の変換後の名前同士で)名前が衝突する場合、2つ目以降に拡張子の前へ`-2`から始まる連番を付け、その名前も既存のファイル名と衝突するなら衝突しなくなるまで連番を増やす(例:`shot.png`、`shot-2.png`)
 - JSON側の`*Path`フィールドは、ZIPルートからの相対パスをそのまま持つ
 - `{productHandle}`はエクスポート時点のプロダクトのハンドル文字列。プロダクト論理削除済みの場合も同じ規則で出力する
 
@@ -101,10 +107,10 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
     { "path": "upvotes.json", "kind": "upvotes", "count": 40 },
     { "path": "ratings.json", "kind": "ratings", "count": 4 },
     { "path": "follows.json", "kind": "follows", "count": 7 },
-    { "path": "reports.json", "kind": "reports", "count": 0 },
+    { "path": "reports.json", "kind": "reports", "count": 1 },
     { "path": "inquiries.json", "kind": "inquiries", "count": 1 },
     { "path": "sponsorships.json", "kind": "sponsorships", "count": 1 },
-    { "path": "payments.json", "kind": "payments", "count": 3 }
+    { "path": "payments.json", "kind": "payments", "count": 5 }
   ]
 }
 ```
@@ -191,7 +197,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
   "nickname": "Kurachi",
   "headline": "個人開発者。SaaSを週1でローンチ中",
   "bioPath": "profile/bio.md",
-  "avatarPath": "profile/avatar.png",
+  "avatarPath": "profile/avatar/avatar.png",
   "avatarQuarantined": false,
   "websites": [
     { "name": "GitHub", "url": "https://github.example/kurachi" },
@@ -272,7 +278,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 ```json
 [
   {
-    "id": "01J9C3Z5E7G9J1L3N5Q7S9U1W3",
+    "id": "01J9B2Y4D65BHZ5XE90JSNS2J1",
     "productId": "01J9B2Y4D6F8H0K2M4P6R8T0V2",
     "launchDate": "2026-09-07",
     "status": "finished",
@@ -288,7 +294,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
         "result": "won"
       },
       {
-        "id": "01J9E5B7G9J1L3N5Q7S9U1W3Y5",
+        "id": "01J9B2Y4D7T0PGVRJ4GYZ03HAV",
         "kind": "week",
         "round": 1,
         "date": "2026-09-15",
@@ -309,6 +315,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 | `productId`                     | ULID      | `products.json`の`id`                                                                                    |
 | `launchDate`                    | 日付      | 基準時刻でのローンチ日                                                                                   |
 | `status`                        | 文字列    | `scheduled`(予定)、`paired`(ペアリング済み)、`in_progress`(マッチ中)、`finished`(終了)、`canceled`(取消) |
+| `matches[].id`                  | ULID      | マッチID                                                                                                 |
 | `matches[].kind`                | 文字列    | `qualifier`(予選)、`week`(Weekトーナメント)、`year`(Yearトーナメント)                                    |
 | `matches[].round`               | 整数/null | トーナメントのラウンド番号(1回戦=1)。予選は`null`                                                        |
 | `matches[].date`                | 日付      | マッチ実施日                                                                                             |
@@ -327,11 +334,10 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 [
   {
     "id": "01J9F6C8H0K2M4P6R8T0V2X4Z6",
-    "launchId": "01J9G7D9J1L3N5Q7S9U1W3Y5A7",
+    "launchId": "01J9B2Y4D8TVPB5WY7K22X6PAS",
     "product": { "name": "Tactics Board", "handle": "tactics-board" },
     "parentCommentId": null,
     "bodyPath": "comments/01J9F6C8H0K2M4P6R8T0V2X4Z6.md",
-    "ratingScore": 4,
     "createdAt": "2026-09-07T14:20:00.000Z",
     "updatedAt": "2026-09-07T14:25:00.000Z",
     "deletedAt": null,
@@ -340,45 +346,45 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 ]
 ```
 
-| 項目              | 型           | 説明                                                          |
-| ----------------- | ------------ | ------------------------------------------------------------- |
-| `launchId`        | ULID         | コメント先のローンチID                                        |
-| `product`         | オブジェクト | コメント先プロダクトの名称とハンドル                          |
-| `parentCommentId` | ULID/null    | 返信先コメントID。トップレベルは`null`(最大3階層)             |
-| `bodyPath`        | 文字列       | 本文マークダウンのパス。管理者により非公開化中でも含める      |
-| `ratingScore`     | 整数/null    | コメントと併せて付けた5段階評価(1〜5)。付けていなければ`null` |
-| `deletedAt`       | 日時/null    | 自身で削除した日時                                            |
-| `hiddenByAdmin`   | 真偽値       | 管理者により非公開化中なら`true`                              |
+| 項目              | 型           | 説明                                                     |
+| ----------------- | ------------ | -------------------------------------------------------- |
+| `id`              | ULID         | コメントID                                               |
+| `launchId`        | ULID         | コメント先のローンチID                                   |
+| `product`         | オブジェクト | コメント先プロダクトの名称とハンドル                     |
+| `parentCommentId` | ULID/null    | 返信先コメントID。トップレベルは`null`(最大3階層)        |
+| `bodyPath`        | 文字列       | 本文マークダウンのパス。管理者により非公開化中でも含める |
+| `createdAt`       | 日時         | 投稿日時                                                 |
+| `updatedAt`       | 日時         | 最終更新日時                                             |
+| `deletedAt`       | 日時/null    | 自身で削除した日時                                       |
+| `hiddenByAdmin`   | 真偽値       | 管理者により非公開化中なら`true`                         |
 
 ## upvotes.json
 
-自身が行ったUpvote。取り消したものも`canceledAt`付きで含める。
+自身が行ったUpvote。
 
 ```json
 [
   {
-    "matchId": "01J9D4A6F8H0K2M4P6R8T0V2X4",
+    "matchId": "01J9C7E3G5K7M9P1R3T5V7X9Z1",
     "matchKind": "qualifier",
     "matchDate": "2026-09-07",
-    "product": { "name": "Pitch Notes", "handle": "pitch-notes" },
-    "upvotedAt": "2026-09-07T13:02:11.000Z",
-    "canceledAt": null
+    "product": { "name": "Tactics Board", "handle": "tactics-board" },
+    "upvotedAt": "2026-09-07T14:15:00.000Z"
   }
 ]
 ```
 
-| 項目         | 型           | 説明                                 |
-| ------------ | ------------ | ------------------------------------ |
-| `matchId`    | ULID         | UpvoteしたマッチのID                 |
-| `matchKind`  | 文字列       | `qualifier`・`week`・`year`          |
-| `matchDate`  | 日付         | マッチ実施日                         |
-| `product`    | オブジェクト | Upvoteしたプロダクトの名称とハンドル |
-| `upvotedAt`  | 日時         | Upvote日時                           |
-| `canceledAt` | 日時/null    | 取り消した日時                       |
+| 項目        | 型           | 説明                                 |
+| ----------- | ------------ | ------------------------------------ |
+| `matchId`   | ULID         | UpvoteしたマッチのID                 |
+| `matchKind` | 文字列       | `qualifier`・`week`・`year`          |
+| `matchDate` | 日付         | マッチ実施日                         |
+| `product`   | オブジェクト | Upvoteしたプロダクトの名称とハンドル |
+| `upvotedAt` | 日時         | Upvote日時                           |
 
 ## ratings.json
 
-自身が付けた5段階評価の現在値(上書き後の値)。取り消し済みは含めない。
+プロダクトに対して自身が付けた5段階評価の現在値。
 
 ```json
 [
@@ -392,10 +398,13 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 ]
 ```
 
-| 項目                 | 型     | 説明                           |
-| -------------------- | ------ | ------------------------------ |
-| `score`              | 整数   | 1〜5                           |
-| `invalidatedByAdmin` | 真偽値 | 管理者により無効化中なら`true` |
+| 項目                 | 型           | 説明                               |
+| -------------------- | ------------ | ---------------------------------- |
+| `product`            | オブジェクト | 評価したプロダクトの名称とハンドル |
+| `score`              | 整数         | 1〜5                               |
+| `createdAt`          | 日時         | 初回評価日時                       |
+| `updatedAt`          | 日時         | 評価変更日時                       |
+| `invalidatedByAdmin` | 真偽値       | 管理者により無効化中なら`true`     |
 
 ## follows.json
 
@@ -410,6 +419,11 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 ]
 ```
 
+| 項目         | 型           | 説明                                       |
+| ------------ | ------------ | ------------------------------------------ |
+| `user`       | オブジェクト | フォロー中ユーザーのハンドルとニックネーム |
+| `followedAt` | 日時         | フォロー開始日時                           |
+
 ## reports.json
 
 自身が送信した通報。対象は種別と公開識別子のみを持つ。
@@ -419,7 +433,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
   {
     "id": "01J9H8E0K2M4P6R8T0V2X4Z6B8",
     "targetType": "comment",
-    "targetRef": "01J9I9F1L3N5Q7S9U1W3Y5A7C9",
+    "targetRef": "01J9B2Y4D9Z41MQ3NWJFHYZYCB",
     "category": "スパム",
     "reason": "同じ宣伝文を複数のローンチに投稿している",
     "createdAt": "2026-09-08T01:00:00.000Z"
@@ -429,10 +443,12 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 
 | 項目         | 型     | 説明                                                       |
 | ------------ | ------ | ---------------------------------------------------------- |
+| `id`         | ULID   | 通報ID                                                     |
 | `targetType` | 文字列 | `user`・`product`・`comment`                               |
 | `targetRef`  | 文字列 | ユーザーとプロダクトはハンドル文字列、コメントはコメントID |
 | `category`   | 文字列 | 通報時点の通報カテゴリ名                                   |
 | `reason`     | 文字列 | 入力した理由                                               |
+| `createdAt`  | 日時   | 送信日時                                                   |
 
 対応ステータスや管理者の判断結果は含めない。
 
@@ -449,26 +465,26 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
     "createdAt": "2026-08-01T10:00:00.000Z",
     "messages": [
       {
-        "id": "01J9K1H3N5Q7S9U1W3Y5A7C9E1",
+        "id": "01J9B2Y4DAK2GX4GTJXFA87YZT",
         "sender": "user",
         "adminNickname": null,
         "body": "領収書の宛名を変更できますか?",
         "attachments": [
           {
-            "path": "inquiries/01J9J0G2M4P6R8T0V2X4Z6B8D0/01J9K1H3N5Q7S9U1W3Y5A7C9E1/receipt.pdf",
+            "path": "inquiries/01J9J0G2M4P6R8T0V2X4Z6B8D0/01J9B2Y4DAK2GX4GTJXFA87YZT/receipt.pdf",
             "contentType": "application/pdf",
             "size": 48213
           }
         ],
-        "sentAt": "2026-08-01T10:00:00.000Z"
+        "createdAt": "2026-08-01T10:00:00.000Z"
       },
       {
-        "id": "01J9L2J4P6R8T0V2X4Z6B8D0F2",
+        "id": "01J9B2Y4DBQ27HNVTEAP0Q8TK6",
         "sender": "admin",
         "adminNickname": "サポート担当A",
         "body": "Stripeの領収書ページから変更できます。",
         "attachments": [],
-        "sentAt": "2026-08-01T12:30:00.000Z"
+        "createdAt": "2026-08-01T12:30:00.000Z"
       }
     ]
   }
@@ -477,41 +493,48 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 
 | 項目                                   | 型          | 説明                                                                        |
 | -------------------------------------- | ----------- | --------------------------------------------------------------------------- |
+| `id`                                   | ULID        | 問い合わせID                                                                |
 | `category`                             | 文字列      | 問い合わせ時点のカテゴリ名                                                  |
 | `status`                               | 文字列      | `open`(未対応)、`in_progress`(対応中)、`resolved`(対応済)、`rejected`(却下) |
+| `createdAt`                            | 日時        | 問い合わせ日時                                                              |
+| `messages[].id`                        | ULID        | メッセージID                                                                |
 | `messages[].sender`                    | 文字列      | `user`(自身)、`admin`(管理者)                                               |
 | `messages[].adminNickname`             | 文字列/null | 管理者返信時のニックネーム。管理者が削除済みなら`null`                      |
 | `messages[].body`                      | 文字列      | メッセージ本文(プレーンテキスト)                                            |
 | `messages[].attachments[].path`        | 文字列      | 添付ファイルのパス                                                          |
 | `messages[].attachments[].contentType` | 文字列      | 添付ファイルのMIMEタイプ                                                    |
 | `messages[].attachments[].size`        | 整数        | 添付ファイルのバイト数                                                      |
+| `messages[].createdAt`                 | 日時        | 送信日時                                                                    |
 
 ## sponsorships.json
 
 ```json
 [
   {
-    "id": "01J9M3K5Q7S9U1W3Y5A7C9E1G3",
+    "id": "01J9B2Y4DCQ7GXWCZJN3E7HNE1",
     "product": { "name": "Pitch Notes", "handle": "pitch-notes" },
     "tier": "gold",
-    "startsOn": "2026-09-20",
-    "endsOn": "2026-09-26",
+    "startsOn": "2026-09-07",
+    "endsOn": "2026-09-13",
     "days": 7,
-    "status": "scheduled",
-    "paymentId": "01J9N4L6R8T0V2X4Z6B8D0F2H4",
-    "createdAt": "2026-09-15T09:00:00.000Z"
+    "status": "terminated",
+    "paymentId": "01J9B2Y4DDKYB9KA41TCHRDN3D",
+    "createdAt": "2026-09-06T09:00:00.000Z"
   }
 ]
 ```
 
-| 項目        | 型        | 説明                                                                                                                |
-| ----------- | --------- | ------------------------------------------------------------------------------------------------------------------- |
-| `tier`      | 文字列    | `silver`・`gold`・`legend`                                                                                          |
-| `startsOn`  | 日付      | 掲載開始日(基準時刻)                                                                                                |
-| `endsOn`    | 日付      | 掲載終了日(含む)                                                                                                    |
-| `days`      | 整数      | 掲載日数(決済の数量)                                                                                                |
-| `status`    | 文字列    | `pending_payment`(未決済)、`scheduled`(掲載前)、`active`(掲載中)、`ended`(終了)、`terminated`(管理者による強制終了) |
-| `paymentId` | ULID/null | `payments.json`の`id`。未決済なら`null`                                                                             |
+| 項目        | 型           | 説明                                                                                                                |
+| ----------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `id`        | ULID         | スポンサー広告ID                                                                                                    |
+| `product`   | オブジェクト | 掲載したプロダクトの名称とハンドル                                                                                  |
+| `tier`      | 文字列       | `silver`・`gold`・`legend`                                                                                          |
+| `startsOn`  | 日付         | 掲載開始日(基準時刻)                                                                                                |
+| `endsOn`    | 日付         | 掲載終了日(含む)                                                                                                    |
+| `days`      | 整数         | 掲載日数(決済の数量)                                                                                                |
+| `status`    | 文字列       | `pending_payment`(未決済)、`scheduled`(掲載前)、`active`(掲載中)、`ended`(終了)、`terminated`(管理者による強制終了) |
+| `paymentId` | ULID/null    | `payments.json`の`id`。未決済なら`null`                                                                             |
+| `createdAt` | 日時         | 申込日時                                                                                                            |
 
 ## payments.json
 
@@ -522,7 +545,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 ```json
 [
   {
-    "id": "01J9N4L6R8T0V2X4Z6B8D0F2H4",
+    "id": "01J9B2Y4DDKYB9KA41TCHRDN3D",
     "kind": "one_time",
     "purpose": "sponsorship",
     "amount": 5600,
@@ -530,11 +553,11 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
     "quantity": 7,
     "status": "succeeded",
     "stripeReference": "cs_test_a1B2c3D4e5F6g7H8i9J0",
-    "relatedId": "01J9M3K5Q7S9U1W3Y5A7C9E1G3",
-    "occurredAt": "2026-09-15T09:01:12.000Z"
+    "relatedId": "01J9B2Y4DCQ7GXWCZJN3E7HNE1",
+    "occurredAt": "2026-09-06T09:01:12.000Z"
   },
   {
-    "id": "01J9O5M7S9U1W3Y5A7C9E1G3J5",
+    "id": "01J9B2Y4DE62JW92ZWWEY295V9",
     "kind": "subscription",
     "purpose": "ultras",
     "amount": 900,
@@ -554,11 +577,11 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
     "quantity": null,
     "status": "succeeded",
     "stripeReference": "re_3PQRstUvWxYz0123456789",
-    "relatedId": "01J9M3K5Q7S9U1W3Y5A7C9E1G3",
-    "occurredAt": "2026-09-23T04:10:00.000Z"
+    "relatedId": "01J9B2Y4DCQ7GXWCZJN3E7HNE1",
+    "occurredAt": "2026-09-09T04:10:00.000Z"
   },
   {
-    "id": "01J9Q7O9U1W3Y5A7C9E1G3K7M9",
+    "id": "01J9B2Y4DFJX4PKS7J4FEPC2T4",
     "kind": "dispute",
     "purpose": "sponsorship",
     "amount": -5600,
@@ -566,11 +589,11 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
     "quantity": null,
     "status": "disputed",
     "stripeReference": "dp_1PQRstUvWxYz0123456789",
-    "relatedId": "01J9M3K5Q7S9U1W3Y5A7C9E1G3",
-    "occurredAt": "2026-09-25T11:30:00.000Z"
+    "relatedId": "01J9B2Y4DCQ7GXWCZJN3E7HNE1",
+    "occurredAt": "2026-09-11T11:30:00.000Z"
   },
   {
-    "id": "01J9R8P0V2X4Z6B8D0F2H4L8N0",
+    "id": "01J9B2Y4DG78W752RNXX4MZZFJ",
     "kind": "dispute",
     "purpose": "sponsorship",
     "amount": 0,
@@ -578,14 +601,15 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
     "quantity": null,
     "status": "dispute_lost",
     "stripeReference": "dp_1PQRstUvWxYz0123456789",
-    "relatedId": "01J9M3K5Q7S9U1W3Y5A7C9E1G3",
-    "occurredAt": "2026-10-09T02:00:00.000Z"
+    "relatedId": "01J9B2Y4DCQ7GXWCZJN3E7HNE1",
+    "occurredAt": "2026-09-14T02:00:00.000Z"
   }
 ]
 ```
 
 | 項目              | 型        | 説明                                                                                                                                                                                                         |
 | ----------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`              | ULID      | 決済ID                                                                                                                                                                                                       |
 | `kind`            | 文字列    | `one_time`(都度決済)、`subscription`(定期課金の請求)、`refund`(返金)、`dispute`(チャージバック)                                                                                                              |
 | `purpose`         | 文字列    | `week_tournament_entry`・`year_tournament_entry`・`sponsorship`・`ultras`                                                                                                                                    |
 | `amount`          | 整数      | 最小通貨単位の金額。返金は負数。チャージバックはそのレコード時点で実際に動いた金額(異議申し立て開始時は引き落とし額として負数、`dispute_won`は返還額として正数、`dispute_lost`は追加の資金移動が無いため`0`) |
@@ -609,7 +633,7 @@ sequenceDiagram
     participant E as イベントサーバー
     participant R as R2(ファイル用非公開バケット)
     U->>F: エクスポート要求
-    F->>A: 中継(レート制限: 24時間に1回)
+    F->>A: 中継(レート制限: 24時間に3回)
     A->>Q: エクスポートジョブをenqueue
     A-->>F: 受付完了
     F-->>U: 受付完了を即時応答
@@ -624,7 +648,8 @@ sequenceDiagram
 ```
 
 - ダウンロードページではZIPの有効期限(DR-004)を表示する
-- 生成中に再要求してもFR-RLMIT-005により拒否される
+- 生成中であっても、FR-RLMIT-005の上限(24時間に3回)に達していなければ再要求でき、複数のジョブが並行して生成される
+- 生成または保存に失敗し失敗通知メール(FR-UDATA-008)を送信した場合も、その要求はFR-RLMIT-005の上限回数に含まれたままリセットされない
 
 ## スキーマの変更管理
 
