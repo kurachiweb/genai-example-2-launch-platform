@@ -207,17 +207,17 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 }
 ```
 
-| 項目                | 型          | 説明                                         |
-| ------------------- | ----------- | -------------------------------------------- |
-| `handle`            | 文字列      | ハンドル文字列(25文字以内)                   |
-| `nickname`          | 文字列      | ニックネーム(25文字以内)                     |
-| `headline`          | 文字列/null | ヘッドライン(50文字以内)                     |
-| `bioPath`           | 文字列/null | 自己紹介マークダウンのパス。未設定なら`null` |
-| `avatarPath`        | 文字列/null | プロフィール画像のパス。未設定なら`null`     |
-| `avatarQuarantined` | 真偽値      | 隔離フラグ、隔離バケットで判定待ちなら`true` |
-| `websites[].name`   | 文字列      | 外部Webサイトの表示名                        |
-| `websites[].url`    | 文字列      | 外部WebサイトのURL                           |
-| `updatedAt`         | 日時        | プロフィール最終更新日時                     |
+| 項目                | 型          | 説明                                               |
+| ------------------- | ----------- | -------------------------------------------------- |
+| `handle`            | 文字列      | ハンドル文字列(25文字以内)                         |
+| `nickname`          | 文字列      | ニックネーム(25文字以内)                           |
+| `headline`          | 文字列/null | ヘッドライン(50文字以内)                           |
+| `bioPath`           | 文字列/null | 自己紹介マークダウンのパス。未設定なら`null`       |
+| `avatarPath`        | 文字列/null | プロフィール画像のパス。未設定なら`null`           |
+| `avatarQuarantined` | 真偽値      | 隔離フラグ、隔離バケットへ移動されているなら`true` |
+| `websites[].name`   | 文字列      | 外部Webサイトの表示名                              |
+| `websites[].url`    | 文字列      | 外部WebサイトのURL                                 |
+| `updatedAt`         | 日時        | プロフィール最終更新日時                           |
 
 ## products.json
 
@@ -263,9 +263,9 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 | `websiteUrl`                | 文字列    | 外部WebサイトURL                                           |
 | `descriptionPath`           | 文字列    | 説明文マークダウンのパス。管理者により非公開化中でも含める |
 | `logoPath`                  | 文字列    | ロゴ画像のパス                                             |
-| `logoQuarantined`           | 真偽値    | ロゴが隔離バケットで判定待ちなら`true`                     |
+| `logoQuarantined`           | 真偽値    | ロゴが隔離バケットへ移動されているなら`true`               |
 | `screenshots[].path`        | 文字列    | 表示順のスクリーンショット画像のパス                       |
-| `screenshots[].quarantined` | 真偽値    | 隔離バケットで判定待ちなら`true`                           |
+| `screenshots[].quarantined` | 真偽値    | 隔離バケットへ移動されているなら`true`                     |
 | `createdAt`                 | 日時      | 登録日時                                                   |
 | `updatedAt`                 | 日時      | 最終更新日時                                               |
 | `deletedAt`                 | 日時/null | 自身で論理削除した日時                                     |
