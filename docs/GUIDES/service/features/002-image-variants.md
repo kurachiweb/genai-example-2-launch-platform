@@ -44,15 +44,17 @@ DPR 1端末とDPR 2端末の両方に対応するため、それぞれの画像�
 
 URLの拡張子`ext`により出力フォーマットを指定する。配信サーバーはリクエストの`Accept`ヘッダーを参照しない。
 
-| `ext`  | 出力 | 対象となる原本                   |
-| ------ | ---- | -------------------------------- |
-| `avif` | AVIF | SVG以外                          |
-| `webp` | WebP | SVG以外                          |
-| `jpg`  | JPEG | SVG以外                          |
-| `png`  | PNG  | SVG以外                          |
-| `svg`  | SVG  | SVGのみ([SVGの扱い](#svgの扱い)) |
+| `ext`  | 出力 | 対象となる原本                   | 対象となるバリアント  |
+| ------ | ---- | -------------------------------- | --------------------- |
+| `avif` | AVIF | SVG以外                          | `screenshot-full`以外 |
+| `webp` | WebP | SVG以外                          | 全て                  |
+| `jpg`  | JPEG | SVG以外                          | 全て                  |
+| `png`  | PNG  | SVG以外                          | 全て                  |
+| `svg`  | SVG  | SVGのみ([SVGの扱い](#svgの扱い)) | 全て                  |
 
-- 原本の種別と`ext`の組み合わせが上表に無い場合(SVG原本に`svg`以外、非SVG原本に`svg`)は404を返す
+- 上表に無い組み合わせ(SVG原本に`svg`以外、非SVG原本に`svg`、`screenshot-full`に`avif`)は404を返す
+- 出力サイズの長辺上限が1,200pxを超えるバリアントでは`avif`を提供しない
+  - Images Bindingは長辺1,200pxを超えるAVIF画像を出力できないため(参照:[Cloudflare Imagesドキュメント](https://developers.cloudflare.com/images/get-started/limits/))
 - `jpg`と`png`は非対応ブラウザ向けのフォールバックであり、どちらを参照するかはフロントエンドがアップロード時に保存した原本のMIMEタイプで決める(原本がJPEGなら`jpg`、それ以外は`png`)。透過を持つロゴがJPEGで塗り潰されるのを防ぐためである
 - GIFアニメーションは最初のフレームのみを静止画として出力する
 - 全バリアントで`metadata: "none"`を指定しExif等のメタデータを除去する(FR-FILEU-015、DR-006)
@@ -74,14 +76,14 @@ SVGは`<img>`要素からのみ参照し、`<object>`・`<iframe>`・インラ�
 | エッジキャッシュ   | Workerが自ら生成するレスポンスは自動ではエッジキャッシュ(NFR-SCALE-002)に載らないため、Cache API(`caches.default`)にリクエストURLをそのままキーとして保存する。ヒット時はR2の読み出しとImages Bindingの変換を省略する。Workerは毎回起動し、Tiered Cacheは効かない |
 | `X-Image-Cache`    | Cache APIのヒット可否を`HIT`または`MISS`で返す独自ヘッダー。[パージ効果の検証](#パージ効果の検証)と障害調査に用いる                                                                                                                                               |
 | `Cache-Tag`        | 全レスポンスに`Cache-Tag: {objectKey}`を付与する。パージ処理からは使わないが、Purge Files by URLがCache API保存資産に効かないと判明した場合の切替先、及び障害時にダッシュボードから手動でタグパージする手段として確保する                                         |
-| 隔離時のパージ     | 隔離バケットへの移動時に、当該オブジェクトキーの全バリアント×全拡張子のURLをPurge Files by URLで指定して即時無効化する(FR-FILEU-014)                                                                                                                              |
-| 物理削除時のパージ | [日次バッチ](../overview/007-daily-timeline.md#日次バッチ421の内容)による退会ユーザーの投稿データ・ファイルの物理削除(FR-USER-019)時にも、隔離時と同じ方法で当該オブジェクトキーの全バリアント×全拡張子のURLをPurge Files by URLで無効化する(FR-FILEU-019)        |
+| 隔離時のパージ     | 隔離バケットへの移動時に、当該オブジェクトキーの全バリアント×対応拡張子のURLをPurge Files by URLで指定して即時無効化する(FR-FILEU-014)                                                                                                                            |
+| 物理削除時のパージ | [日次バッチ](../overview/007-daily-timeline.md#日次バッチ421の内容)による退会ユーザーの投稿データ・ファイルの物理削除(FR-USER-019)時にも、隔離時と同じ方法で当該オブジェクトキーの全バリアント×対応拡張子のURLをPurge Files by URLで無効化する(FR-FILEU-019)      |
 
 Cache APIのキーにリクエストURLを加工せず用いるのは、Workerがカスタムキーを設定した資産をPurge Files by URLで無効化できないためである。またCache APIは`Vary`ヘッダーを考慮しないため、出力フォーマットの分離はURLの拡張子で行う。
 
 `Cache-Tag`レスポンスヘッダーはCloudflareにより訪問者へ返す前に除去される。(参照:[Cloudflare Workersドキュメント](https://developers.cloudflare.com/workers/cache/configuration/#cache-tag))
 
-パージ対象URLは7バリアント×5拡張子の35件で、Purge Files by URLの1リクエスト上限(Freeプランで100件)に収まる。例(オブジェクトキー`f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48`、`square-sm`のみ抜粋):
+パージ対象URLは7バリアント×5拡張子から`screenshot-full`の`avif`を除いた34件で、Purge Files by URLの1リクエスト上限(Freeプランで100件)に収まる。例(オブジェクトキー`f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48`、`square-sm`のみ抜粋):
 
 ```
 https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.avif
@@ -91,7 +93,7 @@ https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e
 https://genai-example-2-images.lab.kurachiweb.com/square-sm/f3a9c1e7b2d84a6f9c0e5b3a7d1f2c48.svg
 ```
 
-スクリーンショットに`square-*`を、ロゴに`screenshot-*`を、非SVG原本に`svg`を要求することは仕様上想定しないが、配信サーバーは対象画像の種別を判定せずにパージ対象を組み立てるため、全バリアント×全拡張子をパージ対象に含める。
+スクリーンショットに`square-*`を、ロゴに`screenshot-*`を、非SVG原本に`svg`を要求することは仕様上想定しないが、配信サーバーは対象画像の種別を判定せずにパージ対象を組み立てるため、これらもパージ対象に含める。
 
 ### パージ効果の検証
 
@@ -107,7 +109,7 @@ Cloudflareが付与する`CF-Cache-Status`は、Workerが`fetch`サブリクエ�
 
 ## フロントエンドでの参照
 
-- 出力フォーマットの選択は`<picture>`要素と`<source type>`でブラウザに委ねる。`avif`・`webp`の順に`<source>`を並べ、`<img src>`にはフォールバックの`jpg`または`png`を指定する。SVG原本は`<picture>`を使わず`<img src="….svg">`のみで参照する
+- 出力フォーマットの選択は`<picture>`要素と`<source type>`でブラウザに委ねる。`avif`(提供するバリアントのみ)・`webp`の順に`<source>`を並べ、`<img src>`にはフォールバックの`jpg`または`png`を指定する。SVG原本は`<picture>`を使わず`<img src="….svg">`のみで参照する
 - 各`<source>`・`<img>`の`srcset`にはピクセル密度記述子(`1x`/`2x`)で1x・2xバリアントの両方を指定し、DPR 1端末には1xを、DPR 2以上には2xを配信する。幅は固定のため`sizes`属性・幅記述子(`w`)は使わない
 
   ```html
