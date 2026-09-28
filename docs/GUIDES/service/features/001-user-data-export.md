@@ -20,7 +20,7 @@
 | 秘密情報                       | パスワードハッシュ、セッション、TOTPシークレット、リカバリコード、APIキー平文、配信停止トークンは含めない |
 | 論理削除済みデータ             | `deletedAt`付きで含める                                                                                   |
 | 管理者により非表示扱いのデータ | 管理者による非表示化・無効化のフラグ付きで通常通り含める                                                  |
-| 隔離バケットに移された画像     | 原本を隔離バケットから取得し、隔離フラグ付きで通常通り含める                                              |
+| 隔離バケットに移された画像     | 実体は含めず、元ファイル名等のメタデータのみ含める。隔離解除後の再エクスポートでは通常通り実体を含める    |
 
 ## ZIPの構造
 
@@ -199,6 +199,9 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
   "bioPath": "profile/bio.md",
   "avatarPath": "profile/avatar/avatar.png",
   "avatarQuarantined": false,
+  "avatarOriginalFileName": "avatar.png",
+  "avatarContentType": "image/png",
+  "avatarSize": 92416,
   "websites": [
     { "name": "GitHub", "url": "https://github.example/kurachi" },
     { "name": "Blog", "url": "https://blog.example/" }
@@ -207,17 +210,20 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 }
 ```
 
-| 項目                | 型          | 説明                                               |
-| ------------------- | ----------- | -------------------------------------------------- |
-| `handle`            | 文字列      | ハンドル文字列(25文字以内)                         |
-| `nickname`          | 文字列      | ニックネーム(25文字以内)                           |
-| `headline`          | 文字列/null | ヘッドライン(50文字以内)                           |
-| `bioPath`           | 文字列/null | 自己紹介マークダウンのパス。未設定なら`null`       |
-| `avatarPath`        | 文字列/null | プロフィール画像のパス。未設定なら`null`           |
-| `avatarQuarantined` | 真偽値      | 隔離フラグ、隔離バケットへ移動されているなら`true` |
-| `websites[].name`   | 文字列      | 外部Webサイトの表示名                              |
-| `websites[].url`    | 文字列      | 外部WebサイトのURL                                 |
-| `updatedAt`         | 日時        | プロフィール最終更新日時                           |
+| 項目                     | 型          | 説明                                                                        |
+| ------------------------ | ----------- | --------------------------------------------------------------------------- |
+| `handle`                 | 文字列      | ハンドル文字列(25文字以内)                                                  |
+| `nickname`               | 文字列      | ニックネーム(25文字以内)                                                    |
+| `headline`               | 文字列/null | ヘッドライン(50文字以内)                                                    |
+| `bioPath`                | 文字列/null | 自己紹介マークダウンのパス。未設定なら`null`                                |
+| `avatarPath`             | 文字列/null | プロフィール画像のパス。未設定、または`avatarQuarantined`が`true`なら`null` |
+| `avatarQuarantined`      | 真偽値      | プロフィール画像の隔離フラグ、隔離バケットへ移動されているなら`true`        |
+| `avatarOriginalFileName` | 文字列/null | プロフィール画像の元ファイル名。未設定なら`null`                            |
+| `avatarContentType`      | 文字列/null | プロフィール画像のMIMEタイプ。未設定なら`null`                              |
+| `avatarSize`             | 整数/null   | プロフィール画像のバイト数。未設定なら`null`                                |
+| `websites[].name`        | 文字列      | 外部Webサイトの表示名                                                       |
+| `websites[].url`         | 文字列      | 外部WebサイトのURL                                                          |
+| `updatedAt`              | 日時        | プロフィール最終更新日時                                                    |
 
 ## products.json
 
@@ -235,14 +241,23 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
     "descriptionPath": "products/pitch-notes/description.md",
     "logoPath": "products/pitch-notes/logo/logo.png",
     "logoQuarantined": false,
+    "logoOriginalFileName": "logo.png",
+    "logoContentType": "image/png",
+    "logoSize": 61234,
     "screenshots": [
       {
         "path": "products/pitch-notes/screenshots/home.png",
-        "quarantined": false
+        "quarantined": false,
+        "originalFileName": "home.png",
+        "contentType": "image/png",
+        "size": 154892
       },
       {
-        "path": "products/pitch-notes/screenshots/home-2.png",
-        "quarantined": false
+        "path": null,
+        "quarantined": true,
+        "originalFileName": "home-2.png",
+        "contentType": "image/png",
+        "size": 182044
       }
     ],
     "createdAt": "2026-08-30T02:10:00.000Z",
@@ -253,23 +268,29 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 ]
 ```
 
-| 項目                        | 型        | 説明                                                       |
-| --------------------------- | --------- | ---------------------------------------------------------- |
-| `id`                        | ULID      | プロダクトID                                               |
-| `handle`                    | 文字列    | ハンドル文字列(50文字以内)                                 |
-| `name`                      | 文字列    | 名称(50文字以内)                                           |
-| `tagline`                   | 文字列    | タグライン(100文字以内)                                    |
-| `category`                  | 文字列    | エクスポート時点のカテゴリ名                               |
-| `websiteUrl`                | 文字列    | 外部WebサイトURL                                           |
-| `descriptionPath`           | 文字列    | 説明文マークダウンのパス。管理者により非公開化中でも含める |
-| `logoPath`                  | 文字列    | ロゴ画像のパス                                             |
-| `logoQuarantined`           | 真偽値    | ロゴが隔離バケットへ移動されているなら`true`               |
-| `screenshots[].path`        | 文字列    | 表示順のスクリーンショット画像のパス                       |
-| `screenshots[].quarantined` | 真偽値    | 隔離バケットへ移動されているなら`true`                     |
-| `createdAt`                 | 日時      | 登録日時                                                   |
-| `updatedAt`                 | 日時      | 最終更新日時                                               |
-| `deletedAt`                 | 日時/null | 自身で論理削除した日時                                     |
-| `hiddenByAdmin`             | 真偽値    | 管理者により非公開化中なら`true`。理由は含めない           |
+| 項目                             | 型          | 説明                                                                  |
+| -------------------------------- | ----------- | --------------------------------------------------------------------- |
+| `id`                             | ULID        | プロダクトID                                                          |
+| `handle`                         | 文字列      | ハンドル文字列(50文字以内)                                            |
+| `name`                           | 文字列      | 名称(50文字以内)                                                      |
+| `tagline`                        | 文字列      | タグライン(100文字以内)                                               |
+| `category`                       | 文字列      | エクスポート時点のカテゴリ名                                          |
+| `websiteUrl`                     | 文字列      | 外部WebサイトURL                                                      |
+| `descriptionPath`                | 文字列      | 説明文マークダウンのパス。管理者により非公開化中でも含める            |
+| `logoPath`                       | 文字列/null | ロゴ画像のパス。`logoQuarantined`が`true`なら`null`                   |
+| `logoQuarantined`                | 真偽値      | ロゴ画像が隔離バケットへ移動されているなら`true`                      |
+| `logoOriginalFileName`           | 文字列      | ロゴ画像の元ファイル名                                                |
+| `logoContentType`                | 文字列      | ロゴ画像のMIMEタイプ                                                  |
+| `logoSize`                       | 整数        | ロゴ画像のバイト数                                                    |
+| `screenshots[].path`             | 文字列/null | 表示順のスクリーンショット画像のパス。`quarantined`が`true`なら`null` |
+| `screenshots[].quarantined`      | 真偽値      | スクリーンショット画像が隔離バケットへ移動されているなら`true`        |
+| `screenshots[].originalFileName` | 文字列      | スクリーンショット画像の元ファイル名                                  |
+| `screenshots[].contentType`      | 文字列      | スクリーンショット画像のMIMEタイプ                                    |
+| `screenshots[].size`             | 整数        | スクリーンショット画像のバイト数                                      |
+| `createdAt`                      | 日時        | 登録日時                                                              |
+| `updatedAt`                      | 日時        | 最終更新日時                                                          |
+| `deletedAt`                      | 日時/null   | 自身で論理削除した日時                                                |
+| `hiddenByAdmin`                  | 真偽値      | 管理者により非公開化中なら`true`。理由は含めない                      |
 
 ## launches.json
 
