@@ -174,6 +174,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### 画像配信
 
 - Cloudflare WorkersのImages Binding ... R2に保存した画像をWorker内でフォーマット変換・リサイズ・Exif削除
+- Cloudflare Workers Cache ... 変換済み画像をWorker前段でエッジキャッシュ
 
 ### 実行環境のセキュリティ
 
