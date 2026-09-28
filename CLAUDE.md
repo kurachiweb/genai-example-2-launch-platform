@@ -3,7 +3,7 @@
 ## このサービスについて
 
 作った製品を投稿し、他のユーザーと投票数を競い合うローンチプラットフォーム。
-要件定義等の詳細は[README.md](README.md)を参照すること。
+要件定義等の詳細は[ソフトウェア要件定義書](docs/requirements/spec.md)を、そのうち機能要件については[システム機能要件](docs/requirements/functional.md)を参照すること。
 
 ## 技術選定
 
@@ -133,7 +133,8 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... TanStack Startを利用
 │       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
-│   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
+│   ├── requirements/           # ソフトウェア要件定義書(IEEE 29148準拠、SSoT)
+│   ├── onboardings/            # オンボーディングガイド ... ローカル環境の構築手順及びポート番号
 │   ├── ai-extensions/          # 外部由来のAIエージェント向けガイドライン(原文のまま配置)
 │   ├── ai-prompts/             # 開発中に使用した主なプロンプトの記録
 │   ├── adr/                    # ecc:architecture-decision-recordsスキルによる自動生成ADR
@@ -159,5 +160,5 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進める開発コンテナ
 ├── compose.yaml                # コンテナの管理
 ├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化、及びPlaywrightによるE2Eテスト
-└── README.md                   # サービス説明を兼ねた要件定義書(SSoT)
+└── README.md                   # サービス説明、各種ドキュメントへの索引
 ```
