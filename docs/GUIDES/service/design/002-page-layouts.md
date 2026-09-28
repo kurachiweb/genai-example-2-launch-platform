@@ -23,7 +23,15 @@
 | `/unsubscribe/{token}`                                           | 配信停止(FR-NOTIF-009)                                   | ログイン不要。RFC 8058のPOST先(FR-NOTIF-008)はイベントサーバー |
 | `/api-docs`                                                      | 公開APIのSwagger UI(NFR-MAINT-007)                       |                                                                |
 
-URL内のハンドル文字列は大文字小文字を区別せずに解決し、正規化した表記へリダイレクトはしない。検索エンジンによる重複コンテンツ判定を避けるため、各ページは`<link rel="canonical">`により登録時の表記のURLを正として出力する。
+URL内のハンドル文字列は大文字小文字を区別せずに解決し、正規化した表記へリダイレクトはしない。検索エンジンによる重複コンテンツ判定を避けるため、各ページは`<link rel="canonical">`により現在設定されている表記のURLを正として出力する。
+
+### 旧ハンドルの保持とリダイレクト
+
+保持・リダイレクト・削除時の例外はFR-USER-018・FR-UPROF-010〜012・FR-PRDCT-018〜020・FR-ADMAG-021〜023・FR-HELP-011を正とする。
+
+運営・権限者を装うなりすまし対策として、ユーザー及びプロダクトのハンドル文字列には、以下の予約語を大文字小文字の区別無く使用できない。
+
+`admin`・`administrator`・`root`・`superuser`・`staff`・`moderator`・`mod`・`official`・`support`・`security`・`team`・`launchstadium`・`launch-stadium`・`launch_stadium`
 
 ## 共通レイアウト(利用者側)
 
