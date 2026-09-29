@@ -145,10 +145,16 @@ FR-SPONS-006の広告スペースを以下の配置とする。申し込まれ�
 | `/settings/security`      | ログイン中セッション一覧と失効、TOTP多要素認証、リカバリコード | FR-USER-016〜017                      |
 | `/settings/notifications` | 通知メールの受信可否と配信停止中の表示                         | FR-NOTIF-005、FR-NOTIF-016            |
 | `/settings/follows`       | フォロー中・フォロワー一覧                                     | FR-FOLOW-006〜008                     |
-| `/settings/plan`          | Ultrasの状態・加入・解約、決済履歴                             | FR-PPLAN-001〜003、FR-PYMNT-004       |
+| `/settings/plan`          | Ultrasの状態・加入・解約、支払い方法の更新                     | FR-PPLAN-001〜003、FR-PPLAN-008       |
+| `/settings/billing`       | 決済履歴(Ultras・参加費・広告)                                 | FR-PYMNT-004                          |
 | `/settings/sponsorships`  | 申し込んだスポンサー広告の一覧と掲載状況                       | FR-SPONS-011                          |
 | `/settings/api-keys`      | APIキーの発行・スコープ設定・引き継ぎ再発行・削除              | FR-PAPI-001、FR-PAPI-005〜007         |
 | `/settings/export`        | データエクスポートの要求とダウンロード                         | FR-UDATA-001、FR-UDATA-007            |
+
+- 支払い方法の更新ボタンはStripe Customer Portalへ遷移し、完了後に`/settings/plan`へ戻す
+  - Customer Portalでは支払い方法の更新と解約を有効にし、解約は課金期間末に解約する設定とする(FR-PPLAN-003)。決済履歴は本サイト内で扱うため無効にする
+  - ポータルから戻った直後はFR-PPLAN-009の反映が未了の場合があるため、その間は反映待ちである旨を表示する
+- 支払い失敗の再試行中(`past_due`)は、支払い方法の更新を促す表示を出す
 
 ## プロダクト登録・編集
 

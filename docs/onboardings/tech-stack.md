@@ -126,6 +126,7 @@
   - Stripe Node.js SDK(APIサーバー及びイベントサーバーで使用、`createFetchHttpClient()`によるfetchベースの通信)
   - Stripe Checkout Sessions API(決済セッションの管理)
   - Stripe Refunds API(自動返金)
+  - Stripe Customer Portal(Ultrasの支払い方法の更新)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
   - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
 

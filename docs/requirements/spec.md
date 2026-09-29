@@ -192,7 +192,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 - **SW-013**: システムは、Cloudflare WorkersのImages Bindingによる非SVG画像の変換をサポートしなければならない(FR-FILEU-015に対応)
 - **SW-014**: システムは、Cloudflare Email ServiceのEmail Sendingにより、各種通知メールの配信経路を提供しなければならない(FR-NOTIF-001〜014、016に対応)
 - **SW-015**: システムは、Cloudflare Queues Event SubscriptionsによりEmail Sendingのバウンス・苦情・拒否イベントをQueuesへ配信しなければならない(SW-014に対応)
-- **SW-016**: システムは、Stripe Checkout Sessions API・Stripe Refunds API及びStripe Webhookによる決済処理連携を提供しなければならない
+- **SW-016**: システムは、Stripe Checkout Sessions API・Stripe Refunds API・Stripe Customer Portal及びStripe Webhookによる決済処理連携を提供しなければならない
 - **SW-017**: システムは、Amazon Rekognition APIを用いた画像自動判定処理を提供しなければならない(FR-FILEU-011に対応)
 - **SW-018**: システムは、Cloudflare Turnstileによるウィジェット埋め込み及びAPIサーバー側でのsiteverify検証機能を提供しなければならない(FR-USER-012、FR-FOLOW-009、FR-PRDCT-014、FR-VOTE-006、FR-COMNT-008、FR-REPOT-006、FR-SPONS-012、FR-INQRY-006に対応)
 - **SW-019**: システムは、Have I Been PwnedのPwned Passwords range API(k-Anonymity方式)によるパスワード漏洩照合を提供しなければならない(NFR-SECUR-026に対応)
