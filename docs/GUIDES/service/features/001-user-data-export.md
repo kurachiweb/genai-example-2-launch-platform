@@ -19,14 +19,14 @@
 | ID                             | 各エンティティのULID。他ファイルからの参照はULIDで行う                                                    |
 | 秘密情報                       | パスワードハッシュ、セッション、TOTPシークレット、リカバリコード、APIキー平文、配信停止トークンは含めない |
 | 論理削除済みデータ             | `deletedAt`付きで含める                                                                                   |
-| 管理者により非表示扱いのデータ | 管理者による非表示化・無効化のフラグ付きで通常通り含める                                                  |
+| 管理者により非公開扱いのデータ | 管理者による非公開化・無効化のフラグ付きで通常通り含める                                                  |
 | 隔離バケットに移された画像     | 実体は含めず、元ファイル名等のメタデータのみ含める。隔離解除後の再エクスポートでは通常通り実体を含める    |
 
 ## ZIPの構造
 
 ZIPのファイル名は`launch-stadium-export-{handle}-{YYYYMMDD}.zip`(日付は基準時刻での要求日)とする。
 
-```
+```text
 launch-stadium-export-KurachiWeb-20260915.zip
 ├── README.txt
 ├── manifest.json
@@ -70,7 +70,7 @@ launch-stadium-export-KurachiWeb-20260915.zip
   - `:`・`*`・`?`・`"`・`<`・`>`・`|`を`-`に置換する
   - 拡張子を除いた部分の末尾にある`.`・半角スペースを全て除去する
   - 拡張子を除いた部分が大文字小文字を問わずWindowsの予約デバイス名(`CON`・`PRN`・`AUX`・`NUL`・`COM1〜COM9`・`LPT1〜LPT9`)のいずれかと一致する場合、末尾に`_`を付与する
-  - 同一ディレクトリ内で(上記の変換後の名前同士で)名前が衝突する場合、2つ目以降に拡張子の前へ`-2`から始まる連番を付け、その名前も既存のファイル名と衝突するなら衝突しなくなるまで連番を増やす(例:`shot.png`、`shot-2.png`)
+  - 同一ディレクトリ内で(上記の変換後の名前同士で)大文字小文字問わず名前が衝突する場合、2つ目以降に拡張子の前へ`-2`から始まる連番を付け、その名前も既存のファイル名と衝突するなら衝突しなくなるまで連番を増やす(例:`shot.png`、`shot-2.png`)
 - JSON側の`*Path`フィールドは、ZIPルートからの相対パスをそのまま持つ
 - `{productHandle}`はエクスポート時点のプロダクトのハンドル文字列。プロダクト論理削除済みの場合も同じ規則で出力する
 
@@ -94,7 +94,6 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
   "schemaVersion": 1,
   "service": "Launch Stadium",
   "requestedAt": "2026-09-15T10:12:30.000Z",
-  "generatedAt": "2026-09-15T10:13:05.412Z",
   "user": {
     "handle": "KurachiWeb"
   },
@@ -120,7 +119,6 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 | `schemaVersion` | 整数   | 本書で定義する構造のバージョン。後方互換性のない変更時に加算する |
 | `service`       | 文字列 | 固定値`Launch Stadium`                                           |
 | `requestedAt`   | 日時   | ユーザーがエクスポートを要求した日時                             |
-| `generatedAt`   | 日時   | ZIP生成が完了した日時                                            |
 | `user.handle`   | 文字列 | エクスポート時点のハンドル文字列                                 |
 | `files[].path`  | 文字列 | 同梱するJSONファイル名                                           |
 | `files[].kind`  | 文字列 | ファイルが表すエンティティ種別の識別子                           |
@@ -176,7 +174,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 | `mfaEnabled`                             | 真偽値            | TOTP多要素認証の有効状態。シークレットやリカバリコードは含めない                                     |
 | `plan`                                   | オブジェクト/null | Ultras加入履歴が無ければ`null`                                                                       |
 | `plan.name`                              | 文字列            | 固定値`ultras`                                                                                       |
-| `plan.status`                            | 文字列            | `active`(有効)、`canceled`(解約済みで期間末まで有効)、`ended`(終了)                                  |
+| `plan.status`                            | 文字列            | `active`(有効)、`past_due`(決済再試行中も有効)、`canceled`(解約済みで期間末まで有効)、`ended`(終了)  |
 | `plan.startedAt`                         | 日時              | 加入日時                                                                                             |
 | `plan.currentPeriodEndsAt`               | 日時              | 現在の課金期間の終了日時                                                                             |
 | `plan.canceledAt`                        | 日時/null         | 解約操作の日時                                                                                       |
@@ -342,7 +340,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 | `matches[].date`                | 日付      | マッチ実施日                                                                                             |
 | `matches[].upvoteCount`         | 整数      | 自プロダクトの確定Upvote数                                                                               |
 | `matches[].opponentUpvoteCount` | 整数      | 対戦相手の確定Upvote数。不戦勝は`0`                                                                      |
-| `matches[].lastUpvotedAt`       | 日時/null | 自プロダクトの最終Upvote時刻                                                                             |
+| `matches[].lastUpvotedAt`       | 日時/null | 自プロダクトの最終Upvote時間                                                                             |
 | `matches[].result`              | 文字列    | `won`、`lost`、`bye`(不戦勝)、`walkover`(相手の退会・停止・非公開化による勝利)                           |
 | `awards[].kind`                 | 文字列    | `product_of_the_week`(週間受賞)、`product_of_the_year`(年間受賞)                                         |
 | `awards[].period`               | 文字列    | 受賞対象期間。週間受賞は`2026-W37`形式(ISO週)、年間受賞は`2026`形式                                      |
@@ -489,7 +487,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
         "id": "01J9B2Y4DAK2GX4GTJXFA87YZT",
         "sender": "user",
         "adminNickname": null,
-        "body": "領収書の宛名を変更できますか?",
+        "body": "領収書の宛名を変更できますか？",
         "attachments": [
           {
             "path": "inquiries/01J9J0G2M4P6R8T0V2X4Z6B8D0/01J9B2Y4DAK2GX4GTJXFA87YZT/receipt.pdf",
@@ -573,7 +571,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
     "currency": "usd",
     "quantity": 7,
     "status": "succeeded",
-    "stripeReference": "cs_test_a1B2c3D4e5F6g7H8i9J0",
+    "stripeReference": "cs_live_a1B2c3D4e5F6g7H8i9J0",
     "relatedId": "01J9B2Y4DCQ7GXWCZJN3E7HNE1",
     "occurredAt": "2026-09-06T09:01:12.000Z"
   },
@@ -593,7 +591,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
     "id": "01J9P6N8T0V2X4Z6B8D0F2H4K6",
     "kind": "refund",
     "purpose": "sponsorship",
-    "amount": -4000,
+    "amount": -4800,
     "currency": "usd",
     "quantity": null,
     "status": "succeeded",
@@ -637,7 +635,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 | `currency`        | 文字列    | ISO 4217小文字。`usd`固定                                                                                                                                                                                    |
 | `quantity`        | 整数/null | 数量(スポンサー広告は日数)。返金等は`null`                                                                                                                                                                   |
 | `status`          | 文字列    | `succeeded`・`failed`・`pending`。`kind`が`dispute`の場合は`disputed`(係争中)・`dispute_won`(勝訴)・`dispute_lost`(敗訴)を取る                                                                               |
-| `stripeReference` | 文字列    | Stripe側のオブジェクトID(Checkout Session・Invoice・Refund・Dispute)。ユーザーがStripe領収書と突合するために持つ                                                                                             |
+| `stripeReference` | 文字列    | Stripe側のオブジェクトID(Checkout Session・Invoice・Refund・Dispute)。返金の申し出等の問い合わせ対応で、運営がStripe側の該当取引を照会するために持つ                                                         |
 | `relatedId`       | ULID/null | 決済対象のローンチID(トーナメント参加費)またはスポンサー広告ID                                                                                                                                               |
 | `occurredAt`      | 日時      | Webhookイベントに含まれる発生時刻                                                                                                                                                                            |
 
