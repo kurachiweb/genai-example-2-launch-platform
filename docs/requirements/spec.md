@@ -180,7 +180,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 - **SW-001**: システムは、利用者側・管理者側それぞれのフロントエンドサーバーとの通信にGraphQL APIを提供しなければならない(COM-003に対応)
 - **SW-002**: システムは、公開APIとしてRESTful APIを提供しなければならない
 - **SW-003**: システムは、データベースとしてCloudflare D1(SQLiteベース)をサポートしなければならない
-- **SW-004**: システムは、Cloudflare Queuesによる非同期処理をサポートしなければならない(FR-UDATA-004、FR-FTS-003、FR-NOTIF-012〜014、FR-SPONS-015、SW-009に対応)
+- **SW-004**: システムは、Cloudflare Queuesによる非同期処理をサポートしなければならない(FR-UDATA-004、FR-FTS-003、FR-NOTIF-012〜014、FR-SPONS-015、FR-PYMNT-010、SW-009に対応)
 - **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-019、FR-COMNT-009、FR-PRDCT-021、FR-GAME-004、FR-GAME-008〜012、FR-TOURW-004、FR-TOURW-007、FR-TOURW-010〜013、FR-TOURY-004、FR-TOURY-008、FR-TOURY-010〜013、FR-NOTIF-001、FR-NOTIF-002、FR-SPONS-013、FR-SPONS-014、DR-002、DR-004、DR-012〜017に対応)
 - **SW-006**: システムは、Cloudflare Web Analyticsによるメトリクス監視をサポートしなければならない(NFR-OBLOG-001に対応)
 - **SW-007**: システムは、FlareWardenによる死活監視・外部ステータスページをサポートしなければならない(NFR-AVAIL-001、NFR-OBLOG-001に対応)
@@ -192,7 +192,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 - **SW-013**: システムは、Cloudflare WorkersのImages Bindingによる非SVG画像の変換をサポートしなければならない(FR-FILEU-015に対応)
 - **SW-014**: システムは、Cloudflare Email ServiceのEmail Sendingにより、各種通知メールの配信経路を提供しなければならない(FR-NOTIF-001〜014、016に対応)
 - **SW-015**: システムは、Cloudflare Queues Event SubscriptionsによりEmail Sendingのバウンス・苦情・拒否イベントをQueuesへ配信しなければならない(SW-014に対応)
-- **SW-016**: システムは、Stripe Checkout Sessions API及びStripe Webhookによる決済処理連携を提供しなければならない
+- **SW-016**: システムは、Stripe Checkout Sessions API・Stripe Refunds API及びStripe Webhookによる決済処理連携を提供しなければならない
 - **SW-017**: システムは、Amazon Rekognition APIを用いた画像自動判定処理を提供しなければならない(FR-FILEU-011に対応)
 - **SW-018**: システムは、Cloudflare Turnstileによるウィジェット埋め込み及びAPIサーバー側でのsiteverify検証機能を提供しなければならない(FR-USER-012、FR-FOLOW-009、FR-PRDCT-014、FR-VOTE-006、FR-COMNT-008、FR-REPOT-006、FR-SPONS-012、FR-INQRY-006に対応)
 - **SW-019**: システムは、Have I Been PwnedのPwned Passwords range API(k-Anonymity方式)によるパスワード漏洩照合を提供しなければならない(NFR-SECUR-026に対応)
