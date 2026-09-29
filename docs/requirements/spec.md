@@ -181,7 +181,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 - **SW-002**: システムは、公開APIとしてRESTful APIを提供しなければならない
 - **SW-003**: システムは、データベースとしてCloudflare D1(SQLiteベース)をサポートしなければならない
 - **SW-004**: システムは、Cloudflare Queuesによる非同期処理をサポートしなければならない(FR-UDATA-004、FR-FTS-003、FR-NOTIF-012〜014、FR-SPONS-015、FR-PYMNT-010、SW-009に対応)
-- **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-019、FR-COMNT-009、FR-PRDCT-021、FR-GAME-004、FR-GAME-008〜012、FR-TOURW-004、FR-TOURW-007、FR-TOURW-010〜013、FR-TOURY-004、FR-TOURY-008、FR-TOURY-010〜013、FR-NOTIF-001、FR-NOTIF-002、FR-SPONS-013、FR-SPONS-014、DR-002、DR-004、DR-012〜017に対応)
+- **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-019、FR-COMNT-009、FR-PRDCT-021、FR-GAME-004、FR-GAME-008〜012、FR-TOURW-004、FR-TOURW-007、FR-TOURW-010〜013、FR-TOURY-004、FR-TOURY-008、FR-TOURY-010〜013、FR-NOTIF-001、FR-NOTIF-002、FR-SPONS-013、FR-SPONS-014、FR-PYMNT-011、DR-002、DR-004、DR-012〜017に対応)
 - **SW-006**: システムは、Cloudflare Web Analyticsによるメトリクス監視をサポートしなければならない(NFR-OBLOG-001に対応)
 - **SW-007**: システムは、FlareWardenによる死活監視・外部ステータスページをサポートしなければならない(NFR-AVAIL-001、NFR-OBLOG-001に対応)
 - **SW-008**: システムは、Cloudflare Durable Objectsによる状態管理(厳密なレート制限カウント、ログイン試行の強制拒否クールダウン期間)をサポートしなければならない
