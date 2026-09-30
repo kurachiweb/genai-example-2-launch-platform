@@ -69,15 +69,11 @@
     wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
     ```
 
-11. コンテナ内: MikroORMアプリの事前コンパイル
-
-    `apps/api`と`apps/event`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
+11. コンテナ内: DBスキーマ定義の依存パッケージをインストール(初回のみ)
 
     ```sh
     cd /workspace/apps/db
-    bun install # 初回のみ
-    bun run mikro-orm:generate # mikro-orm cache:generate --combined
-    bun run mikro-orm:compile # mikro-orm compile
+    bun install
     ```
 
 12. コンテナ内: アプリケーションの起動

@@ -44,11 +44,6 @@ apps/email
 # Wrangler D1・R2ローカルモードの実データ置き場
 .wrangler
 
-# MikroORMのメタデータキャッシュ・コンパイル済み関数出力先
-/apps/db/temp
-/apps/db/metadata.json
-/apps/db/compiled-functions.js
-
 # フロントエンドのビルド成果物
 .tanstack
 .output

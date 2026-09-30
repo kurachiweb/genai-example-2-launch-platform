@@ -32,8 +32,8 @@
 
 ### ORM
 
-- MikroORM
-- Kysely(クエリビルダ)
+- Drizzle ORM(v1.0 RC) ... D1向け、スキーマ定義と型付きクエリビルダ
+- drizzle-kit(v1.0 RC) ... マイグレーションSQLの生成
 
 ### 認証・認可
 
