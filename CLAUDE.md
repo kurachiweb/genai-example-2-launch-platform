@@ -2,8 +2,7 @@
 
 ## このサービスについて
 
-作った製品を投稿し、他のユーザーと投票数を競い合うローンチプラットフォーム。
-要件定義等の詳細は[ソフトウェア要件定義書](docs/requirements/spec.md)を、そのうち機能要件については[システム機能要件](docs/requirements/functional.md)を参照すること。
+作った製品を投稿し、他のユーザーと投票数を競い合うローンチプラットフォーム。要件定義は[ソフトウェア要件定義書](docs/requirements/README.md)を参照すること。
 
 ## 技術選定
 
@@ -20,6 +19,7 @@
 - コマンドでパスを指定する場合は、必ず絶対パスで表記すること。
 - 必ず実行すべきコマンドやファイル編集がClaude設定のdenyにより拒否されてしまった場合は、開発者が後ほど手動で実行できるように報告すること。
 - フロントエンド側でTanStack系ツールが使われる処理を作成・改修・調査・コードレビューしたい場合は[TanStack Agent Guidelines](docs/ai-extensions/tanstack-agent-guidelines.md)を参照すること。ただしそのガイドラインの「Repository Structure」セクションとは異なり、TanStack関連スキル群は`.claude/skills/tanstack-agent-skills/skills`ディレクトリ内にある。
+- [要件定義書](docs/requirements/README.md)を`grep`コマンドで読み取る際は必ず`--text`オプションを付けること。96KiB超えの巨大テキストファイルがバイナリと判定されてしまうのを防ぐため。
 
 ### コード・ドキュメントの規則
 
