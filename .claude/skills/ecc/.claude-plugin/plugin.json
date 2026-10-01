@@ -1,23 +1,27 @@
 {
   "name": "ecc",
-  "version": "2.0.0",
-  "description": "Harness-native ECC workflows for Codex: shared skills, production-ready MCP configs, and selective-install-aligned conventions for TDD, security scanning, code review, and autonomous development.",
+  "version": "2.2.2",
+  "description": "Harness-native ECC plugin for engineering teams - 68 agents, 293 skills, 94 legacy command shims, reusable hooks, rules, MCP conventions, and operator workflows for Claude Code plus adjacent agent harnesses",
   "author": {
     "name": "Affaan Mustafa",
-    "email": "me@affaanmustafa.com",
     "url": "https://x.com/affaanmustafa"
   },
   "homepage": "https://ecc.tools",
   "repository": "https://github.com/affaan-m/ECC",
   "license": "MIT",
   "keywords": [
-    "codex",
+    "claude-code",
     "agents",
     "skills",
+    "hooks",
+    "rules",
     "tdd",
     "code-review",
     "security",
     "workflow",
-    "automation"
-  ]
+    "automation",
+    "best-practices"
+  ],
+  "skills": ["./skills/"],
+  "commands": ["./commands/"]
 }
