@@ -11,7 +11,7 @@
 ### バックエンド側フレームワーク
 
 - Hono
-- TypeScript
+- TypeScript ... typescript-eslintと組み合わせるためv6を使用
 
 ### 依存性注入(DI)
 
@@ -89,7 +89,7 @@
 - TanStack Start(ルーティングはTanStack Router)
 - @cloudflare/vite-plugin
 - React
-- TypeScript
+- TypeScript ... typescript-eslintと組み合わせるためv6を使用
 
 ### フロントエンド側スキーマ
 
