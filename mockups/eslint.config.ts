@@ -1,5 +1,5 @@
-import { tanstackConfig } from '@tanstack/eslint-config'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import { tanstackConfig } from '@tanstack/eslint-config';
+import { defineConfig, globalIgnores } from 'eslint/config';
 
 export default defineConfig([
   tanstackConfig,
@@ -13,4 +13,4 @@ export default defineConfig([
     },
   },
   globalIgnores(['eslint.config.ts', 'prettier.config.ts']),
-])
+]);

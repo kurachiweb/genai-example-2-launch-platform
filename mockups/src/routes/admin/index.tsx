@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/admin/')({ component: AdminHome })
+export const Route = createFileRoute('/admin/')({ component: AdminHome });
 
 function AdminHome() {
   return (
@@ -11,5 +11,5 @@ function AdminHome() {
         配下にデザイン案のルートを追加してください。
       </p>
     </div>
-  )
+  );
 }

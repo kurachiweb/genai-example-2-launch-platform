@@ -1,15 +1,18 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router';
 
-export const Route = createFileRoute('/client/')({ component: ClientHome })
+export const Route = createFileRoute('/client/')({ component: ClientHome });
 
 function ClientHome() {
   return (
     <div className="p-8">
       <h1 className="text-4xl font-bold">利用者側画面のモックアップ</h1>
-      <p className="mt-4 text-lg">
-        <code>src/routes/client/</code>
-        配下にデザイン案のルートを追加してください。
-      </p>
+      <ul className="mt-4 list-disc space-y-2 pl-6 text-lg">
+        <li>
+          <Link to="/client/top" className="underline">
+            トップページ
+          </Link>
+        </li>
+      </ul>
     </div>
-  )
+  );
 }

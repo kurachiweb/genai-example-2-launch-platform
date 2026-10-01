@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
@@ -7,118 +6,127 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --sea-ink: #173a40;
-  --sea-ink-soft: #416166;
-  --lagoon: #4fb8b2;
-  --lagoon-deep: #328f97;
-  --palm: #2f6a4a;
-  --sand: #e7f0e8;
-  --foam: #f3faf5;
-  --surface: rgba(255, 255, 255, 0.74);
-  --surface-strong: rgba(255, 255, 255, 0.9);
-  --line: rgba(23, 58, 64, 0.14);
-  --inset-glint: rgba(255, 255, 255, 0.82);
-  --kicker: rgba(47, 106, 74, 0.9);
-  --bg-base: #e7f3ec;
-  --header-bg: rgba(251, 255, 248, 0.84);
-  --chip-bg: rgba(255, 255, 255, 0.8);
-  --chip-line: rgba(47, 106, 74, 0.18);
-  --link-bg-hover: rgba(255, 255, 255, 0.9);
-  --hero-a: rgba(79, 184, 178, 0.36);
-  --hero-b: rgba(47, 106, 74, 0.2);
-
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
+  --background: oklch(0.985 0.006 150);
+  --foreground: oklch(0.2 0.03 160);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
+  --card-foreground: oklch(0.2 0.03 160);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.2 0.03 160);
+  --primary: oklch(0.42 0.12 155);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.015 150);
+  --secondary-foreground: oklch(0.3 0.06 158);
+  --muted: oklch(0.95 0.01 150);
+  --muted-foreground: oklch(0.5 0.02 160);
+  --accent: oklch(0.93 0.03 150);
+  --accent-foreground: oklch(0.3 0.06 158);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.871 0.006 286.286);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.012 150);
+  --input: oklch(0.9 0.012 150);
+  --ring: oklch(0.6 0.1 155);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
+  --radius: 0.75rem;
   --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.871 0.006 286.286);
+  --sidebar-foreground: oklch(0.2 0.03 160);
+  --sidebar-primary: oklch(0.42 0.12 155);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.015 150);
+  --sidebar-accent-foreground: oklch(0.3 0.06 158);
+  --sidebar-border: oklch(0.9 0.012 150);
+  --sidebar-ring: oklch(0.6 0.1 155);
+
+  --gold: oklch(0.8 0.15 85);
+  --gold-strong: oklch(0.7 0.16 78);
+  --gold-foreground: oklch(0.28 0.06 70);
+  --defeat: oklch(0.62 0.01 160);
+  --silver: oklch(0.84 0.01 253);
+  --legend-a: oklch(0.2 0.01 260);
+  --legend-b: oklch(0.42 0.02 260);
+
+  --pitch-a: oklch(0.58 0.14 148);
+  --pitch-b: oklch(0.54 0.14 148);
+  --pitch-line: oklch(0.97 0.01 120 / 0.85);
+  --stand-base: oklch(0.86 0.02 150);
+  --stand-step: oklch(0.8 0.025 150);
+  --stand-rim: oklch(0.72 0.03 150);
+  --crowd: oklch(0.45 0.05 160);
+  --sky-glow: oklch(0.98 0.02 100 / 0.5);
+  --ball: oklch(0.99 0 0);
+  --ball-stroke: oklch(0.25 0.02 160);
+  --net: oklch(0.98 0 0 / 0.75);
+  --flood: oklch(0.99 0.05 95 / 0);
 }
 
 .dark {
-  --sea-ink: #d7ece8;
-  --sea-ink-soft: #afcdc8;
-  --lagoon: #60d7cf;
-  --lagoon-deep: #8de5db;
-  --palm: #6ec89a;
-  --sand: #0f1a1e;
-  --foam: #101d22;
-  --surface: rgba(16, 30, 34, 0.8);
-  --surface-strong: rgba(15, 27, 31, 0.92);
-  --line: rgba(141, 229, 219, 0.18);
-  --inset-glint: rgba(194, 247, 238, 0.14);
-  --kicker: #b8efe5;
-  --bg-base: #0a1418;
-  --header-bg: rgba(10, 20, 24, 0.8);
-  --chip-bg: rgba(13, 28, 32, 0.9);
-  --chip-line: rgba(141, 229, 219, 0.24);
-  --link-bg-hover: rgba(24, 44, 49, 0.8);
-  --hero-a: rgba(96, 215, 207, 0.18);
-  --hero-b: rgba(110, 200, 154, 0.12);
-
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.141 0.005 285.823);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.141 0.005 285.823);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.274 0.006 286.033);
-  --input: oklch(0.274 0.006 286.033);
-  --ring: oklch(0.442 0.017 285.786);
+  --background: oklch(0.15 0.02 160);
+  --foreground: oklch(0.96 0.01 150);
+  --card: oklch(0.2 0.025 160);
+  --card-foreground: oklch(0.96 0.01 150);
+  --popover: oklch(0.2 0.025 160);
+  --popover-foreground: oklch(0.96 0.01 150);
+  --primary: oklch(0.74 0.15 150);
+  --primary-foreground: oklch(0.15 0.04 160);
+  --secondary: oklch(0.27 0.03 160);
+  --secondary-foreground: oklch(0.95 0.01 150);
+  --muted: oklch(0.26 0.025 160);
+  --muted-foreground: oklch(0.7 0.02 150);
+  --accent: oklch(0.3 0.04 158);
+  --accent-foreground: oklch(0.95 0.01 150);
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.3 0.03 160);
+  --input: oklch(0.32 0.03 160);
+  --ring: oklch(0.6 0.12 150);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.274 0.006 286.033);
-  --sidebar-ring: oklch(0.442 0.017 285.786);
+  --sidebar: oklch(0.18 0.025 160);
+  --sidebar-foreground: oklch(0.96 0.01 150);
+  --sidebar-primary: oklch(0.74 0.15 150);
+  --sidebar-primary-foreground: oklch(0.15 0.04 160);
+  --sidebar-accent: oklch(0.27 0.03 160);
+  --sidebar-accent-foreground: oklch(0.95 0.01 150);
+  --sidebar-border: oklch(0.3 0.03 160);
+  --sidebar-ring: oklch(0.6 0.12 150);
+
+  --gold: oklch(0.82 0.15 85);
+  --gold-strong: oklch(0.74 0.16 80);
+  --gold-foreground: oklch(0.22 0.05 70);
+  --defeat: oklch(0.55 0.01 160);
+  --silver: oklch(0.75 0.01 250);
+  --legend-a: oklch(0.12 0.01 260);
+  --legend-b: oklch(0.35 0.02 260);
+
+  --pitch-a: oklch(0.42 0.11 150);
+  --pitch-b: oklch(0.38 0.11 150);
+  --pitch-line: oklch(0.95 0.01 120 / 0.8);
+  --stand-base: oklch(0.24 0.02 160);
+  --stand-step: oklch(0.28 0.02 160);
+  --stand-rim: oklch(0.34 0.03 160);
+  --crowd: oklch(0.8 0.06 150);
+  --sky-glow: oklch(0.9 0.08 95 / 0.18);
+  --ball: oklch(0.97 0 0);
+  --ball-stroke: oklch(0.15 0.02 160);
+  --net: oklch(0.95 0 0 / 0.6);
+  --flood: oklch(0.99 0.06 95 / 0.55);
 }
 
 @theme inline {
-  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --breakpoint-xs: 480px;
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans',
+    'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', Meiryo,
+    sans-serif;
+  --font-display:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans',
+    'Noto Sans JP', sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -143,6 +151,11 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-gold: var(--gold);
+  --color-gold-strong: var(--gold-strong);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-defeat: var(--defeat);
+  --color-silver: var(--silver);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -165,183 +178,188 @@ body,
 
 body {
   margin: 0;
-  color: var(--sea-ink);
   font-family: var(--font-sans);
-  background-color: var(--bg-base);
-  background:
-    radial-gradient(1100px 620px at -8% -10%, var(--hero-a), transparent 58%),
-    radial-gradient(1050px 620px at 112% -12%, var(--hero-b), transparent 62%),
-    radial-gradient(
-      720px 380px at 50% 115%,
-      rgba(79, 184, 178, 0.1),
-      transparent 68%
-    ),
-    linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--sand) 68%, white) 0%,
-      var(--foam) 44%,
-      var(--bg-base) 100%
-    );
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.28;
-  background:
-    radial-gradient(
-      circle at 20% 15%,
-      rgba(255, 255, 255, 0.8),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 78% 26%,
-      rgba(79, 184, 178, 0.2),
-      transparent 42%
-    ),
-    radial-gradient(circle at 42% 82%, rgba(47, 106, 74, 0.14), transparent 36%);
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
 }
 
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.14;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(circle at 50% 30%, black, transparent 78%);
+.scoreboard-digits {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.03em;
+  font-weight: 800;
 }
 
-a {
-  color: var(--lagoon-deep);
-  text-decoration-color: rgba(50, 143, 151, 0.4);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
-}
-
-a:hover {
-  color: #246f76;
-}
-
-code {
-  font-size: 0.9em;
-  border: 1px solid var(--line);
-  background: color-mix(in oklab, var(--surface-strong) 82%, white 18%);
-  border-radius: 7px;
-  padding: 2px 7px;
-}
-
-pre code {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  font-size: inherit;
-  color: inherit;
-}
-
-.prose pre {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #1d2e45;
-  color: #e8efff;
-}
-
-.page-wrap {
-  width: min(1080px, calc(100% - 2rem));
-  margin-inline: auto;
-}
-
-.display-title {
-  font-family: 'Fraunces', Georgia, serif;
-}
-
-.island-shell {
-  border: 1px solid var(--line);
-  background: linear-gradient(165deg, var(--surface-strong), var(--surface));
-  box-shadow:
-    0 1px 0 var(--inset-glint) inset,
-    0 22px 44px rgba(30, 90, 72, 0.1),
-    0 6px 18px rgba(23, 58, 64, 0.08);
-  backdrop-filter: blur(4px);
-}
-
-.feature-card {
-  background: linear-gradient(
-    165deg,
-    color-mix(in oklab, var(--surface-strong) 93%, white 7%),
-    var(--surface)
+.legend-gradient {
+  background-image: linear-gradient(
+    120deg,
+    var(--legend-a) 0%,
+    var(--legend-b) 45%,
+    var(--legend-a) 100%
   );
-  box-shadow:
-    0 1px 0 var(--inset-glint) inset,
-    0 18px 34px rgba(30, 90, 72, 0.1),
-    0 4px 14px rgba(23, 58, 64, 0.06);
+  background-size: 200% 100%;
 }
 
-.feature-card:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in oklab, var(--lagoon-deep) 35%, var(--line));
+/* 枠線だけを光沢黒のグラデーションにするため、内側をカード色、枠線領域をグラデーションの2層背景で塗る */
+.legend-frame {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(
+        120deg,
+        var(--legend-a) 0%,
+        var(--legend-b) 45%,
+        var(--legend-a) 100%
+      )
+      border-box;
+  background-size: 200% 100%;
 }
 
-button,
-.island-shell,
-a {
-  transition:
-    background-color 180ms ease,
-    color 180ms ease,
-    border-color 180ms ease,
-    transform 180ms ease;
+.gold-gradient {
+  background-image: linear-gradient(
+    120deg,
+    var(--gold-strong) 0%,
+    var(--gold) 50%,
+    var(--gold-strong) 100%
+  );
 }
 
-.island-kicker {
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-weight: 700;
-  font-size: 0.69rem;
-  color: var(--kicker);
+/* --- スタジアム演出 --- */
+
+@keyframes crowd-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(var(--jump, 3px) * -1));
+  }
 }
 
-.nav-link {
-  position: relative;
-  text-decoration: none;
-  color: var(--sea-ink-soft);
+@keyframes flag-wave {
+  0%,
+  100% {
+    transform: skewY(0deg) scaleX(1);
+  }
+  50% {
+    transform: skewY(-6deg) scaleX(0.94);
+  }
 }
 
-.nav-link::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -8px;
-  width: 100%;
-  height: 2px;
-  transform: scaleX(0);
-  transform-origin: left;
-  background: linear-gradient(90deg, var(--lagoon), #7ed3bf);
-  transition: transform 170ms ease;
+@keyframes ball-spin {
+  to {
+    rotate: 360deg;
+  }
 }
 
-.nav-link:hover,
-.nav-link.is-active {
-  color: var(--sea-ink);
+@keyframes flood-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
-.nav-link:hover::after,
-.nav-link.is-active::after {
-  transform: scaleX(1);
+@keyframes tie-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in oklab, var(--primary) 0%, transparent);
+  }
 }
 
-.rise-in {
-  animation: rise-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+/* cqh単位により紙吹雪自身ではなくコンテナの高さを基準に落下させ、左右に揺れながら下端まで到達させる */
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(0, -6cqh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  25% {
+    transform: translate3d(var(--sway, 32px), 22cqh, 0) rotate(160deg);
+  }
+  50% {
+    transform: translate3d(calc(var(--sway, 32px) * -1), 50cqh, 0)
+      rotate(320deg);
+  }
+  75% {
+    transform: translate3d(var(--sway, 32px), 78cqh, 0) rotate(480deg);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 106cqh, 0) rotate(640deg);
+    opacity: 0;
+  }
+}
+
+@keyframes spotlight-sweep {
+  0%,
+  100% {
+    transform: rotate(-14deg);
+  }
+  50% {
+    transform: rotate(14deg);
+  }
+}
+
+@keyframes spotlight-sweep-reverse {
+  0%,
+  100% {
+    transform: rotate(14deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes count-roll-in {
+  from {
+    transform: translateY(0.6em);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes count-roll-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-0.6em);
+    opacity: 0;
+  }
 }
 
 @keyframes rise-in {
@@ -355,17 +373,136 @@ a {
   }
 }
 
-.site-footer {
-  border-top: 1px solid var(--line);
-  background: color-mix(in oklab, var(--header-bg) 84%, transparent 16%);
+.rise-in {
+  animation: rise-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
+.crowd-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.crowd-side[data-excited='true'] .crowd-dot {
+  --jump: 12px;
+  animation: crowd-jump 0.5s cubic-bezier(0.3, 0, 0.15, 1) 7;
+  animation-delay: var(--jump-delay, 0s);
+}
+
+.flag {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: flag-wave 1.8s ease-in-out infinite;
+  animation-delay: var(--flag-delay, 0s);
+}
+
+.vote-ball-spin {
+  animation: ball-spin 6s linear infinite;
+}
+
+/* 常時回転(6秒/回転)に重ねて再生することで、飛行中だけ合計1秒/回転になる。再生/一時停止の切り替えなので回転角が飛ばずに加速・減速して見える */
+.vote-ball-spin-fast {
+  animation: ball-spin 1.2s linear infinite;
+  animation-play-state: paused;
+}
+
+.vote-ball[data-flying='true'] .vote-ball-spin-fast {
+  animation-play-state: running;
+}
+
+.floodlight {
+  animation: flood-pulse 4s ease-in-out infinite;
+  animation-delay: var(--flood-delay, 0s);
+}
+
+.tie-pulse {
+  animation: tie-pulse 1.6s ease-out infinite;
+}
+
+.confetti-layer {
+  container-type: size;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: confetti-fall var(--fall-duration, 6s) linear infinite;
+  animation-delay: var(--fall-delay, 0s);
+  will-change: transform;
+}
+
+.spotlight {
+  position: absolute;
+  bottom: -10%;
+  width: 22%;
+  height: 130%;
+  transform-origin: bottom center;
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, var(--gold) 45%, transparent),
+    transparent 80%
+  );
+  clip-path: polygon(42% 100%, 58% 100%, 100% 0, 0 0);
+  filter: blur(4px);
+  animation: spotlight-sweep 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.spotlight[data-side='right'] {
+  animation-name: spotlight-sweep-reverse;
+}
+
+.shimmer {
+  animation: shimmer 6s linear infinite;
+}
+
+.count-roll-in {
+  animation: count-roll-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.count-roll-out {
+  animation: count-roll-out 320ms ease-in both;
+}
+
+html[data-motion='off'] .crowd-dot,
+html[data-motion='off'] .flag,
+html[data-motion='off'] .vote-ball-spin,
+html[data-motion='off'] .vote-ball-spin-fast,
+html[data-motion='off'] .floodlight,
+html[data-motion='off'] .tie-pulse,
+html[data-motion='off'] .confetti-piece,
+html[data-motion='off'] .spotlight,
+html[data-motion='off'] .shimmer,
+html[data-motion='off'] .count-roll-in,
+html[data-motion='off'] .count-roll-out,
+html[data-motion='off'] .rise-in {
+  animation: none !important;
+}
+
+html[data-motion='off'] * {
+  transition-duration: 0.01ms !important;
+}
+
+html[data-motion='off'] .confetti-piece {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion='on']) .crowd-dot,
+  html:not([data-motion='on']) .flag,
+  html:not([data-motion='on']) .vote-ball-spin,
+  html:not([data-motion='on']) .vote-ball-spin-fast,
+  html:not([data-motion='on']) .floodlight,
+  html:not([data-motion='on']) .tie-pulse,
+  html:not([data-motion='on']) .confetti-piece,
+  html:not([data-motion='on']) .spotlight,
+  html:not([data-motion='on']) .shimmer,
+  html:not([data-motion='on']) .rise-in {
+    animation: none !important;
   }
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
+  html:not([data-motion='on']) .confetti-piece {
+    display: none;
   }
 }
