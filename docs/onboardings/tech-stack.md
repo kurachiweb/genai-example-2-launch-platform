@@ -32,8 +32,8 @@
 
 ### ORM
 
-- MikroORM
-- Kysely(クエリビルダ)
+- Drizzle ORM(v1.0 RC) ... D1向け、スキーマ定義と型付きクエリビルダ
+- drizzle-kit(v1.0 RC) ... マイグレーションSQLの生成
 
 ### 認証・認可
 
@@ -125,6 +125,8 @@
 - Stripe(決済処理基盤、[ドキュメント](https://docs.stripe.com))
   - Stripe Node.js SDK(APIサーバー及びイベントサーバーで使用、`createFetchHttpClient()`によるfetchベースの通信)
   - Stripe Checkout Sessions API(決済セッションの管理)
+  - Stripe Refunds API(自動返金)
+  - Stripe Customer Portal(Ultrasの支払い方法の更新)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
   - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
 
@@ -174,6 +176,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### 画像配信
 
 - Cloudflare WorkersのImages Binding ... R2に保存した画像をWorker内でフォーマット変換・リサイズ・Exif削除
+- Cloudflare Workers Cache ... 変換済み画像をWorker前段でエッジキャッシュ
 
 ### 実行環境のセキュリティ
 

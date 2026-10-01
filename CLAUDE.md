@@ -2,8 +2,7 @@
 
 ## このサービスについて
 
-作った製品を投稿し、他のユーザーと投票数を競い合うローンチプラットフォーム。
-要件定義等の詳細は[README.md](README.md)を参照すること。
+作った製品を投稿し、他のユーザーと投票数を競い合うローンチプラットフォーム。要件定義は[ソフトウェア要件定義書](docs/requirements/README.md)を参照すること。
 
 ## 技術選定
 
@@ -20,6 +19,7 @@
 - コマンドでパスを指定する場合は、必ず絶対パスで表記すること。
 - 必ず実行すべきコマンドやファイル編集がClaude設定のdenyにより拒否されてしまった場合は、開発者が後ほど手動で実行できるように報告すること。
 - フロントエンド側でTanStack系ツールが使われる処理を作成・改修・調査・コードレビューしたい場合は[TanStack Agent Guidelines](docs/ai-extensions/tanstack-agent-guidelines.md)を参照すること。ただしそのガイドラインの「Repository Structure」セクションとは異なり、TanStack関連スキル群は`.claude/skills/tanstack-agent-skills/skills`ディレクトリ内にある。
+- [要件定義書](docs/requirements/README.md)を`grep`コマンドで読み取る際は必ず`--text`オプションを付けること。96KiB超えの巨大テキストファイルがバイナリと判定されてしまうのを防ぐため。
 
 ### コード・ドキュメントの規則
 
@@ -33,7 +33,7 @@
 - appsディレクトリ内を編集した際は、docsディレクトリ内の関連する内容も必ず更新すること。
 - `docs/GUIDES/tech`ディレクトリ内では本プロジェクト名を記載したり、サービス特有の仕様に言及してはならず、同じ技術選定による他のプロジェクトにも丸写しできる内容にすること。
 - BunのWorkspaces機能は使用しないこと。
-- シードデータやドキュメント内のサンプルデータにおいて、URLのgTLD部やメールアドレスのドメイン部は`.example`のみを使用すること。
+- シードデータやドキュメント内のサンプルデータにおいて、URLのgTLD部やメールアドレスのドメイン部は`.example`のみを使用すること。ただし[本プロジェクトのドメイン](README.md#配信url一覧)は例外とする。
 
 ### 後ほどdocs/GUIDES/techディレクトリに移す規則
 
@@ -56,17 +56,21 @@
   - ルートディレクトリ以外で`bun test`を実行する場合は`--config=/workspace/bunfig.toml`オプションを明示的に指定すること。
 - CIプロセスではBunによるテスト時に`--coverage`というカバレッジ計測オプションを付け、`bunfig.toml`の`coverageThreshold`指定と合わせて閾値未達の場合にCIを失敗させる。
 - ORMについて
-  - MikroORMがCloudflare Workers上で使用不可の`new Function`を呼び出さないように、`mikro-orm cache:generate --combined`及び`mikro-orm compile`コマンドをGitHub Actionsやapps/dbディレクトリの`package.json`に定義し事前コンパイルすること。
-  - MikroORMのクエリビルダには`createKyselyDialect()`をD1ダイアレクトへ差し替えた独自Connectionを使用すること。
-  - テーブルの特定カラムに限りアルファベットの大文字小文字を問わず文字照合させたい場合、MikroORMのテーブル定義にて`@Property({ columnType: 'text collate nocase' })`を記載すること。URLスラッグとして使われるユーザーハンドルのカラムでは特に有用。
+  - マイグレーションSQLは`drizzle-kit generate`で生成し(スキーマ定義で表現できない内容は`--custom`オプションで空のマイグレーションを作成して生SQLで記述する)、適用はWranglerの`wrangler d1 migrations apply`で行う。適用の管理を一本化するため`drizzle-kit migrate`・`drizzle-kit push`は使用しない。
+  - `drizzle-kit`のマイグレーション出力は`migrations/<日時>_<名前>/migration.sql`という入れ子構造であり、Wranglerの既定(`migrations_dir`直下の`*.sql`のみを探索)では検出されない。そのためWrangler設定のD1バインディングに`migrations_dir`と、`<migrations_dirの値>/*/migration.sql`を値とする`migrations_pattern`を指定すること。`wrangler d1 migrations create`は入れ子構造に対応しないため、マイグレーションの作成には使用しない。
+  - テーブルの特定カラムに限りアルファベットの大文字小文字を問わず文字照合させたい場合、Drizzleにはカラムの照合順序を指定するAPIが無いため、`customType`の`dataType()`が`'text collate nocase'`を返す共通ヘルパー(`textNoCase`)を定義し、テーブル定義でそのカラム型を使うこと。URLスラッグとして使われるユーザーハンドルのカラムでは特に有用。
+    - `nocase`が同一視するのはASCIIの大文字小文字のみで、非ASCII文字は区別される。
+    - 既存カラムへ後から指定するとテーブル再作成のマイグレーションが生成されるため、テーブル新規作成時に指定する。
 - テーブル名は小文字で複数形にすること。
 - データベースについて、Cloudflare D1特有の制限に留意すること。
-  - D1ではトランザクションが使えないため、MikroORMの`defineConfig`メソッドで`implicitTransactions: false`を設定し、`EntityManager.transactional()`も使用しない。
+  - D1では`BEGIN`によるトランザクションが使えないため、Drizzleの`db.transaction()`は使用しない。
     - 絞り込みと絞り込んだレコードの更新は1回のSQLで完結させる。
-    - 複数テーブルに書き込む場合、整合性を保つためにMikroORMを介さずKyselyクエリで`D1Database.batch()`を使用する。
-    - ユニーク制約付きテーブルにレコードを追加する場合、同一データの同時作成によるエラーを防ぐため、`INSERT ... ON CONFLICT DO NOTHING`(既存行を更新する場合は`DO UPDATE`)を付ける。
+    - 複数テーブルに書き込む場合、整合性を保つためにDrizzleの`db.batch()`を使用する。D1の`D1Database.batch()`として実行され、途中で失敗すると全体がロールバックされる。
+    - ユニーク制約付きテーブルにレコードを追加する場合、同一データの同時作成によるエラーを防ぐため、`INSERT ... ON CONFLICT DO NOTHING`(Drizzleでは`onConflictDoNothing()`、既存行を更新する場合は`onConflictDoUpdate()`)を付ける。
+  - D1では1クエリあたりのバインド変数が100個までのため、`IN`句に渡す値の数や、複数行を一度に追加するINSERTの「行数×カラム数」がこの上限に収まるよう、クエリを分割する。分割した書き込みの整合性が必要な場合は、同一の`db.batch()`にまとめる。([参照:Cloudflare Docs](https://developers.cloudflare.com/d1/platform/limits/))
   - D1では仮想テーブルを含むデータベースをエクスポートできないため、バックアップ・復旧は`wrangler d1 export`ではなくD1 Time Travelで行う。([参照:Cloudflare Docs](https://developers.cloudflare.com/d1/best-practices/import-export-data/#known-limitations-1))
     - FTS5仮想テーブルは元テーブルへの書き込みに自動追随しないため、`external content`テーブル構成とSQLiteのトリガー(`CREATE TRIGGER`)によりインデックスを同期させる。
+    - 仮想テーブルとトリガーはDrizzleのスキーマ定義で表現できないため、上記のカスタムマイグレーション(生SQL)で記述する。
 - Playwright更新時に同期すべき4箇所
   - `Dockerfile`の`PLAYWRIGHT_VERSION`(共有Chromiumの導入用OS依存パッケージ)
   - ルートの`package.json`の`@playwright/test`(実際に使う共有Chromium本体のバージョンを決定、`.mcp.json`の両MCPサーバーは`CHROMIUM_PATH`経由でこれを共有利用)
@@ -133,7 +137,8 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... TanStack Startを利用
 │       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
-│   ├── onboardings/            # オンボーディングガイド ... 環境構築手順やドキュメント索引
+│   ├── requirements/           # ソフトウェア要件定義書(IEEE 29148準拠、SSoT)
+│   ├── onboardings/            # オンボーディングガイド ... ローカル環境の構築手順及びポート番号
 │   ├── ai-extensions/          # 外部由来のAIエージェント向けガイドライン(原文のまま配置)
 │   ├── ai-prompts/             # 開発中に使用した主なプロンプトの記録
 │   ├── adr/                    # ecc:architecture-decision-recordsスキルによる自動生成ADR
@@ -159,5 +164,5 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進める開発コンテナ
 ├── compose.yaml                # コンテナの管理
 ├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化、及びPlaywrightによるE2Eテスト
-└── README.md                   # サービス説明を兼ねた要件定義書(SSoT)
+└── README.md                   # サービス説明、各種ドキュメントへの索引
 ```

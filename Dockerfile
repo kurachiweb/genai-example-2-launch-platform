@@ -7,9 +7,9 @@ ARG BUN_IMAGE_TAG=1.4.2-slim
 # 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
 FROM oven/bun:${BUN_IMAGE_TAG} AS tools-builder
-ARG OPENTOFU_VERSION=1.12.6
-ARG WRANGLER_VERSION=4.131.1
-ARG STRIPE_CLI_VERSION=1.50.11
+ARG OPENTOFU_VERSION=1.13.0
+ARG WRANGLER_VERSION=4.145.0
+ARG STRIPE_CLI_VERSION=1.53.0
 
 # OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
 # apt-getのダウンロードキャッシュはキャッシュマウントでビルド間永続化し再ダウンロードを避ける。公式Debianベースイメージが標準で有効化するdocker-cleanフックはapt-get実行直後にキャッシュを削除するため、キャッシュマウントを機能させるには無効化が必要。
@@ -42,10 +42,10 @@ RUN BUN_INSTALL=/opt/stripe-cli bun install -g --trust "@stripe/cli@${STRIPE_CLI
 # bunを必要としないため、上記ステージとは別の軽量なベースイメージを使い、BuildKit上で並列にダウンロードできるようにする。
 FROM debian:trixie-slim AS release-binaries-builder
 ARG TARGETARCH
-ARG GITHUB_VERSION=2.100.0
-ARG BETTERLEAKS_VERSION=1.8.1
-ARG MAILPIT_VERSION=1.31.1
-ARG RTK_VERSION=0.49.0
+ARG GITHUB_VERSION=2.102.0
+ARG BETTERLEAKS_VERSION=1.9.0
+ARG MAILPIT_VERSION=1.31.3
+ARG RTK_VERSION=0.50.0
 RUN --mount=type=cache,id=apt-lists-release-binaries-builder,target=/var/lib/apt/lists,sharing=locked \
   --mount=type=cache,id=apt-cache-release-binaries-builder,target=/var/cache/apt,sharing=locked \
   rm -f /etc/apt/apt.conf.d/docker-clean \
@@ -81,7 +81,7 @@ RUN case "${TARGETARCH}" in amd64) RTK_TARGET=x86_64-unknown-linux-musl ;; arm64
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
 FROM oven/bun:${BUN_IMAGE_TAG}
-ARG INFISICAL_VERSION=0.43.132
+ARG INFISICAL_VERSION=0.43.138
 ARG PLAYWRIGHT_VERSION=1.63.0
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。

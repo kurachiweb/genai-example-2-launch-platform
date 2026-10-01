@@ -36,9 +36,10 @@ Kiro-style Spec-Driven Development on an agentic SDLC
     - `/cc-sdd:kiro-validate-design {feature}` (optional: design review)
     - `/cc-sdd:kiro-spec-tasks {feature} [-y]`
   - Multi-spec: `/cc-sdd:kiro-spec-batch` — creates all specs from roadmap.md in parallel by dependency wave
-- Phase 2 (Implementation): `/cc-sdd:kiro-impl {feature} [tasks]`
+- Phase 2 (Implementation): `/cc-sdd:kiro-impl {feature} [tasks] [--review required|inline|off]`
   - Without task numbers: autonomous mode (subagent per task + independent review + final validation)
   - With task numbers: manual mode (selected tasks in main context, still reviewer-gated before completion)
+  - `--review off` skips task-local review; use it intentionally and keep `/cc-sdd:kiro-validate-impl {feature}` as the final quality gate
   - `/cc-sdd:kiro-validate-impl {feature}` (standalone re-validation)
 - Progress check: `/cc-sdd:kiro-spec-status {feature}` (use anytime)
 
@@ -53,7 +54,9 @@ Skills are located in `.claude/skills/cc-sdd/skills/kiro-*/SKILL.md`
 - `cc-sdd:kiro-review` — task-local adversarial review protocol used by reviewer subagents
 - `cc-sdd:kiro-debug` — root-cause-first debug protocol used by debugger subagents
 - `cc-sdd:kiro-verify-completion` — fresh-evidence gate before success or completion claims
-- **If there is even a 1% chance a skill applies to the current task, invoke it.** Do not skip skills because the task seems simple.
+- Use skills explicitly requested by the user and skills relevant to the task's domain, including design, accessibility, and UX.
+- Select skills from their descriptions or metadata first, then read only the selected skills and the references needed for the task.
+- Follow explicit host and project rules and retain required workflow checks. Do not skip relevant skills just because the task is small.
 
 ## Development Rules
 
@@ -64,6 +67,7 @@ Skills are located in `.claude/skills/cc-sdd/skills/kiro-*/SKILL.md`
 
 ## Steering Configuration
 
-- Load entire `.kiro/steering/` as project memory
+- For spec and implementation work, load the core steering files below from `.kiro/steering/`. Reuse current context rather than rereading unchanged files.
+- Load additional steering only when required by project rules or relevant to the task.
 - Default files: `product.md`, `tech.md`, `structure.md`
 - Custom files are supported (managed via `/cc-sdd:kiro-steering-custom`)

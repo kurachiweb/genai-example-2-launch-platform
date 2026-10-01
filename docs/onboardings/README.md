@@ -69,15 +69,11 @@
     wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
     ```
 
-11. コンテナ内: MikroORMアプリの事前コンパイル
-
-    `apps/api`と`apps/event`のアプリケーションをworkerdランタイム上で動作させるため、MikroORMアプリを事前コンパイルして`new Function`呼び出しを回避する。
+11. コンテナ内: DBスキーマ定義の依存パッケージをインストール(初回のみ)
 
     ```sh
     cd /workspace/apps/db
-    bun install # 初回のみ
-    bun run mikro-orm:generate # mikro-orm cache:generate --combined
-    bun run mikro-orm:compile # mikro-orm compile
+    bun install
     ```
 
 12. コンテナ内: アプリケーションの起動
@@ -135,7 +131,7 @@
     infisical --telemetry=false run --env dev -- bunx vite preview --port 48045 --host 0.0.0.0
     ```
 
-### ローカルポート一覧
+## ローカルポート一覧
 
 | アプリ              | 役割                                   | ポート |
 | ------------------- | -------------------------------------- | ------ |
@@ -147,31 +143,3 @@
 | `apps/frontend-lib` | Storybookコンポーネントカタログ        | 48046  |
 
 ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
-
-## ドキュメント索引
-
-### サービス仕様(ルートディレクトリ)
-
-| ドキュメント                 | 内容                                                 |
-| ---------------------------- | ---------------------------------------------------- |
-| [README.md](../../README.md) | サービス概要、ソフトウェア要件定義書(IEEE 29148準拠) |
-
-### エージェント・開発支援(`docs/onboardings/`)
-
-| ドキュメント                                 | 内容                                                             |
-| -------------------------------------------- | ---------------------------------------------------------------- |
-| [claude-extensions.md](claude-extensions.md) | `.claude/`配下のスキル・コマンド・ルール・エージェント定義の解説 |
-| [tech-stack.md](tech-stack.md)               | 技術選定(データベース・バックエンド・フロントエンド・インフラ等) |
-
-### AIエージェント向け外部ガイドライン(`docs/ai-extensions/`)
-
-| ドキュメント                                                                  | 内容                                                                                 |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [tanstack-agent-guidelines.md](../ai-extensions/tanstack-agent-guidelines.md) | TanStack系ツールを扱うAIエージェント向けガイドライン(外部リポジトリ由来)             |
-| [cc-sdd.md](../ai-extensions/cc-sdd.md)                                       | cc-sddフレームワークによるAgentic SDLC・Spec駆動開発ガイドライン(外部リポジトリ由来) |
-
-### 開発中の使用プロンプト記録(`docs/ai-prompts/`)
-
-| ドキュメント                         | 内容                                             |
-| ------------------------------------ | ------------------------------------------------ |
-| [README.md](../ai-prompts/README.md) | AIコーディングで使用した主なプロンプトの記録索引 |
