@@ -118,6 +118,14 @@
     bun run storybook:dev --port 48046 --host 0.0.0.0
     ```
 
+    利用者側・管理者側各画面モックアップ
+
+    ```sh
+    cd /workspace/mockups
+    bun install # 初回のみ
+    bun run dev --port 48047 --host 0.0.0.0
+    ```
+
 13. コンテナ内: デプロイ前動作確認
 
     ```sh
@@ -141,5 +149,6 @@
 | `apps/client`       | 利用者側フロントエンド(TanStack Start) | 48044  |
 | `apps/admin`        | 管理者側フロントエンド(TanStack Start) | 48045  |
 | `apps/frontend-lib` | Storybookコンポーネントカタログ        | 48046  |
+| `mockups`           | 利用者側・管理者側各画面モックアップ   | 48047  |
 
 ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。

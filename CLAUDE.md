@@ -136,6 +136,9 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... TanStack Startを利用
 │       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+├── mockups/src/routes/         # 画面デザイン案 ... TanStack Start・Tailwind CSS・shadcn/uiを利用、フロントエンド共通ファイルは不使用
+│   ├── client/                 # 利用者側画面のモックアップ
+│   └── admin/                  # 管理者側画面のモックアップ
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
 │   ├── requirements/           # ソフトウェア要件定義書(IEEE 29148準拠、SSoT)
 │   ├── onboardings/            # オンボーディングガイド ... ローカル環境の構築手順及びポート番号

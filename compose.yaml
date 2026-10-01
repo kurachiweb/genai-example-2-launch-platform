@@ -49,6 +49,7 @@ services:
       - "48044:48044" # 利用者側フロントエンド
       - "48045:48045" # 管理者側フロントエンド
       - "48046:48046" # Storybookコンポーネントカタログ
+      - "48047:48047" # 利用者側・管理者側各画面モックアップ
     environment:
       WRANGLER_SEND_METRICS: "false"
       STRIPE_CLI_TELEMETRY_OPTOUT: "1"
