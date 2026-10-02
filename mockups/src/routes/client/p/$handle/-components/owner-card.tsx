@@ -3,10 +3,10 @@ import { InfoIcon, PencilIcon, RocketIcon } from 'lucide-react';
 
 import { ROUND_LABEL } from '#/components/client/match/model';
 import { Button } from '#/components/ui/button';
+import { addDays, startOfDay } from '#/lib/clock';
 import { useDateTimeFormatter } from '#/lib/date-format';
 import { formatRemaining } from '#/lib/relative-time';
 
-import { addDays, startOfDay } from '../-model/clock';
 import type { Timeline } from '../-model/launches';
 import type { ProductSearch } from '../-model/options';
 import { PaymentPanel } from './payment-panel';

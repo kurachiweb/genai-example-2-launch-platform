@@ -1,3 +1,5 @@
+import { countGraphemes, truncateGraphemes } from '#/lib/graphemes';
+
 import {
   TODAY,
   YESTERDAY,
@@ -9,7 +11,6 @@ import {
 } from './calendar';
 import { findCategory } from './categories';
 import type { Category } from './categories';
-import { countGraphemes, truncateGraphemes } from './text';
 
 export const PAGE_SIZE = 20;
 export const SEARCH_MAX_LENGTH = 50;

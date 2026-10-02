@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root';
 import { Route as IndexRouteImport } from './routes/index';
 import { Route as AdminIndexRouteImport } from './routes/admin/index';
 import { Route as ClientIndexRouteImport } from './routes/client/index';
+import { Route as ClientAtChar123handleChar125IndexRouteImport } from './routes/client/@{$handle}/index';
 import { Route as ClientPIndexRouteImport } from './routes/client/p/index';
 import { Route as ClientTopIndexRouteImport } from './routes/client/top/index';
 import { Route as ClientPHandleIndexRouteImport } from './routes/client/p/$handle/index';
@@ -31,6 +32,12 @@ const ClientIndexRoute = ClientIndexRouteImport.update({
   path: '/client/',
   getParentRoute: () => rootRouteImport,
 } as any);
+const ClientAtChar123handleChar125IndexRoute =
+  ClientAtChar123handleChar125IndexRouteImport.update({
+    id: '/client/@{$handle}/',
+    path: '/client/@{$handle}/',
+    getParentRoute: () => rootRouteImport,
+  } as any);
 const ClientPIndexRoute = ClientPIndexRouteImport.update({
   id: '/client/p/',
   path: '/client/p/',
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
   '/admin/': typeof AdminIndexRoute;
   '/client/': typeof ClientIndexRoute;
+  '/client/@{$handle}/': typeof ClientAtChar123handleChar125IndexRoute;
   '/client/p/': typeof ClientPIndexRoute;
   '/client/top/': typeof ClientTopIndexRoute;
   '/client/p/$handle/': typeof ClientPHandleIndexRoute;
@@ -59,6 +67,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute;
   '/admin': typeof AdminIndexRoute;
   '/client': typeof ClientIndexRoute;
+  '/client/@{$handle}': typeof ClientAtChar123handleChar125IndexRoute;
   '/client/p': typeof ClientPIndexRoute;
   '/client/top': typeof ClientTopIndexRoute;
   '/client/p/$handle': typeof ClientPHandleIndexRoute;
@@ -68,6 +77,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute;
   '/admin/': typeof AdminIndexRoute;
   '/client/': typeof ClientIndexRoute;
+  '/client/@{$handle}/': typeof ClientAtChar123handleChar125IndexRoute;
   '/client/p/': typeof ClientPIndexRoute;
   '/client/top/': typeof ClientTopIndexRoute;
   '/client/p/$handle/': typeof ClientPHandleIndexRoute;
@@ -78,6 +88,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/'
     | '/client/'
+    | '/client/@{$handle}/'
     | '/client/p/'
     | '/client/top/'
     | '/client/p/$handle/';
@@ -86,6 +97,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/client'
+    | '/client/@{$handle}'
     | '/client/p'
     | '/client/top'
     | '/client/p/$handle';
@@ -94,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/'
     | '/client/'
+    | '/client/@{$handle}/'
     | '/client/p/'
     | '/client/top/'
     | '/client/p/$handle/';
@@ -103,6 +116,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   AdminIndexRoute: typeof AdminIndexRoute;
   ClientIndexRoute: typeof ClientIndexRoute;
+  ClientAtChar123handleChar125IndexRoute: typeof ClientAtChar123handleChar125IndexRoute;
   ClientPIndexRoute: typeof ClientPIndexRoute;
   ClientTopIndexRoute: typeof ClientTopIndexRoute;
   ClientPHandleIndexRoute: typeof ClientPHandleIndexRoute;
@@ -129,6 +143,13 @@ declare module '@tanstack/react-router' {
       path: '/client';
       fullPath: '/client/';
       preLoaderRoute: typeof ClientIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/client/@{$handle}/': {
+      id: '/client/@{$handle}/';
+      path: '/client/@{$handle}';
+      fullPath: '/client/@{$handle}/';
+      preLoaderRoute: typeof ClientAtChar123handleChar125IndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/client/p/': {
@@ -159,6 +180,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminIndexRoute: AdminIndexRoute,
   ClientIndexRoute: ClientIndexRoute,
+  ClientAtChar123handleChar125IndexRoute:
+    ClientAtChar123handleChar125IndexRoute,
   ClientPIndexRoute: ClientPIndexRoute,
   ClientTopIndexRoute: ClientTopIndexRoute,
   ClientPHandleIndexRoute: ClientPHandleIndexRoute,

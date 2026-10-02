@@ -23,13 +23,14 @@ import {
   TooltipTrigger,
 } from '#/components/ui/tooltip';
 import { useDateTimeFormatter } from '#/lib/date-format';
+import { UNVERIFIED_MESSAGE } from '#/lib/messages';
 import { formatElapsed } from '#/lib/relative-time';
 import { cn } from '#/lib/utils';
 
 import type { CommentNode } from '../-model/comments';
 import { CommentComposer } from './comment-composer';
 import { DeleteCommentDialog } from './delete-comment-dialog';
-import { UNVERIFIED_MESSAGE, usePageContext } from './page-context';
+import { usePageContext } from './page-context';
 
 export type CommentActions = {
   reply: (parentId: string, body: string) => void;

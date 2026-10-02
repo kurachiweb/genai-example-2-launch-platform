@@ -9,6 +9,7 @@ import type { SearchSchemaInput } from '@tanstack/react-router';
 import { LoginDialog } from '#/components/client/login-dialog';
 import type { LoginPurpose } from '#/components/client/login-dialog';
 import { NotFound } from '#/components/client/not-found';
+import { PageError } from '#/components/client/page-error';
 import { SiteFooter } from '#/components/client/site-footer';
 import { SiteHeader } from '#/components/client/site-header';
 import { StadiumDefs } from '#/components/client/stadium-pitch/stadium-pitch';
@@ -16,7 +17,6 @@ import { StatePanel } from '#/components/client/state-panel';
 import { VerifyEmailBanner } from '#/components/client/verify-email-banner';
 import { CURRENT_USER } from '#/lib/mock-data';
 
-import { PageError } from './-components/page-error';
 import { PageSkeleton } from './-components/page-skeleton';
 import { ProductContent } from './-components/product-content';
 import { describeChanges, normalize } from './-model/normalize';
@@ -33,7 +33,7 @@ import { buildModel } from './-model/page-model';
 export const Route = createFileRoute('/client/p/$handle/')({
   // URLを直接開いた場合も、矛盾する組み合わせは整合する状態へ直して表示する
   validateSearch: (raw: Partial<ProductSearch> & SearchSchemaInput) =>
-    normalize(parseSearch(raw)).search,
+    normalize(parseSearch(raw)).state,
   search: { middlewares: [stripSearchParams(DEFAULT_SEARCH)] },
   head: () => ({
     meta: [{ title: 'プロダクト詳細 | Launch Stadium 画面デザイン案' }],
@@ -76,11 +76,11 @@ function ProductPage() {
     const resolved = normalize(next, key);
     setNotice(
       resolved.changed.length > 0
-        ? describeChanges(resolved.search, resolved.changed, key)
+        ? describeChanges(resolved.state, resolved.changed, key)
         : null,
     );
     setHighlighted(resolved.changed);
-    navigate({ search: resolved.search, replace: true, resetScroll: false });
+    navigate({ search: resolved.state, replace: true, resetScroll: false });
   };
 
   const requireLogin = useCallback(
@@ -91,7 +91,12 @@ function ProductPage() {
   const body = (() => {
     if (search.page === 'loading' || retrying) return <PageSkeleton />;
     if (search.page === 'error') {
-      return <PageError onRetry={() => setRetrying(true)} />;
+      return (
+        <PageError
+          title="プロダクト情報を読み込めませんでした。"
+          onRetry={() => setRetrying(true)}
+        />
+      );
     }
     if (!model) return <NotFound />;
     return (

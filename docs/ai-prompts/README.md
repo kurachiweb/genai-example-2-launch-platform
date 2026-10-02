@@ -14,3 +14,4 @@
 | [006-create-mockup-client-top.md](006-create-mockup-client-top.md)             | `mockups`アプリの`client/top`ディレクトリ内に、利用者側トップページのデザインモックアップを作る | Claude Opus最新版 |
 | [007-create-mockup-client-product.md](007-create-mockup-client-product.md)     | `mockups`アプリに、利用者側プロダクト詳細ページのデザインモックアップを作る                     | Claude Opus最新版 |
 | [008-create-mockup-client-directory.md](008-create-mockup-client-directory.md) | `mockups`アプリに、利用者側ディレクトリページのデザインモックアップを作る                       | Claude Opus最新版 |
+| [009-create-mockup-client-profile.md](009-create-mockup-client-profile.md)     | `mockups`アプリに、利用者側ユーザー公開プロフィールのデザインモックアップを作る                 | Claude Opus最新版 |

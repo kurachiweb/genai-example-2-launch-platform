@@ -6,11 +6,12 @@ import {
   TooltipTrigger,
 } from '#/components/ui/tooltip';
 
-import type { Award } from '../-model/listing';
+// 受賞した週(表記規則の「2026年第37週(9/7〜9/13)」)または年をlabelに持つ
+export type AwardLabel = { kind: 'week' | 'year'; label: string };
 
-type Props = { awards: Award[] };
+type Props = { awards: AwardLabel[] };
 
-const TITLES: Record<Award['kind'], string> = {
+const TITLES: Record<AwardLabel['kind'], string> = {
   year: 'Product of the Year',
   week: 'Product of the Week',
 };

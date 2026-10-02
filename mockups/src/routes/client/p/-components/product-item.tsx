@@ -2,12 +2,12 @@ import { useId } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ExternalLinkIcon, MessageSquareIcon, PencilIcon } from 'lucide-react';
 
+import { AwardBadges } from '#/components/client/award-badges';
 import { ProductLogo } from '#/components/client/product-logo';
 import { UserAvatar } from '#/components/client/user-avatar';
 import { Button } from '#/components/ui/button';
 
 import type { DirectoryEntry } from '../-model/listing';
-import { AwardBadges } from './award-badges';
 import { HighlightedText } from './highlighted-text';
 import { WinSummary } from './win-summary';
 import { useDirectoryFormat } from './use-directory-format';

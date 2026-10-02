@@ -1,8 +1,13 @@
 import type { Match, MatchKind, Round } from '#/components/client/match/model';
-import { CURRENT_USER, PRODUCTS, USERS } from '#/lib/mock-data';
+import { addDays, addMinutes, atTime, isoDate, weekLabelOf } from '#/lib/clock';
+import {
+  CURRENT_USER,
+  PRODUCTS,
+  USERS,
+  findProductByHandle,
+} from '#/lib/mock-data';
 import type { Product, User } from '#/lib/mock-data';
 
-import { addDays, addMinutes, atTime, isoDate, mondayOf } from './clock';
 import { buildComments } from './comments';
 import type { CommentNode } from './comments';
 import { LONG_NAME, LONG_TAGLINE, descriptionOf } from './content';
@@ -92,34 +97,8 @@ const OLDER_COMMENTS_HOUR = 21;
 const MAKER = USERS[4];
 const LONG_MAKER = USERS[2];
 
-export function findProduct(handle: string): Product | undefined {
-  const lower = handle.toLowerCase();
-  return PRODUCTS.find((product) => product.handle.toLowerCase() === lower);
-}
-
 function isWon(match: HistoryMatch): boolean {
   return ['win', 'bye', 'early'].includes(match.result);
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// ISO 8601の週番号(その週の木曜日が年初から何週目か)
-function isoWeekOf(monday: Date): { year: number; week: number } {
-  const [year, month, day] = isoDate(addDays(monday, 3)).split('-').map(Number);
-  const ordinal =
-    (Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / DAY_MS;
-  return { year, week: Math.floor(ordinal / 7) + 1 };
-}
-
-// 表記規則の「2026年第37週(9/7〜9/13)」
-function weekLabelOf(launchDate: Date): string {
-  const monday = mondayOf(launchDate);
-  const { year, week } = isoWeekOf(monday);
-  const short = (date: Date) => {
-    const [, month, day] = isoDate(date).split('-').map(Number);
-    return `${month}/${day}`;
-  };
-  return `${year}年第${week}週(${short(monday)}〜${short(addDays(monday, 6))})`;
 }
 
 function awardsOf(timeline: Timeline): Award[] {
@@ -239,7 +218,7 @@ export function buildModel(
   search: ProductSearch,
   handle: string,
 ): ProductModel | null {
-  const found = findProduct(handle);
+  const found = findProductByHandle(handle);
   if (!found || search.visibility === 'unavailable') return null;
   if (search.visibility === 'unlisted' && search.auth !== 'owner') return null;
   const plan = planHistory(search);

@@ -2,8 +2,9 @@ import { MailWarningIcon, MessageSquareIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '#/components/ui/button';
+import { UNVERIFIED_MESSAGE } from '#/lib/messages';
 
-import { UNVERIFIED_MESSAGE, usePageContext } from './page-context';
+import { usePageContext } from './page-context';
 
 // コメントを投稿できない閲覧者向けに、投稿欄の代わりに理由と次の行動を示す
 export function CommentGate() {

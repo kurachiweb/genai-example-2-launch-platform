@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { FlagIcon } from 'lucide-react';
 
 import type { LoginPurpose } from '#/components/client/login-dialog';
+import { ReportDialog } from '#/components/client/report-dialog';
+import type { ReportTarget } from '#/components/client/report-dialog';
 import { Button } from '#/components/ui/button';
 
 import type { ProductSearch } from '../-model/options';
@@ -11,11 +13,10 @@ import { LaunchHistory } from './launch-history';
 import { LiveMatchSection } from './live-match-section';
 import { OwnerCard } from './owner-card';
 import { PageContext } from './page-context';
-import type { PageContextValue, ReportTarget } from './page-context';
+import type { PageContextValue } from './page-context';
 import { ProductDescription } from './product-description';
 import { ProductHeader } from './product-header';
 import { RatingCard } from './rating-card';
-import { ReportDialog } from './report-dialog';
 import { ScreenshotGallery } from './screenshot-gallery';
 import { TrophyShelf } from './trophy-shelf';
 import { UnlistedBanner } from './unlisted-banner';
@@ -124,6 +125,7 @@ export function ProductContent({ model, search, onRequireLogin }: Props) {
       </div>
       <ReportDialog
         target={reportTarget}
+        isGuest={model.role === 'guest'}
         onClose={() => setReportTarget(null)}
       />
     </PageContext>

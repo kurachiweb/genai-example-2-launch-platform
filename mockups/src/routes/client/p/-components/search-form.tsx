@@ -3,10 +3,10 @@ import { SearchIcon, XIcon } from 'lucide-react';
 
 import { Button } from '#/components/ui/button';
 import { Input } from '#/components/ui/input';
+import { countGraphemes } from '#/lib/graphemes';
 import { cn } from '#/lib/utils';
 
 import { SEARCH_COUNTER_FROM, SEARCH_MAX_LENGTH } from '../-model/query';
-import { countGraphemes } from '../-model/text';
 
 type Props = {
   value: string | undefined;

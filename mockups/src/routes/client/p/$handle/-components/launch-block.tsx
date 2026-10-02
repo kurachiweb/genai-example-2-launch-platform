@@ -2,14 +2,14 @@ import { Link } from '@tanstack/react-router';
 import { CalendarClockIcon, LinkIcon, RadioIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { LaunchHighlightChip } from '#/components/client/launch-highlight-chip';
 import { Button } from '#/components/ui/button';
+import { isoDate } from '#/lib/clock';
 import { useDateTimeFormatter } from '#/lib/date-format';
 import type { Product } from '#/lib/mock-data';
-import { cn } from '#/lib/utils';
 
-import { isoDate } from '../-model/clock';
 import type { CommentNode } from '../-model/comments';
-import type { LaunchHighlight, LaunchView } from '../-model/launches';
+import type { LaunchView } from '../-model/launches';
 import { CommentThread } from './comment-thread';
 import { MatchRow } from './match-row';
 import { usePageContext } from './page-context';
@@ -20,13 +20,6 @@ type Props = {
   comments: CommentNode[] | undefined;
   // 開始済みで最も新しいローンチのコメントだけを既定で展開する
   commentsOpen: boolean;
-};
-
-const HIGHLIGHT_CLASSES: Record<LaunchHighlight['tone'], string> = {
-  gold: 'gold-gradient text-gold-foreground',
-  primary: 'bg-primary/12 text-primary',
-  live: 'bg-primary text-primary-foreground',
-  muted: 'bg-muted text-defeat',
 };
 
 export function LaunchBlock({
@@ -56,16 +49,12 @@ export function LaunchBlock({
         {launch.highlights.length > 0 && (
           <ul className="flex flex-wrap gap-1.5">
             {launch.highlights.map((highlight) => (
-              <li
+              <LaunchHighlightChip
                 key={highlight.label}
-                className={cn(
-                  'rounded-full px-2.5 py-0.5 text-xs font-bold',
-                  HIGHLIGHT_CLASSES[highlight.tone],
-                )}
-                translate={highlight.tone === 'gold' ? 'no' : undefined}
-              >
-                {highlight.label}
-              </li>
+                as="li"
+                label={highlight.label}
+                tone={highlight.tone}
+              />
             ))}
           </ul>
         )}

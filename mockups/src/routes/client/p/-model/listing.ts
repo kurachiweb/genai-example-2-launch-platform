@@ -1,3 +1,4 @@
+import type { AwardLabel } from '#/components/client/award-badges';
 import { CURRENT_USER, PRODUCTS, USERS } from '#/lib/mock-data';
 import type { Product, User } from '#/lib/mock-data';
 
@@ -22,15 +23,13 @@ export type BaseWin = {
   ownVotes: number | null;
 };
 
-export type Award = { kind: 'week' | 'year'; label: string };
-
 export type DirectoryEntry = {
   id: string;
   product: Product;
   category: Category;
   maker: User;
   isOwn: boolean;
-  awards: Award[];
+  awards: AwardLabel[];
   commentCount: number;
   win: BaseWin;
 };
@@ -245,12 +244,12 @@ function makerOf(slot: number, index: number, state: DirectoryState): User {
   return USERS[1 + (hash(index + 5) % (USERS.length - 1))];
 }
 
-function awardsOf(history: History | undefined): Award[] {
+function awardsOf(history: History | undefined): AwardLabel[] {
   if (!history) return [];
   const weeks = history.wins
     .filter((win) => win.week)
-    .map((win): Award => ({ kind: 'week', label: weekLabelOf(win.date) }));
-  const year: Award[] = history.year
+    .map((win): AwardLabel => ({ kind: 'week', label: weekLabelOf(win.date) }));
+  const year: AwardLabel[] = history.year
     ? [{ kind: 'year', label: history.year }]
     : [];
   return [...year, ...weeks];

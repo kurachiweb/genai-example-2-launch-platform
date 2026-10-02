@@ -8,15 +8,14 @@ import {
 } from 'lucide-react';
 
 import { paletteColors } from '#/components/client/art/palettes';
-import { ROUND_LABEL } from '#/components/client/match/model';
+import { StageBadge } from '#/components/client/match/stage-badge';
 import { ProductLogo } from '#/components/client/product-logo';
-import { Badge } from '#/components/ui/badge';
 import { Button } from '#/components/ui/button';
+import { isoDate } from '#/lib/clock';
 import { useDateTimeFormatter } from '#/lib/date-format';
 import type { Product } from '#/lib/mock-data';
 import { cn } from '#/lib/utils';
 
-import { isoDate } from '../-model/clock';
 import type { HistoryMatch } from '../-model/launches';
 import { usePageContext } from './page-context';
 import { SupportersPanel } from './supporters-panel';
@@ -25,12 +24,6 @@ type Props = {
   match: HistoryMatch;
   product: Product;
 };
-
-function stageOf(match: HistoryMatch): string {
-  if (match.kind === 'qualifier') return '予選';
-  const prefix = match.kind === 'week' ? 'Week' : 'Year';
-  return `${prefix} ${ROUND_LABEL[match.round ?? 'final']}`;
-}
 
 export function MatchRow({ match, product }: Props) {
   const { imagesBroken } = usePageContext();
@@ -48,18 +41,7 @@ export function MatchRow({ match, product }: Props) {
     >
       <div className="grid gap-3 p-3 sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:items-center sm:gap-4 sm:p-4">
         <div className="flex items-center gap-2 sm:flex-col sm:items-start sm:gap-1">
-          <Badge
-            size="lg"
-            variant={match.kind === 'qualifier' ? 'outline' : 'default'}
-            className={cn(
-              match.kind !== 'qualifier' && 'border-0 text-gold-foreground',
-              match.kind !== 'qualifier' &&
-                (match.round === 'final' ? 'gold-gradient' : 'bg-silver'),
-            )}
-            translate="no"
-          >
-            {stageOf(match)}
-          </Badge>
+          <StageBadge kind={match.kind} round={match.round} />
           <time
             dateTime={isoDate(match.date)}
             className="text-xs text-muted-foreground"

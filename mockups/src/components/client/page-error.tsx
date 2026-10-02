@@ -2,10 +2,14 @@ import { CircleAlertIcon, RotateCwIcon } from 'lucide-react';
 
 import { Button } from '#/components/ui/button';
 
-type Props = { onRetry: () => void };
+type Props = {
+  // 「プロダクト情報を読み込めませんでした。」のように読み込めなかった対象を示す
+  title: string;
+  onRetry: () => void;
+};
 
 // 取得エラー。技術的な詳細は出さず、再試行と問い合わせへの導線を示す
-export function PageError({ onRetry }: Props) {
+export function PageError({ title, onRetry }: Props) {
   return (
     <section
       role="alert"
@@ -17,7 +21,7 @@ export function PageError({ onRetry }: Props) {
         aria-hidden="true"
       />
       <h1 id="page-error-heading" className="mt-4 text-xl font-extrabold">
-        プロダクト情報を読み込めませんでした。
+        {title}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         時間をおいて再度お試しください。解決しない場合はお問い合わせください。

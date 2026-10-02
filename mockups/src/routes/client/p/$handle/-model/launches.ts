@@ -1,8 +1,6 @@
+import type { HighlightTone } from '#/components/client/launch-highlight-chip';
 import { ROUND_LABEL } from '#/components/client/match/model';
 import type { MatchKind, Round } from '#/components/client/match/model';
-import { PRODUCTS } from '#/lib/mock-data';
-import type { Product } from '#/lib/mock-data';
-
 import {
   addDays,
   addMinutes,
@@ -15,7 +13,10 @@ import {
   yearFinalAfter,
   yearPaymentDeadlineOf,
   yearRoundDate,
-} from './clock';
+} from '#/lib/clock';
+import { PRODUCTS } from '#/lib/mock-data';
+import type { Product } from '#/lib/mock-data';
+
 import type { ProductSearch } from './options';
 import { latestOutcome } from './plan';
 import type { LaunchState, Plan, PlannedMatch } from './plan';
@@ -42,7 +43,7 @@ export type HistoryMatch = {
 
 export type LaunchHighlight = {
   label: string;
-  tone: 'gold' | 'primary' | 'muted' | 'live';
+  tone: HighlightTone;
 };
 
 export type LaunchView = {

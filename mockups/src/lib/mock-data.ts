@@ -245,20 +245,164 @@ function toHandle(name: string) {
     .replace(/^-+|-+$/g, '');
 }
 
-export const PRODUCTS: Product[] = PRODUCT_SEEDS.map(
-  ([name, tagline, category], index) => ({
-    id: `prd-${String(index + 1).padStart(3, '0')}`,
+type ProductSeed = [string, string, (typeof CATEGORIES)[number]];
+
+function toProducts(
+  seeds: ProductSeed[],
+  { firstId, paletteStep }: { firstId: number; paletteStep: number },
+): Product[] {
+  return seeds.map(([name, tagline, category], index) => ({
+    id: `prd-${String(firstId + index).padStart(3, '0')}`,
     name,
     tagline,
     category,
     handle: toHandle(name),
     siteUrl: `https://${toHandle(name).replace(/-/g, '')}.example`,
     art: {
-      palette: (index * 7) % 12,
+      palette: (index * paletteStep) % 12,
       variant: VARIANTS[(index * 3) % VARIANTS.length],
     },
-  }),
-);
+  }));
+}
+
+export const PRODUCTS: Product[] = toProducts(PRODUCT_SEEDS, {
+  firstId: 1,
+  paletteStep: 7,
+});
+
+// ユーザー公開プロフィールで閲覧中のユーザーがローンチしたプロダクト。自身のプロダクトにはUpvoteできない(FR-VOTE-003)ため、Upvote履歴に使うPRODUCTSとは重ねない
+const MAKER_PRODUCT_SEEDS: ProductSeed[] = [
+  [
+    'Fieldnote',
+    'Field research notes that sync with your lab notebook',
+    '教育',
+  ],
+  [
+    'Offside Alerts',
+    'Price drop alerts for indie SaaS, before they hit your timeline',
+    'マーケティング',
+  ],
+  [
+    'Lanternfish',
+    'Deep-sea inspired dark mode generator for any design system',
+    'デザイン',
+  ],
+  [
+    'Stopwatch Studio',
+    'Time-boxed focus sessions with soundscapes recorded in real stadiums',
+    '生産性',
+  ],
+  [
+    'Throughline',
+    'Connect every customer interview quote to the roadmap item it inspired',
+    '生産性',
+  ],
+  ['Pixel Pantry', 'Free, hand-drawn icon sets', 'デザイン'],
+  [
+    'Counterpress',
+    'Competitor changelog tracking, summarized every Monday morning',
+    'マーケティング',
+  ],
+  [
+    '⚡ Quickstart Kits',
+    'Production-ready starter templates for edge functions',
+    '開発ツール',
+  ],
+  [
+    'Mise en Place',
+    'Recipe scaling and prep timelines for home cooks',
+    'その他',
+  ],
+  [
+    'Telemetry Lens',
+    'OpenTelemetry traces explained in plain English, with suggested fixes',
+    '開発ツール',
+  ],
+  ['Breathwork', 'Guided breathing for panic-free deploy days', 'ヘルスケア'],
+  [
+    'Semaphore Board',
+    'A shared traffic-light status board for remote teams',
+    '生産性',
+  ],
+  [
+    'Cartographer',
+    'Architecture diagrams generated straight from your Terraform state',
+    '開発ツール',
+  ],
+  [
+    'Lingo Ladder',
+    'Five-minute vocabulary drills that adapt to your mistakes',
+    '教育',
+  ],
+  ['Undercroft', 'Self-hosted, end-to-end encrypted file drop', 'その他'],
+  ['Promptsmith', 'Version control and regression tests for LLM prompts', 'AI'],
+  [
+    'Ringtone Atelier',
+    'Compose notification sounds that are still pleasant at 3 a.m.',
+    'デザイン',
+  ],
+  [
+    'Seedling CRM',
+    'The CRM for founders with fewer than 100 customers',
+    'マーケティング',
+  ],
+  [
+    '🎧 Podcast Clipper',
+    'Turn long episodes into captioned vertical clips automatically',
+    'AI',
+  ],
+  ['Sundial', 'Timezone-aware meeting slots', '生産性'],
+  [
+    'Ergonomics Coach',
+    'Webcam posture reminders that never upload a single frame',
+    'ヘルスケア',
+  ],
+  ['Gridiron Forms', 'Spreadsheet-native form builder', '生産性'],
+  [
+    'Vantage Point',
+    'Heatmaps and session replays for static sites, under 3 kB',
+    'マーケティング',
+  ],
+  [
+    'Mnemosyne Docs',
+    'Docs that warn you when the code they describe has changed',
+    '開発ツール',
+  ],
+  ['Tidepool', 'Shared grocery lists that sort themselves by aisle', 'その他'],
+  ['Chalkboard', 'Collaborative lesson plans for substitute teachers', '教育'],
+  [
+    'Overture',
+    'Pitch deck feedback from AI investors with very different temperaments',
+    'AI',
+  ],
+  ['Kilnworks', 'Firing schedules and glaze recipes for ceramicists', 'その他'],
+  ['Pulse Check', 'Anonymous weekly team health surveys in Slack', '生産性'],
+  [
+    'Hyperparameter Orchard',
+    'Compare thousands of training runs side by side',
+    'AI',
+  ],
+  [
+    'Sketchnote Live',
+    'Real-time visual note-taking for conference talks',
+    'デザイン',
+  ],
+  ['Dribble Drills', 'Football training plans for under-12 teams', '教育'],
+  ['Waypoint', 'Onboarding checklists that update themselves', '生産性'],
+];
+
+export const MAKER_PRODUCTS: Product[] = toProducts(MAKER_PRODUCT_SEEDS, {
+  firstId: 101,
+  paletteStep: 5,
+});
+
+// プロダクト詳細のURLのハンドルは大文字小文字を区別せずに解決する
+export function findProductByHandle(handle: string): Product | undefined {
+  const lower = handle.toLowerCase();
+  return [...PRODUCTS, ...MAKER_PRODUCTS].find(
+    (product) => product.handle.toLowerCase() === lower,
+  );
+}
 
 // ニックネームは25文字以内。短い名前・長い名前・区切りの無い長い英単語を織り交ぜ、一部はプロフィール画像を未設定にする
 const USER_SEEDS: [string, string, boolean][] = [
@@ -296,6 +440,12 @@ export const USERS: User[] = USER_SEEDS.map(
 );
 
 export const CURRENT_USER = USERS[0];
+
+// ユーザー公開プロフィールのURLのハンドルは大文字小文字を区別せずに解決する(FR-UPROF-007)
+export function findUserByHandle(handle: string): User | undefined {
+  const lower = handle.toLowerCase();
+  return USERS.find((user) => user.handle.toLowerCase() === lower);
+}
 
 export function productAt(index: number): Product {
   return PRODUCTS[index % PRODUCTS.length];

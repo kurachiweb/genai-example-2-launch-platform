@@ -93,3 +93,22 @@ export function yearFinalAfter(weekFinalDate: Date): Date {
 export function yearRoundDate(finalDate: Date, roundIndex: number): Date {
   return addDays(finalDate, roundIndex - 3);
 }
+
+// ISO 8601の週番号(その週の木曜日が年初から何週目か)
+function isoWeekOf(monday: Date): { year: number; week: number } {
+  const [year, month, day] = isoDate(addDays(monday, 3)).split('-').map(Number);
+  const ordinal =
+    (Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / DAY_MS;
+  return { year, week: Math.floor(ordinal / 7) + 1 };
+}
+
+// 表記規則の「2026年第37週(9/7〜9/13)」
+export function weekLabelOf(date: Date): string {
+  const monday = mondayOf(date);
+  const { year, week } = isoWeekOf(monday);
+  const short = (day: Date) => {
+    const [, month, dayOfMonth] = isoDate(day).split('-').map(Number);
+    return `${month}/${dayOfMonth}`;
+  };
+  return `${year}年第${week}週(${short(monday)}〜${short(addDays(monday, 6))})`;
+}

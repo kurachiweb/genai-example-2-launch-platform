@@ -2,16 +2,16 @@ import { Link } from '@tanstack/react-router';
 import { ExternalLinkIcon, LinkIcon, TrophyIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { FollowButton } from '#/components/client/follow-button';
 import { ProductLogo } from '#/components/client/product-logo';
 import { UserAvatar } from '#/components/client/user-avatar';
 import { Button } from '#/components/ui/button';
+import { isoDate } from '#/lib/clock';
 import { useDateTimeFormatter } from '#/lib/date-format';
 import { categorySlugOf } from '#/lib/mock-data';
 import type { Product, User } from '#/lib/mock-data';
 
-import { isoDate } from '../-model/clock';
 import type { ProductRecord } from '../-model/page-model';
-import { FollowButton } from './follow-button';
 import { usePageContext } from './page-context';
 
 type Props = {
@@ -22,7 +22,7 @@ type Props = {
 };
 
 export function ProductHeader({ product, maker, record, awardCount }: Props) {
-  const { imagesBroken } = usePageContext();
+  const { imagesBroken, role, requireLogin } = usePageContext();
   const dateFormatter = useDateTimeFormatter('longDate');
 
   const copyLink = async () => {
@@ -98,7 +98,13 @@ export function ProductHeader({ product, maker, record, awardCount }: Props) {
               @{maker.handle}
             </p>
           </div>
-          <FollowButton maker={maker} />
+          {role !== 'owner' && (
+            <FollowButton
+              target={maker}
+              viewer={role}
+              onRequireLogin={() => requireLogin('follow')}
+            />
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button

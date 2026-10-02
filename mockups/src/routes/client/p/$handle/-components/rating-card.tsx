@@ -3,9 +3,10 @@ import { StarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '#/components/ui/button';
+import { UNVERIFIED_MESSAGE } from '#/lib/messages';
 
 import type { Rating } from '../-model/page-model';
-import { UNVERIFIED_MESSAGE, usePageContext } from './page-context';
+import { usePageContext } from './page-context';
 import { StarRatingInput } from './star-rating-input';
 
 type Props = { rating: Rating };

@@ -1,8 +1,8 @@
 import { TrophyArt } from '#/components/client/art/trophy-art';
+import { isoDate } from '#/lib/clock';
 import { useDateTimeFormatter } from '#/lib/date-format';
 import { cn } from '#/lib/utils';
 
-import { isoDate } from '../-model/clock';
 import type { Award } from '../-model/page-model';
 
 type Props = { awards: Award[] };

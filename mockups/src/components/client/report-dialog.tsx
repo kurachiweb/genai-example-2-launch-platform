@@ -14,14 +14,18 @@ import { Input } from '#/components/ui/input';
 import { Label } from '#/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '#/components/ui/radio-group';
 import { Textarea } from '#/components/ui/textarea';
+import { countGraphemes } from '#/lib/graphemes';
 import { cn } from '#/lib/utils';
 
-import { countGraphemes } from './comment-tree';
-import type { ReportTarget } from './page-context';
-import { usePageContext } from './page-context';
+export type ReportTarget = {
+  kind: 'product' | 'comment' | 'user';
+  label: string;
+};
 
 type Props = {
   target: ReportTarget | null;
+  // 未ログインで権利侵害を選んだ場合は連絡先メールアドレスを必須にする(FR-REPOT-003)
+  isGuest: boolean;
   onClose: () => void;
 };
 
@@ -36,14 +40,13 @@ const CATEGORIES = [
 const REASON_MAX = 1000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function ReportDialog({ target, onClose }: Props) {
-  const { role } = usePageContext();
+export function ReportDialog({ target, isGuest, onClose }: Props) {
   const formId = useId();
   const [category, setCategory] = useState('');
   const [reason, setReason] = useState('');
   const [email, setEmail] = useState('');
   const [touched, setTouched] = useState({ reason: false, email: false });
-  const needsEmail = role === 'guest' && category === 'rights';
+  const needsEmail = isGuest && category === 'rights';
   const reasonLength = countGraphemes(reason);
   const reasonError =
     reason.trim() === ''

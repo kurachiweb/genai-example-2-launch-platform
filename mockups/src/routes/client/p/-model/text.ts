@@ -1,21 +1,3 @@
-const segmenter = new Intl.Segmenter('ja', { granularity: 'grapheme' });
-
-// 文字数は書記素(ユーザーが1文字と認識する単位)で数える
-export function countGraphemes(text: string): number {
-  return Array.from(segmenter.segment(text)).length;
-}
-
-export function truncateGraphemes(text: string, max: number): string {
-  let result = '';
-  let count = 0;
-  for (const { segment } of segmenter.segment(text)) {
-    if (count >= max) break;
-    result += segment;
-    count += 1;
-  }
-  return result;
-}
-
 // 検索時の正規化(FR-FTS-002のNFKC正規化と、FTS5の`remove_diacritics 2`相当の発音区別符号の除去)を模す
 export function normalizeForSearch(text: string): string {
   return text

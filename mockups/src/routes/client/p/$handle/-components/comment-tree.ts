@@ -47,10 +47,3 @@ export function markDeleted(nodes: CommentNode[], id: string): CommentNode[] {
 export function countComments(nodes: CommentNode[]): number {
   return nodes.reduce((sum, node) => sum + 1 + countComments(node.replies), 0);
 }
-
-export function countGraphemes(text: string): number {
-  const segmenter = new Intl.Segmenter('ja', { granularity: 'grapheme' });
-  let count = 0;
-  for (const _ of segmenter.segment(text)) count += 1;
-  return count;
-}

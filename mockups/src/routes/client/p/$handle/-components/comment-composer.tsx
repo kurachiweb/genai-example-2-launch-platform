@@ -16,9 +16,9 @@ import { Markdown } from '#/components/client/markdown';
 import { Button } from '#/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs';
 import { Textarea } from '#/components/ui/textarea';
+import { countGraphemes } from '#/lib/graphemes';
 import { cn } from '#/lib/utils';
 
-import { countGraphemes } from './comment-tree';
 import { StarRatingInput } from './star-rating-input';
 
 type Props = {

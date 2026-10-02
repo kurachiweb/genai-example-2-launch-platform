@@ -1,12 +1,11 @@
 import { createContext, useContext } from 'react';
 
 import type { LoginPurpose } from '#/components/client/login-dialog';
+import type { ReportTarget } from '#/components/client/report-dialog';
 import type { User } from '#/lib/mock-data';
 
 import type { ProductSearch } from '../-model/options';
 import type { ViewerRole } from '../-model/page-model';
-
-export type ReportTarget = { kind: 'product' | 'comment'; label: string };
 
 export type PageContextValue = {
   role: ViewerRole;
@@ -30,6 +29,3 @@ export function usePageContext(): PageContextValue {
   if (!value) throw new Error('PageContextの外で使用されています');
   return value;
 }
-
-export const UNVERIFIED_MESSAGE =
-  'この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。';

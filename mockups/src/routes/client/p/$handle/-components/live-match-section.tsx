@@ -3,11 +3,12 @@ import { ClockIcon } from 'lucide-react';
 import { MatchCard } from '#/components/client/match/match-card';
 import { ROUND_LABEL } from '#/components/client/match/model';
 import type { Match, Round } from '#/components/client/match/model';
+import { matchEndOf } from '#/lib/clock';
 import { formatCountdown } from '#/lib/countdown';
 import { useDateTimeFormatter } from '#/lib/date-format';
+import { UNVERIFIED_MESSAGE } from '#/lib/messages';
 
-import { matchEndOf } from '../-model/clock';
-import { UNVERIFIED_MESSAGE, usePageContext } from './page-context';
+import { usePageContext } from './page-context';
 import { useMockCountdown } from './use-mock-countdown';
 
 type Props = {

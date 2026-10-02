@@ -1,7 +1,7 @@
+import { addMinutes } from '#/lib/clock';
 import { USERS } from '#/lib/mock-data';
 import type { User } from '#/lib/mock-data';
 
-import { addMinutes } from './clock';
 import {
   COMMENT_BODIES,
   LONG_COMMENT_BODIES,
