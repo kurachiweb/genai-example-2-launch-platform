@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index';
 import { Route as AdminIndexRouteImport } from './routes/admin/index';
 import { Route as ClientIndexRouteImport } from './routes/client/index';
 import { Route as ClientTopIndexRouteImport } from './routes/client/top/index';
+import { Route as ClientPHandleIndexRouteImport } from './routes/client/p/$handle/index';
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,25 @@ const ClientTopIndexRoute = ClientTopIndexRouteImport.update({
   path: '/client/top/',
   getParentRoute: () => rootRouteImport,
 } as any);
+const ClientPHandleIndexRoute = ClientPHandleIndexRouteImport.update({
+  id: '/client/p/$handle/',
+  path: '/client/p/$handle/',
+  getParentRoute: () => rootRouteImport,
+} as any);
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
   '/admin/': typeof AdminIndexRoute;
   '/client/': typeof ClientIndexRoute;
   '/client/top/': typeof ClientTopIndexRoute;
+  '/client/p/$handle/': typeof ClientPHandleIndexRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
   '/admin': typeof AdminIndexRoute;
   '/client': typeof ClientIndexRoute;
   '/client/top': typeof ClientTopIndexRoute;
+  '/client/p/$handle': typeof ClientPHandleIndexRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
@@ -53,13 +61,21 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute;
   '/client/': typeof ClientIndexRoute;
   '/client/top/': typeof ClientTopIndexRoute;
+  '/client/p/$handle/': typeof ClientPHandleIndexRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: '/' | '/admin/' | '/client/' | '/client/top/';
+  fullPaths:
+    '/' | '/admin/' | '/client/' | '/client/top/' | '/client/p/$handle/';
   fileRoutesByTo: FileRoutesByTo;
-  to: '/' | '/admin' | '/client' | '/client/top';
-  id: '__root__' | '/' | '/admin/' | '/client/' | '/client/top/';
+  to: '/' | '/admin' | '/client' | '/client/top' | '/client/p/$handle';
+  id:
+    | '__root__'
+    | '/'
+    | '/admin/'
+    | '/client/'
+    | '/client/top/'
+    | '/client/p/$handle/';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -67,6 +83,7 @@ export interface RootRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute;
   ClientIndexRoute: typeof ClientIndexRoute;
   ClientTopIndexRoute: typeof ClientTopIndexRoute;
+  ClientPHandleIndexRoute: typeof ClientPHandleIndexRoute;
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientTopIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/client/p/$handle/': {
+      id: '/client/p/$handle/';
+      path: '/client/p/$handle';
+      fullPath: '/client/p/$handle/';
+      preLoaderRoute: typeof ClientPHandleIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -107,16 +131,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   ClientIndexRoute: ClientIndexRoute,
   ClientTopIndexRoute: ClientTopIndexRoute,
+  ClientPHandleIndexRoute: ClientPHandleIndexRoute,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>();
-
-import type { getRouter } from './router.tsx';
-import type { createStart } from '@tanstack/react-start';
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
-  }
-}

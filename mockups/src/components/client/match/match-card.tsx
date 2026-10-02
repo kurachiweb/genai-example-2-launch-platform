@@ -2,8 +2,8 @@ import { Badge } from '#/components/ui/badge';
 import type { User } from '#/lib/mock-data';
 import { cn } from '#/lib/utils';
 
-import { matchWinner, ROUND_LABEL } from '../-model';
-import type { Match, Round } from '../-model';
+import { matchWinner, ROUND_LABEL } from './model';
+import type { Match, Round } from './model';
 import { MatchStage } from './match-stage';
 
 type Props = {
@@ -12,6 +12,10 @@ type Props = {
   user: User | null;
   accent?: 'gold';
   round?: Round;
+  // 開催中のヘッダー左側に表示する補足(勝敗結果表示中は結果文言が優先される)
+  caption?: React.ReactNode;
+  // ログイン済みでもUpvoteできない理由(メールアドレス未確認など)
+  restriction?: string | null;
   onRequireLogin: () => void;
 };
 
@@ -21,6 +25,8 @@ export function MatchCard({
   user,
   accent,
   round,
+  caption,
+  restriction,
   onRequireLogin,
 }: Props) {
   const winner = matchWinner(match);
@@ -36,7 +42,7 @@ export function MatchCard({
     >
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-2 text-xs">
         <span className="flex items-center gap-1.5 text-muted-foreground">
-          {!isLive && <ResultLabel match={match} winner={winner} />}
+          {isLive ? caption : <ResultLabel match={match} winner={winner} />}
         </span>
         {round ? (
           <Badge
@@ -56,6 +62,7 @@ export function MatchCard({
         isLive={isLive}
         user={user}
         variant="card"
+        restriction={restriction}
         onRequireLogin={onRequireLogin}
       />
     </article>
@@ -82,7 +89,7 @@ function ResultLabel({
   const tieNote = own === other ? '(最終Upvote時刻が早いため)' : '';
   return (
     <span className="font-semibold text-foreground">
-      フルタイム! {own}対{other}で{winnerName}の勝利{tieNote}
+      フルタイム！{own}対{other}で{winnerName}の勝利{tieNote}
     </span>
   );
 }

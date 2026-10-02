@@ -1,10 +1,40 @@
 import { useSyncExternalStore } from 'react';
 
-export type DateTimeStyle = 'time' | 'date';
+export type DateTimeStyle =
+  | 'time'
+  | 'date'
+  | 'dateWeekday'
+  | 'yearDate'
+  | 'longDate'
+  | 'dateTime'
+  | 'longDateTime';
 
 const STYLE_OPTIONS: Record<DateTimeStyle, Intl.DateTimeFormatOptions> = {
   time: { hour: '2-digit', minute: '2-digit' },
   date: { month: 'long', day: 'numeric' },
+  dateWeekday: { month: 'long', day: 'numeric', weekday: 'short' },
+  yearDate: { year: 'numeric', month: 'long', day: 'numeric' },
+  longDate: {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  },
+  dateTime: {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  },
+  longDateTime: {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  },
 };
 
 function buildFormatters(
@@ -27,7 +57,7 @@ function subscribe() {
   return () => {};
 }
 
-function useHydrated(): boolean {
+export function useHydrated(): boolean {
   return useSyncExternalStore(
     subscribe,
     () => true,

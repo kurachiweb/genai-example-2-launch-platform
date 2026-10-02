@@ -1,12 +1,11 @@
 import { TrophyIcon } from 'lucide-react';
 
-import { paletteColors } from '#/components/client/art';
+import { paletteColors } from '#/components/client/art/palettes';
+import { MatchStage } from '#/components/client/match/match-stage';
+import { matchWinner } from '#/components/client/match/model';
+import type { Match } from '#/components/client/match/model';
 import type { User } from '#/lib/mock-data';
 import { cn } from '#/lib/utils';
-
-import { matchWinner } from '../-model';
-import type { Match } from '../-model';
-import { MatchStage } from './match-stage';
 
 type Props = {
   kind: 'week' | 'year';
@@ -97,7 +96,7 @@ export function FinalShowcase({
             role="status"
           >
             {winnerProduct
-              ? `フルタイム! ${winnerProduct.name}が${title}を受賞🎉`
+              ? `フルタイム！${winnerProduct.name}が${title}を受賞🎉`
               : 'フルタイム。0対0で両者敗北。今回の受賞プロダクトはありません'}
           </p>
         )}

@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
-import { createFileRoute, stripSearchParams } from '@tanstack/react-router';
+import {
+  createFileRoute,
+  stripSearchParams,
+  useNavigate,
+} from '@tanstack/react-router';
 
 import { SiteFooter } from '#/components/client/site-footer';
 import { SiteHeader } from '#/components/client/site-header';
@@ -8,15 +12,27 @@ import {
   LegendBanner,
   SilverList,
 } from '#/components/client/sponsor-ads';
+import { LoginDialog } from '#/components/client/login-dialog';
+import { StatePanel } from '#/components/client/state-panel';
 import { StadiumDefs } from '#/components/client/stadium-pitch/stadium-pitch';
 
 import { FinalShowcase } from './-components/final-showcase';
 import { FullTimeCountdown } from './-components/full-time-countdown';
 import { GuestHero } from './-components/hero';
-import { LoginDialog } from './-components/login-dialog';
-import { QualifierSection, TournamentSection } from './-components/sections';
-import { StatePanel } from './-components/state-panel';
-import { DEFAULT_SEARCH, buildModel, validateSearch } from './-model';
+import { QualifierSection } from './-components/qualifier-section';
+import { TournamentSection } from './-components/tournament-section';
+import {
+  DEFAULT_SEARCH,
+  OPTIONS,
+  OPTION_LABELS,
+  buildModel,
+  validateSearch,
+} from './-model';
+import type { TopSearch } from './-model';
+
+const PANEL_SECTIONS = [
+  { keys: Object.keys(OPTIONS) as (keyof typeof OPTIONS)[] },
+] as const;
 
 export const Route = createFileRoute('/client/top/')({
   validateSearch,
@@ -26,6 +42,7 @@ export const Route = createFileRoute('/client/top/')({
 
 function TopPage() {
   const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const model = useMemo(() => buildModel(search), [search]);
   const [loginOpen, setLoginOpen] = useState(false);
   const requireLogin = () => setLoginOpen(true);
@@ -100,7 +117,19 @@ function TopPage() {
       <SiteFooter />
 
       <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
-      <StatePanel search={search} />
+      <StatePanel
+        sections={PANEL_SECTIONS}
+        options={OPTIONS}
+        labels={OPTION_LABELS}
+        values={search}
+        onChange={(key, value) =>
+          navigate({
+            search: (prev: TopSearch) => ({ ...prev, [key]: value }),
+            replace: true,
+            resetScroll: false,
+          })
+        }
+      />
     </div>
   );
 }

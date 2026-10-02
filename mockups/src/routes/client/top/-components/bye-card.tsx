@@ -1,6 +1,7 @@
+import { Link } from '@tanstack/react-router';
 import { ExternalLinkIcon, TrophyIcon } from 'lucide-react';
 
-import { ProductLogoArt } from '#/components/client/art';
+import { ProductLogoArt } from '#/components/client/art/product-logo-art';
 import { Badge } from '#/components/ui/badge';
 import { Button } from '#/components/ui/button';
 
@@ -37,9 +38,13 @@ export function ByeCard({ entry }: Props) {
           </Badge>
         </div>
         <h3 className="mt-1 font-bold wrap-anywhere">
-          <a href="#" className="text-inherit no-underline hover:underline">
+          <Link
+            to="/client/p/$handle"
+            params={{ handle: product.handle }}
+            className="text-inherit no-underline hover:underline"
+          >
             {product.name}
-          </a>
+          </Link>
         </h3>
         <p className="line-clamp-1 text-xs text-muted-foreground">
           {product.tagline}
@@ -51,7 +56,11 @@ export function ByeCard({ entry }: Props) {
         </p>
       </div>
       <Button size="xs" variant="outline" asChild className="rounded-full">
-        <a href={product.siteUrl} target="_blank" rel="noopener noreferrer">
+        <a
+          href={product.siteUrl}
+          target="_blank"
+          rel={entry.kind === 'qualifier' ? 'noopener ugc' : 'noopener'}
+        >
           サイトを開く
           <ExternalLinkIcon aria-hidden="true" />
         </a>

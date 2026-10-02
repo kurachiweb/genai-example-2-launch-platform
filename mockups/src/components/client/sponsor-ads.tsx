@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ExternalLinkIcon, MegaphoneIcon } from 'lucide-react';
 
-import { ProductLogoArt } from '#/components/client/art';
+import { ProductLogoArt } from '#/components/client/art/product-logo-art';
 import { Button } from '#/components/ui/button';
 import type { Product, User } from '#/lib/mock-data';
 import { cn } from '#/lib/utils';

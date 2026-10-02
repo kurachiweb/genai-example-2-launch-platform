@@ -3,6 +3,7 @@ import type { SearchSchemaInput } from '@tanstack/react-router';
 import { CURRENT_USER, PRODUCTS } from '#/lib/mock-data';
 import type { Product, User } from '#/lib/mock-data';
 import type { SponsorAd } from '#/components/client/sponsor-ads';
+import type { Match, MatchKind, Round } from '#/components/client/match/model';
 
 export const OPTIONS = {
   auth: ['guest', 'user'],
@@ -116,20 +117,6 @@ export function validateSearch(
   return result;
 }
 
-export type Round = 'r1' | 'qf' | 'sf' | 'final';
-export type MatchKind = 'qualifier' | 'week' | 'year';
-
-export type Match = {
-  id: string;
-  kind: MatchKind;
-  left: Product;
-  right: Product;
-  leftVotes: number;
-  rightVotes: number;
-  isOwn: boolean;
-  upvoted: 'left' | 'right' | null;
-};
-
 // absent: 対戦相手が元々いない不戦勝(FR-TOURW-017等)
 // early: 対戦相手の退会・停止・非公開化でマッチが早期終了した不戦勝(FR-GAME-013・FR-TOURW-014・FR-TOURY-014)
 export type ByeEntry = {
@@ -137,13 +124,6 @@ export type ByeEntry = {
   kind: MatchKind;
   product: Product;
 } & ({ reason: 'absent' } | { reason: 'early'; votes: number });
-
-export const ROUND_LABEL: Record<Round, string> = {
-  r1: '1回戦',
-  qf: '準々決勝',
-  sf: '準決勝',
-  final: '決勝',
-};
 
 const ROUND_MATCHES: Record<Round, number> = { r1: 5, qf: 4, sf: 2, final: 1 };
 const ROUND_DAYS_TO_FINAL: Record<Round, number> = {
@@ -205,6 +185,11 @@ function pairProducts(offset: number, count: number): [Product, Product][] {
   return pairs;
 }
 
+// 予選の対戦中プロダクトは未掲載が基本だが、再ローンチで過去に予選勝利済みなら掲載済みとして詳細ページへ遷移できる(FR-GAME-007)
+function isListedBefore(product: Product): boolean {
+  return Number(product.id.slice(-3)) % 3 === 0;
+}
+
 function buildMatch(
   kind: MatchKind,
   index: number,
@@ -213,6 +198,11 @@ function buildMatch(
   extras: Partial<Match> = {},
 ): Match {
   const [left, right] = pair;
+  const isOwn = extras.isOwn ?? false;
+  const linked =
+    kind === 'qualifier'
+      ? { left: isOwn || isListedBefore(left), right: isListedBefore(right) }
+      : { left: true, right: true };
   return {
     id: `${kind}-${index + 1}`,
     kind,
@@ -220,8 +210,9 @@ function buildMatch(
     right,
     leftVotes: votes[0],
     rightVotes: votes[1],
-    isOwn: false,
+    isOwn,
     upvoted: null,
+    linked,
     ...extras,
   };
 }
@@ -340,12 +331,6 @@ function adsOf(
     tier,
     product: PRODUCTS[(offset + i * 3) % PRODUCTS.length],
   }));
-}
-
-export function matchWinner(match: Match): 'left' | 'right' | 'none' {
-  if (match.leftVotes === 0 && match.rightVotes === 0) return 'none';
-  if (match.leftVotes === match.rightVotes) return 'left';
-  return match.leftVotes > match.rightVotes ? 'left' : 'right';
 }
 
 // トーナメントはローンチ日順の隣接ペアのため、カテゴリを考慮せず順に組む

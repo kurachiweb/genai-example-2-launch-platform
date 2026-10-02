@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { paletteColors } from '#/components/client/art';
+import { paletteColors } from '#/components/client/art/palettes';
 import { StadiumPitch } from '#/components/client/stadium-pitch/stadium-pitch';
 import type { Side } from '#/components/client/stadium-pitch/stadium-pitch';
 import type { User } from '#/lib/mock-data';
 import { cn } from '#/lib/utils';
 
-import { matchWinner } from '../-model';
-import type { Match } from '../-model';
+import { matchWinner } from './model';
+import type { Match } from './model';
 import { ProductPanel } from './product-panel';
 import {
   BALL_FLIGHT_MS,
@@ -23,6 +23,7 @@ type Props = {
   isLive: boolean;
   user: User | null;
   variant: 'card' | 'final';
+  restriction?: string | null;
   onRequireLogin: () => void;
 };
 
@@ -118,6 +119,7 @@ export function MatchStage({
   isLive,
   user,
   variant,
+  restriction = null,
   onRequireLogin,
 }: Props) {
   const { leftVotes, rightVotes, upvoted, excited, shot, upvote } =
@@ -131,6 +133,8 @@ export function MatchStage({
   const leftColors = paletteColors(match.left.art.palette);
   const rightColors = paletteColors(match.right.art.palette);
   const isFinal = variant === 'final';
+  // 予選は未審査のプロダクトのためugcを付け、トーナメントは当該WebサイトのSEO向上を支援するため付けない
+  const siteRel = match.kind === 'qualifier' ? 'noopener ugc' : 'noopener';
 
   const winnerLabel = (side: Side): string | null => {
     if (winner !== side) return null;
@@ -141,7 +145,7 @@ export function MatchStage({
     if (!isLive) return 'このマッチはUpvoteを受け付けていません。';
     if (match.isOwn)
       return '自身のプロダクトとその対戦相手にはUpvoteできません。';
-    return null;
+    return restriction;
   };
 
   const pitchProps = {
@@ -174,6 +178,8 @@ export function MatchStage({
       >
         <ProductPanel
           product={match.left}
+          linked={match.linked.left}
+          siteRel={siteRel}
           side="left"
           votes={leftVotes}
           pressed={upvoted === 'left'}
@@ -212,6 +218,8 @@ export function MatchStage({
 
         <ProductPanel
           product={match.right}
+          linked={match.linked.right}
+          siteRel={siteRel}
           side="right"
           votes={rightVotes}
           pressed={upvoted === 'right'}

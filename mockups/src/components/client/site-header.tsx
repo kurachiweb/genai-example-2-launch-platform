@@ -10,7 +10,7 @@ import {
   UserIcon,
 } from 'lucide-react';
 
-import { AvatarArt } from '#/components/client/art';
+import { UserAvatar } from '#/components/client/user-avatar';
 import { Button } from '#/components/ui/button';
 import {
   DropdownMenu,
@@ -30,9 +30,11 @@ import { setTheme, useTheme } from '#/lib/preferences';
 
 type Props = {
   user: User | null;
+  // ページ本文に別のh1(プロダクト名など)がある場合はdivにする
+  logoAs?: 'h1' | 'div';
 };
 
-export function SiteHeader({ user }: Props) {
+export function SiteHeader({ user, logoAs: Logo = 'h1' }: Props) {
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur supports-backdrop-filter:bg-background/70">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-3 px-4">
@@ -40,9 +42,9 @@ export function SiteHeader({ user }: Props) {
           to="/client/top"
           className="flex items-center gap-2 text-foreground no-underline"
         >
-          <h1 className="text-lg font-extrabold tracking-tight before:me-1 before:content-['⚽️']">
+          <Logo className="text-lg font-extrabold tracking-tight before:me-1 before:content-['⚽️']">
             Launch Stadium
-          </h1>
+          </Logo>
         </Link>
 
         <nav
@@ -128,11 +130,7 @@ function UserMenu({ user }: { user: User }) {
           className="flex items-center gap-2 rounded-full border border-border bg-card p-0.5 text-sm font-medium hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:pr-3"
           aria-label={`${user.nickname}のユーザーメニュー`}
         >
-          <AvatarArt
-            palette={user.art.palette}
-            size={28}
-            title={user.nickname}
-          />
+          <UserAvatar user={user} size={28} />
           <span className="hidden max-w-32 wrap-anywhere sm:inline">
             {user.nickname}
           </span>

@@ -12,3 +12,4 @@
 | [004-review-service-documents.md](004-review-service-documents.md)             | `docs/GUIDES/service`ディレクトリ内のドキュメントの問題点を調べ、レポートにまとめる             | Claude Opus最新版 |
 | [005-duplicate-service-documents.md](005-duplicate-service-documents.md)       | `docs/GUIDES/service`ディレクトリ内の重複を整理し、各規則の「正」となる文書へ集約する           | Claude Opus最新版 |
 | [006-create-mockup-client-top.md](006-create-mockup-client-top.md)             | `mockups`アプリの`client/top`ディレクトリ内に、利用者側トップページのデザインモックアップを作る | Claude Opus最新版 |
+| [007-create-mockup-client-product.md](007-create-mockup-client-product.md)     | `mockups`アプリに、利用者側プロダクト詳細ページのデザインモックアップを作る                     | Claude Opus最新版 |

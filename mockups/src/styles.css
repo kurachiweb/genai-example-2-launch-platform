@@ -43,6 +43,8 @@
   --gold: oklch(0.8 0.15 85);
   --gold-strong: oklch(0.7 0.16 78);
   --gold-foreground: oklch(0.28 0.06 70);
+  --warning: oklch(0.72 0.17 55);
+  --warning-strong: oklch(0.5 0.14 50);
   --defeat: oklch(0.62 0.01 160);
   --silver: oklch(0.84 0.01 253);
   --legend-a: oklch(0.2 0.01 260);
@@ -99,6 +101,8 @@
   --gold: oklch(0.82 0.15 85);
   --gold-strong: oklch(0.74 0.16 80);
   --gold-foreground: oklch(0.22 0.05 70);
+  --warning: oklch(0.75 0.16 60);
+  --warning-strong: oklch(0.85 0.13 70);
   --defeat: oklch(0.55 0.01 160);
   --silver: oklch(0.75 0.01 250);
   --legend-a: oklch(0.12 0.01 260);
@@ -154,6 +158,8 @@
   --color-gold: var(--gold);
   --color-gold-strong: var(--gold-strong);
   --color-gold-foreground: var(--gold-foreground);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
   --color-defeat: var(--defeat);
   --color-silver: var(--silver);
   --radius-sm: calc(var(--radius) - 4px);
@@ -477,7 +483,10 @@ html[data-motion='off'] .spotlight,
 html[data-motion='off'] .shimmer,
 html[data-motion='off'] .count-roll-in,
 html[data-motion='off'] .count-roll-out,
-html[data-motion='off'] .rise-in {
+html[data-motion='off'] .rise-in,
+html[data-motion='off'] .animate-pulse,
+html[data-motion='off'] .animate-in,
+html[data-motion='off'] .animate-out {
   animation: none !important;
 }
 
@@ -499,7 +508,10 @@ html[data-motion='off'] .confetti-piece {
   html:not([data-motion='on']) .confetti-piece,
   html:not([data-motion='on']) .spotlight,
   html:not([data-motion='on']) .shimmer,
-  html:not([data-motion='on']) .rise-in {
+  html:not([data-motion='on']) .rise-in,
+  html:not([data-motion='on']) .animate-pulse,
+  html:not([data-motion='on']) .animate-in,
+  html:not([data-motion='on']) .animate-out {
     animation: none !important;
   }
   html:not([data-motion='on']) .confetti-piece {

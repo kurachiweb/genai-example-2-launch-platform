@@ -1,4 +1,4 @@
-import { SoccerBallArt } from '#/components/client/art';
+import { SoccerBallArt } from '#/components/client/art/soccer-ball-art';
 import type { Side } from '#/components/client/stadium-pitch/stadium-pitch';
 import { Badge } from '#/components/ui/badge';
 import { cn } from '#/lib/utils';

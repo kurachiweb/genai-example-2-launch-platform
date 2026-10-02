@@ -1,6 +1,7 @@
+import { Link } from '@tanstack/react-router';
 import { ExternalLinkIcon, TrophyIcon } from 'lucide-react';
 
-import { ProductLogoArt } from '#/components/client/art';
+import { ProductLogoArt } from '#/components/client/art/product-logo-art';
 import type { Side } from '#/components/client/stadium-pitch/stadium-pitch';
 import { Badge } from '#/components/ui/badge';
 import { Button } from '#/components/ui/button';
@@ -11,6 +12,9 @@ import { UpvoteButton } from './upvote-button';
 
 type Props = {
   product: Product;
+  linked: boolean;
+  // 外部Webサイトへのリンクのrel属性(ページ構成の「外部Webサイトへのリンク」の表に従う)
+  siteRel: string;
   side: Side;
   votes: number;
   pressed: boolean;
@@ -23,6 +27,8 @@ type Props = {
 
 export function ProductPanel({
   product,
+  linked,
+  siteRel,
   side,
   votes,
   pressed,
@@ -80,12 +86,17 @@ export function ProductPanel({
               : 'text-base @[768px]:text-lg',
           )}
         >
-          <a
-            href="#"
-            className="text-inherit no-underline hover:underline focus-visible:rounded focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-          >
-            {product.name}
-          </a>
+          {linked ? (
+            <Link
+              to="/client/p/$handle"
+              params={{ handle: product.handle }}
+              className="text-inherit no-underline hover:underline focus-visible:rounded focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            >
+              {product.name}
+            </Link>
+          ) : (
+            product.name
+          )}
         </h3>
         <p
           className={cn(
@@ -107,7 +118,7 @@ export function ProductPanel({
             <a
               href={product.siteUrl}
               target="_blank"
-              rel="noopener noreferrer"
+              rel={siteRel}
               className="px-4"
             >
               サイトを開く

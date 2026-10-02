@@ -12,6 +12,15 @@ function ClientHome() {
             トップページ
           </Link>
         </li>
+        <li>
+          <Link
+            to="/client/p/$handle"
+            params={{ handle: 'pitch-notes' }}
+            className="underline"
+          >
+            プロダクト詳細ページ
+          </Link>
+        </li>
       </ul>
     </div>
   );

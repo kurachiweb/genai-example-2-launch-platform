@@ -15,7 +15,8 @@ export type User = {
   id: string;
   nickname: string;
   handle: string;
-  art: { palette: number };
+  // プロフィール画像が未設定ならnull
+  art: { palette: number } | null;
 };
 
 export const CATEGORIES = [
@@ -229,18 +230,38 @@ export const PRODUCTS: Product[] = PRODUCT_SEEDS.map(
   }),
 );
 
-export const USERS: User[] = [
-  ['Kurachi', 'KurachiWeb'],
-  ['maker_ai', 'maker_ai'],
-  ['Josephine Abernathy-Whitcombe', 'jaw'],
-  ['Yu', 'yu'],
-  ['Tobias', 'tobias_builds'],
-].map(([nickname, handle], index) => ({
-  id: `usr-${index + 1}`,
-  nickname,
-  handle,
-  art: { palette: (index * 5 + 2) % 12 },
-}));
+// ニックネームは25文字以内。短い名前・長い名前・区切りの無い長い英単語を織り交ぜ、一部はプロフィール画像を未設定にする
+const USER_SEEDS: [string, string, boolean][] = [
+  ['Kurachi', 'KurachiWeb', true],
+  ['maker_ai', 'maker_ai', true],
+  ['Josephine Abernathy-Smith', 'jaw', true],
+  ['Yu', 'yu', false],
+  ['Tobias', 'tobias_builds', true],
+  ['Priya Raman', 'priya_ships', true],
+  ['Mateo', 'mateo-dev', false],
+  ['Hubertwolfeschlegelsteinh', 'hubert', true],
+  ['Ada', 'ada_l', true],
+  ['Noah Fitzgerald', 'noahfitz', false],
+  ['Lin', 'lin_codes', true],
+  ['Oluwaseun Adeyemi', 'seun', true],
+  ['Freya', 'freya_makes', false],
+  ['Sasha K.', 'sashak', true],
+  ['indie_hacker_42', 'indie_hacker_42', true],
+  ['Grace Hopperfan', 'gracefan', false],
+  ['Kenji', 'kenji_t', true],
+  ['Amélie Durand', 'amelie', true],
+  ['Rohan', 'rohan_builds', false],
+  ['Zoë', 'zoe', true],
+];
+
+export const USERS: User[] = USER_SEEDS.map(
+  ([nickname, handle, hasImage], index) => ({
+    id: `usr-${index + 1}`,
+    nickname,
+    handle,
+    art: hasImage ? { palette: (index * 5 + 2) % 12 } : null,
+  }),
+);
 
 export const CURRENT_USER = USERS[0];
 

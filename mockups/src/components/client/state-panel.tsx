@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { SlidersHorizontalIcon, XIcon } from 'lucide-react';
 
 import { Button } from '#/components/ui/button';
@@ -7,18 +6,40 @@ import { Label } from '#/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '#/components/ui/radio-group';
 import { Switch } from '#/components/ui/switch';
 import { setMotion, useMotion } from '#/lib/preferences';
-
-import { OPTIONS, OPTION_LABELS } from '../-model';
-import type { TopSearch } from '../-model';
+import { cn } from '#/lib/utils';
 
 const OPEN_KEY = 'ls-state-panel-open';
 
-type Props = {
-  search: TopSearch;
+export type StateOptionLabels<TKey extends string> = Record<
+  TKey,
+  { title: string; values: Record<string, string> }
+>;
+
+export type StateSection<TKey extends string> = {
+  title?: string;
+  keys: readonly TKey[];
 };
 
-export function StatePanel({ search }: Props) {
-  const navigate = useNavigate({ from: '/client/top/' });
+type Props<TKey extends string> = {
+  sections: readonly StateSection<TKey>[];
+  options: Record<TKey, readonly string[]>;
+  labels: StateOptionLabels<TKey>;
+  values: Record<TKey, string>;
+  onChange: (key: TKey, value: string) => void;
+  // 他項目に合わせて自動で切り替えた内容の説明
+  notice?: string | null;
+  highlighted?: readonly TKey[];
+};
+
+export function StatePanel<TKey extends string>({
+  sections,
+  options,
+  labels,
+  values,
+  onChange,
+  notice = null,
+  highlighted = [],
+}: Props<TKey>) {
   const motion = useMotion();
   const [open, setOpen] = useState(false);
 
@@ -37,14 +58,6 @@ export function StatePanel({ search }: Props) {
     } catch {
       // 保存できなくても開閉は反映する
     }
-  };
-
-  const update = (key: keyof TopSearch, value: string) => {
-    navigate({
-      search: (prev: TopSearch) => ({ ...prev, [key]: value }),
-      replace: true,
-      resetScroll: false,
-    });
   };
 
   return (
@@ -77,34 +90,56 @@ export function StatePanel({ search }: Props) {
             />
           </div>
 
-          <div className="space-y-4">
-            {(Object.keys(OPTIONS) as (keyof typeof OPTIONS)[]).map((key) => (
-              <fieldset key={key}>
-                <legend className="mb-1.5 text-xs font-bold text-muted-foreground">
-                  {OPTION_LABELS[key].title}
-                </legend>
-                <RadioGroup
-                  value={search[key]}
-                  onValueChange={(value) => update(key, value)}
-                  className="gap-1"
-                >
-                  {OPTIONS[key].map((value) => (
-                    <div key={value} className="flex items-center gap-2">
-                      <RadioGroupItem id={`${key}-${value}`} value={value} />
-                      <Label
-                        htmlFor={`${key}-${value}`}
-                        className="text-sm font-normal"
-                      >
-                        {
-                          (OPTION_LABELS[key].values as Record<string, string>)[
-                            value
-                          ]
-                        }
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </fieldset>
+          <p aria-live="polite" className="empty:hidden">
+            {notice && (
+              <span className="mb-4 block rounded-lg border border-warning/60 bg-warning/15 px-3 py-2 text-xs leading-relaxed text-foreground">
+                {notice}
+              </span>
+            )}
+          </p>
+
+          <div className="space-y-5">
+            {sections.map((section, index) => (
+              <div key={section.title ?? index} className="space-y-4">
+                {section.title && (
+                  <p className="border-b border-border pb-1 text-xs font-extrabold tracking-wide text-foreground">
+                    {section.title}
+                  </p>
+                )}
+                {section.keys.map((key) => (
+                  <fieldset
+                    key={key}
+                    className={cn(
+                      '-mx-2 rounded-lg px-2 py-1 transition-colors duration-700',
+                      highlighted.includes(key) && 'bg-warning/20',
+                    )}
+                  >
+                    <legend className="mb-1.5 text-xs font-bold text-muted-foreground">
+                      {labels[key].title}
+                    </legend>
+                    <RadioGroup
+                      value={values[key]}
+                      onValueChange={(value) => onChange(key, value)}
+                      className="gap-1"
+                    >
+                      {options[key].map((value) => (
+                        <div key={value} className="flex items-center gap-2">
+                          <RadioGroupItem
+                            id={`${key}-${value}`}
+                            value={value}
+                          />
+                          <Label
+                            htmlFor={`${key}-${value}`}
+                            className="text-sm font-normal"
+                          >
+                            {labels[key].values[value]}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </fieldset>
+                ))}
+              </div>
             ))}
           </div>
         </section>
