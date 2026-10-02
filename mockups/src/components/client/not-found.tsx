@@ -24,7 +24,7 @@ export function NotFound() {
           <Link to="/client/top">トップページへ</Link>
         </Button>
         <Button variant="outline" asChild>
-          <a href="#">ディレクトリを見る</a>
+          <Link to="/client/p">ディレクトリを見る</Link>
         </Button>
       </div>
     </section>

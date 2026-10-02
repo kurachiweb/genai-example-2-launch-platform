@@ -1,4 +1,7 @@
+import { Link } from '@tanstack/react-router';
 import { ChevronRightIcon } from 'lucide-react';
+
+import { categorySlugOf } from '#/lib/mock-data';
 
 type Props = {
   category: string;
@@ -10,15 +13,22 @@ export function Breadcrumbs({ category, name }: Props) {
     <nav aria-label="パンくずリスト" className="text-sm text-muted-foreground">
       <ol className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
         <li className="flex items-center gap-1">
-          <a href="#" className="hover:text-foreground hover:underline">
+          <Link
+            to="/client/p"
+            className="hover:text-foreground hover:underline"
+          >
             ディレクトリ
-          </a>
+          </Link>
           <ChevronRightIcon className="size-3.5" aria-hidden="true" />
         </li>
         <li className="flex items-center gap-1">
-          <a href="#" className="hover:text-foreground hover:underline">
+          <Link
+            to="/client/p"
+            search={{ category: categorySlugOf(category) }}
+            className="hover:text-foreground hover:underline"
+          >
             {category}
-          </a>
+          </Link>
           <ChevronRightIcon className="size-3.5" aria-hidden="true" />
         </li>
         <li

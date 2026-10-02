@@ -51,12 +51,13 @@ export function SiteHeader({ user, logoAs: Logo = 'h1' }: Props) {
           aria-label="メイン"
           className="ml-4 hidden items-center gap-1 md:flex"
         >
-          <a
-            href="#"
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+          <Link
+            to="/client/p"
+            activeOptions={{ exact: true, includeSearch: false }}
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline hover:bg-accent hover:text-foreground data-[status=active]:bg-accent data-[status=active]:font-bold data-[status=active]:text-foreground"
           >
             ディレクトリ
-          </a>
+          </Link>
           <a
             href="#"
             className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -180,7 +181,15 @@ function MobileMenu({ user }: { user: User | null }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem>ディレクトリ</DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link
+            to="/client/p"
+            activeOptions={{ exact: true, includeSearch: false }}
+            className="data-[status=active]:font-bold"
+          >
+            ディレクトリ
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem>ヘルプ</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem>

@@ -30,6 +30,24 @@ export const CATEGORIES = [
   'その他',
 ] as const;
 
+// ディレクトリのURLクエリ(`?category=`)に使うカテゴリのスラッグ
+export const CATEGORY_SLUGS: Record<(typeof CATEGORIES)[number], string> = {
+  AI: 'ai',
+  開発ツール: 'developer-tools',
+  マーケティング: 'marketing',
+  生産性: 'productivity',
+  デザイン: 'design',
+  教育: 'education',
+  ヘルスケア: 'healthcare',
+  その他: 'other',
+};
+
+export function categorySlugOf(name: string): string {
+  return (
+    (CATEGORY_SLUGS as Record<string, string | undefined>)[name] ?? 'other'
+  );
+}
+
 const VARIANTS: ArtVariant[] = [
   'orbit',
   'stripes',
@@ -205,6 +223,18 @@ const PRODUCT_SEEDS: [string, string, (typeof CATEGORIES)[number]][] = [
     'マーケティング',
   ],
   ['Loom & Latch', 'Pattern generator for hand weavers', 'その他'],
+  // 絵文字で始まる名称(頭文字プレースホルダーの書記素単位の切り出しを確認する)
+  [
+    '🚀 Liftoff Changelog',
+    'Release notes your users actually read, drafted from merged pull requests',
+    '開発ツール',
+  ],
+  ['👩‍💻 Pair Prompt', 'Pairing prompts for distributed teams', '教育'],
+  [
+    '🍣Omakase Planner',
+    'Weekly meal plans built around what is already in your fridge',
+    'ヘルスケア',
+  ],
 ];
 
 function toHandle(name: string) {
@@ -252,6 +282,8 @@ const USER_SEEDS: [string, string, boolean][] = [
   ['Amélie Durand', 'amelie', true],
   ['Rohan', 'rohan_builds', false],
   ['Zoë', 'zoe', true],
+  ['🦊 Kitsune', 'kitsune_makes', true],
+  ['👨‍👩‍👧 Family Devs', 'family_devs', true],
 ];
 
 export const USERS: User[] = USER_SEEDS.map(

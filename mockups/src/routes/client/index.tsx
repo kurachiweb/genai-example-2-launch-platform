@@ -13,6 +13,11 @@ function ClientHome() {
           </Link>
         </li>
         <li>
+          <Link to="/client/p" className="underline">
+            ディレクトリ
+          </Link>
+        </li>
+        <li>
           <Link
             to="/client/p/$handle"
             params={{ handle: 'pitch-notes' }}

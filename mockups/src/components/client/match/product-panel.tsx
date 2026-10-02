@@ -5,6 +5,7 @@ import { ProductLogoArt } from '#/components/client/art/product-logo-art';
 import type { Side } from '#/components/client/stadium-pitch/stadium-pitch';
 import { Badge } from '#/components/ui/badge';
 import { Button } from '#/components/ui/button';
+import { categorySlugOf } from '#/lib/mock-data';
 import type { Product } from '#/lib/mock-data';
 import { cn } from '#/lib/utils';
 
@@ -75,7 +76,12 @@ export function ProductPanel({
             </Badge>
           )}
           <Button size="xs" variant="outline" asChild className="rounded-full">
-            <a href="#">{product.category}</a>
+            <Link
+              to="/client/p"
+              search={{ category: categorySlugOf(product.category) }}
+            >
+              {product.category}
+            </Link>
           </Button>
         </div>
         <h3

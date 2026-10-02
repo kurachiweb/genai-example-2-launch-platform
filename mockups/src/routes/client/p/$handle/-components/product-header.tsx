@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { ExternalLinkIcon, LinkIcon, TrophyIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -5,6 +6,7 @@ import { ProductLogo } from '#/components/client/product-logo';
 import { UserAvatar } from '#/components/client/user-avatar';
 import { Button } from '#/components/ui/button';
 import { useDateTimeFormatter } from '#/lib/date-format';
+import { categorySlugOf } from '#/lib/mock-data';
 import type { Product, User } from '#/lib/mock-data';
 
 import { isoDate } from '../-model/clock';
@@ -52,7 +54,12 @@ export function ProductHeader({ product, maker, record, awardCount }: Props) {
               asChild
               className="rounded-full"
             >
-              <a href="#">{product.category}</a>
+              <Link
+                to="/client/p"
+                search={{ category: categorySlugOf(product.category) }}
+              >
+                {product.category}
+              </Link>
             </Button>
             {awardCount > 0 && (
               <a
