@@ -1,0 +1,536 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(0.985 0.006 150);
+  --foreground: oklch(0.2 0.03 160);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.03 160);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.03 160);
+  --primary: oklch(0.42 0.12 155);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.015 150);
+  --secondary-foreground: oklch(0.3 0.06 158);
+  --muted: oklch(0.95 0.01 150);
+  --muted-foreground: oklch(0.5 0.02 160);
+  --accent: oklch(0.93 0.03 150);
+  --accent-foreground: oklch(0.3 0.06 158);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.012 150);
+  --input: oklch(0.9 0.012 150);
+  --ring: oklch(0.6 0.1 155);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.2 0.03 160);
+  --sidebar-primary: oklch(0.42 0.12 155);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.015 150);
+  --sidebar-accent-foreground: oklch(0.3 0.06 158);
+  --sidebar-border: oklch(0.9 0.012 150);
+  --sidebar-ring: oklch(0.6 0.1 155);
+
+  --gold: oklch(0.8 0.15 85);
+  --gold-strong: oklch(0.7 0.16 78);
+  --gold-foreground: oklch(0.28 0.06 70);
+  --warning: oklch(0.72 0.17 55);
+  --warning-strong: oklch(0.5 0.14 50);
+  --defeat: oklch(0.62 0.01 160);
+  --silver: oklch(0.84 0.01 253);
+  --legend-a: oklch(0.2 0.01 260);
+  --legend-b: oklch(0.42 0.02 260);
+
+  --pitch-a: oklch(0.58 0.14 148);
+  --pitch-b: oklch(0.54 0.14 148);
+  --pitch-line: oklch(0.97 0.01 120 / 0.85);
+  --stand-base: oklch(0.86 0.02 150);
+  --stand-step: oklch(0.8 0.025 150);
+  --stand-rim: oklch(0.72 0.03 150);
+  --crowd: oklch(0.45 0.05 160);
+  --sky-glow: oklch(0.98 0.02 100 / 0.5);
+  --ball: oklch(0.99 0 0);
+  --ball-stroke: oklch(0.25 0.02 160);
+  --net: oklch(0.98 0 0 / 0.75);
+  --flood: oklch(0.99 0.05 95 / 0);
+}
+
+.dark {
+  --background: oklch(0.15 0.02 160);
+  --foreground: oklch(0.96 0.01 150);
+  --card: oklch(0.2 0.025 160);
+  --card-foreground: oklch(0.96 0.01 150);
+  --popover: oklch(0.2 0.025 160);
+  --popover-foreground: oklch(0.96 0.01 150);
+  --primary: oklch(0.74 0.15 150);
+  --primary-foreground: oklch(0.15 0.04 160);
+  --secondary: oklch(0.27 0.03 160);
+  --secondary-foreground: oklch(0.95 0.01 150);
+  --muted: oklch(0.26 0.025 160);
+  --muted-foreground: oklch(0.7 0.02 150);
+  --accent: oklch(0.3 0.04 158);
+  --accent-foreground: oklch(0.95 0.01 150);
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.3 0.03 160);
+  --input: oklch(0.32 0.03 160);
+  --ring: oklch(0.6 0.12 150);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.18 0.025 160);
+  --sidebar-foreground: oklch(0.96 0.01 150);
+  --sidebar-primary: oklch(0.74 0.15 150);
+  --sidebar-primary-foreground: oklch(0.15 0.04 160);
+  --sidebar-accent: oklch(0.27 0.03 160);
+  --sidebar-accent-foreground: oklch(0.95 0.01 150);
+  --sidebar-border: oklch(0.3 0.03 160);
+  --sidebar-ring: oklch(0.6 0.12 150);
+
+  --gold: oklch(0.82 0.15 85);
+  --gold-strong: oklch(0.74 0.16 80);
+  --gold-foreground: oklch(0.22 0.05 70);
+  --warning: oklch(0.75 0.16 60);
+  --warning-strong: oklch(0.85 0.13 70);
+  --defeat: oklch(0.55 0.01 160);
+  --silver: oklch(0.75 0.01 250);
+  --legend-a: oklch(0.12 0.01 260);
+  --legend-b: oklch(0.35 0.02 260);
+
+  --pitch-a: oklch(0.42 0.11 150);
+  --pitch-b: oklch(0.38 0.11 150);
+  --pitch-line: oklch(0.95 0.01 120 / 0.8);
+  --stand-base: oklch(0.24 0.02 160);
+  --stand-step: oklch(0.28 0.02 160);
+  --stand-rim: oklch(0.34 0.03 160);
+  --crowd: oklch(0.8 0.06 150);
+  --sky-glow: oklch(0.9 0.08 95 / 0.18);
+  --ball: oklch(0.97 0 0);
+  --ball-stroke: oklch(0.15 0.02 160);
+  --net: oklch(0.95 0 0 / 0.6);
+  --flood: oklch(0.99 0.06 95 / 0.55);
+}
+
+@theme inline {
+  --breakpoint-xs: 480px;
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans',
+    'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', Meiryo,
+    sans-serif;
+  --font-display:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans',
+    'Noto Sans JP', sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-gold: var(--gold);
+  --color-gold-strong: var(--gold-strong);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
+  --color-defeat: var(--defeat);
+  --color-silver: var(--silver);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
+
+.scoreboard-digits {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+
+.legend-gradient {
+  background-image: linear-gradient(
+    120deg,
+    var(--legend-a) 0%,
+    var(--legend-b) 45%,
+    var(--legend-a) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* 枠線だけを光沢黒のグラデーションにするため、内側をカード色、枠線領域をグラデーションの2層背景で塗る */
+.legend-frame {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(
+        120deg,
+        var(--legend-a) 0%,
+        var(--legend-b) 45%,
+        var(--legend-a) 100%
+      )
+      border-box;
+  background-size: 200% 100%;
+}
+
+.gold-gradient {
+  background-image: linear-gradient(
+    120deg,
+    var(--gold-strong) 0%,
+    var(--gold) 50%,
+    var(--gold-strong) 100%
+  );
+}
+
+/* --- スタジアム演出 --- */
+
+@keyframes crowd-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(var(--jump, 3px) * -1));
+  }
+}
+
+@keyframes flag-wave {
+  0%,
+  100% {
+    transform: skewY(0deg) scaleX(1);
+  }
+  50% {
+    transform: skewY(-6deg) scaleX(0.94);
+  }
+}
+
+@keyframes ball-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes flood-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes tie-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in oklab, var(--primary) 0%, transparent);
+  }
+}
+
+/* cqh単位により紙吹雪自身ではなくコンテナの高さを基準に落下させ、左右に揺れながら下端まで到達させる */
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(0, -6cqh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  25% {
+    transform: translate3d(var(--sway, 32px), 22cqh, 0) rotate(160deg);
+  }
+  50% {
+    transform: translate3d(calc(var(--sway, 32px) * -1), 50cqh, 0)
+      rotate(320deg);
+  }
+  75% {
+    transform: translate3d(var(--sway, 32px), 78cqh, 0) rotate(480deg);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 106cqh, 0) rotate(640deg);
+    opacity: 0;
+  }
+}
+
+@keyframes spotlight-sweep {
+  0%,
+  100% {
+    transform: rotate(-14deg);
+  }
+  50% {
+    transform: rotate(14deg);
+  }
+}
+
+@keyframes spotlight-sweep-reverse {
+  0%,
+  100% {
+    transform: rotate(14deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes count-roll-in {
+  from {
+    transform: translateY(0.6em);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes count-roll-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-0.6em);
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise-in {
+  animation: rise-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 演出を止めた場合は左端に静止した帯として残し、読み込み中であることは伝え続ける */
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.progress-indeterminate {
+  animation: progress-indeterminate 1.1s ease-in-out infinite;
+}
+
+.crowd-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.crowd-side[data-excited='true'] .crowd-dot {
+  --jump: 12px;
+  animation: crowd-jump 0.5s cubic-bezier(0.3, 0, 0.15, 1) 7;
+  animation-delay: var(--jump-delay, 0s);
+}
+
+.flag {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: flag-wave 1.8s ease-in-out infinite;
+  animation-delay: var(--flag-delay, 0s);
+}
+
+.vote-ball-spin {
+  animation: ball-spin 6s linear infinite;
+}
+
+/* 常時回転(6秒/回転)に重ねて再生することで、飛行中だけ合計1秒/回転になる。再生/一時停止の切り替えなので回転角が飛ばずに加速・減速して見える */
+.vote-ball-spin-fast {
+  animation: ball-spin 1.2s linear infinite;
+  animation-play-state: paused;
+}
+
+.vote-ball[data-flying='true'] .vote-ball-spin-fast {
+  animation-play-state: running;
+}
+
+.floodlight {
+  animation: flood-pulse 4s ease-in-out infinite;
+  animation-delay: var(--flood-delay, 0s);
+}
+
+.tie-pulse {
+  animation: tie-pulse 1.6s ease-out infinite;
+}
+
+.confetti-layer {
+  container-type: size;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: confetti-fall var(--fall-duration, 6s) linear infinite;
+  animation-delay: var(--fall-delay, 0s);
+  will-change: transform;
+}
+
+.spotlight {
+  position: absolute;
+  bottom: -10%;
+  width: 22%;
+  height: 130%;
+  transform-origin: bottom center;
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, var(--gold) 45%, transparent),
+    transparent 80%
+  );
+  clip-path: polygon(42% 100%, 58% 100%, 100% 0, 0 0);
+  filter: blur(4px);
+  animation: spotlight-sweep 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.spotlight[data-side='right'] {
+  animation-name: spotlight-sweep-reverse;
+}
+
+.shimmer {
+  animation: shimmer 6s linear infinite;
+}
+
+.count-roll-in {
+  animation: count-roll-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.count-roll-out {
+  animation: count-roll-out 320ms ease-in both;
+}
+
+html[data-motion='off'] .crowd-dot,
+html[data-motion='off'] .flag,
+html[data-motion='off'] .vote-ball-spin,
+html[data-motion='off'] .vote-ball-spin-fast,
+html[data-motion='off'] .floodlight,
+html[data-motion='off'] .tie-pulse,
+html[data-motion='off'] .confetti-piece,
+html[data-motion='off'] .spotlight,
+html[data-motion='off'] .shimmer,
+html[data-motion='off'] .count-roll-in,
+html[data-motion='off'] .count-roll-out,
+html[data-motion='off'] .rise-in,
+html[data-motion='off'] .progress-indeterminate,
+html[data-motion='off'] .animate-pulse,
+html[data-motion='off'] .animate-in,
+html[data-motion='off'] .animate-out {
+  animation: none !important;
+}
+
+html[data-motion='off'] * {
+  transition-duration: 0.01ms !important;
+}
+
+html[data-motion='off'] .confetti-piece {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion='on']) .crowd-dot,
+  html:not([data-motion='on']) .flag,
+  html:not([data-motion='on']) .vote-ball-spin,
+  html:not([data-motion='on']) .vote-ball-spin-fast,
+  html:not([data-motion='on']) .floodlight,
+  html:not([data-motion='on']) .tie-pulse,
+  html:not([data-motion='on']) .confetti-piece,
+  html:not([data-motion='on']) .spotlight,
+  html:not([data-motion='on']) .shimmer,
+  html:not([data-motion='on']) .rise-in,
+  html:not([data-motion='on']) .progress-indeterminate,
+  html:not([data-motion='on']) .animate-pulse,
+  html:not([data-motion='on']) .animate-in,
+  html:not([data-motion='on']) .animate-out {
+    animation: none !important;
+  }
+  html:not([data-motion='on']) .confetti-piece {
+    display: none;
+  }
+}
