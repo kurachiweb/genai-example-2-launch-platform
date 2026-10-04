@@ -114,7 +114,7 @@
   - 完了状態: ルートの整形検査が成功し、整形差分だけを含むコミットがフックを通って履歴に残っている
   - _Requirements: 2.4, 2.5, 5.9_
 
-- [ ] 3.6 一時Gitリポジトリでコミット時の品質ゲート全体を検証する
+- [x] 3.6 一時Gitリポジトリでコミット時の品質ゲート全体を検証する
   - ルートの設定とインストール済みパッケージへのリンクを置いた一時リポジトリで、インストーラだけを実行する`prepare`スクリプトによってフックを有効にし、実際にコミットして確かめる(リンク経由で開発コンテナのnode_modulesを書き換えないよう、リンクを置いた状態では依存インストールを実行しない)
   - 整形の自動修正がコミットに含まれること、部分ステージの未ステージ部分が作業ツリーに残ること、修正できない静的解析違反でファイル・行・規則を表示して中止されることを確認する
   - シークレットを含むコミット(mockups配下を含む)が値を伏せた表示で中止され、許可リストに登録した箇所は以後検出されないことを確認する
@@ -330,3 +330,6 @@
 - 3.4: 計画エラー時の失敗コマンドは`bun -e`へJSON文字列を埋め込む方式。`toCommands`はシングルとダブルの引用符を両方含むパスで例外を投げ、lint-stagedがスタックトレース付きで中止する(フェイルクローズは保たれる)。
 - 3.4: 設計のFile Structure Planに無いルート所有のテスト`git-hooks.unit.test.ts`(フックスクリプト・`prepare`・`.betterleaksignore`の書式の検証)と`lint-staged.config.unit.test.ts`を追加した。
 - 3.5: 初回整形は`caeb2c3`(整形差分だけ)。design.mdのtypescriptコードブロックはPrettierの埋め込み整形で80桁に折り返される。`.infisical.json`はInfisical CLIの`init`で4スペースに戻り得るが、次のコミットでフックが整形し直す。
+- 3.6: 一時リポジトリで要件1.1〜4.5の振る舞いをすべて確認し、修正は無かった。`git revert`・cherry-pickは`--no-edit`でも編集を経てもpre-commit・commit-msgを実行しない(Gitの仕様)ため、これらで作るコミットはシークレット検出を通らない。CIでのシークレット検出(infra-delivery)が補う前提を7.3・7.7の文書とinfra-deliveryへの申し送りに書く。
+- 3.6: `GIT_TRACE=1`を画面に出すとBetterleaksが走査失敗としてコミットを拒否する(安全側。トレースはファイルへ出す)。`betterleaks --log-level debug`は`--redact`でも値を表示するため、誤検知の調査で使わないよう7.3・7.7の文書で注意する。
+- 3.6(開発者判断待ち): 設計のStagedTaskPlannerは「生成物は`.prettierignore`とESLint基底設定の`ignores`で除外する」とするが、EslintBaseの`ignores`の列挙(と実装)に`**/worker-configuration.d.ts`が無く、`.prettierignore`にだけある。実際のWrangler出力は`/* eslint-disable */`が空のinterfaceで使われるため変更されないが、使われない無効化コメントは`eslint --fix`で消される。backend-platformが`apps/api`・`apps/event`を作る前に、基底設定の`ignores`と設計に加えるかを決める。
