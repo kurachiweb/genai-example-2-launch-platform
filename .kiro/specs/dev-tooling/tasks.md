@@ -75,7 +75,7 @@
   - _Depends: 1.1_
   - _Requirements: 1.1, 1.2_
 
-- [ ] 3.2 (P) コミットメッセージの型だけを検査する設定を作る
+- [x] 3.2 (P) コミットメッセージの型だけを検査する設定を作る
   - 型が空でないこと、件名が空でないこと、型が許可された一覧(feat・fix・refactor・docs・test・chore・perf・ci)に含まれることの3規則だけを持たせる
   - 許可する型の一覧は開発者向けGit規約の一覧と一致させ、スコープ・件名の言語・行の長さの規則は持たせない
   - マージ・リバートの自動生成メッセージは既定の除外で受け入れる
@@ -320,3 +320,4 @@
 - 2.3: ルートの`eslint.config.ts`は`name: 'root/ignores'`で`apps/`・`mockups/`・外部由来(`.claude/`・`docs/ai-extensions/`・`.kiro/settings/`)・Playwrightの出力先を対象外にし、`lint`は`bun --bun eslint .`。ESLint 10.12.0では、ファイルを明示して渡すとルートのignoreに関係なく最も近い設定が使われ、`--no-warn-ignored`付きでは対象外のファイルが黙って飛ばされる(終了コード0)。そのため3.3の計画処理では次が必須: アプリ所有ファイルは所有アプリのESLintへ振り分ける、mockupsのファイルを渡さない(mockupsの設定を読み込んでクラッシュする)、`apps/`配下でどのアプリ・共有ディレクトリにも属さないTSをルート所有に振り分けない(黙って検査漏れになるため、除外かエラーにする)。
 - 2.3: 外部由来の一覧が`eslint.config.ts`・`.prettierignore`・3.3の計画処理に重複する。3.3で`config/`に単一定義を置いて`eslint.config.ts`もそれを参照するか、4.1で一致を確かめる。`.playwright-mcp/`はESLintの対象外に入っていない(現状JSは置かれない)。
 - 3.1: 環境変数`HUSKY=0`のときhuskyは`HUSKY=0 skip install`を返し、インストーラは設計のフェイルクローズに従って失敗扱い(終了コード1)にする。3.4で`prepare`に結線すると`HUSKY=0 bun install`は失敗する(CIは`CI`の判定が先なので影響なし)。飛ばして成功にするには設計の`HookInstallResult`に理由を加える変更が要り、開発者判断とする。インストーラはカレントディレクトリの`.git`を見るため、`prepare`はルートで実行される前提。
+- 3.2: 型の一覧はcommitlintの`type-enum`違反時にしか出ないため、`helpUrl`に書式と`ALLOWED_COMMIT_TYPES`の案内文を入れ、どの規則の違反でも`ⓘ Get help: …`として表示させている(要件4.2)。`.husky/commit-msg`で`--help-url`を指定するとこの案内が消えるので指定しない。ルートで実行すれば`--config`なしでも`commitlint.config.ts`が探索される。
