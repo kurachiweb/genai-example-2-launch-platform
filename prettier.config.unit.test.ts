@@ -93,16 +93,17 @@ const fileInfoOf = (
 
 let fixtureRoot = '';
 
-const writeFixtureFiles = (
+const writeFixtureFiles = async (
   dir: string,
   files: Readonly<Record<string, string>>,
-): Promise<void[]> =>
-  Promise.all(
+): Promise<void> => {
+  await Promise.all(
     Object.entries(files).map(async ([path, content]) => {
       await mkdir(dirname(join(dir, path)), { recursive: true });
       await writeFile(join(dir, path), content);
     }),
   );
+};
 
 const createFixtureDir = async (
   files: Readonly<Record<string, string>>,
@@ -291,7 +292,7 @@ const createScriptFixtureDir = async (
 ): Promise<string> => {
   const scripts = Object.fromEntries(
     await Promise.all(
-      FORMAT_SCRIPTS.map(async (name) => [
+      FORMAT_SCRIPTS.map(async (name): Promise<readonly [string, string]> => [
         name,
         toFixtureScript(await rootScriptOf(name)),
       ]),

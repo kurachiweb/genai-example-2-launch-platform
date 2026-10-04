@@ -18,4 +18,4 @@ export const GENERATED_CODE_PATTERNS: readonly string[] = [
   '**/generated/**',
 ];
 
-export const COVERAGE_THRESHOLD_PERCENT: 80 = 80;
+export const COVERAGE_THRESHOLD_PERCENT = 80 as const;

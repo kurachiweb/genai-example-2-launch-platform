@@ -5,6 +5,7 @@
   "scripts": {
     "format": "bun --bun prettier --write --ignore-unknown .",
     "format:check": "bun --bun prettier --check --ignore-unknown .",
+    "lint": "bun --bun eslint .",
     "typecheck": "tsc -p tsconfig.json",
     "test:unit": "bun test --pass-with-no-tests --path-ignore-patterns='apps/**' --path-ignore-patterns='mockups/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test"
   },

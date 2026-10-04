@@ -95,12 +95,18 @@ describe('SHARED_DIRS', () => {
   });
 
   test('配置先は利用側アプリのディレクトリ配下にある', () => {
-    for (const sharedDir of SHARED_DIRS) {
-      for (const mount of sharedDir.mounts) {
-        const consumer = APPS.find((app) => app.name === mount.consumer);
-        expect(mount.target.startsWith(`${consumer?.dir}/`)).toBe(true);
-      }
-    }
+    const mountsOutsideConsumer = SHARED_DIRS.flatMap(
+      (sharedDir) => sharedDir.mounts,
+    ).filter(
+      (mount) =>
+        !APPS.some(
+          (app) =>
+            app.name === mount.consumer &&
+            mount.target.startsWith(`${app.dir}/`),
+        ),
+    );
+
+    expect(mountsOutsideConsumer).toEqual([]);
   });
 
   test('配置元と配置先の組がcompose.yamlのbind mountと完全に一致する', () => {

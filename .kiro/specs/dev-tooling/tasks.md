@@ -59,7 +59,7 @@
   - _Depends: 1.1_
   - _Requirements: 2.4, 2.5, 5.1, 5.3, 5.9_
 
-- [ ] 2.3 ルート所有ファイルの静的解析を有効にし、既存のルート所有スクリプトを基準にそろえる
+- [x] 2.3 ルート所有ファイルの静的解析を有効にし、既存のルート所有スクリプトを基準にそろえる
   - 静的解析の基底設定を使うルートの設定を作り、ルートに静的解析のスクリプトを追加する
   - 既存のルート所有スクリプトの違反を、振る舞いを変えずに修正する
   - 完了状態: ルートで静的解析と型検査が成功する
@@ -317,3 +317,5 @@
 - 2.2: `.prettierignore`はルート直下の`mockups`・`.claude`を`/mockups/`・`/.claude/`と先頭`/`で固定している。4.1の一致テストでは先頭`/`を正規化して`QUALITY_GATE_EXCLUDED_DIRS`・`GENERATED_CODE_PATTERNS`と比べる。
 - 2.2: 対象が`.`のときPrettierはディレクトリ展開で未対応ファイルを飛ばすため、`--ignore-unknown`が効くのはファイルを明示して渡す場合(3.3のlint-staged)。Prettierはcwdの`.gitignore`しか読まないため、アプリ固有の出力先はルートの`.gitignore`にも書く必要がある(後続のplatform系specへの注意)。
 - 2.2: 3.5の初回整形の対象は`.infisical.json`・`.kiro/specs/dev-tooling/design.md`・`research.md`・`.kiro/steering/roadmap.md`・`compose.yaml`・`scripts/merge-claude-trust-config.ts`(2.2時点)。`.infisical.json`はInfisical CLIが`init`時だけ書くため整形対象のままにする。
+- 2.3: ルートの`eslint.config.ts`は`name: 'root/ignores'`で`apps/`・`mockups/`・外部由来(`.claude/`・`docs/ai-extensions/`・`.kiro/settings/`)・Playwrightの出力先を対象外にし、`lint`は`bun --bun eslint .`。ESLint 10.12.0では、ファイルを明示して渡すとルートのignoreに関係なく最も近い設定が使われ、`--no-warn-ignored`付きでは対象外のファイルが黙って飛ばされる(終了コード0)。そのため3.3の計画処理では次が必須: アプリ所有ファイルは所有アプリのESLintへ振り分ける、mockupsのファイルを渡さない(mockupsの設定を読み込んでクラッシュする)、`apps/`配下でどのアプリ・共有ディレクトリにも属さないTSをルート所有に振り分けない(黙って検査漏れになるため、除外かエラーにする)。
+- 2.3: 外部由来の一覧が`eslint.config.ts`・`.prettierignore`・3.3の計画処理に重複する。3.3で`config/`に単一定義を置いて`eslint.config.ts`もそれを参照するか、4.1で一致を確かめる。`.playwright-mcp/`はESLintの対象外に入っていない(現状JSは置かれない)。
