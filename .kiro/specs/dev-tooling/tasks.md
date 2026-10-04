@@ -66,7 +66,7 @@
   - _Requirements: 5.1, 5.2, 5.4_
 
 - [ ] 3. コミット時の品質ゲート
-- [ ] 3.1 (P) CI環境と非Git環境ではGitフックの導入を飛ばすインストーラを作る
+- [x] 3.1 (P) CI環境と非Git環境ではGitフックの導入を飛ばすインストーラを作る
   - CI環境変数が空でなければCI、Gitの作業ツリーが無ければ非Git環境を理由に導入を飛ばし、理由を表示して正常終了する
   - それ以外ではフック導入ツールを呼び出す
   - 環境変数・存在確認・導入処理は外から渡せるようにする
@@ -319,3 +319,4 @@
 - 2.2: 3.5の初回整形の対象は`.infisical.json`・`.kiro/specs/dev-tooling/design.md`・`research.md`・`.kiro/steering/roadmap.md`・`compose.yaml`・`scripts/merge-claude-trust-config.ts`(2.2時点)。`.infisical.json`はInfisical CLIが`init`時だけ書くため整形対象のままにする。
 - 2.3: ルートの`eslint.config.ts`は`name: 'root/ignores'`で`apps/`・`mockups/`・外部由来(`.claude/`・`docs/ai-extensions/`・`.kiro/settings/`)・Playwrightの出力先を対象外にし、`lint`は`bun --bun eslint .`。ESLint 10.12.0では、ファイルを明示して渡すとルートのignoreに関係なく最も近い設定が使われ、`--no-warn-ignored`付きでは対象外のファイルが黙って飛ばされる(終了コード0)。そのため3.3の計画処理では次が必須: アプリ所有ファイルは所有アプリのESLintへ振り分ける、mockupsのファイルを渡さない(mockupsの設定を読み込んでクラッシュする)、`apps/`配下でどのアプリ・共有ディレクトリにも属さないTSをルート所有に振り分けない(黙って検査漏れになるため、除外かエラーにする)。
 - 2.3: 外部由来の一覧が`eslint.config.ts`・`.prettierignore`・3.3の計画処理に重複する。3.3で`config/`に単一定義を置いて`eslint.config.ts`もそれを参照するか、4.1で一致を確かめる。`.playwright-mcp/`はESLintの対象外に入っていない(現状JSは置かれない)。
+- 3.1: 環境変数`HUSKY=0`のときhuskyは`HUSKY=0 skip install`を返し、インストーラは設計のフェイルクローズに従って失敗扱い(終了コード1)にする。3.4で`prepare`に結線すると`HUSKY=0 bun install`は失敗する(CIは`CI`の判定が先なので影響なし)。飛ばして成功にするには設計の`HookInstallResult`に理由を加える変更が要り、開発者判断とする。インストーラはカレントディレクトリの`.git`を見るため、`prepare`はルートで実行される前提。
