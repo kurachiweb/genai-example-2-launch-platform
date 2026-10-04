@@ -53,3 +53,10 @@ export const SHARED_DIRS: readonly SharedDirDefinition[] = [
 ];
 
 export const QUALITY_GATE_EXCLUDED_DIRS: readonly string[] = ['mockups'];
+
+// 外部由来の文書とClaude拡張ファイルは原文のまま保つため、整形・静的解析の対象にしない
+export const EXTERNAL_SOURCE_DIRS: readonly string[] = [
+  '.claude',
+  'docs/ai-extensions',
+  '.kiro/settings',
+];

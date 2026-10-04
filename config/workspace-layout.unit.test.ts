@@ -4,6 +4,7 @@ import { join, normalize, relative } from 'node:path';
 
 import {
   APPS,
+  EXTERNAL_SOURCE_DIRS,
   QUALITY_GATE_EXCLUDED_DIRS,
   SHARED_DIRS,
   type AppDefinition,
@@ -109,6 +110,18 @@ describe('SHARED_DIRS', () => {
     expect(mountsOutsideConsumer).toEqual([]);
   });
 
+  test('検査担当がアプリの共有ディレクトリは、検査担当アプリへの配置先を持つ', () => {
+    const withoutCheckerMount = SHARED_DIRS.filter(
+      (sharedDir) =>
+        sharedDir.checkedBy !== 'self' &&
+        !sharedDir.mounts.some(
+          (mount) => mount.consumer === sharedDir.checkedBy,
+        ),
+    );
+
+    expect(withoutCheckerMount).toEqual([]);
+  });
+
   test('配置元と配置先の組がcompose.yamlのbind mountと完全に一致する', () => {
     const fromLayout = SHARED_DIRS.flatMap((sharedDir) =>
       sharedDir.mounts.map((mount) =>
@@ -133,6 +146,20 @@ describe('QUALITY_GATE_EXCLUDED_DIRS', () => {
 
   test('型として変更不可の配列である', () => {
     expectTypeOf(QUALITY_GATE_EXCLUDED_DIRS).toEqualTypeOf<readonly string[]>();
+  });
+});
+
+describe('EXTERNAL_SOURCE_DIRS', () => {
+  test('原文のまま保つ外部由来として.claude・docs/ai-extensions・.kiro/settingsを持つ', () => {
+    expect(EXTERNAL_SOURCE_DIRS).toEqual([
+      '.claude',
+      'docs/ai-extensions',
+      '.kiro/settings',
+    ]);
+  });
+
+  test('型として変更不可の配列である', () => {
+    expectTypeOf(EXTERNAL_SOURCE_DIRS).toEqualTypeOf<readonly string[]>();
   });
 });
 

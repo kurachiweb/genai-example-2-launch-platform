@@ -3,10 +3,11 @@ import type { Linter } from 'eslint';
 import prettierConfig from 'eslint-config-prettier/flat';
 import tseslint from 'typescript-eslint';
 
-import { QUALITY_GATE_EXCLUDED_DIRS } from './config/workspace-layout.ts';
+import {
+  EXTERNAL_SOURCE_DIRS,
+  QUALITY_GATE_EXCLUDED_DIRS,
+} from './config/workspace-layout.ts';
 import { createBaseConfig } from './eslint.config.base.ts';
-
-const EXTERNAL_DIRS = ['.claude', 'docs/ai-extensions', '.kiro/settings'];
 
 // ESLintは.gitignoreを読まず、HTMLレポートにはトレースビューアのJavaScriptが含まれるため明示的に外す
 const PLAYWRIGHT_OUTPUT_DIRS = ['test-results', 'playwright-report'];
@@ -15,7 +16,7 @@ const PLAYWRIGHT_OUTPUT_DIRS = ['test-results', 'playwright-report'];
 const NOT_ROOT_OWNED_DIRS = [
   'apps',
   ...QUALITY_GATE_EXCLUDED_DIRS,
-  ...EXTERNAL_DIRS,
+  ...EXTERNAL_SOURCE_DIRS,
   ...PLAYWRIGHT_OUTPUT_DIRS,
 ];
 

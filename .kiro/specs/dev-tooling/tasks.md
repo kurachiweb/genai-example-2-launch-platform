@@ -85,7 +85,7 @@
   - _Depends: 1.1_
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 5.3_
 
-- [ ] 3.3 (P) ステージ済みファイルを所有者ごとに振り分け、静的解析と整形のコマンドを生成する計画処理を作る
+- [x] 3.3 (P) ステージ済みファイルを所有者ごとに振り分け、静的解析と整形のコマンドを生成する計画処理を作る
   - mockups・外部由来・ロックファイルの配下を計画から外す
   - TypeScriptのファイルは最も長く一致するアプリを所有者とし、検査担当がアプリである共有ディレクトリのファイルは検査担当アプリの配置先パスへ読み替え、どのアプリにも属さないファイルはルートの所有とする
   - 整形は除外後の全ファイルを、未対応形式を無視させてルートの整形ツールへ1回で渡し、コマンドは所有者ごとの静的解析の後に整形の順で並べる
@@ -321,3 +321,6 @@
 - 2.3: 外部由来の一覧が`eslint.config.ts`・`.prettierignore`・3.3の計画処理に重複する。3.3で`config/`に単一定義を置いて`eslint.config.ts`もそれを参照するか、4.1で一致を確かめる。`.playwright-mcp/`はESLintの対象外に入っていない(現状JSは置かれない)。
 - 3.1: 環境変数`HUSKY=0`のときhuskyは`HUSKY=0 skip install`を返し、インストーラは設計のフェイルクローズに従って失敗扱い(終了コード1)にする。3.4で`prepare`に結線すると`HUSKY=0 bun install`は失敗する(CIは`CI`の判定が先なので影響なし)。飛ばして成功にするには設計の`HookInstallResult`に理由を加える変更が要り、開発者判断とする。インストーラはカレントディレクトリの`.git`を見るため、`prepare`はルートで実行される前提。
 - 3.2: 型の一覧はcommitlintの`type-enum`違反時にしか出ないため、`helpUrl`に書式と`ALLOWED_COMMIT_TYPES`の案内文を入れ、どの規則の違反でも`ⓘ Get help: …`として表示させている(要件4.2)。`.husky/commit-msg`で`--help-url`を指定するとこの案内が消えるので指定しない。ルートで実行すれば`--config`なしでも`commitlint.config.ts`が探索される。
+- 3.3: 設計の「どのアプリにも属さないファイルはルートの所有」から意図的に逸脱し、`apps/`配下でどのアプリ・共有ディレクトリにも属さない`.ts`は静的解析の計画から外して整形だけを適用する(ルートのESLintは`apps/`を対象外にしており、渡しても黙って検査漏れになるため)。7.1の文書に「新しいアプリは`config/workspace-layout.ts`の`APPS`に登録しないと品質ゲート(コミット時・一括検査)の対象にならない」と記載する。
+- 3.3: 外部由来の一覧は`config/workspace-layout.ts`の`EXTERNAL_SOURCE_DIRS`に単一定義し、`eslint.config.ts`と計画処理が参照する。4.1では外部由来の除外にこれを使い、`.prettierignore`の外部由来の行との一致も確かめる。
+- 3.3: 3.4の入口では`planStagedTasks`・`toCommands`に加え、`describePlanError`(失敗時の案内文)と`createWorkspaceChecks`(`<dir>/node_modules/.bin/eslint`・`<dir>/package.json`の実在判定)を使う。lint-staged 17.6.0は関数形式の設定が返したコマンド配列を順に実行し、ファイルを付け足さず、シェルを介さない(`string-argv`で分割)。所有アプリに`package.json`が無い場合の`tooling-missing`の案内(`bun install`)はそのままでは解消しない点が残っている(コミットは止まるので安全側)。
