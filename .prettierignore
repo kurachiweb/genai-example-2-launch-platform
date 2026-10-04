@@ -1,0 +1,23 @@
+# モックアップは独自の整形設定を持ち、品質ゲートの対象外とする
+/mockups/
+
+# 外部由来の文書とClaude拡張ファイルは原文のまま保つ
+/docs/ai-extensions/
+/.claude/
+/.kiro/settings/
+
+# ロックファイルはパッケージマネージャーの出力のまま保つ
+bun.lock
+
+# ローカル開発の蓄積データとブラウザ操作MCPの出力はソースではない
+/apps/email/
+.playwright-mcp/
+
+# 適用済みのマイグレーション履歴は生成時の内容のまま保つ
+/apps/db/migrations/
+
+# 自動生成コードは生成ツールの出力のまま保つ
+**/worker-configuration.d.ts
+# config/test-patterns.tsのGENERATED_CODE_PATTERNSの書き写し
+**/*.gen.ts
+**/generated/**

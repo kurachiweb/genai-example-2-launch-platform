@@ -6,13 +6,16 @@ import { join } from 'node:path';
 import js from '@eslint/js';
 import { ESLint, type Linter } from 'eslint';
 import prettierConfig from 'eslint-config-prettier/flat';
-import ts from 'typescript';
 import tseslint from 'typescript-eslint';
 
 import {
   type BaseConfigDependencies,
   createBaseConfig,
 } from './eslint.config.base.ts';
+import {
+  typeOnlyImportsOf,
+  valueModuleReferencesOf,
+} from './test-support/module-references.ts';
 
 const TSCONFIG = {
   compilerOptions: {
@@ -226,76 +229,14 @@ describe('createBaseConfig', () => {
   });
 });
 
-const isTypeOnlyImport = (node: ts.ImportDeclaration): boolean =>
-  node.importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword;
-
-const isModuleCall = ({ expression }: ts.CallExpression): boolean =>
-  expression.kind === ts.SyntaxKind.ImportKeyword ||
-  (ts.isIdentifier(expression) && expression.text === 'require');
-
-const isValueModuleReference = (node: ts.Node): boolean => {
-  if (ts.isImportDeclaration(node)) {
-    return !isTypeOnlyImport(node);
-  }
-  if (ts.isExportDeclaration(node)) {
-    return node.moduleSpecifier !== undefined && !node.isTypeOnly;
-  }
-  if (ts.isImportEqualsDeclaration(node)) {
-    return !node.isTypeOnly;
-  }
-  return ts.isCallExpression(node) && isModuleCall(node);
-};
-
-const collectNodes = (
-  node: ts.Node,
-  predicate: (node: ts.Node) => boolean,
-): readonly string[] => [
-  ...(predicate(node) ? [node.getText()] : []),
-  ...node.getChildren().flatMap((child) => collectNodes(child, predicate)),
-];
-
-const parse = (source: string): ts.SourceFile =>
-  ts.createSourceFile('source.ts', source, ts.ScriptTarget.Latest, true);
-
-const valueModuleReferencesOf = (source: string): readonly string[] =>
-  collectNodes(parse(source), isValueModuleReference);
-
-describe('値のモジュール参照の検出', () => {
-  test.each([
-    "import js from '@eslint/js';",
-    "import { type Linter } from 'eslint';",
-    "import './side-effect.ts';",
-    "export { createBaseConfig } from './base.ts';",
-    "export * from './base.ts';",
-    "import base = require('./base.ts');",
-    "const loaded = await import('./base.ts');",
-    "const loaded = require('./base.ts');",
-  ])('%sを値の参照として検出する', (source) => {
-    expect(valueModuleReferencesOf(source)).toHaveLength(1);
-  });
-
-  test.each([
-    "import type js from '@eslint/js';",
-    "import type { Linter } from 'eslint';",
-    "export type { Linter } from 'eslint';",
-    'export const value = 1;',
-  ])('%sを値の参照として検出しない', (source) => {
-    expect(valueModuleReferencesOf(source)).toEqual([]);
-  });
-});
-
 describe('eslint.config.base.ts', () => {
   test('npmパッケージを型としてのみ参照し、値のimportを持たない', async () => {
     const source = await readFile(
       join(import.meta.dirname, 'eslint.config.base.ts'),
       'utf8',
     );
-    const typeOnlyImports = collectNodes(
-      parse(source),
-      (node) => ts.isImportDeclaration(node) && isTypeOnlyImport(node),
-    );
 
-    expect(typeOnlyImports.length).toBeGreaterThan(0);
+    expect(typeOnlyImportsOf(source).length).toBeGreaterThan(0);
     expect(valueModuleReferencesOf(source)).toEqual([]);
   });
 });

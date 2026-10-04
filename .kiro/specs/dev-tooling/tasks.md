@@ -50,7 +50,7 @@
   - _Depends: 1.1, 1.2_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 2.2 (P) リポジトリ全体の整形設定と整形対象外の一覧を作る
+- [x] 2.2 (P) リポジトリ全体の整形設定と整形対象外の一覧を作る
   - 既存のモックアップと同じ流儀(シングルクォート)の整形設定を、アプリが継承してプラグインなどの差分を加えられる形で用意する
   - 整形対象外として、mockups・原文のまま保つ外部由来の文書と拡張ファイル・ロックファイル・ローカル開発の蓄積データ・マイグレーション履歴・自動生成コード・ブラウザ操作MCPの出力先を指定する
   - ルートに整形と整形検査のスクリプトを追加し、整形ツールが対応しない種類のファイルは無視させる
@@ -312,4 +312,8 @@
 - 1.4: bunfigのE2E除外`**/*.e2e.test.ts`は単一定義の`e2e/**/*.e2e.test.ts`より広い(設計どおり)。4.1の一致テストでは「同等以上に広い」除外として扱う。
 - 1.5: tech各索引は「## 範囲」(箇条書き)と「## 文書一覧」(`| 文書 | 概要 |`の見出し行だけの表+空行+「収録文書はまだ無い。」)の形式。最初の文書を追加するタスク(7.1〜7.5)は表に1行追加し、「収録文書はまだ無い。」を消す。範囲の文言はルートのREADME・全体索引・各索引の3箇所で一致させている。CLAUDE.mdの「ディレクトリ構成」のtech各サブディレクトリの説明は新しい範囲より狭いため、7.6で同期する。
 - 2.1: テストのフィクスチャはリポジトリ内に作らず`mkdtemp(join(tmpdir(), ...))`で作る。リポジトリ内の残骸はルートの整形検査・静的解析を壊す。
-- 2.1: 基底設定の対象外の一覧は`name: 'base/ignores'`の要素にある(4.1の一致テストで参照する)。「`import type`のみ」の検査は`eslint.config.base.unit.test.ts`の`valueModuleReferencesOf`(TypeScriptの構文解析)で行う。5.1・2.2で同じ検査が必要になったら共通のテスト支援へ切り出す。
+- 2.1: 基底設定の対象外の一覧は`name: 'base/ignores'`の要素にある(4.1の一致テストで参照する)。「`import type`のみ」の検査は`valueModuleReferencesOf`(TypeScriptの構文解析)で行う。
+- 2.2: 「`import type`のみ」の検査ヘルパーを設計外の新ディレクトリ`test-support/module-references.ts`へ切り出し、ルート`tsconfig.json`の`include`に`test-support/**/*.ts`を加えた。5.1でも再利用する。2.3のルートESLint設定は`test-support/`も検査対象にし、3.3・4.3でもルート所有として扱う。7.6でCLAUDE.mdのディレクトリ構成に追記する。
+- 2.2: `.prettierignore`はルート直下の`mockups`・`.claude`を`/mockups/`・`/.claude/`と先頭`/`で固定している。4.1の一致テストでは先頭`/`を正規化して`QUALITY_GATE_EXCLUDED_DIRS`・`GENERATED_CODE_PATTERNS`と比べる。
+- 2.2: 対象が`.`のときPrettierはディレクトリ展開で未対応ファイルを飛ばすため、`--ignore-unknown`が効くのはファイルを明示して渡す場合(3.3のlint-staged)。Prettierはcwdの`.gitignore`しか読まないため、アプリ固有の出力先はルートの`.gitignore`にも書く必要がある(後続のplatform系specへの注意)。
+- 2.2: 3.5の初回整形の対象は`.infisical.json`・`.kiro/specs/dev-tooling/design.md`・`research.md`・`.kiro/steering/roadmap.md`・`compose.yaml`・`scripts/merge-claude-trust-config.ts`(2.2時点)。`.infisical.json`はInfisical CLIが`init`時だけ書くため整形対象のままにする。
