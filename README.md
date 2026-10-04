@@ -45,6 +45,21 @@ Launch Stadiumのプログラム一式、及びドキュメント。
 | [design/](docs/GUIDES/service/design/README.md)     | デザイン原則、ページ構成、文言・文字数規則                                                 |
 | [legal/](docs/GUIDES/service/legal/README.md)       | 法令準拠方針、利用規約・プライバシーポリシー・法的通知の大枠、侵害コンテンツ削除請求フロー |
 
+### 技術ドキュメント(`docs/GUIDES/tech/`)
+
+| ドキュメント                                         | 内容                                                                                                                                                                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [README.md](docs/GUIDES/tech/README.md)              | 技術ドキュメントの索引、記述規則、文書の追加方法                                                                                                                                                  |
+| [infra/](docs/GUIDES/tech/infra/README.md)           | インフラ・ネットワーク構成図、実行環境の設定規約と環境種別、ログ管理方針、非同期処理設計                                                                                                          |
+| [external/](docs/GUIDES/tech/external/README.md)     | 各種外部APIの仕様、料金、リクエスト制限、認証方式、エラーハンドリング及びリトライ戦略                                                                                                             |
+| [db/](docs/GUIDES/tech/db/README.md)                 | データベース設計原則、テーブル・カラムの命名規則、マイグレーションの生成と適用の手順、データベース固有の制約と対処                                                                                |
+| [backend/](docs/GUIDES/tech/backend/README.md)       | アーキテクチャ設計(依存性注入を含む)、API設計                                                                                                                                                     |
+| [frontend/](docs/GUIDES/tech/frontend/README.md)     | アクセシビリティ規則、マークアップ規約、コンポーネント共通化対象、開発時とデプロイ前の起動方法                                                                                                    |
+| [coding/](docs/GUIDES/tech/coding/README.md)         | JavaScript・TypeScriptの記法、設定ファイルの記述規約と基底設定の継承、整形検査・静的解析・型検査のコマンド、依存パッケージの版管理、共有ディレクトリの配置方式、GraphQL通信、入力値バリデーション |
+| [testing/](docs/GUIDES/tech/testing/README.md)       | テスト方針(テストの種別と命名規約、実行コマンド)、カバレッジ設定、TDDの進め方、E2Eテストツールの版の更新手順                                                                                      |
+| [operations/](docs/GUIDES/tech/operations/README.md) | デプロイ手順、障害対応、ロールバック手順、決済データ操作                                                                                                                                          |
+| [security/](docs/GUIDES/tech/security/README.md)     | 包括的なセキュリティガイド、認証認可設計、シークレット管理、システム監視及び対応方針                                                                                                              |
+
 ### エージェント・開発支援(`docs/onboardings/`)
 
 | ドキュメント                                                  | 内容                                                             |
