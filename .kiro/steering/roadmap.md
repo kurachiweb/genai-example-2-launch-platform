@@ -92,19 +92,19 @@
 
 要件定義書の読解で見つかった曖昧・未決定の箇所である。担当specの要件フェーズで開発者に確認して解消する。
 
-| 論点 | 該当要件 | 担当spec |
-|---|---|---|
-| クールダウン終了時に失敗回数をリセットすると、失敗ごとに2倍のバックオフが伸びない | FR-RLMIT-010、NFR-SECUR-022 | identity-auth |
-| メールアドレスをキーにするログイン試行DOがハッシュ化対象から漏れている | FR-RLMIT-017、NFR-SECUR-022 | identity-auth |
-| 最初の最上位管理者の作成方法が未定義 | FR-ADMAC-004 | admin-foundation |
-| 同一カテゴリに3つ以上ある場合のペアリング方法 | FR-GAME-004周辺 | match-engine |
-| Week優勝作がYear確定まで最長約1年再ローンチできない意図、トーナメント敗退後の禁止期間 | FR-RELCH-004 | product-launch、tournament-week |
-| 有料プランによる参加費免除の判定時点、決済済み後に加入した場合の返金 | FR-TOURW・FR-TOURY・FR-PPLAN-007周辺 | ultras-subscription、tournament-week |
-| Year初年度や決勝日未設定時の扱い、初年度に参加が64を超える可能性 | FR-TOURY-005、FR-ADMCF-003〜004 | tournament-year |
-| トーナメントの開始予告メールを組み合わせ決定時とマッチ前日のどちらで送るか | FR-NOTIF-001、FR-TOURY-004 | notifications |
-| 複数回勝利したプロダクトのディレクトリ上の単位、ソートと期間絞り込みの基準ローンチ | FR-DIR-001〜007 | directory-discovery |
-| スポンサー広告のティア別・日別の掲載枠上限、0:07以降の当日開始申込の開始通知 | FR-SPONS周辺 | sponsorship |
-| 全Workerへの「IP単位100回/10秒」制限がStripe WebhookやNAT配下の画像閲覧に及ぶ | FR-RLMIT-008 | backend-platform |
+| 論点                                                                                  | 該当要件                             | 担当spec                             |
+| ------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------ |
+| クールダウン終了時に失敗回数をリセットすると、失敗ごとに2倍のバックオフが伸びない     | FR-RLMIT-010、NFR-SECUR-022          | identity-auth                        |
+| メールアドレスをキーにするログイン試行DOがハッシュ化対象から漏れている                | FR-RLMIT-017、NFR-SECUR-022          | identity-auth                        |
+| 最初の最上位管理者の作成方法が未定義                                                  | FR-ADMAC-004                         | admin-foundation                     |
+| 同一カテゴリに3つ以上ある場合のペアリング方法                                         | FR-GAME-004周辺                      | match-engine                         |
+| Week優勝作がYear確定まで最長約1年再ローンチできない意図、トーナメント敗退後の禁止期間 | FR-RELCH-004                         | product-launch、tournament-week      |
+| 有料プランによる参加費免除の判定時点、決済済み後に加入した場合の返金                  | FR-TOURW・FR-TOURY・FR-PPLAN-007周辺 | ultras-subscription、tournament-week |
+| Year初年度や決勝日未設定時の扱い、初年度に参加が64を超える可能性                      | FR-TOURY-005、FR-ADMCF-003〜004      | tournament-year                      |
+| トーナメントの開始予告メールを組み合わせ決定時とマッチ前日のどちらで送るか            | FR-NOTIF-001、FR-TOURY-004           | notifications                        |
+| 複数回勝利したプロダクトのディレクトリ上の単位、ソートと期間絞り込みの基準ローンチ    | FR-DIR-001〜007                      | directory-discovery                  |
+| スポンサー広告のティア別・日別の掲載枠上限、0:07以降の当日開始申込の開始通知          | FR-SPONS周辺                         | sponsorship                          |
+| 全Workerへの「IP単位100回/10秒」制限がStripe WebhookやNAT配下の画像閲覧に及ぶ         | FR-RLMIT-008                         | backend-platform                     |
 
 ## Specs (dependency order)
 
