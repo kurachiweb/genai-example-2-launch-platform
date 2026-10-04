@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "bun ./scripts/tooling/install-git-hooks.ts",
     "format": "bun --bun prettier --write --ignore-unknown .",
     "format:check": "bun --bun prettier --check --ignore-unknown .",
     "lint": "bun --bun eslint .",

@@ -95,7 +95,7 @@
   - _Depends: 1.3_
   - _Requirements: 2.1, 2.4, 2.5, 5.9, 8.3_
 
-- [ ] 3.4 コミット前検査とコミットメッセージ検査をGitフックとして結線する
+- [x] 3.4 コミット前検査とコミットメッセージ検査をGitフックとして結線する
   - ルートの依存インストール時に、3.1のインストーラが実行されるようにする
   - コミット前検査は、シークレット検出ツールの存在確認(無ければ開発コンテナ内でのコミットを案内して中止)、ステージ済み差分全体(mockupsを含む)の伏せ字付きシークレット検出、計画処理に基づく自動修正と再ステージの順に実行し、いずれかが失敗した時点で中止する
   - ステージ済みファイルへの適用設定は計画処理の結果をコマンドへ変換するだけにし、計画がエラーなら理由を表示する失敗コマンドを返す
@@ -324,3 +324,8 @@
 - 3.3: 設計の「どのアプリにも属さないファイルはルートの所有」から意図的に逸脱し、`apps/`配下でどのアプリ・共有ディレクトリにも属さない`.ts`は静的解析の計画から外して整形だけを適用する(ルートのESLintは`apps/`を対象外にしており、渡しても黙って検査漏れになるため)。7.1の文書に「新しいアプリは`config/workspace-layout.ts`の`APPS`に登録しないと品質ゲート(コミット時・一括検査)の対象にならない」と記載する。
 - 3.3: 外部由来の一覧は`config/workspace-layout.ts`の`EXTERNAL_SOURCE_DIRS`に単一定義し、`eslint.config.ts`と計画処理が参照する。4.1では外部由来の除外にこれを使い、`.prettierignore`の外部由来の行との一致も確かめる。
 - 3.3: 3.4の入口では`planStagedTasks`・`toCommands`に加え、`describePlanError`(失敗時の案内文)と`createWorkspaceChecks`(`<dir>/node_modules/.bin/eslint`・`<dir>/package.json`の実在判定)を使う。lint-staged 17.6.0は関数形式の設定が返したコマンド配列を順に実行し、ファイルを付け足さず、シェルを介さない(`string-argv`で分割)。所有アプリに`package.json`が無い場合の`tooling-missing`の案内(`bun install`)はそのままでは解消しない点が残っている(コミットは止まるので安全側)。
+- 3.4: `/workspace`でフックが有効になった(`.git/config`の`hooksPath = .husky/_`)。以後のコミットはシークレット検出・ESLint・Prettierを通り、3.5の初回整形の対象ファイルをステージするとそのコミット内で整形される。
+- 3.4: Betterleaks 1.9.0の`--verbose`はFingerprintを表示しない。`--pre-commit`のFingerprintは`<ファイルのパス>:<検出規則>:<行番号>`で、pre-commitの案内文と`.betterleaksignore`の冒頭コメントに組み立て方を書いた。`.betterleaksignore`は行頭`#`のコメントだけが有効で、行末コメントを付けた行は一致しなくなる。7.3・7.7の文書に記載する。
+- 3.4: Bun 1.4.2の`bunx --bun`は`node`を指定するshebangをBunへ置き換えず、`PATH`上の`node`(開発コンテナではBunのシム)に依存する。開発コンテナ外ではBetterleaksの存在確認で先に止まる。
+- 3.4: 計画エラー時の失敗コマンドは`bun -e`へJSON文字列を埋め込む方式。`toCommands`はシングルとダブルの引用符を両方含むパスで例外を投げ、lint-stagedがスタックトレース付きで中止する(フェイルクローズは保たれる)。
+- 3.4: 設計のFile Structure Planに無いルート所有のテスト`git-hooks.unit.test.ts`(フックスクリプト・`prepare`・`.betterleaksignore`の書式の検証)と`lint-staged.config.unit.test.ts`を追加した。
