@@ -56,8 +56,10 @@
 9. コンテナ内: Claude向けMCPを認証する(初回のみ)
 
    ```sh
-   claude
-   /mcp # 対話セッションにて、上下キーで「△ needs authentication」と表示されるMCP項目を見つけ、Enterキーで認証していく
+   claude mcp login cloudflare-api --no-browser # Cloudflareにログイン/認証後、「このサイトにアクセスできません」に遷移するのでURLをターミナルに入力する
+   claude mcp login cloudflare-bindings --no-browser
+   claude mcp login cloudflare-builds --no-browser
+   claude mcp login cloudflare-observability --no-browser
    ```
 
 10. コンテナ内: ローカルDBの初期化(マイグレーション適用)
