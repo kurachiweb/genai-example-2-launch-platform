@@ -2,6 +2,9 @@
   "name": "genai-ex-2-launch",
   "private": true,
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
     "@commitlint/types": "21.2.3",

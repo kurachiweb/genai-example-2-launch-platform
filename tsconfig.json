@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": ["*.ts", "config/**/*.ts", "scripts/**/*.ts", "e2e/**/*.ts"]
+}
