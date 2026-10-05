@@ -197,7 +197,7 @@
   - 完了状態: 上記の実測結果が期待どおりであり、不一致があればブラウザテストの共通設定値を修正済みである
   - _Requirements: 6.2, 6.7, 6.8, 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 5.6 使い捨ての検証用アプリで、Workers統合テストのカバレッジ判定と一括実行への引数の受け渡しを実測する
+- [x] 5.6 使い捨ての検証用アプリで、Workers統合テストのカバレッジ判定と一括実行への引数の受け渡しを実測する
   - 5.4と同じ方法の作業ツリーのコピーで、`apps/api`の位置にWorkers統合テストを持つ検証用アプリを置き、一括検査が通るよう共有ディレクトリのコピー配置を行う
   - Workers統合テスト(Istanbul)で、閾値未達時に未達の指標と実測値を表示して失敗し、lcovがWorkers統合テスト用の出力先に生成され、対象0件で成功し、計測無効時は判定されないことを確かめる
   - テスト種別ごとの一括実行で、計測の指定が各アプリへ渡ることを確かめる
@@ -354,3 +354,7 @@
 - 5.5(開発者判断済み): ブラウザ・Workers統合テストでは、テストが0件でも`coverage.include`に一致するソースがあれば`--coverage`付きの実行は0%として閾値で失敗する(Vitestは未読込ファイルを分母に含める)。要件6.7は計測無効の実行、要件7.1は計測有効の実行に適用されると解釈し、design.mdの「VitestPresets」節と追跡表6.7の行に明記した(6.7の行には5.3の`ZeroTestsReporter`も追記済み)。7.3の文書に、各アプリが`coverage.include`をその種別が担当するソースに絞ることとあわせて記載する。
 - 5.5(開発者判断済み): 失敗時のスクリーンショットと`.vitest-attachments`をGit管理外にするため、`browserOptionsPreset`(`screenshotDirectory: '.vitest-attachments/screenshots'`と、基準画像の保存先をVitest 4.1.11の既定と同じ`<テストのディレクトリ>/__screenshots__/<テストファイル名>/<名前>-<ブラウザ>-<OS><拡張子>`に固定する`expect.toMatchScreenshot.resolveScreenshotPath`)と`TestKindPreset.attachmentsDir`を加え、ルートの`.gitignore`に`.vitest-attachments`を加えた。`screenshotDirectory`だけを指定すると基準画像の保存先が壊れる(`@vitest/browser/dist/index.js`の2102行)ため、Vitestの更新時は`resolveScreenshotPath`の再確認を主要パッケージ一覧の「更新時の確認事項」(7.1)に載せる。設計外の`test-support/git-ignore.ts`(`isGitIgnored`)を追加した(7.6でCLAUDE.mdのディレクトリ構成に反映)。
 - 5.5(7.3への申し送り): アプリは`test: { ...browserTestPreset, coverage: { ...browserTestPreset.coverage, include }, browser: { ...browserOptionsPreset, provider: playwright({ launchOptions: resolveBrowserLaunchOptions(process.env) }), instances: [...] } }`のように入れ子も展開する。`coverage`や`browser`の展開を漏らすと閾値・lcov・出力先・失敗時の画像の出力先が失われ、型検査・静的解析では検出できない。閾値未達はファイル単位の判定でも`does not meet global threshold`と表示される。AIエージェントから実行するとVitestの出力形式が変わる(テストファイルごとの行・色・100%のファイルが省かれる)が、終了コードと`ERROR`行は変わらない。実測の全文はスクラッチの`5.5-evidence.md`。
+- 5.6: 一時コピーの`apps/api`にWorkers統合テストを持つ検証用アプリを置いて実測し、本リポジトリとの不一致は無かった(閾値はファイル単位で判定され、全体集計が未達でもファイルごとの`ERROR`行だけが出る)。設定ファイルの全文と実測結果はスクラッチの`5.6-evidence.md`にあり、7.1・7.3の文書の材料にする。テストの例では非推奨の`cloudflare:test`の`SELF`ではなく、`cloudflare:workers`の`exports.default.fetch()`を使う。
+- 5.6(7.1・開発者判断待ち): 検証用アプリは`wrangler`を、`@cloudflare/vitest-pool-workers` 0.22.0が`dependencies`で完全固定する4.124.0として直接宣言した(`wrangler types`のため)。主要パッケージ一覧に`wrangler`(と、アプリが使う`@types/bun` 1.4.2)を載せるかは7.1の前に開発者が決める。
+- 5.6(7.1・7.3、およびapi・eventを作る後続specへの申し送り): Workers統合テストを持つアプリの`tsconfig.json`の差分は、`lib: ["ES2024"]`(基底の`target`の既定に含まれるDOMの型が、`caches.default`などWorkers固有のAPIを使ったときに衝突するため外す)、`types: ["bun", "@cloudflare/vitest-pool-workers/types"]`、`include`への`worker-configuration.d.ts`・`db/**`・`lib/**`。`vitest.worker.config.ts`で`coverage`の展開を漏らすとプリセットの`provider: 'istanbul'`が失われ、非TTYでは`MISSING DEPENDENCY '@vitest/coverage-v8'`で失敗し、TTYでは`@vitest/coverage-v8@4.1.11`の導入を対話で促されて入力待ちで止まる(承諾すると使わないV8プロバイダが依存に入るので断り、展開漏れを直す)。
+- 5.6(infra-deliveryへの申し送り): `wrangler types --check`で`worker-configuration.d.ts`の鮮度をCIで確認できる。
