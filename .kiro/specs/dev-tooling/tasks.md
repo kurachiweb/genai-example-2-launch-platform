@@ -215,7 +215,7 @@
   - _Depends: 1.1_
   - _Requirements: 9.5_
 
-- [ ] 6.2 (P) 共有ディレクトリの依存解決が開発コンテナとCI相当環境で一致することを検証し、結果を記録する
+- [x] 6.2 (P) 共有ディレクトリの依存解決が開発コンテナとCI相当環境で一致することを検証し、結果を記録する
   - 前提として、1から5までの成果物がコミット済みであることを確かめる
   - 開発コンテナに、共有ディレクトリのnode_modulesを利用側へ見せるマウントが残っていないこと(compose.yamlの変更とコンテナ再作成の反映)を確かめ、未反映ならコンテナの再作成を開発者へ依頼する作業として報告する
   - リポジトリを一時ディレクトリへclone(node_modulesとbind mountの無い状態)し、依存インストールとコピー配置の後に配置確認が成功すること、配置先を欠落させると依存の解決エラーより先に配置の不備を示して失敗することを確かめる
@@ -360,3 +360,6 @@
 - 5.6(infra-deliveryへの申し送り): `wrangler types --check`で`worker-configuration.d.ts`の鮮度をCIで確認できる。
 - 6.1: `.mcp.json`の`@playwright/mcp`を0.0.83から0.0.80へ変更した。0.0.83の`playwright-core`(1.64.0-alpha)はchromium-1247を期待し、共有Chromium(chromium-1243・153.0.8010.12)と一致するのは0.0.80(`playwright-core` 1.63.0-alpha-2026-08-31)だけだった(0.0.79は1237、0.0.81〜0.0.83は1244・1246・1247)。版ごとの期待リビジョンは、`bun pm view @playwright/mcp@<版> dependencies`で`playwright-core`の版を取り、そのtarballの`browsers.json`で確かめる。0.0.80には`browser_emulate_media`ツールが無い。0.0.83以降を使うには、ルートの`@playwright/test`と`Dockerfile`の`PLAYWRIGHT_VERSION`を先に上げる。実行中のClaude Codeのセッションは、`/mcp`での再接続かセッションの再起動までMCPの旧版を使い続ける。
 - 6.1: `chrome-devtools-mcp`は1.10.1(最新)のままにした。同梱の`puppeteer-core` 25.11.0はChrome 153.0.8010.36を期待し、共有Chromiumとはビルド番号が異なるがメジャー版(CDPの世代)が一致する。完全一致する版は存在しないため、メジャー版の一致と実起動で整合を判断する。両MCPサーバーは`.mcp.json`と同じ引数でstdio起動し、MCPのJSON-RPC(`initialize`→`notifications/initialized`→`tools/list`→ページを開くツールの`tools/call`。chrome-devtools-mcpは`pageId`が必須)でローカルHTTPサーバーのページを開いて確かめた。手順・スクリプトの全文はスクラッチの`6.1-evidence.md`にあり、7.3の文書の材料にする(固有値の`/opt/ms-playwright-bin`などは除く)。research.mdの「Playwright関連の4箇所」は調査時点の記録として残し、8.1で扱いを判断する。
+- 6.2: 開発コンテナ(bind mount)とCI相当環境(`git clone`→`CI=true bun install --frozen-lockfile`→`shared-dirs:place`)の`apps/api`に最小構成(hono 4.13.13・drizzle-orm 1.0.0-rc.4を共有ディレクトリからbare import)を置き、型検査・静的解析・単体テスト・esbuild 0.28.1のバンドル(wrangler 4.124.0の`bundleWorker`の設定を再現)・`check`の成否と、解決された版・実体パス(`apps/api/node_modules/...`)が一致した。手順と結果はresearch.mdの「実装時の検証結果」、最小構成の全文とログはスクラッチの`6.2-evidence.md`にあり、7.2の文書の材料にする。開発コンテナはcompose.yamlの変更を反映済みで、再作成は不要だった。
+- 6.2(infra-deliveryへの申し送り): 配置の不備を依存の解決エラーより先に示すのは一括検査`check`の最初の段階だけで、`test:all:*`やアプリのスクリプトを単独で実行すると`Cannot find module`だけが出る(設計どおり)。CIでは`shared-dirs:place`の後に`check`をテストより先に実行する。honoのような二重実体は型検査を通過するため、検出は配置確認(`non-empty-node-modules`)が担う。
+- 6.2(開発者判断済み): Bun 1.4.2は`extends`を持つtsconfigで`experimentalDecorators`を継承元の値だけで決め、継承する側の`true`を無視する。そのため`bun test`・`bun build`でパラメータデコレータ(Inversifyの`@inject`)がエラーなく消える(tscとesbuildは継承する側に従う)。開発者の判断により、`tsconfig.base.json`に`experimentalDecorators: true`を置き、design.mdの「TsconfigBase」節を更新した。7.1・7.2の文書では、デコレータ設定を基底設定が持つ理由としてこの挙動を記載する。

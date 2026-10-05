@@ -148,6 +148,67 @@
 - 既存文書へPrettierを初めて適用すると差分が大きくなる。初回整形を独立したコミットに分ける。
 - `@playwright/mcp` 0.0.83がPlaywright 1.64系のChromiumリビジョンを要求する可能性がある。実起動で確かめ、合わなければ最も近い版を選ぶ。
 
+## 実装時の検証結果
+
+### 共有ディレクトリの依存解決(タスク6.2)
+
+- **目的**: 要件8.1・8.2・8.4〜8.7。共有ディレクトリのコードが利用側アプリの依存パッケージを読み込む最小構成で、開発コンテナとCI相当環境の解決結果が一致することを確かめた(2026-10-05、`7bb71bc`時点、Bun 1.4.2)。
+- **最小構成**(どちらの環境でも同じファイル。開発コンテナでは確認後に削除した)
+  - 利用側`apps/api`
+    - `package.json`: AppScriptContractの`lint`・`typecheck`・`test:unit`を持つ。主要パッケージ一覧の版の品質ツール6種と`@types/bun` 1.4.2を導入する。共有ディレクトリのコードが使う`hono` 4.13.13・`drizzle-orm` 1.0.0-rc.4を宣言する。バンドル用に`esbuild` 0.28.1(`wrangler` 4.124.0が固定する版)を導入する。
+    - `tsconfig.json`: 基底設定を継承し、差分は`types: ["bun"]`・`experimentalDecorators: true`、`include`への`db/**`・`lib/**`の追加。
+    - `eslint.config.ts`: 5.4と同一。
+    - `src/app.ts`: 利用側の`eq`に共有側のテーブルの列を渡し、利用側の`Hono`に共有側の`Hono`を`route`で結合する。
+  - 共有ディレクトリ
+    - `apps/db/schema/products.ts`: `drizzle-orm/sqlite-core`の`sqliteTable`を使う。
+    - `apps/backend-lib/http/greeting-route.ts`: `hono`をbare importし、コンストラクタ引数にパラメータデコレータを持つ。
+    - `apps/backend-lib/probe/resolve-from-shared-dir.ts`: 共有ディレクトリの位置から`import.meta.resolve`を呼ぶ。
+  - 単体テスト: 共有側と利用側で`Hono`・`SQLiteTable`の`instanceof`が成り立つことを確かめる。共有ディレクトリの位置からの`import.meta.resolve`が利用側の位置からと一致することも確かめ、解決先の版と実体パスを出力する。
+  - バンドル: wrangler 4.124.0の`bundleWorker`がesbuildへ渡す既定値を再現し、esbuildのAPIで`src/index.ts`を組み立ててmetafileを集計した。既定値は`format: esm`・`target: es2024`・`conditions: workerd,worker,browser`・`keepNames`で、`tsconfig`は指定しない。Wranglerでのバンドル(`wrangler deploy --dry-run`)はClaude設定で拒否されるため使っていない。
+- **手順**
+  - CI相当環境
+    1. `git clone`した一時ディレクトリで`CI=true bun install --frozen-lockfile`を実行した(フックは導入されない)。
+    2. 最小構成を置き、`apps/api`で`bun install`を実行した。ここで生成した`bun.lock`を両環境で使う。
+    3. 配置前に`shared-dirs:verify`・`check`を実行した。
+    4. `shared-dirs:place`→`shared-dirs:verify`の後、`apps/api`で型検査・静的解析・単体テスト・バンドル、ルートで`check`・`test:all:unit`を実行した。
+    5. 配置先`apps/api/lib`を削除して`check`を実行した。
+  - 開発コンテナ
+    1. `/proc/self/mountinfo`で、共有側のnode_modulesを利用側へ見せるマウントが0件であることを確かめた(compose.yamlの変更は反映済み)。
+    2. 最小構成と上記の`bun.lock`を置き、`apps/api`で`bun install --frozen-lockfile`を実行して同じコマンドを実行した。
+    3. 置いたファイルを削除し、`apps/api/node_modules`(名前付きボリューム)の中身を空に戻した。`git status`は検証前と同じく空になった。
+- **各コマンドの成否**
+
+| コマンド                         | CI相当環境                                    | 開発コンテナ                                        |
+| -------------------------------- | --------------------------------------------- | --------------------------------------------------- |
+| `shared-dirs:verify`(配置後)     | 成功(`apps/api/db`・`apps/api/lib`が`copied`) | 成功(`apps/api/db`・`apps/api/lib`が`bind-mounted`) |
+| `apps/api`の`typecheck`・`lint`  | 成功                                          | 成功                                                |
+| `apps/api`の`test:unit`          | 成功(3件)                                     | 成功(3件)                                           |
+| バンドル(esbuild 0.28.1)         | 成功(エラー・警告0件)                         | 成功(エラー・警告0件)                               |
+| ルートの`check`・`test:all:unit` | 成功                                          | 成功                                                |
+
+- **解決されたパッケージの版と実体パス**(リポジトリのルートからの相対パス。両環境で同一)
+
+| パッケージ  | 版         | 実行時(共有ディレクトリから)                 | 型検査の読み込み元                      | バンドルの入力                          |
+| ----------- | ---------- | -------------------------------------------- | --------------------------------------- | --------------------------------------- |
+| hono        | 4.13.13    | `apps/api/node_modules/hono/dist/index.js`   | `apps/api/node_modules/hono`のみ        | `apps/api/node_modules/hono`のみ(1実体) |
+| drizzle-orm | 1.0.0-rc.4 | `apps/api/node_modules/drizzle-orm/index.js` | `apps/api/node_modules/drizzle-orm`のみ | `apps/api/node_modules/drizzle-orm`のみ |
+
+- **一致の確かめ方**
+  - 実行時の解決先と`realpath`、型検査の読み込み元、バンドルの入力104ファイルとmetafileの集計を両環境で比べ、いずれもdiffが無かった。`bun pm ls --all`と`bun.lock`のハッシュも一致した。
+  - 共有ディレクトリ側の`node_modules`へ解決されたファイルは無かった。開発コンテナの`apps/api/db/node_modules`は、ボリュームのマウント先としてホスト側に作られた空のディレクトリで、解決に影響しない。
+- **配置の不備の表示**(8.5)
+  - 配置前と、`apps/api/lib`を削除した状態の`check`は終了コード1になった。最初の段階が`欠落(missing)`と案内文(CIでは`bun run shared-dirs:place`、ローカルではcompose.yamlのbind mountの確認)を表示した。その後に、`apps/api`の静的解析(`no-unsafe-*`)と型検査(TS2307)の解決エラーが続いた。
+  - 配置確認を先に行うのは一括検査だけである。アプリの`test:unit`や`test:all:unit`を単独で実行すると、`Cannot find module '../lib/...'`だけが表示される(設計どおり。CIでは`check`をテストより先に実行する)。
+- **対照**(8.4): `apps/api/lib/node_modules`に`hono`を複製すると、`shared-dirs:verify`は`non-empty-node-modules`で失敗した。このとき`bun test`では共有側の`hono`が配置先の`node_modules`へ解決されて`instanceof`が失敗し、バンドルには`hono`が2実体含まれた。型検査は成功したため、二重実体は型検査だけでは検出できない場合がある。
+- **デコレータ**(8.3に関わる発見)
+  - `tsc`とesbuildは、共有ディレクトリのパラメータデコレータを利用側の`tsconfig.json`の設定で検査・変換した。利用側から`experimentalDecorators`を外すと、`tsc`はTS1206、esbuildは`Parameter decorators only work when experimental decorators are enabled`で失敗した。
+  - Bun 1.4.2は、`extends`を持つtsconfigでは`experimentalDecorators`を継承元の値だけで決め、継承する側の指定を無視した。基底設定に指定が無いため、TC39標準のデコレータとして変換され、パラメータデコレータはエラーも出さずに消えた(`bun test`で登録されない)。
+  - この挙動は共有ディレクトリに限らず利用側の`src`でも同じで、配置方式とは無関係に両環境で一致した。基底設定に`experimentalDecorators: true`を置くとBunも従来のデコレータとして変換した。関連する報告は[oven-sh/bun#6326](https://github.com/oven-sh/bun/issues/6326)(OPEN)。対処は開発者の判断待ちである。
+- **結論**
+  - 利用側で解決する方式(M2)では、開発コンテナ(bind mount)とCI相当環境(`shared-dirs:place`のコピー)で、各コマンドの成否と、解決されるパッケージの版・実体パスが一致した(8.1・8.2・8.4・8.6)。
+  - 配置の不備は一括検査の最初の段階で先に示された(8.5)。
+  - Bunのデコレータの扱いは配置方式とは別の課題として残る。
+
 ## References
 
 - [TypeScript 6.0 Release Notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html) — 既定値の変更と非推奨オプション
