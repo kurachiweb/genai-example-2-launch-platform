@@ -165,7 +165,7 @@
   - _Depends: 1.3_
   - _Requirements: 6.2, 6.3, 6.7, 6.8, 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 5.2 (P) E2Eテストの対象アプリと、テストのある対象だけのプロジェクト構成を解決する
+- [x] 5.2 (P) E2Eテストの対象アプリと、テストのある対象だけのプロジェクト構成を解決する
   - 利用者側と管理者側の対象URLを既定値で持ち、環境変数で上書きできるようにする
   - 対象ごとのディレクトリにE2Eテストが1つ以上ある対象だけをプロジェクトにする
   - 完了状態: 単体テストで、環境変数でURLが上書きされ、テストの無い対象がプロジェクトに含まれないことが確認できる
@@ -345,3 +345,5 @@
 - 5.1(開発者判断済み): Vitestのカバレッジ閾値はBunの単体テストとそろえてファイル単位(`thresholds.perFile: true`)にした。契約型はプロパティを`readonly`に保ち配列だけ変更可能にした(Vitest 4.1.11の設定型が変更可能な配列を要求し、`...browserTestPreset`の取り込みを型検査に通すため)。どちらもdesign.mdの「VitestPresets」節に反映済み。
 - 5.1: 設計外の共通ビルダー`config/vitest/test-kind-preset.ts`(`createTestKindPreset`)を追加し、契約型`CoveragePreset`・`TestKindPreset`はここから、`BrowserLaunchOptions`は`browser.ts`からexportする。各プリセットは呼び出しごとに単一定義の配列のコピーを持つ。
 - 5.1: Vitest 4.1.11の`coverage.exclude`の既定は`[]`で、他種別のテストファイルは自動で除外されない(アプリの`coverage.include`に一致すると未テストファイルとして分母に入る)ため、プリセットは4種すべての命名と生成コードを除外する。`CHROMIUM_PATH`が空文字のときは未定義と同じ扱い(5.3のE2E設定もそろえる)。単一定義の`readonly`配列とプリセットの配列をBunの`toEqual`で比べる場合、期待値を`[...TEST_FILE_PATTERNS.browser]`のように展開する。
+- 5.2: 設計外の`createE2ETestFileDetector(rootDir)`を`e2e/support/targets.ts`に追加し、design.mdの「E2EConfig」節に追記した。5.3の`playwright.config.ts`は`resolveE2EProjects(resolveE2ETargets(process.env), createE2ETestFileDetector(import.meta.dirname))`と結線する。プロジェクトの`testDir`はルートからの相対パスで、Playwrightは設定ファイルのディレクトリ基準で解決するため、設定ファイルはルートに置く。
+- 5.2(infra-deliveryへの申し送り): 照合に`node:path`の`matchesGlob`を使うため、PlaywrightをNodeで起動する場合はNode 22.5.0・20.17.0以上が必要(推奨24)。検出器はPlaywrightの収集処理と異なり`node_modules`・`.gitignore`対象・ドットで始まるパス(Nodeの`matchesGlob`では不一致)の扱いに差があるが、偽陽性はテスト0件のプロジェクトができるだけで、大文字小文字の違いは命名検査が止める。

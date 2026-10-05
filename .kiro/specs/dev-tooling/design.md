@@ -850,10 +850,14 @@ export declare function resolveE2EProjects(
   targets: readonly E2ETarget[],
   hasTestFiles: (testDir: string) => boolean,
 ): readonly E2EProjectPlan[];
+export declare function createE2ETestFileDetector(
+  rootDir: string,
+): (testDir: string) => boolean;
 ```
 
-- `resolveE2ETargets`: 既定値は`client`が`http://localhost:48044`、`admin`が`http://localhost:48045`。`E2E_CLIENT_URL`・`E2E_ADMIN_URL`で上書きでき、staging検証にも使える。
-- `resolveE2EProjects`: `e2e/<対象>/`に`*.e2e.test.ts`が1つ以上ある対象だけをプロジェクトにする。テストが1つも無ければプロジェクトは0になり、`--pass-with-no-tests`で正常終了する(6.7)。
+- `resolveE2ETargets`: 既定値は`client`が`http://localhost:48044`、`admin`が`http://localhost:48045`。`E2E_CLIENT_URL`・`E2E_ADMIN_URL`で上書きでき、staging検証にも使える。空文字は未設定と同じ扱いにする。
+- `resolveE2EProjects`: `e2e/<対象>/`に`*.e2e.test.ts`が1つ以上ある対象だけをプロジェクトにする。テストが1つも無ければプロジェクトは0になり、`--pass-with-no-tests`で正常終了する(6.7)。`testDir`は`e2e/<対象>`、`setupProjectName`は`<対象>-reachability`とする。
+- `createE2ETestFileDetector`: `hasTestFiles`の実体。`rootDir`からの相対パスを`TEST_FILE_PATTERNS.e2e`と照合し、`testDir`が無いかディレクトリでなければ偽を返す。`playwright.config.ts`は単体テストを持たないため、判定をこちらに置く。
 - `playwright.config.ts`
   - 各プロジェクトに、到達確認のセットアッププロジェクト(`e2e/support/reachability.setup.ts`)を依存として付ける。
   - `testMatch`には`TEST_FILE_PATTERNS.e2e`を使う。
