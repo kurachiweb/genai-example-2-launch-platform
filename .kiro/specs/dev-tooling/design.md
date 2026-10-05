@@ -469,13 +469,17 @@ export declare const COVERAGE_THRESHOLD_PERCENT: 80;
 export interface CoveragePreset {
   readonly provider: 'v8' | 'istanbul';
   readonly reportsDirectory: string;
-  readonly reporter: readonly ('text' | 'lcov')[];
-  readonly thresholds: { readonly lines: number; readonly functions: number };
-  readonly exclude: readonly string[];
+  readonly reporter: ('text' | 'lcov')[];
+  readonly thresholds: {
+    readonly lines: number;
+    readonly functions: number;
+    readonly perFile: true;
+  };
+  readonly exclude: string[];
 }
 
 export interface TestKindPreset {
-  readonly include: readonly string[];
+  readonly include: string[];
   readonly passWithNoTests: true;
   readonly coverage: CoveragePreset;
 }
@@ -493,6 +497,8 @@ export declare function resolveBrowserLaunchOptions(
 
 - `browserTestPreset`: `provider: 'v8'`・`reportsDirectory: 'coverage/browser'`。
 - `workerTestPreset`: `provider: 'istanbul'`・`reportsDirectory: 'coverage/worker'`。
+- `thresholds.perFile: true`: Bunの単体テストと判定単位をそろえるため、閾値をファイル単位で判定する。
+- 配列の型: Vitest 4.1.11の設定型が変更可能な配列を要求し、`...browserTestPreset`の取り込みを型検査に通すため、プロパティは`readonly`のまま配列だけを変更可能にし、各プリセットは単一定義の配列のコピーを持つ。
 - `resolveBrowserLaunchOptions`は、`CHROMIUM_PATH`が定義されていれば`executablePath`に設定する。定義が無ければ、Playwrightの導入済みブラウザを使う。
 
 **Implementation Notes**

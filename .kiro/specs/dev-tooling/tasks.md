@@ -155,7 +155,7 @@
   - _Requirements: 5.7, 5.8, 6.6, 6.7, 8.5_
 
 - [ ] 5. ブラウザ・Workers統合・E2Eテストの実行基盤
-- [ ] 5.1 (P) ブラウザテストとWorkers統合テストの共通設定値を作る
+- [x] 5.1 (P) ブラウザテストとWorkers統合テストの共通設定値を作る
   - 命名の単一定義に基づく対象パターン、対象0件での成功、行と関数の閾値80%、テストファイルと自動生成コードの除外、種別ごとのlcov出力先を定める
   - カバレッジの方式はブラウザテストをV8、Workers統合テストをIstanbulとし、計測の有効化は指定しない(計測を指定した実行だけで閾値を判定させる)
   - 共有Chromiumのパスが環境変数にあれば、それをブラウザの実行ファイルとして使う起動オプションを返す
@@ -342,3 +342,6 @@
 - 4.3: ルートのスクリプトは`check`・`check:test-names`・`test:all:unit`・`test:all:browser`・`test:all:worker`・`shared-dirs:verify`・`shared-dirs:place`。`check`は追加の引数を受け取らず、配置確認と命名検査はルートのスクリプトとして`bun run`で呼ぶ(ルートのスクリプトが消えると飛ばされるため、実際のルート`package.json`でルートの段階が飛ばされないことを単体テストで確かめている)。入口は`lint`・`typecheck`の単独指定も受け付けるが、ルートのスクリプトは無い。
 - 4.3: `bun run`は親ディレクトリの`package.json`を探索するため、各アプリの`package.json`とスクリプトの有無を実行前に確かめる。読めない`package.json`とコマンドを起動できない場合は、その段階・対象を`cause`付きの失敗として記録して後続を続け、表の後に原因を表示する(差し戻し後に追加し、design.mdの「AggregateRunner」節を更新した)。テストは`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`と補助の`test-support/run-all-fixtures.ts`。
 - 4.3(制約): `readPackageScripts`は`existsSync`で存在を判定するため、リンク先の無いシンボリックリンクの`package.json`や辿れないディレクトリは「プロジェクト未作成」として飛ばされる(表には出る)。
+- 5.1(開発者判断済み): Vitestのカバレッジ閾値はBunの単体テストとそろえてファイル単位(`thresholds.perFile: true`)にした。契約型はプロパティを`readonly`に保ち配列だけ変更可能にした(Vitest 4.1.11の設定型が変更可能な配列を要求し、`...browserTestPreset`の取り込みを型検査に通すため)。どちらもdesign.mdの「VitestPresets」節に反映済み。
+- 5.1: 設計外の共通ビルダー`config/vitest/test-kind-preset.ts`(`createTestKindPreset`)を追加し、契約型`CoveragePreset`・`TestKindPreset`はここから、`BrowserLaunchOptions`は`browser.ts`からexportする。各プリセットは呼び出しごとに単一定義の配列のコピーを持つ。
+- 5.1: Vitest 4.1.11の`coverage.exclude`の既定は`[]`で、他種別のテストファイルは自動で除外されない(アプリの`coverage.include`に一致すると未テストファイルとして分母に入る)ため、プリセットは4種すべての命名と生成コードを除外する。`CHROMIUM_PATH`が空文字のときは未定義と同じ扱い(5.3のE2E設定もそろえる)。単一定義の`readonly`配列とプリセットの配列をBunの`toEqual`で比べる場合、期待値を`[...TEST_FILE_PATTERNS.browser]`のように展開する。
