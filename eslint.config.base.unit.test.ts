@@ -203,6 +203,8 @@ describe('createBaseConfig', () => {
     'storybook-static/main.ts',
     'src/routeTree.gen.ts',
     'src/generated/graphql.ts',
+    'worker-configuration.d.ts',
+    'apps/api/worker-configuration.d.ts',
   ])('%sを検査対象外にする', async (path) => {
     expect(await eslint.isPathIgnored(path)).toBe(true);
   });

@@ -332,7 +332,7 @@
 - 3.5: 初回整形は`caeb2c3`(整形差分だけ)。design.mdのtypescriptコードブロックはPrettierの埋め込み整形で80桁に折り返される。`.infisical.json`はInfisical CLIの`init`で4スペースに戻り得るが、次のコミットでフックが整形し直す。
 - 3.6: 一時リポジトリで要件1.1〜4.5の振る舞いをすべて確認し、修正は無かった。`git revert`・cherry-pickは`--no-edit`でも編集を経てもpre-commit・commit-msgを実行しない(Gitの仕様)ため、これらで作るコミットはシークレット検出を通らない。CIでのシークレット検出(infra-delivery)が補う前提を7.3・7.7の文書とinfra-deliveryへの申し送りに書く。
 - 3.6: `GIT_TRACE=1`を画面に出すとBetterleaksが走査失敗としてコミットを拒否する(安全側。トレースはファイルへ出す)。`betterleaks --log-level debug`は`--redact`でも値を表示するため、誤検知の調査で使わないよう7.3・7.7の文書で注意する。
-- 3.6(開発者判断待ち): 設計のStagedTaskPlannerは「生成物は`.prettierignore`とESLint基底設定の`ignores`で除外する」とするが、EslintBaseの`ignores`の列挙(と実装)に`**/worker-configuration.d.ts`が無く、`.prettierignore`にだけある。実際のWrangler出力は`/* eslint-disable */`が空のinterfaceで使われるため変更されないが、使われない無効化コメントは`eslint --fix`で消される。backend-platformが`apps/api`・`apps/event`を作る前に、基底設定の`ignores`と設計に加えるかを決める。
+- 3.6(開発者判断済み): 開発者の判断により、EslintBaseの`ignores`とdesign.mdの「EslintBase」節に`**/worker-configuration.d.ts`を加えた(`.prettierignore`と一致)。
 - 4.1: 入口は`bun scripts/tooling/check-test-names.ts`(4.3で`package.json`のスクリプトにする)。`git rev-parse --show-toplevel`のルートで`git ls-files -z --cached --others --exclude-standard`を実行し、重複除去と整列をする。`e2e/`の外にある`*.e2e.test.ts`はどのランナーも実行しないため命名規約外として検出する。
 - 4.1: 書き写した除外パターンと単一定義の一致テストは`check-test-names.unit.test.ts`にあり、bunfigの`pathIgnorePatterns`・`coveragePathIgnorePatterns`、ルートと`--path-ignore-patterns`を使う各アプリの`test:unit`、ESLint基底の`base/ignores`、`.prettierignore`(単一定義の各値の包含)を確かめる。新しいアプリが`test:unit`で除外を指定すると、この一致テストの対象になる。
 - 4.1: 一時Gitリポジトリを使うテストは`GIT_DIR`・`GIT_INDEX_FILE`を引き継ぐため、テストをGitフックの中から実行する変更をする場合は、これらを外して実行すること(`lint-staged.config.unit.test.ts`も同じ)。

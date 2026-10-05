@@ -21,6 +21,9 @@ const BUILD_OUTPUT_PATTERNS = [
 // アプリから読み込まれる基底設定は値のimportを持てないため、config/test-patterns.tsのGENERATED_CODE_PATTERNSを書き写している
 const GENERATED_CODE_PATTERNS = ['**/*.gen.ts', '**/generated/**'] as const;
 
+// `wrangler types`の出力ファイル名は変えられずGENERATED_CODE_PATTERNSの命名契約に従わないため、個別に除外する
+const WRANGLER_GENERATED_TYPES = ['**/worker-configuration.d.ts'] as const;
+
 const NUMBER_STATIC_METHOD_GLOBALS = [
   'isNaN',
   'isFinite',
@@ -61,7 +64,11 @@ export function createBaseConfig({
   return [
     {
       name: 'base/ignores',
-      ignores: [...BUILD_OUTPUT_PATTERNS, ...GENERATED_CODE_PATTERNS],
+      ignores: [
+        ...BUILD_OUTPUT_PATTERNS,
+        ...GENERATED_CODE_PATTERNS,
+        ...WRANGLER_GENERATED_TYPES,
+      ],
     },
     js.configs.recommended,
     ...tseslint.configs.strictTypeChecked,

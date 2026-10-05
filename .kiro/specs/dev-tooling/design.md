@@ -895,7 +895,7 @@ export declare function createBaseConfig(
   - `@typescript-eslint/no-deprecated`
   - `no-restricted-globals`: `isNaN`・`isFinite`・`parseInt`・`parseFloat`は`Number.*`を使う。`escape`・`unescape`は禁止する。
   - `prefer-object-has-own`・`prefer-exponentiation-operator`・`prefer-object-spread`・`no-console`
-- `ignores`: `**/dist/**`・`**/.output/**`・`**/.tanstack/**`・`**/.wrangler/**`・`**/coverage/**`・`**/storybook-static/**`・`GENERATED_CODE_PATTERNS`。
+- `ignores`: `**/dist/**`・`**/.output/**`・`**/.tanstack/**`・`**/.wrangler/**`・`**/coverage/**`・`**/storybook-static/**`・`GENERATED_CODE_PATTERNS`・`**/worker-configuration.d.ts`(`wrangler types`の出力で、ファイル名が生成コードの命名契約に従わないため個別に指定する)。
 - 基底設定ファイルは、`import type`以外のimportを持たない。
 
 **Implementation Notes**
