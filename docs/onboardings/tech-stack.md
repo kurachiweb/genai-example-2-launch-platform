@@ -42,7 +42,7 @@
 
 ### ID採番
 
-- ulidx
+- [ulid](https://github.com/ulid/javascript)
 
 ### バリデーション・変換
 
@@ -108,7 +108,7 @@
 
 ### マークダウンエディタ
 
-- `@milkdown/crepe`(ProseMirrorベースのマークダウン向けWYSIWYGエディタ)
+- `@milkdown/crepe` ... ProseMirrorベースのマークダウン向けWYSIWYGエディタ
 - `@milkdown/react` ... Reactコンポーネント、SSRでは描画せずクライアント側でのみマウント
 
 ### 画像編集UI
@@ -125,10 +125,10 @@
 - Stripe(決済処理基盤、[ドキュメント](https://docs.stripe.com))
   - Stripe Node.js SDK(APIサーバー及びイベントサーバーで使用、`createFetchHttpClient()`によるfetchベースの通信)
   - Stripe Checkout Sessions API(決済セッションの管理)
-  - Stripe Refunds API(自動返金)
-  - Stripe Customer Portal(Ultrasの支払い方法の更新)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
   - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
+  - Stripe Refunds API(自動返金)
+  - Stripe Customer Portal(Ultrasの支払い方法の更新)
 
 ## CI/CD
 
@@ -264,7 +264,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### IaC(Infrastructure as Code)
 
 - OpenTofu
-- `infisical`プロバイダ
+  - `infisical`プロバイダ
 
 ### ドキュメント
 
