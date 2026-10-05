@@ -205,7 +205,7 @@
   - _Requirements: 6.3, 6.7, 7.1, 7.2, 7.3, 7.4_
 
 - [ ] 6. 開発環境とCI相当環境の整合の検証
-- [ ] 6.1 (P) E2Eテストツール関連の4箇所を整合させ、両ブラウザ操作MCPサーバーの起動を確かめる
+- [x] 6.1 (P) E2Eテストツール関連の4箇所を整合させ、両ブラウザ操作MCPサーバーの起動を確かめる
   - 開発コンテナのOS依存パッケージの版、ルートのE2Eテストツールの版、2つのブラウザ操作MCPサーバーの版を突き合わせる
   - 両MCPサーバーを共有Chromiumで実際に起動し、ページを開けることを確かめる
   - Chromiumのリビジョンが合わない場合は、最も近いリビジョンに対応する版を選んでMCPサーバーの版を更新する。ルートのパッケージ定義とロックファイルは変更しない
@@ -358,3 +358,5 @@
 - 5.6(7.1・開発者判断待ち): 検証用アプリは`wrangler`を、`@cloudflare/vitest-pool-workers` 0.22.0が`dependencies`で完全固定する4.124.0として直接宣言した(`wrangler types`のため)。主要パッケージ一覧に`wrangler`(と、アプリが使う`@types/bun` 1.4.2)を載せるかは7.1の前に開発者が決める。
 - 5.6(7.1・7.3、およびapi・eventを作る後続specへの申し送り): Workers統合テストを持つアプリの`tsconfig.json`の差分は、`lib: ["ES2024"]`(基底の`target`の既定に含まれるDOMの型が、`caches.default`などWorkers固有のAPIを使ったときに衝突するため外す)、`types: ["bun", "@cloudflare/vitest-pool-workers/types"]`、`include`への`worker-configuration.d.ts`・`db/**`・`lib/**`。`vitest.worker.config.ts`で`coverage`の展開を漏らすとプリセットの`provider: 'istanbul'`が失われ、非TTYでは`MISSING DEPENDENCY '@vitest/coverage-v8'`で失敗し、TTYでは`@vitest/coverage-v8@4.1.11`の導入を対話で促されて入力待ちで止まる(承諾すると使わないV8プロバイダが依存に入るので断り、展開漏れを直す)。
 - 5.6(infra-deliveryへの申し送り): `wrangler types --check`で`worker-configuration.d.ts`の鮮度をCIで確認できる。
+- 6.1: `.mcp.json`の`@playwright/mcp`を0.0.83から0.0.80へ変更した。0.0.83の`playwright-core`(1.64.0-alpha)はchromium-1247を期待し、共有Chromium(chromium-1243・153.0.8010.12)と一致するのは0.0.80(`playwright-core` 1.63.0-alpha-2026-08-31)だけだった(0.0.79は1237、0.0.81〜0.0.83は1244・1246・1247)。版ごとの期待リビジョンは、`bun pm view @playwright/mcp@<版> dependencies`で`playwright-core`の版を取り、そのtarballの`browsers.json`で確かめる。0.0.80には`browser_emulate_media`ツールが無い。0.0.83以降を使うには、ルートの`@playwright/test`と`Dockerfile`の`PLAYWRIGHT_VERSION`を先に上げる。実行中のClaude Codeのセッションは、`/mcp`での再接続かセッションの再起動までMCPの旧版を使い続ける。
+- 6.1: `chrome-devtools-mcp`は1.10.1(最新)のままにした。同梱の`puppeteer-core` 25.11.0はChrome 153.0.8010.36を期待し、共有Chromiumとはビルド番号が異なるがメジャー版(CDPの世代)が一致する。完全一致する版は存在しないため、メジャー版の一致と実起動で整合を判断する。両MCPサーバーは`.mcp.json`と同じ引数でstdio起動し、MCPのJSON-RPC(`initialize`→`notifications/initialized`→`tools/list`→ページを開くツールの`tools/call`。chrome-devtools-mcpは`pageId`が必須)でローカルHTTPサーバーのページを開いて確かめた。手順・スクリプトの全文はスクラッチの`6.1-evidence.md`にあり、7.3の文書の材料にする(固有値の`/opt/ms-playwright-bin`などは除く)。research.mdの「Playwright関連の4箇所」は調査時点の記録として残し、8.1で扱いを判断する。
