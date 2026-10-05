@@ -4,6 +4,7 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
+    "experimentalDecorators": true,
     "target": "ES2024",
     "module": "ESNext",
     "moduleResolution": "bundler",

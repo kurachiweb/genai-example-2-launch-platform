@@ -6,7 +6,7 @@
 - **Discovery Scope**: New Feature(既存の開発コンテナ・compose・bunfigへの統合を含む)
 - **Key Findings**:
   - 現在のcompose.yamlは`apps/db`・`apps/frontend-lib`のnode_modulesを利用側(`apps/{api,event}/db`・`apps/{client,admin}/lib`)にも見せている。この構成ではdrizzle-ormとReactが2つの実体として解決され、drizzleは`tsc`で型エラーになる。利用側のnode_modulesだけで解決する構成では、解決・型検査・Bunテスト・esbuildの全経路で単一の実体になった。
-  - esbuild(Wrangler)とVite系の変換は「対象ファイルに最も近いtsconfig」を使う。共有ディレクトリにデコレータ設定の無いtsconfigを置くと、`tsc`と`bun test`は成功するのにesbuildだけが失敗する。
+  - esbuild(Wrangler)とVite系の変換は「対象ファイルに最も近いtsconfig」を使う。共有ディレクトリにデコレータ設定の無いtsconfigを置くと、`tsc`と`bun test`は成功するのにesbuildだけが失敗する(この`bun test`の成功は、デコレータが実行されたかまでは確かめていない。「実装時の検証結果」を参照)。
   - typescript-eslint 8.71.0はTypeScript 6.1未満にしか対応しない。`@cloudflare/vitest-pool-workers` 0.22.0はVitest ^4.1にしか対応しない。いずれも最新メジャー(TypeScript 7.0.2・Vitest 5.0.3)を採用できない。
 
 ## Research Log
@@ -157,10 +157,11 @@
   - 利用側`apps/api`
     - `package.json`: AppScriptContractの`lint`・`typecheck`・`test:unit`を持つ。主要パッケージ一覧の版の品質ツール6種と`@types/bun` 1.4.2を導入する。共有ディレクトリのコードが使う`hono` 4.13.13・`drizzle-orm` 1.0.0-rc.4を宣言する。バンドル用に`esbuild` 0.28.1(`wrangler` 4.124.0が固定する版)を導入する。
     - `tsconfig.json`: 基底設定を継承し、差分は`types: ["bun"]`・`experimentalDecorators: true`、`include`への`db/**`・`lib/**`の追加。
-    - `eslint.config.ts`: 5.4と同一。
+    - `eslint.config.ts`: タスク5.4の検証用アプリと同一。
     - `src/app.ts`: 利用側の`eq`に共有側のテーブルの列を渡し、利用側の`Hono`に共有側の`Hono`を`route`で結合する。
   - 共有ディレクトリ
     - `apps/db/schema/products.ts`: `drizzle-orm/sqlite-core`の`sqliteTable`を使う。
+    - `apps/backend-lib/di/inject.ts`: パラメータデコレータを定義する。
     - `apps/backend-lib/http/greeting-route.ts`: `hono`をbare importし、コンストラクタ引数にパラメータデコレータを持つ。
     - `apps/backend-lib/probe/resolve-from-shared-dir.ts`: 共有ディレクトリの位置から`import.meta.resolve`を呼ぶ。
   - 単体テスト: 共有側と利用側で`Hono`・`SQLiteTable`の`instanceof`が成り立つことを確かめる。共有ディレクトリの位置からの`import.meta.resolve`が利用側の位置からと一致することも確かめ、解決先の版と実体パスを出力する。
@@ -203,11 +204,13 @@
 - **デコレータ**(8.3に関わる発見)
   - `tsc`とesbuildは、共有ディレクトリのパラメータデコレータを利用側の`tsconfig.json`の設定で検査・変換した。利用側から`experimentalDecorators`を外すと、`tsc`はTS1206、esbuildは`Parameter decorators only work when experimental decorators are enabled`で失敗した。
   - Bun 1.4.2は、`extends`を持つtsconfigでは`experimentalDecorators`を継承元の値だけで決め、継承する側の指定を無視した。基底設定に指定が無いため、TC39標準のデコレータとして変換され、パラメータデコレータはエラーも出さずに消えた(`bun test`で登録されない)。
-  - この挙動は共有ディレクトリに限らず利用側の`src`でも同じで、配置方式とは無関係に両環境で一致した。基底設定に`experimentalDecorators: true`を置くとBunも従来のデコレータとして変換した。関連する報告は[oven-sh/bun#6326](https://github.com/oven-sh/bun/issues/6326)(OPEN)。対処は開発者の判断待ちである。
+  - この挙動は共有ディレクトリに限らず利用側の`src`でも同じで、配置方式とは無関係に両環境で一致した。基底設定に`experimentalDecorators: true`を置くとBunも従来のデコレータとして変換した。関連する報告は[oven-sh/bun#6326](https://github.com/oven-sh/bun/issues/6326)(OPEN)だが、継承元の設定が読まれないという逆向きの報告である。
+  - 開発者の判断により、基底設定に`experimentalDecorators: true`を置いた(2026-10-05)。`tsconfig.base.unit.test.ts`が、基底設定を継承したアプリでBunがパラメータデコレータを実行することを確かめる。
+  - 「共有ディレクトリの依存解決(実験)」のM2で`bun test`が成功したとした記録は、デコレータが実行されたかまでは確かめていない。
 - **結論**
   - 利用側で解決する方式(M2)では、開発コンテナ(bind mount)とCI相当環境(`shared-dirs:place`のコピー)で、各コマンドの成否と、解決されるパッケージの版・実体パスが一致した(8.1・8.2・8.4・8.6)。
   - 配置の不備は一括検査の最初の段階で先に示された(8.5)。
-  - Bunのデコレータの扱いは配置方式とは別の課題として残る。
+  - Bunのデコレータの扱いは配置方式とは別の課題であり、基底設定で対処した。
 
 ## References
 
