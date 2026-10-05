@@ -173,7 +173,7 @@
   - _Depends: 1.3_
   - _Requirements: 6.7, 6.9_
 
-- [ ] 5.3 E2Eテストの設定と到達確認を結線し、ルートのE2Eテストコマンドを用意する
+- [x] 5.3 E2Eテストの設定と到達確認を結線し、ルートのE2Eテストコマンドを用意する
   - 対象ごとのプロジェクトに到達確認のセットアップを依存として付け、E2Eの命名パターンに一致するファイルだけを実行する
   - 到達確認は対象URLへHTTPリクエストを送り、接続できなければ到達できなかったURLを示して失敗する(アプリの起動はE2E設定では行わない)
   - テスト成果物とHTMLレポートをGit管理外の出力先へ出し、ブラウザは共有Chromiumの起動オプションで起動する
@@ -347,3 +347,5 @@
 - 5.1: Vitest 4.1.11の`coverage.exclude`の既定は`[]`で、他種別のテストファイルは自動で除外されない(アプリの`coverage.include`に一致すると未テストファイルとして分母に入る)ため、プリセットは4種すべての命名と生成コードを除外する。`CHROMIUM_PATH`が空文字のときは未定義と同じ扱い(5.3のE2E設定もそろえる)。単一定義の`readonly`配列とプリセットの配列をBunの`toEqual`で比べる場合、期待値を`[...TEST_FILE_PATTERNS.browser]`のように展開する。
 - 5.2: 設計外の`createE2ETestFileDetector(rootDir)`を`e2e/support/targets.ts`に追加し、design.mdの「E2EConfig」節に追記した。5.3の`playwright.config.ts`は`resolveE2EProjects(resolveE2ETargets(process.env), createE2ETestFileDetector(import.meta.dirname))`と結線する。プロジェクトの`testDir`はルートからの相対パスで、Playwrightは設定ファイルのディレクトリ基準で解決するため、設定ファイルはルートに置く。
 - 5.2(infra-deliveryへの申し送り): 照合に`node:path`の`matchesGlob`を使うため、PlaywrightをNodeで起動する場合はNode 22.5.0・20.17.0以上が必要(推奨24)。検出器はPlaywrightの収集処理と異なり`node_modules`・`.gitignore`対象・ドットで始まるパス(Nodeの`matchesGlob`では不一致)の扱いに差があるが、偽陽性はテスト0件のプロジェクトができるだけで、大文字小文字の違いは命名検査が止める。
+- 5.3: 設計外の`e2e/support/reachability.ts`(`assertE2ETargetReachable`)・`playwright-config.ts`(`createPlaywrightConfig`)・`zero-tests-reporter.ts`(`ZeroTestsReporter`)を追加し、`playwright.config.ts`は結線だけにした(design.md更新済み)。Playwright 1.63.0の標準レポーターは0件時に何も表示しないため、要件6.7の0件表示は`ZeroTestsReporter`が担う。design.mdのRequirements Traceabilityの6.7の行にはまだ載っていない(表全体の再整形を避けたため。7.x以降で表を更新するときにあわせて直す)。到達確認は応答があれば状態コードに関係なく成功し、リダイレクトを辿らず、既定10秒で打ち切る。HTMLレポートは`open: 'never'`。
+- 5.3(infra-deliveryへの申し送り): `test:e2e`(`playwright test`)はshebangによりPATH上の`node`で起動するため、CIでは`node`が必要(開発コンテナではBunのシム)。Nodeで起動する場合は5.2の`matchesGlob`に加え`import.meta.dirname`の版要件もある。`CHROMIUM_PATH`が無い環境では、Playwrightは`chromium_headless_shell-1243`を探すため、CIでは共有Chromiumを`CHROMIUM_PATH`で渡すかそのリビジョンを導入する。

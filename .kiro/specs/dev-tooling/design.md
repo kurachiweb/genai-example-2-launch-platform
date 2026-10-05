@@ -177,7 +177,13 @@ graph TB
 │   └── support/
 │       ├── targets.ts              # 対象アプリのURL解決と、テストのある対象だけのプロジェクト構成
 │       ├── targets.unit.test.ts
-│       └── reachability.setup.ts   # 対象アプリへの到達確認(セットアッププロジェクト)
+│       ├── playwright-config.ts    # プロジェクト構成からPlaywrightの設定値を組み立てる純粋関数
+│       ├── playwright-config.unit.test.ts
+│       ├── reachability.ts         # 対象URLへの到達確認の判定
+│       ├── reachability.unit.test.ts
+│       ├── reachability.setup.ts   # 対象アプリへの到達確認(セットアッププロジェクト)
+│       ├── zero-tests-reporter.ts  # 実行対象が0件であったことを表示するレポーター
+│       └── zero-tests-reporter.unit.test.ts
 └── docs/
     ├── GUIDES/tech/
     │   ├── README.md               # 全体索引
@@ -312,7 +318,7 @@ graph TB
 | 6.7         | 0件なら成功し0件と表示                     | AppScriptContract・VitestPresets・E2EConfig              | `--pass-with-no-tests`・`passWithNoTests`                 | —                |
 | 6.8         | 共有ブラウザを使いダウンロードしない       | VitestPresets・E2EConfig                                 | `resolveBrowserLaunchOptions`                             | —                |
 | 6.9         | E2E設定の雛形                              | E2EConfig                                                | `resolveE2ETargets`・`resolveE2EProjects`                 | —                |
-| 6.10        | 到達できないURLを示して失敗                | E2EConfig                                                | `reachability.setup.ts`                                   | —                |
+| 6.10        | 到達できないURLを示して失敗                | E2EConfig                                                | `reachability.setup.ts`・`assertE2ETargetReachable`       | —                |
 | 6.11        | シークレットは実行時注入                   | TestingDocs・AppScriptContract                           | `infisical run`                                           | —                |
 | 7.1         | 80%未満で失敗し指標と実測値を表示          | BunTestConfig・VitestPresets・TestPatterns               | `COVERAGE_THRESHOLD_PERCENT`                              | —                |
 | 7.2         | 計測無効時は判定しない                     | BunTestConfig・VitestPresets                             | `--coverage`指定時のみ                                    | —                |
@@ -853,17 +859,42 @@ export declare function resolveE2EProjects(
 export declare function createE2ETestFileDetector(
   rootDir: string,
 ): (testDir: string) => boolean;
+
+// e2e/support/playwright-config.ts
+export declare function createPlaywrightConfig(
+  plans: readonly E2EProjectPlan[],
+  launchOptions: BrowserLaunchOptions,
+): PlaywrightTestConfig;
+
+// e2e/support/reachability.ts
+export interface ReachabilityOptions {
+  readonly timeoutMs?: number;
+}
+export declare function assertE2ETargetReachable(
+  baseURL: string | undefined,
+  options?: ReachabilityOptions,
+): Promise<void>;
+
+// e2e/support/zero-tests-reporter.ts(Playwrightが読み込むため既定のexport)
+export default class ZeroTestsReporter implements Reporter {
+  constructor(options?: ZeroTestsReporterOptions);
+  onBegin(config: FullConfig, suite: Pick<Suite, 'allTests'>): void;
+}
 ```
 
 - `resolveE2ETargets`: 既定値は`client`が`http://localhost:48044`、`admin`が`http://localhost:48045`。`E2E_CLIENT_URL`・`E2E_ADMIN_URL`で上書きでき、staging検証にも使える。空文字は未設定と同じ扱いにする。
 - `resolveE2EProjects`: `e2e/<対象>/`に`*.e2e.test.ts`が1つ以上ある対象だけをプロジェクトにする。テストが1つも無ければプロジェクトは0になり、`--pass-with-no-tests`で正常終了する(6.7)。`testDir`は`e2e/<対象>`、`setupProjectName`は`<対象>-reachability`とする。
 - `createE2ETestFileDetector`: `hasTestFiles`の実体。`rootDir`からの相対パスを`TEST_FILE_PATTERNS.e2e`と照合し、`testDir`が無いかディレクトリでなければ偽を返す。`playwright.config.ts`は単体テストを持たないため、判定をこちらに置く。
-- `playwright.config.ts`
-  - 各プロジェクトに、到達確認のセットアッププロジェクト(`e2e/support/reachability.setup.ts`)を依存として付ける。
-  - `testMatch`には`TEST_FILE_PATTERNS.e2e`を使う。
-  - 成果物は`outputDir: 'test-results'`とHTMLレポート`playwright-report`(いずれもgitignore済み)に出力する。
-  - `use.launchOptions`には`resolveBrowserLaunchOptions(process.env)`を使う。
-- `reachability.setup.ts`は、対象の`baseURL`へHTTPリクエストを送る。接続できなければ「E2E対象に到達できません: <URL>」で失敗する(6.10)。アプリの起動はE2E設定では行わない。
+- `playwright.config.ts`は`createPlaywrightConfig(resolveE2EProjects(resolveE2ETargets(process.env), createE2ETestFileDetector(import.meta.dirname)), resolveBrowserLaunchOptions(process.env))`を`defineConfig`に渡すだけの入口とする。組み立ては単体テストできる`createPlaywrightConfig`が持つ。
+- `createPlaywrightConfig`
+  - 対象ごとに、到達確認のセットアッププロジェクト(名前は`setupProjectName`、`testDir: 'e2e/support'`・`testMatch: 'reachability.setup.ts'`)と、それを`dependencies`に持つテストのプロジェクト(名前は対象名)をこの順に作る。両方の`use.baseURL`は対象のURLとする。
+  - テストのプロジェクトの`testMatch`には`TEST_FILE_PATTERNS.e2e`を使う。Playwrightは`**/`で始まらない文字列パターンの先頭に`**/`を補い、絶対パスと照合するため、`testDir`が`e2e/<対象>`でも一致する。
+  - 成果物は`outputDir: 'test-results'`とHTMLレポート`playwright-report`(いずれもgitignore済み)に出力する。HTMLレポートは`open: 'never'`とし、失敗時に配信サーバーが待ち続けてコマンドが終わらない状態を避ける。
+  - `use.launchOptions`には受け取った起動オプション(`resolveBrowserLaunchOptions(process.env)`)を使う。
+  - レポーターは`list`・`html`・`ZeroTestsReporter`(`./e2e/support/zero-tests-reporter.ts`)とする。
+- `ZeroTestsReporter`: Playwright 1.63.0の標準のレポーターは`--pass-with-no-tests`で0件のとき何も表示しないため、実行対象が0件なら「実行対象のE2Eテストは0件です」を表示する(6.7)。
+- `reachability.setup.ts`は、`baseURL`を`assertE2ETargetReachable`へ渡すだけとする。`assertE2ETargetReachable`は対象URLへHTTPのGETリクエストを送り、状態コードに関係なく応答があれば成功とし、リダイレクトは辿らない。接続できない・待ち時間(既定10秒)内に応答が無い・URLとして解釈できない場合は「E2E対象に到達できません: <URL>」で失敗し、原因を`cause`に残す(6.10)。URLが未設定なら「E2E対象のURLが設定されていません」で失敗する。アプリの起動はE2E設定では行わない。
+- ルートの`test:e2e`は`playwright test --pass-with-no-tests`とする。Bun 1.4.2はshebangが`node`の実行ファイルを、`bun run`・`bunx --bun`・`bun --bun`のいずれで起動しても`PATH`上の`node`で実行する。そのため開発コンテナではBunのシムで、Nodeのある環境ではNodeで実行される。
 
 ### Base
 
@@ -1065,6 +1096,9 @@ TDDで進め、ルートの単体テスト(`bun run test:unit`)はカバレッ�
     - `foo.test.ts`・`bar.spec.tsx`が検出され、4種の命名は検出されない。
     - bunfigの除外パターンが`TEST_FILE_PATTERNS`・`GENERATED_CODE_PATTERNS`と一致する。
   - `targets.unit.test.ts`: 環境変数でURLを上書きでき、テストの無い対象はプロジェクトにならない(6.7・6.9)。
+  - `playwright-config.unit.test.ts`: 対象ごとに到達確認とテストのプロジェクトが依存付きで作られ、命名パターン・出力先・起動オプション・レポーターが設定どおりで、出力先がGit管理外である(6.4・6.8・6.9)。
+  - `reachability.unit.test.ts`: 一時HTTPサーバーへの応答で成功し、接続拒否・応答待ちの時間切れ・URLの解釈失敗で到達できなかったURLを示して失敗する(6.10)。
+  - `zero-tests-reporter.unit.test.ts`: 実行対象が0件のときだけ0件であることを表示する(6.7)。
   - `eslint.config.base.unit.test.ts`: 非推奨記法が違反になり、書式だけの違いは違反にならず、`*.config.ts`では型情報付きの規則が無効になる(5.4・5.5)。
   - `commitlint.config.unit.test.ts`(4.1〜4.5)
     - `update:`・空の件名・型の無いメッセージを拒否する。
