@@ -683,6 +683,7 @@ export type PlacementState =
   | 'consumer-missing'
   | 'missing'
   | 'content-mismatch'
+  | 'mount-mismatch'
   | 'non-empty-node-modules';
 
 export interface PlacementReport {
@@ -691,11 +692,23 @@ export interface PlacementReport {
   readonly state: PlacementState;
 }
 
+export interface FileIdentity {
+  readonly dev: bigint;
+  readonly ino: bigint;
+}
+
+export type FileIdentityReader = (path: string) => FileIdentity | undefined;
+export type MountPointReader = () => ReadonlySet<string>;
+
 export declare function inspectPlacements(
   repoRoot: string,
+  readIdentity?: FileIdentityReader,
+  readMountPointSet?: MountPointReader,
 ): readonly PlacementReport[];
 export declare function placeByCopy(
   repoRoot: string,
+  readIdentity?: FileIdentityReader,
+  readMountPointSet?: MountPointReader,
 ): readonly PlacementReport[];
 export declare function describeProblem(
   report: PlacementReport,
@@ -706,8 +719,13 @@ export declare function describeProblem(
 - `copied`: 配置先のファイル一覧とサイズが、配置元(node_modules除く)と一致する。
 - `consumer-missing`: 利用側アプリに`package.json`が無いため対象外とし、問題とはしない。
 - `non-empty-node-modules`: 配置先にnode_modulesの中身がある(二重実体の原因)。案内文は「compose.yamlの変更後にコンテナを再作成する」。
-- `missing`・`content-mismatch`: 案内文は「CIでは`bun run shared-dirs:place`を実行する。ローカルではcompose.yamlのマウントを確認する」。
-- `placeByCopy`は、bind mountされていない配置先だけを、node_modulesを除いて削除・再複製する。bind mount先には書き込まない。
+- `missing`・`content-mismatch`: 案内文は「CIでは`bun run shared-dirs:place`を実行する。ローカルではcompose.yamlのマウントを確認する」。配置先が配置元へのシンボリックリンクの場合も`content-mismatch`とする。
+- `mount-mismatch`: 配置先がマウントポイント(`/proc/self/mountinfo`のマウント先)だが、配置元と同じ実体ではない(compose.yamlの誤り)。コピー配置では解消しないため、案内文は「compose.yamlのマウントを確認し、修正後にコンテナを再作成する」。
+- 判定順: `consumer-missing` → `missing` → シンボリックリンクなら`content-mismatch` → `mount-mismatch` → ディレクトリでなければ`content-mismatch` → `non-empty-node-modules` → `bind-mounted` → `copied`または`content-mismatch`。
+- `placeByCopy`は、利用側アプリがある配置先のうち、次のものだけをnode_modulesを除いて削除・再複製する。それ以外には書き込まない。
+  - 配置先が無ければ作成する。配置先そのものがシンボリックリンクなら、リンク自体だけを削除して作成する(リンク先は辿らない)。
+  - マウントポイント、同一性(inode・デバイス)を読めない配置先、配置元と同じ実体の配置先、すでに`copied`と判定される配置先には書き込まない。削除がホスト側の実体や配置元を消すのを防ぐためである。
+- 同一性とマウント情報の読み取りは、テストのため省略可能な引数で差し替えられる。
 
 ##### Batch / Job Contract
 
@@ -1013,6 +1031,7 @@ TDDで進め、ルートの単体テスト(`bun run test:unit`)はカバレッ�
   - `run-all.unit.test.ts`: 失敗があっても後続を実行し、最後に終了コード1を返す。`package.json`が無いアプリは`project-missing`、スクリプトが無いアプリは`script-missing`になる。`--coverage`が各アプリへ渡る(5.7・5.8)。
   - `shared-dirs.unit.test.ts`(8.2・8.4・8.5)
     - 一時ディレクトリで、コピー配置後は`copied`、node_modulesの中身があると`non-empty-node-modules`、配置先が無いと`missing`になる。
+    - 配置元以外のマウントポイントは`mount-mismatch`になり、コピー配置はマウントポイント・同一性を読めない配置先・配置元と同じ実体に書き込まない。
     - `SHARED_DIRS`の配置先がcompose.yamlのbind mount先と一致する。
   - `check-test-names.unit.test.ts`(6.6・7.3)
     - `foo.test.ts`・`bar.spec.tsx`が検出され、4種の命名は検出されない。

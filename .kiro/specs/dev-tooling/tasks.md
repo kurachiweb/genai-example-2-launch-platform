@@ -134,7 +134,7 @@
   - _Depends: 1.3, 1.4, 2.1, 2.2_
   - _Requirements: 6.6, 7.3_
 
-- [ ] 4.2 (P) 共有ディレクトリの配置状態の確認と、CI相当環境でのコピー配置を作る
+- [x] 4.2 (P) 共有ディレクトリの配置状態の確認と、CI相当環境でのコピー配置を作る
   - 各配置先を、bind mount(inode・デバイスが配置元と一致)、コピー(node_modulesを除くファイル一覧とサイズが一致)、利用側アプリ未作成(対象外)、欠落、内容不一致、node_modulesの中身あり(二重実体の原因)のいずれかに判定する
   - 配置元がGit管理下のファイルを持たず新しいcloneに存在しない場合は空のディレクトリとして扱い、コピー配置で空の配置先を作って「コピー」と判定する
   - 問題のある状態ごとに案内文を返す(node_modulesの中身ありはcompose.yaml変更後のコンテナ再作成、欠落・内容不一致はCIでのコピー配置またはローカルのマウント確認)
@@ -336,3 +336,6 @@
 - 4.1: 入口は`bun scripts/tooling/check-test-names.ts`(4.3で`package.json`のスクリプトにする)。`git rev-parse --show-toplevel`のルートで`git ls-files -z --cached --others --exclude-standard`を実行し、重複除去と整列をする。`e2e/`の外にある`*.e2e.test.ts`はどのランナーも実行しないため命名規約外として検出する。
 - 4.1: 書き写した除外パターンと単一定義の一致テストは`check-test-names.unit.test.ts`にあり、bunfigの`pathIgnorePatterns`・`coveragePathIgnorePatterns`、ルートと`--path-ignore-patterns`を使う各アプリの`test:unit`、ESLint基底の`base/ignores`、`.prettierignore`(単一定義の各値の包含)を確かめる。新しいアプリが`test:unit`で除外を指定すると、この一致テストの対象になる。
 - 4.1: 一時Gitリポジトリを使うテストは`GIT_DIR`・`GIT_INDEX_FILE`を引き継ぐため、テストをGitフックの中から実行する変更をする場合は、これらを外して実行すること(`lint-staged.config.unit.test.ts`も同じ)。
+- 4.2: 入口は`bun scripts/tooling/shared-dirs.ts verify|place`(4.3で`shared-dirs:verify`・`shared-dirs:place`のスクリプトにする)。対象リポジトリはスクリプトの位置から決める。compose.yamlとの突き合わせは1.3のとおり`config/workspace-layout.unit.test.ts`にあり、`shared-dirs.ts`のテストは`shared-dirs.unit.test.ts`・`shared-dirs.mount-points.unit.test.ts`・`shared-dirs.write-guards.unit.test.ts`と共通フィクスチャ`test-support/shared-dirs-fixtures.ts`に分けた。
+- 4.2: レビューを受けて状態`mount-mismatch`(配置先が配置元以外のマウントポイント。案内はcompose.yamlの確認とコンテナ再作成)を加え、design.mdの「SharedDirs」節を更新した。`placeByCopy`はマウントポイント・同一性を読めない配置先・配置元と同じ実体・すでに`copied`の配置先に書き込まず、配置先そのものがシンボリックリンクならリンクだけを消して複製する。
+- 4.2(制約): `copied`の判定とplaceの再複製の省略は「種別・パス・サイズ」だけで比べるため、配置元を同じサイズで書き換えた場合やリンク先を同じ長さで張り替えた場合、2回目のplaceは古い内容を残しverifyも成功する。CIは新しいcloneで配置先が無く、開発コンテナではplaceが書き込まないため影響は無い。配置先の内側(node_modules以外)の入れ子マウントは検出しない。7.2の文書に記載する。
