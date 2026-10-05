@@ -182,7 +182,7 @@
   - 完了状態: テストが0件の状態で`bun run test:e2e`が正常終了し、一時的なE2Eテストを置いてアプリ未起動で実行すると到達できないURLを表示して失敗し、その間にブラウザのダウンロードが発生しない(確認後に一時テストは削除する)
   - _Requirements: 6.4, 6.7, 6.8, 6.9, 6.10_
 
-- [ ] 5.4 使い捨ての検証用アプリで、基底設定の継承と一括検査への参加を実測する
+- [x] 5.4 使い捨ての検証用アプリで、基底設定の継承と一括検査への参加を実測する
   - コミット前の成果物も含めるため、node_modulesを除いた作業ツリーのコピーを一時ディレクトリに作り(命名検査がGitのファイル一覧を使うため`.git`も含めるか、コピー後に`git init`と`git add`を行う)、コピーのルートで依存をインストールしたうえで、検査担当が自分自身である`apps/frontend-lib`の位置に、設計のスクリプト契約と主要パッケージ一覧の版で検証用アプリを置く(本リポジトリには置かず、成果物に含めない)
   - 型検査と静的解析の基底設定を継承と差分の指定だけで適用でき、一括検査にそのアプリが参加して成功し、違反を入れると失敗したアプリと検査の種類が表示されることを確かめる
   - アプリのディレクトリで単体テストを実行しても、ルートと同じ除外パターンとカバレッジ閾値が適用されることを確かめる
@@ -349,3 +349,5 @@
 - 5.2(infra-deliveryへの申し送り): 照合に`node:path`の`matchesGlob`を使うため、PlaywrightをNodeで起動する場合はNode 22.5.0・20.17.0以上が必要(推奨24)。検出器はPlaywrightの収集処理と異なり`node_modules`・`.gitignore`対象・ドットで始まるパス(Nodeの`matchesGlob`では不一致)の扱いに差があるが、偽陽性はテスト0件のプロジェクトができるだけで、大文字小文字の違いは命名検査が止める。
 - 5.3: 設計外の`e2e/support/reachability.ts`(`assertE2ETargetReachable`)・`playwright-config.ts`(`createPlaywrightConfig`)・`zero-tests-reporter.ts`(`ZeroTestsReporter`)を追加し、`playwright.config.ts`は結線だけにした(design.md更新済み)。Playwright 1.63.0の標準レポーターは0件時に何も表示しないため、要件6.7の0件表示は`ZeroTestsReporter`が担う。design.mdのRequirements Traceabilityの6.7の行にはまだ載っていない(表全体の再整形を避けたため。7.x以降で表を更新するときにあわせて直す)。到達確認は応答があれば状態コードに関係なく成功し、リダイレクトを辿らず、既定10秒で打ち切る。HTMLレポートは`open: 'never'`。
 - 5.3(infra-deliveryへの申し送り): `test:e2e`(`playwright test`)はshebangによりPATH上の`node`で起動するため、CIでは`node`が必要(開発コンテナではBunのシム)。Nodeで起動する場合は5.2の`matchesGlob`に加え`import.meta.dirname`の版要件もある。`CHROMIUM_PATH`が無い環境では、Playwrightは`chromium_headless_shell-1243`を探すため、CIでは共有Chromiumを`CHROMIUM_PATH`で渡すかそのリビジョンを導入する。
+- 5.4: 一時コピー(`git clone`)の`apps/frontend-lib`に検証用アプリを置いて実測し、本リポジトリとの不一致は無かった。最小構成(AppScriptContractどおりの`package.json`、`extends`・`types: ["bun"]`・`include`だけの`tsconfig.json`、`createBaseConfig`へモジュールを渡すだけの`eslint.config.ts`。Prettierの設定ファイルと`.gitignore`は不要)の全文と実測結果はスクラッチの`5.4-evidence.md`にあり、7.1の文書の材料にする。
+- 5.4(7.1・7.3への申し送り): 一括検査の整形検査はルートで1回だけ実行されるため、表の対象は「ルート」になり、失敗したアプリはPrettierの`[warn]`行のリポジトリ相対パスで特定する(設計どおりで要件5.7を満たす)。アプリの`tsconfig.json`の`include`に`*.ts`を含めると`eslint.config.base.ts`も型検査され、型はルートのnode_modulesから解決されるため、ルートの`bun install`と版の一致が前提になる。アプリの`test:unit`の`--config=../../bunfig.toml`は必須(外すと除外・閾値・lcovのどれも効かない)。lcovの出力先と`SF:`のパスは実行ディレクトリ基準のため、CIで複数アプリのlcovを合算するときはアプリのディレクトリを前に付ける(infra-deliveryへの申し送り)。
