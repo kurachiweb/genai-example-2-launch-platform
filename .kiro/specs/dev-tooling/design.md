@@ -621,9 +621,20 @@ export type AggregateTask =
 export type AggregateCommand = 'check' | AggregateTask;
 export type RunTarget = 'root' | AppName;
 
+export type FailureReason = 'package-json-unreadable' | 'command-unrunnable';
+
+export interface FailureCause {
+  readonly reason: FailureReason;
+  readonly detail: string;
+}
+
 export type StepOutcome =
   | { readonly status: 'passed' }
-  | { readonly status: 'failed'; readonly exitCode: number }
+  | {
+      readonly status: 'failed';
+      readonly exitCode: number;
+      readonly cause?: FailureCause;
+    }
   | {
       readonly status: 'skipped';
       readonly reason: 'project-missing' | 'script-missing';
@@ -654,15 +665,22 @@ export declare function runAggregate(
 ): Promise<readonly StepResult[]>;
 
 export declare function formatSummary(results: readonly StepResult[]): string;
+export declare function formatFailureCauses(
+  results: readonly StepResult[],
+): string;
 export declare function exitCodeOf(results: readonly StepResult[]): 0 | 1;
 ```
+
+- `readPackageScripts`は、`package.json`が無ければ`undefined`を返し、読めない・解釈できない(最上位がオブジェクトでない、`scripts`が値がすべて文字列のオブジェクトでない)場合は例外を投げる。`runAggregate`はこの例外と、コマンドを起動できない例外を捕まえ、その段階・対象を`cause`付きの失敗(`exitCode: 1`)として記録して後続を続ける(5.7)。
+- `bun run`は親ディレクトリの`package.json`を探索するため、`package.json`とスクリプトの有無を実行前に確かめ、無ければ飛ばす。
 
 ##### Batch / Job Contract
 
 - Trigger: `bun run check`・`bun run test:all:unit`・`bun run test:all:browser`・`bun run test:all:worker`。
 - `check`の段階: 共有ディレクトリの配置確認 → テスト命名検査 → ルートの`format:check` → ルートと各アプリの`lint` → ルートと各アプリの`typecheck`。
 - `test:all:*`: ルートと各アプリの同名スクリプト(`test:all:unit`なら`test:unit`)を、`forwardedArgs`付きで実行する。
-- 出力: 段階・対象・結果(成功/失敗と終了コード/飛ばした理由)の表を表示し、1つでも失敗があれば終了コード1で終える。
+- 出力: 段階・対象・結果(成功/失敗と終了コードまたは原因/飛ばした理由)の表を表示し、`cause`付きの失敗があれば原因(リポジトリ相対パスと理由)を重複を除いて続けて表示する。1つでも失敗があれば終了コード1で終える。
+- `check`は追加の引数を受け取らない(余分な引数で失敗する段階があるため)。配置確認と命名検査は、ルートのスクリプト`shared-dirs:verify`・`check:test-names`として実行する。
 - 冪等性: 読み取り専用の検査だけを実行する。
 
 #### SharedDirs

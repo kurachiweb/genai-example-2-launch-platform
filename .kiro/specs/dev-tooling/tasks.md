@@ -145,7 +145,7 @@
   - _Depends: 1.3_
   - _Requirements: 8.2, 8.4, 8.5, 8.6_
 
-- [ ] 4.3 一括検査と全アプリのテスト一括実行を作り、ルートのコマンドとして公開する
+- [x] 4.3 一括検査と全アプリのテスト一括実行を作り、ルートのコマンドとして公開する
   - 一括検査は、共有ディレクトリの配置確認、テスト命名の検査、ルートの整形検査、ルートと各アプリの静的解析、ルートと各アプリの型検査の順に、前段の失敗で止めずにすべて実行する
   - テスト種別ごとの一括実行は、ルートと各アプリの同名スクリプトを、渡された引数(`--coverage`など)付きで実行する
   - アプリに`package.json`が無い場合はプロジェクト未作成、スクリプトが無い場合はスクリプト未定義として飛ばし、他の対象を続ける
@@ -339,3 +339,6 @@
 - 4.2: 入口は`bun scripts/tooling/shared-dirs.ts verify|place`(4.3で`shared-dirs:verify`・`shared-dirs:place`のスクリプトにする)。対象リポジトリはスクリプトの位置から決める。compose.yamlとの突き合わせは1.3のとおり`config/workspace-layout.unit.test.ts`にあり、`shared-dirs.ts`のテストは`shared-dirs.unit.test.ts`・`shared-dirs.mount-points.unit.test.ts`・`shared-dirs.write-guards.unit.test.ts`と共通フィクスチャ`test-support/shared-dirs-fixtures.ts`に分けた。
 - 4.2: レビューを受けて状態`mount-mismatch`(配置先が配置元以外のマウントポイント。案内はcompose.yamlの確認とコンテナ再作成)を加え、design.mdの「SharedDirs」節を更新した。`placeByCopy`はマウントポイント・同一性を読めない配置先・配置元と同じ実体・すでに`copied`の配置先に書き込まず、配置先そのものがシンボリックリンクならリンクだけを消して複製する。
 - 4.2(制約): `copied`の判定とplaceの再複製の省略は「種別・パス・サイズ」だけで比べるため、配置元を同じサイズで書き換えた場合やリンク先を同じ長さで張り替えた場合、2回目のplaceは古い内容を残しverifyも成功する。CIは新しいcloneで配置先が無く、開発コンテナではplaceが書き込まないため影響は無い。配置先の内側(node_modules以外)の入れ子マウントは検出しない。7.2の文書に記載する。
+- 4.3: ルートのスクリプトは`check`・`check:test-names`・`test:all:unit`・`test:all:browser`・`test:all:worker`・`shared-dirs:verify`・`shared-dirs:place`。`check`は追加の引数を受け取らず、配置確認と命名検査はルートのスクリプトとして`bun run`で呼ぶ(ルートのスクリプトが消えると飛ばされるため、実際のルート`package.json`でルートの段階が飛ばされないことを単体テストで確かめている)。入口は`lint`・`typecheck`の単独指定も受け付けるが、ルートのスクリプトは無い。
+- 4.3: `bun run`は親ディレクトリの`package.json`を探索するため、各アプリの`package.json`とスクリプトの有無を実行前に確かめる。読めない`package.json`とコマンドを起動できない場合は、その段階・対象を`cause`付きの失敗として記録して後続を続け、表の後に原因を表示する(差し戻し後に追加し、design.mdの「AggregateRunner」節を更新した)。テストは`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`と補助の`test-support/run-all-fixtures.ts`。
+- 4.3(制約): `readPackageScripts`は`existsSync`で存在を判定するため、リンク先の無いシンボリックリンクの`package.json`や辿れないディレクトリは「プロジェクト未作成」として飛ばされる(表には出る)。
