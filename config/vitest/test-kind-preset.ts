@@ -21,8 +21,12 @@ export interface CoveragePreset {
 export interface TestKindPreset {
   readonly include: string[];
   readonly passWithNoTests: true;
+  readonly attachmentsDir: string;
   readonly coverage: CoveragePreset;
 }
+
+// Vitestの既定値と同じだが、Git管理外にする出力先として.gitignoreと突き合わせるため明示する
+const ATTACHMENTS_DIR = '.vitest-attachments';
 
 // アプリが指定するcoverage.includeは未読込のファイルも分母に含めるため、実行中の種別以外のテストファイルも明示的に外す
 const COVERAGE_EXCLUDE_PATTERNS: readonly string[] = [
@@ -37,6 +41,7 @@ export function createTestKindPreset(
   return {
     include: [...TEST_FILE_PATTERNS[kind]],
     passWithNoTests: true,
+    attachmentsDir: ATTACHMENTS_DIR,
     coverage: {
       provider,
       reportsDirectory: `coverage/${kind}`,

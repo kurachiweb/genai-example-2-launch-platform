@@ -190,7 +190,7 @@
   - _Depends: 4.3_
   - _Requirements: 5.2, 5.7, 6.1, 6.5_
 
-- [ ] 5.5 使い捨ての検証用アプリで、ブラウザテストのカバレッジ判定と共有Chromiumの利用を実測する
+- [x] 5.5 使い捨ての検証用アプリで、ブラウザテストのカバレッジ判定と共有Chromiumの利用を実測する
   - 5.4と同じ方法の作業ツリーのコピーで、検証用アプリにブラウザテストの共通設定値を取り込む設定とブラウザテストを加える(5.4のコピーを使い回してよい)
   - ブラウザテスト(V8)で、閾値未達時に未達の指標と実測値を表示して失敗し、lcovがブラウザテスト用の出力先に生成され、対象0件で成功し、計測無効時は判定されないことを確かめる
   - ブラウザテストが共有Chromiumで動き、ブラウザを追加でダウンロードしないことを確かめる
@@ -351,3 +351,6 @@
 - 5.3(infra-deliveryへの申し送り): `test:e2e`(`playwright test`)はshebangによりPATH上の`node`で起動するため、CIでは`node`が必要(開発コンテナではBunのシム)。Nodeで起動する場合は5.2の`matchesGlob`に加え`import.meta.dirname`の版要件もある。`CHROMIUM_PATH`が無い環境では、Playwrightは`chromium_headless_shell-1243`を探すため、CIでは共有Chromiumを`CHROMIUM_PATH`で渡すかそのリビジョンを導入する。
 - 5.4: 一時コピー(`git clone`)の`apps/frontend-lib`に検証用アプリを置いて実測し、本リポジトリとの不一致は無かった。最小構成(AppScriptContractどおりの`package.json`、`extends`・`types: ["bun"]`・`include`だけの`tsconfig.json`、`createBaseConfig`へモジュールを渡すだけの`eslint.config.ts`。Prettierの設定ファイルと`.gitignore`は不要)の全文と実測結果はスクラッチの`5.4-evidence.md`にあり、7.1の文書の材料にする。
 - 5.4(7.1・7.3への申し送り): 一括検査の整形検査はルートで1回だけ実行されるため、表の対象は「ルート」になり、失敗したアプリはPrettierの`[warn]`行のリポジトリ相対パスで特定する(設計どおりで要件5.7を満たす)。アプリの`tsconfig.json`の`include`に`*.ts`を含めると`eslint.config.base.ts`も型検査され、型はルートのnode_modulesから解決されるため、ルートの`bun install`と版の一致が前提になる。アプリの`test:unit`の`--config=../../bunfig.toml`は必須(外すと除外・閾値・lcovのどれも効かない)。lcovの出力先と`SF:`のパスは実行ディレクトリ基準のため、CIで複数アプリのlcovを合算するときはアプリのディレクトリを前に付ける(infra-deliveryへの申し送り)。
+- 5.5(開発者判断済み): ブラウザ・Workers統合テストでは、テストが0件でも`coverage.include`に一致するソースがあれば`--coverage`付きの実行は0%として閾値で失敗する(Vitestは未読込ファイルを分母に含める)。要件6.7は計測無効の実行、要件7.1は計測有効の実行に適用されると解釈し、design.mdの「VitestPresets」節と追跡表6.7の行に明記した(6.7の行には5.3の`ZeroTestsReporter`も追記済み)。7.3の文書に、各アプリが`coverage.include`をその種別が担当するソースに絞ることとあわせて記載する。
+- 5.5(開発者判断済み): 失敗時のスクリーンショットと`.vitest-attachments`をGit管理外にするため、`browserOptionsPreset`(`screenshotDirectory: '.vitest-attachments/screenshots'`と、基準画像の保存先をVitest 4.1.11の既定と同じ`<テストのディレクトリ>/__screenshots__/<テストファイル名>/<名前>-<ブラウザ>-<OS><拡張子>`に固定する`expect.toMatchScreenshot.resolveScreenshotPath`)と`TestKindPreset.attachmentsDir`を加え、ルートの`.gitignore`に`.vitest-attachments`を加えた。`screenshotDirectory`だけを指定すると基準画像の保存先が壊れる(`@vitest/browser/dist/index.js`の2102行)ため、Vitestの更新時は`resolveScreenshotPath`の再確認を主要パッケージ一覧の「更新時の確認事項」(7.1)に載せる。設計外の`test-support/git-ignore.ts`(`isGitIgnored`)を追加した(7.6でCLAUDE.mdのディレクトリ構成に反映)。
+- 5.5(7.3への申し送り): アプリは`test: { ...browserTestPreset, coverage: { ...browserTestPreset.coverage, include }, browser: { ...browserOptionsPreset, provider: playwright({ launchOptions: resolveBrowserLaunchOptions(process.env) }), instances: [...] } }`のように入れ子も展開する。`coverage`や`browser`の展開を漏らすと閾値・lcov・出力先・失敗時の画像の出力先が失われ、型検査・静的解析では検出できない。閾値未達はファイル単位の判定でも`does not meet global threshold`と表示される。AIエージェントから実行するとVitestの出力形式が変わる(テストファイルごとの行・色・100%のファイルが省かれる)が、終了コードと`ERROR`行は変わらない。実測の全文はスクラッチの`5.5-evidence.md`。

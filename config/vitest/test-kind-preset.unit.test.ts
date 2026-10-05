@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 
+import { isGitIgnored } from '../../test-support/git-ignore.ts';
 import { valueModuleReferencesOf } from '../../test-support/module-references.ts';
 import {
   COVERAGE_THRESHOLD_PERCENT,
@@ -27,11 +28,6 @@ const presets: readonly (readonly [string, TestKindPreset])[] = [
 
 const matchesAny = (patterns: readonly string[], path: string): boolean =>
   patterns.some((pattern) => new Bun.Glob(pattern).match(path));
-
-const isGitIgnored = (path: string): boolean =>
-  Bun.spawnSync(['git', 'check-ignore', '--no-index', '--quiet', path], {
-    cwd: REPO_ROOT,
-  }).exitCode === 0;
 
 describe.each(presets)('%s', (_name, preset) => {
   test('対象が0件でも成功させる', () => {
@@ -86,7 +82,24 @@ describe.each(presets)('%s', (_name, preset) => {
     (appDir) => {
       expect(
         isGitIgnored(
+          REPO_ROOT,
           join(appDir, preset.coverage.reportsDirectory, 'lcov.info'),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  test('添付ファイル・画像比較の差分などのテスト成果物をVitestの既定の出力先へ明示して出す', () => {
+    expect(preset.attachmentsDir).toBe('.vitest-attachments');
+  });
+
+  test.each(APPS.map(({ dir }) => dir))(
+    '%sでのテスト成果物の出力先がGit管理外である',
+    (appDir) => {
+      expect(
+        isGitIgnored(
+          REPO_ROOT,
+          join(appDir, preset.attachmentsDir, 'components/diff-1.png'),
         ),
       ).toBe(true);
     },
@@ -122,6 +135,7 @@ describe('プリセットの型', () => {
     expectTypeOf<TestKindPreset>().toEqualTypeOf<{
       readonly include: string[];
       readonly passWithNoTests: true;
+      readonly attachmentsDir: string;
       readonly coverage: CoveragePreset;
     }>();
   });

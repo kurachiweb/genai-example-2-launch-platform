@@ -13,6 +13,7 @@ describe('workerTestPreset', () => {
     expect(workerTestPreset).toStrictEqual({
       include: [...TEST_FILE_PATTERNS.worker],
       passWithNoTests: true,
+      attachmentsDir: '.vitest-attachments',
       coverage: {
         provider: 'istanbul',
         reportsDirectory: 'coverage/worker',

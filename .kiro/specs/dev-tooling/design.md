@@ -164,7 +164,7 @@ graph TB
 │   ├── workspace-layout.ts         # アプリ一覧、共有ディレクトリの配置先と検査担当、品質ゲート対象外
 │   ├── test-patterns.ts            # 4種の命名パターン、生成コードのパターン、カバレッジ閾値
 │   └── vitest/
-│       ├── browser.ts              # ブラウザテストのプリセット(V8カバレッジ・共有Chromium)
+│       ├── browser.ts              # ブラウザテストのプリセット(V8カバレッジ・共有Chromium・失敗時のスクリーンショットと基準画像の置き場所)
 │       └── worker.ts               # Workers統合テストのプリセット(Istanbulカバレッジ)
 ├── scripts/tooling/
 │   ├── install-git-hooks.ts        # prepare: CI・非Git環境ではフック導入を飛ばす
@@ -214,6 +214,7 @@ graph TB
 
 ### Modified Files
 
+- `.gitignore`: Vitestのテスト成果物の出力先`.vitest-attachments`(VitestPresetsの`attachmentsDir`)を加える。
 - `bunfig.toml`
   - `pathIgnorePatterns`に`**/*.e2e.test.ts`を加える。
   - `coverageReporter = ["text", "lcov"]`・`coverageDir = "coverage/unit"`・`coveragePathIgnorePatterns`(生成コード)を加える。
@@ -279,79 +280,79 @@ graph TB
 
 ## Requirements Traceability
 
-| Requirement | Summary                                    | Components                                               | Interfaces                                                | Flows            |
-| ----------- | ------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------- | ---------------- |
-| 1.1         | インストールでフック有効化                 | GitHookInstaller                                         | `installGitHooks`                                         | —                |
-| 1.2         | 非Git・CIでは飛ばして成功                  | GitHookInstaller                                         | `HookInstallResult`                                       | —                |
-| 1.3         | フック定義をリポジトリで管理               | PreCommitHook・CommitMsgHook                             | `.husky/*`                                                | —                |
-| 2.1         | ステージ済みだけ自動修正しコミットに含める | LintStagedConfig・StagedTaskPlanner                      | `planStagedTasks`・`toCommands`                           | コミット時の検査 |
-| 2.2         | 修正不能な違反で中止                       | LintStagedConfig                                         | ESLintの終了コード                                        | コミット時の検査 |
-| 2.3         | 部分ステージの保護                         | LintStagedConfig                                         | lint-stagedの退避機能                                     | コミット時の検査 |
-| 2.4         | 対象外ファイルを変更しない                 | StagedTaskPlanner・PrettierConfig                        | `EXCLUDED_PATH_PREFIXES`・`.prettierignore`               | —                |
-| 2.5         | マークダウン等も整形                       | StagedTaskPlanner・PrettierConfig                        | `--ignore-unknown`                                        | —                |
-| 3.1         | ステージ済み差分のシークレット検出         | PreCommitHook                                            | `betterleaks git --pre-commit --staged`                   | コミット時の検査 |
-| 3.2         | 検出で中止し場所と規則を表示               | PreCommitHook                                            | `--verbose`                                               | コミット時の検査 |
-| 3.3         | 値を伏せる                                 | PreCommitHook                                            | `--redact`                                                | —                |
-| 3.4         | 許可リスト                                 | SecretScanAllowlist                                      | `.betterleaksignore`                                      | —                |
-| 3.5         | ツールが無ければ中止して案内               | PreCommitHook                                            | 存在確認                                                  | コミット時の検査 |
-| 3.6         | mockups含む全ステージ済みファイル          | PreCommitHook                                            | パス指定なしの検査                                        | —                |
-| 4.1         | 書式と型の検査                             | CommitlintConfig・CommitMsgHook                          | `type-enum`ほか                                           | コミット時の検査 |
-| 4.2         | 違反内容と許可された型の表示               | CommitlintConfig                                         | commitlintの出力                                          | —                |
-| 4.3         | 型一覧をGit規約と一致                      | CommitlintConfig                                         | `ALLOWED_COMMIT_TYPES`                                    | —                |
-| 4.4         | スコープ・言語・長さで拒否しない           | CommitlintConfig                                         | 規則を3つに限定                                           | —                |
-| 4.5         | マージ・リバートは受け入れ                 | CommitlintConfig                                         | commitlint既定の除外                                      | —                |
-| 5.1         | 基底設定をルートに1つずつ                  | TsconfigBase・EslintBase・PrettierConfig                 | 各ファイル                                                | —                |
-| 5.2         | 継承と差分で同基準                         | EslintBase・TsconfigBase                                 | `createBaseConfig`・`extends`                             | —                |
-| 5.3         | JS系設定はTS形式                           | 全設定ファイル                                           | `*.config.ts`                                             | —                |
-| 5.4         | 書式違いを報告しない                       | EslintBase                                               | `prettierConfig`を最後に適用                              | —                |
-| 5.5         | 非推奨API・記法を報告                      | EslintBase                                               | `no-deprecated`・`no-restricted-globals`                  | —                |
-| 5.6         | 厳格な型検査                               | TsconfigBase                                             | `strict`・`noUncheckedIndexedAccess`                      | —                |
-| 5.7         | 一括検査と失敗の表示                       | AggregateRunner                                          | `runAggregate`・`formatSummary`                           | 一括検査         |
-| 5.8         | 未作成アプリを飛ばす                       | AggregateRunner                                          | `StepOutcome.skipped`                                     | 一括検査         |
-| 5.9         | mockupsを含めない                          | WorkspaceLayout・PrettierConfig・StagedTaskPlanner       | `QUALITY_GATE_EXCLUDED_DIRS`                              | —                |
-| 6.1         | 単体テストの対象                           | BunTestConfig・AppScriptContract                         | `test:unit`                                               | —                |
-| 6.2         | ブラウザテストの対象                       | VitestPresets                                            | `browserTestPreset.include`                               | —                |
-| 6.3         | Workers統合テストの対象                    | VitestPresets                                            | `workerTestPreset.include`                                | —                |
-| 6.4         | E2Eの対象                                  | E2EConfig・TestPatterns                                  | `TEST_FILE_PATTERNS.e2e`                                  | —                |
-| 6.5         | アプリ内でも共通テスト設定                 | BunTestConfig・AppScriptContract                         | `--config=../../bunfig.toml`                              | —                |
-| 6.6         | 命名規約外のファイルで一括検査失敗         | TestNameChecker・AggregateRunner                         | `findMisnamedTestFiles`                                   | 一括検査         |
-| 6.7         | 0件なら成功し0件と表示                     | AppScriptContract・VitestPresets・E2EConfig              | `--pass-with-no-tests`・`passWithNoTests`                 | —                |
-| 6.8         | 共有ブラウザを使いダウンロードしない       | VitestPresets・E2EConfig                                 | `resolveBrowserLaunchOptions`                             | —                |
-| 6.9         | E2E設定の雛形                              | E2EConfig                                                | `resolveE2ETargets`・`resolveE2EProjects`                 | —                |
-| 6.10        | 到達できないURLを示して失敗                | E2EConfig                                                | `reachability.setup.ts`・`assertE2ETargetReachable`       | —                |
-| 6.11        | シークレットは実行時注入                   | TestingDocs・AppScriptContract                           | `infisical run`                                           | —                |
-| 7.1         | 80%未満で失敗し指標と実測値を表示          | BunTestConfig・VitestPresets・TestPatterns               | `COVERAGE_THRESHOLD_PERCENT`                              | —                |
-| 7.2         | 計測無効時は判定しない                     | BunTestConfig・VitestPresets                             | `--coverage`指定時のみ                                    | —                |
-| 7.3         | テストファイル・生成コードを除外           | BunTestConfig・VitestPresets・TestPatterns               | `GENERATED_CODE_PATTERNS`                                 | —                |
-| 7.4         | 機械可読形式でGit管理外へ出力              | BunTestConfig・VitestPresets                             | lcov・`coverage/*`                                        | —                |
-| 8.1         | コンテナ内で配置どおり解決                 | SharedDirMounts・WorkspaceLayout                         | compose.yaml                                              | —                |
-| 8.2         | CI相当環境で同じ結果                       | SharedDirs                                               | `placeByCopy`                                             | —                |
-| 8.3         | 利用側の型検査・変換設定で検査             | WorkspaceLayout・StagedTaskPlanner・SharedDirectoriesDoc | `checkedBy`・共有ディレクトリ直下にtsconfigを置かない規則 | —                |
-| 8.4         | 二重実体を作らない                         | SharedDirMounts・SharedDirs                              | 配置先node_modulesが空であることの確認                    | —                |
-| 8.5         | 配置不備を先に示して失敗                   | SharedDirs・AggregateRunner                              | `inspectPlacements`                                       | 一括検査         |
-| 8.6         | CI用の再現手段                             | SharedDirs                                               | `shared-dirs:place`                                       | —                |
-| 8.7         | 最小構成での検証と記録                     | SharedDirectoriesDoc                                     | 検証手順と結果                                            | —                |
-| 9.1         | 主要パッケージ一覧の記載                   | DependencyVersionsDoc                                    | —                                                         | —                |
-| 9.2         | 一覧に含めるもの                           | DependencyVersionsDoc                                    | —                                                         | —                |
-| 9.3         | 追加・更新の手順と版指定なし追加の禁止     | DependencyVersionsDoc                                    | —                                                         | —                |
-| 9.4         | ルートのE2Eツールを一覧の版で導入          | RootPackage                                              | `@playwright/test` 1.63.0                                 | —                |
-| 9.5         | 4箇所の整合とMCP起動確認                   | BrowserToolVersionsDoc・RootPackage                      | Dockerfile・`.mcp.json`                                   | —                |
-| 9.6         | 更新手順の記載                             | BrowserToolVersionsDoc                                   | —                                                         | —                |
-| 10.1        | 9サブディレクトリと索引                    | TechDocsIndex                                            | —                                                         | —                |
-| 10.2        | 範囲・文書一覧・未収録の明示               | TechDocsIndex                                            | —                                                         | —                |
-| 10.3        | READMEの索引から辿れる                     | TechDocsIndex                                            | README.md                                                 | —                |
-| 10.4        | codingの初版                               | CodingDocs                                               | —                                                         | —                |
-| 10.5        | testingの初版                              | TestingDocs                                              | —                                                         | —                |
-| 10.6        | プロジェクト固有の内容を含まない           | TechDocsIndex・全tech文書                                | 記述規則                                                  | —                |
-| 10.7        | 1項目の追記で辿れる形式                    | TechDocsIndex                                            | 索引の表形式                                              | —                |
-| 10.8        | tech-stack.mdへの記載                      | OnboardingUpdates                                        | —                                                         | —                |
-| 10.9        | オンボーディングの更新                     | OnboardingUpdates                                        | —                                                         | —                |
-| 11.1        | 全規則の移設                               | RuleMigration                                            | 移設対応表                                                | —                |
-| 11.2        | 汎用的な表現                               | RuleMigration                                            | —                                                         | —                |
-| 11.3        | 1対1の対応付け                             | RuleMigration                                            | 移設対応表                                                | —                |
-| 11.4        | リンク一覧への置き換え                     | RuleMigration                                            | CLAUDE.md                                                 | —                |
-| 11.5        | 参照すべき作業の明示                       | RuleMigration                                            | CLAUDE.md                                                 | —                |
-| 11.6        | 固有値をtech以外に残す                     | RuleMigration                                            | `docs/onboardings/project-values.md`                      | —                |
+| Requirement | Summary                                    | Components                                               | Interfaces                                                                                                               | Flows            |
+| ----------- | ------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| 1.1         | インストールでフック有効化                 | GitHookInstaller                                         | `installGitHooks`                                                                                                        | —                |
+| 1.2         | 非Git・CIでは飛ばして成功                  | GitHookInstaller                                         | `HookInstallResult`                                                                                                      | —                |
+| 1.3         | フック定義をリポジトリで管理               | PreCommitHook・CommitMsgHook                             | `.husky/*`                                                                                                               | —                |
+| 2.1         | ステージ済みだけ自動修正しコミットに含める | LintStagedConfig・StagedTaskPlanner                      | `planStagedTasks`・`toCommands`                                                                                          | コミット時の検査 |
+| 2.2         | 修正不能な違反で中止                       | LintStagedConfig                                         | ESLintの終了コード                                                                                                       | コミット時の検査 |
+| 2.3         | 部分ステージの保護                         | LintStagedConfig                                         | lint-stagedの退避機能                                                                                                    | コミット時の検査 |
+| 2.4         | 対象外ファイルを変更しない                 | StagedTaskPlanner・PrettierConfig                        | `EXCLUDED_PATH_PREFIXES`・`.prettierignore`                                                                              | —                |
+| 2.5         | マークダウン等も整形                       | StagedTaskPlanner・PrettierConfig                        | `--ignore-unknown`                                                                                                       | —                |
+| 3.1         | ステージ済み差分のシークレット検出         | PreCommitHook                                            | `betterleaks git --pre-commit --staged`                                                                                  | コミット時の検査 |
+| 3.2         | 検出で中止し場所と規則を表示               | PreCommitHook                                            | `--verbose`                                                                                                              | コミット時の検査 |
+| 3.3         | 値を伏せる                                 | PreCommitHook                                            | `--redact`                                                                                                               | —                |
+| 3.4         | 許可リスト                                 | SecretScanAllowlist                                      | `.betterleaksignore`                                                                                                     | —                |
+| 3.5         | ツールが無ければ中止して案内               | PreCommitHook                                            | 存在確認                                                                                                                 | コミット時の検査 |
+| 3.6         | mockups含む全ステージ済みファイル          | PreCommitHook                                            | パス指定なしの検査                                                                                                       | —                |
+| 4.1         | 書式と型の検査                             | CommitlintConfig・CommitMsgHook                          | `type-enum`ほか                                                                                                          | コミット時の検査 |
+| 4.2         | 違反内容と許可された型の表示               | CommitlintConfig                                         | commitlintの出力                                                                                                         | —                |
+| 4.3         | 型一覧をGit規約と一致                      | CommitlintConfig                                         | `ALLOWED_COMMIT_TYPES`                                                                                                   | —                |
+| 4.4         | スコープ・言語・長さで拒否しない           | CommitlintConfig                                         | 規則を3つに限定                                                                                                          | —                |
+| 4.5         | マージ・リバートは受け入れ                 | CommitlintConfig                                         | commitlint既定の除外                                                                                                     | —                |
+| 5.1         | 基底設定をルートに1つずつ                  | TsconfigBase・EslintBase・PrettierConfig                 | 各ファイル                                                                                                               | —                |
+| 5.2         | 継承と差分で同基準                         | EslintBase・TsconfigBase                                 | `createBaseConfig`・`extends`                                                                                            | —                |
+| 5.3         | JS系設定はTS形式                           | 全設定ファイル                                           | `*.config.ts`                                                                                                            | —                |
+| 5.4         | 書式違いを報告しない                       | EslintBase                                               | `prettierConfig`を最後に適用                                                                                             | —                |
+| 5.5         | 非推奨API・記法を報告                      | EslintBase                                               | `no-deprecated`・`no-restricted-globals`                                                                                 | —                |
+| 5.6         | 厳格な型検査                               | TsconfigBase                                             | `strict`・`noUncheckedIndexedAccess`                                                                                     | —                |
+| 5.7         | 一括検査と失敗の表示                       | AggregateRunner                                          | `runAggregate`・`formatSummary`                                                                                          | 一括検査         |
+| 5.8         | 未作成アプリを飛ばす                       | AggregateRunner                                          | `StepOutcome.skipped`                                                                                                    | 一括検査         |
+| 5.9         | mockupsを含めない                          | WorkspaceLayout・PrettierConfig・StagedTaskPlanner       | `QUALITY_GATE_EXCLUDED_DIRS`                                                                                             | —                |
+| 6.1         | 単体テストの対象                           | BunTestConfig・AppScriptContract                         | `test:unit`                                                                                                              | —                |
+| 6.2         | ブラウザテストの対象                       | VitestPresets                                            | `browserTestPreset.include`                                                                                              | —                |
+| 6.3         | Workers統合テストの対象                    | VitestPresets                                            | `workerTestPreset.include`                                                                                               | —                |
+| 6.4         | E2Eの対象                                  | E2EConfig・TestPatterns                                  | `TEST_FILE_PATTERNS.e2e`                                                                                                 | —                |
+| 6.5         | アプリ内でも共通テスト設定                 | BunTestConfig・AppScriptContract                         | `--config=../../bunfig.toml`                                                                                             | —                |
+| 6.6         | 命名規約外のファイルで一括検査失敗         | TestNameChecker・AggregateRunner                         | `findMisnamedTestFiles`                                                                                                  | 一括検査         |
+| 6.7         | 0件なら成功し0件と表示                     | AppScriptContract・VitestPresets・E2EConfig              | `--pass-with-no-tests`・`passWithNoTests`・`ZeroTestsReporter`(計測有効時の扱いはVitestPresetsの「対象0件と計測の関係」) | —                |
+| 6.8         | 共有ブラウザを使いダウンロードしない       | VitestPresets・E2EConfig                                 | `resolveBrowserLaunchOptions`                                                                                            | —                |
+| 6.9         | E2E設定の雛形                              | E2EConfig                                                | `resolveE2ETargets`・`resolveE2EProjects`                                                                                | —                |
+| 6.10        | 到達できないURLを示して失敗                | E2EConfig                                                | `reachability.setup.ts`・`assertE2ETargetReachable`                                                                      | —                |
+| 6.11        | シークレットは実行時注入                   | TestingDocs・AppScriptContract                           | `infisical run`                                                                                                          | —                |
+| 7.1         | 80%未満で失敗し指標と実測値を表示          | BunTestConfig・VitestPresets・TestPatterns               | `COVERAGE_THRESHOLD_PERCENT`                                                                                             | —                |
+| 7.2         | 計測無効時は判定しない                     | BunTestConfig・VitestPresets                             | `--coverage`指定時のみ                                                                                                   | —                |
+| 7.3         | テストファイル・生成コードを除外           | BunTestConfig・VitestPresets・TestPatterns               | `GENERATED_CODE_PATTERNS`                                                                                                | —                |
+| 7.4         | 機械可読形式でGit管理外へ出力              | BunTestConfig・VitestPresets                             | lcov・`coverage/*`                                                                                                       | —                |
+| 8.1         | コンテナ内で配置どおり解決                 | SharedDirMounts・WorkspaceLayout                         | compose.yaml                                                                                                             | —                |
+| 8.2         | CI相当環境で同じ結果                       | SharedDirs                                               | `placeByCopy`                                                                                                            | —                |
+| 8.3         | 利用側の型検査・変換設定で検査             | WorkspaceLayout・StagedTaskPlanner・SharedDirectoriesDoc | `checkedBy`・共有ディレクトリ直下にtsconfigを置かない規則                                                                | —                |
+| 8.4         | 二重実体を作らない                         | SharedDirMounts・SharedDirs                              | 配置先node_modulesが空であることの確認                                                                                   | —                |
+| 8.5         | 配置不備を先に示して失敗                   | SharedDirs・AggregateRunner                              | `inspectPlacements`                                                                                                      | 一括検査         |
+| 8.6         | CI用の再現手段                             | SharedDirs                                               | `shared-dirs:place`                                                                                                      | —                |
+| 8.7         | 最小構成での検証と記録                     | SharedDirectoriesDoc                                     | 検証手順と結果                                                                                                           | —                |
+| 9.1         | 主要パッケージ一覧の記載                   | DependencyVersionsDoc                                    | —                                                                                                                        | —                |
+| 9.2         | 一覧に含めるもの                           | DependencyVersionsDoc                                    | —                                                                                                                        | —                |
+| 9.3         | 追加・更新の手順と版指定なし追加の禁止     | DependencyVersionsDoc                                    | —                                                                                                                        | —                |
+| 9.4         | ルートのE2Eツールを一覧の版で導入          | RootPackage                                              | `@playwright/test` 1.63.0                                                                                                | —                |
+| 9.5         | 4箇所の整合とMCP起動確認                   | BrowserToolVersionsDoc・RootPackage                      | Dockerfile・`.mcp.json`                                                                                                  | —                |
+| 9.6         | 更新手順の記載                             | BrowserToolVersionsDoc                                   | —                                                                                                                        | —                |
+| 10.1        | 9サブディレクトリと索引                    | TechDocsIndex                                            | —                                                                                                                        | —                |
+| 10.2        | 範囲・文書一覧・未収録の明示               | TechDocsIndex                                            | —                                                                                                                        | —                |
+| 10.3        | READMEの索引から辿れる                     | TechDocsIndex                                            | README.md                                                                                                                | —                |
+| 10.4        | codingの初版                               | CodingDocs                                               | —                                                                                                                        | —                |
+| 10.5        | testingの初版                              | TestingDocs                                              | —                                                                                                                        | —                |
+| 10.6        | プロジェクト固有の内容を含まない           | TechDocsIndex・全tech文書                                | 記述規則                                                                                                                 | —                |
+| 10.7        | 1項目の追記で辿れる形式                    | TechDocsIndex                                            | 索引の表形式                                                                                                             | —                |
+| 10.8        | tech-stack.mdへの記載                      | OnboardingUpdates                                        | —                                                                                                                        | —                |
+| 10.9        | オンボーディングの更新                     | OnboardingUpdates                                        | —                                                                                                                        | —                |
+| 11.1        | 全規則の移設                               | RuleMigration                                            | 移設対応表                                                                                                               | —                |
+| 11.2        | 汎用的な表現                               | RuleMigration                                            | —                                                                                                                        | —                |
+| 11.3        | 1対1の対応付け                             | RuleMigration                                            | 移設対応表                                                                                                               | —                |
+| 11.4        | リンク一覧への置き換え                     | RuleMigration                                            | CLAUDE.md                                                                                                                | —                |
+| 11.5        | 参照すべき作業の明示                       | RuleMigration                                            | CLAUDE.md                                                                                                                | —                |
+| 11.6        | 固有値をtech以外に残す                     | RuleMigration                                            | `docs/onboardings/project-values.md`                                                                                     | —                |
 
 ## Components and Interfaces
 
@@ -465,7 +466,9 @@ export declare const COVERAGE_THRESHOLD_PERCENT: 80;
 
 - 値のimportを持たない定数と純粋関数だけを提供する。プロバイダ(`playwright()`・`cloudflareTest()`)の組み立てはアプリ側が行う。
 - `coverage.enabled`は指定しない。閾値は`--coverage`指定時だけ判定される(7.2)。
-- `coverage.include`はアプリのソース配置に依存するため、アプリ側で必ず指定する(未読込ファイルを分母に含めるため。契約)。
+- `coverage.include`はアプリのソース配置に依存するため、アプリ側で必ず指定する(未読込ファイルを分母に含めるため。契約)。各アプリは`coverage.include`をその種別のテストが担当するソースに絞る(他種別のテストで検査するソースを含めると0%として数えられる)。
+- 対象0件と計測の関係: 要件6.7は計測無効の実行に、要件7.1は計測有効の実行に適用する。テストが0件でも`coverage.include`に一致するソースは0%として分母に入るため、`--coverage`付きの実行は閾値で失敗する。CIでテストの無いソースを未達として検出し、NFR-MAINT-003の80%を守るためである。
+- テスト成果物の出力先: 添付ファイル・画像比較の差分・ブラウザテストの失敗時のスクリーンショットはGit管理外の`attachmentsDir`へ出す。コミットする画像比較の基準画像は、テストファイルの隣の`__screenshots__`に置く。
 
 **Contracts**: State [x]
 
@@ -487,6 +490,7 @@ export interface CoveragePreset {
 export interface TestKindPreset {
   readonly include: string[];
   readonly passWithNoTests: true;
+  readonly attachmentsDir: string;
   readonly coverage: CoveragePreset;
 }
 
@@ -494,8 +498,30 @@ export interface BrowserLaunchOptions {
   readonly executablePath?: string;
 }
 
+export interface ReferenceScreenshotPathData {
+  readonly arg: string;
+  readonly ext: string;
+  readonly browserName: string;
+  readonly platform: string;
+  readonly root: string;
+  readonly testFileDirectory: string;
+  readonly testFileName: string;
+}
+
+export interface BrowserOptionsPreset {
+  readonly screenshotDirectory: string;
+  readonly expect: {
+    readonly toMatchScreenshot: {
+      readonly resolveScreenshotPath: (
+        data: ReferenceScreenshotPathData,
+      ) => string;
+    };
+  };
+}
+
 export declare const browserTestPreset: TestKindPreset;
 export declare const workerTestPreset: TestKindPreset;
+export declare const browserOptionsPreset: BrowserOptionsPreset;
 export declare function resolveBrowserLaunchOptions(
   env: Readonly<Record<string, string | undefined>>,
 ): BrowserLaunchOptions;
@@ -503,13 +529,20 @@ export declare function resolveBrowserLaunchOptions(
 
 - `browserTestPreset`: `provider: 'v8'`・`reportsDirectory: 'coverage/browser'`。
 - `workerTestPreset`: `provider: 'istanbul'`・`reportsDirectory: 'coverage/worker'`。
+- `attachmentsDir: '.vitest-attachments'`: Vitestの既定値と同じ値だが、ルートの`.gitignore`と突き合わせるため両種別で明示する。Vitestはこの出力先を実行前に消さない。
+- `browserOptionsPreset`: `browser`配下に取り込む値。
+  - `screenshotDirectory`を`.vitest-attachments/screenshots`にして、失敗時のスクリーンショット(と`page.screenshot()`)をGit管理外へ出す。
+  - Vitest 4.1.11は`screenshotDirectory`を指定すると、画像比較の基準画像の既定の保存先も変わり、テストのディレクトリの下へ絶対パスを連結した場所になる。そのため`expect.toMatchScreenshot.resolveScreenshotPath`で、基準画像の保存先を既定と同じ並びの`<root>/<テストのディレクトリ>/__screenshots__/<テストファイル名>/<名前>-<ブラウザ>-<OS><拡張子>`に固定する。
+  - 差分画像は既定の`resolveDiffPath`により`attachmentsDir`の下へ出る。
 - `thresholds.perFile: true`: Bunの単体テストと判定単位をそろえるため、閾値をファイル単位で判定する。
 - 配列の型: Vitest 4.1.11の設定型が変更可能な配列を要求し、`...browserTestPreset`の取り込みを型検査に通すため、プロパティは`readonly`のまま配列だけを変更可能にし、各プリセットは単一定義の配列のコピーを持つ。
 - `resolveBrowserLaunchOptions`は、`CHROMIUM_PATH`が定義されていれば`executablePath`に設定する。定義が無ければ、Playwrightの導入済みブラウザを使う。
 
 **Implementation Notes**
 
-- Integration: アプリは`test: { ...browserTestPreset, browser: { provider: playwright({ launchOptions: resolveBrowserLaunchOptions(process.env) }), ... } }`の形で取り込む。設定ファイルはworkerdではなくBun/Node上で評価されるため、`process.env`を使ってよい。
+- Integration: アプリは`test: { ...browserTestPreset, coverage: { ...browserTestPreset.coverage, include: [...] }, browser: { ...browserOptionsPreset, provider: playwright({ launchOptions: resolveBrowserLaunchOptions(process.env) }), ... } }`の形で取り込む。
+  - 展開は浅いため、`coverage`・`browser`を書くときはプリセットの`coverage`と`browserOptionsPreset`も展開する。漏れると閾値・lcov・出力先・成果物の置き場所が黙ってVitestの既定に戻り、型検査・静的解析では検出できない。
+  - 設定ファイルはworkerdではなくBun/Node上で評価されるため、`process.env`を使ってよい。
 - Validation: 実装時に、使い捨ての検証用アプリで、ブラウザテスト(V8)とWorkers統合テスト(Istanbul)の閾値判定・lcov出力・0件時の成功を実測する。
 - Risks: Vitest 5系へ上げるとWorkersプールが起動しない。版は主要パッケージ一覧で4.1.11に固定する。
 
