@@ -246,7 +246,7 @@
   - _Depends: 6.2_
   - _Requirements: 8.3, 8.7, 10.6_
 
-- [ ] 7.3 (P) testingの初版として、テスト戦略とE2Eテストツール関連の更新手順を書く
+- [x] 7.3 (P) testingの初版として、テスト戦略とE2Eテストツール関連の更新手順を書く
   - 4種のテストの棲み分けと命名規約、ルート・アプリ・一括の実行コマンド、アプリ内で実行する際の共通設定の指定を、移設対応表の見出しで記載する
   - カバレッジの規約(閾値・除外・出力先・アプリでの計測対象の指定・CIでの計測の有効化)を、移設対応表の見出しで記載する
   - TDDの進め方と、環境シークレットをシークレット管理サービスから実行時に注入してファイルに書き出さない方法を記載する
@@ -365,3 +365,6 @@
 - 6.2(開発者判断済み): Bun 1.4.2は`extends`を持つtsconfigで`experimentalDecorators`を継承元の値だけで決め、継承する側の`true`を無視する。そのため`bun test`・`bun build`でパラメータデコレータ(Inversifyの`@inject`)がエラーなく消える(tscとesbuildは継承する側に従う)。開発者の判断により、`tsconfig.base.json`に`experimentalDecorators: true`を置き、design.mdの「TsconfigBase」節を更新した。1.2の本文「デコレータ設定はアプリ側の差分に委ねる」はこの判断で置き換わった。ルートの`tsconfig.base.unit.test.ts`(設計の「Testing Strategy」に追記済み)が、基底設定を継承したアプリでBunがパラメータデコレータを実行することを確かめる。継承する側で`false`にすると、Bunは従来のデコレータ、esbuildとViteのOxcは標準(TC39)のデコレータとして変換して黙って食い違うため、アプリの差分で`experimentalDecorators`を指定せず、標準(TC39)のデコレータを使わない。7.1・7.2の文書では、デコレータ設定を基底設定が持つ理由としてこの挙動と前提を記載する。
 - 7.1: codingの文書からtestingへのリンク(001の「テストの種別と命名…」と002のE2Eテストツール関連の4箇所)は、7.3の文書がまだ無いため`../testing/README.md`を指している。7.3で該当文書(`testing/001-test-strategy.md`・`testing/002-browser-tool-versions.md`)へ張り替える。001は`config/workspace-layout.ts`の`APPS`・`AppName`・`SHARED_DIRS`(`source`・`mounts`・`checkedBy`)の形を記載しているため、このファイルの形を変える場合は001も更新する。
 - 7.2(frontend-platformへの申し送り): 検査担当が`self`の共有ディレクトリ(`apps/frontend-lib`)は直下に`tsconfig.json`を持つため、配置先(`apps/{client,admin}/lib`)のファイルは型検査では利用側アプリの設定、ViteやesbuildによるTransformでは最も近い共有ディレクトリ自身の`tsconfig.json`で扱われ得る。配置元と配置先でディレクトリの深さが異なるため、相対パスの`extends`(例:`../../tsconfig.base.json`)は配置先の位置から解決できなくなる(Viteのtsconfckは解決できないと例外を投げる)。本specでは未検証であり、`coding/003-shared-directories.md`に「本文書の検証の対象外」として記載した。frontend-libを作るspecで、配置先からの`extends`の解決と変換に関わる設定の一致を確かめる。
+- 7.3(7.5への申し送り): `testing/001-test-strategy.md`の環境シークレットの節は、Workersのコードからシークレットを読む方法を`../security/README.md`へリンクしている。7.5で`security/001-secret-management.md`を作ったら、このリンクを張り替える(7.5の境界にtestingの文書の1行の編集を含める)。
+- 7.3(開発者判断を待たずに親が決定): Implementation Notes 3.4・3.6が「7.3・7.7の文書に記載する」としたBetterleaksの注意点(Fingerprintの組み立て方、`.betterleaksignore`の行頭`#`だけのコメント、`git revert`・cherry-pickがフックを通らずCIでの検出が補うこと、`GIT_TRACE=1`で走査が失敗すること、`--log-level debug`が`--redact`でも値を表示すること)はテストの話題ではないため、testingの文書には載せない。汎用の内容は7.5の`security/001-secret-management.md`に、本プロジェクトでの手順は7.7のオンボーディングガイドに載せる。
+- 7.3: `bun test`は`./`で始まる引数をファイルのパスとして扱いそのファイルだけを実行し、`./`で始まらない引数はフィルタとして扱う(Bun 1.4.2で実測)。E2Eの`test-results`には既定で`error-context.md`だけが出る(トレース・スクリーンショット・動画は`use`で有効にした場合のみ)。

@@ -72,7 +72,7 @@
 
 ### @playwright/test・playwright
 
-- 開発コンテナのOS依存パッケージの版、ルートの`@playwright/test`の版、2つのブラウザ操作MCPサーバーの版の4箇所を整合させる。手順は[testingの索引](../testing/README.md)から辿る文書に従う。
+- 開発コンテナのOS依存パッケージの版、ルートの`@playwright/test`の版、2つのブラウザ操作MCPサーバーの版の4箇所を整合させる。手順は「[E2Eテストツールの版の更新手順](../testing/002-browser-tool-versions.md)」に従う。
 - ブラウザテストを持つアプリの`playwright`も同じ版にする。
 
 ## 版を明示した追加手順
