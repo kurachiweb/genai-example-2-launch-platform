@@ -17,6 +17,8 @@ const SCRIPT_PATH = join(import.meta.dirname, 'install-git-hooks.ts');
 const CI_SKIPPED_MESSAGE = 'CI環境のため、Gitフックの導入を飛ばしました。';
 const NOT_A_GIT_REPOSITORY_SKIPPED_MESSAGE =
   'Gitの作業ツリーが無いため、Gitフックの導入を飛ばしました。';
+const HUSKY_DISABLED_SKIPPED_MESSAGE =
+  '環境変数HUSKYが0のため、Gitフックの導入を飛ばしました。';
 const INSTALLED_MESSAGE = 'Gitフックを導入しました。';
 
 const runInstaller = (env: Env, gitDirExists: boolean) => {
@@ -76,6 +78,33 @@ describe('installGitHooks', () => {
     },
   );
 
+  test.each([true, false])(
+    'HUSKYが0なら.gitの有無(%p)にかかわらずhusky-disabledを理由に飛ばし、フックを導入しない',
+    (gitDirExists) => {
+      const { result, runHusky } = runInstaller({ HUSKY: '0' }, gitDirExists);
+
+      expect(result).toEqual({ status: 'skipped', reason: 'husky-disabled' });
+      expect(runHusky).not.toHaveBeenCalled();
+    },
+  );
+
+  test('CIとHUSKY=0の両方があればciを理由に飛ばす', () => {
+    const { result, runHusky } = runInstaller({ CI: 'true', HUSKY: '0' }, true);
+
+    expect(result).toEqual({ status: 'skipped', reason: 'ci' });
+    expect(runHusky).not.toHaveBeenCalled();
+  });
+
+  test.each(['1', '', 'false'])(
+    'HUSKYが「%s」なら無効化とはみなさず、フックを導入する',
+    (husky) => {
+      const { result, runHusky } = runInstaller({ HUSKY: husky }, true);
+
+      expect(result).toEqual({ status: 'installed' });
+      expect(runHusky).toHaveBeenCalledTimes(1);
+    },
+  );
+
   test('フックの導入に失敗すれば、その例外をそのまま伝える', () => {
     const failure = new Error('導入失敗');
 
@@ -98,6 +127,10 @@ describe('describeHookInstallResult', () => {
     [
       { status: 'skipped', reason: 'not-a-git-repository' },
       NOT_A_GIT_REPOSITORY_SKIPPED_MESSAGE,
+    ],
+    [
+      { status: 'skipped', reason: 'husky-disabled' },
+      HUSKY_DISABLED_SKIPPED_MESSAGE,
     ],
   ])('%oを「%s」と表示する', (result, message) => {
     expect(describeHookInstallResult(result)).toBe(message);
@@ -185,6 +218,20 @@ describe('runHookInstallerEntry', () => {
     expect(exitCode).toBe(0);
   });
 
+  test('HUSKYが0なら飛ばした理由を表示し、huskyを呼ばずに0を返す', async () => {
+    const cwd = await createWorkingDir(true);
+
+    const { exitCode, husky, stdout, stderr } = runEntryInProcess(
+      { HUSKY: '0' },
+      cwd,
+    );
+
+    expect(stdout).toBe(`${HUSKY_DISABLED_SKIPPED_MESSAGE}\n`);
+    expect(stderr).toBe('');
+    expect(husky).not.toHaveBeenCalled();
+    expect(exitCode).toBe(0);
+  });
+
   test('cwdに.gitがあり、huskyが空文字列を返せば導入した旨を表示して0を返す', async () => {
     const cwd = await createWorkingDir(true);
 
@@ -216,10 +263,10 @@ describe('runHookInstallerEntry', () => {
 
 describe('直接実行したときの入口', () => {
   // gitを見つけられないPATHで起動し、誤ってhuskyが呼ばれても実在のGit設定を変更しないようにする
-  const runEntry = (cwd: string, ci?: string) =>
+  const runEntry = (cwd: string, env: Env = {}) =>
     Bun.spawnSync([process.execPath, SCRIPT_PATH], {
       cwd,
-      env: { PATH: emptyBinDir, ...(ci === undefined ? {} : { CI: ci }) },
+      env: { PATH: emptyBinDir, ...env },
       stdout: 'pipe',
       stderr: 'pipe',
     });
@@ -227,7 +274,7 @@ describe('直接実行したときの入口', () => {
   test('CIが空でなければ飛ばした理由を表示して終了コード0で終える', async () => {
     const cwd = await createWorkingDir(true);
 
-    const { exitCode, stdout } = runEntry(cwd, 'true');
+    const { exitCode, stdout } = runEntry(cwd, { CI: 'true' });
 
     expect(stdout.toString()).toBe(`${CI_SKIPPED_MESSAGE}\n`);
     expect(exitCode).toBe(0);
@@ -239,6 +286,16 @@ describe('直接実行したときの入口', () => {
     const { exitCode, stdout } = runEntry(cwd);
 
     expect(stdout.toString()).toBe(`${NOT_A_GIT_REPOSITORY_SKIPPED_MESSAGE}\n`);
+    expect(exitCode).toBe(0);
+  });
+
+  test('HUSKYが0なら飛ばした理由を表示して終了コード0で終える', async () => {
+    const cwd = await createWorkingDir(true);
+
+    const { exitCode, stdout, stderr } = runEntry(cwd, { HUSKY: '0' });
+
+    expect(stdout.toString()).toBe(`${HUSKY_DISABLED_SKIPPED_MESSAGE}\n`);
+    expect(stderr.toString()).toBe('');
     expect(exitCode).toBe(0);
   });
 

@@ -589,6 +589,21 @@ describe('書き写した除外パターンと単一定義の一致', () => {
       expect(checked[0]?.usesPathIgnorePatterns).toBe(true);
       expect(incomplete).toEqual([]);
     });
+
+    test('ルートのtest:unitが、アプリ・品質ゲートの対象外・外部由来のディレクトリをすべて除外している', async () => {
+      const written = pathIgnorePatternsOf(
+        (await readScripts(join(REPO_ROOT, 'package.json')))['test:unit'] ?? '',
+      );
+      const required = [
+        'apps',
+        ...QUALITY_GATE_EXCLUDED_DIRS,
+        ...EXTERNAL_SOURCE_DIRS,
+      ].map((dir) => `${dir}/**`);
+
+      expect(required.filter((pattern) => !written.includes(pattern))).toEqual(
+        [],
+      );
+    });
   });
 
   describe('静的解析の基底設定(eslint.config.base.ts)', () => {

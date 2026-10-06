@@ -124,6 +124,16 @@ describe('COVERAGE_THRESHOLD_PERCENT', () => {
   test('型はリテラル80である', () => {
     expectTypeOf(COVERAGE_THRESHOLD_PERCENT).toEqualTypeOf<80>();
   });
+
+  test('単体テストの共通設定(bunfig.toml)に書き写した閾値が同じ割合である', () => {
+    const bunfig = Bun.TOML.parse(
+      readFileSync(join(import.meta.dir, '..', 'bunfig.toml'), 'utf8'),
+    ) as { readonly test: { readonly coverageThreshold: unknown } };
+
+    expect(bunfig.test.coverageThreshold).toBe(
+      COVERAGE_THRESHOLD_PERCENT / 100,
+    );
+  });
 });
 
 test('定義モジュールは他のモジュールをimportしない', () => {

@@ -38,6 +38,9 @@
 | Vitest          | プリセットの`include`で、実行する種別の命名だけを対象にする                                                             |
 | Playwright Test | `playwright.config.ts`が作る各プロジェクトの`testMatch`で、E2Eテストの命名だけを対象にする                              |
 
+- Bunの`unit.test`はパスの部分一致のため、`*.unit.test.tsx`・`*.unit.test.mts`・`foo_unit.test.ts`・`unit.test.ts`・`unit.test/`ディレクトリ配下のテストなど、単体テストの命名に一致しないファイルも実行し得る。これらは除外パターンでは網羅できないが、いずれも一括検査の命名検査が命名規約外として失敗させる。一括検査が成功する状態では、単体テストのコマンドは`*.unit.test.ts`だけを実行する。
+- この対応は、単体テストのコマンドが走査する範囲が命名検査の対象に含まれることを前提にする。命名検査の対象外のディレクトリ(品質ゲートの対象外・外部由来)は、ルートの`test:unit`でも除外する。ルートの単体テストが、Bunで実際に実行される名前と命名検査の対応を確かめる。
+
 - テストは定義済みのスクリプト(`test:unit`など)で実行する。テストツールを直接起動する場合も、スクリプトと同じ設定ファイルの指定と引数を付ける。
 
 ### 命名規約外のテストファイルの検出
@@ -82,7 +85,7 @@ bun test --config=../../bunfig.toml --pass-with-no-tests unit.test
 | Workers統合テスト | `bun run test:worker`  | `vitest run --config vitest.worker.config.ts`                        |
 
 - スクリプトに続けた引数は、テストツールへそのまま渡る(例: `bun run test:unit --coverage`)。
-- ルートの`bun run test:unit`は、ルートが所有するファイル(設定・ツールのスクリプトなど)の単体テストを実行する。アプリのディレクトリと品質ゲートの対象外のディレクトリを`--path-ignore-patterns`で除外し、`bunfig.toml`の除外も書き写している。
+- ルートの`bun run test:unit`は、ルートが所有するファイル(設定・ツールのスクリプトなど)の単体テストを実行する。アプリのディレクトリ・品質ゲートの対象外のディレクトリ・外部由来のディレクトリを`--path-ignore-patterns`で除外し、`bunfig.toml`の除外も書き写している。除外するディレクトリは`config/workspace-layout.ts`の単一定義と一致させ、ルートの単体テストで確かめる。
 - E2Eテストはルートでだけ実行する(「[E2Eテストの実行](#e2eテストの実行)」)。
 
 ### 一括実行
@@ -292,7 +295,7 @@ test('トップページの見出しを表示する', async ({ page }) => {
 | Workers統合テスト | Istanbul(`@vitest/coverage-istanbul`) | 同上                                                                           |
 
 - 判定はファイル単位で、80%を下回るファイルが1つでもあれば失敗する。全体の集計値では判定しない。Vitestの閾値は既定では全体の集計値で判定されるため、プリセットは`perFile: true`でBunと判定の単位をそろえる。
-- 閾値の値は`config/test-patterns.ts`の`COVERAGE_THRESHOLD_PERCENT`に定義する。`bunfig.toml`はTOML形式で参照できないため、同じ値を書き写す。
+- 閾値の値は`config/test-patterns.ts`の`COVERAGE_THRESHOLD_PERCENT`に定義する。`bunfig.toml`はTOML形式で参照できないため、同じ値を書き写す。書き写した閾値と出力形式(`coverageReporter`)がプリセットと一致することを、ルートの単体テストで確かめる。
 
 ### 計測の有効化
 

@@ -6,7 +6,7 @@ import {
   expectTypeOf,
   test,
 } from 'bun:test';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, matchesGlob } from 'node:path';
 
@@ -33,9 +33,40 @@ const matchesE2EPattern = (repoRelativePath: string): boolean =>
     matchesGlob(repoRelativePath, pattern),
   );
 
+const COMPOSE_PATH = join(import.meta.dirname, '../../compose.yaml');
+
+const COMPOSE_PORT_LABELS: Readonly<Record<E2ETarget['name'], string>> = {
+  client: '利用者側フロントエンド',
+  admin: '管理者側フロントエンド',
+};
+
+// compose.yamlではポートの用途を行末のコメントにだけ書いており、YAMLとして読むとコメントが落ちるため、行の書式から読み取る
+const readComposePortLabels = async (): Promise<
+  ReadonlyMap<string, string>
+> => {
+  const compose = await readFile(COMPOSE_PATH, 'utf8');
+  return new Map(
+    [...compose.matchAll(/^\s*-\s*'\d+:(\d+)'\s*#\s*(.+?)\s*$/gm)].map(
+      ([, containerPort = '', label = '']) => [containerPort, label],
+    ),
+  );
+};
+
 describe('resolveE2ETargets', () => {
   test('環境変数が無ければ、利用者側と管理者側を既定のURLで、この順に返す', () => {
     expect(resolveE2ETargets({})).toStrictEqual([CLIENT_TARGET, ADMIN_TARGET]);
+  });
+
+  test('既定のURLのポートが、compose.yamlで各対象のフロントエンドとして公開しているポートである', async () => {
+    const portLabels = await readComposePortLabels();
+
+    const mismatched = resolveE2ETargets({}).filter(
+      ({ name, baseURL }) =>
+        portLabels.get(new URL(baseURL).port) !== COMPOSE_PORT_LABELS[name],
+    );
+
+    expect(portLabels.size).toBeGreaterThan(0);
+    expect(mismatched).toEqual([]);
   });
 
   test('利用者側のURLを環境変数で上書きでき、管理者側は既定値のままになる', () => {

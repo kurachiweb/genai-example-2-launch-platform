@@ -340,6 +340,29 @@ export default defineConfig({
 - 自動修正できる静的解析の違反は、アプリのディレクトリで`bun --bun eslint --fix <ファイル>`を実行して直す。整形の違反は`bun run format`で直す。
 - コミット時には、ステージ済みのファイルだけに、所有するアプリのESLintによる自動修正とルートのPrettierによる整形が適用され、修正後の内容がそのコミットに含まれる。自動修正できない違反が残るとコミットが中止される。
 
+### ルートが所有するファイルの型検査
+
+ルートの`tsconfig.json`は、アプリ・品質ゲートの対象外・外部由来のディレクトリを除く、ルートが所有するすべてのTypeScriptを型検査の対象にする。
+
+```json
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": [
+    "apps",
+    "<品質ゲートの対象外のディレクトリ>",
+    "<外部由来のディレクトリ>"
+  ]
+}
+```
+
+- コミット時の検査は、どのアプリにも属さないファイルをルートの静的解析へ渡す。型情報を使う規則は、型検査の対象外のファイルを`was not found by the project service`という解析エラーにするため、ルートが所有するファイルはすべて型検査の対象にする。
+- `exclude`には`config/workspace-layout.ts`の`QUALITY_GATE_EXCLUDED_DIRS`・`EXTERNAL_SOURCE_DIRS`の値を書き写す。ルートの単体テストが一致を確かめる。
+- TypeScriptの`**`は、ドットで始まるディレクトリ(`.github`など)に一致しない。そこへルートが所有するTypeScript(CIのワークフローが使うスクリプトなど)を置く場合は、`include`に`.github/**/*.ts`のように明示する。ルートの単体テストが、リポジトリにあるルート所有のTypeScriptがすべて型検査の対象に入っていることを確かめる。
+
 ### 一括検査
 
 `bun run check`は、次の段階を順に実行する。途中で失敗しても止めずに最後まで実行し、1つでも失敗があれば終了コード1で終える。

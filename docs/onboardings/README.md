@@ -58,7 +58,7 @@
    /workspace/scripts/setup-chromium.sh # コンテナの起動時にもこのスクリプトが実行されるが、ルートの`bun install`前はChromiumの導入を飛ばすため、ここで`bun install`で解決された`@playwright/test`の版に合わせて導入する
    ```
 
-   - 環境変数`CI`が空でない環境(CI)や、`.git`の無い場所(リポジトリをGit管理外へコピーした場合など)では、Gitフックの導入を飛ばして`bun install`を成功させる。
+   - 環境変数`CI`が空でない環境(CI)や、`.git`の無い場所(リポジトリをGit管理外へコピーした場合など)では、Gitフックの導入を飛ばして`bun install`を成功させる。huskyの無効化を示す環境変数`HUSKY`が`0`の場合も同様に導入を飛ばすが、開発コンテナでのコミットは常にGitフックを通す。
 
 9. コンテナ内: Claude向けMCPを認証する(初回のみ)
 

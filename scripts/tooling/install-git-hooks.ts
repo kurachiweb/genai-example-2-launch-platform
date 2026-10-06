@@ -7,7 +7,7 @@ export type HookInstallResult =
   | { readonly status: 'installed' }
   | {
       readonly status: 'skipped';
-      readonly reason: 'ci' | 'not-a-git-repository';
+      readonly reason: 'ci' | 'husky-disabled' | 'not-a-git-repository';
     };
 
 type HookSkipReason = Extract<
@@ -37,6 +37,7 @@ export interface HookInstallerEntryDependencies {
 
 const SKIPPED_MESSAGES: Readonly<Record<HookSkipReason, string>> = {
   ci: 'CI環境のため、Gitフックの導入を飛ばしました。',
+  'husky-disabled': '環境変数HUSKYが0のため、Gitフックの導入を飛ばしました。',
   'not-a-git-repository':
     'Gitの作業ツリーが無いため、Gitフックの導入を飛ばしました。',
 };
@@ -48,6 +49,10 @@ export function installGitHooks({
 }: HookInstallerDependencies): HookInstallResult {
   if (env.CI !== undefined && env.CI !== '') {
     return { status: 'skipped', reason: 'ci' };
+  }
+  // huskyはHUSKY=0のとき導入を拒否して理由を返すため、呼ぶ前に開発者の意図した無効化として扱う
+  if (env.HUSKY === '0') {
+    return { status: 'skipped', reason: 'husky-disabled' };
   }
   if (!gitDirExists()) {
     return { status: 'skipped', reason: 'not-a-git-repository' };

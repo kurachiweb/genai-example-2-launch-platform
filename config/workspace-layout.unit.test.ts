@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join, normalize, relative } from 'node:path';
 
+import { isGitIgnored } from '../test-support/git-ignore.ts';
 import {
   APPS,
   EXTERNAL_SOURCE_DIRS,
@@ -132,6 +133,15 @@ describe('SHARED_DIRS', () => {
     expect(readSubdirectoryBindMounts().toSorted()).toEqual(
       fromLayout.toSorted(),
     );
+  });
+
+  // 配置先の中身は配置元と同じファイルのため、Gitの一覧に現れると命名検査や整形検査が同じファイルを配置元と重ねて扱う
+  test('すべての配置先がGit管理外である', () => {
+    const notIgnored = SHARED_DIRS.flatMap(({ mounts }) =>
+      mounts.map(({ target }) => target),
+    ).filter((target) => !isGitIgnored(REPO_ROOT, target));
+
+    expect(notIgnored).toEqual([]);
   });
 
   test('型として変更不可の配列である', () => {

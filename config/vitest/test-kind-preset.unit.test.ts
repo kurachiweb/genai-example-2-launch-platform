@@ -119,6 +119,17 @@ test('種別ごとの出力先が単体テストの出力先を含めて互い�
   expect(new Set(reportsDirectories).size).toBe(reportsDirectories.length);
 });
 
+test.each(presets)(
+  '%sの出力形式が単体テストの共通設定(bunfig.toml)と同じである',
+  (_name, preset) => {
+    const bunfig = Bun.TOML.parse(
+      readFileSync(join(REPO_ROOT, 'bunfig.toml'), 'utf8'),
+    ) as { readonly test: { readonly coverageReporter: unknown } };
+
+    expect(bunfig.test.coverageReporter).toEqual(preset.coverage.reporter);
+  },
+);
+
 describe('プリセットの型', () => {
   test('Vitestの設定に取り込めるよう、プロパティは変更不可のまま配列だけを変更可能にする', () => {
     expectTypeOf<CoveragePreset>().toEqualTypeOf<{

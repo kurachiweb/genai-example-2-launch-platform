@@ -3,11 +3,12 @@
   "compilerOptions": {
     "types": ["bun"]
   },
-  "include": [
-    "*.ts",
-    "config/**/*.ts",
-    "scripts/**/*.ts",
-    "e2e/**/*.ts",
-    "test-support/**/*.ts"
+  "include": ["**/*.ts"],
+  "exclude": [
+    "apps",
+    "mockups",
+    ".claude",
+    "docs/ai-extensions",
+    ".kiro/settings"
   ]
 }

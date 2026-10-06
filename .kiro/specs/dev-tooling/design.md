@@ -80,6 +80,7 @@ graph TB
         PkgScripts[package json scripts]
         Hooks[husky hooks and lint-staged]
         PlaywrightCfg[playwright config]
+        RootLintCfg[root eslint config]
     end
     subgraph Tooling
         HookInstaller[install git hooks]
@@ -103,8 +104,12 @@ graph TB
     StagedPlanner --> Layout
     Aggregate --> Layout
     SharedDirs --> Layout
+    NameChecker --> Layout
     NameChecker --> Patterns
     PlaywrightCfg --> Patterns
+    PlaywrightCfg --> VitestPresets
+    RootLintCfg --> Layout
+    RootLintCfg --> Bases
     VitestPresets --> Patterns
     Apps --> Bases
     Apps --> VitestPresets
@@ -146,7 +151,7 @@ graph TB
 ├── package.json                    # ルートの依存(Git運用・E2E・ルート所有ファイルの品質ツール)とスクリプト
 ├── bun.lock                        # 生成物
 ├── tsconfig.base.json              # 全アプリ共通の型検査基底設定
-├── tsconfig.json                   # ルート所有ファイル(*.ts・config・scripts・e2e・test-support)の型検査、Bunの型
+├── tsconfig.json                   # ルート所有ファイル(apps・mockups・外部由来を除く全TS)の型検査、Bunの型
 ├── eslint.config.base.ts           # 静的解析基底設定のファクトリ(モジュール注入型)
 ├── eslint.config.base.unit.test.ts # 基底設定の規則の振る舞いを検証
 ├── eslint.config.ts                # ルート所有ファイル用の静的解析設定
@@ -170,7 +175,7 @@ graph TB
 │       ├── browser.ts              # ブラウザテストのプリセット(V8カバレッジ・共有Chromium・失敗時のスクリーンショットと基準画像の置き場所)
 │       └── worker.ts               # Workers統合テストのプリセット(Istanbulカバレッジ)
 ├── scripts/tooling/
-│   ├── install-git-hooks.ts        # prepare: CI・非Git環境ではフック導入を飛ばす
+│   ├── install-git-hooks.ts        # prepare: CI・HUSKY=0・非Git環境ではフック導入を飛ばす
 │   ├── staged-tasks.ts             # ステージ済みファイルを所有者ごとに振り分け、共有ディレクトリを配置先パスへ読み替え
 │   ├── run-all.ts                  # 一括実行と集計表示
 │   ├── shared-dirs.ts              # 共有ディレクトリの配置(CI)と確認
@@ -314,7 +319,7 @@ graph TB
 | 5.7         | 一括検査と失敗の表示                       | AggregateRunner                                                        | `runAggregate`・`formatSummary`                                                                                          | 一括検査         |
 | 5.8         | 未作成アプリを飛ばす                       | AggregateRunner                                                        | `StepOutcome.skipped`                                                                                                    | 一括検査         |
 | 5.9         | mockupsを含めない                          | WorkspaceLayout・PrettierConfig・StagedTaskPlanner                     | `QUALITY_GATE_EXCLUDED_DIRS`                                                                                             | —                |
-| 6.1         | 単体テストの対象                           | BunTestConfig・AppScriptContract                                       | `test:unit`                                                                                                              | —                |
+| 6.1         | 単体テストの対象                           | BunTestConfig・AppScriptContract・TestNameChecker                      | `test:unit`・`findMisnamedTestFiles`(部分一致で拾う命名規約外の名前は一括検査で失敗)                                     | —                |
 | 6.2         | ブラウザテストの対象                       | VitestPresets                                                          | `browserTestPreset.include`                                                                                              | —                |
 | 6.3         | Workers統合テストの対象                    | VitestPresets                                                          | `workerTestPreset.include`                                                                                               | —                |
 | 6.4         | E2Eの対象                                  | E2EConfig・TestPatterns                                                | `TEST_FILE_PATTERNS.e2e`                                                                                                 | —                |
@@ -325,7 +330,7 @@ graph TB
 | 6.9         | E2E設定の雛形                              | E2EConfig                                                              | `resolveE2ETargets`・`resolveE2EProjects`                                                                                | —                |
 | 6.10        | 到達できないURLを示して失敗                | E2EConfig                                                              | `reachability.setup.ts`・`assertE2ETargetReachable`                                                                      | —                |
 | 6.11        | シークレットは実行時注入                   | TestingDocs・AppScriptContract                                         | `infisical run`                                                                                                          | —                |
-| 7.1         | 80%未満で失敗し指標と実測値を表示          | BunTestConfig・VitestPresets・TestPatterns                             | `COVERAGE_THRESHOLD_PERCENT`                                                                                             | —                |
+| 7.1         | 80%未満で失敗し指標と実測値を表示          | BunTestConfig・VitestPresets・TestPatterns                             | `COVERAGE_THRESHOLD_PERCENT`(Bunは未達を表の実測値と終了コードで示す。上流の制約)                                        | —                |
 | 7.2         | 計測無効時は判定しない                     | BunTestConfig・VitestPresets                                           | `--coverage`指定時のみ                                                                                                   | —                |
 | 7.3         | テストファイル・生成コードを除外           | BunTestConfig・VitestPresets・TestPatterns                             | `GENERATED_CODE_PATTERNS`                                                                                                | —                |
 | 7.4         | 機械可読形式でGit管理外へ出力              | BunTestConfig・VitestPresets                                           | lcov・`coverage/*`                                                                                                       | —                |
@@ -365,11 +370,11 @@ graph TB
 | WorkspaceLayout                                                                                             | Config       | アプリ・共有ディレクトリ・対象外の配置定義   | 5.9, 8.1, 8.3                                | なし                                                        | State          |
 | TestPatterns                                                                                                | Config       | テスト命名・生成コード・閾値の単一定義       | 6.1-6.4, 7.1, 7.3                            | なし                                                        | State          |
 | VitestPresets                                                                                               | Config       | ブラウザ・Workers統合テストの共通設定値      | 6.2, 6.3, 6.7, 6.8, 7.1-7.4                  | TestPatterns (P0)                                           | State          |
-| GitHookInstaller                                                                                            | Tooling      | CI・非Git環境を除いてhuskyを導入             | 1.1, 1.2                                     | husky (P0)                                                  | Service        |
+| GitHookInstaller                                                                                            | Tooling      | CI・HUSKY=0・非Git環境を除いてhuskyを導入    | 1.1, 1.2                                     | husky (P0)                                                  | Service        |
 | StagedTaskPlanner                                                                                           | Tooling      | ステージ済みファイルの振り分けとコマンド生成 | 2.1, 2.4, 2.5, 5.9, 8.3                      | WorkspaceLayout (P0)                                        | Service        |
 | AggregateRunner                                                                                             | Tooling      | 一括実行と集計                               | 5.7, 5.8, 6.6, 6.7                           | WorkspaceLayout (P0)・SharedDirs (P1)・TestNameChecker (P1) | Service, Batch |
 | SharedDirs                                                                                                  | Tooling      | 共有ディレクトリの配置と確認                 | 8.2, 8.4, 8.5, 8.6                           | WorkspaceLayout (P0)                                        | Service, Batch |
-| TestNameChecker                                                                                             | Tooling      | 命名規約外のテストファイル検出               | 6.6                                          | TestPatterns (P0)                                           | Service        |
+| TestNameChecker                                                                                             | Tooling      | 命名規約外のテストファイル検出               | 6.6                                          | TestPatterns (P0)・WorkspaceLayout (P0)                     | Service        |
 | PreCommitHook                                                                                               | Entry        | シークレット検出とlint-stagedの起動          | 1.3, 2.2, 3.1-3.3, 3.5, 3.6                  | Betterleaks (P0)・LintStagedConfig (P0)                     | Batch          |
 | CommitMsgHook・CommitlintConfig                                                                             | Entry        | 型の検査                                     | 1.3, 4.1-4.5                                 | commitlint (P0)                                             | Batch          |
 | LintStagedConfig                                                                                            | Entry        | 計画をlint-stagedへ渡す                      | 2.1-2.3                                      | StagedTaskPlanner (P0)                                      | Batch          |
@@ -378,7 +383,7 @@ graph TB
 | EslintBase                                                                                                  | Base         | 静的解析基底設定のファクトリ                 | 5.1-5.5                                      | 注入されるESLint系モジュール (P0)                           | Service        |
 | PrettierConfig                                                                                              | Base         | リポジトリ全体の整形設定と対象外             | 2.4, 2.5, 5.1, 5.9                           | prettier (P0)                                               | State          |
 | BunTestConfig                                                                                               | Base         | 単体テストの共通設定                         | 6.1, 6.5, 7.1-7.4                            | Bun (P0)                                                    | State          |
-| E2EConfig                                                                                                   | Entry        | 対象アプリのプロジェクト構成と到達確認       | 6.4, 6.7-6.10                                | @playwright/test (P0)・TestPatterns (P1)                    | Service        |
+| E2EConfig                                                                                                   | Entry        | 対象アプリのプロジェクト構成と到達確認       | 6.4, 6.7-6.10                                | @playwright/test (P0)・TestPatterns・VitestPresets (P1)     | Service        |
 | AppScriptContract                                                                                           | Contract     | アプリが一括検査に参加する条件               | 6.1, 6.5, 6.7, 6.11                          | AggregateRunner (P0)                                        | API            |
 | RootPackage                                                                                                 | Entry        | ルートの依存とスクリプト                     | 1.1, 9.4, 9.5                                | 上記すべて                                                  | API            |
 | SharedDirMounts                                                                                             | Infra        | compose.yamlの共有ディレクトリ配置           | 8.1, 8.4                                     | Docker Compose (P0)                                         | State          |
@@ -542,7 +547,7 @@ export declare function resolveBrowserLaunchOptions(
   - 差分画像は既定の`resolveDiffPath`により`attachmentsDir`の下へ出る。
 - `thresholds.perFile: true`: Bunの単体テストと判定単位をそろえるため、閾値をファイル単位で判定する。
 - 配列の型: Vitest 4.1.11の設定型が変更可能な配列を要求し、`...browserTestPreset`の取り込みを型検査に通すため、プロパティは`readonly`のまま配列だけを変更可能にし、各プリセットは単一定義の配列のコピーを持つ。
-- `resolveBrowserLaunchOptions`は、`CHROMIUM_PATH`が定義されていれば`executablePath`に設定する。定義が無ければ、Playwrightの導入済みブラウザを使う。
+- `resolveBrowserLaunchOptions`は、`CHROMIUM_PATH`が空でない値で定義されていれば`executablePath`に設定する。未定義か空文字なら、Playwrightの導入済みブラウザを使う(E2EConfigも同じ扱い)。
 
 **Implementation Notes**
 
@@ -570,7 +575,7 @@ export type HookInstallResult =
   | { readonly status: 'installed' }
   | {
       readonly status: 'skipped';
-      readonly reason: 'ci' | 'not-a-git-repository';
+      readonly reason: 'ci' | 'husky-disabled' | 'not-a-git-repository';
     };
 
 export interface HookInstallerDependencies {
@@ -586,7 +591,8 @@ export declare function installGitHooks(
 
 - Preconditions: リポジトリのルートで実行される。
 - Postconditions: `installed`のとき`core.hooksPath`が`.husky/_`を指す。`skipped`のとき何も変更せず、終了コード0で理由を表示する。
-- 判定順: `CI`が空でなければ`ci`、`.git`が無ければ`not-a-git-repository`、それ以外は`runHusky`を呼ぶ。
+- 判定順: `CI`が空でなければ`ci`、`HUSKY`が`0`なら`husky-disabled`、`.git`が無ければ`not-a-git-repository`、それ以外は`runHusky`を呼ぶ。
+- `husky-disabled`(開発者決定): huskyは`HUSKY=0`のとき導入せず理由の文字列を返すため、呼ぶ前に開発者の意図した無効化として飛ばし、インストールを成功させる。コミット時の`HUSKY=0`はhusky自体がフックを飛ばすため、導入時に失敗させてもフックの回避は防げない。AIエージェントによる`HUSKY=0`は`.claude/settings.json`が拒否し、フックを通らないコミットのシークレット検出はCIが補う。
 
 #### StagedTaskPlanner
 
@@ -825,6 +831,9 @@ export declare function findMisnamedTestFiles(
 
 - 入力: `git ls-files --cached --others --exclude-standard`の結果。この一覧には、gitignore済みのnode_modulesや共有ディレクトリの配置先が含まれない。そこから`QUALITY_GATE_EXCLUDED_DIRS`と外部由来のパスを除いたものを渡す。
 - `TEST_LIKE_FILE_PATTERN`に一致し、`TEST_FILE_PATTERNS`のどれにも一致しないファイルを返す。
+- 単体テストのコマンドの絞り込みとの関係(開発者決定): Bunの`unit.test`はパスの部分一致のため、`*.unit.test.tsx`・`*.unit.test.mts`・`foo_unit.test.ts`・`unit.test.ts`・`unit.test/`配下のテストなど、単体テストの命名に一致しないファイルも実行し得る。これらは除外パターンでは網羅できないが、いずれも`TEST_LIKE_FILE_PATTERN`に一致し単体テストの命名に一致しないため、本検査が一括検査を失敗させる。一括検査が成功する状態では、単体テストのコマンドは`*.unit.test.ts`だけを実行する(6.1)。
+  - 前提: 単体テストのコマンドが走査する範囲は本検査の対象に含まれる。そのため、ルートの`test:unit`は本検査の対象外(`QUALITY_GATE_EXCLUDED_DIRS`・`EXTERNAL_SOURCE_DIRS`)とアプリのディレクトリを`--path-ignore-patterns`で外す。
+  - `check-test-names.unit-filter.unit.test.ts`が、ルートの`test:unit`のフィルタでBunが実際に実行する候補を一時ディレクトリで集め、単体テストの命名に一致しないものがすべて検出されることを確かめる。
 
 ### Entry
 
@@ -1011,6 +1020,13 @@ export declare function createBaseConfig(
   - 既存の除外に`**/*.e2e.test.ts`を加える。
   - 既存の`coverageThreshold = 0.8`・`coverageSkipTestFiles = true`は維持する。
   - `coverageReporter = ["text", "lcov"]`・`coverageDir = "coverage/unit"`・`coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**"]`を加える。
+  - `coverageThreshold`は`COVERAGE_THRESHOLD_PERCENT`、`coverageReporter`はVitestPresetsの`reporter`の書き写しであり、ルートの単体テストで一致を確かめる。
+  - Bun 1.4.2は閾値未達のとき専用のメッセージを出さず、表の`% Funcs`・`% Lines`の実測値と終了コード1だけで示す(端末では未達の値が赤)。要件7.1の「未達の指標と実測値の表示」は、Bunの単体テストではこの表示で満たすものとする(上流の制約、開発者決定)。
+- ルートの`package.json`の`test:unit`は、`apps/**`・`QUALITY_GATE_EXCLUDED_DIRS`と`EXTERNAL_SOURCE_DIRS`の各ディレクトリ(`<ディレクトリ>/**`)・`bunfig.toml`の`pathIgnorePatterns`を`--path-ignore-patterns`で指定する。Bunはドットで始まるディレクトリを走査しないが、単一定義との一致を単純に保つため外部由来はすべて指定する。
+- ルートの`tsconfig.json`(開発者決定)
+  - `include: ["**/*.ts"]`とし、`exclude`にアプリ(`apps`)・`QUALITY_GATE_EXCLUDED_DIRS`・`EXTERNAL_SOURCE_DIRS`を書き写す。コミット時の検査はアプリにも対象外にも属さないTSをルートの静的解析へ渡し、型情報を使う規則は型検査の対象外のファイルを解析エラーにするため、ルート所有のTSはすべてルートの型検査の対象にする。
+  - TypeScriptの`**`はドットで始まるディレクトリに一致しない。そこへルート所有のTS(例: CIのワークフローが使うスクリプト)を置く場合は、`include`に明示する。
+  - `tsconfig.unit.test.ts`が、`exclude`と単一定義の一致と、リポジトリにあるルート所有のTSがドットで始まるディレクトリの配下も含めてすべて対象に入っていることを確かめる。
 
 #### AppScriptContract
 
@@ -1036,7 +1052,7 @@ export declare function createBaseConfig(
 - パッケージを持たない共有ディレクトリ(`apps/backend-lib`)と、ツールを持たない共有ディレクトリ(`apps/db`)は、直下に`tsconfig.json`を置かない。
 - 検査担当でない利用側アプリ(`event`、および`checkedBy: 'self'`の共有ディレクトリを配置する`client`・`admin`)は、共有ディレクトリの配置先を静的解析とテストの対象から外す。型検査には含める。外し方は次のとおり。
   - 静的解析は`ignores`で外す。
-  - 単体テストは`--path-ignore-patterns`で外す。
+  - 単体テストは`--path-ignore-patterns`で外す。Bun 1.4.2ではコマンドラインの`--path-ignore-patterns`が`bunfig.toml`の`pathIgnorePatterns`を置き換えるため、`bunfig.toml`の除外もすべて書き写す(ルートの単体テストが一致を確かめる)。
   - Vitestは`exclude`で外す。
   - これにより、同じファイルが別の設定で重ねて検査されることを防ぐ。
 - 環境シークレットが必要なテストは、`infisical --telemetry=false run --env dev -- bun run test:worker`のように実行時に注入する。シークレットをファイルに書き出さない。
@@ -1109,7 +1125,7 @@ export declare function createBaseConfig(
 | コミットメッセージの型違反                                 | 許可された型の一覧を表示して中止する                                                                |
 | 共有ディレクトリの配置不備                                 | 一括検査の最初の段階で、状態ごとの案内文を表示して失敗する                                          |
 | 命名規約外のテストファイル                                 | ファイルと正しい命名規約を表示して失敗する                                                          |
-| カバレッジ未達                                             | 各テストランナーが未達の指標と実測値を表示して失敗する                                              |
+| カバレッジ未達                                             | Vitestは未達の指標と実測値を表示し、Bunは表の実測値と終了コード1で示して失敗する                    |
 | E2E対象へ到達できない                                      | 到達できなかったURLを表示して失敗する                                                               |
 
 ### Monitoring
@@ -1121,7 +1137,8 @@ export declare function createBaseConfig(
 TDDで進め、ルートの単体テスト(`bun run test:unit`)はカバレッジ80%を満たす。
 
 - **Unit Tests**
-  - `install-git-hooks.unit.test.ts`: `CI`ありで`ci`、`.git`無しで`not-a-git-repository`になり、いずれもhuskyを呼ばない。それ以外で`installed`になる(1.1・1.2)。
+  - `install-git-hooks.unit.test.ts`: `CI`ありで`ci`、`HUSKY`が`0`で`husky-disabled`、`.git`無しで`not-a-git-repository`になり、いずれもhuskyを呼ばずに終了コード0で終える。それ以外で`installed`になる(1.1・1.2)。
+  - `tsconfig.unit.test.ts`: ルートの`tsconfig.json`の`exclude`が単一定義と一致し、リポジトリにあるルート所有のTSがすべて型検査の対象に入っている(5.1・5.6)。
   - `tsconfig.base.unit.test.ts`: 基底設定を継承したアプリで、Bunがパラメータデコレータを実行する(5.2・8.3)。
   - `staged-tasks.unit.test.ts`(2.1・2.4・2.5・5.9・8.3)
     - mockups・外部由来・ロックファイルが計画から外れる。
@@ -1132,11 +1149,14 @@ TDDで進め、ルートの単体テスト(`bun run test:unit`)はカバレッ�
   - `shared-dirs.unit.test.ts`(8.2・8.4・8.5)
     - 一時ディレクトリで、コピー配置後は`copied`、node_modulesの中身があると`non-empty-node-modules`、配置先が無いと`missing`になる。
     - 配置元以外のマウントポイントは`mount-mismatch`になり、コピー配置はマウントポイント・同一性を読めない配置先・配置元と同じ実体に書き込まない。
-    - `SHARED_DIRS`の配置先がcompose.yamlのbind mount先と一致する(`config/workspace-layout.unit.test.ts`)。
+    - `SHARED_DIRS`の配置先がcompose.yamlのbind mount先と一致し、すべてGit管理外である(`config/workspace-layout.unit.test.ts`)。
   - `check-test-names.unit.test.ts`(6.6・7.3)
     - `foo.test.ts`・`bar.spec.tsx`が検出され、4種の命名は検出されない。
     - bunfigの除外パターンが`TEST_FILE_PATTERNS`・`GENERATED_CODE_PATTERNS`と一致する。
-  - `targets.unit.test.ts`: 環境変数でURLを上書きでき、テストの無い対象はプロジェクトにならない(6.7・6.9)。
+    - ルートと各アプリの`test:unit`がbunfigの除外を書き写し、ルートの`test:unit`がアプリ・品質ゲートの対象外・外部由来のディレクトリを外す。
+  - `check-test-names.unit-filter.unit.test.ts`: ルートの`test:unit`のフィルタでBunが実行する候補のうち、単体テストの命名に一致しないものがすべて命名規約外として検出される(6.1・6.6)。
+  - `config/test-patterns.unit.test.ts`・`config/vitest/test-kind-preset.unit.test.ts`: bunfigの`coverageThreshold`・`coverageReporter`が、単一定義の閾値とプリセットの出力形式と一致する(7.1・7.4)。
+  - `targets.unit.test.ts`: 環境変数でURLを上書きでき、テストの無い対象はプロジェクトにならない。既定のURLのポートがcompose.yamlで各対象として公開しているポートと一致する(6.7・6.9)。
   - `playwright-config.unit.test.ts`: 対象ごとに到達確認とテストのプロジェクトが依存付きで作られ、命名パターン・出力先・起動オプション・レポーターが設定どおりで、出力先がGit管理外である(6.4・6.8・6.9)。
   - `reachability.unit.test.ts`: 一時HTTPサーバーへの応答で成功し、接続拒否・応答待ちの時間切れ・URLの解釈失敗で到達できなかったURLを示して失敗する(6.10)。
   - `zero-tests-reporter.unit.test.ts`: 実行対象が0件のときだけ0件であることを表示する(6.7)。
@@ -1145,6 +1165,7 @@ TDDで進め、ルートの単体テスト(`bun run test:unit`)はカバレッ�
     - `update:`・空の件名・型の無いメッセージを拒否する。
     - 日本語スコープ・長い件名を受け入れる。
     - マージ・リバートの自動生成メッセージを受け入れる。
+  - `prettier.config.unit.test.ts`・`lint-staged.config.unit.test.ts`・`git-hooks.unit.test.ts`(フックスクリプト・`prepare`・`.betterleaksignore`の書式)と、`config/`配下の各単体テストは、それぞれの設定値と単一定義からの組み立てを確かめる。
 - **Integration Tests**(一時Gitリポジトリ上で実施)
   - フック全体: 一時リポジトリにルートの設定とnode_modulesへのリンクを置き、次を確かめる(1.1・2.1〜2.3・3.1〜3.3・4.2)。
     - 整形の自動修正がコミットに含まれる。
