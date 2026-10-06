@@ -257,7 +257,7 @@
   - _Depends: 1.5, 5.6, 6.1_
   - _Requirements: 6.5, 6.11, 9.6, 10.5, 10.6, 11.1, 11.2_
 
-- [ ] 7.4 (P) infraとdbの移設規則の文書を書く
+- [x] 7.4 (P) infraとdbの移設規則の文書を書く
   - ローカル状態の永続化と複数Worker間でのリソースIDの共有、互換性日付、デプロイ先とシークレット管理の環境種別を、移設対応表の文書と見出しで汎用的に記載する
   - マイグレーションの生成と適用、大文字小文字を区別しないカラム、テーブルの命名規則、D1の制約と対処を、移設対応表の文書と見出しで汎用的に記載する
   - infraとdbの索引に文書を1行ずつ追記する
@@ -368,3 +368,4 @@
 - 7.3(7.5への申し送り): `testing/001-test-strategy.md`の環境シークレットの節は、Workersのコードからシークレットを読む方法を`../security/README.md`へリンクしている。7.5で`security/001-secret-management.md`を作ったら、このリンクを張り替える(7.5の境界にtestingの文書の1行の編集を含める)。
 - 7.3(開発者判断を待たずに親が決定): Implementation Notes 3.4・3.6が「7.3・7.7の文書に記載する」としたBetterleaksの注意点(Fingerprintの組み立て方、`.betterleaksignore`の行頭`#`だけのコメント、`git revert`・cherry-pickがフックを通らずCIでの検出が補うこと、`GIT_TRACE=1`で走査が失敗すること、`--log-level debug`が`--redact`でも値を表示すること)はテストの話題ではないため、testingの文書には載せない。汎用の内容は7.5の`security/001-secret-management.md`に、本プロジェクトでの手順は7.7のオンボーディングガイドに載せる。
 - 7.3: `bun test`は`./`で始まる引数をファイルのパスとして扱いそのファイルだけを実行し、`./`で始まらない引数はフィルタとして扱う(Bun 1.4.2で実測)。E2Eの`test-results`には既定で`error-context.md`だけが出る(トレース・スクリーンショット・動画は`use`で有効にした場合のみ)。
+- 7.4(7.5への申し送り): `infra/001-wrangler-conventions.md`の「ローカル状態の永続化と共有」節は、`@cloudflare/vite-plugin`の`persistState`の設定方法を`../frontend/README.md`へリンクしている。7.5で`frontend/002-tanstack-start-on-workers.md`を作ったら、このリンクを該当見出しへ張り替える(7.5の境界にinfraの文書の1行の編集を含める)。`infra/002-environments.md`のInfisicalの実行例は`--telemetry=false`を含まない汎用形で、実際の接頭辞は7.6の`project-values.md`に残す。
