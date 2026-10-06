@@ -283,7 +283,7 @@
   - _Depends: 7.1, 7.3, 7.4, 7.5_
   - _Requirements: 11.3, 11.4, 11.5, 11.6_
 
-- [ ] 7.7 (P) オンボーディングガイドと技術スタック表を更新する
+- [x] 7.7 (P) オンボーディングガイドと技術スタック表を更新する
   - ルートの`bun install`でGitフックが有効になること、コミットは開発コンテナ内で行うこと、compose.yamlの変更後にコンテナを再作成することを手順に追記する
   - 各アプリで品質ツールを主要パッケージ一覧の版で導入する手順を追記する
   - 採用した付属パッケージ(typescript-eslint・`@eslint/js`・`@commitlint/types`・`@types/bun`・`@vitest/browser-playwright`・`@vitest/coverage-v8`・`@vitest/coverage-istanbul`)と、主要パッケージ一覧への参照を技術スタック表に追記する
@@ -374,3 +374,4 @@
 - 7.6: CLAUDE.mdの「技術規則の参照先」は16規則の移設先のH2見出しへ1対1でリンクし、アンカーはGitHubのスラッグ(`github-slugger` 2.0.0)と一致させた(中黒「・」はスラッグで除去される。例:`#マイグレーション大文字小文字を区別しないカラム`)。技術文書の見出しの文言を変える場合は、CLAUDE.md・`docs/onboardings/project-values.md`のアンカーも合わせて直す。`project-values.md`には必須の固有値に加え、規則#13の`migrations/`の受け皿として`<マイグレーションの保存先>`→`apps/db/migrations`(apiとeventのWrangler設定からは`db/migrations`。Wrangler設定は未作成のため後続specで確かめる)を載せた。
 - 7.6(レビューの差し戻し後に対応): `docs/adr/0001-drizzle-orm-over-mikroorm.md`の「反映先」がCLAUDE.mdから消えた節を指していたため、db/001・db/002と`project-values.md`へ張り替えた。`.kiro/steering/roadmap.md`と`.kiro/specs/*/brief.md`は移設した規則を要約・引用しているが、節名を指さず値も矛盾しないため張り替えていない。
 - 7.6(7.7への申し送り): ルートのREADME.mdの`docs/onboardings/`の索引表と`docs/onboardings/README.md`に、`project-values.md`がまだ載っていない。7.7で1行ずつ追加する。
+- 7.7: オンボーディングガイドに「コミット時の検査」「compose.yamlを変更したとき」「アプリへの品質ツールの導入」「日常の検査とテスト」を加え、クイックスタートの`setup-chromium.sh`の説明を実態(コンテナ起動時に`entrypoint.sh`から実行され、ルートの`bun install`前はChromiumの導入を飛ばす)に訂正した。`HUSKY=0 bun install`が失敗する挙動(Notes 3.1)は、フックの無効化を促さないよう記載していない。技術スタック表は付属パッケージ7つだけを追加し、本体パッケージと`wrangler`は既存の記載のままにした。

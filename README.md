@@ -62,10 +62,11 @@ Launch Stadiumのプログラム一式、及びドキュメント。
 
 ### エージェント・開発支援(`docs/onboardings/`)
 
-| ドキュメント                                                  | 内容                                                             |
-| ------------------------------------------------------------- | ---------------------------------------------------------------- |
-| [claude-extensions.md](docs/onboardings/claude-extensions.md) | `.claude/`配下のスキル・コマンド・ルール・エージェント定義の解説 |
-| [tech-stack.md](docs/onboardings/tech-stack.md)               | 技術選定(データベース・バックエンド・フロントエンド・インフラ等) |
+| ドキュメント                                                  | 内容                                                                                         |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| [claude-extensions.md](docs/onboardings/claude-extensions.md) | `.claude/`配下のスキル・コマンド・ルール・エージェント定義の解説                             |
+| [tech-stack.md](docs/onboardings/tech-stack.md)               | 技術選定(データベース・バックエンド・フロントエンド・インフラ等)                             |
+| [project-values.md](docs/onboardings/project-values.md)       | 技術ドキュメントの一般的な表記に当てはまる本プロジェクト固有の値(パス・日付・リソース名など) |
 
 ### AIエージェント向け外部ガイドライン(`docs/ai-extensions/`)
 
