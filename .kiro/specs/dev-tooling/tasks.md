@@ -274,7 +274,7 @@
   - _Depends: 1.5_
   - _Requirements: 10.6, 11.1, 11.2_
 
-- [ ] 7.6 CLAUDE.mdの移設元の節をリンク一覧に置き換え、取り除いた固有値を残す
+- [x] 7.6 CLAUDE.mdの移設元の節をリンク一覧に置き換え、取り除いた固有値を残す
   - 移設対応表の16規則すべてが、移設先の文書と見出しに1対1で存在することを突き合わせる
   - 汎用化で取り除いた固有値(ローカル状態の保存先と共有するアプリ、互換性日付、単体テストの設定ファイルのパス、シークレット注入の実行接頭辞、共有Chromiumのパス、E2Eテストツール関連の4箇所の具体的なファイルと項目名)を、CLAUDE.mdの元の節から拾い、オンボーディング配下の固有値の文書に記載する
   - 当該節を「技術規則の参照先」の見出しと「<作業>の前に: リンク」形式のリンク一覧だけに置き換え、最後に固有値の文書へのリンクを置く
@@ -371,3 +371,6 @@
 - 7.4(7.5への申し送り): `infra/001-wrangler-conventions.md`の「ローカル状態の永続化と共有」節は、`@cloudflare/vite-plugin`の`persistState`の設定方法を`../frontend/README.md`へリンクしている。7.5で`frontend/002-tanstack-start-on-workers.md`を作ったら、このリンクを該当見出しへ張り替える(7.5の境界にinfraの文書の1行の編集を含める)。`infra/002-environments.md`のInfisicalの実行例は`--telemetry=false`を含まない汎用形で、実際の接頭辞は7.6の`project-values.md`に残す。
 - 7.5: CLAUDE.mdの規則#9の理由「WranglerやViteのバンドル処理はesbuildを用いており`emitDecoratorMetadata`が使えない」は一部が事実に反する。実測では、wrangler 4.124.0が固定するesbuild 0.28.1は`emitDecoratorMetadata: true`でも`design:paramtypes`を警告なしに出力しないが、Vite 8.3.1の`vite build`(Rolldown・Oxc)とBun 1.4.2の`bun test`・`bun build`は出力する。規則(`@inject`の明示)は変えず、`backend/001-dependency-injection-on-workers.md`には「メタデータに頼るコードは単体テストを通過してもWranglerのバンドル後に実行時に失敗し得る」という正確な理由を書いた。`coding/001-javascript-typescript-conventions.md`の「デコレータの設定」とdesign.mdの「TsconfigBase」節の「esbuild系のバンドラが出力しない」は誤りではないため変更していない。
 - 7.5: `security/001-secret-management.md`の「シークレットの注入」は、Infisicalの実行接頭辞を汎用形`infisical run --env <環境種別> -- <コマンド>`で書き、共通オプション(本プロジェクトでは`--telemetry=false`)は「プロジェクトで決めた共通のオプションがあれば`infisical`の直後に付ける」としている。7.6の`project-values.md`に実際の接頭辞を載せる。Betterleaksの汎用的な注意点は同文書のH2「シークレットの検出」にあり、7.7のオンボーディングガイドからはここへリンクする。
+- 7.6: CLAUDE.mdの「技術規則の参照先」は16規則の移設先のH2見出しへ1対1でリンクし、アンカーはGitHubのスラッグ(`github-slugger` 2.0.0)と一致させた(中黒「・」はスラッグで除去される。例:`#マイグレーション大文字小文字を区別しないカラム`)。技術文書の見出しの文言を変える場合は、CLAUDE.md・`docs/onboardings/project-values.md`のアンカーも合わせて直す。`project-values.md`には必須の固有値に加え、規則#13の`migrations/`の受け皿として`<マイグレーションの保存先>`→`apps/db/migrations`(apiとeventのWrangler設定からは`db/migrations`。Wrangler設定は未作成のため後続specで確かめる)を載せた。
+- 7.6(レビューの差し戻し後に対応): `docs/adr/0001-drizzle-orm-over-mikroorm.md`の「反映先」がCLAUDE.mdから消えた節を指していたため、db/001・db/002と`project-values.md`へ張り替えた。`.kiro/steering/roadmap.md`と`.kiro/specs/*/brief.md`は移設した規則を要約・引用しているが、節名を指さず値も矛盾しないため張り替えていない。
+- 7.6(7.7への申し送り): ルートのREADME.mdの`docs/onboardings/`の索引表と`docs/onboardings/README.md`に、`project-values.md`がまだ載っていない。7.7で1行ずつ追加する。
