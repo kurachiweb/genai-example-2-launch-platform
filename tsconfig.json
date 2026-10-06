@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": [
+    "apps",
+    "mockups",
+    ".claude",
+    "docs/ai-extensions",
+    ".kiro/settings"
+  ]
+}

@@ -5,7 +5,7 @@ import {
   renameSync,
   rmSync,
   writeFileSync,
-} from "node:fs";
+} from 'node:fs';
 
 interface ClaudeConfig {
   projects?: Record<string, Record<string, unknown> | undefined>;
@@ -15,14 +15,14 @@ interface ClaudeConfig {
 // ワークスペース信頼設定のキーだけを既存内容を保持したまま冪等にマージする。
 const configDir = process.env.CLAUDE_CONFIG_DIR;
 if (!configDir) {
-  throw new Error("環境変数CLAUDE_CONFIG_DIRが未設定です。");
+  throw new Error('環境変数CLAUDE_CONFIG_DIRが未設定です。');
 }
 const path = `${configDir}/.claude.json`;
 
 let data: ClaudeConfig = {};
 if (existsSync(path)) {
   try {
-    data = JSON.parse(readFileSync(path, "utf8")) as ClaudeConfig;
+    data = JSON.parse(readFileSync(path, 'utf8')) as ClaudeConfig;
   } catch {
     // 破損時は既存内容を捨てず、バックアップを退避してから初期化する
     const brokenBackupPath = `${path}.broken`;
@@ -36,8 +36,8 @@ data = {
   ...data,
   projects: {
     ...data.projects,
-    "/workspace": {
-      ...data.projects?.["/workspace"],
+    '/workspace': {
+      ...data.projects?.['/workspace'],
       hasTrustDialogAccepted: true,
       hasCompletedProjectOnboarding: true,
     },

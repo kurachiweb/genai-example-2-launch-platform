@@ -1,0 +1,13 @@
+# シークレット検出を飛ばしたコミットを作らないよう、検出ツールが無い環境ではコミットを止める
+if ! command -v betterleaks >/dev/null 2>&1; then
+  echo 'シークレット検出ツールBetterleaksが見つからないため、コミットを中止しました。Betterleaksを導入済みの開発コンテナ内でコミットしてください。' >&2
+  exit 1
+fi
+
+if ! betterleaks git --pre-commit --staged --redact --no-banner --verbose; then
+  echo 'シークレットを検出したか検出に失敗したため、コミットを中止しました。シークレットを取り除いてから再度コミットしてください。' >&2
+  echo '誤検知の場合は、検出結果のパス・検出規則・行番号から「<ファイルのパス>:<検出規則>:<行番号>」形式のFingerprintを作り、リポジトリのルートの.betterleaksignoreに1行で追記してコミットに含めてください。' >&2
+  exit 1
+fi
+
+bunx --bun lint-staged

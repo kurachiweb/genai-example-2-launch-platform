@@ -1,5 +1,7 @@
 # 主な技術選定
 
+版を完全に固定する主要パッケージ(TypeScript・ESLint・Prettier・Vitest系・Drizzle ORM・Playwrightなど)の版と固定の理由は、[依存パッケージの版管理](../GUIDES/tech/coding/002-dependency-versions.md#主要パッケージの一覧)の主要パッケージの一覧を正とする。
+
 ## データベース
 
 - SQLデータベース
@@ -42,7 +44,7 @@
 
 ### ID採番
 
-- ulidx
+- [ulid](https://github.com/ulid/javascript)
 
 ### バリデーション・変換
 
@@ -108,7 +110,7 @@
 
 ### マークダウンエディタ
 
-- `@milkdown/crepe`(ProseMirrorベースのマークダウン向けWYSIWYGエディタ)
+- `@milkdown/crepe` ... ProseMirrorベースのマークダウン向けWYSIWYGエディタ
 - `@milkdown/react` ... Reactコンポーネント、SSRでは描画せずクライアント側でのみマウント
 
 ### 画像編集UI
@@ -125,10 +127,10 @@
 - Stripe(決済処理基盤、[ドキュメント](https://docs.stripe.com))
   - Stripe Node.js SDK(APIサーバー及びイベントサーバーで使用、`createFetchHttpClient()`によるfetchベースの通信)
   - Stripe Checkout Sessions API(決済セッションの管理)
-  - Stripe Refunds API(自動返金)
-  - Stripe Customer Portal(Ultrasの支払い方法の更新)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
   - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
+  - Stripe Refunds API(自動返金)
+  - Stripe Customer Portal(Ultrasの支払い方法の更新)
 
 ## CI/CD
 
@@ -232,8 +234,12 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### コード品質
 
 - ESLint + Prettier(`eslint-config-prettier`を使い`eslint-plugin-prettier`は使わない)
+  - `@eslint/js` ... ESLint公式の推奨規則、静的解析の基底設定が使用
+  - typescript-eslint ... TypeScriptの構文解析と型情報付きの規則(`strictTypeChecked`、`no-deprecated`による非推奨記法の検出)
+- `@types/bun` ... `tsc`による型検査でBunのAPIと`bun:test`の型を解決(ルートと各アプリの`tsconfig.json`の`types`に`bun`を指定)
 - Husky + lint-staged(`pre-commit`フック)
 - Commitlint(コミットメッセージ規約)
+  - `@commitlint/types` ... TypeScriptで書く設定ファイル`commitlint.config.ts`の型と、規則の重大度の定数
 
 ### 開発プロセスのセキュリティ
 
@@ -248,8 +254,11 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Bun(ロジック層の単体テスト、`bun test`コマンドを使用)
 - Vitest + Vitest Browser Mode(DOM・コンポーネントテスト、フロントエンド)
+  - `@vitest/browser-playwright` ... Vitest Browser ModeのブラウザプロバイダとしてPlaywrightを使い、共有Chromiumでテストを実行
+  - `@vitest/coverage-v8` ... ブラウザテストのカバレッジ計測(V8)
 - vitest-browser-react(フロントエンド、Vitest Browser Mode上で使用)
 - @cloudflare/vitest-pool-workers(Cloudflare Workers統合テスト、D1・R2・DOバインディングを含む)
+  - `@vitest/coverage-istanbul` ... Workers統合テストのカバレッジ計測(workerdではV8のカバレッジ計測を使えないためIstanbulを使用)
 - Playwright(複数アプリの横断E2E)
 
 ### ブラウザ動作確認
@@ -264,7 +273,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### IaC(Infrastructure as Code)
 
 - OpenTofu
-- `infisical`プロバイダ
+  - `infisical`プロバイダ
 
 ### ドキュメント
 

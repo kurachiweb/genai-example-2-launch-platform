@@ -65,6 +65,8 @@ coverage
 test-results
 # Playwright(HTMLレポートの出力先)
 playwright-report
+# Vitest(添付ファイル・画像比較の差分・ブラウザテストの失敗時のスクリーンショットの出力先)
+.vitest-attachments
 # Playwright MCPの出力先
 .playwright-mcp
 

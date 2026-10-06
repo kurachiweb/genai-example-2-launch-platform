@@ -1,0 +1,189 @@
+import { describe, expect, expectTypeOf, test } from 'bun:test';
+import { join, resolve } from 'node:path';
+
+import { isGitIgnored } from '../../test-support/git-ignore.ts';
+
+import {
+  COVERAGE_THRESHOLD_PERCENT,
+  GENERATED_CODE_PATTERNS,
+  TEST_FILE_PATTERNS,
+} from '../test-patterns.ts';
+import { APPS } from '../workspace-layout.ts';
+import {
+  type BrowserLaunchOptions,
+  browserOptionsPreset,
+  browserTestPreset,
+  resolveBrowserLaunchOptions,
+} from './browser.ts';
+import type { TestKindPreset } from './test-kind-preset.ts';
+
+describe('browserTestPreset', () => {
+  test('単一定義に基づく設定値だけを持ち、余計な設定を持たない', () => {
+    expect(browserTestPreset).toStrictEqual({
+      include: [...TEST_FILE_PATTERNS.browser],
+      passWithNoTests: true,
+      attachmentsDir: '.vitest-attachments',
+      coverage: {
+        provider: 'v8',
+        reportsDirectory: 'coverage/browser',
+        reporter: ['text', 'lcov'],
+        thresholds: {
+          lines: COVERAGE_THRESHOLD_PERCENT,
+          functions: COVERAGE_THRESHOLD_PERCENT,
+          perFile: true,
+        },
+        exclude: [
+          ...Object.values(TEST_FILE_PATTERNS).flat(),
+          ...GENERATED_CODE_PATTERNS,
+        ],
+      },
+    });
+  });
+
+  test('ブラウザテストの命名パターンだけを対象にする', () => {
+    expect(browserTestPreset.include).toEqual([...TEST_FILE_PATTERNS.browser]);
+  });
+
+  test('V8でカバレッジを計測する', () => {
+    expect(browserTestPreset.coverage.provider).toBe('v8');
+  });
+
+  test('lcovをブラウザテスト用の出力先へ書き出す', () => {
+    expect(browserTestPreset.coverage.reportsDirectory).toBe(
+      'coverage/browser',
+    );
+    expect(browserTestPreset.coverage.reporter).toEqual(['text', 'lcov']);
+  });
+
+  test('型はテスト種別の共通設定値である', () => {
+    expectTypeOf(browserTestPreset).toEqualTypeOf<TestKindPreset>();
+  });
+});
+
+describe('resolveBrowserLaunchOptions', () => {
+  test('共有Chromiumのパスがあれば、それをブラウザの実行ファイルにする', () => {
+    expect(
+      resolveBrowserLaunchOptions({ CHROMIUM_PATH: '/opt/chromium/chrome' }),
+    ).toStrictEqual({ executablePath: '/opt/chromium/chrome' });
+  });
+
+  test.each([
+    ['定義されていない', {}],
+    ['値がundefinedである', { CHROMIUM_PATH: undefined }],
+    ['空文字列である', { CHROMIUM_PATH: '' }],
+  ])('共有Chromiumのパスが%s場合は実行ファイルを指定しない', (_label, env) => {
+    const options = resolveBrowserLaunchOptions(env);
+
+    expect(options).toStrictEqual({});
+    expect(Object.hasOwn(options, 'executablePath')).toBe(false);
+  });
+
+  test('共有Chromiumのパスが無ければ、ほかのブラウザ関連の環境変数があっても実行ファイルを指定しない', () => {
+    expect(
+      resolveBrowserLaunchOptions({ PLAYWRIGHT_BROWSERS_PATH: '/x' }),
+    ).toStrictEqual({});
+  });
+
+  test('共有Chromiumのパス以外の環境変数を起動オプションに含めない', () => {
+    expect(
+      resolveBrowserLaunchOptions({
+        CHROMIUM_PATH: '/opt/chromium/chrome',
+        PLAYWRIGHT_BROWSERS_PATH: '/opt/ms-playwright',
+        HEADLESS: 'false',
+      }),
+    ).toStrictEqual({ executablePath: '/opt/chromium/chrome' });
+  });
+
+  test('型は起動オプションを返す関数である', () => {
+    expectTypeOf(resolveBrowserLaunchOptions).toEqualTypeOf<
+      (
+        env: Readonly<Record<string, string | undefined>>,
+      ) => BrowserLaunchOptions
+    >();
+  });
+});
+
+describe('browserOptionsPreset', () => {
+  const REPO_ROOT = resolve(import.meta.dir, '../..');
+  const resolveReferencePath =
+    browserOptionsPreset.expect.toMatchScreenshot.resolveScreenshotPath;
+  const pathData = {
+    arg: 'primary',
+    ext: '.png',
+    browserName: 'chromium',
+    platform: 'linux',
+    root: '/repo/apps/frontend-lib',
+    testFileDirectory: 'components',
+    testFileName: 'button.browser.test.tsx',
+  };
+
+  test('失敗時のスクリーンショットの出力先と基準画像の保存先だけを持つ', () => {
+    expect(browserOptionsPreset).toStrictEqual({
+      screenshotDirectory: '.vitest-attachments/screenshots',
+      expect: {
+        toMatchScreenshot: { resolveScreenshotPath: resolveReferencePath },
+      },
+    });
+    expect(typeof resolveReferencePath).toBe('function');
+  });
+
+  test('失敗時のスクリーンショットをテスト成果物の出力先の中へ出す', () => {
+    expect(
+      browserOptionsPreset.screenshotDirectory.startsWith(
+        `${browserTestPreset.attachmentsDir}/`,
+      ),
+    ).toBe(true);
+  });
+
+  test('基準画像はVitestの既定と同じ並びで、テストファイルの隣の__screenshots__へ保存する', () => {
+    expect(resolveReferencePath(pathData)).toBe(
+      '/repo/apps/frontend-lib/components/__screenshots__/button.browser.test.tsx/primary-chromium-linux.png',
+    );
+  });
+
+  test('アプリ直下のテストファイルでも区切りを重ねない', () => {
+    expect(resolveReferencePath({ ...pathData, testFileDirectory: '' })).toBe(
+      '/repo/apps/frontend-lib/__screenshots__/button.browser.test.tsx/primary-chromium-linux.png',
+    );
+  });
+
+  test('失敗時のスクリーンショットや添付ファイルの出力先に関係なく基準画像の保存先を決める', () => {
+    const withOutputDirectories = {
+      ...pathData,
+      screenshotDirectory: '.vitest-attachments/screenshots',
+      attachmentsDir: '.vitest-attachments',
+    };
+
+    expect(resolveReferencePath(withOutputDirectories)).toBe(
+      resolveReferencePath(pathData),
+    );
+  });
+
+  test.each(APPS.map(({ dir }) => dir))(
+    '%sでは失敗時のスクリーンショットがGit管理外になる',
+    (appDir) => {
+      expect(
+        isGitIgnored(
+          REPO_ROOT,
+          join(
+            appDir,
+            browserOptionsPreset.screenshotDirectory,
+            'components/button.browser.test.tsx/failure-1.png',
+          ),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  test.each(APPS.map(({ dir }) => dir))(
+    '%sでは基準画像をコミットできる',
+    (appDir) => {
+      const referencePath = resolveReferencePath({
+        ...pathData,
+        root: join(REPO_ROOT, appDir),
+      });
+
+      expect(isGitIgnored(REPO_ROOT, referencePath)).toBe(false);
+    },
+  );
+});

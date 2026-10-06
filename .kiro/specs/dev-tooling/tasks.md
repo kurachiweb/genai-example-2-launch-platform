@@ -1,0 +1,383 @@
+# Implementation Plan
+
+- [x] 1. 基盤: ルートの依存・型検査・設定データ・単体テスト設定・技術ドキュメントの置き場所
+- [x] 1.1 ルートのパッケージを作成し、主要パッケージを固定した版で導入する
+  - ルートにパッケージ定義を新設し、Git運用(husky・lint-staged・commitlintの本体と型定義)、ルート所有ファイル用の品質ツール(ESLint・`@eslint/js`・typescript-eslint・eslint-config-prettier・Prettier・TypeScript)、Bunの型定義、E2Eテストツールを、設計の主要パッケージ一覧の版で完全に固定して導入する
+  - Bunのワークスペース機能は使わない
+  - 導入後に共有Chromiumのセットアップスクリプトを実行し、共有Chromiumのリンクを作成する
+  - 完了状態: ルートで`bun install`が成功し、ロックファイルに記録された各パッケージの版が一覧と一致し、共有Chromiumのリンク先が`--version`で起動できる
+  - _Requirements: 9.4_
+
+- [x] 1.2 全アプリ共通の型検査基底設定と、ルート所有ファイルの型検査を整える
+  - 厳格な型検査(暗黙の`any`の禁止・インデックスアクセス結果の未定義考慮など)とバンドラ前提のモジュール解決を持つ基底設定をルートに1つ用意し、デコレータ設定と取り込む型はアプリ側の差分に委ねる
+  - 非推奨のコンパイラオプションを使わない
+  - ルート所有のTypeScript(設定ファイル・ツールスクリプト・設定データ・E2E支援コード)を対象に、基底設定を継承してBunの型だけを加えたルートの型検査設定を用意し、ルートに型検査のスクリプトを追加する
+  - 完了状態: ルートの型検査が既存のルート所有スクリプトに対して成功し、暗黙の`any`を含む一時ファイルを置くと失敗する(確認後に一時ファイルは削除する)
+  - _Requirements: 5.1, 5.2, 5.3, 5.6_
+
+- [x] 1.3 アプリと共有ディレクトリの配置定義、テスト命名とカバレッジの単一定義を用意する
+  - 一括実行の対象アプリと順序(api・event・frontend-lib・client・admin)、共有ディレクトリごとの配置元・配置先・検査担当、品質ゲートの対象外ディレクトリ(mockups)をデータとして定義する
+  - 配置先は開発コンテナのbind mount先と完全に一致させる
+  - 4種のテストの命名パターン、テストランナーがテストとみなす名前のパターン、自動生成コードのパターン、カバレッジ閾値80%をデータとして定義する
+  - どちらの定義も他のモジュールをimportしない
+  - 完了状態: 2つの定義がルートの型検査を通り、値が設計の定義(配置先の対応・検査担当・命名パターン・生成コードのパターン・閾値)と一致している
+  - _Requirements: 5.9, 6.1, 6.2, 6.3, 6.4, 7.1, 7.3, 8.1, 8.3_
+
+- [x] 1.4 単体テストの共通設定にE2Eの除外とカバレッジ出力を加え、ルートの単体テストコマンドを用意する
+  - 単体テストの共通設定で、E2Eテストの命名をBunの対象から除外する
+  - 既存の閾値80%とテストファイル自身の除外を維持したまま、カバレッジを人が読む形式と機械可読形式(lcov)でGit管理外の単体テスト用の出力先へ書き出し、自動生成コードを分母から除外する
+  - ルートの単体テストコマンドは、ルート所有のテストだけ(アプリとmockupsを除く)を対象にし、対象が0件でも正常終了させる
+  - 完了状態: ルートで単体テストを実行すると対象0件で正常終了し、一時的なテストを置いてカバレッジ付きで実行すると未達時に指標と実測値を表示して失敗してlcovが出力され、カバレッジ無しでは閾値判定が行われない(確認後に一時ファイルは削除する)
+  - _Requirements: 6.1, 6.5, 6.7, 7.1, 7.2, 7.3, 7.4_
+
+- [x] 1.5 (P) 技術ドキュメントの置き場所と索引を作る
+  - 9つのサブディレクトリ(infra・external・db・backend・frontend・coding・testing・operations・security)を作り、全体の索引に各サブディレクトリの扱う範囲を表で示す
+  - 各サブディレクトリの索引に「範囲」と「文書一覧」(文書・概要)の表を持たせ、収録文書がまだ無い場合はその旨を示し、新しい文書は表に1行追加するだけで辿れる形式にする
+  - ルートのREADMEの「ドキュメント索引」に技術ドキュメントの表を追加する
+  - プロジェクト名・サービス固有の仕様・本プロジェクト固有の値(ドメイン・ポート番号・リソース名・絶対パス)を書かない
+  - 完了状態: ルートのREADMEから全体の索引と9つのサブディレクトリの索引へリンクで辿れ、各索引が範囲と「収録文書はまだ無い」旨を示している
+  - _Boundary: TechDocsIndex_
+  - _Requirements: 10.1, 10.2, 10.3, 10.6, 10.7_
+
+- [x] 2. 静的解析と整形の基底設定
+- [x] 2.1 (P) アプリが自分の導入したモジュールを渡して使う、静的解析の基底設定を作る
+  - 推奨規則、型情報付きの厳格な規則、共通規則、設定ファイルでの型情報付き規則の無効化、整形と衝突する規則の無効化(最後に適用)の順で構成する
+  - 共通規則で、非推奨APIの使用、`Number.*`へ置き換えるべきグローバル関数と廃止予定のグローバル関数の使用、コンソール出力などを違反にする
+  - ビルド成果物・カバレッジ出力・自動生成コードを検査対象外にする(基底設定は`import type`以外のimportを持てないため、自動生成コードのパターンは単一定義から書き写し、4.1で一致を確かめる)
+  - 基底設定はnpmパッケージを型としてのみ参照し、値のimportを持たない
+  - 完了状態: 基底設定の単体テストで、グローバルの`isNaN`と`String.prototype.substr`が違反になり、書式だけが異なるコードは違反にならず、設定ファイルでは型情報付きの規則が無効になることが確認できる
+  - _Boundary: EslintBase_
+  - _Depends: 1.1, 1.2_
+  - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+- [x] 2.2 (P) リポジトリ全体の整形設定と整形対象外の一覧を作る
+  - 既存のモックアップと同じ流儀(シングルクォート)の整形設定を、アプリが継承してプラグインなどの差分を加えられる形で用意する
+  - 整形対象外として、mockups・原文のまま保つ外部由来の文書と拡張ファイル・ロックファイル・ローカル開発の蓄積データ・マイグレーション履歴・自動生成コード・ブラウザ操作MCPの出力先を指定する
+  - ルートに整形と整形検査のスクリプトを追加し、整形ツールが対応しない種類のファイルは無視させる
+  - 完了状態: 整形検査を実行すると、mockups・外部由来・ロックファイルを対象にせず、マークダウン・JSON・YAMLを含む対象ファイルの整形差分を報告する
+  - _Boundary: PrettierConfig_
+  - _Depends: 1.1_
+  - _Requirements: 2.4, 2.5, 5.1, 5.3, 5.9_
+
+- [x] 2.3 ルート所有ファイルの静的解析を有効にし、既存のルート所有スクリプトを基準にそろえる
+  - 静的解析の基底設定を使うルートの設定を作り、ルートに静的解析のスクリプトを追加する
+  - 既存のルート所有スクリプトの違反を、振る舞いを変えずに修正する
+  - 完了状態: ルートで静的解析と型検査が成功する
+  - _Requirements: 5.1, 5.2, 5.4_
+
+- [x] 3. コミット時の品質ゲート
+- [x] 3.1 (P) CI環境と非Git環境ではGitフックの導入を飛ばすインストーラを作る
+  - CI環境変数が空でなければCI、Gitの作業ツリーが無ければ非Git環境を理由に導入を飛ばし、理由を表示して正常終了する
+  - それ以外ではフック導入ツールを呼び出す
+  - 環境変数・存在確認・導入処理は外から渡せるようにする
+  - 完了状態: 単体テストで、CIありと`.git`無しではいずれも導入処理が呼ばれずに飛ばした理由が返り、それ以外では導入処理が呼ばれることが確認できる
+  - _Boundary: GitHookInstaller_
+  - _Depends: 1.1_
+  - _Requirements: 1.1, 1.2_
+
+- [x] 3.2 (P) コミットメッセージの型だけを検査する設定を作る
+  - 型が空でないこと、件名が空でないこと、型が許可された一覧(feat・fix・refactor・docs・test・chore・perf・ci)に含まれることの3規則だけを持たせる
+  - 許可する型の一覧は開発者向けGit規約の一覧と一致させ、スコープ・件名の言語・行の長さの規則は持たせない
+  - マージ・リバートの自動生成メッセージは既定の除外で受け入れる
+  - 単体テストは、導入済みのコミットメッセージ検査ツールのコマンドへ標準入力でメッセージを渡して判定し、追加の依存を導入しない
+  - 完了状態: 単体テストで、`update:`・空の件名・型の無いメッセージが拒否され、日本語スコープ・長い件名・マージ・リバートのメッセージが受け入れられることが確認できる
+  - _Boundary: CommitlintConfig_
+  - _Depends: 1.1_
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 5.3_
+
+- [x] 3.3 (P) ステージ済みファイルを所有者ごとに振り分け、静的解析と整形のコマンドを生成する計画処理を作る
+  - mockups・外部由来・ロックファイルの配下を計画から外す
+  - TypeScriptのファイルは最も長く一致するアプリを所有者とし、検査担当がアプリである共有ディレクトリのファイルは検査担当アプリの配置先パスへ読み替え、どのアプリにも属さないファイルはルートの所有とする
+  - 整形は除外後の全ファイルを、未対応形式を無視させてルートの整形ツールへ1回で渡し、コマンドは所有者ごとの静的解析の後に整形の順で並べる
+  - 検査担当アプリが未作成の場合と、所有者に品質ツールが未導入の場合は、該当アプリと`bun install`の実行を案内するエラーを返す
+  - 完了状態: 単体テストで、除外対象が計画に含まれず、`apps/backend-lib`・`apps/db`のファイルが`apps/api`配下へ読み替えられ、`apps/frontend-lib`のファイルがfrontend-libの所有になり、マークダウンが整形だけの対象になり、検査担当アプリが無いとエラーになることが確認できる
+  - _Boundary: StagedTaskPlanner_
+  - _Depends: 1.3_
+  - _Requirements: 2.1, 2.4, 2.5, 5.9, 8.3_
+
+- [x] 3.4 コミット前検査とコミットメッセージ検査をGitフックとして結線する
+  - ルートの依存インストール時に、3.1のインストーラが実行されるようにする
+  - コミット前検査は、シークレット検出ツールの存在確認(無ければ開発コンテナ内でのコミットを案内して中止)、ステージ済み差分全体(mockupsを含む)の伏せ字付きシークレット検出、計画処理に基づく自動修正と再ステージの順に実行し、いずれかが失敗した時点で中止する
+  - ステージ済みファイルへの適用設定は計画処理の結果をコマンドへ変換するだけにし、計画がエラーなら理由を表示する失敗コマンドを返す
+  - コミットメッセージ検査のフックから3.2の設定で検査する
+  - 誤検知を登録する許可リストを、リポジトリで管理するファイルとして用意する
+  - `git config`の実行はClaude設定で拒否されるため、フックの有効化はコミットの挙動で確かめる
+  - 完了状態: ルートで`bun install`を実行した後、本リポジトリで型が一覧に無いメッセージのコミットが許可された型の一覧を表示して拒否される
+  - _Depends: 2.3_
+  - _Requirements: 1.1, 1.3, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1, 4.2_
+
+- [x] 3.5 既存ファイルへの初回整形を、機能変更と分けた独立したコミットで適用する
+  - 1.1から3.4までの成果物をコミットし終えてから、整形対象のすべての既存ファイルへ整形を適用する
+  - 並行する作業の新規ファイルが混ざらないよう、コミット済みのファイルへの整形差分だけをステージする
+  - 整形の差分がマークダウンの表・図・コードブロックの意味を変えていないことを確かめる
+  - コミット前検査のシークレット検出で既存ファイルの誤検知が出た場合は、許可リストに登録して理由をコミットに残す
+  - 完了状態: ルートの整形検査が成功し、整形差分だけを含むコミットがフックを通って履歴に残っている
+  - _Requirements: 2.4, 2.5, 5.9_
+
+- [x] 3.6 一時Gitリポジトリでコミット時の品質ゲート全体を検証する
+  - ルートの設定とインストール済みパッケージへのリンクを置いた一時リポジトリで、インストーラだけを実行する`prepare`スクリプトによってフックを有効にし、実際にコミットして確かめる(リンク経由で開発コンテナのnode_modulesを書き換えないよう、リンクを置いた状態では依存インストールを実行しない)
+  - 整形の自動修正がコミットに含まれること、部分ステージの未ステージ部分が作業ツリーに残ること、修正できない静的解析違反でファイル・行・規則を表示して中止されることを確認する
+  - シークレットを含むコミット(mockups配下を含む)が値を伏せた表示で中止され、許可リストに登録した箇所は以後検出されないことを確認する
+  - シークレット検出ツールを`PATH`から外すと、案内付きで中止されることを確認する
+  - mockups配下のファイルが整形・静的解析で変更されないこと、マージ・リバートのメッセージが受け入れられることを確認する
+  - CI環境変数を付けた実行と`.git`の無い場所での実行で、インストーラがフックを導入せずに正常終了することを確認する
+  - 完了状態: 上記すべての確認結果が期待どおりであり、不一致があれば該当タスクの成果物を修正済みである
+  - _Requirements: 1.1, 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.2, 4.5_
+
+- [x] 4. 一括検査と共有ディレクトリの配置確認
+- [x] 4.1 (P) 命名規約に一致しないテストファイルを検出する検査を作る
+  - Gitの管理対象と未追跡(無視対象を除く)のファイル一覧から、品質ゲートの対象外と外部由来のパスを除いて検査する
+  - テストとみなされる名前でありながら4種いずれの命名にも一致しないファイルを、正しい命名規約とともに返し、該当があれば失敗終了する入口を用意する
+  - 単体テストの共通設定の除外パターンとカバレッジ除外パターン、静的解析の基底設定の対象外、整形対象外の一覧が、命名と生成コードの単一定義と一致すること(書き写した値の食い違いが無いこと)も単体テストで確かめる
+  - 完了状態: 単体テストで`foo.test.ts`・`bar.spec.tsx`が検出され、4種の命名のファイルが検出されず、書き写した各パターンと単一定義の一致が確認できる
+  - _Boundary: TestNameChecker_
+  - _Depends: 1.3, 1.4, 2.1, 2.2_
+  - _Requirements: 6.6, 7.3_
+
+- [x] 4.2 (P) 共有ディレクトリの配置状態の確認と、CI相当環境でのコピー配置を作る
+  - 各配置先を、bind mount(inode・デバイスが配置元と一致)、コピー(node_modulesを除くファイル一覧とサイズが一致)、利用側アプリ未作成(対象外)、欠落、内容不一致、node_modulesの中身あり(二重実体の原因)のいずれかに判定する
+  - 配置元がGit管理下のファイルを持たず新しいcloneに存在しない場合は空のディレクトリとして扱い、コピー配置で空の配置先を作って「コピー」と判定する
+  - 問題のある状態ごとに案内文を返す(node_modulesの中身ありはcompose.yaml変更後のコンテナ再作成、欠落・内容不一致はCIでのコピー配置またはローカルのマウント確認)
+  - コピー配置は、bind mountされていない配置先だけをnode_modulesを除いて削除・再複製し、bind mount先には書き込まない
+  - 確認とコピー配置を実行でき、状態の表を表示して問題があれば失敗終了する入口を用意する
+  - 完了状態: 一時ディレクトリを使う単体テストで、コピー配置後は「コピー」、node_modulesの中身があると「node_modulesの中身あり」、配置先が無いと「欠落」、配置元が無い場合のコピー配置後は「コピー」と判定され、配置定義の配置先がcompose.yamlのbind mount先と一致することが確認できる
+  - _Boundary: SharedDirs_
+  - _Depends: 1.3_
+  - _Requirements: 8.2, 8.4, 8.5, 8.6_
+
+- [x] 4.3 一括検査と全アプリのテスト一括実行を作り、ルートのコマンドとして公開する
+  - 一括検査は、共有ディレクトリの配置確認、テスト命名の検査、ルートの整形検査、ルートと各アプリの静的解析、ルートと各アプリの型検査の順に、前段の失敗で止めずにすべて実行する
+  - テスト種別ごとの一括実行は、ルートと各アプリの同名スクリプトを、渡された引数(`--coverage`など)付きで実行する
+  - アプリに`package.json`が無い場合はプロジェクト未作成、スクリプトが無い場合はスクリプト未定義として飛ばし、他の対象を続ける
+  - 段階・対象・結果(成功、失敗と終了コード、飛ばした理由)の表を表示し、1つでも失敗があれば失敗終了する
+  - ルートに一括検査・命名検査・テスト種別ごとの一括実行・共有ディレクトリの確認とコピー配置のスクリプトを追加する
+  - 完了状態: 単体テストで、失敗後も後続が実行されて最後に失敗終了し、未作成・未定義が飛ばした理由として表示され、引数が各アプリへ渡ることが確認でき、ルートで`bun run check`を実行すると全段階が成功して未作成のアプリが飛ばされたと表示される
+  - _Requirements: 5.7, 5.8, 6.6, 6.7, 8.5_
+
+- [x] 5. ブラウザ・Workers統合・E2Eテストの実行基盤
+- [x] 5.1 (P) ブラウザテストとWorkers統合テストの共通設定値を作る
+  - 命名の単一定義に基づく対象パターン、対象0件での成功、行と関数の閾値80%、テストファイルと自動生成コードの除外、種別ごとのlcov出力先を定める
+  - カバレッジの方式はブラウザテストをV8、Workers統合テストをIstanbulとし、計測の有効化は指定しない(計測を指定した実行だけで閾値を判定させる)
+  - 共有Chromiumのパスが環境変数にあれば、それをブラウザの実行ファイルとして使う起動オプションを返す
+  - npmパッケージは型としてのみ参照する
+  - 完了状態: 単体テストで、各種別の対象パターン・閾値・除外・出力先が単一定義と一致し、共有Chromiumのパスの有無で起動オプションが切り替わることが確認できる
+  - _Boundary: VitestPresets_
+  - _Depends: 1.3_
+  - _Requirements: 6.2, 6.3, 6.7, 6.8, 7.1, 7.2, 7.3, 7.4_
+
+- [x] 5.2 (P) E2Eテストの対象アプリと、テストのある対象だけのプロジェクト構成を解決する
+  - 利用者側と管理者側の対象URLを既定値で持ち、環境変数で上書きできるようにする
+  - 対象ごとのディレクトリにE2Eテストが1つ以上ある対象だけをプロジェクトにする
+  - 完了状態: 単体テストで、環境変数でURLが上書きされ、テストの無い対象がプロジェクトに含まれないことが確認できる
+  - _Boundary: E2EConfig_
+  - _Depends: 1.3_
+  - _Requirements: 6.7, 6.9_
+
+- [x] 5.3 E2Eテストの設定と到達確認を結線し、ルートのE2Eテストコマンドを用意する
+  - 対象ごとのプロジェクトに到達確認のセットアップを依存として付け、E2Eの命名パターンに一致するファイルだけを実行する
+  - 到達確認は対象URLへHTTPリクエストを送り、接続できなければ到達できなかったURLを示して失敗する(アプリの起動はE2E設定では行わない)
+  - テスト成果物とHTMLレポートをGit管理外の出力先へ出し、ブラウザは共有Chromiumの起動オプションで起動する
+  - ルートにE2Eテストのスクリプトを追加し、対象0件でも正常終了させる
+  - Playwrightのテストランナーが開発コンテナ内(nodeシム経由のBun)で動作することも確かめる
+  - 完了状態: テストが0件の状態で`bun run test:e2e`が正常終了し、一時的なE2Eテストを置いてアプリ未起動で実行すると到達できないURLを表示して失敗し、その間にブラウザのダウンロードが発生しない(確認後に一時テストは削除する)
+  - _Requirements: 6.4, 6.7, 6.8, 6.9, 6.10_
+
+- [x] 5.4 使い捨ての検証用アプリで、基底設定の継承と一括検査への参加を実測する
+  - コミット前の成果物も含めるため、node_modulesを除いた作業ツリーのコピーを一時ディレクトリに作り(命名検査がGitのファイル一覧を使うため`.git`も含めるか、コピー後に`git init`と`git add`を行う)、コピーのルートで依存をインストールしたうえで、検査担当が自分自身である`apps/frontend-lib`の位置に、設計のスクリプト契約と主要パッケージ一覧の版で検証用アプリを置く(本リポジトリには置かず、成果物に含めない)
+  - 型検査と静的解析の基底設定を継承と差分の指定だけで適用でき、一括検査にそのアプリが参加して成功し、違反を入れると失敗したアプリと検査の種類が表示されることを確かめる
+  - アプリのディレクトリで単体テストを実行しても、ルートと同じ除外パターンとカバレッジ閾値が適用されることを確かめる
+  - 完了状態: 上記の実測結果が期待どおりであり、不一致があれば基底設定・単体テストの共通設定・一括実行を修正済みである
+  - _Depends: 4.3_
+  - _Requirements: 5.2, 5.7, 6.1, 6.5_
+
+- [x] 5.5 使い捨ての検証用アプリで、ブラウザテストのカバレッジ判定と共有Chromiumの利用を実測する
+  - 5.4と同じ方法の作業ツリーのコピーで、検証用アプリにブラウザテストの共通設定値を取り込む設定とブラウザテストを加える(5.4のコピーを使い回してよい)
+  - ブラウザテスト(V8)で、閾値未達時に未達の指標と実測値を表示して失敗し、lcovがブラウザテスト用の出力先に生成され、対象0件で成功し、計測無効時は判定されないことを確かめる
+  - ブラウザテストが共有Chromiumで動き、ブラウザを追加でダウンロードしないことを確かめる
+  - 完了状態: 上記の実測結果が期待どおりであり、不一致があればブラウザテストの共通設定値を修正済みである
+  - _Requirements: 6.2, 6.7, 6.8, 7.1, 7.2, 7.3, 7.4_
+
+- [x] 5.6 使い捨ての検証用アプリで、Workers統合テストのカバレッジ判定と一括実行への引数の受け渡しを実測する
+  - 5.4と同じ方法の作業ツリーのコピーで、`apps/api`の位置にWorkers統合テストを持つ検証用アプリを置き、一括検査が通るよう共有ディレクトリのコピー配置を行う
+  - Workers統合テスト(Istanbul)で、閾値未達時に未達の指標と実測値を表示して失敗し、lcovがWorkers統合テスト用の出力先に生成され、対象0件で成功し、計測無効時は判定されないことを確かめる
+  - テスト種別ごとの一括実行で、計測の指定が各アプリへ渡ることを確かめる
+  - 完了状態: 上記の実測結果が期待どおりであり、不一致があればWorkers統合テストの共通設定値・一括実行を修正済みである
+  - _Requirements: 6.3, 6.7, 7.1, 7.2, 7.3, 7.4_
+
+- [x] 6. 開発環境とCI相当環境の整合の検証
+- [x] 6.1 (P) E2Eテストツール関連の4箇所を整合させ、両ブラウザ操作MCPサーバーの起動を確かめる
+  - 開発コンテナのOS依存パッケージの版、ルートのE2Eテストツールの版、2つのブラウザ操作MCPサーバーの版を突き合わせる
+  - 両MCPサーバーを共有Chromiumで実際に起動し、ページを開けることを確かめる
+  - Chromiumのリビジョンが合わない場合は、最も近いリビジョンに対応する版を選んでMCPサーバーの版を更新する。ルートのパッケージ定義とロックファイルは変更しない
+  - 開発コンテナの定義の変更が必要になった場合は、イメージの再ビルドを開発者へ依頼する作業として報告する
+  - 完了状態: 4箇所の版が整合し、両MCPサーバーが共有Chromiumで起動してページを開けたことを確認済みである
+  - _Boundary: RootPackage(Playwright関連の版)_
+  - _Depends: 1.1_
+  - _Requirements: 9.5_
+
+- [x] 6.2 (P) 共有ディレクトリの依存解決が開発コンテナとCI相当環境で一致することを検証し、結果を記録する
+  - 前提として、1から5までの成果物がコミット済みであることを確かめる
+  - 開発コンテナに、共有ディレクトリのnode_modulesを利用側へ見せるマウントが残っていないこと(compose.yamlの変更とコンテナ再作成の反映)を確かめ、未反映ならコンテナの再作成を開発者へ依頼する作業として報告する
+  - リポジトリを一時ディレクトリへclone(node_modulesとbind mountの無い状態)し、依存インストールとコピー配置の後に配置確認が成功すること、配置先を欠落させると依存の解決エラーより先に配置の不備を示して失敗することを確かめる
+  - 共有ディレクトリのコードが利用側アプリの依存パッケージを読み込む最小構成を両環境に置き、型検査・単体テスト・バンドルの成否と、解決されるパッケージの版と実体パスが一致することを確かめる
+  - 開発コンテナ側の最小構成は他specが所有する場所に一時的に置くため、確認後に削除し、コミットしない。最小構成のためにインストールしたパッケージも、利用側アプリのnode_modules(名前付きボリューム)から削除して空に戻す
+  - 完了状態: 両環境での検証が成功し、手順と結果(各コマンドの成否・解決された版・実体パス)が本specの調査記録に「実装時の検証結果」として残っている
+  - _Boundary: SharedDirs, SharedDirMounts_
+  - _Depends: 4.3, 5.6_
+  - _Requirements: 8.1, 8.2, 8.4, 8.5, 8.6, 8.7_
+
+- [x] 7. 技術ドキュメントの初版と規則の移設
+- [x] 7.1 (P) codingの初版として、記法と設定ファイルの規約、主要パッケージの版固定方針を書く
+  - 設定ファイルの記述形式(JavaScriptでも書ける設定はTypeScript形式、JSON・TOMLしか持たない設定はその形式)と、新しい記法の選択と非推奨記法の禁止を、移設対応表の見出しで記載する
+  - 基底設定の継承方法(型検査設定の継承、静的解析の基底設定へモジュールを渡す方法、整形設定の継承)と、アプリが一括検査に参加するためのスクリプト契約、導入すべき品質ツール、検査担当でないアプリでの共有ディレクトリの除外方法を記載する
+  - 整形検査・静的解析・型検査・一括検査のコマンドの使い方を記載する
+  - 主要パッケージの一覧(版・固定の理由・更新時の確認事項)と、版を明示した追加手順、全アプリの版をそろえる手順、版を指定しない追加の禁止を別の文書に記載する
+  - codingの索引に2文書を1行ずつ追記する
+  - 完了状態: codingの索引から2文書へ辿れ、主要パッケージの一覧にテストランナー・ORMとマイグレーション生成ツール・E2Eテストツールが固定する版と理由付きで載り、文書にプロジェクト固有の値が含まれない
+  - _Boundary: CodingDocs, DependencyVersionsDoc_
+  - _Depends: 1.5, 4.3, 5.4_
+  - _Requirements: 5.2, 9.1, 9.2, 9.3, 10.4, 10.6, 11.1, 11.2_
+
+- [x] 7.2 codingの文書として、共有ディレクトリの配置方式と検証結果を書く
+  - ワークスペース機能を使わない配置方式と利用側で解決する理由、共有ディレクトリ直下に型検査設定を置かない規則、CIでのコピー配置を記載する
+  - 6.2の調査記録をもとに、検証の手順と結果を本プロジェクト固有の値を除いた形で記載する
+  - codingの索引に1行追記する(7.1と同じ索引を編集するため並列にしない)
+  - 完了状態: codingの索引から文書へ辿れ、検証の手順と結果(各コマンドの成否と、解決が両環境で一致したこと)が記載され、文書にプロジェクト固有の値が含まれない
+  - _Depends: 6.2_
+  - _Requirements: 8.3, 8.7, 10.6_
+
+- [x] 7.3 (P) testingの初版として、テスト戦略とE2Eテストツール関連の更新手順を書く
+  - 4種のテストの棲み分けと命名規約、ルート・アプリ・一括の実行コマンド、アプリ内で実行する際の共通設定の指定を、移設対応表の見出しで記載する
+  - カバレッジの規約(閾値・除外・出力先・アプリでの計測対象の指定・CIでの計測の有効化)を、移設対応表の見出しで記載する
+  - TDDの進め方と、環境シークレットをシークレット管理サービスから実行時に注入してファイルに書き出さない方法を記載する
+  - E2Eテストツール関連の4箇所、更新の順序、両MCPサーバーの起動確認の手順を、移設対応表の見出しで別の文書に記載する
+  - testingの索引に2文書を1行ずつ追記する
+  - 完了状態: testingの索引から2文書へ辿れ、4種のテストの実行コマンドと4箇所の更新手順を文書だけで実行でき、文書にプロジェクト固有の値が含まれない
+  - _Boundary: TestingDocs, BrowserToolVersionsDoc_
+  - _Depends: 1.5, 5.6, 6.1_
+  - _Requirements: 6.5, 6.11, 9.6, 10.5, 10.6, 11.1, 11.2_
+
+- [x] 7.4 (P) infraとdbの移設規則の文書を書く
+  - ローカル状態の永続化と複数Worker間でのリソースIDの共有、互換性日付、デプロイ先とシークレット管理の環境種別を、移設対応表の文書と見出しで汎用的に記載する
+  - マイグレーションの生成と適用、大文字小文字を区別しないカラム、テーブルの命名規則、D1の制約と対処を、移設対応表の文書と見出しで汎用的に記載する
+  - infraとdbの索引に文書を1行ずつ追記する
+  - 完了状態: infraとdbの索引から4文書へ辿れ、移設対応表の該当規則がそれぞれ指定の見出しの下にあり、文書にプロジェクト固有の値が含まれない
+  - _Boundary: RuleMigration(infra・db)_
+  - _Depends: 1.5_
+  - _Requirements: 10.6, 11.1, 11.2_
+
+- [x] 7.5 (P) backend・frontend・securityの移設規則の文書を書く
+  - コンストラクタ引数の注入の明示、日時の表示、TanStack Startの開発時とデプロイ前の起動、シークレットの注入(Wrangler設定での宣言・シークレットでない環境変数・IaCでのシークレット取得を含む)を、移設対応表の文書と見出しで汎用的に記載する
+  - backend・frontend・securityの索引に文書を1行ずつ追記する
+  - 完了状態: backend・frontend・securityの索引から4文書へ辿れ、移設対応表の該当規則がそれぞれ指定の見出しの下にあり、文書にプロジェクト固有の値が含まれない
+  - _Boundary: RuleMigration(backend・frontend・security)_
+  - _Depends: 1.5_
+  - _Requirements: 10.6, 11.1, 11.2_
+
+- [x] 7.6 CLAUDE.mdの移設元の節をリンク一覧に置き換え、取り除いた固有値を残す
+  - 移設対応表の16規則すべてが、移設先の文書と見出しに1対1で存在することを突き合わせる
+  - 汎用化で取り除いた固有値(ローカル状態の保存先と共有するアプリ、互換性日付、単体テストの設定ファイルのパス、シークレット注入の実行接頭辞、共有Chromiumのパス、E2Eテストツール関連の4箇所の具体的なファイルと項目名)を、CLAUDE.mdの元の節から拾い、オンボーディング配下の固有値の文書に記載する
+  - 当該節を「技術規則の参照先」の見出しと「<作業>の前に: リンク」形式のリンク一覧だけに置き換え、最後に固有値の文書へのリンクを置く
+  - ディレクトリ構成の説明に新しいディレクトリ(設定データ・E2E・ツールスクリプト)を加え、ルートのパッケージの説明を更新する
+  - 完了状態: CLAUDE.mdの当該節に規則の本文が残っておらず、16規則がすべてリンク先の見出しで見つかり、取り除いた固有値がすべて固有値の文書に載っている
+  - _Depends: 7.1, 7.3, 7.4, 7.5_
+  - _Requirements: 11.3, 11.4, 11.5, 11.6_
+
+- [x] 7.7 (P) オンボーディングガイドと技術スタック表を更新する
+  - ルートの`bun install`でGitフックが有効になること、コミットは開発コンテナ内で行うこと、compose.yamlの変更後にコンテナを再作成することを手順に追記する
+  - 各アプリで品質ツールを主要パッケージ一覧の版で導入する手順を追記する
+  - 採用した付属パッケージ(typescript-eslint・`@eslint/js`・`@commitlint/types`・`@types/bun`・`@vitest/browser-playwright`・`@vitest/coverage-v8`・`@vitest/coverage-istanbul`)と、主要パッケージ一覧への参照を技術スタック表に追記する
+  - 完了状態: オンボーディングガイドに上記の手順が載り、技術スタック表に採用した付属パッケージと主要パッケージ一覧への参照が載っている
+  - _Boundary: OnboardingUpdates_
+  - _Depends: 7.1_
+  - _Requirements: 10.8, 10.9_
+
+- [x] 8. 全体の検証
+- [x] 8.1 品質ゲート全体と要件の充足を検証する
+  - ルートで一括検査、カバレッジ付きの単体テスト、E2Eテストを実行する
+  - ルートの単体テストのカバレッジが行・関数とも80%以上であることを確かめる
+  - 技術ドキュメントの全文書にプロジェクト名・ポート番号・ドメイン・リソース名・絶対パスが含まれないことを検索で確かめ、索引・README・CLAUDE.mdのリンク切れが無いことを確かめる
+  - 本リポジトリで規約どおりのメッセージのコミットが、フックを通って成功することを確かめる
+  - 開発者が手動で行う必要がある作業(コンテナの再作成・イメージの再ビルドなど)が残っていれば一覧にして報告する
+  - 完了状態: 一括検査・カバレッジ付き単体テスト・E2Eテストがすべて成功し、技術ドキュメントの固有値の検索結果が0件である
+  - _Requirements: 5.7, 7.1, 10.3, 10.6_
+
+## Implementation Notes
+
+- 1.1: ルートは`@playwright/test`だけを直接宣言し、`playwright`・`playwright-core`は`@playwright/test`の完全固定により1.63.0へ推移的に決まる。主要パッケージ一覧の文書化(7.1・7.3)ではこの点を明記する。
+- 1.1: 文字列`.env`を含むシェルコマンドはClaude設定で拒否されるため、`process.env`を使う確認処理はスクリプトファイルに書いて実行する。開発コンテナに`python3`は無い。
+- 1.3: `SHARED_DIRS`の配置先とcompose.yamlのbind mount先の突き合わせは`config/workspace-layout.unit.test.ts`に実装済み。4.2では重複させず、必要ならこのテストを移すか参照する。
+- 1.4: Bun 1.4.2のCLIの`--path-ignore-patterns`はbunfigの`pathIgnorePatterns`を併合せず置き換える。そのためルートの`test:unit`はbunfigのbrowser・worker・e2eの除外を書き写している。4.1の一致テストでは、ルート(と将来の各アプリ)の`test:unit`がbunfigの除外パターンをすべて含むことも確かめる。共有ディレクトリを外すアプリ(event・client・admin)もbunfigの除外を書き写す必要があり、7.1・7.3の文書に明記する。
+- 1.4: Bunのカバレッジ閾値判定はファイル単位で、未達時に明示メッセージを出さない(表の`% Funcs`・`% Lines`の実測値と終了コード1のみ。TTYでは未達値が赤)。7.3の文書に記載する。Vitestの`thresholds`は既定で全体集計のため、5.1で判定単位をそろえるか開発者に確認する。
+- 1.4: bunfigのE2E除外`**/*.e2e.test.ts`は単一定義の`e2e/**/*.e2e.test.ts`より広い(設計どおり)。4.1の一致テストでは「同等以上に広い」除外として扱う。
+- 1.5: tech各索引は「## 範囲」(箇条書き)と「## 文書一覧」(`| 文書 | 概要 |`の見出し行だけの表+空行+「収録文書はまだ無い。」)の形式。最初の文書を追加するタスク(7.1〜7.5)は表に1行追加し、「収録文書はまだ無い。」を消す。範囲の文言はルートのREADME・全体索引・各索引の3箇所で一致させている。CLAUDE.mdの「ディレクトリ構成」のtech各サブディレクトリの説明は新しい範囲より狭いため、7.6で同期する。
+- 2.1: テストのフィクスチャはリポジトリ内に作らず`mkdtemp(join(tmpdir(), ...))`で作る。リポジトリ内の残骸はルートの整形検査・静的解析を壊す。
+- 2.1: 基底設定の対象外の一覧は`name: 'base/ignores'`の要素にある(4.1の一致テストで参照する)。「`import type`のみ」の検査は`valueModuleReferencesOf`(TypeScriptの構文解析)で行う。
+- 2.2: 「`import type`のみ」の検査ヘルパーを設計外の新ディレクトリ`test-support/module-references.ts`へ切り出し、ルート`tsconfig.json`の`include`に`test-support/**/*.ts`を加えた。5.1でも再利用する。2.3のルートESLint設定は`test-support/`も検査対象にし、3.3・4.3でもルート所有として扱う。7.6でCLAUDE.mdのディレクトリ構成に追記する。
+- 2.2: `.prettierignore`はルート直下の`mockups`・`.claude`を`/mockups/`・`/.claude/`と先頭`/`で固定している。4.1の一致テストでは先頭`/`を正規化して`QUALITY_GATE_EXCLUDED_DIRS`・`GENERATED_CODE_PATTERNS`と比べる。
+- 2.2: 対象が`.`のときPrettierはディレクトリ展開で未対応ファイルを飛ばすため、`--ignore-unknown`が効くのはファイルを明示して渡す場合(3.3のlint-staged)。Prettierはcwdの`.gitignore`しか読まないため、アプリ固有の出力先はルートの`.gitignore`にも書く必要がある(後続のplatform系specへの注意)。
+- 2.2: 3.5の初回整形の対象は`.infisical.json`・`.kiro/specs/dev-tooling/design.md`・`research.md`・`.kiro/steering/roadmap.md`・`compose.yaml`・`scripts/merge-claude-trust-config.ts`(2.2時点)。`.infisical.json`はInfisical CLIが`init`時だけ書くため整形対象のままにする。
+- 2.3: ルートの`eslint.config.ts`は`name: 'root/ignores'`で`apps/`・`mockups/`・外部由来(`.claude/`・`docs/ai-extensions/`・`.kiro/settings/`)・Playwrightの出力先を対象外にし、`lint`は`bun --bun eslint .`。ESLint 10.12.0では、ファイルを明示して渡すとルートのignoreに関係なく最も近い設定が使われ、`--no-warn-ignored`付きでは対象外のファイルが黙って飛ばされる(終了コード0)。そのため3.3の計画処理では次が必須: アプリ所有ファイルは所有アプリのESLintへ振り分ける、mockupsのファイルを渡さない(mockupsの設定を読み込んでクラッシュする)、`apps/`配下でどのアプリ・共有ディレクトリにも属さないTSをルート所有に振り分けない(黙って検査漏れになるため、除外かエラーにする)。
+- 2.3: 外部由来の一覧が`eslint.config.ts`・`.prettierignore`・3.3の計画処理に重複する。3.3で`config/`に単一定義を置いて`eslint.config.ts`もそれを参照するか、4.1で一致を確かめる。`.playwright-mcp/`はESLintの対象外に入っていない(現状JSは置かれない)。
+- 3.1: 環境変数`HUSKY=0`のときhuskyは`HUSKY=0 skip install`を返し、インストーラは設計のフェイルクローズに従って失敗扱い(終了コード1)にする。3.4で`prepare`に結線すると`HUSKY=0 bun install`は失敗する(CIは`CI`の判定が先なので影響なし)。飛ばして成功にするには設計の`HookInstallResult`に理由を加える変更が要り、開発者判断とする。インストーラはカレントディレクトリの`.git`を見るため、`prepare`はルートで実行される前提。
+- 3.2: 型の一覧はcommitlintの`type-enum`違反時にしか出ないため、`helpUrl`に書式と`ALLOWED_COMMIT_TYPES`の案内文を入れ、どの規則の違反でも`ⓘ Get help: …`として表示させている(要件4.2)。`.husky/commit-msg`で`--help-url`を指定するとこの案内が消えるので指定しない。ルートで実行すれば`--config`なしでも`commitlint.config.ts`が探索される。
+- 3.3: 設計の「どのアプリにも属さないファイルはルートの所有」から意図的に逸脱し、`apps/`配下でどのアプリ・共有ディレクトリにも属さない`.ts`は静的解析の計画から外して整形だけを適用する(ルートのESLintは`apps/`を対象外にしており、渡しても黙って検査漏れになるため)。7.1の文書に「新しいアプリは`config/workspace-layout.ts`の`APPS`に登録しないと品質ゲート(コミット時・一括検査)の対象にならない」と記載する。
+- 3.3: 外部由来の一覧は`config/workspace-layout.ts`の`EXTERNAL_SOURCE_DIRS`に単一定義し、`eslint.config.ts`と計画処理が参照する。4.1では外部由来の除外にこれを使い、`.prettierignore`の外部由来の行との一致も確かめる。
+- 3.3: 3.4の入口では`planStagedTasks`・`toCommands`に加え、`describePlanError`(失敗時の案内文)と`createWorkspaceChecks`(`<dir>/node_modules/.bin/eslint`・`<dir>/package.json`の実在判定)を使う。lint-staged 17.6.0は関数形式の設定が返したコマンド配列を順に実行し、ファイルを付け足さず、シェルを介さない(`string-argv`で分割)。所有アプリに`package.json`が無い場合の`tooling-missing`の案内(`bun install`)はそのままでは解消しない点が残っている(コミットは止まるので安全側)。
+- 3.4: `/workspace`でフックが有効になった(`.git/config`の`hooksPath = .husky/_`)。以後のコミットはシークレット検出・ESLint・Prettierを通り、3.5の初回整形の対象ファイルをステージするとそのコミット内で整形される。
+- 3.4: Betterleaks 1.9.0の`--verbose`はFingerprintを表示しない。`--pre-commit`のFingerprintは`<ファイルのパス>:<検出規則>:<行番号>`で、pre-commitの案内文と`.betterleaksignore`の冒頭コメントに組み立て方を書いた。`.betterleaksignore`は行頭`#`のコメントだけが有効で、行末コメントを付けた行は一致しなくなる。7.3・7.7の文書に記載する。
+- 3.4: Bun 1.4.2の`bunx --bun`は`node`を指定するshebangをBunへ置き換えず、`PATH`上の`node`(開発コンテナではBunのシム)に依存する。開発コンテナ外ではBetterleaksの存在確認で先に止まる。
+- 3.4: 計画エラー時の失敗コマンドは`bun -e`へJSON文字列を埋め込む方式。`toCommands`はシングルとダブルの引用符を両方含むパスで例外を投げ、lint-stagedがスタックトレース付きで中止する(フェイルクローズは保たれる)。
+- 3.4: 設計のFile Structure Planに無いルート所有のテスト`git-hooks.unit.test.ts`(フックスクリプト・`prepare`・`.betterleaksignore`の書式の検証)と`lint-staged.config.unit.test.ts`を追加した。
+- 3.5: 初回整形は`caeb2c3`(整形差分だけ)。design.mdのtypescriptコードブロックはPrettierの埋め込み整形で80桁に折り返される。`.infisical.json`はInfisical CLIの`init`で4スペースに戻り得るが、次のコミットでフックが整形し直す。
+- 3.6: 一時リポジトリで要件1.1〜4.5の振る舞いをすべて確認し、修正は無かった。`git revert`・cherry-pickは`--no-edit`でも編集を経てもpre-commit・commit-msgを実行しない(Gitの仕様)ため、これらで作るコミットはシークレット検出を通らない。CIでのシークレット検出(infra-delivery)が補う前提を7.3・7.7の文書とinfra-deliveryへの申し送りに書く。
+- 3.6: `GIT_TRACE=1`を画面に出すとBetterleaksが走査失敗としてコミットを拒否する(安全側。トレースはファイルへ出す)。`betterleaks --log-level debug`は`--redact`でも値を表示するため、誤検知の調査で使わないよう7.3・7.7の文書で注意する。
+- 3.6(開発者判断済み): 開発者の判断により、EslintBaseの`ignores`とdesign.mdの「EslintBase」節に`**/worker-configuration.d.ts`を加えた(`.prettierignore`と一致)。
+- 4.1: 入口は`bun scripts/tooling/check-test-names.ts`(4.3で`package.json`のスクリプトにする)。`git rev-parse --show-toplevel`のルートで`git ls-files -z --cached --others --exclude-standard`を実行し、重複除去と整列をする。`e2e/`の外にある`*.e2e.test.ts`はどのランナーも実行しないため命名規約外として検出する。
+- 4.1: 書き写した除外パターンと単一定義の一致テストは`check-test-names.unit.test.ts`にあり、bunfigの`pathIgnorePatterns`・`coveragePathIgnorePatterns`、ルートと`--path-ignore-patterns`を使う各アプリの`test:unit`、ESLint基底の`base/ignores`、`.prettierignore`(単一定義の各値の包含)を確かめる。新しいアプリが`test:unit`で除外を指定すると、この一致テストの対象になる。
+- 4.1: 一時Gitリポジトリを使うテストは`GIT_DIR`・`GIT_INDEX_FILE`を引き継ぐため、テストをGitフックの中から実行する変更をする場合は、これらを外して実行すること(`lint-staged.config.unit.test.ts`も同じ)。
+- 4.2: 入口は`bun scripts/tooling/shared-dirs.ts verify|place`(4.3で`shared-dirs:verify`・`shared-dirs:place`のスクリプトにする)。対象リポジトリはスクリプトの位置から決める。compose.yamlとの突き合わせは1.3のとおり`config/workspace-layout.unit.test.ts`にあり、`shared-dirs.ts`のテストは`shared-dirs.unit.test.ts`・`shared-dirs.mount-points.unit.test.ts`・`shared-dirs.write-guards.unit.test.ts`と共通フィクスチャ`test-support/shared-dirs-fixtures.ts`に分けた。
+- 4.2: レビューを受けて状態`mount-mismatch`(配置先が配置元以外のマウントポイント。案内はcompose.yamlの確認とコンテナ再作成)を加え、design.mdの「SharedDirs」節を更新した。`placeByCopy`はマウントポイント・同一性を読めない配置先・配置元と同じ実体・すでに`copied`の配置先に書き込まず、配置先そのものがシンボリックリンクならリンクだけを消して複製する。
+- 4.2(制約): `copied`の判定とplaceの再複製の省略は「種別・パス・サイズ」だけで比べるため、配置元を同じサイズで書き換えた場合やリンク先を同じ長さで張り替えた場合、2回目のplaceは古い内容を残しverifyも成功する。CIは新しいcloneで配置先が無く、開発コンテナではplaceが書き込まないため影響は無い。配置先の内側(node_modules以外)の入れ子マウントは検出しない。7.2の文書に記載する。
+- 4.3: ルートのスクリプトは`check`・`check:test-names`・`test:all:unit`・`test:all:browser`・`test:all:worker`・`shared-dirs:verify`・`shared-dirs:place`。`check`は追加の引数を受け取らず、配置確認と命名検査はルートのスクリプトとして`bun run`で呼ぶ(ルートのスクリプトが消えると飛ばされるため、実際のルート`package.json`でルートの段階が飛ばされないことを単体テストで確かめている)。入口は`lint`・`typecheck`の単独指定も受け付けるが、ルートのスクリプトは無い。
+- 4.3: `bun run`は親ディレクトリの`package.json`を探索するため、各アプリの`package.json`とスクリプトの有無を実行前に確かめる。読めない`package.json`とコマンドを起動できない場合は、その段階・対象を`cause`付きの失敗として記録して後続を続け、表の後に原因を表示する(差し戻し後に追加し、design.mdの「AggregateRunner」節を更新した)。テストは`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`と補助の`test-support/run-all-fixtures.ts`。
+- 4.3(制約): `readPackageScripts`は`existsSync`で存在を判定するため、リンク先の無いシンボリックリンクの`package.json`や辿れないディレクトリは「プロジェクト未作成」として飛ばされる(表には出る)。
+- 5.1(開発者判断済み): Vitestのカバレッジ閾値はBunの単体テストとそろえてファイル単位(`thresholds.perFile: true`)にした。契約型はプロパティを`readonly`に保ち配列だけ変更可能にした(Vitest 4.1.11の設定型が変更可能な配列を要求し、`...browserTestPreset`の取り込みを型検査に通すため)。どちらもdesign.mdの「VitestPresets」節に反映済み。
+- 5.1: 設計外の共通ビルダー`config/vitest/test-kind-preset.ts`(`createTestKindPreset`)を追加し、契約型`CoveragePreset`・`TestKindPreset`はここから、`BrowserLaunchOptions`は`browser.ts`からexportする。各プリセットは呼び出しごとに単一定義の配列のコピーを持つ。
+- 5.1: Vitest 4.1.11の`coverage.exclude`の既定は`[]`で、他種別のテストファイルは自動で除外されない(アプリの`coverage.include`に一致すると未テストファイルとして分母に入る)ため、プリセットは4種すべての命名と生成コードを除外する。`CHROMIUM_PATH`が空文字のときは未定義と同じ扱い(5.3のE2E設定もそろえる)。単一定義の`readonly`配列とプリセットの配列をBunの`toEqual`で比べる場合、期待値を`[...TEST_FILE_PATTERNS.browser]`のように展開する。
+- 5.2: 設計外の`createE2ETestFileDetector(rootDir)`を`e2e/support/targets.ts`に追加し、design.mdの「E2EConfig」節に追記した。5.3の`playwright.config.ts`は`resolveE2EProjects(resolveE2ETargets(process.env), createE2ETestFileDetector(import.meta.dirname))`と結線する。プロジェクトの`testDir`はルートからの相対パスで、Playwrightは設定ファイルのディレクトリ基準で解決するため、設定ファイルはルートに置く。
+- 5.2(infra-deliveryへの申し送り): 照合に`node:path`の`matchesGlob`を使うため、PlaywrightをNodeで起動する場合はNode 22.5.0・20.17.0以上が必要(推奨24)。検出器はPlaywrightの収集処理と異なり`node_modules`・`.gitignore`対象・ドットで始まるパス(Nodeの`matchesGlob`では不一致)の扱いに差があるが、偽陽性はテスト0件のプロジェクトができるだけで、大文字小文字の違いは命名検査が止める。
+- 5.3: 設計外の`e2e/support/reachability.ts`(`assertE2ETargetReachable`)・`playwright-config.ts`(`createPlaywrightConfig`)・`zero-tests-reporter.ts`(`ZeroTestsReporter`)を追加し、`playwright.config.ts`は結線だけにした(design.md更新済み)。Playwright 1.63.0の標準レポーターは0件時に何も表示しないため、要件6.7の0件表示は`ZeroTestsReporter`が担う。design.mdのRequirements Traceabilityの6.7の行にはまだ載っていない(表全体の再整形を避けたため。7.x以降で表を更新するときにあわせて直す)。到達確認は応答があれば状態コードに関係なく成功し、リダイレクトを辿らず、既定10秒で打ち切る。HTMLレポートは`open: 'never'`。
+- 5.3(infra-deliveryへの申し送り): `test:e2e`(`playwright test`)はshebangによりPATH上の`node`で起動するため、CIでは`node`が必要(開発コンテナではBunのシム)。Nodeで起動する場合は5.2の`matchesGlob`に加え`import.meta.dirname`の版要件もある。`CHROMIUM_PATH`が無い環境では、Playwrightは`chromium_headless_shell-1243`を探すため、CIでは共有Chromiumを`CHROMIUM_PATH`で渡すかそのリビジョンを導入する。
+- 5.4: 一時コピー(`git clone`)の`apps/frontend-lib`に検証用アプリを置いて実測し、本リポジトリとの不一致は無かった。最小構成(AppScriptContractどおりの`package.json`、`extends`・`types: ["bun"]`・`include`だけの`tsconfig.json`、`createBaseConfig`へモジュールを渡すだけの`eslint.config.ts`。Prettierの設定ファイルと`.gitignore`は不要)の全文と実測結果はスクラッチの`5.4-evidence.md`にあり、7.1の文書の材料にする。
+- 5.4(7.1・7.3への申し送り): 一括検査の整形検査はルートで1回だけ実行されるため、表の対象は「ルート」になり、失敗したアプリはPrettierの`[warn]`行のリポジトリ相対パスで特定する(設計どおりで要件5.7を満たす)。アプリの`tsconfig.json`の`include`に`*.ts`を含めると`eslint.config.base.ts`も型検査され、型はルートのnode_modulesから解決されるため、ルートの`bun install`と版の一致が前提になる。アプリの`test:unit`の`--config=../../bunfig.toml`は必須(外すと除外・閾値・lcovのどれも効かない)。lcovの出力先と`SF:`のパスは実行ディレクトリ基準のため、CIで複数アプリのlcovを合算するときはアプリのディレクトリを前に付ける(infra-deliveryへの申し送り)。
+- 5.5(開発者判断済み): ブラウザ・Workers統合テストでは、テストが0件でも`coverage.include`に一致するソースがあれば`--coverage`付きの実行は0%として閾値で失敗する(Vitestは未読込ファイルを分母に含める)。要件6.7は計測無効の実行、要件7.1は計測有効の実行に適用されると解釈し、design.mdの「VitestPresets」節と追跡表6.7の行に明記した(6.7の行には5.3の`ZeroTestsReporter`も追記済み)。7.3の文書に、各アプリが`coverage.include`をその種別が担当するソースに絞ることとあわせて記載する。
+- 5.5(開発者判断済み): 失敗時のスクリーンショットと`.vitest-attachments`をGit管理外にするため、`browserOptionsPreset`(`screenshotDirectory: '.vitest-attachments/screenshots'`と、基準画像の保存先をVitest 4.1.11の既定と同じ`<テストのディレクトリ>/__screenshots__/<テストファイル名>/<名前>-<ブラウザ>-<OS><拡張子>`に固定する`expect.toMatchScreenshot.resolveScreenshotPath`)と`TestKindPreset.attachmentsDir`を加え、ルートの`.gitignore`に`.vitest-attachments`を加えた。`screenshotDirectory`だけを指定すると基準画像の保存先が壊れる(`@vitest/browser/dist/index.js`の2102行)ため、Vitestの更新時は`resolveScreenshotPath`の再確認を主要パッケージ一覧の「更新時の確認事項」(7.1)に載せる。設計外の`test-support/git-ignore.ts`(`isGitIgnored`)を追加した(7.6でCLAUDE.mdのディレクトリ構成に反映)。
+- 5.5(7.3への申し送り): アプリは`test: { ...browserTestPreset, coverage: { ...browserTestPreset.coverage, include }, browser: { ...browserOptionsPreset, provider: playwright({ launchOptions: resolveBrowserLaunchOptions(process.env) }), instances: [...] } }`のように入れ子も展開する。`coverage`や`browser`の展開を漏らすと閾値・lcov・出力先・失敗時の画像の出力先が失われ、型検査・静的解析では検出できない。閾値未達はファイル単位の判定でも`does not meet global threshold`と表示される。AIエージェントから実行するとVitestの出力形式が変わる(テストファイルごとの行・色・100%のファイルが省かれる)が、終了コードと`ERROR`行は変わらない。実測の全文はスクラッチの`5.5-evidence.md`。
+- 5.6: 一時コピーの`apps/api`にWorkers統合テストを持つ検証用アプリを置いて実測し、本リポジトリとの不一致は無かった(閾値はファイル単位で判定され、全体集計が未達でもファイルごとの`ERROR`行だけが出る)。設定ファイルの全文と実測結果はスクラッチの`5.6-evidence.md`にあり、7.1・7.3の文書の材料にする。テストの例では非推奨の`cloudflare:test`の`SELF`ではなく、`cloudflare:workers`の`exports.default.fetch()`を使う。
+- 5.6(7.1・開発者判断済み): 検証用アプリは`wrangler`を、`@cloudflare/vitest-pool-workers` 0.22.0が`dependencies`で完全固定する4.124.0として直接宣言した(`wrangler types`のため)。開発者の判断により、主要パッケージ一覧とdesign.mdの「主要パッケージの版(初版)」には`wrangler` 4.124.0だけを加え、`@types/bun`は載せない(`@types/bun`は7.1の文書で各アプリが導入する品質ツールとしてだけ記載)。
+- 5.6(7.1・7.3、およびapi・eventを作る後続specへの申し送り): Workers統合テストを持つアプリの`tsconfig.json`の差分は、`lib: ["ES2024"]`(基底の`target`の既定に含まれるDOMの型が、`caches.default`などWorkers固有のAPIを使ったときに衝突するため外す)、`types: ["bun", "@cloudflare/vitest-pool-workers/types"]`、`include`への`worker-configuration.d.ts`・`db/**`・`lib/**`。`vitest.worker.config.ts`で`coverage`の展開を漏らすとプリセットの`provider: 'istanbul'`が失われ、非TTYでは`MISSING DEPENDENCY '@vitest/coverage-v8'`で失敗し、TTYでは`@vitest/coverage-v8@4.1.11`の導入を対話で促されて入力待ちで止まる(承諾すると使わないV8プロバイダが依存に入るので断り、展開漏れを直す)。
+- 5.6(infra-deliveryへの申し送り): `wrangler types --check`で`worker-configuration.d.ts`の鮮度をCIで確認できる。
+- 6.1: `.mcp.json`の`@playwright/mcp`を0.0.83から0.0.80へ変更した。0.0.83の`playwright-core`(1.64.0-alpha)はchromium-1247を期待し、共有Chromium(chromium-1243・153.0.8010.12)と一致するのは0.0.80(`playwright-core` 1.63.0-alpha-2026-08-31)だけだった(0.0.79は1237、0.0.81〜0.0.83は1244・1246・1247)。版ごとの期待リビジョンは、`bun pm view @playwright/mcp@<版> dependencies`で`playwright-core`の版を取り、そのtarballの`browsers.json`で確かめる。0.0.80には`browser_emulate_media`ツールが無い。0.0.83以降を使うには、ルートの`@playwright/test`と`Dockerfile`の`PLAYWRIGHT_VERSION`を先に上げる。実行中のClaude Codeのセッションは、`/mcp`での再接続かセッションの再起動までMCPの旧版を使い続ける。
+- 6.1: `chrome-devtools-mcp`は1.10.1(最新)のままにした。同梱の`puppeteer-core` 25.11.0はChrome 153.0.8010.36を期待し、共有Chromiumとはビルド番号が異なるがメジャー版(CDPの世代)が一致する。完全一致する版は存在しないため、メジャー版の一致と実起動で整合を判断する。両MCPサーバーは`.mcp.json`と同じ引数でstdio起動し、MCPのJSON-RPC(`initialize`→`notifications/initialized`→`tools/list`→ページを開くツールの`tools/call`。chrome-devtools-mcpは`pageId`が必須)でローカルHTTPサーバーのページを開いて確かめた。手順・スクリプトの全文はスクラッチの`6.1-evidence.md`にあり、7.3の文書の材料にする(固有値の`/opt/ms-playwright-bin`などは除く)。research.mdの「Playwright関連の4箇所」は調査時点の記録として残し、8.1で扱いを判断する。
+- 6.2: 開発コンテナ(bind mount)とCI相当環境(`git clone`→`CI=true bun install --frozen-lockfile`→`shared-dirs:place`)の`apps/api`に最小構成(hono 4.13.13・drizzle-orm 1.0.0-rc.4を共有ディレクトリからbare import)を置き、型検査・静的解析・単体テスト・esbuild 0.28.1のバンドル(wrangler 4.124.0の`bundleWorker`の設定を再現)・`check`の成否と、解決された版・実体パス(`apps/api/node_modules/...`)が一致した。手順と結果はresearch.mdの「実装時の検証結果」、最小構成の全文とログはスクラッチの`6.2-evidence.md`にあり、7.2の文書の材料にする。開発コンテナはcompose.yamlの変更を反映済みで、再作成は不要だった。
+- 6.2(infra-deliveryへの申し送り): 配置の不備を依存の解決エラーより先に示すのは一括検査`check`の最初の段階だけで、`test:all:*`やアプリのスクリプトを単独で実行すると`Cannot find module`だけが出る(設計どおり)。CIでは`shared-dirs:place`の後に`check`をテストより先に実行する。honoのような二重実体は型検査を通過するため、検出は配置確認(`non-empty-node-modules`)が担う。
+- 6.2(開発者判断済み): Bun 1.4.2は`extends`を持つtsconfigで`experimentalDecorators`を継承元の値だけで決め、継承する側の`true`を無視する。そのため`bun test`・`bun build`でパラメータデコレータ(Inversifyの`@inject`)がエラーなく消える(tscとesbuildは継承する側に従う)。開発者の判断により、`tsconfig.base.json`に`experimentalDecorators: true`を置き、design.mdの「TsconfigBase」節を更新した。1.2の本文「デコレータ設定はアプリ側の差分に委ねる」はこの判断で置き換わった。ルートの`tsconfig.base.unit.test.ts`(設計の「Testing Strategy」に追記済み)が、基底設定を継承したアプリでBunがパラメータデコレータを実行することを確かめる。継承する側で`false`にすると、Bunは従来のデコレータ、esbuildとViteのOxcは標準(TC39)のデコレータとして変換して黙って食い違うため、アプリの差分で`experimentalDecorators`を指定せず、標準(TC39)のデコレータを使わない。7.1・7.2の文書では、デコレータ設定を基底設定が持つ理由としてこの挙動と前提を記載する。
+- 7.1: codingの文書からtestingへのリンク(001の「テストの種別と命名…」と002のE2Eテストツール関連の4箇所)は、7.3の文書がまだ無いため`../testing/README.md`を指している。7.3で該当文書(`testing/001-test-strategy.md`・`testing/002-browser-tool-versions.md`)へ張り替える。001は`config/workspace-layout.ts`の`APPS`・`AppName`・`SHARED_DIRS`(`source`・`mounts`・`checkedBy`)の形を記載しているため、このファイルの形を変える場合は001も更新する。
+- 7.2(frontend-platformへの申し送り): 検査担当が`self`の共有ディレクトリ(`apps/frontend-lib`)は直下に`tsconfig.json`を持つため、配置先(`apps/{client,admin}/lib`)のファイルは型検査では利用側アプリの設定、ViteやesbuildによるTransformでは最も近い共有ディレクトリ自身の`tsconfig.json`で扱われ得る。配置元と配置先でディレクトリの深さが異なるため、相対パスの`extends`(例:`../../tsconfig.base.json`)は配置先の位置から解決できなくなる(Viteのtsconfckは解決できないと例外を投げる)。本specでは未検証であり、`coding/003-shared-directories.md`に「本文書の検証の対象外」として記載した。frontend-libを作るspecで、配置先からの`extends`の解決と変換に関わる設定の一致を確かめる。
+- 7.3(7.5への申し送り): `testing/001-test-strategy.md`の環境シークレットの節は、Workersのコードからシークレットを読む方法を`../security/README.md`へリンクしている。7.5で`security/001-secret-management.md`を作ったら、このリンクを張り替える(7.5の境界にtestingの文書の1行の編集を含める)。
+- 7.3(開発者判断を待たずに親が決定): Implementation Notes 3.4・3.6が「7.3・7.7の文書に記載する」としたBetterleaksの注意点(Fingerprintの組み立て方、`.betterleaksignore`の行頭`#`だけのコメント、`git revert`・cherry-pickがフックを通らずCIでの検出が補うこと、`GIT_TRACE=1`で走査が失敗すること、`--log-level debug`が`--redact`でも値を表示すること)はテストの話題ではないため、testingの文書には載せない。汎用の内容は7.5の`security/001-secret-management.md`に、本プロジェクトでの手順は7.7のオンボーディングガイドに載せる。
+- 7.3: `bun test`は`./`で始まる引数をファイルのパスとして扱いそのファイルだけを実行し、`./`で始まらない引数はフィルタとして扱う(Bun 1.4.2で実測)。E2Eの`test-results`には既定で`error-context.md`だけが出る(トレース・スクリーンショット・動画は`use`で有効にした場合のみ)。
+- 7.4(7.5への申し送り): `infra/001-wrangler-conventions.md`の「ローカル状態の永続化と共有」節は、`@cloudflare/vite-plugin`の`persistState`の設定方法を`../frontend/README.md`へリンクしている。7.5で`frontend/002-tanstack-start-on-workers.md`を作ったら、このリンクを該当見出しへ張り替える(7.5の境界にinfraの文書の1行の編集を含める)。`infra/002-environments.md`のInfisicalの実行例は`--telemetry=false`を含まない汎用形で、実際の接頭辞は7.6の`project-values.md`に残す。
+- 7.5: CLAUDE.mdの規則#9の理由「WranglerやViteのバンドル処理はesbuildを用いており`emitDecoratorMetadata`が使えない」は一部が事実に反する。実測では、wrangler 4.124.0が固定するesbuild 0.28.1は`emitDecoratorMetadata: true`でも`design:paramtypes`を警告なしに出力しないが、Vite 8.3.1の`vite build`(Rolldown・Oxc)とBun 1.4.2の`bun test`・`bun build`は出力する。規則(`@inject`の明示)は変えず、`backend/001-dependency-injection-on-workers.md`には「メタデータに頼るコードは単体テストを通過してもWranglerのバンドル後に実行時に失敗し得る」という正確な理由を書いた。`coding/001-javascript-typescript-conventions.md`の「デコレータの設定」とdesign.mdの「TsconfigBase」節の「esbuild系のバンドラが出力しない」は誤りではないため変更していない。
+- 7.5: `security/001-secret-management.md`の「シークレットの注入」は、Infisicalの実行接頭辞を汎用形`infisical run --env <環境種別> -- <コマンド>`で書き、共通オプション(本プロジェクトでは`--telemetry=false`)は「プロジェクトで決めた共通のオプションがあれば`infisical`の直後に付ける」としている。7.6の`project-values.md`に実際の接頭辞を載せる。Betterleaksの汎用的な注意点は同文書のH2「シークレットの検出」にあり、7.7のオンボーディングガイドからはここへリンクする。
+- 7.6: CLAUDE.mdの「技術規則の参照先」は16規則の移設先のH2見出しへ1対1でリンクし、アンカーはGitHubのスラッグ(`github-slugger` 2.0.0)と一致させた(中黒「・」はスラッグで除去される。例:`#マイグレーション大文字小文字を区別しないカラム`)。技術文書の見出しの文言を変える場合は、CLAUDE.md・`docs/onboardings/project-values.md`のアンカーも合わせて直す。`project-values.md`には必須の固有値に加え、規則#13の`migrations/`の受け皿として`<マイグレーションの保存先>`→`apps/db/migrations`(apiとeventのWrangler設定からは`db/migrations`。Wrangler設定は未作成のため後続specで確かめる)を載せた。
+- 7.6(レビューの差し戻し後に対応): `docs/adr/0001-drizzle-orm-over-mikroorm.md`の「反映先」がCLAUDE.mdから消えた節を指していたため、db/001・db/002と`project-values.md`へ張り替えた。`.kiro/steering/roadmap.md`と`.kiro/specs/*/brief.md`は移設した規則を要約・引用しているが、節名を指さず値も矛盾しないため張り替えていない。
+- 7.6(7.7への申し送り): ルートのREADME.mdの`docs/onboardings/`の索引表と`docs/onboardings/README.md`に、`project-values.md`がまだ載っていない。7.7で1行ずつ追加する。
+- 7.7: オンボーディングガイドに「コミット時の検査」「compose.yamlを変更したとき」「アプリへの品質ツールの導入」「日常の検査とテスト」を加え、クイックスタートの`setup-chromium.sh`の説明を実態(コンテナ起動時に`entrypoint.sh`から実行され、ルートの`bun install`前はChromiumの導入を飛ばす)に訂正した。`HUSKY=0 bun install`が失敗する挙動(Notes 3.1)は、フックの無効化を促さないよう記載していない。技術スタック表は付属パッケージ7つだけを追加し、本体パッケージと`wrangler`は既存の記載のままにした。
+- 8.1: 一括検査・カバレッジ付き単体テスト(関数100%・行98.98%、ファイル単位の最小は`install-git-hooks.ts`の行87.72%)・E2Eテスト(0件表示)が成功し、技術ドキュメントの固有値の検索(README・compose.yaml・`docs/onboardings/`・Dockerfile・`.mcp.json`などから導いた26語)は誤検知を除き0件、README・CLAUDE.md・`docs/GUIDES/tech`・`docs/onboardings/`の相対リンクに不備は無かった。research.mdの「実装時の検証結果」に6.1の結果を追記し、design.mdの実装との食い違い(対応表2.4の定数名など)を直した。範囲外の既存不備として`docs/ai-prompts/008-create-mockup-client-directory.md`のアンカー`#ディレクトリ`(正しくは`#ディレクトリp`)が残る。Bun 1.4.2は`coverage/unit/`に`.lcov.info.<ハッシュ>.tmp`を残すことがあるため、CIの成果物には`coverage/unit/lcov.info`を明示する(infra-deliveryへの申し送り)。
+- 8.1後の機能検証(開発者判断済み): Notes 3.1の未決事項は、`HUSKY=0`のとき`HookInstallResult`の理由`husky-disabled`で導入を飛ばし、終了コード0にすると決めた(判定順は`CI`→`HUSKY`→`.git`)。コミット時の`HUSKY=0`はhusky自体がフックを飛ばすため、導入時の失敗には回避を防ぐ効果が無い。オンボーディングガイドには、飛ばす条件として無効化を促さない形で記載した。`.claude/settings.json`が文字列`HUSKY=0`を含むシェルコマンドを拒否する(`Bash(*HUSKY=0*)`)ため、この文字列を含む編集はファイル編集ツールか、スクリプトファイル経由で行う。
+- 8.1後の機能検証(開発者判断済み): 要件6.1(単体テストのコマンドが`*.unit.test.ts`だけを実行する)は、Bunの`unit.test`が部分一致で拾う命名規約外の名前を命名検査が一括検査で失敗させることで保証すると決めた。保証の前提として、ルートの`test:unit`に外部由来(`.claude/**`・`docs/ai-extensions/**`・`.kiro/settings/**`)の除外を加えた(Bun 1.4.2はドットで始まるディレクトリを走査しないが、単一定義との一致を単純に保つため全件を指定)。`check-test-names.unit-filter.unit.test.ts`は、実際のBunをフィルタ付きで一時ディレクトリに対して実行し、JUnit形式の結果から実行されたファイルを集める。
+- 8.1後の機能検証(開発者判断済み): 要件7.1のBunの単体テストでの「未達の指標と実測値の表示」は、表の実測値と終了コード1で満たすものとし、上流の制約としてdesign.mdの追跡表とBunTestConfigに記録した。
+- 8.1後の機能検証(開発者判断済み): ルートの`tsconfig.json`を`include: ["**/*.ts"]`と、アプリ・品質ゲートの対象外・外部由来の`exclude`に変えた。TypeScriptの`**`はドットで始まるディレクトリに一致しない(実測)ため、`.github/`配下などにルート所有のTSを置く場合は`include`に明示する(infra-deliveryへの申し送り)。`tsconfig.unit.test.ts`が、`exclude`と単一定義の一致と、リポジトリにあるルート所有のTSがすべて型検査の対象に入っていることを確かめる。
+- 8.1後の機能検証: 書き写した値の一致テストを加えた(`bunfig.toml`の`coverageThreshold`・`coverageReporter`、`.gitignore`の共有ディレクトリの配置先、E2Eの既定URLのポート)。E2Eのポートは、compose.yamlの`ports`の行末コメント(利用者側フロントエンド・管理者側フロントエンド)で対象を識別するため、コメントの文言を変える場合は`e2e/support/targets.unit.test.ts`の`COMPOSE_PORT_LABELS`も直す。design.mdは、AppScriptContract(Bunの除外の書き写し)、VitestPresets(`CHROMIUM_PATH`の空文字)、構成図とComponentsの依存、Testing Strategyを実装に合わせた。

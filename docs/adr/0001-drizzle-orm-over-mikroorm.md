@@ -58,6 +58,7 @@ ORMとしてDrizzle ORM(v1.0 RC)とdrizzle-kitを採用し、Kyselyは併用し�
 
 ## 反映先
 
-- [CLAUDE.md](../../CLAUDE.md)の「ORMについて」「データベースについて」
+- [DrizzleとCloudflare D1のマイグレーションと命名規則](../GUIDES/tech/db/001-drizzle-migrations-on-d1.md)・[Cloudflare D1の制約と対処](../GUIDES/tech/db/002-d1-constraints.md)
+- [本プロジェクト固有の値](../onboardings/project-values.md#技術ドキュメントの表記と本プロジェクトの値)の`<マイグレーションの保存先>`
 - [tech-stack.md](../onboardings/tech-stack.md)のORM節
 - 要件定義書のNFR-SECUR-021

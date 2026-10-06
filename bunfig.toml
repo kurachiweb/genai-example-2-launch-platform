@@ -1,9 +1,16 @@
 [test]
-# Vitest向けの`*.browser.test.{ts,tsx}`と@cloudflare/vitest-pool-workers向けの`*.worker.test.{ts,tsx}`はBunでは動作しないため除外する
-pathIgnorePatterns = ["**/*.browser.test.{ts,tsx}", "**/*.worker.test.{ts,tsx}"]
+# Vitest向けの`*.browser.test.{ts,tsx}`と@cloudflare/vitest-pool-workers向けの`*.worker.test.{ts,tsx}`、Playwright向けの`*.e2e.test.ts`はBunでは動作しないため除外する
+pathIgnorePatterns = ["**/*.browser.test.{ts,tsx}", "**/*.worker.test.{ts,tsx}", "**/*.e2e.test.ts"]
 
 # カバレッジ計測が有効なら、NFR-MAINT-003が要求する80%以上を強制する
 coverageThreshold = 0.8
 
 # テストファイル自身は分母から除外し、プロダクションコードのカバレッジのみを計測する
 coverageSkipTestFiles = true
+
+# 人が読む表に加え、CIなどの他ツールが読めるlcovを、他のテスト種別と混ざらないGit管理外の出力先へ書き出す
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage/unit"
+
+# 自動生成コードはテストで網羅する対象ではないため分母から除外する
+coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**"]

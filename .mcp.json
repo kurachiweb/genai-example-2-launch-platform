@@ -19,7 +19,7 @@
       "command": "bunx",
       "args": [
         "--bun",
-        "@playwright/mcp@0.0.83",
+        "@playwright/mcp@0.0.80",
         "--executable-path",
         "${CHROMIUM_PATH}",
         "--isolated",

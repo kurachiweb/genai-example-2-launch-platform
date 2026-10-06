@@ -36,47 +36,25 @@
 - シードデータやドキュメント内のサンプルデータにおいて、URLのgTLD部やメールアドレスのドメイン部は`.example`のみを使用すること。ただし[本プロジェクトのドメイン](README.md#配信url一覧)は例外とする。
 - 1つのコンポーネントファイル内でエクスポートするReactコンポーネントは必ず1つだけにすること。
 
-### 後ほどdocs/GUIDES/techディレクトリに移す規則
+### 技術規則の参照先
 
-- ESLintなどの設定ファイルは`*.js`ではなく`*.ts`として作成すること。
-- JavaScriptにおいて`isNaN`ではなく`Number.isNaN`を使うなど新しい記法を選び、非推奨の記法は決して使わないこと。
-- HTML要素で日時を表示する場合は必ず`<time>`要素を使い、`datetime`属性値としてISO形式の日時文字列を設定すること。
-- Wranglerコマンドのうち`--persist-to`オプションがあるものでは、`--persist-to /workspace/.wrangler/state`オプションを付け、さらにD1・R2系コマンドでは`--local`オプションも付けること。
-  - `apps/api`と`apps/event`のWrangler設定において、`database_id`・R2バケット名、及び`wrangler dev`が優先して使う`preview_database_id`・`preview_id`・`preview_bucket_name`は、両アプリで同一の値にすること。
-- TanStack Startアプリは通常`bun run dev`で起動するが、デプロイ前は`vite build && vite preview`によりCloudflare Workers向けにビルドして動作確認すること。
-  - TanStack StartフロントエンドからWranglerに接続するには`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: "/workspace/.wrangler/state" } })`と記述する。
-- 全ての秘匿すべき環境シークレットは`.env`や`.dev.vars`ファイルではなくInfisical Webサービス内で管理するので、`bun run dev`など環境シークレットを使うコマンドの先頭には毎回`infisical --telemetry=false run --env dev -- `を付けて注入すること。
-  - `wrangler dev`や、`@cloudflare/vite-plugin`による`vite dev`の場合は、Infisicalから環境シークレットが`process.env`に注入されるが、コード中で`env.(シークレットキー)`として使用するにはWrangler設定のルート及び`env.(staging|prod).secrets.required`プロパティに当該シークレットキーを指定する必要がある。
-  - シークレットではない環境変数をコード中で`env.(シークレットキー)`として使用するには、Wrangler設定のルート及び`env.(staging|prod).vars`プロパティに当該環境変数を指定する必要がある。
-  - OpenTofuで使う環境シークレットも`*.tfvars`や`*.tfstate`ファイルには書き出さずInfisicalで一元管理し、`infisical`プロバイダの`ephemeral`リソースをOIDC認証で呼び出す。
-- Cloudflare及びWranglerの環境種別は、デプロイ先検証環境を`staging`、本番環境を`prod`とする。
-- Infisicalの環境種別は、ローカル環境を`dev`、デプロイ先検証環境を`staging`、本番環境を`prod`とする。
-- WranglerやViteのバンドル処理はesbuildを用いており`emitDecoratorMetadata`が使えないため、Inversifyのコンストラクタ引数には`@inject`を必ず明示し、型からの自動解決を避けること。
-- 全アプリのWrangler設定で、`compatibility_date`は`2026-08-04`と定義すること。これにより互換性フラグの`nodejs_compat`及び`nodejs_compat_v2`が自動で有効になる。
-- テストツールの棲み分けのため、テストファイル名を目的・使用ツール別に分ける。`*.unit.test.ts`はBun(`bun test unit.test`)、`*.browser.test.{ts,tsx}`はVitest、`*.worker.test.{ts,tsx}`は`@cloudflare/vitest-pool-workers`を使用する。そして各ツールのテストコマンド実行時にこれらのglobパターンを引数として指定すること。
-  - ルートディレクトリ以外で`bun test`を実行する場合は`--config=/workspace/bunfig.toml`オプションを明示的に指定すること。
-- CIプロセスではBunによるテスト時に`--coverage`というカバレッジ計測オプションを付け、`bunfig.toml`の`coverageThreshold`指定と合わせて閾値未達の場合にCIを失敗させる。
-- ORMについて
-  - マイグレーションSQLは`drizzle-kit generate`で生成し(スキーマ定義で表現できない内容は`--custom`オプションで空のマイグレーションを作成して生SQLで記述する)、適用はWranglerの`wrangler d1 migrations apply`で行う。適用の管理を一本化するため`drizzle-kit migrate`・`drizzle-kit push`は使用しない。
-  - `drizzle-kit`のマイグレーション出力は`migrations/<日時>_<名前>/migration.sql`という入れ子構造であり、Wranglerの既定(`migrations_dir`直下の`*.sql`のみを探索)では検出されない。そのためWrangler設定のD1バインディングに`migrations_dir`と、`<migrations_dirの値>/*/migration.sql`を値とする`migrations_pattern`を指定すること。`wrangler d1 migrations create`は入れ子構造に対応しないため、マイグレーションの作成には使用しない。
-  - テーブルの特定カラムに限りアルファベットの大文字小文字を問わず文字照合させたい場合、Drizzleにはカラムの照合順序を指定するAPIが無いため、`customType`の`dataType()`が`'text collate nocase'`を返す共通ヘルパー(`textNoCase`)を定義し、テーブル定義でそのカラム型を使うこと。URLスラッグとして使われるユーザーハンドルのカラムでは特に有用。
-    - `nocase`が同一視するのはASCIIの大文字小文字のみで、非ASCII文字は区別される。
-    - 既存カラムへ後から指定するとテーブル再作成のマイグレーションが生成されるため、テーブル新規作成時に指定する。
-- テーブル名は小文字で複数形にすること。
-- データベースについて、Cloudflare D1特有の制限に留意すること。
-  - D1では`BEGIN`によるトランザクションが使えないため、Drizzleの`db.transaction()`は使用しない。
-    - 絞り込みと絞り込んだレコードの更新は1回のSQLで完結させる。
-    - 複数テーブルに書き込む場合、整合性を保つためにDrizzleの`db.batch()`を使用する。D1の`D1Database.batch()`として実行され、途中で失敗すると全体がロールバックされる。
-    - ユニーク制約付きテーブルにレコードを追加する場合、同一データの同時作成によるエラーを防ぐため、`INSERT ... ON CONFLICT DO NOTHING`(Drizzleでは`onConflictDoNothing()`、既存行を更新する場合は`onConflictDoUpdate()`)を付ける。
-  - D1では1クエリあたりのバインド変数が100個までのため、`IN`句に渡す値の数や、複数行を一度に追加するINSERTの「行数×カラム数」がこの上限に収まるよう、クエリを分割する。分割した書き込みの整合性が必要な場合は、同一の`db.batch()`にまとめる。([参照:Cloudflare Docs](https://developers.cloudflare.com/d1/platform/limits/))
-  - D1では仮想テーブルを含むデータベースをエクスポートできないため、バックアップ・復旧は`wrangler d1 export`ではなくD1 Time Travelで行う。([参照:Cloudflare Docs](https://developers.cloudflare.com/d1/best-practices/import-export-data/#known-limitations-1))
-    - FTS5仮想テーブルは元テーブルへの書き込みに自動追随しないため、`external content`テーブル構成とSQLiteのトリガー(`CREATE TRIGGER`)によりインデックスを同期させる。
-    - 仮想テーブルとトリガーはDrizzleのスキーマ定義で表現できないため、上記のカスタムマイグレーション(生SQL)で記述する。
-- Playwright更新時に同期すべき4箇所
-  - `Dockerfile`の`PLAYWRIGHT_VERSION`(共有Chromiumの導入用OS依存パッケージ)
-  - ルートの`package.json`の`@playwright/test`(実際に使う共有Chromium本体のバージョンを決定、`.mcp.json`の両MCPサーバーは`CHROMIUM_PATH`経由でこれを共有利用)
-  - `.mcp.json`の`chrome-devtools-mcp`(同梱する`puppeteer-core`のChrome DevTools Protocol対応バージョンを共有Chromiumに合わせる。実起動で動作確認する)
-  - `.mcp.json`の`@playwright/mcp`(同梱する`playwright-core`のChromiumリビジョンを共有Chromiumに合わせる。リビジョン番号が一致しない場合は最も近いリビジョンを選択する。実起動で動作確認する)
+- 設定ファイル(ESLint・Viteなど)を作る前に: [設定ファイルの記述形式](docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md#設定ファイルの記述形式)
+- JavaScript・TypeScriptのコードを書く前に: [新しい記法の選択](docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md#新しい記法の選択)
+- HTML要素で日時を表示する前に: [日時の表示](docs/GUIDES/tech/frontend/001-markup-conventions.md#日時の表示)
+- Wranglerのコマンドの実行やD1・R2のバインディングの定義の前に: [ローカル状態の永続化と共有](docs/GUIDES/tech/infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)
+- TanStack Startアプリを起動・ビルドする前に: [開発時とデプロイ前の起動](docs/GUIDES/tech/frontend/002-tanstack-start-on-workers.md#開発時とデプロイ前の起動)
+- シークレット・環境変数を使うコマンドの実行や設定の前に: [シークレットの注入](docs/GUIDES/tech/security/001-secret-management.md#シークレットの注入)
+- Wrangler設定やコマンドでデプロイ先を指定する前に: [デプロイ先の環境種別](docs/GUIDES/tech/infra/002-environments.md#デプロイ先の環境種別)
+- Infisicalの環境を指定する前に: [シークレット管理の環境種別](docs/GUIDES/tech/infra/002-environments.md#シークレット管理の環境種別)
+- Inversifyで注入するクラスを書く前に: [コンストラクタ引数の注入](docs/GUIDES/tech/backend/001-dependency-injection-on-workers.md#コンストラクタ引数の注入)
+- Wrangler設定を作成・変更する前に: [互換性日付](docs/GUIDES/tech/infra/001-wrangler-conventions.md#互換性日付)
+- テストファイルの作成やテストの実行の前に: [テストの種別と命名](docs/GUIDES/tech/testing/001-test-strategy.md#テストの種別と命名)
+- カバレッジの計測やCIのテストの設定の前に: [カバレッジ](docs/GUIDES/tech/testing/001-test-strategy.md#カバレッジ)
+- DBスキーマの変更やマイグレーションの作成・適用の前に: [マイグレーション・大文字小文字を区別しないカラム](docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md#マイグレーション大文字小文字を区別しないカラム)
+- テーブルを新しく定義する前に: [命名規則](docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md#命名規則)
+- D1へのクエリ・全文検索・バックアップを設計する前に: [D1の制約と対処](docs/GUIDES/tech/db/002-d1-constraints.md#d1の制約と対処)
+- Playwright・ブラウザ操作MCPサーバーの版を更新する前に: [同期すべき4箇所](docs/GUIDES/tech/testing/002-browser-tool-versions.md#同期すべき4箇所)
+- 上記の文書のプレースホルダーを本プロジェクトの値に読み替える前に: [本プロジェクト固有の値](docs/onboardings/project-values.md)
 
 ### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について
 
@@ -142,7 +120,7 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   └── admin/                  # 管理者側画面のモックアップ
 ├── docs/                       # ドキュメント ... 全てマークダウン形式
 │   ├── requirements/           # ソフトウェア要件定義書(IEEE 29148準拠、SSoT)
-│   ├── onboardings/            # オンボーディングガイド ... ローカル環境の構築手順及びポート番号
+│   ├── onboardings/            # オンボーディングガイド ... ローカル環境の構築手順及びポート番号、技術選定、技術ドキュメントから除いた本プロジェクト固有の値
 │   ├── ai-extensions/          # 外部由来のAIエージェント向けガイドライン(原文のまま配置)
 │   ├── ai-prompts/             # 開発中に使用した主なプロンプトの記録
 │   ├── adr/                    # ecc:architecture-decision-recordsスキルによる自動生成ADR
@@ -150,23 +128,33 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   ├── CODEMAPS/               # ecc:doc-updaterエージェントによる自動生成コードマップ
 │   └── GUIDES/                 # 要件定義書を元にした開発者ドキュメント、ecc:doc-updaterエージェントにより都度更新
 │       ├── tech/               # 本プロジェクトに限らず同じ技術選定のプロジェクトにコピーできる、技術的な資料
-│       │   ├── infra/          # インフラ・ネットワーク構成図、ログ管理方針、非同期処理設計
+│       │   ├── infra/          # インフラ・ネットワーク構成図、実行環境の設定規約と環境種別、ログ管理方針、非同期処理設計
 │       │   ├── external/       # 各種外部APIの仕様、料金、リクエスト制限、認証方式、エラーハンドリング及びリトライ戦略
-│       │   ├── db/             # データベース設計原則、マイグレーション手順
-│       │   ├── backend/        # バックエンドのコーディングルール ... アーキテクチャ設計、API設計
-│       │   ├── frontend/       # フロントエンドのコーディングルール ... アクセシビリティ規則、コンポーネント共通化対象
-│       │   ├── coding/         # バックエンド/フロントエンド共通のコーディングルール ... JS/TSの記法、GraphQL通信、入力値バリデーション
-│       │   ├── testing/        # テスト方針、カバレッジ設定
+│       │   ├── db/             # データベース設計原則、テーブル・カラムの命名規則、マイグレーションの生成と適用の手順、データベース固有の制約と対処
+│       │   ├── backend/        # バックエンドのコーディングルール ... アーキテクチャ設計(依存性注入を含む)、API設計
+│       │   ├── frontend/       # フロントエンドのコーディングルール ... アクセシビリティ規則、マークアップ規約、コンポーネント共通化対象、開発時とデプロイ前の起動方法
+│       │   ├── coding/         # バックエンド/フロントエンド共通のコーディングルール ... JavaScript・TypeScriptの記法、設定ファイルの記述規約と基底設定の継承、整形検査・静的解析・型検査のコマンド、依存パッケージの版管理、共有ディレクトリの配置方式、GraphQL通信、入力値バリデーション
+│       │   ├── testing/        # テスト方針(テストの種別と命名規約、実行コマンド)、カバレッジ設定、TDDの進め方、E2Eテストツールの版の更新手順
 │       │   ├── operations/     # 運用ガイド ... デプロイ手順、障害対応、ロールバック手順、決済データ操作
-│       │   └── security/       # 包括的なセキュリティガイド、認証認可設計、システム監視及び対応方針
+│       │   └── security/       # 包括的なセキュリティガイド、認証認可設計、シークレット管理、システム監視及び対応方針
 │       └── service/            # 本プロジェクト特有の資料
 │           ├── overview/       # サービス概要、コンセプト、料金及びプラン体系
 │           ├── features/       # 国際化方針や決済実装方針など特筆すべき機能仕様
 │           ├── design/         # デザインガイドライン ... 文字やパーツ配置に関するサービス固有の規則
 │           └── legal/          # 法律及びコンプライアンス準拠方針、利用規約・プライバシーポリシーの大枠
-├── scripts/                    # ローカル開発用シェルスクリプト ... コンテナの常駐プロセス起動など
+├── config/                     # ルートと全アプリが参照する設定データ ... アプリ一覧と共有ディレクトリの配置先、テストの命名パターンとカバレッジ閾値
+│   └── vitest/                 # ブラウザテスト・Workers統合テストのVitestプリセット
+├── e2e/                        # PlaywrightによるE2Eテスト(設定はルートの`playwright.config.ts`) ... 対象アプリ(`client`・`admin`)ごとのディレクトリにテストを置く
+│   └── support/                # 対象アプリのURL解決、Playwrightの設定値の組み立て、到達確認、対象0件の表示
+├── scripts/                    # 開発コンテナとツールのスクリプト ... コンテナ起動時の処理(Claude Codeの更新、ワークスペース信頼設定のマージ、Chromiumの導入、常駐プロセスの起動)
+│   └── tooling/                # 品質ゲートのツールスクリプト ... Gitフックの導入、コミット時の検査対象の振り分け、一括検査・一括実行、共有ディレクトリの配置、テスト命名の検査
+├── test-support/               # ルートの単体テストの補助 ... 共通フィクスチャ、型だけの読み込みの判定、Git管理外の判定
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進める開発コンテナ
 ├── compose.yaml                # コンテナの管理
-├── package.json                # プロジェクトルート ... commitlint、husky、lint-stagedによるgit管理の厳格化、及びPlaywrightによるE2Eテスト
+├── package.json                # プロジェクトルート ... Gitフック(husky・lint-staged・commitlint)によるgit管理の厳格化、ルート所有ファイルの整形・静的解析・型検査・単体テスト、全アプリの一括検査とテストの一括実行、共有ディレクトリの配置確認とCIでのコピー配置、PlaywrightによるE2Eテスト
+├── bunfig.toml                 # 単体テスト(Bun)の共通設定 ... 他の種別の除外、カバレッジの閾値・除外・出力先
+├── tsconfig.base.json          # ルートと全アプリが継承する型検査の基底設定
+├── eslint.config.base.ts       # ルートと全アプリが使う静的解析の基底設定
+├── prettier.config.ts          # リポジトリ全体の整形設定
 └── README.md                   # サービス説明、各種ドキュメントへの索引
 ```
