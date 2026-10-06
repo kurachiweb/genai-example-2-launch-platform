@@ -411,4 +411,4 @@ infisical run --env <環境種別> -- bun run test:all:worker --coverage
 - `infisical run`は、指定した環境種別のシークレットを環境変数として`--`の後のコマンドへ渡す。プロジェクトで決めた共通のオプションがあれば、`infisical`の直後に付ける。
 - シークレットをファイルに書き出さない。シークレットを置く`.env`・`.dev.vars`などのファイルを作らず、テストのコード・フィクスチャ・スナップショットにも値を書かない。
 - シークレットの値を標準出力やログに表示しない。テストの失敗メッセージにも値を含めない。
-- 設定ファイル(`vitest.<種別>.config.ts`など)はBun・Node上で評価されるため、注入された値を`process.env`で読める。Workersの実行環境で動くコードからシークレットを参照するための設定は、[securityの索引](../security/README.md)から辿る文書に従う。
+- 設定ファイル(`vitest.<種別>.config.ts`など)はBun・Node上で評価されるため、注入された値を`process.env`で読める。Workersの実行環境で動くコードからシークレットを参照するための設定は、「[シークレットの注入](../security/001-secret-management.md#シークレットの注入)」に従う。

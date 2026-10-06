@@ -266,7 +266,7 @@
   - _Depends: 1.5_
   - _Requirements: 10.6, 11.1, 11.2_
 
-- [ ] 7.5 (P) backend・frontend・securityの移設規則の文書を書く
+- [x] 7.5 (P) backend・frontend・securityの移設規則の文書を書く
   - コンストラクタ引数の注入の明示、日時の表示、TanStack Startの開発時とデプロイ前の起動、シークレットの注入(Wrangler設定での宣言・シークレットでない環境変数・IaCでのシークレット取得を含む)を、移設対応表の文書と見出しで汎用的に記載する
   - backend・frontend・securityの索引に文書を1行ずつ追記する
   - 完了状態: backend・frontend・securityの索引から4文書へ辿れ、移設対応表の該当規則がそれぞれ指定の見出しの下にあり、文書にプロジェクト固有の値が含まれない
@@ -369,3 +369,5 @@
 - 7.3(開発者判断を待たずに親が決定): Implementation Notes 3.4・3.6が「7.3・7.7の文書に記載する」としたBetterleaksの注意点(Fingerprintの組み立て方、`.betterleaksignore`の行頭`#`だけのコメント、`git revert`・cherry-pickがフックを通らずCIでの検出が補うこと、`GIT_TRACE=1`で走査が失敗すること、`--log-level debug`が`--redact`でも値を表示すること)はテストの話題ではないため、testingの文書には載せない。汎用の内容は7.5の`security/001-secret-management.md`に、本プロジェクトでの手順は7.7のオンボーディングガイドに載せる。
 - 7.3: `bun test`は`./`で始まる引数をファイルのパスとして扱いそのファイルだけを実行し、`./`で始まらない引数はフィルタとして扱う(Bun 1.4.2で実測)。E2Eの`test-results`には既定で`error-context.md`だけが出る(トレース・スクリーンショット・動画は`use`で有効にした場合のみ)。
 - 7.4(7.5への申し送り): `infra/001-wrangler-conventions.md`の「ローカル状態の永続化と共有」節は、`@cloudflare/vite-plugin`の`persistState`の設定方法を`../frontend/README.md`へリンクしている。7.5で`frontend/002-tanstack-start-on-workers.md`を作ったら、このリンクを該当見出しへ張り替える(7.5の境界にinfraの文書の1行の編集を含める)。`infra/002-environments.md`のInfisicalの実行例は`--telemetry=false`を含まない汎用形で、実際の接頭辞は7.6の`project-values.md`に残す。
+- 7.5: CLAUDE.mdの規則#9の理由「WranglerやViteのバンドル処理はesbuildを用いており`emitDecoratorMetadata`が使えない」は一部が事実に反する。実測では、wrangler 4.124.0が固定するesbuild 0.28.1は`emitDecoratorMetadata: true`でも`design:paramtypes`を警告なしに出力しないが、Vite 8.3.1の`vite build`(Rolldown・Oxc)とBun 1.4.2の`bun test`・`bun build`は出力する。規則(`@inject`の明示)は変えず、`backend/001-dependency-injection-on-workers.md`には「メタデータに頼るコードは単体テストを通過してもWranglerのバンドル後に実行時に失敗し得る」という正確な理由を書いた。`coding/001-javascript-typescript-conventions.md`の「デコレータの設定」とdesign.mdの「TsconfigBase」節の「esbuild系のバンドラが出力しない」は誤りではないため変更していない。
+- 7.5: `security/001-secret-management.md`の「シークレットの注入」は、Infisicalの実行接頭辞を汎用形`infisical run --env <環境種別> -- <コマンド>`で書き、共通オプション(本プロジェクトでは`--telemetry=false`)は「プロジェクトで決めた共通のオプションがあれば`infisical`の直後に付ける」としている。7.6の`project-values.md`に実際の接頭辞を載せる。Betterleaksの汎用的な注意点は同文書のH2「シークレットの検出」にあり、7.7のオンボーディングガイドからはここへリンクする。

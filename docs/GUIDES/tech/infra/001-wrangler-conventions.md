@@ -28,7 +28,7 @@ wrangler d1 execute <データベース名> --local --persist-to <ローカル�
 wrangler r2 object put <バケット名>/<オブジェクトキー> --file <ファイル> --local --persist-to <ローカル状態の保存先>
 ```
 
-- `@cloudflare/vite-plugin`で起動するアプリも、同じ`<ローカル状態の保存先>`を使うよう設定する。設定方法は[フロントエンドの技術資料](../frontend/README.md)に従う。
+- `@cloudflare/vite-plugin`で起動するアプリも、同じ`<ローカル状態の保存先>`を使うよう設定する。設定方法は「[開発時とデプロイ前の起動](../frontend/002-tanstack-start-on-workers.md#開発時とデプロイ前の起動)」に従う。
 
 ### 複数Worker間でのリソースIDの共有
 
