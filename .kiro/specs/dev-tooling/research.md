@@ -73,6 +73,7 @@
 
 - **Findings**: Dockerfileの`PLAYWRIGHT_VERSION`は1.63.0、`.mcp.json`の`chrome-devtools-mcp`は1.10.1(puppeteer-core同梱)、`@playwright/mcp` 0.0.83は`playwright-core 1.64.0-alpha`を同梱している。`/opt/ms-playwright`には`chromium-1243`が導入済みである。一方、`CHROMIUM_PATH`のリンクは、ルート未インストールのため未作成である。
 - **Implications**: ルートの`@playwright/test`を1.63.0で導入して`setup-chromium.sh`を実行し、両MCPサーバーを実際に起動して確認する。リビジョンが合わなければ、CLAUDE.mdの規則どおり最も近いリビジョンの版を選ぶ。
+- 実装時の結果は「[E2Eテストツール関連の4箇所の整合(タスク6.1)](#e2eテストツール関連の4箇所の整合タスク61)」を参照。
 
 ## Architecture Pattern Evaluation
 
@@ -149,6 +150,23 @@
 - `@playwright/mcp` 0.0.83がPlaywright 1.64系のChromiumリビジョンを要求する可能性がある。実起動で確かめ、合わなければ最も近い版を選ぶ。
 
 ## 実装時の検証結果
+
+### E2Eテストツール関連の4箇所の整合(タスク6.1)
+
+- **目的**: 要件9.5。E2Eテストツール関連の4箇所の版を突き合わせ、両ブラウザ操作MCPサーバーが共有Chromiumで起動することを確かめた(2026-10-05、Bun 1.4.2)。版の調べ方と起動確認の手順は「[E2Eテストツールの版の更新手順](../../../docs/GUIDES/tech/testing/002-browser-tool-versions.md)」の「期待するChromiumの調べ方」「両MCPサーバーの起動確認」に従う。
+- **4箇所の版**
+
+| 箇所                                       | タスク6.1の前 | タスク6.1の後 | 期待するChromium                                          |
+| ------------------------------------------ | ------------- | ------------- | --------------------------------------------------------- |
+| `Dockerfile`の`PLAYWRIGHT_VERSION`         | 1.63.0        | 1.63.0        | —(OS依存パッケージの導入だけに使う)                       |
+| ルートの`package.json`の`@playwright/test` | 1.63.0        | 1.63.0        | chromium-1243(153.0.8010.12)。共有Chromiumと同じ          |
+| `.mcp.json`の`chrome-devtools-mcp`         | 1.10.1        | 1.10.1        | Chrome 153.0.8010.36(同梱の`puppeteer-core` 25.11.0)      |
+| `.mcp.json`の`@playwright/mcp`             | 0.0.83        | 0.0.80        | chromium-1247からchromium-1243へ(依存の`playwright-core`) |
+
+- **`@playwright/mcp`を0.0.80へ変更した理由**: 0.0.83の依存`playwright-core`(1.64.0-alpha)はchromium-1247を期待し、共有Chromium(chromium-1243)と一致しなかった。正式版のうち1243に一致するのは0.0.80(`playwright-core` 1.63.0-alpha-2026-08-31)だけだった(0.0.79は1237、0.0.81〜0.0.83は1244・1246・1247)。0.0.80には`browser_emulate_media`ツールが無い。0.0.83以降を使うには、ルートの`@playwright/test`と`Dockerfile`の`PLAYWRIGHT_VERSION`を先に上げる。
+- **`chrome-devtools-mcp`を1.10.1のままにした理由**: 同梱の`puppeteer-core`が期待するChromeは共有Chromiumとビルド番号が異なるが、メジャー版(CDPの世代)の153が一致する。ビルド番号まで一致する版は存在しないため、メジャー版の一致と実起動で整合を判断した。
+- **起動確認**: 両MCPサーバーを`.mcp.json`と同じ引数でstdio起動し、MCPのJSON-RPC(`initialize`→`notifications/initialized`→`tools/list`→ページを開くツールの`tools/call`)でローカルHTTPサーバーのページを開けた。どちらもブラウザ本体が`CHROMIUM_PATH`から起動され、ページ内で取得したブラウザの版が共有Chromiumの153.0.8010.12と一致し、終了後に残ったブラウザのプロセスは無かった。
+- **結論**: 4箇所の版は整合し、両MCPサーバーが共有Chromiumで起動してページを開けた(9.5)。`Dockerfile`の変更とイメージの再ビルドは不要だった。実行中のAIエージェントのセッションは、MCPサーバーを再接続するまで変更前の版を使い続ける(タスク8.1の時点で、実行中のMCPサーバーは`@playwright/mcp@0.0.80`だった)。
 
 ### 共有ディレクトリの依存解決(タスク6.2)
 

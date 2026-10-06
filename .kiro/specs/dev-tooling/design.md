@@ -146,7 +146,7 @@ graph TB
 ├── package.json                    # ルートの依存(Git運用・E2E・ルート所有ファイルの品質ツール)とスクリプト
 ├── bun.lock                        # 生成物
 ├── tsconfig.base.json              # 全アプリ共通の型検査基底設定
-├── tsconfig.json                   # ルート所有ファイル(*.ts・config・scripts・e2e)の型検査、Bunの型
+├── tsconfig.json                   # ルート所有ファイル(*.ts・config・scripts・e2e・test-support)の型検査、Bunの型
 ├── eslint.config.base.ts           # 静的解析基底設定のファクトリ(モジュール注入型)
 ├── eslint.config.base.unit.test.ts # 基底設定の規則の振る舞いを検証
 ├── eslint.config.ts                # ルート所有ファイル用の静的解析設定
@@ -160,10 +160,13 @@ graph TB
 ├── .husky/
 │   ├── pre-commit                  # Betterleaksの存在確認と検出、その後lint-staged
 │   └── commit-msg                  # commitlint
+├── *.unit.test.ts                  # 上記以外のルート所有の設定とフックの単体テスト(git-hooks.unit.test.tsはフックスクリプト・prepare・.betterleaksignoreの書式)
 ├── config/
-│   ├── workspace-layout.ts         # アプリ一覧、共有ディレクトリの配置先と検査担当、品質ゲート対象外
+│   ├── workspace-layout.ts         # アプリ一覧、共有ディレクトリの配置先と検査担当、品質ゲート対象外と外部由来のディレクトリ
 │   ├── test-patterns.ts            # 4種の命名パターン、生成コードのパターン、カバレッジ閾値
+│   ├── *.unit.test.ts              # 上記それぞれの単体テスト(同名で併置。vitest/も同じ)
 │   └── vitest/
+│       ├── test-kind-preset.ts     # 種別ごとのプリセットを組み立てる共通処理と契約型(CoveragePreset・TestKindPreset)
 │       ├── browser.ts              # ブラウザテストのプリセット(V8カバレッジ・共有Chromium・失敗時のスクリーンショットと基準画像の置き場所)
 │       └── worker.ts               # Workers統合テストのプリセット(Istanbulカバレッジ)
 ├── scripts/tooling/
@@ -184,6 +187,7 @@ graph TB
 │       ├── reachability.setup.ts   # 対象アプリへの到達確認(セットアッププロジェクト)
 │       ├── zero-tests-reporter.ts  # 実行対象が0件であったことを表示するレポーター
 │       └── zero-tests-reporter.unit.test.ts
+├── test-support/                   # ルートの単体テストの補助(共通フィクスチャ、型だけの読み込みの判定、Git管理外の判定)
 └── docs/
     ├── GUIDES/tech/
     │   ├── README.md               # 全体索引
@@ -288,7 +292,7 @@ graph TB
 | 2.1         | ステージ済みだけ自動修正しコミットに含める | LintStagedConfig・StagedTaskPlanner                                    | `planStagedTasks`・`toCommands`                                                                                          | コミット時の検査 |
 | 2.2         | 修正不能な違反で中止                       | LintStagedConfig                                                       | ESLintの終了コード                                                                                                       | コミット時の検査 |
 | 2.3         | 部分ステージの保護                         | LintStagedConfig                                                       | lint-stagedの退避機能                                                                                                    | コミット時の検査 |
-| 2.4         | 対象外ファイルを変更しない                 | StagedTaskPlanner・PrettierConfig                                      | `EXCLUDED_PATH_PREFIXES`・`.prettierignore`                                                                              | —                |
+| 2.4         | 対象外ファイルを変更しない                 | StagedTaskPlanner・PrettierConfig                                      | `QUALITY_GATE_EXCLUDED_DIRS`・`EXTERNAL_SOURCE_DIRS`・`.prettierignore`                                                  | —                |
 | 2.5         | マークダウン等も整形                       | StagedTaskPlanner・PrettierConfig                                      | `--ignore-unknown`                                                                                                       | —                |
 | 3.1         | ステージ済み差分のシークレット検出         | PreCommitHook                                                          | `betterleaks git --pre-commit --staged`                                                                                  | コミット時の検査 |
 | 3.2         | 検出で中止し場所と規則を表示               | PreCommitHook                                                          | `--verbose`                                                                                                              | コミット時の検査 |
@@ -395,6 +399,7 @@ graph TB
 - アプリ一覧(一括実行の対象と順序): `api`・`event`・`frontend-lib`・`client`・`admin`。`apps/db`と`apps/backend-lib`はアプリではなく、検査担当アプリの下で検査される共有ディレクトリとして扱う。
 - 共有ディレクトリごとに、配置元・配置先(compose.yamlのbind mount先と同一)・検査担当(`api`または`self`)を持つ。
 - 品質ゲートの対象外ディレクトリ(`mockups`)を持つ。
+- 原文のまま保つ外部由来のディレクトリ(`.claude`・`docs/ai-extensions`・`.kiro/settings`)を持つ。ルートの静的解析設定・StagedTaskPlanner・TestNameCheckerが参照し、`.prettierignore`がこれらをすべて含むことはTestNameCheckerの単体テストで確かめる。
 - 他モジュールをimportしない。
 
 **Contracts**: State [x]
@@ -423,10 +428,11 @@ export interface SharedDirDefinition {
 export declare const APPS: readonly AppDefinition[];
 export declare const SHARED_DIRS: readonly SharedDirDefinition[];
 export declare const QUALITY_GATE_EXCLUDED_DIRS: readonly string[];
+export declare const EXTERNAL_SOURCE_DIRS: readonly string[];
 ```
 
 - 値: `apps/db` → `apps/api/db`・`apps/event/db`(checkedBy `api`)、`apps/backend-lib` → `apps/api/lib`・`apps/event/lib`(checkedBy `api`)、`apps/frontend-lib` → `apps/client/lib`・`apps/admin/lib`(checkedBy `self`)。
-- 不変条件: `SHARED_DIRS`の配置先はcompose.yamlのbind mount先と完全に一致する(SharedDirsの単体テストでcompose.yamlと突き合わせる)。
+- 不変条件: `SHARED_DIRS`の配置先はcompose.yamlのbind mount先と完全に一致する(WorkspaceLayoutの単体テスト`config/workspace-layout.unit.test.ts`でcompose.yamlと突き合わせる)。
 
 #### TestPatterns
 
@@ -591,11 +597,11 @@ export declare function installGitHooks(
 
 **Responsibilities & Constraints**
 
-- 次のパス配下のファイルは、計画から除外する: `QUALITY_GATE_EXCLUDED_DIRS`、外部由来(`docs/ai-extensions/`・`.claude/`・`.kiro/settings/`)、ロックファイル(`bun.lock`)。生成物は`.prettierignore`とESLint基底設定の`ignores`で除外する。
+- 次のパス配下のファイルは、計画から除外する: `QUALITY_GATE_EXCLUDED_DIRS`、外部由来(`EXTERNAL_SOURCE_DIRS`の`docs/ai-extensions/`・`.claude/`・`.kiro/settings/`)、ロックファイル(`bun.lock`)。生成物は`.prettierignore`とESLint基底設定の`ignores`で除外する。
 - 静的解析の対象(`.ts`・`.tsx`)は、所有者ごとに振り分ける。
   - 所有者は、最も長く一致するアプリディレクトリで決める。
   - 共有ディレクトリ(`checkedBy`がアプリ)のファイルは、検査担当アプリの配置先パスへ読み替える(例: `apps/backend-lib/x.ts` → `apps/api/lib/x.ts`)。
-  - どのアプリにも属さないファイルの所有者はルートとする。
+  - どのアプリにも属さないファイルの所有者はルートとする。ただし`apps/`配下でどのアプリ・共有ディレクトリにも属さないファイルは、ルートの静的解析が`apps/`を対象外にしており渡しても黙って検査されないため、静的解析の計画から外して整形だけを適用する。新しいアプリは`APPS`に登録して品質ゲートの対象にする。
 - 整形の対象は、除外後のすべてのファイルとし、ルートのPrettierへ`--ignore-unknown`付きで1回だけ渡す。
 - 生成するコマンドの順序は、所有者ごとのESLint、その後にPrettierとする。
 
@@ -1077,7 +1083,7 @@ export declare function createBaseConfig(
 | Requirements | 10.8, 10.9, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6                |
 
 - 移設は「Supporting References」の移設対応表に従い、1規則につき移設先の文書と見出しを1つ割り当てる(11.3)。
-- CLAUDE.mdの当該節は、見出し「技術規則の参照先」とリンク一覧だけにする。各行は「<作業>の前に: [文書](パス)」の形で、参照すべき作業を示す(11.4・11.5)。リンク一覧の最後に`docs/onboardings/project-values.md`へのリンクを置く。
+- CLAUDE.mdの当該節は、見出し「技術規則の参照先」とリンク一覧だけにする。各行は「`<作業>の前に: [文書](パス)`」の形で、参照すべき作業を示す(11.4・11.5)。リンク一覧の最後に`docs/onboardings/project-values.md`へのリンクを置く。
 - `docs/onboardings/project-values.md`には、汎用化で取り除いた値を記載する(11.6)。
   - D1・R2のローカル状態の保存先`/workspace/.wrangler/state`と、それを共有するアプリ(`apps/api`・`apps/event`)
   - `compatibility_date`の値`2026-08-04`
@@ -1126,7 +1132,7 @@ TDDで進め、ルートの単体テスト(`bun run test:unit`)はカバレッ�
   - `shared-dirs.unit.test.ts`(8.2・8.4・8.5)
     - 一時ディレクトリで、コピー配置後は`copied`、node_modulesの中身があると`non-empty-node-modules`、配置先が無いと`missing`になる。
     - 配置元以外のマウントポイントは`mount-mismatch`になり、コピー配置はマウントポイント・同一性を読めない配置先・配置元と同じ実体に書き込まない。
-    - `SHARED_DIRS`の配置先がcompose.yamlのbind mount先と一致する。
+    - `SHARED_DIRS`の配置先がcompose.yamlのbind mount先と一致する(`config/workspace-layout.unit.test.ts`)。
   - `check-test-names.unit.test.ts`(6.6・7.3)
     - `foo.test.ts`・`bar.spec.tsx`が検出され、4種の命名は検出されない。
     - bunfigの除外パターンが`TEST_FILE_PATTERNS`・`GENERATED_CODE_PATTERNS`と一致する。

@@ -293,7 +293,7 @@
   - _Requirements: 10.8, 10.9_
 
 - [ ] 8. 全体の検証
-- [ ] 8.1 品質ゲート全体と要件の充足を検証する
+- [x] 8.1 品質ゲート全体と要件の充足を検証する
   - ルートで一括検査、カバレッジ付きの単体テスト、E2Eテストを実行する
   - ルートの単体テストのカバレッジが行・関数とも80%以上であることを確かめる
   - 技術ドキュメントの全文書にプロジェクト名・ポート番号・ドメイン・リソース名・絶対パスが含まれないことを検索で確かめ、索引・README・CLAUDE.mdのリンク切れが無いことを確かめる
@@ -375,3 +375,4 @@
 - 7.6(レビューの差し戻し後に対応): `docs/adr/0001-drizzle-orm-over-mikroorm.md`の「反映先」がCLAUDE.mdから消えた節を指していたため、db/001・db/002と`project-values.md`へ張り替えた。`.kiro/steering/roadmap.md`と`.kiro/specs/*/brief.md`は移設した規則を要約・引用しているが、節名を指さず値も矛盾しないため張り替えていない。
 - 7.6(7.7への申し送り): ルートのREADME.mdの`docs/onboardings/`の索引表と`docs/onboardings/README.md`に、`project-values.md`がまだ載っていない。7.7で1行ずつ追加する。
 - 7.7: オンボーディングガイドに「コミット時の検査」「compose.yamlを変更したとき」「アプリへの品質ツールの導入」「日常の検査とテスト」を加え、クイックスタートの`setup-chromium.sh`の説明を実態(コンテナ起動時に`entrypoint.sh`から実行され、ルートの`bun install`前はChromiumの導入を飛ばす)に訂正した。`HUSKY=0 bun install`が失敗する挙動(Notes 3.1)は、フックの無効化を促さないよう記載していない。技術スタック表は付属パッケージ7つだけを追加し、本体パッケージと`wrangler`は既存の記載のままにした。
+- 8.1: 一括検査・カバレッジ付き単体テスト(関数100%・行98.98%、ファイル単位の最小は`install-git-hooks.ts`の行87.72%)・E2Eテスト(0件表示)が成功し、技術ドキュメントの固有値の検索(README・compose.yaml・`docs/onboardings/`・Dockerfile・`.mcp.json`などから導いた26語)は誤検知を除き0件、README・CLAUDE.md・`docs/GUIDES/tech`・`docs/onboardings/`の相対リンクに不備は無かった。research.mdの「実装時の検証結果」に6.1の結果を追記し、design.mdの実装との食い違い(対応表2.4の定数名など)を直した。範囲外の既存不備として`docs/ai-prompts/008-create-mockup-client-directory.md`のアンカー`#ディレクトリ`(正しくは`#ディレクトリp`)が残る。Bun 1.4.2は`coverage/unit/`に`.lcov.info.<ハッシュ>.tmp`を残すことがあるため、CIの成果物には`coverage/unit/lcov.info`を明示する(infra-deliveryへの申し送り)。
