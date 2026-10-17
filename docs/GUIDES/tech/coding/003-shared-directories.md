@@ -87,7 +87,7 @@ graph LR
 デコレータの設定は、利用側アプリの差分ではなく基底設定(`tsconfig.base.json`の`experimentalDecorators: true`)が持つ。アプリの`tsconfig.json`では`experimentalDecorators`を指定しない。
 
 - `tsc`とesbuildは、共有ディレクトリのパラメータデコレータを、利用側アプリの`tsconfig.json`(継承した値を含む)のデコレータ設定で検査・変換する。
-- Bun 1.4.2は、`extends`を持つ`tsconfig.json`の`experimentalDecorators`を継承元の値だけで決め、継承する側の指定を無視する。利用側アプリの差分だけで有効にすると、`bun test`・`bun build`はパラメータデコレータをエラーも警告も無く消す。
+- Bun 1.4.3は、`extends`を持つ`tsconfig.json`の`experimentalDecorators`を継承元の値だけで決め、継承する側の指定を無視する。利用側アプリの差分だけで有効にすると、`bun test`・`bun build`はパラメータデコレータをエラーも警告も無く消す。
 - この挙動は利用側アプリ自身のソースでも同じであり、配置方式とは関係が無い。基底設定に置けば、`tsc`・esbuild・Bunのどの経路でも、共有ディレクトリのデコレータが従来のデコレータとして検査・変換される。
 - ルートの`tsconfig.base.unit.test.ts`は、基底設定を継承したアプリでBunがパラメータデコレータを実行することを確かめる。
 - 詳しい前提(標準(TC39)のデコレータを使わないこと、`emitDecoratorMetadata`を使わないこと)は「[デコレータの設定](001-javascript-typescript-conventions.md#デコレータの設定)」に従う。
@@ -154,7 +154,7 @@ CIでは次の順に実行する。
 
 ## 検証の手順と結果
 
-共有ディレクトリのコードが利用側アプリの依存パッケージを読み込む最小構成を、開発コンテナ(bind mount)とCI相当環境(コピー配置)の両方に置き、各コマンドの成否と解決結果を比べた。品質ツールとDrizzle ORMは[主要パッケージの一覧](002-dependency-versions.md)の版、esbuildは一覧のWranglerが固定する版、Bunと`@types/bun`は1.4.2を使った。一覧に無いHonoは、利用側アプリで版を完全に固定して宣言した。
+共有ディレクトリのコードが利用側アプリの依存パッケージを読み込む最小構成を、開発コンテナ(bind mount)とCI相当環境(コピー配置)の両方に置き、各コマンドの成否と解決結果を比べた。品質ツールとDrizzle ORMは[主要パッケージの一覧](002-dependency-versions.md)の版、esbuildは一覧のWranglerが固定する版、Bunと`@types/bun`は1.4.3を使った。一覧に無いHonoは、利用側アプリで版を完全に固定して宣言した。
 
 配置方式・Bun・バンドラを変える場合は、同じ手順で再検証する。再検証では「[デコレータの設定](001-javascript-typescript-conventions.md#デコレータの設定)」に従い、利用側アプリの`tsconfig.json`で`experimentalDecorators`を指定しない。
 
@@ -252,7 +252,7 @@ CI相当環境では、次の順に実行した。
 #### デコレータ
 
 - `tsc`とesbuildは、共有ディレクトリのパラメータデコレータを、利用側アプリの`tsconfig.json`のデコレータ設定で検査・変換した。基底設定にも利用側アプリにもデコレータ設定が無い構成では、`tsc`はTS1206、esbuildは`Parameter decorators only work when experimental decorators are enabled`で失敗した。
-- 利用側アプリの差分だけで`experimentalDecorators: true`を指定した構成では、Bun 1.4.2の`bun test`・`bun build`がパラメータデコレータを標準(TC39)のデコレータとして変換し、エラーも警告も無く消した。利用側アプリ自身のソースでも同じであり、配置方式とは関係なく両環境で同じ結果だった。
+- 利用側アプリの差分だけで`experimentalDecorators: true`を指定した構成では、Bun 1.4.3の`bun test`・`bun build`がパラメータデコレータを標準(TC39)のデコレータとして変換し、エラーも警告も無く消した。利用側アプリ自身のソースでも同じであり、配置方式とは関係なく両環境で同じ結果だった。
 - 基底設定に`experimentalDecorators: true`を加えた構成(CI相当環境のみ。利用側アプリの差分の指定は残した)では、Bunも従来のデコレータとして変換してパラメータデコレータを実行し、単体テスト・型検査・バンドルがすべて成功した。利用側アプリで指定しない構成では、`tsc`とesbuildは基底設定の値を継承する。Bunがパラメータデコレータを実行することは、ルートの`tsconfig.base.unit.test.ts`が確かめる。これが「[デコレータ設定を基底設定に置く理由](#デコレータ設定を基底設定に置く理由)」の根拠である。
 
 #### 結論

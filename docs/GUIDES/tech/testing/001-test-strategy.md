@@ -70,7 +70,7 @@ bun test --config=../../bunfig.toml --pass-with-no-tests unit.test
 
 - Bunは実行したディレクトリの`bunfig.toml`だけを読み、ルートの`bunfig.toml`をさかのぼって読まない。`--config`を省くと、他の種別の除外・カバレッジの閾値・lcovの出力のいずれも適用されない。相対パスは、アプリのディレクトリがルートの2階層下にある場合の例である。
 - ルートで実行する場合は、ルートの`bunfig.toml`が自動で読まれるため`--config`は要らない。
-- Bun 1.4.2では、コマンドラインの`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず、置き換わる。除外を加えるアプリは、`bunfig.toml`の`pathIgnorePatterns`もすべて書き写す。例は「[検査担当でないアプリでの共有ディレクトリの除外](../coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外)」にある。ルートの単体テストは、各アプリの`test:unit`がこの書き写しを含むことを確かめる。
+- Bun 1.4.3では、コマンドラインの`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず、置き換わる。除外を加えるアプリは、`bunfig.toml`の`pathIgnorePatterns`もすべて書き写す。例は「[検査担当でないアプリでの共有ディレクトリの除外](../coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外)」にある。ルートの単体テストは、各アプリの`test:unit`がこの書き写しを含むことを確かめる。
 
 ## 実行コマンド
 

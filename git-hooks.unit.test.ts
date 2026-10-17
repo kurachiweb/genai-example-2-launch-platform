@@ -15,7 +15,7 @@ const SPAWN_TIMEOUT_MS = 30_000;
 // Betterleaksは開発コンテナでは/usr/local/binに導入されるため、システムの基本的なコマンドだけを含むPATHでは見つからない
 const SYSTEM_PATH = ['/usr/bin', '/bin'];
 const BUN_DIR = dirname(process.execPath);
-// GitフックはコミットしたシェルのPATHを引き継ぐ。Bun 1.4.2の`bunx --bun`はnodeを指定するshebangをBunへ置き換えないため、開発コンテナのPATHにあるnodeの代替(Bun)が必要になる
+// GitフックはコミットしたシェルのPATHを引き継ぐ。Bun 1.4.3の`bunx --bun`はnodeを指定するshebangをBunへ置き換えないため、開発コンテナのPATHにあるnodeの代替(Bun)が必要になる
 const INHERITED_PATH = (process.env.PATH ?? '').split(delimiter);
 const SECRET_SCAN_COMMAND =
   'betterleaks git --pre-commit --staged --redact --no-banner --verbose';
