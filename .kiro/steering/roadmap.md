@@ -86,7 +86,11 @@
   - 隔離バケットと隔離理由: media-pipelineがデータモデルと移動処理を、ugc-moderationが管理操作を所有する
   - 監査ログ: admin-foundationが記録APIと閲覧画面を所有し、管理操作を持つ各specが記録を呼び出す
   - インフラ資源: infra-deliveryがOpenTofu構成を所有し、後続specは必要な資源(Queue・Durable Objectsなど)を同構成へ追記する
-  - techドキュメント: dev-toolingが`docs/GUIDES/tech`の構成と索引を作り、各specが担当領域を追記する
+  - techドキュメント: dev-toolingが`docs/GUIDES/tech`の構成と索引を作り、各specが担当領域を追記する。文書の番号はroadmapの順で各specのdesign.mdに先に割り当て、実装の順で番号がずれないようにする
+  - 共用部品`apps/common-lib`: content-processingが新設し、client・admin・api・eventの4アプリへの配置の仕組みを所有する。マークダウンの描画・書記素での文字数計算・検索語の正規化を提供し、他specは自分の共有定義を同ディレクトリへ追加する(media-pipelineの`common-lib/media`など)
+  - ユーザーのファイルの波及処理: 退会・物理削除に伴うファイルの削除と、停止・停止解除に伴う隔離理由の付け外しは、user-profile-socialがユーザーライフサイクルイベントのハンドラとして登録する。media-pipelineは保有者単位の操作を、identity-authはハンドラの登録口を提供する
+  - Workerのシークレット: 各specが必須・任意のシークレットを宣言し、infra-deliveryのデプロイの一覧とInfisicalの表へ反映する。stagingの値は必須にする変更をマージする前に開発者が登録し、prodの値はlaunch-readinessがリリース時に登録する
+  - データの保存場所: D1・R2・Queuesは米国の管轄(`jurisdiction = "us"`)で作り、Durable Objectsは管轄を指定しない。Rekognitionはus-east-1を使う。プライバシーポリシー骨子・準拠方針には、Cloudflareの資源の保存場所をinfra-deliveryが、Rekognitionへの送信と移転根拠をmedia-pipelineが書く
 
 ## Requirement Ambiguities
 
@@ -108,15 +112,15 @@
 
 ## Specs (dependency order)
 
-- [ ] dev-tooling -- ルートの品質ゲート(Husky・lint-staged・commitlint・Betterleaks)、ESLint/Prettier/tsconfig基底設定、4種テストの実行規約、共有ディレクトリの依存解決(CI含む)、`docs/GUIDES/tech`の土台と規則移設. Dependencies: none
-- [ ] backend-platform -- apps/db・apps/backend-lib・apps/api・apps/eventの骨格(Hono+Inversifyクリーンアーキテクチャ、Drizzle/D1、Wrangler全バインディング、ログ・Sentry、Cron/Queuesディスパッチ、レート制限基盤、Turnstile検証). Dependencies: dev-tooling
-- [ ] api-gateway -- GraphQL Yoga基盤(Armor・persisted operations・DataLoader)とスキーマモジュール規約、REST(OpenAPI)骨格、BFF中継の内部認証・セッション・クライアントIP引き継ぎ. Dependencies: backend-platform
-- [ ] email-delivery -- メール送信基盤(送信インターフェース・Email Service/Mailpit実装・JSX emailテンプレート基盤・Queues経由の送信と再試行・上限超過時の遅延送信・バウンス等の検知と抑止リスト). Dependencies: backend-platform
-- [ ] frontend-platform -- apps/client・apps/admin・apps/frontend-libの骨格(TanStack Start・BFF中継・CSRF・CSP・codegen・TanStack Query・デザインシステム・Storybook・共通レイアウト)と端から端までの疎通確認. Dependencies: api-gateway
-- [ ] infra-delivery -- apps/infraのOpenTofu定義(Cloudflare資源・Infisical連携)とGitHub ActionsのCI/CD(検査・staging/prodデプロイ・D1マイグレーション). Dependencies: backend-platform, frontend-platform
-- [ ] media-pipeline -- ファイルアップロード・検証・非同期モデレーション(Rekognition)・画像配信ドメイン・同一オリジンのファイル配信・ファイルのライフサイクル(4.25). Dependencies: frontend-platform
-- [ ] content-processing -- マークダウン入力・描画・サニタイズ(4.27)と全文検索基盤(FTS5・索引正規化パイプライン、4.28). Dependencies: frontend-platform
-- [ ] identity-auth -- ユーザー登録・認証・セッション・TOTP・退会(4.1)、認証プリミティブ、ユーザーライフサイクルイベント、設定ページシェル. Dependencies: frontend-platform, email-delivery
+- [x] dev-tooling -- ルートの品質ゲート(Husky・lint-staged・commitlint・Betterleaks)、ESLint/Prettier/tsconfig基底設定、4種テストの実行規約、共有ディレクトリの依存解決(CI含む)、`docs/GUIDES/tech`の土台と規則移設. Dependencies: none
+- [x] backend-platform -- apps/db・apps/backend-lib・apps/api・apps/eventの骨格(Hono+Inversifyクリーンアーキテクチャ、Drizzle/D1、Wrangler全バインディング、ログ・Sentry、Cron/Queuesディスパッチ、レート制限基盤、Turnstile検証). Dependencies: dev-tooling
+- [x] api-gateway -- GraphQL Yoga基盤(Armor・persisted operations・DataLoader)とスキーマモジュール規約、REST(OpenAPI)骨格、BFF中継の内部認証・セッション・クライアントIP引き継ぎ. Dependencies: backend-platform
+- [x] email-delivery -- メール送信基盤(送信インターフェース・Email Service/Mailpit実装・JSX emailテンプレート基盤・Queues経由の送信と再試行・上限超過時の遅延送信・バウンス等の検知と抑止リスト). Dependencies: backend-platform
+- [x] frontend-platform -- apps/client・apps/admin・apps/frontend-libの骨格(TanStack Start・BFF中継・CSRF・CSP・codegen・TanStack Query・デザインシステム・Storybook・共通レイアウト)と端から端までの疎通確認. Dependencies: api-gateway
+- [x] infra-delivery -- apps/infraのOpenTofu定義(Cloudflare資源・Infisical連携)とGitHub ActionsのCI/CD(検査・staging/prodデプロイ・D1マイグレーション). Dependencies: backend-platform, frontend-platform
+- [x] content-processing -- 共用部品`apps/common-lib`の新設、マークダウン入力・描画・サニタイズ(4.27)と全文検索基盤(FTS5・索引正規化パイプライン、4.28). Dependencies: frontend-platform
+- [x] media-pipeline -- ファイルアップロード・検証・非同期モデレーション(Rekognition)・画像配信ドメイン・同一オリジンのファイル配信・ファイルのライフサイクル(4.25). Dependencies: frontend-platform, content-processing
+- [x] identity-auth -- ユーザー登録・認証・セッション・TOTP・退会(4.1)、認証プリミティブ、ユーザーライフサイクルイベント、設定ページシェル. Dependencies: frontend-platform, email-delivery, content-processing
 - [ ] admin-foundation -- 管理者アカウント・ログイン・RBAC(4.20)、監査ログ、管理画面シェル、最初の最上位管理者の作成. Dependencies: identity-auth, media-pipeline
 - [ ] legal-pages -- 利用規約・プライバシーポリシー・法的通知の編集と改訂履歴、公開ページ、全ページからの規約リンク. Dependencies: admin-foundation, content-processing
 - [ ] inquiry-chat -- 問い合わせフォームとチャット(4.17)、管理者の返信・ステータス管理、問い合わせカテゴリマスタ. Dependencies: admin-foundation, media-pipeline
