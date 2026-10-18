@@ -1,0 +1,266 @@
+# Research & Design Decisions
+
+## Summary
+
+- **Feature**: `identity-auth`
+- **Discovery Scope**: New Feature(認証の実装は無い。backend-platform・api-gateway・email-delivery・frontend-platformの設計・タスクは承認済みで実装は未着手であり、本specはその契約の上に利用者の認証・アカウント・ライフサイクルを新設する。セキュリティに直結するため完全な調査を行った)
+- **Key Findings**:
+  - api-gatewayの`GraphQLContext`は要求のヘッダーを持たず、frontend-platformの中継項目(`FORWARDED_BROWSER_HEADERS`)も`user-agent`を含まない。セッションに端末情報を保存する(Q6)には、両specのコードに互換を保った追加が要る。本specのタスクとして行い、両specの再検証の対象にする。
+  - D1の`db.batch()`は文を順に1つのトランザクションで実行するが、前の文の結果で後の文を変えられない。状態の遷移と後続specの同期の波及処理を1つの一括の書き込みに含める(Q5)には、「事前条件を満たさなければ制約違反になる挿入」を先頭に置き、競合した場合は全体を取り消す方式が要る。
+  - DISIFYはAPIキーなしでも使えるが、匿名の利用は送信元IPごとに毎分30回・1日1,000件に制限される。Workersの送信元IPは他の利用者と共有され得るため、無料アカウントのAPIキー(アカウントごとに毎分60回・1日10,000件)を任意で使えるようにする(仮6)。
+  - 退会日の業務日付から13日後の業務日付の日次バッチで物理削除を始めると、論理削除からの経過は12日4時間〜13日4時間21分となり、14日の期限まで少なくとも19時間39分の再試行の余地が残る。経過時間(13×24時間)で判定すると余地が最短1分になる。
+  - OTPAuth 9.5.2の`TOTP.validate`は照合した時間窓の差(`delta`)を返す。`TOTP.counter`と合わせて使用済みの時間窓を記録すれば、同じ認証コードの再使用を拒否できる。uqr 0.1.3の`encode`はQRコードのセルの行列を返すため、ReactのSVG要素で描画でき、生のHTMLの挿入(NFR-SECUR-038)を避けられる。
+
+## 要件フェーズ前の確認事項(2026-10-18)
+
+開発者の判断を要する論点を、要件の作成前に一括で確認した。決定は`requirements.md`の「要件フェーズでの決定事項」にも記録する。
+
+| #   | 論点                                                       | 根拠                                                                                                                         | 回答(2026-10-18)                                                                                                                                                                                                                                                                                             |
+| --- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | ログイン試行の失敗回数の戻し方                             | roadmapのRequirement Ambiguities・brief・NFR-SECUR-022・FR-RLMIT-009・010                                                    | 推奨案。クールダウン終了時はロックを解くだけにし、失敗が続く限り1→2→4…→300秒と伸ばす。失敗回数はログイン成功時と、最後の失敗から24時間失敗が無いときに消す。FR-RLMIT-010は「終了時はロック解除のみ」と読み替え、要件定義書の改訂が要る旨を報告する。1つのメールアドレスへの総当たりは最終的に1時間あたり約12回に抑えられる |
+| Q2  | ログイン試行のメールアドレス単位の記録のキー               | roadmapのRequirement Ambiguities・brief・FR-RLMIT-017・NFR-SECUR-022・DR-001・backend-platformの`hashRateLimitKey`            | 推奨案。要件の記載漏れとして扱い、`hashRateLimitKey`でハッシュ化する。前後の空白を除いて小文字化してから数える。要件定義書の改訂が要る旨を報告する                                                                                                                                                          |
+| Q3  | HIBP・DISIFYを使えないとき                                 | brief Constraints・NFR-SECUR-026・FR-USER-014・SW-019・SW-020・NFR-AVAIL-002                                                 | 推奨案。両方とも処理を続ける。HIBPが使えないときは照合を省いて受け付け、警告をログとSentryに残す。DISIFYが使えないときはメールアドレス確認を完了させ、判定結果を「未判定」として保存し、後から非同期で判定し直す。判定結果は「使い捨て・通常・未判定」の3値                                                     |
+| Q4  | 規約同意の記録                                             | brief Constraints・FR-USER-002・legal-pagesのbrief・利用規約の大枠の章18・準拠方針の前提                                     | 推奨案。同意した日時だけを記録する。版はlegal-pagesの改訂履歴の保存日時と突き合わせれば特定できる                                                                                                                                                                                                             |
+| Q5  | 波及処理の実行方式                                         | roadmapのShared seams・FR-USER-018・FR-VOTE-008・FR-GAME-013・FR-PPLAN-004・010・FR-ADMUG-026・backend-platformのQ7           | 推奨案。同期と非同期の2段階。同期の処理はD1の更新を状態の変更と同じ`db.batch`に含める。非同期の処理はStripe・R2・キャッシュ・検索索引への処理をQueuesで行う                                                                                                                                                |
+| Q6  | 端末情報の表示                                             | FR-USER-016・プライバシーポリシーの大枠(User-Agent)・CLAUDE.md(新規パッケージ)・frontend-platformの`FORWARDED_BROWSER_HEADERS` | 推奨案。`bowser` 2.14.1(MIT、依存なし)でブラウザとOSを表示する。User-Agentはセッションに保存し、表示時に解析する。中継する項目へ`user-agent`を加える変更が要る(frontend-platformの再検証の対象)                                                                                                           |
+| Q7  | 重要操作の本人確認                                         | FR-USER-007・012・015・017・018・NFR-SECUR-030                                                                               | 推奨案。退会・メールアドレス変更の要求・TOTPの無効化・リカバリコードの再発行で現在のパスワードを求め、TOTPが有効ならコードかリカバリコードも求める。全セッションを削除したうえで、ログイン中に操作した端末にだけ新しいセッションを発行する。退会と未ログインのパスワードリセットは全セッション削除のみ             |
+| Q8  | TOTP紛失時の復旧                                           | FR-USER-017・NFR-SECUR-031・032・FR-USER-018・FR-USER-013                                                                     | 推奨案。復旧手段を設けない。リカバリコードを唯一の予備手段にし、保管を強く促し、設定画面に残数を表示する                                                                                                                                                                                                     |
+
+### 提示した選択肢(記録)
+
+- Q1: 回数を残しロックだけ解除(採用) / 回数は戻し段階は残す(1時間あたり約72回と緩い) / 要件の文言どおり(止まる時間は常に1秒)
+- Q2: 小文字化してハッシュ化(採用) / 入力どおりにハッシュ化 / 平文で保持
+- Q3: 両方とも処理を続ける(採用) / HIBPは拒否(503)・DISIFYは続ける / 両方とも拒否(503)
+- Q4: 同意日時だけ記録(採用) / 同意した版も記録(空を許す列と「現在の版」の差し込み口) / 何も記録しない
+- Q5: 同期と非同期の2段階(採用) / すべて非同期 / すべて同期
+- Q6: `bowser`でブラウザとOSを表示(採用) / `ua-parser-js` 1.x(2.xはAGPL-3.0) / 自前で簡易に判定 / User-Agentをそのまま表示
+- Q7: 再確認あり・操作端末は継続(採用) / 再確認あり・全端末ログアウト / 再確認なし・操作端末は継続 / 要件の文言どおり
+- Q8: 復旧手段を設けない(採用) / メールで期間をおいて解除(7日待機・待機中に通知・正規ログインで取消) / 問い合わせで運営が解除
+
+### 確認済みのため質問しない事項
+
+- TOTPとQRコードのパッケージ: tech-stack.mdでOTPAuthとuqrに決定済み。`otpauth` 9.5.2(2026-09-03公開、MIT、`@noble/hashes` 2.4.0に依存)、`uqr` 0.1.3(2026-04-03公開、MIT、依存なし)。どちらもworkerdで動く。版の固定とtech-stack.mdへの記載は導入する実装タスクで行う。
+- パスワードのハッシュ化: NFR-SECUR-004・005がWeb CryptoのPBKDF2-HMAC-SHA512・10万回・固定ペッパー・16バイト以上のソルトを指定している。パッケージは不要。固定ペッパーを`HASH_PEPPER`と共用するかは設計で決める(後述「Design Decisions」)。
+- HIBPとDISIFY: tech-stack.mdでHIBPのrange APIとDISIFY APIに決定済み。SHA-1は`crypto.subtle.digest`、APIは`fetch`で呼ぶ。SDKは不要。
+- Turnstile: ウィジェットは`@marsidev/react-turnstile` 1.6.1(frontend-platformのQ6)。サーバー側はbackend-platformの`BotVerifier`・`turnstileGuard`(無効なら403、届かなければ503)。
+- 認証系のメール: テンプレートは`@react-email/*`(email-deliveryのQ5)。送信元は表示名「Launch Stadium」の`noreply@`アドレス(同Q6)。トランザクションメールで抑止リストの対象外(同Q1)。件名は文言規則で決定済み。
+- セッション: 保存先はD1、有効期限はアイドル14日・絶対90日(NFR-SECUR-028・029)。期限切れは日次バッチで削除(DR-014)。識別子は32バイト乱数のbase64url 43文字(api-gatewayの`SESSION_TOKEN_PATTERN`)。Cookie名は`__Host-ls_session`と`__Host-ls_admin_session`(frontend-platform)。
+- 認証系トークン: 有効期限・ハッシュ化・失効・後始末はNFR-SECUR-033〜035とDR-015で決定済み。
+- 再送とリセット要求の回数制限: backend-platformの厳密カウンタ(固定期間、Alarmで消去、`HashedRateLimitKey`)で表せる(FR-RLMIT-001・011)。数え方は申し送りに従い、メールの種類ごとに初回も含めて数え、メールアドレス変更の確認メール(FR-USER-007)も対象にする。
+- CSRF・中継・Cookie属性: frontend-platformの契約で実装済み。CSRF検証はGET・HEAD・OPTIONS以外の全要求。
+- 停止中のユーザーのセッション: ページ配置「停止中の本人には自分のプロフィールに帯を表示」、文言規則「停止中アカウント(パスワード合致時)」から、停止時に既存セッションは消さず閲覧だけを許し、新しいログインは停止中の文言で拒否する。FR-USER-020とも整合する。
+- 退会の取り消しと再登録: 退会アカウントはログイン不可(FR-USER-020)のため取消機能は持たない。メールアドレスは退会直後から再登録できる(FR-USER-013)。ハンドルは物理削除まで他人に使わせない(FR-USER-003)。物理削除は論理削除から13日後の4:21バッチ(日次タイムライン)。
+- 設定ページのシェルの範囲: シェル(登録された項目だけを並べるナビゲーション)と`/settings/account`・`/settings/security`を作る。`/settings/profile`などは各specが登録する。未実装ページの仮表示は不要。
+- 規約ページのURL: `/terms`・`/privacy`・`/legal`はページ配置で確定している。
+- ログイン画面の形: モックアップのログインダイアログは「ログインが必要です」の案内で、ログインと登録の本体は`/auth/*`のページ(ページ配置)。
+- 管理者の認証: admin-foundationの担当。共通部品を再利用し、管理者のテーブルとセッションは利用者と分ける。
+- Stripe Customerの削除: paymentsがハンドラを登録する(briefのOut)。
+- steering: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替する。
+
+### 仮決定(開発者確認待ち)
+
+設計中に生じた、開発者の判断を要する論点である。回答と上流specに最も整合する案を仮に採用して設計・タスクを作った。確認の結果で変える場合は、記載の要件・設計の箇所を直す。
+
+| #   | 論点                                       | 採用した案                                                                                                                                                                                       | 他の選択肢                                                                                                       | 影響する箇所                                      |
+| --- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 仮1 | TOTPの有効化に本人確認を求めるか           | 有効化の開始でも現在のパスワードを求める。Q7の列挙に無いが、セッションだけを奪った第三者がTOTPを有効にすると、本人は認証コードを持たずにロックアウトされ、Q8により復旧できないため               | Q7の文言どおり有効化では求めない(有効化には認証アプリの正しいコードだけを求める)                                 | 要件12.1・13.1、`TotpManagement`                  |
+| 仮2 | セッションの「一括」失効の範囲             | 操作している端末以外をすべて失効させる。操作している端末は個別の失効またはログアウトで失効させる                                                                                                  | 操作している端末を含めてすべて失効させ、ログアウトさせる                                                         | 要件8.7、`SessionManagement`                      |
+| 仮3 | 本人確認の誤りをログイン試行に数えるか     | 数える。セッションを奪った第三者が、本人確認の画面からパスワードを総当たりできないようにするため。TOTPの誤りを数えることは申し送りで決定済み                                                     | 数えない(本人確認には別の回数制限を設ける、または制限しない)                                                     | 要件7.9、`ReAuthenticator`                        |
+| 仮4 | メールアドレス変更後の使い捨て判定         | 新しいメールアドレスの確認が完了した時点でも判定し直す。FR-USER-014の「メールアドレス確認完了時」に、変更時の確認も含まれると読む                                                                 | 登録時の確認だけで判定し、変更時は判定しない                                                                     | 要件3.4、`EmailChange`                            |
+| 仮5 | 停止中のユーザーの退会                     | 受け付けず、問い合わせへ案内する(FR-USER-020の書き込みの拒否を文言どおり適用する)。ログアウトとセッションの失効は受け付ける                                                                      | 退会だけは受け付ける(消去の権利を優先する。ただしメールアドレスの即時の再登録で停止を回避できる)                   | 要件4.4、`Withdrawal`・`AccountGuard`             |
+| 仮6 | DISIFYのAPIキー                            | 任意のシークレット`DISIFY_API_KEY`を設け、値があれば`X-Api-Key`で送る。staging・prodには無料アカウントのキーを登録する(開発者の手作業)。無ければ匿名で呼ぶ                                         | 常に匿名で呼ぶ(送信元IPの共有により上限に達しやすく、「未判定」が増える) / 有料プラン                             | `DisifyClient`、Wrangler設定、手作業の一覧        |
+
+### 要件定義書の改訂が必要な箇所
+
+要件定義書(`docs/requirements/README.md`)は本specでは編集しない(roadmapのOut)。次の改訂が必要である。
+
+| 要件ID                         | 内容                                                                                                                                                                                         | 根拠 |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| FR-RLMIT-010                   | 「クールダウン期間の終了時点でAlarm APIによりリセット」を「クールダウン期間の終了時点ではロックの解除だけを行い、失敗回数は最後の失敗から24時間失敗が無い時点でAlarm APIによりリセット」に改める | Q1   |
+| FR-RLMIT-017                   | 対象にNFR-SECUR-022(メールアドレス単位のログイン試行)を加え、キーにするメールアドレスは前後の空白を除いて小文字にしてからハッシュ化する旨を加える                                                  | Q2   |
+| NFR-SECUR-026                  | 漏洩パスワードデータベースに照合できない場合は照合を省いて受け付け、運用者が検知できるよう記録する旨を加える                                                                                    | Q3   |
+| FR-USER-014                    | 判定結果を「使い捨て・通常・未判定」の3値とし、判定サービスに到達できない場合は「未判定」として確認を完了させ、後から判定し直す旨を加える。メールアドレス変更の確認時の判定も明記する(仮4)          | Q3   |
+| NFR-SECUR-030                  | 重要な操作では全端末のセッションを削除したうえで、ログイン中に操作した端末にだけ新しいセッションを発行する旨を明記する(明確化)                                                                   | Q7   |
+| FR-RLMIT-001                   | 「再送について」の回数に初回の送信を含めること、メールの種類ごとに数えることを明記する(明確化)                                                                                                   | 申し送り |
+| FR-USER-002                    | 同意した日時を記録する旨を加える(明確化)                                                                                                                                                     | Q4   |
+| FR-USER-020                    | 停止中のユーザーの退会を受け付けない旨、ログアウトとセッションの失効は受け付ける旨を明記する(仮5の確認後)                                                                                       | 仮5  |
+
+## Research Log
+
+### 上流specの契約と不足
+
+- **Context**: 本specは4つの上流spec(実装は未着手)の契約の上に作る。差し替える登録箇所と、足りない契約を洗い出した。
+- **Sources Consulted**: `.kiro/specs/backend-platform/design.md`(`KeyedHasher`・`hashRateLimitKey`・`RateLimitCounterClient`・`BotVerifier`・`CronRegistry`・`MessageContract`・`RetryPolicy`・`PlatformEnv`・`WranglerConfigs`)、`.kiro/specs/api-gateway/design.md`(`SessionVerifier`・`SessionAccess`・`GraphQLContext`・`GraphQLSchemaModule`・`composition/session.ts`)、`.kiro/specs/email-delivery/design.md`(`EmailKind`・`EmailTemplate`・`EmailSender`・`UserAddressDirectory`・`SuppressionMaintenance`・`USER_ADDRESS_DIRECTORY`)、`.kiro/specs/frontend-platform/design.md`(`FORWARDED_BROWSER_HEADERS`・`SiteLayoutSlots`・`executeGraphQL`・`useTurnstileToken`・`FormParts`)。
+- **Findings**:
+  - api-gatewayの`SessionVerifier.verify({ subjectKind, token })`は利用者と管理者の両方を1つのポートで受ける。`composition/session.ts`の束縛を差し替える契約である。
+  - `SessionAccess.issue({ token, maxAgeSeconds })`・`clear()`で、リゾルバからCookieの発行と削除を指示できる。frontend-platformは`maxAgeSeconds`を1〜34560000の整数だけ受け付ける。
+  - `GraphQLContext`は`caller`・`correlationId`・`clientIp`・`session`・`loaders`・`resolve`・`assertHuman`を持ち、要求のヘッダーを持たない。ブラウザからの中継(`/_bff/graphql`)は`FORWARDED_BROWSER_HEADERS`(`content-type`・`accept`・`cf-turnstile-response`)だけを引き継ぎ、サーバー側の描画のGraphQLはブラウザのヘッダーを引き継がない。
+  - email-deliveryの`SuppressionMaintenance`はapiのメールモジュールだけが束縛する。`UserAddressDirectory.findRegistered`は1回90件までで、照合キー(`toMatchingKey`、前後の空白を除いて小文字化)の集合を返す。
+  - backend-platformのQueuesのconsumerは`max_retries: 6`で、メッセージの種別ごとの`RetryPolicy`の`maxAttempts`はこれより小さくする必要がある(設定の検査が`DEFAULT_RETRY_POLICY.maxAttempts`との大小を確かめる)。
+  - backend-platformの`RateLimitCounter`はapiの`durable_objects`の`migrations`で`v1`として作られる。
+- **Implications**: 
+  - `user-agent`の受け渡しのため、frontend-platformの`FORWARDED_BROWSER_HEADERS`に`user-agent`を、api-gatewayの`GatewayRequestScope`と`GraphQLContext`に`userAgent`を、既存の振る舞いを変えずに加える。ログインはブラウザからの中継で行うため、サーバー側の描画での引き継ぎは要らない。
+  - `SuppressionMaintenance`を、eventの本specのモジュールでも束縛して、退会の非同期の波及処理から呼ぶ。email-deliveryのファイルは変えない。
+  - 新しいDurable Objectのクラスは、apiの`migrations`の既存の最後のタグの次(現時点の設計では`v2`)に追加する。Wave 1の他specが同時にタグを追加する場合は、実装時に番号を詰める。
+
+### PBKDF2・HMAC・AES-GCMとWeb Crypto
+
+- **Context**: NFR-SECUR-004〜006・032・034、TOTPの秘密鍵の保存(要件13.10)。
+- **Sources Consulted**: workerdのWeb Crypto(`crypto.subtle.deriveBits`のPBKDF2・HKDF、`importKey`、`timingSafeEqual`)、[workerd#1346](https://github.com/cloudflare/workerd/issues/1346)(PBKDF2の反復回数の上限10万回)、OWASP Password Storage Cheat Sheet・Multifactor Authentication Cheat Sheet。
+- **Findings**:
+  - workerdはPBKDF2の反復回数が10万回を超えると例外にする。10万回ちょうどは受け付ける。
+  - `crypto.subtle.timingSafeEqual`はWorkersの拡張でBunには無い。照合はWorkers統合テストで確かめるか、HMACの`verify`による比較(backend-platformの`KeyedHasher`と同じ方式)を使う。
+  - TOTPの秘密鍵は照合のたびに平文が要るため、ハッシュ化できない。OWASPは保存時の暗号化を推奨している。
+- **Implications**: パスワードは「`KeyedHasher`の用途`password-prehash`によるHMAC-SHA512(ペッパー)→PBKDF2-HMAC-SHA512(16バイトのソルト・10万回・64バイト)」とし、ペッパーは`HASH_PEPPER`を用途の区別付きで共用する。TOTPの秘密鍵はAES-256-GCMで暗号化し、鍵は`HASH_PEPPER`からHKDF-SHA-256(用途の文字列付き)で導出し、利用者のIDを追加認証データにする。
+
+### HIBP Pwned Passwordsのrange API
+
+- **Context**: NFR-SECUR-026・SW-019・Q3。
+- **Sources Consulted**: [HIBP API v3](https://haveibeenpwned.com/API/v3#PwnedPasswords)、`GET https://api.pwnedpasswords.com/range/5BAA6`の実際の応答(2026-10-18)。
+- **Findings**:
+  - SHA-1の16進(大文字)の先頭5文字を送り、残り35文字と出現回数の`SUFFIX:COUNT`の行の一覧を受け取る。APIキーは不要。
+  - `Add-Padding: true`を付けると、出現回数0の偽の行が加わり、応答の大きさから照合結果を推測されにくくなる(実測約2,000行・約80KB)。
+  - 応答には`Cache-Control: no-store`が付く。
+- **Implications**: `Add-Padding: true`と識別用の`User-Agent`を付けて呼び、出現回数0の行は無視する。3秒で打ち切り、2xx以外・通信の失敗・時間切れ・解析できない応答は「使えない」として照合を省く(Q3)。
+
+### DISIFYの単一メールアドレスの判定
+
+- **Context**: FR-USER-014・SW-020・Q3。
+- **Sources Consulted**: [DISIFY Docs](https://docs.disify.com/)の`api/email.md`・`api/errors.md`・`guide/rate-limits.md`・`guide/authentication.md`、既知の使い捨てドメインに対する実際の応答(2026-10-18)。
+- **Findings**:
+  - `POST https://disify.com/api/email`にフォーム形式で`email`を送ると、`format`・`disposable`・`dns`などを返す。判定が完了すれば、使い捨てでも状態コードは200である。
+  - 状態コード401・403・422・429・503と、HTML・異なるJSONの応答があり得る。本文の形に頼らず、状態コードを先に確かめるよう案内されている。
+  - 匿名は送信元IPごとに毎分30回・1日1,000件、無料アカウントはアカウントごとに毎分60回・1日10,000件・月30,000件。APIキーは`X-Api-Key`ヘッダーで渡す。
+- **Implications**: ローカル部をダミー(`dummy`)に置き換えたアドレスをPOSTの本文で送り、URLにメールアドレスを含めない。200かつ`format: true`で`disposable`が真偽値なら判定結果、それ以外はすべて「未判定」とする。APIキーは任意のシークレットにする(仮6)。
+
+### OTPAuth・uqr・bowser
+
+- **Context**: FR-USER-016・017、NFR-SECUR-031・032、Q6。
+- **Sources Consulted**: npmの`otpauth@9.5.2`・`uqr@0.1.3`・`bowser@2.14.1`の型定義と公開日(2026-10-18に確認)。
+- **Findings**:
+  - `otpauth`: `new Secret({ size: 20 })`で160ビットの秘密鍵、`new TOTP({ issuer, label, algorithm: 'SHA1', digits: 6, period: 30, secret })`、`validate({ token, timestamp, window: 1 })`は一致した時間窓の差か`null`を返す。`TOTP.counter({ period, timestamp })`で時間窓の番号を得る。`toString()`で`otpauth://`のURIを作る。依存の`@noble/hashes`は純粋なJavaScriptで、workerdで動く。
+  - `uqr`: `encode(data)`はセルの行列(`data: boolean[][]`)を返し、`renderSVG`はSVGの文字列を返す。
+  - `bowser`: `Bowser.parse(ua)`が`browser.name`・`os.name`・`platform.type`を返す。2.14.1は2026-02-08公開、MIT、依存なし。
+- **Implications**: TOTPの生成と照合はAPIサーバーだけで行い、`otpauth`はapiに導入する。QRコードはクライアントで`encode`の行列からSVG要素を組み立てる部品を`apps/frontend-lib`に置き、admin-foundationが再利用できるようにする(`uqr`はfrontend-lib・client・adminに同じ版で宣言する)。`bowser`はapiだけに導入し、User-Agentの生の値をブラウザへ返さない。
+
+### Durable Objectsのアラームとログイン試行の記録
+
+- **Context**: NFR-SECUR-022・023、FR-RLMIT-009・010、Q1・Q2。
+- **Sources Consulted**: Cloudflare Docs「Durable Objects Alarms」「Storage API(SQLite)」、backend-platformの`RateLimitCounter`の設計。
+- **Findings**:
+  - 1つのDurable Objectが予約できるアラームは1つで、`setAlarm`は既存の予約を置き換える。アラームは少なくとも1回実行され、失敗時は再試行される。
+  - 同じDurable Objectへの要求は1つずつ処理されるため、失敗回数の加算は正確になる。ただし「ロックの確認→パスワードの照合→失敗の記録」を別々の呼び出しで行うと、確認と記録の間に並行した試行が入り得る。
+- **Implications**: クールダウン中かどうかは保存した`lockedUntil`と現在時刻の比較で判定し、アラームはロックの解除(FR-RLMIT-010の読み替え)と、最後の失敗から24時間後の記録の削除に使う。並行した試行の超過は最大でも同時に送られた件数にとどまるため許容し、bot判定(ログインごと)で補う。
+
+### D1の一括の書き込みと状態の遷移
+
+- **Context**: Q5(同期の波及処理を状態の変更と同じ一括の書き込みに含める)、要件16.2・16.8。
+- **Sources Consulted**: `docs/GUIDES/tech/db/002-d1-constraints.md`、backend-platformの`DatabaseClient`の設計。
+- **Findings**:
+  - `db.batch()`は途中の失敗で全体を取り消すが、前の文の結果で後の文を変えられない。条件付きの`UPDATE`が0件でも後続の文は実行される。
+  - NOT NULL制約に違反する挿入は、一括の書き込み全体を失敗させる。
+- **Implications**: 利用者の行に版の番号(`lifecycle_version`)を持たせ、一括の書き込みの先頭で「版が読み取った値と一致すれば値を、一致しなければNULLを入れる」イベントの挿入を行う。競合した場合はNOT NULL制約の違反で全体が取り消され、状態の重複した遷移と波及処理の二重の適用を防ぐ。後続specの同期の波及処理は、集合に対する1文の更新(行ごとの文にしない)で書く規約にする。
+
+### 物理削除の時期と再試行の余地
+
+- **Context**: DR-002・FR-USER-019・日次タイムライン・申し送り(13日後のバッチで始め、14日以内に再試行できる余地を残す)。
+- **Findings**:
+  - 日次バッチはUTC 12:21(業務時刻4:21)に1回だけ走る。条件を「論理削除の時刻が13×24時間以上前」にすると、退会がバッチの直後なら次のバッチまで待って13日23時間59分後に始まり、残りの余地が1分になる。
+  - 条件を「退会の業務日付が、バッチの業務日付の13日前以前」にすると、開始は論理削除から12日4時間22分〜13日4時間21分後で、残りは19時間39分以上になる。
+- **Implications**: 業務日付で判定する。物理削除のイベントの非同期の再試行は約75分(5回、300秒から倍、上限3600秒)で終わり、失敗が残れば14日を過ぎる前に運用者へ通知できる。
+
+## Architecture Pattern Evaluation
+
+| Option                                         | Description                                                                                       | Strengths                                                       | Risks / Limitations                                                                 | Notes        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------ |
+| 4層+汎用`auth`と利用者`identity`の2モジュール | 利用者・管理者に依存しない認証部品を`auth`、利用者のアカウントを`identity`としてapiの各層に置く | admin-foundationが同じapp内でそのまま再利用できる。共有ディレクトリを太らせない | eventから使う部品(使い捨て判定・照会口・イベントの記録)だけは共有ディレクトリに要る | 採用         |
+| 認証部品をすべて共有ディレクトリに置く         | `backend-lib`に認証部品をまとめる                                                                 | 配置の規則が単純                                                | eventが使わない部品(Durable Object・PBKDF2・TOTP)までeventに配置される            | 不採用       |
+| 波及処理をドメインイベントの汎用バスで行う     | 任意の集約のイベントを登録できる汎用の仕組み                                                       | プロダクトのライフサイクルイベントにも使える                    | 現時点の要件は利用者だけで、汎用化は推測に基づく抽象になる                          | 不採用(YAGNI) |
+
+## Design Decisions
+
+### Decision: 認証部品の配置(Generalization)
+
+- **Context**: brief「認証の共通部品は利用者・管理者の両方で使える形にする」、要件19。
+- **Alternatives Considered**:
+  1. apiの`domain/auth`・`application/auth`・`infrastructure/auth`に、主体(利用者・管理者)に依存しない部品として置く
+  2. `apps/backend-lib`に置く
+- **Selected Approach**: 1。管理者の認証もapiで動くため、同じapp内の汎用モジュールとして置く。eventからも使う部品(ライフサイクルイベントの型と記録、使い捨て判定、利用者のメールアドレスの照会口)だけを`apps/backend-lib`の`core/identity`・`workers/identity`に置く。
+- **Rationale**: 共有ディレクトリはapi・eventの両方に配置されるため、片方だけが使う部品を置くと配置先の依存が増える。
+- **Trade-offs**: admin-foundationは`auth`モジュールのポートと部品を読み込むが、`identity`モジュールには依存しない。
+- **Follow-up**: admin-foundationの設計で、セッション・トークン・リカバリコードのテーブルを管理者用に別に作る。
+
+### Decision: ペッパーの共用(Build vs Adopt)
+
+- **Context**: 申し送り「固定ペッパーを`HASH_PEPPER`と共用するかは設計で決める」。
+- **Alternatives Considered**:
+  1. `HASH_PEPPER`を用途の区別付きで共用する
+  2. パスワード専用の新しいシークレット(例: `PASSWORD_PEPPER`)を設ける
+- **Selected Approach**: 1。PBKDF2の入力を`KeyedHasher.hash('password-prehash', password)`(HMAC-SHA512)にし、TOTPの暗号鍵も`HASH_PEPPER`からHKDFで用途を区別して導出する。
+- **Rationale**: 両方のシークレットは同じWorkerのシークレットとして保存され、片方だけが漏れる経路は乏しい。用途の区別付きのHMACとHKDFにより、ハッシュ値と鍵が用途をまたいで一致しない。シークレットが増えないため、開発者の手作業(Infisicalへの登録)も増えない。HMACの前処理によりPBKDF2の入力は常に86文字になり、128文字のパスワードでも計算量が一定になる。
+- **Trade-offs**: `HASH_PEPPER`を入れ替えると、全パスワード・TOTPの秘密鍵・保存済みのハッシュが使えなくなる(個別のシークレットでも同様)。入れ替えは想定せず、技術ドキュメントに記載する。
+
+### Decision: 同期と非同期の波及処理の契約(Generalization・Simplification)
+
+- **Context**: Q5、roadmapのShared seams、要件16。
+- **Selected Approach**:
+  - イベントの種類は`withdrawn`・`suspended`・`unsuspended`・`purge_due`の4つ。同期の波及処理は`withdrawn`・`suspended`・`unsuspended`だけ、非同期の波及処理は4つすべてに登録できる。
+  - 同期の波及処理はapiに登録し、状態の遷移・イベントの記録と同じ`db.batch()`に文を加える。非同期の波及処理はeventに登録し、Queueのメッセージ`identity.run-user-lifecycle`(本文はイベントのIDだけ)で、登録された順に1つずつ実行する。完了した波及処理はD1に記録し、再実行しない。
+  - 同じ利用者のイベントは発生順に処理する(前のイベントが完了するまで後のイベントを遅らせる)。停止と停止解除が短時間に続いても、画像の隔離と復元が逆順にならない。
+  - 物理削除の開始(`purge_due`)は、登録された全波及処理の完了後に、本specが利用者自身の行を物理削除して終える。この最後の処理は登録口に載せず、実行器の組み込みの段階にする(登録口に載せると、自分の完了記録を自分で消すことになる)。
+- **Rationale**: 1つのメッセージで順に実行すれば、波及処理ごとのメッセージの分配が要らず、物理削除の最後の段階を「全波及処理の完了後」に置ける。1回で終わらない処理は「続きがある」を返して遅延の再送(backend-platformの`defer`)で続ける。
+- **Trade-offs**: 1つの波及処理の失敗が後続の波及処理を待たせる。完了済みの波及処理は飛ばすため、再試行のたびに重複して実行されることはない。
+
+### Decision: 未完了の波及処理の記録と日次の再実行
+
+- **Context**: backend-platformのQ7(デッドレターは通知して破棄)、申し送り。
+- **Selected Approach**: イベントを`pending`で記録し、全波及処理の完了で`completed`にする。業務時刻4:21のジョブが、最後の送信から1時間以上経っても`pending`のイベントのメッセージを送り直し、送り直しの回数を数える。3回目以降はSentryへ`error`で通知する。
+- **Rationale**: デッドレターに移ったメッセージは破棄されるが、D1の記録から復元できる。
+
+### Decision: ログイン試行の記録の状態遷移
+
+- **Context**: Q1・Q2、要件7。
+- **Selected Approach**: 状態は`failures`・`lockedUntil`・`lastFailureAt`。失敗の記録で`failures`を1増やし、6回以上なら`lockedUntil = now + min(1000 × 2^(failures − 6), 300000)`ミリ秒。ロック中の試行は照合せずに拒否し、数えない。成功で記録を削除する。アラームは`lockedUntil`(ロックの解除)と`lastFailureAt + 24時間`(記録の削除)の早い方に置き直す。メールアドレス単位のDurable Objectの名前は`login-email:<user|admin>:<ハッシュ>`、IPアドレス単位は`login-ip:<ハッシュ>`とし、IPアドレス単位だけを利用者と管理者で共有する。
+- **Rationale**: 失敗が続く限り待ち時間が伸び、最終的に5分に1回(1時間あたり約12回)に抑えられる。
+- **Follow-up**: 送信元IPアドレスが不明な要求(内部経路の設定の誤り)では、IPアドレス単位の記録を使わずに警告を記録する。全員が1つの記録を共有して互いを締め出すことを避けるためである。
+
+### Decision: メールのリンクの形とトークンの受け渡し
+
+- **Context**: 申し送り「メールのリンクを開いたGETでは状態を変えず、ページからのPOSTで確定する(リンクの先読み対策)」、要件14.7。
+- **Selected Approach**: リンクは`/auth/<手続き>#token=<トークン>`とし、トークンをURLのフラグメントに置く。画面はブラウザでフラグメントを読み、確定のボタンでGraphQLのミューテーションに渡す。
+- **Rationale**: フラグメントはサーバーへ送られないため、フロントエンドサーバーのアクセスログ・Sentryの要求URL・中間の機器のログにトークンが残らない。リンクの先読みはページを取得するだけで状態を変えない。
+- **Trade-offs**: サーバー側の描画ではトークンを検証できないため、無効なリンクかどうかは確定の操作の結果で示す。
+
+### Decision: セッションの最終利用日時の更新の間引き
+
+- **Context**: 申し送り「最終利用日時の更新は間引く」、要件8.3。
+- **Selected Approach**: 最後の更新から15分以上経っている場合だけ`last_used_at`を更新し、そのときだけCookieの有効期間を延ばす指示(`renewal`)を返す。
+- **Rationale**: 画面の表示ごとにD1へ書き込むことを避ける。アイドル14日に対して15分の誤差は無視できる。
+
+### Decision: パッケージの配置
+
+- **Selected Approach**: `otpauth` 9.5.2・`bowser` 2.14.1はapiだけ、`uqr` 0.1.3はfrontend-lib・client・admin(共有ディレクトリの規約により3つで同じ版)に導入する。
+- **Rationale**: 秘密鍵の生成・照合とUser-Agentの解析はサーバーだけで行い、QRコードの描画だけをブラウザで行う。
+
+## Risks & Mitigations
+
+- 後続specの同期の波及処理が重い(行ごとの文を大量に加える) — 集合に対する1文の更新だけを加える規約にし、登録口の型で「文の配列」を返す形にして、レビューで確かめる。
+- 後続specの非同期の波及処理が冪等でない — 規約で冪等を求め、同じイベントで2回呼ぶテストを各specに求める(`backend/007`に記載)。
+- 物理削除の波及処理が14日以内に終わらない — 業務日付による開始で19時間以上の余地を残し、期限を過ぎた対象を個人情報なしで通知する。利用者の行への外部キーが残っていれば最後の物理削除が失敗し、取り残しを検出できる。
+- 外部サービス(HIBP・DISIFY)の長期の障害 — 照合・判定を省いて処理を続け(Q3)、ログとSentryで検知する。DISIFYは「未判定」を日次で判定し直す。
+- `HASH_PEPPER`の漏洩 — ペッパーだけではパスワードを復元できない(PBKDF2)。TOTPの秘密鍵はD1と鍵の両方が漏れた場合だけ復元される。
+- 並行したログイン試行による制限の超過 — ログインごとのbot判定で補う。
+- Wave 1の他specとの番号の衝突(Durable Objectsの`migrations`のタグ、`docs/GUIDES/tech`の文書番号) — 実装時に既存の最大値の次へ詰める旨をタスクに書く。
+- `apps/common-lib`(content-processing)の実装が本specより遅れる — 本specの入力規則のタスクがcontent-processingの共有ディレクトリの配置タスクの完了に依存する旨を明記し、roadmapの依存に加えるよう報告する。
+
+## References
+
+- [HIBP API v3 Pwned Passwords](https://haveibeenpwned.com/API/v3#PwnedPasswords) — range APIとパディング
+- [DISIFY Docs](https://docs.disify.com/) — 単一メールアドレスの判定、エラー、レート制限、認証
+- [RFC 6238 TOTP](https://www.rfc-editor.org/rfc/rfc6238) — 時間窓と再使用の防止
+- [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html) — 応答の同一化、再認証
+- [OWASP Multifactor Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html) — TOTPの秘密鍵の保護、リカバリコード
+- [workerd#1346](https://github.com/cloudflare/workerd/issues/1346) — PBKDF2の反復回数の上限
+- [Cloudflare Durable Objects Alarms](https://developers.cloudflare.com/durable-objects/api/alarms/) — アラームの予約と再試行
+- 上流spec: `.kiro/specs/backend-platform/design.md`・`.kiro/specs/api-gateway/design.md`・`.kiro/specs/email-delivery/design.md`・`.kiro/specs/frontend-platform/design.md`
+- 参照したスキル: `cc-sdd`の`kiro-spec-*`、TanStackの`tanstack-start/rules/auth-route-protection.md`(`beforeLoad`による保護と文脈の拡張)・`tanstack-router/rules/org-pathless-layouts.md`(ログイン必須の領域を経路の無いレイアウトにする)
