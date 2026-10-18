@@ -88,7 +88,7 @@
   - インフラ資源: infra-deliveryがOpenTofu構成を所有し、後続specは必要な資源(Queue・Durable Objectsなど)を同構成へ追記する
   - techドキュメント: dev-toolingが`docs/GUIDES/tech`の構成と索引を作り、各specが担当領域を追記する。文書の番号はroadmapの順で各specのdesign.mdに先に割り当て、実装の順で番号がずれないようにする
   - 共用部品`apps/common-lib`: content-processingが新設し、client・admin・api・eventの4アプリへの配置の仕組みを所有する。マークダウンの描画・書記素での文字数計算・検索語の正規化を提供し、他specは自分の共有定義を同ディレクトリへ追加する(media-pipelineの`common-lib/media`など)
-  - ユーザーのファイルの波及処理: 退会・物理削除に伴うファイルの削除と、停止・停止解除に伴う隔離理由の付け外しは、user-profile-socialがユーザーライフサイクルイベントのハンドラとして登録する。media-pipelineは保有者単位の操作を、identity-authはハンドラの登録口を提供する
+  - ユーザーのファイルの波及処理: 退会・物理削除に伴うファイルの削除と、停止・停止解除に伴う隔離理由の付け外しは、user-profile-socialがユーザーライフサイクルイベントのハンドラとして登録する。media-pipelineは保有者単位の操作(`eraseOwnedBy`・`MediaQuarantine.addReasonForOwner`・`removeReasonForOwner`。1回に最大1,000件を処理し、残りの有無を返す)を、identity-authはハンドラの登録口を提供する
   - Workerのシークレット: 各specが必須・任意のシークレットを宣言し、infra-deliveryのデプロイの一覧とInfisicalの表へ反映する。stagingの値は必須にする変更をマージする前に開発者が登録し、prodの値はlaunch-readinessがリリース時に登録する
   - データの保存場所: D1・R2・Queuesは米国の管轄(`jurisdiction = "us"`)で作り、Durable Objectsは管轄を指定しない。Rekognitionはus-east-1を使う。プライバシーポリシー骨子・準拠方針には、Cloudflareの資源の保存場所をinfra-deliveryが、Rekognitionへの送信と移転根拠をmedia-pipelineが書く
 
