@@ -4,7 +4,7 @@
 
 **Purpose**: プロフィール画像・ロゴ・スクリーンショット・管理者のプロフィール画像・問い合わせの添付など、ファイルを扱う全機能が共通に使うメディア基盤を提供する。用途に依存しない1つのパイプラインとして、アップロードの受付と検証(APIサーバー)、画像の非同期の自動判定と隔離(イベントサーバーのQueueの処理)、画像配信専用ドメインからの変換配信とエッジキャッシュ(イベントサーバーの名前付きエントリポイント)、非公開ファイルの同一オリジン配信(フロントエンドサーバーの中継とAPIサーバー)、ファイルのライフサイクル(論理削除・物理削除・未使用ファイルの削除)、アップロード部品と画像の表示部品を整える。
 
-**Users**: ドメインspec(user-profile-social・product-launch・admin-foundation・inquiry-chat)の開発者とAIエージェントは、APIサーバーの登録箇所へ用途を追記し、画面ではアップロード部品と画像の表示部品を置き、業務データの保存時に紐付け・削除の操作を呼ぶ。ugc-moderation・identity-auth・product-launchは隔離理由の追加・解除と保有者単位の削除を呼び、data-exportはファイルの情報と内容を読む。運用者は画像配信ドメインのキャッシュと判定の状態を、ログ・Sentry・動作確認の経路で確かめる。
+**Users**: ドメインspec(user-profile-social・product-launch・admin-foundation・inquiry-chat)の開発者とAIエージェントは、APIサーバーの登録箇所へ用途を追記し、画面ではアップロード部品と画像の表示部品を置き、業務データの保存時に紐付け・削除の操作を呼ぶ。ugc-moderation・product-launchはファイル単位の隔離理由の追加・解除と削除を呼び、user-profile-socialはidentity-authのユーザーライフサイクルイベントの波及処理として保有者単位の物理削除と隔離理由の付け外しを呼び、data-exportはファイルの情報と内容を読む。運用者は画像配信ドメインのキャッシュと判定の状態を、ログ・Sentry・動作確認の経路で確かめる。
 
 **Impact**: 上流のbackend-platform・api-gateway・frontend-platformの登録箇所(モジュール・内部REST・メッセージ種別・定期実行・IP制限の除外・中継の経路・スキーマモジュール)へ追記し、eventのWrangler設定に名前付きエントリポイント単位のキャッシュと判定の変数・シークレットを加える。D1にメディアの2テーブルを加える。staging・prodのR2バインディングの米国管轄(`jurisdiction: "us"`)はinfra-deliveryが加え、本specはそれを前提にする。
 
@@ -43,10 +43,11 @@
 ### Out of Boundary
 
 - 用途の登録値と、業務データの保存・ファイルの参照・個数と合計の判定(各ドメインspec)。
-- 隔離・復元・削除を呼ぶ契機の判断(退会・停止・非公開化・差し替え)と、その操作の監査ログ・通知(identity-auth・product-launch・ugc-moderation)。
+- 隔離・復元・削除を呼ぶ契機の判断(退会・停止・非公開化・差し替え)と、その操作の監査ログ・通知。ユーザーの退会・停止・停止解除に伴う保有者単位の操作は、user-profile-socialがidentity-authのユーザーライフサイクルイベントの波及処理として登録して呼ぶ(identity-authは登録口を提供するだけで本specの操作を呼ばない)。プロダクトの非公開化・削除はproduct-launch、管理操作はugc-moderationが呼ぶ。
 - 管理者が隔離中の画像を見る権限の判定の実装(ugc-moderationが`AdminMediaReviewPolicy`を差し替える)。用途ごとの閲覧の可否の実装(inquiry-chatなどが`FileReadPolicy`を登録する)。
 - エクスポートのZIPと、そのファイル用バケット上のオブジェクト(data-exportが直接扱い、本specの記録を持たない)。
-- 3つのバケット(米国管轄)・画像配信ドメイン・DNS・WAFの作成と、api・eventのR2バインディングへの`jurisdiction: "us"`の指定(infra-deliveryの要件2.3。backend-platformのWrangler設定を変える)。Images Paidの判断とprodのシークレットの登録(launch-readiness)。IAMユーザー・ポリシー・アクセスキーとAIサービスのオプトアウト(開発者の手作業)。
+- 3つのバケット(米国管轄)・画像配信ドメイン・DNS・WAFの作成と、api・eventのR2バインディングへの`jurisdiction: "us"`の指定(infra-deliveryの要件2.3。backend-platformのWrangler設定を変える)。InfisicalのキーとWorkerへ渡すシークレットの一覧(`OPTIONAL_WORKER_SECRETS`など)への本specのキーの記載(infra-delivery)。Images Paidの判断とprodのシークレットの登録(launch-readiness)。IAMユーザー・ポリシー・アクセスキーとAIサービスのオプトアウト(開発者の手作業)。
+- プライバシーポリシーの大枠と準拠方針のうち、Cloudflareの資源の保存場所(D1・R2・Queuesは米国、Durable Objectsは保証しない)の記述(infra-delivery)。本specは判定サービス(us-east-1)への送信と、その移転の根拠だけを書く。
 - 中継の共通処理(`relayToApi`・CSRF・IP制限・セキュリティヘッダー)と内部経路の認証(frontend-platform・api-gateway)。本specは経路を登録するだけである。
 - 要件定義書の改訂(本specは報告だけ行う)。
 
@@ -55,12 +56,12 @@
 - backend-platform: `AppModule`と登録箇所(`modules.ts`・`scheduled-jobs.ts`・`message-handlers.ts`・`rate-limit-exclusions.ts`)、DIの識別子`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`MessagePublisher`)、`defineMessageContract`と`MESSAGE_CONTRACTS`、`MessageHandlerRegistration.retry`、`ScheduledJobDefinition`、`RateLimitExclusion`、`AppError`と共通のエラー形式、`createDatabase`・共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`)、ログとSentry。
 - api-gateway: `createInternalRoutesModule`・`createSessionAccess`・`CallerKind`・`AuthenticatedPrincipal`、`defineSchemaModule`・`defineLoader`、`withSecurityHeaders`(応答のCSPを保つ規則)。
 - frontend-platform: `RelayRoute`と`relay-routes.ts`の登録箇所、`PublicRuntimeConfig`、UI部品(dialog・button・label)・`notify`・アクセシビリティの検査の補助、`IMAGES_ORIGIN`。
-- content-processing: `apps/common-lib`の配置と参照の方法(仮決定2)。
+- content-processing: `apps/common-lib`の配置と参照の方法(仮決定2)と、frontend-libの`server/**`から`../common-lib/**`を読み込む許可(横断レビューM-2でcontent-processingが加える)。本specの実装は、content-processingのタスク1.1(共有ディレクトリの定義への共用部品の追加)・1.2(共用部品のプロジェクトと読み込みの境界)・4.1(APIサーバーとイベントサーバーへの組み込み)・4.2(利用者側・管理者側とfrontend-libへの組み込み)と、上記の許可の完了を前提にする(roadmapの順はinfra-delivery→content-processing→media-pipeline→identity-auth)。
 - npmパッケージ: Technology Stackの表に挙げた版に限る。
 - 依存の方向(後述の矢印の向きだけを許す):
   - サーバー: `common-lib/media` → `backend-lib/core/media` → `backend-lib/workers/media` → 各アプリの`application` → `infrastructure`・`presentation` → `composition`。`apps/db/schema/media`は`backend-lib/workers/media`から読む。
   - `backend-lib/core/media`とeventの`application/media`は、`cloudflare:*`・Hono・`wasm-image-optimization`・`aws4fetch`・`backend-lib/workers`・`apps/db`を読み込まない(Bunの単体テストで検査する純粋な層)。
-  - フロント: `common-lib/media` → `frontend-lib/utilities/media` → `frontend-lib/components/media`・`frontend-lib/server/media` → `apps/{client,admin}`。
+  - フロント: `common-lib/media` → `frontend-lib/utilities/media` → `frontend-lib/components/media`・`frontend-lib/server/media` → `apps/{client,admin}`。`frontend-lib/server/media`は`common-lib/media`(`ATTACHMENT_MEDIA_TYPES`・経路の接頭辞)を直接読み込む(content-processingが加える`server/**`の許可に従う。M-2)。frontend-libの`components/**`・`server/**`は`common-lib/media`だけを読み込み、`common-lib/validation/**`(Zodを使う)を読み込まない。
   - `common-lib/media`は他のどの層も読み込まず、外部パッケージにも依存しない。
 
 ### Revalidation Triggers
@@ -68,21 +69,22 @@
 - 下流(ドメインspec・ugc-moderation・data-export)が再確認する変更:
   - `UploadPurpose`の形・許可形式の範囲・上限の最大値、用途の命名規約。
   - `MediaFiles`・`MediaQuarantine`の操作と結果の型、`QuarantineReason`の値、`MediaFileView`の項目。
+  - 保有者単位の操作(`eraseOwnedBy`・`addReasonForOwner`・`removeReasonForOwner`)の1回の上限件数(`OWNER_OPERATION_BATCH_LIMIT`)と`OwnerBatchResult.hasMore`の意味(user-profile-socialの波及処理が、identity-authの`LifecycleHandlerOutcome`の`continue`へ対応付ける)。
   - `FileReadPolicy`・`AdminMediaReviewPolicy`の形と既定の動作。
   - GraphQLの`MediaImage`・`MediaAttachment`、部品のprops、アップロードとダウンロードの経路・エラーコード。
   - 画像バリアントの表、日次バッチの時刻と順序、メッセージ種別。
 - 上流(本specの設計が変更を求めるもの。上流のspecは本specに合わせて再確認する):
   - backend-platform: eventのWrangler設定の`exports`(`default`はキャッシュ無効、`ImageDelivery`は有効)、変数とシークレット、設定の単体テストの期待値(eventのキャッシュ)、`MESSAGE_CONTRACTS`への3種の追加。判定の実測で1バッチのCPU時間が上限に近い場合の`limits.cpu_ms`。
-  - frontend-platform: `PublicRuntimeConfig`への画像配信のオリジンの追加、`relay-routes.ts`への2経路の追加、`toBrowserResponse`がダウンロードの`Content-Type`・`Content-Disposition`・`Content-Length`を保つこと、client・adminのルートへの`ImagesOriginProvider`の配置。
+  - frontend-platform: `PublicRuntimeConfig`への画像配信のオリジンの追加、`relay-routes.ts`への2経路の追加、`toBrowserResponse`がダウンロードの`Content-Type`・`Content-Disposition`・`Content-Length`を保つこと、client・adminのルートへの`ImagesOriginProvider`の配置。`relayToApi`の415(`unsupported_media_type`)の判定と応答の形が変わる場合は、本specの`UPLOAD_RELAY_ROUTE`と`parseUploadResponse`の対応付けを再確認する(M-10)。
   - api-gateway: `internal-routes.ts`への2経路、`graphql-modules.ts`への`media`モジュールの追加。
-  - content-processing: `apps/common-lib`の配置先・参照方法の変更(仮決定2)。
-  - infra-delivery: 3つのバケットの管轄とR2バインディングへの管轄の指定(api・eventのWrangler設定。backend-platformへの影響)、画像配信ドメインのイベントサーバーへの割り当て。本specは画像判定専用のQueueなどの資源を追加しない。
+  - content-processing: `apps/common-lib`の配置先・参照方法の変更(仮決定2)、frontend-libの`server/**`からcommon-libを読み込む許可(M-2)、本specが前提にするタスク(1.1・1.2・4.1・4.2)の範囲の変更。
+  - infra-delivery: 3つのバケットの管轄とR2バインディングへの管轄の指定(api・eventのWrangler設定。backend-platformへの影響)、画像配信ドメインのイベントサーバーへの割り当て、InfisicalのキーとWorkerへ渡すシークレットの一覧への本specのキー(必須の`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`、eventの任意の`MEDIA_SMOKE_TOKEN`)の記載、プライバシーポリシーの大枠と準拠方針の保存場所の記述(本specは書き換えない。M-8)。本specは画像判定専用のQueueなどの資源を追加しない。
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- 上流のbackend-platform・api-gateway・frontend-platformは設計が承認済みで、実装は本specより先に行う。本specは各specの登録箇所への追記と、Revalidation Triggersに挙げた最小の変更だけを行う。
+- 上流のbackend-platform・api-gateway・frontend-platformは設計が承認済みで、実装は本specより先に行う。content-processingの`apps/common-lib`の新設と組み込みのタスク(Allowed Dependencies)も、roadmapの順で本specより先に完了する。本specは各specの登録箇所への追記と、Revalidation Triggersに挙げた最小の変更だけを行う。
 - backend-platformの受信部は、バッチ内のメッセージを1件ずつ処理し、メッセージ種別ごとに再試行の方針を上書きできる。デッドレターでは本文が捨てられるため、失ってはならない状態(判定の待ち・保存先のずれ)はD1に残し、日次バッチで回復する。
 - api-gatewayの内部REST(`/internal`)はフロントエンドサーバーの中継からだけ届き、`createSessionAccess`で呼び出し元(利用者側・管理者側)に応じたセッションを判定できる。api-gatewayの`withSecurityHeaders`は、応答が自らCSPを持てば既定のCSPで置き換えない(SVGの配信で使う)。
 - frontend-platformの中継は、`RelayRoute`を`src/composition/relay-routes.ts`へ追加するだけで、CSRF・IP制限・セッションの引き継ぎ・セキュリティヘッダー(`no-store`)の経路に乗る。
@@ -155,7 +157,7 @@ graph TB
 
 - Selected pattern: 用途を登録する汎用パイプライン。受付と認可はAPIサーバーの内部REST、重い処理(判定・バケット間の移動・パージ)はイベントサーバーのQueueの処理、配信はイベントサーバーの関門と名前付きエントリポイントに分ける。
 - Domain/feature boundaries: ドメインspecは「用途の登録」「紐付け・削除・隔離の操作の呼び出し」「部品の配置」だけを行う。ファイルの記録・保存先・判定の状態は本specだけが書き換える。
-- Existing patterns preserved: 4層の配置と処理単位のDIコンテナ、登録箇所への追記、メッセージ種別`<ドメイン>.<動詞句>`、日次バッチ4:21、共通のエラー形式、1ファイル1コンポーネント。
+- Existing patterns preserved: 4層の配置と処理単位のDIコンテナ、登録箇所への追記、メッセージ種別`<ドメイン>.<動詞句>`、ジョブ名`<spec名>.<名詞句>`、日次バッチ4:21、共通のエラー形式、1ファイル1コンポーネント。
 - New components rationale: 画像配信のキャッシュをWorker全体ではなく画像の応答に限るために名前付きエントリポイントを置く。原子的でないバケット間の移動を冪等にするため、目的の保存先へそろえる処理を1つにまとめる。
 - Steering compliance: CLAUDE.mdのクリーンアーキテクチャとInversify、TDD、技術ドキュメントの固有値の分離、新規パッケージの版の規則に従う。
 
@@ -293,18 +295,18 @@ apps/
 ├── client/src/composition/relay-routes.ts         # (変更)2経路を追加
 └── admin/src/composition/relay-routes.ts          # (変更)2経路を追加
 docs/
-├── GUIDES/tech/external/<連番>-image-moderation.md      # 画像判定サービス(要求・上限・カテゴリと閾値・失敗の分類・再試行・IAMの手作業・オプトアウト・代替の判定)
-├── GUIDES/tech/infra/<連番>-image-delivery.md           # 変換配信・エントリポイント単位のキャッシュ・関門・パージ・版ごとのキャッシュ・R2の管轄・stagingの確認手順
-├── GUIDES/tech/security/<連番>-file-upload-security.md  # 事前検証・実体検証・SVGの検査・ファイル名・キー・上書きの拒否・配信のヘッダー・メタデータの扱い
-└── GUIDES/tech/{external,infra,security}/README.md      # 文書一覧へ1行ずつ追記
+├── GUIDES/tech/external/003-image-moderation.md      # 画像判定サービス(要求・上限・カテゴリと閾値・失敗の分類・再試行・IAMの手作業・オプトアウト・代替の判定)
+├── GUIDES/tech/infra/008-image-delivery.md           # 変換配信・エントリポイント単位のキャッシュ・関門・パージ・版ごとのキャッシュ・R2の管轄・stagingの確認手順
+├── GUIDES/tech/security/005-file-upload-security.md  # 事前検証・実体検証・SVGの検査・ファイル名・キー・上書きの拒否・配信のヘッダー・メタデータの扱い
+└── GUIDES/tech/{external,infra,security}/README.md   # 文書一覧へ1行ずつ追記
 ```
 
-- `<連番>`は、実装時点で各ディレクトリにある最大の番号の次とする(並行して作成中のinfra-deliveryなども`infra`へ追記するため)。
+- 技術ドキュメントの番号は、spec横断レビュー(I-4)でroadmapの順に割り当てた値に固定する(本specは`external/003`・`infra/008`・`security/005`)。他specの文書の有無によらず番号を変えない。
 - テストファイルは、同名の`*.unit.test.ts`(純粋な層)・`*.worker.test.ts`(Workersの実行環境)・`*.browser.test.tsx`(部品)を対象ファイルの隣に置く(上の木では一部を省略した)。
 
 ### Modified Files
 
-- `apps/db/schema/index.ts` — メディアの2テーブルを集約点に加える。`apps/db/migrations/<日時>_media_pipeline/migration.sql`を生成する。
+- `apps/db/schema/index.ts` — メディアの2テーブルを集約点に加える。`apps/db/migrations/<日時>_media_pipeline/migration.sql`を生成する。並行するspec(identity-authなど)とスナップショットが分岐しないよう、mainの最新を取り込んでから生成し、番号の衝突があれば生成し直す(M-6)。
 - `apps/backend-lib/core/messaging/contracts/index.ts` — 3種のメッセージ契約を`MESSAGE_CONTRACTS`へ加える。
 - `apps/api/src/composition/modules.ts`・`internal-routes.ts`・`graphql-modules.ts`・`scheduled-jobs.ts` — `MEDIA_PLATFORM_MODULE`・apiのメディアモジュール、2つの内部REST、`mediaSchemaModule`、日次バッチ3種(4:21、順序810・820・830)を登録する。
 - `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 4:21の定期実行の式が無ければ3環境に加える(email-deliveryで加わっていれば変えない)。R2バインディングの管轄はinfra-deliveryが加える。
@@ -319,13 +321,14 @@ docs/
 - `apps/client/src/routes/__root.tsx`・`apps/admin/src/routes/__root.tsx` — `ImagesOriginProvider`で画像配信のオリジンを配る。
 - `apps/client/src/composition/relay-routes.ts`・`apps/admin/src/composition/relay-routes.ts` — `UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE`を加える。
 - `docs/GUIDES/service/features/002-image-variants.md` — 出力フォーマットのメタデータの行を決定Q1に合わせ、パージの実行経路を「画像配信の名前付きエントリポイントのRPC」に改める。
-- `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — Exifの記述(決定Q1・Q2)、委託先のAWSの所在(米国東部)と渡す情報、国外移転の根拠(EU域内から米国への移転)を改める。
-- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「紐付けられなかったアップロードファイル」の行を加える。保存場所の米国管轄の記述は、infra-deliveryの更新があればそれに合わせる。
+- `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — Exifの記述(決定Q1・Q2)、委託先のAWS(Rekognition)の所在(米国東部、us-east-1)と渡す情報(判定用画像だけ)を改め、国外移転の記載事項にRekognitionへの送信とその移転の根拠(EU域内から米国への移転)を加える。国外移転の記載事項は本specが更新し、Cloudflareの資源の保存場所の記述(infra-deliveryが所有)は書き換えない(M-8)。
+- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「紐付けられなかったアップロードファイル」の行を加える。判定サービスへの送信と移転の根拠はプライバシーポリシーの大枠(委託先の一覧・国外移転の記載事項)を正とし、データの保存場所の表(infra-deliveryが所有)は書き換えない(M-8)。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — アップロードのエラーの文言(編集後のサイズ超過・SVGの書き出し直し・読み込めないファイル・画素数超過・合計サイズ超過・一時的に利用できない)を加える。
+- `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」のジョブの名前と順序の表(roadmapの順で先に実装するcontent-processingが作る)へ、本specの3つのジョブの行(810・820・830)を加える(M-4)。
 - `docs/onboardings/tech-stack.md` — 画像処理に`image-size`を加え、各パッケージの役割を更新する。
 - `docs/GUIDES/tech/coding/002-dependency-versions.md` — api・eventでそろえる`image-size`・`fast-xml-parser`と、client・admin・frontend-libでそろえる`react-easy-crop`を一覧に加える。
-- `docs/onboardings/project-values.md`・`README.md` — 固有の値(ホスト名・変数・シークレットのキー名・用途の命名・メッセージ種別・ジョブ名)と、ローカルとstagingの動作確認の手順・Infisicalへの登録を加える。
-- `CLAUDE.md` — 「技術規則の参照先」に、アップロード・画像配信・画像判定の3文書へのリンクを作業の種類とともに加える。
+- `docs/onboardings/project-values.md`・`README.md` — 固有の値(ホスト名・変数・シークレットのキー名・用途の命名・メッセージ種別・ジョブ名)と、ローカルとstagingの動作確認の手順・Infisicalへの登録(stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する。prodの値はlaunch-readinessがリリース時に登録する)を加える。
+- `CLAUDE.md` — 「技術規則の参照先」に、アップロード・画像配信・画像判定の3文書(`security/005`・`infra/008`・`external/003`)へのリンクを作業の種類とともに加える。
 
 ## System Flows
 
@@ -456,11 +459,11 @@ sequenceDiagram
 
 ### 日次バッチ(基準時刻4:21)
 
-| 順序 | ジョブ名                       | 対象                                                                                                       | 処理                                          |
-| ---- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| 810  | `media.erase-expired-files`    | 削除待ち、論理削除から13日以上、アップロードから24時間を過ぎた未紐付け(保存未完了を含む)                   | `MediaEraser`で物理削除(最大1,000件ずつ繰り返す) |
-| 820  | `media.requeue-moderation`     | 未判定、判定待ちのまま作成から1時間以上(削除されていないもの)                                             | `media.moderate-image`を送り直す(最大1,000件)  |
-| 830  | `media.reconcile-locations`    | 隔離理由があるのに画像用非公開バケットにある、または理由が無いのに隔離バケットにある画像                   | `media.relocate-files`を25件ずつ送る          |
+| 順序 | ジョブ名                                   | 対象                                                                                                       | 処理                                          |
+| ---- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 810  | `media-pipeline.expired-file-erasure`      | 削除待ち、論理削除から13日以上、アップロードから24時間を過ぎた未紐付け(保存未完了を含む)                   | `MediaEraser`で物理削除(最大1,000件ずつ繰り返す) |
+| 820  | `media-pipeline.moderation-requeue`        | 未判定、判定待ちのまま作成から1時間以上(削除されていないもの)                                             | `media.moderate-image`を送り直す(最大1,000件)  |
+| 830  | `media-pipeline.location-reconciliation`   | 隔離理由があるのに画像用非公開バケットにある、または理由が無いのに隔離バケットにある画像                   | `media.relocate-files`を25件ずつ送る          |
 
 - 各ジョブは前回の結果に依存せず、同じ日に重複して起動しても結果が変わらない。件数の上限を超えた分は翌日に回る(ログに残数を出す)。
 
@@ -482,7 +485,7 @@ sequenceDiagram
 | 4.5, 4.6, 4.7 | ファイル名の整形と記録                      | FileName・D1MediaFileStore・MediaSchema                            | `sanitizeFileName`・`media_files`                             | アップロード   |
 | 4.8, 4.9, 4.10 | 判定の依頼・201・503                       | UploadReceiver・UploadRoute                                        | `MODERATE_IMAGE_MESSAGE`・`UploadedFile`                      | アップロード   |
 | 5.1, 5.2, 5.3 | 紐付け                                      | MediaFilesService                                                  | `MediaFiles.claim`                                            | —              |
-| 5.4, 5.5    | 未使用ファイルの削除                          | MediaDailyJobs・MediaEraser                                        | `media.erase-expired-files`                                   | 日次バッチ     |
+| 5.4, 5.5    | 未使用ファイルの削除                          | MediaDailyJobs・MediaEraser                                        | `media-pipeline.expired-file-erasure`                         | 日次バッチ     |
 | 6.1, 6.2, 6.3, 6.4 | 判定用画像                             | ModerationImagePlan・WasmModerationImageRenderer・PngEncoder       | `planModerationImage`・`ModerationImageRenderer`              | 自動判定       |
 | 6.5, 6.6    | 全カテゴリ60%と設定値                         | ModerationConfig・ModerationVerdict                                | `MODERATION_MIN_CONFIDENCE`・`MODERATION_BLOCKED_CATEGORIES`   | 自動判定       |
 | 6.7, 6.8    | 不適切の隔離と問題なしの記録                  | ModerateImageHandler・D1MediaFileStore・FileRelocator              | `recordModeration`                                            | 自動判定       |
@@ -490,15 +493,16 @@ sequenceDiagram
 | 6.10        | 送る情報の限定                                | RekognitionModerationProvider                                      | `ModerationProvider.detect`                                   | 自動判定       |
 | 7.1, 7.2, 7.3, 7.4, 7.5 | SVGの許可リスト                   | SvgAllowlist・ModerateImageHandler                                 | `inspectSvg`                                                  | 自動判定       |
 | 8.1, 8.2    | 一時的な失敗の再試行と未判定                  | ModerateImageHandler・MediaIncidentReporter                        | `MODERATION_RETRY_POLICY`                                     | 自動判定       |
-| 8.3         | 日次の再依頼                                  | MediaDailyJobs                                                     | `media.requeue-moderation`                                    | 日次バッチ     |
+| 8.3         | 日次の再依頼                                  | MediaDailyJobs                                                     | `media-pipeline.moderation-requeue`                           | 日次バッチ     |
 | 8.4         | 恒久的な失敗の隔離                            | ModerateImageHandler                                               | `ModerationOutcome.rejected`                                  | 自動判定       |
 | 8.5         | 障害時の受付と配信の継続                      | UploadReceiver・ImageDelivery                                      | 判定に依存しない受付と配信                                    | —              |
 | 8.6, 8.7, 8.8 | 重複・解除後・削除済みの依頼                | ModerateImageHandler・D1MediaFileStore                             | 条件付きの`recordModeration`                                  | 自動判定       |
 | 9.1, 9.2, 9.3, 9.4 | 隔離理由と復元の条件                   | MediaQuarantineService・MediaFile(`desiredLocation`)・FileRelocator | `MediaQuarantine.addReason`・`removeReason`                  | 隔離・復元     |
 | 9.5         | 隔離後のパージ                                | FileRelocator・PurgeImageCacheHandler                              | `PURGE_IMAGE_CACHE_MESSAGE`                                   | 隔離・復元     |
 | 9.6, 9.7    | 同期の確定と冪等な非同期の移動                | MediaQuarantineService・RelocateFilesHandler・FileRelocator        | `RELOCATE_FILES_MESSAGE`                                      | 隔離・復元     |
-| 9.8         | 日次の食い違いの修復                          | MediaDailyJobs                                                     | `media.reconcile-locations`                                   | 日次バッチ     |
+| 9.8         | 日次の食い違いの修復                          | MediaDailyJobs                                                     | `media-pipeline.location-reconciliation`                      | 日次バッチ     |
 | 9.9         | 自動判定の隔離の一覧                          | MediaQuarantineService                                             | `MediaQuarantine.listByReason`                                | —              |
+| 9.10        | 保有者単位の隔離理由の追加・解除              | MediaQuarantineService・D1MediaFileStore                           | `MediaQuarantine.addReasonForOwner`・`removeReasonForOwner`   | 隔離・復元     |
 | 10.1, 10.12 | 配信ドメインとURL・形式外の404                | ImageGatewayModule・ImageRequestMatch                              | `parseImagePath`                                              | 画像配信       |
 | 10.2, 10.3, 10.8 | 変換・最初のフレーム・メタデータ         | ImageDelivery(application)・ImagesBindingTransformer               | `ImageTransformer`                                            | 画像配信       |
 | 10.4, 10.7  | 404と原本の非配信                             | ImageDelivery(application)                                         | `isDeliverable`                                               | 画像配信       |
@@ -509,7 +513,7 @@ sequenceDiagram
 | 10.11       | 変換の一時的な失敗                            | ImageDelivery(application)                                         | 503 `no-store`                                                | 画像配信       |
 | 11.1        | エッジキャッシュ                              | ImageDeliveryEntrypoint・EventWranglerConfig                       | `exports.ImageDelivery.cache`                                 | 画像配信       |
 | 11.2, 11.3, 11.4, 11.5 | パージ                             | PurgeImageCacheHandler・WorkersCachePurger・ImageDeliveryEntrypoint | `purgeObjectKeys`・`MEDIA_MESSAGE_LIMITS`                    | 隔離・復元     |
-| 11.6        | stagingの確認手順                             | ImageDeliveryDoc・MediaSmokeModule                                 | `infra/<連番>-image-delivery.md`                              | —              |
+| 11.6        | stagingの確認手順                             | ImageDeliveryDoc・MediaSmokeModule                                 | `infra/008-image-delivery.md`                                 | —              |
 | 12.1, 12.8  | 同一オリジンの順次配信                        | MediaRelayRoutes・FileContentRoute                                 | `FILE_DOWNLOAD_RELAY_ROUTE`・`GET /internal/media/files/:fileId` | —          |
 | 12.2, 12.3, 12.4 | 用途の方針・401・404                     | FileAccessAuthorizer・OwnerOnlyFileReadPolicy                      | `FileReadPolicy`                                              | —              |
 | 12.5        | 配信のヘッダー                                | FileContentRoute・FileName                                         | `attachmentDisposition`                                       | —              |
@@ -517,9 +521,10 @@ sequenceDiagram
 | 12.9        | ダウンロードのリンクの部品                    | PrivateFileLink                                                    | `downloadPathOf`                                              | —              |
 | 13.1, 13.2  | 即時の物理削除と削除待ち                      | MediaFilesService・MediaEraser                                     | `MediaFiles.eraseNow`                                         | 隔離・復元     |
 | 13.3, 13.4  | 論理削除と、その間の扱い                      | MediaFilesService・D1MediaFileStore                                | `MediaFiles.markDeleted`                                      | —              |
-| 13.5        | 13日経過の物理削除                            | MediaDailyJobs・MediaEraser                                        | `media.erase-expired-files`                                   | 日次バッチ     |
+| 13.5        | 13日経過の物理削除                            | MediaDailyJobs・MediaEraser                                        | `media-pipeline.expired-file-erasure`                         | 日次バッチ     |
 | 13.6, 13.7  | 保有者・指定の物理削除と冪等性                | MediaFilesService・MediaEraser                                     | `MediaFiles.eraseOwnedBy`                                     | —              |
 | 13.8        | 一括取得と内容の読み出し                      | MediaFilesService・MediaGraphqlModule                              | `MediaFiles.findMany`・`openContent`                          | —              |
+| 13.9        | 保有者単位の操作の1回の上限と残りの有無       | MediaFilesService・MediaQuarantineService                          | `OWNER_OPERATION_BATCH_LIMIT`・`OwnerBatchResult`             | —              |
 | 14.1, 14.2  | クリック・ドラッグ・カメラ                    | FileDropZone                                                       | `<input type="file" accept>`                                  | —              |
 | 14.3        | 選択の一覧とサムネイル                        | FileSelectionList・FileThumbnail                                   | —                                                             | —              |
 | 14.4        | 選択時の検査                                  | UploadConstraints・UploadMessages                                  | `checkSelection`                                              | —              |
@@ -532,12 +537,12 @@ sequenceDiagram
 | 15.6        | 遅延読み込み                                  | MediaPicture                                                       | `loading`                                                     | —              |
 | 16.1        | us-east-1と専用の資格情報                     | RekognitionModerationProvider・EventWranglerConfig                 | `MODERATION_REGION`・`REKOGNITION_*`                          | —              |
 | 16.2        | 資格情報の管理                                | MediaEnv・SentryMediaIncidentReporter                              | `secrets.required`                                            | —              |
-| 16.3        | オプトアウトとIAMの手順                       | ImageModerationDoc                                                 | `external/<連番>-image-moderation.md`                         | —              |
+| 16.3        | オプトアウトとIAMの手順                       | ImageModerationDoc                                                 | `external/003-image-moderation.md`                            | —              |
 | 16.4        | プライバシーポリシー・準拠方針                | ServiceDocsAlignment                                               | `003-privacy-policy-outline.md`・`001-compliance-policy.md`   | —              |
 | 17.1        | スクリプト契約とカバレッジ                    | 全コンポーネント                                                   | 一括検査・一括テスト                                          | —              |
 | 17.2, 17.3  | 動作確認の経路                                | MediaSmokeModule                                                   | `MEDIA_SMOKE_TOKEN`                                           | —              |
-| 17.4        | 技術ドキュメント                              | ImageModerationDoc・ImageDeliveryDoc・FileUploadSecurityDoc        | 3文書                                                         | —              |
-| 17.5        | サービス仕様の整合                            | ServiceDocsAlignment                                               | 画像バリアント仕様ほか                                        | —              |
+| 17.4        | 技術ドキュメント                              | ImageModerationDoc・ImageDeliveryDoc・FileUploadSecurityDoc        | `external/003`・`infra/008`・`security/005`                    | —              |
+| 17.5        | サービス仕様の整合                            | ServiceDocsAlignment                                               | 画像バリアント仕様・日次タイムラインほか                      | —              |
 | 17.6, 17.7  | tech-stack・固有の値・オンボーディング        | ProjectDocsUpdate                                                  | `tech-stack.md`・`project-values.md`・`README.md`             | —              |
 
 ## Components and Interfaces
@@ -547,11 +552,11 @@ sequenceDiagram
 | MediaTypes・ImageVariants・UploadProtocol  | common-lib                   | 前後で共有する形式・バリアント・プロトコルの定義           | 1.2, 10.1, 10.4, 15.1, 15.2                   | —                                                           | Service         |
 | UploadPurposeRegistry                      | backend-lib/core             | 用途の定義と検証                                           | 1.1, 1.2                                      | MediaTypes(P0)                                             | Service         |
 | UploadPrecheck・FileSignature・ImageDimensions・SvgSyntax・TextContentCheck・FileName・ObjectKey | backend-lib/core | 受付の純粋な検証と整形                       | 2.1-2.4, 3.1-3.9, 4.1, 4.5, 4.6              | image-size(P0)・fast-xml-parser(P0)                       | Service         |
-| MediaFile(型と隔離の規則)・MediaMessages   | backend-lib/core             | ファイルの型・目的の保存先・メッセージ契約                 | 9.1-9.4, 4.8, 9.6, 11.3                       | backend-platformのメッセージ契約(P0)                       | Event, State    |
+| MediaFile(型と隔離の規則)・MediaMessages   | backend-lib/core             | ファイルの型・目的の保存先・メッセージ契約                 | 9.1-9.4, 4.8, 9.6, 9.10, 11.3, 13.9           | backend-platformのメッセージ契約(P0)                       | Event, State    |
 | MediaSchema                                | db                           | ファイルの記録と隔離理由のテーブル                         | 4.7, 9.1                                      | 共通カラム(P0)                                             | State           |
-| D1MediaFileStore・R2MediaObjectStore       | backend-lib/workers          | D1とR2への読み書き                                         | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3  | D1(P0)・R2(P0)                                            | Service         |
+| D1MediaFileStore・R2MediaObjectStore       | backend-lib/workers          | D1とR2への読み書き                                         | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3, 9.10 | D1(P0)・R2(P0)                                            | Service         |
 | UploadReceiver                             | backend-lib/workers          | 受付処理の本体                                             | 2.5, 2.6, 3.1-3.9, 4.1-4.10, 8.5                       | UploadPrecheck(P0)・Stores(P0)・MessagePublisher(P0)      | Service         |
-| MediaEraser・MediaFilesService・MediaQuarantineService | backend-lib/workers | ドメインへ提供する操作                                   | 5.1-5.5, 9.1-9.9, 13.1-13.8                   | Stores(P0)・MessagePublisher(P0)                          | Service         |
+| MediaEraser・MediaFilesService・MediaQuarantineService | backend-lib/workers | ドメインへ提供する操作                                   | 5.1-5.5, 9.1-9.10, 13.1-13.9                  | Stores(P0)・MessagePublisher(P0)                          | Service         |
 | UploadRoute・FileContentRoute              | api/presentation             | アップロードと非公開ファイルの内部REST                     | 1.3-1.7, 4.9, 4.10, 12.1-12.8                 | api-gatewayの内部REST(P0)・UploadReceiver(P0)              | API             |
 | FileAccessAuthorizer・方針の既定実装       | api/application・infrastructure | 閲覧の可否と管理者の画像確認                            | 12.2-12.4, 12.6, 12.7                         | Principal(P0)                                              | Service         |
 | MediaDailyJobs                             | api/application              | 物理削除・判定の再依頼・保存先の修復                       | 5.4, 5.5, 8.3, 9.8, 13.2, 13.5                | backend-platformの定期実行(P0)                             | Batch           |
@@ -649,9 +654,9 @@ export type FileAccessErrorCode = 'unauthenticated' | 'not_found' | 'storage_una
 
 **Implementation Notes**
 
-- Integration: 参照方法はcontent-processingが定める`apps/common-lib`の規約(配置先の名前も`common-lib`とし、`frontend-lib`・`backend-lib`からは兄弟の相対パス`../common-lib`で参照する)に従う。外部パッケージに依存しないため、`frontend-lib`の位置での検査でも実体が2つにならない。値は画像バリアント仕様と一致させ、仕様の変更時は同時に直す。
+- Integration: 参照方法はcontent-processingが定める`apps/common-lib`の規約(配置先の名前も`common-lib`とし、`frontend-lib`・`backend-lib`からは兄弟の相対パス`../common-lib`で参照する)に従う。frontend-libでは`utilities/media`・`components/media`に加えて`server/media`も直接読み込む(content-processingが加える`server/**`の許可。M-2)。外部パッケージに依存しないため、`frontend-lib`の位置での検査でも実体が2つにならない。値は画像バリアント仕様と一致させ、仕様の変更時は同時に直す。
 - Validation: `parseImagePath`の境界(大文字の16進・長さ違い・余分なパス・二重拡張子)、`isDeliverable`の全組み合わせ(SVG原本に`svg`以外、`screenshot-full`に`avif`)を単体テストで確かめる。
-- Risks: 仮決定2で別案になった場合は、同じ内容を`frontend-lib`と`backend-lib`に置く。
+- Risks: 置き場所は仮決定2の承認(2026-10-18)で確定した。content-processingの前提のタスク(Allowed Dependencies)が未完了なら、本specのタスク1.1で止めて報告する。
 
 ### backend-lib/core/media
 
@@ -752,7 +757,7 @@ export declare function generateObjectKey(randomBytes: (length: number) => Uint8
 | Field        | Detail                                                       |
 | ------------ | ------------------------------------------------------------ |
 | Intent       | ファイルの型・目的の保存先の規則・メッセージ契約・ポート     |
-| Requirements | 4.7, 4.8, 9.1, 9.3, 9.4, 9.6, 11.3, 13.8                     |
+| Requirements | 4.7, 4.8, 9.1, 9.3, 9.4, 9.6, 9.10, 11.3, 13.8, 13.9         |
 
 **Contracts**: Service [x] / Event [x] / State [x]
 
@@ -820,11 +825,17 @@ export type ClaimResult =
   | { readonly ok: false; readonly failures: readonly { readonly fileId: string; readonly reason: ClaimFailureReason }[] };
 export interface EraseSummary { readonly erased: number }
 export interface MediaContent { readonly file: MediaFileView; readonly body: ReadableStream<Uint8Array> }
+export interface OwnerRef { readonly kind: UploaderKind; readonly id: string }
+export declare const OWNER_OPERATION_BATCH_LIMIT: 1000; // 保有者単位の操作が1回の呼び出しで処理する件数の上限
+export interface OwnerBatchResult {
+  readonly processed: number; // この呼び出しで処理した件数
+  readonly hasMore: boolean; // 真なら残りがあり、呼び出し元が同じ操作を繰り返す
+}
 export interface MediaFiles {
   claim(request: ClaimRequest): Promise<ClaimResult>;
   markDeleted(fileIds: readonly string[]): Promise<void>; // 削除済みのものは日時を変えない
   eraseNow(fileIds: readonly string[]): Promise<EraseSummary>; // 先に削除待ちの印を付ける。失敗時はAppError(unavailable)を投げ、日次バッチが完了させる
-  eraseOwnedBy(owner: { readonly kind: UploaderKind; readonly id: string }): Promise<EraseSummary>;
+  eraseOwnedBy(owner: OwnerRef): Promise<OwnerBatchResult>; // 保有者の全ファイル(全用途・隔離中を含む)を最大OWNER_OPERATION_BATCH_LIMIT件ずつ物理削除する
   findMany(fileIds: readonly string[]): Promise<ReadonlyMap<string, MediaFileView>>;
   openContent(fileId: string): Promise<MediaContent | undefined>; // 保存完了・未削除・隔離中でないものだけ
 }
@@ -836,6 +847,8 @@ export interface QuarantinedImage {
 export interface MediaQuarantine {
   addReason(fileIds: readonly string[], reason: QuarantineReason): Promise<void>; // 画像用の用途以外はAppError(bad_request)
   removeReason(fileIds: readonly string[], reason: QuarantineReason): Promise<void>;
+  addReasonForOwner(owner: OwnerRef, reason: QuarantineReason): Promise<OwnerBatchResult>; // 保有者の画像用の用途のファイル(削除待ちを除く)のうち理由を持たないものに加える
+  removeReasonForOwner(owner: OwnerRef, reason: QuarantineReason): Promise<OwnerBatchResult>; // 保有者の画像用の用途のファイルのうち理由を持つものから取り除く
   listByReason(input: {
     readonly reason: QuarantineReason;
     readonly cursor: string | undefined;
@@ -867,7 +880,9 @@ export declare const MEDIA_TYPES: {
 ```
 
 - 前提: 呼び出し元(ドメインspec)は、自分の業務の認可を済ませてから呼ぶ。本specの操作は主体の権限を判定しない(紐付けは保有者の一致だけを確かめる)。
-- 事後: `addReason`・`removeReason`は隔離理由をD1に確定させてから`media.relocate-files`を送り、送信に失敗した場合は`AppError(unavailable)`を投げる(呼び出し元は同じ操作を再実行できる)。
+- 事後: `addReason`・`removeReason`・`addReasonForOwner`・`removeReasonForOwner`は隔離理由をD1に確定させてから`media.relocate-files`を送り、送信に失敗した場合は`AppError(unavailable)`を投げる(呼び出し元は同じ操作を再実行できる)。
+- 保有者単位の操作(9.10・13.6・13.9): 対象は呼び出しのたびにD1の状態から求め直す(物理削除は保有者のファイル、理由の追加はその理由を持たない画像、解除はその理由を持つ画像)。そのため進み具合を呼び出し元が持つ必要は無く、途中の失敗や重複の呼び出しでも結果が変わらない。`hasMore`が真なら呼び出し元が同じ操作を繰り返す。user-profile-socialは、identity-authの非同期の波及処理(`purge_due`で`eraseOwnedBy`、`suspended`で`addReasonForOwner(owner, 'user_suspended')`、`unsuspended`で`removeReasonForOwner(owner, 'user_suspended')`)として登録し、`hasMore`を`LifecycleHandlerOutcome`の`continue`へ対応付ける。
+- 停止中の利用者の書き込み操作は、ドメインspecの保存がidentity-authの判定の部品で拒否する。そのため、停止の波及処理の後にアップロードされた画像は理由を持たないが、紐付けられないまま24時間で物理削除される(5.4)。
 
 ### backend-lib/workers/media
 
@@ -876,7 +891,7 @@ export declare const MEDIA_TYPES: {
 | Field        | Detail                                     |
 | ------------ | ------------------------------------------ |
 | Intent       | D1とR2への読み書き(条件付きの更新を含む)   |
-| Requirements | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3 |
+| Requirements | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3, 9.10 |
 
 **Contracts**: Service [x]
 
@@ -912,7 +927,13 @@ export interface MediaFileStore {
   addReasons(ids: readonly string[], reason: QuarantineReason): Promise<void>; // onConflictDoNothing
   removeReasons(ids: readonly string[], reason: QuarantineReason): Promise<void>;
   updateLocation(id: string, from: MediaLocation, to: MediaLocation): Promise<boolean>; // 現在値がfromのときだけ
-  findIdsOwnedBy(owner: { readonly kind: UploaderKind; readonly id: string }, limit: number): Promise<readonly string[]>;
+  findIdsOwnedBy(owner: OwnerRef, limit: number): Promise<readonly string[]>; // 全用途・全状態
+  findOwnedImageIdsByReason(input: {
+    readonly owner: OwnerRef;
+    readonly reason: QuarantineReason;
+    readonly hasReason: boolean; // 偽は理由を持たない画像(削除待ちを除く)、真は理由を持つ画像
+    readonly limit: number;
+  }): Promise<readonly string[]>;
   findEraseCandidates(input: { readonly deletedBefore: Date; readonly unattachedCreatedBefore: Date; readonly limit: number }): Promise<readonly string[]>;
   findModerationRequeueCandidates(input: { readonly pendingCreatedBefore: Date; readonly limit: number }): Promise<readonly string[]>;
   findLocationMismatches(limit: number): Promise<readonly string[]>;
@@ -969,7 +990,7 @@ export interface MediaObjectStore {
 | Field        | Detail                                       |
 | ------------ | -------------------------------------------- |
 | Intent       | ドメインへ提供する紐付け・削除・隔離の操作   |
-| Requirements | 5.1-5.5, 9.1-9.9, 13.1-13.8                  |
+| Requirements | 5.1-5.5, 9.1-9.10, 13.1-13.9                 |
 
 **Contracts**: Service [x]
 
@@ -978,8 +999,9 @@ export interface MediaObjectStore {
 - `MediaEraser.erase`: 記録を読み、画像用の用途は画像用非公開バケットと隔離バケット、ファイル用の用途はファイル用非公開バケットからオブジェクトを削除する → 画像のオブジェクトキーを100件ずつ`PURGE_IMAGE_CACHE_MESSAGE`で送る → 記録を削除する。どの段階で失敗しても例外を投げ、再実行で同じ結果になる(13.7)。
 - `claim`: 全件の記録を読み、存在・保存完了・未削除・削除待ちでない・用途の一致・保有者の一致を確かめる。1件でも満たさなければ何も変えずに理由の一覧を返す(5.2)。満たせば`attach`(既に紐付け済みなら変えない、5.3)。
 - `eraseNow`: `markEraseRequested`の後に`MediaEraser.erase`を呼ぶ。削除待ちの印が付いたファイルは、紐付け・非公開ファイルの配信・`openContent`の対象から外れる(13.2)。
-- `eraseOwnedBy`: 保有者のファイルを1,000件ずつ繰り返し`eraseNow`する(13.6)。
-- `markDeleted`: 論理削除の日時を付ける。論理削除されたファイルは紐付けできないが、画像配信はバケットの有無だけで応答するため止まらない(13.4、仮決定1)。
+- `eraseOwnedBy`: `findIdsOwnedBy`で保有者のファイルを`OWNER_OPERATION_BATCH_LIMIT`+1件まで読み、先頭の上限件数を`eraseNow`する。読めた件数が上限を超えていれば`hasMore: true`を返す(13.6・13.9)。
+- `addReasonForOwner`・`removeReasonForOwner`: `findOwnedImageIdsByReason`で対象を上限+1件まで読み、先頭の上限件数に`addReasons`・`removeReasons`を行い、25件ずつ`RELOCATE_FILES_MESSAGE`を送る。`hasMore`は`eraseOwnedBy`と同じ規則で決める(9.10・13.9)。
+- `markDeleted`: 論理削除の日時を付ける。論理削除されたファイルは紐付けできないが、画像配信はバケットの有無だけで応答するため止まらない(13.4、仮決定1。2026-10-18に開発者が承認)。
 - `openContent`: 保存完了・未削除・削除待ちでない・隔離中でないファイルの内容を、現在の保存先から読み出す(13.8)。
 - `MediaQuarantine.addReason`・`removeReason`: 画像用の用途であることを確かめ、`addReasons`・`removeReasons`の後、目的の保存先が変わりうるファイルを25件ずつ`RELOCATE_FILES_MESSAGE`で送る(9.6)。
 - `listByReason`: 理由の作成日時の新しい順に、検出内容(`moderation_detail`)とともに返す(9.9)。
@@ -1345,6 +1367,8 @@ export declare const FILE_DOWNLOAD_RELAY_ROUTE: RelayRoute;
 ```
 
 - client・adminの`relay-routes.ts`へ両方を加える。中継の共通処理(CSRF・IP制限・セッションの引き継ぎ・`no-store`・非ページのCSP)はfrontend-platformのとおりに働く。
+- `server/media`は`ATTACHMENT_MEDIA_TYPES`と経路の接頭辞を`common-lib/media`から直接読み込み、common-libの他のディレクトリ(`validation/**`など)を読み込まない(M-2)。
+- 415の扱い(M-10): 本specはfrontend-platformの`relayToApi`の415の挙動を変えずに合わせる。中継は`acceptContentTypes`(全用途の許可形式の範囲)に無い`Content-Type`を、APIへ送らずに415`unsupported_media_type`(frontend-platformの共通のエラー形式)で返す。用途ごとの許可形式の判定は、引数を除いて照合するAPI側(415`unsupported_file_type`)が行う。中継の照合での引数(`; charset=...`)の扱いはfrontend-platformの定めによるため、アップロード部品は`Content-Type`に引数を付けず、`ATTACHMENT_MEDIA_TYPES`の値そのものを送る。`parseUploadResponse`は、中継の415`unsupported_media_type`をAPIの415`unsupported_file_type`と同じ文言に対応付ける。
 - 前提(Revalidation Triggers): `toBrowserResponse`は指示の項目と`Set-Cookie`以外の応答ヘッダー(`Content-Type`・`Content-Disposition`・`Content-Length`)を保つ。本specは単体テストでこれを確かめる。
 
 #### アップロードの部品群
@@ -1411,7 +1435,7 @@ export interface AttachmentUploadFieldProps {
 - `FileDropZone`: ボタンの見た目のラベルと隠した`<input type="file" accept="<形式の一覧>" multiple?>`を持ち、Enter・Spaceで選択を始める。ドラッグ中の状態を視覚とテキストで示す(14.1・14.2)。
 - `ImageUploadField`: 選択→`checkSelection`→SVG以外は`ImageCropDialog`(複数なら1枚ずつ順に)→`encodeCroppedImage`(`createImageBitmap`で向きを反映し、`computeCropOutput`の寸法へ縮小して`toBlob`。JPEGは品質0.9)→作り直したサイズの検査(14.7)→`useFileUpload`で送信。SVGは編集を省き選んだファイルのサイズで判定する(14.8)。
 - `AttachmentUploadField`: 編集ダイアログを出さず、選んだファイルをそのまま送る(14.8)。
-- `useFileUpload`: 1件ずつ順に`fetch`で`POST /_bff/uploads/<purpose>`(`Content-Type`は確定した形式、`x-upload-file-name`は`encodeFileNameHeader`)を送り、`parseUploadResponse`で`UploadedFile`か拒否の文言にする。503・429・通信の失敗は`retryable: true`で「現在ご利用いただけません」系の文言を出し、同じファイルで再試行できる(14.9〜14.11)。
+- `useFileUpload`: 1件ずつ順に`fetch`で`POST /_bff/uploads/<purpose>`(`Content-Type`は確定した形式を引数なしで、`x-upload-file-name`は`encodeFileNameHeader`)を送り、`parseUploadResponse`で`UploadedFile`か拒否の文言にする。中継の415`unsupported_media_type`はAPIの`unsupported_file_type`と同じ文言にする(M-10)。503・429・通信の失敗は`retryable: true`で「現在ご利用いただけません」系の文言を出し、同じファイルで再試行できる(14.9〜14.11)。
 - 結果の通知: 選択・検証・送信中・成功・失敗を`aria-live="polite"`の領域で読み上げ、エラーは入力欄に`aria-describedby`で結び付ける。ダイアログはフォーカスを閉じ込め、閉じたら選択のボタンへ戻す(14.12)。
 
 #### MediaPicture・MediaPlaceholder・PrivateFileLink
@@ -1513,7 +1537,7 @@ erDiagram
     }
 ```
 
-- ファイルの保有者(`owner_kind`・`owner_id`)は、利用者・管理者のテーブルへの外部キーを持たない(identity-auth・admin-foundationのテーブルに依存しないため)。保有者の退会・削除時の物理削除は`eraseOwnedBy`で行う。
+- ファイルの保有者(`owner_kind`・`owner_id`)は、利用者・管理者のテーブルへの外部キーを持たない(identity-auth・admin-foundationのテーブルに依存しないため)。利用者の退会に伴う物理削除(`eraseOwnedBy`)と、停止・停止解除に伴うユーザー停止の隔離理由の付け外し(`addReasonForOwner`・`removeReasonForOwner`)は、user-profile-socialがidentity-authのユーザーライフサイクルイベントの波及処理として呼ぶ(I-1)。外部キーが無いため、identity-authの取り残しの検出(他specの外部キーに頼る)は`media_files`を対象にしない。退会者のファイルの取り残しは、波及処理が`hasMore: false`になるまで繰り返されること(失敗は波及処理の再試行)で防ぐ。
 - 業務データからファイルへの参照(ファイルの識別子)は各ドメインのテーブルが持つ。本specは参照先の存在を保証しない(紐付けの時点で確かめる)。
 
 ### Physical Data Model
@@ -1552,7 +1576,7 @@ erDiagram
 | `Content-Length`が無い                     | 411        | `content_length_required`     | ファイルを送信できませんでした。もう一度お試しください。                                  |
 | `Content-Length`が不正・本文の長さの不一致 | 400        | `invalid_content_length`・`content_length_mismatch` | ファイルを送信できませんでした。もう一度お試しください。                    |
 | 上限サイズの超過                           | 413        | `file_too_large`              | {用途}は{上限}以内の{画像・ファイル}を選択してください。                                  |
-| 許可されない形式                           | 415        | `unsupported_file_type`       | {形式の一覧}の{画像・ファイル}を選択してください。                                        |
+| 許可されない形式                           | 415        | `unsupported_file_type`(API)・`unsupported_media_type`(中継。M-10) | {形式の一覧}の{画像・ファイル}を選択してください。                  |
 | 内容と申告の不一致・壊れたSVG・テキスト不正・寸法を読めない | 422 | `file_type_mismatch`・`invalid_svg`・`invalid_text_file`・`image_unreadable` | ファイルを読み込めませんでした。ファイルが壊れていないか確認して、もう一度選択してください。 |
 | DOCTYPE・ENTITYを含むSVG                   | 422        | `svg_declaration_not_allowed` | このSVGは読み込めません。編集ソフトでSVGとして書き出し直してから選択してください。        |
 | 画素数・辺の長さの超過                     | 422        | `image_dimensions_exceeded`   | 画像の縦横の大きさが上限を超えています。小さくしてから選択してください。                  |
@@ -1574,13 +1598,13 @@ erDiagram
 - `backend-lib/core/media`: `precheckUpload`の411→400→413→415の順序と境界値(上限ちょうど・1バイト超)、`detectSignature`の5形式と偽装(PNGの申告にJPEGの本文)、`readImageDimensions`の向き1〜8とSVGのviewBox・寸法なし、`exceedsPixelLimits`の境界、`checkSvgSyntax`のDOCTYPE・ENTITY(大文字小文字)・壊れたXML・UTF-8でない本文、テキストの検査(NUL・不完全なUTF-8・断片の境界で分かれた文字)、`sanitizeFileName`(パス区切り・制御文字・先頭のドット・255バイトの書記素境界・空)、`attachmentDisposition`、`desiredLocation`の全組み合わせ、`defineUploadPurpose`の違反(2.1〜2.4・3.1〜3.9・4.5・4.6・9.3・9.4)。
 - eventの`application/media`: `judgeLabels`(親をたどる・閾値ちょうど・設定外のカテゴリ)、`parseModerationConfig`、`planModerationImage`(as-is・resize・padの境界、640・80・5MB)、`encodePng`(生成したPNGを`image-size`とシグネチャで読み戻す)、`inspectSvg`(Inkscape・Illustrator・Figmaの書き出しの標本は許可、script・foreignObject・`onload`・外部`href`・`javascript:`・`@import`・`xml-stylesheet`・`set`・許可外のdata URIは違反)、判定の処理(偽のポートで、重複・解除後・削除済み・一時的な失敗の試行回数ごとの再試行と未判定・恒久的な失敗の隔離)、`deliverImage`(404・SVG・変換・503とヘッダー)(6.1〜6.10・7.1〜7.5・8.1〜8.8・10.1〜10.12)。
 - apiの`application/media`: `FileAccessAuthorizer`(用途の方針・既定の保有者・管理者の画像確認・利用者側の画像の拒否)、日次バッチの境界日時(13日・24時間・1時間)(5.4・8.3・12.2〜12.7・13.5)。
-- frontend-libの`utilities/media`: `checkSelection`・`computeCropOutput`・`buildPictureSources`・文言の対応・`placeholder-appearance`(書記素とコントラスト比)・`media-relay-routes`の経路と転送する項目(14.4・14.6・15.1〜15.5)。
+- frontend-libの`utilities/media`: `checkSelection`・`computeCropOutput`・`buildPictureSources`・文言の対応(中継の415`unsupported_media_type`を含む)・送信の`Content-Type`に引数が無いこと・`placeholder-appearance`(書記素とコントラスト比)・`media-relay-routes`の経路と転送する項目(14.4・14.6・14.9・15.1〜15.5)。
 
 ### Integration Tests(Workers統合テスト)
 
 - api: アップロードの経路(D1・R2・Queueの実物のバインディング)で、201と記録・オブジェクト・`media.moderate-image`の送信、411・413・415・422の各拒否で記録とオブジェクトが残らないこと、長さの不一致、上書きの拒否(同じキーの2回目の書き込みが`exists`)、ファイル用のメタデータ(1.3〜1.7・2.1〜2.6・3.1〜3.9・4.1〜4.10)。
 - api: ダウンロードの経路で、保有者・登録した方針・管理者の確認の方針・未ログイン・削除待ち・保存未完了・隔離中の画像の各ケースのヘッダーと状態コード(12.1〜12.8)。
-- backend-lib/workers: `MediaFilesService`の紐付け(全件の検査と一部不正での不変)、`MediaEraser`の再実行の冪等性(途中で失敗させた後の再実行)、`MediaQuarantineService`の理由の追加・解除と送信、日次バッチの対象の照会(5.1〜5.5・9.1〜9.9・13.1〜13.8)。
+- backend-lib/workers: `MediaFilesService`の紐付け(全件の検査と一部不正での不変)、`MediaEraser`の再実行の冪等性(途中で失敗させた後の再実行)、`MediaQuarantineService`の理由の追加・解除と送信、保有者単位の操作(上限件数の境界での`hasMore`、繰り返しで全件が処理されること、途中の失敗の後の再実行で同じ結果になること、他の保有者のファイルを変えないこと)、日次バッチの対象の照会(5.1〜5.5・9.1〜9.10・13.1〜13.9)。
 - event: 代替の判定とwasmの描画で、不適切→隔離バケットへ移動・理由と検出内容・パージの依頼、問題なし→公開のまま、重複の依頼で変わらないこと、未判定、復号できない画像の隔離、SVGの違反の隔離(6.1〜6.10・7.1〜7.5・8.1〜8.8)。wasmがテスト環境で読めない場合は描画を偽物に差し替え、実物はローカルの動作確認で確かめる。
 - event: `FileRelocator`の移動・復元・途中の失敗からの再実行、パージの処理(`ctx.cache`が無い環境で`skipped`)、関門→`ImageDelivery`の配信(Images Bindingの簡易版で形式と寸法、SVGのCSP、404の`no-store`、クエリ文字列の無視、IP制限の除外、専用ホストでの404)、動作確認の経路のトークンの有無(9.1〜9.9・10.1〜10.12・11.1〜11.5・17.2・17.3)。
 - 設定: eventのWrangler設定で、`exports`のキャッシュの設定、変数とシークレットのキー名(11.1・16.1・16.2)。R2バインディングの管轄はinfra-deliveryの構成検査が確かめる。
@@ -1636,6 +1660,10 @@ erDiagram
 | `exports`                         | `default`: キャッシュ無効、`ImageDelivery`: 有効     | 同左(トップレベルの設定)                                    | 同左                                                |
 
 - 全10カテゴリ: `Explicit`・`Non-Explicit Nudity of Intimate parts and Kissing`・`Swimwear or Underwear`・`Violence`・`Visually Disturbing`・`Drugs & Tobacco`・`Alcohol`・`Rude Gestures`・`Gambling`・`Hate Symbols`。
+- シークレットの登録とWorkerへの受け渡し(I-3):
+  - stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する(`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`はタスク1.3が必須にする)。任意の`MEDIA_SMOKE_TOKEN`も、マージ後のstagingの確認に使うため同じマージの前に登録する。未登録のままマージすると、infra-deliveryのデプロイが必須のシークレットの欠落で失敗し、以後のstagingのデプロイが止まる。AIエージェントはInfisicalへ書き込まない。
+  - prodの値はlaunch-readinessがリリース時に登録する(prodの資源と最初のprodのデプロイもリリース時にlaunch-readinessが行う)。prodには`MEDIA_SMOKE_TOKEN`を登録しない。
+  - Workerへの受け渡しは、infra-deliveryで追記済みである(Infisicalの表に必須の`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`、`OPTIONAL_WORKER_SECRETS`のeventに`MEDIA_SMOKE_TOKEN`)。必須の2つはeventの`secrets.required`(タスク1.3)からデプロイの対象になる。本specは`scripts/delivery`を編集せず、追記済みであることを確かめる。
 - ローカルの画像配信のオリジン(`http://localhost:48043`)はfrontend-platformの`IMAGES_ORIGIN`と同じである。
 
 ### 名前の一覧
@@ -1643,7 +1671,7 @@ erDiagram
 | 種類                 | 名前                                                                                   |
 | -------------------- | -------------------------------------------------------------------------------------- |
 | メッセージ種別       | `media.moderate-image`・`media.relocate-files`・`media.purge-image-cache`              |
-| 日次バッチのジョブ   | `media.erase-expired-files`(810)・`media.requeue-moderation`(820)・`media.reconcile-locations`(830) |
+| 日次バッチのジョブ   | `media-pipeline.expired-file-erasure`(810)・`media-pipeline.moderation-requeue`(820)・`media-pipeline.location-reconciliation`(830)。名前は`<spec名>.<名詞句>`の規約に従う(M-9。メッセージ種別は`<ドメイン>.<動詞句>`の`media.*`) |
 | 内部REST             | `/internal/media/uploads/:purpose`・`/internal/media/files/:fileId`(api)、`/internal/media/smoke/*`(event) |
 | ブラウザ向けの経路   | `/_bff/uploads/<用途名>`・`/_bff/files/<fileId>`(client・admin)                        |
 | 名前付きエントリポイント | `ImageDelivery`(event)                                                             |
