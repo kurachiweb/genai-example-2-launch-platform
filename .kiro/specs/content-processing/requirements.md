@@ -34,7 +34,7 @@
   - FR-FTS-002: 「各単語を二重引用符で囲む」に加えて、各語を前方一致(`"語"*`)で照合する(Q4、要件12)。
   - FR-MDOWN-006: 「変換した文字列をアンカーIDとする」に対し、IDに接頭辞(`user-content-`と本文ごとの識別子)を付け、本文中の`#`リンクも同じ接頭辞へ書き換える(Q5、要件4)。
   - FR-FTS-006: 外部APIの障害が続いた場合と非対応言語の場合は、キーワードの代わりに正規化テキストで索引する縮退運転と、日次の再抽出を加える(Q3、要件10)。
-- 設計段階で開発者の確認を待つ仮決定は、research.mdの「仮決定(開発者確認待ち)」に記録する。
+- 設計段階で選んだ仮決定P1〜P8は、2026-10-18に開発者が承認した(P1は個別に、P2〜P8は一括で承認)。内容はresearch.mdの「仮決定(2026-10-18に開発者が承認)」に記録する。
 
 ### 用語
 
@@ -74,13 +74,14 @@
   - 検索結果の並び順(関連度)以外の業務ロジック、検索語の文字数の上限(50文字)の検証(各ドメインspec)
   - ヘルプ記事の目次の画面(help-center)。本specは見出しの一覧を提供する
   - マークダウンへの画像の添付、コードのシンタックスハイライト(要件定義書1.2でスコープ外)
-  - Google Cloudのプロジェクト・APIの有効化・APIキーの発行と制限、Infisicalへの登録(開発者の手作業)、Workerへのシークレットの反映とCIのワークフロー(infra-delivery)
+  - Google Cloudのプロジェクト・APIの有効化・APIキーの発行と制限、Infisicalの`staging`への登録(開発者の手作業)、Infisicalの`prod`への登録(launch-readiness)、Workerへのシークレットの反映とCIのワークフロー(infra-delivery)
 - **Adjacent expectations**:
   - 各ドメインspecは、マークダウンの入力欄に項目名・上限・`rel`・本文の識別子を渡し、APIサーバーで本specの検証規則を使ってマークダウンの原文を保存する(描画結果のHTMLは保存しない)。
   - directory-discovery・help-centerは、検索対象を登録し、索引のテーブルとマイグレーションを本specのひな形で作り、元データの作成・編集・削除の処理で本specの手段を呼ぶ。検索の画面では本specの検索式・関連度・強調表示の部品を使う。
   - help-centerは、本specが返す見出しの一覧から目次を作る。
   - backend-platformの非同期メッセージ・定期実行・一括の書き込み・ログとエラートラッキングの基盤を使う。frontend-platformの共通部品・フォーム部品・静的解析の設定・CSPを使い、生のHTMLの挿入の例外を本specの表示部品の1箇所に限る。
-  - infra-deliveryは、イベントサーバーの外部APIのキーをstaging・prodのWorkerへシークレットとして反映し、本specが加える変数の値を環境ごとに設定する。開発者は、Google CloudのAPIキーを発行してInfisicalへ登録する。
+  - infra-deliveryは、イベントサーバーの外部APIのキーをInfisicalのキーの表とWorkerのシークレットの一覧に載せてstaging・prodのWorkerへ反映し、本specが加える変数の3環境の値を一覧に持つ。開発者は、Google CloudのAPIキーを発行し、stagingの値をキーを必須にする変更をmainへマージする前にInfisicalへ登録する。prodの値の登録はlaunch-readinessがリリース時に行う。
+  - media-pipeline・identity-authは、本specが新設する共用部品の配置と読み込みの境界に従って、自分の共有定義を共用部品へ加える。identity-authは書記素の文字数の部品を使い、APIサーバーに利用者側のオリジンの変数を本specと同じ名前・同じ値で置く。
 
 ## Requirements
 
