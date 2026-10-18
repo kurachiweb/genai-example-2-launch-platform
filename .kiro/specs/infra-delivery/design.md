@@ -6,11 +6,11 @@
 
 **Users**: 開発者は、mainへのマージでstagingを確かめ、GitHubの画面からリリースのPRを作らせて承認する。AIエージェントと後続specは、資源一覧(`apps/infra/environments/<環境>.json`)とWrangler設定へ同じ名前で資源を追記するだけで、新しいQueue・R2バケット・ホスト名をデプロイできる。launch-readinessは、本specの手順でprodの資源を作り、識別子を反映して最初のリリースを行う。
 
-**Impact**: 存在しない`apps/infra`・`.github`・`scripts/delivery`を新設する。上流specが所有する4アプリのWrangler設定へ、R2の管轄(`jurisdiction: "us"`)・`workers_dev: false`・`preview_urls: false`・stagingの識別子を書き込み、frontend-platformの疎通確認のE2Eに`@smoke`タグを付ける。tech-stack.mdのCI/CD(検査でstagingを注入する記載)をdevの注入へ改め、準拠方針とプライバシーポリシー骨子の保存場所を米国とする。
+**Impact**: 存在しない`apps/infra`・`.github`・`scripts/delivery`を新設する。上流specが所有する4アプリのWrangler設定へ、R2の管轄(`jurisdiction: "us"`)・`workers_dev: false`・`preview_urls: false`・stagingの識別子を書き込み、frontend-platformの疎通確認のE2Eに`@smoke`タグを付ける。tech-stack.mdのCI/CD(検査でstagingを注入する記載)をdevの注入へ改め、準拠方針とプライバシーポリシー骨子のCloudflareの資源の保存場所を、D1・R2・Queuesは米国、Durable Objectsは保証しないと改める。
 
 ### Goals
 
-- staging・prodの資源が1つのOpenTofuの定義と環境ごとの資源一覧から作られ、D1・R2・Queuesが米国の管轄で保存される(Q3・仮決定K1)。
+- staging・prodの資源が1つのOpenTofuの定義と環境ごとの資源一覧から作られ、D1・R2・Queuesが米国の管轄で保存される(Q3・K1)。
 - mainとprodへのPR・push、hotfixブランチへのpushで検査が走り、1つの総合結果(`checks / ci-gate`)がマージの条件になる。
 - mainへのpushでstagingへ、prodへのpushでprodへ、資源の更新→識別子の照合→マイグレーション→API→event→フロントエンド→ホスト名→購読→確認の順にデプロイされる。
 - prodへのマージには、コードオーナー(開発者)の承認が必須で、ワークフローの承認では満たせない(Q5)。
@@ -34,15 +34,17 @@
 - 契約: 資源一覧の形(`ResourceCatalog`)、デプロイの段階(`DEPLOY_STAGES`)、必須チェックの名前`checks / ci-gate`、OpenTofuの出力`resource_ids`、Infisicalのフォルダの構成と主体のOIDCの縛り、Workerの版のタグ(デプロイしたコミット)、スモークテストのタグ`@smoke`、Workerの任意のシークレットの一覧(`OPTIONAL_WORKER_SECRETS`)。
 - 4アプリのWrangler設定のうち、staging・prodの識別子(D1の`database_id`・`TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`)の値、R2のバインディングの`jurisdiction`、`workers_dev`・`preview_urls`。
 - ルートの`package.json`の`delivery`・`infra:check`・`infra:fmt`のスクリプト。
-- 技術ドキュメント`infra/005`〜`007`・`operations/001`〜`002`・`security/003`(番号は実装時の索引の続き番号で確定する)と、`security/001`・`testing/001`への追記。tech-stack.md・`docs/onboardings/project-values.md`・オンボーディング・CLAUDE.mdのディレクトリ構成・準拠方針とプライバシーポリシー骨子の保存場所の更新。
+- 技術ドキュメント`infra/005`〜`007`・`operations/001`〜`002`・`security/003`(Wave 1の横断レビューI-4で割り当てた番号に固定する)と、`security/001`・`testing/001`への追記。tech-stack.md・`docs/onboardings/project-values.md`・オンボーディング・CLAUDE.mdのディレクトリ構成・準拠方針とプライバシーポリシー骨子の保存場所の更新。
 
 ### Out of Boundary
 
-- prodの資源・状態の保管先・Infisicalのプロジェクトと主体の作成、prodの識別子の反映、最初のprodのデプロイ(launch-readiness)。
+- prodの資源・状態の保管先・Infisicalのprodの主体とシークレットの値の作成、prodの識別子の反映、最初のprodのデプロイ(launch-readiness)。
 - Wrangler設定のバインディング名・資源の名前の決定、`secrets.required`のキー、Worker・Durable Objectsのコード(backend-platform・frontend-platform・email-deliveryほか)。本specはそれらを読むだけで、上記の値以外を変えない。
 - 一括検査・一括テスト・共有ディレクトリの配置のコマンドと、テストの命名・カバレッジの閾値(dev-tooling)。本specはCIから呼ぶだけである。
 - GraphQLの許可リストの生成とスキーマの検査(api-gateway)、疎通確認の画面とそのE2Eの内容(frontend-platform)。本specは`@smoke`タグの付与だけを行う。
-- Durable Objectsの管轄の指定(backend-platform・identity-authへの依頼、仮決定K7)、Rekognition・Natural Languageの資格情報の作成(media-pipeline・content-processing・開発者)。
+- Durable Objectsの管轄(どのspecも指定しない。K7)、Rekognition・Natural Languageの資格情報の作成(media-pipeline・content-processing・開発者)。
+- 準拠方針とプライバシーポリシー骨子のうち、Rekognition(us-east-1)への送信とその国外移転の根拠(media-pipeline)。本specはCloudflareの資源の保存場所だけを書き、互いの記述を上書きしない。
+- `CLIENT_SITE_ORIGIN`の変数(client・adminはcontent-processing、apiはidentity-authが所有する)。本specは3環境の値を「Supporting References」の一覧に持つだけである。
 - ブランチ保護・Environment・Actionsの設定の実施(開発者の手作業。本specは値を文書化する)。
 
 ### Allowed Dependencies
@@ -57,11 +59,13 @@
 - 資源一覧の形(`ResourceCatalog`)・ファイルの場所の変更(後続specの資源の追加手順、launch-readiness)。
 - `DEPLOY_STAGES`の順序・必須チェックの名前の変更(ブランチ保護の設定、api-gateway・frontend-platformのデプロイの順序の契約)。
 - Infisicalのフォルダの構成・キーの名前・主体のOIDCの縛りの変更(開発者の設定、launch-readiness)。
+- Infisicalのキーの表(各specが宣言した必須と任意のシークレット)の変更(シークレットを宣言する全spec、launch-readiness)。
 - Workerの版のタグの形式の変更(api-gatewayの`--previous-ref`、ロールバックの手順)。
 - `@smoke`タグの意味の変更(E2Eを追加する全spec)。
-- `OPTIONAL_WORKER_SECRETS`の変更(任意のシークレットを持つspec)。
+- `OPTIONAL_WORKER_SECRETS`の変更(任意のシークレットを持つemail-delivery・media-pipeline・identity-auth)。
 - R2の管轄・`workers_dev`・`preview_urls`の扱いの変更(backend-platform・frontend-platform・media-pipelineのWrangler設定と検査)。
-- Queuesの管轄(仮決定K1)の変更(email-delivery・media-pipelineのQueue、準拠方針)。
+- Queuesの管轄(K1)の変更(email-delivery・media-pipelineのQueue、準拠方針)。
+- 資源一覧のclientのホスト名の変更(`CLIENT_SITE_ORIGIN`を所有するcontent-processing(client・admin)・identity-auth(api)。値は「Supporting References」の一覧)。
 
 ## Architecture
 
@@ -99,10 +103,10 @@ graph TB
         Live[live root module]
         Modules[storage messaging edge routing modules]
     end
-    subgraph Infisical
-        DevProject[dev project]
-        StagingProject[staging project]
-        ProdProject[prod project]
+    subgraph Infisical[infisical single project]
+        DevEnv[dev environment]
+        StagingEnv[staging environment]
+        ProdEnv[prod environment]
     end
     subgraph Cloudflare
         Data[d1 r2 queues us jurisdiction]
@@ -120,9 +124,9 @@ graph TB
     Release --> Cli
     Cli --> CoreRules
     Cli --> Adapters
-    Adapters --> DevProject
-    Adapters --> StagingProject
-    Adapters --> ProdProject
+    Adapters --> DevEnv
+    Adapters --> StagingEnv
+    Adapters --> ProdEnv
     Cli --> Live
     Live --> Catalog
     Live --> Modules
@@ -153,8 +157,8 @@ graph TB
 | Layer               | Choice / Version                                                                  | Role in Feature                                            | Notes                                                               |
 | ------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------- |
 | IaC                 | OpenTofu 1.13.1・Cloudflare provider 5.27.0・`infisical` provider 0.19.38         | 資源の定義・状態の暗号化・`ephemeral`での資格情報の取得    | 版は完全に固定。providerはOpenTofu Registryの公開から2週間以上      |
-| State               | Cloudflare R2(S3互換backend、`use_lockfile`)                                      | 環境ごとの状態と計画の保管                                 | 環境ごとのバケット、管轄なし(仮決定K2)                              |
-| Secrets             | Infisical(EUリージョン)・Infisical CLI 0.44.2                                     | OIDCでの認証、`infisical export`による取り出し             | 環境ごとのプロジェクト(仮決定K3)                                    |
+| State               | Cloudflare R2(S3互換backend、`use_lockfile`)                                      | 環境ごとの状態と計画の保管                                 | 環境ごとのバケット、管轄なし(K2)                                    |
+| Secrets             | Infisical(EUリージョン)・Infisical CLI 0.44.2                                     | OIDCでの認証、`infisical export`による取り出し             | 既存の1つのプロジェクトのdev・staging・prodの環境(K3)               |
 | CI/CD               | GitHub Actions(ホステッドランナー`ubuntu`)、再利用ワークフロー、Environments      | 検査・デプロイ・リリースのPR                               | アクションはコミットSHAで固定                                       |
 | Workers             | Wrangler(アプリの版と、購読の操作用に4.151.1)・`@cloudflare/vite-plugin`のビルド | マイグレーション・デプロイ・版のタグ・購読・予行           | デプロイはアプリが固定する版で行う                                  |
 | Scripts             | Bun 1.4.3・TypeScript 6.0.3(既存)                                                 | `scripts/delivery`のコマンドと単体テスト                   | `Bun.JSONC`・`Bun.YAML`を使い、新しいパッケージを入れない           |
@@ -169,7 +173,7 @@ graph TB
 apps/infra/
 ├── environments/
 │   ├── staging.json                     # 資源一覧(staging): 名前・識別子・管轄・ホスト名・Infisical・GitHubのEnvironment
-│   └── prod.json                        # 資源一覧(prod): 同じ形。Infisicalの識別子はlaunch-readinessが埋める
+│   └── prod.json                        # 資源一覧(prod): 同じ形。Infisicalの主体の識別子はlaunch-readinessが埋める
 ├── backends/
 │   ├── staging.s3.hcl                   # stateの保管先(バケット・キー・接続先)の部分設定
 │   └── prod.s3.hcl
@@ -243,7 +247,7 @@ scripts/delivery/
 ```
 
 - 各`commands/*.ts`・`core/*.ts`・`adapters/*.ts`・`catalog/*.ts`の隣に同名の`*.unit.test.ts`を置く(省略して記載)。
-- 技術ドキュメント: `docs/GUIDES/tech/infra/005-infrastructure-overview.md`・`006-iac-with-opentofu.md`・`007-ci-cd-pipelines.md`、`operations/001-deployment.md`・`002-rollback-and-recovery.md`、`security/003-ci-secrets-and-repository-protection.md`(番号は実装時の各索引の続き番号で確定する)。
+- 技術ドキュメント: `docs/GUIDES/tech/infra/005-infrastructure-overview.md`・`006-iac-with-opentofu.md`・`007-ci-cd-pipelines.md`、`operations/001-deployment.md`・`002-rollback-and-recovery.md`、`security/003-ci-secrets-and-repository-protection.md`。番号はWave 1の横断レビューI-4の割り当てで固定し、他のspecの番号(content-processingの`security/004`、media-pipelineの`infra/008`・`security/005`、identity-authの`security/006`など)と重ならない。
 
 ### Modified Files
 
@@ -258,7 +262,8 @@ scripts/delivery/
 - `docs/onboardings/project-values.md` — 本specの技術ドキュメントのプレースホルダーに当てはまる値(資源一覧の場所、stateのバケット、Infisicalのプロジェクトと主体とフォルダ、Environment、必須チェックの名前、ルールセット、コードオーナー、管轄)を加える。
 - `docs/onboardings/README.md` — 初回の準備(開発者の手作業)、stagingへのデプロイの流れ、リリースとhotfixの手順へのリンクを加える。
 - `CLAUDE.md` — ディレクトリ構成の`apps/infra`の内訳、`.github`の説明、`scripts/delivery/`を更新する。
-- `docs/GUIDES/service/legal/001-compliance-policy.md`・`003-privacy-policy-outline.md` — 「データの保存場所」にD1・R2・Queuesは米国(管轄の保証)と記し、値の正を`docs/onboardings/project-values.md`にする。
+- `docs/GUIDES/service/legal/001-compliance-policy.md` — 「データの保存場所」の表に、D1・R2・Queuesは米国(管轄の保証)、Durable Objects(レート制限のカウントなど、ハッシュ化した一時的な値)は保存場所を保証しないと記し、値の正を`docs/onboardings/project-values.md`にする(K7)。
+- `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 「記載上の注意」の保存場所の項に、Cloudflareの資源の保存場所(D1・R2・Queuesは米国、Durable Objectsは保証しない)と値の正を記す。「国外移転の記載事項」(移転の法的根拠など)と委託先の一覧のRekognitionの記述はmedia-pipelineが書くため、本specは書き換えない(M-8)。
 
 ## System Flows
 
@@ -279,7 +284,7 @@ graph LR
 ```
 
 - `ci-gate`は`if: always()`で、`needs`の結果がすべて`success`でなければ失敗する。ルールセットはこの1つ(`checks / ci-gate`)だけを必須にする(5.7)。
-- `tests`・`e2e`だけが`id-token: write`を持ち、検査用の主体(devのプロジェクトのViewer)でInfisicalへ入る(6.3)。
+- `tests`・`e2e`だけが`id-token: write`を持ち、検査用の主体(プロジェクトのViewer)でInfisicalへ入り、devの環境だけを取り出す(6.3)。
 
 ### デプロイパイプライン
 
@@ -342,7 +347,7 @@ graph LR
     OIDC[github oidc token] --> ChecksId[ci checks identity]
     OIDC --> StagingId[ci deploy staging identity]
     OIDC --> ProdId[ci deploy prod identity]
-    ChecksId --> DevRoot[dev project root folder]
+    ChecksId --> DevRoot[dev environment root folder]
     StagingId --> StgRoot[staging root folder]
     StagingId --> StgTofu[staging ci tofu folder]
     StagingId --> StgCf[staging ci cloudflare folder]
@@ -355,6 +360,7 @@ graph LR
 ```
 
 - 主体のOIDCの縛り(subject・`job_workflow_ref`・audience)は「Supporting References」の表に従う(4.2・4.3)。
+- 3つの環境は1つのプロジェクトにあり(K3)、FreeプランのViewerはプロジェクト全体に効く。図の矢印は各コマンドが取り出す範囲で、権限の境界ではない。どの機械の主体も全環境を読めるリスクと緩和策は「Security Considerations」に従う。
 - 値は各コマンドがメモリに取り出し、起動時に`::add-mask::`で伏せ、必要な子プロセスの環境変数または標準入力にだけ渡す(4.7)。
 
 ## Requirements Traceability
@@ -511,7 +517,7 @@ graph LR
 **Responsibilities & Constraints**
 
 - `apps/infra/environments/staging.json`・`prod.json`に置き、OpenTofu(`jsondecode(file())`)と`scripts/delivery`(`parseResourceCatalog`)の両方が読む。秘密値を持たない。
-- 値は上流specの命名(「Supporting References」の資源一覧の表)に従う。prodのInfisicalの識別子は、launch-readinessが作るまで全桁0のUUIDとする。
+- 値は上流specの命名(「Supporting References」の資源一覧の表)に従う。`infisical.projectId`は、両環境とも既存のプロジェクト(`.infisical.json`の`workspaceId`)と同じ値にする(K3)。prodの主体の識別子(`infisical.identityId`)は、launch-readinessが作るまで全桁0のUUIDとする。
 - 後続specは`r2`・`queues`・`hostnames`のmapに項目を加えて資源を追加する(1.10)。キーは英小文字とハイフンで、Wrangler設定のバインディング名とは独立している。
 
 **Contracts**: State [x]
@@ -901,7 +907,12 @@ export declare function previousReleaseFromVersions(
 
 // worker-secrets.ts
 export const OPTIONAL_WORKER_SECRETS: Readonly<Record<WorkerKey, readonly string[]>>;
-// { api: [], event: ['EMAIL_SMOKE_TOKEN', 'EMAIL_SMOKE_RECIPIENT'], client: [], admin: [] }
+// {
+//   api: ['DISIFY_API_KEY'],
+//   event: ['EMAIL_SMOKE_TOKEN', 'EMAIL_SMOKE_RECIPIENT', 'MEDIA_SMOKE_TOKEN', 'DISIFY_API_KEY'],
+//   client: [],
+//   admin: [],
+// }
 export type WorkerSecretSelection =
   | { readonly ok: true; readonly secrets: Readonly<Record<string, string>> }
   | { readonly ok: false; readonly missing: readonly string[] }; // キー名だけ
@@ -947,6 +958,7 @@ export declare function releasePrBody(head: string, commits: readonly string[], 
 - `summarizePlan`は資源のアドレスと操作の種類だけを返し、属性の値を返さない(7.12)。`delete`・`replace`があれば要約の先頭に警告を出す。
 - `reconcileResourceIds`は、出力のうち`sensitive`のものを読み飛ばし、値を返さない(8.1)。
 - `selectWorkerSecrets`は必須のキーの欠落をキー名だけで返し、値を返さない(4.5・4.7)。
+- `OPTIONAL_WORKER_SECRETS`は、各specが宣言した任意のシークレットの一覧である(email-deliveryの`EMAIL_SMOKE_*`、media-pipelineの`MEDIA_SMOKE_TOKEN`、identity-authの`DISIFY_API_KEY`)。任意のシークレットを持つ後続specは、この一覧と「Supporting References」のInfisicalのキーの表へ追記する。各アプリの宣言から読む形にはしない。
 - `releasePrBody`は、headとprodの間のコミットの一覧、stagingでの確認・Expand/Contract・prodの識別子の反映のチェック項目、作成したワークフローの実行のURLを持つ。
 
 ### scripts/delivery(adapters)
@@ -1061,6 +1073,7 @@ export interface HttpProbe {
   4. client・adminのとき: `CLOUDFLARE_ENV=<env> bun run build`。
 - Output / destination: アプリのディレクトリで`bunx wrangler deploy [--env <env>] --tag <GITHUB_SHA> --message "<GITHUB_SHA> <実行のURL>" --secrets-file /dev/stdin`(client・adminは`--env`を付けずビルドの設定を使う)。シークレットのJSONは標準入力で渡し、出力は表示する(バインディングの名前と変数の値だけで、秘密値を含まない)。`parseDeployOutput`で版のIDと起動時間を読み、手順の要約に書く(7.6)。
 - Idempotency & recovery: 同じコミットで再実行すると新しい版になる(内容は同じ)。失敗したらジョブを止め、自動で戻さない(7.7)。`/dev/stdin`を読めない場合の代替はresearch.mdのRisksに従う。
+- Durable Objectのマイグレーション: Wrangler設定の`migrations`(クラスの追加など)は、`wrangler deploy`が同じ版で適用する。本specの導入後は、後続specが加えたDurable Object(identity-authの`LoginAttemptThrottle`など)もmainへのマージでstagingへ適用され、開発者の手作業は要らない。戻せない変更になる点はロールバックの制約(10.3)に従う。
 
 #### EmailSubscriptionEnsurer
 
@@ -1073,7 +1086,7 @@ export interface HttpProbe {
 
 - `wrangler queues subscription list <eventsQueueの名前> --json`(Dockerfileと同じ4.151.1のWrangler)を取り込み、`diffSubscription`で判定する。
 - `absent`なら`wrangler queues subscription create <Queue> --source email.sending --events message.bounced,message.complained,message.rejected,message.failed --zone-id <zoneId> --domain <domain> --name <subscriptionName>`を実行する。`present`なら何もしない。`mismatch`なら差分を表示して失敗し、作り直しは開発者が判断する(7.9)。
-- Risks: 管轄付きのQueueへの購読の到達は未確認(仮決定K1)。stagingの最初のデプロイで確かめる手順を`operations/001`に置く。
+- Risks: 管轄付きのQueueへの購読の到達は未確認(K1)。stagingの最初のデプロイで確かめる手順を`operations/001`に置く。
 
 #### PostDeployVerifier
 
@@ -1127,7 +1140,7 @@ export interface HttpProbe {
 
 - 「DeliveryCli」のサブコマンドの表のとおり。いずれも`core`の判定と`adapters`の呼び出しの組み合わせで、新しい境界を持たない。
 - `AUDIT_EXCEPTIONS`は`{ advisory: 'GHSA-...', reason: string, reviewBy: 'YYYY-MM-DD' }`の配列で、初版は空である(5.5)。
-- `InfisicalSession`の主体と対象: `checks`は`catalog/check-secrets.ts`(プロジェクトは`.infisical.json`の`workspaceId`、環境`dev`)、`staging`・`prod`は資源一覧の`infisical`。
+- `InfisicalSession`の主体と対象: `checks`は`catalog/check-secrets.ts`(プロジェクトは`.infisical.json`の`workspaceId`、環境`dev`)、`staging`・`prod`は資源一覧の`infisical`。3つとも同じプロジェクトで、取り出す環境だけが異なる(K3)。
 
 ### .github
 
@@ -1194,17 +1207,17 @@ export interface HttpProbe {
 
 - `infra/005-infrastructure-overview.md`: 構成図(Workers4つ・カスタムドメイン・D1・R2・Queues・Turnstile・Web Analytics・Email Sendingと購読・Service Bindings・外部サービス)と、CI/CDとシークレットの流れの図(mermaid)。ゾーン全体のルールを持たない方針(1.7)。
 - `infra/006-iac-with-opentofu.md`: ディレクトリ構成、資源一覧の項目、モジュールの境界と資源の追加手順(1.10)、状態の保管(S3互換backend・ロックファイル・環境ごとのバケット)と暗号化、`ephemeral`の資格情報、providerの固定とロックファイルのプラットフォーム、2段階の適用、`prevent_destroy`、`tofu test`、管轄の注意(Wranglerのバインディング・S3の接続先・Data Access Logs・デッドレターの管轄の一致・変更不可、2.4)、既存の資源の`import`(12.2)。
-- `infra/007-ci-cd-pipelines.md`: ワークフローとジョブの構成、検査の順、E2Eの実行環境(`/workspace`・Mailpit・Chromium・Node)、カバレッジの合算、予行、デプロイの段階、直前のリリースの特定、購読、デプロイ後の確認、直列化、ログに値を出さない規則、ツールの版の固定と同期、Expand/Contractの前提(7.13)。
-- `operations/001-deployment.md`: 初回の準備の表(実施者・順序・確認方法、12.1)、必須シークレットの一覧(12.3)、stagingの最初のデプロイと識別子の反映(12.4・4.8)、mainからstagingへの自動デプロイ、リリースのPR・承認・マージ、hotfixとprodからmainへの戻しのマージ、prodの準備の手順(8.4)、シークレットの追加とWorkerからの削除。
+- `infra/007-ci-cd-pipelines.md`: ワークフローとジョブの構成、検査の順、E2Eの実行環境(`/workspace`・Mailpit・Chromium・Node)、カバレッジの合算、予行、デプロイの段階、Durable Objectのマイグレーションがデプロイで適用されること、直前のリリースの特定、購読、デプロイ後の確認、直列化、ログに値を出さない規則、ツールの版の固定と同期、Expand/Contractの前提(7.13)。
+- `operations/001-deployment.md`: 初回の準備の表(実施者・順序・確認方法、12.1)、各specが宣言した必須と任意のシークレットの一覧と登録の時期(stagingは必須にする変更のマージ前、prodはlaunch-readiness、12.3)、stagingの最初のデプロイと識別子の反映(12.4・4.8)、mainからstagingへの自動デプロイ、リリースのPR・承認・マージ、hotfixとprodからmainへの戻しのマージ、prodの準備の手順(8.4)、シークレットの追加とWorkerからの削除。
 - `operations/002-rollback-and-recovery.md`: 逆順のロールバックと版の特定(10.1・10.2)、ロールバックの制約とデータベースの復元(10.3)、実行者(10.4)、状態のロックの解除と復旧、CIの外での一時的な操作(4.9)。
-- `security/003-ci-secrets-and-repository-protection.md`: 主体の分離とOIDCの縛り、プロジェクトの分け方(環境ごとの権限が無いプランの場合)、フォルダの構成、ロールは読み取りだけ(4.6)、マスクとログの規則、フォークのPR(5.8)、ルールセット・Environment・Actionsの設定(9.10)、残るリスクとAIエージェントの対策(9.11)。
+- `security/003-ci-secrets-and-repository-protection.md`: 主体の分離とOIDCの縛り、環境ごとの権限が無いプランで1つのプロジェクトを使う場合のリスクと緩和策(どの機械の主体も全環境を読めること、プランを上げた場合の分離の手順、13.3)、フォルダの構成、ロールは読み取りだけ(4.6)、マスクとログの規則、フォークのPR(5.8)、ルールセット・Environment・Actionsの設定(9.10)、残るリスクとAIエージェントの対策(9.11)。
 - `security/001`・`testing/001`への追記、各`README.md`の文書一覧、`project-values.md`・`tech-stack.md`・オンボーディング・CLAUDE.md・準拠方針とプライバシーポリシー骨子の更新は「Modified Files」のとおり(2.5・13.5〜13.7)。
 
 ## Data Models
 
 ### Domain Model
 
-- 環境(`staging`・`prod`)ごとに、資源一覧1つ・状態1つ・Infisicalのプロジェクト1つ・GitHubのEnvironment1つ・主体1つが1対1に対応する。検査は環境を持たず、devのプロジェクトと検査用の主体を使う。
+- 環境(`staging`・`prod`)ごとに、資源一覧1つ・状態1つ・Infisicalの環境1つ・GitHubのEnvironment1つ・主体1つが1対1に対応する。検査は環境を持たず、Infisicalのdevの環境と検査用の主体を使う。Infisicalのプロジェクトは3つの環境で共通の1つである(K3)。
 - 資源の識別子(D1の`database_id`・Turnstileのサイトキー・Web Analyticsのトークン)は、OpenTofuの状態が正で、Wrangler設定はその写しである。`reconcile-ids`が写しの一致を保証する。
 - 版のタグ(デプロイしたコミット)は、Workerの版の情報としてCloudflareに保存され、直前のリリースの特定とロールバックの版の特定に使う。
 
@@ -1214,8 +1227,8 @@ export interface HttpProbe {
 
 | 環境    | バケット                              | キー                     | 接続先                                            | 管轄           |
 | ------- | ------------------------------------- | ------------------------ | ------------------------------------------------- | -------------- |
-| staging | `genai-example-2-tofu-state-staging`  | `live/terraform.tfstate` | `https://<アカウントID>.r2.cloudflarestorage.com` | なし(仮決定K2) |
-| prod    | `genai-example-2-tofu-state-prod`     | `live/terraform.tfstate` | 同上                                              | なし(仮決定K2) |
+| staging | `genai-example-2-tofu-state-staging`  | `live/terraform.tfstate` | `https://<アカウントID>.r2.cloudflarestorage.com` | なし(K2)       |
+| prod    | `genai-example-2-tofu-state-prod`     | `live/terraform.tfstate` | 同上                                              | なし(K2)       |
 
 - ロックはOpenTofuが同じキーに`.tflock`を条件付き書き込みで置く(`use_lockfile`)。状態と計画はAES-GCMで暗号化される。
 
@@ -1285,12 +1298,18 @@ export interface HttpProbe {
 
 ## Security Considerations
 
-- **主体の分離**: 検査はdevだけ、stagingのデプロイはstagingだけ、prodのデプロイはprodだけを読める(仮決定K3)。stagingとprodの主体はEnvironmentのsubjectと`deploy.yml`の`job_workflow_ref`で縛り、Environmentのデプロイ対象ブランチ(staging→main、prod→prod)と組み合わせて、PRのコードやほかのワークフローからは届かない(4.2・4.3)。機械の主体はViewerで、書き込めない(4.6)。
+- **主体の分離**: 検査・stagingのデプロイ・prodのデプロイで別々の主体を使い、検査はdevだけ、stagingのデプロイはstagingだけ、prodのデプロイはprodだけを取り出す(4.2)。stagingとprodの主体はEnvironmentのsubjectと`deploy.yml`の`job_workflow_ref`で縛り、Environmentのデプロイ対象ブランチ(staging→main、prod→prod)と組み合わせて、PRのコードやほかのワークフローからはその主体で認証できない(4.3)。機械の主体はViewerで、書き込めない(4.6)。
+- **1つのプロジェクトで全環境を読める主体**(K3で受け入れたリスク): Infisicalは1つのプロジェクトのままで、FreeプランのViewerはプロジェクト全体に効く。そのため、どの機械の主体も権限の上では全環境のシークレットを読める。同じリポジトリへpushできる者がワークフローを書き換えたPRや、承認数0のmainへマージされたコードは、他の環境の値を読み出し得る。Freeプランでできる範囲で、次のとおり緩和する(詳細はresearch.mdのRisks)。
+  - prodの値はlaunch-readinessがリリース時に登録し、それまでprodの環境に値を置かない(Q6)。
+  - `ci-deploy-prod`のOIDCの縛り(Environment`prod`・`deploy.yml@refs/heads/prod`・デプロイ対象ブランチ)を保ち、フォークのPRと他のリポジトリにはトークンを渡さない。
+  - 各コマンドは自分の範囲の環境だけを取り出し、使う前にマスクする。主体はViewer、アクセストークンの有効期限は短くし、長期の認証情報を作らない。
+  - 主体を範囲ごとに分けておき、Proプランへ上げれば、各主体に環境ごとのロールを割り当てるだけで環境を分離できるようにする。
+  - `security/003`に、このリスクと緩和策、プランを上げた場合の分離の手順を書く(13.3)。
 - **長期の認証情報を持たない**: GitHubのSecretsとVariablesにInfisicalの資格情報を置かない。CloudflareのトークンとR2の鍵はInfisicalにだけある(4.1)。
 - **ログ**: 取り出した値は使う前にmaskし、`capture`で取り込む出力(計画のJSON・`tofu output`・`infisical export`)は表示しない。計画は要約、適用は資源の行だけを表示する(4.7・7.12)。
 - **ワークフローの注入**: `pull_request_target`を使わず、入力とイベントの値を`run`に直接展開しない。チェックアウトの資格情報を残さない(W5・W6)。
 - **承認の偽装**: コードオーナーの承認を必須にし、botの承認を数えない。開発者の名義での承認・マージを防ぐため、Claude設定に`Bash(gh pr review*)`・`Bash(gh api*)`の拒否を加えるよう開発者に依頼する(9.11)。
-- **同じアカウントの資格情報**(仮決定K5): stagingのトークンがprodの資源に届くリスクを受け入れ、`prevent_destroy`・Time Travel・値の非表示で緩和する。
+- **同じアカウントの資格情報**(K5): stagingのトークンがprodの資源に届くリスクを受け入れ、`prevent_destroy`・Time Travel・値の非表示で緩和する。
 - **アクセストークンの受け渡し**: Infisicalのアクセストークンは`GITHUB_ENV`で同じジョブの後続の手順に渡る。後続の手順は本リポジトリのコマンドとSHAで固定したアクションだけにし、主体のトークンの有効期限を短くする。
 - **公開リポジトリ**: 資源一覧のアカウントIDとゾーンID、主体のIDとプロジェクトのIDは秘密でない識別子としてコミットする(OIDCのクレームと組み合わせないと使えない)。
 
@@ -1314,23 +1333,23 @@ graph TB
 
 - 既存のデータは無い。上流specの手順(email-delivery)で手作業により作成済みのstagingの資源(送信ドメイン・メールイベント用Queue・購読)がある場合は、`live/main.tf`に`import`ブロックを一時的に置いて取り込むか、開発者が削除してから最初の適用を行う(12.2)。購読はOpenTofuの管理外のため、そのまま`ensure-email-subscription`が`present`と判定する。
 - 開発者の手作業(AIエージェントは行わない): 「Supporting References」の初回の準備の表の全項目、stagingの最初の実行の後のTurnstileの秘密鍵の登録、ルールセットの変更、Claude設定のdenyの追加。
-- prodはlaunch-readinessが、prodのstateのバケットとR2トークン、Infisicalのprodのプロジェクトと主体とシークレット、資源一覧`prod.json`のInfisicalの識別子を用意し、リリースのPRのマージで資源を作成して識別子を反映し、2回目のリリースでWorkerをデプロイする(8.4)。
+- prodはlaunch-readinessが、prodのstateのバケットとR2トークン、Infisicalのprodの環境のフォルダと各specが宣言したシークレットの値、prodの主体、資源一覧`prod.json`の主体の識別子を用意し、リリースのPRのマージで資源を作成して識別子を反映し、2回目のリリースでWorkerをデプロイする(8.4)。
 
 ## 上流spec・他specへの影響
 
 | 対象                          | 影響                                                                                                                                                                                                      |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| backend-platform              | api・eventのWrangler設定に`workers_dev: false`・`preview_urls: false`と、staging・prodのR2の`jurisdiction: "us"`が加わる。`wrangler-config.unit.test.ts`は管轄と公開URLを期待値に含めてよい。`RateLimitCounter`のDurable Objectを`jurisdiction("us")`で使う依頼(仮決定K7) |
+| backend-platform              | api・eventのWrangler設定に`workers_dev: false`・`preview_urls: false`と、staging・prodのR2の`jurisdiction: "us"`が加わる。`wrangler-config.unit.test.ts`は管轄と公開URLを期待値に含めてよい。`RateLimitCounter`のDurable Objectの管轄は指定しない(K7) |
 | frontend-platform             | client・adminのWrangler設定に`workers_dev: false`・`preview_urls: false`が加わる。疎通確認のE2Eに`@smoke`タグが付く                                                                                     |
-| email-delivery                | メールイベント用QueueとデッドレターがすべてQueueの`us`の管轄になる(仮決定K1)。送信ドメインのプレビューの無効化・Queueと購読の作成は本specが行い、手作業から外れる                                     |
+| email-delivery                | メールイベント用QueueとデッドレターがすべてQueueの`us`の管轄になる(K1)。送信ドメインのプレビューの無効化・Queueと購読の作成は本specが行い、手作業から外れる                                             |
 | api-gateway                   | 直前のリリースはclientのWorkerの版のタグから特定する。`graphql:allowlist --previous-ref`の契約は変えない                                                                                                 |
 | dev-tooling                   | ルートの`package.json`に`delivery`・`infra:check`・`infra:fmt`が加わる。`scripts/delivery`はルートの検査と単体テストの対象になる                                                                         |
-| identity-auth(Wave 1)         | ログイン試行のDurable Objectを`jurisdiction("us")`で使う依頼(仮決定K7)                                                                                                                                   |
-| media-pipeline(Wave 1)        | R2をS3 APIで使う場合の接続先は`https://<ACCOUNT_ID>.us.r2.cloudflarestorage.com`。管轄付きのバケットではData Access Logsを使えない。画像判定専用のQueueを作る場合は資源一覧の`queues`とWrangler設定へ同じ名前で加え、`us`の管轄になる |
-| content-processing(Wave 1)    | 自然言語分析のAPIキーは開発者がstaging・prodの`/`へ登録し、Wrangler設定の`secrets.required`に宣言すればデプロイ時に反映される。`apps/common-lib`はCIの導入と配置に自動で含まれる                        |
-| launch-readiness              | prodの準備(stateのバケット・Infisicalのプロジェクトと主体とシークレット・資源一覧の識別子)・資源の作成・識別子の反映・最初のデプロイ、Sentryのソースマップのアップロードの手順の追加、stagingの`SENTRY_DSN`の値(仮決定K8) |
+| identity-auth(Wave 1)         | 任意のシークレット`DISIFY_API_KEY`はapi・eventの`OPTIONAL_WORKER_SECRETS`に載り、Infisicalのstagingに値があればデプロイ時に反映される。prodの値はlaunch-readinessが登録する。`LoginAttemptThrottle`のDurable Objectの管轄は指定しない(K7)。そのマイグレーションは、本specの導入後はmainへのマージでCIのデプロイが適用する(M-11)。apiの`CLIENT_SITE_ORIGIN`の3環境の値は「Supporting References」の一覧と同じにする(M-1) |
+| media-pipeline(Wave 1)        | R2をS3 APIで使う場合の接続先は`https://<ACCOUNT_ID>.us.r2.cloudflarestorage.com`。管轄付きのバケットではData Access Logsを使えない。画像判定専用のQueueを作る場合は資源一覧の`queues`とWrangler設定へ同じ名前で加え、`us`の管轄になる。eventの必須の`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`はInfisicalのキーの表に載る。stagingの値は`secrets.required`へ加える変更をmainへマージする前に登録し、prodの値はlaunch-readinessが登録する。任意の`MEDIA_SMOKE_TOKEN`はeventの`OPTIONAL_WORKER_SECRETS`に載る(stagingだけに登録)。準拠方針とプライバシーポリシー骨子のRekognitionへの送信と移転の根拠はmedia-pipelineが書き、本specのCloudflareの保存場所の記述と互いに上書きしない(M-8) |
+| content-processing(Wave 1)    | eventの必須の`GOOGLE_NL_API_KEY`はInfisicalのキーの表に載る。stagingの値は`secrets.required`へ加える変更をmainへマージする前に開発者が登録し、prodの値はlaunch-readinessが登録する。client・adminの`CLIENT_SITE_ORIGIN`の3環境の値は「Supporting References」の一覧と同じにする(M-1)。`apps/common-lib`はCIの導入と配置に自動で含まれる |
+| launch-readiness              | prodの準備(stateのバケット・Infisicalのprodの主体とフォルダ・各specが宣言したprodのシークレットの値・資源一覧の主体の識別子)・資源の作成・識別子の反映・最初のデプロイ、Sentryのソースマップのアップロードの手順の追加、stagingの`SENTRY_DSN`の値(K8) |
 
-- 仮決定K8(research.md): backend-platform・frontend-platformはstagingの`secrets.required`に`SENTRY_DSN`を持ち、値の登録をlaunch-readinessとしている。stagingへの随時デプロイには最初のstagingのデプロイの前に値が要るため、本specの初回の準備で開発者がstaging用のSentryのDSNを登録する(Sentryのstaging用のプロジェクトはlaunch-readinessより前に作る)。
+- K8(research.md、承認済み): backend-platform・frontend-platformはstagingの`secrets.required`に`SENTRY_DSN`を持ち、値の登録をlaunch-readinessとしている。stagingへの随時デプロイには最初のstagingのデプロイの前に値が要るため、本specの初回の準備で開発者がstaging用のSentryのDSNを登録する(Sentryのstaging用のプロジェクトはlaunch-readinessより前に作る)。
 
 ## Supporting References
 
@@ -1355,22 +1374,31 @@ graph TB
 
 ### Infisicalのフォルダとキー
 
-| プロジェクト(仮決定K3) | 環境      | フォルダ         | キー                                                                                                   | 使う手順                          | 登録の時期                                                         |
-| ---------------------- | --------- | ---------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------ |
-| 既存(dev)              | `dev`     | `/`              | 上流specのdevの値                                                                                      | 検査のテスト・E2E                 | 上流specの手順                                                     |
-| staging                | `staging` | `/`              | `HASH_PEPPER`・`TURNSTILE_SECRET_KEY`・`SENTRY_DSN`・`EMAIL_ALLOWED_RECIPIENTS`、任意の`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT` | Workerのデプロイ                  | 最初の実行の前(`TURNSTILE_SECRET_KEY`はウィジェットの作成後)       |
-| staging                | `staging` | `/ci/tofu`       | `TF_VAR_state_passphrase`(16文字以上)・`TF_VAR_state_access_key_id`・`TF_VAR_state_secret_access_key` | OpenTofu                          | 最初の実行の前                                                     |
-| staging                | `staging` | `/ci/cloudflare` | `CLOUDFLARE_API_TOKEN`                                                                                 | OpenTofuのprovider・Wrangler      | 最初の実行の前                                                     |
-| prod                   | `prod`    | 上と同じ構成     | 上と同じ(`EMAIL_ALLOWED_RECIPIENTS`・任意の値は除く)                                                   | 同上                              | launch-readiness                                                   |
+プロジェクトは既存の1つ(`.infisical.json`の`workspaceId`)で、dev・staging・prodの環境を使う(K3)。
+
+| 環境      | フォルダ         | キー(使うWorker、宣言したspec)                                                                                                                                                                   | 使う手順                          | 登録の時期                                                                     |
+| --------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------ |
+| `dev`     | `/`              | 各specのdevの値                                                                                                                                                                                  | 検査のテスト・E2E(ローカルと共用) | 各specの手順                                                                   |
+| `staging` | `/`              | 必須: `HASH_PEPPER`(api・event)・`TURNSTILE_SECRET_KEY`(api)・`SENTRY_DSN`(4つのWorker)・`EMAIL_ALLOWED_RECIPIENTS`(event)                                                                     | Workerのデプロイ                  | 最初の実行の前(`TURNSTILE_SECRET_KEY`はウィジェットの作成後)                   |
+| `staging` | `/`              | 必須(Wave 1): `GOOGLE_NL_API_KEY`(event、content-processing)・`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`(event、media-pipeline)                                              | Workerのデプロイ                  | そのキーを`secrets.required`へ加える変更をmainへマージする前                   |
+| `staging` | `/`              | 任意(`OPTIONAL_WORKER_SECRETS`): `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`(event、email-delivery)・`MEDIA_SMOKE_TOKEN`(event、media-pipeline)・`DISIFY_API_KEY`(api・event、identity-auth) | Workerのデプロイ                  | 任意。登録すると次のデプロイで反映される                                       |
+| `staging` | `/ci/tofu`       | `TF_VAR_state_passphrase`(16文字以上)・`TF_VAR_state_access_key_id`・`TF_VAR_state_secret_access_key`                                                                                           | OpenTofu                          | 最初の実行の前                                                                 |
+| `staging` | `/ci/cloudflare` | `CLOUDFLARE_API_TOKEN`                                                                                                                                                                           | OpenTofuのprovider・Wrangler      | 最初の実行の前                                                                 |
+| `prod`    | stagingと同じ構成 | `/`はstagingと同じ必須のキー(`EMAIL_ALLOWED_RECIPIENTS`を除く)と任意の`DISIFY_API_KEY`。疎通確認のトークン(`EMAIL_SMOKE_*`・`MEDIA_SMOKE_TOKEN`)は登録しない                                     | 同上                              | launch-readinessがリリース時に登録する(本specと各specの手順では登録しない)     |
+
+- 必須のキーをstagingに登録しないまま、そのキーを`secrets.required`へ加える変更をmainへマージすると、`selectWorkerSecrets`が欠落で失敗し、以後のstagingのデプロイがすべて止まる。そのため、各specの手順では、stagingの値をマージの前に登録する。
+- 後続specがシークレットを宣言したら、この表へ追記する。任意のシークレットは`OPTIONAL_WORKER_SECRETS`にも加える。`operations/001`のシークレットの一覧は、この表を写す(12.3)。
 
 ### 主体とOIDCの縛り
 
-| 主体                 | プロジェクトとロール | subject                                                                  | `job_workflow_ref`                                                                   | audience                         |
+| 主体                 | ロール(取り出す環境) | subject                                                                  | `job_workflow_ref`                                                                   | audience                         |
 | -------------------- | -------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | -------------------------------- |
-| `ci-checks`          | dev・Viewer          | `repo:kurachiweb/genai-example-2-launch-platform:*`                      | `kurachiweb/genai-example-2-launch-platform/.github/workflows/checks.yml@*`          | `https://github.com/kurachiweb`  |
-| `ci-deploy-staging`  | staging・Viewer      | `repo:kurachiweb/genai-example-2-launch-platform:environment:staging`    | `kurachiweb/genai-example-2-launch-platform/.github/workflows/deploy.yml@refs/heads/main` | 同上                        |
-| `ci-deploy-prod`     | prod・Viewer         | `repo:kurachiweb/genai-example-2-launch-platform:environment:prod`       | `kurachiweb/genai-example-2-launch-platform/.github/workflows/deploy.yml@refs/heads/prod` | 同上                        |
+| `ci-checks`          | Viewer(dev)          | `repo:kurachiweb/genai-example-2-launch-platform:*`                      | `kurachiweb/genai-example-2-launch-platform/.github/workflows/checks.yml@*`          | `https://github.com/kurachiweb`  |
+| `ci-deploy-staging`  | Viewer(staging)      | `repo:kurachiweb/genai-example-2-launch-platform:environment:staging`    | `kurachiweb/genai-example-2-launch-platform/.github/workflows/deploy.yml@refs/heads/main` | 同上                        |
+| `ci-deploy-prod`     | Viewer(prod)         | `repo:kurachiweb/genai-example-2-launch-platform:environment:prod`       | `kurachiweb/genai-example-2-launch-platform/.github/workflows/deploy.yml@refs/heads/prod` | 同上                        |
 
+- 3つの主体は同じプロジェクトにあり、FreeプランのViewerはプロジェクト全体に効く。括弧内は各コマンドが取り出す環境で、権限の境界ではない(K3。「Security Considerations」)。
+- 主体の数は、開発者を含めて4つ(`ci-deploy-prod`はlaunch-readinessが作る)で、Freeプランの上限5に収まる。
 - アクセストークンの有効期限は、検査30分・デプロイ60分を目安に主体に設定する。
 
 ### 初回の準備(開発者の手作業)
@@ -1379,11 +1407,22 @@ graph TB
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | 1   | stagingのstateのR2バケットを作り、そのバケットだけを読み書きできるR2のAPIトークンを発行する                                                                 | ダッシュボードでバケットとトークンの範囲を確かめる             |
 | 2   | stagingのCloudflareのAPIトークンを作る(D1・R2・Queues・Workers Scripts・Turnstile・Web Analytics・Email Sendingの編集、アカウント設定の読み取り、ゾーン`kurachiweb.com`のDNS・Workers Routesの編集と読み取り。正確な権限名は作成時に確かめる) | `wrangler whoami`相当の確認をCIの初回の実行で行う |
-| 3   | Infisicalにstaging用のプロジェクト(仮決定K3)とフォルダ`/ci/tofu`・`/ci/cloudflare`を作り、上の表のキーを登録する                                            | ダッシュボードの一覧                                           |
-| 4   | Infisicalに主体`ci-checks`(devのプロジェクト)・`ci-deploy-staging`を作り、OIDC認証を上の表のとおりに縛り、ロールをViewerにする                              | Viewerが割り当てられること(Risks)                              |
-| 5   | 資源一覧`staging.json`にInfisicalのプロジェクトIDと主体のIDを、`check-secrets.ts`に`ci-checks`の主体のIDを記入するPRを作る(AIエージェントが行える)         | `contract-check`の成功                                         |
+| 3   | 既存のInfisicalのプロジェクトのstagingの環境に、フォルダ`/ci/tofu`・`/ci/cloudflare`を作り、上の表のそのフォルダのキーを登録する(プロジェクトは新設しない。K3) | ダッシュボードの一覧                                           |
+| 4   | 既存のプロジェクトに主体`ci-checks`・`ci-deploy-staging`を作り、OIDC認証を上の表のとおりに縛り、ロールをViewerにする                                         | Viewerが割り当てられること(Risks)                              |
+| 5   | 資源一覧`staging.json`に`ci-deploy-staging`の主体のIDを、`check-secrets.ts`に`ci-checks`の主体のIDを記入するPRを作る(プロジェクトのIDは`.infisical.json`と同じで記入済み。AIエージェントが行える) | `contract-check`の成功                       |
 | 6   | GitHubのEnvironment`staging`(対象ブランチ`main`)・`prod`(対象ブランチ`prod`)を作る                                                                          | Settings → Environments                                        |
 | 7   | Actionsの設定で、ワークフローの既定の権限を読み取りにし、「GitHub ActionsにPRの作成と承認を許可」を有効にする                                              | Settings → Actions → General                                   |
 | 8   | 既存のルールセット(main・prod)に必須チェック`checks / ci-gate`を加え、prodのルールセット(承認1・コードオーナーの承認・push時に古い承認を取り消す・最後のpushの承認は無効・例外なし)を作る | 本specのPRで必須チェックが表示される                    |
 | 9   | Claude設定のdenyに`Bash(gh pr review*)`・`Bash(gh api*)`を加える                                                                                           | AIエージェントのコマンドが拒否される                           |
-| 10  | stagingの`HASH_PEPPER`・`SENTRY_DSN`(仮決定K8)・`EMAIL_ALLOWED_RECIPIENTS`を登録する                                                                       | ダッシュボードの一覧                                           |
+| 10  | stagingの`/`に`HASH_PEPPER`・`SENTRY_DSN`(K8)・`EMAIL_ALLOWED_RECIPIENTS`を登録する。Wave 1以降のspecが宣言する必須のキーは、上の表の「登録の時期」のとおり各specのマージの前に登録する | ダッシュボードの一覧                       |
+
+### ホスト名から導かれる変数の値(M-1)
+
+| 変数                 | Worker | 所有するspec       | ローカル                 | staging                                                     | prod                                                |
+| -------------------- | ------ | ------------------ | ------------------------ | ----------------------------------------------------------- | --------------------------------------------------- |
+| `CLIENT_SITE_ORIGIN` | client | content-processing | `http://localhost:48044` | `https://genai-example-2-client-staging.lab.kurachiweb.com` | `https://genai-example-2-client.lab.kurachiweb.com` |
+| `CLIENT_SITE_ORIGIN` | admin  | content-processing | 同上                     | 同上                                                        | 同上                                                |
+| `CLIENT_SITE_ORIGIN` | api    | identity-auth      | 同上                     | 同上                                                        | 同上                                                |
+
+- 値は資源一覧のclientのホスト名から導かれる。Wrangler設定の変数は所有するspecが書き、本specは値の一覧を持つだけである。両specは名前と値をそろえる。
+- clientのホスト名を変えるときは、所有する両specとこの一覧を合わせて直す(Revalidation Triggers)。

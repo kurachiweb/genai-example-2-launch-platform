@@ -7,7 +7,7 @@
 - **Key Findings**:
   - Cloudflare provider 5.27.0(OpenTofu Registryで2026-10-03公開、本日時点で15日経過)の`cloudflare_d1_database`・`cloudflare_r2_bucket`・`cloudflare_queue`は、いずれも`jurisdiction`に`"us"`を受け付ける。開発者が選んだ米国の管轄(Q3)は、代替手段を使わずにOpenTofuだけで実現できる。5.28.0(2026-10-13公開)は2週間に満たないため採らない。
   - 米国の管轄のR2バケットは、Workersのバインディングに`jurisdiction`の指定が要り、S3 APIの接続先が`https://<ACCOUNT_ID>.us.r2.cloudflarestorage.com`になり、Data Access Logsを使えない。Queuesの管轄はバインディングに指定が要らないが、デッドレターキューは送り元と同じ管轄でなければならない。email-deliveryのメールイベント用Queueのデッドレターは本体のデッドレターなので、Queueはすべて同じ管轄にそろえる必要がある。
-  - InfisicalのFreeプランは、主体(人間と機械の合計)5つ・プロジェクト数無制限・環境3つで、独自のロール(環境ごとの権限)を使えない。1つのプロジェクトのままでは、検査用の主体がprodのシークレットも読めてしまう。環境ごとにプロジェクトを分ければ、主体4つ(開発者・検査・staging・prod)で分離できる。
+  - InfisicalのFreeプランは、主体(人間と機械の合計)5つ・プロジェクト数無制限・環境3つで、独自のロール(環境ごとの権限)を使えない。1つのプロジェクトのままでは、CIの機械の主体がすべての環境のシークレットを読める。開発者はこのリスクを受け入れ、既存の1つのプロジェクトのdev・staging・prodの環境を使うと決めた(K3)。主体は4つ(開発者・検査・stagingのデプロイ・prodのデプロイ)で、上限5に収まる。
   - `GITHUB_TOKEN`で作ったプルリクエストは新しいワークフローを起動しない。main→prodのプルリクエストの必須チェックは、同じコミットに対するmainへのpushの検査結果で満たす。GitHub AppとBotはコードオーナーになれないため、コードオーナーの承認を必須にすれば、ワークフローによる承認ではprodへのマージの条件を満たせない(Q5)。
   - Workersのカスタムドメインは、Workerが存在しないと作れない。OpenTofu 1.13の`-exclude`で、1回目の適用からカスタムドメインを外し、Workerのデプロイの後に2回目の適用で作る。Wrangler設定に`routes`を書かず`workers_dev: false`にすれば、Wranglerは外部で作ったカスタムドメインを変更しない。
   - `.claude/settings.json`は`*wrangler deploy*`を拒否するため、AIエージェントは`wrangler deploy --dry-run`もローカルで実行できない。デプロイの予行はCIの検査で行い、AIエージェントが確かめられるのは`tofu fmt`・`tofu validate`・`tofu test`(モックのプロバイダ)と、TypeScriptのスクリプトの単体テストまでとする。
@@ -42,7 +42,7 @@
 - providerの版: roadmapで完全固定と決まっている。版は設計で決める(Research Log「Cloudflare providerの版と管轄の対応」)。
 - D1の`read_replication`: `mode = "disabled"`を明示する。backend-platformの`createDatabase`は`env.DB`を直接使い、Sessions APIを使わないため、レプリカを有効にしても効果が無い。
 - stateの暗号化・パスフレーズのInfisicalからの注入・`ephemeral`リソースとOIDC認証: briefとroadmap、`security/001-secret-management.md`で決定済み。
-- 環境種別: `infra/002-environments.md`で決定済み。staging・prodは同一のCloudflareアカウントを使う。Infisicalのプロジェクトの分け方は仮決定K3とする。
+- 環境種別: `infra/002-environments.md`で決定済み。staging・prodは同一のCloudflareアカウントを使う。Infisicalは既存の1つのプロジェクトのdev・staging・prodの環境を使う(K3)。
 - 資源の名前・Worker名・Queue名・`namespace_id`・送信ドメイン名: backend-platform・email-delivery・frontend-platformのSupporting Referencesと、email-delivery Q6で決定済み。
 - 識別子の反映方法: 実際の値をWrangler設定へ書き込んでコミットする。backend-platformとfrontend-platformが「infra-deliveryが置き換える」と決めている。prodの値はQ6によりlaunch-readinessが反映する。
 - Turnstileのウィジェット: 環境ごとに1つとし、client・adminの両ホスト名を登録する。モードは`managed`とする。
@@ -57,20 +57,31 @@
 - フォークからのPR: リポジトリは公開のため、フォークのPRにはシークレットもOIDCのトークンも渡らない。貢献は同じリポジトリのブランチからに限る前提として文書に書く。
 - Sentryへのソースマップのアップロード: どのspecも扱っていない。Sentryのプロジェクトと値を所有するlaunch-readinessが、本specのデプロイパイプラインへ手順を追加する(requirementsのAdjacent expectationsに明記)。
 
-### 仮決定(開発者確認待ち)
+### 仮決定(2026-10-18に開発者が承認)
 
-設計中に見つかった、開発者の判断が要る新しい論点である。回答(Q3・Q5・Q6)と上流specに最も整合する案を選んで設計を進めた。
+設計中に見つかった、開発者の判断が要る新しい論点である。回答(Q3・Q5・Q6)と上流specに最も整合する案を選んで設計を進め、2026-10-18に開発者が確認した。K1・K2・K4・K5・K6・K8は選んだ案のとおりに承認された。K3・K7は開発者の回答で変わり、下表の「決定」は変更後の内容である。
 
-| #   | 論点                                       | 選んだ案                                                                                                                                                                                                                                              | 他の選択肢                                                                                                                                                                        |
+| #   | 論点                                       | 決定                                                                                                                                                                                                                                                  | 他の選択肢(記録)                                                                                                                                                                  |
 | --- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| K1  | Queuesの管轄                               | 本体・デッドレター・メールイベント用と、後続specが追加するQueueを、すべて`us`の管轄で作る。メッセージに宛先のメールアドレスなどの個人情報が入り、デッドレターは送り元と同じ管轄が必須のため、全Queueをそろえる                                      | 管轄を指定しない(既定)。準拠方針に「一時的なメッセージは保存場所を保証しない」と書く。メールイベントの購読が管轄付きのQueueへ届かないと分かった場合の切り替え先でもある             |
-| K2  | stateの保管先の分け方と管轄                | 環境ごとに別のバケット(`genai-example-2-tofu-state-staging`・`-prod`)を作り、管轄は指定しない。接続先は通常のS3 API(`https://<ACCOUNT_ID>.r2.cloudflarestorage.com`)。バケット単位のR2 APIトークンで環境ごとに権限を分け、Data Access Logsで読み取りを追える | 1つのバケットをキーで分ける(トークンが両環境のstateに届く) / `us`の管轄で作る(接続先が`.us.`になり、Data Access Logsを使えない)                                                      |
-| K3  | Infisicalのプロジェクトの分け方            | 既存のプロジェクトをdev(ローカルと検査)用とし、staging用・prod用のプロジェクトを新設する。主体は開発者・検査・stagingのデプロイ・prodのデプロイの4つ(Freeプランの上限5以内)                                                                        | 1つのプロジェクトのまま(検査の主体がprodも読める) / Proプランへ上げて環境ごとのロールで分ける(費用が掛かる)                                                                          |
-| K4  | リリースのPRの作成の契機                   | 開発者がGitHubの画面からワークフローを手動で起動し、`main`または`hotfix/<名前>`からprodへのPRをbotに作らせる。hotfixのPRも同じワークフローで作る(開発者が自分のPRを承認できないため)                                                                 | stagingへのデプロイのたびに自動で作る(リリース前から開いたPRが残り、誤ってマージしやすい)                                                                                          |
-| K5  | CloudflareのAPIトークンの範囲              | 環境ごとに1つのトークンをOpenTofuとWranglerで共用する。同じアカウントのため、stagingのトークンがprodの資源にも権限を持つ。このリスクを受け入れ、prodの資源の削除防止・D1のTime Travel・トークンの値を表示しない運用で緩和する                         | 用途ごとに分ける(同じジョブで両方を使うため効果が小さい) / 環境ごとにアカウントを分ける(同じゾーンのカスタムドメインを使うため不可)                                                 |
-| K6  | デプロイの後の確認                         | stagingは`@smoke`タグを付けたE2Eテストをstagingのhttpsへ実行する。prodはapi・eventの`/health`とclientのトップページの応答だけを確かめる。frontend-platformの疎通確認のE2Eに`@smoke`タグを付ける                                                    | stagingで全E2Eを実行する(Mailpitなどローカル専用の前提を持つテストが失敗する) / デプロイの後に確認しない                                                                          |
-| K7  | Durable Objectsの保存場所                  | 準拠方針の表に載るDurable Objects(レート制限のカウンタ・ログイン試行)も米国にそろえるよう、backend-platform・identity-authへ`jurisdiction("us")`での利用を依頼する(再検証の対象)                                                                     | 指定しない。準拠方針に「一時的なカウンタはハッシュ化した値だけを持ち、保存場所を保証しない」と書く                                                                                  |
-| K8  | stagingの`SENTRY_DSN`の登録時期            | backend-platform・frontend-platformはstagingの`secrets.required`に`SENTRY_DSN`を持ち、値の登録をlaunch-readinessとしている。stagingへの随時デプロイには最初のデプロイの前に値が要るため、本specの初回の準備で開発者がstaging用のSentryのDSNを登録する | 上流のstagingの`secrets.required`から`SENTRY_DSN`を外す(上流の変更) / stagingの最初のデプロイをlaunch-readinessまで待つ(roadmapの随時デプロイに反する)                          |
+| K1  | Queuesの管轄                               | 承認。本体・デッドレター・メールイベント用と、後続specが追加するQueueを、すべて`us`の管轄で作る。メッセージに宛先のメールアドレスなどの個人情報が入り、デッドレターは送り元と同じ管轄が必須のため、全Queueをそろえる                                | 管轄を指定しない(既定)。準拠方針に「一時的なメッセージは保存場所を保証しない」と書く。メールイベントの購読が管轄付きのQueueへ届かないと分かった場合の切り替え先でもある             |
+| K2  | stateの保管先の分け方と管轄                | 承認。環境ごとに別のバケット(`genai-example-2-tofu-state-staging`・`-prod`)を作り、管轄は指定しない。接続先は通常のS3 API(`https://<ACCOUNT_ID>.r2.cloudflarestorage.com`)。バケット単位のR2 APIトークンで環境ごとに権限を分け、Data Access Logsで読み取りを追える | 1つのバケットをキーで分ける(トークンが両環境のstateに届く) / `us`の管轄で作る(接続先が`.us.`になり、Data Access Logsを使えない)                                                      |
+| K3  | Infisicalのプロジェクトの分け方            | 変更。既存の1つのプロジェクトのまま、dev・staging・prodの環境を使う。主体は開発者・`ci-checks`・`ci-deploy-staging`・`ci-deploy-prod`の4つ(Freeプランの上限5以内)で、機械の主体はプロジェクト全体のViewerになる。CIの機械の主体が全環境のシークレットを読めるリスクを受け入れる(Risksの「1つのプロジェクトで全環境を読める主体」) | 環境ごとにプロジェクトを分ける(既存をdev用とし、staging用・prod用を新設する。設計時に選んだ案で、取り下げた) / Proプランへ上げて環境ごとのロールで分ける(費用が掛かる)                |
+| K4  | リリースのPRの作成の契機                   | 承認。開発者がGitHubの画面からワークフローを手動で起動し、`main`または`hotfix/<名前>`からprodへのPRをbotに作らせる。hotfixのPRも同じワークフローで作る(開発者が自分のPRを承認できないため)                                                         | stagingへのデプロイのたびに自動で作る(リリース前から開いたPRが残り、誤ってマージしやすい)                                                                                          |
+| K5  | CloudflareのAPIトークンの範囲              | 承認。環境ごとに1つのトークンをOpenTofuとWranglerで共用する。同じアカウントのため、stagingのトークンがprodの資源にも権限を持つ。このリスクを受け入れ、prodの資源の削除防止・D1のTime Travel・トークンの値を表示しない運用で緩和する                 | 用途ごとに分ける(同じジョブで両方を使うため効果が小さい) / 環境ごとにアカウントを分ける(同じゾーンのカスタムドメインを使うため不可)                                                 |
+| K6  | デプロイの後の確認                         | 承認。stagingは`@smoke`タグを付けたE2Eテストをstagingのhttpsへ実行する。prodはapi・eventの`/health`とclientのトップページの応答だけを確かめる。frontend-platformの疎通確認のE2Eに`@smoke`タグを付ける                                            | stagingで全E2Eを実行する(Mailpitなどローカル専用の前提を持つテストが失敗する) / デプロイの後に確認しない                                                                          |
+| K7  | Durable Objectsの保存場所                  | 変更。Durable Objectsは管轄を指定しない。レート制限のカウンタとログイン試行の記録は、ハッシュ化した短命の値だけを持つため。準拠方針・プライバシーポリシー骨子には「Durable Objectsの保存場所は保証しない」と書く。backend-platform・identity-authへの依頼は無い | `jurisdiction("us")`で米国にそろえるよう、backend-platform・identity-authへ依頼する(設計時に選んだ案で、取り下げた)                                                                 |
+| K8  | stagingの`SENTRY_DSN`の登録時期            | 承認。backend-platform・frontend-platformはstagingの`secrets.required`に`SENTRY_DSN`を持ち、値の登録をlaunch-readinessとしている。stagingへの随時デプロイには最初のデプロイの前に値が要るため、本specの初回の準備で開発者がstaging用のSentryのDSNを登録する | 上流のstagingの`secrets.required`から`SENTRY_DSN`を外す(上流の変更) / stagingの最初のデプロイをlaunch-readinessまで待つ(roadmapの随時デプロイに反する)                          |
+
+### 横断レビューの反映(2026-10-18)
+
+Wave 1の4spec(infra-delivery・content-processing・media-pipeline・identity-auth)の横断レビューの指摘と開発者の回答を、次のとおり反映した。
+
+- **I-3(Workerのシークレット)**: Infisicalのキーの表と`OPTIONAL_WORKER_SECRETS`に、Wave 1の各specが宣言したキーを加えた。必須は`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`(event、media-pipeline)・`GOOGLE_NL_API_KEY`(event、content-processing)、任意は`DISIFY_API_KEY`(api・event、identity-auth)・`MEDIA_SMOKE_TOKEN`(event、media-pipeline)である。要件12.3の対象を「各specが宣言したもの」に広げた。stagingの値は、そのキーを必須にする変更をmainへマージする前に登録する(未登録のままマージすると、以後のstagingのデプロイが必須の欠落で止まる)。prodの値の登録はlaunch-readinessへ引き継ぐ。任意のシークレットを各アプリの宣言から読む形には変えず、後続specが本specの一覧へ追記する。
+- **I-4(技術ドキュメントの番号)**: `infra/005`〜`007`・`operations/001`・`002`・`security/003`に固定した。
+- **M-1(`CLIENT_SITE_ORIGIN`)**: 変数はcontent-processing(client・admin)とidentity-auth(api)が所有し、名前と値をそろえる。本specは3環境の値を「Supporting References」の一覧に持ち、clientのホスト名を変えるときの再検証の対象に両specを加えた。
+- **M-8(保存場所の記述の分担)**: 本specは、準拠方針とプライバシーポリシー骨子のうち、Cloudflareの資源の保存場所(D1・R2・Queuesは米国、Durable Objectsは保証しない)だけを書く。Rekognition(us-east-1)への送信とその移転の根拠はmedia-pipelineが書き、互いの記述を上書きしない。
+- **M-11(Durable Objectのマイグレーション)**: Wrangler設定の`migrations`は`wrangler deploy`が同じ版で適用するため、本specの導入後はmainへのマージでCIがstagingへ適用する。identity-authの`LoginAttemptThrottle`もこの経路で適用される。
+- **M-9(ジョブとメッセージの名前)**: 規約はジョブが`<spec名>.<名詞句>`、メッセージ種別が`<ドメイン>.<動詞句>`である。本specは定期実行のジョブもメッセージ種別も持たないため、変更は無い。GitHub Actionsのワークフローのジョブ(`ci-gate`など)はこの規約の対象外である。
 
 ## Research Log
 
@@ -98,7 +109,7 @@
   - D1: 管轄付きのデータベースにも、Workersは世界中から接続できる。作成後に管轄は変えられない。
   - Queues: 管轄付きのQueueにも、Workersはどこからでも送受信できる(バインディングに管轄の指定は無い)。デッドレターキューは送り元と同じ管轄でなければならず、存在しない名前を指定すると送り元と同じ管轄で自動作成される。作成後に管轄は変えられない。Queuesの管轄は公開から6日しか経っておらず、Email Sendingのイベントの購読が管轄付きのQueueへ届くかは文書に記載が無い。
   - Durable Objects: `env.<名前空間>.jurisdiction("us")`で米国の管轄の名前空間を得る。コードで指定するもので、Wrangler設定やOpenTofuでは指定しない。
-- **Implications**: R2のバインディングへの`jurisdiction: "us"`の追記を、本specがapi・eventのWrangler設定のstaging・prodに行う(上流の再検証の対象)。Queueの管轄は仮決定K1とし、stagingで購読の到達を最初に確かめる。Durable Objectsは仮決定K7として上流へ依頼する。
+- **Implications**: R2のバインディングへの`jurisdiction: "us"`の追記を、本specがapi・eventのWrangler設定のstaging・prodに行う(上流の再検証の対象)。Queueの管轄はK1のとおり`us`とし、stagingで購読の到達を最初に確かめる。Durable Objectsは管轄を指定せず、準拠方針には保存場所を保証しないと書く(K7)。
 
 ### InfisicalのproviderとCLI
 
@@ -114,7 +125,7 @@
 
 - **Sources Consulted**: Infisical「[Pricing](https://infisical.com/pricing)」、Infisical Docs「[Role-based access controls](https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls)」、第三者の料金の解説(2026-09)。
 - **Findings**: Freeプランは主体5つ(人間と機械の合計)・プロジェクト数無制限・プロジェクトあたり環境3つで、独自のロールは使えない。組み込みのロール(Admin・Member・Viewer)はプロジェクト全体に効き、環境ごとに権限を分けられない。監査ログは保持されない。
-- **Implications**: 環境ごとにプロジェクトを分ける(仮決定K3)。主体は開発者・`ci-checks`・`ci-deploy-staging`・`ci-deploy-prod`の4つで、機械の主体にはViewerを与える。Viewerを機械の主体にFreeプランで割り当てられることを、初回の準備で確かめる(Risks)。
+- **Implications**: 既存の1つのプロジェクトのdev・staging・prodの環境を使う(K3)。主体は開発者・`ci-checks`・`ci-deploy-staging`・`ci-deploy-prod`の4つで、機械の主体にはViewerを与える。Viewerはプロジェクト全体に効くため、機械の主体はどれも全環境のシークレットを読める。各コマンドが取り出す環境を自分の範囲に限り、主体をOIDCのクレームで縛ることで、読み取りの経路を狭める(Risks)。主体を範囲ごとに分けておくのは、Proプランなどで環境ごとのロールが使えるようになったときに、ロールの変更だけで環境を分離できるようにするためである。Viewerを機械の主体にFreeプランで割り当てられることを、初回の準備で確かめる(Risks)。
 
 ### OpenTofuの機能
 
@@ -275,7 +286,14 @@
 - **APIによる送信ドメインの登録とDNSレコード**: OpenTofuで登録したときに`cf-bounce`のMX・SPF・DKIMと`_dmarc`のレコードが作られない場合がある。緩和: stagingの最初の適用の後にレコードを確かめる。作られなければ、送信ドメインの資源の計算値(`dkim_selector`・`return_path_domain`)とEmail ServiceのAPIで得た値から`cloudflare_dns_record`を`edge_services`に加える。
 - **`--secrets-file`への標準入力**: Wranglerが`/dev/stdin`を読めない場合、シークレットを一時ファイルに書く必要がある。緩和: 実装時に確かめ、読めなければ`$RUNNER_TEMP`に権限0600のファイルを作り、`finally`で消す(ランナーはジョブごとに破棄される)。この場合は`security/003`に例外として記載する。
 - **Wranglerの自動作成**: 資源の識別子が無いバインディングは、`wrangler deploy`が資源を自動で作る。管轄の無いR2などが黙って作られる。緩和: デプロイの前にOpenTofuの適用と構成検査(全バインディングが資源一覧にある)を必ず通す。
-- **Viewerロールの割り当て**: FreeプランでViewerを機械の主体に割り当てられない場合、CIの主体が書き込めてしまう(Q7)。緩和: 初回の準備で確かめ、割り当てられなければ開発者に報告して仮決定K3と合わせて判断してもらう。
+- **1つのプロジェクトで全環境を読める主体**(K3で受け入れたリスク): FreeプランのViewerはプロジェクト全体に効くため、`ci-checks`・`ci-deploy-staging`・`ci-deploy-prod`のどれもがdev・staging・prodのすべてのシークレットを読める。同じリポジトリへブランチをpushできる者(開発者と、開発者の認証情報を使うAIエージェント)は、ワークフローを書き換えたPRの検査で`ci-checks`として認証し、stagingとprodの値を読み出せる。承認数0のmainへマージされたコードも、stagingのデプロイの主体でprodの値を読める。Freeプランでできる緩和:
+  - prodの値はlaunch-readinessがリリース時に登録する(Q6)。それまでprodの環境は空で、読み出せる値が無い。
+  - 主体のOIDCの縛りを保つ。`ci-deploy-prod`はEnvironment`prod`のsubject・`deploy.yml@refs/heads/prod`の`job_workflow_ref`・Environmentのデプロイ対象ブランチ(prod)で縛り、ほかのワークフローとブランチからはその主体で認証できない。フォークのPRと他のリポジトリには、どの主体のトークンも渡らない。
+  - 各コマンドは自分の範囲の環境(検査はdev、デプロイはその環境)だけを取り出し、取り出した値を使う前にマスクする。
+  - 機械の主体はViewerで書き込めず、アクセストークンの有効期限を短くし、長期の認証情報を作らない。
+  - 主体は範囲ごとに分けてあるため、Proプランへ上げれば、各主体に環境ごとのロールを割り当てるだけで環境を分離できる。
+  - ワークフローと`scripts/delivery`の変更は、PRの差分で開発者が確かめる。
+- **Viewerロールの割り当て**: FreeプランでViewerを機械の主体に割り当てられない場合、CIの主体が書き込めてしまう(Q7)。緩和: 初回の準備で確かめ、割り当てられなければ開発者に報告して判断してもらう。
 - **Infisicalの監査ログが無い**: Freeプランでは読み取りの記録が残らない。緩和: 主体をOIDCのクレームで狭く縛り、長期の認証情報を作らない。
 - **providerのドリフトの不具合**(roadmapの指摘): Cloudflare provider v5はドリフトの報告が続く。緩和: 版を完全に固定し、計画の要約で想定外の`update`・`replace`を確かめ、`prevent_destroy`で消失を止める。
 - **カスタムドメインの証明書の発行待ち**: 初回は証明書の発行に時間が掛かり、デプロイ後の確認が失敗し得る。緩和: 確認は`/health`の200を最大10分待ってから行う。
