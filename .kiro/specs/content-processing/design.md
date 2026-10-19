@@ -4,7 +4,7 @@
 
 **Purpose**: マークダウンの入力・描画・サニタイズと、全文検索の索引・正規化・照合を、全ドメインが共通で使う1つの基盤として提供する。画面を持たない純粋な処理(描画・書記素の文字数・入力の検証規則・検索語の処理)は新しい共有ディレクトリ`apps/common-lib`に置き、利用者側・管理者側のフロントエンド(ページの描画とブラウザ)・APIサーバー・イベントサーバーの4アプリが同じ定義を使う。画面部品(入力欄・表示・強調表示)は`apps/frontend-lib`、索引の部品は`apps/db`・`apps/backend-lib`、索引の更新の処理はイベントサーバー、再抽出の定期実行はAPIサーバーに置く。
 
-**Users**: legal-pages・help-center・user-profile-social・product-launch・engagementの開発者とAIエージェントは、マークダウンの入力欄と表示部品を画面に置き、APIサーバーで本specの検証規則を使ってマークダウンの原文を保存する。directory-discovery・help-centerは、検索対象を登録し、本specのひな形で索引のテーブルを作り、元データの作成・編集・削除の処理で本specの手段を呼び、検索の画面で検索式・関連度・強調表示の部品を使う。media-pipeline・identity-authは、本specが新設する`apps/common-lib`の配置と読み込みの境界の上に自分の共有定義(`common-lib/media`・`common-lib/identity`)を置き、identity-authは`countGraphemes`を使う。infra-deliveryは、本specが加えるシークレットと変数をInfisicalの表・Workerのシークレットの一覧・変数の一覧に載せてstaging・prodへ反映する。
+**Users**: legal-pages・help-center・user-profile-social・product-launch・engagementの開発者とAIエージェントは、マークダウンの入力欄と表示部品を画面に置き、APIサーバーで本specの検証規則を使ってマークダウンの原文を保存する。directory-discovery・help-centerは、検索対象を登録し、本specのひな形で索引のテーブルを作り、元データの作成・編集・削除の処理で本specの手段を呼び、検索の画面で検索式・関連度・強調表示の部品を使う。media-pipeline・identity-authは、本specが新設する`apps/common-lib`の配置と読み込みの境界の上に自分の共有定義(`common-lib/media`・`common-lib/identity`)を置き、identity-authは`countGraphemes`を使う。infra-deliveryは、本specが加えるシークレットと変数をInfisicalの表・変数の一覧に載せてstaging・prodへ反映する(シークレットのキーの一覧の正は`docs/onboardings/project-values.md`で、本specが自分のキーの行を加える)。
 
 **Impact**: dev-toolingの共有ディレクトリの定義(`config/workspace-layout.ts`・`compose.yaml`・`.gitignore`)に5つ目の共有ディレクトリを加え、4アプリの品質ツール設定・依存・型検査の対象を更新する。frontend-platformの静的解析の規則・Vite設定・環境の検証に、エディタの読み込みの制限・Vueの機能フラグ・利用者側のオリジンの変数を加える。backend-platformのメッセージ契約・メッセージの処理・定期実行・イベントサーバーの環境の登録箇所へ、検索の索引の更新を追記する。
 
@@ -34,7 +34,7 @@
 - `apps/event`の追加部分: 索引の更新の処理(`SearchIndexRefreshHandler`)、キーワード抽出の実装(Google Cloud Natural Language・無効化)、環境の変数とシークレット、登録、疎通確認のスクリプト。
 - `apps/api`の追加部分: 日次の再抽出のジョブ(`SearchKeywordReextractionJob`)と登録。
 - 契約: `MarkdownRenderOptions`・`RenderedMarkdown`・`SanitizedHtml`、`MarkdownEditorProps`、`markdownTextSchema`の文言、`SearchTargetDefinition`・`SearchIndexDefinition`・`SearchIndexStatements`・`SearchIndexRefreshRequester`、メッセージ`search-index.refresh`、索引文書の共通の列と状態の値、全文検索の索引の名前の規約、変数`KEYWORD_EXTRACTOR`・`CLIENT_SITE_ORIGIN`、シークレット`GOOGLE_NL_API_KEY`。
-- 技術ドキュメント: `external/002-natural-language-keyword-extraction.md`・`db/004-full-text-search.md`・`frontend/008-markdown-editor-and-content.md`・`security/004-markdown-sanitization.md`と各索引(番号はroadmapの順で割り当てた固定の番号)。`coding/002`・`coding/003`・CLAUDE.md・tech-stack.md・`docs/onboardings`・サービス仕様(日次タイムライン・文言規則・ページ構成・準拠方針)の該当箇所の更新。
+- 技術ドキュメント: `external/002-natural-language-keyword-extraction.md`・`db/004-full-text-search.md`・`frontend/008-markdown-editor-and-content.md`・`security/004-markdown-sanitization.md`と各索引(番号はroadmapの順で割り当てた固定の番号)。`coding/002`・`coding/003`・CLAUDE.md・tech-stack.md・`docs/onboardings`・サービス仕様(日次タイムライン・文言規則・ページ構成・準拠方針)の該当箇所の更新。backend-platformの`infra/003-async-processing.md`へのジョブとメッセージ種別の名前の規約の追記(16.8)。
 
 ### Out of Boundary
 
@@ -62,6 +62,8 @@
 - `markdownTextSchema`の引数と文言、書記素の数え方と`countGraphemes`の形(入力欄を持つ全下流spec・identity-auth)。
 - `SearchTargetDefinition`・`SearchIndexDefinition`・`SearchIndexStatements`・`SearchIndexRefreshRequester`の形、索引文書の共通の列と`KEYWORD_STATUSES`、全文検索の索引とトリガーの名前の規約、`ftsRankedSources`・`bm25Rank`の返す列(directory-discovery・help-center)。
 - メッセージ`search-index.refresh`の本文と再試行の方針、再抽出のジョブの名前・時刻・順序・件数の上限(運用・infra-delivery・4:21にジョブを足すmedia-pipeline・identity-auth)。
+- 日次タイムラインの「日次バッチ(4:21)の内容」のジョブの名前と順序の表の形(4:21にジョブを足すmedia-pipeline・identity-authと後続spec)。
+- `infra/003-async-processing.md`へ追記するジョブ・波及処理とメッセージ種別の名前の規約(ジョブや波及処理を登録する全下流spec。identity-authの`backend/007`の名前の規約の記述)。
 - `buildFtsMatchExpression`の照合規則(前方一致)と`findHighlightRanges`の一致規則(directory-discovery・help-center)。
 - 変数`KEYWORD_EXTRACTOR`・`CLIENT_SITE_ORIGIN`、シークレット`GOOGLE_NL_API_KEY`の名前と環境ごとの値(infra-delivery・launch-readiness)。`CLIENT_SITE_ORIGIN`の名前と値は、identity-authがAPIサーバーに置く同名の変数と同じにする(identity-auth)。
 - 共有ディレクトリの数・配置先・検査担当、frontend-lib・backend-libからの参照方法(兄弟の相対パス、仮決定P4)、common-libの読み込みの境界の規則、frontend-libの`components/**`・`server/**`・`utilities/**`からcommon-libを読み込む許可と`validation/**`の制限(dev-tooling・全アプリ・infra-deliveryのCI・`common-lib/media`を置くmedia-pipeline・`common-lib/identity`を置くidentity-auth)。
@@ -72,9 +74,11 @@
 
 | spec           | 前提にする本specのタスク                                                                                                                         | 使うもの                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| media-pipeline | 1.1(共有ディレクトリの定義と配置)、1.2(共用部品のプロジェクトと読み込みの境界)、4.1・4.2(利用側アプリの依存・型検査の対象・静的解析とテストの除外、frontend-libからの参照) | `common-lib/media`の置き場所、`frontend-lib`の`utilities/media`・`server/media`と`backend-lib`からの兄弟の相対パスでの参照 |
-| identity-auth  | 上の4つに加えて2.1(書記素の数え方)                                                                                                             | `countGraphemes`、`common-lib/identity`の置き場所、APIサーバーと同名・同値の`CLIENT_SITE_ORIGIN`                                    |
+| media-pipeline | 1.1(共有ディレクトリの定義と配置)、1.2(共用部品のプロジェクトと読み込みの境界)、4.1・4.2(利用側アプリの依存・型検査の対象・静的解析とテストの除外、frontend-libからの参照)、6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`validation/**`の禁止の静的解析の規則)、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成 | `common-lib/media`の置き場所、`frontend-lib`の`utilities/media`・`server/media`と`backend-lib`からの兄弟の相対パスでの参照、`server/**`からの読み込みの規則、日次タイムラインの表 |
+| identity-auth  | 上のタスクに加えて2.1(書記素の数え方)                                                                                                          | `countGraphemes`、`common-lib/identity`の置き場所、APIサーバーと同名・同値の`CLIENT_SITE_ORIGIN`、日次タイムラインの表               |
 
+- `server/**`の許可の確かめ方: frontend-platformの静的解析はfrontend-libの外への相対パスの読み込みを禁止しないため、4.2の後は`server/**`から`../common-lib/**`を読み込んでも静的解析で拒否されない。6.1で`components/**`・`server/**`からの`common-lib/validation/**`の禁止が入り、その他のモジュールの読み込みが報告されないことをESLintのNode APIの単体テストで確かめる。11.3で`coding/003`に読み込める範囲を書く。下流specは、6.1の単体テストの成功と`coding/003`の記述で許可を確かめる。
+- 日次タイムラインの表: 「日次バッチ(4:21)の内容」のジョブの名前と順序の表は、最初に4:21のジョブを足すspecが作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、後のspecは行を足す。想定の順序では本specの11.4が作る。下流specは、表が無いことを理由に止めず、表が無ければ同じ形で作って自分の行を足す。その場合、本specの11.4は既存の表へ行を足すだけにする。
 - launch-readinessは、Infisicalの`prod`への`GOOGLE_NL_API_KEY`の登録を、本specのタスク12の引き継ぎ事項として受け取る。
 
 #### 上流・並行specへの変更(本specが行う)
@@ -82,16 +86,16 @@
 | spec              | 変更                                                                                                                                                                                                                                                                     | 再確認の要否                                          |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
 | dev-tooling       | `AppName`・`APPS`・`SHARED_DIRS`に`common-lib`を加え、`compose.yaml`のbind mountと名前付きボリューム、`.gitignore`の配置先、`workspace-layout.unit.test.ts`の期待値を更新する。`coding/002`・`coding/003`に追記する                                                     | 要(共有ディレクトリが5つになる)                       |
-| backend-platform  | api・eventの依存・型検査の対象・静的解析とテストの除外に`common-lib/`を加える。`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`MODULES`・eventの`env-schema.ts`・Wrangler設定に追記する                                                                        | 不要(登録箇所への追記の範囲)                          |
+| backend-platform  | api・eventの依存・型検査の対象・静的解析とテストの除外に`common-lib/`を加える。`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`MODULES`・eventの`env-schema.ts`・Wrangler設定に追記する。`infra/003-async-processing.md`の定期実行の説明に、ジョブ・波及処理とメッセージ種別の名前の規約を追記する                                                                        | 不要(登録箇所と文書への追記の範囲)                    |
 | frontend-platform | `frontend-lint.ts`の`no-restricted-imports`にMilkdownの制限と、common-libの読み込みの許可(`components/**`・`server/**`・`utilities/**`)と`validation/**`の制限を加える。client・admin・frontend-libの依存・型検査の対象・Vite設定(Vueの機能フラグ・`server.fs.allow`)、`styles/base.css`の取り込み、変数`CLIENT_SITE_ORIGIN`と`PublicRuntimeConfig.clientSiteOrigin`を加える | 要(環境の検証と公開する設定の形が変わる)              |
-| infra-delivery    | eventの`GOOGLE_NL_API_KEY`を、Infisicalのキーの表とWorkerのシークレットの一覧(infra-deliveryが所有)に載せる。client・adminの`CLIENT_SITE_ORIGIN`の3環境の値を、infra-deliveryの一覧の値と一致させる。CIは`APPS`に従って`apps/common-lib`の依存を導入し、`shared-dirs:place`で配置する                     | 要(キーと値の一覧への追加はinfra-deliveryが行う)      |
-| email-delivery    | 業務時刻4:21のcron式`21 12 * * *`を共有する(順序950で後に並ぶ)                                                                                                                                                                                                          | 不要                                                  |
+| infra-delivery    | eventの`GOOGLE_NL_API_KEY`を、Infisicalのキーの表(infra-deliveryが所有)に載せる。実装後のキーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節で、本specが行を加える。client・adminの`CLIENT_SITE_ORIGIN`の3環境の値を、infra-deliveryの一覧の値と一致させる。CIは`APPS`に従って`apps/common-lib`の依存を導入し、`shared-dirs:place`で配置する                     | 要(キーと値の一覧への追加はinfra-deliveryが行う)      |
+| email-delivery    | 業務時刻4:21のcron式`21 12 * * *`を共有する(順序950で後に並ぶ)。email-deliveryはroadmapの依存ではないため、実装の有無はタスク1.1で確かめ、無ければ開発者へ報告して進める。cron式が無ければタスク10で加える                                                              | 不要                                                  |
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- `apps`配下は未実装で、dev-toolingの品質ゲート・共有ディレクトリの配置の仕組みだけが実装済みである。backend-platform・api-gateway・email-delivery・frontend-platformは設計まで承認済みで、本specはその契約(登録箇所・メッセージ・定期実行・層の規則・共通部品・静的解析の設定)を前提にし、それらの実装の完了後に着手する。
+- `apps`配下は未実装で、dev-toolingの品質ゲート・共有ディレクトリの配置の仕組みだけが実装済みである。backend-platform・api-gateway・email-delivery・frontend-platformは設計まで承認済みで、本specはその契約(登録箇所・メッセージ・定期実行・層の規則・共通部品・静的解析の設定)を前提にする。roadmapの依存(frontend-platformと、その上流のbackend-platform・api-gateway)の実装の完了後に着手する。email-deliveryはroadmapの依存ではなく、共有するのは4:21の定期実行だけのため、実装が無くても止めずに開発者へ報告する。
 - `config/workspace-layout.ts`の`SHARED_DIRS`は、`apps/db`・`apps/backend-lib`(検査担当api)と`apps/frontend-lib`(検査担当`self`)の3つで、フロントエンドとバックエンドの両方へ配置される共有ディレクトリが無い。`scripts/tooling/shared-dirs.ts`は定義を読むだけの汎用の仕組みで、定義の追加で新しい共有ディレクトリを扱える。
 - `docs/GUIDES/tech/db/002`は、FTS5のexternal contentとトリガーによる同期、カスタムマイグレーション、Time Travelによるバックアップを定めている。backend-platformは全文検索用のテーブルの主キーを連番とする規約だけを持ち、部品を提供しない。
 - frontend-platformは、`@eslint-react/dom/no-dangerously-set-innerhtml`を全体で禁止し、本specのサニタイズ済みHTMLの部品だけが理由のコメント付きで1行だけ無効化できる規約(`frontend/003`)を置いている。CSPはスクリプトにnonceと`'self'`、スタイルに`'unsafe-inline'`を許可する。
@@ -340,14 +344,15 @@ docs/
 - `apps/backend-lib/core/messaging/contracts/index.ts` — `SEARCH_INDEX_REFRESH_MESSAGE`を`MESSAGE_CONTRACTS`へ加える。
 - `apps/event/src/composition/env-schema.ts`・`modules.ts`・`message-handlers.ts` — `KEYWORD_EXTRACTOR`・`GOOGLE_NL_API_KEY`の検証、`createSearchPlatformModule(SEARCH_TARGETS)`とeventの検索のモジュール、`search-index.refresh`の処理と再試行の方針を登録する。
 - `apps/event/wrangler.jsonc`・`worker-configuration.d.ts`・`vitest.worker.config.ts`・`package.json` — 3環境の`vars.KEYWORD_EXTRACTOR`、staging・prodの`secrets.required`への`GOOGLE_NL_API_KEY`、テスト用の値、スクリプト`smoke:keyword-extraction`を加える。
-- `apps/api/src/composition/modules.ts`・`scheduled-jobs.ts` — 共通の束縛とapiの検索のモジュール、再抽出のジョブ`content-processing.keyword-reextraction`(業務時刻4:21・順序950)を登録する。`triggers.crons`の`21 12 * * *`は既にあれば変更しない。
+- `apps/api/src/composition/modules.ts`・`scheduled-jobs.ts` — 共通の束縛とapiの検索のモジュール、再抽出のジョブ`content-processing.keyword-reextraction`(業務時刻4:21・順序950)を登録する。`apps/api/wrangler.jsonc`の3環境の`triggers.crons`の`21 12 * * *`は、既にあれば変更せず、無ければ加える(email-deliveryの実装の有無によらず、backend-platformのcron式の一致の検査を通す)。
 - `docs/GUIDES/tech/coding/002-dependency-versions.md` — common-libと4アプリで版をそろえるパッケージ(描画の9つ・zod)、frontend-lib・client・adminでそろえるパッケージ(エディタの3つ・`@tailwindcss/typography`)を一覧へ加える。
 - `docs/GUIDES/tech/coding/003-shared-directories.md` — 共有ディレクトリから別の共有ディレクトリを兄弟の相対パスで参照する規則(配置先の名前を配置元と同じにする、検査担当`self`の位置では配置元のnode_modulesから解決される、Viteの`server.fs.allow`、同じパッケージが2つの実体になり得るモジュールを読み込まない)と、frontend-libのどのディレクトリ(`components/**`・`server/**`・`utilities/**`)からcommon-libを読み込めるかを追記する。
+- `docs/GUIDES/tech/infra/003-async-processing.md`(backend-platformが作成) — 定期実行の説明に、ジョブとイベントの波及処理の名前を`<spec名>.<名詞句>`、メッセージ種別を`<ドメイン>.<動詞句>`とする規約を追記する。メッセージ種別の規約が既にあれば重複して書かず、ジョブの規約を並べる。本プロジェクトのジョブの名前・時刻・順序は列挙しない(正は日次タイムラインと`project-values.md`)(16.8)。
 - `docs/GUIDES/tech/frontend/003`(frontend-platformが作成) — 生のHTMLの例外の箇所を`components/markdown/markdown-content.tsx`と明記し、`security/004-markdown-sanitization.md`へリンクする。
 - `docs/onboardings/tech-stack.md` — `@tailwindcss/typography`と`@milkdown/kit`を追記し、マークダウンエディタの記述にbuilderと遅延読み込みを、マークダウン処理からrehype-slugを外す(仮決定P2・P3)。導入するタスクの中で行う。
-- `docs/onboardings/project-values.md`・`README.md` — 変数・シークレットの名前と値、IDの接頭辞、再抽出の時刻と件数、`apps/common-lib`の依存の導入、開発コンテナの再作成、疎通確認のスクリプトの使い方を追記する。
+- `docs/onboardings/project-values.md`・`README.md` — 変数・シークレットの名前と値、IDの接頭辞、再抽出の時刻と件数、`apps/common-lib`の依存の導入、開発コンテナの再作成、疎通確認のスクリプトの使い方を追記する。シークレットのキーは、`project-values.md`のWorkerのシークレットのキーの一覧の節(キーの一覧の正。infra-deliveryが作る)へ、`secrets.required`に加える変更と同じ変更で`GOOGLE_NL_API_KEY`の行(環境・フォルダ・使うWorker・宣言したspec・必須・登録の時期)を加え、技術ドキュメントには写さない。既に行があれば食い違いを確かめるだけにし、節が無ければ作らない(infra-deliveryが節を作る時にmainのWrangler設定から載せる)。
 - `CLAUDE.md` — ディレクトリ構成に`apps/common-lib`と各アプリの`common-lib`(配置先)を加え、「技術規則の参照先」に4つの技術ドキュメント(`external/002`・`db/004`・`frontend/008`・`security/004`)へのリンクを作業の種類とともに加える。
-- `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」に、ジョブの名前と順序の表が無ければ作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、検索のキーワードの再抽出(`content-processing.keyword-reextraction`・950)の行を加える(仮決定P6)。同じ時刻にジョブを足す他のspecも同じ表へ行を加える。
+- `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」に、ジョブの名前と順序の表が無ければ作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、既に下流specが作っていれば行だけを加える。検索のキーワードの再抽出(`content-processing.keyword-reextraction`・950)の行を順序どおりに加える(仮決定P6)。同じ時刻にジョブを足す他のspecも同じ表へ行を加え、表が無ければ同じ形で作る(「本specのタスクを前提にする下流spec」)。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — マークダウンの入力の検証の文言(必須・禁止文字)、リンクのURLの形式違反、エディタの読み込み失敗、プレビューの空、文字数の超過と戻りの読み上げの文言を加える。
 - `docs/GUIDES/service/design/002-page-layouts.md` — 「コメント」の投稿欄の記述に、書く側が書式を適用した見た目で編集すること、ツールバーの項目に表を含めることを加える。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「検索索引(索引文書)」(元データの削除と同時に物理削除、FR-FTS-007)の行を加える。
@@ -537,6 +542,7 @@ sequenceDiagram
 | 16.3, 16.4                          | 技術ドキュメント                                              | TechDocs                                                                                     | —                                                                | —                        |
 | 16.5, 16.6                          | tech-stack.mdと開発者向け文書                                 | DeveloperDocs                                                                                | —                                                                | —                        |
 | 16.7                                | サービス仕様                                                  | ServiceDocs                                                                                  | —                                                                | —                        |
+| 16.8                                | ジョブとメッセージ種別の名前の規約                            | TechDocs                                                                                     | `infra/003-async-processing.md`                                  | —                        |
 
 ## Components and Interfaces
 
@@ -581,7 +587,7 @@ sequenceDiagram
 | SearchKeywordReextractionJob・ApiSearchComposition         | api                   | 日次の再抽出とその登録                                         | 9.10, 10.6, 15.6                              | SearchIndexStore (P0)、SearchIndexRefreshRequester (P0)   | Batch          |
 | WorkspaceLayoutUpdate                                      | dev-tooling           | 共有ディレクトリの定義・マウント・Git管理外                    | 1.4                                           | `shared-dirs`の仕組み (P0)                                | State          |
 | ConsumerAppIntegration                                     | 4アプリ・frontend-lib | 依存・型検査・除外・Viteの設定                                 | 1.5, 1.6                                      | WorkspaceLayoutUpdate (P0)                                | State          |
-| TechDocs・DeveloperDocs・ServiceDocs                       | docs                  | 技術ドキュメント・開発者向け文書・サービス仕様                 | 7.7, 8.7, 16.3〜16.7                          | —                                                         | —              |
+| TechDocs・DeveloperDocs・ServiceDocs                       | docs                  | 技術ドキュメント・開発者向け文書・サービス仕様                 | 7.7, 8.7, 16.3〜16.8                          | —                                                         | —              |
 
 ### common-lib
 
@@ -1547,7 +1553,7 @@ export declare function createKeywordExtractor(env: {
 
 ##### Batch / Job Contract
 
-- Trigger: 業務時刻4:21(`21 12 * * *`)、`order: 950`(email-deliveryの900の後)、名前`content-processing.keyword-reextraction`。ジョブの名前は`<spec名>.<名詞句>`(email-deliveryの`email-delivery.cleanup`と同じ規約)、メッセージ種別は`<ドメイン>.<動詞句>`(backend-platformの規約)とする。
+- Trigger: 業務時刻4:21(`21 12 * * *`)、`order: 950`(email-deliveryの900の後)、名前`content-processing.keyword-reextraction`。ジョブの名前は`<spec名>.<名詞句>`(email-deliveryの`email-delivery.cleanup`と同じ規約)、メッセージ種別は`<ドメイン>.<動詞句>`(backend-platformの規約)とする。この規約は本specが`infra/003-async-processing.md`へ追記する(16.8)。`triggers.crons`に`21 12 * * *`が無ければ加える。
 - 処理: `catalog.names()`の各検索対象で、`store.findSourceIdsForReextraction(target, now - 1時間, 200)`の各IDに`requester.requestRefresh`する。検索対象ごとの件数を`info`ログ(カテゴリ`['search','reextraction']`)に出す(15.6)。
 - Idempotency & recovery: 同じ日に2回動いても、同じIDの更新を重ねて要求するだけで、処理は冪等である。1件の要求の失敗は要求の部品が記録し、残りを続ける。
 - `composition/search-module.ts`は`ReextractionJob`を束縛し、`scheduled-jobs.ts`に登録する。
@@ -1600,11 +1606,12 @@ const COMMON_LIB: SharedDirDefinition = {
 
 #### TechDocs・DeveloperDocs・ServiceDocs
 
-- `external/002-natural-language-keyword-extraction.md`(16.3): エンティティ分析の要求と応答、APIキーの渡し方と制限(APIの制限を掛けたキー)、料金と上限、失敗の分類と再試行・縮退、対応言語、送る情報の範囲、手元の疎通確認の手順。
+- `external/002-natural-language-keyword-extraction.md`(16.3): エンティティ分析の要求と応答、APIキーの渡し方と制限(APIの制限を掛けたキー)、料金と上限、失敗の分類と再試行・縮退、対応言語、送る情報の範囲、手元の疎通確認の手順。シークレットのキーと変数の名前はプレースホルダーで書き、値と名前は`project-values.md`へのリンクにする。
 - `db/004-full-text-search.md`(7.7・8.7・16.3): 索引文書のテーブルと全文検索の索引の構成(連番の主キー・external content・トリガー・`prefix`)、ひな形の使い方(集約点とSQLの出力)、検索式と関連度の組み込み、条件付きの書き込み、更新待ちの印と削除の一括の書き込み、列を変えた後のトリガーの作り直しと`rebuild`、Time Travelでのバックアップ、マークダウンの原文を保存してHTMLを保存しない規約。
 - `frontend/008-markdown-editor-and-content.md`(16.3): 入力欄の使い方(フォームとの結合・検証規則)、遅延読み込みとMilkdownの読み込みの制限、表示部品と折りたたみ、目次の作り方、文字数のカウンターと保存される原文の関係、アクセシビリティの規約(Tabキー・リンクのダイアログ)、強調表示部品。
 - `security/004-markdown-sanitization.md`(16.3): 許可リスト、参照先の制限、処理の順序とサニタイズの後の変換の限定、接頭辞とDOM clobbering、生のHTMLの例外の1箇所と検査、攻撃パターン集の追加の手順。
-- 記述規則(16.4): プロジェクト名・サービス固有の仕様・固有値を書かず、固有値は`project-values.md`に置く。
+- `infra/003-async-processing.md`への追記(16.8): 定期実行の説明に、ジョブとイベントの波及処理の名前`<spec名>.<名詞句>`とメッセージ種別の名前`<ドメイン>.<動詞句>`の規約を、プレースホルダーだけで書く。backend-platformが所有する文書への追記であり、本specの再抽出のジョブとメッセージ`search-index.refresh`はこの規約に合う。
+- 記述規則(16.4): プロジェクト名・サービス固有の仕様・固有値を書かず、固有値は`project-values.md`に置く。シークレットのキーの一覧も固有の値として`project-values.md`を正とし、技術ドキュメントにはキーの名前を列挙しない。
 - DeveloperDocs(16.5・16.6)とServiceDocs(16.7)は「Modified Files」のとおり。
 
 ## Data Models
@@ -1738,6 +1745,6 @@ flowchart LR
 | `GOOGLE_NL_API_KEY`(eventのシークレット)    | 無し(`secrets.required`に含めない) | Infisicalの`staging`(`secrets.required`に含める)     | Infisicalの`prod`(`secrets.required`に含める)       |
 | `CLIENT_SITE_ORIGIN`(client・admin)        | `http://localhost:48044`  | `https://genai-example-2-client-staging.lab.kurachiweb.com` | `https://genai-example-2-client.lab.kurachiweb.com` |
 
-- `GOOGLE_NL_API_KEY`は、infra-deliveryのInfisicalのキーの表とWorkerのシークレットの一覧に載る。stagingの値は、`secrets.required`に加える変更をmainへマージする前に開発者がInfisicalの`staging`へ登録する(未登録のままマージすると、以後のstagingのデプロイがシークレットの欠落で止まる)。prodの値の登録はlaunch-readinessがリリース時に行う。
+- `GOOGLE_NL_API_KEY`は、infra-deliveryのInfisicalのキーの表に載る。実装後のキーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節で、本specが`secrets.required`へ加える変更(タスク9.1)と同じ変更で行を加える(技術ドキュメントには写さない)。stagingの値は、`secrets.required`に加える変更をmainへマージする前に開発者がInfisicalの`staging`へ登録する(未登録のままマージすると、以後のstagingのデプロイがシークレットの欠落で止まる)。prodの値の登録はlaunch-readinessがリリース時に行う。
 - `CLIENT_SITE_ORIGIN`の3環境の値は、identity-authがapiに置く同名の変数と、infra-deliveryの一覧の値と同じにする。
 - eventのWorkers統合テストでは`KEYWORD_EXTRACTOR`を`google-natural-language`、`GOOGLE_NL_API_KEY`をテスト用の固定値にし、`fetchMock`で外部への通信を止める。

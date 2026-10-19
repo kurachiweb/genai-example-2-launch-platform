@@ -26,7 +26,7 @@
 
 - 採用したパッケージのtech-stack.mdへの追記は、spec段階では行わず、導入する実装タスクの中で行う(frontend-platformの慣行)。
 - 要件定義書の改訂が必要な箇所: FR-FTS-002(Q4)、FR-MDOWN-006(Q5)、FR-FTS-006(Q3の縮退運転と再抽出)。roadmapにより要件定義書そのものは改訂しない。
-- Google Cloud Natural LanguageのAPIキーはInfisicalで管理する。staging・prodのイベントサーバーへのシークレットの反映は、infra-deliveryのInfisicalのキーの表とWorkerのシークレットの一覧に`GOOGLE_NL_API_KEY`を加えて行う(横断レビューI-3)。stagingの値はキーを必須にする変更をmainへマージする前に開発者が登録し、prodの値の登録はlaunch-readinessへ引き継ぐ。
+- Google Cloud Natural LanguageのAPIキーはInfisicalで管理する。staging・prodのイベントサーバーへのシークレットの反映は、infra-deliveryのInfisicalのキーの表に`GOOGLE_NL_API_KEY`を加えて行う(横断レビューI-3)。キーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節とし、本specが行を加える(横断レビューN-5)。stagingの値はキーを必須にする変更をmainへマージする前に開発者が登録し、prodの値の登録はlaunch-readinessへ引き継ぐ。
 
 ### 提示した選択肢(記録)
 
@@ -74,7 +74,7 @@
 
 ## Wave 1の横断レビューの反映(2026-10-18)
 
-infra-delivery・content-processing・media-pipeline・identity-authとroadmapの横断レビューの指摘と、開発者の決定のうち、本specに関係するものである。
+infra-delivery・content-processing・media-pipeline・identity-authとroadmapの横断レビュー(1回目のC・I・M、2回目のN)の指摘と、開発者の決定のうち、本specに関係するものである。
 
 | ID  | 指摘                                                                                     | 本specへの反映                                                                                                                                                                                                                                                                                                  |
 | --- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -85,6 +85,13 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 | M-2 | frontend-libの`server/**`からcommon-libを読む許可が無い                                  | `server/**`も`../common-lib/**`を読み込めるようにし、`components/**`と同じくZodを使う`validation/**`の読み込みを禁止する。media-pipelineの`server/media`はこれを前提にする                                                                                                                                       |
 | M-4 | 4:21のジョブの順序を日次タイムラインへ書くspecが偏っている                               | 4:21にジョブを足す各specが日次タイムラインへ追記する。本specは、日次バッチのジョブの順序の表が無ければ作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、自分のジョブの行を加える                                                                                                                |
 | M-9 | ジョブ・波及処理の名前の接頭辞がそろっていない                                           | ジョブの名前は`<spec名>.<名詞句>`(email-deliveryの`email-delivery.cleanup`と同じ)、メッセージ種別は`<ドメイン>.<動詞句>`(backend-platform)にそろえる。再抽出のジョブの名前は`content-processing.keyword-reextraction`とし、メッセージ`search-index.refresh`はそのままとする                                     |
+| N-1 | Cloudflareの資源の国外移転の根拠を書くspecが無い                                         | 本specは関係しない。国外移転の記載事項は委託先単位で分担し、Cloudflareの項をinfra-delivery、AWS(Rekognition)の項をmedia-pipelineが書く(根拠はDPFを主とし、無効時は委託先のDPAの標準契約条項)。本specのGoogle Cloud Natural Languageの項は今回の分担に含まれない |
+| N-2 | 「無ければ止める」前提に、roadmapに無い依存(email-deliveryの実装)が含まれる               | タスク1.1の前提からemail-deliveryを外し、実装(4:21のcron式と`email-delivery.cleanup`)の有無を確かめ、無ければ開発者へ報告して続ける形にした。cron式が無ければタスク10で加える。roadmapの依存には加えない                                                    |
+| N-3 | 下流が前提にするタスクの区切りに`server/**`の許可と日次タイムラインの表が入っていない     | design.mdの「本specのタスクを前提にする下流spec」の区切りに、6.1・11.3のうち`coding/003`への`server/**`の許可の記述・11.4のうち日次タイムラインの表の作成を加え、許可の確かめ方を注記した。表は最初に4:21のジョブを足すspecが作り、後のspecは行を足す。下流specは表が無いことを理由に止めない |
+| N-4 | ジョブ名の規約の置き場所が無い                                                           | 受け入れ基準16.8とタスク11.5を加え、backend-platformの`infra/003-async-processing.md`(backend-platform/design.mdで定期実行を説明する文書として割り当てられた番号)へ、ジョブ・波及処理`<spec名>.<名詞句>`とメッセージ種別`<ドメイン>.<動詞句>`の規約を追記する |
+| N-5 | 技術ドキュメントへシークレットのキーの一覧を写す設計                                     | キーの一覧の正を`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節(infra-deliveryが作る)とし、本specはキーを必須にする変更と同じ変更で`GOOGLE_NL_API_KEY`の行を加える(タスク9.1)。`external/002`はキーと変数の名前を列挙せず、プレースホルダーとリンクにする(タスク11.1)                                     |
+| N-6 | 運営者による代理の退会                                                                   | 本specは関係しない(identity-auth・ugc-moderation)                                                                                                                                                                                                              |
+| N-7 | 停止中の利用者のアップロードの拒否                                                       | 本specは関係しない(media-pipeline・identity-auth)                                                                                                                                                                                                              |
 
 - M-5(4:21の1回の起動の時間の予算)とM-7(同じファイルへの追記によるマージの衝突)は、開発者とbackend-platformの判断に委ね、本specでは扱わない。
 

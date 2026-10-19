@@ -67,7 +67,7 @@
   - 書記素の数え方と、マークダウンの入力の検証規則
   - 全文検索の索引の定義・マイグレーションのひな形・同期・再構築、索引の正規化処理、キーワード抽出の縮退と再抽出、元データの削除時の索引の削除、検索式の組み立てと関連度の並び順の部品、検索語の強調表示
   - 検索対象の登録口と、ドメインが索引の更新を要求する手段
-  - 上記のテストと、`docs/GUIDES/tech`の`external`・`db`・`frontend`・`security`の文書、関連する開発者向け文書とサービス仕様の更新
+  - 上記のテストと、`docs/GUIDES/tech`の`external`・`db`・`frontend`・`security`の文書、定期実行の文書(`infra`)へのジョブとメッセージ種別の名前の規約の追記、関連する開発者向け文書とサービス仕様の更新
 - **Out of scope**:
   - 各ドメインの入力欄の上限値と必須の別、各表示場所の`rel`の値と折りたたみの高さ、本文の識別子の選び方(各ドメインspec)
   - ドメインごとの検索対象の登録・索引のテーブルとマイグレーション・検索の画面とクエリ・論理削除や非公開の元データを索引に含めるかの判断(directory-discovery・help-center)
@@ -79,8 +79,8 @@
   - 各ドメインspecは、マークダウンの入力欄に項目名・上限・`rel`・本文の識別子を渡し、APIサーバーで本specの検証規則を使ってマークダウンの原文を保存する(描画結果のHTMLは保存しない)。
   - directory-discovery・help-centerは、検索対象を登録し、索引のテーブルとマイグレーションを本specのひな形で作り、元データの作成・編集・削除の処理で本specの手段を呼ぶ。検索の画面では本specの検索式・関連度・強調表示の部品を使う。
   - help-centerは、本specが返す見出しの一覧から目次を作る。
-  - backend-platformの非同期メッセージ・定期実行・一括の書き込み・ログとエラートラッキングの基盤を使う。frontend-platformの共通部品・フォーム部品・静的解析の設定・CSPを使い、生のHTMLの挿入の例外を本specの表示部品の1箇所に限る。
-  - infra-deliveryは、イベントサーバーの外部APIのキーをInfisicalのキーの表とWorkerのシークレットの一覧に載せてstaging・prodのWorkerへ反映し、本specが加える変数の3環境の値を一覧に持つ。開発者は、Google CloudのAPIキーを発行し、stagingの値をキーを必須にする変更をmainへマージする前にInfisicalへ登録する。prodの値の登録はlaunch-readinessがリリース時に行う。
+  - backend-platformの非同期メッセージ・定期実行・一括の書き込み・ログとエラートラッキングの基盤を使い、backend-platformの定期実行の技術ドキュメントへジョブとメッセージ種別の名前の規約を追記する。frontend-platformの共通部品・フォーム部品・静的解析の設定・CSPを使い、生のHTMLの挿入の例外を本specの表示部品の1箇所に限る。
+  - infra-deliveryは、イベントサーバーの外部APIのキーをInfisicalのキーの表に載せてstaging・prodのWorkerへ反映し、本specが加える変数の3環境の値を一覧に持つ。シークレットのキーの一覧の正は[本プロジェクト固有の値](../../../docs/onboardings/project-values.md)であり、本specは自分のキーの行をそこへ加える。開発者は、Google CloudのAPIキーを発行し、stagingの値をキーを必須にする変更をmainへマージする前にInfisicalへ登録する。prodの値の登録はlaunch-readinessがリリース時に行う。
   - media-pipeline・identity-authは、本specが新設する共用部品の配置と読み込みの境界に従って、自分の共有定義を共用部品へ加える。identity-authは書記素の文字数の部品を使い、APIサーバーに利用者側のオリジンの変数を本specと同じ名前・同じ値で置く。
 
 ## Requirements
@@ -312,3 +312,4 @@
 5. When 本specで新しいパッケージを導入する、または採用済みのパッケージを使わないと決める, the 共用部品と共通部品 shall 同じ作業の中で[tech-stack.md](../../../docs/onboardings/tech-stack.md)を更新する
 6. The 開発者向け文書 shall 共用部品の追加に伴い、共有ディレクトリの配置方式・依存の版の一覧・CLAUDE.mdのディレクトリ構成と技術規則の参照先・オンボーディングの手順を更新する
 7. The サービス仕様 shall 日次タイムラインに再抽出の定期実行を、文言規則に本specが追加する文言(入力の検証・エディタの読み込み失敗・プレビューの空)を追記する
+8. The 技術ドキュメント shall 定期実行のジョブの登録を説明する`docs/GUIDES/tech`の`infra`の文書に、ジョブとイベントの波及処理の名前を`<spec名>.<名詞句>`、非同期メッセージの種別を`<ドメイン>.<動詞句>`とする命名規約を、本プロジェクトのジョブの名前を挙げずに追記する
