@@ -122,7 +122,7 @@
 - [x] infra-delivery -- apps/infraのOpenTofu定義(Cloudflare資源・Infisical連携)とGitHub ActionsのCI/CD(検査・staging/prodデプロイ・D1マイグレーション). Dependencies: backend-platform, frontend-platform
 - [x] content-processing -- 共用部品`apps/common-lib`の新設、マークダウン入力・描画・サニタイズ(4.27)と全文検索基盤(FTS5・索引正規化パイプライン、4.28). Dependencies: frontend-platform
 - [x] media-pipeline -- ファイルアップロード・検証・非同期モデレーション(Rekognition)・画像配信ドメイン・同一オリジンのファイル配信・ファイルのライフサイクル(4.25). Dependencies: frontend-platform, content-processing
-- [x] identity-auth -- ユーザー登録・認証・セッション・TOTP・退会(4.1)、認証プリミティブ、ユーザーライフサイクルイベント、設定ページシェル. Dependencies: frontend-platform, email-delivery, content-processing
+- [x] identity-auth -- ユーザー登録・認証・セッション・TOTP・退会(4.1)、認証プリミティブ、ユーザーライフサイクルイベント、設定ページシェル. Dependencies: frontend-platform, email-delivery, content-processing, media-pipeline
 - [ ] admin-foundation -- 管理者アカウント・ログイン・RBAC(4.20)、監査ログ、管理画面シェル、最初の最上位管理者の作成. Dependencies: identity-auth, media-pipeline
 - [ ] legal-pages -- 利用規約・プライバシーポリシー・法的通知の編集と改訂履歴、公開ページ、全ページからの規約リンク. Dependencies: admin-foundation, content-processing
 - [ ] inquiry-chat -- 問い合わせフォームとチャット(4.17)、管理者の返信・ステータス管理、問い合わせカテゴリマスタ. Dependencies: admin-foundation, media-pipeline
