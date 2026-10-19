@@ -42,7 +42,7 @@
   - HonoはInversifyによる依存性注入とクリーンアーキテクチャ、`@inject`の明示
   - D1の制約(`db.transaction()`禁止・`db.batch()`・`onConflictDoNothing()`・バインド変数100個・FTS5はカスタムマイグレーション)
   - 環境シークレットはInfisicalで一元管理し`.dev.vars`・`.env`を使わない、`compatibility_date`は`2026-08-04`
-  - Bun Workspacesを使わず、共有ディレクトリ(`apps/db`・`apps/backend-lib`・`apps/frontend-lib`)はbind mountで配置する
+  - Bun Workspacesを使わず、共有ディレクトリ(`apps/db`・`apps/backend-lib`・`apps/frontend-lib`・`apps/common-lib`)はbind mountで配置する
   - 1ファイルにつきReactコンポーネントのエクスポートは1つ、日時は`<time datetime>`で表示する
   - サンプルデータのドメインは`.example`のみ、文書・コメント・コミットメッセージは日本語
 - 採用技術は[tech-stack.md](../../docs/onboardings/tech-stack.md)に従う。新しいパッケージが必要になったら、workerdで動作し継続的にメンテナンスされている候補を挙げて開発者に質問し、採用したものをtech-stack.mdに追記する。
@@ -71,7 +71,7 @@
   - 以降のドメインspecは、要件定義書の節を1〜2個ずつ受け持つ縦切りとし、管理画面側の機能(4.21〜4.23)も該当ドメインのspecへ寄せる。例えばカテゴリマスタは利用するspecが個別に所有する
   - 消費する側が提供する側より後に来るよう依存順を決め、先行specへの後からの改修を最小にする
 - **Shared seams to watch**:
-  - ユーザーライフサイクルイベント(退会・停止・停止解除): identity-authが契約を定義し退会を発火、ugc-moderationが停止を発火、各ドメインspecが自分のハンドラを登録する
+  - ユーザーライフサイクルイベント(退会・停止・停止解除): identity-authが契約を定義し退会を発火、ugc-moderationが停止を発火、各ドメインspecが自分のハンドラを登録する。停止中の利用者も退会でき、セッションが切れた利用者のために、identity-authが運営者による退会の操作口を、ugc-moderationがその管理画面と問い合わせからの導線を所有する
   - プロダクトライフサイクルイベント(非公開化・削除・復元): product-launchが契約を定義し、match-engine・directory-discovery・sponsorshipなどがハンドラを登録、ugc-moderationが非公開化を発火する
   - 可視性フィルタ(退会・停止・非公開・論理削除の除外): ユーザー側の条件はidentity-auth、プロダクト側の条件はproduct-launchが共通部品として所有する
   - ハンドル基盤(大文字小文字を区別しない一意性・旧ハンドルの302リダイレクト・予約語): user-profile-socialが所有し、product-launch・help-center・プロダクトカテゴリが再利用する
@@ -80,7 +80,7 @@
   - 再ローンチ可否ポリシー: product-launchが所有し、tournament-week・tournament-yearが「トーナメント結果確定待ち」の条件を供給する
   - 決済フルフィルメント: paymentsが購入種別とフルフィルメントのポートを所有し、ultras-subscription・tournament-week・tournament-year・sponsorshipが実装する
   - 通知イベント契約: notificationsが所有し、match-engine・tournament-week・tournament-yearが発行する
-  - Cron・Queuesのディスパッチ: backend-platformが所有し、各specがジョブとメッセージ種別を登録する(時刻は日次タイムラインに従う)
+  - Cron・Queuesのディスパッチ: backend-platformが所有し、各specがジョブとメッセージ種別を登録する(時刻は日次タイムラインに従う)。ジョブと波及処理の名前は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`とする。4:21のジョブの名前と順序は日次タイムラインの表に載せ、表が無ければ最初にジョブを足すspecが作る
   - GraphQLスキーマとpersisted operations: api-gatewayがサーバー側規約を、frontend-platformがクライアント側規約を所有し、各ドメインspecがスキーマモジュールを追加する
   - 画面シェル: 利用者側レイアウトとフッターはfrontend-platform、設定ページのシェルはidentity-auth、管理画面のシェルとメニューはadmin-foundation、トップページはmatch-engine、プロダクト詳細ページはdirectory-discovery、公開プロフィールはuser-profile-socialが所有し、他specはそこへ区画を追加する
   - 隔離バケットと隔離理由: media-pipelineがデータモデルと移動処理を、ugc-moderationが管理操作を所有する
@@ -126,7 +126,7 @@
 - [ ] inquiry-chat -- 問い合わせフォームとチャット(4.17)、管理者の返信・ステータス管理、問い合わせカテゴリマスタ. Dependencies: admin-foundation, media-pipeline
 - [ ] payments -- Stripe決済基盤(4.26)、購入とフルフィルメントのポート、Webhook反映、返金、決済履歴. Dependencies: identity-auth, legal-pages
 - [ ] ultras-subscription -- 有料プランUltras(4.18)、プラン判定サービス、有料プラン導線の機能フラグ、料金ページ. Dependencies: payments, admin-foundation
-- [ ] user-profile-social -- ユーザープロフィールと公開プロフィールページ(4.2)、フォロー(4.3)、ハンドル基盤. Dependencies: identity-auth, media-pipeline, content-processing, ultras-subscription
+- [ ] user-profile-social -- ユーザープロフィールと公開プロフィールページ(4.2)、フォロー(4.3)、ハンドル基盤、退会・停止に伴うユーザーの全保有ファイルの波及処理. Dependencies: identity-auth, media-pipeline, content-processing, ultras-subscription
 - [ ] help-center -- ヘルプページ(4.16)、ヘルプ記事管理、ヘルプカテゴリマスタ. Dependencies: admin-foundation, content-processing, user-profile-social
 - [ ] product-launch -- プロダクト登録・編集・削除とローンチ日予約(4.5)、再ローンチ制限(4.8)、プロダクトカテゴリマスタ、プロダクトライフサイクルイベント. Dependencies: user-profile-social, admin-foundation
 - [ ] match-engine -- 汎用マッチモデル、Upvote(4.6)、予選のペアリング・開始・確定(4.7)、トップページ. Dependencies: product-launch

@@ -39,7 +39,10 @@
   - 4.2(FR-UPROF-001〜013)、4.3(FR-FOLOW-001〜010)
   - ハンドル基盤と予約語一覧
   - 公開プロフィールページとプロフィール編集画面、フォロー関連の画面
-  - ユーザーライフサイクルイベントへのハンドラ登録(プロフィール画像の削除など)
+  - ユーザーライフサイクルイベントへのハンドラ登録
+    - 退会・物理削除に伴う、退会者の全保有ファイル(プロフィール画像に限らず、プロダクトの画像・問い合わせの添付を含む)の物理削除(media-pipelineの`eraseOwnedBy`)
+    - 停止・停止解除に伴う、隔離理由`user_suspended`の付け外し(media-pipelineの`MediaQuarantine.addReasonForOwner`・`removeReasonForOwner`)
+    - いずれも1回に最大1,000件を処理して残りの有無(`hasMore`)を返すので、identity-authの非同期の波及処理の`continue`へ対応付ける
   - 上記のテスト
 - **Out**:
   - ローンチ履歴の区画(product-launch)
@@ -74,3 +77,7 @@
 - ハンドル列には`textNoCase`をテーブル新規作成時に指定する(後から指定するとテーブル再作成のマイグレーションになる)。`nocase`が同一視するのはASCIIの大文字小文字のみ
 - 入力上限と表示規則は[文言規則](../../../docs/GUIDES/service/design/003-text-and-copy-rules.md)に従う
 - モックアップのURLは`/client/`接頭辞付きで、本番のURLとは異なる
+- ファイルの波及処理の担当は、roadmapのShared seams「ユーザーのファイルの波及処理」で決まっている。外部キーの無い`media_files`はidentity-authの取り残しの検出に掛からない
+  - identity-authから本specの実装までの間にstagingで物理削除された利用者のファイルは、取り残される
+  - 取り残されたファイルを一度だけ消す手順を設けるか、stagingのデータなので受け入れるかは、要件フェーズで決める
+- ハンドルの規則(文字種・長さ・予約語・大文字小文字・旧ハンドル)は本specが所有する。identity-authが持つのは、登録時に生成する初期ハンドルの形式(`InitialHandleFormat`)と、重複判定の差し込み口(`HANDLE_AVAILABILITY`)だけである。初期ハンドルの形式は本specの規則を満たす必要がある
