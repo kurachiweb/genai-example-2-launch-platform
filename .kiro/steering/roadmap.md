@@ -139,7 +139,7 @@
 - [ ] sponsorship -- スポンサー広告の申込・決済・掲載・開始終了通知(4.15)、管理者による強制終了と返金目安額. Dependencies: directory-discovery, payments
 - [ ] tournament-year -- Product of the Year決定トーナメント(4.14)と決勝実施日の設定. Dependencies: tournament-week
 - [ ] public-api -- 公開REST API(4.19)、APIキー管理、Swagger UIページ. Dependencies: engagement
-- [ ] ugc-moderation -- ユーザー生成コンテンツ管理(4.21のうち通報・広告以外)、統計、停止・非公開化・評価無効化、画像の手動モデレーション. Dependencies: engagement, tournament-year, sponsorship
+- [ ] ugc-moderation -- ユーザー生成コンテンツ管理(4.21のうち通報・広告以外)、統計、停止・非公開化・評価無効化、運営者による代理の退会、画像の手動モデレーション. Dependencies: engagement, tournament-year, sponsorship, inquiry-chat
 - [ ] content-reporting -- 通報(4.12)、通報管理と権利侵害対応フロー、通報カテゴリマスタ. Dependencies: ugc-moderation
 - [ ] data-export -- ユーザーデータのエクスポート(4.4). Dependencies: content-reporting, inquiry-chat, public-api
 - [ ] launch-readiness -- 非機能要件の検証(性能・可用性・アクセシビリティ・セキュリティ)、監視設定、全体E2E回帰、運用ドキュメント、本番リリース準備. Dependencies: infra-delivery, help-center, data-export

@@ -65,7 +65,7 @@
 
 ## Upstream / Downstream
 
-- **Upstream**: engagement、tournament-year、sponsorship、admin-foundation、media-pipeline、payments(収益の集計)
+- **Upstream**: engagement、tournament-year、sponsorship、admin-foundation、media-pipeline、payments(収益の集計)、identity-auth(停止・停止解除と運営者による退会の操作口)、inquiry-chat(代理の退会の依頼を受ける問い合わせ)
 - **Downstream**: content-reporting
 
 ## Existing Spec Touchpoints
