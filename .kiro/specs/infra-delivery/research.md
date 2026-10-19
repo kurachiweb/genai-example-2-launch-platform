@@ -97,6 +97,21 @@ Wave 1の2回目の横断レビューの指摘(N-1〜N-9)と開発者の回答�
 | N-6 | 関係なし | 運営者による代理の退会はidentity-auth・ugc-moderationの担当で、インフラの資源と手順に変更は無い |
 | N-7 | 関係なし | アップロードの可否の差し込み口はmedia-pipeline・identity-authの担当で、インフラの資源と手順に変更は無い |
 
+### 横断レビュー3回目の反映(2026-10-19)
+
+Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答を、次のとおり反映した。本specの担当はR3-4・R3-5・R3-6である。R3-7はroadmapとugc-moderationのbriefの修正で、親エージェントが行う。
+
+| ID   | 本specとの関係 | 反映した内容 |
+| ---- | -------------- | ------------ |
+| R3-1 | 関係なし | セッションの読み取り専用の型`SessionView`はapi-gateway・identity-auth・media-pipelineの担当で、インフラの資源と手順に変更は無い |
+| R3-2 | 関係なし | identity-authの記述の修正である |
+| R3-3 | 関係なし | media-pipelineの記述の修正である |
+| R3-4 | Cloudflareの項の所在を限定しない処理の範囲 | 所在を限定しない処理に、メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics)を加えた。範囲は骨子の委託先の一覧のCloudflareの用途すべてに当たる。identity-authが前提にする「Cloudflareの項(Turnstileを含む)」と一致させた。要件の用語・2.6、design.mdのOverview・Modified Files・他specへの影響の表(identity-auth)、tasks 8.5を改めた |
+| R3-5 | Google Cloudの項の担当 | Google Cloud(Natural Language API)の項はcontent-processingが同じ形と根拠の種類で書くことを、要件の決定事項・Out of scope・Adjacent expectations、design.mdのOut of Boundary・Revalidation Triggers・Modified Files・他specへの影響の表(content-processing)、tasks 8.5に加えた |
+| R3-6 | 骨子の共通の「移転の法的根拠」の行と書き方の型 | 開発者の決定(2026-10-19)により、roadmapの順で最初に骨子を改める本specが、共通の行を「DPFを主とし、DPFが無効になった場合は委託先のDPAに含まれるSCCに拠る。委託先の項がある委託先は、その項を正とする」に改める。項を持たないStripe・Sentryにもこの行が当たる。あわせて、骨子(委託先ごとの`###`の見出しと移転先・移転の根拠・委託先が講じる措置の3項目)と準拠方針(「データの保存場所」の表の下の委託先ごとの箇条)の書き方の型を示し、Cloudflareの項を見本にする。media-pipeline・content-processingは型に合わせ、共通の行を書き換えない。DISIFYとHave I Been Pwnedを対象外とする文は残すと名指しで書いた。要件に受け入れ基準2.7を加え、design.mdのBoundary・Out of Boundary・Revalidation Triggers・Modified Files・追跡表・コンポーネントの要件の列と、tasks 8.5を改めた |
+| R3-7 | 関係なし | roadmapとugc-moderationのbriefの修正である |
+| R3-8 | 関係なし | 文言規則への追加はmedia-pipeline・identity-authの担当で、本specは文言を持たない |
+
 ## Research Log
 
 ### Cloudflare providerの版と管轄の対応
@@ -297,7 +312,7 @@ Wave 1の2回目の横断レビューの指摘(N-1〜N-9)と開発者の回答�
 - **AIエージェントが開発者の認証情報で承認する**: 開発コンテナの`gh`は開発者の名義で、`gh pr review --approve`と`gh api`(マージのAPIを含む)が拒否されていない。botが作ったprodのPRを開発者の名義で承認・マージできてしまう。緩和: `Bash(gh pr review*)`・`Bash(gh api*)`をClaude設定のdenyへ加えるよう開発者に依頼し、承認とマージはGitHubの画面で人間が行う運用を文書化する。設定が入るまでは残存リスクとして扱う。
 - **同じアカウントのCloudflareのトークン**(K5): 承認数0のmainへマージされたコードは、stagingのトークンで実行され、同じアカウントのprodの資源にも権限が及ぶ。緩和: prodのデータの資源は`prevent_destroy`、D1はTime Travel、トークンの値はマスクして表示しない、ワークフローの変更はPRで開発者が確認する。
 - **Queuesの管轄とメールイベントの購読**(K1): 管轄付きのQueueへEmail Sendingのイベントが届くかが未確認である。緩和: stagingの最初のデプロイで、購読の作成と配信不能イベントの到達を確かめる手順を置く。届かなければK1を「管轄を指定しない」へ切り替え(Queueは作り直す。メッセージは一時的なもの)、準拠方針とプライバシーポリシー骨子のCloudflareの項(Queuesを所在を限定しない処理へ移す)を改める。
-- **国外移転の根拠の前提**(N-1): DPFは、Cloudflareの認証の継続と、EU-USの十分性認定の有効性を前提にする。また、所在を限定しない処理は米国以外の国のデータセンターでも行われ得る。DPFは米国への移転の仕組みのため、この部分にどの根拠が当たるかは骨子の範囲では決めていない。緩和: 骨子には開発者の決定どおり「DPFを主とし、無効になった場合はDPAに含まれるSCCに拠る」と書く。法務文書の本文を用意するときに、開発者がDPFの認証の一覧でのCloudflareの状況と、DPAに含まれるSCCが米国以外の処理を含むかを確かめる。
+- **国外移転の根拠の前提**(N-1): DPFは、Cloudflareの認証の継続と、EU-USの十分性認定の有効性を前提にする。また、所在を限定しない処理は米国以外の国のデータセンターでも行われ得る。DPFは米国への移転の仕組みのため、この部分にどの根拠が当たるかは骨子の範囲では決めていない。緩和: 骨子には開発者の決定どおり「DPFを主とし、無効になった場合はDPAに含まれるSCCに拠る」と書く。法務文書の本文を用意するときに、開発者がDPFの認証の一覧でのCloudflareの状況と、DPAに含まれるSCCが米国以外の処理を含むかを確かめる。全委託先に共通の「移転の法的根拠」の行も同じ根拠に改める(R3-6)ため、項を持たないStripe・SentryのDPFの認証とDPAのSCCも、同じときに開発者が確かめる。
 - **APIによる送信ドメインの登録とDNSレコード**: OpenTofuで登録したときに`cf-bounce`のMX・SPF・DKIMと`_dmarc`のレコードが作られない場合がある。緩和: stagingの最初の適用の後にレコードを確かめる。作られなければ、送信ドメインの資源の計算値(`dkim_selector`・`return_path_domain`)とEmail ServiceのAPIで得た値から`cloudflare_dns_record`を`edge_services`に加える。
 - **`--secrets-file`への標準入力**: Wranglerが`/dev/stdin`を読めない場合、シークレットを一時ファイルに書く必要がある。緩和: 実装時に確かめ、読めなければ`$RUNNER_TEMP`に権限0600のファイルを作り、`finally`で消す(ランナーはジョブごとに破棄される)。この場合は`security/003`に例外として記載する。
 - **Wranglerの自動作成**: 資源の識別子が無いバインディングは、`wrangler deploy`が資源を自動で作る。管轄の無いR2などが黙って作られる。緩和: デプロイの前にOpenTofuの適用と構成検査(全バインディングが資源一覧にある)を必ず通す。

@@ -6,7 +6,7 @@
 
 **Users**: 開発者は、mainへのマージでstagingを確かめ、GitHubの画面からリリースのPRを作らせて承認する。AIエージェントと後続specは、資源一覧(`apps/infra/environments/<環境>.json`)とWrangler設定へ同じ名前で資源を追記するだけで、新しいQueue・R2バケット・ホスト名をデプロイできる。launch-readinessは、本specの手順でprodの資源を作り、識別子を反映して最初のリリースを行う。
 
-**Impact**: 存在しない`apps/infra`・`.github`・`scripts/delivery`を新設する。上流specが所有する4アプリのWrangler設定へ、R2の管轄(`jurisdiction: "us"`)・`workers_dev: false`・`preview_urls: false`・stagingの識別子を書き込み、frontend-platformの疎通確認のE2Eに`@smoke`タグを付ける。tech-stack.mdのCI/CD(検査でstagingを注入する記載)をdevの注入へ改め、準拠方針とプライバシーポリシー骨子のCloudflareの項(保存場所と国外移転の記載事項)を、D1・R2・Queuesは米国、所在を限定しない処理(Durable Objects・Workerの実行・エッジのキャッシュ・ログ)は処理する国を特定できない、移転の根拠はEU-USデータプライバシーフレームワーク(DPF)を主とし標準契約条項(SCC)を予備とする、と改める。
+**Impact**: 存在しない`apps/infra`・`.github`・`scripts/delivery`を新設する。上流specが所有する4アプリのWrangler設定へ、R2の管轄(`jurisdiction: "us"`)・`workers_dev: false`・`preview_urls: false`・stagingの識別子を書き込み、frontend-platformの疎通確認のE2Eに`@smoke`タグを付ける。tech-stack.mdのCI/CD(検査でstagingを注入する記載)をdevの注入へ改め、準拠方針とプライバシーポリシー骨子のCloudflareの項(保存場所と国外移転の記載事項)を、D1・R2・Queuesは米国、所在を限定しない処理(Durable Objects・Workerの実行・エッジのキャッシュ・ログ・メール送信・Turnstile・Web Analytics)は処理する国を特定できない、移転の根拠はEU-USデータプライバシーフレームワーク(DPF)を主とし標準契約条項(SCC)を予備とする、と改める。あわせて、骨子の全委託先に共通の「移転の法的根拠」の行を同じ根拠に改め、委託先の項の書き方の型を示す。
 
 ### Goals
 
@@ -35,7 +35,7 @@
 - 4アプリのWrangler設定のうち、staging・prodの識別子(D1の`database_id`・`TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`)の値、R2のバインディングの`jurisdiction`、`workers_dev`・`preview_urls`。
 - ルートの`package.json`の`delivery`・`infra:check`・`infra:fmt`のスクリプト。
 - 技術ドキュメント`infra/005`〜`007`・`operations/001`〜`002`・`security/003`(Wave 1の横断レビューI-4で割り当てた番号に固定する)と、`security/001`・`testing/001`への追記。tech-stack.md・`docs/onboardings/project-values.md`・オンボーディング・CLAUDE.mdのディレクトリ構成の更新。`project-values.md`のWorkerのシークレットのキーの一覧の節(後続specが行を足す。N-5)。
-- 準拠方針とプライバシーポリシー骨子の「データの保存場所」と「国外移転の記載事項」のうち、Cloudflareの項(N-1)。
+- 準拠方針とプライバシーポリシー骨子の「データの保存場所」と「国外移転の記載事項」のうち、Cloudflareの項(N-1)と、骨子の全委託先に共通の「移転の法的根拠」の行、委託先の項の書き方の型(R3-6)。
 
 ### Out of Boundary
 
@@ -44,7 +44,7 @@
 - 一括検査・一括テスト・共有ディレクトリの配置のコマンドと、テストの命名・カバレッジの閾値(dev-tooling)。本specはCIから呼ぶだけである。
 - GraphQLの許可リストの生成とスキーマの検査(api-gateway)、疎通確認の画面とそのE2Eの内容(frontend-platform)。本specは`@smoke`タグの付与だけを行う。
 - Durable Objectsの管轄(どのspecも指定しない。K7)、Rekognition・Natural Languageの資格情報の作成(media-pipeline・content-processing・開発者)。
-- 準拠方針とプライバシーポリシー骨子のうち、Cloudflare以外の委託先の項。AWS(Rekognition、us-east-1)の項はmedia-pipelineが書く。分担は委託先単位で、本specはCloudflareの項だけを書き、互いの項を書き換えない。根拠の種類(DPFを主、SCCを予備)は両項で同じにする。法務文書の本文は開発者が用意する(N-1)。
+- 準拠方針とプライバシーポリシー骨子のうち、Cloudflare以外の委託先の項。AWS(Rekognition、us-east-1)の項はmedia-pipelineが、Google Cloud(Natural Language API)の項はcontent-processingが書く。分担は委託先単位で、本specはCloudflareの項と全委託先に共通の「移転の法的根拠」の行だけを書き、互いの項を書き換えない。項の書き方は本specが示す型に、根拠の種類(DPFを主、SCCを予備)は3項で同じにする。法務文書の本文は開発者が用意する(N-1・R3-5・R3-6)。
 - `CLIENT_SITE_ORIGIN`の変数(client・adminはcontent-processing、apiはidentity-authが所有する)。本specは3環境の値を「Supporting References」の一覧に持つだけである。
 - ブランチ保護・Environment・Actionsの設定の実施(開発者の手作業。本specは値を文書化する)。
 
@@ -66,7 +66,7 @@
 - `OPTIONAL_WORKER_SECRETS`の変更(任意のシークレットを持つemail-delivery・media-pipeline・identity-auth)。
 - R2の管轄・`workers_dev`・`preview_urls`の扱いの変更(backend-platform・frontend-platform・media-pipelineのWrangler設定と検査)。
 - Queuesの管轄(K1)の変更(email-delivery・media-pipelineのQueue、準拠方針とプライバシーポリシー骨子のCloudflareの項)。
-- 国外移転の記載事項の委託先単位の分担と、根拠の種類(DPFを主、SCCを予備)の変更(AWSの項を書くmedia-pipeline)。
+- 国外移転の記載事項の委託先単位の分担、根拠の種類(DPFを主、SCCを予備)、全委託先に共通の「移転の法的根拠」の行、委託先の項の書き方の型の変更(AWSの項を書くmedia-pipeline、Google Cloudの項を書くcontent-processing。R3-5・R3-6)。
 - 資源一覧のclientのホスト名の変更(`CLIENT_SITE_ORIGIN`を所有するcontent-processing(client・admin)・identity-auth(api)。値は「Supporting References」の一覧)。
 
 ## Architecture
@@ -264,13 +264,18 @@ scripts/delivery/
 - `docs/onboardings/project-values.md` — 本specの技術ドキュメントのプレースホルダーに当てはまる値(資源一覧の場所、stateのバケット、Infisicalのプロジェクトと主体とフォルダ、Environment、必須チェックの名前、ルールセット、コードオーナー、管轄)を加える。Workerのシークレットのキーの一覧の節を、「Supporting References」のInfisicalのフォルダとキーの表の形で作る(環境・フォルダ・キー・使うWorker・宣言したspec・必須か任意か・登録の時期)。行は、作成の時点でmainのWrangler設定の`secrets.required`・`OPTIONAL_WORKER_SECRETS`・`/ci/*`のフォルダにあるキーを載せる。この節をキーの一覧の正とし、後続specはキーを宣言する変更と同じ変更で行を足す(既にあれば食い違いを確かめるだけにする。12.3、N-5)。
 - `docs/onboardings/README.md` — 初回の準備(開発者の手作業)、stagingへのデプロイの流れ、リリースとhotfixの手順へのリンクを加える。
 - `CLAUDE.md` — ディレクトリ構成の`apps/infra`の内訳、`.github`の説明、`scripts/delivery/`を更新する。
-- `docs/GUIDES/service/legal/001-compliance-policy.md` — 「データの保存場所」の表のCloudflareの行に、D1・R2・Queuesは米国(管轄の保証)、所在を限定しない処理(Durable Objectsのレート制限のカウントなど、ハッシュ化した一時的な値・Workers Logs)は保存場所を保証しないと記す。表の下に、Workerの実行と画像配信のエッジのキャッシュも所在を限定しないことと、国外移転の根拠はプライバシーポリシー骨子のCloudflareの項を参照することを記す。値の正を`docs/onboardings/project-values.md`にする(K7・N-1)。
-- `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 「国外移転の記載事項」にCloudflareの項を加える(2.6、N-1)。
-  - 移転先: D1・R2・Queuesは米国の管轄で保存する。所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs)は、Cloudflareの各地のデータセンターで行われ得るため、処理する国を特定できない旨とその理由を記す。
-  - 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Cloudflareのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る。
-  - 委託先が講じる措置: 既存の共通の記述(データ処理条項・暗号化通信と保存・アクセス制御)を参照する。
-  - 共通の「移転先の国」の行のCloudflareの記述は、この項への参照に改める。「記載上の注意」の保存場所の項には、値の正(`project-values.md`)を記す。
-  - 分担は委託先単位である。AWS(Rekognition、us-east-1)の項はmedia-pipelineが同じ根拠の種類で書き、両specは互いの項を書き換えない。委託先の項の形(移転先・移転の根拠・委託先が講じる措置の3つ)は両項で共通にする。共通の「移転先の国」の行は、各specが自分の委託先の記述だけを改める。Stripe・Google Cloud・Sentryなど他の委託先の記述は変えない。法務文書の本文は開発者が用意するため、本specは骨子の記載事項に留める。
+- `docs/GUIDES/service/legal/001-compliance-policy.md` — 「データの保存場所」の表のCloudflareの行に、D1・R2・Queuesは米国(管轄の保証)、所在を限定しない処理(Durable Objectsのレート制限のカウントなど、ハッシュ化した一時的な値・Workers Logs)は保存場所を保証しないと記す。表の下に、委託先ごとの保存場所の箇条を設け、最初の箇条にCloudflareを書く(K7・N-1・R3-4・R3-6)。
+  - Cloudflareの箇条: D1・R2・Queuesは米国の管轄で保存すること、所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics))は保存場所を保証しないこと、移転の根拠はプライバシーポリシー骨子のCloudflareの項を正とすること、値の正は`docs/onboardings/project-values.md`であること。
+  - 書き方の型(他specはこれに合わせる): 箇条1つに委託先1つを、`- **<委託先>(<サービス>)**: <保存または一時送信の場所>。<委託先側での保存の有無>。移転の根拠はプライバシーポリシー骨子の<委託先>の項を正とする。`の形で書く。並びは骨子の委託先の一覧の順にする。表はデータごとの保存先(Cloudflareの資源)の一覧のまま残し、他の委託先は表へ行を足さず箇条だけを足す。既存の「外部サービスへ一時送信する情報と保持しない旨は委託先の一覧を正とする」の一文は残す。
+- `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 「国外移転の記載事項」の全委託先に共通の「移転の法的根拠」の行を改め、Cloudflareの項を加える(2.6・2.7、N-1・R3-4・R3-6)。
+  - 共通の「移転の法的根拠」の行: 「標準契約条項等の該当するもの」を、「EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は委託先のデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る。委託先の項がある委託先は、その項を正とする」に改める。項を持たない委託先(Stripe・Sentry)にもこの行が当たる。本specはroadmapの順で最初に骨子を改めるため、この行を担当する(R3-6)。
+  - 共通の「移転先の国」の行: Cloudflareの記述だけを、Cloudflareの項への参照に改める。「DISIFYとHave I Been Pwnedには個人を識別できる情報を渡さないため対象外」の文は残す。「当該国の制度」「委託先が講じる措置」「本人の求め」の行は変えない。
+  - 書き方の型(他specはこれに合わせる): 共通の行の後に、委託先ごとに`### <委託先>(<サービス>)`の見出しを置き、「移転先」「移転の根拠」「委託先が講じる措置」の3項目の箇条を書く。並びは委託先の一覧の順にする。移転の根拠の項目は、共通の行と同じ根拠に、その委託先のDPAを当てて書く。委託先が講じる措置の項目は、共通の行を参照し、その委託先に固有の措置だけを加える。
+  - Cloudflareの項の移転先: D1・R2・Queuesは米国の管轄で保存する。所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics))は、Cloudflareの各地のデータセンターで行われ得るため、処理する国を特定できない旨とその理由を記す。範囲は委託先の一覧のCloudflareの用途(ホスティング、データベース、ストレージ、メール送信、bot対策、解析)すべてに当たる。
+  - Cloudflareの項の移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Cloudflareのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る。
+  - Cloudflareの項の委託先が講じる措置: 共通の行(データ処理条項・暗号化通信と保存・アクセス制御)を参照する。
+  - 「記載上の注意」の保存場所の項には、値の正(`project-values.md`)を記す。
+  - 分担は委託先単位である。AWS(Rekognition、us-east-1)の項はmedia-pipelineが、Google Cloud(Natural Language API)の項はcontent-processingが、上記の型と同じ根拠の種類で書く。各specは互いの項と全委託先に共通の行(各specが自分の委託先の記述だけを改める「移転先の国」の行を除く)を書き換えない。本specはStripe・Google Cloud・Sentry・DISIFY・Have I Been Pwnedの記述を変えない。法務文書の本文は開発者が用意するため、本specは骨子の記載事項に留める。
 
 ## System Flows
 
@@ -391,6 +396,7 @@ graph LR
 | 2.4         | S3の接続先と使えない機能                   | InfraDocs                                                        | `infra/006`                                          | —                  |
 | 2.5         | 準拠方針とポリシー骨子                     | ProjectDocsUpdate                                                | `legal/001`・`legal/003`・project-values             | —                  |
 | 2.6         | 国外移転の記載事項のCloudflareの項         | ProjectDocsUpdate                                                | `legal/001`・`legal/003`の「国外移転の記載事項」     | —                  |
+| 2.7         | 共通の移転の法的根拠の行と書き方の型       | ProjectDocsUpdate                                                | `legal/003`の共通の行・`legal/001`の委託先ごとの箇条 | —                  |
 | 3.1         | 専用の保管先・リポジトリに置かない         | LiveRoot・ResourceCatalog                                        | `backend "s3"`・`backends/*.s3.hcl`                  | デプロイ           |
 | 3.2         | 状態と計画の暗号化と鍵の注入               | LiveRoot・TofuRunner・SecretSource                               | `encryption`・`/ci/tofu`                             | シークレット       |
 | 3.3         | 鍵が無ければ失敗                           | LiveRoot                                                         | `enforced = true`                                    | —                  |
@@ -511,7 +517,7 @@ graph LR
 | RuntimeConfigPatch       | apps integration      | 4アプリのWrangler設定への反映                             | 2.3, 8.2, 8.3, 11.3                  | 上流のWrangler設定 (P0)                        | State           |
 | SmokeTag                 | e2e integration       | 疎通確認のE2Eへの`@smoke`                                 | 7.10                                 | frontend-platformのE2E (P0)                    | State           |
 | RepositoryProtection     | docs                  | ルールセット・Environment・Actions設定の値                | 9.4–9.11                             | 開発者の手作業 (P0)                            | State           |
-| InfraDocs・OperationsDocs・SecurityDocs・TestingDocsUpdate・ProjectDocsUpdate | docs | 技術ドキュメントと既存文書の更新 | 1.7, 2.4, 2.5, 2.6, 3.5, 4.6, 4.8, 4.9, 5.8, 7.13, 8.4, 9.10, 9.11, 10.x, 12.x, 13.x | なし | — |
+| InfraDocs・OperationsDocs・SecurityDocs・TestingDocsUpdate・ProjectDocsUpdate | docs | 技術ドキュメントと既存文書の更新 | 1.7, 2.4, 2.5, 2.6, 2.7, 3.5, 4.6, 4.8, 4.9, 5.8, 7.13, 8.4, 9.10, 9.11, 10.x, 12.x, 13.x | なし | — |
 
 ### apps/infra
 
@@ -1211,7 +1217,7 @@ export interface HttpProbe {
 | Field        | Detail                                                                           |
 | ------------ | -------------------------------------------------------------------------------- |
 | Intent       | 構成・パイプライン・運用・保護の設定の文書化                                     |
-| Requirements | 1.7, 2.4, 2.5, 2.6, 3.5, 4.6, 4.8, 4.9, 5.8, 7.13, 8.4, 9.10, 9.11, 10.1–10.4, 12.1–12.4, 13.1–13.7 |
+| Requirements | 1.7, 2.4, 2.5, 2.6, 2.7, 3.5, 4.6, 4.8, 4.9, 5.8, 7.13, 8.4, 9.10, 9.11, 10.1–10.4, 12.1–12.4, 13.1–13.7 |
 
 - `infra/005-infrastructure-overview.md`: 構成図(Workers4つ・カスタムドメイン・D1・R2・Queues・Turnstile・Web Analytics・Email Sendingと購読・Service Bindings・外部サービス)と、CI/CDとシークレットの流れの図(mermaid)。ゾーン全体のルールを持たない方針(1.7)。
 - `infra/006-iac-with-opentofu.md`: ディレクトリ構成、資源一覧の項目、モジュールの境界と資源の追加手順(1.10)、状態の保管(S3互換backend・ロックファイル・環境ごとのバケット)と暗号化、`ephemeral`の資格情報、providerの固定とロックファイルのプラットフォーム、2段階の適用、`prevent_destroy`、`tofu test`、管轄の注意(Wranglerのバインディング・S3の接続先・Data Access Logs・デッドレターの管轄の一致・変更不可、2.4)、既存の資源の`import`(12.2)。
@@ -1221,7 +1227,7 @@ export interface HttpProbe {
   - プロジェクト固有のキーの一覧(キー名・宣言したspec・使うWorker)は写さず、`docs/onboardings/project-values.md`のキーの一覧の節へのリンクにする(13.5、N-5)。
 - `operations/002-rollback-and-recovery.md`: 逆順のロールバックと版の特定(10.1・10.2)、ロールバックの制約とデータベースの復元(10.3)、実行者(10.4)、状態のロックの解除と復旧、CIの外での一時的な操作(4.9)。
 - `security/003-ci-secrets-and-repository-protection.md`: 主体の分離とOIDCの縛り、環境ごとの権限が無いプランで1つのプロジェクトを使う場合のリスクと緩和策(どの機械の主体も全環境を読めること、プランを上げた場合の分離の手順、13.3)、フォルダの構成、ロールは読み取りだけ(4.6)、マスクとログの規則、フォークのPR(5.8)、ルールセット・Environment・Actionsの設定(9.10)、残るリスクとAIエージェントの対策(9.11)。
-- `security/001`・`testing/001`への追記、各`README.md`の文書一覧、`project-values.md`・`tech-stack.md`・オンボーディング・CLAUDE.md・準拠方針とプライバシーポリシー骨子の更新は「Modified Files」のとおり(2.5・2.6・12.3・13.5〜13.7)。
+- `security/001`・`testing/001`への追記、各`README.md`の文書一覧、`project-values.md`・`tech-stack.md`・オンボーディング・CLAUDE.md・準拠方針とプライバシーポリシー骨子の更新は「Modified Files」のとおり(2.5〜2.7・12.3・13.5〜13.7)。
 
 ## Data Models
 
@@ -1354,9 +1360,9 @@ graph TB
 | email-delivery                | メールイベント用QueueとデッドレターがすべてQueueの`us`の管轄になる(K1)。送信ドメインのプレビューの無効化・Queueと購読の作成は本specが行い、手作業から外れる                                             |
 | api-gateway                   | 直前のリリースはclientのWorkerの版のタグから特定する。`graphql:allowlist --previous-ref`の契約は変えない                                                                                                 |
 | dev-tooling                   | ルートの`package.json`に`delivery`・`infra:check`・`infra:fmt`が加わる。`scripts/delivery`はルートの検査と単体テストの対象になる                                                                         |
-| identity-auth(Wave 1)         | 任意のシークレット`DISIFY_API_KEY`はapi・eventの`OPTIONAL_WORKER_SECRETS`に載り、Infisicalのstagingに値があればデプロイ時に反映される。prodの値はlaunch-readinessが登録する。`LoginAttemptThrottle`のDurable Objectの管轄は指定しない(K7)。そのマイグレーションは、本specの導入後はmainへのマージでCIのデプロイが適用する(M-11)。apiの`CLIENT_SITE_ORIGIN`の3環境の値は「Supporting References」の一覧と同じにする(M-1)。キーは`project-values.md`のキーの一覧の節へ行を足し、技術ドキュメントにはキーの名前を列挙しない(N-5) |
-| media-pipeline(Wave 1)        | R2をS3 APIで使う場合の接続先は`https://<ACCOUNT_ID>.us.r2.cloudflarestorage.com`。管轄付きのバケットではData Access Logsを使えない。画像判定専用のQueueを作る場合は資源一覧の`queues`とWrangler設定へ同じ名前で加え、`us`の管轄になる。eventの必須の`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`はInfisicalのキーの表に載る。stagingの値は`secrets.required`へ加える変更をmainへマージする前に登録し、prodの値はlaunch-readinessが登録する。任意の`MEDIA_SMOKE_TOKEN`はeventの`OPTIONAL_WORKER_SECRETS`に載る(stagingだけに登録)。本specの5.3がこれらを一覧へ先に入れるため、media-pipelineは本specの実装の有無を確かめ、無ければ開発者へ報告して進める(N-2)。キーは`project-values.md`のキーの一覧の節へ行を足す(N-5)。国外移転の記載事項は委託先単位で分担し、media-pipelineがAWS(Rekognition)の項を、本specがCloudflareの項を、同じ根拠の種類(DPFを主、SCCを予備)で書き、互いの項を書き換えない(N-1) |
-| content-processing(Wave 1)    | eventの必須の`GOOGLE_NL_API_KEY`はInfisicalのキーの表に載る。stagingの値は`secrets.required`へ加える変更をmainへマージする前に開発者が登録し、prodの値はlaunch-readinessが登録する。client・adminの`CLIENT_SITE_ORIGIN`の3環境の値は「Supporting References」の一覧と同じにする(M-1)。キーは`project-values.md`のキーの一覧の節へ行を足し、技術ドキュメントにはキーの名前を列挙しない(N-5)。`apps/common-lib`はCIの導入と配置に自動で含まれる |
+| identity-auth(Wave 1)         | 任意のシークレット`DISIFY_API_KEY`はapi・eventの`OPTIONAL_WORKER_SECRETS`に載り、Infisicalのstagingに値があればデプロイ時に反映される。prodの値はlaunch-readinessが登録する。`LoginAttemptThrottle`のDurable Objectの管轄は指定しない(K7)。そのマイグレーションは、本specの導入後はmainへのマージでCIのデプロイが適用する(M-11)。apiの`CLIENT_SITE_ORIGIN`の3環境の値は「Supporting References」の一覧と同じにする(M-1)。キーは`project-values.md`のキーの一覧の節へ行を足し、技術ドキュメントにはキーの名前を列挙しない(N-5)。準拠方針とプライバシーポリシー骨子のCloudflareの項の所在を限定しない処理には、bot判定(Turnstile)とメール送信を含む(R3-4) |
+| media-pipeline(Wave 1)        | R2をS3 APIで使う場合の接続先は`https://<ACCOUNT_ID>.us.r2.cloudflarestorage.com`。管轄付きのバケットではData Access Logsを使えない。画像判定専用のQueueを作る場合は資源一覧の`queues`とWrangler設定へ同じ名前で加え、`us`の管轄になる。eventの必須の`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`はInfisicalのキーの表に載る。stagingの値は`secrets.required`へ加える変更をmainへマージする前に登録し、prodの値はlaunch-readinessが登録する。任意の`MEDIA_SMOKE_TOKEN`はeventの`OPTIONAL_WORKER_SECRETS`に載る(stagingだけに登録)。本specの5.3がこれらを一覧へ先に入れるため、media-pipelineは本specの実装の有無を確かめ、無ければ開発者へ報告して進める(N-2)。キーは`project-values.md`のキーの一覧の節へ行を足す(N-5)。国外移転の記載事項は委託先単位で分担し、media-pipelineがAWS(Rekognition)の項を、本specがCloudflareの項を、content-processingがGoogle Cloudの項を、同じ根拠の種類(DPFを主、SCCを予備)で書き、互いの項を書き換えない(N-1・R3-5)。AWSの項は、本specが示す骨子と準拠方針の書き方の型に合わせ、本specが改める全委託先に共通の「移転の法的根拠」の行を書き換えない(R3-6) |
+| content-processing(Wave 1)    | eventの必須の`GOOGLE_NL_API_KEY`はInfisicalのキーの表に載る。stagingの値は`secrets.required`へ加える変更をmainへマージする前に開発者が登録し、prodの値はlaunch-readinessが登録する。client・adminの`CLIENT_SITE_ORIGIN`の3環境の値は「Supporting References」の一覧と同じにする(M-1)。キーは`project-values.md`のキーの一覧の節へ行を足し、技術ドキュメントにはキーの名前を列挙しない(N-5)。`apps/common-lib`はCIの導入と配置に自動で含まれる。国外移転の記載事項は委託先単位で分担し、content-processingがGoogle Cloud(Natural Language API)の項を、本specのCloudflareの項・media-pipelineのAWSの項と同じ根拠の種類(DPFを主、SCCを予備)で書き、互いの項を書き換えない(N-1・R3-5)。Google Cloudの項は、本specが示す骨子と準拠方針の書き方の型に合わせ、本specが改める全委託先に共通の「移転の法的根拠」の行を書き換えない(R3-6) |
 | launch-readiness              | prodの準備(stateのバケット・Infisicalのprodの主体とフォルダ・各specが宣言したprodのシークレットの値・資源一覧の主体の識別子)・資源の作成・識別子の反映・最初のデプロイ、Sentryのソースマップのアップロードの手順の追加、stagingの`SENTRY_DSN`の値(K8) |
 
 - K8(research.md、承認済み): backend-platform・frontend-platformはstagingの`secrets.required`に`SENTRY_DSN`を持ち、値の登録をlaunch-readinessとしている。stagingへの随時デプロイには最初のstagingのデプロイの前に値が要るため、本specの初回の準備で開発者がstaging用のSentryのDSNを登録する(Sentryのstaging用のプロジェクトはlaunch-readinessより前に作る)。
