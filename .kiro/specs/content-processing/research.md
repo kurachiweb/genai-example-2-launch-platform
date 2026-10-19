@@ -85,7 +85,7 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 | M-2 | frontend-libの`server/**`からcommon-libを読む許可が無い                                  | `server/**`も`../common-lib/**`を読み込めるようにし、`components/**`と同じくZodを使う`validation/**`の読み込みを禁止する。media-pipelineの`server/media`はこれを前提にする                                                                                                                                       |
 | M-4 | 4:21のジョブの順序を日次タイムラインへ書くspecが偏っている                               | 4:21にジョブを足す各specが日次タイムラインへ追記する。本specは、日次バッチのジョブの順序の表が無ければ作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、自分のジョブの行を加える                                                                                                                |
 | M-9 | ジョブ・波及処理の名前の接頭辞がそろっていない                                           | ジョブの名前は`<spec名>.<名詞句>`(email-deliveryの`email-delivery.cleanup`と同じ)、メッセージ種別は`<ドメイン>.<動詞句>`(backend-platform)にそろえる。再抽出のジョブの名前は`content-processing.keyword-reextraction`とし、メッセージ`search-index.refresh`はそのままとする                                     |
-| N-1 | Cloudflareの資源の国外移転の根拠を書くspecが無い                                         | 本specは関係しない。国外移転の記載事項は委託先単位で分担し、Cloudflareの項をinfra-delivery、AWS(Rekognition)の項をmedia-pipelineが書く(根拠はDPFを主とし、無効時は委託先のDPAの標準契約条項)。本specのGoogle Cloud Natural Languageの項は今回の分担に含まれない |
+| N-1 | Cloudflareの資源の国外移転の根拠を書くspecが無い                                         | 国外移転の記載事項は委託先単位で分担し、Cloudflareの項をinfra-delivery、AWS(Rekognition)の項をmedia-pipeline、本specが使う委託先Google Cloud(Natural Language API)の項を本specが書く(開発者の決定の委託先単位の分担を当てはめた追加の決定)。受け入れ基準16.9とタスク11.4を加えた。項の形は「移転先・移転の根拠・委託先が講じる措置」、根拠はDPFを主とし、無効になった場合は委託先のDPAに含まれるSCCに拠る。共通の「移転先の国」の行はGoogle Cloudの記述だけを改め、他の委託先の項は書き換えない |
 | N-2 | 「無ければ止める」前提に、roadmapに無い依存(email-deliveryの実装)が含まれる               | タスク1.1の前提からemail-deliveryを外し、実装(4:21のcron式と`email-delivery.cleanup`)の有無を確かめ、無ければ開発者へ報告して続ける形にした。cron式が無ければタスク10で加える。roadmapの依存には加えない                                                    |
 | N-3 | 下流が前提にするタスクの区切りに`server/**`の許可と日次タイムラインの表が入っていない     | design.mdの「本specのタスクを前提にする下流spec」の区切りに、6.1・11.3のうち`coding/003`への`server/**`の許可の記述・11.4のうち日次タイムラインの表の作成を加え、許可の確かめ方を注記した。表は最初に4:21のジョブを足すspecが作り、後のspecは行を足す。下流specは表が無いことを理由に止めない |
 | N-4 | ジョブ名の規約の置き場所が無い                                                           | 受け入れ基準16.8とタスク11.5を加え、backend-platformの`infra/003-async-processing.md`(backend-platform/design.mdで定期実行を説明する文書として割り当てられた番号)へ、ジョブ・波及処理`<spec名>.<名詞句>`とメッセージ種別`<ドメイン>.<動詞句>`の規約を追記する |
@@ -192,6 +192,10 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
   - 非対応の言語は`INVALID_ARGUMENT`(HTTP 400)になる。エンティティ分析の対応言語はzh・zh-Hant・en・fr・de・it・ja・ko・pt・ru・es。
   - 上限: 1要求1,000,000バイト、トークン100,000(超過分は無視)、毎分600要求・毎日800,000要求(プロジェクト単位)。
   - 料金: 1,000文字を1単位、毎月5,000単位まで無料、以降1,000単位あたり1ドル。
+- **処理する場所とデータの扱い(N-1の追加の決定で確認)**:
+  - [Locations](https://docs.cloud.google.com/natural-language/docs/locations): 既定のグローバルのエンドポイント(`language.googleapis.com`)では、Googleは処理する場所を特定のリージョンに限ることを保証しない。複数リージョンのエンドポイント`us-language.googleapis.com`・`eu-language.googleapis.com`を使うと、機械学習の処理をそれぞれ米国・EUの中だけで行う。同じ文書はv2(`documents:analyzeEntities`)が複数リージョンのエンドポイントで使えるかを明記していない。
+  - [Data Usage FAQ](https://cloud.google.com/natural-language/docs/data_usage): 送ったテキストはメモリ上で処理されて保存されず、サービスの提供以外に使われず、現在は学習に使われない。要求の時刻や大きさなどのメタデータは、サービスの改善と不正利用の対策のため一時的に記録される。
+  - 本specはグローバルのエンドポイントを使う(`ANALYZE_ENTITIES_ENDPOINT`)ため、国外移転の記載事項のGoogle Cloudの項には「処理する場所は保証されない」と書く。
 - **Implications**: 応答の`languageSupported: false`と、言語を理由とする400を「非対応言語」とする。それ以外の400と401・403は設定の誤り、429・5xx・通信の失敗・時間切れは一時的な失敗とする。キーワードは種類で絞り(仮決定P8)、名前を正規化して重複を除く。抽出の入力が前回と同じなら呼ばない(料金の抑制)。
 
 ### CSPへの影響
@@ -342,6 +346,7 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 - 20,000文字の本文の描画(Bunで約124ms)が、遅い端末のブラウザの初期化を遅らせる — 入力と指定でメモ化し、単体テストで処理時間の上限を確かめる。劣化した場合は、表示場所の側でサーバーだけの描画に切り替えられるよう、表示部品は描画結果を受け取る形にする。
 - 索引文書のテーブルの列を変えると、drizzle-kitがテーブルを作り直してトリガーが消える — 列を変えた後にトリガーを作り直すSQL(`renderSearchIndexTriggersSql`)と`rebuild`を手順に含め、マイグレーションとの突き合わせの単体テストでトリガーの欠落を検出する。
 - D1のFTS5が`prefix`の指定・`bm25`の重み・トリガーをbun:sqliteと同じに扱うかは未確認 — D1上のWorkers統合テストで確かめ、違えば`prefix`を外す。
+- 自然言語APIをグローバルのエンドポイントで呼ぶため、処理する場所が保証されない — プライバシーポリシーの大枠のGoogle Cloudの項にその旨と移転の根拠(DPFを主、DPAのSCCを予備)を書く。米国だけでの処理を保証したい場合は、`us-language.googleapis.com`がv2の`analyzeEntities`に対応するかを疎通確認のスクリプトで確かめてから接続先を変え、同じ変更で項を改める(開発者の判断)。
 - 自然言語APIの応答の形は文書から決めた(実際のキーでの確認はしていない) — 応答をZodで検証し、合わなければ設定の誤りとしてSentryへ送る。開発者が疎通確認のスクリプトで実際の応答を確かめる。
 - 同じ時期に作るspec(infra-delivery・media-pipeline・identity-auth)も`docs/GUIDES/tech`へ文書を加えるため、文書の番号が衝突し得る — 番号をroadmapの順で先に割り当てて固定した(横断レビューI-4)。本specは`external/002`・`db/004`・`frontend/008`・`security/004`を使う。
 - frontend-libの位置の検査では、frontend-libとcommon-libで同じパッケージ(zodなど)が2つの実体になり得る — frontend-libの部品はcommon-libのZodを使うモジュールを読み込まない規約を置き、利用側アプリでは1つの実体になることをclient・adminの型検査とビルドで確かめる。
@@ -354,6 +359,8 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 - [FTS5 Prefix Queries・The bm25() function](https://sqlite.org/fts5.html) — 前方一致と列ごとの重み
 - [Cloud Natural Language API v2 reference](https://docs.cloud.google.com/natural-language/docs/reference/rest/v2/documents) — 要求と応答
 - [Cloud Natural Language quotas](https://docs.cloud.google.com/natural-language/quotas) — 上限と割り当て
+- [Cloud Natural Language locations](https://docs.cloud.google.com/natural-language/docs/locations) — グローバルと複数リージョンのエンドポイント、処理する場所の保証
+- [Cloud Natural Language Data Usage FAQ](https://cloud.google.com/natural-language/docs/data_usage) — 送ったテキストの保存・利用・メタデータの記録
 - [rehype-sanitize](https://github.com/rehypejs/rehype-sanitize) — 許可リストと`clobberPrefix`
 - [remark-rehype](https://github.com/remarkjs/remark-rehype) — Raw HTMLの扱いと脚注の文言
 - [Milkdown Crepe](https://milkdown.dev/docs/guide/using-crepe) — builderと機能

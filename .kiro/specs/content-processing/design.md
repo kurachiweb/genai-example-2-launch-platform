@@ -34,7 +34,7 @@
 - `apps/event`の追加部分: 索引の更新の処理(`SearchIndexRefreshHandler`)、キーワード抽出の実装(Google Cloud Natural Language・無効化)、環境の変数とシークレット、登録、疎通確認のスクリプト。
 - `apps/api`の追加部分: 日次の再抽出のジョブ(`SearchKeywordReextractionJob`)と登録。
 - 契約: `MarkdownRenderOptions`・`RenderedMarkdown`・`SanitizedHtml`、`MarkdownEditorProps`、`markdownTextSchema`の文言、`SearchTargetDefinition`・`SearchIndexDefinition`・`SearchIndexStatements`・`SearchIndexRefreshRequester`、メッセージ`search-index.refresh`、索引文書の共通の列と状態の値、全文検索の索引の名前の規約、変数`KEYWORD_EXTRACTOR`・`CLIENT_SITE_ORIGIN`、シークレット`GOOGLE_NL_API_KEY`。
-- 技術ドキュメント: `external/002-natural-language-keyword-extraction.md`・`db/004-full-text-search.md`・`frontend/008-markdown-editor-and-content.md`・`security/004-markdown-sanitization.md`と各索引(番号はroadmapの順で割り当てた固定の番号)。`coding/002`・`coding/003`・CLAUDE.md・tech-stack.md・`docs/onboardings`・サービス仕様(日次タイムライン・文言規則・ページ構成・準拠方針)の該当箇所の更新。backend-platformの`infra/003-async-processing.md`へのジョブとメッセージ種別の名前の規約の追記(16.8)。
+- 技術ドキュメント: `external/002-natural-language-keyword-extraction.md`・`db/004-full-text-search.md`・`frontend/008-markdown-editor-and-content.md`・`security/004-markdown-sanitization.md`と各索引(番号はroadmapの順で割り当てた固定の番号)。`coding/002`・`coding/003`・CLAUDE.md・tech-stack.md・`docs/onboardings`・サービス仕様(日次タイムライン・文言規則・ページ構成・準拠方針)の該当箇所の更新。backend-platformの`infra/003-async-processing.md`へのジョブとメッセージ種別の名前の規約の追記(16.8)。プライバシーポリシーの大枠と準拠方針の国外移転の記載事項のうち、委託先Google Cloud(Natural Language API)の項(16.9)。
 
 ### Out of Boundary
 
@@ -46,6 +46,7 @@
 - 中継・CSP・セキュリティヘッダー・フォーム部品・デザイントークン(frontend-platform。本specは静的解析の規則への追記・Vite設定の機能フラグ・変数1つの追加だけを行う)。
 - Google Cloudのプロジェクト・APIの有効化・キーの発行と制限、Infisicalの`staging`への登録(開発者の手作業)、Infisicalの`prod`への登録(launch-readiness)、staging・prodのWorkerへのシークレットの反映とCI(infra-delivery)。
 - `apps/common-lib`の下のmedia-pipeline・identity-authの共有定義(`common-lib/media`・`common-lib/identity`)と、APIサーバーの変数`CLIENT_SITE_ORIGIN`(identity-auth)。
+- プライバシーポリシー・準拠方針の法務文書の本文(開発者が用意する)と、国外移転の記載事項のうちGoogle Cloud以外の委託先の項(Cloudflareはinfra-delivery、AWSはmedia-pipeline。委託先単位の分担)。
 
 ### Allowed Dependencies
 
@@ -64,6 +65,7 @@
 - メッセージ`search-index.refresh`の本文と再試行の方針、再抽出のジョブの名前・時刻・順序・件数の上限(運用・infra-delivery・4:21にジョブを足すmedia-pipeline・identity-auth)。
 - 日次タイムラインの「日次バッチ(4:21)の内容」のジョブの名前と順序の表の形(4:21にジョブを足すmedia-pipeline・identity-authと後続spec)。
 - `infra/003-async-processing.md`へ追記するジョブ・波及処理とメッセージ種別の名前の規約(ジョブや波及処理を登録する全下流spec。identity-authの`backend/007`の名前の規約の記述)。
+- プライバシーポリシーの大枠の国外移転の記載事項のGoogle Cloudの項(送る情報・処理する場所・移転の根拠・措置)。委託先の項の形(移転先・移転の根拠・委託先が講じる措置)と根拠の種類(DPFを主、委託先のDPAのSCCを予備)は、Cloudflareの項(infra-delivery)・AWSの項(media-pipeline)とそろえる。外部APIの接続先(処理のリージョン)や送る項目を変えたら、この項を改める(infra-delivery・media-pipeline・launch-readiness)。
 - `buildFtsMatchExpression`の照合規則(前方一致)と`findHighlightRanges`の一致規則(directory-discovery・help-center)。
 - 変数`KEYWORD_EXTRACTOR`・`CLIENT_SITE_ORIGIN`、シークレット`GOOGLE_NL_API_KEY`の名前と環境ごとの値(infra-delivery・launch-readiness)。`CLIENT_SITE_ORIGIN`の名前と値は、identity-authがAPIサーバーに置く同名の変数と同じにする(identity-auth)。
 - 共有ディレクトリの数・配置先・検査担当、frontend-lib・backend-libからの参照方法(兄弟の相対パス、仮決定P4)、common-libの読み込みの境界の規則、frontend-libの`components/**`・`server/**`・`utilities/**`からcommon-libを読み込む許可と`validation/**`の制限(dev-tooling・全アプリ・infra-deliveryのCI・`common-lib/media`を置くmedia-pipeline・`common-lib/identity`を置くidentity-auth)。
@@ -355,7 +357,13 @@ docs/
 - `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」に、ジョブの名前と順序の表が無ければ作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、既に下流specが作っていれば行だけを加える。検索のキーワードの再抽出(`content-processing.keyword-reextraction`・950)の行を順序どおりに加える(仮決定P6)。同じ時刻にジョブを足す他のspecも同じ表へ行を加え、表が無ければ同じ形で作る(「本specのタスクを前提にする下流spec」)。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — マークダウンの入力の検証の文言(必須・禁止文字)、リンクのURLの形式違反、エディタの読み込み失敗、プレビューの空、文字数の超過と戻りの読み上げの文言を加える。
 - `docs/GUIDES/service/design/002-page-layouts.md` — 「コメント」の投稿欄の記述に、書く側が書式を適用した見た目で編集すること、ツールバーの項目に表を含めることを加える。
-- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「検索索引(索引文書)」(元データの削除と同時に物理削除、FR-FTS-007)の行を加える。
+- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「検索索引(索引文書)」(元データの削除と同時に物理削除、FR-FTS-007)の行を加える。「データの保存場所(DR-007)」に委託先Google Cloudの項として、キーワード抽出の対象のテキストをNatural Language APIへ一時送信し、Google側では保存されないこと、処理する場所はGoogleが保証しないこと、その移転の根拠はプライバシーポリシーの大枠の国外移転の記載事項(Google Cloudの項)を正とすることを加える(16.9、N-1)。Cloudflareの資源の保存先の表と記述(infra-delivery)とAWSの項(media-pipeline)は書き換えない。
+- `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 「国外移転の記載事項」に委託先Google Cloud(Natural Language API)の項を加える(16.9、N-1)。項の形は、Cloudflareの項(infra-delivery)・AWSの項(media-pipeline)と同じ「移転先・移転の根拠・委託先が講じる措置」の3つにする。
+  - 移転先: 送る情報は、検索対象が登録したキーワード抽出の対象の項目の公開用のテキスト(プロダクト名・タグライン・説明文、ヘルプ記事の本文)だけで、利用者の識別子などを送らない(15.3)。APIは処理のリージョンを指定しないグローバルのエンドポイント(`ANALYZE_ENTITIES_ENDPOINT`)で呼ぶため、Googleは処理する場所を保証せず、委託先の所在国である米国以外の国でも処理され得る旨を記す。
+  - 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Google CloudのDPA(Cloud Data Processing Addendum)に含まれる標準契約条項(SCC)に拠る。
+  - 委託先が講じる措置: 既存の共通の記述(データ処理条項・暗号化通信と保存・アクセス制御)を参照し、送ったテキストはメモリ上で処理されて保存されず、サービスの提供以外(学習を含む)に使われないこと(GoogleのData Usage FAQ。要求の時刻・大きさなどのメタデータだけが一時的に記録される)と、Natural Language APIだけに制限した専用のAPIキーを加える。
+  - 共通の「移転先の国」の行は、Google Cloudの記述だけをこの項への参照に改める。Cloudflareの項(infra-delivery)・AWSの項(media-pipeline)、他の委託先の記述、全委託先に共通の記載(当該国の制度・本人の求めへの対応)は書き換えない。
+  - 法務文書の本文は開発者が用意するため、本specは骨子の記載事項に留める。
 
 ## System Flows
 
@@ -543,6 +551,7 @@ sequenceDiagram
 | 16.5, 16.6                          | tech-stack.mdと開発者向け文書                                 | DeveloperDocs                                                                                | —                                                                | —                        |
 | 16.7                                | サービス仕様                                                  | ServiceDocs                                                                                  | —                                                                | —                        |
 | 16.8                                | ジョブとメッセージ種別の名前の規約                            | TechDocs                                                                                     | `infra/003-async-processing.md`                                  | —                        |
+| 16.9                                | 国外移転の記載事項のGoogle Cloudの項                          | ServiceDocs                                                                                  | `legal/001`・`legal/003`の「国外移転の記載事項」                 | —                        |
 
 ## Components and Interfaces
 
@@ -587,7 +596,7 @@ sequenceDiagram
 | SearchKeywordReextractionJob・ApiSearchComposition         | api                   | 日次の再抽出とその登録                                         | 9.10, 10.6, 15.6                              | SearchIndexStore (P0)、SearchIndexRefreshRequester (P0)   | Batch          |
 | WorkspaceLayoutUpdate                                      | dev-tooling           | 共有ディレクトリの定義・マウント・Git管理外                    | 1.4                                           | `shared-dirs`の仕組み (P0)                                | State          |
 | ConsumerAppIntegration                                     | 4アプリ・frontend-lib | 依存・型検査・除外・Viteの設定                                 | 1.5, 1.6                                      | WorkspaceLayoutUpdate (P0)                                | State          |
-| TechDocs・DeveloperDocs・ServiceDocs                       | docs                  | 技術ドキュメント・開発者向け文書・サービス仕様                 | 7.7, 8.7, 16.3〜16.8                          | —                                                         | —              |
+| TechDocs・DeveloperDocs・ServiceDocs                       | docs                  | 技術ドキュメント・開発者向け文書・サービス仕様                 | 7.7, 8.7, 16.3〜16.9                          | —                                                         | —              |
 
 ### common-lib
 
@@ -1612,7 +1621,7 @@ const COMMON_LIB: SharedDirDefinition = {
 - `security/004-markdown-sanitization.md`(16.3): 許可リスト、参照先の制限、処理の順序とサニタイズの後の変換の限定、接頭辞とDOM clobbering、生のHTMLの例外の1箇所と検査、攻撃パターン集の追加の手順。
 - `infra/003-async-processing.md`への追記(16.8): 定期実行の説明に、ジョブとイベントの波及処理の名前`<spec名>.<名詞句>`とメッセージ種別の名前`<ドメイン>.<動詞句>`の規約を、プレースホルダーだけで書く。backend-platformが所有する文書への追記であり、本specの再抽出のジョブとメッセージ`search-index.refresh`はこの規約に合う。
 - 記述規則(16.4): プロジェクト名・サービス固有の仕様・固有値を書かず、固有値は`project-values.md`に置く。シークレットのキーの一覧も固有の値として`project-values.md`を正とし、技術ドキュメントにはキーの名前を列挙しない。
-- DeveloperDocs(16.5・16.6)とServiceDocs(16.7)は「Modified Files」のとおり。
+- DeveloperDocs(16.5・16.6)とServiceDocs(16.7・16.9)は「Modified Files」のとおり。
 
 ## Data Models
 
@@ -1698,7 +1707,7 @@ const COMMON_LIB: SharedDirDefinition = {
 - DOM clobbering: 本文由来の`id`・`name`・`aria-describedby`・`aria-labelledby`はすべて`user-content-`(と本文の識別子)で始まり、画面側のID(`main`など)やグローバル変数を上書きしない。
 - 参照先: `http`・`https`・`mailto`と`#`だけを許し、相対URL・プロトコル相対URLを含む他の参照はリンクを外す。別オリジンのリンクは`target="_blank"`と表示場所の`rel`(既定で`noopener`)を持つ。
 - エディタ: 編集領域の中のHTMLはProseMirrorの文書から生成され、保存されるのはマークダウンの原文だけで、表示は常に描画部品を通る。Crepeのアイコンの`innerHTML`は固定のSVGをDOMPurifyに通したライブラリ内部の処理で、利用者の入力ではない。
-- 外部API: APIキーはeventのシークレットだけに置き、ログ・例外・Sentryに含めない。Google Cloud側でキーにNatural Language APIだけのAPIの制限を掛ける(開発者の手作業、`external/002`)。送るのは登録されたキーワード抽出の対象の項目の公開用のテキストだけである(DR-001、プライバシーポリシーの委託先の一覧と一致)。
+- 外部API: APIキーはeventのシークレットだけに置き、ログ・例外・Sentryに含めない。Google Cloud側でキーにNatural Language APIだけのAPIの制限を掛ける(開発者の手作業、`external/002`)。送るのは登録されたキーワード抽出の対象の項目の公開用のテキストだけである(DR-001、プライバシーポリシーの委託先の一覧と一致)。処理のリージョンを指定しないため処理する場所は保証されず、EU域内の利用者のテキストの移転の根拠は、DPFを主とし、無効になった場合はGoogle CloudのDPAに含まれるSCCに拠る(プライバシーポリシーの大枠のGoogle Cloudの項、16.9)。
 - 検索式の注入: 検索語は引用符で囲み、`"`をエスケープし、バインド変数で渡す。
 
 ## Performance & Scalability
