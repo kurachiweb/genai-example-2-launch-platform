@@ -82,11 +82,12 @@
 - **Adjacent expectations**:
   - frontend-platformは、ブラウザから受けた`user-agent`をAPIサーバーへの中継項目に含める(Q6)。本specはその変更を自身のタスクとして行い、frontend-platformの再検証を求める。
   - api-gatewayのGraphQLの文脈は、中継された`user-agent`をリゾルバへ渡す。本specはその追加を自身のタスクとして行い、api-gatewayの再検証を求める。
+  - api-gatewayは、application層にセッションの読み取りの型`SessionView`(`apps/api/src/application/session/session-view.ts`)を持ち、presentation層の`SessionAccess`がそれを拡張する。本specはその追加を自身のタスクとして行い、機能制限の判定などapplication層の契約は`SessionView`を受け取る(層の規則に従うため)。
   - email-deliveryは、本specが追加するメール種別・テンプレートを送り、送信期限を過ぎた期限付きリンクのメールを送らない。本specは利用者のメールアドレスの照会口を実装し、退会時に抑止記録の削除を依頼する。
   - backend-platformのbot判定の検証・厳密なレート制限カウンタ・定期実行・非同期メッセージ・デッドレターの仕組みを使う。デッドレターへ移ったメッセージは破棄されるため、未完了の波及処理は本specが記録して日次で再実行する。
   - content-processingは、書記素(利用者が1文字と認識する単位)で文字数を数える共通部品を、利用者側・管理者側フロントエンドサーバーとAPI・イベントサーバーから使える共有ディレクトリ`apps/common-lib`に置く。本specはニックネームの文字数の検証にこれを使い、content-processingの共用部品の新設と組み込みの完了後に実装する(roadmapの依存)。content-processingは利用者側・管理者側の変数`CLIENT_SITE_ORIGIN`を所有し、本specはAPIサーバーの同名・同値の変数を所有する。
   - ugc-moderationは、本specの停止・停止解除の操作口を呼び、理由の記録・監査ログ・通知を自ら行う。また、セッションが切れた停止中の利用者から問い合わせで退会の依頼を受け、管理画面から管理者側の認可を経て本specの運営者による退会の操作口を呼び、監査ログをadmin-foundationの記録APIで記録する。
-  - media-pipelineは、利用者のアップロードの受け付けに「アップロードできる利用者か」の差し込み口(既定は許可)を設け、保存の前に判定して拒否なら応答する。管理者のアップロードは対象外である。本specはその差し込み口を、停止中・退会済みの利用者を拒否する判定で束縛し、差し込み口を作るmedia-pipelineのタスクの完了後に実装する。
+  - media-pipelineは、利用者のアップロードの受け付けに「アップロードできる利用者か」の差し込み口(既定は許可)を設け、保存の前に判定して拒否なら応答する。管理者のアップロードは対象外である。本specはその差し込み口を、停止中・退会済みの利用者を拒否する判定で束縛し、差し込み口を作るmedia-pipelineのタスクの完了後に実装する(roadmapの依存)。
   - user-profile-social・match-engine・paymentsなどのドメインspecは、ユーザーライフサイクルイベントの波及処理を登録し、自分のデータの論理削除・物理削除・匿名化・停止時の処理を冪等に実装する。可視ユーザーの判定条件と機能制限の判定部品を使う。
   - user-profile-socialは、ユーザーが保有するファイルの物理削除(物理削除の開始時)と、停止・停止解除に伴う隔離理由の付け外しを、media-pipelineの保有者単位の操作を呼ぶ波及処理として登録する。本specはその登録口だけを提供する。
   - user-profile-socialは、ハンドルの規則を所有し、本specが登録時に設定するハンドルの重複判定に、旧ハンドルと予約語の判定を加える。本specが生成する初期ハンドルは、その規則を満たす必要がある。

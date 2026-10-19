@@ -6,10 +6,11 @@
 
 **Users**: 投稿者・サポーターは`/auth/*`と`/settings/account`・`/settings/security`で自分のアカウントを管理する。admin-foundationは`auth`モジュール(パスワード・秘密の発行・セッションの有効期限・ログイン試行の制限・TOTP・リカバリコード)を管理者用のテーブルと値で使う。ugc-moderationは停止・停止解除の操作口と、管理画面から運営者による退会の操作口を呼ぶ。後続のドメインspecは、ライフサイクルイベントの登録口に自分の波及処理を加え、可視ユーザーの条件と`AccountGuard`で利用者を絞り込み・判定する。media-pipelineのアップロードの受け付けは、本specが束縛する判定で停止中の利用者を拒否する。
 
-**Impact**: backend-platform・api-gateway・email-delivery・frontend-platformが作る骨格(いずれも未実装)の登録箇所へ、本specのモジュール・スキーマモジュール・ジョブ・メッセージ種別・メール種別・テンプレート・画面を追記する。上流のコードへの変更は次の3点に限り、いずれも既存の振る舞いを変えない追加である。
+**Impact**: backend-platform・api-gateway・email-delivery・frontend-platformが作る骨格(いずれも未実装)の登録箇所へ、本specのモジュール・スキーマモジュール・ジョブ・メッセージ種別・メール種別・テンプレート・画面を追記する。上流のコードへの変更は次の5点に限り、いずれも既存の振る舞いを変えない追加である。
 
 - frontend-platformの中継項目`FORWARDED_BROWSER_HEADERS`に`user-agent`を加える(Q6)。
 - api-gatewayの`GatewayRequestScope`・`GraphQLContext`に`userAgent`を加える。
+- api-gatewayのapplication層に、セッションの読み取りの型`SessionView`(`apps/api/src/application/session/session-view.ts`)を加え、`SessionAccess`がそれを拡張する。application層の契約は`SessionView`を受け取る(横断レビューR3-1)。
 - api-gatewayの`composition/session.ts`の束縛と、email-deliveryの`USER_ADDRESS_DIRECTORY`の束縛を、本specの実装へ差し替える(上流specが定めた差し替えの契約どおり)。
 - media-pipelineが設ける「アップロードできる利用者か」の差し込み口(`UploaderEligibility`、既定は許可)の束縛を、本specの判定の実装へ差し替える(media-pipelineが定めた差し替えの契約どおり、横断レビューN-7)。
 
@@ -61,7 +62,7 @@
 - 運営者による退会の管理画面、問い合わせからの導線(停止中の利用者の依頼の受け付けと本人の確かめ)、操作の権限の確認(admin-foundationの権限の判定)、監査ログの記録(admin-foundationの記録API)、利用者への連絡(ugc-moderation)。本specの操作口は、呼び出し元と主体が管理者側であることだけを確かめる。
 - アップロードの受け付け、`UploaderEligibility`の定義と既定の実装(許可)、利用者のアップロードの経路での判定の呼び出しと拒否の応答(media-pipeline)。管理者のアップロードの経路は判定の対象外である。
 - 各ドメインの同期・非同期の波及処理の中身(各ドメインspec)。本specは自分のテーブルと抑止記録の削除依頼だけを波及処理として持つ。ユーザーが保有するファイルの物理削除(`purge_due`でのmedia-pipelineの`eraseOwnedBy`)と、停止・停止解除に伴う隔離理由`user_suspended`の付け外しは、identity-authとmedia-pipelineの両方に依存するuser-profile-socialが波及処理として登録する。本specはその登録口だけを提供する。
-- bot判定の検証(backend-platformの`BotVerifier`)、厳密なレート制限カウンタ(`RateLimitCounterClient`)、セッションの受け渡しの契約(api-gatewayの`SessionAccess`)、Cookieの属性と発行(frontend-platform)、メールの描画と送信(email-delivery)の実装。
+- bot判定の検証(backend-platformの`BotVerifier`)、厳密なレート制限カウンタ(`RateLimitCounterClient`)、セッションの受け渡しの契約(api-gatewayの`SessionAccess`。本specはapplication層の読み取りの型`SessionView`の追加だけを行う)、Cookieの属性と発行(frontend-platform)、メールの描画と送信(email-delivery)の実装。
 - 書記素の数え方の実装(content-processingの`apps/common-lib`)。
 - 外部サービスのアカウントの作成とシークレットの登録(stagingの値は開発者の手作業、prodの値はlaunch-readinessがリリース時に登録する)。Workerへ渡す任意のシークレットの一覧(`OPTIONAL_WORKER_SECRETS`)とInfisicalの表への`DISIFY_API_KEY`の追加(infra-deliveryで追記済み)。
 - Durable Objectのマイグレーションの適用(infra-delivery)。Wrangler設定の`migrations`は`wrangler deploy`が適用するため、infra-deliveryの導入後はmainへのマージでCIがstagingへ適用する(infra-deliveryのWorkerDeployerと`infra/007`)。infra-deliveryより前に実装する場合だけ、開発者が手作業でデプロイする。
@@ -71,11 +72,11 @@
 ### Allowed Dependencies
 
 - backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashPurpose`・`hashRateLimitKey`・`HashedRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`MessageContract`・`RetryPolicy`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`MessagePublisher`・`RateLimitCounterClient`・`BotVerifier`・`PlatformEnv`・`HttpFetch`。形を変えない。
-- api-gateway: `SessionVerifier`・`Principal`・`AuthenticatedPrincipal`・`SessionVerification`・`SessionIssue`・`SESSION_TYPES`・`SESSION_TOKEN_PATTERN`・`AnonymousSessionVerifier`、`GraphQLSchemaModule`・`defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`、`SessionAccess`。`GraphQLContext`・`GatewayRequestScope`への`userAgent`の追加だけを行う。
+- api-gateway: `SessionVerifier`・`Principal`・`AuthenticatedPrincipal`・`SessionVerification`・`SessionIssue`・`SESSION_TYPES`・`SESSION_TOKEN_PATTERN`・`AnonymousSessionVerifier`、`GraphQLSchemaModule`・`defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`、`SessionAccess`。`GraphQLContext`・`GatewayRequestScope`への`userAgent`の追加と、application層へのセッションの読み取りの型`SessionView`(`apps/api/src/application/session/session-view.ts`)の追加、`SessionAccess`がそれを拡張する変更だけを行う。本specのapplication層は`SessionView`だけを読み込み、presentation層の`SessionAccess`・`CallerKind`を読み込まない(backend-platformの層の規則、横断レビューR3-1)。
 - email-delivery: `EmailKind`・`defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EmailTemplate`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`・`toMatchingKey`・`isValidEmailAddress`・`UserAddressDirectory`・`SuppressionMaintenance`・`EMAIL_TYPES`。形を変えない。
 - frontend-platform: `SiteLayoutSlots`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`の表示部品・`runAxe`。`FORWARDED_BROWSER_HEADERS`への`user-agent`の追加だけを行う。
 - content-processing: `apps/common-lib`の書記素の文字数を数える関数と、共有ディレクトリの配置(4アプリ)。依存するのは、content-processingの設計の「本specのタスクを前提にする下流spec」が示す最小の区切りである。タスク1.1(共有ディレクトリの定義と配置)・1.2(共用部品のプロジェクトと読み込みの境界)・2.1(書記素の数え方)・4.1(APIサーバー・イベントサーバーへの組み込み)・4.2(利用者側・管理者側・frontend-libへの組み込み)・6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`validation/**`の禁止の静的解析の規則)と、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成である。4.1・4.2は、各アプリの配置先を静的解析とテストの対象から外す(本specのタスク1.3の前提)。日次タイムラインの表は、無ければ本specのタスク12.2が作るため、表が無いことでは止めない(横断レビューN-3)。
-- media-pipeline: 「アップロードできる利用者か」の差し込み口の`UploaderEligibility`・`UploaderEligibilityDecision`・`UPLOAD_ACCESS_TYPES`(`apps/api/src/application/media/uploader-eligibility.ts`)と`UploaderDenialCode`(`common-lib/media`)、既定の束縛の箇所`apps/api/src/composition/uploader-eligibility.ts`。形を変えず、束縛だけを本specの実装へ差し替える。差し込み口を作るのはmedia-pipelineのタスク5.1(アップロードの内部REST)・5.6(APIサーバーの束縛の組み立て)で、本specのタスク8.5はその完了を前提にする。roadmapのidentity-authの依存にmedia-pipelineは無いが、roadmapの順はmedia-pipeline→identity-authである。そのため、差し込み口が無ければ8.5を保留して開発者へ報告し、他のタスクは進める(横断レビューN-2と同じ扱い)。
+- media-pipeline: 「アップロードできる利用者か」の差し込み口の`UploaderEligibility`・`UploaderEligibilityDecision`・`UPLOAD_ACCESS_TYPES`(`apps/api/src/application/media/uploader-eligibility.ts`)と`UploaderDenialCode`(`common-lib/media`)、既定の束縛の箇所`apps/api/src/composition/uploader-eligibility.ts`。形を変えず、束縛だけを本specの実装へ差し替える。差し込み口の`session`は、本specのタスク2.3が加える`SessionView`である(横断レビューR3-1)。差し込み口を作るのはmedia-pipelineのタスク5.1(アップロードの内部REST)・5.6(APIサーバーの束縛の組み立て)で、本specのタスク8.5はその完了を前提にする。media-pipelineはroadmapのidentity-authの依存にあり、roadmapの順の上では先に完了しているはずである。ただし5.1・5.6が無ければ8.5を保留して開発者へ報告し、他のタスクは進める(横断レビューR3-2)。
 - npmパッケージ: Technology Stackの表に挙げた版に限る。新規は`otpauth` 9.5.2・`uqr` 0.1.3・`bowser` 2.14.1だけ。
 - 上流の登録箇所への追記: apiの`composition`の各登録箇所・`index.ts`・`wrangler.jsonc`・`eslint.config.ts`(backend-platform・api-gateway・email-delivery)、eventの`composition`の各登録箇所と`templates/index.ts`(backend-platform・email-delivery)、clientの`routes/__root.tsx`の`beforeLoad`と`composition/layout-slots.ts`(frontend-platform)。既存の束縛・経路・設定値は、差し替えの契約がある`SESSION_BINDINGS`・`USER_ADDRESS_DIRECTORY`・3つの区画・media-pipelineの`UploaderEligibility`の束縛を除いて変えない。
 - 依存の方向は「Dependency Direction」に従う。`identity`は`auth`に依存してよいが、`auth`は`identity`に依存しない。
@@ -84,6 +85,7 @@
 
 - `UserLifecycleEvent`の種類・`UserLifecycleAsyncRegistration`・`UserLifecycleSyncRegistration`・`LifecycleHandlerOutcome`の形、波及処理の順序と再実行の規則(波及処理を登録する全ドメインspec)。
 - `visibleUsers`・`verifiedUsers`の条件、`AccountGuard`の形とエラーコード(利用者を扱う全ドメインspec)。
+- `SessionView`の形と置き場所(`apps/api/src/application/session/session-view.ts`)、`SessionAccess`がそれを拡張すること(api-gateway、`UploaderEligibility`で受け取るmedia-pipeline、application層でセッションを読む全ドメインspec)。
 - `users`の列・状態の値・`lifecycle_version`の扱い、`HANDLE_AVAILABILITY`の形(user-profile-social・ugc-moderation・data-export)。
 - 初期ハンドルの形式(`InitialHandleFormat`、英小文字と数字の12文字)と、user-profile-socialが所有するハンドルの規則(文字種・長さ・予約語・大文字小文字の扱い・旧ハンドル)。どちらかを変えたら、初期ハンドルがその規則を満たすことを確かめ直す(user-profile-social)。
 - `UserSuspension`の形(ugc-moderation)。
@@ -105,6 +107,7 @@
 | frontend-platform | `apps/frontend-lib/server/relay/relay-contract.ts`の`FORWARDED_BROWSER_HEADERS`に`user-agent`を加える(Q6)                                                | ブラウザからの中継でUser-AgentがAPIサーバーへ届く。中継の項目の一覧はfrontend-platformのRevalidation Triggersに当たるため再検証を求める |
 | api-gateway       | `GatewayRequestScope`・`GraphQLContext`に`userAgent: string \| undefined`を加え、`GraphqlModule`が内部経路の要求の`user-agent`を512文字までで渡す      | 既存のリゾルバに影響しない。`GraphQLContext`の形はapi-gatewayのRevalidation Triggersに当たるため再検証を求める                         |
 | api-gateway       | `composition/session.ts`の`SESSION_BINDINGS`を本specの振り分けの実装へ差し替える                                                                        | api-gatewayが定めた差し替えの契約どおり                                                                                              |
+| api-gateway       | application層に、セッションの読み取りの型`SessionView`(`application/session/session-view.ts`。`principal()`だけを持つ)を加え、`presentation/gateway/session-access.ts`の`SessionAccess`がそれを拡張する(横断レビューR3-1) | `SessionAccess`の形と`createSessionAccess`の振る舞いは変わらず、既存の呼び出し側に影響しない。application層の契約(本specの`AccountGuard`など、media-pipelineの`UploaderEligibility`)は`SessionView`を受け取り、呼び出し側は`SessionAccess`をそのまま渡せる。`SessionAccess`の形はapi-gatewayのRevalidation Triggersに当たるため再検証を求める。media-pipelineが先に実装されて`SessionView`が既にあれば、形を確かめるだけにする |
 | email-delivery    | `USER_ADDRESS_DIRECTORY`を`D1UserAddressDirectory`へ差し替え、eventでも`SuppressionMaintenance`を束縛して退会時に呼ぶ                                   | 契約どおり。eventでの束縛はemail-deliveryのファイルを変えずに本specのモジュールで行う                                                |
 | backend-platform  | apiの`durable_objects`に`LOGIN_ATTEMPT_THROTTLE`、`migrations`に既存の最後のタグの次(現時点`v2`)で`LoginAttemptThrottle`を加える                       | 後続specが資源を追記する規約どおり。Wave 1の他specもタグを追加する場合は実装時に番号を詰める                                          |
 | content-processing | `apps/common-lib`の`countGraphemes`を使い、`apps/common-lib/identity/`に入力規則を置く。APIサーバーの変数にcontent-processingがclient・adminに加える`CLIENT_SITE_ORIGIN`と同じ名前・同じ値を使う。日次タイムラインの表(content-processingの11.4が作る想定)へ行を足し、`backend/007`からジョブ・波及処理の名前の規約(content-processingの11.5が`infra/003`へ追記する)へリンクする | roadmapの依存にcontent-processingがあり、実装の順はcontent-processing→media-pipeline→identity-authである。本specのタスク1.3が、content-processingの最小の区切り(1.1・1.2・2.1・4.1・4.2・6.1、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインの表の作成)に依存する。`countGraphemes`・共有ディレクトリの配置・`CLIENT_SITE_ORIGIN`の変更は、content-processingのRevalidation Triggersで本specへ伝わる |
@@ -189,7 +192,7 @@ graph TB
 ### Dependency Direction
 
 - 共有コード: `apps/db/schema/identity` → `backend-lib/core/identity`(zod・inversifyの型・`core`の他の部品だけ) → `backend-lib/workers/identity`(D1・`fetch`) → アプリの`src`。
-- apiの`src`内: `domain/auth` ← `domain/identity` ← `application/auth` ← `application/identity` ← `infrastructure/{auth,identity}`・`presentation/graphql/modules/identity` ← `composition`。`auth`の各層は`identity`の各層を読み込まない(admin-foundationが`identity`無しで再利用できるように)。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
+- apiの`src`内: `domain/auth` ← `domain/identity` ← `application/auth` ← `application/identity` ← `infrastructure/{auth,identity}`・`presentation/graphql/modules/identity` ← `composition`。`application/identity`がセッションを受け取るときは、api-gatewayの`application/session/session-view.ts`の`SessionView`を読み込み、`presentation/gateway`の型(`SessionAccess`・`CallerKind`)を読み込まない(backend-platformの層の規則)。`auth`の各層は`identity`の各層を読み込まない(admin-foundationが`identity`無しで再利用できるように)。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
 - eventの`src`内: `application/identity` ← `infrastructure/identity` ← `composition`。テンプレートはemail-deliveryの規則どおり`infrastructure/email/templates/`だけがReactを読み込む。
 - clientの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。`components/auth`・`components/settings`は`graphql/operations/identity`を読み込んでよい。
 - `apps/common-lib/identity`は`apps/common-lib`の他の部品だけを読み込み、zod・React・Workersに依存しない。
@@ -393,6 +396,7 @@ docs/
 - `apps/frontend-lib/server/relay/relay-contract.ts`・`relay-headers.unit.test.ts` — `FORWARDED_BROWSER_HEADERS`に`user-agent`を加え、ブラウザのUser-Agentが中継され、偽の内部ヘッダーは引き続き除かれることを確かめる。
 - `apps/frontend-lib/package.json`・`apps/client/package.json`・`apps/admin/package.json`(各`bun.lock`) — `uqr` 0.1.3を版固定で加える。
 - `apps/api/src/presentation/graphql/gateway-server.ts`・`graphql-context.ts`・`graphql-module.ts`(各テスト) — `userAgent`を要求から文脈へ渡す。
+- `apps/api/src/application/session/session-view.ts`(新規、api-gatewayの契約への追記)・`apps/api/src/presentation/gateway/session-access.ts` — `SessionView`を定義し、`SessionAccess`が`SessionView`を拡張する形に改める。`SessionAccess`の形は変えない。既に`SessionView`があれば形を確かめるだけにする(横断レビューR3-1)。
 - `apps/api/src/composition/session.ts` — `SESSION_BINDINGS`を`SubjectSessionVerifier`の振り分けへ差し替え、`AUTH_TYPES.UserSessionVerifier`・`AUTH_TYPES.AdminSessionVerifier`(既定は無効)を束縛する。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`email-registrations.ts`・`env-schema.ts` — identityのモジュール、スキーマモジュール、3つのジョブ、`USER_ADDRESS_DIRECTORY`の差し替え、`CLIENT_SITE_ORIGIN`・`LOGIN_ATTEMPT_THROTTLE`・任意の`DISIFY_API_KEY`の検証を加える。
 - `apps/api/src/composition/uploader-eligibility.ts`(media-pipelineが作る) — `UPLOAD_ACCESS_TYPES.UploaderEligibility`の束縛を、`AllowAllUploaderEligibility`から`IDENTITY_TYPES.AccountUploaderEligibility`への転送に差し替える。他の束縛は変えない(4.7)。
@@ -409,7 +413,7 @@ docs/
 - `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 本specが使う委託先のDISIFY・Have I Been Pwnedへは個人を識別できる情報を渡さないため国外移転の対象外である旨が、infra-deliveryの「移転先の国」の行の改訂の後も残っていることを確かめ、無ければ両委託先の分だけ書き加える。Cloudflareの項(Turnstileを含む)と他の委託先の項は書き換えない(横断レビューN-1、roadmapの「国外移転の記載」)。
 - `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」のジョブの名前と順序の表に、本specの3つのジョブの名前と順序(100・110・120)の行を加える。表が無ければ作り、上流のemail-deliveryの`email-delivery.cleanup`(900)の行も含める(横断レビューN-3。想定の順序ではcontent-processingが先に作るが、表が無いことを理由に止めない)。
 - `docs/GUIDES/service/design/002-page-layouts.md` — `/auth/*`の画面の一覧、設定ページのシェルの配置、ヘッダーのアカウント表示、停止中の設定ページ(退会だけを操作でき、セッションが切れた後は問い合わせで退会を依頼できる旨を案内する)を追記する。
-- `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 本specで追加するエラーメッセージ・状態の文言(停止中の設定ページの案内を含む)と、認証系メールの本文の要点を追記する。
+- `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 本specで追加するエラーメッセージ・状態の文言(停止中の設定ページの案内を含む)と、認証系メールの本文の要点を追記する。`forbidden`の「この操作はできません。」は、roadmapの順で先に実装されるmedia-pipelineのタスク9.2が追加する。本specは既にあることを確かめるだけにし、無い場合だけ追記する(横断レビューR3-8)。
 - `docs/onboardings/tech-stack.md` — OTPAuth・uqr・`bowser`の版を記載する。
 - `docs/GUIDES/tech/coding/002-dependency-versions.md` — `uqr`をfrontend-lib・client・adminで版をそろえる一覧に、`otpauth`・`bowser`をapiの一覧に加える。
 - `docs/onboardings/project-values.md` — Durable Objectのバインディング名とクラス名、`CLIENT_SITE_ORIGIN`の値(content-processingが記載した行があれば、APIサーバーも同じ値を使う旨を加える)、TOTPの発行者名、ジョブの名前と順序、メール種別の名前を記載する。シークレットのキーの一覧の節(正は本ファイル。infra-deliveryのタスク8.5が作る)には、`DISIFY_API_KEY`(api・event、任意)の行を、キーを読む変更(タスク8.1)と同じ変更で足す。行があれば食い違いを確かめるだけにし、節が無ければ開発者へ報告する(横断レビューN-5。infra-deliveryはroadmapの依存に無いため、N-2と同じ扱い)。
@@ -645,8 +649,8 @@ sequenceDiagram
 | 2.1, 2.2, 2.3, 2.4, 2.9                   | 確認メール・確定・再送                      | EmailVerification、AuthTokenStore、IdentityMailer、LinkConfirmation、VerifyEmailBanner             | `verifyEmail`・`resendVerificationEmail`                          | 登録とメールアドレスの確認   |
 | 2.5, 2.6, 2.7, 2.8, 2.10                  | 送信回数の制限                              | MailSendLimits、RateLimitCounterClient(上流)                                                    | `MailSendLimits.consume`                                          | 登録とメールアドレスの確認   |
 | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6              | 使い捨て判定と判定し直し                    | DisposableEmailCheck、DisifyClient、DisposableEmailRecheckHandler、DisposableRecheckSweepJob       | `DisposableEmailChecker.check`、`identity.recheck-disposable-email` | 登録とメールアドレスの確認   |
-| 4.1, 4.2, 4.3, 4.4, 4.5, 4.6              | 機能制限と可視ユーザー                      | AccountGuard、UserAccountRules、IdentityVisibility、Withdrawal、SettingsShell                      | `AccountGuard`、`visibleUsers`・`verifiedUsers`                   | —                            |
-| 4.7                                       | アップロードできる利用者の判定              | AccountUploaderEligibility、UserAccountRules、ApiIdentityComposition                              | media-pipelineの`UploaderEligibility`                             | アップロードできる利用者の判定 |
+| 4.1, 4.2, 4.3, 4.4, 4.5, 4.6              | 機能制限と可視ユーザー                      | AccountGuard、UserAccountRules、IdentityVisibility、Withdrawal、SettingsShell、SessionViewContract | `AccountGuard`、`visibleUsers`・`verifiedUsers`                   | —                            |
+| 4.7                                       | アップロードできる利用者の判定              | AccountUploaderEligibility、UserAccountRules、ApiIdentityComposition、SessionViewContract          | media-pipelineの`UploaderEligibility`                             | アップロードできる利用者の判定 |
 | 5.1, 5.2, 5.3, 5.4, 5.5, 5.6              | パスワードの規則・漏洩照合・保存            | PasswordRules、PasswordPolicy、HibpPwnedPasswordChecker、Pbkdf2PasswordHasher、AccountInputRules   | `PasswordPolicy.validateNewPassword`、`PasswordHasher`            | 登録とメールアドレスの確認   |
 | 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8    | ログイン・第2要素・ログアウト               | Login、LoginChallengeStore、TotpAuthenticator、RecoveryCodeIssuer、SessionIssuer、LoginForm、ReturnPath、ResolverSupport | `login`・`completeSecondFactorLogin`・`logout`                            | ログイン                     |
 | 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8    | ログイン試行の記録                          | LoginThrottleState、LoginAttemptThrottle、DurableLoginThrottle、LoginThrottleKeys                  | `LoginThrottle`                                                   | ログイン試行の記録の状態遷移 |
@@ -728,6 +732,7 @@ sequenceDiagram
 | IdentityPurgeStore・EventIdentityComposition      | event                        | 利用者の行の物理削除・束縛と登録                          | 17.2, 17.3, 17.5, 17.6                          | D1 (P0)                                                   | State           |
 | IdentityEmailTemplates                            | event/infrastructure/email   | 7種のテンプレート                                         | 14.6                                            | email-deliveryのレイアウト (P0)                           | Service         |
 | UserAgentRelay                                    | 上流の変更(frontend-lib・api) | User-Agentの中継と文脈への受け渡し                       | 8.4, 8.9                                        | frontend-platform・api-gateway (P0)                       | API             |
+| SessionViewContract                               | 上流の変更(api/application/session・api/presentation/gateway) | application層が受け取るセッションの読み取りの型`SessionView` | 4.1, 4.3, 4.7                    | api-gatewayの`SessionAccess`・`Principal` (P0)            | Service         |
 | ClientViewer・AuthenticatedLayout・SettingsNavigationRegistry | client                | ログイン中の利用者・ログイン必須の領域・設定の登録箇所    | 18.2, 18.3, 18.6, 18.7                          | `executeGraphQL` (P0)                                     | State           |
 | AuthRoutes・各フォーム・LinkConfirmation・LoginRequiredDialog・ReturnPath・FragmentToken・AccountFormSchemas | client | 認証画面 | 1.1, 1.2, 2.2, 6.6, 9.1, 9.4, 18.1, 18.4, 18.8, 18.9, 18.10, 18.11 | frontend-platformの部品 (P0)                     | State           |
 | AccountMenu・LaunchAction・VerifyEmailBanner      | client                       | ヘッダーの区画                                            | 18.2, 18.3, 18.5, 6.7                           | `SiteLayoutSlots` (P0)                                    | State           |
@@ -1561,13 +1566,17 @@ export interface CurrentUser {
   readonly principal: AuthenticatedPrincipal;
   readonly user: UserRecord;
 }
+import type { SessionView } from '../session/session-view.ts';
+
 export interface AccountGuard {
-  currentUser(session: SessionAccess): Promise<CurrentUser | undefined>; // 未ログインならundefined。処理単位で1回だけ読む
-  requireUser(session: SessionAccess): Promise<CurrentUser>; // 未ログインはunauthenticated
-  requireWritableUser(session: SessionAccess): Promise<CurrentUser>; // 停止中はaccount_unavailable(403)
-  requireVerifiedUser(session: SessionAccess): Promise<CurrentUser>; // 上に加えて未確認はemail_not_verified(403)
+  currentUser(session: SessionView): Promise<CurrentUser | undefined>; // 未ログインならundefined。処理単位で1回だけ読む
+  requireUser(session: SessionView): Promise<CurrentUser>; // 未ログインはunauthenticated
+  requireWritableUser(session: SessionView): Promise<CurrentUser>; // 停止中はaccount_unavailable(403)
+  requireVerifiedUser(session: SessionView): Promise<CurrentUser>; // 上に加えて未確認はemail_not_verified(403)
 }
 ```
+
+- セッションは`SessionView`(「SessionViewContract」)で受け取る。リゾルバ・内部RESTは`GraphQLContext.session`などの`SessionAccess`をそのまま渡せる(構造的部分型)。`requireUser`は`principal()`が未ログインなら`AppError({ kind: 'unauthenticated', code: 'unauthenticated' })`を投げる。
 
 - 処理単位のコンテナで単一の束縛にし、同じ要求の中では利用者を1回だけ読む。後続specのリゾルバは`context.resolve<AccountGuard>(IDENTITY_TYPES.AccountGuard)`で使う(4.1・4.3)。
 - 停止中でも`requireUser`は通す(閲覧・ログアウト・セッションの失効・退会を許すため、4.4)。
@@ -1591,13 +1600,13 @@ export interface AccountGuard {
 
 ```typescript
 // 型はmedia-pipelineの定義(application/media/uploader-eligibility.ts・common-lib/media)を使う
-// UploaderEligibility.check(input: { session: SessionAccess; principal: AuthenticatedPrincipal; purpose: UploadPurpose }): Promise<UploaderEligibilityDecision>
+// UploaderEligibility.check(input: { session: SessionView; principal: AuthenticatedPrincipal; purpose: UploadPurpose }): Promise<UploaderEligibilityDecision>
 // UploaderEligibilityDecision = { allowed: true } | { allowed: false; code: UploaderDenialCode }
 // UploaderDenialCode = 'account_unavailable' | 'email_not_verified'
 export declare class AccountUploaderEligibility implements UploaderEligibility {
   constructor(guard: AccountGuard); // @inject(IDENTITY_TYPES.AccountGuard)
   check(input: {
-    readonly session: SessionAccess;
+    readonly session: SessionView;
     readonly principal: AuthenticatedPrincipal;
     readonly purpose: UploadPurpose;
   }): Promise<UploaderEligibilityDecision>;
@@ -1649,7 +1658,7 @@ export interface Registration {
 ```typescript
 export interface EmailVerification {
   verify(token: string, meta: RequestMeta): Promise<void>; // 無効はinvalid_link
-  resend(session: SessionAccess, meta: RequestMeta): Promise<'sent' | 'already-verified'>;
+  resend(session: SessionView, meta: RequestMeta): Promise<'sent' | 'already-verified'>;
 }
 export interface DisposableEmailCheck {
   checkAndSave(user: UserRecord, at: Date): Promise<DisposableEmailStatus>; // undetermined なら15分後の判定し直しを依頼
@@ -1852,7 +1861,7 @@ export declare function commitWithdrawal(
 
 export interface AdministrativeWithdrawalCommand {
   readonly userId: string;
-  readonly caller: CallerKind; // GraphQLContext.caller。'admin'だけを受け付ける
+  readonly caller: string; // GraphQLContext.caller(api-gatewayのCallerKind。presentation層の型を読み込まないため文字列で受ける)。'admin'だけを受け付ける
   readonly operator: Principal; // GraphQLContext.session.principal()の結果。管理者のセッションだけを受け付ける
   readonly at: Date;
 }
@@ -2188,6 +2197,41 @@ export declare const LIFECYCLE_ORDER_WAIT_SECONDS: 60;
 - frontend-platform: `FORWARDED_BROWSER_HEADERS`を`['content-type', 'accept', 'cf-turnstile-response', 'user-agent']`にする。`relay-headers.unit.test.ts`に、ブラウザのUser-Agentが引き継がれることを加える。
 - api-gateway: `GatewayRequestScope`と`GraphQLContext`に`readonly userAgent: string | undefined`を加える。`GraphqlModule`は内部経路の要求(GraphiQLの経路を含む)の`user-agent`を512文字で切って渡す。既存のテストは変えずに、値が届くことのテストを加える。
 
+#### SessionViewContract
+
+| Field        | Detail                                                                 |
+| ------------ | ---------------------------------------------------------------------- |
+| Intent       | application層が受け取るセッションの読み取りの型をapi-gatewayの契約へ加える |
+| Requirements | 4.1, 4.3, 4.7                                                          |
+
+**Contracts**: Service [x]
+
+##### Service Interface
+
+```typescript
+// apps/api/src/application/session/session-view.ts(新規)
+import type { Principal } from './session-verifier.ts';
+
+export interface SessionView {
+  principal(): Promise<Principal>; // 最初の呼び出しで1回だけ検証する。セッションのIDはAuthenticatedPrincipal.sessionIdで得る
+}
+
+// apps/api/src/presentation/gateway/session-access.ts(変更)
+import type { SessionView } from '../../application/session/session-view.ts'; // 既存のimportに加える
+
+export interface SessionAccess extends SessionView {
+  requireAuthenticated(): Promise<AuthenticatedPrincipal>;
+  issue(session: SessionIssue): void;
+  clear(): void;
+}
+```
+
+- 背景: backend-platformの層の規則は、`src/application/**`から`**/presentation/**`の読み込みを型だけの読み込みも含めて禁止する。`SessionAccess`は`presentation/gateway`にあるため、application層の契約は`SessionView`を受け取る(横断レビューR3-1)。
+- 型名と置き場所は、Wave 1の全specで`SessionView`・`apps/api/src/application/session/session-view.ts`にそろえる。持つのはapplication層が必要とする読み取り(`principal()`)だけで、Cookieの指示(`issue`・`clear`)はリゾルバなどpresentation層だけが`SessionAccess`で行う。
+- api-gatewayの既存の`application/session/`(`session-verifier.ts`・`anonymous-session-verifier.ts`)と名前・置き場所は衝突しない。`SessionAccess`のメンバーと`createSessionAccess`の振る舞いは変えない。
+- 本specのapplication層で`SessionView`を受け取るのは、`AccountGuard`の4つのメソッド・`AccountUploaderEligibility.check`・`EmailVerification.resend`である。他のユースケースは`CurrentUser`・`Principal`を受け取る。media-pipelineの`UploaderEligibility`も`SessionView`だけを読み込む。
+- roadmapの順ではmedia-pipelineが先に実装される。`SessionView`が既にあれば、形がこの定義と一致することを確かめるだけにする。
+
 ### client
 
 #### ClientViewer・AuthenticatedLayout・SettingsNavigationRegistry
@@ -2398,7 +2442,7 @@ stateDiagram-v2
 | `forbidden`                      | forbidden(403)        | この操作はできません。                                                                   | 利用者側でない呼び出し元(6.8)、管理者側の経路でない運営者による退会(15.8) |
 | `bot_verification_failed`・`bot_verification_unavailable` | forbidden(403)・unavailable(503) | backend-platformの定型                                          | bot判定(12.5・12.6)                  |
 
-- 文言規則に無い文言(第2要素・本人確認・リンク・TOTP・競合・案内の文言)は、`003-text-and-copy-rules.md`への追記をタスクに含める。
+- 文言規則に無い文言(第2要素・本人確認・リンク・TOTP・競合・案内の文言)は、`003-text-and-copy-rules.md`への追記をタスクに含める。`forbidden`の「この操作はできません。」は、media-pipelineのタスク9.2が`upload_forbidden`の文言として先に追加する。本specは既にあることを確かめ、無い場合だけ追記する(横断レビューR3-8)。
 
 ### Monitoring
 
@@ -2414,6 +2458,7 @@ stateDiagram-v2
   - `password-rules`・`account-input-rules`: 7・8・128・129コードポイント、絵文字を含むニックネームの25・26書記素、ハンドル・ニックネーム・ローカル部との大文字小文字を区別しない一致(1.1・5.1・5.2)。
   - `disposable-email`: ローカル部の置き換え、200の`disposable`の真偽、`format: false`・401・429・503・HTMLで`undetermined`(3.1・3.2)。
   - `user-lifecycle`: 名前の形式、重複・同じ種類での`order`の重複の拒否、`order`昇順(16.1)。
+  - 層の規則(apiの`test/config/layer-rules.unit.test.ts`): `application/identity`から`presentation/gateway/session-access.ts`を型だけで読み込む例が違反として報告され、`application/session/session-view.ts`の読み込みは報告されない(横断レビューR3-1、4.1・4.3・4.7)。
   - 各ユースケース(ポートを偽物にする): 登録の順序と重複・送信回数の上限での未作成(1.4・2.7)、パスワードリセットの要求の同一の結果と停止中への不送信(9.1〜9.3)、メールアドレス変更の重複時の不送信(10.3)、本人確認の失敗の記録(7.9・12.2)、第2要素の再使用の拒否(6.5)、停止中の退会の受け付け(4.4・仮5)、運営者による退会が管理者側の呼び出し元と管理者の主体だけを受け付け、停止中の利用者も本人の退会と同じ遷移とメッセージで退会させ、退会済み・存在しない対象を`not_found`にすること(15.7〜15.9)、アップロードできる利用者の判定が停止中・退会済みを`account_unavailable`で拒否し、未確認を許可すること(4.7)、`UserLifecycleRunner`の順序待ち・完了済みの飛ばし・`continue`・物理削除の最後の段階(16.3・16.4・16.7・17.2)。
 - **Integration Tests**(Workers統合テスト):
   - D1のストア: 部分一意索引による退会後の同じメールの再登録(1.5)、ハンドル・仮名化IDの一意、トークンの2回目の消費の失敗(14.2)、`applyEmailChange`の重複時の`email-in-use`(10.5)、`deleteExpired`の境界(8.8・14.5)。

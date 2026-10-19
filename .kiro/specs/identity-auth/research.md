@@ -88,7 +88,7 @@ FR-USER-020は改訂しない。仮5の変更で停止中の退会を受け付�
 
 ### Wave 1の横断レビューの反映(2026-10-18)
 
-kiro-spec-batchの横断レビューの指摘と開発者の回答を、次のとおり反映した。C-1〜M-11は1回目、N-1〜N-7は2回目の横断レビューの指摘である(N-8・N-9はroadmapとuser-profile-socialのbriefの修正で、親エージェントが行った)。
+kiro-spec-batchの横断レビューの指摘と開発者の回答を、次のとおり反映した。C-1〜M-11は1回目、N-1〜N-7は2回目、R3-1・R3-2・R3-8は3回目(2026-10-19)の横断レビューの指摘である(N-8・N-9はroadmapとuser-profile-socialのbriefの修正で、親エージェントが行った。R3-3〜R3-7は他specとroadmap・briefの修正である)。
 
 | 指摘 | 決定                                                                                                                                                                                                          | 反映した箇所                                                                 |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -104,12 +104,15 @@ kiro-spec-batchの横断レビューの指摘と開発者の回答を、次の�
 | M-9  | 波及処理とジョブの名前は`<spec名>.<名詞句>`(`email-delivery.cleanup`・`content-processing.keyword-reextraction`と同じ形)、メッセージ種別は`<ドメイン>.<動詞句>`(backend-platformの規約)。本specのジョブ(`identity-auth.*`)・波及処理・メッセージ(`identity.*`)は既にこの規約に沿う | design.mdのUserLifecycleContract・定期実行のジョブ                           |
 | M-11 | Durable Objectのマイグレーションは、infra-deliveryの導入後はmainへのマージでCIが適用する。導入前に実装する場合だけ開発者が手作業でデプロイする                                                                    | design.mdのOut of Boundary・Migration Strategy、tasks.mdの5.3・13.1          |
 | N-1  | 国外移転の記載事項は委託先単位で分担し、Cloudflareの項(D1・R2・Queuesの米国保存、所在を限定しないDurable Objects・Workersの実行・エッジキャッシュ・ログの扱い、EU-USデータプライバシーフレームワークを主とし無効なら委託先のDPAの標準契約条項に拠る移転の根拠)をinfra-deliveryが、AWS(Rekognition)の項をmedia-pipelineが書く。本specのD1のテーブルとログイン試行の記録はCloudflareの項に含まれ、本specはその項を書き換えない。DISIFY・HIBPには個人を識別できる情報を渡さないため、既存の骨子どおり国外移転の対象外のままにし、infra-deliveryの改訂の後もその旨が残っていることを12.2で確かめる(roadmapの「国外移転の記載」により、委託先を使うspecが自分の委託先の分を受け持つ) | requirements.mdのAdjacent expectations、design.mdのOut of Boundary・Revalidation Triggers・上流への影響・Modified Files(準拠方針・プライバシーポリシー骨子)、tasks.mdの12.2 |
-| N-2  | roadmapに無い依存は「確かめて、無ければ開発者へ報告する」とする。本specの13.1は既にこの扱いである。新しい8.5のmedia-pipelineの差し込み口と、8.1のinfra-deliveryのキーの一覧の節も同じ扱いにした(roadmapの依存には加えない) | design.mdのAllowed Dependencies・Modified Files、tasks.mdの8.1・8.5・13.1     |
+| N-2  | roadmapに無い依存は「確かめて、無ければ開発者へ報告する」とする。本specの13.1は既にこの扱いである。新しい8.5のmedia-pipelineの差し込み口と、8.1のinfra-deliveryのキーの一覧の節も同じ扱いにした。その後、roadmapの依存にmedia-pipelineが加わった(R3-2) | design.mdのAllowed Dependencies・Modified Files、tasks.mdの8.1・8.5・13.1     |
 | N-3  | 日次タイムラインの表は、無ければ最初に4:21のジョブを足すspecが作り(email-deliveryの900を含める)、後のspecは行を足す。本specも表が無いことを理由に止めず、無ければ作る。タスク1.3の前提は、content-processingが示す最小の区切り(1.1・1.2・2.1・4.1・4.2・6.1、11.3のうち`coding/003`の`server/**`の許可、11.4のうち表の作成)に合わせた | design.mdのAllowed Dependencies・上流への影響・Revalidation Triggers・Modified Files・定期実行のジョブ、tasks.mdの1.3・12.2 |
 | N-4  | ジョブ・波及処理の名前は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`。規約はroadmapのShared seams(親エージェントが追記)と、content-processingのタスク11.5がbackend-platformの`infra/003-async-processing.md`へ追記する文書を正とする。本specの`backend/007`は名前の規約を書かずにリンクする(要件20.5) | requirements.mdの20.5、design.mdのUserLifecycleContract・IdentityDocs、tasks.mdの12.1 |
 | N-5  | シークレットのキーの一覧の正は`docs/onboardings/project-values.md`の節(infra-deliveryのタスク8.5が作る)とし、本specはキーを読む変更(8.1)と同じ変更で`DISIFY_API_KEY`の行を足すか、行があれば食い違いを確かめる。技術ドキュメントにはキーの名前を列挙しない | requirements.mdのAdjacent expectations、design.mdの上流への影響・Modified Files・IdentityDocs・Supporting References、tasks.mdの8.1・12.1・12.2・13.1 |
 | N-6  | セッションが切れた停止中の利用者のため、運営者による退会の操作口`AdministrativeWithdrawal`を設ける。停止中の利用者にも使え、本人の退会と同じ確定の処理(`commitWithdrawal`)を通す。呼び出せるのは管理者側の呼び出し元と管理者のセッションの経路だけで、権限の確認・監査ログ(admin-foundationの記録API)・管理画面・問い合わせからの導線は呼び出し側(ugc-moderation)が持つ。停止中の設定ページの案内文に、セッションが切れた後は問い合わせで退会を依頼できる旨を加えた。roadmapのShared seamsへは親エージェントが追記した。要件定義書の改訂は不要 | requirements.mdの決定事項(仮5)・用語・Boundary Context・要件15(Objective・15.7〜15.10)、design.mdのBoundary Commitments・Revalidation Triggers・運営者による退会の流れ・Withdrawal・AdministrativeWithdrawal・UserSuspension・設定セクション・エラーの表・Security Considerations、tasks.mdの7.9・10.6・10.7・12.1・12.2 |
 | N-7  | 停止中の利用者のアップロードを拒否する。media-pipelineの差し込み口`UploaderEligibility`(既定は全許可、`apps/api/src/composition/uploader-eligibility.ts`)を、本specの`AccountUploaderEligibility`で束縛する。判定は`AccountGuard.currentUser`と`checkAccountWritable`(確認済みは求めない)で、停止中・退会済みを`account_unavailable`で拒否し、メールアドレスが未確認の利用者はFR-USER-006の制限にアップロードが無いため拒否しない。media-pipelineのタスク5.1・5.6の完了を前提にする | requirements.mdの決定事項(横断N-7)・Boundary Context・要件4.7、design.mdのBoundary Commitments・Allowed Dependencies・上流への影響・アップロードできる利用者の判定・AccountUploaderEligibility・ApiIdentityComposition、tasks.mdの8.5・13.1 |
+| R3-1 | application層の契約がpresentation層の`SessionAccess`を読み込むと、backend-platformの層の規則(型だけの読み込みも禁止)に違反する。application層に、セッションの読み取り専用の型`SessionView`(`apps/api/src/application/session/session-view.ts`、`principal()`だけを持つ)を置き、`SessionAccess`がそれを拡張する。型名と置き場所はWave 1の全specでそろえ、api-gatewayの契約への追記として本specのタスク2.3で行う(media-pipelineが先に置いていれば形を確かめるだけ)。`AccountGuard`の4つのメソッド・`AccountUploaderEligibility`・`EmailVerification.resend`は`SessionView`を受け取る。同じ理由で、`AdministrativeWithdrawalCommand.caller`はpresentation層の`CallerKind`を読み込まず文字列で受ける(水平展開) | requirements.mdのAdjacent expectations、design.mdのImpact・Out of Boundary・Allowed Dependencies・Revalidation Triggers・上流への影響・Dependency Direction・Modified Files・追跡表・コンポーネントの表・AccountGuard・AccountUploaderEligibility・EmailVerification・AdministrativeWithdrawal・SessionViewContract・Testing Strategy、tasks.mdの2.3・7.1・7.9・8.5 |
+| R3-2 | roadmapの依存にmedia-pipelineが加わった。8.5は、順の上では先に完了しているはずのmedia-pipelineの5.1・5.6を前提にし、無ければ8.5だけを保留して報告し、他のタスクは進める | design.mdのAllowed Dependencies、tasks.mdの1.1・8.5、research.mdのN-2の行・アップロードの判定の決定・Risks |
+| R3-8 | 「この操作はできません。」は、roadmapの順で先に実装されるmedia-pipelineのタスク9.2が文言規則へ加える。本specの`forbidden`は同じ文言を使い、12.2では既にあることを確かめるだけにする(無い場合だけ追記する) | design.mdのModified Files・Error Categories and Responses、tasks.mdの12.2 |
 
 ## Research Log
 
@@ -277,10 +280,21 @@ kiro-spec-batchの横断レビューの指摘と開発者の回答を、次の�
 
 ### Decision: アップロードできる利用者の判定の束縛(横断レビューN-7)
 
-- **Context**: 停止中の利用者は既存のセッションでアップロードでき、FR-USER-020の書き込みの拒否がアップロードの経路で満たされない。media-pipelineはアップロードの受け付けに差し込み口`UploaderEligibility`(既定は全許可、処理単位のコンテナから解決、`SessionAccess`と主体と用途を受け取る)を設けた。
+- **Context**: 停止中の利用者は既存のセッションでアップロードでき、FR-USER-020の書き込みの拒否がアップロードの経路で満たされない。media-pipelineはアップロードの受け付けに差し込み口`UploaderEligibility`(既定は全許可、処理単位のコンテナから解決、セッションの読み取りの型`SessionView`と主体と用途を受け取る。横断レビューR3-1)を設けた。
 - **Selected Approach**: `AccountUploaderEligibility`を`AccountGuard.currentUser`と`checkAccountWritable(user, { requireVerifiedEmail: false })`で実装し、`apps/api/src/composition/uploader-eligibility.ts`の束縛を差し替える。停止中・退会済みは`account_unavailable`、未確認は許可する。
 - **Rationale**: `AccountGuard.requireWritableUser`と同じ規則で判定し、同じ要求の中で利用者を1回だけ読む。未確認の利用者の制限(FR-USER-006)の対象にアップロードは無く、制限のある操作への紐付けは各ドメインspecの保存で拒否される。
-- **Trade-offs**: roadmapのidentity-authの依存にmedia-pipelineが無いため、差し込み口が無い間は束縛を保留し、停止中の利用者のアップロードが残る(紐付けられないファイルは24〜48時間で消える)。
+- **Trade-offs**: media-pipelineはroadmapの依存で先に完了しているはずだが、差し込み口が無い間は束縛を保留し、停止中の利用者のアップロードが残る(紐付けられないファイルは24〜48時間で消える)。
+
+### Decision: application層が受け取るセッションの型(横断レビューR3-1)
+
+- **Context**: `AccountGuard`などapplication層のユースケースが、api-gatewayの`presentation/gateway/session-access.ts`の`SessionAccess`を受け取る設計だった。backend-platformの層の規則は`src/application/**`から`**/presentation/**`の読み込みを型だけの読み込みも含めて禁止するため、実装するとルートの一括検査が失敗する。
+- **Alternatives Considered**:
+  1. api-gatewayのapplication層に狭い読み取りの型を置き、`SessionAccess`がそれを拡張する
+  2. 層の規則で、application層から`session-access.ts`の型だけの読み込みを許す
+  3. Wave 1の各specが、application層に同じ形の局所的な型を定義する
+- **Selected Approach**: 1(開発者の決定、2026-10-19)。型名は`SessionView`、置き場所は`apps/api/src/application/session/session-view.ts`で、`principal()`だけを持つ。セッションのIDは`AuthenticatedPrincipal.sessionId`で読む。api-gatewayの契約への追記として、本specのタスク2.3で行う。
+- **Rationale**: 層の規則を弱めず、同じ型を重複させない。構造的部分型のため、リゾルバ・内部RESTは`SessionAccess`をそのまま渡せ、既存の呼び出し側は変わらない。Cookieの指示(`issue`・`clear`)をpresentation層に閉じ込められる。
+- **Trade-offs**: roadmapの順ではmedia-pipelineが先に実装されるため、型を最初に置くspecが本specの2.3より先になり得る。その場合、2.3は形を確かめるだけにする。
 
 ### Decision: パッケージの配置
 
@@ -299,7 +313,7 @@ kiro-spec-batchの横断レビューの指摘と開発者の回答を、次の�
 - `apps/common-lib`(content-processing)の実装が本specより遅れる — roadmapの依存にcontent-processingを加え、実装の順をcontent-processing→media-pipeline→identity-authにした(2026-10-18)。本specのタスク1.3の前提に、content-processingが示す最小の区切り(1.1・1.2・2.1・4.1・4.2・6.1、11.3のうち`coding/003`の`server/**`の許可、11.4のうち日次タイムラインの表の作成)を明記した。日次タイムラインの表が無いことでは止めず、12.2で作る。
 - 停止中の利用者が退会して同じメールアドレスで再登録し、停止を逃れる — 仮5の変更で防がないことを受け入れた。再登録したアカウントは新しいハンドル・仮名化IDを持ち、運営者は通報や使い捨て判定の結果をもとに再度停止できる。
 - 運営者による退会の取り違え・濫用(本人確認が無く、取り消せない) — 操作口は管理者側の呼び出し元と管理者のセッションだけを受け付け、利用者側のGraphQLに公開しない。依頼者の本人の確かめ・権限の確認・監査ログはugc-moderation・admin-foundationが持つ(横断レビューN-6)。
-- media-pipelineの差し込み口が本specの実装より遅れる(roadmapの依存に無い) — タスク8.5を保留して開発者へ報告し、他のタスクは進める。その間、停止中の利用者は既存のセッションでアップロードできるが、紐付けは各ドメインspecの保存で拒否され、ファイルは24〜48時間で消える(横断レビューN-7)。
+- media-pipelineの差し込み口が本specの実装より遅れる(roadmapの依存で、順の上では先に完了しているはず。R3-2) — タスク8.5を保留して開発者へ報告し、他のタスクは進める。その間、停止中の利用者は既存のセッションでアップロードできるが、紐付けは各ドメインspecの保存で拒否され、ファイルは24〜48時間で消える(横断レビューN-7)。
 - 外部キーを持たないデータ(media-pipelineの`media_files`)の取り残しは、利用者の行の物理削除の失敗では検出されない — ファイルの物理削除はuser-profile-socialの`purge_due`の波及処理が行い、その完了までイベントが`pending`に残るため、失敗は期限超過の通知で検知される。完了を返した後の取り残しの検出は、その波及処理とmedia-pipelineの責任とし、`backend/007`に規約として書く。
 
 ## References
