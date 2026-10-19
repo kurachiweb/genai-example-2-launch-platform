@@ -67,7 +67,7 @@
 | 仮2 | セッションの「一括」失効の範囲             | 操作している端末以外をすべて失効させる。操作している端末は個別の失効またはログアウトで失効させる                                                                                                  | 操作している端末を含めてすべて失効させ、ログアウトさせる                                                         | 要件8.7、`SessionManagement`                      | 承認(一括)   |
 | 仮3 | 本人確認の誤りをログイン試行に数えるか     | 数える。セッションを奪った第三者が、本人確認の画面からパスワードを総当たりできないようにするため。TOTPの誤りを数えることは申し送りで決定済み                                                     | 数えない(本人確認には別の回数制限を設ける、または制限しない)                                                     | 要件7.9、`ReAuthenticator`                        | 承認(一括)   |
 | 仮4 | メールアドレス変更後の使い捨て判定         | 新しいメールアドレスの確認が完了した時点でも判定し直す。FR-USER-014の「メールアドレス確認完了時」に、変更時の確認も含まれると読む                                                                 | 登録時の確認だけで判定し、変更時は判定しない                                                                     | 要件3.4、`EmailChange`                            | 承認(一括)   |
-| 仮5 | 停止中のユーザーの退会                     | 停止中のユーザーでも退会を受け付ける(消去の権利を優先する)。ログアウトとセッションの失効も受け付け、メールアドレス変更・パスワード変更・多要素認証の設定は拒否する。退会後すぐに同じメールアドレスで再登録して停止を逃れることは防げないが、これを受け入れる。FR-USER-020の「書き込み操作の拒否」に退会を含めず、要件定義書は改訂しない | 受け付けず、問い合わせへ案内する(当初の仮の案。FR-USER-020の書き込みの拒否を文言どおり適用する)               | 要件4.4・15.1、`Withdrawal`・`AccountGuard`・`UserLifecycleCommitter`・停止中の設定ページ | 変更         |
+| 仮5 | 停止中のユーザーの退会                     | 停止中のユーザーでも退会を受け付ける(消去の権利を優先する)。ログアウトとセッションの失効も受け付け、メールアドレス変更・パスワード変更・多要素認証の設定は拒否する。退会後すぐに同じメールアドレスで再登録して停止を逃れることは防げないが、これを受け入れる。FR-USER-020の「書き込み操作の拒否」に退会を含めず、要件定義書は改訂しない。セッションが切れた停止中の利用者は問い合わせで退会を依頼し、ugc-moderationの管理画面から運営者による退会の操作口(`AdministrativeWithdrawal`)で退会させる(横断レビューN-6への回答) | 受け付けず、問い合わせへ案内する(当初の仮の案。FR-USER-020の書き込みの拒否を文言どおり適用する)               | 要件4.4・15.1・15.7〜15.10、`Withdrawal`・`AdministrativeWithdrawal`・`AccountGuard`・`UserLifecycleCommitter`・停止中の設定ページ | 変更         |
 | 仮6 | DISIFYのAPIキー                            | 任意のシークレット`DISIFY_API_KEY`を設け、値があれば`X-Api-Key`で送る。無ければ匿名で呼ぶ。stagingの値(無料アカウントのキー)は、そのキーを読む本specの変更をmainへマージする前に開発者が登録し、prodの値はlaunch-readinessがリリース時に登録する。Workerへはinfra-deliveryの`OPTIONAL_WORKER_SECRETS`(api・event、追記済み)で渡る | 常に匿名で呼ぶ(送信元IPの共有により上限に達しやすく、「未判定」が増える) / 有料プラン                             | `DisifyClient`、Wrangler設定、手作業の一覧        | 承認(個別)   |
 
 ### 要件定義書の改訂が必要な箇所
@@ -84,25 +84,32 @@
 | FR-RLMIT-001                   | 「再送について」の回数に初回の送信を含めること、メールの種類ごとに数えることを明記する(明確化)                                                                                                   | 申し送り |
 | FR-USER-002                    | 同意した日時を記録する旨を加える(明確化)                                                                                                                                                     | Q4   |
 
-FR-USER-020は改訂しない。仮5の変更で停止中の退会を受け付けるが、開発者の回答(2026-10-18)により改訂は不要とした。本specは、退会を同要件の「書き込み操作」に含めないと読む。
+FR-USER-020は改訂しない。仮5の変更で停止中の退会を受け付けるが、開発者の回答(2026-10-18)により改訂は不要とした。本specは、退会を同要件の「書き込み操作」に含めないと読む。セッションが切れた後の退会を運営者による退会の操作口で受けること(横断レビューN-6)も、ログインを認めないため同要件と食い違わず、改訂は不要である。一方、ファイルのアップロードは同要件の「書き込み操作」に含め、media-pipelineの差し込み口を本specが束縛して停止中・退会済みの利用者を拒否する(横断レビューN-7)。
 
 ### Wave 1の横断レビューの反映(2026-10-18)
 
-kiro-spec-batchの横断レビューの指摘と開発者の回答を、次のとおり反映した。
+kiro-spec-batchの横断レビューの指摘と開発者の回答を、次のとおり反映した。C-1〜M-11は1回目、N-1〜N-7は2回目の横断レビューの指摘である(N-8・N-9はroadmapとuser-profile-socialのbriefの修正で、親エージェントが行った)。
 
 | 指摘 | 決定                                                                                                                                                                                                          | 反映した箇所                                                                 |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| C-1  | roadmapの依存にcontent-processingを加え、順序をcontent-processing→media-pipeline→identity-authにした(roadmapは親エージェントが修正)。本specが依存するのは、content-processingのタスク1.1・1.2・2.1(`apps/common-lib`の新設と書記素の数え方)と4.1・4.2(各アプリへの組み込み。配置先を静的解析とテストの対象から外す) | design.mdのAllowed Dependencies・上流への影響、tasks.mdの1.1・1.3             |
+| C-1  | roadmapの依存にcontent-processingを加え、順序をcontent-processing→media-pipeline→identity-authにした(roadmapは親エージェントが修正)。本specが依存するのは、content-processingのタスク1.1・1.2・2.1(`apps/common-lib`の新設と書記素の数え方)と4.1・4.2(各アプリへの組み込み。配置先を静的解析とテストの対象から外す)。2回目のN-3で、content-processingが示す最小の区切りに6.1、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインの表の作成が加わった | design.mdのAllowed Dependencies・上流への影響、tasks.mdの1.1・1.3             |
 | I-1  | ユーザーが保有するファイルの物理削除(`eraseOwnedBy`)と、停止・停止解除に伴う隔離理由`user_suspended`の付け外しは、user-profile-socialがユーザーライフサイクルイベントの波及処理として登録する。本specは登録口だけを提供する | requirements.mdのBoundary Context、design.mdのNon-Goals・Out of Boundary・物理削除の注記 |
 | I-2  | Durable Objectsには管轄を指定しない(infra-deliveryのK7の取り下げ)。本specへの管轄の依頼は無くなった                                                                                                            | design.mdの`LoginAttemptThrottle`・Revalidation Triggers、tasks.mdの12.2      |
 | I-3  | `DISIFY_API_KEY`はinfra-deliveryが`OPTIONAL_WORKER_SECRETS`(api・event)とInfisicalの表に追記済み。stagingの値は、そのキーを読む本specの変更をmainへマージする前に開発者が登録し、prodの値はlaunch-readinessがリリース時に登録する。Infisicalは1プロジェクトのまま、dev・staging・prodの環境を使う | 仮6、design.mdのSupporting References、tasks.mdの12.2・13.1                  |
 | I-4  | 技術ドキュメントの番号を`security/006`・`external/004`〜`006`・`backend/007`に固定した                                                                                                                           | design.mdのDirectory Structure・IdentityDocs、tasks.mdの12.1                 |
 | M-1  | `CLIENT_SITE_ORIGIN`は、APIサーバーの変数を本specが、client・adminの同名の変数をcontent-processingが所有し、名前・値・検証の規則をそろえて相互に参照する。infra-deliveryが3環境の値を一覧に持つ                   | design.mdのRevalidation Triggers・ApiIdentityComposition、tasks.mdの8.1      |
 | M-3  | ハンドルの規則はuser-profile-socialが所有する。本specは初期ハンドルの形式(`InitialHandleFormat`)と`HANDLE_AVAILABILITY`だけを持ち、初期ハンドルがその規則を満たすことを再検証の対象にする                         | requirements.mdのBoundary Context、design.mdのOut of Boundary・Revalidation Triggers |
-| M-4  | 日次タイムラインの「日次バッチ(4:21)の内容」の、content-processingが作るジョブの名前と順序の表に、本specの3行(100・110・120)を加える                                                                              | requirements.mdの20.6、design.mdのModified Files、tasks.mdの12.2             |
+| M-4  | 日次タイムラインの「日次バッチ(4:21)の内容」の、content-processingが作るジョブの名前と順序の表に、本specの3行(100・110・120)を加える。2回目のN-3で、表が無ければ本specが作る形に改めた                         | requirements.mdの20.6、design.mdのModified Files、tasks.mdの12.2             |
 | M-6  | D1のマイグレーションは、mainの最新を取り込んでから生成し、衝突したら生成し直す                                                                                                                                  | design.mdのModified Files、tasks.mdの1.2                                     |
 | M-9  | 波及処理とジョブの名前は`<spec名>.<名詞句>`(`email-delivery.cleanup`・`content-processing.keyword-reextraction`と同じ形)、メッセージ種別は`<ドメイン>.<動詞句>`(backend-platformの規約)。本specのジョブ(`identity-auth.*`)・波及処理・メッセージ(`identity.*`)は既にこの規約に沿う | design.mdのUserLifecycleContract・定期実行のジョブ                           |
 | M-11 | Durable Objectのマイグレーションは、infra-deliveryの導入後はmainへのマージでCIが適用する。導入前に実装する場合だけ開発者が手作業でデプロイする                                                                    | design.mdのOut of Boundary・Migration Strategy、tasks.mdの5.3・13.1          |
+| N-1  | 国外移転の記載事項は委託先単位で分担し、Cloudflareの項(D1・R2・Queuesの米国保存、所在を限定しないDurable Objects・Workersの実行・エッジキャッシュ・ログの扱い、EU-USデータプライバシーフレームワークを主とし無効なら委託先のDPAの標準契約条項に拠る移転の根拠)をinfra-deliveryが、AWS(Rekognition)の項をmedia-pipelineが書く。本specのD1のテーブルとログイン試行の記録はCloudflareの項に含まれ、本specはその項を書き換えない。DISIFY・HIBPには個人を識別できる情報を渡さないため、既存の骨子どおり国外移転の対象外のままにし、infra-deliveryの改訂の後もその旨が残っていることを12.2で確かめる(roadmapの「国外移転の記載」により、委託先を使うspecが自分の委託先の分を受け持つ) | requirements.mdのAdjacent expectations、design.mdのOut of Boundary・Revalidation Triggers・上流への影響・Modified Files(準拠方針・プライバシーポリシー骨子)、tasks.mdの12.2 |
+| N-2  | roadmapに無い依存は「確かめて、無ければ開発者へ報告する」とする。本specの13.1は既にこの扱いである。新しい8.5のmedia-pipelineの差し込み口と、8.1のinfra-deliveryのキーの一覧の節も同じ扱いにした(roadmapの依存には加えない) | design.mdのAllowed Dependencies・Modified Files、tasks.mdの8.1・8.5・13.1     |
+| N-3  | 日次タイムラインの表は、無ければ最初に4:21のジョブを足すspecが作り(email-deliveryの900を含める)、後のspecは行を足す。本specも表が無いことを理由に止めず、無ければ作る。タスク1.3の前提は、content-processingが示す最小の区切り(1.1・1.2・2.1・4.1・4.2・6.1、11.3のうち`coding/003`の`server/**`の許可、11.4のうち表の作成)に合わせた | design.mdのAllowed Dependencies・上流への影響・Revalidation Triggers・Modified Files・定期実行のジョブ、tasks.mdの1.3・12.2 |
+| N-4  | ジョブ・波及処理の名前は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`。規約はroadmapのShared seams(親エージェントが追記)と、content-processingのタスク11.5がbackend-platformの`infra/003-async-processing.md`へ追記する文書を正とする。本specの`backend/007`は名前の規約を書かずにリンクする(要件20.5) | requirements.mdの20.5、design.mdのUserLifecycleContract・IdentityDocs、tasks.mdの12.1 |
+| N-5  | シークレットのキーの一覧の正は`docs/onboardings/project-values.md`の節(infra-deliveryのタスク8.5が作る)とし、本specはキーを読む変更(8.1)と同じ変更で`DISIFY_API_KEY`の行を足すか、行があれば食い違いを確かめる。技術ドキュメントにはキーの名前を列挙しない | requirements.mdのAdjacent expectations、design.mdの上流への影響・Modified Files・IdentityDocs・Supporting References、tasks.mdの8.1・12.1・12.2・13.1 |
+| N-6  | セッションが切れた停止中の利用者のため、運営者による退会の操作口`AdministrativeWithdrawal`を設ける。停止中の利用者にも使え、本人の退会と同じ確定の処理(`commitWithdrawal`)を通す。呼び出せるのは管理者側の呼び出し元と管理者のセッションの経路だけで、権限の確認・監査ログ(admin-foundationの記録API)・管理画面・問い合わせからの導線は呼び出し側(ugc-moderation)が持つ。停止中の設定ページの案内文に、セッションが切れた後は問い合わせで退会を依頼できる旨を加えた。roadmapのShared seamsへは親エージェントが追記した。要件定義書の改訂は不要 | requirements.mdの決定事項(仮5)・用語・Boundary Context・要件15(Objective・15.7〜15.10)、design.mdのBoundary Commitments・Revalidation Triggers・運営者による退会の流れ・Withdrawal・AdministrativeWithdrawal・UserSuspension・設定セクション・エラーの表・Security Considerations、tasks.mdの7.9・10.6・10.7・12.1・12.2 |
+| N-7  | 停止中の利用者のアップロードを拒否する。media-pipelineの差し込み口`UploaderEligibility`(既定は全許可、`apps/api/src/composition/uploader-eligibility.ts`)を、本specの`AccountUploaderEligibility`で束縛する。判定は`AccountGuard.currentUser`と`checkAccountWritable`(確認済みは求めない)で、停止中・退会済みを`account_unavailable`で拒否し、メールアドレスが未確認の利用者はFR-USER-006の制限にアップロードが無いため拒否しない。media-pipelineのタスク5.1・5.6の完了を前提にする | requirements.mdの決定事項(横断N-7)・Boundary Context・要件4.7、design.mdのBoundary Commitments・Allowed Dependencies・上流への影響・アップロードできる利用者の判定・AccountUploaderEligibility・ApiIdentityComposition、tasks.mdの8.5・13.1 |
 
 ## Research Log
 
@@ -256,6 +263,25 @@ kiro-spec-batchの横断レビューの指摘と開発者の回答を、次の�
 - **Selected Approach**: 最後の更新から15分以上経っている場合だけ`last_used_at`を更新し、そのときだけCookieの有効期間を延ばす指示(`renewal`)を返す。
 - **Rationale**: 画面の表示ごとにD1へ書き込むことを避ける。アイドル14日に対して15分の誤差は無視できる。
 
+### Decision: 運営者による退会の操作口(横断レビューN-6)
+
+- **Context**: 停止中の利用者はログインできない(6.4)。停止では既存のセッションを消さないが、セッションが切れた後やログアウトの後は設定ページから退会できず、仮5の意図(消去の権利の優先)が一部しか満たされない。準拠方針は消去の手段を退会としている。
+- **Alternatives Considered**:
+  1. 運営者が利用者に代わって退会させる操作口を設け、ugc-moderationが管理画面から使う(採用。開発者の回答)
+  2. 停止中の利用者に、退会だけを行える制限付きのログインを認める(FR-USER-020の「ログインの拒否」と食い違い、要件定義書の改訂が要る)
+  3. 現状を受け入れ、問い合わせを受けてシステムの外で対応する
+- **Selected Approach**: 1。`AdministrativeWithdrawal.withdraw({ userId, caller, operator, at })`を設け、呼び出し元が`admin`で主体が管理者のセッションのときだけ受け付ける。退会の確定は本人の退会と共通の`commitWithdrawal`を通す。本人確認・bot判定・Cookieの指示は行わない。
+- **Rationale**: 退会の確定を1か所にまとめることで、同期・非同期の波及処理・抑止記録の削除・物理削除の時期が本人の退会と変わらない。操作口を利用者側のGraphQLに公開しないことと、呼び出し元と主体の確認で、利用者側からは呼べない。
+- **Trade-offs**: 管理者の権限(RBAC)の確認と監査ログは呼び出し側に委ねるため、本specの操作口だけでは権限の不足を検出しない。admin-foundationの管理者のセッションの検証が入るまでは、管理者のセッションが常に無効のため呼べない。
+- **Follow-up**: ugc-moderationの設計で、問い合わせでの依頼者の本人の確かめ方、権限、監査ログの記録、利用者への連絡を決める。
+
+### Decision: アップロードできる利用者の判定の束縛(横断レビューN-7)
+
+- **Context**: 停止中の利用者は既存のセッションでアップロードでき、FR-USER-020の書き込みの拒否がアップロードの経路で満たされない。media-pipelineはアップロードの受け付けに差し込み口`UploaderEligibility`(既定は全許可、処理単位のコンテナから解決、`SessionAccess`と主体と用途を受け取る)を設けた。
+- **Selected Approach**: `AccountUploaderEligibility`を`AccountGuard.currentUser`と`checkAccountWritable(user, { requireVerifiedEmail: false })`で実装し、`apps/api/src/composition/uploader-eligibility.ts`の束縛を差し替える。停止中・退会済みは`account_unavailable`、未確認は許可する。
+- **Rationale**: `AccountGuard.requireWritableUser`と同じ規則で判定し、同じ要求の中で利用者を1回だけ読む。未確認の利用者の制限(FR-USER-006)の対象にアップロードは無く、制限のある操作への紐付けは各ドメインspecの保存で拒否される。
+- **Trade-offs**: roadmapのidentity-authの依存にmedia-pipelineが無いため、差し込み口が無い間は束縛を保留し、停止中の利用者のアップロードが残る(紐付けられないファイルは24〜48時間で消える)。
+
 ### Decision: パッケージの配置
 
 - **Selected Approach**: `otpauth` 9.5.2・`bowser` 2.14.1はapiだけ、`uqr` 0.1.3はfrontend-lib・client・admin(共有ディレクトリの規約により3つで同じ版)に導入する。
@@ -270,8 +296,10 @@ kiro-spec-batchの横断レビューの指摘と開発者の回答を、次の�
 - `HASH_PEPPER`の漏洩 — ペッパーだけではパスワードを復元できない(PBKDF2)。TOTPの秘密鍵はD1と鍵の両方が漏れた場合だけ復元される。
 - 並行したログイン試行による制限の超過 — ログインごとのbot判定で補う。
 - Wave 1の他specとの番号の衝突 — Durable Objectsの`migrations`のタグは実装時に既存の最大値の次へ詰める。`docs/GUIDES/tech`の文書番号はWave 1の割り当て(`security/006`・`external/004`〜`006`・`backend/007`)で固定した。D1のマイグレーションはmainの最新を取り込んでから生成し、衝突したら生成し直す。
-- `apps/common-lib`(content-processing)の実装が本specより遅れる — roadmapの依存にcontent-processingを加え、実装の順をcontent-processing→media-pipeline→identity-authにした(2026-10-18)。本specのタスク1.3の前提に、content-processingのタスク1.1・1.2・2.1・4.1・4.2を明記した。
+- `apps/common-lib`(content-processing)の実装が本specより遅れる — roadmapの依存にcontent-processingを加え、実装の順をcontent-processing→media-pipeline→identity-authにした(2026-10-18)。本specのタスク1.3の前提に、content-processingが示す最小の区切り(1.1・1.2・2.1・4.1・4.2・6.1、11.3のうち`coding/003`の`server/**`の許可、11.4のうち日次タイムラインの表の作成)を明記した。日次タイムラインの表が無いことでは止めず、12.2で作る。
 - 停止中の利用者が退会して同じメールアドレスで再登録し、停止を逃れる — 仮5の変更で防がないことを受け入れた。再登録したアカウントは新しいハンドル・仮名化IDを持ち、運営者は通報や使い捨て判定の結果をもとに再度停止できる。
+- 運営者による退会の取り違え・濫用(本人確認が無く、取り消せない) — 操作口は管理者側の呼び出し元と管理者のセッションだけを受け付け、利用者側のGraphQLに公開しない。依頼者の本人の確かめ・権限の確認・監査ログはugc-moderation・admin-foundationが持つ(横断レビューN-6)。
+- media-pipelineの差し込み口が本specの実装より遅れる(roadmapの依存に無い) — タスク8.5を保留して開発者へ報告し、他のタスクは進める。その間、停止中の利用者は既存のセッションでアップロードできるが、紐付けは各ドメインspecの保存で拒否され、ファイルは24〜48時間で消える(横断レビューN-7)。
 - 外部キーを持たないデータ(media-pipelineの`media_files`)の取り残しは、利用者の行の物理削除の失敗では検出されない — ファイルの物理削除はuser-profile-socialの`purge_due`の波及処理が行い、その完了までイベントが`pending`に残るため、失敗は期限超過の通知で検知される。完了を返した後の取り残しの検出は、その波及処理とmedia-pipelineの責任とし、`backend/007`に規約として書く。
 
 ## References

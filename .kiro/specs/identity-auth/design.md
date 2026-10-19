@@ -4,13 +4,14 @@
 
 **Purpose**: 利用者側サイトのアカウント(登録・メールアドレスの確認・ログイン・セッション・パスワードのリセットと変更・メールアドレス変更・多要素認証・退会と物理削除)を、APIサーバー(`apps/api`)・イベントサーバー(`apps/event`)・利用者側フロントエンドサーバー(`apps/client`)にまたがって実装する。あわせて、管理者の認証が再利用できる認証部品、退会・停止・停止解除を後続specへ伝えるユーザーライフサイクルイベント、物理削除を進める削除オーケストレータ、他specが使う可視ユーザーの判定条件と機能制限の部品を提供する。
 
-**Users**: 投稿者・サポーターは`/auth/*`と`/settings/account`・`/settings/security`で自分のアカウントを管理する。admin-foundationは`auth`モジュール(パスワード・秘密の発行・セッションの有効期限・ログイン試行の制限・TOTP・リカバリコード)を管理者用のテーブルと値で使う。ugc-moderationは停止・停止解除の操作口を呼ぶ。後続のドメインspecは、ライフサイクルイベントの登録口に自分の波及処理を加え、可視ユーザーの条件と`AccountGuard`で利用者を絞り込み・判定する。
+**Users**: 投稿者・サポーターは`/auth/*`と`/settings/account`・`/settings/security`で自分のアカウントを管理する。admin-foundationは`auth`モジュール(パスワード・秘密の発行・セッションの有効期限・ログイン試行の制限・TOTP・リカバリコード)を管理者用のテーブルと値で使う。ugc-moderationは停止・停止解除の操作口と、管理画面から運営者による退会の操作口を呼ぶ。後続のドメインspecは、ライフサイクルイベントの登録口に自分の波及処理を加え、可視ユーザーの条件と`AccountGuard`で利用者を絞り込み・判定する。media-pipelineのアップロードの受け付けは、本specが束縛する判定で停止中の利用者を拒否する。
 
 **Impact**: backend-platform・api-gateway・email-delivery・frontend-platformが作る骨格(いずれも未実装)の登録箇所へ、本specのモジュール・スキーマモジュール・ジョブ・メッセージ種別・メール種別・テンプレート・画面を追記する。上流のコードへの変更は次の3点に限り、いずれも既存の振る舞いを変えない追加である。
 
 - frontend-platformの中継項目`FORWARDED_BROWSER_HEADERS`に`user-agent`を加える(Q6)。
 - api-gatewayの`GatewayRequestScope`・`GraphQLContext`に`userAgent`を加える。
 - api-gatewayの`composition/session.ts`の束縛と、email-deliveryの`USER_ADDRESS_DIRECTORY`の束縛を、本specの実装へ差し替える(上流specが定めた差し替えの契約どおり)。
+- media-pipelineが設ける「アップロードできる利用者か」の差し込み口(`UploaderEligibility`、既定は許可)の束縛を、本specの判定の実装へ差し替える(media-pipelineが定めた差し替えの契約どおり、横断レビューN-7)。
 
 ### Goals
 
@@ -25,6 +26,8 @@
 - プロフィールの編集・公開プロフィール・旧ハンドル・予約語(user-profile-social)。
 - 管理者アカウント・管理者のログイン画面・管理者用のテーブル(admin-foundation)。
 - 停止の画面・理由・監査ログ・停止の通知メール(ugc-moderation)。
+- 運営者による退会の管理画面・問い合わせからの導線・権限の確認・監査ログ(ugc-moderation・admin-foundation)。
+- アップロードの受け付けと拒否の応答(media-pipeline)。
 - 各ドメインのデータの論理削除・物理削除・匿名化、Stripe Customerの削除と定期課金の解約(各ドメインspecの波及処理)。
 - ユーザーが保有するファイルの物理削除と、停止・停止解除に伴う隔離理由の付け外し(user-profile-socialが波及処理として登録する)。
 - 未確認ユーザーの書き込みの拒否・通知メールの除外の各機能への適用(各ドメインspecが本specの部品を使う)。
@@ -39,7 +42,8 @@
 - 認証部品(apiの`domain/auth`・`application/auth`・`infrastructure/auth`): パスワードの規則・ハッシュ化・漏洩照合、秘密の発行とハッシュ化、セッションの有効期限の判定、ログイン試行の記録(Durable Object`LoginAttemptThrottle`)、TOTP、秘密鍵の暗号化、リカバリコード、主体別のセッションの検証の振り分け。
 - 利用者のアカウントの業務処理(apiの`domain/identity`・`application/identity`・`infrastructure/identity`)と、GraphQLのスキーマモジュール`identity`。
 - ユーザーライフサイクルイベントの契約(`core/identity/user-lifecycle.ts`)、同期の波及処理の契約と実行(apiの`UserLifecycleCommitter`)、非同期の波及処理の実行器(eventの`UserLifecycleRunner`)、イベントの記録(`workers/identity/user-lifecycle-store.ts`)、日次の再実行、削除オーケストレータと最後の物理削除。
-- 停止・停止解除の状態の遷移と操作口(`UserSuspension`)、機能制限の判定(`AccountGuard`)。
+- 停止・停止解除の状態の遷移と操作口(`UserSuspension`)、運営者による退会の操作口(`AdministrativeWithdrawal`。利用者本人の退会と同じ確定の処理を通す)、機能制限の判定(`AccountGuard`)。
+- media-pipelineの`UploaderEligibility`の本specの実装(`AccountUploaderEligibility`。停止中・退会済みを拒否し、未確認は拒否しない)と、APIサーバーの合成でのその束縛。
 - 使い捨てメールアドレスの判定(`DisifyClient`・判定し直し)、利用者のメールアドレスの照会口の実装(`D1UserAddressDirectory`)。
 - メール種別7つ(`core/email/kinds/identity.ts`)とテンプレート(`apps/event/src/infrastructure/email/templates/identity/`)。
 - 定期実行のジョブ3つ(業務時刻4:21、`order` 100・110・120)とメッセージ種別2つ(`identity.run-user-lifecycle`・`identity.recheck-disposable-email`)。
@@ -54,12 +58,15 @@
 - `users.nickname`・`users.handle`の変更、ハンドルの規則(文字種・長さ・予約語・大文字小文字の扱い・旧ハンドル)、旧ハンドルの保持と302リダイレクト、予約語の判定(user-profile-social)。本specは登録時に生成する初期ハンドルの形式(`InitialHandleFormat`)と、重複判定の差し込み口`HANDLE_AVAILABILITY`だけを持つ。
 - 管理者のテーブル・管理者のセッションの検証の実装・管理画面(admin-foundation)。本specは`AUTH_TYPES.AdminSessionVerifier`の束縛を常に無効を返す既定の実装にしておく。
 - 停止・停止解除の画面、理由・監査ログ・通知メール(ugc-moderation・admin-foundation)。
+- 運営者による退会の管理画面、問い合わせからの導線(停止中の利用者の依頼の受け付けと本人の確かめ)、操作の権限の確認(admin-foundationの権限の判定)、監査ログの記録(admin-foundationの記録API)、利用者への連絡(ugc-moderation)。本specの操作口は、呼び出し元と主体が管理者側であることだけを確かめる。
+- アップロードの受け付け、`UploaderEligibility`の定義と既定の実装(許可)、利用者のアップロードの経路での判定の呼び出しと拒否の応答(media-pipeline)。管理者のアップロードの経路は判定の対象外である。
 - 各ドメインの同期・非同期の波及処理の中身(各ドメインspec)。本specは自分のテーブルと抑止記録の削除依頼だけを波及処理として持つ。ユーザーが保有するファイルの物理削除(`purge_due`でのmedia-pipelineの`eraseOwnedBy`)と、停止・停止解除に伴う隔離理由`user_suspended`の付け外しは、identity-authとmedia-pipelineの両方に依存するuser-profile-socialが波及処理として登録する。本specはその登録口だけを提供する。
 - bot判定の検証(backend-platformの`BotVerifier`)、厳密なレート制限カウンタ(`RateLimitCounterClient`)、セッションの受け渡しの契約(api-gatewayの`SessionAccess`)、Cookieの属性と発行(frontend-platform)、メールの描画と送信(email-delivery)の実装。
 - 書記素の数え方の実装(content-processingの`apps/common-lib`)。
 - 外部サービスのアカウントの作成とシークレットの登録(stagingの値は開発者の手作業、prodの値はlaunch-readinessがリリース時に登録する)。Workerへ渡す任意のシークレットの一覧(`OPTIONAL_WORKER_SECRETS`)とInfisicalの表への`DISIFY_API_KEY`の追加(infra-deliveryで追記済み)。
 - Durable Objectのマイグレーションの適用(infra-delivery)。Wrangler設定の`migrations`は`wrangler deploy`が適用するため、infra-deliveryの導入後はmainへのマージでCIがstagingへ適用する(infra-deliveryのWorkerDeployerと`infra/007`)。infra-deliveryより前に実装する場合だけ、開発者が手作業でデプロイする。
 - Durable Objectsの管轄の指定。ログイン試行の記録はハッシュ化したキーの短命の値だけのため、管轄を指定しない(Wave 1の決定)。
+- プライバシーポリシー骨子・準拠方針の、Cloudflareの資源の保存場所と国外移転の記載事項のCloudflareの項(所在を限定しないDurable Objectsの扱いと、移転の根拠(EU-USデータプライバシーフレームワーク、無効になった場合は委託先のDPAの標準契約条項))。infra-deliveryが書き、本specは書き換えない(横断レビューN-1)。本specのD1のテーブルとログイン試行の記録はその対象に含まれる。
 
 ### Allowed Dependencies
 
@@ -67,9 +74,10 @@
 - api-gateway: `SessionVerifier`・`Principal`・`AuthenticatedPrincipal`・`SessionVerification`・`SessionIssue`・`SESSION_TYPES`・`SESSION_TOKEN_PATTERN`・`AnonymousSessionVerifier`、`GraphQLSchemaModule`・`defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`、`SessionAccess`。`GraphQLContext`・`GatewayRequestScope`への`userAgent`の追加だけを行う。
 - email-delivery: `EmailKind`・`defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EmailTemplate`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`・`toMatchingKey`・`isValidEmailAddress`・`UserAddressDirectory`・`SuppressionMaintenance`・`EMAIL_TYPES`。形を変えない。
 - frontend-platform: `SiteLayoutSlots`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`の表示部品・`runAxe`。`FORWARDED_BROWSER_HEADERS`への`user-agent`の追加だけを行う。
-- content-processing: `apps/common-lib`の書記素の文字数を数える関数と、共有ディレクトリの配置(4アプリ)。依存するのはcontent-processingのタスク1.1(共有ディレクトリの定義と配置)・1.2(共用部品のプロジェクトと読み込みの境界)・2.1(書記素の数え方)と、4.1(APIサーバー・イベントサーバーへの組み込み)・4.2(利用者側・管理者側・frontend-libへの組み込み)である。4.1・4.2は、各アプリの配置先を静的解析とテストの対象から外す(本specのタスク1.3の前提)。
+- content-processing: `apps/common-lib`の書記素の文字数を数える関数と、共有ディレクトリの配置(4アプリ)。依存するのは、content-processingの設計の「本specのタスクを前提にする下流spec」が示す最小の区切りである。タスク1.1(共有ディレクトリの定義と配置)・1.2(共用部品のプロジェクトと読み込みの境界)・2.1(書記素の数え方)・4.1(APIサーバー・イベントサーバーへの組み込み)・4.2(利用者側・管理者側・frontend-libへの組み込み)・6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`validation/**`の禁止の静的解析の規則)と、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成である。4.1・4.2は、各アプリの配置先を静的解析とテストの対象から外す(本specのタスク1.3の前提)。日次タイムラインの表は、無ければ本specのタスク12.2が作るため、表が無いことでは止めない(横断レビューN-3)。
+- media-pipeline: 「アップロードできる利用者か」の差し込み口の`UploaderEligibility`・`UploaderEligibilityDecision`・`UPLOAD_ACCESS_TYPES`(`apps/api/src/application/media/uploader-eligibility.ts`)と`UploaderDenialCode`(`common-lib/media`)、既定の束縛の箇所`apps/api/src/composition/uploader-eligibility.ts`。形を変えず、束縛だけを本specの実装へ差し替える。差し込み口を作るのはmedia-pipelineのタスク5.1(アップロードの内部REST)・5.6(APIサーバーの束縛の組み立て)で、本specのタスク8.5はその完了を前提にする。roadmapのidentity-authの依存にmedia-pipelineは無いが、roadmapの順はmedia-pipeline→identity-authである。そのため、差し込み口が無ければ8.5を保留して開発者へ報告し、他のタスクは進める(横断レビューN-2と同じ扱い)。
 - npmパッケージ: Technology Stackの表に挙げた版に限る。新規は`otpauth` 9.5.2・`uqr` 0.1.3・`bowser` 2.14.1だけ。
-- 上流の登録箇所への追記: apiの`composition`の各登録箇所・`index.ts`・`wrangler.jsonc`・`eslint.config.ts`(backend-platform・api-gateway・email-delivery)、eventの`composition`の各登録箇所と`templates/index.ts`(backend-platform・email-delivery)、clientの`routes/__root.tsx`の`beforeLoad`と`composition/layout-slots.ts`(frontend-platform)。既存の束縛・経路・設定値は、差し替えの契約がある`SESSION_BINDINGS`・`USER_ADDRESS_DIRECTORY`・3つの区画を除いて変えない。
+- 上流の登録箇所への追記: apiの`composition`の各登録箇所・`index.ts`・`wrangler.jsonc`・`eslint.config.ts`(backend-platform・api-gateway・email-delivery)、eventの`composition`の各登録箇所と`templates/index.ts`(backend-platform・email-delivery)、clientの`routes/__root.tsx`の`beforeLoad`と`composition/layout-slots.ts`(frontend-platform)。既存の束縛・経路・設定値は、差し替えの契約がある`SESSION_BINDINGS`・`USER_ADDRESS_DIRECTORY`・3つの区画・media-pipelineの`UploaderEligibility`の束縛を除いて変えない。
 - 依存の方向は「Dependency Direction」に従う。`identity`は`auth`に依存してよいが、`auth`は`identity`に依存しない。
 
 ### Revalidation Triggers
@@ -79,14 +87,16 @@
 - `users`の列・状態の値・`lifecycle_version`の扱い、`HANDLE_AVAILABILITY`の形(user-profile-social・ugc-moderation・data-export)。
 - 初期ハンドルの形式(`InitialHandleFormat`、英小文字と数字の12文字)と、user-profile-socialが所有するハンドルの規則(文字種・長さ・予約語・大文字小文字の扱い・旧ハンドル)。どちらかを変えたら、初期ハンドルがその規則を満たすことを確かめ直す(user-profile-social)。
 - `UserSuspension`の形(ugc-moderation)。
+- `AdministrativeWithdrawal`の形と、呼び出せる経路の条件(呼び出し元が管理者側で、主体が管理者のセッション)、対象が退会済み・存在しないときの`not_found`、利用者本人の退会と同じ確定の処理を通すこと(ugc-moderation・admin-foundation)。停止中の設定ページの案内文(問い合わせで退会を依頼できる旨)を変えたら、ugc-moderationの問い合わせからの導線も確かめ直す。
+- アップロードできる利用者の判定の規則(停止中・退会済みは拒否、メールアドレスが未確認でも拒否しない)と、`AccountUploaderEligibility`の束縛の位置(media-pipeline、アップロードを使う全ドメインspec)。
 - `auth`モジュールのポート・`SessionPolicy`・`LoginThrottle`のスコープとDurable Objectの名前の規則(admin-foundation)。
 - `AUTH_TYPES.AdminSessionVerifier`の束縛の位置(admin-foundation)。
 - `SETTINGS_NAV_ITEMS`の形と`order`の規約、`_authenticated`のレイアウトの文脈(`viewer`)、`LoginRequiredDialog`の形(設定ページ・ログイン必須の画面を追加する全spec)。
 - `FORWARDED_BROWSER_HEADERS`・`GraphQLContext.userAgent`の追加(frontend-platform・api-gateway)。
 - メール種別の名前と入力(email-delivery、文言規則)。
 - `CLIENT_SITE_ORIGIN`・`DISIFY_API_KEY`・`LOGIN_ATTEMPT_THROTTLE`の名前と値(infra-delivery・launch-readiness)。`CLIENT_SITE_ORIGIN`は、APIサーバーの変数を本specが、利用者側・管理者側の同名の変数をcontent-processingが所有し、名前と3環境の値を同じにする(content-processing、infra-deliveryのSupporting References「ホスト名から導かれる変数の値」の表)。
-- ログイン試行の記録に保存する値の性質(ハッシュ化したキーと回数・時刻だけで、最後の失敗から24時間で消える)。Durable Objectsの管轄を指定しない判断と、準拠方針の「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」の記述の前提である(infra-delivery)。
-- 定期実行のジョブの名前と`order`(100・110・120)の変更(同じ4:21にジョブを登録する全spec、日次タイムラインの順序の表)。
+- ログイン試行の記録に保存する値の性質(ハッシュ化したキーと回数・時刻だけで、最後の失敗から24時間で消える)。Durable Objectsの管轄を指定しない判断と、準拠方針の「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」の記述、プライバシーポリシー骨子の国外移転の記載事項のCloudflareの項(所在を限定しない処理の扱い)の前提である(infra-delivery)。
+- 定期実行のジョブの名前と`order`(100・110・120)の変更(同じ4:21にジョブを登録する全spec、日次タイムラインの順序の表)。日次タイムラインの表は、無ければ最初に4:21のジョブを足すspecが作り、後のspecは行を足す(横断レビューN-3)。
 
 ### 上流への影響
 
@@ -97,8 +107,9 @@
 | api-gateway       | `composition/session.ts`の`SESSION_BINDINGS`を本specの振り分けの実装へ差し替える                                                                        | api-gatewayが定めた差し替えの契約どおり                                                                                              |
 | email-delivery    | `USER_ADDRESS_DIRECTORY`を`D1UserAddressDirectory`へ差し替え、eventでも`SuppressionMaintenance`を束縛して退会時に呼ぶ                                   | 契約どおり。eventでの束縛はemail-deliveryのファイルを変えずに本specのモジュールで行う                                                |
 | backend-platform  | apiの`durable_objects`に`LOGIN_ATTEMPT_THROTTLE`、`migrations`に既存の最後のタグの次(現時点`v2`)で`LoginAttemptThrottle`を加える                       | 後続specが資源を追記する規約どおり。Wave 1の他specもタグを追加する場合は実装時に番号を詰める                                          |
-| content-processing | `apps/common-lib`の`countGraphemes`を使い、`apps/common-lib/identity/`に入力規則を置く。APIサーバーの変数にcontent-processingがclient・adminに加える`CLIENT_SITE_ORIGIN`と同じ名前・同じ値を使う | roadmapの依存にcontent-processingがあり、実装の順はcontent-processing→media-pipeline→identity-authである。本specのタスク1.3がcontent-processingのタスク1.1・1.2・2.1・4.1・4.2に依存する。`countGraphemes`・共有ディレクトリの配置・`CLIENT_SITE_ORIGIN`の変更は、content-processingのRevalidation Triggersで本specへ伝わる |
-| infra-delivery(Wave 1) | `OPTIONAL_WORKER_SECRETS`のapi・eventとInfisicalの表に`DISIFY_API_KEY`を、「ホスト名から導かれる変数の値」の表にAPIサーバーの`CLIENT_SITE_ORIGIN`の3環境の値(本specの所有)を載せる。`LoginAttemptThrottle`の`migrations`はmainへのマージでCIの`wrangler deploy`がstagingへ適用する | Wave 1の決定(2026-10-18)により、infra-deliveryで追記済み。本specは`scripts/delivery`を編集せず、載っていることを確かめるだけにする。Durable Objectsの管轄は指定しないため、管轄の依頼は無い |
+| content-processing | `apps/common-lib`の`countGraphemes`を使い、`apps/common-lib/identity/`に入力規則を置く。APIサーバーの変数にcontent-processingがclient・adminに加える`CLIENT_SITE_ORIGIN`と同じ名前・同じ値を使う。日次タイムラインの表(content-processingの11.4が作る想定)へ行を足し、`backend/007`からジョブ・波及処理の名前の規約(content-processingの11.5が`infra/003`へ追記する)へリンクする | roadmapの依存にcontent-processingがあり、実装の順はcontent-processing→media-pipeline→identity-authである。本specのタスク1.3が、content-processingの最小の区切り(1.1・1.2・2.1・4.1・4.2・6.1、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインの表の作成)に依存する。`countGraphemes`・共有ディレクトリの配置・`CLIENT_SITE_ORIGIN`の変更は、content-processingのRevalidation Triggersで本specへ伝わる |
+| media-pipeline(Wave 1) | `apps/api/src/composition/uploader-eligibility.ts`の`UPLOAD_ACCESS_TYPES.UploaderEligibility`の束縛を、既定の`AllowAllUploaderEligibility`から本specの`AccountUploaderEligibility`へ差し替える(横断レビューN-7) | media-pipelineが定めた差し替えの契約どおり(media-pipelineのタスク5.1・5.6の後)。差し込み口の形・判定を呼ぶ経路(利用者側だけ)・拒否の応答(403と判定の`code`)はmedia-pipelineが所有する。本specは`account_unavailable`だけを返し、`email_not_verified`は返さない |
+| infra-delivery(Wave 1) | `OPTIONAL_WORKER_SECRETS`のapi・eventとInfisicalの表に`DISIFY_API_KEY`を、「ホスト名から導かれる変数の値」の表にAPIサーバーの`CLIENT_SITE_ORIGIN`の3環境の値(本specの所有)を載せる。`LoginAttemptThrottle`の`migrations`はmainへのマージでCIの`wrangler deploy`がstagingへ適用する | Wave 1の決定(2026-10-18)により、infra-deliveryで追記済み。本specは`scripts/delivery`を編集せず、載っていることを確かめるだけにする。シークレットのキーの一覧の正は`docs/onboardings/project-values.md`で、infra-deliveryが一覧の節を作り、本specは`DISIFY_API_KEY`の行を足す(横断レビューN-5)。Durable Objectsの管轄は指定しないため、管轄の依頼は無い。国外移転の記載事項のCloudflareの項はinfra-deliveryが書く(横断レビューN-1) |
 
 ## Architecture
 
@@ -255,6 +266,7 @@ apps/
 │   │   ├── session-issuer.ts                           # セッションの発行と、重要な操作の後の再発行
 │   │   ├── user-session-verifier.ts                    # 利用者のセッションの検証
 │   │   ├── account-guard.ts                            # ログイン・状態・確認の判定(他specも使う)
+│   │   ├── account-uploader-eligibility.ts             # media-pipelineのUploaderEligibilityの実装(停止中・退会済みを拒否)
 │   │   ├── registration.ts                             # 登録
 │   │   ├── email-verification.ts                       # 確認と再送
 │   │   ├── disposable-email-check.ts                   # 確認時の判定と、判定し直しの依頼
@@ -266,7 +278,8 @@ apps/
 │   │   ├── email-change.ts                             # 要求と確定
 │   │   ├── password-change.ts                          # 要求と確定
 │   │   ├── totp-management.ts                          # 開始・有効化・無効化・再発行
-│   │   ├── withdrawal.ts                               # 退会
+│   │   ├── withdrawal.ts                               # 退会と、運営者による退会と共通の確定の処理(commitWithdrawal)
+│   │   ├── administrative-withdrawal.ts                # 運営者による退会の操作口(ugc-moderationが管理者側の経路から呼ぶ)
 │   │   ├── user-suspension.ts                          # 停止・停止解除の操作口(ugc-moderationが呼ぶ)
 │   │   └── jobs/
 │   │       ├── purge-orchestrator-job.ts               # 物理削除の開始・未完了の再実行・期限超過の通知(order 100)
@@ -382,6 +395,7 @@ docs/
 - `apps/api/src/presentation/graphql/gateway-server.ts`・`graphql-context.ts`・`graphql-module.ts`(各テスト) — `userAgent`を要求から文脈へ渡す。
 - `apps/api/src/composition/session.ts` — `SESSION_BINDINGS`を`SubjectSessionVerifier`の振り分けへ差し替え、`AUTH_TYPES.UserSessionVerifier`・`AUTH_TYPES.AdminSessionVerifier`(既定は無効)を束縛する。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`email-registrations.ts`・`env-schema.ts` — identityのモジュール、スキーマモジュール、3つのジョブ、`USER_ADDRESS_DIRECTORY`の差し替え、`CLIENT_SITE_ORIGIN`・`LOGIN_ATTEMPT_THROTTLE`・任意の`DISIFY_API_KEY`の検証を加える。
+- `apps/api/src/composition/uploader-eligibility.ts`(media-pipelineが作る) — `UPLOAD_ACCESS_TYPES.UploaderEligibility`の束縛を、`AllowAllUploaderEligibility`から`IDENTITY_TYPES.AccountUploaderEligibility`への転送に差し替える。他の束縛は変えない(4.7)。
 - `apps/api/src/index.ts` — `LoginAttemptThrottle`を名前付きでエクスポートする。
 - `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 3環境の`durable_objects.bindings`に`LOGIN_ATTEMPT_THROTTLE`、`migrations`に`LoginAttemptThrottle`のタグ、`vars`に`CLIENT_SITE_ORIGIN`を加え、型を生成し直す。
 - `apps/api/package.json`・`bun.lock` — `otpauth` 9.5.2・`bowser` 2.14.1を版固定で加える。
@@ -391,13 +405,14 @@ docs/
 - `apps/client/src/routes/__root.tsx` — `beforeLoad`で`viewer`を取得して文脈に入れる(取得の失敗は未ログインとして扱う)。
 - `apps/client/src/composition/layout-slots.ts` — `headerAccount`・`headerLaunchAction`・`belowHeader`を本specの部品に差し替える。
 - `docs/GUIDES/tech/{security,external,backend}/README.md` — 新しい文書を1行ずつ追記する。
-- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧にログイン試行の記録・ライフサイクルイベントの記録の行を加え、ログインセッションの削除方法を「アイドル期限または絶対期限の超過後」に直す。ログイン試行の記録の行は、infra-deliveryが書くDurable Objectsの保存場所の記述「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」と表現をそろえ、「ハッシュ化したキーと回数だけの一時的な値」とする。保存場所の記述そのものは書き換えない。
-- `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」の、content-processingが作るジョブの名前と順序の表に、本specの3つのジョブの名前と順序(100・110・120)の行を加える。
-- `docs/GUIDES/service/design/002-page-layouts.md` — `/auth/*`の画面の一覧、設定ページのシェルの配置、ヘッダーのアカウント表示、停止中の設定ページ(退会だけを操作できる)を追記する。
+- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧にログイン試行の記録・ライフサイクルイベントの記録の行を加え、ログインセッションの削除方法を「アイドル期限または絶対期限の超過後」に直す。ログイン試行の記録の行は、infra-deliveryが書くDurable Objectsの保存場所の記述「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」と表現をそろえ、「ハッシュ化したキーと回数だけの一時的な値」とする。保存場所の記述と、プライバシーポリシー骨子の国外移転の記載事項のCloudflareの項(infra-deliveryが所有、横断レビューN-1)は書き換えない。
+- `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 本specが使う委託先のDISIFY・Have I Been Pwnedへは個人を識別できる情報を渡さないため国外移転の対象外である旨が、infra-deliveryの「移転先の国」の行の改訂の後も残っていることを確かめ、無ければ両委託先の分だけ書き加える。Cloudflareの項(Turnstileを含む)と他の委託先の項は書き換えない(横断レビューN-1、roadmapの「国外移転の記載」)。
+- `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」のジョブの名前と順序の表に、本specの3つのジョブの名前と順序(100・110・120)の行を加える。表が無ければ作り、上流のemail-deliveryの`email-delivery.cleanup`(900)の行も含める(横断レビューN-3。想定の順序ではcontent-processingが先に作るが、表が無いことを理由に止めない)。
+- `docs/GUIDES/service/design/002-page-layouts.md` — `/auth/*`の画面の一覧、設定ページのシェルの配置、ヘッダーのアカウント表示、停止中の設定ページ(退会だけを操作でき、セッションが切れた後は問い合わせで退会を依頼できる旨を案内する)を追記する。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 本specで追加するエラーメッセージ・状態の文言(停止中の設定ページの案内を含む)と、認証系メールの本文の要点を追記する。
 - `docs/onboardings/tech-stack.md` — OTPAuth・uqr・`bowser`の版を記載する。
 - `docs/GUIDES/tech/coding/002-dependency-versions.md` — `uqr`をfrontend-lib・client・adminで版をそろえる一覧に、`otpauth`・`bowser`をapiの一覧に加える。
-- `docs/onboardings/project-values.md` — Durable Objectのバインディング名とクラス名、`CLIENT_SITE_ORIGIN`の値(content-processingが記載した行があれば、APIサーバーも同じ値を使う旨を加える)、TOTPの発行者名、ジョブの名前と順序、メール種別の名前を記載する。
+- `docs/onboardings/project-values.md` — Durable Objectのバインディング名とクラス名、`CLIENT_SITE_ORIGIN`の値(content-processingが記載した行があれば、APIサーバーも同じ値を使う旨を加える)、TOTPの発行者名、ジョブの名前と順序、メール種別の名前を記載する。シークレットのキーの一覧の節(正は本ファイル。infra-deliveryのタスク8.5が作る)には、`DISIFY_API_KEY`(api・event、任意)の行を、キーを読む変更(タスク8.1)と同じ変更で足す。行があれば食い違いを確かめるだけにし、節が無ければ開発者へ報告する(横断レビューN-5。infra-deliveryはroadmapの依存に無いため、N-2と同じ扱い)。
 - `docs/onboardings/README.md` — 任意のシークレット`DISIFY_API_KEY`のInfisical(staging環境)への登録の手順(stagingの値は、そのキーを読む本specの変更をmainへマージする前に開発者が登録する)と、prodの値はlaunch-readinessがリリース時に登録する旨、E2EテストでのMailpitの使い方を記載する。
 - `CLAUDE.md` — 「技術規則の参照先」に、認証を要する処理・ライフサイクルの波及処理を書く前に読む文書(`security/006`・`backend/007`)へのリンクを加える。
 
@@ -526,6 +541,39 @@ sequenceDiagram
 - 退会は全セッションの削除とCookieの削除だけを行う(15.1)。
 - 停止中の利用者からは、重要な操作のうち退会だけを受け付ける。退会は`AccountGuard.requireUser`で確かめ、他の重要な操作は`requireWritableUser`で停止中を拒否する(4.4・仮5)。
 
+### 運営者による退会
+
+```mermaid
+sequenceDiagram
+    participant O as AdminScreen
+    participant M as ModerationResolver
+    participant P as AdminPermission
+    participant W as AdministrativeWithdrawal
+    participant K as LifecycleCommitter
+    participant Q as JobsQueue
+    participant L as AuditLog
+    O->>M: withdraw user requested by inquiry
+    M->>P: check admin permission
+    M->>W: withdraw user id with admin caller and admin principal
+    W->>W: reject unless caller and principal are admin
+    W->>W: not found when withdrawn or missing
+    W->>K: commit withdraw with expected version
+    K-->>W: user soft deleted, sessions and tokens deleted, sync handlers applied
+    W->>Q: publish run user lifecycle
+    W-->>M: done
+    M->>L: record audit log
+```
+
+- 図のうち`ModerationResolver`・`AdminPermission`・`AuditLog`と管理画面は、ugc-moderation・admin-foundationが所有する。本specは`AdministrativeWithdrawal`だけを提供し、利用者側のGraphQLの操作は加えない(15.7・15.8)。
+- 退会の確定は、利用者本人の退会と同じ`commitWithdrawal`(`UserLifecycleCommitter.commit({ kind: 'withdraw' })`と`identity.run-user-lifecycle`の送信)を通す。そのため、同期と非同期の波及処理・抑止記録の削除・物理削除の時期は本人の退会と変わらない(15.7)。停止中の利用者のセッションが残っていれば、同じ一括の書き込みで消える。
+- 本人確認とbot判定は求めない。誤った対象の退会は取り消せないため、問い合わせでの本人の確かめと権限の確認・監査ログは呼び出し側が行う。
+
+### アップロードできる利用者の判定
+
+- media-pipelineの`UploadRoute`は、利用者側の要求で主体の種類を確かめた後、本文を読む前に`UPLOAD_ACCESS_TYPES.UploaderEligibility`を処理単位のコンテナから解決して呼ぶ。本specの`AccountUploaderEligibility`は`AccountGuard.currentUser(session)`で利用者を読み、`checkAccountWritable(user, { requireVerifiedEmail: false })`(`AccountGuard.requireWritableUser`と同じ規則)で、停止中・退会済みの利用者を`account_unavailable`で拒否する(4.7)。
+- メールアドレスが確認済みでない利用者は拒否しない(`email_not_verified`を返さない)。要件定義書の未確認時の制限(FR-USER-006)にアップロードは無く、制限のある操作(プロダクトの投稿など)へのファイルの紐付けは、各ドメインspecの保存が`requireVerifiedUser`で拒否するためである。
+- 拒否の応答(403)と、管理者側の経路・動作確認の経路で判定を呼ばないことはmedia-pipelineが行う。拒否した要求ではファイルも記録も作られない。
+
 ### ユーザーライフサイクルイベント
 
 ```mermaid
@@ -598,6 +646,7 @@ sequenceDiagram
 | 2.5, 2.6, 2.7, 2.8, 2.10                  | 送信回数の制限                              | MailSendLimits、RateLimitCounterClient(上流)                                                    | `MailSendLimits.consume`                                          | 登録とメールアドレスの確認   |
 | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6              | 使い捨て判定と判定し直し                    | DisposableEmailCheck、DisifyClient、DisposableEmailRecheckHandler、DisposableRecheckSweepJob       | `DisposableEmailChecker.check`、`identity.recheck-disposable-email` | 登録とメールアドレスの確認   |
 | 4.1, 4.2, 4.3, 4.4, 4.5, 4.6              | 機能制限と可視ユーザー                      | AccountGuard、UserAccountRules、IdentityVisibility、Withdrawal、SettingsShell                      | `AccountGuard`、`visibleUsers`・`verifiedUsers`                   | —                            |
+| 4.7                                       | アップロードできる利用者の判定              | AccountUploaderEligibility、UserAccountRules、ApiIdentityComposition                              | media-pipelineの`UploaderEligibility`                             | アップロードできる利用者の判定 |
 | 5.1, 5.2, 5.3, 5.4, 5.5, 5.6              | パスワードの規則・漏洩照合・保存            | PasswordRules、PasswordPolicy、HibpPwnedPasswordChecker、Pbkdf2PasswordHasher、AccountInputRules   | `PasswordPolicy.validateNewPassword`、`PasswordHasher`            | 登録とメールアドレスの確認   |
 | 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8    | ログイン・第2要素・ログアウト               | Login、LoginChallengeStore、TotpAuthenticator、RecoveryCodeIssuer、SessionIssuer、LoginForm、ReturnPath、ResolverSupport | `login`・`completeSecondFactorLogin`・`logout`                            | ログイン                     |
 | 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8    | ログイン試行の記録                          | LoginThrottleState、LoginAttemptThrottle、DurableLoginThrottle、LoginThrottleKeys                  | `LoginThrottle`                                                   | ログイン試行の記録の状態遷移 |
@@ -616,6 +665,8 @@ sequenceDiagram
 | 14.5                                      | 期限切れのトークンの削除                    | CredentialCleanupJob                                                                              | `ScheduledJobDefinition`                                          | —                            |
 | 14.6                                      | 7種のメール                                 | IdentityEmailKinds、IdentityEmailTemplates、IdentityMailer                                         | `EmailSender.send`                                                | —                            |
 | 15.1, 15.2, 15.3, 15.4, 15.5, 15.6        | 退会                                        | Withdrawal、UserLifecycleCommitter、EmailSuppressionCleanupHandler、WithdrawalSection              | `withdraw`                                                        | ユーザーライフサイクルイベント |
+| 15.7, 15.8, 15.9                          | 運営者による退会                            | AdministrativeWithdrawal、Withdrawal(`commitWithdrawal`)、UserLifecycleCommitter、EmailSuppressionCleanupHandler | `AdministrativeWithdrawal.withdraw`                               | 運営者による退会             |
+| 15.10                                     | 停止中の設定ページの退会の案内              | SettingsShell・設定セクション                                                                      | —                                                                 | —                            |
 | 16.1, 16.2, 16.3, 16.4, 16.5, 16.6, 16.7  | ライフサイクルイベント                      | UserLifecycleContract、UserLifecycleCommitter、UserLifecycleStore、UserLifecycleRunner、PurgeOrchestratorJob | `UserLifecycleSyncRegistration`・`UserLifecycleAsyncRegistration` | ユーザーライフサイクルイベント |
 | 16.8, 16.9, 16.10                         | 停止・停止解除の操作口                      | UserSuspension、UserLifecycleCommitter                                                            | `UserSuspension.suspend`・`unsuspend`                             | ユーザーライフサイクルイベント |
 | 17.1, 17.2, 17.3, 17.4, 17.5, 17.6        | 物理削除                                    | PurgeOrchestratorJob、UserLifecycleRunner、IdentityPurgeStore                                     | `purge_due`、`IdentityPurgeStore.purge`                           | 物理削除                     |
@@ -651,6 +702,7 @@ sequenceDiagram
 | IdentityPorts・RequestMeta                        | api/application/identity     | ストア・メール・設定値のポート                            | 全般                                            | —                                                         | Service         |
 | SessionIssuer・UserSessionVerifier                | api/application/identity     | セッションの発行・再発行・検証                            | 6.1, 8.1, 8.2, 8.3, 10.7, 11.4, 13.7            | UserSessionStore (P0)                                     | Service         |
 | AccountGuard                                      | api/application/identity     | ログイン・状態・確認の判定                                | 4.1, 4.3, 4.4                                   | UserAccountStore (P0)                                     | Service         |
+| AccountUploaderEligibility                        | api/application/identity     | media-pipelineの`UploaderEligibility`の実装               | 4.7                                             | UserAccountStore (P0)・media-pipelineの`UploaderEligibility` (P0) | Service  |
 | Registration                                      | api/application/identity     | 登録                                                      | 1.1〜1.8, 2.1, 2.7                              | PasswordPolicy・MailSendLimits・HandleAvailability (P0)   | Service         |
 | EmailVerification・DisposableEmailCheck           | api/application/identity     | 確認・再送・使い捨て判定                                  | 2.2〜2.4, 2.9, 3.1〜3.4                         | AuthTokenStore・DisposableEmailChecker (P0)               | Service         |
 | MailSendLimits                                    | api/application/identity     | FR-RLMIT-001の回数制限                                    | 2.5〜2.8, 2.10                                  | RateLimitCounterClient (P0)                               | Service         |
@@ -662,13 +714,14 @@ sequenceDiagram
 | PasswordChange                                    | api/application/identity     | 要求と確定                                                | 11.1〜11.5                                      | ReAuthenticator・AuthTokenStore (P0)                      | Service         |
 | TotpManagement                                    | api/application/identity     | 多要素認証の設定とリカバリコード                          | 13.1〜13.7                                      | TotpAuthenticator・SecretBox・RecoveryCodeIssuer (P0)     | Service         |
 | Withdrawal                                        | api/application/identity     | 退会                                                      | 4.4, 15.1〜15.3, 15.6                           | ReAuthenticator・UserLifecycleCommitter (P0)              | Service         |
+| AdministrativeWithdrawal                          | api/application/identity     | 運営者による退会の操作口                                  | 15.7, 15.8, 15.9                                | UserLifecycleCommitter・MessagePublisher (P0)             | Service         |
 | UserSuspension                                    | api/application/identity     | 停止・停止解除の操作口                                    | 16.8, 16.9, 16.10                               | UserLifecycleCommitter (P0)                               | Service         |
 | PurgeOrchestratorJob・CredentialCleanupJob・DisposableRecheckSweepJob | api/application/identity/jobs | 日次のジョブ                                  | 8.8, 14.5, 3.3, 16.6, 17.1, 17.4                | UserLifecycleStore・各ストア (P0)                         | Batch           |
 | D1Stores(UserAccount・UserSession・AuthToken・LoginChallenge・TotpCredential・RecoveryCode)・D1HandleAvailability | api/infrastructure/identity | D1の読み書き | 1.4, 1.6, 2.3, 8.6, 8.7, 9.4, 10.4, 11.3, 13.5, 13.6 | D1 (P0)                                         | State           |
-| UserLifecycleCommitter                            | api/infrastructure/identity  | 版の検査付きの状態の遷移と同期の波及処理                  | 15.1, 15.2, 16.2, 16.8                          | D1・同期の波及処理 (P0)                                   | Service         |
+| UserLifecycleCommitter                            | api/infrastructure/identity  | 版の検査付きの状態の遷移と同期の波及処理                  | 15.1, 15.2, 15.7, 16.2, 16.8                    | D1・同期の波及処理 (P0)                                   | Service         |
 | IdentityMailer                                    | api/infrastructure/identity  | 7種のメールとリンクのURL                                  | 2.1, 2.4, 9.2, 9.5, 10.2, 10.6, 11.1, 11.3, 14.4, 14.6 | EmailSender (P0)                                  | Service         |
 | IdentitySchemaModule(IdentityInputs・IdentityErrors・ResolverSupport・各リゾルバ) | api/presentation | GraphQLの型・入力・エラー・リゾルバ      | 1.8, 6.8, 12.4〜12.6, 18.10ほか                 | api-gatewayの`GraphQLContext` (P0)                        | API             |
-| ApiIdentityComposition                            | api/composition              | 束縛・登録箇所・環境・Wrangler設定                        | 19.4, 19.5, 8.8, 14.5, 16.6                     | backend-platform・api-gatewayの登録箇所 (P0)              | State           |
+| ApiIdentityComposition                            | api/composition              | 束縛・登録箇所・環境・Wrangler設定                        | 4.7, 19.4, 19.5, 8.8, 14.5, 16.6                | backend-platform・api-gateway・media-pipelineの登録箇所 (P0) | State        |
 | UserLifecycleRunner                               | event/application            | 非同期の波及処理の実行器                                  | 16.3, 16.4, 16.5, 16.7, 17.2, 17.3              | UserLifecycleStore・登録 (P0)                             | Batch           |
 | EmailSuppressionCleanupHandler                    | event/application            | 退会時の抑止記録の削除                                    | 15.3                                            | SuppressionMaintenance (P0)                               | Event           |
 | DisposableEmailRecheckHandler                     | event/application            | 未判定の判定し直し                                        | 3.3                                             | DisifyClient (P1)                                         | Batch           |
@@ -678,7 +731,7 @@ sequenceDiagram
 | ClientViewer・AuthenticatedLayout・SettingsNavigationRegistry | client                | ログイン中の利用者・ログイン必須の領域・設定の登録箇所    | 18.2, 18.3, 18.6, 18.7                          | `executeGraphQL` (P0)                                     | State           |
 | AuthRoutes・各フォーム・LinkConfirmation・LoginRequiredDialog・ReturnPath・FragmentToken・AccountFormSchemas | client | 認証画面 | 1.1, 1.2, 2.2, 6.6, 9.1, 9.4, 18.1, 18.4, 18.8, 18.9, 18.10, 18.11 | frontend-platformの部品 (P0)                     | State           |
 | AccountMenu・LaunchAction・VerifyEmailBanner      | client                       | ヘッダーの区画                                            | 18.2, 18.3, 18.5, 6.7                           | `SiteLayoutSlots` (P0)                                    | State           |
-| SettingsShell・各設定セクション                   | client                       | 設定ページ                                                | 4.4, 8.4〜8.7, 10.1, 11.1, 12.1, 13.1〜13.9, 15.1, 15.4 | frontend-platformの部品 (P0)                           | State           |
+| SettingsShell・各設定セクション                   | client                       | 設定ページ                                                | 4.4, 8.4〜8.7, 10.1, 11.1, 12.1, 13.1〜13.9, 15.1, 15.4, 15.10 | frontend-platformの部品 (P0)                    | State           |
 | TotpQrCode・RecoveryCodeList・PasswordInput       | frontend-lib                 | 管理者側も使う認証の画面部品                              | 13.1, 13.3, 13.6, 13.9, 18.11                   | uqr (P0)                                                  | State           |
 | MailpitSupport・AuthE2E                           | e2e                          | メールの読み取りとE2Eテスト                               | 20.2                                            | Playwright・Mailpit (P0)                                  | Batch           |
 | IdentityDocs                                      | docs                         | 技術ドキュメントと関連文書                                | 20.4, 20.5, 20.6, 20.7                          | —                                                         | —               |
@@ -796,7 +849,7 @@ export declare const LIFECYCLE_CONTINUE_DELAY_SECONDS: 5;
 ```
 
 - 配送保証: 少なくとも1回。非同期の波及処理は冪等にし、同じイベントで2回呼ばれても結果が変わらないようにする(16.7、`backend/007`に記載)。
-- 名前の規約: 波及処理(同期・非同期)と定期実行のジョブの名前は`<spec名>.<名詞句>`とする(email-deliveryの`email-delivery.cleanup`と同じ形)。メッセージ種別はbackend-platformの規約どおり`<ドメイン>.<動詞句>`とする(本specは`identity.*`)。
+- 名前の規約: 波及処理(同期・非同期)と定期実行のジョブの名前は`<spec名>.<名詞句>`とする(email-deliveryの`email-delivery.cleanup`と同じ形)。メッセージ種別はbackend-platformの規約どおり`<ドメイン>.<動詞句>`とする(本specは`identity.*`)。規約の正はroadmapのShared seams(Cron・Queuesのディスパッチ)と、content-processingが追記するbackend-platformの`infra/003-async-processing.md`である。
 - 順序: 同じ利用者のイベントは発生順(`occurredAt`、同時刻はIDの昇順)に処理する(16.4)。異なる利用者の間の順序は保証しない。
 - `purge_due`の波及処理は、その利用者の自分のデータを物理削除・匿名化する。本specの最後の物理削除は登録口に載せず、実行器が全波及処理の完了後に行う。
 
@@ -1452,7 +1505,9 @@ export declare const IDENTITY_TYPES: {
   readonly PasswordChange: unique symbol;
   readonly TotpManagement: unique symbol;
   readonly Withdrawal: unique symbol;
+  readonly AdministrativeWithdrawal: unique symbol;
   readonly UserSuspension: unique symbol;
+  readonly AccountUploaderEligibility: unique symbol;
   readonly PurgeOrchestratorJob: unique symbol;
   readonly CredentialCleanupJob: unique symbol;
   readonly DisposableRecheckSweepJob: unique symbol;
@@ -1516,6 +1571,43 @@ export interface AccountGuard {
 
 - 処理単位のコンテナで単一の束縛にし、同じ要求の中では利用者を1回だけ読む。後続specのリゾルバは`context.resolve<AccountGuard>(IDENTITY_TYPES.AccountGuard)`で使う(4.1・4.3)。
 - 停止中でも`requireUser`は通す(閲覧・ログアウト・セッションの失効・退会を許すため、4.4)。
+
+#### AccountUploaderEligibility
+
+| Field        | Detail                                                                 |
+| ------------ | ---------------------------------------------------------------------- |
+| Intent       | media-pipelineの「アップロードできる利用者か」の差し込み口の本specの実装 |
+| Requirements | 4.7                                                                    |
+
+**Dependencies**
+
+- Inbound: media-pipelineの`UploadRoute`(`POST /internal/media/uploads/:purpose`)。呼び出し元が利用者側の要求だけで、主体の種類の確認の後、本文を読む前に呼ばれる(P0)
+- Outbound: AccountGuard(処理単位で単一。同じ要求の利用者を1回だけ読む)(P0)
+- External: media-pipelineの`UploaderEligibility`・`UploaderEligibilityDecision`・`UploaderDenialCode`・`UPLOAD_ACCESS_TYPES`(media-pipelineのタスク5.1で作られる)(P0)
+
+**Contracts**: Service [x]
+
+##### Service Interface
+
+```typescript
+// 型はmedia-pipelineの定義(application/media/uploader-eligibility.ts・common-lib/media)を使う
+// UploaderEligibility.check(input: { session: SessionAccess; principal: AuthenticatedPrincipal; purpose: UploadPurpose }): Promise<UploaderEligibilityDecision>
+// UploaderEligibilityDecision = { allowed: true } | { allowed: false; code: UploaderDenialCode }
+// UploaderDenialCode = 'account_unavailable' | 'email_not_verified'
+export declare class AccountUploaderEligibility implements UploaderEligibility {
+  constructor(guard: AccountGuard); // @inject(IDENTITY_TYPES.AccountGuard)
+  check(input: {
+    readonly session: SessionAccess;
+    readonly principal: AuthenticatedPrincipal;
+    readonly purpose: UploadPurpose;
+  }): Promise<UploaderEligibilityDecision>;
+}
+```
+
+- 判定: `AccountGuard.currentUser(session)`で利用者を読み、`checkAccountWritable(user, { requireVerifiedEmail: false })`(`AccountGuard.requireWritableUser`と同じ規則)にかける(4.3・4.7)。停止中・退会済み、または利用者を読めない場合は`{ allowed: false, code: 'account_unavailable' }`を返し、それ以外は`{ allowed: true }`を返す。`email_not_verified`は返さない(FR-USER-006の制限にアップロードは無い)。`purpose`による扱いの違いは設けない。
+- 拒否の応答(403と`account_unavailable`の文言)、管理者側の経路と動作確認の経路で判定を呼ばないことは、media-pipelineが行う(media-pipelineの要件1.8・1.9)。`account_unavailable`の文言は本specの「Error Categories and Responses」と同じ「このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。」である。
+- 例外: D1の読み取りの失敗は例外のまま投げる。media-pipelineは受け付けを行わず、共通のエラー処理に任せるため、ファイルは保存されない。
+- 束縛: `IDENTITY_MODULE`で`IDENTITY_TYPES.AccountUploaderEligibility`を処理単位のコンテナに束縛する(`AccountGuard`と同じ範囲)。media-pipelineの`apps/api/src/composition/uploader-eligibility.ts`の、`UPLOAD_ACCESS_TYPES.UploaderEligibility`への`AllowAllUploaderEligibility`の束縛を、`IDENTITY_TYPES.AccountUploaderEligibility`への転送に差し替える(「ApiIdentityComposition」)。前提はmedia-pipelineのタスク5.1(差し込み口の作成)と5.6(APIサーバーの束縛の組み立て)である。
 
 #### Registration
 
@@ -1732,12 +1824,12 @@ export declare const TOTP_SETUP_TTL_SECONDS: 600;
 - `enable`: 保留が無い・期限切れは`totp_setup_expired`→`open`して`verify`(誤りは`invalid_second_factor`)→`RecoveryCodeIssuer.issue('user-recovery-code')`→`TotpCredentialStore.enable(step, hashes)`→全セッション削除と操作した端末への再発行(13.7)。
 - `disable`・`regenerateRecoveryCodes`: 有効でなければ`totp_not_enabled`→`ReAuthenticator.verify`→`disable`または`RecoveryCodeStore.replaceAll`→全セッション削除と再発行(13.5〜13.7)。
 
-#### Withdrawal・UserSuspension
+#### Withdrawal・AdministrativeWithdrawal・UserSuspension
 
-| Field        | Detail                                        |
-| ------------ | --------------------------------------------- |
-| Intent       | 退会と、停止・停止解除の操作口               |
-| Requirements | 4.4, 15.1, 15.2, 15.3, 15.6, 16.8, 16.9, 16.10 |
+| Field        | Detail                                                            |
+| ------------ | ----------------------------------------------------------------- |
+| Intent       | 退会と、運営者による退会・停止・停止解除の操作口                  |
+| Requirements | 4.4, 15.1, 15.2, 15.3, 15.6, 15.7, 15.8, 15.9, 16.8, 16.9, 16.10   |
 
 **Contracts**: Service [x]
 
@@ -1747,6 +1839,26 @@ export declare const TOTP_SETUP_TTL_SECONDS: 600;
 export interface Withdrawal {
   withdraw(current: CurrentUser, reAuthentication: ReAuthenticationInput, meta: RequestMeta): Promise<void>;
 }
+// withdrawal.ts。本人の退会と運営者による退会が共通に通す確定の処理
+export declare function commitWithdrawal(
+  deps: {
+    readonly committer: UserLifecycleCommitter;
+    readonly publisher: MessagePublisher;
+    readonly reporter: AuthIncidentReporter;
+  },
+  user: UserRecord,
+  at: Date,
+): Promise<void>;
+
+export interface AdministrativeWithdrawalCommand {
+  readonly userId: string;
+  readonly caller: CallerKind; // GraphQLContext.caller。'admin'だけを受け付ける
+  readonly operator: Principal; // GraphQLContext.session.principal()の結果。管理者のセッションだけを受け付ける
+  readonly at: Date;
+}
+export interface AdministrativeWithdrawal {
+  withdraw(command: AdministrativeWithdrawalCommand): Promise<void>; // 管理者側でなければforbidden、退会済み・存在しないはnot_found
+}
 export type SuspensionResult = 'changed' | 'unchanged';
 export interface UserSuspension {
   suspend(userId: string, at: Date): Promise<SuspensionResult>; // 退会済み・存在しないはnot_found
@@ -1754,7 +1866,9 @@ export interface UserSuspension {
 }
 ```
 
-- `withdraw`: `requireUser`(停止中も受け付ける、4.4・仮5)→`assertHuman('withdraw')`→`ReAuthenticator.verify`→`UserLifecycleCommitter.commit({ kind: 'withdraw' })`→`MessagePublisher.publish(RUN_USER_LIFECYCLE_MESSAGE, { eventId })`→リゾルバが`session.clear()`。送信の失敗は`lifecycle-publish-failed`を報告して成功として応答する(日次の再実行で回復、16.6)。
+- `withdraw`: `requireUser`(停止中も受け付ける、4.4・仮5)→`assertHuman('withdraw')`→`ReAuthenticator.verify`→`commitWithdrawal`→リゾルバが`session.clear()`。
+- `commitWithdrawal`: `UserLifecycleCommitter.commit({ kind: 'withdraw', expectedVersion: user.lifecycleVersion })`→`MessagePublisher.publish(RUN_USER_LIFECYCLE_MESSAGE, { eventId })`。送信の失敗は`lifecycle-publish-failed`を報告して成功として扱う(日次の再実行で回復、16.6)。本人の退会と運営者による退会は、この関数だけで退会を確定させる(15.7)。
+- `AdministrativeWithdrawal.withdraw`(15.7〜15.9): 呼び出し元が`admin`で、主体が`subjectKind: 'admin'`の認証済みでなければ`AppError({ kind: 'forbidden', code: 'forbidden' })`(15.8)→`UserAccountStore.findById`が無い・退会済みなら`not_found`(15.9)→`commitWithdrawal`。停止中の利用者も受け付け、本人確認・bot判定・Cookieの指示は行わない。管理者の主体の検証はadmin-foundationの`AdminSessionVerifier`、操作の権限の確認と監査ログの記録は呼び出し側(ugc-moderation)が行う。後続のリゾルバは`context.resolve<AdministrativeWithdrawal>(IDENTITY_TYPES.AdministrativeWithdrawal)`で使い、`command`の`caller`・`operator`は`GraphQLContext`から渡す。本specの`identity`のスキーマモジュールには、この操作のミューテーションを加えない。
 - 停止中の利用者の退会: 状態の`suspended`と`suspended_at`を残したまま論理削除する。同じ利用者の停止のイベントの非同期の波及処理が終わってから、退会の非同期の波及処理が始まる(16.4)。退会後は停止解除を受け付けない(16.9)。
 - `suspend`・`unsuspend`: 利用者を読み、既に同じ状態なら`unchanged`(16.8)→`commit`→送信。停止では既存のセッションを消さない(16.10)。
 
@@ -1775,7 +1889,7 @@ export interface UserSuspension {
 | `identity-auth.credential-cleanup`        | 110     | 期限切れのセッション(アイドルまたは絶対、8.8)・未使用の認証系トークン(14.5)・第2要素の待ち・TOTPの保留を物理削除し、件数を`info`で記録                                                                                                     |
 | `identity-auth.disposable-recheck-sweep`  | 120     | 判定が`undetermined`で最後の判定から1時間以上経った確認済みの利用者を50件まで選び、`identity.recheck-disposable-email`を送る(3.3)                                                                                                         |
 
-- Trigger: apiのCron Triggers(`21 12 * * *`)。`order`はWave 1と上流の他のジョブ(media-pipelineの810〜830、email-deliveryの900、content-processingの950)と重ならない。ジョブの名前と順序は日次タイムラインの「日次バッチ(4:21)の内容」に記載する。
+- Trigger: apiのCron Triggers(`21 12 * * *`)。`order`はWave 1と上流の他のジョブ(media-pipelineの810〜830、email-deliveryの900、content-processingの950)と重ならない。ジョブの名前と順序は日次タイムラインの「日次バッチ(4:21)の内容」の表に記載する(表が無ければ作る。横断レビューN-3)。
 - 名前: `<spec名>.<名詞句>`(「UserLifecycleContract」の名前の規約。email-deliveryの`email-delivery.cleanup`・content-processingの`content-processing.keyword-reextraction`と同じ形)。
 - Idempotency: すべての処理は2回実行しても結果が変わらない(`purge_due`は利用者ごとに1件、削除は条件付き)。件数の上限を超えた分は翌日に続ける。
 
@@ -1988,13 +2102,15 @@ type Mutation {
 | Field        | Detail                                         |
 | ------------ | ---------------------------------------------- |
 | Intent       | 束縛・登録箇所・環境の検証・Wrangler設定       |
-| Requirements | 8.8, 14.5, 16.6, 19.4, 19.5                    |
+| Requirements | 4.7, 8.8, 14.5, 16.6, 19.4, 19.5               |
 
 **Contracts**: State [x]
 
 ##### State Management
 
 ```typescript
+// composition/uploader-eligibility.ts(media-pipelineが作り、本specが差し替える)
+// UPLOAD_ACCESS_TYPES.UploaderEligibility → IDENTITY_TYPES.AccountUploaderEligibility(既定のAllowAllUploaderEligibilityから差し替え)
 // composition/session.ts(差し替え)
 export declare const SESSION_BINDINGS: ContainerModule; // SESSION_TYPES.SessionVerifier → SubjectSessionVerifier、AUTH_TYPES.UserSessionVerifier → UserSessionVerifier、AUTH_TYPES.AdminSessionVerifier → InvalidSubjectSessionVerifier
 // composition/identity-registrations.ts
@@ -2005,7 +2121,8 @@ export declare const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncReg
 export declare const IDENTITY_MODULE: AppModule; // AUTH_TYPES・IDENTITY_TYPESの束縛とジョブのハンドラー
 ```
 
-- `identity-module.ts`: `PasswordHasher`・`PwnedPasswordChecker`(`fetch`・`User-Agent`)・`SecretGenerator`・`SecretBox`(`HASH_PEPPER`)・`TotpAuthenticator`・`LoginThrottle`(`LOGIN_ATTEMPT_THROTTLE`)・`AuthIncidentReporter`・各ストア・`DisposableEmailChecker`(`createDisifyClient`、`DISIFY_API_KEY`)・`IdentityMailer`・`DeviceDescriber`・`IdentitySettings`(`CLIENT_SITE_ORIGIN`、TOTPの発行者名は`APP_ENVIRONMENT`から`Launch Stadium`・`Launch Stadium staging`・`Launch Stadium local`)・各ユースケース・3つのジョブ。`AccountGuard`は処理単位のコンテナで単一にする。
+- `identity-module.ts`: `PasswordHasher`・`PwnedPasswordChecker`(`fetch`・`User-Agent`)・`SecretGenerator`・`SecretBox`(`HASH_PEPPER`)・`TotpAuthenticator`・`LoginThrottle`(`LOGIN_ATTEMPT_THROTTLE`)・`AuthIncidentReporter`・各ストア・`DisposableEmailChecker`(`createDisifyClient`、`DISIFY_API_KEY`)・`IdentityMailer`・`DeviceDescriber`・`IdentitySettings`(`CLIENT_SITE_ORIGIN`、TOTPの発行者名は`APP_ENVIRONMENT`から`Launch Stadium`・`Launch Stadium staging`・`Launch Stadium local`)・各ユースケース(`AdministrativeWithdrawal`を含む)・`AccountUploaderEligibility`・3つのジョブ。`AccountGuard`は処理単位のコンテナで単一にし、`AccountUploaderEligibility`も同じ範囲に束縛する。
+- `uploader-eligibility.ts`(media-pipeline): `UPLOAD_ACCESS_TYPES.UploaderEligibility`を`IDENTITY_TYPES.AccountUploaderEligibility`へ転送する束縛に差し替える(4.7)。media-pipelineの経路が処理単位のコンテナから解決するため、同じ要求の`AccountGuard`が使われる。
 - `modules.ts`: `IDENTITY_MODULE`を`MODULES`へ加える。`graphql-modules.ts`: `identitySchemaModule`を加える。`scheduled-jobs.ts`: 3つのジョブ(4:21、100・110・120)を加える。`email-registrations.ts`: `USER_ADDRESS_DIRECTORY`を`D1UserAddressDirectory`へ差し替える。
 - `env-schema.ts`: `CLIENT_SITE_ORIGIN`(http・httpsのURLのオリジンで、`new URL(v).origin === v`。content-processingのclient・adminの検証と同じ規則)、`LOGIN_ATTEMPT_THROTTLE`(Durable Objectの名前空間)、`DISIFY_API_KEY`(任意、空文字は未設定として扱う)。
 - `index.ts`: `LoginAttemptThrottle`を名前付きでエクスポートする。
@@ -2155,8 +2272,9 @@ export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版�
 #### SettingsShell・設定セクション
 
 - `/settings/account`: メールアドレス変更(新しいメール・本人確認・bot判定・送信後の案内)、パスワード変更(新しいパスワード・本人確認・bot判定・送信後の案内)、退会(影響の説明・確認・本人確認・bot判定、15.4)。
-- 停止中の`/settings/account`(4.4・仮5): ページ上部に停止中の案内「このアカウントは停止されているため、メールアドレスとパスワードは変更できません。退会は行えます。詳しくはお問い合わせください。」と問い合わせ(`/contact`)へのリンクを示し、メールアドレス変更とパスワード変更の入力と送信を無効にする。退会のセクションは停止中も操作でき、通常時と同じ影響の説明・確認・本人確認・bot判定を求める。
-- `/settings/security`: セッションの一覧(端末情報・最終利用日時・発行日時・「この端末」、個別の失効・「この端末以外をすべてログアウト」)、多要素認証(開始の本人確認→QRコードと手入力用の文字列→認証コードの入力→リカバリコードの表示)、無効化、リカバリコードの再発行と残数(3以下で再発行を促す、13.8)。停止中は多要素認証の開始・無効化・再発行を無効にして`/settings/account`と同じ停止中の案内を示し、セッションの一覧と失効は操作できる(4.4)。
+- 停止中の`/settings/account`(4.4・15.10・仮5): ページ上部に停止中の案内「このアカウントは停止されているため、メールアドレスとパスワードは変更できません。退会はこの画面から行えます。ログアウトした後やログインの有効期限が切れた後は、お問い合わせから退会を依頼できます。」と問い合わせ(`/contact`)へのリンクを示し、メールアドレス変更とパスワード変更の入力と送信を無効にする。退会のセクションは停止中も操作でき、通常時と同じ影響の説明・確認・本人確認・bot判定を求める。
+- `/settings/security`: セッションの一覧(端末情報・最終利用日時・発行日時・「この端末」、個別の失効・「この端末以外をすべてログアウト」)、多要素認証(開始の本人確認→QRコードと手入力用の文字列→認証コードの入力→リカバリコードの表示)、無効化、リカバリコードの再発行と残数(3以下で再発行を促す、13.8)。停止中は多要素認証の開始・無効化・再発行を無効にして`/settings/account`と同じ停止中の案内(問い合わせで退会を依頼できる旨を含む)を示し、セッションの一覧と失効は操作できる(4.4・15.10)。
+- 停止中の案内で問い合わせによる退会の依頼を示すのは、停止中の利用者はログインできず(6.4)、セッションが切れた後は設定ページから退会できないためである。依頼は、ugc-moderationの管理画面から運営者による退会の操作口で処理される(15.7)。
 - 日時は`<time datetime>`で表示する。破壊的な操作の確認は文言規則に従う(例:「退会しますか?」→「退会する」)。
 
 ### frontend-lib
@@ -2180,7 +2298,8 @@ export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版�
 
 - `security/006-authentication.md`: パスワード(規則・PBKDF2とペッパー・漏洩照合と障害時)、セッション(識別子・ハッシュ化・アイドルと絶対・延長の間引き・主体別の検証)、認証系トークン(期限・単回・失効・フラグメントでの受け渡し)、ログイン試行の制限(2つの単位・バックオフ・解除と削除)、多要素認証(TOTP・秘密鍵の暗号化・再使用の拒否・リカバリコード)、本人確認とセッションの入れ替え、ペッパーの入れ替えができないこと。プロジェクト名・固有の値はプレースホルダーにする。
 - `external/004-pwned-passwords.md`・`005-disposable-email-check.md`・`006-turnstile.md`: 各サービスのAPI・認証・上限・料金・障害時の扱い・テストでの差し替え。Turnstileはサービスの仕様(テスト用のキー・上限)だけを書き、検証の規約はbackend-platformの`backend/003`へリンクする(20.5)。
-- `backend/007-user-lifecycle-events.md`: イベントの種類、同期と非同期の登録、波及処理とジョブの名前の規約、文の規約、冪等・続き・順序、再実行と通知、物理削除の段階と外部キーの規約(外部キーを持たないデータの取り残しは、その波及処理が検出に責任を持つこと)。
+- `backend/007-user-lifecycle-events.md`: イベントの種類(退会のイベントは本人の退会と運営者による退会のどちらでも同じであること)、同期と非同期の登録、文の規約、冪等・続き・順序、再実行と通知、物理削除の段階と外部キーの規約(外部キーを持たないデータの取り残しは、その波及処理が検出に責任を持つこと)。波及処理とジョブの名前の規約は書かず、content-processingがbackend-platformの`infra/003-async-processing.md`へ追記する規約(content-processingのタスク11.5)へのリンクにする(横断レビューN-4、20.5)。実装の時点で`infra/003`に規約が無ければ、開発者へ報告する。
+- 共通: シークレットのキーの名前(`DISIFY_API_KEY`など)を列挙せず、プレースホルダーと`docs/onboardings/project-values.md`のキーの一覧の節へのリンクにする(横断レビューN-5)。
 
 ## Data Models
 
@@ -2197,7 +2316,7 @@ erDiagram
 ```
 
 - 集約: 利用者アカウント(`users`を根に、セッション・認証系トークン・第2要素の待ち・TOTP・リカバリコード)。ライフサイクルイベントは利用者の行と外部キーを持たない別の集約で、物理削除の最後に本specが消す。
-- 状態: `status`は`active`・`suspended`、退会は`deleted_at`(論理削除)。退会は`active`・`suspended`のどちらからも行え(4.4・仮5)、退会は終端で、停止・停止解除できない。停止中の退会では`status`・`suspended_at`を残し、退会済みの判定は`deleted_at`だけで行う。`lifecycle_version`は状態の遷移ごとに1増え、同期の波及処理の一括の書き込みの版の検査に使う。
+- 状態: `status`は`active`・`suspended`、退会は`deleted_at`(論理削除)。退会は`active`・`suspended`のどちらからも行え(4.4・仮5)、本人の退会と運営者による退会は同じ遷移である(15.7)。退会は終端で、停止・停止解除できない。停止中の退会では`status`・`suspended_at`を残し、退会済みの判定は`deleted_at`だけで行う。`lifecycle_version`は状態の遷移ごとに1増え、同期の波及処理の一括の書き込みの版の検査に使う。
 
 ```mermaid
 stateDiagram-v2
@@ -2262,7 +2381,7 @@ stateDiagram-v2
 | `registration_email_unavailable` | conflict(409)         | このメールアドレスは登録できません。                                                     | 登録(1.4)                            |
 | `password_rejected`              | unprocessable(422)    | 詳細`password`(漏洩・識別子と一致の文言)                                                 | 登録・リセット・変更(5.2・5.3)       |
 | `invalid_credentials`            | unauthenticated(401)  | メールアドレスまたはパスワードが正しくありません。                                       | ログイン(6.3)                        |
-| `account_unavailable`            | forbidden(403)        | このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。                 | 停止中のログイン・書き込み(4.3・6.4) |
+| `account_unavailable`            | forbidden(403)        | このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。                 | 停止中のログイン・書き込み(4.3・6.4)。アップロードの拒否ではmedia-pipelineが同じコードと文言で応答する(4.7) |
 | `login_throttled`                | rate_limited(429)     | ログイン試行が続いたため、しばらく待ってから再度お試しください。(`Retry-After`)          | ログイン・第2要素・本人確認(7.3)     |
 | `rate_limit_exceeded`            | rate_limited(429)     | 操作が集中しています。しばらく待ってから再度お試しください。(`Retry-After`)              | 認証系メールの送信回数(2.6)          |
 | `invalid_second_factor`          | unauthenticated(401)  | 認証コードが正しくありません。                                                           | 第2要素のログイン・TOTPの有効化(6.5) |
@@ -2275,7 +2394,8 @@ stateDiagram-v2
 | `totp_setup_expired`             | unprocessable(422)    | 設定の有効期限が切れました。最初からやり直してください。                                 | TOTPの有効化(13.3)                   |
 | `account_state_conflict`         | conflict(409)         | 処理が重なりました。時間をおいて再度お試しください。                                     | 状態の遷移の版の競合(16.2)           |
 | `unauthenticated`                | unauthenticated(401)  | ログインが必要です。                                                                     | ログイン必須の操作                   |
-| `not_found`                      | not_found(404)        | 対象が見つかりません。                                                                   | 他人・不明のセッションの失効、停止の対象(16.9) |
+| `not_found`                      | not_found(404)        | 対象が見つかりません。                                                                   | 他人・不明のセッションの失効、停止の対象(16.9)、運営者による退会の対象(15.9) |
+| `forbidden`                      | forbidden(403)        | この操作はできません。                                                                   | 利用者側でない呼び出し元(6.8)、管理者側の経路でない運営者による退会(15.8) |
 | `bot_verification_failed`・`bot_verification_unavailable` | forbidden(403)・unavailable(503) | backend-platformの定型                                          | bot判定(12.5・12.6)                  |
 
 - 文言規則に無い文言(第2要素・本人確認・リンク・TOTP・競合・案内の文言)は、`003-text-and-copy-rules.md`への追記をタスクに含める。
@@ -2294,7 +2414,7 @@ stateDiagram-v2
   - `password-rules`・`account-input-rules`: 7・8・128・129コードポイント、絵文字を含むニックネームの25・26書記素、ハンドル・ニックネーム・ローカル部との大文字小文字を区別しない一致(1.1・5.1・5.2)。
   - `disposable-email`: ローカル部の置き換え、200の`disposable`の真偽、`format: false`・401・429・503・HTMLで`undetermined`(3.1・3.2)。
   - `user-lifecycle`: 名前の形式、重複・同じ種類での`order`の重複の拒否、`order`昇順(16.1)。
-  - 各ユースケース(ポートを偽物にする): 登録の順序と重複・送信回数の上限での未作成(1.4・2.7)、パスワードリセットの要求の同一の結果と停止中への不送信(9.1〜9.3)、メールアドレス変更の重複時の不送信(10.3)、本人確認の失敗の記録(7.9・12.2)、第2要素の再使用の拒否(6.5)、停止中の退会の受け付け(4.4・仮5)、`UserLifecycleRunner`の順序待ち・完了済みの飛ばし・`continue`・物理削除の最後の段階(16.3・16.4・16.7・17.2)。
+  - 各ユースケース(ポートを偽物にする): 登録の順序と重複・送信回数の上限での未作成(1.4・2.7)、パスワードリセットの要求の同一の結果と停止中への不送信(9.1〜9.3)、メールアドレス変更の重複時の不送信(10.3)、本人確認の失敗の記録(7.9・12.2)、第2要素の再使用の拒否(6.5)、停止中の退会の受け付け(4.4・仮5)、運営者による退会が管理者側の呼び出し元と管理者の主体だけを受け付け、停止中の利用者も本人の退会と同じ遷移とメッセージで退会させ、退会済み・存在しない対象を`not_found`にすること(15.7〜15.9)、アップロードできる利用者の判定が停止中・退会済みを`account_unavailable`で拒否し、未確認を許可すること(4.7)、`UserLifecycleRunner`の順序待ち・完了済みの飛ばし・`continue`・物理削除の最後の段階(16.3・16.4・16.7・17.2)。
 - **Integration Tests**(Workers統合テスト):
   - D1のストア: 部分一意索引による退会後の同じメールの再登録(1.5)、ハンドル・仮名化IDの一意、トークンの2回目の消費の失敗(14.2)、`applyEmailChange`の重複時の`email-in-use`(10.5)、`deleteExpired`の境界(8.8・14.5)。
   - `UserLifecycleCommitter`: 版の競合で状態・同期の波及処理の文・イベントがすべて取り消される、同期の波及処理の文が同じ一括の書き込みで確定する(16.2)、停止中の利用者の退会で`status`・`suspended_at`が残り`deleted_at`が入る(4.4)。
@@ -2303,13 +2423,14 @@ stateDiagram-v2
   - GraphQLの`identity`モジュール(api-gatewayのテスト補助で`ClientGateway`から): 登録→Cookieの発行の指示、ログインの429と`Retry-After`、管理者側の呼び出し元の拒否(6.8)、bot判定の失敗の403(12.5)、`viewer`の`null`、セッションの一覧の`current`。
   - eventの`identity.run-user-lifecycle`のバッチ: 登録した偽の波及処理が順に呼ばれ、失敗で再試行、完了済みは呼ばれない。物理削除で利用者の行が消え、外部キーの残りでは`pending`に残る(16.5・17.3)。
   - email-deliveryとの結合: 7種のテンプレートが`createEmailTemplateRegistry`に通り、件名と行動ボタンのURLを含む(14.6)。
+  - media-pipelineとの結合: 処理単位のコンテナで`UPLOAD_ACCESS_TYPES.UploaderEligibility`が本specの実装に解決され、停止中の利用者のセッションでの`POST /internal/media/uploads/:purpose`(テスト用の用途を登録する)が403・`account_unavailable`になって記録とオブジェクトが残らず、未確認の利用者のアップロードは受け付けられる(4.7)。
 - **E2E/UI Tests**(Playwright、ローカルで起動したapi・event・clientとMailpit):
   - 登録→未確認の帯→Mailpitのリンク→確認→帯が消える(1.1・2.2・18.5)。
   - ログイン→ヘッダーのユーザーメニュー→ログアウト、誤ったパスワードの文言、別のブラウザの文脈でのセッションの一覧と個別の失効(6.1・6.3・6.7・8.4・8.6)。
   - パスワードリセットの要求(未登録のメールでも同じ案内)→リンク→再設定→既存のセッションが無効になる→完了のメール(9.1・9.4・9.5)。
   - 多要素認証の設定(画面のQRコードの手入力用の文字列からテスト内で認証コードを計算)→リカバリコードの表示→ログアウト→認証コードでのログイン→リカバリコードでのログイン→無効化(13.1・13.3・6.2)。
   - メールアドレス変更とパスワード変更のリンクの確定、退会→ログインできない→同じメールでの再登録(10.4・11.3・15.1・15.5・1.5)。
-- **ブラウザテスト**(Vitest Browser Mode): 各フォームの検証の表示と送信中の無効化、`LinkConfirmation`がマウントだけでは送信しない(18.8)、`TotpQrCode`の描画と代替テキスト、`RecoveryCodeList`のコピー、`SettingsNavigation`の`aria-current`、`runAxe`の違反0件(18.10・18.11)。
+- **ブラウザテスト**(Vitest Browser Mode): 各フォームの検証の表示と送信中の無効化、`LinkConfirmation`がマウントだけでは送信しない(18.8)、`TotpQrCode`の描画と代替テキスト、`RecoveryCodeList`のコピー、`SettingsNavigation`の`aria-current`、停止中の設定ページの案内(問い合わせで退会を依頼できる旨)と操作の無効化(4.4・15.10)、`runAxe`の違反0件(18.10・18.11)。
 - **Performance**: パスワードの照合1回のCPU時間をWorkers統合テストで計測して記録する(目安100ミリ秒以内)。
 
 ## Security Considerations
@@ -2323,6 +2444,8 @@ stateDiagram-v2
   - TOTPの再使用・秘密鍵の漏洩: 使用済みの時間窓の記録、AES-GCMでの保存(鍵はD1の外)。
   - 波及処理の取りこぼし: 同期の部分は状態の変更と同時に確定、非同期の部分は記録と日次の再実行。
   - 停止逃れ: 停止中の利用者は退会でき(4.4)、退会の直後から同じメールアドレスで再登録できる(1.5)。消去の権利を優先し、この回避を防がないことを受け入れる(仮5、2026-10-18の開発者の判断)。再登録したアカウントは新しいハンドル・仮名化IDを持ち、運営者は使い捨て判定の結果と通報で再度停止できる。
+  - 運営者による退会の濫用・取り違え: 本人確認を伴わず取り消せないため、操作口は管理者側の呼び出し元と管理者のセッションだけを受け付け(15.8)、利用者側のGraphQLの操作を設けない。依頼者の本人の確かめ・操作の権限の確認・監査ログは呼び出し側(ugc-moderation・admin-foundation)が行う。
+  - 停止中の利用者のアップロード: 停止では既存のセッションを消さない(16.10)ため、media-pipelineの差し込み口を本specの判定で束縛し、保存の前に拒否する(4.7、FR-USER-020)。
 - データの最小化(DR-001): セッションにIPアドレスを保存しない。ログイン試行の記録はハッシュ化したキーと回数だけで、最後の失敗から24時間で消える。使い捨て判定へはローカル部を送らない。漏洩照合へはSHA-1の先頭5文字だけを送る。
 
 ## Performance & Scalability
@@ -2362,7 +2485,7 @@ flowchart LR
 | HKDFの情報の文字列                       | `totp-secret-v1`                                                                                                                    |
 | TOTPの発行者名                           | prod`Launch Stadium`・staging`Launch Stadium staging`・ローカル`Launch Stadium local`                                               |
 | `CLIENT_SITE_ORIGIN`                          | ローカル`http://localhost:48044`・staging`https://genai-example-2-client-staging.lab.kurachiweb.com`・prod`https://genai-example-2-client.lab.kurachiweb.com`(apiの変数は本spec、client・adminの同名の変数はcontent-processingが所有し、値はinfra-deliveryの「ホスト名から導かれる変数の値」の表と同じ) |
-| 任意のシークレット                       | `DISIFY_API_KEY`(api・event。仮6)。stagingの値は、そのキーを読む本specの変更をmainへマージする前に開発者がInfisicalのstaging環境へ登録し、prodの値はlaunch-readinessがリリース時に登録する。Workerへはinfra-deliveryの`OPTIONAL_WORKER_SECRETS`(api・event、追記済み)で渡る |
+| 任意のシークレット                       | `DISIFY_API_KEY`(api・event。仮6)。stagingの値は、そのキーを読む本specの変更をmainへマージする前に開発者がInfisicalのstaging環境へ登録し、prodの値はlaunch-readinessがリリース時に登録する。Workerへはinfra-deliveryの`OPTIONAL_WORKER_SECRETS`(api・event、追記済み)で渡る。キーの一覧の正は`docs/onboardings/project-values.md`の節で、キーを読む変更(タスク8.1)と同じ変更で行を足すか、行があれば食い違いを確かめる(横断レビューN-5) |
 | 技術ドキュメントの番号                   | `security/006`・`external/004`(漏洩パスワード照合)・`external/005`(使い捨てメールアドレス判定)・`external/006`(Turnstile)・`backend/007` |
 | 外部への`User-Agent`                     | `genai-example-2-api`・`genai-example-2-event`(HIBP・DISIFYの呼び出し)                                                             |
 | 定期実行のジョブ                         | `identity-auth.purge-orchestrator`(4:21・100)・`identity-auth.credential-cleanup`(4:21・110)・`identity-auth.disposable-recheck-sweep`(4:21・120) |
