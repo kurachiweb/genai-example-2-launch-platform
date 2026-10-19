@@ -91,7 +91,7 @@
   - ユーザーのファイルの波及処理: 退会・物理削除に伴うファイルの削除と、停止・停止解除に伴う隔離理由の付け外しは、user-profile-socialがユーザーライフサイクルイベントのハンドラとして登録する。media-pipelineは保有者単位の操作(`eraseOwnedBy`・`MediaQuarantine.addReasonForOwner`・`removeReasonForOwner`。1回に最大1,000件を処理し、残りの有無を返す)を、identity-authはハンドラの登録口を提供する
   - Workerのシークレット: 各specが必須・任意のシークレットを宣言し、infra-deliveryのデプロイの一覧とInfisicalの表へ反映する。stagingの値は必須にする変更をマージする前に開発者が登録し、prodの値はlaunch-readinessがリリース時に登録する。キーの一覧は`docs/onboardings/project-values.md`の節を正とし、技術ドキュメントには列挙しない
   - データの保存場所: D1・R2・Queuesは米国の管轄(`jurisdiction = "us"`)で作り、Durable Objectsは管轄を指定しない。Rekognitionはus-east-1を使う
-  - 国外移転の記載: プライバシーポリシー骨子・準拠方針の「国外移転の記載事項」と「データの保存場所」は、委託先を使うspecが委託先ごとの項(移転先・移転の根拠・委託先が講じる措置)を書き、他の委託先の項は書き換えない。Cloudflareはinfra-delivery、AWS(Rekognition)はmedia-pipeline、Google Cloud(Natural Language API)はcontent-processingが書き、後続specが新しい委託先を加えるときも同じ形にする。移転の根拠は、EU-USデータプライバシーフレームワーク(DPF)を主とし、無効になった場合は委託先のデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る
+  - 国外移転の記載: プライバシーポリシー骨子・準拠方針の「国外移転の記載事項」と「データの保存場所」は、委託先を使うspecが委託先ごとの項(移転先・移転の根拠・委託先が講じる措置)を書き、他の委託先の項は書き換えない。Cloudflareはinfra-delivery、AWS(Rekognition)はmedia-pipeline、Google Cloud(Natural Language API)はcontent-processingが書き、後続specが新しい委託先を加えるときも同じ形にする。骨子は共通の行の後に委託先ごとの`### <委託先>(<サービス>)`の見出しを置き、準拠方針は「データの保存場所」の表(Cloudflareの資源)の下に委託先ごとの箇条を足す。共通の行の改訂と型の見本はinfra-deliveryが最初に作る。移転の根拠は、EU-USデータプライバシーフレームワーク(DPF)を主とし、無効になった場合は委託先のデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る
   - アップロードできる利用者の判定: media-pipelineがアップロードの受け付けに差し込み口(`UploaderEligibility`。既定は許可)を設け、identity-authが`AccountGuard`の判定(停止中の拒否など)で束縛する
 
 ## Requirement Ambiguities
