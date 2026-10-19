@@ -89,8 +89,10 @@
   - techドキュメント: dev-toolingが`docs/GUIDES/tech`の構成と索引を作り、各specが担当領域を追記する。文書の番号はroadmapの順で各specのdesign.mdに先に割り当て、実装の順で番号がずれないようにする
   - 共用部品`apps/common-lib`: content-processingが新設し、client・admin・api・eventの4アプリへの配置の仕組みを所有する。マークダウンの描画・書記素での文字数計算・検索語の正規化を提供し、他specは自分の共有定義を同ディレクトリへ追加する(media-pipelineの`common-lib/media`など)
   - ユーザーのファイルの波及処理: 退会・物理削除に伴うファイルの削除と、停止・停止解除に伴う隔離理由の付け外しは、user-profile-socialがユーザーライフサイクルイベントのハンドラとして登録する。media-pipelineは保有者単位の操作(`eraseOwnedBy`・`MediaQuarantine.addReasonForOwner`・`removeReasonForOwner`。1回に最大1,000件を処理し、残りの有無を返す)を、identity-authはハンドラの登録口を提供する
-  - Workerのシークレット: 各specが必須・任意のシークレットを宣言し、infra-deliveryのデプロイの一覧とInfisicalの表へ反映する。stagingの値は必須にする変更をマージする前に開発者が登録し、prodの値はlaunch-readinessがリリース時に登録する
-  - データの保存場所: D1・R2・Queuesは米国の管轄(`jurisdiction = "us"`)で作り、Durable Objectsは管轄を指定しない。Rekognitionはus-east-1を使う。プライバシーポリシー骨子・準拠方針には、Cloudflareの資源の保存場所をinfra-deliveryが、Rekognitionへの送信と移転根拠をmedia-pipelineが書く
+  - Workerのシークレット: 各specが必須・任意のシークレットを宣言し、infra-deliveryのデプロイの一覧とInfisicalの表へ反映する。stagingの値は必須にする変更をマージする前に開発者が登録し、prodの値はlaunch-readinessがリリース時に登録する。キーの一覧は`docs/onboardings/project-values.md`の節を正とし、技術ドキュメントには列挙しない
+  - データの保存場所: D1・R2・Queuesは米国の管轄(`jurisdiction = "us"`)で作り、Durable Objectsは管轄を指定しない。Rekognitionはus-east-1を使う
+  - 国外移転の記載: プライバシーポリシー骨子・準拠方針の「国外移転の記載事項」と「データの保存場所」は、委託先を使うspecが委託先ごとの項(移転先・移転の根拠・委託先が講じる措置)を書き、他の委託先の項は書き換えない。Cloudflareはinfra-delivery、AWS(Rekognition)はmedia-pipeline、Google Cloud(Natural Language API)はcontent-processingが書き、後続specが新しい委託先を加えるときも同じ形にする。移転の根拠は、EU-USデータプライバシーフレームワーク(DPF)を主とし、無効になった場合は委託先のデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る
+  - アップロードできる利用者の判定: media-pipelineがアップロードの受け付けに差し込み口(`UploaderEligibility`。既定は許可)を設け、identity-authが`AccountGuard`の判定(停止中の拒否など)で束縛する
 
 ## Requirement Ambiguities
 
