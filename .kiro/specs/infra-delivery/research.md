@@ -79,9 +79,23 @@ Wave 1の4spec(infra-delivery・content-processing・media-pipeline・identity-a
 - **I-3(Workerのシークレット)**: Infisicalのキーの表と`OPTIONAL_WORKER_SECRETS`に、Wave 1の各specが宣言したキーを加えた。必須は`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`(event、media-pipeline)・`GOOGLE_NL_API_KEY`(event、content-processing)、任意は`DISIFY_API_KEY`(api・event、identity-auth)・`MEDIA_SMOKE_TOKEN`(event、media-pipeline)である。要件12.3の対象を「各specが宣言したもの」に広げた。stagingの値は、そのキーを必須にする変更をmainへマージする前に登録する(未登録のままマージすると、以後のstagingのデプロイが必須の欠落で止まる)。prodの値の登録はlaunch-readinessへ引き継ぐ。任意のシークレットを各アプリの宣言から読む形には変えず、後続specが本specの一覧へ追記する。
 - **I-4(技術ドキュメントの番号)**: `infra/005`〜`007`・`operations/001`・`002`・`security/003`に固定した。
 - **M-1(`CLIENT_SITE_ORIGIN`)**: 変数はcontent-processing(client・admin)とidentity-auth(api)が所有し、名前と値をそろえる。本specは3環境の値を「Supporting References」の一覧に持ち、clientのホスト名を変えるときの再検証の対象に両specを加えた。
-- **M-8(保存場所の記述の分担)**: 本specは、準拠方針とプライバシーポリシー骨子のうち、Cloudflareの資源の保存場所(D1・R2・Queuesは米国、Durable Objectsは保証しない)だけを書く。Rekognition(us-east-1)への送信とその移転の根拠はmedia-pipelineが書き、互いの記述を上書きしない。
+- **M-8(保存場所の記述の分担)**: 本specは、準拠方針とプライバシーポリシー骨子のうち、Cloudflareの資源の保存場所(D1・R2・Queuesは米国、Durable Objectsは保証しない)だけを書く。Rekognition(us-east-1)への送信とその移転の根拠はmedia-pipelineが書き、互いの記述を上書きしない。2回目の横断レビューのN-1で、節単位ではなく委託先単位の分担に改めた(次の節)。
 - **M-11(Durable Objectのマイグレーション)**: Wrangler設定の`migrations`は`wrangler deploy`が同じ版で適用するため、本specの導入後はmainへのマージでCIがstagingへ適用する。identity-authの`LoginAttemptThrottle`もこの経路で適用される。
-- **M-9(ジョブとメッセージの名前)**: 規約はジョブが`<spec名>.<名詞句>`、メッセージ種別が`<ドメイン>.<動詞句>`である。本specは定期実行のジョブもメッセージ種別も持たないため、変更は無い。GitHub Actionsのワークフローのジョブ(`ci-gate`など)はこの規約の対象外である。
+- **M-9(ジョブとメッセージの名前)**: 規約はジョブ・波及処理が`<spec名>.<名詞句>`、メッセージ種別が`<ドメイン>.<動詞句>`である。本specは定期実行のジョブも波及処理もメッセージ種別も持たないため、変更は無い。GitHub Actionsのワークフローのジョブ(`ci-gate`など)はこの規約の対象外である。
+
+### 横断レビュー2回目の反映(2026-10-18)
+
+Wave 1の2回目の横断レビューの指摘(N-1〜N-9)と開発者の回答を、次のとおり反映した。N-8・N-9はroadmapとuser-profile-socialのbriefの修正で、親エージェントが行う。
+
+| ID  | 本specとの関係 | 反映した内容 |
+| --- | -------------- | ------------ |
+| N-1 | 国外移転の根拠の担当 | 国外移転の記載事項と保存場所の記載を、節単位ではなく委託先単位で分担する。本specはCloudflareの項を書く。内容は、D1・R2・Queuesを米国の管轄に置くこと、所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs)は処理する国を特定できないこととその理由、移転の根拠である。根拠はEU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合はCloudflareのDPAに含まれる標準契約条項(SCC)に拠る。AWS(Rekognition)の項はmedia-pipelineが同じ根拠の種類で書き、互いの項を書き換えない。法務文書の本文は開発者が用意し、本specは骨子と準拠方針の記載事項までを書く。要件2に受け入れ基準2.6を加え、design.mdのOut of Boundary・Modified Files・追跡表とtasks 8.5を改めた。「国外移転の記載事項はmedia-pipelineが書く」「本specは書き換えない」という節単位の記述は無くした |
+| N-2 | `OPTIONAL_WORKER_SECRETS`への暗黙の依存 | media-pipelineのタスク1.3は、本specの実装の有無を確かめ、無ければ開発者へ報告して進める(止めない)。本specのタスク5.3はWave 1のキーを先に一覧へ入れるため、本specの変更は要らない。design.mdの他specへの影響の表に、この扱いを書いた。roadmapの依存には加えない |
+| N-3 | 関係なし | 本specは日次タイムラインのジョブも、frontend-libの`server/**`からの読み込みも持たない。`apps/common-lib`はCIの導入と配置に自動で含まれる(5.3) |
+| N-4 | 関係なし | 規約は「ジョブ・波及処理は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`」である。本specはいずれも持たないため、M-9の記録の文言だけをそろえた |
+| N-5 | シークレットのキーの一覧の置き場所 | キーの一覧の正を`docs/onboardings/project-values.md`のキーの一覧の節にする。tasks 8.5でその節を作り、各specはキーを宣言する変更と同じ変更で行を足す。技術ドキュメント`operations/001`には、登録の時期・欠落時にデプロイが止まること・任意のシークレットの一覧への追記を、プレースホルダーと一般的な規則だけで書き、キーの一覧はリンクにする。要件12.3を「規則を記載し、キーの一覧は固有の値の文書に置いて参照する」に改め、design.mdとtasks 8.2・8.5・9.1を合わせた |
+| N-6 | 関係なし | 運営者による代理の退会はidentity-auth・ugc-moderationの担当で、インフラの資源と手順に変更は無い |
+| N-7 | 関係なし | アップロードの可否の差し込み口はmedia-pipeline・identity-authの担当で、インフラの資源と手順に変更は無い |
 
 ## Research Log
 
@@ -282,7 +296,8 @@ Wave 1の4spec(infra-delivery・content-processing・media-pipeline・identity-a
 - **ワークフローの承認を許可する設定**(Q5で残るリスク): リポジトリ設定「GitHub ActionsにPRの作成と承認を許可」を有効にすると、`pull-requests: write`を持つワークフローは他人のPRを承認できる。緩和: botはコードオーナーになれないため、コードオーナーの承認を必須にしたprodでは条件を満たさない。ワークフローの既定の権限を読み取りにし、`pull-requests: write`は`release-pr.yml`だけに与え、構成検査で確かめる。mainは承認数0のため、この設定でmainの保護は弱まらない。
 - **AIエージェントが開発者の認証情報で承認する**: 開発コンテナの`gh`は開発者の名義で、`gh pr review --approve`と`gh api`(マージのAPIを含む)が拒否されていない。botが作ったprodのPRを開発者の名義で承認・マージできてしまう。緩和: `Bash(gh pr review*)`・`Bash(gh api*)`をClaude設定のdenyへ加えるよう開発者に依頼し、承認とマージはGitHubの画面で人間が行う運用を文書化する。設定が入るまでは残存リスクとして扱う。
 - **同じアカウントのCloudflareのトークン**(K5): 承認数0のmainへマージされたコードは、stagingのトークンで実行され、同じアカウントのprodの資源にも権限が及ぶ。緩和: prodのデータの資源は`prevent_destroy`、D1はTime Travel、トークンの値はマスクして表示しない、ワークフローの変更はPRで開発者が確認する。
-- **Queuesの管轄とメールイベントの購読**(K1): 管轄付きのQueueへEmail Sendingのイベントが届くかが未確認である。緩和: stagingの最初のデプロイで、購読の作成と配信不能イベントの到達を確かめる手順を置く。届かなければK1を「管轄を指定しない」へ切り替え(Queueは作り直す。メッセージは一時的なもの)、準拠方針を改める。
+- **Queuesの管轄とメールイベントの購読**(K1): 管轄付きのQueueへEmail Sendingのイベントが届くかが未確認である。緩和: stagingの最初のデプロイで、購読の作成と配信不能イベントの到達を確かめる手順を置く。届かなければK1を「管轄を指定しない」へ切り替え(Queueは作り直す。メッセージは一時的なもの)、準拠方針とプライバシーポリシー骨子のCloudflareの項(Queuesを所在を限定しない処理へ移す)を改める。
+- **国外移転の根拠の前提**(N-1): DPFは、Cloudflareの認証の継続と、EU-USの十分性認定の有効性を前提にする。また、所在を限定しない処理は米国以外の国のデータセンターでも行われ得る。DPFは米国への移転の仕組みのため、この部分にどの根拠が当たるかは骨子の範囲では決めていない。緩和: 骨子には開発者の決定どおり「DPFを主とし、無効になった場合はDPAに含まれるSCCに拠る」と書く。法務文書の本文を用意するときに、開発者がDPFの認証の一覧でのCloudflareの状況と、DPAに含まれるSCCが米国以外の処理を含むかを確かめる。
 - **APIによる送信ドメインの登録とDNSレコード**: OpenTofuで登録したときに`cf-bounce`のMX・SPF・DKIMと`_dmarc`のレコードが作られない場合がある。緩和: stagingの最初の適用の後にレコードを確かめる。作られなければ、送信ドメインの資源の計算値(`dkim_selector`・`return_path_domain`)とEmail ServiceのAPIで得た値から`cloudflare_dns_record`を`edge_services`に加える。
 - **`--secrets-file`への標準入力**: Wranglerが`/dev/stdin`を読めない場合、シークレットを一時ファイルに書く必要がある。緩和: 実装時に確かめ、読めなければ`$RUNNER_TEMP`に権限0600のファイルを作り、`finally`で消す(ランナーはジョブごとに破棄される)。この場合は`security/003`に例外として記載する。
 - **Wranglerの自動作成**: 資源の識別子が無いバインディングは、`wrangler deploy`が資源を自動で作る。管轄の無いR2などが黙って作られる。緩和: デプロイの前にOpenTofuの適用と構成検査(全バインディングが資源一覧にある)を必ず通す。
