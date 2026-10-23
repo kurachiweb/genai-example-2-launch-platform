@@ -10,8 +10,8 @@
 
 - [ ] 1.2 資源一覧の型と解析を作り、staging・prodの資源一覧を置く
   - 先に、資源一覧の解析の単体テスト(正しい例、項目の欠落、型の誤り、ホスト名がゾーン名で終わらない、Turnstile・アクセス解析の対象がホスト名一覧に無い、配信不能イベントの受け皿が非同期メッセージの一覧に無い、環境の名前の不一致、全桁0の識別子の判定)を書く
-  - 上流specの命名(設計のSupporting Referencesの資源一覧の表)でstaging・prodの資源一覧を作る。Infisicalのプロジェクトの識別子は、両環境ともリポジトリの`.infisical.json`と同じ既存のプロジェクトの値にする(K3)。主体の識別子は全桁0の仮の値とし、stagingは初回の準備で開発者の情報を受けて記入する(prodはlaunch-readinessが記入する)
-  - 検査用の主体の設定を、プロジェクトをリポジトリの`.infisical.json`から読む形で作る
+  - 上流specの命名(設計のSupporting Referencesの資源一覧の表)でstaging・prodの資源一覧を作る。Infisicalのプロジェクトの識別子は、両環境ともリポジトリの`.infisical.yaml`と同じ既存のプロジェクトの値にする(K3)。主体の識別子は全桁0の仮の値とし、stagingは初回の準備で開発者の情報を受けて記入する(prodはlaunch-readinessが記入する)
+  - 検査用の主体の設定を、プロジェクトをリポジトリの`.infisical.yaml`の`secrets-management.project-id`から読む形で作る
   - 完了状態: 単体テストが成功し、両環境の資源一覧が解析でき、名前・ホスト名・stateのバケットが設計の表と一致する
   - _Requirements: 1.1, 1.2, 1.10, 3.1_
 

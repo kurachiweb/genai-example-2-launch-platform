@@ -149,7 +149,7 @@ Workersの実行環境で動くアプリは、次の差分を加える。
 
 デコレータの設定は基底設定が持ち、アプリの`tsconfig.json`では`experimentalDecorators`を指定しない(`true`も`false`も書かない)。標準(TC39)のデコレータを使うアプリは置かない。
 
-- 理由: Bun 1.4.3は、`extends`を持つtsconfigの`experimentalDecorators`を継承元の値だけで決め、継承する側の指定を無視する。
+- 理由: Bun 1.4.4は、`extends`を持つtsconfigの`experimentalDecorators`を継承元の値だけで決め、継承する側の指定を無視する。
   - 継承する側だけで`true`にすると、`tsc`とesbuildは従来のデコレータとして扱う一方、Bunの`bun test`・`bun build`は標準のデコレータとして変換する。その結果、パラメータデコレータ(コンストラクタ引数への注入の指定など)がエラーも警告も無く消える。
   - 継承する側で`false`にしても、Bunは基底設定の値で従来のデコレータとして変換し、esbuildとViteのOxcは標準のデコレータとして変換する。変換経路ごとに結果が黙って食い違う。
 - パラメータデコレータは標準のデコレータに存在しないため、コンストラクタ引数への注入を指定するライブラリを使うには従来のデコレータが必要になる。
@@ -305,7 +305,7 @@ const config: Linter.Config[] = [
 ];
 ```
 
-単体テストでは、配置先に加えて`bunfig.toml`の`pathIgnorePatterns`(他の種別のテストの除外)をすべて書き写す。Bun 1.4.3では、コマンドラインの`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず、置き換えるためである。
+単体テストでは、配置先に加えて`bunfig.toml`の`pathIgnorePatterns`(他の種別のテストの除外)をすべて書き写す。Bun 1.4.4では、コマンドラインの`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず、置き換えるためである。
 
 ```json
 {

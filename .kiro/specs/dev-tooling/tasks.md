@@ -316,7 +316,7 @@
 - 2.2: 「`import type`のみ」の検査ヘルパーを設計外の新ディレクトリ`test-support/module-references.ts`へ切り出し、ルート`tsconfig.json`の`include`に`test-support/**/*.ts`を加えた。5.1でも再利用する。2.3のルートESLint設定は`test-support/`も検査対象にし、3.3・4.3でもルート所有として扱う。7.6でCLAUDE.mdのディレクトリ構成に追記する。
 - 2.2: `.prettierignore`はルート直下の`mockups`・`.claude`を`/mockups/`・`/.claude/`と先頭`/`で固定している。4.1の一致テストでは先頭`/`を正規化して`QUALITY_GATE_EXCLUDED_DIRS`・`GENERATED_CODE_PATTERNS`と比べる。
 - 2.2: 対象が`.`のときPrettierはディレクトリ展開で未対応ファイルを飛ばすため、`--ignore-unknown`が効くのはファイルを明示して渡す場合(3.3のlint-staged)。Prettierはcwdの`.gitignore`しか読まないため、アプリ固有の出力先はルートの`.gitignore`にも書く必要がある(後続のplatform系specへの注意)。
-- 2.2: 3.5の初回整形の対象は`.infisical.json`・`.kiro/specs/dev-tooling/design.md`・`research.md`・`.kiro/steering/roadmap.md`・`compose.yaml`・`scripts/merge-claude-trust-config.ts`(2.2時点)。`.infisical.json`はInfisical CLIが`init`時だけ書くため整形対象のままにする。
+- 2.2: 3.5の初回整形の対象は`.infisical.yaml`・`.kiro/specs/dev-tooling/design.md`・`research.md`・`.kiro/steering/roadmap.md`・`compose.yaml`・`scripts/merge-claude-trust-config.ts`(2.2時点)。`.infisical.yaml`はInfisical CLIが`init`時だけ書くため整形対象のままにする。
 - 2.3: ルートの`eslint.config.ts`は`name: 'root/ignores'`で`apps/`・`mockups/`・外部由来(`.claude/`・`docs/ai-extensions/`・`.kiro/settings/`)・Playwrightの出力先を対象外にし、`lint`は`bun --bun eslint .`。ESLint 10.12.0では、ファイルを明示して渡すとルートのignoreに関係なく最も近い設定が使われ、`--no-warn-ignored`付きでは対象外のファイルが黙って飛ばされる(終了コード0)。そのため3.3の計画処理では次が必須: アプリ所有ファイルは所有アプリのESLintへ振り分ける、mockupsのファイルを渡さない(mockupsの設定を読み込んでクラッシュする)、`apps/`配下でどのアプリ・共有ディレクトリにも属さないTSをルート所有に振り分けない(黙って検査漏れになるため、除外かエラーにする)。
 - 2.3: 外部由来の一覧が`eslint.config.ts`・`.prettierignore`・3.3の計画処理に重複する。3.3で`config/`に単一定義を置いて`eslint.config.ts`もそれを参照するか、4.1で一致を確かめる。`.playwright-mcp/`はESLintの対象外に入っていない(現状JSは置かれない)。
 - 3.1: 環境変数`HUSKY=0`のときhuskyは`HUSKY=0 skip install`を返し、インストーラは設計のフェイルクローズに従って失敗扱い(終了コード1)にする。3.4で`prepare`に結線すると`HUSKY=0 bun install`は失敗する(CIは`CI`の判定が先なので影響なし)。飛ばして成功にするには設計の`HookInstallResult`に理由を加える変更が要り、開発者判断とする。インストーラはカレントディレクトリの`.git`を見るため、`prepare`はルートで実行される前提。
@@ -329,7 +329,7 @@
 - 3.4: Bun 1.4.2の`bunx --bun`は`node`を指定するshebangをBunへ置き換えず、`PATH`上の`node`(開発コンテナではBunのシム)に依存する。開発コンテナ外ではBetterleaksの存在確認で先に止まる。
 - 3.4: 計画エラー時の失敗コマンドは`bun -e`へJSON文字列を埋め込む方式。`toCommands`はシングルとダブルの引用符を両方含むパスで例外を投げ、lint-stagedがスタックトレース付きで中止する(フェイルクローズは保たれる)。
 - 3.4: 設計のFile Structure Planに無いルート所有のテスト`git-hooks.unit.test.ts`(フックスクリプト・`prepare`・`.betterleaksignore`の書式の検証)と`lint-staged.config.unit.test.ts`を追加した。
-- 3.5: 初回整形は`caeb2c3`(整形差分だけ)。design.mdのtypescriptコードブロックはPrettierの埋め込み整形で80桁に折り返される。`.infisical.json`はInfisical CLIの`init`で4スペースに戻り得るが、次のコミットでフックが整形し直す。
+- 3.5: 初回整形は`caeb2c3`(整形差分だけ)。design.mdのtypescriptコードブロックはPrettierの埋め込み整形で80桁に折り返される。`.infisical.yaml`はInfisical CLIの`init`で4スペースに戻り得るが、次のコミットでフックが整形し直す。
 - 3.6: 一時リポジトリで要件1.1〜4.5の振る舞いをすべて確認し、修正は無かった。`git revert`・cherry-pickは`--no-edit`でも編集を経てもpre-commit・commit-msgを実行しない(Gitの仕様)ため、これらで作るコミットはシークレット検出を通らない。CIでのシークレット検出(infra-delivery)が補う前提を7.3・7.7の文書とinfra-deliveryへの申し送りに書く。
 - 3.6: `GIT_TRACE=1`を画面に出すとBetterleaksが走査失敗としてコミットを拒否する(安全側。トレースはファイルへ出す)。`betterleaks --log-level debug`は`--redact`でも値を表示するため、誤検知の調査で使わないよう7.3・7.7の文書で注意する。
 - 3.6(開発者判断済み): 開発者の判断により、EslintBaseの`ignores`とdesign.mdの「EslintBase」節に`**/worker-configuration.d.ts`を加えた(`.prettierignore`と一致)。

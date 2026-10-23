@@ -1,15 +1,15 @@
 # syntax=docker/dockerfile:1
 
 # Debian 13(trixie)がベース
-ARG BUN_IMAGE_TAG=1.4.3-slim
+ARG BUN_IMAGE_TAG=1.4.4-slim
 
 # OpenTofu・Wrangler・Stripe CLIを導入する専用ビルドステージ。
 # 各ツールは可能な限りAPT(公式リポジトリ)、それが無ければnpmレジストリ(bun経由)の順で取得する。
 # `apt-get install`ではなく`apt-get download`+`dpkg -x`でファイルのみを抽出することで、postinstスクリプトやAPT状態を最終イメージに残さない。
 FROM oven/bun:${BUN_IMAGE_TAG} AS tools-builder
-ARG OPENTOFU_VERSION=1.13.1
-ARG WRANGLER_VERSION=4.151.1
-ARG STRIPE_CLI_VERSION=1.54.0
+ARG OPENTOFU_VERSION=1.13.2
+ARG WRANGLER_VERSION=4.152.0
+ARG STRIPE_CLI_VERSION=1.55.1
 
 # OpenTofu(公式リポジトリ: packages.opentofu.org)をAPTで取得する。
 # apt-getのダウンロードキャッシュはキャッシュマウントでビルド間永続化し再ダウンロードを避ける。公式Debianベースイメージが標準で有効化するdocker-cleanフックはapt-get実行直後にキャッシュを削除するため、キャッシュマウントを機能させるには無効化が必要。
@@ -42,9 +42,9 @@ RUN BUN_INSTALL=/opt/stripe-cli bun install -g --trust "@stripe/cli@${STRIPE_CLI
 # bunを必要としないため、上記ステージとは別の軽量なベースイメージを使い、BuildKit上で並列にダウンロードできるようにする。
 FROM debian:trixie-slim AS release-binaries-builder
 ARG TARGETARCH
-ARG GITHUB_VERSION=2.102.0
+ARG GITHUB_VERSION=2.103.0
 ARG BETTERLEAKS_VERSION=1.9.0
-ARG MAILPIT_VERSION=1.31.6
+ARG MAILPIT_VERSION=1.32.0
 ARG RTK_VERSION=1.0.1
 RUN --mount=type=cache,id=apt-lists-release-binaries-builder,target=/var/lib/apt/lists,sharing=locked \
   --mount=type=cache,id=apt-cache-release-binaries-builder,target=/var/cache/apt,sharing=locked \
@@ -81,7 +81,7 @@ RUN case "${TARGETARCH}" in amd64) RTK_TARGET=x86_64-unknown-linux-musl ;; arm64
 
 # 本番環境はCloudflare Workers(サーバーレス)で動くため、このイメージは開発専用でありデプロイしない。
 FROM oven/bun:${BUN_IMAGE_TAG}
-ARG INFISICAL_VERSION=0.44.2
+ARG INFISICAL_CLI_VERSION=0.44.8
 ARG PLAYWRIGHT_VERSION=1.64.1
 
 # 各種CLIツールのインストーラやネイティブ依存のビルドに必要なパッケージを導入する。
@@ -93,7 +93,7 @@ RUN --mount=type=cache,id=apt-lists-final,target=/var/lib/apt/lists,sharing=lock
   && apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates build-essential procps curl file git \
   && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-  && apt-get install -y --no-install-recommends "infisical=${INFISICAL_VERSION}"
+  && apt-get install -y --no-install-recommends "infisical=${INFISICAL_CLI_VERSION}"
 
 # OpenTofuを導入する。バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
 COPY --from=tools-builder /out/ /

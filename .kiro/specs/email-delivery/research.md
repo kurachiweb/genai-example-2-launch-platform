@@ -95,7 +95,7 @@
 ### ローカル開発の送信先
 
 - **Context**: briefの「ローカルのMailpitへの送信方式は設計フェーズで決める」。tech-stack.mdはMailpitのHTTP送信APIを指定している。
-- **Sources Consulted**: Cloudflare Docs「[Local email sending](https://developers.cloudflare.com/email-service/local-development/sending/)」、Mailpit 1.31.6(`/workspace/Dockerfile`・`/workspace/scripts/entrypoint.sh`)、Mailpitの`/api/v1/info`への疎通。
+- **Sources Consulted**: Cloudflare Docs「[Local email sending](https://developers.cloudflare.com/email-service/local-development/sending/)」、Mailpit 1.32.0(`/workspace/Dockerfile`・`/workspace/scripts/entrypoint.sh`)、Mailpitの`/api/v1/info`への疎通。
 - **Findings**:
   - `wrangler dev`は既定で`send_email`をローカルで模擬し、内容をローカルのファイルとログへ出すだけで、受信箱としては確認しにくい。`remote: true`にすると実際に送信される。
   - Mailpitは開発コンテナでポート48041(UIとHTTP API)に常駐する。SMTPの既定ポートは公開されていない。workerdから任意ポートへのSMTP(`connect()`)はTCPソケットで可能だが、SMTPの会話を自作する必要がある。
