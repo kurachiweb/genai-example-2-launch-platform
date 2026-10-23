@@ -61,10 +61,16 @@
 
 ## Existing Spec Touchpoints
 
-- **Extends**: なし
-- **Adjacent**: user-profile-social(ハンドル基盤の方式)、legal-pages(管理者生成コンテンツ)
+- **Extends**: inquiry-chat(管理画面のカテゴリのページ`/categories`の区画の登録口`CATEGORY_SECTIONS`へ、ヘルプカテゴリの区画を`order` 20で加える)、admin-foundation(`ADMIN_NAV_ITEMS`へヘルプ記事`/help-articles`(`order` 100)を加える)
+- **Adjacent**: user-profile-social(ハンドル基盤の方式)、legal-pages(管理者生成コンテンツ)、admin-foundation(`AdminDirectory`による作成者の表示)
 
 ## Constraints
 
 - テーブル新規作成時に`textNoCase`をハンドルのカラムへ指定する
 - 予約語一覧はハンドル基盤が持つ共通の一覧を使う
+- ヘルプカテゴリの管理画面は、inquiry-chatが作る`/categories`のページに区画として載せる(`CategorySection`の`{ id: 'help-center.help-categories', order: 20, title, component }`)。区画の中身はadmin-foundationの`CategoryMasterEditor`を`withHandle: false`、`canEdit`はモデレーター以上で使う。区画ごとにエラー境界で包まれるため、区画の失敗は他の区画を止めない
+- ヘルプ記事の管理画面はadmin-foundationの仮6のURL`/help-articles`(メニューの`order` 100)に置く
+- 記事を作成した管理者の表示(FR-HELP-008・009)は、admin-foundationの`AdminDirectory.findProfiles`(`ADMIN_PLATFORM_TYPES.AdminDirectory`、`apps/backend-lib/workers/admin`)で引く。削除済み・招待中の管理者は結果に含まれないため、含まれないIDは「削除済み」と表示する。`admins`テーブルを直接読まない
+- 管理操作はadmin-foundationの`AuditLogRecorder`で、操作と同じ一括の書き込みに含めて記録する
+- 管理画面のE2Eの管理者ログインは、admin-foundationの`e2e/support/admin-bootstrap.ts`を使う
+- 4:21のジョブとユーザーライフサイクルの波及処理の`order`は、roadmapの帯の割り当ての表で本specに割り当てた700番台(700〜799)を使う。波及処理の各ドメインの範囲は0〜9999で、10000以上はidentity-auth専用である。帯の値は同じ時刻・同じ種類の中で上流のspecの後に動くため、上流の値より前に動く必要がある処理があれば設計時に開発者へ確認する
