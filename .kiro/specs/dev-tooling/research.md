@@ -173,16 +173,18 @@
 - **目的**: 要件8.1・8.2・8.4〜8.7。共有ディレクトリのコードが利用側アプリの依存パッケージを読み込む最小構成で、開発コンテナとCI相当環境の解決結果が一致することを確かめた(2026-10-05、`7bb71bc`時点、Bun 1.4.2)。
 - **最小構成**(どちらの環境でも同じファイル。開発コンテナでは確認後に削除した)
   - 利用側`apps/api`
-    - `package.json`: AppScriptContractの`lint`・`typecheck`・`test:unit`を持つ。主要パッケージ一覧の版の品質ツール6種と`@types/bun` 1.4.2を導入する。共有ディレクトリのコードが使う`hono` 4.13.13・`drizzle-orm` 1.0.0-rc.4を宣言する。バンドル用に`esbuild` 0.28.1(`wrangler` 4.124.0が固定する版)を導入する。
+    - `package.json`: AppScriptContractの`lint`・`typecheck`・`test:unit`を持つ。主要パッケージ一覧の版の品質ツール6種と`@types/bun` 1.4.2を導入する。共有ディレクトリのコードが使う`hono` 4.13.13・`drizzle-orm` 1.0.0-rc.5を宣言する。バンドル用に`esbuild` 0.28.1(`wrangler` 4.124.0が固定する版)を導入する。
     - `tsconfig.json`: 基底設定を継承し、差分は`types: ["bun"]`・`experimentalDecorators: true`、`include`への`db/**`・`lib/**`の追加。
     - `eslint.config.ts`: タスク5.4の検証用アプリと同一。
     - `src/app.ts`: 利用側の`eq`に共有側のテーブルの列を渡し、利用側の`Hono`に共有側の`Hono`を`route`で結合する。
   - 共有ディレクトリ
     - `apps/db/schema/products.ts`: `drizzle-orm/sqlite-core`の`sqliteTable`を使う。
+      - 現在の規約ではテーブルを`snakeCase.table`で定義する(backend-platform、`db/001`の命名規則)。`snakeCase.table`も`sqliteTable`と同じ`SQLiteTable`のインスタンスを返すため(drizzle-orm 1.0.0-rc.5で確認)、本検証の解決結果は定義の関数に依存しない。
     - `apps/backend-lib/di/inject.ts`: パラメータデコレータを定義する。
     - `apps/backend-lib/http/greeting-route.ts`: `hono`をbare importし、コンストラクタ引数にパラメータデコレータを持つ。
     - `apps/backend-lib/probe/resolve-from-shared-dir.ts`: 共有ディレクトリの位置から`import.meta.resolve`を呼ぶ。
   - 単体テスト: 共有側と利用側で`Hono`・`SQLiteTable`の`instanceof`が成り立つことを確かめる。共有ディレクトリの位置からの`import.meta.resolve`が利用側の位置からと一致することも確かめ、解決先の版と実体パスを出力する。
+    - drizzle-orm 1.0.0-rc.5以降は、`SQLiteTable`などの`instanceof`がクラスの種別の印で判定され、二重実体でも成り立つ(2026-10-23にscratchpadで複製した2実体を比べて確認)。rc.5以降で再検証する場合、二重実体の検出には`import.meta.resolve`の解決先の一致と`Hono`の`instanceof`を使う。
   - バンドル: wrangler 4.124.0の`bundleWorker`がesbuildへ渡す既定値を再現し、esbuildのAPIで`src/index.ts`を組み立ててmetafileを集計した。既定値は`format: esm`・`target: es2024`・`conditions: workerd,worker,browser`・`keepNames`で、`tsconfig`は指定しない。Wranglerでのバンドル(`wrangler deploy --dry-run`)はClaude設定で拒否されるため使っていない。
 - **手順**
   - CI相当環境
@@ -210,7 +212,7 @@
 | パッケージ  | 版         | 実行時(共有ディレクトリから)                 | 型検査の読み込み元                      | バンドルの入力                          |
 | ----------- | ---------- | -------------------------------------------- | --------------------------------------- | --------------------------------------- |
 | hono        | 4.13.13    | `apps/api/node_modules/hono/dist/index.js`   | `apps/api/node_modules/hono`のみ        | `apps/api/node_modules/hono`のみ(1実体) |
-| drizzle-orm | 1.0.0-rc.4 | `apps/api/node_modules/drizzle-orm/index.js` | `apps/api/node_modules/drizzle-orm`のみ | `apps/api/node_modules/drizzle-orm`のみ |
+| drizzle-orm | 1.0.0-rc.5 | `apps/api/node_modules/drizzle-orm/index.js` | `apps/api/node_modules/drizzle-orm`のみ | `apps/api/node_modules/drizzle-orm`のみ |
 
 - **一致の確かめ方**
   - 実行時の解決先と`realpath`、型検査の読み込み元、バンドルの入力104ファイルとmetafileの集計を両環境で比べ、いずれもdiffが無かった。`bun pm ls --all`と`bun.lock`のハッシュも一致した。

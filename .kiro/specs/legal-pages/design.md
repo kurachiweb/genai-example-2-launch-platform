@@ -126,7 +126,7 @@ graph TB
 
 | Layer        | Choice / Version                                                                   | Role in Feature                  | Notes                 |
 | ------------ | ---------------------------------------------------------------------------------- | -------------------------------- | --------------------- |
-| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.4)                                              | 文書の状態・下書き・版           | 新しいテーブル2つ     |
+| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                              | 文書の状態・下書き・版           | 新しいテーブル2つ     |
 | API          | GraphQL Yoga(api-gatewayの基盤)・Zod                                               | 公開の照会・管理の照会と変更     | 既存                  |
 | 画面         | TanStack Start・TanStack Router 1.170系(`useBlocker`)・React・react-hook-form・zod | 公開ページ・過去版・管理画面     | frontend-platformの版 |
 | マークダウン | content-processingの`MarkdownEditor`(Crepe 7.22.2)・`MarkdownContent`              | 編集とプレビュー・表示           | 既存                  |

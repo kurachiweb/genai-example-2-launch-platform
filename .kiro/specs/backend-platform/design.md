@@ -56,7 +56,7 @@
 - `AppModule`・`ScheduledJobDefinition`・`MessageContract`・`QueueEnvelope`・`RateLimitExclusion`・`ClientIpResolver`・`BotVerifier`・`RateLimitCounterClient`の形の変更。
 - バインディング名・Queue名・バケット名・D1名・Worker名・Rate Limitingの`namespace_id`・シークレットと変数のキー名の変更(infra-delivery・frontend-platform)。
 - IP制限の上限・キー・応答の変更(frontend-platform)。
-- 共通カラムの型(日時の保持形式・IDの形式)、`casing`設定の変更(全ドメインのスキーマ)。
+- 共通カラムの型(日時の保持形式・IDの形式)、列名の変換方式(`snakeCase.table`)の変更(全ドメインのスキーマ)。
 - 再試行の上限・間隔、デッドレターの扱いの変更(email-deliveryなどのメッセージ利用者)。
 - ヘルスチェックの経路の変更(launch-readiness)。
 
@@ -132,7 +132,7 @@ graph TB
 | ランタイム            | Cloudflare Workers(`compatibility_date` 2026-08-04)                                                                                        | 両サーバーの実行                                    | Node.js互換は互換性日付で既定有効。`compatibility_flags`は書かない |
 | Webフレームワーク     | hono 4.13.13                                                                                                                               | ルーティングとミドルウェア                          | tech-stack記載済み                                                 |
 | DI                    | inversify 8.2.3・reflect-metadata 0.2.2                                                                                                    | 処理単位のコンテナ、`@inject`による注入             | reflect-metadataは新規(Q3)。`jitless`は既定の`true`のまま          |
-| ORM・マイグレーション | drizzle-orm 1.0.0-rc.4・drizzle-kit 1.0.0-rc.4                                                                                             | スキーマ・型付きクエリ・マイグレーション生成        | 主要パッケージ一覧どおり完全固定                                   |
+| ORM・マイグレーション | drizzle-orm 1.0.0-rc.5・drizzle-kit 1.0.0-rc.5                                                                                             | スキーマ・型付きクエリ・マイグレーション生成        | 主要パッケージ一覧どおり完全固定                                   |
 | ID                    | ulid 3.0.2                                                                                                                                 | ULIDの採番                                          | tech-stack記載済み                                                 |
 | 検証                  | zod 4.6.5                                                                                                                                  | 環境・メッセージ本文の検証                          | tech-stack記載済み                                                 |
 | ログ                  | @logtape/logtape 2.3.11・@logtape/redaction 2.3.11                                                                                         | JSONログ・処理単位の文脈・伏せ字                    | redactionは新規(Q4)                                                |
@@ -151,8 +151,8 @@ apps/
 ├── db/                                      # 共有ディレクトリ(配置先: apps/{api,event}/db、検査担当: api)。直下にtsconfig.jsonを置かない
 │   ├── package.json                         # drizzle-kit・drizzle-orm・ulid(生成ツールの実行専用)と`db:generate`スクリプト
 │   ├── bun.lock
-│   ├── drizzle.config.ts                    # dialect sqlite、schema、out、casing snake_case
-│   ├── client.ts                            # createDatabase(d1)・Database型・DATABASE_CASING
+│   ├── drizzle.config.ts                    # dialect sqlite、schema、out
+│   ├── client.ts                            # createDatabase(d1)・Database型
 │   ├── client.worker.test.ts                # D1上での共通カラム・論理削除・大文字小文字・一括実行の検証
 │   ├── schema/
 │   │   ├── index.ts                         # 全テーブル定義の集約点(初版はテーブル無し)
@@ -257,7 +257,7 @@ docs/
 ├── GUIDES/tech/
 │   ├── backend/002-layered-architecture-on-workers.md   # 層構成・依存方向・処理単位のコンテナ・登録箇所・共通エラー
 │   ├── backend/003-rate-limiting-and-bot-verification.md # 厳密カウンタ・バインディング制限・Worker単位のIP制限の規約・Turnstile
-│   ├── db/003-schema-conventions.md          # ID・共通カラム・論理削除・日時・casing・接続と一括実行
+│   ├── db/003-schema-conventions.md          # ID・共通カラム・論理削除・日時・列名の変換・接続と一括実行
 │   ├── infra/003-async-processing.md         # 定期実行・非同期メッセージ・再試行・デッドレター・冪等性
 │   ├── infra/004-logging-and-error-tracking.md  # ログの形式・相関ID・伏せ字・呼び出しログ無効化・保持期間・Sentry
 │   ├── security/002-keyed-hashing.md          # 高エントロピーの秘密情報のHMACハッシュ化と照合
@@ -365,7 +365,7 @@ sequenceDiagram
 | 1.3         | 作成・更新日時の自動設定               | CommonColumns                               | `timestamps`                                          | —                |
 | 1.4         | 論理削除の列と絞り込み                 | CommonColumns                               | `softDelete`・`notDeleted`                            | —                |
 | 1.5         | 大文字小文字を区別しない列             | TextNoCase                                  | `textNoCase`                                          | —                |
-| 1.6         | 配置と命名の規約                       | SchemaConventionsDoc・DrizzleConfig         | `schema/index.ts`・`casing`                           | —                |
+| 1.6         | 配置と命名の規約                       | SchemaConventionsDoc・DrizzleConfig         | `schema/index.ts`・`snakeCase.table`                  | —                |
 | 1.7         | 業務テーブル無し・検証用テーブルで確認 | CommonColumns・DatabaseClient               | テスト内のテーブル定義                                | —                |
 | 2.1         | 差分のマイグレーション生成             | DrizzleConfig                               | `db:generate`                                         | —                |
 | 2.2         | 変更なしなら生成しない                 | DrizzleConfig                               | `db:generate`                                         | —                |
@@ -516,7 +516,9 @@ sequenceDiagram
 
 - `apps/db/schema/_shared/`に置き、`drizzle-orm`と`ulid`以外を読み込まない。
 - 日時はUTCのUnixエポックミリ秒を整数で保持する(Drizzleの`integer({ mode: 'timestamp_ms' })`)。比較と範囲検索が整数で済み、I18N-002を満たす。
-- 列名はTypeScriptのキーをキャメルケースで書き、データベースではスネークケースにする。変換は`createDatabase`と`drizzle.config.ts`の両方で`casing: 'snake_case'`を指定して行う(両者の不一致は生成SQLと実行時のクエリの食い違いになるため、`DATABASE_CASING`定数を共有する)。
+- 列名はTypeScriptのキーをキャメルケースで書き、データベースではスネークケースにする。drizzle-orm v1は接続の設定と`drizzle.config.ts`に列名の変換の指定を持たないため、テーブルは`drizzle-orm/sqlite-core`の`snakeCase.table`で定義する。変換はテーブル定義に含まれ、生成SQLと実行時のクエリが同じ列名になる。
+- `sqliteTable`・`sqliteTableCreator`で定義すると列名がキーのまま(キャメルケース)になるため、使わない(AppLayerRulesで禁止する)。
+- 列名を明示した列(`text('source_id')`など)は、`snakeCase.table`の中でも明示した名前になる。変換結果が意図と異なるキー(大文字に続く数字の前でも区切られる`totpSecretV2`→`totp_secret_v_2`など)は、列名を明示する。
 - 更新日時の自動設定はDrizzleの更新クエリでだけ働く。生のSQLで更新する場合は呼び出し側が設定する(`db/003`に記載)。
 
 **Contracts**: State [x]
@@ -543,7 +545,7 @@ export declare const textNoCase: CustomColumnBuilderFactory<string>; // customTy
 利用側のテーブル定義は次の形になる(`db/003`に記載する)。
 
 ```typescript
-export const articles = sqliteTable('articles', {
+export const articles = snakeCase.table('articles', {
   id: ulidPrimaryKey(),
   slug: textNoCase().notNull().unique(),
   ...timestamps(),
@@ -564,7 +566,7 @@ const visible = await db
 
 **Implementation Notes**
 
-- Validation: 単体テストで`getTableConfig`により列の型・NOT NULL・既定値の有無を確かめる。`client.worker.test.ts`で、テスト内で定義した検証用テーブルを生のSQLで作り、D1上で追加・更新・論理削除の絞り込み・大文字小文字の一意判定を確かめる(1.7)。
+- Validation: 単体テストで`getTableConfig`により列名(スネークケース)・列の型・NOT NULL・既定値の有無を確かめる。`client.worker.test.ts`で、テスト内で定義した検証用テーブルを生のSQLで作り、D1上で追加・更新・論理削除の絞り込み・大文字小文字の一意判定を確かめる(1.7)。
 
 #### DatabaseClient・DrizzleConfig
 
@@ -579,15 +581,14 @@ const visible = await db
 
 ```typescript
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import type * as schema from './schema';
 
-export type Database = DrizzleD1Database<typeof schema>;
-export declare const DATABASE_CASING: 'snake_case';
+export type Database = DrizzleD1Database;
 export declare function createDatabase(d1: D1Database): Database;
 ```
 
 - Postconditions: `Database`はDrizzleのクエリビルダだけを公開し、値は常にパラメータとして送られる(2.6、NFR-SECUR-021)。`Database.batch([...])`は途中の失敗で全体を取り消す(2.7)。`db.transaction()`は使わない(`db/002`)。
-- `drizzle.config.ts`: `dialect: 'sqlite'`・`schema: './schema/index.ts'`・`out: './migrations'`・`casing: DATABASE_CASING`。`drizzle-kit migrate`・`push`は使わない(`db/001`)。
+- `createDatabase`はテーブル定義を接続に渡さない。drizzle-orm 1.0.0-rc.5は接続の設定から旧方式のリレーショナルクエリ用の`schema`を廃止し、`DrizzleD1Database`の型引数はリレーションの定義を取る。本specはクエリビルダと`sql`だけを使い、リレーショナルクエリ(`db.query`)を使わない。後続specで必要になった場合は、`defineRelations`で定義したリレーションを`relations`として渡し、`Database`を`DrizzleD1Database<typeof relations>`にする。その場合、`where`の項目に`undefined`を渡すと例外になるため、条件を省く項目には`drizzle-orm/relations`の`EmptyFilter`を渡す。
+- `drizzle.config.ts`: `dialect: 'sqlite'`・`schema: './schema/index.ts'`・`out: './migrations'`。`drizzle-kit migrate`・`push`は使わない(`db/001`)。
 - `schema/index.ts`は全テーブル定義の集約点で、各ドメインspecは`schema/<ドメイン>.ts`を追加してここから再エクスポートする(1.6)。
 - `apps/db/package.json`の`db:generate`は`drizzle-kit generate`。同じ版の`drizzle-orm`・`drizzle-kit`・`ulid`を`apps/db`に導入する(生成ツールがスキーマを読み込むため)。
 
@@ -1638,7 +1639,7 @@ export declare function turnstileGuard(
 | `src/application/**`                               | `**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`cloudflare:*`・`**/lib/workers/**`・`**/db/client*`                                 |
 | `src/infrastructure/**`・`src/presentation/**`     | `**/composition/**`                                                                                                                                             |
 | `lib/core/**`(apiのみ。共有ディレクトリの検査担当) | `**/workers/**`・`hono`・`cloudflare:*`・`**/db/**`                                                                                                             |
-| `db/**`(apiのみ)                                   | `**/lib/**`・`hono`・`cloudflare:*`                                                                                                                             |
+| `db/**`(apiのみ)                                   | `**/lib/**`・`hono`・`cloudflare:*`・`drizzle-orm/sqlite-core`の`sqliteTable`・`sqliteTableCreator`(`snakeCase.table`を使う)                                    |
 
 - `test/config/layer-rules.unit.test.ts`は、ESLintのNode APIで各層の違反例が報告されることを確かめる。
 
@@ -1742,7 +1743,7 @@ export declare function turnstileGuard(
 
 - ArchitectureDoc(`backend/002-layered-architecture-on-workers.md`): 4層と合成ルート、依存方向と静的解析、処理単位のコンテナ(`jitless`の注意)、登録箇所、共通エラーと共通のエラー形式、ミドルウェアの順序、ヘルスチェック、層とテスト種別・カバレッジの分担。
 - RateLimitingDoc(`backend/003-rate-limiting-and-bot-verification.md`): 厳密カウンタ(ルール・キーのハッシュ化・リセット)、バインディングの制限、Worker単位のIP制限の規約表(13.6)、除外規則、クライアントIPの解決の差し替え、bot判定の検証(2形態・失敗の分類・テスト用の鍵)。
-- SchemaConventionsDoc(`db/003-schema-conventions.md`): 主キー(ULID・全文検索用の連番、1.2)、共通カラムと日時の保持(3.5)、論理削除、`casing`、テーブル定義の配置(1.6)、手書きのマイグレーション(2.3、`db/001`への参照)、接続と一括実行。
+- SchemaConventionsDoc(`db/003-schema-conventions.md`): 主キー(ULID・全文検索用の連番、1.2)、共通カラムと日時の保持(3.5)、論理削除、列名の変換(`snakeCase.table`)、テーブル定義の配置(1.6)、手書きのマイグレーション(2.3、`db/001`への参照)、接続と一括実行。
 - AsyncProcessingDoc(`infra/003-async-processing.md`): 定期実行(業務時刻での登録・cron式との一致・ローカルでの起動)、非同期メッセージ(契約・封筒・送信・再試行・`defer`・デッドレター)、重複配信と冪等性(11.9)、ジョブとメッセージの使い分け。
 - LoggingDoc(`infra/004-logging-and-error-tracking.md`): ログの形式・カテゴリ・相関ID、伏せ字の規則、呼び出しログの無効化と保持期間、エラートラッキングの送信規則とトレースの割合。
 - KeyedHashingDoc(`security/002-keyed-hashing.md`): 高エントロピーの秘密情報とレート制限キーのHMAC化、用途の分離、照合の方法、ペッパーの管理。

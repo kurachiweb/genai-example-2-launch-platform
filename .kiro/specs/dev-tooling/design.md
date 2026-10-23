@@ -1223,7 +1223,7 @@ graph LR
 | vitest・@vitest/browser-playwright・@vitest/coverage-v8・@vitest/coverage-istanbul | 4.1.11                                   | 該当アプリ                                       | `@cloudflare/vitest-pool-workers`がVitest ^4.1のみ対応                                                       |
 | @cloudflare/vitest-pool-workers                                                    | 0.22.0                                   | api・event                                       | Vitest 4.1系との組み合わせ                                                                                   |
 | wrangler                                                                           | 4.124.0                                  | api・event                                       | `@cloudflare/vitest-pool-workers` 0.22.0が`dependencies`で完全固定する版と一致させる。`wrangler types`に必要 |
-| drizzle-orm・drizzle-kit                                                           | 同一のプレリリース版(初版時点1.0.0-rc.4) | apps/db・api・event                              | 正式版が無くRCのまま。ORMと生成ツールの版ずれを防ぐ                                                          |
+| drizzle-orm・drizzle-kit                                                           | 同一のプレリリース版(初版時点1.0.0-rc.5) | apps/db・api・event                              | 正式版が無くRCのまま。ORMと生成ツールの版ずれを防ぐ                                                          |
 | @playwright/test・playwright                                                       | 1.63.0                                   | ルート(playwrightはブラウザテストを持つアプリも) | 共有Chromiumのリビジョンを決める。DockerfileのOS依存パッケージ版と一致させる                                 |
 
 ### 移設対応表(CLAUDE.md「後ほどdocs/GUIDES/techディレクトリに移す規則」)

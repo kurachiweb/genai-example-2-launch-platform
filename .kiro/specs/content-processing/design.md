@@ -51,7 +51,7 @@
 ### Allowed Dependencies
 
 - 上流(dev-tooling): 基底設定(`tsconfig.base.json`・`eslint.config.base.ts`・`prettier.config.ts`・`bunfig.toml`)、スクリプト契約、テストの命名、`config/workspace-layout.ts`と`shared-dirs`の仕組み(定義への追記だけ)、`config/vitest`のプリセット。
-- 上流(backend-platform): `apps/db`の`Database`・`createDatabase`・`DATABASE_CASING`、`core`の`defineMessageContract`・`MessageContract`・`MessageHandler`・`MessageMeta`・`MessageHandlingResult`・`RetryPolicy`・`DEFAULT_RETRY_POLICY`・`ScheduledJobDefinition`・`ScheduledJobHandler`・`AppModule`・`PLATFORM_TYPES`・`Clock`・`getAppLogger`・`AppError`、`workers`の`MessagePublisher`・`PlatformEnv`、登録箇所(`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`MODULES`・`env-schema.ts`)。
+- 上流(backend-platform): `apps/db`の`Database`・`createDatabase`・テーブル定義の`snakeCase.table`、`core`の`defineMessageContract`・`MessageContract`・`MessageHandler`・`MessageMeta`・`MessageHandlingResult`・`RetryPolicy`・`DEFAULT_RETRY_POLICY`・`ScheduledJobDefinition`・`ScheduledJobHandler`・`AppModule`・`PLATFORM_TYPES`・`Clock`・`getAppLogger`・`AppError`、`workers`の`MessagePublisher`・`PlatformEnv`、登録箇所(`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`MODULES`・`env-schema.ts`)。
 - 上流(frontend-platform): `components/ui`のボタン・タブ・ダイアログ・テキスト入力・ラベル、`components/state`の状態表示、`utilities/class-names.ts`の`cn`、`test/a11y.ts`の`runAxe`、`config/frontend-lint.ts`、`styles/tokens.css`・`base.css`、ルーターの文脈の`PublicRuntimeConfig`、Storybookの設定。
 - npmパッケージ: Technology Stackの表に挙げた版に限る。
 - 依存の方向: 「Dependency Direction」に従う。`apps/common-lib`は他のアプリのコードを読み込まない。`@milkdown/*`と`vue`を読み込めるのは`apps/frontend-lib/components/markdown-editor/crepe/**`だけである。
@@ -74,10 +74,10 @@
 
 `apps/common-lib`の新設は本specが行い、media-pipeline・identity-authはその上に自分の共有定義を置く。roadmapの順では本spec全体の完了を待ってから両specに着手する。本spec全体を待たずに着手する場合の最小の区切りは、次のタスクの完了とする。
 
-| spec           | 前提にする本specのタスク                                                                                                                         | 使うもの                                                                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| spec           | 前提にする本specのタスク                                                                                                                                                                                                                                                                                                                                                                   | 使うもの                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | media-pipeline | 1.1(共有ディレクトリの定義と配置)、1.2(共用部品のプロジェクトと読み込みの境界)、4.1・4.2(利用側アプリの依存・型検査の対象・静的解析とテストの除外、frontend-libからの参照)、6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`validation/**`の禁止の静的解析の規則)、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成 | `common-lib/media`の置き場所、`frontend-lib`の`utilities/media`・`server/media`と`backend-lib`からの兄弟の相対パスでの参照、`server/**`からの読み込みの規則、日次タイムラインの表 |
-| identity-auth  | 上のタスクに加えて2.1(書記素の数え方)                                                                                                          | `countGraphemes`、`common-lib/identity`の置き場所、APIサーバーと同名・同値の`CLIENT_SITE_ORIGIN`、日次タイムラインの表               |
+| identity-auth  | 上のタスクに加えて2.1(書記素の数え方)                                                                                                                                                                                                                                                                                                                                                      | `countGraphemes`、`common-lib/identity`の置き場所、APIサーバーと同名・同値の`CLIENT_SITE_ORIGIN`、日次タイムラインの表                                                            |
 
 - `server/**`の許可の確かめ方: frontend-platformの静的解析はfrontend-libの外への相対パスの読み込みを禁止しないため、4.2の後は`server/**`から`../common-lib/**`を読み込んでも静的解析で拒否されない。6.1で`components/**`・`server/**`からの`common-lib/validation/**`の禁止が入り、その他のモジュールの読み込みが報告されないことをESLintのNode APIの単体テストで確かめる。11.3で`coding/003`に読み込める範囲を書く。下流specは、6.1の単体テストの成功と`coding/003`の記述で許可を確かめる。
 - 日次タイムラインの表: 「日次バッチ(4:21)の内容」のジョブの名前と順序の表は、最初に4:21のジョブを足すspecが作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、後のspecは行を足す。想定の順序では本specの11.4が作る。下流specは、表が無いことを理由に止めず、表が無ければ同じ形で作って自分の行を足す。その場合、本specの11.4は既存の表へ行を足すだけにする。
@@ -85,13 +85,13 @@
 
 #### 上流・並行specへの変更(本specが行う)
 
-| spec              | 変更                                                                                                                                                                                                                                                                     | 再確認の要否                                          |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| dev-tooling       | `AppName`・`APPS`・`SHARED_DIRS`に`common-lib`を加え、`compose.yaml`のbind mountと名前付きボリューム、`.gitignore`の配置先、`workspace-layout.unit.test.ts`の期待値を更新する。`coding/002`・`coding/003`に追記する                                                     | 要(共有ディレクトリが5つになる)                       |
-| backend-platform  | api・eventの依存・型検査の対象・静的解析とテストの除外に`common-lib/`を加える。`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`MODULES`・eventの`env-schema.ts`・Wrangler設定に追記する。`infra/003-async-processing.md`の定期実行の説明に、ジョブ・波及処理とメッセージ種別の名前の規約を追記する                                                                        | 不要(登録箇所と文書への追記の範囲)                    |
-| frontend-platform | `frontend-lint.ts`の`no-restricted-imports`にMilkdownの制限と、common-libの読み込みの許可(`components/**`・`server/**`・`utilities/**`)と`validation/**`の制限を加える。client・admin・frontend-libの依存・型検査の対象・Vite設定(Vueの機能フラグ・`server.fs.allow`)、`styles/base.css`の取り込み、変数`CLIENT_SITE_ORIGIN`と`PublicRuntimeConfig.clientSiteOrigin`を加える | 要(環境の検証と公開する設定の形が変わる)              |
-| infra-delivery    | eventの`GOOGLE_NL_API_KEY`を、Infisicalのキーの表(infra-deliveryが所有)に載せる。実装後のキーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節で、本specが行を加える。client・adminの`CLIENT_SITE_ORIGIN`の3環境の値を、infra-deliveryの一覧の値と一致させる。CIは`APPS`に従って`apps/common-lib`の依存を導入し、`shared-dirs:place`で配置する                     | 要(キーと値の一覧への追加はinfra-deliveryが行う)      |
-| email-delivery    | 業務時刻4:21のcron式`21 12 * * *`を共有する(順序950で後に並ぶ)。email-deliveryはroadmapの依存ではないため、実装の有無はタスク1.1で確かめ、無ければ開発者へ報告して進める。cron式が無ければタスク10で加える                                                              | 不要                                                  |
+| spec              | 変更                                                                                                                                                                                                                                                                                                                                                                                | 再確認の要否                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| dev-tooling       | `AppName`・`APPS`・`SHARED_DIRS`に`common-lib`を加え、`compose.yaml`のbind mountと名前付きボリューム、`.gitignore`の配置先、`workspace-layout.unit.test.ts`の期待値を更新する。`coding/002`・`coding/003`に追記する                                                                                                                                                                 | 要(共有ディレクトリが5つになる)                  |
+| backend-platform  | api・eventの依存・型検査の対象・静的解析とテストの除外に`common-lib/`を加える。`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`MODULES`・eventの`env-schema.ts`・Wrangler設定に追記する。`infra/003-async-processing.md`の定期実行の説明に、ジョブ・波及処理とメッセージ種別の名前の規約を追記する                                                                      | 不要(登録箇所と文書への追記の範囲)               |
+| frontend-platform | `frontend-lint.ts`の`no-restricted-imports`にMilkdownの制限と、common-libの読み込みの許可(`components/**`・`server/**`・`utilities/**`)と`validation/**`の制限を加える。client・admin・frontend-libの依存・型検査の対象・Vite設定(Vueの機能フラグ・`server.fs.allow`)、`styles/base.css`の取り込み、変数`CLIENT_SITE_ORIGIN`と`PublicRuntimeConfig.clientSiteOrigin`を加える        | 要(環境の検証と公開する設定の形が変わる)         |
+| infra-delivery    | eventの`GOOGLE_NL_API_KEY`を、Infisicalのキーの表(infra-deliveryが所有)に載せる。実装後のキーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節で、本specが行を加える。client・adminの`CLIENT_SITE_ORIGIN`の3環境の値を、infra-deliveryの一覧の値と一致させる。CIは`APPS`に従って`apps/common-lib`の依存を導入し、`shared-dirs:place`で配置する | 要(キーと値の一覧への追加はinfra-deliveryが行う) |
+| email-delivery    | 業務時刻4:21のcron式`21 12 * * *`を共有する(順序950で後に並ぶ)。email-deliveryはroadmapの依存ではないため、実装の有無はタスク1.1で確かめ、無ければ開発者へ報告して進める。cron式が無ければタスク10で加える                                                                                                                                                                          | 不要                                             |
 
 ## Architecture
 
@@ -191,17 +191,17 @@ graph TB
 
 ### Technology Stack
 
-| Layer                  | Choice / Version                                                                                                                                                                                                    | Role in Feature                                         | Notes                                                                                                                                 |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 描画                   | unified 11.0.5・remark-parse 11.0.0・remark-gfm 4.0.1・remark-cjk-friendly 2.3.2・remark-cjk-friendly-gfm-strikethrough 2.3.1・remark-rehype 11.1.2・rehype-sanitize 6.0.0・rehype-stringify 10.0.1・hast-util-to-text 4.0.2 | 解析・文字列化・サニタイズ・HTMLとテキストの出力         | tech-stack記載済み。common-libと4アプリで版をそろえる。rehype-slugは使わない(仮決定P2)                                                |
-| 検証                   | zod 4.6.5                                                                                                                                                                                                           | マークダウンの入力の検証規則                            | backend-platform・frontend-platformと同じ版                                                                                           |
-| エディタ               | @milkdown/crepe 7.22.2・@milkdown/kit 7.22.2・@milkdown/react 7.22.2                                                                                                                                                | 編集領域(遅延読み込み)                                  | 7.22.3は公開から2週間未満(Q2)。`@milkdown/kit`の明示の宣言は仮決定P3。frontend-lib・client・adminで版をそろえる                       |
-| 文字組み               | @tailwindcss/typography 0.5.20                                                                                                                                                                                      | 本文の`prose`の文字組み                                 | 新規(Q6)。frontend-lib・client・adminで版をそろえる                                                                                   |
-| 標準API                | `Intl.Segmenter`・`String.prototype.normalize`・`String.prototype.isWellFormed`・Web Crypto(`crypto.subtle.digest`)・`fetch`・`AbortSignal.timeout`                                                                 | 書記素・NFKC・不正なUnicodeの判定・ハッシュ・外部API     | workerd・ブラウザ・Bunの標準。パッケージを追加しない                                                                                 |
-| データ                 | Cloudflare D1(SQLite FTS5)・drizzle-orm 1.0.0-rc.4                                                                                                                                                                  | 索引文書のテーブル・全文検索の索引・トリガー            | backend-platformの版                                                                                                                  |
-| 非同期・定期実行       | Cloudflare Queues(`JOBS_QUEUE`)・Cron Triggers(api)                                                                                                                                                                 | 索引の更新・日次の再抽出                                | backend-platformの基盤。新しいQueueは作らない                                                                                         |
-| 外部API                | Google Cloud Natural Language v2 `documents:analyzeEntities`                                                                                                                                                        | キーワード抽出                                          | tech-stack記載済み。`fetch`でRESTを呼ぶ                                                                                               |
-| テスト                 | bun test(bun:sqlite)・vitest 4.1.11(Browser Mode・`@cloudflare/vitest-pool-workers` 0.22.0)・vitest-browser-react 2.3.0・axe-core 4.13.0                                                                            | 単体・ブラウザ・Workers統合テスト                       | 上流の版                                                                                                                              |
+| Layer            | Choice / Version                                                                                                                                                                                                             | Role in Feature                                      | Notes                                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 描画             | unified 11.0.5・remark-parse 11.0.0・remark-gfm 4.0.1・remark-cjk-friendly 2.3.2・remark-cjk-friendly-gfm-strikethrough 2.3.1・remark-rehype 11.1.2・rehype-sanitize 6.0.0・rehype-stringify 10.0.1・hast-util-to-text 4.0.2 | 解析・文字列化・サニタイズ・HTMLとテキストの出力     | tech-stack記載済み。common-libと4アプリで版をそろえる。rehype-slugは使わない(仮決定P2)                          |
+| 検証             | zod 4.6.5                                                                                                                                                                                                                    | マークダウンの入力の検証規則                         | backend-platform・frontend-platformと同じ版                                                                     |
+| エディタ         | @milkdown/crepe 7.22.2・@milkdown/kit 7.22.2・@milkdown/react 7.22.2                                                                                                                                                         | 編集領域(遅延読み込み)                               | 7.22.3は公開から2週間未満(Q2)。`@milkdown/kit`の明示の宣言は仮決定P3。frontend-lib・client・adminで版をそろえる |
+| 文字組み         | @tailwindcss/typography 0.5.20                                                                                                                                                                                               | 本文の`prose`の文字組み                              | 新規(Q6)。frontend-lib・client・adminで版をそろえる                                                             |
+| 標準API          | `Intl.Segmenter`・`String.prototype.normalize`・`String.prototype.isWellFormed`・Web Crypto(`crypto.subtle.digest`)・`fetch`・`AbortSignal.timeout`                                                                          | 書記素・NFKC・不正なUnicodeの判定・ハッシュ・外部API | workerd・ブラウザ・Bunの標準。パッケージを追加しない                                                            |
+| データ           | Cloudflare D1(SQLite FTS5)・drizzle-orm 1.0.0-rc.5                                                                                                                                                                           | 索引文書のテーブル・全文検索の索引・トリガー         | backend-platformの版                                                                                            |
+| 非同期・定期実行 | Cloudflare Queues(`JOBS_QUEUE`)・Cron Triggers(api)                                                                                                                                                                          | 索引の更新・日次の再抽出                             | backend-platformの基盤。新しいQueueは作らない                                                                   |
+| 外部API          | Google Cloud Natural Language v2 `documents:analyzeEntities`                                                                                                                                                                 | キーワード抽出                                       | tech-stack記載済み。`fetch`でRESTを呼ぶ                                                                         |
+| テスト           | bun test(bun:sqlite)・vitest 4.1.11(Browser Mode・`@cloudflare/vitest-pool-workers` 0.22.0)・vitest-browser-react 2.3.0・axe-core 4.13.0                                                                                     | 単体・ブラウザ・Workers統合テスト                    | 上流の版                                                                                                        |
 
 - common-libのコードが実行時に使うパッケージ(描画の9つとzod)は、api・event・client・adminも同じ版で宣言する(共有ディレクトリの規約)。エディタの3つと`@tailwindcss/typography`・remark-cjk-friendlyの2つは、frontend-lib・client・adminが宣言する。版をそろえるパッケージの一覧を`coding/002`に加える。
 - hast・mdastの型パッケージは宣言せず、変換で触る節点だけの構造的な型を`markdown/hast-types.ts`に置く(推移的な型パッケージに頼らない)。
@@ -488,124 +488,124 @@ sequenceDiagram
 
 ## Requirements Traceability
 
-| Requirement                         | Summary                                                       | Components                                                                                   | Interfaces                                                       | Flows                    |
-| ----------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------ |
-| 1.1, 1.2                            | 4アプリで同じ定義・同じ結果                                   | CommonLibProject、MarkdownRenderer、Graphemes、MarkdownTextSchema、SearchTerms、HighlightRanges | `renderMarkdown`・`countGraphemes`ほか                            | 描画の処理の順序         |
-| 1.3                                 | 共用部品の依存の境界                                          | CommonLibProject                                                                             | `import-boundary.unit.test.ts`                                   | —                        |
-| 1.4                                 | 配置と品質ゲートへの参加                                      | WorkspaceLayoutUpdate                                                                        | `SHARED_DIRS`                                                    | —                        |
-| 1.5, 1.6                            | 依存の宣言と型検査、同じ参照の書き方                          | ConsumerAppIntegration                                                                       | 兄弟の相対パス`../common-lib`                                    | —                        |
-| 2.1, 2.2                            | ツールバーと挿入の除外                                        | MarkdownToolbar、EditorFeatures、EditorCommands                                              | `EditorAction`・`EditorController`                               | 入力欄の読み込み         |
-| 2.3, 2.4                            | 見出しレベル1・画像・ファイルの扱い                           | ForbiddenNodeNormalizer、EditorFeatures、HeadingInputRule                                    | ProseMirrorのプラグイン                                          | —                        |
-| 2.5, 2.9, 2.10, 2.14, 2.15          | 編集領域・値の受け渡し・外部の置き換え・無効・CJKの強調       | CrepeEditorSurface、MarkdownEditor、CjkRemarkPlugins                                         | `EditorSurfaceProps`・`MarkdownEditorProps`                      | 入力欄の読み込み         |
-| 2.6, 2.7                            | プレビュー                                                    | MarkdownEditor、MarkdownContent                                                              | `MarkdownEditorProps.preview`                                    | —                        |
-| 2.8                                 | 書記素のカウンター                                            | MarkdownLengthCounter、Graphemes                                                             | `countGraphemes`                                                 | —                        |
-| 2.11, 2.12, 2.13                    | 仮の表示・読み込み失敗・遅延読み込み                          | EditorPlaceholder、EditorLoadBoundary、LoadCrepeEditor、MarkdownLintRules、EditorBundleCheck | `loadCrepeEditor`                                                | 入力欄の読み込み         |
-| 3.1, 3.4                            | ツールバーとリンクのダイアログのキーボード操作                | MarkdownToolbar、MarkdownLinkDialog                                                          | —                                                                | —                        |
-| 3.2, 3.3                            | 編集領域の関連付けとTabキー                                   | EditorAccessibility、EditorFeatures                                                          | `EditorSurfaceProps`                                             | —                        |
-| 3.5                                 | 超過の読み上げ                                                | MarkdownLengthCounter                                                                        | —                                                                | —                        |
-| 3.6                                 | アクセシビリティの自動検査                                    | 全画面部品のブラウザテスト                                                                   | `runAxe`                                                         | —                        |
-| 4.1, 4.2, 4.3, 4.11                 | GFM・Raw HTML・見出しレベル1・画像・脚注の文言                | MarkdownProcessor、LiteralSyntax                                                             | `renderMarkdown`                                                 | 描画の処理の順序         |
-| 4.4, 4.5, 4.6, 4.7                  | 見出しのID・接頭辞・`#`の参照・本文由来のID                   | HeadingSlug、HeadingIds、SanitizeSchema、AnchorPrefix                                        | `slugifyHeading`・`idPrefixFor`                                  | 描画の処理の順序         |
-| 4.8, 4.9, 4.10                      | リンクの開き方と`rel`                                         | LinkPolicy、MarkdownOptions                                                                  | `MarkdownRenderOptions`                                          | 描画の処理の順序         |
-| 4.12, 4.13                          | 文字組みと表の横スクロール                                    | MarkdownContent、MarkdownStyles、TableScroll                                                 | `MarkdownContentProps`                                           | —                        |
-| 4.14                                | 折りたたみ                                                    | CollapsibleMarkdownContent                                                                   | `CollapsibleMarkdownContentProps`                                | —                        |
-| 4.15                                | ページの描画とブラウザで同じHTML                              | useRenderedMarkdown、MarkdownRenderer                                                        | `useRenderedMarkdown`                                            | —                        |
-| 5.1, 5.2, 5.3                       | 許可リスト・参照先の制限・危険な出力の禁止                    | SanitizeSchema、LinkPolicy                                                                   | —                                                                | 描画の処理の順序         |
-| 5.4                                 | サニタイズ済みの型                                            | MarkdownRenderer                                                                             | `SanitizedHtml`                                                  | —                        |
-| 5.5                                 | 生のHTMLの挿入の1箇所化                                       | MarkdownLintRules、RawHtmlExceptionCheck、MarkdownContent                                    | —                                                                | —                        |
-| 5.6                                 | 攻撃パターン集                                                | XssPayloads                                                                                  | —                                                                | —                        |
-| 6.1, 6.2                            | 見出しの一覧                                                  | ExtractHeadings                                                                              | `RenderedMarkdown.headings`                                      | 描画の処理の順序         |
-| 6.3, 6.4                            | プレーンテキスト                                              | MarkdownSearchText                                                                           | `extractSearchText`・`RenderedMarkdown.plainText`                | 描画の処理の順序         |
-| 7.1                                 | 書記素                                                        | Graphemes                                                                                    | `countGraphemes`                                                 | —                        |
-| 7.2, 7.3, 7.4, 7.5, 7.6             | 検証規則と文言                                                | MarkdownTextSchema、TextSafety                                                               | `markdownTextSchema`                                             | —                        |
-| 7.7                                 | 原文を保存する規約                                            | TechDocs                                                                                     | —                                                                | —                        |
-| 8.1, 8.2, 8.3, 8.4, 8.5, 8.6        | 索引の構造・ひな形・同期・重み・再構築                        | SearchDocumentColumns、SearchIndexDefinition、SearchIndexSql、SearchIndexAggregation         | `defineSearchIndex`・`renderSearchIndexSql`                      | —                        |
-| 8.7                                 | Time Travelの規約                                             | TechDocs                                                                                     | —                                                                | —                        |
-| 9.1                                 | 書き込みを待たせない非同期の更新                              | SearchIndexStatements、SearchIndexRefreshRequester、SearchIndexRefreshHandler                | `markPending`・`requestRefresh`・`search-index.refresh`          | 索引の更新               |
-| 9.2, 9.3                            | 元データの読み直しと対象外の削除                              | SearchIndexRefreshHandler、SearchSourceProvider、SearchIndexRepository                       | `SearchSourceProvider.read`                                      | 索引の更新               |
-| 9.4, 9.5                            | 構文の除去・NFKC・キーワード抽出                              | IndexDocumentBuilder、MarkdownSearchText、NaturalLanguageProtocol、KeywordSelection          | `buildIndexDocument`・`selectKeywords`                           | 索引の更新               |
-| 9.6                                 | 変わっていない入力の再利用                                    | RefreshDecision                                                                              | `planRefresh`                                                    | 索引の更新               |
-| 9.7, 9.8, 9.9                       | 古い版・削除との競合・重複の配送                              | SearchIndexRepository、SearchIndexRefreshHandler                                             | `SearchIndexStore.upsert`                                        | 索引の更新               |
-| 9.10                                | 要求の送信の失敗の回復                                        | SearchIndexRefreshRequester、SearchIndexStatements、SearchKeywordReextractionJob             | `requestRefresh`                                                 | 日次の再抽出             |
-| 10.1, 10.2, 10.3, 10.4, 10.5        | 再試行・縮退・非対応言語・設定の誤り                          | RefreshDecision、SearchIndexRefreshHandler、NaturalLanguageProtocol                          | `decideAfterExtraction`・`SEARCH_INDEX_REFRESH_RETRY`            | キーワードの状態         |
-| 10.6                                | 日次の再抽出                                                  | SearchKeywordReextractionJob、SearchIndexRepository                                          | `findSourceIdsForReextraction`                                   | 日次の再抽出             |
-| 10.7                                | 障害時も書き込みと検索を止めない                              | SearchIndexRefreshRequester、FtsQuery                                                        | —                                                                | 索引の更新               |
-| 10.8                                | 抽出を無効にした環境                                          | KeywordExtractors                                                                            | `DisabledKeywordExtractor`                                       | キーワードの状態         |
-| 11.1, 11.2                          | 削除の文と分割                                                | SearchIndexStatements                                                                        | `deleteSources`                                                  | —                        |
-| 11.3                                | 削除後の要求で作り直さない                                    | SearchIndexRepository、SearchIndexRefreshHandler                                             | 条件付きの追加・更新                                             | 索引の更新               |
-| 12.1, 12.2, 12.3, 12.4              | 検索語の正規化と検索式                                        | SearchTerms                                                                                  | `normalizeSearchTerms`・`buildFtsMatchExpression`                | —                        |
-| 12.5                                | 一致と関連度の部品                                            | FtsQuery                                                                                     | `ftsRankedSources`・`bm25Rank`                                   | —                        |
-| 12.6                                | 大文字小文字・全角半角・発音区別符号の無視                    | SearchIndexSql、SearchTerms                                                                  | `tokenize='unicode61 remove_diacritics 2'`・NFKC                 | —                        |
-| 13.1, 13.2, 13.3, 13.5              | 強調表示の範囲                                                | HighlightRanges                                                                              | `findHighlightRanges`                                            | —                        |
-| 13.4                                | `<mark>`の表示                                                | HighlightedText                                                                              | `HighlightedTextProps`                                           | —                        |
-| 14.1, 14.4, 14.5                    | 検索対象の登録と検証                                          | SearchTargetRegistry                                                                         | `defineSearchTarget`・`createSearchTargetRegistry`               | —                        |
-| 14.2                                | ドメイン向けの手段                                            | SearchIndexStatements、SearchIndexRefreshRequester                                           | `SearchIndexStatements`・`SearchIndexRefreshRequester`           | 索引の更新               |
-| 14.3                                | 未登録の検索対象                                              | SearchIndexRefreshHandler                                                                    | —                                                                | —                        |
-| 15.1                                | 処理のログ                                                    | SearchIndexRefreshHandler                                                                    | ログのカテゴリ`['search','index']`                               | —                        |
-| 15.2, 15.3                          | キーの管理と送る情報の限定                                    | EventSearchComposition、IndexDocumentBuilder                                                 | `GOOGLE_NL_API_KEY`                                              | —                        |
-| 15.4                                | 要求の打ち切り                                                | KeywordExtractors                                                                            | `GoogleNaturalLanguageExtractor`                                 | —                        |
-| 15.5                                | 疎通確認の手順                                                | KeywordExtractionSmoke                                                                       | `smoke:keyword-extraction`                                       | —                        |
-| 15.6                                | 再抽出のログ                                                  | SearchKeywordReextractionJob                                                                 | —                                                                | 日次の再抽出             |
-| 16.1, 16.2                          | カバレッジとD1上のテスト                                      | 全コンポーネントのテスト                                                                     | —                                                                | —                        |
-| 16.3, 16.4                          | 技術ドキュメント                                              | TechDocs                                                                                     | —                                                                | —                        |
-| 16.5, 16.6                          | tech-stack.mdと開発者向け文書                                 | DeveloperDocs                                                                                | —                                                                | —                        |
-| 16.7                                | サービス仕様                                                  | ServiceDocs                                                                                  | —                                                                | —                        |
-| 16.8                                | ジョブとメッセージ種別の名前の規約                            | TechDocs                                                                                     | `infra/003-async-processing.md`                                  | —                        |
-| 16.9                                | 国外移転の記載事項のGoogle Cloudの項                          | ServiceDocs                                                                                  | `legal/001`・`legal/003`の「国外移転の記載事項」                 | —                        |
+| Requirement                  | Summary                                                 | Components                                                                                      | Interfaces                                              | Flows            |
+| ---------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------- |
+| 1.1, 1.2                     | 4アプリで同じ定義・同じ結果                             | CommonLibProject、MarkdownRenderer、Graphemes、MarkdownTextSchema、SearchTerms、HighlightRanges | `renderMarkdown`・`countGraphemes`ほか                  | 描画の処理の順序 |
+| 1.3                          | 共用部品の依存の境界                                    | CommonLibProject                                                                                | `import-boundary.unit.test.ts`                          | —                |
+| 1.4                          | 配置と品質ゲートへの参加                                | WorkspaceLayoutUpdate                                                                           | `SHARED_DIRS`                                           | —                |
+| 1.5, 1.6                     | 依存の宣言と型検査、同じ参照の書き方                    | ConsumerAppIntegration                                                                          | 兄弟の相対パス`../common-lib`                           | —                |
+| 2.1, 2.2                     | ツールバーと挿入の除外                                  | MarkdownToolbar、EditorFeatures、EditorCommands                                                 | `EditorAction`・`EditorController`                      | 入力欄の読み込み |
+| 2.3, 2.4                     | 見出しレベル1・画像・ファイルの扱い                     | ForbiddenNodeNormalizer、EditorFeatures、HeadingInputRule                                       | ProseMirrorのプラグイン                                 | —                |
+| 2.5, 2.9, 2.10, 2.14, 2.15   | 編集領域・値の受け渡し・外部の置き換え・無効・CJKの強調 | CrepeEditorSurface、MarkdownEditor、CjkRemarkPlugins                                            | `EditorSurfaceProps`・`MarkdownEditorProps`             | 入力欄の読み込み |
+| 2.6, 2.7                     | プレビュー                                              | MarkdownEditor、MarkdownContent                                                                 | `MarkdownEditorProps.preview`                           | —                |
+| 2.8                          | 書記素のカウンター                                      | MarkdownLengthCounter、Graphemes                                                                | `countGraphemes`                                        | —                |
+| 2.11, 2.12, 2.13             | 仮の表示・読み込み失敗・遅延読み込み                    | EditorPlaceholder、EditorLoadBoundary、LoadCrepeEditor、MarkdownLintRules、EditorBundleCheck    | `loadCrepeEditor`                                       | 入力欄の読み込み |
+| 3.1, 3.4                     | ツールバーとリンクのダイアログのキーボード操作          | MarkdownToolbar、MarkdownLinkDialog                                                             | —                                                       | —                |
+| 3.2, 3.3                     | 編集領域の関連付けとTabキー                             | EditorAccessibility、EditorFeatures                                                             | `EditorSurfaceProps`                                    | —                |
+| 3.5                          | 超過の読み上げ                                          | MarkdownLengthCounter                                                                           | —                                                       | —                |
+| 3.6                          | アクセシビリティの自動検査                              | 全画面部品のブラウザテスト                                                                      | `runAxe`                                                | —                |
+| 4.1, 4.2, 4.3, 4.11          | GFM・Raw HTML・見出しレベル1・画像・脚注の文言          | MarkdownProcessor、LiteralSyntax                                                                | `renderMarkdown`                                        | 描画の処理の順序 |
+| 4.4, 4.5, 4.6, 4.7           | 見出しのID・接頭辞・`#`の参照・本文由来のID             | HeadingSlug、HeadingIds、SanitizeSchema、AnchorPrefix                                           | `slugifyHeading`・`idPrefixFor`                         | 描画の処理の順序 |
+| 4.8, 4.9, 4.10               | リンクの開き方と`rel`                                   | LinkPolicy、MarkdownOptions                                                                     | `MarkdownRenderOptions`                                 | 描画の処理の順序 |
+| 4.12, 4.13                   | 文字組みと表の横スクロール                              | MarkdownContent、MarkdownStyles、TableScroll                                                    | `MarkdownContentProps`                                  | —                |
+| 4.14                         | 折りたたみ                                              | CollapsibleMarkdownContent                                                                      | `CollapsibleMarkdownContentProps`                       | —                |
+| 4.15                         | ページの描画とブラウザで同じHTML                        | useRenderedMarkdown、MarkdownRenderer                                                           | `useRenderedMarkdown`                                   | —                |
+| 5.1, 5.2, 5.3                | 許可リスト・参照先の制限・危険な出力の禁止              | SanitizeSchema、LinkPolicy                                                                      | —                                                       | 描画の処理の順序 |
+| 5.4                          | サニタイズ済みの型                                      | MarkdownRenderer                                                                                | `SanitizedHtml`                                         | —                |
+| 5.5                          | 生のHTMLの挿入の1箇所化                                 | MarkdownLintRules、RawHtmlExceptionCheck、MarkdownContent                                       | —                                                       | —                |
+| 5.6                          | 攻撃パターン集                                          | XssPayloads                                                                                     | —                                                       | —                |
+| 6.1, 6.2                     | 見出しの一覧                                            | ExtractHeadings                                                                                 | `RenderedMarkdown.headings`                             | 描画の処理の順序 |
+| 6.3, 6.4                     | プレーンテキスト                                        | MarkdownSearchText                                                                              | `extractSearchText`・`RenderedMarkdown.plainText`       | 描画の処理の順序 |
+| 7.1                          | 書記素                                                  | Graphemes                                                                                       | `countGraphemes`                                        | —                |
+| 7.2, 7.3, 7.4, 7.5, 7.6      | 検証規則と文言                                          | MarkdownTextSchema、TextSafety                                                                  | `markdownTextSchema`                                    | —                |
+| 7.7                          | 原文を保存する規約                                      | TechDocs                                                                                        | —                                                       | —                |
+| 8.1, 8.2, 8.3, 8.4, 8.5, 8.6 | 索引の構造・ひな形・同期・重み・再構築                  | SearchDocumentColumns、SearchIndexDefinition、SearchIndexSql、SearchIndexAggregation            | `defineSearchIndex`・`renderSearchIndexSql`             | —                |
+| 8.7                          | Time Travelの規約                                       | TechDocs                                                                                        | —                                                       | —                |
+| 9.1                          | 書き込みを待たせない非同期の更新                        | SearchIndexStatements、SearchIndexRefreshRequester、SearchIndexRefreshHandler                   | `markPending`・`requestRefresh`・`search-index.refresh` | 索引の更新       |
+| 9.2, 9.3                     | 元データの読み直しと対象外の削除                        | SearchIndexRefreshHandler、SearchSourceProvider、SearchIndexRepository                          | `SearchSourceProvider.read`                             | 索引の更新       |
+| 9.4, 9.5                     | 構文の除去・NFKC・キーワード抽出                        | IndexDocumentBuilder、MarkdownSearchText、NaturalLanguageProtocol、KeywordSelection             | `buildIndexDocument`・`selectKeywords`                  | 索引の更新       |
+| 9.6                          | 変わっていない入力の再利用                              | RefreshDecision                                                                                 | `planRefresh`                                           | 索引の更新       |
+| 9.7, 9.8, 9.9                | 古い版・削除との競合・重複の配送                        | SearchIndexRepository、SearchIndexRefreshHandler                                                | `SearchIndexStore.upsert`                               | 索引の更新       |
+| 9.10                         | 要求の送信の失敗の回復                                  | SearchIndexRefreshRequester、SearchIndexStatements、SearchKeywordReextractionJob                | `requestRefresh`                                        | 日次の再抽出     |
+| 10.1, 10.2, 10.3, 10.4, 10.5 | 再試行・縮退・非対応言語・設定の誤り                    | RefreshDecision、SearchIndexRefreshHandler、NaturalLanguageProtocol                             | `decideAfterExtraction`・`SEARCH_INDEX_REFRESH_RETRY`   | キーワードの状態 |
+| 10.6                         | 日次の再抽出                                            | SearchKeywordReextractionJob、SearchIndexRepository                                             | `findSourceIdsForReextraction`                          | 日次の再抽出     |
+| 10.7                         | 障害時も書き込みと検索を止めない                        | SearchIndexRefreshRequester、FtsQuery                                                           | —                                                       | 索引の更新       |
+| 10.8                         | 抽出を無効にした環境                                    | KeywordExtractors                                                                               | `DisabledKeywordExtractor`                              | キーワードの状態 |
+| 11.1, 11.2                   | 削除の文と分割                                          | SearchIndexStatements                                                                           | `deleteSources`                                         | —                |
+| 11.3                         | 削除後の要求で作り直さない                              | SearchIndexRepository、SearchIndexRefreshHandler                                                | 条件付きの追加・更新                                    | 索引の更新       |
+| 12.1, 12.2, 12.3, 12.4       | 検索語の正規化と検索式                                  | SearchTerms                                                                                     | `normalizeSearchTerms`・`buildFtsMatchExpression`       | —                |
+| 12.5                         | 一致と関連度の部品                                      | FtsQuery                                                                                        | `ftsRankedSources`・`bm25Rank`                          | —                |
+| 12.6                         | 大文字小文字・全角半角・発音区別符号の無視              | SearchIndexSql、SearchTerms                                                                     | `tokenize='unicode61 remove_diacritics 2'`・NFKC        | —                |
+| 13.1, 13.2, 13.3, 13.5       | 強調表示の範囲                                          | HighlightRanges                                                                                 | `findHighlightRanges`                                   | —                |
+| 13.4                         | `<mark>`の表示                                          | HighlightedText                                                                                 | `HighlightedTextProps`                                  | —                |
+| 14.1, 14.4, 14.5             | 検索対象の登録と検証                                    | SearchTargetRegistry                                                                            | `defineSearchTarget`・`createSearchTargetRegistry`      | —                |
+| 14.2                         | ドメイン向けの手段                                      | SearchIndexStatements、SearchIndexRefreshRequester                                              | `SearchIndexStatements`・`SearchIndexRefreshRequester`  | 索引の更新       |
+| 14.3                         | 未登録の検索対象                                        | SearchIndexRefreshHandler                                                                       | —                                                       | —                |
+| 15.1                         | 処理のログ                                              | SearchIndexRefreshHandler                                                                       | ログのカテゴリ`['search','index']`                      | —                |
+| 15.2, 15.3                   | キーの管理と送る情報の限定                              | EventSearchComposition、IndexDocumentBuilder                                                    | `GOOGLE_NL_API_KEY`                                     | —                |
+| 15.4                         | 要求の打ち切り                                          | KeywordExtractors                                                                               | `GoogleNaturalLanguageExtractor`                        | —                |
+| 15.5                         | 疎通確認の手順                                          | KeywordExtractionSmoke                                                                          | `smoke:keyword-extraction`                              | —                |
+| 15.6                         | 再抽出のログ                                            | SearchKeywordReextractionJob                                                                    | —                                                       | 日次の再抽出     |
+| 16.1, 16.2                   | カバレッジとD1上のテスト                                | 全コンポーネントのテスト                                                                        | —                                                       | —                |
+| 16.3, 16.4                   | 技術ドキュメント                                        | TechDocs                                                                                        | —                                                       | —                |
+| 16.5, 16.6                   | tech-stack.mdと開発者向け文書                           | DeveloperDocs                                                                                   | —                                                       | —                |
+| 16.7                         | サービス仕様                                            | ServiceDocs                                                                                     | —                                                       | —                |
+| 16.8                         | ジョブとメッセージ種別の名前の規約                      | TechDocs                                                                                        | `infra/003-async-processing.md`                         | —                |
+| 16.9                         | 国外移転の記載事項のGoogle Cloudの項                    | ServiceDocs                                                                                     | `legal/001`・`legal/003`の「国外移転の記載事項」        | —                |
 
 ## Components and Interfaces
 
-| Component                                                  | Domain/Layer          | Intent                                                         | Req Coverage                                  | Key Dependencies (P0/P1)                                  | Contracts      |
-| ---------------------------------------------------------- | --------------------- | -------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------- | -------------- |
-| CommonLibProject                                           | common-lib            | プロジェクト・自己完結の型検査設定・読み込みの境界             | 1.1, 1.2, 1.3                                 | dev-toolingの基底設定 (P0)                                | State          |
-| MarkdownOptions・HeadingSlug                               | common-lib/markdown   | 描画の指定の検証とFR-MDOWN-006の変換                           | 4.4, 4.5, 4.6, 4.8, 4.9, 4.10                 | —                                                         | Service        |
-| MarkdownProcessor(LiteralSyntax・HeadingIds・SanitizeSchema・AnchorPrefix) | common-lib/markdown | 解析からサニタイズ・接頭辞までの共通の処理                      | 4.1〜4.7, 4.11, 5.1, 5.3                      | unified系 (P0)                                            | Service        |
-| MarkdownRenderer(LinkPolicy・TableScroll・ExtractHeadings) | common-lib/markdown   | 表示用のHTMLと見出しの一覧                                     | 4.8〜4.10, 4.13, 5.2, 5.4, 6.1, 6.2           | MarkdownProcessor (P0)                                    | Service        |
-| MarkdownSearchText                                         | common-lib/markdown   | 索引用のプレーンテキスト                                       | 6.3, 6.4, 9.4                                 | MarkdownProcessor (P0)、hast-util-to-text (P0)            | Service        |
-| XssPayloads                                                | common-lib/markdown   | 攻撃パターン集とその全件の検査                                 | 5.6                                           | MarkdownRenderer (P0)                                     | —              |
-| Graphemes・TextSafety                                      | common-lib/text       | 書記素の数と禁止文字の判定                                     | 2.8, 7.1, 7.5                                 | `Intl.Segmenter` (P0)                                     | Service        |
-| MarkdownTextSchema                                         | common-lib/validation | フロントとAPIで共用する検証規則                                | 7.2〜7.6                                      | zod (P0)                                                  | Service        |
-| SearchTerms                                                | common-lib/search     | 検索語の正規化・検索式・索引用テキストの正規化                 | 9.4, 12.1〜12.4, 12.6                         | —                                                         | Service        |
-| HighlightRanges                                            | common-lib/search     | 強調表示の範囲                                                 | 13.1, 13.2, 13.3, 13.5                        | `Intl.Segmenter` (P0)                                     | Service        |
-| MarkdownContent・useRenderedMarkdown・useMarkdownOptions   | frontend-lib          | 表示部品とメモ化・サイトのオリジンの補完                       | 2.6, 4.12, 4.13, 4.15, 5.5                    | MarkdownRenderer (P0)、PublicRuntimeConfig (P1)           | State          |
-| CollapsibleMarkdownContent                                 | frontend-lib          | 折りたたみ付きの表示                                           | 4.14                                          | MarkdownContent (P0)                                      | —              |
-| MarkdownStyles                                             | frontend-lib/styles   | `prose`の文字組みと本文の補助のスタイル                        | 4.12, 4.13                                    | @tailwindcss/typography (P0)                              | —              |
-| MarkdownEditor(外枠)                                       | frontend-lib          | タブ・ツールバー・遅延読み込み・カウンター・プレビュー         | 2.1, 2.6〜2.14, 3.1, 3.5                      | CrepeEditorSurface (P0)、MarkdownContent (P0)             | Service, State |
-| MarkdownToolbar・MarkdownLinkDialog・MarkdownLengthCounter・EditorPlaceholder・EditorLoadBoundary・LoadCrepeEditor | frontend-lib | 外枠の部品                                        | 2.1, 2.8, 2.11, 2.12, 2.13, 3.1, 3.4, 3.5     | frontend-platformのUI部品 (P0)                            | —              |
-| CrepeEditorSurface(EditorFeatures・HeadingInputRule・ForbiddenNodeNormalizer・EditorCommands・EditorAccessibility・CjkRemarkPlugins・CrepeTheme) | frontend-lib/crepe | 遅延読み込みの編集領域             | 2.1〜2.5, 2.9, 2.10, 2.14, 2.15, 3.2, 3.3     | @milkdown/crepe・kit・react (P0)                          | Service        |
-| HighlightedText                                            | frontend-lib          | `<mark>`による強調表示                                         | 13.4                                          | HighlightRanges (P0)                                      | —              |
-| MarkdownLintRules・RawHtmlExceptionCheck・EditorBundleCheck | frontend-lib/config   | 静的解析の規則・例外の箇所の検査・分離の検査                   | 2.13, 5.5                                     | frontend-platformの`frontend-lint.ts` (P0)、Vite (P1)     | Batch          |
-| SiteOriginConfig                                           | frontend-lib/server・client・admin | 変数`CLIENT_SITE_ORIGIN`の検証と公開                 | 4.8, 4.9                                      | frontend-platformの環境の検証 (P0)                        | State          |
-| SearchDocumentColumns                                      | db/schema             | 索引文書の共通の列と状態の値                                   | 8.2, 9.7, 10.3, 10.4                          | drizzle-orm (P0)                                          | State          |
-| SearchIndexDefinition・SearchIndexSql                      | db/search             | 索引の定義の検証とSQLのひな形・作り直し・再構築               | 8.1, 8.3〜8.6, 12.6                           | drizzle-orm (P0)                                          | Service        |
-| FtsQuery                                                   | db/search             | 一致と関連度のSQL断片                                          | 10.7, 12.5                                    | drizzle-orm (P0)                                          | Service        |
-| SearchIndexAggregation(SEARCH_INDEXES・SQLの出力・マイグレーションの突き合わせ) | db/search | 集約点とマイグレーションの漏れの検出                      | 8.4, 8.6                                      | SearchIndexSql (P0)                                       | Batch          |
-| SearchContracts(SEARCH_TYPES・KeywordStatus・SearchTarget・ports) | core/search      | 検索の型・ポート・識別子                                       | 14.1, 14.2                                    | —                                                         | Service        |
-| SearchIndexRefreshContract                                 | core/messaging        | メッセージ`search-index.refresh`と再試行の方針                 | 9.1, 10.1                                     | backend-platformの`defineMessageContract` (P0)            | Event          |
-| IndexDocumentBuilder                                       | core/search           | 正規化・抽出の入力・ハッシュ                                   | 9.4, 9.6, 15.3                                | MarkdownSearchText (P0)、SearchTerms (P0)                 | Service        |
-| RefreshDecision                                            | core/search           | 更新の計画と抽出結果の判定                                     | 9.6, 9.7, 10.2〜10.5, 10.8                    | —                                                         | Service        |
-| NaturalLanguageProtocol・KeywordSelection                  | core/search           | 外部APIの要求・応答の解釈・キーワードの選別                    | 9.5, 10.1, 10.4, 10.5                         | zod (P0)                                                  | Service        |
-| SearchTargetRegistry                                       | workers/search        | 検索対象の定義・検証・集約点                                   | 14.1, 14.4, 14.5                              | SearchIndexDefinition (P0)、Database (P0)                 | Service        |
-| SearchIndexRepository                                      | workers/search        | 条件付きの追加・更新・削除・再抽出の候補                       | 9.2, 9.3, 9.7, 9.8, 10.6, 11.3, 16.2          | Database (P0)、SearchTargetRegistry (P0)                  | Service        |
-| SearchIndexStatements                                      | workers/search        | ドメインの一括の書き込みに含める文                             | 9.1, 9.10, 11.1, 11.2, 14.2                   | Database (P0)                                             | Service        |
-| SearchIndexRefreshRequester・SearchSourceProvider・SearchPlatformModule | workers/search | 更新の要求・元データの読み取り・共通の束縛                | 9.1, 9.10, 10.7, 14.2                         | MessagePublisher (P0)                                     | Service        |
-| SearchIndexRefreshHandler                                  | event/application     | 索引の更新の処理                                               | 9.1〜9.10, 10.1〜10.5, 11.3, 14.3, 15.1       | ports (P0)、Clock (P1)                                    | Batch          |
-| KeywordExtractors                                          | event/infrastructure  | Google Cloud Natural Language・無効化・選択                    | 9.5, 10.1, 10.4, 10.5, 10.8, 15.4             | fetch (P0)、NaturalLanguageProtocol (P0)                  | Service        |
-| EventSearchComposition                                     | event/composition     | 環境・束縛・メッセージの登録                                   | 9.1, 15.2                                     | backend-platformの登録箇所 (P0)                           | State          |
-| KeywordExtractionSmoke                                     | event/scripts         | 実際のAPIへの疎通確認                                          | 15.5                                          | NaturalLanguageProtocol (P0)                              | Batch          |
-| SearchKeywordReextractionJob・ApiSearchComposition         | api                   | 日次の再抽出とその登録                                         | 9.10, 10.6, 15.6                              | SearchIndexStore (P0)、SearchIndexRefreshRequester (P0)   | Batch          |
-| WorkspaceLayoutUpdate                                      | dev-tooling           | 共有ディレクトリの定義・マウント・Git管理外                    | 1.4                                           | `shared-dirs`の仕組み (P0)                                | State          |
-| ConsumerAppIntegration                                     | 4アプリ・frontend-lib | 依存・型検査・除外・Viteの設定                                 | 1.5, 1.6                                      | WorkspaceLayoutUpdate (P0)                                | State          |
-| TechDocs・DeveloperDocs・ServiceDocs                       | docs                  | 技術ドキュメント・開発者向け文書・サービス仕様                 | 7.7, 8.7, 16.3〜16.9                          | —                                                         | —              |
+| Component                                                                                                                                        | Domain/Layer                       | Intent                                                 | Req Coverage                              | Key Dependencies (P0/P1)                                | Contracts      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------ | ----------------------------------------- | ------------------------------------------------------- | -------------- |
+| CommonLibProject                                                                                                                                 | common-lib                         | プロジェクト・自己完結の型検査設定・読み込みの境界     | 1.1, 1.2, 1.3                             | dev-toolingの基底設定 (P0)                              | State          |
+| MarkdownOptions・HeadingSlug                                                                                                                     | common-lib/markdown                | 描画の指定の検証とFR-MDOWN-006の変換                   | 4.4, 4.5, 4.6, 4.8, 4.9, 4.10             | —                                                       | Service        |
+| MarkdownProcessor(LiteralSyntax・HeadingIds・SanitizeSchema・AnchorPrefix)                                                                       | common-lib/markdown                | 解析からサニタイズ・接頭辞までの共通の処理             | 4.1〜4.7, 4.11, 5.1, 5.3                  | unified系 (P0)                                          | Service        |
+| MarkdownRenderer(LinkPolicy・TableScroll・ExtractHeadings)                                                                                       | common-lib/markdown                | 表示用のHTMLと見出しの一覧                             | 4.8〜4.10, 4.13, 5.2, 5.4, 6.1, 6.2       | MarkdownProcessor (P0)                                  | Service        |
+| MarkdownSearchText                                                                                                                               | common-lib/markdown                | 索引用のプレーンテキスト                               | 6.3, 6.4, 9.4                             | MarkdownProcessor (P0)、hast-util-to-text (P0)          | Service        |
+| XssPayloads                                                                                                                                      | common-lib/markdown                | 攻撃パターン集とその全件の検査                         | 5.6                                       | MarkdownRenderer (P0)                                   | —              |
+| Graphemes・TextSafety                                                                                                                            | common-lib/text                    | 書記素の数と禁止文字の判定                             | 2.8, 7.1, 7.5                             | `Intl.Segmenter` (P0)                                   | Service        |
+| MarkdownTextSchema                                                                                                                               | common-lib/validation              | フロントとAPIで共用する検証規則                        | 7.2〜7.6                                  | zod (P0)                                                | Service        |
+| SearchTerms                                                                                                                                      | common-lib/search                  | 検索語の正規化・検索式・索引用テキストの正規化         | 9.4, 12.1〜12.4, 12.6                     | —                                                       | Service        |
+| HighlightRanges                                                                                                                                  | common-lib/search                  | 強調表示の範囲                                         | 13.1, 13.2, 13.3, 13.5                    | `Intl.Segmenter` (P0)                                   | Service        |
+| MarkdownContent・useRenderedMarkdown・useMarkdownOptions                                                                                         | frontend-lib                       | 表示部品とメモ化・サイトのオリジンの補完               | 2.6, 4.12, 4.13, 4.15, 5.5                | MarkdownRenderer (P0)、PublicRuntimeConfig (P1)         | State          |
+| CollapsibleMarkdownContent                                                                                                                       | frontend-lib                       | 折りたたみ付きの表示                                   | 4.14                                      | MarkdownContent (P0)                                    | —              |
+| MarkdownStyles                                                                                                                                   | frontend-lib/styles                | `prose`の文字組みと本文の補助のスタイル                | 4.12, 4.13                                | @tailwindcss/typography (P0)                            | —              |
+| MarkdownEditor(外枠)                                                                                                                             | frontend-lib                       | タブ・ツールバー・遅延読み込み・カウンター・プレビュー | 2.1, 2.6〜2.14, 3.1, 3.5                  | CrepeEditorSurface (P0)、MarkdownContent (P0)           | Service, State |
+| MarkdownToolbar・MarkdownLinkDialog・MarkdownLengthCounter・EditorPlaceholder・EditorLoadBoundary・LoadCrepeEditor                               | frontend-lib                       | 外枠の部品                                             | 2.1, 2.8, 2.11, 2.12, 2.13, 3.1, 3.4, 3.5 | frontend-platformのUI部品 (P0)                          | —              |
+| CrepeEditorSurface(EditorFeatures・HeadingInputRule・ForbiddenNodeNormalizer・EditorCommands・EditorAccessibility・CjkRemarkPlugins・CrepeTheme) | frontend-lib/crepe                 | 遅延読み込みの編集領域                                 | 2.1〜2.5, 2.9, 2.10, 2.14, 2.15, 3.2, 3.3 | @milkdown/crepe・kit・react (P0)                        | Service        |
+| HighlightedText                                                                                                                                  | frontend-lib                       | `<mark>`による強調表示                                 | 13.4                                      | HighlightRanges (P0)                                    | —              |
+| MarkdownLintRules・RawHtmlExceptionCheck・EditorBundleCheck                                                                                      | frontend-lib/config                | 静的解析の規則・例外の箇所の検査・分離の検査           | 2.13, 5.5                                 | frontend-platformの`frontend-lint.ts` (P0)、Vite (P1)   | Batch          |
+| SiteOriginConfig                                                                                                                                 | frontend-lib/server・client・admin | 変数`CLIENT_SITE_ORIGIN`の検証と公開                   | 4.8, 4.9                                  | frontend-platformの環境の検証 (P0)                      | State          |
+| SearchDocumentColumns                                                                                                                            | db/schema                          | 索引文書の共通の列と状態の値                           | 8.2, 9.7, 10.3, 10.4                      | drizzle-orm (P0)                                        | State          |
+| SearchIndexDefinition・SearchIndexSql                                                                                                            | db/search                          | 索引の定義の検証とSQLのひな形・作り直し・再構築        | 8.1, 8.3〜8.6, 12.6                       | drizzle-orm (P0)                                        | Service        |
+| FtsQuery                                                                                                                                         | db/search                          | 一致と関連度のSQL断片                                  | 10.7, 12.5                                | drizzle-orm (P0)                                        | Service        |
+| SearchIndexAggregation(SEARCH_INDEXES・SQLの出力・マイグレーションの突き合わせ)                                                                  | db/search                          | 集約点とマイグレーションの漏れの検出                   | 8.4, 8.6                                  | SearchIndexSql (P0)                                     | Batch          |
+| SearchContracts(SEARCH_TYPES・KeywordStatus・SearchTarget・ports)                                                                                | core/search                        | 検索の型・ポート・識別子                               | 14.1, 14.2                                | —                                                       | Service        |
+| SearchIndexRefreshContract                                                                                                                       | core/messaging                     | メッセージ`search-index.refresh`と再試行の方針         | 9.1, 10.1                                 | backend-platformの`defineMessageContract` (P0)          | Event          |
+| IndexDocumentBuilder                                                                                                                             | core/search                        | 正規化・抽出の入力・ハッシュ                           | 9.4, 9.6, 15.3                            | MarkdownSearchText (P0)、SearchTerms (P0)               | Service        |
+| RefreshDecision                                                                                                                                  | core/search                        | 更新の計画と抽出結果の判定                             | 9.6, 9.7, 10.2〜10.5, 10.8                | —                                                       | Service        |
+| NaturalLanguageProtocol・KeywordSelection                                                                                                        | core/search                        | 外部APIの要求・応答の解釈・キーワードの選別            | 9.5, 10.1, 10.4, 10.5                     | zod (P0)                                                | Service        |
+| SearchTargetRegistry                                                                                                                             | workers/search                     | 検索対象の定義・検証・集約点                           | 14.1, 14.4, 14.5                          | SearchIndexDefinition (P0)、Database (P0)               | Service        |
+| SearchIndexRepository                                                                                                                            | workers/search                     | 条件付きの追加・更新・削除・再抽出の候補               | 9.2, 9.3, 9.7, 9.8, 10.6, 11.3, 16.2      | Database (P0)、SearchTargetRegistry (P0)                | Service        |
+| SearchIndexStatements                                                                                                                            | workers/search                     | ドメインの一括の書き込みに含める文                     | 9.1, 9.10, 11.1, 11.2, 14.2               | Database (P0)                                           | Service        |
+| SearchIndexRefreshRequester・SearchSourceProvider・SearchPlatformModule                                                                          | workers/search                     | 更新の要求・元データの読み取り・共通の束縛             | 9.1, 9.10, 10.7, 14.2                     | MessagePublisher (P0)                                   | Service        |
+| SearchIndexRefreshHandler                                                                                                                        | event/application                  | 索引の更新の処理                                       | 9.1〜9.10, 10.1〜10.5, 11.3, 14.3, 15.1   | ports (P0)、Clock (P1)                                  | Batch          |
+| KeywordExtractors                                                                                                                                | event/infrastructure               | Google Cloud Natural Language・無効化・選択            | 9.5, 10.1, 10.4, 10.5, 10.8, 15.4         | fetch (P0)、NaturalLanguageProtocol (P0)                | Service        |
+| EventSearchComposition                                                                                                                           | event/composition                  | 環境・束縛・メッセージの登録                           | 9.1, 15.2                                 | backend-platformの登録箇所 (P0)                         | State          |
+| KeywordExtractionSmoke                                                                                                                           | event/scripts                      | 実際のAPIへの疎通確認                                  | 15.5                                      | NaturalLanguageProtocol (P0)                            | Batch          |
+| SearchKeywordReextractionJob・ApiSearchComposition                                                                                               | api                                | 日次の再抽出とその登録                                 | 9.10, 10.6, 15.6                          | SearchIndexStore (P0)、SearchIndexRefreshRequester (P0) | Batch          |
+| WorkspaceLayoutUpdate                                                                                                                            | dev-tooling                        | 共有ディレクトリの定義・マウント・Git管理外            | 1.4                                       | `shared-dirs`の仕組み (P0)                              | State          |
+| ConsumerAppIntegration                                                                                                                           | 4アプリ・frontend-lib              | 依存・型検査・除外・Viteの設定                         | 1.5, 1.6                                  | WorkspaceLayoutUpdate (P0)                              | State          |
+| TechDocs・DeveloperDocs・ServiceDocs                                                                                                             | docs                               | 技術ドキュメント・開発者向け文書・サービス仕様         | 7.7, 8.7, 16.3〜16.9                      | —                                                       | —              |
 
 ### common-lib
 
 #### CommonLibProject
 
-| Field        | Detail                                                       |
-| ------------ | ------------------------------------------------------------ |
-| Intent       | 共用部品のプロジェクトと、依存の境界・型検査設定の保証       |
-| Requirements | 1.1, 1.2, 1.3                                                |
+| Field        | Detail                                                 |
+| ------------ | ------------------------------------------------------ |
+| Intent       | 共用部品のプロジェクトと、依存の境界・型検査設定の保証 |
+| Requirements | 1.1, 1.2, 1.3                                          |
 
 **Responsibilities & Constraints**
 
@@ -623,17 +623,18 @@ sequenceDiagram
 
 #### MarkdownOptions・HeadingSlug
 
-| Field        | Detail                                                     |
-| ------------ | ---------------------------------------------------------- |
-| Intent       | 描画の指定の検証と、FR-MDOWN-006の変換                     |
-| Requirements | 4.4, 4.5, 4.6, 4.8, 4.9, 4.10                              |
+| Field        | Detail                                 |
+| ------------ | -------------------------------------- |
+| Intent       | 描画の指定の検証と、FR-MDOWN-006の変換 |
+| Requirements | 4.4, 4.5, 4.6, 4.8, 4.9, 4.10          |
 
 **Contracts**: Service [x]
 
 ##### Service Interface
 
 ```typescript
-export type LinkRelToken = 'noopener' | 'noreferrer' | 'nofollow' | 'ugc' | 'sponsored';
+export type LinkRelToken =
+  'noopener' | 'noreferrer' | 'nofollow' | 'ugc' | 'sponsored';
 
 export interface MarkdownRenderOptions {
   readonly siteOrigin: string; // 同一オリジンの判定の基準。URLのオリジン(例: https://client.example)
@@ -644,9 +645,12 @@ export interface MarkdownRenderOptions {
 
 export declare const DEFAULT_ID_PREFIX: 'user-content-';
 export declare class MarkdownOptionsError extends Error {
-  readonly field: 'siteOrigin' | 'externalLinkRel' | 'sameOriginLinkRel' | 'idScope';
+  readonly field:
+    'siteOrigin' | 'externalLinkRel' | 'sameOriginLinkRel' | 'idScope';
 }
-export declare function validateRenderOptions(options: MarkdownRenderOptions): void; // 不正ならMarkdownOptionsError
+export declare function validateRenderOptions(
+  options: MarkdownRenderOptions,
+): void; // 不正ならMarkdownOptionsError
 export declare function idPrefixFor(idScope: string | undefined): string; // 'user-content-' または 'user-content-<idScope>-'
 
 export declare function slugifyHeading(text: string): string;
@@ -659,10 +663,10 @@ export declare function normalizeAnchorFragment(fragment: string): string;
 
 #### MarkdownProcessor
 
-| Field        | Detail                                                                           |
-| ------------ | -------------------------------------------------------------------------------- |
-| Intent       | 解析からサニタイズ・接頭辞までを1つの処理として定義する                          |
-| Requirements | 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.11, 5.1, 5.3                                |
+| Field        | Detail                                                  |
+| ------------ | ------------------------------------------------------- |
+| Intent       | 解析からサニタイズ・接頭辞までを1つの処理として定義する |
+| Requirements | 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.11, 5.1, 5.3       |
 
 **Responsibilities & Constraints**
 
@@ -695,10 +699,10 @@ export declare function processMarkdown(
 
 #### MarkdownRenderer
 
-| Field        | Detail                                                       |
-| ------------ | ------------------------------------------------------------ |
-| Intent       | 表示用のサニタイズ済みHTMLと見出しの一覧を返す               |
-| Requirements | 4.8, 4.9, 4.10, 4.13, 5.2, 5.4, 6.1, 6.2                     |
+| Field        | Detail                                         |
+| ------------ | ---------------------------------------------- |
+| Intent       | 表示用のサニタイズ済みHTMLと見出しの一覧を返す |
+| Requirements | 4.8, 4.9, 4.10, 4.13, 5.2, 5.4, 6.1, 6.2       |
 
 **Responsibilities & Constraints**
 
@@ -738,10 +742,10 @@ export declare function renderMarkdown(
 
 #### MarkdownSearchText
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | 表示と同じ解釈の、構文を除いたテキスト       |
-| Requirements | 6.3, 6.4, 9.4                                |
+| Field        | Detail                                 |
+| ------------ | -------------------------------------- |
+| Intent       | 表示と同じ解釈の、構文を除いたテキスト |
+| Requirements | 6.3, 6.4, 9.4                          |
 
 **Contracts**: Service [x]
 
@@ -755,10 +759,10 @@ export declare function extractSearchText(markdown: string): string;
 
 #### Graphemes・TextSafety・MarkdownTextSchema
 
-| Field        | Detail                                                       |
-| ------------ | ------------------------------------------------------------ |
-| Intent       | 書記素の数・禁止文字の判定・フロントとAPIで共用する検証規則  |
-| Requirements | 2.8, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6                            |
+| Field        | Detail                                                      |
+| ------------ | ----------------------------------------------------------- |
+| Intent       | 書記素の数・禁止文字の判定・フロントとAPIで共用する検証規則 |
+| Requirements | 2.8, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6                           |
 
 **Contracts**: Service [x]
 
@@ -775,7 +779,9 @@ export interface MarkdownTextRule {
   readonly maxGraphemes: number; // 1以上の整数
   readonly required: boolean;
 }
-export declare function markdownTextSchema(rule: MarkdownTextRule): z.ZodType<string>;
+export declare function markdownTextSchema(
+  rule: MarkdownTextRule,
+): z.ZodType<string>;
 ```
 
 - 検証の順序と文言(7.3〜7.5): 文字列でなければZodの既定の失敗。`hasForbiddenCharacters`なら「<項目名>に使用できない文字が含まれています。」、必須で空白だけなら「<項目名>を入力してください。」、`countGraphemes`が上限を超えれば「<項目名>は<上限>文字以内で入力してください。」(上限は`Intl.NumberFormat('ja-JP')`で3桁区切り)。値は変換せず、そのまま返す。
@@ -784,10 +790,10 @@ export declare function markdownTextSchema(rule: MarkdownTextRule): z.ZodType<st
 
 #### SearchTerms
 
-| Field        | Detail                                                         |
-| ------------ | -------------------------------------------------------------- |
-| Intent       | 検索語の正規化・検索式・索引用テキストの正規化                 |
-| Requirements | 9.4, 12.1, 12.2, 12.3, 12.4, 12.6                              |
+| Field        | Detail                                         |
+| ------------ | ---------------------------------------------- |
+| Intent       | 検索語の正規化・検索式・索引用テキストの正規化 |
+| Requirements | 9.4, 12.1, 12.2, 12.3, 12.4, 12.6              |
 
 **Contracts**: Service [x]
 
@@ -808,10 +814,10 @@ export declare function normalizeIndexText(text: string): string;
 
 #### HighlightRanges
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | 名称・タグラインの強調表示の範囲             |
-| Requirements | 13.1, 13.2, 13.3, 13.5                       |
+| Field        | Detail                           |
+| ------------ | -------------------------------- |
+| Intent       | 名称・タグラインの強調表示の範囲 |
+| Requirements | 13.1, 13.2, 13.3, 13.5           |
 
 **Contracts**: Service [x]
 
@@ -835,10 +841,10 @@ export declare function findHighlightRanges(
 
 #### MarkdownContent・useRenderedMarkdown・useMarkdownOptions
 
-| Field        | Detail                                                                   |
-| ------------ | ------------------------------------------------------------------------ |
+| Field        | Detail                                                                     |
+| ------------ | -------------------------------------------------------------------------- |
 | Intent       | サニタイズ済みHTMLの唯一の挿入箇所と、描画のメモ化・サイトのオリジンの補完 |
-| Requirements | 2.6, 4.12, 4.13, 4.15, 5.5                                               |
+| Requirements | 2.6, 4.12, 4.13, 4.15, 5.5                                                 |
 
 **Contracts**: State [x]
 
@@ -866,10 +872,10 @@ export declare function useMarkdownOptions(input: {
 
 #### CollapsibleMarkdownContent
 
-| Field        | Detail                         |
-| ------------ | ------------------------------ |
+| Field        | Detail                             |
+| ------------ | ---------------------------------- |
 | Intent       | 指定の高さを超える本文の折りたたみ |
-| Requirements | 4.14                           |
+| Requirements | 4.14                               |
 
 - `MarkdownContentProps`に`collapsedHeight: number`と`fadeClassName?: string`を加える。初めから`max-height`で折りたたみ、マウント後に`ResizeObserver`で高さを測って、あふれる場合だけ下端のぼかしと「続きを読む」(`aria-expanded`・`aria-controls`)を表示し、押すと「折りたたむ」に変わる。あふれない場合はボタンを出さない。
 
@@ -879,10 +885,10 @@ export declare function useMarkdownOptions(input: {
 
 #### MarkdownEditor(外枠)
 
-| Field        | Detail                                                                                   |
-| ------------ | ---------------------------------------------------------------------------------------- |
-| Intent       | 「書く/プレビュー」・固定ツールバー・遅延読み込みの編集領域・カウンター・プレビュー       |
-| Requirements | 2.1, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 3.1, 3.5                          |
+| Field        | Detail                                                                              |
+| ------------ | ----------------------------------------------------------------------------------- |
+| Intent       | 「書く/プレビュー」・固定ツールバー・遅延読み込みの編集領域・カウンター・プレビュー |
+| Requirements | 2.1, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 3.1, 3.5                     |
 
 **Responsibilities & Constraints**
 
@@ -960,17 +966,17 @@ export interface MarkdownEditorProps {
 
 #### CrepeEditorSurface
 
-| Field        | Detail                                                                          |
-| ------------ | ------------------------------------------------------------------------------- |
-| Intent       | Crepeの編集領域を組み立てて制御器を提供する、遅延読み込みの別チャンク            |
-| Requirements | 2.1, 2.2, 2.3, 2.4, 2.5, 2.9, 2.10, 2.14, 2.15, 3.2, 3.3                        |
+| Field        | Detail                                                                |
+| ------------ | --------------------------------------------------------------------- |
+| Intent       | Crepeの編集領域を組み立てて制御器を提供する、遅延読み込みの別チャンク |
+| Requirements | 2.1, 2.2, 2.3, 2.4, 2.5, 2.9, 2.10, 2.14, 2.15, 3.2, 3.3              |
 
 **Responsibilities & Constraints**
 
 - `@milkdown/react`の`MilkdownProvider`・`useEditor`で、`CrepeBuilder({ root, defaultValue: initialValue })`をマウントし、破棄する(2.5)。
 - `EditorFeatures`(2.2・2.4・3.3): `addFeature`は`listItem`・`placeholder`(文は`placeholder`)・`cursor`・`toolbar`(ラベルを「太字」「斜体」「取り消し線」「コード」「リンク」にし、`buildToolbar`でリンクの項目の処理を`onRequestLink`に置き換える)だけとする(仮決定P1)。`builder.editor.remove`で`wrapInHeadingInputRule`・`insertImageInputRule`・`upload`・`indent`を外し、`headingKeymap`の`TurnIntoH1`を空にし、リストの`SinkListItem`・`LiftListItem`と表のセル移動の割り当てから`Tab`・`Shift-Tab`を外す(`Mod-]`・`Mod-[`は残す)。
 - `HeadingInputRule`: 行頭の`#`2〜6個と空白で、同じ数のレベルの見出しにする入力規則を加える。
-- `ForbiddenNodeNormalizer`(2.3): ProseMirrorの`appendTransaction`で、文書が変わった取引の後に、レベル1の見出しを先頭に「# 」を付けた段落へ、画像を「![<alt>](<src>)」の文字列へ置き換える。編集領域の作成直後にも1回適用する(既存の値の読み込み)。
+- `ForbiddenNodeNormalizer`(2.3): ProseMirrorの`appendTransaction`で、文書が変わった取引の後に、レベル1の見出しを先頭に「# 」を付けた段落へ、画像を「![<alt>](src)」の文字列へ置き換える。編集領域の作成直後にも1回適用する(既存の値の読み込み)。
 - `EditorCommands`(2.1): `EditorAction`を`@milkdown/kit/preset/commonmark`・`gfm`のコマンド(見出しはレベル2との切り替え、表は既定の大きさの挿入)へ対応付け、選択中の書式の集合を求める。リンクは`toggleLinkCommand`・`updateLinkCommand`で設定・解除する。
 - `EditorAccessibility`(3.2): `editorViewOptionsCtx`の`attributes`で、編集領域の要素に`id`・`role="textbox"`・`aria-multiline="true"`・`aria-labelledby`・`aria-describedby`・`aria-invalid`を付け、値が変わったら`view.setProps`で更新する。
 - `CjkRemarkPlugins`(2.15): `$remark`でremark-cjk-friendlyとremark-cjk-friendly-gfm-strikethroughを登録する。
@@ -982,7 +988,9 @@ export interface MarkdownEditorProps {
 ##### Service Interface
 
 ```typescript
-export default function CrepeEditorSurface(props: EditorSurfaceProps): ReactElement;
+export default function CrepeEditorSurface(
+  props: EditorSurfaceProps,
+): ReactElement;
 ```
 
 - `React.lazy`のため既定のエクスポートとする(1ファイル1コンポーネント)。Milkdown・Vue・CrepeのCSSはこのディレクトリの外へ出さない。
@@ -1005,10 +1013,10 @@ export default function CrepeEditorSurface(props: EditorSurfaceProps): ReactElem
 
 #### SiteOriginConfig
 
-| Field        | Detail                                                   |
-| ------------ | -------------------------------------------------------- |
-| Intent       | 利用者側のオリジンを両フロントエンドで同じ値として持つ   |
-| Requirements | 4.8, 4.9                                                 |
+| Field        | Detail                                                 |
+| ------------ | ------------------------------------------------------ |
+| Intent       | 利用者側のオリジンを両フロントエンドで同じ値として持つ |
+| Requirements | 4.8, 4.9                                               |
 
 **Contracts**: State [x]
 
@@ -1021,10 +1029,10 @@ export default function CrepeEditorSurface(props: EditorSurfaceProps): ReactElem
 
 #### SearchDocumentColumns
 
-| Field        | Detail                                      |
-| ------------ | ------------------------------------------- |
-| Intent       | 索引文書のテーブルの共通の列と状態の値      |
-| Requirements | 8.2, 9.7, 10.3, 10.4                        |
+| Field        | Detail                                 |
+| ------------ | -------------------------------------- |
+| Intent       | 索引文書のテーブルの共通の列と状態の値 |
+| Requirements | 8.2, 9.7, 10.3, 10.4                   |
 
 **Contracts**: State [x]
 
@@ -1040,7 +1048,7 @@ export declare const KEYWORD_STATUSES: readonly [
 ];
 export type KeywordStatus = (typeof KEYWORD_STATUSES)[number];
 
-// DBの列名を明示する(casingの変換に頼らない)
+// DBの列名を明示する(snakeCase.tableの変換に頼らない)
 export declare function searchDocumentColumns(): {
   readonly id: ColumnBuilder; // integer('id').primaryKey() → INTEGER PRIMARY KEY(連番、DR-009)
   readonly sourceId: ColumnBuilder; // text('source_id').notNull().unique()(元データのULID)
@@ -1051,13 +1059,16 @@ export declare function searchDocumentColumns(): {
   readonly statusChangedAt: ColumnBuilder; // integer('status_changed_at', { mode: 'timestamp_ms' }).notNull()
 };
 export declare function searchTextColumn(name: string): ColumnBuilder; // text(name).notNull().default('')
-export declare function searchDocumentStatusIndex(tableName: string, table: { keywordStatus: SQLiteColumn; statusChangedAt: SQLiteColumn }): IndexBuilder; // <table>_status_idx(keyword_status, status_changed_at)
+export declare function searchDocumentStatusIndex(
+  tableName: string,
+  table: { keywordStatus: SQLiteColumn; statusChangedAt: SQLiteColumn },
+): IndexBuilder; // <table>_status_idx(keyword_status, status_changed_at)
 ```
 
 - 利用側の定義は次の形になる(`db/004`に記載する)。
 
 ```typescript
-export const productSearchDocuments = sqliteTable(
+export const productSearchDocuments = snakeCase.table(
   'product_search_documents',
   {
     ...searchDocumentColumns(),
@@ -1070,10 +1081,10 @@ export const productSearchDocuments = sqliteTable(
 
 #### SearchIndexDefinition・SearchIndexSql
 
-| Field        | Detail                                                                   |
-| ------------ | ------------------------------------------------------------------------ |
-| Intent       | 索引の定義の検証と、全文検索の索引・トリガー・再構築のSQL                |
-| Requirements | 8.1, 8.3, 8.4, 8.5, 8.6, 12.6                                            |
+| Field        | Detail                                                    |
+| ------------ | --------------------------------------------------------- |
+| Intent       | 索引の定義の検証と、全文検索の索引・トリガー・再構築のSQL |
+| Requirements | 8.1, 8.3, 8.4, 8.5, 8.6, 12.6                             |
 
 **Contracts**: Service [x]
 
@@ -1089,7 +1100,10 @@ export interface SearchIndexColumnInput {
 export interface SearchIndexDefinition {
   readonly documentsTableName: string; // /^[a-z][a-z0-9_]*_search_documents$/
   readonly ftsTableName: string; // `${documentsTableName}_fts`
-  readonly textColumns: readonly { readonly name: string; readonly weight: number }[]; // DBの列名
+  readonly textColumns: readonly {
+    readonly name: string;
+    readonly weight: number;
+  }[]; // DBの列名
   readonly keywordsWeight: number;
   readonly prefixLengths: readonly number[]; // 既定[2, 3]
 }
@@ -1101,9 +1115,15 @@ export declare function defineSearchIndex(input: {
   readonly prefixLengths?: readonly number[];
 }): SearchIndexDefinition;
 
-export declare function renderSearchIndexSql(definition: SearchIndexDefinition): string;
-export declare function renderSearchIndexTriggersSql(definition: SearchIndexDefinition): string;
-export declare function renderSearchIndexRebuildSql(definition: SearchIndexDefinition): string;
+export declare function renderSearchIndexSql(
+  definition: SearchIndexDefinition,
+): string;
+export declare function renderSearchIndexTriggersSql(
+  definition: SearchIndexDefinition,
+): string;
+export declare function renderSearchIndexRebuildSql(
+  definition: SearchIndexDefinition,
+): string;
 ```
 
 - `defineSearchIndex`は、テーブル名の形式、共通の列があること、`textColumns`の列がそのテーブルのものであり重複しないこと、重みが正の有限数であること、`prefixLengths`が1〜4の昇順の整数であることを確かめ、違反は`SearchIndexDefinitionError`にする(8.4・8.5)。
@@ -1133,10 +1153,10 @@ END;
 
 #### FtsQuery
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | ドメインの検索のクエリに組み込むSQL断片      |
-| Requirements | 10.7, 12.5                                   |
+| Field        | Detail                                  |
+| ------------ | --------------------------------------- |
+| Intent       | ドメインの検索のクエリに組み込むSQL断片 |
+| Requirements | 10.7, 12.5                              |
 
 **Contracts**: Service [x]
 
@@ -1151,7 +1171,9 @@ export declare function ftsRankedSources(
   definition: SearchIndexDefinition,
   matchExpression: string,
 ): SQL;
-export declare function bm25Rank(definition: SearchIndexDefinition): SQL<number>; // 小さいほど関連度が高い
+export declare function bm25Rank(
+  definition: SearchIndexDefinition,
+): SQL<number>; // 小さいほど関連度が高い
 ```
 
 - 検索式は必ずバインド変数で渡す(`sql`のパラメータ)。ドメインは`ftsRankedSources`を副問い合わせとして元データと結合し、可視性の条件とページングを加え、`rank`の昇順で並べる。検索の索引が古くても検索は動く(10.7)。
@@ -1166,17 +1188,18 @@ export declare function bm25Rank(definition: SearchIndexDefinition): SQL<number>
 
 #### SearchContracts
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | 検索の型・ポート・DIの識別子                 |
-| Requirements | 14.1, 14.2                                   |
+| Field        | Detail                       |
+| ------------ | ---------------------------- |
+| Intent       | 検索の型・ポート・DIの識別子 |
+| Requirements | 14.1, 14.2                   |
 
 **Contracts**: Service [x]
 
 ##### Service Interface
 
 ```typescript
-export type KeywordStatus = 'pending' | 'extracted' | 'fallback' | 'unsupported' | 'disabled';
+export type KeywordStatus =
+  'pending' | 'extracted' | 'fallback' | 'unsupported' | 'disabled';
 
 export type SearchFieldFormat = 'plain' | 'markdown';
 export interface SearchFieldSpec {
@@ -1201,16 +1224,29 @@ export interface StoredIndexState {
 export interface IndexWrite {
   readonly sourceVersion: number;
   readonly texts: Readonly<Record<string, string>>;
-  readonly keywords: { readonly kind: 'set'; readonly value: string } | { readonly kind: 'keep' };
+  readonly keywords:
+    | { readonly kind: 'set'; readonly value: string }
+    | { readonly kind: 'keep' };
   readonly keywordStatus: KeywordStatus;
   readonly extractionInputHash: string | null;
   readonly statusChangedAt: Date;
 }
 export interface SearchIndexStore {
-  findState(target: string, sourceId: string): Promise<StoredIndexState | undefined>;
-  upsert(target: string, sourceId: string, write: IndexWrite): Promise<'written' | 'skipped'>;
+  findState(
+    target: string,
+    sourceId: string,
+  ): Promise<StoredIndexState | undefined>;
+  upsert(
+    target: string,
+    sourceId: string,
+    write: IndexWrite,
+  ): Promise<'written' | 'skipped'>;
   delete(target: string, sourceId: string): Promise<void>;
-  findSourceIdsForReextraction(target: string, pendingBefore: Date, limit: number): Promise<readonly string[]>;
+  findSourceIdsForReextraction(
+    target: string,
+    pendingBefore: Date,
+    limit: number,
+  ): Promise<readonly string[]>;
 }
 export interface SearchSourceProvider {
   read(target: string, sourceId: string): Promise<SearchSource | undefined>;
@@ -1227,8 +1263,14 @@ export interface KeywordExtractor {
 }
 export type KeywordExtractionOutcome =
   | { readonly kind: 'extracted'; readonly keywords: string }
-  | { readonly kind: 'unsupported-language'; readonly languageCode: string | undefined }
-  | { readonly kind: 'temporary-failure'; readonly reason: 'network' | 'timeout' | 'rate-limited' | 'server-error' }
+  | {
+      readonly kind: 'unsupported-language';
+      readonly languageCode: string | undefined;
+    }
+  | {
+      readonly kind: 'temporary-failure';
+      readonly reason: 'network' | 'timeout' | 'rate-limited' | 'server-error';
+    }
   | { readonly kind: 'configuration-error'; readonly status: number }
   | { readonly kind: 'disabled' };
 
@@ -1247,10 +1289,10 @@ export declare const SEARCH_TYPES: {
 
 #### SearchIndexRefreshContract
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | 索引の更新のメッセージと再試行の方針         |
-| Requirements | 9.1, 10.1                                    |
+| Field        | Detail                               |
+| ------------ | ------------------------------------ |
+| Intent       | 索引の更新のメッセージと再試行の方針 |
+| Requirements | 9.1, 10.1                            |
 
 **Contracts**: Event [x]
 
@@ -1274,10 +1316,10 @@ export declare const SEARCH_INDEX_REFRESH_RETRY: RetryPolicy; // DEFAULT_RETRY_P
 
 #### IndexDocumentBuilder
 
-| Field        | Detail                                         |
-| ------------ | ---------------------------------------------- |
-| Intent       | 項目の正規化・抽出の入力・ハッシュ             |
-| Requirements | 9.4, 9.6, 15.3                                 |
+| Field        | Detail                             |
+| ------------ | ---------------------------------- |
+| Intent       | 項目の正規化・抽出の入力・ハッシュ |
+| Requirements | 9.4, 9.6, 15.3                     |
 
 **Contracts**: Service [x]
 
@@ -1302,10 +1344,10 @@ export declare function buildIndexDocument(
 
 #### RefreshDecision
 
-| Field        | Detail                                                     |
-| ------------ | ---------------------------------------------------------- |
-| Intent       | 更新の計画と、抽出結果から書き込みと再試行を決める         |
-| Requirements | 9.6, 9.7, 10.2, 10.3, 10.4, 10.5, 10.8                     |
+| Field        | Detail                                             |
+| ------------ | -------------------------------------------------- |
+| Intent       | 更新の計画と、抽出結果から書き込みと再試行を決める |
+| Requirements | 9.6, 9.7, 10.2, 10.3, 10.4, 10.5, 10.8             |
 
 **Contracts**: Service [x]
 
@@ -1315,7 +1357,10 @@ export declare function buildIndexDocument(
 export type RefreshPlan =
   | { readonly kind: 'skip-stale' } // 保存済みの版が新しい
   | { readonly kind: 'store-empty' } // 抽出の入力が空
-  | { readonly kind: 'reuse-keywords'; readonly status: 'extracted' | 'unsupported' } // ハッシュが同じ
+  | {
+      readonly kind: 'reuse-keywords';
+      readonly status: 'extracted' | 'unsupported';
+    } // ハッシュが同じ
   | { readonly kind: 'extract' };
 export declare function planRefresh(
   current: StoredIndexState | undefined,
@@ -1336,23 +1381,23 @@ export declare function decideAfterExtraction(input: {
 }): ExtractionDecision;
 ```
 
-| 抽出の結果                                  | キーワードの列         | 状態          | 再試行 | 通知 |
-| ------------------------------------------- | ---------------------- | ------------- | ------ | ---- |
-| `extracted`                                 | 抽出したキーワード     | `extracted`   | しない | しない |
-| `unsupported-language`                      | 抽出の入力(正規化テキスト) | `unsupported` | しない | しない |
-| `disabled`                                  | 抽出の入力             | `disabled`    | しない | しない |
-| `temporary-failure`(試行が上限未満)          | 前回のまま(`keep`)     | `pending`     | する   | しない |
-| `temporary-failure`(上限の試行)              | 抽出の入力             | `fallback`    | しない | しない |
-| `configuration-error`                       | 抽出の入力             | `fallback`    | しない | する |
+| 抽出の結果                          | キーワードの列             | 状態          | 再試行 | 通知   |
+| ----------------------------------- | -------------------------- | ------------- | ------ | ------ |
+| `extracted`                         | 抽出したキーワード         | `extracted`   | しない | しない |
+| `unsupported-language`              | 抽出の入力(正規化テキスト) | `unsupported` | しない | しない |
+| `disabled`                          | 抽出の入力                 | `disabled`    | しない | しない |
+| `temporary-failure`(試行が上限未満) | 前回のまま(`keep`)         | `pending`     | する   | しない |
+| `temporary-failure`(上限の試行)     | 抽出の入力                 | `fallback`    | しない | しない |
+| `configuration-error`               | 抽出の入力                 | `fallback`    | しない | する   |
 
 - 元テキストの列はどの場合も最新の値を書く(10.2)。ハッシュは`extracted`・`unsupported`の場合だけ保存し、それ以外は`null`にする(次回に抽出をやり直す)。
 
 #### NaturalLanguageProtocol・KeywordSelection
 
-| Field        | Detail                                                               |
-| ------------ | -------------------------------------------------------------------- |
-| Intent       | 外部APIの要求の組み立て・応答の検証と分類・キーワードの選別         |
-| Requirements | 9.5, 10.1, 10.4, 10.5                                                |
+| Field        | Detail                                                      |
+| ------------ | ----------------------------------------------------------- |
+| Intent       | 外部APIの要求の組み立て・応答の検証と分類・キーワードの選別 |
+| Requirements | 9.5, 10.1, 10.4, 10.5                                       |
 
 **Contracts**: Service [x]
 
@@ -1369,7 +1414,13 @@ export declare function interpretAnalyzeEntitiesResponse(
   body: unknown,
 ): KeywordExtractionOutcome;
 
-export declare const EXCLUDED_ENTITY_TYPES: readonly ['PHONE_NUMBER', 'ADDRESS', 'DATE', 'NUMBER', 'PRICE'];
+export declare const EXCLUDED_ENTITY_TYPES: readonly [
+  'PHONE_NUMBER',
+  'ADDRESS',
+  'DATE',
+  'NUMBER',
+  'PRICE',
+];
 export declare const MAX_KEYWORDS: 500;
 export declare function selectKeywords(
   entities: readonly { readonly name: string; readonly type: string }[],
@@ -1383,10 +1434,10 @@ export declare function selectKeywords(
 
 #### SearchTargetRegistry
 
-| Field        | Detail                                         |
-| ------------ | ---------------------------------------------- |
-| Intent       | 検索対象の定義・検証・集約点                   |
-| Requirements | 14.1, 14.4, 14.5                               |
+| Field        | Detail                       |
+| ------------ | ---------------------------- |
+| Intent       | 検索対象の定義・検証・集約点 |
+| Requirements | 14.1, 14.4, 14.5             |
 
 **Contracts**: Service [x]
 
@@ -1397,11 +1448,15 @@ import type { SQL } from 'drizzle-orm';
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import type { Database } from '../../../db/client';
 
-export interface SearchTargetDefinition<TField extends string = string>
-  extends SearchTargetInfo<TField> {
+export interface SearchTargetDefinition<
+  TField extends string = string,
+> extends SearchTargetInfo<TField> {
   readonly index: SearchIndexDefinition;
   readonly documents: SQLiteTable; // indexの索引文書のテーブル
-  read(db: Database, sourceId: string): Promise<SearchSource<TField> | undefined>; // 削除済み・対象外はundefined
+  read(
+    db: Database,
+    sourceId: string,
+  ): Promise<SearchSource<TField> | undefined>; // 削除済み・対象外はundefined
   isIndexable(sourceId: string): SQL; // 元データが存在し索引の対象であることの条件(EXISTSの中身)
 }
 export declare function defineSearchTarget<TField extends string>(
@@ -1425,10 +1480,10 @@ export declare const SEARCH_TARGETS: readonly SearchTargetDefinition[]; // targe
 
 #### SearchIndexRepository
 
-| Field        | Detail                                                             |
-| ------------ | ------------------------------------------------------------------ |
-| Intent       | 索引文書の条件付きの追加・更新・削除と、再抽出の候補の検索         |
-| Requirements | 9.2, 9.3, 9.7, 9.8, 10.6, 11.3, 16.2                               |
+| Field        | Detail                                                     |
+| ------------ | ---------------------------------------------------------- |
+| Intent       | 索引文書の条件付きの追加・更新・削除と、再抽出の候補の検索 |
+| Requirements | 9.2, 9.3, 9.7, 9.8, 10.6, 11.3, 16.2                       |
 
 **Contracts**: Service [x]
 
@@ -1450,10 +1505,10 @@ export declare class D1SearchIndexRepository implements SearchIndexStore {
 
 #### SearchIndexStatements
 
-| Field        | Detail                                                         |
-| ------------ | -------------------------------------------------------------- |
-| Intent       | ドメインの一括の書き込みに含める、更新待ちの印と削除の文       |
-| Requirements | 9.1, 9.10, 11.1, 11.2, 14.2                                    |
+| Field        | Detail                                                   |
+| ------------ | -------------------------------------------------------- |
+| Intent       | ドメインの一括の書き込みに含める、更新待ちの印と削除の文 |
+| Requirements | 9.1, 9.10, 11.1, 11.2, 14.2                              |
 
 **Contracts**: Service [x]
 
@@ -1464,7 +1519,10 @@ import type { BatchItem } from 'drizzle-orm/batch';
 
 export interface SearchIndexStatements {
   markPending(target: string, sourceId: string, now: Date): BatchItem<'sqlite'>;
-  deleteSources(target: string, sourceIds: readonly string[]): readonly BatchItem<'sqlite'>[];
+  deleteSources(
+    target: string,
+    sourceIds: readonly string[],
+  ): readonly BatchItem<'sqlite'>[];
 }
 export declare function createSearchIndexStatements(
   db: Database,
@@ -1486,10 +1544,10 @@ export declare function createSearchIndexStatements(
 
 #### SearchIndexRefreshHandler
 
-| Field        | Detail                                                               |
-| ------------ | -------------------------------------------------------------------- |
-| Intent       | `search-index.refresh`の処理                                         |
-| Requirements | 9.1〜9.10, 10.1〜10.5, 11.3, 14.3, 15.1                              |
+| Field        | Detail                                  |
+| ------------ | --------------------------------------- |
+| Intent       | `search-index.refresh`の処理            |
+| Requirements | 9.1〜9.10, 10.1〜10.5, 11.3, 14.3, 15.1 |
 
 **Contracts**: Batch [x]
 
@@ -1507,10 +1565,10 @@ export declare function createSearchIndexStatements(
 
 #### KeywordExtractors
 
-| Field        | Detail                                                                   |
-| ------------ | ------------------------------------------------------------------------ |
-| Intent       | Google Cloud Natural Languageの呼び出しと、抽出を無効にした実装          |
-| Requirements | 9.5, 10.1, 10.4, 10.5, 10.8, 15.4                                        |
+| Field        | Detail                                                          |
+| ------------ | --------------------------------------------------------------- |
+| Intent       | Google Cloud Natural Languageの呼び出しと、抽出を無効にした実装 |
+| Requirements | 9.5, 10.1, 10.4, 10.5, 10.8, 15.4                               |
 
 **Contracts**: Service [x]
 
@@ -1531,10 +1589,10 @@ export declare function createKeywordExtractor(env: {
 
 #### EventSearchComposition
 
-| Field        | Detail                                              |
-| ------------ | --------------------------------------------------- |
-| Intent       | eventの環境・束縛・メッセージの登録                 |
-| Requirements | 9.1, 15.2                                           |
+| Field        | Detail                              |
+| ------------ | ----------------------------------- |
+| Intent       | eventの環境・束縛・メッセージの登録 |
+| Requirements | 9.1, 15.2                           |
 
 **Contracts**: State [x]
 
@@ -1553,10 +1611,10 @@ export declare function createKeywordExtractor(env: {
 
 #### SearchKeywordReextractionJob・ApiSearchComposition
 
-| Field        | Detail                                           |
-| ------------ | ------------------------------------------------ |
-| Intent       | 日次の再抽出とその登録                           |
-| Requirements | 9.10, 10.6, 15.6                                 |
+| Field        | Detail                 |
+| ------------ | ---------------------- |
+| Intent       | 日次の再抽出とその登録 |
+| Requirements | 9.10, 10.6, 15.6       |
 
 **Contracts**: Batch [x]
 
@@ -1571,17 +1629,18 @@ export declare function createKeywordExtractor(env: {
 
 #### WorkspaceLayoutUpdate
 
-| Field        | Detail                                                   |
-| ------------ | -------------------------------------------------------- |
-| Intent       | 5つ目の共有ディレクトリの定義・マウント・Git管理外       |
-| Requirements | 1.4                                                      |
+| Field        | Detail                                             |
+| ------------ | -------------------------------------------------- |
+| Intent       | 5つ目の共有ディレクトリの定義・マウント・Git管理外 |
+| Requirements | 1.4                                                |
 
 **Contracts**: State [x]
 
 ##### State Management
 
 ```typescript
-export type AppName = 'common-lib' | 'api' | 'event' | 'frontend-lib' | 'client' | 'admin';
+export type AppName =
+  'common-lib' | 'api' | 'event' | 'frontend-lib' | 'client' | 'admin';
 
 // APPSの先頭に { name: 'common-lib', dir: 'apps/common-lib' } を加える
 // SHARED_DIRSに次を加える
@@ -1602,10 +1661,10 @@ const COMMON_LIB: SharedDirDefinition = {
 
 #### ConsumerAppIntegration
 
-| Field        | Detail                                                         |
-| ------------ | -------------------------------------------------------------- |
+| Field        | Detail                                                          |
+| ------------ | --------------------------------------------------------------- |
 | Intent       | 4アプリとfrontend-libがcommon-libを同じ書き方で使えるようにする |
-| Requirements | 1.5, 1.6                                                       |
+| Requirements | 1.5, 1.6                                                        |
 
 - 4アプリ: 依存の宣言(Technology Stack)、型検査の`include`・`exclude`、静的解析とテストの除外は「Modified Files」のとおり(検査担当でないアプリの規約)。
 - frontend-lib(1.6): コードは`../../../common-lib/…`のように兄弟の相対パスで参照する(仮決定P4)。自身の位置の検査では配置元を直接読み込み、依存はcommon-libのnode_modulesから解決される。ブラウザテストとStorybookのViteは`server.fs.allow`に配置元を加える。frontend-libはcommon-libの描画パッケージを宣言しない(自身の位置ではcommon-libの依存、client・adminではアプリの依存で解決される)。
@@ -1634,16 +1693,16 @@ const COMMON_LIB: SharedDirDefinition = {
 
 索引文書のテーブル(各ドメインが`searchDocumentColumns`と`searchTextColumn`で定義し、drizzle-kitで生成する):
 
-| 列                       | 型                            | 制約・既定値         | 用途                                         |
-| ------------------------ | ----------------------------- | -------------------- | -------------------------------------------- |
-| `id`                     | INTEGER                       | PRIMARY KEY          | 連番(DR-009)。全文検索の索引の`content_rowid` |
-| `source_id`              | TEXT                          | NOT NULL・UNIQUE     | 元データのULID                               |
-| `source_version`         | INTEGER                       | NOT NULL・既定0      | 古い版の上書きの防止                         |
-| `<元テキストの列>`       | TEXT                          | NOT NULL・既定`''`   | 正規化した名称・タグラインなど(ドメインが決める) |
-| `keywords`               | TEXT                          | NOT NULL・既定`''`   | キーワード、または縮退時の正規化テキスト     |
-| `keyword_status`         | TEXT                          | NOT NULL・既定`pending` | `KEYWORD_STATUSES`のいずれか              |
-| `extraction_input_hash`  | TEXT                          | NULL可               | 抽出の入力のハッシュ(再利用の判定)           |
-| `status_changed_at`      | INTEGER(UNIXエポックミリ秒)   | NOT NULL             | 状態を変えた日時(再抽出の判定)               |
+| 列                      | 型                          | 制約・既定値            | 用途                                             |
+| ----------------------- | --------------------------- | ----------------------- | ------------------------------------------------ |
+| `id`                    | INTEGER                     | PRIMARY KEY             | 連番(DR-009)。全文検索の索引の`content_rowid`    |
+| `source_id`             | TEXT                        | NOT NULL・UNIQUE        | 元データのULID                                   |
+| `source_version`        | INTEGER                     | NOT NULL・既定0         | 古い版の上書きの防止                             |
+| `<元テキストの列>`      | TEXT                        | NOT NULL・既定`''`      | 正規化した名称・タグラインなど(ドメインが決める) |
+| `keywords`              | TEXT                        | NOT NULL・既定`''`      | キーワード、または縮退時の正規化テキスト         |
+| `keyword_status`        | TEXT                        | NOT NULL・既定`pending` | `KEYWORD_STATUSES`のいずれか                     |
+| `extraction_input_hash` | TEXT                        | NULL可                  | 抽出の入力のハッシュ(再利用の判定)               |
+| `status_changed_at`     | INTEGER(UNIXエポックミリ秒) | NOT NULL                | 状態を変えた日時(再抽出の判定)                   |
 
 - 索引: `<table>_status_idx(keyword_status, status_changed_at)`。全文検索の索引`<table>_fts`とトリガー3つはカスタムマイグレーション(`renderSearchIndexSql`)で作る。
 - 容量: 前方一致の`prefix='2 3'`で索引は大きくなるが、プロダクトとヘルプ記事の件数ではD1の容量の上限に対して問題にならない。
@@ -1664,17 +1723,17 @@ const COMMON_LIB: SharedDirDefinition = {
 
 ### Error Categories and Responses
 
-| 種類                         | 発生箇所                | 応答                                                                                                   |
-| ---------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ |
-| 入力の検証の失敗             | フォーム・APIサーバー   | `markdownTextSchema`の文言。APIは`validation_error`(api-gatewayの`withValidatedArgs`)                  |
-| 描画の指定の誤り             | 呼び出し側のコード      | `MarkdownOptionsError`(開発時に検出)                                                                   |
-| エディタの読み込みの失敗     | ブラウザ                | 「エディタを読み込めませんでした。」と再試行。値は保持                                                 |
-| 外部APIの一時的な失敗        | イベントサーバー        | 書き込み後に再試行(最大5回)、上限で縮退索引                                                           |
-| 外部APIの非対応言語          | イベントサーバー        | 縮退索引(`unsupported`)、再試行しない                                                                  |
-| 外部APIの設定の誤り          | イベントサーバー        | 縮退索引(`fallback`)とSentryへの通知、日次で再抽出                                                     |
-| 未登録の検索対象             | イベントサーバー        | `error`ログとSentry、処理しない                                                                        |
-| 要求の送信の失敗             | APIサーバー             | `error`ログとSentry、ドメインの書き込みは成功のまま、日次で更新待ちを回復                              |
-| 検索対象の登録の誤り         | 単体テスト              | `SearchTargetRegistryError`・`SearchIndexDefinitionError`                                              |
+| 種類                     | 発生箇所              | 応答                                                                                  |
+| ------------------------ | --------------------- | ------------------------------------------------------------------------------------- |
+| 入力の検証の失敗         | フォーム・APIサーバー | `markdownTextSchema`の文言。APIは`validation_error`(api-gatewayの`withValidatedArgs`) |
+| 描画の指定の誤り         | 呼び出し側のコード    | `MarkdownOptionsError`(開発時に検出)                                                  |
+| エディタの読み込みの失敗 | ブラウザ              | 「エディタを読み込めませんでした。」と再試行。値は保持                                |
+| 外部APIの一時的な失敗    | イベントサーバー      | 書き込み後に再試行(最大5回)、上限で縮退索引                                           |
+| 外部APIの非対応言語      | イベントサーバー      | 縮退索引(`unsupported`)、再試行しない                                                 |
+| 外部APIの設定の誤り      | イベントサーバー      | 縮退索引(`fallback`)とSentryへの通知、日次で再抽出                                    |
+| 未登録の検索対象         | イベントサーバー      | `error`ログとSentry、処理しない                                                       |
+| 要求の送信の失敗         | APIサーバー           | `error`ログとSentry、ドメインの書き込みは成功のまま、日次で更新待ちを回復             |
+| 検索対象の登録の誤り     | 単体テスト            | `SearchTargetRegistryError`・`SearchIndexDefinitionError`                             |
 
 ### Monitoring
 
@@ -1738,21 +1797,21 @@ flowchart LR
 
 ### 本specが定める固有の値
 
-| 項目                               | 値                                                                                                                                                       |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 共有ディレクトリ                   | 配置元`apps/common-lib`、配置先`apps/{api,event,client,admin}/common-lib`、検査担当`self`、node_modulesのボリューム`node_modules_common_lib`               |
-| 見出しのIDの接頭辞                 | `user-content-`(本文の識別子があれば`user-content-<識別子>-`)                                                                                           |
-| メッセージ種別                     | `search-index.refresh`(再試行は5回・30秒から倍・上限3600秒)                                                                                              |
-| 再抽出の定期実行                   | 名前`content-processing.keyword-reextraction`、業務時刻4:21(`21 12 * * *`)・順序950、更新待ちの判定1時間、検索対象ごとに200件                           |
-| 外部APIの打ち切り                  | 10秒                                                                                                                                                     |
-| 全文検索の索引の名前               | `<ドメイン>_search_documents`・`<ドメイン>_search_documents_fts`、トリガー`<テーブル>_fts_ai`・`_fts_ad`・`_fts_au`、索引`<テーブル>_status_idx`          |
-| ログのカテゴリ                     | `['search','index']`・`['search','refresh']`・`['search','reextraction']`                                                                                |
+| 項目                 | 値                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 共有ディレクトリ     | 配置元`apps/common-lib`、配置先`apps/{api,event,client,admin}/common-lib`、検査担当`self`、node_modulesのボリューム`node_modules_common_lib`     |
+| 見出しのIDの接頭辞   | `user-content-`(本文の識別子があれば`user-content-<識別子>-`)                                                                                    |
+| メッセージ種別       | `search-index.refresh`(再試行は5回・30秒から倍・上限3600秒)                                                                                      |
+| 再抽出の定期実行     | 名前`content-processing.keyword-reextraction`、業務時刻4:21(`21 12 * * *`)・順序950、更新待ちの判定1時間、検索対象ごとに200件                    |
+| 外部APIの打ち切り    | 10秒                                                                                                                                             |
+| 全文検索の索引の名前 | `<ドメイン>_search_documents`・`<ドメイン>_search_documents_fts`、トリガー`<テーブル>_fts_ai`・`_fts_ad`・`_fts_au`、索引`<テーブル>_status_idx` |
+| ログのカテゴリ       | `['search','index']`・`['search','refresh']`・`['search','reextraction']`                                                                        |
 
-| 変数・シークレット                         | ローカル(ルート)          | staging                                                     | prod                                                |
-| ------------------------------------------ | ------------------------- | ----------------------------------------------------------- | --------------------------------------------------- |
-| `KEYWORD_EXTRACTOR`(event)                 | `disabled`                | `google-natural-language`                                   | `google-natural-language`                           |
-| `GOOGLE_NL_API_KEY`(eventのシークレット)    | 無し(`secrets.required`に含めない) | Infisicalの`staging`(`secrets.required`に含める)     | Infisicalの`prod`(`secrets.required`に含める)       |
-| `CLIENT_SITE_ORIGIN`(client・admin)        | `http://localhost:48044`  | `https://genai-example-2-client-staging.lab.kurachiweb.com` | `https://genai-example-2-client.lab.kurachiweb.com` |
+| 変数・シークレット                       | ローカル(ルート)                   | staging                                                     | prod                                                |
+| ---------------------------------------- | ---------------------------------- | ----------------------------------------------------------- | --------------------------------------------------- |
+| `KEYWORD_EXTRACTOR`(event)               | `disabled`                         | `google-natural-language`                                   | `google-natural-language`                           |
+| `GOOGLE_NL_API_KEY`(eventのシークレット) | 無し(`secrets.required`に含めない) | Infisicalの`staging`(`secrets.required`に含める)            | Infisicalの`prod`(`secrets.required`に含める)       |
+| `CLIENT_SITE_ORIGIN`(client・admin)      | `http://localhost:48044`           | `https://genai-example-2-client-staging.lab.kurachiweb.com` | `https://genai-example-2-client.lab.kurachiweb.com` |
 
 - `GOOGLE_NL_API_KEY`は、infra-deliveryのInfisicalのキーの表に載る。実装後のキーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節で、本specが`secrets.required`へ加える変更(タスク9.1)と同じ変更で行を加える(技術ドキュメントには写さない)。stagingの値は、`secrets.required`に加える変更をmainへマージする前に開発者がInfisicalの`staging`へ登録する(未登録のままマージすると、以後のstagingのデプロイがシークレットの欠落で止まる)。prodの値の登録はlaunch-readinessがリリース時に行う。
 - `CLIENT_SITE_ORIGIN`の3環境の値は、identity-authがapiに置く同名の変数と、infra-deliveryの一覧の値と同じにする。

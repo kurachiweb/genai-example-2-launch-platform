@@ -203,7 +203,7 @@
 ## Risks & Mitigations
 
 - 変換経路(Bun・Oxc・esbuild)の更新でデコレータの扱いが変わる — 3経路のスモークテストを置き、版の更新時に必ず実行する。
-- Drizzle v1がRCのまま — `drizzle-orm`・`drizzle-kit`を1.0.0-rc.4で完全固定し、`db:migrations:check`でマイグレーションの検出を確かめる。
+- Drizzle v1がRCのまま — `drizzle-orm`・`drizzle-kit`を1.0.0-rc.5で完全固定し、`db:migrations:check`でマイグレーションの検出を確かめる。
 - 別々の`wrangler dev`の間でQueuesのメッセージが届かない可能性 — 実装時に確かめ、届かなければ単一プロセスでの確認手順をオンボーディングに記載する。
 - `@sentry/hono`の`sentry(app)`と`withSentry`の併用による二重計装 — fetchは`sentry(app)`だけ、scheduled・queueは`withSentry`だけで計装し、Workers統合テストで1件の例外が1回だけ送られることを確かめる。
 - WranglerのプログラムAPI(`unstable_startWorker`・`unstable_readConfig`)は不安定版 — スモークテストと設定の検査だけに使い、使えなくなった場合はJSONCの解析と`wrangler dev`のプロセス起動に置き換える。

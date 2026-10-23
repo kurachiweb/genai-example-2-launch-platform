@@ -155,7 +155,7 @@ graph TB
 | 送信(本番・staging) | Cloudflare Email Sending(`send_email`バインディング)                              | 構造化された`send()`による送信                   | public beta。`allowed_sender_addresses`で送信元を固定                        |
 | 送信(ローカル)      | Mailpit 1.32.0のHTTP API(`POST /api/v1/send`)                                     | 開発用の受信箱への送信                           | 開発コンテナに常駐(ポート48041)。`fetch`で呼ぶ                               |
 | 非同期              | Cloudflare Queues(本体`JOBS_QUEUE`、メールイベント用Queue)・Event Subscriptions   | 送信要求の受け渡し、配信不能イベントの受け取り   | 本体はbackend-platformのもの。メールイベント用Queueは新規                    |
-| データ              | Cloudflare D1(drizzle-orm 1.0.0-rc.4)                                             | 抑止リスト・送信済みの記録・警告の間引き         | 新しいテーブル3つ                                                            |
+| データ              | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                             | 抑止リスト・送信済みの記録・警告の間引き         | 新しいテーブル3つ                                                            |
 | 定期実行            | Cron Triggers(api)                                                                | 抑止記録と送信済みの記録の日次の後始末           | 業務時刻4:21(日次バッチ)                                                     |
 | 観測                | @logtape/logtape 2.3.11・@sentry/cloudflare 11.4.0                                | 送信結果のログ、送信不能・上限到達の通知         | 既存                                                                         |
 

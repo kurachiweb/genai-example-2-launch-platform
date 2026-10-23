@@ -167,7 +167,7 @@ graph TB
 
 | Layer        | Choice / Version                                                            | Role in Feature                                | Notes                      |
 | ------------ | --------------------------------------------------------------------------- | ---------------------------------------------- | -------------------------- |
-| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.4)                                       | カテゴリ・問い合わせ・メッセージ・添付の紐付け | 新しいテーブル5つ          |
+| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                       | カテゴリ・問い合わせ・メッセージ・添付の紐付け | 新しいテーブル5つ          |
 | 回数制限     | Durable Objects`RateLimitCounter`(backend-platform)                         | 未ログインの送信のIP単位の制限                 | 既存の`RATE_LIMIT_COUNTER` |
 | bot判定      | Turnstile(backend-platformの`BotVerifier`、frontend-platformのウィジェット) | フォームの送信の検証                           | 既存                       |
 | 定期・非同期 | Cron Triggers(api)・Queues(eventのライフサイクルの実行器)                   | 未ログインの保持期間・退会者の物理削除         | 上流の基盤                 |

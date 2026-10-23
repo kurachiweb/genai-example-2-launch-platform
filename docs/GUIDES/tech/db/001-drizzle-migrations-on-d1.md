@@ -1,6 +1,6 @@
 # DrizzleとCloudflare D1のマイグレーションと命名規則
 
-DrizzleのスキーマからCloudflare D1のマイグレーションを生成してWranglerで適用する手順、大文字小文字を区別しないカラムの定義方法、テーブルの命名規則を定める。
+DrizzleのスキーマからCloudflare D1のマイグレーションを生成してWranglerで適用する手順、大文字小文字を区別しないカラムの定義方法、テーブルとカラムの命名規則を定める。
 
 ## 前提と用語
 
@@ -8,7 +8,7 @@ ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`
 
 | 用語                         | 意味                                                                                                                                       |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| スキーマ定義                 | Drizzleの`sqliteTable`などで記述したテーブル定義                                                                                           |
+| スキーマ定義                 | Drizzleの`snakeCase.table`で記述したテーブル定義                                                                                           |
 | マイグレーション             | スキーマ定義の変更をデータベースへ反映するSQLファイル                                                                                      |
 | カスタムマイグレーション     | スキーマ定義から生成せず、生のSQLを手で記述するマイグレーション                                                                            |
 | `<マイグレーションの保存先>` | `drizzle-kit`の設定の`out`に指定する、マイグレーションを置くディレクトリ。Wrangler設定では、Wrangler設定のファイルからの相対パスで指定する |
@@ -69,10 +69,10 @@ export const textNoCase = customType<{ data: string }>({
 ```
 
 ```typescript
-import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { snakeCase, text } from 'drizzle-orm/sqlite-core';
 import { textNoCase } from './text-no-case';
 
-export const users = sqliteTable('users', {
+export const users = snakeCase.table('users', {
   id: text().primaryKey(),
   handle: textNoCase().notNull().unique(),
 });
@@ -84,7 +84,21 @@ export const users = sqliteTable('users', {
 ## 命名規則
 
 - テーブル名は小文字の複数形にする(例: `users`・`articles`)。
-- テーブル名は`sqliteTable`の第1引数で指定する。
+- テーブル名は`snakeCase.table`の第1引数で指定する。
+- カラム名は、TypeScriptのキーをキャメルケースで書き、データベースではスネークケースにする(例: `createdAt`→`created_at`)。
+  - `drizzle-orm` v1には、接続の設定や`drizzle-kit`の設定で列名の変換を指定する`casing`が無い。そのため、テーブルは`drizzle-orm/sqlite-core`の`snakeCase.table`で定義し、変換をテーブル定義に持たせる。マイグレーションの生成と実行時のクエリが同じテーブル定義を読むため、両者の列名が一致する。
+  - `sqliteTable`・`sqliteTableCreator`は使用しない。列名がキーのまま(キャメルケース)で作られる。静的解析の`no-restricted-imports`で、スキーマ定義からのimportを禁止する。
+  - カラム型の関数に列名を渡すと(`text('source_id')`など)、`snakeCase.table`の中でもその名前が使われる。変換結果が意図と異なるキーは、列名を明示する。例えば、大文字に続く数字の前でも区切られるため、`totpSecretV2`は`totp_secret_v_2`になる。
+
+```typescript
+import { snakeCase, text } from 'drizzle-orm/sqlite-core';
+
+export const accounts = snakeCase.table('accounts', {
+  id: text().primaryKey(),
+  displayName: text().notNull(), // display_name
+  totpSecretV2: text('totp_secret_v2'),
+});
+```
 
 ## 関連する制約
 

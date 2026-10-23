@@ -154,9 +154,9 @@ CIでは次の順に実行する。
 
 ## 検証の手順と結果
 
-共有ディレクトリのコードが利用側アプリの依存パッケージを読み込む最小構成を、開発コンテナ(bind mount)とCI相当環境(コピー配置)の両方に置き、各コマンドの成否と解決結果を比べた。品質ツールとDrizzle ORMは[主要パッケージの一覧](002-dependency-versions.md)の版、esbuildは一覧のWranglerが固定する版、Bunは1.4.4、`@types/bun`は1.4.3を使った。一覧に無いHonoは、利用側アプリで版を完全に固定して宣言した。
+共有ディレクトリのコードが利用側アプリの依存パッケージを読み込む最小構成を、開発コンテナ(bind mount)とCI相当環境(コピー配置)の両方に置き、各コマンドの成否と解決結果を比べた。品質ツールは[主要パッケージの一覧](002-dependency-versions.md)の版、Drizzle ORMは1.0.0-rc.5、esbuildは一覧のWranglerが固定する版、Bunは1.4.4、`@types/bun`は1.4.3を使った。一覧に無いHonoは、利用側アプリで版を完全に固定して宣言した。
 
-配置方式・Bun・バンドラを変える場合は、同じ手順で再検証する。再検証では「[デコレータの設定](001-javascript-typescript-conventions.md#デコレータの設定)」に従い、利用側アプリの`tsconfig.json`で`experimentalDecorators`を指定しない。
+配置方式・Bun・バンドラを変える場合は、同じ手順で再検証する。Drizzle ORMの`instanceof`はクラスの種別の印で判定され、二重実体でも成り立つため、二重実体は解決先の一致と`Hono`の`instanceof`で確かめる。再検証では「[デコレータの設定](001-javascript-typescript-conventions.md#デコレータの設定)」に従い、利用側アプリの`tsconfig.json`で`experimentalDecorators`を指定しない。
 
 ### 最小構成
 
@@ -166,7 +166,7 @@ CIでは次の順に実行する。
   - `package.json`: 「[スクリプト契約](001-javascript-typescript-conventions.md#スクリプト契約)」の`lint`・`typecheck`・`test:unit`を持ち、「[導入する品質ツール](001-javascript-typescript-conventions.md#導入する品質ツール)」を導入する。共有ディレクトリのコードが使うHonoとDrizzle ORMを`dependencies`に宣言する(共有ディレクトリ自身は`package.json`を持たない)。バンドルの確認のために、Wranglerが固定する版のesbuildを導入する。
   - `tsconfig.json`: 基底設定を継承し、`types: ["bun"]`と、`include`への2つの配置先の追加を差分とする。デコレータの設定は、下記の測定の条件による。
   - `eslint.config.ts`: `createBaseConfig`へモジュールを渡すだけにする。
-  - ソース: 利用側アプリのDrizzle ORMの比較関数(`eq`)に共有ディレクトリのテーブルの列を渡し、利用側アプリの`Hono`に共有ディレクトリで作った`Hono`を`route`で結合する。パッケージが二重実体になると、型や`instanceof`が合わなくなる箇所である。
+  - ソース: 利用側アプリのDrizzle ORMの比較関数(`eq`)に共有ディレクトリのテーブルの列を渡し、利用側アプリの`Hono`に共有ディレクトリで作った`Hono`を`route`で結合する。パッケージが二重実体になると、型や`Hono`の`instanceof`が合わなくなる箇所である。
 - 共有ディレクトリ
   - Drizzle ORMでテーブルを定義するスキーマ
   - パラメータデコレータの定義と、コンストラクタ引数にそれを付けて`hono`をbare importするクラス(依存性注入のライブラリと同じ形)

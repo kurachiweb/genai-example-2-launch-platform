@@ -160,7 +160,7 @@ graph TB
 | Layer    | Choice / Version                                                                       | Role in Feature                                | Notes                                          |
 | -------- | -------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
 | 認証部品 | identity-authの`auth`(Web Crypto・otpauth 9.5.2・Durable Object`LoginAttemptThrottle`) | パスワード・秘密・セッション・試行の制限・TOTP | 既存。スコープ`admin`・HMACの用途`admin-*`     |
-| 状態     | Cloudflare D1(drizzle-orm 1.0.0-rc.4)                                                  | 管理者・セッション・トークン・TOTP・監査ログ   | 新しいテーブル8つ                              |
+| 状態     | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                                  | 管理者・セッション・トークン・TOTP・監査ログ   | 新しいテーブル8つ                              |
 | 定期     | Cron Triggers(api)                                                                     | 期限切れの削除・監査ログの保持期間             | backend-platformの基盤                         |
 | メール   | email-deliveryの`EmailSender`・React Email                                             | 6種のトランザクションメール                    | 既存                                           |
 | 画面     | TanStack Start・React・react-hook-form・zod・shadcn/ui・`@marsidev/react-turnstile`    | 認証画面・シェル・一覧・設定                   | frontend-platformの版。`table`・`select`を追加 |

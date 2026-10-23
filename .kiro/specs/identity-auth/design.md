@@ -213,7 +213,7 @@ graph TB
 | QRコード     | uqr 0.1.3                                                                            | URIをセルの行列にし、SVG要素で描画                       | 新規。frontend-lib・client・adminで同じ版                     |
 | 端末情報     | bowser 2.14.1                                                                        | User-Agentからブラウザ名とOS名を得る                     | 新規(Q6)。apiだけ                                             |
 | 外部サービス | HIBP Pwned Passwords range API・DISIFY API・Cloudflare Turnstile                     | 漏洩パスワード照合・使い捨て判定・bot判定                | `fetch`で直接呼ぶ。Turnstileはbackend-platformの`BotVerifier` |
-| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.4)・Durable Objects(SQLite、`ctx.storage.kv`)     | アカウント・セッション・トークン・イベント、ログイン試行 | 新しいテーブル8つ、新しいDurable Objectのクラス1つ            |
+| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.5)・Durable Objects(SQLite、`ctx.storage.kv`)     | アカウント・セッション・トークン・イベント、ログイン試行 | 新しいテーブル8つ、新しいDurable Objectのクラス1つ            |
 | 非同期・定期 | Cloudflare Queues(本体`JOBS_QUEUE`)・Cron Triggers(api)                              | 非同期の波及処理・判定し直し、日次のジョブ               | backend-platformの基盤。新しいQueueは作らない                 |
 | メール       | email-deliveryの`EmailSender`・React Email                                           | 認証系の7種のトランザクションメール                      | 既存                                                          |
 | 画面         | TanStack Start・React・react-hook-form・zod・shadcn/ui・`@marsidev/react-turnstile`  | 認証画面・設定ページ・ヘッダーの区画                     | frontend-platformの版                                         |
