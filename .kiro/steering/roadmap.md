@@ -76,13 +76,45 @@
   - 可視性フィルタ(退会・停止・非公開・論理削除の除外): ユーザー側の条件はidentity-auth、プロダクト側の条件はproduct-launchが共通部品として所有する
   - ハンドル基盤(大文字小文字を区別しない一意性・旧ハンドルの302リダイレクト・予約語): user-profile-socialが所有し、product-launch・help-center・プロダクトカテゴリが再利用する
   - マッチとブラケット: match-engineが汎用マッチモデルと投票を、tournament-weekがブラケットエンジンを所有し、tournament-yearが再利用する
-  - プラン判定(Ultras加入状態): ultras-subscriptionが照会サービスを所有し、user-profile-social・product-launch・tournament-week・tournament-yearが消費する
+  - プラン判定(Ultras加入状態): ultras-subscriptionが照会サービスを所有し、user-profile-social・product-launch・tournament-week・tournament-yearが消費する。UltrasのE2Eは機能フラグの行を書き換え、client・adminの2ファイルをPlaywrightのプロジェクトの依存で直列にする(ultras-subscriptionのタスク10.1)。フラグの値で表示が変わる画面を確かめる後続specのE2Eは、Ultrasのプロジェクトの依存に加えるか、フラグの値で結果が変わる部分を確かめない
   - 再ローンチ可否ポリシー: product-launchが所有し、tournament-week・tournament-yearが「トーナメント結果確定待ち」の条件を供給する
-  - 決済フルフィルメント: paymentsが購入種別とフルフィルメントのポートを所有し、ultras-subscription・tournament-week・tournament-year・sponsorshipが実装する
+  - 決済フルフィルメント: paymentsが購入種別とフルフィルメントのポートを所有し、ultras-subscription・tournament-week・tournament-year・sponsorshipが実装する。返金の共通部品(`PaymentRefunds`)・未完了の決済セッションの失効(`OpenCheckoutExpirer`)・23:40の決済の突合のジョブ(`payments.checkout-reconciliation`、`order` 10)もpaymentsが所有し、後続specは突合の結果をフルフィルメントで受け取る(同じ時刻に突合のジョブを重ねて作らない)。23:40に他のジョブを登録するspec(match-engineなど)は`order`を10より大きくする
   - 通知イベント契約: notificationsが所有し、match-engine・tournament-week・tournament-yearが発行する
-  - Cron・Queuesのディスパッチ: backend-platformが所有し、各specがジョブとメッセージ種別を登録する(時刻は日次タイムラインに従う)。ジョブと波及処理の名前は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`とする。4:21のジョブの名前と順序は日次タイムラインの表に載せ、表が無ければ最初にジョブを足すspecが作る
+  - Cron・Queuesのディスパッチ: backend-platformが所有し、各specがジョブとメッセージ種別を登録する(時刻は日次タイムラインに従う)。ジョブと波及処理の名前は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`とする。4:21のジョブの名前と順序は日次タイムラインの表に載せ、表が無ければ最初にジョブを足すspecが作る。4:21のジョブの`order`とユーザーライフサイクルの波及処理の`order`は、下の表でspecごとに割り当てた同じ百の位の帯を使う(2026-10-23に開発者が決定)。波及処理の`order`は0〜9999が各ドメインspec、10000以上がidentity-auth専用である。backend-platformの`createCronRegistry`とidentity-authの`createAsyncLifecycleRegistry`は`order`の範囲を検査せず、同じ時刻・同じ種類での重複だけを拒否するため、1000以上の帯もそのまま使える。帯の数値は同じ時刻・同じ種類の中の実行順でもあり、後続specの帯(1000番台以降)は上流のmedia-pipeline・email-delivery・content-processingのジョブの後に動く。上流の値より前に動く必要があるジョブ・波及処理を持つspecは、帯の外の値を使わずに設計時に開発者へ確認する。表に無いspec(基盤spec・legal-pages)は4:21のジョブも波及処理も持たず、必要になったら2300番台以降の未使用の帯を表に足して使う
+
+    | spec                | 帯                                              | 使用中の値                           |
+    | ------------------- | ----------------------------------------------- | ------------------------------------ |
+    | identity-auth       | 100番台(波及処理はidentity-auth専用の10000以上) | 4:21は100・110・120、波及処理は10000 |
+    | admin-foundation    | 200番台                                         | 4:21は200・210                       |
+    | inquiry-chat        | 300番台                                         | 4:21は300、波及処理は300             |
+    | payments            | 400番台                                         | 4:21は400・410、波及処理は400・410   |
+    | ultras-subscription | 500番台                                         | 4:21は500、波及処理は500             |
+    | user-profile-social | 600番台                                         | —                                    |
+    | help-center         | 700番台                                         | —                                    |
+    | media-pipeline      | 800番台                                         | 4:21は810・820・830                  |
+    | email-delivery      | 900〜949                                        | 4:21は900                            |
+    | content-processing  | 950〜999                                        | 4:21は950                            |
+    | product-launch      | 1000番台                                        | —                                    |
+    | match-engine        | 1100番台                                        | —                                    |
+    | directory-discovery | 1200番台                                        | —                                    |
+    | notifications       | 1300番台                                        | —                                    |
+    | engagement          | 1400番台                                        | —                                    |
+    | tournament-week     | 1500番台                                        | —                                    |
+    | sponsorship         | 1600番台                                        | —                                    |
+    | tournament-year     | 1700番台                                        | —                                    |
+    | public-api          | 1800番台                                        | —                                    |
+    | ugc-moderation      | 1900番台                                        | —                                    |
+    | content-reporting   | 2000番台                                        | —                                    |
+    | data-export         | 2100番台                                        | —                                    |
+    | launch-readiness    | 2200番台                                        | —                                    |
+
   - GraphQLスキーマとpersisted operations: api-gatewayがサーバー側規約を、frontend-platformがクライアント側規約を所有し、各ドメインspecがスキーマモジュールを追加する
-  - 画面シェル: 利用者側レイアウトとフッターはfrontend-platform、設定ページのシェルはidentity-auth、管理画面のシェルとメニューはadmin-foundation、トップページはmatch-engine、プロダクト詳細ページはdirectory-discovery、公開プロフィールはuser-profile-socialが所有し、他specはそこへ区画を追加する
+  - 画面シェル: 利用者側レイアウトとフッターはfrontend-platform、設定ページのシェルはidentity-auth、管理画面のシェルとメニューはadmin-foundation、トップページはmatch-engine、プロダクト詳細ページはdirectory-discovery、公開プロフィールはuser-profile-socialが所有し、他specはそこへ区画を追加する。管理画面のメニューのURLと`order`はadmin-foundationの仮6(ページ配置)に従う。管理画面のダッシュボードのカード(`DASHBOARD_CARDS`)はadmin-foundation(ugc-moderationの統計10・inquiry-chatの未対応の問い合わせ20・content-reportingの未対応の通報30)、管理画面のカテゴリのページ(`CATEGORY_SECTIONS`)はinquiry-chat(product-launch 10・help-center 20・inquiry-chat 30・content-reporting 40)、管理画面の設定ページ(`ADMIN_SETTINGS_SECTIONS`)と料金ページ(`PRICING_SECTIONS`)はultras-subscription(設定はtournament-yearの決勝日10・ultras-subscriptionの機能フラグ20・notificationsの送信者情報30、料金はultras-subscription 10・sponsorship 20)が所有する。管理画面の問い合わせの詳細の操作(`INQUIRY_DETAIL_ACTIONS`)はinquiry-chat(ugc-moderationが運営者による代理の退会への導線を登録)が所有する
+  - Ultras加入が有効になった知らせ: `ULTRAS_ACTIVATION_HANDLERS`はultras-subscriptionが所有し、tournament-week・tournament-yearが登録する(`order`は100以上、少なくとも1回の配送のためハンドラは冪等にする)
+  - 利用者の連絡先の照会: `UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、`apps/backend-lib/workers/identity`、api・eventの両方に束縛)はidentity-authが所有し、メールを送る各specが使う。各specはメールの宛先・宛名として`users`を直接読まない。ただし画面の表示のためのニックネーム・ハンドルの読み取り(inquiry-chatの`D1InquirerProfiles`・`D1InquiryAdminReader`など)はこの規則の対象外とする。user-profile-socialが置き換えるのは、inquiry-chatの表示用の照会口`InquirerProfiles`の束縛(プロフィール画像付きの実装への差し替え)だけである。`D1InquiryAdminReader`の一覧は、絞り込み・並べ替え・ページ分けと同じ1回の読み取りで送信者のニックネームを得るため`users`を結合しており、`InquirerProfiles`に依存しない。この結合は表示の読み取りの例外として残し、置き換えない
+  - データエクスポートの出力: 各ドメインspecが出力用の部品(identity-authの`AccountExport`・paymentsの`PaymentHistoryExport`・ultras-subscriptionの`UltrasPlanExport`・inquiry-chatの`InquiryExport`など)を持ち、data-exportはそれを呼ぶだけで他のドメインのテーブルを直接読まない
+  - 容量の単位: ファイルサイズの上限の`kB`・`MB`は1,024を基数とする(1kB = 1,024バイト、1MB = 1,048,576バイト。文言規則の「容量の単位」)。外部サービスの上限はそのサービスの値に従う
+  - E2Eの管理者ログイン: 最初の最上位管理者の招待を発行してログインする補助はadmin-foundationの`e2e/support/admin-bootstrap.ts`が所有し、管理画面のE2Eを書く各specが使う
   - 隔離バケットと隔離理由: media-pipelineがデータモデルと移動処理を、ugc-moderationが管理操作を所有する
   - 監査ログ: admin-foundationが記録APIと閲覧画面を所有し、管理操作を持つ各specが記録を呼び出す
   - インフラ資源: infra-deliveryがOpenTofu構成を所有し、後続specは必要な資源(Queue・Durable Objectsなど)を同構成へ追記する
@@ -96,21 +128,23 @@
 
 ## Requirement Ambiguities
 
-要件定義書の読解で見つかった曖昧・未決定の箇所である。担当specの要件フェーズで開発者に確認して解消する。
+要件定義書の読解で見つかった曖昧・未決定の箇所である。担当specの要件フェーズで開発者に確認して解消する。解消した論点は行を消さず、「解決」の列に決めたspecと決定の番号を書く。
 
-| 論点                                                                                  | 該当要件                             | 担当spec                             |
-| ------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------ |
-| クールダウン終了時に失敗回数をリセットすると、失敗ごとに2倍のバックオフが伸びない     | FR-RLMIT-010、NFR-SECUR-022          | identity-auth                        |
-| メールアドレスをキーにするログイン試行DOがハッシュ化対象から漏れている                | FR-RLMIT-017、NFR-SECUR-022          | identity-auth                        |
-| 最初の最上位管理者の作成方法が未定義                                                  | FR-ADMAC-004                         | admin-foundation                     |
-| 同一カテゴリに3つ以上ある場合のペアリング方法                                         | FR-GAME-004周辺                      | match-engine                         |
-| Week優勝作がYear確定まで最長約1年再ローンチできない意図、トーナメント敗退後の禁止期間 | FR-RELCH-004                         | product-launch、tournament-week      |
-| 有料プランによる参加費免除の判定時点、決済済み後に加入した場合の返金                  | FR-TOURW・FR-TOURY・FR-PPLAN-007周辺 | ultras-subscription、tournament-week |
-| Year初年度や決勝日未設定時の扱い、初年度に参加が64を超える可能性                      | FR-TOURY-005、FR-ADMCF-003〜004      | tournament-year                      |
-| トーナメントの開始予告メールを組み合わせ決定時とマッチ前日のどちらで送るか            | FR-NOTIF-001、FR-TOURY-004           | notifications                        |
-| 複数回勝利したプロダクトのディレクトリ上の単位、ソートと期間絞り込みの基準ローンチ    | FR-DIR-001〜007                      | directory-discovery                  |
-| スポンサー広告のティア別・日別の掲載枠上限、0:07以降の当日開始申込の開始通知          | FR-SPONS周辺                         | sponsorship                          |
-| 全Workerへの「IP単位100回/10秒」制限がStripe WebhookやNAT配下の画像閲覧に及ぶ         | FR-RLMIT-008                         | backend-platform                     |
+| 論点                                                                                                                                                                                 | 該当要件                                 | 担当spec                                                      | 解決                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| クールダウン終了時に失敗回数をリセットすると、失敗ごとに2倍のバックオフが伸びない                                                                                                    | FR-RLMIT-010、NFR-SECUR-022              | identity-auth                                                 | identity-auth Q1(失敗回数を残し、クールダウン期間を最大5分まで伸ばす)                     |
+| メールアドレスをキーにするログイン試行DOがハッシュ化対象から漏れている                                                                                                               | FR-RLMIT-017、NFR-SECUR-022              | identity-auth                                                 | identity-auth Q2(正規化したメールアドレスをハッシュ化した値だけを保持する)                |
+| 最初の最上位管理者の作成方法が未定義                                                                                                                                                 | FR-ADMAC-004                             | admin-foundation                                              | admin-foundation Q1(開発者が実行するコマンドで最上位管理者の招待を発行する)               |
+| 同一カテゴリに3つ以上ある場合のペアリング方法                                                                                                                                        | FR-GAME-004周辺                          | match-engine                                                  | —                                                                                         |
+| Week優勝作がYear確定まで最長約1年再ローンチできない意図、トーナメント敗退後の禁止期間                                                                                                | FR-RELCH-004                             | product-launch、tournament-week                               | —                                                                                         |
+| 有料プランによる参加費免除の判定時点、決済済み後に加入した場合の返金                                                                                                                 | FR-TOURW・FR-TOURY・FR-PPLAN-007周辺     | ultras-subscription、tournament-week                          | ultras-subscription Q1(勝利時点と加入時点の2時点で判定)・Q2(決済済みの参加費は返金しない) |
+| Year初年度や決勝日未設定時の扱い、初年度に参加が64を超える可能性                                                                                                                     | FR-TOURY-005、FR-ADMCF-003〜004          | tournament-year                                               | —                                                                                         |
+| トーナメントの開始予告メールを組み合わせ決定時とマッチ前日のどちらで送るか                                                                                                           | FR-NOTIF-001、FR-TOURY-004               | notifications                                                 | —                                                                                         |
+| 複数回勝利したプロダクトのディレクトリ上の単位、ソートと期間絞り込みの基準ローンチ                                                                                                   | FR-DIR-001〜007                          | directory-discovery                                           | —                                                                                         |
+| スポンサー広告のティア別・日別の掲載枠上限、0:07以降の当日開始申込の開始通知                                                                                                         | FR-SPONS周辺                             | sponsorship                                                   | —                                                                                         |
+| 全Workerへの「IP単位100回/10秒」制限がStripe WebhookやNAT配下の画像閲覧に及ぶ                                                                                                        | FR-RLMIT-008                             | backend-platform                                              | backend-platform Q1(Webhook・RFC 8058の配信停止・画像配信のドメインを対象外にする)        |
+| 停止・非公開化・強制終了に伴う返金を自動で行うか(法的通知の大枠の返金ポリシーとFR-ADMUG-024・sponsorshipのbriefの食い違い。paymentsの`PaymentRefunds`で全額・一部の返金を実行できる) | FR-ADMUG-024、FR-PYMNT-010、FR-SPONS周辺 | ugc-moderation、sponsorship、tournament-week、tournament-year | —(payments Q1で部品の提供までを決め、判断は担当specへ申し送った)                          |
+| 4:21の直列実行のジョブ全体の時間の予算と上限(ジョブが増え続けるため。content-processing・media-pipelineのresearch.mdのM-5の申し送り)                                                 | 日次バッチ(DR-004、DR-012〜017など)      | backend-platform(検証はlaunch-readiness)                      | —                                                                                         |
 
 ## Specs (dependency order)
 
@@ -123,19 +157,19 @@
 - [x] content-processing -- 共用部品`apps/common-lib`の新設、マークダウン入力・描画・サニタイズ(4.27)と全文検索基盤(FTS5・索引正規化パイプライン、4.28). Dependencies: frontend-platform
 - [x] media-pipeline -- ファイルアップロード・検証・非同期モデレーション(Rekognition)・画像配信ドメイン・同一オリジンのファイル配信・ファイルのライフサイクル(4.25). Dependencies: frontend-platform, content-processing
 - [x] identity-auth -- ユーザー登録・認証・セッション・TOTP・退会(4.1)、認証プリミティブ、ユーザーライフサイクルイベント、設定ページシェル. Dependencies: frontend-platform, email-delivery, content-processing, media-pipeline
-- [ ] admin-foundation -- 管理者アカウント・ログイン・RBAC(4.20)、監査ログ、管理画面シェル、最初の最上位管理者の作成. Dependencies: identity-auth, media-pipeline
-- [ ] legal-pages -- 利用規約・プライバシーポリシー・法的通知の編集と改訂履歴、公開ページ、全ページからの規約リンク. Dependencies: admin-foundation, content-processing
-- [ ] inquiry-chat -- 問い合わせフォームとチャット(4.17)、管理者の返信・ステータス管理、問い合わせカテゴリマスタ. Dependencies: admin-foundation, media-pipeline
-- [ ] payments -- Stripe決済基盤(4.26)、購入とフルフィルメントのポート、Webhook反映、返金、決済履歴. Dependencies: identity-auth, legal-pages
-- [ ] ultras-subscription -- 有料プランUltras(4.18)、プラン判定サービス、有料プラン導線の機能フラグ、料金ページ. Dependencies: payments, admin-foundation
-- [ ] user-profile-social -- ユーザープロフィールと公開プロフィールページ(4.2)、フォロー(4.3)、ハンドル基盤、退会・停止に伴うユーザーの全保有ファイルの波及処理. Dependencies: identity-auth, media-pipeline, content-processing, ultras-subscription
-- [ ] help-center -- ヘルプページ(4.16)、ヘルプ記事管理、ヘルプカテゴリマスタ. Dependencies: admin-foundation, content-processing, user-profile-social
-- [ ] product-launch -- プロダクト登録・編集・削除とローンチ日予約(4.5)、再ローンチ制限(4.8)、プロダクトカテゴリマスタ、プロダクトライフサイクルイベント. Dependencies: user-profile-social, admin-foundation
+- [x] admin-foundation -- 管理者アカウント・ログイン・RBAC(4.20)、監査ログ、管理画面シェル、最初の最上位管理者の作成. Dependencies: identity-auth, media-pipeline
+- [x] legal-pages -- 利用規約・プライバシーポリシー・法的通知の編集と改訂履歴、公開ページ、全ページからの規約リンク. Dependencies: admin-foundation, content-processing
+- [x] inquiry-chat -- 問い合わせフォームとチャット(4.17)、管理者の返信・ステータス管理、問い合わせカテゴリマスタ、管理画面のカテゴリのページのシェル(`CATEGORY_SECTIONS`). Dependencies: admin-foundation, media-pipeline
+- [x] payments -- Stripe決済基盤(4.26)、購入とフルフィルメントのポート、Webhook反映、返金、決済履歴. Dependencies: identity-auth, legal-pages
+- [x] ultras-subscription -- 有料プランUltras(4.18)、プラン判定サービス、有料プラン導線の機能フラグ、料金ページのシェル(`PRICING_SECTIONS`)、管理画面の設定ページのシェル(`ADMIN_SETTINGS_SECTIONS`). Dependencies: payments, admin-foundation
+- [ ] user-profile-social -- ユーザープロフィールと公開プロフィールページ(4.2)、フォロー(4.3)、ハンドル基盤、退会・停止に伴うユーザーの全保有ファイルの波及処理. Dependencies: identity-auth, media-pipeline, content-processing, ultras-subscription, inquiry-chat
+- [ ] help-center -- ヘルプページ(4.16)、ヘルプ記事管理、ヘルプカテゴリマスタ. Dependencies: admin-foundation, content-processing, user-profile-social, inquiry-chat
+- [ ] product-launch -- プロダクト登録・編集・削除とローンチ日予約(4.5)、再ローンチ制限(4.8)、プロダクトカテゴリマスタ、プロダクトライフサイクルイベント. Dependencies: user-profile-social, admin-foundation, inquiry-chat, ultras-subscription
 - [ ] match-engine -- 汎用マッチモデル、Upvote(4.6)、予選のペアリング・開始・確定(4.7)、トップページ. Dependencies: product-launch
 - [ ] directory-discovery -- ディレクトリ一覧・絞り込み・検索(4.9)、プロダクト詳細ページ、プロダクトの検索索引. Dependencies: match-engine
 - [ ] notifications -- マッチ・フォロワー・受賞の通知メール(4.24)、通知設定、RFC 8058配信停止、送信者情報設定. Dependencies: match-engine, email-delivery
 - [ ] engagement -- ローンチへのコメント(4.10)とプロダクト評価(4.11). Dependencies: directory-discovery
-- [ ] tournament-week -- Product of the Week決定トーナメント(4.13)とブラケットエンジン、参加費決済、自動返金、突合. Dependencies: match-engine, payments, notifications
+- [ ] tournament-week -- Product of the Week決定トーナメント(4.13)とブラケットエンジン、参加費決済、自動返金、突合の結果の反映(突合のジョブはpayments). Dependencies: match-engine, payments, notifications
 - [ ] sponsorship -- スポンサー広告の申込・決済・掲載・開始終了通知(4.15)、管理者による強制終了と返金目安額. Dependencies: directory-discovery, payments
 - [ ] tournament-year -- Product of the Year決定トーナメント(4.14)と決勝実施日の設定. Dependencies: tournament-week
 - [ ] public-api -- 公開REST API(4.19)、APIキー管理、Swagger UIページ. Dependencies: engagement
