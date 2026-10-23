@@ -62,6 +62,7 @@
 - `createBaseConfig`の引数の形の変更、`tsconfig.base.json`の型検査・変換オプションの変更。
 - 主要パッケージの一覧の版の変更(特にVitest・TypeScript・Playwright)。
 - compose.yamlのマウント構成の変更。
+- E2Eの設定の組み立て(`createPlaywrightConfig`)の変更。ultras-subscriptionのタスク10.1が、指定したE2Eのファイルを対象ごとのプロジェクトから外して別のプロジェクトに分け、`dependencies`で直列にする組み立てを加え、本文書のE2EConfigの契約を新しい形に合わせて直す。
 
 ## Architecture
 

@@ -230,6 +230,10 @@
   - 配置の不備は一括検査の最初の段階で先に示された(8.5)。
   - Bunのデコレータの扱いは配置方式とは別の課題であり、基底設定で対処した。
 
+## spec横断レビュー(3回目)の指摘の反映(2026-10-23)
+
+- (軽微)本specは実装済みだが、ultras-subscriptionのタスク10.1が`createPlaywrightConfig`に、指定したE2Eのファイルを対象ごとのプロジェクトから外して別のプロジェクトに分け、`dependencies`で直列にする組み立てを加える。設計のRevalidation Triggersにその旨の行を加えた。E2EConfigの契約は、ultras-subscriptionのタスク10.1が新しい形に合わせて直す。`spec.json`の承認の状態は変えていない。
+
 ## References
 
 - [TypeScript 6.0 Release Notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html) — 既定値の変更と非推奨オプション
