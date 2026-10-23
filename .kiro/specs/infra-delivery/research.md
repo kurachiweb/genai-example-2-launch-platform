@@ -112,6 +112,17 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 | R3-7 | 関係なし                                       | roadmapとugc-moderationのbriefの修正である                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | R3-8 | 関係なし                                       | 文言規則への追加はmedia-pipeline・identity-authの担当で、本specは文言を持たない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
+### spec横断レビューの反映(2026-10-23)
+
+共通ドメイン5spec(admin-foundation・legal-pages・inquiry-chat・payments・ultras-subscription)の作成後の横断レビューで、後続specが宣言した変数とシークレットが本specの一覧に無かった。開発者の決定(2026-10-23)により、次のとおり反映した。
+
+- **ホスト名から導かれる変数**: apiの`ADMIN_SITE_ORIGIN`(admin-foundation。adminのホスト名から導く)と、eventの`CLIENT_SITE_ORIGIN`(payments)の行を「Supporting References」の一覧に加え、Out of Boundary・Revalidation Triggersに所有するspecを加えた。eventのホスト名の変更はStripeのWebhook endpointに効くため、再検証の対象にpaymentsを加えた。
+- **シークレット**: 必須の`STRIPE_API_KEY`(api・event)・`STRIPE_WEBHOOK_SECRET`(event)をInfisicalのキーの表に加えた。登録の時期はWave 1の必須のキーと同じで、stagingは必須にする変更をmainへマージする前、prodはlaunch-readinessである。キーの一覧の正は`docs/onboardings/project-values.md`の節のままで、paymentsが宣言と同じ変更で行を足す。技術ドキュメントにはキーの名前を列挙しない(N-5)。
+- **prodで仮の値を置く公開の変数**: clientの`STRIPE_PUBLISHABLE_KEY`(payments)は、`TURNSTILE_SITE_KEY`と同じくprodに形式の検証を通る仮の値を置き、launch-readinessが置き換える。OpenTofuの資源の識別子ではないため、識別子の反映と照合の対象には加えない。「Supporting References」に表を設けた。
+- **その他の変数**: `PAYMENTS_SMOKE_ENABLED`(api・event、prodは`false`)はシークレットではないため、キーの表には載せず、他specへの影響の表に記録した。ultras-subscription・inquiry-chat・legal-pagesは新しいシークレット・変数・資源を持たない。
+- **タスク**: 本specのタスクは、実装の時点でmainにあるキーと変数だけを扱い、後続specの行は後続specが足すため、タスクの追加は無い。構成検査(3.1・5.2)は資源一覧の識別子だけを照合し、`ADMIN_SITE_ORIGIN`・`STRIPE_PUBLISHABLE_KEY`を照合しないため、検査の変更も無い。
+- **容量の単位**: 1,024を基数とする規則(文言規則)に関わるバイト数の上限を本specは持たない。
+
 ## Research Log
 
 ### Cloudflare providerの版と管轄の対応
