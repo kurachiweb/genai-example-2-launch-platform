@@ -63,10 +63,15 @@
 
 ## Existing Spec Touchpoints
 
-- **Extends**: ugc-moderationの措置ユースケースを呼び出す(通報由来であることを措置の記録に含める)
+- **Extends**: ugc-moderationの措置ユースケースを呼び出す(通報由来であることを措置の記録に含める)。admin-foundationの`DASHBOARD_CARDS`へ未対応の通報の件数のカードを`order` 30で加える(admin-foundation Q2)。inquiry-chatの`CATEGORY_SECTIONS`(管理画面の`/categories`)へ通報カテゴリの区画を`order` 40で加える。admin-foundationの`ADMIN_NAV_ITEMS`へ通報`/reports`(`order` 70)を加える
 - **Adjacent**: inquiry-chat(4種の対応ステータスという同じ方式)
 
 ## Constraints
 
-- 対応完了日時は監査ログに記録し、対応期間の算出に使う(FR-ADMUG-022)
+- 対応完了日時は監査ログに記録し、対応期間の算出に使う(FR-ADMUG-022)。対応期間の表示は、admin-foundationの`AuditLogReader.latestFor({ action, targetKind, targetId })`(最新の記録の日時を返す)で引き、監査ログのテーブルを直接読まない
 - 未ログインの申出者の連絡先は個人情報として扱い、保持期間はデータ要件(DR)に従う
+- ダッシュボードのカードは`DashboardCard`の`{ id: 'content-reporting.unhandled-reports', order: 30, width, component }`で、自分でデータを取得し`DashboardCardFrame`で枠と状態を表示する。カードの失敗は他のカードを止めない
+- 通報カテゴリの区画は`CategorySection`の`{ id: 'content-reporting.report-categories', order: 40, title, component }`で、admin-foundationの`CategoryMasterEditor`を`withHandle: false`で使う
+- 投稿者(ログイン中の利用者)へのメールの宛先は、identity-authの`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)で引き、`users`を直接読まない。退会済みで`undefined`なら送らない
+- 4:21のジョブとユーザーライフサイクルの波及処理の`order`は、roadmapの帯の割り当ての表で本specに割り当てた2000番台(2000〜2099)を使う。波及処理の各ドメインの範囲は0〜9999で、10000以上はidentity-auth専用である。帯の値は同じ時刻・同じ種類の中で上流のspecの後に動くため、上流の値より前に動く必要がある処理があれば設計時に開発者へ確認する
+- 管理画面のE2Eの管理者ログインは、admin-foundationの`e2e/support/admin-bootstrap.ts`を使う
