@@ -1,0 +1,7 @@
+{
+  "name": "hono",
+  "description": "Efficiently develop Hono applications with inline API reference and request testing.",
+  "author": {
+    "name": "Yusuke Wada"
+  }
+}
