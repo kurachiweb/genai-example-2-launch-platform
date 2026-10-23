@@ -25,7 +25,7 @@
 
 ## Approach
 
-掲載期間・ティア・表示可否の判定をこのspecに集約し、各ページへは広告区画として提供する。決済はpaymentsのフルフィルメントのポートを実装して受け取る。返金そのものは管理者がStripe上で手動で行う前提とし、このspecは目安額の算出までを持つ。
+掲載期間・ティア・表示可否の判定をこのspecに集約し、各ページへは広告区画として提供する。決済はpaymentsのフルフィルメントのポートを実装して受け取る。返金の扱い(管理者がStripe上で手動で行うか、paymentsの`PaymentRefunds`で自動で行うか)は要件フェーズで決める(Constraintsの論点)。
 
 ## Scope
 
@@ -37,7 +37,7 @@
   - 上記のテスト
 - **Out**:
   - Stripeとの通信と決済画面の共通部品(payments)
-  - 返金の自動実行(要件上は目安額の表示まで)
+  - 返金の自動実行(要件上は目安額の表示まで。ただし法的通知の大枠と食い違うため要件フェーズで確認する)
 
 ## Boundary Candidates
 
@@ -58,7 +58,7 @@
 
 ## Existing Spec Touchpoints
 
-- **Extends**: なし
+- **Extends**: ultras-subscription(料金ページ`/pricing`の区画の登録口`PRICING_SECTIONS`へ、スポンサー広告の区画を`order` 20で加える)、payments(購入種別`sponsorship`の`PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseFulfillment`を実装する)、admin-foundation(`ADMIN_NAV_ITEMS`へスポンサー広告`/sponsorships`(`order` 90)を加える)
 - **Adjacent**: directory-discovery・match-engine(広告区画を置くページの所有者)
 
 ## Constraints
@@ -66,4 +66,11 @@
 - 要件の論点(要件フェーズで開発者に確認する):
   - ティアごと・日ごとの最大掲載枠数が未定義
   - 当日の0:07以降に申し込んだ当日開始の広告には、開始通知が送られない
+  - 強制終了・プロダクトの非公開化・利用者の停止に伴う返金を自動で行うか。本briefは従来「返金は管理者がStripe上で手動で行う」としていたが、法的通知の大枠の返金ポリシーは広告の強制終了の未掲載日数分と表示停止の日数分を「自動で返金する」と書いており食い違う(roadmapのRequirement Ambiguities、paymentsのQ1)。自動で行う場合は、paymentsの`PaymentRefunds`(全額・一部の金額を指定した非同期の返金の依頼)を呼び、Stripeを直接呼ばない。どちらに決めても、法的通知の大枠か要件定義書のどちらかの改訂が要る
 - 広告の表示はFCPを悪化させないよう、SSRで初期表示する
+- 料金ページの区画は`PricingSection`の`{ id: 'sponsorship.sponsorship-pricing', order: 20, component }`。ページの枠と法的通知へのリンクはultras-subscriptionが持つ
+- 価格はpaymentsの`PriceCatalog`で照会し、決済はpaymentsの`CheckoutStarter`で始める。`PurchaseKindRegistration`に登録するServiceIdentifierは、本specが`backend-lib/workers/<ドメイン>`の共有モジュールでapi・eventの両方に束縛する(反映が両アプリで動くため、paymentsのRevalidation Triggers)。決済の受付の有効期限は作成から1時間(payments仮4)
+- 開始・終了・強制終了のメールの宛先は、identity-authの`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)で引き、`users`を直接読まない
+- データエクスポートに広告の情報を出す場合は、本specが出力用の部品を持ち、data-exportは本specのテーブルを直接読まない
+- 4:21のジョブとユーザーライフサイクルの波及処理の`order`は、roadmapの帯の割り当ての表で本specに割り当てた1600番台(1600〜1699)を使う。波及処理の各ドメインの範囲は0〜9999で、10000以上はidentity-auth専用である。帯の値は同じ時刻・同じ種類の中で上流のspecの後に動くため、上流の値より前に動く必要がある処理があれば設計時に開発者へ確認する。プロダクトライフサイクルの波及処理の`order`は、product-launchが契約で定める規則に従う
+- 管理画面のE2Eの管理者ログインは、admin-foundationの`e2e/support/admin-bootstrap.ts`を使う
