@@ -60,7 +60,10 @@ tournament-weekのブラケットエンジンを再利用し、Year固有の部�
 
 ## Existing Spec Touchpoints
 
-- **Extends**: tournament-weekのブラケットエンジンを再利用する(改修が必要になった場合はtournament-weekの設計と整合させる)
+- **Extends**:
+  - tournament-weekのブラケットエンジンを再利用する(改修が必要になった場合はtournament-weekの設計と整合させる)
+  - ultras-subscription: 管理画面の設定ページ`/settings`の区画の登録口`ADMIN_SETTINGS_SECTIONS`へ、決勝実施日の区画を`order` 10で加える。`ULTRAS_ACTIVATION_HANDLERS`へ加入が有効になった知らせのハンドラを登録する
+  - payments: 購入種別`year_tournament_entry`の`PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseFulfillment`を実装する
 - **Adjacent**: notifications(トーナメント開始予告の送信時刻)
 
 ## Constraints
@@ -68,3 +71,13 @@ tournament-weekのブラケットエンジンを再利用し、Year固有の部�
 - 要件の論点(要件フェーズで開発者に確認する):
   - 前年の決勝日が未設定(既定値)のとき、それを「設定されている」と扱うか
   - 初年度は期間の起点が無いため、参加が64を超え得る(FR-TOURY-005の「シード最大32」と矛盾し得る)
+  - 停止・非公開化に伴う参加資格の停止で返金を自動で行うか(法的通知の大枠の返金ポリシーとFR-ADMUG-024・sponsorshipのbriefの食い違い。roadmapのRequirement Ambiguities)。行う場合はpaymentsの`PaymentRefunds`を呼ぶ
+- 決勝実施日の区画は`AdminSettingsSection`の`{ id: 'tournament-year.final-date', order: 10, component }`。ページの枠と`/settings`のメニュー項目(admin-foundationの`ADMIN_NAV_ITEMS`の`order` 130)はultras-subscriptionが持つ。変更は最上位管理者だけが行える(admin-foundationのQ3の`requireAdmin(..., 'super_admin')`)、監査ログは`AuditLogRecorder`で記録する
+- 参加費の免除は、ultras-subscriptionのQ1・Q2(勝利時点と加入時点の2時点で判定、決済済みの参加費は返金しない)に従い、Weekの優勝の確定時刻`w`と決済期限`d`に対する`UltrasEntitlements.wasEntitledDuring(userId, w, d)`で判定する。Ultrasのテーブルを直接読まない
+- 加入が有効になった知らせのハンドラは`UltrasActivationHandlerRegistration`の`{ name: 'tournament-year.<名詞句>', order, handler }`で、`order`は100以上(ultras-subscriptionの規則)をtournament-weekと重ならないように割り当て、冪等にする。資格の付与と、未完了の参加費の決済セッションのpaymentsの`OpenCheckoutExpirer.expireOpen({ userId, kinds: ['year_tournament_entry'], ... })`での失効を行う(FR-PPLAN-007・FR-TOURY-021)。`OpenCheckoutExpirer`はStripeを呼ぶため、eventの非同期の処理から呼ぶ
+- 未加入者へのUltrasの導線など、機能フラグの値で表示が変わる画面をE2Eで確かめる場合は、フラグの行を書き換えるultras-subscriptionのE2Eのプロジェクトの依存に加えるか、フラグの値で結果が変わる部分を確かめない(roadmapのShared seams「プラン判定」)
+- 参加資格を失った場合の自動返金は、paymentsの`PaymentRefunds`で依頼し、Stripeを直接呼ばない。決済の突合のジョブはpaymentsが所有し、本specは結果をフルフィルメントで受け取る
+- 参加者へのメールの宛先は、identity-authの`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)で引く
+- `PurchaseKindRegistration`に登録するServiceIdentifierは、本specが`backend-lib/workers/<ドメイン>`の共有モジュールでapi・eventの両方に束縛する(paymentsのRevalidation Triggers)
+- 管理画面のE2Eの管理者ログインは、admin-foundationの`e2e/support/admin-bootstrap.ts`を使う
+- 4:21のジョブとユーザーライフサイクルの波及処理の`order`は、roadmapの帯の割り当ての表で本specに割り当てた1700番台(1700〜1799)を使う。波及処理の各ドメインの範囲は0〜9999で、10000以上はidentity-auth専用である。帯の値は同じ時刻・同じ種類の中で上流のspecの後に動くため、上流の値より前に動く必要がある処理があれば設計時に開発者へ確認する
