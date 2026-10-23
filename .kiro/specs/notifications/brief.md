@@ -67,10 +67,15 @@
 
 ## Existing Spec Touchpoints
 
-- **Extends**: なし
+- **Extends**: ultras-subscription(管理画面の設定ページ`/settings`の区画の登録口`ADMIN_SETTINGS_SECTIONS`へ、通知メールの送信者情報の区画を`order` 30で加える)
 - **Adjacent**: email-delivery(送信基盤)
 
 ## Constraints
 
 - 要件の論点(要件フェーズで開発者に確認する): Yearでは組み合わせが決勝の6日前に決まり、1回戦は決勝の0〜5日前に行われる。トーナメントの開始予告を組み合わせ決定時に送るか、マッチ前日に送るか
 - 配信停止トークンのハッシュ化はNFR-SECUR-006の方式に従う
+- 送信者情報の設定(FR-ADMCF-019)は、独立したページではなく、ultras-subscriptionが作る管理画面の設定ページ`/settings`に区画として載せる(`AdminSettingsSection`の`{ id: 'notifications.sender-info', order: 30, component }`)。ページの枠とメニュー項目(admin-foundationの`ADMIN_NAV_ITEMS`の`order` 130)はultras-subscriptionが持つ。変更の権限はadmin-foundationのQ3の方針、記録は`AuditLogRecorder`で行う
+- 通知メールの宛先・宛名は、identity-authの`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)で引く。`emailVerified`が偽の利用者を通知の対象から除く(identity-authの要件4.2)。`users`を直接読まない
+- データエクスポートに通知設定を出すため、本specが出力用の部品を持ち、data-exportは本specのテーブルを直接読まない
+- 管理画面のE2Eの管理者ログインは、admin-foundationの`e2e/support/admin-bootstrap.ts`を使う
+- 4:21のジョブとユーザーライフサイクルの波及処理の`order`は、roadmapの帯の割り当ての表で本specに割り当てた1300番台(1300〜1399)を使う。波及処理の各ドメインの範囲は0〜9999で、10000以上はidentity-auth専用である。帯の値は同じ時刻・同じ種類の中で上流のspecの後に動くため、上流の値より前に動く必要がある処理があれば設計時に開発者へ確認する
