@@ -46,6 +46,9 @@
 - 停止・停止解除の状態の遷移と操作口(`UserSuspension`)、運営者による退会の操作口(`AdministrativeWithdrawal`。利用者本人の退会と同じ確定の処理を通す)、機能制限の判定(`AccountGuard`)。
 - media-pipelineの`UploaderEligibility`の本specの実装(`AccountUploaderEligibility`。停止中・退会済みを拒否し、未確認は拒否しない)と、APIサーバーの合成でのその束縛。
 - 使い捨てメールアドレスの判定(`DisifyClient`・判定し直し)、利用者のメールアドレスの照会口の実装(`D1UserAddressDirectory`)。
+- 後続specが通知メールの宛先を引く利用者の連絡先の照会`UserContactDirectory`(契約・DIの識別子`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・D1の実装・api・event共通の束縛`IDENTITY_PLATFORM_MODULE`。`apps/backend-lib/workers/identity`)。後続specは`users`の`email`・`nickname`・`email_verified_at`を直接読まず、これを使う(spec横断レビュー、2026-10-23)。
+- データエクスポートのアカウントの部分の照会`AccountExport`(契約・DIの識別子`IDENTITY_PLATFORM_TYPES.AccountExport`・D1の実装。`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する)。`account.json`の`email`・`emailVerifiedAt`・`registeredAt`・`mfaEnabled`と、決済履歴の照会に使う仮名化IDを返す。data-exportは`users`・`user_totp_credentials`を直接読まず、これを使う(spec横断レビュー、2026-10-23)。
+- shadcn/uiの`Checkbox`(`apps/frontend-lib/components/ui/checkbox.tsx`)。登録の同意で最初に使い、paymentsの決済の同意が再利用する(spec横断レビュー、2026-10-23)。
 - メール種別7つ(`core/email/kinds/identity.ts`)とテンプレート(`apps/event/src/infrastructure/email/templates/identity/`)。
 - 定期実行のジョブ3つ(業務時刻4:21、`order` 100・110・120)とメッセージ種別2つ(`identity.run-user-lifecycle`・`identity.recheck-disposable-email`)。
 - 利用者側の画面: `/auth/*`の7画面、ログイン必須の経路の無いレイアウト`_authenticated`、設定ページのシェルと登録箇所`SETTINGS_NAV_ITEMS`、`/settings/account`・`/settings/security`、ヘッダーの`headerAccount`・`headerLaunchAction`・`belowHeader`の区画の部品、ログインの案内のダイアログ部品。
@@ -89,6 +92,10 @@
 - `users`の列・状態の値・`lifecycle_version`の扱い、`HANDLE_AVAILABILITY`の形(user-profile-social・ugc-moderation・data-export)。
 - 初期ハンドルの形式(`InitialHandleFormat`、英小文字と数字の12文字)と、user-profile-socialが所有するハンドルの規則(文字種・長さ・予約語・大文字小文字の扱い・旧ハンドル)。どちらかを変えたら、初期ハンドルがその規則を満たすことを確かめ直す(user-profile-social)。
 - `UserSuspension`の形(ugc-moderation)。
+- `UserContact`・`UserContactDirectory`の形、DIの識別子`IDENTITY_PLATFORM_TYPES.UserContactDirectory`と置き場所(`apps/backend-lib/workers/identity`)、api・eventの両方に束縛すること、`findContact`が退会済み(`deleted_at`あり)・物理削除済みの利用者で`undefined`を返し、停止中の利用者を返す規則(payments・ultras-subscription・inquiry-chat、以後メールを送る全ドメインspec)。
+- `AccountExportRecord`・`AccountExport`の形と項目(`account.json`の本specの持ち分と仮名化ID)、DIの識別子`IDENTITY_PLATFORM_TYPES.AccountExport`、api・eventの両方に束縛すること、`find`が退会済み・物理削除済みの利用者で`undefined`を返し、停止中の利用者を返す規則(data-export)。データエクスポートの文書の`account.json`の項目が変わったら、本specの持ち分を確かめ直す。
+- ユーザーライフサイクルの波及処理の`order`の範囲(0〜9999は各ドメイン、10000以上は本spec)と、本specの波及処理の`order`(10000)(波及処理を登録する全ドメインspec、roadmapの帯の割り当ての表)。
+- `apps/frontend-lib/components/ui/checkbox.tsx`の形(paymentsの決済の同意が再利用する)。
 - `AdministrativeWithdrawal`の形と、呼び出せる経路の条件(呼び出し元が管理者側で、主体が管理者のセッション)、対象が退会済み・存在しないときの`not_found`、利用者本人の退会と同じ確定の処理を通すこと(ugc-moderation・admin-foundation)。停止中の設定ページの案内文(問い合わせで退会を依頼できる旨)を変えたら、ugc-moderationの問い合わせからの導線も確かめ直す。
 - アップロードできる利用者の判定の規則(停止中・退会済みは拒否、メールアドレスが未確認でも拒否しない)と、`AccountUploaderEligibility`の束縛の位置(media-pipeline、アップロードを使う全ドメインspec)。
 - `auth`モジュールのポート・`SessionPolicy`・`LoginThrottle`のスコープとDurable Objectの名前の規則(admin-foundation)。
@@ -242,6 +249,12 @@ apps/
 │   └── workers/identity/                               # D1と外部サービス(apiのWorkers統合テスト、各ファイルに同名の*.worker.test.ts)
 │       ├── disify-client.ts                            # DisposableEmailCheckerのDISIFY実装
 │       ├── d1-user-address-directory.ts                # UserAddressDirectoryのD1実装(email-deliveryの照会口)
+│       ├── identity-platform-types.ts                  # IDENTITY_PLATFORM_TYPES(api・event共通の識別子、テストなし)
+│       ├── user-contact-directory.ts                   # UserContact・UserContactDirectory(後続specの連絡先の照会、テストなしの型)
+│       ├── d1-user-contact-directory.ts                # UserContactDirectoryのD1実装
+│       ├── account-export.ts                           # AccountExportRecord・AccountExport(データエクスポートのアカウントの部分、テストなしの型)
+│       ├── d1-account-export.ts                        # AccountExportのD1実装
+│       ├── identity-platform-module.ts                 # api・event共通の束縛(IDENTITY_PLATFORM_MODULE)
 │       └── user-lifecycle-store.ts                     # イベントと完了の記録の読み書き
 ├── api/src/
 │   ├── domain/auth/                                    # 主体に依存しない純粋な規則(Bunの単体テスト)
@@ -341,6 +354,7 @@ apps/
 │   ├── totp-qr-code.tsx                                # uqrのセルの行列をSVG要素で描画
 │   ├── recovery-code-list.tsx                          # リカバリコードの一覧・コピー・保管の注意
 │   └── password-input.tsx                              # 表示・非表示を切り替えるパスワードの入力欄
+├── frontend-lib/components/ui/checkbox.tsx             # shadcn/uiのCheckbox(登録の同意で使い、paymentsの決済の同意が再利用する。stories・browser testを併置)
 └── client/src/
     ├── routes/
     │   ├── auth/register.tsx · login.tsx · verify-email.tsx
@@ -405,6 +419,7 @@ docs/
 - `apps/api/package.json`・`bun.lock` — `otpauth` 9.5.2・`bowser` 2.14.1を版固定で加える。
 - `apps/api/eslint.config.ts`・`test/config/layer-rules.unit.test.ts` — `auth`の各層から`identity`の各層へのimportを禁止する規則と違反例を加える。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`env-schema.ts` — identityのモジュール、2つのメッセージの処理、任意の`DISIFY_API_KEY`を加える。
+- `apps/api/src/composition/modules.ts`・`apps/event/src/composition/modules.ts` — 両アプリの`MODULES`に`IDENTITY_PLATFORM_MODULE`(`UserContactDirectory`・`AccountExport`の束縛)を加える(spec横断レビュー、2026-10-23)。
 - `apps/event/src/infrastructure/email/templates/index.ts` — 7つのテンプレートを`EMAIL_TEMPLATES`へ加える。
 - `apps/client/src/routes/__root.tsx` — `beforeLoad`で`viewer`を取得して文脈に入れる(取得の失敗は未ログインとして扱う)。
 - `apps/client/src/composition/layout-slots.ts` — `headerAccount`・`headerLaunchAction`・`belowHeader`を本specの部品に差し替える。
@@ -681,6 +696,9 @@ sequenceDiagram
 | 19.4, 19.5                               | セッションの役割分担と主体別の検証           | SubjectSessionVerifier、ApiIdentityComposition                                                                           | `SESSION_BINDINGS`、`AUTH_TYPES.AdminSessionVerifier`                    | —                              |
 | 20.1, 20.2, 20.3                         | テスト                                       | 各テスト、E2E(MailpitSupport)                                                                                            | —                                                                        | —                              |
 | 20.4, 20.5, 20.6, 20.7                   | 技術ドキュメントと関連文書                   | IdentityDocs                                                                                                             | —                                                                        | —                              |
+| 4.8                                      | 後続specへの利用者の連絡先の照会             | UserContactDirectory、D1UserContactDirectory、IdentityPlatformModule                                                     | `UserContactDirectory.findContact`                                       | —                              |
+| 4.9                                      | データエクスポートのアカウントの部分の照会   | AccountExport、D1AccountExport、IdentityPlatformModule                                                                   | `AccountExport.find`                                                     | —                              |
+| 1.1, 1.2, 1.3(同意の入力)                | 同意のチェックボックスの共通部品             | RegisterForm、Checkbox(frontend-lib)                                                                                     | `components/ui/checkbox.tsx`                                             | —                              |
 
 ## Components and Interfaces
 
@@ -693,6 +711,8 @@ sequenceDiagram
 | IdentityMessageContracts                                                                                          | backend-lib/core                                              | 2つのメッセージ種別                                          | 3.3, 16.3                                                          | `defineMessageContract` (P0)                                      | Event          |
 | IdentityEmailKinds                                                                                                | backend-lib/core                                              | 7つのメール種別                                              | 14.6                                                               | `defineEmailKind` (P0)                                            | Event          |
 | D1UserAddressDirectory                                                                                            | backend-lib/workers                                           | email-deliveryの照会口の実装                                 | 15.3                                                               | D1 (P0)                                                           | Service        |
+| UserContactDirectory・D1UserContactDirectory・IdentityPlatformModule                                              | backend-lib/workers                                           | 後続specへの利用者の連絡先の照会(api・event共通の束縛)       | 4.8                                                                | D1 (P0)                                                           | Service        |
+| AccountExport・D1AccountExport                                                                                    | backend-lib/workers                                           | データエクスポートのアカウントの部分と仮名化IDの照会         | 4.9                                                                | D1 (P0)                                                           | Service        |
 | UserLifecycleStore                                                                                                | backend-lib/workers                                           | イベントと完了の記録                                         | 16.3, 16.4, 16.6, 17.1                                             | D1 (P0)                                                           | State          |
 | PasswordRules・SessionPolicy・LoginThrottleState・RecoveryCodeFormat・SecondFactor                                | api/domain/auth                                               | 主体に依存しない純粋な規則                                   | 5.1, 5.2, 7.2, 7.3, 7.4, 7.6, 8.2, 8.3, 13.3, 19.2                 | なし                                                              | State          |
 | UserAccountRules・InitialHandleFormat・AuthTokenPurpose                                                           | api/domain/identity                                           | 利用者の状態・可視・初期ハンドルの形式・トークンの用途       | 1.6, 4.3, 4.4, 4.5, 4.6, 14.2                                      | なし                                                              | State          |
@@ -738,6 +758,7 @@ sequenceDiagram
 | AccountMenu・LaunchAction・VerifyEmailBanner                                                                      | client                                                        | ヘッダーの区画                                               | 18.2, 18.3, 18.5, 6.7                                              | `SiteLayoutSlots` (P0)                                            | State          |
 | SettingsShell・各設定セクション                                                                                   | client                                                        | 設定ページ                                                   | 4.4, 8.4〜8.7, 10.1, 11.1, 12.1, 13.1〜13.9, 15.1, 15.4, 15.10     | frontend-platformの部品 (P0)                                      | State          |
 | TotpQrCode・RecoveryCodeList・PasswordInput                                                                       | frontend-lib                                                  | 管理者側も使う認証の画面部品                                 | 13.1, 13.3, 13.6, 13.9, 18.11                                      | uqr (P0)                                                          | State          |
+| Checkbox                                                                                                          | frontend-lib/components/ui                                    | shadcn/uiのチェックボックス(登録の同意、paymentsが再利用)    | 1.1, 1.2, 18.11                                                    | radix-ui (P0)                                                     | State          |
 | MailpitSupport・AuthE2E                                                                                           | e2e                                                           | メールの読み取りとE2Eテスト                                  | 20.2                                                               | Playwright・Mailpit (P0)                                          | Batch          |
 | IdentityDocs                                                                                                      | docs                                                          | 技術ドキュメントと関連文書                                   | 20.4, 20.5, 20.6, 20.7                                             | —                                                                 | —              |
 
@@ -850,7 +871,7 @@ export interface UserLifecycleAsyncHandler {
 export interface UserLifecycleAsyncRegistration {
   readonly name: string; // '<spec名>.<名詞句>' 例: 'identity-auth.email-suppression-cleanup'
   readonly events: readonly UserLifecycleEventType[];
-  readonly order: number; // 同じ種類の中での実行順(昇順)。0〜999は各ドメイン、1000以上は本spec
+  readonly order: number; // 同じ種類の中での実行順(昇順)。0〜9999は各ドメイン(specごとの百の位の帯はroadmap)、10000以上は本spec
   readonly handler: ServiceIdentifier<UserLifecycleAsyncHandler>;
 }
 export interface AsyncLifecycleRegistry {
@@ -870,6 +891,7 @@ export declare const LIFECYCLE_CONTINUE_DELAY_SECONDS: 5;
 - 配送保証: 少なくとも1回。非同期の波及処理は冪等にし、同じイベントで2回呼ばれても結果が変わらないようにする(16.7、`backend/007`に記載)。
 - 名前の規約: 波及処理(同期・非同期)と定期実行のジョブの名前は`<spec名>.<名詞句>`とする(email-deliveryの`email-delivery.cleanup`と同じ形)。メッセージ種別はbackend-platformの規約どおり`<ドメイン>.<動詞句>`とする(本specは`identity.*`)。規約の正はroadmapのShared seams(Cron・Queuesのディスパッチ)と、content-processingが追記するbackend-platformの`infra/003-async-processing.md`である。
 - 順序: 同じ利用者のイベントは発生順(`occurredAt`、同時刻はIDの昇順)に処理する(16.4)。異なる利用者の間の順序は保証しない。
+- `order`の範囲: 0〜9999は各ドメインspecの波及処理に充て、各specは4:21のジョブと同じ百の位の帯を使う(帯の割り当ての表はroadmapのShared seams「Cron・Queuesのディスパッチ」)。10000以上は本specの波及処理(`identity-auth.email-suppression-cleanup`の10000)に充て、同じ種類の各ドメインの波及処理の後に動かす。`createAsyncLifecycleRegistry`は範囲を検査せず、同じ種類での重複だけを拒否する(spec横断レビュー、2026-10-23)。
 - `purge_due`の波及処理は、その利用者の自分のデータを物理削除・匿名化する。本specの最後の物理削除は登録口に載せず、実行器が全波及処理の完了後に行う。
 
 #### IdentityMessageContracts
@@ -961,6 +983,82 @@ export declare function createDisifyClient(
 
 - `createD1UserAddressDirectory(db: Database): UserAddressDirectory`。`findRegistered(addresses)`は最大90件を受け、`deleted_at IS NULL`の利用者のうち、照合キー(`toMatchingKey`)が一致するメールアドレスの照合キーの集合を`available`で返す。D1への問い合わせに失敗したら`unavailable`を返す(email-deliveryの9.4)。
 - apiの`USER_ADDRESS_DIRECTORY`と、eventの`SuppressionMaintenance`の束縛の両方で使う。
+
+#### UserContactDirectory・D1UserContactDirectory・IdentityPlatformModule
+
+| Field        | Detail                                                                                         |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| Intent       | 後続specが通知メールの宛先・宛名を引くための、利用者の連絡先の照会(api・eventの両方で同じ束縛) |
+| Requirements | 4.8(spec横断レビュー、2026-10-23。payments・ultras-subscription・inquiry-chatが使う)           |
+
+**Contracts**: Service [x]
+
+```typescript
+// workers/identity/user-contact-directory.ts
+export interface UserContact {
+  readonly userId: string;
+  readonly email: string;
+  readonly nickname: string;
+  readonly emailVerified: boolean;
+}
+export interface UserContactDirectory {
+  // 退会済み・物理削除済みの利用者はundefined。停止中の利用者は返す
+  findContact(userId: string): Promise<UserContact | undefined>;
+}
+// workers/identity/identity-platform-types.ts
+export declare const IDENTITY_PLATFORM_TYPES: {
+  readonly UserContactDirectory: symbol;
+  readonly AccountExport: symbol;
+}; // Symbol.for('identity.<名前>')(email-deliveryのEMAIL_TYPESと同じ形)
+// workers/identity/d1-user-contact-directory.ts
+export declare class D1UserContactDirectory implements UserContactDirectory {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
+// workers/identity/identity-platform-module.ts
+export declare const IDENTITY_PLATFORM_MODULE: AppModule; // UserContactDirectory → D1UserContactDirectory、AccountExport → D1AccountExport
+```
+
+- `findContact`: `users`から`id = ? AND deleted_at IS NULL`の1行の`email`・`nickname`・`email_verified_at`を読み、`emailVerified`は`email_verified_at IS NOT NULL`とする。行が無い(物理削除済み)・`deleted_at`がある(退会済み)なら`undefined`。`status`は見ないため、停止中の利用者も返す(停止中の利用者にも決済・解約・問い合わせの返信の通知を届けるため)。D1への問い合わせの失敗は例外のまま投げ、呼び出し元(Queueの処理・反映の後の送信)の再試行に任せる。
+- 置き場所: api・eventの両方と`backend-lib/workers/<ドメイン>`(paymentsの`workers/payments`など)から読み込めるよう、契約・識別子・実装を`apps/backend-lib/workers/identity`に置く。apiの`IDENTITY_TYPES`(api専用)・eventの`EVENT_IDENTITY_TYPES`とは別の識別子にする。
+- 束縛: `IDENTITY_PLATFORM_MODULE`をapi・eventの`composition/modules.ts`の`MODULES`へ加える(email-deliveryの`EMAIL_PLATFORM_MODULE`と同じ形)。束縛の範囲は`PLATFORM_TYPES.Database`と同じにする。
+- 使い方: 後続specは`users`の`email`・`nickname`・`email_verified_at`を直接読まず、`IDENTITY_PLATFORM_TYPES.UserContactDirectory`を`@inject`で受け取る。宛先が`undefined`ならメールを送らない(各specの規則で「送らない」として記録する)。確認済みかどうかで送るかを変えるかは各specが決める。
+- 既存の`D1UserAddressDirectory`(email-deliveryの照会口。メールアドレスからの逆引き)とは用途が異なるため統合しない。
+
+#### AccountExport・D1AccountExport
+
+| Field        | Detail                                                                                              |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| Intent       | data-exportが`account.json`の本specの持ち分を組み立て、決済履歴の照会に使う仮名化IDを得るための照会 |
+| Requirements | 4.9(spec横断レビュー、2026-10-23。data-exportが使う)                                                |
+
+**Contracts**: Service [x]
+
+```typescript
+// workers/identity/account-export.ts
+export interface AccountExportRecord {
+  readonly userId: string;
+  readonly pseudonymousId: string; // ZIPには書かない。paymentsのPaymentHistoryExport.listAllへ渡す
+  readonly email: string;
+  readonly emailVerifiedAt: Date | null;
+  readonly registeredAt: Date;
+  readonly mfaEnabled: boolean;
+}
+export interface AccountExport {
+  // 退会済み・物理削除済みの利用者はundefined。停止中の利用者は返す
+  find(userId: string): Promise<AccountExportRecord | undefined>;
+}
+// workers/identity/d1-account-export.ts
+export declare class D1AccountExport implements AccountExport {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
+```
+
+- `find`: `users`の`id = ? AND deleted_at IS NULL`の1行と、その利用者の`user_totp_credentials`を左外部結合した1つの問い合わせで読む。`registeredAt`は`users.created_at`、`emailVerifiedAt`は`users.email_verified_at`、`mfaEnabled`は`user_totp_credentials.enabled_at IS NOT NULL`(設定途中の待ちの行だけなら偽)とする。行が無い(物理削除済み)・`deleted_at`がある(退会済み)なら`undefined`。`status`は見ない。D1への問い合わせの失敗は例外のまま投げ、data-exportのQueueの処理の再試行に任せる。
+- `account.json`との対応: データエクスポートの文書の`account.json`のうち`email`・`emailVerifiedAt`・`registeredAt`・`mfaEnabled`が本specの持ち分である。`plan`はultras-subscriptionの`UltrasPlanExport`、`notificationSettings`はnotifications、`apiKeys`はpublic-apiの出力用の部品が返す。パスワードハッシュ・TOTPの秘密鍵・リカバリコード・セッション・認証系トークン(変更待ちのメールアドレスを含む)・使い捨て判定の結果・同意の日時・停止の状態は返さない(文書の「秘密情報」と、`account.json`に無い項目)。
+- ニックネームとハンドル: `profile.json`の`nickname`・`handle`、`manifest.json`の`user.handle`、ZIPのファイル名のハンドルは、プロフィール編集でそれらを変更するuser-profile-socialのプロフィールの出力用の部品が返す。本specの`AccountExport`は返さない(`users`の列の定義は本specが持つが、変更と表示の持ち主はuser-profile-socialである)。
+- 仮名化ID: data-exportは最初に`find`を呼び、`pseudonymousId`をpaymentsの`PaymentHistoryExport.listAll`へ渡す。仮名化IDはZIPに書かない(文書のIDの方針と`account.json`の項目に無いため)。
+- メールアドレスの確認: データエクスポートの要求は確認済みの利用者に限る(4.1)ため、通常は`emailVerifiedAt`が入っている。`null`のときの扱い(生成を止めるか)はdata-exportが決める。停止中の利用者に生成を認めるかもdata-exportが決める。
+- 置き場所と束縛: `UserContactDirectory`と同じく`apps/backend-lib/workers/identity`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する(ZIPの生成はeventのQueueの処理で行い、要求の受け付けはapiで行うため)。data-exportは`users`・`user_totp_credentials`を直接読まず、`IDENTITY_PLATFORM_TYPES.AccountExport`を`@inject`で受け取る。
 
 #### UserLifecycleStore
 
@@ -2459,7 +2557,7 @@ export declare const LIFECYCLE_ORDER_WAIT_SECONDS: 60;
 
 #### EmailSuppressionCleanupHandler・DisposableEmailRecheckHandler
 
-- `EmailSuppressionCleanupHandler`(登録`identity-auth.email-suppression-cleanup`、`withdrawn`、`order` 1000): 利用者のメールアドレスを読み、email-deliveryの`SuppressionMaintenance.deleteByAddress`を呼ぶ。利用者の行が既に無ければ`done`(15.3)。
+- `EmailSuppressionCleanupHandler`(登録`identity-auth.email-suppression-cleanup`、`withdrawn`、`order` 10000): 利用者のメールアドレスを読み、email-deliveryの`SuppressionMaintenance.deleteByAddress`を呼ぶ。利用者の行が既に無ければ`done`(15.3)。
 - `DisposableEmailRecheckHandler`(`identity.recheck-disposable-email`): 利用者が退会済み・未確認・判定済みなら何もしない。`DisposableEmailChecker.check`の結果を保存する。`undetermined`でも例外にせず(再試行の騒ぎを避ける)、日次のジョブが拾う(3.3)。
 
 #### IdentityPurgeStore・EventIdentityComposition
@@ -2596,6 +2694,7 @@ export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版�
 - `LinkConfirmation`: 開いただけでは何もせず、ボタンでミューテーションを呼ぶ(18.8)。`invalid_link`は「このリンクは無効か、有効期限が切れています。」と再度の手続きへのリンクを示す(14.3)。
 - `LoginRequiredDialog`: `{ open, onOpenChange, title, description, returnTo }`を受け取り、「ログイン」(`/auth/login?redirect=<returnTo>`)・「登録」(`/auth/register`)を示す。内容は呼び出す側が渡す(18.9)。
 - `AccountFormSchemas`: `AccountInputRules`とzodでフォームの検証規則を作る。エラーの文言は文言規則に従う(18.10)。
+- 登録の同意の入力は、shadcn/uiの`Checkbox`を`apps/frontend-lib/components/ui/checkbox.tsx`に加えて使う(frontend-libの規約どおり1ファイル1コンポーネント・stories・`runAxe`)。既定は未選択で、ラベルの要素と関連付けてキーボードで切り替えられるようにする(1.2・18.11)。paymentsの決済の同意が同じ部品を再利用するため、既にあれば作らずに使う(spec横断レビュー、2026-10-23)。
 - ログイン中に`/auth/register`・`/auth/login`を開いたら`/`へ移動する(18.4)。
 
 #### AccountMenu・LaunchAction・VerifyEmailBanner
@@ -2749,7 +2848,7 @@ stateDiagram-v2
   - `session-policy`: アイドル14日・絶対90日のそれぞれの境界、15分未満は更新しない、Cookieの有効期間が残りの短い方になる(8.2・8.3)。
   - `password-rules`・`account-input-rules`: 7・8・128・129コードポイント、絵文字を含むニックネームの25・26書記素、ハンドル・ニックネーム・ローカル部との大文字小文字を区別しない一致(1.1・5.1・5.2)。
   - `disposable-email`: ローカル部の置き換え、200の`disposable`の真偽、`format: false`・401・429・503・HTMLで`undetermined`(3.1・3.2)。
-  - `user-lifecycle`: 名前の形式、重複・同じ種類での`order`の重複の拒否、`order`昇順(16.1)。
+  - `user-lifecycle`: 名前の形式、重複・同じ種類での`order`の重複の拒否、`order`昇順、各ドメインの帯の値(9999以下)と本specの値(10000以上)の両方を受け付け、本specの波及処理が同じ種類の各ドメインの波及処理の後に並ぶこと(16.1)。
   - 層の規則(apiの`test/config/layer-rules.unit.test.ts`): `application/identity`から`presentation/gateway/session-access.ts`を型だけで読み込む例が違反として報告され、`application/session/session-view.ts`の読み込みは報告されない(横断レビューR3-1、4.1・4.3・4.7)。
   - 各ユースケース(ポートを偽物にする): 登録の順序と重複・送信回数の上限での未作成(1.4・2.7)、パスワードリセットの要求の同一の結果と停止中への不送信(9.1〜9.3)、メールアドレス変更の重複時の不送信(10.3)、本人確認の失敗の記録(7.9・12.2)、第2要素の再使用の拒否(6.5)、停止中の退会の受け付け(4.4・仮5)、運営者による退会が管理者側の呼び出し元と管理者の主体だけを受け付け、停止中の利用者も本人の退会と同じ遷移とメッセージで退会させ、退会済み・存在しない対象を`not_found`にすること(15.7〜15.9)、アップロードできる利用者の判定が停止中・退会済みを`account_unavailable`で拒否し、未確認を許可すること(4.7)、`UserLifecycleRunner`の順序待ち・完了済みの飛ばし・`continue`・物理削除の最後の段階(16.3・16.4・16.7・17.2)。
 - **Integration Tests**(Workers統合テスト):
@@ -2759,6 +2858,9 @@ stateDiagram-v2
   - `Pbkdf2PasswordHasher`・`HkdfAesGcmSecretBox`・`OtpauthTotpAuthenticator`・`HibpPwnedPasswordChecker`(偽の`fetch`): 10万回の計算、保存形式、改ざんの検出、時間窓の照合、パディングの行の無視と`unavailable`(5.4・5.5・13.10)。
   - GraphQLの`identity`モジュール(api-gatewayのテスト補助で`ClientGateway`から): 登録→Cookieの発行の指示、ログインの429と`Retry-After`、管理者側の呼び出し元の拒否(6.8)、bot判定の失敗の403(12.5)、`viewer`の`null`、セッションの一覧の`current`。
   - eventの`identity.run-user-lifecycle`のバッチ: 登録した偽の波及処理が順に呼ばれ、失敗で再試行、完了済みは呼ばれない。物理削除で利用者の行が消え、外部キーの残りでは`pending`に残る(16.5・17.3)。
+  - `D1UserContactDirectory`: 通常の利用者で`userId`・`email`・`nickname`・`emailVerified`(確認済みは真、未確認は偽)が返る、停止中の利用者も返る、退会済み(`deleted_at`あり)・存在しない利用者で`undefined`、D1の失敗が例外になる(4.8)。
+  - `D1AccountExport`: 通常の利用者で仮名化ID・メールアドレス・確認日時・登録日時(`created_at`)が返る、多要素認証が有効なら`mfaEnabled`が真で、未設定・設定途中の待ちだけなら偽、停止中の利用者も返る、退会済み・存在しない利用者で`undefined`、D1の失敗が例外になる、結果にパスワードハッシュ・TOTPの秘密鍵などの項目が無い(4.9)。
+  - `IDENTITY_PLATFORM_MODULE`の束縛: APIサーバーとイベントサーバーのそれぞれのWorkers統合テストで、処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.UserContactDirectory`が`D1UserContactDirectory`に、`IDENTITY_PLATFORM_TYPES.AccountExport`が`D1AccountExport`に解決される(4.8・4.9)。
   - email-deliveryとの結合: 7種のテンプレートが`createEmailTemplateRegistry`に通り、件名と行動ボタンのURLを含む(14.6)。
   - media-pipelineとの結合: 処理単位のコンテナで`UPLOAD_ACCESS_TYPES.UploaderEligibility`が本specの実装に解決され、停止中の利用者のセッションでの`POST /internal/media/uploads/:purpose`(テスト用の用途を登録する)が403・`account_unavailable`になって記録とオブジェクトが残らず、未確認の利用者のアップロードは受け付けられる(4.7)。
 - **E2E/UI Tests**(Playwright、ローカルで起動したapi・event・clientとMailpit):
@@ -2827,7 +2929,7 @@ flowchart LR
 | 外部への`User-Agent`                   | `genai-example-2-api`・`genai-example-2-event`(HIBP・DISIFYの呼び出し)                                                                                                                                                                                                                                                                                                                                                                  |
 | 定期実行のジョブ                       | `identity-auth.purge-orchestrator`(4:21・100)・`identity-auth.credential-cleanup`(4:21・110)・`identity-auth.disposable-recheck-sweep`(4:21・120)                                                                                                                                                                                                                                                                                       |
 | メッセージ種別                         | `identity.run-user-lifecycle`・`identity.recheck-disposable-email`                                                                                                                                                                                                                                                                                                                                                                      |
-| 非同期の波及処理                       | `identity-auth.email-suppression-cleanup`(`withdrawn`・1000)                                                                                                                                                                                                                                                                                                                                                                            |
+| 非同期の波及処理                       | `identity-auth.email-suppression-cleanup`(`withdrawn`・10000)                                                                                                                                                                                                                                                                                                                                                                           |
 | 有効期限                               | セッション アイドル14日・絶対90日・更新の間引き15分、第2要素の待ち5分、TOTPの設定10分、認証系トークン 確認24時間・リセットと変更30分                                                                                                                                                                                                                                                                                                    |
 | 判定し直しの遅延                       | 確認時の未判定から15分、日次のジョブは最後の判定から1時間以上                                                                                                                                                                                                                                                                                                                                                                           |
 | ライフサイクルの送り直し               | 最後の送信から1時間以上の`pending`、3回目以降の送り直しで通知                                                                                                                                                                                                                                                                                                                                                                           |
