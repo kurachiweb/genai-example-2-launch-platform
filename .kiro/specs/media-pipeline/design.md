@@ -168,19 +168,19 @@ graph TB
 
 ### Technology Stack
 
-| Layer                    | Choice / Version                                                   | Role in Feature                                                | Notes                                                                                          |
-| ------------------------ | ------------------------------------------------------------------ | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Frontend                 | react-easy-crop 6.2.3                                              | 編集ダイアログの切り取りと拡大縮小                             | tech-stack.md記載済み。最新6.2.4は公開から2週間未満のため6.2.3に固定。client・admin・frontend-libで同じ版 |
-| Frontend                 | Canvas(`createImageBitmap`・`toBlob`)                              | 切り取った画像の縮小と作り直し(JPEG・PNG)                     | ブラウザ標準                                                                                   |
-| Backend(共有)            | image-size 2.0.4                                                   | 先頭部分からの幅・高さの読み取り                               | 新規(決定Q7)。api・eventで同じ版                                                               |
-| Backend(共有)            | fast-xml-parser 5.11.2                                             | SVGの構文の検査(`XMLValidator`)と構造の検査(`XMLParser`)       | tech-stack.md記載済み。`processEntities: false`。api・eventで同じ版                            |
-| Backend(event)           | wasm-image-optimization 2.0.11(`/workerd`)                         | 判定用画像の変換・縮小・RGBAの取り出し                         | tech-stack.md記載済み。eventだけ                                                               |
-| Backend(event)           | aws4fetch 1.0.20                                                   | 判定サービスへの要求のSigV4署名                                | tech-stack.md記載済み。eventだけ                                                               |
-| External                 | Amazon Rekognition DetectModerationLabels(us-east-1)               | 不適切な画像の判定                                             | 決定Q3・Q8。ローカル・CIは決定論的な代替                                                       |
-| Data / Storage           | D1(Drizzle ORM)・R2の3バケット(staging・prodは`jurisdiction: "us"`) | ファイルの記録と隔離理由、原本の保存                           | 条件付きの`put()`(`If-None-Match: *`)                                                          |
-| Messaging / Events       | Queues(`JOBS_QUEUE`)                                               | 判定・保存先の修正・パージの依頼                               | 専用のQueueは作らない                                                                          |
-| Infrastructure / Runtime | Images Binding・Workers Cache(エントリポイント単位)・`ctx.exports` | 変換配信・エッジキャッシュ・パージ                             | Wrangler 4.124.0(4.107.0以上が必要)                                                            |
-| Infrastructure / Runtime | `CompressionStream('deflate')`                                     | 余白付きの判定用画像のPNG符号化                                | workerd・Bunの標準                                                                             |
+| Layer                    | Choice / Version                                                    | Role in Feature                                          | Notes                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Frontend                 | react-easy-crop 6.2.3                                               | 編集ダイアログの切り取りと拡大縮小                       | tech-stack.md記載済み。最新6.2.4は公開から2週間未満のため6.2.3に固定。client・admin・frontend-libで同じ版 |
+| Frontend                 | Canvas(`createImageBitmap`・`toBlob`)                               | 切り取った画像の縮小と作り直し(JPEG・PNG)                | ブラウザ標準                                                                                              |
+| Backend(共有)            | image-size 2.0.4                                                    | 先頭部分からの幅・高さの読み取り                         | 新規(決定Q7)。api・eventで同じ版                                                                          |
+| Backend(共有)            | fast-xml-parser 5.11.2                                              | SVGの構文の検査(`XMLValidator`)と構造の検査(`XMLParser`) | tech-stack.md記載済み。`processEntities: false`。api・eventで同じ版                                       |
+| Backend(event)           | wasm-image-optimization 2.0.11(`/workerd`)                          | 判定用画像の変換・縮小・RGBAの取り出し                   | tech-stack.md記載済み。eventだけ                                                                          |
+| Backend(event)           | aws4fetch 1.0.20                                                    | 判定サービスへの要求のSigV4署名                          | tech-stack.md記載済み。eventだけ                                                                          |
+| External                 | Amazon Rekognition DetectModerationLabels(us-east-1)                | 不適切な画像の判定                                       | 決定Q3・Q8。ローカル・CIは決定論的な代替                                                                  |
+| Data / Storage           | D1(Drizzle ORM)・R2の3バケット(staging・prodは`jurisdiction: "us"`) | ファイルの記録と隔離理由、原本の保存                     | 条件付きの`put()`(`If-None-Match: *`)                                                                     |
+| Messaging / Events       | Queues(`JOBS_QUEUE`)                                                | 判定・保存先の修正・パージの依頼                         | 専用のQueueは作らない                                                                                     |
+| Infrastructure / Runtime | Images Binding・Workers Cache(エントリポイント単位)・`ctx.exports`  | 変換配信・エッジキャッシュ・パージ                       | Wrangler 4.124.0(4.107.0以上が必要)                                                                       |
+| Infrastructure / Runtime | `CompressionStream('deflate')`                                      | 余白付きの判定用画像のPNG符号化                          | workerd・Bunの標準                                                                                        |
 
 ## File Structure Plan
 
@@ -475,119 +475,119 @@ sequenceDiagram
 
 ### 日次バッチ(基準時刻4:21)
 
-| 順序 | ジョブ名                                   | 対象                                                                                                       | 処理                                          |
-| ---- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| 810  | `media-pipeline.expired-file-erasure`      | 削除待ち、論理削除から13日以上、アップロードから24時間を過ぎた未紐付け(保存未完了を含む)                   | `MediaEraser`で物理削除(最大1,000件ずつ繰り返す) |
-| 820  | `media-pipeline.moderation-requeue`        | 未判定、判定待ちのまま作成から1時間以上(削除されていないもの)                                             | `media.moderate-image`を送り直す(最大1,000件)  |
-| 830  | `media-pipeline.location-reconciliation`   | 隔離理由があるのに画像用非公開バケットにある、または理由が無いのに隔離バケットにある画像                   | `media.relocate-files`を25件ずつ送る          |
+| 順序 | ジョブ名                                 | 対象                                                                                     | 処理                                             |
+| ---- | ---------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 810  | `media-pipeline.expired-file-erasure`    | 削除待ち、論理削除から13日以上、アップロードから24時間を過ぎた未紐付け(保存未完了を含む) | `MediaEraser`で物理削除(最大1,000件ずつ繰り返す) |
+| 820  | `media-pipeline.moderation-requeue`      | 未判定、判定待ちのまま作成から1時間以上(削除されていないもの)                            | `media.moderate-image`を送り直す(最大1,000件)    |
+| 830  | `media-pipeline.location-reconciliation` | 隔離理由があるのに画像用非公開バケットにある、または理由が無いのに隔離バケットにある画像 | `media.relocate-files`を25件ずつ送る             |
 
 - 各ジョブは前回の結果に依存せず、同じ日に重複して起動しても結果が変わらない。件数の上限を超えた分は翌日に回る(ログに残数を出す)。
 
 ## Requirements Traceability
 
-| Requirement | Summary                                       | Components                                                         | Interfaces                                                    | Flows          |
-| ----------- | --------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------- | -------------- |
-| 1.1, 1.2    | 用途の登録と許可形式の範囲                    | UploadPurposeRegistry・ApiMediaComposition                         | `UploadPurpose`・`defineUploadPurpose`                        | —              |
-| 1.3, 1.4    | 同一オリジンの中継と1要求1ファイル            | MediaRelayRoutes・UploadRoute                                      | `UPLOAD_RELAY_ROUTE`・`POST /internal/media/uploads/:purpose` | アップロード   |
-| 1.5, 1.6, 1.7 | 未登録・未ログイン・主体の種類の拒否        | UploadRoute                                                        | `UploadRejection`                                             | アップロード   |
-| 1.8, 1.9    | アップロードできる利用者かの差し込み口と拒否  | UploadRoute・UploaderEligibility・AllowAllUploaderEligibility      | `UploaderEligibility.check`・`UPLOAD_ACCESS_TYPES`            | アップロード   |
-| 2.1, 2.2, 2.3, 2.4 | ヘッダーの事前検証                     | UploadPrecheck                                                     | `precheckUpload`                                              | アップロード   |
-| 2.5, 2.6    | 長さの不一致・拒否時に残さない                | UploadReceiver・R2MediaObjectStore                                 | `FixedLengthStream`・`putIfAbsent`                            | アップロード   |
-| 3.1         | マジックバイト                                | FileSignature・UploadReceiver                                      | `detectSignature`                                             | アップロード   |
-| 3.2, 3.3    | SVGの構文とDOCTYPE・ENTITY                    | SvgSyntax                                                          | `checkSvgSyntax`                                              | アップロード   |
-| 3.4         | テキストの検査                                | TextContentCheck                                                   | `createTextContentCheck`                                      | アップロード   |
-| 3.5, 3.6, 3.7, 3.8, 3.9 | 寸法・向き・上限・SVGの寸法       | ImageDimensions                                                    | `readImageDimensions`・`exceedsPixelLimits`                   | アップロード   |
-| 4.1, 4.2    | 推測できないキーと上書きの拒否                | ObjectKey・R2MediaObjectStore                                      | `generateObjectKey`・`putIfAbsent`                            | アップロード   |
-| 4.3, 4.4    | 保存先とファイル用のメタデータ                | UploadReceiver・FileName                                           | `attachmentDisposition`                                       | アップロード   |
-| 4.5, 4.6, 4.7 | ファイル名の整形と記録                      | FileName・D1MediaFileStore・MediaSchema                            | `sanitizeFileName`・`media_files`                             | アップロード   |
-| 4.8, 4.9, 4.10 | 判定の依頼・201・503                       | UploadReceiver・UploadRoute                                        | `MODERATE_IMAGE_MESSAGE`・`UploadedFile`                      | アップロード   |
-| 5.1, 5.2, 5.3 | 紐付け                                      | MediaFilesService                                                  | `MediaFiles.claim`                                            | —              |
-| 5.4, 5.5    | 未使用ファイルの削除                          | MediaDailyJobs・MediaEraser                                        | `media-pipeline.expired-file-erasure`                         | 日次バッチ     |
-| 6.1, 6.2, 6.3, 6.4 | 判定用画像                             | ModerationImagePlan・WasmModerationImageRenderer・PngEncoder       | `planModerationImage`・`ModerationImageRenderer`              | 自動判定       |
-| 6.5, 6.6    | 全カテゴリ60%と設定値                         | ModerationConfig・ModerationVerdict                                | `MODERATION_MIN_CONFIDENCE`・`MODERATION_BLOCKED_CATEGORIES`   | 自動判定       |
-| 6.7, 6.8    | 不適切の隔離と問題なしの記録                  | ModerateImageHandler・D1MediaFileStore・FileRelocator              | `recordModeration`                                            | 自動判定       |
-| 6.9         | ローカル・CIの代替の判定                      | StubModerationProvider・CreateModerationProvider                   | `MODERATION_PROVIDER=stub`                                    | 自動判定       |
-| 6.10        | 送る情報の限定                                | RekognitionModerationProvider                                      | `ModerationProvider.detect`                                   | 自動判定       |
-| 7.1, 7.2, 7.3, 7.4, 7.5 | SVGの許可リスト                   | SvgAllowlist・ModerateImageHandler                                 | `inspectSvg`                                                  | 自動判定       |
-| 8.1, 8.2    | 一時的な失敗の再試行と未判定                  | ModerateImageHandler・MediaIncidentReporter                        | `MODERATION_RETRY_POLICY`                                     | 自動判定       |
-| 8.3         | 日次の再依頼                                  | MediaDailyJobs                                                     | `media-pipeline.moderation-requeue`                           | 日次バッチ     |
-| 8.4         | 恒久的な失敗の隔離                            | ModerateImageHandler                                               | `ModerationOutcome.rejected`                                  | 自動判定       |
-| 8.5         | 障害時の受付と配信の継続                      | UploadReceiver・ImageDelivery                                      | 判定に依存しない受付と配信                                    | —              |
-| 8.6, 8.7, 8.8 | 重複・解除後・削除済みの依頼                | ModerateImageHandler・D1MediaFileStore                             | 条件付きの`recordModeration`                                  | 自動判定       |
-| 9.1, 9.2, 9.3, 9.4 | 隔離理由と復元の条件                   | MediaQuarantineService・MediaFile(`desiredLocation`)・FileRelocator | `MediaQuarantine.addReason`・`removeReason`                  | 隔離・復元     |
-| 9.5         | 隔離後のパージ                                | FileRelocator・PurgeImageCacheHandler                              | `PURGE_IMAGE_CACHE_MESSAGE`                                   | 隔離・復元     |
-| 9.6, 9.7    | 同期の確定と冪等な非同期の移動                | MediaQuarantineService・RelocateFilesHandler・FileRelocator        | `RELOCATE_FILES_MESSAGE`                                      | 隔離・復元     |
-| 9.8         | 日次の食い違いの修復                          | MediaDailyJobs                                                     | `media-pipeline.location-reconciliation`                      | 日次バッチ     |
-| 9.9         | 自動判定の隔離の一覧                          | MediaQuarantineService                                             | `MediaQuarantine.listByReason`                                | —              |
-| 9.10        | 保有者単位の隔離理由の追加・解除              | MediaQuarantineService・D1MediaFileStore                           | `MediaQuarantine.addReasonForOwner`・`removeReasonForOwner`   | 隔離・復元     |
-| 10.1, 10.12 | 配信ドメインとURL・形式外の404                | ImageGatewayModule・ImageRequestMatch                              | `parseImagePath`                                              | 画像配信       |
-| 10.2, 10.3, 10.8 | 変換・最初のフレーム・メタデータ         | ImageDelivery(application)・ImagesBindingTransformer               | `ImageTransformer`                                            | 画像配信       |
-| 10.4, 10.7  | 404と原本の非配信                             | ImageDelivery(application)                                         | `isDeliverable`                                               | 画像配信       |
-| 10.5        | SVGのCSP                                      | ImageDelivery(application)                                         | `SVG_CONTENT_SECURITY_POLICY`                                 | 画像配信       |
-| 10.6        | 長期キャッシュと要求に依存しない応答          | ImageGatewayModule・ImageDelivery(application)                     | `IMAGE_CACHE_CONTROL`                                         | 画像配信       |
-| 10.9        | 判定前の配信                                  | ImageDelivery(application)                                         | バケットの有無だけで判定                                      | 画像配信       |
-| 10.10       | IP制限の除外                                  | ImageRequestMatch・EventMediaComposition                           | `RateLimitExclusion`                                          | —              |
-| 10.11       | 変換の一時的な失敗                            | ImageDelivery(application)                                         | 503 `no-store`                                                | 画像配信       |
-| 11.1        | エッジキャッシュ                              | ImageDeliveryEntrypoint・EventWranglerConfig                       | `exports.ImageDelivery.cache`                                 | 画像配信       |
-| 11.2, 11.3, 11.4, 11.5 | パージ                             | PurgeImageCacheHandler・WorkersCachePurger・ImageDeliveryEntrypoint | `purgeObjectKeys`・`MEDIA_MESSAGE_LIMITS`                    | 隔離・復元     |
-| 11.6        | stagingの確認手順                             | ImageDeliveryDoc・MediaSmokeModule                                 | `infra/008-image-delivery.md`                                 | —              |
-| 12.1, 12.8  | 同一オリジンの順次配信                        | MediaRelayRoutes・FileContentRoute                                 | `FILE_DOWNLOAD_RELAY_ROUTE`・`GET /internal/media/files/:fileId` | —          |
-| 12.2, 12.3, 12.4 | 用途の方針・401・404                     | FileAccessAuthorizer・OwnerOnlyFileReadPolicy                      | `FileReadPolicy`                                              | —              |
-| 12.5        | 配信のヘッダー                                | FileContentRoute・FileName                                         | `attachmentDisposition`                                       | —              |
-| 12.6, 12.7  | 管理者の画像確認                              | FileAccessAuthorizer・DenyAllAdminMediaReviewPolicy                | `AdminMediaReviewPolicy`                                      | —              |
-| 12.9        | ダウンロードのリンクの部品                    | PrivateFileLink                                                    | `downloadPathOf`                                              | —              |
-| 13.1, 13.2  | 即時の物理削除と削除待ち                      | MediaFilesService・MediaEraser                                     | `MediaFiles.eraseNow`                                         | 隔離・復元     |
-| 13.3, 13.4  | 論理削除と、その間の扱い                      | MediaFilesService・D1MediaFileStore                                | `MediaFiles.markDeleted`                                      | —              |
-| 13.5        | 13日経過の物理削除                            | MediaDailyJobs・MediaEraser                                        | `media-pipeline.expired-file-erasure`                         | 日次バッチ     |
-| 13.6, 13.7  | 保有者・指定の物理削除と冪等性                | MediaFilesService・MediaEraser                                     | `MediaFiles.eraseOwnedBy`                                     | —              |
-| 13.8        | 一括取得と内容の読み出し                      | MediaFilesService・MediaGraphqlModule                              | `MediaFiles.findMany`・`openContent`                          | —              |
-| 13.9        | 保有者単位の操作の1回の上限と残りの有無       | MediaFilesService・MediaQuarantineService                          | `OWNER_OPERATION_BATCH_LIMIT`・`OwnerBatchResult`             | —              |
-| 14.1, 14.2  | クリック・ドラッグ・カメラ                    | FileDropZone                                                       | `<input type="file" accept>`                                  | —              |
-| 14.3        | 選択の一覧とサムネイル                        | FileSelectionList・FileThumbnail                                   | —                                                             | —              |
-| 14.4        | 選択時の検査                                  | UploadConstraints・UploadMessages                                  | `checkSelection`                                              | —              |
-| 14.5, 14.6, 14.7 | 編集ダイアログと作り直し                 | ImageCropDialog・CropGeometry・EncodeCroppedImage・ImageUploadField | `computeCropOutput`                                         | —              |
-| 14.8        | SVG・添付はそのまま                           | ImageUploadField・AttachmentUploadField                            | —                                                             | —              |
-| 14.9, 14.10, 14.11 | 拒否・一時的な不可・成功の表示         | UseFileUpload・UploadRequest・UploadMessages                       | `parseUploadResponse`                                         | アップロード   |
-| 14.12       | アクセシビリティ                              | FileDropZone・ImageCropDialog・FileSelectionList                   | `aria-live`・axe-coreの検査                                   | —              |
-| 15.1, 15.2, 15.3, 15.4 | バリアントと形式とサイズ           | MediaPicture・PictureSources・ImagesOriginProvider                 | `buildPictureSources`                                         | —              |
-| 15.5        | プレースホルダー                              | MediaPlaceholder・PlaceholderAppearance                            | —                                                             | —              |
-| 15.6        | 遅延読み込み                                  | MediaPicture                                                       | `loading`                                                     | —              |
-| 16.1        | us-east-1と専用の資格情報                     | RekognitionModerationProvider・EventWranglerConfig                 | `MODERATION_REGION`・`REKOGNITION_*`                          | —              |
-| 16.2        | 資格情報の管理                                | MediaEnv・SentryMediaIncidentReporter                              | `secrets.required`                                            | —              |
-| 16.3        | オプトアウトとIAMの手順                       | ImageModerationDoc                                                 | `external/003-image-moderation.md`                            | —              |
-| 16.4        | プライバシーポリシー・準拠方針のAWSの項       | ServiceDocsAlignment                                               | `003-privacy-policy-outline.md`・`001-compliance-policy.md`   | —              |
-| 17.1        | スクリプト契約とカバレッジ                    | 全コンポーネント                                                   | 一括検査・一括テスト                                          | —              |
-| 17.2, 17.3  | 動作確認の経路                                | MediaSmokeModule                                                   | `MEDIA_SMOKE_TOKEN`                                           | —              |
-| 17.4        | 技術ドキュメント                              | ImageModerationDoc・ImageDeliveryDoc・FileUploadSecurityDoc        | `external/003`・`infra/008`・`security/005`                    | —              |
-| 17.5        | サービス仕様の整合                            | ServiceDocsAlignment                                               | 画像バリアント仕様・日次タイムラインほか                      | —              |
-| 17.6, 17.7  | tech-stack・固有の値・オンボーディング        | ProjectDocsUpdate                                                  | `tech-stack.md`・`project-values.md`・`README.md`             | —              |
+| Requirement             | Summary                                      | Components                                                          | Interfaces                                                       | Flows        |
+| ----------------------- | -------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------ |
+| 1.1, 1.2                | 用途の登録と許可形式の範囲                   | UploadPurposeRegistry・ApiMediaComposition                          | `UploadPurpose`・`defineUploadPurpose`                           | —            |
+| 1.3, 1.4                | 同一オリジンの中継と1要求1ファイル           | MediaRelayRoutes・UploadRoute                                       | `UPLOAD_RELAY_ROUTE`・`POST /internal/media/uploads/:purpose`    | アップロード |
+| 1.5, 1.6, 1.7           | 未登録・未ログイン・主体の種類の拒否         | UploadRoute                                                         | `UploadRejection`                                                | アップロード |
+| 1.8, 1.9                | アップロードできる利用者かの差し込み口と拒否 | UploadRoute・UploaderEligibility・AllowAllUploaderEligibility       | `UploaderEligibility.check`・`UPLOAD_ACCESS_TYPES`               | アップロード |
+| 2.1, 2.2, 2.3, 2.4      | ヘッダーの事前検証                           | UploadPrecheck                                                      | `precheckUpload`                                                 | アップロード |
+| 2.5, 2.6                | 長さの不一致・拒否時に残さない               | UploadReceiver・R2MediaObjectStore                                  | `FixedLengthStream`・`putIfAbsent`                               | アップロード |
+| 3.1                     | マジックバイト                               | FileSignature・UploadReceiver                                       | `detectSignature`                                                | アップロード |
+| 3.2, 3.3                | SVGの構文とDOCTYPE・ENTITY                   | SvgSyntax                                                           | `checkSvgSyntax`                                                 | アップロード |
+| 3.4                     | テキストの検査                               | TextContentCheck                                                    | `createTextContentCheck`                                         | アップロード |
+| 3.5, 3.6, 3.7, 3.8, 3.9 | 寸法・向き・上限・SVGの寸法                  | ImageDimensions                                                     | `readImageDimensions`・`exceedsPixelLimits`                      | アップロード |
+| 4.1, 4.2                | 推測できないキーと上書きの拒否               | ObjectKey・R2MediaObjectStore                                       | `generateObjectKey`・`putIfAbsent`                               | アップロード |
+| 4.3, 4.4                | 保存先とファイル用のメタデータ               | UploadReceiver・FileName                                            | `attachmentDisposition`                                          | アップロード |
+| 4.5, 4.6, 4.7           | ファイル名の整形と記録                       | FileName・D1MediaFileStore・MediaSchema                             | `sanitizeFileName`・`media_files`                                | アップロード |
+| 4.8, 4.9, 4.10          | 判定の依頼・201・503                         | UploadReceiver・UploadRoute                                         | `MODERATE_IMAGE_MESSAGE`・`UploadedFile`                         | アップロード |
+| 5.1, 5.2, 5.3           | 紐付け                                       | MediaFilesService                                                   | `MediaFiles.claim`                                               | —            |
+| 5.4, 5.5                | 未使用ファイルの削除                         | MediaDailyJobs・MediaEraser                                         | `media-pipeline.expired-file-erasure`                            | 日次バッチ   |
+| 6.1, 6.2, 6.3, 6.4      | 判定用画像                                   | ModerationImagePlan・WasmModerationImageRenderer・PngEncoder        | `planModerationImage`・`ModerationImageRenderer`                 | 自動判定     |
+| 6.5, 6.6                | 全カテゴリ60%と設定値                        | ModerationConfig・ModerationVerdict                                 | `MODERATION_MIN_CONFIDENCE`・`MODERATION_BLOCKED_CATEGORIES`     | 自動判定     |
+| 6.7, 6.8                | 不適切の隔離と問題なしの記録                 | ModerateImageHandler・D1MediaFileStore・FileRelocator               | `recordModeration`                                               | 自動判定     |
+| 6.9                     | ローカル・CIの代替の判定                     | StubModerationProvider・CreateModerationProvider                    | `MODERATION_PROVIDER=stub`                                       | 自動判定     |
+| 6.10                    | 送る情報の限定                               | RekognitionModerationProvider                                       | `ModerationProvider.detect`                                      | 自動判定     |
+| 7.1, 7.2, 7.3, 7.4, 7.5 | SVGの許可リスト                              | SvgAllowlist・ModerateImageHandler                                  | `inspectSvg`                                                     | 自動判定     |
+| 8.1, 8.2                | 一時的な失敗の再試行と未判定                 | ModerateImageHandler・MediaIncidentReporter                         | `MODERATION_RETRY_POLICY`                                        | 自動判定     |
+| 8.3                     | 日次の再依頼                                 | MediaDailyJobs                                                      | `media-pipeline.moderation-requeue`                              | 日次バッチ   |
+| 8.4                     | 恒久的な失敗の隔離                           | ModerateImageHandler                                                | `ModerationOutcome.rejected`                                     | 自動判定     |
+| 8.5                     | 障害時の受付と配信の継続                     | UploadReceiver・ImageDelivery                                       | 判定に依存しない受付と配信                                       | —            |
+| 8.6, 8.7, 8.8           | 重複・解除後・削除済みの依頼                 | ModerateImageHandler・D1MediaFileStore                              | 条件付きの`recordModeration`                                     | 自動判定     |
+| 9.1, 9.2, 9.3, 9.4      | 隔離理由と復元の条件                         | MediaQuarantineService・MediaFile(`desiredLocation`)・FileRelocator | `MediaQuarantine.addReason`・`removeReason`                      | 隔離・復元   |
+| 9.5                     | 隔離後のパージ                               | FileRelocator・PurgeImageCacheHandler                               | `PURGE_IMAGE_CACHE_MESSAGE`                                      | 隔離・復元   |
+| 9.6, 9.7                | 同期の確定と冪等な非同期の移動               | MediaQuarantineService・RelocateFilesHandler・FileRelocator         | `RELOCATE_FILES_MESSAGE`                                         | 隔離・復元   |
+| 9.8                     | 日次の食い違いの修復                         | MediaDailyJobs                                                      | `media-pipeline.location-reconciliation`                         | 日次バッチ   |
+| 9.9                     | 自動判定の隔離の一覧                         | MediaQuarantineService                                              | `MediaQuarantine.listByReason`                                   | —            |
+| 9.10                    | 保有者単位の隔離理由の追加・解除             | MediaQuarantineService・D1MediaFileStore                            | `MediaQuarantine.addReasonForOwner`・`removeReasonForOwner`      | 隔離・復元   |
+| 10.1, 10.12             | 配信ドメインとURL・形式外の404               | ImageGatewayModule・ImageRequestMatch                               | `parseImagePath`                                                 | 画像配信     |
+| 10.2, 10.3, 10.8        | 変換・最初のフレーム・メタデータ             | ImageDelivery(application)・ImagesBindingTransformer                | `ImageTransformer`                                               | 画像配信     |
+| 10.4, 10.7              | 404と原本の非配信                            | ImageDelivery(application)                                          | `isDeliverable`                                                  | 画像配信     |
+| 10.5                    | SVGのCSP                                     | ImageDelivery(application)                                          | `SVG_CONTENT_SECURITY_POLICY`                                    | 画像配信     |
+| 10.6                    | 長期キャッシュと要求に依存しない応答         | ImageGatewayModule・ImageDelivery(application)                      | `IMAGE_CACHE_CONTROL`                                            | 画像配信     |
+| 10.9                    | 判定前の配信                                 | ImageDelivery(application)                                          | バケットの有無だけで判定                                         | 画像配信     |
+| 10.10                   | IP制限の除外                                 | ImageRequestMatch・EventMediaComposition                            | `RateLimitExclusion`                                             | —            |
+| 10.11                   | 変換の一時的な失敗                           | ImageDelivery(application)                                          | 503 `no-store`                                                   | 画像配信     |
+| 11.1                    | エッジキャッシュ                             | ImageDeliveryEntrypoint・EventWranglerConfig                        | `exports.ImageDelivery.cache`                                    | 画像配信     |
+| 11.2, 11.3, 11.4, 11.5  | パージ                                       | PurgeImageCacheHandler・WorkersCachePurger・ImageDeliveryEntrypoint | `purgeObjectKeys`・`MEDIA_MESSAGE_LIMITS`                        | 隔離・復元   |
+| 11.6                    | stagingの確認手順                            | ImageDeliveryDoc・MediaSmokeModule                                  | `infra/008-image-delivery.md`                                    | —            |
+| 12.1, 12.8              | 同一オリジンの順次配信                       | MediaRelayRoutes・FileContentRoute                                  | `FILE_DOWNLOAD_RELAY_ROUTE`・`GET /internal/media/files/:fileId` | —            |
+| 12.2, 12.3, 12.4        | 用途の方針・401・404                         | FileAccessAuthorizer・OwnerOnlyFileReadPolicy                       | `FileReadPolicy`                                                 | —            |
+| 12.5                    | 配信のヘッダー                               | FileContentRoute・FileName                                          | `attachmentDisposition`                                          | —            |
+| 12.6, 12.7              | 管理者の画像確認                             | FileAccessAuthorizer・DenyAllAdminMediaReviewPolicy                 | `AdminMediaReviewPolicy`                                         | —            |
+| 12.9                    | ダウンロードのリンクの部品                   | PrivateFileLink                                                     | `downloadPathOf`                                                 | —            |
+| 13.1, 13.2              | 即時の物理削除と削除待ち                     | MediaFilesService・MediaEraser                                      | `MediaFiles.eraseNow`                                            | 隔離・復元   |
+| 13.3, 13.4              | 論理削除と、その間の扱い                     | MediaFilesService・D1MediaFileStore                                 | `MediaFiles.markDeleted`                                         | —            |
+| 13.5                    | 13日経過の物理削除                           | MediaDailyJobs・MediaEraser                                         | `media-pipeline.expired-file-erasure`                            | 日次バッチ   |
+| 13.6, 13.7              | 保有者・指定の物理削除と冪等性               | MediaFilesService・MediaEraser                                      | `MediaFiles.eraseOwnedBy`                                        | —            |
+| 13.8                    | 一括取得と内容の読み出し                     | MediaFilesService・MediaGraphqlModule                               | `MediaFiles.findMany`・`openContent`                             | —            |
+| 13.9                    | 保有者単位の操作の1回の上限と残りの有無      | MediaFilesService・MediaQuarantineService                           | `OWNER_OPERATION_BATCH_LIMIT`・`OwnerBatchResult`                | —            |
+| 14.1, 14.2              | クリック・ドラッグ・カメラ                   | FileDropZone                                                        | `<input type="file" accept>`                                     | —            |
+| 14.3                    | 選択の一覧とサムネイル                       | FileSelectionList・FileThumbnail                                    | —                                                                | —            |
+| 14.4                    | 選択時の検査                                 | UploadConstraints・UploadMessages                                   | `checkSelection`                                                 | —            |
+| 14.5, 14.6, 14.7        | 編集ダイアログと作り直し                     | ImageCropDialog・CropGeometry・EncodeCroppedImage・ImageUploadField | `computeCropOutput`                                              | —            |
+| 14.8                    | SVG・添付はそのまま                          | ImageUploadField・AttachmentUploadField                             | —                                                                | —            |
+| 14.9, 14.10, 14.11      | 拒否・一時的な不可・成功の表示               | UseFileUpload・UploadRequest・UploadMessages                        | `parseUploadResponse`                                            | アップロード |
+| 14.12                   | アクセシビリティ                             | FileDropZone・ImageCropDialog・FileSelectionList                    | `aria-live`・axe-coreの検査                                      | —            |
+| 15.1, 15.2, 15.3, 15.4  | バリアントと形式とサイズ                     | MediaPicture・PictureSources・ImagesOriginProvider                  | `buildPictureSources`                                            | —            |
+| 15.5                    | プレースホルダー                             | MediaPlaceholder・PlaceholderAppearance                             | —                                                                | —            |
+| 15.6                    | 遅延読み込み                                 | MediaPicture                                                        | `loading`                                                        | —            |
+| 16.1                    | us-east-1と専用の資格情報                    | RekognitionModerationProvider・EventWranglerConfig                  | `MODERATION_REGION`・`REKOGNITION_*`                             | —            |
+| 16.2                    | 資格情報の管理                               | MediaEnv・SentryMediaIncidentReporter                               | `secrets.required`                                               | —            |
+| 16.3                    | オプトアウトとIAMの手順                      | ImageModerationDoc                                                  | `external/003-image-moderation.md`                               | —            |
+| 16.4                    | プライバシーポリシー・準拠方針のAWSの項      | ServiceDocsAlignment                                                | `003-privacy-policy-outline.md`・`001-compliance-policy.md`      | —            |
+| 17.1                    | スクリプト契約とカバレッジ                   | 全コンポーネント                                                    | 一括検査・一括テスト                                             | —            |
+| 17.2, 17.3              | 動作確認の経路                               | MediaSmokeModule                                                    | `MEDIA_SMOKE_TOKEN`                                              | —            |
+| 17.4                    | 技術ドキュメント                             | ImageModerationDoc・ImageDeliveryDoc・FileUploadSecurityDoc         | `external/003`・`infra/008`・`security/005`                      | —            |
+| 17.5                    | サービス仕様の整合                           | ServiceDocsAlignment                                                | 画像バリアント仕様・日次タイムラインほか                         | —            |
+| 17.6, 17.7              | tech-stack・固有の値・オンボーディング       | ProjectDocsUpdate                                                   | `tech-stack.md`・`project-values.md`・`README.md`                | —            |
 
 ## Components and Interfaces
 
-| Component                                  | Domain/Layer                 | Intent                                                     | Req Coverage                                  | Key Dependencies (P0/P1)                                    | Contracts       |
-| ------------------------------------------ | ---------------------------- | ---------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------- | --------------- |
-| MediaTypes・ImageVariants・UploadProtocol  | common-lib                   | 前後で共有する形式・バリアント・プロトコルの定義           | 1.2, 1.9, 10.1, 10.4, 15.1, 15.2              | —                                                           | Service         |
-| UploadPurposeRegistry                      | backend-lib/core             | 用途の定義と検証                                           | 1.1, 1.2                                      | MediaTypes(P0)                                             | Service         |
-| UploadPrecheck・FileSignature・ImageDimensions・SvgSyntax・TextContentCheck・FileName・ObjectKey | backend-lib/core | 受付の純粋な検証と整形                       | 2.1-2.4, 3.1-3.9, 4.1, 4.5, 4.6              | image-size(P0)・fast-xml-parser(P0)                       | Service         |
-| MediaFile(型と隔離の規則)・MediaMessages   | backend-lib/core             | ファイルの型・目的の保存先・メッセージ契約                 | 9.1-9.4, 4.8, 9.6, 9.10, 11.3, 13.9           | backend-platformのメッセージ契約(P0)                       | Event, State    |
-| MediaSchema                                | db                           | ファイルの記録と隔離理由のテーブル                         | 4.7, 9.1                                      | 共通カラム(P0)                                             | State           |
-| D1MediaFileStore・R2MediaObjectStore       | backend-lib/workers          | D1とR2への読み書き                                         | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3, 9.10 | D1(P0)・R2(P0)                                            | Service         |
-| UploadReceiver                             | backend-lib/workers          | 受付処理の本体                                             | 2.5, 2.6, 3.1-3.9, 4.1-4.10, 8.5                       | UploadPrecheck(P0)・Stores(P0)・MessagePublisher(P0)      | Service         |
-| MediaEraser・MediaFilesService・MediaQuarantineService | backend-lib/workers | ドメインへ提供する操作                                   | 5.1-5.5, 9.1-9.10, 13.1-13.9                  | Stores(P0)・MessagePublisher(P0)                          | Service         |
-| UploadRoute・FileContentRoute              | api/presentation             | アップロードと非公開ファイルの内部REST                     | 1.3-1.9, 4.9, 4.10, 12.1-12.8                 | api-gatewayの内部REST(P0)・UploadReceiver(P0)・UploaderEligibility(P0) | API             |
-| UploaderEligibility・既定の実装            | api/application・infrastructure | アップロードできる利用者かの差し込み口(既定は全許可)    | 1.8, 1.9                                      | `SessionView`(api-gatewayの契約。R3-1)(P0)               | Service         |
-| FileAccessAuthorizer・方針の既定実装       | api/application・infrastructure | 閲覧の可否と管理者の画像確認                            | 12.2-12.4, 12.6, 12.7                         | Principal(P0)                                              | Service         |
-| MediaDailyJobs                             | api/application              | 物理削除・判定の再依頼・保存先の修復                       | 5.4, 5.5, 8.3, 9.8, 13.2, 13.5                | backend-platformの定期実行(P0)                             | Batch           |
-| MediaGraphqlModule                         | api/presentation             | GraphQLの共通の型と変換・DataLoader                        | 13.8, 15.2                                    | api-gatewayのスキーマモジュール(P0)                        | API             |
-| ModerateImageHandler・判定の規則と部品     | event/application・infrastructure | 自動判定                                              | 6.1-6.10, 7.1-7.5, 8.1-8.8                    | wasm-image-optimization(P0)・Rekognition(P0)              | Event           |
-| FileRelocator・RelocateFilesHandler・PurgeImageCacheHandler | event                | 保存先をそろえる処理とパージ                               | 9.2-9.7, 11.2-11.5                            | R2(P0)・ImageDelivery(P0)                                 | Event           |
-| ImageGatewayModule・ImageDeliveryEntrypoint・ImageDelivery | event                 | 画像の変換配信とキャッシュ                                 | 10.1-10.12, 11.1                              | Images Binding(P0)・Workers Cache(P0)                     | API             |
-| MediaSmokeModule                           | event/presentation           | トークン付きの動作確認                                     | 11.6, 17.2, 17.3                              | UploadReceiver(P0)                                         | API             |
-| MediaRelayRoutes                           | frontend-lib/server          | 中継の経路の定義                                           | 1.3, 12.1, 12.8                               | frontend-platformの`RelayRoute`(P0)                        | API             |
-| アップロードの部品群                       | frontend-lib/components・utilities | 選択・編集・送信・表示                                 | 14.1-14.12                                    | react-easy-crop(P0)・frontend-platformのUI(P1)            | State           |
-| MediaPicture・MediaPlaceholder・PrivateFileLink | frontend-lib/components | 画像の表示とダウンロードのリンク                           | 12.9, 15.1-15.6                               | ImageVariants(P0)                                          | State           |
-| EventWranglerConfig・ApiWranglerConfig     | 設定                         | キャッシュ・変数・シークレット・管轄                       | 11.1, 16.1, 16.2                              | backend-platformの設定(P0)                                 | State           |
-| 文書(ImageModerationDoc・ImageDeliveryDoc・FileUploadSecurityDoc・ServiceDocsAlignment・ProjectDocsUpdate) | docs | 使い方・確認手順・方針の整合・固有の値                     | 11.6, 16.3, 16.4, 17.4-17.7                   | —                                                           | —               |
+| Component                                                                                                  | Domain/Layer                       | Intent                                               | Req Coverage                                      | Key Dependencies (P0/P1)                                               | Contracts    |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- | ------------ |
+| MediaTypes・ImageVariants・UploadProtocol                                                                  | common-lib                         | 前後で共有する形式・バリアント・プロトコルの定義     | 1.2, 1.9, 10.1, 10.4, 15.1, 15.2                  | —                                                                      | Service      |
+| UploadPurposeRegistry                                                                                      | backend-lib/core                   | 用途の定義と検証                                     | 1.1, 1.2                                          | MediaTypes(P0)                                                         | Service      |
+| UploadPrecheck・FileSignature・ImageDimensions・SvgSyntax・TextContentCheck・FileName・ObjectKey           | backend-lib/core                   | 受付の純粋な検証と整形                               | 2.1-2.4, 3.1-3.9, 4.1, 4.5, 4.6                   | image-size(P0)・fast-xml-parser(P0)                                    | Service      |
+| MediaFile(型と隔離の規則)・MediaMessages                                                                   | backend-lib/core                   | ファイルの型・目的の保存先・メッセージ契約           | 9.1-9.4, 4.8, 9.6, 9.10, 11.3, 13.9               | backend-platformのメッセージ契約(P0)                                   | Event, State |
+| MediaSchema                                                                                                | db                                 | ファイルの記録と隔離理由のテーブル                   | 4.7, 9.1                                          | 共通カラム(P0)                                                         | State        |
+| D1MediaFileStore・R2MediaObjectStore                                                                       | backend-lib/workers                | D1とR2への読み書き                                   | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3, 9.10 | D1(P0)・R2(P0)                                                         | Service      |
+| UploadReceiver                                                                                             | backend-lib/workers                | 受付処理の本体                                       | 2.5, 2.6, 3.1-3.9, 4.1-4.10, 8.5                  | UploadPrecheck(P0)・Stores(P0)・MessagePublisher(P0)                   | Service      |
+| MediaEraser・MediaFilesService・MediaQuarantineService                                                     | backend-lib/workers                | ドメインへ提供する操作                               | 5.1-5.5, 9.1-9.10, 13.1-13.9                      | Stores(P0)・MessagePublisher(P0)                                       | Service      |
+| UploadRoute・FileContentRoute                                                                              | api/presentation                   | アップロードと非公開ファイルの内部REST               | 1.3-1.9, 4.9, 4.10, 12.1-12.8                     | api-gatewayの内部REST(P0)・UploadReceiver(P0)・UploaderEligibility(P0) | API          |
+| UploaderEligibility・既定の実装                                                                            | api/application・infrastructure    | アップロードできる利用者かの差し込み口(既定は全許可) | 1.8, 1.9                                          | `SessionView`(api-gatewayの契約。R3-1)(P0)                             | Service      |
+| FileAccessAuthorizer・方針の既定実装                                                                       | api/application・infrastructure    | 閲覧の可否と管理者の画像確認                         | 12.2-12.4, 12.6, 12.7                             | Principal(P0)                                                          | Service      |
+| MediaDailyJobs                                                                                             | api/application                    | 物理削除・判定の再依頼・保存先の修復                 | 5.4, 5.5, 8.3, 9.8, 13.2, 13.5                    | backend-platformの定期実行(P0)                                         | Batch        |
+| MediaGraphqlModule                                                                                         | api/presentation                   | GraphQLの共通の型と変換・DataLoader                  | 13.8, 15.2                                        | api-gatewayのスキーマモジュール(P0)                                    | API          |
+| ModerateImageHandler・判定の規則と部品                                                                     | event/application・infrastructure  | 自動判定                                             | 6.1-6.10, 7.1-7.5, 8.1-8.8                        | wasm-image-optimization(P0)・Rekognition(P0)                           | Event        |
+| FileRelocator・RelocateFilesHandler・PurgeImageCacheHandler                                                | event                              | 保存先をそろえる処理とパージ                         | 9.2-9.7, 11.2-11.5                                | R2(P0)・ImageDelivery(P0)                                              | Event        |
+| ImageGatewayModule・ImageDeliveryEntrypoint・ImageDelivery                                                 | event                              | 画像の変換配信とキャッシュ                           | 10.1-10.12, 11.1                                  | Images Binding(P0)・Workers Cache(P0)                                  | API          |
+| MediaSmokeModule                                                                                           | event/presentation                 | トークン付きの動作確認                               | 11.6, 17.2, 17.3                                  | UploadReceiver(P0)                                                     | API          |
+| MediaRelayRoutes                                                                                           | frontend-lib/server                | 中継の経路の定義                                     | 1.3, 12.1, 12.8                                   | frontend-platformの`RelayRoute`(P0)                                    | API          |
+| アップロードの部品群                                                                                       | frontend-lib/components・utilities | 選択・編集・送信・表示                               | 14.1-14.12                                        | react-easy-crop(P0)・frontend-platformのUI(P1)                         | State        |
+| MediaPicture・MediaPlaceholder・PrivateFileLink                                                            | frontend-lib/components            | 画像の表示とダウンロードのリンク                     | 12.9, 15.1-15.6                                   | ImageVariants(P0)                                                      | State        |
+| EventWranglerConfig・ApiWranglerConfig                                                                     | 設定                               | キャッシュ・変数・シークレット・管轄                 | 11.1, 16.1, 16.2                                  | backend-platformの設定(P0)                                             | State        |
+| 文書(ImageModerationDoc・ImageDeliveryDoc・FileUploadSecurityDoc・ServiceDocsAlignment・ProjectDocsUpdate) | docs                               | 使い方・確認手順・方針の整合・固有の値               | 11.6, 16.3, 16.4, 17.4-17.7                       | —                                                                      | —            |
 
 ### common-lib/media
 
@@ -604,23 +604,34 @@ sequenceDiagram
 
 ```typescript
 // media-types.ts
-export type RasterImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+export type RasterImageMediaType =
+  'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 export type ImageMediaType = RasterImageMediaType | 'image/svg+xml';
 export type DocumentMediaType = 'application/pdf' | 'text/plain';
 export type MediaType = ImageMediaType | DocumentMediaType;
 export declare const IMAGE_MEDIA_TYPES: readonly ImageMediaType[]; // FR-FILEU-002の5形式
 export declare const ATTACHMENT_MEDIA_TYPES: readonly MediaType[]; // 画像5形式・PDF・テキスト(決定Q6)
-export declare function parseMediaType(header: string | null): MediaType | undefined; // 引数を除いて小文字で照合。text/plainのcharsetはutf-8だけ許す
-export declare function isImageMediaType(type: MediaType): type is ImageMediaType;
+export declare function parseMediaType(
+  header: string | null,
+): MediaType | undefined; // 引数を除いて小文字で照合。text/plainのcharsetはutf-8だけ許す
+export declare function isImageMediaType(
+  type: MediaType,
+): type is ImageMediaType;
 export type FallbackFormat = 'jpg' | 'png' | 'svg';
 export declare function fallbackFormatOf(type: ImageMediaType): FallbackFormat; // JPEG→jpg、SVG→svg、他→png
 export declare const MEDIA_TYPE_LABELS: Readonly<Record<MediaType, string>>; // JPEG・PNG・GIF・WebP・SVG・PDF・テキスト
-export declare const MAX_UPLOAD_BYTES: 20_000_000; // 用途の上限の最大値(画像変換の入力上限20MB)
+export declare const MAX_UPLOAD_BYTES: 20_971_520; // 用途の上限の最大値(20MB。文言規則の容量の単位により1,024を基数とする)
+export declare const IMAGE_STORAGE_MAX_BYTES: 20_000_000; // 画像用(images)の用途の上限の最大値。Images Bindingの入力上限「20MB」は基数が明記されていないため、外部の上限として1,000を基数で安全側に取る
 
 // image-variants.ts
 export type ImageVariantName =
-  | 'square-xs' | 'square-sm' | 'square-md' | 'square-lg'
-  | 'screenshot-thumb' | 'screenshot-thumb-2x' | 'screenshot-full';
+  | 'square-xs'
+  | 'square-sm'
+  | 'square-md'
+  | 'square-lg'
+  | 'screenshot-thumb'
+  | 'screenshot-thumb-2x'
+  | 'screenshot-full';
 export type ImageExtension = 'avif' | 'webp' | 'jpg' | 'png' | 'svg';
 export interface ImageVariantSpec {
   readonly name: ImageVariantName;
@@ -629,27 +640,51 @@ export interface ImageVariantSpec {
   readonly fit: 'cover' | 'scale-down';
   readonly avif: boolean; // 長辺1,200px以下のバリアントだけ真
 }
-export declare const IMAGE_VARIANTS: Readonly<Record<ImageVariantName, ImageVariantSpec>>;
+export declare const IMAGE_VARIANTS: Readonly<
+  Record<ImageVariantName, ImageVariantSpec>
+>;
 export declare const OBJECT_KEY_PATTERN: RegExp; // /^[0-9a-f]{32}$/
 export declare const IMAGE_CACHE_CONTROL: 'public, max-age=1209600, immutable';
 export type ImagePathMatch =
-  | { readonly kind: 'image'; readonly objectKey: string; readonly variant: ImageVariantName; readonly extension: ImageExtension }
+  | {
+      readonly kind: 'image';
+      readonly objectKey: string;
+      readonly variant: ImageVariantName;
+      readonly extension: ImageExtension;
+    }
   | { readonly kind: 'undefined-variant' } // 形は合うが未定義のバリアント名・拡張子
   | { readonly kind: 'not-image-path' };
 export declare function parseImagePath(pathname: string): ImagePathMatch;
-export declare function buildImagePath(objectKey: string, variant: ImageVariantName, extension: ImageExtension): string;
-export declare function isDeliverable(variant: ImageVariantName, extension: ImageExtension, original: 'svg' | 'raster'): boolean;
+export declare function buildImagePath(
+  objectKey: string,
+  variant: ImageVariantName,
+  extension: ImageExtension,
+): string;
+export declare function isDeliverable(
+  variant: ImageVariantName,
+  extension: ImageExtension,
+  original: 'svg' | 'raster',
+): boolean;
 export type SquareDisplaySize = 32 | 64 | 128;
-export interface DisplayVariants { readonly x1: ImageVariantName; readonly x2: ImageVariantName | undefined }
-export declare function squareVariants(size: SquareDisplaySize): DisplayVariants; // 32→xs・sm、64→sm・md、128→md・lg
-export declare function screenshotVariants(kind: 'thumb' | 'full'): DisplayVariants; // thumb→thumb・thumb-2x、full→full・なし
+export interface DisplayVariants {
+  readonly x1: ImageVariantName;
+  readonly x2: ImageVariantName | undefined;
+}
+export declare function squareVariants(
+  size: SquareDisplaySize,
+): DisplayVariants; // 32→xs・sm、64→sm・md、128→md・lg
+export declare function screenshotVariants(
+  kind: 'thumb' | 'full',
+): DisplayVariants; // thumb→thumb・thumb-2x、full→full・なし
 
 // upload-protocol.ts
 export declare const UPLOAD_RELAY_PREFIX: '/_bff/uploads/';
 export declare const FILE_RELAY_PREFIX: '/_bff/files/';
 export declare const UPLOAD_FILE_NAME_HEADER: 'x-upload-file-name';
 export declare function encodeFileNameHeader(name: string): string; // encodeURIComponent
-export declare function decodeFileNameHeader(value: string | null): string | undefined; // 復号に失敗すればundefined
+export declare function decodeFileNameHeader(
+  value: string | null,
+): string | undefined; // 復号に失敗すればundefined
 export declare function downloadPathOf(fileId: string): string; // /_bff/files/<fileId>
 export interface UploadedFile {
   readonly fileId: string;
@@ -663,13 +698,25 @@ export interface UploadedFile {
 
 // media-error-codes.ts
 export type UploadErrorCode =
-  | 'upload_purpose_not_found' | 'unauthenticated' | 'upload_forbidden'
-  | 'content_length_required' | 'invalid_content_length' | 'file_too_large' | 'unsupported_file_type'
-  | 'content_length_mismatch' | 'file_type_mismatch' | 'invalid_svg' | 'svg_declaration_not_allowed'
-  | 'invalid_text_file' | 'image_unreadable' | 'image_dimensions_exceeded' | 'storage_unavailable'
+  | 'upload_purpose_not_found'
+  | 'unauthenticated'
+  | 'upload_forbidden'
+  | 'content_length_required'
+  | 'invalid_content_length'
+  | 'file_too_large'
+  | 'unsupported_file_type'
+  | 'content_length_mismatch'
+  | 'file_type_mismatch'
+  | 'invalid_svg'
+  | 'svg_declaration_not_allowed'
+  | 'invalid_text_file'
+  | 'image_unreadable'
+  | 'image_dimensions_exceeded'
+  | 'storage_unavailable'
   | UploaderDenialCode;
 export type UploaderDenialCode = 'account_unavailable' | 'email_not_verified'; // アップロードできる利用者かの判定の拒否(1.9)
-export type FileAccessErrorCode = 'unauthenticated' | 'not_found' | 'storage_unavailable';
+export type FileAccessErrorCode =
+  'unauthenticated' | 'not_found' | 'storage_unavailable';
 ```
 
 **Implementation Notes**
@@ -683,10 +730,10 @@ export type FileAccessErrorCode = 'unauthenticated' | 'not_found' | 'storage_una
 
 #### UploadPurposeRegistry
 
-| Field        | Detail                         |
-| ------------ | ------------------------------ |
-| Intent       | 用途の定義の検証と登録表       |
-| Requirements | 1.1, 1.2                       |
+| Field        | Detail                   |
+| ------------ | ------------------------ |
+| Intent       | 用途の定義の検証と登録表 |
+| Requirements | 1.1, 1.2                 |
 
 **Contracts**: Service [x]
 
@@ -700,26 +747,32 @@ export interface UploadPurpose {
   readonly storage: MediaStorage;
   readonly uploaderKinds: readonly UploaderKind[]; // 1つ以上
   readonly allowedTypes: readonly MediaType[]; // 1つ以上。imagesはIMAGE_MEDIA_TYPES、filesはATTACHMENT_MEDIA_TYPESの部分集合
-  readonly maxBytes: number; // 1〜MAX_UPLOAD_BYTES
+  readonly maxBytes: number; // 1〜MAX_UPLOAD_BYTES。storageがimagesなら1〜IMAGE_STORAGE_MAX_BYTES
 }
 export declare class UploadPurposeError extends Error {}
-export declare function defineUploadPurpose(purpose: UploadPurpose): UploadPurpose; // 違反はUploadPurposeError
+export declare function defineUploadPurpose(
+  purpose: UploadPurpose,
+): UploadPurpose; // 違反はUploadPurposeError
 export interface UploadPurposeRegistry {
   find(name: string): UploadPurpose | undefined;
   list(): readonly UploadPurpose[];
 }
-export declare function createUploadPurposeRegistry(purposes: readonly UploadPurpose[]): UploadPurposeRegistry; // 名前の重複はUploadPurposeError
-export declare const MEDIA_SMOKE_PURPOSE: UploadPurpose; // media-smoke・images・画像5形式・5MiB。登録表に入れず動作確認の経路だけが使う
+export declare function createUploadPurposeRegistry(
+  purposes: readonly UploadPurpose[],
+): UploadPurposeRegistry; // 名前の重複はUploadPurposeError
+export declare const MEDIA_SMOKE_PURPOSE: UploadPurpose; // media-smoke・images・画像5形式・5,242,880バイト(5MB)。登録表に入れず動作確認の経路だけが使う
 ```
 
 - `uploaderKinds`は`MEDIA_SMOKE_PURPOSE`だけ空を許す(`defineUploadPurpose`を通さない定数)。
+- 容量は文言規則の容量の単位(1,024を基数。500kB = 512,000バイト、20MB = 20,971,520バイト)で換算する。各ドメインspecの`maxBytes`も同じ換算で登録する。外部サービスの上限(Images Bindingの入力・Rekognitionのバイト列)はそのサービスの値に従う(spec横断レビュー、2026-10-23)。
+- 最大の上限(20,971,520バイト)は、Workersの要求本文の上限(Free・Paidで100MB)を下回るため、ストリーミングで受け付けられる。
 
 #### UploadPrecheck・FileSignature・ImageDimensions・SvgSyntax・TextContentCheck・FileName・ObjectKey
 
-| Field        | Detail                                                   |
-| ------------ | -------------------------------------------------------- |
-| Intent       | 受付の純粋な検証と整形                                   |
-| Requirements | 2.1, 2.2, 2.3, 2.4, 3.1-3.9, 4.1, 4.5, 4.6, 12.5         |
+| Field        | Detail                                           |
+| ------------ | ------------------------------------------------ |
+| Intent       | 受付の純粋な検証と整形                           |
+| Requirements | 2.1, 2.2, 2.3, 2.4, 3.1-3.9, 4.1, 4.5, 4.6, 12.5 |
 
 **Contracts**: Service [x]
 
@@ -733,37 +786,69 @@ export interface UploadRejection {
   readonly retryAfterSeconds?: number;
 }
 export type PrecheckResult =
-  | { readonly ok: true; readonly declaredLength: number; readonly mediaType: MediaType }
+  | {
+      readonly ok: true;
+      readonly declaredLength: number;
+      readonly mediaType: MediaType;
+    }
   | { readonly ok: false; readonly rejection: UploadRejection };
 export declare function precheckUpload(
   purpose: UploadPurpose,
-  headers: { readonly contentLength: string | null; readonly contentType: string | null },
+  headers: {
+    readonly contentLength: string | null;
+    readonly contentType: string | null;
+  },
 ): PrecheckResult; // 411→400→413→415の順に判定
 
 export type SignatureMediaType = RasterImageMediaType | 'application/pdf';
 export declare const SIGNATURE_PREFIX_BYTES: 12;
-export declare function detectSignature(prefix: Uint8Array): SignatureMediaType | undefined;
+export declare function detectSignature(
+  prefix: Uint8Array,
+): SignatureMediaType | undefined;
 
-export interface ImageDimensions { readonly width: number; readonly height: number }
-export interface PixelLimits { readonly maxPixels: number; readonly maxSide: number }
+export interface ImageDimensions {
+  readonly width: number;
+  readonly height: number;
+}
+export interface PixelLimits {
+  readonly maxPixels: number;
+  readonly maxSide: number;
+}
 export declare const DEFAULT_PIXEL_LIMITS: PixelLimits; // 16,000,000画素・各辺12,000px
 export declare const DIMENSION_PREFIX_BYTES: 1_048_576;
-export declare function readImageDimensions(bytes: Uint8Array, type: ImageMediaType): ImageDimensions | undefined; // 向き5〜8で入れ替え
-export declare function exceedsPixelLimits(dimensions: ImageDimensions, limits: PixelLimits): boolean;
+export declare function readImageDimensions(
+  bytes: Uint8Array,
+  type: ImageMediaType,
+): ImageDimensions | undefined; // 向き5〜8で入れ替え
+export declare function exceedsPixelLimits(
+  dimensions: ImageDimensions,
+  limits: PixelLimits,
+): boolean;
 
 export type SvgSyntaxResult =
   | { readonly ok: true; readonly text: string }
-  | { readonly ok: false; readonly code: 'invalid_svg' | 'svg_declaration_not_allowed' };
+  | {
+      readonly ok: false;
+      readonly code: 'invalid_svg' | 'svg_declaration_not_allowed';
+    };
 export declare function checkSvgSyntax(bytes: Uint8Array): SvgSyntaxResult;
 
 export declare class TextContentError extends Error {}
-export declare function createTextContentCheck(): TransformStream<Uint8Array, Uint8Array>; // 違反でTextContentErrorにより流れを失敗させる
+export declare function createTextContentCheck(): TransformStream<
+  Uint8Array,
+  Uint8Array
+>; // 違反でTextContentErrorにより流れを失敗させる
 
 export declare const MAX_FILE_NAME_BYTES: 255;
-export declare function sanitizeFileName(raw: string | undefined, type: MediaType): string;
+export declare function sanitizeFileName(
+  raw: string | undefined,
+  type: MediaType,
+): string;
 export declare function attachmentDisposition(fileName: string): string; // attachment; filename="<ASCIIの代替>"; filename*=UTF-8''<百分率符号化>
 
-export declare function generateObjectKey(randomBytes: (length: number) => Uint8Array): string; // 16バイト→32文字の小文字16進
+export declare function generateObjectKey(
+  randomBytes: (length: number) => Uint8Array,
+): string; // 16バイト→32文字の小文字16進
 ```
 
 - シグネチャの表: JPEG(`FF D8 FF`)、PNG(`89 50 4E 47 0D 0A 1A 0A`)、GIF(`GIF87a`・`GIF89a`)、WebP(`RIFF`+4バイト+`WEBP`)、PDF(`%PDF-`)。申告がSVG・テキストの場合はこの判定を使わない(3.1)。
@@ -775,10 +860,10 @@ export declare function generateObjectKey(randomBytes: (length: number) => Uint8
 
 #### MediaFile・MediaMessages・ports
 
-| Field        | Detail                                                       |
-| ------------ | ------------------------------------------------------------ |
-| Intent       | ファイルの型・目的の保存先の規則・メッセージ契約・ポート     |
-| Requirements | 4.7, 4.8, 9.1, 9.3, 9.4, 9.6, 9.10, 11.3, 13.8, 13.9         |
+| Field        | Detail                                                   |
+| ------------ | -------------------------------------------------------- |
+| Intent       | ファイルの型・目的の保存先の規則・メッセージ契約・ポート |
+| Requirements | 4.7, 4.8, 9.1, 9.3, 9.4, 9.6, 9.10, 11.3, 13.8, 13.9     |
 
 **Contracts**: Service [x] / Event [x] / State [x]
 
@@ -786,16 +871,30 @@ export declare function generateObjectKey(randomBytes: (length: number) => Uint8
 
 ```typescript
 export type MediaLocation = 'images' | 'files' | 'quarantine';
-export type ModerationStatus = 'not_required' | 'pending' | 'passed' | 'flagged' | 'undetermined';
-export type QuarantineReason = 'auto' | 'product_hidden' | 'user_suspended' | 'admin_action';
+export type ModerationStatus =
+  'not_required' | 'pending' | 'passed' | 'flagged' | 'undetermined';
+export type QuarantineReason =
+  'auto' | 'product_hidden' | 'user_suspended' | 'admin_action';
 export declare const QUARANTINE_REASONS: readonly QuarantineReason[];
 export type MediaOwner =
   | { readonly kind: 'user' | 'admin'; readonly id: string }
   | { readonly kind: 'system' }; // 動作確認の経路だけ
 export type ModerationFinding =
-  | { readonly source: 'labels'; readonly category: string; readonly label: string; readonly confidence: number }
-  | { readonly source: 'svg'; readonly violation: string; readonly target: string } // targetは要素名・属性名(値を含めない)
-  | { readonly source: 'unprocessable'; readonly reason: 'undecodable' | 'rejected-by-service' };
+  | {
+      readonly source: 'labels';
+      readonly category: string;
+      readonly label: string;
+      readonly confidence: number;
+    }
+  | {
+      readonly source: 'svg';
+      readonly violation: string;
+      readonly target: string;
+    } // targetは要素名・属性名(値を含めない)
+  | {
+      readonly source: 'unprocessable';
+      readonly reason: 'undecodable' | 'rejected-by-service';
+    };
 export interface MediaFileView {
   readonly id: string;
   readonly objectKey: string;
@@ -817,17 +916,32 @@ export interface MediaFileView {
   readonly quarantined: boolean; // 隔離理由が1つ以上
   readonly createdAt: Date;
 }
-export declare function desiredLocation(storage: MediaStorage, reasons: readonly QuarantineReason[]): MediaLocation;
+export declare function desiredLocation(
+  storage: MediaStorage,
+  reasons: readonly QuarantineReason[],
+): MediaLocation;
 // files→files、images→理由があればquarantine、無ければimages(FR-ADMUG-028)
 ```
 
 ##### Event Contract
 
 ```typescript
-export declare const MODERATE_IMAGE_MESSAGE: MessageContract<'media.moderate-image', { readonly fileId: string }>;
-export declare const RELOCATE_FILES_MESSAGE: MessageContract<'media.relocate-files', { readonly fileIds: readonly string[] }>; // 1〜25件のULID
-export declare const PURGE_IMAGE_CACHE_MESSAGE: MessageContract<'media.purge-image-cache', { readonly objectKeys: readonly string[] }>; // 1〜100件、OBJECT_KEY_PATTERN
-export declare const MEDIA_MESSAGE_LIMITS: { readonly relocateBatch: 25; readonly purgeBatch: 100 };
+export declare const MODERATE_IMAGE_MESSAGE: MessageContract<
+  'media.moderate-image',
+  { readonly fileId: string }
+>;
+export declare const RELOCATE_FILES_MESSAGE: MessageContract<
+  'media.relocate-files',
+  { readonly fileIds: readonly string[] }
+>; // 1〜25件のULID
+export declare const PURGE_IMAGE_CACHE_MESSAGE: MessageContract<
+  'media.purge-image-cache',
+  { readonly objectKeys: readonly string[] }
+>; // 1〜100件、OBJECT_KEY_PATTERN
+export declare const MEDIA_MESSAGE_LIMITS: {
+  readonly relocateBatch: 25;
+  readonly purgeBatch: 100;
+};
 ```
 
 - 本文にファイル名・主体・画像の内容を入れない(デッドレターの通知にも本文は残らない)。配送は少なくとも1回で、各処理は冪等にする。
@@ -840,13 +954,32 @@ export interface ClaimRequest {
   readonly purpose: string;
   readonly owner: { readonly kind: UploaderKind; readonly id: string };
 }
-export type ClaimFailureReason = 'not_found' | 'not_stored' | 'deleted' | 'purpose_mismatch' | 'owner_mismatch';
+export type ClaimFailureReason =
+  | 'not_found'
+  | 'not_stored'
+  | 'deleted'
+  | 'purpose_mismatch'
+  | 'owner_mismatch';
 export type ClaimResult =
   | { readonly ok: true }
-  | { readonly ok: false; readonly failures: readonly { readonly fileId: string; readonly reason: ClaimFailureReason }[] };
-export interface EraseSummary { readonly erased: number }
-export interface MediaContent { readonly file: MediaFileView; readonly body: ReadableStream<Uint8Array> }
-export interface OwnerRef { readonly kind: UploaderKind; readonly id: string }
+  | {
+      readonly ok: false;
+      readonly failures: readonly {
+        readonly fileId: string;
+        readonly reason: ClaimFailureReason;
+      }[];
+    };
+export interface EraseSummary {
+  readonly erased: number;
+}
+export interface MediaContent {
+  readonly file: MediaFileView;
+  readonly body: ReadableStream<Uint8Array>;
+}
+export interface OwnerRef {
+  readonly kind: UploaderKind;
+  readonly id: string;
+}
 export declare const OWNER_OPERATION_BATCH_LIMIT: 1000; // 保有者単位の操作が1回の呼び出しで処理する件数の上限
 export interface OwnerBatchResult {
   readonly processed: number; // この呼び出しで処理した件数
@@ -857,7 +990,9 @@ export interface MediaFiles {
   markDeleted(fileIds: readonly string[]): Promise<void>; // 削除済みのものは日時を変えない
   eraseNow(fileIds: readonly string[]): Promise<EraseSummary>; // 先に削除待ちの印を付ける。失敗時はAppError(unavailable)を投げ、日次バッチが完了させる
   eraseOwnedBy(owner: OwnerRef): Promise<OwnerBatchResult>; // 保有者の全ファイル(全用途・隔離中を含む)を最大OWNER_OPERATION_BATCH_LIMIT件ずつ物理削除する
-  findMany(fileIds: readonly string[]): Promise<ReadonlyMap<string, MediaFileView>>;
+  findMany(
+    fileIds: readonly string[],
+  ): Promise<ReadonlyMap<string, MediaFileView>>;
   openContent(fileId: string): Promise<MediaContent | undefined>; // 保存完了・未削除・隔離中でないものだけ
 }
 export interface QuarantinedImage {
@@ -866,17 +1001,34 @@ export interface QuarantinedImage {
   readonly findings: readonly ModerationFinding[];
 }
 export interface MediaQuarantine {
-  addReason(fileIds: readonly string[], reason: QuarantineReason): Promise<void>; // 画像用の用途以外はAppError(bad_request)
-  removeReason(fileIds: readonly string[], reason: QuarantineReason): Promise<void>;
-  addReasonForOwner(owner: OwnerRef, reason: QuarantineReason): Promise<OwnerBatchResult>; // 保有者の画像用の用途のファイル(削除待ちを除く)のうち理由を持たないものに加える
-  removeReasonForOwner(owner: OwnerRef, reason: QuarantineReason): Promise<OwnerBatchResult>; // 保有者の画像用の用途のファイルのうち理由を持つものから取り除く
+  addReason(
+    fileIds: readonly string[],
+    reason: QuarantineReason,
+  ): Promise<void>; // 画像用の用途以外はAppError(bad_request)
+  removeReason(
+    fileIds: readonly string[],
+    reason: QuarantineReason,
+  ): Promise<void>;
+  addReasonForOwner(
+    owner: OwnerRef,
+    reason: QuarantineReason,
+  ): Promise<OwnerBatchResult>; // 保有者の画像用の用途のファイル(削除待ちを除く)のうち理由を持たないものに加える
+  removeReasonForOwner(
+    owner: OwnerRef,
+    reason: QuarantineReason,
+  ): Promise<OwnerBatchResult>; // 保有者の画像用の用途のファイルのうち理由を持つものから取り除く
   listByReason(input: {
     readonly reason: QuarantineReason;
     readonly cursor: string | undefined;
     readonly limit: number; // 1〜100
-  }): Promise<{ readonly items: readonly QuarantinedImage[]; readonly nextCursor: string | undefined }>;
+  }): Promise<{
+    readonly items: readonly QuarantinedImage[];
+    readonly nextCursor: string | undefined;
+  }>;
 }
-export interface MediaEraser { erase(fileIds: readonly string[]): Promise<EraseSummary> }
+export interface MediaEraser {
+  erase(fileIds: readonly string[]): Promise<EraseSummary>;
+}
 export interface UploadInput {
   readonly purpose: UploadPurpose;
   readonly uploader: MediaOwner;
@@ -888,7 +1040,9 @@ export interface UploadInput {
 export type UploadOutcome =
   | { readonly ok: true; readonly file: UploadedFile }
   | { readonly ok: false; readonly rejection: UploadRejection };
-export interface UploadReceiver { receive(input: UploadInput): Promise<UploadOutcome> }
+export interface UploadReceiver {
+  receive(input: UploadInput): Promise<UploadOutcome>;
+}
 export declare const MEDIA_TYPES: {
   readonly MediaFiles: unique symbol;
   readonly MediaQuarantine: unique symbol;
@@ -909,9 +1063,9 @@ export declare const MEDIA_TYPES: {
 
 #### D1MediaFileStore・R2MediaObjectStore
 
-| Field        | Detail                                     |
-| ------------ | ------------------------------------------ |
-| Intent       | D1とR2への読み書き(条件付きの更新を含む)   |
+| Field        | Detail                                            |
+| ------------ | ------------------------------------------------- |
+| Intent       | D1とR2への読み書き(条件付きの更新を含む)          |
 | Requirements | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3, 9.10 |
 
 **Contracts**: Service [x]
@@ -934,20 +1088,32 @@ export interface NewMediaFileRecord {
 }
 export type ModerationRecord =
   | { readonly verdict: 'passed' }
-  | { readonly verdict: 'flagged'; readonly findings: readonly ModerationFinding[] }
+  | {
+      readonly verdict: 'flagged';
+      readonly findings: readonly ModerationFinding[];
+    }
   | { readonly verdict: 'undetermined' };
 export interface MediaFileStore {
   insertReceiving(record: NewMediaFileRecord): Promise<void>;
   markStored(id: string): Promise<void>;
-  findViews(ids: readonly string[]): Promise<ReadonlyMap<string, MediaFileView>>; // 100件ごとに分けて照会
+  findViews(
+    ids: readonly string[],
+  ): Promise<ReadonlyMap<string, MediaFileView>>; // 100件ごとに分けて照会
   attach(ids: readonly string[]): Promise<void>; // attached_atが空のものだけ設定
   markDeleted(ids: readonly string[]): Promise<void>;
   markEraseRequested(ids: readonly string[]): Promise<void>;
   remove(ids: readonly string[]): Promise<void>; // 隔離理由は連鎖削除
   recordModeration(id: string, record: ModerationRecord): Promise<boolean>; // 状態がpending・undeterminedのときだけ更新。flaggedは理由の追加と1つの一括実行
   addReasons(ids: readonly string[], reason: QuarantineReason): Promise<void>; // onConflictDoNothing
-  removeReasons(ids: readonly string[], reason: QuarantineReason): Promise<void>;
-  updateLocation(id: string, from: MediaLocation, to: MediaLocation): Promise<boolean>; // 現在値がfromのときだけ
+  removeReasons(
+    ids: readonly string[],
+    reason: QuarantineReason,
+  ): Promise<void>;
+  updateLocation(
+    id: string,
+    from: MediaLocation,
+    to: MediaLocation,
+  ): Promise<boolean>; // 現在値がfromのときだけ
   findIdsOwnedBy(owner: OwnerRef, limit: number): Promise<readonly string[]>; // 全用途・全状態
   findOwnedImageIdsByReason(input: {
     readonly owner: OwnerRef;
@@ -955,10 +1121,24 @@ export interface MediaFileStore {
     readonly hasReason: boolean; // 偽は理由を持たない画像(削除待ちを除く)、真は理由を持つ画像
     readonly limit: number;
   }): Promise<readonly string[]>;
-  findEraseCandidates(input: { readonly deletedBefore: Date; readonly unattachedCreatedBefore: Date; readonly limit: number }): Promise<readonly string[]>;
-  findModerationRequeueCandidates(input: { readonly pendingCreatedBefore: Date; readonly limit: number }): Promise<readonly string[]>;
+  findEraseCandidates(input: {
+    readonly deletedBefore: Date;
+    readonly unattachedCreatedBefore: Date;
+    readonly limit: number;
+  }): Promise<readonly string[]>;
+  findModerationRequeueCandidates(input: {
+    readonly pendingCreatedBefore: Date;
+    readonly limit: number;
+  }): Promise<readonly string[]>;
   findLocationMismatches(limit: number): Promise<readonly string[]>;
-  listQuarantined(input: { readonly reason: QuarantineReason; readonly cursor: string | undefined; readonly limit: number }): Promise<{ readonly items: readonly QuarantinedImage[]; readonly nextCursor: string | undefined }>;
+  listQuarantined(input: {
+    readonly reason: QuarantineReason;
+    readonly cursor: string | undefined;
+    readonly limit: number;
+  }): Promise<{
+    readonly items: readonly QuarantinedImage[];
+    readonly nextCursor: string | undefined;
+  }>;
 }
 export interface StoredObjectMeta {
   readonly contentType: string;
@@ -971,11 +1151,21 @@ export interface StoredObject {
   readonly contentType: string | undefined;
 }
 export interface MediaObjectStore {
-  putIfAbsent(location: MediaLocation, key: string, body: ReadableStream<Uint8Array>, length: number, meta: StoredObjectMeta): Promise<'stored' | 'exists'>;
+  putIfAbsent(
+    location: MediaLocation,
+    key: string,
+    body: ReadableStream<Uint8Array>,
+    length: number,
+    meta: StoredObjectMeta,
+  ): Promise<'stored' | 'exists'>;
   get(location: MediaLocation, key: string): Promise<StoredObject | undefined>;
   exists(location: MediaLocation, key: string): Promise<boolean>;
   delete(location: MediaLocation, keys: readonly string[]): Promise<void>; // 1,000件ごと
-  copy(from: MediaLocation, to: MediaLocation, key: string): Promise<'copied' | 'already-present' | 'source-missing'>;
+  copy(
+    from: MediaLocation,
+    to: MediaLocation,
+    key: string,
+  ): Promise<'copied' | 'already-present' | 'source-missing'>;
 }
 ```
 
@@ -985,10 +1175,10 @@ export interface MediaObjectStore {
 
 #### UploadReceiver
 
-| Field        | Detail                                           |
-| ------------ | ------------------------------------------------ |
+| Field        | Detail                                         |
+| ------------ | ---------------------------------------------- |
 | Intent       | 受付処理の本体(検証→記録→保存→完了→判定の依頼) |
-| Requirements | 2.1-2.6, 3.1-3.9, 4.1-4.10, 8.5                  |
+| Requirements | 2.1-2.6, 3.1-3.9, 4.1-4.10, 8.5                |
 
 **Contracts**: Service [x]
 
@@ -1008,10 +1198,10 @@ export interface MediaObjectStore {
 
 #### MediaEraser・MediaFilesService・MediaQuarantineService
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | ドメインへ提供する紐付け・削除・隔離の操作   |
-| Requirements | 5.1-5.5, 9.1-9.10, 13.1-13.9                 |
+| Field        | Detail                                     |
+| ------------ | ------------------------------------------ |
+| Intent       | ドメインへ提供する紐付け・削除・隔離の操作 |
+| Requirements | 5.1-5.5, 9.1-9.10, 13.1-13.9               |
 
 **Contracts**: Service [x]
 
@@ -1036,19 +1226,19 @@ export interface MediaObjectStore {
 
 #### UploadRoute・FileContentRoute
 
-| Field        | Detail                                     |
-| ------------ | ------------------------------------------ |
-| Intent       | アップロードと非公開ファイルの内部REST     |
-| Requirements | 1.3-1.9, 4.9, 4.10, 12.1-12.8              |
+| Field        | Detail                                 |
+| ------------ | -------------------------------------- |
+| Intent       | アップロードと非公開ファイルの内部REST |
+| Requirements | 1.3-1.9, 4.9, 4.10, 12.1-12.8          |
 
 **Contracts**: API [x]
 
 ##### API Contract
 
-| Method | Endpoint                             | Request                                                                                               | Response                                                                                         | Errors                                                       |
-| ------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| POST   | `/internal/media/uploads/:purpose`   | 本文はファイルのバイト列。`Content-Type`(形式)・`Content-Length`・任意で`x-upload-file-name`(百分率符号化) | 201。`{ "data": UploadedFile }`。ファイル用の用途は`Location: /_bff/files/<fileId>`              | 400・401・403・404・411・413・415・422・503(Supporting References) |
-| GET    | `/internal/media/files/:fileId`      | なし                                                                                                  | 200。本文はファイルの内容。`Content-Type`・`Content-Disposition: attachment`・`Content-Length`・`Cache-Control: private, no-store`・`X-Content-Type-Options: nosniff` | 401・404・503                                                |
+| Method | Endpoint                           | Request                                                                                                    | Response                                                                                                                                                              | Errors                                                             |
+| ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| POST   | `/internal/media/uploads/:purpose` | 本文はファイルのバイト列。`Content-Type`(形式)・`Content-Length`・任意で`x-upload-file-name`(百分率符号化) | 201。`{ "data": UploadedFile }`。ファイル用の用途は`Location: /_bff/files/<fileId>`                                                                                   | 400・401・403・404・411・413・415・422・503(Supporting References) |
+| GET    | `/internal/media/files/:fileId`    | なし                                                                                                       | 200。本文はファイルの内容。`Content-Type`・`Content-Disposition: attachment`・`Content-Length`・`Cache-Control: private, no-store`・`X-Content-Type-Options: nosniff` | 401・404・503                                                      |
 
 - 両経路は`createInternalRoutesModule`で`/internal`の下に登録し、外部経路からは404になる(api-gateway)。セッションは`createSessionAccess`で呼び出し元に応じて判定する。
 - アップロード: 用途が無ければ404 → 未ログインなら401 → 主体の種類が`uploaderKinds`に無ければ403 → 呼び出し元が利用者側なら`UploaderEligibility.check`で判定し、拒否なら403(判定が示す`account_unavailable`・`email_not_verified`) → `UploadReceiver.receive`。判定までは本文を読まない。応答の`Cache-Control`は`no-store`。
@@ -1056,10 +1246,10 @@ export interface MediaObjectStore {
 
 #### UploaderEligibility・既定の実装
 
-| Field        | Detail                                                   |
-| ------------ | -------------------------------------------------------- |
+| Field        | Detail                                                       |
+| ------------ | ------------------------------------------------------------ |
 | Intent       | アップロードできる利用者かを判定する差し込み口(既定は全許可) |
-| Requirements | 1.8, 1.9                                                 |
+| Requirements | 1.8, 1.9                                                     |
 
 **Contracts**: Service [x]
 
@@ -1103,10 +1293,10 @@ export declare class AllowAllUploaderEligibility implements UploaderEligibility 
 
 #### FileAccessAuthorizer・方針の既定実装
 
-| Field        | Detail                                           |
-| ------------ | ------------------------------------------------ |
-| Intent       | 非公開ファイルの閲覧の可否と管理者の画像確認     |
-| Requirements | 12.2, 12.3, 12.4, 12.6, 12.7                     |
+| Field        | Detail                                       |
+| ------------ | -------------------------------------------- |
+| Intent       | 非公開ファイルの閲覧の可否と管理者の画像確認 |
+| Requirements | 12.2, 12.3, 12.4, 12.6, 12.7                 |
 
 **Contracts**: Service [x]
 
@@ -1116,10 +1306,16 @@ export declare class AllowAllUploaderEligibility implements UploaderEligibility 
 import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 
 export interface FileReadPolicy {
-  canRead(input: { readonly principal: AuthenticatedPrincipal; readonly file: MediaFileView }): Promise<boolean>;
+  canRead(input: {
+    readonly principal: AuthenticatedPrincipal;
+    readonly file: MediaFileView;
+  }): Promise<boolean>;
 }
 export interface AdminMediaReviewPolicy {
-  canReview(input: { readonly principal: AuthenticatedPrincipal; readonly file: MediaFileView }): Promise<boolean>;
+  canReview(input: {
+    readonly principal: AuthenticatedPrincipal;
+    readonly file: MediaFileView;
+  }): Promise<boolean>;
 }
 export interface FileReadPolicyRegistration {
   readonly purpose: string;
@@ -1130,7 +1326,11 @@ export declare const FILE_ACCESS_TYPES: {
   readonly DefaultFileReadPolicy: unique symbol;
 };
 export interface FileAccessAuthorizer {
-  canAccess(input: { readonly caller: CallerKind; readonly principal: AuthenticatedPrincipal; readonly file: MediaFileView }): Promise<boolean>;
+  canAccess(input: {
+    readonly caller: CallerKind;
+    readonly principal: AuthenticatedPrincipal;
+    readonly file: MediaFileView;
+  }): Promise<boolean>;
 }
 ```
 
@@ -1140,10 +1340,10 @@ export interface FileAccessAuthorizer {
 
 #### MediaDailyJobs
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | 物理削除・判定の再依頼・保存先の修復         |
-| Requirements | 5.4, 5.5, 8.3, 9.8, 13.2, 13.5               |
+| Field        | Detail                               |
+| ------------ | ------------------------------------ |
+| Intent       | 物理削除・判定の再依頼・保存先の修復 |
+| Requirements | 5.4, 5.5, 8.3, 9.8, 13.2, 13.5       |
 
 **Contracts**: Batch [x]
 
@@ -1156,10 +1356,10 @@ export interface FileAccessAuthorizer {
 
 #### MediaGraphqlModule
 
-| Field        | Detail                                         |
-| ------------ | ---------------------------------------------- |
-| Intent       | 下流のドメインが使うGraphQLの共通の型と変換    |
-| Requirements | 13.8, 15.2                                     |
+| Field        | Detail                                      |
+| ------------ | ------------------------------------------- |
+| Intent       | 下流のドメインが使うGraphQLの共通の型と変換 |
+| Requirements | 13.8, 15.2                                  |
 
 **Contracts**: API [x]
 
@@ -1191,8 +1391,13 @@ type MediaAttachment {
 
 ```typescript
 export declare function toMediaImage(file: MediaFileView): MediaImageModel; // 隔離中・削除待ち・保存未完了はobjectKeyをnull
-export declare function toMediaAttachment(file: MediaFileView): MediaAttachmentModel;
-export declare const mediaFileLoader: LoaderDefinition<string, MediaFileView | null>; // MediaFiles.findManyで一括取得
+export declare function toMediaAttachment(
+  file: MediaFileView,
+): MediaAttachmentModel;
+export declare const mediaFileLoader: LoaderDefinition<
+  string,
+  MediaFileView | null
+>; // MediaFiles.findManyで一括取得
 ```
 
 - クエリ・ミューテーションは持たない。ドメインのスキーマモジュールが自分の型の項目として`MediaImage`・`MediaAttachment`を返す。
@@ -1201,10 +1406,10 @@ export declare const mediaFileLoader: LoaderDefinition<string, MediaFileView | n
 
 #### ModerateImageHandler・判定の規則と部品
 
-| Field        | Detail                                                       |
-| ------------ | ------------------------------------------------------------ |
-| Intent       | 画像の自動判定(判定用画像・判定サービス・SVGの検査)         |
-| Requirements | 6.1-6.10, 7.1-7.5, 8.1-8.8                                   |
+| Field        | Detail                                              |
+| ------------ | --------------------------------------------------- |
+| Intent       | 画像の自動判定(判定用画像・判定サービス・SVGの検査) |
+| Requirements | 6.1-6.10, 7.1-7.5, 8.1-8.8                          |
 
 **Contracts**: Event [x] / Service [x]
 
@@ -1214,11 +1419,31 @@ export declare const mediaFileLoader: LoaderDefinition<string, MediaFileView | n
 // application/media/ports.ts
 export type ModerationImagePlan =
   | { readonly kind: 'as-is'; readonly format: 'png' | 'jpeg' }
-  | { readonly kind: 'resize'; readonly width: number; readonly height: number; readonly format: 'png' | 'jpeg' }
-  | { readonly kind: 'pad'; readonly width: number; readonly height: number; readonly canvasWidth: number; readonly canvasHeight: number };
-export interface ModerationImage { readonly bytes: Uint8Array; readonly format: 'png' | 'jpeg' }
+  | {
+      readonly kind: 'resize';
+      readonly width: number;
+      readonly height: number;
+      readonly format: 'png' | 'jpeg';
+    }
+  | {
+      readonly kind: 'pad';
+      readonly width: number;
+      readonly height: number;
+      readonly canvasWidth: number;
+      readonly canvasHeight: number;
+    };
+export interface ModerationImage {
+  readonly bytes: Uint8Array;
+  readonly format: 'png' | 'jpeg';
+}
 export interface ModerationImageRenderer {
-  render(input: { readonly original: Uint8Array; readonly plan: ModerationImagePlan }): Promise<{ readonly ok: true; readonly image: ModerationImage } | { readonly ok: false; readonly reason: 'undecodable' }>;
+  render(input: {
+    readonly original: Uint8Array;
+    readonly plan: ModerationImagePlan;
+  }): Promise<
+    | { readonly ok: true; readonly image: ModerationImage }
+    | { readonly ok: false; readonly reason: 'undecodable' }
+  >;
 }
 export interface ModerationLabel {
   readonly name: string;
@@ -1228,10 +1453,20 @@ export interface ModerationLabel {
 }
 export type ModerationOutcome =
   | { readonly kind: 'labels'; readonly labels: readonly ModerationLabel[] }
-  | { readonly kind: 'transient'; readonly reason: 'throttled' | 'service-error' | 'timeout' | 'network' | 'misconfigured' }
-  | { readonly kind: 'rejected'; readonly reason: 'invalid-image' | 'too-large' | 'invalid-parameter' };
+  | {
+      readonly kind: 'transient';
+      readonly reason:
+        'throttled' | 'service-error' | 'timeout' | 'network' | 'misconfigured';
+    }
+  | {
+      readonly kind: 'rejected';
+      readonly reason: 'invalid-image' | 'too-large' | 'invalid-parameter';
+    };
 export interface ModerationProvider {
-  detect(image: ModerationImage, minConfidence: number): Promise<ModerationOutcome>;
+  detect(
+    image: ModerationImage,
+    minConfidence: number,
+  ): Promise<ModerationOutcome>;
 }
 export interface MediaIncidentReporter {
   undetermined(fileId: string, reason: string): void; // Sentryのwarning
@@ -1242,7 +1477,12 @@ export interface FileRelocator {
   reconcile(fileIds: readonly string[]): Promise<{ readonly moved: number }>;
 }
 export interface ImageCachePurger {
-  purge(objectKeys: readonly string[]): Promise<{ readonly ok: true } | { readonly ok: false; readonly errorCodes: readonly number[] }>;
+  purge(
+    objectKeys: readonly string[],
+  ): Promise<
+    | { readonly ok: true }
+    | { readonly ok: false; readonly errorCodes: readonly number[] }
+  >;
 }
 export declare const EVENT_MEDIA_TYPES: {
   readonly ModerationProvider: unique symbol;
@@ -1254,26 +1494,43 @@ export declare const EVENT_MEDIA_TYPES: {
 
 // moderation-config.ts・moderation-verdict.ts・moderation-image-plan.ts
 export declare const MODERATION_CATEGORIES: readonly string[]; // 最上位10カテゴリ
-export interface ModerationConfig { readonly minConfidence: number; readonly blockedCategories: readonly string[] }
+export interface ModerationConfig {
+  readonly minConfidence: number;
+  readonly blockedCategories: readonly string[];
+}
 export declare function parseModerationConfig(vars: {
   readonly MODERATION_MIN_CONFIDENCE: string;
   readonly MODERATION_BLOCKED_CATEGORIES: string;
 }): ModerationConfig; // 0〜100の数値、カテゴリはMODERATION_CATEGORIESの部分集合(カンマ区切り)
-export declare function judgeLabels(labels: readonly ModerationLabel[], config: ModerationConfig):
+export declare function judgeLabels(
+  labels: readonly ModerationLabel[],
+  config: ModerationConfig,
+):
   | { readonly verdict: 'passed' }
-  | { readonly verdict: 'flagged'; readonly findings: readonly ModerationFinding[] };
-export declare const MODERATION_IMAGE_LIMITS: { readonly maxLongSide: 640; readonly minSide: 80; readonly maxBytes: 5_000_000 };
+  | {
+      readonly verdict: 'flagged';
+      readonly findings: readonly ModerationFinding[];
+    };
+export declare const MODERATION_IMAGE_LIMITS: {
+  readonly maxLongSide: 640;
+  readonly minSide: 80;
+  readonly maxBytes: 5_242_880;
+}; // maxBytesはRekognitionのImage.Bytesの最大長(5,242,880)
 export declare function planModerationImage(input: {
   readonly type: ImageMediaType;
   readonly width: number; // SVGで寸法が無い場合は640
   readonly height: number;
   readonly byteSize: number;
 }): ModerationImagePlan;
-export declare const MODERATION_RETRY_POLICY: { readonly maxAttempts: 5; readonly baseDelaySeconds: 60; readonly maxDelaySeconds: 1800 };
+export declare const MODERATION_RETRY_POLICY: {
+  readonly maxAttempts: 5;
+  readonly baseDelaySeconds: 60;
+  readonly maxDelaySeconds: 1800;
+};
 ```
 
 - 判定の規則: `judgeLabels`はラベルの`parentName`をたどって最上位のカテゴリを求め、カテゴリが`blockedCategories`に含まれ、信頼度が`minConfidence`以上のものを検出内容にする。設定の初期値は全10カテゴリ・60(決定Q3、Supporting References)。
-- 判定用画像の作り方(6.2〜6.4): JPEG・PNGで長辺640px以下・短辺80px以上・5,000,000バイト以下なら`as-is`。長辺640pxへの縮小後(または縮小不要のまま)短辺が80px以上なら`resize`(JPEG原本はJPEG、他はPNG)。短辺が80px未満になるなら`pad`(縮小した画素の周りに白の余白を足し、各辺を80px以上にしたPNG)。アニメーションは最初のフレームだけを使う。
+- 判定用画像の作り方(6.2〜6.4): JPEG・PNGで長辺640px以下・短辺80px以上・5,242,880バイト以下なら`as-is`。長辺640pxへの縮小後(または縮小不要のまま)短辺が80px以上なら`resize`(JPEG原本はJPEG、他はPNG)。短辺が80px未満になるなら`pad`(縮小した画素の周りに白の余白を足し、各辺を80px以上にしたPNG)。アニメーションは最初のフレームだけを使う。
 - `WasmModerationImageRenderer`: `wasm-image-optimization/workerd`の`optimizeImage`で`resize`は`png`・`jpeg`、`pad`は`raw`(RGBA)で縮小し、`png-encoder.ts`の`padRgba`・`encodePng`でPNGにする。読み込みの失敗は`undecodable`。
 - `RekognitionModerationProvider`: `aws4fetch`の`AwsClient`(サービス`rekognition`・リージョンは`MODERATION_REGION`)で`https://rekognition.<region>.amazonaws.com/`へ`X-Amz-Target: RekognitionService.DetectModerationLabels`・`Content-Type: application/x-amz-json-1.1`のJSON(`Image.Bytes`はbase64、`MinConfidence`)を送る。10秒で打ち切る。エラーの分類はresearch.mdのとおり(一時的・恒久的・設定の誤り)。`fetch`は注入できる。
 - `StubModerationProvider`: 外部へ送らず、判定用画像の寸法で決める(`stub-moderation-rules.ts`)。99×99は「Explicit」信頼度99、98×98は一時的な失敗、97×97は画像として受け付けない、それ以外は検出なし。
@@ -1293,20 +1550,32 @@ export declare const MODERATION_RETRY_POLICY: { readonly maxAttempts: 5; readonl
 
 #### SvgAllowlist
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
+| Field        | Detail                                          |
+| ------------ | ----------------------------------------------- |
 | Intent       | SVGの要素・属性・処理命令・参照の許可リスト検査 |
-| Requirements | 7.1, 7.2, 7.3, 7.4, 7.5                      |
+| Requirements | 7.1, 7.2, 7.3, 7.4, 7.5                         |
 
 **Contracts**: Service [x]
 
 ```typescript
 export type SvgViolationKind =
-  | 'disallowed-element' | 'disallowed-attribute' | 'event-attribute'
-  | 'external-reference' | 'disallowed-data-uri' | 'processing-instruction'
-  | 'declaration' | 'unparseable';
-export interface SvgViolation { readonly kind: SvgViolationKind; readonly target: string } // 要素名・属性名だけ
-export declare function inspectSvg(text: string): { readonly ok: true } | { readonly ok: false; readonly violations: readonly SvgViolation[] };
+  | 'disallowed-element'
+  | 'disallowed-attribute'
+  | 'event-attribute'
+  | 'external-reference'
+  | 'disallowed-data-uri'
+  | 'processing-instruction'
+  | 'declaration'
+  | 'unparseable';
+export interface SvgViolation {
+  readonly kind: SvgViolationKind;
+  readonly target: string;
+} // 要素名・属性名だけ
+export declare function inspectSvg(
+  text: string,
+):
+  | { readonly ok: true }
+  | { readonly ok: false; readonly violations: readonly SvgViolation[] };
 ```
 
 - `XMLParser`を`preserveOrder: true`・`ignoreAttributes: false`・`processEntities: false`・`maxNestedTags: 256`で使い、全要素を走査する。許可リストはSupporting Referencesの表に従う。
@@ -1316,9 +1585,9 @@ export declare function inspectSvg(text: string): { readonly ok: true } | { read
 
 #### FileRelocator・RelocateFilesHandler・PurgeImageCacheHandler
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | 目的の保存先へそろえる処理とキャッシュのパージ |
+| Field        | Detail                                               |
+| ------------ | ---------------------------------------------------- |
+| Intent       | 目的の保存先へそろえる処理とキャッシュのパージ       |
 | Requirements | 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 11.2, 11.3, 11.4, 11.5 |
 
 **Contracts**: Event [x]
@@ -1332,10 +1601,10 @@ export declare function inspectSvg(text: string): { readonly ok: true } | { read
 
 #### ImageGatewayModule・ImageDeliveryEntrypoint・ImageDelivery
 
-| Field        | Detail                                     |
-| ------------ | ------------------------------------------ |
-| Intent       | 画像の変換配信とエッジキャッシュ           |
-| Requirements | 10.1-10.12, 11.1, 11.2                     |
+| Field        | Detail                           |
+| ------------ | -------------------------------- |
+| Intent       | 画像の変換配信とエッジキャッシュ |
+| Requirements | 10.1-10.12, 11.1, 11.2           |
 
 **Contracts**: API [x] / Service [x]
 
@@ -1351,34 +1620,60 @@ export type ImageRequestMatch =
   | { readonly kind: 'image'; readonly path: string }
   | { readonly kind: 'reject-on-dedicated-host' } // 専用のホストで画像のURLの形式に合わない
   | { readonly kind: 'not-image-host' };
-export declare function matchImageRequest(url: URL, config: ImageDeliveryHostConfig): ImageRequestMatch;
+export declare function matchImageRequest(
+  url: URL,
+  config: ImageDeliveryHostConfig,
+): ImageRequestMatch;
 
 // presentation/media/image-delivery-entrypoint.ts
 export declare class ImageDelivery extends WorkerEntrypoint<EventEnv> {
   fetch(request: Request): Promise<Response>;
-  purgeObjectKeys(objectKeys: readonly string[]): Promise<{ readonly ok: boolean; readonly skipped: boolean; readonly errorCodes: readonly number[] }>;
+  purgeObjectKeys(objectKeys: readonly string[]): Promise<{
+    readonly ok: boolean;
+    readonly skipped: boolean;
+    readonly errorCodes: readonly number[];
+  }>;
 }
 
 // application/media/image-delivery.ts
 export interface ImageSource {
-  get(objectKey: string): Promise<{ readonly body: ReadableStream<Uint8Array>; readonly contentType: string | undefined } | undefined>;
+  get(objectKey: string): Promise<
+    | {
+        readonly body: ReadableStream<Uint8Array>;
+        readonly contentType: string | undefined;
+      }
+    | undefined
+  >;
 }
 export interface ImageTransformer {
   transform(input: {
     readonly body: ReadableStream<Uint8Array>;
     readonly variant: ImageVariantSpec;
     readonly format: 'image/avif' | 'image/webp' | 'image/jpeg' | 'image/png';
-  }): Promise<{ readonly ok: true; readonly body: ReadableStream<Uint8Array>; readonly contentType: string } | { readonly ok: false; readonly reason: 'invalid-image' | 'unavailable' }>;
+  }): Promise<
+    | {
+        readonly ok: true;
+        readonly body: ReadableStream<Uint8Array>;
+        readonly contentType: string;
+      }
+    | { readonly ok: false; readonly reason: 'invalid-image' | 'unavailable' }
+  >;
 }
 export declare const SVG_CONTENT_SECURITY_POLICY: "sandbox; default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'";
-export declare function deliverImage(request: Request, deps: { readonly source: ImageSource; readonly transformer: ImageTransformer }): Promise<Response>;
+export declare function deliverImage(
+  request: Request,
+  deps: {
+    readonly source: ImageSource;
+    readonly transformer: ImageTransformer;
+  },
+): Promise<Response>;
 ```
 
 ##### API Contract
 
-| Method     | Endpoint                                   | Request | Response                                                                                                   | Errors                                    |
-| ---------- | ------------------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| GET・HEAD  | `https://{画像配信ドメイン}/{objectKey}/{variant}.{ext}` | なし    | 200。画像。`Cache-Control: public, max-age=1209600, immutable`。SVGは`Content-Type: image/svg+xml`と`SVG_CONTENT_SECURITY_POLICY` | 404・405・503(いずれも`Cache-Control: no-store`) |
+| Method    | Endpoint                                                 | Request | Response                                                                                                                          | Errors                                           |
+| --------- | -------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| GET・HEAD | `https://{画像配信ドメイン}/{objectKey}/{variant}.{ext}` | なし    | 200。画像。`Cache-Control: public, max-age=1209600, immutable`。SVGは`Content-Type: image/svg+xml`と`SVG_CONTENT_SECURITY_POLICY` | 404・405・503(いずれも`Cache-Control: no-store`) |
 
 - `ImageGatewayModule`(既定のエクスポートのHonoの経路。`MODULES`の先頭に登録する): `matchImageRequest`が`image`なら、メソッドが`GET`・`HEAD`以外は405、それ以外は`new Request(<origin><path>, { method })`(クエリ文字列と要求ヘッダーを落とす)で`c.executionCtx.exports.ImageDelivery.fetch()`へ渡し、応答をそのまま返す。`reject-on-dedicated-host`は404(`no-store`)。`not-image-host`は次の経路へ進める。
 - `deliverImage`: `parseImagePath`が`undefined-variant`なら404。原本が無ければ404。原本の`contentType`が`image/svg+xml`なら、`isDeliverable`を満たす場合だけ原本をそのまま返す。ラスターなら`isDeliverable`を満たす場合だけ`IMAGE_VARIANTS`の幅・高さ・`fit`(`scale-down`・`cover`)と拡張子の形式で、品質80・`anim: false`で変換する。`invalid-image`は404、`unavailable`は503(`Retry-After: 5`)。404・405・503はすべて`no-store`。
@@ -1395,22 +1690,22 @@ export declare function deliverImage(request: Request, deps: { readonly source: 
 
 #### MediaSmokeModule
 
-| Field        | Detail                                     |
-| ------------ | ------------------------------------------ |
-| Intent       | トークン付きの動作確認の経路               |
-| Requirements | 11.6, 17.2, 17.3                           |
+| Field        | Detail                       |
+| ------------ | ---------------------------- |
+| Intent       | トークン付きの動作確認の経路 |
+| Requirements | 11.6, 17.2, 17.3             |
 
 **Contracts**: API [x]
 
 ##### API Contract
 
-| Method | Endpoint                                         | Request                                    | Response                                                     | Errors              |
-| ------ | ------------------------------------------------ | ------------------------------------------ | ------------------------------------------------------------ | ------------------- |
-| POST   | `/internal/media/smoke/images`                   | `Authorization: Bearer <トークン>`、本文は画像 | 201 `{ "data": UploadedFile }`                               | 401・404・アップロードと同じ |
-| GET    | `/internal/media/smoke/images/:fileId`           | 同上                                       | 200 `{ "data": { moderationStatus, location, quarantineReasons, findings } }` | 401・404            |
-| POST   | `/internal/media/smoke/images/:fileId/quarantine`| 同上                                       | 202                                                          | 401・404            |
-| POST   | `/internal/media/smoke/images/:fileId/release`   | 同上                                       | 202                                                          | 401・404            |
-| DELETE | `/internal/media/smoke/images/:fileId`           | 同上                                       | 202                                                          | 401・404            |
+| Method | Endpoint                                          | Request                                        | Response                                                                      | Errors                       |
+| ------ | ------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------- |
+| POST   | `/internal/media/smoke/images`                    | `Authorization: Bearer <トークン>`、本文は画像 | 201 `{ "data": UploadedFile }`                                                | 401・404・アップロードと同じ |
+| GET    | `/internal/media/smoke/images/:fileId`            | 同上                                           | 200 `{ "data": { moderationStatus, location, quarantineReasons, findings } }` | 401・404                     |
+| POST   | `/internal/media/smoke/images/:fileId/quarantine` | 同上                                           | 202                                                                           | 401・404                     |
+| POST   | `/internal/media/smoke/images/:fileId/release`    | 同上                                           | 202                                                                           | 401・404                     |
+| DELETE | `/internal/media/smoke/images/:fileId`            | 同上                                           | 202                                                                           | 401・404                     |
 
 - `MEDIA_SMOKE_TOKEN`が未設定なら全経路が404(17.3)。トークンの不一致は401。比較はSHA-256の値を時間一定で行う。
 - アップロードは`MEDIA_SMOKE_PURPOSE`・保有者「システム」で`UploadReceiver`を呼ぶ。隔離・解除は`MediaQuarantine`の`admin_action`、削除は`MediaFiles.eraseNow`を呼ぶ。対象は用途`media-smoke`のファイルに限る。
@@ -1419,10 +1714,10 @@ export declare function deliverImage(request: Request, deps: { readonly source: 
 
 #### MediaRelayRoutes
 
-| Field        | Detail                         |
-| ------------ | ------------------------------ |
-| Intent       | 中継の経路の定義               |
-| Requirements | 1.3, 12.1, 12.8                |
+| Field        | Detail           |
+| ------------ | ---------------- |
+| Intent       | 中継の経路の定義 |
+| Requirements | 1.3, 12.1, 12.8  |
 
 **Contracts**: API [x]
 
@@ -1441,10 +1736,10 @@ export declare const FILE_DOWNLOAD_RELAY_ROUTE: RelayRoute;
 
 #### アップロードの部品群
 
-| Field        | Detail                                         |
-| ------------ | ---------------------------------------------- |
-| Intent       | ファイルの選択・編集・送信・結果の表示         |
-| Requirements | 14.1-14.12                                     |
+| Field        | Detail                                 |
+| ------------ | -------------------------------------- |
+| Intent       | ファイルの選択・編集・送信・結果の表示 |
+| Requirements | 14.1-14.12                             |
 
 **Contracts**: State [x]
 
@@ -1471,18 +1766,33 @@ export type SelectionViolation =
   | { readonly kind: 'size'; readonly fileName: string }
   | { readonly kind: 'count' }
   | { readonly kind: 'total' };
-export declare function checkSelection(files: readonly { readonly name: string; readonly type: string; readonly size: number }[], constraints: UploadConstraints): readonly SelectionViolation[];
+export declare function checkSelection(
+  files: readonly {
+    readonly name: string;
+    readonly type: string;
+    readonly size: number;
+  }[],
+  constraints: UploadConstraints,
+): readonly SelectionViolation[];
 export declare function computeCropOutput(input: {
   readonly area: { readonly width: number; readonly height: number };
   readonly maxLongSide: number;
   readonly sourceType: RasterImageMediaType;
-}): { readonly width: number; readonly height: number; readonly type: 'image/jpeg' | 'image/png' };
+}): {
+  readonly width: number;
+  readonly height: number;
+  readonly type: 'image/jpeg' | 'image/png';
+};
 export type UploadState =
   | { readonly status: 'idle' }
   | { readonly status: 'editing'; readonly file: File }
   | { readonly status: 'uploading'; readonly fileName: string }
   | { readonly status: 'uploaded'; readonly file: UploadedFile }
-  | { readonly status: 'failed'; readonly message: string; readonly retryable: boolean };
+  | {
+      readonly status: 'failed';
+      readonly message: string;
+      readonly retryable: boolean;
+    };
 export interface ImageUploadFieldProps {
   readonly label: string;
   readonly constraints: UploadConstraints;
@@ -1508,10 +1818,10 @@ export interface AttachmentUploadFieldProps {
 
 #### MediaPicture・MediaPlaceholder・PrivateFileLink
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | 画像の表示とダウンロードのリンク             |
-| Requirements | 12.9, 15.1-15.6                              |
+| Field        | Detail                           |
+| ------------ | -------------------------------- |
+| Intent       | 画像の表示とダウンロードのリンク |
+| Requirements | 12.9, 15.1-15.6                  |
 
 **Contracts**: State [x]
 
@@ -1534,11 +1844,27 @@ export interface MediaPictureProps {
   readonly className?: string;
 }
 export interface PictureSources {
-  readonly sources: readonly { readonly type: 'image/avif' | 'image/webp'; readonly srcSet: string }[];
-  readonly img: { readonly src: string; readonly srcSet: string | undefined; readonly width: number; readonly height: number };
+  readonly sources: readonly {
+    readonly type: 'image/avif' | 'image/webp';
+    readonly srcSet: string;
+  }[];
+  readonly img: {
+    readonly src: string;
+    readonly srcSet: string | undefined;
+    readonly width: number;
+    readonly height: number;
+  };
 }
-export declare function buildPictureSources(input: { readonly origin: string; readonly image: MediaImageView & { readonly objectKey: string }; readonly display: PictureDisplay }): PictureSources;
-export interface PrivateFileLinkProps { readonly fileId: string; readonly fileName: string; readonly byteSize: number }
+export declare function buildPictureSources(input: {
+  readonly origin: string;
+  readonly image: MediaImageView & { readonly objectKey: string };
+  readonly display: PictureDisplay;
+}): PictureSources;
+export interface PrivateFileLinkProps {
+  readonly fileId: string;
+  readonly fileName: string;
+  readonly byteSize: number;
+}
 ```
 
 - `buildPictureSources`: 正方形は`squareVariants`、スクリーンショットは`screenshotVariants`で1x・2xを決め、`avif`を提供するバリアントだけAVIFの`<source>`を出す。`<img>`の`src`・`srcSet`はフォールバックの形式(`jpg`・`png`)。幅・高さは正方形なら表示サイズ、スクリーンショットは1xのバリアントの上限と原本の縦横比から求める(原本の寸法が無ければ上限の正方形)。SVGは`<source>`を出さず`svg`だけを返す(15.1〜15.4)。
@@ -1610,10 +1936,10 @@ erDiagram
 
 ### Physical Data Model
 
-| テーブル                         | 列                                                                                                              | 制約・索引                                                                                                                                                                                           |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `media_files`                    | `id`(ULID)・`object_key`・`purpose`・`storage`・`location`・`owner_kind`・`owner_id`・`original_file_name`・`content_type`・`byte_size`・`width`・`height`・`stored_at`・`attached_at`・`moderation_status`・`moderation_detail`(JSON)・`moderated_at`・`erase_requested_at`・`created_at`・`updated_at`・`deleted_at` | `object_key`は一意。`owner_id`・`width`・`height`・日時の5列・`moderation_detail`はNULL可、他はNOT NULL。索引: `(owner_kind, owner_id)`・`(attached_at, created_at)`・`(deleted_at)`・`(moderation_status, created_at)`・`(erase_requested_at)`・`(storage, location)` |
-| `media_file_quarantine_reasons`  | `id`(ULID)・`file_id`・`reason`・`created_at`・`updated_at`                                                    | `(file_id, reason)`は一意。`file_id`は`media_files.id`への外部キーで連鎖削除。索引: `(reason, created_at)`                                                                                           |
+| テーブル                        | 列                                                                                                                                                                                                                                                                                                                     | 制約・索引                                                                                                                                                                                                                                                             |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `media_files`                   | `id`(ULID)・`object_key`・`purpose`・`storage`・`location`・`owner_kind`・`owner_id`・`original_file_name`・`content_type`・`byte_size`・`width`・`height`・`stored_at`・`attached_at`・`moderation_status`・`moderation_detail`(JSON)・`moderated_at`・`erase_requested_at`・`created_at`・`updated_at`・`deleted_at` | `object_key`は一意。`owner_id`・`width`・`height`・日時の5列・`moderation_detail`はNULL可、他はNOT NULL。索引: `(owner_kind, owner_id)`・`(attached_at, created_at)`・`(deleted_at)`・`(moderation_status, created_at)`・`(erase_requested_at)`・`(storage, location)` |
+| `media_file_quarantine_reasons` | `id`(ULID)・`file_id`・`reason`・`created_at`・`updated_at`                                                                                                                                                                                                                                                            | `(file_id, reason)`は一意。`file_id`は`media_files.id`への外部キーで連鎖削除。索引: `(reason, created_at)`                                                                                                                                                             |
 
 - 日時の列はbackend-platformの共通カラム(`timestamps`・`softDelete`)と同じ保持形式にする。
 - `moderation_detail`は`ModerationFinding[]`のJSONで、ファイル名・画像の内容・判定サービスの生の応答を含めない。
@@ -1636,23 +1962,23 @@ erDiagram
 
 ### Error Categories and Responses
 
-| 状況                                       | 状態コード | エラーコード                  | 利用者に見せる文言(文言規則へ追加)                                                       |
-| ------------------------------------------ | ---------- | ----------------------------- | ----------------------------------------------------------------------------------------- |
-| 用途が未登録                               | 404        | `upload_purpose_not_found`    | (画面からは起きない。想定外のエラーの文言)                                                |
-| 未ログイン                                 | 401        | `unauthenticated`             | ログインし直してから、もう一度お試しください。                                            |
-| 主体の種類が対象外                         | 403        | `upload_forbidden`            | この操作はできません。                                                                    |
-| アップロードできない利用者(停止中など。差し込み口の拒否) | 403 | `account_unavailable`     | このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。(文言規則の既存の「停止中アカウント」) |
-| アップロードできない利用者(メールアドレスの確認が必要。差し込み口の拒否) | 403 | `email_not_verified` | この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。(文言規則の既存の「メール未確認」) |
-| `Content-Length`が無い                     | 411        | `content_length_required`     | ファイルを送信できませんでした。もう一度お試しください。                                  |
-| `Content-Length`が不正・本文の長さの不一致 | 400        | `invalid_content_length`・`content_length_mismatch` | ファイルを送信できませんでした。もう一度お試しください。                    |
-| 上限サイズの超過                           | 413        | `file_too_large`              | {用途}は{上限}以内の{画像・ファイル}を選択してください。                                  |
-| 許可されない形式                           | 415        | `unsupported_file_type`(API)・`unsupported_media_type`(中継。M-10) | {形式の一覧}の{画像・ファイル}を選択してください。                  |
-| 内容と申告の不一致・壊れたSVG・テキスト不正・寸法を読めない | 422 | `file_type_mismatch`・`invalid_svg`・`invalid_text_file`・`image_unreadable` | ファイルを読み込めませんでした。ファイルが壊れていないか確認して、もう一度選択してください。 |
-| DOCTYPE・ENTITYを含むSVG                   | 422        | `svg_declaration_not_allowed` | このSVGは読み込めません。編集ソフトでSVGとして書き出し直してから選択してください。        |
-| 画素数・辺の長さの超過                     | 422        | `image_dimensions_exceeded`   | 画像の縦横の大きさが上限を超えています。小さくしてから選択してください。                  |
-| 保存先の一時的な障害                       | 503        | `storage_unavailable`         | 現在ご利用いただけません。しばらく待ってから再度お試しください。                          |
-| 編集後のサイズ超過(ブラウザ)               | —          | —                             | 編集後の画像が{上限}を超えました。切り取る範囲を狭めるか、別の画像を選択してください。    |
-| 合計サイズの超過(ブラウザ)                 | —          | —                             | ファイルは合計{上限}以内で選択してください。                                              |
+| 状況                                                                     | 状態コード | エラーコード                                                                 | 利用者に見せる文言(文言規則へ追加)                                                                             |
+| ------------------------------------------------------------------------ | ---------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 用途が未登録                                                             | 404        | `upload_purpose_not_found`                                                   | (画面からは起きない。想定外のエラーの文言)                                                                     |
+| 未ログイン                                                               | 401        | `unauthenticated`                                                            | ログインし直してから、もう一度お試しください。                                                                 |
+| 主体の種類が対象外                                                       | 403        | `upload_forbidden`                                                           | この操作はできません。                                                                                         |
+| アップロードできない利用者(停止中など。差し込み口の拒否)                 | 403        | `account_unavailable`                                                        | このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。(文言規則の既存の「停止中アカウント」) |
+| アップロードできない利用者(メールアドレスの確認が必要。差し込み口の拒否) | 403        | `email_not_verified`                                                         | この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。(文言規則の既存の「メール未確認」)     |
+| `Content-Length`が無い                                                   | 411        | `content_length_required`                                                    | ファイルを送信できませんでした。もう一度お試しください。                                                       |
+| `Content-Length`が不正・本文の長さの不一致                               | 400        | `invalid_content_length`・`content_length_mismatch`                          | ファイルを送信できませんでした。もう一度お試しください。                                                       |
+| 上限サイズの超過                                                         | 413        | `file_too_large`                                                             | {用途}は{上限}以内の{画像・ファイル}を選択してください。                                                       |
+| 許可されない形式                                                         | 415        | `unsupported_file_type`(API)・`unsupported_media_type`(中継。M-10)           | {形式の一覧}の{画像・ファイル}を選択してください。                                                             |
+| 内容と申告の不一致・壊れたSVG・テキスト不正・寸法を読めない              | 422        | `file_type_mismatch`・`invalid_svg`・`invalid_text_file`・`image_unreadable` | ファイルを読み込めませんでした。ファイルが壊れていないか確認して、もう一度選択してください。                   |
+| DOCTYPE・ENTITYを含むSVG                                                 | 422        | `svg_declaration_not_allowed`                                                | このSVGは読み込めません。編集ソフトでSVGとして書き出し直してから選択してください。                             |
+| 画素数・辺の長さの超過                                                   | 422        | `image_dimensions_exceeded`                                                  | 画像の縦横の大きさが上限を超えています。小さくしてから選択してください。                                       |
+| 保存先の一時的な障害                                                     | 503        | `storage_unavailable`                                                        | 現在ご利用いただけません。しばらく待ってから再度お試しください。                                               |
+| 編集後のサイズ超過(ブラウザ)                                             | —          | —                                                                            | 編集後の画像が{上限}を超えました。切り取る範囲を狭めるか、別の画像を選択してください。                         |
+| 合計サイズの超過(ブラウザ)                                               | —          | —                                                                            | ファイルは合計{上限}以内で選択してください。                                                                   |
 
 ### Monitoring
 
@@ -1666,7 +1992,7 @@ erDiagram
 
 - `common-lib/media`: `parseImagePath`・`isDeliverable`・`squareVariants`・`parseMediaType`の境界と全組み合わせ(10.1・10.4・15.1)。
 - `backend-lib/core/media`: `precheckUpload`の411→400→413→415の順序と境界値(上限ちょうど・1バイト超)、`detectSignature`の5形式と偽装(PNGの申告にJPEGの本文)、`readImageDimensions`の向き1〜8とSVGのviewBox・寸法なし、`exceedsPixelLimits`の境界、`checkSvgSyntax`のDOCTYPE・ENTITY(大文字小文字)・壊れたXML・UTF-8でない本文、テキストの検査(NUL・不完全なUTF-8・断片の境界で分かれた文字)、`sanitizeFileName`(パス区切り・制御文字・先頭のドット・255バイトの書記素境界・空)、`attachmentDisposition`、`desiredLocation`の全組み合わせ、`defineUploadPurpose`の違反(2.1〜2.4・3.1〜3.9・4.5・4.6・9.3・9.4)。
-- eventの`application/media`: `judgeLabels`(親をたどる・閾値ちょうど・設定外のカテゴリ)、`parseModerationConfig`、`planModerationImage`(as-is・resize・padの境界、640・80・5MB)、`encodePng`(生成したPNGを`image-size`とシグネチャで読み戻す)、`inspectSvg`(Inkscape・Illustrator・Figmaの書き出しの標本は許可、script・foreignObject・`onload`・外部`href`・`javascript:`・`@import`・`xml-stylesheet`・`set`・許可外のdata URIは違反)、判定の処理(偽のポートで、重複・解除後・削除済み・一時的な失敗の試行回数ごとの再試行と未判定・恒久的な失敗の隔離)、`deliverImage`(404・SVG・変換・503とヘッダー)(6.1〜6.10・7.1〜7.5・8.1〜8.8・10.1〜10.12)。
+- eventの`application/media`: `judgeLabels`(親をたどる・閾値ちょうど・設定外のカテゴリ)、`parseModerationConfig`、`planModerationImage`(as-is・resize・padの境界、640・80・5,242,880バイト)、`encodePng`(生成したPNGを`image-size`とシグネチャで読み戻す)、`inspectSvg`(Inkscape・Illustrator・Figmaの書き出しの標本は許可、script・foreignObject・`onload`・外部`href`・`javascript:`・`@import`・`xml-stylesheet`・`set`・許可外のdata URIは違反)、判定の処理(偽のポートで、重複・解除後・削除済み・一時的な失敗の試行回数ごとの再試行と未判定・恒久的な失敗の隔離)、`deliverImage`(404・SVG・変換・503とヘッダー)(6.1〜6.10・7.1〜7.5・8.1〜8.8・10.1〜10.12)。
 - apiの`application/media`・`infrastructure/media`: `FileAccessAuthorizer`(用途の方針・既定の保有者・管理者の画像確認・利用者側の画像の拒否)、`AllowAllUploaderEligibility`が常に許可すること、日次バッチの境界日時(13日・24時間・1時間)(1.8・5.4・8.3・12.2〜12.7・13.5)。
 - frontend-libの`utilities/media`: `checkSelection`・`computeCropOutput`・`buildPictureSources`・文言の対応(中継の415`unsupported_media_type`、再試行できない403の`account_unavailable`・`email_not_verified`を含む)・送信の`Content-Type`に引数が無いこと・`placeholder-appearance`(書記素とコントラスト比)・`media-relay-routes`の経路と転送する項目(14.4・14.6・14.9・15.1〜15.5)。
 
@@ -1717,18 +2043,18 @@ erDiagram
 
 ### 環境ごとの設定値(event)
 
-| 項目                              | ローカル(ルート)                                    | staging                                                     | prod                                                |
-| --------------------------------- | --------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------- |
-| `IMAGE_DELIVERY_HOSTNAME`         | `localhost`                                         | `genai-example-2-images-staging.lab.kurachiweb.com`         | `genai-example-2-images.lab.kurachiweb.com`         |
-| `IMAGE_DELIVERY_DEDICATED_HOST`   | `false`                                             | `true`                                                      | `true`                                              |
-| `MODERATION_PROVIDER`             | `stub`                                              | `rekognition`                                               | `rekognition`                                       |
-| `MODERATION_REGION`               | `us-east-1`                                         | `us-east-1`                                                 | `us-east-1`                                         |
-| `MODERATION_MIN_CONFIDENCE`       | `60`                                                | `60`                                                        | `60`                                                |
-| `MODERATION_BLOCKED_CATEGORIES`   | 全10カテゴリ(カンマ区切り)                          | 同左                                                        | 同左                                                |
-| `secrets.required`(追加分)        | なし                                                | `REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY` | 同左                                                |
-| 任意のシークレット                | `MEDIA_SMOKE_TOKEN`(Infisicalのdevに登録した場合だけ有効) | `MEDIA_SMOKE_TOKEN`                                    | 登録しない                                          |
-| R2バインディングの`jurisdiction`  | なし                                                | `us`(3バケット、apiも同じ。infra-deliveryが設定)            | `us`(同左)                                          |
-| `exports`                         | `default`: キャッシュ無効、`ImageDelivery`: 有効     | 同左(トップレベルの設定)                                    | 同左                                                |
+| 項目                             | ローカル(ルート)                                          | staging                                                      | prod                                        |
+| -------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------- |
+| `IMAGE_DELIVERY_HOSTNAME`        | `localhost`                                               | `genai-example-2-images-staging.lab.kurachiweb.com`          | `genai-example-2-images.lab.kurachiweb.com` |
+| `IMAGE_DELIVERY_DEDICATED_HOST`  | `false`                                                   | `true`                                                       | `true`                                      |
+| `MODERATION_PROVIDER`            | `stub`                                                    | `rekognition`                                                | `rekognition`                               |
+| `MODERATION_REGION`              | `us-east-1`                                               | `us-east-1`                                                  | `us-east-1`                                 |
+| `MODERATION_MIN_CONFIDENCE`      | `60`                                                      | `60`                                                         | `60`                                        |
+| `MODERATION_BLOCKED_CATEGORIES`  | 全10カテゴリ(カンマ区切り)                                | 同左                                                         | 同左                                        |
+| `secrets.required`(追加分)       | なし                                                      | `REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY` | 同左                                        |
+| 任意のシークレット               | `MEDIA_SMOKE_TOKEN`(Infisicalのdevに登録した場合だけ有効) | `MEDIA_SMOKE_TOKEN`                                          | 登録しない                                  |
+| R2バインディングの`jurisdiction` | なし                                                      | `us`(3バケット、apiも同じ。infra-deliveryが設定)             | `us`(同左)                                  |
+| `exports`                        | `default`: キャッシュ無効、`ImageDelivery`: 有効          | 同左(トップレベルの設定)                                     | 同左                                        |
 
 - 全10カテゴリ: `Explicit`・`Non-Explicit Nudity of Intimate parts and Kissing`・`Swimwear or Underwear`・`Violence`・`Visually Disturbing`・`Drugs & Tobacco`・`Alcohol`・`Rude Gestures`・`Gambling`・`Hate Symbols`。
 - シークレットの登録とWorkerへの受け渡し(I-3):
@@ -1740,33 +2066,33 @@ erDiagram
 
 ### 名前の一覧
 
-| 種類                 | 名前                                                                                   |
-| -------------------- | -------------------------------------------------------------------------------------- |
-| メッセージ種別       | `media.moderate-image`・`media.relocate-files`・`media.purge-image-cache`              |
-| 日次バッチのジョブ   | `media-pipeline.expired-file-erasure`(810)・`media-pipeline.moderation-requeue`(820)・`media-pipeline.location-reconciliation`(830)。名前は`<spec名>.<名詞句>`の規約に従う(M-9。メッセージ種別は`<ドメイン>.<動詞句>`の`media.*`。規約の置き場所はroadmapのShared seamsと、content-processingのタスク11.5が追記するbackend-platformの`infra/003-async-processing.md`。N-4) |
-| 内部REST             | `/internal/media/uploads/:purpose`・`/internal/media/files/:fileId`(api)、`/internal/media/smoke/*`(event) |
-| ブラウザ向けの経路   | `/_bff/uploads/<用途名>`・`/_bff/files/<fileId>`(client・admin)                        |
-| 名前付きエントリポイント | `ImageDelivery`(event)                                                             |
-| 用途の命名           | `<ドメイン>-<名詞>`の小文字とハイフン(例: `user-avatar`・`admin-avatar`・`product-logo`・`product-screenshot`・`inquiry-attachment`)。動作確認は`media-smoke` |
+| 種類                     | 名前                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| メッセージ種別           | `media.moderate-image`・`media.relocate-files`・`media.purge-image-cache`                                                                                                                                                                                                                                                                                                  |
+| 日次バッチのジョブ       | `media-pipeline.expired-file-erasure`(810)・`media-pipeline.moderation-requeue`(820)・`media-pipeline.location-reconciliation`(830)。名前は`<spec名>.<名詞句>`の規約に従う(M-9。メッセージ種別は`<ドメイン>.<動詞句>`の`media.*`。規約の置き場所はroadmapのShared seamsと、content-processingのタスク11.5が追記するbackend-platformの`infra/003-async-processing.md`。N-4) |
+| 内部REST                 | `/internal/media/uploads/:purpose`・`/internal/media/files/:fileId`(api)、`/internal/media/smoke/*`(event)                                                                                                                                                                                                                                                                 |
+| ブラウザ向けの経路       | `/_bff/uploads/<用途名>`・`/_bff/files/<fileId>`(client・admin)                                                                                                                                                                                                                                                                                                            |
+| 名前付きエントリポイント | `ImageDelivery`(event)                                                                                                                                                                                                                                                                                                                                                     |
+| 用途の命名               | `<ドメイン>-<名詞>`の小文字とハイフン(例: `user-avatar`・`admin-avatar`・`product-logo`・`product-screenshot`・`inquiry-attachment`)。動作確認は`media-smoke`                                                                                                                                                                                                              |
 
 ### SVGの許可リスト(初版)
 
-| 区分                       | 許可するもの                                                                                                                                                                                                                                                                                                                       |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 構造の要素                 | `svg`・`g`・`defs`・`symbol`・`use`・`title`・`desc`・`metadata`・`switch`・`style`(中身を検査)                                                                                                                                                                                                                                     |
-| 図形・文字の要素           | `path`・`rect`・`circle`・`ellipse`・`line`・`polyline`・`polygon`・`text`・`tspan`・`textPath`・`image`(data URIだけ)・`marker`                                                                                                                                                                                                     |
-| 塗り・効果の要素           | `linearGradient`・`radialGradient`・`stop`・`pattern`・`clipPath`・`mask`・`filter`と`fe`で始まるフィルタの要素(`feImage`を除く)                                                                                                                                                                                                     |
-| 属性                       | SVG 1.1・SVG 2の表示属性と幾何の属性(`d`・`x`・`y`・`width`・`height`・`viewBox`・`fill`・`stroke`・`transform`・`opacity`・`class`・`id`など)、`xmlns`と`xmlns:*`、`xml:space`・`xml:lang`、`xlink:href`・`href`(断片だけ)、`style`(中身を検査)                                                                                         |
-| 編集ソフトの名前空間       | Inkscape・Sodipodi・Adobe Illustrator(`i:`・`x:`・`graph:`)・RDF・Dublin Core(`dc:`)・Creative Commons(`cc:`)・Sketch・Serif(Affinity)の要素と属性(`on`で始まる属性を除く)                                                                                                                                                       |
-| 違反にするもの(例)         | `script`・`foreignObject`・`iframe`・`object`・`embed`・`a`・`animate`・`animateTransform`・`animateMotion`・`set`・`feImage`・`handler`・`listener`、`on`で始まる属性、断片以外の参照、`url()`の外部参照、`@import`、`javascript:`、`xml-stylesheet`などの処理命令、許可外のdata URI                                            |
+| 区分                 | 許可するもの                                                                                                                                                                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 構造の要素           | `svg`・`g`・`defs`・`symbol`・`use`・`title`・`desc`・`metadata`・`switch`・`style`(中身を検査)                                                                                                                                                                                       |
+| 図形・文字の要素     | `path`・`rect`・`circle`・`ellipse`・`line`・`polyline`・`polygon`・`text`・`tspan`・`textPath`・`image`(data URIだけ)・`marker`                                                                                                                                                      |
+| 塗り・効果の要素     | `linearGradient`・`radialGradient`・`stop`・`pattern`・`clipPath`・`mask`・`filter`と`fe`で始まるフィルタの要素(`feImage`を除く)                                                                                                                                                      |
+| 属性                 | SVG 1.1・SVG 2の表示属性と幾何の属性(`d`・`x`・`y`・`width`・`height`・`viewBox`・`fill`・`stroke`・`transform`・`opacity`・`class`・`id`など)、`xmlns`と`xmlns:*`、`xml:space`・`xml:lang`、`xlink:href`・`href`(断片だけ)、`style`(中身を検査)                                      |
+| 編集ソフトの名前空間 | Inkscape・Sodipodi・Adobe Illustrator(`i:`・`x:`・`graph:`)・RDF・Dublin Core(`dc:`)・Creative Commons(`cc:`)・Sketch・Serif(Affinity)の要素と属性(`on`で始まる属性を除く)                                                                                                            |
+| 違反にするもの(例)   | `script`・`foreignObject`・`iframe`・`object`・`embed`・`a`・`animate`・`animateTransform`・`animateMotion`・`set`・`feImage`・`handler`・`listener`、`on`で始まる属性、断片以外の参照、`url()`の外部参照、`@import`、`javascript:`、`xml-stylesheet`などの処理命令、許可外のdata URI |
 
 - 許可リストは実装時に標本(Inkscape 1.x・Illustrator・Figma・Affinityの書き出し)で調整し、技術ドキュメントに一覧を載せる。
 
 ### 代替の判定の規則(ローカル・CI)
 
-| 判定用画像の寸法 | 結果                                                              |
-| ---------------- | ----------------------------------------------------------------- |
-| 99×99            | 「Explicit」信頼度99の検出(不適切)                                |
-| 98×98            | 一時的な失敗(`throttled`)                                         |
-| 97×97            | 画像として受け付けない(`invalid-image`)                           |
-| その他           | 検出なし(問題なし)                                                |
+| 判定用画像の寸法 | 結果                                    |
+| ---------------- | --------------------------------------- |
+| 99×99            | 「Explicit」信頼度99の検出(不適切)      |
+| 98×98            | 一時的な失敗(`throttled`)               |
+| 97×97            | 画像として受け付けない(`invalid-image`) |
+| その他           | 検出なし(問題なし)                      |
