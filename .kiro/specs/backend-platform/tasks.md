@@ -228,7 +228,7 @@
   - _Depends: 4.1, 4.2, 4.4, 5.2_
   - _Requirements: 4.5, 4.6, 5.6, 6.1, 6.2, 6.3, 7.5, 8.2, 8.5, 13.2_
 
-- [ ] 6.2 (P) 定期実行のディスパッチャを作る
+- [x] 6.2 (P) 定期実行のディスパッチャを作る
   - 起動したcron式に登録されたジョブを順に、ジョブごとの新しいコンテナで、予定時刻の業務日付・曜日を渡して実行する
   - 失敗したジョブはエラーログとエラートラッキングへ通知し、後続のジョブを続ける。未登録の式は警告だけで終え、最後に結果と所要時間と全ジョブの合計の所要時間の要約を出す
   - (承認後の改訂2)予算の表と計測の時計を任意の引数で受け取り、起動した式に予算があり、最初のジョブの開始から最後のジョブの終了までの合計が予算を超えたら、要約の前に警告ログと、エラートラッキングへのレベル`warning`・タグ`cron`(式)・所要時間と予算を含むコンテキストのメッセージを1回送る。ジョブの失敗の有無に関わらず合計で判定し、警告の送信は後続の処理と結果を変えない
@@ -377,3 +377,4 @@
 - 5.1(7.1・8.1への申し送り): `RateLimitCounter`は同期KV(`storage.kv`)で読み書きし、`await`を挟まないため並行した要求の間に割り込まれない。Alarmは重複して実行され得るため、`alarm()`は期間中なら記録を消さず(Alarmが失われていれば予約し直す)、期間が終わっているか状態が無いときだけ消す。`reset()`は無条件で消す。`migrations`(`v1`の`new_sqlite_classes: ["RateLimitCounter"]`)はWranglerで継承されるキーのためルートにだけ書き、`durable_objects`は3環境に書いている。7.1でエントリを置き換えるときは`RateLimitCounter`のエクスポートを保つ。拒否時の文言とエラーコードは5.2の`binding-rate-limit.ts`と二重に定義されており、期間の終わりの計算も`fixed-window.ts`と同じ式を持つ。apiだけのバインディングを使う共有コードのテストは`Reflect.get`と型ガードで取り出す。
 - 4.4(6.1・6.4・7.1・7.2への申し送り): `createInvocationContainer`の`modules`は、Honoの不変性のため設計の`readonly AppModule[]`ではなく`readonly Pick<AppModule, 'bindings'>[]`を受け取る(環境を指定した`AppModule`の配列もそのまま渡せる)。6.1・6.4も同じ形にそろえる。`InvocationScope`はscope全体(`env`・`executionCtx`・`info`)を束縛する。コンテナの既定のスコープはTransientで、基盤の依存(Database・IdGenerator・KeyedHasher・MessagePublisher)は`toDynamicValue(...).inSingletonScope()`、時計は`toConstantValue(systemClock)`。`platformEnvShape`は`z.object`で使うと未宣言のキーを落とすため、6.1の`envGuard`は検証結果を環境として使わず元の`env`を使い続けるか、`E`をスキーマから推論する(生成された`Env`の`LOG_LEVEL`は値で絞り込まれた型で、スキーマの出力の型を`ZodType<Env>`に代入できない)。両アプリの`Env`は`PlatformEnv`・`SentryEnv`・`{ readonly IP_RATE_LIMITER: RateLimit }`へ代入できることを確認済み。
 - 7.4(9.1・8.3・8.5への申し送り): E2Eの共有の補助`e2e/support/scheduled-trigger.ts`は`apps/backend-lib/core/time/business-time.ts`の実体を直接importする。ルートの単体テストのカバレッジで`business-time.ts`は行80.56%(閾値80%)で余裕が約1行しか無い(ルートの`test:unit`は`apps/**`を除くため、補助のテストだけが分母の共有ファイルを通る)。`business-time.ts`に補助が使わない関数を足すとルートのカバレッジが失敗し得るため、その場合は設計どおり共有ディレクトリのファイルをルートの分母から外すdev-toolingの設定の変更を開発者へ報告する。テストは`Bun.serve`のローカルサーバーへ`E2E_API_URL`・`E2E_EVENT_URL`を向けて確かめる。`docs/GUIDES/tech/testing/001-test-strategy.md`の共有の補助の表とCLAUDE.mdのディレクトリ構成のe2e/support/ の説明への追記は8.3・8.5で扱う。
+- 6.2(6.4・7.1・8.3への申し送り): `dispatch(controller, env, ctx)`は設計どおり相関IDの引数を持たず、LogTapeの公開API`getConfig()?.contextLocalStorage?.getStore()?.correlationId`から相関IDを受け継いで`InvocationScopeInfo`へ渡す(文脈の外では採番する)。6.4のWorkerHandlerは`dispatch`の形を変えず、`withContext({ correlationId })`のキー名を6.1と同じ`correlationId`にそろえる。ログのカテゴリは`['api','scheduled','dispatcher']`に固定(定期実行はapiだけ)。未登録の式とジョブ0件は`warning`ログだけで要約もSentryへの送信も無い。ジョブが`AppError`で失敗した場合は`scrubEvent`によりSentryに届かずログにだけ残るため、8.3の文書に「ジョブの想定外の失敗は`AppError`以外で投げる」を規約として書く。
