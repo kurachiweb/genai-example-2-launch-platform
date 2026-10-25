@@ -78,6 +78,24 @@ const effectiveConfigSchema = z.object({
       simple: z.object({ limit: z.number(), period: z.number() }),
     }),
   ),
+  durable_objects: z.object({
+    bindings: z.array(
+      z.object({
+        name: z.string(),
+        class_name: z.string(),
+        script_name: z.string().optional(),
+      }),
+    ),
+  }),
+  migrations: z.array(
+    z.object({
+      tag: z.string(),
+      new_classes: z.array(z.string()).optional(),
+      new_sqlite_classes: z.array(z.string()).optional(),
+      renamed_classes: z.array(z.unknown()).optional(),
+      deleted_classes: z.array(z.string()).optional(),
+    }),
+  ),
   images: z.object({ binding: z.string() }).optional(),
   triggers: z.object({ crons: z.array(z.string()).optional() }),
   vars: z.record(z.string(), z.unknown()),
@@ -368,6 +386,17 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
         simple: { limit: 100, period: 10 },
       });
     }
+  });
+
+  test('apiだけが厳密カウンタのDurable Objectを束縛し、SQLiteを使うクラスとして移行する', () => {
+    expect(api.durable_objects.bindings).toStrictEqual([
+      { name: 'RATE_LIMIT_COUNTER', class_name: 'RateLimitCounter' },
+    ]);
+    expect(api.migrations).toStrictEqual([
+      { tag: 'v1', new_sqlite_classes: ['RateLimitCounter'] },
+    ]);
+    expect(event.durable_objects.bindings).toStrictEqual([]);
+    expect(event.migrations).toStrictEqual([]);
   });
 
   test('定期実行はapiだけが定義する', () => {

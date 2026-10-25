@@ -190,8 +190,8 @@
   - _Depends: 2.2, 2.4, 4.3_
   - _Requirements: 5.2, 5.3, 10.6_
 
-- [ ] 5. レート制限とbot判定の実行時部品
-- [ ] 5.1 (P) キーごとの厳密なレート制限カウンタとそのクライアントを作る
+- [x] 5. レート制限とbot判定の実行時部品
+- [x] 5.1 (P) キーごとの厳密なレート制限カウンタとそのクライアントを作る
   - Durable Objectで固定期間カウンタの状態を保存し、新しい期間でAlarmを予約し、Alarmとリセットで記録をすべて消す
   - クライアントはルール名とハッシュ化済みキーでオブジェクトを選び、回数を数える・リセットする・拒否を429の共通エラーに変える操作を提供する
   - 結線(このタスクだけがapiの設定とエントリに触れる): apiの暫定のエントリからクラスをエクスポートし、apiのWrangler設定の3環境にDurable Objectのバインディングと、SQLiteを使うクラスのマイグレーションを加え、設定の整合の単体テストに確認項目を足して実行時の環境の型を生成し直す
@@ -374,3 +374,4 @@
 - 5.2(6.1・7.1・7.2への申し送り): `ipRateLimit`の型制約は、4.4の`PlatformEnv`が未作成だったため`E extends { readonly IP_RATE_LIMITER: RateLimit }`にした(`PlatformEnv`はこれを満たす)。クライアントIPはHonoの文脈変数`clientIp`から読み、未設定なら`ip:unknown`で数えるため、6.1の`invocationContext`がIP制限より前に`clientIp`を設定する。`excludePath`はパスの区切りの境界で一致し(`/webhooks/stripe`は`/webhooks/stripe-other`を除外しない)、`pathname`だけを比べる。Miniflareはローカルでも時計に揃った窓でRate Limitingの上限を効かせるため、IP制限のテストは実物の`IP_RATE_LIMITER`を使い、窓の残りが短ければ次の窓を待つ。
 - 4.2(6.1〜6.4への申し送り): Sentryの計装は`createSentryMiddleware(app, options)`(Honoの経路。`AppError`を`shouldHandleError`で除く)と`withSentryForScheduledAndQueue(options, handler)`(scheduled・queueだけを`withSentry`で包み、fetchは元の参照のまま)で、どちらも`CloudflareOptions`を返す関数を受け取る(6.1では`(env) => buildSentryOptions(readSentryRuntimeOptions(env))`の形を渡す)。`@sentry/cloudflare`はisolateごとにクライアントを使い回すため、テストでは`cacheClient: false`を渡す。`readSentryRuntimeOptions`は`PlatformEnv`の代わりに全キー任意の`SentryEnv`を受け取る(Honoの計装は環境の検証より前に動くため)。`PlatformEnv`は`SentryEnv`へ代入できる形にする。範囲外の`SENTRY_TRACES_SAMPLE_RATE`は0になるので、形式の検証は環境の検証スキーマで行う。frontend-platformのresearch.mdがbackend-platformの`beforeSendTransaction`の設定を前提に書いている箇所がある(改訂6で解消)。
 - 5.3(6.1・7.1・8.1・8.3への申し送り): bot判定の部品はapi専用で、ログのカテゴリは`['api','infrastructure','bot-protection']`に固定している(LoggingSetupは`[appName]`にだけシンクを付けるため、eventで使うとログが黙って消える。eventで使う場合は`TurnstileVerifierOptions`に`appName`を加える設計の改訂が要る)。backend-libで`getAppLogger`を使う部品のカテゴリの決め方の前例になる。`turnstileGuard`のHonoの環境の型はローカル型`TurnstileGuardHonoEnv`で、6.1で`PlatformHonoEnv`ができたら差し替える。期待するホスト名は`createTurnstileVerifier`の中で小文字にそろえ、`TURNSTILE_EXPECTED_HOSTNAMES`の分割と空文字の除外は7.1のapiのモジュールが行う。503の文言「現在ご利用いただけません。時間をおいて再度お試しください。」は文言規則の表に無いため8.xで追記する。共有コードのテストはeventでも型検査されるため、apiだけのバインディングを`env`から直接読まない。
+- 5.1(7.1・8.1への申し送り): `RateLimitCounter`は同期KV(`storage.kv`)で読み書きし、`await`を挟まないため並行した要求の間に割り込まれない。Alarmは重複して実行され得るため、`alarm()`は期間中なら記録を消さず(Alarmが失われていれば予約し直す)、期間が終わっているか状態が無いときだけ消す。`reset()`は無条件で消す。`migrations`(`v1`の`new_sqlite_classes: ["RateLimitCounter"]`)はWranglerで継承されるキーのためルートにだけ書き、`durable_objects`は3環境に書いている。7.1でエントリを置き換えるときは`RateLimitCounter`のエクスポートを保つ。拒否時の文言とエラーコードは5.2の`binding-rate-limit.ts`と二重に定義されており、期間の終わりの計算も`fixed-window.ts`と同じ式を持つ。apiだけのバインディングを使う共有コードのテストは`Reflect.get`と型ガードで取り出す。

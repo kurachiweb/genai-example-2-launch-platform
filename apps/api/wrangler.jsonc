@@ -31,6 +31,12 @@
       { "binding": "JOBS_QUEUE", "queue": "genai-example-2-jobs-dev" },
     ],
   },
+  "durable_objects": {
+    "bindings": [
+      { "name": "RATE_LIMIT_COUNTER", "class_name": "RateLimitCounter" },
+    ],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RateLimitCounter"] }],
   "ratelimits": [
     {
       "name": "IP_RATE_LIMITER",
@@ -74,6 +80,11 @@
       "queues": {
         "producers": [
           { "binding": "JOBS_QUEUE", "queue": "genai-example-2-jobs-staging" },
+        ],
+      },
+      "durable_objects": {
+        "bindings": [
+          { "name": "RATE_LIMIT_COUNTER", "class_name": "RateLimitCounter" },
         ],
       },
       "ratelimits": [
@@ -121,6 +132,11 @@
       "queues": {
         "producers": [
           { "binding": "JOBS_QUEUE", "queue": "genai-example-2-jobs-prod" },
+        ],
+      },
+      "durable_objects": {
+        "bindings": [
+          { "name": "RATE_LIMIT_COUNTER", "class_name": "RateLimitCounter" },
         ],
       },
       "ratelimits": [
