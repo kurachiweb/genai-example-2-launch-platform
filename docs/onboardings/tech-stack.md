@@ -18,6 +18,7 @@
 ### 依存性注入(DI)
 
 - Inversify
+  - `reflect-metadata` ... Inversifyの相手依存(peer dependency)、版を固定するためアプリで明示的に宣言する
 
 ### バックエンド側スキーマ
 
@@ -214,6 +215,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### ロギング
 
 - LogTape(構造化ログ出力)
+  - `@logtape/redaction` ... ログに含まれる個人情報や秘密情報の伏せ字
 - Cloudflare Workers Logs(出力されたログの保持・閲覧)
 
 ### モニタリング

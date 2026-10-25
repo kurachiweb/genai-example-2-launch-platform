@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: アプリのプロジェクト・DB生成ツール・実行環境の設定・テスト設定・層の規則
-- [ ] 1.1 APIサーバーとイベントサーバーのプロジェクトを作り、依存を固定した版で導入する
+- [x] 1.1 APIサーバーとイベントサーバーのプロジェクトを作り、依存を固定した版で導入する
   - 両アプリにパッケージ定義を新設し、設計の依存一覧(Hono・Inversify・`reflect-metadata`・Drizzle ORM・ulid・Zod・LogTapeと`@logtape/redaction`・Sentryの2パッケージ、開発用にWrangler・Vitest系・Workersテストプール・drizzle-kit・品質ツール6種・Bunの型定義)を、主要パッケージ一覧の版で完全に固定して導入する
   - dev-toolingの基底設定を継承した型検査設定(Workers向けの差分と、共有ディレクトリの配置先を含む対象)と静的解析設定を置き、スクリプト契約の静的解析・型検査・単体テストを定義する。イベントサーバーは配置先`db`・`lib`を静的解析と単体テストから外し、型検査には含める
   - 新規採用の`reflect-metadata`(Inversifyの相手依存)と`@logtape/redaction`(ログの伏せ字)を、導入と同じ変更でtech-stack.mdへ記載する

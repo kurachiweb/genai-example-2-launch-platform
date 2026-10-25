@@ -144,7 +144,7 @@ graph TB
 | データ                | Cloudflare D1・R2(画像・ファイル・隔離)・Durable Objects(SQLite)                                                                           | 永続化、厳密カウンタ                                | D1名とバケット名は「Supporting References」                        |
 | 非同期                | Cloudflare Queues(本体とデッドレター)・Cron Triggers                                                                                       | 非同期メッセージと定期実行                          | consumerとCron Triggersの置き場所は後述                            |
 | レート制限・bot対策   | Rate Limitingバインディング・Turnstile siteverify                                                                                          | FR-RLMIT-009、SW-018                                | Turnstileは`fetch`で直接呼ぶ                                       |
-| 開発・テスト          | wrangler 4.124.0・vitest 4.1.11・@vitest/coverage-istanbul 4.1.11・@cloudflare/vitest-pool-workers 0.22.0・@types/bun 1.4.2・品質ツール6種 | ローカル起動、型生成、Workers統合テスト、単体テスト | dev-toolingの主要パッケージ一覧の版                                |
+| 開発・テスト          | wrangler 4.124.0・vitest 4.1.11・@vitest/coverage-istanbul 4.1.11・@cloudflare/vitest-pool-workers 0.22.0・@types/bun 1.4.3・品質ツール6種 | ローカル起動、型生成、Workers統合テスト、単体テスト | dev-toolingの主要パッケージ一覧の版                                |
 
 ## File Structure Plan
 

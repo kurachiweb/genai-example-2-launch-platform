@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": ["bun", "@cloudflare/vitest-pool-workers/types"]
+  },
+  "include": [
+    "*.ts",
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "scripts/**/*.ts",
+    "db/**/*.ts",
+    "lib/**/*.ts"
+  ]
+}

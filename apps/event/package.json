@@ -1,0 +1,36 @@
+{
+  "name": "event",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "bun --bun eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests --path-ignore-patterns='db/**' --path-ignore-patterns='lib/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test"
+  },
+  "dependencies": {
+    "@logtape/logtape": "2.3.11",
+    "@logtape/redaction": "2.3.11",
+    "@sentry/cloudflare": "11.4.0",
+    "@sentry/hono": "11.4.0",
+    "drizzle-orm": "1.0.0-rc.5",
+    "hono": "4.13.13",
+    "inversify": "8.2.3",
+    "reflect-metadata": "0.2.2",
+    "ulid": "3.0.2",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@eslint/js": "10.0.1",
+    "@types/bun": "1.4.3",
+    "@vitest/coverage-istanbul": "4.1.11",
+    "drizzle-kit": "1.0.0-rc.5",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "4.1.11",
+    "wrangler": "4.124.0"
+  }
+}
