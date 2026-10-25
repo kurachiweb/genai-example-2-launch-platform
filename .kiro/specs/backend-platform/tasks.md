@@ -39,7 +39,7 @@
   - _Requirements: 5.1_
 
 - [ ] 2. 共有コードの純粋な部品(実行環境に依存しない部品、Bunの単体テスト)
-- [ ] 2.1 (P) 業務時刻(UTC-08:00固定)の計算と時計の部品を作る
+- [x] 2.1 (P) 業務時刻(UTC-08:00固定)の計算と時計の部品を作る
   - UTCの時点から業務時刻の日付・曜日・時・分への変換、業務日付と時刻からUTCへの変換、ISO週と週の開始日・終了日、業務時刻からUTCのcron式への変換を提供する
   - UTCの8:00を日境界とし、夏時間の補正をしない。不正な日付文字列は例外にする
   - 完了状態: UTCの7:59と8:00が別の業務日付になり、23:45が`45 7 * * *`になり、年またぎのISO週が正しいことを単体テストで確かめられる
@@ -349,3 +349,4 @@
 - 1.3: `apps/api/test/config/wrangler-config.unit.test.ts`はconsumerの`max_retries`を`6`の直書きで確かめている。2.7の完了後(2.7のタスク内)に、`DEFAULT_RETRY_POLICY.maxAttempts`より大きいことの比較へ置き換える。consumerの`max_batch_size`・`max_batch_timeout`・`retry_delay`とデッドレターのconsumerの`max_retries`はまだテストしていない。
 - 1.3: 開発コンテナのサンドボックスでは`wrangler dev`が「Ready」まで到達するがHTTPの応答が返らない(最小のWorkerでも同じ)。ローカル起動での確認は9.1で行う。
 - 1.5: 層の禁止importは`no-restricted-imports`の`.gitignore`形式のため、`'hono'`は`@sentry/hono`にも一致し、動的`import()`・`require`とサブパスの無いディレクトリのimportは検査しない。8.1の文書に記載する。層の規則の単体テストは`tseslint.configs.disableTypeChecked`を重ねて仮想のファイルを検査している。
+- 2.1: design.mdに`Clock`の型の定義が無いため、他specの`clock.now()`の使い方に合わせて`interface Clock { now(): Date }`と定数`systemClock`(`core/time/clock.ts`)にした。4.4のコンテナでは`toConstantValue(systemClock)`で束縛する。
