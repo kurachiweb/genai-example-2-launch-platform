@@ -20,7 +20,10 @@ const APPS_DIR = join(import.meta.dirname, '..', '..', '..');
 
 const LINT_TIMEOUT_MS = 60_000;
 
-const RULE_ID = 'no-restricted-imports';
+const RULE_IDS: ReadonlySet<string | null> = new Set([
+  'no-restricted-imports',
+  '@typescript-eslint/no-restricted-imports',
+]);
 
 const linters = new Map<AppName, ESLint>(
   (['api', 'event'] as const).map((app) => [
@@ -125,6 +128,10 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
       forbidden("import { env } from 'cloudflare:workers';"),
       forbidden("import { createDatabase } from '../../../db/client';"),
       forbidden("import { users } from '../../../db/schema';"),
+      forbidden("import type { c } from '../../workers/http/hono-env';"),
+      forbidden("import type { Env } from 'cloudflare:workers';"),
+      forbidden("import type { Database } from '../../../db/client';"),
+      allowed("import type { Hono } from 'hono';"),
       allowed("import { b } from '../errors/app-error';"),
       allowed("import { z } from 'zod';"),
       allowed("import { ulid } from 'ulid';"),
@@ -174,7 +181,7 @@ const reportedStatementsOf = async (
   }
   expect(result.fatalErrorCount).toBe(0);
   return result.messages
-    .filter(({ ruleId }) => ruleId === RULE_ID)
+    .filter(({ ruleId }) => RULE_IDS.has(ruleId))
     .map(({ line }) => statements[line - 1] ?? '');
 };
 

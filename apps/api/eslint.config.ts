@@ -103,13 +103,26 @@ const SHARED_DIRECTORY_RULES: Linter.Config[] = [
         {
           patterns: [
             {
-              group: ['**/workers/**', 'hono', 'cloudflare:*'],
+              group: ['**/workers/**', 'cloudflare:*'],
               message: RUNTIME_MESSAGE,
             },
             {
               group: ['**/db/**'],
               message:
                 '共有コードのcoreはDBスキーマに依存できません。DBの型が必要な契約はworkersに置いてください。',
+            },
+          ],
+        },
+      ],
+      // モジュール登録の契約がHonoのアプリの型を参照するため、実行時に残らない型だけのimportは許す
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['hono'],
+              message: RUNTIME_MESSAGE,
+              allowTypeImports: true,
             },
           ],
         },

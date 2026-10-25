@@ -62,7 +62,7 @@
   - _Boundary: AppError, ErrorEnvelope_
   - _Requirements: 4.4, 4.5, 4.6_
 
-- [ ] 2.4 (P) 依存の識別子・モジュール登録の契約・ID採番・環境の検証を作る
+- [x] 2.4 (P) 依存の識別子・モジュール登録の契約・ID採番・環境の検証を作る
   - 基盤が束縛する依存の識別子と、モジュール(依存の束縛とルートの登録)の契約を定義する
   - ULIDを単調増加で採番するID採番の部品を用意する
   - 環境の検証は、欠けたキーと不正なキーの名前だけを持つ失敗を返し、値を保持しない。同じ環境オブジェクトの2回目以降は検証を省く
@@ -352,3 +352,5 @@
 - 2.1: design.mdに`Clock`の型の定義が無いため、他specの`clock.now()`の使い方に合わせて`interface Clock { now(): Date }`と定数`systemClock`(`core/time/clock.ts`)にした。4.4のコンテナでは`toConstantValue(systemClock)`で束縛する。
 - 2.2(8.4への申し送り): 設計に無い振る舞いとして、`hashPurpose`は空とNUL文字を含む名前を`RangeError`にし、`hashRateLimitKey`は部品を`JSON.stringify(parts)`で連結し部品0個を`RangeError`にし、`verify`は再エンコードして同じ表記の値だけを受け付ける。base64urlは`Uint8Array.prototype.toBase64`・`fromBase64`(型は`types: ["bun"]`のbun-typesで解決)を使い、workerdでの動作も確認した。
 - 2.3(後続specへの申し送り): `AppError`の`message`は設計どおり必須(下流specの`AppError(kind, code)`は略記で、実装時に文言の表から`message`を渡す)。エラーコードはsnake_caseでなければ`RangeError`、`retryAfterSeconds`は`rate_limited`・`unavailable`だけで0以上の整数(厳密カウンタは残り秒数を切り上げて渡す)。`toErrorResponse`の戻り値と詳細は凍結される。500・404の定型の文言(「問題が発生しました。時間をおいて再度お試しください。」「お探しの内容は見つかりませんでした。」)は文言規則の表に無いため、8.xで文言を記載する際に扱う。ugc-moderationのdesign.mdの`AppError(internal)`は`AppErrorKind`に無い。
+- 2.4(親の判断): design.mdが`core/di/app-module.ts`で`import type { Hono } from 'hono'`を指定しているため、AppLayerRulesの`lib/core/**`の`hono`の禁止は実行時の依存の禁止と解釈し、`hono`だけ型のimportを許した(`@typescript-eslint/no-restricted-imports`の`allowTypeImports: true`)。`workers`・`cloudflare:*`・`db`は型のimportも禁止のまま。8.1の文書に記載する。
+- 2.4(4.4・6.1・6.4への申し送り): Honoは環境の型引数について不変なため、`AppModule`の型制約は`THono extends Hono<any, any, any>`(既定は`Hono`)にした。環境を指定したモジュール(`AppModule<Hono<PlatformHonoEnv<E>>>`)は既定の`readonly AppModule[]`へ代入できないので、`createInvocationContainer`・`createWorkerHandler`の`modules`は総称型にするか`bindings`だけを受け取る形にそろえる。設計に無い名前として`IdGenerator.generate(): string`と`createUlidGenerator(clock: Clock)`(ulidの`monotonicFactory`)を置き、`InvocationScopeInfo`は`core/di/identifiers.ts`にある。`validateEnv`は経路が空のZodの問題(全体への`refine`など)をどちらのキーにも分類しない。
