@@ -107,6 +107,11 @@
 
 - Tailwind CSS
 - shadcn/ui
+  - react-day-picker ... shadcn/uiのカレンダー部品の実体
+
+### グラフ描画
+
+- Recharts
 
 ### マークダウンエディタ
 
@@ -214,6 +219,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### モニタリング
 
 - Sentry(レスポンスタイム計測やエラートラッキング、`@sentry/tanstackstart-react`、`@sentry/hono`及び`@sentry/cloudflare`を使用)
+  - `@sentry/cli` ... ViteとWranglerのビルド出力へのデバッグIDの埋め込みとソースマップのアップロード、デプロイの仕組みでのみ使用
 - Cloudflare Web Analytics(ユーザーの傾向・利用状況分析ダッシュボード)
 - FlareWarden(外部ステータスページ・死活監視)
 
@@ -260,6 +266,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 - @cloudflare/vitest-pool-workers(Cloudflare Workers統合テスト、D1・R2・DOバインディングを含む)
   - `@vitest/coverage-istanbul` ... Workers統合テストのカバレッジ計測(workerdではV8のカバレッジ計測を使えないためIstanbulを使用)
 - Playwright(複数アプリの横断E2E)
+- k6 ... 負荷試験、単体の実行ファイルを開発コンテナとCIへ導入し、アプリの依存には加えない
 
 ### ブラウザ動作確認
 
@@ -279,4 +286,4 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Storybook(コンポーネントカタログ、`@storybook/tanstack-react`を使用)
 - GraphiQL(GraphQLスキーマ探索・クエリ試行、GraphQL Yogaに内蔵、デプロイ先環境では`graphiql: false`)
-- Swagger UI(APIサーバーが配信するOpenAPI仕様を閲覧)
+- Swagger UI(APIサーバーが配信するOpenAPI仕様を閲覧、`swagger-ui-dist`をclientが同一オリジンで配信)
