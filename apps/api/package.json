@@ -5,7 +5,9 @@
   "scripts": {
     "lint": "bun --bun eslint .",
     "typecheck": "tsc -p tsconfig.json",
-    "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests unit.test"
+    "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests unit.test",
+    "dev": "wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --test-scheduled",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
     "@logtape/logtape": "2.3.11",

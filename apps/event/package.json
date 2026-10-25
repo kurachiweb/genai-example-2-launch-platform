@@ -5,7 +5,9 @@
   "scripts": {
     "lint": "bun --bun eslint .",
     "typecheck": "tsc -p tsconfig.json",
-    "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests --path-ignore-patterns='db/**' --path-ignore-patterns='lib/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test"
+    "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests --path-ignore-patterns='db/**' --path-ignore-patterns='lib/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test",
+    "dev": "wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
     "@logtape/logtape": "2.3.11",
