@@ -99,7 +99,7 @@
   - _Boundary: Envelope, MessageContracts, RetryPolicy_
   - _Requirements: 11.1, 11.2, 11.3, 11.5, 11.6, 11.7_
 
-- [ ] 2.8 (P) 固定期間カウンタの状態遷移を作る
+- [x] 2.8 (P) 固定期間カウンタの状態遷移を作る
   - 状態が無い、または期間が過ぎていれば新しい期間を始めてAlarmの予約時刻を返し、期間内で上限未満なら回数を増やし、上限に達していれば拒否して状態とリセット時刻を変えない
   - 判定結果に許可の可否・回数・残り回数・リセット時刻を含める
   - 完了状態: 最初の要求での期間開始、上限での拒否と状態の不変、期限切れ後の新しい期間を単体テストで確かめられる
@@ -360,3 +360,4 @@
 - 2.5(全タスク共通): コミット前のシークレット検出(Betterleaks)は、テストのJWTの文字列や`password: '<文字列>'`を検出してコミットを止める。テストの値は部品から組み立てるか(`[...].join('.')`)、`password`等の名前の直後に文字列リテラルを置かず定数を参照する。`.betterleaksignore`は行番号に依存するため使わない。
 - 2.7(6.3への申し送り): `decideOnFailure`は試行回数が1以上の整数でなければ`RangeError`にする(Cloudflare Queuesの`message.attempts`は1始まり)。`defineMessageContract`は種別名が`<ドメイン>.<動詞句>`(小文字・数字・ハイフン)でなければ`RangeError`にする。`isDeadLetterNotice`は`messageId`・`type`・`errorName`のキーが無い通知も受け付ける。登録の`retry`の上書きの併合と`defer`の43200秒の上限は6.3・4.3の担当。
 - 2.6(4.2への申し送り): Sentry 11.4.0に`sendDefaultPii`は無く、`dataCollection`の既定は利用者の情報・Cookie・ヘッダー・クエリ文字列・本文をすべて集める。既定の`requestDataIntegration`はトランザクションとルートのスパンの属性(`contexts.trace.data`の`http.request.header.*`・`user.ip_address`・`http.request.body.data`)にも付ける。除去処理はスパンとトレースのコンテキストの`data`のキーを消さず値の形式で伏せるだけなので、4.2の`dataCollection`の設定(design.mdのSentryInstrumentation)が前提。`@sentry/core`はapi・eventの`package.json`に無く、`TransactionEvent`・`SpanJSON`は`@sentry/cloudflare`が再エクスポートしないため、型だけを`@sentry/core`から読み込んでいる(`@sentry/cloudflare`・`@sentry/hono`が`@sentry/core`を11.4.0に完全固定)。
+- 2.8(5.1への申し送り): `applyHit`は`rule.limit`・`rule.windowSeconds`が1以上の整数でない場合と`now`が有限の数でない場合に`RangeError`にする。5.1では`next`があるときだけ保存し、`scheduleAlarmAt`があるときだけ`setAlarm`する。
