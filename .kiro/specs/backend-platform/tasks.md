@@ -145,7 +145,7 @@
   - _Depends: 1.4_
   - _Requirements: 1.7, 2.6, 2.7_
 
-- [ ] 3.3 (P) マイグレーションがWranglerに検出されることを確かめるコマンドを作る
+- [x] 3.3 (P) マイグレーションがWranglerに検出されることを確かめるコマンドを作る
   - 先に、保存先のマイグレーション名とWranglerの未適用一覧の突き合わせ(一致・検出漏れ・想定外・0件)と、一覧の出力の解析の単体テストを書き、判定処理を純粋関数として実装する
   - コマンドの入口は、一時ディレクトリをローカル状態の保存先にしてWranglerの一覧を取得し、判定結果を表示して終了コードで示す。共有のローカル状態は変更しない
   - apiに、ローカルのD1へマイグレーションを適用するスクリプトと、検出確認のスクリプトを定義する
@@ -364,3 +364,4 @@
 - 2.10(2.11・7.1への申し送り): `cronExpressions()`の昇順は文字列の順ではなくUTCの起動時刻(時・分)の順(例: `40 7 * * *`が`21 12 * * *`より前)。下流specは`triggers.crons`内の位置を定めないため、7.1の一致の検査は順序に依存しない比較(同じ規則で整列するか集合で比べる)にする。範囲外の時刻は`toUtcCronExpression`の`RangeError`を`cause`に持つ`CronRegistryError`(`core/scheduling/cron-registry.ts`)にしており、2.11は同じ例外をimportして使う。整数でない`order`も拒否する(範囲は検査しない)。
 - 2.9(5.3への申し送り): `interpretSiteverify`は、JSONとして読めなかった応答を`{ kind: 'response', status, json: undefined }`で受け取る取り決めにしている(オブジェクトでない値・形が不正な本文は`unavailable`)。複数のエラーコードの優先順位はmisconfigured > unavailable > expired-or-duplicate > invalid-tokenで、未知のコードだけ・コード無しの失敗応答は`invalid-token`(403)。2xx以外は本文のエラーコードを`errorCodes`に残さない。ホスト名は完全一致(大文字小文字を区別)なので、期待するホスト名の設定値を小文字にそろえる場合は5.3か環境の検証で扱う。
 - 3.1(8.2への申し送り): 共通カラムは`apps/db/schema/_shared/columns.ts`(`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`)と`text-no-case.ts`(`textNoCase`)にある。追加時の`created_at`と`updated_at`は別々に現在時刻を取るため1ms程度ずれ得る。`/workspace/docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md`の`textNoCase`のimportの例は`./text-no-case`のままなので、8.2で配置(`_shared/`と`.ts`拡張子)と食い違わないようにする。
+- 3.3(8.5・9.2への申し送り): Wrangler 4.124.0の`d1 migrations list`に`--json`は無く、検出確認は表の出力を解析する(未知の出力・表の欠落・Wranglerの失敗は終了コード1)。`--local`での一覧にシークレットは不要。`--persist-to`に渡したディレクトリには`v3/`が作られるため、検出確認は一時ディレクトリを使う。DB名`genai-example-2-dev`は`apps/api/scripts/check-migrations.ts`の定数と`package.json`の`db:migrate:local`の2箇所にある。
