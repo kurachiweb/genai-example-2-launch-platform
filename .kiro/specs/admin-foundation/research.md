@@ -61,7 +61,7 @@
 
 ### 仮決定(2026-10-23に開発者が承認)
 
-設計中に生じた、開発者の判断を要する論点である。回答と上流specに最も整合する案を仮に採用して設計・タスクを作り、2026-10-23に開発者の確認を得て確定した。仮1〜仮5は採用した案のまま承認され、仮6は回答により管理者アカウントのメニューのURLを`/admins`から`/accounts`へ変更して承認された(URLとルートのパスを水平展開で直し、GraphQLの型名などURL以外の識別子は変えない)。仮3はQ4の回答で記録を求められた論点である。
+設計中に生じた、開発者の判断を要する論点である。回答と上流specに最も整合する案を仮に採用して設計・タスクを作り、2026-10-23に開発者の確認を得て確定した。仮1〜仮5は採用した案のまま承認され、仮6は回答により管理者アカウントのメニューのURLを`/admins`から`/accounts`へ変更して承認された(URLとルートのパスを水平展開で直し、GraphQLの型名などURL以外の識別子は変えない)。仮3はQ4の回答で記録を求められた論点である。承認後のcross-spec reviewで加えた仮7(`AuditLogReader.latestForMany`と照会の共有の偽物)は2026-10-24に開発者が確定した(推奨どおり)。経緯は末尾の「cross-spec reviewの指摘による承認後の改訂(仮7)」に記録する。本specの仮の論点はすべて確定済みである。
 
 | #   | 論点                                 | 確定した案                                                                                                                                                                                                                                                                                                   | 他の選択肢                                                 | 影響する箇所                                                  | 開発者の回答     |
 | --- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------- | ---------------- |
@@ -71,8 +71,11 @@
 | 仮4 | 招待の完了後の状態                   | 完了の時点でその端末をログイン状態にする(メールのリンクとTOTPの両方を確かめた直後のため)                                                                                                                                                                                                                     | 完了後にログイン画面へ案内し、改めてログインさせる         | 要件4.3、`AdminInvitation.complete`・`activate`               | 承認(2026-10-23) |
 | 仮5 | 招待中のアカウントの扱い             | 一覧に「招待中」「招待期限切れ」として表示し、再送(リンクの再発行)と削除による取り消しを行える。再送は`admin-account.invite`として監査ログに記録する                                                                                                                                                         | 招待を別の一覧にする / 再送を設けず、取り消して招待し直す  | 要件3.3・3.4・15.1、`AdminInvitation.resend`、`displayStatus` | 承認(2026-10-23) |
 | 仮6 | 管理画面のURL                        | 16メニューのURLを本specが定めてページ配置に記載する(`/`・`/users`・`/products`・`/comments`・`/ratings`・`/media-moderation`・`/reports`・`/inquiries`・`/sponsorships`・`/help-articles`・`/categories`・`/legal-documents`・`/settings`・`/accounts`・`/audit-logs`・`/account`)。認証の画面は`/auth/`の下 | 各後続specがURLを決める                                    | `ADMIN_NAV_ITEMS`、ページ配置、全後続spec                     | 変更(2026-10-23) |
+| 仮7 | 後続specの監査ログの複数の対象の照会 | 本specが`AuditLogReader.latestForMany`と保存の照会(90件ずつ)と、照会の共有の偽物`createFakeAuditLogReader`を所有・実装する。cross-spec reviewの指摘による承認後の改訂で、2026-10-24に開発者が確定(推奨どおり)                                                                                                |
 
 ### 要件定義書の改訂が必要な箇所
+
+**2026-10-25に要件定義書(`docs/requirements/README.md`)へ適用済み。** 以下は適用前に記録した改訂の内容である。
 
 要件定義書(`docs/requirements/README.md`)は本specでは編集しない(roadmapのOut)。次の改訂が必要である。
 
@@ -95,6 +98,7 @@ identity-authが報告済みのFR-RLMIT-010・FR-RLMIT-017・NFR-SECUR-026の改
 - infra-delivery(再検証): Supporting Referencesの「ホスト名から導かれる変数の値」の表にある、APIサーバーの`ADMIN_SITE_ORIGIN`(本specの所有、管理者側のホスト名から導かれる)の行と、名前と値の一致を確かめる(行はspec横断レビューでinfra-deliveryに追加済み)。
 - media-pipeline: `UPLOAD_PURPOSES`へ`admin-avatar`を加える(契約どおり)。
 - product-launch(後続): ロゴの上限「500kB」を512,000バイトと解釈する(仮2)。
+- content-reporting(後続): `AuditLogReader.latestForMany`と保存の照会(90件ずつ)と照会の共有の偽物`createFakeAuditLogReader`を本specが所有・実装し(仮7)、content-reportingは使うだけである。
 - inquiry-chat・content-reporting(後続): Q2により、ダッシュボードの区画`DASHBOARD_CARDS`へ未対応の件数のカード(order 20・30)を登録する作業を各specの担当として加える。両specのbriefへの追記を推奨する。ugc-moderationは統計グラフのカード(order 10)を登録する。
 - 全後続の管理機能のspec: `ADMIN_NAV_ITEMS`へ定めたURLと`order`で項目を登録し(仮6)、`requireAdmin`でページ配置のロールの一覧に従ってロールを宣言し、`audit-actions/<spec名>.ts`で操作種別を登録して管理操作を記録する。roadmapのShared seams「画面シェル」「監査ログ」へ、ダッシュボードのカードとURLの分担の追記を推奨する。
 
@@ -231,3 +235,12 @@ identity-authが報告済みのFR-RLMIT-010・FR-RLMIT-017・NFR-SECUR-026の改
 - `docs/GUIDES/service/design/002-page-layouts.md` — 管理者側の16メニュー
 - `docs/requirements/README.md` — 4.20・4.22・6.2・7.1
 - 参照したスキルの規則: cc-sddの`kiro-spec-requirements`(EARS・レビューの関門)、`kiro-spec-design`(設計の原則・完全な調査・統合・レビューの関門)、`kiro-spec-tasks`
+
+## cross-spec reviewの指摘による承認後の改訂(仮7、2026-10-24)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、cross-spec reviewの指摘による。2026-10-24に開発者が確定した(推奨どおり)。管理者・利用者に見える振る舞いは変わらない(後続specへの照会口の追加)が、確定の記録として`requirements.md`の決定事項の表にも仮7の行を加えた。要件19.5(後続specが対象と操作種別から最新の監査ログの日時を照会できる照会口)の範囲に収まり、要件の変更は無い。
+- **Context**: content-reportingが一覧の対応期間を求めるために`AuditLogReader.latestForMany`とその保存の照会を本specの実装に加え、他specのテストの照会の偽物も直すタスクを持っていた。他specの実装とテストを後続specが編集する分担になっていた。
+- **Decision**: 本specが`AuditLogReader.latestForMany(input: { readonly action: string; readonly targetKind: AuditTargetKind; readonly targetIds: readonly string[] }): Promise<ReadonlyMap<string, Date>>`を所有・実装する。保存の照会は対象のIDの重複を除いて90件ずつ(操作種別と対象の種類を含めてバインド変数100個以内)に分け、対象ごとの`MAX(occurred_at)`を1回ずつ問い合わせ、記録の無い対象を含めない。あわせて、後続specの単体テストが共有する照会の偽物`createFakeAuditLogReader(overrides?)`(`application/admin/test-support/fake-audit-log-reader.ts`)を作る。
+- **Reason**: 照会口と保存の実装とテストを所有するspecに置くと、契約の変更が1つのspecで閉じる。後続specが自分で偽物を書くと、`AuditLogReader`にメソッドを足すたびに全ての後続specの偽物が型検査で壊れるが、共有の偽物なら本specが既定の振る舞いを足すだけで済む。
+- **変えた箇所**: 設計のRevalidation Triggers・ファイル構成・追跡表・`AuditLogRecorder・AuditLogReader`の契約と説明・`backend/008`の内容・Testing Strategy・Performance & Scalability、本書の後続specへの影響、タスク3.1・3.2・12.2。番号の変更は無い。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。1回目の判定はPASSだった。軽微の指摘のうち、3.2の確かめる項目に空の入力を加え、本書の仮決定の表の前文に仮7の記録先を加えた。`spec.json`の`updated_at`を更新し、タスクの承認を保った。

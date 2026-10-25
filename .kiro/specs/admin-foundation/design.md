@@ -70,7 +70,7 @@
 
 - `AdminRole`の値と順序・`hasRole`、`AdminAuthorizer`・`requireAdmin`の形とエラーコード(管理機能を持つ全後続spec)。
 - メニューごとの必要なロールの一覧(ページ配置)と、Q3の方針(全後続spec)。
-- `AuditActionDefinition`・`AuditTargetKind`の値・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`の形(操作と同じ一括の書き込みに含める規約)・`AuditLogReader.latestFor`の形(管理操作を持つ全後続spec。`latestFor`はcontent-reportingの対応期間の表示)。
+- `AuditActionDefinition`・`AuditTargetKind`の値・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`の形(操作と同じ一括の書き込みに含める規約)・`AuditLogReader.latestFor`・`latestForMany`の形と、テストの共有の偽物`createFakeAuditLogReader`の既定の振る舞いと差し替えの形(管理操作を持つ全後続spec。`latestFor`・`latestForMany`はcontent-reportingの対応期間の表示、仮7)。
 - `user.email-search`の記録の形(ugc-moderation)。
 - `ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`の形と`order`、管理画面のURL(仮6)(全後続spec。カードはugc-moderation・inquiry-chat・content-reporting)。
 - `AdminDirectory`の形・削除済みの扱い・置き場所(`backend-lib/workers/admin`)とapi・eventでの束縛(help-center、inquiry-chat(返信した管理者の表示とデータエクスポートの`adminNickname`)、legal-pages(版の公開者と下書きの保存者)、ultras-subscription(機能フラグの変更者))。
@@ -217,6 +217,7 @@ apps/
 │       │   ├── admin-profile.ts                        # プロフィールの更新
 │       │   ├── audit-log-recorder.ts                   # AuditLogRecorder(検証済みの記録の準備と単独の記録。後続specも使う)
 │       │   ├── audit-log-reader.ts                     # AuditLogReader
+│       │   ├── test-support/fake-audit-log-reader.ts   # createFakeAuditLogReader(後続specの単体テストが共有する偽物、仮7。同名の*.unit.test.ts)
 │       │   └── jobs/
 │       │       ├── admin-credential-cleanup-job.ts     # 期限切れのセッション・トークン・待ち・保留(order 200)
 │       │       └── audit-log-retention-job.ts          # 3年を過ぎた監査ログ(order 210)
@@ -224,7 +225,7 @@ apps/
 │       │   ├── d1-admin-account-store.ts · d1-admin-session-store.ts · d1-admin-auth-token-store.ts
 │       │   ├── d1-admin-login-challenge-store.ts · d1-admin-totp-credential-store.ts · d1-admin-recovery-code-store.ts
 │       │   ├── audit-log-statements.ts                 # buildAuditLogStatements(後続specのストアも一括の書き込みに含める)
-│       │   ├── d1-audit-log-store.ts                   # 単独の記録・検索・最新の照会・保持期間の削除
+│       │   ├── d1-audit-log-store.ts                   # 単独の記録・検索・最新の照会(1件と複数)・保持期間の削除
 │       │   └── email-admin-mailer.ts                   # 6種のメールの送信要求とリンクのURL
 │       ├── presentation/graphql/
 │       │   ├── admin-guard.ts                          # requireAdmin(後続specのリゾルバも使う)
@@ -389,7 +390,7 @@ sequenceDiagram
 | 16.1〜16.7  | プロフィール                 | AdminProfile・AdminAvatar・AdminProfileDialog                                                                         | `admin-avatar`                                    |
 | 17.1〜17.6  | アクセス制御の部品           | AdminAuthorizer・AdminGuard・RoleGate・AdminViewerContext・ページ配置                                                 | `requireAdmin`・`hasRole`                         |
 | 18.1〜18.9  | 監査ログの記録               | AuditActionCatalog・AuditEntryRules・AuditLogRecorder・AuditLogStatements・D1AuditLogStore・ReasonField               | `prepare`・`buildAuditLogStatements`              |
-| 19.1〜19.7  | 監査ログの閲覧・保持         | AuditLogReader・AuditLogsPage・AuditLogRetentionJob                                                                   | `searchAuditLogs`・`latestFor`                    |
+| 19.1〜19.7  | 監査ログの閲覧・保持         | AuditLogReader・AuditLogsPage・AuditLogRetentionJob                                                                   | `searchAuditLogs`・`latestFor`・`latestForMany`   |
 | 20.1〜20.9  | シェル・ダッシュボード       | AdminNavigationRegistry・DashboardCardRegistry・AdminNavigation・AdminAccountMenu・DashboardGrid・AuthenticatedLayout | `ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`              |
 | 21.1〜21.4  | 共通部品                     | AdminCommonParts                                                                                                      | `frontend-lib/components/admin`                   |
 | 22.1〜22.6  | テスト・文書                 | AdminE2E・AdminDocs                                                                                                   | —                                                 |
@@ -876,7 +877,17 @@ export interface AuditLogReader {
     readonly targetKind: AuditTargetKind;
     readonly targetId: string;
   }): Promise<Date | undefined>;
+  latestForMany(input: {
+    readonly action: string;
+    readonly targetKind: AuditTargetKind;
+    readonly targetIds: readonly string[];
+  }): Promise<ReadonlyMap<string, Date>>; // 記録のある対象だけを含む(仮7)
 }
+
+// application/admin/test-support/fake-audit-log-reader.ts(後続specの単体テストが共有する偽物、仮7)
+export declare function createFakeAuditLogReader(
+  overrides?: Partial<AuditLogReader>,
+): AuditLogReader; // 既定はsearchが空・latestForがundefined・latestForManyが空のMap
 // PreparedAuditEntryは検証と正規化を済ませた値(ID・操作者・操作種別・対象の種類とID・理由・詳細・日時)。作れるのはprepareだけ
 export interface PreparedAuditEntry {
   readonly brand: 'PreparedAuditEntry'; /* 以下の値は読み取り専用 */
@@ -906,6 +917,8 @@ export declare function buildAuditLogStatements(
 - `buildAuditLogStatements`: ログの挿入(`guard`があれば`operator_admin_id`を`CASE`式にする)→対象の挿入(1文あたり25行、バインド変数100個以内)。ストア(infrastructure層)は自分の文と同じ`db.batch()`に入れる(18.2)。
 - 規約(`backend/008`): 管理操作は、application層で`prepare`し、infrastructure層のストアで操作の文と`buildAuditLogStatements`を同じ一括の書き込みにする。記録だけの操作(閲覧・検索)は`record`を操作の結果を返す前に呼び、失敗したら結果を返さない。
 - `search`: `(occurred_at, id)`の降順のカーソル(`base64url('<ミリ秒>:<ID>')`)。対象の識別子は`admin_audit_log_targets`との`EXISTS`で絞る(19.2・19.3)。
+- `latestForMany`(仮7、19.5): `latestFor`の複数の対象版。`targetIds`の重複を除き、空なら問い合わせずに空のMapを返す。`D1AuditLogStore`は対象のIDを90件ずつ(操作種別と対象の種類を含めてバインド変数100個以内)に分け、`admin_audit_log_targets`の`(target_kind, target_id, log_id)`の索引と`admin_audit_logs`の結合で`target_id`ごとの`MAX(occurred_at)`を1回の問い合わせで求め、結果を1つのMapにまとめる。記録の無い対象は含めない。`search`・`latestFor`の形は変えない。
+- `createFakeAuditLogReader`(仮7): 後続specの単体テストが`AuditLogReader`の偽物を自分で書かずに使う共有の偽物。`overrides`に渡したメソッドだけを差し替え、残りは既定の振る舞いを返す。`AuditLogReader`にメソッドを足すときは本specがこの偽物の既定の振る舞いも足すため、後続specの偽物が型検査で壊れない。テストだけが読み込む。
 
 #### AdminCredentialCleanupJob・AuditLogRetentionJob
 
@@ -1240,7 +1253,7 @@ export declare function currentTotpCode(secret: string, at?: Date): string;
 - `signInAdmin`: `/auth/login`でメールとパスワードとbot判定(ローカルのテスト用のキー)→`currentTotpCode`の認証コードでログインする(再ログイン・ログアウト後の確認に使う)。同じ時間窓の認証コードは再使用できないため、前回の時間窓を過ぎるまで待つ。
 - `executeLocalD1`は、利用者の停止など画面から作れない状態の用意に後続specも使う。リモートのD1には書き込めない(Claude設定のdeny)。メールはMailpitの補助(identity-auth)で読む。
 - `security/007-admin-authorization.md`: 管理者の主体と利用者の主体の分離、ロールの順序と最低限のロールの宣言、所有権の判定、要求ごとのロールの読み込み、最後の最上位管理者の保護の書き込みの方式、管理者のセッションの期限、本人確認、bot判定の適用範囲。
-- `backend/008-audit-logging.md`: 操作種別の登録、記録の文を操作と同じ一括の書き込みに含める規約、個人情報を含めない規則(利用者は仮名化ID、検索文字列を残さない)、理由の要否、保持期間の削除、最新の日時の照会。
+- `backend/008-audit-logging.md`: 操作種別の登録、記録の文を操作と同じ一括の書き込みに含める規約、個人情報を含めない規則(利用者は仮名化ID、検索文字列を残さない)、理由の要否、保持期間の削除、最新の日時の照会(1件と複数の対象、複数の対象はバインド変数の上限に合わせた分割)、利用側の単体テストが照会の偽物を自分で書かずに共有の偽物を使う規約(仮7)。
 - `frontend/009-admin-console-shell.md`: メニューとダッシュボードのカードの登録、カードの状態表示とエラーの分離、ロールによる操作の出し分け、共通部品の使い方。
 - `operations/003-first-administrator-bootstrap.md`: 招待の発行コマンドの目的・実行者・環境ごとの手順・リンクの扱い・最後の最上位管理者が締め出された場合の手順(仮3)。プロジェクト名と固有の値はプレースホルダーにし、値は`docs/onboardings/project-values.md`へのリンクにする。
 
@@ -1331,10 +1344,11 @@ stateDiagram-v2
   - `audit-action`・`audit-entry`: 名前の形式と重複の拒否、`required`で空・`none`で値あり・501書記素、`user`の対象のUUIDでない値、`maxTargets`超、未登録の操作種別、`user.email-search`が理由と詳細を受け付けないこと(18.3〜18.6)。
   - `admin-account`: 削除の可否(自分・viewer・moderatorから最上位管理者・最上位管理者から最上位管理者)、ロール変更とプロフィール編集の可否、招待期限切れの表示(15.2〜15.7・16.3・16.4)。
   - `admin-session-policy`: アイドル1時間・絶対12時間の境界、5分未満は更新しない(8.2・8.3)。
-  - 各ユースケース(ポートを偽物にする): 招待の重複の拒否と監査ログの文の同梱(3.1・3.2)、招待の完了の2段階とトークンを`start`では消費しないこと(4.2・4.3)、招待中・未登録のログインが同じ失敗になること(6.2)、本人確認の失敗の記録(7.6・13.2)、パスワードリセットの要求の同一の結果(9.1)、メール変更の重複時の不送信(10.3)、TOTPの再設定で保留が期限切れなら現在の設定が残ること(12.3)、`AdminAuthorizer`の呼び出し元・主体・ロールの拒否(17.1・17.3)と`requireSelfOrRole`の本人の許可(17.2)。
+  - 各ユースケース(ポートを偽物にする): 招待の重複の拒否と監査ログの文の同梱(3.1・3.2)、招待の完了の2段階とトークンを`start`では消費しないこと(4.2・4.3)、招待中・未登録のログインが同じ失敗になること(6.2)、本人確認の失敗の記録(7.6・13.2)、パスワードリセットの要求の同一の結果(9.1)、メール変更の重複時の不送信(10.3)、TOTPの再設定で保留が期限切れなら現在の設定が残ること(12.3)、`AdminAuthorizer`の呼び出し元・主体・ロールの拒否(17.1・17.3)と`requireSelfOrRole`の本人の許可(17.2)、`AuditLogReader.latestForMany`のストアへの受け渡し(19.5)。
+  - `createFakeAuditLogReader`: 既定の振る舞い(空の検索・`undefined`・空のMap)と、渡したメソッドだけが差し替わること(仮7)。
   - `scripts/admin`: `sqlStringLiteral`の`'`の二重化と制御文字の拒否、招待中の有無で生成されるSQL、環境ごとの引数とオリジン(2.1〜2.5)。
 - **Integration Tests**(Workers統合テスト):
-  - D1のストア: メールの大文字小文字を区別しない一意(1.3)、`deleteGuarded`・`changeRoleGuarded`が最後の有効な最上位管理者で全体を取り消し監査ログも残らないこと、2人の最上位管理者が互いを同時に降格しても1人が残ること(15.8・15.9・18.2)、`activate`の一括の書き込み(4.3・4.4)、トークンの2回目の消費の失敗(14.2)、監査ログの検索のカーソルと各条件(19.2・19.3)、保持期間の削除の境界(19.6)。
+  - D1のストア: メールの大文字小文字を区別しない一意(1.3)、`deleteGuarded`・`changeRoleGuarded`が最後の有効な最上位管理者で全体を取り消し監査ログも残らないこと、2人の最上位管理者が互いを同時に降格しても1人が残ること(15.8・15.9・18.2)、`activate`の一括の書き込み(4.3・4.4)、トークンの2回目の消費の失敗(14.2)、監査ログの検索のカーソルと各条件(19.2・19.3)、最新の照会の1件と複数(対象ごとの最新の日時、記録の無い対象を含めないこと、操作種別と対象の種類で絞ること、90件を超える入力の分割と重複したID、空の入力、19.5・仮7)、保持期間の削除の境界(19.6)。
   - `AdminSessionVerifier`: 期限切れ・招待中・削除済みで`invalid`、`touch`で`renewal`(8.2〜8.4)。identity-authの`SubjectSessionVerifier`経由で管理者側のGraphQLが管理者の主体を得ること。
   - `D1AdminDirectory`: 有効な管理者だけを返し、削除済み・招待中・存在しないIDを含めないこと、101件のIDを2回の照会に分けること、`ADMIN_PLATFORM_MODULE`がapiとeventの両方のコンテナで解決できること(1.5)。
   - GraphQLの`admin`モジュール(`AdminGateway`から): ログインの2段階とCookieの指示、bot判定の失敗の403(6.7)、利用者側の呼び出し元の拒否(6.8)、閲覧のみの`inviteAdmin`の403(3.5)、モデレーターの最上位管理者の削除の403(15.4)、`auditLogs`の削除済みの操作者(19.4)。
@@ -1359,7 +1373,7 @@ stateDiagram-v2
 ## Performance & Scalability
 
 - 権限の判定は要求ごとにD1の主キーの検索1回(処理単位のコンテナで保持)。セッションの最終利用の更新は5分に1回までに間引く。
-- 監査ログの検索は索引付きのカーソルで1ページ50件。対象の絞り込みは`(target_kind, target_id, log_id)`の索引を使う。
+- 監査ログの検索は索引付きのカーソルで1ページ50件。対象の絞り込みは`(target_kind, target_id, log_id)`の索引を使う。`latestForMany`は90件ごとに1回の問い合わせで、後続specの一覧の1ページ(50件)なら1回で済む(NFR-PERF-004)。
 - 日次のジョブは件数の上限で区切り、Workersのcpu時間に収める。
 
 ## Migration Strategy
