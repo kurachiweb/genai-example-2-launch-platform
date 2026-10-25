@@ -113,7 +113,7 @@
   - _Boundary: SiteverifyResult_
   - _Requirements: 14.1, 14.2, 14.3, 14.4_
 
-- [ ] 2.10 業務時刻で登録したジョブを起動時刻ごとに並べる登録表を作る
+- [x] 2.10 業務時刻で登録したジョブを起動時刻ごとに並べる登録表を作る
   - ジョブ定義(名前・業務時刻・順序・処理の識別子)を受け取り、名前の重複・範囲外の時刻・同じ時刻での順序の重複を拒否する
   - 登録された時刻をUTCのcron式の一覧として返し、cron式ごとに順序どおりのジョブを返す。未登録の式は空を返す
   - 完了状態: 同じ時刻のジョブが順序どおりに並び、不正な定義が拒否されることを単体テストで確かめられる
@@ -361,3 +361,4 @@
 - 2.7(6.3への申し送り): `decideOnFailure`は試行回数が1以上の整数でなければ`RangeError`にする(Cloudflare Queuesの`message.attempts`は1始まり)。`defineMessageContract`は種別名が`<ドメイン>.<動詞句>`(小文字・数字・ハイフン)でなければ`RangeError`にする。`isDeadLetterNotice`は`messageId`・`type`・`errorName`のキーが無い通知も受け付ける。登録の`retry`の上書きの併合と`defer`の43200秒の上限は6.3・4.3の担当。
 - 2.6(4.2への申し送り): Sentry 11.4.0に`sendDefaultPii`は無く、`dataCollection`の既定は利用者の情報・Cookie・ヘッダー・クエリ文字列・本文をすべて集める。既定の`requestDataIntegration`はトランザクションとルートのスパンの属性(`contexts.trace.data`の`http.request.header.*`・`user.ip_address`・`http.request.body.data`)にも付ける。除去処理はスパンとトレースのコンテキストの`data`のキーを消さず値の形式で伏せるだけなので、4.2の`dataCollection`の設定(design.mdのSentryInstrumentation)が前提。`@sentry/core`はapi・eventの`package.json`に無く、`TransactionEvent`・`SpanJSON`は`@sentry/cloudflare`が再エクスポートしないため、型だけを`@sentry/core`から読み込んでいる(`@sentry/cloudflare`・`@sentry/hono`が`@sentry/core`を11.4.0に完全固定)。
 - 2.8(5.1への申し送り): `applyHit`は`rule.limit`・`rule.windowSeconds`が1以上の整数でない場合と`now`が有限の数でない場合に`RangeError`にする。5.1では`next`があるときだけ保存し、`scheduleAlarmAt`があるときだけ`setAlarm`する。
+- 2.10(2.11・7.1への申し送り): `cronExpressions()`の昇順は文字列の順ではなくUTCの起動時刻(時・分)の順(例: `40 7 * * *`が`21 12 * * *`より前)。下流specは`triggers.crons`内の位置を定めないため、7.1の一致の検査は順序に依存しない比較(同じ規則で整列するか集合で比べる)にする。範囲外の時刻は`toUtcCronExpression`の`RangeError`を`cause`に持つ`CronRegistryError`(`core/scheduling/cron-registry.ts`)にしており、2.11は同じ例外をimportして使う。整数でない`order`も拒否する(範囲は検査しない)。
