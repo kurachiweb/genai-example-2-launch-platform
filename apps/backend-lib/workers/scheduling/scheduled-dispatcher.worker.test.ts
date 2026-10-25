@@ -85,6 +85,7 @@ interface DispatchInput {
   readonly registry?: CronRegistry;
   readonly fetch?: RecordingFetch;
   readonly withoutOptions?: boolean;
+  readonly repeat?: number;
 }
 
 const DISPATCHER_CATEGORY = 'api.scheduled.dispatcher';
@@ -228,8 +229,12 @@ async function dispatch(input: DispatchInput): Promise<DispatchResult> {
   const handler = withSentryForScheduledAndQueue<TestEnv>(
     sentryOptions(recording),
     {
-      scheduled: (controller, scheduledEnv, ctx) =>
-        dispatcher.dispatch(controller, scheduledEnv, ctx),
+      // 同じクライアントで続けて起動した場合を確かめるため、1回の呼び出しの中で指定の回数だけ振り分ける
+      scheduled: async (controller, scheduledEnv, ctx) => {
+        for (let count = 0; count < (input.repeat ?? 1); count += 1) {
+          await dispatcher.dispatch(controller, scheduledEnv, ctx);
+        }
+      },
     },
   );
   const ctx = createExecutionContext();
@@ -462,6 +467,23 @@ describe('createScheduledDispatcher(時間の予算)', () => {
       result: 'succeeded',
       totalDurationMs: 301,
     });
+  });
+
+  test('同じクライアントで続けて2回予算を超えると、2回ともエラートラッキングへwarningを送る', async () => {
+    const result = await dispatch({
+      cron: CRON_4_21,
+      budgets: [BUDGET],
+      jobs: [{ name: 'daily-ranking', at: AT_4_21, order: 1, elapseMs: 301 }],
+      repeat: 2,
+    });
+
+    expect(logsAt(result, 'warning')).toHaveLength(2);
+    const warnings = eventsAt(result, 'warning');
+    expect(warnings).toHaveLength(2);
+    expect(warnings.map(({ payload }) => payload.fingerprint)).toStrictEqual([
+      ['scheduled-run-budget', CRON_4_21],
+      ['scheduled-run-budget', CRON_4_21],
+    ]);
   });
 
   test('ジョブの失敗を含んでも、合計が予算を超えれば警告を送る', async () => {

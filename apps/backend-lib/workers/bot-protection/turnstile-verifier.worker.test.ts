@@ -1,6 +1,7 @@
 import { resetSync } from '@logtape/logtape';
 import {
   CloudflareClient,
+  dedupeIntegration,
   type Event,
   getCurrentScope,
 } from '@sentry/cloudflare';
@@ -160,11 +161,13 @@ interface RecordingSentry {
   readonly flush: () => Promise<boolean>;
 }
 
-function installRecordingSentry(): RecordingSentry {
+function installRecordingSentry(
+  integrations: readonly ReturnType<typeof dedupeIntegration>[] = [],
+): RecordingSentry {
   const events: Event[] = [];
   const client = new CloudflareClient({
     dsn: TEST_DSN,
-    integrations: [],
+    integrations: [...integrations],
     stackParser: () => [],
     transport: () => ({
       send: () => Promise.resolve({}),
@@ -533,6 +536,27 @@ describe('createTurnstileVerifier(assertHuman)', () => {
       errorCodes: ['invalid-input-secret'],
     });
     expect(JSON.stringify(sentry.events)).not.toContain(TOKEN);
+  });
+
+  test('設定の誤りが続けて起きても、重複の除外で捨てずに毎回エラートラッキングへ送る', async () => {
+    const sentry = installRecordingSentry([dedupeIntegration()]);
+    const misconfigured = createTurnstileVerifier(
+      verifierOptions(respondWith(failureBody(['invalid-input-secret']))),
+    );
+
+    await captureRejection(
+      misconfigured.assertHuman({ token: TOKEN, remoteIp: CLIENT_IP }),
+    );
+    await captureRejection(
+      misconfigured.assertHuman({ token: TOKEN, remoteIp: CLIENT_IP }),
+    );
+    await sentry.flush();
+
+    expect(sentry.events).toHaveLength(2);
+    expect(sentry.events.map(({ fingerprint }) => fingerprint)).toStrictEqual([
+      ['bot-verification-misconfigured'],
+      ['bot-verification-misconfigured'],
+    ]);
   });
 });
 

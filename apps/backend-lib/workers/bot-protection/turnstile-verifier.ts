@@ -1,4 +1,4 @@
-import { captureMessage } from '@sentry/cloudflare';
+import { captureEvent } from '@sentry/cloudflare';
 
 import {
   type BotVerificationFailure,
@@ -169,8 +169,11 @@ export function createTurnstileVerifier(
         return;
       }
       if (result.failure === 'misconfigured') {
-        captureMessage(MISCONFIGURED_REPORT_MESSAGE, {
+        // captureMessageの文言だけのイベントは、直前と同じ文言なら重複として捨てられ、続けて起きた設定の誤りを通知できない。文言をlogentryに置くと重複の判定から外れ、まとめ方は指紋で決める
+        captureEvent({
           level: 'error',
+          logentry: { message: MISCONFIGURED_REPORT_MESSAGE },
+          fingerprint: ['bot-verification-misconfigured'],
           extra: { errorCodes: result.errorCodes },
         });
       }

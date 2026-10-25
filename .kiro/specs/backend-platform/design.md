@@ -438,7 +438,7 @@ sequenceDiagram
 | 10.6        | ジョブからのメッセージ送信                                    | MessagePublisher・InvocationContainer                                                                   | `PLATFORM_TYPES.MessagePublisher`                                                           | —                |
 | 10.7        | ローカルでの手動起動                                          | AppPackageScripts・AsyncProcessingDoc・ScheduledTriggerHelper                                           | `--test-scheduled`・`/cdn-cgi/local/scheduled`・`triggerScheduled`                          | —                |
 | 10.8        | ジョブ0件でも失敗しない                                       | ScheduledDispatcher                                                                                     | 空の登録表                                                                                  | —                |
-| 10.9        | 予算の超過の警告(改訂2)                                       | RunBudgetTable・ScheduledDispatcher・AppComposition・CronSyncTest・AsyncProcessingDoc・ProjectValuesDoc | `ScheduledRunBudget`・`SCHEDULED_RUN_BUDGETS`・`captureMessage`                             | 定期実行         |
+| 10.9        | 予算の超過の警告(改訂2)                                       | RunBudgetTable・ScheduledDispatcher・AppComposition・CronSyncTest・AsyncProcessingDoc・ProjectValuesDoc | `ScheduledRunBudget`・`SCHEDULED_RUN_BUDGETS`・`captureEvent`                               | 定期実行         |
 | 11.1        | 種別ごとの振り分け                                            | QueueConsumer・MessageContracts                                                                         | `MessageHandlerRegistration`                                                                | 非同期           |
 | 11.2        | 検証して封筒を付けて送信                                      | MessagePublisher・Envelope                                                                              | `MessagePublisher.publish`                                                                  | —                |
 | 11.3        | 不正・未登録は送信しない                                      | MessagePublisher                                                                                        | `MessagePublishError`                                                                       | —                |
@@ -1457,7 +1457,7 @@ export declare function createScheduledDispatcher<E extends PlatformEnv>(
 
 - Trigger: apiのCron Triggers(`triggers.crons`)。Cron Triggersはapiだけに置く(tech-stack)。重い処理はジョブが`MessagePublisher`でeventへ委ねる。
 - 処理: `registry.jobsFor(controller.cron)`の順に、ジョブごとに新しいコンテナで`handler.run`を呼ぶ。失敗は`error`ログとSentryの`captureException`(タグ`job`)に送り、次のジョブを続ける(10.4)。未登録の式は`warning`ログだけで終える(10.5)。最後にジョブごとの結果と所要時間、全ジョブの合計の所要時間(`totalDurationMs`)の要約を`info`で出す(8.6)。
-- 予算の超過(10.9、承認後の改訂2): `budgets.budgetFor(controller.cron)`があり、最初のジョブの開始から最後のジョブの終了までの所要時間が`exceedsRunBudget`で真なら、要約の前に`warning`ログ(`cron`・`totalDurationMs`・`maxTotalDurationMs`)と、Sentryの`captureMessage`(レベル`warning`、タグ`cron`(式)、コンテキスト`scheduled_run`に`totalDurationMs`・`maxTotalDurationMs`・ジョブの数)を送る。予算ちょうどは送らない。ジョブの失敗の有無に関わらず合計で判定し、警告の送信は後続の処理と結果を変えない。
+- 予算の超過(10.9、承認後の改訂2): `budgets.budgetFor(controller.cron)`があり、最初のジョブの開始から最後のジョブの終了までの所要時間が`exceedsRunBudget`で真なら、要約の前に`warning`ログ(`cron`・`totalDurationMs`・`maxTotalDurationMs`)と、Sentryの`captureEvent`(レベル`warning`、`logentry`の文言、`fingerprint`に`cron`(式)を含む、タグ`cron`(式)、コンテキスト`scheduled_run`に`totalDurationMs`・`maxTotalDurationMs`・ジョブの数)を送る(承認後の改訂7)。予算ちょうどは送らない。ジョブの失敗の有無に関わらず合計で判定し、警告の送信は後続の処理と結果を変えない。
 - 計測: Workersの時計はI/Oの間にだけ進むため、所要時間はD1・Queuesなどの待ちを含む実時間の近似である。予算の判定と要約の所要時間は同じ時計で計る。
 - Idempotency: 再実行の安全はジョブの責任とする(`infra/003`)。
 
@@ -1534,7 +1534,7 @@ export declare function createQueueDispatcher<
   - 封筒の不正・未登録の種別・本文の検証失敗は、再試行せずに`DeadLetterNotice`を送って`ack`(11.6)。
   - 通知の送信に失敗したら`retry`する。
   - 1件ごとに相関ID(封筒のID)で`withContext`し、結果(`done`・`deferred`・`retried`・`dead-lettered`)と所要時間を`info`で記録する(8.6)。
-- デッドレターの処理: `isDeadLetterNotice`なら通知の内容を、そうでなければ元のメッセージとして`parseEnvelope`で得たIDと種別(読めなければ`undefined`)と`reason: 'auto-moved'`を、`error`ログとSentryの`captureMessage`(レベル`error`、タグ`message_type`・`dead_letter_reason`)へ送り、`ack`する(11.8)。本文(`body`)は読まない・記録しない。
+- デッドレターの処理: `isDeadLetterNotice`なら通知の内容を、そうでなければ元のメッセージとして`parseEnvelope`で得たIDと種別(読めなければ`undefined`)と`reason: 'auto-moved'`を、`error`ログとSentryの`captureEvent`(レベル`error`、`logentry`の文言、`fingerprint`に理由と種別、タグ`message_type`・`dead_letter_reason`、コンテキスト`dead_letter`)へ送り、`ack`する(11.8、承認後の改訂7)。本文(`body`)は読まない・記録しない。
 - Wrangler設定: 本体のconsumerは`max_batch_size: 10`・`max_batch_timeout: 5`・`max_retries: 6`・`dead_letter_queue: <DLQ名>`・`retry_delay: 30`。デッドレターのconsumerは`max_batch_size: 10`・`max_retries: 3`。
 
 #### RateLimitCounter・RateLimitCounterClient
@@ -1680,6 +1680,7 @@ export declare function turnstileGuard(
 
 - `verify`: トークンが無い・空なら通信せず`missing-token`。2048文字を超えたら通信せず`invalid-token`。それ以外は`https://challenges.cloudflare.com/turnstile/v0/siteverify`へJSONで`secret`・`response`・`remoteip`をPOSTし、`AbortSignal.timeout(timeoutMs)`で打ち切る。結果は`interpretSiteverify`で分類する。
 - `assertHuman`: `missing-token`・`invalid-token`・`expired-or-duplicate`・`action-mismatch`・`hostname-mismatch`は`AppError({ kind: 'forbidden', code: 'bot_verification_failed' })`(14.2)。`unavailable`・`misconfigured`は`AppError({ kind: 'unavailable', code: 'bot_verification_unavailable', retryAfterSeconds: 5 })`(14.3)。`misconfigured`はSentryにも`error`で送る(設定の誤りは想定外として扱う)。
+- 設定の誤りのSentryへの送信は`captureEvent`(レベル`error`、`logentry`の文言、`fingerprint`、extraの`errorCodes`)とする(承認後の改訂7)。
 - ログ(14.7): 失敗時に`warning`で`failure`と`errorCodes`を記録する。トークンは属性に入れない(フィールドの伏せ字の対象にも含める)。
 - apiのモジュールが`PLATFORM_TYPES.BotVerifier`へ`createTurnstileVerifier({ secretKey: env.TURNSTILE_SECRET_KEY, expectedHostnames: TURNSTILE_EXPECTED_HOSTNAMESの分割, fetch: globalThis.fetch })`を束縛する。api-gatewayのリゾルバはコンテナから取得して`assertHuman`を呼ぶ(14.5)。
 - ローカル環境は、Infisicalの`dev`環境の`TURNSTILE_SECRET_KEY`にTurnstileの「常に成功」のテスト用シークレットを置く(14.6)。テストは`fetch`を差し替え、外部へ通信しない。

@@ -1,9 +1,5 @@
 import { getConfig } from '@logtape/logtape';
-import {
-  captureException,
-  captureMessage,
-  withScope,
-} from '@sentry/cloudflare';
+import { captureEvent, captureException, withScope } from '@sentry/cloudflare';
 
 import type { AppModule } from '../../core/di/app-module.ts';
 import type { InvocationScopeInfo } from '../../core/di/identifiers.ts';
@@ -99,14 +95,15 @@ function reportBudgetExceeded(
     maxTotalDurationMs,
     jobCount,
   });
-  withScope((scope) => {
-    scope.setTag('cron', cron);
-    scope.setContext('scheduled_run', {
-      totalDurationMs,
-      maxTotalDurationMs,
-      jobCount,
-    });
-    captureMessage('定期実行の合計の所要時間が予算を超えました', 'warning');
+  // captureMessageの文言だけのイベントは、直前と同じ文言なら重複として捨てられ、続けて起きた超過を通知できない。文言をlogentryに置くと重複の判定から外れ、まとめ方は式ごとの指紋で決める
+  captureEvent({
+    level: 'warning',
+    logentry: { message: '定期実行の合計の所要時間が予算を超えました' },
+    fingerprint: ['scheduled-run-budget', cron],
+    tags: { cron },
+    contexts: {
+      scheduled_run: { totalDurationMs, maxTotalDurationMs, jobCount },
+    },
   });
 }
 

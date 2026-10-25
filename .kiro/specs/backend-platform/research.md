@@ -265,6 +265,7 @@
 - 2026-10-25(改訂4): Sentryの個人情報の収集設定(`sendDefaultPii`から`dataCollection`へ)と、トランザクションの個人情報の除去。タスク2.6の実装のレビューの指摘を受けて開発者が決定(末尾の改訂4の節)。
 - 2026-10-25(改訂5): LoggingSetupのテスト用の差し替え口を`sink?: Sink`から`console?: Console`へ。タスク4.1の実装で、LogTapeのシンクが整形前の記録を受け取り、値の形式の伏せ字とJSONオブジェクト化を通った出力をテストで受け取れないことが分かり、親(実装のコントローラー)が決定(末尾の改訂5の節)。
 - 2026-10-25(改訂6): Sentryのトレースの除去処理を`beforeSendTransaction`(`scrubTransaction`)から`beforeSendSpan`(`scrubSpan`)へ。タスク4.2の実装で、11.4.0の既定の`traceLifecycle: 'stream'`ではトランザクションが送られず`beforeSendTransaction`が無視されることが分かり、開発者が決定(末尾の改訂6の節)。
+- 2026-10-25(改訂7): 同じ文言を繰り返し送るSentryへの通知(デッドレター・定期実行の予算の超過・bot判定の設定の誤り)を`captureMessage`から`captureEvent`(`logentry`と`fingerprint`)へ。タスク6.3の実装とレビューで、組み込みのdedupeが同じ文言の連続した通知を捨てることが分かり、親(実装のコントローラー)が決定(末尾の改訂7の節)。
 
 ## 開発者の決定による承認後の改訂(改訂3、2026-10-24)
 
@@ -318,3 +319,11 @@
 - **決定**: 案B。`scrubSpan(span: StreamedSpanJSON): StreamedSpanJSON`を`core/observability/scrub-event.ts`に置き、スパンの名前と属性の文字列の値(配列と`{ value, unit }`の形を含む。スパンの説明は属性`sentry.description`)に`REDACTION_PATTERNS`を適用する。最後の防御として、利用者と接続元を表す属性(`user.ip_address`・`user.email`・`client.address`・`network.peer.address`)、`url.query`、`http.request.body.data`、`http.response.header.set-cookie`と、`scrubEvent`が削除するヘッダー(`cookie`・`authorization`と12種)の`http.request.header.*`の属性を、大文字小文字を区別せずに削除する。SDKは`captureSpan`で共通の属性(`user.ip_address`など)を付けた後に`beforeSendSpan`を呼ぶため、ここで削除できる。`beforeSendSpan`は`null`を返せない(スパンを落とせない)ため、除去だけを行う。`scrubTransaction`は使われなくなるため削除した(下流specのdesign・tasksは参照していない。frontend-platformのresearch.mdは本specの旧い設定として言及するだけ)。
 - **要件**: 要件9.2(IPアドレスを除き、Cookie・認証ヘッダー・本文を含めず、パフォーマンストレースの名前と説明と付随する値の秘密情報を値の形式で伏せる)を満たすための設計の修正で、要件の文言と利用者・運用者から見える振る舞いの約束は変わらないため、`requirements.md`の「承認後の改訂」の表には載せない(表の注記に改訂6を加えた)。
 - **変えた箇所**: 設計の`SentryScrubber`(Intent、Service Interfaceの`scrubTransaction`を`scrubSpan`へ、利用者とリクエストの個人情報の除去の説明、`scrubSpan`の処理)、`SentryInstrumentation`の`buildSentryOptions`とトレースの送り方、収集設定の説明、`LogRecordFormat・LogRedaction`の`REDACTION_PATTERNS`の説明、File Structure Planの`scrub-event.ts`の説明、追跡表の9.2、Revalidation Triggers(Sentry SDKの版の更新)、LoggingDoc、Testing Strategyの`scrub-event.unit.test.ts`と`sentry.worker.test.ts`、Security Considerations、本書のSentryの節のImplications。タスク2.6の詳細(改訂6の注記)と4.2の詳細・完了状態(親が更新)。番号の変更は無い。
+
+## 実装時の決定による承認後の改訂(改訂7、2026-10-25)
+
+- **状態**: タスク6.3の実装とレビューで判明し、親(実装のコントローラー)が決定した。Sentryへの送り方だけの変更で、要件の振る舞いは変わらない(むしろ要件どおりに届くようにする)。
+- **Context**: `@sentry/core` 11.4.0の既定の`dedupeIntegration`は、直前のイベントと`message`が同じで、`fingerprint`の有無と内容が同じで、スタックトレースが無いイベントを捨てる(タグとコンテキストは比べない)。クライアントはisolateごとに使い回されるため、呼び出しをまたいでも捨てられる。設計の`captureMessage`は固定の文言で送るため、続けて起きたデッドレター(11.8)・定期実行の予算の超過(10.9)・bot判定の設定の誤り(14.3)の2件目以降が届かない。
+- **決定**: これらの通知は`captureEvent`で、`logentry`に文言、`fingerprint`に種別を表す値(デッドレターは理由と種別、予算の超過は`cron`の式、設定の誤りは固定の値)を入れて送る。`logentry`だけのイベントは`message`を持たないためdedupeの対象にならず、`scrubEvent`の伏せ字の対象でもある。レベル・タグ・コンテキストは従来どおり。
+- **要件**: 要件の文言と振る舞いは変わらないため、`requirements.md`の「承認後の改訂」の表には載せない。
+- **変えた箇所**: 設計のScheduledDispatcherの予算の超過、QueueConsumer・DeadLetterConsumerのデッドレターの処理、TurnstileVerifier・TurnstileGuardの設定の誤りの送信、追跡表の10.9。タスク2.6〜6.3の番号と記述の変更は無い(実装は6.3の差し戻しで行った)。

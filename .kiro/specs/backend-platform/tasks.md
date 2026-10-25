@@ -238,7 +238,7 @@
   - _Depends: 2.10, 2.11, 4.1, 4.2, 4.4_
   - _Requirements: 8.6, 10.3, 10.4, 10.5, 10.8, 10.9_
 
-- [ ] 6.3 (P) 本体Queueとデッドレターのconsumerを作る
+- [x] 6.3 (P) 本体Queueとデッドレターのconsumerを作る
   - 本体は1件ずつ、封筒の解析・契約の検索・本文の検証・ハンドラーの実行を行い、完了は`ack`、遅延再送は同じIDで再送して`ack`、失敗は再試行判定に従って間隔付きの`retry`か本文を含まない通知のデッドレターへの送信とする
   - 封筒の不正・未登録の種別・本文の検証失敗は再試行せずに通知を送り、通知の送信に失敗したら元のメッセージを`retry`する
   - デッドレターは通知と自動で移った元のメッセージの両方を受け、本文を読まずに種別・ID・試行回数・理由をエラーログとエラートラッキングへ送って`ack`する
@@ -380,3 +380,4 @@
 - 6.2(6.4・7.1・8.3への申し送り): `dispatch(controller, env, ctx)`は設計どおり相関IDの引数を持たず、LogTapeの公開API`getConfig()?.contextLocalStorage?.getStore()?.correlationId`から相関IDを受け継いで`InvocationScopeInfo`へ渡す(文脈の外では採番する)。6.4のWorkerHandlerは`dispatch`の形を変えず、`withContext({ correlationId })`のキー名を6.1と同じ`correlationId`にそろえる。ログのカテゴリは`['api','scheduled','dispatcher']`に固定(定期実行はapiだけ)。未登録の式とジョブ0件は`warning`ログだけで要約もSentryへの送信も無い。ジョブが`AppError`で失敗した場合は`scrubEvent`によりSentryに届かずログにだけ残るため、8.3の文書に「ジョブの想定外の失敗は`AppError`以外で投げる」を規約として書く。
 - 6.1(6.4・7.1・7.2・8.1・8.3への申し送り): `createWorkerApp`の`WorkerAppOptions`は、`envSchema`を`z.ZodType`(4.4のNotes)、`sentry`を`CloudflareOptions`を返す関数(4.2のNotes。アプリは`(env) => buildSentryOptions(readSentryRuntimeOptions(env))`を渡す)にした。`envGuard`は検証結果を使わず元の`c.env`を使い続ける。環境の検証の失敗のログ属性は`missingEnvNames`・`invalidEnvNames`(`@logtape/redaction`の既定のフィールド名`/key/i`に当たる名前は値ごと伏せられるため、8.3の文書に「ログの属性名に`key`・`token`等を含めない」と書く)。Honoは`Error`以外が投げられると`onError`を通さずに再送出するためアクセスログが出ない。8.3の文書に「`Error`(の派生)だけを投げる」、HonoのHTTPExceptionも500になるため「`HTTPException`を使わず`AppError`を使う」を規約として書く。`invocation-context.ts`のローカル型`InvocationContextHonoEnv`は`PlatformHonoEnv`と変数名が重複している。
 - 8.4(8.1・8.5への申し送り): `security/002-keyed-hashing.md`は新しいプレースホルダー`<ペッパーのシークレットのキー>`(本プロジェクトでは`HASH_PEPPER`)と`<共通ライブラリの配置先>`(api・eventでは`lib`)を使う。8.5で`docs/onboardings/project-values.md`に追加し、8.1の文書も共有のバックエンドのライブラリを同じプレースホルダー名で書く。
+- 6.3(親の判断・改訂7、6.4・7.2・8.3への申し送り): Sentryの組み込みのdedupeは同じ`message`・同じfingerprint・スタック無しの連続したイベントを捨てるため、同じ文言を繰り返し送る通知(デッドレター・定期実行の予算の超過・bot判定の設定の誤り)は`captureEvent`(`logentry`・`fingerprint`)で送る(research.mdの改訂7。6.2・5.3の実装も水平展開で直した)。8.3の文書にこの規約を書き、下流spec(email-delivery・notifications・data-export・content-reporting・identity-auth・tournament-year)の固定の文言の`captureMessage`へ申し送る。本体のconsumerは1件ごとの想定外の例外を`captureException`して`retry()`し、遅延再送の不正な遅延は処理の失敗として扱う。ログのカテゴリは`['event','queue','consumer']`・`['event','queue','dead-letter']`に固定。自動で移った元のメッセージの`attempts`はデッドレターQueueでの配信回数で代用し`queueMessageId`を加える。登録の`retry.maxAttempts`がWranglerの`max_retries`(6)以上だと`auto-moved`として届く(8.3に制約として書く)。`@cloudflare/vitest-pool-workers` 0.22.0の`getQueueResult`は遅延秒数を記録しないため`vi.spyOn(message, 'retry')`で確かめ、型定義に無い`FetcherQueueResult`を2つのテストで`declare global`している。
