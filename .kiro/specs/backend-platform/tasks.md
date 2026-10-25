@@ -55,7 +55,7 @@
   - _Boundary: KeyedHasher, RateLimitKey_
   - _Requirements: 4.1, 4.2, 4.3, 12.7_
 
-- [ ] 2.3 (P) 想定内の失敗を表す共通エラー型と共通のエラー形式を作る
+- [x] 2.3 (P) 想定内の失敗を表す共通エラー型と共通のエラー形式を作る
   - 失敗の種類(入力不正・未認証・権限不足・存在しない・競合・意味的に不正・回数超過・一時的な障害)と状態コードの対応、機械可読なエラーコード、項目ごとの詳細、再試行までの秒数を持たせる
   - 共通のエラー形式への変換で`Retry-After`と`Cache-Control: no-store`を付け、500と404の定型を内部の詳細を含まない形で用意する
   - 完了状態: 種類ごとの状態コード、`Retry-After`の有無、500の定型にスタックトレースやメッセージ以外の内部情報が含まれないことを単体テストで確かめられる
@@ -351,3 +351,4 @@
 - 1.5: 層の禁止importは`no-restricted-imports`の`.gitignore`形式のため、`'hono'`は`@sentry/hono`にも一致し、動的`import()`・`require`とサブパスの無いディレクトリのimportは検査しない。8.1の文書に記載する。層の規則の単体テストは`tseslint.configs.disableTypeChecked`を重ねて仮想のファイルを検査している。
 - 2.1: design.mdに`Clock`の型の定義が無いため、他specの`clock.now()`の使い方に合わせて`interface Clock { now(): Date }`と定数`systemClock`(`core/time/clock.ts`)にした。4.4のコンテナでは`toConstantValue(systemClock)`で束縛する。
 - 2.2(8.4への申し送り): 設計に無い振る舞いとして、`hashPurpose`は空とNUL文字を含む名前を`RangeError`にし、`hashRateLimitKey`は部品を`JSON.stringify(parts)`で連結し部品0個を`RangeError`にし、`verify`は再エンコードして同じ表記の値だけを受け付ける。base64urlは`Uint8Array.prototype.toBase64`・`fromBase64`(型は`types: ["bun"]`のbun-typesで解決)を使い、workerdでの動作も確認した。
+- 2.3(後続specへの申し送り): `AppError`の`message`は設計どおり必須(下流specの`AppError(kind, code)`は略記で、実装時に文言の表から`message`を渡す)。エラーコードはsnake_caseでなければ`RangeError`、`retryAfterSeconds`は`rate_limited`・`unavailable`だけで0以上の整数(厳密カウンタは残り秒数を切り上げて渡す)。`toErrorResponse`の戻り値と詳細は凍結される。500・404の定型の文言(「問題が発生しました。時間をおいて再度お試しください。」「お探しの内容は見つかりませんでした。」)は文言規則の表に無いため、8.xで文言を記載する際に扱う。ugc-moderationのdesign.mdの`AppError(internal)`は`AppErrorKind`に無い。
