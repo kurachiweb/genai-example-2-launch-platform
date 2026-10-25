@@ -28,10 +28,11 @@
 ### This Spec Owns
 
 - `apps/db`: 共通カラムの部品(`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`)、`textNoCase`、スキーマの集約点`schema/index.ts`、`createDatabase`、`drizzle.config.ts`、マイグレーションの保存先`migrations/`。
-- `apps/backend-lib/core`: 業務時刻、`KeyedHasher`、`AppError`と共通のエラー形式、DIの識別子と`AppModule`契約、環境の検証、ログの整形と伏せ字の規則、Sentryイベントの除去規則、cron登録表、メッセージの封筒・契約・再試行規則、固定期間カウンタ、siteverify応答の解釈。
+- `apps/backend-lib/core`: 業務時刻、`KeyedHasher`、`AppError`と共通のエラー形式、DIの識別子と`AppModule`契約、環境の検証、ログの整形と伏せ字の規則、Sentryイベントの除去規則、cron登録表、メッセージの封筒・契約・再試行規則、固定期間カウンタ、siteverify応答の解釈、定期実行の起動時刻ごとの時間の予算の表(承認後の改訂2)。
 - `apps/backend-lib/workers`: Honoアプリの組み立て(ミドルウェアの順序)、処理単位のコンテナ、ログ設定、Sentryの計装、Workerハンドラーの組み立て、定期実行・非同期メッセージ・デッドレターのディスパッチャ、メッセージの送信、厳密カウンタのDurable Objectとクライアント、Rate Limitingバインディングのミドルウェア、IP制限、Turnstileの検証。
-- `apps/api`・`apps/event`: エントリ、`src/composition`の登録箇所、4層の配置規約と静的解析による依存方向の強制、Wrangler設定(全環境のバインディング・変数・シークレットのキー名)、`worker-configuration.d.ts`、アプリの品質ツール設定、マイグレーションの検出確認スクリプト、DIのスモークテスト。
-- 契約: 共通のエラー形式、`AppModule`、`ScheduledJobDefinition`、`MessageContract`と`QueueEnvelope`、`RateLimitExclusion`、`ClientIpResolver`、`BotVerifier`、`RateLimitCounterClient`、IP制限の規約(バインディング名・上限・キー・応答)、ヘルスチェックの経路、apiのWorker名。
+- `e2e/support/scheduled-trigger.ts`(承認後の改訂2): ローカルの定期実行を業務日付と業務時刻で起こすE2Eの共有の補助`triggerScheduled`と、業務日付の補助(`businessDateOf`・`addBusinessDays`・`isNearBusinessDayBoundary`)。定期実行をローカルで起こすE2E・統合の手順を持つ全specはこれを使い、同等の補助を作らない。
+- `apps/api`・`apps/event`: エントリ、`src/composition`の登録箇所(apiの定期実行の時間の予算の登録を含む)、4層の配置規約と静的解析による依存方向の強制、Wrangler設定(全環境のバインディング・変数・シークレットのキー名)、`worker-configuration.d.ts`、アプリの品質ツール設定、マイグレーションの検出確認スクリプト、DIのスモークテスト。
+- 契約: 共通のエラー形式、`AppModule`、`ScheduledJobDefinition`、`ScheduledRunBudget`と予算の超過の警告の形(レベル`warning`・タグ`cron`・所要時間)、`triggerScheduled`、`MessageContract`と`QueueEnvelope`、`RateLimitExclusion`、`ClientIpResolver`、`BotVerifier`、`RateLimitCounterClient`、IP制限の規約(バインディング名・上限・キー・応答)、ヘルスチェックの経路、apiのWorker名。
 - 技術ドキュメント: `backend/002`・`backend/003`・`db/003`・`infra/003`・`infra/004`・`security/002`と各索引、`docs/onboardings`の更新。
 
 ### Out of Boundary
@@ -59,6 +60,9 @@
 - 共通カラムの型(日時の保持形式・IDの形式)、列名の変換方式(`snakeCase.table`)の変更(全ドメインのスキーマ)。
 - 再試行の上限・間隔、デッドレターの扱いの変更(email-deliveryなどのメッセージ利用者)。
 - ヘルスチェックの経路の変更(launch-readiness)。
+- 定期実行の時間の予算の値、予算の超過の警告の形(レベル`warning`・タグ`cron`・所要時間)、要約のログの項目の変更(launch-readiness)。逆向きに、launch-readinessの仮1の値が変われば、本specの`SCHEDULED_RUN_BUDGETS`と`infra/003`・`project-values.md`の値を合わせる。
+- `triggerScheduled`の入力の形と、ローカルの定期実行の経路(`/cdn-cgi/local/scheduled`。固定したWranglerの版の経路)の変更(定期実行をローカルで起こすE2E・統合の手順を持つ全spec)。
+- ログの伏せ字の値のパターンの変更(全ドメイン)。承認後の改訂3で、値のパターンの置き換え後の文字列を`[REDACTED]`に統一した(ログに既製の置き換えの文字列を期待するテストは合わせる)。Sentryの伏せ字の対象の項目(例外の値と種類・メッセージ・パンくず・トランザクションとスパン、承認後の改訂3)の変更(launch-readinessのチェックリストA-09のstagingでの確認)。逆向きに、public-apiが公開APIのキーの形式(`API_KEY_TOKEN_PATTERN`)を変えた場合は、本specの`REDACTION_PATTERNS`のキーのパターンを合わせる。
 
 ## Architecture
 
@@ -177,6 +181,7 @@ apps/
 │   │   ├── logging/app-logger.ts            # カテゴリ規約付きのロガー取得
 │   │   ├── observability/scrub-event.ts     # Sentryイベントの個人情報除去と想定内エラーの除外
 │   │   ├── scheduling/cron-registry.ts      # ジョブ定義の検証、業務時刻→cron式、起動時刻ごとの順序
+│   │   ├── scheduling/run-budget.ts         # 起動時刻ごとの時間の予算の表と超過の判定(承認後の改訂2)
 │   │   ├── messaging/envelope.ts            # QueueEnvelope・DeadLetterNoticeの型と解析
 │   │   ├── messaging/message-contract.ts    # defineMessageContract・MessageHandler・登録の型
 │   │   ├── messaging/retry-policy.ts        # 失敗時の再試行間隔とデッドレター移送の判定
@@ -221,7 +226,7 @@ apps/
 │   │   ├── composition/
 │   │   │   ├── env-schema.ts                # apiの環境の検証スキーマ
 │   │   │   ├── modules.ts                   # AppModuleの登録箇所
-│   │   │   ├── scheduled-jobs.ts            # 定期実行ジョブの登録箇所(初版は空)
+│   │   │   ├── scheduled-jobs.ts            # 定期実行ジョブの登録箇所(初版は空)と起動時刻ごとの時間の予算(SCHEDULED_RUN_BUDGETS)
 │   │   │   └── rate-limit-exclusions.ts     # IP制限の除外規則の登録箇所(初版は空)
 │   │   └── (domain|application|infrastructure|presentation)/  # 各層。最初のファイルを追加するspecが作る
 │   ├── scripts/
@@ -253,6 +258,9 @@ apps/
         └── composition/
             ├── env-schema.ts · modules.ts · rate-limit-exclusions.ts
             └── message-handlers.ts          # メッセージ種別の処理の登録箇所(初版は空)
+e2e/support/                                 # dev-toolingのE2Eの補助の置き場所(承認後の改訂2で1ファイルを追加)
+├── scheduled-trigger.ts                     # ローカルの定期実行を業務日付と業務時刻で起こす(ScheduledTriggerHelper)
+└── scheduled-trigger.unit.test.ts           # 要求のURL・cron式・時刻、入力の検証、失敗の例外、業務日付の補助
 docs/
 ├── GUIDES/tech/
 │   ├── backend/002-layered-architecture-on-workers.md   # 層構成・依存方向・処理単位のコンテナ・登録箇所・共通エラー
@@ -271,8 +279,8 @@ docs/
 ### Modified Files
 
 - `docs/onboardings/tech-stack.md`: `reflect-metadata`(Inversifyの相手依存)と`@logtape/redaction`(ログの伏せ字)を追記する。
-- `docs/onboardings/project-values.md`: Worker名・D1名・バケット名・Queue名・バインディング名・Rate Limitingの`namespace_id`・シークレットと変数のキー名・ヘルスチェックの経路・ポートを追記する。
-- `docs/onboardings/README.md`: api・event・dbの依存の導入、マイグレーションの生成と適用、`--test-scheduled`付きの起動、シークレット(`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`)のInfisicalへの登録、テストとスモークテストの手順を更新する。
+- `docs/onboardings/project-values.md`: Worker名・D1名・バケット名・Queue名・バインディング名・Rate Limitingの`namespace_id`・シークレットと変数のキー名・ヘルスチェックの経路・ポート、定期実行の時間の予算を適用する起動時刻とその値(4:21の予算300,000ms・上限600,000ms・各ジョブの目安30,000ms、承認後の改訂2)を追記する。
+- `docs/onboardings/README.md`: api・event・dbの依存の導入、マイグレーションの生成と適用、`--test-scheduled`付きの起動と`/cdn-cgi/local/scheduled`による定期実行の手動起動、シークレット(`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`)のInfisicalへの登録、テストとスモークテストの手順を更新する。
 - `docs/GUIDES/tech/coding/002-dependency-versions.md`: api・eventと共有ディレクトリで版をそろえるパッケージ(hono・inversify・reflect-metadata・ulid・zod・LogTape・Sentry)を一覧に追記する。
 - `docs/GUIDES/tech/{backend,db,infra,security}/README.md`: 新しい文書を1行ずつ追記する。
 - `CLAUDE.md`: 「技術規則の参照先」に、新しい技術ドキュメントへのリンクを作業の種類とともに追記する。
@@ -353,155 +361,161 @@ sequenceDiagram
         J-->>D: done or error
         D->>O: report error and continue
     end
+    D->>O: warning when total duration exceeds run budget
     D->>O: summary log
 ```
 
+- 予算の表に起動時刻がある場合だけ、全ジョブの合計の所要時間を予算と比べる(10.9、承認後の改訂2)。警告は要約のログの前に送り、ジョブの実行と結果を変えない。
+
 ## Requirements Traceability
 
-| Requirement | Summary                                | Components                                  | Interfaces                                            | Flows            |
-| ----------- | -------------------------------------- | ------------------------------------------- | ----------------------------------------------------- | ---------------- |
-| 1.1         | ULIDの主キー部品                       | CommonColumns・IdGenerator                  | `ulidPrimaryKey`                                      | —                |
-| 1.2         | 全文検索用は連番の規約                 | SchemaConventionsDoc                        | `db/003`                                              | —                |
-| 1.3         | 作成・更新日時の自動設定               | CommonColumns                               | `timestamps`                                          | —                |
-| 1.4         | 論理削除の列と絞り込み                 | CommonColumns                               | `softDelete`・`notDeleted`                            | —                |
-| 1.5         | 大文字小文字を区別しない列             | TextNoCase                                  | `textNoCase`                                          | —                |
-| 1.6         | 配置と命名の規約                       | SchemaConventionsDoc・DrizzleConfig         | `schema/index.ts`・`snakeCase.table`                  | —                |
-| 1.7         | 業務テーブル無し・検証用テーブルで確認 | CommonColumns・DatabaseClient               | テスト内のテーブル定義                                | —                |
-| 2.1         | 差分のマイグレーション生成             | DrizzleConfig                               | `db:generate`                                         | —                |
-| 2.2         | 変更なしなら生成しない                 | DrizzleConfig                               | `db:generate`                                         | —                |
-| 2.3         | 手書きのマイグレーションの手順         | SchemaConventionsDoc                        | `drizzle-kit generate --custom`                       | —                |
-| 2.4         | apiで1回適用し両サーバーで参照         | WranglerConfigs                             | `db:migrate:local`・同一`database_id`・`--persist-to` | —                |
-| 2.5         | 検出確認のコマンド                     | MigrationCheck                              | `db:migrations:check`                                 | —                |
-| 2.6         | 型付きクエリとパラメータ化             | DatabaseClient                              | `createDatabase`・`Database`                          | —                |
-| 2.7         | 一括実行と取り消し                     | DatabaseClient                              | `Database.batch`                                      | —                |
-| 3.1         | UTC→業務時刻                           | BusinessTime                                | `toBusinessDateTime`                                  | —                |
-| 3.2         | 業務時刻→UTC                           | BusinessTime                                | `fromBusinessDateTime`                                | —                |
-| 3.3         | UTC 8:00の日境界・夏時間なし           | BusinessTime                                | 固定オフセット                                        | —                |
-| 3.4         | ISO週と週の開始・終了                  | BusinessTime                                | `businessWeekOf`                                      | —                |
-| 3.5         | 日時の保持規約の文書                   | SchemaConventionsDoc                        | `db/003`                                              | —                |
-| 4.1         | ペッパー鍵のHMAC-SHA512                | KeyedHasher                                 | `KeyedHasher.hash`                                    | —                |
-| 4.2         | 時間が内容に依存しない照合             | KeyedHasher                                 | `KeyedHasher.verify`                                  | —                |
-| 4.3         | ペッパー無しで失敗                     | KeyedHasher・EnvSchema                      | `createKeyedHasher`                                   | —                |
-| 4.4         | 共通エラー型と状態コード               | AppError                                    | `AppErrorKind`・`STATUS_BY_KIND`                      | —                |
-| 4.5         | 共通のエラー形式で応答                 | ErrorEnvelope・ErrorHandler                 | `toErrorResponse`                                     | HTTPリクエスト   |
-| 4.6         | 想定外の例外は500で詳細なし            | ErrorHandler・ErrorEnvelope                 | `INTERNAL_ERROR_ENVELOPE`                             | HTTPリクエスト   |
-| 5.1         | 4層と依存方向                          | AppLayerRules                               | `eslint.config.ts`の`no-restricted-imports`           | —                |
-| 5.2         | 処理単位専用の依存                     | InvocationContainer                         | `createInvocationContainer`                           | HTTPリクエスト   |
-| 5.3         | 識別子の明示と経路非依存の解決         | InvocationContainer・PlatformIdentifiers    | `PLATFORM_TYPES`・`@inject`                           | —                |
-| 5.4         | 3経路のスモークテスト                  | DiSmokeTests                                | `test:unit`・`test:worker`・`test:smoke`              | —                |
-| 5.5         | モジュールの追加と登録だけで組み込む   | AppModuleContract・AppComposition           | `AppModule`・登録箇所4ファイル                        | —                |
-| 5.6         | 404の共通形式                          | ErrorHandler                                | `notFound`                                            | HTTPリクエスト   |
-| 5.7         | グローバルスコープ1秒以内              | WorkerHandler・AppComposition               | 遅延初期化                                            | —                |
-| 6.1         | 認証なしで200                          | HealthRoute                                 | `GET /health`                                         | HTTPリクエスト   |
-| 6.2         | 依存先を確かめない                     | HealthRoute・WorkerApp                      | 環境の検証より前に配置                                | HTTPリクエスト   |
-| 6.3         | 内部情報なし・キャッシュ禁止           | HealthRoute                                 | `Cache-Control: no-store`                             | —                |
-| 6.4         | apiでも外部から到達                    | HealthRoute・ProjectValuesDoc               | 経路の契約                                            | —                |
-| 7.1         | 全接続の3環境定義                      | WranglerConfigs                             | `wrangler.jsonc`                                      | —                |
-| 7.2         | 同一リソース識別子と保存先の共有       | WranglerConfigs                             | `wrangler-config.unit.test.ts`                        | —                |
-| 7.3         | 共通の互換性日付・フラグなし           | WranglerConfigs                             | `compatibility_date`                                  | —                |
-| 7.4         | シークレットのキー名と変数             | WranglerConfigs                             | `secrets.required`・`vars`                            | —                |
-| 7.5         | 欠けたキー名で失敗                     | EnvSchema・EnvGuard・WorkerHandler          | `validateEnv`・`EnvValidationError`                   | HTTPリクエスト   |
-| 7.6         | apiの前段キャッシュ無効                | WranglerConfigs                             | `cache.enabled: false`                                | —                |
-| 7.7         | 環境の型の生成と食い違いの検出         | WranglerConfigs                             | `cf-typegen`・`wrangler types --check`                | —                |
-| 7.8         | シークレットを実行時注入で起動         | AppPackageScripts・OnboardingUpdates        | `infisical run`+`dev`                                 | —                |
-| 8.1         | JSON形式のログ                         | LoggingSetup・LogRecordFormat               | `toLogObject`                                         | —                |
-| 8.2         | 相関ID                                 | InvocationContext・WorkerHandler            | `withContext`                                         | HTTPリクエスト   |
-| 8.3         | 個人情報・秘密情報の伏せ字             | LogRedaction・LoggingSetup                  | `redactByField`・`redactByPattern`                    | —                |
-| 8.4         | 呼び出しログの無効化                   | WranglerConfigs                             | `observability.logs.invocation_logs: false`           | —                |
-| 8.5         | アクセスログ                           | InvocationContext                           | `accessLog`                                           | HTTPリクエスト   |
-| 8.6         | 定期実行・メッセージの結果ログ         | ScheduledDispatcher・QueueConsumer          | 要約ログ                                              | 定期実行・非同期 |
-| 8.7         | 環境ごとのログレベル                   | LoggingSetup                                | `LOG_LEVEL`                                           | —                |
-| 8.8         | 7日保持・長期出力先なし                | LoggingSetup・WranglerConfigs               | コンソールシンクのみ                                  | —                |
-| 9.1         | 想定外の例外を送信                     | SentryInstrumentation                       | `sentry(app)`・`withSentry`                           | HTTPリクエスト   |
-| 9.2         | IP・Cookie・認証ヘッダー・本文を除く   | SentryScrubber                              | `scrubEvent`                                          | —                |
-| 9.3         | 想定内の失敗を送らない                 | SentryScrubber・SentryInstrumentation       | `shouldHandleError`・`scrubEvent`                     | —                |
-| 9.4         | 割合でのトレース                       | SentryInstrumentation                       | `SENTRY_TRACES_SAMPLE_RATE`                           | —                |
-| 9.5         | 送信先が無ければ送らない               | SentryInstrumentation                       | `buildSentryOptions`(`enabled`)                       | —                |
-| 9.6         | 送信失敗で結果を変えない               | SentryInstrumentation                       | SDKの非同期送信                                       | —                |
-| 10.1        | 業務時刻でのジョブ登録                 | CronRegistry・AppComposition                | `ScheduledJobDefinition`                              | 定期実行         |
-| 10.2        | cron式とWrangler設定の一致検査         | CronRegistry・CronSyncTest                  | `toUtcCronExpression`・`cron-sync.unit.test.ts`       | —                |
-| 10.3        | 登録順の逐次実行と業務日付・曜日       | ScheduledDispatcher・CronRegistry           | `ScheduledJobContext`                                 | 定期実行         |
-| 10.4        | 失敗を通知して続行                     | ScheduledDispatcher                         | ジョブごとのtry                                       | 定期実行         |
-| 10.5        | 未登録の起動時刻は警告                 | ScheduledDispatcher                         | `jobsFor`が空                                         | 定期実行         |
-| 10.6        | ジョブからのメッセージ送信             | MessagePublisher・InvocationContainer       | `PLATFORM_TYPES.MessagePublisher`                     | —                |
-| 10.7        | ローカルでの手動起動                   | AppPackageScripts・AsyncProcessingDoc       | `--test-scheduled`・`/cdn-cgi/handler/scheduled`      | —                |
-| 10.8        | ジョブ0件でも失敗しない                | ScheduledDispatcher                         | 空の登録表                                            | —                |
-| 11.1        | 種別ごとの振り分け                     | QueueConsumer・MessageContracts             | `MessageHandlerRegistration`                          | 非同期           |
-| 11.2        | 検証して封筒を付けて送信               | MessagePublisher・Envelope                  | `MessagePublisher.publish`                            | —                |
-| 11.3        | 不正・未登録は送信しない               | MessagePublisher                            | `MessagePublishError`                                 | —                |
-| 11.4        | 成功で完了                             | QueueConsumer                               | `message.ack()`                                       | 非同期           |
-| 11.5        | 間隔を伸ばして再試行・他を継続         | QueueConsumer・RetryPolicy                  | `decideOnFailure`・`message.retry({ delaySeconds })`  | 非同期           |
-| 11.6        | 未登録・不正本文は即デッドレター       | QueueConsumer・Envelope                     | `DeadLetterNotice`                                    | 非同期           |
-| 11.7        | 上限超過でデッドレター                 | QueueConsumer・RetryPolicy・WranglerConfigs | `maxAttempts`・`max_retries`・`dead_letter_queue`     | 非同期           |
-| 11.8        | デッドレターは通知して破棄・本文なし   | DeadLetterConsumer                          | `handleDeadLetterBatch`                               | 非同期           |
-| 11.9        | 重複配信と冪等性の規約                 | AsyncProcessingDoc                          | `infra/003`                                           | —                |
-| 12.1        | 回数・残り・リセット時刻を返す         | RateLimitCounter・FixedWindow               | `RateLimitCounterClient.hit`・`CounterDecision`       | —                |
-| 12.2        | 同時要求を正確に数える                 | RateLimitCounter                            | キーごとのDurable Object                              | —                |
-| 12.3        | 最初の要求で開始し期間経過で0          | FixedWindow・RateLimitCounter               | `applyHit`・`alarm`                                   | —                |
-| 12.4        | 上限到達は拒否し期間を変えない         | FixedWindow                                 | `applyHit`                                            | —                |
-| 12.5        | 途中でのリセット                       | RateLimitCounter                            | `RateLimitCounterClient.reset`                        | —                |
-| 12.6        | 0に戻ったら記録を残さない              | RateLimitCounter                            | `deleteAll`                                           | —                |
-| 12.7        | ハッシュ化済みキーだけを保持           | RateLimitKey・RateLimitCounterClient        | `HashedRateLimitKey`                                  | —                |
-| 12.8        | 429・再試行秒数・共通形式              | RateLimitCounterClient・ErrorHandler        | `assertWithinLimit`                                   | —                |
-| 13.1        | IP単位・Worker単位で10秒100回          | IpRateLimit・WranglerConfigs                | `IP_RATE_LIMITER`・`ip:<IP>`                          | HTTPリクエスト   |
-| 13.2        | 超過で429                              | IpRateLimit・BindingRateLimit               | `rate_limit_exceeded`・`Retry-After: 10`              | HTTPリクエスト   |
-| 13.3        | Webhook・配信停止・画像配信の除外      | RateLimitExclusions・AppComposition         | `RateLimitExclusion`                                  | HTTPリクエスト   |
-| 13.4        | 経路・ホスト名での除外登録             | RateLimitExclusions                         | `excludePath`・`excludeHostname`                      | —                |
-| 13.5        | 中継時は信頼済みの元IP                 | ClientIp・WorkerApp                         | `ClientIpResolver`(api-gatewayが差し替え)             | —                |
-| 13.6        | 規約の文書化                           | RateLimitingDoc・ProjectValuesDoc           | `backend/003`                                         | —                |
-| 13.7        | 汎用の部品                             | BindingRateLimit                            | `bindingRateLimit`                                    | —                |
-| 14.1        | トークンとIPで検証し成功だけ許可       | TurnstileVerifier・SiteverifyResult         | `BotVerifier.verify`                                  | —                |
-| 14.2        | 無効・期限切れ・使用済みは403          | TurnstileVerifier・SiteverifyResult         | `bot_verification_failed`                             | —                |
-| 14.3        | 到達不能・時間切れは503                | TurnstileVerifier                           | `bot_verification_unavailable`                        | —                |
-| 14.4        | 操作名・ホスト名の照合                 | SiteverifyResult                            | `expectedAction`・`TURNSTILE_EXPECTED_HOSTNAMES`      | —                |
-| 14.5        | ミドルウェアとサービスの両方           | TurnstileGuard・TurnstileVerifier           | `turnstileGuard`・`PLATFORM_TYPES.BotVerifier`        | —                |
-| 14.6        | テスト用の鍵                           | TurnstileVerifier・OnboardingUpdates        | テスト用シークレット                                  | —                |
-| 14.7        | 失敗理由は記録しトークンは記録しない   | TurnstileVerifier・LogRedaction             | ログの属性                                            | —                |
-| 15.1        | スクリプト契約と一括検査               | AppPackageScripts                           | `lint`・`typecheck`・`test:unit`・`test:worker`       | —                |
-| 15.2        | カバレッジ80%                          | AppPackageScripts・VitestConfigs            | `coverage.include`の分担                              | —                |
-| 15.3        | backendの文書                          | ArchitectureDoc・RateLimitingDoc            | `backend/002`・`backend/003`                          | —                |
-| 15.4        | dbの文書                               | SchemaConventionsDoc                        | `db/003`                                              | —                |
-| 15.5        | infraの文書                            | AsyncProcessingDoc・LoggingDoc              | `infra/003`・`infra/004`                              | —                |
-| 15.6        | 固有値をproject-valuesへ               | ProjectValuesDoc・全tech文書                | 記述規則                                              | —                |
-| 15.7        | tech-stack.mdへの記載                  | OnboardingUpdates                           | `reflect-metadata`・`@logtape/redaction`              | —                |
-| 15.8        | オンボーディングの更新                 | OnboardingUpdates                           | `docs/onboardings/README.md`                          | —                |
+| Requirement | Summary                                                       | Components                                                                                              | Interfaces                                                                                  | Flows            |
+| ----------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------- |
+| 1.1         | ULIDの主キー部品                                              | CommonColumns・IdGenerator                                                                              | `ulidPrimaryKey`                                                                            | —                |
+| 1.2         | 全文検索用は連番の規約                                        | SchemaConventionsDoc                                                                                    | `db/003`                                                                                    | —                |
+| 1.3         | 作成・更新日時の自動設定                                      | CommonColumns                                                                                           | `timestamps`                                                                                | —                |
+| 1.4         | 論理削除の列と絞り込み                                        | CommonColumns                                                                                           | `softDelete`・`notDeleted`                                                                  | —                |
+| 1.5         | 大文字小文字を区別しない列                                    | TextNoCase                                                                                              | `textNoCase`                                                                                | —                |
+| 1.6         | 配置と命名の規約                                              | SchemaConventionsDoc・DrizzleConfig                                                                     | `schema/index.ts`・`snakeCase.table`                                                        | —                |
+| 1.7         | 業務テーブル無し・検証用テーブルで確認                        | CommonColumns・DatabaseClient                                                                           | テスト内のテーブル定義                                                                      | —                |
+| 2.1         | 差分のマイグレーション生成                                    | DrizzleConfig                                                                                           | `db:generate`                                                                               | —                |
+| 2.2         | 変更なしなら生成しない                                        | DrizzleConfig                                                                                           | `db:generate`                                                                               | —                |
+| 2.3         | 手書きのマイグレーションの手順                                | SchemaConventionsDoc                                                                                    | `drizzle-kit generate --custom`                                                             | —                |
+| 2.4         | apiで1回適用し両サーバーで参照                                | WranglerConfigs                                                                                         | `db:migrate:local`・同一`database_id`・`--persist-to`                                       | —                |
+| 2.5         | 検出確認のコマンド                                            | MigrationCheck                                                                                          | `db:migrations:check`                                                                       | —                |
+| 2.6         | 型付きクエリとパラメータ化                                    | DatabaseClient                                                                                          | `createDatabase`・`Database`                                                                | —                |
+| 2.7         | 一括実行と取り消し                                            | DatabaseClient                                                                                          | `Database.batch`                                                                            | —                |
+| 3.1         | UTC→業務時刻                                                  | BusinessTime                                                                                            | `toBusinessDateTime`                                                                        | —                |
+| 3.2         | 業務時刻→UTC                                                  | BusinessTime                                                                                            | `fromBusinessDateTime`                                                                      | —                |
+| 3.3         | UTC 8:00の日境界・夏時間なし                                  | BusinessTime                                                                                            | 固定オフセット                                                                              | —                |
+| 3.4         | ISO週と週の開始・終了                                         | BusinessTime                                                                                            | `businessWeekOf`                                                                            | —                |
+| 3.5         | 日時の保持規約の文書                                          | SchemaConventionsDoc                                                                                    | `db/003`                                                                                    | —                |
+| 4.1         | ペッパー鍵のHMAC-SHA512                                       | KeyedHasher                                                                                             | `KeyedHasher.hash`                                                                          | —                |
+| 4.2         | 時間が内容に依存しない照合                                    | KeyedHasher                                                                                             | `KeyedHasher.verify`                                                                        | —                |
+| 4.3         | ペッパー無しで失敗                                            | KeyedHasher・EnvSchema                                                                                  | `createKeyedHasher`                                                                         | —                |
+| 4.4         | 共通エラー型と状態コード                                      | AppError                                                                                                | `AppErrorKind`・`STATUS_BY_KIND`                                                            | —                |
+| 4.5         | 共通のエラー形式で応答                                        | ErrorEnvelope・ErrorHandler                                                                             | `toErrorResponse`                                                                           | HTTPリクエスト   |
+| 4.6         | 想定外の例外は500で詳細なし                                   | ErrorHandler・ErrorEnvelope                                                                             | `INTERNAL_ERROR_ENVELOPE`                                                                   | HTTPリクエスト   |
+| 5.1         | 4層と依存方向                                                 | AppLayerRules                                                                                           | `eslint.config.ts`の`no-restricted-imports`                                                 | —                |
+| 5.2         | 処理単位専用の依存                                            | InvocationContainer                                                                                     | `createInvocationContainer`                                                                 | HTTPリクエスト   |
+| 5.3         | 識別子の明示と経路非依存の解決                                | InvocationContainer・PlatformIdentifiers                                                                | `PLATFORM_TYPES`・`@inject`                                                                 | —                |
+| 5.4         | 3経路のスモークテスト                                         | DiSmokeTests                                                                                            | `test:unit`・`test:worker`・`test:smoke`                                                    | —                |
+| 5.5         | モジュールの追加と登録だけで組み込む                          | AppModuleContract・AppComposition                                                                       | `AppModule`・登録箇所4ファイル                                                              | —                |
+| 5.6         | 404の共通形式                                                 | ErrorHandler                                                                                            | `notFound`                                                                                  | HTTPリクエスト   |
+| 5.7         | グローバルスコープ1秒以内                                     | WorkerHandler・AppComposition                                                                           | 遅延初期化                                                                                  | —                |
+| 6.1         | 認証なしで200                                                 | HealthRoute                                                                                             | `GET /health`                                                                               | HTTPリクエスト   |
+| 6.2         | 依存先を確かめない                                            | HealthRoute・WorkerApp                                                                                  | 環境の検証より前に配置                                                                      | HTTPリクエスト   |
+| 6.3         | 内部情報なし・キャッシュ禁止                                  | HealthRoute                                                                                             | `Cache-Control: no-store`                                                                   | —                |
+| 6.4         | apiでも外部から到達                                           | HealthRoute・ProjectValuesDoc                                                                           | 経路の契約                                                                                  | —                |
+| 7.1         | 全接続の3環境定義                                             | WranglerConfigs                                                                                         | `wrangler.jsonc`                                                                            | —                |
+| 7.2         | 同一リソース識別子と保存先の共有                              | WranglerConfigs                                                                                         | `wrangler-config.unit.test.ts`                                                              | —                |
+| 7.3         | 共通の互換性日付・フラグなし                                  | WranglerConfigs                                                                                         | `compatibility_date`                                                                        | —                |
+| 7.4         | シークレットのキー名と変数                                    | WranglerConfigs                                                                                         | `secrets.required`・`vars`                                                                  | —                |
+| 7.5         | 欠けたキー名で失敗                                            | EnvSchema・EnvGuard・WorkerHandler                                                                      | `validateEnv`・`EnvValidationError`                                                         | HTTPリクエスト   |
+| 7.6         | apiの前段キャッシュ無効                                       | WranglerConfigs                                                                                         | `cache.enabled: false`                                                                      | —                |
+| 7.7         | 環境の型の生成と食い違いの検出                                | WranglerConfigs                                                                                         | `cf-typegen`・`wrangler types --check`                                                      | —                |
+| 7.8         | シークレットを実行時注入で起動                                | AppPackageScripts・OnboardingUpdates                                                                    | `infisical run`+`dev`(infra-deliveryの改訂1の後は`run-with-secrets --scope local --worker`) | —                |
+| 8.1         | JSON形式のログ                                                | LoggingSetup・LogRecordFormat                                                                           | `toLogObject`                                                                               | —                |
+| 8.2         | 相関ID                                                        | InvocationContext・WorkerHandler                                                                        | `withContext`                                                                               | HTTPリクエスト   |
+| 8.3         | 個人情報・秘密情報の伏せ字                                    | LogRedaction・LoggingSetup                                                                              | `redactByField`・`redactByPattern`                                                          | —                |
+| 8.4         | 呼び出しログの無効化                                          | WranglerConfigs                                                                                         | `observability.logs.invocation_logs: false`                                                 | —                |
+| 8.5         | アクセスログ                                                  | InvocationContext                                                                                       | `accessLog`                                                                                 | HTTPリクエスト   |
+| 8.6         | 定期実行・メッセージの結果ログ                                | ScheduledDispatcher・QueueConsumer                                                                      | 要約ログ                                                                                    | 定期実行・非同期 |
+| 8.7         | 環境ごとのログレベル                                          | LoggingSetup                                                                                            | `LOG_LEVEL`                                                                                 | —                |
+| 8.8         | 7日保持・長期出力先なし                                       | LoggingSetup・WranglerConfigs                                                                           | コンソールシンクのみ                                                                        | —                |
+| 9.1         | 想定外の例外を送信                                            | SentryInstrumentation                                                                                   | `sentry(app)`・`withSentry`                                                                 | HTTPリクエスト   |
+| 9.2         | IP・Cookie・認証ヘッダー・本文を除き、値の形式で伏せる(改訂3) | SentryScrubber・SentryInstrumentation・LoggingDoc                                                       | `scrubEvent`・`scrubTransaction`・`buildSentryOptions`・`infra/004`                         | —                |
+| 9.3         | 想定内の失敗を送らない                                        | SentryScrubber・SentryInstrumentation                                                                   | `shouldHandleError`・`scrubEvent`                                                           | —                |
+| 9.4         | 割合でのトレース                                              | SentryInstrumentation                                                                                   | `SENTRY_TRACES_SAMPLE_RATE`                                                                 | —                |
+| 9.5         | 送信先が無ければ送らない                                      | SentryInstrumentation                                                                                   | `buildSentryOptions`(`enabled`)                                                             | —                |
+| 9.6         | 送信失敗で結果を変えない                                      | SentryInstrumentation                                                                                   | SDKの非同期送信                                                                             | —                |
+| 10.1        | 業務時刻でのジョブ登録                                        | CronRegistry・AppComposition                                                                            | `ScheduledJobDefinition`                                                                    | 定期実行         |
+| 10.2        | cron式とWrangler設定の一致検査                                | CronRegistry・CronSyncTest                                                                              | `toUtcCronExpression`・`cron-sync.unit.test.ts`                                             | —                |
+| 10.3        | 登録順の逐次実行と業務日付・曜日                              | ScheduledDispatcher・CronRegistry                                                                       | `ScheduledJobContext`                                                                       | 定期実行         |
+| 10.4        | 失敗を通知して続行                                            | ScheduledDispatcher                                                                                     | ジョブごとのtry                                                                             | 定期実行         |
+| 10.5        | 未登録の起動時刻は警告                                        | ScheduledDispatcher                                                                                     | `jobsFor`が空                                                                               | 定期実行         |
+| 10.6        | ジョブからのメッセージ送信                                    | MessagePublisher・InvocationContainer                                                                   | `PLATFORM_TYPES.MessagePublisher`                                                           | —                |
+| 10.7        | ローカルでの手動起動                                          | AppPackageScripts・AsyncProcessingDoc・ScheduledTriggerHelper                                           | `--test-scheduled`・`/cdn-cgi/local/scheduled`・`triggerScheduled`                          | —                |
+| 10.8        | ジョブ0件でも失敗しない                                       | ScheduledDispatcher                                                                                     | 空の登録表                                                                                  | —                |
+| 10.9        | 予算の超過の警告(改訂2)                                       | RunBudgetTable・ScheduledDispatcher・AppComposition・CronSyncTest・AsyncProcessingDoc・ProjectValuesDoc | `ScheduledRunBudget`・`SCHEDULED_RUN_BUDGETS`・`captureMessage`                             | 定期実行         |
+| 11.1        | 種別ごとの振り分け                                            | QueueConsumer・MessageContracts                                                                         | `MessageHandlerRegistration`                                                                | 非同期           |
+| 11.2        | 検証して封筒を付けて送信                                      | MessagePublisher・Envelope                                                                              | `MessagePublisher.publish`                                                                  | —                |
+| 11.3        | 不正・未登録は送信しない                                      | MessagePublisher                                                                                        | `MessagePublishError`                                                                       | —                |
+| 11.4        | 成功で完了                                                    | QueueConsumer                                                                                           | `message.ack()`                                                                             | 非同期           |
+| 11.5        | 間隔を伸ばして再試行・他を継続                                | QueueConsumer・RetryPolicy                                                                              | `decideOnFailure`・`message.retry({ delaySeconds })`                                        | 非同期           |
+| 11.6        | 未登録・不正本文は即デッドレター                              | QueueConsumer・Envelope                                                                                 | `DeadLetterNotice`                                                                          | 非同期           |
+| 11.7        | 上限超過でデッドレター                                        | QueueConsumer・RetryPolicy・WranglerConfigs                                                             | `maxAttempts`・`max_retries`・`dead_letter_queue`                                           | 非同期           |
+| 11.8        | デッドレターは通知して破棄・本文なし                          | DeadLetterConsumer                                                                                      | `handleDeadLetterBatch`                                                                     | 非同期           |
+| 11.9        | 重複配信と冪等性の規約                                        | AsyncProcessingDoc                                                                                      | `infra/003`                                                                                 | —                |
+| 12.1        | 回数・残り・リセット時刻を返す                                | RateLimitCounter・FixedWindow                                                                           | `RateLimitCounterClient.hit`・`CounterDecision`                                             | —                |
+| 12.2        | 同時要求を正確に数える                                        | RateLimitCounter                                                                                        | キーごとのDurable Object                                                                    | —                |
+| 12.3        | 最初の要求で開始し期間経過で0                                 | FixedWindow・RateLimitCounter                                                                           | `applyHit`・`alarm`                                                                         | —                |
+| 12.4        | 上限到達は拒否し期間を変えない                                | FixedWindow                                                                                             | `applyHit`                                                                                  | —                |
+| 12.5        | 途中でのリセット                                              | RateLimitCounter                                                                                        | `RateLimitCounterClient.reset`                                                              | —                |
+| 12.6        | 0に戻ったら記録を残さない                                     | RateLimitCounter                                                                                        | `deleteAll`                                                                                 | —                |
+| 12.7        | ハッシュ化済みキーだけを保持                                  | RateLimitKey・RateLimitCounterClient                                                                    | `HashedRateLimitKey`                                                                        | —                |
+| 12.8        | 429・再試行秒数・共通形式                                     | RateLimitCounterClient・ErrorHandler                                                                    | `assertWithinLimit`                                                                         | —                |
+| 13.1        | IP単位・Worker単位で10秒100回                                 | IpRateLimit・WranglerConfigs                                                                            | `IP_RATE_LIMITER`・`ip:<IP>`                                                                | HTTPリクエスト   |
+| 13.2        | 超過で429                                                     | IpRateLimit・BindingRateLimit                                                                           | `rate_limit_exceeded`・`Retry-After: 10`                                                    | HTTPリクエスト   |
+| 13.3        | Webhook・配信停止・画像配信の除外                             | RateLimitExclusions・AppComposition                                                                     | `RateLimitExclusion`                                                                        | HTTPリクエスト   |
+| 13.4        | 経路・ホスト名での除外登録                                    | RateLimitExclusions                                                                                     | `excludePath`・`excludeHostname`                                                            | —                |
+| 13.5        | 中継時は信頼済みの元IP                                        | ClientIp・WorkerApp                                                                                     | `ClientIpResolver`(api-gatewayが差し替え)                                                   | —                |
+| 13.6        | 規約の文書化                                                  | RateLimitingDoc・ProjectValuesDoc                                                                       | `backend/003`                                                                               | —                |
+| 13.7        | 汎用の部品                                                    | BindingRateLimit                                                                                        | `bindingRateLimit`                                                                          | —                |
+| 14.1        | トークンとIPで検証し成功だけ許可                              | TurnstileVerifier・SiteverifyResult                                                                     | `BotVerifier.verify`                                                                        | —                |
+| 14.2        | 無効・期限切れ・使用済みは403                                 | TurnstileVerifier・SiteverifyResult                                                                     | `bot_verification_failed`                                                                   | —                |
+| 14.3        | 到達不能・時間切れは503                                       | TurnstileVerifier                                                                                       | `bot_verification_unavailable`                                                              | —                |
+| 14.4        | 操作名・ホスト名の照合                                        | SiteverifyResult                                                                                        | `expectedAction`・`TURNSTILE_EXPECTED_HOSTNAMES`                                            | —                |
+| 14.5        | ミドルウェアとサービスの両方                                  | TurnstileGuard・TurnstileVerifier                                                                       | `turnstileGuard`・`PLATFORM_TYPES.BotVerifier`                                              | —                |
+| 14.6        | テスト用の鍵                                                  | TurnstileVerifier・OnboardingUpdates                                                                    | テスト用シークレット                                                                        | —                |
+| 14.7        | 失敗理由は記録しトークンは記録しない                          | TurnstileVerifier・LogRedaction                                                                         | ログの属性                                                                                  | —                |
+| 15.1        | スクリプト契約と一括検査                                      | AppPackageScripts                                                                                       | `lint`・`typecheck`・`test:unit`・`test:worker`                                             | —                |
+| 15.2        | カバレッジ80%                                                 | AppPackageScripts・VitestConfigs                                                                        | `coverage.include`の分担                                                                    | —                |
+| 15.3        | backendの文書                                                 | ArchitectureDoc・RateLimitingDoc                                                                        | `backend/002`・`backend/003`                                                                | —                |
+| 15.4        | dbの文書                                                      | SchemaConventionsDoc                                                                                    | `db/003`                                                                                    | —                |
+| 15.5        | infraの文書                                                   | AsyncProcessingDoc・LoggingDoc                                                                          | `infra/003`・`infra/004`                                                                    | —                |
+| 15.6        | 固有値をproject-valuesへ                                      | ProjectValuesDoc・全tech文書                                                                            | 記述規則                                                                                    | —                |
+| 15.7        | tech-stack.mdへの記載                                         | OnboardingUpdates                                                                                       | `reflect-metadata`・`@logtape/redaction`                                                    | —                |
+| 15.8        | オンボーディングの更新                                        | OnboardingUpdates                                                                                       | `docs/onboardings/README.md`                                                                | —                |
 
 ## Components and Interfaces
 
-| Component                                                         | Domain/Layer | Intent                                             | Req Coverage                                   | Key Dependencies (P0/P1)                                | Contracts      |
-| ----------------------------------------------------------------- | ------------ | -------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------- | -------------- |
-| CommonColumns・TextNoCase                                         | db           | 共通カラムと大文字小文字を区別しない列             | 1.1, 1.3, 1.4, 1.5, 1.7                        | drizzle-orm (P0)・ulid (P0)                             | State          |
-| DatabaseClient・DrizzleConfig                                     | db           | 接続・型付きクエリ・マイグレーション生成           | 1.6, 2.1, 2.2, 2.6, 2.7                        | drizzle-orm・drizzle-kit (P0)                           | Service        |
-| MigrationCheck                                                    | api/scripts  | マイグレーションの検出確認                         | 2.5                                            | wrangler (P0)                                           | Batch          |
-| BusinessTime                                                      | core         | 業務時刻の計算                                     | 3.1-3.4                                        | なし                                                    | Service        |
-| KeyedHasher                                                       | core         | ペッパー鍵のHMACとその照合                         | 4.1-4.3, 12.7                                  | Web Crypto (P0)                                         | Service        |
-| AppError・ErrorEnvelope                                           | core         | 想定内の失敗と共通のエラー形式                     | 4.4-4.6, 5.6, 12.8, 13.2, 14.2, 14.3           | なし                                                    | State          |
-| PlatformIdentifiers・AppModuleContract                            | core         | 依存の識別子とモジュール登録の契約                 | 5.3, 5.5                                       | inversify (P0)                                          | State          |
-| EnvSchema                                                         | core         | 環境の検証と欠けたキー名                           | 4.3, 7.5                                       | zod (P0)                                                | Service        |
-| LogRecordFormat・LogRedaction                                     | core         | ログのJSON化と伏せ字の規則                         | 8.1, 8.3, 14.7                                 | @logtape/logtape・@logtape/redaction (P0)               | Service        |
-| SentryScrubber                                                    | core         | エラーレポートの個人情報除去と想定内の除外         | 9.2, 9.3                                       | なし                                                    | Service        |
-| CronRegistry                                                      | core         | ジョブ定義の検証と起動時刻ごとの順序               | 10.1-10.3, 10.5                                | BusinessTime (P0)                                       | Service        |
-| Envelope・MessageContracts・RetryPolicy                           | core         | メッセージの封筒・契約・再試行判定                 | 11.1-11.3, 11.5-11.7                           | zod (P0)                                                | Event          |
-| FixedWindow・RateLimitKey                                         | core         | 固定期間の状態遷移とハッシュ化済みキー             | 12.1, 12.3, 12.4, 12.7                         | KeyedHasher (P0)                                        | State          |
-| SiteverifyResult                                                  | core         | siteverify応答の分類                               | 14.1-14.4                                      | なし                                                    | Service        |
-| PlatformEnv                                                       | workers      | 両サーバー共通の環境の型とスキーマ断片             | 7.4, 7.5                                       | EnvSchema (P0)                                          | State          |
-| InvocationContainer                                               | workers      | 処理単位のコンテナとプラットフォームの束縛         | 5.2, 5.3, 10.6                                 | inversify (P0)・DatabaseClient (P0)                     | Service        |
-| WorkerApp(InvocationContext・EnvGuard・HealthRoute・ErrorHandler) | workers      | Honoアプリとミドルウェアの順序                     | 4.5, 4.6, 5.6, 6.1-6.4, 7.5, 8.2, 8.5          | hono (P0)・IpRateLimit (P0)・SentryInstrumentation (P1) | API            |
-| LoggingSetup                                                      | workers      | LogTapeの設定                                      | 8.1-8.3, 8.7, 8.8                              | @logtape/* (P0)                                         | Service        |
-| SentryInstrumentation                                             | workers      | Sentryの初期化と計装                               | 9.1, 9.3-9.6                                   | @sentry/hono・@sentry/cloudflare (P0)                   | Service        |
-| WorkerHandler                                                     | workers      | fetch・scheduled・queueの組み立て                  | 5.2, 5.7, 7.5, 8.2                             | WorkerApp・Dispatchers (P0)                             | Service        |
-| ScheduledDispatcher                                               | workers      | 定期実行の振り分け                                 | 8.6, 10.3-10.5, 10.8                           | CronRegistry (P0)                                       | Batch          |
-| MessagePublisher                                                  | workers      | メッセージの検証と送信                             | 10.6, 11.2, 11.3                               | Queues (P0)・MessageContracts (P0)                      | Service        |
-| QueueConsumer・DeadLetterConsumer                                 | workers      | 本体とデッドレターのconsumer                       | 8.6, 11.1, 11.4-11.8                           | RetryPolicy (P0)・Queues (P0)                           | Batch, Event   |
-| RateLimitCounter・RateLimitCounterClient                          | workers      | 厳密カウンタ                                       | 12.1-12.8                                      | Durable Objects (P0)・FixedWindow (P0)                  | Service, State |
-| BindingRateLimit・IpRateLimit・ClientIp・RateLimitExclusions      | workers      | バインディングによる制限とIP制限                   | 13.1-13.5, 13.7                                | Rate Limitingバインディング (P0)                        | API            |
-| TurnstileVerifier・TurnstileGuard                                 | workers      | bot判定の検証                                      | 14.1-14.7                                      | siteverify (P0)・SiteverifyResult (P0)                  | Service, API   |
-| AppComposition(api・event)                                        | apps         | エントリと登録箇所                                 | 5.5, 5.7, 10.1, 13.3                           | WorkerHandler (P0)                                      | State          |
-| AppLayerRules                                                     | apps         | 層の依存方向の静的解析                             | 5.1                                            | ESLint (P0)                                             | State          |
-| WranglerConfigs                                                   | apps         | 全環境のバインディング・変数・シークレットのキー名 | 2.4, 7.1-7.4, 7.6, 7.7, 8.4, 8.8, 11.7, 13.1   | wrangler (P0)                                           | State          |
-| AppPackageScripts・VitestConfigs                                  | apps         | スクリプト契約とテスト設定                         | 7.8, 10.7, 15.1, 15.2                          | dev-toolingのプリセット (P0)                            | API            |
-| DiSmokeTests・CronSyncTest                                        | apps/test    | 3経路のDI解決とcronの一致                          | 5.4, 10.2                                      | Bun・Vitest・Wrangler (P0)                              | Batch          |
-| 技術ドキュメント群・OnboardingUpdates                             | docs         | 規約と手順の文書化                                 | 1.2, 1.6, 2.3, 3.5, 6.4, 11.9, 13.6, 15.3-15.8 | なし                                                    | —              |
+| Component                                                         | Domain/Layer | Intent                                                | Req Coverage                                                    | Key Dependencies (P0/P1)                                | Contracts      |
+| ----------------------------------------------------------------- | ------------ | ----------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------- | -------------- |
+| CommonColumns・TextNoCase                                         | db           | 共通カラムと大文字小文字を区別しない列                | 1.1, 1.3, 1.4, 1.5, 1.7                                         | drizzle-orm (P0)・ulid (P0)                             | State          |
+| DatabaseClient・DrizzleConfig                                     | db           | 接続・型付きクエリ・マイグレーション生成              | 1.6, 2.1, 2.2, 2.6, 2.7                                         | drizzle-orm・drizzle-kit (P0)                           | Service        |
+| MigrationCheck                                                    | api/scripts  | マイグレーションの検出確認                            | 2.5                                                             | wrangler (P0)                                           | Batch          |
+| BusinessTime                                                      | core         | 業務時刻の計算                                        | 3.1-3.4                                                         | なし                                                    | Service        |
+| KeyedHasher                                                       | core         | ペッパー鍵のHMACとその照合                            | 4.1-4.3, 12.7                                                   | Web Crypto (P0)                                         | Service        |
+| AppError・ErrorEnvelope                                           | core         | 想定内の失敗と共通のエラー形式                        | 4.4-4.6, 5.6, 12.8, 13.2, 14.2, 14.3                            | なし                                                    | State          |
+| PlatformIdentifiers・AppModuleContract                            | core         | 依存の識別子とモジュール登録の契約                    | 5.3, 5.5                                                        | inversify (P0)                                          | State          |
+| EnvSchema                                                         | core         | 環境の検証と欠けたキー名                              | 4.3, 7.5                                                        | zod (P0)                                                | Service        |
+| LogRecordFormat・LogRedaction                                     | core         | ログのJSON化と伏せ字の規則                            | 8.1, 8.3, 14.7                                                  | @logtape/logtape・@logtape/redaction (P0)               | Service        |
+| SentryScrubber                                                    | core         | エラーレポートの個人情報除去と想定内の除外            | 9.2, 9.3                                                        | LogRedaction (P0)                                       | Service        |
+| CronRegistry                                                      | core         | ジョブ定義の検証と起動時刻ごとの順序                  | 10.1-10.3, 10.5                                                 | BusinessTime (P0)                                       | Service        |
+| RunBudgetTable                                                    | core         | 起動時刻ごとの時間の予算と超過の判定(改訂2)           | 10.9                                                            | BusinessTime (P0)・CronRegistry (P1)                    | Service        |
+| Envelope・MessageContracts・RetryPolicy                           | core         | メッセージの封筒・契約・再試行判定                    | 11.1-11.3, 11.5-11.7                                            | zod (P0)                                                | Event          |
+| FixedWindow・RateLimitKey                                         | core         | 固定期間の状態遷移とハッシュ化済みキー                | 12.1, 12.3, 12.4, 12.7                                          | KeyedHasher (P0)                                        | State          |
+| SiteverifyResult                                                  | core         | siteverify応答の分類                                  | 14.1-14.4                                                       | なし                                                    | Service        |
+| PlatformEnv                                                       | workers      | 両サーバー共通の環境の型とスキーマ断片                | 7.4, 7.5                                                        | EnvSchema (P0)                                          | State          |
+| InvocationContainer                                               | workers      | 処理単位のコンテナとプラットフォームの束縛            | 5.2, 5.3, 10.6                                                  | inversify (P0)・DatabaseClient (P0)                     | Service        |
+| WorkerApp(InvocationContext・EnvGuard・HealthRoute・ErrorHandler) | workers      | Honoアプリとミドルウェアの順序                        | 4.5, 4.6, 5.6, 6.1-6.4, 7.5, 8.2, 8.5                           | hono (P0)・IpRateLimit (P0)・SentryInstrumentation (P1) | API            |
+| LoggingSetup                                                      | workers      | LogTapeの設定                                         | 8.1-8.3, 8.7, 8.8                                               | @logtape/* (P0)                                         | Service        |
+| SentryInstrumentation                                             | workers      | Sentryの初期化と計装                                  | 9.1-9.6                                                         | @sentry/hono・@sentry/cloudflare (P0)                   | Service        |
+| WorkerHandler                                                     | workers      | fetch・scheduled・queueの組み立て                     | 5.2, 5.7, 7.5, 8.2                                              | WorkerApp・Dispatchers (P0)                             | Service        |
+| ScheduledDispatcher                                               | workers      | 定期実行の振り分けと予算の超過の警告                  | 8.6, 10.3-10.5, 10.8, 10.9                                      | CronRegistry (P0)・RunBudgetTable (P0)                  | Batch          |
+| MessagePublisher                                                  | workers      | メッセージの検証と送信                                | 10.6, 11.2, 11.3                                                | Queues (P0)・MessageContracts (P0)                      | Service        |
+| QueueConsumer・DeadLetterConsumer                                 | workers      | 本体とデッドレターのconsumer                          | 8.6, 11.1, 11.4-11.8                                            | RetryPolicy (P0)・Queues (P0)                           | Batch, Event   |
+| RateLimitCounter・RateLimitCounterClient                          | workers      | 厳密カウンタ                                          | 12.1-12.8                                                       | Durable Objects (P0)・FixedWindow (P0)                  | Service, State |
+| BindingRateLimit・IpRateLimit・ClientIp・RateLimitExclusions      | workers      | バインディングによる制限とIP制限                      | 13.1-13.5, 13.7                                                 | Rate Limitingバインディング (P0)                        | API            |
+| TurnstileVerifier・TurnstileGuard                                 | workers      | bot判定の検証                                         | 14.1-14.7                                                       | siteverify (P0)・SiteverifyResult (P0)                  | Service, API   |
+| AppComposition(api・event)                                        | apps         | エントリと登録箇所                                    | 5.5, 5.7, 10.1, 10.9, 13.3                                      | WorkerHandler (P0)                                      | State          |
+| AppLayerRules                                                     | apps         | 層の依存方向の静的解析                                | 5.1                                                             | ESLint (P0)                                             | State          |
+| WranglerConfigs                                                   | apps         | 全環境のバインディング・変数・シークレットのキー名    | 2.4, 7.1-7.4, 7.6, 7.7, 8.4, 8.8, 11.7, 13.1                    | wrangler (P0)                                           | State          |
+| AppPackageScripts・VitestConfigs                                  | apps         | スクリプト契約とテスト設定                            | 7.8, 10.7, 15.1, 15.2                                           | dev-toolingのプリセット (P0)                            | API            |
+| DiSmokeTests・CronSyncTest                                        | apps/test    | 3経路のDI解決とcronの一致                             | 5.4, 10.2, 10.9                                                 | Bun・Vitest・Wrangler (P0)                              | Batch          |
+| ScheduledTriggerHelper                                            | e2e support  | ローカルの定期実行を業務日付と業務時刻で起こす(改訂2) | 10.7                                                            | BusinessTime (P0)・apiのローカルの定期実行 (P0)         | Service        |
+| 技術ドキュメント群・OnboardingUpdates                             | docs         | 規約と手順の文書化                                    | 1.2, 1.6, 2.3, 3.5, 6.4, 9.2, 10.7, 10.9, 11.9, 13.6, 15.3-15.8 | なし                                                    | —              |
 
 ### db
 
@@ -885,7 +899,7 @@ export declare function getAppLogger(
 ```
 
 - `REDACTED_FIELD_PATTERNS`: `@logtape/redaction`の`DEFAULT_REDACT_FIELDS`に、`ip`・`ipAddress`・`clientIp`・`remoteIp`・`email`・`mail`・`cookie`・`set-cookie`・`authorization`・`token`・`turnstileToken`・`pepper`・`secret`を表すパターン(大文字小文字を区別しない)を加える。
-- `REDACTION_PATTERNS`: `EMAIL_ADDRESS_PATTERN`・`JWT_PATTERN`・`CREDIT_CARD_NUMBER_PATTERN`と独自のIPv4・IPv6・`Bearer <値>`のパターン。
+- `REDACTION_PATTERNS`: `EMAIL_ADDRESS_PATTERN`・`JWT_PATTERN`・`CREDIT_CARD_NUMBER_PATTERN`と独自のIPv4・IPv6・`Bearer <値>`・公開APIのキー(`lsk_[A-Za-z0-9_-]{43}`)のパターン。独自のパターンは`@logtape/redaction`の規則どおり`g`フラグ付きの正規表現とし、置き換え後の文字列は定数`REDACTED`(`[REDACTED]`)とする。`@logtape/redaction`の既製のパターンは置き換え後の文字列が異なる(カード番号は`XXXX-XXXX-XXXX-XXXX`、メールアドレスは`REDACTED@EMAIL.ADDRESS`、JWTは`[JWT REDACTED]`)ため、正規表現を保ったまま置き換えを`REDACTED`へ包み直し、全パターンの出力を`[REDACTED]`に統一する。`CREDIT_CARD_NUMBER_PATTERN`はLuhnの検査の関数を保ち、その結果に含まれる既製の置き換えの文字列だけを`REDACTED`に替える(検査を通らない数字の並びと、隣の数字の区切りは元のまま残す)(承認後の改訂3)。公開APIのキーのパターンは、`Authorization`以外の場所(ログのメッセージ・属性の値)に紛れたキーも伏せるためのもので、キーの形式はpublic-apiの`API_KEY_TOKEN_PATTERN`(`lsk_`と32バイトのbase64url)に合わせる(承認後の改訂1)。`redactByPattern`は配列の順に置き換えるため、キーの一部が他のパターン(カード番号など)に先に当たって形が崩れないよう、公開APIのキーのパターンを配列の先頭に置く。Sentryでは、`SentryScrubber`が同じ`REDACTION_PATTERNS`を、パンくずの`data`の値に加えて、例外の値と種類・イベントのメッセージ(`logentry`を含む)・パンくずの`message`・トランザクションの名前とスパンの説明と`data`の値に適用する(承認後の改訂3。項目の一覧は`SentryScrubber`の節を正とし、リクエストのURLと`contexts.trace.data`の値も含む)。
 - ログはコンソールへオブジェクトとして渡し、Workers Logsがフィールドを索引化する。カテゴリは`[アプリ名, 層, モジュール]`の規約とする。
 
 #### SentryScrubber
@@ -913,6 +927,15 @@ export declare function scrubTransaction(
 
 - `hint.originalException`が`AppError`なら`null`(送らない)。
 - `user.ip_address`・`user.email`を削除し、`request.cookies`・`request.data`・`request.query_string`を削除する。`request.headers`から`cookie`・`authorization`・`cf-connecting-ip`・`x-forwarded-for`・`x-real-ip`・`true-client-ip`を削除する。パンくずの`data`の値にも`REDACTION_PATTERNS`を適用する。
+- 値の形式による伏せ字(9.2、承認後の改訂3。2026-10-24に開発者が決定): `scrubEvent`は、`REDACTION_PATTERNS`を配列の順に(公開APIのキーを先に)次の文字列へ適用し、当たった部分を`[REDACTED]`に置き換える。
+  - 例外の値(`exception.values[].value`)と種類(`exception.values[].type`)。種類は通常はクラス名だが、`Error.name`はコードから任意の文字列を設定できるため対象に含める。
+  - イベントのメッセージ(`message`)と`logentry`の`message`・`formatted`・文字列の`params`。
+  - パンくずの`message`と`data`の値(既存)。
+  - トランザクションの名前(`transaction`)。エラーイベントにもトランザクションの名前が付くため対象に含める。
+  - リクエストのURL(`request.url`)。SDKの設定によってはクエリ文字列やトークンを含む経路がURLに残り得るため対象に含める(`request.query_string`の削除は既存)。
+- `scrubTransaction`は、トランザクションの名前(`transaction`)、スパンの説明(`spans[].description`)と`data`の文字列の値、`contexts.trace.data`の文字列の値に同じく適用する。外部へのHTTPの呼び出しのスパンの説明・URLや経路の名前に、トークン・キーを含むURLが入り得るため。
+- スタックトレースのフレーム(ファイル名・関数名・行の内容)は、アプリのソースの情報で利用者の値を含まないため対象にしない。アプリが付けるタグ・コンテキストには秘密情報と個人情報を入れない規則とし(`infra/004`)、伏せ字の対象にしない。
+- 例外の値などを書き換えても、Sentryのグループ化はスタックトレースと種類で行われるため、置き換えで大きく変わらない。
 
 #### CronRegistry
 
@@ -953,6 +976,37 @@ export declare function createCronRegistry(
 ```
 
 - `createCronRegistry`は、名前の重複、時・分の範囲外、同じ時刻での`order`の重複を`CronRegistryError`にする。
+
+#### RunBudgetTable
+
+| Field        | Detail                                                 |
+| ------------ | ------------------------------------------------------ |
+| Intent       | 起動時刻ごとの1回の起動の時間の予算と超過の判定(改訂2) |
+| Requirements | 10.9                                                   |
+
+**Contracts**: Service [x]
+
+##### Service Interface
+
+```typescript
+export interface ScheduledRunBudget {
+  readonly at: BusinessTimeOfDay; // 予算を適用する起動時刻(業務時刻)
+  readonly maxTotalDurationMs: number; // 1回の起動の全ジョブの合計の所要時間の予算(正の整数)
+}
+export interface RunBudgetTable {
+  budgetFor(cron: string): ScheduledRunBudget | undefined; // 予算の無い式はundefined
+}
+export declare function createRunBudgetTable(
+  budgets: readonly ScheduledRunBudget[],
+): RunBudgetTable;
+export declare function exceedsRunBudget(
+  budget: ScheduledRunBudget,
+  totalDurationMs: number,
+): boolean; // 合計が予算より大きいときだけ真(予算ちょうどは偽)
+```
+
+- `createRunBudgetTable`は、時・分の範囲外、同じ時刻の重複、正の整数でない予算を`CronRegistryError`にする。式との対応は`toUtcCronExpression`で求める。
+- 予算はジョブの登録と独立に持つ。ジョブの無い時刻の予算は使われないだけで誤りにしない。
 
 #### Envelope・MessageContracts・RetryPolicy
 
@@ -1301,7 +1355,7 @@ export declare function ensureLoggingConfigured(options: LoggingOptions): void; 
 | Field        | Detail                               |
 | ------------ | ------------------------------------ |
 | Intent       | Sentryの初期化と、全ハンドラーの計装 |
-| Requirements | 9.1, 9.3, 9.4, 9.5, 9.6              |
+| Requirements | 9.1, 9.2, 9.3, 9.4, 9.5, 9.6         |
 
 **Contracts**: Service [x]
 
@@ -1358,10 +1412,10 @@ export declare function createWorkerHandler<E extends PlatformEnv>(
 
 #### ScheduledDispatcher
 
-| Field        | Detail                      |
-| ------------ | --------------------------- |
-| Intent       | 定期実行の振り分け          |
-| Requirements | 8.6, 10.3, 10.4, 10.5, 10.8 |
+| Field        | Detail                               |
+| ------------ | ------------------------------------ |
+| Intent       | 定期実行の振り分けと予算の超過の警告 |
+| Requirements | 8.6, 10.3, 10.4, 10.5, 10.8, 10.9    |
 
 **Contracts**: Batch [x]
 
@@ -1375,14 +1429,21 @@ export interface ScheduledDispatcher<E extends PlatformEnv> {
     ctx: ExecutionContext,
   ): Promise<void>;
 }
+export interface ScheduledDispatcherOptions {
+  readonly budgets?: RunBudgetTable; // 既定は予算なし
+  readonly now?: () => number; // 所要時間の計測に使う時計(ミリ秒)。テストで差し替える。既定はDate.now
+}
 export declare function createScheduledDispatcher<E extends PlatformEnv>(
   registry: CronRegistry,
   modules: readonly AppModule[],
+  options?: ScheduledDispatcherOptions,
 ): ScheduledDispatcher<E>;
 ```
 
 - Trigger: apiのCron Triggers(`triggers.crons`)。Cron Triggersはapiだけに置く(tech-stack)。重い処理はジョブが`MessagePublisher`でeventへ委ねる。
-- 処理: `registry.jobsFor(controller.cron)`の順に、ジョブごとに新しいコンテナで`handler.run`を呼ぶ。失敗は`error`ログとSentryの`captureException`(タグ`job`)に送り、次のジョブを続ける(10.4)。未登録の式は`warning`ログだけで終える(10.5)。最後にジョブごとの結果と所要時間の要約を`info`で出す(8.6)。
+- 処理: `registry.jobsFor(controller.cron)`の順に、ジョブごとに新しいコンテナで`handler.run`を呼ぶ。失敗は`error`ログとSentryの`captureException`(タグ`job`)に送り、次のジョブを続ける(10.4)。未登録の式は`warning`ログだけで終える(10.5)。最後にジョブごとの結果と所要時間、全ジョブの合計の所要時間(`totalDurationMs`)の要約を`info`で出す(8.6)。
+- 予算の超過(10.9、承認後の改訂2): `budgets.budgetFor(controller.cron)`があり、最初のジョブの開始から最後のジョブの終了までの所要時間が`exceedsRunBudget`で真なら、要約の前に`warning`ログ(`cron`・`totalDurationMs`・`maxTotalDurationMs`)と、Sentryの`captureMessage`(レベル`warning`、タグ`cron`(式)、コンテキスト`scheduled_run`に`totalDurationMs`・`maxTotalDurationMs`・ジョブの数)を送る。予算ちょうどは送らない。ジョブの失敗の有無に関わらず合計で判定し、警告の送信は後続の処理と結果を変えない。
+- 計測: Workersの時計はI/Oの間にだけ進むため、所要時間はD1・Queuesなどの待ちを含む実時間の近似である。予算の判定と要約の所要時間は同じ時計で計る。
 - Idempotency: 再実行の安全はジョブの責任とする(`infra/003`)。
 
 #### MessagePublisher
@@ -1612,14 +1673,15 @@ export declare function turnstileGuard(
 
 #### AppComposition(api・event)
 
-| Field        | Detail               |
-| ------------ | -------------------- |
-| Intent       | エントリと登録箇所   |
-| Requirements | 5.5, 5.7, 10.1, 13.3 |
+| Field        | Detail                     |
+| ------------ | -------------------------- |
+| Intent       | エントリと登録箇所         |
+| Requirements | 5.5, 5.7, 10.1, 10.9, 13.3 |
 
 **Responsibilities & Constraints**
 
-- `src/index.ts`(api): `createWorkerApp`・`createScheduledDispatcher(createCronRegistry(SCHEDULED_JOBS), MODULES)`・`createWorkerHandler`を組み合わせて`export default`し、`RateLimitCounter`を名前付きでエクスポートする。
+- `src/index.ts`(api): `createWorkerApp`・`createScheduledDispatcher(createCronRegistry(SCHEDULED_JOBS), MODULES, { budgets: createRunBudgetTable(SCHEDULED_RUN_BUDGETS) })`・`createWorkerHandler`を組み合わせて`export default`し、`RateLimitCounter`を名前付きでエクスポートする。
+- `scheduled-jobs.ts`(api)の`SCHEDULED_RUN_BUDGETS`(10.9、承認後の改訂2): `[{ at: { hour: 4, minute: 21 }, maxTotalDurationMs: 300_000 }]`。値はlaunch-readinessの仮1(予算5分。上限10分と各ジョブの目安30秒は`infra/003`と`project-values.md`に記し、判定はlaunch-readinessの検証が行う)に従う。4:21のジョブは各ドメインspecが登録し、本specの初版では無い。
 - `src/index.ts`(event): `createWorkerApp`・`createQueueDispatcher(MESSAGE_HANDLERS, MODULES)`・`createWorkerHandler`を組み合わせる。eventはCron Triggersを持たない。
 - 登録箇所(5.5): `modules.ts`(`MODULES`)、`scheduled-jobs.ts`(`SCHEDULED_JOBS`、api)、`message-handlers.ts`(`MESSAGE_HANDLERS`、event)、`rate-limit-exclusions.ts`(`RATE_LIMIT_EXCLUSIONS`)。初版はapiの`MODULES`に`BotVerifier`・`RateLimitCounterClient`を束縛する基盤モジュールだけを置き、他は空配列とする。
 - `scheduled-jobs.ts`・`message-handlers.ts`は、Bunの単体テストから読み込めるよう`cloudflare:*`を読み込まない。
@@ -1709,7 +1771,7 @@ export declare function turnstileGuard(
 | `db:migrations:check` | `bun ./scripts/check-migrations.ts`                                                                | なし                                                                             |
 | `test:smoke`          | `bun ./scripts/smoke-wrangler-bundle.ts`                                                           | なし                                                                             |
 
-- `dev`はシークレットが要るため、`infisical --telemetry=false run --env dev -- bun run dev`で起動する(7.8)。定期実行の手動起動は`curl "http://localhost:48042/cdn-cgi/handler/scheduled?cron=<式>"`(10.7)。
+- `dev`はシークレットが要るため、実行時に注入して起動する(7.8)。infra-deliveryの改訂1の実装の後は、Workerごとのフォルダ(`/workers/api`・`/workers/event`)を`/`に重ねる`bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker api -- bun run dev`(eventは`--worker event`)で起動する(`WORKER_SCOPED_SECRETS`のキー(`STRIPE_API_KEY`)は`/`からは渡らず、素の`infisical run`ではpaymentsの起動時の検査が失敗するため)。それより前(本specの実装の時点)は`infisical --telemetry=false run --env dev -- bun run dev`で起動する。定期実行の手動起動は`curl "http://localhost:48042/cdn-cgi/local/scheduled?cron=<式>&time=<UTCのミリ秒>"`、E2Eからは`e2e/support/scheduled-trigger.ts`の`triggerScheduled`(10.7)。eventは定期実行を持たないため`--test-scheduled`を付けない。
 - Vitest(api): `workerTestPreset`を取り込み、`coverage.include`を`src/{infrastructure,presentation,composition}/**`・`src/index.ts`・`lib/workers/**`・`db/client.ts`に絞る。`cloudflareTest`の`miniflare.bindings`にテスト用の`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`と`TEST_MIGRATIONS`(`readNestedD1Migrations`の結果)を渡し、`setupFiles`の`apply-migrations.ts`が`applyD1Migrations`で適用する。`lib/workers`のQueue関連のテスト用に、`miniflare.queueProducers`で`JOBS_DLQ`を追加する。
 - Vitest(event): `coverage.include`を`src/{infrastructure,presentation,composition}/**`・`src/index.ts`に絞り、`db/**`・`lib/**`を`exclude`する。
 - Bunの単体テストは読み込まれたファイルだけを分母にするため、`core`・`domain`・`application`・`db/schema`・`scripts`の単体テストと重ならない(15.2)。
@@ -1720,7 +1782,7 @@ export declare function turnstileGuard(
 | Field        | Detail                              |
 | ------------ | ----------------------------------- |
 | Intent       | 3経路のDI解決と、cron式の一致の検査 |
-| Requirements | 5.4, 10.2                           |
+| Requirements | 5.4, 10.2, 10.9                     |
 
 **Contracts**: Batch [x]
 
@@ -1730,24 +1792,63 @@ export declare function turnstileGuard(
 - Bun(5.4): `di-resolution.unit.test.ts`がコンテナからフィクスチャを解決する。
 - Vitest/Oxc(5.4): `di-resolution.worker.test.ts`がworkerd上でフィクスチャと`PLATFORM_TYPES.KeyedHasher`を`createInvocationContainer`経由で解決する。
 - Wrangler/esbuild(5.4): `smoke-wrangler-bundle.ts`が`test/smoke/wrangler.smoke.jsonc`(`main: wrangler-bundle-entry.ts`)をWranglerの`unstable_startWorker`で起動し、エントリがフィクスチャを解決した結果をHTTPで返すことを確かめて終了コードで示す。
-- `test/config/cron-sync.unit.test.ts`(10.2): `createCronRegistry(SCHEDULED_JOBS).cronExpressions()`と、apiの3環境の`triggers.crons`が一致することを確かめる。
+- `test/config/cron-sync.unit.test.ts`(10.2): `createCronRegistry(SCHEDULED_JOBS).cronExpressions()`と、apiの3環境の`triggers.crons`が一致することを確かめる。あわせて、`createRunBudgetTable(SCHEDULED_RUN_BUDGETS).budgetFor('21 12 * * *')`の予算が300,000msであることを確かめる(10.9、承認後の改訂2)。
+
+### e2e support
+
+#### ScheduledTriggerHelper
+
+| Field        | Detail                                                               |
+| ------------ | -------------------------------------------------------------------- |
+| Intent       | ローカルの定期実行を業務日付と業務時刻で起こすE2Eの共有の補助(改訂2) |
+| Requirements | 10.7                                                                 |
+
+**Contracts**: Service [x]
+
+##### Service Interface
+
+```typescript
+// e2e/support/scheduled-trigger.ts
+export interface ScheduledTriggerInput {
+  readonly worker: 'api' | 'event';
+  readonly businessDate: string; // YYYY-MM-DD(業務日付、UTC-08:00)
+  readonly businessTime: string; // HH:mm(業務時刻)
+}
+export declare function triggerScheduled(
+  input: ScheduledTriggerInput,
+): Promise<void>; // 2xx以外・通信の失敗は例外
+export declare function buildScheduledTriggerURL(
+  input: ScheduledTriggerInput,
+  env: Readonly<Record<string, string | undefined>>,
+): URL; // 要求のURL(純粋関数)
+export declare function businessDateOf(at: Date): string; // YYYY-MM-DD
+export declare function addBusinessDays(date: string, days: number): string; // YYYY-MM-DD
+export declare function isNearBusinessDayBoundary(now: Date): boolean; // UTCの7:40以上8:00未満
+```
+
+- `buildScheduledTriggerURL`: `businessDate`を`parseBusinessDate`で、`businessTime`を`HH:mm`の形と時・分の範囲で検証し(不正なら例外)、`toUtcCronExpression`で式を、`fromBusinessDateTime`でUTCの時点を求め、`<Workerのオリジン>/cdn-cgi/local/scheduled?cron=<式>&time=<UTCのミリ秒>`を返す。式と時点は`apps/backend-lib/core/time/business-time.ts`を読み込んで求め、業務時刻の規則を複製しない。
+- Workerのオリジン: apiは`E2E_API_URL`、eventは`E2E_EVENT_URL`(空文字は未設定と同じ)。既定はapiが`http://localhost:48042`、eventが`http://localhost:48043`(`resolveE2ETargets`と同じ扱い)。
+- `triggerScheduled`: `process.env`で`buildScheduledTriggerURL`を呼び、`fetch`でGETする。2xx以外は、Worker・式・状態コードを含む例外にする。eventは定期実行のハンドラーと`--test-scheduled`の起動を持たないため、`worker: 'event'`の呼び出しはeventがそれらを持つまで例外になる。
+- `businessDateOf`・`addBusinessDays`・`isNearBusinessDayBoundary`: E2Eが業務日付を指定し、業務日付の境界の直前(定期実行の起動と実際の時刻の業務日付がずれ得る20分)のテストを対象外にするための補助。`toBusinessDateTime`・`fromBusinessDateTime`で求める。
+- ローカルの定期実行の経路と`time`の引数はWranglerの版で異なり得るため、この補助の1箇所に閉じ込め、実装時に固定したWranglerの版で確かめる。
+- テスト: `scheduled-trigger.unit.test.ts`(ルートの単体テスト)で、4:21・23:45(UTCの翌日の7:45)・0:00のURLの式と時刻、環境変数による上書きと空文字の扱い、不正な日付・時刻の例外、差し替えた`fetch`での2xx以外の例外、業務日付の補助(UTCの7:59と8:00、7:39と7:40、月またぎの加算)を確かめる。`business-time.ts`もルートの単体テストの分母に入るため、ルートのカバレッジ付きの単体テストがファイルごとの閾値を満たすことを確かめる。満たさない場合は、共有ディレクトリのファイルを利用側のアプリの計測に任せてルートの分母から外す変更(dev-toolingの`bunfig.toml`とその照合の単体テスト、`testing/001`)をdev-toolingへの依頼として開発者へ報告し、承認まで7.4の完了を保留する。
 
 ### docs
 
 #### 技術ドキュメント群・OnboardingUpdates
 
-| Field        | Detail                                                                  |
-| ------------ | ----------------------------------------------------------------------- |
-| Intent       | 規約・部品の使い方・手順の文書化                                        |
-| Requirements | 1.2, 1.6, 2.3, 3.5, 6.4, 11.9, 13.6, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8 |
+| Field        | Detail                                                                                   |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| Intent       | 規約・部品の使い方・手順の文書化                                                         |
+| Requirements | 1.2, 1.6, 2.3, 3.5, 6.4, 9.2, 10.7, 10.9, 11.9, 13.6, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8 |
 
 - ArchitectureDoc(`backend/002-layered-architecture-on-workers.md`): 4層と合成ルート、依存方向と静的解析、処理単位のコンテナ(`jitless`の注意)、登録箇所、共通エラーと共通のエラー形式、ミドルウェアの順序、ヘルスチェック、層とテスト種別・カバレッジの分担。
 - RateLimitingDoc(`backend/003-rate-limiting-and-bot-verification.md`): 厳密カウンタ(ルール・キーのハッシュ化・リセット)、バインディングの制限、Worker単位のIP制限の規約表(13.6)、除外規則、クライアントIPの解決の差し替え、bot判定の検証(2形態・失敗の分類・テスト用の鍵)。
 - SchemaConventionsDoc(`db/003-schema-conventions.md`): 主キー(ULID・全文検索用の連番、1.2)、共通カラムと日時の保持(3.5)、論理削除、列名の変換(`snakeCase.table`)、テーブル定義の配置(1.6)、手書きのマイグレーション(2.3、`db/001`への参照)、接続と一括実行。
-- AsyncProcessingDoc(`infra/003-async-processing.md`): 定期実行(業務時刻での登録・cron式との一致・ローカルでの起動)、非同期メッセージ(契約・封筒・送信・再試行・`defer`・デッドレター)、重複配信と冪等性(11.9)、ジョブとメッセージの使い分け。
-- LoggingDoc(`infra/004-logging-and-error-tracking.md`): ログの形式・カテゴリ・相関ID、伏せ字の規則、呼び出しログの無効化と保持期間、エラートラッキングの送信規則とトレースの割合。
+- AsyncProcessingDoc(`infra/003-async-processing.md`): 定期実行(業務時刻での登録・cron式との一致・ローカルでの起動(`--test-scheduled`と`/cdn-cgi/local/scheduled?cron=<式>&time=<ミリ秒>`、E2Eからは`triggerScheduled`))、非同期メッセージ(契約・封筒・送信・再試行・`defer`・デッドレター)、重複配信と冪等性(11.9)、ジョブとメッセージの使い分け。同じ時刻に直列で動くジョブ群の時間の予算(10.9、承認後の改訂2): 実行基盤の上限から導く規則(1日1回の起動の上限は実時間の上限15分の3分の2の10分、予算は上限の半分の5分、各ジョブの実時間の目安はHTTPの処理のCPU時間の上限と同じ値の30秒)、予算の超過で`warning`(タグ`cron`・所要時間)が送られること、目安を超えるジョブはメッセージ処理へ分割すること、予算の登録の方法(`ScheduledRunBudget`)。予算を適用する起動時刻と本プロジェクトが採用した旨は書かず、`project-values.md`への参照とする(15.6)。
+- LoggingDoc(`infra/004-logging-and-error-tracking.md`): ログの形式・カテゴリ・相関ID、伏せ字の規則(サービス固有のトークンの形式の値のパターンは、固有の値を書かずに「他のパターンより先に当たるよう先頭に置く」という一般的な規則として示す)、呼び出しログの無効化と保持期間、エラートラッキングの送信規則とトレースの割合、エラートラッキングで値の形式の伏せ字を適用する項目(例外の値と種類・メッセージ・パンくず・トランザクションとスパン)と、タグ・コンテキストに秘密情報と個人情報を入れない規則(承認後の改訂3)。
 - KeyedHashingDoc(`security/002-keyed-hashing.md`): 高エントロピーの秘密情報とレート制限キーのHMAC化、用途の分離、照合の方法、ペッパーの管理。
-- ProjectValuesDoc: 「Supporting References」の固有値とヘルスチェックの経路(6.4)を`docs/onboardings/project-values.md`へ記載する(15.6)。
+- ProjectValuesDoc: 「Supporting References」の固有値とヘルスチェックの経路(6.4)、定期実行の時間の予算を適用する起動時刻と値(4:21、予算300,000ms・上限600,000ms・各ジョブの目安30,000ms、10.9)を`docs/onboardings/project-values.md`へ記載する(15.6)。
 - OnboardingUpdates: tech-stack.md(15.7)、オンボーディングの手順(15.8)、依存の版の一覧、CLAUDE.mdの参照先。
 - 記述規則: `docs/GUIDES/tech`にはプロジェクト名・サービス固有の仕様・固有値を書かない(15.6)。
 
@@ -1813,6 +1914,7 @@ export declare function turnstileGuard(
 - ログはWorkers Logs(7日)だけに保存する。相関IDでログとSentryのイベントを結び付ける。
 - 外部の死活監視は`/health`を監視する(設定はlaunch-readiness)。
 - デッドレターの発生はSentryの`error`イベントとして通知される。
+- 予算を定めた起動時刻の定期実行の合計の所要時間が予算を超えると、Sentryの`warning`イベント(タグ`cron`)として通知される(10.9)。アラートの規則はlaunch-readinessが定める。
 
 ## Testing Strategy
 
@@ -1823,40 +1925,42 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
   - `keyed-hasher.unit.test.ts`: 同じ入力は同じ86文字のbase64urlになり、用途が違えば一致しない。`verify`は正しい値で真、1文字違いと不正な形式で偽。ペッパーが空なら`HasherConfigurationError`(4.1〜4.3)。
   - `app-error.unit.test.ts`・`error-envelope.unit.test.ts`: 種類ごとの状態コード、`Retry-After`と`no-store`、500の定型が内部の詳細を含まない(4.4〜4.6)。
   - `cron-registry.unit.test.ts`: 同時刻のジョブが`order`順に並び、名前・順序の重複と範囲外の時刻を拒否する(10.1〜10.3・10.5)。
+  - `run-budget.unit.test.ts`: 4:21の予算が式`21 12 * * *`で引け、予算の無い式は`undefined`になる。`exceedsRunBudget`は300,000msで偽、300,001msで真。同じ時刻の重複・範囲外の時刻・0と小数の予算を拒否する(10.9)。
+  - `scheduled-trigger.unit.test.ts`(ルート): ScheduledTriggerHelperの項目(10.7)。
   - `retry-policy.unit.test.ts`・`envelope.unit.test.ts`・`message-contract.unit.test.ts`: 30・60・120・240秒の後に`dead-letter`になる。封筒の不正を検出する。`MESSAGE_CONTRACTS`に種別の重複が無い(11.5〜11.7)。
   - `fixed-window.unit.test.ts`: 最初の要求で期間が始まりAlarmが予約される。上限で拒否され状態が変わらない。期限切れ後の要求で新しい期間になる(12.1・12.3・12.4)。
   - `siteverify-result.unit.test.ts`: エラーコードごとの分類、操作名・ホスト名の不一致、時間切れ・ネットワーク失敗・JSONでない応答が`unavailable`になる(14.1〜14.4)。
-  - `redaction.unit.test.ts`・`log-record.unit.test.ts`: IPv4・IPv6・メールアドレス・JWT・Bearer・Cookie・`token`のフィールドが伏せ字になり、通常の値は残る(8.1・8.3)。
-  - `scrub-event.unit.test.ts`: IPアドレス・Cookie・認証ヘッダー・本文が除かれ、`AppError`のイベントが落ちる(9.2・9.3)。
+  - `redaction.unit.test.ts`・`log-record.unit.test.ts`: IPv4・IPv6・メールアドレス・JWT・Bearer・公開APIのキー(`lsk_`と43文字)・Cookie・`token`のフィールドが伏せ字になり、通常の値と`lsk_`で始まるがキーの形式に合わない短い値は残る。キーの43文字の中に、前後を数字以外の文字で挟んだLuhnの検査を通る16桁の数字の並び(`CREDIT_CARD_NUMBER_PATTERN`に当たる形)を含めた値が1つの`[REDACTED]`になり、キーの断片が残らない。パターンの順序を入れ替えるとこのテストが失敗する(パターンを先頭に置く理由の確認)(8.1・8.3)。メッセージ中のLuhnの検査を通る16桁の数字の並び・メールアドレス・JWTがそれぞれ`[REDACTED]`になり、Luhnの検査を通らない16桁の数字は残る(承認後の改訂3)。
+  - `scrub-event.unit.test.ts`: IPアドレス・Cookie・認証ヘッダー・本文が除かれ、パンくずの`data`の公開APIのキーが伏せ字になり、`AppError`のイベントが落ちる(9.2・9.3)。公開APIのキー(`lsk_`と43文字)と、前後を数字以外の文字で挟んだLuhnの検査を通る16桁の数字の並び(カード番号の形)を、例外の値・例外の種類・イベントの`message`・`logentry`の`message`と`formatted`と`params`・パンくずの`message`・リクエストのURL・トランザクションの名前にそれぞれ入れると`[REDACTED]`になり、周りの文字列は残る。`scrubTransaction`でトランザクションの名前・スパンの説明と`data`の値・`contexts.trace.data`の値に入れたキーが伏せ字になる。パターンに当たらない値(通常の例外のメッセージ・クラス名)は変わらない(9.2、承認後の改訂3)。
   - `env-schema.unit.test.ts`: 欠けたキーと不正なキーの名前だけが返り、値が例外に含まれない(7.5)。
   - `columns.unit.test.ts`・`text-no-case.unit.test.ts`: 列の型・NOT NULL・既定値・更新時の値(1.1・1.3〜1.5)。
   - `compare-migrations.unit.test.ts`: 保存先とWranglerの一覧の一致・不一致・0件の判定と、一覧の出力の解析(2.5)。
   - `read-nested-d1-migrations.unit.test.ts`: 一時ディレクトリの`<日時>_<名前>/migration.sql`を名前順に読み、`--> statement-breakpoint`で文に分ける。
-  - `wrangler-config.unit.test.ts`・`cron-sync.unit.test.ts`・`layer-rules.unit.test.ts`: WranglerConfigs・CronSyncTest・AppLayerRulesの項目(5.1・7.1〜7.4・7.6・8.4・10.2・11.7・13.1)。
+  - `wrangler-config.unit.test.ts`・`cron-sync.unit.test.ts`・`layer-rules.unit.test.ts`: WranglerConfigs・CronSyncTest(`SCHEDULED_RUN_BUDGETS`の4:21の予算を含む)・AppLayerRulesの項目(5.1・7.1〜7.4・7.6・8.4・10.2・10.9・11.7・13.1)。
   - `di-resolution.unit.test.ts`: Bunでの`@inject`の解決(5.3・5.4)。
 - **Integration Tests**(Workers統合テスト、workerd)
   - `create-worker-app.worker.test.ts`: `/health`が環境の欠けた状態でも200と`no-store`を返す。未登録の経路が404、`AppError`と想定外の例外が共通のエラー形式になる。アクセスログに1件、クエリ文字列とIPを含まずに出る。相関IDが同じ処理の全ログに付く(4.5・4.6・5.6・6.1〜6.3・7.5・8.2・8.5)。
   - `invocation-container.worker.test.ts`: 2つの同時リクエストが別の`Database`・単一インスタンスを受け取る(5.2)。
   - `ip-rate-limit.worker.test.ts`・`binding-rate-limit.worker.test.ts`: 同じIPの101回目が429・`Retry-After: 10`になり、別のIPは影響を受けない。除外規則に当たるリクエストは数えない。差し替えたリゾルバの値で数える(13.1〜13.5・13.7)。
   - `rate-limit-counter.worker.test.ts`: 並行した`hit`が正確に数えられ、`runDurableObjectAlarm`の後に記録が消え、`reset`で途中から0に戻る。拒否時に`assertWithinLimit`が429と残り秒数を返す(12.1〜12.8)。
-  - `scheduled-dispatcher.worker.test.ts`: 2つのジョブのうち1つ目が失敗しても2つ目が実行され、未登録の式で警告だけになり、0件で成功する(8.6・10.3〜10.5・10.8)。
+  - `scheduled-dispatcher.worker.test.ts`: 2つのジョブのうち1つ目が失敗しても2つ目が実行され、未登録の式で警告だけになり、0件で成功する(8.6・10.3〜10.5・10.8)。差し替えた時計とトランスポートで、予算のある式の合計が予算を1ms超えると`warning`のログとSentryの`warning`(タグ`cron`、コンテキストの所要時間)が1回送られ、予算ちょうど・予算の無い式・失敗したジョブを含む予算以内の起動では送られず、要約に`totalDurationMs`が出る(10.9)。
   - `queue-consumer.worker.test.ts`・`dead-letter-consumer.worker.test.ts`: `createMessageBatch`で、成功の`ack`、失敗の`retry`と遅延、上限到達・未登録の種別・不正な本文でのデッドレター通知、`defer`の再送、1件の失敗が他に影響しないこと、デッドレターのログとSentryに本文が含まれないことを確かめる(11.1〜11.8)。
   - `queue-publisher.worker.test.ts`: 封筒の付与と遅延送信、未登録・不正な本文の拒否(11.2・11.3)。
   - `turnstile-verifier.worker.test.ts`・`turnstile-guard.worker.test.ts`: 差し替えた`fetch`で、成功・各失敗の状態コード、5秒の打ち切り、トークンがログに出ないこと(14.1〜14.7)。
-  - `sentry.worker.test.ts`: 差し替えたトランスポートで、想定外の例外が1回だけ送られ、`AppError`は送られず、DSNが無ければ送らず、トランスポートの失敗が応答を変えない(9.1・9.3〜9.6)。
+  - `sentry.worker.test.ts`: 差し替えたトランスポートで、想定外の例外が1回だけ送られ、`AppError`は送られず、DSNが無ければ送らず、トランスポートの失敗が応答を変えない(9.1・9.3〜9.6)。メッセージに公開APIのキーを含む想定外の例外が`[REDACTED]`になって届き、`buildSentryOptions`の`beforeSend`・`beforeSendTransaction`に`scrubEvent`・`scrubTransaction`がつながっている(9.2、承認後の改訂3)。
   - `client.worker.test.ts`(db): 共通カラム・論理削除の絞り込み・大文字小文字の一意判定・`batch`の途中失敗での取り消し(1.3〜1.5・1.7・2.6・2.7)。
   - eventの`index.worker.test.ts`: `/health`、IP制限、本体Queueからデッドレターのconsumerまでの経路(6.1・11.6〜11.8・13.1)。
   - `di-resolution.worker.test.ts`: workerd(Oxc)での解決(5.3・5.4)。
 - **スモーク・手順の検証**(実装時)
   - `bun run test:smoke`: Wranglerのバンドル(esbuild)で起動したWorkerでの解決(5.4)。
   - `bun run db:migrations:check`: 0件で成功する(2.5)。手書きの仮マイグレーションを一時的に置いて検出されることを確かめ、確認後に削除する。
-  - `wrangler dev`での起動とヘルスチェック、`/cdn-cgi/handler/scheduled`での手動起動、apiから送ったメッセージがeventのconsumerへ届くか(research.mdのRisk)。
+  - `wrangler dev`での起動とヘルスチェック、`triggerScheduled`(`/cdn-cgi/local/scheduled`)での手動起動、apiから送ったメッセージがeventのconsumerへ届くか(research.mdのRisk)。
 - **Performance**
   - `create-worker-handler.worker.test.ts`で、ハンドラーを組み立てただけではログ設定とコンテナ生成が行われず、最初の呼び出しで初めて行われることを確かめる(グローバルスコープの規則、5.7)。デプロイ時の起動時間(Worker Startup Time)はinfra-deliveryのデプロイ出力で確かめる。
 
 ## Security Considerations
 
-- 個人情報: ログはフィールド名と値のパターンの二段で伏せ字にし、呼び出しログを無効にする(DR-008)。Sentryは`sendDefaultPii: false`と除去処理でIPアドレス等を送らない(NFR-OBLOG-004)。デッドレターの通知に本文を含めない。
+- 個人情報: ログはフィールド名と値のパターンの二段で伏せ字にし、呼び出しログを無効にする(DR-008)。Sentryは`sendDefaultPii: false`と除去処理でIPアドレス等を送らず、例外の値・メッセージ・パンくず・トランザクションとスパンに紛れた秘密情報も値の形式で伏せる(NFR-OBLOG-004、承認後の改訂3)。デッドレターの通知に本文を含めない。
 - 秘密情報: `HASH_PEPPER`・`TURNSTILE_SECRET_KEY`・`SENTRY_DSN`はInfisicalで管理し、`secrets.required`でキー名だけを宣言する。ローカルでも`.dev.vars`を作らない。
 - レート制限キー: Durable Objectsに保存するキーは`HashedRateLimitKey`型で強制し、元のIPアドレス・メールアドレスを保存しない(FR-RLMIT-017)。
 - IP制限の除外は、署名・トークンで真正性を確かめる経路と、エッジキャッシュの後ろの画像配信に限る(Q1)。除外の登録は各specのコードレビューの対象とする。
@@ -1867,7 +1971,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
 
 - グローバルスコープ1秒以内(2.5節): 初期化はすべて最初の呼び出しまで遅らせる。
 - 処理単位のコンテナの生成は束縛の登録だけで、I/Oを伴わない。
-- 定期実行はCPU時間の上限(日次の式は15分、ただしHTTPと同じ30秒を目安とする)に収まるよう、重い処理をメッセージへ分割する(`infra/003`)。
+- 定期実行は実時間・CPU時間の上限(日次の式は15分)に収まるよう、1日1回の起動の全ジョブの合計の実時間の予算を5分・上限を10分、各ジョブの目安を30秒とし、目安を超える重い処理をメッセージへ分割する(`infra/003`、承認後の改訂2)。予算を適用する起動時刻(4:21)は`SCHEDULED_RUN_BUDGETS`と`project-values.md`に置き、超過は`warning`(タグ`cron`)で知らせる(10.9)。予算と上限の実測による確認はlaunch-readinessが行う。
 - メッセージのconsumerはバッチ10件を1件ずつ処理し、1件の処理時間がCPU時間30秒を超えないことを各ハンドラーの責任とする。
 
 ## Migration Strategy

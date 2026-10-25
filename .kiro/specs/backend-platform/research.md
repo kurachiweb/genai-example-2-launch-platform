@@ -80,7 +80,8 @@
 - **Findings**:
   - Cron TriggersはWorkers Paidでアカウントあたり250個。CPU時間はCron Triggerあたり30秒(実行間隔1時間未満)・15分(1時間以上)。
   - `triggers.crons`を空配列にしてデプロイすると、既存のCron Triggersはすべて削除される。変更の反映には最大15分かかる。
-  - ローカルでは`wrangler dev --test-scheduled`で起動し、`/cdn-cgi/handler/scheduled?cron=<式>`へのリクエストで任意の式のハンドラーを起こせる。
+  - ローカルでは`wrangler dev --test-scheduled`で起動し、`/cdn-cgi/local/scheduled?cron=<式>&time=<ミリ秒>`へのリクエストで任意の式と予定時刻(`scheduledTime`)のハンドラーを起こせる(経路と引数はWranglerの版で異なり得るため、実装時に固定した版で確かめる。承認後の改訂2で直した)。
+  - Cron Triggersの1回の起動の実時間の上限は15分である(launch-readinessの調査)。
 - **Implications**: 日次タイムラインの時刻をcron式として定義できる。登録されたジョブの業務時刻とWrangler設定の`triggers.crons`を単体テストで突き合わせる。
 
 ### Workers Logsの呼び出しログ
@@ -218,3 +219,70 @@
 - [Queues: Dead Letter Queues](https://developers.cloudflare.com/queues/configuration/dead-letter-queues/) — 自動の移送と`max_retries`
 - [Turnstile: Server-side validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/) — siteverifyの要求・応答とエラーコード、テスト用の鍵
 - [ADR-0001](../../../docs/adr/0001-drizzle-orm-over-mikroorm.md) — Drizzle ORM単体の採用
+
+## public-apiの依頼による承認後の改訂(改訂1、2026-10-24)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、public-apiの依頼による。2026-10-24に開発者が確定した(推奨どおり)。開発者に確認したQ1〜Q7とは別の項目として記録する。`spec.json`のタスクの承認はタスクのグラフのサニティレビューの結果を表し、改訂1の開発者の確認を意味しない。
+- **Context**: public-apiのresearch.mdの「上流・後続specへの影響」とRisks(コーディネーター経由。requested by public-api)。公開APIのキーの平文(`lsk_`と32バイトのbase64urlの43文字)は、`Authorization`のヘッダーとしてはフィールド名(`authorization`)と`Bearer <値>`のパターンで伏せられるが、ログのメッセージ・属性の値・Sentryのパンくずに紛れた場合は既存のパターンに当たらず、そのまま残り得た。
+- **改訂の内容**: `REDACTION_PATTERNS`の先頭に`lsk_[A-Za-z0-9_-]{43}`(`g`フラグ付き、置き換えは定数`REDACTED`の`[REDACTED]`)を加える。`redactByPattern`は配列の順に置き換えるため、キーの一部がカード番号などのパターンに先に当たらないよう先頭に置く。Sentryでは`SentryScrubber`が同じ`REDACTION_PATTERNS`をパンくずの`data`の値に適用するため、そこに紛れたキーも伏せられる(`SentryScrubber`の処理は変えない)。
+- **範囲の外**: Sentryの例外のメッセージ(`exception.values[].value`)・`message`・パンくずの`message`には、改訂の前から`REDACTION_PATTERNS`を適用しておらず、本改訂でも対象外のままである。これらにも適用するかは、要件9.2と`SentryScrubber`の範囲を広げる判断になるため、開発者の確認事項として残した(2026-10-24に開発者が適用すると決定し、改訂3で範囲を広げた。下の改訂3の節を参照)。
+- **要件**: 要件8.3(トークン・秘密情報を値の形式で検出して伏せる)の範囲の中のパターンの追加で、利用者・運用者から見える振る舞いの変更ではないため、`requirements.md`は変えていない。
+- **変えた箇所**: 設計の`LogRecordFormat・LogRedaction`の`REDACTION_PATTERNS`の説明・Revalidation Triggers・Testing Strategyの`redaction.unit.test.ts`と`scrub-event.unit.test.ts`、タスク2.5の詳細と完了状態、2.6の完了状態と`_Depends: 2.5_`(`REDACTION_PATTERNS`を使う既存の依存の明記。同じ大項目の2.5に依存するため`(P)`を外した)、8.3の技術ドキュメントに固有のキーの形式とそのプレースホルダーを書かず一般的な規則として書く旨、コンポーネントの表の`SentryScrubber`の依存(LogRedaction)。番号の変更は無い。
+- **Follow-up**(2026-10-24の確定により前半は不要): 開発者の確認が得られない場合は、タスク2.5・2.6・8.3と設計のうち改訂1で加えた部分を外す。本specの実装の時点でpublic-apiのキーの形式が変わっていれば、パターンを合わせる。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って2回行った。どちらも新しいサブエージェントによる独立した確認(independent)である。
+  - 1回目はNEEDS_FIXES(必須1件・軽微5件)だった。必須の指摘は、Sentryでキーが伏せられる範囲の記述が誇張だったこと(パンくずの`data`の値だけで、例外のメッセージは対象外である旨に直した)。軽微の指摘(置き換えの文字列の表記、2.6の2.5への依存の明記、Sentry側のテスト、パターンの順序、技術ドキュメントへの`lsk_`の混入の防止)もすべて直した。
+  - 2回目はNEEDS_FIXES(必須1件・軽微3件)だった。必須の指摘は、1回目の修正で2.6に`_Depends: 2.5_`を足したのに`(P)`が残り、同じ大項目の直前のタスクへの依存と`(P)`が食い違ったこと。軽微の指摘は、コンポーネントの表の`SentryScrubber`の依存が「なし」のままであること、8.3が参照する固有の値(接頭辞)の記載の担当、パターンを先頭に置く根拠を確かめるテストが無いこと。
+  - kiro-spec-tasksの規則(2回目の判定がPASSでなければ、それ以上レビューを繰り返さずに止める)に従い、3回目のレビューを行っていない。`tasks.md`は2回目の必須の指摘(2.6の`(P)`を外す)と軽微の2件(`SentryScrubber`の依存、接頭辞の記載はpublic-apiの担当である旨)を直した下書きで、タスクの承認(`approvals.tasks.approved`)は`false`に戻した。
+- **タスクの計画の再検証(2026-10-24、コーディネーターの指示による再実行)**: `/kiro-spec-tasks backend-platform -y`を、修正済みの`tasks.md`を既存の下書きとして引き継ぐ形で再実行した。あわせて、パターンを先頭に置く理由を確かめるテスト(前後を数字以外の文字で挟んだLuhnの検査を通る16桁を含むキーが1つの`[REDACTED]`になり、パターンの順序を入れ替えると失敗する)を2.5とTesting Strategyに加えた。タスクの計画のレビューゲートでは、要件の105件の受け入れ基準の番号がすべてタスクにあることを機械的に確かめた。新しいサブエージェントによる独立した確認(independent)を、通常の2回の上限で行った。
+  - 1回目の判定はNEEDS_FIXES(必須1件・軽微4件)だった。必須の指摘は、8.3が技術ドキュメントからキーの接頭辞をproject-valuesの記載へ参照させていたが、その記載は後続のpublic-apiの担当で、8.3・8.5の実装の時点では参照先が無いこと(8.3を、固有の値もプレースホルダーも書かず一般的な規則として書く形に直した)。軽微の指摘(タスクの承認と改訂1の開発者の確認の関係の明記、順序のテストのデータの条件と順序を入れ替えたときの失敗の確認、Revalidation Triggersの向きの書き分け)も直した。
+  - 2回目の判定はPASSだった。軽微の指摘3件(8.3の完了状態の伏せ字の対象の判断基準、設計のLoggingDocへの一般的な規則の記載、Follow-upで外す範囲の明確化)に従って直した。タスクを承認した(改訂1はその後の2026-10-24に開発者が確定した)。
+- **開発者の判断の論点(解決済み)**: Sentryの例外のメッセージ・`message`・パンくずの`message`へ`REDACTION_PATTERNS`を適用するか(要件9.2と`SentryScrubber`の範囲の拡大)。2026-10-24に開発者が適用すると決定し、改訂3で範囲を広げた。
+
+## spec横断レビューの指摘による承認後の改訂(改訂2、2026-10-24)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、cross-spec reviewの指摘による(launch-readinessの申し送りの受け入れ)。2026-10-24に開発者が確定した(推奨どおり)。`spec.json`のタスクの承認は変更部分のタスクのレビューの結果を表し、改訂2の開発者の確認を意味しない。
+- **Context**: launch-readinessの仮1(4:21の日次バッチの時間の予算と上限)とresearch.mdの「上流・後続specへの影響」が、予算の値の記載と超過の警告を本specへ申し送っていた。また、本specの文書はローカルの定期実行の経路を現行のWranglerの文書と異なる旧い経路で書いていたが、現行の経路は`/cdn-cgi/local/scheduled`(`time`の引数で予定時刻を指定できる)である。さらに、launch-readinessが自前の`e2e/support/scheduled-trigger.ts`を計画しており、定期実行をローカルで起こす他のspecも同等の補助を作るおそれがあった。
+- **決定**:
+  - 予算: 1日1回の起動の全ジョブの合計の実時間の予算5分・上限10分(Cron Triggersの実時間の上限15分の3分の2)・各ジョブの目安30秒(launch-readinessの仮1の値)を`infra/003`に一般的な規則として記し、予算を適用する起動時刻(4:21)と値は`project-values.md`と`SCHEDULED_RUN_BUDGETS`に置く。`infra/003`では値を実行基盤の上限から導く規則(上限は実時間の上限の3分の2、予算は上限の半分、各ジョブの実時間の目安はHTTPの処理のCPU時間の上限と同じ値の30秒)として書き、同じ技術選定の他のプロジェクトにも当てはまる形にする。技術ドキュメントに固有の値を書かない規則(15.6)のため、4:21の時刻と本プロジェクトが採用した旨は`infra/003`に書かず、`project-values.md`への参照とする。
+  - 警告: `ScheduledDispatcher`が、予算の表(`RunBudgetTable`、core)に起動時刻がある場合に、最初のジョブの開始から最後のジョブの終了までの合計を予算と比べ、超えたら要約の前に`warning`ログとSentryの`captureMessage`(レベル`warning`・タグ`cron`(式)・コンテキスト`scheduled_run`に所要時間と予算)を送る。予算ちょうどは送らない。要約の`info`に合計の所要時間(`totalDurationMs`)を加える。上限10分と各ジョブの目安30秒は警告の対象にせず、launch-readinessの検証(`CronBudgetJudge`)が判定する。
+  - 経路: ローカルの定期実行の経路を`/cdn-cgi/local/scheduled?cron=<式>&time=<ミリ秒>`に直した(design.mdの追跡表・パッケージのスクリプトの注記・Testing Strategy、本書のCron Triggersの上限の節)。
+  - 共有の補助: `e2e/support/scheduled-trigger.ts`の`triggerScheduled(input: { readonly worker: 'api' | 'event'; readonly businessDate: string; readonly businessTime: string }): Promise<void>`を本specが持つ。launch-readinessの設計の`ScheduledTrigger`の業務日付の処理(`businessDateOf`・`addBusinessDays`・`isNearBusinessDayBoundary`)も取り込んだ。業務時刻の計算は`apps/backend-lib/core/time/business-time.ts`を読み込み、規則を複製しない(launch-readinessの設計は補助の中で計算を閉じる案だったが、規則の二重管理を避けた)。
+- **理由**: 予算の超過を運用者が実測を待たずに知れるようにするため(launch-readinessの仮1)。経路の誤りはオンボーディングの手順とE2Eの補助をそのまま失敗させるため。補助を上流に1つ置くと、定期実行を起こすE2Eを持つドメインspecがそれぞれ補助を作らずに済む。
+- **要件**: 予算の超過の警告は運用者から見える振る舞いのため、要件10.9を加え、`requirements.md`の「承認後の改訂」の表に改訂2の行を置いた。経路の修正と共有の補助は要件10.7の範囲の中の修正である。
+- **変えた箇所**(変更部分のタスクのレビューの1回目の指摘による修正を含む): 設計のThis Spec Owns・契約・Revalidation Triggers・File Structure Plan(`run-budget.ts`・`scheduled-jobs.ts`の注記・`e2e/support/scheduled-trigger.ts`)・Modified Files・定期実行の流れ・追跡表(10.7・10.9)・コンポーネントの表(`RunBudgetTable`・`ScheduledTriggerHelper`・`ScheduledDispatcher`・`AppComposition`・技術ドキュメント群)・`RunBudgetTable`と`ScheduledTriggerHelper`の節・`ScheduledDispatcher`の契約(任意の`options`)と処理・`AppComposition`・パッケージのスクリプトの注記・AsyncProcessingDoc・ProjectValuesDoc・Monitoring・Testing Strategy・Performance & Scalability。タスク2.10・6.2・7.1・8.3・8.5・9.1の詳細と完了状態と要件、新しいタスク2.11(予算の表)・7.4(共有の補助)。既存の番号の変更は無い。
+- **Follow-up**(2026-10-24の確定により前半は不要): 開発者の確認が得られない場合は、要件10.9と、タスク2.11と、6.2・7.1・8.3・8.5のうち改訂2で加えた部分を外す(経路の修正と共有の補助は残す)。launch-readinessの仮1の値が変われば`SCHEDULED_RUN_BUDGETS`・`infra/003`・`project-values.md`を合わせる。eventは定期実行を持たないため、`triggerScheduled`の`worker: 'event'`は、eventが定期実行のハンドラーと`--test-scheduled`の起動を持つまで例外になる。
+- **開発者の確認の論点(2026-10-24に確定)**: 予算の値(launch-readinessの仮1。同日に確定)と、超過を`warning`として送る形(タグ`cron`)。いずれも推奨どおりに確定した。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って2回行った。どちらも新しいサブエージェントによる独立した確認(independent)である。
+  - 1回目はNEEDS_FIXES(必須1件・軽微6件)だった。必須の指摘は、改訂2の経緯の記述に旧い経路の文字列が残っていたこと(文字列を書かない形に直した)。軽微の指摘(業務時刻のファイルがルートのカバレッジの分母に入ること、2.10が独立に確かめられる2つの成果を持つこと(予算の表を2.11に分けた)、8.3の完了状態の照合先、`infra/003`の値を実行基盤の上限から導く規則として書くこと、`SCHEDULED_RUN_BUDGETS`のテストの受け持ち(CronSyncTest)、8.5の10.7)もすべて直した。
+  - 2回目はPASSだった。軽微の指摘のうち、ルートのファイルごとのカバレッジの閾値を満たさない場合の扱い(dev-toolingの設定の変更を開発者へ報告し7.4の完了を保留する)、各ジョブの目安30秒が実時間であることの明記、8.3の完了状態を並行の8.5ではなく設計の値と照合することを直した。6.2の大きさの指摘は、同じ境界の中の作業のため分けなかった。タスクの承認(`approvals.tasks.approved: true`)を保った(改訂2はその後の2026-10-24に開発者が確定した)。
+
+### 変更履歴
+
+- 2026-10-24(改訂2): 上記の改訂。cross-spec reviewの指摘による。2026-10-24に開発者が確定。
+- 2026-10-24(改訂3): Sentryの伏せ字の範囲の拡大。開発者が決定(下の改訂3の節)。
+- 2026-10-24(確定): 改訂1・改訂2を開発者が推奨どおり確定。振る舞いの変更は無い(末尾の「開発者の確定(2026-10-24)」)。
+- 2026-10-24(文言の整合、改訂の番号なし): パッケージのスクリプトの注記と追跡表7.8に、infra-deliveryの改訂1の実装の後のapi・eventのローカルの起動の形(`run-with-secrets --scope local --worker <api|event>`。`WORKER_SCOPED_SECRETS`の`STRIPE_API_KEY`はWorkerごとのフォルダからだけ渡る)を書き加えた。本specの実装の時点の起動の形(`infisical run`)は変えていない。振る舞いの変更は無く、タスクも変えていない。cross-spec reviewの指摘による。
+
+## 開発者の決定による承認後の改訂(改訂3、2026-10-24)
+
+- **状態**: 2026-10-24に開発者が決定した改訂で、確定している(仮の決定ではない)。改訂1の「範囲の外」と「開発者の判断の論点」として残していた論点を解決する。roadmapの「Requirement Ambiguities」の該当の行はコントローラーが閉じる。
+- **決定**: APIキーなどの秘密の値は、例外のメッセージに現れた場合も伏せる。`SentryScrubber`の`REDACTION_PATTERNS`の適用先を、パンくずの`data`の値(既存)に加えて、例外の値(`exception.values[].value`)・イベントの`message`(`logentry`の`message`・`formatted`・文字列の`params`を含む)・パンくずの`message`へ広げる。
+- **追加で対象にした項目と理由**:
+  - 例外の種類(`exception.values[].type`): 通常はクラス名だが、`Error.name`はコードから任意の文字列を設定できるため対象に含めた。クラス名はパターンに当たらないため、通常の値は変わらない。
+  - トランザクションの名前(`transaction`。エラーイベントにも付く)、スパンの説明(`spans[].description`)と`data`の文字列の値、`contexts.trace.data`の文字列の値: Honoの経路や外部へのHTTPの呼び出しの計装が、トークン・キーを含むURLや経路を名前・説明・`data`に入れ得るため、`scrubTransaction`でも適用する。
+  - 対象にしない項目: スタックトレースのフレーム(アプリのソースの情報で利用者の値を含まない)、アプリが付けるタグ・コンテキスト(秘密情報と個人情報を入れない規則を`infra/004`に書き、コードレビューで守る)。
+- **要件**: 要件9.2を、例外のメッセージと種類・イベントのメッセージ・パンくずのメッセージと値・リクエストのURL・パフォーマンストレースの名前と説明と付随する値に含まれる秘密情報と個人情報を値の形式で検出して伏せる形に広げ、`requirements.md`の「承認後の改訂」の表に改訂3の行(2026-10-24に開発者が決定)を置いた。表の見出しと注記を、改訂ごとに状態(開発者が確定・開発者が決定)を示す形に改めた。
+- **変えた箇所**: 設計の`LogRecordFormat・LogRedaction`の`REDACTION_PATTERNS`の説明、`SentryScrubber`の処理、追跡表の9.2、Revalidation Triggers、LoggingDoc、Testing Strategyの`scrub-event.unit.test.ts`、Security Considerations、技術ドキュメント群の要件。タスク2.6の詳細・先に書くテスト・完了状態、8.3の詳細と要件(9.2を追加)。番号の変更は無い。
+- **後続への影響**: launch-readinessの要件16.12・チェックリストA-09は、開発者の判断を求める形から、stagingでダミーの`lsk_`のキーを含む例外がSentryで伏せられて届くことを確かめる形に変わる(launch-readinessの担当)。
+- **変更部分のタスクのレビューの1回目による追加**:
+  - 置き換えの文字列の統一: `@logtape/redaction`の既製のカード番号のパターンは`XXXX-XXXX-XXXX-XXXX`、メールアドレスは`REDACTED@EMAIL.ADDRESS`、JWTは`[JWT REDACTED]`に置き換えるため、カード番号の形が`[REDACTED]`にならなかった。正規表現(カード番号はLuhnの検査も)を保ったまま置き換えを`REDACTED`へ包み直し、全パターンの出力を`[REDACTED]`に統一した(タスク2.5の詳細と完了状態、設計の`REDACTION_PATTERNS`の説明・Testing Strategy・Revalidation Triggers)。ログの出力の文字列も変わるが、伏せる範囲は変わらない。
+  - リクエストのURL(`request.url`)も、トークンを含む経路やクエリ文字列が残り得るため対象に加えた。
+  - 計装への結線の確認: タスク4.2の完了状態と`sentry.worker.test.ts`に、メッセージに公開APIのキーを含む例外が`[REDACTED]`になって届くことと、`beforeSend`・`beforeSendTransaction`のつながりを加え、4.2と追跡表の9.2に要件9.2を加えた。8.3の完了状態に、伏せ字を適用する項目の一覧と除去処理の実装の一致を加えた。
+  - 改訂1との関係: テストの公開APIのキーのパターン(`lsk_`)は改訂1が加えたもので、改訂1は2026-10-24に開発者が確定したため、`lsk_`のキーのテストをそのまま使う。
+- **変えたタスク(改訂3の全体)**: 2.5、2.6、4.2、8.3。番号の変更は無い。
+- **変更部分のタスクの検証(改訂3)**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って2回行った。どちらも新しいサブエージェントによる独立した確認(independent)である。1回目はNEEDS_FIXES(必須1件・軽微8件)で、必須の指摘は既製のカード番号のパターンが`[REDACTED]`ではなく`XXXX-XXXX-XXXX-XXXX`に置き換えること(置き換えの統一で直した)。軽微の指摘(要件9.2と改訂3の行の範囲、2.6のスパンの`data`とトレースのコンテキストの確かめ、`logentry`の`formatted`、4.2での結線の確認、改訂1との関係、表の注記、8.3の完了状態、リクエストのURL)もすべて直した。2回目はPASSで、軽微の指摘(SentryInstrumentationの要件への9.2、`REDACTION_PATTERNS`の説明の項目の一覧、本節の要件の要約、カード番号の置き換えの範囲)も直した。タスクの承認(`approvals.tasks.approved: true`)を保った。
+
+## 開発者の確定(2026-10-24)
+
+- 2026-10-24に開発者が改訂1(公開APIのキー`lsk_`のパターン)と改訂2(4:21の予算の超過の警告・ローカルの定期実行の経路・共有の補助`triggerScheduled`)を推奨どおりに確定した。改訂3は同日に開発者が決定済みである。本specの承認後の改訂は全て確定し、開発者の判断を待つ論点は残っていない。
+- 確定に伴う振る舞いの変更は無い(採用していた案どおり)。要件・設計・タスクから確認を待つ旨の記述を除き、`requirements.md`の「承認後の改訂」の表の状態を確定に改めた。改訂1の取り下げに備えた代替の記述(`lsk_`のテストの置き換え)と、改訂2の開発者の確認が得られない場合のFollow-upは、確定により不要になった。
