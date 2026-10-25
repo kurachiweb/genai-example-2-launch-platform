@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  bindingSchema,
   type PlatformEnv,
   platformEnvShape,
 } from '../../lib/workers/env/platform-env.ts';
@@ -19,10 +20,7 @@ export type ApiWorkerEnv = Satisfies<Env, ApiEnv>;
 
 export const apiEnvSchema = z.object({
   ...platformEnvShape,
-  // バインディングの実体はworkerdが注入するため、存在とオブジェクトであることだけを確かめる
-  RATE_LIMIT_COUNTER: z.custom<DurableObjectNamespace<RateLimitCounter>>(
-    (value) => typeof value === 'object' && value !== null,
-  ),
+  RATE_LIMIT_COUNTER: bindingSchema<DurableObjectNamespace<RateLimitCounter>>(),
   TURNSTILE_SECRET_KEY: z.string().min(1),
   TURNSTILE_EXPECTED_HOSTNAMES: z.string(),
 });

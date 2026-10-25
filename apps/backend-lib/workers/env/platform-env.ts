@@ -29,17 +29,17 @@ const PLATFORM_LOG_LEVELS = [
 const SAMPLE_RATE_PATTERN = /^(?:0(?:\.\d+)?|1(?:\.0+)?)$/;
 
 // バインディングの実体はworkerdが注入するため、存在とオブジェクトであることだけを確かめる
-function binding<T>() {
+export function bindingSchema<T>(): z.ZodCustom<T> {
   return z.custom<T>((value) => typeof value === 'object' && value !== null);
 }
 
 export const platformEnvShape = {
-  DB: binding<D1Database>(),
-  IMAGES_BUCKET: binding<R2Bucket>(),
-  FILES_BUCKET: binding<R2Bucket>(),
-  QUARANTINE_BUCKET: binding<R2Bucket>(),
-  JOBS_QUEUE: binding<Queue<QueueEnvelope>>(),
-  IP_RATE_LIMITER: binding<RateLimit>(),
+  DB: bindingSchema<D1Database>(),
+  IMAGES_BUCKET: bindingSchema<R2Bucket>(),
+  FILES_BUCKET: bindingSchema<R2Bucket>(),
+  QUARANTINE_BUCKET: bindingSchema<R2Bucket>(),
+  JOBS_QUEUE: bindingSchema<Queue<QueueEnvelope>>(),
+  IP_RATE_LIMITER: bindingSchema<RateLimit>(),
   HASH_PEPPER: z.string().min(1),
   LOG_LEVEL: z.enum(PLATFORM_LOG_LEVELS),
   SENTRY_ENVIRONMENT: z.string().min(1),
