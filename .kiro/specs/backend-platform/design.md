@@ -1338,17 +1338,15 @@ export declare function createWorkerApp<E extends PlatformEnv>(
 ##### Service Interface
 
 ```typescript
-import type { Sink } from '@logtape/logtape';
-
 export interface LoggingOptions {
   readonly appName: 'api' | 'event';
   readonly level: 'debug' | 'info' | 'warning' | 'error';
-  readonly sink?: Sink; // テストで差し替える。既定はコンソールシンク
+  readonly console?: Console; // テストで出力を受け取る(承認後の改訂5)。既定はグローバルの`console`
 }
 export declare function ensureLoggingConfigured(options: LoggingOptions): void; // isolateごとに1回。レベルが変われば再設定
 ```
 
-- `configureSync`で、シンクを`redactByField(getConsoleSink({ formatter: redactByPattern(objectConsoleFormatter, REDACTION_PATTERNS) }), { fieldPatterns: REDACTED_FIELD_PATTERNS, action: () => REDACTED })`とし、`contextLocalStorage`に`node:async_hooks`の`AsyncLocalStorage`を渡す。
+- `configureSync`で、シンクを`redactByField(getConsoleSink({ console, formatter: redactByPattern(objectConsoleFormatter, REDACTION_PATTERNS) }), { fieldPatterns: REDACTED_FIELD_PATTERNS, action: () => REDACTED })`とし、`contextLocalStorage`に`node:async_hooks`の`AsyncLocalStorage`を渡す。
 - 出力先はコンソールだけで、Workers Logs(保持7日)に保存される(8.8)。外部へのログ転送(Logpush・Tail Worker)は設けない。
 - `LOG_LEVEL`が不正な場合も、ログの設定は`info`で続け、環境の検証で失敗させる。
 

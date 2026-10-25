@@ -263,6 +263,7 @@
 - 2026-10-24(確定): 改訂1・改訂2を開発者が推奨どおり確定。振る舞いの変更は無い(末尾の「開発者の確定(2026-10-24)」)。
 - 2026-10-24(文言の整合、改訂の番号なし): パッケージのスクリプトの注記と追跡表7.8に、infra-deliveryの改訂1の実装の後のapi・eventのローカルの起動の形(`run-with-secrets --scope local --worker <api|event>`。`WORKER_SCOPED_SECRETS`の`STRIPE_API_KEY`はWorkerごとのフォルダからだけ渡る)を書き加えた。本specの実装の時点の起動の形(`infisical run`)は変えていない。振る舞いの変更は無く、タスクも変えていない。cross-spec reviewの指摘による。
 - 2026-10-25(改訂4): Sentryの個人情報の収集設定(`sendDefaultPii`から`dataCollection`へ)と、トランザクションの個人情報の除去。タスク2.6の実装のレビューの指摘を受けて開発者が決定(末尾の改訂4の節)。
+- 2026-10-25(改訂5): LoggingSetupのテスト用の差し替え口を`sink?: Sink`から`console?: Console`へ。タスク4.1の実装で、LogTapeのシンクが整形前の記録を受け取り、値の形式の伏せ字とJSONオブジェクト化を通った出力をテストで受け取れないことが分かり、親(実装のコントローラー)が決定(末尾の改訂5の節)。
 
 ## 開発者の決定による承認後の改訂(改訂3、2026-10-24)
 
@@ -297,3 +298,11 @@
   - 除去処理の層(最後の防御): `user`・`request`の個人情報の除去を共通の処理にして`scrubEvent`と`scrubTransaction`の両方に適用し、削除するヘッダーを`cookie`・`authorization`とIPアドレスの取得に使う12種に広げる。入れ子をたどる伏せ字は、祖先にあるオブジェクトを`[Circular ~]`(Sentryの正規化と同じ印)に置き換えて打ち切る。
 - **要件**: 要件9.2(IPアドレスを除き、Cookie・認証ヘッダー・本文を含めない)を満たすための設計の修正で、要件の文言と利用者・運用者から見える振る舞いの約束は変わらないため、`requirements.md`の「承認後の改訂」の表には載せない。
 - **変えた箇所**: 設計の`SentryScrubber`の処理(共通の除去と`scrubTransaction`への適用、ヘッダーの列挙、`logentry`と循環参照)、`SentryInstrumentation`の`buildSentryOptions`と収集設定、Revalidation Triggers(Sentry SDKの版の更新)、LoggingDoc、Testing Strategyの`scrub-event.unit.test.ts`と`sentry.worker.test.ts`、Security Considerations、本書のSentryの節のImplications。タスク2.6の詳細と4.2の詳細・完了状態。番号の変更は無い。
+
+## 実装時の決定による承認後の改訂(改訂5、2026-10-25)
+
+- **状態**: タスク4.1の実装で判明し、親(実装のコントローラー)が決定した。テスト用の差し替え口だけの変更で、振る舞いの変更は無い。
+- **Context**: 設計の`LoggingOptions.sink?: Sink`は「テストで差し替える」としていたが、LogTapeの`Sink`は整形前の`LogRecord`を受け取る。値の形式の伏せ字とJSONオブジェクト化は`getConsoleSink`の整形関数(`redactByPattern(objectConsoleFormatter, REDACTION_PATTERNS)`)の中で行われるため、シンクを差し替えるとタスク4.1の完了状態(伏せ字が適用されたJSONオブジェクトが記録される)をテストで確かめられない。
+- **決定**: 差し替え口を`console?: Console`にし、`getConsoleSink`の`console`オプションに渡す。テストは記録用のコンソールで本番と同じ組み合わせ(フィールド名とパターンの伏せ字、JSONオブジェクト化、レベルとコンソールのメソッドの対応)の出力を受け取る。後続のタスクのテストも同じ方法でログを確かめる。
+- **要件**: 要件の文言と振る舞いは変わらないため、`requirements.md`の「承認後の改訂」の表には載せない。
+- **変えた箇所**: 設計の`LoggingSetup`のService Interfaceと`configureSync`の説明。番号の変更は無い。

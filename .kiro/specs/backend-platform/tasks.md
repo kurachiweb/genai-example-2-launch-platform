@@ -155,7 +155,7 @@
   - _Requirements: 2.4, 2.5_
 
 - [ ] 4. 観測性・メッセージ送信・処理単位のコンテナ(実行環境の部品)
-- [ ] 4.1 (P) LogTapeの設定を作る
+- [x] 4.1 (P) LogTapeの設定を作る
   - コンソールへの出力を、値のパターンによる伏せ字を通した整形関数と、フィールド名による伏せ字で包み、処理単位の文脈を非同期の文脈で引き継ぐ
   - 設定はisolateで1回だけ行い、ログレベルが変わったときだけ設定し直す。不正なログレベルは`info`で続ける
   - コンソール以外の出力先(外部転送)を持たない
@@ -366,3 +366,5 @@
 - 3.1(8.2への申し送り): 共通カラムは`apps/db/schema/_shared/columns.ts`(`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`)と`text-no-case.ts`(`textNoCase`)にある。追加時の`created_at`と`updated_at`は別々に現在時刻を取るため1ms程度ずれ得る。`/workspace/docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md`の`textNoCase`のimportの例は`./text-no-case`のままなので、8.2で配置(`_shared/`と`.ts`拡張子)と食い違わないようにする。
 - 3.3(8.5・9.2への申し送り): Wrangler 4.124.0の`d1 migrations list`に`--json`は無く、検出確認は表の出力を解析する(未知の出力・表の欠落・Wranglerの失敗は終了コード1)。`--local`での一覧にシークレットは不要。`--persist-to`に渡したディレクトリには`v3/`が作られるため、検出確認は一時ディレクトリを使う。DB名`genai-example-2-dev`は`apps/api/scripts/check-migrations.ts`の定数と`package.json`の`db:migrate:local`の2箇所にある。
 - 3.2(親の判断、8.1への申し送り): design.mdは`db/client.worker.test.ts`をdb配下に置くが、AppLayerRulesは`db/**`で`cloudflare:*`を禁止するため、`db/**/*.worker.test.{ts,tsx}`だけ`cloudflare:*`の禁止を外した(`**/lib/**`・`hono`・`sqliteTable`の禁止は保つ)。8.1の文書に記載する。D1のWorkers統合テストは`cloudflare:workers`の`env`からバインディングを受け取り(`cloudflare:test`の`env`は非推奨)、検証用テーブルの`CREATE TABLE`はDrizzleの`getTableConfig`から列定義を組み立てる。Drizzleは単一の文の失敗を`DrizzleQueryError`で包み、D1のエラーは`cause`にある。
+- 4.1(親の判断・改訂5): LoggingSetupのテスト用の差し替え口は`console?: Console`(`getConsoleSink`の`console`に渡す)。LogTapeの`Sink`は整形前の記録を受け取り、値の形式の伏せ字とJSON化を通った出力をテストで受け取れないため(research.mdの改訂5)。後続のタスクのテストも記録用のコンソールでログを確かめる。設計に無い判断として、LogTapeのmetaロガーを明示的に同じ伏せ字付きのシンクへ`warning`以上で流し(既定の伏せ字を通らないシンクと設定完了の通知を防ぐ)、設定し直しても同じ`AsyncLocalStorage`を使い続け、`getConfig()`の同一性で外部のresetを検知する。`node:async_hooks`は互換性日付2026-08-04でフラグ無しで使える。
+- 4.1(8.3への申し送り): `@logtape/redaction`の`EMAIL_ADDRESS_PATTERN`は空白を挟まない日本語をローカル部に含めて伏せる(「連絡先はuser@launch.exampleです」→全体が`[REDACTED]`)。伏せすぎで漏えいは無い。8.3の文書に「メールアドレスは属性として渡すか、空白や記号で区切る」と規約として書く。
