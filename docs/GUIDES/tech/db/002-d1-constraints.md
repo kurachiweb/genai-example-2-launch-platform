@@ -119,23 +119,23 @@ wrangler d1 time-travel restore <データベース名> --bookmark=<ブックマ
 FTS5の仮想テーブルは、元のテーブルへの書き込みに自動では追随しない。そのため、FTS5の`external content`テーブルの構成(索引だけを持ち、本文は元のテーブルから読む構成)を採り、SQLiteのトリガー(`CREATE TRIGGER`)で元のテーブルへの追加・更新・削除のたびに索引を同期させる。
 
 ```sql
-CREATE VIRTUAL TABLE articles_fts USING fts5(title, body, content='articles');
+CREATE VIRTUAL TABLE article_search_documents_fts USING fts5(title, body, content='article_search_documents', content_rowid='id');
 
-CREATE TRIGGER articles_fts_after_insert AFTER INSERT ON articles BEGIN
-  INSERT INTO articles_fts(rowid, title, body) VALUES (new.rowid, new.title, new.body);
+CREATE TRIGGER article_search_documents_fts_after_insert AFTER INSERT ON article_search_documents BEGIN
+  INSERT INTO article_search_documents_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
 END;
 
-CREATE TRIGGER articles_fts_after_delete AFTER DELETE ON articles BEGIN
-  INSERT INTO articles_fts(articles_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body);
+CREATE TRIGGER article_search_documents_fts_after_delete AFTER DELETE ON article_search_documents BEGIN
+  INSERT INTO article_search_documents_fts(article_search_documents_fts, rowid, title, body) VALUES ('delete', old.id, old.title, old.body);
 END;
 
-CREATE TRIGGER articles_fts_after_update AFTER UPDATE ON articles BEGIN
-  INSERT INTO articles_fts(articles_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body);
-  INSERT INTO articles_fts(rowid, title, body) VALUES (new.rowid, new.title, new.body);
+CREATE TRIGGER article_search_documents_fts_after_update AFTER UPDATE ON article_search_documents BEGIN
+  INSERT INTO article_search_documents_fts(article_search_documents_fts, rowid, title, body) VALUES ('delete', old.id, old.title, old.body);
+  INSERT INTO article_search_documents_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
 END;
 ```
 
-- `content_rowid`を省略すると、元のテーブルの`rowid`で索引と行を対応させる。`INTEGER PRIMARY KEY`を明示しないテーブルの`rowid`は`VACUUM`で変わり得る(SQLiteの「[VACUUM](https://sqlite.org/lang_vacuum.html)」)ため、元のテーブルに`INTEGER PRIMARY KEY`のカラムがあれば、`content_rowid`にそのカラムを指定する。
+- `content_rowid`を省略すると、元のテーブルの`rowid`で索引と行を対応させる。`INTEGER PRIMARY KEY`を明示しないテーブルの`rowid`は`VACUUM`で変わり得る(SQLiteの「[VACUUM](https://sqlite.org/lang_vacuum.html)」)ため、元のテーブルの`INTEGER PRIMARY KEY`のカラムを`content_rowid`に指定する。元のテーブル(全文検索用のテーブル)の主キーを連番にする規約は「[全文検索用のテーブルの連番](003-schema-conventions.md#全文検索用のテーブルの連番)」に従う。
 - 参照: SQLiteの「[External Content Tables](https://sqlite.org/fts5.html#external_content_tables)」
 
 #### 仮想テーブルとトリガーの記述場所

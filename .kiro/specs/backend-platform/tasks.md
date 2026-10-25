@@ -300,7 +300,7 @@
   - _Boundary: ArchitectureDoc, RateLimitingDoc_
   - _Requirements: 13.6, 15.3, 15.6_
 
-- [ ] 8.2 (P) データベースのスキーマ規約の技術ドキュメントを追加する
+- [x] 8.2 (P) データベースのスキーマ規約の技術ドキュメントを追加する
   - 主キー(ULIDと全文検索用の連番)、共通カラムと日時のUTC保持、論理削除と絞り込み、列名の変換、テーブル定義の配置と集約点、手書きのマイグレーションの手順(既存文書への参照)、接続と一括実行を記載する
   - 索引へ1行追記し、既存のマイグレーションの文書と記述を食い違わせない
   - 完了状態: データベースの索引から文書へ辿れ、利用例のテーブル定義が共通部品の実際の使い方と一致している
@@ -381,3 +381,4 @@
 - 6.1(6.4・7.1・7.2・8.1・8.3への申し送り): `createWorkerApp`の`WorkerAppOptions`は、`envSchema`を`z.ZodType`(4.4のNotes)、`sentry`を`CloudflareOptions`を返す関数(4.2のNotes。アプリは`(env) => buildSentryOptions(readSentryRuntimeOptions(env))`を渡す)にした。`envGuard`は検証結果を使わず元の`c.env`を使い続ける。環境の検証の失敗のログ属性は`missingEnvNames`・`invalidEnvNames`(`@logtape/redaction`の既定のフィールド名`/key/i`に当たる名前は値ごと伏せられるため、8.3の文書に「ログの属性名に`key`・`token`等を含めない」と書く)。Honoは`Error`以外が投げられると`onError`を通さずに再送出するためアクセスログが出ない。8.3の文書に「`Error`(の派生)だけを投げる」、HonoのHTTPExceptionも500になるため「`HTTPException`を使わず`AppError`を使う」を規約として書く。`invocation-context.ts`のローカル型`InvocationContextHonoEnv`は`PlatformHonoEnv`と変数名が重複している。
 - 8.4(8.1・8.5への申し送り): `security/002-keyed-hashing.md`は新しいプレースホルダー`<ペッパーのシークレットのキー>`(本プロジェクトでは`HASH_PEPPER`)と`<共通ライブラリの配置先>`(api・eventでは`lib`)を使う。8.5で`docs/onboardings/project-values.md`に追加し、8.1の文書も共有のバックエンドのライブラリを同じプレースホルダー名で書く。
 - 6.3(親の判断・改訂7、6.4・7.2・8.3への申し送り): Sentryの組み込みのdedupeは同じ`message`・同じfingerprint・スタック無しの連続したイベントを捨てるため、同じ文言を繰り返し送る通知(デッドレター・定期実行の予算の超過・bot判定の設定の誤り)は`captureEvent`(`logentry`・`fingerprint`)で送る(research.mdの改訂7。6.2・5.3の実装も水平展開で直した)。8.3の文書にこの規約を書き、下流spec(email-delivery・notifications・data-export・content-reporting・identity-auth・tournament-year)の固定の文言の`captureMessage`へ申し送る。本体のconsumerは1件ごとの想定外の例外を`captureException`して`retry()`し、遅延再送の不正な遅延は処理の失敗として扱う。ログのカテゴリは`['event','queue','consumer']`・`['event','queue','dead-letter']`に固定。自動で移った元のメッセージの`attempts`はデッドレターQueueでの配信回数で代用し`queueMessageId`を加える。登録の`retry.maxAttempts`がWranglerの`max_retries`(6)以上だと`auto-moved`として届く(8.3に制約として書く)。`@cloudflare/vitest-pool-workers` 0.22.0の`getQueueResult`は遅延秒数を記録しないため`vi.spyOn(message, 'retry')`で確かめ、型定義に無い`FetcherQueueResult`を2つのテストで`declare global`している。
+- 8.2(8.5への申し送り): `db/003-schema-conventions.md`は新しいプレースホルダー`<DBディレクトリ>`(本プロジェクトでは`apps/db`)を使い、既存の001の`<データベース名>`・`<バインディング名>`も`project-values.md`に未記載。8.5で追加する。業務時刻のオフセット(UTC-08:00)は003では値を書かず「夏時間の無い固定のUTCオフセット」としているため、8.5で`project-values.md`に載せる。002の全文検索の例は、連番の主キーを持つ全文検索用のテーブルを外部コンテンツにし`content_rowid='id'`を指定する形に改めた。

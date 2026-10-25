@@ -69,15 +69,18 @@ export const textNoCase = customType<{ data: string }>({
 ```
 
 ```typescript
-import { snakeCase, text } from 'drizzle-orm/sqlite-core';
-import { textNoCase } from './text-no-case';
+import { snakeCase } from 'drizzle-orm/sqlite-core';
+
+import { ulidPrimaryKey } from './_shared/columns.ts';
+import { textNoCase } from './_shared/text-no-case.ts';
 
 export const users = snakeCase.table('users', {
-  id: text().primaryKey(),
+  id: ulidPrimaryKey(),
   handle: textNoCase().notNull().unique(),
 });
 ```
 
+- `textNoCase`は、共通カラムの部品と同じくスキーマ定義のディレクトリの`_shared/`に置く。配置と主キーの部品(`ulidPrimaryKey`)は「[データベースのスキーマ規約](003-schema-conventions.md)」に従う。
 - `nocase`が同一視するのはASCIIの大文字小文字だけで、非ASCII文字(全角英字・アクセント付きの文字など)は区別される。
 - 既存のカラムへ後から指定すると、テーブルを作り直すマイグレーションが生成される。そのため、`textNoCase`はテーブルを新規に作成するときに指定する。
 
@@ -93,8 +96,10 @@ export const users = snakeCase.table('users', {
 ```typescript
 import { snakeCase, text } from 'drizzle-orm/sqlite-core';
 
+import { ulidPrimaryKey } from './_shared/columns.ts';
+
 export const accounts = snakeCase.table('accounts', {
-  id: text().primaryKey(),
+  id: ulidPrimaryKey(),
   displayName: text().notNull(), // display_name
   totpSecretV2: text('totp_secret_v2'),
 });
