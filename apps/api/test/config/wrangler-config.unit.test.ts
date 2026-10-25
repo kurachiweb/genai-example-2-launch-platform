@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import { unstable_readConfig } from 'wrangler';
 import { z } from 'zod';
 
+import { DEFAULT_RETRY_POLICY } from '../../lib/core/messaging/retry-policy.ts';
+
 type AppName = 'api' | 'event';
 
 const APP_NAMES = ['api', 'event'] as const satisfies readonly AppName[];
@@ -60,8 +62,11 @@ const effectiveConfigSchema = z.object({
       .array(
         z.object({
           queue: z.string(),
+          max_batch_size: z.number().optional(),
+          max_batch_timeout: z.number().optional(),
           max_retries: z.number().optional(),
           dead_letter_queue: z.string().optional(),
+          retry_delay: z.number().optional(),
         }),
       )
       .optional(),
@@ -328,7 +333,21 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     );
 
     expect(consumer?.dead_letter_queue).toBe(jobsDlq);
-    expect(consumer?.max_retries).toBe(6);
+    expect(consumer?.max_retries).toBeGreaterThan(
+      DEFAULT_RETRY_POLICY.maxAttempts,
+    );
+  });
+
+  test('eventの本体のconsumerは10件・5秒でまとめて受け取り、異常終了時は30秒後に再配信する', () => {
+    const consumer = event.queues.consumers?.find(
+      (entry) => entry.queue === jobsQueue,
+    );
+
+    expect(consumer).toMatchObject({
+      max_batch_size: 10,
+      max_batch_timeout: 5,
+      retry_delay: 30,
+    });
   });
 
   test('eventはデッドレターも受信し、デッドレターの先を持たない', () => {
@@ -336,7 +355,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
       (entry) => entry.queue === jobsDlq,
     );
 
-    expect(consumer).toBeDefined();
+    expect(consumer).toMatchObject({ max_batch_size: 10, max_retries: 3 });
     expect(consumer?.dead_letter_queue).toBeUndefined();
   });
 

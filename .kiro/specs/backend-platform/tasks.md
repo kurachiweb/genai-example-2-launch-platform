@@ -90,7 +90,7 @@
   - _Boundary: SentryScrubber_
   - _Requirements: 9.2, 9.3_
 
-- [ ] 2.7 (P) 非同期メッセージの封筒・契約・再試行の判定を作る
+- [x] 2.7 (P) 非同期メッセージの封筒・契約・再試行の判定を作る
   - 封筒(版・種別・ID・送信日時・本文)と、本文を含まないデッドレター通知(種別・ID・試行回数・理由・例外名)の型と解析を用意する
   - 種別と本文の検証規則を組にする契約と、処理(完了または試行回数を数えない遅延再送)の型、全契約の集約点(初版は空)を用意する
   - 試行回数に応じて30秒から倍々で伸ばし上限で止める再試行間隔と、上限到達でデッドレターとする判定を提供する
@@ -166,7 +166,8 @@
 - [ ] 4.2 (P) Sentryの初期化オプションと計装を作る
   - 送信先が無ければ無効にし、個人情報の既定送信を切り、イベントとトランザクションの送信前に除去処理を通し、環境とトレースの割合を設定から読む
   - Honoの経路は共通エラー型を除いて送るミドルウェアで、定期実行と非同期メッセージのハンドラーは別の計装で包み、fetchを二重に計装しない
-  - 完了状態: 差し替えたトランスポートで、想定外の例外が1回だけ送られ、共通エラー型は送られず、送信先が無ければ送らず、送信の失敗が応答を変えないことをWorkers統合テストで確かめられる。あわせて、メッセージに公開APIのキーを含む想定外の例外が`[REDACTED]`になって届き、送信前の処理にイベントとトランザクションの両方の除去処理がつながっていることを確かめられる(承認後の改訂3)
+  - (承認後の改訂4、2026-10-25に開発者が決定)Sentry 11.4.0に`sendDefaultPii`は無いため、個人情報の既定送信は`dataCollection`(利用者の情報・Cookie・リクエストのヘッダー・URLのクエリ文字列・HTTPの本文を集めない)で切る
+  - 完了状態: 差し替えたトランスポートで、想定外の例外が1回だけ送られ、共通エラー型は送られず、送信先が無ければ送らず、送信の失敗が応答を変えないことをWorkers統合テストで確かめられる。あわせて、メッセージに公開APIのキーを含む想定外の例外が`[REDACTED]`になって届き、送信前の処理にイベントとトランザクションの両方の除去処理がつながっていることを確かめられる(承認後の改訂3)。`CF-Connecting-IP`付きのリクエストで、届いたイベントとトランザクションに利用者のIPアドレスとIPアドレスを表すヘッダーが含まれないことを確かめられる(承認後の改訂4)
   - _Boundary: SentryInstrumentation_
   - _Depends: 2.6_
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
@@ -346,7 +347,7 @@
 ## Implementation Notes
 
 - 1.2: `apps/db/client.ts`の`D1Database`は1.3で生成する`worker-configuration.d.ts`で初めて宣言されるため、1.2は1.3の実装後に型検査を確かめてコミットした。後続でも、実行時の環境の型に依存するコードは型生成の後でなければ型検査が通らない。
-- 1.3: `apps/api/test/config/wrangler-config.unit.test.ts`はconsumerの`max_retries`を`6`の直書きで確かめている。2.7の完了後(2.7のタスク内)に、`DEFAULT_RETRY_POLICY.maxAttempts`より大きいことの比較へ置き換える。consumerの`max_batch_size`・`max_batch_timeout`・`retry_delay`とデッドレターのconsumerの`max_retries`はまだテストしていない。
+- 1.3(2.7で解消済み): consumerの`max_retries`の検査は`DEFAULT_RETRY_POLICY.maxAttempts`より大きいことの比較になり、consumerの`max_batch_size`・`max_batch_timeout`・`retry_delay`とデッドレターのconsumerの`max_retries`も検査している。
 - 1.3: 開発コンテナのサンドボックスでは`wrangler dev`が「Ready」まで到達するがHTTPの応答が返らない(最小のWorkerでも同じ)。ローカル起動での確認は9.1で行う。
 - 1.5: 層の禁止importは`no-restricted-imports`の`.gitignore`形式のため、`'hono'`は`@sentry/hono`にも一致し、動的`import()`・`require`とサブパスの無いディレクトリのimportは検査しない。8.1の文書に記載する。層の規則の単体テストは`tseslint.configs.disableTypeChecked`を重ねて仮想のファイルを検査している。
 - 2.1: design.mdに`Clock`の型の定義が無いため、他specの`clock.now()`の使い方に合わせて`interface Clock { now(): Date }`と定数`systemClock`(`core/time/clock.ts`)にした。4.4のコンテナでは`toConstantValue(systemClock)`で束縛する。
@@ -355,3 +356,5 @@
 - 2.4(親の判断): design.mdが`core/di/app-module.ts`で`import type { Hono } from 'hono'`を指定しているため、AppLayerRulesの`lib/core/**`の`hono`の禁止は実行時の依存の禁止と解釈し、`hono`だけ型のimportを許した(`@typescript-eslint/no-restricted-imports`の`allowTypeImports: true`)。`workers`・`cloudflare:*`・`db`は型のimportも禁止のまま。8.1の文書に記載する。
 - 2.4(4.4・6.1・6.4への申し送り): Honoは環境の型引数について不変なため、`AppModule`の型制約は`THono extends Hono<any, any, any>`(既定は`Hono`)にした。環境を指定したモジュール(`AppModule<Hono<PlatformHonoEnv<E>>>`)は既定の`readonly AppModule[]`へ代入できないので、`createInvocationContainer`・`createWorkerHandler`の`modules`は総称型にするか`bindings`だけを受け取る形にそろえる。設計に無い名前として`IdGenerator.generate(): string`と`createUlidGenerator(clock: Clock)`(ulidの`monotonicFactory`)を置き、`InvocationScopeInfo`は`core/di/identifiers.ts`にある。`validateEnv`は経路が空のZodの問題(全体への`refine`など)をどちらのキーにも分類しない。
 - 2.5(8.3への申し送り): `toLogObject`は属性の最上位のErrorを`{name, message, stack, cause}`に開き、原因はErrorと文字列・数値・真偽値だけを出力する(`redactByField`がErrorの中を走査しないため、オブジェクトの原因と独自のプロパティは出さない)。ライブラリの仕様により、タグ付きテンプレートに属性に無いオブジェクトを差し込むと属性名による伏せ字が効かず、入れ子のErrorは`{}`になる。8.3の文書に「秘密情報を含み得るオブジェクトは名前付きの属性として渡す」「例外は属性の最上位に置く」を規約として書く。Cookieのフィールド名だけ部分一致(`/cookie/i`)で、他は名前と完全一致。
+- 2.5(全タスク共通): コミット前のシークレット検出(Betterleaks)は、テストのJWTの文字列や`password: '<文字列>'`を検出してコミットを止める。テストの値は部品から組み立てるか(`[...].join('.')`)、`password`等の名前の直後に文字列リテラルを置かず定数を参照する。`.betterleaksignore`は行番号に依存するため使わない。
+- 2.7(6.3への申し送り): `decideOnFailure`は試行回数が1以上の整数でなければ`RangeError`にする(Cloudflare Queuesの`message.attempts`は1始まり)。`defineMessageContract`は種別名が`<ドメイン>.<動詞句>`(小文字・数字・ハイフン)でなければ`RangeError`にする。`isDeadLetterNotice`は`messageId`・`type`・`errorName`のキーが無い通知も受け付ける。登録の`retry`の上書きの併合と`defer`の43200秒の上限は6.3・4.3の担当。
