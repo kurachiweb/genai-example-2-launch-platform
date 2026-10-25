@@ -1450,7 +1450,7 @@ TDDで進め、各部品のテストを先に書く。`core/email`・`event/appl
   - `email-smoke-route.worker.test.ts`: 未設定で404、トークン不一致で401、成功で202と`email.send`の送信(10.2・11.4・11.5)。
   - `email-module.worker.test.ts`(event): `createMessageBatch`で`email.send`をeventのqueueハンドラーへ渡し、Mailpitの宛先への要求(テスト内で差し替えた`globalThis.fetch`が受ける)に日本語の件名と両パートが含まれる。メールイベント用Queueのバッチでhard bounceが`email_suppressions`へ記録され、同じバッチの再送で変わらない(1.5・3.3・7.1・7.7・7.10)。
 - **手順の検証**(実装時)
-  - ローカル: `infisical --telemetry=false run --env dev -- bun run dev`でeventを起動し、疎通確認の経路を呼んでMailpitのUIで日本語の件名・本文・両パートを確認する(11.4)。
+  - ローカル: シークレットを実行時に注入してeventを起動し、疎通確認の経路を呼んでMailpitのUIで日本語の件名・本文・両パートを確認する(11.4)。起動の形は、本specの実装の時点(infra-deliveryの前)は`infisical --telemetry=false run --env dev -- bun run dev`、infra-deliveryの改訂1の実装の後はWorkerごとのフォルダを重ねる`bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker event -- bun run dev`である(`WORKER_SCOPED_SECRETS`の`STRIPE_API_KEY`は`/workers/event`からだけ渡り、素の`infisical run`ではpaymentsの起動時の検査が失敗するため)。
   - staging: デプロイ後に開発者が疎通確認の経路を呼び、検証済みの宛先で受信を確認する(11.5)。
 - **Performance**
   - 1件の描画と送信がCPU時間の上限に十分収まることを、`react-email-renderer.worker.test.tsx`で20件の描画の所要時間として記録する。

@@ -214,3 +214,7 @@
 - [Email Service: Local email sending](https://developers.cloudflare.com/email-service/local-development/sending/) — `wrangler dev`での模擬と`remote`
 - [Mailpit API v1](https://mailpit.axllent.org/docs/api-v1/) — `POST /api/v1/send`と検索API
 - [React Email: render](https://react.email/docs/utilities/render) — HTMLとテキストパートの生成
+
+## 変更履歴
+
+- 2026-10-24(文言の整合、改訂の番号なし): Testing Strategyのローカルの手順の検証に、infra-deliveryの改訂1の実装の後のeventのローカルの起動の形(`run-with-secrets --scope local --worker event`。`WORKER_SCOPED_SECRETS`の`STRIPE_API_KEY`はWorkerごとのフォルダからだけ渡る)を書き加えた。本specの実装の時点の起動の形(`infisical run`)は変えていない。振る舞いの変更は無く、タスク(8.1はオンボーディングの手順に従う形で、コマンドを書いていない)も変えていない。cross-spec reviewの指摘による。

@@ -25,7 +25,7 @@
 | Q6  | 本文の表示装飾に`@tailwindcss/typography`を採用するか    | `mockups/src/components/client/markdown.tsx`の`prose`、frontend-platformのQ5、CLAUDE.md(新規パッケージ)                                                                              | 推奨案。`@tailwindcss/typography` 0.5.20(2026-06-08公開、Tailwind公式、相手依存にTailwind 4を含む)を採用し、frontend-lib・client・adminで版をそろえて宣言する                                                                                                                                                                                                                                                                                                                                                                        |
 
 - 採用したパッケージのtech-stack.mdへの追記は、spec段階では行わず、導入する実装タスクの中で行う(frontend-platformの慣行)。
-- 要件定義書の改訂が必要な箇所: FR-FTS-002(Q4)、FR-MDOWN-006(Q5)、FR-FTS-006(Q3の縮退運転と再抽出)。roadmapにより要件定義書そのものは改訂しない。
+- 要件定義書の改訂が必要な箇所: FR-FTS-002(Q4)、FR-MDOWN-006(Q5)、FR-FTS-006(Q3の縮退運転と再抽出)。roadmapにより要件定義書そのものは改訂しない。(2026-10-25に要件定義書へ適用済み)
 - Google Cloud Natural LanguageのAPIキーはInfisicalで管理する。staging・prodのイベントサーバーへのシークレットの反映は、infra-deliveryのInfisicalのキーの表に`GOOGLE_NL_API_KEY`を加えて行う(横断レビューI-3)。キーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節とし、本specが行を加える(横断レビューN-5)。stagingの値はキーを必須にする変更をmainへマージする前に開発者が登録し、prodの値の登録はlaunch-readinessへ引き継ぐ。
 
 ### 提示した選択肢(記録)

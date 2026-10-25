@@ -67,6 +67,8 @@
 
 ### 要件定義書の改訂が必要な箇所
 
+**2026-10-25に要件定義書(`docs/requirements/README.md`)へ適用済み。** 以下は適用前に記録した改訂の内容である。
+
 要件定義書(`docs/requirements/README.md`)は本specでは編集しない(roadmapのOut)。次の改訂が必要である。
 
 | 要件ID       | 内容                                                                                                                                                                                                                                                             | 根拠       |

@@ -21,7 +21,7 @@
 - 参加費の免除の適用・参加資格の付与・未完了の参加費の決済セッションの失効(tournament-week・tournament-year)、再ローンチの間隔の適用(product-launch)、加入表示の描画(user-profile-social)。
 - 料金ページのスポンサー広告の区画(sponsorship)、管理画面の設定ページの決勝日(tournament-year)・送信者情報(notifications)の区画。
 - 解約の受付以外の自動のメール(特典の終了・更新の予告)、Stripeの顧客向けメール(Q8)。
-- 要件定義書の改訂(roadmapのOut。必要な改訂は[research.md](research.md)の「要件定義書の改訂が必要な箇所」に記録した)。
+- 要件定義書の改訂(roadmapのOut。必要な改訂は[research.md](research.md)の「要件定義書の改訂が必要な箇所」に記録した)。(2026-10-25に要件定義書へ適用済み)
 
 ## Boundary Commitments
 
@@ -410,7 +410,7 @@ sequenceDiagram
 | EntitlementRules・SubscriptionTransition                                                     | backend-lib/core     | 特典の終了時刻・加入状態の導出・変化の解釈           | 2.1〜2.11, 3.1〜3.4, 8.1〜8.5           | 業務時刻 (P0)                                                      | Service   |
 | ActivationContract・ActivationMessage                                                        | backend-lib/core     | 知らせの契約・登録の検証・メッセージ種別             | 4.1, 4.3, 4.4                           | backend-platform (P0)                                              | Event     |
 | UltrasEmailKinds                                                                             | backend-lib/core     | 2種のメールの種別                                    | 8.1, 8.3, 8.6, 8.7                      | email-delivery (P0)                                                | —         |
-| D1各ストア・UltrasPromotionFlagReader                                                        | backend-lib/workers  | 4テーブルの読み書き・フラグ                          | 1.7〜1.9, 2.*, 10.5, 11.1               | D1 (P0)                                                            | State     |
+| D1各ストア・UltrasPromotionFlagReader                                                        | backend-lib/workers  | 4テーブルの読み書き・フラグ                          | 1.7〜1.9, 2.\*, 10.5, 11.1              | D1 (P0)                                                            | State     |
 | UltrasEntitlements                                                                           | backend-lib/workers  | 特典の判定と現在の加入状態                           | 3.1〜3.7                                | D1SubscriptionStore (P0)                                           | Service   |
 | UltrasOfferPolicy                                                                            | backend-lib/workers  | 購入の可否と内容                                     | 1.2〜1.6, 10.6                          | PriceCatalog (P0)、UltrasEntitlements (P0)                         | Service   |
 | UltrasFulfillment                                                                            | backend-lib/workers  | 加入の有効化と知らせの行                             | 1.7〜1.9, 4.1, 4.2                      | D1SubscriptionStore (P0)                                           | Service   |
@@ -422,7 +422,7 @@ sequenceDiagram
 | PortalSessionStarter・PortalSessionLimits                                                    | api/application      | Portalのセッションと回数制限                         | 6.1, 6.2, 6.5〜6.7                      | StripeGateway (P0)、RateLimitCounterClient (P0)                    | Service   |
 | PromotionSettingService・D1PromotionSettingWriter                                            | api                  | フラグの照会・変更と監査ログ                         | 10.1〜10.4                              | AuditLogRecorder (P0)                                              | Service   |
 | PendingDispatchSweepJob                                                                      | api/application/jobs | 送り出し直しと後始末                                 | 4.5, 8.9, 11.3                          | ActivationDispatcher (P0)                                          | Batch     |
-| UltrasSchemaModule                                                                           | api/presentation     | GraphQLの型と操作                                    | 1._, 5._, 6._, 9._, 10.*                | api-gateway (P0)                                                   | API       |
+| UltrasSchemaModule                                                                           | api/presentation     | GraphQLの型と操作                                    | 1.\*, 5.\*, 6.\*, 9.\*, 10.\*           | api-gateway (P0)                                                   | API       |
 | RunActivationHandlersHandler                                                                 | event/application    | 知らせの実行                                         | 4.1, 4.4                                | ULTRAS_ACTIVATION_HANDLERS (P0)                                    | Event     |
 | SubscriptionCancellationHandler・SubscriptionErasureHandler                                  | event/application    | 退会・停止の解約と物理削除                           | 7.1〜7.7, 11.1                          | identity-auth (P0)、StripeGateway (P0)                             | Event     |
 | UltrasEmailTemplates                                                                         | event/infrastructure | 2種のメール                                          | 8.1, 8.3, 8.7                           | email-delivery (P0)                                                | —         |
