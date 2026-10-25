@@ -255,7 +255,7 @@
   - _Depends: 6.1, 6.2, 6.3_
   - _Requirements: 5.2, 5.7, 7.5, 8.2, 9.1_
 
-- [ ] 7. アプリへの結線とスモークテスト
+- [x] 7. アプリへの結線とスモークテスト
 - [x] 7.1 (P) APIサーバーのエントリと登録箇所を作り、定期実行の定義との一致を検査する
   - apiの環境の検証スキーマ(共通の断片に厳密カウンタ・bot判定の秘密鍵と期待するホスト名を加える)と、生成された環境の型が共通の型を満たす型検査を置く
   - モジュールの登録箇所に、bot判定の検証と厳密カウンタのクライアントを束縛する基盤モジュールを置き、定期実行ジョブとIP制限の除外の登録箇所を空で用意する(Bunから読み込めるよう`cloudflare:*`を読み込まない)
@@ -276,7 +276,7 @@
   - _Depends: 6.4_
   - _Requirements: 5.5, 6.1, 11.6, 11.7, 11.8, 13.1, 13.3_
 
-- [ ] 7.3 Bun・Vitest(Oxc)・Wrangler(esbuild)の3つの変換経路でDIを解決するスモークテストを作る
+- [x] 7.3 Bun・Vitest(Oxc)・Wrangler(esbuild)の3つの変換経路でDIを解決するスモークテストを作る
   - `@inject`付きのコンストラクタ引数を持つスモーク用のクラスを用意し、Bunの単体テストとWorkers統合テスト(基盤の依存の解決を含む)で解決する
   - スモーク用のWrangler設定とエントリを用意し、WranglerのプログラムAPIでバンドル・起動したWorkerへHTTPで問い合わせて解決結果を確かめるスクリプトを、apiのスモークテストのコマンドとして定義する
   - 完了状態: 3つの経路のスモークテストがいずれも成功する
@@ -291,7 +291,7 @@
   - _Depends: 2.1_
   - _Requirements: 10.7_
 
-- [ ] 8. 技術ドキュメントとオンボーディング
+- [x] 8. 技術ドキュメントとオンボーディング
 - [x] 8.1 (P) バックエンドのアーキテクチャとレート制限・bot判定の技術ドキュメントを追加する
   - 4層と合成ルート、依存方向と静的解析、処理単位のコンテナ(`jitless`の注意を含む)、登録箇所、共通エラーと共通のエラー形式、ミドルウェアの順序、ヘルスチェック、層とテスト種別・カバレッジの分担を記載する
   - 厳密カウンタ(ルール・キーのハッシュ化・リセット)、バインディングによる制限、Worker単位のIP制限の規約表(キー・上限・応答・名前空間)、除外規則、クライアントIPの解決の差し替え、bot判定の2形態と失敗の分類・テスト用の鍵を記載する
@@ -322,7 +322,7 @@
   - _Boundary: KeyedHashingDoc_
   - _Requirements: 4.1, 4.2, 15.6_
 
-- [ ] 8.5 (P) 本プロジェクト固有の値・オンボーディング・依存の版の一覧・CLAUDE.mdの参照先を更新する
+- [x] 8.5 (P) 本プロジェクト固有の値・オンボーディング・依存の版の一覧・CLAUDE.mdの参照先を更新する
   - 本プロジェクト固有の値に、Worker名・D1名と識別子・バケット名・Queue名・バインディング名・IP制限の名前空間・変数とシークレットのキー名・ヘルスチェックの経路・ポートと、定期実行の時間の予算を適用する起動時刻と値(4:21、予算300,000ms・上限600,000ms・各ジョブの目安30,000ms。承認後の改訂2)を記載する
   - オンボーディングに、api・event・DBスキーマの依存の導入、マイグレーションの生成と適用、シークレットのInfisicalへの登録(開発者の手作業)、定期実行の手動起動(`/cdn-cgi/local/scheduled`とE2Eの共有の補助)付きの起動、テストとスモークテストの手順を記載する
   - 依存の版の一覧に、api・eventと共有ディレクトリで版をそろえるパッケージを追記する
@@ -387,3 +387,6 @@
 - 8.3(8.5への申し送り): `infra/003`・`004`は新しいプレースホルダー`<定期実行を受け持つアプリ>`(api)・`<メッセージを受信するアプリ>`(event)・`<定期実行の登録箇所>`(`apps/api/src/composition/scheduled-jobs.ts`)・`<メッセージ処理の登録箇所>`(`apps/event/src/composition/message-handlers.ts`)・`<予算を適用する起動時刻>`(4:21、予算300,000ms・上限600,000ms・各ジョブの目安30,000ms)・`<本体Queueのバインディング>`(`JOBS_QUEUE`)・`<デッドレターQueueのバインディング>`(`JOBS_DLQ`)・`<本体Queueの名前の変数>`(`JOBS_QUEUE_NAME`)・`<デッドレターQueueの名前の変数>`(`JOBS_DLQ_NAME`)・`<本体Queueの名前>`・`<デッドレターQueueの名前>`・`<ログレベルの変数>`(`LOG_LEVEL`)・`<エラートラッキングのDSNのシークレットのキー>`(`SENTRY_DSN`)・`<エラートラッキングの環境名の変数>`(`SENTRY_ENVIRONMENT`)・`<トレースの割合の変数>`(`SENTRY_TRACES_SAMPLE_RATE`)を使う。CLAUDE.mdのディレクトリ構成のe2e/support/ の説明への定期実行の補助の追記は8.5で扱う。`toUtcCronExpression`は`(hour - offset/60) % 24`で正のUTCオフセットでは負の時になり得る(本プロジェクトは負のオフセットの定数で影響なし)。
 - 7.1(7.3・8.5・下流specへの申し送り): apiの登録箇所は`apps/api/src/composition/`の`env-schema.ts`(`apiEnvSchema`と生成された`Env`の型検査`Satisfies<Env, ApiEnv>`。`ApiEnv`は設計に無い名前)・`modules.ts`(`MODULES`と基盤モジュール`platformModule`。BotVerifier・RateLimitCounterClientはコンテナで1つ)・`scheduled-jobs.ts`(`SCHEDULED_JOBS`は空、`SCHEDULED_RUN_BUDGETS`は4:21・300,000ms)・`rate-limit-exclusions.ts`(`RATE_LIMIT_EXCLUSIONS`は空)。cron式の一致の検査は`apps/api/test/config/cron-sync.unit.test.ts`(両辺を整列して比較)。workerdでは`globalThis.fetch`をオブジェクトのメソッドとして呼ぶと`Illegal invocation`になるため、BotVerifierへは`(input, init) => fetch(input, init)`で包んで渡す(テストは`vi.spyOn`のため包みの必要性を検出しない)。`binding<T>()`の判定を`platform-env.ts`から書き写しており、7.2も同じ重複がある。
 - 7.2(8.5・9.1への申し送り): eventの登録箇所は`apps/event/src/composition/`の`env-schema.ts`(`eventEnvSchema`と生成された`Env`の型検査)・`modules.ts`・`message-handlers.ts`(`MESSAGE_HANDLERS`)・`rate-limit-exclusions.ts`で、いずれも空。エントリは定期実行を持たない。Workers統合テストは実物のMiniflareのQueue(本体→consumer→再配信→デッドレターQueue→デッドレターのconsumer)で通しを確かめ、テスト用の契約とハンドラーは`vi.mock`+`importOriginal`で登録箇所に追記する。consumerの`max_batch_timeout`(5秒)のためQueueのテストは約10秒かかる。
+- 7.3(9.1・9.2への申し送り): サンドボックスでは、Wranglerの中継(ProxyWorker)のURL・`worker.fetch`は応答しないが、Wranglerが起動した利用者のWorkerの実行時のソケットへの直接のHTTPは応答する(1.3の「`wrangler dev`がHTTPに応答しない」の原因は中継から利用者のWorkerへの転送)。`test:smoke`(`apps/api/scripts/smoke-wrangler-bundle.ts`)は`unstable_startWorker`の`worker.raw`の`reloadComplete`の`proxyData`(`userWorkerUrl`・`headers`)で利用者のWorkerへ直接問い合わせる。Wranglerの版を更新したら`test:smoke`で確かめる(型の形が変わればzodの検証かタイムアウトで終了コード1)。スモーク用の設定はバインディングなしの`apps/api/test/smoke/wrangler.smoke.jsonc`で、ローカル状態は一時ディレクトリ。起動に失敗した場合も一時ディレクトリを削除するよう親が後始末を直した。
+- 7.1・7.2(親の対応): 両アプリの`env-schema.ts`の`binding<T>()`の重複は、`platform-env.ts`から`bindingSchema<T>()`を公開して解消した。
+- 8.5(9.1への申し送り): オンボーディングの起動は`infisical --telemetry=false run --env dev -- bun run dev`(infra-deliveryの改訂1の後は`run-with-secrets`へ)。シークレットの登録はInfisicalのWebコンソールで行い、値を表示しない確認方法を示した。`project-values.md`の`<マシンアイデンティティのID>`は未確定(infra-deliveryが作成)。7.3のスモークテストのコミットが8.5の後になったのは、lint-staged(dev-tooling)がオンボーディングの文書を7.3のコミットへ繰り返し混入させたため。

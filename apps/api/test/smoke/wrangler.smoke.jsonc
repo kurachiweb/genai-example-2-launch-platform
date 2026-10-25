@@ -1,0 +1,6 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "genai-example-2-api-di-smoke",
+  "main": "wrangler-bundle-entry.ts",
+  "compatibility_date": "2026-08-04",
+}
