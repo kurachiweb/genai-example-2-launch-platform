@@ -341,7 +341,7 @@
   - _Depends: 7.4, 8.5_
   - _Requirements: 2.4, 6.1, 7.8, 10.7_
 
-- [ ] 9.2 一括検査とカバレッジ80%を満たすことを確かめる
+- [x] 9.2 一括検査とカバレッジ80%を満たすことを確かめる
   - ルートの一括検査と、カバレッジ計測付きの単体テスト・Workers統合テストの一括実行を行い、両アプリの全ファイルが行・関数80%以上であることを確かめる
   - スモークテストとマイグレーションの検出確認を実行する
   - 完了状態: 一括検査・カバレッジ付きの一括テスト・スモークテスト・マイグレーションの検出確認がすべて成功する
@@ -390,3 +390,4 @@
 - 7.3(9.1・9.2への申し送り): サンドボックスでは、Wranglerの中継(ProxyWorker)のURL・`worker.fetch`は応答しないが、Wranglerが起動した利用者のWorkerの実行時のソケットへの直接のHTTPは応答する(1.3の「`wrangler dev`がHTTPに応答しない」の原因は中継から利用者のWorkerへの転送)。`test:smoke`(`apps/api/scripts/smoke-wrangler-bundle.ts`)は`unstable_startWorker`の`worker.raw`の`reloadComplete`の`proxyData`(`userWorkerUrl`・`headers`)で利用者のWorkerへ直接問い合わせる。Wranglerの版を更新したら`test:smoke`で確かめる(型の形が変わればzodの検証かタイムアウトで終了コード1)。スモーク用の設定はバインディングなしの`apps/api/test/smoke/wrangler.smoke.jsonc`で、ローカル状態は一時ディレクトリ。起動に失敗した場合も一時ディレクトリを削除するよう親が後始末を直した。
 - 7.1・7.2(親の対応): 両アプリの`env-schema.ts`の`binding<T>()`の重複は、`platform-env.ts`から`bindingSchema<T>()`を公開して解消した。
 - 8.5(9.1への申し送り): オンボーディングの起動は`infisical --telemetry=false run --env dev -- bun run dev`(infra-deliveryの改訂1の後は`run-with-secrets`へ)。シークレットの登録はInfisicalのWebコンソールで行い、値を表示しない確認方法を示した。`project-values.md`の`<マシンアイデンティティのID>`は未確定(infra-deliveryが作成)。7.3のスモークテストのコミットが8.5の後になったのは、lint-staged(dev-tooling)がオンボーディングの文書を7.3のコミットへ繰り返し混入させたため。
+- 9.2(2026-10-25の結果): `bun run check`は成功9件・失敗0件(未作成のフロントエンドの6件は飛ばした)。カバレッジ付きの単体テストはルート624件(全体で行99.27%)・api 601件(行100%)・eventは0件で、いずれも終了コード0(ファイル単位の閾値を満たす)。カバレッジ付きのWorkers統合テストはapi 25ファイル243件(全体で行99.75%)・event 1ファイル4件で、プリセットの`perFile: true`の閾値を満たし終了コード0。`test:smoke`と`db:migrations:check`(マイグレーション0件)も成功した。
