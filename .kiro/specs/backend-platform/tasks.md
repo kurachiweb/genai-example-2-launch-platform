@@ -106,7 +106,7 @@
   - _Boundary: FixedWindow_
   - _Requirements: 12.1, 12.3, 12.4_
 
-- [ ] 2.9 (P) bot判定サービスの応答を分類する処理を作る
+- [x] 2.9 (P) bot判定サービスの応答を分類する処理を作る
   - エラーコードを無効・期限切れまたは使用済み・設定の誤り・一時的な障害に分類し、ネットワーク失敗・時間切れ・2xx以外・JSONでない応答を一時的な障害とする
   - 成功応答でも、期待する操作名・ホスト名と一致しなければ不一致の失敗にする(期待値が無ければ照合しない)
   - 完了状態: エラーコードごとの分類と、操作名・ホスト名の不一致を単体テストで確かめられる
@@ -362,3 +362,4 @@
 - 2.6(4.2への申し送り): Sentry 11.4.0に`sendDefaultPii`は無く、`dataCollection`の既定は利用者の情報・Cookie・ヘッダー・クエリ文字列・本文をすべて集める。既定の`requestDataIntegration`はトランザクションとルートのスパンの属性(`contexts.trace.data`の`http.request.header.*`・`user.ip_address`・`http.request.body.data`)にも付ける。除去処理はスパンとトレースのコンテキストの`data`のキーを消さず値の形式で伏せるだけなので、4.2の`dataCollection`の設定(design.mdのSentryInstrumentation)が前提。`@sentry/core`はapi・eventの`package.json`に無く、`TransactionEvent`・`SpanJSON`は`@sentry/cloudflare`が再エクスポートしないため、型だけを`@sentry/core`から読み込んでいる(`@sentry/cloudflare`・`@sentry/hono`が`@sentry/core`を11.4.0に完全固定)。
 - 2.8(5.1への申し送り): `applyHit`は`rule.limit`・`rule.windowSeconds`が1以上の整数でない場合と`now`が有限の数でない場合に`RangeError`にする。5.1では`next`があるときだけ保存し、`scheduleAlarmAt`があるときだけ`setAlarm`する。
 - 2.10(2.11・7.1への申し送り): `cronExpressions()`の昇順は文字列の順ではなくUTCの起動時刻(時・分)の順(例: `40 7 * * *`が`21 12 * * *`より前)。下流specは`triggers.crons`内の位置を定めないため、7.1の一致の検査は順序に依存しない比較(同じ規則で整列するか集合で比べる)にする。範囲外の時刻は`toUtcCronExpression`の`RangeError`を`cause`に持つ`CronRegistryError`(`core/scheduling/cron-registry.ts`)にしており、2.11は同じ例外をimportして使う。整数でない`order`も拒否する(範囲は検査しない)。
+- 2.9(5.3への申し送り): `interpretSiteverify`は、JSONとして読めなかった応答を`{ kind: 'response', status, json: undefined }`で受け取る取り決めにしている(オブジェクトでない値・形が不正な本文は`unavailable`)。複数のエラーコードの優先順位はmisconfigured > unavailable > expired-or-duplicate > invalid-tokenで、未知のコードだけ・コード無しの失敗応答は`invalid-token`(403)。2xx以外は本文のエラーコードを`errorCodes`に残さない。ホスト名は完全一致(大文字小文字を区別)なので、期待するホスト名の設定値を小文字にそろえる場合は5.3か環境の検証で扱う。
