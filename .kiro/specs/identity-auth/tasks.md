@@ -100,6 +100,16 @@
   - _Boundary: AccountExport, D1AccountExport, IdentityPlatformModule_
   - _Requirements: 4.9_
 
+- [ ] 3.7 管理画面の利用者の検索・一覧の照会を作り、APIサーバーとイベントサーバーの両方に束縛する(仮7)
+  - 先に、退会済みを除いて作成日時とIDの降順に並ぶこと、ハンドル・ニックネームの大文字小文字を区別しない部分一致と`%`・`_`・`\`が文字として照合されること、メールアドレスの前後の空白を除いた大文字小文字を区別しない完全一致(メールアドレスでの引き当ても同じ)、状態の絞り込み、件数の上限の境界(0と51の拒否)とカーソルによる続きの取得・不正なカーソルの拒否、IDでの引き当てが91件以上で分割され退会済みを含めないこと、メールアドレスでの引き当てが退会済みを返さないこと、時点の登録者数が時点以後の登録を数えず時点以後の退会を数えること、結果にメールアドレス・パスワードハッシュの項目が無いことを確かめるWorkers統合テストを書く
+  - 同じく先に、APIサーバーとイベントサーバーの処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`がD1の実装に解決されることを、3.5の両アプリのWorkers統合テストに加えて確かめる
+  - 設計の契約(`AdminUserStatus`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserDirectory`)とD1の実装`D1AdminUserDirectory`を共有のWorkers向けの部品(`apps/backend-lib/workers/identity/admin-user-directory.ts`)に作り、3.5の`IDENTITY_PLATFORM_TYPES`に識別子を、`IDENTITY_PLATFORM_MODULE`に束縛を加える
+  - 契約の形はugc-moderationが前提にするため、変える必要が出たら実装を止めて開発者へ報告する
+  - 完了状態: Workers統合テストが成功し、両アプリで同じ識別子から利用者の検索・引き当て・登録者数の数え上げができる
+  - _Depends: 1.2, 3.2, 3.6_
+  - _Boundary: AdminUserDirectory, D1AdminUserDirectory, IdentityPlatformModule_
+  - _Requirements: 4.10_
+
 - [ ] 4. 認証部品の規則とポート(主体に依存しない)
 - [ ] 4.1 (P) パスワード・セッションの有効期限・リカバリコード・第2要素の入力の規則を作る
   - 先に、パスワードの長さとハンドル・ニックネーム・ローカル部との大文字小文字を区別しない一致、アイドル14日・絶対90日の境界と15分未満の更新の省略とCookieの有効期間(残りの短い方)、リカバリコードの形式と入力の正規化(空白・ハイフン・大文字)、認証コードの正規化を確かめる単体テストを書く

@@ -27,7 +27,7 @@
 - プロフィールの編集・公開プロフィール・旧ハンドル・予約語(user-profile-social)。
 - 管理者アカウント・管理者のログイン画面・管理者用のテーブル(admin-foundation)。
 - 停止の画面・理由・監査ログ・停止の通知メール(ugc-moderation)。
-- 運営者による退会の管理画面・問い合わせからの導線・権限の確認・監査ログ(ugc-moderation・admin-foundation)。
+- 運営者による退会の管理画面(ユーザー一覧からの操作)・権限の確認・監査ログ(ugc-moderation・admin-foundation)。
 - アップロードの受け付けと拒否の応答(media-pipeline)。
 - 各ドメインのデータの論理削除・物理削除・匿名化、Stripe Customerの削除と定期課金の解約(各ドメインspecの波及処理)。
 - ユーザーが保有するファイルの物理削除と、停止・停止解除に伴う隔離理由の付け外し(user-profile-socialが波及処理として登録する)。
@@ -48,6 +48,7 @@
 - 使い捨てメールアドレスの判定(`DisifyClient`・判定し直し)、利用者のメールアドレスの照会口の実装(`D1UserAddressDirectory`)。
 - 後続specが通知メールの宛先を引く利用者の連絡先の照会`UserContactDirectory`(契約・DIの識別子`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・D1の実装・api・event共通の束縛`IDENTITY_PLATFORM_MODULE`。`apps/backend-lib/workers/identity`)。後続specは`users`の`email`・`nickname`・`email_verified_at`を直接読まず、これを使う(spec横断レビュー、2026-10-23)。
 - データエクスポートのアカウントの部分の照会`AccountExport`(契約・DIの識別子`IDENTITY_PLATFORM_TYPES.AccountExport`・D1の実装。`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する)。`account.json`の`email`・`emailVerifiedAt`・`registeredAt`・`mfaEnabled`と、決済履歴の照会に使う仮名化IDを返す。data-exportは`users`・`user_totp_credentials`を直接読まず、これを使う(spec横断レビュー、2026-10-23)。
+- 管理画面の利用者の検索・一覧の照会`AdminUserDirectory`(契約・D1の実装`D1AdminUserDirectory`・DIの識別子`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`。`apps/backend-lib/workers/identity/admin-user-directory.ts`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する)。ugc-moderationの`/users`・措置の対象の確かめ・週ごとの統計は`users`を直接読まず、これを使う(仮7、spec横断レビュー、2026-10-24)。
 - shadcn/uiの`Checkbox`(`apps/frontend-lib/components/ui/checkbox.tsx`)。登録の同意で最初に使い、paymentsの決済の同意が再利用する(spec横断レビュー、2026-10-23)。
 - メール種別7つ(`core/email/kinds/identity.ts`)とテンプレート(`apps/event/src/infrastructure/email/templates/identity/`)。
 - 定期実行のジョブ3つ(業務時刻4:21、`order` 100・110・120)とメッセージ種別2つ(`identity.run-user-lifecycle`・`identity.recheck-disposable-email`)。
@@ -62,7 +63,7 @@
 - `users.nickname`・`users.handle`の変更、ハンドルの規則(文字種・長さ・予約語・大文字小文字の扱い・旧ハンドル)、旧ハンドルの保持と302リダイレクト、予約語の判定(user-profile-social)。本specは登録時に生成する初期ハンドルの形式(`InitialHandleFormat`)と、重複判定の差し込み口`HANDLE_AVAILABILITY`だけを持つ。
 - 管理者のテーブル・管理者のセッションの検証の実装・管理画面(admin-foundation)。本specは`AUTH_TYPES.AdminSessionVerifier`の束縛を常に無効を返す既定の実装にしておく。
 - 停止・停止解除の画面、理由・監査ログ・通知メール(ugc-moderation・admin-foundation)。
-- 運営者による退会の管理画面、問い合わせからの導線(停止中の利用者の依頼の受け付けと本人の確かめ)、操作の権限の確認(admin-foundationの権限の判定)、監査ログの記録(admin-foundationの記録API)、利用者への連絡(ugc-moderation)。本specの操作口は、呼び出し元と主体が管理者側であることだけを確かめる。
+- 運営者による退会の管理画面(ugc-moderation。最上位管理者だけがユーザー一覧から行う操作)、操作の権限の確認(admin-foundationの権限の判定)、監査ログの記録(admin-foundationの記録API)。停止中の利用者の依頼の受け付け・本人の確かめ・利用者への連絡は、運営者がシステムの外(問い合わせの確認とシステム外のメール)で行い、どのspecも持たない。本specの操作口は、呼び出し元と主体が管理者側であることだけを確かめる。
 - アップロードの受け付け、`UploaderEligibility`の定義と既定の実装(許可)、利用者のアップロードの経路での判定の呼び出しと拒否の応答(media-pipeline)。管理者のアップロードの経路は判定の対象外である。
 - 各ドメインの同期・非同期の波及処理の中身(各ドメインspec)。本specは自分のテーブルと抑止記録の削除依頼だけを波及処理として持つ。ユーザーが保有するファイルの物理削除(`purge_due`でのmedia-pipelineの`eraseOwnedBy`)と、停止・停止解除に伴う隔離理由`user_suspended`の付け外しは、identity-authとmedia-pipelineの両方に依存するuser-profile-socialが波及処理として登録する。本specはその登録口だけを提供する。
 - bot判定の検証(backend-platformの`BotVerifier`)、厳密なレート制限カウンタ(`RateLimitCounterClient`)、セッションの受け渡しの契約(api-gatewayの`SessionAccess`。本specはapplication層の読み取りの型`SessionView`の追加だけを行う)、Cookieの属性と発行(frontend-platform)、メールの描画と送信(email-delivery)の実装。
@@ -94,9 +95,10 @@
 - `UserSuspension`の形(ugc-moderation)。
 - `UserContact`・`UserContactDirectory`の形、DIの識別子`IDENTITY_PLATFORM_TYPES.UserContactDirectory`と置き場所(`apps/backend-lib/workers/identity`)、api・eventの両方に束縛すること、`findContact`が退会済み(`deleted_at`あり)・物理削除済みの利用者で`undefined`を返し、停止中の利用者を返す規則(payments・ultras-subscription・inquiry-chat、以後メールを送る全ドメインspec)。
 - `AccountExportRecord`・`AccountExport`の形と項目(`account.json`の本specの持ち分と仮名化ID)、DIの識別子`IDENTITY_PLATFORM_TYPES.AccountExport`、api・eventの両方に束縛すること、`find`が退会済み・物理削除済みの利用者で`undefined`を返し、停止中の利用者を返す規則(data-export)。データエクスポートの文書の`account.json`の項目が変わったら、本specの持ち分を確かめ直す。
+- `AdminUserDirectory`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserStatus`の形、DIの識別子`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`と置き場所(`apps/backend-lib/workers/identity/admin-user-directory.ts`)、`search`・`findByIds`・`findByEmail`が退会済みを除く規則、`countRegisteredAt`の数え方(`created_at < at`かつ`deleted_at IS NULL`または`deleted_at >= at`)、部分一致の逃がし方と並び(ugc-moderation、仮7)。`users`の列・`status`の値・`disposable_email_status`の値を変えたら、この照会とugc-moderationの`/users`・週ごとの統計を確かめ直す。
 - ユーザーライフサイクルの波及処理の`order`の範囲(0〜9999は各ドメイン、10000以上は本spec)と、本specの波及処理の`order`(10000)(波及処理を登録する全ドメインspec、roadmapの帯の割り当ての表)。
 - `apps/frontend-lib/components/ui/checkbox.tsx`の形(paymentsの決済の同意が再利用する)。
-- `AdministrativeWithdrawal`の形と、呼び出せる経路の条件(呼び出し元が管理者側で、主体が管理者のセッション)、対象が退会済み・存在しないときの`not_found`、利用者本人の退会と同じ確定の処理を通すこと(ugc-moderation・admin-foundation)。停止中の設定ページの案内文(問い合わせで退会を依頼できる旨)を変えたら、ugc-moderationの問い合わせからの導線も確かめ直す。
+- `AdministrativeWithdrawal`の形と、呼び出せる経路の条件(呼び出し元が管理者側で、主体が管理者のセッション)、対象が退会済み・存在しないときの`not_found`、利用者本人の退会と同じ確定の処理を通すこと(ugc-moderation・admin-foundation)。停止中の設定ページの案内文(問い合わせで退会を依頼できる旨)を変えたら、ugc-moderationの代理の退会の手順(問い合わせで依頼を受け、ユーザー一覧から行う)も確かめ直す。
 - アップロードできる利用者の判定の規則(停止中・退会済みは拒否、メールアドレスが未確認でも拒否しない)と、`AccountUploaderEligibility`の束縛の位置(media-pipeline、アップロードを使う全ドメインspec)。
 - `auth`モジュールのポート・`SessionPolicy`・`LoginThrottle`のスコープとDurable Objectの名前の規則(admin-foundation)。
 - `AUTH_TYPES.AdminSessionVerifier`の束縛の位置(admin-foundation)。
@@ -254,6 +256,7 @@ apps/
 │       ├── d1-user-contact-directory.ts                # UserContactDirectoryのD1実装
 │       ├── account-export.ts                           # AccountExportRecord・AccountExport(データエクスポートのアカウントの部分、テストなしの型)
 │       ├── d1-account-export.ts                        # AccountExportのD1実装
+│       ├── admin-user-directory.ts                     # AdminUserDirectory・D1AdminUserDirectory(ugc-moderationの管理画面の利用者の照会、仮7)
 │       ├── identity-platform-module.ts                 # api・event共通の束縛(IDENTITY_PLATFORM_MODULE)
 │       └── user-lifecycle-store.ts                     # イベントと完了の記録の読み書き
 ├── api/src/
@@ -419,7 +422,7 @@ docs/
 - `apps/api/package.json`・`bun.lock` — `otpauth` 9.5.2・`bowser` 2.14.1を版固定で加える。
 - `apps/api/eslint.config.ts`・`test/config/layer-rules.unit.test.ts` — `auth`の各層から`identity`の各層へのimportを禁止する規則と違反例を加える。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`env-schema.ts` — identityのモジュール、2つのメッセージの処理、任意の`DISIFY_API_KEY`を加える。
-- `apps/api/src/composition/modules.ts`・`apps/event/src/composition/modules.ts` — 両アプリの`MODULES`に`IDENTITY_PLATFORM_MODULE`(`UserContactDirectory`・`AccountExport`の束縛)を加える(spec横断レビュー、2026-10-23)。
+- `apps/api/src/composition/modules.ts`・`apps/event/src/composition/modules.ts` — 両アプリの`MODULES`に`IDENTITY_PLATFORM_MODULE`(`UserContactDirectory`・`AccountExport`・`AdminUserDirectory`の束縛)を加える(spec横断レビュー、2026-10-23・2026-10-24)。
 - `apps/event/src/infrastructure/email/templates/index.ts` — 7つのテンプレートを`EMAIL_TEMPLATES`へ加える。
 - `apps/client/src/routes/__root.tsx` — `beforeLoad`で`viewer`を取得して文脈に入れる(取得の失敗は未ログインとして扱う)。
 - `apps/client/src/composition/layout-slots.ts` — `headerAccount`・`headerLaunchAction`・`belowHeader`を本specの部品に差し替える。
@@ -698,6 +701,7 @@ sequenceDiagram
 | 20.4, 20.5, 20.6, 20.7                   | 技術ドキュメントと関連文書                   | IdentityDocs                                                                                                             | —                                                                        | —                              |
 | 4.8                                      | 後続specへの利用者の連絡先の照会             | UserContactDirectory、D1UserContactDirectory、IdentityPlatformModule                                                     | `UserContactDirectory.findContact`                                       | —                              |
 | 4.9                                      | データエクスポートのアカウントの部分の照会   | AccountExport、D1AccountExport、IdentityPlatformModule                                                                   | `AccountExport.find`                                                     | —                              |
+| 4.10                                     | 管理画面の利用者の検索・一覧の照会(仮7)      | AdminUserDirectory、D1AdminUserDirectory、IdentityPlatformModule                                                         | `AdminUserDirectory`                                                     | —                              |
 | 1.1, 1.2, 1.3(同意の入力)                | 同意のチェックボックスの共通部品             | RegisterForm、Checkbox(frontend-lib)                                                                                     | `components/ui/checkbox.tsx`                                             | —                              |
 
 ## Components and Interfaces
@@ -713,6 +717,7 @@ sequenceDiagram
 | D1UserAddressDirectory                                                                                            | backend-lib/workers                                           | email-deliveryの照会口の実装                                 | 15.3                                                               | D1 (P0)                                                           | Service        |
 | UserContactDirectory・D1UserContactDirectory・IdentityPlatformModule                                              | backend-lib/workers                                           | 後続specへの利用者の連絡先の照会(api・event共通の束縛)       | 4.8                                                                | D1 (P0)                                                           | Service        |
 | AccountExport・D1AccountExport                                                                                    | backend-lib/workers                                           | データエクスポートのアカウントの部分と仮名化IDの照会         | 4.9                                                                | D1 (P0)                                                           | Service        |
+| AdminUserDirectory・D1AdminUserDirectory                                                                          | backend-lib/workers                                           | ugc-moderationの管理画面の利用者の検索・一覧・数え上げ(仮7)  | 4.10                                                               | D1 (P0)                                                           | Service        |
 | UserLifecycleStore                                                                                                | backend-lib/workers                                           | イベントと完了の記録                                         | 16.3, 16.4, 16.6, 17.1                                             | D1 (P0)                                                           | State          |
 | PasswordRules・SessionPolicy・LoginThrottleState・RecoveryCodeFormat・SecondFactor                                | api/domain/auth                                               | 主体に依存しない純粋な規則                                   | 5.1, 5.2, 7.2, 7.3, 7.4, 7.6, 8.2, 8.3, 13.3, 19.2                 | なし                                                              | State          |
 | UserAccountRules・InitialHandleFormat・AuthTokenPurpose                                                           | api/domain/identity                                           | 利用者の状態・可視・初期ハンドルの形式・トークンの用途       | 1.6, 4.3, 4.4, 4.5, 4.6, 14.2                                      | なし                                                              | State          |
@@ -1009,13 +1014,14 @@ export interface UserContactDirectory {
 export declare const IDENTITY_PLATFORM_TYPES: {
   readonly UserContactDirectory: symbol;
   readonly AccountExport: symbol;
+  readonly AdminUserDirectory: symbol; // 仮7
 }; // Symbol.for('identity.<名前>')(email-deliveryのEMAIL_TYPESと同じ形)
 // workers/identity/d1-user-contact-directory.ts
 export declare class D1UserContactDirectory implements UserContactDirectory {
   constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
 }
 // workers/identity/identity-platform-module.ts
-export declare const IDENTITY_PLATFORM_MODULE: AppModule; // UserContactDirectory → D1UserContactDirectory、AccountExport → D1AccountExport
+export declare const IDENTITY_PLATFORM_MODULE: AppModule; // UserContactDirectory → D1UserContactDirectory、AccountExport → D1AccountExport、AdminUserDirectory → D1AdminUserDirectory
 ```
 
 - `findContact`: `users`から`id = ? AND deleted_at IS NULL`の1行の`email`・`nickname`・`email_verified_at`を読み、`emailVerified`は`email_verified_at IS NOT NULL`とする。行が無い(物理削除済み)・`deleted_at`がある(退会済み)なら`undefined`。`status`は見ないため、停止中の利用者も返す(停止中の利用者にも決済・解約・問い合わせの返信の通知を届けるため)。D1への問い合わせの失敗は例外のまま投げ、呼び出し元(Queueの処理・反映の後の送信)の再試行に任せる。
@@ -1059,6 +1065,62 @@ export declare class D1AccountExport implements AccountExport {
 - 仮名化ID: data-exportは最初に`find`を呼び、`pseudonymousId`をpaymentsの`PaymentHistoryExport.listAll`へ渡す。仮名化IDはZIPに書かない(文書のIDの方針と`account.json`の項目に無いため)。
 - メールアドレスの確認: データエクスポートの要求は確認済みの利用者に限る(4.1)ため、通常は`emailVerifiedAt`が入っている。`null`のときの扱い(生成を止めるか)はdata-exportが決める。停止中の利用者に生成を認めるかもdata-exportが決める。
 - 置き場所と束縛: `UserContactDirectory`と同じく`apps/backend-lib/workers/identity`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する(ZIPの生成はeventのQueueの処理で行い、要求の受け付けはapiで行うため)。data-exportは`users`・`user_totp_credentials`を直接読まず、`IDENTITY_PLATFORM_TYPES.AccountExport`を`@inject`で受け取る。
+
+#### AdminUserDirectory・D1AdminUserDirectory
+
+| Field        | Detail                                                                                                      |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| Intent       | ugc-moderationの管理画面が利用者を検索・一覧し、措置の対象を確かめ、週ごとの登録者数を数えるための照会(仮7) |
+| Requirements | 4.10(spec横断レビュー、2026-10-24。ugc-moderationが使う)                                                    |
+
+**Contracts**: Service [x]
+
+```typescript
+// workers/identity/admin-user-directory.ts
+export type AdminUserStatus = 'active' | 'suspended';
+export interface AdminUserRecord {
+  readonly userId: string;
+  readonly pseudonymousId: string;
+  readonly handle: string;
+  readonly nickname: string;
+  readonly status: AdminUserStatus;
+  readonly suspendedAt: Date | null;
+  readonly registeredAt: Date;
+  readonly emailVerified: boolean;
+  readonly disposableEmailStatus: DisposableEmailStatus | null; // 確認前はnull
+}
+export interface AdminUserSearchFilter {
+  readonly handle?: string; // 大文字小文字を区別しない部分一致
+  readonly nickname?: string; // 同上
+  readonly email?: string; // 大文字小文字を区別しない完全一致(仮3)
+  readonly status?: AdminUserStatus;
+}
+export interface AdminUserDirectory {
+  search(
+    filter: AdminUserSearchFilter,
+    page: { readonly after?: string; readonly limit: number }, // 1〜50
+  ): Promise<{
+    readonly users: readonly AdminUserRecord[];
+    readonly nextCursor: string | null;
+  }>; // 退会済みを除く、(created_at, id)の降順
+  findByIds(
+    userIds: readonly string[],
+  ): Promise<ReadonlyMap<string, AdminUserRecord>>; // 退会済みを除く、90件ずつ
+  findByEmail(email: string): Promise<AdminUserRecord | undefined>; // 退会していない利用者の完全一致
+  countRegisteredAt(at: Date): Promise<number>; // created_at < atかつ(deleted_at IS NULLまたはdeleted_at >= at)
+}
+export declare class D1AdminUserDirectory implements AdminUserDirectory {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
+```
+
+- 契約の正は本specの設計で、本specが所有して実装する。ugc-moderationはこの契約を使う(形を変えるときは本specのRevalidation Triggersでugc-moderationへ伝える)。コメントの「仮3」はugc-moderationの仮3(メールアドレスの完全一致の検索)を指す。`DisposableEmailStatus`は`core/identity/disposable-email.ts`の型である。
+- `search`: `users`の`deleted_at IS NULL`の行を、条件を`AND`でつないで`(created_at, id)`の降順に`limit + 1`件読み、先頭`limit`件と続きの有無を返す。`limit`が1〜50の外なら`AppError(bad_request, validation_error)`。部分一致は`LIKE ? ESCAPE '\'`で、入力の`%`・`_`・`\`を逃がす(SQLiteの`LIKE`はASCIIの大文字小文字を区別しない)。`email`は前後の空白を除いた値と`COLLATE NOCASE`の列の完全一致。カーソルは`base64url('<ミリ秒>:<ID>')`で、形式が違えば`AppError(bad_request, validation_error)`。
+- `findByIds`: 重複を除き、IDのバインド変数を90個以内に分けて読む。退会済み・存在しないIDは結果に含めない。`findByEmail`: 前後の空白を除いた`email = ?`かつ`deleted_at IS NULL`の1行。
+- `countRegisteredAt`: `created_at < ? AND (deleted_at IS NULL OR deleted_at >= ?)`の件数(物理削除済みは数えない)。
+- 値の対応: `registeredAt`は`created_at`、`emailVerified`は`email_verified_at IS NOT NULL`、`disposableEmailStatus`は`disposable_email_status`。メールアドレス・パスワードハッシュ・セッション・TOTPの項目は返さない(メールアドレスは検索の条件にだけ使う)。
+- 置き場所と束縛: `UserContactDirectory`と同じく`apps/backend-lib/workers/identity`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する(eventでは使わないが、置き場所の規則をそろえる)。ugc-moderationは`users`を直接読まず、`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`を`@inject`で受け取る。管理画面とGraphQLの操作はugc-moderationが持つ。
+- D1への問い合わせの失敗は例外のまま投げる。
 
 #### UserLifecycleStore
 
@@ -2860,7 +2922,8 @@ stateDiagram-v2
   - eventの`identity.run-user-lifecycle`のバッチ: 登録した偽の波及処理が順に呼ばれ、失敗で再試行、完了済みは呼ばれない。物理削除で利用者の行が消え、外部キーの残りでは`pending`に残る(16.5・17.3)。
   - `D1UserContactDirectory`: 通常の利用者で`userId`・`email`・`nickname`・`emailVerified`(確認済みは真、未確認は偽)が返る、停止中の利用者も返る、退会済み(`deleted_at`あり)・存在しない利用者で`undefined`、D1の失敗が例外になる(4.8)。
   - `D1AccountExport`: 通常の利用者で仮名化ID・メールアドレス・確認日時・登録日時(`created_at`)が返る、多要素認証が有効なら`mfaEnabled`が真で、未設定・設定途中の待ちだけなら偽、停止中の利用者も返る、退会済み・存在しない利用者で`undefined`、D1の失敗が例外になる、結果にパスワードハッシュ・TOTPの秘密鍵などの項目が無い(4.9)。
-  - `IDENTITY_PLATFORM_MODULE`の束縛: APIサーバーとイベントサーバーのそれぞれのWorkers統合テストで、処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.UserContactDirectory`が`D1UserContactDirectory`に、`IDENTITY_PLATFORM_TYPES.AccountExport`が`D1AccountExport`に解決される(4.8・4.9)。
+  - `D1AdminUserDirectory`: 退会済みを除き`(created_at, id)`の降順に並ぶ、ハンドル・ニックネームの大文字小文字を区別しない部分一致と`%`・`_`・`\`の逃がし、メールアドレスの前後の空白を除いた大文字小文字を区別しない完全一致(`findByEmail`も同じ)、状態の絞り込み、`limit`の境界(0と51の拒否)とカーソルの続き・不正なカーソルの拒否、`findByIds`の91件以上の分割と退会済みの除外、`findByEmail`の退会済みの除外、`countRegisteredAt`が指定時刻以後の登録を数えず指定時刻以後の退会を数えること、結果にメールアドレス・パスワードハッシュが無いこと(4.10)。
+  - `IDENTITY_PLATFORM_MODULE`の束縛: APIサーバーとイベントサーバーのそれぞれのWorkers統合テストで、処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.UserContactDirectory`が`D1UserContactDirectory`に、`IDENTITY_PLATFORM_TYPES.AccountExport`が`D1AccountExport`に、`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`が`D1AdminUserDirectory`に解決される(4.8・4.9・4.10)。
   - email-deliveryとの結合: 7種のテンプレートが`createEmailTemplateRegistry`に通り、件名と行動ボタンのURLを含む(14.6)。
   - media-pipelineとの結合: 処理単位のコンテナで`UPLOAD_ACCESS_TYPES.UploaderEligibility`が本specの実装に解決され、停止中の利用者のセッションでの`POST /internal/media/uploads/:purpose`(テスト用の用途を登録する)が403・`account_unavailable`になって記録とオブジェクトが残らず、未確認の利用者のアップロードは受け付けられる(4.7)。
 - **E2E/UI Tests**(Playwright、ローカルで起動したapi・event・clientとMailpit):
@@ -2883,7 +2946,7 @@ stateDiagram-v2
   - TOTPの再使用・秘密鍵の漏洩: 使用済みの時間窓の記録、AES-GCMでの保存(鍵はD1の外)。
   - 波及処理の取りこぼし: 同期の部分は状態の変更と同時に確定、非同期の部分は記録と日次の再実行。
   - 停止逃れ: 停止中の利用者は退会でき(4.4)、退会の直後から同じメールアドレスで再登録できる(1.5)。消去の権利を優先し、この回避を防がないことを受け入れる(仮5、2026-10-18の開発者の判断)。再登録したアカウントは新しいハンドル・仮名化IDを持ち、運営者は使い捨て判定の結果と通報で再度停止できる。
-  - 運営者による退会の濫用・取り違え: 本人確認を伴わず取り消せないため、操作口は管理者側の呼び出し元と管理者のセッションだけを受け付け(15.8)、利用者側のGraphQLの操作を設けない。依頼者の本人の確かめ・操作の権限の確認・監査ログは呼び出し側(ugc-moderation・admin-foundation)が行う。
+  - 運営者による退会の濫用・取り違え: 本人確認を伴わず取り消せないため、操作口は管理者側の呼び出し元と管理者のセッションだけを受け付け(15.8)、利用者側のGraphQLの操作を設けない。操作の権限の確認(最上位管理者だけ)と監査ログは呼び出し側(ugc-moderation・admin-foundation)が行い、依頼者の本人の確かめは運営者がシステムの外で行う。
   - 停止中の利用者のアップロード: 停止では既存のセッションを消さない(16.10)ため、media-pipelineの差し込み口を本specの判定で束縛し、保存の前に拒否する(4.7、FR-USER-020)。
 - データの最小化(DR-001): セッションにIPアドレスを保存しない。ログイン試行の記録はハッシュ化したキーと回数だけで、最後の失敗から24時間で消える。使い捨て判定へはローカル部を送らない。漏洩照合へはSHA-1の先頭5文字だけを送る。
 
