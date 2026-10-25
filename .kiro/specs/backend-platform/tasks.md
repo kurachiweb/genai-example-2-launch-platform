@@ -316,7 +316,7 @@
   - _Boundary: AsyncProcessingDoc, LoggingDoc_
   - _Requirements: 9.2, 10.7, 10.9, 11.9, 15.5, 15.6_
 
-- [ ] 8.4 (P) 秘密情報のハッシュ化の技術ドキュメントを追加する
+- [x] 8.4 (P) 秘密情報のハッシュ化の技術ドキュメントを追加する
   - 高エントロピーの秘密情報とレート制限のキーのHMAC化、用途の分離、照合の方法、ペッパーの管理を記載し、索引へ1行追記する
   - 完了状態: セキュリティの索引から文書へ辿れ、記載の手順がハッシュ化部品の振る舞いと一致している
   - _Boundary: KeyedHashingDoc_
@@ -379,3 +379,4 @@
 - 7.4(9.1・8.3・8.5への申し送り): E2Eの共有の補助`e2e/support/scheduled-trigger.ts`は`apps/backend-lib/core/time/business-time.ts`の実体を直接importする。ルートの単体テストのカバレッジで`business-time.ts`は行80.56%(閾値80%)で余裕が約1行しか無い(ルートの`test:unit`は`apps/**`を除くため、補助のテストだけが分母の共有ファイルを通る)。`business-time.ts`に補助が使わない関数を足すとルートのカバレッジが失敗し得るため、その場合は設計どおり共有ディレクトリのファイルをルートの分母から外すdev-toolingの設定の変更を開発者へ報告する。テストは`Bun.serve`のローカルサーバーへ`E2E_API_URL`・`E2E_EVENT_URL`を向けて確かめる。`docs/GUIDES/tech/testing/001-test-strategy.md`の共有の補助の表とCLAUDE.mdのディレクトリ構成のe2e/support/ の説明への追記は8.3・8.5で扱う。
 - 6.2(6.4・7.1・8.3への申し送り): `dispatch(controller, env, ctx)`は設計どおり相関IDの引数を持たず、LogTapeの公開API`getConfig()?.contextLocalStorage?.getStore()?.correlationId`から相関IDを受け継いで`InvocationScopeInfo`へ渡す(文脈の外では採番する)。6.4のWorkerHandlerは`dispatch`の形を変えず、`withContext({ correlationId })`のキー名を6.1と同じ`correlationId`にそろえる。ログのカテゴリは`['api','scheduled','dispatcher']`に固定(定期実行はapiだけ)。未登録の式とジョブ0件は`warning`ログだけで要約もSentryへの送信も無い。ジョブが`AppError`で失敗した場合は`scrubEvent`によりSentryに届かずログにだけ残るため、8.3の文書に「ジョブの想定外の失敗は`AppError`以外で投げる」を規約として書く。
 - 6.1(6.4・7.1・7.2・8.1・8.3への申し送り): `createWorkerApp`の`WorkerAppOptions`は、`envSchema`を`z.ZodType`(4.4のNotes)、`sentry`を`CloudflareOptions`を返す関数(4.2のNotes。アプリは`(env) => buildSentryOptions(readSentryRuntimeOptions(env))`を渡す)にした。`envGuard`は検証結果を使わず元の`c.env`を使い続ける。環境の検証の失敗のログ属性は`missingEnvNames`・`invalidEnvNames`(`@logtape/redaction`の既定のフィールド名`/key/i`に当たる名前は値ごと伏せられるため、8.3の文書に「ログの属性名に`key`・`token`等を含めない」と書く)。Honoは`Error`以外が投げられると`onError`を通さずに再送出するためアクセスログが出ない。8.3の文書に「`Error`(の派生)だけを投げる」、HonoのHTTPExceptionも500になるため「`HTTPException`を使わず`AppError`を使う」を規約として書く。`invocation-context.ts`のローカル型`InvocationContextHonoEnv`は`PlatformHonoEnv`と変数名が重複している。
+- 8.4(8.1・8.5への申し送り): `security/002-keyed-hashing.md`は新しいプレースホルダー`<ペッパーのシークレットのキー>`(本プロジェクトでは`HASH_PEPPER`)と`<共通ライブラリの配置先>`(api・eventでは`lib`)を使う。8.5で`docs/onboardings/project-values.md`に追加し、8.1の文書も共有のバックエンドのライブラリを同じプレースホルダー名で書く。
