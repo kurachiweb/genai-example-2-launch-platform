@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: アプリのプロジェクト・DB生成ツール・実行環境の設定・テスト設定・層の規則
+- [x] 1. 基盤: アプリのプロジェクト・DB生成ツール・実行環境の設定・テスト設定・層の規則
 - [x] 1.1 APIサーバーとイベントサーバーのプロジェクトを作り、依存を固定した版で導入する
   - 両アプリにパッケージ定義を新設し、設計の依存一覧(Hono・Inversify・`reflect-metadata`・Drizzle ORM・ulid・Zod・LogTapeと`@logtape/redaction`・Sentryの2パッケージ、開発用にWrangler・Vitest系・Workersテストプール・drizzle-kit・品質ツール6種・Bunの型定義)を、主要パッケージ一覧の版で完全に固定して導入する
   - dev-toolingの基底設定を継承した型検査設定(Workers向けの差分と、共有ディレクトリの配置先を含む対象)と静的解析設定を置き、スクリプト契約の静的解析・型検査・単体テストを定義する。イベントサーバーは配置先`db`・`lib`を静的解析と単体テストから外し、型検査には含める
@@ -38,7 +38,7 @@
   - 完了状態: 依存方向の単体テストが成功し、規則に合う既存ファイルで両アプリの静的解析が成功する
   - _Requirements: 5.1_
 
-- [ ] 2. 共有コードの純粋な部品(実行環境に依存しない部品、Bunの単体テスト)
+- [x] 2. 共有コードの純粋な部品(実行環境に依存しない部品、Bunの単体テスト)
 - [x] 2.1 (P) 業務時刻(UTC-08:00固定)の計算と時計の部品を作る
   - UTCの時点から業務時刻の日付・曜日・時・分への変換、業務日付と時刻からUTCへの変換、ISO週と週の開始日・終了日、業務時刻からUTCのcron式への変換を提供する
   - UTCの8:00を日境界とし、夏時間の補正をしない。不正な日付文字列は例外にする
@@ -130,7 +130,7 @@
   - _Requirements: 10.9_
 
 - [ ] 3. データベースの共通部品とマイグレーションの検出確認
-- [ ] 3.1 (P) 全テーブルが使う主キー・作成更新日時・論理削除の列と、大文字小文字を区別しない列を作る
+- [x] 3.1 (P) 全テーブルが使う主キー・作成更新日時・論理削除の列と、大文字小文字を区別しない列を作る
   - 先に、テスト内の検証用テーブル定義(`snakeCase.table`)で、スネークケースの列名・列の型・NOT NULL・既定値・更新時の値を確かめる単体テストを書く
   - ULIDを採番するテキストの主キー、UTCミリ秒の作成・更新日時(Drizzleの更新時に更新日時を自動設定)、NULLを未削除とする削除日時と未削除への絞り込み条件、照合順序`nocase`のテキスト列を提供する
   - 完了状態: 列定義の単体テストが成功し、各部品がORMとulid以外を読み込んでいない
@@ -363,3 +363,4 @@
 - 2.8(5.1への申し送り): `applyHit`は`rule.limit`・`rule.windowSeconds`が1以上の整数でない場合と`now`が有限の数でない場合に`RangeError`にする。5.1では`next`があるときだけ保存し、`scheduleAlarmAt`があるときだけ`setAlarm`する。
 - 2.10(2.11・7.1への申し送り): `cronExpressions()`の昇順は文字列の順ではなくUTCの起動時刻(時・分)の順(例: `40 7 * * *`が`21 12 * * *`より前)。下流specは`triggers.crons`内の位置を定めないため、7.1の一致の検査は順序に依存しない比較(同じ規則で整列するか集合で比べる)にする。範囲外の時刻は`toUtcCronExpression`の`RangeError`を`cause`に持つ`CronRegistryError`(`core/scheduling/cron-registry.ts`)にしており、2.11は同じ例外をimportして使う。整数でない`order`も拒否する(範囲は検査しない)。
 - 2.9(5.3への申し送り): `interpretSiteverify`は、JSONとして読めなかった応答を`{ kind: 'response', status, json: undefined }`で受け取る取り決めにしている(オブジェクトでない値・形が不正な本文は`unavailable`)。複数のエラーコードの優先順位はmisconfigured > unavailable > expired-or-duplicate > invalid-tokenで、未知のコードだけ・コード無しの失敗応答は`invalid-token`(403)。2xx以外は本文のエラーコードを`errorCodes`に残さない。ホスト名は完全一致(大文字小文字を区別)なので、期待するホスト名の設定値を小文字にそろえる場合は5.3か環境の検証で扱う。
+- 3.1(8.2への申し送り): 共通カラムは`apps/db/schema/_shared/columns.ts`(`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`)と`text-no-case.ts`(`textNoCase`)にある。追加時の`created_at`と`updated_at`は別々に現在時刻を取るため1ms程度ずれ得る。`/workspace/docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md`の`textNoCase`のimportの例は`./text-no-case`のままなので、8.2で配置(`_shared/`と`.ts`拡張子)と食い違わないようにする。
