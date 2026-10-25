@@ -6,9 +6,10 @@
   - 公開から2週間を過ぎた最新のパッチ版を選び、`stripe` 23.0.x(api・event)・`@stripe/stripe-js` 10系・`@stripe/react-stripe-js` 7.0.x(client)を完全固定で加える。選んだ版と公開日を記録する
   - 先に、各アプリの設定の単体テスト(Wrangler設定の3環境の比較)に、apiの`STRIPE_API_KEY`(必須のシークレット)と`PAYMENTS_SMOKE_ENABLED`、eventの`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`(必須のシークレット)と`PAYMENTS_SMOKE_ENABLED`・`CLIENT_SITE_ORIGIN`、clientの`STRIPE_PUBLISHABLE_KEY`の宣言を確かめる項目を加える。`PAYMENTS_SMOKE_ENABLED`はローカル・stagingで`true`、prodで`false`
   - api・eventの環境の検証に、`rk_test_`・`rk_live_`で始まる制限付きキー、`whsec_`で始まる署名の秘密、`true`・`false`の変数、オリジンの形式を加え、不足が既存の設定の不足として検知されることをテストで確かめる
-  - 型の生成をやり直し、Infisicalのキーの表と変数の値の表(`docs/onboardings/project-values.md`)に行を加える。stagingの値は必須にする変更をmainへマージする前に開発者が登録する必要がある旨を、作業の報告に含める
+  - 型の生成をやり直し、Infisicalのキーの表と変数の値の表(`docs/onboardings/project-values.md`)に行を加える。`STRIPE_API_KEY`の行はWorkerごとのフォルダ(apiは`/workers/api`、eventは`/workers/event`)で書き、`STRIPE_WEBHOOK_SECRET`の行は`/`で書く。stagingの値は必須にする変更をmainへマージする前に開発者が登録する必要がある旨(api用とevent用の制限付きキーを別々のWorkerごとのフォルダへ)を、作業の報告に含める(仮7)
+  - infra-deliveryの配布のスクリプトのWorkerごとのフォルダからだけ取るシークレットの一覧に`STRIPE_API_KEY`があることを確かめる。無ければ止めて開発者へ報告する(infra-deliveryの改訂1、仮7)
   - `STRIPE_PUBLISHABLE_KEY`は公開の値のためWranglerの`vars`に書く。ローカルとstagingには形式の検証を通る仮の値(`pk_test_`で始まる)を置く。ローカルの値は1.4でdev用のsandboxの公開キーへ置き換え、stagingの値はmainへのマージ前に開発者がstaging用のsandboxの公開キーを用意して置き換える(作業の報告に含める)。prodは、infra-deliveryの`TURNSTILE_SITE_KEY`と同じく形式の検証を通る仮の値(`pk_live_`で始まる)を置き、launch-readinessがライブモードの公開キーへ置き換える
-  - 完了状態: 3アプリの型検査と設定の単体テストが成功し、キーが無い環境では起動時の検証が不足するキーの名前だけを報告する
+  - 完了状態: 3アプリの型検査と設定の単体テストが成功し、キーが無い環境では起動時の検証が不足するキーの名前だけを報告する。infra-deliveryのWorkerごとのフォルダからだけ取るシークレットの一覧に`STRIPE_API_KEY`があること(または無いため止めて報告したこと)が作業の報告に記録されている
   - _Requirements: 15.1, 15.2, 15.3, 15.4_
 
 - [ ] 1.2 購入種別・決済履歴の値・状態の値・同意の文言・金額の共有定義を作る
@@ -18,18 +19,20 @@
   - _Requirements: 2.1, 4.4, 12.1_
 
 - [ ] 1.3 決済の7テーブルを定義し、マイグレーションを作る
-  - 先に、各テーブルの列の型・NOT NULL・既定値、状態と種類の値の制約(1.2の共有定義の値と一致すること)、`payment_purchases`の`exclusivity_key`の`status = 'fulfilled'`に限る部分一意索引と検索用の索引、`payment_records`の`(stripe_reference, kind)`(チャージバック以外)と`(stripe_reference, kind, status)`(チャージバック)の一意索引、`pseudonymous_id`に外部キーが無いこと、`payment_customers`・`payment_purchases`の`users`への外部キーと`payment_refunds`の購入への外部キー、カード番号などの決済情報の列が無いことを確かめる単体テストを書く
+  - 先に、各テーブルの列の型・NOT NULL・既定値、状態と種類の値の制約(1.2の共有定義の値と一致すること)、`payment_purchases`の`exclusivity_key`の`status = 'fulfilled'`に限る部分一意索引と検索用の索引、`payment_records`の`(stripe_reference, kind)`(チャージバック以外)と`(stripe_reference, kind, status)`(チャージバック)の一意索引と、収益の照会のための`occurred_at`の索引、`pseudonymous_id`に外部キーが無いこと、`payment_customers`・`payment_purchases`の`users`への外部キーと`payment_refunds`の購入への外部キー、カード番号などの決済情報の列が無いことを確かめる単体テストを書く
   - Stripe Customerの対応・購入・決済履歴・返金の依頼・Stripeのオブジェクトの最終の発生時刻・価格の一時保持・版の検査の行の7テーブルを定義し、スキーマの集約点へ加える
   - mainの最新を取り込んでからマイグレーションを生成し、衝突したら生成し直す
   - 完了状態: 単体テストが成功し、マイグレーションをローカルに適用でき、同じ`exclusivity_key`の`fulfilled`の行を2つ作れない
-  - _Requirements: 1.1, 1.7, 2.4, 6.4, 12.5, 12.6, 15.5_
+  - _Requirements: 1.1, 1.7, 2.4, 6.4, 12.5, 12.6, 12.10, 15.5_
 
 - [ ] 1.4 開発用sandboxの設定と検証の手順を書き、開発者の準備を確かめる
-  - 運用手順書(`operations/004`)のうち、環境ごとのStripeの設定(制限付きキーの権限の表、`lookup_key`付きの価格と税込の設定、税の登録、Adaptive Pricingの無効化、決済手段の設定をカード・Apple Pay・Google Pay・LinkだけにしてKlarnaなどを切ること、Webhook endpointのAPI版と15種の購読、ローカルの`stripe listen`の転送と署名の秘密)と、決済手段の検証の手順の節を、本プロジェクト固有の値を含めずに先に書く
-  - 開発者が行う作業(dev用のsandboxの作成、devのsandboxの公開キーの取得、api・eventの制限付きキーと`stripe listen`の署名の秘密のInfisicalの`dev`への登録、疎通確認用の価格`payments_smoke`(1ドル)の作成、決済手段と税の設定)を一覧にして報告する
+  - 運用手順書(`operations/004`)のうち、環境ごとのStripeの設定(制限付きキーの権限の表と、api用とevent用の制限付きキーをシークレット管理サービスのWorkerごとのフォルダへ別々に登録し、共通のフォルダには置かない手順(仮7)、`lookup_key`付きの価格と税込の設定、税の登録、Adaptive Pricingの無効化、決済手段の設定をカード・Apple Pay・Google Pay・LinkだけにしてKlarnaなどを切ること、Webhook endpointのAPI版と15種の購読、ローカルの`stripe listen`の転送と署名の秘密)と、決済手段の検証の手順の節を、本プロジェクト固有の値を含めずに先に書く
+  - 開発者が行う作業(dev用のsandboxの作成、devのsandboxの公開キーの取得、apiの制限付きキーのInfisicalの`dev`の`/workers/api`への登録とeventの制限付きキーの`/workers/event`への登録(仮7)、`stripe listen`の署名の秘密のInfisicalの`dev`の`/`への登録、疎通確認用の価格`payments_smoke`(1ドル)の作成、決済手段と税の設定)を一覧にして報告する
   - 1.1で置いたclientのWrangler設定のローカルの`STRIPE_PUBLISHABLE_KEY`の仮の値を、開発者から受け取ったdevの公開キーで置き換え、`project-values.md`の変数の値の表の行に書き込む
-  - 完了状態: 手順書の節が整形の検査を通り、ローカルの公開キーと`project-values.md`の行が書き込まれ、開発者の準備の完了(または未完了で保留した旨)が作業の報告に記録されている
-  - _Boundary: PaymentsTechDocs, clientのWrangler設定(ローカルの`STRIPE_PUBLISHABLE_KEY`の値だけ)_
+  - オンボーディングのAPIサーバーとイベントサーバーのローカルの起動のコマンドが、Workerごとのフォルダを重ねるinfra-deliveryのシークレットの注入のコマンド(ローカルの範囲、Workerの指定付き)の形であることを確かめ、そうでなければ止めて開発者へ報告する(infra-deliveryの8.5の担当。本タスクは書き換えない。仮7)
+  - 上の運用手順書の節とは別に、オンボーディングへ、api用とevent用のdevの制限付きキーをInfisicalの`dev`の`/workers/api`・`/workers/event`へ登録する手順を書き加える(仮7)
+  - 完了状態: 手順書の節が整形の検査を通り、ローカルの公開キーと`project-values.md`の行が書き込まれ、開発者の準備の完了(または未完了で保留した旨)が作業の報告に記録され、オンボーディングにWorkerごとのフォルダへの登録の手順がある。開発者の準備が終わっていれば、Workerの指定付きで起動したapiとeventの起動時の検証が成功し、Workerの指定を付けずに起動すると起動時の検証が`STRIPE_API_KEY`の不足を報告する(共通のフォルダの値が使われないことの確認)
+  - _Boundary: PaymentsTechDocs, オンボーディング(Workerごとのフォルダへの登録の手順だけ), clientのWrangler設定(ローカルの`STRIPE_PUBLISHABLE_KEY`の値だけ)_
   - _Depends: 1.1_
   - _Requirements: 15.1, 15.2, 15.6, 15.7_
 
@@ -37,9 +40,9 @@
 - [ ] 2.1 購入種別の口・定期課金の受け取り口・各ポートの契約と、登録の検証を作る
   - 先に、同じ購入種別の重複登録で例外になること、`enabled`が偽の登録と未登録の購入種別が解決されないこと、`enabled`で`PAYMENTS_SMOKE_ENABLED`を見る仮の登録が`false`の環境で解決されないこと(疎通確認用の購入種別の本物は5.7で作るため、テストは仮の登録で書く)、定期課金の受け取り口の名前の形式と重複の検証を確かめる単体テストを書く
   - 購入の内容(価格の種類・数量・対象・二重決済の鍵・決済期限・受付期限・反映の期限・最終確認画面の表示事項・bot判定の要否)、購入の可否、権利の付与の計画(付与の文または拒否)、定期課金の状態の変化(解約の予定時刻を含む)の型を作る。購入種別の口と定期課金の受け取り口に、確定の後に1回呼ばれる省略可能な処理を加える(U1)
-  - DIの識別子と、Stripeのゲートウェイと読み取り専用の結果の型・各ストア・返金の依頼・失効・価格の照会・Customerの照会のポートの型を作る(メールの宛先はidentity-authの`UserContactDirectory`を使い、本specはポートを持たない)
+  - DIの識別子と、Stripeのゲートウェイと読み取り専用の結果の型・各ストア・返金の依頼・失効・価格の照会・Customerの照会・期間ごとの純収益の照会(設計の`RevenuePeriod`・`PaymentRevenueReport`、仮7)のポートの型を作る(メールの宛先はidentity-authの`UserContactDirectory`を使い、本specはポートを持たない)
   - 完了状態: 単体テストが成功し、ポートの型をStripe・D1の実装(3・4の各タスク)と後続specが`backend-lib/workers/payments`に依存せずに読み込める
-  - _Requirements: 2.1, 2.2, 2.3, 2.7, 2.9, 2.11, 7.8, 7.9_
+  - _Requirements: 2.1, 2.2, 2.3, 2.7, 2.9, 2.11, 7.8, 7.9, 12.10_
 
 - [ ] 2.2 購入の状態の前進・有効期限・受付期限・反映の期限と、返金の金額の規則を作る
   - 先に、有効期限(決済期限の無い購入は作成から1時間、期限のある購入は24時間と決済期限の早い方、30分を下回らない)、受付期限の境界(期限ちょうどは拒否)、反映の期限の境界、前進できる元の状態(完了した購入は戻らない、`superseded`から完了へ進める)、返金の金額(残りの全額・一部・超過・0以下・非整数)、Stripeの返金理由への対応を確かめる単体テストを書く
@@ -108,7 +111,7 @@
 
 - [ ] 5. 反映・返金・通知の共有部品
 - [ ] 5.1 返金の依頼の部品を作る
-  - 先に、Workers統合テストで、全額と一部の依頼の受け付けと記録と送信、同じ依頼キーの2回目の重複の返却、支払額を超える依頼・未確定・存在しない購入の拒否、依頼元の一括の書き込みに含める文の返却と確定後の送信、反映からの経路(購入の状態とPaymentIntentのIDを検査せず、引数の支払額から全額の返金の依頼の行を`reflection:<購入ID>`の依頼キーで作り、前進の文と同じ一括の書き込みでだけ確定する)、後続specの経路(`request`・`prepare`)が`reflection:`で始まる依頼キーを拒否すること、送信の失敗で送信待ちが残ることを確かめる
+  - 先に、Workers統合テストで、全額と一部の依頼の受け付けと記録と送信、同じ依頼キーの2回目の重複の返却(`request`と`prepare`の両方。依頼キーの形式の検査が照会より先で、既に存在する`reflection:`の依頼キーでも`invalid_request_key`で拒否する。`prepare`の2回目は既存の依頼の識別と重複の印と空の文を返し、新しい行を作らない。金額や理由が異なっても、残りの額を超える金額でも拒否しない。確定前の2つの依頼の文が同じ依頼キーで重なると、後から確定する一括の書き込みが一意制約で失敗する)、支払額を超える依頼・未確定・存在しない購入の拒否、依頼元の一括の書き込みに含める文の返却と確定後の送信、反映からの経路(購入の状態とPaymentIntentのIDを検査せず、引数の支払額から全額の返金の依頼の行を`reflection:<購入ID>`の依頼キーで作り、前進の文と同じ一括の書き込みでだけ確定する)、後続specの経路(`request`・`prepare`)が`reflection:`で始まる依頼キーを拒否すること、送信の失敗で送信待ちが残ることを確かめる
   - 完了状態: Workers統合テストが成功し、依頼の受け付けがStripeの呼び出しを待たずに返る
   - _Depends: 2.2, 4.2_
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
@@ -136,12 +139,12 @@
   - _Depends: 4.3, 5.3_
   - _Requirements: 6.4, 6.5, 6.6, 6.7, 6.9, 7.7, 7.8, 7.9, 8.8, 8.9, 8.10, 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 5.5 (P) 価格の照会とデータエクスポート用の読み出しを作る
-  - 先に、Workers統合テストで、10分以内の価格の再利用、古い価格の取り直し、Stripeに到達できないときの古い価格の返却と値が無いときの利用できない旨、決済履歴の全件を`payments.json`の項目だけで返すこと(同意の日時・資金源のグループ・購入IDを含めない)を確かめる
-  - 完了状態: Workers統合テストが成功し、エクスポートの項目がデータエクスポートの文書の表と一致する
-  - _Boundary: PriceCatalog, PaymentHistoryExport_
+- [ ] 5.5 (P) 価格の照会・データエクスポート用の読み出し・期間ごとの純収益の照会を作る
+  - 先に、Workers統合テストで、期間ごとの純収益(成功した都度決済と請求の合計から、成功した返金と、敗北が確定したチャージバックの引き落とし額を差し引く。敗北の額は同じStripeのIDの引き落としの行から取り、敗北が確定した時刻の期間に数える。勝ったチャージバック・失敗と処理中の行・疎通確認用の購入種別を含めない。期間の境界・入力の順・該当の無い期間の0・最大の60個の期間が1回の一括の実行で成功すること(D1のバインド変数の上限を超えないよう期間を組に分ける)・引き落としの行が無い敗北の記録の扱い・期間の数と前後の誤りの拒否)と、10分以内の価格の再利用、古い価格の取り直し、Stripeに到達できないときの古い価格の返却と値が無いときの利用できない旨、決済履歴の全件を`payments.json`の項目だけで返すこと(同意の日時・資金源のグループ・購入IDを含めない)を確かめる
+  - 完了状態: Workers統合テストが成功し、エクスポートの項目がデータエクスポートの文書の表と一致し、純収益の照会が1回の一括の実行で、入力の順に期間ごとの値を返す(仮7)
+  - _Boundary: PriceCatalog, PaymentHistoryExport, PaymentRevenueReport_
   - _Depends: 3.1, 4.2_
-  - _Requirements: 12.8, 13.1, 13.2, 13.3, 13.4_
+  - _Requirements: 12.8, 12.10, 13.1, 13.2, 13.3, 13.4_
 
 - [ ] 5.6 未完了の決済セッションの失効を作る
   - 先に、Workers統合テストで、利用者と購入種別(と対象)を指定した失効、Stripe上で既に完了していた購入の反映、件数の上限と残りの有無、Stripeの一時的な失敗の例外を確かめる
@@ -152,11 +155,11 @@
 
 - [ ] 5.7 疎通確認用の購入種別・登録箇所・両アプリ共通の束縛を組み込む
   - 後続specが追記する購入種別と定期課金の受け取り口の登録箇所を作り、初版は疎通確認用(1ドル・数量1・期限無し・何もしない権利の付与)だけを登録する
-  - 反映・返金・失効・価格・エクスポート・Customerの照会・通知の束縛を、両アプリ共通のモジュールにまとめる
-  - 先に、Workers統合テストで、共通の束縛から各部品を取り出せること、疎通確認用の購入の内容、`PAYMENTS_SMOKE_ENABLED`が`false`の環境で疎通確認用が解決されないことを確かめる
+  - 反映・返金・失効・価格・エクスポート・純収益の照会・Customerの照会・通知の束縛を、両アプリ共通のモジュールにまとめる
+  - 先に、Workers統合テストで、共通の束縛から各部品(純収益の照会を含む)を取り出せること、疎通確認用の購入の内容、`PAYMENTS_SMOKE_ENABLED`が`false`の環境で疎通確認用が解決されないことを確かめる
   - 完了状態: Workers統合テストが成功し、api・eventのモジュールの一覧に加えられる状態になる
   - _Depends: 5.4, 5.5, 5.6_
-  - _Requirements: 2.8, 2.9_
+  - _Requirements: 2.8, 2.9, 12.10_
 
 - [ ] 6. APIサーバーのユースケース
 - [ ] 6.1 APIサーバーの決済の識別子と、決済の開始・利用者単位の回数制限を作る

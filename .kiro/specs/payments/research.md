@@ -191,7 +191,7 @@
 - 23:40の突合がマッチの確定より後に走る — `order` 10で登録し、match-engineの23:40のジョブはそれより大きい`order`にする(後続specへの申し送り)。
 - 税の登録の漏れで税が徴収されない — 運用手順書の環境ごとの確認項目にする。launch-readinessの本番の準備で確かめる。
 - 後続specのフルフィルメントが`backend-lib`に置けない処理(外部の呼び出し)を要する — 権利の付与はD1の文に限り、外部の呼び出しは反映の後に後続spec自身が非同期で行う(Revalidation Triggers)。
-- 返金ポリシーの「自動で返金する」の行が、後続specで手動の運用になる — 申し送りとして報告し、法的通知の本文の修正は該当specと開発者が行う。
+- 返金ポリシーの「自動で返金する」の行が、後続specで手動の運用になる — 申し送りとして報告し、法的通知の本文の修正は該当specと開発者が行う。広告の2行は、2026-10-24に開発者が決めたsponsorshipの仮3(B、本specの`PaymentRefunds`で金額を指定した自動の日割り返金)で解消した。
 
 ## References
 
@@ -219,29 +219,32 @@
 
 ## 要件定義書の改訂が必要な箇所
 
+**2026-10-25に要件定義書(`docs/requirements/README.md`)へ適用済み。** 以下は適用前に記録した改訂の内容である。
+
 要件定義書(`docs/requirements/README.md`)は本specでは編集しない(roadmapのOut)。次の改訂が必要である。
 
-| 要件ID                           | 内容                                                                                                                                                                                  | 根拠    |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| FR-PYMNT-010                     | 非同期の返金の対象を「FR-PYMNT-009・FR-PYMNT-012の返金」から、「FR-PYMNT-009・FR-PYMNT-012の返金、二重決済の返金、及び各機能が依頼する全額・一部の返金」に広げる                      | Q1      |
-| FR-PYMNT-012                     | 反映の期限を過ぎた決済に加え、既に権利を付与した対象への二重決済と、権利を付与できない購入の決済も、権利を与えず自動で全額返金する旨を加える                                          | Q1      |
-| FR-PYMNT-001                     | 受け付ける決済手段をカード・Apple Pay・Google Pay・Linkと明記し、Linkの資金源のうち即時に確認される支払い(即時銀行決済など)を含む旨と、支払いが確定するまで権利を付与しない旨を加える | Q2・仮1 |
-| LR-007(またはFR-PYMNT節に新設)   | 最終確認画面での役務の即時提供への同意と撤回権を失う旨の了知について、同意した日時と文言の版を記録し、購入の確定後に内容と同意の旨を記載した確認メールを送る旨を加える                | Q3      |
-| FR-RLMIT節に新設                 | 決済セッションの作成について、ユーザー単位で1時間に20回を上限としたレート制限をDurable Objectsにより提供し、上限超過時は429を返す旨を加える                                           | Q7・仮2 |
-| FR-TOURW-002・FR-TOURY-002(注記) | 決済期限の無い都度決済(スポンサー広告)と定期課金の決済セッションの有効期限を作成から1時間とする旨は、FR-PYMNT節に加える                                                               | 仮4     |
+| 要件ID                           | 内容                                                                                                                                                                                                                             | 根拠                 |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| FR-PYMNT-010                     | 非同期の返金の対象を「FR-PYMNT-009・FR-PYMNT-012の返金」から、「FR-PYMNT-009・FR-PYMNT-012の返金、二重決済の返金、及び各機能が依頼する全額・一部の返金(スポンサー広告の強制終了・表示停止に伴う自動の日割り返金を含む)」に広げる | Q1・sponsorshipの仮3 |
+| FR-PYMNT-005                     | 決済履歴へ反映する返金に、FR-PYMNT-009・FR-PYMNT-012の自動返金に加え、二重決済の返金と、各機能が返金の共通部品で依頼した全額・一部の返金(スポンサー広告の自動の日割り返金を含む)を加える                                         | Q1・sponsorshipの仮3 |
+| FR-PYMNT-012                     | 反映の期限を過ぎた決済に加え、既に権利を付与した対象への二重決済と、権利を付与できない購入の決済も、権利を与えず自動で全額返金する旨を加える                                                                                     | Q1                   |
+| FR-PYMNT-001                     | 受け付ける決済手段をカード・Apple Pay・Google Pay・Linkと明記し、Linkの資金源のうち即時に確認される支払い(即時銀行決済など)を含む旨と、支払いが確定するまで権利を付与しない旨を加える                                            | Q2・仮1              |
+| LR-007(またはFR-PYMNT節に新設)   | 最終確認画面での役務の即時提供への同意と撤回権を失う旨の了知について、同意した日時と文言の版を記録し、購入の確定後に内容と同意の旨を記載した確認メールを送る旨を加える                                                           | Q3                   |
+| FR-RLMIT節に新設                 | 決済セッションの作成について、ユーザー単位で1時間に20回を上限としたレート制限をDurable Objectsにより提供し、上限超過時は429を返す旨を加える                                                                                      | Q7・仮2              |
+| FR-TOURW-002・FR-TOURY-002(注記) | 決済期限の無い都度決済(スポンサー広告)と定期課金の決済セッションの有効期限を作成から1時間とする旨は、FR-PYMNT節に加える                                                                                                          | 仮4                  |
 
 ## 上流・後続specへの影響
 
 - frontend-platform(上流): `CLIENT_SECURITY_POLICY`へStripeの許可先を加え、clientの環境の検証と`PublicRuntimeConfig`に`STRIPE_PUBLISHABLE_KEY`(`stripePublishableKey`)を加える(content-processingの`CLIENT_SITE_ORIGIN`と同じ手順、本specの変更として行う)。許可先の形の規則は変えない。E2EでCSPの違反が見つかった場合だけ、サブドメインのワイルドカードの許可を依頼する。チェックボックスの部品は本specでは加えない(identity-authのタスク10.4が新設する)。
-- infra-delivery(上流): Infisicalのキーの表(`docs/onboardings/project-values.md`)に`STRIPE_API_KEY`(api・event)・`STRIPE_WEBHOOK_SECRET`(event)の行を、変数の値の表に`STRIPE_PUBLISHABLE_KEY`(client)・`PAYMENTS_SMOKE_ENABLED`(api・event)・eventの`CLIENT_SITE_ORIGIN`の行を本specが加える。stagingの値は、必須にする変更をmainへマージする前に開発者が登録する。prodの値はlaunch-readinessが登録する。
+- infra-delivery(上流): Infisicalのキーの表(`docs/onboardings/project-values.md`)に`STRIPE_API_KEY`(api・event)・`STRIPE_WEBHOOK_SECRET`(event)の行を、変数の値の表に`STRIPE_PUBLISHABLE_KEY`(client)・`PAYMENTS_SMOKE_ENABLED`(api・event)・eventの`CLIENT_SITE_ORIGIN`の行を本specが加える。stagingの値は、必須にする変更をmainへマージする前に開発者が登録する。prodの値はlaunch-readinessが登録する。`STRIPE_API_KEY`は、infra-deliveryの改訂1のWorkerごとのフォルダ(`/workers/api`・`/workers/event`)へapi用とevent用の制限付きキーを別々に登録する(仮7)。
 - identity-auth(上流): ファイルの変更は無い。決済画面の同意のチェックボックスには、identity-authのタスク10.4が新設するfrontend-libの`Checkbox`を使う。メールの宛先は共有の部品`UserContactDirectory.findContact`(`apps/backend-lib/workers/identity`)で引き、`users`の列を直接読まない。非同期の波及処理の`order` 400・410(`purge_due`・`withdrawn`・`suspended`、本specの400番台)を使う。
 - match-engine(後続): 23:40のマッチの確定のジョブは、本specの`payments.checkout-reconciliation`(`order` 10)より大きい`order`にする。
 - tournament-week・tournament-year(後続): `PurchaseOfferPolicy`(決済期限・受付期限・反映の期限=組み合わせ決定、`exclusivityKey`はローンチとトーナメントの組)と`PurchaseFulfillment`を`backend-lib/workers/<ドメイン>`に実装し、`PURCHASE_KIND_REGISTRATIONS`へ登録する。FR-PYMNT-009の返金は`PaymentRefunds`(依頼キーは購入IDと理由の組)で依頼する。FR-PPLAN-007(Ultrasの加入の確定)とFR-TOURW-021・FR-TOURY-021(参加資格の喪失)の未完了の決済セッションの失効は、本specの`OpenCheckoutExpirer.expireOpen`をeventの非同期の処理から呼ぶ(要件2.10)。
 - sponsorship(後続): 申込の行を作った後に`CheckoutStarter.start`を呼び、`PurchaseOfferPolicy`(数量=掲載日数、`requiresBotVerification`はFR-SPONS-012に従う)と`PurchaseFulfillment`を実装する。強制終了・表示停止の返金を自動にするかは、返金ポリシーとの食い違い(Q1)を踏まえて判断し、自動なら`PaymentRefunds`(金額指定)を使う。
 - ultras-subscription(後続): `SubscriptionEventSink`を実装して加入状態を管理する。加入の`PurchaseFulfillment`は、既に加入中なら拒否する(本specが定期課金を解約して初回の請求を返金する)。解約(FR-PPLAN-004・010)とCustomer Portal(FR-PPLAN-008)は`StripeGateway.cancelSubscription`・`createPortalSession`と`CustomerDirectory`を使い、apiの制限付きキーの権限(Subscriptions・Customer Portal)の追加を`operations/004`に記す。返金ポリシーの「停止に伴うUltrasの日数分の自動返金」とFR-PPLAN-010の食い違いを判断する。
-- ugc-moderation(後続): 統計の収益は`payment_records`を直接読まず、本specに集計の照会口の追加を依頼する。停止・非公開化に伴うトーナメント参加資格・広告の返金の自動化の要否(返金ポリシー)を判断する。
+- ugc-moderation(後続): 統計の収益は`payment_records`を直接読まず、本specに集計の照会口の追加を依頼する。照会`PaymentRevenueReport`(`core/payments/ports.ts`・`workers/payments/d1-payment-revenue-report.ts`・`PAYMENTS_TYPES.PaymentRevenueReport`)は、2026-10-24の開発者の決定により本specが所有・実装し、ugc-moderationは呼ぶだけである(仮7、要件12.10)。停止・非公開化に伴うトーナメント参加資格・広告の返金の自動化の要否(返金ポリシー)を判断する。
 - data-export(後続): 本specが所有するエクスポート部品`PaymentHistoryExport.listAll`を呼んで`payments.json`を作り、決済履歴のテーブルを直接読まない。
-- 返金ポリシー(法的通知の大枠)の「自動で返金する」の4行(ユーザー停止に伴うUltrasの日数分、ユーザー停止・非公開化に伴うトーナメント参加資格の停止、広告の強制終了の未掲載日数分、ユーザー停止・非公開化に伴う広告の表示停止の日数分)は、要件定義書(FR-ADMUG-024は返金目安額の表示まで)・sponsorshipのbrief(手動)と食い違う。本specは部品だけを提供し、各specと開発者の判断に委ねる(Q1)。
+- 返金ポリシー(法的通知の大枠)の「自動で返金する」の4行(ユーザー停止に伴うUltrasの日数分、ユーザー停止・非公開化に伴うトーナメント参加資格の停止、広告の強制終了の未掲載日数分、ユーザー停止・非公開化に伴う広告の表示停止の日数分)は、要件定義書(FR-ADMUG-024は返金目安額の表示まで)・sponsorshipのbrief(手動)と食い違う。本specは部品だけを提供し、各specと開発者の判断に委ねる(Q1)。このうち広告の2行(強制終了の未掲載日数分・表示停止の日数分)とsponsorshipのbriefの手動の返金との食い違いは、2026-10-24に開発者が決めたsponsorshipの仮3(B、自動の日割り返金)で解消した。
 
 ## タスクの計画の検証(2026-10-23)
 
@@ -300,3 +303,30 @@ ultras-subscriptionの要件と設計の作成中に、本specの口に足りな
 3回目のspec横断レビューの指摘を、設計に反映した。`spec.json`の承認の状態は変えていない。
 
 - (軽微)設計の非同期の波及処理の節が「`withdrawn`・`suspended`のultras-subscriptionの500の前に動く」と、上流の本specが後続specの値を引いていた。「どのイベントでも後続specの帯(500番台以降。roadmapの帯の割り当ての表)の前に動く」に改めた。同じ理由で、Revalidation Triggersの波及処理の`order`の行の重ねない帯の列挙からultras-subscription(500番台)を外し、後続specに割り当てた帯の列挙に500番台を加えた。本specの`order`(4:21の400・410、波及処理の400・410)は変えない。
+
+## spec横断レビューによる承認後の変更(仮7、2026-10-24)
+
+- **状態**: 要件・設計・タスクの承認の後の変更で、cross-spec reviewの指摘による。2026-10-24に開発者が確定した。Workerごとのキーは推奨どおり、収益の照会は推奨と異なり本specが所有・実装する案である(下の「確定(2026-10-24)」)。`requirements.md`の決定事項の表に仮7として記録した。
+- **指摘1(シークレット)**: infra-deliveryの設計では`STRIPE_API_KEY`がInfisicalの`/`に1つだけあり、全Workerへ同じ値が渡るため、本specのQ5(api用とevent用の制限付きキーを別々に作る)と15.2を満たせなかった。infra-deliveryが改訂1で、Workerごとのフォルダ`/workers/api`・`/workers/event`(同じキーの`/`の値より優先)と、`/`の値を使わないキーの一覧`WORKER_SCOPED_SECRETS`(`STRIPE_API_KEY`を含む)を設けた。
+- **決定1**: 本specはその仕組みを採る。dev・stagingでapiの制限付きキーを`/workers/api`へ、eventの制限付きキーを`/workers/event`へ登録し、`/`には置かない(prodはlaunch-readinessが同じ形で登録する。launch-readinessの仮13)。`STRIPE_WEBHOOK_SECRET`はeventだけが使うため`/`のままとする。キーの名前・Wrangler設定の宣言・環境の検証は変えない。apiとeventのローカルの起動はinfra-deliveryの`run-with-secrets --scope local --worker <api|event>`の形で行う。タスク1.1(キーの一覧の節の行をWorkerごとのフォルダで書く、`WORKER_SCOPED_SECRETS`の確認)と1.4(`operations/004`の制限付きキーの登録の手順、開発者の作業の一覧、オンボーディングの起動のコマンドの確認)と、設計のAllowed Dependencies・Revalidation Triggers・Technology Stack・Modified Files・Security Considerations・Migration Strategyを改めた。
+- **指摘2(収益の照会)**: ugc-moderationの設計が、本specの共有ディレクトリへ収益の照会`PaymentRevenueReport`・`RevenuePeriod`(`core/payments/ports.ts`)、実装`workers/payments/d1-payment-revenue-report.ts`、DIの識別子`PAYMENTS_TYPES.PaymentRevenueReport`と`PAYMENTS_PLATFORM_MODULE`での束縛を加える(作成も利用もugc-moderation)が、本specの再検証の対象とファイルの計画に記録が無かった。純収益は`payment_records`の`kind`・`status`・`purpose`の値と`amount`の符号(返金とチャージバックの損失は負の値)に依存する。
+- **決定2**: 設計のRevalidation Triggersに、`payment_records`の`kind`・`status`・`purpose`の値の意味、`amount`の符号の規則、`occurred_at`の意味、`payments_smoke`の扱いを変えるときはugc-moderationを再検証する旨を加えた。Directory Structureの注記とファイルの計画の注記に、ugc-moderationが作成する4か所(`ports.ts`・`identifiers.ts`・`d1-payment-revenue-report.ts`・`payments-platform-module.ts`)を記録した。(この扱いは2026-10-24の確定で、本specが所有・実装する形に改めた。下の「確定(2026-10-24)」を正とする。)DIの識別子は本specの`PAYMENTS_TYPES`である。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。1回目の判定はNEEDS_FIXESだった。1.4がオンボーディングの起動のコマンドを書き換える記述をinfra-deliveryの担当として「止めて報告する」に改め、`_Boundary:_`から外したこと、Workerごとのフォルダへの登録の手順をオンボーディングへ書く作業を1.4に加えたこと、1.4の完了状態を値を出さずに確かめられる形(Workerの指定の有無による起動時の検証の結果)に改めたこと、1.1の完了状態に`WORKER_SCOPED_SECRETS`の確認の記録を加えたことを直した。`PaymentRevenueReport`を本specのタスクにしないことは規則に合うとの判定だった。2回目の判定はPASSだった。軽微な指摘のうち、1.4の`_Boundary:_`にオンボーディング(登録の手順だけ)を加え、1.4の自己参照の文言を改めた。`spec.json`の`updated_at`を更新し、タスクの承認を保った。
+
+### 確定(2026-10-24)
+
+- **Workerごとの制限付きキー**: 推奨どおり確定した(infra-deliveryの改訂1も同日に確定)。
+- **収益の照会**: 開発者は「上流specが所有・実装する」案を選んだ(推奨の「ugc-moderationが本specの共有ディレクトリへ作成する」案と異なる)。本specが`RevenuePeriod`・`PaymentRevenueReport.netRevenue(periods)`(`core/payments/ports.ts`)、実装`workers/payments/d1-payment-revenue-report.ts`、`PAYMENTS_TYPES.PaymentRevenueReport`、`PAYMENTS_PLATFORM_MODULE`での束縛を、自分のタスク(2.1の契約、1.3の索引、5.5の実装とWorkers統合テスト、5.7の束縛)で作る。シグネチャはugc-moderationの設計のものをそのまま写した。要件に12.10を加えた。Revalidation Triggersには、利用者としてugc-moderationを残した。
+- **純収益の数え方**: ugc-moderationの説明(成功した決済から返金と敗北したチャージバックを差し引く)に従う。ただし、ugc-moderationの設計の式は`kind = 'dispute' AND status = 'dispute_lost'`の行の`amount`を合計するが、本specのチャージバックの記録の規則では、引き落としは`disputed`の行(負の額)、`dispute_lost`の行は0で記録される。そのまま合計すると敗北したチャージバックが差し引かれない。そこで、`dispute_lost`の行の発生時刻の期間に、同じ`stripe_reference`の`disputed`の行の額を差し引く形にした。勝ったチャージバック(`dispute_won`)と、まだ決着していない引き落としは数えない。ugc-moderationは、設計の純収益の説明を本specの`PaymentRevenueReport`の定義(要件12.10)への参照に改める必要がある。
+- **問い合わせの形**: D1の1つの問い合わせのバインド変数の上限(100)に収まるよう、期間を最大40個ずつの組に分けて1回の`db.batch`で実行する。期間の合計は1件ごとの金額の範囲では検証しない。設計のレビューで、5.5を価格・エクスポート・純収益の3部品に分ける案も挙がったが、いずれも決済履歴と価格の読み取りだけの小さな部品で、5.7の依存の順を保つため分けなかった。
+- **確定の反映の検証**: kiro-spec-tasksのタスクのレビューとkiro-spec-designの設計のレビューを、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。1回目はNEEDS_FIXES(60期間でD1のバインド変数の上限100を超える、対応の無い敗北の記録のログの取り方、期間の合計の範囲の検証)で、上の問い合わせの形に直した。2回目はPASSだった。
+- **spec横断レビュー3回目の反映(2026-10-24)**: `PaymentRefunds.prepare`の同じ依頼キーの2回目の振る舞い(既存の依頼を`duplicate: true`・空の文で返し、新しい行を作らない。依頼キーの形式の検査、依頼キーの照会、金額と購入の状態の検証の順)を契約に定め、5.1のテストに加えた。返金ポリシーの広告の行の食い違いがsponsorshipの仮3(B)で解消したことを、要件のQ1と本書に記した。変更部分のタスクのレビュー(independent)は、1回目に`reflection:`の依頼キーの検査の順の指摘があり、直した後の2回目でPASSだった。
+- **索引**: 全利用者の期間の検索のため、`payment_records`に`(occurred_at)`の索引を加えた(1.3)。
+
+### sponsorshipの仮3(B、自動の日割り返金)の影響の確認(2026-10-24)
+
+開発者は、スポンサー広告の強制終了は未掲載日数分、表示停止(停止・非公開化)は停止した日数分を、`PaymentRefunds`(金額指定)で自動で日割り返金すると決めた。本specの`PaymentRefunds`が対応しているかを確かめた。
+
+- **対応済み**: `request`・`prepare`は金額の指定(最小通貨単位の正の整数、`null`は残りの全額)を受け付ける(8.1)。依頼キーで1回だけ実行され(8.2)、残りの額(支払額 − 失敗・取り消し以外の依頼の合計)を超える依頼は`amount_exceeds_refundable`で拒否する(8.3)。同じ購入に対する複数回の一部の返金(表示停止の後の強制終了など)も、依頼キーを分ければ扱える。理由は`[a-z0-9_]{1,64}`の自由な値で、Stripeの返金理由は`requested_by_customer`になる。返金の反映(決済履歴の負の記録)は手動・自動を問わず行う(8.8)。本specの変更は要らない。
+- **注意(sponsorshipの側で扱う)**: (1)本specの自動返金の通知メール(8.10)は、反映の期限切れ・付与できない・二重決済の依頼(依頼キーが`reflection:`で始まる)だけに送る。日割り返金を購入者へ知らせるメールはsponsorshipが送る(または管理者の措置の通知に含める)。(2)`purge_due`で購入の行が消えた後の依頼は`purchase_not_found`で拒否される。(3)前提は購入が`fulfilled`(または`rejected`)で支払いが確定していることで、スポンサー広告の都度決済はこれを満たす。(4)日割りの額の計算・端数の扱い・依頼キーの形(例: `sponsorship:<広告ID>:suspension:<停止の記録ID>`)はsponsorshipが決める。
+- **要件定義書**: FR-PYMNT-005・FR-PYMNT-010の改訂の行に、スポンサー広告の自動の日割り返金を明記した(下の「要件定義書の改訂が必要な箇所」)。法的通知の大枠の返金ポリシーとの食い違い(Q1)は、スポンサー広告については自動返金が実装されることで解消する。
