@@ -54,6 +54,21 @@
 - テーブルを新しく定義する前に: [命名規則](docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md#命名規則)
 - D1へのクエリ・全文検索・バックアップを設計する前に: [D1の制約と対処](docs/GUIDES/tech/db/002-d1-constraints.md#d1の制約と対処)
 - Playwright・ブラウザ操作MCPサーバーの版を更新する前に: [同期すべき4箇所](docs/GUIDES/tech/testing/002-browser-tool-versions.md#同期すべき4箇所)
+- バックエンドに経路・ユースケース・リポジトリ・モジュールを追加する前に: [層構成と合成ルート](docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#層構成と合成ルート)
+- バックエンドのファイル間でimportを書く前に: [依存方向と静的解析](docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析)
+- バックエンドで想定内の失敗を返す処理やエラーコードを書く前に: [共通エラーと共通のエラー形式](docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#共通エラーと共通のエラー形式)
+- 経路にレート制限を掛ける前に: [制限の方式の選び方](docs/GUIDES/tech/backend/003-rate-limiting-and-bot-verification.md#制限の方式の選び方)
+- 経路やフォームの送信にbot判定を掛ける前に: [bot判定の検証](docs/GUIDES/tech/backend/003-rate-limiting-and-bot-verification.md#bot判定の検証)
+- テーブル定義のファイルを追加する前に: [テーブル定義の配置](docs/GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)
+- テーブルの主キーを定義する前に: [主キー](docs/GUIDES/tech/db/003-schema-conventions.md#主キー)
+- テーブルに作成日時・更新日時・論理削除のカラムを定義する前に: [共通カラム](docs/GUIDES/tech/db/003-schema-conventions.md#共通カラム)
+- 定期実行のジョブを追加する前に: [定期実行](docs/GUIDES/tech/infra/003-async-processing.md#定期実行)
+- 非同期メッセージを送る処理や受信する処理を書く前に: [非同期メッセージ](docs/GUIDES/tech/infra/003-async-processing.md#非同期メッセージ)
+- 定期実行のジョブやメッセージの処理で書き込みを行う前に: [重複配信と冪等性](docs/GUIDES/tech/infra/003-async-processing.md#重複配信と冪等性)
+- バックエンドでログを出す前に: [ログの出力](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#ログの出力)
+- ログの属性やエラーレポートに利用者の入力・秘密情報が入り得る処理を書く前に: [伏せ字の規則](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#伏せ字の規則)
+- バックエンドで例外を投げる・エラートラッキングへ送る処理を書く前に: [エラートラッキング](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#エラートラッキング)
+- トークンなどの秘密情報やレート制限のキーを保存・照合する前に: [ハッシュ化の対象](docs/GUIDES/tech/security/002-keyed-hashing.md#ハッシュ化の対象)
 - 上記の文書のプレースホルダーを本プロジェクトの値に読み替える前に: [本プロジェクト固有の値](docs/onboardings/project-values.md)
 
 ### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について
@@ -145,7 +160,7 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ├── config/                     # ルートと全アプリが参照する設定データ ... アプリ一覧と共有ディレクトリの配置先、テストの命名パターンとカバレッジ閾値
 │   └── vitest/                 # ブラウザテスト・Workers統合テストのVitestプリセット
 ├── e2e/                        # PlaywrightによるE2Eテスト(設定はルートの`playwright.config.ts`) ... 対象アプリ(`client`・`admin`)ごとのディレクトリにテストを置く
-│   └── support/                # 対象アプリのURL解決、Playwrightの設定値の組み立て、到達確認、対象0件の表示
+│   └── support/                # 対象アプリのURL解決、Playwrightの設定値の組み立て、到達確認、対象0件の表示、ローカルの定期実行を業務日付と業務時刻で起こす補助
 ├── scripts/                    # 開発コンテナとツールのスクリプト ... コンテナ起動時の処理(Claude Codeの更新、ワークスペース信頼設定のマージ、Chromiumの導入、常駐プロセスの起動)
 │   └── tooling/                # 品質ゲートのツールスクリプト ... Gitフックの導入、コミット時の検査対象の振り分け、一括検査・一括実行、共有ディレクトリの配置、テスト命名の検査
 ├── test-support/               # ルートの単体テストの補助 ... 共通フィクスチャ、型だけの読み込みの判定、Git管理外の判定

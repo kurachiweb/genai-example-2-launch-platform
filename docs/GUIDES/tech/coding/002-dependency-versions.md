@@ -10,22 +10,29 @@
 
 ## 主要パッケージの一覧
 
-| パッケージ                                                                                 | 版                                      | 導入先                                               | 固定の理由                                                                                                                        |
-| ------------------------------------------------------------------------------------------ | --------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `typescript`                                                                               | 6.0.3                                   | ルート・全アプリ                                     | `typescript-eslint` 8.71.0がTypeScript 6.1未満にしか対応しない                                                                    |
-| `eslint`・`@eslint/js`                                                                     | 10.12.0・10.0.1                         | ルート・全アプリ                                     | 静的解析の基底設定の規則と、ファイルごとに最も近い設定ファイルを使う探索に依存する                                                |
-| `typescript-eslint`                                                                        | 8.71.0                                  | ルート・全アプリ                                     | 静的解析の基底設定が使う`strictTypeChecked`・`no-deprecated`に依存する                                                            |
-| `eslint-config-prettier`                                                                   | 10.1.8                                  | ルート・全アプリ                                     | 整形と静的解析の衝突を避ける                                                                                                      |
-| `prettier`                                                                                 | 3.9.9                                   | ルート・全アプリ                                     | 整形結果を一致させる(整形検査はルートの版、エディタ連携はアプリの版で整形する)                                                    |
-| `vitest`・`@vitest/browser-playwright`・`@vitest/coverage-v8`・`@vitest/coverage-istanbul` | 4.1.11                                  | ブラウザテスト・Workers統合テストを持つアプリ        | `@cloudflare/vitest-pool-workers`がVitest ^4.1にしか対応しない。`@vitest/browser-playwright`は同じ版の`vitest`だけを前提とする    |
-| `@cloudflare/vitest-pool-workers`                                                          | 0.22.0                                  | Workers統合テストを持つアプリ                        | Vitest 4.1系と組み合わせられる版                                                                                                  |
-| `wrangler`                                                                                 | 4.124.0                                 | Workers統合テストを持つアプリ                        | `@cloudflare/vitest-pool-workers` 0.22.0が`dependencies`で完全固定する版と一致させ、実体を1つに保つ。`wrangler types`の実行に必要 |
-| `drizzle-orm`・`drizzle-kit`                                                               | 1.0.0-rc.5(2つとも同一のプレリリース版) | DBスキーマ定義の共有ディレクトリと、それを使うアプリ | 正式版が無くRCのまま。ORMとマイグレーション生成ツールの版ずれを防ぐ                                                               |
-| `@playwright/test`・`playwright`                                                           | 1.64.1                                  | ルート(`playwright`はブラウザテストを持つアプリも)   | 共有のChromiumのリビジョンを決める。開発コンテナのOS依存パッケージの版と一致させる                                                |
+| パッケージ                                                                                 | 版                                      | 導入先                                               | 固定の理由                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------ | --------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `typescript`                                                                               | 6.0.3                                   | ルート・全アプリ                                     | `typescript-eslint` 8.71.0がTypeScript 6.1未満にしか対応しない                                                                                                              |
+| `eslint`・`@eslint/js`                                                                     | 10.12.0・10.0.1                         | ルート・全アプリ                                     | 静的解析の基底設定の規則と、ファイルごとに最も近い設定ファイルを使う探索に依存する                                                                                          |
+| `typescript-eslint`                                                                        | 8.71.0                                  | ルート・全アプリ                                     | 静的解析の基底設定が使う`strictTypeChecked`・`no-deprecated`に依存する                                                                                                      |
+| `eslint-config-prettier`                                                                   | 10.1.8                                  | ルート・全アプリ                                     | 整形と静的解析の衝突を避ける                                                                                                                                                |
+| `prettier`                                                                                 | 3.9.9                                   | ルート・全アプリ                                     | 整形結果を一致させる(整形検査はルートの版、エディタ連携はアプリの版で整形する)                                                                                              |
+| `vitest`・`@vitest/browser-playwright`・`@vitest/coverage-v8`・`@vitest/coverage-istanbul` | 4.1.11                                  | ブラウザテスト・Workers統合テストを持つアプリ        | `@cloudflare/vitest-pool-workers`がVitest ^4.1にしか対応しない。`@vitest/browser-playwright`は同じ版の`vitest`だけを前提とする                                              |
+| `@cloudflare/vitest-pool-workers`                                                          | 0.22.0                                  | Workers統合テストを持つアプリ                        | Vitest 4.1系と組み合わせられる版                                                                                                                                            |
+| `wrangler`                                                                                 | 4.124.0                                 | Workers統合テストを持つアプリ                        | `@cloudflare/vitest-pool-workers` 0.22.0が`dependencies`で完全固定する版と一致させ、実体を1つに保つ。`wrangler types`の実行に必要                                           |
+| `drizzle-orm`・`drizzle-kit`                                                               | 1.0.0-rc.5(2つとも同一のプレリリース版) | DBスキーマ定義の共有ディレクトリと、それを使うアプリ | 正式版が無くRCのまま。ORMとマイグレーション生成ツールの版ずれを防ぐ                                                                                                         |
+| `@playwright/test`・`playwright`                                                           | 1.64.1                                  | ルート(`playwright`はブラウザテストを持つアプリも)   | 共有のChromiumのリビジョンを決める。開発コンテナのOS依存パッケージの版と一致させる                                                                                          |
+| `hono`                                                                                     | 4.13.13                                 | バックエンドの共通ライブラリを使うアプリ             | 共通ライブラリは配置先のアプリの依存パッケージで動き、検査担当のアプリの版でだけテストされる。版が食い違うと、テストしていない組み合わせで動く                              |
+| `inversify`・`reflect-metadata`                                                            | 8.2.3・0.2.2                            | バックエンドの共通ライブラリを使うアプリ             | `hono`と同じ理由。`reflect-metadata`はInversifyの内部パッケージの相手依存(`~0.2.2`)で、アプリで明示的に宣言して版を固定する                                                 |
+| `zod`                                                                                      | 4.6.5                                   | バックエンドの共通ライブラリを使うアプリ             | `hono`と同じ理由。環境とメッセージの本文の検証規則を、共通ライブラリとアプリのスキーマで組み合わせる                                                                        |
+| `@logtape/logtape`・`@logtape/redaction`                                                   | 2.3.11(2つとも同一)                     | バックエンドの共通ライブラリを使うアプリ             | `hono`と同じ理由。`@logtape/redaction`は同じ版以上の`@logtape/logtape`を相手依存に持ち、2つは同じ版で公開される                                                             |
+| `@sentry/cloudflare`・`@sentry/hono`                                                       | 11.4.0(2つとも同一)                     | バックエンドの共通ライブラリを使うアプリ             | `hono`と同じ理由。2つとも`@sentry/core`を同じ版に完全固定し、`@sentry/hono`は同じ版の`@sentry/cloudflare`を相手依存に持つ。2つの版をそろえて`@sentry/core`の実体を1つに保つ |
+| `ulid`                                                                                     | 3.0.2                                   | DBスキーマ定義の共有ディレクトリと、それを使うアプリ | 共通カラムの主キーの既定値と、共通ライブラリのIDの採番が使う。マイグレーションの生成とアプリの実行で同じ版にする                                                            |
 
 - Vitest系はテストの種別に応じて導入する。ブラウザテストを持つアプリは`vitest`・`@vitest/browser-playwright`・`@vitest/coverage-v8`・`playwright`を、Workers統合テストを持つアプリは`vitest`・`@vitest/coverage-istanbul`・`@cloudflare/vitest-pool-workers`・`wrangler`を導入する。
 - ルートは`@playwright/test`だけを直接宣言する。`@playwright/test`は`playwright`を、`playwright`は`playwright-core`を、それぞれ完全固定の`dependencies`で持つため、`playwright`・`playwright-core`は推移的に同じ版に決まる。ブラウザテストを持つアプリは、`@vitest/browser-playwright`が使う`playwright`を直接宣言し、同じ版にする。
 - 一覧に無いパッケージでも、共有ディレクトリのコードが実行時に使うものは、利用側アプリが共有ディレクトリ側と同じ版で宣言する。
+- バックエンドの共通ライブラリは`package.json`を持たず、使うパッケージ(`hono`・`inversify`・`reflect-metadata`・`zod`・`@logtape/logtape`・`@logtape/redaction`・`@sentry/cloudflare`・`@sentry/hono`・`ulid`・`drizzle-orm`)を、配置先の全アプリが同じ版で`dependencies`に宣言する。`@sentry/core`の型だけを使う場合も、`@sentry/core`は宣言せず`@sentry/cloudflare`・`@sentry/hono`が固定する版に任せる。
 
 ## 更新時の確認事項
 
@@ -70,6 +77,12 @@
 - スキーマを変えずにマイグレーションの生成を実行し、新しいマイグレーションが生成されない。スナップショットの形式が変わった場合は、リリースノートの手順に従って移行する。
 - ORMを使う全アプリの型検査が成功する。共有ディレクトリのスキーマ定義は、マイグレーションの生成では共有ディレクトリ側のORMで、アプリの型検査と実行では利用側アプリのORMで読み込まれる。版が食い違うと、生成したマイグレーションとアプリの実行とでスキーマ定義の解釈が異なり得る。
 
+### @sentry/cloudflare・@sentry/hono
+
+- 2つを同じ版で同時に更新する。
+- `git grep -noE '\["@sentry/core@[^"]+"' -- '*bun.lock' ':!<対象外のディレクトリ>/'`で、各`bun.lock`に`@sentry/core`が1つの版だけ載っている。
+- 「[SDKの版を更新するとき](../infra/004-logging-and-error-tracking.md#sdkの版を更新するとき)」の項目を確かめる。
+
 ### @playwright/test・playwright
 
 - 開発コンテナのOS依存パッケージの版、ルートの`@playwright/test`の版、2つのブラウザ操作MCPサーバーの版の4箇所を整合させる。手順は「[E2Eテストツールの版の更新手順](../testing/002-browser-tool-versions.md)」に従う。
@@ -101,7 +114,7 @@
    git grep -n '"<パッケージ>":' -- '*package.json' ':!<対象外のディレクトリ>/'
    ```
 
-3. 見つかった各ディレクトリで、「[版を明示した追加手順](#版を明示した追加手順)」のコマンドを新しい版で実行する。一緒に動かすパッケージ(Vitest系の4つ、`@cloudflare/vitest-pool-workers`と`wrangler`、`drizzle-orm`と`drizzle-kit`、`@playwright/test`と`playwright`)は同時に更新する。
+3. 見つかった各ディレクトリで、「[版を明示した追加手順](#版を明示した追加手順)」のコマンドを新しい版で実行する。一緒に動かすパッケージ(Vitest系の4つ、`@cloudflare/vitest-pool-workers`と`wrangler`、`drizzle-orm`と`drizzle-kit`、`@playwright/test`と`playwright`、`inversify`と`reflect-metadata`、`@logtape/logtape`と`@logtape/redaction`、`@sentry/cloudflare`と`@sentry/hono`)は同時に更新する。
 4. すべての`package.json`と`bun.lock`が同じ版になったことを確かめる。
 
    ```sh

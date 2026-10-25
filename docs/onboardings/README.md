@@ -69,39 +69,71 @@
    claude mcp login cloudflare-observability --no-browser
    ```
 
-10. コンテナ内: ローカルDBの初期化(マイグレーション適用)
-
-    `apps/api`と`apps/event`は同一の`--persist-to`を指定することで、D1・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。
-
-    ```sh
-    cd /workspace/apps/api
-    wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state
-    ```
-
-11. コンテナ内: DBスキーマ定義の依存パッケージをインストール(初回のみ)
+10. コンテナ内: DBスキーマ定義・APIサーバー・イベントサーバーの依存パッケージをインストールする(初回のみ)
 
     ```sh
     cd /workspace/apps/db
     bun install
+    cd /workspace/apps/api
+    bun install
+    cd /workspace/apps/event
+    bun install
     ```
 
-12. コンテナ内: アプリケーションの起動
+    - `apps/db`と`apps/backend-lib`は、`apps/api`・`apps/event`へ`db`・`lib`として配置される共有ディレクトリである(「[共有ディレクトリの配置先](project-values.md#共有ディレクトリの配置先)」)。`apps/backend-lib`は依存パッケージを持たず、配置先のアプリの依存パッケージで動く。`apps/db`の依存パッケージは、`apps/db`で実行するマイグレーションの生成に使う。
+    - 依存パッケージの版の追加・更新を含むコミットを取り込んだら、該当するディレクトリで`bun install`を再実行する。
 
-    APIサーバー
+11. コンテナ内: シークレットをInfisicalに登録する(初回のみ、開発者の手作業)
+
+    `apps/api`・`apps/event`は、起動時に次のシークレットを必要とする。Infisicalのプロジェクトのローカル環境(`dev`)のルートフォルダ(`/`)に、Webの管理画面で登録する。登録済みであれば飛ばす。各値の意味は「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」を参照する。
+
+    | キー                   | 登録する値                                                        | 使うアプリ               |
+    | ---------------------- | ----------------------------------------------------------------- | ------------------------ |
+    | `HASH_PEPPER`          | 次の`openssl rand -hex 64`で生成した128文字の16進数               | `apps/api`・`apps/event` |
+    | `TURNSTILE_SECRET_KEY` | 常に成功するテスト用の秘密鍵`1x0000000000000000000000000000000AA` | `apps/api`               |
+
+    ```sh
+    openssl rand -hex 64 # 出力をHASH_PEPPERとして登録し、ファイルやチャットに残さない
+    infisical --telemetry=false run --env dev -- sh -c 'test -n "$HASH_PEPPER" && test -n "$TURNSTILE_SECRET_KEY" && echo "登録済み"' # 値を表示せずに登録を確かめる
+    ```
+
+    - 未登録のまま起動すると、`wrangler dev`が足りないキーを警告し、ヘルスチェック以外の経路が環境の検証で500になる。ヘルスチェックは環境の検証より前に応答するため、未登録でも200を返す。
+
+12. コンテナ内: ローカルDBの初期化(マイグレーション適用)
+
+    `apps/api`と`apps/event`は同一の`--persist-to`を指定することで、D1・R2ローカルモードの実データを共有する。そのためマイグレーション適用は`apps/api`側の1回のみでよい。`db:migrate:local`は`wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state`を実行する。
 
     ```sh
     cd /workspace/apps/api
-    bun install # 初回のみ
-    infisical --telemetry=false run --env dev -- wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+    bun run db:migrate:local
     ```
 
-    イベントサーバー
+    - DBスキーマを変えたときは「[DBスキーマを変更したとき](#dbスキーマを変更したとき)」の手順でマイグレーションを生成して適用する。
+
+13. コンテナ内: アプリケーションの起動
+
+    APIサーバー(`bun run dev`は`wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --test-scheduled`を実行する)
+
+    ```sh
+    cd /workspace/apps/api
+    infisical --telemetry=false run --env dev -- bun run dev
+    ```
+
+    イベントサーバー(`bun run dev`は`wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state`を実行する)
 
     ```sh
     cd /workspace/apps/event
-    bun install # 初回のみ
-    infisical --telemetry=false run --env dev -- wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state
+    infisical --telemetry=false run --env dev -- bun run dev
     ```
+
+    両サーバーの起動後、別のターミナルでヘルスチェックに到達できることを確かめる。どちらも200と本文`{"status":"ok"}`を返す。
+
+    ```sh
+    curl -i http://localhost:48042/health
+    curl -i http://localhost:48043/health
+    ```
+
+    APIサーバーの定期実行は自動では起動しないため、「[定期実行の手動起動](#定期実行の手動起動)」の手順で起こす。
 
     利用者側フロントエンド
 
@@ -135,7 +167,7 @@
     bun run dev --port 48047 --host 0.0.0.0
     ```
 
-13. コンテナ内: デプロイ前動作確認
+14. コンテナ内: デプロイ前動作確認
 
     ```sh
     # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
@@ -147,6 +179,39 @@
     infisical --telemetry=false run --env dev -- bunx vite build
     infisical --telemetry=false run --env dev -- bunx vite preview --port 48045 --host 0.0.0.0
     ```
+
+## 定期実行の手動起動
+
+ローカルの`wrangler dev`は、Cron Triggersを決まった時刻に自動では起こさない。APIサーバーは`bun run dev`により`--test-scheduled`付きで起動するため、次の経路への要求で、任意の業務時刻の定期実行を起こせる。イベントサーバーは定期実行を持たない。
+
+```sh
+# 業務日付2026-11-02の業務時刻4:21(UTCの2026-11-02 12:21)の定期実行を起こす
+curl "http://localhost:48042/cdn-cgi/local/scheduled?cron=21+12+*+*+*&time=1793622060000"
+```
+
+- `cron`はUTCのcron式で、空白を`+`にする。業務時刻はUTC-08:00のため、業務時刻に8時間を足した時刻がUTCの時刻になる(「[業務時刻](project-values.md#業務時刻)」)。
+- `time`は予定時刻のUTCのミリ秒である。`bun -e "console.log(Date.UTC(2026, 10, 2, 12, 21))"`のように求める(月は0始まり)。
+- 応答は、ジョブが失敗しても200になる。ジョブの結果は、APIサーバーのログとデータの状態で確かめる。登録したジョブの無い式では、`warning`のログが出るだけである。
+- E2Eテストからは、共有の補助`e2e/support/scheduled-trigger.ts`の`triggerScheduled({ worker: 'api', businessDate, businessTime })`で、業務日付と業務時刻を指定して起こす。cron式と予定時刻は補助が求め、APIサーバーのURLは環境変数`E2E_API_URL`で上書きできる(「[E2Eからの起動](../GUIDES/tech/infra/003-async-processing.md#e2eからの起動)」)。
+
+## DBスキーマを変更したとき
+
+テーブル定義を`apps/db/schema/`に書き(「[テーブル定義の配置](../GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)」)、次の順でマイグレーションを生成して適用する。各手順の詳細は「[スキーマ規約のマイグレーション](../GUIDES/tech/db/003-schema-conventions.md#マイグレーション)」に従う。
+
+```sh
+# 1. マイグレーションを生成する(apps/db/migrations/<日時>_<名前>/migration.sql)
+cd /workspace/apps/db
+bun run db:generate --name=<マイグレーションの名前>
+bunx drizzle-kit generate --custom --name=<マイグレーションの名前> # テーブル定義で表せない内容(全文検索の仮想テーブル・トリガーなど)を生のSQLで書く場合
+
+# 2. ローカルのD1に適用し、生成したマイグレーションがWranglerに検出されることを確かめる
+cd /workspace/apps/api
+bun run db:migrate:local
+bun run db:migrations:check
+```
+
+- マイグレーションの適用は`apps/api`での1回でよい。`apps/event`は同じローカル状態とデータベースを参照する。
+- `db:migrations:check`は、CIからも同じスクリプトを呼ぶ(infra-deliveryで設定する)。共有のローカル状態を変えずに一時ディレクトリで検出を確かめ、検出されなかったマイグレーションがあれば名前を表示して失敗する。
 
 ## コミット時の検査
 
@@ -212,6 +277,17 @@ bun add --dev --exact <パッケージ>@<版> <パッケージ>@<版> # 導入�
 | `bun run test:all:unit`・`bun run test:all:browser`・`bun run test:all:worker` | ルートと全アプリの単体テスト・ブラウザテスト・Workers統合テストを種別ごとに一括で実行する(`--coverage`を付けると各アプリへ渡る) |
 | `bun run test:e2e`                                                             | E2Eテストを実行する(対象のアプリは事前に起動しておく)                                                                           |
 
+APIサーバー・イベントサーバーだけを検査・テストするときは、各アプリのディレクトリ(`/workspace/apps/api`・`/workspace/apps/event`)で次のスクリプトを実行する。テストに必要なシークレットはテストの設定がテスト用の値で渡すため、Infisicalからの注入は要らない。
+
+| コマンド                            | 対象                     | 内容                                                                                                                                        |
+| ----------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run lint`・`bun run typecheck` | `apps/api`・`apps/event` | 静的解析・型検査。共有ディレクトリ(`db`・`lib`)の静的解析は検査担当の`apps/api`が受け持つ                                                   |
+| `bun run test:unit`                 | `apps/api`・`apps/event` | 単体テスト(Bun)。共有ディレクトリの単体テストは`apps/api`が実行する                                                                         |
+| `bun run test:worker`               | `apps/api`・`apps/event` | Workers統合テスト(Vitest、workerd上)。`apps/api`はマイグレーションを適用したD1と共有ディレクトリのWorkers統合テストを含む                   |
+| `bun run test:smoke`                | `apps/api`               | 依存性注入のスモークテスト。Wranglerでバンドルして起動したWorkerが、`@inject`付きのコンストラクタ引数を持つクラスを解決できることを確かめる |
+| `bun run db:migrations:check`       | `apps/api`               | マイグレーションがWranglerに検出されることを確かめる                                                                                        |
+| `bun run cf-typegen`                | `apps/api`・`apps/event` | Wrangler設定を変えたときに、実行時の型の定義ファイル`worker-configuration.d.ts`を生成し直す                                                 |
+
 ## ローカルポート一覧
 
 | アプリ              | 役割                                   | ポート |
@@ -223,5 +299,7 @@ bun add --dev --exact <パッケージ>@<版> <パッケージ>@<版> # 導入�
 | `apps/admin`        | 管理者側フロントエンド(TanStack Start) | 48045  |
 | `apps/frontend-lib` | Storybookコンポーネントカタログ        | 48046  |
 | `mockups`           | 利用者側・管理者側各画面モックアップ   | 48047  |
+
+`apps/api`・`apps/event`のヘルスチェックの経路は`/health`である(「[ヘルスチェックとローカルのURL](project-values.md#ヘルスチェックとローカルのurl)」)。
 
 ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
