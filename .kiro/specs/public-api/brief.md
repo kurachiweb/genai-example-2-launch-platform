@@ -21,12 +21,12 @@
   - 公開データ(プロフィール・プロダクト・ローンチとマッチ・Upvote・コメント・評価など)の読み取り
   - 自分のプロフィールとプロダクト説明文の更新
   - 停止・退会のデータを除外する
-- レート制限が動作する(FR-RLMIT-004・006・007・014・016)。
+- レート制限が動作する(FR-RLMIT-005・007・008・017・019)。
   - キー発行はユーザー単位で1時間に3回まで
   - 認証が必要なエンドポイントは、ユーザー単位で読み取り1分30回・書き込み1分15回(Durable Objects)
   - 全エンドポイントで、IP単位に1分60回(Rate Limiting binding)
 - OpenAPI仕様が認証不要で配信され、`/api-docs`のSwagger UIから参照できる。
-- CORSは公開APIに限り`*`である(NFR-SECUR-043)。
+- CORSは公開APIに限り`*`である(NFR-SECUR-045)。
 
 ## Approach
 
@@ -35,8 +35,8 @@
 ## Scope
 
 - **In**:
-  - 4.19(FR-PAPI-001〜009)
-  - FR-RLMIT-004・006・007・014・016、NFR-SECUR-043
+  - 4.19(FR-PAPI-001〜011)
+  - FR-RLMIT-005・007・008・017・019、NFR-SECUR-045
   - APIキー管理画面、`/api-docs`のSwagger UI
   - 上記のテスト
   - `docs/GUIDES/tech/backend`への公開API設計の追記

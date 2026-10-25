@@ -11,7 +11,7 @@
 ### Goals
 
 - ドメインspecは、用途を1件登録するだけで、事前検証・実体検証・推測できないキーでの上書きしない保存・自動判定・変換配信・削除が働く。
-- 不適切と判定した画像と、隔離理由が付いた画像は、通常数秒〜数分で配信が止まり、エッジキャッシュからも消える。隔離理由がすべて解消するまで公開に戻らない(FR-ADMUG-028)。
+- 不適切と判定した画像と、隔離理由が付いた画像は、通常数秒〜数分で配信が止まり、エッジキャッシュからも消える。隔離理由がすべて解消するまで公開に戻らない(FR-ADMUG-050)。
 - 判定サービスの障害時もアップロードと配信は止まらず、判定は再試行と日次バッチで回復する(NFR-AVAIL-002)。
 - 変換済みの画像はエッジキャッシュから配信され、ヒット時はストレージの読み出しと変換を省く。
 - 本specのコードの単体テスト・ブラウザテスト・Workers統合テストが行と関数のカバレッジ80%を満たし、一括検査に参加する。
@@ -337,7 +337,7 @@ docs/
   - 委託先が講じる措置: 既存の共通の記述(データ処理条項・暗号化通信と保存・アクセス制御)を参照し、送った画像を保存・学習に使わせない設定(AIサービスのオプトアウト)と、判定の呼び出しだけを許す専用の資格情報を加える。
   - 共通の「移転先の国」の行は、AWSの記述だけをこの項への参照に改める。Cloudflareの項と記述(infra-delivery)、Google Cloud(Natural Language API)の項と記述(content-processing。R3-5)、他の委託先の記述、全委託先に共通の記載(当該国の制度・本人の求めへの対応、infra-deliveryの8.5が改める「移転の法的根拠」の行)は書き換えない。
   - 法務文書の本文は開発者が用意するため、本specは骨子の記載事項に留める。
-- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「紐付けられなかったアップロードファイル」の行を加える。「データの保存場所(DR-007)」の表(Cloudflareの資源の一覧)には行を足さず、表の下の委託先ごとの箇条に、infra-deliveryのタスク8.5が示す型で`- **AWS(Rekognition)**: 米国東部(us-east-1)。判定用画像を一時送信し、判定サービス側では保存しない。移転の根拠は骨子のAWSの項を正とする。`を加える(N-1・R3-6)。Cloudflareの資源の保存先の表と箇条(infra-deliveryが所有)と、他の委託先の箇条は書き換えない。
+- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「紐付けられなかったアップロードファイル」の行を加える。「データの保存場所(DR-012)」の表(Cloudflareの資源の一覧)には行を足さず、表の下の委託先ごとの箇条に、infra-deliveryのタスク8.5が示す型で`- **AWS(Rekognition)**: 米国東部(us-east-1)。判定用画像を一時送信し、判定サービス側では保存しない。移転の根拠は骨子のAWSの項を正とする。`を加える(N-1・R3-6)。Cloudflareの資源の保存先の表と箇条(infra-deliveryが所有)と、他の委託先の箇条は書き換えない。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — アップロードのエラーの文言(主体の種類が対象外の「この操作はできません。」(`upload_forbidden`。R3-8)・編集後のサイズ超過・SVGの書き出し直し・読み込めないファイル・画素数超過・合計サイズ超過・一時的に利用できない)を加える。「この操作はできません。」はidentity-authの`forbidden`も使う文言で、roadmapの順で先に実装する本specが加える。アップロードできない利用者の拒否(`account_unavailable`・`email_not_verified`)は、既存の「停止中アカウント」「メール未確認」の文言を使い、行を加えない。
 - `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」のジョブの名前と順序の表へ、本specの3つのジョブの行(810・820・830)を加える(M-4)。表は最初に4:21のジョブを足すspecが作り、後のspecは行を足す(N-3)。想定の順序ではcontent-processingが作るが、表が無ければ本specが作り(上流のemail-deliveryの`email-delivery.cleanup`(900)を含める)、表が無いことを理由に止めない。
 - `docs/onboardings/tech-stack.md` — 画像処理に`image-size`を加え、各パッケージの役割を更新する。
@@ -922,7 +922,7 @@ export declare function desiredLocation(
   storage: MediaStorage,
   reasons: readonly QuarantineReason[],
 ): MediaLocation;
-// files→files、images→理由があればquarantine、無ければimages(FR-ADMUG-028)
+// files→files、images→理由があればquarantine、無ければimages(FR-ADMUG-050)
 ```
 
 ##### Event Contract
@@ -1897,7 +1897,7 @@ export interface PrivateFileLinkProps {
 
 - 集約はファイル(`media_files`の1行)で、隔離理由(`media_file_quarantine_reasons`)はその子である。ファイルの保存先・判定の状態・隔離理由は本specの操作だけが書き換える。
 - 不変条件:
-  - 画像用の用途のファイルの目的の保存先は、隔離理由が1つ以上なら隔離バケット、無ければ画像用非公開バケットである(FR-ADMUG-028)。実際の保存先(`location`)は非同期の処理で目的の保存先へそろう。
+  - 画像用の用途のファイルの目的の保存先は、隔離理由が1つ以上なら隔離バケット、無ければ画像用非公開バケットである(FR-ADMUG-050)。実際の保存先(`location`)は非同期の処理で目的の保存先へそろう。
   - 判定の状態は、判定待ち・未判定からだけ判定済み(問題なし・不適切)・未判定へ進む。管理者が自動判定の理由を外しても、状態は不適切のまま戻さない(再判定しないため)。
   - 削除待ちの印が付いたファイルは、紐付け・非公開ファイルの配信・内容の読み出しの対象にならず、いずれ物理削除される。
 
@@ -2039,9 +2039,9 @@ erDiagram
 ## Security Considerations
 
 - 受付: 形式は申告ではなく内容で判定し、拡張子は使わない。オブジェクトキーは128ビットの乱数で、クライアントの指定を受け付けない。上書きは条件付きの書き込みで拒否する。DOCTYPE・ENTITYを含むSVGは受け付けず、`processEntities: false`で実体を展開しない。
-- 配信: ユーザーの画像は認証Cookieの届かない別のサブドメインから配信する(NFR-SECUR-040)。SVGは`sandbox`付きのCSPで配信し、`<img>`からだけ参照する。非公開ファイルは`attachment`・`nosniff`・`no-store`で返し、利用者側からは画像用バケットのファイルを返さない。
+- 配信: ユーザーの画像は認証Cookieの届かない別のサブドメインから配信する(NFR-SECUR-042)。SVGは`sandbox`付きのCSPで配信し、`<img>`からだけ参照する。非公開ファイルは`attachment`・`nosniff`・`no-store`で返し、利用者側からは画像用バケットのファイルを返さない。
 - 認可: 拒否と不存在を区別せず404にする。管理者の画像確認は既定で全拒否とし、ugc-moderationの実装でだけ開く。
-- 停止中の利用者: 停止では既存のセッションが消えないため、利用者側のアップロードは受付の前に`UploaderEligibility`で判定し、identity-authの束縛で停止中の利用者を拒否する(FR-USER-020、1.8・1.9)。既定の全許可は、identity-authの実装前にログインが成立しないため穴にならない。
+- 停止中の利用者: 停止では既存のセッションが消えないため、利用者側のアップロードは受付の前に`UploaderEligibility`で判定し、identity-authの束縛で停止中の利用者を拒否する(FR-USER-026、1.8・1.9)。既定の全許可は、identity-authの実装前にログインが成立しないため穴にならない。
 - 判定サービス: 資格情報は`rekognition:DetectModerationLabels`だけを許す専用のIAMユーザーで、シークレットとして注入し、ログ・Sentryに出さない。送るのは判定用画像だけで、ファイル名・主体を送らない。AWSのAIサービスのオプトアウトを有効にする(開発者の作業)。EU域内の利用者の画像を米国へ送る移転の根拠は、DPFを主とし、無効になった場合はAWSのDPAに含まれるSCCに拠る(プライバシーポリシーの大枠のAWSの項。N-1)。
 - メタデータ: 編集ダイアログの経路ではブラウザの作り直しでExifが消える。直接送られたJPEGのメタデータは配信の`jpg`出力に残り得る(決定Q1の残存リスク、research.md)。
 - 動作確認の経路: トークンが無い環境(prod)では404で、トークンはSHA-256の値を時間一定で比較する。対象は動作確認の用途のファイルに限る。
@@ -2055,7 +2055,7 @@ erDiagram
 
 ## Migration Strategy
 
-- 新しい2テーブルの追加だけで、既存のテーブルを変えない(Expand/Contractの「拡張」だけ、NFR-AVAIL-008)。マイグレーションの適用をデプロイより先に行うbackend-platform・infra-deliveryの順序に従う。
+- 新しい2テーブルの追加だけで、既存のテーブルを変えない(Expand/Contractの「拡張」だけ、NFR-AVAIL-009)。マイグレーションの適用をデプロイより先に行うbackend-platform・infra-deliveryの順序に従う。
 - staging・prodのR2バインディングへの`jurisdiction: "us"`の指定(infra-delivery)は、バケットが米国管轄で作られていることが前提である。管轄の無いバケットが既にある環境では、バケットの作り直しが要る(作成後に管轄を変えられない)。
 
 ## Supporting References

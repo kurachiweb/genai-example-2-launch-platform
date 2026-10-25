@@ -17,16 +17,16 @@
   - カテゴリをマスタから選び、未ログインで「権利侵害」を選んだ場合は連絡先が必須
   - 理由は1,000文字以内、自分のコンテンツは通報できない
   - Turnstileによるbot対策
-- 通報のレート制限が動作する(FR-RLMIT-003・013)。IP単位で1時間に10回、ログイン中はユーザー単位も同じ基準でDurable Objectsにより制限し、キーはハッシュ化する。
-- 管理者側の通報管理(FR-ADMUG-015〜022)が動作する。
+- 通報のレート制限が動作する(FR-RLMIT-004・016)。IP単位で1時間に10回、ログイン中はユーザー単位も同じ基準でDurable Objectsにより制限し、キーはハッシュ化する。
+- 管理者側の通報管理(FR-ADMUG-019・020・025・027・030・035・039・040)が動作する。
   - 一覧と絞り込み、4種の対応ステータス
   - 同一コンテンツへの通報の集約と、件数・理由の内訳の表示
   - 一覧からの措置(ugc-moderationの非公開化・停止のユースケースを使う)と却下
   - 措置・却下を投稿者と申出者へメールで通知する
   - 権利侵害の通報で、投稿者へ事情を照会するメールを送れる
   - 権利侵害の通報の対応期間を表示する
-- 通報カテゴリのマスタ管理(FR-ADMCF-015〜017)が動作する。標準の「権利侵害」「その他」は削除できず、削除時は「その他」へ付け替える。
-- 管理画面のプロダクト詳細に、受け付けた通報件数の区画がある(FR-ADMUG-006)。
+- 通報カテゴリのマスタ管理(FR-ADMCF-019〜021)が動作する。標準の「権利侵害」「その他」は削除できず、削除時は「その他」へ付け替える。
+- 管理画面のプロダクト詳細に、受け付けた通報件数の区画がある(FR-ADMUG-008)。
 - 監査ログの対象操作が記録される。
 
 ## Approach
@@ -37,7 +37,7 @@
 
 - **In**:
   - 4.12(FR-REPOT-001〜006)
-  - FR-ADMUG-015〜022、FR-ADMCF-015〜017、FR-RLMIT-003・013、LR-004
+  - FR-ADMUG-019・020・025・027・030・035・039・040、FR-ADMCF-019〜021、FR-RLMIT-004・016、LR-004
   - 通報ダイアログ、管理画面の通報管理、通報カテゴリのマスタ
   - 上記のテスト
 - **Out**:
@@ -68,7 +68,7 @@
 
 ## Constraints
 
-- 対応完了日時は監査ログに記録し、対応期間の算出に使う(FR-ADMUG-022)。対応期間の表示は、admin-foundationの`AuditLogReader.latestFor({ action, targetKind, targetId })`(最新の記録の日時を返す)で引き、監査ログのテーブルを直接読まない
+- 対応完了日時は監査ログに記録し、対応期間の算出に使う(FR-ADMUG-040)。対応期間の表示は、admin-foundationの`AuditLogReader.latestFor({ action, targetKind, targetId })`(最新の記録の日時を返す)で引き、監査ログのテーブルを直接読まない
 - 未ログインの申出者の連絡先は個人情報として扱い、保持期間はデータ要件(DR)に従う
 - ダッシュボードのカードは`DashboardCard`の`{ id: 'content-reporting.unhandled-reports', order: 30, width, component }`で、自分でデータを取得し`DashboardCardFrame`で枠と状態を表示する。カードの失敗は他のカードを止めない
 - 通報カテゴリの区画は`CategorySection`の`{ id: 'content-reporting.report-categories', order: 40, title, component }`で、admin-foundationの`CategoryMasterEditor`を`withHandle: false`で使う

@@ -7,7 +7,7 @@
 - **Key Findings**:
   - Crepe 7.22.2のbuilderで、固定ツールバーを除き選択時のツールバー・リスト・プレースホルダー・カーソル・表だけを組み込んだ場合、`bun build --minify`で約786KB(gzip約250KB)だった。KaTeX・CodeMirrorは含まれず、`eval`・`new Function`も無い。内部のUIはVueのランタイムで描かれる。
   - Crepeの固定ツールバー(top-bar)と表の操作UIのボタンは、アクセシブルな名前を持たず、`pointerdown`だけで動く(キーボードの操作では発火しない)。選択時のツールバーのボタンは`aria-label`を持つ。CrepeBuilderの基本構成はアップロード(ファイルの貼り付け・ドロップで画像を挿入する)とインデント(Tabキーで字下げする)のプラグインを含み、リストと表もTabキーを使う。
-  - remark-rehypeは既定でRaw HTMLを捨て、rehype-sanitizeの既定のスキーマは相対URL・プロトコル相対URLのリンクを残す。どちらもFR-MDOWN-005・010を満たさないため、構文木の段階で文字列への置き換えと参照先の検査が要る。20,000文字の文書の描画はBunで平均約124ms、2,000文字で約9msだった。
+  - remark-rehypeは既定でRaw HTMLを捨て、rehype-sanitizeの既定のスキーマは相対URL・プロトコル相対URLのリンクを残す。どちらもFR-MDOWN-005・012を満たさないため、構文木の段階で文字列への置き換えと参照先の検査が要る。20,000文字の文書の描画はBunで平均約124ms、2,000文字で約9msだった。
   - SQLite 3.53.2(bun:sqlite)で、external contentのFTS5とトリガーの同期、前方一致の`"語"*`、二重引用符のエスケープ、演算子や列の指定に当たる語の無害化、版の条件付きの`ON CONFLICT DO UPDATE ... WHERE`、`INSERT ... SELECT ... WHERE EXISTS`による元データの存在の条件付きの追加が、いずれも意図どおりに動いた。
   - Google Cloud Natural Language v2の`documents:analyzeEntities`は、応答に`languageCode`と`languageSupported`を持ち、非対応の言語の指定は`INVALID_ARGUMENT`になる。v2のEntityは`name`・`type`・`metadata`・`mentions[].probability`を持ち、v1の`salience`は無い。1要求の上限は1,000,000バイト、既定の割り当ては毎分600要求である。
 
@@ -41,20 +41,20 @@
 
 - roadmapのRequirement Ambiguities: 担当specがcontent-processingの行は無い。
 - 日本語の分割方式: FR-FTS-001がunicode61と`remove_diacritics 2`に固定しており、日本語の分割はFR-FTS-006のキーワード抽出が担う。一致の広さだけをQ4で確認した。
-- 索引を更新するタイミング: FR-FTS-003(作成・編集時にQueuesで非同期)とFR-FTS-007(削除時は即時)で決まっている。
+- 索引を更新するタイミング: FR-FTS-003(作成・編集時にQueuesで非同期)とFR-FTS-009(削除時は即時)で決まっている。
 - 後続specとの責任分担: briefのScope(Out)とOut of Boundaryで決まっている。ドメインごとのFTSテーブルと検索画面はdirectory-discovery・help-center、入力上限値は各ドメインが持つ。全文検索用のテーブルの主キーを連番にする規約はbackend-platformが文書だけで定めており(部品は提供しない)、部品とひな形は本specが作る。
 - 文字数の数え方: `design/003-text-and-copy-rules.md`が「書記素で数え、フロントのフォーカスアウト時とサーバーで同じ値で検証する」と定める。モックアップは記法を含む原文を`Intl.Segmenter`で数える。workerd・ブラウザ・Bunの標準APIで足り、NFKCも`String.prototype.normalize`で足りる。
 - プレビューの形: `design/002-page-layouts.md`とモックアップの「書く/プレビュー」タブで決まっている(WYSIWYGとの関係はQ2の回答により設計で決める)。
-- 見出しレベル1と画像の「通常の文字列として描画」(FR-MDOWN-008)の解釈: モックアップの`markdown.tsx`が、見出しレベル1は`<p># 本文</p>`、画像は`![alt](src)`の文字列として描画しており、これを正とする。
+- 見出しレベル1と画像の「通常の文字列として描画」(FR-MDOWN-010)の解釈: モックアップの`markdown.tsx`が、見出しレベル1は`<p># 本文</p>`、画像は`![alt](src)`の文字列として描画しており、これを正とする。
 - Raw HTML: FR-MDOWN-005とモックアップのコメントにより、文字列として表示する(削除しない)。
 - リンクの`rel`: `design/002-page-layouts.md`の「外部Webサイトへのリンク」の表で表示場所ごとに決まっている。描画部品は`rel`を指定できるようにするだけでよい。`noreferrer`はfrontend-platformが`Referrer-Policy: same-origin`を付けるため不要である。
-- 表示部品の生HTMLの挿入: NFR-SECUR-038と、frontend-platformの`frontend/003`(本specのサニタイズ済みHTMLの部品だけが、理由のコメント付きで1行だけ規則を無効化できる)で決まっている。`hast-util-to-jsx-runtime`は導入しない。
-- 相対URL: FR-MDOWN-010が`http`・`https`・`mailto`と`#`だけを許可するため除去する。ヘルプ記事の内部リンクは絶対URLで書く。
+- 表示部品の生HTMLの挿入: NFR-SECUR-040と、frontend-platformの`frontend/003`(本specのサニタイズ済みHTMLの部品だけが、理由のコメント付きで1行だけ規則を無効化できる)で決まっている。`hast-util-to-jsx-runtime`は導入しない。
+- 相対URL: FR-MDOWN-012が`http`・`https`・`mailto`と`#`だけを許可するため除去する。ヘルプ記事の内部リンクは絶対URLで書く。
 - 入力の検証で拒否するもの: 見出しレベル1・画像・Raw HTMLは描画時に文字列にする要件のため、サーバー側で拒否するのは文字数など形式の違反だけである。
 - 保存形式: `features/001-user-data-export.md`がマークダウンの原文を`.md`で出力するため、DBにはマークダウンの原文を保存し、HTMLは保存しない。
 - マークダウン処理のパッケージ: tech-stack.mdで選定済み(unified 11.0.5、remark-parse 11.0.0、remark-gfm 4.0.1、remark-rehype 11.1.2、rehype-sanitize 6.0.0、rehype-stringify 10.0.1、hast-util-to-text 4.0.2、remark-cjk-friendly 2.3.2(2026-09-30公開)、remark-cjk-friendly-gfm-strikethrough 2.3.1)。いずれも公開から2週間以上経っている。rehype-slugの扱いは仮決定P2を参照。
 - キーワード抽出のAPI: tech-stack.mdで、APIキー認証のGoogle Cloud Natural Languageに決まっている。gRPCのSDKは使わず`fetch`でRESTのv2の`analyzeEntities`を呼ぶ。料金は1,000文字を1単位とし、毎月5,000単位まで無料、それ以降は1,000単位あたり1ドル。送信する内容は`legal/003-privacy-policy-outline.md`の委託先の一覧(プロダクト名・タグライン・説明文、ヘルプ記事、一時送信)と一致している。
-- バックアップ: NFR-AVAIL-007と`db/002`により、Time Travelで行う。
+- バックアップ: NFR-AVAIL-008と`db/002`により、Time Travelで行う。
 - CSP: スクリプトはnonceに加えて同一オリジン(`'self'`)の読み込みが許可され、スタイルは`'unsafe-inline'`が許可されている。Crepeの別チャンクとCSSは同一オリジンから読み込まれ、許可先の追加は要らない(Research Log「CSPへの影響」)。
 
 ### 仮決定(2026-10-18に開発者が承認)
@@ -67,7 +67,7 @@
 | P2  | rehype-slugの扱い                                       | rehype-slugを使わず、FR-MDOWN-006の変換と連番を自前のrehypeの処理で実装し、tech-stack.mdから外す                                                                                                                                                                                                                               | rehype-slugで付けたIDを後から書き換える                                                                                                                                 | rehype-slugはgithub-sluggerで記号を削除しCJK文字を残すため、FR-MDOWN-006の「記号とCJK文字のURLエンコード」と食い違い、削除された記号は後から復元できない。接頭辞と連番も自前の処理で決めるため、依存を減らせる                                                                         |
 | P3  | `@milkdown/kit`の宣言                                   | Crepeが完全固定で依存する`@milkdown/kit` 7.22.2を、エディタを使う3つのアプリ(frontend-lib・client・admin)で明示的に宣言する                                                                                                                                                                                                    | 推移的な依存に任せてimportする                                                                                                                                          | 見出しの入力規則の除去・アップロードの除外・コマンドの呼び出し・remarkのプラグインの登録に`@milkdown/kit`を直接importする。宣言しないimportは版の固定と配置方式の規約(利用側アプリが宣言する)に反する                                                                                  |
 | P4  | frontend-libからcommon-libを参照する方法                | frontend-libへは配置せず、配置先の名前を配置元と同じ`common-lib`にして、frontend-libのコードは兄弟の相対パス(`../common-lib`)で参照する。frontend-libの位置の検査では配置元を直接読み込み、client・adminに配置された後は各アプリの配置先を読み込む                                                                             | (a) frontend-libにも配置し、client・adminでは`lib/common-lib`へ入れ子に配置する (b) 描画の関数を利用側アプリから画面部品へ注入する                                      | (a)はbind mountの入れ子が要り、dev-toolingの配置確認が入れ子を検出しない(`coding/003`の制約)。(b)は全ての呼び出し箇所が注入を書く必要があり、サニタイズ済みの型の保証も弱まる。兄弟の相対パスならdev-toolingの仕組みを変えずに、回答どおり4アプリへの配置で済む                        |
-| P5  | 同一オリジンの判定の基準(FR-MDOWN-007)                  | client・adminの両方に変数`CLIENT_SITE_ORIGIN`(利用者側のオリジン)を加え、frontend-platformの環境の検証とブラウザへ渡す設定に含める                                                                                                                                                                                             | 要求のURLのオリジンを使う                                                                                                                                               | 管理者側のプレビューでは要求のURLが管理者側のオリジンになり、利用者側への絶対URLのリンクを別オリジンと誤判定する。値はREADMEの配信URLから決まる                                                                                                                                        |
+| P5  | 同一オリジンの判定の基準(FR-MDOWN-009)                  | client・adminの両方に変数`CLIENT_SITE_ORIGIN`(利用者側のオリジン)を加え、frontend-platformの環境の検証とブラウザへ渡す設定に含める                                                                                                                                                                                             | 要求のURLのオリジンを使う                                                                                                                                               | 管理者側のプレビューでは要求のURLが管理者側のオリジンになり、利用者側への絶対URLのリンクを別オリジンと誤判定する。値はREADMEの配信URLから決まる                                                                                                                                        |
 | P6  | 再抽出の定期実行の時刻                                  | 業務時刻4:21の日次バッチの最後(順序950)に組み込み、日次タイムラインの「日次バッチの内容」に追記する                                                                                                                                                                                                                            | 独立した時刻(例: 4:31)を新設してタイムラインに行を加える                                                                                                                | 既存のcron式(`21 12 * * *`、email-deliveryが追加)を再利用でき、Cron Triggersを増やさない。削除系の処理の後に置くため、削除済みの元データの再抽出を要求しない                                                                                                                           |
 | P7  | ローカル環境のキーワード抽出                            | ローカル環境では既定で無効(変数`KEYWORD_EXTRACTOR`を`disabled`、シークレット不要)にし、正規化テキストで索引する。実際のAPIへの疎通は、Infisicalから注入したキーで手元から確かめるスクリプトで確かめる                                                                                                                          | Infisicalの`dev`にもキーを登録し、ローカルでも常に実際のAPIを呼ぶ                                                                                                       | キーを持たない開発者でもイベントサーバーが起動でき(キーが必須だと環境の検証で全要求が失敗する)、ローカルの試行で料金が発生しない。staging・prodは必ず実際のAPIを呼ぶ                                                                                                                   |
 | P8  | キーワードから除くエンティティの種類                    | `PHONE_NUMBER`・`ADDRESS`・`DATE`・`NUMBER`・`PRICE`を除き、名前を正規化して重複を除く                                                                                                                                                                                                                                         | 全ての種類を使う                                                                                                                                                        | これらは検索語として使われにくく、電話番号と住所は個人に関する情報になり得る(DR-001)。v2のEntityは重要度(salience)を持たないため、種類で絞る                                                                                                                                           |
@@ -141,7 +141,7 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 
 ### 描画パイプラインの挙動
 
-- **Context**: FR-MDOWN-004〜010、Q5。
+- **Context**: FR-MDOWN-004〜006・009〜012、Q5。
 - **Sources Consulted**: scratchpadでunified 11.0.5・remark-parse 11.0.0・remark-gfm 4.0.1・remark-cjk-friendly 2.3.2・remark-cjk-friendly-gfm-strikethrough 2.3.1・remark-rehype 11.1.2・rehype-sanitize 6.0.0・rehype-stringify 10.0.1・hast-util-to-text 4.0.2で試作した。
 - **Findings**:
   - remark-rehypeは既定(`allowDangerousHtml: false`)でRaw HTMLの節点を捨てる。構文木(mdast)の段階で`html`の節点を文字列の節点に置き換えると、ブロックの位置のRaw HTMLは段落に包まれずに出力されるため、ブロックの位置では段落で包む必要がある。
@@ -164,7 +164,7 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 
 ### FTS5の動作確認
 
-- **Context**: FR-FTS-001・002・007、Q4、DR-009、`db/002`のexternal contentとトリガーの例。
+- **Context**: FR-FTS-001・002・009、Q4、DR-014、`db/002`のexternal contentとトリガーの例。
 - **Sources Consulted**: scratchpadのbun:sqlite(SQLite 3.53.2)。
 - **Findings**:
 
@@ -183,7 +183,7 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 
 ### Google Cloud Natural Language v2
 
-- **Context**: SW-023、FR-FTS-006、Q3。
+- **Context**: SW-024、FR-FTS-006、Q3。
 - **Sources Consulted**: [documents.analyzeEntities(v2)](https://docs.cloud.google.com/natural-language/docs/reference/rest/v2/documents/analyzeEntities)、[Document(v2)](https://docs.cloud.google.com/natural-language/docs/reference/rest/v2/documents)、[Entity(v2)](https://docs.cloud.google.com/natural-language/docs/reference/rest/v2/Entity)、[Language support](https://docs.cloud.google.com/natural-language/docs/languages)、[Quotas and limits](https://docs.cloud.google.com/natural-language/quotas)、[Pricing](https://cloud.google.com/natural-language/pricing)(料金は調査担当の確認値)。
 - **Findings**:
   - 要求: `POST https://language.googleapis.com/v2/documents:analyzeEntities`、本文は`{ document: { type: 'PLAIN_TEXT', content, languageCode? }, encodingType: 'UTF8' }`。`languageCode`を省くと自動判定する。APIキーは`x-goog-api-key`ヘッダーで渡せる。
@@ -242,7 +242,7 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 
 ### Decision: 描画はサニタイズの後に信頼できる変換だけを行う
 
-- **Context**: FR-MDOWN-005〜010、Q5。
+- **Context**: FR-MDOWN-005・006・009〜012、Q5。
 - **Alternatives Considered**:
   1. rehype-sanitizeを最後に置き、リンクの`target`・`rel`や表の枠もスキーマで許可する — 利用者の入力に由来しない属性まで許可リストに入り、許可の範囲が広がる。
   2. サニタイズを先に行い、その後に本specのコードだけが属性を加える — 許可リストは入力に由来する要素だけに絞れる。
@@ -273,7 +273,7 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 
 ### Decision: 索引の書き込みは版と元データの存在を条件にした1文で行う
 
-- **Context**: Queuesは少なくとも1回の配送で順序を保証しない(backend-platform)。FR-FTS-007、要件9.7・9.8・11.3。
+- **Context**: Queuesは少なくとも1回の配送で順序を保証しない(backend-platform)。FR-FTS-009、要件9.7・9.8・11.3。
 - **Alternatives Considered**:
   1. 読み直した元データで無条件に上書きする — 古い版の後着や、削除との競合で索引が復活する。
   2. 版(元データが返す単調増加の値)と、元データの存在と対象の条件を、1文の`INSERT ... SELECT ... WHERE EXISTS ... ON CONFLICT DO UPDATE ... WHERE`で同時に判定する。
@@ -336,7 +336,7 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 | リンクの挿入       | `[リンク](https://)`の文字列を挿入する                                                  | URLを入力するダイアログ                                                                       | WYSIWYGでは記法を直接入力しないため   |
 | SSR時の表示        | textareaを描く                                                                          | 同じ大きさの仮の表示(現在の値の描画結果)と操作できない状態のツールバー                        | 編集領域はブラウザでだけ動く(Q2)      |
 | 文字数の読み上げ   | カウンター全体を`aria-live="polite"`にする                                              | 上限の超過と戻りの時だけ読み上げる                                                            | 入力のたびの読み上げを避ける(要件3.5) |
-| 同一オリジンの判定 | `https?://`で始まれば外部とする                                                         | サイトのオリジンと比べる                                                                      | FR-MDOWN-007                          |
+| 同一オリジンの判定 | `https?://`で始まれば外部とする                                                         | サイトのオリジンと比べる                                                                      | FR-MDOWN-009                          |
 | 表の横スクロール   | `overflow-x-auto`の枠                                                                   | 同じ枠に`tabindex="0"`・`role="region"`・名前を付ける                                         | キーボードでのスクロール(要件4.13)    |
 | 折りたたみ         | マウント後に高さを測って折りたたむ                                                      | 初めから指定の高さで折りたたみ、測定後にあふれる場合だけ「続きを読む」を出す                  | 初期化後のレイアウトのずれを減らす    |
 

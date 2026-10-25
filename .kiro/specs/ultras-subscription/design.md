@@ -10,7 +10,7 @@
 
 ### Goals
 
-- FR-PPLAN-001〜010・FR-ADMCF-018が動作し、加入→支払いの失敗→回復、解約の予約→取り消し、解約の予約→末日の終了、停止→期間末の解約、退会→即時の解約のどの経路でも、加入状態と特典の判定が料金とプランの表(と要件フェーズの決定Q1〜Q8)に一致する。
+- FR-PPLAN-001〜013・FR-ADMCF-022が動作し、加入→支払いの失敗→回復、解約の予約→取り消し、解約の予約→末日の終了、停止→期間末の解約、退会→即時の解約のどの経路でも、加入状態と特典の判定が料金とプランの表(と要件フェーズの決定Q1〜Q8)に一致する。
 - 特典の判定が、通知の到着順・再送・過去の時点の指定にかかわらず同じ結果を返す。
 - 加入が有効になった知らせが、加入1件につき確実に1回、登録された処理へ届く。
 - 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
@@ -40,7 +40,7 @@
 ### Out of Boundary
 
 - Stripeとの通信と決済の状態(payments)。本specは`StripeGateway`の定期課金の操作(`cancelSubscription`・`createPortalSession`)と`CustomerDirectory`・`CheckoutStarter`・`PriceCatalog`を呼ぶだけで、Stripeの型やpaymentsのテーブルを直接扱わない。
-- 古い通知の破棄(DR-011)と冪等性(DR-010)、権利を付与できない購入の定期課金の解約と全額返金(payments)。
+- 古い通知の破棄(DR-016)と冪等性(DR-015)、権利を付与できない購入の定期課金の解約と全額返金(payments)。
 - 加入が有効になった知らせを受けた後の処理(未完了の参加費の決済セッションの失効・参加資格の付与)の中身(tournament-week・tournament-year)。
 - 特典の判定の結果の使い方(加入表示・再ローンチの間隔・参加費の免除)と、トーナメント参加費の画面などに出す導線の描画(各後続spec。表示の可否は`UltrasPromotionGate`・`UltrasPromotionFlagReader`で決める)。
 - 停止・停止の解除・退会の操作そのもの(ugc-moderation・identity-auth)。
@@ -275,7 +275,7 @@ apps/
 - `docs/onboardings/tech-stack.md` — Stripe Customer Portalの用途を「Ultrasの支払い方法の更新・解約・解約の取り消し」に改める(Q6)。
 - `docs/GUIDES/tech/backend/README.md`・`external/README.md` — 文書一覧の表に行を加える。
 - `docs/GUIDES/tech/operations/004-payment-data-operations.md` — 「定期課金とCustomer Portal」の節(価格`ultras_monthly`の作成、Portalの機能、再試行の後の解約、顧客向けメールの停止、api・eventの制限付きキーへのSubscriptions・Customer Portalの権限、test clockによる検証)を加える。
-- `docs/GUIDES/service/legal/004-legal-notice-outline.md` — 返金ポリシーの「ユーザー停止に伴う定期課金(Ultras)」の行を「定期課金を課金期間の末日に終わるよう解約する(FR-PPLAN-010)。返金しない」に直し(Q3)、「退会に伴う定期課金の解約: 即時に解約し、返金しない」(Q7)・「トーナメント参加費の決済後のUltras加入: 返金しない」(Q2)の行を加える。章8に解約はCustomer Portalで行う旨と解約の受付の確認メール(仮1)を加える。他の行は変えない。
+- `docs/GUIDES/service/legal/004-legal-notice-outline.md` — 返金ポリシーの「ユーザー停止に伴う定期課金(Ultras)」の行を「定期課金を課金期間の末日に終わるよう解約する(FR-PPLAN-012)。返金しない」に直し(Q3)、「退会に伴う定期課金の解約: 即時に解約し、返金しない」(Q7)・「トーナメント参加費の決済後のUltras加入: 返金しない」(Q2)の行を加える。章8に解約はCustomer Portalで行う旨と解約の受付の確認メール(仮1)を加える。他の行は変えない。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — LR-007の行に、退会時の即時の解約・解約の受付の確認(仮1)・購入確認メールの自動更新の条件(仮3)を加える。
 - `docs/GUIDES/service/overview/002-pricing-and-plans.md` — 免除の判定時点の確定(Q1)、決済後に加入した場合の返金なし(Q2)、特典の終了時刻(Q4)、機能フラグの範囲と初期値(Q5・仮2)、停止・退会の扱い(Q3・Q7)、支払いの失敗と解約の受付のメール(Q8・仮1)。
 - `docs/GUIDES/service/design/002-page-layouts.md` — `/pricing`の「フラグがオフなら404」を「Ultrasの区画を未加入者に表示しない」に直し(Q5)、`/settings/plan`をPortalに一本化した配置(Q6)・状態ごとの表示・Portalから戻った直後の表示、管理者側の「設定」ページの区画の並び(仮6)を記載する。

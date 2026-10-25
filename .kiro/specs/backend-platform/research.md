@@ -16,11 +16,11 @@
 
 | #   | 論点                                              | 根拠                                     | 回答(2026-10-06)                                                                                                                                 |
 | --- | ------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Q1  | FR-RLMIT-008(Worker単位のIP制限)の除外条件        | roadmapのRequirement Ambiguities・brief  | 推奨案。Stripe Webhook・RFC 8058配信停止・画像配信ドメインをIP単位の制限の対象外とし、署名・トークン検証、エッジキャッシュ、WAFで守る            |
-| Q2  | FR-RLMIT-008をclient・adminのWorkerへ適用するspec | brief「全Worker共通」とfrontend-platform | 推奨案。本specはapi・eventを担当し、client・adminのWorkerへの適用はfrontend-platformが同じ規約で実装する。規約(キー・上限・応答)を設計に明記する |
+| Q1  | FR-RLMIT-009(Worker単位のIP制限)の除外条件        | roadmapのRequirement Ambiguities・brief  | 推奨案。Stripe Webhook・RFC 8058配信停止・画像配信ドメインをIP単位の制限の対象外とし、署名・トークン検証、エッジキャッシュ、WAFで守る            |
+| Q2  | FR-RLMIT-009をclient・adminのWorkerへ適用するspec | brief「全Worker共通」とfrontend-platform | 推奨案。本specはapi・eventを担当し、client・adminのWorkerへの適用はfrontend-platformが同じ規約で実装する。規約(キー・上限・応答)を設計に明記する |
 | Q3  | `reflect-metadata`の採用                          | brief・CLAUDE.md(新規パッケージ)         | 推奨案。`reflect-metadata` 0.2.2をapi・eventに版固定で宣言する。導入時にtech-stack.mdへ追記する                                                  |
-| Q4  | ログの個人情報マスキングの実装手段                | DR-008・CLAUDE.md(新規パッケージ)        | 推奨案。`@logtape/redaction`を採用し、IPアドレスのパターンは独自に追加する。導入時にtech-stack.mdへ追記する                                      |
-| Q5  | Workers Logsの呼び出しログの扱い                  | DR-008                                   | 推奨案。呼び出しログを無効にし、マスキング済みのアクセスログを自前で出す                                                                         |
+| Q4  | ログの個人情報マスキングの実装手段                | DR-013・CLAUDE.md(新規パッケージ)        | 推奨案。`@logtape/redaction`を採用し、IPアドレスのパターンは独自に追加する。導入時にtech-stack.mdへ追記する                                      |
+| Q5  | Workers Logsの呼び出しログの扱い                  | DR-013                                   | 推奨案。呼び出しログを無効にし、マスキング済みのアクセスログを自前で出す                                                                         |
 | Q6  | ヘルスチェックの公開範囲と確認内容                | NFR-AVAIL-003・SW-007・README            | 推奨案ではなく「外部公開し、Workerが動いているかだけを確かめる」を採用。api・eventとも認証なしで外部公開し、D1への疎通は確認しない               |
 | Q7  | デッドレターキューに移ったメッセージの扱い        | brief(再試行とデッドレターの方針)        | 推奨案。DLQのconsumerが種別・ID・理由をログとSentryに通知してから破棄し、本文は残さない。再実行は各ドメインの冪等な処理に任せる                  |
 
@@ -114,7 +114,7 @@
 
 - **Sources Consulted**: Cloudflare Docs「Config Explorer」(`ratelimits`の`namespace_id`・`simple.limit`・`simple.period`)。
 - **Findings**: `simple.period`は10または60(秒)。`namespace_id`はアカウント内で名前空間を区別する正の整数の文字列で、同じ値を使うWorker・環境は回数を共有する。カウントはCloudflareのロケーション単位である。
-- **Implications**: FR-RLMIT-008は`limit: 100`・`period: 10`。Worker・環境ごとに別の`namespace_id`を割り当て、値の一覧を`docs/onboardings/project-values.md`に記載する。
+- **Implications**: FR-RLMIT-009は`limit: 100`・`period: 10`。Worker・環境ごとに別の`namespace_id`を割り当て、値の一覧を`docs/onboardings/project-values.md`に記載する。
 
 ### Wranglerの自動プロビジョニング
 
@@ -172,7 +172,7 @@
 
 ### Decision: 厳密カウンタは固定期間とAlarmによる後始末
 
-- **Context**: 要件12・FR-RLMIT-011〜016の「カウント対象期間の開始から所定時間経過した時点でAlarm APIによりリセット」。
+- **Context**: 要件12・FR-RLMIT-014〜019の「カウント対象期間の開始から所定時間経過した時点でAlarm APIによりリセット」。
 - **Selected Approach**: キー(ルール名とハッシュ化済みの値)ごとに1つのDurable Object(SQLite)を割り当てる。最初の要求で期間を開始してAlarmを予約し、Alarmで全データを削除する。期間の判定は純粋関数(`core/rate-limit/fixed-window.ts`)に置き、Alarmが遅れても要求時に期限切れを判定する。
 - **Rationale**: Durable Objectは単一スレッドで、同じキーへの同時要求を直列化する(要件12.2)。
 
@@ -186,12 +186,12 @@
 ### Decision: Worker単位のIP制限のキーとクライアントIP
 
 - **Context**: 要件13・Q1・Q2。
-- **Selected Approach**: キーは`ip:<送信元IPアドレス>`。送信元IPアドレスは`ClientIpResolver`で求め、既定は`CF-Connecting-IP`ヘッダー。特定できない場合は`ip:unknown`として1つのキーで数える(制限を外さない安全側)。api-gatewayは、内部認証を伴う中継リクエストでだけ引き継がれた元のIPを返すリゾルバを`createWorkerApp`へ渡す。キーはRate Limitingバインディングの内部カウンタにだけ使われ、本specの保存先には残らないため、FR-RLMIT-017(Durable Objectsのキーのハッシュ化)の対象外とする。
+- **Selected Approach**: キーは`ip:<送信元IPアドレス>`。送信元IPアドレスは`ClientIpResolver`で求め、既定は`CF-Connecting-IP`ヘッダー。特定できない場合は`ip:unknown`として1つのキーで数える(制限を外さない安全側)。api-gatewayは、内部認証を伴う中継リクエストでだけ引き継がれた元のIPを返すリゾルバを`createWorkerApp`へ渡す。キーはRate Limitingバインディングの内部カウンタにだけ使われ、本specの保存先には残らないため、FR-RLMIT-020(Durable Objectsのキーのハッシュ化)の対象外とする。
 - **Rationale**: frontend-platformが同じ規約を、共有コード無しで再現できる単純さを優先する。
 
 ### Generalization・Build vs Adopt・Simplification
 
-- **Generalization**: FR-RLMIT-008はRate Limitingバインディングの汎用ミドルウェア(`bindingRateLimit`)にキーの関数と除外規則を与えた特殊形として実装し、public-apiのFR-RLMIT-007も同じ部品で実装できる。FR-RLMIT-001〜006・009〜016は、汎用の厳密カウンタ(ルール名・上限・期間・リセット)で表現できる。
+- **Generalization**: FR-RLMIT-009はRate Limitingバインディングの汎用ミドルウェア(`bindingRateLimit`)にキーの関数と除外規則を与えた特殊形として実装し、public-apiのFR-RLMIT-008も同じ部品で実装できる。FR-RLMIT-001・003〜007・011・012・014〜019は、汎用の厳密カウンタ(ルール名・上限・期間・リセット)で表現できる。
 - **Build vs Adopt**:
   - 採用: LogTape・`@logtape/redaction`(マスキング)、`@sentry/hono`・`@sentry/cloudflare`、Inversify、Drizzle、`ulid`、Zod。
   - 自作: 定期実行と非同期メッセージのディスパッチャ(ルーティング表と再試行判定だけで、既製品はWorkersのハンドラー形式に合わない)、固定期間カウンタ(Durable Objectの数十行)、siteverifyの呼び出し(公式SDKが無い)。

@@ -5,7 +5,7 @@
 - **Feature**: `ultras-subscription`
 - **Discovery Scope**: Complex Integration(有料プランの実装は無い。上流の13spec(dev-tooling〜payments)の設計・タスクは承認済みで実装は未着手であり、本specはpaymentsの購入種別・定期課金の受け取り口・Stripeの定期課金の操作の上に、加入状態・特典の判定・加入のイベント・機能フラグ・料金ページとプラン管理画面を足す。外部サービス(Stripe Billing・Customer Portal)の仕様と、各国の自動更新の規制を調べた)
 - **Key Findings**:
-  - paymentsの購入種別の口(`PurchaseFulfillment.prepare`)と定期課金の受け取り口(`SubscriptionEventSink.statementsFor`)はD1の文だけを返し、確定の後に呼ばれる場所が無い。加入が有効になった知らせ(FR-PPLAN-007)と支払いの失敗のメールを確定の直後に送り出すには、口に省略可能な`afterCommit`を足す必要がある。依頼待ちの行を一括の書き込みに含め、`afterCommit`と4:21の日次の確認で送り出す(仮5)。
+  - paymentsの購入種別の口(`PurchaseFulfillment.prepare`)と定期課金の受け取り口(`SubscriptionEventSink.statementsFor`)はD1の文だけを返し、確定の後に呼ばれる場所が無い。加入が有効になった知らせ(FR-PPLAN-008)と支払いの失敗のメールを確定の直後に送り出すには、口に省略可能な`afterCommit`を足す必要がある。依頼待ちの行を一括の書き込みに含め、`afterCommit`と4:21の日次の確認で送り出す(仮5)。
   - API版`2025-09-30.clover`以降、新しい定期課金は柔軟な請求モードで作られ、Customer Portalでの期間末の解約は`cancel_at`の時刻で表され`cancel_at_period_end`は偽のままになる。paymentsの`SubscriptionChange`は`cancelAtPeriodEnd`しか持たないため、`cancelAt`を足さないとPortalでの解約を見落とす(仮5)。
   - 加入状態を保存せず、加入ごとの「特典の継続期間」`[開始時刻, 特典の終了時刻)`を保存して問い合わせの時刻から導くと、終了のための定期実行が要らず、過去の時点の判定(勝利時点の免除、Q1)も同じ区間で答えられる。終了の状態で決めた終了時刻を変えないことで、過去の判定が後から変わらない。
   - ドイツ民法典312k条4項は、オンラインで受け付けた解約の内容・受領の日時・終了の時点をテキスト形式(メールなど)で直ちに確認するよう求める。Q8の「解約の受付は画面の表示だけ」ではこれを満たせないため、解約の受付の確認メールを仮1として加えた。カリフォルニア州の自動更新法(Bus. & Prof. Code 17602条(a)(3))は購入後に自動更新の条件・解約の方針・解約の方法を保存できる形で知らせるよう求めるため、paymentsの購入確認メールに最終確認画面の追加事項を載せる(仮3)。
@@ -16,20 +16,20 @@
 
 | #   | 論点                       | 根拠                                                                                                                                                                                            | 回答(2026-10-23)                                                                                                                                                                                                                                                                                                                                                                  |
 | --- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q1  | 参加費免除の判定時点       | FR-TOURW-003・FR-TOURY-003・FR-PPLAN-005・007、roadmapのRequirement Ambiguities(ultras-subscription・tournament-week)、料金とプラン「トーナメント参加費の免除条件」                             | 推奨案(勝利時点と加入時点)。予選勝利またはWeek優勝の確定時点で特典を受けられる状態(active・past_due・canceled)なら即座に参加資格を得る。勝利の後、決済期限(23:35)までに加入すれば加入した時点で得る。本specは指定時点の判定と加入のイベントを提供し、資格の付与はtournament-week・tournament-yearが受け持つ                                                                       |
-| Q2  | 決済後に加入した場合の返金 | FR-PPLAN-007(未完了の決済セッションの失効だけを定める)、roadmapのRequirement Ambiguities、法的通知の大枠の返金ポリシー(原則として決済完了後は返金しない)                                        | 推奨案(返金せず事前に案内)。決済済みの参加費は付与済みの参加資格の対価として返金しない。加入の画面(最終確認画面の追加事項)と`/pricing`に「支払い済みの参加費は返金されません」と表示する                                                                                                                                                                                          |
-| Q3  | 停止時の返金               | FR-PPLAN-010、法的通知の大枠の返金ポリシー(「特典提供停止」「当該課金期間末までの日数分を自動で返金する」)、同じ表の「定期課金の解約: 日割り返金しない」、paymentsのQ1(後続specへの申し送り)    | 推奨案(期間末に解約・返金なし)。要件定義書のとおり課金期間の末日に終わるよう解約し、返金しない。返金ポリシーの該当行を「返金しない」に直す作業を本specに含める。返金ポリシーの他の行(停止・非公開化に伴うトーナメント参加資格の停止、広告の強制終了・表示停止)は書き換えず、後続specの担当として報告する                                                                          |
-| Q4  | 解約後の特典の終了時刻     | FR-PPLAN-003(「UTC-08:00時間で当該課金期間の末日まで」)、日次タイムライン「Ultras解約後の特典継続」、Stripeの課金期間の終了時刻は日の区切りに合わない                                           | 推奨案(末日の23:59まで)。課金期間の終了時刻を含むUTC-08:00の日の終わりまで特典を続ける。支払いの失敗による終了(FR-PPLAN-006)は日の終わりまで延ばさず、その場で終える                                                                                                                                                                                                              |
-| Q5  | 機能フラグオフの範囲       | FR-ADMCF-018(表示の切り替えだけを定める)、ページ配置「機能フラグがオフの場合、このページは404を返す」(`/pricing`には広告の申し込みも同居する)、料金とプラン(オフでも加入済みの特典に影響しない) | 推奨案(Ultras区画を隠し加入停止)。未加入者にはUltrasの区画と各画面の導線を出さず、新規加入の開始もサーバー側で拒否する。`/pricing`は広告のために表示を続け、加入中の人の状態表示・解約・Portalは変えない。ページ配置の404の記述は本specで直す                                                                                                                                     |
-| Q6  | 解約と再開の操作口         | FR-PPLAN-008・009、ページ配置の`/settings/plan`、tech-stack.md(Portalは支払い方法の更新用)、paymentsの`StripeGateway`(解約の取り消しの操作が無い)                                               | 推奨案(Portalに一本化)。`/settings/plan`には状態と管理のボタンを置き、解約(期間末)・解約の取り消し・支払い方法の更新はすべてCustomer Portalで行い、結果はWebhookで反映する                                                                                                                                                                                                        |
-| Q7  | 退会時の解約の時機         | FR-PPLAN-004(時機を定めない)、FR-PPLAN-010(停止は末日と明記)、返金ポリシー(解約は日割り返金なし)、FR-USER-019(物理削除でStripe Customerを削除)                                                  | 推奨案(即時に解約・返金なし)。退会の波及処理で即時に解約し、返金しない                                                                                                                                                                                                                                                                                                            |
-| Q8  | 定期課金の通知メール       | FR-PPLAN-006・009、paymentsのQ3(Stripeの領収書メールを使わず自前で送る)と仮5(購入確認は加入時の1通だけ)、LR-007                                                                                 | 選択肢2(支払い失敗だけ自前)。支払いの失敗(支払い方法の更新を促す)だけをemail-deliveryのトランザクションメールで送り、解約の受付と特典の終了は`/settings/plan`の表示だけで知らせる。Stripeの顧客向けメールは切る。LR-007(解約の受付の確認を求める地域)との関係はresearch.mdで確認し、問題があれば仮として記録する(調査の結果は「Research Log」の「自動更新と解約の各国規制」と仮1) |
+| Q1  | 参加費免除の判定時点       | FR-TOURW-003・FR-TOURY-005・FR-PPLAN-006・008、roadmapのRequirement Ambiguities(ultras-subscription・tournament-week)、料金とプラン「トーナメント参加費の免除条件」                             | 推奨案(勝利時点と加入時点)。予選勝利またはWeek優勝の確定時点で特典を受けられる状態(active・past_due・canceled)なら即座に参加資格を得る。勝利の後、決済期限(23:35)までに加入すれば加入した時点で得る。本specは指定時点の判定と加入のイベントを提供し、資格の付与はtournament-week・tournament-yearが受け持つ                                                                       |
+| Q2  | 決済後に加入した場合の返金 | FR-PPLAN-008(未完了の決済セッションの失効だけを定める)、roadmapのRequirement Ambiguities、法的通知の大枠の返金ポリシー(原則として決済完了後は返金しない)                                        | 推奨案(返金せず事前に案内)。決済済みの参加費は付与済みの参加資格の対価として返金しない。加入の画面(最終確認画面の追加事項)と`/pricing`に「支払い済みの参加費は返金されません」と表示する                                                                                                                                                                                          |
+| Q3  | 停止時の返金               | FR-PPLAN-012、法的通知の大枠の返金ポリシー(「特典提供停止」「当該課金期間末までの日数分を自動で返金する」)、同じ表の「定期課金の解約: 日割り返金しない」、paymentsのQ1(後続specへの申し送り)    | 推奨案(期間末に解約・返金なし)。要件定義書のとおり課金期間の末日に終わるよう解約し、返金しない。返金ポリシーの該当行を「返金しない」に直す作業を本specに含める。返金ポリシーの他の行(停止・非公開化に伴うトーナメント参加資格の停止、広告の強制終了・表示停止)は書き換えず、後続specの担当として報告する                                                                          |
+| Q4  | 解約後の特典の終了時刻     | FR-PPLAN-003(「UTC-08:00時間で当該課金期間の末日まで」)、日次タイムライン「Ultras解約後の特典継続」、Stripeの課金期間の終了時刻は日の区切りに合わない                                           | 推奨案(末日の23:59まで)。課金期間の終了時刻を含むUTC-08:00の日の終わりまで特典を続ける。支払いの失敗による終了(FR-PPLAN-007)は日の終わりまで延ばさず、その場で終える                                                                                                                                                                                                              |
+| Q5  | 機能フラグオフの範囲       | FR-ADMCF-022(表示の切り替えだけを定める)、ページ配置「機能フラグがオフの場合、このページは404を返す」(`/pricing`には広告の申し込みも同居する)、料金とプラン(オフでも加入済みの特典に影響しない) | 推奨案(Ultras区画を隠し加入停止)。未加入者にはUltrasの区画と各画面の導線を出さず、新規加入の開始もサーバー側で拒否する。`/pricing`は広告のために表示を続け、加入中の人の状態表示・解約・Portalは変えない。ページ配置の404の記述は本specで直す                                                                                                                                     |
+| Q6  | 解約と再開の操作口         | FR-PPLAN-010・011、ページ配置の`/settings/plan`、tech-stack.md(Portalは支払い方法の更新用)、paymentsの`StripeGateway`(解約の取り消しの操作が無い)                                               | 推奨案(Portalに一本化)。`/settings/plan`には状態と管理のボタンを置き、解約(期間末)・解約の取り消し・支払い方法の更新はすべてCustomer Portalで行い、結果はWebhookで反映する                                                                                                                                                                                                        |
+| Q7  | 退会時の解約の時機         | FR-PPLAN-005(時機を定めない)、FR-PPLAN-012(停止は末日と明記)、返金ポリシー(解約は日割り返金なし)、FR-USER-022(物理削除でStripe Customerを削除)                                                  | 推奨案(即時に解約・返金なし)。退会の波及処理で即時に解約し、返金しない                                                                                                                                                                                                                                                                                                            |
+| Q8  | 定期課金の通知メール       | FR-PPLAN-007・011、paymentsのQ3(Stripeの領収書メールを使わず自前で送る)と仮5(購入確認は加入時の1通だけ)、LR-007                                                                                 | 選択肢2(支払い失敗だけ自前)。支払いの失敗(支払い方法の更新を促す)だけをemail-deliveryのトランザクションメールで送り、解約の受付と特典の終了は`/settings/plan`の表示だけで知らせる。Stripeの顧客向けメールは切る。LR-007(解約の受付の確認を求める地域)との関係はresearch.mdで確認し、問題があれば仮として記録する(調査の結果は「Research Log」の「自動更新と解約の各国規制」と仮1) |
 
 ### 提示した選択肢(記録)
 
 - Q1: 勝利時点と加入時点(推奨・採用。勝利の確定時点で特典を受けられる状態なら即座に、勝利の後で決済期限までに加入すれば加入時点で参加資格を得る) / 組み合わせ決定時点(23:45の1回だけで判定する。期限後に加入しても免除される10分間が生じ、勝利後に特典が終了した人は資格を失う) / 決済期限時点(23:35の状態で判定する。勝利時点で加入していても期限前に特典が終了すると資格を失う)
 - Q2: 返金せず事前に案内(推奨・採用。付与済みの参加資格の対価として返金せず、加入の画面と`/pricing`に表示する) / 組み合わせ前なら全額返金(加入が有効になった時点で組み合わせ決定前の参加費をtournament-weekが自動で全額返金する。要件定義書と返金ポリシーの改訂が要る) / 返金せず案内もしない(苦情につながるおそれ)
-- Q3: 期間末に解約・返金なし(推奨・採用。要件定義書(SSoT)どおり。返金ポリシーの行を直す) / 期間末に解約・日割りで自動返金(特典は停止の時点で終え、残りの日数分を一部返金する。日割りの計算と要件の追記が要る) / 即時に解約・日割りで自動返金(FR-PPLAN-010と食い違い、要件定義書の改訂が要る) / 期間末に解約・管理者が手動で返金(返金ポリシーの行を「個別に判断」に直す)
+- Q3: 期間末に解約・返金なし(推奨・採用。要件定義書(SSoT)どおり。返金ポリシーの行を直す) / 期間末に解約・日割りで自動返金(特典は停止の時点で終え、残りの日数分を一部返金する。日割りの計算と要件の追記が要る) / 即時に解約・日割りで自動返金(FR-PPLAN-012と食い違い、要件定義書の改訂が要る) / 期間末に解約・管理者が手動で返金(返金ポリシーの行を「個別に判断」に直す)
 - Q4: 末日の23:59まで(推奨・採用。終了時刻を含むUTC-08:00の日の終わりまで。支払い失敗による終了はその場で) / Stripeの終了時刻まで(`current_period_end`で終える。要件定義書と日次タイムラインの改訂が要る)
 - Q5: Ultras区画を隠し加入停止(推奨・採用) / 導線だけ隠し加入は受付(要件の文言どおり表示だけを切り替える) / `/pricing`全体を404(ページ配置どおり。広告の申し込みの画面をsponsorshipが別に設ける必要がある)
 - Q6: Portalに一本化(推奨・採用。paymentsへの操作の追加が要らない) / 解約は自前・他はPortal(確認のダイアログ付きの解約ボタンを自前で置く) / 解約・取り消しとも自前(paymentsの`StripeGateway`に取り消しの操作を加える改修が要る)
@@ -41,16 +41,16 @@
 - 状態と特典の対応: active・past_due・canceledは「適用する」、endedは「適用しない」とし、公開プロフィールの加入表示も同じ条件にする(料金とプラン、briefのConstraints)。支払い失敗の再試行の回数と期間はStripeの設定に従い、再試行の後は「サブスクリプションをキャンセルする」(ended)とする。
 - 状態の名前: データエクスポートの`plan.status`の4値(`active`・`past_due`・`canceled`・`ended`)と、`plan`の項目(`startedAt`・`currentPeriodEndsAt`・`canceledAt`)に合わせる。
 - 特典の判定の口: 消費する側はStripeの状態を見ず、本specの判定サービス(指定時点で特典を受けられるか)だけに依存する(brief、roadmapのShared seams)。再ローンチの間隔はローンチ日を登録・編集する時点の状態で判定し、適用はproduct-launchが行う(再ローンチ規則)。
-- 加入が有効になった時点: paymentsで決済セッションの支払いの確定を反映した時点(`PurchaseFulfillment`)を「加入の確定」とする。FR-PPLAN-007の失効と免除の付与はtournament-week・tournament-yearがハンドラとして持ち、`OpenCheckoutExpirer`はeventの非同期の処理から呼ぶ(brief、paymentsのdesign)。
-- paymentsとの継ぎ目: `ultras`の購入種別の`PurchaseOfferPolicy`・`PurchaseFulfillment`と`SubscriptionEventSink`を`backend-lib/workers/<ドメイン>`に実装し、apiとeventの両方に束縛する(D1の文だけ)。既に加入中の購入は`prepare`で拒否し、paymentsが定期課金を解約して初回の請求を返金する。古い通知の破棄(DR-011)と冪等性(DR-010)はpaymentsが受け持つ。
+- 加入が有効になった時点: paymentsで決済セッションの支払いの確定を反映した時点(`PurchaseFulfillment`)を「加入の確定」とする。FR-PPLAN-008の失効と免除の付与はtournament-week・tournament-yearがハンドラとして持ち、`OpenCheckoutExpirer`はeventの非同期の処理から呼ぶ(brief、paymentsのdesign)。
+- paymentsとの継ぎ目: `ultras`の購入種別の`PurchaseOfferPolicy`・`PurchaseFulfillment`と`SubscriptionEventSink`を`backend-lib/workers/<ドメイン>`に実装し、apiとeventの両方に束縛する(D1の文だけ)。既に加入中の購入は`prepare`で拒否し、paymentsが定期課金を解約して初回の請求を返金する。古い通知の破棄(DR-016)と冪等性(DR-015)はpaymentsが受け持つ。
 - 決済画面・最終確認画面・購入確認メール・決済履歴: paymentsが受け持つ。Ultrasの追加の表示事項(自動更新・毎月の請求額・解約の方法)は`CheckoutSummaryText.additionalNotes`で渡す。購入確認メールは加入時の1通だけ(payments仮5)。
-- 決済手段: Customer Portalでもカード・Apple Pay・Google Pay・Linkに揃える(FR-PPLAN-008、payments Q2・仮1)。Portalの設定と制限付きキーの権限(Subscriptions・Customer Portal)は、paymentsの`operations/004`の手順に本specが追記する。
+- 決済手段: Customer Portalでもカード・Apple Pay・Google Pay・Linkに揃える(FR-PPLAN-010、payments Q2・仮1)。Portalの設定と制限付きキーの権限(Subscriptions・Customer Portal)は、paymentsの`operations/004`の手順に本specが追記する。
 - 価格の表示: Stripeのダッシュボードで設定した税込のUSDを、paymentsの`PriceCatalog`・`MoneyText`で表示する(LR-009・I18N-003)。
 - 未確認・停止中の利用者: メールアドレスが未確認の利用者は加入できない(FR-USER-006)。停止中・退会済みの利用者も決済を開始できない(paymentsの要件3.5)。
-- チャージバック: 特典を自動では変えない(FR-PYMNT-007)。
+- チャージバック: 特典を自動では変えない(FR-PYMNT-008)。
 - 機能フラグの権限と監査: 切り替えは最上位管理者だけ(admin-foundation Q3)。監査ログは`AuditLogRecorder`で記録し、画面は管理画面のメニュー「設定」(`/settings`、order 130)に置く。フラグをオフにしても加入済みの特典に影響しない(料金とプラン)。
 - 画面の置き場所: 料金ページは`/pricing`、プラン管理は`/settings/plan`(ページ配置)。設定ページへの登録はidentity-authの`SETTINGS_NAV_ITEMS`(order 60は予約済み)。Portalから戻った直後の反映待ちの表示と、past_dueの間の支払い方法の更新を促す表示もページ配置で決まっている。
-- 停止を解除しても自動で再開しない: FR-PPLAN-010・LR-007で決まっている。
+- 停止を解除しても自動で再開しない: FR-PPLAN-012・LR-007で決まっている。
 - ジョブ・メッセージの名前: `<spec名>.<名詞句>`・`<ドメイン>.<動詞句>`、時刻は日次タイムラインに従う(backend-platform、roadmap)。
 - 新しいパッケージ: 要らない。Stripe関連の3パッケージはtech-stack.mdとpaymentsのQ6で決まっている。
 - steering: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替する(payments・identity-authと同じ)。
@@ -64,7 +64,7 @@
 - **Findings**:
   - paymentsの`PurchaseFulfillment.prepare`は副作用を持たずD1の文を返し、反映の一括の書き込みで購入の前進と同時に確定する。`SubscriptionEventSink.statementsFor`も同じで、古い通知はpaymentsが`payment_stripe_objects`の発生時刻で捨てる。どちらにも確定の後に呼ばれる場所が無い。
   - paymentsの`CheckoutSessionReflection`は確定の後(手順5)に購入確認メールと返金の送り出しを行う。同じ位置に口の`afterCommit`を呼ぶ処理を足せば、既存の流れを変えずに後続specの副作用を送り出せる。
-  - `OpenCheckoutExpirer.expireOpen`はStripeを呼ぶため、FR-PPLAN-007の失効は後続specがeventの非同期の処理から呼ぶ(payments要件2.10)。
+  - `OpenCheckoutExpirer.expireOpen`はStripeを呼ぶため、FR-PPLAN-008の失効は後続specがeventの非同期の処理から呼ぶ(payments要件2.10)。
   - 権利を付与できない購入(既に加入中)は、paymentsの返金の処理が定期課金を即時に解約してから全額返金する。
   - identity-authの非同期の波及処理の`order`は0〜9999が各ドメイン(10000以上はidentity-auth自身)。既存の登録は`purge_due`にinquiry-chatの300とpaymentsの400、`withdrawn`・`suspended`にpaymentsの410(spec横断レビューで、各specが4:21のジョブと同じ百の位の帯を使う形に整理した。後述)。4:21のジョブの`order`は100〜120・200・210・300・400・410・810〜830・900・950が使われている。
   - email-deliveryは種別(`EMAIL_KINDS`)とテンプレート(`EMAIL_TEMPLATES`)の1対1を検査するため、種別とテンプレートは同じタスクで足す必要がある(paymentsで問題になった点)。
@@ -74,7 +74,7 @@
 
 ### Stripeの定期課金と柔軟な請求モード
 
-- **Context**: Customer Portalでの解約(FR-PPLAN-009)と課金期間の末日の判定(Q4)。
+- **Context**: Customer Portalでの解約(FR-PPLAN-011)と課金期間の末日の判定(Q4)。
 - **Sources Consulted**: [Integrate the customer portal](https://docs.stripe.com/customer-management/integrate-customer-portal)、[Cancel subscriptions](https://docs.stripe.com/billing/subscriptions/cancel)、[Billing mode changelog](https://docs.stripe.com/changelog/basil/2025-06-30/billing-mode)、[cancel_at enums](https://docs.stripe.com/changelog/basil/2025-07-30/cancel-at-enums)。
 - **Findings**:
   - API版`2025-09-30.clover`以降、新しい定期課金は柔軟な請求モード(`billing_mode: flexible`)が既定になる。paymentsが固定するAPI版`2026-09-30.endive`もこれに当たる。
@@ -107,7 +107,7 @@
 
 ### Stripeの再試行・顧客向けメール・検証の設定
 
-- **Context**: FR-PPLAN-006(再試行の後の扱い)、Q8(Stripeの顧客向けメールを切る)、要件12.2(検証の手順)。
+- **Context**: FR-PPLAN-007(再試行の後の扱い)、Q8(Stripeの顧客向けメールを切る)、要件12.2(検証の手順)。
 - **Sources Consulted**: `stripe:stripe-best-practices`スキル(定期課金とCustomer Portal・test clock)、料金とプラン「状態ごとの特典の適用」。
 - **Findings**:
   - 支払いの再試行(Smart Retries)の後の扱いは、ダッシュボードの「Manage failed payments」で「サブスクリプションをキャンセル」を選べる。料金とプランはこの設定を前提にする。
@@ -137,7 +137,7 @@
 
 ### Decision: 加入が有効になった知らせとメールの送り出し
 
-- **Context**: FR-PPLAN-007、Q8、paymentsの口は副作用を持てない。
+- **Context**: FR-PPLAN-008、Q8、paymentsの口は副作用を持てない。
 - **Alternatives Considered**:
   1. 口の`prepare`の中でメッセージを送る(paymentsの契約に反し、一括の書き込みが取り消されても送られる)
   2. 依頼待ちの行だけを書き、4:21の日次の確認で送る(最大1日遅れる)
@@ -154,7 +154,7 @@
 
 ### Decision: 機能フラグの保存と変更
 
-- **Context**: FR-ADMCF-018、仮2、admin-foundationの監査ログの規約。
+- **Context**: FR-ADMCF-022、仮2、admin-foundationの監査ログの規約。
 - **Selected Approach**: `ultras_settings`に鍵ごとの行を持ち、マイグレーションで`ultras_promotion`(オフ)を挿入する。変更は版の照合付きの一括の書き込みで、照合に失敗したら主キーにNULLを挿入する文でNOT NULL制約の違反を起こし、設定と監査ログのどちらも確定させない(`db/005`のNOT NULLによる取り消しの方式)。
 - **Rationale**: 照合と監査ログの記録を1回の一括の書き込みにまとめられ、別の表(paymentsの`payment_batch_guards`に当たるもの)を足さずに済む。
 
@@ -215,14 +215,14 @@
 
 | 要件ID                     | 内容                                                                                                                                                          | 根拠     |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| FR-TOURW-003・FR-TOURY-003 | 有料プランによる免除の判定時点を「予選勝利(Week優勝)の確定時点で特典を受けられる状態、または勝利の後で決済期限までに加入した時点」と明記する                  | Q1       |
-| FR-PPLAN-007               | 加入の前に決済が完了した参加費は返金しない旨を注記する                                                                                                        | Q2       |
-| FR-PPLAN-010               | 停止に伴う解約で返金しない旨を明記する(返金ポリシーの大枠は本specで修正する)                                                                                  | Q3       |
-| FR-PPLAN-003               | 「当該課金期間の末日」を「課金期間の最後の瞬間を含むUTC-08:00の日付」と定義し、支払いの失敗(FR-PPLAN-006)と退会による終了は日の終わりまで延ばさない旨を加える | Q4       |
-| FR-ADMCF-018               | 機能フラグがオフの間は新規加入の受付も停止し、加入済みの利用者の特典・状態表示・Customer Portalには影響しない旨を加える                                       | Q5       |
-| FR-PPLAN-008               | Customer Portalで支払い方法の更新に加え、課金期間の末日に終わる解約と解約の取り消しを行えるようにする旨に改める                                               | Q6       |
-| FR-PPLAN-004               | 退会時は即時に解約し、返金しない旨を加える                                                                                                                    | Q7       |
-| FR-PPLAN-006の下に新設     | 支払いの失敗(再試行中への移行)を利用者にトランザクションメールで通知する旨を加える                                                                            | Q8       |
+| FR-TOURW-003・FR-TOURY-005 | 有料プランによる免除の判定時点を「予選勝利(Week優勝)の確定時点で特典を受けられる状態、または勝利の後で決済期限までに加入した時点」と明記する                  | Q1       |
+| FR-PPLAN-008               | 加入の前に決済が完了した参加費は返金しない旨を注記する                                                                                                        | Q2       |
+| FR-PPLAN-012               | 停止に伴う解約で返金しない旨を明記する(返金ポリシーの大枠は本specで修正する)                                                                                  | Q3       |
+| FR-PPLAN-003               | 「当該課金期間の末日」を「課金期間の最後の瞬間を含むUTC-08:00の日付」と定義し、支払いの失敗(FR-PPLAN-007)と退会による終了は日の終わりまで延ばさない旨を加える | Q4       |
+| FR-ADMCF-022               | 機能フラグがオフの間は新規加入の受付も停止し、加入済みの利用者の特典・状態表示・Customer Portalには影響しない旨を加える                                       | Q5       |
+| FR-PPLAN-010               | Customer Portalで支払い方法の更新に加え、課金期間の末日に終わる解約と解約の取り消しを行えるようにする旨に改める                                               | Q6       |
+| FR-PPLAN-005               | 退会時は即時に解約し、返金しない旨を加える                                                                                                                    | Q7       |
+| FR-PPLAN-007の下に新設     | 支払いの失敗(再試行中への移行)を利用者にトランザクションメールで通知する旨を加える                                                                            | Q8       |
 | LR-007の下に新設           | 解約の受付の確認メール(受付の日時・終了の時点)を送る旨と、購入確認に自動更新の条件・解約の方法を載せる旨を加える                                              | 仮1・仮3 |
 | FR-RLMIT節に新設           | Customer Portalのセッションの作成に、利用者単位で1時間に20回の上限を設ける旨を加える                                                                          | 仮4      |
 
@@ -232,7 +232,7 @@
 - payments・inquiry-chat: 両specが`purge_due`の非同期の波及処理に`order` 300を登録していた重複は、spec横断レビュー(2026-10-23)で各specが4:21のジョブと同じ百の位の帯を使う形に解消した(inquiry-chatは300、paymentsは400・410、本specは500)。
 - identity-auth(上流): ファイルの変更は無い。メールの宛先と宛名は共有の部品`UserContactDirectory.findContact`(`apps/backend-lib/workers/identity`)で引き、`users`の列を直接読まない。`SETTINGS_NAV_ITEMS`の`order` 60、非同期の波及処理の`order` 500を使う。
 - admin-foundation(上流): ファイルの変更は無い。`ADMIN_NAV_ITEMS`に「設定」(130)を本specが足し、`/settings`のページの枠を本specが作る(仮6)。
-- tournament-week・tournament-year(後続): `ULTRAS_ACTIVATION_HANDLERS`にハンドラ(`order` 100以上)を登録し、`OpenCheckoutExpirer.expireOpen`で未完了の参加費の決済セッションを失効させる(FR-PPLAN-007)。免除は`UltrasEntitlements.wasEntitledDuring(投稿者, 勝利の確定時刻, 決済期限)`で判定する(Q1)。決済済みの参加費は返金しない(Q2)。参加費の画面のUltrasの案内は`UltrasPromotionGate`で包む(Q5)。返金ポリシーの「停止・非公開化に伴うトーナメント参加資格の停止: 返金する」の行の扱い(自動か手動か)を判断する。tournament-yearは管理画面の設定ページに決勝日の区画(`order` 10)を登録する。
+- tournament-week・tournament-year(後続): `ULTRAS_ACTIVATION_HANDLERS`にハンドラ(`order` 100以上)を登録し、`OpenCheckoutExpirer.expireOpen`で未完了の参加費の決済セッションを失効させる(FR-PPLAN-008)。免除は`UltrasEntitlements.wasEntitledDuring(投稿者, 勝利の確定時刻, 決済期限)`で判定する(Q1)。決済済みの参加費は返金しない(Q2)。参加費の画面のUltrasの案内は`UltrasPromotionGate`で包む(Q5)。返金ポリシーの「停止・非公開化に伴うトーナメント参加資格の停止: 返金する」の行の扱い(自動か手動か)を判断する。tournament-yearは管理画面の設定ページに決勝日の区画(`order` 10)を登録する。
 - product-launch(後続): 再ローンチの間隔は、ローンチ日の登録・編集の時点で`UltrasEntitlements.isEntitledAt`を使う。
 - user-profile-social(後続): 公開プロフィールの加入表示は`UltrasEntitlements.isEntitledAt(利用者, 現在)`で決める。
 - sponsorship(後続): 料金ページの区画を`PRICING_SECTIONS`に登録する(`order` 20)。返金ポリシーの「管理者によるスポンサー広告の強制終了」「停止・非公開化に伴う広告の表示停止」の行の扱いを判断する。

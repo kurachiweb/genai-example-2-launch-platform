@@ -41,7 +41,7 @@
 - `createWorkerApp`のミドルウェアの順序、共通のエラー形式、`AppError`、IP制限・bot判定の検証・処理単位のコンテナの実装(backend-platformのものを変えずに使う)。
 - フロントエンドのWrangler設定のService Bindings、中継処理、Cookieの発行、操作の一覧の生成(frontend-platform)。
 - `SessionVerifier`の本実装、セッションの発行・失効の業務処理(identity-auth・admin-foundation)。
-- 公開APIの業務の経路・APIキーの認証・FR-RLMIT-006〜007の適用(public-api)。
+- 公開APIの業務の経路・APIキーの認証・FR-RLMIT-007〜008の適用(public-api)。
 - `/internal`の下のファイルの中継先の経路、画像配信のCSPの値(media-pipeline)。
 - 直前のリリースのコミットの特定、CIでのコマンドの呼び出し、APIサーバーを先にデプロイする順序の実行(infra-delivery)。
 - GraphQLのクライアント観測の応答時間の計測(frontend-platform・launch-readiness)。
@@ -1552,7 +1552,7 @@ export declare const SESSION_BINDINGS: ContainerModule; // SESSION_TYPES.Session
 ### Monitoring
 
 - 操作ログ(`['api', 'graphql', 'operation']`)で、操作名・呼び出し元・エラーコード・処理時間を相関IDとともに追える。
-- 想定外の例外はSentryへ送り、トレースのスパン名に操作名を付ける。NFR-PERF-003の計測はfrontend-platformのブラウザ側のトレースで行い、API側のスパンと結び付ける。
+- 想定外の例外はSentryへ送り、トレースのスパン名に操作名を付ける。NFR-PERF-007の計測はfrontend-platformのブラウザ側のトレースで行い、API側のスパンと結び付ける。
 - 元のクライアントIPの付与漏れは`['api', 'gateway', 'client-ip']`の警告で検知する。
 
 ## Testing Strategy

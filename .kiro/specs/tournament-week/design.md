@@ -10,7 +10,7 @@
 
 ### Goals
 
-- FR-TOURW-001〜021と、Weekトーナメントに関わるFR-PYMNT-009・FR-PPLAN-005・007・FR-RELCH-004・FR-PRDCT-012・FR-NOTIF-001〜004が、参加の枠→決済または免除→凍結と分類→組み合わせ→1日1ラウンドの進行→終了と賞、削除・退会・停止・非公開化・Ultrasの加入・決済の反映の遅れのどの経路でも、要件と仮1〜仮7の決定に一致する。
+- FR-TOURW-001〜027と、Weekトーナメントに関わるFR-PYMNT-010・FR-PPLAN-006・008・FR-RELCH-004・FR-PRDCT-014・FR-NOTIF-001・004・006・007が、参加の枠→決済または免除→凍結と分類→組み合わせ→1日1ラウンドの進行→終了と賞、削除・退会・停止・非公開化・Ultrasの加入・決済の反映の遅れのどの経路でも、要件と仮1〜仮7の決定に一致する。
 - tournament-yearが本specのファイルを変えずに、ブラケットの規則・記録・進行と、Week優勝の照会・トロフィーの区画を使える。
 - 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
 
@@ -1110,7 +1110,7 @@ export interface WeekBoardRound {
   readonly matchIds: readonly string[];
 }
 export interface WeekBoardReader {
-  read(date: BusinessDate, now: Date): Promise<readonly WeekBoardRound[]>; // 1回戦の日の昇順(FR-TOURW-009)
+  read(date: BusinessDate, now: Date): Promise<readonly WeekBoardRound[]>; // 1回戦の日の昇順(FR-TOURW-013)
 }
 export interface WeekBracketView {
   readonly tournament: WeekTournamentRecord;

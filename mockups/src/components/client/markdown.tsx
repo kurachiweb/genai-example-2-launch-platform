@@ -16,7 +16,7 @@ function isExternal(href: string | undefined): boolean {
   return href != null && /^https?:\/\//.test(href);
 }
 
-// GFM準拠で描画する。Raw HTMLは文字列のまま表示され(FR-MDOWN-005)、見出しレベル1と画像は通常の文字列として描画する(FR-MDOWN-008)
+// GFM準拠で描画する。Raw HTMLは文字列のまま表示され(FR-MDOWN-005)、見出しレベル1と画像は通常の文字列として描画する(FR-MDOWN-010)
 function componentsFor(externalRel: string): Components {
   return {
     h1: ({ children }) => <p># {children}</p>,

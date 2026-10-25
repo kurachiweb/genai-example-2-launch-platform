@@ -13,8 +13,8 @@
 ## Desired Outcome
 
 - DIで差し替えられる送信インターフェースがあり、本番・staging用のEmail Service実装とローカル用のMailpit実装を持つ。
-- 送信はQueuesを経由してeventのconsumerが非同期に行う。送信レート・日次上限に達した分は破棄せず、上限リセット後に送信する。一時的エラーは再試行し、それでも失敗したらSentryで検知する(FR-NOTIF-012〜014を全メール種別に一般化)。
-- Queues Event Subscriptionsでバウンス・苦情・拒否イベントを受け取り、抑止リストとして記録する(FR-NOTIF-015、SW-015)。他specが参照できる照会手段がある。
+- 送信はQueuesを経由してeventのconsumerが非同期に行う。送信レート・日次上限に達した分は破棄せず、上限リセット後に送信する。一時的エラーは再試行し、それでも失敗したらSentryで検知する(FR-NOTIF-019〜021を全メール種別に一般化)。
+- Queues Event Subscriptionsでバウンス・苦情・拒否イベントを受け取り、抑止リストとして記録する(FR-NOTIF-022、SW-015)。他specが参照できる照会手段がある。
 - JSX emailによるテンプレート基盤(共通レイアウト、テキストパート、送信者情報を差し込む区画)があり、日本語の件名と本文の送信を検証済みである。
 - トランザクションメールと通知メールの区別がある(配信停止ヘッダーの付与はnotificationsが担う)。
 - `docs/GUIDES/tech/external`(メール送信サービスの仕様・制限・リトライ戦略)と`infra`(非同期処理)に記載がある。
@@ -34,7 +34,7 @@
 - **Out**:
   - 個々のメールの文面とテンプレート(各ドメインspec)
   - 通知設定・配信停止・送信者情報の設定(notifications)
-  - 抑止状態の画面表示(notifications、FR-NOTIF-016)
+  - 抑止状態の画面表示(notifications、FR-NOTIF-023)
 
 ## Boundary Candidates
 

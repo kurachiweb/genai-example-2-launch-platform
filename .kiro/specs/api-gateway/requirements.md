@@ -4,11 +4,11 @@
 
 利用者側・管理者側のフロントエンドサーバーとAPIサーバーの間の通信基盤を整える。後続のドメインspecが、同じ規約でGraphQLのスキーマとRESTの経路を追加できるようにする。対象は次のとおりである。
 
-- GraphQLの受付経路と内部認証(SW-001、COM-003、NFR-SECUR-015、NFR-PERF-005)
+- GraphQLの受付経路と内部認証(SW-001、COM-003、NFR-SECUR-015、NFR-PERF-009)
 - 元のクライアントIPアドレスの引き継ぎ(COM-005)とセッション識別子の受け渡しの契約(COM-004)
 - GraphQLの上限・許可リスト・introspectionの無効化(NFR-SECUR-016〜020)とエラー応答
-- スキーマモジュールの規約(NFR-PERF-004、NFR-SECUR-012)、スキーマの出力と型の生成(NFR-MAINT-004)
-- 公開REST APIの骨格とOpenAPI仕様の配信(SW-002、FR-PAPI-002)、CORS(NFR-SECUR-043)
+- スキーマモジュールの規約(NFR-PERF-008、NFR-SECUR-012)、スキーマの出力と型の生成(NFR-MAINT-004)
+- 公開REST APIの骨格とOpenAPI仕様の配信(SW-002、FR-PAPI-002)、CORS(NFR-SECUR-045)
 - APIサーバーとイベントサーバーのセキュリティヘッダー(NFR-SECUR-010)
 - 上記のテストと技術ドキュメント
 
@@ -84,7 +84,7 @@
 
 ### Requirement 1: GraphQLの受付経路と内部認証
 
-**Objective:** フロントエンドサーバーの開発者として、GraphQLとフロントエンド向けの経路がService Bindingsで中継された要求だけに応じてほしい。それにより、ブラウザや第三者がAPIサーバーへ直接GraphQLを送れない(COM-003、NFR-SECUR-015、NFR-PERF-005)。
+**Objective:** フロントエンドサーバーの開発者として、GraphQLとフロントエンド向けの経路がService Bindingsで中継された要求だけに応じてほしい。それにより、ブラウザや第三者がAPIサーバーへ直接GraphQLを送れない(COM-003、NFR-SECUR-015、NFR-PERF-009)。
 
 #### Acceptance Criteria
 
@@ -168,7 +168,7 @@
 
 ### Requirement 7: GraphQLのエラー応答
 
-**Objective:** フロントエンドの開発者として、GraphQLの失敗を機械可読なエラーコードで判別したい。それにより、状態コードの解釈に頼らずに画面の表示を分岐でき、内部の詳細が利用者に漏れない(NFR-SECUR-011、FR-RLMIT-001〜005)。
+**Objective:** フロントエンドの開発者として、GraphQLの失敗を機械可読なエラーコードで判別したい。それにより、状態コードの解釈に頼らずに画面の表示を分岐でき、内部の詳細が利用者に漏れない(NFR-SECUR-011、FR-RLMIT-001・003〜006)。
 
 #### Acceptance Criteria
 
@@ -182,7 +182,7 @@
 
 ### Requirement 8: スキーマモジュールの規約
 
-**Objective:** ドメインspecの開発者として、型定義・リゾルバ・関連データの一括読み込みを1つのモジュールとして追加するだけで、GraphQLへ機能を載せたい。それにより、spec間でスキーマの作り方がばらつかず、N+1問題を避けられる(NFR-PERF-004、NFR-SECUR-012)。
+**Objective:** ドメインspecの開発者として、型定義・リゾルバ・関連データの一括読み込みを1つのモジュールとして追加するだけで、GraphQLへ機能を載せたい。それにより、spec間でスキーマの作り方がばらつかず、N+1問題を避けられる(NFR-PERF-008、NFR-SECUR-012)。
 
 #### Acceptance Criteria
 
@@ -225,7 +225,7 @@
 
 ### Requirement 11: 公開REST APIのCORS
 
-**Objective:** 公開APIの利用者として、自分のWebサイトのブラウザから公開REST APIを呼び出したい。同時に運用者として、それ以外の経路をブラウザから呼ばせたくない(NFR-SECUR-043)。
+**Objective:** 公開APIの利用者として、自分のWebサイトのブラウザから公開REST APIを呼び出したい。同時に運用者として、それ以外の経路をブラウザから呼ばせたくない(NFR-SECUR-045)。
 
 #### Acceptance Criteria
 
@@ -248,7 +248,7 @@
 
 ### Requirement 13: 観測と起動時間
 
-**Objective:** 運用者として、GraphQLの操作ごとの結果と処理時間を、個人情報を含めずに調べたい。それにより、応答時間の目標(NFR-PERF-003)に対する遅い操作を特定でき、Workerの起動の制約(グローバルスコープの処理1秒以内)を守れる。
+**Objective:** 運用者として、GraphQLの操作ごとの結果と処理時間を、個人情報を含めずに調べたい。それにより、応答時間の目標(NFR-PERF-007)に対する遅い操作を特定でき、Workerの起動の制約(グローバルスコープの処理1秒以内)を守れる。
 
 #### Acceptance Criteria
 

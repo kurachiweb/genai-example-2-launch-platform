@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Purpose**: 4種類の通知メール(マッチ開始予告・勝敗結果・フォロー中ユーザーのマッチ開催・フォロー中ユーザーの受賞結果)を、利用者が種類ごとに選んだ受信設定(初期値はすべて受信しない)に従って送る。通知は宛先ごとの記録として、送る時刻の区切り(送信枠: 夜の23:45・朝の0:00・受賞の直後)とまとめのキーを持ち、枠ごとの送り出しで1通ずつにまとめる。これにより、勝敗結果と翌日予告の統合(FR-NOTIF-002)、開催通知の同日分の集約(FR-NOTIF-006)、Yearの1回戦の予告の前日までの保持(仮1)、遅れて届いた発行、重複の防止を同じ仕組みで扱う。夜の枠の送り出しは、トーナメントのspecの23:45の処理が本specの送り出しの入口(`EveningDispatchGate.markReady`)へ準備の完了を伝えた時点で始め、伝えない機能があれば23:55に始める(仮2)。送信はemail-deliveryの経路に乗せ、全ての通知メールに送信者情報・RFC 8058のヘッダー・本文の配信停止のリンクを付ける。トーナメントのspecのために通知イベントの契約(開始予告・結果・受賞)と結果の追記の登録口を定め、予選の開始予告と結果はmatch-engineのマッチの照会から本specが自ら作る。
+**Purpose**: 4種類の通知メール(マッチ開始予告・勝敗結果・フォロー中ユーザーのマッチ開催・フォロー中ユーザーの受賞結果)を、利用者が種類ごとに選んだ受信設定(初期値はすべて受信しない)に従って送る。通知は宛先ごとの記録として、送る時刻の区切り(送信枠: 夜の23:45・朝の0:00・受賞の直後)とまとめのキーを持ち、枠ごとの送り出しで1通ずつにまとめる。これにより、勝敗結果と翌日予告の統合(FR-NOTIF-004)、開催通知の同日分の集約(FR-NOTIF-009)、Yearの1回戦の予告の前日までの保持(仮1)、遅れて届いた発行、重複の防止を同じ仕組みで扱う。夜の枠の送り出しは、トーナメントのspecの23:45の処理が本specの送り出しの入口(`EveningDispatchGate.markReady`)へ準備の完了を伝えた時点で始め、伝えない機能があれば23:55に始める(仮2)。送信はemail-deliveryの経路に乗せ、全ての通知メールに送信者情報・RFC 8058のヘッダー・本文の配信停止のリンクを付ける。トーナメントのspecのために通知イベントの契約(開始予告・結果・受賞)と結果の追記の登録口を定め、予選の開始予告と結果はmatch-engineのマッチの照会から本specが自ら作る。
 
 **Users**: 利用者は`/settings/notifications`で受信設定を選び、抑止による除外の状態を確かめる。受信者はメールソフトのワンクリック、または本文のリンクから`/unsubscribe`の確認の操作で、ログインせずに配信を止める。最上位管理者は管理画面の設定ページ(`/settings`)で送信者情報を設定する。tournament-week・tournament-yearの開発者は`NotificationEventPublisher`で通知イベントを発行し、`RESULT_NOTICE_SUPPLEMENTS`で決済期限の追記を登録し、23:45の処理の最後に`EveningDispatchGate.markReady`で準備の完了を伝える(送り出しの前提の登録口`EVENING_DISPATCH_PARTICIPANTS`に自分の名前を登録する)。data-exportは`NotificationSettingsExport`で通知設定を出力する。
 
@@ -10,13 +10,13 @@
 
 ### Goals
 
-- FR-NOTIF-001〜011・016とFR-ADMCF-019が動作し、予選・トーナメント・即時の終了・開始時点の決着・遅れた発行・送り出しの失敗のどの経路でも、要件と仮1〜仮7の決定に一致する。
+- FR-NOTIF-001・004・006〜010・012・016〜018・023とFR-ADMCF-024が動作し、予選・トーナメント・即時の終了・開始時点の決着・遅れた発行・送り出しの失敗のどの経路でも、要件と仮1〜仮7の決定に一致する。
 - tournament-week・tournament-yearが本specのファイルを変えずに、通知イベントの発行と結果の追記の登録だけで通知を送れる。
 - 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
 
 ### Non-Goals
 
-- 送信の流量制御・上限による待機・再試行・送信不能の検知・抑止リストの記録(email-delivery、FR-NOTIF-012〜015)。
+- 送信の流量制御・上限による待機・再試行・送信不能の検知・抑止リストの記録(email-delivery、FR-NOTIF-019〜022)。
 - トランザクションメール、トーナメントのブラケット・ラウンドの進行・賞・決済期限の計算と、通知イベントの発行の実装(tournament-week・tournament-year)。
 - 送信履歴の画面・再送の操作・通知の言語の切り替え・リアルタイムの通知。
 - 要件定義書の改訂(roadmapのOut。必要な改訂は[research.md](research.md)の「要件定義書の改訂が必要な箇所」に記録した)。(2026-10-25に要件定義書へ適用済み)
@@ -558,9 +558,9 @@ sequenceDiagram
 // common-lib/notifications/notification-topics.ts
 export declare const NOTIFICATION_TOPICS: readonly [
   'match_preview', // マッチ開始予告(FR-NOTIF-001)
-  'match_result', // 勝敗結果(FR-NOTIF-002)
-  'followed_user_match', // フォロー中ユーザーのマッチ開催(FR-NOTIF-003)
-  'followed_user_award', // フォロー中ユーザーの受賞結果(FR-NOTIF-004)
+  'match_result', // 勝敗結果(FR-NOTIF-004)
+  'followed_user_match', // フォロー中ユーザーのマッチ開催(FR-NOTIF-006)
+  'followed_user_award', // フォロー中ユーザーの受賞結果(FR-NOTIF-007)
 ];
 export type NotificationTopic = (typeof NOTIFICATION_TOPICS)[number];
 export declare const NOTIFICATION_TOPIC_COPY: Readonly<

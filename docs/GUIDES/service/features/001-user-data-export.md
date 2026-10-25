@@ -1,6 +1,6 @@
 # ユーザーデータエクスポートのJSONスキーマとファイル構造
 
-データポータビリティ機能(FR-UDATA-001〜008、DR-003)でユーザーに提供するZIPアーカイブの構造と、各JSONファイルの項目を定義する。
+データポータビリティ機能(FR-UDATA-001〜009、DR-004)でユーザーに提供するZIPアーカイブの構造と、各JSONファイルの項目を定義する。
 エクスポートは「ユーザー自身が生成・提供したデータ」と「自身のプロダクトが受けた成績」を対象とし、他ユーザーの行動(フォロワー一覧、自分のプロダクトへの他者のUpvoteやコメント)は含めない。
 
 ## 全体方針
@@ -65,7 +65,7 @@ launch-stadium-export-KurachiWeb-20260915.zip
 
 ### ファイル名の規則
 
-- 画像・添付ファイルはアップロード時にクライアントが申告した元ファイル名(FR-FILEU-018によりサニタイズ済み)を用いる
+- 画像・添付ファイルはアップロード時にクライアントが申告した元ファイル名(FR-FILEU-020によりサニタイズ済み)を用いる
 - ZIP内のファイル名を決める際、Windows・macOS・Linuxのいずれでも展開・作成できるよう元ファイル名に次の変換を順に適用する
   - `:`・`*`・`?`・`"`・`<`・`>`・`|`を`-`に置換する
   - 拡張子を除いた部分の末尾にある`.`・半角スペースを全て除去する
@@ -179,9 +179,9 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 | `plan.currentPeriodEndsAt`               | 日時              | 現在の課金期間の終了日時                                                                             |
 | `plan.canceledAt`                        | 日時/null         | 解約操作の日時                                                                                       |
 | `notificationSettings.matchPreview`      | 真偽値            | マッチ開始予告メール(FR-NOTIF-001)の受信可否                                                         |
-| `notificationSettings.matchResult`       | 真偽値            | 勝敗結果通知メール(FR-NOTIF-002)の受信可否                                                           |
-| `notificationSettings.followedUserMatch` | 真偽値            | フォロー中ユーザーのマッチ開催通知(FR-NOTIF-003)の受信可否                                           |
-| `notificationSettings.followedUserAward` | 真偽値            | フォロー中ユーザーの受賞結果通知(FR-NOTIF-004)の受信可否                                             |
+| `notificationSettings.matchResult`       | 真偽値            | 勝敗結果通知メール(FR-NOTIF-004)の受信可否                                                           |
+| `notificationSettings.followedUserMatch` | 真偽値            | フォロー中ユーザーのマッチ開催通知(FR-NOTIF-006)の受信可否                                           |
+| `notificationSettings.followedUserAward` | 真偽値            | フォロー中ユーザーの受賞結果通知(FR-NOTIF-007)の受信可否                                             |
 | `notificationSettings.suppressedReason`  | 文字列/null       | バウンス等により送信対象外の場合`bounce`・`complaint`・`rejected`のいずれか。通常は`null`            |
 | `apiKeys[].name`                         | 文字列            | ユーザーが付けたキーの名前                                                                           |
 | `apiKeys[].scopes`                       | オブジェクト      | 機能ごとの権限。値は`none`・`read`・`read_write`(`read_write`は`profile`と`productDescriptions`のみ) |
@@ -641,7 +641,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 
 ## 生成と提供の流れ
 
-要求受付から非同期生成・保存・通知・配信までの流れはFR-UDATA-001〜008、レート制限はFR-RLMIT-005、保存時のオブジェクトメタデータはFR-FILEU-009、削除はDR-004を正とする。
+要求受付から非同期生成・保存・通知・配信までの流れはFR-UDATA-001〜009、レート制限はFR-RLMIT-006、保存時のオブジェクトメタデータはFR-FILEU-011、削除はDR-005を正とする。
 
 ```mermaid
 sequenceDiagram
@@ -666,9 +666,9 @@ sequenceDiagram
     F-->>U: 同一オリジンからストリーミング配信
 ```
 
-- ダウンロードページではZIPの有効期限(DR-004)を表示する
-- 生成中であっても、FR-RLMIT-005の上限(24時間に3回)に達していなければ再要求でき、複数のジョブが並行して生成される
-- 生成または保存に失敗し失敗通知メール(FR-UDATA-008)を送信した場合も、その要求はFR-RLMIT-005の上限回数に含まれたままリセットされない
+- ダウンロードページではZIPの有効期限(DR-005)を表示する
+- 生成中であっても、FR-RLMIT-006の上限(24時間に3回)に達していなければ再要求でき、複数のジョブが並行して生成される
+- 生成または保存に失敗し失敗通知メール(FR-UDATA-009)を送信した場合も、その要求はFR-RLMIT-006の上限回数に含まれたままリセットされない
 
 ## スキーマの変更管理
 

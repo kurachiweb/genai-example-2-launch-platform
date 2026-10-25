@@ -16,7 +16,7 @@ import { PAGE_SIZE, effectiveSort, hasConditions } from './query';
 import type { DateRange, DirectoryQuery, SortKey } from './query';
 import { containsTerms } from './text';
 
-// win: 通常の勝利 / bye: 対戦相手が元々いない不戦勝(FR-GAME-003・FR-GAME-014) / early: 早期勝敗決定による不戦勝(FR-GAME-013)
+// win: 通常の勝利 / bye: 対戦相手が元々いない不戦勝(FR-GAME-004・FR-GAME-016) / early: 早期勝敗決定による不戦勝(FR-GAME-015)
 export type BaseWin = {
   date: string;
   result: 'win' | 'bye' | 'early';

@@ -2,13 +2,13 @@
 
 ## Project Description (Input)
 
-開発者である利用者は、本サービスの公開データを自分のツールやサイトで使い、自分のプロフィールやプロダクト説明文をプログラムから更新したい。そのため、APIキーによるBearer認証、権限スコープ(無効・読み取り・読み書き)、ユーザー単位とIP単位のレート制限を備えた公開REST APIと、その仕様書(OpenAPI)が必要である。公開APIの実装は無く、api-gatewayでRESTとOpenAPIの骨格(基準パス`/v1`・エラー形式・認証不要の仕様の配信・CORS)が、backend-platformでレート制限の基盤が、identity-authで設定ページのシェルとユーザーライフサイクルイベントが、product-launch・match-engine・directory-discovery・engagement・user-profile-socialで公開する読み取りと更新のユースケースができている前提である。Swagger UIのページは利用者側の`/api-docs`に、APIキーの管理画面は`/settings/api-keys`に置く方針が[ページ配置](../../../docs/GUIDES/service/design/002-page-layouts.md)で決まっている。4.19(FR-PAPI-001〜009)・FR-RLMIT-004・006・007・014・016・NFR-SECUR-036・037・043・NFR-MAINT-007・APIキーの管理画面・`/api-docs`のSwagger UIを対象とする(詳細は[brief.md](brief.md))。
+開発者である利用者は、本サービスの公開データを自分のツールやサイトで使い、自分のプロフィールやプロダクト説明文をプログラムから更新したい。そのため、APIキーによるBearer認証、権限スコープ(無効・読み取り・読み書き)、ユーザー単位とIP単位のレート制限を備えた公開REST APIと、その仕様書(OpenAPI)が必要である。公開APIの実装は無く、api-gatewayでRESTとOpenAPIの骨格(基準パス`/v1`・エラー形式・認証不要の仕様の配信・CORS)が、backend-platformでレート制限の基盤が、identity-authで設定ページのシェルとユーザーライフサイクルイベントが、product-launch・match-engine・directory-discovery・engagement・user-profile-socialで公開する読み取りと更新のユースケースができている前提である。Swagger UIのページは利用者側の`/api-docs`に、APIキーの管理画面は`/settings/api-keys`に置く方針が[ページ配置](../../../docs/GUIDES/service/design/002-page-layouts.md)で決まっている。4.19(FR-PAPI-001〜011)・FR-RLMIT-005・007・008・017・019・NFR-SECUR-038・039・045・NFR-MAINT-007・APIキーの管理画面・`/api-docs`のSwagger UIを対象とする(詳細は[brief.md](brief.md))。
 
 ## Introduction
 
 利用者が設定ページで発行するAPIキーで認証する公開REST API(`/v1`)を実装する。APIキーは名前と機能ごとの権限スコープを持ち、ハッシュだけを保存して平文は発行時に1度だけ示す。公開APIは、掲載中のプロダクト・カテゴリ・ローンチ履歴とマッチの結果・Upvote(サポーターとUpvote履歴)・コメント・評価の集計・公開プロフィールの読み取りと、自分のプロフィールと投稿プロダクトの説明文の読み取り・更新を、キーの権限スコープの範囲で提供する。読み取りは画面と同じ公開範囲の判定を使い、停止・非公開化・無効化・退会のデータを除外する。キーの発行・ユーザー単位の読み取りと書き込み・送信元IPアドレス単位の3つのレート制限を設け、OpenAPIの仕様書を認証なしで配信し、`/api-docs`のSwagger UIで参照できるようにする。対象は次のとおりである。
 
-- 4.19(FR-PAPI-001〜009)、FR-RLMIT-004・006・007・014・016、NFR-SECUR-036・037・043、NFR-MAINT-007
+- 4.19(FR-PAPI-001〜011)、FR-RLMIT-005・007・008・017・019、NFR-SECUR-038・039・045、NFR-MAINT-007
 - APIキーの発行・一覧・編集・再発行・削除と、その管理画面`/settings/api-keys`
 - 公開APIの認証・権限スコープの判定・公開する読み取りと更新の経路・レート制限
 - `/api-docs`のSwagger UIのページ
@@ -68,10 +68,10 @@
 #### Acceptance Criteria
 
 1. When ログイン中の利用者が前後の空白を除いて1〜50文字(書記素)の名前と7つの機能の権限スコープを指定して発行を要求する, the APIキー管理機能 shall 推測できない十分な長さの乱数から新しいAPIキーを作り、名前・権限スコープ・発行日時とともに保存する(FR-PAPI-001・FR-PAPI-005)
-2. The APIキー管理機能 shall APIキーを要件定義書NFR-SECUR-006の方式でハッシュ化した値だけを保存し、平文を発行の応答でだけ利用者へ示す(NFR-SECUR-036)
+2. The APIキー管理機能 shall APIキーを要件定義書NFR-SECUR-006の方式でハッシュ化した値だけを保存し、平文を発行の応答でだけ利用者へ示す(NFR-SECUR-038)
 3. If 名前が空、または前後の空白を除いて50文字を超える, then the APIキー管理機能 shall 発行せずに入力の誤りを返す
 4. If 権限スコープに機能ごとに許されない値(「プロフィール」「プロダクトの説明文」以外の機能の「読み書き」など)が含まれる, then the APIキー管理機能 shall 発行せずに入力の誤りを返す
-5. The APIキー管理機能 shall 同時に有効なAPIキーの数に上限を設けない(FR-RLMIT-004)
+5. The APIキー管理機能 shall 同時に有効なAPIキーの数に上限を設けない(FR-RLMIT-005)
 6. If 停止中の利用者が発行を要求する, then the APIキー管理機能 shall 発行せずにアカウントを利用できない旨を返す
 7. The APIキー管理機能 shall メールアドレスが確認済みでない利用者の発行を、そのことを理由に拒否しない(要件定義書FR-USER-006の制限の対象に無いため)
 8. If 発行の確定の時点で利用者が退会済みまたは停止中である, then the APIキー管理機能 shall APIキーを保存しない
@@ -85,7 +85,7 @@
 
 1. The APIキー管理機能 shall 権限スコープの機能として「プロダクト」「ローンチ履歴」「Upvote」「コメント」「評価」に「無効」「読み取り」を、「プロフィール」「プロダクトの説明文」に「無効」「読み取り」「読み書き」を選ばせる(FR-PAPI-005)
 2. The 公開API shall 各経路に対応する機能と操作(読み取り・書き込み)を1つずつ定め、APIキーのその機能の権限スコープが読み取りの経路では「読み取り」以上、書き込みの経路では「読み書き」の場合だけ要求を処理する
-3. If 要求したAPIキーの権限スコープがその経路の機能と操作を許さない, then the 公開API shall 処理せずに権限が不足している旨を403で返す(NFR-SECUR-037)
+3. If 要求したAPIキーの権限スコープがその経路の機能と操作を許さない, then the 公開API shall 処理せずに権限が不足している旨を403で返す(NFR-SECUR-039)
 4. When 利用者がAPIキーの権限スコープを編集する, the 公開API shall 編集の確定の後の要求から新しい権限スコープで判定する
 5. The 公開API shall 各経路が必要とする機能と操作を、OpenAPIの仕様書の経路の説明に記載する
 
@@ -110,9 +110,9 @@
 
 #### Acceptance Criteria
 
-1. The APIキー管理機能 shall 新しいAPIキーの発行(再発行を含む、仮2)を、利用者単位で1時間に3回までに制限する(FR-RLMIT-004)
-2. If 利用者が上限を超えて発行を要求する, then the APIキー管理機能 shall 発行せずに429 Too Many Requestsと再試行までの秒数を返す(FR-RLMIT-004)
-3. The APIキー管理機能 shall 発行の回数を、その利用者の最初の発行から1時間が経った時点でリセットする(FR-RLMIT-014)
+1. The APIキー管理機能 shall 新しいAPIキーの発行(再発行を含む、仮2)を、利用者単位で1時間に3回までに制限する(FR-RLMIT-005)
+2. If 利用者が上限を超えて発行を要求する, then the APIキー管理機能 shall 発行せずに429 Too Many Requestsと再試行までの秒数を返す(FR-RLMIT-005)
+3. The APIキー管理機能 shall 発行の回数を、その利用者の最初の発行から1時間が経った時点でリセットする(FR-RLMIT-017)
 4. The APIキー管理機能 shall 名前と権限スコープの編集と削除を、発行の回数に数えない
 
 ### Requirement 5: 退会・停止とAPIキー
@@ -196,7 +196,7 @@
 1. Where APIキーの「コメント」の権限スコープが読み取りである, the 公開API shall 掲載中のプロダクトの指定したローンチのコメントを、トップレベルの新しい順に最大10スレッドずつ、各スレッドの返信を古い順に添えて、続きを取得できる形で返す(FR-PAPI-003)
 2. The 公開API shall 削除・非公開化されたコメント、退会済み・停止中の利用者のコメントを、本文と投稿者を含めずに削除された旨の印だけで返す(FR-COMNT-007・FR-PAPI-009)
 3. Where APIキーの「評価」の権限スコープが読み取りである, the 公開API shall 掲載中のプロダクトの5段階評価の平均値と件数を返す(FR-PAPI-003)
-4. The 公開API shall 評価の集計から、管理者により無効化された評価と、退会済み・停止中の利用者の評価を除く(FR-RATNG-007・FR-PAPI-009)
+4. The 公開API shall 評価の集計から、管理者により無効化された評価と、退会済み・停止中の利用者の評価を除く(FR-RATNG-009・FR-PAPI-009)
 5. If 指定したローンチが存在しない、取り消されている、またはそのプロダクトのものでない, then the 公開API shall 見つからない旨を404で返す
 
 ### Requirement 11: プロフィールの読み取りと更新
@@ -232,11 +232,11 @@
 
 #### Acceptance Criteria
 
-1. The 公開API shall APIキーによる認証が必要な経路の要求を、キーの持ち主の利用者単位で、読み取りは1分あたり30回、書き込み(更新)は1分あたり15回までに制限する(FR-RLMIT-006)
+1. The 公開API shall APIキーによる認証が必要な経路の要求を、キーの持ち主の利用者単位で、読み取りは1分あたり30回、書き込み(更新)は1分あたり15回までに制限する(FR-RLMIT-007)
 2. The 公開API shall 利用者単位の回数を、その利用者が持つ全てのAPIキーの要求を合わせて数える
-3. The 公開API shall 利用者単位の回数を、その期間の最初の要求から1分が経った時点でリセットする(FR-RLMIT-016)
-4. The 公開API shall 仕様書の配信を含む公開APIの全ての経路の要求を、送信元IPアドレス単位で1分あたり60回までに制限する(FR-RLMIT-007)
-5. If いずれかの上限を超える, then the 公開API shall 処理せずに429 Too Many Requestsと再試行までの秒数を返す(FR-RLMIT-006・FR-RLMIT-007)
+3. The 公開API shall 利用者単位の回数を、その期間の最初の要求から1分が経った時点でリセットする(FR-RLMIT-019)
+4. The 公開API shall 仕様書の配信を含む公開APIの全ての経路の要求を、送信元IPアドレス単位で1分あたり60回までに制限する(FR-RLMIT-008)
+5. If いずれかの上限を超える, then the 公開API shall 処理せずに429 Too Many Requestsと再試行までの秒数を返す(FR-RLMIT-007・FR-RLMIT-008)
 6. The 公開API shall 認証の失敗・権限の不足・停止中の拒否の要求を、利用者単位の回数に数えない
 7. The 公開API shall 利用者単位の制限を受けた要求の応答に、上限・残りの回数・リセットの時刻を示すヘッダーを添える
 8. The 公開API shall 利用者単位の回数の記録に、利用者の識別をハッシュ化した値だけを使う
@@ -251,7 +251,7 @@
 2. The 公開API shall 一覧の続きを、ディレクトリと同じページ番号の方式(プロダクトの一覧)か、不透明なカーソルの方式(その他の一覧)のどちらかで返し、各一覧の方式を仕様書に記載する
 3. The 公開API shall 日時をISO 8601のUTC表記、基準時刻の日付を`YYYY-MM-DD`で返す
 4. The 公開API shall 全ての経路を、要求と応答の検証規則・必要な権限スコープ・エラーの状態コードとともにOpenAPIの仕様書に記載し、仕様書を認証なしで配信させる(FR-PAPI-002・NFR-MAINT-007)
-5. The 公開API shall プリフライトを含む全ての要求に`Access-Control-Allow-Origin: *`・経路が受け付けるメソッド・`Authorization`を許すヘッダーを返させ、更新の経路では`Content-Type`も許させる(NFR-SECUR-043)
+5. The 公開API shall プリフライトを含む全ての要求に`Access-Control-Allow-Origin: *`・経路が受け付けるメソッド・`Authorization`を許すヘッダーを返させ、更新の経路では`Content-Type`も許させる(NFR-SECUR-045)
 6. The 公開API shall 応答に、要求したキーの平文・ハッシュ、他の利用者のメールアドレスなどの非公開の情報を含めない
 
 ### Requirement 15: Swagger UIのページ

@@ -5,7 +5,7 @@ import type { User } from '#/lib/mock-data';
 type Props = {
   user: Pick<User, 'id' | 'nickname' | 'art'>;
   size: number;
-  // 読み込み失敗または隔離中(FR-FILEU-011・FR-ADMUG-026〜027)
+  // 読み込み失敗または隔離中(FR-FILEU-013・FR-ADMUG-048〜049)
   broken?: boolean;
   className?: string;
 };

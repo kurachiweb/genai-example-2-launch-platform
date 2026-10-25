@@ -357,7 +357,7 @@ docs/
 - `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」に、ジョブの名前と順序の表が無ければ作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、既に下流specが作っていれば行だけを加える。検索のキーワードの再抽出(`content-processing.keyword-reextraction`・950)の行を順序どおりに加える(仮決定P6)。同じ時刻にジョブを足す他のspecも同じ表へ行を加え、表が無ければ同じ形で作る(「本specのタスクを前提にする下流spec」)。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — マークダウンの入力の検証の文言(必須・禁止文字)、リンクのURLの形式違反、エディタの読み込み失敗、プレビューの空、文字数の超過と戻りの読み上げの文言を加える。
 - `docs/GUIDES/service/design/002-page-layouts.md` — 「コメント」の投稿欄の記述に、書く側が書式を適用した見た目で編集すること、ツールバーの項目に表を含めることを加える。
-- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「検索索引(索引文書)」(元データの削除と同時に物理削除、FR-FTS-007)の行を加える。「データの保存場所(DR-007)」に委託先Google Cloudの項として、キーワード抽出の対象のテキストをNatural Language APIへ一時送信し、Google側では保存されないこと、処理する場所はGoogleが保証しないこと、その移転の根拠はプライバシーポリシーの大枠の国外移転の記載事項(Google Cloudの項)を正とすることを加える(16.9、N-1)。Cloudflareの資源の保存先の表と記述(infra-delivery)とAWSの項(media-pipeline)は書き換えない。
+- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「検索索引(索引文書)」(元データの削除と同時に物理削除、FR-FTS-009)の行を加える。「データの保存場所(DR-012)」に委託先Google Cloudの項として、キーワード抽出の対象のテキストをNatural Language APIへ一時送信し、Google側では保存されないこと、処理する場所はGoogleが保証しないこと、その移転の根拠はプライバシーポリシーの大枠の国外移転の記載事項(Google Cloudの項)を正とすることを加える(16.9、N-1)。Cloudflareの資源の保存先の表と記述(infra-delivery)とAWSの項(media-pipeline)は書き換えない。
 - `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 「国外移転の記載事項」に委託先Google Cloud(Natural Language API)の項を加える(16.9、N-1)。項の形は、Cloudflareの項(infra-delivery)・AWSの項(media-pipeline)と同じ「移転先・移転の根拠・委託先が講じる措置」の3つにする。
   - 移転先: 送る情報は、検索対象が登録したキーワード抽出の対象の項目の公開用のテキスト(プロダクト名・タグライン・説明文、ヘルプ記事の本文)だけで、利用者の識別子などを送らない(15.3)。APIは処理のリージョンを指定しないグローバルのエンドポイント(`ANALYZE_ENTITIES_ENDPOINT`)で呼ぶため、Googleは処理する場所を保証せず、委託先の所在国である米国以外の国でも処理され得る旨を記す。
   - 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Google CloudのDPA(Cloud Data Processing Addendum)に含まれる標準契約条項(SCC)に拠る。
@@ -1050,7 +1050,7 @@ export type KeywordStatus = (typeof KEYWORD_STATUSES)[number];
 
 // DBの列名を明示する(snakeCase.tableの変換に頼らない)
 export declare function searchDocumentColumns(): {
-  readonly id: ColumnBuilder; // integer('id').primaryKey() → INTEGER PRIMARY KEY(連番、DR-009)
+  readonly id: ColumnBuilder; // integer('id').primaryKey() → INTEGER PRIMARY KEY(連番、DR-014)
   readonly sourceId: ColumnBuilder; // text('source_id').notNull().unique()(元データのULID)
   readonly sourceVersion: ColumnBuilder; // integer('source_version').notNull().default(0)
   readonly keywords: ColumnBuilder; // text('keywords').notNull().default('')
@@ -1687,7 +1687,7 @@ const COMMON_LIB: SharedDirDefinition = {
 ### Domain Model
 
 - 本specは業務の集約を持たない。値オブジェクトとして、`RenderedMarkdown`・`MarkdownHeading`・`SanitizedHtml`・`HighlightRange`・`SearchSource`・`IndexDocument`・`KeywordStatus`を定義する。
-- 索引文書は元データ1件に対して高々1行で、元データの識別子(`source_id`)で一意である。索引文書の寿命は元データに従属し、元データの削除と同時に消える(FR-FTS-007)。
+- 索引文書は元データ1件に対して高々1行で、元データの識別子(`source_id`)で一意である。索引文書の寿命は元データに従属し、元データの削除と同時に消える(FR-FTS-009)。
 
 ### Physical Data Model
 
@@ -1695,7 +1695,7 @@ const COMMON_LIB: SharedDirDefinition = {
 
 | 列                      | 型                          | 制約・既定値            | 用途                                             |
 | ----------------------- | --------------------------- | ----------------------- | ------------------------------------------------ |
-| `id`                    | INTEGER                     | PRIMARY KEY             | 連番(DR-009)。全文検索の索引の`content_rowid`    |
+| `id`                    | INTEGER                     | PRIMARY KEY             | 連番(DR-014)。全文検索の索引の`content_rowid`    |
 | `source_id`             | TEXT                        | NOT NULL・UNIQUE        | 元データのULID                                   |
 | `source_version`        | INTEGER                     | NOT NULL・既定0         | 古い版の上書きの防止                             |
 | `<元テキストの列>`      | TEXT                        | NOT NULL・既定`''`      | 正規化した名称・タグラインなど(ドメインが決める) |

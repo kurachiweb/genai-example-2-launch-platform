@@ -5,14 +5,14 @@
 利用者側(`apps/client`)と管理者側(`apps/admin`)のフロントエンドサーバーと、両者が使う共通部品(`apps/frontend-lib`)の基盤を整える。画面を持つ後続specの開発者とAIエージェントが、同じ骨格・同じセキュリティ対策・同じ見た目の上で画面を追加できるようにする。対象は次のとおりである。
 
 - 両フロントエンドサーバーの起動と実行環境、SSRと初回表示の性能(NFR-PERF-001、2.5節)
-- APIサーバーへの中継(COM-003〜005、NFR-PERF-005、NFR-SECUR-001・015)
-- CSRF対策・CSP・セキュリティヘッダー・キャッシュの禁止(NFR-SECUR-003・009〜011・038)とWorker単位のIP制限(FR-RLMIT-008)
+- APIサーバーへの中継(COM-003〜005、NFR-PERF-009、NFR-SECUR-001・015)
+- CSRF対策・CSP・セキュリティヘッダー・キャッシュの禁止(NFR-SECUR-003・009〜011・040)とWorker単位のIP制限(FR-RLMIT-009)
 - GraphQLクライアントとデータ取得の規約(NFR-MAINT-004)
-- デザインシステム・共通部品・Storybook・アクセシビリティ(UI-001〜005、NFR-MAINT-005)
+- デザインシステム・共通部品・Storybook・アクセシビリティ(UI-001〜003・005・006、NFR-MAINT-005)
 - 日時・数値の表示とブラウザ翻訳への耐性(I18N-001・002・004)
 - 利用者側の共通レイアウト・管理者側の基本レイアウト・エラー画面(LR-001、FR-HELP-006)
 - 疎通確認の画面とスモークテスト
-- エラートラッキング・アクセス解析・ログ(SW-006、SW-021、NFR-OBLOG-001〜004、NFR-PERF-003、DR-008)
+- エラートラッキング・アクセス解析・ログ(SW-006、SW-022、NFR-OBLOG-001〜006、NFR-PERF-007、DR-013)
 - 上記のテストと技術ドキュメント、国際化方針の文書
 
 採用技術はtech-stack.mdと上流のdev-tooling・backend-platform・api-gatewayで決定済みである(TanStack Start・`@cloudflare/vite-plugin`・GraphQL Code Generator・TanStack Query・Jotai・Tailwind CSS・shadcn/ui・React Hook Form・Zod・Storybook・Sentry・Cloudflare Web Analytics・Turnstile)。本書の受け入れ基準は、原則として技術名に依存しない振る舞いとして記述する。ただし要件定義書が名指しする方式(Service Bindings・Cookieの属性・CSPのnonce・`Sec-Fetch-Site`・WCAG 2.2 AA・`<time>`要素など)と、開発者が決定した値はそのまま記す。
@@ -100,7 +100,7 @@
 
 ### Requirement 2: APIサーバーへの中継
 
-**Objective:** 画面の開発者として、ページの描画中の取得とブラウザからのGraphQLの要求が、フロントエンドサーバーを経てAPIサーバーへ届いてほしい。それにより、ブラウザがAPIサーバーへ直接通信せず、送信元IP・セッション・bot判定のトークンの引き継ぎが常に同じ方法で行われる(COM-003〜005、NFR-PERF-005、NFR-SECUR-001・015)。
+**Objective:** 画面の開発者として、ページの描画中の取得とブラウザからのGraphQLの要求が、フロントエンドサーバーを経てAPIサーバーへ届いてほしい。それにより、ブラウザがAPIサーバーへ直接通信せず、送信元IP・セッション・bot判定のトークンの引き継ぎが常に同じ方法で行われる(COM-003〜005、NFR-PERF-009、NFR-SECUR-001・015)。
 
 #### Acceptance Criteria
 
@@ -134,7 +134,7 @@
 
 ### Requirement 4: CSPとセキュリティヘッダー
 
-**Objective:** 運用者として、フロントエンドサーバーのすべての応答で、許可したスクリプトだけが実行され、ブラウザ向けのセキュリティヘッダーが付き、認証情報を含み得る応答がキャッシュされないでほしい(NFR-SECUR-009〜011・038)。
+**Objective:** 運用者として、フロントエンドサーバーのすべての応答で、許可したスクリプトだけが実行され、ブラウザ向けのセキュリティヘッダーが付き、認証情報を含み得る応答がキャッシュされないでほしい(NFR-SECUR-009〜011・040)。
 
 #### Acceptance Criteria
 
@@ -149,7 +149,7 @@
 
 ### Requirement 5: Worker単位のIP制限
 
-**Objective:** 運用者として、同じ送信元から短時間に大量の要求が来ても、フロントエンドサーバーとその先のAPIサーバーへの負荷を抑えたい(FR-RLMIT-008)。backend-platformの規約と同じ値で制限する。
+**Objective:** 運用者として、同じ送信元から短時間に大量の要求が来ても、フロントエンドサーバーとその先のAPIサーバーへの負荷を抑えたい(FR-RLMIT-009)。backend-platformの規約と同じ値で制限する。
 
 #### Acceptance Criteria
 
@@ -194,7 +194,7 @@
 
 ### Requirement 8: 共通部品とカタログ
 
-**Objective:** 画面の開発者として、フォーム・状態表示・トースト・bot判定のウィジェット・エラー画面を共通部品から使いたい。それにより、各画面の振る舞いと見た目がそろう(UI-004・UI-005、SW-018、NFR-MAINT-005)。
+**Objective:** 画面の開発者として、フォーム・状態表示・トースト・bot判定のウィジェット・エラー画面を共通部品から使いたい。それにより、各画面の振る舞いと見た目がそろう(UI-005・UI-006、SW-018、NFR-MAINT-005)。
 
 #### Acceptance Criteria
 
@@ -273,7 +273,7 @@
 
 ### Requirement 13: エラートラッキング・アクセス解析・ログ
 
-**Objective:** 運用者として、フロントエンドの失敗と性能を、個人情報を含めずに調べたい(SW-006、SW-021、NFR-OBLOG-001〜004、NFR-PERF-003、DR-001、DR-008)。
+**Objective:** 運用者として、フロントエンドの失敗と性能を、個人情報を含めずに調べたい(SW-006、SW-022、NFR-OBLOG-001〜005、NFR-PERF-007、DR-001、DR-013)。
 
 #### Acceptance Criteria
 

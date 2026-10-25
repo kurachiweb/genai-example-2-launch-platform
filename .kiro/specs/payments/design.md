@@ -10,7 +10,7 @@
 
 ### Goals
 
-- FR-PYMNT-001〜012・SW-016・DR-010・011・013・LR-007〜009の決済画面と記録の部分が動作し、疎通確認用の購入種別(仮6)でE2Eテストを端から端まで通せる。
+- FR-PYMNT-001〜018・SW-016・DR-015・016・018・LR-007〜009の決済画面と記録の部分が動作し、疎通確認用の購入種別(仮6)でE2Eテストを端から端まで通せる。
 - Webhook・`return_url`・突合のどの組み合わせで同じ決済が届いても、権利の付与・決済履歴の記録・購入確認メールの依頼が1回だけ行われる。
 - 権利を付与できなかった決済・反映の期限を過ぎた決済・二重決済が、利用者の操作なしに全額返金される。
 - 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
@@ -235,7 +235,7 @@ apps/
 │   │   ├── checkout-start-limits.ts                 # 利用者単位の回数制限(仮2)
 │   │   ├── checkout-reader.ts                       # 決済画面の表示用の情報
 │   │   ├── checkout-consent-recorder.ts             # 同意の記録(Q3)
-│   │   ├── checkout-return-confirmer.ts             # return_urlからの反映(FR-PYMNT-008)
+│   │   ├── checkout-return-confirmer.ts             # return_urlからの反映(FR-PYMNT-009)
 │   │   ├── payment-history-reader.ts                # 決済履歴の一覧
 │   │   └── jobs/
 │   │       ├── checkout-reconciliation-job.ts       # 23:40の突合(order 10)
@@ -789,7 +789,7 @@ export declare function mapStripeEvent(event: {
 
 - `HANDLED_STRIPE_EVENT_TYPES`は`checkout.session.completed`・`checkout.session.async_payment_succeeded`・`checkout.session.async_payment_failed`・`checkout.session.expired`・`invoice.paid`・`invoice.payment_failed`・`customer.subscription.created`・`customer.subscription.updated`・`customer.subscription.deleted`・`refund.created`・`refund.updated`・`refund.failed`・`charge.dispute.funds_withdrawn`・`charge.dispute.funds_reinstated`・`charge.dispute.closed`の15種で、Webhook endpointの購読の一覧と一致させる(`operations/004`)。他の種類は`ignored`(6.3)。
 - 通知の発生時刻は`event.created`(秒)を使い、反映ではオブジェクトの最新の状態をStripeから取得し直す(通知の本文の古いスナップショットに依存しない)。
-- `ADVANCEABLE_FROM`: `processing`へは`open`・`superseded`から、`fulfilled`・`rejected`へは`open`・`processing`・`superseded`から、`expired`へは`open`・`processing`・`superseded`から進める。完了した購入は戻らない(DR-011)。
+- `ADVANCEABLE_FROM`: `processing`へは`open`・`superseded`から、`fulfilled`・`rejected`へは`open`・`processing`・`superseded`から、`expired`へは`open`・`processing`・`superseded`から進める。完了した購入は戻らない(DR-016)。
 
 ### backend-lib/workers
 
@@ -1033,7 +1033,7 @@ export type ReflectionOutcome =
       readonly kind: 'already_applied';
       readonly purchaseStatus?: PurchaseStatus;
     }
-  | { readonly kind: 'stale' } // 発生時刻が古い(DR-011)
+  | { readonly kind: 'stale' } // 発生時刻が古い(DR-016)
   | { readonly kind: 'unresolved' } // 本サービスに結び付かない(6.9)
   | { readonly kind: 'ignored' };
 export interface PaymentReflector {
@@ -1066,7 +1066,7 @@ export interface OpenCheckoutExpirer {
 ```
 
 - 対象の`open`・`processing`の購入ごとに`expireCheckoutSession`を呼び、`expired`へ前進させる。Stripe上で既に完了していた(`not_open`)購入は`retrieveCheckoutSession` → `reflectCheckoutSnapshot`で反映する(14.3)。
-- 退会・停止の波及処理(`OpenCheckoutExpiryHandler`)と、後続specのFR-PPLAN-007(Ultrasの加入の確定)・FR-TOURW-021・FR-TOURY-021(参加資格の喪失)の処理が使う。Stripeを呼ぶため、後続specはeventの非同期の処理から呼ぶ。
+- 退会・停止の波及処理(`OpenCheckoutExpiryHandler`)と、後続specのFR-PPLAN-008(Ultrasの加入の確定)・FR-TOURW-027・FR-TOURY-030(参加資格の喪失)の処理が使う。Stripeを呼ぶため、後続specはeventの非同期の処理から呼ぶ。
 
 #### PaymentRefunds
 
@@ -1599,7 +1599,7 @@ export interface MoneyTextProps {
 - Webhook: 署名の検証と5分の時刻の許容。生の本文で検証し、検証の前に本文を解釈しない。経路はIP制限の対象外(backend-platformのQ1)。
 - 認可: 決済画面・同意・`return_url`の確定・決済履歴は本人の購入・記録だけを返し、他人の購入は存在しないものとして扱う(状態を明かさない)。`return_url`の`session_id`は推測されても本人の購入でなければ反映の結果を返さない(反映そのものは冪等で害が無い)。
 - CSRF: 変更操作はfrontend-platformのBFFのCSRFの検査の下にある。決済の確定はStripe.jsからStripeへ直接送られ、本サービスの経路を通らない。
-- データ最小化: Stripeへはメールアドレスと仮名化IDだけを渡す。決済情報は保存しない(DR-005)。ログ・Sentryに個人データを含めない。
+- データ最小化: Stripeへはメールアドレスと仮名化IDだけを渡す。決済情報は保存しない(DR-008)。ログ・Sentryに個人データを含めない。
 
 ## Performance & Scalability
 

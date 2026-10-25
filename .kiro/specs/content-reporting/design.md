@@ -10,7 +10,7 @@
 
 ### Goals
 
-- FR-REPOT-001〜006・FR-ADMUG-006(通報件数)・015〜022・FR-ADMCF-015〜017・FR-RLMIT-003・013・LR-004・DR-017が、要件と仮1〜仮8の決定に一致する。
+- FR-REPOT-001〜006・FR-ADMUG-008(通報件数)・015〜022・FR-ADMCF-019〜021・FR-RLMIT-004・016・LR-004・DR-022が、要件と仮1〜仮8の決定に一致する。
 - 措置による対応済では、ugc-moderationの状態の変更・措置の記録・案件の完了・2つの監査ログが1つの一括の書き込みで確定し、競合や既に措置済みのときに何も残らない。
 - 通報の受け付けと集約が1つの一括の書き込みで確定し、1つの対象に未完了の案件が2つできない。
 - 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
@@ -78,7 +78,7 @@
 
 | 上流spec            | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 影響と再検証                                                                                                                                                                                                                  |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| admin-foundation    | (1)変更なし。apiの`AuditLogReader.latestForMany(input: { readonly action: string; readonly targetKind: AuditTargetKind; readonly targetIds: readonly string[] }): Promise<ReadonlyMap<string, Date>>`と監査ログの保存の照会(90件ずつ、対象ごとの最新の日時)と、テストの共有の偽物`createFakeAuditLogReader`は、admin-foundationが仮7で所有・実装し、本specは使うだけである。(2)`audit-actions/content-reporting.ts`と`index.ts`の連結、adminの`composition/admin-navigation.ts`に1件(70)、`composition/dashboard-cards.ts`に1件(30) | (1)admin-foundationの仮7の契約どおり。一覧の対応期間を1回の照会で求める(NFR-PERF-004)。本specの単体テストは共有の偽物を使うため、`AuditLogReader`へのメソッドの追加で壊れない。(2)は契約どおり(仮6のURLと`order`、Q2のカード) |
+| admin-foundation    | (1)変更なし。apiの`AuditLogReader.latestForMany(input: { readonly action: string; readonly targetKind: AuditTargetKind; readonly targetIds: readonly string[] }): Promise<ReadonlyMap<string, Date>>`と監査ログの保存の照会(90件ずつ、対象ごとの最新の日時)と、テストの共有の偽物`createFakeAuditLogReader`は、admin-foundationが仮7で所有・実装し、本specは使うだけである。(2)`audit-actions/content-reporting.ts`と`index.ts`の連結、adminの`composition/admin-navigation.ts`に1件(70)、`composition/dashboard-cards.ts`に1件(30) | (1)admin-foundationの仮7の契約どおり。一覧の対応期間を1回の照会で求める(NFR-PERF-008)。本specの単体テストは共有の偽物を使うため、`AuditLogReader`へのメソッドの追加で壊れない。(2)は契約どおり(仮6のURLと`order`、Q2のカード) |
 | ugc-moderation      | adminの`composition/admin-product-detail-sections.ts`に1件(10)。apiの措置のユースケースを`statements`付きで呼び、結果の`ModerationOutcome.actionId`を本specの`report_cases.resolution_action_id`に残す。ugc-moderationの入力・記録の型・テーブルは変えない                                                                                                                                                                                                                                                                          | 契約どおり(ugc-moderationのData Contractsの「結果の`actionId`で自分の記録と結べる」)。ugc-moderationの再検証は要らない                                                                                                        |
 | inquiry-chat        | adminの`composition/category-sections.ts`に1件(40)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 契約どおり(仮4の`order`)                                                                                                                                                                                                      |
 | directory-discovery | clientの`composition/product-page-sections.ts`に1件(`bottom` 10)                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 契約どおり(予約の値)                                                                                                                                                                                                          |
@@ -567,7 +567,7 @@ export declare const RESPONSE_TIME_ALERT_LABELS: Readonly<
 >;
 ```
 
-- 対応ステータスの値と表示名は、inquiry-chatの`InquiryStatus`(`open`・`in_progress`・`resolved`・`rejected`、未対応・対応中・対応済・却下)と同じにする(FR-ADMAG-020の「同様の方式」)。型は共有せず、単体テストで値と表示名の一致を確かめる。
+- 対応ステータスの値と表示名は、inquiry-chatの`InquiryStatus`(`open`・`in_progress`・`resolved`・`rejected`、未対応・対応中・対応済・却下)と同じにする(FR-ADMAG-024の「同様の方式」)。型は共有せず、単体テストで値と表示名の一致を確かめる。
 - カテゴリ名の規則はadmin-foundationの`checkCategoryName`(1〜30書記素)を使い、本specでは定義しない。
 
 #### ReportingAuditActions
@@ -674,7 +674,7 @@ export interface ReportErasureStore {
 ```
 
 - 参照の消去(17.5、仮7)は`UPDATE report_cases SET target_id = NULL, target_owner_user_id = NULL, product_id = NULL, target_detached_at = ?, updated_at = ? WHERE id IN (SELECT id FROM report_cases WHERE <条件> LIMIT ?)`で、案件・通報・申出者の理由・状態・完了の記録は変えない。件数が上限に達したら`remaining: true`。条件の列がnullになるため、2回目の実行は同じ案件を選ばない。
-- 参照を消した案件と通報の保持: 通常の規則(未ログインの通報は最後の完了から14日、ログイン中の通報は申出者の退会と物理削除まで、通報が無くなった案件の削除)に加えて、`target_detached_at`から3年(監査ログの保持期間と同じ、DR-012)で案件を通報ごと削除する(17.10)。3年は、参照を消した案件に対応した操作の監査ログが残る期間で、判断の記録として案件と通報を突き合わせられる期間に合わせた。起点は対象の物理削除(参照の消去)の日時で、案件の状態によらない。
+- 参照を消した案件と通報の保持: 通常の規則(未ログインの通報は最後の完了から14日、ログイン中の通報は申出者の退会と物理削除まで、通報が無くなった案件の削除)に加えて、`target_detached_at`から3年(監査ログの保持期間と同じ、DR-017)で案件を通報ごと削除する(17.10)。3年は、参照を消した案件に対応した操作の監査ログが残る期間で、判断の記録として案件と通報を突き合わせられる期間に合わせた。起点は対象の物理削除(参照の消去)の日時で、案件の状態によらない。
 - 申出者の理由は書き換えない。理由は申出者自身の申告で、データエクスポートで申出者へ返す記録でもあり、投稿者を指す記述を機械的に判別して消すことはできないためである。参照を消した案件は削除された投稿者の識別子(利用者・プロダクト・コメントのID)を持たず、理由をその利用者の記録と結び付けられない。理由は管理画面(全ロールの管理者)と申出者自身のデータエクスポートにだけ示し、3年で削除する。この扱いはプライバシーポリシーの骨子・準拠方針のデータ保持期間に記す(タスク1.6)。
 - 案件の削除は、`id IN (SELECT id FROM report_cases WHERE ... LIMIT ?)`で選んだ案件の通報→案件の順に1つの一括の書き込みで行い、件数が上限に達したら`remaining: true`。どれも処理の時点の行だけを対象にし、何度実行しても結果が変わらない(17.9)。
 - 論理削除の文は同期の処理が返し、利用者の退会の確定と同じ一括の書き込みに入る(17.3)。
@@ -1501,7 +1501,7 @@ erDiagram
 
 - 通報は利用者側からだけ受け付け(`caller`)、bot判定と送信元IPアドレス・利用者ごとの厳密な回数制限を通す。キーはハッシュ化し、送信元IPアドレスを保存しない。停止中の利用者はIPアドレスの制限だけを受ける(仮6)が、bot判定で守る。
 - 管理者側の照会と操作はサーバー側の`requireAdmin`で認可し(照会は閲覧のみ以上、操作はモデレーター以上)、画面の`RoleGate`は補助である。ugc-moderationの措置のユースケースは認可を行わないため、本specのリゾルバの認可が唯一の門である。
-- 未ログインの申出者の連絡先メールアドレスは、通知の宛先にだけ使い、管理画面・監査ログ・ログに出さず、最後の完了から14日で削除する(DR-017)。申出者の理由とニックネームは投稿者へのメールに載せない(11.6・12.4)。
+- 未ログインの申出者の連絡先メールアドレスは、通知の宛先にだけ使い、管理画面・監査ログ・ログに出さず、最後の完了から14日で削除する(DR-022)。申出者の理由とニックネームは投稿者へのメールに載せない(11.6・12.4)。
 - 対象の物理削除の後も残す案件と通報は、削除された投稿者・プロダクト・コメントの識別子を持たず、申出者の理由を書き換えずに参照の消去から3年で削除する(仮7)。理由は管理画面と申出者自身のデータエクスポートにだけ示す。
 - 理由・照会の内容は通知メールに差し込むため、入力欄で個人情報を含めない旨を注記し、テンプレートはHTMLとして解釈しない。通報の理由・コメントの抜粋は管理画面で文字列として扱う(6.9)。
 - 通報の対象は表示中のコンテンツに限るため、非公開のコンテンツの存在を通報の応答で探ることはできない(どの理由でも`report_target_not_found`)。

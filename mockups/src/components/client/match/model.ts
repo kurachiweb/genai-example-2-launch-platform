@@ -12,7 +12,7 @@ export type Match = {
   rightVotes: number;
   isOwn: boolean;
   upvoted: 'left' | 'right' | null;
-  // 詳細ページへ遷移させるのはディレクトリ掲載済みまたは自身のプロダクトのみ(FR-GAME-007)
+  // 詳細ページへ遷移させるのはディレクトリ掲載済みまたは自身のプロダクトのみ(FR-GAME-008)
   linked: { left: boolean; right: boolean };
 };
 

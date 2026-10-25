@@ -43,18 +43,18 @@
 
 ### 確認済みのため質問しない事項
 
-- roadmapの「Requirement Ambiguities」: 本specが担当する行は無い。FR-RLMIT-008のclient・adminへの適用はbackend-platformのQ2で決定済みで、規約(バインディング`IP_RATE_LIMITER`・10秒あたり100回・キー`ip:<CF-Connecting-IP>`・`namespace_id`はclientが`1003`・`2003`・`3003`、adminが`1004`・`2004`・`3004`)をそのまま使う。超過時の画面は文言規則の「レート制限(429)」で、ページの要求にはHTML、それ以外には共通のエラー形式で返す。
-- 静的なファイルの扱い(FR-RLMIT-008・NFR-SECUR-010): Workers Static Assetsが配信するファイルはWorkerを起動しないため数えない(backend-platformで画像のエッジキャッシュを対象外にしたのと同じ扱い)。セキュリティヘッダーは`_headers`で付ける。
+- roadmapの「Requirement Ambiguities」: 本specが担当する行は無い。FR-RLMIT-009のclient・adminへの適用はbackend-platformのQ2で決定済みで、規約(バインディング`IP_RATE_LIMITER`・10秒あたり100回・キー`ip:<CF-Connecting-IP>`・`namespace_id`はclientが`1003`・`2003`・`3003`、adminが`1004`・`2004`・`3004`)をそのまま使う。超過時の画面は文言規則の「レート制限(429)」で、ページの要求にはHTML、それ以外には共通のエラー形式で返す。
+- 静的なファイルの扱い(FR-RLMIT-009・NFR-SECUR-010): Workers Static Assetsが配信するファイルはWorkerを起動しないため数えない(backend-platformで画像のエッジキャッシュを対象外にしたのと同じ扱い)。セキュリティヘッダーは`_headers`で付ける。
 - briefの実現性チェックの2点: 設計で解消する。CSRFのミドルウェアは`src/start.ts`で絞り込みを付けて明示的に登録し、`CLOUDFLARE_ENV`はビルド時に指定する。別プロセスのAPIの名前付きエントリポイントへの接続は、scratchpadで`vite dev`・`vite preview`の両方で確かめた(Research Log)。
 - CSRFの検証の範囲(NFR-SECUR-003): 要件は「認証を要する状態変更リクエスト」だが、中継する操作が認証を要するかをフロントエンドサーバーは判別できないため、`GET`・`HEAD`・`OPTIONS`以外の全要求と、メソッドを問わないサーバー関数の呼び出しに適用する。正規の利用でサイト外から状態変更が届く経路は無い(Stripeの戻りは`GET`、RFC 8058の配信停止はイベントサーバー)。要件の文言より範囲を広げる判断のため、完了報告の「開発者の確認が必要な判断」に含める(開発者の指示)。`Referer`による代わりの判定は行わない(要件の手順に無いため。TanStackの既定は有効)。
 - `no-store`の範囲(NFR-SECUR-011): 要求ごとのnonce(NFR-SECUR-009)を含むHTMLはキャッシュできないため、Workerが返す応答はログイン状態を問わず`no-store`にする。ハッシュ付きの静的なファイルは長期キャッシュにする。
 - CSPの範囲(NFR-SECUR-009): nonceはスクリプトに適用し、サードパーティのドメインを個別に列挙する(`strict-dynamic`は使わない)。スタイルはReactのSSRが出す`style`属性やトーストの部品が実行時に挿入するスタイルのため、インラインを許可する(要件の目的は「スクリプト実行元の制限」)。
 - api-gatewayとの衝突: 無い。エントリポイント名・中継の項目・指示の項目・`documentId`による要求・操作の一覧の出力先・スキーマファイルを契約どおりに使う。ローカルでも許可リストが適用されるため、操作の追加後に`graphql:allowlist`を再実行する手順をオンボーディングに書く。
 - セッションのCookie: localhostではCookieがポートで分かれないため、client・adminで名前を分ける(同名だと、管理者側が利用者のCookieを管理者のセッションとして検証させて無効と判定され、削除の指示で利用者のCookieを消す)。
-- 送信ボタンの活性制御(UI-004): 要件の文言とモックアップのとおり、入力が有効になるまで無効にし、エラーはフォーカスが外れた時に表示する。
+- 送信ボタンの活性制御(UI-005): 要件の文言とモックアップのとおり、入力が有効になるまで無効にし、エラーはフォーカスが外れた時に表示する。
 - 文言: 404・取得エラー・429・Turnstile失敗は`003-text-and-copy-rules.md`にある。
 - Cookieの同意バナー: 準拠方針(`legal/001-compliance-policy.md`)で不要と決定済み。表示設定の保存はlocalStorageで、Cookieを増やさない。
-- Sentry: 利用者側・管理者側の両方。トレースの割合はbackend-platformと同じ(prod 0.1・staging 1・ローカルは送信先なしで無効)。Session Replayは使わない(DR-001)。NFR-PERF-003の「クライアント観測」はブラウザから送ったGraphQLの要求だけを対象にする。
+- Sentry: 利用者側・管理者側の両方。トレースの割合はbackend-platformと同じ(prod 0.1・staging 1・ローカルは送信先なしで無効)。Session Replayは使わない(DR-001)。NFR-PERF-007の「クライアント観測」はブラウザから送ったGraphQLの要求だけを対象にする。
 - フォント: モックアップはシステムフォントだけを使う。
 - フッターとヘッダーの分担: URL構造の固定パスへのリンクは本specが置き、ピン留めヘルプ記事はhelp-center、ログイン中の表示はidentity-auth、トップページの中身はmatch-engineが差し込む。
 - Storybook: ローカルでの閲覧に限る(roadmap・infra-deliveryに配信先が無い)。
@@ -142,7 +142,7 @@
 
 - **Context**: Q7。
 - **Sources Consulted**: npmの相手依存。`eslint-plugin-react` 7.37.5は`eslint` `^3〜^9.7`、`eslint-plugin-jsx-a11y` 6.10.2(最終リリース2024-10)は`^3〜^9`。`@eslint-react/eslint-plugin` 5.23.5は`eslint` `*`、`eslint-plugin-react-hooks` 7.1.1・`@tanstack/eslint-plugin-query` 5.104.1・`@tanstack/eslint-plugin-router` 1.162.0は`^10`を含む。`eslint-plugin-jsx-a11y-x` 0.2.0は`^9 || ^10`。
-- **Implications**: 採用した7つで、React・フック・アクセシビリティ・TanStack・Storybookの規則と、クラス名の整列をそろえる。生のHTMLの挿入の禁止(NFR-SECUR-038)は`@eslint-react`の`dom/no-dangerously-set-innerhtml`と`no-restricted-syntax`(`innerHTML`・`outerHTML`への代入)で強制する。
+- **Implications**: 採用した7つで、React・フック・アクセシビリティ・TanStack・Storybookの規則と、クラス名の整列をそろえる。生のHTMLの挿入の禁止(NFR-SECUR-040)は`@eslint-react`の`dom/no-dangerously-set-innerhtml`と`no-restricted-syntax`(`innerHTML`・`outerHTML`への代入)で強制する。
 
 ### Storybookとアクセシビリティの自動検査
 
@@ -218,7 +218,7 @@
 
 ### Decision: ブラウザ側のSentryを初期化の後に読み込む
 
-- **Context**: 要件14.2(最初の描画を妨げない)、NFR-PERF-003。
+- **Context**: 要件14.2(最初の描画を妨げない)、NFR-PERF-007。
 - **Selected Approach**: ルートの部品のマウント後に`@sentry/tanstackstart-react`を動的に読み込み、ルーターのトレースと中継の経路への伝搬を設定する。中継はサーバー側の現在のスパンから`sentry-trace`・`baggage`を求めてAPIへ付ける。
 - **Trade-offs**: 初期化より前の例外とページの読み込み自体のトレースは記録しない。計測の対象(GraphQLの要求)は初期化の後に発生するため影響しない。
 

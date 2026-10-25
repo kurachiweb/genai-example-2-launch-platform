@@ -1790,7 +1790,7 @@ export declare const RELAY_ROUTES: readonly RelayRoute[]; // 初版は[GRAPHQL_R
 ### Monitoring
 
 - アクセスログ(`[caller, 'http', 'access']`)で、経路・状態コード・処理時間・結果を相関IDとともに追える。CSRFの拒否(`[caller, 'http', 'csrf']`)・IP制限の超過(`[caller, 'http', 'rate-limit']`)・中継の失敗(`[caller, 'relay']`)・Cookieの指示の破棄(`[caller, 'relay', 'session']`)は`warning`で出す。
-- SentryのトレースはAPIサーバーのスパンと`sentry-trace`・`baggage`で結び付く。NFR-PERF-003の計測は、ブラウザから`/_bff/graphql`への要求のスパンで行う。
+- SentryのトレースはAPIサーバーのスパンと`sentry-trace`・`baggage`で結び付く。NFR-PERF-007の計測は、ブラウザから`/_bff/graphql`への要求のスパンで行う。
 
 ## Testing Strategy
 

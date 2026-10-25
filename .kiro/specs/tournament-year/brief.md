@@ -12,13 +12,13 @@ Product of the Weekの優勝作は、年に1度のProduct of the Year決定ト�
 
 ## Desired Outcome
 
-- Yearトーナメント(FR-TOURY-001〜021)が動作する。
+- Yearトーナメント(FR-TOURY-001〜030)が動作する。
   - Weekの優勝作に参加資格を与える
   - 決済期限は決勝6日前の23:35、組み合わせは同日23:45に決める
   - 参加は最大64(シード最大32)
   - 1回戦は参加数に応じて決勝の0〜5日前に行う
   - その他の規則はWeekと同じ型で、賞を授与する
-- 最上位管理者が決勝実施日を設定できる(FR-ADMCF-001〜005、監査ログの対象)。
+- 最上位管理者が決勝実施日を設定できる(FR-ADMCF-001〜003・006・007、監査ログの対象)。
   - 対象年内の日曜日のみ選べる
   - 現在から8日後より前は選べない
   - 前年の決勝実施日から64週以上空く日付は拒否する
@@ -34,8 +34,8 @@ tournament-weekのブラケットエンジンを再利用し、Year固有の部�
 ## Scope
 
 - **In**:
-  - 4.14(FR-TOURY-001〜021)
-  - FR-ADMCF-001〜005と管理画面の決勝日設定
+  - 4.14(FR-TOURY-001〜030)
+  - FR-ADMCF-001〜003・006・007と管理画面の決勝日設定
   - Year固有の参加資格・日程・表示
   - 上記のテスト
 - **Out**:
@@ -70,11 +70,11 @@ tournament-weekのブラケットエンジンを再利用し、Year固有の部�
 
 - 要件の論点(要件フェーズで開発者に確認する):
   - 前年の決勝日が未設定(既定値)のとき、それを「設定されている」と扱うか
-  - 初年度は期間の起点が無いため、参加が64を超え得る(FR-TOURY-005の「シード最大32」と矛盾し得る)
-  - 停止・非公開化に伴う参加資格の停止で返金を自動で行うか(法的通知の大枠の返金ポリシーとFR-ADMUG-024・sponsorshipのbriefの食い違い。roadmapのRequirement Ambiguities)。行う場合はpaymentsの`PaymentRefunds`を呼ぶ
+  - 初年度は期間の起点が無いため、参加が64を超え得る(FR-TOURY-012の「シード最大32」と矛盾し得る)
+  - 停止・非公開化に伴う参加資格の停止で返金を自動で行うか(法的通知の大枠の返金ポリシーとFR-ADMUG-045・sponsorshipのbriefの食い違い。roadmapのRequirement Ambiguities)。行う場合はpaymentsの`PaymentRefunds`を呼ぶ
 - 決勝実施日の区画は`AdminSettingsSection`の`{ id: 'tournament-year.final-date', order: 10, component }`。ページの枠と`/settings`のメニュー項目(admin-foundationの`ADMIN_NAV_ITEMS`の`order` 130)はultras-subscriptionが持つ。変更は最上位管理者だけが行える(admin-foundationのQ3の`requireAdmin(..., 'super_admin')`)、監査ログは`AuditLogRecorder`で記録する
 - 参加費の免除は、ultras-subscriptionのQ1・Q2(勝利時点と加入時点の2時点で判定、決済済みの参加費は返金しない)に従い、Weekの優勝の確定時刻`w`と決済期限`d`に対する`UltrasEntitlements.wasEntitledDuring(userId, w, d)`で判定する。Ultrasのテーブルを直接読まない
-- 加入が有効になった知らせのハンドラは`UltrasActivationHandlerRegistration`の`{ name: 'tournament-year.<名詞句>', order, handler }`で、`order`は100以上(ultras-subscriptionの規則)をtournament-weekと重ならないように割り当て、冪等にする。資格の付与と、未完了の参加費の決済セッションのpaymentsの`OpenCheckoutExpirer.expireOpen({ userId, kinds: ['year_tournament_entry'], ... })`での失効を行う(FR-PPLAN-007・FR-TOURY-021)。`OpenCheckoutExpirer`はStripeを呼ぶため、eventの非同期の処理から呼ぶ
+- 加入が有効になった知らせのハンドラは`UltrasActivationHandlerRegistration`の`{ name: 'tournament-year.<名詞句>', order, handler }`で、`order`は100以上(ultras-subscriptionの規則)をtournament-weekと重ならないように割り当て、冪等にする。資格の付与と、未完了の参加費の決済セッションのpaymentsの`OpenCheckoutExpirer.expireOpen({ userId, kinds: ['year_tournament_entry'], ... })`での失効を行う(FR-PPLAN-008・FR-TOURY-030)。`OpenCheckoutExpirer`はStripeを呼ぶため、eventの非同期の処理から呼ぶ
 - 未加入者へのUltrasの導線など、機能フラグの値で表示が変わる画面をE2Eで確かめる場合は、フラグの行を書き換えるultras-subscriptionのE2Eのプロジェクトの依存に加えるか、フラグの値で結果が変わる部分を確かめない(roadmapのShared seams「プラン判定」)
 - 参加資格を失った場合の自動返金は、paymentsの`PaymentRefunds`で依頼し、Stripeを直接呼ばない。決済の突合のジョブはpaymentsが所有し、本specは結果をフルフィルメントで受け取る
 - 参加者へのメールの宛先は、identity-authの`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)で引く

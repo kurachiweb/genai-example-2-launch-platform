@@ -16,19 +16,19 @@
 
 ## Desired Outcome
 
-- 通知メール(FR-NOTIF-001〜007)が送信される。
+- 通知メール(FR-NOTIF-001・004・006〜010)が送信される。
   - マッチ開始予告: 前日23:45のペアリング後
   - 勝敗結果: 当日23:45。トーナメントの準決勝以前で勝った場合は開始予告と統合する
   - フォロワーへの開催通知: 同日分を1通に集約する
   - フォロワーへの受賞通知
   - いずれも送信者情報を表示する
-- 通知設定ページで、種類ごとに受信可否を設定できる(初期値はすべて受信しない)。バウンス・苦情・拒否で抑止中ならその旨を表示する(FR-NOTIF-005・016)。
-- 配信停止(FR-NOTIF-008〜011)が動作する。
+- 通知設定ページで、種類ごとに受信可否を設定できる(初期値はすべて受信しない)。バウンス・苦情・拒否で抑止中ならその旨を表示する(FR-NOTIF-008・023)。
+- 配信停止(FR-NOTIF-012・016〜018)が動作する。
   - `List-Unsubscribe`と`List-Unsubscribe-Post`ヘッダーを付ける
   - eventでワンクリックのPOSTを受け付ける
   - 本文中のリンクから`/unsubscribe/{token}`で確認操作だけで停止できる
   - トークンはユーザーと種別ごとに発行し、HMACでハッシュ化して保存し、退会まで有効とする
-- 最上位管理者が送信者情報(事業者名・連絡先メールアドレス・物理的郵送先住所、各200文字以内)を設定できる(FR-ADMCF-019、監査ログの対象)。
+- 最上位管理者が送信者情報(事業者名・連絡先メールアドレス・物理的郵送先住所、各200文字以内)を設定できる(FR-ADMCF-024、監査ログの対象)。
 - 通知イベントの契約があり、match-engine・tournament-week・tournament-yearが発行できる。
 
 ## Approach
@@ -38,13 +38,13 @@
 ## Scope
 
 - **In**:
-  - 4.24のうちFR-NOTIF-001〜011・016
-  - FR-ADMCF-019、LR-005
+  - 4.24のうちFR-NOTIF-001・004・006〜010・012・016〜018・023
+  - FR-ADMCF-024、LR-005
   - 通知設定ページ、配信停止ページ、eventの配信停止エンドポイント
   - 通知イベントの契約
   - 上記のテスト
 - **Out**:
-  - 送信の流量制御・再試行・抑止リストの記録(email-delivery、FR-NOTIF-012〜015)
+  - 送信の流量制御・再試行・抑止リストの記録(email-delivery、FR-NOTIF-019〜022)
   - トランザクションメール(各ドメインspec)
   - トーナメントのイベント発行の実装(tournament-week・tournament-year)
 
@@ -74,7 +74,7 @@
 
 - 要件の論点(要件フェーズで開発者に確認する): Yearでは組み合わせが決勝の6日前に決まり、1回戦は決勝の0〜5日前に行われる。トーナメントの開始予告を組み合わせ決定時に送るか、マッチ前日に送るか
 - 配信停止トークンのハッシュ化はNFR-SECUR-006の方式に従う
-- 送信者情報の設定(FR-ADMCF-019)は、独立したページではなく、ultras-subscriptionが作る管理画面の設定ページ`/settings`に区画として載せる(`AdminSettingsSection`の`{ id: 'notifications.sender-info', order: 30, component }`)。ページの枠とメニュー項目(admin-foundationの`ADMIN_NAV_ITEMS`の`order` 130)はultras-subscriptionが持つ。変更の権限はadmin-foundationのQ3の方針、記録は`AuditLogRecorder`で行う
+- 送信者情報の設定(FR-ADMCF-024)は、独立したページではなく、ultras-subscriptionが作る管理画面の設定ページ`/settings`に区画として載せる(`AdminSettingsSection`の`{ id: 'notifications.sender-info', order: 30, component }`)。ページの枠とメニュー項目(admin-foundationの`ADMIN_NAV_ITEMS`の`order` 130)はultras-subscriptionが持つ。変更の権限はadmin-foundationのQ3の方針、記録は`AuditLogRecorder`で行う
 - 通知メールの宛先・宛名は、identity-authの`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)で引く。`emailVerified`が偽の利用者を通知の対象から除く(identity-authの要件4.2)。`users`を直接読まない
 - データエクスポートに通知設定を出すため、本specが出力用の部品を持ち、data-exportは本specのテーブルを直接読まない
 - 管理画面のE2Eの管理者ログインは、admin-foundationの`e2e/support/admin-bootstrap.ts`を使う

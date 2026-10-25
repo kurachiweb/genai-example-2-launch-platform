@@ -10,7 +10,7 @@
 
 ### Goals
 
-- FR-UPROF-001〜013・FR-FOLOW-001〜010が動作し、ハンドルの変更→旧URLの302→再変更、他人の旧ハンドルの設定とその旧ハンドルの削除(仮2)、停止→画像の隔離→停止解除、退会→論理削除→物理削除、保有者の居ないファイルの日次の削除(仮1)のどの経路でも、要件と2026-10-24に確定した仮1〜仮3の決定に一致する。
+- FR-UPROF-001〜014・FR-FOLOW-001〜010が動作し、ハンドルの変更→旧URLの302→再変更、他人の旧ハンドルの設定とその旧ハンドルの削除(仮2)、停止→画像の隔離→停止解除、退会→論理削除→物理削除、保有者の居ないファイルの日次の削除(仮1)のどの経路でも、要件と2026-10-24に確定した仮1〜仮3の決定に一致する。
 - ハンドル基盤を、product-launch・help-centerが対象の記述を渡すだけで同じ規則で使える。
 - 公開プロフィールに、後続specが本specのファイルを変えずにタブ・バッジ・メニューの項目を加えられる。
 - 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
@@ -396,7 +396,7 @@ sequenceDiagram
 ```
 
 - `purge_due`の順は、inquiry-chat(300)・payments(400)・ultras-subscription(500)の後に本specの600・610、その後に後続spec(1000番台以降)・identity-auth(10000)・`users`の物理削除である。後続specの行はファイルのIDを外部キー無しで持つため、610の削除は止まらない。
-- 停止の解除では`user_suspended`だけを取り除き、他の理由の残る画像は隔離のままになる(media-pipelineの規則、FR-ADMUG-028)。
+- 停止の解除では`user_suspended`だけを取り除き、他の理由の残る画像は隔離のままになる(media-pipelineの規則、FR-ADMUG-050)。
 
 ### 保有者の居ないファイルの日次の削除(仮1)
 
@@ -560,7 +560,7 @@ export declare function checkWebsiteName(value: string): OptionalTextCheck; // �
 export declare const EXTERNAL_URL_MAX_LENGTH: 2048;
 export type ExternalUrlCheck =
   'ok' | 'empty' | 'too-long' | 'not-absolute' | 'disallowed-scheme';
-export declare function checkExternalUrl(value: string): ExternalUrlCheck; // URLとして解析でき、protocolがhttps:・http:、2,048文字以内(NFR-SECUR-044)
+export declare function checkExternalUrl(value: string): ExternalUrlCheck; // URLとして解析でき、protocolがhttps:・http:、2,048文字以内(NFR-SECUR-046)
 export declare function externalUrlHost(value: string): string; // 表示用のホスト名。解析できなければ空文字列
 ```
 
@@ -1026,7 +1026,7 @@ export interface FollowStore {
 ```
 
 - `save`の一括の書き込みは「System Flows」の並びのとおり。可視の条件は`visibleUsers()`と同じ(`deleted_at IS NULL AND status = 'active'`)。ハンドルの照合は`users.handle = ? COLLATE BINARY`(表記の違いも競合として検出)。使用中の条件は`handleOccupiedCondition(USER_HANDLE_NAMESPACE, handle, { exceptOwnerId })`(他人の現在のハンドル)で、`plan.handle.kind`が`changed`のときだけ含める。同じく`changed`のときだけ、`users`の更新の後に`previousHandleRelease(db, USER_HANDLE_NAMESPACE, { handle, exceptOwnerId })`(他人の旧ハンドルの削除、仮2)と`previousHandleUpsert`を置く。`user_profiles`の挿入または更新は`ON CONFLICT(user_id) DO UPDATE`。
-- `PublicProfileStore.load`は利用者と`user_profiles`・外部Webサイト・可視のフォロワー数・閲覧者のフォローの有無を1回の`db.batch()`の読み取りで得る(NFR-PERF-003)。
+- `PublicProfileStore.load`は利用者と`user_profiles`・外部Webサイト・可視のフォロワー数・閲覧者のフォローの有無を1回の`db.batch()`の読み取りで得る(NFR-PERF-007)。
 - `insertIfAbsent`: `INSERT INTO user_follows (...) SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM users WHERE id = ? AND <可視>) ON CONFLICT (follower_id, followee_id) DO NOTHING`。変更が0件なら`isFollowing`で`exists`と`target-unavailable`を分ける。
 - 一覧: `user_follows`(`deleted_at IS NULL`)と相手の`users`(可視)・`user_profiles`を結合し、`(created_at, id) < (?, ?)`・`ORDER BY created_at DESC, id DESC LIMIT ?`。
 
@@ -1356,14 +1356,14 @@ export interface UserAvatarProps {
 ## Security Considerations
 
 - 認可: 編集・一覧は本人だけ(利用者IDはセッションから取り、引数で受け取らない)。フォロー一覧を他人に返す手段を持たない(10.7)。
-- XSS: 外部WebサイトのURLは保存前に`https`・`http`の絶対URLに限り(NFR-SECUR-044)、表示でも`checkExternalUrl`で確かめてから`href`にする。自己紹介はcontent-processingのサニタイズを経て描画する。ニックネーム・ヘッドラインはReactのテキストとして描く。
+- XSS: 外部WebサイトのURLは保存前に`https`・`http`の絶対URLに限り(NFR-SECUR-046)、表示でも`checkExternalUrl`で確かめてから`href`にする。自己紹介はcontent-processingのサニタイズを経て描画する。ニックネーム・ヘッドラインはReactのテキストとして描く。
 - bot対策: 保存(`profile_update`)・フォローと解除(`follow`)でTurnstileを検証する。
 - 情報の推測の防止: 存在しない・退会済み・停止中・形式違反のハンドルは同一の404。停止中の利用者の旧ハンドルも転送せずに404。公開の識別子はハンドルだけとし、利用者のIDをブラウザへ出さない。
 - データ最小化: 新しい個人データは本人が入力したプロフィールだけで、ログに含めない。
 
 ## Performance & Scalability
 
-- 公開プロフィールの読み取りは解決(索引で1〜2回)と`db.batch()`の読み取り1回、Ultrasの判定1回で、DataLoaderでプロフィール画像を一括に引く(NFR-PERF-003・004)。
+- 公開プロフィールの読み取りは解決(索引で1〜2回)と`db.batch()`の読み取り1回、Ultrasの判定1回で、DataLoaderでプロフィール画像を一括に引く(NFR-PERF-007・008)。
 - フォロワー数は`(followee_id, created_at, id)`の索引の範囲で数える。一覧は同じ索引でカーソルの範囲を読む。
 - 物理削除はフォローを1,000件ずつ消し、Workersの1回の処理の時間に収める。
 

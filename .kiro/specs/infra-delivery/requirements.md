@@ -4,12 +4,12 @@
 
 Cloudflare上の資源をコードで管理し、GitHub Actionsで検査とデプロイを自動化する。これにより、全spec完了後の一括リリースまでの間、mainブランチ経由でstagingへ随時デプロイして検証でき、mainとprodへの変更をマージ前に検査できるようにする。対象は次のとおりである。
 
-- staging・prodの資源の定義(NFR-PORT-002)、データの保存場所とCloudflareへの国外移転の根拠(DR-007)、定義の状態の保管と暗号化
+- staging・prodの資源の定義(NFR-PORT-002)、データの保存場所とCloudflareへの国外移転の根拠(DR-012)、定義の状態の保管と暗号化
 - CIとIaC定義が使うシークレットの供給経路(NFR-SECUR-007・NFR-SECUR-014)
 - 検査パイプライン(NFR-MAINT-002・NFR-MAINT-003)と、CIでの共有ディレクトリの配置の再現
-- staging・prodへのデプロイパイプライン(NFR-AVAIL-004・NFR-AVAIL-008、SW-015)
+- staging・prodへのデプロイパイプライン(NFR-AVAIL-005・NFR-AVAIL-009、SW-015)
 - prodへのリリースの手順と、人間の承認を必須にするリポジトリ保護の文書化
-- ロールバックと復旧の手順(NFR-AVAIL-005〜007)
+- ロールバックと復旧の手順(NFR-AVAIL-006〜008)
 - 資源一覧・実行環境設定・CI設定の整合性の検査
 - 上記の技術ドキュメントと、関連する既存文書の更新
 
@@ -127,7 +127,7 @@ Cloudflare上の資源をコードで管理し、GitHub Actionsで検査とデ�
 
 ### Requirement 2: データの保存場所と国外移転
 
-**Objective:** 運用者として、利用者のデータを米国内に保存することを保証し、Cloudflareへの移転の根拠を示したい。それにより、プライバシーポリシーに保存場所と国外移転の記載事項を確定的に書ける(DR-007)。
+**Objective:** 運用者として、利用者のデータを米国内に保存することを保証し、Cloudflareへの移転の根拠を示したい。それにより、プライバシーポリシーに保存場所と国外移転の記載事項を確定的に書ける(DR-012)。
 
 #### Acceptance Criteria
 
@@ -199,7 +199,7 @@ Cloudflare上の資源をコードで管理し、GitHub Actionsで検査とデ�
 
 ### Requirement 7: デプロイパイプライン
 
-**Objective:** 開発者として、mainへのマージでstagingへ、prodへのマージでprodへ自動でデプロイしたい。それにより、手順を誤らず、利用者に停止を見せずに新しい版を出せる(NFR-AVAIL-004・NFR-AVAIL-008)。
+**Objective:** 開発者として、mainへのマージでstagingへ、prodへのマージでprodへ自動でデプロイしたい。それにより、手順を誤らず、利用者に停止を見せずに新しい版を出せる(NFR-AVAIL-005・NFR-AVAIL-009)。
 
 #### Acceptance Criteria
 
@@ -248,7 +248,7 @@ Cloudflare上の資源をコードで管理し、GitHub Actionsで検査とデ�
 
 ### Requirement 10: ロールバックと復旧
 
-**Objective:** 運用者として、デプロイの失敗時に直前の正常な版へ戻し、データの障害からは保持期間内の時点へ復旧したい(NFR-AVAIL-005〜007)。
+**Objective:** 運用者として、デプロイの失敗時に直前の正常な版へ戻し、データの障害からは保持期間内の時点へ復旧したい(NFR-AVAIL-006〜008)。
 
 #### Acceptance Criteria
 

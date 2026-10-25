@@ -16,10 +16,10 @@
 
 | #   | 論点                                           | 根拠                                                                  | 回答(2026-10-17)                                                                                                                                                                    |
 | --- | ---------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q1  | 抑止リストをトランザクションメールにも使うか   | FR-NOTIF-015・brief・notificationsのbrief                             | 推奨案。抑止リストは通知メール(FR-NOTIF-001〜004)の送信判定だけに使い、トランザクションメールは抑止中でも送信を試みる。プロバイダに拒否されたら再試行せず記録する                   |
-| Q2  | 抑止の契機と期間                               | FR-NOTIF-015・SW-015・FR-NOTIF-016                                    | 推奨案。恒久バウンスと苦情は期限なし、受信者側の理由による拒否だけ7日間。送信側が原因の拒否は抑止せず送信不能として検知する                                                         |
+| Q1  | 抑止リストをトランザクションメールにも使うか   | FR-NOTIF-022・brief・notificationsのbrief                             | 推奨案。抑止リストは通知メール(FR-NOTIF-001・004・006・007)の送信判定だけに使い、トランザクションメールは抑止中でも送信を試みる。プロバイダに拒否されたら再試行せず記録する         |
+| Q2  | 抑止の契機と期間                               | FR-NOTIF-022・SW-015・FR-NOTIF-023                                    | 推奨案。恒久バウンスと苦情は期限なし、受信者側の理由による拒否だけ7日間。送信側が原因の拒否は抑止せず送信不能として検知する                                                         |
 | Q3  | 抑止記録の保持                                 | DR-001・DR-002・プライバシーポリシーの大枠・データ保持期間の一覧      | 推奨案。そのアドレスを登録した利用者の退会時に削除し、利用者に紐づかないアドレスの記録は最後の契機から1年で削除する                                                                 |
-| Q4  | 送信上限で遅れた期限付きリンクのメール         | FR-NOTIF-013・brief・NFR-SECUR-033                                    | 推奨案。呼び出し側が送信期限を指定でき、期限を過ぎたメールは送らずに記録する。期限の無いメールはFR-NOTIF-013どおり上限のリセット後に送る                                            |
+| Q4  | 送信上限で遅れた期限付きリンクのメール         | FR-NOTIF-020・brief・NFR-SECUR-035                                    | 推奨案。呼び出し側が送信期限を指定でき、期限を過ぎたメールは送らずに記録する。期限の無いメールはFR-NOTIF-020どおり上限のリセット後に送る                                            |
 | Q5  | テンプレート描画のパッケージ                   | tech-stack.md・roadmapのConstraints・brief・CLAUDE.md(新規パッケージ) | 推奨案。`@react-email/components` 1.0.12・`@react-email/render` 2.1.0を採用する。tech-stack.mdのJSX emailの置き換えはspec段階では編集せず、導入する実装タスクで行う                 |
 | Q6  | 送信元の表示名・アドレス・返信先・送信ドメイン | 要件定義書に定め無し・READMEの配信URL一覧・launch-readinessのbrief    | 推奨案。表示名「Launch Stadium」、`noreply@`、返信先なし。送信ドメインはprodが`genai-example-2-mail.lab.kurachiweb.com`、stagingが`genai-example-2-mail-staging.lab.kurachiweb.com` |
 | Q7  | stagingから任意の宛先へ送るか                  | brief・READMEの配信URL一覧・Email Sendingの料金と上限                 | 推奨案。stagingは検証済みの宛先にだけ送れるよう制限し、それ以外への送信は送信不能として扱う                                                                                         |
@@ -40,13 +40,13 @@
 
 - roadmapの「Requirement Ambiguities」: 本specが担当する論点は無い。
 - briefで要件フェーズに確認するとされた論点: 無い。Mailpitへの送信方式はbriefの指示どおり設計フェーズで決める(tech-stack.mdはHTTPの送信API)。
-- ソフトバウンス: FR-NOTIF-015の「恒久的にバウンス」に従い、再試行を使い切ったソフトバウンスは抑止の契機にしない。
-- 送信者情報の表示範囲: 文言規則の本文構成は送信者情報を通知種別で限定していないため、全メールに表示する。設定はnotifications(FR-ADMCF-019)が持ち、本specは差し込む区画と取得口を持つ。未設定の通知メールを送るかはnotificationsが判断する。
-- 配信停止ヘッダー: Email Sendingは`List-Unsubscribe`・`List-Unsubscribe-Post`を許可しており、FR-NOTIF-008を実現できる。本specは任意のヘッダーを渡す口だけを持つ。
-- 送信内容のプレビュー(送信したメールの内容を約7日ダッシュボードに保存する機能): 平文のトークンが残るため、NFR-SECUR-034の趣旨により無効にする。設定は開発者の手作業またはinfra-deliveryが行う。
+- ソフトバウンス: FR-NOTIF-022の「恒久的にバウンス」に従い、再試行を使い切ったソフトバウンスは抑止の契機にしない。
+- 送信者情報の表示範囲: 文言規則の本文構成は送信者情報を通知種別で限定していないため、全メールに表示する。設定はnotifications(FR-ADMCF-024)が持ち、本specは差し込む区画と取得口を持つ。未設定の通知メールを送るかはnotificationsが判断する。
+- 配信停止ヘッダー: Email Sendingは`List-Unsubscribe`・`List-Unsubscribe-Post`を許可しており、FR-NOTIF-012を実現できる。本specは任意のヘッダーを渡す口だけを持つ。
+- 送信内容のプレビュー(送信したメールの内容を約7日ダッシュボードに保存する機能): 平文のトークンが残るため、NFR-SECUR-036の趣旨により無効にする。設定は開発者の手作業またはinfra-deliveryが行う。
 - Queue上の平文トークン: コンプライアンス方針のデータ保存場所の表で「ジョブメッセージ(一時的)」として扱い済みである。ログとデッドレターの通知に本文を含めない(backend-platformのQ7)。
 - 重複配信: Queuesは少なくとも1回の配送のため、送信要求の識別子で重複送信を抑える(backend-platformの冪等の規約)。
-- 日次上限到達の検知: 運用者がエラートラッキングで気付けるようにする(FR-NOTIF-014の一般化)。
+- 日次上限到達の検知: 運用者がエラートラッキングで気付けるようにする(FR-NOTIF-021の一般化)。
 - 添付ファイル: 要件に添付を送る機能が無いため扱わない。
 - 抑止リストの照合: 大文字小文字を区別しない(FR-USER-013と同じ扱い)。
 - テンプレート以外のパッケージ: Email Sending・Mailpitの呼び出しはバインディングと`fetch`で足り、追加しない。
@@ -57,7 +57,7 @@
 
 ### Email Sendingの送信APIと上限
 
-- **Context**: briefの実現性チェックで、Email Sendingはpublic betaでありAPI変更に備えて抽象化する必要があると指摘された。FR-NOTIF-013・014を全種別に一般化するために、失敗の分類を確かめる。
+- **Context**: briefの実現性チェックで、Email Sendingはpublic betaでありAPI変更に備えて抽象化する必要があると指摘された。FR-NOTIF-020・021を全種別に一般化するために、失敗の分類を確かめる。
 - **Sources Consulted**: Cloudflare Docs「[Workers API](https://developers.cloudflare.com/email-service/api/send-emails/workers-api/)」「[Limits](https://developers.cloudflare.com/email-service/platform/limits/)」「[Pricing](https://developers.cloudflare.com/email-service/platform/pricing/)」「[Email headers](https://developers.cloudflare.com/email-service/reference/headers/)」「[Changelog](https://developers.cloudflare.com/email-service/platform/changelog/)」。
 - **Findings**:
   - バインディング`send_email`の`send()`は`to`・`from`・`subject`・`html`・`text`・`replyTo`・`cc`・`bcc`・`attachments`・`headers`を受け取り、成功時は`{ messageId }`を返す。失敗は`code`と`message`を持つ`Error`で投げられる。
@@ -71,7 +71,7 @@
 
 ### 配信不能イベントと抑止
 
-- **Context**: FR-NOTIF-015・SW-015。Q1・Q2の判断材料。
+- **Context**: FR-NOTIF-022・SW-015。Q1・Q2の判断材料。
 - **Sources Consulted**: Cloudflare Docs「[Event subscriptions](https://developers.cloudflare.com/email-service/reference/event-subscriptions/)」「[Suppressions](https://developers.cloudflare.com/email-service/concepts/suppressions/)」「[Sync recipient records](https://developers.cloudflare.com/email-service/examples/email-sending/sync-recipient-records/)」「[Subscribe to Email Sending events with Queues](https://developers.cloudflare.com/changelog/post/2026-07-15-event-subscriptions/)」。
 - **Findings**:
   - 購読は送信ドメインごとで、種類は`message.delivered`・`message.deferred`・`message.bounced`・`message.failed`・`message.rejected`・`message.complained`の6つ。`type`は`cf.email.sending.message.<種類>`。
@@ -132,7 +132,7 @@
 
 ### Decision: 送信上限はbackend-platformの`defer`で待ち、日次上限は1時間ごとに試す
 
-- **Context**: 要件5(FR-NOTIF-013の一般化)。日次上限のリセット時刻は公開されていない。
+- **Context**: 要件5(FR-NOTIF-020の一般化)。日次上限のリセット時刻は公開されていない。
 - **Selected Approach**: 送信レートの上限は60秒、日次上限は3600秒の`defer`。`defer`は同じIDの封筒を再送し試行回数に数えない(backend-platformの契約)。上限到達の警告は`email_alert_throttles`で1時間に1回に間引き、Sentryのfingerprintで1つの問題にまとめる。
 - **Rationale**: 待機中の件数が多いと、毎回の通知でSentryの枠を使い切るため。
 - **Trade-offs**: リセット直後の送信開始が最大1時間遅れる。

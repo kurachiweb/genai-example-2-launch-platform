@@ -6,7 +6,7 @@
 - **Discovery Scope**: Complex Integration(公開APIとAPIキーの実装は無い。上流の23spec(dev-tooling〜sponsorship)の設計・タスクは承認済みで、実装はdev-toolingだけが済んでいる。本specはapi-gatewayの公開RESTの骨格(`createRestModule`・`PublicRestRoutes`・`dataEnvelope`・`offsetListEnvelope`・`cursorListEnvelope`・`errorResponses`・`API_KEY_SECURITY`)、backend-platformの`RateLimitCounterClient`・`bindingRateLimit`・`KeyedHasher`、identity-authの`AccountGuard`・`USER_LIFECYCLE_SYNC_HANDLERS`・`SETTINGS_NAV_ITEMS`、directory-discoveryの`DirectoryReader`・`DirectoryCategoryReader`・`ProductPageReader`、match-engineの`MatchDirectory`・`SupporterDirectory`・`UpvoteHistoryReader`、engagementの`CommentReader`・`RatingService`、user-profile-socialの`MyProfileReader`・`ProfileEditor`・`PublicProfileReader`・`UserProfileDirectory`、product-launchの`ProductDirectory`・`MyProductsReader`・`ProductDescriptionEditor`、media-pipelineの`MediaFiles`・`buildImagePath`の上に、APIキーの管理・公開RESTの経路・Swagger UIのページを足す)
 - **Key Findings**:
   - 上流の各ドメインspecは、公開APIから同じユースケースを呼べるよう、利用者をセッションではなく引数(`CurrentUser`・`viewer`)で受け取り、bot対策をリゾルバ側に置いている(user-profile-socialの12.7、product-launchの7.8、directory-discoveryの`ProductPageReader`、engagementの`CommentReader`)。公開データの読み取りは閲覧者を未ログイン(`viewer: undefined`)として呼べば、画面と同じ公開範囲(FR-PAPI-009の除外)になる。
-  - api-gatewayの`createRestModule`は、`PublicRestRoutes`(`(api) => void`)を登録の順に呼んでから仕様の経路(`/openapi.json`)と`OPTIONS /*`を加える。最初の登録で`api.use('*', ...)`を呼べば、FR-RLMIT-007のIP単位の制限を仕様の配信を含む基準パスの全経路へ掛けられる。経路の認証・権限・回数の制限は`@hono/zod-openapi`の`createRoute`の`middleware`で経路ごとに掛ける。
+  - api-gatewayの`createRestModule`は、`PublicRestRoutes`(`(api) => void`)を登録の順に呼んでから仕様の経路(`/openapi.json`)と`OPTIONS /*`を加える。最初の登録で`api.use('*', ...)`を呼べば、FR-RLMIT-008のIP単位の制限を仕様の配信を含む基準パスの全経路へ掛けられる。経路の認証・権限・回数の制限は`@hono/zod-openapi`の`createRoute`の`middleware`で経路ごとに掛ける。
   - api-gatewayの設計は仕様書の`servers`を定めていない。経路は`/v1`にマウントした子のアプリに登録されるため、仕様書のパスは基準パスを含まず、`servers`が無いとSwagger UIの試行や外部のコード生成がオリジンの直下を呼んでしまう。相対の`servers: [{ url: '/v1' }]`と`info`の説明の追加をapi-gatewayへ依頼し、api-gatewayの改訂1として反映された(上流・後続specへの影響)。
   - `swagger-ui-react`の最新版(5.32.15〜5.33.2)はReact 19の`react-dom`の既定のエクスポートに`createRoot`が無いため実行時に空の画面になる(Gravitee PR #21289)。frontend-platformはReact 19.3.0で固定しているため使えない。`swagger-ui-dist`の5.33系を同一オリジンで配信し、外部ファイルから初期化すれば`script-src 'self'`の厳格なCSPで動いた報告が複数ある(todoless PR #134・Project-mAIstro PR #2041)。`img-src`の`data:`はfrontend-platformのCSPで許可済みである。
   - APIサーバーは画像配信のオリジンを知らない(`IMAGES_ORIGIN`はclient・adminの変数)。公開APIの応答に画像の絶対URLを入れるため、apiに`IMAGES_ORIGIN`を加える。clientは公開APIのオリジンを知らないため、Swagger UIの仕様書の取得と試行のために`PUBLIC_API_ORIGIN`を加え、CSPの`connect-src`へ実行時の許可先として入れる。
@@ -18,7 +18,7 @@
 | #   | 論点                                               | 根拠                                                                                                                                                                                                                                                | 選択肢                                                                                                                                                                                                                                                                                       | 推奨と仮の採用                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | --- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 仮1 | 停止中の利用者のAPIキーによる要求                  | FR-PAPI-009(停止されたデータを読み取りから除外し書き込みを拒否)、identity-authの6.4(停止中の利用者はログインできない)・`requireWritableUser`(停止中は`account_unavailable`)、FR-PAPI-008(削除は退会だけ)                                            | (A)全ての要求を403`account_unavailable`で拒否し、キーは残す / (B)公開データの読み取りは許し、書き込みと自分のデータの読み取りだけを拒否する                                                                                                                                                  | 推奨・仮の採用は(A)。停止中の利用者はログインできないため、APIキーによる認証も同じく拒否するのが一貫する。キーを消さないため、解除後にキーを作り直す必要が無い。(B)は停止中の利用者が自動化を続けられ、停止の効果が薄れる **2026-10-24に開発者が確定: 推奨と異なる(B)を採用**(公開データの読み取りは許し、書き込みと自分のデータの読み取りだけを403で拒否する)                                                                                                        |
-| 仮2 | 「権限スコープを引き継いだ新規キーの発行」(再発行) | FR-PAPI-006(引き継いだ新規キーを発行)、ページ配置の`/settings/api-keys`(「引き継ぎ再発行」)、briefの「権限を引き継いだ再発行」、FR-RLMIT-004(新規発行操作を1時間に3回)                                                                              | (A)同じ名前・権限スコープの新しいキーを発行し、同じ操作で元のキーを削除する(ローテーション)。発行の回数に数える / (B)元のキーを残し、新しいキーを追加で発行する                                                                                                                              | 推奨・仮の採用は(A)。「再発行」の語と合い、漏洩が疑われるキーを1つの操作で差し替えられる。(B)は「発行」と同じ結果に名前と権限の複写が付くだけで、元のキーの削除を忘れやすい。どちらも新しいキーの発行であるため、FR-RLMIT-004の回数に数える **2026-10-24に開発者が確定: 推奨と異なる(B)を採用**(元のキーを残し、同じ名前・権限スコープの新しいキーを追加で発行する。発行と同じ処理に名前と権限スコープの複写を加えたもので、キーの数に上限は無く、発行の回数に数える) |
+| 仮2 | 「権限スコープを引き継いだ新規キーの発行」(再発行) | FR-PAPI-006(引き継いだ新規キーを発行)、ページ配置の`/settings/api-keys`(「引き継ぎ再発行」)、briefの「権限を引き継いだ再発行」、FR-RLMIT-005(新規発行操作を1時間に3回)                                                                              | (A)同じ名前・権限スコープの新しいキーを発行し、同じ操作で元のキーを削除する(ローテーション)。発行の回数に数える / (B)元のキーを残し、新しいキーを追加で発行する                                                                                                                              | 推奨・仮の採用は(A)。「再発行」の語と合い、漏洩が疑われるキーを1つの操作で差し替えられる。(B)は「発行」と同じ結果に名前と権限の複写が付くだけで、元のキーの削除を忘れやすい。どちらも新しいキーの発行であるため、FR-RLMIT-005の回数に数える **2026-10-24に開発者が確定: 推奨と異なる(B)を採用**(元のキーを残し、同じ名前・権限スコープの新しいキーを追加で発行する。発行と同じ処理に名前と権限スコープの複写を加えたもので、キーの数に上限は無く、発行の回数に数える) |
 | 仮3 | 他の利用者の公開プロフィールの読み取り             | FR-PAPI-003(プロダクト・ローンチ履歴・Upvote・コメント・評価)、briefのDesired Outcome(「公開データ(プロフィール・…)の読み取り」)、プライバシーポリシー骨子の11行目と70行目(公開APIで第三者が公開情報を取得できる。公開情報に公開プロフィールを含む) | (A)「プロフィール」の権限スコープが読み取り以上なら、他の利用者の公開プロフィールも読める / (B)自分のプロフィールだけを読める                                                                                                                                                                | 推奨・仮の採用は(A)。briefとプライバシーポリシー骨子が公開プロフィールを公開APIの対象に含めている。公開プロフィールのページと同じ公開範囲(停止中・退会済みは404)を使うため、新しい公開の範囲は生じない。(B)はFR-PAPI-003の列挙には合うが、briefと食い違う **2026-10-24に開発者が確定(推奨どおり)**                                                                                                                                                                    |
 | 仮4 | Swagger UIを組み込むnpmパッケージ                  | NFR-MAINT-007(Swagger UI)、tech-stack.mdの「ドキュメント」(Swagger UIとだけ記載)、ページ配置(`/api-docs`は利用者側)、frontend-platformのCSP(外部のスクリプト・`'unsafe-eval'`を許さない)・React 19.3.0                                              | (A)`swagger-ui-dist`(5.33系。React 18を内蔵した単一の束を、clientのViteで遅延読み込みのチャンクとして同一オリジンから配信する) / (B)`swagger-ui-react`(React 19で実行時に動かない) / (C)`@hono/swagger-ui`(APIサーバーにページを置き、CDNから読み込む。`/api-docs`の配置とCSPの方針に反する) | 推奨・仮の採用は(A)。workerdでは動かさず、ブラウザだけで動く。継続的に保守されている公式の配布物で、厳格なCSPで動いた報告がある。新しいパッケージのため、CLAUDE.mdの規則に従い2026-10-24に開発者が承認して確定し、tech-stack.mdの「ドキュメント」はコントローラーが更新済みである                                                                                                                                                                                     |
 
@@ -28,9 +28,9 @@
 - 公開するプロダクトの範囲: 掲載中のプロダクトだけ(ページ配置の「プロダクト詳細の公開範囲」・directory-discoveryの`ProductPageReader`で未ログインの閲覧者に見えるもの)。自分の未掲載のプロダクトは「プロダクトの説明文」の自分のプロダクトの一覧でだけ扱う。
 - プロフィール画像の更新: COM-003によりファイルのアップロードはフロントエンドサーバーの中継に限られ、公開APIには画像を受け付ける経路が無い。プロフィールの更新は画像以外の項目に限り、画像は現在の値を保つ。
 - 未確認の利用者のキーの発行: FR-USER-006の制限(投稿・評価・コメント・Upvote・フォロー・決済・加入・データエクスポート)にAPIキーの発行は無い。プロフィールの更新(user-profile-socialの4.12)とプロダクトの編集(product-launchの確認済み事項)も未確認を拒否しない。
-- 発行の回数の制限と編集: FR-RLMIT-004は「新規発行操作」を数える。名前と権限スコープの編集は新規発行ではない。FR-PAPI-005の「編集時」により、既存のキーの権限スコープの編集を設ける(名前も同じフォームで編集できる)。
-- 回数の制限の期間とリセット: backend-platformの`RateLimitCounter`(最初の要求で期間を始め、Alarmで記録を消す)がFR-RLMIT-014・016の「期間の開始から1時間・1分でAlarmによりリセット」をそのまま満たす。
-- IP単位の制限の部品: backend-platformのresearch.md(Generalization)が「public-apiのFR-RLMIT-007も`bindingRateLimit`で実装できる」としている。プリフライトは公開APIの操作ではないため数えない(Worker単位の10秒100回の制限は掛かる)。
+- 発行の回数の制限と編集: FR-RLMIT-005は「新規発行操作」を数える。名前と権限スコープの編集は新規発行ではない。FR-PAPI-005の「編集時」により、既存のキーの権限スコープの編集を設ける(名前も同じフォームで編集できる)。
+- 回数の制限の期間とリセット: backend-platformの`RateLimitCounter`(最初の要求で期間を始め、Alarmで記録を消す)がFR-RLMIT-017・019の「期間の開始から1時間・1分でAlarmによりリセット」をそのまま満たす。
+- IP単位の制限の部品: backend-platformのresearch.md(Generalization)が「public-apiのFR-RLMIT-008も`bindingRateLimit`で実装できる」としている。プリフライトは公開APIの操作ではないため数えない(Worker単位の10秒100回の制限は掛かる)。
 - 波及処理と`order`: 退会のAPIキーの削除は同期の波及処理(`order`を持たない)で行う。4:21のジョブと非同期の波及処理は無い(物理削除の時点では退会の同期の処理でキーが消えており、発行の書き込みの`CASE`式で退会済み・停止中の利用者のキーを作らない)。roadmapの帯(1800番台)の使用中の値は「—」のままである。
 - 新しいパッケージ: `swagger-ui-dist`(仮4)だけである。APIキーの乱数・ハッシュはWeb Crypto API(backend-platformの`KeyedHasher`)、REST・OpenAPIは`@hono/zod-openapi`(api-gateway)、画面はfrontend-platformのshadcn/uiの部品を使う。
 - steering: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替する(directory-discoveryと同じ)。
@@ -56,7 +56,7 @@
 
 ### APIキーの形式・保存・照合
 
-- **Context**: NFR-SECUR-006・036、FR-PAPI-002、identity-authのトークンの扱い。
+- **Context**: NFR-SECUR-006・038、FR-PAPI-002、identity-authのトークンの扱い。
 - **Findings**:
   - identity-authはセッションと認証系トークンを32バイトのbase64url(43文字)で発行し、`KeyedHasher`のハッシュを一意索引の列に保存して、ハッシュの一致で引いている。HMACの出力は攻撃者が制御できないため、索引による等価比較の時間差から平文を推測できない。
   - 秘密の文字列に固定の接頭辞を付けると、利用者・リポジトリの秘密情報の検査がAPIキーを識別しやすい。
@@ -64,7 +64,7 @@
 
 ### 認証と回数の制限の順序
 
-- **Context**: FR-PAPI-002・FR-RLMIT-006・007・NFR-SECUR-037・043、api-gatewayの外部経路の後処理。
+- **Context**: FR-PAPI-002・FR-RLMIT-007・008・NFR-SECUR-039・045、api-gatewayの外部経路の後処理。
 - **Findings**:
   - IP単位の制限(Rate Limitingバインディング)は認証より前に掛けないと、無効なキーの総当たりを抑えられない。利用者単位の制限は利用者が決まった後でしか掛けられない。
   - 権限の不足を利用者単位の回数に数えると、誤った設定のクライアントが正常な経路の枠を使い果たす。
@@ -111,7 +111,7 @@
 
 ### Decision: IP単位の制限を最初の経路の登録で掛ける
 
-- **Context**: FR-RLMIT-007は仕様の配信を含む全経路が対象。api-gatewayに中間処理の登録口は無い。
+- **Context**: FR-RLMIT-008は仕様の配信を含む全経路が対象。api-gatewayに中間処理の登録口は無い。
 - **Selected Approach**: `PUBLIC_REST_ROUTES`の先頭に`publicApiIpRateLimitRoutes`(`api.use('*', bindingRateLimit(...))`、`OPTIONS`を除外)を置く。新しいバインディング`PUBLIC_API_RATE_LIMITER`(`limit: 60`・`period: 60`)を使い、キーは`public-api:<IP>`とする。
 - **Rationale**: api-gatewayの契約(`(api) => void`)の中で実現でき、上流を変えない。
 - **Trade-offs**: 登録の順序に依存する。順序をWorkers統合テストで確かめ、`rest-routes.ts`にその旨の注記を置く。
@@ -120,7 +120,7 @@
 
 - **Context**: 開発者が仮2で「元のキーを残し、同じ名前・権限スコープの新しいキーを追加で発行する」(案B)を確定した(2026-10-24)。
 - **Selected Approach**: `ApiKeyManagement.reissue`は`ApiKeyStore.findForOwner`で元のキーの名前と権限スコープを読み、発行と同じ処理(`API_KEY_ISSUE_RULE`の回数の制限→乱数とハッシュ→`ApiKeyStore.insert`)で新しいキーを加える。元のキーは変えない。`ApiKeyStore.replace`は作らない。
-- **Rationale**: FR-RLMIT-004は同時に有効なキーの数に上限を設けないため、キーが増えることは許される。新しいキーの発行であるため、発行の回数(1時間に3回)に数える。発行と同じ処理を通すため、停止中・退会済みの利用者の`CASE`式もそのまま効く。
+- **Rationale**: FR-RLMIT-005は同時に有効なキーの数に上限を設けないため、キーが増えることは許される。新しいキーの発行であるため、発行の回数(1時間に3回)に数える。発行と同じ処理を通すため、停止中・退会済みの利用者の`CASE`式もそのまま効く。
 - **Trade-offs**: 同じ名前のキーが複数並ぶ。一覧は発行日時で区別し、確認のダイアログで元のキーが残ることと、不要になったら削除することを示す。
 
 ### Decision: 説明文の更新の前に非公開化を判定する
@@ -181,7 +181,7 @@
 | 要件ID      | 内容                                                                                                                                                                         | 根拠     |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | FR-PAPI-009 | 「停止された利用者のAPIキーでも公開データの読み取りは許し、その利用者自身のデータの読み取りと書き込みは拒否する」旨を加える                                                  | 仮1(案B) |
-| FR-PAPI-006 | 「引き継いで発行した新規キーは元のキーと別に有効で、元のキーは削除されない。新規発行としてFR-RLMIT-004の回数に数える」旨を加える(現在の文言とは矛盾しないが、明記を推奨する) | 仮2(案B) |
+| FR-PAPI-006 | 「引き継いで発行した新規キーは元のキーと別に有効で、元のキーは削除されない。新規発行としてFR-RLMIT-005の回数に数える」旨を加える(現在の文言とは矛盾しないが、明記を推奨する) | 仮2(案B) |
 | FR-PAPI-003 | 取得できる公開データに公開プロフィールを加える                                                                                                                               | 仮3      |
 
 ## 上流・後続specへの影響
@@ -245,7 +245,7 @@
 ## 開発者の確定の反映(2026-10-24)
 
 - 仮1(推奨と異なる案B): 経路に対象(`public`・`own`)を設け、停止中の持ち主のキーは公開データの経路で処理し、`/v1/me`の下の自分のデータの4経路で403`account_unavailable`にした。`ApiKeyAuthorizer`は対象で`requireUser`・`requireWritableUser`を選ぶ。要件5.2・5.3、design.mdの`ApiTarget`・`definePublicApiRoute`・`apiKeyAuth`・経路の表の注記・テスト・セキュリティ、tasks.mdの2.1・4.1・4.2・5.2〜5.7・9.1を直した。
-- 仮2(推奨と異なる案B): 再発行は元のキーを残し、発行と同じ処理に名前と権限スコープの複写を加えたものにした。FR-RLMIT-004によりキーの数の上限は無く、発行の回数(1時間に3回)に数える。`ApiKeyStore.replace`を削った。要件3.4、design.mdの発行と再発行の流れ・`ApiKeyManagement.reissue`・ストア・確認のダイアログの文言・データモデル・テスト、tasks.mdの1.3・3.1・3.2・6.3を直した。
+- 仮2(推奨と異なる案B): 再発行は元のキーを残し、発行と同じ処理に名前と権限スコープの複写を加えたものにした。FR-RLMIT-005によりキーの数の上限は無く、発行の回数(1時間に3回)に数える。`ApiKeyStore.replace`を削った。要件3.4、design.mdの発行と再発行の流れ・`ApiKeyManagement.reissue`・ストア・確認のダイアログの文言・データモデル・テスト、tasks.mdの1.3・3.1・3.2・6.3を直した。
 - 仮3・仮4: 推奨どおり確定した。
 - api-gatewayの改訂1は`servers`と`info`だけで確定し、`Access-Control-Expose-Headers`は入らない。design.mdとtasks.mdの5.7・8.1から外した。
 - backend-platformの改訂3で、Sentryの伏せ字が例外・イベント・パンくずのメッセージとトレースのデータに広がった。design.mdの「上流への影響」と9.2の報告の文言を直した。

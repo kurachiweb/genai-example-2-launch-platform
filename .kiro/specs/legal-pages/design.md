@@ -10,7 +10,7 @@
 
 ### Goals
 
-- FR-ADMAG-006〜008とLR-001・LR-008の表示面が、下書きと公開を分けた形(Q3)で動作し、E2Eテストで下書きの保存から公開・過去版の表示までを確かめられる。
+- FR-ADMAG-007・008・010とLR-001・LR-008の表示面が、下書きと公開を分けた形(Q3)で動作し、E2Eテストで下書きの保存から公開・過去版の表示までを確かめられる。
 - 公開した全版の本文と公開者が残り、同意日時から版を一意に特定できる。
 - 同時の編集・公開で版番号の重複や後勝ちの上書きが起きない。
 - 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
@@ -205,7 +205,7 @@ docs/GUIDES/tech/db/005-draft-and-published-versions.md
 - `apps/admin/src/composition/admin-navigation.ts` — `{ to: '/legal-documents', label: '法務文書', order: 120 }`を加える。
 - `docs/GUIDES/tech/db/README.md` — `005`の行を加える。
 - `docs/GUIDES/service/design/002-page-layouts.md` — 利用者側のURLの表に過去版の3行、外部リンクの`rel`の表に法務文書(`noopener`)、法務文書の公開ページと過去版の配置の節、管理者側の法務文書の画面の構成とURL(仮4)を加える。
-- `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 入力欄の上限の表に法務文書の本文の行(上限100,000文字・必須・マークダウン・FR-ADMAG-006)を加え、本specの文言(「Error Handling」の表と、各画面部品に記した確認・状態・案内の文言)を追記する。
+- `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 入力欄の上限の表に法務文書の本文の行(上限100,000文字・必須・マークダウン・FR-ADMAG-007)を加え、本specの文言(「Error Handling」の表と、各画面部品に記した確認・状態・案内の文言)を追記する。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「法務文書の版(本文・変更概要・公開日時・公開した管理者のID)は無期限、削除の操作なし」「法務文書の下書きは公開・破棄で削除」の行を加え、「法務文書の改訂」を下書きと公開・過去版の掲示・周知の運用(Q4)・本番公開前の初版の公開(Q6)の内容に改める。
 - `docs/GUIDES/service/legal/002-terms-of-service-outline.md`・`003-privacy-policy-outline.md` — 章18・章13の要点に「改訂履歴と過去の各版の掲示」を加える。
 - `CLAUDE.md` — 「技術規則の参照先」に、下書きと公開した版を持つデータを設計する前に読む`db/005`へのリンクを加える。
@@ -800,7 +800,7 @@ export declare function useUnsavedChangesGuard(dirty: boolean): {
 | `legal_documents`         | `id` text(ULID)・`kind` text(`terms`・`privacy`・`legal-notice`)・`state_version` integer(既定0)・`latest_version_number` integer(既定0)・`draft_body` text?・`draft_saved_at` integer?(ミリ秒)・`draft_saved_by_admin_id` text?(外部キーなし)・`created_at`・`updated_at` | `kind`の一意索引、`kind`のCHECK制約                                            |
 | `legal_document_versions` | `id` text(ULID)・`document_id` text(`legal_documents.id`への外部キー)・`version_number` integer・`body` text・`change_summary` text・`published_at` integer(ミリ秒)・`published_by_admin_id` text(外部キーなし)・`created_at`・`updated_at`                                | `(document_id, version_number)`の一意索引、`(document_id, published_at)`の索引 |
 
-- 主キーはULID(DR-009)。日時はUTCのエポックミリ秒(I18N-002、`timestamps()`と同じ)。
+- 主キーはULID(DR-014)。日時はUTCのエポックミリ秒(I18N-002、`timestamps()`と同じ)。
 - 文書の行は削除しないため、版の外部キーの削除時の動作は指定しない。
 
 ### Data Contracts & Integration
@@ -858,7 +858,7 @@ export declare function useUnsavedChangesGuard(dirty: boolean): {
 ## Security Considerations
 
 - 下書きと公開者は管理者側の許可リストの操作だけが返し、公開の型にはその項目が存在しない(3.9・6.5)。管理の照会と変更は`requireAdmin`を先頭で通す。
-- 本文はマークダウンの原文で保存し、表示はcontent-processingのサニタイズを通す(FR-MDOWN-009・010)。外部リンクは別タブで`noopener`。
+- 本文はマークダウンの原文で保存し、表示はcontent-processingのサニタイズを通す(FR-MDOWN-011・012)。外部リンクは別タブで`noopener`。
 - 変更概要は公開されるため、入力欄の近くに「変更概要は利用者側のページに公開されます。」と示す。
 
 ## Performance & Scalability

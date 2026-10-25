@@ -17,9 +17,9 @@
 
 | #   | 論点                                                      | 根拠                                                                    | 回答(2026-10-17)                                                                                                                                                                                             |
 | --- | --------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Q1  | GraphQLのスキーマの定義方式と導入するパッケージ           | briefのApproach・CLAUDE.md(新規パッケージ)・NFR-PERF-004・NFR-MAINT-004 | 推奨案。スキーマファーストと型生成を採用し、`@graphql-codegen/cli` 7.4.3・`@graphql-codegen/typescript` 6.1.0・`@graphql-codegen/typescript-resolvers` 6.1.0を導入する。`graphql`は16.14.2に固定する         |
+| Q1  | GraphQLのスキーマの定義方式と導入するパッケージ           | briefのApproach・CLAUDE.md(新規パッケージ)・NFR-PERF-008・NFR-MAINT-004 | 推奨案。スキーマファーストと型生成を採用し、`@graphql-codegen/cli` 7.4.3・`@graphql-codegen/typescript` 6.1.0・`@graphql-codegen/typescript-resolvers` 6.1.0を導入する。`graphql`は16.14.2に固定する         |
 | Q2  | 利用者側と管理者側で実行できるGraphQL操作の範囲を分けるか | SW-001・COM-004・NFR-SECUR-008・NFR-SECUR-019・admin-foundationのbrief  | 推奨案。スキーマは1つとし、許可リストを呼び出し元別にする                                                                                                                                                    |
-| Q3  | デプロイ後、現行版から消えた操作をいつまで受け付けるか    | NFR-SECUR-019・NFR-AVAIL-004・NFR-AVAIL-005・brief                      | 推奨案ではなく「直前のリリース分まで受け付ける」を採用。現行版と直前の版の操作を合わせて受け付け、それより古い操作は自動で外れる。デプロイ履歴の保持方法は設計で決め、新しいリソースが必要なら追加で確認する |
+| Q3  | デプロイ後、現行版から消えた操作をいつまで受け付けるか    | NFR-SECUR-019・NFR-AVAIL-005・NFR-AVAIL-006・brief                      | 推奨案ではなく「直前のリリース分まで受け付ける」を採用。現行版と直前の版の操作を合わせて受け付け、それより古い操作は自動で外れる。デプロイ履歴の保持方法は設計で決め、新しいリソースが必要なら追加で確認する |
 | Q4  | ローカル環境でGraphiQLを使うための例外                    | tech-stack.md・COM-003・NFR-SECUR-015・NFR-SECUR-018・NFR-SECUR-019     | 推奨案。ローカル環境だけGraphiQLの経路を外部経路に開き、その経路だけで任意の操作とintrospectionを許す。フロントエンドからの中継には、ローカルでも許可リストを適用する                                        |
 | Q5  | クエリの複雑度(コスト)の算出方法と上限値                  | NFR-SECUR-017                                                           | 推奨案。GraphQL Armorの既定の算出方法と上限5000を使い、登録済みの全操作が上限以下であることを検査で確かめる                                                                                                  |
 | Q6  | セキュリティヘッダーをAPI・イベントサーバーへ付けるspec   | NFR-SECUR-010・frontend-platformのbrief・backend-platformのdesign       | 推奨案。本specが共有コードに部品を作り、apiとeventの両方の全応答に付ける。画像配信のCSPはmedia-pipelineが上書きできるようにする                                                                              |
@@ -39,18 +39,18 @@
 - briefの「要件フェーズで開発者に確認する」論点: 該当は無い。スキーマの定義方式は設計フェーズの扱いだったが、新しいパッケージを伴うためQ1で先に確認した。
 - CIへの組み込み: `.github/workflows`はinfra-deliveryが所有する(roadmap、dev-tooling・backend-platformの前例)。本specはスキーマの出力・生成物の検査・許可リストの生成を、CIから呼べるコマンドとして提供する。
 - 内部認証の手段: Service Bindingsの名前付きエントリポイントへはService Binding経由でしか到達できず、`ctx.props`はデプロイ権限を持つ者しか設定できない(Cloudflare Docs「Context」)。秘密鍵を共有せずに呼び出し元を識別できるため、詳細は設計で決める。
-- セッションの分担: identity-authのbriefがセッションの発行・失効・保存(NFR-SECUR-002・028〜030)を受け持つ。本specは、識別子の受け渡しの契約と検証のポートだけを持ち、identity-authの実装が入るまでは常に未ログインとして扱う。
+- セッションの分担: identity-authのbriefがセッションの発行・失効・保存(NFR-SECUR-002・029〜031)を受け持つ。本specは、識別子の受け渡しの契約と検証のポートだけを持ち、identity-authの実装が入るまでは常に未ログインとして扱う。
 - persisted documentsの保管場所: KVなどの新しいリソースを使わず、APIのバンドルに含める前提で設計する。新しい操作を含むフロントエンドを出すときにAPIを先にデプロイする順序を、infra-deliveryとの契約にする。
-- ページングと共通スカラー: 要件定義書がカーソル型(FR-FOLOW-006・FR-COMNT-004)とオフセット型(FR-DIR-008)の両方を求めるため、両方の共通の型と日時のスカラーを規約に含める。
+- ページングと共通スカラー: 要件定義書がカーソル型(FR-FOLOW-006・FR-COMNT-004)とオフセット型(FR-DIR-011)の両方を求めるため、両方の共通の型と日時のスカラーを規約に含める。
 - サブスクリプションとGraphQLのマルチパートアップロード: リアルタイム配信の要件が無く、アップロードはSW-009のストリーミング中継(media-pipeline)で行うため、範囲外として無効にする。
 - SW-009・SW-011の中継先となる内部REST: 本specは内部経路だけで受け付ける経路の追加規約を提供し、経路自体はmedia-pipelineが追加する。
 - introspectionとGraphiQLを無効にする環境: NFR-SECUR-018の「デプロイ先環境」とtech-stack.mdから、stagingとprodの両方で無効にする。
 - `graphql`の版: GraphQL Armor 3.2.0(最終リリース2025-12-29)が`graphql` ^16.10を直接依存に持つため、二重読み込みを避けて16.14.2に固定する。`@hono/zod-openapi` 1.6.3の相手依存(zod ^4・hono >=4.10)は、上流で固定した版と合う。
 - 上流の契約とのずれ: backend-platformの`ClientIpResolver`は`Request`だけを受け取り、ミドルウェアの順序は`createWorkerApp`だけが定める。中継の判定はエントリでの印付けで、IP制限の429へのCORSヘッダーの付与はエントリでの応答の後処理で、上流の契約を変えずに実現する。
-- GraphQLでのレート制限の応答: FR-RLMIT-001〜005の対象はGraphQLのミューテーションで提供されるため、レート制限の超過はGraphQLの応答でも429と`Retry-After`を返す。
+- GraphQLでのレート制限の応答: FR-RLMIT-001・003〜006の対象はGraphQLのミューテーションで提供されるため、レート制限の超過はGraphQLの応答でも429と`Retry-After`を返す。
 - RESTのエラー形式とバリデーションエラーの状態コード: CLAUDE.mdに従い`ecc:api-design`(400・422の使い分け)とbackend-platformの共通のエラー形式に従う。
 - Armorのその他の保護: トークン数1000・ディレクティブ数50・フィールド候補の非表示を既定のまま有効にする。
-- briefの要件IDの誤記: 「GraphQLのクライアント観測p95は300ms以内(NFR-PERF-002)」はNFR-PERF-003の誤りである。計測と検証はfrontend-platform・launch-readinessが行う。
+- briefの要件IDの誤記: 「GraphQLのクライアント観測p95は300ms以内(NFR-PERF-004)」はNFR-PERF-007の誤りである。計測と検証はfrontend-platform・launch-readinessが行う。
 - steering: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替する。
 
 ## Research Log
@@ -174,7 +174,7 @@
 
 ### Decision: セッションの検証は最初の参照時に1回だけ行う
 
-- **Context**: 要件3・NFR-PERF-003。
+- **Context**: 要件3・NFR-PERF-007。
 - **Selected Approach**: `SessionAccess.principal()`を最初に呼んだときに`SessionVerifier.verify`を1回だけ呼び、結果を処理単位の中で使い回す。認証を要さない操作ではデータベースへ問い合わせない。Cookieの発行・削除の指示は、処理の終わりに応答ヘッダーへ反映する。
 
 ### Generalization・Build vs Adopt・Simplification

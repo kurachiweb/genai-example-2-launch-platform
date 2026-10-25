@@ -137,7 +137,7 @@ export const OPTION_LABELS = {
     values: { off: '未加入', on: '加入中' },
   },
   flag: {
-    title: 'Ultras導線の機能フラグ(FR-ADMCF-018)',
+    title: 'Ultras導線の機能フラグ(FR-ADMCF-022)',
     values: { on: 'ON', off: 'OFF' },
   },
   history: {
@@ -160,7 +160,7 @@ export const OPTION_LABELS = {
   },
   bye: { title: '不戦勝の履歴', values: { off: '無し', on: 'あり' } },
   early: {
-    title: '早期勝敗決定の履歴(FR-GAME-013等)',
+    title: '早期勝敗決定の履歴(FR-GAME-015等)',
     values: { off: '無し', on: 'あり' },
   },
   opponents: {

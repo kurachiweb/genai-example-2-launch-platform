@@ -10,7 +10,7 @@
 
 ### Goals
 
-- FR-ADMUG-001〜014・019(投稿者への通知)・025〜028と、FR-ADMAG-001〜003のうち本specの操作が、要件と、2026-10-24に開発者が確定した仮1〜仮9の決定に一致する。
+- FR-ADMUG-001・004〜014・017・018・030(投稿者への通知)・025〜028と、FR-ADMAG-001〜003のうち本specの操作が、要件と、2026-10-24に開発者が確定した仮1〜仮9の決定に一致する。
 - 状態を変える措置の監査ログと措置の記録が、状態の変更と同じ一括の書き込みで確定し、競合や既に同じ状態のときに何も残らない。
 - 波及処理を実装せず、上流のライフサイクルと操作口だけで連鎖させる。
 - 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
@@ -20,7 +20,7 @@
 - 通報の管理・集約・申出者への通知・権利侵害の照会(content-reporting)。スポンサー広告の強制終了(sponsorship)。
 - 波及処理の中身(match-engine・product-launch・media-pipeline・user-profile-social・directory-discovery・sponsorship・tournament-week・tournament-year・ultras-subscription・identity-auth)。
 - 監査ログの保存と閲覧画面・管理者の認可の部品・管理画面のシェル(admin-foundation)。問い合わせの画面と問い合わせの詳細の操作(inquiry-chat)。代理の退会の依頼の受け付け・本人の意思の確かめ・完了の知らせ(運営者がシステムの外で行う)。
-- 措置の取り消し・評価の無効化・画像の操作の投稿者への通知(FR-ADMUG-019の対象外)。
+- 措置の取り消し・評価の無効化・画像の操作の投稿者への通知(FR-ADMUG-030の対象外)。
 - 要件定義書の改訂(roadmapのOut。必要な改訂は[research.md](research.md)の「要件定義書の改訂が必要な箇所」に記録した)。(2026-10-25に要件定義書へ適用済み)
 
 ## Boundary Commitments
@@ -41,7 +41,7 @@
 - `users`の状態の遷移・退会の確定・物理削除(identity-auth)。本specは`UserSuspension`・`AdministrativeWithdrawal`を呼び、`users`へ書き込まない。
 - `products`・`product_launches`の状態の遷移・未開始のローンチの取り消し・ロゴとスクリーンショットの隔離(product-launch)。本specは`ProductVisibilityControl`を呼ぶ。
 - `launch_comments`・`product_ratings`の状態の変更(engagement)。本specは`CommentModerationControl`・`RatingModerationControl`を呼ぶ。
-- 隔離理由のデータ・バケット間の移動・削除の実行・FR-ADMUG-028の不変条件(media-pipeline)。本specは`MediaQuarantine`・`MediaFiles`を呼び、`AdminMediaReviewPolicy`の束縛を差し替える。
+- 隔離理由のデータ・バケット間の移動・削除の実行・FR-ADMUG-050の不変条件(media-pipeline)。本specは`MediaQuarantine`・`MediaFiles`を呼び、`AdminMediaReviewPolicy`の束縛を差し替える。
 - 停止・停止解除に伴う画像の隔離理由の付け外し(user-profile-social)、マッチの即時の終了・Upvoteの論理削除(match-engine)、索引(directory-discovery)、広告の表示の条件と表示停止の日割り返金(sponsorship)、トーナメントの分類と自動返金(tournament-week・tournament-year)、Ultrasの解約(ultras-subscription)。
 - 監査ログのテーブル・記録の部品・閲覧画面、`user.email-search`の定義(admin-foundation)。問い合わせのデータと画面(inquiry-chat)。決済履歴のデータ(payments)。
 - 通報からの措置の画面・申出者への通知(content-reporting)。本specは措置のユースケースとプロダクト詳細の区画の登録口を提供するだけである。
@@ -402,7 +402,7 @@ stateDiagram-v2
     Deleted --> [*]
 ```
 
-- 公開承認は自動判定の理由、隔離の解除は管理者操作の理由だけを外し、非公開化・ユーザー停止の理由は外さない(11.6・11.9・11.12)。公開に戻すかはmedia-pipelineの`desiredLocation`が全理由で決める(FR-ADMUG-028)。
+- 公開承認は自動判定の理由、隔離の解除は管理者操作の理由だけを外し、非公開化・ユーザー停止の理由は外さない(11.6・11.9・11.12)。公開に戻すかはmedia-pipelineの`desiredLocation`が全理由で決める(FR-ADMUG-050)。
 - 削除は隔離画像(理由が1つ以上)だけを受け付け、`MediaFiles.eraseNow`を呼ぶ。公開中の画像は先に個別の隔離を経る。
 - 記録は媒体の操作の後に、措置の記録と監査ログを1つの一括の書き込みで書く。記録の失敗はエラーを返し、再実行は媒体の操作が冪等(理由の追加・解除は変化が無ければ何もしない、削除済みのファイルは記録だけを書く)なため結果が重ならない。
 

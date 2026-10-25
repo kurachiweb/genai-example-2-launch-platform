@@ -28,7 +28,7 @@
 - CSRF対策(Sec-Fetch-Siteの検証、server functionsのCSRFミドルウェア)、nonce付きCSP、認証が必要なページの`no-store`などのセキュリティヘッダーが有効である(NFR-SECUR-009〜011ほか)。
 - GraphQL Code Generator(client-preset)とpersisted documents、TanStack Queryと`@tanstack/react-router-ssr-query`、Jotaiの利用規約が確立している。
 - Tailwind CSSとshadcn/uiによるデザインシステムがある。モックアップのデザイントークン(深緑・ゴールド・琥珀・シルバー・Legend・ダークモード)を移植済みである。
-- `apps/frontend-lib`に共通部品があり、Storybookでプレビューできる。対象はフォーム部品(React Hook FormとZod、フォーカスが外れた時の検証表示、UI-004)、状態表示(UI-005)、404・エラーページ、`<time>`による日時表示、Turnstileウィジェット、トーストなどである。
+- `apps/frontend-lib`に共通部品があり、Storybookでプレビューできる。対象はフォーム部品(React Hook FormとZod、フォーカスが外れた時の検証表示、UI-005)、状態表示(UI-006)、404・エラーページ、`<time>`による日時表示、Turnstileウィジェット、トーストなどである。
 - 利用者側の共通レイアウト(ヘッダー・フッター)と、管理者側の基本レイアウトがある。
 - 「ページ→BFF→API GraphQL→D1」の疎通を確認する画面とPlaywrightのスモークE2Eがある。
 - Web AnalyticsとSentry(フロントエンド)が組み込まれている。

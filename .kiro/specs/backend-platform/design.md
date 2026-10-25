@@ -12,7 +12,7 @@
 
 - 両サーバーが同じ層構成・同じ依存性の組み立て方で動き、3つの変換経路(Bun・Vitest/Oxc・Wrangler/esbuild)で同じ依存を解決する。
 - 後続specは、登録箇所への追記だけで、ルート・依存・定期実行のジョブ・非同期メッセージの種別・IP制限の除外を組み込める。
-- ログとエラーレポートから個人情報が除かれ(DR-008・NFR-OBLOG-004)、想定外のエラーはSentryで検知できる。
+- ログとエラーレポートから個人情報が除かれ(DR-013・NFR-OBLOG-004)、想定外のエラーはSentryで検知できる。
 - 両サーバーの単体テスト・Workers統合テストがカバレッジ80%を満たし、一括検査に参加する。
 
 ### Non-Goals
@@ -143,7 +143,7 @@ graph TB
 | エラートラッキング    | @sentry/cloudflare 11.4.0・@sentry/hono 11.4.0                                                                                             | 例外の送信とトレース                                | tech-stack記載済み                                                 |
 | データ                | Cloudflare D1・R2(画像・ファイル・隔離)・Durable Objects(SQLite)                                                                           | 永続化、厳密カウンタ                                | D1名とバケット名は「Supporting References」                        |
 | 非同期                | Cloudflare Queues(本体とデッドレター)・Cron Triggers                                                                                       | 非同期メッセージと定期実行                          | consumerとCron Triggersの置き場所は後述                            |
-| レート制限・bot対策   | Rate Limitingバインディング・Turnstile siteverify                                                                                          | FR-RLMIT-008、SW-018                                | Turnstileは`fetch`で直接呼ぶ                                       |
+| レート制限・bot対策   | Rate Limitingバインディング・Turnstile siteverify                                                                                          | FR-RLMIT-009、SW-018                                | Turnstileは`fetch`で直接呼ぶ                                       |
 | 開発・テスト          | wrangler 4.124.0・vitest 4.1.11・@vitest/coverage-istanbul 4.1.11・@cloudflare/vitest-pool-workers 0.22.0・@types/bun 1.4.2・品質ツール6種 | ローカル起動、型生成、Workers統合テスト、単体テスト | dev-toolingの主要パッケージ一覧の版                                |
 
 ## File Structure Plan
@@ -208,7 +208,7 @@ apps/
 │       ├── rate-limit/rate-limit-counter.ts # Durable Objectクラス
 │       ├── rate-limit/rate-limit-counter-client.ts
 │       ├── rate-limit/binding-rate-limit.ts # Rate Limitingバインディングの汎用ミドルウェア
-│       ├── rate-limit/ip-rate-limit.ts      # FR-RLMIT-008
+│       ├── rate-limit/ip-rate-limit.ts      # FR-RLMIT-009
 │       ├── rate-limit/client-ip.ts          # ClientIpResolverと既定の実装
 │       ├── rate-limit/exclusions.ts         # RateLimitExclusionと生成関数
 │       ├── bot-protection/turnstile-verifier.ts
@@ -1870,7 +1870,7 @@ export declare function isNearBusinessDayBoundary(now: Date): boolean; // UTCの
 | `deleted_at` | `INTEGER`             | NULL可        | 論理削除の日時。NULLは未削除    |
 | 任意の列     | `TEXT COLLATE NOCASE` | 任意          | `textNoCase`                    |
 
-- 全文検索用のテーブルは`INTEGER PRIMARY KEY`の連番(DR-009)。仮想テーブルとトリガーは手書きのマイグレーション(`db/002`)。
+- 全文検索用のテーブルは`INTEGER PRIMARY KEY`の連番(DR-014)。仮想テーブルとトリガーは手書きのマイグレーション(`db/002`)。
 
 **厳密カウンタ(Durable Object、SQLiteストレージのKV)**
 
@@ -1960,9 +1960,9 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
 
 ## Security Considerations
 
-- 個人情報: ログはフィールド名と値のパターンの二段で伏せ字にし、呼び出しログを無効にする(DR-008)。Sentryは`sendDefaultPii: false`と除去処理でIPアドレス等を送らず、例外の値・メッセージ・パンくず・トランザクションとスパンに紛れた秘密情報も値の形式で伏せる(NFR-OBLOG-004、承認後の改訂3)。デッドレターの通知に本文を含めない。
+- 個人情報: ログはフィールド名と値のパターンの二段で伏せ字にし、呼び出しログを無効にする(DR-013)。Sentryは`sendDefaultPii: false`と除去処理でIPアドレス等を送らず、例外の値・メッセージ・パンくず・トランザクションとスパンに紛れた秘密情報も値の形式で伏せる(NFR-OBLOG-004、承認後の改訂3)。デッドレターの通知に本文を含めない。
 - 秘密情報: `HASH_PEPPER`・`TURNSTILE_SECRET_KEY`・`SENTRY_DSN`はInfisicalで管理し、`secrets.required`でキー名だけを宣言する。ローカルでも`.dev.vars`を作らない。
-- レート制限キー: Durable Objectsに保存するキーは`HashedRateLimitKey`型で強制し、元のIPアドレス・メールアドレスを保存しない(FR-RLMIT-017)。
+- レート制限キー: Durable Objectsに保存するキーは`HashedRateLimitKey`型で強制し、元のIPアドレス・メールアドレスを保存しない(FR-RLMIT-020)。
 - IP制限の除外は、署名・トークンで真正性を確かめる経路と、エッジキャッシュの後ろの画像配信に限る(Q1)。除外の登録は各specのコードレビューの対象とする。
 - bot判定はフェイルクローズで、判定サービスの障害時も保護対象の操作を通さない。
 - 中継された元のクライアントIPは、api-gatewayの内部認証を伴う場合だけ信頼する(NFR-SECUR-015)。本specの既定のリゾルバは任意のヘッダーを信頼しない。
@@ -2006,4 +2006,4 @@ graph LR
 | `TURNSTILE_EXPECTED_HOSTNAMES`    | 空(照合しない)                                              | `genai-example-2-client-staging.lab.kurachiweb.com,genai-example-2-admin-staging.lab.kurachiweb.com` | `genai-example-2-client.lab.kurachiweb.com,genai-example-2-admin.lab.kurachiweb.com` |
 
 - staging・prodの`database_id`はinfra-deliveryがOpenTofuで作成したD1の値に置き換える(両アプリ同時に)。
-- prodの`SENTRY_TRACES_SAMPLE_RATE`は、フロントエンドのNFR-PERF-003(10回に1回)に合わせた。
+- prodの`SENTRY_TRACES_SAMPLE_RATE`は、フロントエンドのNFR-PERF-007(10回に1回)に合わせた。

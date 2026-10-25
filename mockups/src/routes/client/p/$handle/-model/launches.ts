@@ -37,7 +37,7 @@ export type HistoryMatch = {
   // 同数で勝敗を最終Upvote時間で決めた場合の結果
   tieBreak: 'won' | 'lost' | null;
   opponent: OpponentView | null;
-  // 退会・停止したユーザーを除いたサポーター数(FR-DIR-011)
+  // 退会・停止したユーザーを除いたサポーター数(FR-DIR-014)
   supporterCount: number;
 };
 
