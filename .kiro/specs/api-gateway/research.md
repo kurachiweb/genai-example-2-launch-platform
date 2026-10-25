@@ -207,3 +207,19 @@
 - [GraphQL over HTTP Appendix A](https://github.com/graphql/graphql-over-http/blob/main/spec/Appendix%20A%20--%20Persisted%20Documents.md) — `sha256:`付きの識別子
 - [GraphQL Code Generator: typescript-resolvers](https://the-guild.dev/graphql/codegen/plugins/typescript/typescript-resolvers) — リゾルバの型
 - [Hono: Zod OpenAPI](https://hono.dev/examples/zod-openapi) — 経路と仕様の一体化
+
+## public-apiの依頼による承認後の改訂(改訂1、2026-10-24)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、public-apiの依頼による。2026-10-24に開発者が確定(Expose-Headersを除く)。開発者に確認したQ1〜Q6とは別に、`requirements.md`の「承認後の改訂」の表に改訂1として記録した。本specの改訂はすべて確定している。
+- **Context**: public-apiのresearch.mdの「上流・後続specへの影響」(コーディネーター経由。requested by public-api)。本specの経路は`/v1`にマウントした子のアプリに登録されるため仕様書の`paths`は基準パスを含まず、`servers`が無いとSwagger UIの試行や外部のコード生成がオリジンの直下を呼んでしまう。また仕様書の`info`(認証・権限・回数の制限の説明)を登録箇所から渡す口が無く、public-apiのタスク7.2が保留になっていた。あわせて、公開APIのCORSに回数の制限のヘッダーを公開する`Access-Control-Expose-Headers`を加える依頼(推奨の改訂)もあった。
+- **改訂の内容**(確定):
+  - `createRestModule(routes, options?: { readonly info?: { readonly title: string; readonly version: string; readonly description?: string } })`とし、`doc31`へ`info: options?.info ?? 既定の情報`と`servers: [{ url: PUBLIC_API_BASE_PATH }]`(`/v1`)を渡す。未指定なら既定の`title`(`Launch Stadium Public API`)と`version`(`1.0.0`)を使う(要件10.9・10.10)。
+- **採用しなかった依頼**: `createPublicApiCorsPolicy`が基準パスの下の全応答に`Access-Control-Expose-Headers: Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset`を付ける案(`PUBLIC_API_EXPOSED_HEADERS`)。開発者の回答(第20回)は「serversとinfoだけ。Access-Control-Expose-Headersは入れない」で、推奨と異なる。一度加えた要件11.6と、設計・タスク(7.2・8.2・9.2・9.5)・テストの該当部分を取り除き、CORSは改訂の前の値(`Access-Control-Expose-Headers`を付けない)に戻した。ブラウザのクライアントは回数の制限のヘッダーを読めないが、サーバー間の利用には影響しない。
+- **Alternatives Considered**:
+  1. 相対の`servers`と登録箇所からの`info`(採用)
+  2. 仕様書のパスに基準パスを含める(子のアプリを`/v1`にマウントする構成と`@hono/zod-openapi`の経路の登録を変える必要がある)
+  3. 絶対URLの`servers`(環境ごとのオリジンを本specが知る必要があり、Wrangler設定の変数が増える)
+- **Rationale**: 相対の`servers`は仕様書の場所に対して解決されるため、ローカル・staging・prodのいずれでも同じ値で正しい基準パスを指す。`info`は既定値を持つ省略可能な引数とし、本specの段階の呼び出し(`createRestModule(REST_ROUTES)`)を変えない。
+- **変えた箇所**(確定後): 要件10.9・10.10と「承認後の改訂」の表、設計のRevalidation Triggers・追跡表・コンポーネントの表・`PublicApiApp・Responses・RouteTable・CorsPolicy・RestModule`の契約と説明・`api-worker.ts`の説明・`backend/005`の内容・Testing Strategy・本specが定める固有の値、タスク7.3・9.2・9.5(仕様書の`servers`と`info`)。改訂1によるタスク7.2の変更として残るのは、`_Boundary: RouteTable, CorsPolicy_`の追加だけである(テスト・実装・完了状態・要件の対応は改訂の前に戻した)。番号の変更は無い。
+- **変更部分のタスクの検証(改訂1の追加時、Expose-Headersを含む範囲)**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。判定はPASSだった。軽微の指摘のうち、9.5の固有の値の記載対象に相対のサーバーを加え、7.3の関数名と引数の名前を能力の表現に改めた(Expose-Headersに関する修正は確定の際に取り除いた)。
+- **変更部分のタスクの検証(2026-10-24の確定後の範囲)**: Expose-Headersを取り除いた後の要件・設計・タスク・research.mdを、新しいサブエージェントによる独立した確認(independent)でレビューした。要件の90件の受け入れ基準の番号がすべてタスクと設計の追跡表にあることを機械的に確かめた。1回目の判定はPASSだった。軽微の指摘のうち、本節の7.2の記述と、検証の範囲の区別を直した。`Access-Control-Expose-Headers`が付かないことを確かめるテストの追加は、取り除く指示の範囲を超えるため加えていない。タスクの承認を保った。

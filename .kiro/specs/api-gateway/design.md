@@ -62,7 +62,7 @@
 - 操作の一覧の場所・形式・識別子の形式、スキーマファイルの場所(frontend-platform)。
 - `GraphQLSchemaModule`・`GraphQLContext`・`defineLoader`・`withValidatedArgs`・ページングの型、上限値(全ドメインspec)。
 - `SessionVerifier`・`Principal`・`SessionIssue`の形(identity-auth・admin-foundation)。
-- 基準パス、`PublicRestRoutes`・応答のスキーマ部品・認証方式の名前(public-api)。
+- 基準パス、`PublicRestRoutes`・応答のスキーマ部品・認証方式の名前、`createRestModule`の`options.info`の形、仕様書の相対の`servers`(public-api)。
 - `/internal`の接頭辞、`InternalRoutes`の形、`createSessionAccess`の形(media-pipeline)。
 - セキュリティヘッダーの値とCSPの置き換えの規則(media-pipeline・launch-readiness)。
 - `graphql:allowlist --previous-ref`の引数とデプロイの順序(infra-delivery)。
@@ -411,6 +411,8 @@ sequenceDiagram
 | 10.6        | 成功応答の共通の型                        | Responses                                                   | `dataEnvelope`・`offsetListEnvelope`・`cursorListEnvelope` | —          |
 | 10.7        | Bearer認証の宣言                          | PublicApiApp・Responses                                     | `API_KEY_SECURITY`                                         | —          |
 | 10.8        | 仕様の配信経路だけ                        | RestModule・ApiCompositionUpdates                           | 空の`REST_ROUTES`                                          | —          |
+| 10.9        | 相対のサーバーで基準パスを示す            | RestModule                                                  | `doc31`の`servers: [{ url: '/v1' }]`                       | 外部経路   |
+| 10.10       | 登録箇所からの題名・版・説明の指定        | RestModule                                                  | `createRestModule`の`options.info`                         | —          |
 | 11.1        | 全応答にACAO・ACAM・ACAH                  | CorsPolicy・PublicEntrypoint・RouteTable                    | `headersFor`                                               | 外部経路   |
 | 11.2        | 更新系はContent-Type                      | CorsPolicy                                                  | 本文を受け取るメソッドの判定                               | —          |
 | 11.3        | プリフライトは204                         | RestModule                                                  | `OPTIONS /v1/*`                                            | 外部経路   |
@@ -451,7 +453,7 @@ sequenceDiagram
 | SchemaModule・SchemaComposer・PlatformTypeDefs・DateTimeScalar | presentation/graphql                      | モジュールの契約・合成・印字                           | 8.1, 8.2, 8.6, 9.1, 9.2, 9.3                  | graphql (P0)                                     | Service, State |
 | SystemModule・SystemStatusQuery・D1DatabaseProbe               | presentation・application・infrastructure | 疎通確認(参照実装)                                     | 8.4, 8.8                                      | Database (P0)                                    | API, Service   |
 | SessionVerifierPort・AnonymousSessionVerifier                  | application                               | セッションの検証のポートと既定の実装                   | 3.1〜3.4                                      | —                                                | Service        |
-| PublicApiApp・Responses・RouteTable・CorsPolicy・RestModule    | presentation/rest                         | 公開RESTの骨格とCORS                                   | 10.1〜10.8, 11.1〜11.5                        | @hono/zod-openapi (P0)                           | API, Service   |
+| PublicApiApp・Responses・RouteTable・CorsPolicy・RestModule    | presentation/rest                         | 公開RESTの骨格とCORS                                   | 10.1〜10.10, 11.1〜11.5                       | @hono/zod-openapi (P0)                           | API, Service   |
 | SecurityHeaders                                                | backend-lib/workers                       | セキュリティヘッダーの付与                             | 12.1〜12.3                                    | —                                                | Service        |
 | SentryScrubAdditions                                           | backend-lib/core                          | 追加ヘッダーのSentryからの除去                         | 2.2, 3.7                                      | backend-platformの`scrubEvent` (P0)              | Service        |
 | GraphQLScripts                                                 | scripts                                   | 生成・検査・許可リスト                                 | 4.9, 5.5〜5.9, 9.1〜9.4                       | Git (P1)、GraphQL Code Generator (P0)            | Batch          |
@@ -1165,7 +1167,7 @@ export declare const SESSION_TOKEN_PATTERN: RegExp; // /^[A-Za-z0-9_-]{43}$/(32�
 | Field        | Detail                            |
 | ------------ | --------------------------------- |
 | Intent       | 公開RESTの骨格・OpenAPI仕様・CORS |
-| Requirements | 10.1〜10.8, 11.1〜11.5            |
+| Requirements | 10.1〜10.10, 11.1〜11.5           |
 
 **Contracts**: API [x] / Service [x]
 
@@ -1243,6 +1245,13 @@ export declare function createPublicApiCorsPolicy(
 ): CorsPolicy; // CorsPolicyはpresentation/gatewayの契約。基準パスの外ならundefined
 export declare function createRestModule<E extends PlatformEnv>(
   routes: readonly PublicRestRoutes<E>[],
+  options?: {
+    readonly info?: {
+      readonly title: string;
+      readonly version: string;
+      readonly description?: string;
+    };
+  },
 ): {
   readonly module: AppModule<Hono<PlatformHonoEnv<E>>>;
   readonly routeTable: PublicRouteTable;
@@ -1250,9 +1259,10 @@ export declare function createRestModule<E extends PlatformEnv>(
 ```
 
 - `createRestModule`は、`createPublicApiApp`へ登録箇所の経路を追加し、`API_KEY_SECURITY_SCHEME`を登録し、`doc31`で仕様の経路を加え、`OPTIONS /*`(204)を加えてから、親のアプリの`/v1`へマウントする(10.1〜10.3・11.3)。経路の追加は`composition/rest-routes.ts`への追記だけで行う(10.2)。初版は空で、仕様の配信だけを公開する(10.8)。
+- 仕様書の設定(10.9・10.10): `doc31`へ`{ openapi: '3.1.0', info: options?.info ?? 既定の情報, servers: [{ url: PUBLIC_API_BASE_PATH }] }`を渡す。経路は`/v1`にマウントした子のアプリに登録されるため、仕様書の`paths`は基準パスを含まない。相対のサーバー`/v1`により、Swagger UIの試行や外部のコード生成が`<オリジン>/v1/<経路>`を呼ぶ。既定の情報は`title`: `Launch Stadium Public API`、`version`: `1.0.0`(説明なし)で、`options.info`を渡すとその値で置き換える(項目ごとの合成はしない)。`options.info`は後続spec(public-api)が`composition/api-worker.ts`の呼び出しで渡す。
 - 検証失敗(10.4): `defaultHook`は`AppError({ kind: 'bad_request', code: 'validation_error', message, details })`を投げ、backend-platformの`onError`が400と共通のエラー形式にする。`details`の`field`はZodの`path`を`.`で連結した値。
 - 未登録の経路(10.5)はbackend-platformの`notFound`が404にする。
-- CORSの値(11.1・11.2・11.4): `Access-Control-Allow-Origin: *`。`Access-Control-Allow-Methods`は`methodsFor`の結果と`OPTIONS`(未登録のパスは`OPTIONS`だけ)。`Access-Control-Allow-Headers`は`Authorization`に、`POST`・`PUT`・`PATCH`のいずれかがあれば`Content-Type`を加える。`Access-Control-Max-Age: 600`。`Access-Control-Allow-Credentials`は付けない。基準パスの外では`undefined`を返す(11.5)。
+- CORSの値(11.1・11.2・11.4): `Access-Control-Allow-Origin: *`。`Access-Control-Allow-Methods`は`methodsFor`の結果と`OPTIONS`(未登録のパスは`OPTIONS`だけ)。`Access-Control-Allow-Headers`は`Authorization`に、`POST`・`PUT`・`PATCH`のいずれかがあれば`Content-Type`を加える。`Access-Control-Max-Age: 600`。`Access-Control-Expose-Headers`は付けない。`Access-Control-Allow-Credentials`は付けない。基準パスの外では`undefined`を返す(11.5)。
 - 公開REST APIの応答のキーはsnake_case(`ecc:api-design`)、GraphQLはcamelCaseとする。
 
 ### backend-lib
@@ -1419,7 +1429,7 @@ export declare const SESSION_BINDINGS: ContainerModule; // SESSION_TYPES.Session
 ```
 
 - `modules.ts`の`MODULES`へ、`{ name: 'session', bindings: SESSION_BINDINGS }`、`{ name: 'system', bindings: SYSTEM_BINDINGS }`、`createGraphQLModule({ schemaModules: GRAPHQL_SCHEMA_MODULES, allowlist })`、`createRestModule(REST_ROUTES).module`、`createInternalRoutesModule(INTERNAL_ROUTES)`を加える。
-- `api-worker.ts`: `createRestModule(REST_ROUTES)`→`createWorkerApp({ ..., modules: MODULES, resolveClientIp: resolveGatewayClientIp })`→`createWorkerHandler`で`apiHandler`を作り、`publicEntrypoint = createPublicEntrypoint(apiHandler, { cors: createPublicApiCorsPolicy(rest.routeTable) })`をエクスポートする。いずれもモジュールの読み込み時は組み立てだけで、I/Oと初期化は最初の要求まで遅らせる(backend-platformの規則)。
+- `api-worker.ts`: `createRestModule(REST_ROUTES)`(本specの段階では`options`を渡さず既定の情報を使う。public-apiが`{ info }`を加える)→`createWorkerApp({ ..., modules: MODULES, resolveClientIp: resolveGatewayClientIp })`→`createWorkerHandler`で`apiHandler`を作り、`publicEntrypoint = createPublicEntrypoint(apiHandler, { cors: createPublicApiCorsPolicy(rest.routeTable) })`をエクスポートする。いずれもモジュールの読み込み時は組み立てだけで、I/Oと初期化は最初の要求まで遅らせる(backend-platformの規則)。
 - `index.ts`: `export default publicEntrypoint`、`export class ClientGateway extends createGatewayEntrypointClass('client', apiHandler) {}`、`AdminGateway`、backend-platformの`RateLimitCounter`だけをエクスポートする。
 - `env-schema.ts`: `APP_ENVIRONMENT: z.enum(APP_ENVIRONMENTS)`。Wrangler設定の`vars`はルート`local`・`env.staging`は`staging`・`env.prod`は`prod`。
 - `graphql-modules.ts`と、そこから読み込むファイルは`cloudflare:*`・`@sentry/*`・`infrastructure`を読み込まない(生成コマンドがBunで読み込む)。
@@ -1446,7 +1456,7 @@ export declare const SESSION_BINDINGS: ContainerModule; // SESSION_TYPES.Session
 | Requirements | 2.4, 3.8, 5.9, 7.7, 9.4, 12.4, 14.3, 14.4, 14.5, 14.6, 14.7 |
 
 - `backend/004-graphql-server.md`: 受付経路、上限と算出方法、許可リスト(呼び出し元別・現行と直前のリリース)、introspection・GraphiQL、エラーの分類と状態コード、スキーマモジュールの規約(合成・`extend`を使わない・重複の禁止・リゾルバに業務ロジックを置かない・`defineLoader`の使い方と件数の上限・`withValidatedArgs`・ページングの型と命名・日時のスカラー・`assertHuman`)、生成と検査のコマンド、操作ログ。
-- `backend/005-public-rest-api.md`: 基準パスと版、経路の登録、検証失敗の応答、成功応答の形式とページング、認証方式の宣言、OpenAPI仕様の配信、CORSの規則とHonoの外で付ける理由。
+- `backend/005-public-rest-api.md`: 基準パスと版、経路の登録、検証失敗の応答、成功応答の形式とページング、認証方式の宣言、OpenAPI仕様の配信(相対の`servers`で基準パスを示す理由、登録箇所からの`info`の指定)、CORSの規則とHonoの外で付ける理由。
 - `backend/006-internal-gateway.md`: 名前付きエントリポイントによる内部認証、呼び出し元の判定、元のクライアントIPの扱い、セッションの受け渡しと指示、内部RESTの追加規約、Hono内の順序とHono外の前処理・後処理の2段、セキュリティヘッダーの値とCSPの置き換え方。
 - `coding/004-graphql-communication.md`: サーバー側の契約(要求の形式、ヘッダーの一覧、応答の指示のヘッダー、エラーコード表、状態コード、スキーマファイルの場所、操作の一覧の場所・形式・識別子、許可リストの生成とデプロイの順序、直前のリリースの渡し方)。「クライアント側」の節は見出しだけを置き、frontend-platformが書く。
 - 記述規則: `docs/GUIDES/tech`にはプロジェクト名と固有値を書かない。アプリのディレクトリ・エントリポイント名・経路などの固有値は`project-values.md`に置く(14.5)。
@@ -1569,7 +1579,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
   - `system`モジュールと`d1-database-probe.worker.test.ts`: `systemStatus`がD1に到達できる場合に真、失敗を差し込んだ場合に偽を返すこと(8.8)。
   - `operation-observability.worker.test.ts`: 操作ログの属性と、変数・トークンが含まれないこと(13.1)。
   - `gateway-server.worker.test.ts`: エントリの読み込みだけではYogaとスキーマが組み立てられず、最初の要求で1回だけ組み立てられること(13.3)。
-  - `rest-module.worker.test.ts`・`cors-policy.worker.test.ts`・`route-table.worker.test.ts`: OpenAPI仕様の配信と認証方式、テスト用の経路の検証失敗の400と詳細、未登録の404、プリフライトの204、IP制限の429を含む全応答のCORSヘッダー、更新系の`Content-Type`、他の経路にCORSが無いこと(10.1〜10.8・11.1〜11.5)。
+  - `rest-module.worker.test.ts`・`cors-policy.worker.test.ts`・`route-table.worker.test.ts`: OpenAPI仕様の配信と認証方式、仕様書の`servers`が`[{ url: '/v1' }]`であること、`options.info`の未指定で既定の情報・指定でその値になること、テスト用の経路の検証失敗の400と詳細、未登録の404、プリフライトの204、IP制限の429を含む全応答のCORSヘッダー、更新系の`Content-Type`、他の経路にCORSが無いこと(10.1〜10.10・11.1〜11.5)。
   - `security-headers.worker.test.ts`(backend-lib): 既定の値の付与、応答のCSPを置き換えないこと、不変のヘッダーの応答の複製(12.1〜12.3)。
   - eventの`index.worker.test.ts`(追記): `/health`と404にセキュリティヘッダーが付くこと(12.1)。
 - **生成・手順の検証**(実装時)
@@ -1617,18 +1627,19 @@ graph LR
 
 ### 本specが定める固有の値
 
-| 項目                           | 値                                                                                               |
-| ------------------------------ | ------------------------------------------------------------------------------------------------ |
-| 名前付きエントリポイント       | `ClientGateway`(利用者側)・`AdminGateway`(管理者側)                                              |
-| GraphQLの経路                  | `/graphql`                                                                                       |
-| 内部RESTの接頭辞               | `/internal`                                                                                      |
-| 公開RESTの基準パス・仕様の経路 | `/v1`・`/v1/openapi.json`                                                                        |
-| `APP_ENVIRONMENT`              | ルート`local`、`env.staging`は`staging`、`env.prod`は`prod`                                      |
-| ローカルのGraphiQL             | `http://localhost:48042/graphql`(APIのポートはbackend-platformの`dev`スクリプト)                 |
-| 生成物                         | `apps/api/src/presentation/graphql/generated/{schema.graphql,resolvers-types.ts,allowlist.json}` |
-| 操作の一覧                     | `apps/{client,admin}/src/graphql/generated/persisted-documents.json`                             |
-| 本文の上限                     | 1MiB                                                                                             |
-| 一括読み込みの件数の上限(既定) | 50                                                                                               |
-| OpenAPI仕様の`info`            | `title`: `Launch Stadium Public API`、`version`: `1.0.0`                                         |
+| 項目                           | 値                                                                                                       |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| 名前付きエントリポイント       | `ClientGateway`(利用者側)・`AdminGateway`(管理者側)                                                      |
+| GraphQLの経路                  | `/graphql`                                                                                               |
+| 内部RESTの接頭辞               | `/internal`                                                                                              |
+| 公開RESTの基準パス・仕様の経路 | `/v1`・`/v1/openapi.json`                                                                                |
+| `APP_ENVIRONMENT`              | ルート`local`、`env.staging`は`staging`、`env.prod`は`prod`                                              |
+| ローカルのGraphiQL             | `http://localhost:48042/graphql`(APIのポートはbackend-platformの`dev`スクリプト)                         |
+| 生成物                         | `apps/api/src/presentation/graphql/generated/{schema.graphql,resolvers-types.ts,allowlist.json}`         |
+| 操作の一覧                     | `apps/{client,admin}/src/graphql/generated/persisted-documents.json`                                     |
+| 本文の上限                     | 1MiB                                                                                                     |
+| 一括読み込みの件数の上限(既定) | 50                                                                                                       |
+| OpenAPI仕様の`info`(既定)      | `title`: `Launch Stadium Public API`、`version`: `1.0.0`(`createRestModule`の`options.info`で置き換え可) |
+| OpenAPI仕様の`servers`         | `[{ url: '/v1' }]`(相対)                                                                                 |
 
 - これらの値は`docs/onboardings/project-values.md`に記載し、`docs/GUIDES/tech`には書かない(14.5)。
