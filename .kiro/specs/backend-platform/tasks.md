@@ -46,7 +46,7 @@
   - _Boundary: BusinessTime_
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 2.2 (P) ペッパー鍵のHMAC-SHA512によるハッシュ化・照合と、レート制限のハッシュ化済みキーを作る
+- [x] 2.2 (P) ペッパー鍵のHMAC-SHA512によるハッシュ化・照合と、レート制限のハッシュ化済みキーを作る
   - 用途の名前を入力に含めて用途間でハッシュ値が一致しないようにし、結果をbase64urlで返す
   - 照合はWeb CryptoのHMAC検証で行い、比較時間が入力の内容に依存しないようにする。デコードできない値は不一致とする
   - ペッパーが未設定・空なら失敗する
@@ -350,3 +350,4 @@
 - 1.3: 開発コンテナのサンドボックスでは`wrangler dev`が「Ready」まで到達するがHTTPの応答が返らない(最小のWorkerでも同じ)。ローカル起動での確認は9.1で行う。
 - 1.5: 層の禁止importは`no-restricted-imports`の`.gitignore`形式のため、`'hono'`は`@sentry/hono`にも一致し、動的`import()`・`require`とサブパスの無いディレクトリのimportは検査しない。8.1の文書に記載する。層の規則の単体テストは`tseslint.configs.disableTypeChecked`を重ねて仮想のファイルを検査している。
 - 2.1: design.mdに`Clock`の型の定義が無いため、他specの`clock.now()`の使い方に合わせて`interface Clock { now(): Date }`と定数`systemClock`(`core/time/clock.ts`)にした。4.4のコンテナでは`toConstantValue(systemClock)`で束縛する。
+- 2.2(8.4への申し送り): 設計に無い振る舞いとして、`hashPurpose`は空とNUL文字を含む名前を`RangeError`にし、`hashRateLimitKey`は部品を`JSON.stringify(parts)`で連結し部品0個を`RangeError`にし、`verify`は再エンコードして同じ表記の値だけを受け付ける。base64urlは`Uint8Array.prototype.toBase64`・`fromBase64`(型は`types: ["bun"]`のbun-typesで解決)を使い、workerdでの動作も確認した。
