@@ -74,6 +74,7 @@
   - `UploadPurpose`の形・許可形式の範囲・上限の最大値、用途の命名規約。
   - `MediaFiles`・`MediaQuarantine`の操作と結果の型、`QuarantineReason`の値、`MediaFileView`の項目。
   - 保有者単位の操作(`eraseOwnedBy`・`addReasonForOwner`・`removeReasonForOwner`)の1回の上限件数(`OWNER_OPERATION_BATCH_LIMIT`)と`OwnerBatchResult.hasMore`の意味(user-profile-socialの波及処理が、identity-authの`LifecycleHandlerOutcome`の`continue`へ対応付ける)。
+  - 保有者の識別子の列挙(`MediaFiles.listOwnerIds`)の入力と結果の型、`limit`の範囲(1〜`OWNER_ID_LIST_MAX_LIMIT`の500)、`after`を含まない続きの規則、`next`の意味、ファイルの状態によらず列挙すること(承認後の改訂1)。user-profile-socialの4:21のジョブ`user-profile-social.orphaned-file-sweep`が、保有者の利用者が存在しないファイルを見つけるために`kind: 'user'`・`limit: 90`で呼び、見つけた保有者ごとに`eraseOwnedBy`を呼ぶ。
   - `FileReadPolicy`・`AdminMediaReviewPolicy`の形と既定の動作。
   - `UploaderEligibility`の形・DIの識別子(`UPLOAD_ACCESS_TYPES.UploaderEligibility`)・束縛の置き場所・既定の動作(全許可)・判定を呼ぶ経路(利用者側だけ)・拒否のエラーコード(`account_unavailable`・`email_not_verified`)・入力の`session`の型(`SessionView`)(identity-authが束縛する)。identity-authのタスク8.5が束縛を差し替えると、本specのタスク5.6の登録箇所の既定値の単体テスト(全許可)の期待値が変わる(8.5が直す)。タスク5.1のWorkers統合テストは差し込み口をテストのコンテナへ明示的に束縛するため、差し替えの影響を受けない(R3-3)。
   - GraphQLの`MediaImage`・`MediaAttachment`、部品のprops、アップロードとダウンロードの経路・エラーコード。
@@ -217,7 +218,7 @@ apps/
 │       ├── r2-media-object-store.ts               # MediaObjectStoreのR2実装(上書きしない書き込み・読み出し・削除・バケット間のコピー)
 │       ├── upload-receiver.ts                     # 受付処理(事前検証→実体検証→記録→保存→完了→判定の依頼)
 │       ├── media-eraser.ts                        # 物理削除(全バケット→パージの依頼→記録の削除)
-│       ├── media-files-service.ts                 # MediaFilesの実装(紐付け・論理削除・即時削除・保有者単位の削除・取得・内容)
+│       ├── media-files-service.ts                 # MediaFilesの実装(紐付け・論理削除・即時削除・保有者単位の削除・保有者の識別子の列挙・取得・内容)
 │       ├── media-quarantine-service.ts            # MediaQuarantineの実装(理由の追加・解除と移動の依頼・一覧)
 │       └── media-platform-module.ts               # 両アプリ共通の束縛(MEDIA_PLATFORM_MODULE)
 ├── api/
@@ -542,6 +543,7 @@ sequenceDiagram
 | 13.6, 13.7              | 保有者・指定の物理削除と冪等性               | MediaFilesService・MediaEraser                                      | `MediaFiles.eraseOwnedBy`                                        | —            |
 | 13.8                    | 一括取得と内容の読み出し                     | MediaFilesService・MediaGraphqlModule                               | `MediaFiles.findMany`・`openContent`                             | —            |
 | 13.9                    | 保有者単位の操作の1回の上限と残りの有無      | MediaFilesService・MediaQuarantineService                           | `OWNER_OPERATION_BATCH_LIMIT`・`OwnerBatchResult`                | —            |
+| 13.10                   | 保有者の識別子の列挙(改訂1)                  | MediaFilesService・D1MediaFileStore                                 | `MediaFiles.listOwnerIds`・`OWNER_ID_LIST_MAX_LIMIT`             | —            |
 | 14.1, 14.2              | クリック・ドラッグ・カメラ                   | FileDropZone                                                        | `<input type="file" accept>`                                     | —            |
 | 14.3                    | 選択の一覧とサムネイル                       | FileSelectionList・FileThumbnail                                    | —                                                                | —            |
 | 14.4                    | 選択時の検査                                 | UploadConstraints・UploadMessages                                   | `checkSelection`                                                 | —            |
@@ -564,30 +566,30 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                                                                  | Domain/Layer                       | Intent                                               | Req Coverage                                      | Key Dependencies (P0/P1)                                               | Contracts    |
-| ---------------------------------------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- | ------------ |
-| MediaTypes・ImageVariants・UploadProtocol                                                                  | common-lib                         | 前後で共有する形式・バリアント・プロトコルの定義     | 1.2, 1.9, 10.1, 10.4, 15.1, 15.2                  | —                                                                      | Service      |
-| UploadPurposeRegistry                                                                                      | backend-lib/core                   | 用途の定義と検証                                     | 1.1, 1.2                                          | MediaTypes(P0)                                                         | Service      |
-| UploadPrecheck・FileSignature・ImageDimensions・SvgSyntax・TextContentCheck・FileName・ObjectKey           | backend-lib/core                   | 受付の純粋な検証と整形                               | 2.1-2.4, 3.1-3.9, 4.1, 4.5, 4.6                   | image-size(P0)・fast-xml-parser(P0)                                    | Service      |
-| MediaFile(型と隔離の規則)・MediaMessages                                                                   | backend-lib/core                   | ファイルの型・目的の保存先・メッセージ契約           | 9.1-9.4, 4.8, 9.6, 9.10, 11.3, 13.9               | backend-platformのメッセージ契約(P0)                                   | Event, State |
-| MediaSchema                                                                                                | db                                 | ファイルの記録と隔離理由のテーブル                   | 4.7, 9.1                                          | 共通カラム(P0)                                                         | State        |
-| D1MediaFileStore・R2MediaObjectStore                                                                       | backend-lib/workers                | D1とR2への読み書き                                   | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3, 9.10 | D1(P0)・R2(P0)                                                         | Service      |
-| UploadReceiver                                                                                             | backend-lib/workers                | 受付処理の本体                                       | 2.5, 2.6, 3.1-3.9, 4.1-4.10, 8.5                  | UploadPrecheck(P0)・Stores(P0)・MessagePublisher(P0)                   | Service      |
-| MediaEraser・MediaFilesService・MediaQuarantineService                                                     | backend-lib/workers                | ドメインへ提供する操作                               | 5.1-5.5, 9.1-9.10, 13.1-13.9                      | Stores(P0)・MessagePublisher(P0)                                       | Service      |
-| UploadRoute・FileContentRoute                                                                              | api/presentation                   | アップロードと非公開ファイルの内部REST               | 1.3-1.9, 4.9, 4.10, 12.1-12.8                     | api-gatewayの内部REST(P0)・UploadReceiver(P0)・UploaderEligibility(P0) | API          |
-| UploaderEligibility・既定の実装                                                                            | api/application・infrastructure    | アップロードできる利用者かの差し込み口(既定は全許可) | 1.8, 1.9                                          | `SessionView`(api-gatewayの契約。R3-1)(P0)                             | Service      |
-| FileAccessAuthorizer・方針の既定実装                                                                       | api/application・infrastructure    | 閲覧の可否と管理者の画像確認                         | 12.2-12.4, 12.6, 12.7                             | Principal(P0)                                                          | Service      |
-| MediaDailyJobs                                                                                             | api/application                    | 物理削除・判定の再依頼・保存先の修復                 | 5.4, 5.5, 8.3, 9.8, 13.2, 13.5                    | backend-platformの定期実行(P0)                                         | Batch        |
-| MediaGraphqlModule                                                                                         | api/presentation                   | GraphQLの共通の型と変換・DataLoader                  | 13.8, 15.2                                        | api-gatewayのスキーマモジュール(P0)                                    | API          |
-| ModerateImageHandler・判定の規則と部品                                                                     | event/application・infrastructure  | 自動判定                                             | 6.1-6.10, 7.1-7.5, 8.1-8.8                        | wasm-image-optimization(P0)・Rekognition(P0)                           | Event        |
-| FileRelocator・RelocateFilesHandler・PurgeImageCacheHandler                                                | event                              | 保存先をそろえる処理とパージ                         | 9.2-9.7, 11.2-11.5                                | R2(P0)・ImageDelivery(P0)                                              | Event        |
-| ImageGatewayModule・ImageDeliveryEntrypoint・ImageDelivery                                                 | event                              | 画像の変換配信とキャッシュ                           | 10.1-10.12, 11.1                                  | Images Binding(P0)・Workers Cache(P0)                                  | API          |
-| MediaSmokeModule                                                                                           | event/presentation                 | トークン付きの動作確認                               | 11.6, 17.2, 17.3                                  | UploadReceiver(P0)                                                     | API          |
-| MediaRelayRoutes                                                                                           | frontend-lib/server                | 中継の経路の定義                                     | 1.3, 12.1, 12.8                                   | frontend-platformの`RelayRoute`(P0)                                    | API          |
-| アップロードの部品群                                                                                       | frontend-lib/components・utilities | 選択・編集・送信・表示                               | 14.1-14.12                                        | react-easy-crop(P0)・frontend-platformのUI(P1)                         | State        |
-| MediaPicture・MediaPlaceholder・PrivateFileLink                                                            | frontend-lib/components            | 画像の表示とダウンロードのリンク                     | 12.9, 15.1-15.6                                   | ImageVariants(P0)                                                      | State        |
-| EventWranglerConfig・ApiWranglerConfig                                                                     | 設定                               | キャッシュ・変数・シークレット・管轄                 | 11.1, 16.1, 16.2                                  | backend-platformの設定(P0)                                             | State        |
-| 文書(ImageModerationDoc・ImageDeliveryDoc・FileUploadSecurityDoc・ServiceDocsAlignment・ProjectDocsUpdate) | docs                               | 使い方・確認手順・方針の整合・固有の値               | 11.6, 16.3, 16.4, 17.4-17.7                       | —                                                                      | —            |
+| Component                                                                                                  | Domain/Layer                       | Intent                                               | Req Coverage                                             | Key Dependencies (P0/P1)                                               | Contracts    |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- | ------------ |
+| MediaTypes・ImageVariants・UploadProtocol                                                                  | common-lib                         | 前後で共有する形式・バリアント・プロトコルの定義     | 1.2, 1.9, 10.1, 10.4, 15.1, 15.2                         | —                                                                      | Service      |
+| UploadPurposeRegistry                                                                                      | backend-lib/core                   | 用途の定義と検証                                     | 1.1, 1.2                                                 | MediaTypes(P0)                                                         | Service      |
+| UploadPrecheck・FileSignature・ImageDimensions・SvgSyntax・TextContentCheck・FileName・ObjectKey           | backend-lib/core                   | 受付の純粋な検証と整形                               | 2.1-2.4, 3.1-3.9, 4.1, 4.5, 4.6                          | image-size(P0)・fast-xml-parser(P0)                                    | Service      |
+| MediaFile(型と隔離の規則)・MediaMessages                                                                   | backend-lib/core                   | ファイルの型・目的の保存先・メッセージ契約           | 9.1-9.4, 4.8, 9.6, 9.10, 11.3, 13.9, 13.10               | backend-platformのメッセージ契約(P0)                                   | Event, State |
+| MediaSchema                                                                                                | db                                 | ファイルの記録と隔離理由のテーブル                   | 4.7, 9.1                                                 | 共通カラム(P0)                                                         | State        |
+| D1MediaFileStore・R2MediaObjectStore                                                                       | backend-lib/workers                | D1とR2への読み書き                                   | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3, 9.10, 13.10 | D1(P0)・R2(P0)                                                         | Service      |
+| UploadReceiver                                                                                             | backend-lib/workers                | 受付処理の本体                                       | 2.5, 2.6, 3.1-3.9, 4.1-4.10, 8.5                         | UploadPrecheck(P0)・Stores(P0)・MessagePublisher(P0)                   | Service      |
+| MediaEraser・MediaFilesService・MediaQuarantineService                                                     | backend-lib/workers                | ドメインへ提供する操作                               | 5.1-5.5, 9.1-9.10, 13.1-13.10                            | Stores(P0)・MessagePublisher(P0)                                       | Service      |
+| UploadRoute・FileContentRoute                                                                              | api/presentation                   | アップロードと非公開ファイルの内部REST               | 1.3-1.9, 4.9, 4.10, 12.1-12.8                            | api-gatewayの内部REST(P0)・UploadReceiver(P0)・UploaderEligibility(P0) | API          |
+| UploaderEligibility・既定の実装                                                                            | api/application・infrastructure    | アップロードできる利用者かの差し込み口(既定は全許可) | 1.8, 1.9                                                 | `SessionView`(api-gatewayの契約。R3-1)(P0)                             | Service      |
+| FileAccessAuthorizer・方針の既定実装                                                                       | api/application・infrastructure    | 閲覧の可否と管理者の画像確認                         | 12.2-12.4, 12.6, 12.7                                    | Principal(P0)                                                          | Service      |
+| MediaDailyJobs                                                                                             | api/application                    | 物理削除・判定の再依頼・保存先の修復                 | 5.4, 5.5, 8.3, 9.8, 13.2, 13.5                           | backend-platformの定期実行(P0)                                         | Batch        |
+| MediaGraphqlModule                                                                                         | api/presentation                   | GraphQLの共通の型と変換・DataLoader                  | 13.8, 15.2                                               | api-gatewayのスキーマモジュール(P0)                                    | API          |
+| ModerateImageHandler・判定の規則と部品                                                                     | event/application・infrastructure  | 自動判定                                             | 6.1-6.10, 7.1-7.5, 8.1-8.8                               | wasm-image-optimization(P0)・Rekognition(P0)                           | Event        |
+| FileRelocator・RelocateFilesHandler・PurgeImageCacheHandler                                                | event                              | 保存先をそろえる処理とパージ                         | 9.2-9.7, 11.2-11.5                                       | R2(P0)・ImageDelivery(P0)                                              | Event        |
+| ImageGatewayModule・ImageDeliveryEntrypoint・ImageDelivery                                                 | event                              | 画像の変換配信とキャッシュ                           | 10.1-10.12, 11.1                                         | Images Binding(P0)・Workers Cache(P0)                                  | API          |
+| MediaSmokeModule                                                                                           | event/presentation                 | トークン付きの動作確認                               | 11.6, 17.2, 17.3                                         | UploadReceiver(P0)                                                     | API          |
+| MediaRelayRoutes                                                                                           | frontend-lib/server                | 中継の経路の定義                                     | 1.3, 12.1, 12.8                                          | frontend-platformの`RelayRoute`(P0)                                    | API          |
+| アップロードの部品群                                                                                       | frontend-lib/components・utilities | 選択・編集・送信・表示                               | 14.1-14.12                                               | react-easy-crop(P0)・frontend-platformのUI(P1)                         | State        |
+| MediaPicture・MediaPlaceholder・PrivateFileLink                                                            | frontend-lib/components            | 画像の表示とダウンロードのリンク                     | 12.9, 15.1-15.6                                          | ImageVariants(P0)                                                      | State        |
+| EventWranglerConfig・ApiWranglerConfig                                                                     | 設定                               | キャッシュ・変数・シークレット・管轄                 | 11.1, 16.1, 16.2                                         | backend-platformの設定(P0)                                             | State        |
+| 文書(ImageModerationDoc・ImageDeliveryDoc・FileUploadSecurityDoc・ServiceDocsAlignment・ProjectDocsUpdate) | docs                               | 使い方・確認手順・方針の整合・固有の値               | 11.6, 16.3, 16.4, 17.4-17.7                              | —                                                                      | —            |
 
 ### common-lib/media
 
@@ -860,10 +862,10 @@ export declare function generateObjectKey(
 
 #### MediaFile・MediaMessages・ports
 
-| Field        | Detail                                                   |
-| ------------ | -------------------------------------------------------- |
-| Intent       | ファイルの型・目的の保存先の規則・メッセージ契約・ポート |
-| Requirements | 4.7, 4.8, 9.1, 9.3, 9.4, 9.6, 9.10, 11.3, 13.8, 13.9     |
+| Field        | Detail                                                      |
+| ------------ | ----------------------------------------------------------- |
+| Intent       | ファイルの型・目的の保存先の規則・メッセージ契約・ポート    |
+| Requirements | 4.7, 4.8, 9.1, 9.3, 9.4, 9.6, 9.10, 11.3, 13.8, 13.9, 13.10 |
 
 **Contracts**: Service [x] / Event [x] / State [x]
 
@@ -985,11 +987,20 @@ export interface OwnerBatchResult {
   readonly processed: number; // この呼び出しで処理した件数
   readonly hasMore: boolean; // 真なら残りがあり、呼び出し元が同じ操作を繰り返す
 }
+export declare const OWNER_ID_LIST_MAX_LIMIT: 500; // 保有者の識別子の列挙が1回の呼び出しで返す件数の上限
 export interface MediaFiles {
   claim(request: ClaimRequest): Promise<ClaimResult>;
   markDeleted(fileIds: readonly string[]): Promise<void>; // 削除済みのものは日時を変えない
   eraseNow(fileIds: readonly string[]): Promise<EraseSummary>; // 先に削除待ちの印を付ける。失敗時はAppError(unavailable)を投げ、日次バッチが完了させる
   eraseOwnedBy(owner: OwnerRef): Promise<OwnerBatchResult>; // 保有者の全ファイル(全用途・隔離中を含む)を最大OWNER_OPERATION_BATCH_LIMIT件ずつ物理削除する
+  listOwnerIds(input: {
+    readonly kind: UploaderKind;
+    readonly after: string | undefined; // 前の呼び出しのnext。この値を含まず、より後の識別子から返す
+    readonly limit: number; // 1〜OWNER_ID_LIST_MAX_LIMIT
+  }): Promise<{
+    readonly ownerIds: readonly string[]; // 重複の無い昇順
+    readonly next: string | undefined; // 続きがあればownerIdsの最後の識別子
+  }>; // owner_kindがkindのファイルの保有者の識別子を、ファイルの状態によらず列挙する(承認後の改訂1)
   findMany(
     fileIds: readonly string[],
   ): Promise<ReadonlyMap<string, MediaFileView>>;
@@ -1057,16 +1068,17 @@ export declare const MEDIA_TYPES: {
 - 前提: 呼び出し元(ドメインspec)は、自分の業務の認可を済ませてから呼ぶ。本specの操作は主体の権限を判定しない(紐付けは保有者の一致だけを確かめる)。
 - 事後: `addReason`・`removeReason`・`addReasonForOwner`・`removeReasonForOwner`は隔離理由をD1に確定させてから`media.relocate-files`を送り、送信に失敗した場合は`AppError(unavailable)`を投げる(呼び出し元は同じ操作を再実行できる)。
 - 保有者単位の操作(9.10・13.6・13.9): 対象は呼び出しのたびにD1の状態から求め直す(物理削除は保有者のファイル、理由の追加はその理由を持たない画像、解除はその理由を持つ画像)。そのため進み具合を呼び出し元が持つ必要は無く、途中の失敗や重複の呼び出しでも結果が変わらない。`hasMore`が真なら呼び出し元が同じ操作を繰り返す。user-profile-socialは、identity-authの非同期の波及処理(`purge_due`で`eraseOwnedBy`、`suspended`で`addReasonForOwner(owner, 'user_suspended')`、`unsuspended`で`removeReasonForOwner(owner, 'user_suspended')`)として登録し、`hasMore`を`LifecycleHandlerOutcome`の`continue`へ対応付ける。
+- 保有者の識別子の列挙(13.10、承認後の改訂1): `listOwnerIds`は、`owner_kind`が`kind`の`media_files`の`owner_id`を重複を除いて昇順に最大`limit`件返す。`after`があれば、その値より後(その値を含まない)の識別子から返す。続きがあれば`ownerIds`の最後の識別子を`next`に入れ、無ければ`next`は`undefined`になる。用途・保存の完了・紐付け・論理削除・削除待ち・隔離中かどうかによらず列挙する。`limit`が1〜`OWNER_ID_LIST_MAX_LIMIT`(500)の整数でなければ`AppError(bad_request)`を投げる。列挙は読み取りだけで、ファイルも保有者も変えない。user-profile-socialの4:21のジョブ`user-profile-social.orphaned-file-sweep`が、`kind: 'user'`・`limit: 90`で列挙し、`users`に行の無い保有者ごとに`eraseOwnedBy`を`hasMore`が偽になるまで呼ぶ(2026-10-24に開発者が確定したuser-profile-social仮1による)。列挙と削除の間に増減したファイルは、次の日の実行で求め直す。
 - 停止中の利用者のアップロードは、identity-authが`UploaderEligibility`を束縛した後、受付の時点で拒否される(1.8・1.9。N-7)。そのため、停止の波及処理の後に理由を持たない画像が新たに保存されることは無い。紐付けなど業務データの保存は、ドメインspecがidentity-authの判定の部品で拒否する。
 
 ### backend-lib/workers/media
 
 #### D1MediaFileStore・R2MediaObjectStore
 
-| Field        | Detail                                            |
-| ------------ | ------------------------------------------------- |
-| Intent       | D1とR2への読み書き(条件付きの更新を含む)          |
-| Requirements | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3, 9.10 |
+| Field        | Detail                                                   |
+| ------------ | -------------------------------------------------------- |
+| Intent       | D1とR2への読み書き(条件付きの更新を含む)                 |
+| Requirements | 4.2, 4.3, 4.4, 4.7, 6.7, 6.8, 8.6, 9.2, 9.3, 9.10, 13.10 |
 
 **Contracts**: Service [x]
 
@@ -1115,6 +1127,11 @@ export interface MediaFileStore {
     to: MediaLocation,
   ): Promise<boolean>; // 現在値がfromのときだけ
   findIdsOwnedBy(owner: OwnerRef, limit: number): Promise<readonly string[]>; // 全用途・全状態
+  findOwnerIds(input: {
+    readonly kind: UploaderKind;
+    readonly after: string | undefined;
+    readonly limit: number;
+  }): Promise<readonly string[]>; // 全用途・全状態の保有者の識別子を重複無しの昇順で最大limit件(承認後の改訂1)
   findOwnedImageIdsByReason(input: {
     readonly owner: OwnerRef;
     readonly reason: QuarantineReason;
@@ -1172,6 +1189,7 @@ export interface MediaObjectStore {
 - `putIfAbsent`は`onlyIf: new Headers({ 'If-None-Match': '*' })`で書き込み、`null`なら`exists`を返す。本文は`FixedLengthStream(length)`に通し、長さが食い違えば書き込みが例外で失敗する(2.5)。
 - `copy`は元を読み出して`putIfAbsent`で書き込む(元のHTTPメタデータを引き継ぐ)。
 - バインド変数の上限(100)のため、`IN`の照会と更新は90件ごとに分ける(`db/002`)。
+- `findOwnerIds`(13.10、承認後の改訂1): `SELECT DISTINCT owner_id FROM media_files WHERE owner_kind = ? AND owner_id > ? ORDER BY owner_id LIMIT ?`を、`after`が`undefined`なら`owner_id > ?`の条件を除いて実行する。索引`(owner_kind, owner_id)`の順に読むため、重複の除去と並べ替えに表全体の走査と一時的な並べ替えを要しない。比較と順序は列の既定の照合順序(`BINARY`)による。状態の列(`stored_at`・`attached_at`・`deleted_at`・`erase_requested_at`)と隔離理由を条件に含めない。`owner_kind`が`user`・`admin`の行は`owner_id`を必ず持ち、`system`の行(`owner_id`がNULL)は`kind`に当たらない。
 
 #### UploadReceiver
 
@@ -1201,7 +1219,7 @@ export interface MediaObjectStore {
 | Field        | Detail                                     |
 | ------------ | ------------------------------------------ |
 | Intent       | ドメインへ提供する紐付け・削除・隔離の操作 |
-| Requirements | 5.1-5.5, 9.1-9.10, 13.1-13.9               |
+| Requirements | 5.1-5.5, 9.1-9.10, 13.1-13.10              |
 
 **Contracts**: Service [x]
 
@@ -1212,6 +1230,7 @@ export interface MediaObjectStore {
 - `eraseNow`: `markEraseRequested`の後に`MediaEraser.erase`を呼ぶ。削除待ちの印が付いたファイルは、紐付け・非公開ファイルの配信・`openContent`の対象から外れる(13.2)。
 - `eraseOwnedBy`: `findIdsOwnedBy`で保有者のファイルを`OWNER_OPERATION_BATCH_LIMIT`+1件まで読み、先頭の上限件数を`eraseNow`する。読めた件数が上限を超えていれば`hasMore: true`を返す(13.6・13.9)。
 - `addReasonForOwner`・`removeReasonForOwner`: `findOwnedImageIdsByReason`で対象を上限+1件まで読み、先頭の上限件数に`addReasons`・`removeReasons`を行い、25件ずつ`RELOCATE_FILES_MESSAGE`を送る。`hasMore`は`eraseOwnedBy`と同じ規則で決める(9.10・13.9)。
+- `listOwnerIds`(13.10、承認後の改訂1): `limit`が1〜`OWNER_ID_LIST_MAX_LIMIT`の整数でなければ、照会せずに`AppError(bad_request)`を投げる。`findOwnerIds`で`limit`+1件まで読み、読めた件数が`limit`を超えていれば先頭の`limit`件を`ownerIds`に、その最後の識別子を`next`に入れる。超えていなければ読めた全件を返し、`next`は`undefined`にする。
 - `markDeleted`: 論理削除の日時を付ける。論理削除されたファイルは紐付けできないが、画像配信はバケットの有無だけで応答するため止まらない(13.4、仮決定1。2026-10-18に開発者が承認)。
 - `openContent`: 保存完了・未削除・削除待ちでない・隔離中でないファイルの内容を、現在の保存先から読み出す(13.8)。
 - `MediaQuarantine.addReason`・`removeReason`: 画像用の用途であることを確かめ、`addReasons`・`removeReasons`の後、目的の保存先が変わりうるファイルを25件ずつ`RELOCATE_FILES_MESSAGE`で送る(9.6)。
@@ -1931,7 +1950,7 @@ erDiagram
     }
 ```
 
-- ファイルの保有者(`owner_kind`・`owner_id`)は、利用者・管理者のテーブルへの外部キーを持たない(identity-auth・admin-foundationのテーブルに依存しないため)。利用者の退会に伴う物理削除(`eraseOwnedBy`)と、停止・停止解除に伴うユーザー停止の隔離理由の付け外し(`addReasonForOwner`・`removeReasonForOwner`)は、user-profile-socialがidentity-authのユーザーライフサイクルイベントの波及処理として呼ぶ(I-1)。外部キーが無いため、identity-authの取り残しの検出(他specの外部キーに頼る)は`media_files`を対象にしない。退会者のファイルの取り残しは、波及処理が`hasMore: false`になるまで繰り返されること(失敗は波及処理の再試行)で防ぐ。
+- ファイルの保有者(`owner_kind`・`owner_id`)は、利用者・管理者のテーブルへの外部キーを持たない(identity-auth・admin-foundationのテーブルに依存しないため)。利用者の退会に伴う物理削除(`eraseOwnedBy`)と、停止・停止解除に伴うユーザー停止の隔離理由の付け外し(`addReasonForOwner`・`removeReasonForOwner`)は、user-profile-socialがidentity-authのユーザーライフサイクルイベントの波及処理として呼ぶ(I-1)。外部キーが無いため、identity-authの取り残しの検出(他specの外部キーに頼る)は`media_files`を対象にしない。退会者のファイルの取り残しは、波及処理が`hasMore: false`になるまで繰り返されること(失敗は波及処理の再試行)で防ぐ。それでも保有者の利用者の行が無いまま残ったファイル(user-profile-socialの導入より前に物理削除された利用者のファイルなど)は、user-profile-socialの4:21のジョブが`listOwnerIds`で保有者を列挙し、`eraseOwnedBy`で物理削除する(承認後の改訂1)。
 - 業務データからファイルへの参照(ファイルの識別子)は各ドメインのテーブルが持つ。本specは参照先の存在を保証しない(紐付けの時点で確かめる)。
 
 ### Physical Data Model
@@ -2000,7 +2019,7 @@ erDiagram
 
 - api: アップロードの経路(D1・R2・Queueの実物のバインディング)で、201と記録・オブジェクト・`media.moderate-image`の送信、411・413・415・422の各拒否で記録とオブジェクトが残らないこと、長さの不一致、上書きの拒否(同じキーの2回目の書き込みが`exists`)、ファイル用のメタデータ(1.3〜1.7・2.1〜2.6・3.1〜3.9・4.1〜4.10)。`UploaderEligibility`を拒否する偽物に差し替え、利用者側の要求が403と判定のエラーコード(`account_unavailable`・`email_not_verified`)になり、記録もオブジェクトも残らないこと、管理者側の要求では判定が呼ばれないこと、全許可の実装を束縛すると利用者のアップロードが通ること(1.8・1.9)。差し込み口は、`composition/uploader-eligibility.ts`の束縛に頼らず、テストのコンテナへ明示的に束縛する(identity-authのタスク8.5の差し替えの影響を受けない。R3-3)。
 - api: ダウンロードの経路で、保有者・登録した方針・管理者の確認の方針・未ログイン・削除待ち・保存未完了・隔離中の画像の各ケースのヘッダーと状態コード(12.1〜12.8)。
-- backend-lib/workers: `MediaFilesService`の紐付け(全件の検査と一部不正での不変)、`MediaEraser`の再実行の冪等性(途中で失敗させた後の再実行)、`MediaQuarantineService`の理由の追加・解除と送信、保有者単位の操作(上限件数の境界での`hasMore`、繰り返しで全件が処理されること、途中の失敗の後の再実行で同じ結果になること、他の保有者のファイルを変えないこと)、日次バッチの対象の照会(5.1〜5.5・9.1〜9.10・13.1〜13.9)。
+- backend-lib/workers: `MediaFilesService`の紐付け(全件の検査と一部不正での不変)、`MediaEraser`の再実行の冪等性(途中で失敗させた後の再実行)、`MediaQuarantineService`の理由の追加・解除と送信、保有者単位の操作(上限件数の境界での`hasMore`、繰り返しで全件が処理されること、途中の失敗の後の再実行で同じ結果になること、他の保有者のファイルを変えないこと)、日次バッチの対象の照会(5.1〜5.5・9.1〜9.10・13.1〜13.9)。保有者の識別子の列挙(`listOwnerIds`、承認後の改訂1)で、複数のファイルを持つ保有者が1回だけ現れること、昇順に並ぶこと、`after`がその値を含まない続きになり`next`をたどると全保有者が重複も欠けも無くそろうこと、続きが無いと`next`が`undefined`になること(件数が`limit`ちょうどの場合を含む)、`limit`の境界(1と500は受け付け、0・501・整数でない値は`AppError(bad_request)`)、受付中・論理削除・削除待ち・隔離中・ファイル用の用途のファイルの保有者も列挙されること、`kind`の違う保有者(`admin`・`system`)が混ざらないこと、列挙がファイルを変えないこと(13.10)。
 - event: 代替の判定とwasmの描画で、不適切→隔離バケットへ移動・理由と検出内容・パージの依頼、問題なし→公開のまま、重複の依頼で変わらないこと、未判定、復号できない画像の隔離、SVGの違反の隔離(6.1〜6.10・7.1〜7.5・8.1〜8.8)。wasmがテスト環境で読めない場合は描画を偽物に差し替え、実物はローカルの動作確認で確かめる。
 - event: `FileRelocator`の移動・復元・途中の失敗からの再実行、パージの処理(`ctx.cache`が無い環境で`skipped`)、関門→`ImageDelivery`の配信(Images Bindingの簡易版で形式と寸法、SVGのCSP、404の`no-store`、クエリ文字列の無視、IP制限の除外、専用ホストでの404)、動作確認の経路のトークンの有無(9.1〜9.9・10.1〜10.12・11.1〜11.5・17.2・17.3)。
 - 設定: eventのWrangler設定で、`exports`のキャッシュの設定、変数とシークレットのキー名(11.1・16.1・16.2)。R2バインディングの管轄はinfra-deliveryの構成検査が確かめる。

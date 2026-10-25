@@ -315,6 +315,8 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
 
 ## 要件定義書の改訂が必要な箇所
 
+**2026-10-25に要件定義書(`docs/requirements/README.md`)へ適用済み。** 以下は適用前に記録した改訂の内容である。
+
 | 要件ID       | 現在の文言の要点                                                    | 本specの決定                                                                                                                 |
 | ------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | FR-FILEU-015 | 配信時に`metadata: "none"`指定によりExif情報を除去する              | 決定Q1。配信時のJPEGのメタデータの除去は要件から外し、変換基盤の既定に任せる。WebP・AVIF・PNGへの変換では常に除かれる        |
@@ -347,3 +349,20 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
 - [Context(ctx.exports)](https://developers.cloudflare.com/workers/runtime-apis/context/) — ループバックのService Binding
 - [DetectModerationLabels](https://docs.aws.amazon.com/rekognition/latest/APIReference/API_DetectModerationLabels.html) — 要求・応答・エラー
 - [画像バリアント仕様](../../../docs/GUIDES/service/features/002-image-variants.md) — バリアント・URL・キャッシュとパージ
+
+## user-profile-socialの依頼による承認後の改訂(改訂1、2026-10-24)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、2026-10-24に開発者が確定したuser-profile-social仮1による。本specの生成中の仮決定(仮1〜仮3)とは別の項目で、`requirements.md`の「承認後の改訂」の表に改訂1として記録した。開発者の判断を待つ論点は残っていない。`spec.json`のタスクの承認は変更部分のタスクのレビューの結果を表す。
+- **Context**: user-profile-socialの仮1(2026-10-24に開発者がCに確定)により、apiの4:21のジョブ`user-profile-social.orphaned-file-sweep`(`order` 600)が、保有者の利用者が存在しないファイルを物理削除する。`media_files`の保有者は利用者のテーブルへの外部キーを持たないため、退会の波及処理の導入より前に物理削除された利用者のファイルなどは、保有者の識別子が分からないと見つけられない。user-profile-socialのdesign.mdが、そのための`MediaFiles`への操作の追加を本specへ依頼していた。
+- **改訂の内容**: `MediaFiles`に`listOwnerIds(input: { readonly kind: UploaderKind; readonly after: string | undefined; readonly limit: number }): Promise<{ readonly ownerIds: readonly string[]; readonly next: string | undefined }>`を加える。`owner_kind`が`kind`の`media_files`の`owner_id`を重複を除いて昇順に最大`limit`(1〜500。`OWNER_ID_LIST_MAX_LIMIT`)件返し、`after`はその値を含まない続きの位置とし、続きがあれば`ownerIds`の最後の識別子を`next`に入れる。ファイルの状態(保存の完了・紐付け・論理削除・削除待ち・隔離中)と用途によらず列挙し、索引`(owner_kind, owner_id)`を使う。範囲外の`limit`は`AppError(bad_request)`にする。リポジトリには`findOwnerIds`を加え、`limit`+1件まで読んで続きの有無を決める。user-profile-socialのdesign.mdの依頼の型と規則に一致させた。
+- **Alternatives Considered**:
+  1. 保有者の識別子を重複無しで列挙する読み取りの操作を加える(採用。削除の判断はuser-profile-socialに残り、本specは利用者のテーブルを参照しない)
+  2. 保有者の識別子と存在を確かめる関数を受け取り、本specが削除まで行う操作(存在の判定という業務の知識が本specへ入り、1回の上限件数と失敗の扱いが2つのspecにまたがる)
+  3. 利用者のテーブルとの結合で保有者の居ないファイルを照会する(identity-authのテーブルに依存しないという本specの境界に反する)
+- **Rationale**: 既存の索引`(owner_kind, owner_id)`で重複の除去と並べ替えができ、表の追加やマイグレーションが要らない。読み取りだけで状態を変えないため、冪等性と既存の保有者単位の操作(`eraseOwnedBy`)の規則を変えない。
+- **要件**: ドメインspecへ提供する手段の追加で、既存の要件13(ファイルの削除とライフサイクル)の目的に当たるため、受け入れ基準13.10を加えた。
+- **変えた箇所**: 要件の「承認後の改訂」の表・In scope・Adjacent expectations・13.10。設計のRevalidation Triggers・File Structure Planの`media-files-service.ts`の注記・追跡表(13.10)・コンポーネントの表(`MediaFile(型と隔離の規則)・MediaMessages`・`D1MediaFileStore・R2MediaObjectStore`・`MediaEraser・MediaFilesService・MediaQuarantineService`)・`MediaFile・MediaMessages・ports`の要件の欄(13.10)・`MediaFiles`の契約(`OWNER_ID_LIST_MAX_LIMIT`・`listOwnerIds`)と規則・`MediaFileStore`の`findOwnerIds`と照会の説明・`MediaFilesService`の責務・論理データモデルの保有者の注記・Testing StrategyのWorkers統合テスト。タスク3.5・4.1・4.4の詳細と要件(13.10を追加)。番号の変更と、新しいタスク・依存の変更は無い。
+- **後続への影響**: user-profile-socialのタスク6.3(4:21のジョブ)は、本specのタスク4.4の完了まで保留される(user-profile-socialの設計のとおり)。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って2回行った。どちらも新しいサブエージェントによる独立した確認(independent)である。
+  - 1回目はNEEDS_FIXES(必須1件・軽微2件)だった。必須の指摘は、契約を置く`MediaFile・MediaMessages・ports`の要件の欄とコンポーネントの表の行に13.10が無く、13.10を対応付けたタスク3.5の境界と食い違ったこと(両方に13.10を加えた)。軽微の指摘(要件のIn scopeへの列挙の追加、`spec.json`の`updated_at`の更新)も直した。
+  - 2回目はPASSだった。軽微の指摘2件(File Structure Planの`media-files-service.ts`の注記への列挙の追加、`system`の行の`owner_id`を「空」ではなく「NULL」と書くこと)に従って直した。タスクの承認(`approvals.tasks.approved: true`)を保った。
