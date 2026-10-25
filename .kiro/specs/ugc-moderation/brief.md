@@ -18,9 +18,9 @@
   - 使い捨てメールアドレスの判定結果の表示
   - 理由付きの停止と停止解除(ユーザーライフサイクルイベントを発火する)
   - 運営者による代理の退会
-    - セッションが切れた停止中の利用者などから、問い合わせで依頼を受けて行う
+    - セッションが切れた停止中の利用者などから依頼を受け、最上位管理者だけがユーザー一覧から行う(2026-10-24に開発者が確定、仮4)
     - identity-authの操作口(例: `AdministrativeWithdrawal`)を呼び、監査ログに記録する
-    - 問い合わせからの導線もこのspecが持つ
+    - 依頼の受け付け・本人の意思の確かめ・完了の知らせは運営者がシステムの外のメールで行う(仮4・仮5)
 - プロダクト管理(FR-ADMUG-005〜008)がある。
   - 一覧・検索・詳細(評価一覧・ローンチ履歴・マッチ結果)
   - 理由付きの非公開化と復元
@@ -65,24 +65,24 @@
 
 ## Upstream / Downstream
 
-- **Upstream**: engagement、tournament-year、sponsorship、admin-foundation、media-pipeline、payments(収益の集計)、identity-auth(停止・停止解除と運営者による退会の操作口)、inquiry-chat(代理の退会の依頼を受ける問い合わせ)
+- **Upstream**: engagement、tournament-year、sponsorship、admin-foundation、media-pipeline、payments(収益の集計)、identity-auth(停止・停止解除と運営者による退会の操作口)
 - **Downstream**: content-reporting
 
 ## Existing Spec Touchpoints
 
 - **Extends**:
   - admin-foundation: `DASHBOARD_CARDS`へ統計のカードを`order` 10で加え(admin-foundation Q2)、`ADMIN_NAV_ITEMS`へユーザー`/users`(20)・プロダクト`/products`(30)・コメント`/comments`(40)・評価`/ratings`(50)・画像モデレーション`/media-moderation`(60)を加える(URLと`order`はadmin-foundationの仮6)
-  - inquiry-chat: 管理画面の問い合わせの詳細(`/inquiries/$inquiryId`)から運営者による代理の退会へ進む導線は、inquiry-chatが設ける問い合わせの詳細の操作の登録口`INQUIRY_DETAIL_ACTIONS`(`apps/admin/src/composition/inquiry-detail-actions.ts`、初版は空)へ、`InquiryDetailAction`の`{ id: 'ugc-moderation.<名詞句>', order, component }`を登録して置く。部品はプロパティ`inquiry`で`InquiryDetailActionContext`(問い合わせのID`inquiryId`・種別`kind`・利用者のID`userId`・退会済みか`withdrawn`・未ログインの問い合わせの連絡先メールアドレス`contactEmail`)を受け取り、表示の条件(ロール・種別・状態)と必要なデータの取得を自分で持つ。登録箇所はロールの条件を持たないため、部品が`RoleGate`・`useAdminRole`で必要なロールを判定し、サーバー側の認可は本specの`requireAdmin`で行う。形はinquiry-chatの設計の`InquiryDetailActionsRegistry`を正とし、変えない
-  - payments: 統計の週ごとの合計収益は、paymentsが決済のテーブルの直接の読み取りを禁じているため、paymentsの`core/payments`に集計の照会のポート(期間ごとの合計の金額など)を追加して使う。追加はpaymentsの公開の契約の変更になるため、paymentsの再検証として扱う
+  - payments: 統計の週ごとの合計収益は、paymentsが決済のテーブルの直接の読み取りを禁じているため、paymentsが仮7で提供する期間ごとの純収益の照会`PaymentRevenueReport`(paymentsのタスク5.5・5.7)を使う(2026-10-24に開発者が上流の所有・実装と確定)
+  - engagement: 管理画面のコメントと評価の一覧の照会は、engagementが仮6で提供する(engagementのタスク2.7。2026-10-24に開発者が上流の所有・実装と確定)
 - **Adjacent**: content-reporting(通報からの措置)、media-pipeline(隔離の移動処理)
 
 ## Constraints
 
-- 統計グラフの描画にはグラフ用のライブラリが必要になる見込みで、新規パッケージとして候補を挙げて開発者に質問する
+- 統計グラフの描画にはグラフ用のライブラリが必要になる見込みで、新規パッケージとして候補を挙げて開発者に質問する(仮2でRechartsに確定)
 - プロダクト詳細に表示する「受け付けた通報件数」(FR-ADMUG-006)は、content-reportingが区画として追加する
 - 隔離画像の表示はSW-012の画像配信経路を使わず、SW-011と同じ方式(APIが管理者認証を判定してR2から読み出し、管理者側フロントエンドが中継)で行う
 - 統計のカードは`DashboardCard`の`{ id: 'ugc-moderation.weekly-statistics', order: 10, width: 'full', component }`とし、自分でデータを取得して`DashboardCardFrame`で枠と状態を表示する。別の統計のページは作らない
-- 要件の論点(要件フェーズで開発者に確認する): 停止・非公開化に伴う返金を自動で行うか。法的通知の大枠の返金ポリシーは自動の返金を書くが、FR-ADMUG-024は返金目安額の表示までで、sponsorshipのbriefは手動の返金としている(roadmapのRequirement Ambiguities)。返金を行う場合は、paymentsの`PaymentRefunds`(全額・一部の返金の非同期の依頼)を呼ぶ
+- 要件の論点(要件フェーズで開発者に確認する。仮8で確定し、本specは返金を依頼しない。広告はsponsorshipの仮3で停止した日数分を自動で日割り返金する): 停止・非公開化に伴う返金を自動で行うか。法的通知の大枠の返金ポリシーは自動の返金を書くが、FR-ADMUG-024は返金目安額の表示までで、sponsorshipのbriefは手動の返金としていた(roadmapのRequirement Ambiguities。sponsorshipの仮3の確定で自動の日割り返金に改めた)。本specは返金を依頼しない(仮8で確定)。
 - 停止・停止解除・運営者による代理の退会の画面は、identity-authの`UserSuspension`・`AdministrativeWithdrawal`を呼び、権限はadmin-foundationの`requireAdmin`、記録は`AuditLogRecorder`で行う。メールアドレス検索の記録はadmin-foundationの操作種別`user.email-search`を使う
 - 投稿者への通知メールの宛先は、identity-authの`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)で引く。停止中の利用者も宛先を返すため、停止の通知を送れる
 - 管理画面のE2Eの管理者ログインは、admin-foundationの`e2e/support/admin-bootstrap.ts`を使う
