@@ -5,8 +5,7 @@ import type {
   EventHint,
   Exception,
   RequestEventData,
-  SpanJSON,
-  TransactionEvent,
+  StreamedSpanJSON,
   User,
 } from '@sentry/core';
 
@@ -14,7 +13,6 @@ import { AppError } from '../errors/app-error.ts';
 import { REDACTION_PATTERNS } from '../logging/redaction.ts';
 
 type LogEntry = NonNullable<Event['logentry']>;
-type Contexts = NonNullable<Event['contexts']>;
 
 const REMOVED_USER_FIELDS: ReadonlySet<string> = new Set([
   'ip_address',
@@ -44,6 +42,18 @@ const REMOVED_HEADER_NAMES: ReadonlySet<string> = new Set([
   'forwarded',
   'x-vercel-forwarded-for',
 ]);
+
+const REMOVED_SPAN_ATTRIBUTES: ReadonlySet<string> = new Set([
+  'user.ip_address',
+  'user.email',
+  'client.address',
+  'network.peer.address',
+  'url.query',
+  'http.request.body.data',
+  'http.response.header.set-cookie',
+]);
+
+const REQUEST_HEADER_ATTRIBUTE_PREFIX = 'http.request.header.';
 
 // Sentryの正規化が循環参照に付ける印と同じ表記にする
 const CIRCULAR_REFERENCE_MARKER = '[Circular ~]';
@@ -161,19 +171,16 @@ function scrubLogEntry(logentry: LogEntry): LogEntry {
   return redactDeep(logentry);
 }
 
-function scrubSpan(span: SpanJSON): SpanJSON {
-  return {
-    ...redactTextFields(span, ['description']),
-    data: redactDeep(span.data),
-  };
-}
-
-function scrubTraceContextData(contexts: Contexts): Contexts {
-  const { trace } = contexts;
-  if (trace?.data === undefined) {
-    return contexts;
-  }
-  return { ...contexts, trace: { ...trace, data: redactDeep(trace.data) } };
+// 逐次送信のスパンの属性は、SDKの収集設定を経た後の最後の防御として、利用者や接続元を表すキーを除く
+function isRemovedSpanAttribute(key: string): boolean {
+  const lowerKey = key.toLowerCase();
+  return (
+    REMOVED_SPAN_ATTRIBUTES.has(lowerKey) ||
+    (lowerKey.startsWith(REQUEST_HEADER_ATTRIBUTE_PREFIX) &&
+      REMOVED_HEADER_NAMES.has(
+        lowerKey.slice(REQUEST_HEADER_ATTRIBUTE_PREFIX.length),
+      ))
+  );
 }
 
 export function scrubEvent(
@@ -200,12 +207,9 @@ export function scrubEvent(
   };
 }
 
-export function scrubTransaction(event: TransactionEvent): TransactionEvent {
-  const { spans, contexts } = event;
+export function scrubSpan(span: StreamedSpanJSON): StreamedSpanJSON {
   return {
-    ...redactTextFields(event, ['transaction']),
-    ...scrubUserAndRequest(event),
-    ...(spans && { spans: spans.map(scrubSpan) }),
-    ...(contexts && { contexts: scrubTraceContextData(contexts) }),
+    ...redactTextFields(span, ['name']),
+    attributes: redactDeep(omitFields(span.attributes, isRemovedSpanAttribute)),
   };
 }

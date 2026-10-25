@@ -4,13 +4,12 @@ import type {
   Breadcrumb,
   ErrorEvent,
   EventHint,
-  SpanJSON,
-  TransactionEvent,
+  StreamedSpanJSON,
 } from '@sentry/core';
 
 import { AppError } from '../errors/app-error.ts';
 import { REDACTED } from '../logging/redaction.ts';
-import { scrubEvent, scrubTransaction } from './scrub-event.ts';
+import { scrubEvent, scrubSpan } from './scrub-event.ts';
 
 const API_KEY = `lsk_${'AbCdEfGhIj'.repeat(4)}K_-`;
 const LUHN_VALID_CARD_NUMBER = '4111111111111111';
@@ -51,24 +50,18 @@ function createErrorEvent(overrides: Partial<ErrorEvent> = {}): ErrorEvent {
   };
 }
 
-function createSpan(overrides: Partial<SpanJSON> = {}): SpanJSON {
+function createSpan(
+  overrides: Partial<StreamedSpanJSON> = {},
+): StreamedSpanJSON {
   return {
     span_id: '0123456789abcdef',
     trace_id: '0123456789abcdef0123456789abcdef',
+    name: 'GET /v1/posts/:postId',
     start_timestamp: 1_792_000_000,
+    end_timestamp: 1_792_000_001,
     status: 'ok',
-    data: {},
-    ...overrides,
-  };
-}
-
-function createTransactionEvent(
-  overrides: Partial<TransactionEvent> = {},
-): TransactionEvent {
-  return {
-    type: 'transaction',
-    event_id: '0123456789abcdef0123456789abcdef',
-    environment: 'staging',
+    is_segment: true,
+    attributes: {},
     ...overrides,
   };
 }
@@ -395,165 +388,127 @@ describe('scrubEvent', () => {
   });
 });
 
-describe('scrubTransaction', () => {
-  test('利用者のIPアドレスとメールアドレス、リクエストのCookie・本文・クエリ文字列・IPアドレスや認証を表すヘッダーを除き、URLを伏せる', () => {
-    const scrubbed = scrubTransaction(
-      createTransactionEvent({
-        user: {
-          id: '01JBXUSER',
-          ip_address: '203.0.113.10',
-          email: 'someone@mail.example',
-        },
-        request: {
-          method: 'GET',
-          url: `https://api.launch-stadium.example/v1/keys/${API_KEY}`,
-          cookies: { session: 'opaque-session' },
-          data: { comment: '本文' },
-          query_string: 'page=2',
-          headers: {
-            'cf-connecting-ip': '203.0.113.10',
-            'x-forwarded-for': '203.0.113.10',
-            'true-client-ip': '203.0.113.10',
-            cookie: 'session=opaque-session',
-            authorization: 'Bearer opaque-credential',
-            'user-agent': 'Mozilla/5.0',
-          },
-        },
-      }),
-    );
-
-    expect(scrubbed.user).toStrictEqual({ id: '01JBXUSER' });
-    expect(scrubbed.request).toStrictEqual({
-      method: 'GET',
-      url: `https://api.launch-stadium.example/v1/keys/${REDACTED}`,
-      headers: { 'user-agent': 'Mozilla/5.0' },
-    });
-  });
-
-  test.each(REMOVED_HEADER_NAMES)('ヘッダー%sを除く', (name) => {
-    const scrubbed = scrubTransaction(
-      createTransactionEvent({
-        request: { headers: { [name]: '203.0.113.10', accept: '*/*' } },
-      }),
-    );
-
-    expect(scrubbed.request?.headers).toStrictEqual({ accept: '*/*' });
-  });
-
-  test('トランザクションの名前に入れたキーとカード番号の形を伏せる', () => {
-    const scrubbed = scrubTransaction(
-      createTransactionEvent({ transaction: sensitiveText('GET /v1') }),
-    );
-
-    expect(scrubbed.transaction).toBe(redactedText('GET /v1'));
-  });
-
-  test('スパンの説明とdataの文字列の値を伏せ、文字列以外の値は残す', () => {
-    const scrubbed = scrubTransaction(
-      createTransactionEvent({
-        spans: [
-          createSpan({
-            description: sensitiveText('GET https://partner.example/'),
-            op: 'http.client',
-            data: {
-              'url.full': sensitiveText('https://partner.example/'),
-              'http.response.status_code': 200,
-              'list.values': [API_KEY, 'plain'],
-            },
-          }),
-        ],
-      }),
-    );
-
-    expect(scrubbed.spans).toStrictEqual([
+describe('scrubSpan', () => {
+  test('スパンの名前と、説明を含む文字列の属性の値に紛れた秘密情報を伏せ字にし、周りの文字列は残す', () => {
+    const scrubbed = scrubSpan(
       createSpan({
-        description: redactedText('GET https://partner.example/'),
-        op: 'http.client',
-        data: {
-          'url.full': redactedText('https://partner.example/'),
-          'http.response.status_code': 200,
-          'list.values': [REDACTED, 'plain'],
+        name: sensitiveText('名前'),
+        attributes: {
+          'sentry.description': sensitiveText('説明'),
+          'url.full': `https://api.launch-stadium.example/v1/keys/${API_KEY}`,
+          'http.route': '/v1/keys/:key',
         },
       }),
-    ]);
+    );
+
+    expect(scrubbed.name).toBe(redactedText('名前'));
+    expect(scrubbed.attributes).toStrictEqual({
+      'sentry.description': redactedText('説明'),
+      'url.full': `https://api.launch-stadium.example/v1/keys/${REDACTED}`,
+      'http.route': '/v1/keys/:key',
+    });
   });
 
-  test('トレースのコンテキストのdataの文字列の値を伏せ、他のコンテキストは残す', () => {
-    const scrubbed = scrubTransaction(
-      createTransactionEvent({
-        contexts: {
-          trace: {
-            span_id: '0123456789abcdef',
-            trace_id: '0123456789abcdef0123456789abcdef',
-            op: 'http.server',
-            data: {
-              'http.route': sensitiveText('/v1/keys'),
-              'sentry.sample_rate': 0.1,
-            },
+  test('配列と値の形式の属性に含まれる文字列も伏せ字にする', () => {
+    const scrubbed = scrubSpan(
+      createSpan({
+        attributes: {
+          'http.request.header.x-api-key': [API_KEY],
+          'app.note': { value: sensitiveText('値'), unit: 'byte' },
+        },
+      }),
+    );
+
+    expect(scrubbed.attributes).toStrictEqual({
+      'http.request.header.x-api-key': [REDACTED],
+      'app.note': { value: redactedText('値'), unit: 'byte' },
+    });
+  });
+
+  test('文字列以外の属性とパターンに当たらない値は変えない', () => {
+    const attributes = {
+      'http.response.status_code': 200,
+      'sentry.sample_rate': 0.1,
+      'app.cached': false,
+      'app.counts': [1, 2, 3],
+      'sentry.op': 'http.server',
+      'app.message': '通常のメッセージです',
+    };
+
+    const scrubbed = scrubSpan(createSpan({ name: 'GET /health', attributes }));
+
+    expect(scrubbed.name).toBe('GET /health');
+    expect(scrubbed.attributes).toStrictEqual(attributes);
+  });
+
+  test('利用者のIPアドレス・メールアドレスと、接続元のアドレス・クエリ文字列・本文の属性を除く', () => {
+    const scrubbed = scrubSpan(
+      createSpan({
+        attributes: {
+          'user.id': '01JBXUSER',
+          'user.ip_address': '203.0.113.10',
+          'user.email': 'someone@mail.example',
+          'client.address': '203.0.113.10',
+          'network.peer.address': '203.0.113.10',
+          'url.query': 'page=2',
+          'http.request.body.data': '{"comment":"本文"}',
+          'http.request.method': 'GET',
+        },
+      }),
+    );
+
+    expect(scrubbed.attributes).toStrictEqual({
+      'user.id': '01JBXUSER',
+      'http.request.method': 'GET',
+    });
+  });
+
+  test.each(REMOVED_HEADER_NAMES)(
+    'リクエストのヘッダー%sの属性を大文字小文字を区別せずに除く',
+    (name) => {
+      const scrubbed = scrubSpan(
+        createSpan({
+          attributes: {
+            [`http.request.header.${name}`]: ['203.0.113.10'],
+            'http.request.header.accept': ['*/*'],
           },
-          cloud_resource: { 'cloud.provider': 'cloudflare' },
+        }),
+      );
+
+      expect(scrubbed.attributes).toStrictEqual({
+        'http.request.header.accept': ['*/*'],
+      });
+    },
+  );
+
+  test('応答のSet-Cookieヘッダーの属性を除く', () => {
+    const scrubbed = scrubSpan(
+      createSpan({
+        attributes: {
+          'http.response.header.set-cookie': ['session=opaque-session'],
+          'http.response.header.content-type': ['application/json'],
         },
       }),
     );
 
-    expect(scrubbed.contexts).toStrictEqual({
-      trace: {
-        span_id: '0123456789abcdef',
-        trace_id: '0123456789abcdef0123456789abcdef',
-        op: 'http.server',
-        data: {
-          'http.route': redactedText('/v1/keys'),
-          'sentry.sample_rate': 0.1,
-        },
-      },
-      cloud_resource: { 'cloud.provider': 'cloudflare' },
+    expect(scrubbed.attributes).toStrictEqual({
+      'http.response.header.content-type': ['application/json'],
     });
   });
 
-  test('パターンに当たらない通常の名前と説明は変えず、対象の項目が無ければ書き足さない', () => {
-    const event = createTransactionEvent({
-      transaction: 'GET /v1/products/:productId',
-      spans: [
-        createSpan({
-          description: 'SELECT * FROM products',
-          data: { 'db.system': 'd1' },
-        }),
-      ],
-      contexts: {
-        trace: {
-          span_id: '0123456789abcdef',
-          trace_id: '0123456789abcdef0123456789abcdef',
-        },
+  test('元のスパンを書き換えない', () => {
+    const span = createSpan({
+      name: sensitiveText('名前'),
+      attributes: {
+        'url.full': `https://api.launch-stadium.example/v1/keys/${API_KEY}`,
+        'user.ip_address': '203.0.113.10',
+        'app.note': { value: API_KEY },
       },
     });
+    const before = structuredClone(span);
 
-    expect(scrubTransaction(event)).toStrictEqual(event);
-    expect(scrubTransaction(createTransactionEvent())).toStrictEqual(
-      createTransactionEvent(),
-    );
-  });
+    scrubSpan(span);
 
-  test('元のトランザクションを書き換えない', () => {
-    const event = createTransactionEvent({
-      transaction: sensitiveText('GET /v1'),
-      spans: [
-        createSpan({
-          description: sensitiveText('説明'),
-          data: { key: API_KEY },
-        }),
-      ],
-      contexts: {
-        trace: {
-          span_id: '0123456789abcdef',
-          trace_id: '0123456789abcdef0123456789abcdef',
-          data: { key: API_KEY },
-        },
-      },
-    });
-    const before = structuredClone(event);
-
-    scrubTransaction(event);
-
-    expect(event).toStrictEqual(before);
+    expect(span).toStrictEqual(before);
   });
 });

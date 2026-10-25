@@ -108,7 +108,7 @@
 - **Findings**:
   - `@sentry/hono`の`./cloudflare`入口の`sentry(app, options)`は、内部で`@sentry/cloudflare`の`withSentry`をアプリに適用し、Honoのエラーを捕捉するミドルウェアを返す。`shouldHandleError`で送信するエラーを絞れる。接続元の情報を`hono/cloudflare-workers`の`getConnInfo`で読む。
   - 相手依存はすべて任意で、`@sentry/cloudflare`は`withSentry`でscheduled・queueなどのハンドラーも計装できる。
-- **Implications**: Honoの経路は`sentry(app, ...)`、scheduled・queueは`withSentry`で計装する。`dataCollection`で利用者の情報・Cookie・ヘッダー・URLのクエリ文字列・HTTPの本文を集めない設定にし、`beforeSend`・`beforeSendTransaction`の両方でIPアドレス・Cookie・認証ヘッダー・本文を除く(承認後の改訂4。11.4.0には`sendDefaultPii`が無い)。二重計装が起きないことをWorkers統合テストで確かめる。
+- **Implications**: Honoの経路は`sentry(app, ...)`、scheduled・queueは`withSentry`で計装する。`dataCollection`で利用者の情報・Cookie・ヘッダー・URLのクエリ文字列・HTTPの本文を集めない設定にし、`beforeSend`(イベント)と`beforeSendSpan`(逐次送信のスパン)の両方でIPアドレス・Cookie・認証ヘッダー・本文を除く(承認後の改訂4・改訂6。11.4.0には`sendDefaultPii`が無く、既定の`traceLifecycle: 'stream'`では`beforeSendTransaction`が呼ばれない)。二重計装が起きないことをWorkers統合テストで確かめる。
 
 ### Rate Limitingバインディング
 
@@ -264,6 +264,7 @@
 - 2026-10-24(文言の整合、改訂の番号なし): パッケージのスクリプトの注記と追跡表7.8に、infra-deliveryの改訂1の実装の後のapi・eventのローカルの起動の形(`run-with-secrets --scope local --worker <api|event>`。`WORKER_SCOPED_SECRETS`の`STRIPE_API_KEY`はWorkerごとのフォルダからだけ渡る)を書き加えた。本specの実装の時点の起動の形(`infisical run`)は変えていない。振る舞いの変更は無く、タスクも変えていない。cross-spec reviewの指摘による。
 - 2026-10-25(改訂4): Sentryの個人情報の収集設定(`sendDefaultPii`から`dataCollection`へ)と、トランザクションの個人情報の除去。タスク2.6の実装のレビューの指摘を受けて開発者が決定(末尾の改訂4の節)。
 - 2026-10-25(改訂5): LoggingSetupのテスト用の差し替え口を`sink?: Sink`から`console?: Console`へ。タスク4.1の実装で、LogTapeのシンクが整形前の記録を受け取り、値の形式の伏せ字とJSONオブジェクト化を通った出力をテストで受け取れないことが分かり、親(実装のコントローラー)が決定(末尾の改訂5の節)。
+- 2026-10-25(改訂6): Sentryのトレースの除去処理を`beforeSendTransaction`(`scrubTransaction`)から`beforeSendSpan`(`scrubSpan`)へ。タスク4.2の実装で、11.4.0の既定の`traceLifecycle: 'stream'`ではトランザクションが送られず`beforeSendTransaction`が無視されることが分かり、開発者が決定(末尾の改訂6の節)。
 
 ## 開発者の決定による承認後の改訂(改訂3、2026-10-24)
 
@@ -306,3 +307,14 @@
 - **決定**: 差し替え口を`console?: Console`にし、`getConsoleSink`の`console`オプションに渡す。テストは記録用のコンソールで本番と同じ組み合わせ(フィールド名とパターンの伏せ字、JSONオブジェクト化、レベルとコンソールのメソッドの対応)の出力を受け取る。後続のタスクのテストも同じ方法でログを確かめる。
 - **要件**: 要件の文言と振る舞いは変わらないため、`requirements.md`の「承認後の改訂」の表には載せない。
 - **変えた箇所**: 設計の`LoggingSetup`のService Interfaceと`configureSync`の説明。番号の変更は無い。
+
+## 開発者の決定による承認後の改訂(改訂6、2026-10-25)
+
+- **状態**: 2026-10-25に開発者が決定した改訂で、確定している。タスク4.2の実装で判明し、親(実装のコントローラー)が2案を示して開発者が案Bを選んだ。
+- **Context**: 設計は`buildSentryOptions`に`beforeSendTransaction: scrubTransaction`を置いていたが、固定した`@sentry/core@11.4.0`の`traceLifecycle`の既定は`'stream'`で、パフォーマンスのデータはトランザクションのイベントではなく逐次送信のスパン(`StreamedSpanJSON`、エンベロープの項目`span`の`version: 2`)として送られる。このとき`beforeSendTransaction`は呼ばれず、SDKは実行時に「`beforeSendTransaction` and `ignoreTransactions` are ignored with `traceLifecycle: 'stream'`」と警告する。型定義でも`beforeSendTransaction`は`@deprecated`(v12で削除)で、参照すると`@typescript-eslint/no-deprecated`が違反を報告する。Workers統合テストでは、`dataCollection`によりスパンにIPアドレス・ヘッダー・Cookie・クエリ文字列は付かなかったが、スパンの名前と`url.full`・`url.path`などの属性には値の形式の伏せ字(改訂3)が掛からなかった。frontend-platformのresearch.mdも、同じ漏れをRisksに記録している。
+- **検討した案**:
+  - 案A: `traceLifecycle: 'static'`を指定し、`beforeSendTransaction: scrubTransaction`を保つ。変更は最小で、実験では全テストが通った。ただし非推奨のAPIに依存し、SDK v12への更新で作り直しになる。
+  - 案B(採用): 既定の`'stream'`のまま、`beforeSendSpan`にスパンの除去処理`scrubSpan`をつなぎ、`beforeSendTransaction`を使わない。
+- **決定**: 案B。`scrubSpan(span: StreamedSpanJSON): StreamedSpanJSON`を`core/observability/scrub-event.ts`に置き、スパンの名前と属性の文字列の値(配列と`{ value, unit }`の形を含む。スパンの説明は属性`sentry.description`)に`REDACTION_PATTERNS`を適用する。最後の防御として、利用者と接続元を表す属性(`user.ip_address`・`user.email`・`client.address`・`network.peer.address`)、`url.query`、`http.request.body.data`、`http.response.header.set-cookie`と、`scrubEvent`が削除するヘッダー(`cookie`・`authorization`と12種)の`http.request.header.*`の属性を、大文字小文字を区別せずに削除する。SDKは`captureSpan`で共通の属性(`user.ip_address`など)を付けた後に`beforeSendSpan`を呼ぶため、ここで削除できる。`beforeSendSpan`は`null`を返せない(スパンを落とせない)ため、除去だけを行う。`scrubTransaction`は使われなくなるため削除した(下流specのdesign・tasksは参照していない。frontend-platformのresearch.mdは本specの旧い設定として言及するだけ)。
+- **要件**: 要件9.2(IPアドレスを除き、Cookie・認証ヘッダー・本文を含めず、パフォーマンストレースの名前と説明と付随する値の秘密情報を値の形式で伏せる)を満たすための設計の修正で、要件の文言と利用者・運用者から見える振る舞いの約束は変わらないため、`requirements.md`の「承認後の改訂」の表には載せない(表の注記に改訂6を加えた)。
+- **変えた箇所**: 設計の`SentryScrubber`(Intent、Service Interfaceの`scrubTransaction`を`scrubSpan`へ、利用者とリクエストの個人情報の除去の説明、`scrubSpan`の処理)、`SentryInstrumentation`の`buildSentryOptions`とトレースの送り方、収集設定の説明、`LogRecordFormat・LogRedaction`の`REDACTION_PATTERNS`の説明、File Structure Planの`scrub-event.ts`の説明、追跡表の9.2、Revalidation Triggers(Sentry SDKの版の更新)、LoggingDoc、Testing Strategyの`scrub-event.unit.test.ts`と`sentry.worker.test.ts`、Security Considerations、本書のSentryの節のImplications。タスク2.6の詳細(改訂6の注記)と4.2の詳細・完了状態(親が更新)。番号の変更は無い。

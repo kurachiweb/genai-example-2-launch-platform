@@ -85,6 +85,7 @@
   - 利用者のIPアドレス・メールアドレス、リクエストのCookie・本文・クエリ文字列、IPアドレスや認証を表すヘッダーを除き、パンくずの値にも伏せ字のパターンを適用する
   - (承認後の改訂3、2026-10-24に開発者が決定)値の形式の伏せ字のパターンを、例外の値と種類、イベントのメッセージ(`logentry`の`message`・`formatted`・文字列の`params`を含む)、パンくずのメッセージ、リクエストのURL、トランザクションの名前にも適用する。パフォーマンストレースの送信前の処理でも、トランザクションの名前・スパンの説明と`data`の文字列の値・トレースのコンテキストの`data`の文字列の値に適用する
   - (承認後の改訂4、2026-10-25に開発者が決定)利用者とリクエストの個人情報の除去を共通の処理にして、パフォーマンストレースの送信前の処理にも適用する。除くヘッダーはCookie・認証とSentryがIPアドレスの取得に使う12種とし、循環参照は打ち切る
+  - (承認後の改訂6、2026-10-25に開発者が決定)パフォーマンストレースの除去処理は、トランザクションへの処理(`scrubTransaction`)ではなく、逐次送信のスパンへの処理(`scrubSpan`。スパンの名前・説明・文字列の属性の値への伏せ字と、IPアドレス・接続元・ヘッダー等の属性の削除)とする(実装は4.2で行った)
   - 先に、公開APIのキー(`lsk_`と43文字)と、前後を数字以外の文字で挟んだLuhnの検査を通る16桁の数字の並び(カード番号の形)を、例外のメッセージ・イベントのメッセージ・パンくずのメッセージ(と例外の種類・`logentry`・リクエストのURL・トランザクションの名前・スパンの説明と`data`の値・トレースのコンテキストの`data`の値)に入れたイベントの単体テストを書く
   - 完了状態: 除去後のイベントに対象の項目が残らず、パンくずの値に入れた公開APIのキー(`lsk_`と43文字)が伏せ字になり、共通エラー型のイベントが落ちることを単体テストで確かめられる。例外のメッセージ・イベントのメッセージ・パンくずのメッセージに入れたキーとカード番号の形がそれぞれ`[REDACTED]`になって周りの文字列が残り、例外の種類・`logentry`・リクエストのURL・トランザクションの名前・スパンの説明と`data`の値・トレースのコンテキストの`data`の値でも同じく伏せられ、パターンに当たらない通常のメッセージとクラス名は変わらないことを単体テストで確かめられる
   - _Depends: 2.5_
@@ -164,7 +165,7 @@
   - _Depends: 2.5_
   - _Requirements: 8.1, 8.2, 8.3, 8.7, 8.8_
 
-- [ ] 4.2 (P) Sentryの初期化オプションと計装を作る
+- [x] 4.2 (P) Sentryの初期化オプションと計装を作る
   - 送信先が無ければ無効にし、個人情報の既定送信を切り、イベントとトランザクションの送信前に除去処理を通し、環境とトレースの割合を設定から読む
   - Honoの経路は共通エラー型を除いて送るミドルウェアで、定期実行と非同期メッセージのハンドラーは別の計装で包み、fetchを二重に計装しない
   - (承認後の改訂4、2026-10-25に開発者が決定)Sentry 11.4.0に`sendDefaultPii`は無いため、個人情報の既定送信は`dataCollection`(利用者の情報・Cookie・リクエストのヘッダー・URLのクエリ文字列・HTTPの本文を集めない)で切る
@@ -371,3 +372,4 @@
 - 4.1(8.3への申し送り): `@logtape/redaction`の`EMAIL_ADDRESS_PATTERN`は空白を挟まない日本語をローカル部に含めて伏せる(「連絡先はuser@launch.exampleです」→全体が`[REDACTED]`)。伏せすぎで漏えいは無い。8.3の文書に「メールアドレスは属性として渡すか、空白や記号で区切る」と規約として書く。
 - 4.3(8.3・6.3への申し送り): `MessagePublisher.publish`は種別名で集約点の契約を引き、登録された契約のスキーマで検証した結果(`parsed.data`、規則に無いキーは除かれる)を封筒の本文として送る。そのため契約のスキーマは、parse結果をもう一度検証しても同じ値になる冪等な規則に限る(非冪等な`transform`を使わない)。8.3の文書に記載する。遅延は0〜43200の整数で、上限`MAX_DELAY_SECONDS`は`workers/messaging/queue-publisher.ts`からエクスポートしており、6.3の`defer`の上限で再利用する。MiniflareのQueueは送った内容を読み返せないため、封筒の確認は記録用の`Queue`の代用品で行う。
 - 5.2(6.1・7.1・7.2への申し送り): `ipRateLimit`の型制約は、4.4の`PlatformEnv`が未作成だったため`E extends { readonly IP_RATE_LIMITER: RateLimit }`にした(`PlatformEnv`はこれを満たす)。クライアントIPはHonoの文脈変数`clientIp`から読み、未設定なら`ip:unknown`で数えるため、6.1の`invocationContext`がIP制限より前に`clientIp`を設定する。`excludePath`はパスの区切りの境界で一致し(`/webhooks/stripe`は`/webhooks/stripe-other`を除外しない)、`pathname`だけを比べる。Miniflareはローカルでも時計に揃った窓でRate Limitingの上限を効かせるため、IP制限のテストは実物の`IP_RATE_LIMITER`を使い、窓の残りが短ければ次の窓を待つ。
+- 4.2(6.1〜6.4への申し送り): Sentryの計装は`createSentryMiddleware(app, options)`(Honoの経路。`AppError`を`shouldHandleError`で除く)と`withSentryForScheduledAndQueue(options, handler)`(scheduled・queueだけを`withSentry`で包み、fetchは元の参照のまま)で、どちらも`CloudflareOptions`を返す関数を受け取る(6.1では`(env) => buildSentryOptions(readSentryRuntimeOptions(env))`の形を渡す)。`@sentry/cloudflare`はisolateごとにクライアントを使い回すため、テストでは`cacheClient: false`を渡す。`readSentryRuntimeOptions`は`PlatformEnv`の代わりに全キー任意の`SentryEnv`を受け取る(Honoの計装は環境の検証より前に動くため)。`PlatformEnv`は`SentryEnv`へ代入できる形にする。範囲外の`SENTRY_TRACES_SAMPLE_RATE`は0になるので、形式の検証は環境の検証スキーマで行う。frontend-platformのresearch.mdがbackend-platformの`beforeSendTransaction`の設定を前提に書いている箇所がある(改訂6で解消)。
