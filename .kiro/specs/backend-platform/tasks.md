@@ -155,7 +155,7 @@
   - _Depends: 1.2, 1.3_
   - _Requirements: 2.4, 2.5_
 
-- [ ] 4. 観測性・メッセージ送信・処理単位のコンテナ(実行環境の部品)
+- [x] 4. 観測性・メッセージ送信・処理単位のコンテナ(実行環境の部品)
 - [x] 4.1 (P) LogTapeの設定を作る
   - コンソールへの出力を、値のパターンによる伏せ字を通した整形関数と、フィールド名による伏せ字で包み、処理単位の文脈を非同期の文脈で引き継ぐ
   - 設定はisolateで1回だけ行い、ログレベルが変わったときだけ設定し直す。不正なログレベルは`info`で続ける
@@ -183,7 +183,7 @@
   - _Depends: 2.4, 2.7_
   - _Requirements: 10.6, 11.2, 11.3_
 
-- [ ] 4.4 両サーバー共通の環境の型と、処理単位ごとのDIコンテナを作る
+- [x] 4.4 両サーバー共通の環境の型と、処理単位ごとのDIコンテナを作る
   - 両サーバー共通のバインディング・変数・シークレットの型と、検証スキーマの断片を定義する
   - 処理単位ごとに新しいコンテナを作り、環境・処理単位の情報・データベース・時計・ID採番・ハッシュ化・メッセージ送信を束縛してから、各モジュールの束縛を読み込む。`jitless`の既定値を変えない
   - 完了状態: 同時に処理される2つの処理単位が別のデータベースと単一インスタンスを受け取り、基盤の依存を識別子で解決できることをWorkers統合テストで確かめられる
@@ -375,3 +375,4 @@
 - 4.2(6.1〜6.4への申し送り): Sentryの計装は`createSentryMiddleware(app, options)`(Honoの経路。`AppError`を`shouldHandleError`で除く)と`withSentryForScheduledAndQueue(options, handler)`(scheduled・queueだけを`withSentry`で包み、fetchは元の参照のまま)で、どちらも`CloudflareOptions`を返す関数を受け取る(6.1では`(env) => buildSentryOptions(readSentryRuntimeOptions(env))`の形を渡す)。`@sentry/cloudflare`はisolateごとにクライアントを使い回すため、テストでは`cacheClient: false`を渡す。`readSentryRuntimeOptions`は`PlatformEnv`の代わりに全キー任意の`SentryEnv`を受け取る(Honoの計装は環境の検証より前に動くため)。`PlatformEnv`は`SentryEnv`へ代入できる形にする。範囲外の`SENTRY_TRACES_SAMPLE_RATE`は0になるので、形式の検証は環境の検証スキーマで行う。frontend-platformのresearch.mdがbackend-platformの`beforeSendTransaction`の設定を前提に書いている箇所がある(改訂6で解消)。
 - 5.3(6.1・7.1・8.1・8.3への申し送り): bot判定の部品はapi専用で、ログのカテゴリは`['api','infrastructure','bot-protection']`に固定している(LoggingSetupは`[appName]`にだけシンクを付けるため、eventで使うとログが黙って消える。eventで使う場合は`TurnstileVerifierOptions`に`appName`を加える設計の改訂が要る)。backend-libで`getAppLogger`を使う部品のカテゴリの決め方の前例になる。`turnstileGuard`のHonoの環境の型はローカル型`TurnstileGuardHonoEnv`で、6.1で`PlatformHonoEnv`ができたら差し替える。期待するホスト名は`createTurnstileVerifier`の中で小文字にそろえ、`TURNSTILE_EXPECTED_HOSTNAMES`の分割と空文字の除外は7.1のapiのモジュールが行う。503の文言「現在ご利用いただけません。時間をおいて再度お試しください。」は文言規則の表に無いため8.xで追記する。共有コードのテストはeventでも型検査されるため、apiだけのバインディングを`env`から直接読まない。
 - 5.1(7.1・8.1への申し送り): `RateLimitCounter`は同期KV(`storage.kv`)で読み書きし、`await`を挟まないため並行した要求の間に割り込まれない。Alarmは重複して実行され得るため、`alarm()`は期間中なら記録を消さず(Alarmが失われていれば予約し直す)、期間が終わっているか状態が無いときだけ消す。`reset()`は無条件で消す。`migrations`(`v1`の`new_sqlite_classes: ["RateLimitCounter"]`)はWranglerで継承されるキーのためルートにだけ書き、`durable_objects`は3環境に書いている。7.1でエントリを置き換えるときは`RateLimitCounter`のエクスポートを保つ。拒否時の文言とエラーコードは5.2の`binding-rate-limit.ts`と二重に定義されており、期間の終わりの計算も`fixed-window.ts`と同じ式を持つ。apiだけのバインディングを使う共有コードのテストは`Reflect.get`と型ガードで取り出す。
+- 4.4(6.1・6.4・7.1・7.2への申し送り): `createInvocationContainer`の`modules`は、Honoの不変性のため設計の`readonly AppModule[]`ではなく`readonly Pick<AppModule, 'bindings'>[]`を受け取る(環境を指定した`AppModule`の配列もそのまま渡せる)。6.1・6.4も同じ形にそろえる。`InvocationScope`はscope全体(`env`・`executionCtx`・`info`)を束縛する。コンテナの既定のスコープはTransientで、基盤の依存(Database・IdGenerator・KeyedHasher・MessagePublisher)は`toDynamicValue(...).inSingletonScope()`、時計は`toConstantValue(systemClock)`。`platformEnvShape`は`z.object`で使うと未宣言のキーを落とすため、6.1の`envGuard`は検証結果を環境として使わず元の`env`を使い続けるか、`E`をスキーマから推論する(生成された`Env`の`LOG_LEVEL`は値で絞り込まれた型で、スキーマの出力の型を`ZodType<Env>`に代入できない)。両アプリの`Env`は`PlatformEnv`・`SentryEnv`・`{ readonly IP_RATE_LIMITER: RateLimit }`へ代入できることを確認済み。
