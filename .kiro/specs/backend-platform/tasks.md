@@ -70,7 +70,7 @@
   - _Boundary: PlatformIdentifiers, AppModuleContract, EnvSchema_
   - _Requirements: 1.1, 5.3, 5.5, 7.5_
 
-- [ ] 2.5 (P) ログ1件をJSONオブジェクトにする整形と、個人情報・秘密情報の伏せ字の規則を作る
+- [x] 2.5 (P) ログ1件をJSONオブジェクトにする整形と、個人情報・秘密情報の伏せ字の規則を作る
   - 時刻・レベル・カテゴリ・メッセージと構造化した属性・文脈を持つオブジェクトへの変換と、それをコンソールへ渡す整形関数を用意する
   - 伏せ字の対象として、既定のフィールドにIP・メールアドレス・Cookie・認証ヘッダー・トークン・bot判定のトークン・ペッパー・シークレットのフィールド名を加え、値のパターンにメールアドレス・JWT・カード番号と独自のIPv4・IPv6・Bearer・公開APIのキー(`lsk_[A-Za-z0-9_-]{43}`)を加える
   - カテゴリの規約(アプリ・層・モジュール)付きのロガー取得を用意する
@@ -354,3 +354,4 @@
 - 2.3(後続specへの申し送り): `AppError`の`message`は設計どおり必須(下流specの`AppError(kind, code)`は略記で、実装時に文言の表から`message`を渡す)。エラーコードはsnake_caseでなければ`RangeError`、`retryAfterSeconds`は`rate_limited`・`unavailable`だけで0以上の整数(厳密カウンタは残り秒数を切り上げて渡す)。`toErrorResponse`の戻り値と詳細は凍結される。500・404の定型の文言(「問題が発生しました。時間をおいて再度お試しください。」「お探しの内容は見つかりませんでした。」)は文言規則の表に無いため、8.xで文言を記載する際に扱う。ugc-moderationのdesign.mdの`AppError(internal)`は`AppErrorKind`に無い。
 - 2.4(親の判断): design.mdが`core/di/app-module.ts`で`import type { Hono } from 'hono'`を指定しているため、AppLayerRulesの`lib/core/**`の`hono`の禁止は実行時の依存の禁止と解釈し、`hono`だけ型のimportを許した(`@typescript-eslint/no-restricted-imports`の`allowTypeImports: true`)。`workers`・`cloudflare:*`・`db`は型のimportも禁止のまま。8.1の文書に記載する。
 - 2.4(4.4・6.1・6.4への申し送り): Honoは環境の型引数について不変なため、`AppModule`の型制約は`THono extends Hono<any, any, any>`(既定は`Hono`)にした。環境を指定したモジュール(`AppModule<Hono<PlatformHonoEnv<E>>>`)は既定の`readonly AppModule[]`へ代入できないので、`createInvocationContainer`・`createWorkerHandler`の`modules`は総称型にするか`bindings`だけを受け取る形にそろえる。設計に無い名前として`IdGenerator.generate(): string`と`createUlidGenerator(clock: Clock)`(ulidの`monotonicFactory`)を置き、`InvocationScopeInfo`は`core/di/identifiers.ts`にある。`validateEnv`は経路が空のZodの問題(全体への`refine`など)をどちらのキーにも分類しない。
+- 2.5(8.3への申し送り): `toLogObject`は属性の最上位のErrorを`{name, message, stack, cause}`に開き、原因はErrorと文字列・数値・真偽値だけを出力する(`redactByField`がErrorの中を走査しないため、オブジェクトの原因と独自のプロパティは出さない)。ライブラリの仕様により、タグ付きテンプレートに属性に無いオブジェクトを差し込むと属性名による伏せ字が効かず、入れ子のErrorは`{}`になる。8.3の文書に「秘密情報を含み得るオブジェクトは名前付きの属性として渡す」「例外は属性の最上位に置く」を規約として書く。Cookieのフィールド名だけ部分一致(`/cookie/i`)で、他は名前と完全一致。
