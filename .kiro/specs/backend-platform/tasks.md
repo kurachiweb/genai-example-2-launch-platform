@@ -129,7 +129,7 @@
   - _Depends: 2.1, 2.10_
   - _Requirements: 10.9_
 
-- [ ] 3. データベースの共通部品とマイグレーションの検出確認
+- [x] 3. データベースの共通部品とマイグレーションの検出確認
 - [x] 3.1 (P) 全テーブルが使う主キー・作成更新日時・論理削除の列と、大文字小文字を区別しない列を作る
   - 先に、テスト内の検証用テーブル定義(`snakeCase.table`)で、スネークケースの列名・列の型・NOT NULL・既定値・更新時の値を確かめる単体テストを書く
   - ULIDを採番するテキストの主キー、UTCミリ秒の作成・更新日時(Drizzleの更新時に更新日時を自動設定)、NULLを未削除とする削除日時と未削除への絞り込み条件、照合順序`nocase`のテキスト列を提供する
@@ -138,7 +138,7 @@
   - _Depends: 1.2_
   - _Requirements: 1.1, 1.3, 1.4, 1.5_
 
-- [ ] 3.2 D1上で共通カラム・論理削除・大文字小文字・一括実行の振る舞いを確かめる
+- [x] 3.2 D1上で共通カラム・論理削除・大文字小文字・一括実行の振る舞いを確かめる
   - テスト内で検証用テーブルを作り、接続の入口経由で、追加時の日時とIDの自動設定、更新時の更新日時、論理削除の絞り込み、大文字小文字だけが異なる値の一意制約違反を確かめる
   - 一括実行の途中の文が失敗すると、先行する書き込みも取り消されることを確かめる
   - 完了状態: これらのWorkers統合テストが成功する
@@ -365,3 +365,4 @@
 - 2.9(5.3への申し送り): `interpretSiteverify`は、JSONとして読めなかった応答を`{ kind: 'response', status, json: undefined }`で受け取る取り決めにしている(オブジェクトでない値・形が不正な本文は`unavailable`)。複数のエラーコードの優先順位はmisconfigured > unavailable > expired-or-duplicate > invalid-tokenで、未知のコードだけ・コード無しの失敗応答は`invalid-token`(403)。2xx以外は本文のエラーコードを`errorCodes`に残さない。ホスト名は完全一致(大文字小文字を区別)なので、期待するホスト名の設定値を小文字にそろえる場合は5.3か環境の検証で扱う。
 - 3.1(8.2への申し送り): 共通カラムは`apps/db/schema/_shared/columns.ts`(`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`)と`text-no-case.ts`(`textNoCase`)にある。追加時の`created_at`と`updated_at`は別々に現在時刻を取るため1ms程度ずれ得る。`/workspace/docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md`の`textNoCase`のimportの例は`./text-no-case`のままなので、8.2で配置(`_shared/`と`.ts`拡張子)と食い違わないようにする。
 - 3.3(8.5・9.2への申し送り): Wrangler 4.124.0の`d1 migrations list`に`--json`は無く、検出確認は表の出力を解析する(未知の出力・表の欠落・Wranglerの失敗は終了コード1)。`--local`での一覧にシークレットは不要。`--persist-to`に渡したディレクトリには`v3/`が作られるため、検出確認は一時ディレクトリを使う。DB名`genai-example-2-dev`は`apps/api/scripts/check-migrations.ts`の定数と`package.json`の`db:migrate:local`の2箇所にある。
+- 3.2(親の判断、8.1への申し送り): design.mdは`db/client.worker.test.ts`をdb配下に置くが、AppLayerRulesは`db/**`で`cloudflare:*`を禁止するため、`db/**/*.worker.test.{ts,tsx}`だけ`cloudflare:*`の禁止を外した(`**/lib/**`・`hono`・`sqliteTable`の禁止は保つ)。8.1の文書に記載する。D1のWorkers統合テストは`cloudflare:workers`の`env`からバインディングを受け取り(`cloudflare:test`の`env`は非推奨)、検証用テーブルの`CREATE TABLE`はDrizzleの`getTableConfig`から列定義を組み立てる。Drizzleは単一の文の失敗を`DrizzleQueryError`で包み、D1のエラーは`cause`にある。

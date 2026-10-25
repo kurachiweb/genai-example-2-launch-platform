@@ -92,6 +92,21 @@ const LAYER_RULES: Linter.Config[] = [
   },
 ];
 
+const DB_WORKER_TEST_FILES = 'db/**/*.worker.test.{ts,tsx}';
+
+const DB_TABLE_DEFINITION_RESTRICTION = {
+  name: 'drizzle-orm/sqlite-core',
+  importNames: ['sqliteTable', 'sqliteTableCreator'],
+  message:
+    '列名をスネークケースへ変換するため、テーブルはsnakeCase.tableで定義してください。',
+};
+
+const DB_SHARED_DIRECTORY_RESTRICTION = {
+  group: ['**/lib/**'],
+  message:
+    'drizzle-kitが配置元でスキーマを読み込むため、DBスキーマは他の共有ディレクトリに依存できません。',
+};
+
 // 共有ディレクトリの静的解析は検査担当のapiだけが受け持つため、共有コードとDBスキーマの規則はapiにだけ置く
 const SHARED_DIRECTORY_RULES: Linter.Config[] = [
   {
@@ -132,27 +147,37 @@ const SHARED_DIRECTORY_RULES: Linter.Config[] = [
   {
     name: 'api/shared/db',
     files: ['db/**'],
+    ignores: [DB_WORKER_TEST_FILES],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          paths: [
-            {
-              name: 'drizzle-orm/sqlite-core',
-              importNames: ['sqliteTable', 'sqliteTableCreator'],
-              message:
-                '列名をスネークケースへ変換するため、テーブルはsnakeCase.tableで定義してください。',
-            },
-          ],
+          paths: [DB_TABLE_DEFINITION_RESTRICTION],
           patterns: [
-            {
-              group: ['**/lib/**'],
-              message:
-                'drizzle-kitが配置元でスキーマを読み込むため、DBスキーマは他の共有ディレクトリに依存できません。',
-            },
+            DB_SHARED_DIRECTORY_RESTRICTION,
             {
               group: ['hono', 'cloudflare:*'],
               message: 'DBスキーマは実行環境とHonoに依存できません。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: 'api/shared/db-worker-tests',
+    files: [DB_WORKER_TEST_FILES],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [DB_TABLE_DEFINITION_RESTRICTION],
+          patterns: [
+            DB_SHARED_DIRECTORY_RESTRICTION,
+            // Workers統合テストはD1のバインディングをworkerdの実行環境から受け取るため、cloudflare:*だけを許す
+            {
+              group: ['hono'],
+              message: 'DBのWorkers統合テストはHonoに依存できません。',
             },
           ],
         },

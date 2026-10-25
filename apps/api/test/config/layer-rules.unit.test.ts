@@ -162,6 +162,39 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
       allowed("import { b } from './_shared/columns';"),
     ],
   },
+  {
+    file: 'db/client.ts',
+    imports: [
+      forbidden("import { env } from 'cloudflare:workers';"),
+      forbidden("import type { Env } from 'cloudflare:workers';"),
+      allowed("import { drizzle } from 'drizzle-orm/d1';"),
+    ],
+  },
+  {
+    file: 'db/schema/_shared/violation.worker.test.ts',
+    imports: [
+      forbidden("import { a } from '../../../lib/core/time/clock';"),
+      forbidden("import { Hono } from 'hono';"),
+      forbidden("import { sqliteTable } from 'drizzle-orm/sqlite-core';"),
+      forbidden(
+        "import { sqliteTableCreator } from 'drizzle-orm/sqlite-core';",
+      ),
+      allowed("import { env } from 'cloudflare:workers';"),
+      allowed("import { applyD1Migrations } from 'cloudflare:test';"),
+      allowed("import { snakeCase } from 'drizzle-orm/sqlite-core';"),
+      allowed("import { b } from './columns';"),
+    ],
+  },
+  {
+    file: 'db/violation.worker.test.ts',
+    imports: [
+      forbidden("import { a } from '../lib/core/time/clock';"),
+      forbidden("import { Hono } from 'hono';"),
+      forbidden("import { sqliteTable } from 'drizzle-orm/sqlite-core';"),
+      allowed("import { env } from 'cloudflare:workers';"),
+      allowed("import { createDatabase } from './client';"),
+    ],
+  },
 ];
 
 const reportedStatementsOf = async (
