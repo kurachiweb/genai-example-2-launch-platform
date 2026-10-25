@@ -123,6 +123,22 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - **タスク**: 本specのタスクは、実装の時点でmainにあるキーと変数だけを扱い、後続specの行は後続specが足すため、タスクの追加は無い。構成検査(3.1・5.2)は資源一覧の識別子だけを照合し、`ADMIN_SITE_ORIGIN`・`STRIPE_PUBLISHABLE_KEY`を照合しないため、検査の変更も無い。
 - **容量の単位**: 1,024を基数とする規則(文言規則)に関わるバイト数の上限を本specは持たない。
 
+### spec横断レビューによる承認後の改訂(改訂1、2026-10-24)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、cross-spec reviewの指摘による。2026-10-24に開発者が推奨どおり確定した。`requirements.md`の「承認後の改訂」の表に改訂1として記録した。
+- **指摘**: Infisicalの`/`に`STRIPE_API_KEY`を1つだけ置き、`selectWorkerSecrets`が全Workerへ同じ値を渡す設計は、paymentsのQ5(承認済み。api用とevent用の制限付きキーを別々に作る)と食い違っていた(CRITICAL)。launch-readinessも仮13で同じ食い違いを申し送っていた。あわせて、後続specが要求したホスト名から導かれる変数の行と、上流spec・他specへの影響の表の行が欠けていた。
+- **決定(シークレット)**: dev・staging・prodの各環境に、Workerごとのフォルダ`/workers/api`・`/workers/event`を設け、その値を同じキーの`/`の値より優先してそのWorkerにだけ渡す(要件4.10)。Workerごとに分けると定めたキーの一覧`WORKER_SCOPED_SECRETS`(初版は`STRIPE_API_KEY`)は、`/`に置いても使わず、Workerごとのフォルダに無ければ必須の欠落として止める。一覧と重ね合わせは`core/secret-scope.ts`(`WORKER_SCOPED_SECRETS`・純粋関数`layerWorkerSecrets`)に置き、`deploy-worker`(デプロイ)・`run-with-secrets --worker`(検査とローカル)・`e2e-stack`(api・eventを`run-with-secrets --scope checks --worker`を通して起動)の3つの経路で同じ規則を使う。ローカルの起動のために`run-with-secrets`へ範囲`local`(ログインせず開発者の`infisical login`を使う)を加え、オンボーディングのapi・eventの起動のコマンドを改める。フォルダは、dev・stagingは初回の準備で、prodはlaunch-readinessが空のまま作る。
+- **理由**: キー名を変えずに値をWorkerごとに分けられ、payments・launch-readinessのWrangler設定と環境の検証を変えずに済む。`/`の値を捨てる一覧を持つことで、誤って共通のフォルダへ登録した制限付きキーが両方のWorkerへ渡る事故を防げる。重ね合わせを配布のスクリプトの1つの関数に置くことで、デプロイ・E2E・ローカルの優先の規則がずれない。
+- **他の選択肢(記録)**:
+  - Infisicalのシークレットのインポート(Workerごとのフォルダが`/`をインポートし、`infisical run --path /workers/api`で起動する): コマンドの変更は小さいが、同じキーの優先の順をCLIの挙動に委ねることになり、版による違いを確かめられていない。CIのデプロイと規則を共有できない。
+  - `infisical run`の入れ子(外側で`/`、内側で`--path /workers/api`): 内側の値が外側の環境変数を上書きするかがCLIの挙動に依存する。
+  - キー名を分ける(`STRIPE_API_KEY_API`など): paymentsの環境の検証とWrangler設定の宣言を変える必要があり、Workerのコードが同じ名前で読めなくなる。
+- **決定(ホスト名から導かれる変数)**: 「Supporting References」の一覧に、eventの`EVENT_SITE_ORIGIN`(notifications)、apiの`IMAGES_ORIGIN`とclientの`PUBLIC_API_ORIGIN`(public-api)、client・adminの`IMAGES_ORIGIN`(frontend-platform)の3環境の値を加え、Out of Boundary・Revalidation Triggers(event・api・imagesのホスト名の変更)に所有するspecを加えた。値は各specの設計の値と同じで、変数は所有するspecがWrangler設定に書く。構成検査はこれらを照合しないため、検査の変更は無い。
+- **決定(影響の表)**: 上流spec・他specへの影響の表に、notifications・public-apiの行を加え、frontend-platformの行に`IMAGES_ORIGIN`を、paymentsの行にWorkerごとのフォルダを、launch-readinessの行に仮7の承認後の条件付きの追記(`core/secret-scope.ts`の`/ci/sentry`、`commands/deploy-worker.ts`・`deploy.yml`のソースマップのアップロードの手順、新設の`core/sourcemap-upload.ts`・`commands/upload-sourcemaps.ts`)とprodのWorkerごとの登録(仮13)を加えた。
+- **変えた箇所**: 要件4.10と「承認後の改訂」の表。設計のBoundary Commitments(契約・Out of Boundary)・Revalidation Triggers・Directory Structureの注記・シークレットの供給の図と説明・追跡表(4.10・6.3)・コンポーネントの表・`secret-scope.ts`と`worker-secrets.ts`の契約と説明・DeliveryCliの表(`run-with-secrets`・`e2e-stack`)・WorkerDeployer・E2eStack・`operations/001`と`security/003`の内容・Modified Files(オンボーディング)・Error Handling・Testing Strategy・Security Considerations・影響の表・Infisicalのフォルダとキーの表と注記・初回の準備の手順3・ホスト名から導かれる変数の値の表。タスク4.3・4.4・5.3・8.2・8.3・8.5。番号の変更は無い。
+- **他specへの申し送り(本specは編集しない)**: backend-platform・email-delivery・launch-readinessの設計に、eventまたはapiを`infisical --telemetry=false run --env dev -- ...`で起動する記述がある。paymentsが`STRIPE_API_KEY`を必須にした後は、Workerごとのフォルダを重ねる`run-with-secrets --scope local --worker`の形でないと起動の検証が失敗するため、各specで記述を改める必要がある。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。1回目の判定はNEEDS_FIXESだった。`WORKER_SCOPED_SECRETS`を`worker-secrets.ts`(5.3)に置くと先に動く4.3が使えないため`secret-scope.ts`へ移して4.3で置くこと、devのWorkerごとのフォルダの存在を6.3・8.5の前提にすること、`project-values.md`の実行接頭辞の記述にapi・eventの例外を書くこと、8.5の完了状態と4.4の実起動の依存の注記を加えることを直した。4.3の分割は、判定と注入の部品が同じ層で閉じるため見送った。2回目の判定はPASSで、残る指摘は無かった。`spec.json`の`updated_at`を更新し、タスクの承認を保った。
+
 ## Research Log
 
 ### Cloudflare providerの版と管轄の対応
@@ -339,6 +355,7 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - **providerのドリフトの不具合**(roadmapの指摘): Cloudflare provider v5はドリフトの報告が続く。緩和: 版を完全に固定し、計画の要約で想定外の`update`・`replace`を確かめ、`prevent_destroy`で消失を止める。
 - **カスタムドメインの証明書の発行待ち**: 初回は証明書の発行に時間が掛かり、デプロイ後の確認が失敗し得る。緩和: 確認は`/health`の200を最大10分待ってから行う。
 - **公開リポジトリのログ**: Actionsのログは誰でも読める。緩和: Infisicalから受け取った値を起動時に`::add-mask::`で伏せ、計画は要約だけを出し、`tofu output`の値は秘密でない識別子だけを扱う。
+- **空のWorkerごとのフォルダの取り出し**(改訂1): `infisical export --path`が空のフォルダで空の一覧を返すか、存在しないフォルダで失敗するかは版で確かめていない。緩和: フォルダは初回の準備とlaunch-readinessで必ず作り、4.3の実装でCLIの挙動を確かめて、空のフォルダは空の一覧、取り出しの失敗はフォルダの名前だけを出して止める扱いに合わせる。
 
 ## References
 
