@@ -165,7 +165,7 @@ TDDの各段階では、書いているテストだけを実行する。
 | `bunfig.toml`                          | 単体テストの共通設定(他の種別の除外、カバレッジの閾値・除外・出力先)                                                                                                           |
 | `config/vitest/browser.ts`             | ブラウザテストのプリセット(`browserTestPreset`・`browserOptionsPreset`)と、共有Chromiumの起動オプションを返す`resolveBrowserLaunchOptions`                                     |
 | `config/vitest/worker.ts`              | Workers統合テストのプリセット(`workerTestPreset`)                                                                                                                              |
-| `playwright.config.ts`・`e2e/support/` | E2Eテストの設定、E2Eの対象の定義、到達確認、0件を表示するレポーター                                                                                                            |
+| `playwright.config.ts`・`e2e/support/` | E2Eテストの設定、E2Eの対象の定義、到達確認、0件を表示するレポーター、テストが共有する補助(ローカルの定期実行を業務日付と業務時刻で起こす`scheduled-trigger.ts`)                |
 
 - プリセットはnpmパッケージの値をimportせず、定数と関数だけを提供する。テストツールのプロバイダとプラグイン(`playwright()`・`cloudflareTest()`)は、アプリが自分のnode_modulesからimportして組み立てる。基底設定と同じく、値をimportするとルートに導入した版が使われるためである。
 - 設定ファイル(`vitest.<種別>.config.ts`・`playwright.config.ts`)はWorkersの実行環境ではなくBun・Node上で評価されるため、`process.env`を読んでよい。
@@ -281,6 +281,7 @@ test('トップページの見出しを表示する', async ({ page }) => {
 
 - ブラウザは、ブラウザテストと同じく`resolveBrowserLaunchOptions`の起動オプションで共有Chromiumを起動する。
 - E2Eテストのカバレッジは計測しない。
+- 複数の対象のテストが使う補助は`e2e/support/`に置き、テストごとに作らない。定期実行を起こすテストは、`e2e/support/scheduled-trigger.ts`の`triggerScheduled`を使う(「[E2Eからの起動](../infra/003-async-processing.md#e2eからの起動)」)。
 
 ## カバレッジ
 
