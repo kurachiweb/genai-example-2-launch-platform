@@ -209,7 +209,7 @@
   - _Depends: 2.3_
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.7_
 
-- [ ] 5.3 (P) bot判定のトークンを検証するサービスとミドルウェアを作る
+- [x] 5.3 (P) bot判定のトークンを検証するサービスとミドルウェアを作る
   - トークンが無い・長すぎる場合は通信せずに失敗とし、それ以外は判定サービスへトークン・送信元IPを送り、5秒で打ち切って応答を分類する
   - 失敗を403(無効・期限切れ・不一致)と503(障害・設定の誤り)の共通エラーへ変える操作を用意し、設定の誤りはエラートラッキングにも送る
   - 失敗理由とエラーコードを警告ログに残し、トークンを記録しない
@@ -373,3 +373,4 @@
 - 4.3(8.3・6.3への申し送り): `MessagePublisher.publish`は種別名で集約点の契約を引き、登録された契約のスキーマで検証した結果(`parsed.data`、規則に無いキーは除かれる)を封筒の本文として送る。そのため契約のスキーマは、parse結果をもう一度検証しても同じ値になる冪等な規則に限る(非冪等な`transform`を使わない)。8.3の文書に記載する。遅延は0〜43200の整数で、上限`MAX_DELAY_SECONDS`は`workers/messaging/queue-publisher.ts`からエクスポートしており、6.3の`defer`の上限で再利用する。MiniflareのQueueは送った内容を読み返せないため、封筒の確認は記録用の`Queue`の代用品で行う。
 - 5.2(6.1・7.1・7.2への申し送り): `ipRateLimit`の型制約は、4.4の`PlatformEnv`が未作成だったため`E extends { readonly IP_RATE_LIMITER: RateLimit }`にした(`PlatformEnv`はこれを満たす)。クライアントIPはHonoの文脈変数`clientIp`から読み、未設定なら`ip:unknown`で数えるため、6.1の`invocationContext`がIP制限より前に`clientIp`を設定する。`excludePath`はパスの区切りの境界で一致し(`/webhooks/stripe`は`/webhooks/stripe-other`を除外しない)、`pathname`だけを比べる。Miniflareはローカルでも時計に揃った窓でRate Limitingの上限を効かせるため、IP制限のテストは実物の`IP_RATE_LIMITER`を使い、窓の残りが短ければ次の窓を待つ。
 - 4.2(6.1〜6.4への申し送り): Sentryの計装は`createSentryMiddleware(app, options)`(Honoの経路。`AppError`を`shouldHandleError`で除く)と`withSentryForScheduledAndQueue(options, handler)`(scheduled・queueだけを`withSentry`で包み、fetchは元の参照のまま)で、どちらも`CloudflareOptions`を返す関数を受け取る(6.1では`(env) => buildSentryOptions(readSentryRuntimeOptions(env))`の形を渡す)。`@sentry/cloudflare`はisolateごとにクライアントを使い回すため、テストでは`cacheClient: false`を渡す。`readSentryRuntimeOptions`は`PlatformEnv`の代わりに全キー任意の`SentryEnv`を受け取る(Honoの計装は環境の検証より前に動くため)。`PlatformEnv`は`SentryEnv`へ代入できる形にする。範囲外の`SENTRY_TRACES_SAMPLE_RATE`は0になるので、形式の検証は環境の検証スキーマで行う。frontend-platformのresearch.mdがbackend-platformの`beforeSendTransaction`の設定を前提に書いている箇所がある(改訂6で解消)。
+- 5.3(6.1・7.1・8.1・8.3への申し送り): bot判定の部品はapi専用で、ログのカテゴリは`['api','infrastructure','bot-protection']`に固定している(LoggingSetupは`[appName]`にだけシンクを付けるため、eventで使うとログが黙って消える。eventで使う場合は`TurnstileVerifierOptions`に`appName`を加える設計の改訂が要る)。backend-libで`getAppLogger`を使う部品のカテゴリの決め方の前例になる。`turnstileGuard`のHonoの環境の型はローカル型`TurnstileGuardHonoEnv`で、6.1で`PlatformHonoEnv`ができたら差し替える。期待するホスト名は`createTurnstileVerifier`の中で小文字にそろえ、`TURNSTILE_EXPECTED_HOSTNAMES`の分割と空文字の除外は7.1のapiのモジュールが行う。503の文言「現在ご利用いただけません。時間をおいて再度お試しください。」は文言規則の表に無いため8.xで追記する。共有コードのテストはeventでも型検査されるため、apiだけのバインディングを`env`から直接読まない。
