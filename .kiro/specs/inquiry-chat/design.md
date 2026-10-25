@@ -20,7 +20,7 @@
 - 未ログインの問い合わせへのシステム上の返信・受付確認のメール(1.2スコープ外)。
 - メッセージの編集・削除、管理者への新着通知、担当者の割り当て、リアルタイムの配信(Q8で定期再取得に決定)。
 - ファイルの受け付け・検証・保存・配信・未使用ファイルの削除と、退会者が保有するファイルの物理削除(media-pipeline・user-profile-social)。
-- 運営者による代理の退会の画面と導線(ugc-moderation)、データエクスポートの要求・ZIPの生成・添付の実体の同梱(data-export)。
+- 運営者による代理の退会の画面(ugc-moderation。ユーザー一覧から行う)、データエクスポートの要求・ZIPの生成・添付の実体の同梱(data-export)。
 
 ## Boundary Commitments
 
@@ -47,7 +47,7 @@
 - 利用者のプロフィール画像の保持と、`InquirerProfiles`の画像付きの実装(user-profile-social)。
 - 停止・退会の状態の遷移と判定(identity-auth)、ロールの判定・監査ログの記録と保存・管理者の照会・メニューとダッシュボードの区画・管理画面の共通部品(admin-foundation)。
 - bot判定の検証・回数制限のカウンタ・送信元IPアドレスのハッシュ化・定期実行の仕組み(backend-platform)、メールの描画と送信(email-delivery)、書記素の数え方(content-processing)。
-- 運営者による代理の退会の画面と導線(ugc-moderation)、データエクスポートの要求・ZIPの生成・添付の実体の同梱とZIP内のファイル名の決定(data-export。本specは`InquiryExport`で問い合わせをエクスポート用の形で返すだけ)、他のカテゴリマスタの区画と業務規則(product-launch・help-center・content-reporting)。
+- 運営者による代理の退会の画面(ugc-moderation。ユーザー一覧から行い、本specの問い合わせの詳細からの導線は無い)、データエクスポートの要求・ZIPの生成・添付の実体の同梱とZIP内のファイル名の決定(data-export。本specは`InquiryExport`で問い合わせをエクスポート用の形で返すだけ)、他のカテゴリマスタの区画と業務規則(product-launch・help-center・content-reporting)。
 - 利用者の連絡先(メールアドレス・ニックネーム・確認状態)の読み取り(identity-authの`UserContactDirectory`)。本specは返信の通知先をこれで引く。
 
 ### Allowed Dependencies
@@ -67,7 +67,7 @@
 - `InquiryExport`の形・並び・1回の件数と、データエクスポートの文書の`inquiries.json`の項目との対応、管理者の返信に添付が無いこと(data-export)。data-exportは本specのテーブルを直接読まないため、テーブルの列の変更は`InquiryExport`の形を変えない限り再検証の対象にならない。
 - `InquirerProfiles`の形と既定の実装の差し替えの手順(user-profile-social)。
 - `CATEGORY_SECTIONS`の形と`order`(product-launch 10・help-center 20・inquiry-chat 30・content-reporting 40)、`/categories`のページの区画の表示とエラーの分離(product-launch・help-center・content-reporting)。
-- `INQUIRY_DETAIL_ACTIONS`の形(`InquiryDetailActionContext`の項目)と`order`、詳細のページでの操作の表示の位置とエラーの分離(ugc-moderationの運営者による代理の退会への導線)。
+- `INQUIRY_DETAIL_ACTIONS`の形(`InquiryDetailActionContext`の項目)と`order`、詳細のページでの操作の表示の位置とエラーの分離(後続specの操作。2026-10-24の時点で登録するspecは無い)。
 - 未ログインの問い合わせが利用者のアカウントに紐付かないこと(ugc-moderationの退会の依頼の確かめ方)。
 - 波及処理の名前と`order`(identity-authの登録口、他の`purge_due`の波及処理との並び)。
 - 定期実行のジョブの名前と`order`(300)(4:21にジョブを登録する全spec、日次タイムラインの表)。
@@ -1189,7 +1189,7 @@ export interface InquirerAvatarProps {
 
 #### InquiryDetailActionsRegistry・InquiryDetailActionsView
 
-後続specが問い合わせの詳細のページに操作(ugc-moderationの運営者による代理の退会への導線など)を足す差し込み口である(spec横断レビュー(2回目)、2026-10-23)。admin-foundationの`DASHBOARD_CARDS`と本specの`CATEGORY_SECTIONS`と同じ登録箇所の形にする。
+後続specが問い合わせの詳細のページに操作を足す差し込み口である(初版は空。2026-10-24の時点で登録するspecは無い)。admin-foundationの`DASHBOARD_CARDS`と本specの`CATEGORY_SECTIONS`と同じ登録箇所の形にする。
 
 **Contracts**: State [x]
 
@@ -1214,7 +1214,7 @@ export declare const INQUIRY_DETAIL_ACTIONS: readonly InquiryDetailAction[]; // 
 
 - `InquiryDetailActionsView({ inquiry })`: `INQUIRY_DETAIL_ACTIONS`を`order`順に並べ、各操作を個別のエラー境界で包み、1つの操作の失敗が詳細の表示と他の操作を止めないようにする。登録が空なら何も描画しない(見出しや空状態も出さない)。
 - 全ロールが全メニューを参照できる方針(admin-foundationのQ3)に合わせ、登録箇所にロールの条件を持たせない。操作の部品が`RoleGate`・`useAdminRole`で必要なロールを判定し、サーバー側の認可は操作を足すspecの`requireAdmin`が持つ。
-- 本specは文脈の値を詳細の取得結果から渡すだけで、操作の中身(代理の退会の手順・本人の確かめ・監査ログ)は持たない。
+- 本specは文脈の値を詳細の取得結果から渡すだけで、操作の中身(手順・本人の確かめ・監査ログ)は持たない。
 
 #### CategorySectionsRegistry・CategorySectionsView・InquiryCategorySection
 

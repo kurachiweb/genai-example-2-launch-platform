@@ -45,7 +45,7 @@
 - 添付の形式: 画像5形式・PDF・プレーンテキストで、編集ダイアログは出さない(media-pipelineのQ6、`ATTACHMENT_MEDIA_TYPES`)。1メッセージあたりの20件・合計の判定は本specが紐付けの前に行う(media-pipelineの設計が「個数・合計の判定は各ドメインspec」と定める)。上限のバイト数の解釈は仮3。
 - 添付の保存と配信: 用途`inquiry-attachment`をファイル用(`storage: 'files'`、利用者だけがアップロード)として登録し、`FileReadPolicy`で投稿者本人とログイン中の管理者だけに閲覧を許す。配信は同一オリジンの中継で、`Content-Disposition: attachment`によりインライン表示しない(FR-INQRY-007・013・016、SW-011、FR-FILEU-009・017、ページ配置)。紐付けなかったファイルはmedia-pipelineの日次バッチが削除する。
 - 退会時のファイル: 利用者が保有するファイルの物理削除は、user-profile-socialの`purge_due`の波及処理(`eraseOwnedBy`)が行う。本specは自分のテーブルの論理削除(同期の波及処理)と物理削除(`purge_due`の非同期の波及処理)をidentity-authの登録口に登録する(roadmapのShared seams、brief Constraints)。
-- 運営者による代理の退会: 管理画面と問い合わせからの導線はugc-moderationの担当で、本specは持たない(identity-auth・ugc-moderationのbrief)。
+- 運営者による代理の退会: 管理画面はugc-moderationの担当で、本specは持たない(identity-auth・ugc-moderationのbrief)。ugc-moderationの仮4の確定(2026-10-24)により、起点はユーザー一覧だけで、問い合わせの詳細からの導線は無い。
 - 未ログインのレート制限: IP単位で1時間に5回、Durable Objectsの厳密カウンタ、Alarmによるリセット、超過時は429。キーは`hashRateLimitKey`でHMACハッシュ化する(FR-RLMIT-002・012・017、backend-platformの`RateLimitCounterClient`)。Turnstileは`BotVerifier.assertHuman`(`GraphQLContext.assertHuman`)で検証する。
 - 未ログインの問い合わせへの返信: システム上では返信せず、受付確認のメールも送らない。送信完了のメッセージだけを表示する(1.2スコープ外、FR-INQRY-009)。「対応済」「却下」から14日以上のものは日次バッチ(業務時刻4:21、`inquiry-chat.<名詞句>`)で物理削除する(DR-016、日次タイムライン)。
 - ログインの問い合わせの保持: 退会以外による保持期限は要件に無く、設けない。
@@ -75,6 +75,8 @@
 
 ### 要件定義書の改訂が必要な箇所
 
+**2026-10-25に要件定義書(`docs/requirements/README.md`)へ適用済み。** 以下は適用前に記録した改訂の内容である。
+
 要件定義書(`docs/requirements/README.md`)は本specでは編集しない(roadmapのOut)。次の改訂が必要である。
 
 | 要件ID                    | 内容                                                                                                                                                           | 根拠     |
@@ -96,7 +98,7 @@
 - admin-foundation: `ADMIN_NAV_ITEMS`へ問い合わせ(`/inquiries`・80)とカテゴリ(`/categories`・110)を、`DASHBOARD_CARDS`へ`inquiry-chat.unhandled-inquiries`(order 20)を、`AUDIT_ACTIONS`へ`audit-actions/inquiry-chat.ts`を加える(契約どおり)。`/categories`のページと区画の登録口`CATEGORY_SECTIONS`は本specが新設する(仮4)。admin-foundationの共通部品(`components/admin`)の形は変えない。`AdminDirectory`は`backend-lib/workers/admin`から読み込み、eventでは`ADMIN_PLATFORM_MODULE`の束縛を使う。E2Eの管理者の用意と停止の状態の用意は、admin-foundationの`e2e/support/admin-bootstrap.ts`・`e2e/support/local-d1.ts`を使う(spec横断レビューの決定)。
 - product-launch・help-center・content-reporting(後続、再検証): カテゴリマスタの画面は`/categories`に新しいページを作らず、`CATEGORY_SECTIONS`へ区画(product 10・help 20・report 40)を足す(仮4)。
 - user-profile-social(後続、再検証): 利用者のプロフィール画像を、本specの`INQUIRY_TYPES.InquirerProfiles`の束縛の差し替え(既定は画像なし)で問い合わせフォームと管理画面へ渡す。
-- ugc-moderation(後続): 停止中の利用者からの退会の依頼は、未ログインの問い合わせ(利用者のアカウントに紐付かない)として届く(Q1)。本人の確かめは連絡先メールアドレスと登録メールアドレスの照合など、ugc-moderationの導線で行う。導線は、本specが詳細のページに設ける操作の登録口`INQUIRY_DETAIL_ACTIONS`(初版は空)へugc-moderationが操作を登録して置く(spec横断レビュー(2回目)、2026-10-23)。
+- ugc-moderation(後続): 停止中の利用者からの退会の依頼は、未ログインの問い合わせ(利用者のアカウントに紐付かない)として届く(Q1)。本人の確かめ(連絡先メールアドレスと登録メールアドレスの照合など)は、運営者がシステムの外で行う(ugc-moderationの仮4・仮5)。代理の退会はugc-moderationの管理画面のユーザー一覧から行い、本specの詳細のページの操作の登録口`INQUIRY_DETAIL_ACTIONS`へは登録しない(ugc-moderationの仮4、2026-10-24に開発者が確定)。登録口は初版は空のまま後続specのために残す。
 - data-export(後続、再検証): 本specのテーブルを直接読まず、本specのエクスポート用の照会口`InquiryExport.listPage`(`apps/backend-lib/workers/inquiry/`、eventで束縛)を呼ぶ。管理者の返信に添付が無いこと(Q6)、カテゴリ名は現在の名前であること、添付の`path`はdata-exportが`fileId`と元のファイル名から組み立てることを前提にする。データエクスポートのサービス仕様(`docs/GUIDES/service/features/001-user-data-export.md`)の`inquiries.json`は本specのタスクで改める。
 - legal-pages(同時期、確認済み): legal-pagesのdesign.mdは`db/005`を割り当てており、本specの`security/008`・`frontend/010`と重ならない。
 
@@ -139,6 +141,14 @@
 
 - (重要)ugc-moderationのbriefが、本specの設計に問い合わせの詳細の差し込み口が無いままの記述だった。ugc-moderationのbriefは、本specの`INQUIRY_DETAIL_ACTIONS`(`apps/admin/src/composition/inquiry-detail-actions.ts`)へ運営者による代理の退会への導線を登録し、部品が`InquiryDetailActionContext`を受け取る形に改められ、roadmapのShared seams「画面シェル」に本specが`INQUIRY_DETAIL_ACTIONS`を所有する旨が加わった。本文書では、要件のIntroductionの隣接specの説明のugc-moderationに、詳細の操作の登録箇所へ導線を足す旨を加えた。設計とタスクは2回目のY1で反映済みのため変えていない。
 - (軽微)roadmapのShared seams「利用者の連絡先の照会」が、user-profile-socialが`D1InquirerProfiles`と`D1InquiryAdminReader`の両方を置き換えるとしていた。本設計の`D1InquiryAdminReader.list`は`users`を直接結合し、`InquirerProfiles`に依存しないことを確かめた。roadmapとuser-profile-socialのbriefで、置き換えの対象を`InquirerProfiles`の束縛に限り、`D1InquiryAdminReader`の一覧のニックネームの結合は表示の読み取りの例外として残すと決めた。本specの設計は変えない。
+
+## 全specの横断レビューと開発者の確定の反映(2026-10-24)
+
+- **仮7の取り下げ**: spec横断レビュー(2026-10-24)の指摘により、運営者による代理の退会の対象を確かめる照会`InquiryRequesterDirectory`(`D1InquiryRequesterDirectory`・`INQUIRY_REQUESTER_TYPES`、`apps/backend-lib/workers/inquiry/inquiry-requester-directory.ts`、apiの`INQUIRY_MODULE`で束縛)を本specが所有して実装する改訂(仮7。要件13.8・タスク7.4・Revalidation Triggersの行を含む)をいったん加えた。開発者がugc-moderationの仮4で、代理の退会は最上位管理者だけが行い起点は管理画面のユーザー一覧だけとすることを確定した(2026-10-24)ため、この照会を使う機能が無くなり、仮7を取り下げた。照会・束縛・要件13.8・タスク7.4・Revalidation Triggersの行・本書の記録を取り除き、要件・設計・タスクを改訂の前の内容に戻した。
+- **`INQUIRY_DETAIL_ACTIONS`への登録の取りやめ**: 同じ確定により、ugc-moderationは問い合わせの詳細のページの操作の登録口`INQUIRY_DETAIL_ACTIONS`へ代理の退会への導線(order 10)を登録しない。登録口・表示`InquiryDetailActionsView`・文脈`InquiryDetailActionContext`は後続specのために残し、初版は空のままとする(タスク10.1の作業は変わらない)。requirements.mdの範囲と隣接specの説明、design.mdのNon-Goals・Out of Boundary・Revalidation Triggers・InquiryDetailActionsRegistry、tasks.mdの10.1の文言、本書の確認済みの事項・後続specへの影響から、ugc-moderationが登録するという記述を除いた。後述の「Decision: 問い合わせの詳細のページの操作の登録口」の経緯(当初はugc-moderationの導線を想定した)は記録として残す。
+- 本specの仮決定(仮1〜仮5)は2026-10-23に確定済みで、確認待ちの事項は無い。
+- 変更部分のタスクのサニティレビュー(2026-10-24): 新しいサブエージェントによる独立した確認(independent)を1回行い、PASSだった。軽微の指摘に従い、design.mdの`INQUIRY_DETAIL_ACTIONS`の節から経緯を除いた(経緯は本節に残す)。
+- 変更履歴(2026-10-24、spec横断レビューの3回目、振る舞いの変更なし): 後続specへの影響のugc-moderationの行で、依頼者の本人の確かめを運営者がシステムの外で行う旨に改めた(ugc-moderationの仮4・仮5)。
 
 ## Research Log
 

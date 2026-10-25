@@ -69,7 +69,7 @@
 - **Out of scope**:
   - 未ログインの問い合わせへのシステム上の返信と、受付確認のメール(1.2スコープ外、FR-INQRY-009)
   - ファイルのアップロード・実体検証・保存・配信・未使用ファイルの削除の仕組み(media-pipeline)と、退会者が保有するファイルの物理削除(user-profile-socialの波及処理)
-  - 運営者による代理の退会の管理画面と、問い合わせからの導線(ugc-moderation)
+  - 運営者による代理の退会の管理画面(ugc-moderation。ユーザー一覧から行い、問い合わせの詳細からの導線は設けない)
   - 利用者のプロフィール画像の保持と表示用の値(user-profile-social)。本specは表示の差し込み口を持ち、画像が無い間は既定のアイコンを表示する
   - ヘルプ記事(help-center)・通報(content-reporting)・他のカテゴリマスタの業務規則(product-launch・help-center・content-reporting)
   - データエクスポートのZIPの生成と、添付ファイルの実体の同梱・ZIP内のファイル名の決定(data-export)。問い合わせをエクスポート用の形で返す照会口は本specが持つ(要件13.7)
@@ -81,7 +81,7 @@
   - email-deliveryは、本specが追加するトランザクションメールを送る。抑止リストの対象外である(email-deliveryのQ1)。
   - backend-platformは、bot判定の検証・厳密な回数制限のカウンタ・送信元IPアドレスのハッシュ化・定期実行の仕組みを提供する。frontend-platformは、bot判定のウィジェット・フォーム・状態表示の部品・データの取得と再取得の仕組みを提供する。
   - content-processingは、書記素で文字数を数える共通部品を提供する。
-  - user-profile-socialは、利用者のプロフィール画像を、本specの表示の差し込み口へ渡す。ugc-moderationは、未ログインの問い合わせで受けた退会の依頼を処理し、管理画面の問い合わせの詳細から運営者による代理の退会へ進む導線を、本specの詳細の操作の登録箇所へ足す。data-exportは、本specのエクスポート用の照会口を呼んで問い合わせをエクスポートし、本specのテーブルを直接読まない。
+  - user-profile-socialは、利用者のプロフィール画像を、本specの表示の差し込み口へ渡す。ugc-moderationは、未ログインの問い合わせで受けた退会の依頼を、管理画面のユーザー一覧からの運営者による代理の退会で処理する(本specの詳細の操作の登録箇所には登録しない)。data-exportは、本specのエクスポート用の照会口を呼んで問い合わせをエクスポートし、本specのテーブルを直接読まない。
 
 ## Requirements
 
