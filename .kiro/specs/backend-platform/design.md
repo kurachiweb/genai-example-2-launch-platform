@@ -63,6 +63,7 @@
 - 定期実行の時間の予算の値、予算の超過の警告の形(レベル`warning`・タグ`cron`・所要時間)、要約のログの項目の変更(launch-readiness)。逆向きに、launch-readinessの仮1の値が変われば、本specの`SCHEDULED_RUN_BUDGETS`と`infra/003`・`project-values.md`の値を合わせる。
 - `triggerScheduled`の入力の形と、ローカルの定期実行の経路(`/cdn-cgi/local/scheduled`。固定したWranglerの版の経路)の変更(定期実行をローカルで起こすE2E・統合の手順を持つ全spec)。
 - ログの伏せ字の値のパターンの変更(全ドメイン)。承認後の改訂3で、値のパターンの置き換え後の文字列を`[REDACTED]`に統一した(ログに既製の置き換えの文字列を期待するテストは合わせる)。Sentryの伏せ字の対象の項目(例外の値と種類・メッセージ・パンくず・トランザクションとスパン、承認後の改訂3)の変更(launch-readinessのチェックリストA-09のstagingでの確認)。逆向きに、public-apiが公開APIのキーの形式(`API_KEY_TOKEN_PATTERN`)を変えた場合は、本specの`REDACTION_PATTERNS`のキーのパターンを合わせる。
+- Sentry SDK(`@sentry/cloudflare`・`@sentry/hono`・`@sentry/core`)の版の更新。`dataCollection`の既定値と項目、既定の`requestDataIntegration`がイベントとトランザクションに付ける項目、IPアドレスの取得に使うヘッダーの一覧(`getClientIPAddress`)が変わっていないかを確かめ、`buildSentryOptions`の収集設定と`SentryScrubber`の削除するヘッダーを合わせる(承認後の改訂4)。
 
 ## Architecture
 
@@ -926,10 +927,11 @@ export declare function scrubTransaction(
 ```
 
 - `hint.originalException`が`AppError`なら`null`(送らない)。
-- `user.ip_address`・`user.email`を削除し、`request.cookies`・`request.data`・`request.query_string`を削除する。`request.headers`から`cookie`・`authorization`・`cf-connecting-ip`・`x-forwarded-for`・`x-real-ip`・`true-client-ip`を削除する。パンくずの`data`の値にも`REDACTION_PATTERNS`を適用する。
+- 利用者とリクエストの個人情報の除去(`scrubEvent`と`scrubTransaction`の共通の処理。`scrubTransaction`への適用は承認後の改訂4): `user.ip_address`・`user.email`を削除し、`request.cookies`・`request.data`・`request.query_string`を削除し、`request.url`に`REDACTION_PATTERNS`を適用する。`request.headers`から、`cookie`・`authorization`と、Sentryが利用者のIPアドレスの取得に使う12種のヘッダー(`@sentry/core`の`getClientIPAddress`の`x-client-ip`・`x-forwarded-for`・`fly-client-ip`・`cf-connecting-ip`・`fastly-client-ip`・`true-client-ip`・`x-real-ip`・`x-cluster-client-ip`・`x-forwarded`・`forwarded-for`・`forwarded`・`x-vercel-forwarded-for`)を、大文字小文字を区別せずに削除する(ヘッダーの列挙は承認後の改訂4)。SDKの既定の`requestDataIntegration`はトランザクションにも`request`と`user.ip_address`を付けるため、`SentryInstrumentation`の`dataCollection`で集めない設定にしたうえで、除去処理を最後の防御として両方に適用する。
+- パンくずの`data`の値にも`REDACTION_PATTERNS`を適用する。
 - 値の形式による伏せ字(9.2、承認後の改訂3。2026-10-24に開発者が決定): `scrubEvent`は、`REDACTION_PATTERNS`を配列の順に(公開APIのキーを先に)次の文字列へ適用し、当たった部分を`[REDACTED]`に置き換える。
   - 例外の値(`exception.values[].value`)と種類(`exception.values[].type`)。種類は通常はクラス名だが、`Error.name`はコードから任意の文字列を設定できるため対象に含める。
-  - イベントのメッセージ(`message`)と`logentry`の`message`・`formatted`・文字列の`params`。
+  - イベントのメッセージ(`message`)と`logentry`の`message`・`formatted`・文字列の`params`。`@sentry/core`の型は`formatted`を持たないが、イベントの形式は`formatted`を定めているため、`logentry`の中の文字列を全て対象にする。`logentry.params`はSentryの正規化(`normalizeEvent`)の対象外で循環参照を含み得るため、入れ子をたどる伏せ字は祖先にあるオブジェクトを`[Circular ~]`に置き換えて打ち切る(承認後の改訂4)。
   - パンくずの`message`と`data`の値(既存)。
   - トランザクションの名前(`transaction`)。エラーイベントにもトランザクションの名前が付くため対象に含める。
   - リクエストのURL(`request.url`)。SDKの設定によってはクエリ文字列やトークンを含む経路がURLに残り得るため対象に含める(`request.query_string`の削除は既存)。
@@ -1377,7 +1379,19 @@ export declare function buildSentryOptions(
 ): CloudflareOptions;
 ```
 
-- `buildSentryOptions`: `dsn`が無ければ`enabled: false`(9.5)。`sendDefaultPii: false`、`beforeSend: scrubEvent`、`beforeSendTransaction: scrubTransaction`、`tracesSampleRate`(9.4)、`environment`。
+- `buildSentryOptions`: `dsn`が無ければ`enabled: false`(9.5)。`dataCollection`(下記、9.2)、`beforeSend: scrubEvent`、`beforeSendTransaction: scrubTransaction`、`tracesSampleRate`(9.4)、`environment`。
+- 個人情報を集めない収集設定(9.2、承認後の改訂4。2026-10-25に開発者が決定): Sentry 11.4.0には`sendDefaultPii`が無く、収集は`dataCollection`(`@sentry/core`の`DataCollection`型)で決まる。その既定値(`resolveDataCollectionOptions`)は`userInfo: true`・`cookies: true`・`httpHeaders: { request: true, response: true }`・`httpBodies`に4種全て・`urlQueryParams: true`などで、既定の`requestDataIntegration`はエラーイベントとトランザクションに`user.ip_address`・`request.headers`・`request.query_string`を付け、ルートのスパンの属性(トランザクションの`contexts.trace.data`)にも`http.request.header.*`・`user.ip_address`・`http.request.body.data`を付け得る。このため次の値を明示し、SDKの段階で集めない。除去処理(`SentryScrubber`)はスパンとトレースのコンテキストの`data`のキーを削除せず値の形式で伏せるだけのため、それらの個人情報はこの設定で防ぐ。
+  - `userInfo: false`(`user.ip_address`などを自動で付けない)
+  - `cookies: false`
+  - `httpHeaders: false`(リクエストとレスポンスの両方)
+  - `httpBodies: []`
+  - `urlQueryParams: false`
+  - `graphQL: { document: false, variables: false }`(操作の本文と変数に利用者の入力が入り得る)
+  - `genAI: { inputs: false, outputs: false }`
+  - `databaseQueryData: false`(クエリのバインド値と結果)
+  - `queues: false`(メッセージの本文。デッドレターの通知に本文を含めない方針と合わせる)
+  - `stackFrameVariables: false`(ローカル変数の値)
+  - `frameContextLines`は既定のまま(アプリのソースの行で利用者の値を含まない)
 - Honoの経路は`@sentry/hono/cloudflare`の`sentry(app, (env) => buildSentryOptions(readSentryRuntimeOptions(env)))`で計装し、`shouldHandleError`で`AppError`を除く(9.3)。
 - scheduled・queueは`@sentry/cloudflare`の`withSentry`で計装する。fetchを二重に計装しない。
 - 送信はSDKが`ctx.waitUntil`で非同期に行い、送信の失敗は応答と処理結果を変えない(9.6)。
@@ -1846,7 +1860,7 @@ export declare function isNearBusinessDayBoundary(now: Date): boolean; // UTCの
 - RateLimitingDoc(`backend/003-rate-limiting-and-bot-verification.md`): 厳密カウンタ(ルール・キーのハッシュ化・リセット)、バインディングの制限、Worker単位のIP制限の規約表(13.6)、除外規則、クライアントIPの解決の差し替え、bot判定の検証(2形態・失敗の分類・テスト用の鍵)。
 - SchemaConventionsDoc(`db/003-schema-conventions.md`): 主キー(ULID・全文検索用の連番、1.2)、共通カラムと日時の保持(3.5)、論理削除、列名の変換(`snakeCase.table`)、テーブル定義の配置(1.6)、手書きのマイグレーション(2.3、`db/001`への参照)、接続と一括実行。
 - AsyncProcessingDoc(`infra/003-async-processing.md`): 定期実行(業務時刻での登録・cron式との一致・ローカルでの起動(`--test-scheduled`と`/cdn-cgi/local/scheduled?cron=<式>&time=<ミリ秒>`、E2Eからは`triggerScheduled`))、非同期メッセージ(契約・封筒・送信・再試行・`defer`・デッドレター)、重複配信と冪等性(11.9)、ジョブとメッセージの使い分け。同じ時刻に直列で動くジョブ群の時間の予算(10.9、承認後の改訂2): 実行基盤の上限から導く規則(1日1回の起動の上限は実時間の上限15分の3分の2の10分、予算は上限の半分の5分、各ジョブの実時間の目安はHTTPの処理のCPU時間の上限と同じ値の30秒)、予算の超過で`warning`(タグ`cron`・所要時間)が送られること、目安を超えるジョブはメッセージ処理へ分割すること、予算の登録の方法(`ScheduledRunBudget`)。予算を適用する起動時刻と本プロジェクトが採用した旨は書かず、`project-values.md`への参照とする(15.6)。
-- LoggingDoc(`infra/004-logging-and-error-tracking.md`): ログの形式・カテゴリ・相関ID、伏せ字の規則(サービス固有のトークンの形式の値のパターンは、固有の値を書かずに「他のパターンより先に当たるよう先頭に置く」という一般的な規則として示す)、呼び出しログの無効化と保持期間、エラートラッキングの送信規則とトレースの割合、エラートラッキングで値の形式の伏せ字を適用する項目(例外の値と種類・メッセージ・パンくず・トランザクションとスパン)と、タグ・コンテキストに秘密情報と個人情報を入れない規則(承認後の改訂3)。
+- LoggingDoc(`infra/004-logging-and-error-tracking.md`): ログの形式・カテゴリ・相関ID、伏せ字の規則(サービス固有のトークンの形式の値のパターンは、固有の値を書かずに「他のパターンより先に当たるよう先頭に置く」という一般的な規則として示す)、呼び出しログの無効化と保持期間、エラートラッキングの送信規則とトレースの割合、エラートラッキングで値の形式の伏せ字を適用する項目(例外の値と種類・メッセージ・パンくず・トランザクションとスパン)と、タグ・コンテキストに秘密情報と個人情報を入れない規則(承認後の改訂3)。SDKの収集設定(`dataCollection`)で個人情報を集めない設定と、除去処理をエラーイベントとトランザクションの両方に適用する2層の防御(承認後の改訂4)。
 - KeyedHashingDoc(`security/002-keyed-hashing.md`): 高エントロピーの秘密情報とレート制限キーのHMAC化、用途の分離、照合の方法、ペッパーの管理。
 - ProjectValuesDoc: 「Supporting References」の固有値とヘルスチェックの経路(6.4)、定期実行の時間の予算を適用する起動時刻と値(4:21、予算300,000ms・上限600,000ms・各ジョブの目安30,000ms、10.9)を`docs/onboardings/project-values.md`へ記載する(15.6)。
 - OnboardingUpdates: tech-stack.md(15.7)、オンボーディングの手順(15.8)、依存の版の一覧、CLAUDE.mdの参照先。
@@ -1931,7 +1945,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
   - `fixed-window.unit.test.ts`: 最初の要求で期間が始まりAlarmが予約される。上限で拒否され状態が変わらない。期限切れ後の要求で新しい期間になる(12.1・12.3・12.4)。
   - `siteverify-result.unit.test.ts`: エラーコードごとの分類、操作名・ホスト名の不一致、時間切れ・ネットワーク失敗・JSONでない応答が`unavailable`になる(14.1〜14.4)。
   - `redaction.unit.test.ts`・`log-record.unit.test.ts`: IPv4・IPv6・メールアドレス・JWT・Bearer・公開APIのキー(`lsk_`と43文字)・Cookie・`token`のフィールドが伏せ字になり、通常の値と`lsk_`で始まるがキーの形式に合わない短い値は残る。キーの43文字の中に、前後を数字以外の文字で挟んだLuhnの検査を通る16桁の数字の並び(`CREDIT_CARD_NUMBER_PATTERN`に当たる形)を含めた値が1つの`[REDACTED]`になり、キーの断片が残らない。パターンの順序を入れ替えるとこのテストが失敗する(パターンを先頭に置く理由の確認)(8.1・8.3)。メッセージ中のLuhnの検査を通る16桁の数字の並び・メールアドレス・JWTがそれぞれ`[REDACTED]`になり、Luhnの検査を通らない16桁の数字は残る(承認後の改訂3)。
-  - `scrub-event.unit.test.ts`: IPアドレス・Cookie・認証ヘッダー・本文が除かれ、パンくずの`data`の公開APIのキーが伏せ字になり、`AppError`のイベントが落ちる(9.2・9.3)。公開APIのキー(`lsk_`と43文字)と、前後を数字以外の文字で挟んだLuhnの検査を通る16桁の数字の並び(カード番号の形)を、例外の値・例外の種類・イベントの`message`・`logentry`の`message`と`formatted`と`params`・パンくずの`message`・リクエストのURL・トランザクションの名前にそれぞれ入れると`[REDACTED]`になり、周りの文字列は残る。`scrubTransaction`でトランザクションの名前・スパンの説明と`data`の値・`contexts.trace.data`の値に入れたキーが伏せ字になる。パターンに当たらない値(通常の例外のメッセージ・クラス名)は変わらない(9.2、承認後の改訂3)。
+  - `scrub-event.unit.test.ts`: IPアドレス・Cookie・認証ヘッダー・本文が除かれ、パンくずの`data`の公開APIのキーが伏せ字になり、`AppError`のイベントが落ちる(9.2・9.3)。公開APIのキー(`lsk_`と43文字)と、前後を数字以外の文字で挟んだLuhnの検査を通る16桁の数字の並び(カード番号の形)を、例外の値・例外の種類・イベントの`message`・`logentry`の`message`と`formatted`と`params`・パンくずの`message`・リクエストのURL・トランザクションの名前にそれぞれ入れると`[REDACTED]`になり、周りの文字列は残る。`scrubTransaction`でトランザクションの名前・スパンの説明と`data`の値・`contexts.trace.data`の値に入れたキーが伏せ字になる。パターンに当たらない値(通常の例外のメッセージ・クラス名)は変わらない(9.2、承認後の改訂3)。`scrubTransaction`でも利用者のIPアドレス・メールアドレスと、リクエストのCookie・本文・クエリ文字列・IPアドレスや認証を表すヘッダーが除かれ、URLのキーが伏せ字になる。Sentryが利用者のIPアドレスの取得に使う12種のヘッダーと`cookie`・`authorization`が、`scrubEvent`と`scrubTransaction`の両方で大文字小文字を区別せずに除かれる。`logentry.params`の循環するオブジェクトで無限に再帰せず、循環の位置が`[Circular ~]`になる(9.2、承認後の改訂4)。
   - `env-schema.unit.test.ts`: 欠けたキーと不正なキーの名前だけが返り、値が例外に含まれない(7.5)。
   - `columns.unit.test.ts`・`text-no-case.unit.test.ts`: 列の型・NOT NULL・既定値・更新時の値(1.1・1.3〜1.5)。
   - `compare-migrations.unit.test.ts`: 保存先とWranglerの一覧の一致・不一致・0件の判定と、一覧の出力の解析(2.5)。
@@ -1947,7 +1961,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
   - `queue-consumer.worker.test.ts`・`dead-letter-consumer.worker.test.ts`: `createMessageBatch`で、成功の`ack`、失敗の`retry`と遅延、上限到達・未登録の種別・不正な本文でのデッドレター通知、`defer`の再送、1件の失敗が他に影響しないこと、デッドレターのログとSentryに本文が含まれないことを確かめる(11.1〜11.8)。
   - `queue-publisher.worker.test.ts`: 封筒の付与と遅延送信、未登録・不正な本文の拒否(11.2・11.3)。
   - `turnstile-verifier.worker.test.ts`・`turnstile-guard.worker.test.ts`: 差し替えた`fetch`で、成功・各失敗の状態コード、5秒の打ち切り、トークンがログに出ないこと(14.1〜14.7)。
-  - `sentry.worker.test.ts`: 差し替えたトランスポートで、想定外の例外が1回だけ送られ、`AppError`は送られず、DSNが無ければ送らず、トランスポートの失敗が応答を変えない(9.1・9.3〜9.6)。メッセージに公開APIのキーを含む想定外の例外が`[REDACTED]`になって届き、`buildSentryOptions`の`beforeSend`・`beforeSendTransaction`に`scrubEvent`・`scrubTransaction`がつながっている(9.2、承認後の改訂3)。
+  - `sentry.worker.test.ts`: 差し替えたトランスポートで、想定外の例外が1回だけ送られ、`AppError`は送られず、DSNが無ければ送らず、トランスポートの失敗が応答を変えない(9.1・9.3〜9.6)。メッセージに公開APIのキーを含む想定外の例外が`[REDACTED]`になって届き、`buildSentryOptions`の`beforeSend`・`beforeSendTransaction`に`scrubEvent`・`scrubTransaction`がつながっている(9.2、承認後の改訂3)。`CF-Connecting-IP`付きのリクエストで、届いたイベントとトランザクションに利用者のIPアドレスとIPアドレスを表すヘッダーが含まれない(9.2、承認後の改訂4)。
   - `client.worker.test.ts`(db): 共通カラム・論理削除の絞り込み・大文字小文字の一意判定・`batch`の途中失敗での取り消し(1.3〜1.5・1.7・2.6・2.7)。
   - eventの`index.worker.test.ts`: `/health`、IP制限、本体Queueからデッドレターのconsumerまでの経路(6.1・11.6〜11.8・13.1)。
   - `di-resolution.worker.test.ts`: workerd(Oxc)での解決(5.3・5.4)。
@@ -1960,7 +1974,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
 
 ## Security Considerations
 
-- 個人情報: ログはフィールド名と値のパターンの二段で伏せ字にし、呼び出しログを無効にする(DR-013)。Sentryは`sendDefaultPii: false`と除去処理でIPアドレス等を送らず、例外の値・メッセージ・パンくず・トランザクションとスパンに紛れた秘密情報も値の形式で伏せる(NFR-OBLOG-004、承認後の改訂3)。デッドレターの通知に本文を含めない。
+- 個人情報: ログはフィールド名と値のパターンの二段で伏せ字にし、呼び出しログを無効にする(DR-013)。Sentryは、SDKの収集設定(`dataCollection`)で利用者の情報・Cookie・ヘッダー・URLのクエリ文字列・HTTPの本文を集めず、最後の防御としてエラーイベントとトランザクションの両方の除去処理でIPアドレス・Cookie・認証ヘッダー・本文を除く2層で防ぐ(承認後の改訂4)。例外の値・メッセージ・パンくず・トランザクションとスパンに紛れた秘密情報も値の形式で伏せる(NFR-OBLOG-004、承認後の改訂3)。デッドレターの通知に本文を含めない。
 - 秘密情報: `HASH_PEPPER`・`TURNSTILE_SECRET_KEY`・`SENTRY_DSN`はInfisicalで管理し、`secrets.required`でキー名だけを宣言する。ローカルでも`.dev.vars`を作らない。
 - レート制限キー: Durable Objectsに保存するキーは`HashedRateLimitKey`型で強制し、元のIPアドレス・メールアドレスを保存しない(FR-RLMIT-020)。
 - IP制限の除外は、署名・トークンで真正性を確かめる経路と、エッジキャッシュの後ろの画像配信に限る(Q1)。除外の登録は各specのコードレビューの対象とする。

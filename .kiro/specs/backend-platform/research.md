@@ -108,7 +108,7 @@
 - **Findings**:
   - `@sentry/hono`の`./cloudflare`入口の`sentry(app, options)`は、内部で`@sentry/cloudflare`の`withSentry`をアプリに適用し、Honoのエラーを捕捉するミドルウェアを返す。`shouldHandleError`で送信するエラーを絞れる。接続元の情報を`hono/cloudflare-workers`の`getConnInfo`で読む。
   - 相手依存はすべて任意で、`@sentry/cloudflare`は`withSentry`でscheduled・queueなどのハンドラーも計装できる。
-- **Implications**: Honoの経路は`sentry(app, ...)`、scheduled・queueは`withSentry`で計装する。`sendDefaultPii: false`に加えて`beforeSend`・`beforeSendTransaction`でIPアドレス・Cookie・認証ヘッダー・本文を除く。二重計装が起きないことをWorkers統合テストで確かめる。
+- **Implications**: Honoの経路は`sentry(app, ...)`、scheduled・queueは`withSentry`で計装する。`dataCollection`で利用者の情報・Cookie・ヘッダー・URLのクエリ文字列・HTTPの本文を集めない設定にし、`beforeSend`・`beforeSendTransaction`の両方でIPアドレス・Cookie・認証ヘッダー・本文を除く(承認後の改訂4。11.4.0には`sendDefaultPii`が無い)。二重計装が起きないことをWorkers統合テストで確かめる。
 
 ### Rate Limitingバインディング
 
@@ -262,6 +262,7 @@
 - 2026-10-24(改訂3): Sentryの伏せ字の範囲の拡大。開発者が決定(下の改訂3の節)。
 - 2026-10-24(確定): 改訂1・改訂2を開発者が推奨どおり確定。振る舞いの変更は無い(末尾の「開発者の確定(2026-10-24)」)。
 - 2026-10-24(文言の整合、改訂の番号なし): パッケージのスクリプトの注記と追跡表7.8に、infra-deliveryの改訂1の実装の後のapi・eventのローカルの起動の形(`run-with-secrets --scope local --worker <api|event>`。`WORKER_SCOPED_SECRETS`の`STRIPE_API_KEY`はWorkerごとのフォルダからだけ渡る)を書き加えた。本specの実装の時点の起動の形(`infisical run`)は変えていない。振る舞いの変更は無く、タスクも変えていない。cross-spec reviewの指摘による。
+- 2026-10-25(改訂4): Sentryの個人情報の収集設定(`sendDefaultPii`から`dataCollection`へ)と、トランザクションの個人情報の除去。タスク2.6の実装のレビューの指摘を受けて開発者が決定(末尾の改訂4の節)。
 
 ## 開発者の決定による承認後の改訂(改訂3、2026-10-24)
 
@@ -286,3 +287,13 @@
 
 - 2026-10-24に開発者が改訂1(公開APIのキー`lsk_`のパターン)と改訂2(4:21の予算の超過の警告・ローカルの定期実行の経路・共有の補助`triggerScheduled`)を推奨どおりに確定した。改訂3は同日に開発者が決定済みである。本specの承認後の改訂は全て確定し、開発者の判断を待つ論点は残っていない。
 - 確定に伴う振る舞いの変更は無い(採用していた案どおり)。要件・設計・タスクから確認を待つ旨の記述を除き、`requirements.md`の「承認後の改訂」の表の状態を確定に改めた。改訂1の取り下げに備えた代替の記述(`lsk_`のテストの置き換え)と、改訂2の開発者の確認が得られない場合のFollow-upは、確定により不要になった。
+
+## 開発者の決定による承認後の改訂(改訂4、2026-10-25)
+
+- **状態**: 2026-10-25に開発者が決定した改訂で、確定している。タスク2.6の実装のレビュー(1回目)の指摘による。
+- **Context**: 設計は`buildSentryOptions`に`sendDefaultPii: false`を置いていたが、固定した`@sentry/core@11.4.0`のオプションに`sendDefaultPii`は無く、収集は`dataCollection`(`DataCollection`型)で決まる。その既定値(`resolveDataCollectionOptions`)は`userInfo: true`・`cookies: true`・`httpHeaders: { request: true, response: true }`・`httpBodies`に4種全て・`urlQueryParams: true`で、既定の`requestDataIntegration`はエラーイベントだけでなくトランザクションにも`request.headers`・`request.query_string`・`user.ip_address`を付ける。設計の`scrubTransaction`は`user`・`request`に触れず、IPアドレスがトランザクションで送られて要件9.2に反していた。あわせて、削除するヘッダー(6種)が、Sentryが利用者のIPアドレスの取得に使うヘッダー(`getClientIPAddress`の12種)より少なく、`logentry.params`はSentryの正規化(`normalizeEvent`)の対象外で循環参照を含み得るのに、入れ子をたどる伏せ字に打ち切りが無かった。
+- **決定**: 両方の層で防ぐ。
+  - SDKの層: `buildSentryOptions`で`dataCollection`を明示し、`userInfo`・`cookies`・`httpHeaders`・`urlQueryParams`・`graphQL`・`genAI`・`databaseQueryData`・`queues`・`stackFrameVariables`を無効にし、`httpBodies`を空にする(値は設計の`SentryInstrumentation`の節)。ルートのスパンの属性(`http.request.header.*`・`user.ip_address`・`http.request.body.data`)は除去処理がキーを削除しないため、この層で防ぐ。
+  - 除去処理の層(最後の防御): `user`・`request`の個人情報の除去を共通の処理にして`scrubEvent`と`scrubTransaction`の両方に適用し、削除するヘッダーを`cookie`・`authorization`とIPアドレスの取得に使う12種に広げる。入れ子をたどる伏せ字は、祖先にあるオブジェクトを`[Circular ~]`(Sentryの正規化と同じ印)に置き換えて打ち切る。
+- **要件**: 要件9.2(IPアドレスを除き、Cookie・認証ヘッダー・本文を含めない)を満たすための設計の修正で、要件の文言と利用者・運用者から見える振る舞いの約束は変わらないため、`requirements.md`の「承認後の改訂」の表には載せない。
+- **変えた箇所**: 設計の`SentryScrubber`の処理(共通の除去と`scrubTransaction`への適用、ヘッダーの列挙、`logentry`と循環参照)、`SentryInstrumentation`の`buildSentryOptions`と収集設定、Revalidation Triggers(Sentry SDKの版の更新)、LoggingDoc、Testing Strategyの`scrub-event.unit.test.ts`と`sentry.worker.test.ts`、Security Considerations、本書のSentryの節のImplications。タスク2.6の詳細と4.2の詳細・完了状態。番号の変更は無い。
