@@ -51,6 +51,9 @@ function reportTags(report: DeadLetterReport): Record<string, string> {
       ? {}
       : { message_type: report.messageType }),
     dead_letter_reason: report.reason,
+    ...(report.messageId === undefined
+      ? {}
+      : { correlation_id: report.messageId }),
   };
 }
 

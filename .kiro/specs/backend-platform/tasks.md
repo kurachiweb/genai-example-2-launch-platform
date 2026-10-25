@@ -219,7 +219,7 @@
   - _Depends: 2.3, 2.5, 2.9_
   - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7_
 
-- [ ] 6. HTTPアプリとディスパッチャの組み立て
+- [x] 6. HTTPアプリとディスパッチャの組み立て
 - [x] 6.1 両サーバー共通のHonoアプリを、設計の順序のミドルウェアで組み立てる
   - Sentry、相関IDとクライアントIPとログの文脈、IP制限、ヘルスチェック(GET・HEAD、認証なし、200・`no-store`、依存先を確かめない)、環境の検証、処理単位のコンテナ、各モジュールのルート、404と例外の変換の順に組み立てる
   - 処理の終了時に、メソッド・クエリ文字列を除いたパス・状態コード・処理時間のアクセスログを、IPを含めずに1件出す
@@ -248,7 +248,7 @@
   - _Depends: 2.7, 4.1, 4.2, 4.3, 4.4_
   - _Requirements: 8.6, 11.1, 11.4, 11.5, 11.6, 11.7, 11.8_
 
-- [ ] 6.4 fetch・定期実行・非同期メッセージをまとめたWorkerハンドラーを作る
+- [x] 6.4 fetch・定期実行・非同期メッセージをまとめたWorkerハンドラーを作る
   - 呼び出しのたびに最初にログ設定を確かめ、定期実行と非同期メッセージでは相関IDを採番してログの文脈の中で処理し、環境を検証する
   - グローバルスコープではimport・定数・ルート登録だけを行い、ログ設定・コンテナ生成・暗号鍵の生成を最初の呼び出しまで遅らせる
   - 完了状態: ハンドラーを組み立てただけではログ設定とコンテナ生成が行われず、最初の呼び出しで行われ、定期実行と非同期メッセージの処理にもエラートラッキングの計装が掛かることをWorkers統合テストで確かめられる
@@ -382,3 +382,4 @@
 - 8.4(8.1・8.5への申し送り): `security/002-keyed-hashing.md`は新しいプレースホルダー`<ペッパーのシークレットのキー>`(本プロジェクトでは`HASH_PEPPER`)と`<共通ライブラリの配置先>`(api・eventでは`lib`)を使う。8.5で`docs/onboardings/project-values.md`に追加し、8.1の文書も共有のバックエンドのライブラリを同じプレースホルダー名で書く。
 - 6.3(親の判断・改訂7、6.4・7.2・8.3への申し送り): Sentryの組み込みのdedupeは同じ`message`・同じfingerprint・スタック無しの連続したイベントを捨てるため、同じ文言を繰り返し送る通知(デッドレター・定期実行の予算の超過・bot判定の設定の誤り)は`captureEvent`(`logentry`・`fingerprint`)で送る(research.mdの改訂7。6.2・5.3の実装も水平展開で直した)。8.3の文書にこの規約を書き、下流spec(email-delivery・notifications・data-export・content-reporting・identity-auth・tournament-year)の固定の文言の`captureMessage`へ申し送る。本体のconsumerは1件ごとの想定外の例外を`captureException`して`retry()`し、遅延再送の不正な遅延は処理の失敗として扱う。ログのカテゴリは`['event','queue','consumer']`・`['event','queue','dead-letter']`に固定。自動で移った元のメッセージの`attempts`はデッドレターQueueでの配信回数で代用し`queueMessageId`を加える。登録の`retry.maxAttempts`がWranglerの`max_retries`(6)以上だと`auto-moved`として届く(8.3に制約として書く)。`@cloudflare/vitest-pool-workers` 0.22.0の`getQueueResult`は遅延秒数を記録しないため`vi.spyOn(message, 'retry')`で確かめ、型定義に無い`FetcherQueueResult`を2つのテストで`declare global`している。
 - 8.2(8.5への申し送り): `db/003-schema-conventions.md`は新しいプレースホルダー`<DBディレクトリ>`(本プロジェクトでは`apps/db`)を使い、既存の001の`<データベース名>`・`<バインディング名>`も`project-values.md`に未記載。8.5で追加する。業務時刻のオフセット(UTC-08:00)は003では値を書かず「夏時間の無い固定のUTCオフセット」としているため、8.5で`project-values.md`に載せる。002の全文検索の例は、連番の主キーを持つ全文検索用のテーブルを外部コンテンツにし`content_rowid='id'`を指定する形に改めた。
+- 6.4(7.1・7.2への申し送り): `createWorkerHandler`の`WorkerHandlerOptions`は設計から次のとおり逸脱した。`modules`を持たない(コンテナはHonoの`requestContainer`と各ディスパッチャーが作り、ハンドラーには使い道が無い。アプリは`MODULES`を`createScheduledDispatcher`・`createQueueDispatcher`と`createWorkerApp`にだけ渡す)、`sentry`(`CloudflareOptions`を返す関数)と`console?: Console`を加えた、`envSchema`は`z.ZodType`。エントリは`createWorkerHandler({ appName, app, envSchema, sentry, scheduled | queue })`の形で組み立てる。scheduled・queueでは相関IDを採番してSentryのタグ`correlation_id`と`withContext({ correlationId })`に入れ、環境を検証し(失敗はキー名だけの`error`ログと例外。queueではバッチ全体がQueuesの再試行になる)、`withSentryForScheduledAndQueue`で計装する。デッドレターのSentryのイベントにはメッセージの`correlation_id`のタグを付ける(親がレビューの指摘で追加)。環境の検証の失敗のログは`env-guard.ts`と重複している。

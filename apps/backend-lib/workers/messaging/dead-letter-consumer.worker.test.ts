@@ -254,6 +254,7 @@ describe('createQueueDispatcher(デッドレター)', () => {
       tags: {
         message_type: 'test.send-greeting',
         dead_letter_reason: 'handler-failed',
+        correlation_id: NOTICE_ID,
       },
       contexts: {
         dead_letter: {
@@ -284,6 +285,7 @@ describe('createQueueDispatcher(デッドレター)', () => {
       tags: {
         message_type: 'test.send-greeting',
         dead_letter_reason: 'auto-moved',
+        correlation_id: AUTO_MOVED_ID,
       },
     });
   });
