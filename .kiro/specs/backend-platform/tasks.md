@@ -173,7 +173,7 @@
   - _Depends: 2.6_
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-- [ ] 4.3 (P) 契約で検証してから封筒を付けて送るメッセージ送信を作る
+- [x] 4.3 (P) 契約で検証してから封筒を付けて送るメッセージ送信を作る
   - 集約点に無い種別、検証に失敗する本文、上限を超える遅延を、送信せずに理由付きで失敗させる。失敗のメッセージに本文を含めない
   - 送信時にIDと送信日時を付け、遅延秒数を指定できるようにする
   - 完了状態: テスト用の契約で、封筒の付与と遅延送信、未登録・不正な本文の拒否をWorkers統合テストで確かめられる
@@ -368,3 +368,4 @@
 - 3.2(親の判断、8.1への申し送り): design.mdは`db/client.worker.test.ts`をdb配下に置くが、AppLayerRulesは`db/**`で`cloudflare:*`を禁止するため、`db/**/*.worker.test.{ts,tsx}`だけ`cloudflare:*`の禁止を外した(`**/lib/**`・`hono`・`sqliteTable`の禁止は保つ)。8.1の文書に記載する。D1のWorkers統合テストは`cloudflare:workers`の`env`からバインディングを受け取り(`cloudflare:test`の`env`は非推奨)、検証用テーブルの`CREATE TABLE`はDrizzleの`getTableConfig`から列定義を組み立てる。Drizzleは単一の文の失敗を`DrizzleQueryError`で包み、D1のエラーは`cause`にある。
 - 4.1(親の判断・改訂5): LoggingSetupのテスト用の差し替え口は`console?: Console`(`getConsoleSink`の`console`に渡す)。LogTapeの`Sink`は整形前の記録を受け取り、値の形式の伏せ字とJSON化を通った出力をテストで受け取れないため(research.mdの改訂5)。後続のタスクのテストも記録用のコンソールでログを確かめる。設計に無い判断として、LogTapeのmetaロガーを明示的に同じ伏せ字付きのシンクへ`warning`以上で流し(既定の伏せ字を通らないシンクと設定完了の通知を防ぐ)、設定し直しても同じ`AsyncLocalStorage`を使い続け、`getConfig()`の同一性で外部のresetを検知する。`node:async_hooks`は互換性日付2026-08-04でフラグ無しで使える。
 - 4.1(8.3への申し送り): `@logtape/redaction`の`EMAIL_ADDRESS_PATTERN`は空白を挟まない日本語をローカル部に含めて伏せる(「連絡先はuser@launch.exampleです」→全体が`[REDACTED]`)。伏せすぎで漏えいは無い。8.3の文書に「メールアドレスは属性として渡すか、空白や記号で区切る」と規約として書く。
+- 4.3(8.3・6.3への申し送り): `MessagePublisher.publish`は種別名で集約点の契約を引き、登録された契約のスキーマで検証した結果(`parsed.data`、規則に無いキーは除かれる)を封筒の本文として送る。そのため契約のスキーマは、parse結果をもう一度検証しても同じ値になる冪等な規則に限る(非冪等な`transform`を使わない)。8.3の文書に記載する。遅延は0〜43200の整数で、上限`MAX_DELAY_SECONDS`は`workers/messaging/queue-publisher.ts`からエクスポートしており、6.3の`defer`の上限で再利用する。MiniflareのQueueは送った内容を読み返せないため、封筒の確認は記録用の`Queue`の代用品で行う。
