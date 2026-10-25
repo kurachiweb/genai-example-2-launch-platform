@@ -32,7 +32,7 @@
   - 完了状態: 両アプリでWorkers統合テストのコマンドが対象0件で成功し、apiではマイグレーション0件の状態で適用処理がエラーなく通る
   - _Requirements: 15.2_
 
-- [ ] 1.5 アプリの4層と共有コードの依存方向を静的解析で強制する
+- [x] 1.5 アプリの4層と共有コードの依存方向を静的解析で強制する
   - 先に、各層・共有コードの`core`・DBスキーマの位置に置いた違反例のimportが報告されることを、静的解析のNode APIで確かめる単体テストを書く
   - 両アプリの静的解析設定に、ファイルの位置ごとの禁止import(設計の表。DBスキーマでの列名を変換しないテーブル定義関数を含む)を加える。共有コードとDBスキーマの規則は検査担当のapiだけに置く
   - 完了状態: 依存方向の単体テストが成功し、規則に合う既存ファイルで両アプリの静的解析が成功する
@@ -348,3 +348,4 @@
 - 1.2: `apps/db/client.ts`の`D1Database`は1.3で生成する`worker-configuration.d.ts`で初めて宣言されるため、1.2は1.3の実装後に型検査を確かめてコミットした。後続でも、実行時の環境の型に依存するコードは型生成の後でなければ型検査が通らない。
 - 1.3: `apps/api/test/config/wrangler-config.unit.test.ts`はconsumerの`max_retries`を`6`の直書きで確かめている。2.7の完了後(2.7のタスク内)に、`DEFAULT_RETRY_POLICY.maxAttempts`より大きいことの比較へ置き換える。consumerの`max_batch_size`・`max_batch_timeout`・`retry_delay`とデッドレターのconsumerの`max_retries`はまだテストしていない。
 - 1.3: 開発コンテナのサンドボックスでは`wrangler dev`が「Ready」まで到達するがHTTPの応答が返らない(最小のWorkerでも同じ)。ローカル起動での確認は9.1で行う。
+- 1.5: 層の禁止importは`no-restricted-imports`の`.gitignore`形式のため、`'hono'`は`@sentry/hono`にも一致し、動的`import()`・`require`とサブパスの無いディレクトリのimportは検査しない。8.1の文書に記載する。層の規則の単体テストは`tseslint.configs.disableTypeChecked`を重ねて仮想のファイルを検査している。
