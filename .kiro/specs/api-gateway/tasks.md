@@ -213,7 +213,7 @@
   - _Requirements: 10.2, 10.3, 10.5, 10.8, 10.9, 10.10, 11.3_
 
 - [ ] 8. APIサーバーへの結線と端から端までの確認
-- [ ] 8.1 登録箇所・合成・エントリをAPIサーバーへ結線する
+- [x] 8.1 登録箇所・合成・エントリをAPIサーバーへ結線する
   - 公開REST・内部REST・セッションの束縛の登録箇所を作り(初版は空、セッションは既定の実装)、モジュールの登録へセッション・疎通確認の束縛とGraphQL・公開REST・内部RESTのモジュールを加える
   - Workerの組み立て(クライアントIPの解決の差し替え、外部経路の包みとCORSの方針)を合成ルートの1ファイルにまとめ、メインモジュールは既定のエクスポート・2つの名前付きエントリポイント・backend-platformの厳密カウンタのクラスだけをエクスポートする
   - 完了状態: apiの静的解析・型検査・既存のWorkers統合テストが成功する(実際の入口のバンドルは10.1のdry-runで確かめる。承認後の改訂2)
@@ -310,3 +310,4 @@
 - 7.1(設計の補完と7.3・8.2・9.2への申し送り): `@hono/zod-openapi`・`@hono/zod-validator`は本文の解析失敗とContent-Typeの不一致でHonoの`HTTPException`(400・415)を投げ、基盤の`onError`が想定外(500・Sentry送信)として扱うため、公開APIのアプリの`onError`で`AppError`に変えて再送出する(応答を返すと`c.error`が`HTTPException`のまま残るため)。400は`validation_error`(詳細`field: ''`・`code: invalid_json`)、415は`AppErrorStatus`に415が無いため`unsupported_media_type`の400(415で返すにはbackend-platformの`AppError`に種類の追加が要る。人の判断待ち)。公開RESTの本文はJSONだけの前提で、`HTTPException`の400はすべて`invalid_json`とみなす。設計に無い`registerApiKeySecurityScheme(api)`を加えた(7.3の`createRestModule`で呼ぶ)。`toFieldErrorDetails`と文言はGraphQLの`validated-args.ts`と重複している(統合の候補)。RESTのページングはsnake_caseの`meta`。Sentryへ送られないことは外側の`c.error`で確かめた(7.3・8.2で`createWorkerApp`に組み込んだ状態でも確かめる)。
 - 7.2(7.3・9.2への申し送り): 経路の表は`createRouteTable`を呼んだ時点の`openAPIRegistry`の経路と仕様の経路から作るため、7.3は全経路の登録後に作る。`{name}`は`/`を含まない空でない1セグメントに一致し、それ以外は文字どおり(末尾スラッシュの正規化なし)。`hide: true`の経路と素の`api.get`の経路は表に入らず、ブラウザからのプリフライトが`OPTIONS`だけになる(9.2の文書に「ブラウザから呼ぶ経路に`hide`を使わない」と書く)。Honoとの差は、固定のセグメントの百分率符号化と1セグメント内の複数の変数(`{a}.{b}`)だけで、どちらもCORSが狭くなる側。
 - 7.3(8.2・9.2への申し送り): 公開RESTのモジュール名は`public-rest`(設計に記載なし、`internal-rest`にならった)。`@hono/zod-openapi`の`doc31`は仕様を要求ごとに作り、生成に失敗すると例外をそのまま`c.json(e, 500)`で返す(共通のエラー形式・Sentryを通らない)。8.2の端から端までのテストで仕様の配信を確かめ、9.2の文書に「経路を追加したら仕様の取得をテストする」と書く。仕様は子の`OpenAPIHono`の登録だけから作られ、内部経路・GraphQLは載らない。
+- 8.1(設計からの逸脱と8.2・9.3・10.1への申し送り): 設計1441行は`MODULES`へ公開RESTのモジュールを加えるが、`createRestModule<Env>(REST_ROUTES)`は`composition/api-worker.ts`で1回だけ作り、`createWorkerApp`へ`[...MODULES, rest.module]`で渡す(`MODULES`は公開RESTを含まない)。アプリに登録するインスタンスと、public-apiのtasks.md 7.2が`api-worker.ts`で`{ info }`を渡すインスタンス・CORSの経路の表を同じにするため。public-restはinternal-restの後に登録される(パスが重ならず振る舞いは同じ)。登録箇所の型は`ApiEnv`ではなく`Env`(Honoの型引数の不変性)。疎通確認の束縛は`modules.ts`の`systemModule`。`wrangler.jsonc`は変更なし(名前付きエントリポイントは呼び出し側のService Bindingで指定)。`wrangler deploy --dry-run`は権限設定で拒否されたため、実際の入口のバンドルは10.1で確かめる。9.3で`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の合成ルートの記述(組み立ては`composition/api-worker.ts`、`index.ts`はエクスポートだけ)と登録箇所の表(`rest-routes.ts`・`internal-routes.ts`・`session.ts`・`graphql-modules.ts`)を直す。実際の結線でのCORS・中継ヘッダーの除去・クライアントIPの解決の差し替えは8.2で確かめる。

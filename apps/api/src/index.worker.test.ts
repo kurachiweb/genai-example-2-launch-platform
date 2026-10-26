@@ -12,9 +12,17 @@ import { PLATFORM_TYPES } from '../lib/core/di/identifiers.ts';
 import { hashRateLimitKey } from '../lib/core/rate-limit/rate-limit-key.ts';
 import type { BotVerifier } from '../lib/workers/bot-protection/turnstile-verifier.ts';
 import { createInvocationContainer } from '../lib/workers/di/invocation-container.ts';
+import { SECURITY_HEADERS } from '../lib/workers/http/security-headers.ts';
 import type { RateLimitCounterClient } from '../lib/workers/rate-limit/rate-limit-counter-client.ts';
+import { AnonymousSessionVerifier } from './application/session/anonymous-session-verifier.ts';
+import { SESSION_TYPES } from './application/session/session-verifier.ts';
+import {
+  DefaultSystemStatusQuery,
+  SYSTEM_TYPES,
+} from './application/system/system-status-query.ts';
 import { MODULES } from './composition/modules.ts';
-import worker from './index.ts';
+import * as mainModule from './index.ts';
+import { D1DatabaseProbe } from './infrastructure/system/d1-database-probe.ts';
 
 const API_ORIGIN = 'https://genai-example-2-api.example';
 const SITEVERIFY_HOSTNAME = 'client.launch.example';
@@ -74,6 +82,26 @@ afterAll(() => {
 });
 
 describe('APIサーバーのエントリ', () => {
+  test('メインモジュールは既定のエクスポート・名前付きエントリポイント・厳密カウンタのクラスだけをエクスポートする', () => {
+    expect(Object.keys(mainModule).sort()).toEqual([
+      'AdminGateway',
+      'ClientGateway',
+      'RateLimitCounter',
+      'default',
+    ]);
+  });
+
+  test('外部経路の応答にセキュリティヘッダーを付ける', async () => {
+    const response = await exports.default.fetch(`${API_ORIGIN}/health`, {
+      headers: { 'CF-Connecting-IP': '203.0.113.74' },
+    });
+
+    expect(response.status).toBe(200);
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+      expect(response.headers.get(name)).toBe(value);
+    }
+  });
+
   test('ヘルスチェックが外部からの経路として200とキャッシュの禁止を返す', async () => {
     const response = await exports.default.fetch(`${API_ORIGIN}/health`, {
       headers: { 'CF-Connecting-IP': '203.0.113.71' },
@@ -82,6 +110,19 @@ describe('APIサーバーのエントリ', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('Cache-Control')).toBe('no-store');
     expect(await response.json()).toEqual({ status: 'ok' });
+  });
+
+  test('公開APIの仕様を外部経路で配信する', async () => {
+    const response = await exports.default.fetch(
+      `${API_ORIGIN}/v1/openapi.json`,
+      { headers: { 'CF-Connecting-IP': '203.0.113.75' } },
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      openapi: '3.1.0',
+      servers: [{ url: '/v1' }],
+    });
   });
 
   test('未登録の経路は共通のエラー形式の404になる', async () => {
@@ -97,7 +138,7 @@ describe('APIサーバーのエントリ', () => {
   });
 
   test('ジョブの無い時刻の定期実行が失敗せずに終わる', async () => {
-    const scheduled = worker.scheduled;
+    const scheduled = mainModule.default.scheduled;
     if (scheduled === undefined) {
       throw new Error('定期実行のハンドラーがエクスポートされていません');
     }
@@ -143,6 +184,25 @@ describe('APIサーバーの基盤モジュール', () => {
       ],
     );
     await client.reset(rule, key);
+  });
+
+  test('セッションの検証に、常に未ログインとする既定の実装を束縛する', () => {
+    const container = createContainer(env);
+
+    expect(container.get(SESSION_TYPES.SessionVerifier)).toBeInstanceOf(
+      AnonymousSessionVerifier,
+    );
+  });
+
+  test('疎通確認のユースケースとデータベースの到達確認を束縛する', () => {
+    const container = createContainer(env);
+
+    expect(container.get(SYSTEM_TYPES.SystemStatusQuery)).toBeInstanceOf(
+      DefaultSystemStatusQuery,
+    );
+    expect(container.get(SYSTEM_TYPES.DatabaseProbe)).toBeInstanceOf(
+      D1DatabaseProbe,
+    );
   });
 
   test('処理単位の中では同じbot判定の検証と厳密カウンタのクライアントを使う', () => {
