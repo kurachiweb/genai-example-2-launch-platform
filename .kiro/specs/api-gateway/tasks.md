@@ -131,7 +131,7 @@
   - _Boundary: OperationAllowlist_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 13.3_
 
-- [ ] 5.3 エラーのマスキングと状態コードの方針を作る
+- [x] 5.3 エラーのマスキングと状態コードの方針を作る
   - 先に、共通エラー型の失敗のコード・メッセージ・詳細、回数超過と一時的な障害の429・503と`Retry-After`、想定外の例外の定型の文言とログ・送信の1回の呼び出し、共通エラー型を送信しないこと、実行前の拒否の400、バッチ・変数の型の不一致の要求不正を確かめるWorkers統合テストを書く
   - 実行時のエラーのマスキングと、解析・検証の拒否へコードと400を付けるプラグインを実装する
   - 完了状態: テストが成功し、想定外の例外の内部の詳細が応答に含まれない
@@ -299,3 +299,4 @@
 - 4.6(8.1・9.1への申し送り): 疎通確認の実装クラスは`DefaultSystemStatusQuery`(設計はインターフェースと同名だが宣言の結合の規則に当たるため)。8.1で`SYSTEM_TYPES.SystemStatusQuery`→`DefaultSystemStatusQuery`、`SYSTEM_TYPES.DatabaseProbe`→`D1DatabaseProbe`を`MODULES`に束縛する。到達確認の警告ログのカテゴリは`['api', 'infrastructure', 'system']`。Bunで読み込むファイルの禁止import規則から`src/presentation/graphql/modules/**/*.worker.test.ts`だけを外した(Bunは読み込まず、D1のため`cloudflare:*`・infrastructureが要る)。9.1の文書にこの扱いを書く。失敗を差し込むD1の偽物は`test/support/failing-d1.ts`。
 - 5.1(5.3への申し送り): 上限の拒否の種類は`WeakMap<GraphQLError, QueryLimitKind>`でエラーオブジェクトに記録するため、ErrorPolicyは包み直す前に`classifyDocumentErrors`で分類する。構文の誤りはgraphqlが種類を持たないため"Syntax Error:"の接頭辞で判別し、Armorも同じ接頭辞を使うため記録した種類を先に見る(記録の無い将来のArmorの上限は`graphql_parse_failed`になる)。`@escape.tech/graphql-armor-types`はArmorの下位パッケージの任意依存として推移的に入っており、直接は読み込まない。テスト補助`test/support/query-limit-harness.ts`はBunにも読み込まれるため、Bunのカバレッジの閾値(ファイルごと)を満たすよう全関数をBunのテストで通す。
 - 5.2(5.3・5.6への申し送り): persisted operationsの拒否(`persisted_operation_required`・`persisted_operation_not_found`、400)は`path`も原因も持たない`GraphQLError`として`maskError`に届く。設計862行の「`path`も原因も持たない→`graphql_request_invalid`」をそのまま適用すると上書きされるため、5.3では既知の`GatewayErrorCode`を持つエラーを残す規則を先に置く。プラグインは呼び出し元を`x-internal-caller`から、無ければ任意の操作を許す時(ローカルのGraphiQL)だけ`x-debug-caller`(既定`client`)から決め、どちらでもなければ照会せず`persisted_operation_not_found`にする(フェイルクローズ)。5.6はこの規則を重複させず共有する。許可リストの検証は最初の`find`で1回(失敗は記憶しない)。拒否のエラーは要求ごとに作る。文言は「登録済みの操作の識別子(documentId)を指定してください。」「登録されていない操作です。」。
+- 5.3(設計の補完と5.5・9.1への申し送り): 拒否のコード(persisted operations・構文・上限)を残すのは`path`も`originalError`も持たないエラーだけで、`path`付きのエラーや外から付けた`internal_error`は想定外として伏せる。伏せ済みの判定はポリシーが作ったエラーの`WeakSet`だけで行う。Armorの深さ・コスト・エイリアス・ディレクティブの拒否は検証中に投げられ`maskError`に届く。Yogaの`usePreventMutationViaGET`が構文エラーの`http.spec`を真にするため、`spec: false`の400として作り直す。GETのmutationの405もYogaの要求エラーとして`graphql_request_invalid`の400になる。不正な日時の変数は`validation_error`の200、リテラルは`graphql_validation_failed`の400。5.5では、Yoga自身のloggerがマスク時に生の例外を出力するため`logging: false`か伏せ字のloggerにする。9.1の文書に「利用者に見せられない内部の詳細は`GraphQLError`ではなく通常の例外か`AppError`で投げる」と書く(`path`の無い`GraphQLError`の文言はそのまま応答に出るため)。`error-codes.ts`はコードの一覧`GATEWAY_ERROR_CODES`から型を作る。
