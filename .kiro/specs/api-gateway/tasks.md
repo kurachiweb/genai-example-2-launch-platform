@@ -40,7 +40,7 @@
   - _Requirements: 12.1_
 
 - [ ] 3. 内部経路と外部経路の境界
-- [ ] 3.1 (P) 呼び出し元の付与・除去・読み取りと、送信元IPアドレスの解決を作る
+- [x] 3.1 (P) 呼び出し元の付与・除去・読み取りと、送信元IPアドレスの解決を作る
   - 先に、呼び出し元の上書き、外部経路での呼び出し元と元のクライアントIPのヘッダーの除去、IPv4・IPv6の解釈と不正値の拒否、内部経路では引き継いだIP・外部経路では接続元のIPを返す解決を確かめるWorkers統合テストを書く
   - backend-platformのクライアントIPの解決の型に合わせて実装し、`cf`の情報を保ったまま要求を複製する
   - 完了状態: 外部経路で偽の呼び出し元・IPのヘッダーを付けた要求が内部経路として扱われず、内部経路で欠落・不正なIPが不明として返ることをテストで確かめられる
@@ -285,3 +285,4 @@
 - 2.1: `withSecurityHeaders`は既存の`withSentryForScheduledAndQueue`にならい`<E, Q = unknown>`(設計は`<E>`)。ヘッダーが不変の応答は設定時の`TypeError`で検出して`new Response(response.body, response)`で複製する。eventの`test:worker`は`lib/**`を除外しているため、共有コードのWorkers統合テストはapiでだけ実行される。
 - 2.2: `backend-lib/core`の単体テストはapiの`test:unit`だけが`lib/**`経由で実行する(ルートは`apps/**`を、eventは`lib/**`を除外)。中継ヘッダーは`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の伏せ字の規則に一般的な説明で追記した(本プロジェクトのヘッダー名は9.4・9.5で記載する)。
 - 2.3(9.3への申し送り): eventは`createWorkerHandler`の戻り値を一番外側で`withSecurityHeaders`で包む(Honoの経路は`@sentry/hono`がアプリを直接計装するため、外側の包みは例外の捕捉に影響しない)。`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の「エントリが`createWorkerHandler`の結果をそのまま`export default`する」記述を9.3で直す。
+- 3.1: `resolveGatewayClientIp`は「`readInternalCaller`が有効な呼び出し元を返せば内部経路」と判定する(設計536行の「ヘッダーがあれば」より厳密で、GraphqlModuleの判定と同じ)。要求の複製は`new Request(request, { headers })`で、本文のストリームは複製へ移る(後続は複製だけを読む)。IPの判定はzodの`z.ipv4()`・`z.ipv6()`で、表記の正規化はしない。
