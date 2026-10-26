@@ -89,7 +89,7 @@
   - _Boundary: Loaders_
   - _Requirements: 8.3_
 
-- [ ] 4.3 リゾルバに渡すGraphQLの文脈を作る
+- [x] 4.3 リゾルバに渡すGraphQLの文脈を作る
   - 先に、文脈が呼び出し元・相関ID・クライアントIP・セッションの参照・一括読み込みの登録表を持ち、処理単位のコンテナから依存を取得でき、bot判定の呼び出しが引き継いだトークンとクライアントIPをbackend-platformの検証へ渡すことを確かめるWorkers統合テストを書く
   - 要求ごとの文脈の生成を実装する
   - 完了状態: テスト用の検証の差し替えで、bot判定の成功・失敗がそれぞれ通過・共通エラーになることを確かめられる
@@ -293,3 +293,4 @@
 - 4.1(設計の「Modified Files」からの逸脱): `graphql-yoga`の型が`@whatwg-node/fetch`の`/// <reference lib="dom" />`を引き込み、workers-typesの`Request`・`BufferSource`と衝突するため、apiの`tsconfig.json`の`paths`で`@whatwg-node/fetch`を`apps/api/types/whatwg-node-fetch.d.ts`(Workersの型を別名で公開する置き換えの宣言)へ向け、`include`に`types/**/*.ts`を加えた。型が`any`になれば`apps/api/test/types/whatwg-node-fetch-types.ts`で型検査が失敗する。実行時(esbuild・Bun・Vite)は実体へ解決する。`@whatwg-node/fetch`の更新時は置き換えの宣言を見直す。手順は`docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md`に記載。
 - 4.1(5.xへの申し送り): 不正な日時の変数では`AppError`が`GraphQLError.originalError.originalError`に、リテラルでは`originalError`に入るため、ErrorPolicyは1段深く見る。出力できない日時は`TypeError`(想定外の例外として扱う)。合成エラーのモジュール名の重複は`module:<name>`、基盤の型定義は予約モジュール`platform`として重複検査に加わる。ルート型は`Query`・`Mutation`だけ。
 - 4.2(4.3への申し送り): 登録表は`createLoaderRegistry(scope: LoaderScope): LoaderRegistry`(設計に名前の記載なし)で作り、既定の上限は`DEFAULT_LOADER_MAX_BATCH_SIZE`(50)。`createGraphQLContext`は要求ごとに`createLoaderRegistry({ resolve: (id) => container.get(id) })`で作る。`resolve<T>(identifier: symbol): T`は`@typescript-eslint/no-unnecessary-type-parameters`に当たるため、`app-module.ts`にならい理由のコメント付きで抑制している。
+- 4.3(5.5への申し送り): `createGraphQLContext`の引数は、設計の`GatewayRequestScope`(5.5で定義、`observation`を含む)の構造的な部分集合`GraphQLContextScope`(`access`・`container`・`correlationId`・`clientIp`・`session`・`botToken`)。5.5では`GatewayRequestScope`をそのまま渡す(循環importを避けるため`graphql-context.ts`から`gateway-server.ts`を読み込まない)。Yogaは文脈の項目を`Object.assign`で自身の文脈へ複製するため、`resolve`・`assertHuman`は`this`に依存しない。`BotVerifier`は`assertHuman`の呼び出し時に取得する。
