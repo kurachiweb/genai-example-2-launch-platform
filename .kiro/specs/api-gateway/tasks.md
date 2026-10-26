@@ -117,7 +117,7 @@
   - _Requirements: 8.4, 8.8_
 
 - [ ] 5. GraphQLの実行基盤
-- [ ] 5.1 (P) クエリの上限と、拒否の種類・エラーコードの分類を作る
+- [x] 5.1 (P) クエリの上限と、拒否の種類・エラーコードの分類を作る
   - 先に、深さ9・エイリアス16・コスト5000超・字句1000超・ディレクティブ51の操作がそれぞれの種類のエラーコードに、構文の誤りと存在しない項目がそれぞれのコードに分類されること、上限以内の操作が通ること、デプロイ先の設定では上限値と実測値と項目の候補が応答に出ないことを確かめるWorkers統合テストを書く
   - 上限値の定数、Armorの設定と拒否の種類の記録、エラーコードの型と解析・検証の失敗の分類を実装する
   - 完了状態: テストが成功し、上限とエラーコードのファイルがBunからも読み込める
@@ -297,3 +297,4 @@
 - 4.4(4.5・9.1への申し送り): 包んだリゾルバの生成型への代入は、codegenと同じ形の`Resolver`型をテスト内に置いて確かめた。4.5で実際の生成型への代入を確かめる。`validation_error`の詳細の`message`はZodの`issue.message`のため、文言を指定しない規則はZodの既定の英語の文言になる。9.1の文書に「利用者へ出る規則には日本語の文言を必ず指定する」と書く。`invalid_cursor`の文言は「ページの位置の指定が正しくありません。」、全体の文言は「入力内容を確認してください。」。検証は`safeParseAsync`(非同期の規則のため)。`first`・`perPage`の既定値は持たせずドメインが決める。
 - 4.5(6.4への申し送り): 設計のDependency Directionの「`scripts/graphql/**`は指定のファイルだけを読み込む」「`src`から`scripts`を読み込まない」を強制する静的解析の規則は、どのタスクにも割り当てられていない(現状は手で守っている)。`scripts/graphql/`の入口がそろう6.4で、`files: ['scripts/graphql/**']`に`cloudflare:*`・`@sentry/*`・`**/infrastructure/**`の禁止と、`src/**`から`**/scripts/**`の禁止を加え、層の規則の単体テストに違反例を足す。graphql-codegenは`#!/usr/bin/env node`でNodeで起動する(Wranglerと同じ扱い。9.xの文書に書く)。
 - 4.6(8.1・9.1への申し送り): 疎通確認の実装クラスは`DefaultSystemStatusQuery`(設計はインターフェースと同名だが宣言の結合の規則に当たるため)。8.1で`SYSTEM_TYPES.SystemStatusQuery`→`DefaultSystemStatusQuery`、`SYSTEM_TYPES.DatabaseProbe`→`D1DatabaseProbe`を`MODULES`に束縛する。到達確認の警告ログのカテゴリは`['api', 'infrastructure', 'system']`。Bunで読み込むファイルの禁止import規則から`src/presentation/graphql/modules/**/*.worker.test.ts`だけを外した(Bunは読み込まず、D1のため`cloudflare:*`・infrastructureが要る)。9.1の文書にこの扱いを書く。失敗を差し込むD1の偽物は`test/support/failing-d1.ts`。
+- 5.1(5.3への申し送り): 上限の拒否の種類は`WeakMap<GraphQLError, QueryLimitKind>`でエラーオブジェクトに記録するため、ErrorPolicyは包み直す前に`classifyDocumentErrors`で分類する。構文の誤りはgraphqlが種類を持たないため"Syntax Error:"の接頭辞で判別し、Armorも同じ接頭辞を使うため記録した種類を先に見る(記録の無い将来のArmorの上限は`graphql_parse_failed`になる)。`@escape.tech/graphql-armor-types`はArmorの下位パッケージの任意依存として推移的に入っており、直接は読み込まない。テスト補助`test/support/query-limit-harness.ts`はBunにも読み込まれるため、Bunのカバレッジの閾値(ファイルごと)を満たすよう全関数をBunのテストで通す。
