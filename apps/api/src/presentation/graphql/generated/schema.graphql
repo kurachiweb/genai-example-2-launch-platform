@@ -1,0 +1,24 @@
+"""UTCのRFC 3339形式の日時"""
+scalar DateTime
+
+type OffsetPageInfo {
+  page: Int!
+  perPage: Int!
+  totalCount: Int!
+  totalPages: Int!
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+}
+
+type Query {
+  """APIサーバーの時刻とデータベースへの到達可否"""
+  systemStatus: SystemStatus!
+}
+
+type SystemStatus {
+  databaseReachable: Boolean!
+  serverTime: DateTime!
+}

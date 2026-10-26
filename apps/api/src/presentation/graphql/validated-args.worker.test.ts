@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { createInvocationContainer } from '../../../lib/workers/di/invocation-container.ts';
 import { createSessionAccess } from '../gateway/session-access.ts';
+import type { Resolver } from './generated/resolvers-types.ts';
 import {
   createGraphQLContext,
   type GraphQLContext,
@@ -14,25 +15,6 @@ import {
 import { composeGatewaySchema } from './schema-composer.ts';
 import { defineSchemaModule } from './schema-module.ts';
 import { withValidatedArgs } from './validated-args.ts';
-
-// graphql-codegenのtypescript-resolversが生成するリゾルバの型と同じ形
-type ResolverFn<TResult, TParent, TContext, TArgs> = (
-  parent: TParent,
-  args: TArgs,
-  context: TContext,
-  info: GraphQLResolveInfo,
-) => Promise<TResult> | TResult;
-interface ResolverWithResolve<TResult, TParent, TContext, TArgs> {
-  resolve: ResolverFn<TResult, TParent, TContext, TArgs>;
-}
-type Resolver<
-  TResult,
-  TParent = Record<PropertyKey, never>,
-  TContext = Record<PropertyKey, never>,
-  TArgs = Record<PropertyKey, never>,
-> =
-  | ResolverFn<TResult, TParent, TContext, TArgs>
-  | ResolverWithResolve<TResult, TParent, TContext, TArgs>;
 
 interface GreetingArgs {
   readonly name: string;

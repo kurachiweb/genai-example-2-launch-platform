@@ -102,7 +102,7 @@
   - 完了状態: テストが成功し、包んだリゾルバが生成したリゾルバの型に代入できる
   - _Requirements: 8.5, 8.6_
 
-- [ ] 4.5 スキーマファイルの印字とリゾルバの型の生成コマンドを作り、生成物をコミットする
+- [x] 4.5 スキーマファイルの印字とリゾルバの型の生成コマンドを作り、生成物をコミットする
   - スキーマモジュールの登録箇所を作り、疎通確認のモジュールを型定義だけで登録する(リゾルバは4.6で加える)
   - 型生成の設定(入力はスキーマファイル、文脈の型と日時のスカラーの対応)と、登録箇所を合成してスキーマファイルへ印字した後に型生成を起動する生成コマンドを作る
   - 先に、登録箇所から合成した印字結果とコミットしたスキーマファイルが一致することを確かめるWorkers統合テストを書く
@@ -295,3 +295,4 @@
 - 4.2(4.3への申し送り): 登録表は`createLoaderRegistry(scope: LoaderScope): LoaderRegistry`(設計に名前の記載なし)で作り、既定の上限は`DEFAULT_LOADER_MAX_BATCH_SIZE`(50)。`createGraphQLContext`は要求ごとに`createLoaderRegistry({ resolve: (id) => container.get(id) })`で作る。`resolve<T>(identifier: symbol): T`は`@typescript-eslint/no-unnecessary-type-parameters`に当たるため、`app-module.ts`にならい理由のコメント付きで抑制している。
 - 4.3(5.5への申し送り): `createGraphQLContext`の引数は、設計の`GatewayRequestScope`(5.5で定義、`observation`を含む)の構造的な部分集合`GraphQLContextScope`(`access`・`container`・`correlationId`・`clientIp`・`session`・`botToken`)。5.5では`GatewayRequestScope`をそのまま渡す(循環importを避けるため`graphql-context.ts`から`gateway-server.ts`を読み込まない)。Yogaは文脈の項目を`Object.assign`で自身の文脈へ複製するため、`resolve`・`assertHuman`は`this`に依存しない。`BotVerifier`は`assertHuman`の呼び出し時に取得する。
 - 4.4(4.5・9.1への申し送り): 包んだリゾルバの生成型への代入は、codegenと同じ形の`Resolver`型をテスト内に置いて確かめた。4.5で実際の生成型への代入を確かめる。`validation_error`の詳細の`message`はZodの`issue.message`のため、文言を指定しない規則はZodの既定の英語の文言になる。9.1の文書に「利用者へ出る規則には日本語の文言を必ず指定する」と書く。`invalid_cursor`の文言は「ページの位置の指定が正しくありません。」、全体の文言は「入力内容を確認してください。」。検証は`safeParseAsync`(非同期の規則のため)。`first`・`perPage`の既定値は持たせずドメインが決める。
+- 4.5(6.4への申し送り): 設計のDependency Directionの「`scripts/graphql/**`は指定のファイルだけを読み込む」「`src`から`scripts`を読み込まない」を強制する静的解析の規則は、どのタスクにも割り当てられていない(現状は手で守っている)。`scripts/graphql/`の入口がそろう6.4で、`files: ['scripts/graphql/**']`に`cloudflare:*`・`@sentry/*`・`**/infrastructure/**`の禁止と、`src/**`から`**/scripts/**`の禁止を加え、層の規則の単体テストに違反例を足す。graphql-codegenは`#!/usr/bin/env node`でNodeで起動する(Wranglerと同じ扱い。9.xの文書に書く)。
