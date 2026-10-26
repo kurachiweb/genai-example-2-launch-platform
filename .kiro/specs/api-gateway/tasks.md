@@ -175,7 +175,7 @@
   - _Boundary: GraphQLScripts(許可リストの組み立てと引数の解析)_
   - _Requirements: 5.5, 5.6, 5.7, 5.8_
 
-- [ ] 6.3 操作の一覧を作業ツリーとGitの履歴から読み、許可リストの生成コマンドを作る
+- [x] 6.3 操作の一覧を作業ツリーとGitの履歴から読み、許可リストの生成コマンドを作る
   - 先に、一時的なGitリポジトリで、作業ツリーにファイルが無い場合の空、指定コミットにファイルが無い場合の空、存在しないコミットでの失敗を確かめる単体テストを書く
   - 利用者側・管理者側の操作の一覧の場所の契約、読み出し、生成コマンド(直前のリリースの指定が無ければその旨を表示)を実装し、現行の操作だけで生成した許可リストをコミットする
   - 完了状態: フロントエンドの一覧が無い状態で生成コマンドが空の許可リストを出力し、テスト用の一覧を置くと呼び出し元ごとの許可リストになる
@@ -305,3 +305,4 @@
 - 5.6(設計の補完と8.x・9.1・10.1への申し送り): 受付経路は「内部の呼び出し元ヘッダー→ローカルのGraphiQLの要求(`isGraphiqlRequest`を共有)→未登録の経路と同じ404」の順で、404は本文の上限の413より先。413は`AppError`に種類が無いためモジュールで共通のエラー形式を作る(コード`payload_too_large`、文言「リクエストの本文が大きすぎます。」)。本文の上限はHonoの`bodyLimit`で、長さのヘッダーがあればその値を信頼する(区切りは実行基盤が強制する前提)。外部経路の404は経路を隠すため操作ログ・ルートのスパンの属性を出さず、413は操作ログだけ出す。Honoの`c.res`のsetterは古い応答のヘッダーを新しい応答へ書き戻すため、後処理では`c.res = undefined`の後に代入する(YogaのSSEの`Cache-Control: no-cache`で`no-store`が戻るのを防ぐ。SSEは受け付ける)。GraphiQLの画面のCSPはYoga 5.24.6の内蔵HTMLに合わせ、unpkgのスクリプト・スタイル・フォント・接続と`'unsafe-inline'`・`worker-src blob:`を許す(faviconは遮断)。ブラウザでの表示とMonacoの`'unsafe-eval'`の要否は10.1で確かめる。テストは`test/support/graphql-module-harness.ts`と`graphql-module.worker.test.ts`・`graphql-module.response.worker.test.ts`に分けた。
 - 6.1(設計の改訂候補と6.4への申し送り): 検証関数は設計どおり上限のプラグインだけのYogaで解析・検証するため、introspection(`__schema`・`__type`)、1つの文書に複数の操作、`Subscription`型の無い`subscription`も合格する。実行時はintrospectionが無効(5.5)なので、許可リストに入っても`graphql_validation_failed`で拒否される。破壊的変更の検出の目的からは、graphqlの`NoSchemaIntrospectionCustomRule`などを加えて実行時と合わせるのが筋だが、設計の範囲外のため加えていない(人の判断待ち)。上限を複数超えた操作は最初の1つのコードだけを返す。テストは`test/support/query-limit-harness.ts`を読み込むため、6.4の`scripts/graphql/**`の読み込み制限ではテストファイルの扱いを決める。
 - 6.2(設計の改訂候補と6.3・6.4への申し送り): 設計1404行の「キーを整列した」は、Logical Data Modelの例と既存のfixtureに合わせ`version`→`operations`の順を固定し、呼び出し元と識別子だけ辞書順にした。設計136行の読み込みの許可一覧に無い`operation-allowlist.ts`を、設計自身の`AllowlistData`の参照に従い`import type`で読み込む(6.4の規則で型だけの読み込みを許す)。識別子の正規表現は`operation-allowlist.ts`と重複定義。`PersistedDocuments`・`PersistedDocumentsByCaller`は`allowlist-builder.ts`で定義し、6.3の`allowlist-sources.ts`はここから読み込む。識別子の形式とハッシュの照合は直前の一覧にも当てる。`--previous-ref`はハイフンで始まる値・未知のオプション・位置引数を拒否する。6.3でGitを呼ぶ時はシェルを介さず起動し、可能なら`git rev-parse --verify --end-of-options <ref>^{commit}`でも確かめる。
+- 6.3(infra-deliveryへの申し送り): 操作の一覧の場所は`apps/client`・`apps/admin`の`src/graphql/generated/persisted-documents.json`(frontend-platformの設計と一致)。Gitの読み出しは`git ls-tree --format`を使うためGit 2.36以上が必要(開発コンテナは2.47.3)。Gitは呼び出し元の環境を引き継ぐため、`GIT_DIR`などが設定された状態(フックの中など)で単体テストや生成コマンドを動かすと別のリポジトリを読む。CIを作る時に、`GIT_DIR`・`GIT_WORK_TREE`・`GIT_INDEX_FILE`などを除いて起動するか判断する(既存の`test-support/git-ignore.ts`も同じ)。
