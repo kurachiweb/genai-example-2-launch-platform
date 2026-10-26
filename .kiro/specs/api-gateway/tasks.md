@@ -197,7 +197,7 @@
   - _Boundary: PublicApiApp, Responses_
   - _Requirements: 10.1, 10.4, 10.6, 10.7_
 
-- [ ] 7.2 登録済みの経路の表とCORSの方針を作る
+- [x] 7.2 登録済みの経路の表とCORSの方針を作る
   - 先に、パスに対する受け付けるメソッドの算出(パスの変数を含む)、基準パスの下の全応答のCORSのヘッダー、更新系での`Content-Type`、未登録のパスでの`OPTIONS`だけ、`Access-Control-Allow-Credentials`が無いこと、基準パスの外では付けないことを確かめるWorkers統合テストを書く
   - 経路の表と、3.5の契約に従うCORSの方針を実装する(公開RESTの側から外部経路の契約を参照し、逆向きの参照を作らない)
   - 完了状態: テストが成功する
@@ -308,3 +308,4 @@
 - 6.3(infra-deliveryへの申し送り): 操作の一覧の場所は`apps/client`・`apps/admin`の`src/graphql/generated/persisted-documents.json`(frontend-platformの設計と一致)。Gitの読み出しは`git ls-tree --format`を使うためGit 2.36以上が必要(開発コンテナは2.47.3)。Gitは呼び出し元の環境を引き継ぐため、`GIT_DIR`などが設定された状態(フックの中など)で単体テストや生成コマンドを動かすと別のリポジトリを読む。CIを作る時に、`GIT_DIR`・`GIT_WORK_TREE`・`GIT_INDEX_FILE`などを除いて起動するか判断する(既存の`test-support/git-ignore.ts`も同じ)。
 - 6.4: 比較と表示は純粋関数の`scripts/graphql/generated-check.ts`(設計のFile Structure Planに無い)に置き、`describeBuildError`を`allowlist-builder.ts`へ移して2つの入口で共有した。`graphql-codegen --check`はスキーマファイルと比べるため、スキーマが古い時はスキーマの比較が検出する。codegenの設定の誤りなども「型の食い違い」と表示される(codegenのエラー出力は出る)。静的解析は、`scripts/graphql/**`に`cloudflare:*`・`@sentry/*`・infrastructureと設計136行の一覧に無い`src`のファイルの読み込みを禁止し(`operation-allowlist.ts`は型だけ可、`test/support`は可)、`src/**`から`**/scripts/**`を禁止する(`@typescript-eslint/no-restricted-imports`を使い、層の規則の`no-restricted-imports`のオプションを置き換えない)。dev-toolingの設計(738行付近)の`check`の段階の一覧に`graphql:check`はまだ無い(api-gatewayの変更対象外のため人の判断待ち)。
 - 7.1(設計の補完と7.3・8.2・9.2への申し送り): `@hono/zod-openapi`・`@hono/zod-validator`は本文の解析失敗とContent-Typeの不一致でHonoの`HTTPException`(400・415)を投げ、基盤の`onError`が想定外(500・Sentry送信)として扱うため、公開APIのアプリの`onError`で`AppError`に変えて再送出する(応答を返すと`c.error`が`HTTPException`のまま残るため)。400は`validation_error`(詳細`field: ''`・`code: invalid_json`)、415は`AppErrorStatus`に415が無いため`unsupported_media_type`の400(415で返すにはbackend-platformの`AppError`に種類の追加が要る。人の判断待ち)。公開RESTの本文はJSONだけの前提で、`HTTPException`の400はすべて`invalid_json`とみなす。設計に無い`registerApiKeySecurityScheme(api)`を加えた(7.3の`createRestModule`で呼ぶ)。`toFieldErrorDetails`と文言はGraphQLの`validated-args.ts`と重複している(統合の候補)。RESTのページングはsnake_caseの`meta`。Sentryへ送られないことは外側の`c.error`で確かめた(7.3・8.2で`createWorkerApp`に組み込んだ状態でも確かめる)。
+- 7.2(7.3・9.2への申し送り): 経路の表は`createRouteTable`を呼んだ時点の`openAPIRegistry`の経路と仕様の経路から作るため、7.3は全経路の登録後に作る。`{name}`は`/`を含まない空でない1セグメントに一致し、それ以外は文字どおり(末尾スラッシュの正規化なし)。`hide: true`の経路と素の`api.get`の経路は表に入らず、ブラウザからのプリフライトが`OPTIONS`だけになる(9.2の文書に「ブラウザから呼ぶ経路に`hide`を使わない」と書く)。Honoとの差は、固定のセグメントの百分率符号化と1セグメント内の複数の変数(`{a}.{b}`)だけで、どちらもCORSが狭くなる側。
