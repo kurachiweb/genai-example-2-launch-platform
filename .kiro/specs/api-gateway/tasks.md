@@ -168,7 +168,7 @@
   - _Depends: 5.1_
   - _Requirements: 4.9_
 
-- [ ] 6.2 (P) 許可リストを組み立てる純粋な処理と引数の解析を作る
+- [x] 6.2 (P) 許可リストを組み立てる純粋な処理と引数の解析を作る
   - 先に、現行と直前の和集合、直前だけの検証失敗の除外と一覧、現行の検証失敗・識別子の形式不正・ハッシュの不一致・同じ識別子の本文の衝突での失敗、キーの順の決まった出力、直前のリリースの引数の有無と値の欠落を確かめる単体テストを書く
   - 組み立て(検証関数を受け取る)、直列化、引数の解析を実装する
   - 完了状態: 単体テストが成功する
@@ -304,3 +304,4 @@
 - 5.5(設計の改訂候補と5.6・9.1への申し送り): 要件6.3・11.5に合わせ、設計から次を変えた。`useDisableIntrospection`は全環境に適用し、ローカルのGraphiQLの要求(内部の呼び出し元ヘッダーが無い要求)だけ通す(設計は「デプロイ先環境だけ」)。`graphiql`はローカルのGraphiQLの要求だけ真(設計は「ローカル環境だけ真」)。Yogaの既定のCORS(任意のOriginを資格情報付きで反射)を`cors: false`で無効にする。`logging: false`。想定外の例外のログのカテゴリは`['api', 'graphql', 'error']`(設計のMonitoringに無い)。`getGatewayServer`は環境だけをキーにisolate内で使い回し、2回目以降の`options`を無視するため、5.6のテストは同じファイル内でスキーマモジュールと許可リストをそろえる。テスト補助`test/support/observability-recording.ts`を追加した(`operation-observability.worker.test.ts`に同じ補助の重複が残る)。1.2の`gateway-headers.ts`の関数カバレッジ不足は解消した。
 - 5.6(設計の補完と8.x・9.1・10.1への申し送り): 受付経路は「内部の呼び出し元ヘッダー→ローカルのGraphiQLの要求(`isGraphiqlRequest`を共有)→未登録の経路と同じ404」の順で、404は本文の上限の413より先。413は`AppError`に種類が無いためモジュールで共通のエラー形式を作る(コード`payload_too_large`、文言「リクエストの本文が大きすぎます。」)。本文の上限はHonoの`bodyLimit`で、長さのヘッダーがあればその値を信頼する(区切りは実行基盤が強制する前提)。外部経路の404は経路を隠すため操作ログ・ルートのスパンの属性を出さず、413は操作ログだけ出す。Honoの`c.res`のsetterは古い応答のヘッダーを新しい応答へ書き戻すため、後処理では`c.res = undefined`の後に代入する(YogaのSSEの`Cache-Control: no-cache`で`no-store`が戻るのを防ぐ。SSEは受け付ける)。GraphiQLの画面のCSPはYoga 5.24.6の内蔵HTMLに合わせ、unpkgのスクリプト・スタイル・フォント・接続と`'unsafe-inline'`・`worker-src blob:`を許す(faviconは遮断)。ブラウザでの表示とMonacoの`'unsafe-eval'`の要否は10.1で確かめる。テストは`test/support/graphql-module-harness.ts`と`graphql-module.worker.test.ts`・`graphql-module.response.worker.test.ts`に分けた。
 - 6.1(設計の改訂候補と6.4への申し送り): 検証関数は設計どおり上限のプラグインだけのYogaで解析・検証するため、introspection(`__schema`・`__type`)、1つの文書に複数の操作、`Subscription`型の無い`subscription`も合格する。実行時はintrospectionが無効(5.5)なので、許可リストに入っても`graphql_validation_failed`で拒否される。破壊的変更の検出の目的からは、graphqlの`NoSchemaIntrospectionCustomRule`などを加えて実行時と合わせるのが筋だが、設計の範囲外のため加えていない(人の判断待ち)。上限を複数超えた操作は最初の1つのコードだけを返す。テストは`test/support/query-limit-harness.ts`を読み込むため、6.4の`scripts/graphql/**`の読み込み制限ではテストファイルの扱いを決める。
+- 6.2(設計の改訂候補と6.3・6.4への申し送り): 設計1404行の「キーを整列した」は、Logical Data Modelの例と既存のfixtureに合わせ`version`→`operations`の順を固定し、呼び出し元と識別子だけ辞書順にした。設計136行の読み込みの許可一覧に無い`operation-allowlist.ts`を、設計自身の`AllowlistData`の参照に従い`import type`で読み込む(6.4の規則で型だけの読み込みを許す)。識別子の正規表現は`operation-allowlist.ts`と重複定義。`PersistedDocuments`・`PersistedDocumentsByCaller`は`allowlist-builder.ts`で定義し、6.3の`allowlist-sources.ts`はここから読み込む。識別子の形式とハッシュの照合は直前の一覧にも当てる。`--previous-ref`はハイフンで始まる値・未知のオプション・位置引数を拒否する。6.3でGitを呼ぶ時はシェルを介さず起動し、可能なら`git rev-parse --verify --end-of-options <ref>^{commit}`でも確かめる。
