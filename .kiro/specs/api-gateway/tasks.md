@@ -229,7 +229,7 @@
   - _Requirements: 1.1, 1.2, 1.4, 1.5, 2.1, 2.2, 5.4, 6.3, 6.6, 11.1, 12.1, 14.2_
 
 - [ ] 9. 技術ドキュメントとオンボーディング
-- [ ] 9.1 (P) GraphQL基盤の技術ドキュメントを追加する
+- [x] 9.1 (P) GraphQL基盤の技術ドキュメントを追加する
   - 受付経路、上限と算出方法、呼び出し元別の許可リストと現行・直前のリリース、introspection・GraphiQL、エラーの分類と状態コード、スキーマモジュールの規約(合成・重複の禁止・リゾルバに業務ロジックを置かない・一括読み込みと件数の上限・引数の検証・ページングの型と命名・日時のスカラー・bot判定)、生成と検査のコマンド(一括検査の段階を含む)、操作ログ、トレースへの操作名の付け方(ルートのスパンの属性と実行の子のスパン、ルートのスパンの名前を変えない理由)を記載し、索引へ1行追記する
   - 完了状態: バックエンドの索引から文書へ辿れ、記載の規約がテストで確かめた振る舞いと一致し、プロジェクト名と固有値を含まない
   - _Boundary: 技術ドキュメント群(GraphQL基盤の文書)_
@@ -312,3 +312,4 @@
 - 7.3(8.2・9.2への申し送り): 公開RESTのモジュール名は`public-rest`(設計に記載なし、`internal-rest`にならった)。`@hono/zod-openapi`の`doc31`は仕様を要求ごとに作り、生成に失敗すると例外をそのまま`c.json(e, 500)`で返す(共通のエラー形式・Sentryを通らない)。8.2の端から端までのテストで仕様の配信を確かめ、9.2の文書に「経路を追加したら仕様の取得をテストする」と書く。仕様は子の`OpenAPIHono`の登録だけから作られ、内部経路・GraphQLは載らない。
 - 8.1(設計からの逸脱と8.2・9.3・10.1への申し送り): 設計1441行は`MODULES`へ公開RESTのモジュールを加えるが、`createRestModule<Env>(REST_ROUTES)`は`composition/api-worker.ts`で1回だけ作り、`createWorkerApp`へ`[...MODULES, rest.module]`で渡す(`MODULES`は公開RESTを含まない)。アプリに登録するインスタンスと、public-apiのtasks.md 7.2が`api-worker.ts`で`{ info }`を渡すインスタンス・CORSの経路の表を同じにするため。public-restはinternal-restの後に登録される(パスが重ならず振る舞いは同じ)。登録箇所の型は`ApiEnv`ではなく`Env`(Honoの型引数の不変性)。疎通確認の束縛は`modules.ts`の`systemModule`。`wrangler.jsonc`は変更なし(名前付きエントリポイントは呼び出し側のService Bindingで指定)。`wrangler deploy --dry-run`は権限設定で拒否されたため、実際の入口のバンドルは10.1で確かめる。9.3で`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の合成ルートの記述(組み立ては`composition/api-worker.ts`、`index.ts`はエクスポートだけ)と登録箇所の表(`rest-routes.ts`・`internal-routes.ts`・`session.ts`・`graphql-modules.ts`)を直す。実際の結線でのCORS・中継ヘッダーの除去・クライアントIPの解決の差し替えは8.2で確かめる。
 - 8.2: 端から端までのテストは`src/index.gateway.worker.test.ts`(実際の結線)と`src/index.allowlist.worker.test.ts`(テスト用の許可リスト。`getGatewayServer`がisolate内で使い回されるため別ファイル)。環境を上書きする時の`callInternal`は設計どおり`apiHandler`へ`markInternalRequest`・`applySecurityHeaders`を当てて呼ぶ(エントリポイントのクラスはローカルの`exports`経由と`createGatewayEntrypointClass`で作るクラスで確かめる)。実際の結線は許可リストが空のため、呼び出し元の偽装の上書き(1.4)はテスト用の許可リストのアプリで確かめた。`REST_ROUTES`・`INTERNAL_ROUTES`が空のため、実際の結線での入力の誤りのSentry非送信と`/internal`の偽装は確かめられず、7.3・3.4の単体で確かめている(下流specが経路を加えた時にテストを足す)。実際の結線は各要求の始めにLogTapeの出力を`console`へ戻すため、ログはconsoleのスパイで捕まえる。
+- 9.1(9.4・9.5への申し送り): `docs/GUIDES/tech/backend/004-graphql-server.md`はエラーコードの全表を持つため、9.4の文書は重複させずリンクする。9.5の`project-values.md`に、プレースホルダー`<GraphQLの経路>`・`<GraphQLの本文の上限>`・`<一括読み込みの件数の既定値>`の値と、文書中の「アプリ」(`src/presentation/graphql/`などのアプリ内のパス)が`apps/api`であることを載せる。`Subscription`型の無いスキーマへの`subscription`と、`operationName`の無い複数操作の文書が実行時に`graphql_request_invalid`の400になることは、使い捨てのスクリプトで確かめただけでコミット済みのテストは無い。
