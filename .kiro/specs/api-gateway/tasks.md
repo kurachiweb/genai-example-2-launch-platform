@@ -124,7 +124,7 @@
   - _Boundary: QueryLimits, ErrorCodes_
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.6, 4.7, 4.8, 6.2_
 
-- [ ] 5.2 (P) 呼び出し元別の許可リストとpersisted operationsのプラグインを作る
+- [x] 5.2 (P) 呼び出し元別の許可リストとpersisted operationsのプラグインを作る
   - 先に、許可リストの形の検証、`documentId`での照会、呼び出し元の一覧だけを照会すること(他方の操作は未登録)、本文だけの要求・識別子なし・未登録がそれぞれのエラーコードと400になること、任意の操作を許す判定が真の要求だけ本文を受け付けること、許可リストの検証が最初の照会で1回だけ行われることを確かめるWorkers統合テストを書く
   - 許可リストの読み込みと照会、`documentId`の抽出、プラグインの組み立てを実装する
   - 完了状態: テストが成功する
@@ -298,3 +298,4 @@
 - 4.5(6.4への申し送り): 設計のDependency Directionの「`scripts/graphql/**`は指定のファイルだけを読み込む」「`src`から`scripts`を読み込まない」を強制する静的解析の規則は、どのタスクにも割り当てられていない(現状は手で守っている)。`scripts/graphql/`の入口がそろう6.4で、`files: ['scripts/graphql/**']`に`cloudflare:*`・`@sentry/*`・`**/infrastructure/**`の禁止と、`src/**`から`**/scripts/**`の禁止を加え、層の規則の単体テストに違反例を足す。graphql-codegenは`#!/usr/bin/env node`でNodeで起動する(Wranglerと同じ扱い。9.xの文書に書く)。
 - 4.6(8.1・9.1への申し送り): 疎通確認の実装クラスは`DefaultSystemStatusQuery`(設計はインターフェースと同名だが宣言の結合の規則に当たるため)。8.1で`SYSTEM_TYPES.SystemStatusQuery`→`DefaultSystemStatusQuery`、`SYSTEM_TYPES.DatabaseProbe`→`D1DatabaseProbe`を`MODULES`に束縛する。到達確認の警告ログのカテゴリは`['api', 'infrastructure', 'system']`。Bunで読み込むファイルの禁止import規則から`src/presentation/graphql/modules/**/*.worker.test.ts`だけを外した(Bunは読み込まず、D1のため`cloudflare:*`・infrastructureが要る)。9.1の文書にこの扱いを書く。失敗を差し込むD1の偽物は`test/support/failing-d1.ts`。
 - 5.1(5.3への申し送り): 上限の拒否の種類は`WeakMap<GraphQLError, QueryLimitKind>`でエラーオブジェクトに記録するため、ErrorPolicyは包み直す前に`classifyDocumentErrors`で分類する。構文の誤りはgraphqlが種類を持たないため"Syntax Error:"の接頭辞で判別し、Armorも同じ接頭辞を使うため記録した種類を先に見る(記録の無い将来のArmorの上限は`graphql_parse_failed`になる)。`@escape.tech/graphql-armor-types`はArmorの下位パッケージの任意依存として推移的に入っており、直接は読み込まない。テスト補助`test/support/query-limit-harness.ts`はBunにも読み込まれるため、Bunのカバレッジの閾値(ファイルごと)を満たすよう全関数をBunのテストで通す。
+- 5.2(5.3・5.6への申し送り): persisted operationsの拒否(`persisted_operation_required`・`persisted_operation_not_found`、400)は`path`も原因も持たない`GraphQLError`として`maskError`に届く。設計862行の「`path`も原因も持たない→`graphql_request_invalid`」をそのまま適用すると上書きされるため、5.3では既知の`GatewayErrorCode`を持つエラーを残す規則を先に置く。プラグインは呼び出し元を`x-internal-caller`から、無ければ任意の操作を許す時(ローカルのGraphiQL)だけ`x-debug-caller`(既定`client`)から決め、どちらでもなければ照会せず`persisted_operation_not_found`にする(フェイルクローズ)。5.6はこの規則を重複させず共有する。許可リストの検証は最初の`find`で1回(失敗は記憶しない)。拒否のエラーは要求ごとに作る。文言は「登録済みの操作の識別子(documentId)を指定してください。」「登録されていない操作です。」。
