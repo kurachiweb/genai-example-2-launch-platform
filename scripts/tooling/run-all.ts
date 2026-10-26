@@ -95,6 +95,8 @@ const CHECK_STEPS: readonly PlannedStep[] = [
   { script: 'lint', targets: ROOT_AND_APPS, args: [] },
   // 設定を変えて型を生成し直し忘れると型検査のエラーとして現れるため、型検査の前に確認して原因を先に表示する。実行時の型を生成するのはWorkersのアプリだけのため、ルートは対象にしない
   { script: 'cf-typegen:check', targets: APPS_ONLY, args: [] },
+  // 生成し直し忘れたGraphQLのスキーマファイルやリゾルバの型も型検査のエラーとして現れるため、同じ理由で型検査の前に置く。生成物を持つのはアプリだけのため、ルートは対象にしない
+  { script: 'graphql:check', targets: APPS_ONLY, args: [] },
   { script: 'typecheck', targets: ROOT_AND_APPS, args: [] },
 ];
 
@@ -104,6 +106,7 @@ const STEP_LABELS: ReadonlyMap<string, string> = new Map([
   ['format:check', '整形検査'],
   ['lint', '静的解析'],
   ['cf-typegen:check', '型生成の検査'],
+  ['graphql:check', 'GraphQLの生成物の検査'],
   ['typecheck', '型検査'],
   ['test:unit', '単体テスト'],
   ['test:browser', 'ブラウザテスト'],
@@ -122,7 +125,7 @@ const FAILURE_REASON_LABELS: Readonly<Record<FailureReason, string>> = {
 
 const USAGE = [
   `使い方: bun scripts/tooling/run-all.ts <${AGGREGATE_COMMANDS.join('|')}> [引数...]`,
-  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型生成の検査・型検査を、失敗しても止めずにすべて実行する(引数は受け取らない)',
+  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型生成の検査・GraphQLの生成物の検査・型検査を、失敗しても止めずにすべて実行する(引数は受け取らない)',
   '  それ以外: ルートと各アプリの同名スクリプトを、残りの引数付きで実行する',
   '',
 ].join('\n');

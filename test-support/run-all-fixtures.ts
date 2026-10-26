@@ -44,6 +44,13 @@ export const ROOT_CHECK_SCRIPTS = [
   'typecheck',
 ];
 
+export const DIR_CHECK_SCRIPTS = [
+  'lint',
+  'cf-typegen:check',
+  'graphql:check',
+  'typecheck',
+];
+
 export type ScriptsByDir = Readonly<
   Record<string, Readonly<Record<string, string>> | Error | undefined>
 >;

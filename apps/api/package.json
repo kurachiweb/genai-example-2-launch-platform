@@ -12,6 +12,7 @@
     "cf-typegen:check": "wrangler types --check",
     "graphql:generate": "bun ./scripts/graphql/generate.ts",
     "graphql:allowlist": "bun ./scripts/graphql/build-allowlist.ts",
+    "graphql:check": "bun ./scripts/graphql/check.ts",
     "db:migrate:local": "wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state",
     "db:migrations:check": "bun ./scripts/check-migrations.ts",
     "test:smoke": "bun ./scripts/smoke-wrangler-bundle.ts"

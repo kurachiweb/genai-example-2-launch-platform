@@ -181,7 +181,7 @@
   - 完了状態: フロントエンドの一覧が無い状態で生成コマンドが空の許可リストを出力し、テスト用の一覧を置くと呼び出し元ごとの許可リストになる
   - _Requirements: 5.6, 5.7, 5.9_
 
-- [ ] 6.4 スキーマファイル・リゾルバの型・許可リストの食い違いを検査するコマンドを作る
+- [x] 6.4 スキーマファイル・リゾルバの型・許可リストの食い違いを検査するコマンドを作る
   - 登録箇所から合成した印字結果とスキーマファイルの比較、型生成の検査、現行だけで生成した許可リストとコミットした許可リストの比較を行い、食い違いがあれば再実行すべき生成コマンドを表示して失敗する
   - (承認後の改訂2)先に、dev-toolingの一括検査の単体テストへ、型生成の検査と型検査の間にアプリだけを対象とする段階「GraphQLの生成物の検査」が入り、検査のスクリプトを持たないアプリは「スクリプト未定義」で飛ばされることを加え、失敗を確かめてから一括検査の段階に加える。スクリプト契約の文書の表・段階の一覧・出力例にも加える
   - 完了状態: 生成直後は成功し、スキーマファイル・型・許可リストのいずれかを手で変えると終了コード1になる。ルートの一括検査でもapiの段階として実行され、一括検査の単体テストが成功する
@@ -306,3 +306,4 @@
 - 6.1(設計の改訂候補と6.4への申し送り): 検証関数は設計どおり上限のプラグインだけのYogaで解析・検証するため、introspection(`__schema`・`__type`)、1つの文書に複数の操作、`Subscription`型の無い`subscription`も合格する。実行時はintrospectionが無効(5.5)なので、許可リストに入っても`graphql_validation_failed`で拒否される。破壊的変更の検出の目的からは、graphqlの`NoSchemaIntrospectionCustomRule`などを加えて実行時と合わせるのが筋だが、設計の範囲外のため加えていない(人の判断待ち)。上限を複数超えた操作は最初の1つのコードだけを返す。テストは`test/support/query-limit-harness.ts`を読み込むため、6.4の`scripts/graphql/**`の読み込み制限ではテストファイルの扱いを決める。
 - 6.2(設計の改訂候補と6.3・6.4への申し送り): 設計1404行の「キーを整列した」は、Logical Data Modelの例と既存のfixtureに合わせ`version`→`operations`の順を固定し、呼び出し元と識別子だけ辞書順にした。設計136行の読み込みの許可一覧に無い`operation-allowlist.ts`を、設計自身の`AllowlistData`の参照に従い`import type`で読み込む(6.4の規則で型だけの読み込みを許す)。識別子の正規表現は`operation-allowlist.ts`と重複定義。`PersistedDocuments`・`PersistedDocumentsByCaller`は`allowlist-builder.ts`で定義し、6.3の`allowlist-sources.ts`はここから読み込む。識別子の形式とハッシュの照合は直前の一覧にも当てる。`--previous-ref`はハイフンで始まる値・未知のオプション・位置引数を拒否する。6.3でGitを呼ぶ時はシェルを介さず起動し、可能なら`git rev-parse --verify --end-of-options <ref>^{commit}`でも確かめる。
 - 6.3(infra-deliveryへの申し送り): 操作の一覧の場所は`apps/client`・`apps/admin`の`src/graphql/generated/persisted-documents.json`(frontend-platformの設計と一致)。Gitの読み出しは`git ls-tree --format`を使うためGit 2.36以上が必要(開発コンテナは2.47.3)。Gitは呼び出し元の環境を引き継ぐため、`GIT_DIR`などが設定された状態(フックの中など)で単体テストや生成コマンドを動かすと別のリポジトリを読む。CIを作る時に、`GIT_DIR`・`GIT_WORK_TREE`・`GIT_INDEX_FILE`などを除いて起動するか判断する(既存の`test-support/git-ignore.ts`も同じ)。
+- 6.4: 比較と表示は純粋関数の`scripts/graphql/generated-check.ts`(設計のFile Structure Planに無い)に置き、`describeBuildError`を`allowlist-builder.ts`へ移して2つの入口で共有した。`graphql-codegen --check`はスキーマファイルと比べるため、スキーマが古い時はスキーマの比較が検出する。codegenの設定の誤りなども「型の食い違い」と表示される(codegenのエラー出力は出る)。静的解析は、`scripts/graphql/**`に`cloudflare:*`・`@sentry/*`・infrastructureと設計136行の一覧に無い`src`のファイルの読み込みを禁止し(`operation-allowlist.ts`は型だけ可、`test/support`は可)、`src/**`から`**/scripts/**`を禁止する(`@typescript-eslint/no-restricted-imports`を使い、層の規則の`no-restricted-imports`のオプションを置き換えない)。dev-toolingの設計(738行付近)の`check`の段階の一覧に`graphql:check`はまだ無い(api-gatewayの変更対象外のため人の判断待ち)。

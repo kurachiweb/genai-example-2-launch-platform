@@ -293,6 +293,99 @@ const BUN_LOADED_CASES: readonly PositionCase[] = [
   },
 ];
 
+const graphqlScriptCase = (
+  file: string,
+  ...extraImports: readonly ImportCase[]
+): PositionCase => ({
+  file,
+  imports: [
+    ...extraImports,
+    ...BUN_LOADED_FORBIDDEN_IMPORTS,
+    forbidden(
+      "import { Repository } from '../../src/infrastructure/sample/repository.ts';",
+    ),
+    forbidden("import { MODULES } from '../../src/composition/modules.ts';"),
+    forbidden(
+      "import { UseCase } from '../../src/application/sample/use-case.ts';",
+    ),
+    forbidden(
+      "import { getGatewayServer } from '../../src/presentation/graphql/gateway-server.ts';",
+    ),
+    forbidden(
+      "import { readInternalCaller } from '../../src/presentation/gateway/internal-request.ts';",
+    ),
+    forbidden(
+      "import { createOperationAllowlistPlugin } from '../../src/presentation/graphql/operation-allowlist.ts';",
+    ),
+    allowed(
+      "import type { AllowlistData } from '../../src/presentation/graphql/operation-allowlist.ts';",
+    ),
+    allowed(
+      "import { GRAPHQL_SCHEMA_MODULES } from '../../src/composition/graphql-modules.ts';",
+    ),
+    allowed(
+      "import { systemSchemaModule } from '../../src/presentation/graphql/modules/system/index.ts';",
+    ),
+    ...[
+      'schema-module',
+      'schema-composer',
+      'platform-type-defs',
+      'date-time-scalar',
+      'query-limits',
+      'error-codes',
+    ].map((name) =>
+      allowed(`import { a } from '../../src/presentation/graphql/${name}.ts';`),
+    ),
+    allowed(
+      "import { CALLER_KINDS } from '../../src/presentation/gateway/gateway-headers.ts';",
+    ),
+    allowed("import { buildAllowlist } from './allowlist-builder.ts';"),
+    allowed("import { createYoga } from 'graphql-yoga';"),
+    allowed("import { readFile } from 'node:fs/promises';"),
+  ],
+});
+
+const GRAPHQL_SCRIPT_CASES: readonly PositionCase[] = [
+  graphqlScriptCase('scripts/graphql/sample.ts'),
+  graphqlScriptCase(
+    'scripts/graphql/sample.unit.test.ts',
+    allowed("import { describe } from 'bun:test';"),
+    allowed(
+      "import { createLimitTestSchema } from '../../test/support/query-limit-harness.ts';",
+    ),
+  ),
+];
+
+const scriptImportsFrom = (toApi: string): readonly ImportCase[] => [
+  forbidden(
+    `import { buildAllowlist } from '${toApi}scripts/graphql/allowlist-builder.ts';`,
+  ),
+  forbidden(
+    `import type { PersistedDocuments } from '${toApi}scripts/graphql/allowlist-builder.ts';`,
+  ),
+  forbidden(`import { a } from '${toApi}scripts/check-migrations';`),
+];
+
+const SOURCE_TO_SCRIPT_CASES: readonly PositionCase[] = [
+  { file: 'src/index.ts', imports: scriptImportsFrom('../') },
+  {
+    file: 'src/domain/sample/violation.ts',
+    imports: scriptImportsFrom('../../../'),
+  },
+  {
+    file: 'src/composition/violation.ts',
+    imports: scriptImportsFrom('../../'),
+  },
+  {
+    file: 'src/presentation/graphql/query-limits.ts',
+    imports: scriptImportsFrom('../../../'),
+  },
+  {
+    file: 'src/presentation/graphql/modules/sample/index.worker.test.ts',
+    imports: scriptImportsFrom('../../../../../'),
+  },
+];
+
 const reportedStatementsOf = async (
   app: AppName,
   { file, imports }: PositionCase,
@@ -309,9 +402,14 @@ const reportedStatementsOf = async (
     throw new Error(`${file}の静的解析の結果がありません。`);
   }
   expect(result.fatalErrorCount).toBe(0);
-  return result.messages
-    .filter(({ ruleId }) => RULE_IDS.has(ruleId))
-    .map(({ line }) => statements[line - 1] ?? '');
+  // 1つのimportが複数のパターンに当たると同じ行が複数回報告されるため、報告された行の集合で比べる
+  return [
+    ...new Set(
+      result.messages
+        .filter(({ ruleId }) => RULE_IDS.has(ruleId))
+        .map(({ line }) => statements[line - 1] ?? ''),
+    ),
+  ];
 };
 
 const expectedStatementsOf = ({ imports }: PositionCase): readonly string[] =>
@@ -332,6 +430,30 @@ describe.each(['api', 'event'] as const)('%sの層の依存方向', (app) => {
 describe('apiのBunで読み込むGraphQLのファイルの依存方向', () => {
   test.each(BUN_LOADED_CASES.map((position) => [position.file, position]))(
     '%sで実行環境・Sentry・インフラ層・合成ルートへの許されない依存だけを報告する',
+    async (_file, position) => {
+      expect(await reportedStatementsOf('api', position)).toEqual(
+        expectedStatementsOf(position),
+      );
+    },
+    LINT_TIMEOUT_MS,
+  );
+});
+
+describe('apiのGraphQLの生成・検査のスクリプトとsrcの間の依存方向', () => {
+  test.each(GRAPHQL_SCRIPT_CASES.map((position) => [position.file, position]))(
+    '%sで指定のファイル以外のsrc・実行環境・Sentry・インフラ層への依存と、許可リストのモジュールからの型以外の読み込みだけを報告する',
+    async (_file, position) => {
+      expect(await reportedStatementsOf('api', position)).toEqual(
+        expectedStatementsOf(position),
+      );
+    },
+    LINT_TIMEOUT_MS,
+  );
+
+  test.each(
+    SOURCE_TO_SCRIPT_CASES.map((position) => [position.file, position]),
+  )(
+    '%sからscriptsへの依存を型だけの読み込みも含めて報告する',
     async (_file, position) => {
       expect(await reportedStatementsOf('api', position)).toEqual(
         expectedStatementsOf(position),

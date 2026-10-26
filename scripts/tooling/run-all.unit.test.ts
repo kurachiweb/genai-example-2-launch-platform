@@ -10,6 +10,7 @@ import {
   callOf,
   createFakeWorkspace,
   createOutput,
+  DIR_CHECK_SCRIPTS,
   everyDirWith,
   failedWith,
   packageJsonOf,
@@ -40,7 +41,7 @@ import {
 
 const USAGE_MESSAGE = [
   '使い方: bun scripts/tooling/run-all.ts <check|lint|typecheck|test:unit|test:browser|test:worker> [引数...]',
-  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型生成の検査・型検査を、失敗しても止めずにすべて実行する(引数は受け取らない)',
+  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型生成の検査・GraphQLの生成物の検査・型検査を、失敗しても止めずにすべて実行する(引数は受け取らない)',
   '  それ以外: ルートと各アプリの同名スクリプトを、残りの引数付きで実行する',
   '',
 ].join('\n');
@@ -48,9 +49,9 @@ const USAGE_MESSAGE = [
 const { createDir, createRepositoryWithScript } = useRunAllFixtures();
 
 describe('runAggregate', () => {
-  test('checkは配置確認・命名検査・整形検査をルートで、静的解析・型生成の検査・型検査をルートと各アプリで、この順に実行する', async () => {
+  test('checkは配置確認・命名検査・整形検査をルートで、静的解析と型検査をルートと各アプリで、型生成の検査とGraphQLの生成物の検査を各アプリで、この順に実行する', async () => {
     const { deps, calls } = createFakeWorkspace({
-      ...everyDirWith('lint', 'cf-typegen:check', 'typecheck'),
+      ...everyDirWith(...DIR_CHECK_SCRIPTS),
       [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS),
     });
 
@@ -62,6 +63,7 @@ describe('runAggregate', () => {
       callOf(ROOT_DIR, 'bun', 'run', 'format:check'),
       ...ALL_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'lint')),
       ...APP_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'cf-typegen:check')),
+      ...APP_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'graphql:check')),
       ...ALL_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'typecheck')),
     ]);
     expect(results).toEqual([
@@ -70,6 +72,7 @@ describe('runAggregate', () => {
       { step: 'format:check', target: 'root', outcome: PASSED },
       ...resultsOf('lint', {}, PASSED),
       ...appResultsOf('cf-typegen:check', {}, PASSED),
+      ...appResultsOf('graphql:check', {}, PASSED),
       ...resultsOf('typecheck', {}, PASSED),
     ]);
   });
@@ -77,26 +80,28 @@ describe('runAggregate', () => {
   test('checkは前段や他の対象が失敗しても後続の段階と対象をすべて実行し、失敗を終了コード付きで残す', async () => {
     const { deps, calls } = createFakeWorkspace(
       {
-        ...everyDirWith('lint', 'cf-typegen:check', 'typecheck'),
+        ...everyDirWith(...DIR_CHECK_SCRIPTS),
         [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS),
       },
       {
         '. shared-dirs:verify': 1,
         'apps/api lint': 2,
         'apps/event cf-typegen:check': 1,
+        'apps/api graphql:check': 1,
         '. typecheck': 2,
       },
     );
 
     const results = await runAggregate('check', [], deps);
 
-    expect(calls).toHaveLength(3 + ALL_DIRS.length * 2 + APP_DIRS.length);
+    expect(calls).toHaveLength(3 + ALL_DIRS.length * 2 + APP_DIRS.length * 2);
     expect(results).toEqual([
       { step: 'shared-dirs:verify', target: 'root', outcome: failedWith(1) },
       { step: 'check:test-names', target: 'root', outcome: PASSED },
       { step: 'format:check', target: 'root', outcome: PASSED },
       ...resultsOf('lint', { api: failedWith(2) }, PASSED),
       ...appResultsOf('cf-typegen:check', { event: failedWith(1) }, PASSED),
+      ...appResultsOf('graphql:check', { api: failedWith(1) }, PASSED),
       ...resultsOf('typecheck', { root: failedWith(2) }, PASSED),
     ]);
   });
@@ -130,11 +135,33 @@ describe('runAggregate', () => {
         { api: SCRIPT_MISSING, client: SCRIPT_MISSING },
         PROJECT_MISSING,
       ),
+      ...appResultsOf(
+        'graphql:check',
+        { api: SCRIPT_MISSING, client: SCRIPT_MISSING },
+        PROJECT_MISSING,
+      ),
       ...resultsOf(
         'typecheck',
         { root: SCRIPT_MISSING, api: SCRIPT_MISSING, client: SCRIPT_MISSING },
         PROJECT_MISSING,
       ),
+    ]);
+  });
+
+  test('GraphQLの生成物の検査は、graphql:checkを持つアプリでだけ実行し、持たないアプリはスクリプト未定義として飛ばす', async () => {
+    const { deps, calls } = createFakeWorkspace({
+      ...everyDirWith('lint', 'cf-typegen:check', 'typecheck'),
+      [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS, 'graphql:check'),
+      'apps/api': scriptsOf(...DIR_CHECK_SCRIPTS),
+    });
+
+    const results = await runAggregate('check', [], deps);
+
+    expect(
+      calls.filter(({ command }) => command.includes('graphql:check')),
+    ).toEqual([callOf('apps/api', 'bun', 'run', 'graphql:check')]);
+    expect(results.filter(({ step }) => step === 'graphql:check')).toEqual([
+      ...appResultsOf('graphql:check', { api: PASSED }, SCRIPT_MISSING),
     ]);
   });
 
@@ -259,18 +286,15 @@ describe('formatSummary', () => {
     ]);
   });
 
-  test('型生成の検査の段階を日本語の名前付きで表示する', () => {
+  test.each([
+    ['cf-typegen:check', '型生成の検査(cf-typegen:check)'],
+    ['graphql:check', 'GraphQLの生成物の検査(graphql:check)'],
+  ])('%sの段階を日本語の名前付きで表示する', (step, label) => {
     const [, row = ''] = linesOf(
-      formatSummary([
-        { step: 'cf-typegen:check', target: 'api', outcome: PASSED },
-      ]),
+      formatSummary([{ step, target: 'api', outcome: PASSED }]),
     );
 
-    expect(row.split(/ {2,}/)).toEqual([
-      '型生成の検査(cf-typegen:check)',
-      'api',
-      '成功',
-    ]);
+    expect(row.split(/ {2,}/)).toEqual([label, 'api', '成功']);
   });
 
   test('全角文字を含む列も表示幅で桁をそろえ、行末に空白を残さない', () => {
@@ -400,6 +424,7 @@ describe('runAggregateEntry', () => {
         { step: 'format:check', target: 'root', outcome: failedWith(1) },
         ...resultsOf('lint', { root: PASSED }, PROJECT_MISSING),
         ...appResultsOf('cf-typegen:check', {}, PROJECT_MISSING),
+        ...appResultsOf('graphql:check', {}, PROJECT_MISSING),
         ...resultsOf('typecheck', { root: PASSED }, PROJECT_MISSING),
       ])}`,
     );
@@ -485,6 +510,7 @@ describe('直接実行したときの入口', () => {
         'apps/api/package.json': packageJsonOf({
           lint: 'exit 2',
           'cf-typegen:check': 'echo typegen-api',
+          'graphql:check': 'echo graphql-api',
           typecheck: 'echo typecheck-api',
         }),
       });
@@ -492,6 +518,7 @@ describe('直接実行したときの入口', () => {
       const { exitCode, stdout } = runEntry(repoRoot, ['check']);
 
       expect(stdout).toContain('\ntypegen-api\n');
+      expect(stdout).toContain('\ngraphql-api\n');
       expect(stdout).toContain('\ntypecheck-api\n');
       expect(stdout).toEndWith(
         formatSummary([
@@ -504,6 +531,7 @@ describe('直接実行したときの入口', () => {
             PROJECT_MISSING,
           ),
           ...appResultsOf('cf-typegen:check', { api: PASSED }, PROJECT_MISSING),
+          ...appResultsOf('graphql:check', { api: PASSED }, PROJECT_MISSING),
           ...resultsOf(
             'typecheck',
             { root: PASSED, api: PASSED },

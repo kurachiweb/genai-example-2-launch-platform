@@ -166,6 +166,91 @@ const BUN_LOADED_GRAPHQL_RULES: Linter.Config[] = [
   },
 ];
 
+const SCRIPT_READABLE_SOURCE_FILES = [
+  'composition/graphql-modules',
+  'presentation/graphql/schema-module',
+  'presentation/graphql/schema-composer',
+  'presentation/graphql/platform-type-defs',
+  'presentation/graphql/date-time-scalar',
+  'presentation/graphql/query-limits',
+  'presentation/graphql/error-codes',
+  'presentation/gateway/gateway-headers',
+];
+
+const SCRIPT_READABLE_SOURCE_DIRS = ['presentation/graphql/modules'];
+
+const OPERATION_ALLOWLIST_SOURCE = 'presentation/graphql/operation-allowlist';
+
+const escapeRegExp = (text: string): string =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// gitignore形式の否定では除外した親ディレクトリの下のファイルを含め直せないため、指定のファイル・ディレクトリ以外のsrcを正規表現で表す
+const UNREADABLE_SOURCE_REGEX = `/src/(?!(?:${[
+  ...[...SCRIPT_READABLE_SOURCE_FILES, OPERATION_ALLOWLIST_SOURCE].map(
+    (file) => `${escapeRegExp(file)}(?:\\.ts)?$`,
+  ),
+  ...SCRIPT_READABLE_SOURCE_DIRS.map((dir) => `${escapeRegExp(dir)}/`),
+].join('|')}))`;
+
+// 生成・検査のスクリプトはBunで実行され、単体テストのカバレッジの分母も読み込んだファイルで決まるため、srcのうちBunで読み込める指定のファイルだけを読み込ませる
+const GRAPHQL_SCRIPT_RULES: Linter.Config[] = [
+  {
+    name: 'api/graphql/scripts',
+    files: ['scripts/graphql/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            BUN_LOADED_RESTRICTION,
+            {
+              regex: UNREADABLE_SOURCE_REGEX,
+              message:
+                'GraphQLの生成・検査のスクリプトは、srcのうちGraphQLの登録箇所・スキーマの合成・上限・エラーコード・ゲートウェイのヘッダーのファイルだけを読み込めます。',
+            },
+          ],
+        },
+      ],
+      // 許可リストの型はスクリプトの出力の形を決めるため読み込めるが、実体はWorkersの実行時の処理を引き込むため読み込ませない
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                `**/src/${OPERATION_ALLOWLIST_SOURCE}`,
+                `**/src/${OPERATION_ALLOWLIST_SOURCE}.ts`,
+              ],
+              allowTypeImports: true,
+              message:
+                'GraphQLの生成・検査のスクリプトは、許可リストのモジュールから型だけを読み込めます。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // 層の規則のno-restricted-importsのオプションを置き換えないよう、srcからscriptsへの禁止は別の規則で行う
+  {
+    name: 'api/source/no-scripts',
+    files: ['src/**'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/scripts/**'],
+              message:
+                'srcは生成・検査のスクリプトに依存できません。共有する処理はsrcに置き、スクリプトから読み込んでください。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+];
+
 const config: Linter.Config[] = [
   ...createBaseConfig({
     js,
@@ -175,6 +260,7 @@ const config: Linter.Config[] = [
   }),
   ...createBackendLayerRules('api'),
   ...BUN_LOADED_GRAPHQL_RULES,
+  ...GRAPHQL_SCRIPT_RULES,
   ...SHARED_DIRECTORY_RULES,
 ];
 

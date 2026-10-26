@@ -3,7 +3,9 @@ import { createHash } from 'node:crypto';
 
 import type { GatewayErrorCode } from '../../src/presentation/graphql/error-codes.ts';
 import {
+  type AllowlistBuildError,
   buildAllowlist,
+  describeBuildError,
   type PersistedDocuments,
   type PersistedDocumentsByCaller,
   serializeAllowlist,
@@ -335,5 +337,37 @@ describe('serializeAllowlist', () => {
         operations: { admin: reversed, client: reversed },
       }),
     );
+  });
+});
+
+describe('describeBuildError', () => {
+  test.each<[AllowlistBuildError, string]>([
+    [
+      { kind: 'invalid_id', caller: 'client', documentId: 'abc' },
+      '  識別子の形式が正しくありません: client abc',
+    ],
+    [
+      { kind: 'hash_mismatch', caller: 'admin', documentId: 'sha256:abc' },
+      '  識別子が本文のSHA-256と一致しません: admin sha256:abc',
+    ],
+    [
+      {
+        kind: 'conflicting_document',
+        caller: 'client',
+        documentId: 'sha256:abc',
+      },
+      '  現行と直前のリリースで同じ識別子の本文が異なります: client sha256:abc',
+    ],
+    [
+      {
+        kind: 'current_invalid',
+        caller: 'admin',
+        documentId: 'sha256:abc',
+        reasons: ['query_aliases_exceeded', 'graphql_validation_failed'],
+      },
+      '  現行の操作がスキーマまたは上限の検証に通りません(query_aliases_exceeded・graphql_validation_failed): admin sha256:abc',
+    ],
+  ])('%oを字下げした1行の説明にする', (error, expected) => {
+    expect(describeBuildError(error)).toBe(expected);
   });
 });

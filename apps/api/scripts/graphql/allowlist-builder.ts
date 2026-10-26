@@ -230,3 +230,16 @@ export function serializeAllowlist(allowlist: AllowlistData): string {
   );
   return `${JSON.stringify({ version: allowlist.version, operations }, null, 2)}\n`;
 }
+
+const BUILD_ERROR_MESSAGES = {
+  invalid_id: '識別子の形式が正しくありません',
+  hash_mismatch: '識別子が本文のSHA-256と一致しません',
+  conflicting_document: '現行と直前のリリースで同じ識別子の本文が異なります',
+  current_invalid: '現行の操作がスキーマまたは上限の検証に通りません',
+} as const satisfies Record<AllowlistBuildError['kind'], string>;
+
+export function describeBuildError(error: AllowlistBuildError): string {
+  const reasons =
+    error.kind === 'current_invalid' ? `(${error.reasons.join('・')})` : '';
+  return `  ${BUILD_ERROR_MESSAGES[error.kind]}${reasons}: ${error.caller} ${error.documentId}`;
+}

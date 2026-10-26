@@ -8,6 +8,7 @@ import {
   callOf,
   createFakeWorkspace,
   createOutput,
+  DIR_CHECK_SCRIPTS,
   everyDirWith,
   failedWith,
   packageJsonOf,
@@ -66,7 +67,7 @@ const causesMessageOf = (...details: readonly string[]): string =>
   ].join('\n');
 
 const CHECK_WORKSPACE = {
-  ...everyDirWith('lint', 'cf-typegen:check', 'typecheck'),
+  ...everyDirWith(...DIR_CHECK_SCRIPTS),
   [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS),
 };
 
@@ -82,6 +83,7 @@ const CHECK_RESULTS_WITH_UNREADABLE_EVENT: readonly StepResult[] = [
   ...ROOT_STEPS_PASSED,
   ...resultsOf('lint', { api: failedWith(3), event: UNREADABLE_EVENT }, PASSED),
   ...appResultsOf('cf-typegen:check', { event: UNREADABLE_EVENT }, PASSED),
+  ...appResultsOf('graphql:check', { event: UNREADABLE_EVENT }, PASSED),
   ...resultsOf('typecheck', { event: UNREADABLE_EVENT }, PASSED),
 ];
 
@@ -109,6 +111,9 @@ describe('runAggregate', () => {
       ...DIRS_EXCEPT_EVENT.map((dir) => callOf(dir, 'bun', 'run', 'lint')),
       ...APP_DIRS_EXCEPT_EVENT.map((dir) =>
         callOf(dir, 'bun', 'run', 'cf-typegen:check'),
+      ),
+      ...APP_DIRS_EXCEPT_EVENT.map((dir) =>
+        callOf(dir, 'bun', 'run', 'graphql:check'),
       ),
       ...DIRS_EXCEPT_EVENT.map((dir) => callOf(dir, 'bun', 'run', 'typecheck')),
     ]);
@@ -263,7 +268,7 @@ describe('runAggregateEntry', () => {
     );
 
     expect(calls).toHaveLength(
-      3 + DIRS_EXCEPT_EVENT.length * 2 + APP_DIRS_EXCEPT_EVENT.length,
+      3 + DIRS_EXCEPT_EVENT.length * 2 + APP_DIRS_EXCEPT_EVENT.length * 2,
     );
     expect(stdout).toBe(
       `\n${formatSummary(CHECK_RESULTS_WITH_UNREADABLE_EVENT)}`,
@@ -350,6 +355,15 @@ describe('直接実行したときの入口', () => {
           ),
           ...appResultsOf(
             'cf-typegen:check',
+            {
+              api: SCRIPT_MISSING,
+              event: unreadable,
+              'frontend-lib': SCRIPT_MISSING,
+            },
+            PROJECT_MISSING,
+          ),
+          ...appResultsOf(
+            'graphql:check',
             {
               api: SCRIPT_MISSING,
               event: unreadable,
