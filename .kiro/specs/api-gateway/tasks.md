@@ -189,7 +189,7 @@
   - _Requirements: 4.9, 9.3, 9.4_
 
 - [ ] 7. 公開RESTの骨格とCORS
-- [ ] 7.1 (P) 公開APIのアプリ・応答のスキーマ部品・認証方式の宣言を作る
+- [x] 7.1 (P) 公開APIのアプリ・応答のスキーマ部品・認証方式の宣言を作る
   - 先に、テスト用の経路で、検証の失敗が400と項目ごとの詳細の共通のエラー形式になること、単体・オフセット型・カーソル型の成功応答のスキーマとエラー応答のスキーマがOpenAPI仕様に現れること、Bearer認証の方式を宣言できることを確かめるWorkers統合テストを書く
   - 基準パス・仕様の経路の定数、検証失敗を共通エラー型へ変換するアプリの生成、応答のスキーマ部品、認証方式を実装する
   - 完了状態: テストが成功する
@@ -307,3 +307,4 @@
 - 6.2(設計の改訂候補と6.3・6.4への申し送り): 設計1404行の「キーを整列した」は、Logical Data Modelの例と既存のfixtureに合わせ`version`→`operations`の順を固定し、呼び出し元と識別子だけ辞書順にした。設計136行の読み込みの許可一覧に無い`operation-allowlist.ts`を、設計自身の`AllowlistData`の参照に従い`import type`で読み込む(6.4の規則で型だけの読み込みを許す)。識別子の正規表現は`operation-allowlist.ts`と重複定義。`PersistedDocuments`・`PersistedDocumentsByCaller`は`allowlist-builder.ts`で定義し、6.3の`allowlist-sources.ts`はここから読み込む。識別子の形式とハッシュの照合は直前の一覧にも当てる。`--previous-ref`はハイフンで始まる値・未知のオプション・位置引数を拒否する。6.3でGitを呼ぶ時はシェルを介さず起動し、可能なら`git rev-parse --verify --end-of-options <ref>^{commit}`でも確かめる。
 - 6.3(infra-deliveryへの申し送り): 操作の一覧の場所は`apps/client`・`apps/admin`の`src/graphql/generated/persisted-documents.json`(frontend-platformの設計と一致)。Gitの読み出しは`git ls-tree --format`を使うためGit 2.36以上が必要(開発コンテナは2.47.3)。Gitは呼び出し元の環境を引き継ぐため、`GIT_DIR`などが設定された状態(フックの中など)で単体テストや生成コマンドを動かすと別のリポジトリを読む。CIを作る時に、`GIT_DIR`・`GIT_WORK_TREE`・`GIT_INDEX_FILE`などを除いて起動するか判断する(既存の`test-support/git-ignore.ts`も同じ)。
 - 6.4: 比較と表示は純粋関数の`scripts/graphql/generated-check.ts`(設計のFile Structure Planに無い)に置き、`describeBuildError`を`allowlist-builder.ts`へ移して2つの入口で共有した。`graphql-codegen --check`はスキーマファイルと比べるため、スキーマが古い時はスキーマの比較が検出する。codegenの設定の誤りなども「型の食い違い」と表示される(codegenのエラー出力は出る)。静的解析は、`scripts/graphql/**`に`cloudflare:*`・`@sentry/*`・infrastructureと設計136行の一覧に無い`src`のファイルの読み込みを禁止し(`operation-allowlist.ts`は型だけ可、`test/support`は可)、`src/**`から`**/scripts/**`を禁止する(`@typescript-eslint/no-restricted-imports`を使い、層の規則の`no-restricted-imports`のオプションを置き換えない)。dev-toolingの設計(738行付近)の`check`の段階の一覧に`graphql:check`はまだ無い(api-gatewayの変更対象外のため人の判断待ち)。
+- 7.1(設計の補完と7.3・8.2・9.2への申し送り): `@hono/zod-openapi`・`@hono/zod-validator`は本文の解析失敗とContent-Typeの不一致でHonoの`HTTPException`(400・415)を投げ、基盤の`onError`が想定外(500・Sentry送信)として扱うため、公開APIのアプリの`onError`で`AppError`に変えて再送出する(応答を返すと`c.error`が`HTTPException`のまま残るため)。400は`validation_error`(詳細`field: ''`・`code: invalid_json`)、415は`AppErrorStatus`に415が無いため`unsupported_media_type`の400(415で返すにはbackend-platformの`AppError`に種類の追加が要る。人の判断待ち)。公開RESTの本文はJSONだけの前提で、`HTTPException`の400はすべて`invalid_json`とみなす。設計に無い`registerApiKeySecurityScheme(api)`を加えた(7.3の`createRestModule`で呼ぶ)。`toFieldErrorDetails`と文言はGraphQLの`validated-args.ts`と重複している(統合の候補)。RESTのページングはsnake_caseの`meta`。Sentryへ送られないことは外側の`c.error`で確かめた(7.3・8.2で`createWorkerApp`に組み込んだ状態でも確かめる)。
