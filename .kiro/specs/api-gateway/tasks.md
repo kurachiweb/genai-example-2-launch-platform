@@ -241,7 +241,7 @@
   - _Boundary: 技術ドキュメント群(公開RESTの文書)_
   - _Requirements: 14.3, 14.5_
 
-- [ ] 9.3 (P) 内部経路とセキュリティヘッダーの技術ドキュメントを追加する
+- [x] 9.3 (P) 内部経路とセキュリティヘッダーの技術ドキュメントを追加する
   - 名前付きエントリポイントによる内部認証、呼び出し元の判定、元のクライアントIPの扱い、セッションの受け渡しと指示、内部RESTの追加規約、Hono内の順序とHono外の前処理・後処理の2段、セキュリティヘッダーの値とCSPの置き換え方を記載し、索引へ1行追記する
   - 完了状態: バックエンドの索引から文書へ辿れ、プロジェクト名と固有値を含まない
   - _Boundary: 技術ドキュメント群(内部経路の文書)_
@@ -314,3 +314,4 @@
 - 8.2: 端から端までのテストは`src/index.gateway.worker.test.ts`(実際の結線)と`src/index.allowlist.worker.test.ts`(テスト用の許可リスト。`getGatewayServer`がisolate内で使い回されるため別ファイル)。環境を上書きする時の`callInternal`は設計どおり`apiHandler`へ`markInternalRequest`・`applySecurityHeaders`を当てて呼ぶ(エントリポイントのクラスはローカルの`exports`経由と`createGatewayEntrypointClass`で作るクラスで確かめる)。実際の結線は許可リストが空のため、呼び出し元の偽装の上書き(1.4)はテスト用の許可リストのアプリで確かめた。`REST_ROUTES`・`INTERNAL_ROUTES`が空のため、実際の結線での入力の誤りのSentry非送信と`/internal`の偽装は確かめられず、7.3・3.4の単体で確かめている(下流specが経路を加えた時にテストを足す)。実際の結線は各要求の始めにLogTapeの出力を`console`へ戻すため、ログはconsoleのスパイで捕まえる。
 - 9.1(9.4・9.5への申し送り): `docs/GUIDES/tech/backend/004-graphql-server.md`はエラーコードの全表を持つため、9.4の文書は重複させずリンクする。9.5の`project-values.md`に、プレースホルダー`<GraphQLの経路>`・`<GraphQLの本文の上限>`・`<一括読み込みの件数の既定値>`の値と、文書中の「アプリ」(`src/presentation/graphql/`などのアプリ内のパス)が`apps/api`であることを載せる。`Subscription`型の無いスキーマへの`subscription`と、`operationName`の無い複数操作の文書が実行時に`graphql_request_invalid`の400になることは、使い捨てのスクリプトで確かめただけでコミット済みのテストは無い。
 - 9.2(9.5への申し送り): `docs/GUIDES/tech/backend/005-public-rest-api.md`のプレースホルダー`<公開RESTの基準パス>`・`<仕様の経路>`・`<仕様書の既定の情報>`の値を`project-values.md`に載せる。合成ルートのファイル名は固有値として書かず「Workerの入口を組み立てる合成ルートのファイル」と書いた(9.3で002を直す時も揃える)。
+- 9.3(人の判断待ちと9.5への申し送り): 内部RESTにはGraphQLのような共通の後処理が無く、経路が`AppError`を投げて終えるとセッションの指示(無効と判定したセッションの削除を含む)が応答に載らない(`006-internal-gateway.md`に注意として記載。共通の後処理を設けるかは人の判断待ち)。9.5の`project-values.md`に、`006`のプレースホルダー(利用者側・管理者側のエントリポイント名、内部RESTの接頭辞、呼び出し元・元のクライアントIP・セッション識別子・bot判定のトークン・デバッグ用の呼び出し元・セッションの発行・有効期間・削除の各ヘッダー、APIサーバーのWorker名)の値、「Workerの入口を組み立てる合成ルートのファイル」が`apps/api/src/composition/api-worker.ts`であること、`CALLER_KINDS`の値を載せる。`<バインディング名>`は呼び出し側(frontend-platform)が決める値。`006`のGraphiQLのCSPの表にはYoga内蔵の画面が読み込むCDNのホストが書かれているため、Yogaの更新時に見直す。

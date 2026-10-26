@@ -35,7 +35,9 @@ HonoとInversifyで作るCloudflare Workersのサーバーの4層の配置と合
 
 ### 合成ルート
 
-- エントリ`src/index.ts`は、`createWorkerApp`で組み立てたHonoのアプリと、定期実行・非同期メッセージのディスパッチャを、`createWorkerHandler`で`fetch`・`scheduled`・`queue`のハンドラーにまとめて`export default`する。Durable Objectのクラスは、Wrangler設定の`class_name`と同じ名前でエントリから名前付きでエクスポートする。エントリを書き換えるときもこのエクスポートを保つ。
+- Workerのハンドラーは、`createWorkerApp`で組み立てたHonoのアプリと、定期実行・非同期メッセージのディスパッチャを、`createWorkerHandler`で`fetch`・`scheduled`・`queue`のハンドラーにまとめて作る。エントリ`src/index.ts`は、その結果の一番外側にHonoの外の前処理・後処理の包み(全応答へのセキュリティヘッダーの`withSecurityHeaders`、外部経路と内部経路を分けるWorkerでは`createPublicEntrypoint`)を掛けて`export default`する(「[Honoの外の前処理・後処理](006-internal-gateway.md#honoの外の前処理後処理)」)。
+- 組み立てが多いWorkerは、ハンドラーと包みの組み立てを、Workerの入口を組み立てる合成ルートのファイル(`src/composition/`の下)に置き、`src/index.ts`はエクスポート(名前付きエントリポイントのクラスの宣言を含む)だけを行う。
+- Durable Objectのクラスは、Wrangler設定の`class_name`と同じ名前で、名前付きエントリポイントのクラスは、呼び出し側のService Bindingsの`entrypoint`と同じ名前で、エントリから名前付きでエクスポートする(「[名前付きエントリポイントによる内部認証](006-internal-gateway.md#名前付きエントリポイントによる内部認証)」)。エントリを書き換えるときもこれらのエクスポートを保つ。
 - グローバルスコープ(モジュールの読み込み時)では、import・定数の定義・ルートの登録だけを行う。ログの設定・DIコンテナの生成・暗号鍵の生成は、最初の呼び出しまで遅らせる。Workerの起動時間(グローバルスコープの処理時間)を短く保つためである。
 - 処理単位ごとの状態(リクエストや利用者に関わる値、データベースの接続など)をモジュールスコープの変数に置かず、処理単位のコンテナに束縛する。isolateは複数の処理単位を順に、また並行して処理するため、モジュールスコープに置いた状態は処理単位の間で共有される。
 - モジュールスコープに置く状態は、処理単位に依存しないものに限る。共通ライブラリでは、Honoのアプリとルートの登録、ログの設定、環境オブジェクトごとの検証の結果(「[環境の検証](#環境の検証)」)、エラートラッキングのクライアントがisolateの中で使い回される。
@@ -44,15 +46,20 @@ HonoとInversifyで作るCloudflare Workersのサーバーの4層の配置と合
 
 機能を追加するときは、合成ルートの登録箇所に追記するだけで組み込み、共通ライブラリの骨格を変えない。
 
-| ファイル                                   | 登録するもの                                                                                                                  |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `src/composition/modules.ts`               | モジュール(依存の束縛とルートの登録)の一覧`MODULES`                                                                           |
-| `src/composition/scheduled-jobs.ts`        | 定期実行のジョブの一覧`SCHEDULED_JOBS`と、起動時刻ごとの時間の予算`SCHEDULED_RUN_BUDGETS`(定期実行を持つWorkerだけ)           |
-| `src/composition/message-handlers.ts`      | 非同期メッセージの種別ごとの処理の一覧`MESSAGE_HANDLERS`(Queueのconsumerを持つWorkerだけ)                                     |
-| `src/composition/rate-limit-exclusions.ts` | Worker単位のIP制限の除外規則の一覧`RATE_LIMIT_EXCLUSIONS`(「[除外規則](003-rate-limiting-and-bot-verification.md#除外規則)」) |
-| `src/composition/env-schema.ts`            | 環境の検証スキーマ(「[環境の検証](#環境の検証)」)                                                                             |
+| ファイル                                   | 登録するもの                                                                                                                                              |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/composition/modules.ts`               | モジュール(依存の束縛とルートの登録)の一覧`MODULES`                                                                                                       |
+| `src/composition/scheduled-jobs.ts`        | 定期実行のジョブの一覧`SCHEDULED_JOBS`と、起動時刻ごとの時間の予算`SCHEDULED_RUN_BUDGETS`(定期実行を持つWorkerだけ)                                       |
+| `src/composition/message-handlers.ts`      | 非同期メッセージの種別ごとの処理の一覧`MESSAGE_HANDLERS`(Queueのconsumerを持つWorkerだけ)                                                                 |
+| `src/composition/rate-limit-exclusions.ts` | Worker単位のIP制限の除外規則の一覧`RATE_LIMIT_EXCLUSIONS`(「[除外規則](003-rate-limiting-and-bot-verification.md#除外規則)」)                             |
+| `src/composition/env-schema.ts`            | 環境の検証スキーマ(「[環境の検証](#環境の検証)」)                                                                                                         |
+| `src/composition/session.ts`               | セッションの検証の実装の束縛`SESSION_BINDINGS`(「[検証の実装の差し替え](006-internal-gateway.md#検証の実装の差し替え)」。セッションを受け取るWorkerだけ)  |
+| `src/composition/graphql-modules.ts`       | GraphQLのスキーマモジュールの一覧`GRAPHQL_SCHEMA_MODULES`(「[構成と登録](004-graphql-server.md#構成と登録)」。GraphQLのサーバーを持つWorkerだけ)          |
+| `src/composition/rest-routes.ts`           | 公開REST APIの経路の一覧`REST_ROUTES`(「[経路の登録](005-public-rest-api.md#経路の登録)」。公開REST APIを持つWorkerだけ)                                  |
+| `src/composition/internal-routes.ts`       | 内部経路だけで受け付けるRESTの経路の一覧`INTERNAL_ROUTES`(「[内部RESTの追加規約](006-internal-gateway.md#内部restの追加規約)」。内部経路を持つWorkerだけ) |
 
-- `scheduled-jobs.ts`・`message-handlers.ts`は、Bunの単体テスト(定期実行の定義との一致の検査など)から読み込めるよう、`cloudflare:*`を読み込まない。
+- `scheduled-jobs.ts`・`message-handlers.ts`は、Bunの単体テスト(定期実行の定義との一致の検査など)から読み込めるよう、`cloudflare:*`を読み込まない。`graphql-modules.ts`も、生成・検査のコマンドがBunで読み込むため、`cloudflare:*`・`@sentry/*`・インフラ層を読み込まない。
+- `SESSION_BINDINGS`・`GRAPHQL_SCHEMA_MODULES`・`INTERNAL_ROUTES`は、`modules.ts`の`MODULES`に加えたモジュール(`{ name: 'session', bindings: SESSION_BINDINGS }`・`createGraphQLModule`・`createInternalRoutesModule`)を通じてアプリに載る。公開REST APIのモジュールは、仕様書の情報とCORSの経路の表を同じ登録から作るため、Workerの入口を組み立てる合成ルートのファイルで1回だけ作り、`MODULES`に含めずに`createWorkerApp`の`modules`へ`[...MODULES, <公開RESTのモジュール>]`として渡す(「[仕様書の情報の指定](005-public-rest-api.md#仕様書の情報の指定)」)。
 
 ## 依存方向と静的解析
 
@@ -191,7 +198,7 @@ HTTPのアプリは共通ライブラリの`createWorkerApp(options)`(`workers/h
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `appName`             | ログのカテゴリの先頭に使うアプリ名                                                                                                                               |
 | `envSchema`           | 環境の検証スキーマ                                                                                                                                               |
-| `modules`             | 登録箇所の`MODULES`                                                                                                                                              |
+| `modules`             | 登録箇所の`MODULES`。合成ルートで別に組み立てるモジュールがあれば`[...MODULES, <モジュール>]`                                                                    |
 | `rateLimitExclusions` | 登録箇所の`RATE_LIMIT_EXCLUSIONS`                                                                                                                                |
 | `resolveClientIp`     | クライアントIPの解決(省略時は`CF-Connecting-IP`。「[クライアントIPの解決の差し替え](003-rate-limiting-and-bot-verification.md#クライアントipの解決の差し替え)」) |
 | `sentry`              | 環境からエラートラッキングの初期化オプションを返す関数。環境の検証より前に呼ばれるため、キーが欠けた環境でも動くようにする                                       |
@@ -223,6 +230,7 @@ flowchart TD
 8. 未登録の経路の404と、例外の変換(「[共通エラーと共通のエラー形式](#共通エラーと共通のエラー形式)」)。
 
 - モジュールの経路に掛けるミドルウェア(bot判定の検証など)は、処理単位のコンテナが作られた後に動く。
+- Honoのアプリの外側では、エントリの包みが要求の前処理と応答の後処理(セキュリティヘッダー・CORSなど)を行う(「[前処理と後処理の順序](006-internal-gateway.md#前処理と後処理の順序)」)。
 
 ### ヘルスチェック
 
