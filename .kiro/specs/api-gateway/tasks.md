@@ -82,7 +82,7 @@
   - _Boundary: SchemaModule, SchemaComposer, PlatformTypeDefs, DateTimeScalar_
   - _Requirements: 8.1, 8.2, 8.6, 9.2_
 
-- [ ] 4.2 (P) 処理単位ごとの関連データの一括読み込みの部品を作る
+- [x] 4.2 (P) 処理単位ごとの関連データの一括読み込みの部品を作る
   - 先に、同じ処理単位で3件の読み込みが1回の一括読み込みになること、別の処理単位の読み込み結果を共有しないこと、件数の上限(既定50)で分割されること、一括読み込みの関数が処理単位のコンテナから依存を取得できることを確かめるWorkers統合テストを書く
   - 一括読み込みの定義と、処理単位ごとに定義から読み込み器を1つ作って使い回す登録表を実装する
   - 完了状態: テストが成功し、一括読み込みの回数をテストで観測できる
@@ -292,3 +292,4 @@
 - 3.5(8.2・9.3への申し送り): 外部経路の後処理は、セキュリティヘッダー(不変なら複製)→CORSの順(設計586行のCORS→セキュリティヘッダーの順では、不変ヘッダーの応答でCORSの設定が例外になるため)。9.3の文書はこの順で書く。エントリポイントのクラスのテストは直接インスタンス化で行い、Service Binding・`exports`経由は8.2で確かめる。内側の`fetch`が例外を投げるとセキュリティヘッダーは付かないため、Honoの`onError`が常に応答を返すことを8.2で確かめる。
 - 4.1(設計の「Modified Files」からの逸脱): `graphql-yoga`の型が`@whatwg-node/fetch`の`/// <reference lib="dom" />`を引き込み、workers-typesの`Request`・`BufferSource`と衝突するため、apiの`tsconfig.json`の`paths`で`@whatwg-node/fetch`を`apps/api/types/whatwg-node-fetch.d.ts`(Workersの型を別名で公開する置き換えの宣言)へ向け、`include`に`types/**/*.ts`を加えた。型が`any`になれば`apps/api/test/types/whatwg-node-fetch-types.ts`で型検査が失敗する。実行時(esbuild・Bun・Vite)は実体へ解決する。`@whatwg-node/fetch`の更新時は置き換えの宣言を見直す。手順は`docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md`に記載。
 - 4.1(5.xへの申し送り): 不正な日時の変数では`AppError`が`GraphQLError.originalError.originalError`に、リテラルでは`originalError`に入るため、ErrorPolicyは1段深く見る。出力できない日時は`TypeError`(想定外の例外として扱う)。合成エラーのモジュール名の重複は`module:<name>`、基盤の型定義は予約モジュール`platform`として重複検査に加わる。ルート型は`Query`・`Mutation`だけ。
+- 4.2(4.3への申し送り): 登録表は`createLoaderRegistry(scope: LoaderScope): LoaderRegistry`(設計に名前の記載なし)で作り、既定の上限は`DEFAULT_LOADER_MAX_BATCH_SIZE`(50)。`createGraphQLContext`は要求ごとに`createLoaderRegistry({ resolve: (id) => container.get(id) })`で作る。`resolve<T>(identifier: symbol): T`は`@typescript-eslint/no-unnecessary-type-parameters`に当たるため、`app-module.ts`にならい理由のコメント付きで抑制している。
