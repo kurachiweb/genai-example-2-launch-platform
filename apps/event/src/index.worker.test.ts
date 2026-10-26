@@ -18,6 +18,10 @@ import {
   type MessageHandlerRegistration,
 } from '../lib/core/messaging/message-contract.ts';
 import { systemClock } from '../lib/core/time/clock.ts';
+import {
+  DEFAULT_CONTENT_SECURITY_POLICY,
+  SECURITY_HEADERS,
+} from '../lib/workers/http/security-headers.ts';
 import { createMessagePublisher } from '../lib/workers/messaging/queue-publisher.ts';
 
 // エントリが読み込む登録箇所に、テスト用の契約とハンドラーを追記した状態にする。エントリはテストからの最初の呼び出しで読み込まれるため、その時点で下の定数を参照できる
@@ -143,6 +147,24 @@ describe('イベントサーバーのエントリ', () => {
     expect(await response.json()).toMatchObject({
       error: { code: 'not_found' },
     });
+  });
+
+  test.each<[string, string, string]>([
+    ['ヘルスチェック', '/health', '203.0.113.12'],
+    ['未登録の経路', '/unknown-route', '203.0.113.13'],
+  ])('%sの応答にセキュリティヘッダーが付く', async (_route, path, ip) => {
+    const response = await exports.default.fetch(
+      `${EVENT_ORIGIN}${path}`,
+      fromIp(ip),
+    );
+    await response.body?.cancel();
+
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+      expect(response.headers.get(name)).toBe(value);
+    }
+    expect(response.headers.get('Content-Security-Policy')).toBe(
+      DEFAULT_CONTENT_SECURITY_POLICY,
+    );
   });
 
   test(

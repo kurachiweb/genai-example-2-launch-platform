@@ -1,5 +1,6 @@
 import { createWorkerHandler } from '../lib/workers/handler/create-worker-handler.ts';
 import { createWorkerApp } from '../lib/workers/http/create-worker-app.ts';
+import { withSecurityHeaders } from '../lib/workers/http/security-headers.ts';
 import { createQueueDispatcher } from '../lib/workers/messaging/queue-consumer.ts';
 import {
   buildSentryOptions,
@@ -22,10 +23,12 @@ const app = createWorkerApp<EventEnv>({
   sentry,
 });
 
-export default createWorkerHandler<EventEnv>({
-  appName: 'event',
-  app,
-  envSchema: eventEnvSchema,
-  sentry,
-  queue: createQueueDispatcher<EventEnv>(MESSAGE_HANDLERS, MODULES),
-});
+export default withSecurityHeaders(
+  createWorkerHandler<EventEnv>({
+    appName: 'event',
+    app,
+    envSchema: eventEnvSchema,
+    sentry,
+    queue: createQueueDispatcher<EventEnv>(MESSAGE_HANDLERS, MODULES),
+  }),
+);

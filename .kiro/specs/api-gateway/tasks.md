@@ -32,7 +32,7 @@
   - _Boundary: SentryScrubAdditions_
   - _Requirements: 2.2, 3.7_
 
-- [ ] 2.3 イベントサーバーの全応答にセキュリティヘッダーを付ける
+- [x] 2.3 イベントサーバーの全応答にセキュリティヘッダーを付ける
   - 先に、イベントサーバーのWorkers統合テストへ、ヘルスチェックと未登録の経路の応答にセキュリティヘッダーが付くことを加える
   - イベントサーバーの既定のエクスポートを2.1の包みで包む。Queueのconsumerの経路は変えない
   - 完了状態: イベントサーバーのWorkers統合テストが、Queueからデッドレターまでの既存の項目を含めて成功する
@@ -284,3 +284,4 @@
 - 1.2(後続への申し送り): Bunが読み込むGraphQLのファイルの禁止importは`src/presentation/graphql/modules/**`の`*.worker.test.ts`にも当たり、`cloudflare:*`を読み込めない。疎通確認のモジュールのテストで`cloudflare:test`が要るならテスト補助経由にするか、規則に`ignores`を加える。合成ルートの禁止のパターンと文言は`config/eslint/backend-layers.ts`から複製している。
 - 2.1: `withSecurityHeaders`は既存の`withSentryForScheduledAndQueue`にならい`<E, Q = unknown>`(設計は`<E>`)。ヘッダーが不変の応答は設定時の`TypeError`で検出して`new Response(response.body, response)`で複製する。eventの`test:worker`は`lib/**`を除外しているため、共有コードのWorkers統合テストはapiでだけ実行される。
 - 2.2: `backend-lib/core`の単体テストはapiの`test:unit`だけが`lib/**`経由で実行する(ルートは`apps/**`を、eventは`lib/**`を除外)。中継ヘッダーは`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の伏せ字の規則に一般的な説明で追記した(本プロジェクトのヘッダー名は9.4・9.5で記載する)。
+- 2.3(9.3への申し送り): eventは`createWorkerHandler`の戻り値を一番外側で`withSecurityHeaders`で包む(Honoの経路は`@sentry/hono`がアプリを直接計装するため、外側の包みは例外の捕捉に影響しない)。`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の「エントリが`createWorkerHandler`の結果をそのまま`export default`する」記述を9.3で直す。
