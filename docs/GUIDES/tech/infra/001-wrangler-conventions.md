@@ -1,6 +1,6 @@
 # Wranglerの設定とコマンドの規約
 
-Cloudflare WorkersのアプリをWranglerで開発するときの、ローカル状態(D1・R2などのローカルモードの実データ)の永続化先と複数Worker間での共有方法、及び互換性日付の定め方を定める。
+Cloudflare WorkersのアプリをWranglerで開発するときの、Wranglerを動かす実行環境、ローカル状態(D1・R2などのローカルモードの実データ)の永続化先と複数Worker間での共有方法、及び互換性日付の定め方を定める。
 
 ## 前提と用語
 
@@ -13,6 +13,14 @@ Cloudflare WorkersのアプリをWranglerで開発するときの、ローカル
 | `<ローカル状態の保存先>` | ローカル状態を置くディレクトリ。全アプリで共通の1つの絶対パスを決め、Gitの管理対象外にする                            |
 | リソースID               | Wrangler設定のバインディングで、ローカル状態とデプロイ先のリソースを特定する値(D1の`database_id`、R2のバケット名など) |
 | `<互換性日付>`           | Wrangler設定の`compatibility_date`に指定する日付。全アプリで共通の1つの日付を決める                                   |
+
+## Wranglerを動かす実行環境
+
+- WranglerはNode.js上で動かす。パッケージの導入やスクリプトの起動にBunを使う場合も、Wrangler自体はBunで動かさない。
+  - Bun上で動かすと、`wrangler dev`は「Ready」と表示してもHTTPの要求に応答しない。Wranglerの中継(ローカルの起動で要求を受けるWorker)は、Worker本体の準備ができた知らせを`request.cf`の値として受け取る。Bunの組み込みの`undici`はWranglerが内部で使うMiniflareのカスタムのディスパッチャを呼ばないため、この値が付かず、中継は要求を待たせ続ける。
+  - `wrangler`の実行ファイルは`#!/usr/bin/env node`で始まる。Bunのイメージなどで`node`がBunへのシンボリックリンクになっている環境では、Node.jsの実行ファイルを`PATH`のより前に置き、`node --version`がNode.jsの版を返すことを確かめる。
+  - Node.jsの版は、Wranglerの`package.json`の`engines.node`を満たすものにする。
+- `bunx --bun wrangler`のように`--bun`を付けると`node`の解決にかかわらずBunで動くため、Wranglerには付けない。
 
 ## ローカル状態の永続化と共有
 

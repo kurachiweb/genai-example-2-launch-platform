@@ -235,6 +235,10 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Bun
 
+### 開発ツールの実行環境(開発コンテナのみ)
+
+- Node.js v26 ... WranglerやViteなど`#!/usr/bin/env node`で始まるCLIを動かす。Bun上ではWranglerの`wrangler dev`がHTTPに応答しないため、開発コンテナに実行ファイルだけを導入している(npmは導入しない)
+
 ### AIエージェント向けトークン節約プロキシ
 
 - RTK ... Claude Codeが発行する特定のBashコマンドを`rtk`経由に書き換えてコマンド出力のトークン量を削減する

@@ -331,8 +331,8 @@
   - _Boundary: ProjectValuesDoc, OnboardingUpdates_
   - _Requirements: 6.4, 10.7, 10.9, 13.6, 15.6, 15.7, 15.8_
 
-- [ ] 9. 検証
-- [ ] 9.1 ローカル環境での起動・マイグレーション・定期実行・Queueの受け渡しを手順どおりに確かめる
+- [x] 9. 検証
+- [x] 9.1 ローカル環境での起動・マイグレーション・定期実行・Queueの受け渡しを手順どおりに確かめる
   - 前提: 開発者がInfisicalの`dev`環境にハッシュ化のペッパーとbot判定のテスト用シークレットを登録済みであること。未登録なら登録手順を報告して止める
   - オンボーディングの手順でマイグレーションを適用し、シークレットを実行時に注入して両サーバーを起動し、ヘルスチェックが200、同じIPからの101回目が429になることを確かめる
   - apiで定期実行を、E2Eの共有の補助を使う一時的なスクリプト(コミットしない)で業務日付と4:21を指定して起こし、登録0件の警告ログが出ることと、ローカルの定期実行の経路と時刻の引数が固定したWranglerの版で動くことを確かめる。経路か引数が食い違えば、補助と非同期処理の文書とオンボーディングを直す
@@ -340,7 +340,6 @@
   - 完了状態: 確かめた結果(Queueの受け渡しの可否と定期実行の経路の確認を含む)が記録され、オンボーディングの手順と実際の動作が一致している
   - _Depends: 7.4, 8.5_
   - _Requirements: 2.4, 6.1, 7.8, 10.7_
-  - _Blocked: 開発コンテナでInfisicalにログインしておらず(`infisical run`が「couldn't find your logged in details」で失敗)、`dev`環境のハッシュ化のペッパーとbot判定のテスト用シークレットの登録を確かめられない。開発者が`infisical login`を行い、オンボーディングの手順10のとおり`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`を登録してから再開する_
 
 - [x] 9.2 一括検査とカバレッジ80%を満たすことを確かめる
   - ルートの一括検査と、カバレッジ計測付きの単体テスト・Workers統合テストの一括実行を行い、両アプリの全ファイルが行・関数80%以上であることを確かめる
@@ -392,3 +391,5 @@
 - 7.1・7.2(親の対応): 両アプリの`env-schema.ts`の`binding<T>()`の重複は、`platform-env.ts`から`bindingSchema<T>()`を公開して解消した。
 - 8.5(9.1への申し送り): オンボーディングの起動は`infisical --telemetry=false run --env dev -- bun run dev`(infra-deliveryの改訂1の後は`run-with-secrets`へ)。シークレットの登録はInfisicalのWebコンソールで行い、値を表示しない確認方法を示した。`project-values.md`の`<マシンアイデンティティのID>`は未確定(infra-deliveryが作成)。7.3のスモークテストのコミットが8.5の後になったのは、lint-staged(dev-tooling)がオンボーディングの文書を7.3のコミットへ繰り返し混入させたため。
 - 9.2(2026-10-25の結果): `bun run check`は成功9件・失敗0件(未作成のフロントエンドの6件は飛ばした)。カバレッジ付きの単体テストはルート624件(全体で行99.27%)・api 601件(行100%)・eventは0件で、いずれも終了コード0(ファイル単位の閾値を満たす)。カバレッジ付きのWorkers統合テストはapi 25ファイル243件(全体で行99.75%)・event 1ファイル4件で、プリセットの`perFile: true`の閾値を満たし終了コード0。`test:smoke`と`db:migrations:check`(マイグレーション0件)も成功した。
+- 9.1(2026-10-26の結果): 開発者がInfisicalの`dev`環境に`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`を登録した後、オンボーディングの手順で確かめた。`db:migrate:local`は適用0件で成功。`infisical run`でシークレットを注入して両サーバーを同時に起動し、`/health`はapi(48042)・event(48043)とも200・`Cache-Control: no-store`。同じIPの1〜100回目は200で101回目は429・`Retry-After: 10`(両サーバー)。apiの定期実行をE2Eの共有の補助(一時的なスクリプト、コミットしない)で業務日付と4:21で起こすと、Wrangler 4.124.0のローカルの経路`/cdn-cgi/local/scheduled`の`cron`・`time`の引数どおりに起動し、登録0件の警告(`cron: 21 12 * * *`、相関ID付き)が出た。apiから`JOBS_QUEUE`へ送ったメッセージ(一時的に登録したジョブで送信し、確認後に元に戻した)は、別のプロセスで起動したeventのconsumerへ届き、未登録の種別としてデッドレターへ移り、デッドレターのconsumerが通知した(別プロセス間のQueueの受け渡しはローカルでも可能)。
+- 9.1(見つかった不備と修正): (1)開発コンテナの`node`がBunへのシンボリックリンクで、Wrangler(Miniflare)がBun上で動くと、Bunの組み込みの`undici`がカスタムのディスパッチャを呼ばないため`dispatchFetch`の`cf`(`MF-CF-Blob`)が付かず、`wrangler dev`の中継が`play`の`proxyData`を受け取れずに要求を待たせ続けていた(1.3・7.3の「HTTPに応答しない」の原因)。開発者の決定で、DockerfileにNode.js v26.12.1の実行ファイルを導入し(`/usr/local/bin/node`がbunの代替より優先)、`infra/001-wrangler-conventions.md`に「Wranglerを動かす実行環境」を、tech-stack.md・オンボーディング・CLAUDE.mdの参照先に記載した。確認は同じ版のNode.jsを`PATH`の先頭に置いて行った(コンテナの作り直しは開発者が行う)。(2)両サーバーを同時に起動するとインスペクターの既定の9229が衝突してeventが起動できなかったため、eventの`dev`に`--inspector-port 9230`を加え、design.mdのAppPackageScripts・VitestConfigsとオンボーディングを直した。コンテナの作り直しの後は、7.3の`test:smoke`の中継を経由しない問い合わせは不要になるが、Wranglerの版の更新で壊れない限りそのままでよい。

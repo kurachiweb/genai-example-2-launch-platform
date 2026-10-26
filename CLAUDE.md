@@ -41,6 +41,7 @@
 - 設定ファイル(ESLint・Viteなど)を作る前に: [設定ファイルの記述形式](docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md#設定ファイルの記述形式)
 - JavaScript・TypeScriptのコードを書く前に: [新しい記法の選択](docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md#新しい記法の選択)
 - HTML要素で日時を表示する前に: [日時の表示](docs/GUIDES/tech/frontend/001-markup-conventions.md#日時の表示)
+- `wrangler dev`などWranglerを起動する前に: [Wranglerを動かす実行環境](docs/GUIDES/tech/infra/001-wrangler-conventions.md#wranglerを動かす実行環境)
 - Wranglerのコマンドの実行やD1・R2のバインディングの定義の前に: [ローカル状態の永続化と共有](docs/GUIDES/tech/infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)
 - TanStack Startアプリを起動・ビルドする前に: [開発時とデプロイ前の起動](docs/GUIDES/tech/frontend/002-tanstack-start-on-workers.md#開発時とデプロイ前の起動)
 - シークレット・環境変数を使うコマンドの実行や設定の前に: [シークレットの注入](docs/GUIDES/tech/security/001-secret-management.md#シークレットの注入)

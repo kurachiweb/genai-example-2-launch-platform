@@ -112,6 +112,8 @@
 
 13. コンテナ内: アプリケーションの起動
 
+    Wranglerは開発コンテナのNode.jsで動く(`node --version`がv26を返す。Bunで動かすと`wrangler dev`がHTTPに応答しない。理由は「[Wranglerを動かす実行環境](../GUIDES/tech/infra/001-wrangler-conventions.md#wranglerを動かす実行環境)」)。`node --version`がBunの版を返す古いコンテナでは、コンテナを作り直す。
+
     APIサーバー(`bun run dev`は`wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --test-scheduled`を実行する)
 
     ```sh
@@ -119,7 +121,7 @@
     infisical --telemetry=false run --env dev -- bun run dev
     ```
 
-    イベントサーバー(`bun run dev`は`wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state`を実行する)
+    イベントサーバー(`bun run dev`は`wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --inspector-port 9230`を実行する。APIサーバーと同時に起動するため、開発者ツールの接続先(インスペクター)を既定の9229と重ならない9230にしている)
 
     ```sh
     cd /workspace/apps/event
