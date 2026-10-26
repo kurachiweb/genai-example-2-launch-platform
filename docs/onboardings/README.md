@@ -135,7 +135,7 @@
     curl -i http://localhost:48043/health
     ```
 
-    APIサーバーの定期実行は自動では起動しないため、「[定期実行の手動起動](#定期実行の手動起動)」の手順で起こす。
+    APIサーバーの定期実行は自動では起動しないため、「[定期実行の手動起動](#定期実行の手動起動)」の手順で起こす。GraphQLの操作は、ブラウザで「[ローカルのGraphiQL](#ローカルのgraphiql)」から試せる。
 
     利用者側フロントエンド
 
@@ -196,6 +196,39 @@ curl "http://localhost:48042/cdn-cgi/local/scheduled?cron=21+12+*+*+*&time=17936
 - 応答は、ジョブが失敗しても200になる。ジョブの結果は、APIサーバーのログとデータの状態で確かめる。登録したジョブの無い式では、`warning`のログが出るだけである。
 - E2Eテストからは、共有の補助`e2e/support/scheduled-trigger.ts`の`triggerScheduled({ worker: 'api', businessDate, businessTime })`で、業務日付と業務時刻を指定して起こす。cron式と予定時刻は補助が求め、APIサーバーのURLは環境変数`E2E_API_URL`で上書きできる(「[E2Eからの起動](../GUIDES/tech/infra/003-async-processing.md#e2eからの起動)」)。
 
+## ローカルのGraphiQL
+
+ローカル環境のAPIサーバーは、外部経路のGraphQLの経路でGraphiQLの画面を返す。クイックスタートの手順13でAPIサーバーを起動し、ブラウザで次のURLを開く。
+
+```text
+http://localhost:48042/graphql
+```
+
+画面の左の編集欄に操作の本文を書いて実行する。例えば、次の操作でAPIサーバーの時刻とデータベースへの到達可否を確かめられる。
+
+```graphql
+query {
+  systemStatus {
+    serverTime
+    databaseReachable
+  }
+}
+```
+
+- GraphiQLの要求は、許可リストに無い操作の本文とintrospectionも実行できる。補完やスキーマの参照はintrospectionで動く。クエリの上限は内部経路と同じく適用する(「[introspectionとGraphiQL](../GUIDES/tech/backend/004-graphql-server.md#introspectionとgraphiql)」)。
+- 呼び出し元とセッション識別子は、画面の下部のHeadersの欄にJSONで手入力して指定する。呼び出し元の既定は利用者側(`client`)である。ヘッダーの名前は「[内部経路のヘッダー](project-values.md#内部経路のヘッダー)」を参照する。
+
+  ```json
+  {
+    "x-debug-caller": "admin",
+    "x-session-token": "<43文字のセッション識別子>"
+  }
+  ```
+
+- 元のクライアントIPアドレスのヘッダーは信頼されず、接続元のIPアドレスが使われる。
+- GraphiQLの画面は、本体・スタイル・エディタのワーカーをCDN(`https://unpkg.com`)から読み込むため、ブラウザからインターネットへ接続できる必要がある。
+- GraphiQLとintrospectionは`APP_ENVIRONMENT`が`local`のときだけ使える。デプロイ先環境の外部経路のGraphQLの経路は404を返す。
+
 ## DBスキーマを変更したとき
 
 テーブル定義を`apps/db/schema/`に書き(「[テーブル定義の配置](../GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)」)、次の順でマイグレーションを生成して適用する。各手順の詳細は「[スキーマ規約のマイグレーション](../GUIDES/tech/db/003-schema-conventions.md#マイグレーション)」に従う。
@@ -214,6 +247,36 @@ bun run db:migrations:check
 
 - マイグレーションの適用は`apps/api`での1回でよい。`apps/event`は同じローカル状態とデータベースを参照する。
 - `db:migrations:check`は、CIからも同じスクリプトを呼ぶ(infra-deliveryで設定する)。共有のローカル状態を変えずに一時ディレクトリで検出を確かめ、検出されなかったマイグレーションがあれば名前を表示して失敗する。
+
+## GraphQLのスキーマや操作を変更したとき
+
+APIサーバーのスキーマファイル・リゾルバの型・許可リストは、生成コマンドで作ってコミットする(生成物の場所は「[GraphQLの生成物と操作の一覧](project-values.md#graphqlの生成物と操作の一覧)」)。生成と検査にシークレットは要らないため、Infisicalからの注入は付けない。
+
+```sh
+cd /workspace/apps/api
+
+# スキーマモジュール(src/presentation/graphql/modules/)や登録箇所(src/composition/graphql-modules.ts)を変えたとき: スキーマファイルとリゾルバの型を生成する
+bun run graphql:generate
+
+# フロントエンドの操作の一覧が変わったとき: 許可リストを生成する
+bun run graphql:allowlist
+
+# 生成物が定義・操作の一覧と食い違っていないことを確かめる
+bun run graphql:check
+```
+
+フロントエンドの操作を加えた・変えた後は、次の順に生成し、生成物を同じコミットに含める(「[許可リストの生成とデプロイの順序](../GUIDES/tech/coding/004-graphql-communication.md#許可リストの生成とデプロイの順序)」)。
+
+1. スキーマモジュールも変えたなら、先に`/workspace/apps/api`で`bun run graphql:generate`を実行する。フロントエンドのコード生成がスキーマファイルを入力にするためである。
+2. `apps/client`・`apps/admin`のフロントエンドのコード生成で、操作の一覧(`src/graphql/generated/persisted-documents.json`)を出力する。
+3. `/workspace/apps/api`で`bun run graphql:allowlist`を引数なしで実行し、現行の操作だけから許可リストを生成する。
+4. `/workspace/apps/api`で`bun run graphql:check`を実行し、成功することを確かめる。
+5. スキーマファイル・リゾルバの型・操作の一覧・許可リストを同じコミットに含める。
+
+- 起動中のAPIサーバーは、許可リストをバンドルに含めて読み込む。生成し直した許可リストが反映されなければ、APIサーバーを起動し直す。
+- `graphql:allowlist`の`--previous-ref <コミット>`は、デプロイの時にCIが直前のリリースの操作を加えるためのものである。ローカル環境では指定せず、指定して生成した許可リストはコミットしない(`graphql:check`は現行の操作だけで生成した許可リストと比べるため、直前のリリースの操作が現行と異なれば失敗する)。
+- 許可リストの生成は、操作がスキーマに対する検証かクエリの上限の検査に通らなければ、操作の識別子と理由を表示して失敗する。
+- `graphql:check`は、食い違った生成物と、再実行すべき生成コマンドを実行する順に表示する。一括検査`bun run check`も、型検査の前にこの検査を実行する。
 
 ## コミット時の検査
 
@@ -272,12 +335,12 @@ bun add --dev --exact <パッケージ>@<版> <パッケージ>@<版> # 導入�
 
 ルート(`/workspace`)で実行する主なコマンド。各コマンドの詳細とアプリ内での実行方法は、「[検査コマンド](../GUIDES/tech/coding/001-javascript-typescript-conventions.md#検査コマンド)」と「[実行コマンド](../GUIDES/tech/testing/001-test-strategy.md#実行コマンド)」に従う。
 
-| コマンド                                                                       | 内容                                                                                                                            |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `bun run check`                                                                | 共有ディレクトリの配置確認・テスト命名の検査・整形検査・全アプリの静的解析と型検査を一括で実行する                              |
-| `bun run format`                                                               | リポジトリ全体を整形する                                                                                                        |
-| `bun run test:all:unit`・`bun run test:all:browser`・`bun run test:all:worker` | ルートと全アプリの単体テスト・ブラウザテスト・Workers統合テストを種別ごとに一括で実行する(`--coverage`を付けると各アプリへ渡る) |
-| `bun run test:e2e`                                                             | E2Eテストを実行する(対象のアプリは事前に起動しておく)                                                                           |
+| コマンド                                                                       | 内容                                                                                                                                    |
+| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run check`                                                                | 共有ディレクトリの配置確認・テスト命名の検査・整形検査・全アプリの静的解析・型生成の検査・GraphQLの生成物の検査・型検査を一括で実行する |
+| `bun run format`                                                               | リポジトリ全体を整形する                                                                                                                |
+| `bun run test:all:unit`・`bun run test:all:browser`・`bun run test:all:worker` | ルートと全アプリの単体テスト・ブラウザテスト・Workers統合テストを種別ごとに一括で実行する(`--coverage`を付けると各アプリへ渡る)         |
+| `bun run test:e2e`                                                             | E2Eテストを実行する(対象のアプリは事前に起動しておく)                                                                                   |
 
 APIサーバー・イベントサーバーだけを検査・テストするときは、各アプリのディレクトリ(`/workspace/apps/api`・`/workspace/apps/event`)で次のスクリプトを実行する。テストに必要なシークレットはテストの設定がテスト用の値で渡すため、Infisicalからの注入は要らない。
 
@@ -290,6 +353,9 @@ APIサーバー・イベントサーバーだけを検査・テストすると�
 | `bun run db:migrations:check`       | `apps/api`               | マイグレーションがWranglerに検出されることを確かめる                                                                                        |
 | `bun run cf-typegen`                | `apps/api`・`apps/event` | Wrangler設定を変えたときに、実行時の型の定義ファイル`worker-configuration.d.ts`を生成し直す                                                 |
 | `bun run cf-typegen:check`          | `apps/api`・`apps/event` | 生成済みの`worker-configuration.d.ts`がWrangler設定と食い違っていないかを確かめる。ルートの一括検査(`bun run check`)でも実行される          |
+| `bun run graphql:generate`          | `apps/api`               | GraphQLのスキーマファイルとリゾルバの型を生成する(「[GraphQLのスキーマや操作を変更したとき](#graphqlのスキーマや操作を変更したとき)」)      |
+| `bun run graphql:allowlist`         | `apps/api`               | フロントエンドの操作の一覧から、GraphQLの許可リストを生成する                                                                               |
+| `bun run graphql:check`             | `apps/api`               | GraphQLの生成物がスキーマモジュールと操作の一覧に食い違っていないかを確かめる。ルートの一括検査(`bun run check`)でも実行される              |
 
 ## ローカルポート一覧
 

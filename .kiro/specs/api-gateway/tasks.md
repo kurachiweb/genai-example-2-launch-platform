@@ -253,7 +253,7 @@
   - _Boundary: 技術ドキュメント群(GraphQL通信の文書)_
   - _Requirements: 2.4, 3.8, 5.9, 7.7, 9.4, 14.4, 14.5_
 
-- [ ] 9.5 (P) 本プロジェクト固有の値・オンボーディング・CLAUDE.mdの参照先を更新する
+- [x] 9.5 (P) 本プロジェクト固有の値・オンボーディング・CLAUDE.mdの参照先を更新する
   - 本プロジェクト固有の値に、エントリポイント名・経路・ヘッダー名・生成物と操作の一覧の場所・環境の種別の値・ローカルのGraphiQLのURL・OpenAPI仕様の既定の情報と相対のサーバーを記載する
   - オンボーディングに、生成・許可リスト・検査のコマンド、フロントエンドの操作を加えた後の手順、ローカルのGraphiQLの使い方を記載する
   - CLAUDE.mdの「技術規則の参照先」に、スキーマモジュール・公開REST・内部RESTを追加する前の参照先を追記する
@@ -316,3 +316,4 @@
 - 9.2(9.5への申し送り): `docs/GUIDES/tech/backend/005-public-rest-api.md`のプレースホルダー`<公開RESTの基準パス>`・`<仕様の経路>`・`<仕様書の既定の情報>`の値を`project-values.md`に載せる。合成ルートのファイル名は固有値として書かず「Workerの入口を組み立てる合成ルートのファイル」と書いた(9.3で002を直す時も揃える)。
 - 9.3(人の判断待ちと9.5への申し送り): 内部RESTにはGraphQLのような共通の後処理が無く、経路が`AppError`を投げて終えるとセッションの指示(無効と判定したセッションの削除を含む)が応答に載らない(`006-internal-gateway.md`に注意として記載。共通の後処理を設けるかは人の判断待ち)。9.5の`project-values.md`に、`006`のプレースホルダー(利用者側・管理者側のエントリポイント名、内部RESTの接頭辞、呼び出し元・元のクライアントIP・セッション識別子・bot判定のトークン・デバッグ用の呼び出し元・セッションの発行・有効期間・削除の各ヘッダー、APIサーバーのWorker名)の値、「Workerの入口を組み立てる合成ルートのファイル」が`apps/api/src/composition/api-worker.ts`であること、`CALLER_KINDS`の値を載せる。`<バインディング名>`は呼び出し側(frontend-platform)が決める値。`006`のGraphiQLのCSPの表にはYoga内蔵の画面が読み込むCDNのホストが書かれているため、Yogaの更新時に見直す。
 - 9.4(9.5への申し送り): `docs/GUIDES/tech/coding/004-graphql-communication.md`のプレースホルダー`<APIサーバーのアプリ>`(apps/api)・`<利用者側のフロントエンドのアプリ>`(apps/client)・`<管理者側のフロントエンドのアプリ>`(apps/admin)を`project-values.md`に載せる。許可リストの例の`<呼び出し元の種類>`は`CALLER_KINDS`の値。文書の分担は、エラーコードの全表・許可リストの照会と検証・コマンドの挙動がbackend/004、ヘッダーの値の形式とサーバー側の検査がbackend/006、各ヘッダーを誰が付けるか・生成物と操作の一覧の場所と形式・デプロイの手順・応答全体の状態コードがcoding/004。Yogaは`application/json`以外に`application/graphql+json`・`application/graphql`・`application/x-www-form-urlencoded`も解析し、それ以外は本文の無い415になる。
+- 9.5(10.1・frontend-platformへの申し送り): `project-values.md`に固有値を載せ、技術文書の固有のプレースホルダーは全て読み替えられる。`<バインディング名>`はD1用(`DB`)とService Bindings用(`API`、frontend-platformが定める予定の値)を限定語で分けた。005の`<オリジン>`は配信元のオリジンの一般的な意味で、固有値の表の`<オリジン>`(ローカルの定期実行)とは別。GraphQLの経路`/graphql`はコードの`GRAPHQL_PATH`(graphql-module.ts)と`GRAPHQL_ENDPOINT`(gateway-server.ts)で2重に定義されている(統合の候補)。オンボーディングのフロントエンドのコード生成はコマンド名を書いていない(frontend-platformが追記する)。起動中の開発サーバーが再生成した許可リストを読み直すか、GraphiQLの画面の操作(ヘッダーの指定・CSP)は10.1で確かめる。
