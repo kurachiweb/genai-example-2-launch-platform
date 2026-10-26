@@ -220,7 +220,7 @@
   - _Depends: 3.5, 4.6, 5.6, 6.3, 7.3_
   - _Requirements: 1.6, 3.3, 8.1, 10.2, 13.3_
 
-- [ ] 8.2 テスト補助を作り、内部経路・外部経路の端から端までをWorkers統合テストで確かめる
+- [x] 8.2 テスト補助を作り、内部経路・外部経路の端から端までをWorkers統合テストで確かめる
   - 環境と呼び出し元を指定してエントリを呼ぶテスト補助と、`documentId`の要求の組み立てを作る
   - 実際の結線では、名前付きエントリポイント経由の未登録の操作が拒否され(コミットした許可リストはフロントエンドの操作の一覧が無いため空)、ローカル環境の外部経路(GraphiQL)では登録箇所の`systemStatus`が実行できることを確かめる
   - テスト用の許可リストで組み立てたアプリで、名前付きエントリポイント経由の`systemStatus`の実行、利用者側から管理者側の操作の拒否を確かめる
@@ -311,3 +311,4 @@
 - 7.2(7.3・9.2への申し送り): 経路の表は`createRouteTable`を呼んだ時点の`openAPIRegistry`の経路と仕様の経路から作るため、7.3は全経路の登録後に作る。`{name}`は`/`を含まない空でない1セグメントに一致し、それ以外は文字どおり(末尾スラッシュの正規化なし)。`hide: true`の経路と素の`api.get`の経路は表に入らず、ブラウザからのプリフライトが`OPTIONS`だけになる(9.2の文書に「ブラウザから呼ぶ経路に`hide`を使わない」と書く)。Honoとの差は、固定のセグメントの百分率符号化と1セグメント内の複数の変数(`{a}.{b}`)だけで、どちらもCORSが狭くなる側。
 - 7.3(8.2・9.2への申し送り): 公開RESTのモジュール名は`public-rest`(設計に記載なし、`internal-rest`にならった)。`@hono/zod-openapi`の`doc31`は仕様を要求ごとに作り、生成に失敗すると例外をそのまま`c.json(e, 500)`で返す(共通のエラー形式・Sentryを通らない)。8.2の端から端までのテストで仕様の配信を確かめ、9.2の文書に「経路を追加したら仕様の取得をテストする」と書く。仕様は子の`OpenAPIHono`の登録だけから作られ、内部経路・GraphQLは載らない。
 - 8.1(設計からの逸脱と8.2・9.3・10.1への申し送り): 設計1441行は`MODULES`へ公開RESTのモジュールを加えるが、`createRestModule<Env>(REST_ROUTES)`は`composition/api-worker.ts`で1回だけ作り、`createWorkerApp`へ`[...MODULES, rest.module]`で渡す(`MODULES`は公開RESTを含まない)。アプリに登録するインスタンスと、public-apiのtasks.md 7.2が`api-worker.ts`で`{ info }`を渡すインスタンス・CORSの経路の表を同じにするため。public-restはinternal-restの後に登録される(パスが重ならず振る舞いは同じ)。登録箇所の型は`ApiEnv`ではなく`Env`(Honoの型引数の不変性)。疎通確認の束縛は`modules.ts`の`systemModule`。`wrangler.jsonc`は変更なし(名前付きエントリポイントは呼び出し側のService Bindingで指定)。`wrangler deploy --dry-run`は権限設定で拒否されたため、実際の入口のバンドルは10.1で確かめる。9.3で`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の合成ルートの記述(組み立ては`composition/api-worker.ts`、`index.ts`はエクスポートだけ)と登録箇所の表(`rest-routes.ts`・`internal-routes.ts`・`session.ts`・`graphql-modules.ts`)を直す。実際の結線でのCORS・中継ヘッダーの除去・クライアントIPの解決の差し替えは8.2で確かめる。
+- 8.2: 端から端までのテストは`src/index.gateway.worker.test.ts`(実際の結線)と`src/index.allowlist.worker.test.ts`(テスト用の許可リスト。`getGatewayServer`がisolate内で使い回されるため別ファイル)。環境を上書きする時の`callInternal`は設計どおり`apiHandler`へ`markInternalRequest`・`applySecurityHeaders`を当てて呼ぶ(エントリポイントのクラスはローカルの`exports`経由と`createGatewayEntrypointClass`で作るクラスで確かめる)。実際の結線は許可リストが空のため、呼び出し元の偽装の上書き(1.4)はテスト用の許可リストのアプリで確かめた。`REST_ROUTES`・`INTERNAL_ROUTES`が空のため、実際の結線での入力の誤りのSentry非送信と`/internal`の偽装は確かめられず、7.3・3.4の単体で確かめている(下流specが経路を加えた時にテストを足す)。実際の結線は各要求の始めにLogTapeの出力を`console`へ戻すため、ログはconsoleのスパイで捕まえる。
