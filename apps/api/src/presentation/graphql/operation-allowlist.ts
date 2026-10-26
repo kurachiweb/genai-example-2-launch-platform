@@ -81,7 +81,7 @@ function extractDocumentId(params: GraphQLParams): string | null {
   return typeof documentId === 'string' ? documentId : null;
 }
 
-function readDebugCaller(request: Request): CallerKind {
+export function readDebugCaller(request: Request): CallerKind {
   const value = request.headers.get(GATEWAY_HEADERS.debugCaller);
   return CALLER_KINDS.find((kind) => kind === value) ?? DEFAULT_DEBUG_CALLER;
 }

@@ -18,7 +18,7 @@ export type InternalRoutes<E extends PlatformEnv> = (
 const clientIpLogger = getAppLogger(['api', 'gateway', 'client-ip']);
 
 // 経路の存在を明かさないよう、未登録の経路と同じ定型の404にする
-function createNotFoundError(): AppError {
+export function createNotFoundError(): AppError {
   return new AppError({
     kind: 'not_found',
     code: NOT_FOUND_RESPONSE.body.error.code,

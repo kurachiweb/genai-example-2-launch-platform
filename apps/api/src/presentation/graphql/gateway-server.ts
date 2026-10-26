@@ -66,21 +66,23 @@ function reportUnexpected(error: unknown): void {
   captureException(error);
 }
 
-// GraphiQLの要求は、ローカル環境で内部経路の呼び出し元を持たない要求とする。任意の操作・introspection・GraphiQLの画面を同じ判定で許す
-function graphiqlRequestMatcher(
+// GraphiQLの要求は、ローカル環境で内部経路の呼び出し元を持たない要求とする。受付経路の判定と、任意の操作・introspection・GraphiQLの画面を許す判定に同じ関数を使う
+export function isGraphiqlRequest(
   environment: AppEnvironment,
-): (request: Request) => boolean {
-  if (isDeployedEnvironment(environment)) {
-    return () => false;
-  }
-  return (request) => readInternalCaller(request) === undefined;
+  request: Request,
+): boolean {
+  return (
+    !isDeployedEnvironment(environment) &&
+    readInternalCaller(request) === undefined
+  );
 }
 
 export function createGatewayServer(
   options: GatewayServerOptions,
 ): GatewayServer {
   const deployed = isDeployedEnvironment(options.environment);
-  const isGraphiqlRequest = graphiqlRequestMatcher(options.environment);
+  const graphiqlRequest = (request: Request): boolean =>
+    isGraphiqlRequest(options.environment, request);
   const errorPolicy = createErrorPolicy({ reportUnexpected });
   return createYoga<GatewayServerContext, GraphQLContext>({
     schema: composeGatewaySchema(options.schemaModules),
@@ -93,7 +95,7 @@ export function createGatewayServer(
     // Yogaのloggerは伏せる前の例外を出力するため使わず、想定外の例外はErrorPolicyから伏せ字を通るログへ出す
     logging: false,
     extraParamNames: ['documentId'],
-    graphiql: !deployed && isGraphiqlRequest,
+    graphiql: graphiqlRequest,
     maskedErrors: { maskError: errorPolicy.maskError },
     context: ({ scope }) => createGraphQLContext(scope),
     plugins: [
@@ -102,11 +104,11 @@ export function createGatewayServer(
         blockFieldSuggestion: deployed,
       }),
       useDisableIntrospection({
-        isDisabled: (request) => !isGraphiqlRequest(request),
+        isDisabled: (request) => !graphiqlRequest(request),
       }),
       createPersistedOperationsPlugin(
         createOperationAllowlist(options.allowlist),
-        { allowArbitrary: isGraphiqlRequest },
+        { allowArbitrary: graphiqlRequest },
       ),
       errorPolicy.plugin,
       createOperationObservabilityPlugin(),
