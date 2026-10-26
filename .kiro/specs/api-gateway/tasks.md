@@ -54,7 +54,7 @@
   - _Boundary: SessionVerifierPort, AnonymousSessionVerifier_
   - _Requirements: 3.3, 3.4_
 
-- [ ] 3.3 セッションの検証の呼び出しとCookieの指示を集約する部品を作る
+- [x] 3.3 セッションの検証の呼び出しとCookieの指示を集約する部品を作る
   - 先に、呼び出し元の種類で検証の種類(利用者・管理者)が決まること、形式不正のトークンでは検証を呼ばないこと、最初の参照で1回だけ検証すること、無効の判定で削除の指示、更新と発行で発行の指示が応答ヘッダーに出ること、形式不正の発行値を拒否すること、未ログインで認証を要求すると未認証の共通エラーになることを確かめるWorkers統合テストを書く
   - 処理単位のコンテナから検証のポートを取得し、指示を応答ヘッダーへ反映する関数を実装する。トークンは本文とログに出さない
   - 完了状態: テストが成功し、ログの出力にトークンの値が含まれないことを確かめられる
@@ -287,3 +287,4 @@
 - 2.3(9.3への申し送り): eventは`createWorkerHandler`の戻り値を一番外側で`withSecurityHeaders`で包む(Honoの経路は`@sentry/hono`がアプリを直接計装するため、外側の包みは例外の捕捉に影響しない)。`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の「エントリが`createWorkerHandler`の結果をそのまま`export default`する」記述を9.3で直す。
 - 3.1: `resolveGatewayClientIp`は「`readInternalCaller`が有効な呼び出し元を返せば内部経路」と判定する(設計536行の「ヘッダーがあれば」より厳密で、GraphqlModuleの判定と同じ)。要求の複製は`new Request(request, { headers })`で、本文のストリームは複製へ移る(後続は複製だけを読む)。IPの判定はzodの`z.ipv4()`・`z.ipv6()`で、表記の正規化はしない。
 - 3.2: `SESSION_TYPES`は設計のFile Structure Planどおり`session-verifier.ts`に置いた(`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の例は識別子を`application/<domain>/types.ts`に置く)。束縛は8.1の`composition/session.ts`で行う。
+- 3.3(設計の補完): リゾルバが先に`issue`・`clear`を指示していれば、検証の結果(無効・更新)から出る指示で上書きしない(「最後の指示が有効」はリゾルバの指示どうしに当てはめる)。発行の値は識別子の形式に加え`maxAgeSeconds`が1以上の整数でなければ`RangeError`(メッセージに値を含めない)。`applySessionInstructions`はプライベートフィールドで指示を取り出すため`createSessionAccess`で作った値だけを受け付ける。未認証の共通エラーは下流spec(identity-auth・admin-foundation・inquiry-chat)の表に合わせ、コード`unauthenticated`・文言「ログインが必要です。」。
