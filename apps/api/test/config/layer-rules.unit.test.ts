@@ -131,6 +131,8 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
       forbidden("import type { c } from '../../workers/http/hono-env';"),
       forbidden("import type { Env } from 'cloudflare:workers';"),
       forbidden("import type { Database } from '../../../db/client';"),
+      forbidden("import { MODULES } from '../../../src/composition/modules';"),
+      forbidden("import { e } from '../../../src/domain/sample/entity';"),
       allowed("import type { Hono } from 'hono';"),
       allowed("import { b } from '../errors/app-error';"),
       allowed("import { z } from 'zod';"),
@@ -140,6 +142,11 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
   {
     file: 'lib/workers/sample/violation.ts',
     imports: [
+      forbidden("import { MODULES } from '../../../src/composition/modules';"),
+      forbidden("import { e } from '../../../src/domain/sample/entity';"),
+      forbidden(
+        "import type { ApiEnv } from '../../../src/composition/env-schema';",
+      ),
       allowed("import { a } from '../../core/errors/app-error';"),
       allowed("import { createDatabase } from '../../../db/client';"),
       allowed("import { Hono } from 'hono';"),
@@ -150,6 +157,7 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
     file: 'db/schema/violation.ts',
     imports: [
       forbidden("import { a } from '../../lib/core/time/clock';"),
+      forbidden("import { e } from '../../src/domain/sample/entity';"),
       forbidden("import { Hono } from 'hono';"),
       forbidden("import { env } from 'cloudflare:workers';"),
       forbidden("import { sqliteTable } from 'drizzle-orm/sqlite-core';"),

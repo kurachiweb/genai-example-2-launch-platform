@@ -75,18 +75,20 @@ graph LR
 
 ### 位置ごとの禁止import
 
-各アプリの`eslint.config.ts`に、ファイルの位置ごとの`no-restricted-imports`を置く。4層の規則は全アプリに置き、共通ライブラリとDBディレクトリの規則は検査担当のアプリにだけ置く。検査担当でないアプリは、配置先を静的解析から外す(「[検査担当でないアプリでの共有ディレクトリの除外](../coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外)」)。
+各アプリの`eslint.config.ts`に、ファイルの位置ごとの`no-restricted-imports`を置く。4層の規則は全アプリに置き、共通ライブラリとDBディレクトリの規則は検査担当のアプリにだけ置く。4層の規則は全アプリで同じ内容のため、ルートの`config/eslint/backend-layers.ts`の`createBackendLayerRules(<アプリ名>)`に1つだけ定義し、各アプリの`eslint.config.ts`から読み込む。アプリごとに変わるのは規則の名前の接頭辞だけである。検査担当でないアプリは、配置先を静的解析から外す(「[検査担当でないアプリでの共有ディレクトリの除外](../coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外)」)。
 
 | 対象のファイル                                                     | 禁止するimport                                                                                                                                                                                             |
 | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/domain/**`                                                    | `**/application/**`・`**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`drizzle-orm*`・`cloudflare:*`・`**/<共通ライブラリの配置先>/workers/**`・`**/<DBディレクトリの配置先>/**` |
 | `src/application/**`                                               | `**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`cloudflare:*`・`**/<共通ライブラリの配置先>/workers/**`・`**/<DBディレクトリの配置先>/client*`                                 |
 | `src/infrastructure/**`・`src/presentation/**`                     | `**/composition/**`                                                                                                                                                                                        |
-| `<共通ライブラリの配置先>/core/**`(検査担当のみ)                   | `**/workers/**`・`cloudflare:*`・`**/<DBディレクトリの配置先>/**`・`hono`(型だけのimportは許す)                                                                                                            |
-| `<DBディレクトリの配置先>/**`(検査担当のみ)                        | `**/<共通ライブラリの配置先>/**`・`hono`・`cloudflare:*`・`drizzle-orm/sqlite-core`の`sqliteTable`・`sqliteTableCreator`                                                                                   |
+| `<共通ライブラリの配置先>/core/**`(検査担当のみ)                   | `**/workers/**`・`cloudflare:*`・`**/<DBディレクトリの配置先>/**`・`**/src/**`・`hono`(型だけのimportは許す)                                                                                               |
+| `<共通ライブラリの配置先>/workers/**`(検査担当のみ)                | `**/src/**`                                                                                                                                                                                                |
+| `<DBディレクトリの配置先>/**`(検査担当のみ)                        | `**/<共通ライブラリの配置先>/**`・`**/src/**`・`hono`・`cloudflare:*`・`drizzle-orm/sqlite-core`の`sqliteTable`・`sqliteTableCreator`                                                                      |
 | `<DBディレクトリの配置先>/**/*.worker.test.{ts,tsx}`(検査担当のみ) | 上の行から`cloudflare:*`を除いたもの                                                                                                                                                                       |
 
 - 共通ライブラリの`core`の`hono`は、`@typescript-eslint/no-restricted-imports`の`allowTypeImports: true`で型だけのimport(`import type { Hono } from 'hono'`)を許す。モジュールの契約がHonoのアプリの型を参照するためである。型だけのimportは実行時に残らないため、`core`がHonoなしで動くことは変わらない。`workers`・`cloudflare:*`・DBディレクトリは型だけのimportも禁止する。
+- 共有ディレクトリ(共通ライブラリの`core`・`workers`とDBディレクトリ)は利用側アプリの`src`を読み込まない。共有ディレクトリは複数のアプリへ配置されるため、あるアプリの層や合成ルートに依存すると、他のアプリへ配置したときに解決できない。アプリ固有の型や値は、合成ルートから引数で渡す。
 - DBディレクトリのWorkers統合テストは、D1のバインディングをworkerdの実行環境(`cloudflare:workers`の`env`)から受け取るため、`cloudflare:*`だけを許す。
 - DBディレクトリでテーブルを`sqliteTable`で定義すると列名がスネークケースへ変換されないため、`snakeCase.table`を使う(「[命名規則](../db/001-drizzle-migrations-on-d1.md#命名規則)」)。
 - 規則に合うことは、ESLintのNode APIで各位置に置いた仮想のファイルの違反例と許可例を検査する単体テストで確かめる。
@@ -235,8 +237,8 @@ flowchart TD
 
 ### 環境の検証
 
-- 各アプリは`src/composition/env-schema.ts`に、共通ライブラリの`platformEnvShape`(全Workerに共通のバインディング・変数・シークレットの検証規則)を展開し、アプリだけのキーを加えた`z.object`のスキーマを置く。あわせて、生成された`Env`が共通の型`PlatformEnv`を満たすことを`satisfies`などの型検査で確かめる。
-- 検証に失敗すると、欠けたキーと不正なキーの名前だけを`error`ログに出し、500の定型で応答する。値はログにも例外にも含めない。
+- 各アプリは`src/composition/env-schema.ts`に、共通ライブラリの`platformEnvShape`(全Workerに共通のバインディング・変数・シークレットの検証規則)を展開し、アプリだけのキーを加えた`z.object`のスキーマを置く。あわせて、生成された`Env`が共通の型`PlatformEnv`を満たすことを`satisfies`などの型検査で確かめる。スキーマ自体にも`satisfies z.ZodType<アプリの環境の型>`を付け、環境の型にキーを足してスキーマに足し忘れたら型検査で失敗させる。
+- 検証に失敗すると、欠けたキーと不正なキーの名前だけを`error`ログに出し、500の定型で応答する。値はログにも例外にも含めない。HTTPのミドルウェアと、定期実行・非同期メッセージのハンドラーは、同じ関数`logEnvValidationFailure`(`core/env/env-schema.ts`)で失敗を記録し、ログの文言と属性名をそろえる。
 - 検証の結果は環境オブジェクトごとに覚え、同じisolateの2回目以降は検証しない。
 - 後続の処理は、検証の結果ではなく元の`env`を使う。スキーマに書いた既定値や変換(`default`・`transform`)は`env`に反映されないため、検証規則は値の形を確かめるだけにする。
 - スキーマの全体に掛けた`refine`のように、問題の経路にキーの無い検証の失敗は、どのキーにも分類されない。
