@@ -61,7 +61,7 @@
   - _Depends: 1.2, 3.2_
   - _Requirements: 3.1, 3.2, 3.4, 3.5, 3.6, 3.7_
 
-- [ ] 3.4 内部経路だけで受け付ける経路と、内部RESTの登録の仕組みを作る
+- [x] 3.4 内部経路だけで受け付ける経路と、内部RESTの登録の仕組みを作る
   - 先に、外部経路の要求が共通のエラー形式の404になり、内部経路の要求は登録した経路に届くこと、内部経路でIPが欠落・不正なら値を含めない警告ログが出ることを確かめるWorkers統合テストを書く
   - 内部経路だけで受け付けるミドルウェアと、`/internal`の下に登録した経路を追加するモジュールの組み立てを実装する
   - 完了状態: テスト用に登録した内部RESTの経路が、内部経路では応答し外部経路では404になる
@@ -288,3 +288,4 @@
 - 3.1: `resolveGatewayClientIp`は「`readInternalCaller`が有効な呼び出し元を返せば内部経路」と判定する(設計536行の「ヘッダーがあれば」より厳密で、GraphqlModuleの判定と同じ)。要求の複製は`new Request(request, { headers })`で、本文のストリームは複製へ移る(後続は複製だけを読む)。IPの判定はzodの`z.ipv4()`・`z.ipv6()`で、表記の正規化はしない。
 - 3.2: `SESSION_TYPES`は設計のFile Structure Planどおり`session-verifier.ts`に置いた(`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の例は識別子を`application/<domain>/types.ts`に置く)。束縛は8.1の`composition/session.ts`で行う。
 - 3.3(設計の補完): リゾルバが先に`issue`・`clear`を指示していれば、検証の結果(無効・更新)から出る指示で上書きしない(「最後の指示が有効」はリゾルバの指示どうしに当てはめる)。発行の値は識別子の形式に加え`maxAgeSeconds`が1以上の整数でなければ`RangeError`(メッセージに値を含めない)。`applySessionInstructions`はプライベートフィールドで指示を取り出すため`createSessionAccess`で作った値だけを受け付ける。未認証の共通エラーは下流spec(identity-auth・admin-foundation・inquiry-chat)の表に合わせ、コード`unauthenticated`・文言「ログインが必要です。」。
+- 3.4: 外部経路からの`/internal`は環境を問わず常に`NOT_FOUND_RESPONSE`と同じ404(設計588行とError Categoriesの「デプロイ先環境では404」より、System Flows・要件1.2の記述に合わせた)。IPの欠落・不正の警告は`/internal`の下の未登録のパスでも出る。空文字列のIPヘッダーは`invalid`。内部RESTのモジュール名は`internal-rest`(設計に記載なし)。ログのカテゴリの2番目が層名でない点は、`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の`[<アプリ名>, <層>, <モジュール>]`と既存のコード(`http`・`queue`)の間で以前から食い違っている。
