@@ -4,7 +4,7 @@ Cloudflare Workersで、他のWorkerからService Bindingsの名前付きエン�
 
 ## 前提と用語
 
-層構成・合成ルート・処理単位のコンテナ・共通エラー・ミドルウェアの順序は「[Cloudflare Workersでの層構成と依存性の組み立て](002-layered-architecture-on-workers.md)」に、Worker単位のIP制限とクライアントIPの解決の差し替えは「[レート制限とbot判定の検証](003-rate-limiting-and-bot-verification.md)」に従う。GraphQLの受付経路は「[GraphQLサーバーの基盤](004-graphql-server.md)」に、公開REST APIとCORSは「[公開REST APIの骨格](005-public-rest-api.md)」に、フロントエンドサーバーとの間の要求の形式とヘッダーの値の一覧は「[GraphQL通信](../coding/004-graphql-communication.md)」に記載する。
+層構成・合成ルート・処理単位のコンテナ・共通エラー・ミドルウェアの順序は「[Cloudflare Workersでの層構成と依存性の組み立て](002-layered-architecture-on-workers.md)」に、Worker単位のIP制限とクライアントIPの解決の差し替えは「[レート制限とbot判定の検証](003-rate-limiting-and-bot-verification.md)」に従う。GraphQLの受付経路は「[GraphQLサーバーの基盤](004-graphql-server.md)」に、公開REST APIとCORSは「[公開REST APIの骨格](005-public-rest-api.md)」に、フロントエンドサーバーとの間の要求の形式と各ヘッダーを誰が付けるかは「[GraphQL通信](../coding/004-graphql-communication.md)」に記載する。
 
 部品の置き場所は、アプリの`src/`からのパスで示す。
 
@@ -144,7 +144,7 @@ Honoの中では、呼び出し元を`readInternalCaller(request)`だけで判�
 
 - 発行と削除のヘッダーは同じ応答に同時に付かない。どちらも付かなければ、Cookieを変えない。
 - フロントエンドサーバーは指示ヘッダーをCookieの操作に変え、ブラウザへ返す応答から取り除く。新しいセッション識別子は応答本文に含めない。
-- ヘッダーの名前と値の本プロジェクトでの一覧、及びフロントエンドサーバーの側の処理は「[GraphQL通信](../coding/004-graphql-communication.md)」に記載する。
+- 各ヘッダーを誰が付け、フロントエンドサーバーがどう処理するかは「[GraphQL通信](../coding/004-graphql-communication.md)」に記載する。
 
 ### 検証の呼び出し
 

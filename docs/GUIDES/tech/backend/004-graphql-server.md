@@ -4,7 +4,7 @@ HonoとGraphQL YogaでCloudflare Workersに載せるGraphQLサーバーの受付
 
 ## 前提と用語
 
-層構成・処理単位のコンテナ・共通エラーは「[Cloudflare Workersでの層構成と依存性の組み立て](002-layered-architecture-on-workers.md)」に、bot判定は「[レート制限とbot判定の検証](003-rate-limiting-and-bot-verification.md#bot判定の検証)」に従う。内部経路の認証・元のクライアントIPアドレス・セッションの受け渡し・セキュリティヘッダーは「[内部経路とセキュリティヘッダー](006-internal-gateway.md)」に、フロントエンドサーバーとの間の要求の形式・ヘッダーの名前・操作の一覧と許可リストの受け渡しは「[GraphQL通信](../coding/004-graphql-communication.md)」に記載する。
+層構成・処理単位のコンテナ・共通エラーは「[Cloudflare Workersでの層構成と依存性の組み立て](002-layered-architecture-on-workers.md)」に、bot判定は「[レート制限とbot判定の検証](003-rate-limiting-and-bot-verification.md#bot判定の検証)」に従う。内部経路の認証・元のクライアントIPアドレス・セッションの受け渡し・セキュリティヘッダーは「[内部経路とセキュリティヘッダー](006-internal-gateway.md)」に、フロントエンドサーバーとの間の要求の形式・各ヘッダーを誰が付けるか・操作の一覧と許可リストの受け渡しは「[GraphQL通信](../coding/004-graphql-communication.md)」に記載する。
 
 GraphQLのサーバーはGraphQL Yoga、クエリの上限はGraphQL Armor、リゾルバの型の生成はGraphQL Code Generator、一括読み込みはDataLoader、引数の検証はZodを使う。部品の置き場所は、アプリの`src/presentation/graphql/`からのパスで示す。
 

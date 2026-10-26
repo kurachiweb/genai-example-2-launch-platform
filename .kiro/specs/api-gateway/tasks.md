@@ -247,7 +247,7 @@
   - _Boundary: 技術ドキュメント群(内部経路の文書)_
   - _Requirements: 2.4, 3.8, 12.4, 14.3, 14.5_
 
-- [ ] 9.4 (P) GraphQL通信のサーバー側の契約の技術ドキュメントを追加する
+- [x] 9.4 (P) GraphQL通信のサーバー側の契約の技術ドキュメントを追加する
   - 要求の形式、中継ヘッダーと指示ヘッダーの一覧、エラーコード表と状態コード、スキーマファイルの場所、操作の一覧の場所・形式・識別子、許可リストの生成とデプロイの順序、直前のリリースの渡し方を記載し、クライアント側の節は見出しだけを置いて、索引へ1行追記する
   - 完了状態: コーディングの索引から文書へ辿れ、frontend-platformが追記する節が用意され、プロジェクト名と固有値を含まない
   - _Boundary: 技術ドキュメント群(GraphQL通信の文書)_
@@ -315,3 +315,4 @@
 - 9.1(9.4・9.5への申し送り): `docs/GUIDES/tech/backend/004-graphql-server.md`はエラーコードの全表を持つため、9.4の文書は重複させずリンクする。9.5の`project-values.md`に、プレースホルダー`<GraphQLの経路>`・`<GraphQLの本文の上限>`・`<一括読み込みの件数の既定値>`の値と、文書中の「アプリ」(`src/presentation/graphql/`などのアプリ内のパス)が`apps/api`であることを載せる。`Subscription`型の無いスキーマへの`subscription`と、`operationName`の無い複数操作の文書が実行時に`graphql_request_invalid`の400になることは、使い捨てのスクリプトで確かめただけでコミット済みのテストは無い。
 - 9.2(9.5への申し送り): `docs/GUIDES/tech/backend/005-public-rest-api.md`のプレースホルダー`<公開RESTの基準パス>`・`<仕様の経路>`・`<仕様書の既定の情報>`の値を`project-values.md`に載せる。合成ルートのファイル名は固有値として書かず「Workerの入口を組み立てる合成ルートのファイル」と書いた(9.3で002を直す時も揃える)。
 - 9.3(人の判断待ちと9.5への申し送り): 内部RESTにはGraphQLのような共通の後処理が無く、経路が`AppError`を投げて終えるとセッションの指示(無効と判定したセッションの削除を含む)が応答に載らない(`006-internal-gateway.md`に注意として記載。共通の後処理を設けるかは人の判断待ち)。9.5の`project-values.md`に、`006`のプレースホルダー(利用者側・管理者側のエントリポイント名、内部RESTの接頭辞、呼び出し元・元のクライアントIP・セッション識別子・bot判定のトークン・デバッグ用の呼び出し元・セッションの発行・有効期間・削除の各ヘッダー、APIサーバーのWorker名)の値、「Workerの入口を組み立てる合成ルートのファイル」が`apps/api/src/composition/api-worker.ts`であること、`CALLER_KINDS`の値を載せる。`<バインディング名>`は呼び出し側(frontend-platform)が決める値。`006`のGraphiQLのCSPの表にはYoga内蔵の画面が読み込むCDNのホストが書かれているため、Yogaの更新時に見直す。
+- 9.4(9.5への申し送り): `docs/GUIDES/tech/coding/004-graphql-communication.md`のプレースホルダー`<APIサーバーのアプリ>`(apps/api)・`<利用者側のフロントエンドのアプリ>`(apps/client)・`<管理者側のフロントエンドのアプリ>`(apps/admin)を`project-values.md`に載せる。許可リストの例の`<呼び出し元の種類>`は`CALLER_KINDS`の値。文書の分担は、エラーコードの全表・許可リストの照会と検証・コマンドの挙動がbackend/004、ヘッダーの値の形式とサーバー側の検査がbackend/006、各ヘッダーを誰が付けるか・生成物と操作の一覧の場所と形式・デプロイの手順・応答全体の状態コードがcoding/004。Yogaは`application/json`以外に`application/graphql+json`・`application/graphql`・`application/x-www-form-urlencoded`も解析し、それ以外は本文の無い415になる。
