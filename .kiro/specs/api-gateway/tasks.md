@@ -205,7 +205,7 @@
   - _Boundary: RouteTable, CorsPolicy_
   - _Requirements: 11.1, 11.2, 11.4, 11.5_
 
-- [ ] 7.3 公開RESTのモジュールを作り、仕様の配信とプリフライトを提供する
+- [x] 7.3 公開RESTのモジュールを作り、仕様の配信とプリフライトを提供する
   - 先に、認証なしでOpenAPI 3.1の仕様が返ること、登録した経路が仕様に含まれること、仕様の`servers`が`[{ url: '/v1' }]`であること、登録箇所から仕様書の情報(題名・版・任意の説明)を渡さなければ既定の題名と版になり、渡せばその値になること、プリフライトが204になること、基準パスの下の未登録の経路が404になること、登録が空なら仕様の配信だけが公開されることを確かめるWorkers統合テストを書く
   - 登録された経路の追加・認証方式の登録・仕様の経路(相対のサーバーと、指定または既定の仕様書の情報)・プリフライトの経路を持つモジュールと経路の表の組み立てを実装する
   - 完了状態: backend-platformのアプリの組み立てに載せたモジュールで、テストが成功し、配信された仕様の`servers[0].url`が`/v1`である
@@ -309,3 +309,4 @@
 - 6.4: 比較と表示は純粋関数の`scripts/graphql/generated-check.ts`(設計のFile Structure Planに無い)に置き、`describeBuildError`を`allowlist-builder.ts`へ移して2つの入口で共有した。`graphql-codegen --check`はスキーマファイルと比べるため、スキーマが古い時はスキーマの比較が検出する。codegenの設定の誤りなども「型の食い違い」と表示される(codegenのエラー出力は出る)。静的解析は、`scripts/graphql/**`に`cloudflare:*`・`@sentry/*`・infrastructureと設計136行の一覧に無い`src`のファイルの読み込みを禁止し(`operation-allowlist.ts`は型だけ可、`test/support`は可)、`src/**`から`**/scripts/**`を禁止する(`@typescript-eslint/no-restricted-imports`を使い、層の規則の`no-restricted-imports`のオプションを置き換えない)。dev-toolingの設計(738行付近)の`check`の段階の一覧に`graphql:check`はまだ無い(api-gatewayの変更対象外のため人の判断待ち)。
 - 7.1(設計の補完と7.3・8.2・9.2への申し送り): `@hono/zod-openapi`・`@hono/zod-validator`は本文の解析失敗とContent-Typeの不一致でHonoの`HTTPException`(400・415)を投げ、基盤の`onError`が想定外(500・Sentry送信)として扱うため、公開APIのアプリの`onError`で`AppError`に変えて再送出する(応答を返すと`c.error`が`HTTPException`のまま残るため)。400は`validation_error`(詳細`field: ''`・`code: invalid_json`)、415は`AppErrorStatus`に415が無いため`unsupported_media_type`の400(415で返すにはbackend-platformの`AppError`に種類の追加が要る。人の判断待ち)。公開RESTの本文はJSONだけの前提で、`HTTPException`の400はすべて`invalid_json`とみなす。設計に無い`registerApiKeySecurityScheme(api)`を加えた(7.3の`createRestModule`で呼ぶ)。`toFieldErrorDetails`と文言はGraphQLの`validated-args.ts`と重複している(統合の候補)。RESTのページングはsnake_caseの`meta`。Sentryへ送られないことは外側の`c.error`で確かめた(7.3・8.2で`createWorkerApp`に組み込んだ状態でも確かめる)。
 - 7.2(7.3・9.2への申し送り): 経路の表は`createRouteTable`を呼んだ時点の`openAPIRegistry`の経路と仕様の経路から作るため、7.3は全経路の登録後に作る。`{name}`は`/`を含まない空でない1セグメントに一致し、それ以外は文字どおり(末尾スラッシュの正規化なし)。`hide: true`の経路と素の`api.get`の経路は表に入らず、ブラウザからのプリフライトが`OPTIONS`だけになる(9.2の文書に「ブラウザから呼ぶ経路に`hide`を使わない」と書く)。Honoとの差は、固定のセグメントの百分率符号化と1セグメント内の複数の変数(`{a}.{b}`)だけで、どちらもCORSが狭くなる側。
+- 7.3(8.2・9.2への申し送り): 公開RESTのモジュール名は`public-rest`(設計に記載なし、`internal-rest`にならった)。`@hono/zod-openapi`の`doc31`は仕様を要求ごとに作り、生成に失敗すると例外をそのまま`c.json(e, 500)`で返す(共通のエラー形式・Sentryを通らない)。8.2の端から端までのテストで仕様の配信を確かめ、9.2の文書に「経路を追加したら仕様の取得をテストする」と書く。仕様は子の`OpenAPIHono`の登録だけから作られ、内部経路・GraphQLは載らない。
