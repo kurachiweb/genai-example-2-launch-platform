@@ -235,7 +235,7 @@
   - _Boundary: 技術ドキュメント群(GraphQL基盤の文書)_
   - _Requirements: 7.7, 14.3, 14.5_
 
-- [ ] 9.2 (P) 公開RESTの骨格の技術ドキュメントを追加する
+- [x] 9.2 (P) 公開RESTの骨格の技術ドキュメントを追加する
   - 基準パスと版、経路の登録、検証失敗の応答、成功応答の形式とページング、認証方式の宣言、OpenAPI仕様の配信(相対のサーバーで基準パスを示す理由と、登録箇所からの仕様書の情報の指定)、CORSの規則とHonoの外で付ける理由を記載し、索引へ1行追記する
   - 完了状態: バックエンドの索引から文書へ辿れ、プロジェクト名と固有値を含まない
   - _Boundary: 技術ドキュメント群(公開RESTの文書)_
@@ -313,3 +313,4 @@
 - 8.1(設計からの逸脱と8.2・9.3・10.1への申し送り): 設計1441行は`MODULES`へ公開RESTのモジュールを加えるが、`createRestModule<Env>(REST_ROUTES)`は`composition/api-worker.ts`で1回だけ作り、`createWorkerApp`へ`[...MODULES, rest.module]`で渡す(`MODULES`は公開RESTを含まない)。アプリに登録するインスタンスと、public-apiのtasks.md 7.2が`api-worker.ts`で`{ info }`を渡すインスタンス・CORSの経路の表を同じにするため。public-restはinternal-restの後に登録される(パスが重ならず振る舞いは同じ)。登録箇所の型は`ApiEnv`ではなく`Env`(Honoの型引数の不変性)。疎通確認の束縛は`modules.ts`の`systemModule`。`wrangler.jsonc`は変更なし(名前付きエントリポイントは呼び出し側のService Bindingで指定)。`wrangler deploy --dry-run`は権限設定で拒否されたため、実際の入口のバンドルは10.1で確かめる。9.3で`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の合成ルートの記述(組み立ては`composition/api-worker.ts`、`index.ts`はエクスポートだけ)と登録箇所の表(`rest-routes.ts`・`internal-routes.ts`・`session.ts`・`graphql-modules.ts`)を直す。実際の結線でのCORS・中継ヘッダーの除去・クライアントIPの解決の差し替えは8.2で確かめる。
 - 8.2: 端から端までのテストは`src/index.gateway.worker.test.ts`(実際の結線)と`src/index.allowlist.worker.test.ts`(テスト用の許可リスト。`getGatewayServer`がisolate内で使い回されるため別ファイル)。環境を上書きする時の`callInternal`は設計どおり`apiHandler`へ`markInternalRequest`・`applySecurityHeaders`を当てて呼ぶ(エントリポイントのクラスはローカルの`exports`経由と`createGatewayEntrypointClass`で作るクラスで確かめる)。実際の結線は許可リストが空のため、呼び出し元の偽装の上書き(1.4)はテスト用の許可リストのアプリで確かめた。`REST_ROUTES`・`INTERNAL_ROUTES`が空のため、実際の結線での入力の誤りのSentry非送信と`/internal`の偽装は確かめられず、7.3・3.4の単体で確かめている(下流specが経路を加えた時にテストを足す)。実際の結線は各要求の始めにLogTapeの出力を`console`へ戻すため、ログはconsoleのスパイで捕まえる。
 - 9.1(9.4・9.5への申し送り): `docs/GUIDES/tech/backend/004-graphql-server.md`はエラーコードの全表を持つため、9.4の文書は重複させずリンクする。9.5の`project-values.md`に、プレースホルダー`<GraphQLの経路>`・`<GraphQLの本文の上限>`・`<一括読み込みの件数の既定値>`の値と、文書中の「アプリ」(`src/presentation/graphql/`などのアプリ内のパス)が`apps/api`であることを載せる。`Subscription`型の無いスキーマへの`subscription`と、`operationName`の無い複数操作の文書が実行時に`graphql_request_invalid`の400になることは、使い捨てのスクリプトで確かめただけでコミット済みのテストは無い。
+- 9.2(9.5への申し送り): `docs/GUIDES/tech/backend/005-public-rest-api.md`のプレースホルダー`<公開RESTの基準パス>`・`<仕様の経路>`・`<仕様書の既定の情報>`の値を`project-values.md`に載せる。合成ルートのファイル名は固有値として書かず「Workerの入口を組み立てる合成ルートのファイル」と書いた(9.3で002を直す時も揃える)。
