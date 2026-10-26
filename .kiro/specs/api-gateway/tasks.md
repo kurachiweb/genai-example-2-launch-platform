@@ -138,7 +138,7 @@
   - _Depends: 5.1_
   - _Requirements: 4.5, 7.1, 7.2, 7.3, 7.4, 7.6_
 
-- [ ] 5.4 (P) 操作ログとトレースのプラグインを作る
+- [x] 5.4 (P) 操作ログとトレースのプラグインを作る
   - 先に、操作名・種類・呼び出し元・結果・エラーコード・状態コード・処理時間を持つ操作ログが1件出ること、変数・セッション識別子・bot判定のトークンが含まれないことを確かめるWorkers統合テストを書く
   - (承認後の改訂2)あわせて、Sentryの送信を差し替えたトランスポートで、ルートのスパンの名前が経路の名前のまま操作名・種類・呼び出し元の属性を持つこと、実行した操作だけに操作名入りの実行の子のスパンがあること、どちらの値もスパンの除去処理を通った後に残ることを確かめるテストを書く。Sentryのhonoの計装が応答の時点でルートのスパンの名前を書き戻すため、ルートのスパンの名前は変えない
   - 操作の記録、プラグイン、操作ログの出力を実装する
@@ -300,3 +300,4 @@
 - 5.1(5.3への申し送り): 上限の拒否の種類は`WeakMap<GraphQLError, QueryLimitKind>`でエラーオブジェクトに記録するため、ErrorPolicyは包み直す前に`classifyDocumentErrors`で分類する。構文の誤りはgraphqlが種類を持たないため"Syntax Error:"の接頭辞で判別し、Armorも同じ接頭辞を使うため記録した種類を先に見る(記録の無い将来のArmorの上限は`graphql_parse_failed`になる)。`@escape.tech/graphql-armor-types`はArmorの下位パッケージの任意依存として推移的に入っており、直接は読み込まない。テスト補助`test/support/query-limit-harness.ts`はBunにも読み込まれるため、Bunのカバレッジの閾値(ファイルごと)を満たすよう全関数をBunのテストで通す。
 - 5.2(5.3・5.6への申し送り): persisted operationsの拒否(`persisted_operation_required`・`persisted_operation_not_found`、400)は`path`も原因も持たない`GraphQLError`として`maskError`に届く。設計862行の「`path`も原因も持たない→`graphql_request_invalid`」をそのまま適用すると上書きされるため、5.3では既知の`GatewayErrorCode`を持つエラーを残す規則を先に置く。プラグインは呼び出し元を`x-internal-caller`から、無ければ任意の操作を許す時(ローカルのGraphiQL)だけ`x-debug-caller`(既定`client`)から決め、どちらでもなければ照会せず`persisted_operation_not_found`にする(フェイルクローズ)。5.6はこの規則を重複させず共有する。許可リストの検証は最初の`find`で1回(失敗は記憶しない)。拒否のエラーは要求ごとに作る。文言は「登録済みの操作の識別子(documentId)を指定してください。」「登録されていない操作です。」。
 - 5.3(設計の補完と5.5・9.1への申し送り): 拒否のコード(persisted operations・構文・上限)を残すのは`path`も`originalError`も持たないエラーだけで、`path`付きのエラーや外から付けた`internal_error`は想定外として伏せる。伏せ済みの判定はポリシーが作ったエラーの`WeakSet`だけで行う。Armorの深さ・コスト・エイリアス・ディレクティブの拒否は検証中に投げられ`maskError`に届く。Yogaの`usePreventMutationViaGET`が構文エラーの`http.spec`を真にするため、`spec: false`の400として作り直す。GETのmutationの405もYogaの要求エラーとして`graphql_request_invalid`の400になる。不正な日時の変数は`validation_error`の200、リテラルは`graphql_validation_failed`の400。5.5では、Yoga自身のloggerがマスク時に生の例外を出力するため`logging: false`か伏せ字のloggerにする。9.1の文書に「利用者に見せられない内部の詳細は`GraphQLError`ではなく通常の例外か`AppError`で投げる」と書く(`path`の無い`GraphQLError`の文言はそのまま応答に出るため)。`error-codes.ts`はコードの一覧`GATEWAY_ERROR_CODES`から型を作る。
+- 5.4(設計の補完と5.5・5.6・9.1への申し送り): 操作ログはエラーコードがあるか状態コードが400以上なら`outcome: error`・`warning`(コードの無い415・413を成功として記録しないため)。不明の操作名・種類は`null`、エラーコードは重複を除く。Yogaのサーバー文脈は`{ scope }`の形(`OperationObservabilityContext`は`GatewayRequestScope`の部分集合)で、5.5で`{ scope: GatewayRequestScope }`を渡し、5.6で`logOperation`を呼ぶ。5.5では同じYogaのインスタンスへ2回要求し、解析・検証のキャッシュが当たっても操作名が記録されることを確かめる。Yogaが結果処理の前に返す応答(415・GraphiQLのHTML)と5.6のモジュールが返す404・413はルートのスパンの属性が付かない(5.6で扱いを決める)。
