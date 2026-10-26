@@ -2,7 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2024"],
-    "types": ["bun", "@cloudflare/vitest-pool-workers/types"]
+    "types": ["bun", "@cloudflare/vitest-pool-workers/types"],
+    "paths": {
+      "@whatwg-node/fetch": ["./types/whatwg-node-fetch.d.ts"]
+    }
   },
   "include": [
     "*.ts",
@@ -10,6 +13,7 @@
     "test/**/*.ts",
     "scripts/**/*.ts",
     "db/**/*.ts",
-    "lib/**/*.ts"
+    "lib/**/*.ts",
+    "types/**/*.ts"
   ]
 }

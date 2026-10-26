@@ -145,6 +145,29 @@ Workersの実行環境で動くアプリは、次の差分を加える。
 - `types`: Workers統合テストの`cloudflare:test`モジュールの型を加える。
 - `include`: アプリ直下の`*.ts`により、`wrangler types`が出力する`worker-configuration.d.ts`(実行時の型と環境の型)も含まれる。
 
+#### 依存パッケージがDOMの型を読み込む場合
+
+`lib`からDOMを外しても、依存パッケージの型宣言が`/// <reference lib="dom" />`を含むと、そのパッケージを読み込んだ時点でDOMの型がプログラム全体に加わる。Workersの型と食い違い、依存パッケージと無関係なファイルで型エラーになる(例: `new Request()`の型が`Request<unknown, IncomingRequestCfProperties>`に代入できない、`Uint8Array`が`crypto.subtle`の`BufferSource`に代入できない)。
+
+- 原因の特定: `tsc -p tsconfig.json --explainFiles`の出力で`lib.dom.d.ts`を探し、`Library referenced via 'dom' from file`に続くファイルを確かめる。
+- 対処: そのアプリの`tsconfig.json`の`paths`で、DOMを参照する型宣言のモジュールを、同じ公開の型をWorkersのグローバルから示す宣言ファイル(アプリ直下の`types/`に置く)へ差し替え、`include`に`types/**/*.ts`を加える。アプリの`tsconfig.json`は原則として`types`と`include`だけを差分にするが(「[型検査設定の継承](#型検査設定の継承)」)、この`paths`と`include`の追加はその例外である。
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "<DOMを参照するモジュール>": ["./types/<モジュール名>.d.ts"]
+    }
+  }
+}
+```
+
+- 差し替えの対象は型検査だけである。esbuild(Wrangler)・Bun・Vite(Vitest)は、依存パッケージの内部からの読み込みもアプリのソースからの読み込みも、宣言ファイルではなく本物のパッケージへ解決する。Viteは`resolve.tsconfigPaths`が既定で無効のため`paths`を使わない(有効にしない)。
+- TypeScriptの`libReplacement`は置き換え先を`node_modules`の`@typescript/lib-dom`パッケージからしか探さず`paths`を使わないため、この目的には使わない。
+- 宣言ファイルの書き方の落とし穴: Workersの型は`Headers`・`Blob`・`URL`などを`declare class`、`crypto`などを`declare const`で宣言しており、ブロックスコープの宣言は`typeof globalThis.Headers`のように`globalThis`から引けない。本来は型エラーになるが、宣言ファイル内のエラーは`skipLibCheck: true`で報告されず、その型は黙って`any`になる。また、モジュールの中で公開する名前(`export const Headers`)を宣言すると、モジュール内の`typeof Headers`はグローバルの型ではなくその定数自身を指す。そのため、別名で宣言して(`declare const workersHeaders: typeof Headers;`)、`export { workersHeaders as Headers };`で公開する名前へ付け替える。
+- `any`化の検査: 宣言ファイルの外の、型検査の対象になる`.ts`に型だけの検査を置き、差し替えたモジュールの全ての公開の値と、関数の戻り値・インスタンスの各項目が`any`でないことを確かめる(`0 extends 1 & T`で`any`を判定し、`any`の項目名の和集合が`never`でなければ型エラーにする)。検査は先に書き、`globalThis`から引いた誤った宣言で失敗することを確かめる。
+- 依存パッケージの版を更新したら、差し替えた宣言ファイルの公開の型が元の型宣言と一致しているかを確かめる。
+
 #### デコレータの設定
 
 デコレータの設定は基底設定が持ち、アプリの`tsconfig.json`では`experimentalDecorators`を指定しない(`true`も`false`も書かない)。標準(TC39)のデコレータを使うアプリは置かない。

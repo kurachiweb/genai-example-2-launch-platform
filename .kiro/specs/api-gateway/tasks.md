@@ -75,7 +75,7 @@
   - _Requirements: 1.1, 1.3, 1.4, 1.5, 12.1_
 
 - [ ] 4. GraphQLのスキーマモジュールの規約と生成
-- [ ] 4.1 (P) スキーマモジュールの契約・基盤の型定義・日時のスカラー・合成と重複検査・印字を作る
+- [x] 4.1 (P) スキーマモジュールの契約・基盤の型定義・日時のスカラー・合成と重複検査・印字を作る
   - 先に、複数モジュールの`Query`・`Mutation`の結合、モジュール名・型・項目(列挙型の値・入力型の項目を含む)の重複での合成エラー、スキーマに無い型・項目のリゾルバでの失敗、日時の出力(エポックミリ秒と日付からUTCのRFC 3339)と不正な入力の拒否、同じ定義から同じ印字結果になることを確かめるWorkers統合テストを書く
   - 基盤の型定義(日時・カーソル型とオフセット型のページング情報)を先頭に置いて合成し、型と項目を名前順に並べて印字する
   - 完了状態: テストが成功し、合成と印字の関数がBunからも読み込める(禁止importが無い)
@@ -290,3 +290,5 @@
 - 3.3(設計の補完): リゾルバが先に`issue`・`clear`を指示していれば、検証の結果(無効・更新)から出る指示で上書きしない(「最後の指示が有効」はリゾルバの指示どうしに当てはめる)。発行の値は識別子の形式に加え`maxAgeSeconds`が1以上の整数でなければ`RangeError`(メッセージに値を含めない)。`applySessionInstructions`はプライベートフィールドで指示を取り出すため`createSessionAccess`で作った値だけを受け付ける。未認証の共通エラーは下流spec(identity-auth・admin-foundation・inquiry-chat)の表に合わせ、コード`unauthenticated`・文言「ログインが必要です。」。
 - 3.4: 外部経路からの`/internal`は環境を問わず常に`NOT_FOUND_RESPONSE`と同じ404(設計588行とError Categoriesの「デプロイ先環境では404」より、System Flows・要件1.2の記述に合わせた)。IPの欠落・不正の警告は`/internal`の下の未登録のパスでも出る。空文字列のIPヘッダーは`invalid`。内部RESTのモジュール名は`internal-rest`(設計に記載なし)。ログのカテゴリの2番目が層名でない点は、`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の`[<アプリ名>, <層>, <モジュール>]`と既存のコード(`http`・`queue`)の間で以前から食い違っている。
 - 3.5(8.2・9.3への申し送り): 外部経路の後処理は、セキュリティヘッダー(不変なら複製)→CORSの順(設計586行のCORS→セキュリティヘッダーの順では、不変ヘッダーの応答でCORSの設定が例外になるため)。9.3の文書はこの順で書く。エントリポイントのクラスのテストは直接インスタンス化で行い、Service Binding・`exports`経由は8.2で確かめる。内側の`fetch`が例外を投げるとセキュリティヘッダーは付かないため、Honoの`onError`が常に応答を返すことを8.2で確かめる。
+- 4.1(設計の「Modified Files」からの逸脱): `graphql-yoga`の型が`@whatwg-node/fetch`の`/// <reference lib="dom" />`を引き込み、workers-typesの`Request`・`BufferSource`と衝突するため、apiの`tsconfig.json`の`paths`で`@whatwg-node/fetch`を`apps/api/types/whatwg-node-fetch.d.ts`(Workersの型を別名で公開する置き換えの宣言)へ向け、`include`に`types/**/*.ts`を加えた。型が`any`になれば`apps/api/test/types/whatwg-node-fetch-types.ts`で型検査が失敗する。実行時(esbuild・Bun・Vite)は実体へ解決する。`@whatwg-node/fetch`の更新時は置き換えの宣言を見直す。手順は`docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md`に記載。
+- 4.1(5.xへの申し送り): 不正な日時の変数では`AppError`が`GraphQLError.originalError.originalError`に、リテラルでは`originalError`に入るため、ErrorPolicyは1段深く見る。出力できない日時は`TypeError`(想定外の例外として扱う)。合成エラーのモジュール名の重複は`module:<name>`、基盤の型定義は予約モジュール`platform`として重複検査に加わる。ルート型は`Query`・`Mutation`だけ。
