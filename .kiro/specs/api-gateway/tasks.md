@@ -96,7 +96,7 @@
   - _Depends: 3.3, 4.2_
   - _Requirements: 3.1, 8.4, 8.7_
 
-- [ ] 4.4 リゾルバの引数の検証とページングの補助を作る
+- [x] 4.4 リゾルバの引数の検証とページングの補助を作る
   - 先に、引数の検証の失敗が入力不正のエラーコードと引数のパスの詳細になること、カーソルの符号化と不正なカーソルの拒否、次のページの有無と末尾のカーソル、オフセット型の総ページ数、ページングの引数の範囲を確かめるWorkers統合テストを書く
   - 引数の検証の包みと、カーソル型・オフセット型の引数スキーマと結果の組み立てを実装する
   - 完了状態: テストが成功し、包んだリゾルバが生成したリゾルバの型に代入できる
@@ -294,3 +294,4 @@
 - 4.1(5.xへの申し送り): 不正な日時の変数では`AppError`が`GraphQLError.originalError.originalError`に、リテラルでは`originalError`に入るため、ErrorPolicyは1段深く見る。出力できない日時は`TypeError`(想定外の例外として扱う)。合成エラーのモジュール名の重複は`module:<name>`、基盤の型定義は予約モジュール`platform`として重複検査に加わる。ルート型は`Query`・`Mutation`だけ。
 - 4.2(4.3への申し送り): 登録表は`createLoaderRegistry(scope: LoaderScope): LoaderRegistry`(設計に名前の記載なし)で作り、既定の上限は`DEFAULT_LOADER_MAX_BATCH_SIZE`(50)。`createGraphQLContext`は要求ごとに`createLoaderRegistry({ resolve: (id) => container.get(id) })`で作る。`resolve<T>(identifier: symbol): T`は`@typescript-eslint/no-unnecessary-type-parameters`に当たるため、`app-module.ts`にならい理由のコメント付きで抑制している。
 - 4.3(5.5への申し送り): `createGraphQLContext`の引数は、設計の`GatewayRequestScope`(5.5で定義、`observation`を含む)の構造的な部分集合`GraphQLContextScope`(`access`・`container`・`correlationId`・`clientIp`・`session`・`botToken`)。5.5では`GatewayRequestScope`をそのまま渡す(循環importを避けるため`graphql-context.ts`から`gateway-server.ts`を読み込まない)。Yogaは文脈の項目を`Object.assign`で自身の文脈へ複製するため、`resolve`・`assertHuman`は`this`に依存しない。`BotVerifier`は`assertHuman`の呼び出し時に取得する。
+- 4.4(4.5・9.1への申し送り): 包んだリゾルバの生成型への代入は、codegenと同じ形の`Resolver`型をテスト内に置いて確かめた。4.5で実際の生成型への代入を確かめる。`validation_error`の詳細の`message`はZodの`issue.message`のため、文言を指定しない規則はZodの既定の英語の文言になる。9.1の文書に「利用者へ出る規則には日本語の文言を必ず指定する」と書く。`invalid_cursor`の文言は「ページの位置の指定が正しくありません。」、全体の文言は「入力内容を確認してください。」。検証は`safeParseAsync`(非同期の規則のため)。`first`・`perPage`の既定値は持たせずドメインが決める。
