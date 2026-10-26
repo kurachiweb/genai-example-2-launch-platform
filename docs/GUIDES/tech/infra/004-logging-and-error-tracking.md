@@ -312,13 +312,14 @@ flowchart LR
 | `logentry`                                 | `message`・`formatted`・`params`の中の全ての文字列を、入れ子をたどって値の形式で伏せる。循環するオブジェクトは祖先の位置を`[Circular ~]`にして打ち切る                                                                                |
 | パンくず(`breadcrumbs[]`)                  | `message`と、`data`の中の全ての文字列(入れ子を含む)を値の形式で伏せる                                                                                                                                                                 |
 | トランザクションの名前(`transaction`)      | 値の形式で伏せる                                                                                                                                                                                                                      |
-| リクエスト(`request`)                      | `url`を値の形式で伏せ、`cookies`・`data`・`query_string`を削除する。`headers`から`cookie`・`authorization`とIPアドレスを表すヘッダーを、大文字小文字を区別せずに削除する                                                              |
+| リクエスト(`request`)                      | `url`を値の形式で伏せ、`cookies`・`data`・`query_string`を削除する。`headers`から`cookie`・`authorization`、IPアドレスを表すヘッダー、中継ヘッダーを、大文字小文字を区別せずに削除する                                                |
 | 利用者(`user`)                             | `ip_address`・`email`を削除する                                                                                                                                                                                                       |
 | スパンの名前(`name`)                       | 値の形式で伏せる                                                                                                                                                                                                                      |
 | スパンの属性(`attributes`)                 | 文字列の値(配列と`{ value, unit }`の形の中を含む)を値の形式で伏せる。スパンの説明(`sentry.description`)、URL・経路(`url.full`・`url.path`)もこれで伏せられる                                                                          |
 | スパンの属性のうち利用者と接続元を表すもの | `user.ip_address`・`user.email`・`client.address`・`network.peer.address`・`url.query`・`http.request.body.data`・`http.response.header.set-cookie`と、`http.request.header.<削除するヘッダー名>`を、大文字小文字を区別せずに削除する |
 
 - IPアドレスを表すヘッダーは、Sentryが利用者のIPアドレスの取得に使う12種(`x-client-ip`・`x-forwarded-for`・`fly-client-ip`・`cf-connecting-ip`・`fastly-client-ip`・`true-client-ip`・`x-real-ip`・`x-cluster-client-ip`・`x-forwarded`・`forwarded-for`・`forwarded`・`x-vercel-forwarded-for`)である。
+- 中継ヘッダーは、他のWorkerが要求を中継するときに付ける、元のクライアントIPアドレス・セッション識別子・bot判定のトークン(`cf-turnstile-response`)のヘッダーである。中継ヘッダーの名前を加えたり変えたりしたら、除去処理の削除するヘッダーを合わせる。
 - `scrubSpan`はスパンを書き換えずに新しいスパンを返す。`beforeSendSpan`はスパンを捨てられないため、除去だけを行う。
 - 例外の値などを書き換えても、Sentryのグループ化はスタックトレースと例外の種類で行われるため、グループは大きく変わらない。
 

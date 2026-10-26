@@ -25,7 +25,7 @@
   - _Boundary: SecurityHeaders_
   - _Requirements: 12.1, 12.2, 12.3_
 
-- [ ] 2.2 (P) Sentryのイベントから中継ヘッダーを除く
+- [x] 2.2 (P) Sentryのイベントから中継ヘッダーを除く
   - 先に、backend-platformのイベントの除去の単体テストへ、元のクライアントIP・セッション識別子・bot判定のトークンのヘッダーが除かれることを加え、失敗を確かめる
   - 除くヘッダーの一覧に3つを加える。関数の形と既存の除去規則は変えない
   - 完了状態: 除去の単体テストが既存の項目を含めて成功する
@@ -283,3 +283,4 @@
 - 1.2(10.2への申し送り): Workers統合テストの`coverage.include`は`src/presentation/**`を含むため、Bunで単体テストする`gateway-headers.ts`(後の`query-limits.ts`・`error-codes.ts`も)は、Workers統合テストから関数が呼ばれるまで関数カバレッジが閾値を下回る。後続の3.x・5.xで解消される想定で、10.2で確かめる。
 - 1.2(後続への申し送り): Bunが読み込むGraphQLのファイルの禁止importは`src/presentation/graphql/modules/**`の`*.worker.test.ts`にも当たり、`cloudflare:*`を読み込めない。疎通確認のモジュールのテストで`cloudflare:test`が要るならテスト補助経由にするか、規則に`ignores`を加える。合成ルートの禁止のパターンと文言は`config/eslint/backend-layers.ts`から複製している。
 - 2.1: `withSecurityHeaders`は既存の`withSentryForScheduledAndQueue`にならい`<E, Q = unknown>`(設計は`<E>`)。ヘッダーが不変の応答は設定時の`TypeError`で検出して`new Response(response.body, response)`で複製する。eventの`test:worker`は`lib/**`を除外しているため、共有コードのWorkers統合テストはapiでだけ実行される。
+- 2.2: `backend-lib/core`の単体テストはapiの`test:unit`だけが`lib/**`経由で実行する(ルートは`apps/**`を、eventは`lib/**`を除外)。中継ヘッダーは`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の伏せ字の規則に一般的な説明で追記した(本プロジェクトのヘッダー名は9.4・9.5で記載する)。

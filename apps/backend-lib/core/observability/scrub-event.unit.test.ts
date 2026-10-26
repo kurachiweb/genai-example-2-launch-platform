@@ -15,7 +15,7 @@ const API_KEY = `lsk_${'AbCdEfGhIj'.repeat(4)}K_-`;
 const LUHN_VALID_CARD_NUMBER = '4111111111111111';
 const NO_HINT: EventHint = {};
 
-// Sentryが利用者のIPアドレスの取得に使う12種のヘッダーと、Cookie・認証のヘッダー
+// Sentryが利用者のIPアドレスの取得に使う12種のヘッダーと、Cookie・認証のヘッダーと、中継された元のクライアントIP・セッション識別子・bot判定のトークンのヘッダー
 const REMOVED_HEADER_NAMES = [
   'X-Client-IP',
   'X-Forwarded-For',
@@ -31,6 +31,9 @@ const REMOVED_HEADER_NAMES = [
   'X-Vercel-Forwarded-For',
   'Cookie',
   'Authorization',
+  'X-Original-Client-IP',
+  'X-Session-Token',
+  'CF-Turnstile-Response',
 ];
 
 function sensitiveText(label: string): string {

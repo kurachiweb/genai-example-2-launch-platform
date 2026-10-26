@@ -25,7 +25,8 @@ const REMOVED_REQUEST_FIELDS: ReadonlySet<string> = new Set([
   'query_string',
 ]);
 
-// Sentryが利用者のIPアドレスの取得に使う12種のヘッダー(@sentry/coreのgetClientIPAddress)を全て含める
+// Sentryが利用者のIPアドレスの取得に使う12種のヘッダー(@sentry/coreのgetClientIPAddress)を全て含める。
+// 他のWorkerが中継する元のクライアントIP・セッション識別子・bot判定のトークンのヘッダーも含める
 const REMOVED_HEADER_NAMES: ReadonlySet<string> = new Set([
   'cookie',
   'authorization',
@@ -41,6 +42,9 @@ const REMOVED_HEADER_NAMES: ReadonlySet<string> = new Set([
   'forwarded-for',
   'forwarded',
   'x-vercel-forwarded-for',
+  'x-original-client-ip',
+  'x-session-token',
+  'cf-turnstile-response',
 ]);
 
 const REMOVED_SPAN_ATTRIBUTES: ReadonlySet<string> = new Set([
