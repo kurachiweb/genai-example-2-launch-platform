@@ -5,14 +5,10 @@ import {
   type CounterDecision,
   type CounterRule,
   type WindowState,
+  windowEndsAt,
 } from '../../core/rate-limit/fixed-window.ts';
 
 const WINDOW_STATE_KEY = 'window';
-const MILLISECONDS_PER_SECOND = 1000;
-
-function windowEndsAt(state: WindowState): number {
-  return state.windowStartedAt + state.windowSeconds * MILLISECONDS_PER_SECOND;
-}
 
 export class RateLimitCounter extends DurableObject {
   async hit(rule: CounterRule): Promise<CounterDecision> {

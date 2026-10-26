@@ -4,6 +4,7 @@ import {
   applyHit,
   type CounterRule,
   type WindowState,
+  windowEndsAt,
 } from './fixed-window.ts';
 
 const rule: CounterRule = {
@@ -213,5 +214,13 @@ describe('applyHit', () => {
 
   test('現在時刻が有限の数でなければRangeErrorにする', () => {
     expect(() => applyHit(undefined, Number.NaN, rule)).toThrow(RangeError);
+  });
+});
+
+describe('windowEndsAt', () => {
+  test('期間の開始時刻に期間の秒数をミリ秒にして足した時刻を返す', () => {
+    expect(
+      windowEndsAt({ count: 1, windowStartedAt: 1_000, windowSeconds: 60 }),
+    ).toBe(61_000);
   });
 });

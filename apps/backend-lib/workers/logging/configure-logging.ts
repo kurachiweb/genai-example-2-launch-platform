@@ -8,6 +8,7 @@ import {
 } from '@logtape/logtape';
 import { redactByField, redactByPattern } from '@logtape/redaction';
 
+import { isLogLevel, type LogLevel } from '../../core/logging/log-level.ts';
 import { objectConsoleFormatter } from '../../core/logging/log-record.ts';
 import {
   REDACTED,
@@ -17,28 +18,19 @@ import {
 
 export interface LoggingOptions {
   readonly appName: 'api' | 'event';
-  readonly level: 'debug' | 'info' | 'warning' | 'error';
+  readonly level: LogLevel;
   readonly console?: Console;
 }
 
-type LoggingLevel = LoggingOptions['level'];
-
 interface AppliedLogging {
   readonly appName: LoggingOptions['appName'];
-  readonly level: LoggingLevel;
+  readonly level: LogLevel;
   readonly console: Console;
   readonly config: Config<string, string>;
 }
 
-const LOGGING_LEVELS: ReadonlySet<string> = new Set<LoggingLevel>([
-  'debug',
-  'info',
-  'warning',
-  'error',
-]);
-
 // 不正なLOG_LEVELは環境の検証で失敗させるため、ログ自体は既定のレベルで出し続ける
-const FALLBACK_LEVEL: LoggingLevel = 'info';
+const FALLBACK_LEVEL: LogLevel = 'info';
 
 const CONSOLE_SINK_ID = 'console';
 
@@ -50,13 +42,9 @@ let applied: AppliedLogging | undefined;
 // 設定し直しても進行中の処理単位の文脈を失わないよう、isolateで1つのストアを使い続ける
 let contextLocalStorage: AsyncLocalStorage<Record<string, unknown>> | undefined;
 
-function isLoggingLevel(level: string): level is LoggingLevel {
-  return LOGGING_LEVELS.has(level);
-}
-
 function isApplied(
   appName: LoggingOptions['appName'],
-  level: LoggingLevel,
+  level: LogLevel,
   output: Console,
 ): boolean {
   return (
@@ -69,7 +57,7 @@ function isApplied(
 }
 
 export function ensureLoggingConfigured(options: LoggingOptions): void {
-  const level = isLoggingLevel(options.level) ? options.level : FALLBACK_LEVEL;
+  const level = isLogLevel(options.level) ? options.level : FALLBACK_LEVEL;
   const output = options.console ?? console;
   if (isApplied(options.appName, level, output)) {
     return;

@@ -47,7 +47,7 @@ function assertValidInput(now: number, rule: CounterRule): void {
   }
 }
 
-function windowEndsAt(state: WindowState): number {
+export function windowEndsAt(state: WindowState): number {
   return state.windowStartedAt + state.windowSeconds * MILLISECONDS_PER_SECOND;
 }
 

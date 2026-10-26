@@ -22,7 +22,7 @@ import {
 import { createInvocationContainer } from '../di/invocation-container.ts';
 import type { PlatformEnv } from '../env/platform-env.ts';
 import { handleDeadLetterBatch } from './dead-letter-consumer.ts';
-import { MAX_DELAY_SECONDS } from './queue-publisher.ts';
+import { invalidDelayMessage, isValidDelaySeconds } from './queue-publisher.ts';
 
 export interface QueueDispatcher<E extends PlatformEnv> {
   dispatch(batch: MessageBatch, env: E, ctx: ExecutionContext): Promise<void>;
@@ -112,14 +112,8 @@ async function sendDeadLetterNotice(
 }
 
 function assertDeferDelay(delaySeconds: number): void {
-  if (
-    !Number.isInteger(delaySeconds) ||
-    delaySeconds < 0 ||
-    delaySeconds > MAX_DELAY_SECONDS
-  ) {
-    throw new RangeError(
-      `遅延秒数は0以上${String(MAX_DELAY_SECONDS)}以下の整数で指定してください: ${String(delaySeconds)}`,
-    );
+  if (!isValidDelaySeconds(delaySeconds)) {
+    throw new RangeError(invalidDelayMessage(delaySeconds));
   }
 }
 

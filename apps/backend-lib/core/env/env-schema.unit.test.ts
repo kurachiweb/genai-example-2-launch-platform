@@ -2,7 +2,11 @@ import { describe, expect, test } from 'bun:test';
 
 import { z } from 'zod';
 
-import { EnvValidationError, validateEnv } from './env-schema.ts';
+import {
+  EnvValidationError,
+  logEnvValidationFailure,
+  validateEnv,
+} from './env-schema.ts';
 
 const SECRET_PEPPER = 'pepper-value-must-not-leak';
 const INVALID_LOG_LEVEL = 'verbose-value-must-not-leak';
@@ -184,5 +188,34 @@ describe('EnvValidationError', () => {
     expect(error.missingKeys).toEqual([]);
     expect(error.invalidKeys).toEqual([]);
     expect(error.message).toContain('なし');
+  });
+});
+
+describe('logEnvValidationFailure', () => {
+  test('欠けたキーと不正なキーの名前だけを、値を含めずにerrorで1件記録する', () => {
+    const calls: { message: string; properties: unknown }[] = [];
+    const logger = {
+      error: (message: string, properties: unknown) => {
+        calls.push({ message, properties });
+      },
+    };
+    const error = captureEnvError(schema, {
+      ...validEnv(),
+      HASH_PEPPER: undefined,
+      LOG_LEVEL: INVALID_LOG_LEVEL,
+    });
+
+    logEnvValidationFailure(logger, error);
+
+    expect(calls).toEqual([
+      {
+        message: '環境の設定に不備があるため処理を始めません',
+        properties: {
+          missingEnvNames: ['HASH_PEPPER'],
+          invalidEnvNames: ['LOG_LEVEL'],
+        },
+      },
+    ]);
+    expect(JSON.stringify(calls)).not.toContain(INVALID_LOG_LEVEL);
   });
 });

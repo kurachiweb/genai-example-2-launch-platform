@@ -31,12 +31,16 @@ export class MessagePublishError extends Error {
   }
 }
 
-function isValidDelaySeconds(delaySeconds: number): boolean {
+export function isValidDelaySeconds(delaySeconds: number): boolean {
   return (
     Number.isInteger(delaySeconds) &&
     delaySeconds >= 0 &&
     delaySeconds <= MAX_DELAY_SECONDS
   );
+}
+
+export function invalidDelayMessage(delaySeconds: number): string {
+  return `遅延秒数は0以上${String(MAX_DELAY_SECONDS)}以下の整数で指定してください: ${String(delaySeconds)}`;
 }
 
 export function createMessagePublisher(
@@ -71,7 +75,7 @@ export function createMessagePublisher(
       if (delaySeconds !== undefined && !isValidDelaySeconds(delaySeconds)) {
         throw new MessagePublishError(
           'invalid-delay',
-          `遅延秒数は0以上${String(MAX_DELAY_SECONDS)}以下の整数で指定してください: ${String(delaySeconds)}`,
+          invalidDelayMessage(delaySeconds),
         );
       }
 

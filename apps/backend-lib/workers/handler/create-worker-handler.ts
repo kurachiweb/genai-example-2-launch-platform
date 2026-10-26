@@ -4,7 +4,11 @@ import type { Hono } from 'hono';
 import type { z } from 'zod';
 
 import type { InvocationScopeInfo } from '../../core/di/identifiers.ts';
-import { EnvValidationError, validateEnv } from '../../core/env/env-schema.ts';
+import {
+  EnvValidationError,
+  logEnvValidationFailure,
+  validateEnv,
+} from '../../core/env/env-schema.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import type { PlatformEnv } from '../env/platform-env.ts';
 import type { PlatformHonoEnv } from '../http/hono-env.ts';
@@ -56,11 +60,7 @@ export function createWorkerHandler<E extends PlatformEnv>(
       validateEnv(envSchema, env);
     } catch (error) {
       if (error instanceof EnvValidationError) {
-        // 属性名に`key`を含めると、属性名による伏せ字の既定の規則で値ごと伏せられる
-        envLoggers[kind].error('環境の設定に不備があるため処理を始めません', {
-          missingEnvNames: error.missingKeys,
-          invalidEnvNames: error.invalidKeys,
-        });
+        logEnvValidationFailure(envLoggers[kind], error);
       }
       throw error;
     }

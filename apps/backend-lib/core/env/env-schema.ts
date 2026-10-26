@@ -18,6 +18,21 @@ function formatKeys(keys: readonly string[]): string {
   return keys.length === 0 ? 'なし' : keys.join(', ');
 }
 
+export interface EnvFailureLogger {
+  error(message: string, properties: Record<string, unknown>): void;
+}
+
+export function logEnvValidationFailure(
+  logger: EnvFailureLogger,
+  error: EnvValidationError,
+): void {
+  // 属性名に`key`を含めると、属性名による伏せ字の既定の規則で値ごと伏せられる
+  logger.error('環境の設定に不備があるため処理を始めません', {
+    missingEnvNames: error.missingKeys,
+    invalidEnvNames: error.invalidKeys,
+  });
+}
+
 const validatedEnvsBySchema = new WeakMap<
   z.ZodType,
   WeakMap<object, unknown>
