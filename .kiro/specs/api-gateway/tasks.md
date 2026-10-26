@@ -18,7 +18,7 @@
   - _Requirements: 2.4, 3.8, 9.1_
 
 - [ ] 2. 共有コード: セキュリティヘッダーとSentryの除外ヘッダー
-- [ ] 2.1 (P) 応答へセキュリティヘッダーを付ける部品を共有コードに作る
+- [x] 2.1 (P) 応答へセキュリティヘッダーを付ける部品を共有コードに作る
   - 先に、HSTS・`X-Content-Type-Options`・`Referrer-Policy`・Permissions-Policy・既定のCSPが付くこと、応答が既にCSPを持てば置き換えないこと、ヘッダーが不変の応答も複製して付けられること、Workerのハンドラーを包んだ場合に`fetch`の応答にだけ付くことを確かめるWorkers統合テストを書く
   - 設計の値の表どおりに、応答への付与とWorkerのハンドラーの包みを実装する
   - 完了状態: 共有コードのWorkers統合テストが成功し、包んだハンドラーの`scheduled`・`queue`がそのまま委ねられる
@@ -282,3 +282,4 @@
 - 1.1: Betterleaksが`bun.lock`の`"@inquirer/password": "^…"`(パッケージ名)を`generic-password`として誤検知する。依存を変えて該当行が移動したら`.betterleaksignore`のFingerprintを登録し直す。
 - 1.2(10.2への申し送り): Workers統合テストの`coverage.include`は`src/presentation/**`を含むため、Bunで単体テストする`gateway-headers.ts`(後の`query-limits.ts`・`error-codes.ts`も)は、Workers統合テストから関数が呼ばれるまで関数カバレッジが閾値を下回る。後続の3.x・5.xで解消される想定で、10.2で確かめる。
 - 1.2(後続への申し送り): Bunが読み込むGraphQLのファイルの禁止importは`src/presentation/graphql/modules/**`の`*.worker.test.ts`にも当たり、`cloudflare:*`を読み込めない。疎通確認のモジュールのテストで`cloudflare:test`が要るならテスト補助経由にするか、規則に`ignores`を加える。合成ルートの禁止のパターンと文言は`config/eslint/backend-layers.ts`から複製している。
+- 2.1: `withSecurityHeaders`は既存の`withSentryForScheduledAndQueue`にならい`<E, Q = unknown>`(設計は`<E>`)。ヘッダーが不変の応答は設定時の`TypeError`で検出して`new Response(response.body, response)`で複製する。eventの`test:worker`は`lib/**`を除外しているため、共有コードのWorkers統合テストはapiでだけ実行される。
