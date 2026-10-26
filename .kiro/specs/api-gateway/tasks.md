@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 依存の導入・環境の種別・内部経路の契約の型・import制限
+- [x] 1. 基盤: 依存の導入・環境の種別・内部経路の契約の型・import制限
 - [x] 1.1 APIサーバーへGraphQL・OpenAPI関連の依存を固定した版で導入し、環境の種別を設定に加える
   - 前提: backend-platformの全タスクが完了し、api・eventのプロジェクト・Wrangler設定・Workers統合テストの設定が存在すること。無ければ止めて報告する
   - 設計のTechnology Stackの依存(`graphql` 16.14.2・GraphQL Yoga・persisted operationsとintrospection無効化のプラグイン・GraphQL Armor・DataLoader・`@hono/zod-openapi`、開発用にGraphQL Code Generatorのcli・typescript・typescript-resolvers)を、版を完全に固定して導入する
@@ -17,7 +17,7 @@
   - 完了状態: 契約の定数の単体テストと、違反例のimportが報告される層の規則のテストが成功し、apiの静的解析・型検査が成功する
   - _Requirements: 2.4, 3.8, 9.1_
 
-- [ ] 2. 共有コード: セキュリティヘッダーとSentryの除外ヘッダー
+- [x] 2. 共有コード: セキュリティヘッダーとSentryの除外ヘッダー
 - [x] 2.1 (P) 応答へセキュリティヘッダーを付ける部品を共有コードに作る
   - 先に、HSTS・`X-Content-Type-Options`・`Referrer-Policy`・Permissions-Policy・既定のCSPが付くこと、応答が既にCSPを持てば置き換えないこと、ヘッダーが不変の応答も複製して付けられること、Workerのハンドラーを包んだ場合に`fetch`の応答にだけ付くことを確かめるWorkers統合テストを書く
   - 設計の値の表どおりに、応答への付与とWorkerのハンドラーの包みを実装する
@@ -39,7 +39,7 @@
   - _Depends: 2.1_
   - _Requirements: 12.1_
 
-- [ ] 3. 内部経路と外部経路の境界
+- [x] 3. 内部経路と外部経路の境界
 - [x] 3.1 (P) 呼び出し元の付与・除去・読み取りと、送信元IPアドレスの解決を作る
   - 先に、呼び出し元の上書き、外部経路での呼び出し元と元のクライアントIPのヘッダーの除去、IPv4・IPv6の解釈と不正値の拒否、内部経路では引き継いだIP・外部経路では接続元のIPを返す解決を確かめるWorkers統合テストを書く
   - backend-platformのクライアントIPの解決の型に合わせて実装し、`cf`の情報を保ったまま要求を複製する
@@ -74,7 +74,7 @@
   - _Depends: 2.1_
   - _Requirements: 1.1, 1.3, 1.4, 1.5, 12.1_
 
-- [ ] 4. GraphQLのスキーマモジュールの規約と生成
+- [x] 4. GraphQLのスキーマモジュールの規約と生成
 - [x] 4.1 (P) スキーマモジュールの契約・基盤の型定義・日時のスカラー・合成と重複検査・印字を作る
   - 先に、複数モジュールの`Query`・`Mutation`の結合、モジュール名・型・項目(列挙型の値・入力型の項目を含む)の重複での合成エラー、スキーマに無い型・項目のリゾルバでの失敗、日時の出力(エポックミリ秒と日付からUTCのRFC 3339)と不正な入力の拒否、同じ定義から同じ印字結果になることを確かめるWorkers統合テストを書く
   - 基盤の型定義(日時・カーソル型とオフセット型のページング情報)を先頭に置いて合成し、型と項目を名前順に並べて印字する
@@ -116,7 +116,7 @@
   - 完了状態: テスト用のコンテナで`systemStatus`が時刻とデータベースの到達可否を返し、生成した型でリゾルバの型検査が成功する
   - _Requirements: 8.4, 8.8_
 
-- [ ] 5. GraphQLの実行基盤
+- [x] 5. GraphQLの実行基盤
 - [x] 5.1 (P) クエリの上限と、拒否の種類・エラーコードの分類を作る
   - 先に、深さ9・エイリアス16・コスト5000超・字句1000超・ディレクティブ51の操作がそれぞれの種類のエラーコードに、構文の誤りと存在しない項目がそれぞれのコードに分類されること、上限以内の操作が通ること、デプロイ先の設定では上限値と実測値と項目の候補が応答に出ないことを確かめるWorkers統合テストを書く
   - 上限値の定数、Armorの設定と拒否の種類の記録、エラーコードの型と解析・検証の失敗の分類を実装する
@@ -160,7 +160,7 @@
   - _Depends: 3.4, 5.5_
   - _Requirements: 1.1, 1.2, 1.5, 6.3, 6.4, 6.6, 7.5, 12.3, 13.1_
 
-- [ ] 6. 許可リストの生成と検査のコマンド
+- [x] 6. 許可リストの生成と検査のコマンド
 - [x] 6.1 操作の本文をスキーマと上限で検証する関数を作る
   - 先に、テスト用のスキーマで、上限を超える操作がそれぞれの種類のコードを返し、構文の誤りと存在しない項目がそれぞれのコードを返し、上限以内の操作が合格する単体テストを書く
   - 5.1の上限とエラーコードの分類を使い、解析と検証だけを行う関数を実装する(実行はしない)
@@ -188,7 +188,7 @@
   - _Depends: 4.5, 6.1, 6.3_
   - _Requirements: 4.9, 9.3, 9.4_
 
-- [ ] 7. 公開RESTの骨格とCORS
+- [x] 7. 公開RESTの骨格とCORS
 - [x] 7.1 (P) 公開APIのアプリ・応答のスキーマ部品・認証方式の宣言を作る
   - 先に、テスト用の経路で、検証の失敗が400と項目ごとの詳細の共通のエラー形式になること、単体・オフセット型・カーソル型の成功応答のスキーマとエラー応答のスキーマがOpenAPI仕様に現れること、Bearer認証の方式を宣言できることを確かめるWorkers統合テストを書く
   - 基準パス・仕様の経路の定数、検証失敗を共通エラー型へ変換するアプリの生成、応答のスキーマ部品、認証方式を実装する
@@ -212,7 +212,7 @@
   - _Boundary: RestModule_
   - _Requirements: 10.2, 10.3, 10.5, 10.8, 10.9, 10.10, 11.3_
 
-- [ ] 8. APIサーバーへの結線と端から端までの確認
+- [x] 8. APIサーバーへの結線と端から端までの確認
 - [x] 8.1 登録箇所・合成・エントリをAPIサーバーへ結線する
   - 公開REST・内部REST・セッションの束縛の登録箇所を作り(初版は空、セッションは既定の実装)、モジュールの登録へセッション・疎通確認の束縛とGraphQL・公開REST・内部RESTのモジュールを加える
   - Workerの組み立て(クライアントIPの解決の差し替え、外部経路の包みとCORSの方針)を合成ルートの1ファイルにまとめ、メインモジュールは既定のエクスポート・2つの名前付きエントリポイント・backend-platformの厳密カウンタのクラスだけをエクスポートする
@@ -228,7 +228,7 @@
   - 完了状態: 端から端までのWorkers統合テストが、デプロイ先環境とローカル環境の両方の設定で成功する
   - _Requirements: 1.1, 1.2, 1.4, 1.5, 2.1, 2.2, 5.4, 6.3, 6.6, 11.1, 12.1, 14.2_
 
-- [ ] 9. 技術ドキュメントとオンボーディング
+- [x] 9. 技術ドキュメントとオンボーディング
 - [x] 9.1 (P) GraphQL基盤の技術ドキュメントを追加する
   - 受付経路、上限と算出方法、呼び出し元別の許可リストと現行・直前のリリース、introspection・GraphiQL、エラーの分類と状態コード、スキーマモジュールの規約(合成・重複の禁止・リゾルバに業務ロジックを置かない・一括読み込みと件数の上限・引数の検証・ページングの型と命名・日時のスカラー・bot判定)、生成と検査のコマンド(一括検査の段階を含む)、操作ログ、トレースへの操作名の付け方(ルートのスパンの属性と実行の子のスパン、ルートのスパンの名前を変えない理由)を記載し、索引へ1行追記する
   - 完了状態: バックエンドの索引から文書へ辿れ、記載の規約がテストで確かめた振る舞いと一致し、プロジェクト名と固有値を含まない
@@ -321,3 +321,4 @@
 - 10.1(2026-10-26の結果): オンボーディングの手順で`graphql:generate`・`graphql:allowlist`(client 0件・admin 0件)・`graphql:check`を実行し、全て成功して生成物は変わらなかった。実際のWrangler設定で`unstable_startWorker`のバンドルを取り出すと、`ClientGateway`・`AdminGateway`・`RateLimitCounter`・既定のエクスポートとYogaを含み、生3.05MiB・gzip 573KiB(無料プランの上限3MBの約19%)。esbuildでminifyすると生1.3MiB・gzip 345KiB。大きい依存はzod 443KiB・graphql 173KiB・drizzle-orm 108KiB・@sentry/core 106KiB。`watch`で起動して`allowlist.json`を更新するとWranglerがバンドルし直すため、起動中の開発サーバーは再生成した許可リストを起動し直さずに反映する(オンボーディングを修正)。開発コンテナの`node`はv26.12.1、unpkgとChromiumは利用可能。
 - 10.1(開発者の手動実行が必要): (1)`infisical --telemetry=false login --domain https://eu.infisical.com`でログインし、Webコンソールの`dev`環境に`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`があることを確かめる。(2)`/workspace/apps/api`で`infisical --telemetry=false run --env dev -- bun run dev`を実行し、`http://localhost:48042/graphql`のGraphiQLで`systemStatus`を実行できること・コンソールにCSP違反が出ないこと・Monacoが`'unsafe-eval'`を要さないことと、`curl -i http://localhost:48042/v1/openapi.json`の応答にCORSとセキュリティヘッダーが付くことを確かめる。(3)`/workspace/apps/api`で`bunx wrangler deploy --dry-run --outdir /tmp/api-dry-run`を実行し、Total Upload/gzipが上の大きさに近いことを確かめる(`wrangler deploy`はClaudeの設定で拒否される)。
 - 10.2(2026-10-26の結果): ルートの`check`は成功12件・失敗0件(GraphQLの生成物の検査はapiで成功、eventはスクリプト未定義で飛ばした)。`test:all:unit --coverage`はルート629件・api 763件が成功し閾値違反なし(ルートの最小は`business-time.ts`の行80.56%、apiの最小は`document-validator.ts`の行97.06%)。`test:all:worker --coverage`はapi 778件(関数100%・行99.4%、最小は`operation-observability.ts`の行95%)・event 6件(100%)が成功し閾値違反なし。`test:smoke`(DIの変換経路)と`db:migrations:check`(0件)も成功。1.2で申し送ったカバレッジ不足は解消済み。
+- 最終検証(2026-10-26、kiro-validate-impl): 判定はMANUAL_VERIFY_REQUIRED(10.1のローカル起動・GraphiQLのブラウザでの確認・デプロイのdry-runが開発者待ち)。一括検査・カバレッジ付きの全テスト・スモークは成功し、要件14件・受け入れ基準90件に実装がある(10.4の`Content-Type`の不一致に`details`が無い、9.3のテストはスキーマファイルの食い違いだけ、が軽微な不足)。依存の向きの違反は無い。上流・下流への申し送り: (1)public-apiのdesign.md 929行は`PublicRestRoutes<ApiEnv>`を前提にするが、`REST_ROUTES`は`PublicRestRoutes<Env>`(8.1。Honoの型引数が不変のため、public-apiの設計を`Env`に改める必要がある)。(2)identity-authが`GatewayRequestScope`へ`userAgent`を足す時は、`graphql-context.ts`の`GraphQLContextScope`と`graphql-module.ts`の`createRequestScope`にも追記が要る。(3)backend-platformの`AppError`に413・415が無い(5.6・7.1)。(4)dev-toolingの設計に`graphql:check`の段階が無い(6.4)。(5)infra-deliveryのCIでは`--previous-ref`付きの許可リストの生成の後に`graphql:check`を流さない。改善の候補: 生成コマンドがBunで読み込む`gateway-headers.ts`・`validated-args.ts`・`pagination.ts`・`loaders.ts`にも禁止importの規則を広げる、Allowed Dependenciesに`NOT_FOUND_RESPONSE`・`getAppLogger`・`ErrorEnvelope`・`AppErrorStatus`を追記する、テストのためだけのexport(`createGatewayServer`など)の整理。
