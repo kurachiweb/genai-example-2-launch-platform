@@ -271,7 +271,7 @@
   - _Blocked: 開発コンテナでInfisicalにログインしていないため、シークレットを注入したAPIサーバーの起動(ローカルのGraphiQLでの`systemStatus`の実行・CSP違反の有無・Monacoの`'unsafe-eval'`の要否、`/v1/openapi.json`のCORSとセキュリティヘッダー)を確かめられない。`wrangler deploy --dry-run`は`.claude/settings.json`のdenyのため未実行。開発者の手動実行の手順はImplementation Notes 10.1に記載_
   - _Requirements: 5.7, 6.3, 9.1, 9.2, 9.3_
 
-- [ ] 10.2 一括検査とカバレッジ80%を満たすことを確かめる
+- [x] 10.2 一括検査とカバレッジ80%を満たすことを確かめる
   - ルートの一括検査と、カバレッジ計測付きの単体テスト・Workers統合テストの一括実行を行い、api・eventの全ファイルが行・関数80%以上であることを確かめる
   - backend-platformのスモークテスト(DIの変換経路の確認)とマイグレーションの検出確認が、回帰として引き続き成功することを確かめる
   - 完了状態: 一括検査(GraphQLの生成物の検査の段階を含む)・カバレッジ付きの一括テスト・スモークテスト・マイグレーションの検出確認がすべて成功する
@@ -320,3 +320,4 @@
 - 9.5(10.1・frontend-platformへの申し送り): `project-values.md`に固有値を載せ、技術文書の固有のプレースホルダーは全て読み替えられる。`<バインディング名>`はD1用(`DB`)とService Bindings用(`API`、frontend-platformが定める予定の値)を限定語で分けた。005の`<オリジン>`は配信元のオリジンの一般的な意味で、固有値の表の`<オリジン>`(ローカルの定期実行)とは別。GraphQLの経路`/graphql`はコードの`GRAPHQL_PATH`(graphql-module.ts)と`GRAPHQL_ENDPOINT`(gateway-server.ts)で2重に定義されている(統合の候補)。オンボーディングのフロントエンドのコード生成はコマンド名を書いていない(frontend-platformが追記する)。起動中の開発サーバーが再生成した許可リストを読み直すか、GraphiQLの画面の操作(ヘッダーの指定・CSP)は10.1で確かめる。
 - 10.1(2026-10-26の結果): オンボーディングの手順で`graphql:generate`・`graphql:allowlist`(client 0件・admin 0件)・`graphql:check`を実行し、全て成功して生成物は変わらなかった。実際のWrangler設定で`unstable_startWorker`のバンドルを取り出すと、`ClientGateway`・`AdminGateway`・`RateLimitCounter`・既定のエクスポートとYogaを含み、生3.05MiB・gzip 573KiB(無料プランの上限3MBの約19%)。esbuildでminifyすると生1.3MiB・gzip 345KiB。大きい依存はzod 443KiB・graphql 173KiB・drizzle-orm 108KiB・@sentry/core 106KiB。`watch`で起動して`allowlist.json`を更新するとWranglerがバンドルし直すため、起動中の開発サーバーは再生成した許可リストを起動し直さずに反映する(オンボーディングを修正)。開発コンテナの`node`はv26.12.1、unpkgとChromiumは利用可能。
 - 10.1(開発者の手動実行が必要): (1)`infisical --telemetry=false login --domain https://eu.infisical.com`でログインし、Webコンソールの`dev`環境に`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`があることを確かめる。(2)`/workspace/apps/api`で`infisical --telemetry=false run --env dev -- bun run dev`を実行し、`http://localhost:48042/graphql`のGraphiQLで`systemStatus`を実行できること・コンソールにCSP違反が出ないこと・Monacoが`'unsafe-eval'`を要さないことと、`curl -i http://localhost:48042/v1/openapi.json`の応答にCORSとセキュリティヘッダーが付くことを確かめる。(3)`/workspace/apps/api`で`bunx wrangler deploy --dry-run --outdir /tmp/api-dry-run`を実行し、Total Upload/gzipが上の大きさに近いことを確かめる(`wrangler deploy`はClaudeの設定で拒否される)。
+- 10.2(2026-10-26の結果): ルートの`check`は成功12件・失敗0件(GraphQLの生成物の検査はapiで成功、eventはスクリプト未定義で飛ばした)。`test:all:unit --coverage`はルート629件・api 763件が成功し閾値違反なし(ルートの最小は`business-time.ts`の行80.56%、apiの最小は`document-validator.ts`の行97.06%)。`test:all:worker --coverage`はapi 778件(関数100%・行99.4%、最小は`operation-observability.ts`の行95%)・event 6件(100%)が成功し閾値違反なし。`test:smoke`(DIの変換経路)と`db:migrations:check`(0件)も成功。1.2で申し送ったカバレッジ不足は解消済み。
