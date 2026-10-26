@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  assertRetryPolicy,
   DEFAULT_RETRY_POLICY,
   decideOnFailure,
+  QUEUE_MAX_RETRIES,
   type RetryPolicy,
 } from './retry-policy.ts';
 
@@ -79,6 +81,35 @@ describe('decideOnFailure', () => {
       expect(() => decideOnFailure(DEFAULT_RETRY_POLICY, attempts)).toThrow(
         RangeError,
       );
+    },
+  );
+});
+
+describe('assertRetryPolicy', () => {
+  test('試行回数の上限が1以上でQueuesの再試行回数の上限以下なら受け付ける', () => {
+    expect(() => {
+      assertRetryPolicy({ ...DEFAULT_RETRY_POLICY, maxAttempts: 1 });
+    }).not.toThrow();
+    expect(() => {
+      assertRetryPolicy({
+        ...DEFAULT_RETRY_POLICY,
+        maxAttempts: QUEUE_MAX_RETRIES,
+      });
+    }).not.toThrow();
+  });
+
+  test('既定の方針を受け付ける', () => {
+    expect(() => {
+      assertRetryPolicy(DEFAULT_RETRY_POLICY);
+    }).not.toThrow();
+  });
+
+  test.each([0, QUEUE_MAX_RETRIES + 1, 2.5, Number.NaN])(
+    '試行回数の上限が%pなら例外にする',
+    (maxAttempts) => {
+      expect(() => {
+        assertRetryPolicy({ ...DEFAULT_RETRY_POLICY, maxAttempts });
+      }).toThrow(RangeError);
     },
   );
 });

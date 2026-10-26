@@ -10,6 +10,23 @@ export const DEFAULT_RETRY_POLICY: RetryPolicy = Object.freeze({
   maxDelaySeconds: 3600,
 });
 
+// 本体Queueのconsumerの`max_retries`(Wrangler設定)と一致させる。一致は設定の整合の単体テストで確かめる
+export const QUEUE_MAX_RETRIES = 6;
+
+// Queuesは`max_retries`+1回まで配信する。上限を`max_retries`以下に抑え、最後の試行で通知の送信に失敗しても再配信で送り直せるようにする
+export function assertRetryPolicy(policy: RetryPolicy): void {
+  const { maxAttempts } = policy;
+  if (
+    !Number.isInteger(maxAttempts) ||
+    maxAttempts < 1 ||
+    maxAttempts > QUEUE_MAX_RETRIES
+  ) {
+    throw new RangeError(
+      `試行回数の上限は1以上${String(QUEUE_MAX_RETRIES)}以下の整数で指定してください: ${String(maxAttempts)}`,
+    );
+  }
+}
+
 export type FailureDecision =
   | { readonly kind: 'retry'; readonly delaySeconds: number }
   | { readonly kind: 'dead-letter' };

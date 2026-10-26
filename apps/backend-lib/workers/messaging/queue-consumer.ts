@@ -1,5 +1,5 @@
 import { withContext } from '@logtape/logtape';
-import { captureException } from '@sentry/cloudflare';
+import { captureException, withScope } from '@sentry/cloudflare';
 
 import type { AppModule } from '../../core/di/app-module.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
@@ -15,6 +15,7 @@ import type {
   MessageHandlingResult,
 } from '../../core/messaging/message-contract.ts';
 import {
+  assertRetryPolicy,
   DEFAULT_RETRY_POLICY,
   decideOnFailure,
   type RetryPolicy,
@@ -67,10 +68,9 @@ function indexRegistrations(
         `メッセージの種別が重複して登録されています: ${JSON.stringify(type)}`,
       );
     }
-    indexed.set(type, {
-      registration,
-      policy: { ...DEFAULT_RETRY_POLICY, ...registration.retry },
-    });
+    const policy = { ...DEFAULT_RETRY_POLICY, ...registration.retry };
+    assertRetryPolicy(policy);
+    indexed.set(type, { registration, policy });
   }
   return indexed;
 }
@@ -245,9 +245,31 @@ async function consumeOne<E extends QueueConsumerEnv>(
     return;
   }
   const { envelope } = parsed;
-  await withContext({ correlationId: envelope.id }, () =>
-    consumeMessage(message, envelope, context),
-  );
+  // バッチ全体の相関IDはハンドラーが付けるため、処理単位であるメッセージごとのスコープで封筒のIDに置き換え、ログとエラーレポートを結び付ける
+  await withScope((scope) => {
+    scope.setTag('correlation_id', envelope.id);
+    return withContext({ correlationId: envelope.id }, () =>
+      retryOnUnexpectedError(message, () =>
+        consumeMessage(message, envelope, context),
+      ),
+    );
+  });
+}
+
+async function retryOnUnexpectedError(
+  message: Message,
+  run: () => Promise<void>,
+): Promise<void> {
+  try {
+    await run();
+  } catch (error) {
+    // 1件の想定外の失敗で残りのメッセージの処理を止めないよう、そのメッセージだけをQueuesの再試行に任せる。例外を投げ直さないため、計装の代わりにエラートラッキングへ送る
+    logger.error('メッセージの処理中に想定外のエラーが発生しました', {
+      error,
+    });
+    captureException(error);
+    message.retry();
+  }
 }
 
 async function consumeJobsBatch<E extends QueueConsumerEnv>(
@@ -255,16 +277,8 @@ async function consumeJobsBatch<E extends QueueConsumerEnv>(
   context: ConsumeContext<E>,
 ): Promise<void> {
   for (const message of batch.messages) {
-    try {
-      await consumeOne(message, context);
-    } catch (error) {
-      // 1件の想定外の失敗で残りのメッセージの処理を止めないよう、そのメッセージだけをQueuesの再試行に任せる。例外を投げ直さないため、計装の代わりにエラートラッキングへ送る
-      logger.error('メッセージの処理中に想定外のエラーが発生しました', {
-        error,
-      });
-      captureException(error);
-      message.retry();
-    }
+    // 封筒を読めたメッセージはその相関IDの文脈の中で受け止めるため、ここで受け止めるのは封筒を読む前と読めなかった場合の失敗だけになる
+    await retryOnUnexpectedError(message, () => consumeOne(message, context));
   }
 }
 

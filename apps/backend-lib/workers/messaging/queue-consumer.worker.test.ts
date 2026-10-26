@@ -22,6 +22,7 @@ import {
   type MessageHandlingResult,
   type MessageMeta,
 } from '../../core/messaging/message-contract.ts';
+import { QUEUE_MAX_RETRIES } from '../../core/messaging/retry-policy.ts';
 import type { InvocationScope } from '../di/invocation-container.ts';
 import type { PlatformEnv } from '../env/platform-env.ts';
 import { ensureLoggingConfigured } from '../logging/configure-logging.ts';
@@ -733,15 +734,39 @@ describe('createQueueDispatcher(本体Queue)', () => {
 
     expect(result.error).toBeUndefined();
     expect(result.outcomes).toEqual([RETRIED_WITH_QUEUE_DELAY, ACKED]);
-    expect(
-      recording.calls.filter(({ method }) => method === 'error'),
-    ).toHaveLength(1);
+    const errorLogs = recording.calls.filter(
+      ({ method }) => method === 'error',
+    );
+    expect(errorLogs).toHaveLength(1);
+    expect(errorLogs[0]?.object).toMatchObject({ correlationId: FIRST_ID });
     const events = sentEvents(result);
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       level: 'error',
       exception: { values: [{ type: 'RangeError' }] },
+      tags: { correlation_id: FIRST_ID },
     });
+  });
+
+  test('想定外の例外のエラーレポートの相関IDは、そのメッセージだけに付き後続のメッセージへ残らない', async () => {
+    const harness = createHarness(failing);
+
+    const result = await harness.dispatch([
+      createTestMessage(
+        envelopeOf(greetingContract.type, { recipient: 'a' }, FIRST_ID),
+        0,
+      ),
+      // 同じ文言の例外が続くとSentryの組み込みのdedupeが後続を捨てるため、試行回数を変えて文言を変える
+      createTestMessage(
+        envelopeOf(greetingContract.type, { recipient: 'b' }, SECOND_ID),
+        -1,
+      ),
+    ]);
+
+    expect(sentEvents(result).map((event) => event.tags)).toEqual([
+      expect.objectContaining({ correlation_id: FIRST_ID }),
+      expect.objectContaining({ correlation_id: SECOND_ID }),
+    ]);
   });
 
   test('同じ種別を重複して登録すると組み立て時に例外にする', () => {
@@ -753,5 +778,15 @@ describe('createQueueDispatcher(本体Queue)', () => {
     expect(() =>
       createQueueDispatcher([registration, registration], []),
     ).toThrow(RangeError);
+  });
+
+  test('再試行の上書きの試行回数の上限がQueuesの再試行回数の上限を超えると組み立て時に例外にする', () => {
+    const registration: MessageHandlerRegistration<unknown> = {
+      contract: greetingContract,
+      handler: TEST_TYPES.GreetingHandler,
+      retry: { maxAttempts: QUEUE_MAX_RETRIES + 1 },
+    };
+
+    expect(() => createQueueDispatcher([registration], [])).toThrow(RangeError);
   });
 });

@@ -386,7 +386,7 @@ stateDiagram-v2
 - バッチのQueueの名前が`<本体Queueの名前の変数>`の値なら本体、`<デッドレターQueueの名前の変数>`の値ならデッドレターとして扱う。どちらでもなければ`error`ログを出してバッチ全体を例外にする。処理を始める前の環境の検証に失敗した場合も、バッチ全体を例外にしてQueuesの再配信に任せる。
 - 本体のメッセージごとに、封筒の解析、契約の検索、本文の検証、処理の実行を行う。
 - 処理が例外を投げた場合は、`warning`ログ(属性`error`)に記録して再試行の規則で判定する。試行ごとの失敗はエラートラッキングへ送らず、上限に達してデッドレターへ移ったときに、デッドレターのconsumerが送る。
-- 上記の外で想定外の例外が起きた場合は、`error`ログとエラートラッキング(`captureException`)へ送り、そのメッセージだけを`retry()`する(間隔はWrangler設定の`retry_delay`)。
+- 上記の外で想定外の例外が起きた場合は、そのメッセージの相関ID(封筒のID)の文脈とエラートラッキングのスコープの中で、`error`ログとエラートラッキング(`captureException`)へ送り、そのメッセージだけを`retry()`する(間隔はWrangler設定の`retry_delay`)。
 - メッセージごとに、封筒のIDを相関IDにして、`info`ログ「メッセージを処理しました」を出す。属性は`result`(`done`・`deferred`・`retried`・`dead-lettered`)・`messageType`・`attempts`・`durationMs`と、該当する場合の`reason`(デッドレターの理由)・`errorName`(例外のクラス名)である。封筒が不正なメッセージは`messageType`を持たず、相関IDはバッチの相関ID(Workerのハンドラーがバッチごとに採番したUUID)になる。
 
 ### 再試行
@@ -482,7 +482,8 @@ interface DeadLetterNotice {
 }
 ```
 
-- `max_retries`は、Queuesが元のメッセージを自動でデッドレターへ移すまでの再試行の回数である。登録で上書きしたものを含め、全ての種別の`retry.maxAttempts`を`max_retries`より小さくする。`maxAttempts`が`max_retries`以上だと、ディスパッチャが通知を送る前にQueuesが元のメッセージを移し、例外のクラス名の無い`auto-moved`として届く。
+- `max_retries`は、Queuesが元のメッセージを自動でデッドレターへ移すまでの再試行の回数である。Queuesは`max_retries`+1回まで配信し、それを超えて失敗した元のメッセージを移す。移されたメッセージは、例外のクラス名の無い`auto-moved`として届く。
+- 登録で上書きしたものを含め、全ての種別の`retry.maxAttempts`を`max_retries`以下にする。最後の試行で通知の送信に失敗しても、残りの1回の再配信で送り直せるようにするためである。ディスパッチャは、`max_retries`と同じ値の定数`QUEUE_MAX_RETRIES`(`core/messaging/retry-policy.ts`)を超える`maxAttempts`を、組み立て時に`assertRetryPolicy`で`RangeError`にする。定数と`max_retries`の一致は、設定の整合の単体テストで確かめる。`max_retries`を変えるときは定数も合わせる。
 - `retry_delay`は、間隔を指定しない`retry()`(想定外の例外・通知の送信の失敗)とconsumerの異常終了のときの再配信までの秒数である。
 - デッドレターのconsumerには`dead_letter_queue`を指定しない。
 - Queueを送信するだけのアプリには`producers`だけを置き、`consumers`を置かない。

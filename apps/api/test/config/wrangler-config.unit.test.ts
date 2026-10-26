@@ -4,7 +4,10 @@ import { join } from 'node:path';
 import { unstable_readConfig } from 'wrangler';
 import { z } from 'zod';
 
-import { DEFAULT_RETRY_POLICY } from '../../lib/core/messaging/retry-policy.ts';
+import {
+  DEFAULT_RETRY_POLICY,
+  QUEUE_MAX_RETRIES,
+} from '../../lib/core/messaging/retry-policy.ts';
 
 type AppName = 'api' | 'event';
 
@@ -351,8 +354,9 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     );
 
     expect(consumer?.dead_letter_queue).toBe(jobsDlq);
-    expect(consumer?.max_retries).toBeGreaterThan(
-      DEFAULT_RETRY_POLICY.maxAttempts,
+    expect(consumer?.max_retries).toBe(QUEUE_MAX_RETRIES);
+    expect(DEFAULT_RETRY_POLICY.maxAttempts).toBeLessThanOrEqual(
+      QUEUE_MAX_RETRIES,
     );
   });
 
