@@ -23,4 +23,4 @@ export const apiEnvSchema = z.object({
   RATE_LIMIT_COUNTER: bindingSchema<DurableObjectNamespace<RateLimitCounter>>(),
   TURNSTILE_SECRET_KEY: z.string().min(1),
   TURNSTILE_EXPECTED_HOSTNAMES: z.string(),
-});
+}) satisfies z.ZodType<ApiEnv>;

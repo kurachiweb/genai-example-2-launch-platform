@@ -236,13 +236,14 @@ export default config;
 
 一括検査は、ルートと各アプリで同じ名前のスクリプトを`bun run`で実行する。アプリは次のスクリプトを定義する。
 
-| スクリプト     | 定義するアプリ                | 内容                                                                 |
-| -------------- | ----------------------------- | -------------------------------------------------------------------- |
-| `lint`         | 全アプリ                      | `bun --bun eslint .`                                                 |
-| `typecheck`    | 全アプリ                      | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める)  |
-| `test:unit`    | 全アプリ                      | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test` |
-| `test:browser` | ブラウザテストを持つアプリ    | `vitest run --config vitest.browser.config.ts`                       |
-| `test:worker`  | Workers統合テストを持つアプリ | `vitest run --config vitest.worker.config.ts`                        |
+| スクリプト         | 定義するアプリ                       | 内容                                                                                      |
+| ------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `lint`             | 全アプリ                             | `bun --bun eslint .`                                                                      |
+| `typecheck`        | 全アプリ                             | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める)                       |
+| `cf-typegen:check` | Wranglerで実行時の型を生成するアプリ | `wrangler types --check`(生成済みの`worker-configuration.d.ts`が設定と食い違えば失敗する) |
+| `test:unit`        | 全アプリ                             | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test`                      |
+| `test:browser`     | ブラウザテストを持つアプリ           | `vitest run --config vitest.browser.config.ts`                                            |
+| `test:worker`      | Workers統合テストを持つアプリ        | `vitest run --config vitest.worker.config.ts`                                             |
 
 ```json
 {
@@ -257,7 +258,7 @@ export default config;
 }
 ```
 
-- 定義していないスクリプトは、一括検査で「飛ばした(スクリプト未定義)」として扱われ、失敗にはならない。ブラウザテストもWorkers統合テストも持たないアプリは、`test:browser`・`test:worker`を定義しない。
+- 定義していないスクリプトは、一括検査で「飛ばした(スクリプト未定義)」として扱われ、失敗にはならない。ブラウザテストもWorkers統合テストも持たないアプリは、`test:browser`・`test:worker`を定義しない。Wranglerで実行時の型を生成しないアプリは、`cf-typegen:check`を定義しない。
 - 整形検査はルートで1回だけ実行するため、アプリに整形のスクリプトは要らない。
 - `test:unit`の`--config=../../bunfig.toml`は省略できない。Bunはアプリのディレクトリからルートの`bunfig.toml`をさかのぼって読まないため、省略すると他の種別のテストの除外・カバレッジ閾値・lcovの出力のいずれも適用されない。相対パスは、アプリのディレクトリがルートの2階層下にある場合の例である。
 - テストの種別と命名、実行コマンド、カバレッジの規約は、「[テスト戦略](../testing/001-test-strategy.md)」に従う。
@@ -371,9 +372,11 @@ export default defineConfig({
 2. テスト命名の検査(`check:test-names`)
 3. 整形検査(ルートの`format:check`)
 4. 静的解析(ルートと各アプリの`lint`)
-5. 型検査(ルートと各アプリの`typecheck`)
+5. 型生成の検査(各アプリの`cf-typegen:check`)
+6. 型検査(ルートと各アプリの`typecheck`)
 
 - 配置の不備は、後段の静的解析や型検査では依存の解決エラーとして現れるため、最初の段階で確かめて原因を先に示す。
+- Wranglerの設定を変えて実行時の型を生成し直し忘れると、型検査のエラーとして現れるため、型検査の前に型生成の検査で原因を先に示す。ルートは実行時の型を生成しないため、この段階の対象にしない。
 - `check`は追加の引数を受け取らない。テストの一括実行(`bun run test:all:unit`など)は同じ仕組みでルートと各アプリの同名スクリプトを実行し、追加の引数(`--coverage`など)をそれぞれへ渡す。
 
 最後に、段階・対象・結果の表と件数を表示する。
@@ -386,10 +389,12 @@ export default defineConfig({
 静的解析(lint)                                  ルート      成功
 静的解析(lint)                                  <アプリ名>  失敗(終了コード1)
 静的解析(lint)                                  <アプリ名>  飛ばした(プロジェクト未作成)
+型生成の検査(cf-typegen:check)                  <アプリ名>  成功
+型生成の検査(cf-typegen:check)                  <アプリ名>  飛ばした(プロジェクト未作成)
 型検査(typecheck)                               ルート      成功
 型検査(typecheck)                               <アプリ名>  成功
 型検査(typecheck)                               <アプリ名>  飛ばした(プロジェクト未作成)
-成功5件・失敗2件・飛ばした2件
+成功6件・失敗2件・飛ばした3件
 ```
 
 - 失敗したアプリと検査の種類は表の「失敗」の行で分かる。違反の内容は、表の前に流れる各コマンドの出力で確かめる。

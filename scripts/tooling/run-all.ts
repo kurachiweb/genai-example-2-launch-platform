@@ -80,10 +80,12 @@ const AGGREGATE_COMMANDS: readonly AggregateCommand[] = [
 
 const ROOT_ONLY: readonly TargetDir[] = [{ target: 'root', dir: '.' }];
 
-const ROOT_AND_APPS: readonly TargetDir[] = [
-  ...ROOT_ONLY,
-  ...APPS.map(({ name, dir }) => ({ target: name, dir })),
-];
+const APPS_ONLY: readonly TargetDir[] = APPS.map(({ name, dir }) => ({
+  target: name,
+  dir,
+}));
+
+const ROOT_AND_APPS: readonly TargetDir[] = [...ROOT_ONLY, ...APPS_ONLY];
 
 // 配置の不備は後段の静的解析・型検査で依存の解決エラーとして現れるため、最初に確認して原因を先に表示する
 const CHECK_STEPS: readonly PlannedStep[] = [
@@ -91,6 +93,8 @@ const CHECK_STEPS: readonly PlannedStep[] = [
   { script: 'check:test-names', targets: ROOT_ONLY, args: [] },
   { script: 'format:check', targets: ROOT_ONLY, args: [] },
   { script: 'lint', targets: ROOT_AND_APPS, args: [] },
+  // 設定を変えて型を生成し直し忘れると型検査のエラーとして現れるため、型検査の前に確認して原因を先に表示する。実行時の型を生成するのはWorkersのアプリだけのため、ルートは対象にしない
+  { script: 'cf-typegen:check', targets: APPS_ONLY, args: [] },
   { script: 'typecheck', targets: ROOT_AND_APPS, args: [] },
 ];
 
@@ -99,6 +103,7 @@ const STEP_LABELS: ReadonlyMap<string, string> = new Map([
   ['check:test-names', 'テスト命名の検査'],
   ['format:check', '整形検査'],
   ['lint', '静的解析'],
+  ['cf-typegen:check', '型生成の検査'],
   ['typecheck', '型検査'],
   ['test:unit', '単体テスト'],
   ['test:browser', 'ブラウザテスト'],
@@ -117,7 +122,7 @@ const FAILURE_REASON_LABELS: Readonly<Record<FailureReason, string>> = {
 
 const USAGE = [
   `使い方: bun scripts/tooling/run-all.ts <${AGGREGATE_COMMANDS.join('|')}> [引数...]`,
-  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型検査を、失敗しても止めずにすべて実行する(引数は受け取らない)',
+  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型生成の検査・型検査を、失敗しても止めずにすべて実行する(引数は受け取らない)',
   '  それ以外: ルートと各アプリの同名スクリプトを、残りの引数付きで実行する',
   '',
 ].join('\n');

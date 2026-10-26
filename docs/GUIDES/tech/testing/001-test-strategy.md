@@ -252,7 +252,7 @@ describe('fetchハンドラー', () => {
 ```
 
 - 型検査設定の差分は「[Workers統合テストを持つアプリの差分](../coding/001-javascript-typescript-conventions.md#workers統合テストを持つアプリの差分)」に従う。
-- `wrangler types`が出力する`worker-configuration.d.ts`(実行時の型と環境の型)を生成してコミットする。`wrangler types --check`で、生成し直しが要るかを確かめられる。
+- `wrangler types`が出力する`worker-configuration.d.ts`(実行時の型と環境の型)を生成してコミットする。生成し直しが要るかは、アプリのスクリプト`cf-typegen:check`(`wrangler types --check`)で確かめる。一括検査(`bun run check`)の段階「型生成の検査」でも毎回実行される(「[一括検査](../coding/001-javascript-typescript-conventions.md#一括検査)」)。
 
 ### プリセットの取り込みの注意
 

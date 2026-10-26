@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import {
   ALL_DIRS,
+  appResultsOf,
   callOf,
   createFakeWorkspace,
   createOutput,
@@ -17,6 +18,7 @@ import {
   ROOT_DIR,
   runEntry,
   runEntryInProcess,
+  SCRIPT_MISSING,
   scriptsOf,
   SPAWN_TIMEOUT_MS,
   useRunAllFixtures,
@@ -64,7 +66,7 @@ const causesMessageOf = (...details: readonly string[]): string =>
   ].join('\n');
 
 const CHECK_WORKSPACE = {
-  ...everyDirWith('lint', 'typecheck'),
+  ...everyDirWith('lint', 'cf-typegen:check', 'typecheck'),
   [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS),
 };
 
@@ -79,6 +81,7 @@ const UNREADABLE_EVENT = unreadablePackage(unreadableEventOf(PARSE_ERROR));
 const CHECK_RESULTS_WITH_UNREADABLE_EVENT: readonly StepResult[] = [
   ...ROOT_STEPS_PASSED,
   ...resultsOf('lint', { api: failedWith(3), event: UNREADABLE_EVENT }, PASSED),
+  ...appResultsOf('cf-typegen:check', { event: UNREADABLE_EVENT }, PASSED),
   ...resultsOf('typecheck', { event: UNREADABLE_EVENT }, PASSED),
 ];
 
@@ -89,6 +92,9 @@ const createWorkspaceWithUnreadableEvent = () =>
   );
 
 const DIRS_EXCEPT_EVENT = ALL_DIRS.filter((dir) => dir !== 'apps/event');
+const APP_DIRS_EXCEPT_EVENT = DIRS_EXCEPT_EVENT.filter(
+  (dir) => dir !== ROOT_DIR,
+);
 
 describe('runAggregate', () => {
   test('package.jsonを読めないアプリは、各段階の失敗としてパス付きの原因と共に記録し、後続の対象と段階を続ける', async () => {
@@ -101,6 +107,9 @@ describe('runAggregate', () => {
       callOf(ROOT_DIR, 'bun', 'run', 'check:test-names'),
       callOf(ROOT_DIR, 'bun', 'run', 'format:check'),
       ...DIRS_EXCEPT_EVENT.map((dir) => callOf(dir, 'bun', 'run', 'lint')),
+      ...APP_DIRS_EXCEPT_EVENT.map((dir) =>
+        callOf(dir, 'bun', 'run', 'cf-typegen:check'),
+      ),
       ...DIRS_EXCEPT_EVENT.map((dir) => callOf(dir, 'bun', 'run', 'typecheck')),
     ]);
     expect(results).toEqual(CHECK_RESULTS_WITH_UNREADABLE_EVENT);
@@ -253,7 +262,9 @@ describe('runAggregateEntry', () => {
       deps,
     );
 
-    expect(calls).toHaveLength(3 + DIRS_EXCEPT_EVENT.length * 2);
+    expect(calls).toHaveLength(
+      3 + DIRS_EXCEPT_EVENT.length * 2 + APP_DIRS_EXCEPT_EVENT.length,
+    );
     expect(stdout).toBe(
       `\n${formatSummary(CHECK_RESULTS_WITH_UNREADABLE_EVENT)}`,
     );
@@ -334,6 +345,15 @@ describe('直接実行したときの入口', () => {
               api: failedWith(3),
               event: unreadable,
               'frontend-lib': PASSED,
+            },
+            PROJECT_MISSING,
+          ),
+          ...appResultsOf(
+            'cf-typegen:check',
+            {
+              api: SCRIPT_MISSING,
+              event: unreadable,
+              'frontend-lib': SCRIPT_MISSING,
             },
             PROJECT_MISSING,
           ),

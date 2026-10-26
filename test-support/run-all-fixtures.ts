@@ -18,7 +18,8 @@ export const SPAWN_TIMEOUT_MS = 30_000;
 
 const FAKE_ROOT = '/repo';
 export const ROOT_DIR = '.';
-export const ALL_DIRS = [ROOT_DIR, ...APPS.map(({ dir }) => dir)];
+export const APP_DIRS = APPS.map(({ dir }) => dir);
+export const ALL_DIRS = [ROOT_DIR, ...APP_DIRS];
 const APP_TARGETS: readonly RunTarget[] = APPS.map(({ name }) => name);
 
 export const PASSED: StepOutcome = { status: 'passed' };
@@ -102,6 +103,13 @@ export const resultsOf = (
     target,
     outcome: outcomes[target] ?? fallback,
   }));
+
+export const appResultsOf = (
+  step: string,
+  outcomes: Readonly<Partial<Record<RunTarget, StepOutcome>>>,
+  fallback: StepOutcome,
+): readonly StepResult[] =>
+  resultsOf(step, outcomes, fallback).filter(({ target }) => target !== 'root');
 
 export const everyDirWith = (...names: readonly string[]): ScriptsByDir =>
   Object.fromEntries(ALL_DIRS.map((dir) => [dir, scriptsOf(...names)]));

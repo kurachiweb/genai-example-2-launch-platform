@@ -289,6 +289,7 @@ APIサーバー・イベントサーバーだけを検査・テストすると�
 | `bun run test:smoke`                | `apps/api`               | 依存性注入のスモークテスト。Wranglerでバンドルして起動したWorkerが、`@inject`付きのコンストラクタ引数を持つクラスを解決できることを確かめる |
 | `bun run db:migrations:check`       | `apps/api`               | マイグレーションがWranglerに検出されることを確かめる                                                                                        |
 | `bun run cf-typegen`                | `apps/api`・`apps/event` | Wrangler設定を変えたときに、実行時の型の定義ファイル`worker-configuration.d.ts`を生成し直す                                                 |
+| `bun run cf-typegen:check`          | `apps/api`・`apps/event` | 生成済みの`worker-configuration.d.ts`がWrangler設定と食い違っていないかを確かめる。ルートの一括検査(`bun run check`)でも実行される          |
 
 ## ローカルポート一覧
 

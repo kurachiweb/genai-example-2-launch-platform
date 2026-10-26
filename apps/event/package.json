@@ -8,7 +8,8 @@
     "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests --path-ignore-patterns='db/**' --path-ignore-patterns='lib/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test",
     "test:worker": "vitest run --config vitest.worker.config.ts",
     "dev": "wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --inspector-port 9230",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "cf-typegen:check": "wrangler types --check"
   },
   "dependencies": {
     "@logtape/logtape": "2.3.11",
