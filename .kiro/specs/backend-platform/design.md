@@ -58,7 +58,7 @@
 - バインディング名・Queue名・バケット名・D1名・Worker名・Rate Limitingの`namespace_id`・シークレットと変数のキー名の変更(infra-delivery・frontend-platform)。
 - IP制限の上限・キー・応答の変更(frontend-platform)。
 - 共通カラムの型(日時の保持形式・IDの形式)、列名の変換方式(`snakeCase.table`)の変更(全ドメインのスキーマ)。
-- 再試行の上限・間隔、デッドレターの扱いの変更(email-deliveryなどのメッセージ利用者)。
+- 再試行の上限・間隔、デッドレターの扱いの変更(email-deliveryなどのメッセージ利用者)。本体のconsumerの`max_retries`を変える場合は`QUEUE_MAX_RETRIES`を同じ値にし、登録ごとの`retry.maxAttempts`がその値以下に収まるかを利用者のspecで確かめる(承認後の改訂8)。
 - ヘルスチェックの経路の変更(launch-readiness)。
 - 定期実行の時間の予算の値、予算の超過の警告の形(レベル`warning`・タグ`cron`・所要時間)、要約のログの項目の変更(launch-readiness)。逆向きに、launch-readinessの仮1の値が変われば、本specの`SCHEDULED_RUN_BUDGETS`と`infra/003`・`project-values.md`の値を合わせる。
 - `triggerScheduled`の入力の形と、ローカルの定期実行の経路(`/cdn-cgi/local/scheduled`。固定したWranglerの版の経路)の変更(定期実行をローカルで起こすE2E・統合の手順を持つ全spec)。
@@ -180,6 +180,7 @@ apps/
 │   │   ├── logging/log-record.ts            # LogRecordからJSONオブジェクトへの変換
 │   │   ├── logging/redaction.ts             # 伏せ字の対象フィールド名と値のパターン(IPv4・IPv6を含む)
 │   │   ├── logging/app-logger.ts            # カテゴリ規約付きのロガー取得
+│   │   ├── logging/log-level.ts             # 環境変数で指定できるログレベルの列挙と判定(承認後の改訂8)
 │   │   ├── observability/scrub-event.ts     # Sentryイベントとスパンの個人情報除去と想定内エラーの除外
 │   │   ├── scheduling/cron-registry.ts      # ジョブ定義の検証、業務時刻→cron式、起動時刻ごとの順序
 │   │   ├── scheduling/run-budget.ts         # 起動時刻ごとの時間の予算の表と超過の判定(承認後の改訂2)
@@ -215,7 +216,7 @@ apps/
 │       ├── bot-protection/turnstile-verifier.ts
 │       └── bot-protection/turnstile-guard.ts
 ├── api/
-│   ├── package.json                         # スクリプト契約+dev・cf-typegen・db:migrate:local・db:migrations:check・test:smoke
+│   ├── package.json                         # スクリプト契約+dev・cf-typegen・cf-typegen:check・db:migrate:local・db:migrations:check・test:smoke
 │   ├── bun.lock
 │   ├── tsconfig.json                        # 基底設定の継承、lib ES2024、types、include(src・test・scripts・db・lib・*.ts)
 │   ├── eslint.config.ts                     # createBaseConfig+層の依存方向の規則
@@ -249,7 +250,7 @@ apps/
 │           ├── cron-sync.unit.test.ts       # ジョブの業務時刻とtriggers.cronsの一致
 │           └── layer-rules.unit.test.ts     # 層の依存方向の静的解析規則
 └── event/
-    ├── package.json                         # スクリプト契約(test:unitで配置先db・libを除外)+dev・cf-typegen
+    ├── package.json                         # スクリプト契約(test:unitで配置先db・libを除外)+dev・cf-typegen・cf-typegen:check
     ├── bun.lock
     ├── tsconfig.json · eslint.config.ts(ignoresにdb/・lib/) · vitest.worker.config.ts(excludeにdb/・lib/)
     ├── wrangler.jsonc · worker-configuration.d.ts
@@ -259,6 +260,9 @@ apps/
         └── composition/
             ├── env-schema.ts · modules.ts · rate-limit-exclusions.ts
             └── message-handlers.ts          # メッセージ種別の処理の登録箇所(初版は空)
+config/eslint/                               # 承認後の改訂8
+├── backend-layers.ts                        # api・eventのsrcの4層の禁止import(createBackendLayerRules)
+└── backend-layers.unit.test.ts              # 規則の名前の接頭辞と、アプリ間で同じ内容であること
 e2e/support/                                 # dev-toolingのE2Eの補助の置き場所(承認後の改訂2で1ファイルを追加)
 ├── scheduled-trigger.ts                     # ローカルの定期実行を業務日付と業務時刻で起こす(ScheduledTriggerHelper)
 └── scheduled-trigger.unit.test.ts           # 要求のURL・cron式・時刻、入力の検証、失敗の例外、業務日付の補助
@@ -285,6 +289,8 @@ docs/
 - `docs/GUIDES/tech/coding/002-dependency-versions.md`: api・eventと共有ディレクトリで版をそろえるパッケージ(hono・inversify・reflect-metadata・ulid・zod・LogTape・Sentry)を一覧に追記する。
 - `docs/GUIDES/tech/{backend,db,infra,security}/README.md`: 新しい文書を1行ずつ追記する。
 - `CLAUDE.md`: 「技術規則の参照先」に、新しい技術ドキュメントへのリンクを作業の種類とともに追記する。
+- `scripts/tooling/run-all.ts`・`test-support/run-all-fixtures.ts`(dev-tooling、承認後の改訂8): 一括検査(`check`)の静的解析と型検査の間に、アプリだけを対象にする段階「型生成の検査」(`cf-typegen:check`)を加える(7.7)。設定を変えて型を生成し直し忘れると型検査のエラーとして現れるため、型検査の前に原因を示す。ルートは実行時の型を生成しないため対象にしない。
+- `docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md`(dev-tooling、承認後の改訂8): 一括検査の段階とスクリプト契約に`cf-typegen:check`を加える。
 
 ## System Flows
 
@@ -414,7 +420,7 @@ sequenceDiagram
 | 7.4         | シークレットのキー名と変数                                    | WranglerConfigs                                                                                         | `secrets.required`・`vars`                                                                  | —                |
 | 7.5         | 欠けたキー名で失敗                                            | EnvSchema・EnvGuard・WorkerHandler                                                                      | `validateEnv`・`EnvValidationError`                                                         | HTTPリクエスト   |
 | 7.6         | apiの前段キャッシュ無効                                       | WranglerConfigs                                                                                         | `cache.enabled: false`                                                                      | —                |
-| 7.7         | 環境の型の生成と食い違いの検出                                | WranglerConfigs                                                                                         | `cf-typegen`・`wrangler types --check`                                                      | —                |
+| 7.7         | 環境の型の生成と食い違いの検出                                | WranglerConfigs                                                                                         | `cf-typegen`・`cf-typegen:check`(一括検査の段階、改訂8)                                     | —                |
 | 7.8         | シークレットを実行時注入で起動                                | AppPackageScripts・OnboardingUpdates                                                                    | `infisical run`+`dev`(infra-deliveryの改訂1の後は`run-with-secrets --scope local --worker`) | —                |
 | 8.1         | JSON形式のログ                                                | LoggingSetup・LogRecordFormat                                                                           | `toLogObject`                                                                               | —                |
 | 8.2         | 相関ID                                                        | InvocationContext・WorkerHandler                                                                        | `withContext`                                                                               | HTTPリクエスト   |
@@ -829,11 +835,24 @@ export interface InvocationScopeInfo {
   readonly clientIp: string | undefined; // fetchのみ
 }
 
-export interface AppModule<THono extends Hono = Hono> {
+// Honoは環境の型引数について不変なため、型制約は任意の環境のHonoにする(承認後の改訂8)
+export interface AppModule<THono extends Hono<any, any, any> = Hono> {
   readonly name: string;
   readonly bindings?: ContainerModule; // 処理単位のコンテナへ読み込む
   readonly routes?: (app: THono) => void; // isolateごとに1回登録
 }
+
+// core/time/clock.ts(承認後の改訂8)
+export interface Clock {
+  now(): Date;
+}
+export declare const systemClock: Clock;
+
+// core/ids/id-generator.ts(承認後の改訂8)
+export interface IdGenerator {
+  generate(): string;
+}
+export declare function createUlidGenerator(clock: Clock): IdGenerator; // ulidのmonotonicFactory
 ```
 
 - 識別子は`Symbol.for('platform.<名前>')`で作る。ドメインの識別子は各アプリの`src`にドメインごとに定義する。
@@ -861,9 +880,19 @@ export declare function validateEnv<TSchema extends z.ZodType>(
   schema: TSchema,
   env: unknown,
 ): z.infer<TSchema>;
+
+// 承認後の改訂8
+export interface EnvFailureLogger {
+  error(message: string, properties: Record<string, unknown>): void;
+}
+export declare function logEnvValidationFailure(
+  logger: EnvFailureLogger,
+  error: EnvValidationError,
+): void;
 ```
 
 - 失敗時は`EnvValidationError`を投げ、キー名だけを持つ(値・Zodの入力値を保持しない)。
+- `logEnvValidationFailure`は、HTTPの`envGuard`と、定期実行・非同期メッセージの`WorkerHandler`が共通で使う失敗のログで、`missingEnvNames`・`invalidEnvNames`の属性だけを`error`で1件出す(属性名に`key`を含めると、属性名による伏せ字の既定の規則で値ごと伏せられるため)(承認後の改訂8)。
 - 検証結果は環境オブジェクトごとに`WeakMap`で覚え、同じisolateの2回目以降は検証しない。
 
 #### LogRecordFormat・LogRedaction
@@ -1087,6 +1116,8 @@ export interface MessageHandlerRegistration<TBody> {
 }
 
 export declare const DEFAULT_RETRY_POLICY: RetryPolicy;
+export declare const QUEUE_MAX_RETRIES: 6; // 本体のconsumerのmax_retriesと一致させる(承認後の改訂8)
+export declare function assertRetryPolicy(policy: RetryPolicy): void; // 承認後の改訂8
 export type FailureDecision =
   | { readonly kind: 'retry'; readonly delaySeconds: number }
   | { readonly kind: 'dead-letter' };
@@ -1109,6 +1140,7 @@ export declare const MESSAGE_CONTRACTS: readonly MessageContract<
 
 - 配送保証: Queuesは少なくとも1回の配送で、重複配信があり得る。順序は保証しない。各ハンドラーは冪等にする(11.9、`infra/003`)。
 - 再試行間隔: `min(baseDelaySeconds × 2^(attempts-1), maxDelaySeconds)`(30秒・60秒・120秒・240秒)。`attempts >= maxAttempts`なら`dead-letter`。
+- 試行回数の上限(承認後の改訂8): Queuesは`max_retries`+1回まで配信し、それを超えて失敗したメッセージを自動でデッドレターへ移す(理由が`auto-moved`になり、失敗の理由が失われる)。最後の試行で通知の送信に失敗しても再配信で送り直せるよう、`assertRetryPolicy`は`maxAttempts`を1以上`QUEUE_MAX_RETRIES`以下の整数に限り、範囲外を`RangeError`にする。`createQueueDispatcher`は登録の`retry`を既定の方針に併合した結果を組み立て時に検査する。`QUEUE_MAX_RETRIES`とWranglerの`max_retries`の一致は、設定の整合の単体テストで確かめる。
 - `defer`の`delaySeconds`はQueuesの上限(43200秒)以下とし、超える値は例外にする。
 - 契約(種別と検証規則)は送信側(api・event)と受信側(event)の両方が読むため、共有の`core/messaging/contracts/`に置き、`contracts/index.ts`の`MESSAGE_CONTRACTS`へ集約する。種別名は`<ドメイン>.<動詞句>`(例: `email.send`)とし、重複は単体テストで検出する。
 
@@ -1150,6 +1182,8 @@ export declare function applyHit(
   now: number,
   rule: CounterRule,
 ): HitOutcome;
+// windowStartedAt + windowSeconds×1000。RateLimitCounterのalarmも同じ関数で期間の終わりを求める(承認後の改訂8)
+export declare function windowEndsAt(state: WindowState): number;
 
 export type HashedRateLimitKey = string & {
   readonly __brand: 'HashedRateLimitKey';
@@ -1249,7 +1283,7 @@ export declare const platformEnvShape: import('zod').ZodRawShape; // アプリ�
 
 - apiの環境: `PlatformEnv`+`RATE_LIMIT_COUNTER: DurableObjectNamespace<RateLimitCounter>`・`TURNSTILE_SECRET_KEY`・`TURNSTILE_EXPECTED_HOSTNAMES`(カンマ区切り、空なら照合しない)。
 - eventの環境: `PlatformEnv`+`JOBS_DLQ: Queue<DeadLetterNotice>`・`IMAGES: ImagesBinding`・`JOBS_QUEUE_NAME`・`JOBS_DLQ_NAME`。
-- `wrangler types`が生成する各アプリの`Env`が`PlatformEnv`を満たすことを、アプリの型検査で確かめる(`src/composition/env-schema.ts`に`satisfies`の型検査を置く)。
+- `wrangler types`が生成する各アプリの`Env`が`PlatformEnv`を満たすことを、アプリの型検査で確かめる(`src/composition/env-schema.ts`に`satisfies`の型検査を置く)。あわせて、各アプリの検証スキーマに`satisfies z.ZodType<アプリの環境の型>`(apiは`ApiEnv`、eventは`EventPlatformEnv`)を付け、環境の型にキーを足してスキーマに足し忘れたら型検査で失敗させる(承認後の改訂8)。
 
 #### InvocationContainer
 
@@ -1270,11 +1304,14 @@ export interface InvocationScope<E extends PlatformEnv> {
   readonly executionCtx: ExecutionContext;
   readonly info: InvocationScopeInfo;
 }
+// 環境を指定したAppModuleは既定のAppModuleへ代入できないため、コンテナに必要なbindingsだけを受け取る(承認後の改訂8)
 export declare function createInvocationContainer<E extends PlatformEnv>(
   scope: InvocationScope<E>,
-  modules: readonly AppModule[],
+  modules: readonly Pick<AppModule, 'bindings'>[],
 ): Container;
 ```
+
+- `modules`の形は、HTTPの`requestContainer`・`ScheduledDispatcher`・`QueueDispatcher`のすべてで同じ`readonly Pick<AppModule, 'bindings'>[]`にそろえる。環境を指定した`AppModule`の配列もそのまま渡せる(承認後の改訂8)。
 
 - 毎回`new Container({ defaultScope: 'Transient' })`を作る。`jitless`は指定しない(既定の`true`を保つ。workerdは実行時のコード生成を禁止する)。
 - プラットフォームの束縛: `Env`・`InvocationScope`(定数)、`Database`(`createDatabase(env.DB)`、処理単位で単一)、`Clock`(システム時計)、`IdGenerator`(ULID、単調増加)、`KeyedHasher`(`env.HASH_PEPPER`)、`MessagePublisher`(`env.JOBS_QUEUE`)。続けて各モジュールの`bindings`を同期の`load`で読み込む。
@@ -1310,11 +1347,13 @@ export interface PlatformHonoEnv<E extends PlatformEnv> {
 }
 export interface WorkerAppOptions<E extends PlatformEnv> {
   readonly appName: 'api' | 'event';
-  readonly envSchema: import('zod').ZodType<E>;
+  // 検証の結果ではなく元の環境を使い続けるため、スキーマの出力の型は問わない(承認後の改訂8)
+  readonly envSchema: import('zod').ZodType;
   readonly modules: readonly AppModule<Hono<PlatformHonoEnv<E>>>[];
   readonly rateLimitExclusions: readonly RateLimitExclusion<E>[];
   readonly resolveClientIp?: ClientIpResolver; // 既定はresolveConnectingIp
-  readonly sentry: (env: E) => SentryRuntimeOptions;
+  // 環境の検証より前に呼ばれるため、受け取る環境にはキーが欠けていることがある。アプリは(env) => buildSentryOptions(readSentryRuntimeOptions(env))を渡す(承認後の改訂8)
+  readonly sentry: SentryOptionsFactory<E>;
 }
 export declare function createWorkerApp<E extends PlatformEnv>(
   options: WorkerAppOptions<E>,
@@ -1324,7 +1363,7 @@ export declare function createWorkerApp<E extends PlatformEnv>(
 - 順序: Sentryの`sentry(app, ...)` → `invocationContext`(相関IDの採番、クライアントIPの解決、LogTapeの`withContext`、終了時のアクセスログ) → `ipRateLimit` → `/health` → `envGuard` → `requestContainer` → 各モジュールの`routes` → `notFound`・`onError`。
 - 相関IDは`crypto.randomUUID()`。Sentryのタグ`correlation_id`にも付ける。
 - アクセスログ(8.5): レベル`info`、カテゴリ`[アプリ名, 'http', 'access']`、属性は`method`・`path`(クエリ文字列を除く)・`status`・`durationMs`。`clientIp`は記録しない。
-- `envGuard`: `validateEnv`が失敗したら、`EnvValidationError`のキー名だけを`error`で記録し、500の定型を返す(7.5)。
+- `envGuard`: `validateEnv`が失敗したら、`EnvValidationError`のキー名だけを`logEnvValidationFailure`で`error`に記録し、500の定型を返す(7.5)。検証の結果は使わず、元の`c.env`を使い続ける(`platformEnvShape`を`z.object`で使うと未宣言のキーを落とすため)(承認後の改訂8)。
 - `onError`: `AppError`は`toErrorResponse`、それ以外は`error`ログ(例外名と伏せ字済みのメッセージ)と`INTERNAL_ERROR_RESPONSE`(4.6)。
 - ヘルスチェックは`/health`。apiでもこの経路を外部に公開する(6.4)。api-gatewayは公開REST APIを別のベースパスに置き、この経路と衝突させない(契約)。
 
@@ -1340,9 +1379,14 @@ export declare function createWorkerApp<E extends PlatformEnv>(
 ##### Service Interface
 
 ```typescript
+// core/logging/log-level.ts。PlatformEnvのLOG_LEVELと環境の検証スキーマも同じ列挙を使う(承認後の改訂8)
+export declare const LOG_LEVELS: readonly ['debug', 'info', 'warning', 'error'];
+export type LogLevel = (typeof LOG_LEVELS)[number];
+export declare function isLogLevel(level: string): level is LogLevel;
+
 export interface LoggingOptions {
   readonly appName: 'api' | 'event';
-  readonly level: 'debug' | 'info' | 'warning' | 'error';
+  readonly level: LogLevel;
   readonly console?: Console; // テストで出力を受け取る(承認後の改訂5)。既定はグローバルの`console`
 }
 export declare function ensureLoggingConfigured(options: LoggingOptions): void; // isolateごとに1回。レベルが変われば再設定
@@ -1371,12 +1415,29 @@ export interface SentryRuntimeOptions {
   readonly environment: string;
   readonly tracesSampleRate: number;
 }
+// Honoの計装は環境の検証より前に動くため、全キー任意の環境を受け取る。PlatformEnvはSentryEnvへ代入できる(承認後の改訂8)
+export interface SentryEnv {
+  readonly SENTRY_DSN?: string | undefined;
+  readonly SENTRY_ENVIRONMENT?: string | undefined;
+  readonly SENTRY_TRACES_SAMPLE_RATE?: string | undefined;
+}
 export declare function readSentryRuntimeOptions(
-  env: PlatformEnv,
+  env: SentryEnv,
 ): SentryRuntimeOptions;
 export declare function buildSentryOptions(
   runtime: SentryRuntimeOptions,
 ): CloudflareOptions;
+
+// 承認後の改訂8
+export type SentryOptionsFactory<E> = (env: E) => CloudflareOptions;
+export declare function createSentryMiddleware<E extends import('hono').Env>(
+  app: import('hono').Hono<E>,
+  options: SentryOptionsFactory<E['Bindings']>,
+): import('hono').MiddlewareHandler; // AppErrorをshouldHandleErrorで除く
+export declare function withSentryForScheduledAndQueue<E, Q = unknown>(
+  options: SentryOptionsFactory<E>,
+  handler: ExportedHandler<E, Q>,
+): ExportedHandler<E, Q>; // scheduled・queueだけをwithSentryで包み、fetchは元の参照のまま
 ```
 
 - `buildSentryOptions`: `dsn`が無ければ`enabled: false`(9.5)。`dataCollection`(下記、9.2)、`beforeSend: scrubEvent`、`beforeSendSpan: scrubSpan`、`tracesSampleRate`(9.4)、`environment`。
@@ -1409,20 +1470,23 @@ export declare function buildSentryOptions(
 ##### Service Interface
 
 ```typescript
+// modulesを持たない。コンテナはHonoのrequestContainerと各ディスパッチャーが作るため、アプリはMODULESをcreateWorkerApp・createScheduledDispatcher・createQueueDispatcherにだけ渡す(承認後の改訂8)
 export interface WorkerHandlerOptions<E extends PlatformEnv> {
   readonly appName: 'api' | 'event';
   readonly app: Hono<PlatformHonoEnv<E>>;
-  readonly envSchema: import('zod').ZodType<E>;
-  readonly modules: readonly AppModule[];
+  readonly envSchema: import('zod').ZodType; // 検証の結果は使わない(承認後の改訂8)
   readonly scheduled?: ScheduledDispatcher<E>;
   readonly queue?: QueueDispatcher<E>;
+  readonly sentry: SentryOptionsFactory<E>; // scheduled・queueの計装に使う(承認後の改訂8)
+  readonly console?: Console; // テストで出力を受け取る(承認後の改訂8)
 }
 export declare function createWorkerHandler<E extends PlatformEnv>(
   options: WorkerHandlerOptions<E>,
 ): ExportedHandler<E>;
 ```
 
-- 各呼び出しの最初に`ensureLoggingConfigured`を呼び、scheduled・queueでは相関IDを採番して`withContext`の中で処理する(8.2)。queueでは`validateEnv`の失敗をバッチ全体の例外にし、Queuesの再試行に任せる。
+- エントリは`createWorkerHandler({ appName, app, envSchema, sentry, scheduled | queue })`の形で組み立てる(承認後の改訂8)。
+- 各呼び出しの最初に`ensureLoggingConfigured`を呼び、scheduled・queueでは相関IDを採番してSentryのタグ`correlation_id`と`withContext`に入れて処理する(8.2)。環境の検証の失敗は`logEnvValidationFailure`でキー名だけを記録して例外にし、queueではバッチ全体をQueuesの再試行に任せる。`withSentryForScheduledAndQueue`で計装する。
 - グローバルスコープではimportと定数の定義、Honoのルート登録だけを行い、ネットワーク・I/O・暗号鍵の生成を行わない(5.7)。
 
 #### ScheduledDispatcher
@@ -1450,7 +1514,7 @@ export interface ScheduledDispatcherOptions {
 }
 export declare function createScheduledDispatcher<E extends PlatformEnv>(
   registry: CronRegistry,
-  modules: readonly AppModule[],
+  modules: readonly Pick<AppModule, 'bindings'>[], // 承認後の改訂8
   options?: ScheduledDispatcherOptions,
 ): ScheduledDispatcher<E>;
 ```
@@ -1523,7 +1587,7 @@ export declare function createQueueDispatcher<
   },
 >(
   registrations: readonly MessageHandlerRegistration<unknown>[],
-  modules: readonly AppModule[],
+  modules: readonly Pick<AppModule, 'bindings'>[], // 承認後の改訂8
 ): QueueDispatcher<E>;
 ```
 
@@ -1534,6 +1598,9 @@ export declare function createQueueDispatcher<
   - 封筒の不正・未登録の種別・本文の検証失敗は、再試行せずに`DeadLetterNotice`を送って`ack`(11.6)。
   - 通知の送信に失敗したら`retry`する。
   - 1件ごとに相関ID(封筒のID)で`withContext`し、結果(`done`・`deferred`・`retried`・`dead-lettered`)と所要時間を`info`で記録する(8.6)。
+  - 1件ごとにSentryの`withScope`でスコープを分け、タグ`correlation_id`を封筒のIDにする。`WorkerHandler`がバッチ全体に付けた相関IDを、処理単位であるメッセージの相関IDで置き換え、そのメッセージのログとエラーレポートを結び付ける(9.1、承認後の改訂8)。
+  - ハンドラーの外で起きた想定外の例外(バグ)は、同じメッセージの文脈とスコープの中で`error`ログと`captureException`に送り、そのメッセージだけを`retry`して後続のメッセージを続ける(承認後の改訂8)。
+  - `defer`の遅延の判定と範囲外の文言は、`MessagePublisher`の`isValidDelaySeconds`・`invalidDelayMessage`を使う(承認後の改訂8)。
 - デッドレターの処理: `isDeadLetterNotice`なら通知の内容を、そうでなければ元のメッセージとして`parseEnvelope`で得たIDと種別(読めなければ`undefined`)と`reason: 'auto-moved'`を、`error`ログとSentryの`captureEvent`(レベル`error`、`logentry`の文言、`fingerprint`に理由と種別、タグ`message_type`・`dead_letter_reason`、コンテキスト`dead_letter`)へ送り、`ack`する(11.8、承認後の改訂7)。本文(`body`)は読まない・記録しない。
 - Wrangler設定: 本体のconsumerは`max_batch_size: 10`・`max_batch_timeout: 5`・`max_retries: 6`・`dead_letter_queue: <DLQ名>`・`retry_delay: 30`。デッドレターのconsumerは`max_batch_size: 10`・`max_retries: 3`。
 
@@ -1612,9 +1679,10 @@ export interface BindingRateLimitOptions<E> {
 export declare function bindingRateLimit<E>(
   options: BindingRateLimitOptions<E>,
 ): MiddlewareHandler;
-export declare function ipRateLimit<E extends PlatformEnv>(
-  exclusions: readonly RateLimitExclusion<E>[],
-): MiddlewareHandler;
+// IP制限に要るバインディングだけを型制約にする。PlatformEnvはこれを満たす(承認後の改訂8)
+export declare function ipRateLimit<
+  E extends { readonly IP_RATE_LIMITER: RateLimit },
+>(exclusions: readonly RateLimitExclusion<E>[]): MiddlewareHandler;
 export declare const IP_RATE_LIMIT_KEY_PREFIX: 'ip:';
 export declare const UNKNOWN_CLIENT_IP: 'unknown';
 ```
@@ -1709,17 +1777,18 @@ export declare function turnstileGuard(
 | Intent       | 層の依存方向を静的解析で強制する |
 | Requirements | 5.1                              |
 
-- 各アプリの`eslint.config.ts`に、ファイルの位置ごとの`no-restricted-imports`を加える。
+- 各アプリの`eslint.config.ts`に、ファイルの位置ごとの`no-restricted-imports`を加える。`src`の4層の規則は、api・eventで同じ内容を持つため`config/eslint/backend-layers.ts`の`createBackendLayerRules(appName)`に1つだけ定義し、両アプリから読み込む(規則の名前の接頭辞だけがアプリ名で変わる)。共有ディレクトリとDBスキーマの規則は検査担当のapiの設定にだけ置く(承認後の改訂8)。
 
 | 対象のファイル                                     | 禁止するimport                                                                                                                                                  |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/domain/**`                                    | `**/application/**`・`**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`drizzle-orm*`・`cloudflare:*`・`**/lib/workers/**`・`**/db/**` |
 | `src/application/**`                               | `**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`cloudflare:*`・`**/lib/workers/**`・`**/db/client*`                                 |
 | `src/infrastructure/**`・`src/presentation/**`     | `**/composition/**`                                                                                                                                             |
-| `lib/core/**`(apiのみ。共有ディレクトリの検査担当) | `**/workers/**`・`hono`・`cloudflare:*`・`**/db/**`                                                                                                             |
-| `db/**`(apiのみ)                                   | `**/lib/**`・`hono`・`cloudflare:*`・`drizzle-orm/sqlite-core`の`sqliteTable`・`sqliteTableCreator`(`snakeCase.table`を使う)                                    |
+| `lib/core/**`(apiのみ。共有ディレクトリの検査担当) | `**/workers/**`・`hono`・`cloudflare:*`・`**/db/**`・`**/src/**`(改訂8)                                                                                         |
+| `lib/workers/**`(apiのみ、改訂8)                   | `**/src/**`(利用側アプリの層に依存すると、他のアプリへ配置したときに解決できない)                                                                               |
+| `db/**`(apiのみ)                                   | `**/lib/**`・`**/src/**`(改訂8)・`hono`・`cloudflare:*`・`drizzle-orm/sqlite-core`の`sqliteTable`・`sqliteTableCreator`(`snakeCase.table`を使う)                |
 
-- `test/config/layer-rules.unit.test.ts`は、ESLintのNode APIで各層の違反例が報告されることを確かめる。
+- `test/config/layer-rules.unit.test.ts`は、ESLintのNode APIで各層の違反例が報告されることを確かめる。共有コードの`lib/core`・`lib/workers`とDBスキーマから利用側アプリの`src`へのimportが報告されることも確かめる(承認後の改訂8)。`config/eslint/backend-layers.unit.test.ts`は、規則の名前の接頭辞と、アプリが違っても名前以外の規則が同じであることを確かめる。
 
 #### WranglerConfigs
 
@@ -1753,14 +1822,14 @@ export declare function turnstileGuard(
 
 - バインディング・`vars`・`secrets`は継承されないキーであるため、ルート・`env.staging`・`env.prod`のそれぞれに書く。`compatibility_date`・`observability`・`cache`は`env`で上書きしない。
 - リソースの名前と識別子は「Supporting References」の表に従う。staging・prodの`database_id`は仮の値で、infra-deliveryが置き換える。
-- `worker-configuration.d.ts`は`bun run cf-typegen`(`wrangler types`)で生成してコミットし、`wrangler types --check`で食い違いを検出する(7.7)。
+- `worker-configuration.d.ts`は`bun run cf-typegen`(`wrangler types`)で生成してコミットし、`wrangler types --check`で食い違いを検出する(7.7)。食い違いの検査は`cf-typegen:check`として定義し、一括検査(`bun run check`)の段階「型生成の検査」で毎回実行する(承認後の改訂8)。
 - `test/config/wrangler-config.unit.test.ts`(apiに置き、eventの設定も読む)が次を確かめる(7.1〜7.4・7.6・8.4・11.7・13.1)。
   - 3環境すべてに必要なバインディング名があり、名前が両アプリで一致する。
   - D1の`database_name`・`database_id`とR2のバケット名が、環境ごとに両アプリで一致する(7.2)。
   - `compatibility_date`が`2026-08-04`で、`compatibility_flags`に`nodejs_compat`系が無い(7.3)。
   - `vars`・`secrets.required`に「シークレットの値」らしき項目が無く、必須キーが揃っている(7.4)。
   - apiの`cache.enabled`が`false`、両アプリの呼び出しログが無効(7.6・8.4)。
-  - consumerの`max_retries`が`DEFAULT_RETRY_POLICY.maxAttempts`より大きく、`dead_letter_queue`が設定されている(11.7)。
+  - consumerの`max_retries`が`QUEUE_MAX_RETRIES`(6)と一致し、`DEFAULT_RETRY_POLICY.maxAttempts`がそれ以下で、`dead_letter_queue`が設定されている(11.7、承認後の改訂8)。
   - `IP_RATE_LIMITER`が`limit: 100`・`period: 10`で、`namespace_id`がWorker・環境ごとに異なる(13.1)。
 - 設定の読み込みはWranglerの`unstable_readConfig`を使い、環境ごとの実効値で検査する。
 
@@ -1783,6 +1852,7 @@ export declare function turnstileGuard(
 | `test:worker`         | `vitest run --config vitest.worker.config.ts`                                                      | 同左(`exclude`に`db/**`・`lib/**`)                                                                     |
 | `dev`                 | `wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --test-scheduled`  | `wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --inspector-port 9230` |
 | `cf-typegen`          | `wrangler types`                                                                                   | 同左                                                                                                   |
+| `cf-typegen:check`    | `wrangler types --check`(一括検査の段階「型生成の検査」、承認後の改訂8)                            | 同左                                                                                                   |
 | `db:migrate:local`    | `wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state` | なし(apiで1回適用、2.4)                                                                                |
 | `db:migrations:check` | `bun ./scripts/check-migrations.ts`                                                                | なし                                                                                                   |
 | `test:smoke`          | `bun ./scripts/smoke-wrangler-bundle.ts`                                                           | なし                                                                                                   |
@@ -1943,7 +2013,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
   - `cron-registry.unit.test.ts`: 同時刻のジョブが`order`順に並び、名前・順序の重複と範囲外の時刻を拒否する(10.1〜10.3・10.5)。
   - `run-budget.unit.test.ts`: 4:21の予算が式`21 12 * * *`で引け、予算の無い式は`undefined`になる。`exceedsRunBudget`は300,000msで偽、300,001msで真。同じ時刻の重複・範囲外の時刻・0と小数の予算を拒否する(10.9)。
   - `scheduled-trigger.unit.test.ts`(ルート): ScheduledTriggerHelperの項目(10.7)。
-  - `retry-policy.unit.test.ts`・`envelope.unit.test.ts`・`message-contract.unit.test.ts`: 30・60・120・240秒の後に`dead-letter`になる。封筒の不正を検出する。`MESSAGE_CONTRACTS`に種別の重複が無い(11.5〜11.7)。
+  - `retry-policy.unit.test.ts`・`envelope.unit.test.ts`・`message-contract.unit.test.ts`: 30・60・120・240秒の後に`dead-letter`になる。封筒の不正を検出する。`MESSAGE_CONTRACTS`に種別の重複が無い(11.5〜11.7)。`assertRetryPolicy`が`maxAttempts`の0・`QUEUE_MAX_RETRIES`+1・小数・`NaN`を拒否する(承認後の改訂8)。
   - `fixed-window.unit.test.ts`: 最初の要求で期間が始まりAlarmが予約される。上限で拒否され状態が変わらない。期限切れ後の要求で新しい期間になる(12.1・12.3・12.4)。
   - `siteverify-result.unit.test.ts`: エラーコードごとの分類、操作名・ホスト名の不一致、時間切れ・ネットワーク失敗・JSONでない応答が`unavailable`になる(14.1〜14.4)。
   - `redaction.unit.test.ts`・`log-record.unit.test.ts`: IPv4・IPv6・メールアドレス・JWT・Bearer・公開APIのキー(`lsk_`と43文字)・Cookie・`token`のフィールドが伏せ字になり、通常の値と`lsk_`で始まるがキーの形式に合わない短い値は残る。キーの43文字の中に、前後を数字以外の文字で挟んだLuhnの検査を通る16桁の数字の並び(`CREDIT_CARD_NUMBER_PATTERN`に当たる形)を含めた値が1つの`[REDACTED]`になり、キーの断片が残らない。パターンの順序を入れ替えるとこのテストが失敗する(パターンを先頭に置く理由の確認)(8.1・8.3)。メッセージ中のLuhnの検査を通る16桁の数字の並び・メールアドレス・JWTがそれぞれ`[REDACTED]`になり、Luhnの検査を通らない16桁の数字は残る(承認後の改訂3)。
@@ -1960,7 +2030,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
   - `ip-rate-limit.worker.test.ts`・`binding-rate-limit.worker.test.ts`: 同じIPの101回目が429・`Retry-After: 10`になり、別のIPは影響を受けない。除外規則に当たるリクエストは数えない。差し替えたリゾルバの値で数える(13.1〜13.5・13.7)。
   - `rate-limit-counter.worker.test.ts`: 並行した`hit`が正確に数えられ、`runDurableObjectAlarm`の後に記録が消え、`reset`で途中から0に戻る。拒否時に`assertWithinLimit`が429と残り秒数を返す(12.1〜12.8)。
   - `scheduled-dispatcher.worker.test.ts`: 2つのジョブのうち1つ目が失敗しても2つ目が実行され、未登録の式で警告だけになり、0件で成功する(8.6・10.3〜10.5・10.8)。差し替えた時計とトランスポートで、予算のある式の合計が予算を1ms超えると`warning`のログとSentryの`warning`(タグ`cron`、コンテキストの所要時間)が1回送られ、予算ちょうど・予算の無い式・失敗したジョブを含む予算以内の起動では送られず、要約に`totalDurationMs`が出る(10.9)。
-  - `queue-consumer.worker.test.ts`・`dead-letter-consumer.worker.test.ts`: `createMessageBatch`で、成功の`ack`、失敗の`retry`と遅延、上限到達・未登録の種別・不正な本文でのデッドレター通知、`defer`の再送、1件の失敗が他に影響しないこと、デッドレターのログとSentryに本文が含まれないことを確かめる(11.1〜11.8)。
+  - `queue-consumer.worker.test.ts`・`dead-letter-consumer.worker.test.ts`: `createMessageBatch`で、成功の`ack`、失敗の`retry`と遅延、上限到達・未登録の種別・不正な本文でのデッドレター通知、`defer`の再送、1件の失敗が他に影響しないこと、デッドレターのログとSentryに本文が含まれないことを確かめる(11.1〜11.8)。ハンドラーの外の想定外の例外のエラーログとSentryのイベントに封筒のIDの相関ID(タグ`correlation_id`)が付き、後続のメッセージのイベントには後続のIDが付くこと、登録の`retry.maxAttempts`が`QUEUE_MAX_RETRIES`を超えると組み立て時に`RangeError`になることを確かめる(9.1、承認後の改訂8)。
   - `queue-publisher.worker.test.ts`: 封筒の付与と遅延送信、未登録・不正な本文の拒否(11.2・11.3)。
   - `turnstile-verifier.worker.test.ts`・`turnstile-guard.worker.test.ts`: 差し替えた`fetch`で、成功・各失敗の状態コード、5秒の打ち切り、トークンがログに出ないこと(14.1〜14.7)。
   - `sentry.worker.test.ts`: 差し替えたトランスポートで、想定外の例外が1回だけ送られ、`AppError`は送られず、DSNが無ければ送らず、トランスポートの失敗が応答を変えない(9.1・9.3〜9.6)。メッセージに公開APIのキーを含む想定外の例外が`[REDACTED]`になって届き、`buildSentryOptions`の`beforeSend`・`beforeSendSpan`に`scrubEvent`・`scrubSpan`がつながり、`traceLifecycle`を指定せず`beforeSendTransaction`を持たない(9.2、承認後の改訂3・改訂6)。`CF-Connecting-IP`付きのリクエストで、届いたイベントとスパン(エンベロープの項目`span`)に利用者のIPアドレスとIPアドレスを表すヘッダーが含まれない(9.2、承認後の改訂4・改訂6)。URLのパスに入れた公開APIのキーと、スパンの名前に入れたキーが、届いたスパンの名前・属性で`[REDACTED]`になる(9.2、承認後の改訂6)。

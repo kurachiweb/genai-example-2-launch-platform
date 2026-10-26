@@ -327,3 +327,24 @@
 - **決定**: これらの通知は`captureEvent`で、`logentry`に文言、`fingerprint`に種別を表す値(デッドレターは理由と種別、予算の超過は`cron`の式、設定の誤りは固定の値)を入れて送る。`logentry`だけのイベントは`message`を持たないためdedupeの対象にならず、`scrubEvent`の伏せ字の対象でもある。レベル・タグ・コンテキストは従来どおり。
 - **要件**: 要件の文言と振る舞いは変わらないため、`requirements.md`の「承認後の改訂」の表には載せない。
 - **変えた箇所**: 設計のScheduledDispatcherの予算の超過、QueueConsumer・DeadLetterConsumerのデッドレターの処理、TurnstileVerifier・TurnstileGuardの設定の誤りの送信、追跡表の10.9。タスク2.6〜6.3の番号と記述の変更は無い(実装は6.3の差し戻しで行った)。
+
+## 実装の検証の指摘による承認後の改訂(改訂8、2026-10-26)
+
+- **状態**: 2026-10-26の`/cc-sdd:kiro-validate-impl backend-platform`(判定GO)のWarningとInfoのうち、開発者が対応を指示した項目の改訂で、確定している。一括検査に段階を足す方式(案A)と、spec.jsonは`ready_for_implementation`と`updated_at`だけを更新することは開発者が選んだ。
+- **Context**: 検証で、タスクの横断で見えた次の指摘が出た。
+  - W1: Queueの本体consumerで、ハンドラーの外で起きた想定外の例外のSentryイベントとエラーログに、`WorkerHandler`がバッチ全体に付けた相関IDが付き、そのメッセージ(処理単位)の他のログの相関ID(封筒のID)と結び付かない。
+  - W3: 登録ごとの`retry.maxAttempts`がWranglerの`max_retries`との関係を検査されず、大きすぎると方針より先にQueuesが自動でデッドレターへ移し(`auto-moved`)、失敗の理由が失われる。
+  - W5: タスクのImplementation Notesで承認した逸脱(`WorkerHandlerOptions`・`WorkerAppOptions`・`createInvocationContainer`と各ディスパッチャーの`modules`・`ipRateLimit`の型制約・`Clock`と`IdGenerator`の定義・`AppModule`の型制約・`readSentryRuntimeOptions`の引数)が、設計のインターフェース定義に反映されていない。後続specが設計の形を前提にすると組み立てを誤る。
+  - W6: apiの環境の検証スキーマに、eventにある`satisfies z.ZodType<…>`の型検査が無い(水平展開の漏れ)。
+  - W7: 設定と生成済みの型の食い違いの検査(7.7)が手動の`wrangler types --check`だけで、一括検査に入っていない。
+  - Info: 設計の層の規則表に`lib/workers/**`が無く、共有コードから利用側アプリの`src`への上向きのimportを静的解析で検出できない。層の規則がapi・eventの設定に同じ内容で重複している。ログレベルの列挙・環境の検証失敗のログ・期間の終わりの計算・遅延秒数の判定が2箇所ずつに重複している。spec.jsonが実装の完了を反映していない。
+- **決定**:
+  - W1: `consumeOne`をメッセージごとにSentryの`withScope`で包んでタグ`correlation_id`を封筒のIDにし、想定外の例外の受け止めもその文脈とスコープの中で行う。同じ文言の例外が続くとSentryの組み込みのdedupe(改訂7)が後続を捨てるため、テストは文言の異なる例外で確かめる。
+  - W3: `core/messaging/retry-policy.ts`に`QUEUE_MAX_RETRIES`(6)と`assertRetryPolicy`を置き、`createQueueDispatcher`が併合後の方針を組み立て時に検査する。上限は、Miniflareの実装(`maxAttempts = maxRetries + 1`で、それを超えて失敗したらデッドレターへ移す)で確かめた配信回数`max_retries`+1より1小さい`max_retries`とし、最後の試行で通知の送信に失敗しても再配信で送り直せるようにする。タスク6.3のNotesにある「`maxAttempts`が`max_retries`以上だと`auto-moved`」は1つずれていた(`max_retries`+1を超えると`auto-moved`)。
+  - W5: 設計のインターフェース定義を実装に合わせて改訂する(下の「変えた箇所」)。
+  - W6: apiの`apiEnvSchema`に`satisfies z.ZodType<ApiEnv>`を付ける。
+  - W7(案A): api・eventに`cf-typegen:check`(`wrangler types --check`)を定義し、dev-toolingの一括検査(`run-all.ts`の`check`)の静的解析と型検査の間に、アプリだけを対象にする段階「型生成の検査」を足す。ルートは実行時の型を生成せず、ルートの段階を1つも飛ばさない既存の約束を保つため対象にしない。案B(`typecheck`に連結)はスクリプト契約の`typecheck`が型検査以外も行うことになるため、案C(設定の整合の単体テストから子プロセスで実行)は単体テストが外部コマンドに依存して遅くなるため採らない。
+  - 層の規則: `src`の4層の規則を`config/eslint/backend-layers.ts`の`createBackendLayerRules(appName)`に移して両アプリから読み込み、apiの共有ディレクトリの規則に`lib/workers/**`の行を足し、`lib/core/**`・`lib/workers/**`・`db/**`で`**/src/**`を禁止する。置き場所は、ルートと全アプリが参照する設定データの`config/`(Workers統合テストのプリセット`config/vitest/worker.ts`と同じ)とする。
+  - 重複: ログレベルの列挙を`core/logging/log-level.ts`(`LOG_LEVELS`・`LogLevel`・`isLogLevel`)に、環境の検証失敗のログを`core/env/env-schema.ts`の`logEnvValidationFailure`に、期間の終わりの計算を`fixed-window.ts`の`windowEndsAt`の公開に、遅延秒数の判定と範囲外の文言を`queue-publisher.ts`の`isValidDelaySeconds`・`invalidDelayMessage`の公開にまとめる。
+- **要件**: 要件の文言と、利用者・運用者から見える振る舞いの約束は変わらない(W1は要件8.2・9.1をより確かに満たし、W3は開発者向けの組み立て時の検査、W7は開発者向けの検査の追加)ため、`requirements.md`の「承認後の改訂」の表には載せない。
+- **変えた箇所**: 設計のRevalidation Triggers(再試行の上限)、File Structure Plan(`logging/log-level.ts`・`config/eslint/`・api・eventの`package.json`の`cf-typegen:check`)、Modified Files(`run-all.ts`・`001-javascript-typescript-conventions.md`)、追跡表の7.7、`AppModule`の型制約と`Clock`・`IdGenerator`の定義、EnvSchemaの`logEnvValidationFailure`、FixedWindowの`windowEndsAt`、`RetryPolicy`の`QUEUE_MAX_RETRIES`・`assertRetryPolicy`と試行回数の上限、PlatformEnvの`satisfies`、InvocationContainerの`modules`、`WorkerAppOptions`・`envGuard`、LoggingSetupの`LOG_LEVELS`、SentryInstrumentationの`SentryEnv`・`SentryOptionsFactory`・`createSentryMiddleware`・`withSentryForScheduledAndQueue`、WorkerHandlerの`WorkerHandlerOptions`、ScheduledDispatcherとQueueDispatcherの`modules`、QueueConsumerの相関IDと想定外の例外と遅延の判定、`ipRateLimit`の型制約、AppLayerRules、WranglerConfigsの型の検査と`max_retries`の確認、AppPackageScriptsの`cf-typegen:check`、Testing Strategyの`retry-policy.unit.test.ts`・`queue-consumer.worker.test.ts`。タスクは10.1〜10.4として追加した。既存のタスクの番号の変更は無い。

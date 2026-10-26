@@ -347,6 +347,36 @@
   - 完了状態: 一括検査・カバレッジ付きの一括テスト・スモークテスト・マイグレーションの検出確認がすべて成功する
   - _Requirements: 5.4, 15.1, 15.2_
 
+- [x] 10. 実装の検証の指摘への対応(承認後の改訂8)
+- [x] 10.1 Queueのconsumerの相関IDと再試行の上限を、処理単位と配信回数に合わせる
+  - 先に、ハンドラーの外の想定外の例外のエラーログとSentryのイベントに封筒のIDの相関ID(タグ`correlation_id`)が付き、後続のメッセージには後続のIDが付くこと、登録の`retry.maxAttempts`がQueuesの再試行回数の上限を超えると組み立て時に例外になることを確かめるテストを書く
+  - メッセージごとにSentryのスコープを分けて相関IDを封筒のIDにし、想定外の例外の受け止めをその文脈とスコープの中で行う
+  - Queuesの再試行回数の上限の定数と方針の検査を`core/messaging/retry-policy.ts`に置き、ディスパッチャの組み立て時に検査する。定数とWranglerの`max_retries`の一致を設定の整合の単体テストで確かめる
+  - 完了状態: consumerのWorkers統合テスト・再試行の方針の単体テスト・設定の整合の単体テストが成功する
+  - _Boundary: QueueConsumer, RetryPolicy, WranglerConfigs_
+  - _Requirements: 8.2, 9.1, 11.5, 11.7_
+
+- [x] 10.2 環境の検証スキーマの型検査と、設定と生成済みの型の食い違いの検査を一括検査に加える
+  - apiの環境の検証スキーマに、eventと同じ`satisfies z.ZodType<…>`の型検査を付ける
+  - 先に、一括検査が静的解析と型検査の間でアプリだけに型生成の検査を実行し、日本語の段階名で表示することを確かめるテストを書き、dev-toolingの一括検査に段階を足す。api・eventに`cf-typegen:check`を定義する
+  - 完了状態: 一括検査で両アプリの型生成の検査が成功し、Wrangler設定を一時的に変えると失敗する(確認後に戻す)
+  - _Boundary: AppComposition, AppPackageScripts_
+  - _Requirements: 7.5, 7.7_
+
+- [x] 10.3 層の規則を共通化し、共有ディレクトリから利用側アプリの`src`への依存を禁止する。重複した判定と定義を1つにする
+  - 先に、`lib/core`・`lib/workers`・DBスキーマから`src`へのimportが報告されることを確かめるテストを書き、`src`の4層の規則を`config/eslint/backend-layers.ts`へ移して両アプリから読み込む
+  - ログレベルの列挙・環境の検証失敗のログ・期間の終わりの計算・遅延秒数の判定と文言を、それぞれ1箇所の定義にまとめる(先に単体テストを書く)
+  - 完了状態: 層の規則の単体テスト・新しい単体テストと、両アプリの静的解析・型検査・全テストが成功する
+  - _Boundary: AppLayerRules, LoggingSetup, EnvSchema, FixedWindow, MessagePublisher, QueueConsumer_
+  - _Requirements: 5.1, 7.5, 8.7, 11.3, 12.3_
+
+- [x] 10.4 設計・技術ドキュメント・オンボーディングを実装に合わせる
+  - design.mdのインターフェース定義を、Implementation Notesで承認した逸脱と10.1〜10.3の変更に合わせて改訂し、research.mdに改訂8として記録する
+  - レイヤ構成・非同期処理・ログ管理・JavaScriptとTypeScriptの規約・テスト方針の技術ドキュメント、オンボーディング、CLAUDE.mdのディレクトリ構成、dev-toolingの設計の一括検査の段階を更新する
+  - 完了状態: 設計の型定義が実装と一致し、技術ドキュメントにプロジェクト名と固有値が無い
+  - _Boundary: ArchitectureDoc, AsyncProcessingDoc, LoggingDoc, OnboardingUpdates_
+  - _Requirements: 15.3, 15.5, 15.6_
+
 ## Implementation Notes
 
 - 1.2: `apps/db/client.ts`の`D1Database`は1.3で生成する`worker-configuration.d.ts`で初めて宣言されるため、1.2は1.3の実装後に型検査を確かめてコミットした。後続でも、実行時の環境の型に依存するコードは型生成の後でなければ型検査が通らない。
@@ -380,7 +410,7 @@
 - 6.2(6.4・7.1・8.3への申し送り): `dispatch(controller, env, ctx)`は設計どおり相関IDの引数を持たず、LogTapeの公開API`getConfig()?.contextLocalStorage?.getStore()?.correlationId`から相関IDを受け継いで`InvocationScopeInfo`へ渡す(文脈の外では採番する)。6.4のWorkerHandlerは`dispatch`の形を変えず、`withContext({ correlationId })`のキー名を6.1と同じ`correlationId`にそろえる。ログのカテゴリは`['api','scheduled','dispatcher']`に固定(定期実行はapiだけ)。未登録の式とジョブ0件は`warning`ログだけで要約もSentryへの送信も無い。ジョブが`AppError`で失敗した場合は`scrubEvent`によりSentryに届かずログにだけ残るため、8.3の文書に「ジョブの想定外の失敗は`AppError`以外で投げる」を規約として書く。
 - 6.1(6.4・7.1・7.2・8.1・8.3への申し送り): `createWorkerApp`の`WorkerAppOptions`は、`envSchema`を`z.ZodType`(4.4のNotes)、`sentry`を`CloudflareOptions`を返す関数(4.2のNotes。アプリは`(env) => buildSentryOptions(readSentryRuntimeOptions(env))`を渡す)にした。`envGuard`は検証結果を使わず元の`c.env`を使い続ける。環境の検証の失敗のログ属性は`missingEnvNames`・`invalidEnvNames`(`@logtape/redaction`の既定のフィールド名`/key/i`に当たる名前は値ごと伏せられるため、8.3の文書に「ログの属性名に`key`・`token`等を含めない」と書く)。Honoは`Error`以外が投げられると`onError`を通さずに再送出するためアクセスログが出ない。8.3の文書に「`Error`(の派生)だけを投げる」、HonoのHTTPExceptionも500になるため「`HTTPException`を使わず`AppError`を使う」を規約として書く。`invocation-context.ts`のローカル型`InvocationContextHonoEnv`は`PlatformHonoEnv`と変数名が重複している。
 - 8.4(8.1・8.5への申し送り): `security/002-keyed-hashing.md`は新しいプレースホルダー`<ペッパーのシークレットのキー>`(本プロジェクトでは`HASH_PEPPER`)と`<共通ライブラリの配置先>`(api・eventでは`lib`)を使う。8.5で`docs/onboardings/project-values.md`に追加し、8.1の文書も共有のバックエンドのライブラリを同じプレースホルダー名で書く。
-- 6.3(親の判断・改訂7、6.4・7.2・8.3への申し送り): Sentryの組み込みのdedupeは同じ`message`・同じfingerprint・スタック無しの連続したイベントを捨てるため、同じ文言を繰り返し送る通知(デッドレター・定期実行の予算の超過・bot判定の設定の誤り)は`captureEvent`(`logentry`・`fingerprint`)で送る(research.mdの改訂7。6.2・5.3の実装も水平展開で直した)。8.3の文書にこの規約を書き、下流spec(email-delivery・notifications・data-export・content-reporting・identity-auth・tournament-year)の固定の文言の`captureMessage`へ申し送る。本体のconsumerは1件ごとの想定外の例外を`captureException`して`retry()`し、遅延再送の不正な遅延は処理の失敗として扱う。ログのカテゴリは`['event','queue','consumer']`・`['event','queue','dead-letter']`に固定。自動で移った元のメッセージの`attempts`はデッドレターQueueでの配信回数で代用し`queueMessageId`を加える。登録の`retry.maxAttempts`がWranglerの`max_retries`(6)以上だと`auto-moved`として届く(8.3に制約として書く)。`@cloudflare/vitest-pool-workers` 0.22.0の`getQueueResult`は遅延秒数を記録しないため`vi.spyOn(message, 'retry')`で確かめ、型定義に無い`FetcherQueueResult`を2つのテストで`declare global`している。
+- 6.3(親の判断・改訂7、6.4・7.2・8.3への申し送り): Sentryの組み込みのdedupeは同じ`message`・同じfingerprint・スタック無しの連続したイベントを捨てるため、同じ文言を繰り返し送る通知(デッドレター・定期実行の予算の超過・bot判定の設定の誤り)は`captureEvent`(`logentry`・`fingerprint`)で送る(research.mdの改訂7。6.2・5.3の実装も水平展開で直した)。8.3の文書にこの規約を書き、下流spec(email-delivery・notifications・data-export・content-reporting・identity-auth・tournament-year)の固定の文言の`captureMessage`へ申し送る。本体のconsumerは1件ごとの想定外の例外を`captureException`して`retry()`し、遅延再送の不正な遅延は処理の失敗として扱う。ログのカテゴリは`['event','queue','consumer']`・`['event','queue','dead-letter']`に固定。自動で移った元のメッセージの`attempts`はデッドレターQueueでの配信回数で代用し`queueMessageId`を加える。Queuesは`max_retries`(6)+1回まで配信し、登録の`retry.maxAttempts`がそれを超えると`auto-moved`として届く(改訂8で境界を訂正し、10.1で`maxAttempts`を`max_retries`以下に限る組み立て時の検査を加えた)。`@cloudflare/vitest-pool-workers` 0.22.0の`getQueueResult`は遅延秒数を記録しないため`vi.spyOn(message, 'retry')`で確かめ、型定義に無い`FetcherQueueResult`を2つのテストで`declare global`している。
 - 8.2(8.5への申し送り): `db/003-schema-conventions.md`は新しいプレースホルダー`<DBディレクトリ>`(本プロジェクトでは`apps/db`)を使い、既存の001の`<データベース名>`・`<バインディング名>`も`project-values.md`に未記載。8.5で追加する。業務時刻のオフセット(UTC-08:00)は003では値を書かず「夏時間の無い固定のUTCオフセット」としているため、8.5で`project-values.md`に載せる。002の全文検索の例は、連番の主キーを持つ全文検索用のテーブルを外部コンテンツにし`content_rowid='id'`を指定する形に改めた。
 - 6.4(7.1・7.2への申し送り): `createWorkerHandler`の`WorkerHandlerOptions`は設計から次のとおり逸脱した。`modules`を持たない(コンテナはHonoの`requestContainer`と各ディスパッチャーが作り、ハンドラーには使い道が無い。アプリは`MODULES`を`createScheduledDispatcher`・`createQueueDispatcher`と`createWorkerApp`にだけ渡す)、`sentry`(`CloudflareOptions`を返す関数)と`console?: Console`を加えた、`envSchema`は`z.ZodType`。エントリは`createWorkerHandler({ appName, app, envSchema, sentry, scheduled | queue })`の形で組み立てる。scheduled・queueでは相関IDを採番してSentryのタグ`correlation_id`と`withContext({ correlationId })`に入れ、環境を検証し(失敗はキー名だけの`error`ログと例外。queueではバッチ全体がQueuesの再試行になる)、`withSentryForScheduledAndQueue`で計装する。デッドレターのSentryのイベントにはメッセージの`correlation_id`のタグを付ける(親がレビューの指摘で追加)。環境の検証の失敗のログは`env-guard.ts`と重複している。
 - 8.1(8.5への申し送り): `backend/002`・`003`は新しいプレースホルダー`<DBディレクトリの配置先>`(`db`)・`<ヘルスチェックの経路>`(`/health`)・`<IP制限のバインディング名>`(`IP_RATE_LIMITER`)・`<IP制限の名前空間>`(Workerと環境ごとの`namespace_id`)・`<厳密カウンタのバインディング名>`(`RATE_LIMIT_COUNTER`)・`<bot判定の秘密鍵のシークレットのキー>`(`TURNSTILE_SECRET_KEY`)・`<期待するホスト名の変数のキー>`(`TURNSTILE_EXPECTED_HOSTNAMES`)を使う。「処理単位」はHTTPリクエスト1件・定期実行のジョブ1つ・非同期メッセージ1件(要件の用語どおり)。7.1〜7.3の登録箇所・エントリ・DIのスモークテストは設計に基づいて書いたため、実装後に記述を確かめる。`ClientIpResolver`は`Request`だけを受け取り`env`を受け取らない(api-gatewayが中継の検証に`env`の秘密が要る場合は設計の見直しが要る)。
@@ -393,3 +423,4 @@
 - 9.2(2026-10-25の結果): `bun run check`は成功9件・失敗0件(未作成のフロントエンドの6件は飛ばした)。カバレッジ付きの単体テストはルート624件(全体で行99.27%)・api 601件(行100%)・eventは0件で、いずれも終了コード0(ファイル単位の閾値を満たす)。カバレッジ付きのWorkers統合テストはapi 25ファイル243件(全体で行99.75%)・event 1ファイル4件で、プリセットの`perFile: true`の閾値を満たし終了コード0。`test:smoke`と`db:migrations:check`(マイグレーション0件)も成功した。
 - 9.1(2026-10-26の結果): 開発者がInfisicalの`dev`環境に`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`を登録した後、オンボーディングの手順で確かめた。`db:migrate:local`は適用0件で成功。`infisical run`でシークレットを注入して両サーバーを同時に起動し、`/health`はapi(48042)・event(48043)とも200・`Cache-Control: no-store`。同じIPの1〜100回目は200で101回目は429・`Retry-After: 10`(両サーバー)。apiの定期実行をE2Eの共有の補助(一時的なスクリプト、コミットしない)で業務日付と4:21で起こすと、Wrangler 4.124.0のローカルの経路`/cdn-cgi/local/scheduled`の`cron`・`time`の引数どおりに起動し、登録0件の警告(`cron: 21 12 * * *`、相関ID付き)が出た。apiから`JOBS_QUEUE`へ送ったメッセージ(一時的に登録したジョブで送信し、確認後に元に戻した)は、別のプロセスで起動したeventのconsumerへ届き、未登録の種別としてデッドレターへ移り、デッドレターのconsumerが通知した(別プロセス間のQueueの受け渡しはローカルでも可能)。
 - 9.1(見つかった不備と修正): (1)開発コンテナの`node`がBunへのシンボリックリンクで、Wrangler(Miniflare)がBun上で動くと、Bunの組み込みの`undici`がカスタムのディスパッチャを呼ばないため`dispatchFetch`の`cf`(`MF-CF-Blob`)が付かず、`wrangler dev`の中継が`play`の`proxyData`を受け取れずに要求を待たせ続けていた(1.3・7.3の「HTTPに応答しない」の原因)。開発者の決定で、DockerfileにNode.js v26.12.1の実行ファイルを導入し(`/usr/local/bin/node`がbunの代替より優先)、`infra/001-wrangler-conventions.md`に「Wranglerを動かす実行環境」を、tech-stack.md・オンボーディング・CLAUDE.mdの参照先に記載した。確認は同じ版のNode.jsを`PATH`の先頭に置いて行った(コンテナの作り直しは開発者が行う)。(2)両サーバーを同時に起動するとインスペクターの既定の9229が衝突してeventが起動できなかったため、eventの`dev`に`--inspector-port 9230`を加え、design.mdのAppPackageScripts・VitestConfigsとオンボーディングを直した。コンテナの作り直しの後は、7.3の`test:smoke`の中継を経由しない問い合わせは不要になるが、Wranglerの版の更新で壊れない限りそのままでよい。
+- 10.1〜10.4(2026-10-26、承認後の改訂8): `/cc-sdd:kiro-validate-impl backend-platform`(判定GO)のW1・W3・W5・W6・W7とInfoの「層の規則」「重複」「spec.jsonが古い」に、開発者の指示で対応した。Queueのconsumerは`consumeOne`をメッセージごとに`withScope`で包み、`createWorkerHandler`がバッチに付けた`correlation_id`を封筒のIDで置き換える(想定外の例外が続くとSentryのdedupeが後続を捨てるため、テストは試行回数0と-1で文言を変えている)。`QUEUE_MAX_RETRIES`(6)は`core/messaging/retry-policy.ts`にあり、`assertRetryPolicy`は`maxAttempts`を1〜6の整数に限る(Miniflareの`maxAttempts = maxRetries + 1`で配信回数を確かめ、最後の試行で通知の送信に失敗しても1回は再配信できる値にした)。一括検査の段階「型生成の検査」(`cf-typegen:check`)はアプリだけが対象で、ルートの段階を1つも飛ばさないルートの`package.json`の約束(dev-tooling)を保つ。`test-support/run-all-fixtures.ts`に`APP_DIRS`・`appResultsOf`を足した。`src`の4層の規則は`config/eslint/backend-layers.ts`の`createBackendLayerRules(appName)`にあり、共有ディレクトリの規則(`**/src/**`の禁止を含む)はapiの`eslint.config.ts`に残した。動的`import()`・`require`の検査は今回の対象外で、1.5のNotesのまま。ログレベルは`core/logging/log-level.ts`、環境の検証失敗のログは`core/env/env-schema.ts`の`logEnvValidationFailure`(Loggerのオーバーロードを避けるため最小の`EnvFailureLogger`を受け取る)、期間の終わりは`fixed-window.ts`の`windowEndsAt`、遅延秒数は`queue-publisher.ts`の`isValidDelaySeconds`・`invalidDelayMessage`にまとめた。spec.jsonはcc-sddに実装完了後の`phase`が無いため、開発者の選択で`phase`を変えず`ready_for_implementation`と`updated_at`だけを更新した。W2(429の文言とエラーコードの二重定義)とInfoの残り(Workers統合テストの`Missing required secrets`の警告、仮のD1のIDを直接書いた設定のテスト)は対応していない。
