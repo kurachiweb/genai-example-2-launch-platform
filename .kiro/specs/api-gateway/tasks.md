@@ -161,7 +161,7 @@
   - _Requirements: 1.1, 1.2, 1.5, 6.3, 6.4, 6.6, 7.5, 12.3, 13.1_
 
 - [ ] 6. 許可リストの生成と検査のコマンド
-- [ ] 6.1 操作の本文をスキーマと上限で検証する関数を作る
+- [x] 6.1 操作の本文をスキーマと上限で検証する関数を作る
   - 先に、テスト用のスキーマで、上限を超える操作がそれぞれの種類のコードを返し、構文の誤りと存在しない項目がそれぞれのコードを返し、上限以内の操作が合格する単体テストを書く
   - 5.1の上限とエラーコードの分類を使い、解析と検証だけを行う関数を実装する(実行はしない)
   - 完了状態: 単体テストが成功し、Bunのカバレッジで読み込んだ上限とエラーコードのファイルも80%を満たす
@@ -303,3 +303,4 @@
 - 5.4(設計の補完と5.5・5.6・9.1への申し送り): 操作ログはエラーコードがあるか状態コードが400以上なら`outcome: error`・`warning`(コードの無い415・413を成功として記録しないため)。不明の操作名・種類は`null`、エラーコードは重複を除く。Yogaのサーバー文脈は`{ scope }`の形(`OperationObservabilityContext`は`GatewayRequestScope`の部分集合)で、5.5で`{ scope: GatewayRequestScope }`を渡し、5.6で`logOperation`を呼ぶ。5.5では同じYogaのインスタンスへ2回要求し、解析・検証のキャッシュが当たっても操作名が記録されることを確かめる。Yogaが結果処理の前に返す応答(415・GraphiQLのHTML)と5.6のモジュールが返す404・413はルートのスパンの属性が付かない(5.6で扱いを決める)。
 - 5.5(設計の改訂候補と5.6・9.1への申し送り): 要件6.3・11.5に合わせ、設計から次を変えた。`useDisableIntrospection`は全環境に適用し、ローカルのGraphiQLの要求(内部の呼び出し元ヘッダーが無い要求)だけ通す(設計は「デプロイ先環境だけ」)。`graphiql`はローカルのGraphiQLの要求だけ真(設計は「ローカル環境だけ真」)。Yogaの既定のCORS(任意のOriginを資格情報付きで反射)を`cors: false`で無効にする。`logging: false`。想定外の例外のログのカテゴリは`['api', 'graphql', 'error']`(設計のMonitoringに無い)。`getGatewayServer`は環境だけをキーにisolate内で使い回し、2回目以降の`options`を無視するため、5.6のテストは同じファイル内でスキーマモジュールと許可リストをそろえる。テスト補助`test/support/observability-recording.ts`を追加した(`operation-observability.worker.test.ts`に同じ補助の重複が残る)。1.2の`gateway-headers.ts`の関数カバレッジ不足は解消した。
 - 5.6(設計の補完と8.x・9.1・10.1への申し送り): 受付経路は「内部の呼び出し元ヘッダー→ローカルのGraphiQLの要求(`isGraphiqlRequest`を共有)→未登録の経路と同じ404」の順で、404は本文の上限の413より先。413は`AppError`に種類が無いためモジュールで共通のエラー形式を作る(コード`payload_too_large`、文言「リクエストの本文が大きすぎます。」)。本文の上限はHonoの`bodyLimit`で、長さのヘッダーがあればその値を信頼する(区切りは実行基盤が強制する前提)。外部経路の404は経路を隠すため操作ログ・ルートのスパンの属性を出さず、413は操作ログだけ出す。Honoの`c.res`のsetterは古い応答のヘッダーを新しい応答へ書き戻すため、後処理では`c.res = undefined`の後に代入する(YogaのSSEの`Cache-Control: no-cache`で`no-store`が戻るのを防ぐ。SSEは受け付ける)。GraphiQLの画面のCSPはYoga 5.24.6の内蔵HTMLに合わせ、unpkgのスクリプト・スタイル・フォント・接続と`'unsafe-inline'`・`worker-src blob:`を許す(faviconは遮断)。ブラウザでの表示とMonacoの`'unsafe-eval'`の要否は10.1で確かめる。テストは`test/support/graphql-module-harness.ts`と`graphql-module.worker.test.ts`・`graphql-module.response.worker.test.ts`に分けた。
+- 6.1(設計の改訂候補と6.4への申し送り): 検証関数は設計どおり上限のプラグインだけのYogaで解析・検証するため、introspection(`__schema`・`__type`)、1つの文書に複数の操作、`Subscription`型の無い`subscription`も合格する。実行時はintrospectionが無効(5.5)なので、許可リストに入っても`graphql_validation_failed`で拒否される。破壊的変更の検出の目的からは、graphqlの`NoSchemaIntrospectionCustomRule`などを加えて実行時と合わせるのが筋だが、設計の範囲外のため加えていない(人の判断待ち)。上限を複数超えた操作は最初の1つのコードだけを返す。テストは`test/support/query-limit-harness.ts`を読み込むため、6.4の`scripts/graphql/**`の読み込み制限ではテストファイルの扱いを決める。
