@@ -136,6 +136,8 @@ const BUN_LOADED_GRAPHQL_RULES: Linter.Config[] = [
       'src/presentation/graphql/query-limits.ts',
       'src/presentation/graphql/error-codes.ts',
     ],
+    // Workers統合テストはBunが読み込まず、D1などのバインディングをworkerdの実行環境から受け取るため、層の規則だけを当てる
+    ignores: ['src/presentation/graphql/modules/**/*.worker.test.ts'],
     rules: {
       'no-restricted-imports': [
         'error',

@@ -110,7 +110,7 @@
   - _Depends: 1.2, 4.1_
   - _Requirements: 8.1, 9.1, 9.2, 9.3_
 
-- [ ] 4.6 疎通確認のユースケース・データベースの到達確認・リゾルバを作る
+- [x] 4.6 疎通確認のユースケース・データベースの到達確認・リゾルバを作る
   - 先に、ユースケースが時計の値と到達可否を返す単体テストと、データベースに到達できれば真・失敗を差し込めば偽と警告ログになるWorkers統合テストを書く
   - アプリケーション層のユースケースと到達確認のポート、インフラ層の到達確認、ユースケースだけを呼ぶリゾルバを実装し、疎通確認のモジュールにリゾルバを加える
   - 完了状態: テスト用のコンテナで`systemStatus`が時刻とデータベースの到達可否を返し、生成した型でリゾルバの型検査が成功する
@@ -296,3 +296,4 @@
 - 4.3(5.5への申し送り): `createGraphQLContext`の引数は、設計の`GatewayRequestScope`(5.5で定義、`observation`を含む)の構造的な部分集合`GraphQLContextScope`(`access`・`container`・`correlationId`・`clientIp`・`session`・`botToken`)。5.5では`GatewayRequestScope`をそのまま渡す(循環importを避けるため`graphql-context.ts`から`gateway-server.ts`を読み込まない)。Yogaは文脈の項目を`Object.assign`で自身の文脈へ複製するため、`resolve`・`assertHuman`は`this`に依存しない。`BotVerifier`は`assertHuman`の呼び出し時に取得する。
 - 4.4(4.5・9.1への申し送り): 包んだリゾルバの生成型への代入は、codegenと同じ形の`Resolver`型をテスト内に置いて確かめた。4.5で実際の生成型への代入を確かめる。`validation_error`の詳細の`message`はZodの`issue.message`のため、文言を指定しない規則はZodの既定の英語の文言になる。9.1の文書に「利用者へ出る規則には日本語の文言を必ず指定する」と書く。`invalid_cursor`の文言は「ページの位置の指定が正しくありません。」、全体の文言は「入力内容を確認してください。」。検証は`safeParseAsync`(非同期の規則のため)。`first`・`perPage`の既定値は持たせずドメインが決める。
 - 4.5(6.4への申し送り): 設計のDependency Directionの「`scripts/graphql/**`は指定のファイルだけを読み込む」「`src`から`scripts`を読み込まない」を強制する静的解析の規則は、どのタスクにも割り当てられていない(現状は手で守っている)。`scripts/graphql/`の入口がそろう6.4で、`files: ['scripts/graphql/**']`に`cloudflare:*`・`@sentry/*`・`**/infrastructure/**`の禁止と、`src/**`から`**/scripts/**`の禁止を加え、層の規則の単体テストに違反例を足す。graphql-codegenは`#!/usr/bin/env node`でNodeで起動する(Wranglerと同じ扱い。9.xの文書に書く)。
+- 4.6(8.1・9.1への申し送り): 疎通確認の実装クラスは`DefaultSystemStatusQuery`(設計はインターフェースと同名だが宣言の結合の規則に当たるため)。8.1で`SYSTEM_TYPES.SystemStatusQuery`→`DefaultSystemStatusQuery`、`SYSTEM_TYPES.DatabaseProbe`→`D1DatabaseProbe`を`MODULES`に束縛する。到達確認の警告ログのカテゴリは`['api', 'infrastructure', 'system']`。Bunで読み込むファイルの禁止import規則から`src/presentation/graphql/modules/**/*.worker.test.ts`だけを外した(Bunは読み込まず、D1のため`cloudflare:*`・infrastructureが要る)。9.1の文書にこの扱いを書く。失敗を差し込むD1の偽物は`test/support/failing-d1.ts`。

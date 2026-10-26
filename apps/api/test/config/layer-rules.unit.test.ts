@@ -267,6 +267,20 @@ const BUN_LOADED_CASES: readonly PositionCase[] = [
     ],
   },
   {
+    file: 'src/presentation/graphql/modules/sample/index.worker.test.ts',
+    imports: [
+      forbidden("import { MODULES } from '../../../../composition/modules';"),
+      allowed("import { env } from 'cloudflare:workers';"),
+      allowed("import { createExecutionContext } from 'cloudflare:test';"),
+      allowed(
+        "import { Repository } from '../../../../infrastructure/sample/repository';",
+      ),
+      allowed(
+        "import { UseCase } from '../../../../application/sample/use-case';",
+      ),
+    ],
+  },
+  {
     file: 'src/presentation/graphql/gateway-server.ts',
     imports: [
       forbidden("import { MODULES } from '../../composition/modules';"),
