@@ -146,7 +146,7 @@
   - _Boundary: OperationObservability_
   - _Requirements: 3.7, 13.1, 13.2_
 
-- [ ] 5.5 Yogaを組み立て、環境ごとにisolate内で使い回す
+- [x] 5.5 Yogaを組み立て、環境ごとにisolate内で使い回す
   - 先に、テスト用のスキーマモジュールと許可リストで、デプロイ先の設定ではintrospection・GraphiQLが無効で、ローカルの設定ではGraphiQLの要求だけ任意の操作とintrospectionが通り、上限が両方に適用され、バッチ・マルチパートが拒否され、組み立てが最初の要求で1回だけ行われることを確かめるWorkers統合テストを書く
   - 設計の設定とプラグインの順で組み立てる。想定外の例外の送信には、backend-platformのログとSentryを使う
   - 完了状態: テストが成功し、モジュールの読み込みだけでは組み立てが行われない
@@ -301,3 +301,4 @@
 - 5.2(5.3・5.6への申し送り): persisted operationsの拒否(`persisted_operation_required`・`persisted_operation_not_found`、400)は`path`も原因も持たない`GraphQLError`として`maskError`に届く。設計862行の「`path`も原因も持たない→`graphql_request_invalid`」をそのまま適用すると上書きされるため、5.3では既知の`GatewayErrorCode`を持つエラーを残す規則を先に置く。プラグインは呼び出し元を`x-internal-caller`から、無ければ任意の操作を許す時(ローカルのGraphiQL)だけ`x-debug-caller`(既定`client`)から決め、どちらでもなければ照会せず`persisted_operation_not_found`にする(フェイルクローズ)。5.6はこの規則を重複させず共有する。許可リストの検証は最初の`find`で1回(失敗は記憶しない)。拒否のエラーは要求ごとに作る。文言は「登録済みの操作の識別子(documentId)を指定してください。」「登録されていない操作です。」。
 - 5.3(設計の補完と5.5・9.1への申し送り): 拒否のコード(persisted operations・構文・上限)を残すのは`path`も`originalError`も持たないエラーだけで、`path`付きのエラーや外から付けた`internal_error`は想定外として伏せる。伏せ済みの判定はポリシーが作ったエラーの`WeakSet`だけで行う。Armorの深さ・コスト・エイリアス・ディレクティブの拒否は検証中に投げられ`maskError`に届く。Yogaの`usePreventMutationViaGET`が構文エラーの`http.spec`を真にするため、`spec: false`の400として作り直す。GETのmutationの405もYogaの要求エラーとして`graphql_request_invalid`の400になる。不正な日時の変数は`validation_error`の200、リテラルは`graphql_validation_failed`の400。5.5では、Yoga自身のloggerがマスク時に生の例外を出力するため`logging: false`か伏せ字のloggerにする。9.1の文書に「利用者に見せられない内部の詳細は`GraphQLError`ではなく通常の例外か`AppError`で投げる」と書く(`path`の無い`GraphQLError`の文言はそのまま応答に出るため)。`error-codes.ts`はコードの一覧`GATEWAY_ERROR_CODES`から型を作る。
 - 5.4(設計の補完と5.5・5.6・9.1への申し送り): 操作ログはエラーコードがあるか状態コードが400以上なら`outcome: error`・`warning`(コードの無い415・413を成功として記録しないため)。不明の操作名・種類は`null`、エラーコードは重複を除く。Yogaのサーバー文脈は`{ scope }`の形(`OperationObservabilityContext`は`GatewayRequestScope`の部分集合)で、5.5で`{ scope: GatewayRequestScope }`を渡し、5.6で`logOperation`を呼ぶ。5.5では同じYogaのインスタンスへ2回要求し、解析・検証のキャッシュが当たっても操作名が記録されることを確かめる。Yogaが結果処理の前に返す応答(415・GraphiQLのHTML)と5.6のモジュールが返す404・413はルートのスパンの属性が付かない(5.6で扱いを決める)。
+- 5.5(設計の改訂候補と5.6・9.1への申し送り): 要件6.3・11.5に合わせ、設計から次を変えた。`useDisableIntrospection`は全環境に適用し、ローカルのGraphiQLの要求(内部の呼び出し元ヘッダーが無い要求)だけ通す(設計は「デプロイ先環境だけ」)。`graphiql`はローカルのGraphiQLの要求だけ真(設計は「ローカル環境だけ真」)。Yogaの既定のCORS(任意のOriginを資格情報付きで反射)を`cors: false`で無効にする。`logging: false`。想定外の例外のログのカテゴリは`['api', 'graphql', 'error']`(設計のMonitoringに無い)。`getGatewayServer`は環境だけをキーにisolate内で使い回し、2回目以降の`options`を無視するため、5.6のテストは同じファイル内でスキーマモジュールと許可リストをそろえる。テスト補助`test/support/observability-recording.ts`を追加した(`operation-observability.worker.test.ts`に同じ補助の重複が残る)。1.2の`gateway-headers.ts`の関数カバレッジ不足は解消した。
