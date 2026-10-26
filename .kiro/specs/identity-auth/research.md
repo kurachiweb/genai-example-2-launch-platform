@@ -364,3 +364,7 @@ cross-spec reviewの指摘による、承認の後の改訂である。仮7は20
 - [Cloudflare Durable Objects Alarms](https://developers.cloudflare.com/durable-objects/api/alarms/) — アラームの予約と再試行
 - 上流spec: `.kiro/specs/backend-platform/design.md`・`.kiro/specs/api-gateway/design.md`・`.kiro/specs/email-delivery/design.md`・`.kiro/specs/frontend-platform/design.md`
 - 参照したスキル: `cc-sdd`の`kiro-spec-*`、TanStackの`tanstack-start/rules/auth-route-protection.md`(`beforeLoad`による保護と文脈の拡張)・`tanstack-router/rules/org-pathless-layouts.md`(ログイン必須の領域を経路の無いレイアウトにする)
+
+## 上流(api-gateway)の版の更新への追従(2026-10-26)
+
+- api-gatewayの承認後の改訂2(実装前のギャップ分析のG5)で、開発者の指示により`graphql-yoga`を5.24.1から最新のパッチ5.24.6へ上げた。本specは上流の版を使うため、design.mdのTechnology Stackの表の`graphql-yoga`の版を5.24.6に合わせた。他の記述と契約は変えていない。

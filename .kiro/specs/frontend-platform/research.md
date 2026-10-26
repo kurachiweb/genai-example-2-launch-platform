@@ -132,11 +132,11 @@
 ### GraphQLのクライアント側のコード生成
 
 - **Context**: 要件6、api-gatewayの契約(操作の一覧の場所・形式・識別子`sha256:<16進>`、`documentId`による要求)。
-- **Sources Consulted**: api-gatewayのresearch.md(`@graphql-codegen/client-preset` 6.2.0の`persistedDocuments`の出力)、npmの`@graphql-codegen/client-preset@6.2.0`(相手依存`graphql` ^16)。
+- **Sources Consulted**: api-gatewayのresearch.md(`@graphql-codegen/client-preset` 6.2.0の`persistedDocuments`の出力)、npmの`@graphql-codegen/client-preset@6.2.0`(相手依存`graphql` ^16)。2026-10-26に`@graphql-codegen/client-preset@6.2.3`の配布物も確かめ、相手依存と`persisted-documents.json`の識別子の形式(`sha256:`の前置き)が6.2.0から変わっていないことを確かめた。
 - **Findings**:
   - `persistedDocuments`を有効にすると、出力先に`persisted-documents.json`を出し、生成した文書に`__meta__.hash`(`sha256:<16進>`)を付ける。`mode: 'replaceDocumentWithHash'`では、生成物から操作の本文が消え、識別子だけが残る。
   - `@graphql-codegen/cli`の`--check`は、生成物が最新でなければ終了コード1を返す。
-- **Implications**: 出力先を`src/graphql/generated/`(api-gatewayの契約)にし、`mode: 'replaceDocumentWithHash'`でバンドルから本文を除く。`graphql`は16.14.2、`@graphql-codegen/cli`は7.4.3でapiとそろえる。操作は各アプリの`src`にだけ置き、共通部品には置かない(利用者側と管理者側の一覧を分けるため)。
+- **Implications**: 出力先を`src/graphql/generated/`(api-gatewayの契約)にし、`mode: 'replaceDocumentWithHash'`でバンドルから本文を除く。`graphql`は16.14.2、`@graphql-codegen/cli`は7.4.6でapiとそろえ、`@graphql-codegen/client-preset`は6.2.3とする(2026-10-26、api-gatewayの承認後の改訂2への追従。下の「上流(api-gateway)の版の更新への追従」を参照)。操作は各アプリの`src`にだけ置き、共通部品には置かない(利用者側と管理者側の一覧を分けるため)。
 
 ### ESLint 10と画面向けの静的解析
 
@@ -259,3 +259,9 @@
 - [Cloudflare: Request(cf.timezone)](https://developers.cloudflare.com/workers/runtime-apis/request/) — 接続元のタイムゾーン
 - [Cloudflare: Observatory](https://developers.cloudflare.com/speed/observatory/) — RUM
 - [WCAG 2.2: Pause, Stop, Hide](https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide.html) — 2.2.2の停止手段
+
+## 上流(api-gateway)の版の更新への追従(2026-10-26)
+
+- **Context**: api-gatewayの承認後の改訂2(実装前のギャップ分析のG5)で、開発者の指示によりapiの`@graphql-codegen/cli`を7.4.3から最新のパッチ7.4.6へ上げた。cliはapi・client・adminで版をそろえる契約のため、本specの設計の版も7.4.6に合わせた。
+- **client-presetの更新**: 開発者の指示により、`@graphql-codegen/client-preset`も6.2.0から最新のパッチ6.2.3(2026-10-09)へ上げた。6.2.3の相手依存(`graphql` ^16を含む範囲)と、`persisted-documents.json`の識別子の形式(`sha256:<16進>`)は6.2.0と同じで、api-gatewayの許可リストの契約は変わらない。6.2.3は依存に`@graphql-codegen/typescript` ^6.1.2を持ち、apiで上げた版とそろう。
+- **変えた箇所**: design.mdのTechnology Stackの表のGraphQLの行(cli 7.4.6・client-preset 6.2.3)と、上の「GraphQLのクライアント側のコード生成」のSources Consulted・Implicationsの版。

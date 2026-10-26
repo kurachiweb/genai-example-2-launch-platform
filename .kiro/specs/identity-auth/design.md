@@ -219,7 +219,7 @@ graph TB
 | 非同期・定期 | Cloudflare Queues(本体`JOBS_QUEUE`)・Cron Triggers(api)                              | 非同期の波及処理・判定し直し、日次のジョブ               | backend-platformの基盤。新しいQueueは作らない                 |
 | メール       | email-deliveryの`EmailSender`・React Email                                           | 認証系の7種のトランザクションメール                      | 既存                                                          |
 | 画面         | TanStack Start・React・react-hook-form・zod・shadcn/ui・`@marsidev/react-turnstile`  | 認証画面・設定ページ・ヘッダーの区画                     | frontend-platformの版                                         |
-| サーバー     | hono 4.13.13・inversify 8.2.3・graphql-yoga 5.24.1・zod 4.6.5                        | GraphQLのモジュール・DI・入力の検証                      | 上流の版                                                      |
+| サーバー     | hono 4.13.13・inversify 8.2.3・graphql-yoga 5.24.6・zod 4.6.5                        | GraphQLのモジュール・DI・入力の検証                      | 上流の版(Yogaはapi-gatewayの承認後の改訂2で5.24.6)            |
 | テスト       | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1・Mailpit 1.32.0         | 単体・Workers統合・ブラウザ・E2E                         | 上流の版。E2EはMailpitのAPIでメールを読む                     |
 
 ## File Structure Plan

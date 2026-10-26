@@ -223,3 +223,132 @@
 - **変えた箇所**(確定後): 要件10.9・10.10と「承認後の改訂」の表、設計のRevalidation Triggers・追跡表・コンポーネントの表・`PublicApiApp・Responses・RouteTable・CorsPolicy・RestModule`の契約と説明・`api-worker.ts`の説明・`backend/005`の内容・Testing Strategy・本specが定める固有の値、タスク7.3・9.2・9.5(仕様書の`servers`と`info`)。改訂1によるタスク7.2の変更として残るのは、`_Boundary: RouteTable, CorsPolicy_`の追加だけである(テスト・実装・完了状態・要件の対応は改訂の前に戻した)。番号の変更は無い。
 - **変更部分のタスクの検証(改訂1の追加時、Expose-Headersを含む範囲)**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。判定はPASSだった。軽微の指摘のうち、9.5の固有の値の記載対象に相対のサーバーを加え、7.3の関数名と引数の名前を能力の表現に改めた(Expose-Headersに関する修正は確定の際に取り除いた)。
 - **変更部分のタスクの検証(2026-10-24の確定後の範囲)**: Expose-Headersを取り除いた後の要件・設計・タスク・research.mdを、新しいサブエージェントによる独立した確認(independent)でレビューした。要件の90件の受け入れ基準の番号がすべてタスクと設計の追跡表にあることを機械的に確かめた。1回目の判定はPASSだった。軽微の指摘のうち、本節の7.2の記述と、検証の範囲の区別を直した。`Access-Control-Expose-Headers`が付かないことを確かめるテストの追加は、取り除く指示の範囲を超えるため加えていない。タスクの承認を保った。
+
+---
+
+## 実装前のギャップ分析(2026-10-26)
+
+- **状態**: `/cc-sdd:kiro-validate-gap api-gateway`による分析で、要件・設計・タスクは変えていない。設計の作成時(2026-10-17〜24)は`apps/api`・`apps/event`・`apps/backend-lib`がbackend-platformの実装前だったため、実装済みのコード(コミット`e87aea4`)と、設計が前提にした上流の契約を照合した。
+- **前提の変化**: backend-platformは全タスクを完了し、`ready_for_implementation: true`になった。本specの設計の承認後に、backend-platformへ承認後の改訂4〜8(Sentryの収集設定、逐次送信のスパンの除去、一括検査の`cf-typegen:check`、層の規則の共通化など)が加わった。実装の対象として次に着手できるspecは本specである。
+- **steering**: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specのコードで代替した。
+
+### 上流の契約と実装の照合
+
+| 設計が前提にした契約                                                                        | 実装(`apps/backend-lib`・`apps/api`)                                                                                                  | 判定                                                                                               |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `createWorkerApp`の`resolveClientIp?: ClientIpResolver`(既定は`resolveConnectingIp`)        | `workers/http/create-worker-app.ts`にある                                                                                             | 一致                                                                                               |
+| ミドルウェアの順序(Sentry→相関ID・クライアントIP→IP制限→`/health`→環境の検証→コンテナ→経路) | 同じ順序で、`notFound`は`handleNotFound`、`onError`は`createErrorHandler`                                                             | 一致                                                                                               |
+| `createWorkerHandler`が`ExportedHandler<E>`を返す                                           | `fetch`はログの設定(`ensureLogging`)の後に`app.fetch`を呼ぶ。`scheduled`・`queue`だけを`withSentryForScheduledAndQueue`で包む         | 一致。エントリポイントは`app.fetch`ではなく`handler.fetch`を呼ぶ必要があり、設計はそのとおりである |
+| `AppModule`・`PlatformHonoEnv`(`correlationId`・`clientIp`・`container`)                    | 改訂8で`AppModule`の型制約が`Hono<any, any, any>`に緩んだ                                                                             | 一致(設計の`AppModule<Hono<PlatformHonoEnv<E>>>`はそのまま使える)                                  |
+| `AppError`・`toErrorResponse`・`NOT_FOUND_RESPONSE`、再試行の秒数は429・503だけ             | `core/errors/app-error.ts`・`error-envelope.ts`                                                                                       | 一致                                                                                               |
+| `BotVerifier.assertHuman({ token, remoteIp, expectedAction })`                              | `workers/bot-protection/turnstile-verifier.ts`                                                                                        | 一致                                                                                               |
+| IP制限のキー`ip:<IP>`・送信元が不明なら`ip:unknown`                                         | `workers/rate-limit/ip-rate-limit.ts`                                                                                                 | 一致                                                                                               |
+| `scrubEvent`の除くヘッダーの一覧                                                            | 改訂4・6で、`scrubSpan`も同じ一覧で`http.request.header.<名前>`の属性を除く。SDKの`dataCollection.httpHeaders: false`で元から集めない | 一致。本specの追記はイベントとスパンの両方に効く多層の防御になる                                   |
+| GraphQLの本文・変数をSentryへ送らない(3.7・13.1)                                            | `buildSentryOptions`の`dataCollection.graphQL: { document: false, variables: false }`                                                 | 一致                                                                                               |
+| 4層の依存方向のimport制限                                                                   | 改訂8で`config/eslint/backend-layers.ts`の`createBackendLayerRules`へ共通化                                                           | 一致。ただし後述のG2                                                                               |
+| `cloudflare:workers`の`exports`によるWorkers統合テスト                                      | `src/index.worker.test.ts`が`exports.default.fetch`を使う。`worker-configuration.d.ts`の`mainModule`が`src/index.ts`を指す            | 一致。`exports.ClientGateway`も型が付く                                                            |
+
+### 既存の資産
+
+- `apps/api/src`は`index.ts`(Workerの組み立て)と`composition`(環境の検証スキーマ・`MODULES`・IP制限の除外・定期実行の定義)だけで、`domain`・`application`・`infrastructure`・`presentation`は空である。GraphQL関連の依存と`@hono/zod-openapi`は未導入である。
+- テストは`src/index.worker.test.ts`、`test/config`(Wrangler設定・層の規則・cronの一致)、`test/smoke`(DIのバンドルの確認)がある。
+- ルートの一括検査(`CHECK_STEPS`)は、共有ディレクトリの配置確認→テスト命名→整形→静的解析→型生成の検査(`cf-typegen:check`)→型検査の順である。
+- `docs/GUIDES/tech`の`backend`は001〜003、`coding`は001〜003で、本specの`backend/004`〜`006`・`coding/004`は空いている。後続spec(admin-foundationなど)は`backend/007`以降を使う設計で、番号は衝突しない。
+- tech-stack.mdには、GraphQL Yoga・GraphQL Armor・DataLoader・persisted operations・introspectionの無効化・`@hono/zod-openapi`・GraphQL Code Generator(client-preset)・GraphiQLが載っている。`@graphql-codegen/typescript`・`@graphql-codegen/typescript-resolvers`は未記載で、設計どおり追記が要る。
+- 生成コードの命名(`**/generated/**`)は、Bunのカバレッジ・Vitestのカバレッジの除外(`GENERATED_CODE_PATTERNS`)に既に入っている。
+- 後続spec(frontend-platform)の設計は、`ClientGateway`・`AdminGateway`、中継のヘッダー、`apps/{client,admin}/src/graphql/generated/persisted-documents.json`、スキーマファイルの場所を本specと同じ値で参照している。
+
+### 要件と資産の対応
+
+| 要件                    | 必要な技術要素                                               | 使える既存の資産                                                               | ギャップ                   |
+| ----------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------ | -------------------------- |
+| 1 受付経路と内部認証    | 名前付きエントリポイント、ヘッダーの除去、内部経路だけの経路 | `createWorkerHandler`・`AppModule`・`handleNotFound`                           | Missing、Constraint(G7)    |
+| 2 クライアントIP        | 内部経路のIPの解決、欠落・不正の警告                         | `resolveClientIp`の差し込み口、`ip:unknown`                                    | Missing                    |
+| 3 セッション            | 検証のポート、`SessionAccess`、Cookieの指示のヘッダー        | 処理単位のコンテナ                                                             | Missing                    |
+| 4 上限                  | GraphQL Armor、拒否の種類の分類                              | —                                                                              | Missing、Constraint(G5)    |
+| 5 許可リスト            | persisted operations、生成コマンド、Gitの履歴の読み出し      | —                                                                              | Missing、Constraint(G4)    |
+| 6 introspection         | 無効化、GraphiQLの経路                                       | `SENTRY_ENVIRONMENT`(値は同じだが用途が違う、G10)                              | Missing                    |
+| 7 エラー応答            | エラーコードの付与とマスキング、429・503                     | `AppError`・`STATUS_BY_KIND`・Sentryの`shouldHandleError`                      | Missing                    |
+| 8 スキーマモジュール    | 合成と重複検査、DataLoader、引数の検証、ページング、bot判定  | `PLATFORM_TYPES.Database`・`Clock`・`BotVerifier`                              | Missing、Unknown(G6)       |
+| 9 スキーマの出力        | 印字、リゾルバの型の生成、検査                               | 生成コードの命名の契約                                                         | Missing、Constraint(G4)    |
+| 10・11 公開REST・CORS   | `OpenAPIHono`、経路表、CORSの後処理                          | `notFound`・`onError`、IP制限の429                                             | Missing                    |
+| 12 セキュリティヘッダー | 共有コードの部品、apiとeventへの適用                         | —                                                                              | Missing                    |
+| 13 観測                 | 操作ログ、トレースへの操作名、初回の要求での組み立て         | アクセスログ(`invocationContext`)、Sentryのhonoの計装                          | Missing、Constraint(G1)    |
+| 14 テストと文書         | Workers統合テスト、カバレッジ、技術ドキュメント              | `workerTestPreset`、`coverage.include`、層の規則のテスト、Wrangler設定のテスト | Constraint(G2・G3・G8・G9) |
+
+### 新たに見つかったギャップと制約
+
+- **G1 トレースのスパン名が上書きされる(Constraint、13.2、設計の記述に影響)**: `@sentry/hono`の中間処理(`@sentry/server-utils`の`responseHandler`)は、応答の時点でルートのスパンの名前を`<メソッド> <経路>`(`POST /graphql`)へ更新し、`http.route`属性とトランザクション名も設定する。Sentryの中間処理は`createWorkerApp`の最初の`app.use`で最も外側にあるため、OperationObservabilityがGraphQLの処理中に「現在のスパンの名前を`graphql <種類> <操作名>`に更新」しても、応答の時点で戻される。13.2の受け入れ基準は「パフォーマンストレースに操作名と呼び出し元を付ける」で、名前の更新に限らない。代替は次のとおりである。
+  1. ルートのスパンに属性(`graphql.operation.name`・`graphql.operation.type`・`graphql.caller`)を付ける。名前は`POST /graphql`のまま
+  2. GraphQLの実行を子のスパン(`startSpan`)で包み、子のスパンの名前に操作名を入れる
+  3. 1と2を併用する
+- **G2 ESLintの規則が重なると前の規則が消える(Constraint、設計の「Dependency Direction」)**: flat configでは、同じファイルに当たる複数の設定が同じ規則(`no-restricted-imports`)を指定すると、後の設定のオプションが前の設定を置き換える(結合しない)。apiの`eslint.config.ts`へ`presentation/graphql`の一部のファイル向けに`cloudflare:*`・`@sentry/*`・`infrastructure`の禁止を加えると、そのファイルでは`createBackendLayerRules`の「プレゼンテーション層は合成ルートに依存できない」が無効になる。追加の規則に合成ルートの禁止を含め直すか、`createBackendLayerRules`に追加のパターンを渡す口を作る(後者は共有の`config/eslint`の変更)。`test/config/layer-rules.unit.test.ts`に違反例を加えて確かめられる。
+- **G3 既存のテストの期待値の更新(Constraint、設計の「Modified Files」に無い)**: `test/config/wrangler-config.unit.test.ts`の「apiの変数はシークレットを含まず、環境ごとの値を持つ」は`api.vars`を`toStrictEqual`で比べるため、`APP_ENVIRONMENT`を加えると期待値の更新が要る。`worker-configuration.d.ts`の再生成を忘れると、一括検査の`cf-typegen:check`(backend-platformの改訂8)が失敗する(再生成は設計に記載済み)。G2の規則を加える場合は`layer-rules.unit.test.ts`も更新対象になる。
+- **G4 生成物の検査を一括検査に含めるか(Constraint、要件9.3・9.4)**: 設計は`graphql:check`をCI(infra-delivery)から呼ぶ前提で、ルートの一括検査には加えていない。backend-platformの改訂8は、設定と生成済みの型の食い違いを一括検査の`cf-typegen:check`で検出する前例を作った。`graphql:check`も一括検査の段階に加える(dev-toolingの`scripts/tooling/run-all.ts`の変更、`graphql:check`を持たないアプリは「スクリプト未定義」で飛ばされる)か、CIだけに任せるかを決める必要がある。
+- **G5 依存の版(Constraint)**: 2026-10-26時点のnpmレジストリで確かめた。
+  - `graphql-yoga` 6.0.1(2026-10-23)が出て、`@envelop/core` ^6に依存する。GraphQL Armor 3.2.0(2025-12-29から更新なし)は相手依存が`@envelop/core` ^5のため、Yoga 6とは組み合わせられない見込みである。設計のYoga 5系の固定は引き続き必要だが、Yoga 5系の保守が先に終わるリスクが増した。
+  - Yoga 5系は`graphql-yoga` 5.24.6・`@graphql-yoga/plugin-persisted-operations` 3.24.6・`@graphql-yoga/plugin-disable-introspection` 2.25.6(いずれも2026-10-15)が最新である。プラグインの3.24.6・2.25.6は相手依存が`graphql-yoga` ^5.24.6のため、パッチを上げるなら3つを同時に上げる。設計の版(5.24.1・3.24.1・2.25.1)は一組として整合している。
+  - `@graphql-codegen/cli` 7.4.6・`@graphql-codegen/typescript` 6.1.2・`@graphql-codegen/typescript-resolvers` 6.1.1が出ている(設計は7.4.3・6.1.0・6.1.0)。cliはclient・adminと版をそろえる契約で、client・adminは未実装である。
+  - `graphql`の16系は16.14.2が最新のまま(17.0.2は2026-07に公開)。`dataloader` 2.2.3・`@hono/zod-openapi` 1.6.3も最新のままである。
+- **G6 Node.js互換なしでの動作(Unknown、8.3)**: Wrangler設定のテストは「互換性フラグ(Node.js互換を含む)を指定しない」を強制する。DataLoader 2.2.3は一括読み込みの起動を`process.nextTick`→`setImmediate`→`setTimeout`の順で予約するため、Node.js互換の無いworkerdでは`setTimeout`で起動する可能性がある。設計時の事前検証は、互換性フラグの有無と、DataLoaderが1回にまとまることを記録していない。8.3のWorkers統合テスト(3件の読み込みが1回の一括読み込みになる)で確かめ、Yoga・Armor・`@hono/zod-openapi`も互換性フラグなしで動くことをタスク1.1の段階で確かめる。
+- **G7 外部経路の404の本文(Constraint、1.2)**: 「経路の存在を明かさない」ためには、GraphqlModule・InternalOnlyが返す404の本文を、backend-platformの`handleNotFound`(`NOT_FOUND_RESPONSE`の`not_found`と定型の文言)と完全に同じにする必要がある。`AppError(not_found)`の文言が異なると、未登録の経路との違いから存在を推測できる。Workers統合テストで本文の一致を確かめる。
+- **G8 スモークテストの範囲(Info、設計のTesting Strategy)**: `bun run test:smoke`は`test/smoke/wrangler-bundle-entry.ts`(DIの確認用の専用の入口)だけをバンドルし、`src/index.ts`を対象にしない。設計の「名前付きエントリポイントを加えた後も成功すること」は本specの変更と無関係に成功し、Yogaを含む実際のバンドルの大きさとグローバルスコープの処理時間は確かめられない。実際の入口は、タスク10.1の`wrangler dev`の起動と、デプロイしない`wrangler deploy --dry-run`の出力で確かめる必要がある。
+- **G9 テストでの環境の差し替え(Info、14.2)**: `exports.ClientGateway`はWrangler設定のルートの`vars`(ローカル環境)で動くため、内部経路でstaging・prodの振る舞い(4.8・6.1・6.2)を確かめるには、テスト補助が差し替えた`env`で`handler.fetch`を呼ぶ(エントリポイントと同じ付与の関数を通す)か、エントリポイントのクラスをテストで直接生成する必要がある。設計は「環境・呼び出し元を指定してエントリを呼ぶ」とだけ定める。
+- **G10 環境の種別の変数の重複(Info)**: `SENTRY_ENVIRONMENT`が既に`local`・`staging`・`prod`を持つ。`APP_ENVIRONMENT`は値が重なるが、frontend-platform・admin-foundation・launch-readiness(C-08で両方を確認)の設計が`APP_ENVIRONMENT`を前提にするため、設計どおり別の変数として加える方が後続への影響が小さい。
+- **G11 bot判定のトークンのヘッダー名の重複(Info)**: backend-platformの`TURNSTILE_RESPONSE_HEADER`(`CF-Turnstile-Response`)と、設計の`GATEWAY_HEADERS.botToken`(`cf-turnstile-response`)は同じヘッダーである。`gateway-headers.ts`は生成コマンドがBunで読み込むため共有コードの`workers`を読み込まない方針で、値は重複して持つことになる。単体テストで大文字小文字を除いた一致を確かめる。
+
+### 実装の進め方の選択肢
+
+- **案A: 設計どおりに実装し、ギャップはタスクの中で吸収する**
+  - G1は13.2の受け入れ基準を属性で満たし、設計の1行の記述との差をtasks.mdの実装メモに残す。G2・G3・G6〜G11は各タスクのテストと実装で対応する。版は設計の値のまま固定する。
+  - ✅ 承認済みの設計・タスクを変えずにすぐ着手できる
+  - ❌ 設計の記述(トレースの方式・変更ファイル・版)と実装が食い違ったまま残り、後続specが設計を読み違えるおそれがある
+- **案B: 実装の前に、全ギャップを承認後の改訂(改訂2)として設計・タスクへ反映する**
+  - G1のトレースの方式、G2のlint規則の結合、G3の変更ファイル、G4の一括検査、G5の版、G7の404の本文、G8のバンドルの確認方法を、設計とタスクに反映してから着手する。
+  - ✅ 設計と実装が一致し、後続specの参照先が正しく保たれる
+  - ❌ 改訂の範囲が広く、タスクのレビューをやり直す手間がかかる
+- **案C: 後続specとの契約に関わるものだけ改訂し、残りは実装で吸収する(折衷)**
+  - 改訂の対象: G1(トレースの付け方。launch-readinessなどが観測の方法として参照する)、G5(版。tech-stack.mdと`coding/002`の版の一覧に載る)、G4(一括検査に加える場合はdev-toolingの契約に影響する)。
+  - 実装で吸収: G2・G3・G6〜G11。完了時にtasks.mdの実装メモへ記録する。
+  - ✅ 契約の食い違いを防ぎつつ、改訂を最小にできる
+  - ❌ どれを改訂の対象にするかの線引きを、開発者が判断する必要がある
+
+### 工数とリスク
+
+- **工数: L(1〜2週間)**。タスクは10群・38件で、GraphQLの実行基盤・生成コマンド・公開RESTの骨格・技術ドキュメント4本を含む。主要な組み合わせは設計時のscratchpadで動作を確かめ済みである。
+- **リスク: Medium**。上流の契約は設計どおりに実装されていて、主要なライブラリの組み合わせも事前に検証済みである。一方で、G1(Sentryの計装との干渉)とG5(Yoga 6の公開とArmorの更新停滞)が新たに見つかり、G6(Node.js互換なしでの動作)は未確認である。
+
+### 実装に向けた推奨
+
+- **推奨: 案C**。G1とG5は後続specとtech-stack.mdが参照する内容に関わるため、着手前に改訂として確定する。G4は開発者の判断で一括検査に加えるかを決める。
+- **着手前に開発者が決める事項**:
+  - G1: トレースへの操作名の付け方(属性・子のスパン・両方)
+  - G5: Yoga 5系・codegenの版を設計の値のままにするか、最新のパッチ(5.24.6・3.24.6・2.25.6、cli 7.4.6・typescript 6.1.2・typescript-resolvers 6.1.1)へ上げるか
+  - G4: `graphql:check`をルートの一括検査に加えるか、CIだけに任せるか
+- **Research Needed**(実装の中で確かめる):
+  - G1: Sentry 11.4.0の逐次送信のスパンで、ルートのスパンの属性と子のスパンの名前が`scrubSpan`を通った後もそのまま届くこと
+  - G5: Yoga 5系の保守の方針(セキュリティ修正の提供期間)と、GraphQL Armorの`@envelop/core` 6への対応の予定
+  - G6: Node.js互換なしのworkerdで、DataLoaderの一括読み込み、Yoga・Armor・`@hono/zod-openapi`が動くこと
+  - G8: `wrangler deploy --dry-run`の出力で、Yogaを含むバンドルの大きさを確かめられること
+
+## 実装前のギャップ分析による承認後の改訂(改訂2、2026-10-26)
+
+- **状態**: 上の「実装前のギャップ分析」を受けた改訂で、2026-10-26に開発者が確定した。要件(受け入れ基準)は変えず、設計・タスク・本書だけを変えた。そのため`requirements.md`の「承認後の改訂」の表には加えていない(backend-platformの承認後の改訂4〜8と同じ扱い)。要件・設計・タスクの承認を保った。
+- **開発者の決定**:
+  - G5(依存の版): 「全て最新のパッチに上げる」。
+  - G1(トレース): 推奨案の「両方」。ルートのスパンに属性を付け、GraphQLの実行を子のスパンで覆う。
+  - G4(一括検査): 推奨案の「一括検査に加える」。
+  - 相違点1(設計の「Modified Files」の漏れ): 推奨案の「設計とタスクに追記」。
+  - 相違点2(スモークテストの検証項目): 推奨案の「dry-runの確認に置き換え」。
+  - 相違点3(OperationObservabilityのスパンの名前の記述): G1の決定に合わせて直す。
+- **改訂の内容**:
+  - G5: `graphql-yoga` 5.24.6・`@graphql-yoga/plugin-persisted-operations` 3.24.6・`@graphql-yoga/plugin-disable-introspection` 2.25.6・`@graphql-codegen/cli` 7.4.6・`@graphql-codegen/typescript` 6.1.2・`@graphql-codegen/typescript-resolvers` 6.1.1。`graphql` 16.14.2・GraphQL Armor 3.2.0・`dataloader` 2.2.3・`@hono/zod-openapi` 1.6.3は最新のままで変えない。Yoga 6系はGraphQL Armorの依存(`@envelop/core` ^5)と合わないため、5系の最新のパッチに留める。要件フェーズのQ1の表の版(7.4.3・6.1.0・6.1.0)は決定時点の記録として残す。
+  - G1: OperationObservabilityは、ルートのスパンの名前を変えず、属性`graphql.operation.name`・`graphql.operation.type`・`graphql.caller`を付ける。GraphQLの実行の段階を子のスパン`graphql <種類> <操作名>`(`op`は`graphql.execute`)で覆い、実行前に拒否した操作では子のスパンを作らない。テストは、差し替えたトランスポートで`scrubSpan`の後の値を確かめる。
+  - G4: dev-toolingの一括検査の`CHECK_STEPS`で、`cf-typegen:check`と`typecheck`の間に、アプリだけを対象とする段階「GraphQLの生成物の検査」(`graphql:check`)を加える。生成し直し忘れたリゾルバの型が型検査のエラーとして現れる前に、原因を表示するためである。
+  - 相違点1とG2: 設計の「Modified Files」に、`test/config/wrangler-config.unit.test.ts`(`APP_ENVIRONMENT`の期待値)、`test/config/layer-rules.unit.test.ts`(違反例)、一括検査の`run-all.ts`とその単体テスト・補助、`coding/001`を加えた。「Dependency Direction」に、追加のimport制限へ合成ルートの禁止を含め直す規則を加えた。
+  - 相違点2: 設計のTesting Strategyの`test:smoke`の項目を、`wrangler deploy --dry-run`による実際の入口のバンドルの確認に置き換えた。スモークテストは回帰の確認としてだけ残す。
+- **変えた箇所**:
+  - design.md: Overview(Impact)、Boundary Commitments(This Spec Owns・Allowed Dependencies・Revalidation Triggers)、Dependency Direction、Technology Stack、Modified Files、Requirements Traceabilityの9.3・13.2、OperationObservability、GraphQLScriptsの`graphql:check`、Monitoring、Testing Strategy。
+  - tasks.md: 1.2(G2)、5.4(G1)、6.4(G4)、8.1(スモークテストの完了状態)、9.1(トレースと一括検査の記載)、10.1(dry-run)、10.2(一括検査の段階・スモークテストの位置付け)。タスクの番号・依存・要件の対応は変えていない。1.1の`wrangler-config.unit.test.ts`の更新は、改訂の前からタスクに含まれていた。
+  - 水平展開: frontend-platformのdesign.mdの`@graphql-codegen/cli`を7.4.6に(api・client・adminで版をそろえる契約)、identity-authのdesign.mdの`graphql-yoga`を5.24.6に(上流の版)合わせた。それぞれのresearch.mdに経緯を記録した。
+- **未解決のまま実装で確かめる事項**: ギャップ分析のResearch NeededのうちG5のYoga 5系の保守の方針、G6のNode.js互換なしでの動作は、改訂の対象ではなく、タスク1.1・4.2・5.4・10.1の中で確かめる。
