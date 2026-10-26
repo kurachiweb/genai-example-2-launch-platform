@@ -205,6 +205,80 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
   },
 ];
 
+const BUN_LOADED_FORBIDDEN_IMPORTS: readonly ImportCase[] = [
+  forbidden("import { env } from 'cloudflare:workers';"),
+  forbidden("import type { Env } from 'cloudflare:workers';"),
+  forbidden("import * as Sentry from '@sentry/cloudflare';"),
+  forbidden("import { sentry } from '@sentry/hono';"),
+];
+
+const bunLoadedPresentationCase = (
+  file: string,
+  depth: number,
+): PositionCase => {
+  const toSrc = '../'.repeat(depth);
+  return {
+    file,
+    imports: [
+      ...BUN_LOADED_FORBIDDEN_IMPORTS,
+      forbidden(
+        `import { Repository } from '${toSrc}infrastructure/sample/repository';`,
+      ),
+      forbidden(`import { MODULES } from '${toSrc}composition/modules';`),
+      allowed("import { buildSchema } from 'graphql';"),
+      allowed("import { z } from 'zod';"),
+      allowed(`import { UseCase } from '${toSrc}application/sample/use-case';`),
+      allowed(
+        `import { GATEWAY_HEADERS } from '${toSrc}presentation/gateway/gateway-headers';`,
+      ),
+      allowed(`import { a } from '${toSrc}../lib/core/errors/app-error';`),
+    ],
+  };
+};
+
+const BUN_LOADED_CASES: readonly PositionCase[] = [
+  bunLoadedPresentationCase(
+    'src/presentation/graphql/modules/sample/type-defs.ts',
+    4,
+  ),
+  ...[
+    'schema-module.ts',
+    'schema-composer.ts',
+    'platform-type-defs.ts',
+    'date-time-scalar.ts',
+    'query-limits.ts',
+    'error-codes.ts',
+  ].map((name) =>
+    bunLoadedPresentationCase(`src/presentation/graphql/${name}`, 2),
+  ),
+  {
+    file: 'src/composition/graphql-modules.ts',
+    imports: [
+      ...BUN_LOADED_FORBIDDEN_IMPORTS,
+      forbidden(
+        "import { Repository } from '../infrastructure/sample/repository';",
+      ),
+      allowed(
+        "import { systemSchemaModule } from '../presentation/graphql/modules/system/index';",
+      ),
+      allowed(
+        "import { defineSchemaModule } from '../presentation/graphql/schema-module';",
+      ),
+    ],
+  },
+  {
+    file: 'src/presentation/graphql/gateway-server.ts',
+    imports: [
+      forbidden("import { MODULES } from '../../composition/modules';"),
+      allowed("import * as Sentry from '@sentry/cloudflare';"),
+      allowed("import { env } from 'cloudflare:workers';"),
+      allowed(
+        "import { Repository } from '../../infrastructure/sample/repository';",
+      ),
+    ],
+  },
+];
+
 const reportedStatementsOf = async (
   app: AppName,
   { file, imports }: PositionCase,
@@ -234,6 +308,18 @@ describe.each(['api', 'event'] as const)('%sの層の依存方向', (app) => {
     '%sで外側の層と実行環境への依存だけを報告する',
     async (_file, position) => {
       expect(await reportedStatementsOf(app, position)).toEqual(
+        expectedStatementsOf(position),
+      );
+    },
+    LINT_TIMEOUT_MS,
+  );
+});
+
+describe('apiのBunで読み込むGraphQLのファイルの依存方向', () => {
+  test.each(BUN_LOADED_CASES.map((position) => [position.file, position]))(
+    '%sで実行環境・Sentry・インフラ層・合成ルートへの許されない依存だけを報告する',
+    async (_file, position) => {
+      expect(await reportedStatementsOf('api', position)).toEqual(
         expectedStatementsOf(position),
       );
     },

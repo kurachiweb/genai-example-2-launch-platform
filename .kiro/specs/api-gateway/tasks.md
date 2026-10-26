@@ -9,7 +9,7 @@
   - 完了状態: apiのロックファイルの各版が設計の表と一致し、`graphql`の実体が1つだけで、Wrangler設定の整合テスト・型生成の検査・型検査が成功し、tech-stack.mdと依存の版の一覧が更新されている
   - _Requirements: 6.1, 6.3, 14.6_
 
-- [ ] 1.2 内部経路の契約の型と、生成コマンドがBunで読み込むファイルのimport制限を用意する
+- [x] 1.2 内部経路の契約の型と、生成コマンドがBunで読み込むファイルのimport制限を用意する
   - 呼び出し元の種類・環境の種別とデプロイ先の判定・中継ヘッダーとセッションの指示ヘッダーの名前を、設計の契約どおりに定数と型で提供する。先にデプロイ先の判定の単体テストを書く
   - 先に、backend-platformの層の規則の単体テストへ、スキーマモジュール・合成・上限・エラーコードの各ファイルと登録箇所から`cloudflare:*`・Sentry・インフラ層を読み込む違反例が報告されることを加え、apiの静的解析設定に禁止importを加える
   - (承認後の改訂2)後の設定の禁止importは同じファイルの層の規則を置き換えるため、追加する規則に合成ルートの禁止も含め直し、対象のファイルから合成ルートを読み込む違反例も報告されることを層の規則の単体テストで確かめる
@@ -280,3 +280,5 @@
 
 - 1.1(1.2への申し送り): `apps/api/src/composition/env-schema.ts`は`APP_ENVIRONMENT`の3値を暫定の定数`APP_ENVIRONMENT_VALUES`で持つ。1.2で`gateway-headers.ts`の`APP_ENVIRONMENTS`・`AppEnvironment`へ置き換え、定義を1箇所にする。依存の版の一覧は表に「導入先」の列を持つ形のため、`graphql`・`@graphql-codegen/cli`の導入先は「GraphQLのサーバーとクライアントを持つアプリ」と一般化した。`@escape.tech/graphql-armor-types`(任意の相手依存)は未導入。
 - 1.1: Betterleaksが`bun.lock`の`"@inquirer/password": "^…"`(パッケージ名)を`generic-password`として誤検知する。依存を変えて該当行が移動したら`.betterleaksignore`のFingerprintを登録し直す。
+- 1.2(10.2への申し送り): Workers統合テストの`coverage.include`は`src/presentation/**`を含むため、Bunで単体テストする`gateway-headers.ts`(後の`query-limits.ts`・`error-codes.ts`も)は、Workers統合テストから関数が呼ばれるまで関数カバレッジが閾値を下回る。後続の3.x・5.xで解消される想定で、10.2で確かめる。
+- 1.2(後続への申し送り): Bunが読み込むGraphQLのファイルの禁止importは`src/presentation/graphql/modules/**`の`*.worker.test.ts`にも当たり、`cloudflare:*`を読み込めない。疎通確認のモジュールのテストで`cloudflare:test`が要るならテスト補助経由にするか、規則に`ignores`を加える。合成ルートの禁止のパターンと文言は`config/eslint/backend-layers.ts`から複製している。

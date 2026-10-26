@@ -117,6 +117,53 @@ const SHARED_DIRECTORY_RULES: Linter.Config[] = [
   },
 ];
 
+const BUN_LOADED_RESTRICTION = {
+  group: ['cloudflare:*', '@sentry/*', '**/infrastructure/**'],
+  message:
+    'GraphQLの生成コマンドと単体テストがBunで読み込むため、このファイルはWorkersの実行環境・Sentry・インフラ層に依存できません。',
+};
+
+// 同じファイルに当たる後の設定のno-restricted-importsは層の規則のオプションを置き換えるため、プレゼンテーション層の合成ルートの禁止を含め直す
+const BUN_LOADED_GRAPHQL_RULES: Linter.Config[] = [
+  {
+    name: 'api/graphql/bun-loaded-presentation',
+    files: [
+      'src/presentation/graphql/modules/**',
+      'src/presentation/graphql/schema-module.ts',
+      'src/presentation/graphql/schema-composer.ts',
+      'src/presentation/graphql/platform-type-defs.ts',
+      'src/presentation/graphql/date-time-scalar.ts',
+      'src/presentation/graphql/query-limits.ts',
+      'src/presentation/graphql/error-codes.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            BUN_LOADED_RESTRICTION,
+            {
+              group: ['**/composition/**'],
+              message:
+                'インフラ層とプレゼンテーション層は合成ルートに依存できません。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: 'api/graphql/bun-loaded-registry',
+    files: ['src/composition/graphql-modules.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [BUN_LOADED_RESTRICTION] },
+      ],
+    },
+  },
+];
+
 const config: Linter.Config[] = [
   ...createBaseConfig({
     js,
@@ -125,6 +172,7 @@ const config: Linter.Config[] = [
     tsconfigRootDir: import.meta.dirname,
   }),
   ...createBackendLayerRules('api'),
+  ...BUN_LOADED_GRAPHQL_RULES,
   ...SHARED_DIRECTORY_RULES,
 ];
 
