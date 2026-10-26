@@ -28,6 +28,7 @@
 - DataLoader(GraphQLのN+1問題対策)
 - GraphQL Armor(クエリ深度・複雑度・エイリアス数の上限設定によるDoS対策)
 - `@graphql-yoga/plugin-persisted-operations`(永続化クエリによる許可リスト方式のDoS対策)
+- GraphQL Code Generator(`@graphql-codegen/typescript`・`@graphql-codegen/typescript-resolvers`によりスキーマからリゾルバの型を生成)
 
 ### OpenAPI仕様
 

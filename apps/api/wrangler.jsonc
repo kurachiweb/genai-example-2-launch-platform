@@ -49,6 +49,7 @@
     "SENTRY_ENVIRONMENT": "local",
     "SENTRY_TRACES_SAMPLE_RATE": "0",
     "TURNSTILE_EXPECTED_HOSTNAMES": "",
+    "APP_ENVIRONMENT": "local",
   },
   "secrets": { "required": ["HASH_PEPPER", "TURNSTILE_SECRET_KEY"] },
   "env": {
@@ -99,6 +100,7 @@
         "SENTRY_ENVIRONMENT": "staging",
         "SENTRY_TRACES_SAMPLE_RATE": "1",
         "TURNSTILE_EXPECTED_HOSTNAMES": "genai-example-2-client-staging.lab.kurachiweb.com,genai-example-2-admin-staging.lab.kurachiweb.com",
+        "APP_ENVIRONMENT": "staging",
       },
       "secrets": {
         "required": ["HASH_PEPPER", "TURNSTILE_SECRET_KEY", "SENTRY_DSN"],
@@ -151,6 +153,7 @@
         "SENTRY_ENVIRONMENT": "prod",
         "SENTRY_TRACES_SAMPLE_RATE": "0.1",
         "TURNSTILE_EXPECTED_HOSTNAMES": "genai-example-2-client.lab.kurachiweb.com,genai-example-2-admin.lab.kurachiweb.com",
+        "APP_ENVIRONMENT": "prod",
       },
       "secrets": {
         "required": ["HASH_PEPPER", "TURNSTILE_SECRET_KEY", "SENTRY_DSN"],

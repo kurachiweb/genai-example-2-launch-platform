@@ -119,6 +119,7 @@ interface ExpectedEnvironment {
   readonly sentryTracesSampleRate: string;
   readonly turnstileExpectedHostnames: string;
   readonly requiresSentryDsn: boolean;
+  readonly appEnvironment: string;
 }
 
 const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
@@ -134,6 +135,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     sentryTracesSampleRate: '0',
     turnstileExpectedHostnames: '',
     requiresSentryDsn: false,
+    appEnvironment: 'local',
   },
   {
     label: 'staging',
@@ -148,6 +150,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     turnstileExpectedHostnames:
       'genai-example-2-client-staging.lab.kurachiweb.com,genai-example-2-admin-staging.lab.kurachiweb.com',
     requiresSentryDsn: true,
+    appEnvironment: 'staging',
   },
   {
     label: 'prod',
@@ -162,6 +165,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     turnstileExpectedHostnames:
       'genai-example-2-client.lab.kurachiweb.com,genai-example-2-admin.lab.kurachiweb.com',
     requiresSentryDsn: true,
+    appEnvironment: 'prod',
   },
 ];
 
@@ -308,6 +312,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
       SENTRY_ENVIRONMENT: env.sentryEnvironment,
       SENTRY_TRACES_SAMPLE_RATE: env.sentryTracesSampleRate,
       TURNSTILE_EXPECTED_HOSTNAMES: env.turnstileExpectedHostnames,
+      APP_ENVIRONMENT: env.appEnvironment,
     });
   });
 

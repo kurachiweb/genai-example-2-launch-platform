@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 依存の導入・環境の種別・内部経路の契約の型・import制限
-- [ ] 1.1 APIサーバーへGraphQL・OpenAPI関連の依存を固定した版で導入し、環境の種別を設定に加える
+- [x] 1.1 APIサーバーへGraphQL・OpenAPI関連の依存を固定した版で導入し、環境の種別を設定に加える
   - 前提: backend-platformの全タスクが完了し、api・eventのプロジェクト・Wrangler設定・Workers統合テストの設定が存在すること。無ければ止めて報告する
   - 設計のTechnology Stackの依存(`graphql` 16.14.2・GraphQL Yoga・persisted operationsとintrospection無効化のプラグイン・GraphQL Armor・DataLoader・`@hono/zod-openapi`、開発用にGraphQL Code Generatorのcli・typescript・typescript-resolvers)を、版を完全に固定して導入する
   - 先に、backend-platformのWrangler設定の整合の単体テストへ、環境の種別の変数がルート`local`・staging`staging`・prod`prod`であることの確認を加え、失敗を確かめてから設定と環境の検証スキーマに変数を加え、実行時の型を再生成する
@@ -275,3 +275,8 @@
   - backend-platformのスモークテスト(DIの変換経路の確認)とマイグレーションの検出確認が、回帰として引き続き成功することを確かめる
   - 完了状態: 一括検査(GraphQLの生成物の検査の段階を含む)・カバレッジ付きの一括テスト・スモークテスト・マイグレーションの検出確認がすべて成功する
   - _Requirements: 14.1, 14.2_
+
+## Implementation Notes
+
+- 1.1(1.2への申し送り): `apps/api/src/composition/env-schema.ts`は`APP_ENVIRONMENT`の3値を暫定の定数`APP_ENVIRONMENT_VALUES`で持つ。1.2で`gateway-headers.ts`の`APP_ENVIRONMENTS`・`AppEnvironment`へ置き換え、定義を1箇所にする。依存の版の一覧は表に「導入先」の列を持つ形のため、`graphql`・`@graphql-codegen/cli`の導入先は「GraphQLのサーバーとクライアントを持つアプリ」と一般化した。`@escape.tech/graphql-armor-types`(任意の相手依存)は未導入。
+- 1.1: Betterleaksが`bun.lock`の`"@inquirer/password": "^…"`(パッケージ名)を`generic-password`として誤検知する。依存を変えて該当行が移動したら`.betterleaksignore`のFingerprintを登録し直す。
