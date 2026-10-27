@@ -735,7 +735,7 @@ export declare function exitCodeOf(results: readonly StepResult[]): 0 | 1;
 ##### Batch / Job Contract
 
 - Trigger: `bun run check`・`bun run test:all:unit`・`bun run test:all:browser`・`bun run test:all:worker`。
-- `check`の段階: 共有ディレクトリの配置確認 → テスト命名検査 → ルートの`format:check` → ルートと各アプリの`lint` → 各アプリの`cf-typegen:check`(型生成の検査。ルートは対象外。backend-platformの承認後の改訂8で追加) → ルートと各アプリの`typecheck`。
+- `check`の段階: 共有ディレクトリの配置確認 → テスト命名検査 → ルートの`format:check` → ルートと各アプリの`lint` → 各アプリの`cf-typegen:check`(型生成の検査。ルートは対象外。backend-platformの承認後の改訂8で追加) → 各アプリの`graphql:check`(GraphQLの生成物の検査。アプリだけが対象で、スクリプトを持たないアプリは飛ばす。api-gatewayの承認後の改訂2で追加) → ルートと各アプリの`typecheck`。
 - `test:all:*`: ルートと各アプリの同名スクリプト(`test:all:unit`なら`test:unit`)を、`forwardedArgs`付きで実行する。
 - 出力: 段階・対象・結果(成功/失敗と終了コードまたは原因/飛ばした理由)の表を表示し、`cause`付きの失敗があれば原因(リポジトリ相対パスと理由)を重複を除いて続けて表示する。1つでも失敗があれば終了コード1で終える。
 - `check`は追加の引数を受け取らない(余分な引数で失敗する段階があるため)。配置確認と命名検査は、ルートのスクリプト`shared-dirs:verify`・`check:test-names`として実行する。

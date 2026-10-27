@@ -236,6 +236,10 @@
 
 - (軽微)本specは実装済みだが、ultras-subscriptionのタスク10.1が`createPlaywrightConfig`に、指定したE2Eのファイルを対象ごとのプロジェクトから外して別のプロジェクトに分け、`dependencies`で直列にする組み立てを加える。設計のRevalidation Triggersにその旨の行を加えた。E2EConfigの契約は、ultras-subscriptionのタスク10.1が新しい形に合わせて直す。`spec.json`の承認の状態は変えていない。
 
+## api-gatewayの実装による一括検査の段階の追加(2026-10-27、開発者の決定)
+
+- api-gatewayの承認後の改訂2(タスク6.4)で、一括検査の`check`の型生成の検査と型検査の間に、アプリだけを対象とする段階「GraphQLの生成物の検査」(`graphql:check`)が加わった(`scripts/tooling/run-all.ts`・`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`・`test-support/run-all-fixtures.ts`、スクリプト契約の文書`coding/001`)。開発者の決定で、design.mdの「`check`の段階」の一覧へ、backend-platformの`cf-typegen:check`と同じ書き方で追記した。`spec.json`の承認の状態は変えていない。
+
 ## References
 
 - [TypeScript 6.0 Release Notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html) — 既定値の変更と非推奨オプション

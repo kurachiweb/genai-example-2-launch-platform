@@ -926,10 +926,11 @@ export declare function apiKeyAuth(
 
 ```typescript
 export declare const PUBLIC_API_IP_RATE_LIMIT_KEY_PREFIX: 'public-api:';
-export declare const publicApiIpRateLimitRoutes: PublicRestRoutes<ApiEnv>;
+export declare const publicApiIpRateLimitRoutes: PublicRestRoutes<Env>;
 // (api) => api.use('*', bindingRateLimit({ binding: (env) => env.PUBLIC_API_RATE_LIMITER, key: (_, ip) => 'public-api:' + (ip ?? 'unknown'), periodSeconds: PUBLIC_API_IP_RATE_LIMIT.periodSeconds, exclusions: [(request) => request.method === 'OPTIONS'] }))
 ```
 
+- 型引数は、api-gatewayの登録箇所`REST_ROUTES`(`readonly PublicRestRoutes<Env>[]`)に合わせて生成された`Env`にする。Honoの環境の型引数は不変のため、`ApiEnv`では登録箇所へ加えた時点で型検査に失敗する。
 - `PUBLIC_API_REST_ROUTES`の先頭に置き、`createRestModule`が後から加える`/openapi.json`にも掛かる(13.4)。超過は`bindingRateLimit`が429・`Retry-After: 60`・`rate_limit_exceeded`を返す(13.5)。
 - Wrangler設定: `ratelimits`に`{ name: 'PUBLIC_API_RATE_LIMITER', namespace_id: '1005', simple: { limit: 60, period: 60 } }`(staging `2005`・prod `3005`)。
 

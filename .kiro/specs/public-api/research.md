@@ -252,3 +252,8 @@
 - user-profile-socialの仮3(外部Webサイトは10件まで)は、本specが`common-lib/profile`の上限の定数を使うため、仕様の文言の変更は要らない。
 - 本specに開発者の確認を待つ論点は残っていない。
 - 確定の反映の後、変更した部分を新しいサブエージェントによる独立した確認(independent)で、設計のレビューの関門とタスクのグラフのサニティレビューの両方について2回まで検証した。1回目は設計がNEEDS_FIXES(必須5件: スキーマの注記の「再発行」の物理削除、発行と再発行の流れの順序、design.mdに残った`Access-Control-Expose-Headers`の記述、research.mdのSentryの伏せ字の範囲と改訂1の内容)、タスクはPASSだった。軽微の指摘(追跡表の5.2・5.3、`ApiTarget`の注記、他人のキーの照会のテスト、E2Eの再発行の確認、3.2の回数の消費、requirements.mdの見出し)とあわせて直した。2回目は設計・タスクともPASSで、設計とタスクを承認し直した。変更した要件は3.4・5.2・5.3(と5の目的・仮の表)、変更したタスクは1.1・1.3・2.1・3.1・3.2・4.1・4.2・5.2・5.3・5.4・5.5・5.6・5.7・6.3・8.1・9.1・9.2である。
+
+## api-gatewayの実装の反映(2026-10-27、開発者の決定)
+
+- api-gatewayの実装では、公開RESTの経路の登録箇所`REST_ROUTES`の型が`readonly PublicRestRoutes<Env>[]`(生成された`Env`)になった。Honoの環境の型引数は不変のため、`PublicRestRoutes<ApiEnv>`の経路は登録箇所へ加えた時点で型検査に失敗する。開発者の決定で、本specの設計をapi-gatewayの実装に合わせた。
+- design.mdの`PublicApiIpRateLimit`の`publicApiIpRateLimitRoutes`を`PublicRestRoutes<Env>`に改め、型引数の理由を説明に加えた。`bindingRateLimit`の`binding: (env) => env.PUBLIC_API_RATE_LIMITER`は、Wrangler設定へ`PUBLIC_API_RATE_LIMITER`を加えて型を再生成した`Env`で解決される。要件・タスクは変えていない。
