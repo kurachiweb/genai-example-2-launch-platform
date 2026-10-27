@@ -261,6 +261,13 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 - ESLint + Prettier(`eslint-config-prettier`を使い`eslint-plugin-prettier`は使わない)
   - `@eslint/js` ... ESLint公式の推奨規則、静的解析の基底設定が使用
   - typescript-eslint ... TypeScriptの構文解析と型情報付きの規則(`strictTypeChecked`、`no-deprecated`による非推奨記法の検出)
+  - `@eslint-react/eslint-plugin` ... フロントエンドのReactの部品の規則(生のHTMLの挿入の禁止を含む)
+  - `eslint-plugin-react-hooks` ... フロントエンドのフックの使い方とReact Compilerの前提の規則
+  - `eslint-plugin-jsx-a11y-x` ... フロントエンドのJSXのアクセシビリティの規則(ESLint v10に対応した`eslint-plugin-jsx-a11y`のフォーク)
+  - `@tanstack/eslint-plugin-query` ... フロントエンドのTanStack Queryの使い方の規則
+  - `@tanstack/eslint-plugin-router` ... フロントエンドのTanStack Routerの使い方の規則
+  - `eslint-plugin-storybook` ... Storybookのストーリーの書き方の規則
+  - `prettier-plugin-tailwindcss` ... フロントエンドのTailwind CSSのクラス名の整列
 - `@types/bun` ... `tsc`による型検査でBunのAPIと`bun:test`の型を解決(ルートと各アプリの`tsconfig.json`の`types`に`bun`を指定)
 - Husky + lint-staged(`pre-commit`フック)
 - Commitlint(コミットメッセージ規約)

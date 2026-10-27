@@ -9,7 +9,7 @@
   - 完了状態: ルートの一括検査で共通部品のアプリが静的解析・型検査・テスト命名の検査に参加して成功し、型検査の設定の一致の単体テストが成功し、ロックファイルの版が設計の表と一致し、tech-stack.mdに10個のパッケージが載っている
   - _Requirements: 15.2, 15.7_
 
-- [ ] 1.2 画面向けの静的解析の規則と、クラス名の整列を用意する
+- [x] 1.2 画面向けの静的解析の規則と、クラス名の整列を用意する
   - React・フック・アクセシビリティ・TanStack Query・TanStack Router・Storybookの規則のプラグインと、クラス名を整列する整形のプラグインを、設計の版で共通部品へ導入する
   - 先に、生のHTMLの挿入(危険なHTMLの属性・`innerHTML`・`outerHTML`への代入)と、依存の方向に反するimport(純粋な関数やサーバーの部品からのReact・TanStack・Workers・Sentryの読み込み、画面部品からのサーバー専用ファイルの読み込み)が報告されることを、ESLintのNode APIで確かめる単体テストを書く
   - 3つのアプリが使う規則の組み立てを共通部品に置き、プラグインの型をimportせずに設定の型で受け取る。共通部品の静的解析設定と整形設定に適用する
@@ -381,3 +381,4 @@
 ## Implementation Notes
 
 - 1.1(1.3・5.9・9.1への申し送り): `test:browser`は設定ファイルが無いとexit 1になるため、プリセット・ブラウザモード・Chromiumだけの最小の`vitest.browser.config.ts`を置いた。成果物の置き場所・共有Chromium(`browserOptionsPreset`・`resolveBrowserLaunchOptions`)・カバレッジの対象の絞り込みは1.3で加える。`@tanstack/react-router` 1.170.41を直接宣言した(`@tanstack/react-start` 1.168.60が完全固定する版と同じ)。`@tanstack/react-router-ssr-query`・`graphql`は未導入。`tsconfig.json`の`include`は`**/*.ts`・`**/*.tsx`で、TypeScriptの`**`はドットで始まるディレクトリに一致しないため、5.9で`.storybook/`を明示する。文書の相違: coding/001(59〜61行・94行)は全アプリの`tsconfig.json`が基底設定を`extends`すると定め、スクリプト契約の`test:browser`を「ブラウザテストを持つアプリ」に限るため、9.1で`coding/003`に加えて`coding/001`にも共通部品の例外を書く。
+- 1.2(1.3・9.x・infra-deliveryへの申し送り): 設計との相違は次のとおり。規則名は5.23.5で`@eslint-react/dom-no-dangerously-set-innerhtml`(設計は`dom/`区切り)。設計の`Linter.Plugin`はeslintの型に無く、各プラグインの型は`ESLint.Plugin`へ代入できないため、構造的な型`PluginWithConfigs`で受けて推奨設定の形を実行時に検証する。整形のプラグインは文字列で書くとルートのPrettierが`/workspace`から解決して失敗するため、`import.meta.resolve`で共通部品の`node_modules`から解決したパスを渡す(9.xでfrontend/003・coding/001に書く。`apps/frontend-lib/node_modules`が無い環境ではルートの`format:check`が設定の読み込みで失敗するため、CIでは整形検査の前に共通部品の依存を入れる)。`tailwindStylesheet`は`styles/base.css`が無いため未指定で、1.3で`apps/frontend-lib/prettier.config.ts`に`tailwindStylesheet: './styles/base.css'`を加える。フックの規則の重複は、`@eslint-react`の推奨が有効にする同名規則だけ`react-hooks`側を止める(`reactHooksConflictsOf`)。`@eslint-react`のrefs・immutability・globalsは実験的で推奨に無いため`react-hooks`側が担う。purity・set-state-in-effect・exhaustive-depsは`@eslint-react`側でwarnになるが、ルートの一括検査は`--max-warnings=0`。生のHTMLの禁止は`insertAdjacentHTML`と`createElement`の第2引数の`dangerouslySetInnerHTML`も含める(計算したキーの代入・`Object.assign`は検出しない)。Dependency Directionから、共通部品から利用側アプリの`src`へのimportと、`src/composition`→`src/routes`も禁止した。動的`import()`と`start/**`内の別ディレクトリの`*.server.ts`の読み込みは検出しない。
