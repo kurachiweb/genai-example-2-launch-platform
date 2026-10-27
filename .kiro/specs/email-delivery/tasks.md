@@ -127,7 +127,7 @@
   - _Depends: 2.3_
   - _Requirements: 1.7, 4.1, 4.3, 4.4, 4.5, 4.6, 6.1, 6.3_
 
-- [ ] 5.3 (P) メールの異常のエラートラッキングへの通知と、未設定の送信者情報の既定実装を作る
+- [x] 5.3 (P) メールの異常のエラートラッキングへの通知と、未設定の送信者情報の既定実装を作る
   - 送信不能・送信側の拒否・配送失敗・不正なイベントはerror、日次上限はwarningで送り、異常の種類・種別・分類・コードのタグと、異常の種類ごと(日次上限は1つ)のfingerprintを付ける。宛先・件名・本文・入力・URLを送らない
   - 送信者情報の取得口の既定実装として、常に未設定を返すものを用意する
   - 完了状態: 差し替えたトランスポートでタグとfingerprint、個人情報を含まないことを確かめ、既定の送信者情報が未設定を返すことをWorkers統合テストで確かめられる
@@ -253,3 +253,4 @@
 - 5.1(5.2〜5.5への申し送り): eventのポートは`apps/event/src/application/email/ports.ts`、識別子は`email-types.ts`の`EVENT_EMAIL_TYPES`(処理の識別子`SendEmailHandler`・`DeliveryEventHandler`を含む)。`EmailRenderError`はクラスとして`ports.ts`にあり、5.7が投げて5.4が`instanceof`で見分ける。`EmailTransientFailure`は5.4が定義する。`EmailIncident`の`undeliverable`の`category`は未登録の種別のため`EmailCategory | undefined`(設計の型との相違)で、5.3は`undefined`のとき`email_category`のタグを付けない。`createEmailProvider`の環境の型`EventEmailEnv`は設計に置き場が無いため、5.2が`Pick<Env, ...>`等で定義する。
 - 5.2(6.1への申し送り): `createEmailProvider(env, fetcher)`の環境の型`EventEmailEnv`は`create-email-provider.ts`に独立したインターフェースとして定義した(生成された`Env`の`MAILPIT_API_URL`がリテラル型のため)。`EMAIL_PROVIDER`が想定外の値だと`undefined`を返すため、6.1の環境の検証で値を保証する。設定の欠落はキー名だけの`Error`。`createCloudflareEmailProvider`はテストのため任意の第2引数で時間切れの値を受け取る(設計は1引数)。
 - 5.2: Email Sendingの30秒の時間切れの後に`send()`が遅れて成功すると、一時的な障害として再試行されて二重送信になり得る(要件6.1と設計の想定どおり。少なくとも1回の配信の範囲)。Mailpitの失敗コードは設計の`mailpit-rejected`に加えて`mailpit-unreachable`・`mailpit-status-<状態コード>`・`mailpit-invalid-response`(すべて一時的な障害)。
+- 5.3(6.1への申し送り): `SentryEmailIncidentReporter`・`UnsetSenderInfoProvider`はコンストラクタ引数の無い`@injectable()`のクラスで、`.to(クラス)`で束縛する。通知は設計の`captureMessage`ではなく技術ドキュメント004の定型の文言の規則に従い`captureEvent`+`logentry`で送る(重複除外で捨てられないため)。送信不能には設計に無い`correlation_id`(送信要求の識別子)のタグも付ける。タグと指紋の値は`[A-Za-z0-9_.:-]`だけのとき64文字に切り詰め、それ以外は`unknown`、不正なイベントで種類が無ければ`missing`。
