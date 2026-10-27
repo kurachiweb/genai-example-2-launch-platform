@@ -102,7 +102,7 @@
   - _Depends: 1.2, 2.5_
   - _Requirements: 5.4, 6.7, 10.3_
 
-- [ ] 4.4 退会時の削除と日次の後始末のサービス、両アプリ共通の束縛を作る
+- [x] 4.4 退会時の削除と日次の後始末のサービス、両アプリ共通の束縛を作る
   - 退会時の削除は照合キーで物理削除し、対象が無くても成功する
   - 日次の後始末は、期限切れの抑止記録、14日より古い送信済みの記録、最後の契機から1年を過ぎ利用者に登録されていない抑止記録を削除する。1年の判定は90件ずつ最大20ページで区切り、照会口が使えなければその処理を行わず警告を出して要約に記す
   - 種別の集約・受付・抑止リスト・送信済みの記録・間引きを処理単位のコンテナへ束縛する共通のモジュールを用意する
@@ -248,3 +248,5 @@
 - 4.1(4.4への申し送り): 受付はファクトリ`createEmailSender(publisher, registry)`で、`workers`の他の部品と同じく`toDynamicValue`で束縛する。宛先は照合キーにせず元の値のまま送る(正規化は抑止リスト側)。年0000〜9999外の期限は`invalid-deadline`、過去の期限は受け付ける(送信処理が期限切れとして扱う)。
 - 4.2(4.4への申し送り): 抑止リストはファクトリ`createSuppressionRepository(db, clock)`で、`SuppressionList`・`SuppressionRecorder`・`SuppressionStore`の交差を`SuppressionRepository`型として公開した(設計に無い名前)。合成のSQLは`core`の理由の強さ(complaint > hard_bounce > rejected)を`CASE`に写しており、27状態の全729組を`mergeSuppression`と比べるWorkers統合テストでずれを検出する。
 - 4.3(4.4への申し送り): `createSendRecordRepository(db)`・`createAlertThrottleRepository(db)`はClockを持たない(時刻は引数で受け取る)。送信済みの記録の型は`SendRecordRepository`(設計の`SendRecordStore & { deleteSentBefore }`と同じ形の名前付きインターフェース)。`deleteSentBefore`は`sent_at < cutoff`で、ちょうど基準日時の行は残す。
+- 4.4(6.1・6.3への申し送り): `EMAIL_PLATFORM_MODULE`の型は`Omit<AppModule, 'routes'>`(既定の`AppModule`はHonoの型引数の不変性で両アプリの`MODULES`に代入できないため)。束縛は種別の集約・受付・抑止の照会と記録・送信済みの記録・間引きだけで、`SuppressionMaintenance`は6.3で`createSuppressionMaintenance(suppressions, sendRecords, directory)`から作ってapiのモジュールに束縛する。後始末の警告ログのカテゴリは`['api', 'application', 'email-cleanup']`に固定した(eventから使う場合は引数化が要る)。
+- 4.4(運用の見直しの対象): 1年の判定は実行をまたいで`afterKey`を持ち越さず毎日先頭から数え直すため、1年を過ぎた登録済みの記録が照合キーの昇順で先頭の1800件を占めると、それより後ろの未登録の記録が削除されなくなる(設計どおりの限界)。
