@@ -23,6 +23,7 @@ const PREBUNDLED_DEPENDENCIES = [
   'react-hook-form',
   '@hookform/resolvers/zod',
   'zod',
+  'sonner',
 ];
 
 export default defineConfig({

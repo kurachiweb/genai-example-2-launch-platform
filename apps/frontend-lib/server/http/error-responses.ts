@@ -1,3 +1,5 @@
+import { UNEXPECTED_ERROR_MESSAGE } from '../../utilities/messages/state-messages.ts';
+
 const STATUS_BY_CODE = Object.freeze({
   rate_limit_exceeded: 429,
   csrf_rejected: 403,
@@ -14,8 +16,7 @@ export type FrontendErrorCode = keyof typeof STATUS_BY_CODE;
 export const RATE_LIMIT_MESSAGE =
   '操作が集中しています。しばらく待ってから再度お試しください。';
 
-export const UNEXPECTED_ERROR_MESSAGE =
-  'ページを表示できませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。';
+export { UNEXPECTED_ERROR_MESSAGE };
 
 const REJECTED_OPERATION_MESSAGE =
   'この操作を受け付けられませんでした。ページを再読み込みして再度お試しください。';
