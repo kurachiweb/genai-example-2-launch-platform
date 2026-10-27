@@ -186,7 +186,7 @@
   - 完了状態: 経路のWorkers統合テストが成功し、要求の本文から宛先を受け取らないことを確かめられる
   - _Requirements: 3.3, 10.2, 11.4, 11.5_
 
-- [ ] 6.3 (P) APIサーバーのメールの束縛、利用者のアドレスの照会口の既定実装、日次の後始末のジョブを登録する
+- [x] 6.3 (P) APIサーバーのメールの束縛、利用者のアドレスの照会口の既定実装、日次の後始末のジョブを登録する
   - 先に、ジョブが後始末を呼んで要約をログに出す単体テストを書く
   - 照会口の登録箇所を用意し、初期値は常に「使えない」を返す既定実装とする
   - 共通のモジュールに加えて、後始末のサービス・照会口・ジョブを束縛するモジュールを登録し、ジョブを業務時刻4:21(順序900)で登録して3環境の定期実行の定義に対応するcron式を加える
@@ -262,3 +262,5 @@
 - 6.1(6.2への申し送り): eventのメールのモジュールは`composition/email-module.ts`の`EVENT_EMAIL_MODULE`で、経路はまだ持たない(6.2で疎通確認の経路を足す)。`ReactEmailRenderer`は起動時に作る定数を`toConstantValue`で束縛した(種別とテンプレートの対応の誤りを起動時に検出するため。5.7の申し送りとの相違)。送信プロバイダには処理単位ごとにグローバルの`fetch`を渡し、テストは`vi.spyOn(globalThis, 'fetch')`で受ける。eventのコンテナで`EMAIL_TYPES.EmailSender`が解決できることは6.2の経路のテストで確かめる。
 - 6.1: eventのWorkers統合テストでD1を使うため、apiの`readNestedD1Migrations`を`config/vitest/read-nested-d1-migrations.ts`へ移して両アプリで共有した(`config/vitest`の規則は`node:`の組み込みを許す形に緩めた)。マイグレーションは`setupFiles`で適用すると既存の`index.worker.test.ts`の`vi.mock`が効かなくなるため、D1を使うテストファイルの`beforeAll`で適用する。backend-platformのdesign.md(241〜242行・1866行)は移す前のパスを指したまま。eventの`wrangler deploy --dry-run`によるバンドルの確認は権限で拒否されたため、開発者の手動実行待ち。
 - 6.2(7.2・8.1への申し送り): 疎通確認の経路は`POST /internal/email/smoke`で、`Authorization: Bearer <EMAIL_SMOKE_TOKEN>`を渡すと202 `{ requestId }`を返す。2つのシークレットが揃わなければ未登録の経路と同じ404。1.3の申し送りに従い、ルートの`secrets.required`だけに`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`を加え、設計の表を改めた。ローカルで未登録だと`wrangler dev`は警告して起動し、経路は404になるため、開発者がInfisical(dev)へ2つのキーを登録する必要がある。stagingは`wrangler secret put`で登録する(`secrets.required`には入れていないのでデプロイは失敗しない)。404のエラーの組み立ては`apps/api/src/presentation/gateway/internal-only.ts`の`createNotFoundError`と同じ内容をeventに写している。
+- 6.3: 日次の後始末のジョブは`email-delivery.cleanup`(業務時刻4:21=UTC 12:21、順序900)で、DI識別子`API_EMAIL_TYPES.EmailCleanupJob`は設計に無いため`application/email/email-cleanup-job.ts`に置いた。`21 12 * * *`はルートの`triggers.crons`だけに加えた。`triggers`はWranglerで環境に継承されるキーで、staging・prodの実効値にも入ることをcronの一致の検査(3環境)で確かめている(project-values.mdの「ルート・`env.staging`・`env.prod`の`triggers.crons`に書く」と設計のModified Filesの「3環境の`triggers.crons`」とは書き方が異なる)。backend-platformの「ジョブの無い時刻の定期実行が失敗せずに終わる」テストの時刻を`0 3 * * *`へ移した。
+- 6.3(identity-authへの申し送り): `USER_ADDRESS_DIRECTORY`は`Newable<UserAddressDirectory>`で`.to()`で束縛するため、identity-authはdesign.mdのファクトリ`createD1UserAddressDirectory(db)`ではなく、`@injectable()`と`@inject(PLATFORM_TYPES.Database)`を持つクラスとして差し替える。

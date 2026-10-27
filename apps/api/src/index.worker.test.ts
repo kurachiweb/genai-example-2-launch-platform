@@ -147,8 +147,8 @@ describe('APIサーバーのエントリ', () => {
     await expect(
       scheduled(
         createScheduledController({
-          cron: '21 12 * * *',
-          scheduledTime: Date.UTC(2026, 9, 25, 12, 21),
+          cron: '0 3 * * *',
+          scheduledTime: Date.UTC(2026, 9, 25, 3, 0),
         }),
         env,
         ctx,

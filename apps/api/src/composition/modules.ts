@@ -7,6 +7,7 @@ import {
   type BotVerifier,
   createTurnstileVerifier,
 } from '../../lib/workers/bot-protection/turnstile-verifier.ts';
+import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
   createRateLimitCounterClient,
@@ -22,6 +23,7 @@ import { D1DatabaseProbe } from '../infrastructure/system/d1-database-probe.ts';
 import { createInternalRoutesModule } from '../presentation/gateway/internal-only.ts';
 import allowlist from '../presentation/graphql/generated/allowlist.json';
 import { createGraphQLModule } from '../presentation/graphql/graphql-module.ts';
+import { API_EMAIL_MODULE } from './email-module.ts';
 import { GRAPHQL_SCHEMA_MODULES } from './graphql-modules.ts';
 import { INTERNAL_ROUTES } from './internal-routes.ts';
 import { SESSION_BINDINGS } from './session.ts';
@@ -79,4 +81,6 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
     allowlist,
   }),
   createInternalRoutesModule<Env>(INTERNAL_ROUTES),
+  EMAIL_PLATFORM_MODULE,
+  API_EMAIL_MODULE,
 ];
