@@ -14,6 +14,7 @@ const PREBUNDLED_DEPENDENCIES = [
   'react',
   'react/jsx-dev-runtime',
   'react-dom/client',
+  'react-dom/server',
   'vitest-browser-react',
   'radix-ui',
   'lucide-react',

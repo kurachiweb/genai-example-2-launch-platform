@@ -39,12 +39,36 @@ export const DATE_TIME_FORMATS: Readonly<
   },
 };
 
+// Intlのオブジェクトの生成は整形より重いため、表示設定のオブジェクトが生きている間だけ書式ごとに使い回す
+const formattersByPreferences = new WeakMap<
+  DisplayPreferences,
+  Map<DateTimeFormatName, Intl.DateTimeFormat>
+>();
+
+const formatterOf = (
+  format: DateTimeFormatName,
+  preferences: DisplayPreferences,
+): Intl.DateTimeFormat => {
+  const formatters =
+    formattersByPreferences.get(preferences) ??
+    new Map<DateTimeFormatName, Intl.DateTimeFormat>();
+  if (!formattersByPreferences.has(preferences)) {
+    formattersByPreferences.set(preferences, formatters);
+  }
+  const cached = formatters.get(format);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const formatter = new Intl.DateTimeFormat(preferences.locale, {
+    ...DATE_TIME_FORMATS[format],
+    timeZone: preferences.timeZone,
+  });
+  formatters.set(format, formatter);
+  return formatter;
+};
+
 export const formatDateTime = (
   value: Date,
   format: DateTimeFormatName,
   preferences: DisplayPreferences,
-): string =>
-  new Intl.DateTimeFormat(preferences.locale, {
-    ...DATE_TIME_FORMATS[format],
-    timeZone: preferences.timeZone,
-  }).format(value);
+): string => formatterOf(format, preferences).format(value);

@@ -120,3 +120,21 @@ describe('resolveBrowserDisplayPreferences', () => {
     expect(supportedLocaleOf(preferences.locale)).toBe(preferences.locale);
   });
 });
+
+describe('supportedLocaleOf(拡張の除去)', () => {
+  test('Unicode拡張と私用の部分を落とした言語タグにする', () => {
+    expect(supportedLocaleOf('ja-JP-u-ca-japanese')).toBe('ja-JP');
+    expect(supportedLocaleOf('en-US-u-nu-arab')).toBe('en-US');
+    expect(supportedLocaleOf('en-US-x-private')).toBe('en-US');
+    expect(supportedLocaleOf('de-DE-u-co-phonebk-x-foo')).toBe('de-DE');
+  });
+
+  test('拡張を持つロケールのブラウザの値も拡張を落として採用する', () => {
+    expect(
+      toDisplayPreferences({
+        timeZone: 'Asia/Tokyo',
+        locale: 'ja-JP-u-ca-japanese-hc-h12',
+      }),
+    ).toEqual({ timeZone: 'Asia/Tokyo', locale: 'ja-JP' });
+  });
+});

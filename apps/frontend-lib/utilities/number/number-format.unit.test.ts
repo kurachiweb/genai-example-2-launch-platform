@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 
 import { formatNumber } from './number-format.ts';
 
@@ -44,5 +44,31 @@ describe('formatNumber', () => {
         maximumFractionDigits: 1,
       }),
     ).toBe('25.6%');
+  });
+});
+
+describe('formatNumber(整形のオブジェクトの使い回し)', () => {
+  test('同じ表示設定のオブジェクトと同じ内容の指定では整形のオブジェクトを1度だけ作る', () => {
+    const preferences = inLocale('ja-JP');
+    const constructor = spyOn(Intl, 'NumberFormat');
+    try {
+      formatNumber(1, preferences);
+      formatNumber(2, preferences);
+      formatNumber(0.1, preferences, { style: 'percent' });
+      formatNumber(0.2, preferences, { style: 'percent' });
+      formatNumber(3, inLocale('ja-JP'));
+
+      expect(constructor).toHaveBeenCalledTimes(3);
+    } finally {
+      constructor.mockRestore();
+    }
+  });
+
+  test('使い回しても指定ごとの整形の結果は変わらない', () => {
+    const preferences = inLocale('ja-JP');
+
+    expect(formatNumber(0.5, preferences)).toBe('0.5');
+    expect(formatNumber(0.5, preferences, { style: 'percent' })).toBe('50%');
+    expect(formatNumber(0.5, preferences)).toBe('0.5');
   });
 });

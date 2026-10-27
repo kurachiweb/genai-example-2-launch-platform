@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 
 import {
   DATE_TIME_FORMATS,
@@ -102,5 +102,33 @@ describe('formatDateTime', () => {
         }
       }
     }
+  });
+});
+
+describe('formatDateTime(整形のオブジェクトの使い回し)', () => {
+  test('同じ表示設定のオブジェクトと書式では整形のオブジェクトを1度だけ作る', () => {
+    const preferences: DisplayPreferences = { ...TOKYO_JA };
+    const constructor = spyOn(Intl, 'DateTimeFormat');
+    try {
+      formatDateTime(KICKOFF, 'time', preferences);
+      formatDateTime(KICKOFF, 'time', preferences);
+      formatDateTime(KICKOFF, 'date', preferences);
+      formatDateTime(KICKOFF, 'time', { ...TOKYO_JA });
+
+      expect(constructor).toHaveBeenCalledTimes(3);
+    } finally {
+      constructor.mockRestore();
+    }
+  });
+
+  test('使い回しても表示設定と書式ごとの整形の結果は変わらない', () => {
+    const preferences: DisplayPreferences = { ...TOKYO_JA };
+
+    expect(formatDateTime(KICKOFF, 'time', preferences)).toBe('16:40');
+    expect(formatDateTime(KICKOFF, 'yearDate', preferences)).toBe(
+      '2026年1月15日',
+    );
+    expect(formatDateTime(KICKOFF, 'time', preferences)).toBe('16:40');
+    expect(formatDateTime(KICKOFF, 'time', LOS_ANGELES_JA)).toBe('23:40');
   });
 });

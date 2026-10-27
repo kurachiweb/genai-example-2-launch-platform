@@ -29,7 +29,8 @@ export const supportedLocaleOf = (value: unknown): string | null => {
     const [locale] = Intl.DateTimeFormat.supportedLocalesOf(
       Intl.getCanonicalLocales(value),
     );
-    return locale ?? null;
+    // ブラウザが解決するロケールは拡張を持たず、要求の言語の設定の暦や数字の拡張をサーバー側の整形にだけ効かせると初期化の後に表示が切り替わるため、拡張と私用の部分を落とす
+    return locale === undefined ? null : new Intl.Locale(locale).baseName;
   } catch {
     return null;
   }
