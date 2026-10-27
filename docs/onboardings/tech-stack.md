@@ -110,6 +110,8 @@
 ### UI・スタイリング
 
 - Tailwind CSS
+  - `@tailwindcss/vite` ... ViteでTailwind CSSのスタイルシートを処理するプラグイン
+  - `tw-animate-css` ... shadcn/uiの部品が使う出入りのアニメーションのクラス
 - shadcn/ui
   - `radix-ui` ... shadcn/uiの部品が土台にするアクセシブルな部品群(全部品を1つにまとめたパッケージ)
   - `class-variance-authority` ... 部品の見た目の種類(variants)ごとのクラス名の定義
@@ -288,6 +290,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 - Vitest + Vitest Browser Mode(DOM・コンポーネントテスト、フロントエンド)
   - `@vitest/browser-playwright` ... Vitest Browser ModeのブラウザプロバイダとしてPlaywrightを使い、共有Chromiumでテストを実行
   - `@vitest/coverage-v8` ... ブラウザテストのカバレッジ計測(V8)
+  - `axe-core` ... ブラウザテストで描画した要素のアクセシビリティを自動検査(WCAG 2.2 AAの規則に絞って実行)
 - vitest-browser-react(フロントエンド、Vitest Browser Mode上で使用)
 - @cloudflare/vitest-pool-workers(Cloudflare Workers統合テスト、D1・R2・DOバインディングを含む)
   - `@vitest/coverage-istanbul` ... Workers統合テストのカバレッジ計測(workerdではV8のカバレッジ計測を使えないためIstanbulを使用)

@@ -16,7 +16,7 @@
     "skipLibCheck": true,
     "jsx": "react-jsx",
     "lib": ["ES2024", "DOM"],
-    "types": ["bun"]
+    "types": ["bun", "vite/client"]
   },
   "include": ["**/*.ts", "**/*.tsx"]
 }

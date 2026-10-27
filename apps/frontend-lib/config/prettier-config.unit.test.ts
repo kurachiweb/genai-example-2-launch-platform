@@ -24,4 +24,20 @@ describe('共通部品の整形設定', () => {
     );
     expect(options?.singleQuote).toBe(true);
   });
+
+  test('基本のスタイルが定義するデザイントークンのクラス名も推奨の順に整列する', async () => {
+    const options = await resolveConfig(SAMPLE_FILE, {
+      editorconfig: false,
+      useCache: false,
+    });
+
+    const formatted = await format(
+      'export const Sample = () => <div className="text-gold-foreground xs:p-6 p-4 bg-gold" />;\n',
+      { ...options, filepath: SAMPLE_FILE },
+    );
+
+    expect(formatted).toBe(
+      'export const Sample = () => (\n  <div className="bg-gold p-4 text-gold-foreground xs:p-6" />\n);\n',
+    );
+  });
 });
