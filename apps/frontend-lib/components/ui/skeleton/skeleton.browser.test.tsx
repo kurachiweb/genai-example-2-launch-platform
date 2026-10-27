@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest';
-import { cdp, page, userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
 import '../../../styles/base.css';
@@ -9,15 +9,8 @@ import {
   COLOR_SCHEMES,
   tokenColorOf,
 } from '../../../test/computed-style.ts';
+import { emulateReducedMotion } from '../../../test/reduced-motion.ts';
 import { Skeleton } from './skeleton.tsx';
-
-async function emulateReducedMotion(
-  value: 'reduce' | 'no-preference',
-): Promise<void> {
-  await cdp().send('Emulation.setEmulatedMedia', {
-    features: [{ name: 'prefers-reduced-motion', value }],
-  });
-}
 
 afterEach(async () => {
   applyColorScheme('light');

@@ -118,5 +118,23 @@ describe('Badge', () => {
 
       expect(await runAxe(container)).toStrictEqual([]);
     });
+
+    test.each(VARIANTS)(
+      '見た目の種類が%sのリンクのバッジにポインターを重ねた状態で、アクセシビリティの検査の違反が0件',
+      async (variant) => {
+        applyColorScheme(scheme);
+        const { container } = await render(
+          <div className="p-4">
+            <Badge asChild variant={variant}>
+              <a href="#directory">{`${variant}のリンク`}</a>
+            </Badge>
+          </div>,
+        );
+
+        await userEvent.hover(page.getByRole('link'));
+
+        expect(await runAxe(container)).toStrictEqual([]);
+      },
+    );
   });
 });

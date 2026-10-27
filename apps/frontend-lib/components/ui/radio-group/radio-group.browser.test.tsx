@@ -10,6 +10,7 @@ import {
   outlineOf,
   ringOutline,
 } from '../../../test/computed-style.ts';
+import { pressKeyUntilFocusMoves } from '../../../test/keyboard.ts';
 import { Label } from '../label/label.tsx';
 import { RadioGroup } from './radio-group.tsx';
 import { RadioGroupItem } from './radio-group-item.tsx';
@@ -51,13 +52,7 @@ function PlanRadioGroup({
 
 const radioOf = (name: string) => page.getByRole('radio', { name });
 
-// Radixは矢印キーを押している間に移ったフォーカスで項目を選ぶ。Playwrightは押下と解放を間を置かずに送るため、人の操作と同じくフォーカスが移るまで押したままにする
-async function pressArrowDown(): Promise<void> {
-  const focusedBefore = document.activeElement;
-  await userEvent.keyboard('{ArrowDown>}');
-  await expect.poll(() => document.activeElement).not.toBe(focusedBefore);
-  await userEvent.keyboard('{/ArrowDown}');
-}
+const pressArrowDown = () => pressKeyUntilFocusMoves('ArrowDown');
 
 afterEach(() => {
   applyColorScheme('light');

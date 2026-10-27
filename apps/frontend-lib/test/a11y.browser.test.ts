@@ -59,6 +59,34 @@ describe('runAxe', () => {
     expect(violations).toStrictEqual([]);
   });
 
+  test('色の切り替えの動きの途中の要素は、動きが終わった後の色で検査する', async () => {
+    const text = document.createElement('p');
+    text.textContent = '配色を切り替えた直後の文章';
+    text.style.cssText =
+      'color:#aaaaaa;background:#ffffff;transition:color 300ms linear';
+    const container = mount(text);
+    expect(getComputedStyle(text).color).toBe('rgb(170, 170, 170)');
+    text.style.color = '#000000';
+
+    const violations = await runAxe(container);
+
+    expect(violations).toStrictEqual([]);
+  });
+
+  test('終わりの無い動きがあっても、その終了を待たずに検査する', async () => {
+    const spinner = document.createElement('p');
+    spinner.textContent = '読み込み中';
+    spinner.animate([{ opacity: 1 }, { opacity: 1 }], {
+      duration: 1000,
+      iterations: Number.POSITIVE_INFINITY,
+    });
+    const container = mount(spinner);
+
+    const violations = await runAxe(container);
+
+    expect(violations).toStrictEqual([]);
+  });
+
   test('WCAG 2.2 AAの対象外(推奨事項・AAA)にだけ違反する要素では0件を返す', async () => {
     const emptyHeading = document.createElement('h2');
     const lowContrastForAaa = document.createElement('p');

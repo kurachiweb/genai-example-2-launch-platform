@@ -148,5 +148,21 @@ describe('Button', () => {
 
       expect(await runAxe(container)).toStrictEqual([]);
     });
+
+    test.each(VARIANTS)(
+      '見た目の種類が%sのボタンにポインターを重ねた状態で、アクセシビリティの検査の違反が0件',
+      async (variant) => {
+        applyColorScheme(scheme);
+        const { container } = await render(
+          <div className="p-4">
+            <Button variant={variant}>{`${variant}の操作`}</Button>
+          </div>,
+        );
+
+        await userEvent.hover(page.getByRole('button'));
+
+        expect(await runAxe(container)).toStrictEqual([]);
+      },
+    );
   });
 });
