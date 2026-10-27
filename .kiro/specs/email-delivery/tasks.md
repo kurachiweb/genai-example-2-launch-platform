@@ -85,7 +85,7 @@
   - _Depends: 2.2, 2.5_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.6, 1.7, 1.8_
 
-- [ ] 4.2 (P) 抑止記録の照会・合成付きの記録・削除・後始末用の検索をD1上に作る
+- [x] 4.2 (P) 抑止記録の照会・合成付きの記録・削除・後始末用の検索をD1上に作る
   - 照会は照合キーで正規化し、期限なし・期限内の記録だけを抑止中とする。複数件の照会はバインド変数の上限に合わせて分割する
   - 記録は1つの文の競合時更新で、合成の規則と同値の式により行う
   - 期限切れの削除、最後の契機が基準より古い照合キーの昇順のページ取得、照合キー指定の削除を用意する。削除は対象が無くても成功する
@@ -246,3 +246,4 @@
 - 2.5(5.6・5.7への申し送り): `formatUtcDateTime`・`formatUtcDate`は任意の第2引数`{ withYear?: boolean }`を取り、無効な`Date`では`RangeError`を投げる。テンプレートで日時を表示するときはマークアップ規約の日時の表示(`<time dateTime>`)に従って包む。
 - 3(6.1への申し送り): 追加のQueueの登録は`createQueueDispatcher(..., { rawQueues })`で渡し、最初の`dispatch`で`assertRawQueueRegistrations`が検証する。登録が誤っていると本体のQueueを含む全バッチが例外になる(Sentryで検知)。名前は`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`、Queue名の解決結果が空・`undefined`でも拒否する。新しいケースは既存の`queue-consumer.worker.test.ts`(800行の上限に近い)ではなく`queue-consumer.raw-queues.worker.test.ts`に置いた(設計のTesting Strategyとの相違)。
 - 4.1(4.4への申し送り): 受付はファクトリ`createEmailSender(publisher, registry)`で、`workers`の他の部品と同じく`toDynamicValue`で束縛する。宛先は照合キーにせず元の値のまま送る(正規化は抑止リスト側)。年0000〜9999外の期限は`invalid-deadline`、過去の期限は受け付ける(送信処理が期限切れとして扱う)。
+- 4.2(4.4への申し送り): 抑止リストはファクトリ`createSuppressionRepository(db, clock)`で、`SuppressionList`・`SuppressionRecorder`・`SuppressionStore`の交差を`SuppressionRepository`型として公開した(設計に無い名前)。合成のSQLは`core`の理由の強さ(complaint > hard_bounce > rejected)を`CASE`に写しており、27状態の全729組を`mergeSuppression`と比べるWorkers統合テストでずれを検出する。
