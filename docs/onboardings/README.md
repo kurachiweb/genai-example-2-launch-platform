@@ -87,17 +87,22 @@
 
     `apps/api`・`apps/event`は、起動時に次のシークレットを必要とする。Infisicalのプロジェクトのローカル環境(`dev`)のルートフォルダ(`/`)に、Webの管理画面で登録する。登録済みであれば飛ばす。各値の意味は「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」を参照する。
 
-    | キー                   | 登録する値                                                        | 使うアプリ               |
-    | ---------------------- | ----------------------------------------------------------------- | ------------------------ |
-    | `HASH_PEPPER`          | 次の`openssl rand -hex 64`で生成した128文字の16進数               | `apps/api`・`apps/event` |
-    | `TURNSTILE_SECRET_KEY` | 常に成功するテスト用の秘密鍵`1x0000000000000000000000000000000AA` | `apps/api`               |
+    | キー                    | 登録する値                                                           | 使うアプリ               |
+    | ----------------------- | -------------------------------------------------------------------- | ------------------------ |
+    | `HASH_PEPPER`           | 次の`openssl rand -hex 64`で生成した128文字の16進数                  | `apps/api`・`apps/event` |
+    | `TURNSTILE_SECRET_KEY`  | 常に成功するテスト用の秘密鍵`1x0000000000000000000000000000000AA`    | `apps/api`               |
+    | `EMAIL_SMOKE_TOKEN`     | 次の`openssl rand -hex 32`で生成した64文字の16進数                   | `apps/event`             |
+    | `EMAIL_SMOKE_RECIPIENT` | 疎通確認メールの宛先。任意のアドレス(例:`smoke@local.example`)でよい | `apps/event`             |
 
     ```sh
     openssl rand -hex 64 # 出力をHASH_PEPPERとして登録し、ファイルやチャットに残さない
+    openssl rand -hex 32 # 出力をEMAIL_SMOKE_TOKENとして登録し、ファイルやチャットに残さない
     infisical --telemetry=false run --env dev -- sh -c 'test -n "$HASH_PEPPER" && test -n "$TURNSTILE_SECRET_KEY" && echo "登録済み"' # 値を表示せずに登録を確かめる
+    infisical --telemetry=false run --env dev -- sh -c 'test -n "$EMAIL_SMOKE_TOKEN" && test -n "$EMAIL_SMOKE_RECIPIENT" && echo "疎通確認のシークレットも登録済み"'
     ```
 
     - 未登録のまま起動すると、`wrangler dev`が足りないキーを警告し、ヘルスチェック以外の経路が環境の検証で500になる。ヘルスチェックは環境の検証より前に応答するため、未登録でも200を返す。
+    - `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`は、メールの疎通確認の経路(「[疎通確認の経路](#疎通確認の経路)」)だけが使う。未登録でもイベントサーバーは環境の検証に通り、疎通確認の経路だけが404になる。ローカル環境ではMailpitが全ての宛先のメールを受け取るため、外部へは送られない。
 
 12. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
@@ -228,6 +233,71 @@ query {
 - 元のクライアントIPアドレスのヘッダーは信頼されず、接続元のIPアドレスが使われる。
 - GraphiQLの画面は、本体・スタイル・エディタのワーカーをCDN(`https://unpkg.com`)から読み込むため、ブラウザからインターネットへ接続できる必要がある。
 - GraphiQLとintrospectionは`APP_ENVIRONMENT`が`local`のときだけ使える。デプロイ先環境の外部経路のGraphQLの経路は404を返す。
+
+## ローカルのメールの確認
+
+ローカル環境のイベントサーバーは、メールを外部へ送らずにMailpitへ送る(`EMAIL_PROVIDER`が`mailpit`)。Mailpitはコンテナの起動時に`/workspace/scripts/entrypoint.sh`がポート48041で起動する。届いたメールは、ブラウザで次のURLを開いて確かめる。
+
+```text
+http://localhost:48041
+```
+
+- 一覧からメールを選び、件名・送信元・宛先と、HTMLとテキストの両パート・ヘッダーを確かめる。
+- コマンドで確かめるときは、MailpitのAPIを使う。APIの一覧は「[ローカルの受信箱(Mailpit)](../GUIDES/tech/external/001-email-sending.md#ローカルの受信箱mailpit)」に従う。
+
+  ```sh
+  curl -sG http://localhost:48041/api/v1/search --data-urlencode 'query=subject:"メール送信の確認"' # 件名で検索し、メッセージのIDを得る
+  curl -s http://localhost:48041/api/v1/message/<メッセージのID> # 件名・送信元・宛先・HTMLとテキストの本文
+  curl -s -X DELETE http://localhost:48041/api/v1/messages # 全てのメッセージを削除する
+  ```
+
+- メールは`/workspace/apps/email/mailpit.db`に5,000通まで保存され、それを超えると古いものから消える。Mailpitのログは`/workspace/apps/email/mailpit.log`に出る。どちらもGit管理に含めない。
+
+### 疎通確認の経路
+
+イベントサーバーの`POST /internal/email/smoke`は、`EMAIL_SMOKE_RECIPIENT`の宛先へ疎通確認メール(件名「メール送信の確認」)の送信を依頼する。本番と同じ経路(Queue → 送信処理 → 描画 → 送信プロバイダ)を通るため、送信の仕組み全体を確かめられる。
+
+1. クイックスタートの手順11で`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`を登録し、手順13でイベントサーバーを起動する。
+2. 別のターミナルで、Infisicalから注入したトークンを使って経路を呼ぶ。トークンの値をコマンドに直接書かない。
+
+   ```sh
+   infisical --telemetry=false run --env dev -- sh -c 'curl -i -X POST -H "Authorization: Bearer $EMAIL_SMOKE_TOKEN" http://localhost:48043/internal/email/smoke'
+   ```
+
+3. 202と本文`{"requestId":"<送信要求の識別子>"}`が返ることを確かめる。
+4. イベントサーバーのログで、メッセージ「メールの送信処理を終えました」の`requestId`が同じで、`result`が`sent`であることを確かめる。
+5. Mailpitで、件名・本文の日本語が文字化けせず、HTMLとテキストの両パートがあり、送信元が`Launch Stadium <noreply@local.example>`であることを確かめる。
+
+| 応答 | 原因と対処                                                                                               |
+| ---- | -------------------------------------------------------------------------------------------------------- |
+| 401  | トークンが一致しない。`--env dev`で注入しているか、イベントサーバーを起動したときと同じ値かを確かめる    |
+| 404  | `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`のどちらかが未登録。登録した後、イベントサーバーを起動し直す |
+
+- staging環境での確かめ方は「[stagingでの確認](../GUIDES/tech/external/001-email-sending.md#stagingでの確認)」に従う。URLは「[メール送信](project-values.md#メール送信)」を参照する。
+
+## stagingのメールのシークレット
+
+デプロイ先検証環境(`staging`)のイベントサーバーは、検証済みの宛先にだけメールを送る(`EMAIL_RECIPIENT_POLICY`が`allowlist`)。次のシークレットは開発者がInfisicalの`staging`環境へ手作業で登録し、AIエージェントは登録しない。Infisicalの値を正とする。
+
+| キー                       | 登録する値                                                                                   | 必須                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `EMAIL_ALLOWED_RECIPIENTS` | 送ってよい宛先のカンマ区切り。各宛先はEmail Routingの**Destination Addresses**で検証しておく | 必須。`secrets.required`にあり、未設定ではデプロイが失敗する |
+| `EMAIL_SMOKE_TOKEN`        | `openssl rand -hex 32`で生成した、ローカル環境と別の値                                       | 任意。疎通確認の経路を使うときだけ                           |
+| `EMAIL_SMOKE_RECIPIENT`    | `EMAIL_ALLOWED_RECIPIENTS`に含めた宛先の1つ                                                  | 任意。疎通確認の経路を使うときだけ                           |
+
+1. Infisicalのプロジェクトの`staging`環境のルートフォルダ(`/`)に、Webの管理画面で上の値を登録する。必須の`EMAIL_ALLOWED_RECIPIENTS`は、そのキーを`secrets.required`へ加える変更を`main`へマージする前に登録する。
+2. CIのデプロイ(infra-delivery)が導入された後は、登録だけで次のstagingへのデプロイがWorkerへ反映する。`wrangler secret put`は使わない(使っても次のデプロイでInfisicalの値に戻る)。
+3. CIのデプロイが導入されるまでの暫定の手順として、登録した値をInfisicalから注入し、`wrangler secret put`でイベントサーバーのWorkerへ設定する。値はコマンドやファイルに書かず、標準入力で渡す。
+
+   ```sh
+   cd /workspace/apps/event
+   infisical --telemetry=false run --env staging -- sh -c 'printf %s "$EMAIL_ALLOWED_RECIPIENTS" | wrangler secret put EMAIL_ALLOWED_RECIPIENTS --env staging'
+   infisical --telemetry=false run --env staging -- sh -c 'printf %s "$EMAIL_SMOKE_TOKEN" | wrangler secret put EMAIL_SMOKE_TOKEN --env staging'
+   infisical --telemetry=false run --env staging -- sh -c 'printf %s "$EMAIL_SMOKE_RECIPIENT" | wrangler secret put EMAIL_SMOKE_RECIPIENT --env staging'
+   ```
+
+- 本番環境(`prod`)には`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`を設定しない。疎通確認の経路は404のままになる。
+- 送信ドメインの登録・送信内容のプレビューの無効化・メールイベント用Queueと購読の作成は「[管理画面の設定](../GUIDES/tech/external/001-email-sending.md#管理画面の設定)」と「[購読とQueueの作成](../GUIDES/tech/external/001-email-sending.md#購読とqueueの作成)」に従う。
 
 ## DBスキーマを変更したとき
 

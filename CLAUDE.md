@@ -70,6 +70,7 @@
 - 定期実行のジョブを追加する前に: [定期実行](docs/GUIDES/tech/infra/003-async-processing.md#定期実行)
 - 非同期メッセージを送る処理や受信する処理を書く前に: [非同期メッセージ](docs/GUIDES/tech/infra/003-async-processing.md#非同期メッセージ)
 - 定期実行のジョブやメッセージの処理で書き込みを行う前に: [重複配信と冪等性](docs/GUIDES/tech/infra/003-async-processing.md#重複配信と冪等性)
+- メールを送る処理やメール種別・テンプレートを書く前に: [メールを送る](docs/GUIDES/tech/external/001-email-sending.md#メールを送る)
 - バックエンドでログを出す前に: [ログの出力](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#ログの出力)
 - ログの属性やエラーレポートに利用者の入力・秘密情報が入り得る処理を書く前に: [伏せ字の規則](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#伏せ字の規則)
 - バックエンドで例外を投げる・エラートラッキングへ送る処理を書く前に: [エラートラッキング](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#エラートラッキング)
