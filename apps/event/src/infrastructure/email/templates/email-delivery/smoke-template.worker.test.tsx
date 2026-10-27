@@ -18,10 +18,10 @@ describe('疎通確認メールのテンプレート', () => {
     );
   });
 
-  test('宛名・行動ボタン・配信停止のURLを持たない', () => {
+  test('宛名・行動ボタン・配信停止のリンクを持たない', () => {
     expect(SMOKE_TEMPLATE.greeting(INPUT)).toBeUndefined();
     expect(Object.hasOwn(SMOKE_TEMPLATE, 'action')).toBe(false);
-    expect(Object.hasOwn(SMOKE_TEMPLATE, 'unsubscribeUrl')).toBe(false);
+    expect(Object.hasOwn(SMOKE_TEMPLATE, 'unsubscribeLinks')).toBe(false);
   });
 
   test('本文に日本語の段落と、time要素で包んだ受付日時のUTC表記を置く', async () => {

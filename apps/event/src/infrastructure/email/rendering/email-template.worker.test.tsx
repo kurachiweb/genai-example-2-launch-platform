@@ -41,7 +41,7 @@ const digestTemplate = defineEmailTemplate({
   preview: () => '今週の動きをお知らせします。',
   greeting: ({ nickname }) => nickname,
   action: () => ({ label: 'まとめを見る', url: 'https://app.example/digest' }),
-  unsubscribeUrl: () => 'https://app.example/unsubscribe/token',
+  unsubscribeLinks: () => [{ url: 'https://app.example/unsubscribe/token' }],
   Body: () => <p>今週の動きをお知らせします。</p>,
 });
 
@@ -72,9 +72,9 @@ describe('テンプレートの定義', () => {
     expect(html).toContain('1200円をお支払いいただきました。');
   });
 
-  test('任意の行動ボタンと配信停止のURLを持たないテンプレートも定義できる', () => {
+  test('任意の行動ボタンと配信停止のリンクを持たないテンプレートも定義できる', () => {
     expect(Object.hasOwn(receiptTemplate, 'action')).toBe(false);
-    expect(Object.hasOwn(receiptTemplate, 'unsubscribeUrl')).toBe(false);
+    expect(Object.hasOwn(receiptTemplate, 'unsubscribeLinks')).toBe(false);
   });
 });
 

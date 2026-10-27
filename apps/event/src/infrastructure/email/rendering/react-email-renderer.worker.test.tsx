@@ -54,13 +54,25 @@ const brokenBodyKind = defineEmailKind({
   inputSchema: z.object({}),
 });
 
+const combinedKind = defineEmailKind({
+  name: 'test.renderer-combined',
+  category: 'notification',
+  inputSchema: z.object({ resultUrl: z.string(), previewUrl: z.string() }),
+});
+
+const unlabeledLinksKind = defineEmailKind({
+  name: 'test.renderer-unlabeled-links',
+  category: 'notification',
+  inputSchema: z.object({ urls: z.array(z.string()) }),
+});
+
 const digestTemplate = defineEmailTemplate({
   kind: digestKind,
   subject: ({ productName }) => `${productName}の今週のまとめ`,
   preview: () => '今週の動きをお知らせします。',
   greeting: ({ nickname }) => nickname,
   action: () => ({ label: 'プロダクトを見る', url: ACTION_URL }),
-  unsubscribeUrl: () => UNSUBSCRIBE_URL,
+  unsubscribeLinks: () => [{ url: UNSUBSCRIBE_URL }],
   Body: ({ input }) => (
     <Text>{`${input.productName}の今週の動きをお知らせします。`}</Text>
   ),
@@ -71,7 +83,7 @@ const receiptTemplate = defineEmailTemplate({
   subject: ({ amount }) => `${String(amount)}円の領収書`,
   preview: () => 'お支払いを受け付けました。',
   greeting: () => undefined,
-  unsubscribeUrl: () => UNSUBSCRIBE_URL,
+  unsubscribeLinks: () => [{ url: UNSUBSCRIBE_URL }],
   Body: ({ input }) => (
     <Text>{`${String(input.amount)}円をお支払いいただきました。`}</Text>
   ),
@@ -97,11 +109,35 @@ const brokenBodyTemplate = defineEmailTemplate({
   },
 });
 
+const combinedTemplate = defineEmailTemplate({
+  kind: combinedKind,
+  subject: () => '勝敗結果と対戦の予告',
+  preview: () => '勝敗結果と次の対戦をお知らせします。',
+  greeting: () => '山田',
+  unsubscribeLinks: ({ resultUrl, previewUrl }) => [
+    { label: '勝敗結果の通知を配信停止', url: resultUrl },
+    { label: '対戦の予告の通知を配信停止', url: previewUrl },
+  ],
+  Body: () => <Text>勝敗結果と次の対戦をお知らせします。</Text>,
+});
+
+const unlabeledLinksTemplate = defineEmailTemplate({
+  kind: unlabeledLinksKind,
+  subject: () => '件名です',
+  preview: () => '冒頭の文です。',
+  greeting: () => undefined,
+  // @ts-expect-error ラベルの無い複数のリンクは型でも拒否する
+  unsubscribeLinks: ({ urls }) => urls.map((url) => ({ url })),
+  Body: () => <Text>本文です。</Text>,
+});
+
 const TEST_KINDS: readonly AnyEmailKind[] = [
   digestKind,
   receiptKind,
   brokenSubjectKind,
   brokenBodyKind,
+  combinedKind,
+  unlabeledLinksKind,
 ];
 
 const TEST_TEMPLATES: readonly EmailTemplate<unknown>[] = [
@@ -109,6 +145,8 @@ const TEST_TEMPLATES: readonly EmailTemplate<unknown>[] = [
   receiptTemplate,
   brokenSubjectTemplate,
   brokenBodyTemplate,
+  combinedTemplate,
+  unlabeledLinksTemplate,
 ];
 
 const RENDER_COUNT_FOR_TIMING = 20;
@@ -225,6 +263,60 @@ describe('React Emailによる描画', () => {
 
     expect(rendered.text).toContain('1200円をお支払いいただきました。');
     expect(rendered.text).not.toContain(SENDER_INFO.businessName);
+  });
+
+  test('通知メールの配信停止のリンクが1つでラベルが無ければ「この通知を配信停止」の文言で置く', async () => {
+    const rendered = await createRenderer().render(
+      digestKind,
+      { nickname: '山田', productName: 'Pitch Notes' },
+      undefined,
+    );
+
+    for (const part of [rendered.html, rendered.text]) {
+      expect(part).toContain('この通知を配信停止');
+    }
+  });
+
+  test('テンプレートが返した複数の配信停止のリンクを、両パートにラベルとURLの組で順に置く', async () => {
+    const resultUrl = 'https://app.example/unsubscribe/result-token';
+    const previewUrl = 'https://app.example/unsubscribe/preview-token';
+
+    const rendered = await createRenderer().render(
+      combinedKind,
+      { resultUrl, previewUrl },
+      SENDER_INFO,
+    );
+
+    expect(hrefsOf(rendered.html)).toEqual([resultUrl, previewUrl]);
+    expect(rendered.html).not.toContain('この通知を配信停止');
+    const positions = [
+      '勝敗結果の通知を配信停止',
+      resultUrl,
+      '対戦の予告の通知を配信停止',
+      previewUrl,
+      SENDER_INFO.businessName,
+    ].map((part) => rendered.text.indexOf(part));
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  test('ラベルの無い複数の配信停止のリンクを返すテンプレートはEmailRenderErrorにする', async () => {
+    await expect(
+      createRenderer().render(
+        unlabeledLinksKind,
+        {
+          urls: [
+            'https://app.example/unsubscribe/result-token',
+            'https://app.example/unsubscribe/preview-token',
+          ],
+        },
+        undefined,
+      ),
+    ).rejects.toThrow(
+      new EmailRenderError(
+        'メール種別"test.renderer-unlabeled-links"の描画に失敗しました',
+      ),
+    );
   });
 
   test('種別に対応するテンプレートが無ければEmailRenderErrorにする', async () => {

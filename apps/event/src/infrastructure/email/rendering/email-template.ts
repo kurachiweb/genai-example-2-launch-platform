@@ -10,6 +10,16 @@ export interface EmailAction {
   readonly url: string;
 }
 
+export interface EmailUnsubscribeLink {
+  readonly url: string;
+  // 省略できるのはリンクが1つのときだけで、そのときは共通の文言で表示する
+  readonly label?: string;
+}
+
+// 複数のリンクを並べるときは、どの通知の配信停止かを見分けられるようすべてにラベルを付ける
+export type EmailUnsubscribeLinkList =
+  readonly [EmailUnsubscribeLink] | readonly Required<EmailUnsubscribeLink>[];
+
 // 種別ごとの入力の型を持つテンプレートをEmailTemplate<unknown>の集約点へ並べられるよう、
 // 入力を受け取る部品はすべて引数が双変になるメソッドの記法で宣言する
 export interface EmailTemplate<TInput> {
@@ -20,8 +30,8 @@ export interface EmailTemplate<TInput> {
   // 宛名のニックネーム。undefinedなら宛名の行を省略する
   greeting(input: TInput): string | undefined;
   action?(input: TInput): EmailAction | undefined;
-  // 通知メールの種別でだけ配信停止の区画に使う
-  unsubscribeUrl?(input: TInput): string | undefined;
+  // 通知メールの種別でだけ配信停止の区画に使い、空なら区画を置かない
+  unsubscribeLinks?(input: TInput): EmailUnsubscribeLinkList;
   Body(props: { readonly input: TInput }): ReactNode;
 }
 

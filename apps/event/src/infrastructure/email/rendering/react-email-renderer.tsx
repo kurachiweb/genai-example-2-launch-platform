@@ -49,7 +49,7 @@ async function renderTemplate(
       preview={template.preview(input)}
       greeting={template.greeting(input)}
       action={template.action?.(input)}
-      unsubscribeUrl={template.unsubscribeUrl?.(input)}
+      unsubscribeLinks={template.unsubscribeLinks?.(input) ?? []}
       senderInfo={senderInfo}
     >
       <template.Body input={input} />

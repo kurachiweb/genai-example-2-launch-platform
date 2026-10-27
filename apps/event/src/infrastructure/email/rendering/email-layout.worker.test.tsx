@@ -14,7 +14,20 @@ const ACTION = {
 
 const UNSUBSCRIBE_URL = 'https://app.example/unsubscribe/token';
 
-const UNSUBSCRIBE_LABEL = 'この種類の通知メールの配信停止';
+const UNSUBSCRIBE_LABEL = 'この通知を配信停止';
+
+const RESULT_UNSUBSCRIBE = {
+  label: '勝敗結果の通知を配信停止',
+  url: 'https://app.example/unsubscribe/result-token',
+} as const;
+
+const PREVIEW_UNSUBSCRIBE = {
+  label: '対戦の予告の通知を配信停止',
+  url: 'https://app.example/unsubscribe/preview-token',
+} as const;
+
+const UNLABELED_LINKS_MESSAGE =
+  '配信停止のリンクが複数あるときは、すべてのリンクにラベルが必要です';
 
 const SENDER_INFO: SenderInfo = {
   businessName: 'テスト事業者',
@@ -29,7 +42,7 @@ const FULL_PROPS: LayoutProps = {
   preview: '受信一覧に出る冒頭の文です。',
   greeting: '山田',
   action: ACTION,
-  unsubscribeUrl: UNSUBSCRIBE_URL,
+  unsubscribeLinks: [{ url: UNSUBSCRIBE_URL }],
   senderInfo: SENDER_INFO,
 };
 
@@ -150,13 +163,94 @@ describe('メールの共通レイアウト', () => {
     expect(hrefsOf(html)).toEqual([ACTION.url]);
   });
 
-  test('通知メールでも配信停止のURLが無ければ区画を置かない', async () => {
+  test('通知メールでも配信停止のリンクが無ければ区画を置かない', async () => {
     const html = await renderLayout({
       ...FULL_PROPS,
-      unsubscribeUrl: undefined,
+      unsubscribeLinks: [],
     });
 
     expect(html).not.toContain(UNSUBSCRIBE_LABEL);
+    expect(hrefsOf(html)).toEqual([ACTION.url]);
+  });
+
+  test('配信停止のリンクが1つでもラベルがあればその文言で置く', async () => {
+    const text = await renderLayout(
+      { ...FULL_PROPS, unsubscribeLinks: [RESULT_UNSUBSCRIBE] },
+      { plainText: true },
+    );
+
+    expect(text).toContain(RESULT_UNSUBSCRIBE.label);
+    expect(text).not.toContain(UNSUBSCRIBE_LABEL);
+  });
+
+  test('複数の配信停止のリンクを、行動ボタンと送信者情報の間にラベルとURLの組で順に置く', async () => {
+    const props: LayoutProps = {
+      ...FULL_PROPS,
+      unsubscribeLinks: [RESULT_UNSUBSCRIBE, PREVIEW_UNSUBSCRIBE],
+    };
+    const html = await renderLayout(props);
+    const text = await renderLayout(props, { plainText: true });
+
+    expect(hrefsOf(html)).toEqual([
+      ACTION.url,
+      RESULT_UNSUBSCRIBE.url,
+      PREVIEW_UNSUBSCRIBE.url,
+    ]);
+    expect(html).not.toContain(UNSUBSCRIBE_LABEL);
+    const htmlPositions = positionsOf(html, [
+      ACTION.label,
+      RESULT_UNSUBSCRIBE.label,
+      PREVIEW_UNSUBSCRIBE.label,
+      SENDER_INFO.businessName,
+    ]);
+    expect(htmlPositions.every((position) => position >= 0)).toBe(true);
+    expect(htmlPositions).toEqual([...htmlPositions].sort((a, b) => a - b));
+    const textPositions = positionsOf(text, [
+      ACTION.url,
+      RESULT_UNSUBSCRIBE.label,
+      RESULT_UNSUBSCRIBE.url,
+      PREVIEW_UNSUBSCRIBE.label,
+      PREVIEW_UNSUBSCRIBE.url,
+      SENDER_INFO.businessName,
+    ]);
+    expect(textPositions.every((position) => position >= 0)).toBe(true);
+    expect(textPositions).toEqual([...textPositions].sort((a, b) => a - b));
+  });
+
+  test('ラベルの無い配信停止のリンクが複数あれば描画を失敗させる', async () => {
+    await expect(
+      renderLayout({
+        ...FULL_PROPS,
+        // @ts-expect-error ラベルの無い複数のリンクは型でも拒否する
+        unsubscribeLinks: [
+          { url: RESULT_UNSUBSCRIBE.url },
+          { url: PREVIEW_UNSUBSCRIBE.url },
+        ],
+      }),
+    ).rejects.toThrow(UNLABELED_LINKS_MESSAGE);
+  });
+
+  test('一部のリンクにだけラベルがある複数の配信停止のリンクも描画を失敗させる', async () => {
+    await expect(
+      renderLayout({
+        ...FULL_PROPS,
+        // @ts-expect-error ラベルの無い複数のリンクは型でも拒否する
+        unsubscribeLinks: [
+          RESULT_UNSUBSCRIBE,
+          { url: PREVIEW_UNSUBSCRIBE.url },
+        ],
+      }),
+    ).rejects.toThrow(UNLABELED_LINKS_MESSAGE);
+  });
+
+  test('トランザクションメールでは複数のリンクを渡されても配信停止の区画を置かない', async () => {
+    const html = await renderLayout({
+      ...FULL_PROPS,
+      category: 'transactional',
+      unsubscribeLinks: [RESULT_UNSUBSCRIBE, PREVIEW_UNSUBSCRIBE],
+    });
+
+    expect(html).not.toContain(RESULT_UNSUBSCRIBE.label);
     expect(hrefsOf(html)).toEqual([ACTION.url]);
   });
 
