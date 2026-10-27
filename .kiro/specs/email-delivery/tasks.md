@@ -36,7 +36,7 @@
   - _Boundary: EmailKindRegistry_
   - _Requirements: 1.3, 2.1, 2.2_
 
-- [ ] 2.2 (P) 送信要求の本文・宛先・追加ヘッダーの検証と、`email.send`の契約を作る
+- [x] 2.2 (P) 送信要求の本文・宛先・追加ヘッダーの検証と、`email.send`の契約を作る
   - 宛先は254文字以内のWHATWG形式で1件に限り、照合キー(前後の空白を除いた小文字)を作る部品を用意する
   - 追加ヘッダーは許可リスト(配信停止系・自動送信の表示など)に限り、改行を含む値、HTTPSのURIを含まない配信停止ヘッダー、ワンクリックの定型以外の値、1値と合計の大きさの超過を拒否する
   - 種別・宛先・入力・任意の送信期限・任意の追加ヘッダーを持つ本文の契約と大きさの上限を定め、メッセージ契約の集約点に登録する
@@ -238,3 +238,4 @@
 - 1.3(6.2・8.1への申し送り): `secrets`を定義した設定では`wrangler dev`が`secrets.required`のキーだけを`env`へ渡すため、設計の表どおりでは`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`がローカルの`env`に入らず、疎通確認の経路が常に404になる。6.2でルートの`secrets.required`へ2つのキーを加え(staging・prodには加えない)、設計の表と`email-wrangler-config.unit.test.ts`の期待値を改める。
 - 1.3: テスト用の`EMAIL_EVENTS_QUEUE_NAME`は`genai-example-2-email-events-test`でローカルのconsumerの名前と異なる。振り分けのWorkers統合テストでは`batch.queue`に`env.EMAIL_EVENTS_QUEUE_NAME`を使う。backend-platformの`wrangler-config.unit.test.ts`は`EMAIL_`・`MAILPIT_`で始まるキーを除いて比べ、それらはメールの設定のテストが厳密に検査する。
 - 2.1: 種別の検索は`createEmailKindRegistry(EMAIL_KINDS).get(name)`(未登録は`undefined`)。疎通確認の種別は`EMAIL_DELIVERY_SMOKE_KIND`で、入力`requestedAt`は`z.iso.datetime()`(末尾`Z`のUTCだけ)。集約は名前の形式・重複に加えて分類の不正と入力スキーマの欠落も`EmailKindRegistryError`にする(要件2.2)。
+- 2.2(4.1への申し送り): 本文の大きさの判定は`isWithinEmailSendBodyLimit(body)`(JSONにしたUTF-8が`MAX_EMAIL_SEND_BODY_BYTES`以下か)を使う。追加ヘッダーは名前の大文字小文字を区別せずに照合し、大文字小文字だけ違う重複は`too-many`、空の値と`List-Unsubscribe`の無い`List-Unsubscribe-Post`は拒否する。`List-Unsubscribe`はカンマで単純に分割するため、URIにカンマを含む値は拒否される。
