@@ -252,8 +252,9 @@ export class SendEmailHandler implements MessageHandler<EmailSendBody> {
   }
 
   // 間引きの失敗を例外にすると、試行回数に数えない待機が再試行として数えられてしまう
+  // 間引けないときは警告を送る。指紋が1つに固定された警告なので、重ねて送ってもエラートラッキング上の1つの問題にまとまる
   private async alertDailyLimit(context: HandlingContext): Promise<void> {
-    let acquired = false;
+    let acquired: boolean;
     try {
       acquired = await this.alertThrottle.tryAcquire(
         DAILY_LIMIT_ALERT_NAME,
@@ -265,6 +266,7 @@ export class SendEmailHandler implements MessageHandler<EmailSendBody> {
         error,
         ...identityOf(context),
       });
+      acquired = true;
     }
     if (acquired) {
       this.incidents.report({ kind: 'daily-limit' });

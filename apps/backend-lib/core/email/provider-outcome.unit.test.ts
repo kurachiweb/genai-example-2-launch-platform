@@ -28,7 +28,7 @@ describe('classifyCloudflareSendError', () => {
     },
   );
 
-  test.each(['E_SOMETHING_NEW', 'E_ACCOUNT_SUSPENDED', ''])(
+  test.each(['E_SOMETHING_NEW', ''])(
     '未知のコード%pは再試行して上限で検知するためtemporaryにする',
     (code) => {
       expect(classifyCloudflareSendError(code)).toEqual({
@@ -66,6 +66,7 @@ describe('classifyCloudflareSendError', () => {
     'E_HEADERS_TOO_MANY',
     'E_SENDER_NOT_VERIFIED',
     'E_SENDER_DOMAIN_NOT_AVAILABLE',
+    'E_ACCOUNT_SUSPENDED',
   ])('再試行しても結果が変わらないコード%pをpermanentにする', (code) => {
     expect(classifyCloudflareSendError(code)).toEqual({
       kind: 'permanent',

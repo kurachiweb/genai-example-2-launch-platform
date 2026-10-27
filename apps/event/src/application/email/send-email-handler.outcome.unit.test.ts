@@ -187,7 +187,7 @@ describe('SendEmailHandler 送信結果による行動', () => {
     expect(incidents).toEqual([]);
   });
 
-  test('日次上限の間引きに失敗しても、待機を試行に数えないため例外にせず通知せずに3600秒の待機を返す', async () => {
+  test('日次上限の間引きに失敗したら、警告を逃さないよう日次上限を通知し、待機を試行に数えないため例外にせず3600秒の待機を返す', async () => {
     const failure = new Error('D1に接続できません');
     const { handler, incidents } = createHarness({
       outcome: { kind: 'daily-limit' },
@@ -200,7 +200,7 @@ describe('SendEmailHandler 送信結果による行動', () => {
       kind: 'defer',
       delaySeconds: 3600,
     });
-    expect(incidents).toEqual([]);
+    expect(incidents).toEqual<EmailIncident[]>([{ kind: 'daily-limit' }]);
     const errors = errorLogs();
     expect(errors).toHaveLength(1);
     expect(errors[0]?.properties).toEqual({

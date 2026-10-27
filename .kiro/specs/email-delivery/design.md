@@ -606,15 +606,16 @@ export declare function classifyCloudflareSendError(
 ): EmailProviderFailure;
 ```
 
-| Email Sendingのコード                                                                                                                          | 分類                   |
-| ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| `E_RATE_LIMIT_EXCEEDED`                                                                                                                        | `rate-limited`         |
-| `E_DAILY_LIMIT_EXCEEDED`                                                                                                                       | `daily-limit`          |
-| `E_INTERNAL_SERVER_ERROR`・`E_DELIVERY_FAILED`・未知のコード・コード無し                                                                       | `temporary`            |
-| `E_RECIPIENT_SUPPRESSED`                                                                                                                       | `recipient-suppressed` |
-| 検証系・ヘッダー系・`E_SENDER_NOT_VERIFIED`・`E_SENDER_DOMAIN_NOT_AVAILABLE`・`E_RECIPIENT_NOT_ALLOWED`・`E_CONTENT_TOO_LARGE`・`E_TOO_MANY_*` | `permanent`            |
+| Email Sendingのコード                                                                                                                                                 | 分類                   |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `E_RATE_LIMIT_EXCEEDED`                                                                                                                                               | `rate-limited`         |
+| `E_DAILY_LIMIT_EXCEEDED`                                                                                                                                              | `daily-limit`          |
+| `E_INTERNAL_SERVER_ERROR`・`E_DELIVERY_FAILED`・未知のコード・コード無し                                                                                              | `temporary`            |
+| `E_RECIPIENT_SUPPRESSED`                                                                                                                                              | `recipient-suppressed` |
+| 検証系・ヘッダー系・`E_SENDER_NOT_VERIFIED`・`E_SENDER_DOMAIN_NOT_AVAILABLE`・`E_RECIPIENT_NOT_ALLOWED`・`E_ACCOUNT_SUSPENDED`・`E_CONTENT_TOO_LARGE`・`E_TOO_MANY_*` | `permanent`            |
 
 - バインディングの`E_RECIPIENT_NOT_ALLOWED`は設定の誤りとして`permanent`にし、stagingの宛先制限(`recipient-not-allowed`)と区別する。未知のコードは再試行して上限で検知する安全側に倒す。
+- `E_ACCOUNT_SUSPENDED`(送信の評判の悪化などによるアカウントの送信の停止)は約30分の再試行では解けないため、設定の誤りと同じく`permanent`にしてすぐに送信不能を通知する(research.mdの承認後の改訂1)。
 
 #### DeliveryDecision
 
@@ -1118,7 +1119,7 @@ export declare class SendEmailHandler implements MessageHandler<EmailSendBody> {
 ```
 
 - 処理の順序: (1)`hasSent(meta.id)`なら`duplicate`で完了(6.7)。(2)`decideBeforeSend`が`skip`なら`expired`で完了(5.5)。(3)種別が無い・入力が検証に合わないなら`undeliverable`を通知して完了(6.3)。(4)通知メールで`getStatus`が抑止中なら`suppressed`で完了(8.4)。トランザクションメールは照会しない(8.5)。(5)送信者情報を取得して描画し、`EmailRenderError`なら`undeliverable`(`code: 'render-failed'`)を通知して完了(6.3)。(6)`provider.send`→`decideAfterOutcome`。
-- 行動: `completed`は`markSent`(失敗は`error`ログにとどめて完了し、再送を避ける)と`sent`のログ(6.6)。`defer`は`daily-limit`のとき`tryAcquire('email-daily-limit', now, 3600)`が真なら`daily-limit`を通知し、`{ kind: 'defer', delaySeconds }`を返す(5.1〜5.4)。`retry`は`EmailTransientFailure`を投げ、backend-platformの再試行(登録の`retry: EMAIL_SEND_RETRY_POLICY`)に任せる(6.1)。`give-up`は`report`なら`undeliverable`を通知し、結果をログに出して完了する(6.2〜6.4)。
+- 行動: `completed`は`markSent`(失敗は`error`ログにとどめて完了し、再送を避ける)と`sent`のログ(6.6)。`defer`は`daily-limit`のとき`tryAcquire('email-daily-limit', now, 3600)`が真なら`daily-limit`を通知する。`tryAcquire`自体が失敗したときは`error`ログを出したうえで通知する(fingerprintが1つに固定されているため、重ねて送っても1つの問題にまとまる。例外にすると試行回数に数えない待機が再試行として数えられるため、例外にしない。research.mdの承認後の改訂2)。どちらも`{ kind: 'defer', delaySeconds }`を返す(5.1〜5.4)。`retry`は`EmailTransientFailure`を投げ、backend-platformの再試行(登録の`retry: EMAIL_SEND_RETRY_POLICY`)に任せる(6.1)。`give-up`は`report`なら`undeliverable`を通知し、結果をログに出して完了する(6.2〜6.4)。
 - ログ(10.1): 結果`sent`・`deferred`・`expired`・`suppressed`・`duplicate`・`retrying`・`undeliverable`・`recipient-suppressed`・`recipient-not-allowed`と、種別・分類・送信要求の識別子・所要時間・試行回数。宛先・件名・本文・入力・URLを属性に入れない(6.8)。
 - 送信要求の識別子は封筒のID(`meta.id`)である。`defer`は同じIDで再送されるため、待機をまたいでも重複の防止が効く。
 
@@ -1401,21 +1402,22 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 
 ### Error Categories and Responses
 
-| 状況                                                             | 振る舞い                                                            |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------- |
-| 種別の未登録・入力不正・宛先不正・ヘッダー不正・大きさ超過(受付) | `EmailSendError`。送らない                                          |
-| 送信レートの上限                                                 | 60秒の`defer`。試行回数に数えない                                   |
-| 日次上限                                                         | 3600秒の`defer`。1時間に1回`warning`をSentryへ(同じ問題)            |
-| 一時的な障害・時間切れ                                           | 120・240・480・960秒で再試行。5回目で送信不能を`error`で通知        |
-| 恒久的な失敗・描画失敗・消費時の入力不正                         | 送信不能を`error`で通知して完了                                     |
-| 宛先の抑止(送信時の拒否)                                         | `info`ログで完了                                                    |
-| stagingの宛先制限                                                | `info`ログで完了                                                    |
-| 送信期限切れ・抑止中の通知メール・重複                           | `info`ログで完了                                                    |
-| 送信者情報の取得失敗(D1)                                         | 例外で再試行                                                        |
-| 不正・未知の配信不能イベント                                     | `warning`ログと`error`のSentry、記録せず完了                        |
-| 送信側の拒否・受付後の配送失敗                                   | `error`のSentry、記録しない                                         |
-| 抑止の記録の失敗(D1)                                             | 例外で再試行、上限で`DeadLetterNotice`(`raw:email-delivery-events`) |
-| 利用者のアドレスの照会口が未提供                                 | 1年経過の削除を行わず`warning`ログ                                  |
+| 状況                                                             | 振る舞い                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 種別の未登録・入力不正・宛先不正・ヘッダー不正・大きさ超過(受付) | `EmailSendError`。送らない                                                |
+| 送信レートの上限                                                 | 60秒の`defer`。試行回数に数えない                                         |
+| 日次上限                                                         | 3600秒の`defer`。1時間に1回`warning`をSentryへ(同じ問題)                  |
+| 日次上限の警告の間引きの失敗(D1)                                 | `error`ログを出して`warning`をSentryへ送り、3600秒の`defer`(例外にしない) |
+| 一時的な障害・時間切れ                                           | 120・240・480・960秒で再試行。5回目で送信不能を`error`で通知              |
+| 恒久的な失敗・描画失敗・消費時の入力不正                         | 送信不能を`error`で通知して完了                                           |
+| 宛先の抑止(送信時の拒否)                                         | `info`ログで完了                                                          |
+| stagingの宛先制限                                                | `info`ログで完了                                                          |
+| 送信期限切れ・抑止中の通知メール・重複                           | `info`ログで完了                                                          |
+| 送信者情報の取得失敗(D1)                                         | 例外で再試行                                                              |
+| 不正・未知の配信不能イベント                                     | `warning`ログと`error`のSentry、記録せず完了                              |
+| 送信側の拒否・受付後の配送失敗                                   | `error`のSentry、記録しない                                               |
+| 抑止の記録の失敗(D1)                                             | 例外で再試行、上限で`DeadLetterNotice`(`raw:email-delivery-events`)       |
+| 利用者のアドレスの照会口が未提供                                 | 1年経過の削除を行わず`warning`ログ                                        |
 
 ### Monitoring
 

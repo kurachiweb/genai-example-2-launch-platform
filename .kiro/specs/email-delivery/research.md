@@ -61,7 +61,7 @@
 - **Sources Consulted**: Cloudflare Docs「[Workers API](https://developers.cloudflare.com/email-service/api/send-emails/workers-api/)」「[Limits](https://developers.cloudflare.com/email-service/platform/limits/)」「[Pricing](https://developers.cloudflare.com/email-service/platform/pricing/)」「[Email headers](https://developers.cloudflare.com/email-service/reference/headers/)」「[Changelog](https://developers.cloudflare.com/email-service/platform/changelog/)」。
 - **Findings**:
   - バインディング`send_email`の`send()`は`to`・`from`・`subject`・`html`・`text`・`replyTo`・`cc`・`bcc`・`attachments`・`headers`を受け取り、成功時は`{ messageId }`を返す。失敗は`code`と`message`を持つ`Error`で投げられる。
-  - 失敗コードは、検証系(`E_VALIDATION_ERROR`・`E_FIELD_MISSING`・`E_TOO_MANY_RECIPIENTS`・`E_CONTENT_TOO_LARGE`・ヘッダー系7種)、設定系(`E_SENDER_NOT_VERIFIED`・`E_SENDER_DOMAIN_NOT_AVAILABLE`・`E_RECIPIENT_NOT_ALLOWED`)、宛先の抑止(`E_RECIPIENT_SUPPRESSED`)、上限(`E_RATE_LIMIT_EXCEEDED`・`E_DAILY_LIMIT_EXCEEDED`)、一時的な障害(`E_INTERNAL_SERVER_ERROR`)、配送失敗(`E_DELIVERY_FAILED`)に分かれる。再試行可否は文書に明記されていない。
+  - 失敗コードは、検証系(`E_VALIDATION_ERROR`・`E_FIELD_MISSING`・`E_TOO_MANY_RECIPIENTS`・`E_CONTENT_TOO_LARGE`・ヘッダー系7種)、設定系(`E_SENDER_NOT_VERIFIED`・`E_SENDER_DOMAIN_NOT_AVAILABLE`・`E_RECIPIENT_NOT_ALLOWED`)、宛先の抑止(`E_RECIPIENT_SUPPRESSED`)、上限(`E_RATE_LIMIT_EXCEEDED`・`E_DAILY_LIMIT_EXCEEDED`)、アカウントの送信の停止(`E_ACCOUNT_SUSPENDED`)、一時的な障害(`E_INTERNAL_SERVER_ERROR`)、配送失敗(`E_DELIVERY_FAILED`)に分かれる。再試行可否は文書に明記されていない。`E_ACCOUNT_SUSPENDED`は承認後の改訂1で恒久の失敗に分類した。
   - 宛先は`to`・`cc`・`bcc`の合計50件まで、メッセージは添付込み5MiBまで、件名は998文字まで、独自ヘッダーは合計16KB・許可リストの非`X-`ヘッダーは20個まで。
   - 日次上限は新しいアカウントほど低く、送信実績に応じて自動で上がる。値とリセット時刻は公開されていない。検証済みの宛先への送信は日次上限と月間の枠に数えない。
   - Workers Paidで月3,000通を含み、超過は1,000通あたり0.35ドル。APIで拒否された送信(抑止による拒否を含む)は数えない。
@@ -215,6 +215,24 @@
 - [Mailpit API v1](https://mailpit.axllent.org/docs/api-v1/) — `POST /api/v1/send`と検索API
 - [React Email: render](https://react.email/docs/utilities/render) — HTMLとテキストパートの生成
 
+## 開発者の決定による承認後の改訂(改訂1、2026-10-27)
+
+- **状態**: 2026-10-27に開発者が決定した改訂で、確定している。タスク2.3の実装で、設計の失敗コードの表に無い`E_ACCOUNT_SUSPENDED`を未知のコードとして一時的な障害に分類し、開発者の判断を求めていた。
+- **決定**: `E_ACCOUNT_SUSPENDED`を恒久的な失敗(`permanent`)に分類する。
+- **理由**: 送信の評判の悪化などでアカウントの送信が停止された状態であり、約30分の再試行では解けない。再試行で知らせるのを遅らせず、`E_SENDER_NOT_VERIFIED`などの設定の誤りと同じく、すぐに送信不能として通知する。
+- **要件**: 要件6.3(恒久的な失敗は再試行しない)の範囲の中の分類の追加で、要件の文言は変わらない。
+- **変えた箇所**: 設計のProviderOutcomeClassifierの失敗コードの表と注記、本書のEmail Sendingの送信APIと上限のFindings、技術ドキュメント`external/001-email-sending.md`の失敗コードの分類。コードは`provider-outcome.ts`の恒久のコードの集合と、その単体テスト。タスクの番号と記述の変更は無い。
+
+## 開発者の決定による承認後の改訂(改訂2、2026-10-27)
+
+- **状態**: 2026-10-27に開発者が決定した改訂で、確定している。タスク5.4の実装で、日次上限の警告の間引き(`AlertThrottle.tryAcquire`)自体の失敗を`error`ログにとどめて警告を送らない形にし、開発者の判断を求めていた。
+- **決定**: 間引き自体が失敗したときも警告を送る側に倒す。間引きの失敗は`error`ログに残し、警告(`daily-limit`)を送り、3600秒の待機(`defer`)を返す。例外にはしない。
+- **理由**: 警告のSentryのfingerprintは`['email', 'daily-limit']`の1つに固定されており、間引けずに重ねて送っても1つの問題にまとまる(要件5.4を保つ)。警告を送らないと、D1の障害と日次上限が重なったときに上限への到達に気付けない。例外にしないのは、試行回数に数えない待機が再試行として数えられるため(要件5.3)。
+- **要件**: 要件5.3・5.4の範囲の中の扱いの決定で、要件の文言は変わらない。
+- **変えた箇所**: 設計のSendEmailHandlerの行動の説明と、Error Handlingの表(間引きの失敗の行を追加)、技術ドキュメント`external/001-email-sending.md`の待機の節。コードは`send-email-handler.ts`の`alertDailyLimit`と、`send-email-handler.outcome.unit.test.ts`。タスクの番号と記述の変更は無い。
+
 ## 変更履歴
 
 - 2026-10-24(文言の整合、改訂の番号なし): Testing Strategyのローカルの手順の検証に、infra-deliveryの改訂1の実装の後のeventのローカルの起動の形(`run-with-secrets --scope local --worker event`。`WORKER_SCOPED_SECRETS`の`STRIPE_API_KEY`はWorkerごとのフォルダからだけ渡る)を書き加えた。本specの実装の時点の起動の形(`infisical run`)は変えていない。振る舞いの変更は無く、タスク(8.1はオンボーディングの手順に従う形で、コマンドを書いていない)も変えていない。cross-spec reviewの指摘による。
+- 2026-10-27(改訂1): `E_ACCOUNT_SUSPENDED`を恒久的な失敗に分類。開発者が決定(上の改訂1の節)。
+- 2026-10-27(改訂2): 日次上限の警告の間引きの失敗時も警告を送る。開発者が決定(上の改訂2の節)。
