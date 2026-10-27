@@ -134,7 +134,7 @@
   - _Boundary: EmailIncidentReporter, SenderInfoDefault_
   - _Requirements: 2.4, 3.6, 3.7, 5.4, 6.2, 6.3, 6.5, 6.8, 7.4, 7.8_
 
-- [ ] 5.4 (P) `email.send`の送信処理を作る
+- [x] 5.4 (P) `email.send`の送信処理を作る
   - 先に、偽物のポートで各分岐の単体テストを書く
   - 重複(送信済み)・送信期限切れ・未登録の種別・入力の不正・通知メールの抑止中を送信前に判定する。トランザクションメールは抑止リストを照会しない
   - 送信者情報を取得して描画し、描画の失敗は送信不能として通知する。送信結果の判定に従い、完了時の記録(失敗はログにとどめる)、待機(日次上限は間引き付きの警告)、再試行の例外、断念(通知の要否に従う)を行う
@@ -254,3 +254,4 @@
 - 5.2(6.1への申し送り): `createEmailProvider(env, fetcher)`の環境の型`EventEmailEnv`は`create-email-provider.ts`に独立したインターフェースとして定義した(生成された`Env`の`MAILPIT_API_URL`がリテラル型のため)。`EMAIL_PROVIDER`が想定外の値だと`undefined`を返すため、6.1の環境の検証で値を保証する。設定の欠落はキー名だけの`Error`。`createCloudflareEmailProvider`はテストのため任意の第2引数で時間切れの値を受け取る(設計は1引数)。
 - 5.2: Email Sendingの30秒の時間切れの後に`send()`が遅れて成功すると、一時的な障害として再試行されて二重送信になり得る(要件6.1と設計の想定どおり。少なくとも1回の配信の範囲)。Mailpitの失敗コードは設計の`mailpit-rejected`に加えて`mailpit-unreachable`・`mailpit-status-<状態コード>`・`mailpit-invalid-response`(すべて一時的な障害)。
 - 5.3(6.1への申し送り): `SentryEmailIncidentReporter`・`UnsetSenderInfoProvider`はコンストラクタ引数の無い`@injectable()`のクラスで、`.to(クラス)`で束縛する。通知は設計の`captureMessage`ではなく技術ドキュメント004の定型の文言の規則に従い`captureEvent`+`logentry`で送る(重複除外で捨てられないため)。送信不能には設計に無い`correlation_id`(送信要求の識別子)のタグも付ける。タグと指紋の値は`[A-Za-z0-9_.:-]`だけのとき64文字に切り詰め、それ以外は`unknown`、不正なイベントで種類が無ければ`missing`。
+- 5.4(6.1への申し送り): `SendEmailHandler`と`EmailTransientFailure`は`application/email/send-email-handler.ts`にある。ログのカテゴリは`['event', 'application', 'email-send']`、属性名は伏せ字の規則(`/email/i`)と予約の`category`を避けて`kind`・`kindCategory`・`deferCause`・`delaySeconds`等。前判定の送信不能のコードは`unknown-kind`・`invalid-input`・`render-failed`。日次上限の警告は`tryAcquire('email-daily-limit', now, 3600)`が真のときだけ送り、`tryAcquire`自体の失敗はerrorログにとどめて警告を送らない(開発者の判断待ち)。待機で再配信されると試行回数が1に戻るため、待機をまたぐと一時的な障害の再試行の合計が5回を超え得る(backend-platformの方式による)。
