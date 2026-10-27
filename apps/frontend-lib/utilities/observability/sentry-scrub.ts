@@ -8,8 +8,10 @@ import type {
   StreamedSpanJSON,
 } from '@sentry/core';
 
-import { GraphQLClientError } from '../graphql/graphql-result.ts';
+import { isExpectedFailure } from '../graphql/graphql-result.ts';
 import { redactDeep, redactText } from './redaction-patterns.ts';
+
+export { isExpectedFailure };
 
 const ALLOWED_REQUEST_HEADERS = ['accept', 'content-type', 'user-agent'];
 
@@ -93,9 +95,6 @@ const USER_ATTRIBUTE_PREFIX = 'user.';
 const URL_FULL_ATTRIBUTE = 'url.full';
 
 const URL_QUERY_OR_FRAGMENT_PATTERN = /[?#].*$/su;
-
-export const isExpectedFailure = (error: unknown): boolean =>
-  error instanceof GraphQLClientError && error.expected;
 
 const stripUrlQuery = (url: string): string =>
   redactText(url.replace(URL_QUERY_OR_FRAGMENT_PATTERN, ''));

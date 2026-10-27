@@ -4,6 +4,7 @@ import {
   createNetworkError,
   GraphQLClientError,
   type GraphQLResult,
+  isExpectedFailure,
   parseGraphQLResponse,
   requireData,
 } from './graphql-result.ts';
@@ -484,5 +485,16 @@ describe('requireData', () => {
     });
 
     expect(() => requireData(result)).toThrow(errorOf(result));
+  });
+});
+
+describe('isExpectedFailure', () => {
+  test('想定内のコードを持つGraphQLClientErrorだけを想定内と判定する', () => {
+    const errorOfCode = (code: string): GraphQLClientError =>
+      new GraphQLClientError({ code, message: '失敗しました', status: 400 });
+
+    expect(isExpectedFailure(errorOfCode('validation_failed'))).toBe(true);
+    expect(isExpectedFailure(errorOfCode('internal_error'))).toBe(false);
+    expect(isExpectedFailure(new Error('validation_failed'))).toBe(false);
   });
 });

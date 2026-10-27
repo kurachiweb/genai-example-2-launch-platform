@@ -195,3 +195,7 @@ export const createNetworkError = (cause: unknown): GraphQLClientError =>
     { code: 'network_error', message: NETWORK_ERROR_MESSAGE, status: 0 },
     { cause },
   );
+
+// エラートラッキングの除外とブラウザの送信待ちの列で共用する。列は主バンドルに入るため、伏せ字のパターンを持つsentry-scrub.tsではなくここに置く
+export const isExpectedFailure = (error: unknown): boolean =>
+  error instanceof GraphQLClientError && error.expected;
