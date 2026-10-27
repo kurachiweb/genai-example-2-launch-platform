@@ -77,7 +77,7 @@
   - _Requirements: 7.10_
 
 - [ ] 4. 共有のD1のストアと送信の受付(apiのWorkers統合テスト)
-- [ ] 4.1 (P) 送信要求を検証してQueueへ送る受付を作る
+- [x] 4.1 (P) 送信要求を検証してQueueへ送る受付を作る
   - 種別の検索・入力の検証・宛先の検証・追加ヘッダーの検証・送信期限の検証・本文の大きさの確認を行い、`email.send`として送信して送信要求の識別子を返す
   - 失敗は理由ごとの受付の失敗とし、メッセージに宛先と入力の値を含めない。Queueの障害は包まずに伝える
   - 完了状態: 成功時に封筒付きのメッセージが本体のQueueへ1件送られて識別子が返り、各拒否の場合に送られないことをWorkers統合テストで確かめられる
@@ -245,3 +245,4 @@
 - 2.5(4.1への申し送り): `EmailSendError`は下流のapplication層が`instanceof`で見分けるため`core/email/ports.ts`に定義した(コンストラクタは`(reason)`だけで、メッセージは理由ごとの固定文)。4.1はこれを`core/email/ports.ts`からimportして投げる。
 - 2.5(5.6・5.7への申し送り): `formatUtcDateTime`・`formatUtcDate`は任意の第2引数`{ withYear?: boolean }`を取り、無効な`Date`では`RangeError`を投げる。テンプレートで日時を表示するときはマークアップ規約の日時の表示(`<time dateTime>`)に従って包む。
 - 3(6.1への申し送り): 追加のQueueの登録は`createQueueDispatcher(..., { rawQueues })`で渡し、最初の`dispatch`で`assertRawQueueRegistrations`が検証する。登録が誤っていると本体のQueueを含む全バッチが例外になる(Sentryで検知)。名前は`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`、Queue名の解決結果が空・`undefined`でも拒否する。新しいケースは既存の`queue-consumer.worker.test.ts`(800行の上限に近い)ではなく`queue-consumer.raw-queues.worker.test.ts`に置いた(設計のTesting Strategyとの相違)。
+- 4.1(4.4への申し送り): 受付はファクトリ`createEmailSender(publisher, registry)`で、`workers`の他の部品と同じく`toDynamicValue`で束縛する。宛先は照合キーにせず元の値のまま送る(正規化は抑止リスト側)。年0000〜9999外の期限は`invalid-deadline`、過去の期限は受け付ける(送信処理が期限切れとして扱う)。
