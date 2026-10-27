@@ -31,6 +31,7 @@ const APP_RUNTIME: AppRuntime = {
 };
 
 const requestContextOf = (): FrontendRequestContext => ({
+  caller: 'client',
   nonce: NONCE,
   correlationId: CORRELATION_ID,
   display: APP_RUNTIME.display,
@@ -42,6 +43,7 @@ const requestContextOf = (): FrontendRequestContext => ({
   },
   api: { fetch: () => Promise.resolve(new Response(null)) },
   sessionCookieName: '__Host-test_session',
+  reportUnexpected: () => undefined,
 });
 
 describe('createAppRuntimeHolder', () => {

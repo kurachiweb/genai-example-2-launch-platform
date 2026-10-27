@@ -160,3 +160,17 @@ export function toBrowserResponse(
     headers,
   });
 }
+
+// 描画中に複数の取得がセッションを指示しても、ブラウザへは最後に届いた指示だけを渡す
+export function mergeSessionSetCookies(
+  existing: readonly string[],
+  incoming: readonly string[],
+  cookieName: SessionCookieName,
+): string[] {
+  const isSessionCookie = (setCookie: string): boolean =>
+    setCookie.startsWith(`${cookieName}=`);
+  return [
+    ...existing.filter((setCookie) => !isSessionCookie(setCookie)),
+    ...incoming.filter(isSessionCookie),
+  ];
+}

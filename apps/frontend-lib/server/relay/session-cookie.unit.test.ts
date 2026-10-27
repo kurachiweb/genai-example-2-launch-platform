@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   buildSessionSetCookie,
+  mergeSessionSetCookies,
   readSessionInstruction,
   readSessionToken,
   type SessionCookieLogger,
@@ -553,5 +554,36 @@ describe('toBrowserResponse', () => {
     expect(response.headers.getSetCookie()).toEqual([
       `${CLIENT_COOKIE}=; Max-Age=0; ${COOKIE_ATTRIBUTES}`,
     ]);
+  });
+});
+
+describe('mergeSessionSetCookies', () => {
+  const OTHER_COOKIE = 'theme=dark; Path=/';
+
+  test('既に付いた自分のセッションのCookieの指示を新しい指示で置き換え、他のCookieは残す', () => {
+    const issued = `${CLIENT_COOKIE}=${ISSUED_TOKEN}; Max-Age=60; ${COOKIE_ATTRIBUTES}`;
+    const cleared = `${CLIENT_COOKIE}=; Max-Age=0; ${COOKIE_ATTRIBUTES}`;
+
+    expect(
+      mergeSessionSetCookies([OTHER_COOKIE, issued], [cleared], CLIENT_COOKIE),
+    ).toEqual([OTHER_COOKIE, cleared]);
+  });
+
+  test('名前が前方一致するだけの別のCookieは置き換えない', () => {
+    const similar = `${CLIENT_COOKIE}_v2=value; Path=/`;
+    const issued = `${CLIENT_COOKIE}=${ISSUED_TOKEN}; Max-Age=60; ${COOKIE_ATTRIBUTES}`;
+
+    expect(mergeSessionSetCookies([similar], [issued], CLIENT_COOKIE)).toEqual([
+      similar,
+      issued,
+    ]);
+  });
+
+  test('新しい指示のうち自分のセッションのCookie以外は加えない', () => {
+    const adminIssued = `${ADMIN_COOKIE}=${ADMIN_TOKEN}; Max-Age=60; ${COOKIE_ATTRIBUTES}`;
+
+    expect(
+      mergeSessionSetCookies([OTHER_COOKIE], [adminIssued], CLIENT_COOKIE),
+    ).toEqual([OTHER_COOKIE]);
   });
 });

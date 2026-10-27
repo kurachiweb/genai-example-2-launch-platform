@@ -37,3 +37,8 @@ export const RELAY_TRACE_HEADERS = Object.freeze([
 ] as const);
 
 export const RELAY_PATH_PREFIX = '/_bff/';
+
+// ブラウザがGraphQLを送る中継の経路と、その中継先のAPIサーバーの経路。ブラウザ向けのコードからも読むため、中継の処理と切り離してここに置く
+export const GRAPHQL_RELAY_PATH = `${RELAY_PATH_PREFIX}graphql`;
+
+export const GRAPHQL_UPSTREAM_PATH = '/graphql';

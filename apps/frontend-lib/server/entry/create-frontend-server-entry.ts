@@ -295,6 +295,7 @@ const dispatch = async (valid: ValidRequest): Promise<Handled> => {
     };
   }
   const context: FrontendRequestContext = {
+    caller: profile.caller,
     nonce: valid.nonce,
     correlationId: valid.correlationId,
     display: resolveRequestDisplayPreferences({
@@ -305,6 +306,7 @@ const dispatch = async (valid: ValidRequest): Promise<Handled> => {
     relay,
     api: env.API,
     sessionCookieName: profile.sessionCookieName,
+    reportUnexpected: options.reportUnexpected,
   };
   const response = await options.startHandler.fetch(request, { context });
   return {

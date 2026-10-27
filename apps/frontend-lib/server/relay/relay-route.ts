@@ -2,6 +2,8 @@ import type { ServiceFetcher } from '../env/frontend-env.ts';
 import { errorEnvelopeResponse } from '../http/error-responses.ts';
 import {
   GATEWAY_CALLER_HEADERS,
+  GRAPHQL_RELAY_PATH,
+  GRAPHQL_UPSTREAM_PATH,
   RELAY_PATH_PREFIX,
   RELAY_REQUEST_HEADERS,
   RELAY_TRACE_HEADERS,
@@ -160,9 +162,9 @@ export function defineRelayRoute(route: RelayRoute): RelayRoute {
 }
 
 export const GRAPHQL_RELAY_ROUTE: RelayRoute = defineRelayRoute({
-  path: `${RELAY_PATH_PREFIX}graphql`,
+  path: GRAPHQL_RELAY_PATH,
   methods: ['POST'],
-  upstreamPath: () => '/graphql',
+  upstreamPath: () => GRAPHQL_UPSTREAM_PATH,
   acceptContentTypes: ['application/json'],
   timeoutMs: 15_000,
 });

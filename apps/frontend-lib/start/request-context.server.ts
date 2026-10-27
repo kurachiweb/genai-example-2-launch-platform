@@ -6,7 +6,7 @@ import { type AppRuntime, toAppRuntime } from './router-context.ts';
 // 共通部品はTanStack StartのRegisterへ要求の文脈の型を登録せず、戻り値の型がundefinedになるため、createFrontendServerEntryがstartHandler.fetchへ渡した文脈を型の無い値として読んでから確かめる
 const readStartContext: () => unknown = getGlobalStartContext;
 
-const readFrontendRequestContext = (): FrontendRequestContext => {
+export const readFrontendRequestContext = (): FrontendRequestContext => {
   const context = readStartContext();
   if (
     typeof context !== 'object' ||

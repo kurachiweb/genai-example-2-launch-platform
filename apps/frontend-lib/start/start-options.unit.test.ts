@@ -4,6 +4,7 @@ import {
   sentryGlobalRequestMiddleware,
 } from '@sentry/tanstackstart-react';
 
+import { responseCommitMiddleware } from './response-commit.ts';
 import { createFrontendStartOptions } from './start-options.ts';
 
 const APP_ORIGIN = 'https://app.example';
@@ -46,12 +47,14 @@ const requestOf = (
 ): Request => new Request(`${APP_ORIGIN}${path}`, { method, headers });
 
 describe('createFrontendStartOptions', () => {
-  test('要求のミドルウェアはSentryを先頭に置き、その後にCSRFのミドルウェアを置く', () => {
+  test('要求のミドルウェアはSentryを先頭に置き、CSRF、応答の送り始めの記録の順に置く', () => {
     const { requestMiddleware, functionMiddleware } = startOptionsOf();
 
-    expect(requestMiddleware).toHaveLength(2);
+    expect(requestMiddleware).toHaveLength(3);
     expect(requestMiddleware[0]).toBe(sentryGlobalRequestMiddleware);
     expect(requestMiddleware[1]).not.toBe(sentryGlobalRequestMiddleware);
+    expect(requestMiddleware[1]).not.toBe(responseCommitMiddleware);
+    expect(requestMiddleware[2]).toBe(responseCommitMiddleware);
     expect(functionMiddleware).toEqual([sentryGlobalFunctionMiddleware]);
   });
 
