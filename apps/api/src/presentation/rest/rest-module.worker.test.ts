@@ -335,7 +335,7 @@ describe('createRestModuleの経路', () => {
 });
 
 describe('createRestModuleのエラー', () => {
-  test('検証の失敗は400の共通のエラー形式になり、エラートラッキングへ送らない', async () => {
+  test('検証の失敗は400、本文の形式の不一致は415の共通のエラー形式になり、エラートラッキングへ送らない', async () => {
     configureRecordingLogs();
     const { app, sentry } = createTestServer([itemRoutes]);
 
@@ -366,7 +366,7 @@ describe('createRestModuleのエラー', () => {
         details: [{ field: '', code: 'invalid_json' }],
       },
     });
-    expect(unsupported.status).toBe(400);
+    expect(unsupported.status).toBe(415);
     expect(await unsupported.json()).toMatchObject({
       error: { code: 'unsupported_media_type' },
     });

@@ -750,11 +750,16 @@ export type AppErrorKind =
   | 'not_found' // 404
   | 'conflict' // 409
   | 'unprocessable' // 422 形式は正しいが意味的に不正
+  | 'payload_too_large' // 413 本文が大きすぎる(api-gatewayの改訂3)
+  | 'unsupported_media_type' // 415 本文の形式を受け付けない(api-gatewayの改訂3)
   | 'rate_limited' // 429
   | 'unavailable'; // 503 依存先の一時的な障害
 
 export declare const STATUS_BY_KIND: Readonly<
-  Record<AppErrorKind, 400 | 401 | 403 | 404 | 409 | 422 | 429 | 503>
+  Record<
+    AppErrorKind,
+    400 | 401 | 403 | 404 | 409 | 413 | 415 | 422 | 429 | 503
+  >
 >;
 
 export interface FieldErrorDetail {

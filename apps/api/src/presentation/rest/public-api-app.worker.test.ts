@@ -363,7 +363,7 @@ describe('createPublicApiAppの本文の形式の誤り', () => {
     ['text/plainのContent-Type', { 'Content-Type': 'text/plain' }],
     ['Content-Typeの無い本文', {}],
   ])(
-    '%sは400とunsupported_media_typeの共通のエラー形式で応答し、経路の処理を呼ばず、外側からはAppErrorに見える',
+    '%sは415とunsupported_media_typeの共通のエラー形式で応答し、経路の処理を呼ばず、外側からはAppErrorに見える',
     async (_label, headers: Record<string, string>) => {
       const handled = createHandledItems();
       const { app, observedErrors } = createObservedApp(handled);
@@ -374,7 +374,7 @@ describe('createPublicApiAppの本文の形式の誤り', () => {
         JSON.stringify({ title: 'abc', tags: [] }),
       );
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(415);
       expect(response.headers.get('Cache-Control')).toBe('no-store');
       expect(await response.json()).toStrictEqual({
         error: {

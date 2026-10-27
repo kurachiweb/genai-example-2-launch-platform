@@ -257,16 +257,18 @@ flowchart TD
 
 ### 失敗の種類と状態コード
 
-| 種類(`kind`)      | 状態コード | 使う場面                     |
-| ----------------- | ---------- | ---------------------------- |
-| `bad_request`     | 400        | 入力の形式の不正・検証の失敗 |
-| `unauthenticated` | 401        | 認証されていない             |
-| `forbidden`       | 403        | 権限が無い・bot判定の失敗    |
-| `not_found`       | 404        | 対象が存在しない             |
-| `conflict`        | 409        | 状態の競合                   |
-| `unprocessable`   | 422        | 形式は正しいが意味的に不正   |
-| `rate_limited`    | 429        | 回数の超過                   |
-| `unavailable`     | 503        | 依存先の一時的な障害         |
+| 種類(`kind`)             | 状態コード | 使う場面                                         |
+| ------------------------ | ---------- | ------------------------------------------------ |
+| `bad_request`            | 400        | 入力の形式の不正・検証の失敗                     |
+| `unauthenticated`        | 401        | 認証されていない                                 |
+| `forbidden`              | 403        | 権限が無い・bot判定の失敗                        |
+| `not_found`              | 404        | 対象が存在しない                                 |
+| `conflict`               | 409        | 状態の競合                                       |
+| `payload_too_large`      | 413        | 要求の本文が上限を超えた                         |
+| `unsupported_media_type` | 415        | 要求の本文の形式(`Content-Type`)に対応していない |
+| `unprocessable`          | 422        | 形式は正しいが意味的に不正                       |
+| `rate_limited`           | 429        | 回数の超過                                       |
+| `unavailable`            | 503        | 依存先の一時的な障害                             |
 
 ```typescript
 import { AppError } from '<共通ライブラリの配置先>/core/errors/app-error.ts';

@@ -8,6 +8,7 @@ import {
   installGraphQLModuleHooks,
   INVALID_TOKEN,
   logsOf,
+  observedErrors,
   OPERATION_CATEGORY,
   OPERATIONS,
   paddedDocument,
@@ -20,6 +21,7 @@ import {
   VALID_TOKEN,
   verifyCalls,
 } from '../../../test/support/graphql-module-harness.ts';
+import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { DEFAULT_CONTENT_SECURITY_POLICY } from '../../../lib/workers/http/security-headers.ts';
 import {
   GATEWAY_HEADERS,
@@ -62,7 +64,7 @@ describe('createGraphQLModule(本文の上限)', () => {
       body: () => streamOf(GRAPHQL_MAX_BODY_BYTES + 1),
     },
   ])(
-    '$label本文が上限を超えたら、413と共通のエラー形式で応答し、操作を実行しない',
+    '$label本文が上限を超えたら、共通エラーの変換で413の共通のエラー形式を応答し、操作を実行しない',
     async ({ body }) => {
       const before = resolverCalls;
 
@@ -75,10 +77,15 @@ describe('createGraphQLModule(本文の上限)', () => {
       expect(await response.json()).toStrictEqual({
         error: {
           code: 'payload_too_large',
-          message: expect.any(String) as string,
+          message: 'リクエストの本文が大きすぎます。',
         },
       });
       expect(response.headers.get('Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Content-Security-Policy')).toBe(
+        DEFAULT_CONTENT_SECURITY_POLICY,
+      );
+      expect(observedErrors).toHaveLength(1);
+      expect(observedErrors[0]).toBeInstanceOf(AppError);
       expect(resolverCalls).toBe(before);
       expect(logsOf(OPERATION_CATEGORY)).toMatchObject([
         { caller: 'client', outcome: 'error', status: 413, errorCodes: [] },

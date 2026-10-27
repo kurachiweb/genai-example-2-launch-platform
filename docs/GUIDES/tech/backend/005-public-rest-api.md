@@ -108,12 +108,12 @@ export const REST_ROUTES: readonly PublicRestRoutes<Env>[] = [
 | ------------------------------------------------------------ | ---------- | ------------------------ | ------------------------------------------------------ | --------------------------------------------------------------------- |
 | パスの変数・クエリ・本文などが検証規則に合わない             | 400        | `validation_error`       | 「入力内容を確認してください。」                       | 項目ごと。`field`はZodの問題のパスを`.`で連結した値(最上位なら空文字) |
 | 本文をJSONとして解析できない(空の本文を含む)                 | 400        | `validation_error`       | 「入力内容を確認してください。」                       | `field`は空文字、`code`は`invalid_json`                               |
-| 本文を受け取る経路で`Content-Type`が`application/json`でない | 400        | `unsupported_media_type` | 「Content-Typeにapplication/jsonを指定してください。」 | なし                                                                  |
+| 本文を受け取る経路で`Content-Type`が`application/json`でない | 415        | `unsupported_media_type` | 「Content-Typeにapplication/jsonを指定してください。」 | なし                                                                  |
 | 基準パスの下の未登録の経路・登録済みの経路の未登録のメソッド | 404        | `not_found`              | 基盤の定型                                             | なし                                                                  |
 
 - `details`の`code`・`message`はZodの問題のコードと文言である。利用者へ出る規則には、日本語の文言を必ず指定する(`z.string().max(100, '100文字以内で入力してください。')`など)。指定しないとZodの既定の英語の文言が`details`の`message`に出る。
 - 要求本文はJSONだけを受け付ける。`@hono/zod-openapi`は本文の解析の失敗と`Content-Type`の不一致をHonoの`HTTPException`(400・415)で投げ、基盤はこれを想定外の例外として500にするため、アプリの`onError`が`AppError`へ変えて再送出する。`HTTPException`の400は全てJSONの解析の失敗として扱うため、フォームなどJSON以外の本文を受け付ける経路を作らない。
-- `AppError`の種類に415が無いため、`Content-Type`の不一致は400で返す。
+- `Content-Type`の不一致は`AppError`(`kind: 'unsupported_media_type'`)に変え、415で返す。
 - それ以外の`HTTPException`と、`AppError`でない例外は想定外の例外として500になり、エラートラッキングへ送られる(「[例外の投げ方](002-layered-architecture-on-workers.md#例外の投げ方)」)。
 
 ## 成功応答の形式とページング
@@ -136,7 +136,7 @@ export const REST_ROUTES: readonly PublicRestRoutes<Env>[] = [
 - オフセット型の`meta`は、`total`・`total_pages`が0以上、`page`・`per_page`が1以上の整数である。
 - カーソル型の`meta`は、最後のページなら`has_next`が`false`、`next_cursor`が`null`である。
 - ページングの引数(クエリ)の検証規則は骨格が持たず、各経路が定義する。
-- エラー応答は`errorResponses([<状態コード>...])`で経路の`responses`に加える。指定した状態コードだけが、説明と共通のエラー形式のスキーマ(仕様書の部品`ErrorEnvelope`)付きで仕様に載る。指定できる状態コードは`AppError`の種類の状態コード(400・401・403・404・409・422・429・503)である。
+- エラー応答は`errorResponses([<状態コード>...])`で経路の`responses`に加える。指定した状態コードだけが、説明と共通のエラー形式のスキーマ(仕様書の部品`ErrorEnvelope`)付きで仕様に載る。指定できる状態コードは`AppError`の種類の状態コード(400・401・403・404・409・413・415・422・429・503)である。本文を受け取る経路は、`Content-Type`の不一致の415も加える。
 
 ## 認証方式の宣言
 

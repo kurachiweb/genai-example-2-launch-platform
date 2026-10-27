@@ -68,10 +68,9 @@ function createMalformedBodyError(): AppError {
   });
 }
 
-// AppErrorの種類に415が無いため、本文の形式の不一致も入力の誤りとして400で返す
 function createUnsupportedMediaTypeError(): AppError {
   return new AppError({
-    kind: 'bad_request',
+    kind: 'unsupported_media_type',
     code: 'unsupported_media_type',
     message: 'Content-Typeにapplication/jsonを指定してください。',
   });

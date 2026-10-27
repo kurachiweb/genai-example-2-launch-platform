@@ -85,6 +85,7 @@ export const DEPLOYED_ENVIRONMENTS: readonly AppEnvironment[] = [
 
 export let resolverCalls = 0;
 export const verifyCalls: VerifyCall[] = [];
+export const observedErrors: unknown[] = [];
 export let logs: LoggedObject[] = [];
 
 export function documentIdOf(digit: string): string {
@@ -191,12 +192,26 @@ export const sessionModule: AppModule<TestApp> = {
   }),
 };
 
+// 外側の中間処理(エラートラッキング)と同じく、経路の処理を終えた後に残った例外を記録する
+export const errorObserverModule: AppModule<TestApp> = {
+  name: 'error-observer-test',
+  routes: (app) => {
+    app.use('/graphql', async (c, next) => {
+      await next();
+      if (c.error !== undefined) {
+        observedErrors.push(c.error);
+      }
+    });
+  },
+};
+
 export function createTestApp(): TestApp {
   return createWorkerApp<TestEnv>({
     appName: 'api',
     envSchema: z.object(platformEnvShape),
     modules: [
       sessionModule,
+      errorObserverModule,
       createGraphQLModule<TestEnv>({
         schemaModules: [ALLOWLIST_MODULE, ROUTE_MODULE],
         allowlist: ALLOWLIST,
@@ -333,6 +348,7 @@ export function installGraphQLModuleHooks(): void {
   beforeEach(() => {
     logs.splice(0);
     verifyCalls.splice(0);
+    observedErrors.splice(0);
   });
 
   afterAll(() => {

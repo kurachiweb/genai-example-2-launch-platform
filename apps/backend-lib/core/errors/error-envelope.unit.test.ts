@@ -20,6 +20,8 @@ const EXPECTED_STATUS_BY_KIND: readonly (readonly [
   ['forbidden', 403],
   ['not_found', 404],
   ['conflict', 409],
+  ['payload_too_large', 413],
+  ['unsupported_media_type', 415],
   ['unprocessable', 422],
   ['rate_limited', 429],
   ['unavailable', 503],

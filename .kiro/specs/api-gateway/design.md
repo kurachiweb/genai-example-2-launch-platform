@@ -693,7 +693,7 @@ export declare function createGraphQLModule<
 
 - 受付経路: `readInternalCaller`があれば`internal`(呼び出し元はその値)。無ければ、ローカル環境なら`graphiql`(呼び出し元は`x-debug-caller`、既定`client`)、それ以外は`AppError(not_found)`(1.2・6.6)。
 - 内部経路では`warnOnMissingClientIp`を呼ぶ。`graphiql`のクライアントIPは接続元の値(backend-platformの解決結果)を使う(6.4)。
-- 本文が1MiBを超えたら413と共通のエラー形式`payload_too_large`で応答する。
+- 本文が1MiBを超えたら`AppError`(`payload_too_large`)を投げ、基盤の例外の変換が413と共通のエラー形式で応答する(改訂3)。
 - `getGatewayServer`のYogaへ、要求と`GatewayRequestScope`(受付経路・コンテナ・相関ID・クライアントIP・セッション・bot判定のトークン・観測の記録)を渡す。
 - 後処理: `applySessionInstructions`、`Cache-Control: no-store`(7.5)、`logOperation`(13.1)。GraphiQLのHTMLの応答には、unpkgのスクリプト・スタイルとインラインを許すCSPを付けて既定のCSPを置き換える(12.3、ローカル環境だけ)。
 
@@ -1183,11 +1183,11 @@ export declare const SESSION_TOKEN_PATTERN: RegExp; // /^[A-Za-z0-9_-]{43}$/(32�
 
 ##### API Contract
 
-| Method  | Endpoint             | Request        | Response                                 | Errors                                                  |
-| ------- | -------------------- | -------------- | ---------------------------------------- | ------------------------------------------------------- |
-| GET     | `/v1/openapi.json`   | なし(認証不要) | 200 OpenAPI 3.1のJSON                    | 429(IP制限)                                             |
-| OPTIONS | `/v1/*`              | プリフライト   | 204とCORSのヘッダー                      | 429(IP制限)                                             |
-| 任意    | `/v1/<登録した経路>` | 経路の検証規則 | 経路の定義(`{ data }`・`{ data, meta }`) | 400 `validation_error`、404 `not_found`、他は経路の定義 |
+| Method  | Endpoint             | Request        | Response                                 | Errors                                                                                |
+| ------- | -------------------- | -------------- | ---------------------------------------- | ------------------------------------------------------------------------------------- |
+| GET     | `/v1/openapi.json`   | なし(認証不要) | 200 OpenAPI 3.1のJSON                    | 429(IP制限)                                                                           |
+| OPTIONS | `/v1/*`              | プリフライト   | 204とCORSのヘッダー                      | 429(IP制限)                                                                           |
+| 任意    | `/v1/<登録した経路>` | 経路の検証規則 | 経路の定義(`{ data }`・`{ data, meta }`) | 400 `validation_error`、404 `not_found`、415 `unsupported_media_type`、他は経路の定義 |
 
 ```typescript
 import type { OpenAPIHono, z } from '@hono/zod-openapi';
@@ -1226,7 +1226,8 @@ export declare function cursorListEnvelope<T extends z.ZodType>(
     next_cursor: z.ZodNullable<z.ZodString>;
   }>;
 }>;
-export type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 422 | 429 | 503;
+export type ErrorStatus =
+  400 | 401 | 403 | 404 | 409 | 413 | 415 | 422 | 429 | 503;
 export declare function errorResponses(
   statuses: readonly ErrorStatus[],
 ): Readonly<
@@ -1557,6 +1558,7 @@ export declare const SESSION_BINDINGS: ContainerModule; // SESSION_TYPES.Session
 | その他の想定内の失敗                           | `AppError`のコード                          | 200                      | `unauthenticated`・`forbidden`・`not_found`など |
 | 想定外の例外                                   | `internal_error`                            | 200(データが無ければ500) | ログとSentryへ送る                              |
 | 公開RESTの検証の失敗                           | `validation_error`                          | 400                      | 共通のエラー形式と`details`                     |
+| 公開RESTの本文の`Content-Type`の不一致         | `unsupported_media_type`                    | 415                      | 共通のエラー形式(改訂3)                         |
 | 公開RESTの未登録の経路                         | `not_found`                                 | 404                      | CORSのヘッダー付き                              |
 
 ### Monitoring

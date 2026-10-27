@@ -166,7 +166,7 @@ describe('エラー応答のスキーマ部品', () => {
     const responses = errorResponses(ERROR_STATUSES);
 
     expect(ERROR_STATUSES).toStrictEqual([
-      400, 401, 403, 404, 409, 422, 429, 503,
+      400, 401, 403, 404, 409, 413, 415, 422, 429, 503,
     ]);
     const descriptions = Object.values(responses).map(
       ({ description }) => description,

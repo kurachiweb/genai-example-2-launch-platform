@@ -6,7 +6,7 @@ import type { ErrorEnvelope } from '../../../lib/core/errors/error-envelope.ts';
 export type ErrorStatus = AppErrorStatus;
 
 export const ERROR_STATUSES: readonly ErrorStatus[] = Object.freeze([
-  400, 401, 403, 404, 409, 422, 429, 503,
+  400, 401, 403, 404, 409, 413, 415, 422, 429, 503,
 ]);
 
 const ERROR_DESCRIPTIONS: Readonly<Record<ErrorStatus, string>> = Object.freeze(
@@ -16,6 +16,8 @@ const ERROR_DESCRIPTIONS: Readonly<Record<ErrorStatus, string>> = Object.freeze(
     403: '操作する権限がありません。',
     404: '対象が見つかりません。',
     409: '対象の状態と競合しています。',
+    413: '要求の本文が大きすぎます。',
+    415: '要求の本文の形式に対応していません。',
     422: '入力内容を処理できません。',
     429: '要求の回数が上限を超えました。',
     503: '一時的に利用できません。',

@@ -2,7 +2,7 @@ import type { Context, Hono, MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 
 import type { AppModule } from '../../../lib/core/di/app-module.ts';
-import type { ErrorEnvelope } from '../../../lib/core/errors/error-envelope.ts';
+import { AppError } from '../../../lib/core/errors/app-error.ts';
 import type { PlatformEnv } from '../../../lib/workers/env/platform-env.ts';
 import type { PlatformHonoEnv } from '../../../lib/workers/http/hono-env.ts';
 import {
@@ -65,29 +65,27 @@ const GRAPHQL_PATH = '/graphql';
 
 const GRAPHQL_METHODS = ['GET', 'POST'];
 
-const PAYLOAD_TOO_LARGE_STATUS = 413;
-
-const PAYLOAD_TOO_LARGE_BODY: ErrorEnvelope = Object.freeze({
-  error: Object.freeze({
-    code: 'payload_too_large',
-    message: 'リクエストの本文が大きすぎます。',
-  }),
-});
-
 const CACHE_CONTROL_HEADER = 'Cache-Control';
 
 const CONTENT_SECURITY_POLICY_HEADER = 'Content-Security-Policy';
 
-// 長さのヘッダーがあれば本文を読まずに判定し、無ければ上限を超えた時点で読むのをやめる。HonoのHTTPExceptionは共通エラーではないため、共通のエラー形式の応答を返す
+function createPayloadTooLargeError(): AppError {
+  return new AppError({
+    kind: 'payload_too_large',
+    code: 'payload_too_large',
+    message: 'リクエストの本文が大きすぎます。',
+  });
+}
+
+// 長さのヘッダーがあれば本文を読まずに判定し、無ければ上限を超えた時点で読むのをやめる。既定の超過の扱いはHonoのHTTPException(想定外の例外)を投げるため、共通エラーを投げて基盤の例外の変換に応答させる
 function createBodyLimit<E extends GraphQLModuleEnv>(): MiddlewareHandler<
   PlatformHonoEnv<E>
 > {
   return bodyLimit({
     maxSize: GRAPHQL_MAX_BODY_BYTES,
-    onError: (c) =>
-      c.json(PAYLOAD_TOO_LARGE_BODY, PAYLOAD_TOO_LARGE_STATUS, {
-        [CACHE_CONTROL_HEADER]: 'no-store',
-      }),
+    onError: () => {
+      throw createPayloadTooLargeError();
+    },
   });
 }
 

@@ -366,3 +366,7 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
 - **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って2回行った。どちらも新しいサブエージェントによる独立した確認(independent)である。
   - 1回目はNEEDS_FIXES(必須1件・軽微2件)だった。必須の指摘は、契約を置く`MediaFile・MediaMessages・ports`の要件の欄とコンポーネントの表の行に13.10が無く、13.10を対応付けたタスク3.5の境界と食い違ったこと(両方に13.10を加えた)。軽微の指摘(要件のIn scopeへの列挙の追加、`spec.json`の`updated_at`の更新)も直した。
   - 2回目はPASSだった。軽微の指摘2件(File Structure Planの`media-files-service.ts`の注記への列挙の追加、`system`の行の`owner_id`を「空」ではなく「NULL」と書くこと)に従って直した。タスクの承認(`approvals.tasks.approved: true`)を保った。
+
+## 上流(api-gateway)の改訂3の反映(2026-10-27)
+
+- api-gatewayの実装後の改訂3で、backend-platformの`AppErrorKind`に`payload_too_large`(413)と`unsupported_media_type`(415)が加わった。design.mdの「アップロード」の説明にあった「411・413・415は`AppError`の種類に無い」は事実と合わなくなったため、413・415は`AppError`で表せ、411だけが種類に無いと改めた。受付の経路が共通のエラー形式の組み立て部品で応答を作る設計は変えていない(413・415も同じ部品で作ってよい)。要件・タスクは変えていない。
