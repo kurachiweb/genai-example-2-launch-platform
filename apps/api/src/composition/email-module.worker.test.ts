@@ -16,6 +16,7 @@ import {
 } from 'vitest';
 
 import { createDatabase } from '../../db/client.ts';
+import { emailCleanupCursors } from '../../db/schema/email/email-cleanup-cursors.ts';
 import { emailSendRecords } from '../../db/schema/email/email-send-records.ts';
 import { emailSuppressions } from '../../db/schema/email/email-suppressions.ts';
 import { EMAIL_TYPES } from '../../lib/core/email/identifiers.ts';
@@ -127,6 +128,7 @@ async function runScheduled(cron: string, scheduledTime: Date): Promise<void> {
 beforeEach(async () => {
   await db.delete(emailSuppressions);
   await db.delete(emailSendRecords);
+  await db.delete(emailCleanupCursors);
 });
 
 afterEach(() => {
@@ -242,5 +244,23 @@ describe('定期実行からの日次の後始末', () => {
       jobs: [expect.objectContaining({ name: 'email-delivery.cleanup' })],
     });
     expect(JSON.stringify(logs)).not.toContain(RECIPIENT_DOMAIN);
+    expect(await db.select().from(emailCleanupCursors)).toEqual([]);
+  });
+
+  test('1年を過ぎた記録が無い日は、紐づかない記録の確認を末尾まで終えたとして、続きの位置を先頭のままD1に保存する', async () => {
+    recordConsole();
+
+    await runScheduled(CLEANUP_CRON, SCHEDULED_TIME);
+
+    expect(
+      await db
+        .select({
+          name: emailCleanupCursors.name,
+          afterKey: emailCleanupCursors.afterKey,
+        })
+        .from(emailCleanupCursors),
+    ).toEqual([
+      { name: 'email-delivery.unlinked-suppressions', afterKey: null },
+    ]);
   });
 });

@@ -11,6 +11,7 @@ import type {
 } from '../../lib/core/email/ports.ts';
 import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { Clock } from '../../lib/core/time/clock.ts';
+import { createCleanupCursorRepository } from '../../lib/workers/email/cleanup-cursor-repository.ts';
 import { createSendRecordRepository } from '../../lib/workers/email/send-record-repository.ts';
 import { createSuppressionMaintenance } from '../../lib/workers/email/suppression-maintenance.ts';
 import { createSuppressionRepository } from '../../lib/workers/email/suppression-repository.ts';
@@ -37,6 +38,7 @@ export const API_EMAIL_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
           ),
           createSendRecordRepository(db),
           context.get<UserAddressDirectory>(EMAIL_TYPES.UserAddressDirectory),
+          createCleanupCursorRepository(db),
         );
       })
       .inSingletonScope();

@@ -13,6 +13,7 @@ describe('スキーマの集約点', () => {
     'email_suppressions',
     'email_send_records',
     'email_alert_throttles',
+    'email_cleanup_cursors',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
