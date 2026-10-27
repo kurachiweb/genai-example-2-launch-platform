@@ -212,13 +212,13 @@
   - _Boundary: EmailDocs_
   - _Requirements: 11.8, 11.10, 11.11_
 
-- [ ] 8. 検証と引き継ぎ
-- [ ] 8.1 ローカル環境でイベントサーバーを起動し、疎通確認の経路からMailpitへの到着を確かめる
+- [x] 8. 検証と引き継ぎ
+- [x] 8.1 ローカル環境でイベントサーバーを起動し、疎通確認の経路からMailpitへの到着を確かめる
   - Infisical(dev)に疎通確認のシークレットが無ければ、開発者へ登録を依頼して止まる(AIエージェントはInfisicalへ書き込まない)
   - オンボーディングの手順どおりにシークレットを注入してイベントサーバーを起動し、疎通確認の経路を呼ぶ
   - Mailpitの画面またはAPIで、日本語の件名・本文、HTMLとテキストの両パート、表示名と送信元を確かめる
   - 完了状態: Mailpitに疎通確認メールが1通届き、件名・本文が文字化けせず両パートを持つことを確かめた記録が残る
-  - _Blocked: Infisical(dev)に`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`が未登録(2026-10-27に確認)。開発者の登録待ち_
+  - _確認の記録(2026-10-27): Infisical(dev)から注入して`bun run dev`で起動し、`POST /internal/email/smoke`が202(不正なトークンは401)を返した。送信処理のログは`result: sent`・`kind: email-delivery.smoke`・`attempts: 1`。Mailpitに件名「メール送信の確認」の1通が届き、`multipart/alternative`でHTML(`lang="ja"`)とテキストの両パートを持ち、日本語の本文が文字化けせず、送信元は`Launch Stadium <noreply@local.example>`、返信先なし_
   - _Requirements: 3.3, 11.4_
 
 - [x] 8.2 一括検査とカバレッジ80%を確かめ、開発者の手作業とstagingでの確認を引き継ぐ
