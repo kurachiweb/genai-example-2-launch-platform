@@ -61,7 +61,7 @@
   - _Boundary: DeliveryEventParser, SuppressionPolicy_
   - _Requirements: 6.5, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 8.3, 9.2, 9.3_
 
-- [ ] 2.5 共有ポート・DI識別子と、メール内の日時表記の部品を作る
+- [x] 2.5 共有ポート・DI識別子と、メール内の日時表記の部品を作る
   - 送信の受付・抑止リストの照会と記録・退会時の削除と日次の後始末・利用者のアドレスの照会口・送信者情報の取得口・送信済みの記録・警告の間引きのポートと、受付の失敗の理由の型を定義する
   - 共有ポートのDI識別子を定義する
   - UTCの日時を「9月15日07:40(UTC)」の形式(日付だけ、年付きの形式も)で表す部品を作る
@@ -242,3 +242,5 @@
 - 2.3(5.4・6.1への申し送り): 再試行の間隔は受信部が登録の`retry`の方針で決め、`decideAfterOutcome`は`EMAIL_SEND_RETRY_POLICY`で回数を判定する。`MESSAGE_HANDLERS`の`email.send`の登録に`retry: EMAIL_SEND_RETRY_POLICY`を渡し、Workers統合テストで確かめる(既定の方針のままだと再試行が30秒から始まる)。
 - 2.3: `decideAfterOutcome`は試行回数の検証のため結果によらず先に`decideOnFailure`を呼び、不正な回数ではどの結果でも`RangeError`になる。コード無しの一時的な障害は`UNKNOWN_SEND_ERROR_CODE`(`'unknown'`)。`E_ACCOUNT_SUSPENDED`は設計の表に無いため未知のコードとして一時的な障害に分類している(開発者の判断待ち)。設定の検査は`EMAIL_SEND_RETRY_POLICY.maxAttempts`を本体とメールイベント用の両方のQueueのconsumerの`max_retries`と比べる(設計のEmailConfigChecksとDeliveryDecisionで比べる対象が食い違うため)。
 - 2.4(4.2・5.5への申し送り): `SUPPRESSION_REASONS`とDBスキーマの`last_reason`の一致は`core`の単体テストでは定数の比較だけなので、4.2のリポジトリで型の相互代入を保証する。配信不能イベントの理由は`^[A-Za-z0-9_.:-]{1,64}$`に合わなければ`'unknown'`に置き換わり、`rejection`・`failure.reason`の欠けも`'unknown'`で受け付ける。検証の失敗時の`type`は生の文字列で長さの上限が無いため、5.5でログの属性に入れるときは切り詰める。
+- 2.5(4.1への申し送り): `EmailSendError`は下流のapplication層が`instanceof`で見分けるため`core/email/ports.ts`に定義した(コンストラクタは`(reason)`だけで、メッセージは理由ごとの固定文)。4.1はこれを`core/email/ports.ts`からimportして投げる。
+- 2.5(5.6・5.7への申し送り): `formatUtcDateTime`・`formatUtcDate`は任意の第2引数`{ withYear?: boolean }`を取り、無効な`Date`では`RangeError`を投げる。テンプレートで日時を表示するときはマークアップ規約の日時の表示(`<time dateTime>`)に従って包む。
