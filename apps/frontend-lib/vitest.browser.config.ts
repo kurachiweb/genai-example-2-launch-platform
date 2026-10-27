@@ -25,6 +25,8 @@ const PREBUNDLED_DEPENDENCIES = [
   '@hookform/resolvers/zod',
   'zod',
   'sonner',
+  '@tanstack/react-router',
+  '@marsidev/react-turnstile',
 ];
 
 export default defineConfig({
