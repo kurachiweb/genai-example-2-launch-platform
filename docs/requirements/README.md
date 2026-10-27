@@ -189,6 +189,7 @@ Product HuntやUneedなど既存のローンチプラットフォームは、数
 - **FR-USER-029**: システムは、FR-USER-007のメールアドレス変更が完了した際、変更前のメールアドレス宛に変更完了を通知するメールを送信しなければならない
 - **FR-USER-030**: システムは、FR-USER-010のパスワードリセットが完了した際、完了を通知するメールをユーザーへ送信しなければならない
 - **FR-USER-031**: システムは、FR-USER-016のパスワード変更が完了した際、完了を通知するメールをユーザーへ送信しなければならない
+- **FR-USER-032**: システムは、ユーザーの退会・停止・停止解除・物理削除の開始に伴う後続処理(FR-USER-019、FR-USER-022等)のうち一定時間を過ぎても完了していないものを、UTC-08:00時間16時21分の日次の定期実行で再実行しなければならない(DR-002、SW-005に対応)
 
 ## 4.2 ユーザープロフィール機能
 
@@ -836,7 +837,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **SW-002**: システムは、公開APIとしてRESTful APIを提供しなければならない
 - **SW-003**: システムは、データベースとしてCloudflare D1(SQLiteベース)をサポートしなければならない
 - **SW-004**: システムは、Cloudflare Queuesによる非同期処理をサポートしなければならない(FR-UDATA-005、FR-FTS-003、FR-FILEU-016、FR-FILEU-021、FR-NOTIF-019〜021、FR-SPONS-019、FR-PYMNT-012、SW-009に対応)
-- **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-022、FR-COMNT-009、FR-FTS-007、FR-PRDCT-024、FR-FILEU-024、FR-GAME-005、FR-GAME-009〜012・014、FR-TOURW-007、FR-TOURW-011、FR-TOURW-014〜016・018、FR-TOURY-009、FR-TOURY-015、FR-TOURY-017〜019・021、FR-NOTIF-001、FR-NOTIF-004、FR-SPONS-016、FR-SPONS-018、FR-PYMNT-012、FR-PYMNT-013、DR-002、DR-005、DR-017〜022・024・026、DR-023、DR-025、LR-011、NFR-PERF-010に対応)
+- **SW-005**: システムは、Cloudflare Cron Triggersによる定期実行をサポートしなければならない(FR-USER-022、FR-USER-032、FR-COMNT-009、FR-FTS-007、FR-PRDCT-024、FR-FILEU-024、FR-GAME-005、FR-GAME-009〜012・014、FR-TOURW-007、FR-TOURW-011、FR-TOURW-014〜016・018、FR-TOURY-009、FR-TOURY-015、FR-TOURY-017〜019・021、FR-NOTIF-001、FR-NOTIF-004、FR-SPONS-016、FR-SPONS-018、FR-PYMNT-012、FR-PYMNT-013、DR-002、DR-005、DR-017〜022・024・026、DR-023、DR-025、LR-011、NFR-PERF-010に対応)
 - **SW-006**: システムは、Cloudflare Web Analyticsによるメトリクス監視をサポートしなければならない(NFR-OBLOG-001に対応)
 - **SW-007**: システムは、FlareWardenによる死活監視・外部ステータスページをサポートしなければならない(NFR-AVAIL-001、NFR-OBLOG-001に対応)
 - **SW-008**: システムは、Cloudflare Durable Objectsによる状態管理(厳密なレート制限カウント、ログイン試行の強制拒否クールダウン期間)をサポートしなければならない
