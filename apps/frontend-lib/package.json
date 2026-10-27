@@ -1,0 +1,53 @@
+{
+  "name": "frontend-lib",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "bun --bun eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests unit.test",
+    "test:browser": "vitest run --config vitest.browser.config.ts"
+  },
+  "dependencies": {
+    "@graphql-typed-document-node/core": "3.2.0",
+    "@hookform/resolvers": "5.9.1",
+    "@logtape/logtape": "2.3.11",
+    "@logtape/redaction": "2.3.11",
+    "@marsidev/react-turnstile": "1.6.1",
+    "@sentry/cloudflare": "11.4.0",
+    "@sentry/tanstackstart-react": "11.4.0",
+    "@tanstack/react-query": "5.104.1",
+    "@tanstack/react-router": "1.170.41",
+    "@tanstack/react-start": "1.168.60",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "jotai": "3.0.1",
+    "lucide-react": "1.51.0",
+    "radix-ui": "1.6.7",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-hook-form": "7.89.0",
+    "sonner": "2.0.8",
+    "tailwind-merge": "3.7.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/bun": "1.4.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "@vitest/browser-playwright": "4.1.11",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "playwright": "1.64.1",
+    "prettier": "3.9.9",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vite": "8.3.2",
+    "vitest": "4.1.11",
+    "vitest-browser-react": "2.3.0"
+  }
+}

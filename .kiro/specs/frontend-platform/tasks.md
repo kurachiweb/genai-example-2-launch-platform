@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共通部品のプロジェクト・静的解析・スタイル・ブラウザテスト
-- [ ] 1.1 共通部品のプロジェクトを作り、品質ツールと実行時の依存を固定した版で導入する
+- [x] 1.1 共通部品のプロジェクトを作り、品質ツールと実行時の依存を固定した版で導入する
   - 前提: dev-toolingの全タスクが完了し、ブラウザテストのプリセット・テストの命名検査・共有ディレクトリの配置の確認が使えること。無ければ止めて報告する
   - 共通部品のアプリに、スクリプト契約(静的解析・型検査・単体テスト・ブラウザテスト)を定義し、品質ツール6種・`@types/bun`・Reactの型・Vitest Browser Mode一式・`vitest-browser-react`と、実行時の依存(React・TanStack Start・TanStack Query・Jotai・Zod・LogTapeと伏せ字・Sentryの2つ・UIの土台とクラス名の組み立て・アイコン・トースト・React Hook Formと`@hookform/resolvers`・`@marsidev/react-turnstile`・`@graphql-typed-document-node/core`)と、Vite・`@vitejs/plugin-react`・Tailwind CSSを、設計のTechnology Stackの版で完全に固定して導入する
   - 型検査の設定は基底設定を継承せず、基底設定の値を書き写した自己完結の設定にする。先に、基底設定と差分(JSX・lib・types・include)以外で一致することを確かめる単体テストを書き、失敗を確かめてから設定を置く
@@ -377,3 +377,7 @@
   - 完了状態: 索引から9.1〜9.5のすべての文書へ辿れ、手順のとおりに新しい作業ツリーで両アプリとカタログを起動でき、tech-stack.mdに設計のTechnology Stackの新規のパッケージがすべて載っている
   - _Depends: 9.1, 9.2, 9.3, 9.4, 9.5_
   - _Requirements: 15.3, 15.4, 15.7, 15.8_
+
+## Implementation Notes
+
+- 1.1(1.3・5.9・9.1への申し送り): `test:browser`は設定ファイルが無いとexit 1になるため、プリセット・ブラウザモード・Chromiumだけの最小の`vitest.browser.config.ts`を置いた。成果物の置き場所・共有Chromium(`browserOptionsPreset`・`resolveBrowserLaunchOptions`)・カバレッジの対象の絞り込みは1.3で加える。`@tanstack/react-router` 1.170.41を直接宣言した(`@tanstack/react-start` 1.168.60が完全固定する版と同じ)。`@tanstack/react-router-ssr-query`・`graphql`は未導入。`tsconfig.json`の`include`は`**/*.ts`・`**/*.tsx`で、TypeScriptの`**`はドットで始まるディレクトリに一致しないため、5.9で`.storybook/`を明示する。文書の相違: coding/001(59〜61行・94行)は全アプリの`tsconfig.json`が基底設定を`extends`すると定め、スクリプト契約の`test:browser`を「ブラウザテストを持つアプリ」に限るため、9.1で`coding/003`に加えて`coding/001`にも共通部品の例外を書く。

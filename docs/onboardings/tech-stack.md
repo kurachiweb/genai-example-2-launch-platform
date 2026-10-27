@@ -92,12 +92,14 @@
 
 - TanStack Start(ルーティングはTanStack Router)
 - @cloudflare/vite-plugin
+- `@vitejs/plugin-react` ... ViteでのReactのJSX変換と開発時の差し替え(Fast Refresh)
 - React
 - TypeScript ... typescript-eslintと組み合わせるためv6を使用
 
 ### フロントエンド側スキーマ
 
 - GraphQL Code Generator(client-presetによりクエリからTypedDocumentNodeと型を生成)
+  - `@graphql-typed-document-node/core` ... 生成した操作の型(`TypedDocumentNode`)の定義、共通部品が操作の結果と変数の型を受け取るために使用
 
 ### 状態管理・データフェッチング
 
@@ -109,6 +111,12 @@
 
 - Tailwind CSS
 - shadcn/ui
+  - `radix-ui` ... shadcn/uiの部品が土台にするアクセシブルな部品群(全部品を1つにまとめたパッケージ)
+  - `class-variance-authority` ... 部品の見た目の種類(variants)ごとのクラス名の定義
+  - `clsx` ... 条件付きのクラス名の連結
+  - `tailwind-merge` ... 衝突するTailwind CSSのクラス名の解消
+  - `lucide-react` ... アイコン
+  - `sonner` ... トースト通知
   - react-day-picker ... shadcn/uiのカレンダー部品の実体
 
 ### グラフ描画
@@ -127,6 +135,7 @@
 ### フォーム・バリデーション
 
 - React Hook Form
+  - `@hookform/resolvers` ... ZodのスキーマをReact Hook Formの検証に接続
 - Zod
 
 ## 決済サービス
@@ -199,6 +208,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### bot対策・不正防止
 
 - Cloudflare Turnstile(ウィジェット埋め込み及びAPIサーバー側でのsiteverify検証)
+  - `@marsidev/react-turnstile` ... フロントエンドでのウィジェットの埋め込みとトークンの受け取り
 
 ### メール
 
