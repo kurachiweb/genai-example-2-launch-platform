@@ -60,6 +60,21 @@ describe('Button', () => {
     expect(getComputedStyle(disabled.element()).opacity).toBe('0.5');
   });
 
+  test('支援技術向けの無効の指定では、フォーカスを保ったまま無効と同じ見た目で示す', async () => {
+    await render(<Button aria-disabled>保存する</Button>);
+    const button = page.getByRole('button', { name: '保存する' });
+
+    await userEvent.tab();
+
+    await expect.element(button).toHaveFocus();
+    await expect.element(button).toHaveAttribute('aria-disabled', 'true');
+    const { opacity, pointerEvents } = getComputedStyle(button.element());
+    expect({ opacity, pointerEvents }).toStrictEqual({
+      opacity: '0.5',
+      pointerEvents: 'none',
+    });
+  });
+
   test.each(COLOR_SCHEMES)(
     '配色が%sのとき、キーボードで移ったフォーカスをリングの色の輪郭で示す',
     async (scheme) => {

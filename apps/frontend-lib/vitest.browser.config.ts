@@ -20,6 +20,9 @@ const PREBUNDLED_DEPENDENCIES = [
   'class-variance-authority',
   'clsx',
   'tailwind-merge',
+  'react-hook-form',
+  '@hookform/resolvers/zod',
+  'zod',
 ];
 
 export default defineConfig({
