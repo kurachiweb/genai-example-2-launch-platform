@@ -110,7 +110,7 @@
   - _Requirements: 1.1, 9.1, 9.2, 9.3, 9.4, 9.5_
 
 - [ ] 5. イベントサーバーの送信処理・送信プロバイダ・描画
-- [ ] 5.1 イベントサーバーのメール処理のポートとDI識別子を定義する
+- [x] 5.1 イベントサーバーのメール処理のポートとDI識別子を定義する
   - 送信プロバイダ(失敗を結果として返す)・描画・異常の通知・送信元の設定のポートと、送信するメール・描画結果・異常の種類の型を定義する
   - イベントサーバーだけで使うDI識別子を定義する
   - ポートは`application`の層に置き、`lib/core/email`の型だけを参照する
@@ -250,3 +250,4 @@
 - 4.3(4.4への申し送り): `createSendRecordRepository(db)`・`createAlertThrottleRepository(db)`はClockを持たない(時刻は引数で受け取る)。送信済みの記録の型は`SendRecordRepository`(設計の`SendRecordStore & { deleteSentBefore }`と同じ形の名前付きインターフェース)。`deleteSentBefore`は`sent_at < cutoff`で、ちょうど基準日時の行は残す。
 - 4.4(6.1・6.3への申し送り): `EMAIL_PLATFORM_MODULE`の型は`Omit<AppModule, 'routes'>`(既定の`AppModule`はHonoの型引数の不変性で両アプリの`MODULES`に代入できないため)。束縛は種別の集約・受付・抑止の照会と記録・送信済みの記録・間引きだけで、`SuppressionMaintenance`は6.3で`createSuppressionMaintenance(suppressions, sendRecords, directory)`から作ってapiのモジュールに束縛する。後始末の警告ログのカテゴリは`['api', 'application', 'email-cleanup']`に固定した(eventから使う場合は引数化が要る)。
 - 4.4(運用の見直しの対象): 1年の判定は実行をまたいで`afterKey`を持ち越さず毎日先頭から数え直すため、1年を過ぎた登録済みの記録が照合キーの昇順で先頭の1800件を占めると、それより後ろの未登録の記録が削除されなくなる(設計どおりの限界)。
+- 5.1(5.2〜5.5への申し送り): eventのポートは`apps/event/src/application/email/ports.ts`、識別子は`email-types.ts`の`EVENT_EMAIL_TYPES`(処理の識別子`SendEmailHandler`・`DeliveryEventHandler`を含む)。`EmailRenderError`はクラスとして`ports.ts`にあり、5.7が投げて5.4が`instanceof`で見分ける。`EmailTransientFailure`は5.4が定義する。`EmailIncident`の`undeliverable`の`category`は未登録の種別のため`EmailCategory | undefined`(設計の型との相違)で、5.3は`undefined`のとき`email_category`のタグを付けない。`createEmailProvider`の環境の型`EventEmailEnv`は設計に置き場が無いため、5.2が`Pick<Env, ...>`等で定義する。
