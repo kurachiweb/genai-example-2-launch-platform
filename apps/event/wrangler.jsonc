@@ -42,6 +42,14 @@
         "max_batch_size": 10,
         "max_retries": 3,
       },
+      {
+        "queue": "genai-example-2-email-events-dev",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 6,
+        "dead_letter_queue": "genai-example-2-jobs-dlq-dev",
+        "retry_delay": 30,
+      },
     ],
   },
   "ratelimits": [
@@ -58,6 +66,11 @@
     "SENTRY_TRACES_SAMPLE_RATE": "0",
     "JOBS_QUEUE_NAME": "genai-example-2-jobs-dev",
     "JOBS_DLQ_NAME": "genai-example-2-jobs-dlq-dev",
+    "EMAIL_PROVIDER": "mailpit",
+    "EMAIL_FROM_ADDRESS": "noreply@local.example",
+    "EMAIL_RECIPIENT_POLICY": "any",
+    "EMAIL_EVENTS_QUEUE_NAME": "genai-example-2-email-events-dev",
+    "MAILPIT_API_URL": "http://127.0.0.1:48041",
   },
   "secrets": { "required": ["HASH_PEPPER"] },
   "env": {
@@ -106,6 +119,14 @@
             "max_batch_size": 10,
             "max_retries": 3,
           },
+          {
+            "queue": "genai-example-2-email-events-staging",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 6,
+            "dead_letter_queue": "genai-example-2-jobs-dlq-staging",
+            "retry_delay": 30,
+          },
         ],
       },
       "ratelimits": [
@@ -116,14 +137,28 @@
         },
       ],
       "images": { "binding": "IMAGES" },
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "allowed_sender_addresses": [
+            "noreply@genai-example-2-mail-staging.lab.kurachiweb.com",
+          ],
+        },
+      ],
       "vars": {
         "LOG_LEVEL": "info",
         "SENTRY_ENVIRONMENT": "staging",
         "SENTRY_TRACES_SAMPLE_RATE": "1",
         "JOBS_QUEUE_NAME": "genai-example-2-jobs-staging",
         "JOBS_DLQ_NAME": "genai-example-2-jobs-dlq-staging",
+        "EMAIL_PROVIDER": "cloudflare",
+        "EMAIL_FROM_ADDRESS": "noreply@genai-example-2-mail-staging.lab.kurachiweb.com",
+        "EMAIL_RECIPIENT_POLICY": "allowlist",
+        "EMAIL_EVENTS_QUEUE_NAME": "genai-example-2-email-events-staging",
       },
-      "secrets": { "required": ["HASH_PEPPER", "SENTRY_DSN"] },
+      "secrets": {
+        "required": ["HASH_PEPPER", "SENTRY_DSN", "EMAIL_ALLOWED_RECIPIENTS"],
+      },
     },
     "prod": {
       "d1_databases": [
@@ -167,6 +202,14 @@
             "max_batch_size": 10,
             "max_retries": 3,
           },
+          {
+            "queue": "genai-example-2-email-events-prod",
+            "max_batch_size": 10,
+            "max_batch_timeout": 5,
+            "max_retries": 6,
+            "dead_letter_queue": "genai-example-2-jobs-dlq-prod",
+            "retry_delay": 30,
+          },
         ],
       },
       "ratelimits": [
@@ -177,12 +220,24 @@
         },
       ],
       "images": { "binding": "IMAGES" },
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "allowed_sender_addresses": [
+            "noreply@genai-example-2-mail.lab.kurachiweb.com",
+          ],
+        },
+      ],
       "vars": {
         "LOG_LEVEL": "info",
         "SENTRY_ENVIRONMENT": "prod",
         "SENTRY_TRACES_SAMPLE_RATE": "0.1",
         "JOBS_QUEUE_NAME": "genai-example-2-jobs-prod",
         "JOBS_DLQ_NAME": "genai-example-2-jobs-dlq-prod",
+        "EMAIL_PROVIDER": "cloudflare",
+        "EMAIL_FROM_ADDRESS": "noreply@genai-example-2-mail.lab.kurachiweb.com",
+        "EMAIL_RECIPIENT_POLICY": "any",
+        "EMAIL_EVENTS_QUEUE_NAME": "genai-example-2-email-events-prod",
       },
       "secrets": { "required": ["HASH_PEPPER", "SENTRY_DSN"] },
     },

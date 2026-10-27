@@ -1,19 +1,20 @@
 import { describe, expect, test } from 'bun:test';
-import { join } from 'node:path';
-
-import { unstable_readConfig } from 'wrangler';
 import { z } from 'zod';
 
 import {
   DEFAULT_RETRY_POLICY,
   QUEUE_MAX_RETRIES,
 } from '../../lib/core/messaging/retry-policy.ts';
+import {
+  appPath,
+  EMAIL_CONFIG_KEY_PATTERN,
+  readWranglerConfig,
+  type WranglerAppName,
+} from '../support/wrangler-config.ts';
 
-type AppName = 'api' | 'event';
+type AppName = WranglerAppName;
 
 const APP_NAMES = ['api', 'event'] as const satisfies readonly AppName[];
-
-const APPS_DIR = join(import.meta.dirname, '..', '..', '..');
 
 const COMPATIBILITY_DATE = '2026-08-04';
 
@@ -173,11 +174,21 @@ function readEffectiveConfig(
   app: AppName,
   wranglerEnv: string | undefined,
 ): EffectiveConfig {
-  const raw: unknown = unstable_readConfig(
-    { config: join(APPS_DIR, app, 'wrangler.jsonc'), env: wranglerEnv },
-    { hideWarnings: true },
+  return effectiveConfigSchema.parse(readWranglerConfig(app, wranglerEnv));
+}
+
+function withoutEmailKeys(keys: readonly string[]): string[] {
+  return keys.filter((key) => !EMAIL_CONFIG_KEY_PATTERN.test(key));
+}
+
+function withoutEmailEntries(
+  record: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(record).filter(
+      ([key]) => !EMAIL_CONFIG_KEY_PATTERN.test(key),
+    ),
   );
-  return effectiveConfigSchema.parse(raw);
 }
 
 function bindingNames(entries: readonly { readonly binding: string }[]) {
@@ -212,8 +223,8 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
   test('Worker名に環境ごとの接尾辞が付き、エントリがsrc/index.tsである', () => {
     expect(api.name).toBe(`genai-example-2-api${env.workerNameSuffix}`);
     expect(event.name).toBe(`genai-example-2-event${env.workerNameSuffix}`);
-    expect(api.main).toBe(join(APPS_DIR, 'api', 'src', 'index.ts'));
-    expect(event.main).toBe(join(APPS_DIR, 'event', 'src', 'index.ts'));
+    expect(api.main).toBe(appPath('api', 'src', 'index.ts'));
+    expect(event.main).toBe(appPath('event', 'src', 'index.ts'));
   });
 
   test('両アプリが同じ名前のD1・R2・IP制限のバインディングを持つ', () => {
@@ -299,8 +310,8 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     ]);
   });
 
-  test('eventは必須シークレットとしてペッパーのキー名だけを宣言する', () => {
-    expect(event.secrets?.required).toEqual([
+  test('eventはメール以外の必須シークレットとしてペッパーのキー名だけを宣言する', () => {
+    expect(withoutEmailKeys(event.secrets?.required ?? [])).toEqual([
       'HASH_PEPPER',
       ...(env.requiresSentryDsn ? ['SENTRY_DSN'] : []),
     ]);
@@ -316,8 +327,8 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     });
   });
 
-  test('eventの変数はシークレットを含まず、環境ごとの値とQueue名を持つ', () => {
-    expect(event.vars).toStrictEqual({
+  test('eventのメール以外の変数はシークレットを含まず、環境ごとの値とQueue名を持つ', () => {
+    expect(withoutEmailEntries(event.vars)).toStrictEqual({
       LOG_LEVEL: env.logLevel,
       SENTRY_ENVIRONMENT: env.sentryEnvironment,
       SENTRY_TRACES_SAMPLE_RATE: env.sentryTracesSampleRate,

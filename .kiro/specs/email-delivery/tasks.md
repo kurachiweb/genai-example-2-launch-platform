@@ -20,7 +20,7 @@
   - 完了状態: 列の単体テストが成功し、生成したマイグレーションがマイグレーションの検出確認のコマンドで検出され、ローカルに適用できる
   - _Requirements: 8.2, 8.6, 10.3_
 
-- [ ] 1.3 イベントサーバーのWrangler設定にメールの項目を加え、設定の整合を単体テストで保証する
+- [x] 1.3 イベントサーバーのWrangler設定にメールの項目を加え、設定の整合を単体テストで保証する
   - 先に、環境ごとの実効値で、メールの変数の有無と値、送信元のドメインが決定事項の送信ドメインと一致すること、staging・prodだけにある送信バインディングと送信元の許可リスト、stagingの宛先制限の方針と必須シークレット、prodの方針、メールイベント用Queueのconsumerの再試行上限とデッドレター、変数にシークレットにすべき項目が無いことを確かめる単体テストを書く
   - 設計の表どおりに、3環境の変数(送信プロバイダ・送信元・宛先制限の方針・メールイベント用Queueの名前、ルートだけMailpitのURL)、staging・prodの送信バインディング、stagingの必須シークレット、メールイベント用Queueのconsumerを、継承されないキーは環境ごとに書く
   - Workers統合テストの設定に、テスト用の変数(MailpitのURL・送信元・Queueの名前)を加える
@@ -229,8 +229,11 @@
 ## Implementation Notes
 
 - 1.1: `@react-email/components`1.0.12は`@react-email/render`2.0.6を入れ子の依存に持つ。描画は直接宣言した`@react-email/render`2.1.0から`render`をimportし、`@react-email/components`の再エクスポートを使わない。
-- 1.1(5.xへの申し送り): eventのWorkers統合テストのカバレッジの`include`は`*.ts`だけで、描画とテンプレートの`.tsx`が分母に入らない。5.xで`{ts,tsx}`にする。`jsx: "react-jsx"`が暗黙に読み込む`react/jsx-runtime`は静的解析の禁止で検出しないため、`.tsx`は`infrastructure/email/rendering`・`templates`だけに置く。
+- 1.1(5.xへの申し送り): eventのWorkers統合テストのカバレッジの`include`は1.3で`{ts,tsx}`にした。`jsx: "react-jsx"`が暗黙に読み込む`react/jsx-runtime`は静的解析の禁止で検出しないため、`.tsx`は`infrastructure/email/rendering`・`templates`だけに置く。
 - 1.1: eventの静的解析は`lib/`・`db/`を無視するため、共有ディレクトリでのReactの禁止はapiの静的解析(`**/*.{ts,tsx}`)で担保している(設計のModified Filesの「eventの`lib/**`で禁止」との相違)。
 - 1.2(4.3への申し送り): `email_send_records.id`は`ulidPrimaryKey()`のためid省略時にULIDが採番される。送信済みの記録のリポジトリは必ず封筒のIDを明示して入れ、Workers統合テストでそれを確かめる。
 - 1.2(4.2への申し送り): `email_suppressions.last_reason`の値の組(`hard_bounce`・`complaint`・`rejected`)はDBスキーマと`core/email`の`SuppressionReason`の2か所にある。リポジトリで`emailSuppressions.$inferSelect['lastReason']`と`SuppressionReason`が相互に代入できることを型で保証する。
 - 1.2: テーブル定義は`schema/<ドメイン>/<テーブル>.ts`に置く(技術ドキュメントのdb/001・003を全下流specの設計に合わせて改めた)。
+- 1.3(2.3への申し送り): `apps/api/test/config/email-wrangler-config.unit.test.ts`は、メールイベント用Queueのconsumerの`max_retries`を`QUEUE_MAX_RETRIES`との一致と`DEFAULT_RETRY_POLICY.maxAttempts`超過だけで検査している。2.3で`EMAIL_SEND_RETRY_POLICY.maxAttempts < max_retries`の検査を加える。
+- 1.3(6.2・8.1への申し送り): `secrets`を定義した設定では`wrangler dev`が`secrets.required`のキーだけを`env`へ渡すため、設計の表どおりでは`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`がローカルの`env`に入らず、疎通確認の経路が常に404になる。6.2でルートの`secrets.required`へ2つのキーを加え(staging・prodには加えない)、設計の表と`email-wrangler-config.unit.test.ts`の期待値を改める。
+- 1.3: テスト用の`EMAIL_EVENTS_QUEUE_NAME`は`genai-example-2-email-events-test`でローカルのconsumerの名前と異なる。振り分けのWorkers統合テストでは`batch.queue`に`env.EMAIL_EVENTS_QUEUE_NAME`を使う。backend-platformの`wrangler-config.unit.test.ts`は`EMAIL_`・`MAILPIT_`で始まるキーを除いて比べ、それらはメールの設定のテストが厳密に検査する。
