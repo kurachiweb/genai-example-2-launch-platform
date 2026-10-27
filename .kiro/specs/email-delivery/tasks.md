@@ -152,7 +152,7 @@
   - _Depends: 2.4, 2.5_
   - _Requirements: 6.5, 6.8, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9_
 
-- [ ] 5.6 (P) テンプレートの定義と集約、共通レイアウトの部品を作る
+- [x] 5.6 (P) テンプレートの定義と集約、共通レイアウトの部品を作る
   - テンプレートは種別・件名・冒頭の文・宛名・任意の行動ボタン・任意の配信停止のURL・本文の部品を持つ。集約で種別の集約点と1対1でなければ例外にする
   - 共通レイアウトは日本語の言語指定を持ち、宛名・本文・行動ボタン・配信停止(通知メールでURLがあるときだけ)・送信者情報(未設定なら省略)の順に並べる。画像・外部スクリプト・計測用のURLを置かない
   - 宛名・行動ボタン・配信停止・送信者情報をそれぞれ1ファイル1コンポーネントで作る
@@ -256,3 +256,5 @@
 - 5.3(6.1への申し送り): `SentryEmailIncidentReporter`・`UnsetSenderInfoProvider`はコンストラクタ引数の無い`@injectable()`のクラスで、`.to(クラス)`で束縛する。通知は設計の`captureMessage`ではなく技術ドキュメント004の定型の文言の規則に従い`captureEvent`+`logentry`で送る(重複除外で捨てられないため)。送信不能には設計に無い`correlation_id`(送信要求の識別子)のタグも付ける。タグと指紋の値は`[A-Za-z0-9_.:-]`だけのとき64文字に切り詰め、それ以外は`unknown`、不正なイベントで種類が無ければ`missing`。
 - 5.4(6.1への申し送り): `SendEmailHandler`と`EmailTransientFailure`は`application/email/send-email-handler.ts`にある。ログのカテゴリは`['event', 'application', 'email-send']`、属性名は伏せ字の規則(`/email/i`)と予約の`category`を避けて`kind`・`kindCategory`・`deferCause`・`delaySeconds`等。前判定の送信不能のコードは`unknown-kind`・`invalid-input`・`render-failed`。日次上限の警告は`tryAcquire('email-daily-limit', now, 3600)`が真のときだけ送り、`tryAcquire`自体の失敗はerrorログにとどめて警告を送らない(開発者の判断待ち)。待機で再配信されると試行回数が1に戻るため、待機をまたぐと一時的な障害の再試行の合計が5回を超え得る(backend-platformの方式による)。
 - 5.5(6.1への申し送り): `DeliveryEventHandler`(`application/email/delivery-event-handler.ts`)は`RawMessageHandler`でClockを持たず、イベントの時刻が無ければ`meta.timestamp`(Queueに入った時刻。再試行で変わらない)を使う。ログのカテゴリは`['event', 'application', 'email-delivery-event']`。ログの捕まえ方のテスト補助は`application/email/email-log-capture.fixtures.ts`に共有した。要件7.8は不正なイベントを「警告」とするが、設計のEmailIncidentReporterの表に従いSentryへは`error`で送る(ログは`warning`)。
+- 5.6(5.7への申し送り): `EmailTemplate.Body`は設計の`ComponentType<{ input }>`ではなくメソッドの記法`Body(props: { readonly input: TInput }): ReactNode`(引数の反変で`EmailTemplate<unknown>[]`へ代入できないため)。`<template.Body input={…} />`で描画できる。`EMAIL_TEMPLATES`は空なので、5.7で疎通確認のテンプレートを登録し、`createEmailTemplateRegistry(EMAIL_TEMPLATES, EMAIL_KINDS)`が例外を投げないことのテストを加える(5.7より前に6.1を結線すると壊れる)。集約は名前に加えて種別の定義が同じオブジェクトであることも検査する。JSXで`{変数}文字列`と分けて書くとHTMLに`<!-- -->`が入るため、文言はテンプレートリテラルで1つのテキストにする。
+- 5.6(文言の仮置き): 配信停止の区画の文言「この種類の通知メールの配信停止」と、見出し・ラベル無しで3つの値を1行ずつ並べる送信者情報は、設計・文言規則に定めが無いため仮置き(開発者の確認待ち)。配信停止の区画はリンク1つだけで、notificationsのFR-NOTIF-013(集約したメールで2種類の配信停止リンク)には対応できない(notificationsの実装時の見直しの対象)。
