@@ -287,3 +287,8 @@
 - 設計のレビュー(変更した部分): 要件の98件の番号がすべて追跡表にあり、境界の4節とファイル構成が変更後も一致することを機械的に確かめた。期限切れの状態・`markExpired`・`listFailedWithUpload`・`clearUpload`・`listByUserPage`・`DataExportConnection`・`withdrawn`の登録は既存のコンポーネントの中に収まり、新しいコンポーネントは無い。
 - タスクのレビュー: 新しいサブエージェントによる独立した確認の1回目でPASSだった。軽微の指摘6件(設計の残っていた`purge_due`だけの記述・`finished`の期限切れ・ブラウザテストの状態の数、ページングをapi-gatewayの`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`に合わせ`first`の上限20を`validation_error`で検証し`listByUserPage`が最大`limit + 1`件を返す形にすること、退会の削除と生成の競合で`recordUpload`が更新されないときのアップロードの破棄、ダウンロードの期限切れの状態の404の確認、`useInfiniteQuery`の取得し直しの記述)に従って直した。要件・設計・タスクの承認を保つ。
 - 横断レビュー3回目の指摘への対応(2026-10-24): 設計の`ExportSnapshot`で使いながら定義の無かった`ExportReport`を、content-reportingの`ReportExportRecord`と同じ項目(`targetType`は`REPORT_TARGET_KINDS`と同じ値を写す)で定義し、`targetRef`が解決できないか対象への参照が消されたとき(content-reportingの仮7)に`null`になる旨を`null`の規則に書いた。タスク3.3の単体テストに`targetRef: null`の通報が項目ごと残ることを加えた。新しいサブエージェントによる独立した確認(変更した部分)の1回目でPASSで、軽微の指摘(上流と同じ`null`の条件の文言・種類の値の同期の注記・要件5.7への対応付け)に従って直した。承認を保つ。
+
+## 上流(api-gateway)の改訂3の反映(2026-10-27)
+
+- api-gatewayの実装後の改訂3で、内部RESTに共通の後処理が加わった。サブアプリが要求ごとに`SessionAccess`を作って`c.var.session`で経路へ渡し、経路の後(共通エラー・想定外の例外の応答を含む)に`Cache-Control: no-store`とセッションの指示を付ける。経路が付けた`Cache-Control`は`no-store`で上書きされる(開発者の決定)。
+- そのため、ダウンロードの応答のヘッダーを`Cache-Control: private, no-store`から`no-store`に改めた(requirements.mdの該当の受け入れ基準、design.mdの経路の表と応答のヘッダーの説明)。`no-store`だけでどのキャッシュにも保存されないため、守るべき性質は変わらない。経路の`authorize`は`createSessionAccess`を作り直さず`c.var.session`を使う形に改めた。R2のオブジェクトのメタデータの`private, no-store`は応答ではないため変えていない。タスクは変えていない。

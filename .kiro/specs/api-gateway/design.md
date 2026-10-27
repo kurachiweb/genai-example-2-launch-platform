@@ -603,7 +603,13 @@ export declare function createPublicEntrypoint<E>(
 import type { Hono, MiddlewareHandler } from 'hono';
 
 export declare const INTERNAL_ROUTE_PREFIX: '/internal';
-export type InternalRoutes<E> = (app: Hono<PlatformHonoEnv<E>>) => void;
+export type InternalHonoEnv<E> = {
+  readonly Bindings: E;
+  readonly Variables: PlatformHonoEnv<E>['Variables'] & {
+    readonly session: SessionAccess;
+  };
+}; // 改訂3
+export type InternalRoutes<E> = (app: Hono<InternalHonoEnv<E>>) => void;
 
 export declare function internalOnly(): MiddlewareHandler; // 外部経路ならAppError(not_found)
 export declare function warnOnMissingClientIp(request: Request): void; // 内部経路でIPが無い・不正なら警告
@@ -616,7 +622,7 @@ export declare function createInternalRoutesModule<E extends PlatformEnv>(
 | ------ | ------------- | ------------------ | ------------------ | --------------------------------------- |
 | 任意   | `/internal/*` | 登録した経路の定義 | 登録した経路の定義 | 404 `not_found`(外部経路・未登録の経路) |
 
-- `createInternalRoutesModule`は`/internal`のサブアプリに`internalOnly()`と`warnOnMissingClientIp`を先に適用し、登録された経路をその後に追加する。経路のハンドラーは`createSessionAccess`で同じセッションの契約を使える(1.6)。
+- `createInternalRoutesModule`は`/internal`のサブアプリに`internalOnly()`・`warnOnMissingClientIp`・セッションの提供を先に適用し、登録された経路をその後に追加する。セッションの提供は要求ごとに`createSessionAccess`で参照を作って`c.var.session`で経路へ渡し、経路の後(共通エラー・想定外の例外の応答を含む)に`finishSessionResponse`で`Cache-Control: no-store`(経路が付けた値は上書きする)とセッションの指示を付ける(1.6・3.5・3.6・7.5、改訂3)。経路は`createSessionAccess`を作り直さない(作り直した参照の指示は応答に載らない)。外部経路の404は`internalOnly`で先に終わり、検証も指示も付かない。
 - 警告ログ(2.3): カテゴリ`['api', 'gateway', 'client-ip']`、レベル`warning`、属性`reason`(`missing`・`invalid`)・`caller`。IPの値は記録しない。
 
 #### SessionAccess
@@ -656,12 +662,17 @@ export declare function applySessionInstructions(
   access: SessionAccess,
   headers: Headers,
 ): void;
+export declare function finishSessionResponse(
+  c: Context,
+  access: SessionAccess,
+): void; // 改訂3
 ```
 
 - 呼び出し元から検証の種類を決める(利用者側→`user`、管理者側→`admin`、3.2)。
 - トークンが無い、または`SESSION_TOKEN_PATTERN`に合わなければ、`SessionVerifier`を呼ばずに未ログインとする(3.4)。
 - `verify`の結果が`invalid`なら未ログインとし、削除の指示を記録する(3.6)。`valid`で`renewal`があれば発行の指示を記録する。
 - `applySessionInstructions`: 発行は`x-session-issue`・`x-session-max-age`、削除は`x-session-clear: 1`。発行の値が`SESSION_TOKEN_PATTERN`に合わなければ設定せず例外にする(ヘッダーへの注入を防ぐ)。トークンは応答本文・ログ・Sentryに出さない(3.5・3.7)。
+- `finishSessionResponse`(改訂3): `c.res`のヘッダーを複製して`Cache-Control: no-store`と`applySessionInstructions`の指示を書いた応答を作り、`c.res = undefined`の後に代入する(Honoの`c.res`のsetterが古い応答のヘッダーを書き戻すため)。GraphQLの経路と内部RESTの共通の後処理が使う。
 
 ### presentation/graphql
 
@@ -695,7 +706,7 @@ export declare function createGraphQLModule<
 - 内部経路では`warnOnMissingClientIp`を呼ぶ。`graphiql`のクライアントIPは接続元の値(backend-platformの解決結果)を使う(6.4)。
 - 本文が1MiBを超えたら`AppError`(`payload_too_large`)を投げ、基盤の例外の変換が413と共通のエラー形式で応答する(改訂3)。
 - `getGatewayServer`のYogaへ、要求と`GatewayRequestScope`(受付経路・コンテナ・相関ID・クライアントIP・セッション・bot判定のトークン・観測の記録)を渡す。
-- 後処理: `applySessionInstructions`、`Cache-Control: no-store`(7.5)、`logOperation`(13.1)。GraphiQLのHTMLの応答には、unpkgのスクリプト・スタイルとインラインを許すCSPを付けて既定のCSPを置き換える(12.3、ローカル環境だけ)。
+- 後処理: `finishSessionResponse`(`Cache-Control: no-store`(7.5)とセッションの指示。内部RESTと共有する、改訂3)、`logOperation`(13.1)。GraphiQLのHTMLの応答には、unpkgのスクリプト・スタイルとインラインを許すCSPを付けて既定のCSPを置き換える(12.3、ローカル環境だけ)。
 
 #### GatewayServer
 

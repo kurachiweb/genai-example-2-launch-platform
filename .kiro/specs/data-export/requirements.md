@@ -195,7 +195,7 @@
 3. If 未ログインでダウンロードの経路が要求される, then the データエクスポート shall 401を返す
 4. If 本人以外の利用者、または管理者側からダウンロードが要求される, then the データエクスポート shall 見つからない旨(404)を返し、ZIPの存在を明かさない(FR-UDATA-008)
 5. If 存在しない・作成中・失敗・有効期限を過ぎた要求のダウンロードが要求される, then the データエクスポート shall 削除の前でも見つからない旨(404)を返す
-6. The データエクスポート shall ダウンロードの応答に`Content-Disposition: attachment`・`Cache-Control: private, no-store`・`X-Content-Type-Options: nosniff`・`Content-Length`を付ける
+6. The データエクスポート shall ダウンロードの応答に`Content-Disposition: attachment`・`Cache-Control: no-store`・`X-Content-Type-Options: nosniff`・`Content-Length`を付ける
 
 ### Requirement 10: 削除と保持
 

@@ -15,9 +15,9 @@ Cloudflare Workersで、他のWorkerからService Bindingsの名前付きエン�
 | `resolveGatewayClientIp`                                                                             | `presentation/gateway/internal-request.ts`                  | 内部経路と外部経路でのクライアントIPの解決                                   |
 | `createGatewayEntrypointClass`                                                                       | `presentation/gateway/gateway-entrypoint.ts`                | 呼び出し元を固定した名前付きエントリポイントのクラス                         |
 | `createPublicEntrypoint`・`CorsPolicy`                                                               | `presentation/gateway/public-entrypoint.ts`                 | 外部経路の前処理と後処理(既定のエクスポート)                                 |
-| `INTERNAL_ROUTE_PREFIX`・`InternalRoutes`・`createInternalRoutesModule`                              | `presentation/gateway/internal-only.ts`                     | 内部RESTのモジュール                                                         |
+| `INTERNAL_ROUTE_PREFIX`・`InternalRoutes`・`InternalHonoEnv`・`createInternalRoutesModule`           | `presentation/gateway/internal-only.ts`                     | 内部RESTのモジュールと、経路が受け取る文脈の型                               |
 | `internalOnly`・`warnOnMissingClientIp`・`createNotFoundError`                                       | `presentation/gateway/internal-only.ts`                     | 内部経路だけを受け付ける判定と、元のクライアントIPアドレスの欠落・不正の警告 |
-| `createSessionAccess`・`applySessionInstructions`・`SessionAccess`                                   | `presentation/gateway/session-access.ts`                    | セッションの検証の呼び出しと、Cookieの指示の応答ヘッダーへの反映             |
+| `createSessionAccess`・`applySessionInstructions`・`finishSessionResponse`・`SessionAccess`          | `presentation/gateway/session-access.ts`                    | セッションの検証の呼び出しと、Cookieの指示の応答ヘッダーへの反映             |
 | `SessionVerifier`・`SESSION_TYPES`・`SESSION_TOKEN_PATTERN`・`Principal`・`SessionIssue`             | `application/session/session-verifier.ts`                   | セッションの検証のポートと型                                                 |
 | `AnonymousSessionVerifier`                                                                           | `application/session/anonymous-session-verifier.ts`         | 常に無効と判定する既定の実装                                                 |
 | `INTERNAL_ROUTES`                                                                                    | `composition/internal-routes.ts`                            | 内部RESTの経路の登録箇所                                                     |
@@ -148,7 +148,7 @@ Honoの中では、呼び出し元を`readInternalCaller(request)`だけで判�
 
 ### 検証の呼び出し
 
-経路の処理は`createSessionAccess({ container, caller, token })`で処理単位ごとのセッションの参照(`SessionAccess`)を作り、次のメソッドを使う。GraphQLでは受付経路が作り、文脈の`session`としてリゾルバへ渡す。
+セッションの参照(`SessionAccess`)は、受付経路が要求ごとに`createSessionAccess({ container, caller, token })`で作って経路の処理へ渡し、経路の処理は次のメソッドを使う。GraphQLでは文脈の`session`としてリゾルバへ、内部RESTではHonoの文脈の変数`session`(`c.var.session`)として経路のハンドラーへ渡す。経路の処理で参照を作り直さない。
 
 | メソッド                 | 振る舞い                                                                                                                                   |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -176,6 +176,7 @@ Honoの中では、呼び出し元を`readInternalCaller(request)`だけで判�
 - 発行の値が`SESSION_TOKEN_PATTERN`に合わない、または有効期間が1以上の整数でなければ、ヘッダーを設定せずに`RangeError`を投げる。値をそのまま応答ヘッダーへ書くため、注入を防ぐ。例外のメッセージに値を含めない。
 - `createSessionAccess`で作った参照だけを受け付け、それ以外を渡すと`TypeError`になる。
 - 書き込むヘッダーは書き換えられるものにする。`fetch`の結果など書き換えられない応答は、ヘッダーを複製して応答を作り直してから反映する。
+- 受付経路の後処理は`finishSessionResponse(<Honoの文脈>, <セッションの参照>)`で行う。経路の応答のヘッダーを複製し、`Cache-Control: no-store`と指示ヘッダーを書き込んだ応答に作り直して、Honoの文脈の応答を差し替える(「[Honoの中の順序](#honoの中の順序)」の`c.res`の注意)。経路が付けた`Cache-Control`も`no-store`に置き換わる。GraphQLと内部RESTの受付経路が、経路の処理の後に呼ぶ。
 - セッション識別子は応答本文・ログ・エラーレポートに含めない。エラートラッキングのイベントの要求のヘッダーからは`<セッション識別子のヘッダー>`が除かれる。ログの属性名による伏せ字は、名前に`token`を含む属性(`sessionToken`など)を部分一致で丸ごと伏せるが、値の形式による伏せ字はセッション識別子の形式を検出しない(「[伏せ字の規則](../infra/004-logging-and-error-tracking.md#伏せ字の規則)」)。セッション識別子の値を、名前に`token`を含まない属性・ログの文言・例外のメッセージに入れない。
 
 ### 検証の実装の差し替え
@@ -192,33 +193,16 @@ GraphQL以外で内部経路だけから呼ぶ経路(ファイルの中継先な
 ```typescript
 import type { FindDownload } from '../../application/download/find-download.ts';
 import { DOWNLOAD_TYPES } from '../../application/download/types.ts';
-import { GATEWAY_HEADERS } from '../gateway/gateway-headers.ts';
 import type { InternalRoutes } from '../gateway/internal-only.ts';
-import { readInternalCaller } from '../gateway/internal-request.ts';
-import {
-  applySessionInstructions,
-  createSessionAccess,
-} from '../gateway/session-access.ts';
 
 export const registerDownloadInternalRoutes: InternalRoutes<Env> = (app) => {
   app.get('/downloads/:id', async (c) => {
-    const caller = readInternalCaller(c.req.raw);
-    if (caller === undefined) {
-      throw new Error('内部経路の呼び出し元がありません');
-    }
-    const session = createSessionAccess({
-      container: c.get('container'),
-      caller,
-      token: c.req.header(GATEWAY_HEADERS.sessionToken),
-    });
-    const principal = await session.requireAuthenticated();
+    const principal = await c.var.session.requireAuthenticated();
     const download = await c
       .get('container')
       .get<FindDownload>(DOWNLOAD_TYPES.FindDownload)
       .execute(principal.subjectId, c.req.param('id'));
-    const response = c.json({ data: download });
-    applySessionInstructions(session, response.headers);
-    return response;
+    return c.json({ data: download });
   });
 };
 ```
@@ -233,9 +217,11 @@ export const INTERNAL_ROUTES: readonly InternalRoutes<Env>[] = [
 ```
 
 - 経路のパスは`<内部RESTの接頭辞>`を含めずに書く。`createInternalRoutesModule`が接頭辞のサブアプリに登録してマウントする。
-- サブアプリは、登録した経路より先に、外部経路の要求を404にする判定(`internalOnly`)と、元のクライアントIPアドレスの欠落・不正の警告(`warnOnMissingClientIp`)を掛ける。経路で同じ判定を重ねない。外部経路からは、登録した経路も未登録の経路も同じ404になる。
-- 呼び出し元は`readInternalCaller`で読む。`internalOnly`を通った後は常に値があるが、型の上は`undefined`を含むため、無ければ想定外の例外にする。
-- セッションを使う経路は、`createSessionAccess`で参照を作り、返す応答のヘッダーへ`applySessionInstructions`で指示を反映する。共通エラーを投げて終えると、例外の変換が作った応答には指示が載らない。上の例の`requireAuthenticated()`も未ログインなら共通エラーを投げるため、この場合に当たる。検証で無効と判定したセッションの削除の指示も返らないため、Cookieの削除まで必要な経路は、`principal()`で判定して未ログインの応答も経路の中で作る。
+- サブアプリは、登録した経路より先に、外部経路の要求を404にする判定(`internalOnly`)と、元のクライアントIPアドレスの欠落・不正の警告(`warnOnMissingClientIp`)を掛け、続けてセッションの参照を作って経路へ渡す。経路で同じ判定を重ねない。外部経路からは、登録した経路も未登録の経路も同じ404になり、セッションの検証も指示ヘッダーも無い。
+- 経路のハンドラーは`InternalHonoEnv`の文脈を受け取り、セッションの参照を`c.var.session`で使う。`createSessionAccess`で参照を作り直さない。作り直した参照の指示は応答に載らない。
+- サブアプリは、経路の処理の後に`finishSessionResponse`で、応答に`Cache-Control: no-store`とセッションの指示を付ける。経路が共通エラーや想定外の例外で終えた場合も、例外の変換が作った応答に付く。上の例の`requireAuthenticated()`が未ログインの共通エラーを投げても、検証で無効と判定したセッションの削除の指示は401の応答に載る。経路の中で`applySessionInstructions`を呼ばない。
+- 経路が付けた`Cache-Control`は`no-store`に置き換わる。内部RESTの応答はキャッシュさせない。
+- 呼び出し元の種類で処理を分ける経路は、`readInternalCaller`で読む。`internalOnly`を通った後は常に値があるが、型の上は`undefined`を含むため、無ければ想定外の例外にする。
 - エラーの応答は共通のエラー形式にする。JSONの成功応答は公開REST APIと同じ規則(本文のキーはsnake_case、データは`data`)に従う。ファイルの中継など、JSONでない本文を返す経路はこの規則の対象外である。経路の存在を明かさない必要は内部経路には無く、未登録の経路は通常の404になる。
 - 内部RESTの経路はOpenAPI仕様に載らず、CORSのヘッダーも付かない。
 - 経路を追加したら、内部経路で応答し、外部経路で404になることをWorkers統合テストで確かめる。
@@ -278,11 +264,11 @@ Honoの中のミドルウェアは「[ミドルウェアの順序](002-layered-a
 | 経路                           | 順序                                                                                                                                                                                                                    |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `<GraphQLの経路>`              | 受付経路の判定(内部経路→GraphiQLの要求→404)→元のクライアントIPアドレスの警告→処理単位の範囲(セッションの参照など)の作成→本文の上限→Yogaの実行→後処理(キャッシュの禁止・セッションの指示・GraphiQLの画面のCSP・操作ログ) |
-| `<内部RESTの接頭辞>`とその下   | 内部経路の判定(外部経路なら404)→元のクライアントIPアドレスの警告→登録した経路                                                                                                                                           |
+| `<内部RESTの接頭辞>`とその下   | 内部経路の判定(外部経路なら404)→元のクライアントIPアドレスの警告→セッションの参照の作成→登録した経路→後処理(キャッシュの禁止・セッションの指示)                                                                         |
 | `<公開RESTの基準パス>`とその下 | 「[公開REST APIの骨格](005-public-rest-api.md)」                                                                                                                                                                        |
 
 - GraphQLの受付経路の詳細は「[受付経路](004-graphql-server.md#受付経路)」に記載する。
-- 経路の後処理で応答を差し替えるときは、Honoの`c.res`へ`undefined`を代入してから新しい応答を代入する。`c.res`への代入は、前の応答のヘッダーを新しい応答へ上書きで写すため、前の応答の`Cache-Control`や`Content-Security-Policy`が後処理の値を戻してしまう。
+- 経路の後処理で応答を差し替えるときは、Honoの`c.res`へ`undefined`を代入してから新しい応答を代入する(`finishSessionResponse`はこの手順で差し替える)。`c.res`への代入は、前の応答のヘッダーを新しい応答へ上書きで写すため、前の応答の`Cache-Control`や`Content-Security-Policy`が後処理の値を戻してしまう。
 - Honoは経路の例外を例外の変換で応答にしてから、外側のミドルウェアの`next()`を返す。経路に掛けたミドルウェアの`await next()`の後の処理は、共通のエラー形式の応答にも掛かる。
 
 ## セキュリティヘッダー

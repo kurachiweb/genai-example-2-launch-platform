@@ -46,7 +46,7 @@
 ### Allowed Dependencies
 
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Env`・`Database`・`Clock`・`IdGenerator`・`KeyedHasher`・`MessagePublisher`・`RateLimitCounterClient`)・`AppError`・`getAppLogger`・`captureMessage`の規約・`Database`・`PlatformEnv`の型・`ulidPrimaryKey`・`timestamps`・`BusinessTime`・`ScheduledJobDefinition`・`defineMessageContract`・`MessageContract`・`MESSAGE_CONTRACTS`・`MessageHandler`・`MessageHandlerRegistration`・`MessageMeta`・`hashRateLimitKey`・`CounterRule`。形を変えない。
-- api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`caller`)・`DateTime`・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`PageInfo`・`createInternalRoutesModule`・`InternalRoutes`・`createSessionAccess`・`SessionView`・`CallerKind`。
+- api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`caller`)・`DateTime`・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`PageInfo`・`createInternalRoutesModule`・`InternalRoutes`・`InternalHonoEnv`(`c.var.session`)・`SessionView`・`CallerKind`。
 - identity-auth: `IDENTITY_TYPES.AccountGuard`(`requireUser`)・`IDENTITY_PLATFORM_TYPES.AccountExport`・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`users`テーブル(外部キーだけ)、clientの`SETTINGS_NAV_ITEMS`・`SettingsNavItem`・`_authenticated`の`viewer`、E2Eの`e2e/support/mailpit.ts`。
 - 出力用の部品(research.mdのResearch Logの表): `ULTRAS_TYPES.UltrasPlanExport`、`NOTIFICATIONS_PLATFORM_TYPES.NotificationSettingsExport`、`PUBLIC_API_PLATFORM_TYPES.ApiKeyExport`、`PROFILE_PLATFORM_TYPES.ProfileExport`・`FollowExport`、`PRODUCT_PLATFORM_TYPES.ProductExport`・`LaunchExport`・`ProductDirectory`(`findSummaries`)、`MATCH_PLATFORM_TYPES.MatchExport`・`UpvoteExport`、`WEEK_TOURNAMENT_TYPES.WeekAwardExport`、`YEAR_TOURNAMENT_TYPES.YearAwardExport`、`ENGAGEMENT_PLATFORM_TYPES.CommentExport`・`RatingExport`、`REPORTING_PLATFORM_TYPES.ReportExport`、`INQUIRY_EXPORT_TYPES.InquiryExport`、`SPONSORSHIP_PLATFORM_TYPES.SponsorshipExport`、`PAYMENTS_TYPES.PaymentHistoryExport`。いずれもeventのアプリケーション層の3つの読み取りの部品(とその単体テスト・`apps/event/test/data-export/`の契約と結合のテスト)だけが読み込む。
 - media-pipeline: `MEDIA_TYPES.MediaFiles`(`findMany`・`openContent`)・`MediaFileView`・`attachmentDisposition`。
@@ -976,11 +976,11 @@ type Mutation {
 ```
 
 - リゾルバの冒頭で`context.caller`が利用者側でなければ`forbidden`(要件1.8)。エラーコード: `unauthenticated`・`email_not_verified`(403)・`rate_limited`(429、`retryAfterSeconds`)・`unavailable`(503)。`byteSize`は4GiB未満の整数を`Float`で返す(GraphQLの`Int`は32ビット)。`myDataExports`はapi-gatewayのページングの規約に従う。引数は`CURSOR_PAGE_ARGS`を`first`の上限20に狭めたスキーマで`withValidatedArgs`により検証し、20を超える`first`は`validation_error`にする。`after`は`decodeCursor`で要求のIDへ戻し(不正なら`invalid_cursor`)、`DataExportReader.listMine`の最大`first + 1`件を`toConnection`(カーソルは`encodeCursor`)へ渡す。`EXPIRED`の項目は完了日時・有効期限・ファイル名・大きさを返し`downloadPath`を`null`にする(仮4)。
-- `GET /internal/data-exports/:exportId/archive`(`createInternalRoutesModule`に登録): 呼び出し元が利用者側でなければ404→`createSessionAccess`で`authorize`→`ExportArchiveStorage.open`(無ければ`warning`のログと404)→200。応答のヘッダーは保存時のメタデータ(`writeHttpMetadata`)に`Content-Length`・`X-Content-Type-Options: nosniff`を加える(要件9.6)。
+- `GET /internal/data-exports/:exportId/archive`(`createInternalRoutesModule`に登録): 呼び出し元が利用者側でなければ404→`c.var.session`(サブアプリが渡す参照。api-gatewayの改訂3)で`authorize`→`ExportArchiveStorage.open`(無ければ`warning`のログと404)→200。応答のヘッダーは保存時のメタデータ(`writeHttpMetadata`)に`Content-Length`・`X-Content-Type-Options: nosniff`を加える(要件9.6)。
 
-| Method | Endpoint                                   | Request | Response                                                                                                                                                                    | Errors        |
-| ------ | ------------------------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| GET    | `/internal/data-exports/:exportId/archive` | なし    | 200。本文はZIP。`Content-Type: application/zip`・`Content-Disposition: attachment`・`Content-Length`・`Cache-Control: private, no-store`・`X-Content-Type-Options: nosniff` | 401・404・503 |
+| Method | Endpoint                                   | Request | Response                                                                                                                                                                         | Errors        |
+| ------ | ------------------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| GET    | `/internal/data-exports/:exportId/archive` | なし    | 200。本文はZIP。`Content-Type: application/zip`・`Content-Disposition: attachment`・`Content-Length`・`Cache-Control: no-store`(共通の後処理)・`X-Content-Type-Options: nosniff` | 401・404・503 |
 
 ### event
 
@@ -1083,7 +1083,7 @@ export interface ArchiveGenerationService {
 
 - 認可: 要求・一覧・ダウンロードはすべてサーバー側で本人に絞り、利用者側の呼び出し元に限る。ダウンロードは存在を明かさない404にする。ZIPはファイル用非公開バケットに置き、公開のURLを持たない。
 - 個人データの最小化: ZIPは生成完了から7日で消す。要求の記録(日時・状態・ファイル名・大きさ)は利用者の履歴として退会まで残し、退会の時点でZIPとともに消す(仮4)。オブジェクトのキー・メッセージ・ログに利用者を表す値を含めない。回数制限のキーはハッシュ化する。
-- 応答のヘッダー: `attachment`・`private, no-store`・`nosniff`で、ブラウザでの解釈とキャッシュを防ぐ。
+- 応答のヘッダー: `attachment`・`no-store`(内部RESTの共通の後処理が付ける)・`nosniff`で、ブラウザでの解釈とキャッシュを防ぐ。
 - 秘密情報: 出力用の部品が秘密情報を返さないことに加え、スナップショットの型に秘密情報の項目を持たない。仮名化IDは決済履歴の照会にだけ使う。
 
 ## Performance & Scalability

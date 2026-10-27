@@ -1,3 +1,4 @@
+import type { Context } from 'hono';
 import type { Container } from 'inversify';
 
 import { AppError } from '../../../lib/core/errors/app-error.ts';
@@ -163,4 +164,18 @@ export function applySessionInstructions(
     SESSION_RESPONSE_HEADERS.maxAge,
     String(instruction.session.maxAgeSeconds),
   );
+}
+
+// 書き換えられない応答に備え、複製したヘッダーで応答を作り直す。Honoは応答の代入時に前の応答のヘッダーを上書きで写すため、先に外して経路の応答のCache-Controlなどが後処理の値を戻さないようにする
+export function finishSessionResponse(c: Context, access: SessionAccess): void {
+  const headers = new Headers(c.res.headers);
+  headers.set('Cache-Control', 'no-store');
+  applySessionInstructions(access, headers);
+  const response = new Response(c.res.body, {
+    status: c.res.status,
+    statusText: c.res.statusText,
+    headers,
+  });
+  c.res = undefined;
+  c.res = response;
 }

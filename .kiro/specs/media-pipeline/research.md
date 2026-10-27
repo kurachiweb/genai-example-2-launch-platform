@@ -50,7 +50,7 @@
 - SVG検査による隔離の承認: FR-FILEU-015・FR-ADMUG-017の文言どおり自動判定による隔離として扱い、管理者の公開承認を可能にする。承認後もFR-FILEU-018のヘッダーで防御する。
 - 画像配信ドメインのIP制限の除外: backend-platformのQ1で決定済み。
 - CSP: SVG応答でのCSPの上書きはapi-gatewayのQ6・要件12.3で決定済み(応答が自らCSPを持てば既定のCSPで置き換えない)。フロントのimg-srcへの画像配信オリジン(`IMAGES_ORIGIN`)と、プレビュー用の`blob:`・`data:`はfrontend-platformで決定済み。
-- 中継経路: アップロードとダウンロードの中継は、frontend-platformの`RelayRoute`(`/_bff/`)とapi-gatewayの内部REST(`/internal`・`createSessionAccess`)で決定済み。GraphQLでのアップロードはapi-gatewayで無効と決定済み。CSRFの検証はGET・HEAD・OPTIONS以外の全要求に適用済み。
+- 中継経路: アップロードとダウンロードの中継は、frontend-platformの`RelayRoute`(`/_bff/`)とapi-gatewayの内部REST(`/internal`・サブアプリが渡す`c.var.session`。api-gatewayの改訂3)で決定済み。GraphQLでのアップロードはapi-gatewayで無効と決定済み。CSRFの検証はGET・HEAD・OPTIONS以外の全要求に適用済み。
 - リソース: R2の3バケット(`IMAGES_BUCKET`・`FILES_BUCKET`・`QUARANTINE_BUCKET`)、eventの`IMAGES`バインディング、`JOBS_QUEUE`とデッドレターキュー、再試行の規則、メッセージ種別の命名`<ドメイン>.<動詞句>`はbackend-platformで決定済み。
 - 変換配信の仕様: 画像バリアント仕様で決定済み(バリアント・URL・`Cache-Control`・パージ・404の`no-store`・「GIFは最初のフレームのみ」)。Q1の結果だけを反映する。
 - HW-001のカメラ: モバイルでは、ネイティブのファイル選択(`<input type="file">`)がカメラ撮影を選択肢に出す。`getUserMedia`は使わず、Permissions-Policyの`camera=()`も変えない。iOSは、`accept`にHEICが無ければJPEGへ変換して渡す。
@@ -370,3 +370,4 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
 ## 上流(api-gateway)の改訂3の反映(2026-10-27)
 
 - api-gatewayの実装後の改訂3で、backend-platformの`AppErrorKind`に`payload_too_large`(413)と`unsupported_media_type`(415)が加わった。design.mdの「アップロード」の説明にあった「411・413・415は`AppError`の種類に無い」は事実と合わなくなったため、413・415は`AppError`で表せ、411だけが種類に無いと改めた。受付の経路が共通のエラー形式の組み立て部品で応答を作る設計は変えていない(413・415も同じ部品で作ってよい)。要件・タスクは変えていない。
+- 同じ改訂3で、api-gatewayの内部RESTに共通の後処理が加わった。サブアプリが要求ごとに`SessionAccess`を作って`c.var.session`で経路へ渡し、経路の後(共通エラー・想定外の例外の応答を含む)に`Cache-Control: no-store`とセッションの指示を付ける。経路が付けた`Cache-Control`は`no-store`で上書きされる(開発者の決定)。design.mdの依存の一覧・内部RESTの前提・経路の説明・`session`の型の説明・ダウンロードの応答のヘッダーと、tasks.mdの5.3の応答の確認を、`c.var.session`と`no-store`に改めた。R2のオブジェクトのメタデータの`private, no-store`(要件の該当箇所)は応答ではないため変えていない。

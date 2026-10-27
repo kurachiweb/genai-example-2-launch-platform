@@ -352,3 +352,14 @@
   - tasks.md: 1.2(G2)、5.4(G1)、6.4(G4)、8.1(スモークテストの完了状態)、9.1(トレースと一括検査の記載)、10.1(dry-run)、10.2(一括検査の段階・スモークテストの位置付け)。タスクの番号・依存・要件の対応は変えていない。1.1の`wrangler-config.unit.test.ts`の更新は、改訂の前からタスクに含まれていた。
   - 水平展開: frontend-platformのdesign.mdの`@graphql-codegen/cli`を7.4.6に(api・client・adminで版をそろえる契約)、identity-authのdesign.mdの`graphql-yoga`を5.24.6に(上流の版)合わせた。それぞれのresearch.mdに経緯を記録した。
 - **未解決のまま実装で確かめる事項**: ギャップ分析のResearch NeededのうちG5のYoga 5系の保守の方針、G6のNode.js互換なしでの動作は、改訂の対象ではなく、タスク1.1・4.2・5.4・10.1の中で確かめる。
+
+## 実装後の検証による承認後の改訂(改訂3、2026-10-27)
+
+- **状態**: 全タスクの実装と最終検証(MANUAL_VERIFY_REQUIRED)の後、Implementation Notesで「人の判断待ち」とした論点を開発者が1件ずつ決めた改訂。要件の性質は変えず(下流のdata-exportの応答のヘッダーの値だけ改めた)、設計・タスクのImplementation Notes・本書・技術ドキュメントと、関係する上流・下流のspecを改めた。要件・設計・タスクの承認を保った。
+- **決定と変えた箇所**:
+  1. 許可リストの生成時の検査(タスク6.1): 実行時に必ず拒否される操作を生成時に弾く。`createDocumentValidator`に、graphqlの`NoSchemaIntrospectionCustomRule`(introspectionは`graphql_validation_failed`、`__typename`は通す)と、スキーマにルートの型が無い操作の検査(`Subscription`型の無いスキーマへの`subscription`など、`graphql_request_invalid`)を加えた。コードは実行時と同じで、`test/graphql/document-validator-runtime.worker.test.ts`がローカル・デプロイ先の`createGatewayServer`と照合する。1つの文書の複数の操作は、実行時に`operationName`で選ばれるため通す。ただし有効な操作とルートの型の無い操作が同じ文書に混ざると文書全体が弾かれる(client-presetの文書は1操作のため実害は小さい)。design.mdのGraphQLScripts・File Structure Plan・Testing Strategy、`backend/004`・`coding/004`・オンボーディングを改めた。
+  2. 公開RESTの`Content-Type`の不一致(タスク7.1): 400ではなく415で返す。backend-platformの`AppErrorKind`に`unsupported_media_type`(415)を加えた。合わせて`payload_too_large`(413)も加え、GraphQLの経路の本文の上限超過(タスク5.6)を自前の組み立てではなく`AppError`で返す形に揃えた(応答は不変)。design.mdの公開RESTの`ErrorStatus`・経路の表・エラーの表・GraphqlModule、backend-platformのdesign.md・research.md、media-pipelineのdesign.md・research.md(413・415が`AppError`で表せるようになった)、`backend/002`・`004`・`005`を改めた。
+  3. 内部RESTの共通の後処理(タスク9.3の注意): `createInternalRoutesModule`のサブアプリが要求ごとに`SessionAccess`を作って`c.var.session`(`InternalHonoEnv`)で経路へ渡し、経路の後(共通エラー・想定外の例外の応答を含む)に`finishSessionResponse`で`Cache-Control: no-store`とセッションの指示を付ける。後処理はGraphQLの経路と共有する。経路が付けた`Cache-Control`は`no-store`で上書きする(開発者の決定)。design.mdのInternalOnly・SessionAccess・GraphqlModule、`backend/006`、下流のmedia-pipeline・data-exportのdesign.md(`c.var.session`と応答の`no-store`)・data-exportのrequirements.md(ダウンロードの応答の`Cache-Control`)・media-pipelineのtasks.md(5.3の確認)を改めた。
+  4. public-apiの`publicApiIpRateLimitRoutes`の型を`PublicRestRoutes<Env>`に改めた(Honoの環境の型引数が不変で、登録箇所`REST_ROUTES`が`Env`のため)。
+  5. dev-toolingのdesign.mdの`check`の段階の一覧に`graphql:check`を加えた。
+  6. `spec.json`の`ready_for_implementation`を`true`にした。

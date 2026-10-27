@@ -55,7 +55,7 @@
 ### Allowed Dependencies
 
 - backend-platform: `AppModule`と登録箇所(`modules.ts`・`scheduled-jobs.ts`・`message-handlers.ts`・`rate-limit-exclusions.ts`)、DIの識別子`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`MessagePublisher`)、`defineMessageContract`と`MESSAGE_CONTRACTS`、`MessageHandlerRegistration.retry`、`ScheduledJobDefinition`、`RateLimitExclusion`、`AppError`と共通のエラー形式、`createDatabase`・共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`)、ログとSentry。
-- api-gateway: `createInternalRoutesModule`・`createSessionAccess`・`CallerKind`・`AuthenticatedPrincipal`・`Principal`、application層のセッションの読み取り専用の型`SessionView`(`application/session/session-view.ts`。api-gatewayの契約への追記で、identity-authのタスク2.3が追記する。無い場合の扱いは「UploaderEligibility・既定の実装」。R3-1)、`defineSchemaModule`・`defineLoader`、`withSecurityHeaders`(応答のCSPを保つ規則)。
+- api-gateway: `createInternalRoutesModule`・`InternalHonoEnv`(`c.var.session`)・`CallerKind`・`AuthenticatedPrincipal`・`Principal`、application層のセッションの読み取り専用の型`SessionView`(`application/session/session-view.ts`。api-gatewayの契約への追記で、identity-authのタスク2.3が追記する。無い場合の扱いは「UploaderEligibility・既定の実装」。R3-1)、`defineSchemaModule`・`defineLoader`、`withSecurityHeaders`(応答のCSPを保つ規則)。
 - frontend-platform: `RelayRoute`と`relay-routes.ts`の登録箇所、`PublicRuntimeConfig`、UI部品(dialog・button・label)・`notify`・アクセシビリティの検査の補助、`IMAGES_ORIGIN`。
 - content-processing: `apps/common-lib`の配置と参照の方法(仮決定2)と、frontend-libの`server/**`から`../common-lib/**`を読み込む許可(横断レビューM-2でcontent-processingが加える)、日次タイムラインの「日次バッチ(4:21)の内容」のジョブの名前と順序の表。本specの実装は、content-processingが下流向けに示す最小の区切りの完了を前提にする(roadmapの順はinfra-delivery→content-processing→media-pipeline→identity-auth)。区切りは次のとおりである(横断レビュー2回目のN-3)。
   - タスク1.1(共有ディレクトリの定義への共用部品の追加)・1.2(共用部品のプロジェクトと読み込みの境界)・4.1(APIサーバーとイベントサーバーへの組み込み)・4.2(利用者側・管理者側とfrontend-libへの組み込み)。
@@ -92,7 +92,7 @@
 
 - 上流のbackend-platform・api-gateway・frontend-platformは設計が承認済みで、実装は本specより先に行う。content-processingの`apps/common-lib`の新設と組み込みのタスク(Allowed Dependencies)も、roadmapの順で本specより先に完了する。本specは各specの登録箇所への追記と、Revalidation Triggersに挙げた最小の変更だけを行う。
 - backend-platformの受信部は、バッチ内のメッセージを1件ずつ処理し、メッセージ種別ごとに再試行の方針を上書きできる。デッドレターでは本文が捨てられるため、失ってはならない状態(判定の待ち・保存先のずれ)はD1に残し、日次バッチで回復する。
-- api-gatewayの内部REST(`/internal`)はフロントエンドサーバーの中継からだけ届き、`createSessionAccess`で呼び出し元(利用者側・管理者側)に応じたセッションを判定できる。api-gatewayの`withSecurityHeaders`は、応答が自らCSPを持てば既定のCSPで置き換えない(SVGの配信で使う)。
+- api-gatewayの内部REST(`/internal`)はフロントエンドサーバーの中継からだけ届き、サブアプリが要求ごとに作って渡す`c.var.session`(api-gatewayの改訂3)で呼び出し元(利用者側・管理者側)に応じたセッションを判定できる。api-gatewayの`withSecurityHeaders`は、応答が自らCSPを持てば既定のCSPで置き換えない(SVGの配信で使う)。
 - frontend-platformの中継は、`RelayRoute`を`src/composition/relay-routes.ts`へ追加するだけで、CSRF・IP制限・セッションの引き継ぎ・セキュリティヘッダー(`no-store`)の経路に乗る。
 
 ### Architecture Pattern & Boundary Map
@@ -1254,14 +1254,14 @@ export interface MediaObjectStore {
 
 ##### API Contract
 
-| Method | Endpoint                           | Request                                                                                                    | Response                                                                                                                                                              | Errors                                                             |
-| ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| POST   | `/internal/media/uploads/:purpose` | 本文はファイルのバイト列。`Content-Type`(形式)・`Content-Length`・任意で`x-upload-file-name`(百分率符号化) | 201。`{ "data": UploadedFile }`。ファイル用の用途は`Location: /_bff/files/<fileId>`                                                                                   | 400・401・403・404・411・413・415・422・503(Supporting References) |
-| GET    | `/internal/media/files/:fileId`    | なし                                                                                                       | 200。本文はファイルの内容。`Content-Type`・`Content-Disposition: attachment`・`Content-Length`・`Cache-Control: private, no-store`・`X-Content-Type-Options: nosniff` | 401・404・503                                                      |
+| Method | Endpoint                           | Request                                                                                                    | Response                                                                                                                                                                   | Errors                                                             |
+| ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| POST   | `/internal/media/uploads/:purpose` | 本文はファイルのバイト列。`Content-Type`(形式)・`Content-Length`・任意で`x-upload-file-name`(百分率符号化) | 201。`{ "data": UploadedFile }`。ファイル用の用途は`Location: /_bff/files/<fileId>`                                                                                        | 400・401・403・404・411・413・415・422・503(Supporting References) |
+| GET    | `/internal/media/files/:fileId`    | なし                                                                                                       | 200。本文はファイルの内容。`Content-Type`・`Content-Disposition: attachment`・`Content-Length`・`Cache-Control: no-store`(共通の後処理)・`X-Content-Type-Options: nosniff` | 401・404・503                                                      |
 
-- 両経路は`createInternalRoutesModule`で`/internal`の下に登録し、外部経路からは404になる(api-gateway)。セッションは`createSessionAccess`で呼び出し元に応じて判定する。
+- 両経路は`createInternalRoutesModule`で`/internal`の下に登録し、外部経路からは404になる(api-gateway)。セッションはサブアプリが渡す`c.var.session`で呼び出し元に応じて判定する(経路で`createSessionAccess`を作り直さない。作り直した参照の指示は応答に載らない)。応答の`Cache-Control`は共通の後処理が`no-store`で上書きし、セッションの指示も付ける(api-gatewayの改訂3)。
 - アップロード: 用途が無ければ404 → 未ログインなら401 → 主体の種類が`uploaderKinds`に無ければ403 → 呼び出し元が利用者側なら`UploaderEligibility.check`で判定し、拒否なら403(判定が示す`account_unavailable`・`email_not_verified`) → `UploadReceiver.receive`。判定までは本文を読まない。応答の`Cache-Control`は`no-store`。
-- ダウンロード: 未ログインなら401 → `fileId`がULIDの形でなければ404 → 記録が無い・保存未完了・論理削除・削除待ちなら404 → `FileAccessAuthorizer`が拒否すれば404 → 現在の保存先(画像は`location`、見つからなければ他方)から読み出して返す。ファイル用のオブジェクトは保存時のメタデータ(`writeHttpMetadata`)、画像は`attachmentDisposition`と`private, no-store`を付ける。
+- ダウンロード: 未ログインなら401 → `fileId`がULIDの形でなければ404 → 記録が無い・保存未完了・論理削除・削除待ちなら404 → `FileAccessAuthorizer`が拒否すれば404 → 現在の保存先(画像は`location`、見つからなければ他方)から読み出して返す。ファイル用のオブジェクトは保存時のメタデータ(`writeHttpMetadata`)、画像は`attachmentDisposition`を付ける。`Cache-Control`は内部RESTの共通の後処理が`no-store`で上書きする(api-gatewayの改訂3)。
 
 #### UploaderEligibility・既定の実装
 
@@ -1298,7 +1298,7 @@ export declare const UPLOAD_ACCESS_TYPES: {
 export declare class AllowAllUploaderEligibility implements UploaderEligibility {} // 常に{ allowed: true }
 ```
 
-- `session`の型(R3-1): backend-platformの層の規則により、application層はpresentation層を読み込めない(型だけの読み込みも同じ)。そのため、`session`はapplication層のセッションの読み取り専用の型`SessionView`(`apps/api/src/application/session/session-view.ts`)で受け取る。`SessionView`はapi-gatewayの契約への追記で、追記はidentity-authのタスク2.3が行い、presentation層の`SessionAccess`は`SessionView`を拡張する。`UploadRoute`(presentation)は`createSessionAccess`の結果をそのまま渡す(構造的部分型)。本specは`session`のメンバーを呼ばず、判定の実装へ渡すだけである。
+- `session`の型(R3-1): backend-platformの層の規則により、application層はpresentation層を読み込めない(型だけの読み込みも同じ)。そのため、`session`はapplication層のセッションの読み取り専用の型`SessionView`(`apps/api/src/application/session/session-view.ts`)で受け取る。`SessionView`はapi-gatewayの契約への追記で、追記はidentity-authのタスク2.3が行い、presentation層の`SessionAccess`は`SessionView`を拡張する。`UploadRoute`(presentation)は内部RESTのサブアプリが要求ごとに作って渡す`c.var.session`(`SessionAccess`)をそのまま渡す(構造的部分型。api-gatewayの改訂3)。本specは`session`のメンバーを呼ばず、判定の実装へ渡すだけである。
 - `SessionView`が無い場合(R3-1): 追加はidentity-authのタスク2.3の担当だが、roadmapの順では本specのタスク5.1が先に実装される。5.1の時点で`session-view.ts`が無ければ、5.1が2.3の定義と同じ形・同じ場所で置く。
   - 形: メンバーは`principal(): Promise<Principal>`だけにする。`Principal`は`application/session/session-verifier.ts`から読み込む。セッションのIDは`AuthenticatedPrincipal.sessionId`で読むため、別のメンバーは設けない。`requireAuthenticated`・`issue`・`clear`は含めない。
   - 5.1はapi-gatewayの`SessionAccess`(presentation)と設計の文書を変えない。`SessionAccess`は`principal()`を持つため、宣言を変えなくても`SessionView`へ代入できる。`SessionAccess`を`SessionView`の拡張に改めるのは、identity-authのタスク2.3である。

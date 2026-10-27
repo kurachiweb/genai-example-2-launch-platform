@@ -15,8 +15,8 @@ import {
 } from '../gateway/internal-only.ts';
 import { readInternalCaller } from '../gateway/internal-request.ts';
 import {
-  applySessionInstructions,
   createSessionAccess,
+  finishSessionResponse,
 } from '../gateway/session-access.ts';
 import {
   type GatewayRequestScope,
@@ -64,8 +64,6 @@ export const GRAPHIQL_CONTENT_SECURITY_POLICY = [
 const GRAPHQL_PATH = '/graphql';
 
 const GRAPHQL_METHODS = ['GET', 'POST'];
-
-const CACHE_CONTROL_HEADER = 'Cache-Control';
 
 const CONTENT_SECURITY_POLICY_HEADER = 'Content-Security-Policy';
 
@@ -129,25 +127,17 @@ function isGraphiqlPage(access: GraphQLAccess, headers: Headers): boolean {
   );
 }
 
-// Yogaの応答のヘッダーが書き換えられない場合に備え、複製したヘッダーで応答を作り直す
-function finishResponse(
-  response: Response,
+function finishResponse<E extends GraphQLModuleEnv>(
+  c: GraphQLRouteContext<E>,
   scope: GatewayRequestScope,
-): Response {
-  const headers = new Headers(response.headers);
-  headers.set(CACHE_CONTROL_HEADER, 'no-store');
-  applySessionInstructions(scope.session, headers);
-  if (isGraphiqlPage(scope.access, headers)) {
-    headers.set(
+): void {
+  finishSessionResponse(c, scope.session);
+  if (isGraphiqlPage(scope.access, c.res.headers)) {
+    c.res.headers.set(
       CONTENT_SECURITY_POLICY_HEADER,
       GRAPHIQL_CONTENT_SECURITY_POLICY,
     );
   }
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
 }
 
 // 受付経路の判定と後処理で作った範囲を、同じ要求の実行の段で使う
@@ -174,10 +164,7 @@ function admitRequest<E extends GraphQLModuleEnv>(): MiddlewareHandler<
     const scope = createRequestScope(c, access);
     requestScopes.set(c, scope);
     await next();
-    const response = finishResponse(c.res, scope);
-    // Honoは応答の代入時に前の応答のヘッダーを上書きで写すため、先に外してYogaのCache-Control・CSPが後処理の値を戻さないようにする
-    c.res = undefined;
-    c.res = response;
+    finishResponse(c, scope);
     logOperation({
       caller: access.caller,
       observation: scope.observation,
