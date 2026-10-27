@@ -6,8 +6,6 @@ import {
   type AnyEmailKind,
   defineEmailKind,
 } from '../../../../lib/core/email/email-kind.ts';
-import { EMAIL_KINDS } from '../../../../lib/core/email/kinds/index.ts';
-import { EMAIL_TEMPLATES } from '../templates/index.ts';
 import {
   createEmailTemplateRegistry,
   defineEmailTemplate,
@@ -143,16 +141,5 @@ describe('テンプレートの集約', () => {
     expect(() => createEmailTemplateRegistry([], KINDS)).toThrow(
       EmailTemplateRegistryError,
     );
-  });
-});
-
-describe('全テンプレートの集約点', () => {
-  test('各テンプレートは全メール種別の集約点の種別を重複なく指す', () => {
-    const kindNames = EMAIL_TEMPLATES.map((template) => template.kind.name);
-
-    expect(new Set(kindNames).size).toBe(kindNames.length);
-    for (const template of EMAIL_TEMPLATES) {
-      expect(EMAIL_KINDS).toContain(template.kind);
-    }
   });
 });

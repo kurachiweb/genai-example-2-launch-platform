@@ -161,7 +161,7 @@
   - _Depends: 1.1, 2.1, 2.5_
   - _Requirements: 2.1, 2.2, 2.3, 3.1, 3.4, 3.5, 3.6, 3.7, 3.10_
 
-- [ ] 5.7 描画処理と疎通確認のテンプレートを作り、workerd上で日本語の両パートを確かめる
+- [x] 5.7 描画処理と疎通確認のテンプレートを作り、workerd上で日本語の両パートを確かめる
   - 同じ要素からHTMLとテキストを生成し、件名はテンプレートが定めたものを接頭辞なしで使う。対応するテンプレートが無ければ描画の失敗にする
   - 疎通確認のテンプレート(件名「メール送信の確認」、受付日時のUTC表記と日本語の段落、宛名なし)を作り、テンプレートの集約点に登録する
   - 1.1の最小の描画テストを描画処理のテストに置き換える
@@ -258,3 +258,4 @@
 - 5.5(6.1への申し送り): `DeliveryEventHandler`(`application/email/delivery-event-handler.ts`)は`RawMessageHandler`でClockを持たず、イベントの時刻が無ければ`meta.timestamp`(Queueに入った時刻。再試行で変わらない)を使う。ログのカテゴリは`['event', 'application', 'email-delivery-event']`。ログの捕まえ方のテスト補助は`application/email/email-log-capture.fixtures.ts`に共有した。要件7.8は不正なイベントを「警告」とするが、設計のEmailIncidentReporterの表に従いSentryへは`error`で送る(ログは`warning`)。
 - 5.6(5.7への申し送り): `EmailTemplate.Body`は設計の`ComponentType<{ input }>`ではなくメソッドの記法`Body(props: { readonly input: TInput }): ReactNode`(引数の反変で`EmailTemplate<unknown>[]`へ代入できないため)。`<template.Body input={…} />`で描画できる。`EMAIL_TEMPLATES`は空なので、5.7で疎通確認のテンプレートを登録し、`createEmailTemplateRegistry(EMAIL_TEMPLATES, EMAIL_KINDS)`が例外を投げないことのテストを加える(5.7より前に6.1を結線すると壊れる)。集約は名前に加えて種別の定義が同じオブジェクトであることも検査する。JSXで`{変数}文字列`と分けて書くとHTMLに`<!-- -->`が入るため、文言はテンプレートリテラルで1つのテキストにする。
 - 5.6(文言の仮置き): 配信停止の区画の文言「この種類の通知メールの配信停止」と、見出し・ラベル無しで3つの値を1行ずつ並べる送信者情報は、設計・文言規則に定めが無いため仮置き(開発者の確認待ち)。配信停止の区画はリンク1つだけで、notificationsのFR-NOTIF-013(集約したメールで2種類の配信停止リンク)には対応できない(notificationsの実装時の見直しの対象)。
+- 5.7(6.1への申し送り): `ReactEmailRenderer`はコンストラクタで`EmailTemplateRegistry`を受け取るクラスで`@injectable`を持たず、テンプレートの集約のDI識別子も無い。`.to(ReactEmailRenderer)`では解決できないため、`toDynamicValue(() => new ReactEmailRenderer(createEmailTemplateRegistry(EMAIL_TEMPLATES, EMAIL_KINDS)))`で束縛する。描画の失敗の`EmailRenderError`はメッセージが種別の名前だけで元の例外を`cause`に残すが、`SendEmailHandler`は`cause`をログ・Sentryへ出さない。疎通確認の本文の文言(「メール送信の確認のために送信したメールです。」「受付日時は…です。」「このメールへの返信は不要です。」)は仮置き(開発者の確認待ち)。20件の描画の所要時間はVitestの`annotate`で記録する(`--reporter=verbose`で表示)。
