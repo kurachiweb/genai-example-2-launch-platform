@@ -10,6 +10,7 @@ import {
 import { type EventEnv, eventEnvSchema } from './composition/env-schema.ts';
 import { MESSAGE_HANDLERS } from './composition/message-handlers.ts';
 import { MODULES } from './composition/modules.ts';
+import { RAW_QUEUE_HANDLERS } from './composition/raw-queue-handlers.ts';
 import { RATE_LIMIT_EXCLUSIONS } from './composition/rate-limit-exclusions.ts';
 
 const sentry: SentryOptionsFactory<EventEnv> = (env) =>
@@ -29,6 +30,8 @@ export default withSecurityHeaders(
     app,
     envSchema: eventEnvSchema,
     sentry,
-    queue: createQueueDispatcher<EventEnv>(MESSAGE_HANDLERS, MODULES),
+    queue: createQueueDispatcher<EventEnv>(MESSAGE_HANDLERS, MODULES, {
+      rawQueues: RAW_QUEUE_HANDLERS,
+    }),
   }),
 );

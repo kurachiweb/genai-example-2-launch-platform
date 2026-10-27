@@ -159,15 +159,16 @@ TDDの各段階では、書いているテストだけを実行する。
 
 ### 共通設定の置き場所
 
-| ファイル                               | 内容                                                                                                                                                                           |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `config/test-patterns.ts`              | 4種の命名(`TEST_FILE_PATTERNS`)、テストとみなす名前(`TEST_LIKE_FILE_PATTERN`)、自動生成コードの命名(`GENERATED_CODE_PATTERNS`)、カバレッジの閾値(`COVERAGE_THRESHOLD_PERCENT`) |
-| `bunfig.toml`                          | 単体テストの共通設定(他の種別の除外、カバレッジの閾値・除外・出力先)                                                                                                           |
-| `config/vitest/browser.ts`             | ブラウザテストのプリセット(`browserTestPreset`・`browserOptionsPreset`)と、共有Chromiumの起動オプションを返す`resolveBrowserLaunchOptions`                                     |
-| `config/vitest/worker.ts`              | Workers統合テストのプリセット(`workerTestPreset`)                                                                                                                              |
-| `playwright.config.ts`・`e2e/support/` | E2Eテストの設定、E2Eの対象の定義、到達確認、0件を表示するレポーター、テストが共有する補助(ローカルの定期実行を業務日付と業務時刻で起こす`scheduled-trigger.ts`)                |
+| ファイル                                     | 内容                                                                                                                                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `config/test-patterns.ts`                    | 4種の命名(`TEST_FILE_PATTERNS`)、テストとみなす名前(`TEST_LIKE_FILE_PATTERN`)、自動生成コードの命名(`GENERATED_CODE_PATTERNS`)、カバレッジの閾値(`COVERAGE_THRESHOLD_PERCENT`) |
+| `bunfig.toml`                                | 単体テストの共通設定(他の種別の除外、カバレッジの閾値・除外・出力先)                                                                                                           |
+| `config/vitest/browser.ts`                   | ブラウザテストのプリセット(`browserTestPreset`・`browserOptionsPreset`)と、共有Chromiumの起動オプションを返す`resolveBrowserLaunchOptions`                                     |
+| `config/vitest/worker.ts`                    | Workers統合テストのプリセット(`workerTestPreset`)                                                                                                                              |
+| `config/vitest/read-nested-d1-migrations.ts` | D1のマイグレーションの保存先から`<名前>/migration.sql`の入れ子構造を読み、Workers統合テストへ渡す形にする`readNestedD1Migrations`                                              |
+| `playwright.config.ts`・`e2e/support/`       | E2Eテストの設定、E2Eの対象の定義、到達確認、0件を表示するレポーター、テストが共有する補助(ローカルの定期実行を業務日付と業務時刻で起こす`scheduled-trigger.ts`)                |
 
-- プリセットはnpmパッケージの値をimportせず、定数と関数だけを提供する。テストツールのプロバイダとプラグイン(`playwright()`・`cloudflareTest()`)は、アプリが自分のnode_modulesからimportして組み立てる。基底設定と同じく、値をimportするとルートに導入した版が使われるためである。
+- プリセットはnpmパッケージの値をimportせず、定数と関数だけを提供する。テストツールのプロバイダとプラグイン(`playwright()`・`cloudflareTest()`)は、アプリが自分のnode_modulesからimportして組み立てる。基底設定と同じく、値をimportするとルートに導入した版が使われるためである。`node:`で始まる組み込みモジュールはnode_modulesから解決されないため、importしてよい。
 - 設定ファイル(`vitest.<種別>.config.ts`・`playwright.config.ts`)はWorkersの実行環境ではなくBun・Node上で評価されるため、`process.env`を読んでよい。
 
 ### ブラウザテストの設定
@@ -251,6 +252,7 @@ describe('fetchハンドラー', () => {
 });
 ```
 
+- D1を使うテストには、`miniflare.bindings`にテスト用のバインディング(例: `TEST_MIGRATIONS`)として`readNestedD1Migrations`の結果を渡し、`cloudflare:test`の`applyD1Migrations`で適用する。適用は`setupFiles`か、D1を使うテストファイルの`beforeAll`で行う。`setupFiles`で`cloudflare:test`を読み込むと、テストファイルの`vi.mock`より先にWorkerのエントリが読み込まれ、エントリが読み込むモジュールの差し替えが効かなくなる。エントリの読み込むモジュールを`vi.mock`で差し替えるテストを持つアプリでは、テストファイルで適用する。
 - 型検査設定の差分は「[Workers統合テストを持つアプリの差分](../coding/001-javascript-typescript-conventions.md#workers統合テストを持つアプリの差分)」に従う。
 - `wrangler types`が出力する`worker-configuration.d.ts`(実行時の型と環境の型)を生成してコミットする。生成し直しが要るかは、アプリのスクリプト`cf-typegen:check`(`wrangler types --check`)で確かめる。一括検査(`bun run check`)の段階「型生成の検査」でも毎回実行される(「[一括検査](../coding/001-javascript-typescript-conventions.md#一括検査)」)。
 

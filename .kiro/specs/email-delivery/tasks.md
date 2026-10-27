@@ -170,7 +170,7 @@
   - _Requirements: 3.2, 3.3, 3.4, 3.9, 11.3_
 
 - [ ] 6. 統合: 登録・経路・定期実行
-- [ ] 6.1 イベントサーバーのメールの束縛と登録を組み立て、Queueからの送信と抑止の記録を通しで確かめる
+- [x] 6.1 イベントサーバーのメールの束縛と登録を組み立て、Queueからの送信と抑止の記録を通しで確かめる
   - 先に、`email.send`のバッチから日本語の件名と両パートがMailpitの宛先への要求に含まれること、メールイベント用Queueのhard bounceが抑止リストに記録されて同じバッチの再送で変わらないことを確かめるWorkers統合テストを書く
   - 環境の検証に、送信プロバイダ・送信元・宛先制限の方針・Queueの名前と、方針に応じた条件付きの必須キー(MailpitのURL・送信バインディング・許可する宛先)を加え、欠けたキー名だけを報告する
   - 送信プロバイダ・描画・送信者情報の登録箇所(初期値は未設定の既定実装)・異常の通知・送信元の設定・2つの処理を束縛するモジュールを作り、共通のモジュールとともに登録する
@@ -259,3 +259,5 @@
 - 5.6(5.7への申し送り): `EmailTemplate.Body`は設計の`ComponentType<{ input }>`ではなくメソッドの記法`Body(props: { readonly input: TInput }): ReactNode`(引数の反変で`EmailTemplate<unknown>[]`へ代入できないため)。`<template.Body input={…} />`で描画できる。`EMAIL_TEMPLATES`は空なので、5.7で疎通確認のテンプレートを登録し、`createEmailTemplateRegistry(EMAIL_TEMPLATES, EMAIL_KINDS)`が例外を投げないことのテストを加える(5.7より前に6.1を結線すると壊れる)。集約は名前に加えて種別の定義が同じオブジェクトであることも検査する。JSXで`{変数}文字列`と分けて書くとHTMLに`<!-- -->`が入るため、文言はテンプレートリテラルで1つのテキストにする。
 - 5.6(文言の仮置き): 配信停止の区画の文言「この種類の通知メールの配信停止」と、見出し・ラベル無しで3つの値を1行ずつ並べる送信者情報は、設計・文言規則に定めが無いため仮置き(開発者の確認待ち)。配信停止の区画はリンク1つだけで、notificationsのFR-NOTIF-013(集約したメールで2種類の配信停止リンク)には対応できない(notificationsの実装時の見直しの対象)。
 - 5.7(6.1への申し送り): `ReactEmailRenderer`はコンストラクタで`EmailTemplateRegistry`を受け取るクラスで`@injectable`を持たず、テンプレートの集約のDI識別子も無い。`.to(ReactEmailRenderer)`では解決できないため、`toDynamicValue(() => new ReactEmailRenderer(createEmailTemplateRegistry(EMAIL_TEMPLATES, EMAIL_KINDS)))`で束縛する。描画の失敗の`EmailRenderError`はメッセージが種別の名前だけで元の例外を`cause`に残すが、`SendEmailHandler`は`cause`をログ・Sentryへ出さない。疎通確認の本文の文言(「メール送信の確認のために送信したメールです。」「受付日時は…です。」「このメールへの返信は不要です。」)は仮置き(開発者の確認待ち)。20件の描画の所要時間はVitestの`annotate`で記録する(`--reporter=verbose`で表示)。
+- 6.1(6.2への申し送り): eventのメールのモジュールは`composition/email-module.ts`の`EVENT_EMAIL_MODULE`で、経路はまだ持たない(6.2で疎通確認の経路を足す)。`ReactEmailRenderer`は起動時に作る定数を`toConstantValue`で束縛した(種別とテンプレートの対応の誤りを起動時に検出するため。5.7の申し送りとの相違)。送信プロバイダには処理単位ごとにグローバルの`fetch`を渡し、テストは`vi.spyOn(globalThis, 'fetch')`で受ける。eventのコンテナで`EMAIL_TYPES.EmailSender`が解決できることは6.2の経路のテストで確かめる。
+- 6.1: eventのWorkers統合テストでD1を使うため、apiの`readNestedD1Migrations`を`config/vitest/read-nested-d1-migrations.ts`へ移して両アプリで共有した(`config/vitest`の規則は`node:`の組み込みを許す形に緩めた)。マイグレーションは`setupFiles`で適用すると既存の`index.worker.test.ts`の`vi.mock`が効かなくなるため、D1を使うテストファイルの`beforeAll`で適用する。backend-platformのdesign.md(241〜242行・1866行)は移す前のパスを指したまま。eventの`wrangler deploy --dry-run`によるバンドルの確認は権限で拒否されたため、開発者の手動実行待ち。

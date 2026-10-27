@@ -1,6 +1,9 @@
+import { join } from 'node:path';
+
 import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
 import { configDefaults, defineConfig } from 'vitest/config';
 
+import { readNestedD1Migrations } from '../../config/vitest/read-nested-d1-migrations.ts';
 import { workerTestPreset } from '../../config/vitest/worker.ts';
 
 const TEST_HASH_PEPPER = 'test-hash-pepper-for-workers-integration-tests';
@@ -14,7 +17,7 @@ const TEST_EMAIL_EVENTS_QUEUE_NAME = 'genai-example-2-email-events-test';
 
 export default defineConfig({
   plugins: [
-    cloudflareTest({
+    cloudflareTest(async () => ({
       wrangler: { configPath: './wrangler.jsonc' },
       miniflare: {
         bindings: {
@@ -22,9 +25,12 @@ export default defineConfig({
           MAILPIT_API_URL: TEST_MAILPIT_API_URL,
           EMAIL_FROM_ADDRESS: TEST_EMAIL_FROM_ADDRESS,
           EMAIL_EVENTS_QUEUE_NAME: TEST_EMAIL_EVENTS_QUEUE_NAME,
+          TEST_MIGRATIONS: await readNestedD1Migrations(
+            join(import.meta.dirname, 'db', 'migrations'),
+          ),
         },
       },
-    }),
+    })),
   ],
   test: {
     ...workerTestPreset,

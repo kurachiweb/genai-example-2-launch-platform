@@ -1,7 +1,12 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { D1Migration } from '@cloudflare/vitest-pool-workers';
+// @cloudflare/vitest-pool-workersのD1Migrationと同じ形。ルートはこのパッケージを依存に持たないため、型を読み込まずに定義する。
+// Miniflareのバインディングの値の型(JSON)へ代入できるよう、暗黙の添字シグネチャを持つ型エイリアスにする
+export type D1Migration = {
+  readonly name: string;
+  readonly queries: string[];
+};
 
 const MIGRATION_FILE_NAME = 'migration.sql';
 

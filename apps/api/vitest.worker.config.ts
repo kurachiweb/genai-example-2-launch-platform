@@ -4,7 +4,7 @@ import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
 import { defineConfig } from 'vitest/config';
 
 import { workerTestPreset } from '../../config/vitest/worker.ts';
-import { readNestedD1Migrations } from './test/support/read-nested-d1-migrations.ts';
+import { readNestedD1Migrations } from '../../config/vitest/read-nested-d1-migrations.ts';
 
 // Cloudflare Turnstileが公開している、常に成功を返すテスト用のシークレット
 const TURNSTILE_ALWAYS_PASSES_SECRET_KEY =

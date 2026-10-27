@@ -204,18 +204,20 @@ describe('config/vitest配下のモジュール', () => {
   test('プリセットと共通定義のモジュールがある', () => {
     expect(modulePaths.map((path) => path.split(sep).at(-1))).toEqual([
       'browser.ts',
+      'read-nested-d1-migrations.ts',
       'test-kind-preset.ts',
       'worker.ts',
     ]);
   });
 
+  // 組み込みモジュールはnode_modulesから解決されず、どのアプリから読み込んでも同じ実行環境のものが使われる
   test.each(modulePaths)(
-    '%sはnpmパッケージを値として参照せず、config配下のモジュールだけを値として参照する',
+    '%sはnpmパッケージを値として参照せず、組み込みモジュールとconfig配下のモジュールだけを値として参照する',
     (modulePath) => {
       const source = readFileSync(modulePath, 'utf8');
-      const specifiers = valueModuleReferencesOf(source).map(
-        (reference) => /['"]([^'"]+)['"]/.exec(reference)?.[1],
-      );
+      const specifiers = valueModuleReferencesOf(source)
+        .map((reference) => /['"]([^'"]+)['"]/.exec(reference)?.[1])
+        .filter((specifier) => !specifier?.startsWith('node:'));
 
       for (const specifier of specifiers) {
         expect(specifier).toMatch(/^\.\.?\//);
