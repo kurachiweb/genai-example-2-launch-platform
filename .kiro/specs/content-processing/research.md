@@ -353,6 +353,10 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 - `Intl.Segmenter`の書記素の境界は、ブラウザとWorkersのICUの版の差で、新しい絵文字の並びだけ異なり得る — 代表的な絵文字・結合文字・国旗で両方の結果が一致することをテストし、差は技術ドキュメントに記す。
 - Crepeの版の更新で、組み込んだ機能のDOMや入力規則の名前が変わる — 版を完全に固定し、更新時はブラウザテスト(見出しレベル1・画像・Tabキー・アクセシビリティ)とバンドルの分離の検査を必ず実行する。
 
+## email-deliveryの実装の反映(2026-10-27、開発者の決定)
+
+- テーブル定義の配置の規約(技術ドキュメント`db/003`の「テーブル定義の配置」)が、ドメインごとのディレクトリに1テーブル1ファイルで置く`schema/<ドメイン>/<テーブル>.ts`になっている(email-deliveryの1.2で、全下流specの設計に合わせて改めた)。開発者の決定で、design.mdのOut of Boundaryの索引文書のテーブルの置き場所を`apps/db/schema/<ドメイン>.ts`から`apps/db/schema/<ドメイン>/<テーブル>.ts`に改めた。本specが置く共通の列の部品`schema/_shared/search-documents.ts`は規約どおりで変えていない。要件・タスクは変えていない。
+
 ## References
 
 - [FTS5 External Content Tables](https://sqlite.org/fts5.html#external_content_tables) — 外部コンテンツとトリガーの同期、`rebuild`

@@ -275,7 +275,7 @@ apps/
 │   │   ├── followed-user-matches-template.ts · followed-user-matches-email-body.tsx
 │   │   ├── followed-user-award-template.ts · followed-user-award-email-body.tsx
 │   │   ├── result-supplement-block.tsx                         # 結果の追記の段落
-│   │   └── notice-footer-links.tsx                             # 通知設定と追加の配信停止のリンク
+│   │   └── notice-settings-link.tsx                            # 通知設定のリンク
 │   ├── presentation/notifications/one-click-unsubscribe-route.ts   # POST・GET /unsubscribe
 │   └── composition/
 │       ├── notifications-module.ts
@@ -496,11 +496,11 @@ sequenceDiagram
 | 7.3, 7.4                          | 送信基盤と抑止                     | GroupDispatcher                                                                                            | `EmailSender.send`・`SuppressionList.findSuppressed`                                 | 夜の送信枠                     |
 | 7.5, 7.6                          | 送信者情報の表示と未設定           | D1SenderInfoProvider、GroupDispatcher、SentryNotificationIncidentReporter                                  | `SenderInfoProvider`・`sender_info_missing`                                          | —                              |
 | 7.7, 7.8, 7.9                     | 表示できないプロダクト             | NoticeEmail、MorningCollector、GroupDispatcher                                                             | `own_product_unavailable`・「非公開のプロダクト」                                    | —                              |
-| 7.10, 7.11                        | 本文構成とリンク                   | NotificationTemplates、NoticeEmail                                                                         | `EmailTemplate`                                                                      | —                              |
+| 7.10, 7.11                        | 本文構成とリンク                   | NotificationTemplates、NoticeSettingsLink、NoticeEmail                                                     | `EmailTemplate`                                                                      | —                              |
 | 7.12                              | 重複の防止                         | NotificationSchema、D1NotificationNoticeStore、D1NotificationSlotStore                                     | `dedupe_key`・リース                                                                 | 送信枠の状態                   |
 | 8.1, 8.6                          | ヘッダー                           | UnsubscribeTokenRules、NoticeEmail                                                                         | `listUnsubscribeHeaders`                                                             | —                              |
 | 8.2, 8.3, 8.4, 8.5, 8.7           | ワンクリックの受け口               | OneClickUnsubscribeRoute、OneClickUnsubscribe、D1UnsubscribeTokenService                                   | `POST`・`GET /unsubscribe`・`excludePath`                                            | 配信停止                       |
-| 9.1                               | 本文のリンク                       | NotificationTemplates、NoticeFooterLinks、NoticeEmail                                                      | `unsubscribePageUrl`                                                                 | —                              |
+| 9.1                               | 本文のリンク                       | NotificationTemplates、NoticeCopy、NoticeEmail                                                             | `unsubscribePageUrl`・`unsubscribeLinks`・`COMBINED_UNSUBSCRIBE_LABELS`              | —                              |
 | 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8 | 配信停止ページ                     | UnsubscribeRoute、UnsubscribeConfirmation、UnsubscribeService                                              | `notificationUnsubscribeLink`・`confirmNotificationUnsubscribe`・`readFragmentToken` | 配信停止                       |
 | 10.1, 10.2, 10.3, 10.4            | トークンの発行と照合               | D1UnsubscribeTokenService、UnsubscribeTokenRules、NotificationSchema                                       | `tokensFor`・`resolve`                                                               | 配信停止                       |
 | 10.5                              | 退会での無効化                     | AccountWithdrawalSyncHandler                                                                               | `USER_LIFECYCLE_SYNC_HANDLERS`                                                       | —                              |
@@ -541,7 +541,7 @@ sequenceDiagram
 | FlushSlotHandler・ExpandEventHandler・OneClickUnsubscribe・AccountPurgeHandler                                                                                                                                                                                                        | event/application                 | 送り出しの段・受賞の展開・停止・物理削除   | 6.1, 6.3, 8.2, 8.3, 8.7, 12.8, 13.3, 14.2                                       | core/notifications (P0)                              | Batch, Event   |
 | EveningCollector・MorningCollector・GroupDispatcher・RegisteredSupplementSource・D1SenderInfoProvider                                                                                                                                                                                 | event/infrastructure              | 収集・送信・追記・送信者情報               | 3.1, 4.1, 4.6, 5.1, 5.5, 7.1〜7.9, 11.8, 12.6, 14.4, 14.5                       | MatchDirectory (P0)、EmailSender (P0)                | Batch, Service |
 | OneClickUnsubscribeRoute                                                                                                                                                                                                                                                              | event/presentation                | `POST`・`GET /unsubscribe`                 | 8.2〜8.5, 8.7                                                                   | Hono (P0)                                            | API            |
-| NotificationTemplates(MatchPreview・MatchResult・FollowedUserMatches・FollowedUserAward・ResultSupplementBlock・NoticeFooterLinks)・ResultNoticeSupplements                                                                                                                           | event/infrastructure・composition | 4つのテンプレートと追記の登録口            | 3.4, 4.3, 4.4, 4.6, 5.2〜5.4, 6.2, 7.10, 7.11, 9.1, 12.7                        | email-deliveryのテンプレート基盤 (P0)                | Service        |
+| NotificationTemplates(MatchPreview・MatchResult・FollowedUserMatches・FollowedUserAward・ResultSupplementBlock・NoticeSettingsLink)・ResultNoticeSupplements                                                                                                                          | event/infrastructure・composition | 4つのテンプレートと追記の登録口            | 3.4, 4.3, 4.4, 4.6, 5.2〜5.4, 6.2, 7.10, 7.11, 9.1, 12.7                        | email-deliveryのテンプレート基盤 (P0)                | Service        |
 | NotificationSettingsRoute・NotificationSettingsPanel・NotificationTopicSwitch・DeliveryStatusNotice・NotificationCopy                                                                                                                                                                 | client                            | 通知設定ページ                             | 1.3〜1.9, 2.1〜2.4                                                              | SETTINGS_NAV_ITEMS (P0)                              | State          |
 | UnsubscribeRoute・UnsubscribeConfirmation                                                                                                                                                                                                                                             | client                            | 配信停止ページ                             | 9.2〜9.8                                                                        | readFragmentToken (P0)                               | State          |
 | SenderInfoSection・SenderInfoForm                                                                                                                                                                                                                                                     | admin                             | 送信者情報の区画                           | 11.1〜11.4, 11.7                                                                | ADMIN_SETTINGS_SECTIONS (P0)、RoleGate (P0)          | State          |
@@ -886,6 +886,10 @@ export declare function awardPeriodLabel(
   period: string,
 ): string; // '2026年第37週(9/7〜9/13)'・'2026年'
 export declare const UNAVAILABLE_PRODUCT_NAME: '非公開のプロダクト';
+export declare const COMBINED_UNSUBSCRIBE_LABELS: {
+  readonly match_result: '勝敗結果の通知を配信停止';
+  readonly match_preview: 'マッチ開始予告の通知を配信停止';
+}; // 統合したメールの配信停止の区画の2つのリンクの文言(9.1・仮4)
 export declare function suppressionReasonOf(
   reason: SuppressionReason,
 ): 'bounce' | 'complaint' | 'rejected'; // hard_bounce→bounce(データエクスポートと画面で共通)
@@ -966,7 +970,7 @@ export declare function buildNoticeEmail(
 - 結果: `resultOutcomeOf`が`null`、または自分のプロダクトが無ければ`own_product_unavailable`(7.7)。相手のプロダクトが無ければ`UNAVAILABLE_PRODUCT_NAME`(7.9)。追記のうち行動のボタンを持つ最初のものを主要な行動にし、無ければ「自分のプロダクトを見る」(`<client>/my/products`)(4.6)。
 - 開催通知: プロダクトまたは投稿者が表示できない項目を除き(7.8)、0件になれば`skip`。
 - 受賞: プロダクトまたは投稿者が表示できなければ`skip`。ボタンは`<client>/p/<ハンドル>`。
-- 全種別に`settingsUrl`(`<client>/settings/notifications`、7.11)と、主たる種別のトークンの`unsubscribeUrl`(9.1)・ヘッダー(8.1)を入れる。統合したメールのヘッダーは`match_result`のトークン(8.6・仮4)で、本文に`match_preview`の配信停止のリンクも入れる(9.1)。
+- 全種別に`settingsUrl`(`<client>/settings/notifications`、7.11)と、主たる種別のトークンの`unsubscribeUrl`(9.1)・ヘッダー(8.1)を入れる。統合したメールのヘッダーは`match_result`のトークン(8.6・仮4)で、`next.unsubscribeUrl`に`match_preview`のトークンの配信停止のURLも入れる(9.1)。どちらのURLも、テンプレートの`unsubscribeLinks`がemail-deliveryの配信停止の区画へ渡す(「NotificationTemplates・ResultNoticeSupplements」)。
 
 #### ResultNoticeSupplementContract
 
@@ -1075,7 +1079,7 @@ export declare const FOLLOWED_USER_AWARD_EMAIL: EmailKind<
 >;
 export interface NoticeLinks {
   readonly settingsUrl: string;
-  readonly unsubscribeUrl: string;
+  readonly unsubscribeUrl: string; // 主たる種別の配信停止。テンプレートのunsubscribeLinksが区画へ渡す(9.1)
 }
 export interface MatchPreviewEmailInput extends NoticeLinks {
   readonly nickname: string;
@@ -1103,7 +1107,7 @@ export interface MatchResultEmailInput extends NoticeLinks {
     readonly matchLabel: string;
     readonly startsAt: string;
     readonly endsAt: string;
-    readonly unsubscribeUrl: string; // match_previewの配信停止(9.1)
+    readonly unsubscribeUrl: string; // match_previewの配信停止。unsubscribeLinksの2つ目のリンク(9.1)
   } | null;
 }
 export interface FollowedUserMatchesEmailInput extends NoticeLinks {
@@ -1642,7 +1646,7 @@ export interface SupplementSource {
 - `MorningCollector.step`: System Flows「朝の送信枠」。カーソルは`{ owners: { ownerUserId, items: { matchId, productId }[] }[], ownerIndex, followAfter }`のJSONで、2,000件のフォロワーごとに`done: false`を返す(5.1・5.5)。
 - `GroupDispatcher.dispatchNext`: (1)`nextPendingGroups(slotKey, 20)`。(2)`enabledTopicsOf`で確かめ直し、`planGroupEmail`(7.1・7.2)。(3)`SenderInfoStore.get()`が未設定なら全てを`sender_info_missing`にし、`AlertThrottle.tryAcquire('notifications-sender-info-missing', now, 3600)`が真なら報告(7.6・仮3)。(4)宛先ごとに`UserContactDirectory.findContact`(無い→`recipient_unavailable`、未確認→`email_not_verified`)、`SuppressionList.findSuppressed`(→`suppressed`)(7.3・7.4・14.5)。(5)`MatchDirectory.findMatches`・`ProductDirectory.findSummaries(ids, 'visible')`・`UserProfileDirectory.findSummaries(ids, 'visible')`を1回ずつ、結果の通知ごとに`SupplementSource`、主たる種別のトークンを`tokensFor`で1回。(6)`buildNoticeEmail`→`EmailSender.send({ kind, to, input, headers })`(`EmailSendError`は`send_rejected`で報告)→`settle`(送った通知は`sent`と送信要求の識別子)。
 - `RegisteredSupplementSource`: `RESULT_NOTICE_SUPPLEMENTS`の`providersFor(kind)`を`order`順に処理単位のコンテナから解決して呼び、`resultNoticeSupplementSchema`に合わない追記は捨てて`warn`のログ(提供元の名前だけ)。3件まで(4.6)。
-- `D1SenderInfoProvider`: email-deliveryの`SenderInfoProvider`の実装で、`SenderInfoStore.get()`の`SenderInfo`を返す。eventの`EMAIL_SENDER_INFO_PROVIDER`をこのクラスへ書き換える(7.5・11.8)。
+- `D1SenderInfoProvider`: email-deliveryの`SenderInfoProvider`の実装で、`SenderInfoStore.get()`の`SenderInfo`を返す。eventの`EMAIL_SENDER_INFO_PROVIDER`をこのクラスへ書き換える(7.5・11.8)。`EMAIL_SENDER_INFO_PROVIDER`は`Newable<SenderInfoProvider>`で`.to()`で束縛されるため、ファクトリではなく、`@injectable()`とコンストラクタ引数の`@inject(NOTIFICATIONS_PLATFORM_TYPES.SenderInfoStore)`を持つクラスにする。
 
 #### OneClickUnsubscribeRoute
 
@@ -1657,7 +1661,8 @@ export interface SupplementSource {
 
 #### NotificationTemplates・ResultNoticeSupplements
 
-- 4つのテンプレートはemail-deliveryの`defineEmailTemplate`で定義し、`subject`は`NoticeCopy`、`greeting`はニックネーム、`action`は主要な行動、`unsubscribeUrl`は入力の`unsubscribeUrl`(7.10・9.1)。本文の部品は「Supporting References」の文。`ResultSupplementBlock`は追記を見出しと段落で描き、`emphasized`なら太字にする(4.6)。`NoticeFooterLinks`は通知設定のリンクと、統合したメールの`next.unsubscribeUrl`(予告の配信停止)を描く(7.11・9.1)。日時は`formatUtcDateTime`(7.10)。
+- 4つのテンプレートはemail-deliveryの`defineEmailTemplate`で定義し、`subject`は`NoticeCopy`、`greeting`はニックネーム、`action`は主要な行動、`unsubscribeLinks`は配信停止の区画のリンク(7.10・9.1)。本文の部品は「Supporting References」の文。`ResultSupplementBlock`は追記を見出しと段落で描き、`emphasized`なら太字にする(4.6)。`NoticeSettingsLink`は通知設定のリンクを本文の末尾に描く(7.11)。日時は`formatUtcDateTime`(7.10)。
+- `unsubscribeLinks`(9.1・仮4): 統合したメール(`match_result`で`next`がnullでない)は`[{ url: input.unsubscribeUrl, label: COMBINED_UNSUBSCRIBE_LABELS.match_result }, { url: input.next.unsubscribeUrl, label: COMBINED_UNSUBSCRIBE_LABELS.match_preview }]`の2つを、それ以外は`[{ url: input.unsubscribeUrl }]`の1つを返す。1つのときはラベルを省き、email-deliveryの既定の文言「この通知を配信停止」で表示する。email-deliveryは、リンクが2つ以上のときにラベルを必須とし(型と描画時の両方で検出)、配信停止の区画を通知メールの種別にだけ、宛名・本文・行動ボタン・配信停止・送信者情報の順で置く。2つのラベルは、既定の文言の「この」を種別の名称に置き換えた「<種別の名称>の通知を配信停止」の形にし、種別の名称は通知設定ページと同じ「勝敗結果」「マッチ開始予告」を使う。
 - `RESULT_NOTICE_SUPPLEMENTS`(`composition/result-notice-supplements.ts`、`createResultNoticeSupplementRegistry`で検証)は初版で空。tournament-week・tournament-yearが追記する(12.7)。
 
 ### client
@@ -1776,7 +1781,7 @@ erDiagram
 - Unit Tests(Bun、`*.unit.test.ts`):
   - `notification-slots`: 夜の枠の期日(業務日付の23:45=UTCの翌日7:45)と`settle_until`(23:55)、朝の枠(0:00=UTCの8:00)、`previewSlotFor`が前日の夜の枠、`resultSlotFor`が当日、キーの往復と形式違反(3.3・13.1・13.2・15.2)。
   - `notice-plan`: `matchNoticeDrafts`(予告は`scheduled`で側が2つだけ・不戦勝の除外(仮6)・結果は確定だけ・紐付けの無い側の除外)、`noticeDedupeKey`・`groupKeyFor`、`planGroupEmail`(統合・片方だけ受信(4.5)・受信しない種別の`topic_disabled`・送信の対象者でない・31件目以降の`omittedCount`)(3.5・4.4・4.5・5.2・5.6・7.2)。
-  - `notice-copy`: 件名の全ての形(勝利・敗北・両者敗北・不戦勝・統合・予告・開催の1件と複数・受賞)、`resultOutcomeOf`の写像(`both_forfeited`はnull)、`matchLabel`・`roundName`、`awardPeriodLabel`(ISO週の年末年始の境界)(3.4・4.3・5.2・5.3・6.2)。
+  - `notice-copy`: 件名の全ての形(勝利・敗北・両者敗北・不戦勝・統合・予告・開催の1件と複数・受賞)、`resultOutcomeOf`の写像(`both_forfeited`はnull)、`matchLabel`・`roundName`、`awardPeriodLabel`(ISO週の年末年始の境界)、`COMBINED_UNSUBSCRIBE_LABELS`の文言(3.4・4.3・5.2・5.3・6.2・9.1)。
   - `notice-email`: 古い予告の除外と統合からの予告の切り離し、自分のプロダクトの非公開化(仮7)、相手の「非公開のプロダクト」、開催通知の表示できない項目の除外と0件のskip、追記の行動のボタンの優先、ヘッダーがhttps:のときだけ・統合したメールのヘッダーが`match_result`のトークン(仮4)・本文の2つのリンク(3.6・4.6・7.7〜7.9・8.1・8.6・9.1)。
   - `result-notice-supplements`・`unsubscribe-token`・`notification-event-contract`: 登録の名前と順の重複の例外、追記の形式の検証、トークンの形式とURLとヘッダー、通知イベントの検証と重複のキー(8.1・12.4・12.5・12.7)。
   - common-lib: 通知種別の値、送信者情報の長さ(200書記素と201書記素・空白だけ)(11.4)。
@@ -1785,7 +1790,7 @@ erDiagram
   - スキーマ: CHECK・一意索引(同じ`dedupe_key`の通知が1件・同じ組の種が1件・`token_hash`の一意)、`users`への外部キー(1.2・7.12・10.1)。
   - 共有部品: 受信設定の初期値と`upsert`、`eligibleRecipients`・`enabledTopicsOf`が停止中・未確認・退会済みを除き91件以上を分けて読むこと、トークンの導出が同じ組で同じ値・照合・別の用途の値が一致しないこと・種の削除で無効、送信枠のリースの排他と段の更新、通知の記録の重複の無視と`lateSlotKeys`、発行の検証(未確定の結果・開始済みの予告・不明なマッチ・51件)と重複・受賞の展開の500件ずつとカーソル、データエクスポートの項目と`bounce`の写像(1.2・3.2・3.3・6.1・7.1・7.12・10.1〜10.5・12.1〜12.5・12.8・14.3)。
   - api: 退会の同期の処理(identity-authの退会の確定と同じ一括の書き込みで種・受信設定が消え`pending`の通知が`recipient_withdrawn`になり、競合で本specの文も取り消される)、送信者情報の保存と監査ログが同じ一括の書き込みで、版の不一致で両方とも書かれないこと、保守の削除と期限切れ、スキーマモジュールの各操作の権限・エラーコード・`client`と`admin`以外の拒否・未設定の送信者情報・抑止の理由と期限(1.3〜1.7・2.1〜2.4・9.2〜9.5・10.5・11.2〜11.7・13.4・13.5・14.1)。
-  - event: 夜の収集がmatch-engineの予選(当日の確定・翌日の予定)から受信する設定の投稿者だけの通知を作り再実行で増えないこと、朝の収集がマッチ中のマッチの投稿者のフォロワーを2,000件で区切ってカーソルで続け、表示できないプロダクトを除くこと、送信がEmailSenderの偽物に統合・集約・抑止・未設定・古い予告を正しく渡し`settle`すること、`D1SenderInfoProvider`の値、ワンクリックの経路(200・400・404・繰り返し・GETの303と`Location`・IP制限の除外・`Cache-Control`)、テンプレートの件名・本文・UTC表記・リンク・追記・統合の2つのリンク・エスケープ(4種別と`EMAIL_KINDS`・`EMAIL_TEMPLATES`の1対1)、`email.send`の封筒の`headers`(3.1・3.4・4.1・4.3・4.4・4.6・5.1〜5.6・6.2・7.3〜7.11・8.1〜8.5・8.7・9.1・11.8・12.6)。
+  - event: 夜の収集がmatch-engineの予選(当日の確定・翌日の予定)から受信する設定の投稿者だけの通知を作り再実行で増えないこと、朝の収集がマッチ中のマッチの投稿者のフォロワーを2,000件で区切ってカーソルで続け、表示できないプロダクトを除くこと、送信がEmailSenderの偽物に統合・集約・抑止・未設定・古い予告を正しく渡し`settle`すること、`D1SenderInfoProvider`の値、ワンクリックの経路(200・400・404・繰り返し・GETの303と`Location`・IP制限の除外・`Cache-Control`)、テンプレートの件名・本文・UTC表記・リンク・追記・配信停止の区画(統合したメールの2つのラベル付きのリンクと、1つのときの既定の文言)・エスケープ(4種別と`EMAIL_KINDS`・`EMAIL_TEMPLATES`の1対1)、`email.send`の封筒の`headers`(3.1・3.4・4.1・4.3・4.4・4.6・5.1〜5.6・6.2・7.3〜7.11・8.1〜8.5・8.7・9.1・11.8・12.6)。
   - 送り出しの入口(`D1EveningDispatchGate`、ローカルD1): 前提が2つで1つ目の呼び出しが`waiting`と残りの名前・2つ目が`dispatch-requested`で送り出しのメッセージが1通だけ・同じ呼び出しの繰り返しと期限の後の呼び出しが`already-requested`・登録の無い名前の`unknown-participant`・本specのジョブより先に呼ばれた場合に枠と前提の一覧と期限の送り出しを作ること・通知の記録が先に作った夜の枠に`open`が一覧を写して直ちには依頼しないこと・前提が空のときに`open`が直ちに依頼すること・2つの呼び出しを同時に行っても依頼が1回であること(13.1・13.7〜13.9・15.2)。
 - E2E/UI Tests:
   - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `NotificationTopicSwitch`(送信中・成功の通知・失敗で元に戻る・無効)、`NotificationSettingsPanel`(4種別の順と初期値の説明)、`DeliveryStatusNotice`(3つの理由・期限・未確認・停止中・照会の失敗)、`UnsubscribeConfirmation`(確認・成功・既に停止・無効・失敗の再試行・個人情報を出さない)、`SenderInfoSection`・`SenderInfoForm`(未設定の警告・ロールによる参照だけ・項目ごとの検証・競合の案内)(1.3〜1.7・2.1〜2.4・9.2〜9.6・9.8・11.1〜11.4・11.7)。
@@ -1835,17 +1840,17 @@ erDiagram
 
 ### 通知メールの文(文言規則に追加)
 
-| 種別・場面          | 件名                                                             | 本文の要点                                                                                                                                                      |
-| ------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 開始予告            | まもなくキックオフ: Pitch Notes vs Tactics Board(既存)           | 「明日、<自分>が<相手>と対戦します(<マッチの表記>)。」「キックオフ: 9月15日08:00(UTC)」「フルタイム: 9月16日07:40(UTC)」、ボタン「トップページを見る」          |
-| 勝敗結果(勝利)      | フルタイム: Pitch Notesが12対9でTactics Boardに勝利(既存)        | 「<自分>は12対9で<相手>に勝利しました(<マッチの表記>)。」。最終Upvote時間なら「同数でしたが、最終Upvote時刻が早いため勝利しました。」                           |
-| 勝敗結果(敗北)      | フルタイム: Pitch Notesは9対12でTactics Boardに敗れました        | 「<自分>は9対12で<相手>に敗れました。」。最終Upvote時間なら「同数でしたが、最終Upvote時刻が遅かったため敗れました。」                                           |
-| 勝敗結果(両者敗北)  | フルタイム: Pitch NotesとTactics Boardは両者敗北(0対0)           | 「Upvoteが無かったため、両者敗北(0対0)となりました。」                                                                                                          |
-| 勝敗結果(不戦勝)    | フルタイム: Pitch Notesは不戦勝                                  | 「対戦相手がいないため不戦勝となりました。」(相手の退会等による勝利も同じ表記)                                                                                  |
-| 統合                | フルタイム: Pitch NotesがTactics Boardに勝利、明日は準決勝(既存) | 結果の文に続けて「明日は<ラウンド名>です。<相手>と対戦します。」とキックオフ・フルタイムの時刻。不戦勝の統合は「フルタイム: Pitch Notesは不戦勝、明日は準決勝」 |
-| 開催通知(1件・複数) | 既存の2つ                                                        | 項目ごとに「<プロダクト>(<投稿者>さん)— <マッチの表記> vs <相手>」、残りは「ほか<n>件」、ボタン「トップページで応援する」                                       |
-| 受賞結果            | Pitch NotesがProduct of the Weekを受賞(既存)                     | 「<投稿者>さんの<プロダクト>が<期間>のProduct of the Weekを受賞しました。」、ボタン「プロダクトを見る」                                                         |
-| 全種別の末尾        | —                                                                | 「通知設定を変更する」(通知設定ページ)、配信停止の区画「この種類の通知メールの配信を停止する」、統合したメールは「開始予告の配信を停止する」も、送信者情報      |
+| 種別・場面          | 件名                                                             | 本文の要点                                                                                                                                                                                                |
+| ------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 開始予告            | まもなくキックオフ: Pitch Notes vs Tactics Board(既存)           | 「明日、<自分>が<相手>と対戦します(<マッチの表記>)。」「キックオフ: 9月15日08:00(UTC)」「フルタイム: 9月16日07:40(UTC)」、ボタン「トップページを見る」                                                    |
+| 勝敗結果(勝利)      | フルタイム: Pitch Notesが12対9でTactics Boardに勝利(既存)        | 「<自分>は12対9で<相手>に勝利しました(<マッチの表記>)。」。最終Upvote時間なら「同数でしたが、最終Upvote時刻が早いため勝利しました。」                                                                     |
+| 勝敗結果(敗北)      | フルタイム: Pitch Notesは9対12でTactics Boardに敗れました        | 「<自分>は9対12で<相手>に敗れました。」。最終Upvote時間なら「同数でしたが、最終Upvote時刻が遅かったため敗れました。」                                                                                     |
+| 勝敗結果(両者敗北)  | フルタイム: Pitch NotesとTactics Boardは両者敗北(0対0)           | 「Upvoteが無かったため、両者敗北(0対0)となりました。」                                                                                                                                                    |
+| 勝敗結果(不戦勝)    | フルタイム: Pitch Notesは不戦勝                                  | 「対戦相手がいないため不戦勝となりました。」(相手の退会等による勝利も同じ表記)                                                                                                                            |
+| 統合                | フルタイム: Pitch NotesがTactics Boardに勝利、明日は準決勝(既存) | 結果の文に続けて「明日は<ラウンド名>です。<相手>と対戦します。」とキックオフ・フルタイムの時刻。不戦勝の統合は「フルタイム: Pitch Notesは不戦勝、明日は準決勝」                                           |
+| 開催通知(1件・複数) | 既存の2つ                                                        | 項目ごとに「<プロダクト>(<投稿者>さん)— <マッチの表記> vs <相手>」、残りは「ほか<n>件」、ボタン「トップページで応援する」                                                                                 |
+| 受賞結果            | Pitch NotesがProduct of the Weekを受賞(既存)                     | 「<投稿者>さんの<プロダクト>が<期間>のProduct of the Weekを受賞しました。」、ボタン「プロダクトを見る」                                                                                                   |
+| 全種別の末尾        | —                                                                | 「通知設定を変更する」(通知設定ページ)、配信停止の区画「この通知を配信停止」(email-deliveryの既定の文言)、統合したメールは「勝敗結果の通知を配信停止」「マッチ開始予告の通知を配信停止」の2つ、送信者情報 |
 
 ### 画面の文言(文言規則に追加)
 

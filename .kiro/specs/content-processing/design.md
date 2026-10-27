@@ -38,7 +38,7 @@
 
 ### Out of Boundary
 
-- 各ドメインの検索対象の登録(`backend-lib/workers/search/targets/<ドメイン>.ts`)・索引文書のテーブル(`apps/db/schema/<ドメイン>.ts`)・カスタムマイグレーション・検索の画面とクエリ・論理削除や非公開の元データの扱い(directory-discovery・help-center)。
+- 各ドメインの検索対象の登録(`backend-lib/workers/search/targets/<ドメイン>.ts`)・索引文書のテーブル(`apps/db/schema/<ドメイン>/<テーブル>.ts`)・カスタムマイグレーション・検索の画面とクエリ・論理削除や非公開の元データの扱い(directory-discovery・help-center)。
 - 各入力欄の上限値と必須の別・表示場所の`rel`・折りたたみの高さ・本文の識別子の選び方・マークダウンを保存するGraphQLの操作(各ドメインspec)。
 - ヘルプ記事の目次の画面(help-center)、検索語の50文字の上限(各ドメインspec)。
 - 共有ディレクトリの配置と配置確認の仕組みそのもの(dev-tooling。本specは定義への追記だけを行う)。

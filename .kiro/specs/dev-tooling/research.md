@@ -240,6 +240,12 @@
 
 - api-gatewayの承認後の改訂2(タスク6.4)で、一括検査の`check`の型生成の検査と型検査の間に、アプリだけを対象とする段階「GraphQLの生成物の検査」(`graphql:check`)が加わった(`scripts/tooling/run-all.ts`・`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`・`test-support/run-all-fixtures.ts`、スクリプト契約の文書`coding/001`)。開発者の決定で、design.mdの「`check`の段階」の一覧へ、backend-platformの`cf-typegen:check`と同じ書き方で追記した。`spec.json`の承認の状態は変えていない。
 
+## email-deliveryの実装の反映(2026-10-27、開発者の決定)
+
+- `config/vitest/*.ts`の値の読み込み: email-deliveryの6.1で、apiの`readNestedD1Migrations`をeventのWorkers統合テストと共有するため`config/vitest/read-nested-d1-migrations.ts`へ移した。ファイルを読むために`node:fs/promises`・`node:path`を値として読み込むため、`config/vitest/*.ts`の規則を「npmパッケージは型としてだけ参照し、値として読み込めるのは`node:`で始まる組み込みモジュールと`config/`配下のモジュールだけ」に緩めた(`config/vitest/test-kind-preset.unit.test.ts`が検査する)。組み込みモジュールは`node_modules`から解決されず、どのアプリから読み込んでも同じ実行環境のものが使われるため、「アプリから読み込まれたときにルート側のパッケージを実行時に解決しない」という規則の理由は保たれる。`eslint.config.base.ts`・`prettier.config.ts`の規則は変えていない。
+- 利用側アプリの単体テストの設定: email-deliveryの8.2で、eventの単体テストが読み込む`lib/core`のファイルがBunのカバレッジの分母に入り閾値を割った。Bun 1.4.4では`--path-ignore-patterns`がテストファイルの選択にだけ効き、分母から外せるのはbunfigの`coveragePathIgnorePatterns`だけである。開発者の決定で、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に`lib/**`・`db/**`を加えた`apps/event/bunfig.unit.toml`を置き、eventの`test:unit`が`--config`で指す。`coveragePathIgnorePatterns`以外がルートと同じであることと配置先の除外は、`scripts/tooling/check-test-names.unit.test.ts`が検査する(client・adminも単体テストを持つと同じ設定が要る)。要件6.5(アプリ内でも共通のテスト設定)は、ルートの設定の書き写しとその同期の検査で満たす。
+- 変えた箇所: design.mdのAllowed Dependencies・Dependency Direction・File Structure Plan(`config/vitest/read-nested-d1-migrations.ts`)・VitestPresets・AppScriptContract(`test:unit`の行と、検査担当でない利用側アプリの外し方)・追跡表の6.5・Testing Strategyの`check-test-names.unit.test.ts`。要件・タスクと`spec.json`の承認の状態は変えていない。本書の「Design Decisions」の「簡素化」の「Vitestプリセットは値のimportを持たない定数にし」は、当時の決定の記録として残した。
+
 ## References
 
 - [TypeScript 6.0 Release Notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html) — 既定値の変更と非推奨オプション

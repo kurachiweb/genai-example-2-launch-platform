@@ -52,7 +52,7 @@
 - 既存の開発コンテナ(Dockerfile・compose.yaml・`scripts/setup-chromium.sh`)と、そこに導入済みのBun 1.4.2・Betterleaks 1.9.0・`CHROMIUM_PATH`。
 - npmパッケージ: 技術スタック表に挙げた版に限る。
 - 依存の方向(後述): `config/` → `scripts/tooling/` → 入口(`package.json`のスクリプト・`lint-staged.config.ts`・`.husky/*`・`playwright.config.ts`)。逆方向のimportは禁止する。
-- 基底設定(`eslint.config.base.ts`・`config/vitest/*.ts`)は、パッケージを型としてのみimportし、値のimportを持たない。
+- 基底設定(`eslint.config.base.ts`・`config/vitest/*.ts`)は、パッケージを型としてのみimportし、値のimportを持たない。ただし`config/vitest/*.ts`は、`node:`で始まる組み込みモジュールと`config/`配下のモジュールを値として読み込める(組み込みモジュールは`node_modules`から解決されず、どのアプリから読み込んでも同じ実行環境のものが使われるため。email-deliveryの実装の反映)。
 
 ### Revalidation Triggers
 
@@ -125,7 +125,7 @@ graph TB
 
 ### Dependency Direction
 
-`config/`(データ定義) → `scripts/tooling/`(ロジック) → 入口(`package.json`のスクリプト・`lint-staged.config.ts`・`.husky/*`・`playwright.config.ts`)の順にのみimportする。`config/`は`scripts/`をimportしない。`eslint.config.base.ts`・`config/vitest/*.ts`・`prettier.config.ts`は、npmパッケージを`import type`でのみ参照する。これはアプリから読み込まれたときに、ルート側のパッケージを実行時に解決しないためである。
+`config/`(データ定義) → `scripts/tooling/`(ロジック) → 入口(`package.json`のスクリプト・`lint-staged.config.ts`・`.husky/*`・`playwright.config.ts`)の順にのみimportする。`config/`は`scripts/`をimportしない。`eslint.config.base.ts`・`config/vitest/*.ts`・`prettier.config.ts`は、npmパッケージを`import type`でのみ参照する。これはアプリから読み込まれたときに、ルート側のパッケージを実行時に解決しないためである。`node:`で始まる組み込みモジュールは`node_modules`から解決されないため、`config/vitest/*.ts`は値として読み込める。
 
 ### Technology Stack
 
@@ -174,7 +174,8 @@ graph TB
 │   └── vitest/
 │       ├── test-kind-preset.ts     # 種別ごとのプリセットを組み立てる共通処理と契約型(CoveragePreset・TestKindPreset)
 │       ├── browser.ts              # ブラウザテストのプリセット(V8カバレッジ・共有Chromium・失敗時のスクリーンショットと基準画像の置き場所)
-│       └── worker.ts               # Workers統合テストのプリセット(Istanbulカバレッジ)
+│       ├── worker.ts               # Workers統合テストのプリセット(Istanbulカバレッジ)
+│       └── read-nested-d1-migrations.ts  # D1のマイグレーションの読み込み(api・eventのWorkers統合テストが共有。email-deliveryの実装の反映)
 ├── scripts/tooling/
 │   ├── install-git-hooks.ts        # prepare: CI・HUSKY=0・非Git環境ではフック導入を飛ばす
 │   ├── staged-tasks.ts             # ステージ済みファイルを所有者ごとに振り分け、共有ディレクトリを配置先パスへ読み替え
@@ -324,7 +325,7 @@ graph TB
 | 6.2         | ブラウザテストの対象                       | VitestPresets                                                          | `browserTestPreset.include`                                                                                              | —                |
 | 6.3         | Workers統合テストの対象                    | VitestPresets                                                          | `workerTestPreset.include`                                                                                               | —                |
 | 6.4         | E2Eの対象                                  | E2EConfig・TestPatterns                                                | `TEST_FILE_PATTERNS.e2e`                                                                                                 | —                |
-| 6.5         | アプリ内でも共通テスト設定                 | BunTestConfig・AppScriptContract                                       | `--config=../../bunfig.toml`                                                                                             | —                |
+| 6.5         | アプリ内でも共通テスト設定                 | BunTestConfig・AppScriptContract                                       | `--config=../../bunfig.toml`・利用側アプリの`bunfig.unit.toml`(ルートの書き写し)                                         | —                |
 | 6.6         | 命名規約外のファイルで一括検査失敗         | TestNameChecker・AggregateRunner                                       | `findMisnamedTestFiles`                                                                                                  | 一括検査         |
 | 6.7         | 0件なら成功し0件と表示                     | AppScriptContract・VitestPresets・E2EConfig                            | `--pass-with-no-tests`・`passWithNoTests`・`ZeroTestsReporter`(計測有効時の扱いはVitestPresetsの「対象0件と計測の関係」) | —                |
 | 6.8         | 共有ブラウザを使いダウンロードしない       | VitestPresets・E2EConfig                                               | `resolveBrowserLaunchOptions`                                                                                            | —                |
@@ -476,7 +477,7 @@ export declare const COVERAGE_THRESHOLD_PERCENT: 80;
 
 **Responsibilities & Constraints**
 
-- 値のimportを持たない定数と純粋関数だけを提供する。プロバイダ(`playwright()`・`cloudflareTest()`)の組み立てはアプリ側が行う。
+- npmパッケージの値のimportを持たない定数と純粋関数だけを提供する。プロバイダ(`playwright()`・`cloudflareTest()`)の組み立てはアプリ側が行う。値として読み込めるのは`node:`で始まる組み込みモジュールと`config/`配下のモジュールだけで、`config/vitest/test-kind-preset.unit.test.ts`が検査する。
 - `coverage.enabled`は指定しない。閾値は`--coverage`指定時だけ判定される(7.2)。
 - `coverage.include`はアプリのソース配置に依存するため、アプリ側で必ず指定する(未読込ファイルを分母に含めるため。契約)。各アプリは`coverage.include`をその種別のテストが担当するソースに絞る(他種別のテストで検査するソースを含めると0%として数えられる)。
 - 対象0件と計測の関係: 要件6.7は計測無効の実行に、要件7.1は計測有効の実行に適用する。テストが0件でも`coverage.include`に一致するソースは0%として分母に入るため、`--coverage`付きの実行は閾値で失敗する。CIでテストの無いソースを未達として検出し、NFR-MAINT-003の80%を守るためである。
@@ -1040,13 +1041,13 @@ export declare function createBaseConfig(
 
 ##### API Contract
 
-| スクリプト     | 対象アプリ                  | 内容                                                                          |
-| -------------- | --------------------------- | ----------------------------------------------------------------------------- |
-| `lint`         | 全アプリ                    | `bun --bun eslint .`                                                          |
-| `typecheck`    | 全アプリ                    | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める)           |
-| `test:unit`    | 全アプリ                    | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test`          |
-| `test:browser` | frontend-lib・client・admin | `vitest run --config vitest.browser.config.ts`(`browserTestPreset`を取り込む) |
-| `test:worker`  | api・event                  | `vitest run --config vitest.worker.config.ts`(`workerTestPreset`を取り込む)   |
+| スクリプト     | 対象アプリ                  | 内容                                                                                                                             |
+| -------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `lint`         | 全アプリ                    | `bun --bun eslint .`                                                                                                             |
+| `typecheck`    | 全アプリ                    | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める)                                                              |
+| `test:unit`    | 全アプリ                    | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test`(検査担当でない利用側アプリは下記の`bunfig.unit.toml`を指す) |
+| `test:browser` | frontend-lib・client・admin | `vitest run --config vitest.browser.config.ts`(`browserTestPreset`を取り込む)                                                    |
+| `test:worker`  | api・event                  | `vitest run --config vitest.worker.config.ts`(`workerTestPreset`を取り込む)                                                      |
 
 - 各アプリは、次のdevDependenciesを主要パッケージ一覧の版で導入する: `eslint`・`@eslint/js`・`typescript-eslint`・`eslint-config-prettier`・`prettier`・`typescript`。
 - 共有ディレクトリのコードが実行時に使うパッケージは、利用側アプリが宣言する。版は共有ディレクトリ側と同じにする。
@@ -1054,6 +1055,7 @@ export declare function createBaseConfig(
 - 検査担当でない利用側アプリ(`event`、および`checkedBy: 'self'`の共有ディレクトリを配置する`client`・`admin`)は、共有ディレクトリの配置先を静的解析とテストの対象から外す。型検査には含める。外し方は次のとおり。
   - 静的解析は`ignores`で外す。
   - 単体テストは`--path-ignore-patterns`で外す。Bun 1.4.2ではコマンドラインの`--path-ignore-patterns`が`bunfig.toml`の`pathIgnorePatterns`を置き換えるため、`bunfig.toml`の除外もすべて書き写す(ルートの単体テストが一致を確かめる)。
+  - `--path-ignore-patterns`はテストファイルの選択にだけ効き、テストが読み込んだ配置先のファイルをカバレッジの分母から外さない(Bun 1.4.4で分母から外せるのはbunfigの`coveragePathIgnorePatterns`だけ)。そこで単体テストを持つ利用側アプリは、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に配置先(`<配置先>/**`)を加えた`bunfig.unit.toml`をアプリの直下に置き、`test:unit`の`--config`で指す(eventの`apps/event/bunfig.unit.toml`、email-deliveryの実装の反映)。`coveragePathIgnorePatterns`以外がルートと同じであることと配置先の除外は、ルートの単体テストが検査する。
   - Vitestは`exclude`で外す。
   - これにより、同じファイルが別の設定で重ねて検査されることを防ぐ。
 - 環境シークレットが必要なテストは、`infisical --telemetry=false run --env dev -- bun run test:worker`のように実行時に注入する。シークレットをファイルに書き出さない。
@@ -1155,6 +1157,7 @@ TDDで進め、ルートの単体テスト(`bun run test:unit`)はカバレッ�
     - `foo.test.ts`・`bar.spec.tsx`が検出され、4種の命名は検出されない。
     - bunfigの除外パターンが`TEST_FILE_PATTERNS`・`GENERATED_CODE_PATTERNS`と一致する。
     - ルートと各アプリの`test:unit`がbunfigの除外を書き写し、ルートの`test:unit`がアプリ・品質ゲートの対象外・外部由来のディレクトリを外す。
+    - 検査担当でない利用側アプリの`test:unit`が、ルートの`bunfig.toml`を`coveragePathIgnorePatterns`への配置先の追加だけ変えて書き写した設定を指し、配置先をテストファイルの選択から外す。
   - `check-test-names.unit-filter.unit.test.ts`: ルートの`test:unit`のフィルタでBunが実行する候補のうち、単体テストの命名に一致しないものがすべて命名規約外として検出される(6.1・6.6)。
   - `config/test-patterns.unit.test.ts`・`config/vitest/test-kind-preset.unit.test.ts`: bunfigの`coverageThreshold`・`coverageReporter`が、単一定義の閾値とプリセットの出力形式と一致する(7.1・7.4)。
   - `targets.unit.test.ts`: 環境変数でURLを上書きでき、テストの無い対象はプロジェクトにならない。既定のURLのポートがcompose.yamlで各対象として公開しているポートと一致する(6.7・6.9)。

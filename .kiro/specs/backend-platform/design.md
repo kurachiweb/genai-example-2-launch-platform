@@ -238,8 +238,6 @@ apps/
 │   │   └── smoke-wrangler-bundle.ts         # Wranglerのバンドルで起動したWorkerでDIを解決するスモークテスト
 │   └── test/
 │       ├── setup/apply-migrations.ts        # Workers統合テストのsetupFiles(マイグレーションの適用)
-│       ├── support/read-nested-d1-migrations.ts  # 入れ子のマイグレーションの読み込み(Vitest設定側)
-│       ├── support/read-nested-d1-migrations.unit.test.ts
 │       ├── smoke/fixtures/greeting.ts       # @inject付きのスモーク用クラス
 │       ├── smoke/di-resolution.unit.test.ts     # Bunでの解決
 │       ├── smoke/di-resolution.worker.test.ts   # workerd(Oxc)での解決
@@ -252,6 +250,7 @@ apps/
 └── event/
     ├── package.json                         # スクリプト契約(test:unitで配置先db・libを除外)+dev・cf-typegen・cf-typegen:check
     ├── bun.lock
+    ├── bunfig.unit.toml                     # test:unitの設定(ルートのbunfig.tomlの書き写しに、カバレッジの分母からdb/・lib/を外す除外を加える。email-deliveryの実装の反映)
     ├── tsconfig.json · eslint.config.ts(ignoresにdb/・lib/) · vitest.worker.config.ts(excludeにdb/・lib/)
     ├── wrangler.jsonc · worker-configuration.d.ts
     └── src/
@@ -263,6 +262,9 @@ apps/
 config/eslint/                               # 承認後の改訂8
 ├── backend-layers.ts                        # api・eventのsrcの4層の禁止import(createBackendLayerRules)
 └── backend-layers.unit.test.ts              # 規則の名前の接頭辞と、アプリ間で同じ内容であること
+config/vitest/                               # dev-toolingのプリセットの置き場所(email-deliveryの実装の反映で1ファイルを追加)
+├── read-nested-d1-migrations.ts             # 入れ子のマイグレーションの読み込み(api・eventのVitest設定が共有)
+└── read-nested-d1-migrations.unit.test.ts
 e2e/support/                                 # dev-toolingのE2Eの補助の置き場所(承認後の改訂2で1ファイルを追加)
 ├── scheduled-trigger.ts                     # ローカルの定期実行を業務日付と業務時刻で起こす(ScheduledTriggerHelper)
 └── scheduled-trigger.unit.test.ts           # 要求のURL・cron式・時刻、入力の検証、失敗の例外、業務日付の補助
@@ -610,7 +612,7 @@ export declare function createDatabase(d1: D1Database): Database;
 - Postconditions: `Database`はDrizzleのクエリビルダだけを公開し、値は常にパラメータとして送られる(2.6、NFR-SECUR-021)。`Database.batch([...])`は途中の失敗で全体を取り消す(2.7)。`db.transaction()`は使わない(`db/002`)。
 - `createDatabase`はテーブル定義を接続に渡さない。drizzle-orm 1.0.0-rc.5は接続の設定から旧方式のリレーショナルクエリ用の`schema`を廃止し、`DrizzleD1Database`の型引数はリレーションの定義を取る。本specはクエリビルダと`sql`だけを使い、リレーショナルクエリ(`db.query`)を使わない。後続specで必要になった場合は、`defineRelations`で定義したリレーションを`relations`として渡し、`Database`を`DrizzleD1Database<typeof relations>`にする。その場合、`where`の項目に`undefined`を渡すと例外になるため、条件を省く項目には`drizzle-orm/relations`の`EmptyFilter`を渡す。
 - `drizzle.config.ts`: `dialect: 'sqlite'`・`schema: './schema/index.ts'`・`out: './migrations'`。`drizzle-kit migrate`・`push`は使わない(`db/001`)。
-- `schema/index.ts`は全テーブル定義の集約点で、各ドメインspecは`schema/<ドメイン>.ts`を追加してここから再エクスポートする(1.6)。
+- `schema/index.ts`は全テーブル定義の集約点で、各ドメインspecは`schema/<ドメイン>/<テーブル>.ts`(1テーブル1ファイル、`db/003`)を追加してここから再エクスポートする(1.6)。
 - `apps/db/package.json`の`db:generate`は`drizzle-kit generate`。同じ版の`drizzle-orm`・`drizzle-kit`・`ulid`を`apps/db`に導入する(生成ツールがスキーマを読み込むため)。
 
 **Implementation Notes**
@@ -1849,22 +1851,23 @@ export declare function turnstileGuard(
 
 ##### API Contract
 
-| スクリプト            | api                                                                                                | event                                                                                                  |
-| --------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `lint`                | `bun --bun eslint .`                                                                               | 同左(ignoresで`db/`・`lib/`を除外)                                                                     |
-| `typecheck`           | `tsc -p tsconfig.json`                                                                             | 同左(`db/`・`lib/`を含める)                                                                            |
-| `test:unit`           | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test`                               | `--path-ignore-patterns`で`db/**`・`lib/**`とbunfigの除外を書き写す                                    |
-| `test:worker`         | `vitest run --config vitest.worker.config.ts`                                                      | 同左(`exclude`に`db/**`・`lib/**`)                                                                     |
-| `dev`                 | `wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --test-scheduled`  | `wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --inspector-port 9230` |
-| `cf-typegen`          | `wrangler types`                                                                                   | 同左                                                                                                   |
-| `cf-typegen:check`    | `wrangler types --check`(一括検査の段階「型生成の検査」、承認後の改訂8)                            | 同左                                                                                                   |
-| `db:migrate:local`    | `wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state` | なし(apiで1回適用、2.4)                                                                                |
-| `db:migrations:check` | `bun ./scripts/check-migrations.ts`                                                                | なし                                                                                                   |
-| `test:smoke`          | `bun ./scripts/smoke-wrangler-bundle.ts`                                                           | なし                                                                                                   |
+| スクリプト            | api                                                                                                | event                                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `lint`                | `bun --bun eslint .`                                                                               | 同左(ignoresで`db/`・`lib/`を除外)                                                                           |
+| `typecheck`           | `tsc -p tsconfig.json`                                                                             | 同左(`db/`・`lib/`を含める)                                                                                  |
+| `test:unit`           | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test`                               | `--config=bunfig.unit.toml`(後述)を指し、`--path-ignore-patterns`で`db/**`・`lib/**`とbunfigの除外を書き写す |
+| `test:worker`         | `vitest run --config vitest.worker.config.ts`                                                      | 同左(`exclude`に`db/**`・`lib/**`)                                                                           |
+| `dev`                 | `wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --test-scheduled`  | `wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --inspector-port 9230`       |
+| `cf-typegen`          | `wrangler types`                                                                                   | 同左                                                                                                         |
+| `cf-typegen:check`    | `wrangler types --check`(一括検査の段階「型生成の検査」、承認後の改訂8)                            | 同左                                                                                                         |
+| `db:migrate:local`    | `wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state` | なし(apiで1回適用、2.4)                                                                                      |
+| `db:migrations:check` | `bun ./scripts/check-migrations.ts`                                                                | なし                                                                                                         |
+| `test:smoke`          | `bun ./scripts/smoke-wrangler-bundle.ts`                                                           | なし                                                                                                         |
 
 - `dev`はシークレットが要るため、実行時に注入して起動する(7.8)。infra-deliveryの改訂1の実装の後は、Workerごとのフォルダ(`/workers/api`・`/workers/event`)を`/`に重ねる`bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker api -- bun run dev`(eventは`--worker event`)で起動する(`WORKER_SCOPED_SECRETS`のキー(`STRIPE_API_KEY`)は`/`からは渡らず、素の`infisical run`ではpaymentsの起動時の検査が失敗するため)。それより前(本specの実装の時点)は`infisical --telemetry=false run --env dev -- bun run dev`で起動する。定期実行の手動起動は`curl "http://localhost:48042/cdn-cgi/local/scheduled?cron=<式>&time=<UTCのミリ秒>"`、E2Eからは`e2e/support/scheduled-trigger.ts`の`triggerScheduled`(10.7)。eventは定期実行を持たないため`--test-scheduled`を付けない。
-- Vitest(api): `workerTestPreset`を取り込み、`coverage.include`を`src/{infrastructure,presentation,composition}/**`・`src/index.ts`・`lib/workers/**`・`db/client.ts`に絞る。`cloudflareTest`の`miniflare.bindings`にテスト用の`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`と`TEST_MIGRATIONS`(`readNestedD1Migrations`の結果)を渡し、`setupFiles`の`apply-migrations.ts`が`applyD1Migrations`で適用する。`lib/workers`のQueue関連のテスト用に、`miniflare.queueProducers`で`JOBS_DLQ`を追加する。
-- Vitest(event): `coverage.include`を`src/{infrastructure,presentation,composition}/**`・`src/index.ts`に絞り、`db/**`・`lib/**`を`exclude`する。
+- `test:unit`(event)の`bunfig.unit.toml`は、ルートの`bunfig.toml`を書き写し、`coveragePathIgnorePatterns`に`lib/**`・`db/**`を加えたもの。`--path-ignore-patterns`はテストファイルの選択にだけ効き、テストが読み込んだ`lib/core`などのファイルをカバレッジの分母から外さないため(email-deliveryの実装の反映)。ルートの`bunfig.toml`との同期はdev-toolingの`check-test-names.unit.test.ts`が検査する。
+- Vitest(api): `workerTestPreset`を取り込み、`coverage.include`を`src/{infrastructure,presentation,composition}/**`・`src/index.ts`・`lib/workers/**`・`db/client.ts`に絞る。`cloudflareTest`の`miniflare.bindings`にテスト用の`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`と`TEST_MIGRATIONS`(`config/vitest/read-nested-d1-migrations.ts`の`readNestedD1Migrations`の結果)を渡し、`setupFiles`の`apply-migrations.ts`が`applyD1Migrations`で適用する。`lib/workers`のQueue関連のテスト用に、`miniflare.queueProducers`で`JOBS_DLQ`を追加する。
+- Vitest(event): `coverage.include`を`src/{infrastructure,presentation,composition}/**/*.{ts,tsx}`・`src/index.ts`に絞り(`.tsx`はemail-deliveryのメールの描画とテンプレート)、`db/**`・`lib/**`を`exclude`する。D1を使うテストのため、apiと同じく`miniflare.bindings`に`TEST_MIGRATIONS`(`readNestedD1Migrations`の結果)を渡し、D1を使うテストファイルの`beforeAll`で`applyD1Migrations`により適用する。`setupFiles`で適用すると既存の`index.worker.test.ts`の`vi.mock`が効かなくなるため、apiの`apply-migrations.ts`の形を採らない(email-deliveryの実装の反映)。
 - Bunの単体テストは読み込まれたファイルだけを分母にするため、`core`・`domain`・`application`・`db/schema`・`scripts`の単体テストと重ならない(15.2)。
 - 依存(api・event共通、`dependencies`): hono・inversify・reflect-metadata・drizzle-orm・ulid・zod・@logtape/logtape・@logtape/redaction・@sentry/cloudflare・@sentry/hono。`devDependencies`: wrangler・vitest・@vitest/coverage-istanbul・@cloudflare/vitest-pool-workers・drizzle-kit・品質ツール6種・@types/bun。すべて版を完全に固定する。
 
@@ -2026,7 +2029,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
   - `env-schema.unit.test.ts`: 欠けたキーと不正なキーの名前だけが返り、値が例外に含まれない(7.5)。
   - `columns.unit.test.ts`・`text-no-case.unit.test.ts`: 列の型・NOT NULL・既定値・更新時の値(1.1・1.3〜1.5)。
   - `compare-migrations.unit.test.ts`: 保存先とWranglerの一覧の一致・不一致・0件の判定と、一覧の出力の解析(2.5)。
-  - `read-nested-d1-migrations.unit.test.ts`: 一時ディレクトリの`<日時>_<名前>/migration.sql`を名前順に読み、`--> statement-breakpoint`で文に分ける。
+  - `config/vitest/read-nested-d1-migrations.unit.test.ts`(ルートの単体テスト): 一時ディレクトリの`<日時>_<名前>/migration.sql`を名前順に読み、`--> statement-breakpoint`で文に分ける。
   - `wrangler-config.unit.test.ts`・`cron-sync.unit.test.ts`・`layer-rules.unit.test.ts`: WranglerConfigs・CronSyncTest(`SCHEDULED_RUN_BUDGETS`の4:21の予算を含む)・AppLayerRulesの項目(5.1・7.1〜7.4・7.6・8.4・10.2・10.9・11.7・13.1)。
   - `di-resolution.unit.test.ts`: Bunでの`@inject`の解決(5.3・5.4)。
 - **Integration Tests**(Workers統合テスト、workerd)

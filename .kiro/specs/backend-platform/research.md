@@ -352,3 +352,13 @@
 ## api-gatewayの改訂3による共通エラーの種類の追加(2026-10-27、開発者の決定)
 
 - api-gatewayの実装後の改訂3で、`AppErrorKind`に`payload_too_large`(413)と`unsupported_media_type`(415)を加えた(`apps/backend-lib/core/errors/app-error.ts`・単体テスト)。公開RESTの本文の`Content-Type`の不一致を415で返すためと、GraphQLの経路の本文の上限超過を自前の組み立てではなく`AppError`で返すため。どちらも`retryAfterSeconds`を受け付けず、`AppError`なのでエラートラッキングへ送らない。design.mdの`AppErrorKind`と`STATUS_BY_KIND`の状態コードの型、`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の共通エラーの表を改めた。要件・タスクは変えていない。
+
+## email-deliveryの実装の反映(2026-10-27、開発者の決定)
+
+- email-deliveryの実装で、本specの実装物の位置と設定が次のとおり変わった。開発者の決定で、design.mdを実装に合わせた。要件・タスクは変えていない。
+  - 入れ子のマイグレーションの読み込み`readNestedD1Migrations`: eventのWorkers統合テストでもD1を使うため、`apps/api/test/support/read-nested-d1-migrations.ts`(と単体テスト)を`config/vitest/read-nested-d1-migrations.ts`へ移し、api・eventのVitest設定が共有する(email-deliveryの6.1)。dev-toolingの`config/vitest/*.ts`の規則は、`node:`で始まる組み込みモジュールの値の読み込みを許す形に緩めた(dev-toolingのresearch.mdの同じ日付の節)。
+  - eventのWorkers統合テスト: `miniflare.bindings`に`TEST_MIGRATIONS`を渡し、D1を使うテストファイルの`beforeAll`で`applyD1Migrations`により適用する。`setupFiles`で適用すると既存の`index.worker.test.ts`の`vi.mock`が効かなくなるため、apiの`apply-migrations.ts`の形を採らない。カバレッジの`include`は、メールの描画とテンプレートの`.tsx`を含めるため`src/{infrastructure,presentation,composition}/**/*.{ts,tsx}`になった(email-deliveryの1.3)。
+  - eventの単体テスト: `test:unit`が読み込む`lib/core`のファイルがBunのカバレッジの分母に入り閾値を割るため、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に`lib/**`・`db/**`を加えた`apps/event/bunfig.unit.toml`を`--config`で指す(コマンドラインの`--path-ignore-patterns`はテストファイルの選択にだけ効き、分母から外さないため。email-deliveryの8.2)。ルートの`bunfig.toml`との同期は`scripts/tooling/check-test-names.unit.test.ts`が検査する。
+  - テーブル定義の配置: 技術ドキュメント`db/003`は`schema/<ドメイン>/<テーブル>.ts`(1テーブル1ファイル)に改められている(email-deliveryの1.2)。design.mdのDrizzleConfigの説明の`schema/<ドメイン>.ts`を合わせた。
+- 変えないもの: `createQueueDispatcher`の任意の第3引数`{ rawQueues }`(email-deliveryが互換を保って加えた封筒を持たないQueueの登録口)は、email-deliveryのresearch.mdのQ8の決定(本specの文書は変えず、変更点と影響をemail-deliveryの設計の「RawQueueDispatch」に記録する)に従い、design.mdの`createQueueDispatcher(MESSAGE_HANDLERS, MODULES)`の記述を変えていない。
+- 変えた箇所: design.mdのFile Structure Plan(apiの`test/support/`の2ファイルを外し、`config/vitest/`の2ファイルとeventの`bunfig.unit.toml`を加えた)、DrizzleConfigの`schema/<ドメイン>/<テーブル>.ts`、AppPackageScriptsの`test:unit`(event)とVitest(api・event)の説明、Testing Strategyの`read-nested-d1-migrations.unit.test.ts`の位置。
