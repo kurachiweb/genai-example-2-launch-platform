@@ -218,9 +218,10 @@
   - オンボーディングの手順どおりにシークレットを注入してイベントサーバーを起動し、疎通確認の経路を呼ぶ
   - Mailpitの画面またはAPIで、日本語の件名・本文、HTMLとテキストの両パート、表示名と送信元を確かめる
   - 完了状態: Mailpitに疎通確認メールが1通届き、件名・本文が文字化けせず両パートを持つことを確かめた記録が残る
+  - _Blocked: Infisical(dev)に`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`が未登録(2026-10-27に確認)。開発者の登録待ち_
   - _Requirements: 3.3, 11.4_
 
-- [ ] 8.2 一括検査とカバレッジ80%を確かめ、開発者の手作業とstagingでの確認を引き継ぐ
+- [x] 8.2 一括検査とカバレッジ80%を確かめ、開発者の手作業とstagingでの確認を引き継ぐ
   - ルートの一括検査と一括テストを実行し、api・eventの単体テストとWorkers統合テストで行と関数のカバレッジ80%以上を確かめる
   - 開発者の手作業(送信ドメインの登録と送信内容のプレビューの無効化、メールイベント用Queueと購読の作成、stagingの宛先の検証と許可する宛先・疎通確認のシークレットの登録、デプロイ後のstagingでの疎通確認)を、実行するコマンドや画面の操作とともに報告にまとめる
   - 完了状態: 一括検査と一括テストが成功してカバレッジが閾値を満たし、手作業の一覧が報告に含まれている
@@ -266,3 +267,4 @@
 - 6.3(identity-authへの申し送り): `USER_ADDRESS_DIRECTORY`は`Newable<UserAddressDirectory>`で`.to()`で束縛するため、identity-authはdesign.mdのファクトリ`createD1UserAddressDirectory(db)`ではなく、`@injectable()`と`@inject(PLATFORM_TYPES.Database)`を持つクラスとして差し替える。
 - 7.1(7.2への申し送り): `docs/GUIDES/tech/external/001-email-sending.md`と`infra/003`で新しいプレースホルダー(`<送信ドメイン>`・`<送信元アドレス>`・`<送信元の表示名>`・`<送信バインディング>`・変数とシークレットのキー名・`<メールイベント用Queueの名前>`・登録箇所・`<後始末の起動時刻>`・`<疎通確認の経路>`等)を使っている。7.2で`docs/onboardings/project-values.md`に本プロジェクトの値との対応を加える。infra/003の3つの規約(本文に個人情報を載せない・遅延再送の待つ期限・送信済みの記録を先に確保)には、メールの例外を追記した。
 - 7.2: stagingのメールのシークレットはInfisical(staging)を正とし、`wrangler secret put`はCIのデプロイ(infra-delivery)が導入されるまでの暫定の手順としてオンボーディング・project-values.md・技術文書に書いた。準拠方針の注7には、後始末が毎日先頭の1,800件だけを確かめる限界を事実として書いた。送信済みの記録の保持期間の対応要件は`SW-004`・`SW-014`とした(専用の要件IDが無いため)。stagingの疎通確認のURLはREADME.mdの配信URL一覧から取ったが、`apps/event/wrangler.jsonc`にはまだルートが無い。
+- 8.2: eventの単体テストが読み込む`lib/core`のファイルがBunのカバレッジの分母に入り閾値を割った(`--path-ignore-patterns`はテストの選択だけに効き分母から外れない。Bun 1.4.4で分母の除外はbunfigの`coveragePathIgnorePatterns`だけ)。開発者の決定で、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に`lib/**`・`db/**`を加えた`apps/event/bunfig.unit.toml`を置き、`test:unit`が`--config`で指す。同期はルートの`check-test-names.unit.test.ts`が検査し、client・adminも単体テストを持つと同じ設定が要る。開発者の手作業(送信ドメイン・プレビュー・Queueと購読・stagingの宛先とシークレット・devのシークレットと8.1・eventのバンドルの確認・stagingの疎通確認)は実装の完了報告に記した。

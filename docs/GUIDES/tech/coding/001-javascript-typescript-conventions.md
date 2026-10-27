@@ -60,12 +60,12 @@ export default config;
 
 ルートに、型検査・静的解析・整形・単体テストの基底設定を1つずつ置く。各アプリは基底設定を継承し、アプリ固有の差分だけを指定する。
 
-| 種類       | ルートの基底設定                        | アプリでの使い方                                           |
-| ---------- | --------------------------------------- | ---------------------------------------------------------- |
-| 型検査     | `tsconfig.base.json`                    | アプリの`tsconfig.json`の`extends`で継承する               |
-| 静的解析   | `eslint.config.base.ts`                 | アプリの`eslint.config.ts`から`createBaseConfig`を呼び出す |
-| 整形       | `prettier.config.ts`・`.prettierignore` | 設定ファイルを置かず、ルートの設定をそのまま適用する       |
-| 単体テスト | `bunfig.toml`                           | アプリの単体テストのスクリプトで`--config`に指定する       |
+| 種類       | ルートの基底設定                        | アプリでの使い方                                                                                                                       |
+| ---------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 型検査     | `tsconfig.base.json`                    | アプリの`tsconfig.json`の`extends`で継承する                                                                                           |
+| 静的解析   | `eslint.config.base.ts`                 | アプリの`eslint.config.ts`から`createBaseConfig`を呼び出す                                                                             |
+| 整形       | `prettier.config.ts`・`.prettierignore` | 設定ファイルを置かず、ルートの設定をそのまま適用する                                                                                   |
+| 単体テスト | `bunfig.toml`                           | アプリの単体テストのスクリプトで`--config`に指定する。共有ディレクトリの検査担当でないアプリは、書き写した`bunfig.unit.toml`を指定する |
 
 ```mermaid
 graph LR
@@ -285,6 +285,7 @@ export default config;
 - 定義していないスクリプトは、一括検査で「飛ばした(スクリプト未定義)」として扱われ、失敗にはならない。ブラウザテストもWorkers統合テストも持たないアプリは、`test:browser`・`test:worker`を定義しない。Wranglerで実行時の型を生成しないアプリは、`cf-typegen:check`を定義しない。GraphQLのサーバーを持たないアプリは、`graphql:check`を定義しない。
 - 整形検査はルートで1回だけ実行するため、アプリに整形のスクリプトは要らない。
 - `test:unit`の`--config=../../bunfig.toml`は省略できない。Bunはアプリのディレクトリからルートの`bunfig.toml`をさかのぼって読まないため、省略すると他の種別のテストの除外・カバレッジ閾値・lcovの出力のいずれも適用されない。相対パスは、アプリのディレクトリがルートの2階層下にある場合の例である。
+- 共有ディレクトリの検査担当でない利用側アプリは、ルートの`bunfig.toml`の代わりに、アプリに置いた単体テスト専用の設定ファイルを`--config`に指定する(「[検査担当でないアプリでの共有ディレクトリの除外](#検査担当でないアプリでの共有ディレクトリの除外)」)。
 - テストの種別と命名、実行コマンド、カバレッジの規約は、「[テスト戦略](../testing/001-test-strategy.md)」に従う。
 
 ### 導入する品質ツール
@@ -307,11 +308,11 @@ bun add --dev --exact eslint@<版> @eslint/js@<版> typescript-eslint@<版> esli
 
 同じ共有ディレクトリを配置する利用側アプリのうち、検査担当でないアプリは、配置先を静的解析とテストの対象から外す。同じファイルが別の設定で重ねて検査されることを防ぐためである。型検査は、共有ディレクトリのコードが各利用側アプリの設定と依存で成り立つことを確かめるため、外さずに`include`へ含める。配置の方式と依存の解決は「[共有ディレクトリの配置方式](003-shared-directories.md)」に従う。
 
-| 検査                        | 外し方                                                                      |
-| --------------------------- | --------------------------------------------------------------------------- |
-| 静的解析                    | `eslint.config.ts`の`ignores`に配置先を加える                               |
-| 単体テスト                  | `test:unit`の`--path-ignore-patterns`に配置先を加える                       |
-| ブラウザ・Workers統合テスト | Vitestの設定の`exclude`に配置先を加え、`coverage.include`に配置先を含めない |
+| 検査                        | 外し方                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 静的解析                    | `eslint.config.ts`の`ignores`に配置先を加える                                                                       |
+| 単体テスト                  | `test:unit`の`--path-ignore-patterns`と、単体テスト専用の設定ファイルの`coveragePathIgnorePatterns`に配置先を加える |
+| ブラウザ・Workers統合テスト | Vitestの設定の`exclude`に配置先を加え、`coverage.include`に配置先を含めない                                         |
 
 静的解析では、`ignores`だけを持つ要素を設定の配列に加える。
 
@@ -330,15 +331,28 @@ const config: Linter.Config[] = [
 ];
 ```
 
-単体テストでは、配置先に加えて`bunfig.toml`の`pathIgnorePatterns`(他の種別のテストの除外)をすべて書き写す。Bun 1.4.4では、コマンドラインの`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず、置き換えるためである。
+単体テストでは、テストファイルの選択とカバレッジの分母の両方から配置先を外す。Bun 1.4.4では、コマンドラインの`--path-ignore-patterns`はテストファイルの選択にだけ効き、配置先のテストを実行しなくても、アプリのテストが読み込んだ配置先のファイルはカバレッジの分母に入る。分母から外す手段は設定ファイルの`coveragePathIgnorePatterns`だけであり、コマンドラインの指定は無い。
+
+1. アプリのディレクトリに単体テスト専用の設定ファイル`bunfig.unit.toml`を置く。ルートの`bunfig.toml`の内容をすべて書き写し、`coveragePathIgnorePatterns`にだけ配置先を加える。
+2. `test:unit`の`--config`でこのファイルを指定し、`--path-ignore-patterns`に配置先を加える。`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず置き換えるため、`pathIgnorePatterns`(他の種別のテストの除外)もすべて書き写す。
+
+```toml
+[test]
+# ルートのbunfig.tomlのcoveragePathIgnorePatterns以外の項目をそのまま書き写す
+coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**", "<共有ディレクトリの配置先>/**"]
+```
 
 ```json
 {
   "scripts": {
-    "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests --path-ignore-patterns='<共有ディレクトリの配置先>/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test"
+    "test:unit": "bun test --config=bunfig.unit.toml --pass-with-no-tests --path-ignore-patterns='<共有ディレクトリの配置先>/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test"
   }
 }
 ```
+
+- 名前を`bunfig.toml`にしないのは、Bunが実行したディレクトリの`bunfig.toml`を`bun install`・`bun run`などでも自動で読むためである。`--config`で指定したときだけ読まれる名前にする。
+- 設定ファイルの`coverageDir`と`coveragePathIgnorePatterns`の相対パスは、設定ファイルの位置ではなく、テストを実行したディレクトリ(アプリのディレクトリ)を基準に解決される。
+- 書き写した内容がルートの`bunfig.toml`と(`coveragePathIgnorePatterns`に加えた配置先を除いて)一致し、`test:unit`が配置先をテストファイルの選択から外すことを、ルートの単体テストで確かめる。ルートの`bunfig.toml`を変えたときは、各アプリの`bunfig.unit.toml`も同じく変える。
 
 Vitestでは、既定の除外を失わないよう`configDefaults.exclude`を展開してから配置先を加える。次の例は除外の指定だけを示し、プリセットの取り込みなど他の設定を省いている。
 

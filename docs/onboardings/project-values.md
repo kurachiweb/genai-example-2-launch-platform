@@ -122,6 +122,12 @@ bun test --config=/workspace/bunfig.toml unit.test
 ```
 
 - 各アプリの`package.json`の`test:unit`スクリプトでは、アプリのディレクトリからの相対パス`--config=../../bunfig.toml`で指定する([スクリプト契約](../GUIDES/tech/coding/001-javascript-typescript-conventions.md#スクリプト契約))。
+- 共有ディレクトリ(`apps/db`・`apps/backend-lib`)の検査担当でない`apps/event`は、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に配置先の`lib/**`・`db/**`を加えた`/workspace/apps/event/bunfig.unit.toml`を`--config=bunfig.unit.toml`で指定する([検査担当でないアプリでの共有ディレクトリの除外](../GUIDES/tech/coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外))。`/workspace/bunfig.toml`を変えたときは、このファイルも同じく変える。
+
+```sh
+cd /workspace/apps/event
+bun run test:unit --coverage
+```
 
 ## シークレット注入の実行接頭辞
 

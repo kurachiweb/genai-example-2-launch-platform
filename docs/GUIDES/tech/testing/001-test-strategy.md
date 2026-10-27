@@ -23,7 +23,7 @@
 | Workers統合テスト | `**/*.worker.test.{ts,tsx}`                 | Vitest(`@cloudflare/vitest-pool-workers`)         | workerd(Workersの実行環境) | リクエストを処理するコード、バインディングを使うコード            |
 | E2Eテスト         | `e2e/<対象名>/**/*.e2e.test.ts`(ルートのみ) | Playwright Test(`@playwright/test`)               | 共有Chromium               | 起動済みのアプリに対する、利用者の操作の流れ                      |
 
-- 4種の命名は`config/test-patterns.ts`の`TEST_FILE_PATTERNS`で1箇所に定義する。各テストツールの設定と命名検査はこの定義を参照する。定義を参照できない`bunfig.toml`(TOML形式)と、`package.json`の`test:unit`(コマンドラインの`unit.test`・`--path-ignore-patterns`)には値を書き写す。`bunfig.toml`の除外と、`test:unit`の`--path-ignore-patterns`は、ルートの単体テストで一致を確かめる。
+- 4種の命名は`config/test-patterns.ts`の`TEST_FILE_PATTERNS`で1箇所に定義する。各テストツールの設定と命名検査はこの定義を参照する。定義を参照できない`bunfig.toml`(TOML形式)と、`package.json`の`test:unit`(コマンドラインの`unit.test`・`--path-ignore-patterns`)には値を書き写す。`bunfig.toml`の除外と、`test:unit`の`--path-ignore-patterns`は、ルートの単体テストで一致を確かめる。共有ディレクトリの検査担当でないアプリが持つ単体テスト専用の設定ファイル(`bunfig.unit.toml`)も、ルートの`bunfig.toml`との一致をルートの単体テストで確かめる。
 - 単体テストの拡張子は`.ts`だけとする。JSXを描画するテストはブラウザテストにする。
 - 単体テスト・ブラウザテスト・Workers統合テストの置き場所は問わない(例: テストするソースの隣)。
 - E2Eテストはルートの`e2e/<対象名>/`の下にだけ置く。`e2e/`の外に置いた`*.e2e.test.ts`はどのテストツールにも実行されないため、命名規約外として検出される。
@@ -71,6 +71,7 @@ bun test --config=../../bunfig.toml --pass-with-no-tests unit.test
 - Bunは実行したディレクトリの`bunfig.toml`だけを読み、ルートの`bunfig.toml`をさかのぼって読まない。`--config`を省くと、他の種別の除外・カバレッジの閾値・lcovの出力のいずれも適用されない。相対パスは、アプリのディレクトリがルートの2階層下にある場合の例である。
 - ルートで実行する場合は、ルートの`bunfig.toml`が自動で読まれるため`--config`は要らない。
 - Bun 1.4.4では、コマンドラインの`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず、置き換わる。除外を加えるアプリは、`bunfig.toml`の`pathIgnorePatterns`もすべて書き写す。例は「[検査担当でないアプリでの共有ディレクトリの除外](../coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外)」にある。ルートの単体テストは、各アプリの`test:unit`がこの書き写しを含むことを確かめる。
+- `--path-ignore-patterns`はテストファイルの選択にだけ効き、カバレッジの分母からは外さない。共有ディレクトリの検査担当でないアプリは、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に配置先を加えた単体テスト専用の設定ファイル(`bunfig.unit.toml`)を、ルートの`bunfig.toml`の代わりに`--config`で指定する(「[分母からの除外](#分母からの除外)」)。
 
 ## 実行コマンド
 
@@ -162,7 +163,7 @@ TDDの各段階では、書いているテストだけを実行する。
 | ファイル                                     | 内容                                                                                                                                                                           |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `config/test-patterns.ts`                    | 4種の命名(`TEST_FILE_PATTERNS`)、テストとみなす名前(`TEST_LIKE_FILE_PATTERN`)、自動生成コードの命名(`GENERATED_CODE_PATTERNS`)、カバレッジの閾値(`COVERAGE_THRESHOLD_PERCENT`) |
-| `bunfig.toml`                                | 単体テストの共通設定(他の種別の除外、カバレッジの閾値・除外・出力先)                                                                                                           |
+| `bunfig.toml`                                | 単体テストの共通設定(他の種別の除外、カバレッジの閾値・除外・出力先)。共有ディレクトリの検査担当でないアプリは、書き写した`bunfig.unit.toml`をアプリに置く                     |
 | `config/vitest/browser.ts`                   | ブラウザテストのプリセット(`browserTestPreset`・`browserOptionsPreset`)と、共有Chromiumの起動オプションを返す`resolveBrowserLaunchOptions`                                     |
 | `config/vitest/worker.ts`                    | Workers統合テストのプリセット(`workerTestPreset`)                                                                                                                              |
 | `config/vitest/read-nested-d1-migrations.ts` | D1のマイグレーションの保存先から`<名前>/migration.sql`の入れ子構造を読み、Workers統合テストへ渡す形にする`readNestedD1Migrations`                                              |
@@ -320,6 +321,10 @@ bun run test:all:worker --coverage
 - 自動生成コード
   - `**/*.gen.ts`・`**/generated/**`(`GENERATED_CODE_PATTERNS`)を、Bunは`bunfig.toml`の`coveragePathIgnorePatterns`で、Vitestはプリセットの`coverage.exclude`で除外する。
   - 自動生成コードは、必ず`*.gen.ts`という名前か`generated/`ディレクトリの下に出力する。この形でない自動生成コードは分母に入る。
+- 検査担当でないアプリに配置した共有ディレクトリ
+  - 単体テスト(Bun)は、テストから読み込まれた配置先のファイルも分母に数える。`test:unit`の`--path-ignore-patterns`で配置先を外しても、外れるのは配置先のテストファイルの実行だけで、分母からは外れない。分母から外す手段は設定ファイルの`coveragePathIgnorePatterns`だけである。そのため検査担当でないアプリは、`coveragePathIgnorePatterns`に配置先を加えた単体テスト専用の設定ファイル`bunfig.unit.toml`を使う。手順は「[検査担当でないアプリでの共有ディレクトリの除外](../coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外)」に従う。
+  - 配置先を分母に残すと、アプリのテストが部分的にしか使わない共有ディレクトリのファイルが閾値を下回り、検査担当のアプリで網羅していても失敗する。
+  - ブラウザテスト・Workers統合テスト(Vitest)は、`coverage.include`に配置先を含めないことで外す(「[計測対象の指定](#計測対象の指定)」)。
 
 ### 計測対象の指定
 
