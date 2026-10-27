@@ -71,8 +71,8 @@ export const textNoCase = customType<{ data: string }>({
 ```typescript
 import { snakeCase } from 'drizzle-orm/sqlite-core';
 
-import { ulidPrimaryKey } from './_shared/columns.ts';
-import { textNoCase } from './_shared/text-no-case.ts';
+import { ulidPrimaryKey } from '../_shared/columns.ts';
+import { textNoCase } from '../_shared/text-no-case.ts';
 
 export const users = snakeCase.table('users', {
   id: ulidPrimaryKey(),
@@ -96,7 +96,7 @@ export const users = snakeCase.table('users', {
 ```typescript
 import { snakeCase, text } from 'drizzle-orm/sqlite-core';
 
-import { ulidPrimaryKey } from './_shared/columns.ts';
+import { ulidPrimaryKey } from '../_shared/columns.ts';
 
 export const accounts = snakeCase.table('accounts', {
   id: ulidPrimaryKey(),

@@ -11,7 +11,7 @@
   - 完了状態: 最小の描画のWorkers統合テストがworkerd上で日本語のHTMLとテキストを返して成功し、両アプリの静的解析・型検査と層の規則の単体テストが成功し、tech-stack.mdにJSX emailが残っていない
   - _Requirements: 3.3, 11.1, 11.3, 11.9_
 
-- [ ] 1.2 抑止リスト・送信済みの記録・警告の間引きのテーブルを定義し、マイグレーションを生成する
+- [x] 1.2 抑止リスト・送信済みの記録・警告の間引きのテーブルを定義し、マイグレーションを生成する
   - 先に、3テーブルの列の型・NOT NULL・一意制約・大文字小文字を区別しない列・共通カラムを確かめる単体テストを書く
   - 抑止リストは照合キー(大文字小文字を区別しない一意の列)・最後の契機の種類と日時・期限(NULLは期限なし)だけを持ち、最後の契機の日時と期限に索引を付ける
   - 送信済みの記録は送信要求の識別子(封筒のIDを明示して入れる主キー)・種別・送信日時だけを持ち、宛先・本文・入力を持たない。送信日時に索引を付ける
@@ -231,3 +231,6 @@
 - 1.1: `@react-email/components`1.0.12は`@react-email/render`2.0.6を入れ子の依存に持つ。描画は直接宣言した`@react-email/render`2.1.0から`render`をimportし、`@react-email/components`の再エクスポートを使わない。
 - 1.1(5.xへの申し送り): eventのWorkers統合テストのカバレッジの`include`は`*.ts`だけで、描画とテンプレートの`.tsx`が分母に入らない。5.xで`{ts,tsx}`にする。`jsx: "react-jsx"`が暗黙に読み込む`react/jsx-runtime`は静的解析の禁止で検出しないため、`.tsx`は`infrastructure/email/rendering`・`templates`だけに置く。
 - 1.1: eventの静的解析は`lib/`・`db/`を無視するため、共有ディレクトリでのReactの禁止はapiの静的解析(`**/*.{ts,tsx}`)で担保している(設計のModified Filesの「eventの`lib/**`で禁止」との相違)。
+- 1.2(4.3への申し送り): `email_send_records.id`は`ulidPrimaryKey()`のためid省略時にULIDが採番される。送信済みの記録のリポジトリは必ず封筒のIDを明示して入れ、Workers統合テストでそれを確かめる。
+- 1.2(4.2への申し送り): `email_suppressions.last_reason`の値の組(`hard_bounce`・`complaint`・`rejected`)はDBスキーマと`core/email`の`SuppressionReason`の2か所にある。リポジトリで`emailSuppressions.$inferSelect['lastReason']`と`SuppressionReason`が相互に代入できることを型で保証する。
+- 1.2: テーブル定義は`schema/<ドメイン>/<テーブル>.ts`に置く(技術ドキュメントのdb/001・003を全下流specの設計に合わせて改めた)。

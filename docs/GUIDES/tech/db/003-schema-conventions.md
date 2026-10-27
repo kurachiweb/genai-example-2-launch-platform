@@ -18,7 +18,7 @@ ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`
 
 ## テーブル定義の配置
 
-テーブル定義は`<DBディレクトリ>/schema/`に、ドメインごとのファイルとして置く。
+テーブル定義は`<DBディレクトリ>/schema/`に、ドメインごとのディレクトリを作り、1テーブル1ファイルで置く。
 
 ```text
 <DBディレクトリ>/
@@ -29,12 +29,13 @@ ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`
     ├── _shared/
     │   ├── columns.ts      # ulidPrimaryKey・timestamps・softDelete・notDeleted
     │   └── text-no-case.ts # textNoCase
-    ├── <ドメイン>.ts       # ドメインごとのテーブル定義
+    ├── <ドメイン>/
+    │   └── <テーブル>.ts   # テーブルごとの定義
     └── index.ts            # 全テーブル定義の集約点
 ```
 
 - `schema/_shared/`には複数のテーブルが共有する列の部品を置き、`drizzle-orm`と`ulid`以外を読み込まない。
-- テーブルを追加するときは`schema/<ドメイン>.ts`に定義し、`schema/index.ts`から再エクスポートする。
+- テーブルを追加するときは`schema/<ドメイン>/<テーブル>.ts`に定義し、`schema/index.ts`から再エクスポートする。
 - `drizzle.config.ts`の`schema`には集約点の`./schema/index.ts`を指定する。`drizzle-kit generate`は集約点から辿れるテーブルだけを読むため、再エクスポートし忘れたテーブルはマイグレーションに含まれない。
 
 ```typescript
@@ -48,12 +49,12 @@ export default defineConfig({
 ```
 
 ```typescript
-export * from './articles.ts';
+export * from './blog/articles.ts';
 ```
 
 ```mermaid
 graph LR
-    Shared["schema/_shared/(共有する列の部品)"] --> Domain["schema/ドメイン名.ts"]
+    Shared["schema/_shared/(共有する列の部品)"] --> Domain["schema/ドメイン名/テーブル名.ts"]
     Domain -- "再エクスポート" --> Index["schema/index.ts(集約点)"]
     Index -- "drizzle-kit generate" --> Migrations["マイグレーションの保存先"]
     Migrations -- "wrangler d1 migrations apply" --> D1["D1"]
@@ -68,8 +69,8 @@ graph LR
 ```typescript
 import { integer, snakeCase, text } from 'drizzle-orm/sqlite-core';
 
-import { softDelete, timestamps, ulidPrimaryKey } from './_shared/columns.ts';
-import { textNoCase } from './_shared/text-no-case.ts';
+import { softDelete, timestamps, ulidPrimaryKey } from '../_shared/columns.ts';
+import { textNoCase } from '../_shared/text-no-case.ts';
 
 export const articles = snakeCase.table('articles', {
   id: ulidPrimaryKey(),
