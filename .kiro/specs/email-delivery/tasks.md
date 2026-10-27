@@ -29,7 +29,7 @@
   - _Requirements: 4.2, 7.10, 10.2_
 
 - [ ] 2. 共有の純粋な部品(Bunの単体テスト)
-- [ ] 2.1 (P) メール種別の契約・集約点・疎通確認用の種別を作る
+- [x] 2.1 (P) メール種別の契約・集約点・疎通確認用の種別を作る
   - 種別は名前・分類(トランザクションか通知か)・テンプレート入力の検証規則を持ち、名前は`<ドメイン>.<名詞句>`の形式とする
   - 集約で名前の形式違反と重複を例外にし、全種別の集約点を用意する。初版は疎通確認用のトランザクションの種別(入力は受付日時)だけを持つ
   - 完了状態: 形式違反・重複が例外になり、集約点の全種別が例外なく登録できることを単体テストで確かめられる
@@ -237,3 +237,4 @@
 - 1.3(2.3への申し送り): `apps/api/test/config/email-wrangler-config.unit.test.ts`は、メールイベント用Queueのconsumerの`max_retries`を`QUEUE_MAX_RETRIES`との一致と`DEFAULT_RETRY_POLICY.maxAttempts`超過だけで検査している。2.3で`EMAIL_SEND_RETRY_POLICY.maxAttempts < max_retries`の検査を加える。
 - 1.3(6.2・8.1への申し送り): `secrets`を定義した設定では`wrangler dev`が`secrets.required`のキーだけを`env`へ渡すため、設計の表どおりでは`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`がローカルの`env`に入らず、疎通確認の経路が常に404になる。6.2でルートの`secrets.required`へ2つのキーを加え(staging・prodには加えない)、設計の表と`email-wrangler-config.unit.test.ts`の期待値を改める。
 - 1.3: テスト用の`EMAIL_EVENTS_QUEUE_NAME`は`genai-example-2-email-events-test`でローカルのconsumerの名前と異なる。振り分けのWorkers統合テストでは`batch.queue`に`env.EMAIL_EVENTS_QUEUE_NAME`を使う。backend-platformの`wrangler-config.unit.test.ts`は`EMAIL_`・`MAILPIT_`で始まるキーを除いて比べ、それらはメールの設定のテストが厳密に検査する。
+- 2.1: 種別の検索は`createEmailKindRegistry(EMAIL_KINDS).get(name)`(未登録は`undefined`)。疎通確認の種別は`EMAIL_DELIVERY_SMOKE_KIND`で、入力`requestedAt`は`z.iso.datetime()`(末尾`Z`のUTCだけ)。集約は名前の形式・重複に加えて分類の不正と入力スキーマの欠落も`EmailKindRegistryError`にする(要件2.2)。
