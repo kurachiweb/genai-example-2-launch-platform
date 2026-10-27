@@ -196,7 +196,7 @@
   - _Requirements: 1.1, 9.2, 9.3, 9.4, 11.1_
 
 - [ ] 7. 技術ドキュメントと関連文書
-- [ ] 7.1 (P) メール送信サービスの技術ドキュメントを追加し、非同期処理の文書へ追記する
+- [x] 7.1 (P) メール送信サービスの技術ドキュメントを追加し、非同期処理の文書へ追記する
   - 送信の使い方(構造化された送信と両パート)、上限と料金の要点、失敗コードの分類表、待機と再試行の間隔と送信不能までの最長時間(約30分)、配信不能イベントの種類と購読、抑止の方針、ローカルの受信箱(送信APIと検索API)、送信内容のプレビューを無効にする手順、送信元の固定と宛先の制限、疎通確認の手順を、固有の値をプレースホルダーにして書き、索引に1行加える
   - 非同期処理の文書に、メール送信の経路、上限による待機と送信期限、封筒を持たないQueueの登録口を追記する
   - 完了状態: 2つの文書にプロジェクト名・固有の値が無く、記載した間隔・回数・期限が実装の定数と一致する
@@ -264,3 +264,4 @@
 - 6.2(7.2・8.1への申し送り): 疎通確認の経路は`POST /internal/email/smoke`で、`Authorization: Bearer <EMAIL_SMOKE_TOKEN>`を渡すと202 `{ requestId }`を返す。2つのシークレットが揃わなければ未登録の経路と同じ404。1.3の申し送りに従い、ルートの`secrets.required`だけに`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`を加え、設計の表を改めた。ローカルで未登録だと`wrangler dev`は警告して起動し、経路は404になるため、開発者がInfisical(dev)へ2つのキーを登録する必要がある。stagingは`wrangler secret put`で登録する(`secrets.required`には入れていないのでデプロイは失敗しない)。404のエラーの組み立ては`apps/api/src/presentation/gateway/internal-only.ts`の`createNotFoundError`と同じ内容をeventに写している。
 - 6.3: 日次の後始末のジョブは`email-delivery.cleanup`(業務時刻4:21=UTC 12:21、順序900)で、DI識別子`API_EMAIL_TYPES.EmailCleanupJob`は設計に無いため`application/email/email-cleanup-job.ts`に置いた。`21 12 * * *`はルートの`triggers.crons`だけに加えた。`triggers`はWranglerで環境に継承されるキーで、staging・prodの実効値にも入ることをcronの一致の検査(3環境)で確かめている(project-values.mdの「ルート・`env.staging`・`env.prod`の`triggers.crons`に書く」と設計のModified Filesの「3環境の`triggers.crons`」とは書き方が異なる)。backend-platformの「ジョブの無い時刻の定期実行が失敗せずに終わる」テストの時刻を`0 3 * * *`へ移した。
 - 6.3(identity-authへの申し送り): `USER_ADDRESS_DIRECTORY`は`Newable<UserAddressDirectory>`で`.to()`で束縛するため、identity-authはdesign.mdのファクトリ`createD1UserAddressDirectory(db)`ではなく、`@injectable()`と`@inject(PLATFORM_TYPES.Database)`を持つクラスとして差し替える。
+- 7.1(7.2への申し送り): `docs/GUIDES/tech/external/001-email-sending.md`と`infra/003`で新しいプレースホルダー(`<送信ドメイン>`・`<送信元アドレス>`・`<送信元の表示名>`・`<送信バインディング>`・変数とシークレットのキー名・`<メールイベント用Queueの名前>`・登録箇所・`<後始末の起動時刻>`・`<疎通確認の経路>`等)を使っている。7.2で`docs/onboardings/project-values.md`に本プロジェクトの値との対応を加える。infra/003の3つの規約(本文に個人情報を載せない・遅延再送の待つ期限・送信済みの記録を先に確保)には、メールの例外を追記した。
