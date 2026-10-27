@@ -55,7 +55,7 @@
   - _Boundary: SentryScrub_
   - _Requirements: 2.13, 13.1, 13.3, 13.5_
 
-- [ ] 3. サーバーのエントリの部品
+- [x] 3. サーバーのエントリの部品
 - [x] 3.1 (P) 環境の検証・公開してよい設定値・アプリのプロファイルの型を作る
   - 先に、必要なキーの欠落と不正な値(環境の種類・トレースの割合・オリジンの形式・バインディングの形)を名前の一覧で返すこと、ブラウザへ渡す設定にシークレットや内部の値が含まれないこと、アクセス解析を持たないプロファイルでは解析のトークンを渡さないこと、送信先が無ければSentryを無効として扱えることを確かめる単体テストを書く
   - 呼び出し元の種類・セッションのCookieの名前・検索除外の判定・アクセス解析の有無を持つプロファイルの型を置く
@@ -126,7 +126,7 @@
   - _Boundary: ServerSentryOptions_
   - _Requirements: 13.1, 13.4, 13.5_
 
-- [ ] 3.11 サーバーのエントリで処理の順序を合成する
+- [x] 3.11 サーバーのエントリで処理の順序を合成する
   - 先に、偽のバインディングと偽のTanStackのハンドラーで、環境の不備の500とキー名だけのログ、IP制限の超過(ページはHTML・他は共通のエラー形式、CSRF・中継・描画を呼ばない)、CSRFの拒否の403と理由のログ、中継の経路への振り分けと未登録の中継の経路の404、描画へ渡す値(nonce・表示設定・公開設定・中継の文脈・Cookieの名前)、ページのCSPに要求のnonceが入ること、全応答のセキュリティヘッダーと`no-store`、stagingと管理者側の検索除外、例外時の500と送信、アクセスログの出力、モジュールの読み込みだけでは環境の検証もログの設定も行われないことを確かめる単体テストを書く
   - 処理の順序は設計の図の1箇所だけで定め、各段階の中身は3.1〜3.9の部品を呼ぶ。Sentryの送信とトレースの項目の取得は、アプリから渡す関数で行う
   - 完了状態: 単体テストが成功し、エントリのファイルが`cloudflare:*`・TanStack・Sentryのパッケージを読み込まない
@@ -397,3 +397,4 @@
 - 3.8(3.11・5.5への申し送り): `resolveRequestDisplayPreferences({ cfTimeZone, acceptLanguage })`は入力の`cfTimeZone`を`unknown`で受けるため、`request.cf?.timezone`の構造的な読み取りは3.11で行う。`Accept-Language`は最初の1024文字・32要素(設計に無い公開の定数`MAX_ACCEPT_LANGUAGE_LENGTH`・`MAX_ACCEPT_LANGUAGE_ENTRIES`)までを読み、上限で切れた要素は使わない。q値の降順(同値はヘッダー順)で`supportedLocaleOf`が通す最初のタグを使い、`q=0`・`*`・不正な要素・不正なq値・q以外の引数を持つ要素は除く(RFC 9110の文法による解釈)。`ja-JP-u-ca-japanese`(和暦)や`en-US-u-nu-arab`(アラビア数字)のようなUnicode拡張・私用の部分は通るため、拡張を落とすかは5.5で判断する(送った本人の画面に限られ、ブラウザの`resolvedOptions().locale`と食い違うとマウント後に整形し直す)。
 - 3.9(3.10・3.11・9.4・9.6への申し送り): 設計からの相違は、`FrontendLoggingOptions.sink?: Sink`を`console?: Console`に(Sinkを差し替えると整形と値の伏せ字を飛ばすため。backend-libと同じ。3.11の`FrontendServerEntryOptions`も`console?: Console`にする)、`logAccess(record)`を`logAccess(caller, record)`に、設計に無い`withCorrelationId(correlationId, callback)`を追加、`REDACTED_FIELD_PATTERNS`の型を凍結した`readonly FieldPattern[]`に。`REDACTED_FIELD_PATTERNS`・`toLogObject`・`serializeError`はbackend-libの`core/logging/redaction.ts`・`log-record.ts`の写しで、片方を変えたらもう片方も見直す。`node:async_hooks`は互換性日付2026-08-04から`nodejs_compat`が既定で有効になるため`compatibility_flags`無しで使える(wrangler 4.124.0の`NODEJS_COMPAT_DEFAULT_ON_DATE`)。3.11は`withCorrelationId`より前に`ensureFrontendLoggingConfigured`を呼び(設定前は文脈が付かない)、プロファイルの`caller`を設定と`logAccess`の両方に使う(違う`caller`のログは捨てられる)。不正なレベルは`info`として扱う。アクセスログは`info`のため、`LOG_LEVEL`を`warning`以上にすると要件13.8の「要求ごとに」を満たさない(設計の環境の表はstaging・prodを`info`に固定)。9.4・9.6で「`LOG_LEVEL`は`info`以下にする」と書く。アクセスログの属性`outcome`はinfra/004の処理単位の終わりのログの表に無いため9.4で加える。
 - 3.10(3.11・4.3・6.3・7.3への申し送り): Sentry 11.4.0に`sendDefaultPii`は無く、`withSentry`の戻り値の型`StrictCloudflareOptions`は未知のキーを`never`にするため、設計の`ServerSentryOptions.sendDefaultPii: false`(1125行)は型検査を通らない。個人情報を既定で送らないことは`dataCollection: SENTRY_DATA_COLLECTION`で満たす(`userInfo: false`でIPアドレスの自動収集も止まる)。設計の改訂候補で、4.3のブラウザ側(`@sentry/tanstackstart-react`、設計1376行)も同様に確かめる。設計616行の`buildServerSentryOptions(env, PROFILE)`はInterfaceの`(env)`と食い違い、Interfaceに従った。6.3・7.3は`withSentry((env) => buildServerSentryOptions(env), ...)`で渡す。環境の検証に失敗するとDSNがあっても`enabled: false`(`environment: 'unknown'`・`tracesSampleRate: 0`)で、環境の不備の500はSentryへ送られずキー名のログだけが残る(backend-libは環境を検証せず送る)。
+- 3.11(4.1・4.2・6.3・7.3・9.xへの申し送り): 順序は`createFrontendServerEntry`の`fetch`(ログの設定→`withCorrelationId`→`handleSafely`→`applySecurityHeaders`→`logAccess`)と`handle`(環境の検証→許可先の合成1回→IP制限→CSRF→`/_bff/`の振り分け→描画)の1箇所。設計との相違は、`FrontendServerEntryOptions`が`console?: Console`を受ける、`FrontendRequestContext.sessionCookieName`が`SessionCookieName`型、設計のMonitoringに無い`[caller, 'http', 'error']`の`error`ログ(想定外の例外と、送信の失敗の`errorName`だけのログ)、`LOG_LEVEL`は環境の検証より前に生の環境から読む、`ctx`(`waitUntil`)は未使用、Sentryのタグ`correlation_id`は付けない(手段が無い)。`reportUnexpected`は`guardReporter`で包み、送信が例外を投げても500・503とヘッダー・アクセスログを返す(送り直さない)。CSPは描画の応答の`Content-Type`が`text/html`の時だけページのCSPで、それ以外とJSON(中継・403・404・429)はページ以外のCSP。429の静的な画面はページのCSP(`<style>`が効く)、環境の不備・許可先の不正・例外の500はページ以外のCSP(`<style>`は遮断)とすべて拒否のPermissions-Policyで、prodの利用者側でも`X-Robots-Tag`を付ける。環境の不備でも`reportUnexpected`を呼ぶが、3.10のとおり環境が不正だとSentryは無効なので実際には送られない。`outcome`はIP制限・CSRF・未登録の`/_bff/`が`rejected`、中継が`relay`、描画が`page`、500が`static_error`。ストリームの応答の`durationMs`はヘッダーを返すまでの時間。4.1は描画の文脈の`relay`(セッション識別子)と`api`を`AppRuntime`やdehydrateされる値へ入れず、テストで確かめる。6.3・7.3の`composition.unit.test.ts`は`mergeSecurityPolicySources(BASE_SECURITY_POLICY_SOURCES, securityPolicy)`が通ることを確かめる(不正なら全要求が500)。テストの共通の偽物は`test/server-entry-fixtures.ts`。
