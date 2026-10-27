@@ -11,9 +11,13 @@ import type { EmailSendBody } from '../../../lib/core/email/send-message.ts';
 import type { MessageHandlingResult } from '../../../lib/core/messaging/message-contract.ts';
 import { type EmailIncident, EmailRenderError } from './ports.ts';
 import {
+  clearCapturedLogs,
+  startLogCapture,
+  stopLogCapture,
+} from './email-log-capture.fixtures.ts';
+import {
   AFTER_SEND,
   bodyOf,
-  clearCapturedLogs,
   createHarness,
   errorLogs,
   handlerLogs,
@@ -30,8 +34,6 @@ import {
   SECRET_URL,
   SEND_DURATION_MS,
   SENDER_INFO,
-  startLogCapture,
-  stopLogCapture,
   SUBJECT,
   TRANSACTIONAL_KIND,
 } from './send-email-handler.fixtures.ts';

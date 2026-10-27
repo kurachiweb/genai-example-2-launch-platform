@@ -144,7 +144,7 @@
   - _Depends: 2.3, 2.5_
   - _Requirements: 1.5, 2.4, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 6.1, 6.2, 6.3, 6.4, 6.6, 6.7, 6.8, 8.4, 8.5, 10.1_
 
-- [ ] 5.5 (P) 配信不能イベントの処理を作る
+- [x] 5.5 (P) 配信不能イベントの処理を作る
   - 先に、偽物のポートで効果ごとの単体テストを書く
   - 検証の失敗は警告と通知を出して正常に終える。抑止は記録、通知の効果は異常の通知、ソフトバウンスはログ、無視するものは詳細ログとする。保存の失敗は例外にして再試行に任せる
   - 完了状態: 効果ごとのポートの呼び出し、不正なイベントで記録しないこと、保存の失敗が例外になることを単体テストで確かめられる
@@ -255,3 +255,4 @@
 - 5.2: Email Sendingの30秒の時間切れの後に`send()`が遅れて成功すると、一時的な障害として再試行されて二重送信になり得る(要件6.1と設計の想定どおり。少なくとも1回の配信の範囲)。Mailpitの失敗コードは設計の`mailpit-rejected`に加えて`mailpit-unreachable`・`mailpit-status-<状態コード>`・`mailpit-invalid-response`(すべて一時的な障害)。
 - 5.3(6.1への申し送り): `SentryEmailIncidentReporter`・`UnsetSenderInfoProvider`はコンストラクタ引数の無い`@injectable()`のクラスで、`.to(クラス)`で束縛する。通知は設計の`captureMessage`ではなく技術ドキュメント004の定型の文言の規則に従い`captureEvent`+`logentry`で送る(重複除外で捨てられないため)。送信不能には設計に無い`correlation_id`(送信要求の識別子)のタグも付ける。タグと指紋の値は`[A-Za-z0-9_.:-]`だけのとき64文字に切り詰め、それ以外は`unknown`、不正なイベントで種類が無ければ`missing`。
 - 5.4(6.1への申し送り): `SendEmailHandler`と`EmailTransientFailure`は`application/email/send-email-handler.ts`にある。ログのカテゴリは`['event', 'application', 'email-send']`、属性名は伏せ字の規則(`/email/i`)と予約の`category`を避けて`kind`・`kindCategory`・`deferCause`・`delaySeconds`等。前判定の送信不能のコードは`unknown-kind`・`invalid-input`・`render-failed`。日次上限の警告は`tryAcquire('email-daily-limit', now, 3600)`が真のときだけ送り、`tryAcquire`自体の失敗はerrorログにとどめて警告を送らない(開発者の判断待ち)。待機で再配信されると試行回数が1に戻るため、待機をまたぐと一時的な障害の再試行の合計が5回を超え得る(backend-platformの方式による)。
+- 5.5(6.1への申し送り): `DeliveryEventHandler`(`application/email/delivery-event-handler.ts`)は`RawMessageHandler`でClockを持たず、イベントの時刻が無ければ`meta.timestamp`(Queueに入った時刻。再試行で変わらない)を使う。ログのカテゴリは`['event', 'application', 'email-delivery-event']`。ログの捕まえ方のテスト補助は`application/email/email-log-capture.fixtures.ts`に共有した。要件7.8は不正なイベントを「警告」とするが、設計のEmailIncidentReporterの表に従いSentryへは`error`で送る(ログは`warning`)。

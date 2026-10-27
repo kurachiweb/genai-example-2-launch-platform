@@ -1,4 +1,4 @@
-import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
+import type { LogRecord } from '@logtape/logtape';
 import { z } from 'zod';
 
 import {
@@ -19,6 +19,7 @@ import type { EmailProviderOutcome } from '../../../lib/core/email/provider-outc
 import type { EmailSendBody } from '../../../lib/core/email/send-message.ts';
 import type { MessageMeta } from '../../../lib/core/messaging/message-contract.ts';
 import type { Clock } from '../../../lib/core/time/clock.ts';
+import { capturedLogsOf } from './email-log-capture.fixtures.ts';
 import type {
   EmailIncident,
   EmailIncidentReporter,
@@ -55,7 +56,7 @@ const RUNTIME_CONFIG: EmailRuntimeConfig = {
   fromName: 'Launch Stadium',
 };
 
-const LOG_CATEGORY = 'event.application.email-send';
+const LOG_CATEGORY = ['event', 'application', 'email-send'] as const;
 
 const testInput = z.object({ title: z.string(), url: z.string() });
 
@@ -247,34 +248,8 @@ export function portsOf(calls: readonly PortCall[]): string[] {
   return calls.map((call) => call.port);
 }
 
-const records: LogRecord[] = [];
-
-export function startLogCapture(): void {
-  records.length = 0;
-  configureSync({
-    reset: true,
-    sinks: {
-      capture: (record) => {
-        records.push(record);
-      },
-    },
-    loggers: [
-      { category: ['event'], sinks: ['capture'], lowestLevel: 'debug' },
-      { category: ['logtape', 'meta'], sinks: [], lowestLevel: 'warning' },
-    ],
-  });
-}
-
-export function stopLogCapture(): void {
-  resetSync();
-}
-
-export function clearCapturedLogs(): void {
-  records.length = 0;
-}
-
 export function handlerLogs(): LogRecord[] {
-  return records.filter((record) => record.category.join('.') === LOG_CATEGORY);
+  return capturedLogsOf(LOG_CATEGORY);
 }
 
 export function errorLogs(): LogRecord[] {

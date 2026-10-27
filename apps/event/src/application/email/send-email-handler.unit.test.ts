@@ -33,8 +33,12 @@ import {
   type EmailRuntimeConfig,
 } from './ports.ts';
 import {
-  bodyOf,
   clearCapturedLogs,
+  startLogCapture,
+  stopLogCapture,
+} from './email-log-capture.fixtures.ts';
+import {
+  bodyOf,
   createHarness,
   metaOf,
   NOTIFICATION_KIND,
@@ -44,8 +48,6 @@ import {
   REQUEST_ID,
   resultLog,
   SENDER_INFO,
-  startLogCapture,
-  stopLogCapture,
   TRANSACTIONAL_KIND,
   VALID_INPUT,
 } from './send-email-handler.fixtures.ts';
