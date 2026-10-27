@@ -94,7 +94,7 @@
   - _Depends: 1.2, 2.4, 2.5_
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 8.1, 8.2, 8.3, 8.6, 9.1, 9.5_
 
-- [ ] 4.3 (P) 送信済みの記録と警告の間引きをD1上に作る
+- [x] 4.3 (P) 送信済みの記録と警告の間引きをD1上に作る
   - 送信済みの記録は2回目の記録を無害にし、基準日時より古い行を削除できるようにする
   - 間引きは1つの文で、間隔内の2回目以降に偽を返す
   - 完了状態: 同じ識別子の2回目の記録で行が増えず、14日より古い行だけが消え、間隔内の2回目の間引きが偽になることをWorkers統合テストで確かめられる
@@ -247,3 +247,4 @@
 - 3(6.1への申し送り): 追加のQueueの登録は`createQueueDispatcher(..., { rawQueues })`で渡し、最初の`dispatch`で`assertRawQueueRegistrations`が検証する。登録が誤っていると本体のQueueを含む全バッチが例外になる(Sentryで検知)。名前は`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`、Queue名の解決結果が空・`undefined`でも拒否する。新しいケースは既存の`queue-consumer.worker.test.ts`(800行の上限に近い)ではなく`queue-consumer.raw-queues.worker.test.ts`に置いた(設計のTesting Strategyとの相違)。
 - 4.1(4.4への申し送り): 受付はファクトリ`createEmailSender(publisher, registry)`で、`workers`の他の部品と同じく`toDynamicValue`で束縛する。宛先は照合キーにせず元の値のまま送る(正規化は抑止リスト側)。年0000〜9999外の期限は`invalid-deadline`、過去の期限は受け付ける(送信処理が期限切れとして扱う)。
 - 4.2(4.4への申し送り): 抑止リストはファクトリ`createSuppressionRepository(db, clock)`で、`SuppressionList`・`SuppressionRecorder`・`SuppressionStore`の交差を`SuppressionRepository`型として公開した(設計に無い名前)。合成のSQLは`core`の理由の強さ(complaint > hard_bounce > rejected)を`CASE`に写しており、27状態の全729組を`mergeSuppression`と比べるWorkers統合テストでずれを検出する。
+- 4.3(4.4への申し送り): `createSendRecordRepository(db)`・`createAlertThrottleRepository(db)`はClockを持たない(時刻は引数で受け取る)。送信済みの記録の型は`SendRecordRepository`(設計の`SendRecordStore & { deleteSentBefore }`と同じ形の名前付きインターフェース)。`deleteSentBefore`は`sent_at < cutoff`で、ちょうど基準日時の行は残す。
