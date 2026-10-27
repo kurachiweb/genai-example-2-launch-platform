@@ -44,7 +44,7 @@
   - _Boundary: EmailSendContract_
   - _Requirements: 1.2, 1.3, 1.6, 1.7, 1.8, 8.2_
 
-- [ ] 2.3 (P) 送信プロバイダの結果の型、失敗コードの分類、送信前後の判定を作る
+- [x] 2.3 (P) 送信プロバイダの結果の型、失敗コードの分類、送信前後の判定を作る
   - 結果を送信済み・送信レートの上限・日次上限・一時的な障害・宛先の抑止・環境の宛先制限・恒久的な失敗に分け、Email Sendingの失敗コードを設計の表どおりに分類する。未知のコードとコード無しは一時的な障害とする
   - 送信前の判定で、送信期限ちょうどとそれ以降を期限切れにする
   - 送信結果から、完了・待機(上限ごとの間隔)・再試行・断念(通知の要否付き)を決め、再試行の方針(5回、120秒から倍、上限3600秒)を定数として持つ
@@ -239,3 +239,5 @@
 - 1.3: テスト用の`EMAIL_EVENTS_QUEUE_NAME`は`genai-example-2-email-events-test`でローカルのconsumerの名前と異なる。振り分けのWorkers統合テストでは`batch.queue`に`env.EMAIL_EVENTS_QUEUE_NAME`を使う。backend-platformの`wrangler-config.unit.test.ts`は`EMAIL_`・`MAILPIT_`で始まるキーを除いて比べ、それらはメールの設定のテストが厳密に検査する。
 - 2.1: 種別の検索は`createEmailKindRegistry(EMAIL_KINDS).get(name)`(未登録は`undefined`)。疎通確認の種別は`EMAIL_DELIVERY_SMOKE_KIND`で、入力`requestedAt`は`z.iso.datetime()`(末尾`Z`のUTCだけ)。集約は名前の形式・重複に加えて分類の不正と入力スキーマの欠落も`EmailKindRegistryError`にする(要件2.2)。
 - 2.2(4.1への申し送り): 本文の大きさの判定は`isWithinEmailSendBodyLimit(body)`(JSONにしたUTF-8が`MAX_EMAIL_SEND_BODY_BYTES`以下か)を使う。追加ヘッダーは名前の大文字小文字を区別せずに照合し、大文字小文字だけ違う重複は`too-many`、空の値と`List-Unsubscribe`の無い`List-Unsubscribe-Post`は拒否する。`List-Unsubscribe`はカンマで単純に分割するため、URIにカンマを含む値は拒否される。
+- 2.3(5.4・6.1への申し送り): 再試行の間隔は受信部が登録の`retry`の方針で決め、`decideAfterOutcome`は`EMAIL_SEND_RETRY_POLICY`で回数を判定する。`MESSAGE_HANDLERS`の`email.send`の登録に`retry: EMAIL_SEND_RETRY_POLICY`を渡し、Workers統合テストで確かめる(既定の方針のままだと再試行が30秒から始まる)。
+- 2.3: `decideAfterOutcome`は試行回数の検証のため結果によらず先に`decideOnFailure`を呼び、不正な回数ではどの結果でも`RangeError`になる。コード無しの一時的な障害は`UNKNOWN_SEND_ERROR_CODE`(`'unknown'`)。`E_ACCOUNT_SUSPENDED`は設計の表に無いため未知のコードとして一時的な障害に分類している(開発者の判断待ち)。設定の検査は`EMAIL_SEND_RETRY_POLICY.maxAttempts`を本体とメールイベント用の両方のQueueのconsumerの`max_retries`と比べる(設計のEmailConfigChecksとDeliveryDecisionで比べる対象が食い違うため)。

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { z } from 'zod';
 
+import { EMAIL_SEND_RETRY_POLICY } from '../../lib/core/email/delivery-decision.ts';
 import {
   DEFAULT_RETRY_POLICY,
   QUEUE_MAX_RETRIES,
@@ -139,6 +140,7 @@ describe.each(EXPECTED_ENVIRONMENTS)(
   (env) => {
     const event = readEventConfig(env.wranglerEnv);
     const emailEventsQueue = `genai-example-2-email-events-${env.resourceSuffix}`;
+    const jobsQueue = `genai-example-2-jobs-${env.resourceSuffix}`;
     const jobsDlq = `genai-example-2-jobs-dlq-${env.resourceSuffix}`;
 
     test('メールの変数を環境ごとの値で持つ', () => {
@@ -200,6 +202,20 @@ describe.each(EXPECTED_ENVIRONMENTS)(
         retry_delay: 30,
       });
       expect(DEFAULT_RETRY_POLICY.maxAttempts).toBeLessThan(
+        consumer?.max_retries ?? 0,
+      );
+      expect(EMAIL_SEND_RETRY_POLICY.maxAttempts).toBeLessThan(
+        consumer?.max_retries ?? 0,
+      );
+    });
+
+    test('email.sendを処理する本体のQueueは、送信不能の判断より後にだけデッドレターへ移す', () => {
+      const consumer = event.queues.consumers?.find(
+        (entry) => entry.queue === jobsQueue,
+      );
+
+      expect(consumer?.max_retries).toBe(QUEUE_MAX_RETRIES);
+      expect(EMAIL_SEND_RETRY_POLICY.maxAttempts).toBeLessThan(
         consumer?.max_retries ?? 0,
       );
     });
