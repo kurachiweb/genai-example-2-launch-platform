@@ -205,7 +205,9 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 - メール送信
   - ローカル環境 ... MailpitのHTTP送信API
   - デプロイ先 ... Cloudflare Email ServiceのEmail Sending
-- JSX email(HTMLメールコード生成、[ドキュメント](https://jsx.email/docs/introduction))
+- React Email(HTMLメールとテキストパートの生成、イベントサーバーだけで使用、[ドキュメント](https://react.email/docs/introduction))
+  - `@react-email/components` ... メールの共通レイアウトの部品
+  - `@react-email/render` ... 同じ要素からHTMLとテキストを生成、Workers向けの出力(`workerd`条件)を使用
 
 ### 画像モデレーション
 

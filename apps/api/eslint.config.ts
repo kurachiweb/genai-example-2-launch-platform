@@ -6,6 +6,7 @@ import tseslint from 'typescript-eslint';
 import {
   APP_SOURCE_RESTRICTION,
   createBackendLayerRules,
+  REACT_RESTRICTION,
   RUNTIME_MESSAGE,
 } from '../../config/eslint/backend-layers.ts';
 import { createBaseConfig } from '../../eslint.config.base.ts';
@@ -58,6 +59,7 @@ const SHARED_DIRECTORY_RULES: Linter.Config[] = [
               message: RUNTIME_MESSAGE,
               allowTypeImports: true,
             },
+            REACT_RESTRICTION,
           ],
         },
       ],
@@ -225,6 +227,7 @@ const GRAPHQL_SCRIPT_RULES: Linter.Config[] = [
               message:
                 'GraphQLの生成・検査のスクリプトは、許可リストのモジュールから型だけを読み込めます。',
             },
+            REACT_RESTRICTION,
           ],
         },
       ],
@@ -244,8 +247,23 @@ const GRAPHQL_SCRIPT_RULES: Linter.Config[] = [
               message:
                 'srcは生成・検査のスクリプトに依存できません。共有する処理はsrcに置き、スクリプトから読み込んでください。',
             },
+            REACT_RESTRICTION,
           ],
         },
+      ],
+    },
+  },
+];
+
+// ReactとReact Emailはeventのメールの描画だけが使うため、apiでは型だけのimportも含めて全体で禁止する。後に当たる@typescript-eslint/no-restricted-importsの設定はこのオプションを置き換えるため、それぞれREACT_RESTRICTIONを含め直す
+const REACT_FORBIDDEN_RULES: Linter.Config[] = [
+  {
+    name: 'api/react/forbidden',
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        { patterns: [REACT_RESTRICTION] },
       ],
     },
   },
@@ -259,6 +277,7 @@ const config: Linter.Config[] = [
     tsconfigRootDir: import.meta.dirname,
   }),
   ...createBackendLayerRules('api'),
+  ...REACT_FORBIDDEN_RULES,
   ...BUN_LOADED_GRAPHQL_RULES,
   ...GRAPHQL_SCRIPT_RULES,
   ...SHARED_DIRECTORY_RULES,

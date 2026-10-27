@@ -32,6 +32,8 @@
 | `graphql-yoga`・`@graphql-yoga/plugin-persisted-operations`・`@graphql-yoga/plugin-disable-introspection` | 5.24.6・3.24.6・2.25.6                  | GraphQLのサーバーを持つアプリ                        | GraphQL Armorの相手依存の`@envelop/core`(`^5.0.0`)と組み合わせられるGraphQL Yogaの系列に限る。2つのプラグインは同じ系列の`graphql-yoga`を相手依存に持つ                     |
 | `@escape.tech/graphql-armor`                                                                              | 3.2.0                                   | GraphQLのサーバーを持つアプリ                        | `graphql`の系列と、組み合わせられるGraphQL Yogaの系列を決める                                                                                                               |
 | `@graphql-codegen/typescript`・`@graphql-codegen/typescript-resolvers`                                    | 6.1.2・6.1.1                            | GraphQLのサーバーを持つアプリ                        | 生成するリゾルバの型が版によって変わる。`@graphql-codegen/cli`と同時に更新し、生成し直す                                                                                    |
+| `react`・`react-dom`・`@types/react`・`@types/react-dom`                                                  | 19.3.0(4つとも同一)                     | Reactを使うアプリ                                    | `react-dom`は同じ版の`react`を相手依存に持つ。フロントエンドとメールの描画で同じ版にそろえ、型定義も実行時の版に合わせる                                                    |
+| `@react-email/components`・`@react-email/render`                                                          | 1.0.12・2.1.0                           | メールを描画するアプリ                               | Workers向けの出力(`workerd`条件)の有無が版で変わる。部品側が別の版の`@react-email/render`を内部に持つため、直接宣言した版で描画する                                         |
 
 - Vitest系はテストの種別に応じて導入する。ブラウザテストを持つアプリは`vitest`・`@vitest/browser-playwright`・`@vitest/coverage-v8`・`playwright`を、Workers統合テストを持つアプリは`vitest`・`@vitest/coverage-istanbul`・`@cloudflare/vitest-pool-workers`・`wrangler`を導入する。
 - ルートは`@playwright/test`だけを直接宣言する。`@playwright/test`は`playwright`を、`playwright`は`playwright-core`を、それぞれ完全固定の`dependencies`で持つため、`playwright`・`playwright-core`は推移的に同じ版に決まる。ブラウザテストを持つアプリは、`@vitest/browser-playwright`が使う`playwright`を直接宣言し、同じ版にする。
@@ -95,6 +97,13 @@
 - `git grep -noE '\["graphql@[^"]+"' -- '*bun.lock' ':!<対象外のディレクトリ>/'`で、各`bun.lock`に`graphql`が1つの版だけ載っている。
 - GraphQL Code Generatorを更新したら、サーバーとクライアントの型を生成し直し、差分を確かめてコミットする。
 
+### react・react-dom・@types/react・@types/react-dom・React Email
+
+- 4つのReact系パッケージを同じ版で同時に更新し、Reactを使うすべてのアプリで同じ版にする。
+- `bun pm view @react-email/components@<版> peerDependencies`・`bun pm view @react-email/render@<版> peerDependencies`の`react`の範囲に、一覧の`react`の版が含まれる。
+- `bun pm view @react-email/render@<版> exports`で`workerd`条件の出力が残っている。
+- メールの描画のWorkers統合テストが、日本語のHTMLとテキストの生成とエスケープを確かめて成功する。
+
 ### @playwright/test・playwright
 
 - 開発コンテナのOS依存パッケージの版、ルートの`@playwright/test`の版、2つのブラウザ操作MCPサーバーの版の4箇所を整合させる。手順は「[E2Eテストツールの版の更新手順](../testing/002-browser-tool-versions.md)」に従う。
@@ -126,7 +135,7 @@
    git grep -n '"<パッケージ>":' -- '*package.json' ':!<対象外のディレクトリ>/'
    ```
 
-3. 見つかった各ディレクトリで、「[版を明示した追加手順](#版を明示した追加手順)」のコマンドを新しい版で実行する。一緒に動かすパッケージ(Vitest系の4つ、`@cloudflare/vitest-pool-workers`と`wrangler`、`drizzle-orm`と`drizzle-kit`、`@playwright/test`と`playwright`、`inversify`と`reflect-metadata`、`@logtape/logtape`と`@logtape/redaction`、`@sentry/cloudflare`と`@sentry/hono`、`graphql-yoga`と2つのプラグイン、`@graphql-codegen/cli`と`@graphql-codegen/typescript`・`@graphql-codegen/typescript-resolvers`)は同時に更新する。
+3. 見つかった各ディレクトリで、「[版を明示した追加手順](#版を明示した追加手順)」のコマンドを新しい版で実行する。一緒に動かすパッケージ(Vitest系の4つ、`@cloudflare/vitest-pool-workers`と`wrangler`、`drizzle-orm`と`drizzle-kit`、`@playwright/test`と`playwright`、`inversify`と`reflect-metadata`、`@logtape/logtape`と`@logtape/redaction`、`@sentry/cloudflare`と`@sentry/hono`、`graphql-yoga`と2つのプラグイン、`@graphql-codegen/cli`と`@graphql-codegen/typescript`・`@graphql-codegen/typescript-resolvers`、`react`・`react-dom`・`@types/react`・`@types/react-dom`)は同時に更新する。
 4. すべての`package.json`と`bun.lock`が同じ版になったことを確かめる。
 
    ```sh

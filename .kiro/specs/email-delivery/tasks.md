@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: テンプレートの依存・メールのテーブル・Wrangler設定
-- [ ] 1.1 イベントサーバーにReactとReact Emailを版固定で導入し、workerd上で描画できることを確かめる
+- [x] 1.1 イベントサーバーにReactとReact Emailを版固定で導入し、workerd上で描画できることを確かめる
   - backend-platformの全タスクが完了していることを前提とする(層構成・登録箇所・受信部・Workers統合テストの設定がある状態)
   - 先に、日本語の文を含む最小の要素を`@react-email/render`でHTMLとテキストにするWorkers統合テストを書き、失敗を確かめてから導入する(5.7で描画処理のテストに置き換える)
   - react 19.3.0・react-dom 19.3.0・@react-email/components 1.0.12・@react-email/render 2.1.0、開発用に@types/react 19.3.0・@types/react-dom 19.3.0を、イベントサーバーだけに完全に固定した版で導入する
@@ -225,3 +225,9 @@
   - 開発者の手作業(送信ドメインの登録と送信内容のプレビューの無効化、メールイベント用Queueと購読の作成、stagingの宛先の検証と許可する宛先・疎通確認のシークレットの登録、デプロイ後のstagingでの疎通確認)を、実行するコマンドや画面の操作とともに報告にまとめる
   - 完了状態: 一括検査と一括テストが成功してカバレッジが閾値を満たし、手作業の一覧が報告に含まれている
   - _Requirements: 11.1, 11.2, 11.5_
+
+## Implementation Notes
+
+- 1.1: `@react-email/components`1.0.12は`@react-email/render`2.0.6を入れ子の依存に持つ。描画は直接宣言した`@react-email/render`2.1.0から`render`をimportし、`@react-email/components`の再エクスポートを使わない。
+- 1.1(5.xへの申し送り): eventのWorkers統合テストのカバレッジの`include`は`*.ts`だけで、描画とテンプレートの`.tsx`が分母に入らない。5.xで`{ts,tsx}`にする。`jsx: "react-jsx"`が暗黙に読み込む`react/jsx-runtime`は静的解析の禁止で検出しないため、`.tsx`は`infrastructure/email/rendering`・`templates`だけに置く。
+- 1.1: eventの静的解析は`lib/`・`db/`を無視するため、共有ディレクトリでのReactの禁止はapiの静的解析(`**/*.{ts,tsx}`)で担保している(設計のModified Filesの「eventの`lib/**`で禁止」との相違)。

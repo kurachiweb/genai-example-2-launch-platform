@@ -47,10 +47,21 @@ const allowed = (statement: string): ImportCase => ({
   reported: false,
 });
 
+const REACT_FORBIDDEN_IMPORTS: readonly ImportCase[] = [
+  forbidden("import { useState } from 'react';"),
+  forbidden("import type { ReactNode } from 'react';"),
+  forbidden("import { jsx } from 'react/jsx-runtime';"),
+  forbidden("import { renderToString } from 'react-dom/server';"),
+  forbidden("import { Html } from '@react-email/components';"),
+  forbidden("import { render } from '@react-email/render';"),
+  allowed("import { a } from './react-email-renderer-port';"),
+];
+
 const SOURCE_LAYER_CASES: readonly PositionCase[] = [
   {
     file: 'src/domain/sample/violation.ts',
     imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
       forbidden("import { a } from '../../application/sample/use-case';"),
       forbidden("import { b } from '../../infrastructure/sample/repository';"),
       forbidden("import { c } from '../../presentation/sample/route';"),
@@ -71,6 +82,7 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
   {
     file: 'src/application/sample/violation.ts',
     imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
       forbidden("import { a } from '../../infrastructure/sample/repository';"),
       forbidden("import { b } from '../../presentation/sample/route';"),
       forbidden("import { c } from '../../composition/modules';"),
@@ -87,6 +99,7 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
   {
     file: 'src/infrastructure/sample/violation.ts',
     imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
       forbidden("import { a } from '../../composition/modules';"),
       allowed("import { Entity } from '../../domain/sample/entity';"),
       allowed("import { UseCase } from '../../application/sample/use-case';"),
@@ -100,6 +113,7 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
   {
     file: 'src/presentation/sample/violation.ts',
     imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
       forbidden("import { a } from '../../composition/modules';"),
       allowed("import { UseCase } from '../../application/sample/use-case';"),
       allowed("import { b } from '../../../lib/workers/http/hono-env';"),
@@ -109,6 +123,7 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
   {
     file: 'src/composition/violation.ts',
     imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
       allowed(
         "import { Repository } from '../infrastructure/sample/repository';",
       ),
@@ -123,6 +138,7 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
   {
     file: 'lib/core/sample/violation.ts',
     imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
       forbidden("import { a } from '../../workers/http/hono-env';"),
       forbidden("import { Hono } from 'hono';"),
       forbidden("import { env } from 'cloudflare:workers';"),
@@ -142,6 +158,7 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
   {
     file: 'lib/workers/sample/violation.ts',
     imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
       forbidden("import { MODULES } from '../../../src/composition/modules';"),
       forbidden("import { e } from '../../../src/domain/sample/entity';"),
       forbidden(
@@ -156,6 +173,7 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
   {
     file: 'db/schema/violation.ts',
     imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
       forbidden("import { a } from '../../lib/core/time/clock';"),
       forbidden("import { e } from '../../src/domain/sample/entity';"),
       forbidden("import { Hono } from 'hono';"),
@@ -299,6 +317,7 @@ const graphqlScriptCase = (
 ): PositionCase => ({
   file,
   imports: [
+    ...REACT_FORBIDDEN_IMPORTS,
     ...extraImports,
     ...BUN_LOADED_FORBIDDEN_IMPORTS,
     forbidden(
@@ -386,6 +405,72 @@ const SOURCE_TO_SCRIPT_CASES: readonly PositionCase[] = [
   },
 ];
 
+const REACT_ALLOWED_IMPORTS: readonly ImportCase[] = [
+  allowed("import { useState } from 'react';"),
+  allowed("import type { ReactNode } from 'react';"),
+  allowed("import { renderToString } from 'react-dom/server';"),
+  allowed("import { Html } from '@react-email/components';"),
+  allowed("import { render } from '@react-email/render';"),
+];
+
+const EVENT_EMAIL_RENDERING_CASES: readonly PositionCase[] = [
+  {
+    file: 'src/infrastructure/email/rendering/sample-layout.tsx',
+    imports: [
+      ...REACT_ALLOWED_IMPORTS,
+      forbidden("import { MODULES } from '../../../composition/modules';"),
+    ],
+  },
+  {
+    file: 'src/infrastructure/email/templates/sample/sample-body.tsx',
+    imports: [
+      ...REACT_ALLOWED_IMPORTS,
+      forbidden("import { MODULES } from '../../../../composition/modules';"),
+    ],
+  },
+  {
+    file: 'src/infrastructure/email/providers/sample-provider.ts',
+    imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
+      allowed(
+        "import { ReactEmailRenderer } from '../rendering/react-email-renderer';",
+      ),
+    ],
+  },
+  {
+    file: 'src/application/email/sample-handler.ts',
+    imports: REACT_FORBIDDEN_IMPORTS,
+  },
+  {
+    file: 'src/composition/email-module.ts',
+    imports: [
+      ...REACT_FORBIDDEN_IMPORTS,
+      allowed(
+        "import { ReactEmailRenderer } from '../infrastructure/email/rendering/react-email-renderer';",
+      ),
+      allowed(
+        "import { EMAIL_TEMPLATES } from '../infrastructure/email/templates/index';",
+      ),
+    ],
+  },
+  {
+    file: 'src/index.ts',
+    imports: REACT_FORBIDDEN_IMPORTS,
+  },
+];
+
+const API_REACT_CASES: readonly PositionCase[] = [
+  'src/infrastructure/email/rendering/sample-layout.tsx',
+  'src/infrastructure/email/templates/sample/sample-body.tsx',
+  'src/index.ts',
+  'test/support/sample-harness.ts',
+  'scripts/sample.ts',
+  'db/schema/_shared/violation.worker.test.ts',
+  'db/client.ts',
+  'lib/core/email/sample.unit.test.ts',
+  'lib/workers/email/sample.worker.test.ts',
+].map((file) => ({ file, imports: REACT_FORBIDDEN_IMPORTS }));
+
 const reportedStatementsOf = async (
   app: AppName,
   { file, imports }: PositionCase,
@@ -420,6 +505,32 @@ describe.each(['api', 'event'] as const)('%sの層の依存方向', (app) => {
     '%sで外側の層と実行環境への依存だけを報告する',
     async (_file, position) => {
       expect(await reportedStatementsOf(app, position)).toEqual(
+        expectedStatementsOf(position),
+      );
+    },
+    LINT_TIMEOUT_MS,
+  );
+});
+
+describe('eventのReactとReact Emailの読み込み位置', () => {
+  test.each(
+    EVENT_EMAIL_RENDERING_CASES.map((position) => [position.file, position]),
+  )(
+    '%sでメールの描画とテンプレートの位置以外からのReactとReact Emailへの依存だけを報告する',
+    async (_file, position) => {
+      expect(await reportedStatementsOf('event', position)).toEqual(
+        expectedStatementsOf(position),
+      );
+    },
+    LINT_TIMEOUT_MS,
+  );
+});
+
+describe('apiのReactとReact Emailの読み込みの禁止', () => {
+  test.each(API_REACT_CASES.map((position) => [position.file, position]))(
+    '%sでReactとReact Emailへの依存を型だけの読み込みも含めて報告する',
+    async (_file, position) => {
+      expect(await reportedStatementsOf('api', position)).toEqual(
         expectedStatementsOf(position),
       );
     },

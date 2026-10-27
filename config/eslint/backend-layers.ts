@@ -10,6 +10,13 @@ export const APP_SOURCE_RESTRICTION = {
     '共有ディレクトリは利用側アプリのsrcに依存できません。アプリ固有の型や値は合成ルートから渡してください。',
 };
 
+// `.gitignore`形式の`react`はパスの途中の`react`という名前にも当たるため、パッケージ名の先頭からの一致を正規表現で表す
+export const REACT_RESTRICTION = {
+  regex: '^(?:react|react-dom)(?:/.*)?$|^@react-email/',
+  message:
+    'Reactと@react-email/*はメールの描画とテンプレートの位置(eventのsrc/infrastructure/email/renderingとtemplates)だけが読み込めます。描画は合成ルートで束縛した描画処理を経由してください。',
+};
+
 // バックエンドのアプリ(api・event)のsrcの4層の依存方向を、ファイルの位置ごとの禁止importで強制する
 export function createBackendLayerRules(appName: string): Linter.Config[] {
   return [
