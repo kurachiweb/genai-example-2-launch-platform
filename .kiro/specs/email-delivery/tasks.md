@@ -117,7 +117,7 @@
   - 完了状態: イベントサーバーの型検査と層の規則の静的解析が成功し、5.2〜5.5がこのポートと共有ポートだけを参照して互いに独立に実装できる状態になっている
   - _Requirements: 4.5_
 
-- [ ] 5.2 (P) Email Sending・Mailpit・宛先制限の送信プロバイダと、環境による選択を作る
+- [x] 5.2 (P) Email Sending・Mailpit・宛先制限の送信プロバイダと、環境による選択を作る
   - Email Sendingは構造化された送信で、表示名「Launch Stadium」とnoreplyの送信元・宛先・件名・両パート・追加ヘッダーを渡し、返信先を設定しない。30秒の時間切れを一時的な障害とし、例外のコードを分類する
   - MailpitはHTTPの送信APIへ送り、成功・400・それ以外と通信の失敗を分類する
   - 宛先制限は、許可された照合キーに無い宛先を送らずに環境の宛先制限として返す
@@ -251,3 +251,5 @@
 - 4.4(6.1・6.3への申し送り): `EMAIL_PLATFORM_MODULE`の型は`Omit<AppModule, 'routes'>`(既定の`AppModule`はHonoの型引数の不変性で両アプリの`MODULES`に代入できないため)。束縛は種別の集約・受付・抑止の照会と記録・送信済みの記録・間引きだけで、`SuppressionMaintenance`は6.3で`createSuppressionMaintenance(suppressions, sendRecords, directory)`から作ってapiのモジュールに束縛する。後始末の警告ログのカテゴリは`['api', 'application', 'email-cleanup']`に固定した(eventから使う場合は引数化が要る)。
 - 4.4(運用の見直しの対象): 1年の判定は実行をまたいで`afterKey`を持ち越さず毎日先頭から数え直すため、1年を過ぎた登録済みの記録が照合キーの昇順で先頭の1800件を占めると、それより後ろの未登録の記録が削除されなくなる(設計どおりの限界)。
 - 5.1(5.2〜5.5への申し送り): eventのポートは`apps/event/src/application/email/ports.ts`、識別子は`email-types.ts`の`EVENT_EMAIL_TYPES`(処理の識別子`SendEmailHandler`・`DeliveryEventHandler`を含む)。`EmailRenderError`はクラスとして`ports.ts`にあり、5.7が投げて5.4が`instanceof`で見分ける。`EmailTransientFailure`は5.4が定義する。`EmailIncident`の`undeliverable`の`category`は未登録の種別のため`EmailCategory | undefined`(設計の型との相違)で、5.3は`undefined`のとき`email_category`のタグを付けない。`createEmailProvider`の環境の型`EventEmailEnv`は設計に置き場が無いため、5.2が`Pick<Env, ...>`等で定義する。
+- 5.2(6.1への申し送り): `createEmailProvider(env, fetcher)`の環境の型`EventEmailEnv`は`create-email-provider.ts`に独立したインターフェースとして定義した(生成された`Env`の`MAILPIT_API_URL`がリテラル型のため)。`EMAIL_PROVIDER`が想定外の値だと`undefined`を返すため、6.1の環境の検証で値を保証する。設定の欠落はキー名だけの`Error`。`createCloudflareEmailProvider`はテストのため任意の第2引数で時間切れの値を受け取る(設計は1引数)。
+- 5.2: Email Sendingの30秒の時間切れの後に`send()`が遅れて成功すると、一時的な障害として再試行されて二重送信になり得る(要件6.1と設計の想定どおり。少なくとも1回の配信の範囲)。Mailpitの失敗コードは設計の`mailpit-rejected`に加えて`mailpit-unreachable`・`mailpit-status-<状態コード>`・`mailpit-invalid-response`(すべて一時的な障害)。
