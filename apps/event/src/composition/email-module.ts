@@ -24,6 +24,7 @@ import { createEmailTemplateRegistry } from '../infrastructure/email/rendering/e
 import { ReactEmailRenderer } from '../infrastructure/email/rendering/react-email-renderer.tsx';
 import { SentryEmailIncidentReporter } from '../infrastructure/email/sentry-email-incident-reporter.ts';
 import { EMAIL_TEMPLATES } from '../infrastructure/email/templates/index.ts';
+import { registerEmailSmokeRoute } from '../presentation/email/email-smoke-route.ts';
 import { EMAIL_SENDER_INFO_PROVIDER } from './email-registrations.ts';
 import type { EventEnv } from './env-schema.ts';
 
@@ -63,4 +64,5 @@ export const EVENT_EMAIL_MODULE: AppModule<Hono<PlatformHonoEnv<EventEnv>>> = {
       DeliveryEventHandler,
     );
   }),
+  routes: registerEmailSmokeRoute,
 };

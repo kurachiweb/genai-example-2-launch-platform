@@ -99,7 +99,8 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEmailEnvironment[] = [
       MAILPIT_API_URL: 'http://127.0.0.1:48041',
     }),
     hasSendBinding: false,
-    requiredEmailSecrets: [],
+    // wrangler devはsecrets.requiredのキーだけをenvへ渡すため、疎通確認の経路を使うローカルにだけ挙げる。デプロイ先に挙げると、登録前のデプロイが失敗する
+    requiredEmailSecrets: ['EMAIL_SMOKE_TOKEN', 'EMAIL_SMOKE_RECIPIENT'],
   },
   {
     label: 'staging',
@@ -166,7 +167,7 @@ describe.each(EXPECTED_ENVIRONMENTS)(
       expect(event.send_email ?? []).toStrictEqual(expected);
     });
 
-    test('メールの必須シークレットは環境の宛先制限の方針に対応する', () => {
+    test('メールの必須シークレットは環境の宛先制限の方針と疎通確認の経路の要否に対応する', () => {
       const required = event.secrets?.required ?? [];
 
       expect(

@@ -179,7 +179,7 @@
   - _Depends: 1.3, 3, 4.4, 5.2, 5.3, 5.4, 5.5, 5.7_
   - _Requirements: 1.1, 1.5, 3.3, 4.1, 4.2, 7.1, 7.7, 7.10_
 
-- [ ] 6.2 疎通確認の経路を作る
+- [x] 6.2 疎通確認の経路を作る
   - 先に、未設定の環境で404、トークンの不一致で401、成功で202と`email.send`の送信が起きることを確かめるWorkers統合テストを書く
   - トークンと宛先の両方のシークレットがある環境だけで有効にし、トークンは両者のSHA-256を時間一定で比較し、宛先はシークレットの値に固定する
   - イベントサーバーのメールのモジュールに経路を登録する
@@ -261,3 +261,4 @@
 - 5.7(6.1への申し送り): `ReactEmailRenderer`はコンストラクタで`EmailTemplateRegistry`を受け取るクラスで`@injectable`を持たず、テンプレートの集約のDI識別子も無い。`.to(ReactEmailRenderer)`では解決できないため、`toDynamicValue(() => new ReactEmailRenderer(createEmailTemplateRegistry(EMAIL_TEMPLATES, EMAIL_KINDS)))`で束縛する。描画の失敗の`EmailRenderError`はメッセージが種別の名前だけで元の例外を`cause`に残すが、`SendEmailHandler`は`cause`をログ・Sentryへ出さない。疎通確認の本文の文言(「メール送信の確認のために送信したメールです。」「受付日時は…です。」「このメールへの返信は不要です。」)は仮置き(開発者の確認待ち)。20件の描画の所要時間はVitestの`annotate`で記録する(`--reporter=verbose`で表示)。
 - 6.1(6.2への申し送り): eventのメールのモジュールは`composition/email-module.ts`の`EVENT_EMAIL_MODULE`で、経路はまだ持たない(6.2で疎通確認の経路を足す)。`ReactEmailRenderer`は起動時に作る定数を`toConstantValue`で束縛した(種別とテンプレートの対応の誤りを起動時に検出するため。5.7の申し送りとの相違)。送信プロバイダには処理単位ごとにグローバルの`fetch`を渡し、テストは`vi.spyOn(globalThis, 'fetch')`で受ける。eventのコンテナで`EMAIL_TYPES.EmailSender`が解決できることは6.2の経路のテストで確かめる。
 - 6.1: eventのWorkers統合テストでD1を使うため、apiの`readNestedD1Migrations`を`config/vitest/read-nested-d1-migrations.ts`へ移して両アプリで共有した(`config/vitest`の規則は`node:`の組み込みを許す形に緩めた)。マイグレーションは`setupFiles`で適用すると既存の`index.worker.test.ts`の`vi.mock`が効かなくなるため、D1を使うテストファイルの`beforeAll`で適用する。backend-platformのdesign.md(241〜242行・1866行)は移す前のパスを指したまま。eventの`wrangler deploy --dry-run`によるバンドルの確認は権限で拒否されたため、開発者の手動実行待ち。
+- 6.2(7.2・8.1への申し送り): 疎通確認の経路は`POST /internal/email/smoke`で、`Authorization: Bearer <EMAIL_SMOKE_TOKEN>`を渡すと202 `{ requestId }`を返す。2つのシークレットが揃わなければ未登録の経路と同じ404。1.3の申し送りに従い、ルートの`secrets.required`だけに`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`を加え、設計の表を改めた。ローカルで未登録だと`wrangler dev`は警告して起動し、経路は404になるため、開発者がInfisical(dev)へ2つのキーを登録する必要がある。stagingは`wrangler secret put`で登録する(`secrets.required`には入れていないのでデプロイは失敗しない)。404のエラーの組み立ては`apps/api/src/presentation/gateway/internal-only.ts`の`createNotFoundError`と同じ内容をeventに写している。

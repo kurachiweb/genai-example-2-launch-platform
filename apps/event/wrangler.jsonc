@@ -72,7 +72,9 @@
     "EMAIL_EVENTS_QUEUE_NAME": "genai-example-2-email-events-dev",
     "MAILPIT_API_URL": "http://127.0.0.1:48041",
   },
-  "secrets": { "required": ["HASH_PEPPER"] },
+  "secrets": {
+    "required": ["HASH_PEPPER", "EMAIL_SMOKE_TOKEN", "EMAIL_SMOKE_RECIPIENT"],
+  },
   "env": {
     "staging": {
       "d1_databases": [
