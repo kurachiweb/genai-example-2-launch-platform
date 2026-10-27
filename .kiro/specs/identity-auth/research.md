@@ -368,3 +368,24 @@ cross-spec reviewの指摘による、承認の後の改訂である。仮7は20
 ## 上流(api-gateway)の版の更新への追従(2026-10-26)
 
 - api-gatewayの承認後の改訂2(実装前のギャップ分析のG5)で、開発者の指示により`graphql-yoga`を5.24.1から最新のパッチ5.24.6へ上げた。本specは上流の版を使うため、design.mdのTechnology Stackの表の`graphql-yoga`の版を5.24.6に合わせた。他の記述と契約は変えていない。
+
+## email-deliveryの実装の反映(2026-10-27、開発者の指示)
+
+- email-deliveryの実装(同specのresearch.mdの改訂3)で、本specが使う契約の形が次のとおり決まった。開発者の指示で、design.mdを実装に合わせた。要件・タスクは変えていない。
+  - 照会口の登録箇所: `USER_ADDRESS_DIRECTORY`(`apps/api/src/composition/email-registrations.ts`)は`Newable<UserAddressDirectory>`で、`API_EMAIL_MODULE`が`.to()`で束縛する。設計のファクトリ`createD1UserAddressDirectory(db)`は登録できないため、`D1UserAddressDirectory`を`@injectable()`と`@inject(PLATFORM_TYPES.Database)`のコンストラクタ引数を持つクラスにした(notificationsの`EMAIL_SENDER_INFO_PROVIDER`と同じ扱い)。
+  - eventでの`SuppressionMaintenance`の束縛: `createSuppressionMaintenance`は、抑止記録(`createSuppressionRepository(db, clock)`)・送信済みの記録(`createSendRecordRepository(db)`)・照会口・1年の判定の続きの位置のストア(`createCleanupCursorRepository(db)`)の4引数を取る。本specがeventで使うのは退会時の`deleteByAddress`だけだが、`deleteByAddress`は続きの位置が同じ照合キーなら位置の行も消すため、4つとも渡す。後始末の警告ログのカテゴリは`['api', 'application', 'email-cleanup']`に固定されており、eventで`runDailyCleanup`を呼ぶとログが捨てられるが、本specは呼ばないため影響しない。
+  - 日次の後始末との時刻の重なり(email-deliveryのtasks.mdの4.4の申し送り「退会の物理削除のバッチを`email-delivery.cleanup`と同じ時刻に動かさない」): 本specの4:21のジョブは`email-delivery.cleanup`(`order` 900)と同じ`21 12 * * *`の起動で先に動く。物理削除(`purge_due`、FR-USER-022)は`deleteByAddress`を呼ばないため当たらないが、`identity-auth.purge-orchestrator`の送り直しで`withdrawn`のイベントの`EmailSuppressionCleanupHandler`が後始末と並行して動くと、退会したアドレスが続きの位置の行に次に確認できた日まで残り得る。重なりの扱いは下の「開発者の決定による送り直しの時刻の分離」で決めた。
+- 変えた箇所: design.mdのExisting Architecture Analysis(上流の実装の状況)、上流への影響の表のemail-deliveryの行、「D1UserAddressDirectory」(クラスの形と束縛)、「IdentityPurgeStore・EventIdentityComposition」(`SuppressionMaintenance`の4引数とログのカテゴリ)。本書のResearch Logの「上流specの契約と不足」は当時の調査の記録として残した。
+
+## 開発者の決定による送り直しの時刻の分離(2026-10-27)
+
+- **状態**: 2026-10-27に開発者が決定した改訂で、確定している。email-deliveryの実装の反映で、未完了のライフサイクルイベントの送り直しが4:21の`email-delivery.cleanup`と同じ起動で動くことを注記し、開発者の判断を求めていた。
+- **決定**: 送り直しを`identity-auth.purge-orchestrator`から新しいジョブ`identity-auth.lifecycle-redispatch`(業務時刻16:21=UTC 0:21、cron式`21 0 * * *`、`order` 100)へ分ける。物理削除の開始(17.1)と期限超過の通知(17.4)は`identity-auth.purge-orchestrator`(4:21・100)に残す。
+- **理由**: 送り直した`withdrawn`のイベントが4:21の後始末と並行して動くと、退会したアドレスが後始末の続きの位置の行に残り得る。送り直しを別の時刻にすれば、日次の起動による重なりは無くなる。物理削除の開始はDR-002・FR-USER-022で4:21の日次バッチと決まっており、`deleteByAddress`を呼ばないため動かさない。利用者の操作による退会の直後のイベントは任意の時刻に動くため、サービス仕様の準拠方針の注7の例外の文(退会の処理と確認の処理が同時に動いた場合)は残す。
+- **時刻の選び方**:
+  - 4:21の後始末から前後12時間離れ、送り直したイベントの非同期の波及処理が再試行(5回、300秒から倍、上限3600秒で約75分)を使い切っても後始末と重ならない。
+  - 同じ業務日付の4:21に作った`purge_due`の送信が失敗しても、「最後の送信から1時間以上」を満たして同じ日のうちに送り直せる。物理削除の開始から14日の期限までの余地は最短19時間39分(業務日付の0:00に退会した場合、期限は物理削除の開始の日の翌日0:00)で、16:21の送り直しの後にも7時間39分残る。4:21のままでは送り直しが翌日の4:21になり、最短の場合は期限を過ぎていた。
+  - 既存の業務時刻の枠(日次タイムラインの0:00・0:07・4:21・23:40・23:45)は使えない。0:00・0:07は最短の期限(0:00)に間に合わない。23:40・23:45はマッチの確定とペアリングの連鎖(日次タイムラインの「同時刻に走る処理の順序」)に重なり、期限までの余地も15〜20分で再試行に足りない。
+  - 分は日次バッチと同じ21分にし、毎時0分の混み合いを避ける。新しいcron式になるため、apiのルートの`triggers.crons`への`21 0 * * *`の追加は本specの実装時に行う(backend-platformのcronの一致の検査が3環境の実効値で確かめる)。Cron TriggersはWorkers Paidでアカウントあたり250個で、数の上限には当たらない。16:21には予算(`SCHEDULED_RUN_BUDGETS`)を置かない(4:21だけに置く規約。送り直しは件数の上限100の軽いジョブである)。
+- **要件**: 要件16.6の「業務時刻4:21の日次バッチで」を「業務時刻16:21の日次の定期実行で」に改めた。要件の意図(一定時間を過ぎた未完了のイベントを日次で再実行し、続くものを通知する)は変わらない。要件定義書(`docs/requirements/README.md`)には送り直しの時刻の記載が無いため変えていない。
+- **変えた箇所**: requirements.mdの16.6。design.mdのOverview(ジョブ4つ)・Revalidation Triggers・File Structure Plan(`lifecycle-redispatch-job.ts`)・Modified Files(`scheduled-jobs.ts`・`wrangler.jsonc`の`triggers.crons`・日次タイムライン)・System Flowsの「ユーザーライフサイクルイベント」・追跡表とコンポーネントの表・`IDENTITY_TYPES.LifecycleRedispatchJob`・「PurgeOrchestratorJob・CredentialCleanupJob・DisposableRecheckSweepJob・LifecycleRedispatchJob」(ジョブの表・Trigger・分ける理由・時刻の理由)・ApiIdentityCompositionの`scheduled-jobs.ts`・Supporting References。サービス仕様の日次タイムライン(`docs/GUIDES/service/overview/007-daily-timeline.md`)に16:21の行を加えた。tasks.mdの8.4に、送り直しのジョブ(16:21・順序100)の登録の検査、apiの`triggers.crons`への`21 0 * * *`の追加、16:21の手動起動の完了状態を加え、7.10を4つのジョブに改めた。

@@ -6,7 +6,7 @@
 
 **Users**: identity-auth・admin-foundation・notifications・inquiry-chat・sponsorship・ugc-moderation・content-reporting・data-exportの開発者とAIエージェントは、`apps/backend-lib/core/email/kinds/`にメール種別の契約を、`apps/event/src/infrastructure/email/templates/`にテンプレートを追加し、`EmailSender`で送信を依頼する。notificationsは抑止リストを照会し、送信者情報の提供元を差し替える。identity-authは退会時の抑止記録の削除と、メールアドレスが利用者に登録済みかの照会口を実装する。infra-deliveryは本設計が示す名前で送信ドメイン・Queue・イベントの購読を用意する。
 
-**Impact**: backend-platformが設計した骨格(未実装)の上に、`apps/backend-lib`の`core/email`・`workers/email`、`apps/db/schema/email`、`apps/event`・`apps/api`のメール関連の層と登録を新設する。backend-platformの非同期メッセージの受信部へ、封筒を持たないメッセージを受け取る追加のQueueの登録口を、既存の振る舞いを変えずに加える(Q8)。テンプレートのパッケージをJSX emailからReact Emailへ置き換える(Q5)。
+**Impact**: backend-platformが実装した骨格の上に、`apps/backend-lib`の`core/email`・`workers/email`、`apps/db/schema/email`、`apps/event`・`apps/api`のメール関連の層と登録を新設する。backend-platformの非同期メッセージの受信部へ、封筒を持たないメッセージを受け取る追加のQueueの登録口を、既存の振る舞いを変えずに加える(Q8)。テンプレートのパッケージをJSX emailからReact Emailへ置き換える(Q5)。
 
 ### Goals
 
@@ -31,7 +31,7 @@
 - 送信要求の受付(`EmailSender`)と、非同期メッセージ`email.send`の契約、追加ヘッダーの許可リスト、宛先の検証と照合キー。
 - 送信処理(`SendEmailHandler`): 重複の防止・送信期限の判定・通知メールの抑止の適用・描画・送信・送信上限での待機・再試行・送信不能の検知と記録。
 - 送信プロバイダの抽象(`EmailProvider`)と実装(Email Sending・Mailpit・stagingの宛先制限)、送信プロバイダの失敗の分類。
-- 配信不能イベントの解釈と抑止の方針(`DeliveryEventHandler`・`SuppressionPolicy`)、抑止リストのデータ(`email_suppressions`)と照会・記録・削除・日次の後始末。
+- 配信不能イベントの解釈と抑止の方針(`DeliveryEventHandler`・`SuppressionPolicy`)、抑止リストのデータ(`email_suppressions`)と照会・記録・削除・日次の後始末、後始末の続きの位置(`email_cleanup_cursors`)。
 - 送信済みの記録(`email_send_records`)と警告の間引き(`email_alert_throttles`)。
 - テンプレート基盤(`EmailTemplate`・共通レイアウトと部品・`ReactEmailRenderer`・UTC表記の部品)。
 - 送信者情報の取得口(`SenderInfoProvider`)と未設定の既定実装、利用者のメールアドレスの照会口(`UserAddressDirectory`)と未提供の既定実装、それぞれの登録箇所。
@@ -42,7 +42,7 @@
 ### Out of Boundary
 
 - 各ドメインのメール種別・テンプレート・送信の契機(各ドメインspec)。
-- 通知メールの対象者の決定と抑止リストによる絞り込み、配信停止のヘッダーの値・本文のリンクのURL・トークン・受付、送信者情報の保存と設定画面、抑止状態の表示(notifications)。本specは配信停止のURLを受け取って表示する区画だけを持つ。
+- 通知メールの対象者の決定と抑止リストによる絞り込み、配信停止のヘッダーの値・本文のリンクのURL・トークン・受付、送信者情報の保存と設定画面、抑止状態の表示(notifications)。本specは配信停止のリンク(URLと任意のラベルの並び)を受け取って表示する区画だけを持つ。
 - 退会時に`SuppressionMaintenance.deleteByAddress`を呼ぶこと、`UserAddressDirectory`の実装(identity-auth)。
 - 送信ドメイン・DNS・メールイベント用Queue・イベントの購読の作成、`database_id`などのクラウドの識別子(infra-delivery)。
 - 共通の封筒・再試行の判定・デッドレターの通知・ログとSentryの設定・定期実行の振り分け(backend-platform。本specは登録口の追加以外を変えない)。
@@ -60,9 +60,11 @@
 - `EmailKind`・`EmailSendRequest`・`EmailSender`・`EmailSendError`の形、種別の命名規約の変更(全下流spec)。
 - `EmailTemplate`の形と共通レイアウトの区画(宛名・行動ボタン・配信停止・送信者情報)の変更(全下流spec・notifications)。
 - `SuppressionList`・`SuppressionStatus`の形、抑止の方針(7日・期限なし・1年)の変更(notifications・サービス仕様の保持期間)。
-- `SuppressionMaintenance.deleteByAddress`・`UserAddressDirectory`・`SenderInfoProvider`の形と登録箇所の変更(identity-auth・notifications)。
+- `SuppressionMaintenance.deleteByAddress`・`createSuppressionMaintenance`の引数・`UserAddressDirectory`・`SenderInfoProvider`の形と登録箇所の変更(identity-auth・notifications)。
+- 実装で生じたこれらの変更(`EmailTemplate`の`Body`の記法と`unsubscribeLinks`、`createSuppressionMaintenance`の4引数と後始末のログのカテゴリ、登録箇所の`Newable`による`.to()`の束縛)は、notifications(2026-10-27)とidentity-auth(2026-10-27)のdesign.md・research.mdへ反映済みである(research.mdの「開発者の指示による承認後の改訂(改訂3、2026-10-27)」)。identity-authは、未完了のライフサイクルイベントの送り直しを業務時刻16:21へ分け、4:21の後始末と同じ起動で退会の削除が動かないようにした(開発者の決定)。
 - 再試行の回数と間隔、待機の間隔の変更(運用・技術ドキュメント)。
 - Queue名・バインディング名・変数とシークレットのキー名・送信ドメイン・送信元アドレスの変更(infra-delivery)。
+- stagingのイベントサーバーのルート(配信URL): `apps/event/wrangler.jsonc`にはまだstagingのルートが無く、疎通確認の経路のstagingのURL(README.mdの配信URL一覧から取った値)はルートの追加まで使えない。ルートの追加はinfra-deliveryの持ち分で、追加・変更したらオンボーディングとproject-values.mdの疎通確認のURLを確かめ直す。
 - `RawQueueRegistration`と`createQueueDispatcher`の追加引数の変更(backend-platformの部品を使う全spec)。
 - eventのReactの版の変更(frontend-platformと版をそろえる)。
 
@@ -70,10 +72,13 @@
 
 ### Existing Architecture Analysis
 
-- backend-platformは設計・タスクとも承認済みで、実装は未着手である。本specはその契約(処理単位のコンテナ・`AppModule`・`MessagePublisher`・`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`DeadLetterNotice`・層の規則)を前提にし、backend-platformの実装完了後に着手する。
+- backend-platformは実装済みである。本specはその契約(処理単位のコンテナ・`AppModule`・`MessagePublisher`・`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`DeadLetterNotice`・層の規則)の上に実装した。
 - backend-platformの受信部は、`batch.queue`が本体(`JOBS_QUEUE_NAME`)・デッドレター(`JOBS_DLQ_NAME`)以外なら例外にする。配信不能イベントはCloudflareが決めた形式で届き封筒を持たないため、追加のQueueとして受ける登録口を加える(後述「RawQueueDispatch」)。
 - Cron Triggersはapiだけに置く規約のため、抑止記録の日次の後始末はapiのジョブとして登録する。
 - `apps/backend-lib`は`api`が検査担当で、`core`はBunの単体テスト、`workers`はapiのWorkers統合テストで検査する。eventの`application`はBunの単体テスト、`infrastructure`・`presentation`・`composition`はeventのWorkers統合テストで検査する。単体テストの命名は`*.unit.test.ts`だけで`.tsx`を持てないため、Reactを含む描画はWorkers統合テスト(`*.worker.test.tsx`)で確かめる。
+- eventの静的解析は`lib/`・`db/`を対象外にしているため、共有ディレクトリでのReactの読み込みの禁止は、`lib/**`・`db/**`を検査するapiの静的解析が担う。
+- `@react-email/components` 1.0.12は`@react-email/render` 2.0.6を入れ子の依存に持つ。描画は直接宣言した`@react-email/render` 2.1.0から`render`をimportし、`@react-email/components`の再エクスポートを使わない。
+- `jsx: "react-jsx"`が暗黙に読み込む`react/jsx-runtime`は静的解析の禁止で検出できないため、`.tsx`は`infrastructure/email/rendering`・`templates`だけに置く(eventのWorkers統合テストのカバレッジの`include`は`{ts,tsx}`)。
 
 ### Architecture Pattern & Boundary Map
 
@@ -148,16 +153,16 @@ graph TB
 
 ### Technology Stack
 
-| Layer               | Choice / Version                                                                  | Role in Feature                                  | Notes                                                                        |
-| ------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------- |
-| テンプレート        | @react-email/components 1.0.12・@react-email/render 2.1.0                         | 共通レイアウトの部品、HTMLとテキストパートの生成 | 新規(Q5)。eventだけ。renderの`workerd`条件の出力を使う。`pretty`は使わない   |
-| UIランタイム        | react 19.3.0・react-dom 19.3.0・@types/react 19.3.0・@types/react-dom 19.3.0(dev) | JSXの描画                                        | 新規。19.3.1は公開から2週間未満のため19.3.0。frontend-platformと版をそろえる |
-| 送信(本番・staging) | Cloudflare Email Sending(`send_email`バインディング)                              | 構造化された`send()`による送信                   | public beta。`allowed_sender_addresses`で送信元を固定                        |
-| 送信(ローカル)      | Mailpit 1.32.0のHTTP API(`POST /api/v1/send`)                                     | 開発用の受信箱への送信                           | 開発コンテナに常駐(ポート48041)。`fetch`で呼ぶ                               |
-| 非同期              | Cloudflare Queues(本体`JOBS_QUEUE`、メールイベント用Queue)・Event Subscriptions   | 送信要求の受け渡し、配信不能イベントの受け取り   | 本体はbackend-platformのもの。メールイベント用Queueは新規                    |
-| データ              | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                             | 抑止リスト・送信済みの記録・警告の間引き         | 新しいテーブル3つ                                                            |
-| 定期実行            | Cron Triggers(api)                                                                | 抑止記録と送信済みの記録の日次の後始末           | 業務時刻4:21(日次バッチ)                                                     |
-| 観測                | @logtape/logtape 2.3.11・@sentry/cloudflare 11.4.0                                | 送信結果のログ、送信不能・上限到達の通知         | 既存                                                                         |
+| Layer               | Choice / Version                                                                  | Role in Feature                                              | Notes                                                                        |
+| ------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| テンプレート        | @react-email/components 1.0.12・@react-email/render 2.1.0                         | 共通レイアウトの部品、HTMLとテキストパートの生成             | 新規(Q5)。eventだけ。renderの`workerd`条件の出力を使う。`pretty`は使わない   |
+| UIランタイム        | react 19.3.0・react-dom 19.3.0・@types/react 19.3.0・@types/react-dom 19.3.0(dev) | JSXの描画                                                    | 新規。19.3.1は公開から2週間未満のため19.3.0。frontend-platformと版をそろえる |
+| 送信(本番・staging) | Cloudflare Email Sending(`send_email`バインディング)                              | 構造化された`send()`による送信                               | public beta。`allowed_sender_addresses`で送信元を固定                        |
+| 送信(ローカル)      | Mailpit 1.32.0のHTTP API(`POST /api/v1/send`)                                     | 開発用の受信箱への送信                                       | 開発コンテナに常駐(ポート48041)。`fetch`で呼ぶ                               |
+| 非同期              | Cloudflare Queues(本体`JOBS_QUEUE`、メールイベント用Queue)・Event Subscriptions   | 送信要求の受け渡し、配信不能イベントの受け取り               | 本体はbackend-platformのもの。メールイベント用Queueは新規                    |
+| データ              | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                             | 抑止リスト・送信済みの記録・警告の間引き・後始末の続きの位置 | 新しいテーブル4つ                                                            |
+| 定期実行            | Cron Triggers(api)                                                                | 抑止記録と送信済みの記録の日次の後始末                       | 業務時刻4:21(日次バッチ)                                                     |
+| 観測                | @logtape/logtape 2.3.11・@sentry/cloudflare 11.4.0                                | 送信結果のログ、送信不能・上限到達の通知                     | 既存                                                                         |
 
 ## File Structure Plan
 
@@ -169,11 +174,12 @@ apps/
 │   ├── email-suppressions.ts                     # 抑止リスト(address・last_reason・last_event_at・expires_at)
 │   ├── email-send-records.ts                     # 送信済みの記録(送信要求の識別子・種別・送信日時)
 │   ├── email-alert-throttles.ts                  # 警告の間引き(name・last_reported_at)
+│   ├── email-cleanup-cursors.ts                  # 後始末の続きの位置(name・after_key)
 │   └── *.unit.test.ts                            # 列の型・制約・既定値
 ├── backend-lib/
 │   ├── core/email/                               # 純粋な契約と方針(Bunの単体テスト、各ファイルに同名の*.unit.test.ts)
 │   │   ├── identifiers.ts                        # EMAIL_TYPES(共有ポートのDI識別子)
-│   │   ├── ports.ts                              # EmailSender・SuppressionList・SuppressionRecorder・SuppressionMaintenance・UserAddressDirectory・SenderInfoProvider・SendRecordStore・AlertThrottleの型
+│   │   ├── ports.ts                              # EmailSender・EmailSendError・SuppressionList・SuppressionRecorder・SuppressionMaintenance・UserAddressDirectory・SenderInfoProvider・SendRecordStore・AlertThrottle
 │   │   ├── email-kind.ts                         # EmailCategory・EmailKind・defineEmailKind・createEmailKindRegistry
 │   │   ├── kinds/index.ts                        # EMAIL_KINDS(全メール種別の集約点)
 │   │   ├── kinds/email-delivery-smoke.ts         # 疎通確認用の種別
@@ -189,28 +195,30 @@ apps/
 │   ├── core/messaging/raw-queue.ts               # RawQueueRegistration・RawMessageHandler・名前の検証(Q8)
 │   └── workers/email/                            # D1と送信の受付(apiのWorkers統合テスト、各ファイルに同名の*.worker.test.ts)
 │       ├── email-sender.ts                       # 送信要求の検証とemail.sendの送信
-│       ├── suppression-repository.ts             # 抑止記録の照会・合成付きの記録・削除・後始末用の検索
-│       ├── send-record-repository.ts             # 送信済みの記録と期限切れの削除
+│       ├── suppression-repository.ts             # 抑止記録の照会・合成付きの記録・削除・後始末用の検索(SuppressionRepository・SuppressionStore)
+│       ├── send-record-repository.ts             # 送信済みの記録と期限切れの削除(SendRecordRepository)
 │       ├── alert-throttle-repository.ts          # 一定間隔に1回だけ真を返す間引き
+│       ├── cleanup-cursor-repository.ts          # 後始末の続きの位置の読み書き(CleanupCursorStore)
 │       ├── suppression-maintenance.ts            # 退会時の削除と日次の後始末
 │       └── email-platform-module.ts              # 両アプリ共通の束縛(EMAIL_PLATFORM_MODULE)
 ├── event/src/
 │   ├── application/email/                        # Bunの単体テスト(各ファイルに同名の*.unit.test.ts)
 │   │   ├── email-types.ts                        # EVENT_EMAIL_TYPES(eventだけのDI識別子)
-│   │   ├── ports.ts                              # EmailProvider・EmailRenderer・EmailIncidentReporter・EmailRuntimeConfigの型
-│   │   ├── send-email-handler.ts                 # email.sendの処理
-│   │   └── delivery-event-handler.ts             # 配信不能イベントの処理
+│   │   ├── ports.ts                              # EmailProvider・EmailRenderer・EmailRenderError・EmailIncidentReporter・EmailRuntimeConfig
+│   │   ├── send-email-handler.ts                 # email.sendの処理(SendEmailHandler・EmailTransientFailure)
+│   │   ├── delivery-event-handler.ts             # 配信不能イベントの処理
+│   │   └── *.fixtures.ts                         # 偽物のポートとログの捕まえ方のテスト補助
 │   ├── infrastructure/email/                     # eventのWorkers統合テスト
 │   │   ├── providers/cloudflare-email-provider.ts    # sendバインディングの呼び出し・時間切れ・失敗の分類
 │   │   ├── providers/mailpit-email-provider.ts       # MailpitのHTTP APIの呼び出し
 │   │   ├── providers/recipient-allowlist-provider.ts # 許可された宛先以外を送らない包み
-│   │   ├── providers/create-email-provider.ts        # 環境の値による実装の選択
+│   │   ├── providers/create-email-provider.ts        # 環境の値による実装の選択(EventEmailEnv)
 │   │   ├── rendering/email-template.ts           # EmailTemplate・defineEmailTemplate・createEmailTemplateRegistry
 │   │   ├── rendering/react-email-renderer.tsx    # レイアウトへの組み込みとHTML・テキストの生成
 │   │   ├── rendering/email-layout.tsx            # 共通レイアウト
 │   │   ├── rendering/email-greeting.tsx          # 宛名
 │   │   ├── rendering/email-action-button.tsx     # 主要な行動へのボタン
-│   │   ├── rendering/email-unsubscribe-link.tsx  # 配信停止リンクの区画
+│   │   ├── rendering/email-unsubscribe-links.tsx # 配信停止リンクの区画(1つ以上のリンク)
 │   │   ├── rendering/email-sender-info.tsx       # 送信者情報の区画
 │   │   ├── templates/index.ts                    # EMAIL_TEMPLATES(全テンプレートの集約点)
 │   │   ├── templates/email-delivery/smoke-email-body.tsx   # 疎通確認メールの本文
@@ -219,15 +227,16 @@ apps/
 │   │   └── sentry-email-incident-reporter.ts     # 送信不能・上限到達などのSentry通知
 │   ├── presentation/email/email-smoke-route.ts   # POST /internal/email/smoke
 │   └── composition/
-│       ├── email-module.ts                       # eventのメールのAppModule(束縛と経路)
+│       ├── email-module.ts                       # eventのメールのAppModule(EVENT_EMAIL_MODULE、束縛と経路)
 │       ├── email-registrations.ts                # EMAIL_SENDER_INFO_PROVIDER(送信者情報の提供元の登録箇所)
 │       └── raw-queue-handlers.ts                 # RAW_QUEUE_HANDLERS(封筒を持たないQueueの登録箇所)
 └── api/
-    ├── src/application/email/email-cleanup-job.ts        # 日次の後始末のジョブ(単体テスト併置)
+    ├── src/application/email/email-cleanup-job.ts        # 日次の後始末のジョブとAPI_EMAIL_TYPES(単体テスト併置)
     ├── src/infrastructure/email/unavailable-user-address-directory.ts  # 未提供として返す既定の照会口
-    ├── src/composition/email-module.ts                   # apiのメールのAppModule
+    ├── src/composition/email-module.ts                   # apiのメールのAppModule(API_EMAIL_MODULE)
     ├── src/composition/email-registrations.ts            # USER_ADDRESS_DIRECTORY(利用者のアドレスの照会口の登録箇所)
     └── test/config/email-wrangler-config.unit.test.ts    # メール関連のWrangler設定の検査
+config/vitest/read-nested-d1-migrations.ts                # 入れ子のマイグレーションの読み込み(api・eventのWorkers統合テストが共有、単体テスト併置)
 docs/
 ├── GUIDES/tech/external/001-email-sending.md      # メール送信サービスの仕様・上限・失敗の分類・再試行・配信不能イベント・抑止・ローカルの受信箱・管理画面の設定
 └── GUIDES/tech/external/README.md                 # 文書一覧へ1行追記
@@ -237,20 +246,22 @@ docs/
 
 ### Modified Files
 
-- `apps/db/schema/index.ts` — メールの3テーブルを集約点に加える。`apps/db/migrations/<日時>_email_delivery/migration.sql`を生成する。
+- `apps/db/schema/index.ts` — メールの4テーブルを集約点に加える。マイグレーションは`apps/db/migrations/20261027063108_email_delivery/`(3テーブル)と`20261027144241_email_cleanup_cursors/`(後始末の続きの位置)の2つである。
 - `apps/backend-lib/core/messaging/contracts/index.ts` — `EMAIL_SEND_MESSAGE`を`MESSAGE_CONTRACTS`へ加える(backend-platformが定めた登録箇所)。
-- `apps/backend-lib/workers/messaging/queue-consumer.ts`・同名の`*.worker.test.ts` — `createQueueDispatcher`に任意の第3引数`{ rawQueues }`を加える。既存の2つのQueueの処理と既存のテストは変えない(Q8)。
+- `apps/backend-lib/workers/messaging/queue-consumer.ts` — `createQueueDispatcher`に任意の第3引数`{ rawQueues }`を加える。既存の2つのQueueの処理と既存の`queue-consumer.worker.test.ts`は変えず、追加分のテストは`queue-consumer.raw-queues.worker.test.ts`に置く(既存のテストファイルが800行の上限に近いため、Q8)。
 - `apps/event/package.json`・`bun.lock` — react・react-dom・@react-email/components・@react-email/render、devに@types/react・@types/react-domを版固定で加える。
 - `apps/event/tsconfig.json` — `jsx: "react-jsx"`と`types`へのReactの型を加え、`include`に`*.tsx`を含める。
-- `apps/event/eslint.config.ts` — `src/**`(`infrastructure/email/rendering`・`templates`以外)と`lib/**`で`react`・`react-dom`・`@react-email/*`のimportを禁止する。
+- `apps/event/eslint.config.ts` — `src/**`(`infrastructure/email/rendering`・`templates`以外)で`react`・`react-dom`・`@react-email/*`のimportを禁止する。eventの静的解析は`lib/`・`db/`を対象外にしているため、共有ディレクトリでの禁止はapiの静的解析で担保する。
 - `apps/api/eslint.config.ts` — `src/**`・`lib/**`・`db/**`で同じimportを禁止する。
-- `apps/event/wrangler.jsonc`・`worker-configuration.d.ts` — 3環境の`vars`(`EMAIL_PROVIDER`・`EMAIL_FROM_ADDRESS`・`EMAIL_RECIPIENT_POLICY`・`EMAIL_EVENTS_QUEUE_NAME`、ルートだけ`MAILPIT_API_URL`)、staging・prodの`send_email`(`EMAIL`、`allowed_sender_addresses`)、stagingの`secrets.required`への`EMAIL_ALLOWED_RECIPIENTS`、メールイベント用Queueのconsumerを加える。
-- `apps/event/vitest.worker.config.ts` — テスト用の変数(Mailpitの宛先URL・送信元)と、メールイベント用Queueの名前を加える。
+- `apps/event/wrangler.jsonc`・`worker-configuration.d.ts` — 3環境の`vars`(`EMAIL_PROVIDER`・`EMAIL_FROM_ADDRESS`・`EMAIL_RECIPIENT_POLICY`・`EMAIL_EVENTS_QUEUE_NAME`、ルートだけ`MAILPIT_API_URL`)、staging・prodの`send_email`(`EMAIL`、`allowed_sender_addresses`)、ルートの`secrets.required`への`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`、stagingの`secrets.required`への`EMAIL_ALLOWED_RECIPIENTS`、メールイベント用Queueのconsumerを加える。
+- `apps/event/vitest.worker.config.ts` — テスト用の変数(Mailpitの宛先URL・送信元)と、メールイベント用Queueの名前(`genai-example-2-email-events-test`。ローカルのconsumerの名前と異なるため、振り分けのテストは`batch.queue`に`env.EMAIL_EVENTS_QUEUE_NAME`を使う)、`miniflare.bindings`の`TEST_MIGRATIONS`(`config/vitest/read-nested-d1-migrations.ts`で読む)を加え、カバレッジの`include`を`{ts,tsx}`にする。マイグレーションは`setupFiles`ではなく、D1を使うテストファイルの`beforeAll`で`applyD1Migrations`により適用する(`setupFiles`で適用すると既存の`index.worker.test.ts`の`vi.mock`が効かなくなるため)。
+- `apps/api/vitest.worker.config.ts` — `readNestedD1Migrations`を`config/vitest/read-nested-d1-migrations.ts`から読む(`apps/api/test/support/`から移した。backend-platform・dev-toolingのresearch.mdの2026-10-27の節)。`config/vitest/*.ts`の規則は`node:`で始まる組み込みモジュールの値の読み込みを許す形になった。
+- `apps/event/package.json`の`test:unit`・`apps/event/bunfig.unit.toml` — eventの単体テストが読み込む`lib/core`のファイルがBunのカバレッジの分母に入らないよう、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に`lib/**`・`db/**`を加えた`bunfig.unit.toml`を`--config`で指す(`--path-ignore-patterns`はテストファイルの選択にだけ効くため)。ルートとの同期は`scripts/tooling/check-test-names.unit.test.ts`が検査する。
 - `apps/event/src/composition/env-schema.ts` — メールの変数・シークレット・バインディングの検証を加える。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts` — `EMAIL_PLATFORM_MODULE`とeventのメールモジュール、`email.send`の処理と再試行の方針を登録する。
 - `apps/event/src/index.ts` — `createQueueDispatcher`へ`RAW_QUEUE_HANDLERS`を渡す。
 - `apps/api/src/composition/modules.ts`・`scheduled-jobs.ts` — apiのメールモジュールと日次の後始末のジョブ(4:21)を登録する。
-- `apps/api/wrangler.jsonc` — 3環境の`triggers.crons`に`21 12 * * *`を加える(既にあれば変更しない)。
+- `apps/api/wrangler.jsonc` — ルートの`triggers.crons`に`21 12 * * *`を加える。`triggers`はWranglerで環境に継承されるキーで、staging・prodの実効値にも入ることをcronの一致の検査(3環境)で確かめる。backend-platformの「ジョブの無い時刻の定期実行が失敗せずに終わる」テスト(`apps/api/src/index.worker.test.ts`)の時刻は、ジョブの無い`0 3 * * *`へ移す。
 - `docs/GUIDES/tech/infra/003-async-processing.md` — メール送信の経路、送信上限による待機と送信期限、封筒を持たないQueueの登録を追記する。
 - `docs/GUIDES/tech/coding/002-dependency-versions.md` — react・react-dom・@types/react・@types/react-dom・@react-email/*を版をそろえる一覧に加える。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に抑止記録と送信済みの記録の行を加える。
@@ -352,18 +363,24 @@ sequenceDiagram
     participant R as SuppressionRepository
     participant U as UserAddressDirectory
     participant W as SendRecordRepository
+    participant C as CleanupCursorRepository
     T->>J: run
     J->>M: run daily cleanup
     M->>R: delete expired temporary suppressions
     M->>W: delete send records older than 14 days
-    M->>R: list records with last event older than 1 year
-    M->>U: find registered among addresses
-    U-->>M: registered set or unavailable
-    M->>R: delete unregistered
+    M->>C: read last checked key
+    loop up to 20 pages of 90 keys
+        M->>R: list records with last event older than 1 year after key
+        M->>U: find registered among addresses
+        U-->>M: registered set or unavailable
+        M->>R: delete unregistered
+        M->>C: save last key or reset to head at end
+    end
     M-->>J: summary
 ```
 
-- 照会口が未提供(identity-authの実装前など)なら、利用者に紐づかない記録の削除を行わず、警告をログに出す(9.4)。期限切れの記録と送信済みの記録の削除は続ける。
+- 1年の判定は前回の続きの位置(`email_cleanup_cursors`の`email-delivery.unlinked-suppressions`の行)の次の照合キーから確かめ、90件未満のページで末尾に達したら位置を先頭へ戻す。1日の件数に上限(1,800件)があっても、全件を数日かけて一巡する。
+- 照会口が未提供(identity-authの実装前など)なら、利用者に紐づかない記録の削除を行わず、警告をログに出す(9.4)。位置は確かめ終えたページまでしか進めない。期限切れの記録と送信済みの記録の削除は続ける。
 
 ## Requirements Traceability
 
@@ -379,7 +396,7 @@ sequenceDiagram
 | 1.8         | 宛先は1件                                  | EmailSendContract                                                            | `EmailSendBody.to`                                       | —                          |
 | 2.1         | 登録だけで種別を追加                       | EmailKindRegistry・EmailRendering                                            | `defineEmailKind`・`defineEmailTemplate`                 | —                          |
 | 2.2         | 重複・欠けた登録の検出                     | EmailKindRegistry・EmailRendering                                            | `createEmailKindRegistry`・`createEmailTemplateRegistry` | —                          |
-| 2.3         | 配信停止の区画は通知メールだけ             | EmailRendering                                                               | `EmailTemplate.unsubscribeUrl`                           | —                          |
+| 2.3         | 配信停止の区画は通知メールだけ             | EmailRendering                                                               | `EmailTemplate.unsubscribeLinks`                         | —                          |
 | 2.4         | ログと通知に種別と分類                     | SendEmailHandler・EmailIncidentReporter                                      | `EmailIncident`                                          | 送信処理の判定             |
 | 3.1         | 本文構成の順の共通レイアウト               | EmailRendering                                                               | `EmailLayout`                                            | —                          |
 | 3.2         | HTMLとテキストの両パート                   | EmailRendering                                                               | `ReactEmailRenderer.render`                              | —                          |
@@ -429,7 +446,7 @@ sequenceDiagram
 | 8.5         | トランザクションメールは止めない           | SendEmailHandler                                                             | `EmailCategory`                                          | 送信処理の判定             |
 | 8.6         | 必要な項目だけ保持                         | EmailSchema・SuppressionRepository                                           | `email_suppressions`                                     | —                          |
 | 9.1         | 退会時の削除                               | SuppressionMaintenance                                                       | `SuppressionMaintenance.deleteByAddress`                 | —                          |
-| 9.2         | 紐づかない記録の1年後の削除                | SuppressionMaintenance・EmailCleanupJob                                      | `UserAddressDirectory`                                   | 日次の後始末               |
+| 9.2         | 紐づかない記録の1年後の削除                | SuppressionMaintenance・CleanupCursorRepository・EmailCleanupJob             | `UserAddressDirectory`・`CleanupCursorStore`             | 日次の後始末               |
 | 9.3         | 期限切れの記録の削除                       | SuppressionMaintenance・SuppressionRepository                                | `runDailyCleanup`                                        | 日次の後始末               |
 | 9.4         | 照会口が使えなければ削除しない             | SuppressionMaintenance・ApiEmailComposition                                  | `UserAddressLookup.unavailable`                          | 日次の後始末               |
 | 9.5         | 削除の冪等性                               | SuppressionMaintenance・SuppressionRepository                                | `deleteByAddress`                                        | —                          |
@@ -451,37 +468,38 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                 | Domain/Layer         | Intent                                           | Req Coverage                                        | Key Dependencies (P0/P1)                            | Contracts      |
-| ------------------------- | -------------------- | ------------------------------------------------ | --------------------------------------------------- | --------------------------------------------------- | -------------- |
-| EmailKindRegistry         | core/email           | メール種別の契約と集約・検査                     | 1.3, 2.1, 2.2                                       | zod(P0)                                             | Service, State |
-| EmailSendContract         | core/email           | `email.send`の本文・宛先・ヘッダーの検証         | 1.2, 1.3, 1.6, 1.7, 1.8, 8.2                        | MessageContract(P0)                                 | Event          |
-| ProviderOutcomeClassifier | core/email           | 送信プロバイダの結果と失敗コードの分類           | 5.1, 5.2, 6.1, 6.3, 6.4                             | —                                                   | Service        |
-| DeliveryDecision          | core/email           | 送信前の判定と結果からの行動                     | 4.4, 5.1–5.3, 5.5, 5.6, 6.1–6.4                     | RetryPolicy(P0)                                     | Service        |
-| DeliveryEventParser       | core/email           | 配信不能イベントの検証と正規化                   | 6.5, 7.8, 7.9                                       | zod(P0)                                             | Event          |
-| SuppressionPolicy         | core/email           | イベントの効果・合成・有効判定                   | 7.1–7.7, 7.9, 8.3, 9.2, 9.3                         | —                                                   | Service, State |
-| UtcDateTimeFormat         | core/email           | メール内の日時表記                               | 3.8                                                 | —                                                   | Service        |
-| EmailPorts                | core/email           | 共有ポートとDI識別子                             | 1.1, 3.6, 8.1, 9.1, 9.2                             | —                                                   | Service        |
-| RawQueueContract          | core/messaging       | 封筒を持たないQueueの登録の型と検証              | 7.10                                                | RetryPolicy(P0)                                     | Batch          |
-| EmailSender               | workers/email        | 送信要求の検証と`email.send`の送信               | 1.1–1.4, 1.6–1.8                                    | MessagePublisher(P0), EmailKindRegistry(P0)         | Service        |
-| SuppressionRepository     | workers/email        | 抑止記録の照会・合成付きの記録・削除             | 7.1–7.7, 8.1–8.3, 8.6, 9.1–9.3, 9.5                 | Database(P0)                                        | Service, State |
-| SendRecordRepository      | workers/email        | 送信済みの記録                                   | 6.7, 10.3                                           | Database(P0)                                        | Service, State |
-| AlertThrottleRepository   | workers/email        | 警告の間引き                                     | 5.4                                                 | Database(P0)                                        | Service, State |
-| SuppressionMaintenance    | workers/email        | 退会時の削除と日次の後始末                       | 9.1–9.5                                             | SuppressionRepository(P0), UserAddressDirectory(P1) | Service, Batch |
-| EmailPlatformModule       | workers/email        | 両アプリ共通の束縛                               | 1.1                                                 | inversify(P0)                                       | Service        |
-| RawQueueDispatch          | workers/messaging    | 追加のQueueの振り分け(既存の受信部の拡張)        | 7.10                                                | QueueDispatcher(P0)                                 | Batch          |
-| EmailSchema               | db/schema/email      | メールの3テーブル                                | 8.2, 8.6, 9.1–9.3, 10.3                             | 共通カラム(P0)                                      | State          |
-| SendEmailHandler          | event/application    | `email.send`の処理                               | 1.5, 2.4, 5.1–5.6, 6.1–6.4, 6.6–6.8, 8.4, 8.5, 10.1 | ポート群(P0)                                        | Batch          |
-| DeliveryEventHandler      | event/application    | 配信不能イベントの処理                           | 6.5, 6.8, 7.1–7.9                                   | SuppressionRecorder(P0)                             | Batch          |
-| EmailProviders            | event/infrastructure | Email Sending・Mailpit・宛先制限の実装           | 1.7, 3.3, 4.1, 4.3–4.6, 6.1, 6.3                    | Email Sending(P0), Mailpit(P1)                      | Service        |
-| EmailRendering            | event/infrastructure | テンプレートの定義・集約・レイアウト・描画       | 2.1–2.3, 3.1–3.7, 3.9, 3.10, 11.3                   | @react-email/render(P0)                             | Service        |
-| SenderInfoDefault         | event/infrastructure | 未設定として返す送信者情報                       | 3.6, 3.7                                            | —                                                   | Service        |
-| EmailIncidentReporter     | event/infrastructure | 送信不能・上限到達・イベント異常のSentry通知     | 2.4, 5.4, 6.2, 6.3, 6.5, 6.8, 7.4, 7.8              | @sentry/cloudflare(P0)                              | Service        |
-| EmailSmokeRoute           | event/presentation   | 疎通確認メールの送信                             | 3.3, 10.2, 11.4, 11.5                               | EmailSender(P0)                                     | API            |
-| EventEmailComposition     | event/composition    | eventの束縛・登録・環境・Wrangler設定            | 1.1, 1.5, 4.1, 4.2, 7.10, 10.2, 11.1                | backend-platformの骨格(P0)                          | State          |
-| EmailCleanupJob           | api/application      | 日次の後始末の起動                               | 9.2–9.4                                             | SuppressionMaintenance(P0)                          | Batch          |
-| ApiEmailComposition       | api/composition      | apiの束縛・登録・ジョブ・既定の照会口            | 1.1, 9.2, 9.4, 11.1                                 | backend-platformの骨格(P0)                          | State          |
-| EmailConfigChecks         | api/test/config      | メール関連のWrangler設定の検査                   | 4.2, 7.10, 10.2                                     | Wranglerの設定読み込み(P1)                          | Batch          |
-| EmailDocs                 | docs                 | 技術ドキュメント・サービス仕様・オンボーディング | 6.9, 10.4, 11.4–11.11                               | —                                                   | —              |
+| Component                 | Domain/Layer         | Intent                                           | Req Coverage                                        | Key Dependencies (P0/P1)                                                                                   | Contracts      |
+| ------------------------- | -------------------- | ------------------------------------------------ | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------- |
+| EmailKindRegistry         | core/email           | メール種別の契約と集約・検査                     | 1.3, 2.1, 2.2                                       | zod(P0)                                                                                                    | Service, State |
+| EmailSendContract         | core/email           | `email.send`の本文・宛先・ヘッダーの検証         | 1.2, 1.3, 1.6, 1.7, 1.8, 8.2                        | MessageContract(P0)                                                                                        | Event          |
+| ProviderOutcomeClassifier | core/email           | 送信プロバイダの結果と失敗コードの分類           | 5.1, 5.2, 6.1, 6.3, 6.4                             | —                                                                                                          | Service        |
+| DeliveryDecision          | core/email           | 送信前の判定と結果からの行動                     | 4.4, 5.1–5.3, 5.5, 5.6, 6.1–6.4                     | RetryPolicy(P0)                                                                                            | Service        |
+| DeliveryEventParser       | core/email           | 配信不能イベントの検証と正規化                   | 6.5, 7.8, 7.9                                       | zod(P0)                                                                                                    | Event          |
+| SuppressionPolicy         | core/email           | イベントの効果・合成・有効判定                   | 7.1–7.7, 7.9, 8.3, 9.2, 9.3                         | —                                                                                                          | Service, State |
+| UtcDateTimeFormat         | core/email           | メール内の日時表記                               | 3.8                                                 | —                                                                                                          | Service        |
+| EmailPorts                | core/email           | 共有ポートとDI識別子                             | 1.1, 3.6, 8.1, 9.1, 9.2                             | —                                                                                                          | Service        |
+| RawQueueContract          | core/messaging       | 封筒を持たないQueueの登録の型と検証              | 7.10                                                | RetryPolicy(P0)                                                                                            | Batch          |
+| EmailSender               | workers/email        | 送信要求の検証と`email.send`の送信               | 1.1–1.4, 1.6–1.8                                    | MessagePublisher(P0), EmailKindRegistry(P0)                                                                | Service        |
+| SuppressionRepository     | workers/email        | 抑止記録の照会・合成付きの記録・削除             | 7.1–7.7, 8.1–8.3, 8.6, 9.1–9.3, 9.5                 | Database(P0)                                                                                               | Service, State |
+| SendRecordRepository      | workers/email        | 送信済みの記録                                   | 6.7, 10.3                                           | Database(P0)                                                                                               | Service, State |
+| AlertThrottleRepository   | workers/email        | 警告の間引き                                     | 5.4                                                 | Database(P0)                                                                                               | Service, State |
+| CleanupCursorRepository   | workers/email        | 後始末の続きの位置                               | 9.2                                                 | Database(P0)                                                                                               | Service, State |
+| SuppressionMaintenance    | workers/email        | 退会時の削除と日次の後始末                       | 9.1–9.5                                             | SuppressionRepository(P0), SendRecordRepository(P0), CleanupCursorRepository(P0), UserAddressDirectory(P1) | Service, Batch |
+| EmailPlatformModule       | workers/email        | 両アプリ共通の束縛                               | 1.1                                                 | inversify(P0)                                                                                              | Service        |
+| RawQueueDispatch          | workers/messaging    | 追加のQueueの振り分け(既存の受信部の拡張)        | 7.10                                                | QueueDispatcher(P0)                                                                                        | Batch          |
+| EmailSchema               | db/schema/email      | メールの4テーブル                                | 8.2, 8.6, 9.1–9.3, 10.3                             | 共通カラム(P0)                                                                                             | State          |
+| SendEmailHandler          | event/application    | `email.send`の処理                               | 1.5, 2.4, 5.1–5.6, 6.1–6.4, 6.6–6.8, 8.4, 8.5, 10.1 | ポート群(P0)                                                                                               | Batch          |
+| DeliveryEventHandler      | event/application    | 配信不能イベントの処理                           | 6.5, 6.8, 7.1–7.9                                   | SuppressionRecorder(P0)                                                                                    | Batch          |
+| EmailProviders            | event/infrastructure | Email Sending・Mailpit・宛先制限の実装           | 1.7, 3.3, 4.1, 4.3–4.6, 6.1, 6.3                    | Email Sending(P0), Mailpit(P1)                                                                             | Service        |
+| EmailRendering            | event/infrastructure | テンプレートの定義・集約・レイアウト・描画       | 2.1–2.3, 3.1–3.7, 3.9, 3.10, 11.3                   | @react-email/render(P0)                                                                                    | Service        |
+| SenderInfoDefault         | event/infrastructure | 未設定として返す送信者情報                       | 3.6, 3.7                                            | —                                                                                                          | Service        |
+| EmailIncidentReporter     | event/infrastructure | 送信不能・上限到達・イベント異常のSentry通知     | 2.4, 5.4, 6.2, 6.3, 6.5, 6.8, 7.4, 7.8              | @sentry/cloudflare(P0)                                                                                     | Service        |
+| EmailSmokeRoute           | event/presentation   | 疎通確認メールの送信                             | 3.3, 10.2, 11.4, 11.5                               | EmailSender(P0)                                                                                            | API            |
+| EventEmailComposition     | event/composition    | eventの束縛・登録・環境・Wrangler設定            | 1.1, 1.5, 4.1, 4.2, 7.10, 10.2, 11.1                | backend-platformの骨格(P0)                                                                                 | State          |
+| EmailCleanupJob           | api/application      | 日次の後始末の起動                               | 9.2–9.4                                             | SuppressionMaintenance(P0)                                                                                 | Batch          |
+| ApiEmailComposition       | api/composition      | apiの束縛・登録・ジョブ・既定の照会口            | 1.1, 9.2, 9.4, 11.1                                 | backend-platformの骨格(P0)                                                                                 | State          |
+| EmailConfigChecks         | api/test/config      | メール関連のWrangler設定の検査                   | 4.2, 7.10, 10.2                                     | Wranglerの設定読み込み(P1)                                                                                 | Batch          |
+| EmailDocs                 | docs                 | 技術ドキュメント・サービス仕様・オンボーディング | 6.9, 10.4, 11.4–11.11                               | —                                                                                                          | —              |
 
 ### core/email
 
@@ -495,7 +513,7 @@ sequenceDiagram
 **Responsibilities & Constraints**
 
 - 種別は名前・分類・テンプレート入力の検証規則を持つ。名前は`<ドメイン>.<名詞句>`(小文字英数字とハイフン、ドットは1つ)とする。
-- `EMAIL_KINDS`(`core/email/kinds/index.ts`)が全種別の唯一の集約点で、下流specは種別のファイルを`kinds/`に追加して集約点に1行足す。初版は`email-delivery.smoke`(トランザクション、入力は`{ requestedAt: string }`)だけを持つ。
+- `EMAIL_KINDS`(`core/email/kinds/index.ts`)が全種別の唯一の集約点で、下流specは種別のファイルを`kinds/`に追加して集約点に1行足す。初版は`email-delivery.smoke`(`EMAIL_DELIVERY_SMOKE_KIND`、トランザクション、入力は`{ requestedAt: string }`で`z.iso.datetime()`により末尾`Z`のUTCだけを受ける)だけを持つ。種別の検索は`createEmailKindRegistry(EMAIL_KINDS).get(name)`で、未登録は`undefined`。
 
 **Contracts**: Service [x] / State [x]
 
@@ -524,7 +542,7 @@ export interface EmailKindRegistry {
 export declare class EmailKindRegistryError extends Error {}
 export declare function createEmailKindRegistry(
   kinds: readonly AnyEmailKind[],
-): EmailKindRegistry; // 名前の形式違反・重複でEmailKindRegistryError
+): EmailKindRegistry; // 名前の形式違反・重複・分類の不正・入力スキーマの欠落でEmailKindRegistryError
 export declare const EMAIL_KINDS: readonly AnyEmailKind[];
 ```
 
@@ -554,6 +572,9 @@ export declare const EMAIL_SEND_MESSAGE: MessageContract<
   EmailSendBody
 >;
 export declare const MAX_EMAIL_SEND_BODY_BYTES: 65536;
+export declare function isWithinEmailSendBodyLimit(
+  body: EmailSendBody,
+): boolean; // JSONにしたUTF-8が上限以下か
 
 export declare function isValidEmailAddress(value: string): boolean; // 254文字以内、WHATWGのメールアドレス形式
 export declare function toMatchingKey(address: string): string; // 前後の空白を除き小文字化
@@ -573,7 +594,7 @@ export declare function validateExtraHeaders(
 ```
 
 - Published: `email.send`(`MESSAGE_CONTRACTS`へ登録)。Subscribed: eventの`SendEmailHandler`。
-- `ALLOWED_EXTRA_HEADERS`はEmail Sendingの許可リストのうち`List-Unsubscribe`・`List-Unsubscribe-Post`・`List-Id`・`Auto-Submitted`・`Precedence`とする。値にCR・LFを含むもの、`List-Unsubscribe`が`<https://...>`を含まないもの、`List-Unsubscribe-Post`が`List-Unsubscribe=One-Click`以外のもの、1値2048バイト超・合計16KB超を拒否する(1.7)。
+- `ALLOWED_EXTRA_HEADERS`はEmail Sendingの許可リストのうち`List-Unsubscribe`・`List-Unsubscribe-Post`・`List-Id`・`Auto-Submitted`・`Precedence`とする。値にCR・LFを含むもの、`List-Unsubscribe`が`<https://...>`を含まないもの、`List-Unsubscribe-Post`が`List-Unsubscribe=One-Click`以外のもの、1値2048バイト超・合計16KB超を拒否する(1.7)。名前は大文字小文字を区別せずに照合し、大文字小文字だけが違う重複は`too-many`にする。空の値と、`List-Unsubscribe`の無い`List-Unsubscribe-Post`も拒否する。`List-Unsubscribe`の値はカンマで単純に分割して検査するため、URIにカンマを含む値は拒否される。
 - 配送保証はbackend-platformの非同期メッセージに従い、重複配信がある。重複の防止は`SendRecordRepository`が担う。
 
 #### ProviderOutcomeClassifier
@@ -614,7 +635,7 @@ export declare function classifyCloudflareSendError(
 | `E_RECIPIENT_SUPPRESSED`                                                                                                                                              | `recipient-suppressed` |
 | 検証系・ヘッダー系・`E_SENDER_NOT_VERIFIED`・`E_SENDER_DOMAIN_NOT_AVAILABLE`・`E_RECIPIENT_NOT_ALLOWED`・`E_ACCOUNT_SUSPENDED`・`E_CONTENT_TOO_LARGE`・`E_TOO_MANY_*` | `permanent`            |
 
-- バインディングの`E_RECIPIENT_NOT_ALLOWED`は設定の誤りとして`permanent`にし、stagingの宛先制限(`recipient-not-allowed`)と区別する。未知のコードは再試行して上限で検知する安全側に倒す。
+- バインディングの`E_RECIPIENT_NOT_ALLOWED`は設定の誤りとして`permanent`にし、stagingの宛先制限(`recipient-not-allowed`)と区別する。未知のコードは再試行して上限で検知する安全側に倒す。コード無しの一時的な障害のコードは`UNKNOWN_SEND_ERROR_CODE`(`'unknown'`)とする。
 - `E_ACCOUNT_SUSPENDED`(送信の評判の悪化などによるアカウントの送信の停止)は約30分の再試行では解けないため、設定の誤りと同じく`permanent`にしてすぐに送信不能を通知する(research.mdの承認後の改訂1)。
 
 #### DeliveryDecision
@@ -664,7 +685,9 @@ export declare function decideAfterOutcome(
 ```
 
 - `temporary`は`attempts < maxAttempts`なら`retry`、以上なら`give-up`(`undeliverable`・`report: true`)。`permanent`は`give-up`(`undeliverable`・`report: true`)。`recipient-suppressed`・`recipient-not-allowed`は`give-up`(`report: false`)。
-- `EMAIL_SEND_RETRY_POLICY.maxAttempts`は、backend-platformのQueuesの`max_retries`(6)より小さく保ち、自動のデッドレター移送より先に本specが送信不能を判断する。
+- `EMAIL_SEND_RETRY_POLICY.maxAttempts`は、本体のQueue(backend-platform)とメールイベント用Queueの両方のconsumerの`max_retries`(6)より小さく保ち、自動のデッドレター移送より先に本specが送信不能を判断する(EmailConfigChecksが両方を検査する)。
+- `decideAfterOutcome`は試行回数の検証のため、結果によらず先に`decideOnFailure`を呼ぶ。不正な試行回数ではどの結果でも`RangeError`になる。
+- 再試行の間隔は受信部が登録の`retry`(`EMAIL_SEND_RETRY_POLICY`)で決め、`decideAfterOutcome`は同じ方針で回数だけを判定する。登録に`retry`を渡さないと既定の方針で30秒から再試行する。
 - `deadline`がちょうど`now`の場合は期限切れとする。
 
 #### DeliveryEventParser
@@ -682,7 +705,7 @@ export declare function decideAfterOutcome(
 interface DeliveryEventBase {
   readonly eventId: string;
   readonly recipient: string; // toMatchingKey済み
-  readonly occurredAt: Date; // metadata.eventTimestamp、無ければ受信時刻
+  readonly occurredAt: Date; // metadata.eventTimestamp、無ければreceivedAt(QueueのメッセージのmetaのtimestampでQueueに入った時刻)
 }
 export type DeliveryEvent =
   | (DeliveryEventBase & { readonly kind: 'hard-bounce' })
@@ -714,6 +737,7 @@ export declare function parseDeliveryEvent(
 - Subscribed: `cf.email.sending.message.{bounced,complained,rejected,failed}`(購読する種類)。`delivered`・`deferred`は購読しないが、届いた場合は`ignored`にする(7.9)。
 - `bounced`は`payload.bounce.type`が`hard`なら`hard-bounce`、それ以外は`soft-bounce`。`rejected`は`payload.rejection.party`が`recipient`のときだけ`party: 'recipient'`、それ以外と欠落は`other`。
 - 件名(`payload.subject`)・SMTPの応答は正規化後の値に含めない(8.6)。`metadata.eventSchemaVersion`が1以外なら`invalid-format`にする。
+- 理由(`rejection.reason`・`failure.reason`)は`^[A-Za-z0-9_.:-]{1,64}$`に合わなければ`'unknown'`(`UNKNOWN_DELIVERY_EVENT_REASON`)に置き換え、欠けていても`'unknown'`で受け付ける。検証の失敗時の`type`は生の文字列のため、ログやタグに入れる側で切り詰める。
 
 #### SuppressionPolicy
 
@@ -727,7 +751,12 @@ export declare function parseDeliveryEvent(
 ##### Service Interface
 
 ```typescript
-export type SuppressionReason = 'hard_bounce' | 'complaint' | 'rejected';
+export declare const SUPPRESSION_REASONS: readonly [
+  'hard_bounce',
+  'complaint',
+  'rejected',
+];
+export type SuppressionReason = (typeof SUPPRESSION_REASONS)[number];
 export interface SuppressionState {
   readonly lastReason: SuppressionReason;
   readonly lastEventAt: Date;
@@ -765,7 +794,7 @@ export declare function isSuppressionActive(
 
 #### UtcDateTimeFormat
 
-- `formatUtcDateTime(instant: Date): string`は「9月15日07:40(UTC)」、`formatUtcDate(instant: Date): string`は「9月15日(UTC)」を返す(3.8)。月日はゼロ埋めせず、時分は2桁にする。年をまたぐ文面が必要な種別のために`{ withYear: true }`で「2026年9月15日07:40(UTC)」を返す。
+- `formatUtcDateTime(instant: Date, options?: { withYear?: boolean }): string`は「9月15日07:40(UTC)」、`formatUtcDate(instant: Date, options?: { withYear?: boolean }): string`は「9月15日(UTC)」を返す(3.8)。月日はゼロ埋めせず、時分は2桁にする。年をまたぐ文面が必要な種別のために`{ withYear: true }`で「2026年9月15日07:40(UTC)」を返す。無効な`Date`では`RangeError`を投げる。テンプレートで表示するときは、マークアップ規約の日時の表示に従って`<time dateTime>`で包む。
 
 #### EmailPorts
 
@@ -797,7 +826,8 @@ export type EmailSendErrorReason =
   | 'invalid-deadline'
   | 'too-large';
 export declare class EmailSendError extends Error {
-  readonly reason: EmailSendErrorReason; // メッセージに宛先・入力の値を含めない
+  constructor(reason: EmailSendErrorReason); // メッセージは理由ごとの固定文で、宛先・入力の値を含めない
+  readonly reason: EmailSendErrorReason;
 }
 
 export type SuppressionStatus =
@@ -859,7 +889,8 @@ export declare const EMAIL_TYPES: {
 };
 ```
 
-- 識別子は`Symbol.for('email.<名前>')`で作る。`UserAddressDirectory`はidentity-authが、`SenderInfoProvider`はnotificationsが実装し、それぞれの登録箇所(apiの`USER_ADDRESS_DIRECTORY`、eventの`EMAIL_SENDER_INFO_PROVIDER`)を自分のクラスへ書き換える。
+- これらの型と`EmailSendError`は`core/email/ports.ts`に置く。`EmailSendError`は下流のapplication層が`instanceof`で見分けるため、`workers`ではなく`core`に定義する。
+- 識別子は`Symbol.for('email.<名前>')`で作る(`core/email/identifiers.ts`)。`UserAddressDirectory`はidentity-authが、`SenderInfoProvider`はnotificationsが実装し、それぞれの登録箇所(apiの`USER_ADDRESS_DIRECTORY: Newable<UserAddressDirectory>`、eventの`EMAIL_SENDER_INFO_PROVIDER: Newable<SenderInfoProvider>`)を自分のクラスへ書き換える。登録箇所は`.to()`で束縛するため、差し替えるクラスは`@injectable()`を持ち、コンストラクタ引数を`@inject`で受ける(ファクトリ関数は登録できない)。
 
 #### RawQueueContract
 
@@ -895,7 +926,10 @@ export declare function assertRawQueueRegistrations<E>(
   reservedQueueNames: readonly string[],
   env: E,
 ): void; // 名前の重複・形式違反、本体とデッドレターのQueue名との重複で例外
+export declare function toRawMessageType(name: string): string; // raw:<name>
 ```
+
+- 名前の形式は`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`。`queueName(env)`の結果が空文字・`undefined`の登録と、登録どうしのQueue名の重複も拒否する。
 
 ### workers/email
 
@@ -926,6 +960,8 @@ export declare function createEmailSender(
 - 事前条件: `request.kind`が`registry`に登録された同じ名前の種別であること。
 - 処理: 種別の検索→`inputSchema.parse`→`isValidEmailAddress(to)`→`validateExtraHeaders`→`deadline`が有効な日時か→本文をJSONにして`MAX_EMAIL_SEND_BODY_BYTES`以下か→`publisher.publish(EMAIL_SEND_MESSAGE, body)`の戻り値を送信要求の識別子として返す。
 - 失敗は理由ごとに`EmailSendError`。`MessagePublishError`は呼び出し側の不具合ではないため包まずにそのまま投げる(Queueの障害は呼び出し側の処理単位の失敗として扱う)。
+- 宛先は照合キーにせず元の値のまま送る(正規化は抑止リスト側で行う)。年が0000〜9999の外の期限は`invalid-deadline`にし、過去の期限は受け付ける(送信処理が期限切れとして扱う)。
+- `workers`の他の部品と同じくファクトリで、`EMAIL_PLATFORM_MODULE`が`toDynamicValue`で束縛する。
 
 #### SuppressionRepository
 
@@ -948,24 +984,30 @@ export interface SuppressionStore {
     afterKey: string | undefined,
   ): Promise<readonly string[]>; // 照合キーの昇順
 }
+export type SuppressionRepository = SuppressionList &
+  SuppressionRecorder &
+  SuppressionStore;
 export declare function createSuppressionRepository(
   db: Database,
   clock: Clock,
-): SuppressionList & SuppressionRecorder & SuppressionStore;
+): SuppressionRepository;
 ```
 
 - `getStatus`・`findSuppressed`は`toMatchingKey`で正規化し、`expires_at IS NULL OR expires_at > now`の記録だけを抑止中とする(8.1〜8.3)。`findSuppressed`はバインド変数の上限(100)に合わせて90件ずつ問い合わせる。
-- `record`は`INSERT ... ON CONFLICT(address) DO UPDATE`の1文で、`mergeSuppression`と同値の式により合成する(7.6・7.7)。
+- `record`は`INSERT ... ON CONFLICT(address) DO UPDATE`の1文で、`mergeSuppression`と同値の式により合成する(7.6・7.7)。理由の強さ(complaint > hard_bounce > rejected)はSQLの`CASE`に写しており、27状態の全729組を`mergeSuppression`と比べるWorkers統合テストでずれを検出する。
+- DBスキーマの`last_reason`の値の組と`SuppressionReason`が相互に代入できることを、リポジトリで型により保証する(値の組が2か所にあるため)。
+- 抑止が有効かの判定は`core`の`isSuppressionActive`と、本リポジトリのSQL(`isActiveAt`の`expires_at IS NULL OR expires_at > now`、`deleteExpired`の`expires_at <= now`)の2か所にある。境界はWorkers統合テストで直接確かめる。
 - 削除は物理削除(9.1〜9.3)。
 
 #### SendRecordRepository
 
-- `createSendRecordRepository(db: Database): SendRecordStore & { deleteSentBefore(cutoff: Date): Promise<number> }`。
-- `markSent`は`onConflictDoNothing()`で挿入し、同じ識別子の2回目は何もしない。保存するのは送信要求の識別子・種別・送信日時だけで、宛先・本文・入力を保存しない(6.7・10.3)。
+- `createSendRecordRepository(db: Database): SendRecordRepository`。`SendRecordRepository`は`SendRecordStore`に`deleteSentBefore(cutoff: Date): Promise<number>`を加えたインターフェースで、Clockを持たない(時刻は引数で受け取る)。
+- `markSent`は`onConflictDoNothing()`で挿入し、同じ識別子の2回目は何もしない。`id`は`ulidPrimaryKey()`で省略時に採番されるため、必ず封筒のIDを明示して入れる。保存するのは送信要求の識別子・種別・送信日時だけで、宛先・本文・入力を保存しない(6.7・10.3)。
+- `deleteSentBefore`は`sent_at < cutoff`で、ちょうど基準日時の行は残す。
 
 #### AlertThrottleRepository
 
-- `createAlertThrottleRepository(db: Database): AlertThrottle`。`tryAcquire`は`INSERT ... ON CONFLICT(name) DO UPDATE SET last_reported_at = ? WHERE last_reported_at <= ? RETURNING name`の1文で、間隔内の2回目以降は偽を返す(5.4)。
+- `createAlertThrottleRepository(db: Database): AlertThrottle`(Clockを持たない)。`tryAcquire`は`INSERT ... ON CONFLICT(name) DO UPDATE SET last_reported_at = ? WHERE last_reported_at <= ? RETURNING name`の1文で、間隔内の2回目以降は偽を返す(5.4)。
 
 #### SuppressionMaintenance
 
@@ -978,19 +1020,44 @@ export declare function createSuppressionRepository(
 
 - Inbound: EmailCleanupJob(api)、identity-authの退会処理 — 呼び出し(P0)
 - Outbound: SuppressionRepository・SendRecordRepository — 削除と検索(P0)
+- Outbound: CleanupCursorRepository — 1年の判定の続きの位置(P0)
 - Outbound: UserAddressDirectory — 利用者に登録済みかの照会(P1)
 
 **Contracts**: Service [x] / Batch [x]
 
+##### Service Interface
+
+```typescript
+export interface CleanupCursorStore {
+  read(name: string): Promise<string | undefined>; // undefinedは先頭から
+  save(name: string, afterKey: string | undefined, now: Date): Promise<void>;
+  resetIfAt(name: string, key: string): Promise<void>; // 位置がkeyなら行を消して先頭へ戻す
+}
+export declare function createCleanupCursorRepository(
+  db: Database,
+): CleanupCursorStore;
+export declare function createSuppressionMaintenance(
+  suppressions: SuppressionStore,
+  sendRecords: Pick<SendRecordRepository, 'deleteSentBefore'>,
+  directory: UserAddressDirectory,
+  cursors: CleanupCursorStore,
+): SuppressionMaintenance;
+```
+
+- 束縛の例(apiの`API_EMAIL_MODULE`): `createSuppressionMaintenance(createSuppressionRepository(db, clock), createSendRecordRepository(db), context.get(EMAIL_TYPES.UserAddressDirectory), createCleanupCursorRepository(db))`を`toDynamicValue`で束縛する。他のアプリ(identity-authのevent)で束縛する場合も同じ4つを渡す。
+- `deleteByAddress(address)`: `toMatchingKey`で正規化して`deleteByKeys([key])`し、続きの位置が同じキーなら`resetIfAt`で位置の行を消す(退会したアドレスを位置の行に残さないため)。位置の比較は大文字小文字を区別しない。
+- 後始末の警告ログのカテゴリは`['api', 'application', 'email-cleanup']`に固定している。eventから`runDailyCleanup`を呼ぶとeventのログの設定でこのカテゴリが捨てられるため、eventで使う場合は引数化が要る(`deleteByAddress`はログを出さないため影響しない)。
+
 ##### Batch / Job Contract
 
 - Trigger: `EmailCleanupJob`(業務時刻4:21、`order: 900`)。
-- 処理: (1)`deleteExpired(now)`(9.3)、(2)`deleteSentBefore(now − 14日)`、(3)`listLastEventBefore(now − 365日, 90, afterKey)`を最大20ページ繰り返し、各ページを`findRegistered`に渡して登録されていないキーを`deleteByKeys`する(9.2)。(3)で`unavailable`が返ったら以降のページを処理せず`warning`ログを出し、`unlinkedCheck: 'skipped-directory-unavailable'`を返す(9.4)。
-- Idempotency: すべての削除は対象が無くても成功し、同じ日に2回実行しても結果は変わらない(9.5)。1回の処理件数を上限で区切り、残りは翌日に続ける。
+- 処理: (1)`deleteExpired(now)`(9.3)、(2)`deleteSentBefore(now − 14日)`、(3)続きの位置(`email-delivery.unlinked-suppressions`)を`read`し、`listLastEventBefore(now − 365日, 90, afterKey)`を最大20ページ繰り返し、各ページを`findRegistered`に渡して登録されていないキーを`deleteByKeys`し、ページごとに最後のキーを`save`する。90件未満のページで末尾に達したら位置を先頭(`undefined`)にして終える(9.2)。(3)で`unavailable`が返ったら位置をそのページの前までにとどめて以降のページを処理せず、`warning`ログを出し、`unlinkedCheck: 'skipped-directory-unavailable'`を返す(9.4)。
+- Idempotency: すべての削除は対象が無くても成功し、対象ごとに冪等である(9.5)。1回の処理件数を上限(1,800件)で区切り、残りは翌日に続きの位置から続ける。同じ業務日付の2回目の実行は、位置が一巡の途中なら続きから追加で確かめて削除する。
+- 並行: 後始末がページを読んでから位置を保存するまでの間に退会の`deleteByAddress`が完了すると、退会したアドレスが次に確認できた日の処理で上書きされるまで位置の行に残る(サービス仕様の準拠方針の注7に記載)。退会の削除を後始末と同じ時刻に集中させない(identity-authへの申し送り)。identity-authは、未完了のライフサイクルイベントの送り直しを業務時刻16:21のジョブへ分け、4:21の起動では退会時の抑止記録の削除(`deleteByAddress`)を動かさない(開発者の決定、2026-10-27)。利用者の操作による退会の直後の削除は任意の時刻に動くため、この限界は残る。
 
 #### EmailPlatformModule
 
-- `EMAIL_PLATFORM_MODULE: AppModule`は、`EmailKindRegistry`(`createEmailKindRegistry(EMAIL_KINDS)`の定数)・`EmailSender`・`SuppressionList`・`SuppressionRecorder`・`SendRecordStore`・`AlertThrottle`を処理単位のコンテナへ束縛する。両アプリの`modules.ts`に登録する(1.1)。`SuppressionMaintenance`はapiのメールモジュールだけが束縛する。
+- `EMAIL_PLATFORM_MODULE: Omit<AppModule, 'routes'>`は、`EmailKindRegistry`(isolateの起動時に作る`createEmailKindRegistry(EMAIL_KINDS)`の定数)・`EmailSender`・`SuppressionList`・`SuppressionRecorder`・`SendRecordStore`・`AlertThrottle`を処理単位のコンテナへ束縛する(ファクトリを`toDynamicValue`)。両アプリの`modules.ts`に登録する(1.1)。型から`routes`を除くのは、既定の`AppModule`がHonoの型引数の不変性で両アプリの`MODULES`に代入できないためである。`SuppressionMaintenance`はapiのメールモジュールだけが束縛する。
 
 ### workers/messaging
 
@@ -1009,36 +1076,37 @@ export declare function createSuppressionRepository(
 export interface QueueDispatcherOptions<E> {
   readonly rawQueues?: readonly RawQueueRegistration<E>[];
 }
-export declare function createQueueDispatcher<
-  E extends PlatformEnv & {
-    readonly JOBS_DLQ: Queue<DeadLetterNotice>;
-    readonly JOBS_QUEUE_NAME: string;
-    readonly JOBS_DLQ_NAME: string;
-  },
->(
+export type QueueConsumerEnv = PlatformEnv & {
+  readonly JOBS_DLQ: Queue<DeadLetterNotice>;
+  readonly JOBS_QUEUE_NAME: string;
+  readonly JOBS_DLQ_NAME: string;
+};
+export declare function createQueueDispatcher<E extends QueueConsumerEnv>(
   registrations: readonly MessageHandlerRegistration<unknown>[],
-  modules: readonly AppModule[],
+  modules: readonly Pick<AppModule, 'bindings'>[],
   options?: QueueDispatcherOptions<E>,
 ): QueueDispatcher<E>;
 ```
 
+- eventの`index.ts`は`createQueueDispatcher<EventEnv>(MESSAGE_HANDLERS, MODULES, { rawQueues: RAW_QUEUE_HANDLERS })`で渡す。
+
 - 振り分け: `batch.queue`が本体・デッドレターなら従来どおり。`rawQueues`のいずれかの`queueName(env)`と一致すれば、メッセージを1件ずつ新しいコンテナで`handler.handle(message.body, meta)`に渡し、正常終了で`ack`する。どれにも一致しなければ従来どおり`error`ログと例外。
 - 失敗: `decideOnFailure(policy, message.attempts)`で`retry`なら`message.retry({ delaySeconds })`、`dead-letter`なら`DeadLetterNotice`(`type: 'raw:<name>'`・`messageId: message.id`・`reason: 'handler-failed'`)を`JOBS_DLQ`へ送って`ack`する。本文はデッドレターへ送らない。
-- 最初の`dispatch`で`assertRawQueueRegistrations`を呼び、本体・デッドレターの名前との重複を拒否する。
+- 最初の`dispatch`で`assertRawQueueRegistrations`を呼び、本体・デッドレターの名前との重複を拒否する(Queue名は環境の値で決まるため)。登録が誤っていると本体のQueueを含む全バッチが例外になり、Sentryで検知される。
 - 互換性: 第3引数を省略した場合の振る舞いは変わらず、backend-platformの既存のテストをそのまま通す。backend-platformの文書は変えず、本節を変更点の記録とする(Q8)。
 
 ### db/schema/email
 
 #### EmailSchema
 
-| Field        | Detail                             |
-| ------------ | ---------------------------------- |
-| Intent       | 抑止リスト・送信済みの記録・間引き |
-| Requirements | 8.2, 8.6, 9.1, 9.2, 9.3, 10.3      |
+| Field        | Detail                                                 |
+| ------------ | ------------------------------------------------------ |
+| Intent       | 抑止リスト・送信済みの記録・間引き・後始末の続きの位置 |
+| Requirements | 8.2, 8.6, 9.1, 9.2, 9.3, 10.3                          |
 
 **Contracts**: State [x]
 
-- 3テーブルとも共通カラム(`id`のULID・`created_at`・`updated_at`)を持つ。詳細は「Data Models」。
+- 4テーブルとも共通カラム(`id`のULID・`created_at`・`updated_at`)を持つ。詳細は「Data Models」。
 
 ### event/application
 
@@ -1079,25 +1147,25 @@ export interface RenderedEmail {
   readonly html: string;
   readonly text: string;
 }
-export declare class EmailRenderError extends Error {}
+export declare class EmailRenderError extends Error {} // 描画が投げ、SendEmailHandlerがinstanceofで見分ける
 export interface EmailRenderer {
   render(
     kind: AnyEmailKind,
     input: unknown,
     senderInfo: SenderInfo | undefined,
-  ): Promise<RenderedEmail>;
+  ): Promise<RenderedEmail>; // 失敗はEmailRenderErrorで投げる
 }
 export type EmailIncident =
   | {
       readonly kind: 'undeliverable';
       readonly emailKind: string;
-      readonly category: EmailCategory;
+      readonly category: EmailCategory | undefined; // 未登録の種別では分類が決まらない
       readonly requestId: string;
       readonly code: string;
     }
   | { readonly kind: 'daily-limit' }
   | {
-      readonly kind: 'sender-side-rejection' | 'delivery-failed';
+      readonly kind: Extract<SuppressionEffect, { kind: 'report' }>['category']; // sender-side-rejection・delivery-failed
       readonly reason: string;
     }
   | {
@@ -1108,6 +1176,7 @@ export interface EmailIncidentReporter {
   report(incident: EmailIncident): void;
 }
 export declare class EmailTransientFailure extends Error {
+  constructor(code: string);
   readonly code: string;
 }
 export declare class SendEmailHandler implements MessageHandler<EmailSendBody> {
@@ -1120,8 +1189,10 @@ export declare class SendEmailHandler implements MessageHandler<EmailSendBody> {
 
 - 処理の順序: (1)`hasSent(meta.id)`なら`duplicate`で完了(6.7)。(2)`decideBeforeSend`が`skip`なら`expired`で完了(5.5)。(3)種別が無い・入力が検証に合わないなら`undeliverable`を通知して完了(6.3)。(4)通知メールで`getStatus`が抑止中なら`suppressed`で完了(8.4)。トランザクションメールは照会しない(8.5)。(5)送信者情報を取得して描画し、`EmailRenderError`なら`undeliverable`(`code: 'render-failed'`)を通知して完了(6.3)。(6)`provider.send`→`decideAfterOutcome`。
 - 行動: `completed`は`markSent`(失敗は`error`ログにとどめて完了し、再送を避ける)と`sent`のログ(6.6)。`defer`は`daily-limit`のとき`tryAcquire('email-daily-limit', now, 3600)`が真なら`daily-limit`を通知する。`tryAcquire`自体が失敗したときは`error`ログを出したうえで通知する(fingerprintが1つに固定されているため、重ねて送っても1つの問題にまとまる。例外にすると試行回数に数えない待機が再試行として数えられるため、例外にしない。research.mdの承認後の改訂2)。どちらも`{ kind: 'defer', delaySeconds }`を返す(5.1〜5.4)。`retry`は`EmailTransientFailure`を投げ、backend-platformの再試行(登録の`retry: EMAIL_SEND_RETRY_POLICY`)に任せる(6.1)。`give-up`は`report`なら`undeliverable`を通知し、結果をログに出して完了する(6.2〜6.4)。
-- ログ(10.1): 結果`sent`・`deferred`・`expired`・`suppressed`・`duplicate`・`retrying`・`undeliverable`・`recipient-suppressed`・`recipient-not-allowed`と、種別・分類・送信要求の識別子・所要時間・試行回数。宛先・件名・本文・入力・URLを属性に入れない(6.8)。
-- 送信要求の識別子は封筒のID(`meta.id`)である。`defer`は同じIDで再送されるため、待機をまたいでも重複の防止が効く。
+- 置き場所: `EmailRuntimeConfig`・`OutgoingEmail`・`EmailProvider`・`RenderedEmail`・`EmailRenderError`・`EmailRenderer`・`EmailIncident`・`EmailIncidentReporter`はeventの`application/email/ports.ts`、`SendEmailHandler`と`EmailTransientFailure`は`application/email/send-email-handler.ts`、DI識別子は`application/email/email-types.ts`の`EVENT_EMAIL_TYPES`(`EmailProvider`・`EmailRenderer`・`EmailIncidentReporter`・`EmailRuntimeConfig`・`SendEmailHandler`・`DeliveryEventHandler`)に置く。
+- 前判定の送信不能のコードは`unknown-kind`・`invalid-input`・`render-failed`。未登録の種別の`undeliverable`は`category`が`undefined`で、Sentryの`email_category`のタグを付けない。`EmailRenderError`の`cause`はログ・Sentryへ出さない。
+- ログ(10.1): カテゴリは`['event', 'application', 'email-send']`。結果`sent`・`deferred`・`expired`・`suppressed`・`duplicate`・`retrying`・`undeliverable`・`recipient-suppressed`・`recipient-not-allowed`と、種別・分類・送信要求の識別子・所要時間・試行回数。属性名は伏せ字の規則(`/email/i`)と予約の`category`を避けて`kind`・`kindCategory`・`requestId`・`deferCause`・`delaySeconds`などにする。宛先・件名・本文・入力・URLを属性に入れない(6.8)。
+- 送信要求の識別子は封筒のID(`meta.id`)である。`defer`は同じIDで再送されるため、待機をまたいでも重複の防止が効く。ただし待機で再配信されると試行回数が1に戻るため、待機をまたぐと一時的な障害の再試行の合計が5回を超え得る(backend-platformの`defer`の方式による)。
 
 #### DeliveryEventHandler
 
@@ -1135,7 +1206,8 @@ export declare class SendEmailHandler implements MessageHandler<EmailSendBody> {
 ##### Batch / Job Contract
 
 - Trigger: メールイベント用Queue(`RAW_QUEUE_HANDLERS`の`email-delivery-events`)。
-- 処理: `parseDeliveryEvent`が失敗なら`invalid-delivery-event`を通知し`warning`ログを出して正常終了する(7.8)。成功なら`decideSuppressionEffect`の効果に従い、`suppress`は`SuppressionRecorder.record`、`report`は`EmailIncidentReporter.report`(6.5・7.4)、`log-only`は`info`ログ(7.5)、`ignore`は`debug`ログ(7.9)。
+- 処理: `parseDeliveryEvent`が失敗なら`invalid-delivery-event`を通知し`warning`ログを出して正常終了する(7.8)。成功なら`decideSuppressionEffect`の効果に従い、`suppress`は`SuppressionRecorder.record`、`report`は`EmailIncidentReporter.report`と`error`ログ(属性`result: 'reported'`・`reportKind`・`reason`、6.5・7.4)、`log-only`は`info`ログ(7.5)、`ignore`は`debug`ログ(7.9)。
+- `RawMessageHandler`の実装で、Clockを持たない。イベントの時刻が無ければ`meta.timestamp`(Queueに入った時刻で、再試行で変わらない)を`parseDeliveryEvent`の`receivedAt`に渡す。ログのカテゴリは`['event', 'application', 'email-delivery-event']`。不正なイベントはログを`warning`、Sentryを`error`(EmailIncidentReporterの表)にする。
 - Idempotency: 記録は合成で冪等(7.7)。通知は重複配信で2回送られ得るが、Sentryの同じ問題にまとまる。
 - 失敗: D1の失敗は例外として再試行に任せる(既定の再試行の方針)。
 
@@ -1171,6 +1243,7 @@ export interface SendEmailBindingLike {
 export declare const PROVIDER_TIMEOUT_MILLISECONDS: 30000;
 export declare function createCloudflareEmailProvider(
   binding: SendEmailBindingLike,
+  timeoutMilliseconds?: number, // 既定はPROVIDER_TIMEOUT_MILLISECONDS。テストで短くする
 ): EmailProvider;
 export declare function createMailpitEmailProvider(
   apiUrl: string,
@@ -1180,14 +1253,23 @@ export declare function createRecipientAllowlistProvider(
   inner: EmailProvider,
   allowedKeys: ReadonlySet<string>,
 ): EmailProvider;
+// 生成されたEnvのMAILPIT_API_URLはリテラル型のため、Pickにせず独立したインターフェースにする
+export interface EventEmailEnv {
+  readonly EMAIL_PROVIDER: 'mailpit' | 'cloudflare';
+  readonly EMAIL_RECIPIENT_POLICY: 'any' | 'allowlist';
+  readonly EMAIL_ALLOWED_RECIPIENTS?: string;
+  readonly MAILPIT_API_URL?: string;
+  readonly EMAIL?: SendEmailBindingLike;
+}
 export declare function createEmailProvider(
   env: EventEmailEnv,
   fetcher: typeof fetch,
 ): EmailProvider;
 ```
 
-- Cloudflare: 構造化された`send()`で`from`(表示名「Launch Stadium」とnoreply)・`to`・`subject`・`html`・`text`・`headers`を渡し、`replyTo`は設定しない(4.1)。30秒で応答が無ければ`temporary`(`timeout`)。例外の`code`を`classifyCloudflareSendError`で分類する。
-- Mailpit: `POST <MAILPIT_API_URL>/api/v1/send`へ`{ From, To, Subject, Text, HTML, Headers }`を送る。200は`sent`(応答の`ID`)、400は`permanent`(`mailpit-rejected`)、それ以外と通信の失敗は`temporary`(4.3)。
+- `EventEmailEnv`は`providers/create-email-provider.ts`に置く。選択に要る設定が欠けていれば、キー名だけをメッセージに持つ`Error`を投げる(値は個人のアドレスを含み得るため)。`EMAIL_PROVIDER`の値はeventの環境の検証(`env-schema.ts`)で保証する。
+- Cloudflare: 構造化された`send()`で`from`(表示名「Launch Stadium」とnoreply)・`to`・`subject`・`html`・`text`・`headers`を渡し、`replyTo`は設定しない(4.1)。30秒で応答が無ければ`temporary`(`timeout`)。例外の`code`を`classifyCloudflareSendError`で分類する。時間切れの後に`send()`が遅れて成功すると、一時的な障害として再試行されて二重送信になり得る(要件6.1の少なくとも1回の配信の範囲)。
+- Mailpit: `POST <MAILPIT_API_URL>/api/v1/send`へ`{ From, To, Subject, Text, HTML, Headers }`を送る。200は`sent`(応答の`ID`)、400は`permanent`(`mailpit-rejected`)。それ以外は`temporary`で、コードは通信の失敗が`mailpit-unreachable`、200・400以外の状態が`mailpit-status-<状態コード>`、200で応答の形が不正なら`mailpit-invalid-response`(4.3)。
 - 宛先制限: `EMAIL_RECIPIENT_POLICY`が`allowlist`なら、`EMAIL_ALLOWED_RECIPIENTS`(カンマ区切り、照合キー)に無い宛先を送らずに`recipient-not-allowed`を返す(4.4)。許可する宛先は個人のアドレスのため設定ファイルに書かずシークレットにする。
 - 選択: `EMAIL_PROVIDER`が`mailpit`ならMailpit、`cloudflare`ならEmail Sending(4.5)。テストは`SendEmailBindingLike`の偽物と注入する`fetch`で、外部へ送らずに確かめる(4.6)。
 
@@ -1207,20 +1289,28 @@ export declare function createEmailProvider(
 ##### Service Interface
 
 ```typescript
-import type { ComponentType } from 'react';
+import type { ReactNode } from 'react';
 
 export interface EmailAction {
   readonly label: string;
   readonly url: string;
 }
+export interface EmailUnsubscribeLink {
+  readonly url: string;
+  readonly label?: string; // 省けるのはリンクが1つのときだけで、既定の文言「この通知を配信停止」で表示する
+}
+// 1件はラベル任意、2件以上はすべてにラベルが必須
+export type EmailUnsubscribeLinkList =
+  readonly [EmailUnsubscribeLink] | readonly Required<EmailUnsubscribeLink>[];
+// 入力を受け取る部品はメソッドの記法で宣言する(引数が双変になり、EmailTemplate<unknown>[]の集約点へ並べられる)
 export interface EmailTemplate<TInput> {
   readonly kind: EmailKind<string, TInput>;
   subject(input: TInput): string; // 接頭辞を付けない(3.9)
   preview(input: TInput): string; // 受信一覧に出る冒頭の文
   greeting(input: TInput): string | undefined; // 宛名のニックネーム。undefinedで省略(3.5)
   action?(input: TInput): EmailAction | undefined;
-  unsubscribeUrl?(input: TInput): string | undefined; // notificationの種別だけ表示(2.3)
-  readonly Body: ComponentType<{ readonly input: TInput }>;
+  unsubscribeLinks?(input: TInput): EmailUnsubscribeLinkList; // notificationの種別だけ表示し、空なら区画を置かない(2.3)
+  Body(props: { readonly input: TInput }): ReactNode; // <template.Body input={…} />で描画する
 }
 export declare function defineEmailTemplate<TInput>(
   template: EmailTemplate<TInput>,
@@ -1232,8 +1322,9 @@ export declare class EmailTemplateRegistryError extends Error {}
 export declare function createEmailTemplateRegistry(
   templates: readonly EmailTemplate<unknown>[],
   kinds: readonly AnyEmailKind[],
-): EmailTemplateRegistry; // 種別とテンプレートが1対1でなければ例外(2.2)
+): EmailTemplateRegistry; // 種別とテンプレートが1対1でない、またはテンプレートの種別が集約点の定義と別のオブジェクトなら例外(2.2)
 export declare const EMAIL_TEMPLATES: readonly EmailTemplate<unknown>[];
+// @injectableを持たない。起動時に作る定数をtoConstantValueで束縛する
 export declare class ReactEmailRenderer implements EmailRenderer {
   constructor(registry: EmailTemplateRegistry);
   render(
@@ -1244,15 +1335,17 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 }
 ```
 
-- レイアウト(3.1): `<Html lang="ja">`・`<Head>`・`<Preview>`・本文の領域に、宛名(`EmailGreeting`、「<ニックネーム>さん」)→`Body`→行動ボタン(`EmailActionButton`)→配信停止(`EmailUnsubscribeLink`、通知メールかつURLがあるときだけ)→送信者情報(`EmailSenderInfo`、未設定なら省略)の順に並べる(3.5〜3.7)。
+- レイアウト(3.1): `<Html lang="ja">`・`<Head>`・`<Preview>`・本文の領域に、宛名(`EmailGreeting`、「<ニックネーム>さん」)→`Body`→行動ボタン(`EmailActionButton`)→配信停止(`EmailUnsubscribeLinks`、通知メールかつリンクが1つ以上あるときだけ。リンクごとに1行)→送信者情報(`EmailSenderInfo`、見出し・ラベル無しで事業者名・連絡先・住所を1行ずつ。未設定なら省略)の順に並べる(3.5〜3.7)。ラベルの無いリンクが複数渡されたら、型の検査を経ない値でも描画時に例外にする。
 - 描画: `render(element)`でHTML、`render(element, { plainText: true })`でテキストを同じ要素から生成し、両者に同じ文言とURLを含める(3.2)。テンプレート入力の文字列はJSXの子として渡し、HTMLとして解釈させない。`dangerouslySetInnerHTML`を使わない(3.4)。
 - 計測・外部資源: 画像・外部スクリプト・計測用のURLを置かない。リンクは渡されたURLをそのまま使う(3.10)。
 - 1つのファイルがエクスポートするReactコンポーネントは1つとする(CLAUDE.md)。`react-email-renderer.tsx`はコンポーネントをエクスポートしない。
-- 疎通確認のテンプレート(`email-delivery.smoke`): 件名「メール送信の確認」、本文に受付日時(`formatUtcDateTime`)と日本語の段落、行動ボタン無し、宛名の省略。
+- JSXで`{変数}文字列`と分けて書くとHTMLに`<!-- -->`が入るため、変数を含む文言はテンプレートリテラルで1つのテキストにする。
+- 描画の失敗は`EmailRenderError`(メッセージは種別の名前だけで、元の例外を`cause`に残す)で投げる。
+- 疎通確認のテンプレート(`email-delivery.smoke`): 件名「メール送信の確認」、本文は「メール送信の確認のために送信したメールです。」「受付日時は<`formatUtcDateTime`を`<time dateTime>`で包んだ日時>です。」「このメールへの返信は不要です。」の3段落、行動ボタン無し、宛名の省略。
 
 #### SenderInfoDefault
 
-- `UnsetSenderInfoProvider.get()`は常に`undefined`を返す。eventの`EMAIL_SENDER_INFO_PROVIDER`の初期値で、notificationsが設定値を返す実装へ書き換える(3.6・3.7)。
+- `UnsetSenderInfoProvider.get()`は常に`undefined`を返す。コンストラクタ引数の無い`@injectable()`のクラスで、eventの`EMAIL_SENDER_INFO_PROVIDER`の初期値として`.to()`で束縛する。notificationsが設定値を返すクラスへ書き換える(3.6・3.7)。
 
 #### EmailIncidentReporter
 
@@ -1261,7 +1354,10 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 | Intent       | メールの異常をSentryへ個人情報なしで送る |
 | Requirements | 2.4, 5.4, 6.2, 6.3, 6.5, 6.8, 7.4, 7.8   |
 
-- `@sentry/cloudflare`の`captureMessage`で、`undeliverable`・`sender-side-rejection`・`delivery-failed`・`invalid-delivery-event`は`error`、`daily-limit`は`warning`で送る。タグは`email_incident`・`email_kind`・`email_category`・`email_code`、fingerprintは`['email', <incidentの種類>, <code>]`とし、上限到達は`['email', 'daily-limit']`で1つの問題にまとめる(5.4)。
+- `SentryEmailIncidentReporter`はコンストラクタ引数の無い`@injectable()`のクラスで、`.to()`で束縛する。
+- `@sentry/cloudflare`の`captureEvent`で、定型の文言を`logentry.message`に置いて送る(技術ドキュメント`infra/004`の定型の文言の規則。`captureMessage`の文言だけのイベントは、直前と同じ文言と指紋なら重複として捨てられ、続けて起きた同じ異常を通知できないため)。`undeliverable`・`sender-side-rejection`・`delivery-failed`・`invalid-delivery-event`は`error`、`daily-limit`は`warning`で送る。
+- タグは`email_incident`・`email_kind`・`email_category`(分類が`undefined`なら付けない)・`email_code`と、`undeliverable`では送信要求の識別子の`correlation_id`。fingerprintは`['email', <incidentの種類>, <code>]`とし、上限到達は`['email', 'daily-limit']`で1つの問題にまとめる(5.4)。
+- タグと指紋の値は`[A-Za-z0-9_.:-]`だけからなるときに64文字へ切り詰めて使い、それ以外は`unknown`にする。不正なイベントで種類が無ければ`missing`にする。
 - 宛先・件名・本文・入力・URLを送らない(6.8)。backend-platformの`scrubEvent`も通る。
 
 ### event/presentation
@@ -1284,6 +1380,7 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 - `EMAIL_SMOKE_TOKEN`と`EMAIL_SMOKE_RECIPIENT`(いずれも任意のシークレット)が両方設定された環境でだけ有効で、無ければ404(`not_found`)を返す。prodには設定しない。
 - トークンは、長さの違いを漏らさないよう両者のSHA-256を`crypto.subtle.timingSafeEqual`で比較し、不一致は401(`unauthenticated`)。宛先は`EMAIL_SMOKE_RECIPIENT`に固定し、要求から受け取らない。
 - 送信は`EmailSender`で`email-delivery.smoke`を依頼するだけで、本番と同じ経路(Queue→consumer→描画→送信プロバイダ)を通る。ローカルではMailpit、stagingでは検証済みの宛先に届く(11.4・11.5)。
+- 404のエラーは、apiの`presentation/gateway/internal-only.ts`の`createNotFoundError`と同じ内容をeventで組み立てる。経路は`registerEmailSmokeRoute`として`EVENT_EMAIL_MODULE`の`routes`に登録する。
 
 ### event/composition
 
@@ -1296,41 +1393,44 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 
 **Contracts**: State [x]
 
-- `email-module.ts`: `EmailProvider`(`createEmailProvider(env, fetch)`)・`EmailRenderer`(`ReactEmailRenderer`)・`SenderInfoProvider`(`EMAIL_SENDER_INFO_PROVIDER`)・`EmailIncidentReporter`・`EmailRuntimeConfig`・`SendEmailHandler`・`DeliveryEventHandler`を束縛し、`EmailSmokeRoute`を登録する。
+- `email-module.ts`(`EVENT_EMAIL_MODULE`): `EmailProvider`(処理単位ごとに`createEmailProvider(env, fetch)`へグローバルの`fetch`を渡す。テストは`vi.spyOn(globalThis, 'fetch')`で受ける)・`EmailRenderer`(種別とテンプレートの対応の誤りを起動時に検出するため、isolateの起動時に作る`new ReactEmailRenderer(createEmailTemplateRegistry(EMAIL_TEMPLATES, EMAIL_KINDS))`を`toConstantValue`で束縛)・`SenderInfoProvider`(`EMAIL_SENDER_INFO_PROVIDER`を`.to()`)・`EmailIncidentReporter`(`SentryEmailIncidentReporter`を`.to()`)・`EmailRuntimeConfig`・`SendEmailHandler`・`DeliveryEventHandler`を束縛し、`EmailSmokeRoute`を登録する。
 - `message-handlers.ts`: `{ contract: EMAIL_SEND_MESSAGE, handler: EVENT_EMAIL_TYPES.SendEmailHandler, retry: EMAIL_SEND_RETRY_POLICY }`。
 - `raw-queue-handlers.ts`: `{ name: 'email-delivery-events', queueName: (env) => env.EMAIL_EVENTS_QUEUE_NAME, handler: EVENT_EMAIL_TYPES.DeliveryEventHandler }`。
 - 環境の検証: `EMAIL_PROVIDER`(`mailpit`・`cloudflare`)、`EMAIL_FROM_ADDRESS`(メールアドレス)、`EMAIL_RECIPIENT_POLICY`(`any`・`allowlist`)、`EMAIL_EVENTS_QUEUE_NAME`は必須。`mailpit`なら`MAILPIT_API_URL`、`cloudflare`なら`EMAIL`バインディング、`allowlist`なら`EMAIL_ALLOWED_RECIPIENTS`を必須にし、欠けたキー名だけを返す。
 
-| 項目                            | ルート(ローカル)                                                                                                                                 | staging                                                                    | prod                                              |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------- |
-| `EMAIL_PROVIDER`                | `mailpit`                                                                                                                                        | `cloudflare`                                                               | `cloudflare`                                      |
-| `EMAIL_FROM_ADDRESS`            | `noreply@local.example`                                                                                                                          | `noreply@genai-example-2-mail-staging.lab.kurachiweb.com`                  | `noreply@genai-example-2-mail.lab.kurachiweb.com` |
-| `MAILPIT_API_URL`               | `http://127.0.0.1:48041`                                                                                                                         | なし                                                                       | なし                                              |
-| `EMAIL_RECIPIENT_POLICY`        | `any`                                                                                                                                            | `allowlist`                                                                | `any`                                             |
-| `EMAIL_EVENTS_QUEUE_NAME`       | `genai-example-2-email-events-dev`                                                                                                               | `genai-example-2-email-events-staging`                                     | `genai-example-2-email-events-prod`               |
-| `send_email`                    | なし                                                                                                                                             | `EMAIL`・`allowed_sender_addresses`は上の送信元だけ                        | 同左                                              |
-| `secrets.required`への追加      | `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`(`wrangler dev`は`secrets.required`のキーだけを`env`へ渡すため。未登録なら警告して起動し、経路は404) | `EMAIL_ALLOWED_RECIPIENTS`                                                 | なし                                              |
-| 任意のシークレット              | なし(上の必須に含める)                                                                                                                           | `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`(`secrets.required`に挙げない) | 設定しない                                        |
-| メールイベント用Queueのconsumer | 上の名前、`max_batch_size: 10`・`max_batch_timeout: 5`・`max_retries: 6`・`dead_letter_queue`は本体のデッドレター・`retry_delay: 30`             | 同左                                                                       | 同左                                              |
+| 項目                            | ルート(ローカル)                                                                                                                                 | staging                                                                                                                                                   | prod                                              |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `EMAIL_PROVIDER`                | `mailpit`                                                                                                                                        | `cloudflare`                                                                                                                                              | `cloudflare`                                      |
+| `EMAIL_FROM_ADDRESS`            | `noreply@local.example`                                                                                                                          | `noreply@genai-example-2-mail-staging.lab.kurachiweb.com`                                                                                                 | `noreply@genai-example-2-mail.lab.kurachiweb.com` |
+| `MAILPIT_API_URL`               | `http://127.0.0.1:48041`                                                                                                                         | なし                                                                                                                                                      | なし                                              |
+| `EMAIL_RECIPIENT_POLICY`        | `any`                                                                                                                                            | `allowlist`                                                                                                                                               | `any`                                             |
+| `EMAIL_EVENTS_QUEUE_NAME`       | `genai-example-2-email-events-dev`                                                                                                               | `genai-example-2-email-events-staging`                                                                                                                    | `genai-example-2-email-events-prod`               |
+| `send_email`                    | なし                                                                                                                                             | `EMAIL`・`allowed_sender_addresses`は上の送信元だけ                                                                                                       | 同左                                              |
+| `secrets.required`への追加      | `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`(`wrangler dev`は`secrets.required`のキーだけを`env`へ渡すため。未登録なら警告して起動し、経路は404) | `EMAIL_ALLOWED_RECIPIENTS`                                                                                                                                | なし                                              |
+| 任意のシークレット              | なし(上の必須に含める)                                                                                                                           | `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`(`secrets.required`に挙げない)                                                                                | 設定しない                                        |
+| シークレットの正                | Infisical(dev)                                                                                                                                   | Infisical(staging)。疎通確認の2つはinfra-deliveryのCIのデプロイが`OPTIONAL_WORKER_SECRETS`として反映する(CIの導入までは`wrangler secret put`が暫定の手段) | メールのシークレットなし                          |
+| メールイベント用Queueのconsumer | 上の名前、`max_batch_size: 10`・`max_batch_timeout: 5`・`max_retries: 6`・`dead_letter_queue`は本体のデッドレター・`retry_delay: 30`             | 同左                                                                                                                                                      | 同左                                              |
 
 ### api
 
 #### EmailCleanupJob
 
-- `ScheduledJobHandler`。`SuppressionMaintenance.runDailyCleanup(context.scheduledTime)`を呼び、要約を`info`ログに出す(9.2〜9.4)。登録は`{ name: 'email-delivery.cleanup', at: { hour: 4, minute: 21 }, order: 900 }`(日次タイムラインの日次バッチ)。
+- `ScheduledJobHandler`。`SuppressionMaintenance.runDailyCleanup(context.scheduledTime)`を呼び、要約を`info`ログ(カテゴリ`['api', 'application', 'email-cleanup']`)に出す(9.2〜9.4)。登録は`{ name: 'email-delivery.cleanup', at: { hour: 4, minute: 21 }, order: 900 }`(業務時刻4:21=UTC 12:21、日次タイムラインの日次バッチ)。
+- DI識別子`API_EMAIL_TYPES.EmailCleanupJob`(`Symbol.for('email.EmailCleanupJob')`)は、apiだけが使うため`application/email/email-cleanup-job.ts`に置く。
 
 #### ApiEmailComposition
 
-- `email-module.ts`: `EMAIL_PLATFORM_MODULE`に加え、`SuppressionMaintenance`・`UserAddressDirectory`(`USER_ADDRESS_DIRECTORY`)・`EmailCleanupJob`を束縛する。`USER_ADDRESS_DIRECTORY`の初期値は`UnavailableUserAddressDirectory`(常に`unavailable`)で、identity-authが利用者のテーブルを引く実装へ書き換える(9.4)。
-- `scheduled-jobs.ts`への登録とapiの`triggers.crons`への`21 12 * * *`は、backend-platformのcronの一致の検査で確かめる。
+- `email-module.ts`(`API_EMAIL_MODULE`): `EMAIL_PLATFORM_MODULE`に加え、`SuppressionMaintenance`(「SuppressionMaintenance」の4つの部品を`toDynamicValue`)・`UserAddressDirectory`(`USER_ADDRESS_DIRECTORY`を`.to()`)・`EmailCleanupJob`を束縛する。`USER_ADDRESS_DIRECTORY: Newable<UserAddressDirectory>`の初期値は`UnavailableUserAddressDirectory`(コンストラクタ引数の無い`@injectable()`のクラスで、常に`unavailable`)で、identity-authが利用者のテーブルを引くクラスへ書き換える(9.4)。
+- `scheduled-jobs.ts`への登録とapiのルートの`triggers.crons`への`21 12 * * *`(環境へ継承)は、backend-platformのcronの一致の検査(3環境の実効値)で確かめる。
 
 #### EmailConfigChecks
 
 - `test/config/email-wrangler-config.unit.test.ts`(apiに置き、eventの設定を読む)が、環境ごとの実効値で次を確かめる(4.2・7.10・10.2)。
   - 上の表の`vars`があり、`EMAIL_FROM_ADDRESS`のドメインがstaging・prodで決定事項Q6の送信ドメインと一致する。
   - staging・prodに`send_email`の`EMAIL`があり、`allowed_sender_addresses`が`EMAIL_FROM_ADDRESS`だけ。ルートには無い。
-  - stagingの`EMAIL_RECIPIENT_POLICY`が`allowlist`で、`secrets.required`に`EMAIL_ALLOWED_RECIPIENTS`がある。prodは`any`。
-  - メールイベント用Queueのconsumerがあり、`max_retries`が`DEFAULT_RETRY_POLICY.maxAttempts`と`EMAIL_SEND_RETRY_POLICY.maxAttempts`より大きく、`dead_letter_queue`が本体のデッドレター。
+  - stagingの`EMAIL_RECIPIENT_POLICY`が`allowlist`で、`secrets.required`に`EMAIL_ALLOWED_RECIPIENTS`がある。prodは`any`。ルートの`secrets.required`にだけ`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`があり、staging・prodには無い。
+  - メールイベント用Queueのconsumerがあり、`max_retries`が`QUEUE_MAX_RETRIES`と一致して`DEFAULT_RETRY_POLICY.maxAttempts`と`EMAIL_SEND_RETRY_POLICY.maxAttempts`より大きく、`dead_letter_queue`が本体のデッドレター。本体のQueueのconsumerの`max_retries`も`EMAIL_SEND_RETRY_POLICY.maxAttempts`より大きい(`email.send`は本体のQueueで届くため)。
+  - backend-platformの`wrangler-config.unit.test.ts`は`EMAIL_`・`MAILPIT_`で始まるキーを除いて比べ、それらは本検査が厳密に確かめる。
   - `vars`にトークン・許可する宛先などシークレットにすべき項目が無い。
 
 ### docs
@@ -1387,6 +1487,17 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 | `last_reported_at`         | `INTEGER`             | `NOT NULL`        | UTCのエポックミリ秒     |
 | `created_at`・`updated_at` | `INTEGER`             | `NOT NULL`        | 共通カラム              |
 
+**`email_cleanup_cursors`**
+
+| 列                         | SQL型                 | 制約              | 値                                                   |
+| -------------------------- | --------------------- | ----------------- | ---------------------------------------------------- |
+| `id`                       | `TEXT`                | `PRIMARY KEY`     | ULID                                                 |
+| `name`                     | `TEXT COLLATE NOCASE` | `NOT NULL UNIQUE` | 例: `email-delivery.unlinked-suppressions`           |
+| `after_key`                | `TEXT`                | NULL可            | 最後に確かめた照合キー。NULLと行の無いことは先頭から |
+| `created_at`・`updated_at` | `INTEGER`             | `NOT NULL`        | 共通カラム                                           |
+
+- 1年の判定の続きの位置を1行だけ持つ。保持するメールアドレスは位置の1件だけで、退会の`deleteByAddress`が同じキーなら行を消す(`resetIfAt`)。利用者に紐づかないことを確かめて削除した記録や期限切れで削除した記録のアドレスは、次に確認できた日の処理で上書きするか先頭へ戻すまで位置に残る(サービス仕様の準拠方針の注7)。
+
 ### Data Contracts & Integration
 
 - `email.send`の本文(`EmailSendBody`)はJSONで、`v: 1`の封筒に包まれる。項目の追加は任意項目で行う。種別の入力の後方互換は各種別の責任とし、Queueに残っている古い入力を受け付けられるようにする(検証に失敗すると送信不能になるため)。
@@ -1402,22 +1513,23 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 
 ### Error Categories and Responses
 
-| 状況                                                             | 振る舞い                                                                  |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| 種別の未登録・入力不正・宛先不正・ヘッダー不正・大きさ超過(受付) | `EmailSendError`。送らない                                                |
-| 送信レートの上限                                                 | 60秒の`defer`。試行回数に数えない                                         |
-| 日次上限                                                         | 3600秒の`defer`。1時間に1回`warning`をSentryへ(同じ問題)                  |
-| 日次上限の警告の間引きの失敗(D1)                                 | `error`ログを出して`warning`をSentryへ送り、3600秒の`defer`(例外にしない) |
-| 一時的な障害・時間切れ                                           | 120・240・480・960秒で再試行。5回目で送信不能を`error`で通知              |
-| 恒久的な失敗・描画失敗・消費時の入力不正                         | 送信不能を`error`で通知して完了                                           |
-| 宛先の抑止(送信時の拒否)                                         | `info`ログで完了                                                          |
-| stagingの宛先制限                                                | `info`ログで完了                                                          |
-| 送信期限切れ・抑止中の通知メール・重複                           | `info`ログで完了                                                          |
-| 送信者情報の取得失敗(D1)                                         | 例外で再試行                                                              |
-| 不正・未知の配信不能イベント                                     | `warning`ログと`error`のSentry、記録せず完了                              |
-| 送信側の拒否・受付後の配送失敗                                   | `error`のSentry、記録しない                                               |
-| 抑止の記録の失敗(D1)                                             | 例外で再試行、上限で`DeadLetterNotice`(`raw:email-delivery-events`)       |
-| 利用者のアドレスの照会口が未提供                                 | 1年経過の削除を行わず`warning`ログ                                        |
+| 状況                                                             | 振る舞い                                                                                  |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 種別の未登録・入力不正・宛先不正・ヘッダー不正・大きさ超過(受付) | `EmailSendError`。送らない                                                                |
+| 送信レートの上限                                                 | 60秒の`defer`。試行回数に数えない                                                         |
+| 日次上限                                                         | 3600秒の`defer`。1時間に1回`warning`をSentryへ(同じ問題)                                  |
+| 日次上限の警告の間引きの失敗(D1)                                 | `error`ログを出して`warning`をSentryへ送り、3600秒の`defer`(例外にしない)                 |
+| 一時的な障害・時間切れ                                           | 120・240・480・960秒で再試行。5回目で送信不能を`error`で通知                              |
+| 恒久的な失敗・描画失敗・消費時の入力不正                         | 送信不能を`error`で通知して完了                                                           |
+| 宛先の抑止(送信時の拒否)                                         | `info`ログで完了                                                                          |
+| stagingの宛先制限                                                | `info`ログで完了                                                                          |
+| 送信期限切れ・抑止中の通知メール・重複                           | `info`ログで完了                                                                          |
+| 送信者情報の取得失敗(D1)                                         | 例外で再試行                                                                              |
+| 不正・未知の配信不能イベント                                     | `warning`ログと`error`のSentry、記録せず完了                                              |
+| 送信側の拒否・受付後の配送失敗                                   | `error`のSentry、記録しない                                                               |
+| 抑止の記録の失敗(D1)                                             | 例外で再試行、上限で`DeadLetterNotice`(`raw:email-delivery-events`)                       |
+| 利用者のアドレスの照会口が未提供                                 | 1年経過の削除を行わず(続きの位置は確かめ終えたページまで)`warning`ログ                    |
+| 封筒を持たないQueueの登録の誤り                                  | 最初の`dispatch`で`RawQueueRegistrationError`。本体を含む全バッチが例外になりSentryで検知 |
 
 ### Monitoring
 
@@ -1427,7 +1539,7 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 
 ## Testing Strategy
 
-TDDで進め、各部品のテストを先に書く。`core/email`・`event/application`・`api/application`はBunの単体テスト、`workers/email`・`workers/messaging`・`event/infrastructure`・`event/presentation`・`event/composition`はWorkers統合テストでカバレッジ80%を満たす(11.2)。
+TDDで進め、各部品のテストを先に書く。`core/email`・`event/application`・`api/application`はBunの単体テスト、`workers/email`・`workers/messaging`・`event/infrastructure`・`event/presentation`・`event/composition`はWorkers統合テストでカバレッジ80%を満たす(11.2)。eventの単体テストのカバレッジは`apps/event/bunfig.unit.toml`(`lib/**`・`db/**`を分母から除く)で計測する。eventのWorkers統合テストでD1を使うファイルは、`config/vitest/read-nested-d1-migrations.ts`で読んだ`TEST_MIGRATIONS`を`beforeAll`で適用する。
 
 - **Unit Tests**(Bun)
   - `email-kind.unit.test.ts`・`kinds/index.unit.test.ts`: 名前の形式違反と重複が例外になり、`EMAIL_KINDS`が例外なく登録できる(2.1・2.2)。
@@ -1437,25 +1549,28 @@ TDDで進め、各部品のテストを先に書く。`core/email`・`event/appl
   - `delivery-event.unit.test.ts`: 文書の6種の例・`bounce.type`の欠落・`party`の欠落・版の違い・件名を含まないこと(6.5・7.8・7.9・8.6)。
   - `suppression-policy.unit.test.ts`: 効果の表、合成の冪等性と可換性(すべての組の順序入れ替え)、期限の境界(7.1〜7.7・8.3)。
   - `format-utc-date-time.unit.test.ts`: 「9月15日07:40(UTC)」、年をまたぐ表記、UTCの日付の境界(3.8)。
-  - `send-email-handler.unit.test.ts`: 偽物のポートで、重複・期限切れ・未登録・入力不正・通知メールの抑止・トランザクションメールは照会しない・描画失敗・各結果の行動・上限警告の間引き・`markSent`の失敗・ログに宛先と件名が無いこと(1.5・2.4・5.x・6.1〜6.4・6.6〜6.8・8.4・8.5・10.1)。
-  - `delivery-event-handler.unit.test.ts`: 効果ごとのポートの呼び出し、不正イベントで記録しないこと(6.5・7.1〜7.9)。
+  - `send-email-handler.unit.test.ts`・`send-email-handler.outcome.unit.test.ts`(送信結果ごとの行動を分けたもの。偽物のポートは`send-email-handler.fixtures.ts`): 偽物のポートで、重複・期限切れ・未登録・入力不正・通知メールの抑止・トランザクションメールは照会しない・描画失敗・各結果の行動・上限警告の間引きとその失敗・`markSent`の失敗・ログに宛先と件名が無いこと(1.5・2.4・5.x・6.1〜6.4・6.6〜6.8・8.4・8.5・10.1)。
+  - `delivery-event-handler.unit.test.ts`: 効果ごとのポートの呼び出し、不正イベントで記録しないこと(6.5・7.1〜7.9)。ログの捕まえ方は`email-log-capture.fixtures.ts`を共有する。
   - `email-cleanup-job.unit.test.ts`・`email-wrangler-config.unit.test.ts`: 要約のログ、Wrangler設定の項目(4.2・7.10・9.2〜9.4・10.2)。
 - **Integration Tests**(Workers統合テスト)
   - `email-sender.worker.test.ts`: 封筒付きで`JOBS_QUEUE`へ送られ、識別子が返り、各拒否で送られない(1.1〜1.4・1.6〜1.8)。
-  - `suppression-repository.worker.test.ts`: D1上での大文字小文字を区別しない照会、合成の1文の結果が`mergeSuppression`の表と一致、期限切れの扱い、101件以上の`findSuppressed`、削除の冪等性(7.6・7.7・8.1〜8.3・9.1・9.5)。
-  - `send-record-repository.worker.test.ts`・`alert-throttle-repository.worker.test.ts`: 2回目の記録が無害、14日の削除、間隔内の2回目が偽(5.4・6.7)。
-  - `suppression-maintenance.worker.test.ts`: 期限切れ・14日・1年の削除、照会口が`unavailable`なら1年の削除をしない、ページの区切り(9.2〜9.5)。
-  - `queue-consumer.worker.test.ts`(追加分): 追加のQueueへの振り分け、例外での再試行、上限での`raw:<name>`の通知と本文を送らないこと、本体・デッドレターの既存の振る舞いが変わらないこと、名前の重複の拒否(7.10)。
+  - `suppression-repository.worker.test.ts`: D1上での大文字小文字を区別しない照会、合成の1文の結果が27状態の全729組で`mergeSuppression`と一致、期限切れの境界、101件以上の`findSuppressed`、削除の冪等性(7.6・7.7・8.1〜8.3・9.1・9.5)。
+  - `send-record-repository.worker.test.ts`・`alert-throttle-repository.worker.test.ts`: 2回目の記録が無害、封筒のIDで記録されること、14日の削除、間隔内の2回目が偽(5.4・6.7)。
+  - `cleanup-cursor-repository.worker.test.ts`: 位置の読み書き、`resetIfAt`が同じキー(大文字小文字を区別しない)のときだけ先頭へ戻すこと(9.2)。
+  - `suppression-maintenance.worker.test.ts`: 期限切れ・14日・1年の削除、照会口が`unavailable`なら1年の削除をせず位置を進めないこと、ページの区切りと翌日の続きからの再開、末尾での先頭への戻り、退会の削除で位置が先頭へ戻ること、同じ日の2回目の実行(9.2〜9.5)。
+  - `email-platform-module.worker.test.ts`(backend-lib)・`email-module.worker.test.ts`(api): 共通のモジュールから受付と抑止リストが、apiのモジュールから`SuppressionMaintenance`と後始末のジョブが解決できること(1.1・9.2)。
+  - `queue-consumer.raw-queues.worker.test.ts`(既存の`queue-consumer.worker.test.ts`とは別のファイル): 追加のQueueへの振り分け、例外での再試行、上限での`raw:<name>`の通知と本文を送らないこと、本体・デッドレターの既存の振る舞いが変わらないこと、名前の重複・形式違反・空のQueue名の拒否(7.10)。
   - `cloudflare-email-provider.worker.test.ts`・`mailpit-email-provider.worker.test.ts`・`recipient-allowlist-provider.worker.test.ts`・`create-email-provider.worker.test.ts`: 偽のバインディングと注入した`fetch`で、送信内容(表示名・noreply・返信先なし・ヘッダー)、各失敗の分類、30秒の時間切れ、許可外の宛先を送らないこと(1.7・4.1・4.3〜4.6・6.1・6.3)。
-  - `react-email-renderer.worker.test.tsx`・`templates/index.worker.test.tsx`: workerd上で日本語の件名・本文、HTMLの`lang="ja"`、テキストパートに同じ文言とURL、`<script>`入りのニックネームのエスケープ、配置の順序、宛名と送信者情報の省略、通知メールだけの配信停止区画、`<img>`・`<script>`が無いこと、`EMAIL_KINDS`と`EMAIL_TEMPLATES`の1対1(2.1〜2.3・3.1〜3.7・3.9・3.10・11.3)。
-  - `sentry-email-incident-reporter.worker.test.ts`: 差し替えたトランスポートで、タグとfingerprint、宛先と件名を含まないこと(5.4・6.8)。
+  - `react-email-renderer.worker.test.tsx`・`email-layout.worker.test.tsx`・`email-template.worker.test.tsx`・`templates/index.worker.test.tsx`・`smoke-template.worker.test.tsx`: workerd上で日本語の件名・本文、HTMLの`lang="ja"`、テキストパートに同じ文言とURL、`<script>`入りのニックネームのエスケープ、配置の順序、宛名と送信者情報の省略、通知メールだけの配信停止区画(1つのリンクの既定の文言、複数のリンクのラベル、ラベルの欠けた複数のリンクで描画が失敗すること)、`<img>`・`<script>`が無いこと、`EMAIL_KINDS`と`EMAIL_TEMPLATES`の1対1と種別の定義の同一性(2.1〜2.3・3.1〜3.7・3.9・3.10・11.3)。
+  - `sentry-email-incident-reporter.worker.test.ts`: 差し替えたトランスポートで、`logentry`の文言・タグ(`correlation_id`を含む)とfingerprint、タグの値の絞り込み、同じ異常を続けて送っても捨てられないこと、宛先と件名を含まないこと(5.4・6.8)。
+  - `env-schema.worker.test.ts`(event): メールの変数・シークレット・バインディングの検証と、欠けたキー名だけを返すこと(4.1・4.2・10.2)。
   - `email-smoke-route.worker.test.ts`: 未設定で404、トークン不一致で401、成功で202と`email.send`の送信(10.2・11.4・11.5)。
-  - `email-module.worker.test.ts`(event): `createMessageBatch`で`email.send`をeventのqueueハンドラーへ渡し、Mailpitの宛先への要求(テスト内で差し替えた`globalThis.fetch`が受ける)に日本語の件名と両パートが含まれる。メールイベント用Queueのバッチでhard bounceが`email_suppressions`へ記録され、同じバッチの再送で変わらない(1.5・3.3・7.1・7.7・7.10)。
+  - `email-module.worker.test.ts`(event): `createMessageBatch`で`email.send`をeventのqueueハンドラーへ渡し、Mailpitの宛先への要求(`vi.spyOn(globalThis, 'fetch')`が受ける)に日本語の件名と両パートが含まれる。メールイベント用Queueのバッチでhard bounceが`email_suppressions`へ記録され、同じバッチの再送で変わらない(1.5・3.3・7.1・7.7・7.10)。
 - **手順の検証**(実装時)
   - ローカル: シークレットを実行時に注入してeventを起動し、疎通確認の経路を呼んでMailpitのUIで日本語の件名・本文・両パートを確認する(11.4)。起動の形は、本specの実装の時点(infra-deliveryの前)は`infisical --telemetry=false run --env dev -- bun run dev`、infra-deliveryの改訂1の実装の後はWorkerごとのフォルダを重ねる`bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker event -- bun run dev`である(`WORKER_SCOPED_SECRETS`の`STRIPE_API_KEY`は`/workers/event`からだけ渡り、素の`infisical run`ではpaymentsの起動時の検査が失敗するため)。
   - staging: デプロイ後に開発者が疎通確認の経路を呼び、検証済みの宛先で受信を確認する(11.5)。
 - **Performance**
-  - 1件の描画と送信がCPU時間の上限に十分収まることを、`react-email-renderer.worker.test.tsx`で20件の描画の所要時間として記録する。
+  - 1件の描画と送信がCPU時間の上限に十分収まることを、`react-email-renderer.worker.test.tsx`で20件の描画の所要時間としてVitestの`annotate`で記録する(`--reporter=verbose`で表示)。
 
 ## Security Considerations
 
@@ -1484,9 +1599,9 @@ graph LR
     F --> G[docs and manual checks]
 ```
 
-- 既存データは無い。マイグレーションはメールの3テーブルを作るだけである。
+- 既存データは無い。マイグレーションはメールの3テーブルを作るもの(`20261027063108_email_delivery`)と、後始末の続きの位置のテーブルを作るもの(`20261027144241_email_cleanup_cursors`)の2つである。
 - 前提: backend-platformの実装が完了していること。
-- 開発者の手作業(AIエージェントは行わない): Email Sendingへのstaging・prodの送信ドメインの登録と送信内容のプレビューの無効化、メールイベント用Queue(staging・prod)とイベントの購読(`bounced`・`complained`・`rejected`・`failed`)の作成(infra-deliveryがOpenTofuへ取り込むまでの間)、stagingの宛先の検証と`EMAIL_ALLOWED_RECIPIENTS`のInfisical(staging)への登録、`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`のInfisical(dev・staging)への登録、stagingでの疎通確認。
+- 開発者の手作業(AIエージェントは行わない): Email Sendingへのstaging・prodの送信ドメインの登録と送信内容のプレビューの無効化、メールイベント用Queue(staging・prod)とイベントの購読(`bounced`・`complained`・`rejected`・`failed`)の作成(infra-deliveryがOpenTofuへ取り込むまでの間)、stagingの宛先の検証と`EMAIL_ALLOWED_RECIPIENTS`のInfisical(staging)への登録、`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`のInfisical(dev・staging)への登録、eventの`wrangler deploy --dry-run`によるバンドルの確認(AIエージェントの実行は権限で拒否される)、stagingでの疎通確認(`apps/event/wrangler.jsonc`にstagingのルートが無いため、infra-deliveryがルートを加えてから行う)。stagingのシークレットはInfisical(staging)を正とし、`wrangler secret put`はinfra-deliveryのCIのデプロイが導入されるまでの暫定の手段とする。
 
 ## Supporting References
 
@@ -1498,5 +1613,5 @@ graph LR
 | 送信元                     | `Launch Stadium <noreply@local.example>` | `Launch Stadium <noreply@genai-example-2-mail-staging.lab.kurachiweb.com>` | `Launch Stadium <noreply@genai-example-2-mail.lab.kurachiweb.com>` |
 | メールイベント用Queue      | `genai-example-2-email-events-dev`       | `genai-example-2-email-events-staging`                                     | `genai-example-2-email-events-prod`                                |
 | `send_email`バインディング | なし                                     | `EMAIL`                                                                    | `EMAIL`                                                            |
-| 日次の後始末のcron(api)    | `21 12 * * *`                            | 同左                                                                       | 同左                                                               |
+| 日次の後始末のcron(api)    | `21 12 * * *`(ルートに書く)              | 同左(ルートから継承)                                                       | 同左(ルートから継承)                                               |
 | 疎通確認の経路(event)      | `POST /internal/email/smoke`             | 同左                                                                       | 無効(シークレットを設定しない)                                     |

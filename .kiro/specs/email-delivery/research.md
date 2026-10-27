@@ -231,8 +231,33 @@
 - **要件**: 要件5.3・5.4の範囲の中の扱いの決定で、要件の文言は変わらない。
 - **変えた箇所**: 設計のSendEmailHandlerの行動の説明と、Error Handlingの表(間引きの失敗の行を追加)、技術ドキュメント`external/001-email-sending.md`の待機の節。コードは`send-email-handler.ts`の`alertDailyLimit`と、`send-email-handler.outcome.unit.test.ts`。タスクの番号と記述の変更は無い。
 
+## 開発者の指示による承認後の改訂(改訂3、2026-10-27)
+
+- **状態**: 2026-10-27に開発者が指示した改訂で、確定している。全タスクの実装を終え、tasks.mdの`## Implementation Notes`に記録した実装の決定と設計との相違を、design.mdへ反映した。設計の意図(要件の範囲・経路・方針)は変えていない。
+- **理由**: 設計は上流(backend-platform・api-gateway・dev-tooling)の実装の前に書かれ、型の制約(Honoの型引数の不変性、テンプレートの引数の反変)、Sentryの重複除外、`wrangler dev`のシークレットの渡し方、Bunのカバレッジの分母などにより、実装で形が変わった箇所がある。開発者の決定(5.6の配信停止の区画と文言、4.4の1年の判定の続きの位置、8.2のeventの単体テストの設定)も含む。
+- **変えた箇所(design.md)**:
+  - Overview・Existing Architecture Analysis: backend-platformが実装済みであること。共有ディレクトリでのReactの禁止をapiの静的解析が担うこと、`@react-email/render`の直接のimportと`.tsx`の置き場所の制限。
+  - Boundary Commitments: This Spec Ownsの`email_cleanup_cursors`、Out of Boundaryの配信停止のリンク(URLと任意のラベルの並び)、Revalidation Triggersの`createSuppressionMaintenance`の引数・影響するspecへの反映の状況・infra-deliveryの持ち分のstagingのイベントサーバーのルート。
+  - Technology Stack: データの行の4テーブル。
+  - Migration Strategy: 2つのマイグレーション(`20261027063108_email_delivery`・`20261027144241_email_cleanup_cursors`)と、開発者の手作業へのeventのバンドルの確認・stagingのシークレットの正・stagingのイベントサーバーのルートの追加。
+  - File Structure Plan: `email-cleanup-cursors.ts`・`cleanup-cursor-repository.ts`・`email-unsubscribe-links.tsx`(`email-unsubscribe-link.tsx`から改名)・eventの`*.fixtures.ts`・`config/vitest/read-nested-d1-migrations.ts`、各ファイルが持つ型(`EmailSendError`・`EmailRenderError`・`EmailTransientFailure`・`EventEmailEnv`・`API_EMAIL_TYPES`)。Modified Filesの4テーブルと2つのマイグレーション、`queue-consumer.raw-queues.worker.test.ts`、eventの静的解析の範囲、ルートの`secrets.required`、Vitestの設定と`TEST_MIGRATIONS`、`apps/event/bunfig.unit.toml`、ルートだけの`triggers.crons`。
+  - System Flows「日次の後始末」・SuppressionMaintenance・Physical Data Model: 1年の判定の続きの位置(`email_cleanup_cursors`)、`createSuppressionMaintenance`の4引数と`CleanupCursorStore`・`createCleanupCursorRepository`・`resetIfAt`、後始末の警告ログのカテゴリの固定、退会の削除との並行の限界。
+  - Requirements Traceability(2.3の`unsubscribeLinks`、9.2)とComponentsの表(CleanupCursorRepositoryの行、SuppressionMaintenanceの依存の`CleanupCursorRepository(P0)`、4テーブル)。
+  - core/emailの各節: EmailKindRegistry(登録の検査の項目、`EMAIL_DELIVERY_SMOKE_KIND`と`z.iso.datetime()`)、EmailSendContract(`isWithinEmailSendBodyLimit`、ヘッダーの照合と拒否の規則)、ProviderOutcomeClassifier(`UNKNOWN_SEND_ERROR_CODE`)、DeliveryEventParser(`receivedAt`、理由の正規化)、SuppressionPolicy(`SUPPRESSION_REASONS`)、UtcDateTimeFormat(任意の第2引数、`RangeError`、`<time dateTime>`)、RawQueueContract(`toRawMessageType`、名前とQueue名の検証)。
+  - workers・eventの小さな節: AlertThrottleRepository(Clockを持たない)、EmailSmokeRoute(404の組み立てと経路の登録)、SenderInfoDefault(`@injectable()`のクラスと`.to()`)。
+  - EmailRendering: `Body`のメソッドの記法、`unsubscribeLinks?(input)`と`EmailUnsubscribeLinkList`(1件はラベル任意で既定の文言「この通知を配信停止」、2件以上はラベル必須)、集約の種別の同一性の検査、`ReactEmailRenderer`の束縛、疎通確認の本文の3段落。
+  - EmailPorts・EmailPlatformModule・EmailSender・SuppressionRepository・SendRecordRepository: `EmailSendError`の置き場所とコンストラクタ、登録箇所の`Newable`と`.to()`、`Omit<AppModule, 'routes'>`、`SuppressionRepository`・`SendRecordRepository`の型名、合成のSQLの検査。
+  - SendEmailHandler・DeliveryEventHandler・EmailIncidentReporter: ポートの置き場所、`EmailIncident`の`undeliverable`の`category`が`EmailCategory | undefined`、ログのカテゴリと属性名、待機をまたぐ試行回数、`report`の効果での`error`ログ、`captureEvent`+`logentry`、`correlation_id`のタグ、タグ値の絞り込み。
+  - EmailProviders・EventEmailComposition: `createCloudflareEmailProvider`の任意の第2引数、`EventEmailEnv`、Mailpitの追加の失敗コード、処理単位ごとの`fetch`、`toConstantValue`の描画、シークレットの正(stagingはInfisical(staging))。
+  - DeliveryDecision・EmailConfigChecks: `EMAIL_SEND_RETRY_POLICY.maxAttempts`を本体とメールイベント用の両方のQueueのconsumerの`max_retries`と比べる(両節で比べる対象が食い違っていたため両方に合わせた)。RawQueueDispatch: `QueueConsumerEnv`と`Pick<AppModule, 'bindings'>`の引数の型、登録の誤りの影響。
+  - EmailCleanupJob・ApiEmailComposition: `API_EMAIL_TYPES.EmailCleanupJob`の置き場所、`API_EMAIL_MODULE`の束縛。
+  - Error Handling・Testing Strategy・Supporting References: 照会口が使えないときの位置、登録の誤りの行、テストのファイルと内容、cronの継承。
+- **影響するspecへの反映**: Revalidation Triggersに当たる変更のうち、`EmailTemplate`の形(`Body`・`unsubscribeLinks`)と`EMAIL_SENDER_INFO_PROVIDER`の`.to()`の束縛はnotificationsのdesign.md・research.mdへ(コミット`5daf8f0`)、`createSuppressionMaintenance`の4引数・後始末のログのカテゴリ・`USER_ADDRESS_DIRECTORY`の`.to()`の束縛と退会の削除の時刻の申し送りはidentity-authのdesign.md・research.mdへ(本改訂と同じ日)反映した。申し送りに対しては、開発者の決定で、identity-authの未完了のライフサイクルイベントの送り直しを業務時刻16:21のジョブへ分けた(identity-authのresearch.mdの「開発者の決定による送り直しの時刻の分離」)。backend-platform・dev-toolingのパスと規約は、それぞれのresearch.mdの2026-10-27の節で反映済み。
+- **要件**: 要件の文言は変わらない。タスクの番号と記述の変更は無い(実装の決定はtasks.mdの`## Implementation Notes`にある)。
+
 ## 変更履歴
 
 - 2026-10-24(文言の整合、改訂の番号なし): Testing Strategyのローカルの手順の検証に、infra-deliveryの改訂1の実装の後のeventのローカルの起動の形(`run-with-secrets --scope local --worker event`。`WORKER_SCOPED_SECRETS`の`STRIPE_API_KEY`はWorkerごとのフォルダからだけ渡る)を書き加えた。本specの実装の時点の起動の形(`infisical run`)は変えていない。振る舞いの変更は無く、タスク(8.1はオンボーディングの手順に従う形で、コマンドを書いていない)も変えていない。cross-spec reviewの指摘による。
 - 2026-10-27(改訂1): `E_ACCOUNT_SUSPENDED`を恒久的な失敗に分類。開発者が決定(上の改訂1の節)。
 - 2026-10-27(改訂2): 日次上限の警告の間引きの失敗時も警告を送る。開発者が決定(上の改訂2の節)。
+- 2026-10-27(改訂3): 実装の決定と設計との相違をdesign.mdへ反映し、identity-authへ申し送りを反映。開発者が指示(上の改訂3の節)。

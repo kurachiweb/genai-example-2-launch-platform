@@ -272,10 +272,10 @@
   - _Depends: 6.5, 7.1, 7.5_
   - _Requirements: 4.4, 15.1, 15.2, 15.3, 15.6, 15.7, 15.8, 15.9, 16.8, 16.9, 16.10_
 
-- [ ] 7.10 (P) 日次の3つのジョブを作る
+- [ ] 7.10 (P) 日次の4つのジョブを作る
   - 先に、物理削除の候補の業務日付による境界(13日前の業務日付以前)と件数の上限、送り直しの対象と3回目以降の通知、14日を過ぎた未完了の通知、期限切れのセッション・トークン・待ち・保留の削除の件数の記録、未判定の判定し直しの依頼の対象と上限を確かめる単体テストを書く
   - 完了状態: 単体テストが成功する
-  - _Boundary: PurgeOrchestratorJob, CredentialCleanupJob, DisposableRecheckSweepJob_
+  - _Boundary: PurgeOrchestratorJob, CredentialCleanupJob, DisposableRecheckSweepJob, LifecycleRedispatchJob_
   - _Depends: 3.4, 6.1_
   - _Requirements: 3.3, 8.8, 14.5, 16.6, 17.1, 17.4_
 
@@ -302,9 +302,9 @@
   - _Requirements: 8.4, 10.1, 11.1, 12.4, 13.8, 15.1_
 
 - [ ] 8.4 日次のジョブと、利用者のメールアドレスの照会口を登録する
-  - 先に、3つのジョブが`identity-auth.purge-orchestrator`・`identity-auth.credential-cleanup`・`identity-auth.disposable-recheck-sweep`の名前(`<spec名>.<名詞句>`)と業務時刻4:21の順序100・110・120で登録され、定期実行の定義のcron式と一致することを、backend-platformのcronの一致の検査に加える
-  - 3つのジョブを定期実行の登録箇所に加え、email-deliveryの照会口の登録箇所を本specのD1の実装に差し替える
-  - 完了状態: cronの一致の検査が成功し、ローカルで4:21の定期実行を手動で起こすと3つのジョブの要約とメールの後始末の照会口の結果(使えない、ではなく実際の判定)がログに出る
+  - 先に、3つのジョブが`identity-auth.purge-orchestrator`・`identity-auth.credential-cleanup`・`identity-auth.disposable-recheck-sweep`の名前(`<spec名>.<名詞句>`)と業務時刻4:21の順序100・110・120で、未完了の後続処理の送り直しのジョブ`identity-auth.lifecycle-redispatch`が業務時刻16:21の順序100で登録され、定期実行の定義のcron式と一致することを、backend-platformのcronの一致の検査に加える
+  - 4つのジョブを定期実行の登録箇所に加え、apiのWrangler設定のルートの`triggers.crons`に16:21に対応する`21 0 * * *`を加え、email-deliveryの照会口の登録箇所を本specのD1の実装(`@injectable()`のクラス)に差し替える
+  - 完了状態: cronの一致の検査が成功し、ローカルで4:21の定期実行を手動で起こすと3つのジョブの要約とメールの後始末の照会口の結果(使えない、ではなく実際の判定)がログに出て、16:21の定期実行を手動で起こすと送り直しのジョブの要約がログに出る
   - _Requirements: 8.8, 14.5, 15.3, 16.6, 17.1_
 
 - [ ] 8.5 アップロードできる利用者の判定を作り、media-pipelineの差し込み口へ束縛する
