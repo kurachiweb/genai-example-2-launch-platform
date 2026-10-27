@@ -52,7 +52,7 @@
   - _Boundary: ProviderOutcomeClassifier, DeliveryDecision_
   - _Requirements: 4.4, 5.1, 5.2, 5.3, 5.5, 5.6, 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 2.4 (P) 配信不能イベントの検証と、抑止の効果・合成・有効判定を作る
+- [x] 2.4 (P) 配信不能イベントの検証と、抑止の効果・合成・有効判定を作る
   - 先に、Cloudflareの文書の6種のイベントの例を標本として用意する
   - イベントを検証して恒久バウンス・ソフトバウンス・苦情・受信者側の拒否・その他の拒否・受付後の配送失敗・無視するものに正規化し、件名と配送サーバーの応答を落とす。版の違い・形式の不正・未知の種類は失敗として返す
   - 効果を、恒久バウンスと苦情は期限なしの抑止、受信者側の拒否は7日の抑止、その他の拒否と配送失敗は通知、ソフトバウンスはログだけ、配信成功と再試行中は無視とする
@@ -241,3 +241,4 @@
 - 2.2(4.1への申し送り): 本文の大きさの判定は`isWithinEmailSendBodyLimit(body)`(JSONにしたUTF-8が`MAX_EMAIL_SEND_BODY_BYTES`以下か)を使う。追加ヘッダーは名前の大文字小文字を区別せずに照合し、大文字小文字だけ違う重複は`too-many`、空の値と`List-Unsubscribe`の無い`List-Unsubscribe-Post`は拒否する。`List-Unsubscribe`はカンマで単純に分割するため、URIにカンマを含む値は拒否される。
 - 2.3(5.4・6.1への申し送り): 再試行の間隔は受信部が登録の`retry`の方針で決め、`decideAfterOutcome`は`EMAIL_SEND_RETRY_POLICY`で回数を判定する。`MESSAGE_HANDLERS`の`email.send`の登録に`retry: EMAIL_SEND_RETRY_POLICY`を渡し、Workers統合テストで確かめる(既定の方針のままだと再試行が30秒から始まる)。
 - 2.3: `decideAfterOutcome`は試行回数の検証のため結果によらず先に`decideOnFailure`を呼び、不正な回数ではどの結果でも`RangeError`になる。コード無しの一時的な障害は`UNKNOWN_SEND_ERROR_CODE`(`'unknown'`)。`E_ACCOUNT_SUSPENDED`は設計の表に無いため未知のコードとして一時的な障害に分類している(開発者の判断待ち)。設定の検査は`EMAIL_SEND_RETRY_POLICY.maxAttempts`を本体とメールイベント用の両方のQueueのconsumerの`max_retries`と比べる(設計のEmailConfigChecksとDeliveryDecisionで比べる対象が食い違うため)。
+- 2.4(4.2・5.5への申し送り): `SUPPRESSION_REASONS`とDBスキーマの`last_reason`の一致は`core`の単体テストでは定数の比較だけなので、4.2のリポジトリで型の相互代入を保証する。配信不能イベントの理由は`^[A-Za-z0-9_.:-]{1,64}$`に合わなければ`'unknown'`に置き換わり、`rejection`・`failure.reason`の欠けも`'unknown'`で受け付ける。検証の失敗時の`type`は生の文字列で長さの上限が無いため、5.5でログの属性に入れるときは切り詰める。
