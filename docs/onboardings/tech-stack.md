@@ -100,6 +100,7 @@
 
 - GraphQL Code Generator(client-presetによりクエリからTypedDocumentNodeと型を生成)
   - `@graphql-typed-document-node/core` ... 生成した操作の型(`TypedDocumentNode`)の定義、共通部品が操作の結果と変数の型を受け取るために使用
+  - GraphQL(`graphql`) ... `TypedDocumentNode`が継承する`DocumentNode`の型の提供元、バックエンド側と同じ版を宣言する
 
 ### 状態管理・データフェッチング
 
