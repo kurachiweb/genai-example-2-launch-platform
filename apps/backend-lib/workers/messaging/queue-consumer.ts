@@ -15,6 +15,12 @@ import type {
   MessageHandlingResult,
 } from '../../core/messaging/message-contract.ts';
 import {
+  assertRawQueueRegistrations,
+  type RawMessageHandler,
+  type RawQueueRegistration,
+  toRawMessageType,
+} from '../../core/messaging/raw-queue.ts';
+import {
   assertRetryPolicy,
   DEFAULT_RETRY_POLICY,
   decideOnFailure,
@@ -35,6 +41,10 @@ export type QueueConsumerEnv = PlatformEnv & {
   readonly JOBS_DLQ_NAME: string;
 };
 
+export interface QueueDispatcherOptions<E> {
+  readonly rawQueues?: readonly RawQueueRegistration<E>[];
+}
+
 type MessageResult = 'done' | 'deferred' | 'retried' | 'dead-lettered';
 
 interface Outcome {
@@ -48,12 +58,23 @@ interface ResolvedRegistration {
   readonly policy: RetryPolicy;
 }
 
+interface ResolvedRawQueue<E> {
+  readonly registration: RawQueueRegistration<E>;
+  readonly policy: RetryPolicy;
+  readonly messageType: string;
+}
+
 interface ConsumeContext<E extends QueueConsumerEnv> {
   readonly registrations: ReadonlyMap<string, ResolvedRegistration>;
   readonly modules: readonly Pick<AppModule, 'bindings'>[];
   readonly env: E;
   readonly ctx: ExecutionContext;
 }
+
+type RawConsumeContext<E extends QueueConsumerEnv> = Omit<
+  ConsumeContext<E>,
+  'registrations'
+>;
 
 const logger = getAppLogger(['event', 'queue', 'consumer']);
 
@@ -73,6 +94,20 @@ function indexRegistrations(
     indexed.set(type, { registration, policy });
   }
   return indexed;
+}
+
+function resolveRawQueues<E>(
+  registrations: readonly RawQueueRegistration<E>[],
+): readonly ResolvedRawQueue<E>[] {
+  return registrations.map((registration) => {
+    const policy = { ...DEFAULT_RETRY_POLICY, ...registration.retry };
+    assertRetryPolicy(policy);
+    return {
+      registration,
+      policy,
+      messageType: toRawMessageType(registration.name),
+    };
+  });
 }
 
 function errorNameOf(error: unknown): string | undefined {
@@ -174,23 +209,35 @@ async function handleEnvelope<E extends QueueConsumerEnv>(
     });
     return await completeHandling(message, envelope, context.env, result);
   } catch (error) {
-    logger.warn('メッセージの処理に失敗しました', { error });
-    const errorName = errorNameOf(error);
-    const decision = decideOnFailure(policy, message.attempts);
-    if (decision.kind === 'retry') {
-      message.retry({ delaySeconds: decision.delaySeconds });
-      return {
-        result: 'retried',
-        ...(errorName === undefined ? {} : { errorName }),
-      };
-    }
-    return sendDeadLetterNotice(message, context.env, {
+    return handleFailure(message, context.env, policy, error, {
       messageId: envelope.id,
       type: envelope.type,
-      reason: 'handler-failed',
-      errorName,
     });
   }
+}
+
+async function handleFailure(
+  message: Message,
+  env: QueueConsumerEnv,
+  policy: RetryPolicy,
+  error: unknown,
+  identity: Pick<DeadLetterNotice, 'messageId' | 'type'>,
+): Promise<Outcome> {
+  logger.warn('メッセージの処理に失敗しました', { error });
+  const errorName = errorNameOf(error);
+  const decision = decideOnFailure(policy, message.attempts);
+  if (decision.kind === 'retry') {
+    message.retry({ delaySeconds: decision.delaySeconds });
+    return {
+      result: 'retried',
+      ...(errorName === undefined ? {} : { errorName }),
+    };
+  }
+  return sendDeadLetterNotice(message, env, {
+    ...identity,
+    reason: 'handler-failed',
+    errorName,
+  });
 }
 
 async function consumeMessage<E extends QueueConsumerEnv>(
@@ -282,14 +329,93 @@ async function consumeJobsBatch<E extends QueueConsumerEnv>(
   }
 }
 
+async function handleRawMessage<E extends QueueConsumerEnv>(
+  message: Message,
+  rawQueue: ResolvedRawQueue<E>,
+  context: RawConsumeContext<E>,
+): Promise<Outcome> {
+  try {
+    const container = createInvocationContainer(
+      {
+        env: context.env,
+        executionCtx: context.ctx,
+        info: { kind: 'queue', correlationId: message.id, clientIp: undefined },
+      },
+      context.modules,
+    );
+    const handler = container.get<RawMessageHandler>(
+      rawQueue.registration.handler,
+    );
+    await handler.handle(message.body, {
+      id: message.id,
+      attempts: message.attempts,
+      timestamp: message.timestamp,
+    });
+    message.ack();
+    return { result: 'done' };
+  } catch (error) {
+    // 本文は送信元が決めた形式で個人情報を含み得るため、通知にはQueuesのメッセージIDと登録の種別だけを載せる
+    return handleFailure(message, context.env, rawQueue.policy, error, {
+      messageId: message.id,
+      type: rawQueue.messageType,
+    });
+  }
+}
+
+async function consumeRawMessage<E extends QueueConsumerEnv>(
+  message: Message,
+  rawQueue: ResolvedRawQueue<E>,
+  context: RawConsumeContext<E>,
+): Promise<void> {
+  const startedAt = Date.now();
+  const outcome = await handleRawMessage(message, rawQueue, context);
+  logger.info('メッセージを処理しました', {
+    ...outcome,
+    messageType: rawQueue.messageType,
+    attempts: message.attempts,
+    durationMs: Date.now() - startedAt,
+  });
+}
+
+async function consumeRawBatch<E extends QueueConsumerEnv>(
+  batch: MessageBatch,
+  rawQueue: ResolvedRawQueue<E>,
+  context: RawConsumeContext<E>,
+): Promise<void> {
+  for (const message of batch.messages) {
+    // 封筒が無いため、QueuesのメッセージIDを相関IDにしてログとエラーレポートを結び付ける
+    await withScope((scope) => {
+      scope.setTag('correlation_id', message.id);
+      return withContext({ correlationId: message.id }, () =>
+        retryOnUnexpectedError(message, () =>
+          consumeRawMessage(message, rawQueue, context),
+        ),
+      );
+    });
+  }
+}
+
 // 環境を指定したAppModuleは既定のAppModuleへ代入できないため、コンテナに必要なbindingsだけを受け取る
 export function createQueueDispatcher<E extends QueueConsumerEnv>(
   registrations: readonly MessageHandlerRegistration<unknown>[],
   modules: readonly Pick<AppModule, 'bindings'>[],
+  options: QueueDispatcherOptions<E> = {},
 ): QueueDispatcher<E> {
   const indexed = indexRegistrations(registrations);
+  const rawRegistrations = options.rawQueues ?? [];
+  const rawQueues = resolveRawQueues(rawRegistrations);
+  let rawQueuesVerified = false;
   return {
     async dispatch(batch, env, ctx) {
+      // Queue名は環境の値で決まるため、本体とデッドレターとの重複は最初のバッチを受けた時点で確かめる
+      if (!rawQueuesVerified) {
+        assertRawQueueRegistrations(
+          rawRegistrations,
+          [env.JOBS_QUEUE_NAME, env.JOBS_DLQ_NAME],
+          env,
+        );
+        rawQueuesVerified = true;
+      }
       if (batch.queue === env.JOBS_QUEUE_NAME) {
         await consumeJobsBatch(batch, {
           registrations: indexed,
@@ -301,6 +427,13 @@ export function createQueueDispatcher<E extends QueueConsumerEnv>(
       }
       if (batch.queue === env.JOBS_DLQ_NAME) {
         handleDeadLetterBatch(batch);
+        return;
+      }
+      const rawQueue = rawQueues.find(
+        ({ registration }) => registration.queueName(env) === batch.queue,
+      );
+      if (rawQueue !== undefined) {
+        await consumeRawBatch(batch, rawQueue, { modules, env, ctx });
         return;
       }
       logger.error('本体とデッドレターのどちらでもないQueueのバッチです', {

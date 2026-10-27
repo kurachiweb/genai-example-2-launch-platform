@@ -68,7 +68,7 @@
   - 完了状態: 日時表記の単体テストが月日のゼロ埋め無し・時分の2桁・UTCの日付の境界・年付きの形式で成功し、ポートを参照する2.1〜2.4の部品とともにapiの型検査が成功する
   - _Requirements: 1.1, 3.6, 3.8, 8.1, 9.1, 9.2_
 
-- [ ] 3. (P) 封筒を持たないQueueの登録口を、backend-platformの受信部へ互換を保って加える
+- [x] 3. (P) 封筒を持たないQueueの登録口を、backend-platformの受信部へ互換を保って加える
   - 先に、受信部のWorkers統合テストへ、登録した追加のQueueへの振り分け、例外での間隔付きの再試行、上限での本文を含まないデッドレター通知(種別`raw:<名前>`)、本体・デッドレターと同じ名前の登録の拒否のケースを足す
   - 追加のQueueの登録(名前・Queue名の解決・処理・任意の再試行の方針)と処理の型、名前の検証を共有コードの`core`に作る
   - 受信部に任意の追加引数を加え、一致したQueueのメッセージを1件ずつ新しいコンテナで処理する。引数を省略した場合の振る舞いは変えない
@@ -244,3 +244,4 @@
 - 2.4(4.2・5.5への申し送り): `SUPPRESSION_REASONS`とDBスキーマの`last_reason`の一致は`core`の単体テストでは定数の比較だけなので、4.2のリポジトリで型の相互代入を保証する。配信不能イベントの理由は`^[A-Za-z0-9_.:-]{1,64}$`に合わなければ`'unknown'`に置き換わり、`rejection`・`failure.reason`の欠けも`'unknown'`で受け付ける。検証の失敗時の`type`は生の文字列で長さの上限が無いため、5.5でログの属性に入れるときは切り詰める。
 - 2.5(4.1への申し送り): `EmailSendError`は下流のapplication層が`instanceof`で見分けるため`core/email/ports.ts`に定義した(コンストラクタは`(reason)`だけで、メッセージは理由ごとの固定文)。4.1はこれを`core/email/ports.ts`からimportして投げる。
 - 2.5(5.6・5.7への申し送り): `formatUtcDateTime`・`formatUtcDate`は任意の第2引数`{ withYear?: boolean }`を取り、無効な`Date`では`RangeError`を投げる。テンプレートで日時を表示するときはマークアップ規約の日時の表示(`<time dateTime>`)に従って包む。
+- 3(6.1への申し送り): 追加のQueueの登録は`createQueueDispatcher(..., { rawQueues })`で渡し、最初の`dispatch`で`assertRawQueueRegistrations`が検証する。登録が誤っていると本体のQueueを含む全バッチが例外になる(Sentryで検知)。名前は`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`、Queue名の解決結果が空・`undefined`でも拒否する。新しいケースは既存の`queue-consumer.worker.test.ts`(800行の上限に近い)ではなく`queue-consumer.raw-queues.worker.test.ts`に置いた(設計のTesting Strategyとの相違)。
