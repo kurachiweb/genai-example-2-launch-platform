@@ -1,3 +1,4 @@
+import { useDisableIntrospection } from '@graphql-yoga/plugin-disable-introspection';
 import { describe, expect, test } from 'bun:test';
 import { createSchema } from 'graphql-yoga';
 
@@ -105,24 +106,100 @@ describe('createDocumentValidator', () => {
   });
 
   test.each([
+    ['__schema', 'query Schema { __schema { description } }'],
+    ['__type', 'query TypeOf { __type(name: "Node") { name } }'],
+  ])(
+    '%sを読むintrospectionはgraphql_validation_failedを返す',
+    (_field, document) => {
+      const validate = createDocumentValidator(createCountingSchema().schema);
+
+      expect(validate(document)).toEqual(['graphql_validation_failed']);
+    },
+  );
+
+  test('__typenameを読む操作は合格する', () => {
+    const validate = createDocumentValidator(createCountingSchema().schema);
+
+    expect(validate('{ __typename node { __typename value } }')).toEqual([]);
+  });
+
+  test.each([
+    ['Subscription', 'subscription Watch { value }'],
+    ['Mutation', 'mutation Change { value }'],
+  ])(
+    '%s型の無いスキーマへの操作はgraphql_request_invalidを返す',
+    (_type, document) => {
+      const validate = createDocumentValidator(createCountingSchema().schema);
+
+      expect(validate(document)).toEqual(['graphql_request_invalid']);
+    },
+  );
+
+  test('Subscription型のあるスキーマへのsubscriptionは合格する', () => {
+    const validate = createDocumentValidator(
+      createSchema({
+        typeDefs: /* GraphQL */ `
+          type Query {
+            value: Int
+          }
+
+          type Subscription {
+            value: Int
+          }
+        `,
+      }),
+    );
+
+    expect(validate('subscription Watch { value }')).toEqual([]);
+  });
+
+  test('複数の操作を持つ文書は合格する', () => {
+    const validate = createDocumentValidator(createCountingSchema().schema);
+
+    expect(
+      validate('query First { value } query Second { node { value } }'),
+    ).toEqual([]);
+  });
+
+  test('複数の操作のうちルートの型の無い操作ごとにgraphql_request_invalidを返す', () => {
+    const validate = createDocumentValidator(createCountingSchema().schema);
+
+    expect(
+      validate(
+        'query First { value } subscription Second { value } mutation Third { value }',
+      ),
+    ).toEqual(['graphql_request_invalid', 'graphql_request_invalid']);
+  });
+
+  test('検証に失敗した文書には、ルートの型の無い操作のコードを加えない', () => {
+    const validate = createDocumentValidator(createCountingSchema().schema);
+
+    expect(validate('subscription Watch($id: Int) { value }')).toEqual([
+      'graphql_validation_failed',
+    ]);
+  });
+
+  test.each([
     ['深さの超過', depthQuery(9)],
     ['コストの超過', costQuery(289)],
     ['字句の超過', tokenQuery(1001)],
     ['構文の誤り', '{ node { value }'],
     ['存在しない項目', '{ missing }'],
+    ['introspection', 'query Schema { __schema { description } }'],
+    ['__typename', '{ __typename value }'],
     ['上限以内', depthQuery(8)],
   ])(
-    '%sの操作に、同じ上限を組み込んだYogaの要求と同じコードを返す',
+    '%sの操作に、同じ上限とintrospectionの無効化を組み込んだYogaの要求と同じコードを返す',
     async (_case, document) => {
       const validate = createDocumentValidator(createCountingSchema().schema);
 
-      const served = await runLimitedOperation(
-        document,
-        createQueryLimitPlugins({
+      const served = await runLimitedOperation(document, [
+        ...createQueryLimitPlugins({
           exposeLimits: false,
           blockFieldSuggestion: true,
         }),
-      );
+        useDisableIntrospection(),
+      ]);
 
       expect(validate(document)).toEqual(
         classifyDocumentErrors(served.documentErrors),

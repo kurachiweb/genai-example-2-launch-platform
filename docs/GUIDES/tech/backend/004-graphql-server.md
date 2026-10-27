@@ -142,7 +142,10 @@ flowchart TD
 - 許可リストの生成コマンドは、作業ツリーの操作の一覧を現行とし、`--previous-ref <コミット>`で指定したコミットの操作の一覧を直前のリリースとする。指定が無ければ(初回のデプロイ・ローカル環境)、現行だけから生成し、直前のリリースを指定していない旨を表示する。
 - 識別子が`sha256:`と64桁の小文字の16進の形でない、本文のSHA-256と一致しない、現行と直前で同じ識別子に異なる本文がある、のいずれかなら、許可リストを生成せずに失敗する。
 - 現行の操作は、合成したスキーマに対する解析・検証と上限の検査に通らなければ、生成を失敗させる。直前のリリースの操作が通らなければ、許可リストから除外して警告を表示する。スキーマの破壊的な変更で直前のリリースの画面が動かなくなる操作を、デプロイ前に見つけるためである。
-- 生成時の検証は、上限のプラグインだけを組み込んだYogaで解析と検証だけを行う。introspectionと、`Subscription`型の無いスキーマへの`subscription`は、生成時の検証を通るが実行時に拒否される。introspectionは内部経路の検証で`graphql_validation_failed`と400に、`subscription`は実行の開始時に`graphql_request_invalid`と400になる。1つの文書に複数の操作を持つものも生成時の検証を通り、実行時は`operationName`で指定した操作が実行される(指定が無ければ`graphql_request_invalid`と400)。
+- 生成時の検証は、上限のプラグインと、内部経路と同じintrospectionの無効化(graphqlの`NoSchemaIntrospectionCustomRule`)を組み込んだYogaで解析と検証だけを行い、実行はしない。実行時に必ず拒否される操作を生成時に見つけるため、理由には同じ操作が内部経路で受けるエラーコードを使う。
+  - introspection(`__schema`・`__type`)は`graphql_validation_failed`とする。`__typename`は拒否しない。
+  - 解析と検証に通った文書のうち、スキーマにルートの型が無い操作(`Subscription`型の無いスキーマへの`subscription`、`Mutation`型の無いスキーマへの`mutation`)は、操作ごとに`graphql_request_invalid`とする。graphqlの検証はこの操作を通し、実行の開始時に拒否するためである。
+  - 1つの文書に複数の操作を持つものは拒否しない。実行時は`operationName`で指定した操作が実行される(指定が無ければ`graphql_request_invalid`と400)。
 - 操作の一覧の場所と形式、許可リストの生成とデプロイの順序、直前のリリースのコミットの渡し方は「[GraphQL通信](../coding/004-graphql-communication.md)」に記載する。
 
 ## introspectionとGraphiQL
@@ -173,21 +176,21 @@ introspectionとGraphiQLは、ローカル環境のGraphiQLの要求でだけ使
 - Yogaは、エラーの`extensions.http.status`のうち最大の値を応答の状態コードにする。データが無く想定外のエラーだけの応答は500になる。
 - 伏せたエラーを再び`maskError`に渡しても変えず、送り直さない。伏せ済みかどうかは、エラーのポリシーが作ったエラーと同一かで判定し、拡張のコードでは判定しない。
 
-| 状況                                                                                                                                   | エラーコード                                                       | 状態コード               |
-| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------ |
-| デプロイ先環境の外部経路からの要求                                                                                                     | `not_found`(共通のエラー形式)                                      | 404                      |
-| 本文が`<GraphQLの本文の上限>`を超える                                                                                                  | `payload_too_large`(共通のエラー形式)                              | 413                      |
-| 操作の識別子を持たずに本文だけ(GraphiQLの要求を除く)                                                                                   | `persisted_operation_required`                                     | 400                      |
-| 識別子が無い・呼び出し元の許可リストに無い                                                                                             | `persisted_operation_not_found`                                    | 400                      |
-| 深さ・コスト・エイリアス・字句・ディレクティブの上限を超える                                                                           | `query_depth_exceeded`など`query_<種類>_exceeded`                  | 400                      |
-| 構文の誤り                                                                                                                             | `graphql_parse_failed`                                             | 400                      |
-| スキーマとの不一致・introspectionの拒否・日時のリテラルの不正                                                                          | `graphql_validation_failed`                                        | 400                      |
-| バッチ・変数の型の不一致・必須の変数の欠落・JSONでない本文・操作を選べない複数の操作・`Subscription`型の無いスキーマへの`subscription` | `graphql_request_invalid`                                          | 400                      |
-| 引数の検証の失敗・日時の変数の不正                                                                                                     | `validation_error`                                                 | 200                      |
-| 回数の超過(`rate_limited`)                                                                                                             | `rate_limit_exceeded`など`AppError`のコード                        | 429(`Retry-After`)       |
-| 依存先の一時的な障害(`unavailable`)                                                                                                    | `bot_verification_unavailable`など`AppError`のコード               | 503(`Retry-After`)       |
-| その他の想定内の失敗                                                                                                                   | `unauthenticated`・`bot_verification_failed`など`AppError`のコード | 200                      |
-| 想定外の例外                                                                                                                           | `internal_error`                                                   | 200(データが無ければ500) |
+| 状況                                                                                                                                                                       | エラーコード                                                       | 状態コード               |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------ |
+| デプロイ先環境の外部経路からの要求                                                                                                                                         | `not_found`(共通のエラー形式)                                      | 404                      |
+| 本文が`<GraphQLの本文の上限>`を超える                                                                                                                                      | `payload_too_large`(共通のエラー形式)                              | 413                      |
+| 操作の識別子を持たずに本文だけ(GraphiQLの要求を除く)                                                                                                                       | `persisted_operation_required`                                     | 400                      |
+| 識別子が無い・呼び出し元の許可リストに無い                                                                                                                                 | `persisted_operation_not_found`                                    | 400                      |
+| 深さ・コスト・エイリアス・字句・ディレクティブの上限を超える                                                                                                               | `query_depth_exceeded`など`query_<種類>_exceeded`                  | 400                      |
+| 構文の誤り                                                                                                                                                                 | `graphql_parse_failed`                                             | 400                      |
+| スキーマとの不一致・introspectionの拒否・日時のリテラルの不正                                                                                                              | `graphql_validation_failed`                                        | 400                      |
+| バッチ・変数の型の不一致・必須の変数の欠落・JSONでない本文・操作を選べない複数の操作・スキーマにルートの型が無い操作(`Subscription`型の無いスキーマへの`subscription`など) | `graphql_request_invalid`                                          | 400                      |
+| 引数の検証の失敗・日時の変数の不正                                                                                                                                         | `validation_error`                                                 | 200                      |
+| 回数の超過(`rate_limited`)                                                                                                                                                 | `rate_limit_exceeded`など`AppError`のコード                        | 429(`Retry-After`)       |
+| 依存先の一時的な障害(`unavailable`)                                                                                                                                        | `bot_verification_unavailable`など`AppError`のコード               | 503(`Retry-After`)       |
+| その他の想定内の失敗                                                                                                                                                       | `unauthenticated`・`bot_verification_failed`など`AppError`のコード | 200                      |
+| 想定外の例外                                                                                                                                                               | `internal_error`                                                   | 200(データが無ければ500) |
 
 - 状態コードを429・503にするのは、リゾルバが`kind`を`rate_limited`・`unavailable`とした`AppError`を投げたときだけである。回数の超過と一時的な障害が1つの応答に混ざると、大きい方の503になる。
 - 実行前の拒否のエラーコードの一覧は`GATEWAY_ERROR_CODES`である。`AppError`のコードは各機能が決める(「[基盤が使うエラーコード](002-layered-architecture-on-workers.md#基盤が使うエラーコード)」)。

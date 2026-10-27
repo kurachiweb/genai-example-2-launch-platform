@@ -168,7 +168,7 @@ apps/
 │   │   ├── build-allowlist.ts                   # 入口: 操作の一覧(現行と--previous-refの版)から許可リストを生成する
 │   │   ├── allowlist-sources.ts                 # 操作の一覧の場所の契約と、作業ツリー・Gitの履歴からの読み出し
 │   │   ├── allowlist-builder.ts                 # 純粋: 識別子の照合・和集合・検証失敗の扱い・整列と直列化
-│   │   ├── document-validator.ts                # 合成したスキーマと上限で操作の本文を検証する関数の組み立て
+│   │   ├── document-validator.ts                # 合成したスキーマ・上限・introspectionの禁止・ルートの型で操作の本文を検証する関数の組み立て
 │   │   ├── cli-args.ts                          # 純粋: --previous-refなどの引数の解析
 │   │   └── *.unit.test.ts                       # 上の4ファイル(入口を除く)の単体テスト
 │   ├── src/
@@ -1411,7 +1411,7 @@ export declare function parseCliArgs(argv: readonly string[]): {
 - 識別子(5.8): `^sha256:[0-9a-f]{64}$`に合い、本文のSHA-256(Web Crypto)の16進と一致すること。現行と直前で同じ識別子に異なる本文があれば`conflicting_document`。
 - 検証(4.9): 現行の操作が理由を返したら`current_invalid`で失敗する。直前のリリースの操作が理由を返したら除外し、`excluded`として表示する(破壊的変更の検出)。
 - 生成(5.5〜5.7): 呼び出し元ごとに、現行と(指定があれば)直前の一覧の和集合を作る。`--previous-ref`が無い場合は現行だけで作り、直前のリリースを指定していない旨を表示する。
-- `createDocumentValidator`は、`createQueryLimitPlugins({ exposeLimits: false, blockFieldSuggestion: false })`を組み込んだYogaの`getEnveloped`で解析と検証だけを行い、`classifyDocumentErrors`で分類する(実行はしない)。
+- `createDocumentValidator`は、`createQueryLimitPlugins({ exposeLimits: false, blockFieldSuggestion: false })`と、graphqlの`NoSchemaIntrospectionCustomRule`を加えるプラグインを組み込んだYogaの`getEnveloped`で解析と検証だけを行い、`classifyDocumentErrors`で分類する(実行はしない)。検証に通った文書では、スキーマにルートの型が無い操作(`Subscription`型の無いスキーマへの`subscription`など)ごとに`graphql_request_invalid`を返す。実行時に必ず拒否される操作を許可リストに入れないためで、コードは実行時と同じにする。1つの文書の複数の操作は、実行時に`operationName`で選ばれるため通す(改訂3)。
 - `generate.ts`・`check.ts`・`build-allowlist.ts`は入口で、ファイルの読み書きと外部コマンドの起動だけを行う。判定は純粋関数に置き、単体テストで確かめる。入口はテストから読み込まない(Bunのカバレッジは読み込んだファイルだけを分母にする)。
 - `codegen.config.ts`: 入力`src/presentation/graphql/generated/schema.graphql`、出力`src/presentation/graphql/generated/resolvers-types.ts`、プラグイン`typescript`・`typescript-resolvers`、設定`useTypeImports: true`・`contextType: '../graphql-context.ts#GraphQLContext'`・`scalars: { DateTime: { input: 'number', output: 'number | Date' } }`・`strictScalars: true`・`enumsAsTypes: true`。
 
@@ -1573,7 +1573,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
 
 - **Unit Tests**(Bun)
   - `allowlist-builder.unit.test.ts`: 現行と直前の和集合、直前だけの検証失敗は除外され`excluded`に出ること、現行の検証失敗・識別子の形式不正・ハッシュの不一致・同じ識別子の本文の衝突で失敗すること、出力がキーの順で同じ文字列になること(4.9・5.5〜5.8)。
-  - `document-validator.unit.test.ts`: テスト用のスキーマで、深さ9・エイリアス16・コスト5000超・字句1000超・ディレクティブ51の操作がそれぞれの`query_*_exceeded`に、構文の誤りと存在しない項目が`graphql_parse_failed`・`graphql_validation_failed`になり、上限以内の操作が合格すること(4.1〜4.7・4.9)。
+  - `document-validator.unit.test.ts`: テスト用のスキーマで、深さ9・エイリアス16・コスト5000超・字句1000超・ディレクティブ51の操作がそれぞれの`query_*_exceeded`に、構文の誤りと存在しない項目が`graphql_parse_failed`・`graphql_validation_failed`になり、上限以内の操作が合格すること(4.1〜4.7・4.9)。introspection(`__schema`・`__type`)が`graphql_validation_failed`に、ルートの型の無い操作が`graphql_request_invalid`になり、`__typename`と複数の操作を持つ文書が合格すること(改訂3)。`test/graphql/document-validator-runtime.worker.test.ts`: 拒否する文書の検証のコードが、`createGatewayServer`の内部経路(ローカル・デプロイ先)で実行した時のコードと一致すること(改訂3)。
   - `allowlist-sources.unit.test.ts`: 一時的なGitリポジトリで、作業ツリーのファイルが無い場合の空、指定コミットに無い場合の空、存在しないコミットでの失敗を確かめる(5.6・5.7)。
   - `cli-args.unit.test.ts`: `--previous-ref`の有無と値の欠落(5.6・5.7)。
   - `session-verifier.unit.test.ts`・`anonymous-session-verifier.unit.test.ts`: `SESSION_TOKEN_PATTERN`が43文字のbase64urlだけを受け付けること、既定の実装が常に`invalid`を返すこと(3.3・3.4)。
