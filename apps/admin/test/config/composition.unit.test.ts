@@ -30,6 +30,11 @@ describe('ADMIN_PROFILE', () => {
     expect(ADMIN_PROFILE.indexable('local')).toBe(false);
   });
 
+  test('prodで検索エンジンへの登録を許す利用者側と異なり、prodでも登録を許さない', () => {
+    expect(CLIENT_PROFILE.indexable('prod')).toBe(true);
+    expect(ADMIN_PROFILE.indexable('prod')).toBe(false);
+  });
+
   test('凍結されていて書き換えられない', () => {
     expect(Object.isFrozen(ADMIN_PROFILE)).toBe(true);
   });
