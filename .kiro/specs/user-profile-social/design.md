@@ -51,11 +51,11 @@
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`ScheduledJobDefinition`と`scheduled-jobs.ts`の登録箇所・`AppError`・`getAppLogger`・`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`・`textNoCase`。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`assertHuman`・`loaders`)・`withValidatedArgs`・`defineLoader`・`encodeCursor`・`decodeCursor`・`toConnection`・`DateTime`・`PageInfo`、`SessionView`。形を変えない。
 - identity-auth: `AccountGuard`(`currentUser`・`requireUser`・`requireWritableUser`・`requireVerifiedUser`)・`IDENTITY_TYPES`・`visibleUsers`・`users`(`id`・`nickname`・`handle`・`status`・`deleted_at`・`created_at`の読み取りと、`nickname`・`handle`・`updated_at`の更新)・`HandleAvailability`・`HANDLE_AVAILABILITY`・`GENERATED_HANDLE_LENGTH`・`GENERATED_HANDLE_ALPHABET`(テストだけ)・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`checkNickname`・`NICKNAME_MAX_GRAPHEMES`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・`_authenticated`のレイアウト・`RootAuthContext`・`viewerQueryOptions`・`LoginRequiredDialog`・E2Eの`e2e/support/mailpit.ts`。
-- media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`IMAGE_MEDIA_TYPES`・`MediaFiles`(`claim`・`eraseNow`・`markDeleted`・`eraseOwnedBy`、仮1で追加を依頼する`listOwnerIds`)・`MediaQuarantine`(`addReasonForOwner`・`removeReasonForOwner`)・`MEDIA_TYPES`・`toMediaImage`・`mediaFileLoader`・GraphQLの`MediaImage`・`ImageUploadField`・`MediaPicture`・`MediaPlaceholder`。`listOwnerIds`の追加のほかは形を変えない。
+- media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`IMAGE_MEDIA_TYPES`・`MediaFiles`(`claim`・`eraseNow`・`markDeleted`・`eraseOwnedBy`、仮1で追加を依頼する`listOwnerIds`)・`MediaQuarantine`(`addReasonForOwner`・`removeReasonForOwner`)・`MEDIA_TYPES`・`toMediaImage`・`mediaFileLoader`・GraphQLの`MediaImage`・`ImageUploadField`(必須の`contactAvailable`)・`MediaPicture`・`MediaPlaceholder`。`listOwnerIds`の追加のほかは形を変えない。
 - content-processing: `countGraphemes`・`hasForbiddenCharacters`・`markdownTextSchema`・`MarkdownEditor`・`useMarkdownOptions`・`useRenderedMarkdown`・`CollapsibleMarkdownContent`。
 - ultras-subscription: `ULTRAS_TYPES.UltrasEntitlements`の`isEntitledAt`。
 - inquiry-chat: `InquirerProfiles`・`InquirerProfile`・`INQUIRY_TYPES.InquirerProfiles`(束縛の差し替えだけ)。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`useTurnstileToken`・`TurnstileWidget`・`buildPageHead`・`PublicRuntimeConfig.clientSiteOrigin`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品(タブ・ドロップダウンメニュー・ツールチップ・ボタン)・`runAxe`。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`useAppForm<TInput, TOutput>(schema, { defaultValues })`・`AppForm`(必須の`onSubmitError`・任意の`serverFieldPrefix`)・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`useTurnstileToken`・`TurnstileWidget`(非表示)・Zodの値の読み込み元(`utilities/validation/zod.ts`の`z`)・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`buildPageHead`・`PublicRuntimeConfig.clientSiteOrigin`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品(タブ・ドロップダウンメニュー・ツールチップ・ボタン)・`runAxe`。
 - npmパッケージ: 新規は無い。
 - 後続specは、`common-lib/handles`・`previousHandleColumns`・`workers/handles`の公開の関数、`workers/profile`の契約(`UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`)、apiの`MyProfileReader`・`ProfileEditor`・GraphQLの`UserSummary`・`userSummaryLoader`、clientの`FollowButton`・`UserAvatar`と3つの登録箇所だけに依存し、本specのテーブルを直接読み書きしない。
 
@@ -277,16 +277,21 @@ apps/
     │   ├── avatar-field.tsx                            # プロフィール画像の選択・削除
     │   ├── handle-field.tsx                            # ハンドルと使用可否・旧ハンドルの案内
     │   ├── website-fields.tsx                          # 外部Webサイトの行(最大10件)
-    │   └── profile-form-schema.ts                      # フォームのzodスキーマ(テストは*.unit.test.ts)
+    │   └── profile-form-schema.ts                      # フォームのZodスキーマ(lib/utilities/validation/zod.tsのz、テストは*.unit.test.ts)
     ├── components/follow/
     │   ├── follow-button.tsx                           # フォローボタン(他specも使う)
     │   ├── follow-list-page.tsx                        # フォロー一覧の画面
     │   └── follow-list.tsx                             # 1つのタブの一覧と続き
     ├── components/user/user-avatar.tsx                 # MediaPictureとプレースホルダー(他specも使う)
-    └── graphql/operations/profile/
-        ├── public-profile.ts                           # publicProfile
-        ├── my-profile.ts                               # myProfile・handleAvailability・updateMyProfile
-        └── follow.ts                                   # myFollowing・myFollowers・followUser・unfollowUser
+    └── graphql/operations/profile/                     # 1ファイル1操作(操作名はClientで始める。生成物はsrc/graphql/generated/)
+        ├── public-profile.graphql                      # query ClientPublicProfile(publicProfile)
+        ├── my-profile.graphql                          # query ClientMyProfile(myProfile)
+        ├── handle-availability.graphql                 # query ClientHandleAvailability(handleAvailability)
+        ├── update-my-profile.graphql                   # mutation ClientUpdateMyProfile(updateMyProfile)
+        ├── my-following.graphql                        # query ClientMyFollowing(myFollowing)
+        ├── my-followers.graphql                        # query ClientMyFollowers(myFollowers)
+        ├── follow-user.graphql                         # mutation ClientFollowUser(followUser)
+        └── unfollow-user.graphql                       # mutation ClientUnfollowUser(unfollowUser)
 e2e/client/
 ├── profile.e2e.test.ts                                 # 編集・公開・旧ハンドルの302・予約語
 └── follow.e2e.test.ts                                  # フォロー・数・一覧・解除
@@ -1241,8 +1246,8 @@ export declare const PUBLIC_PROFILE_MENU_ITEMS: readonly PublicProfileMenuItem[]
 #### ProfileEditRoute・ProfileEditForm・AvatarField・HandleField・WebsiteFields・ProfileFormSchema
 
 - `/_authenticated/settings/profile`(未ログインは`_authenticated`のレイアウトがログインへ誘導、4.15): `SettingsShell`の中に`ProfileEditForm`。`SETTINGS_NAV_ITEMS`に「プロフィール」(order 10、4.2)。
-- `ProfileEditForm`: `useAppForm`と`profile-form-schema.ts`(サーバーと同じ定数と判定、4.3・4.4)。欄の順は画像・ニックネーム・ハンドル・ヘッドライン・自己紹介(`MarkdownEditor`、`maxGraphemes` 5000、`preview`は公開プロフィールと同じ指定で`idScope: 'preview'`、4.5)・外部Webサイト・bot対策のウィジェット(`action` `profile_update`)・保存。各欄はフォーカスアウトで検証する(4.8)。保存は`updateMyProfile`に`expectedHandle`(読み込んだ時点のハンドル)とトークンを渡す(4.9・4.14)。`handle_unavailable`はハンドルの欄、`validation_error`は`applyServerFieldErrors`で欄へ、`profile_update_conflict`は再読み込みの案内。成功で「プロフィールを保存しました。」の`notify`、`myProfile`・`viewerQueryOptions`の取得を無効にしてルーターを再評価し、「公開プロフィールを見る」(`/@<新しいハンドル>`)を示す(4.13)。停止中は全欄と保存を無効にし、停止中で変更できない旨を表示する(4.11)。
-- `AvatarField`: `ImageUploadField`(`constraints: { purpose: 'user-avatar', allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: 512000, subjectLabel: 'プロフィール画像' }`、`edit: { aspect: 1, maxLongSide: 512, cropShape: 'round' }`、5.1・5.2)と現在の画像の`UserAvatar`の表示、「画像を削除」(値を`null`にする、5.4)。
+- `ProfileEditForm`: `profile-form-schema.ts`のスキーマ(Zodの値は`lib/utilities/validation/zod.ts`の`z`から読み、サーバーと同じ定数と判定、4.3・4.4)を`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は`myProfile`の値による全欄)へ渡し、`AppForm`(`serverFieldPrefix="input"`)で描く。欄の順は画像・ニックネーム・ハンドル・ヘッドライン・自己紹介(`MarkdownEditor`、`maxGraphemes` 5000、`preview`は公開プロフィールと同じ指定で`idScope: 'preview'`、4.5)・外部Webサイト・保存。bot対策のウィジェット(`action` `profile_update`)はフォームの中に置き、`TurnstileWidget`が非表示で描くため判定の枠を出さず場所を取らない(判定の失敗時だけ失敗の文言を示す)。各欄はフォーカスアウトで検証する(4.8)。保存は`updateMyProfile`に`expectedHandle`(読み込んだ時点のハンドル)とトークンを渡す(4.9・4.14)。`handle_unavailable`はハンドルの欄、`validation_error`は`AppForm`が`input.`を外して`applyServerFieldErrors`で欄へ移し、欄に対応しない詳細と想定外の失敗は`onSubmitError`で受けて`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言を示し、`profile_update_conflict`は再読み込みの案内。成功で「プロフィールを保存しました。」の`notify`、`myProfile`・`viewerQueryOptions`の取得を無効にしてルーターを再評価し、「公開プロフィールを見る」(`/@<新しいハンドル>`)を示す(4.13)。停止中は全欄と保存を無効にし、停止中で変更できない旨を表示する(4.11)。
+- `AvatarField`: `ImageUploadField`(`constraints: { purpose: 'user-avatar', allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: 512000, subjectLabel: 'プロフィール画像' }`、`edit: { aspect: 1, maxLongSide: 512, cropShape: 'round' }`、`contactAvailable: CLIENT_PROFILE.contactAvailable`(想定外の応答の文言を問い合わせ先の有無で選ぶため)、5.1・5.2)と現在の画像の`UserAvatar`の表示、「画像を削除」(値を`null`にする、5.4)。
 - `HandleField`: `@`の接頭辞付きの入力欄。フォーカスアウトで形式を検査し、形式が正しければ`handleAvailability`で使用可否を確かめ、`UNAVAILABLE`なら「このハンドルは既に使われています。別の文字列を入力してください。」(1.7)。保持中の旧ハンドルがあれば「以前のハンドル@◯◯は、次にハンドルを変更するまで新しいURLへ転送されます。他の利用者が同じハンドルを設定すると、転送は止まります。」を表示する(2.7・仮2)。
 - `WebsiteFields`: 行ごとに名前(任意、25文字)とURL、削除のボタン、「外部Webサイトを追加」(10件で無効、4.6・4.7)。
 
@@ -1270,7 +1275,7 @@ export interface UserAvatarProps {
 }
 ```
 
-- `FollowButton`: ルートの文脈の`viewer`で出し分ける。未ログインは押下で`LoginRequiredDialog`(「フォローにはログインが必要です」、戻り先は現在のパス、9.9)。未確認は無効のボタンとツールチップ(メール未確認の文言、9.5)。本人(`isSameHandle`)は何も描画しない(9.3)。それ以外は`useTurnstileToken`のウィジェット(`action` `follow`)を置き、押下でトークンを`consume`して`followUser`・`unfollowUser`を呼ぶ。トークンの準備前は読み込み中の表示で待つ。成功で`aria-pressed`・ラベル(「フォロー中」「フォロー」)・トースト(「@◯◯をフォローしました。」「@◯◯のフォローを解除しました。」)・`onChange`(9.1・9.2)。失敗は文言規則の文言をトーストで示し、状態を戻す(9.8)。他specの画面(プロダクト詳細)でも同じ部品を使う(9.10)。
+- `FollowButton`: ルートの文脈の`viewer`で出し分ける。未ログインは押下で`LoginRequiredDialog`(「フォローにはログインが必要です」、戻り先は現在のパス、9.9)。未確認は無効のボタンとツールチップ(メール未確認の文言、9.5)。本人(`isSameHandle`)は何も描画しない(9.3)。それ以外は`useTurnstileToken`のウィジェット(`action` `follow`)を置き(`TurnstileWidget`は非表示で描くため、ボタンの周りに判定の枠と場所を設けない)、押下でトークンを`consume`して`followUser`・`unfollowUser`を呼ぶ。トークンの準備前は読み込み中の表示で待つ。成功で`aria-pressed`・ラベル(「フォロー中」「フォロー」)・トースト(「@◯◯をフォローしました。」「@◯◯のフォローを解除しました。」)・`onChange`(9.1・9.2)。失敗は文言規則の文言(`GraphQLClientError`でない例外は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`)をトーストで示し、状態を戻す(9.8)。他specの画面(プロダクト詳細)でも同じ部品を使う(9.10)。
 - `/_authenticated/settings/follows`: `SETTINGS_NAV_ITEMS`に「フォロー」(order 50、10.6)。`FollowListPage`は「フォロー中」「フォロワー」のタブ(`tab=followers`、既定は省略、10.1・10.5)。
 - `FollowList`: `useInfiniteQuery`で`myFollowing`・`myFollowers`を`first: 20`で読み、「さらに読み込む」(10.2)。各行は`UserAvatar`(32)・ニックネーム・`@ハンドル`・フォローした日時(`<time datetime>`)で、行全体を公開プロフィールへのリンクにする(10.3)。0件(「まだフォローしているユーザーはいません。」「まだフォロワーはいません。」)・取得エラー(`ErrorState`)・続きの取得エラー(`PartialErrorState`「続きを読み込めませんでした。」)(10.5)。
 - `UserAvatar`: `MediaPicture`(`display: { kind: 'square', size }`、`placeholder: { label: nickname, seed: handle }`)。画像が無い・隔離中・読み込みの失敗は頭文字のプレースホルダー(5.6)。

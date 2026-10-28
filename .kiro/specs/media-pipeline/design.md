@@ -56,7 +56,7 @@
 
 - backend-platform: `AppModule`と登録箇所(`modules.ts`・`scheduled-jobs.ts`・`message-handlers.ts`・`rate-limit-exclusions.ts`)、DIの識別子`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`MessagePublisher`)、`defineMessageContract`と`MESSAGE_CONTRACTS`、`MessageHandlerRegistration.retry`、`ScheduledJobDefinition`、`RateLimitExclusion`、`AppError`と共通のエラー形式、`createDatabase`・共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`)、ログとSentry。
 - api-gateway: `createInternalRoutesModule`・`InternalHonoEnv`(`c.var.session`)・`CallerKind`・`AuthenticatedPrincipal`・`Principal`、application層のセッションの読み取り専用の型`SessionView`(`application/session/session-view.ts`。api-gatewayの契約への追記で、identity-authのタスク2.3が追記する。無い場合の扱いは「UploaderEligibility・既定の実装」。R3-1)、`defineSchemaModule`・`defineLoader`、`withSecurityHeaders`(応答のCSPを保つ規則)。
-- frontend-platform: `RelayRoute`と`relay-routes.ts`の登録箇所、`PublicRuntimeConfig`、UI部品(dialog・button・label)・`notify`・アクセシビリティの検査の補助、`IMAGES_ORIGIN`。
+- frontend-platform: `RelayRoute`・`defineRelayRoute`と`relay-routes.ts`の登録箇所(`RELAY_ROUTES`)、`PublicRuntimeConfig`、UI部品(dialog・button・label)・`notify`・アクセシビリティの検査の補助、`IMAGES_ORIGIN`、`errorMessageOf`(想定外の応答の文言の選択)、client・adminの`CLIENT_PROFILE`・`ADMIN_PROFILE`の`contactAvailable`(入力欄を置く画面が渡す)。
 - content-processing: `apps/common-lib`の配置と参照の方法(仮決定2)と、frontend-libの`server/**`から`../common-lib/**`を読み込む許可(横断レビューM-2でcontent-processingが加える)、日次タイムラインの「日次バッチ(4:21)の内容」のジョブの名前と順序の表。本specの実装は、content-processingが下流向けに示す最小の区切りの完了を前提にする(roadmapの順はinfra-delivery→content-processing→media-pipeline→identity-auth)。区切りは次のとおりである(横断レビュー2回目のN-3)。
   - タスク1.1(共有ディレクトリの定義への共用部品の追加)・1.2(共用部品のプロジェクトと読み込みの境界)・4.1(APIサーバーとイベントサーバーへの組み込み)・4.2(利用者側・管理者側とfrontend-libへの組み込み)。
   - タスク6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`common-lib/validation/**`の禁止の静的解析の規則)と、11.3のうち`coding/003`への`server/**`の許可の記述。確かめ方は、6.1の単体テストの成功と`coding/003`の記述である(content-processingの設計の「`server/**`の許可の確かめ方」)。
@@ -93,7 +93,7 @@
 - 上流のbackend-platform・api-gateway・frontend-platformは設計が承認済みで、実装は本specより先に行う。content-processingの`apps/common-lib`の新設と組み込みのタスク(Allowed Dependencies)も、roadmapの順で本specより先に完了する。本specは各specの登録箇所への追記と、Revalidation Triggersに挙げた最小の変更だけを行う。
 - backend-platformの受信部は、バッチ内のメッセージを1件ずつ処理し、メッセージ種別ごとに再試行の方針を上書きできる。デッドレターでは本文が捨てられるため、失ってはならない状態(判定の待ち・保存先のずれ)はD1に残し、日次バッチで回復する。
 - api-gatewayの内部REST(`/internal`)はフロントエンドサーバーの中継からだけ届き、サブアプリが要求ごとに作って渡す`c.var.session`(api-gatewayの改訂3)で呼び出し元(利用者側・管理者側)に応じたセッションを判定できる。api-gatewayの`withSecurityHeaders`は、応答が自らCSPを持てば既定のCSPで置き換えない(SVGの配信で使う)。
-- frontend-platformの中継は、`RelayRoute`を`src/composition/relay-routes.ts`へ追加するだけで、CSRF・IP制限・セッションの引き継ぎ・セキュリティヘッダー(`no-store`)の経路に乗る。
+- frontend-platformの中継は、`defineRelayRoute`で定義した`RelayRoute`を`src/composition/relay-routes.ts`へ追加するだけで、CSRF・IP制限・セッションの引き継ぎ・セキュリティヘッダー(`no-store`)の経路に乗る。
 
 ### Architecture Pattern & Boundary Map
 
@@ -287,7 +287,7 @@ apps/
 │   │   ├── crop-geometry.ts                       # 切り取り範囲と最大寸法から出力の寸法・形式を決める
 │   │   ├── picture-sources.ts                     # 表示サイズから<source>・<img>のsrcsetと幅・高さを組み立てる
 │   │   └── placeholder-appearance.ts              # 先頭1文字(書記素)・背景色・文字色の決定
-│   ├── server/media/media-relay-routes.ts         # UPLOAD_RELAY_ROUTE・FILE_DOWNLOAD_RELAY_ROUTE(単体テスト併置)
+│   ├── server/media/media-relay-routes.ts         # UPLOAD_RELAY_ROUTE・FILE_DOWNLOAD_RELAY_ROUTE(defineRelayRouteで定義、単体テスト併置)
 │   └── components/media/                          # 画面部品(ブラウザテスト・Storybook。1ファイル1コンポーネント、*.browser.test.tsx・*.stories.tsxを併置)
 │       ├── file-drop-zone.tsx                     # クリック・ドラッグ&ドロップの選択(キーボード操作可)
 │       ├── file-selection-list.tsx                # 選んだファイルの名前・サイズ・形式・サムネイル・状態
@@ -328,8 +328,8 @@ docs/
 - `apps/event/vitest.worker.config.ts` — テスト用の変数(画像配信のホスト名・代替の判定・閾値)と`.wasm`の読み込みを加える。
 - `apps/frontend-lib/package.json`・`bun.lock`、`apps/client`・`apps/admin`の`package.json`・`bun.lock` — `react-easy-crop`を版固定で加える。
 - `apps/frontend-lib/server/env/frontend-env.ts` — `PublicRuntimeConfig`に`imagesOrigin`を加える(frontend-platformの所有。Revalidation Triggers)。
-- `apps/client/src/routes/__root.tsx`・`apps/admin/src/routes/__root.tsx` — `ImagesOriginProvider`で画像配信のオリジンを配る。
-- `apps/client/src/composition/relay-routes.ts`・`apps/admin/src/composition/relay-routes.ts` — `UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE`を加える。
+- `apps/client/src/routes/__root.tsx`・`apps/admin/src/routes/__root.tsx` — `ImagesOriginProvider`で画像配信のオリジンを配る。変更はこの配置だけで、エラーの画面(`errorComponent`の`ErrorPage`が描く`UnexpectedErrorView`)と`contactHref`の扱いはfrontend-platformのままにし、本specは管理者側のルートに失敗の表示(`ErrorState`・`UnexpectedErrorView`)を置かない。管理者側の画面に置かれる共通部品のアップロードの入力欄は、失敗の文言を`contactAvailable`(`ADMIN_PROFILE.contactAvailable`)で選び、問い合わせを促さない(アップロードの部品群)。
+- `apps/client/src/composition/relay-routes.ts`・`apps/admin/src/composition/relay-routes.ts` — `defineRelayRoute`で定義した`UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE`を`RELAY_ROUTES`の完全一致の経路の後に加える。
 - `docs/GUIDES/service/features/002-image-variants.md` — 出力フォーマットのメタデータの行を決定Q1に合わせ、パージの実行経路を「画像配信の名前付きエントリポイントのRPC」に改める。
 - `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — Exifの記述(決定Q1・Q2)、委託先の一覧のAWS(Rekognition)の行の所在(米国東部、us-east-1)と渡す情報(判定用画像だけ)を改める。「国外移転の記載事項」に委託先AWSの項を加える(16.4、N-1)。項の書き方の型はinfra-deliveryのタスク8.5が示し、Cloudflareの項を見本にする(R3-6)。本specはその型に合わせ、共通の行の後に見出し`### AWS(Rekognition)`を委託先の一覧の順の位置に置き、「移転先」「移転の根拠」「委託先が講じる措置」の3項目を書く。
   - 移転先: 米国(us-east-1)。送る情報は判定用画像だけで、元のファイル名・アップロードした主体の情報を送らない。
@@ -1741,14 +1741,16 @@ export declare function deliverImage(
 **Contracts**: API [x]
 
 ```typescript
-export declare const UPLOAD_RELAY_ROUTE: RelayRoute;
+export declare const UPLOAD_RELAY_ROUTE: RelayRoute; // defineRelayRoute({ ... })で定義し、凍結した経路
 // path: '/_bff/uploads/*'、methods: ['POST']、upstreamPath: /internal/media/uploads/<用途名(百分率符号化)>、
 // acceptContentTypes: ATTACHMENT_MEDIA_TYPES、extraForwardedHeaders: ['content-length', 'x-upload-file-name']、timeoutMs: 120000
-export declare const FILE_DOWNLOAD_RELAY_ROUTE: RelayRoute;
+export declare const FILE_DOWNLOAD_RELAY_ROUTE: RelayRoute; // defineRelayRoute({ ... })で定義し、凍結した経路
 // path: '/_bff/files/*'、methods: ['GET']、upstreamPath: /internal/media/files/<fileId(百分率符号化)>、timeoutMs: 120000
 ```
 
-- client・adminの`relay-routes.ts`へ両方を加える。中継の共通処理(CSRF・IP制限・セッションの引き継ぎ・`no-store`・非ページのCSP)はfrontend-platformのとおりに働く。
+- 両経路はfrontend-platformの`defineRelayRoute`で定義する。`defineRelayRoute`が経路・メソッド・待ち時間・受け付ける形式・追加の項目(小文字、予約名でない)を定義時に検査して凍結し、素のオブジェクトの経路はclient・adminの`composition.unit.test.ts`の凍結の検査を通らない。
+- client・adminの`relay-routes.ts`の`RELAY_ROUTES`へ両方を加える。2経路は末尾が`/*`の接頭辞の経路のため、完全一致の経路(`GRAPHQL_RELAY_ROUTE`など)より後に置く。中継の共通処理(CSRF・IP制限・セッションの引き継ぎ・`no-store`・非ページのCSP)はfrontend-platformのとおりに働く。
+- 上流の5xx(要件2.10の例外): 中継は、上流の5xxで`Content-Type`が`application/json`・`application/*+json`でない応答を、実行基盤が返した失敗とみなして503`upstream_unavailable`(`Retry-After: 5`)に置き換える。このため、ファイルの内容を返すダウンロードの経路(`GET /internal/media/files/:fileId`)とアップロードの経路も、5xxは必ず共通のエラー形式(JSON)で返す(backend-platformの共通のエラー処理がそうする)。
 - `server/media`は`ATTACHMENT_MEDIA_TYPES`と経路の接頭辞を`common-lib/media`から直接読み込み、common-libの他のディレクトリ(`validation/**`など)を読み込まない(M-2)。
 - 415の扱い(M-10): 本specはfrontend-platformの`relayToApi`の415の挙動を変えずに合わせる。中継は`acceptContentTypes`(全用途の許可形式の範囲)に無い`Content-Type`を、APIへ送らずに415`unsupported_media_type`(frontend-platformの共通のエラー形式)で返す。用途ごとの許可形式の判定は、引数を除いて照合するAPI側(415`unsupported_file_type`)が行う。中継の照合での引数(`; charset=...`)の扱いはfrontend-platformの定めによるため、アップロード部品は`Content-Type`に引数を付けず、`ATTACHMENT_MEDIA_TYPES`の値そのものを送る。`parseUploadResponse`は、中継の415`unsupported_media_type`をAPIの415`unsupported_file_type`と同じ文言に対応付ける。
 - 前提(Revalidation Triggers): `toBrowserResponse`は指示の項目と`Set-Cookie`以外の応答ヘッダー(`Content-Type`・`Content-Disposition`・`Content-Length`)を保つ。本specは単体テストでこれを確かめる。
@@ -1818,6 +1820,7 @@ export interface ImageUploadFieldProps {
   readonly edit: ImageEditOptions;
   readonly multiple?: boolean;
   readonly disabled?: boolean;
+  readonly contactAvailable: boolean; // 問い合わせの画面への導線を持つか。利用者側はCLIENT_PROFILE.contactAvailable、管理者側はADMIN_PROFILE.contactAvailableを渡す
   readonly onUploaded: (files: readonly UploadedFile[]) => void;
 }
 export interface AttachmentUploadFieldProps {
@@ -1825,14 +1828,18 @@ export interface AttachmentUploadFieldProps {
   readonly constraints: UploadConstraints;
   readonly multiple?: boolean;
   readonly disabled?: boolean;
+  readonly contactAvailable: boolean; // ImageUploadFieldPropsと同じ
   readonly onUploaded: (files: readonly UploadedFile[]) => void;
 }
+// use-file-upload.ts・upload-request.ts: 想定外の応答の文言を選ぶため、useFileUploadとparseUploadResponseは
+// どちらも呼び出し元の必須のcontactAvailable: booleanを受ける(入力欄のpropsの値をそのまま渡す)
 ```
 
 - `FileDropZone`: ボタンの見た目のラベルと隠した`<input type="file" accept="<形式の一覧>" multiple?>`を持ち、Enter・Spaceで選択を始める。ドラッグ中の状態を視覚とテキストで示す(14.1・14.2)。
 - `ImageUploadField`: 選択→`checkSelection`→SVG以外は`ImageCropDialog`(複数なら1枚ずつ順に)→`encodeCroppedImage`(`createImageBitmap`で向きを反映し、`computeCropOutput`の寸法へ縮小して`toBlob`。JPEGは品質0.9)→作り直したサイズの検査(14.7)→`useFileUpload`で送信。SVGは編集を省き選んだファイルのサイズで判定する(14.8)。
 - `AttachmentUploadField`: 編集ダイアログを出さず、選んだファイルをそのまま送る(14.8)。
-- `useFileUpload`: 1件ずつ順に`fetch`で`POST /_bff/uploads/<purpose>`(`Content-Type`は確定した形式を引数なしで、`x-upload-file-name`は`encodeFileNameHeader`)を送り、`parseUploadResponse`で`UploadedFile`か拒否の文言にする。中継の415`unsupported_media_type`はAPIの`unsupported_file_type`と同じ文言にする(M-10)。503・429・通信の失敗は`retryable: true`で「現在ご利用いただけません」系の文言を出し、同じファイルで再試行できる(14.9〜14.11)。
+- `useFileUpload`: 1件ずつ順に`fetch`で`POST /_bff/uploads/<purpose>`(`Content-Type`は確定した形式を引数なしで、`x-upload-file-name`は`encodeFileNameHeader`)を送り、`parseUploadResponse`で`UploadedFile`か拒否の文言にする。中継の415`unsupported_media_type`はAPIの`unsupported_file_type`と同じ文言にする(M-10)。503(中継の`upstream_unavailable`・`upstream_timeout`を含む)・429・通信の失敗は`retryable: true`で「現在ご利用いただけません」系の文言を出し、同じファイルで再試行できる(14.9〜14.11)。想定外の応答(エラーの表に無い状態コード・エラーコード、`upload_purpose_not_found`、解釈できない本文)は、frontend-platformの`errorMessageOf(error, contactAvailable)`で文言を選ぶ。想定外の応答を表す値は`GraphQLClientError`でないため、`contactAvailable`が真なら`UNEXPECTED_ERROR_MESSAGE`、偽なら問い合わせを促さない`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`になる。
+- `contactAvailable`(入力欄の必須のprops): 共通部品は利用者側と管理者側の両方に置かれるため、問い合わせの導線の有無を呼び出し元から受ける。利用者側の画面は`CLIENT_PROFILE.contactAvailable`(真)を、管理者側の画面(admin-foundationの管理者のプロフィール画像`admin-avatar`など)は`ADMIN_PROFILE.contactAvailable`(偽)を渡し、管理者側では問い合わせを促す文を出さない(frontend-platformの決定事項「管理者側のエラーの案内文」)。
 - 結果の通知: 選択・検証・送信中・成功・失敗を`aria-live="polite"`の領域で読み上げ、エラーは入力欄に`aria-describedby`で結び付ける。ダイアログはフォーカスを閉じ込め、閉じたら選択のボタンへ戻す(14.12)。
 
 #### MediaPicture・MediaPlaceholder・PrivateFileLink
@@ -1981,23 +1988,23 @@ erDiagram
 
 ### Error Categories and Responses
 
-| 状況                                                                     | 状態コード | エラーコード                                                                 | 利用者に見せる文言(文言規則へ追加)                                                                             |
-| ------------------------------------------------------------------------ | ---------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 用途が未登録                                                             | 404        | `upload_purpose_not_found`                                                   | (画面からは起きない。想定外のエラーの文言)                                                                     |
-| 未ログイン                                                               | 401        | `unauthenticated`                                                            | ログインし直してから、もう一度お試しください。                                                                 |
-| 主体の種類が対象外                                                       | 403        | `upload_forbidden`                                                           | この操作はできません。                                                                                         |
-| アップロードできない利用者(停止中など。差し込み口の拒否)                 | 403        | `account_unavailable`                                                        | このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。(文言規則の既存の「停止中アカウント」) |
-| アップロードできない利用者(メールアドレスの確認が必要。差し込み口の拒否) | 403        | `email_not_verified`                                                         | この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。(文言規則の既存の「メール未確認」)     |
-| `Content-Length`が無い                                                   | 411        | `content_length_required`                                                    | ファイルを送信できませんでした。もう一度お試しください。                                                       |
-| `Content-Length`が不正・本文の長さの不一致                               | 400        | `invalid_content_length`・`content_length_mismatch`                          | ファイルを送信できませんでした。もう一度お試しください。                                                       |
-| 上限サイズの超過                                                         | 413        | `file_too_large`                                                             | {用途}は{上限}以内の{画像・ファイル}を選択してください。                                                       |
-| 許可されない形式                                                         | 415        | `unsupported_file_type`(API)・`unsupported_media_type`(中継。M-10)           | {形式の一覧}の{画像・ファイル}を選択してください。                                                             |
-| 内容と申告の不一致・壊れたSVG・テキスト不正・寸法を読めない              | 422        | `file_type_mismatch`・`invalid_svg`・`invalid_text_file`・`image_unreadable` | ファイルを読み込めませんでした。ファイルが壊れていないか確認して、もう一度選択してください。                   |
-| DOCTYPE・ENTITYを含むSVG                                                 | 422        | `svg_declaration_not_allowed`                                                | このSVGは読み込めません。編集ソフトでSVGとして書き出し直してから選択してください。                             |
-| 画素数・辺の長さの超過                                                   | 422        | `image_dimensions_exceeded`                                                  | 画像の縦横の大きさが上限を超えています。小さくしてから選択してください。                                       |
-| 保存先の一時的な障害                                                     | 503        | `storage_unavailable`                                                        | 現在ご利用いただけません。しばらく待ってから再度お試しください。                                               |
-| 編集後のサイズ超過(ブラウザ)                                             | —          | —                                                                            | 編集後の画像が{上限}を超えました。切り取る範囲を狭めるか、別の画像を選択してください。                         |
-| 合計サイズの超過(ブラウザ)                                               | —          | —                                                                            | ファイルは合計{上限}以内で選択してください。                                                                   |
+| 状況                                                                                   | 状態コード | エラーコード                                                                 | 利用者に見せる文言(文言規則へ追加)                                                                                                                                                      |
+| -------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 用途が未登録                                                                           | 404        | `upload_purpose_not_found`                                                   | (画面からは起きない。想定外のエラーの文言で、`errorMessageOf(error, contactAvailable)`により利用者側は`UNEXPECTED_ERROR_MESSAGE`、管理者側は`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`) |
+| 未ログイン                                                                             | 401        | `unauthenticated`                                                            | ログインし直してから、もう一度お試しください。                                                                                                                                          |
+| 主体の種類が対象外                                                                     | 403        | `upload_forbidden`                                                           | この操作はできません。                                                                                                                                                                  |
+| アップロードできない利用者(停止中など。差し込み口の拒否。利用者側の呼び出しだけに返る) | 403        | `account_unavailable`                                                        | このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。(文言規則の既存の「停止中アカウント」)                                                                          |
+| アップロードできない利用者(メールアドレスの確認が必要。差し込み口の拒否)               | 403        | `email_not_verified`                                                         | この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。(文言規則の既存の「メール未確認」)                                                                              |
+| `Content-Length`が無い                                                                 | 411        | `content_length_required`                                                    | ファイルを送信できませんでした。もう一度お試しください。                                                                                                                                |
+| `Content-Length`が不正・本文の長さの不一致                                             | 400        | `invalid_content_length`・`content_length_mismatch`                          | ファイルを送信できませんでした。もう一度お試しください。                                                                                                                                |
+| 上限サイズの超過                                                                       | 413        | `file_too_large`                                                             | {用途}は{上限}以内の{画像・ファイル}を選択してください。                                                                                                                                |
+| 許可されない形式                                                                       | 415        | `unsupported_file_type`(API)・`unsupported_media_type`(中継。M-10)           | {形式の一覧}の{画像・ファイル}を選択してください。                                                                                                                                      |
+| 内容と申告の不一致・壊れたSVG・テキスト不正・寸法を読めない                            | 422        | `file_type_mismatch`・`invalid_svg`・`invalid_text_file`・`image_unreadable` | ファイルを読み込めませんでした。ファイルが壊れていないか確認して、もう一度選択してください。                                                                                            |
+| DOCTYPE・ENTITYを含むSVG                                                               | 422        | `svg_declaration_not_allowed`                                                | このSVGは読み込めません。編集ソフトでSVGとして書き出し直してから選択してください。                                                                                                      |
+| 画素数・辺の長さの超過                                                                 | 422        | `image_dimensions_exceeded`                                                  | 画像の縦横の大きさが上限を超えています。小さくしてから選択してください。                                                                                                                |
+| 保存先の一時的な障害                                                                   | 503        | `storage_unavailable`                                                        | 現在ご利用いただけません。しばらく待ってから再度お試しください。                                                                                                                        |
+| 編集後のサイズ超過(ブラウザ)                                                           | —          | —                                                                            | 編集後の画像が{上限}を超えました。切り取る範囲を狭めるか、別の画像を選択してください。                                                                                                  |
+| 合計サイズの超過(ブラウザ)                                                             | —          | —                                                                            | ファイルは合計{上限}以内で選択してください。                                                                                                                                            |
 
 ### Monitoring
 
@@ -2013,7 +2020,7 @@ erDiagram
 - `backend-lib/core/media`: `precheckUpload`の411→400→413→415の順序と境界値(上限ちょうど・1バイト超)、`detectSignature`の5形式と偽装(PNGの申告にJPEGの本文)、`readImageDimensions`の向き1〜8とSVGのviewBox・寸法なし、`exceedsPixelLimits`の境界、`checkSvgSyntax`のDOCTYPE・ENTITY(大文字小文字)・壊れたXML・UTF-8でない本文、テキストの検査(NUL・不完全なUTF-8・断片の境界で分かれた文字)、`sanitizeFileName`(パス区切り・制御文字・先頭のドット・255バイトの書記素境界・空)、`attachmentDisposition`、`desiredLocation`の全組み合わせ、`defineUploadPurpose`の違反(2.1〜2.4・3.1〜3.9・4.5・4.6・9.3・9.4)。
 - eventの`application/media`: `judgeLabels`(親をたどる・閾値ちょうど・設定外のカテゴリ)、`parseModerationConfig`、`planModerationImage`(as-is・resize・padの境界、640・80・5,242,880バイト)、`encodePng`(生成したPNGを`image-size`とシグネチャで読み戻す)、`inspectSvg`(Inkscape・Illustrator・Figmaの書き出しの標本は許可、script・foreignObject・`onload`・外部`href`・`javascript:`・`@import`・`xml-stylesheet`・`set`・許可外のdata URIは違反)、判定の処理(偽のポートで、重複・解除後・削除済み・一時的な失敗の試行回数ごとの再試行と未判定・恒久的な失敗の隔離)、`deliverImage`(404・SVG・変換・503とヘッダー)(6.1〜6.10・7.1〜7.5・8.1〜8.8・10.1〜10.12)。
 - apiの`application/media`・`infrastructure/media`: `FileAccessAuthorizer`(用途の方針・既定の保有者・管理者の画像確認・利用者側の画像の拒否)、`AllowAllUploaderEligibility`が常に許可すること、日次バッチの境界日時(13日・24時間・1時間)(1.8・5.4・8.3・12.2〜12.7・13.5)。
-- frontend-libの`utilities/media`: `checkSelection`・`computeCropOutput`・`buildPictureSources`・文言の対応(中継の415`unsupported_media_type`、再試行できない403の`account_unavailable`・`email_not_verified`を含む)・送信の`Content-Type`に引数が無いこと・`placeholder-appearance`(書記素とコントラスト比)・`media-relay-routes`の経路と転送する項目(14.4・14.6・14.9・15.1〜15.5)。
+- frontend-libの`utilities/media`: `checkSelection`・`computeCropOutput`・`buildPictureSources`・文言の対応(中継の415`unsupported_media_type`、再試行できない403の`account_unavailable`・`email_not_verified`、`contactAvailable`の真偽による想定外の応答の`UNEXPECTED_ERROR_MESSAGE`・`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`を含む)・送信の`Content-Type`に引数が無いこと・`placeholder-appearance`(書記素とコントラスト比)・`media-relay-routes`の経路と転送する項目(14.4・14.6・14.9・15.1〜15.5)。
 
 ### Integration Tests(Workers統合テスト)
 
@@ -2027,7 +2034,7 @@ erDiagram
 ### Browser Tests(Vitest Browser Mode)
 
 - `FileDropZone`: クリック・Enter・Spaceで選択を始め、ドラッグ&ドロップで選べ、`accept`が許可形式になる(14.1・14.2)。
-- `ImageUploadField`: 許可外・上限超過・個数超過のエラーの表示、SVG以外で編集ダイアログが開き、キーボードで拡大縮小・移動でき、確定でJPEG原本はJPEG・PNG原本はPNGの最大寸法以下のファイルが偽の`fetch`へ送られる。作り直し後の超過の文言、SVGはダイアログを開かない、503で再試行できる、成功で`onUploaded`が呼ばれる(14.3〜14.11)。
+- `ImageUploadField`: 許可外・上限超過・個数超過のエラーの表示、SVG以外で編集ダイアログが開き、キーボードで拡大縮小・移動でき、確定でJPEG原本はJPEG・PNG原本はPNGの最大寸法以下のファイルが偽の`fetch`へ送られる。作り直し後の超過の文言、SVGはダイアログを開かない、503で再試行できる、成功で`onUploaded`が呼ばれる、`contactAvailable`が偽(管理者側)なら想定外の応答で問い合わせを促す文が出ない(14.3〜14.11)。
 - `AttachmentUploadField`・`FileSelectionList`・`MediaPicture`(AVIF・WebPの`<source>`、フォールバック、`width`・`height`、`onError`でプレースホルダー)・`PrivateFileLink`(12.9・14.8・15.1〜15.6)。
 - 全部品でaxe-coreの違反が0件であり、通知の領域に結果が読み上げられる(14.12)。
 

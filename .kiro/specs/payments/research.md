@@ -330,3 +330,9 @@ ultras-subscriptionの要件と設計の作成中に、本specの口に足りな
 - **対応済み**: `request`・`prepare`は金額の指定(最小通貨単位の正の整数、`null`は残りの全額)を受け付ける(8.1)。依頼キーで1回だけ実行され(8.2)、残りの額(支払額 − 失敗・取り消し以外の依頼の合計)を超える依頼は`amount_exceeds_refundable`で拒否する(8.3)。同じ購入に対する複数回の一部の返金(表示停止の後の強制終了など)も、依頼キーを分ければ扱える。理由は`[a-z0-9_]{1,64}`の自由な値で、Stripeの返金理由は`requested_by_customer`になる。返金の反映(決済履歴の負の記録)は手動・自動を問わず行う(8.8)。本specの変更は要らない。
 - **注意(sponsorshipの側で扱う)**: (1)本specの自動返金の通知メール(8.10)は、反映の期限切れ・付与できない・二重決済の依頼(依頼キーが`reflection:`で始まる)だけに送る。日割り返金を購入者へ知らせるメールはsponsorshipが送る(または管理者の措置の通知に含める)。(2)`purge_due`で購入の行が消えた後の依頼は`purchase_not_found`で拒否される。(3)前提は購入が`fulfilled`(または`rejected`)で支払いが確定していることで、スポンサー広告の都度決済はこれを満たす。(4)日割りの額の計算・端数の扱い・依頼キーの形(例: `sponsorship:<広告ID>:suspension:<停止の記録ID>`)はsponsorshipが決める。
 - **要件定義書**: FR-PYMNT-006・FR-PYMNT-012の改訂の行に、スポンサー広告の自動の日割り返金を明記した(下の「要件定義書の改訂が必要な箇所」)。法的通知の大枠の返金ポリシーとの食い違い(Q1)は、スポンサー広告については自動返金が実装されることで解消する。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28)
+
+- frontend-platformの実装と最終検証の後、開発者の決定(frontend-platformのタスク10.4)で、設計をfrontend-platformの設計の「実装で確定した契約による発火と影響を受ける下流spec」の表に合わせた。振る舞いを変えない整合の修正のため、改訂の番号は付けない。要件は変えていない。
+  - 操作の置き場所と生成物: clientの操作を`src/graphql/operations/payments/`の1ファイル1操作の`.graphql`(操作名は`Client`で始める)にし、`graphql()`を呼ばず、部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読むとした。1ファイルにまとめていた3つの操作を分けたため、操作のファイルは5つになった(design.mdのAllowed Dependencies・File Structure Plan、tasks.mdの10.2)。
+  - `CLIENT_SECURITY_POLICY`への追記は、確定した`SecurityPolicySources`の形と許可先の形の規則に合うため変えていない。

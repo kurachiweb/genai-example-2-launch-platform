@@ -54,7 +54,7 @@
 - notifications: `NOTIFICATIONS_PLATFORM_TYPES.NotificationEventPublisher`・`NotificationEvent`・`NotificationPublishError`・`ResultNoticeSupplementProvider`・`ResultNoticeSupplementRegistration`・`RESULT_NOTICE_SUPPLEMENTS`、apiだけの`NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate`(`EveningDispatchGate`・`EveningDispatchReadiness`・`EveningDispatchError`、`core/notifications/evening-dispatch.ts`)・`EVENING_DISPATCH_PARTICIPANTS`(`apps/api/src/composition/evening-dispatch-participants.ts`、登録の追記だけ)(notificationsの仮2)。
 - directory-discovery: `PRODUCT_PAGE_SECTIONS`・`ProductPageSection`・`ProductPageContext`・`PRODUCT_OWNER_ACTIONS`・`ProductOwnerAction`。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・`DateTime`・`RelativeTime`・shadcn/uiの部品(ボタン・バッジ・タブ・ツールチップ)・`runAxe`・デザイントークン。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・`DateTime`・`RelativeTime`・shadcn/uiの部品(ボタン・バッジ・タブ・ツールチップ)・`runAxe`・デザイントークン、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`src/graphql/generated/graphql.ts`の生成物)。
 - admin-foundation: E2Eの`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - npmパッケージ: 新規なし。
 - 後続spec(tournament-year)は、`core/tournament`の規則、`workers/tournament`の`BracketDraw`・`BracketProgression`・`BracketStore`の読み取り、`WeekChampionDirectory`、`TOURNAMENT_TROPHY_SOURCES`、apiの`buildBracketRoundsView`とGraphQLの`BracketRound`・`BracketNode`・`BracketSlot`の型、clientの`components/bracket/`の`BracketRoundColumn`・`BracketRoundTabs`・`BracketMatchCard`・`BracketChampion`と`BracketRoundFields`・`BracketMatchProductFields`のフラグメント(仮7)だけに依存し、本specのテーブルへ直接書き込まない。data-exportは`WeekAwardExport`だけを呼ぶ。ugc-moderationは停止・非公開化をidentity-auth・product-launchのライフサイクルで発火すればよく、本specを直接呼ばない。
@@ -295,11 +295,15 @@ apps/
 │   ├── components/trophy/
 │   │   ├── trophy-shelf.tsx                                  # main 10
 │   │   └── trophy-art.tsx                                    # モックアップのトロフィーのSVGの移植
-│   └── graphql/operations/week-tournament/
-│       ├── week-board.ts
-│       ├── week-bracket.ts                                   # weekBracketと、Yearも使うフラグメントBracketRoundFields・BracketMatchProductFields(仮7)
-│       ├── week-entry.ts
-│       └── product-trophies.ts
+│   └── graphql/operations/week-tournament/                   # 1ファイル1操作の.graphql(操作名はClientで始める)
+│       ├── week-tournament-board.graphql                     # ClientWeekTournamentBoard(WeekBoardRoundFieldsを展開する)
+│       ├── week-board-round-fields.graphql                   # フラグメントWeekBoardRoundFields(WeekTournamentRoundBoard。splitBoardRoundの入力)
+│       ├── week-bracket.graphql                              # ClientWeekBracket(2つのフラグメントを展開する)
+│       ├── bracket-round-fields.graphql                      # Yearも使うフラグメントBracketRoundFields(仮7)
+│       ├── bracket-match-product-fields.graphql              # Yearも使うフラグメントBracketMatchProductFields(仮7)
+│       ├── my-week-entry.graphql                             # ClientMyWeekEntry
+│       ├── start-week-tournament-checkout.graphql            # ClientStartWeekTournamentCheckout
+│       └── product-trophies.graphql                          # ClientProductTrophies
 e2e/
 ├── client/week-tournament.e2e.test.ts                        # 参加費の決済・組み合わせ・トップページ・受賞(ジョブは共用のtriggerScheduledで起動)
 └── support/week-tournament-fixtures.ts                       # ローカルD1に予選の勝者と参加の枠を作る補助
@@ -1420,25 +1424,79 @@ type Mutation {
 
 ### client
 
+```graphql
+# src/graphql/operations/week-tournament/bracket-match-product-fields.graphql(仮7)
+fragment BracketMatchProductFields on MatchProduct {
+  handle
+  name
+  tagline
+  category {
+    id
+    name
+    handle
+  }
+  websiteUrl
+  logo {
+    id
+    objectKey
+    fallbackFormat
+    width
+    height
+  }
+  listed
+}
+```
+
+```graphql
+# src/graphql/operations/week-tournament/bracket-round-fields.graphql(仮7)
+fragment BracketRoundFields on BracketRound {
+  round
+  name
+  date
+  nodes {
+    position
+    match {
+      id
+      kind
+      round
+      stage
+      date
+      phase
+      decision
+      endedEarly
+    }
+    slots {
+      participantNo
+      seed
+      feedLabel
+      product {
+        ...BracketMatchProductFields
+      }
+      upvoteCount
+      result
+    }
+  }
+}
+```
+
 ```typescript
-// graphql/operations/week-tournament/week-bracket.ts(仮7)
-// client presetのgraphql()の文書。型は生成物のBracketRoundFieldsFragment・BracketMatchProductFieldsFragment(fragmentMaskingは無効)
-export declare const BracketMatchProductFields: TypedDocumentNode<BracketMatchProductFieldsFragment>; // fragment BracketMatchProductFields on MatchProduct { handle name tagline category { id name handle } websiteUrl logo { id objectKey fallbackFormat width height } listed }
-export declare const BracketRoundFields: TypedDocumentNode<BracketRoundFieldsFragment>; // fragment BracketRoundFields on BracketRound { round name date nodes { position match { id kind round stage date phase decision endedEarly } slots { participantNo seed feedLabel product { ...BracketMatchProductFields } upvoteCount result } } }
+// 型はsrc/graphql/generated/graphql.tsが生成するBracketRoundFieldsFragment・BracketMatchProductFieldsFragment(fragmentMaskingは無効)
 // components/bracket/bracket-view-props.ts
 export interface BracketViewProps {
   readonly rounds: readonly BracketRoundFieldsFragment[];
-  readonly champion: BracketMatchProductFieldsFragment | null; // 本specが書き出すMatchProductのフラグメントの型
+  readonly champion: BracketMatchProductFieldsFragment | null; // 本specが定義するMatchProductのフラグメントの型
   readonly awarded: boolean; // 賞を授与したか。真でchampionがnullなら「非公開のプロダクト」の受賞と表示する(参加1でroundsが空の場合を含む)
   readonly finished: boolean; // トーナメントが終了したか(awardedが偽なら受賞なしの表示に使う)
 }
 // components/week-tournament/week-board-model.ts
-export declare function splitBoardRound(round: WeekBoardRoundFragment): {
-  readonly cards: readonly MatchFragment[];
-  readonly byes: readonly MatchByeFragment[];
+// WeekBoardRoundFieldsFragmentはweek-board-round-fields.graphqlのフラグメントWeekBoardRoundFields(WeekTournamentRoundBoard)の生成された型
+export declare function splitBoardRound(round: WeekBoardRoundFieldsFragment): {
+  readonly cards: readonly WeekBoardRoundFieldsFragment['matches'][number][];
+  readonly byes: readonly WeekBoardRoundFieldsFragment['byes'][number][];
 }; // サーバーの分類をそのまま使い、並びは位置の昇順
 ```
 
+- 操作とフラグメントは`src/graphql/operations/week-tournament/`に1ファイル1つの`.graphql`で書き、`graphql()`を呼ばない。操作名は`Client`で始め(`ClientWeekTournamentBoard`・`ClientWeekBracket`・`ClientMyWeekEntry`・`ClientStartWeekTournamentCheckout`・`ClientProductTrophies`)、`ClientWeekBracket`は`BracketRoundFields`・`BracketMatchProductFields`を展開する。`ClientWeekTournamentBoard`は`rounds`に`week-board-round-fields.graphql`のフラグメント`WeekBoardRoundFields`(`WeekTournamentRoundBoard`の`tournament`・`round`・`roundName`・`final`・`matches`・`byes`・`bracketPath`)を展開する。`matches`・`byes`の選択は、match-engineの`MatchCard`・`ByeList`の引数が求める`Match`・`MatchBye`の項目に合わせる。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない(frontend-platformの「操作の追加手順」)。tournament-yearの照会も2つのフラグメントを名前で展開する。
 - 不戦勝の一覧の文言(トーナメントでは「次のラウンドへ進みます」)はmatch-engineの`ByeCard`が`match.kind`で切り替える(本specが依頼した改訂として、match-engineの仮7(2026-10-24に確定)が提供)。本specの区画は`ByeList`へマッチを渡すだけである。
 - `WeekTournamentSection`(`main` 20): `weekTournamentBoard(board.date)`を`LIVE_REFRESH_QUERY_OPTIONS`で取得し、`final`でない行ごとに`WeekSectionHeading`(トロフィーのアイコン・「Product of the Weekトーナメント」・ラウンド名・週の表記・決勝日の`<time datetime>`・「ブラケットを見る」)、`MatchCard`(`useUpvote`、段階の印は`tournamentRoundName`、2列は1280px以上)、`ByeList`を描く。行が無ければ`null`(8.1〜8.4・8.6・8.7)。取得の失敗は`PartialErrorState`で区画だけ縮退する(8.8)。
 - `WeekFinalShowcase`(`showcase` 20): `final`の行を全幅で描き、モックアップの演出(紙吹雪は`prefers-reduced-motion: reduce`で止める)と、確定の後は「フルタイム！<名称>がProduct of the Weekを受賞🎉」または「フルタイム。0対0で両者敗北。今回の受賞プロダクトはありません」を`role="status"`で表示する(8.5)。

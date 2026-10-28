@@ -187,9 +187,9 @@
 
 - [ ] 8. 利用者側の画面
 - [ ] 8.1 クライアントの操作を加え、型と許可リストを生成する
-  - トップページの予選・Upvote・取り消し・Upvote履歴の操作をclientに加え、型とpersisted operationsを生成する
+  - トップページの予選・Upvote・取り消し・Upvote履歴の操作を、clientの`src/graphql/operations/match/`に1ファイル1操作の`.graphql`(操作名は`ClientQualifierBoard`・`ClientUpvote`・`ClientCancelUpvote`・`ClientUpvoteHistory`。フラグメントも`.graphql`に置く)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して型とpersisted operations(`src/graphql/generated/`)を生成する。部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
   - 8.4〜8.11で操作やフラグメントを変えた場合は、そのタスクで型の生成と`graphql:allowlist`を実行し直す
-  - 完了状態: 型の生成が成功し、`graphql:allowlist`でapiの許可リストを再生成して`graphql:check`が成功する
+  - 完了状態: 型の生成が成功し、`graphql:allowlist`でapiの許可リストを再生成して`graphql:check`とclientの`codegen.unit.test.ts`(操作名の接頭辞)が成功する
   - _Depends: 6.4, 6.5_
   - _Requirements: 8.1, 10.2_
 
@@ -250,7 +250,7 @@
   - _Requirements: 8.17, 9.1, 9.2, 9.4, 9.6_
 
 - [ ] 8.10 トップページを組み立て、仮のトップページを置き換える
-  - 統合のタスクとして、仮のトップページを本specのトップページに置き換え、カウントダウン(`banner` 10)と予選の区画(`main` 30)を区画の文脈に合わせて登録口へ登録し、bot対策のウィジェットを1つ置き、対戦カードに8.5のフックをつないで成功時の値で予選の取得結果のキャッシュを並び順を保って更新する
+  - 統合のタスクとして、仮のトップページを本specのトップページに置き換え、カウントダウン(`banner` 10)と予選の区画(`main` 30)を区画の文脈に合わせて登録口へ登録し、bot対策のウィジェット(`TurnstileWidget`は非表示で描くため、判定の枠と場所を設けない)を1つ置き、対戦カードに8.5のフックをつないで成功時の値で予選の取得結果のキャッシュを並び順を保って更新する
   - 先に、ブラウザテストで、Upvoteの成功で取得結果が並び順を保って更新されること、30秒ごとの取り直しで値が変わり並び順が変わらないこと、取得エラーの再試行と問い合わせへの導線、予選の区画で予選の一覧が失敗しても他の区画が出ることを確かめる
   - 完了状態: ブラウザテストが成功し、ローカルで`/`を開くとサーバーで描画された予選の区画(マッチが無ければ空の状態)が出る
   - _Depends: 8.5, 8.7, 8.8, 8.9_

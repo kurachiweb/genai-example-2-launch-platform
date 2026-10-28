@@ -317,3 +317,11 @@
 - ugc-moderationの設計が文言規則の文として参照する広告の返金の2文(プロダクトの非公開化の通知の段落・利用者の停止の通知の段落)が、本specのresearch.mdにしか無く、タスク1.4で文言規則へ書かれない点を直した。design.mdのError Handlingの文言の一覧と、タスク1.4の文言規則の項目と完了状態に2文をそのまま加えた。非公開化の文には、要件14.9に合わせて「掲載期間が終わる前に退会した場合や、プロダクトを削除した場合は返金されません。」を加え、上流・後続specへの影響の文も同じにした。
 - 変更部分を新しいサブエージェントによる独立した確認(軽量のタスクのレビュー)で確かめ、1回目の判定はPASSだった(2文はdesign.md・tasks.md・research.md・ugc-moderationのdesign.mdで一字一句同じ)。任意の指摘(退会の条件を「掲載期間が終わる前に退会した場合」に広げる余地、強制終了の返金は本specの強制終了の通知が知らせること)は、ugc-moderationの2文と同時に変える必要があるため開発者の判断に委ね、変えていない。タスクの承認を保つ。
 - 追って、コーディネーターの指示で2文の末尾を要件14.9に合わせた最終の文面(「掲載期間が終わる前に退会した場合や、プロダクトを削除した場合は返金されません。」、非公開化と停止で同じ)にそろえ、design.md・tasks.mdの1.4・research.mdを同じ文面にした(ugc-moderationにも同じ文面が並行して与えられる)。新しいサブエージェントによる軽量のレビューの1回目の判定はPASSで、タスクの承認を保つ。任意の指摘(掲載終了日の翌日0:00から精算までの間の退会・削除も返金しないため、そのすき間だけ文面とずれる)は、極端な場合に限られるため文面を変えていない。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の判断)
+
+- frontend-platformが実装で確定した契約(同specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に、開発者の判断(下流specの設計を今回改訂する)で本specの設計を合わせた。
+- GraphQLの操作: 操作を各アプリの`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む。`graphql()`を呼んで`.ts`のファイルに操作を書くと、操作の本文がブラウザのバンドルに残るため(frontend-platformの要件6.3)。tasks.mdの操作のタスクに、各アプリの`graphql:generate`とapiの`graphql:allowlist`の手順を書いた。
+- 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。
+- bot判定: `TurnstileWidget`は非表示のウィジェットで場所を取らないため、判定の枠の表示と場所の記述を除いた。
+- 変えた箇所: design.mdのAllowed Dependencies、File Structure Planの両アプリの`graphql/operations/sponsorship/`、Modified Filesの生成物と許可リストの行、`SponsorshipApplicationForm`・`MySponsorshipList`・`ResumeCheckoutButton`・`AdminSponsorshipTable`・`TerminateSponsorshipDialog`(`ConfirmActionDialog`の`failureMessageOf`と確定の失敗の表示)、Error Strategy。tasks.mdの6.1・7.2・8.1・8.2・8.3。要件は変えていない。

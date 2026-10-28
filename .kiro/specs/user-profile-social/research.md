@@ -256,3 +256,11 @@
   - 仮3(B): 外部Webサイトの上限を10件にした。要件4.6、設計の`PROFILE_WEBSITES_MAX`・位置のCHECK(0〜9)・入力の検証・文言、タスク1.1〜1.3・5.2・8.1を直した。
 - 受け入れ基準は112件になった(3.8の追加)。
 - 確定の反映の後、設計の変更箇所(ハンドル基盤・保存・4:21のジョブ・上限)を機械的な確認(112件の受け入れ基準の番号が追跡表にあること)と判断で見直し、問題は無かった。タスクのグラフのサニティレビューを、新しいサブエージェントによる独立した確認で2回行った。1回目はNEEDS_FIXES(必須1件・軽微3件)で、整形で受け入れ基準の番号が繰り上がり要件3.5〜3.8の対応がずれていたこと(新しい基準を3.8へ移した)、研究の記録に旧い決定の文言が残っていたこと、9.2が保留中のジョブを文書に載せうること、3.2の要件に11.9が無いことを直した。2回目はPASSだった。
+
+## 変更履歴(2026-10-28、frontend-platformの実装で確定した契約の反映)
+
+- frontend-platformの実装と最終検証の後、開発者の決定(frontend-platformのタスク10.4)で、設計をfrontend-platformの設計の「実装で確定した契約による発火と影響を受ける下流spec」の表に合わせた。振る舞いを変えない整合の修正で、要件は変えていない。
+  - 操作の置き場所と生成物: clientの操作を`src/graphql/operations/profile/`の1ファイル1操作の`.graphql`(操作名は`Client`で始める)にし、`graphql()`を呼ばず、部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読むとした(design.mdのFile Structure Plan、tasks.mdの7.1)。
+  - Zodの値の読み込み元とフォーム部品の形: `profile-form-schema.ts`はZodの値を`lib/utilities/validation/zod.ts`の`z`から読み、`ProfileEditForm`を`useAppForm<TInput, TOutput>(schema, { defaultValues })`と`AppForm`(`serverFieldPrefix="input"`・必須の`onSubmitError`)で作り、`GraphQLClientError`でない例外の文言を`errorMessageOf`で選ぶとした(design.mdのAllowed Dependencies・ProfileEditForm・FollowButton、tasks.mdの8.1)。
+  - 非表示のウィジェット: `TurnstileWidget`は非表示で描くため、`ProfileEditForm`の欄の順からウィジェットを外し、編集フォームとフォローボタンに判定の枠と場所を設けないとした(design.mdのProfileEditForm・FollowButton、tasks.mdの7.1・8.1)。
+  - アップロード部品の問い合わせ先の有無: media-pipelineの`ImageUploadField`に必須の`contactAvailable: boolean`が加わり、想定外の応答などの文言を問い合わせ先の有無で選ぶ。利用者側のプロフィール画像の`AvatarField`は`CLIENT_PROFILE.contactAvailable`を渡すとした(design.mdのAllowed Dependencies・AvatarField、tasks.mdの8.1の説明と確認項目)。本specに`ConfirmActionDialog`を使う箇所は無い。

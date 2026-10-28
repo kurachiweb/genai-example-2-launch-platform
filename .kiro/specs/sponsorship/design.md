@@ -56,7 +56,10 @@
 - media-pipeline: `mediaFileLoader`・`toMediaImage`・GraphQLの`MediaImage`・`MediaPicture`。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EmailSendError`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`。
 - admin-foundation: `requireAdmin`・`CurrentAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkAuditReason`・`AUDIT_REASON_MAX`・`ADMIN_NAV_ITEMS`・`AdminPageHeader`・`AdminFilterBar`・`AdminDataTable`・`ConfirmActionDialog`・`RoleGate`・`useAdminRole`・E2Eの`e2e/support/admin-bootstrap.ts`・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useTurnstileToken`・`TurnstileWidget`・`buildPageHead`・`ErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・日時の表示部品(`DateTime`)・shadcn/uiの部品(ボタン・カード・バッジ・セレクト・ラジオグループ・入力欄・ラベル)・`runAxe`・デザイントークン。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useTurnstileToken`・`TurnstileWidget`・`buildPageHead`・`ErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・日時の表示部品(`DateTime`)・shadcn/uiの部品(ボタン・カード・バッジ・セレクト・ラジオグループ・入力欄・ラベル)・`runAxe`・デザイントークン・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)。
+  - GraphQLの操作は各アプリの`src/graphql/operations/sponsorship/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
+  - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、フォームの失敗の文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
+  - bot判定の`TurnstileWidget`は非表示のウィジェットで場所を取らないため、申込のフォームと決済の再開のボタンの近くに判定の枠の表示と場所を設けない。
 - npmパッケージ: 新規なし。
 - 後続specは、`common-lib/sponsorship`の公開の規則、`workers/sponsorship`の`SponsorshipExport`と`SPONSORSHIP_PLATFORM_TYPES`だけに依存し、本specのテーブルを読み書きしない。
 
@@ -280,12 +283,12 @@ apps/
 │   │   ├── sponsorship-status-badge.tsx                       # 掲載状況の表示
 │   │   ├── resume-checkout-button.tsx                         # 決済へ進む(bot判定付き)
 │   │   └── product-sponsorship-delete-notice.tsx              # 削除の確認の注記
-│   └── graphql/operations/sponsorship/
-│       ├── sponsorship-offer.ts                               # sponsorshipOffer
-│       ├── sponsored-placements.ts                            # sponsoredPlacements
-│       ├── my-sponsorships.ts                                 # mySponsorships
-│       ├── sponsorship-actions.ts                             # applySponsorship・resumeSponsorshipCheckout
-│       └── product-sponsorship-notice.ts                      # activeSponsorshipCount
+│   └── graphql/operations/sponsorship/                        # 1ファイル1操作の*.graphql(操作名はClientで始める)
+│       ├── sponsorship-offer.graphql                          # sponsorshipOffer
+│       ├── sponsored-placements.graphql                       # sponsoredPlacements
+│       ├── my-sponsorships.graphql                            # mySponsorships
+│       ├── apply-sponsorship.graphql · resume-sponsorship-checkout.graphql   # applySponsorship・resumeSponsorshipCheckout
+│       └── active-sponsorship-count.graphql                   # activeSponsorshipCount
 └── admin/src/
     ├── routes/_authenticated/sponsorships.tsx                 # /sponsorships
     ├── components/sponsorship/
@@ -293,7 +296,7 @@ apps/
     │   ├── sponsorship-status-filter.tsx                      # 掲載状況とティアの絞り込み
     │   ├── terminate-sponsorship-dialog.tsx                   # 返金目安額の照会と理由の入力
     │   └── termination-result-notice.tsx                      # 確定した返金目安額と購入の識別
-    └── graphql/operations/sponsorship/admin-sponsorships.ts   # adminSponsorships・sponsorshipTerminationPreview・terminateSponsorship
+    └── graphql/operations/sponsorship/                        # 1ファイル1操作の*.graphql(操作名はAdminで始める。adminSponsorships・sponsorshipTerminationPreview・terminateSponsorship)
 e2e/
 ├── client/sponsorship.e2e.test.ts                             # 表示・一覧・通知(常に)、申込と決済(sandboxがある環境だけ)
 ├── admin/sponsorship-termination.e2e.test.ts                  # 一覧・強制終了・返金目安額・通知
@@ -316,7 +319,7 @@ docs/GUIDES/tech/
 - `apps/common-lib/admin/audit-actions/index.ts` — 連結に`sponsorship`を加える。
 - `apps/client/src/composition/pricing-sections.ts`・`top-page-sections.ts`・`directory-sections.ts`・`product-page-sections.ts`・`settings-navigation.ts`・`product-delete-notices.ts` — 区画・差し込み・ナビゲーション・注記の登録。
 - `apps/admin/src/composition/admin-navigation.ts` — メニューの登録。
-- client・adminのGraphQLの許可リストと生成した型。
+- clientとadminの`src/graphql/generated/`(各アプリの`bun run graphql:generate`)と、apiの許可リスト(`bun run graphql:allowlist`)。
 - `docs/GUIDES/tech/backend/README.md`・`frontend/README.md` — 文書一覧の行。
 - `docs/onboardings/project-values.md` — 処理とジョブの名前と`order`、Cronの式、価格の`lookup_key`、bot判定の`action`、区画と登録の`order`。
 - `docs/GUIDES/service/design/002-page-layouts.md` — ディレクトリの広告(仮4)、広告スペースの補足(仮1・モバイルのGoldの余りの位置・プロダクト詳細ページのGold)、料金ページの申込の区画、`/settings/sponsorships`の状態、管理画面の一覧と強制終了。
@@ -1566,14 +1569,14 @@ export declare const goldInsertTracker: GoldInsertTracker;
 
 - `SponsorshipPricingSection`(`PRICING_SECTIONS`の`{ id: 'sponsorship.sponsorship-pricing', order: 20 }`): 見出し「スポンサー広告」(`id="sponsorship"`)・`TierPriceList`・`SponsorshipApplicationForm`。`sponsorshipOffer`と`viewerQueryOptions`を読む(2.1)。
 - `TierPriceList`: ティアごとに`SponsorLabel`・`MoneyText`の「/日」の単価(`null`は「現在表示できません」、2.3)・表示位置(Legend「各ページの上部に大きく表示」、Gold「メインコンテンツの横と一覧の間に表示」、Silver「ページの下部に表示」)・表示内容(ロゴ・名称・タグライン/ロゴ・名称)(2.1)。
-- `SponsorshipApplicationForm`: 未ログインは「ログインして申し込む」(`/auth/login?redirect=/pricing`、2.4)。停止中は無効と停止中の文言(2.8)、未確認は無効とメール未確認の文言(2.5)。それ以外は、プロダクトのセレクト(`eligibleProducts`、0件は案内と`/my/products`への導線、1.2)、ティアのラジオグループ、開始日・終了日の日付入力(`type="date"`、`min`・`max`は`businessToday`と上限から)、`validatePeriod`によるフォーカスアウト時の文言(1.6・1.7)、日数と合計(`MoneyText`、単価×日数、2.2)、返金の扱いの注記(2.10の追加事項と同じ文言)、`TurnstileWidget`(`action` `sponsorship_apply`)と「申し込む」。送信で`applySponsorship`(トークンは`consume()`)→`/checkout/{購入ID}`へ遷移(2.6)。`GraphQLClientError`のコードで文言規則の文言を出し、重なりと対象外はフォームの上部に示す(1.8・1.9・2.7・2.9)。
+- `SponsorshipApplicationForm`: 未ログインは「ログインして申し込む」(`/auth/login?redirect=/pricing`、2.4)。停止中は無効と停止中の文言(2.8)、未確認は無効とメール未確認の文言(2.5)。それ以外は、プロダクトのセレクト(`eligibleProducts`、0件は案内と`/my/products`への導線、1.2)、ティアのラジオグループ、開始日・終了日の日付入力(`type="date"`、`min`・`max`は`businessToday`と上限から)、`validatePeriod`によるフォーカスアウト時の文言(1.6・1.7)、日数と合計(`MoneyText`、単価×日数、2.2)、返金の扱いの注記(2.10の追加事項と同じ文言)、「申し込む」。bot判定の`TurnstileWidget`(`action` `sponsorship_apply`)は非表示で場所を取らず、判定の失敗の文言だけを出す。送信で`applySponsorship`(トークンは`consume()`)→`/checkout/{購入ID}`へ遷移(2.6)。`GraphQLClientError`のコードで文言規則の文言を出し、重なりと対象外はフォームの上部に示す(1.8・1.9・2.7・2.9)。`GraphQLClientError`でない例外は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言を示す。
 
 #### SettingsSponsorshipsRoute・MySponsorshipList・MySponsorshipItem・SponsorshipStatusBadge・ResumeCheckoutButton・ProductSponsorshipDeleteNotice
 
 - `routes/_authenticated/settings/sponsorships.tsx`: `SettingsShell`の中に`h1`「スポンサー広告」と`MySponsorshipList`。`head`は`buildPageHead({ title: 'スポンサー広告' })`。ナビゲーションは`SETTINGS_NAV_ITEMS`の`{ to: '/settings/sponsorships', label: 'スポンサー広告', order: 80 }`(7.10)。
-- `MySponsorshipList`: `useInfiniteQuery`で`mySponsorships`を`first: 20`、「さらに表示」(7.1)。0件は`EmptyState`(「まだスポンサー広告の申込はありません。」と料金ページへの導線、7.8)、失敗は`ErrorState`(7.9)、初回はカードの形のスケルトン。
+- `MySponsorshipList`: `useInfiniteQuery`で`mySponsorships`を`first: 20`、「さらに表示」(7.1)。0件は`EmptyState`(「まだスポンサー広告の申込はありません。」と料金ページへの導線、7.8)、失敗は`ErrorState`(文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`、7.9)、初回はカードの形のスケルトン。
 - `MySponsorshipItem`: ロゴと名称(`listed`なら`/p/<ハンドル>`へのリンク、論理削除済みは「削除したプロダクト」)・`SponsorLabel`とティア名・`<time datetime>`の開始日〜終了日と「◯日間」・`MoneyText`の支払った金額(未決済は「—」)・`SponsorshipStatusBadge`(7.2・7.3・7.7)。`PAUSED`は表示停止の注記(7.4)、`TERMINATED`は強制終了日と理由(7.5)、`terminationRefund`・`displayStopRefund`があれば「未掲載の{n}日分{金額}を返金します」「表示を止めた{n}日分{金額}を返金します」(`FAILED`は「返金の手続きでお問い合わせが必要です。お問い合わせください。」)(14.11)、`canResume`なら`ResumeCheckoutButton`(7.6)。
-- `ResumeCheckoutButton`: `TurnstileWidget`(`sponsorship_apply`)と「決済へ進む」。`resumeSponsorshipCheckout`→`/checkout/{購入ID}`。`sponsorship_not_payable`は文言を通知し一覧を取り直す(2.11・2.12)。
+- `ResumeCheckoutButton`: 「決済へ進む」と、非表示で場所を取らない`TurnstileWidget`(`sponsorship_apply`)。`resumeSponsorshipCheckout`→`/checkout/{購入ID}`。`sponsorship_not_payable`は文言を通知し一覧を取り直す(2.11・2.12)。
 - `ProductSponsorshipDeleteNotice`(`PRODUCT_DELETE_NOTICES`の`{ id: 'sponsorship.active-ads', order: 30 }`): `activeSponsorshipCount(productHandle)`が1以上なら「このプロダクトの掲載中・掲載予定のスポンサー広告は終了し、返金されません。」を表示し、0・失敗なら何も描かない(11.4・11.5)。
 
 ### admin
@@ -1581,8 +1584,8 @@ export declare const goldInsertTracker: GoldInsertTracker;
 #### AdminSponsorshipsRoute・AdminSponsorshipTable・SponsorshipStatusFilter・TerminateSponsorshipDialog・TerminationResultNotice
 
 - `routes/_authenticated/sponsorships.tsx`: `AdminPageHeader`(「スポンサー広告」)・`SponsorshipStatusFilter`(`AdminFilterBar`の中の掲載状況とティアのセレクト、URLの検索パラメーター`status`・`tier`)・`AdminSponsorshipTable`。メニューは`ADMIN_NAV_ITEMS`の`{ to: '/sponsorships', label: 'スポンサー広告', order: 90 }`(9.3・9.5)。
-- `AdminSponsorshipTable`: `AdminDataTable`(50件、前後のページはカーソルの積み重ねで移動)。列は申込ID・プロダクト(名称・`@`なしのハンドル、論理削除済みは「削除済みのプロダクト」)・申込者・ティア・期間と日数・支払った金額・掲載状況(`PAUSED`は「表示停止中」の印)・申込日時、`terminable`の行に`RoleGate`(モデレーター以上)の「強制終了」(9.1・9.2・9.4・10.1)。失敗は`AdminDataTable`の`error`(9.6)。
-- `TerminateSponsorshipDialog`: 開いたときに`sponsorshipTerminationPreview`を読み、`ConfirmActionDialog`(`reason: 'required'`・`audited: true`)の説明に「未掲載日数{n}日・返金目安額{金額}(支払った金額{金額}・{days}日間)」と、表示停止があれば「これまでの表示停止{n}日分{金額}」と、「強制終了を確定すると、これらの金額が自動で返金されます。」を表示する(10.2)。理由の検証は`ReasonField`(10.9)。確定で`terminateSponsorship`、`sponsorship_not_terminable`は文言を示して一覧を取り直す(10.8)。
+- `AdminSponsorshipTable`: `AdminDataTable`(50件、前後のページはカーソルの積み重ねで移動)。列は申込ID・プロダクト(名称・`@`なしのハンドル、論理削除済みは「削除済みのプロダクト」)・申込者・ティア・期間と日数・支払った金額・掲載状況(`PAUSED`は「表示停止中」の印)・申込日時、`terminable`の行に`RoleGate`(モデレーター以上)の「強制終了」(9.1・9.2・9.4・10.1)。失敗は`AdminDataTable`の`error`(文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、問い合わせの導線を出さない。9.6)。
+- `TerminateSponsorshipDialog`: 開いたときに`sponsorshipTerminationPreview`を読み、`ConfirmActionDialog`(`reason: 'required'`・`audited: true`・`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)の説明に「未掲載日数{n}日・返金目安額{金額}(支払った金額{金額}・{days}日間)」と、表示停止があれば「これまでの表示停止{n}日分{金額}」と、「強制終了を確定すると、これらの金額が自動で返金されます。」を表示する(10.2)。理由の検証は`ReasonField`(10.9)。確定で`terminateSponsorship`。確定の失敗はダイアログの中に`failureMessageOf`の文言で示して理由の入力を保ち、`sponsorship_not_terminable`ではさらに一覧を取り直す(10.8)。照会の失敗も`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。
 - `TerminationResultNotice`: 確定の後に、強制終了日・未掲載日数・返金目安額・表示停止の返金額と、依頼した額(残りの全額で依頼したときは「(残りの全額)」)、それぞれの返金の依頼の結果(`REQUESTED`は「自動の返金を依頼しました。」、`FAILED`は「自動の返金を依頼できませんでした。Stripeのダッシュボードで対応してください。」)、決済を探すための購入ID(コピーのボタン付き)を表示する(10.6・14.8)。
 
 ### docs
@@ -1644,6 +1647,7 @@ erDiagram
 - 決済の確定の時点の条件の崩れは、paymentsの拒否(全額の自動返金)に任せる(3.2)。
 - 広告の取得の失敗は区画のエラー境界に閉じ込め、ページの表示を止めない(5.10)。価格の取得の失敗は価格を`null`で返して申込を無効にする(2.3)。
 - 通知の送信の失敗は依頼待ちの状態とメッセージの再試行・4:21の送り直しで回復する(8.9)。
+- 画面に出す失敗の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(利用者側は`CLIENT_PROFILE`、管理者側は`ADMIN_PROFILE`)。管理者側の画面は`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない。
 - 返金の依頼の拒否は「表示停止の日割りの返金」の「依頼できない場合」のとおりで、強制終了と掲載の終わりの処理を止めない(14.7・14.8)。依頼の送信の失敗はpaymentsの日次の確認が、Stripeでの返金の失敗はpaymentsの`failed`とSentryへの通知が扱う。
 
 ### Error Categories and Responses

@@ -58,7 +58,11 @@
 - ultras-subscription: `ULTRAS_TYPES.UltrasEntitlements`の`isEntitledAt`、`UltrasPromotionGate`。
 - admin-foundation: `requireAdmin`・`CurrentAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`CategoryMasterEditor`・`useAdminRole`・`RoleGate`・E2Eの`e2e/support/admin-bootstrap.ts`。
 - inquiry-chat: `CATEGORY_SECTIONS`・`CategorySection`(登録の追記だけ)。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`useTurnstileToken`・`TurnstileWidget`・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`DateTime`の表示部品・shadcn/uiの部品(ボタン・カード・バッジ・ダイアログ・アラートダイアログ・ツールチップ・セレクト)・`runAxe`。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`useTurnstileToken`・`TurnstileWidget`・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`DateTime`の表示部品・shadcn/uiの部品(ボタン・カード・バッジ・ダイアログ・アラートダイアログ・ツールチップ・セレクト)・`runAxe`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
+  - GraphQLの操作は各アプリの`src/graphql/operations/product/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
+  - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。フォームのスキーマ(`product-form-schema.ts`)の`zod`の値は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
+  - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
+  - bot対策の`TurnstileWidget`は非表示のウィジェットで場所を取らないため、フォームと削除のダイアログに判定の枠の表示と場所を設けない。
 - npmパッケージ: 新規は`react-day-picker`(9系、仮10。2026-10-24に開発者が承認して確定)だけ。
 - 後続specは、`core/product`・`workers/product`の公開の契約、`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`、apiの判定の供給元の契約と3つの登録口・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`PRODUCT_SAVE_HOOKS`・`ProductVisibilityControl`・`ProductDescriptionEditor`、eventの`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、GraphQLの`productOwnerStatus`・`ProductCategory`、clientの`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`だけに依存し、本specのテーブルへ書き込まない。読み取りの問い合わせで本specのテーブルを結合してよいのは`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`を使う絞り込みと、それらで絞った`products.id`・`products.category_id`による並べ替え・集計(カテゴリごとの件数など)だけとする(仮11)。管理画面のプロダクトの検索(名称・ハンドルの部分一致、最新のローンチの状態・公開の状態による絞り込み)はこの範囲を超えるため、後続specの問い合わせには許さず、本specが所有して実装する`AdminProductDirectory`の中にだけ置く明示の例外とする(ugc-moderationは`AdminProductDirectory`を呼び、本specのテーブルを結合しない。仮13)。
 
@@ -300,7 +304,7 @@ apps/
 │   │   ├── launch-status-text.tsx                        # ローンチの状態の文言とキックオフの日時
 │   │   ├── launch-plan-notice.tsx                        # 次回の予約・固定・非公開化の案内
 │   │   ├── product-form.tsx                              # 登録・編集の共通のフォーム
-│   │   ├── product-form-schema.ts                        # フォームのzodスキーマ(テストは*.unit.test.ts)
+│   │   ├── product-form-schema.ts                        # フォームのスキーマ(zodの値はutilities/validation/zod.ts、テストは*.unit.test.ts)
 │   │   ├── logo-field.tsx
 │   │   ├── screenshots-field.tsx
 │   │   ├── product-handle-field.tsx
@@ -315,14 +319,14 @@ apps/
 │   │   ├── award-badge-list.tsx                          # 受賞バッジの並び(LaunchHistoryItemと公開プロフィールの区画で共用、仮14)
 │   │   └── profile-award-badges.tsx                      # 公開プロフィールの受賞バッジの区画(仮14)
 │   ├── composition/public-profile-sections.ts            # (変更)PUBLIC_PROFILE_TABSにlaunches 10、PUBLIC_PROFILE_BADGESにproduct-launch.award-badges 10を追記
-│   └── graphql/operations/product/
-│       ├── my-products.ts                                # myProducts・myProduct・newProductLaunchWindow・productHandleAvailability
-│       ├── product-mutations.ts                          # registerProduct・updateProduct・deleteProduct
-│       ├── product-categories.ts                         # productCategories
-│       └── launch-history.ts                             # launchHistory・profileAwards(仮14)
+│   └── graphql/operations/product/                       # 1ファイル1操作の*.graphql(操作名はClientで始める)
+│       ├── my-products/*.graphql                         # myProducts・myProduct・newProductLaunchWindow・productHandleAvailability
+│       ├── product-mutations/*.graphql                   # registerProduct・updateProduct・deleteProduct
+│       ├── product-categories.graphql                    # productCategories
+│       └── launch-history/*.graphql                      # launchHistory・profileAwards(仮14)
 └── admin/src/
     ├── components/categories/product-category-section.tsx
-    └── graphql/operations/product/product-categories.ts   # 一覧と3つの操作
+    └── graphql/operations/product/                       # 1ファイル1操作の*.graphql(操作名はAdminで始める。一覧と3つの操作)
 e2e/
 ├── client/product.e2e.test.ts                            # 登録・一覧・編集・ハンドルの変更・削除
 └── admin/product-categories.e2e.test.ts                  # 追加・変更・削除の拒否
@@ -2012,21 +2016,21 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 #### MyProductRoutes・MyProductListPage・MyProductCard・LaunchStatusText・LaunchPlanNotice
 
 - ルート(`_authenticated`の下、未ログインはログインへ誘導して戻す、1.11): `/my/products`(`MyProductListPage`)、`/my/products/new`(`ProductForm`の登録)、`/my/products/$handle/edit`(`loader`で`myProduct`を読み、`null`は`notFound()`(7.4)、`MyProductRedirect`は`redirect({ to: '/my/products/$handle/edit', params, statusCode: 302 })`(7.5))。`head`は`buildPageHead`(「自分のプロダクト」「プロダクトを登録」「<名称>を編集」)。
-- `MyProductListPage`: `h1`「自分のプロダクト」と説明文、右上に「新しいプロダクトを登録」(主要ボタン、9.6)。`useInfiniteQuery`で`myProducts`を`first: 20`、「さらに読み込む」(9.1)。0件は`EmptyState`(「まだプロダクトはありません。」と、ローンチ日に予選マッチで1対1の対戦が始まり勝利するとディレクトリに掲載される旨と登録への導線、9.5)。初回ローディングはカードの形のスケルトン、取得エラーは`ErrorState`(再試行・問い合わせ)。停止中は上部に停止中の案内(問い合わせへの導線)を出し、登録と編集の導線を無効にする(9.7)。
+- `MyProductListPage`: `h1`「自分のプロダクト」と説明文、右上に「新しいプロダクトを登録」(主要ボタン、9.6)。`useInfiniteQuery`で`myProducts`を`first: 20`、「さらに読み込む」(9.1)。0件は`EmptyState`(「まだプロダクトはありません。」と、ローンチ日に予選マッチで1対1の対戦が始まり勝利するとディレクトリに掲載される旨と登録への導線、9.5)。初回ローディングはカードの形のスケルトン、取得エラーは`ErrorState`(再試行・問い合わせ、文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`)。停止中は上部に停止中の案内(問い合わせへの導線)を出し、登録と編集の導線を無効にする(9.7)。
 - `MyProductCard`: 左にロゴ(`MediaPicture`の`square` 64、プレースホルダーは名称の頭文字、3.8)、名称・ハンドル(`@`なし)・カテゴリのバッジ、非公開化中は「公開停止中」のバッジ。`LaunchStatusText`(直近のローンチ)と`LaunchPlanNotice`(次回の予約)を並べ、操作は「編集」と、非公開化中でなければ「詳細を見る」(`/p/<ハンドル>`、9.3)。カードの下に`MY_PRODUCT_SECTIONS`を`order`順に個別のエラー境界で描く(9.4)。PCは横並び、640px未満は縦に積む。
 - `LaunchStatusText`: `scheduled`・`paired`は「キックオフ予定」と`<time datetime>`の利用者のタイムゾーンの日時と相対表現(「あと2日」)、`in_progress`は「予選マッチ中」と「トップページで見る」、`finished`は「ディレクトリ掲載」または「予選敗北」とローンチ日、`canceled`は「取消」(9.2・9.8)。
 - `LaunchPlanNotice`: `new`は「このプロダクトは◯月◯日以降のローンチ日を選べます。」と「次回のローンチを予約」(編集画面へ)、`reschedule`は「ローンチ日は編集画面で変更できます。」、`blocked`は理由の文言と解除の日時(あれば)、`unknown`は「ローンチの状態を確認できませんでした。」。固定の期間は「マッチ直前・マッチ中のため、ローンチ日・カテゴリの変更と削除はできません。」(5.2・5.4・6.3)。
 
 #### ProductForm・ProductFormSchema・LogoField・ScreenshotsField・ProductHandleField・CategorySelect・LaunchDateField・ProductEditPage・ProductDeleteDialog
 
-- `ProductForm`(登録と編集で共通): `useAppForm`と`product-form-schema.ts`(サーバーと同じ定数と判定、1.1〜1.3)。1カラム(最大幅768px)で、見出し付きの区画を上から「基本情報」(ロゴ・名称・タグライン・カテゴリ・ハンドル・外部WebサイトURL)・「説明文」(`MarkdownEditor`、`maxGraphemes` 20000、`preview`はプロダクト詳細と同じ`useMarkdownOptions({ externalLinkRel: ['noopener'] })`、1.5)・「スクリーンショット」・「ローンチ日」の順に置き、末尾にbot対策のウィジェット(`action` `product_save`)と送信のボタン(登録は「ローンチを予約🚀」、編集は「変更を保存」)。各欄はフォーカスアウトで検証する(1.9)。サーバーのエラーは`applyServerFieldErrors`で欄へ、`product_update_conflict`は再読み込みの案内、`launch_date_unavailable`はローンチ日の欄に選べる最も早い日を示す。未確認の利用者には登録画面の上部に確認が必要な旨と確認メールの再送への導線を出し、入力と送信を無効にする(1.7)。成功は登録で「プロダクトを登録しました。」とキックオフの日時の`notify`を出して`/my/products`へ(1.10)、編集で「変更を保存しました。」と、ハンドルが変わっていれば新しい編集画面のURLへ`replace`(7.6)。
-- `LogoField`: `ImageUploadField`(`constraints: { purpose: 'product-logo', allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: 512000, subjectLabel: 'ロゴ' }`、`edit: { aspect: 1, maxLongSide: 512 }`、3.1)と現在のロゴの表示・「ロゴを差し替え」。
-- `ScreenshotsField`: `ImageUploadField`(`multiple`、`maxBytes: 5242880`、`maxCount: 20`、`maxTotalBytes: 10485760`、`existingCount`・`existingTotalBytes`は現在の値、`edit: { aspect: 'free', maxLongSide: 1920 }`、3.2・3.3)。選択の順に`screenshot-thumb`の一覧と各画像の「取り除く」、枚数と合計の表示(「3/20枚・2.1MB/10MB」)。
+- `ProductForm`(登録と編集で共通): `useAppForm(<product-form-schema.tsのスキーマ>, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)、`product-form-schema.ts`はサーバーと同じ定数と判定(1.1〜1.3)。1カラム(最大幅768px)で、見出し付きの区画を上から「基本情報」(ロゴ・名称・タグライン・カテゴリ・ハンドル・外部WebサイトURL)・「説明文」(`MarkdownEditor`、`maxGraphemes` 20000、`preview`はプロダクト詳細と同じ`useMarkdownOptions({ externalLinkRel: ['noopener'] })`、1.5)・「スクリーンショット」・「ローンチ日」の順に置き、末尾に送信のボタン(登録は「ローンチを予約🚀」、編集は「変更を保存」)を置く。bot対策のウィジェット(`action` `product_save`)は非表示で場所を取らず、判定の失敗の文言だけを出す。各欄はフォーカスアウトで検証する(1.9)。サーバーのエラーは`AppForm`が`applyServerFieldErrors`で欄へ示し、`onSubmitError`で`product_update_conflict`は再読み込みの案内、`launch_date_unavailable`はローンチ日の欄に選べる最も早い日、それ以外の失敗と欄に対応しない詳細は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言を示す。未確認の利用者には登録画面の上部に確認が必要な旨と確認メールの再送への導線を出し、入力と送信を無効にする(1.7)。成功は登録で「プロダクトを登録しました。」とキックオフの日時の`notify`を出して`/my/products`へ(1.10)、編集で「変更を保存しました。」と、ハンドルが変わっていれば新しい編集画面のURLへ`replace`(7.6)。
+- `LogoField`: `ImageUploadField`(`constraints: { purpose: 'product-logo', allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: 512000, subjectLabel: 'ロゴ' }`、`edit: { aspect: 1, maxLongSide: 512 }`、`contactAvailable`は`CLIENT_PROFILE.contactAvailable`、3.1)と現在のロゴの表示・「ロゴを差し替え」。
+- `ScreenshotsField`: `ImageUploadField`(`multiple`、`contactAvailable`は`CLIENT_PROFILE.contactAvailable`、`maxBytes: 5242880`、`maxCount: 20`、`maxTotalBytes: 10485760`、`existingCount`・`existingTotalBytes`は現在の値、`edit: { aspect: 'free', maxLongSide: 1920 }`、3.2・3.3)。選択の順に`screenshot-thumb`の一覧と各画像の「取り除く」、枚数と合計の表示(「3/20枚・2.1MB/10MB」)。
 - `ProductHandleField`: `/p/`の接頭辞付きの入力欄。フォーカスアウトで形式→`productHandleAvailability`(編集中は`productHandle`を渡す)、`UNAVAILABLE`で「このハンドルは既に使われています。別の文字列を入力してください。」(2.6)。保持中の旧ハンドルがあれば「以前のハンドル◯◯は、次にハンドルを変更するか他のプロダクトが同じハンドルを設定するまで、新しいURLへ転送されます。」(2.10)。
 - `CategorySelect`: `productCategories`の順(追加の順・「その他」が末尾)のセレクト。固定の期間は無効にして理由を`aria-describedby`で示す(6.3)。
 - `LaunchDateField`: 登録は`newProductLaunchWindow`、編集は`plan.window`を描く。`Calendar`に、`earliest`〜`latest`の外と`unavailable`の範囲を`aria-disabled`の日として渡し(選べないがフォーカスでき、ツールチップと`aria-label`で「ペアリングの締め切りを過ぎています」「敗北後の間隔のため選べません」「選べる期間の外です」を示す)、選択でキックオフの日時(利用者のタイムゾーン、`<time datetime>`)と相対表現を表示する(4.8・4.9)。敗北後の間隔が効いていてUltrasの特典を受けていなければ、`UltrasPromotionGate`の中に「Ultrasなら敗北後2日で再ローンチできます。」と料金ページへのリンクを置く(4.10)。編集では計画が`reschedule`なら現在の日を選択済みで変更でき、`new`なら「次回のローンチを予約」(選ばなければ予約しない)、`blocked`・`unknown`・固定ならカレンダーを出さず`LaunchPlanNotice`を出す(5.1〜5.4・6.3)。表示中に23:40を過ぎたら(1分ごとの判定)選べる日を取り直す。
 - `ProductEditPage`: 上部に状態のカード(`LaunchStatusText`・`LaunchPlanNotice`・非公開化中の案内と問い合わせへの導線(7.7)・`MY_PRODUCT_SECTIONS`の`edit`の区画)、`ProductForm`(固定の期間はカテゴリとローンチ日だけを無効、6.3・6.4)、末尾の「危険な操作」の区画に「プロダクトを削除」(固定の期間は無効と理由)。
-- `ProductDeleteDialog`: アラートダイアログで「プロダクト『<名称>』を削除しますか?」、本文に「ローンチ予定と過去のローンチの記録が削除され、元に戻せません。」、`PRODUCT_DELETE_NOTICES`を`order`順に個別のエラー境界で描き、bot対策のウィジェット(`action` `product_delete`)と「削除」(破壊的操作の色)(8.2・8.3)。成功で「プロダクトを削除しました。」と`/my/products`へ。
+- `ProductDeleteDialog`: アラートダイアログで「プロダクト『<名称>』を削除しますか?」、本文に「ローンチ予定と過去のローンチの記録が削除され、元に戻せません。」、`PRODUCT_DELETE_NOTICES`を`order`順に個別のエラー境界で描き、「削除」(破壊的操作の色)を置く。bot対策のウィジェット(`action` `product_delete`)は非表示で場所を取らない(8.2・8.3)。成功で「プロダクトを削除しました。」と`/my/products`へ。
 
 #### LaunchHistoryCount・LaunchHistoryPanel・LaunchHistoryItem
 
@@ -2045,7 +2049,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 #### ProductCategorySection
 
 - 登録: `CATEGORY_SECTIONS`に`{ id: 'product-launch.product-categories', order: 10, title: 'プロダクトカテゴリ', component: ProductCategorySection }`(11.10)。
-- `CategoryMasterEditor`(`withHandle: true`、`canEdit`は`useAdminRole`がモデレーター以上、`systemDefault`は「その他」)。ハンドルの検証は`checkHandleFormat(PRODUCT_CATEGORY_HANDLE_RULE)`、名前は`checkCategoryName`を呼ぶ側が渡す。操作の拒否(`product_category_in_use`など)は`GraphQLClientError`の文言をそのまま表示する(11.3〜11.7)。理由は任意で、監査ログに記録される旨を表示する(11.8)。
+- `CategoryMasterEditor`(`withHandle: true`、`canEdit`は`useAdminRole`がモデレーター以上、`systemDefault`は「その他」)。ハンドルの検証は`checkHandleFormat(PRODUCT_CATEGORY_HANDLE_RULE)`、名前は`checkCategoryName`を呼ぶ側が渡す。操作の拒否(`product_category_in_use`など)と失敗は、`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言をそのまま、11.3〜11.7)。理由は任意で、監査ログに記録される旨を表示する(11.8)。
 
 ### docs
 
@@ -2109,6 +2113,7 @@ erDiagram
 - 想定内の失敗は`AppError`で返し、画面が`extensions.code`で出し分ける。保存の競合は一括の書き込みの取り消しと読み直しで分類する。
 - 判定(固定・次回の予約)の供給元の失敗は、関係する操作を`decision_unavailable`で拒否する(安全側)。表示(ローンチ履歴の要約・受賞)の供給元の失敗は予選の結果からの要約で縮退する。Ultrasの判定の失敗は選べる日を出さず`decision_unavailable`にする。
 - 画像の削除の失敗は保存の結果を変えない(media-pipelineの日次バッチが完了させる)。ライフサイクルの送信の失敗は日次の送り直しで回復する。非同期の処理の例外は再試行に任せる。
+- 画面に出す失敗の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(利用者側は`CLIENT_PROFILE`、管理者側は`ADMIN_PROFILE`)。管理者側のカテゴリの区画は`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない。
 
 ### Error Categories and Responses
 

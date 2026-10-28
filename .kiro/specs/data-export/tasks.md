@@ -147,7 +147,7 @@
 
 - [ ] 5.3 ダウンロードの認可と内部RESTの経路を作る
   - 5.2が作るAPIサーバーの本specのモジュールへ束縛を加えるため、5.2の後に行う(5.4と同じファイルを触るため並行にしない)
-  - 先に、Workers統合テストで、本人のダウンロードが200でZIPの本文と`Content-Disposition`・`Content-Length`・`Cache-Control`・`nosniff`を返すこと、停止中の本人も200、未ログインの401、他の利用者・管理者側の呼び出し元・存在しない・不正な形のID・作成中・失敗・期限切れ(削除の前と、期限切れの状態の記録)・オブジェクトの無い記録の404と警告のログ、保存先の読み出しの失敗の503を確かめる
+  - 先に、Workers統合テストで、本人のダウンロードが200でZIPの本文と`Content-Disposition`・`Content-Length`・`Cache-Control`・`nosniff`を返すこと、停止中の本人も200、未ログインの401、他の利用者・管理者側の呼び出し元・存在しない・不正な形のID・作成中・失敗・期限切れ(削除の前と、期限切れの状態の記録)・オブジェクトの無い記録の404と警告のログ、保存先の読み出しの失敗の503が共通のエラー形式(JSON)で返ることを確かめる(JSONでない5xxはfrontend-platformの中継が503`upstream_unavailable`に置き換えるため)
   - 内部RESTの登録箇所へ経路を加える
   - 完了状態: Workers統合テストが成功し、404の応答が理由によらず同じ形である
   - _Boundary: ArchiveDownloadService, ArchiveDownloadRoute_
@@ -208,9 +208,11 @@
 
 - [ ] 7. 利用者側の設定ページ
 - [ ] 7.1 (P) 中継の経路・GraphQLの操作・許可リスト・設定のナビゲーションとルートの枠を加える
-  - 先に、単体テストで、中継の経路のパス・メソッド・上流のパス(百分率符号化)・時間切れ15分と、管理者側の中継の経路に含まれないこと、設定のナビゲーションの項目(`/settings/export`・「データエクスポート」・`order` 100)を確かめる
-  - 利用者側の中継の経路の登録・設定のナビゲーションの`order` 100・`/settings/export`のルートの最小の枠・2つのGraphQLの操作を加え、型を生成し、`graphql:allowlist`でAPIサーバーの許可リストを再生成して、本specの操作が利用者側の許可リストにだけ載り`graphql:check`が成功することを確かめる
-  - 完了状態: 単体テストと型検査が成功し、`/settings/export`がナビゲーションから開け、利用者側の許可リストに2つの操作が載る
+  - 先に、単体テストで、中継の経路のパス・メソッド・上流のパス(百分率符号化)・時間切れ15分・凍結されていることと、管理者側の中継の経路に含まれないこと、設定のナビゲーションの項目(`/settings/export`・「データエクスポート」・`order` 100)を確かめる
+  - 中継の経路はfrontend-platformの`defineRelayRoute`で定義し(素のオブジェクトにしない)、clientの`RELAY_ROUTES`の完全一致の経路の後に登録する
+  - 2つのGraphQLの操作は、clientの`src/graphql/operations/data-export/`に1ファイル1操作の`.graphql`で書く(操作名は`ClientMyDataExports`・`ClientRequestDataExport`、`graphql()`を呼ばない)。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない
+  - 利用者側の中継の経路の登録・設定のナビゲーションの`order` 100・`/settings/export`のルートの最小の枠・2つのGraphQLの操作を加え、clientで`bun run graphql:generate`を実行して型を生成し、`graphql:allowlist`でAPIサーバーの許可リストを再生成して、本specの操作が利用者側の許可リストにだけ載り`graphql:check`が成功することを確かめる
+  - 完了状態: 単体テストと型検査とclientの`composition.unit.test.ts`(経路の凍結)・`codegen.unit.test.ts`(操作名の接頭辞)が成功し、`/settings/export`がナビゲーションから開け、利用者側の許可リストに2つの操作が載る
   - _Boundary: DataExportRelayRoute、clientのGraphQLの操作、`/settings/export`のルート_
   - _Depends: 5.2, 5.3_
   - _Requirements: 1.1, 1.8, 9.2_

@@ -78,7 +78,7 @@
 - backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashPurpose`・`hashRateLimitKey`・`HashedRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`MessageContract`・`RetryPolicy`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`MessagePublisher`・`RateLimitCounterClient`・`BotVerifier`・`PlatformEnv`・`HttpFetch`。形を変えない。
 - api-gateway: `SessionVerifier`・`Principal`・`AuthenticatedPrincipal`・`SessionVerification`・`SessionIssue`・`SESSION_TYPES`・`SESSION_TOKEN_PATTERN`・`AnonymousSessionVerifier`、`GraphQLSchemaModule`・`defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`、`SessionAccess`。`GraphQLContext`・`GatewayRequestScope`への`userAgent`の追加と、application層へのセッションの読み取りの型`SessionView`(`apps/api/src/application/session/session-view.ts`)の追加、`SessionAccess`がそれを拡張する変更だけを行う。本specのapplication層は`SessionView`だけを読み込み、presentation層の`SessionAccess`・`CallerKind`を読み込まない(backend-platformの層の規則、横断レビューR3-1)。
 - email-delivery: `EmailKind`・`defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EmailTemplate`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`・`toMatchingKey`・`isValidEmailAddress`・`UserAddressDirectory`・`SuppressionMaintenance`・`EMAIL_TYPES`。形を変えない。
-- frontend-platform: `SiteLayoutSlots`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`の表示部品・`runAxe`。`FORWARDED_BROWSER_HEADERS`への`user-agent`の追加だけを行う。
+- frontend-platform: `SiteLayoutSlots`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`useAppForm`・`AppForm`(`onSubmitError`・`serverFieldPrefix`)・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`(非表示のウィジェット)・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`の表示部品・`runAxe`・`utilities/validation/zod.ts`の`z`、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`src/graphql/generated/graphql.ts`の生成物)。`FORWARDED_BROWSER_HEADERS`への`user-agent`の追加だけを行う。
 - content-processing: `apps/common-lib`の書記素の文字数を数える関数と、共有ディレクトリの配置(4アプリ)。依存するのは、content-processingの設計の「本specのタスクを前提にする下流spec」が示す最小の区切りである。タスク1.1(共有ディレクトリの定義と配置)・1.2(共用部品のプロジェクトと読み込みの境界)・2.1(書記素の数え方)・4.1(APIサーバー・イベントサーバーへの組み込み)・4.2(利用者側・管理者側・frontend-libへの組み込み)・6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`validation/**`の禁止の静的解析の規則)と、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成である。4.1・4.2は、各アプリの配置先を静的解析とテストの対象から外す(本specのタスク1.3の前提)。日次タイムラインの表は、無ければ本specのタスク12.2が作るため、表が無いことでは止めない(横断レビューN-3)。
 - media-pipeline: 「アップロードできる利用者か」の差し込み口の`UploaderEligibility`・`UploaderEligibilityDecision`・`UPLOAD_ACCESS_TYPES`(`apps/api/src/application/media/uploader-eligibility.ts`)と`UploaderDenialCode`(`common-lib/media`)、既定の束縛の箇所`apps/api/src/composition/uploader-eligibility.ts`。形を変えず、束縛だけを本specの実装へ差し替える。差し込み口の`session`は、本specのタスク2.3が加える`SessionView`である(横断レビューR3-1)。差し込み口を作るのはmedia-pipelineのタスク5.1(アップロードの内部REST)・5.6(APIサーバーの束縛の組み立て)で、本specのタスク8.5はその完了を前提にする。media-pipelineはroadmapのidentity-authの依存にあり、roadmapの順の上では先に完了しているはずである。ただし5.1・5.6が無ければ8.5を保留して開発者へ報告し、他のタスクは進める(横断レビューR3-2)。
 - npmパッケージ: Technology Stackの表に挙げた版に限る。新規は`otpauth` 9.5.2・`uqr` 0.1.3・`bowser` 2.14.1だけ。
@@ -203,7 +203,7 @@ graph TB
 - 共有コード: `apps/db/schema/identity` → `backend-lib/core/identity`(zod・inversifyの型・`core`の他の部品だけ) → `backend-lib/workers/identity`(D1・`fetch`) → アプリの`src`。
 - apiの`src`内: `domain/auth` ← `domain/identity` ← `application/auth` ← `application/identity` ← `infrastructure/{auth,identity}`・`presentation/graphql/modules/identity` ← `composition`。`application/identity`がセッションを受け取るときは、api-gatewayの`application/session/session-view.ts`の`SessionView`を読み込み、`presentation/gateway`の型(`SessionAccess`・`CallerKind`)を読み込まない(backend-platformの層の規則)。`auth`の各層は`identity`の各層を読み込まない(admin-foundationが`identity`無しで再利用できるように)。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
 - eventの`src`内: `application/identity` ← `infrastructure/identity` ← `composition`。テンプレートはemail-deliveryの規則どおり`infrastructure/email/templates/`だけがReactを読み込む。
-- clientの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。`components/auth`・`components/settings`は`graphql/operations/identity`を読み込んでよい。
+- clientの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。`components/auth`・`components/settings`は`graphql/generated/graphql.ts`(`<操作名>Document`と生成された型)と`graphql/viewer.ts`を読み込んでよい。`graphql/generated/`の`gql.ts`・`index.ts`は読み込まない(frontend-platformの「操作の追加手順」)。
 - `apps/common-lib/identity`は`apps/common-lib`の他の部品だけを読み込み、zod・React・Workersに依存しない。
 
 ### Technology Stack
@@ -373,7 +373,7 @@ apps/
     │   ├── password-reset-request-form.tsx · new-password-form.tsx
     │   ├── link-confirmation.tsx                       # メールのリンクの画面の確定ボタンと結果
     │   ├── login-required-dialog.tsx                   # ログインが必要な操作の案内(他specが内容を渡す)
-    │   ├── account-form-schemas.ts                     # フォームのzodスキーマ(common-libの規則)
+    │   ├── account-form-schemas.ts                     # フォームのZodのスキーマ(common-libの規則。Zodの値はlib/utilities/validation/zod.tsから読む)
     │   ├── return-path.ts                              # 同じサイト内のパスだけを戻り先にする
     │   └── fragment-token.ts                           # URLのフラグメントからトークンを読む
     ├── components/layout/
@@ -387,12 +387,17 @@ apps/
     │   ├── session-list-section.tsx
     │   └── totp-section.tsx · totp-setup-dialog.tsx · recovery-codes-dialog.tsx
     ├── composition/settings-navigation.ts              # SETTINGS_NAV_ITEMS(他specが追記)
-    └── graphql/operations/identity/
-        ├── viewer.ts                                   # ClientViewer・viewerQueryOptions
-        ├── auth-operations.ts                          # 登録・ログイン・第2要素・ログアウト・確認・再送・リセット
-        ├── account-operations.ts                       # メールアドレス・パスワードの変更と確定・退会
-        ├── session-operations.ts                       # 一覧・個別と一括の失効
-        └── totp-operations.ts                          # 多要素認証とリカバリコード
+    ├── graphql/viewer.ts                               # ClientViewer・viewerQueryOptions(生成物の型からの変換)
+    └── graphql/operations/identity/                    # 1ファイル1操作の.graphql(操作名はClientで始める)
+        ├── viewer.graphql · my-sessions.graphql        # ClientViewer・ClientMySessions
+        ├── register-user.graphql · login.graphql · complete-second-factor-login.graphql · logout.graphql
+        │   · verify-email.graphql · resend-verification-email.graphql
+        │   · request-password-reset.graphql · reset-password.graphql      # 登録・ログイン・第2要素・ログアウト・確認・再送・リセット
+        ├── request-email-change.graphql · confirm-email-change.graphql
+        │   · request-password-change.graphql · confirm-password-change.graphql · withdraw.graphql  # 変更と確定・退会
+        ├── revoke-session.graphql · revoke-other-sessions.graphql         # 個別と一括の失効
+        └── start-totp-setup.graphql · enable-totp.graphql · disable-totp.graphql
+            · regenerate-recovery-codes.graphql                            # 多要素認証とリカバリコード
 e2e/
 ├── support/mailpit.ts                                  # MailpitのAPIから宛先ごとの最新のメールとリンクを読む補助
 └── client/auth/
@@ -2710,7 +2715,7 @@ export interface SessionAccess extends SessionView {
 ##### State Management
 
 ```typescript
-// graphql/operations/identity/viewer.ts
+// graphql/viewer.ts(操作はgraphql/operations/identity/viewer.graphqlのClientViewer。型はgraphql/generated/graphql.tsのClientViewerDocument・ClientViewerQuery)
 export type ClientViewer = {
   readonly id: string;
   readonly handle: string;
@@ -2770,7 +2775,9 @@ export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版�
 - `FragmentToken`: `readFragmentToken(hash: string): string | undefined`。`#token=`の値を読み、読んだ後に`history.replaceState`でフラグメントを消す(14.7)。
 - `LinkConfirmation`: 開いただけでは何もせず、ボタンでミューテーションを呼ぶ(18.8)。`invalid_link`は「このリンクは無効か、有効期限が切れています。」と再度の手続きへのリンクを示す(14.3)。
 - `LoginRequiredDialog`: `{ open, onOpenChange, title, description, returnTo }`を受け取り、「ログイン」(`/auth/login?redirect=<returnTo>`)・「登録」(`/auth/register`)を示す。内容は呼び出す側が渡す(18.9)。
-- `AccountFormSchemas`: `AccountInputRules`とzodでフォームの検証規則を作る。エラーの文言は文言規則に従う(18.10)。
+- `AccountFormSchemas`: `AccountInputRules`とZod(値は共通部品の`lib/utilities/validation/zod.ts`の`z`から読み、`zod`を直接読まない)でフォームの検証規則を作る。エラーの文言は文言規則に従う(18.10)。
+- 各フォームは`useAppForm(schema, { defaultValues })`(`defaultValues`は全欄を持つ。型引数は入力と出力の型`useAppForm<TInput, TOutput>`)と`AppForm`で作る。`AppForm`には必須の`onSubmitError`を渡し、`input`を引数に取るmutation(`registerUser`・`login`・`completeSecondFactorLogin`・`resetPassword`・`requestEmailChange`・`requestPasswordChange`・`startTotpSetup`・`disableTotp`・`regenerateRecoveryCodes`・`withdraw`)のフォームには`serverFieldPrefix="input"`を渡す。欄に対応しないサーバーの詳細と想定外の失敗は`onSubmitError(error, { unmatched })`で受け、文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`で選ぶ(18.10)。
+- bot判定は`useTurnstileToken`と`TurnstileWidget`で行い、ウィジェットは非表示(frontend-platformの`size: 'invisible'`)のため、判定の枠の表示と場所を画面に設けない。送信時に`consume()`したトークンを要求に付け、判定の失敗はフォームの`role="alert"`の文言で示す(12.4・12.5)。
 - 登録の同意の入力は、shadcn/uiの`Checkbox`を`apps/frontend-lib/components/ui/checkbox.tsx`に加えて使う(frontend-libの規約どおり1ファイル1コンポーネント・stories・`runAxe`)。既定は未選択で、ラベルの要素と関連付けてキーボードで切り替えられるようにする(1.2・18.11)。paymentsの決済の同意が同じ部品を再利用するため、既にあれば作らずに使う(spec横断レビュー、2026-10-23)。
 - ログイン中に`/auth/register`・`/auth/login`を開いたら`/`へ移動する(18.4)。
 

@@ -243,15 +243,15 @@
 
 - [ ] 8. フロントエンドの部品と中継の経路
 - [ ] 8.1 中継の経路を定義してclient・adminへ登録し、公開設定に画像配信のオリジンを加える
-  - 先に、2つの経路のパス・メソッド・上流のパス(用途名とファイルの識別子の符号化)・受け付ける形式・引き継ぐ項目・時間切れを確かめる単体テストと、ダウンロードの中継で`Content-Type`・`Content-Disposition`・`Content-Length`がブラウザへの応答に残ることを確かめる単体テストと、受け付ける形式に無い`Content-Type`のアップロードが中継の415(`unsupported_media_type`)になることを確かめる単体テストを書く
-  - 経路の定義は`common-lib/media`だけを読み込む(M-2)。中継の415の挙動はfrontend-platformの定めのまま変えない(M-10)
+  - 先に、2つの経路のパス・メソッド・上流のパス(用途名とファイルの識別子の符号化)・受け付ける形式・引き継ぐ項目・時間切れと、経路が凍結されていることを確かめる単体テストと、ダウンロードの中継で`Content-Type`・`Content-Disposition`・`Content-Length`がブラウザへの応答に残ることを確かめる単体テストと、受け付ける形式に無い`Content-Type`のアップロードが中継の415(`unsupported_media_type`)になることを確かめる単体テストを書く
+  - 2つの経路はfrontend-platformの`defineRelayRoute`で定義する(素のオブジェクトにしない)。経路の定義は`common-lib/media`だけを読み込む(M-2)。中継の415の挙動と、上流のJSONでない5xxを503`upstream_unavailable`にする挙動はfrontend-platformの定めのまま変えない(M-10)
   - 中継がこれらのヘッダーを落とす場合は、frontend-platformの応答の変換を互換を保って直す(Revalidation Triggers)
-  - 公開設定に画像配信のオリジンを加え、client・adminの登録箇所に2経路を加える
-  - 完了状態: 単体テストとfrontend-platformの中継・登録箇所のテストが成功する
+  - 公開設定に画像配信のオリジンを加え、client・adminの登録箇所(`RELAY_ROUTES`)に2経路を完全一致の経路の後に加える
+  - 完了状態: 単体テストとfrontend-platformの中継・登録箇所のテスト(client・adminの`composition.unit.test.ts`の凍結の検査を含む)が成功する
   - _Requirements: 1.3, 2.4, 12.1, 12.8_
 
 - [ ] 8.2 (P) 選択・切り取り・送信・表示の純粋な関数を作る
-  - 先に、選択の検査(形式・サイズ・個数・既存分を含む合計)、出力の寸法と形式(JPEG原本はJPEG、他はPNG、最大寸法以下)、送信の組み立て(`Content-Type`に引数を付けない)と応答の解析(201・各拒否・中継の415`unsupported_media_type`をAPIの`unsupported_file_type`と同じ文言にすること・403の`account_unavailable`・`email_not_verified`を文言規則の既存の文言にして再試行不可とすること・429・503・通信の失敗と再試行の可否)、エラーコードと選択の違反から文言規則の文言への対応、サイズの表記、`<picture>`の候補と幅・高さ(正方形・スクリーンショットの縦横比・寸法なし・SVG)、プレースホルダーの先頭1文字(書記素)と配色のコントラスト比を確かめる単体テストを書く
+  - 先に、選択の検査(形式・サイズ・個数・既存分を含む合計)、出力の寸法と形式(JPEG原本はJPEG、他はPNG、最大寸法以下)、送信の組み立て(`Content-Type`に引数を付けない)と応答の解析(201・各拒否・中継の415`unsupported_media_type`をAPIの`unsupported_file_type`と同じ文言にすること・403の`account_unavailable`・`email_not_verified`を文言規則の既存の文言にして再試行不可とすること・429・503・通信の失敗と再試行の可否・想定外の応答と`upload_purpose_not_found`の文言が`contactAvailable`の真で`UNEXPECTED_ERROR_MESSAGE`、偽で`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`になること)、エラーコードと選択の違反から文言規則の文言への対応、サイズの表記、`<picture>`の候補と幅・高さ(正方形・スクリーンショットの縦横比・寸法なし・SVG)、プレースホルダーの先頭1文字(書記素)と配色のコントラスト比を確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、文言が設計のエラーの表と一致する
   - _Boundary: UploadConstraints, UploadRequest, UploadMessages, FileSizeLabel, CropGeometry, PictureSources, PlaceholderAppearance_
   - _Requirements: 14.4, 14.6, 14.7, 14.9, 14.10, 15.1, 15.2, 15.4, 15.5_
@@ -272,8 +272,9 @@
   - _Requirements: 14.5, 14.6, 14.12_
 
 - [ ] 8.5 送信と、画像・添付の入力欄を作る
-  - 先に、偽の`fetch`で、SVG以外の画像で編集ダイアログを経て作り直したファイルが送られること、作り直し後の超過の文言、SVGと添付がダイアログを経ずに選んだファイルで判定されて送られること、複数の画像を1枚ずつ編集すること、拒否の文言と選び直し、503の再試行、成功で呼び出し元へ識別子が渡ってプレビューが出ること、送信中の状態の通知を確かめるブラウザテストを書く
+  - 先に、偽の`fetch`で、SVG以外の画像で編集ダイアログを経て作り直したファイルが送られること、作り直し後の超過の文言、SVGと添付がダイアログを経ずに選んだファイルで判定されて送られること、複数の画像を1枚ずつ編集すること、拒否の文言と選び直し、503の再試行、成功で呼び出し元へ識別子が渡ってプレビューが出ること、送信中の状態の通知、`contactAvailable`が偽(管理者側の`ADMIN_PROFILE.contactAvailable`)なら想定外の応答で問い合わせを促す文(「解決しない場合はお問い合わせください。」)が出ず、真なら出ることを確かめるブラウザテストを書く
   - 送信は1件ずつ順に行う
+  - 2つの入力欄は必須の`contactAvailable`を受け、`useFileUpload`・`parseUploadResponse`へ渡す。想定外の応答の文言はfrontend-platformの`errorMessageOf(error, contactAvailable)`で選ぶ。利用者側の画面は`CLIENT_PROFILE.contactAvailable`、管理者側の画面は`ADMIN_PROFILE.contactAvailable`を渡す
   - 完了状態: ブラウザテストが成功し、axe-coreの違反が0件である
   - _Depends: 8.3, 8.4_
   - _Requirements: 14.4, 14.5, 14.7, 14.8, 14.9, 14.10, 14.11, 14.12_

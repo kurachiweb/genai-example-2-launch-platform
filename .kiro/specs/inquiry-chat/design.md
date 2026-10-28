@@ -58,7 +58,11 @@
 - admin-foundation: `requireAdmin`(`admin-guard.ts`)・`CurrentAdmin`・`AdminDirectory`(`backend-lib/workers/admin`、eventでは`ADMIN_PLATFORM_MODULE`の束縛)・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・`useAdminRole`・`RoleGate`・`frontend-lib/components/admin`(`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`・`CategoryMasterEditor`)・E2Eの補助(`e2e/support/admin-bootstrap.ts`の`signInAsNewAdmin`・`signInAdmin`、`e2e/support/local-d1.ts`の`executeLocalD1`・`sqlStringLiteral`)。形を変えない。
 - media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`ATTACHMENT_MEDIA_TYPES`・`MediaFiles`(`findMany`・`claim`・`markDeleted`)・`MEDIA_TYPES`・`FileReadPolicy`・`FileReadPolicyRegistration`・`toMediaAttachment`・`mediaFileLoader`・GraphQLの`MediaAttachment`・`MediaImage`・`AttachmentUploadField`・`FileSelectionList`・`PrivateFileLink`・`MediaPicture`・`MediaPlaceholder`・`checkSelection`。形を変えない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
-- frontend-platform: `executeGraphQL`(`turnstileToken`)・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`・`runAxe`。
+- frontend-platform: `executeGraphQL`(`turnstileToken`)・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`・`runAxe`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
+  - GraphQLの操作は各アプリの`src/graphql/operations/inquiry/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
+  - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。フォームのスキーマの`zod`の値は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
+  - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
+  - bot判定の`TurnstileWidget`は非表示のウィジェットで場所を取らないため、フォームに判定の枠の表示と場所を設けない。
 - content-processing: `apps/common-lib`の`countGraphemes`と共有ディレクトリの配置。
 - npmパッケージ: 上流の版だけを使い、新規は無い。
 
@@ -165,16 +169,16 @@ graph TB
 
 ### Technology Stack
 
-| Layer        | Choice / Version                                                            | Role in Feature                                | Notes                      |
-| ------------ | --------------------------------------------------------------------------- | ---------------------------------------------- | -------------------------- |
-| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                       | カテゴリ・問い合わせ・メッセージ・添付の紐付け | 新しいテーブル5つ          |
-| 回数制限     | Durable Objects`RateLimitCounter`(backend-platform)                         | 未ログインの送信のIP単位の制限                 | 既存の`RATE_LIMIT_COUNTER` |
-| bot判定      | Turnstile(backend-platformの`BotVerifier`、frontend-platformのウィジェット) | フォームの送信の検証                           | 既存                       |
-| 定期・非同期 | Cron Triggers(api)・Queues(eventのライフサイクルの実行器)                   | 未ログインの保持期間・退会者の物理削除         | 上流の基盤                 |
-| ファイル     | media-pipelineの用途・`MediaFiles`・`FileReadPolicy`・部品                  | 添付のアップロード・紐付け・ダウンロード       | 既存                       |
-| メール       | email-deliveryの`EmailSender`・React Email                                  | 返信の通知メール                               | 既存                       |
-| 画面         | TanStack Start・TanStack Query・react-hook-form・zod・shadcn/ui             | フォーム・チャット・一覧・定期再取得           | frontend-platformの版      |
-| テスト       | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1・Mailpit       | 単体・Workers統合・ブラウザ・E2E               | 上流の版                   |
+| Layer        | Choice / Version                                                            | Role in Feature                                | Notes                                                                   |
+| ------------ | --------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                       | カテゴリ・問い合わせ・メッセージ・添付の紐付け | 新しいテーブル5つ                                                       |
+| 回数制限     | Durable Objects`RateLimitCounter`(backend-platform)                         | 未ログインの送信のIP単位の制限                 | 既存の`RATE_LIMIT_COUNTER`                                              |
+| bot判定      | Turnstile(backend-platformの`BotVerifier`、frontend-platformのウィジェット) | フォームの送信の検証                           | 既存                                                                    |
+| 定期・非同期 | Cron Triggers(api)・Queues(eventのライフサイクルの実行器)                   | 未ログインの保持期間・退会者の物理削除         | 上流の基盤                                                              |
+| ファイル     | media-pipelineの用途・`MediaFiles`・`FileReadPolicy`・部品                  | 添付のアップロード・紐付け・ダウンロード       | 既存                                                                    |
+| メール       | email-deliveryの`EmailSender`・React Email                                  | 返信の通知メール                               | 既存                                                                    |
+| 画面         | TanStack Start・TanStack Query・react-hook-form・zod・shadcn/ui             | フォーム・チャット・一覧・定期再取得           | frontend-platformの版。`zod`の値は`utilities/validation/zod.ts`から読む |
+| テスト       | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1・Mailpit       | 単体・Workers統合・ブラウザ・E2E               | 上流の版                                                                |
 
 ## File Structure Plan
 
@@ -257,9 +261,9 @@ apps/
 │   │   ├── inquiry-chat-view.tsx                       # チャットの表示と定期再取得
 │   │   ├── inquiry-message-composer.tsx                # 追加メッセージの入力と添付
 │   │   ├── suspended-chat-notice.tsx                   # 停止中の送信欄の代わりの案内
-│   │   └── inquiry-form-schemas.ts                     # フォームのzodスキーマ(common-libの規則)
-│   └── graphql/operations/inquiry/
-│       ├── contact-operations.ts · chat-operations.ts
+│   │   └── inquiry-form-schemas.ts                     # フォームのスキーマ(zodの値はutilities/validation/zod.ts、common-libの規則)
+│   └── graphql/operations/inquiry/                     # 1ファイル1操作の*.graphql(操作名はClientで始める)
+│       ├── contact/*.graphql · chat/*.graphql
 └── admin/src/
     ├── routes/_authenticated/
     │   ├── inquiries/index.tsx · inquiries/$inquiryId.tsx
@@ -274,8 +278,8 @@ apps/
     ├── components/categories/category-sections-view.tsx # 区画の並びとエラーの分離
     ├── composition/category-sections.ts                # CATEGORY_SECTIONS(後続specが追記)
     ├── composition/inquiry-detail-actions.ts           # INQUIRY_DETAIL_ACTIONS(初版は空、後続specが追記)
-    └── graphql/operations/inquiry/
-        ├── admin-inquiry-operations.ts · inquiry-category-operations.ts
+    └── graphql/operations/inquiry/                     # 1ファイル1操作の*.graphql(操作名はAdminで始める)
+        ├── inquiries/*.graphql · categories/*.graphql
 e2e/                                                    # 管理者の用意とローカルのD1の操作はadmin-foundationの補助(support/admin-bootstrap.ts・support/local-d1.ts)を使う
 ├── client/inquiry/guest-inquiry.e2e.test.ts · member-inquiry-chat.e2e.test.ts · suspended-contact.e2e.test.ts
 └── admin/inquiries.e2e.test.ts · inquiry-categories.e2e.test.ts
@@ -1166,16 +1170,16 @@ export interface InquirerAvatarProps {
 #### ContactPage・GuestInquiryForm・MemberInquiryForm・GuestInquiryComplete・SuspendedContactNotice・MyInquiryList
 
 - `routes/contact.tsx`: `loader`で`inquiryCategories`を`ensureQueryData`し、`viewer`(identity-authの`__root`の文脈)で切り替える。未ログインは`GuestInquiryForm`、停止中は`SuspendedContactNotice`と`GuestInquiryForm`、停止していないログイン中は`MemberInquiryForm`(要件2.2〜2.4)。ログイン中(停止中を含む)はフォームの下に`MyInquiryList`(要件9.1・9.4)。
-- `GuestInquiryForm`: カテゴリ(`<select>`)・ニックネーム・連絡先メールアドレス・メッセージ・`TurnstileWidget`(action`inquiry_guest`)。成功で`GuestInquiryComplete`(「お問い合わせを受け付けました。回答は入力したメールアドレスへお送りする場合があります。」)に置き換える(要件3.2)。429は`Retry-After`の秒数から再送できる時刻を示す(要件4.5)。
-- `MemberInquiryForm`: `inquiryComposer`の`InquirerAvatar`とニックネーム、カテゴリ・メッセージ・`AttachmentUploadField`(`UploadConstraints`に用途・`ATTACHMENT_MEDIA_TYPES`・`maxBytes`・`maxCount` 20・`maxTotalBytes`)と`FileSelectionList`・`TurnstileWidget`(action`inquiry_member`)。成功で`/inquiries/<ID>`へ遷移する(要件2.3・5.2・6.2・6.8)。
+- `GuestInquiryForm`: カテゴリ(`<select>`)・ニックネーム・連絡先メールアドレス・メッセージ・`TurnstileWidget`(action`inquiry_guest`、非表示で場所を取らない)。成功で`GuestInquiryComplete`(「お問い合わせを受け付けました。回答は入力したメールアドレスへお送りする場合があります。」)に置き換える(要件3.2)。429は`Retry-After`の秒数から再送できる時刻を示す(要件4.5)。
+- `MemberInquiryForm`: `inquiryComposer`の`InquirerAvatar`とニックネーム、カテゴリ・メッセージ・`AttachmentUploadField`(`UploadConstraints`に用途・`ATTACHMENT_MEDIA_TYPES`・`maxBytes`・`maxCount` 20・`maxTotalBytes`、`contactAvailable`は`CLIENT_PROFILE.contactAvailable`)と`FileSelectionList`・`TurnstileWidget`(action`inquiry_member`、非表示で場所を取らない)。成功で`/inquiries/<ID>`へ遷移する(要件2.3・5.2・6.2・6.8)。
 - `MyInquiryList`: `useInfiniteQuery`で20件ずつ、各行は`InquiryStatusBadge`・カテゴリ・送信日時・最後のメッセージの日時・チャットへのリンク。0件は「送信した問い合わせはまだありません。」(要件9.1〜9.3)。
-- 入力欄はフォーカスを外した時点で`inquiry-form-schemas.ts`(common-libの規則)により検証し、サーバーの欄ごとのエラーは`applyServerFieldErrors`で反映する(要件2.6・3.3・5.3)。
+- フォームは`useAppForm(<inquiry-form-schemas.tsのスキーマ>, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)で作る。入力欄はフォーカスを外した時点で`inquiry-form-schemas.ts`(common-libの規則)により検証し、サーバーの欄ごとのエラーは`AppForm`が`applyServerFieldErrors`で反映する(要件2.6・3.3・5.3)。欄に対応しない失敗は`onSubmitError`で、`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言(429は再送できる時刻)をフォームに示す。
 
 #### InquiryChatView・InquiryMessageComposer・SuspendedChatNotice
 
 - `routes/_authenticated/inquiries/$inquiryId.tsx`: 未ログインはidentity-authの`_authenticated`がログインへ案内し、戻り先を保つ(要件7.2)。`memberInquiry`が`null`なら「問い合わせが見つかりません。」(要件7.3)。
 - `InquiryChatView`: `useQuery({ ...graphqlQueryOptions(memberInquiryDocument, { id }), ...LIVE_REFRESH_QUERY_OPTIONS })`で取得し、カテゴリ・ステータス・送信日時とメッセージを古い順に表示する(要件7.1・7.7)。管理者の返信は`InquirerAvatar`(`square-xs`)とニックネーム、削除済みは「削除済みの管理者」(要件7.4・7.5)。
-- `InquiryMessageComposer`: `canPost`が真のとき表示し、1,000書記素の検証・`AttachmentUploadField`・送信中の無効化、成功で`invalidateQueries`(要件8.1・8.3・8.6)。偽なら`SuspendedChatNotice`(「このアカウントは停止中のため、メッセージを送信できません。運営への連絡はお問い合わせフォームから行えます。」と`/contact`へのリンク、要件7.8)。
+- `InquiryMessageComposer`: `canPost`が真のとき表示し、1,000書記素の検証・`AttachmentUploadField`(`contactAvailable`は`CLIENT_PROFILE.contactAvailable`)・送信中の無効化、成功で`invalidateQueries`(要件8.1・8.3・8.6)。偽なら`SuspendedChatNotice`(「このアカウントは停止中のため、メッセージを送信できません。運営への連絡はお問い合わせフォームから行えます。」と`/contact`へのリンク、要件7.8)。
 
 ### admin
 
@@ -1183,9 +1187,9 @@ export interface InquirerAvatarProps {
 
 - `/inquiries`: `AdminFilterBar`(ステータス・種別・カテゴリの`select`、受付日の開始と終了の`<input type="date">`。`inquiry-period.ts`で閲覧者の地域の0時をUTCへ変換)と`AdminDataTable`(50件、前後のページ)。検索パラメータ`status`などをURLに保つ。退会済みは「退会済み」の表示(要件10.1〜10.3・10.7)。
 - `/inquiries/$inquiryId`: ログインは`MemberInquiryDetail`(利用者のニックネーム・ハンドル、メッセージ、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得、要件10.4・10.6)、未ログインは`GuestInquiryDetail`(ニックネーム・連絡先メールアドレス・本文、「この問い合わせへの回答は、連絡先メールアドレスへシステム外のメールで行ってください。」、要件10.5)。どちらの詳細も、問い合わせの情報の下に`InquiryDetailActionsView`を置き、後続specが登録した操作を表示する。
-- `InquiryReplyForm`: `RoleGate minimum="moderator"`、退会済み・未ログインでは表示しない。1,000書記素の検証と理由(任意)。`notificationQueued`が偽ならトーストで「返信は保存されましたが、通知メールを送れませんでした。」(要件11.4・11.7)。
-- `InquiryStatusControl`: 4種の`select`と`ConfirmActionDialog`(理由は任意、監査ログに記録される旨。要件12.5)。退会済みでは表示しない(要件10.7)。
-- `UnhandledInquiriesCard`(`DASHBOARD_CARDS`へ`{ id: 'inquiry-chat.unhandled-inquiries', order: 20, width: 'half' }`): `adminUnhandledInquiryCount`を`DashboardCardFrame`で表示し、`/inquiries?status=OPEN`へのリンク。失敗はカードだけのエラーと再試行(要件14.1・14.3・14.4)。
+- `InquiryReplyForm`: `RoleGate minimum="moderator"`、退会済み・未ログインでは表示しない。1,000書記素の検証と理由(任意)。`notificationQueued`が偽ならトーストで「返信は保存されましたが、通知メールを送れませんでした。」(要件11.4・11.7)。送信の失敗は`AppForm`の`onSubmitError`で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。
+- `InquiryStatusControl`: 4種の`select`と`ConfirmActionDialog`(理由は任意、監査ログに記録される旨、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`。失敗はダイアログの中にその文言で示す。要件12.5)。退会済みでは表示しない(要件10.7)。
+- `UnhandledInquiriesCard`(`DASHBOARD_CARDS`へ`{ id: 'inquiry-chat.unhandled-inquiries', order: 20, width: 'half' }`): `adminUnhandledInquiryCount`を`DashboardCardFrame`で表示し、`/inquiries?status=OPEN`へのリンク。失敗はカードだけのエラーと再試行(文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、問い合わせの導線を出さない。要件14.1・14.3・14.4)。
 
 #### InquiryDetailActionsRegistry・InquiryDetailActionsView
 
@@ -1212,7 +1216,7 @@ export interface InquiryDetailAction {
 export declare const INQUIRY_DETAIL_ACTIONS: readonly InquiryDetailAction[]; // 初版は空
 ```
 
-- `InquiryDetailActionsView({ inquiry })`: `INQUIRY_DETAIL_ACTIONS`を`order`順に並べ、各操作を個別のエラー境界で包み、1つの操作の失敗が詳細の表示と他の操作を止めないようにする。登録が空なら何も描画しない(見出しや空状態も出さない)。
+- `InquiryDetailActionsView({ inquiry })`: `INQUIRY_DETAIL_ACTIONS`を`order`順に並べ、各操作を個別のエラー境界で包み、1つの操作の失敗が詳細の表示と他の操作を止めないようにする。エラー境界の表示は`ErrorState`を`contactHref`無しで描き、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ。登録が空なら何も描画しない(見出しや空状態も出さない)。
 - 全ロールが全メニューを参照できる方針(admin-foundationのQ3)に合わせ、登録箇所にロールの条件を持たせない。操作の部品が`RoleGate`・`useAdminRole`で必要なロールを判定し、サーバー側の認可は操作を足すspecの`requireAdmin`が持つ。
 - 本specは文脈の値を詳細の取得結果から渡すだけで、操作の中身(手順・本人の確かめ・監査ログ)は持たない。
 
@@ -1231,8 +1235,8 @@ export interface CategorySection {
 export declare const CATEGORY_SECTIONS: readonly CategorySection[]; // 初版は問い合わせカテゴリだけ
 ```
 
-- `routes/_authenticated/categories/index.tsx`: `AdminPageHeader`(「カテゴリ」)と`CategorySectionsView`(`order`順に見出し付きで並べ、区画ごとにエラー境界で包む)。
-- `InquiryCategorySection`: `CategoryMasterEditor`(`withHandle: false`、`canEdit`は`useAdminRole`がモデレーター以上、`systemDefault`は「その他」)。削除は付け替えの件数を確認のダイアログで示し、拒否は`GraphQLClientError`の文言を表示する(要件1.2〜1.6・1.8)。
+- `routes/_authenticated/categories/index.tsx`: `AdminPageHeader`(「カテゴリ」)と`CategorySectionsView`(`order`順に見出し付きで並べ、区画ごとにエラー境界で包む。エラー境界の表示は`ErrorState`を`contactHref`無しで描き、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ)。
+- `InquiryCategorySection`: `CategoryMasterEditor`(`withHandle: false`、`canEdit`は`useAdminRole`がモデレーター以上、`systemDefault`は「その他」)。削除は付け替えの件数を確認のダイアログで示し、拒否・失敗は`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言、要件1.2〜1.6・1.8)。
 
 ### e2e・docs
 
@@ -1290,6 +1294,7 @@ erDiagram
 - 想定内の失敗は`AppError`で表し、api-gatewayの方針で`extensions.code`と状態コードになる。文言は`AppError.message`に入れる。
 - 存在の秘匿: 本人以外・不在・論理削除の問い合わせは、利用者側では`memberInquiry`が`null`、`postInquiryMessage`が`inquiry_not_found`で区別しない(要件7.3・8.5)。添付のダウンロードはmedia-pipelineの404(要件6.7)。
 - 監査ログの検証の違反は管理操作の前に`validation_error`で返し、操作を行わない。
+- 画面に出す失敗の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(利用者側は`CLIENT_PROFILE`、管理者側は`ADMIN_PROFILE`)。管理者側の画面は`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない。
 
 ### Error Categories and Responses
 

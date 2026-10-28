@@ -45,7 +45,7 @@
 - 環境種別: `infra/002-environments.md`で決定済み。staging・prodは同一のCloudflareアカウントを使う。Infisicalは既存の1つのプロジェクトのdev・staging・prodの環境を使う(K3)。
 - 資源の名前・Worker名・Queue名・`namespace_id`・送信ドメイン名: backend-platform・email-delivery・frontend-platformのSupporting Referencesと、email-delivery Q6で決定済み。
 - 識別子の反映方法: 実際の値をWrangler設定へ書き込んでコミットする。backend-platformとfrontend-platformが「infra-deliveryが置き換える」と決めている。prodの値はQ6によりlaunch-readinessが反映する。
-- Turnstileのウィジェット: 環境ごとに1つとし、client・adminの両ホスト名を登録する。モードは`managed`とする。
+- Turnstileのウィジェット: 環境ごとに1つとし、client・adminの両ホスト名を登録する。モードは非表示の`invisible`とする(改訂2。frontend-platformの`TurnstileWidget`が非表示で描くため)。
 - stagingの公開: READMEにstagingのURLが載っており、frontend-platform Q3もstagingで疎通確認の画面を公開すると決めているため、アクセス制限は掛けない。
 - デプロイの順序: マイグレーション→APIサーバー→フロントエンドの順。api-gatewayとfrontend-platformで決定済み。
 - 直前のリリースの特定: api-gateway Q3で「新しいリソースを使わない」と決まっている。手段は設計で決める(Workerの版のタグ)。
@@ -139,6 +139,15 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - **他specへの申し送り(本specは編集しない)**: backend-platform・email-delivery・launch-readinessの設計に、eventまたはapiを`infisical --telemetry=false run --env dev -- ...`で起動する記述がある。paymentsが`STRIPE_API_KEY`を必須にした後は、Workerごとのフォルダを重ねる`run-with-secrets --scope local --worker`の形でないと起動の検証が失敗するため、各specで記述を改める必要がある。
 - **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。1回目の判定はNEEDS_FIXESだった。`WORKER_SCOPED_SECRETS`を`worker-secrets.ts`(5.3)に置くと先に動く4.3が使えないため`secret-scope.ts`へ移して4.3で置くこと、devのWorkerごとのフォルダの存在を6.3・8.5の前提にすること、`project-values.md`の実行接頭辞の記述にapi・eventの例外を書くこと、8.5の完了状態と4.4の実起動の依存の注記を加えることを直した。4.3の分割は、判定と注入の部品が同じ層で閉じるため見送った。2回目の判定はPASSで、残る指摘は無かった。`spec.json`の`updated_at`を更新し、タスクの承認を保った。
 
+### frontend-platformの最終検証による承認後の改訂(改訂2、2026-10-28)
+
+- **状態**: 2026-10-28に開発者が決定した改訂で、確定している。frontend-platformの実装と最終検証の後に開発者が決めた判断(Turnstileのウィジェットを非表示で使うこと、全WorkerのIP制限のキーを`HASH_PEPPER`のHMACでハッシュ化すること)を、frontend-platformのタスク10.4として本specの設計へ反映した。`requirements.md`の「承認後の改訂」の表に改訂2として記録した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`TurnstileWidget`は`options.size: 'invisible'`で非表示のウィジェットを描き、画面に枠を出さない。Cloudflare側のウィジェットの種類が`managed`のままでは、判定が対話を求めた時に表示する場所が無い。また、client・adminもIP制限のキーのハッシュ化に`HASH_PEPPER`を使うため、`secrets.required`(3環境)に`HASH_PEPPER`を持つ。本設計のstagingのキーの表と初回の準備は、`HASH_PEPPER`の使うWorkerをapi・eventに限っていた。
+- **決定**: `ResourceCatalog.turnstile.mode`・`cloudflare_turnstile_widget`の`mode`・`tofu test`の期待値・Supporting Referencesの資源の値を`invisible`にした。Cloudflare providerの`cloudflare_turnstile_widget.mode`の値は`managed`・`non-interactive`・`invisible`である(Cloudflareの公式文書のTurnstileの「Widget types」と、Turnstileのウィジェットの設定項目`mode`の説明「managed (default), non-interactive, or invisible」で確かめた)。`HASH_PEPPER`はInfisicalの各環境の`/`に1つの値を置き、api・event・client・adminが共有する。stagingのキーの表と初回の準備の手順10に、使うWorkerとしてclient・adminを加えた。client・adminは`/workers/*`のフォルダを持たないため、`/`の値がそのまま渡る(`selectWorkerSecrets`の`perWorker`は空)。
+- **付随する記述**: Cloudflareの公式文書は、非表示(`invisible`)のウィジェットを使う条件として、自身のプライバシーポリシーでTurnstileのプライバシー補遺(Turnstile Privacy Addendum)を参照することを求めている。本specがプライバシーポリシー骨子のCloudflareの項を書くため、Modified Filesとタスク8.5にその参照を置く旨を加えた。
+- **変えた箇所**: 設計のRevalidation Triggers(ウィジェットの種類)・Modified Files(プライバシーポリシー骨子のCloudflareの項)・`ResourceCatalog`の`turnstile.mode`・EdgeServicesModuleの資源と検証・frontend-platformへの影響の行・Supporting Referencesの資源の表・Infisicalのキーの表のstagingの必須の行・初回の準備の手順10。本ファイルの「確認済みのため質問しない事項」のウィジェットのモードとproviderの調査の`mode`の値。tasks.mdの2.2(計画のテストのモード)・8.5(プライバシーポリシー骨子の参照)。staging・prodのサイトキーとアクセス解析のトークンの仮の値は、従来どおり本specとlaunch-readinessが置き換える。
+- **参照**: [Turnstile(Cloudflare Challenges)](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/turnstile/)・[Turnstile Spin](https://developers.cloudflare.com/turnstile/spin/)・[Widget configurations](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/widget-configurations/)。
+
 ## Research Log
 
 ### Cloudflare providerの版と管轄の対応
@@ -151,7 +160,7 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
   - `cloudflare_r2_bucket.jurisdiction`: 値は`"default"`・`"eu"`・`"fedramp"`・`"us"`。importの識別子は`<account_id>/<bucket_name>/<jurisdiction>`。`location`は最初の作成時だけ効くベストエフォートの指定である。
   - `cloudflare_queue.jurisdiction`: 値は`"eu"`・`"us"`・`"fedramp"`。
   - `cloudflare_workers_custom_domain`: `account_id`・`hostname`・`service`が必須で、`zone_id`を指定できる。`environment`は非推奨。
-  - `cloudflare_turnstile_widget`: `domains`・`mode`(`managed`など)・`name`が必須で、`secret`はsensitiveな計算値、`sitekey`は計算値。
+  - `cloudflare_turnstile_widget`: `domains`・`mode`(`managed`・`non-interactive`・`invisible`)・`name`が必須で、`secret`はsensitiveな計算値、`sitekey`は計算値。
   - `cloudflare_web_analytics_site`: `auto_install`を`false`にし、`host`を指定すると手動のスクリプト用のサイトになる。`site_token`が計算値。
   - `cloudflare_email_sending_subdomain`: `zone_id`・`name`が必須で、`preview_enabled`・`drop_suppressed_recipients`を持つ。`dkim_selector`・`return_path_domain`が計算値。
   - Queuesのイベントの購読の資源は無い(Q7の前提どおり)。

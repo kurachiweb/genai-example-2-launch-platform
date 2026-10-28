@@ -49,7 +49,7 @@
 - content-processing: `searchDocumentColumns`・`searchTextColumn`・`searchDocumentStatusIndex`・`defineSearchIndex`・`SEARCH_INDEXES`・`ftsRankedSources`・`bm25Rank`・`print-search-index-sql.ts`、`defineSearchTarget`・`SEARCH_TARGETS`・`SEARCH_TYPES`・`SearchIndexStatements`・`SearchIndexRefreshRequester`、`normalizeSearchTerms`・`buildFtsMatchExpression`・`countGraphemes`、`HighlightedText`・`CollapsibleMarkdownContent`・`useMarkdownOptions`。
 - user-profile-social: `checkHandleFormat`・`checkExternalUrl`・GraphQLの`UserSummary`・`userSummaryLoader`・`publicProfile`(`viewerRelation`)・`FollowButton`・`UserAvatar`。
 - media-pipeline: `mediaFileLoader`・`toMediaImage`・GraphQLの`MediaImage`・`MediaPicture`。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・日時の表示部品・shadcn/uiの部品(ボタン・バッジ・ツールチップ・カード・シート・ポップオーバー・セレクト・入力欄)・`runAxe`・デザイントークン。identity-authの`LoginRequiredDialog`。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`TurnstileWidget`(非表示)・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・日時の表示部品・shadcn/uiの部品(ボタン・バッジ・ツールチップ・カード・シート・ポップオーバー・セレクト・入力欄)・`runAxe`・デザイントークン。identity-authの`LoginRequiredDialog`。
 - admin-foundation: E2Eの`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - npmパッケージ: 新規なし。
 - 後続specは、`common-lib/directory`・`workers/directory`の公開の契約、apiの`DIRECTORY_ITEM_METRIC_SOURCES`と`DirectoryItemMetricSource`、clientの6つの登録口と区画の文脈の型だけに依存し、本specのテーブルへ書き込まない。
@@ -264,12 +264,13 @@ apps/
 │   │   ├── empty-matches.tsx
 │   │   ├── owner-card.tsx
 │   │   └── product-page-skeleton.tsx
-│   └── graphql/operations/directory/
-│       ├── directory.ts                                       # directory・directoryCategories
-│       ├── product-page.ts                                    # productPage
-│       ├── supporters.ts                                      # matchSupporters
-│       ├── owner-follow-status.ts                             # publicProfileのviewerRelation
-│       └── product-owner-status.ts                            # productOwnerStatus(投稿者本人向けの操作)
+│   └── graphql/operations/directory/                          # 1ファイル1操作(操作名はClientで始める。生成物はsrc/graphql/generated/)
+│       ├── directory.graphql                                  # query ClientDirectory(directory)
+│       ├── directory-categories.graphql                       # query ClientDirectoryCategories(directoryCategories)
+│       ├── product-page.graphql                               # query ClientProductPage(productPage)
+│       ├── match-supporters.graphql                           # query ClientMatchSupporters(matchSupporters)
+│       ├── owner-follow-status.graphql                        # query ClientOwnerFollowStatus(publicProfileのviewerRelation)
+│       └── product-owner-status.graphql                       # query ClientProductOwnerStatus(productOwnerStatus、投稿者本人向けの操作)
 e2e/
 ├── client/directory.e2e.test.ts                               # 一覧・検索・絞り込み・並べ替え・ページ・詳細・302
 └── support/directory-fixtures.ts                              # ローカルD1に確定した予選と掲載中のプロダクトを作る補助
@@ -1125,9 +1126,9 @@ export declare const PRODUCT_OWNER_ACTIONS: readonly ProductOwnerAction[]; // �
 #### ProductPageRoute・ProductPageと部品
 
 - `routes/p/$handle.tsx`: `loader`は`checkHandleFormat`の違反で`notFound()`、`productPage`を`ensureQueryData`で読み、`null`なら`notFound()`、`ProductPageRedirect`なら`redirect({ to: '/p/$handle', params: { handle }, search: 現在の検索パラメーター, statusCode: 302 })`(8.3〜8.7)。`head`は`buildPageHead({ title: <名称>, description: <タグライン>, canonicalUrl: clientSiteOrigin + '/p/' + <現在のハンドル>, noIndex: !listed })`(8.1・8.8・8.10)。404はfrontend-platformの`NotFoundView`(トップページとディレクトリへの導線、8.4)、`errorComponent`は`ErrorState`(8.9)、`pendingComponent`は`ProductPageSkeleton`。
-- `ProductPage`: 1024px以上は本文とサイドバー(幅320〜352px、`sticky`)の2カラム、それ未満は1カラムでサイドバーをヘッダーの直後に置く(9.1)。`banner`の区画→`ProductBreadcrumbs`→`UnlistedBanner`(本人の未掲載、9.3)→`ProductHeader`→`LiveMatchSection`→`main`の区画(`order`順)→`bottom`の区画、サイドバーに`aside`の区画(9.2)。区画ごとのエラー境界(9.11)。`TurnstileWidget`(`match_upvote`)を開催中のマッチがあるときだけ1つ置く。
+- `ProductPage`: 1024px以上は本文とサイドバー(幅320〜352px、`sticky`)の2カラム、それ未満は1カラムでサイドバーをヘッダーの直後に置く(9.1)。`banner`の区画→`ProductBreadcrumbs`→`UnlistedBanner`(本人の未掲載、9.3)→`ProductHeader`→`LiveMatchSection`→`main`の区画(`order`順)→`bottom`の区画、サイドバーに`aside`の区画(9.2)。区画ごとのエラー境界(9.11)。`TurnstileWidget`(`match_upvote`)を開催中のマッチがあるときだけ1つ置く。ウィジェットは非表示で描くため、判定の枠と場所を設けない。
 - `ProductHeader`: ロゴ(`square-md`)・カテゴリのリンク(`/p?category=<ハンドル>`)・受賞回数(受賞の合計、1以上)・`h1`の名称・タグライン・投稿者(`UserAvatar`・ニックネーム・`@ハンドル`、`/@<ハンドル>`)・`OwnerFollow`(本人以外)・`CopyLinkButton`・「サイトを開く」(`rel="noopener"`)・初ローンチ日(`<time datetime>`)・ローンチ回数・「◯勝◯敗」(9.4・9.5)。
-- `OwnerFollow`: ログイン中で本人でない閲覧者のとき、`owner-follow-status.ts`(`publicProfile(handle)`の`viewerRelation`)をクライアントで読み、`FollowButton`の`initialFollowing`に渡す。未ログインは`FollowButton`の未ログインの表示をそのまま使う。照会の失敗はボタンを描かない(縮退)。
+- `OwnerFollow`: ログイン中で本人でない閲覧者のとき、`ClientOwnerFollowStatus`(`publicProfile(handle)`の`viewerRelation`)をクライアントで読み、`FollowButton`の`initialFollowing`に渡す。未ログインは`FollowButton`の未ログインの表示をそのまま使う。照会の失敗はボタンを描かない(縮退)。
 - `CopyLinkButton`: 正規のURLを`navigator.clipboard.writeText`で写し、成功と失敗を`notify`で知らせる(9.12)。
 - `LiveMatchSection`: `liveMatch`があるとき見出し(`id="live-match-heading"`)と`MatchCard`・`useUpvote`(`onUpdated`で`productPage`のキャッシュの`liveMatch`を差し替える)。残り時間と演出はトップページと同じ(9.6)。
 - `ScreenshotGallery`・`ScreenshotLightbox`(`main` 20): `screenshot-thumb`を高さをそろえて横スクロール、押すとダイアログで`screenshot-full`、前後のボタン・左右キー・スワイプ(ポインターの移動量)、「3 / 10」、0枚は描かない(9.7)。
@@ -1136,7 +1137,7 @@ export declare const PRODUCT_OWNER_ACTIONS: readonly ProductOwnerAction[]; // �
 - `MatchHistoryRow`: 種別とラウンドの印(match-engineの`match-labels.ts`)・日付・対戦相手(`kind`ごと、10.3)・比率のバー(`role="img"`と「Upvote数の比率: 12対9」、相手の数があるときだけ)・スコア「12対9」・勝敗のチップ(勝利・不戦勝・敗北・両者敗北、10.2・10.5〜10.7)。`decision`が`LAST_UPVOTE`なら枠を強調し「接戦」と注記(10.4)。`ownUpvoteCount`が1以上なら「サポーター{n}人」の`aria-expanded`のボタン(10.8、仮5)。
 - `SupportersPanel`: `useInfiniteQuery`で`matchSupporters`を`first: 20`、`max-h-72`の枠の中の末尾の番兵を`IntersectionObserver`で見て続きを読む(10.9)。注記(10.10)、各行は`UserAvatar`(28)・ニックネーム・`/@<ハンドル>`、失敗は取得済みを保って「サポーター一覧を読み込めませんでした。」と再試行(10.11)。
 - `EmptyMatches`: `kickedOff`で開催中なら「予選マッチが行われています。勝敗はフルタイム後にここへ表示されます。」と`#live-match-heading`への「マッチを見る」(10.12)。キックオフ前は日付と文言、本人は「リンクをコピーして応援を呼びかける」、他者は「トップページで本日のマッチを見る」(10.13)。
-- `OwnerCard`(`aside` 10、本人だけ描く): 破線の枠の「あなたのプロダクト」、直近のローンチの`summary`の見出し、「編集」(`/my/products/<ハンドル>/edit`)、「再ローンチを予約」(同じ編集の画面)。`product-owner-status.ts`(`productOwnerStatus(productHandle)`)をクライアントで読み、`plan.mode`が`BLOCKED`なら無効と`blocks`の`message`・`releaseAt`(11.2)、`window.relaunchIntervalDays`があれば「このプロダクトは◯日以降のローンチ日を選べます。」(11.3)、`locked`なら固定の注記(11.4)、照会の失敗は無効と「再ローンチの予約の状態を確かめられませんでした。時間をおいて再度お試しください。」(11.6)。`PRODUCT_OWNER_ACTIONS`を描く(11.5)。予約と保存の可否はproduct-launchの保存が判定する(11.7)。
+- `OwnerCard`(`aside` 10、本人だけ描く): 破線の枠の「あなたのプロダクト」、直近のローンチの`summary`の見出し、「編集」(`/my/products/<ハンドル>/edit`)、「再ローンチを予約」(同じ編集の画面)。`ClientProductOwnerStatus`(`productOwnerStatus(productHandle)`)をクライアントで読み、`plan.mode`が`BLOCKED`なら無効と`blocks`の`message`・`releaseAt`(11.2)、`window.relaunchIntervalDays`があれば「このプロダクトは◯日以降のローンチ日を選べます。」(11.3)、`locked`なら固定の注記(11.4)、照会の失敗は無効と「再ローンチの予約の状態を確かめられませんでした。時間をおいて再度お試しください。」(11.6)。`PRODUCT_OWNER_ACTIONS`を描く(11.5)。予約と保存の可否はproduct-launchの保存が判定する(11.7)。
 
 ### docs
 

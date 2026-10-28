@@ -55,7 +55,7 @@
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`assertHuman`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`toConnection`・`DateTime`のスカラー。形を変えない。
 - identity-auth: `AccountGuard`(`requireUser`・`requireVerifiedUser`)・`CurrentUser`・`UserRecord.pseudonymousId`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`AuthenticatedContext`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・frontend-libの`Checkbox`(`apps/frontend-lib/components/ui/checkbox.tsx`、identity-authのタスク10.4が新設するshadcn/uiのCheckbox。決済画面の同意に使う)・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、`apps/backend-lib/workers/identity`、api・eventの両方にidentity-authが束縛する。メールの宛先の照会に使う)。`users`テーブルは`id`(外部キーの参照先)だけに使い、列を直接読まず、書き込まない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
-- frontend-platform: `CLIENT_SECURITY_POLICY`・`SecurityPolicySources`・`PublicRuntimeConfig`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`buildPageHead`・`DateTime`・`RelativeTime`・`NumberText`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`。
+- frontend-platform: `CLIENT_SECURITY_POLICY`・`SecurityPolicySources`・`PublicRuntimeConfig`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`buildPageHead`・`DateTime`・`RelativeTime`・`NumberText`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`。
 - legal-pages: `LEGAL_DOCUMENT_PATHS`(`apps/common-lib/legal/legal-documents.ts`)。
 - infra-delivery: Wranglerの`secrets.required`・`vars`の3環境への記載、Infisicalのキーの表(`docs/onboardings/project-values.md`)、改訂1のWorkerごとのフォルダ(`/workers/api`・`/workers/event`。同じキーの`/`の値より優先される)と`WORKER_SCOPED_SECRETS`(`STRIPE_API_KEY`を含み、`/`の値を使わない)、ローカルの起動の`run-with-secrets --scope local --worker <api|event>`(仮7)。
 - npmパッケージ: `stripe` 23.0.x(api・event)、`@stripe/stripe-js` 10.0.x・`@stripe/react-stripe-js` 7.0.0(client)。版は実装時に公開から2週間を過ぎた最新のパッチ版に完全固定する(Q6)。
@@ -275,10 +275,12 @@ apps/
     │   ├── payment-history-item.tsx                 # 1件の記録
     │   ├── smoke-checkout-button.tsx                # 疎通確認の決済の開始(prod以外だけ表示、仮6)
     │   └── stripe-loader.ts                         # 公開キーでStripe.jsを1回だけ読み込む
-    └── graphql/operations/payments/
-        ├── checkout.ts                              # checkout・recordCheckoutConsent・startSmokeCheckout
-        ├── checkout-return.ts                       # confirmCheckoutReturn
-        └── payment-history.ts                       # paymentHistory
+    └── graphql/operations/payments/                 # 1ファイル1操作(操作名はClientで始める。生成物はsrc/graphql/generated/)
+        ├── checkout.graphql                         # query ClientCheckout(checkout)
+        ├── record-checkout-consent.graphql          # mutation ClientRecordCheckoutConsent(recordCheckoutConsent)
+        ├── start-smoke-checkout.graphql             # mutation ClientStartSmokeCheckout(startSmokeCheckout)
+        ├── confirm-checkout-return.graphql          # mutation ClientConfirmCheckoutReturn(confirmCheckoutReturn)
+        └── payment-history.graphql                  # query ClientPaymentHistory(paymentHistory)
 ```
 
 テストは各ファイルの隣に置く(`*.unit.test.ts`・`*.worker.test.ts`・`*.browser.test.tsx`)。E2Eは`e2e/client/checkout.e2e.test.ts`・`e2e/client/billing.e2e.test.ts`。

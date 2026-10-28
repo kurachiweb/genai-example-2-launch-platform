@@ -53,7 +53,7 @@
 - user-profile-social: `PROFILE_TYPES`の`MyProfileReader`・`ProfileEditor`・`PublicProfileReader`、`PROFILE_PLATFORM_TYPES.UserProfileDirectory`、`common-lib/profile`・`common-lib/url`の規則、`USER_HANDLE_RULE`。
 - media-pipeline: `MEDIA_TYPES.MediaFiles`(`findMany`)、`common-lib/media`の`buildImagePath`・`fallbackFormatOf`。
 - content-processing: `markdownTextSchema`(説明文・自己紹介の検証)、`countGraphemes`。
-- frontend-platform: `buildPageHead`・`ErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`useAppForm`・`AppForm`・`FormField`・`SubmitButton`・shadcn/uiの部品・`graphqlQueryOptions`・`DateTime`・`PublicRuntimeConfig`。
+- frontend-platform: `buildPageHead`・`ErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`useAppForm<TInput, TOutput>(schema, { defaultValues })`・`AppForm`(必須の`onSubmitError`・任意の`serverFieldPrefix`)・`FormField`・`SubmitButton`・`errorMessageOf`・shadcn/uiの部品・`graphqlQueryOptions`・`graphqlMutationOptions`・`DateTime`・`PublicRuntimeConfig`、Zodの値の読み込み元(`utilities/validation/zod.ts`の`z`)、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)。
 - 上流のファイルへの変更は、登録箇所への追記と、clientの環境の拡張(先例のある手順)に限る。上流のテーブルへは書き込まず、`users`は外部キーと`visibleUsers()`の条件の結合だけに使う。
 - 依存の方向は「Dependency Direction」に従う。
 
@@ -150,7 +150,7 @@ graph TB
 - サーバー: `apps/common-lib/public-api` → `apps/db/schema/public-api` → `apps/backend-lib/workers/public-api` → apiの`domain/public-api` → `application/public-api` → `infrastructure/public-api`・`presentation/rest/public-api`・`presentation/graphql/modules/public-api` → `composition`。
 - `presentation/rest/public-api`は`presentation/gateway`・`presentation/rest`(api-gateway)を読み込み、`presentation/graphql`を読み込まない。`presentation/graphql/modules/public-api`は`presentation/rest`を読み込まない。
 - `common-lib/public-api`は他のどの層も読み込まない(clientも読み込む)。
-- client: `common-lib/public-api` → `graphql/operations/public-api` → `components/public-api` → `routes`。`swagger-ui-dist`は`components/public-api/swagger-ui-viewer.tsx`の動的な読み込みだけで参照する。
+- client: `common-lib/public-api`・`graphql/generated`(`graphql/operations/public-api/*.graphql`からの生成物) → `components/public-api` → `routes`。`components/public-api`は`graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`gql.ts`・`index.ts`を読まない。Zodの値は`lib/utilities/validation/zod.ts`の`z`から読み、`zod`からは型だけを読む。`swagger-ui-dist`は`components/public-api/swagger-ui-viewer.tsx`の動的な読み込みだけで参照する。
 
 ### Technology Stack
 
@@ -234,7 +234,12 @@ apps/
 ├── client/src/
 │   ├── routes/_authenticated/settings/api-keys.tsx   # /settings/api-keys
 │   ├── routes/api-docs.tsx                           # /api-docs(ログイン不要)
-│   ├── graphql/operations/public-api/api-keys.ts     # 一覧・発行・編集・再発行・削除の操作
+│   ├── graphql/operations/public-api/                # 1ファイル1操作(操作名はClientで始める。生成物はsrc/graphql/generated/)
+│   │   ├── my-api-keys.graphql                       # query ClientMyApiKeys(一覧)
+│   │   ├── issue-api-key.graphql                     # mutation ClientIssueApiKey(発行)
+│   │   ├── update-api-key.graphql                    # mutation ClientUpdateApiKey(編集)
+│   │   ├── reissue-api-key.graphql                   # mutation ClientReissueApiKey(再発行)
+│   │   └── delete-api-key.graphql                    # mutation ClientDeleteApiKey(削除)
 │   └── components/public-api/                        # 1ファイル1コンポーネント(*.browser.test.tsxを併置)
 │       ├── api-key-settings-page.tsx                 # 見出し・停止中の案内・発行のボタン・一覧
 │       ├── api-key-list.tsx                          # 一覧・0件・失敗・さらに表示
@@ -243,7 +248,7 @@ apps/
 │       ├── api-key-scope-fields.tsx                  # 7機能の権限スコープの選択欄
 │       ├── issued-api-key-dialog.tsx                 # 平文の1度だけの表示とコピー
 │       ├── api-key-confirm-dialog.tsx                # 削除・再発行の確認
-│       ├── api-key-form-schema.ts                    # フォームのzodスキーマ(*.unit.test.ts)
+│       ├── api-key-form-schema.ts                    # フォームのZodスキーマ(lib/utilities/validation/zod.tsのz、*.unit.test.ts)
 │       ├── api-docs-page.tsx                         # 見出し・説明・SwaggerUiViewer
 │       ├── swagger-ui-viewer.tsx                     # 仕様書の取得とSwagger UIの遅延読み込み
 │       └── openapi-document.ts                       # 仕様書の取得とserversの絶対URL化(*.unit.test.ts)
@@ -268,7 +273,7 @@ docs/GUIDES/tech/
 - `apps/api/src/composition/env-schema.ts`・`apps/api/wrangler.jsonc`・型の宣言 — `PUBLIC_API_RATE_LIMITER`(`ratelimits`、3環境の`namespace_id`)と`IMAGES_ORIGIN`(`vars`)を加える。
 - `apps/api/src/composition/api-worker.ts` — `createRestModule`へ`{ info: PUBLIC_API_DOCUMENT_INFO }`を渡す(api-gatewayの改訂1、tasks.mdの7.2)。
 - `apps/event/src/composition/modules.ts` — `PUBLIC_API_PLATFORM_MODULE`を追記する(data-exportが使う)。
-- `apps/frontend-lib/server/env/frontend-env.ts`・`apps/frontend-lib/server/http/security-policy.ts`と各単体テスト — clientの`PUBLIC_API_ORIGIN`(URLのオリジン、clientだけ必須)を検証し、`PublicRuntimeConfig.publicApiOrigin`(adminは`undefined`)へ渡し、`runtimeSecurityPolicySources`の`connectSrc`に値があれば加える(content-processingの`CLIENT_SITE_ORIGIN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順)。
+- `apps/frontend-lib/server/env/frontend-env.ts`・`apps/frontend-lib/server/http/security-policy.ts`と各単体テスト — clientの`PUBLIC_API_ORIGIN`(clientだけ必須)を許可先の形まで検証し、`PublicRuntimeConfig.publicApiOrigin`(adminは`undefined`)へ渡し、`runtimeSecurityPolicySources`の`connectSrc`に値があれば加える(content-processingの`CLIENT_SITE_ORIGIN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順)。エントリ(`create-frontend-server-entry.ts`)の許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない(ClientEnvExtension)。
 - `apps/client/wrangler.jsonc`・`apps/client/test/config/wrangler-config.unit.test.ts` — `PUBLIC_API_ORIGIN`の3環境の値。
 - `apps/api/test/config/wrangler-config.unit.test.ts` — `PUBLIC_API_RATE_LIMITER`の3環境の`namespace_id`・`limit`・`period`(`PUBLIC_API_IP_RATE_LIMIT`と一致)と`IMAGES_ORIGIN`の検査(1.4・4.3)。
 - `apps/client/src/composition/settings-navigation.ts` — `{ to: '/settings/api-keys', label: 'APIキー', order: 90 }`を追記する。
@@ -1133,7 +1138,8 @@ export interface MediaLookup {
 
 **Contracts**: State [x]
 
-- `ValidatedFrontendEnv`のclientの拡張に`PUBLIC_API_ORIGIN: string`(URLのオリジン、clientだけ必須)を加え、`toPublicRuntimeConfig`で`publicApiOrigin`(adminは`undefined`)へ渡す。`runtimeSecurityPolicySources(env)`は値があれば`connectSrc`に加える(`mergeSecurityPolicySources`の許可先の形の規則に合う、15.2・15.7)。
+- `ValidatedFrontendEnv`のclientの拡張に`PUBLIC_API_ORIGIN: string`(clientだけ必須)を加え、`toPublicRuntimeConfig`で`publicApiOrigin`(adminは`undefined`)へ渡す。`runtimeSecurityPolicySources(env)`は値があれば`connectSrc`に加える(15.2・15.7)。
+- 環境のキーの対応: エントリは`runtimeSecurityPolicySources`の欄を許可先の形の規則で確かめ、1つの欄に1つの環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)で不正な値のキー名をログへ出す。`PUBLIC_API_ORIGIN`はこの対応に加えず、`validateFrontendEnv`で`mergeSecurityPolicySources`と同じ許可先の形(`https://<小文字のホスト>`(ポート無し)・`http://localhost:<ポート>`)まで検証する。形に合わない値は環境の検証の失敗となり、`invalidEnvNames`に`PUBLIC_API_ORIGIN`が載る。このため`connectSrc`の検査で不正になる値は`SENTRY_DSN`に由来するものに限られ、対応は1欄1キーのまま正しいキー名を指す。
 - 値: ローカル`http://localhost:48042`、staging`https://genai-example-2-api-staging.lab.kurachiweb.com`、prod`https://genai-example-2-api.lab.kurachiweb.com`(`project-values.md`)。
 
 ### client
@@ -1143,18 +1149,23 @@ export interface MediaLookup {
 **Contracts**: State [x]
 
 ```typescript
+import type { z } from 'zod'; // 型だけ。スキーマの値はlib/utilities/validation/zod.tsのzで作る
+
 export interface ApiKeyFormValues {
   readonly name: string;
   readonly scopes: ApiKeyScopes;
 }
-export declare const apiKeyFormSchema: z.ZodType<ApiKeyFormValues>; // checkApiKeyName・isAllowedScopeLevel(6.3)
+export declare const apiKeyFormSchema: z.ZodType<
+  ApiKeyFormValues,
+  ApiKeyFormValues
+>; // checkApiKeyName・isAllowedScopeLevel(6.3)
 ```
 
 - `ApiKeySettingsRoute`(`routes/_authenticated/settings/api-keys.tsx`): identity-authの設定ページのシェルの下に置き、`myApiKeys`をローダーで先読みする。タイトルは「APIキー」(6.1)。
 - `ApiKeySettingsPage`: 見出し`h1`「APIキー」と説明(「APIキーを使うと、公開APIからプロダクトなどの公開データを読み取ったり、自分のプロフィールとプロダクトの説明文を更新したりできます。」と`/api-docs`への「APIドキュメント」)、「APIキーを発行」、`ApiKeyList`。停止中(`viewer.status`が`SUSPENDED`)は「このアカウントは停止されているため、APIキーの発行・編集・再発行はできません。発行済みのキーは削除できます。」を示し、発行・編集・再発行を無効にする(6.10)。
 - `ApiKeyList`: 発行の新しい順、50件を超えれば「さらに表示」。0件は`EmptyState`(「APIキーはまだありません。」と説明・`/api-docs`、6.9)。失敗は`ErrorState`(6.8)。
 - `ApiKeyListItem`: 名前・権限の要約(「読み取り: プロダクト、ローンチ履歴」「読み書き: プロフィール」のように値ごとに機能の表示名を並べ、全て無効なら「権限なし」)・発行日時(`DateTime`、6.11)・「編集」「再発行」「削除」。
-- `ApiKeyFormDialog`: 発行と編集で共用する。名前の入力(50文字、40文字を超えたらカウンター)と`ApiKeyScopeFields`(機能ごとのラジオグループ。読み取りの5機能は2択、2機能は3択)。発行の初期値は`DEFAULT_ISSUE_SCOPES`(6.4)。429は文言規則のレート制限の文言(6.7)。
+- `ApiKeyFormDialog`: 発行と編集で共用する。名前の入力(50文字、40文字を超えたらカウンター)と`ApiKeyScopeFields`(機能ごとのラジオグループ。読み取りの5機能は2択、2機能は3択)。発行の初期値は`DEFAULT_ISSUE_SCOPES`(6.4)。フォームは`useAppForm<ApiKeyFormValues, ApiKeyFormValues>(apiKeyFormSchema, { defaultValues })`(`defaultValues`は名前と7機能の全欄。発行は空の名前と`DEFAULT_ISSUE_SCOPES`、編集は現在の値)と`AppForm`(`serverFieldPrefix="input"`。発行・編集の操作は`input`で引数を受けるため)で作る。`onSubmitError`は欄に対応しない詳細と想定外の失敗を受け、429は文言規則のレート制限の文言(6.7)、それ以外は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言をフォームの`FormMessage`に示す。
 - `IssuedApiKeyDialog`: 平文を読み取り専用の等幅の欄に示し、「コピー」(`navigator.clipboard.writeText`、成功で「APIキーをコピーしました。」、失敗で「APIキーをコピーできませんでした。」)と「このキーは今しか表示されません。安全な場所に保管してください。」を添える。閉じると平文の状態を破棄し、問い合わせのキャッシュにも残さない(6.5)。
 - `ApiKeyConfirmDialog`: 削除は「APIキー『{名前}』を削除しますか?」・「このキーを使った要求はすぐに使えなくなります。」・「削除」、再発行は「APIキー『{名前}』を再発行しますか?」・「同じ名前と権限の新しいキーを追加で発行します。今のキーはそのまま使えます。不要になったら削除してください。」・「再発行」(6.6・仮2)。
 

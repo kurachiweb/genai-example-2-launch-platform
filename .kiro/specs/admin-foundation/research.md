@@ -244,3 +244,16 @@ identity-authが報告済みのFR-RLMIT-012・FR-RLMIT-020・NFR-SECUR-026の改
 - **Reason**: 照会口と保存の実装とテストを所有するspecに置くと、契約の変更が1つのspecで閉じる。後続specが自分で偽物を書くと、`AuditLogReader`にメソッドを足すたびに全ての後続specの偽物が型検査で壊れるが、共有の偽物なら本specが既定の振る舞いを足すだけで済む。
 - **変えた箇所**: 設計のRevalidation Triggers・ファイル構成・追跡表・`AuditLogRecorder・AuditLogReader`の契約と説明・`backend/008`の内容・Testing Strategy・Performance & Scalability、本書の後続specへの影響、タスク3.1・3.2・12.2。番号の変更は無い。
 - **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。1回目の判定はPASSだった。軽微の指摘のうち、3.2の確かめる項目に空の入力を加え、本書の仮決定の表の前文に仮7の記録先を加えた。`spec.json`の`updated_at`を更新し、タスクの承認を保った。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の判断)
+
+- frontend-platformが実装で確定した契約(同specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に、開発者の判断(下流specの設計を今回改訂する)で本specの設計を合わせた。
+- GraphQLの操作: 操作を各アプリの`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む。`graphql()`を呼んで`.ts`のファイルに操作を書くと、操作の本文がブラウザのバンドルに残るため(frontend-platformの要件6.3)。
+- フォーム: `useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`を受ける`AppForm`の形にした。画面側のスキーマの`zod`の値は`utilities/validation/zod.ts`から読む(CSPの下で`new Function`の試行を止める`jitless`の設定を済ませた`z`)。
+- 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。
+- bot判定: `TurnstileWidget`は非表示のウィジェットで場所を取らないため、画面に判定の枠の表示と場所を設けないことを明記した。
+- 管理者側の画面シェル: `AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ちフッターを持たないため、管理者側のナビゲーションのランドマークは`AdminNavigation`が描く名前付きの`nav`で満たす(frontend-platformの要件10.8)。768px未満の開閉ボタンはヘッダーと本文の間に出る。
+- `CategoryMasterEditor`: 共通部品はアプリのプロファイルを読まないため、拒否・失敗の文言を選ぶ関数`failureMessageOf`をpropsに加えた。管理者側の画面は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を渡す(help-center・inquiry-chat・product-launch・content-reportingのカテゴリの区画が使う)。
+- `ConfirmActionDialog`: 同じ理由で、必須の`failureMessageOf: (error: unknown) => string`をpropsに加えた。`onConfirm`が例外を投げたら、ダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言をダイアログの中に`role="alert"`で示す。管理者側の画面は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を渡す(後続specの確認のダイアログも同じ)。
+- プロフィール画像の入力: `/account`の`ProfileSection`と`/accounts`の`AdminProfileDialog`に置くmedia-pipelineの`ImageUploadField`に、`contactAvailable`として`ADMIN_PROFILE.contactAvailable`を渡す(media-pipelineがアップロードの失敗の文言を選ぶために必須で受ける)。
+- 変えた箇所: design.mdのAllowed Dependencies、上流specの変更の表のfrontend-platformの行、Technology Stackの画面の行、File Structure Planの`graphql/operations/admin/`、`AdminCommonParts`(`ConfirmActionDialog`・`CategoryMasterEditor`の`failureMessageOf`と失敗の文言)、`DashboardGrid`、`AdminNavigation`、管理者アカウントの削除・ロールの変更・招待の確認、Data Contracts & Integrationのアップロード、`frontend/009`の内容、Testing Strategyのブラウザテスト。tasks.mdの10.1・10.2・10.3・11.1・11.2・11.7。要件は変えていない。

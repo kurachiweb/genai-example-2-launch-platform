@@ -271,8 +271,10 @@
 
 - [ ] 6. 利用者側の画面
 - [ ] 6.1 本specの利用者側のGraphQLの操作を加え、型を生成して許可リストを再生成する
-  - トップページの区画・ブラケット・参加費の導線の照会と決済の開始の操作。`yearBracket`の操作は、tournament-weekが書き出すフラグメント`BracketRoundFields`(`rounds`)と`BracketMatchProductFields`(`champion`)を展開し、`tournament`の`awarded`・`status`・`year`・`finalDate`と`participantCount`・`seedCount`を取得し、フラグメントを再定義しない(tournament-weekのタスク7.1、1.1の前提に含む)
-  - 完了状態: 型の生成と許可リストの再生成が成功し、clientの型検査が通る
+  - トップページの区画・ブラケット・参加費の導線の照会と決済の開始の操作を、clientの`src/graphql/operations/year-tournament/`に1ファイル1操作の`.graphql`で書く。操作名は`Client`で始め(`ClientYearTournamentBoard`・`ClientYearBracket`・`ClientMyYearEntry`・`ClientStartYearTournamentCheckout`)、`graphql()`を呼ばない
+  - `ClientYearBracket`は、tournament-weekが`.graphql`に置くフラグメント`BracketRoundFields`(`rounds`)と`BracketMatchProductFields`(`champion`)を名前で展開し、`tournament`の`awarded`・`status`・`year`・`finalDate`と`participantCount`・`seedCount`を取得し、フラグメントを再定義しない(tournament-weekのタスク7.1、1.1の前提に含む)
+  - frontend-platformの「操作の追加手順」どおり、clientで`bun run graphql:generate`、apiで`bun run graphql:allowlist`を実行する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない
+  - 完了状態: 型の生成と許可リストの再生成が成功し、clientとapiの`graphql:check`とclientの`codegen.unit.test.ts`(操作名の接頭辞)が通り、clientの型検査が通る
   - _Depends: 5.11, 5.12_
   - _Requirements: 10.1, 11.1, 12.1_
 
@@ -318,8 +320,9 @@
 
 - [ ] 7. 管理画面
 - [ ] 7.1 本specの管理画面のGraphQLの操作を加え、型を生成して許可リストを再生成する
-  - 決勝実施日の照会と保存の操作
-  - 完了状態: 型の生成と許可リストの再生成が成功し、adminの型検査が通る
+  - 決勝実施日の照会と保存の操作を、adminの`src/graphql/operations/tournament-year/`に1ファイル1操作の`.graphql`で書く。操作名は`Admin`で始め(`AdminYearFinalDateSettings`・`AdminUpdateYearFinalDate`)、`graphql()`を呼ばない
+  - frontend-platformの「操作の追加手順」どおり、adminで`bun run graphql:generate`、apiで`bun run graphql:allowlist`を実行する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない
+  - 完了状態: 型の生成と許可リストの再生成が成功し、adminとapiの`graphql:check`とadminの`codegen.unit.test.ts`(操作名の接頭辞)が通り、adminの型検査が通る
   - _Depends: 5.13_
   - _Requirements: 2.1_
 
@@ -331,12 +334,12 @@
   - _Requirements: 2.1, 2.3, 2.12_
 
 - [ ] 7.3 決勝実施日の選択と保存のフォームを作る
-  - 先に、ブラウザテストで、候補の`<select>`(ラベル・既定の選択・候補が無いときの案内)、任意の理由の上限と注記、確認のダイアログの文(変更後の受付期限・組み合わせ決定・対象期間の変化)、保存の成功の通知、拒否の理由・`final_date_locked`・`version_conflict`の案内、アクセシビリティの検査の違反が0件を確かめる
+  - 先に、ブラウザテストで、候補の`<select>`(ラベル・既定の選択・候補が無いときの案内)、任意の理由の上限と注記、確認のダイアログの文(変更後の受付期限・組み合わせ決定・対象期間の変化)、保存の成功の通知、保存の失敗でダイアログが理由の入力を保ったまま`failureMessageOf`の文言を`role="alert"`で示すこと(拒否の理由・`final_date_locked`・`version_conflict`の案内と、それ以外の失敗で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言が出て問い合わせを促す文が出ないこと)、アクセシビリティの検査の違反が0件を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Requirements: 2.2, 2.11, 2.13_
 
 - [ ] 7.4 決勝実施日の区画を作り、設定ページの区画の登録口に加える
-  - 先に、ブラウザテストで、見出しと説明と2年分のカードの表示、取得の失敗の縮退、設定ページの区画の並び(本specの10が機能フラグの20より上)を確かめる
+  - 先に、ブラウザテストで、見出しと説明と2年分のカードの表示、取得の失敗の縮退(`ErrorState`に`contactHref`を渡さず、問い合わせのボタンと問い合わせを促す文が出ず、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)、設定ページの区画の並び(本specの10が機能フラグの20より上)を確かめる
   - 登録口に`tournament-year.final-date`(10)を加える
   - 完了状態: ブラウザテストが成功し、ローカルで最上位管理者が決勝実施日を保存すると監査ログの画面に記録が出る
   - _Requirements: 2.1_

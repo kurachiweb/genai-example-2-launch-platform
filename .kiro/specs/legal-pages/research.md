@@ -186,3 +186,12 @@ FR-ADMAG-001は改訂しない。Q1により法務文書の操作を監査ログ
 - `docs/GUIDES/service/design/002-page-layouts.md`・`003-text-and-copy-rules.md` — URL・文字数・文言
 - `docs/requirements/README.md` — FR-ADMAG-001・007・008・010、LR-001・008、FR-MDOWN-001〜012、I18N-002・004、DR-014
 - 参照したスキルの規則: cc-sddの`kiro-spec-requirements`(EARS・レビューの関門)、`kiro-spec-design`(設計の原則・軽量の調査・統合・レビューの関門)、`kiro-spec-tasks`
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の判断)
+
+- frontend-platformが実装で確定した契約(同specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に、開発者の判断(下流specの設計を今回改訂する)で本specの設計を合わせた。
+- GraphQLの操作: 操作を各アプリの`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む。`graphql()`を呼んで`.ts`のファイルに操作を書くと、操作の本文がブラウザのバンドルに残るため(frontend-platformの要件6.3)。tasks.mdの操作のタスクに、各アプリの`graphql:generate`とapiの`graphql:allowlist`の手順を書いた。
+- フォーム: `useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`の形にした。画面側のスキーマの`zod`の値は`utilities/validation/zod.ts`から読む(CSPの下で`new Function`の試行を止める`jitless`の設定を済ませた`z`)。
+- 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。
+- `toLegalEditorErrorState`は`AppForm`の`onSubmitError`から呼ぶため、引数を`unknown`にし、`GraphQLClientError`でない例外を`unexpected`(文言は`errorMessageOf`)にした。
+- 変えた箇所: design.mdのAllowed Dependencies、Dependency directionの操作の置き場所、Technology Stackの画面の行、File Structure Planの両アプリの`graphql/operations/legal/`、`ClientLegalPages`の取得の失敗、`AdminLegalPages`(`toLegalEditorErrorState`・`LegalDraftForm`と下書きの破棄の`ConfirmActionDialog`の`failureMessageOf`・`PublishLegalDocumentDialog`・失敗の分岐)。tasks.mdの5.3・6.1・6.3。要件は変えていない。

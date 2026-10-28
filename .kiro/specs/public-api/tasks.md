@@ -29,9 +29,9 @@
   - _Requirements: 13.4, 8.9_
 
 - [ ] 1.5 (P) clientの環境に公開APIのオリジンを加え、CSPの接続先に入れる
-  - content-processingの`CLIENT_SITE_ORIGIN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順で、clientの環境の検証に`PUBLIC_API_ORIGIN`(URLのオリジン、clientだけ必須)を加え、公開設定の`publicApiOrigin`(adminは未定義)へ渡し、実行時の許可先の`connect-src`に値があれば加える
+  - content-processingの`CLIENT_SITE_ORIGIN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順で、clientの環境の検証に`PUBLIC_API_ORIGIN`(clientだけ必須。CSPの許可先の形`https://<小文字のホスト>`(ポート無し)・`http://localhost:<ポート>`まで検証する)を加え、公開設定の`publicApiOrigin`(adminは未定義)へ渡し、実行時の許可先の`connect-src`に値があれば加える。エントリの許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない
   - clientのWrangler設定の3環境に値を書く(ローカル`http://localhost:48042`、staging・prodはapiのホスト名。infra-deliveryの改訂1の表のclientの行に合わせる)
-  - 先に、単体テストで、不正なオリジンの拒否・adminで値が無くても検証が通ること・ページのCSPの`connect-src`に値が入りadminには入らないことを確かめる
+  - 先に、単体テストで、不正なオリジンと許可先の形に合わない値(ポート付きの`https`・大文字のホスト)が環境の検証の失敗としてキー名`PUBLIC_API_ORIGIN`で報告されること・adminで値が無くても検証が通ること・ページのCSPの`connect-src`に値が入りadminには入らないことを確かめる
   - 完了状態: frontend-libとclientの単体テストと設定の検査のテストが成功し、ローカルのclientのページのCSPに公開APIのオリジンが載る
   - _Boundary: `apps/frontend-lib/server/env/frontend-env.ts`・`apps/frontend-lib/server/http/security-policy.ts`・`apps/client/wrangler.jsonc`・`apps/client/test/config/wrangler-config.unit.test.ts`_
   - _Requirements: 15.2, 15.7_
@@ -173,11 +173,13 @@
 
 - [ ] 6. 利用者側の画面: APIキーの管理
 - [ ] 6.1 APIキーの管理の操作と設定ページのナビゲーションを加える
-  - 一覧・発行・編集・再発行・削除の操作を定義してコード生成と許可リストを更新し、設定ページのナビゲーションの登録箇所に「APIキー」(`order` 90)を追記する
-  - 完了状態: コード生成の検査と許可リストの食い違いの検査が成功し、設定ページのナビゲーションの単体テストで「APIキー」が書き出しの順に並ぶ
+  - 一覧・発行・編集・再発行・削除の操作を、clientの`src/graphql/operations/public-api/`に1ファイル1操作の`.graphql`(操作名は`ClientMyApiKeys`・`ClientIssueApiKey`・`ClientUpdateApiKey`・`ClientReissueApiKey`・`ClientDeleteApiKey`)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して`src/graphql/generated/`を更新し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
+  - 設定ページのナビゲーションの登録箇所に「APIキー」(`order` 90)を追記する
+  - 完了状態: `graphql:check`と許可リストの食い違いの検査とclientの`codegen.unit.test.ts`(操作名の接頭辞)が成功し、設定ページのナビゲーションの単体テストで「APIキー」が書き出しの順に並ぶ
   - _Requirements: 6.1_
 
 - [ ] 6.2 (P) 発行と編集のフォームと権限スコープの選択欄を作る
+  - フォームのスキーマはZodの値を`lib/utilities/validation/zod.ts`の`z`から読んで作り、フォームは`useAppForm<ApiKeyFormValues, ApiKeyFormValues>(apiKeyFormSchema, { defaultValues })`(全欄の既定値)と`AppForm`(`serverFieldPrefix="input"`・`onSubmitError`)で作る。`onSubmitError`は429を文言規則のレート制限の文言、それ以外を`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言で示す
   - 先に、ブラウザテストで、名前の検証(空・51文字)のフォーカスアウトと送信時の表示、40文字を超えた後のカウンター、7機能の選択肢の数(2択と3択)、発行の初期値、編集で現在の値が入ること、429の文言、axe-coreの検査を確かめる
   - 完了状態: ブラウザテストとフォームのスキーマの単体テストが成功し、Storybookに状態ごとの例がある
   - _Depends: 1.1, 1.3_

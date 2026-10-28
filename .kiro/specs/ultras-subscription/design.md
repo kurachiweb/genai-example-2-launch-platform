@@ -55,7 +55,7 @@
 - dev-tooling: ルートの`playwright.config.ts`と`e2e/support/playwright-config.ts`の`createPlaywrightConfig`(プロジェクトの組み立て)、テスト方針の文書`docs/GUIDES/tech/testing/001-test-strategy.md`。タスク10.1で、共有の行を書き換えるE2Eを直列にする組み立てと記述を加える(上流への影響)。
 - payments: `PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseFulfillment`・`SubscriptionEventSink`・`SubscriptionChange`・`PURCHASE_KIND_REGISTRATIONS`・`SUBSCRIPTION_EVENT_SINKS`・apiのアプリケーション層の`CheckoutStarter`・`StripeGateway`の`cancelSubscription`・`createPortalSession`・`CustomerDirectory`・`PriceCatalog`・GraphQLの`Money`・`CheckoutStart`・`MoneyText`。仮5の追加(`afterCommit`・`cancelAt`)と仮3の追加(購入確認メールの追加事項)は、paymentsの要件・設計・タスクに反映済み(paymentsのU1・U2、2026-10-23に開発者が承認)で、paymentsのタスクが先に実装する。本specはpaymentsのコードを変更しない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`、adminの`ADMIN_PROFILE`(`contactAvailable`)、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`Admin`・`src/graphql/generated/graphql.ts`の生成物)。
 - npmパッケージ: 新規は無い。
 - 後続specは本specの`core/ultras`・`workers/ultras`の公開の契約(`UltrasEntitlements`・`UltrasPromotionFlagReader`・`UltrasPlanExport`・`UltrasActivationHandlerRegistration`)と、clientの`UltrasPromotionGate`・管理画面の`ADMIN_SETTINGS_SECTIONS`・料金ページの`PRICING_SECTIONS`だけに依存し、テーブルを直接読み書きしない。data-exportも本specのテーブルを直接読まず、本specが所有するエクスポート部品`UltrasPlanExport`を呼ぶ。
 
@@ -248,16 +248,19 @@ apps/
 │   │   ├── portal-return-notice.tsx                    # Portalから戻った直後の反映待ち
 │   │   ├── plan-page.tsx                               # プラン管理画面の全体
 │   │   └── ultras-promotion-gate.tsx                   # 導線の表示の可否(後続specも使う)
-│   └── graphql/operations/ultras/
-│       ├── ultras-offer.ts                             # ultrasOffer
-│       ├── viewer-ultras.ts                            # viewerUltras
-│       └── ultras-actions.ts                           # startUltrasCheckout・createUltrasPortalSession
+│   └── graphql/operations/ultras/                      # 1ファイル1操作の.graphql(操作名はClientで始める)
+│       ├── ultras-offer.graphql                        # ClientUltrasOffer(ultrasOffer)
+│       ├── viewer-ultras.graphql                       # ClientViewerUltras(viewerUltras)
+│       ├── start-ultras-checkout.graphql               # ClientStartUltrasCheckout(startUltrasCheckout)
+│       └── create-ultras-portal-session.graphql        # ClientCreateUltrasPortalSession(createUltrasPortalSession)
 └── admin/src/
     ├── routes/_authenticated/settings/index.tsx        # /settings
     ├── composition/admin-settings-sections.ts          # ADMIN_SETTINGS_SECTIONS(tournament-year・notificationsが追記)
     ├── components/settings/admin-settings-page.tsx     # 区画の並び
     ├── components/ultras/promotion-setting-section.tsx # フラグの区画
-    └── graphql/operations/ultras/promotion-setting.ts  # ultrasPromotionSetting・updateUltrasPromotionSetting
+    └── graphql/operations/ultras/                      # 1ファイル1操作の.graphql(操作名はAdminで始める)
+        ├── ultras-promotion-setting.graphql            # AdminUltrasPromotionSetting(ultrasPromotionSetting)
+        └── update-ultras-promotion-setting.graphql     # AdminUpdateUltrasPromotionSetting(updateUltrasPromotionSetting)
 ```
 
 テストは各ファイルの隣に置く(`*.unit.test.ts`・`*.worker.test.ts`・`*.browser.test.tsx`)。E2Eは`e2e/client/ultras.e2e.test.ts`・`e2e/admin/ultras-promotion.e2e.test.ts`。
@@ -926,6 +929,8 @@ type Mutation {
 
 ### client
 
+- 操作はclient・adminの`src/graphql/operations/ultras/`に1ファイル1操作の`.graphql`で書き、`graphql()`を呼ばない。操作名はclientが`Client`、adminが`Admin`で始め(File Structure Plan)、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない(frontend-platformの「操作の追加手順」)。
+
 #### PricingPage・PricingSections・UltrasPricingSection・UltrasBenefitList・UltrasSubscribeButton
 
 ```typescript
@@ -973,7 +978,8 @@ export declare const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[]; /
 ```
 
 - `/_authenticated/settings/index.tsx`: `AdminPageHeader`「設定」と`ADMIN_SETTINGS_SECTIONS`を`order`順に並べる(10.9)。`ADMIN_NAV_ITEMS`に`{ to: '/settings', label: '設定', order: 130 }`。
-- `PromotionSettingSection`: 現在の値・最後に変更した日時(`DateTime`)と管理者のニックネームを表示する(10.1)。`RoleGate({ minimum: 'super_admin' })`のときだけスイッチを有効にし、それ以外は参照だけで「最上位管理者だけが変更できます」と示す(10.3)。切り替えは`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`)で確定し、`version_conflict`なら最新を読み直す案内を出す(10.2・10.4)。説明文に「オフにすると未加入者への導線と新規加入を止めます。加入中の利用者には影響しません」(10.7)。
+- `PromotionSettingSection`: 現在の値・最後に変更した日時(`DateTime`)と管理者のニックネームを表示する(10.1)。`RoleGate({ minimum: 'super_admin' })`のときだけスイッチを有効にし、それ以外は参照だけで「最上位管理者だけが変更できます」と示す(10.3)。切り替えは`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`)で確定する(10.2)。切り替えの失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す。`failureMessageOf`は`version_conflict`なら最新を読み直す案内(10.4)を、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返す。説明文に「オフにすると未加入者への導線と新規加入を止めます。加入中の利用者には影響しません」(10.7)。
+- 失敗の表示(管理者側は問い合わせの画面を持たない): `PromotionSettingSection`の取得の失敗は区画の中の`ErrorState`(再試行)で縮退し、`contactHref`を渡さない。`GraphQLClientError`でない例外に代えて出す文言(`ErrorState`・`ConfirmActionDialog`の`failureMessageOf`・トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、問い合わせを促す文を出さない。
 
 ## Data Models
 

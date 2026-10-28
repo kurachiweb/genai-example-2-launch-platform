@@ -51,7 +51,7 @@
 - 出力用の部品(research.mdのResearch Logの表): `ULTRAS_TYPES.UltrasPlanExport`、`NOTIFICATIONS_PLATFORM_TYPES.NotificationSettingsExport`、`PUBLIC_API_PLATFORM_TYPES.ApiKeyExport`、`PROFILE_PLATFORM_TYPES.ProfileExport`・`FollowExport`、`PRODUCT_PLATFORM_TYPES.ProductExport`・`LaunchExport`・`ProductDirectory`(`findSummaries`)、`MATCH_PLATFORM_TYPES.MatchExport`・`UpvoteExport`、`WEEK_TOURNAMENT_TYPES.WeekAwardExport`、`YEAR_TOURNAMENT_TYPES.YearAwardExport`、`ENGAGEMENT_PLATFORM_TYPES.CommentExport`・`RatingExport`、`REPORTING_PLATFORM_TYPES.ReportExport`、`INQUIRY_EXPORT_TYPES.InquiryExport`、`SPONSORSHIP_PLATFORM_TYPES.SponsorshipExport`、`PAYMENTS_TYPES.PaymentHistoryExport`。いずれもeventのアプリケーション層の3つの読み取りの部品(とその単体テスト・`apps/event/test/data-export/`の契約と結合のテスト)だけが読み込む。
 - media-pipeline: `MEDIA_TYPES.MediaFiles`(`findMany`・`openContent`)・`MediaFileView`・`attachmentDisposition`。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
-- frontend-platform: `RelayRoute`・`relay-routes.ts`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`notify`・`DateTime`・`EmptyState`・`PartialErrorState`・`LoadingSkeleton`・shadcn/uiの部品(ボタン・バッジ・カード)・`runAxe`。
+- frontend-platform: `RelayRoute`・`defineRelayRoute`・`relay-routes.ts`(`RELAY_ROUTES`)・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`notify`・`DateTime`・`EmptyState`・`PartialErrorState`・`LoadingSkeleton`・shadcn/uiの部品(ボタン・バッジ・カード)・`runAxe`、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`src/graphql/generated/graphql.ts`の生成物)。
 - npmパッケージ: `zod`・`inversify`・`drizzle-orm`(上流で採用済み)と、`fflate` 0.8.3(apiとevent、tech-stack.mdに記載済み。ZIPを書くのはeventだけで、apiは`backend-lib`の型検査とテストのために依存する)。テストでは同パッケージの`unzipSync`を使う。
 
 ### Revalidation Triggers
@@ -259,8 +259,10 @@ apps/
     │   ├── data-export-list.tsx                             # 一覧と自動の取得し直し
     │   ├── data-export-item.tsx                             # 状態・日時・ダウンロード・失敗の案内
     │   └── data-export-status-badge.tsx
-    ├── composition/data-export-relay-route.ts               # DATA_EXPORT_DOWNLOAD_RELAY_ROUTE(*.unit.test.ts)
-    └── graphql/operations/data-export/data-export.ts        # myDataExports・requestDataExport
+    ├── composition/data-export-relay-route.ts               # DATA_EXPORT_DOWNLOAD_RELAY_ROUTE(defineRelayRouteで定義、*.unit.test.ts)
+    └── graphql/operations/data-export/                      # 1ファイル1操作の.graphql(操作名はClientで始める)
+        ├── my-data-exports.graphql                          # ClientMyDataExports(myDataExports)
+        └── request-data-export.graphql                      # ClientRequestDataExport(requestDataExport)
 e2e/
 └── client/data-export.e2e.test.ts
 docs/
@@ -279,8 +281,8 @@ docs/
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`internal-routes.ts`・`scheduled-jobs.ts` — モジュール・スキーマモジュール・内部REST・2つのジョブ。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`user-lifecycle-async-handlers.ts` — モジュール・2つの処理と再試行の方針・物理削除の処理。
 - `apps/api/package.json`・`apps/event/package.json`・各`bun.lock` — `fflate` 0.8.3を版固定で加える(apiは`backend-lib`の検査とテストのため)。
-- `apps/client/src/composition/settings-navigation.ts`・`relay-routes.ts` — ナビゲーションの1件と中継の経路。
-- APIサーバーの許可リスト(`apps/api/src/presentation/graphql/generated/allowlist.json`、`graphql:allowlist`で再生成)と、APIサーバーのスキーマのファイル・clientの生成した型。
+- `apps/client/src/composition/settings-navigation.ts`・`relay-routes.ts` — ナビゲーションの1件と、`defineRelayRoute`で定義した中継の経路。
+- APIサーバーの許可リスト(`apps/api/src/presentation/graphql/generated/allowlist.json`、`graphql:allowlist`で再生成)と、APIサーバーのスキーマのファイル・clientの生成物(`src/graphql/generated/`、clientの`bun run graphql:generate`で再生成)。
 - `docs/GUIDES/tech/backend/README.md`・`security/README.md` — 文書一覧の行。
 - `docs/onboardings/project-values.md` — メッセージ種別・ジョブ・処理の名前と`order`、回数制限の規則の名前と値、メール種別、オブジェクトのキーの接頭辞、部分の大きさ・リース・見張りの遅延・再試行の回数、中継の経路と`timeoutMs`。
 - `docs/onboardings/tech-stack.md` — 「アーカイブ生成」のfflateに、同期のストリーミングのAPIだけを使う旨を追記する。
@@ -1029,7 +1031,9 @@ export interface ArchiveGenerationService {
 - `useRequestDataExport`: `requestDataExport`を送り、成功で「エクスポートを受け付けました。準備ができたらメールでお知らせします。」を`notify`し`myDataExports`を無効化する。`DataExportErrors`が`rate_limited`(再試行の秒数から再び要求できる日時を求めて表示)・`email_not_verified`・通信の失敗を文言へ対応付ける(要件2.3・11.5)。送信中はボタンを無効にする(要件11.4)。
 - `DataExportList`: `myDataExports`を20件ずつ表示し、続きがあれば「さらに表示」で次のページを読み込む(`useInfiniteQuery`、仮4)。作成中が1件でもあれば読み込んだページを10秒ごとに取得し直す(`refetchInterval`、無くなれば止める)。取得の失敗は区画の中の`PartialErrorState`、0件は`EmptyState`(要件11.1・11.3・11.6・11.7)。
 - `DataExportItem`: 要求日時、`DataExportStatusBadge`(作成中・完了・期限切れ・失敗を文言で示し、色だけに頼らない)、完了は完了日時・有効期限・ファイル名・大きさ(1,024基数)と`<a href={downloadPath}>`(`download`属性は付けずサーバーの`Content-Disposition`に任せる)、失敗は失敗の日時と案内(`TOO_LARGE`は問い合わせへのリンク)。日時は`DateTime`(`<time datetime>`)(要件9.1・11.1・11.8・11.9)。 期限切れは完了日時・有効期限・ファイル名・大きさと「有効期限を過ぎたため削除しました」の案内を示し、ダウンロードのリンクを出さない(要件11.8、仮4)。
-- `DATA_EXPORT_DOWNLOAD_RELAY_ROUTE`: `path: '/_bff/exports/*'`、`methods: ['GET']`、`upstreamPath: /internal/data-exports/<exportId(百分率符号化)>/archive`、`timeoutMs: 900000`。adminの`relay-routes.ts`には加えない。
+- `DATA_EXPORT_DOWNLOAD_RELAY_ROUTE`: frontend-platformの`defineRelayRoute`で`path: '/_bff/exports/*'`、`methods: ['GET']`、`upstreamPath: /internal/data-exports/<exportId(百分率符号化)>/archive`、`timeoutMs: 900000`を定義し、凍結した経路にする(素のオブジェクトはclientの`composition.unit.test.ts`の凍結の検査を通らない)。clientの`RELAY_ROUTES`へ、末尾が`/*`の接頭辞の経路として完全一致の経路(`GRAPHQL_RELAY_ROUTE`など)より後に加え、adminの`relay-routes.ts`には加えない。
+- 中継は、上流の5xxで`Content-Type`が`application/json`・`application/*+json`でない応答を実行基盤が返した失敗とみなし、503`upstream_unavailable`(`Retry-After: 5`)に置き換える(frontend-platformの要件2.10の例外)。ZIPを返すダウンロードの経路も、503(R2の失敗)などの5xxは共通のエラー形式(JSON)で返す。時間切れは503`upstream_timeout`になる。
+- 操作はclientの`src/graphql/operations/data-export/`に1ファイル1操作の`.graphql`で書き、`graphql()`を呼ばない。操作名は`Client`で始め(`ClientMyDataExports`・`ClientRequestDataExport`)、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない(frontend-platformの「操作の追加手順」)。
 
 ## Data Models
 

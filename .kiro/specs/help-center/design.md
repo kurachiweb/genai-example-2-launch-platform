@@ -53,7 +53,10 @@
 - admin-foundation: `requireAdmin`(`admin-guard.ts`)・`CurrentAdmin`・`AdminRole`・`hasRole`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`AUDIT_REASON_MAX`・`ADMIN_PLATFORM_TYPES.AdminDirectory`・`AdminDirectory`・`ADMIN_NAV_ITEMS`・`RoleGate`・`useAdminRole`・`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`・`CategoryMasterEditor`、E2Eの`signInAsNewAdmin`・`executeLocalD1`・`sqlStringLiteral`。
 - inquiry-chat: `CATEGORY_SECTIONS`・`CategorySection`(登録の追記だけ)。
 - media-pipeline: `mediaFileLoader`・`toMediaImage`・GraphQLの`MediaImage`・`MediaPicture`・`MediaPlaceholder`。
-- frontend-platform: `SITE_LAYOUT_SLOTS`(`footerHelpLinks`への追記)・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`buildPageHead`・`PublicRuntimeConfig.clientSiteOrigin`・`NotFoundView`・`ErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`DateTime`・shadcn/uiの部品(`select`・`checkbox`・`radio-group`・`badge`・`button`)・`runAxe`。
+- frontend-platform: `SITE_LAYOUT_SLOTS`(`footerHelpLinks`への追記)・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`buildPageHead`・`PublicRuntimeConfig.clientSiteOrigin`・`NotFoundView`・`ErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`DateTime`・shadcn/uiの部品(`select`・`checkbox`・`radio-group`・`badge`・`button`)・`runAxe`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
+  - GraphQLの操作は各アプリの`src/graphql/operations/help/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
+  - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。画面側のスキーマの`zod`の値は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
+  - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
 - e2e: `resolveE2ETargets`(`e2e/support/targets.ts`)。
 - npmパッケージ: 新規は無い。
 - 後続specは、本specのGraphQLの公開の操作と`PinnedHelpLinks`の表示だけに触れ、`help_*`のテーブルを直接読み書きしない。
@@ -250,7 +253,8 @@ apps/
 │   │   ├── related-help-articles.tsx                    # 同カテゴリの記事
 │   │   ├── help-article-skeleton.tsx
 │   │   └── pinned-help-links.tsx                        # フッターのピン留め記事
-│   └── graphql/operations/help/public-help.ts           # helpCenter・helpArticle・helpArticleSearch・pinnedHelpArticles
+│   └── graphql/operations/help/                         # 1ファイル1操作の*.graphql(操作名はClientで始める)
+│       └── help-center.graphql · help-article.graphql · help-article-search.graphql · pinned-help-articles.graphql
 ├── admin/src/
 │   ├── routes/_authenticated/help-articles/
 │   │   ├── index.tsx                                    # /help-articles(絞り込みのクエリ)
@@ -261,7 +265,7 @@ apps/
 │   │   ├── help-article-filter.ts                       # 条件の解析・作成者の選択肢・絞り込み(*.unit.test.ts)
 │   │   ├── help-article-filters.tsx                     # 絞り込みのバー
 │   │   ├── help-article-table.tsx                       # 全件の表
-│   │   ├── help-article-form-schema.ts                  # フォームのzodスキーマ(*.unit.test.ts)
+│   │   ├── help-article-form-schema.ts                  # フォームのスキーマ(zodの値はutilities/validation/zod.ts、*.unit.test.ts)
 │   │   ├── help-article-form.tsx                        # 作成・編集のフォーム
 │   │   ├── help-article-handle-field.tsx                # ハンドルと使用可否・旧ハンドルの案内
 │   │   ├── help-article-delete-button.tsx               # 削除の確認と実行
@@ -269,9 +273,9 @@ apps/
 │   │   ├── help-article-order-editor.tsx                # カテゴリ内の記事の並べ替え(ピン留めの群とそれ以外の群)
 │   │   ├── help-category-order-editor.tsx               # カテゴリの並べ替え
 │   │   └── help-category-section.tsx                    # カテゴリのページの区画
-│   └── graphql/operations/help/
-│       ├── admin-help-articles.ts                       # 記事の照会・使用可否・作成・編集・削除・並べ替え
-│       └── admin-help-categories.ts                     # カテゴリの照会・追加・名前の変更・削除・並べ替え
+│   └── graphql/operations/help/                         # 1ファイル1操作の*.graphql(操作名はAdminで始める)
+│       ├── articles/*.graphql                           # 記事の照会・使用可否・作成・編集・削除・並べ替え
+│       └── categories/*.graphql                         # カテゴリの照会・追加・名前の変更・削除・並べ替え
 e2e/admin/help-center.e2e.test.ts                        # 管理画面の操作から利用者側の表示まで
 docs/GUIDES/tech/frontend/011-table-of-contents.md        # 見出しから作る目次の規約
 ```
@@ -1239,7 +1243,7 @@ export declare function filterHelpArticles<
 
 - ルート`/help-articles`(`routes/_authenticated/help-articles/index.tsx`): `validateSearch`は`parseHelpArticleFilter`。`adminHelpArticles`と`adminHelpCategories`を読み、`AdminPageHeader`(「ヘルプ記事」、モデレーター以上に「新規作成」と「並び順を変更」(`/help-articles/order`)を`RoleGate`で表示し、閲覧のみには「並び順を見る」を表示、12.2)、`HelpArticleFilters`、`HelpArticleTable`(9.1・9.3・9.5)。
 - `HelpArticleFilters`: `AdminFilterBar`に作成者(`buildCreatorOptions`)・カテゴリ(APIの並び順のまま)・ステータスの`select`。適用でURLのクエリを置き換える(9.3・9.4・9.5)。
-- `HelpArticleTable`: `AdminDataTable`(`pagination`なし)。列はタイトル(編集画面へのリンク)・ハンドル・カテゴリ・ステータス(バッジ)・ピン留め・作成者(`AdminAvatar`とニックネーム、削除済みは「削除済みの管理者」)・更新日時(`DateTime`)。空のメッセージは記事が0件なら「ヘルプ記事はまだありません。」、絞り込みの結果が0件なら「条件に一致するヘルプ記事はありません。」。取得エラーは`error`の再試行(9.2・9.6)。
+- `HelpArticleTable`: `AdminDataTable`(`pagination`なし)。列はタイトル(編集画面へのリンク)・ハンドル・カテゴリ・ステータス(バッジ)・ピン留め・作成者(`AdminAvatar`とニックネーム、削除済みは「削除済みの管理者」)・更新日時(`DateTime`)。空のメッセージは記事が0件なら「ヘルプ記事はまだありません。」、絞り込みの結果が0件なら「条件に一致するヘルプ記事はありません。」。取得エラーは`error`の再試行(文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、9.2・9.6)。
 - `ADMIN_NAV_ITEMS`に「ヘルプ記事」(`/help-articles`・100)を加える(9.7)。
 
 #### HelpArticleNewRoute・HelpArticleEditRoute・HelpArticleFormSchema・HelpArticleForm・HelpArticleHandleField・HelpArticleDeleteButton
@@ -1267,9 +1271,9 @@ export interface HelpArticleFormProps {
 - `/help-articles/new`(`new.tsx`): `adminHelpCategories`を読み、`HelpArticleForm`(`mode: 'create'`)。閲覧のみの管理者は一覧へ戻す。保存の成功で「ヘルプ記事を作成しました。」の`notify`と編集画面への移動(6.10)。
 - `/help-articles/$articleId`(`$articleId.tsx`): `adminHelpArticle`と`adminHelpCategories`を読む。`null`なら「このヘルプ記事は削除されています。」と一覧への導線。`HelpArticleForm`(`mode: 'edit'`、`readOnly`は`!hasRole(role, 'moderator')`)。公開なら「公開ページを開く」(`clientSiteOrigin + '/help/' + ハンドル`、`target="_blank"`・`rel="noopener"`、6.11)。モデレーター以上に`HelpArticleDeleteButton`。保存の成功で「ヘルプ記事を保存しました。」と再読み込み。
 - `HelpArticleFormSchema`: サーバーと同じ定数と判定(`checkHelpTitle`・`checkHelpSubtitle`・`checkHandleFormat`・`markdownTextSchema`(100,000書記素)・`AUDIT_REASON_MAX`)から組み立てる(6.1・6.2)。
-- `HelpArticleForm`: `useAppForm`。欄の順はタイトル・サブタイトル・ハンドル(`HelpArticleHandleField`)・カテゴリ(`select`、APIの並び順、11.7)・ピン留め(`checkbox`)・ステータス(`radio-group`、既定は下書き)・本文(`MarkdownEditor`、`maxGraphemes` 100000、`preview`は`useMarkdownOptions({ externalLinkRel: HELP_ARTICLE_EXTERNAL_LINK_REL, idScope: 'preview' })`)・変更の理由(`ReasonField`、任意)・保存。各欄はフォーカスアウトで検証する(6.3・6.4)。編集では`expectedRevision`を送る。`help_article_handle_unavailable`はハンドルの欄、`validation_error`は`applyServerFieldErrors`で欄へ(`fields.categoryId`は「カテゴリを選択してください。」、6.5)、`help_article_conflict`は再読み込みの案内(6.8)、`help_article_not_found`は削除の案内(6.9)。`readOnly`なら全欄を無効にし保存を出さない(12.2)。カテゴリを変えると保存で移動先のカテゴリの末尾に置かれる旨を、カテゴリの欄の説明に示す(6.12)。
+- `HelpArticleForm`: `useAppForm(HelpArticleFormSchema, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)。欄の順はタイトル・サブタイトル・ハンドル(`HelpArticleHandleField`)・カテゴリ(`select`、APIの並び順、11.7)・ピン留め(`checkbox`)・ステータス(`radio-group`、既定は下書き)・本文(`MarkdownEditor`、`maxGraphemes` 100000、`preview`は`useMarkdownOptions({ externalLinkRel: HELP_ARTICLE_EXTERNAL_LINK_REL, idScope: 'preview' })`)・変更の理由(`ReasonField`、任意)・保存。各欄はフォーカスアウトで検証する(6.3・6.4)。編集では`expectedRevision`を送る。`help_article_handle_unavailable`はハンドルの欄、`validation_error`は`AppForm`が`applyServerFieldErrors`で欄へ(`fields.categoryId`は「カテゴリを選択してください。」、6.5)、`onSubmitError`で`help_article_conflict`は再読み込みの案内(6.8)、`help_article_not_found`は削除の案内(6.9)、それ以外の失敗と欄に対応しない詳細は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。`readOnly`なら全欄を無効にし保存を出さない(12.2)。カテゴリを変えると保存で移動先のカテゴリの末尾に置かれる旨を、カテゴリの欄の説明に示す(6.12)。
 - `HelpArticleHandleField`: フォーカスアウトで形式を検査し、正しければ`helpArticleHandleAvailability(handle, articleId)`で確かめ、`UNAVAILABLE`なら「このハンドルは既に使われています。別の文字列を入力してください。」、`AVAILABLE_RELEASES_PREVIOUS`なら「このハンドルは別の記事の以前のハンドルです。保存すると、その記事の以前のURLは転送されなくなります。」(7.7)。旧ハンドルがあれば「以前のハンドル<旧>のURLは、次にハンドルを変更するか、記事を削除するか、他の記事が同じハンドルを設定するまで新しいURLへ転送されます。」(7.11)。
-- `HelpArticleDeleteButton({ article })`: `ConfirmActionDialog`(タイトル「ヘルプ記事『<タイトル>』を削除しますか?」、説明「記事と以前のURLの転送は削除され、元に戻せません。」、確認「削除」、理由`optional`、`audited: true`、8.1)。成功で「ヘルプ記事を削除しました。」と一覧へ移動(8.5)。`help_article_not_found`は削除の案内と一覧への導線(8.4)。
+- `HelpArticleDeleteButton({ article })`: `ConfirmActionDialog`(タイトル「ヘルプ記事『<タイトル>』を削除しますか?」、説明「記事と以前のURLの転送は削除され、元に戻せません。」、確認「削除」、理由`optional`、`audited: true`、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、8.1)。成功で「ヘルプ記事を削除しました。」と一覧へ移動(8.5)。失敗はダイアログの中に`failureMessageOf`の文言で示し、`help_article_not_found`ではAPIの削除の案内に加えて一覧への導線を出す(8.4)。
 
 #### ReorderableList・HelpArticleOrderRoute・HelpArticleOrderEditor・HelpCategoryOrderEditor
 
@@ -1293,7 +1297,7 @@ export interface ReorderableListProps<T> {
 #### HelpCategorySection
 
 - `CATEGORY_SECTIONS`に`{ id: 'help-center.help-categories', order: 20, title: 'ヘルプ記事カテゴリ', component: HelpCategorySection }`を加える(11.8)。
-- `HelpCategorySection`: `adminHelpCategories`(管理者が指定した並び順)を読み、`CategoryMasterEditor`(`withHandle: false`、`canEdit`は`useAdminRole`がモデレーター以上、`systemDefault`は「その他」、`categories`はAPIの順のまま、11.7)と、その下に`HelpCategoryOrderEditor`(閲覧のみは並びの表示だけ)を置く。削除では`articleCount`を使い「付け替わる記事は<件数>件です。付け替えた記事は「その他」の末尾に並びます。」を確認に示す(inquiry-chatの`InquiryCategorySection`と同じ方法、11.5)。拒否は`GraphQLClientError`の文言を表示する(11.1〜11.3)。追加・名前の変更・削除・並べ替えの成功の後は`adminHelpCategories`を取得し直す。
+- `HelpCategorySection`: `adminHelpCategories`(管理者が指定した並び順)を読み、`CategoryMasterEditor`(`withHandle: false`、`canEdit`は`useAdminRole`がモデレーター以上、`systemDefault`は「その他」、`categories`はAPIの順のまま、11.7)と、その下に`HelpCategoryOrderEditor`(閲覧のみは並びの表示だけ)を置く。削除では`articleCount`を使い「付け替わる記事は<件数>件です。付け替えた記事は「その他」の末尾に並びます。」を確認に示す(inquiry-chatの`InquiryCategorySection`と同じ方法、11.5)。拒否・失敗は`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言、11.1〜11.3)。追加・名前の変更・削除・並べ替えの成功の後は`adminHelpCategories`を取得し直す。
 
 ### e2e・docs
 
@@ -1341,6 +1345,7 @@ export interface ReorderableListProps<T> {
 
 - 想定内の失敗は`AppError`で返し、画面が`extensions.code`で出し分ける。保存・削除・並べ替えの競合は一括の書き込みの取り消しと読み直しで分類する。
 - 索引の更新の依頼の失敗は保存の結果を変えない(content-processingの日次の再抽出が完了させる)。作成者の照会の失敗は記事の表示を止めず、作成者を削除済みとして`warn`のログを残す(NFR-AVAIL-002の縮退)。フッターのピン留め記事の失敗はフッターに何も足さない。
+- 画面に出す失敗の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(利用者側は`CLIENT_PROFILE`、管理者側は`ADMIN_PROFILE`)。管理者側の画面(一覧・編集・並べ替え・カテゴリの区画)は`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない。
 
 ### Error Categories and Responses
 

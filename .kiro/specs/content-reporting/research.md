@@ -274,3 +274,13 @@
 - 設計のレビューの関門(kiro-spec-designのdesign-review-gate)を、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。1回目はNEEDS_FIXES(必須3件: 手での完了で依頼待ちの通知が残り手での変更の後に送られ得ること、エラーの分類の「手で対応済にする」、ファイル構成の状態の変更の部品の説明)で、手での完了でも依頼待ちの通知を`none`へ戻すこと(要件8.3)、参照を消した案件の却下で投稿者への通知を`skipped`にすること(要件11.5)、表の要件の番号と件数の上限と文言を直した。2回目はPASSで、軽微の指摘(Domain Modelと仮3の行の補足)に従って直した。
 - タスクのグラフのサニティレビュー(kiro-spec-tasks)を、新しいサブエージェントによる独立した確認(independent)で行った。1回目はPASS(軽微3件を反映)。設計の修正の後の2回目はNEEDS_FIXES(必須1件: 投稿者への通知を`skipped`・`none`にする判断のテストがタスク4.5に無い)で、タスク4.5にそのテストと要件11.5を加えた。レビューは2回までのため、`spec.json`のタスクの承認を`false`にし、修正後のタスクの再レビューを開発者に求める。要件と設計の承認は保った。
 - タスクの再レビュー: `/kiro-spec-tasks content-reporting -y`の手順で、現在のtasks.mdを下書きとして新しいサブエージェントによる独立した確認(independent)を行った。1回目の判定はPASSだった(タスク4.5の投稿者への通知の`pending`・`skipped`・`none`のテストと要件11.5を確認し、149件の受け入れ基準の番号がすべてタスクにある)。軽微の指摘のうち、3.5の手での完了の措置の値の書き方と、9.5のE2Eのファイルの置き場所を直した。タスクの承認を`true`に戻した。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の判断)
+
+- frontend-platformが実装で確定した契約(同specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に、開発者の判断(下流specの設計を今回改訂する)で本specの設計を合わせた。
+- GraphQLの操作: 操作を各アプリの`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む。`graphql()`を呼んで`.ts`のファイルに操作を書くと、操作の本文がブラウザのバンドルに残るため(frontend-platformの要件6.3)。tasks.mdの操作のタスクに、各アプリの`graphql:generate`とapiの`graphql:allowlist`の手順を書いた。
+- フォーム: `useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`の形にした。画面側のスキーマの`zod`の値は`utilities/validation/zod.ts`から読む(CSPの下で`new Function`の試行を止める`jitless`の設定を済ませた`z`)。
+- 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。カテゴリの区画は、admin-foundationの`CategoryMasterEditor`の`failureMessageOf`(本改訂でadmin-foundationが加えた)に`errorMessageOf`を渡す。
+- bot判定: `TurnstileWidget`は非表示のウィジェットで場所を取らないため、判定の枠の表示と場所の記述を除いた。
+- 要件2.6を「bot判定のウィジェットを非表示で置き(判定の枠を画面に出さない)、判定の結果とともに送信する」に改めた(番号は変えていない)。
+- 変えた箇所: design.mdのAllowed Dependencies、File Structure Planの両アプリの`graphql/operations/reporting/`、Modified Filesの生成物と許可リストの行、`ReportDialog`・`ReportForm`・`ReportFormSchema`・`UseSubmitReport`・`ReportSearch`・`ReportCaseActionDialog`(`ConfirmActionDialog`の`failureMessageOf`)・`UseReportCaseMutation`・`UnhandledReportsCard`・`ProductReportsSection`・`ReportCategorySection`(`CategoryMasterEditor`の`failureMessageOf`)、Error Strategy。requirements.mdの2.6。tasks.mdの7.1・7.2・8.1・8.2・8.5。

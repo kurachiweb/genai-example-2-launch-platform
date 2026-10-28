@@ -273,9 +273,11 @@
 
 - [ ] 7. 利用者側の画面
 - [ ] 7.1 本specのGraphQLの操作を加え、型を生成して許可リストを再生成する
-  - トップページの区画・ブラケット・参加費の導線・トロフィーの照会と決済の開始の操作
-  - `graphql/operations/week-tournament/week-bracket.ts`に、`graphql()`の文書として`MatchProduct`のフラグメント`BracketMatchProductFields`と、`BracketRound`のフラグメント`BracketRoundFields`(ラウンド・名前・実施日・位置・マッチの必要な項目・枠。枠のプロダクトは`BracketMatchProductFields`。選択する項目はmatch-engine・product-launch・media-pipelineのスキーマの名前に合わせ、`MatchProduct`の`category`・`logo`は下位の項目を選ぶ)を置いて書き出し、`weekBracket`の照会はこれらを使う。型はclient presetが生成する`BracketRoundFieldsFragment`・`BracketMatchProductFieldsFragment`を使う(仮7、tournament-yearの照会も読み込む)
-  - 完了状態: 型の生成と許可リストの再生成が成功し、clientの型検査が通り、生成された2つのフラグメントの型を`weekBracket`の照会の型を読み込まずに参照できる
+  - トップページの区画・ブラケット・参加費の導線・トロフィーの照会と決済の開始の操作を、clientの`src/graphql/operations/week-tournament/`に1ファイル1操作の`.graphql`で書く。操作名は`Client`で始め(`ClientWeekTournamentBoard`・`ClientWeekBracket`・`ClientMyWeekEntry`・`ClientStartWeekTournamentCheckout`・`ClientProductTrophies`)、`graphql()`を呼ばない
+  - `bracket-match-product-fields.graphql`に`MatchProduct`のフラグメント`BracketMatchProductFields`を、`bracket-round-fields.graphql`に`BracketRound`のフラグメント`BracketRoundFields`(ラウンド・名前・実施日・位置・マッチの必要な項目・枠。枠のプロダクトは`BracketMatchProductFields`。選択する項目はmatch-engine・product-launch・media-pipelineのスキーマの名前に合わせ、`MatchProduct`の`category`・`logo`は下位の項目を選ぶ)を置き、`ClientWeekBracket`の照会はこれらを展開する。型は`src/graphql/generated/graphql.ts`が生成する`BracketRoundFieldsFragment`・`BracketMatchProductFieldsFragment`を使う(仮7、tournament-yearの照会も名前で展開する)
+  - `week-board-round-fields.graphql`に`WeekTournamentRoundBoard`のフラグメント`WeekBoardRoundFields`(`tournament`・`round`・`roundName`・`final`・`matches`・`byes`・`bracketPath`。`matches`・`byes`はmatch-engineの`MatchCard`・`ByeList`の引数が求める項目)を置き、`ClientWeekTournamentBoard`はこれを展開する。`splitBoardRound`は生成された`WeekBoardRoundFieldsFragment`を受ける
+  - frontend-platformの「操作の追加手順」どおり、clientで`bun run graphql:generate`を実行して`src/graphql/generated/`を更新し、apiで`bun run graphql:allowlist`を引数なしで実行して許可リストを再生成する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない
+  - 完了状態: 型の生成と許可リストの再生成が成功し、clientとapiの`graphql:check`とclientの`codegen.unit.test.ts`(操作名の接頭辞・本文を含まない文書)が通り、clientの型検査が通り、生成された2つのフラグメントの型を`ClientWeekBracket`の照会の型を読み込まずに参照できる
   - _Depends: 6.10, 6.11_
   - _Requirements: 8.1, 9.1, 10.1, 10.8, 13.3_
 

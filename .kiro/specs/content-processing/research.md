@@ -357,6 +357,13 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 
 - テーブル定義の配置の規約(技術ドキュメント`db/003`の「テーブル定義の配置」)が、ドメインごとのディレクトリに1テーブル1ファイルで置く`schema/<ドメイン>/<テーブル>.ts`になっている(email-deliveryの1.2で、全下流specの設計に合わせて改めた)。開発者の決定で、design.mdのOut of Boundaryの索引文書のテーブルの置き場所を`apps/db/schema/<ドメイン>.ts`から`apps/db/schema/<ドメイン>/<テーブル>.ts`に改めた。本specが置く共通の列の部品`schema/_shared/search-documents.ts`は規約どおりで変えていない。要件・タスクは変えていない。
 
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の決定)
+
+- frontend-platformの実装と最終検証の後、開発者の決定(frontend-platformのタスク10.4)で、設計をfrontend-platformの設計の「実装で確定した契約による発火と影響を受ける下流spec」の表に照らした。振る舞いを変えない整合の修正のため、改訂の番号は付けない。要件・タスクは変えていない。
+- Zodの値の読み込み元: frontend-platformは、frontend-lib・client・adminのファイルが`zod`の値を`utilities/validation/zod.ts`(`z.config({ jitless: true })`の後の`z`)からだけ読む規則`ZOD_VALUE_RESTRICTION`を`frontend-lint.ts`に置いた。design.mdのDependency Direction・File Structure Plan・Components and Interfacesの表・MarkdownTextSchemaの`zod`の直接の読み込みは、どれも`apps/common-lib`の記述で、この規則の対象(フロントエンドのアプリと共通部品)ではないため変えていない。common-libは自身の`eslint.config.ts`で検査し、api・eventでも動く。client・adminでは利用側のアプリの依存として`zod`が1つの実体になるため(Risks & Mitigations)、`zod.ts`の`jitless`の設定はcommon-libのスキーマにも及ぶ。ZodはJITを使うかをスキーマを作る時点で判定するため、client・adminのブラウザとサーバーのエントリが先頭で`zod.ts`を副作用として読み込み(frontend-platformの決定事項)、common-libのスキーマが作られる前に設定を済ませる。
+- 静的解析の規則の統合: `frontend-lint.ts`の依存の方向の規則は`no-restricted-imports`と`@typescript-eslint/no-restricted-imports`に分かれ、後者は`restrictValueImports`で常に`ZOD_VALUE_RESTRICTION`を含める。design.mdのMarkdownLintRulesに、本specの制限を後者へ加える場合も`restrictValueImports`を通してZodの制限を落とさないことを加えた。
+- 規則の名前: 実装された生のHTMLの規則の名前は`@eslint-react/dom-no-dangerously-set-innerhtml`である。design.mdの3箇所(Existing Architecture Analysis、MarkdownContent、RawHtmlExceptionCheck)の`@eslint-react/dom/no-dangerously-set-innerhtml`を改めた。
+
 ## References
 
 - [FTS5 External Content Tables](https://sqlite.org/fts5.html#external_content_tables) — 外部コンテンツとトリガーの同期、`rebuild`

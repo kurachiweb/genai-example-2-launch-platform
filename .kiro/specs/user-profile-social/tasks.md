@@ -156,7 +156,8 @@
 
 - [ ] 7. 利用者側の公開プロフィール
 - [ ] 7.1 クライアントの操作と、利用者のアバター・フォローボタンを作る
-  - プロフィールとフォローの操作をclientに加え、型とpersisted operationsを生成する
+  - プロフィールとフォローの操作を、clientの`src/graphql/operations/profile/`に1ファイル1操作の`.graphql`(操作名は`ClientPublicProfile`・`ClientMyProfile`・`ClientHandleAvailability`・`ClientUpdateMyProfile`・`ClientMyFollowing`・`ClientMyFollowers`・`ClientFollowUser`・`ClientUnfollowUser`)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して型とpersisted operations(`src/graphql/generated/`)を生成し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する。部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
+  - フォローボタンのbot対策のウィジェットは`TurnstileWidget`(非表示)で置き、判定の枠と場所を設けない
   - 先に、ブラウザテスト(axeの違反0件)で、アバターの画像と頭文字のプレースホルダー(画像なし・隔離中・読み込みの失敗)、フォローボタンの未ログインのログインの案内・未確認の無効と理由・本人で描画しないこと・押下でトークンを使ってフォロー・解除しラベルと`aria-pressed`・トーストが変わること・失敗で状態を戻して文言を出すことを確かめる
   - 完了状態: 型の生成とブラウザテストが成功し、`graphql:allowlist`でapiの許可リストを再生成して`graphql:check`が成功し、他specが2つの部品を読み込める
   - _Depends: 5.3_
@@ -189,7 +190,8 @@
 
 - [ ] 8. 利用者側の設定ページ
 - [ ] 8.1 プロフィール編集フォームの部品を作る
-  - 先に、ブラウザテスト(axeの違反0件)で、フォーカスアウトでの各欄の検証(ニックネーム・ハンドルの文字種と文字数・ヘッドライン・外部WebサイトのURLと名前)、ハンドルの使用可否の確認と使用中の文言、旧ハンドルの案内、画像の選択(500kBの超過・形式の違反の事前の表示、正方形の切り取りの編集)と削除、自己紹介のマークダウンの入力欄とプレビュー、外部Webサイトの追加・削除と10件での追加の無効、停止中の全欄の無効と案内を確かめる
+  - フォームのスキーマはZodの値を`lib/utilities/validation/zod.ts`の`z`から読んで作り、フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(全欄の既定値)と`AppForm`(`serverFieldPrefix="input"`・`onSubmitError`)で作る。bot対策のウィジェットは`TurnstileWidget`(非表示)で置き、判定の枠と場所を設けない。プロフィール画像の`ImageUploadField`には必須の`contactAvailable`として`CLIENT_PROFILE.contactAvailable`を渡す
+  - 先に、ブラウザテスト(axeの違反0件)で、フォーカスアウトでの各欄の検証(ニックネーム・ハンドルの文字種と文字数・ヘッドライン・外部WebサイトのURLと名前)、ハンドルの使用可否の確認と使用中の文言、旧ハンドルの案内、画像の選択(500kBの超過・形式の違反の事前の表示、正方形の切り取りの編集、`ImageUploadField`に`contactAvailable`として`CLIENT_PROFILE.contactAvailable`が渡ること)と削除、自己紹介のマークダウンの入力欄とプレビュー、外部Webサイトの追加・削除と10件での追加の無効、停止中の全欄の無効と案内を確かめる
   - 完了状態: ブラウザテストが成功し、フォームの検証規則がサーバーと同じ定数と判定から組み立てられている
   - _Depends: 7.1_
   - _Requirements: 1.7, 2.7, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.11, 5.1, 5.2_

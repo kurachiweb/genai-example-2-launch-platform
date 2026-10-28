@@ -61,7 +61,11 @@
 - api-gateway: `Principal`・`AuthenticatedPrincipal`・`SessionVerification`・`GraphQLSchemaModule`・`defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`・`SessionAccess`・`SessionView`(identity-authが加えたapplication層の型)。形を変えない。
 - identity-auth: `AUTH_TYPES`と`auth`の全ポート・`PasswordPolicy`・`SecretIssuer`・`RecoveryCodeIssuer`・`createLoginThrottleKeys`・`LoginThrottleScope`(`'admin'`)・`SessionPolicy`と`newSessionTimes`・`evaluateSession`・`cookieMaxAgeSeconds`・`SecondFactorInput`・`normalizeTotpCode`・`SubjectSessionVerifierPort`、`frontend-lib/components/auth`の3部品。`identity`の各層(利用者の業務処理)には依存しない。束縛の差し替えは`AUTH_TYPES.AdminSessionVerifier`の1行だけ。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`・`toMatchingKey`。形を変えない。
-- frontend-platform: `AdminLayoutSlots`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`・`runAxe`。`ADMIN_SECURITY_POLICY`は変えない(bot判定の許可先は`BASE_SECURITY_POLICY_SOURCES`が両アプリに入れる)。
+- frontend-platform: `AdminLayoutSlots`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`ADMIN_PROFILE`(`contactAvailable`は偽)・`useAppForm`・`AppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`・`runAxe`・`utilities/validation/zod.ts`の`z`。`ADMIN_SECURITY_POLICY`は変えない(bot判定の許可先は`BASE_SECURITY_POLICY_SOURCES`が両アプリに入れる)。
+  - GraphQLの操作は`apps/admin/src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名を`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`gql.ts`・`index.ts`と`graphql()`を使わない(frontend-platformの「操作の追加手順」)。
+  - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。スキーマの`zod`の値は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
+  - 失敗の表示: 管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない。`GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、例外の`message`を直接出さない。
+  - bot判定の`TurnstileWidget`は非表示のウィジェットで場所を取らないため、画面に判定の枠の表示と場所を設けない。失敗の文言(`FormMessage`)だけを出す。
 - content-processing: `apps/common-lib`の`countGraphemes`と共有ディレクトリの配置。
 - media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`MediaFiles`(`claim`・`eraseNow`・`findMany`)・`MEDIA_TYPES`・`toMediaImage`・GraphQLの`MediaImage`・`ImageUploadField`・`MediaPicture`・`MediaPlaceholder`。形を変えない。
 - npmパッケージ: 上流の版だけを使い、新規は無い(Q8)。
@@ -83,15 +87,15 @@
 
 ### 上流への影響
 
-| 上流spec           | 変更                                                                                                                                                     | 影響と再検証                                                                                                                                                                                                                       |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| identity-auth      | `composition/session.ts`の`AUTH_TYPES.AdminSessionVerifier`を`ADMIN_TYPES.AdminSessionVerifier`への転送に差し替える                                      | identity-authが定めた差し替えの契約どおり                                                                                                                                                                                          |
-| identity-auth      | `apps/client/src/components/auth/return-path.ts`・`fragment-token.ts`(と単体テスト)を`apps/frontend-lib/utilities/auth/`へ移し、利用者側の読み込みを直す | 関数の形と振る舞いは変えない。利用者側の画面のテストが通ることで確かめる。identity-authのファイルの置き場所の変更のため再検証を求める                                                                                              |
-| frontend-platform  | `ADMIN_LAYOUT_SLOTS`の差し替え、`apps/admin/src/routes/index.tsx`の仮のページの置き換え、`__root.tsx`の`beforeLoad`での`adminViewer`の取得               | 契約どおり。管理者側でbot判定を使うため、`BASE_SECURITY_POLICY_SOURCES`のTurnstileの許可先が管理者側のCSPにも入り、`TURNSTILE_SITE_KEY`が管理者側の変数にあることを再検証の対象にする(Q7)。無ければ`ADMIN_SECURITY_POLICY`へ加える |
-| frontend-platform  | `components/ui`に`table`・`select`の部品(部分ごとのファイル)を加える                                                                                     | 既存の`radix-ui` 1.6.7の範囲。frontend-platformの部品の一覧に加わる                                                                                                                                                                |
-| media-pipeline     | `apps/api/src/composition/upload-purposes.ts`の`UPLOAD_PURPOSES`に`admin-avatar`を加える                                                                 | 契約どおり。管理者の中継の経路はmedia-pipelineが追加済み                                                                                                                                                                           |
-| infra-delivery     | 「ホスト名から導かれる変数の値」の表にある、APIサーバーの`ADMIN_SITE_ORIGIN`(本specの所有)の3環境の値の行と、名前と値の一致を確かめる                    | 本specはWrangler設定と`docs/onboardings/project-values.md`に書き、infra-deliveryの表の行(spec横断レビューで追加済み)と名前と値が一致することを確かめる                                                                             |
-| content-processing | 日次タイムラインの表に本specの2行を足す                                                                                                                  | 表が無ければ作る(identity-authと同じ扱い)                                                                                                                                                                                          |
+| 上流spec           | 変更                                                                                                                                                     | 影響と再検証                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| identity-auth      | `composition/session.ts`の`AUTH_TYPES.AdminSessionVerifier`を`ADMIN_TYPES.AdminSessionVerifier`への転送に差し替える                                      | identity-authが定めた差し替えの契約どおり                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| identity-auth      | `apps/client/src/components/auth/return-path.ts`・`fragment-token.ts`(と単体テスト)を`apps/frontend-lib/utilities/auth/`へ移し、利用者側の読み込みを直す | 関数の形と振る舞いは変えない。利用者側の画面のテストが通ることで確かめる。identity-authのファイルの置き場所の変更のため再検証を求める                                                                                                                                                                                                                                                                                                                          |
+| frontend-platform  | `ADMIN_LAYOUT_SLOTS`の差し替え、`apps/admin/src/routes/index.tsx`の仮のページの置き換え、`__root.tsx`の`beforeLoad`での`adminViewer`の取得               | 契約どおり。`AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ちフッターを持たないため、管理者側のナビゲーションのランドマークは`navigation`の区画の`AdminNavigation`が描く名前付きの`nav`で満たす(frontend-platformの要件10.8)。管理者側でbot判定を使うため、`BASE_SECURITY_POLICY_SOURCES`のTurnstileの許可先が管理者側のCSPにも入り、`TURNSTILE_SITE_KEY`が管理者側の変数にあることを再検証の対象にする(Q7)。無ければ`ADMIN_SECURITY_POLICY`へ加える |
+| frontend-platform  | `components/ui`に`table`・`select`の部品(部分ごとのファイル)を加える                                                                                     | 既存の`radix-ui` 1.6.7の範囲。frontend-platformの部品の一覧に加わる                                                                                                                                                                                                                                                                                                                                                                                            |
+| media-pipeline     | `apps/api/src/composition/upload-purposes.ts`の`UPLOAD_PURPOSES`に`admin-avatar`を加える                                                                 | 契約どおり。管理者の中継の経路はmedia-pipelineが追加済み                                                                                                                                                                                                                                                                                                                                                                                                       |
+| infra-delivery     | 「ホスト名から導かれる変数の値」の表にある、APIサーバーの`ADMIN_SITE_ORIGIN`(本specの所有)の3環境の値の行と、名前と値の一致を確かめる                    | 本specはWrangler設定と`docs/onboardings/project-values.md`に書き、infra-deliveryの表の行(spec横断レビューで追加済み)と名前と値が一致することを確かめる                                                                                                                                                                                                                                                                                                         |
+| content-processing | 日次タイムラインの表に本specの2行を足す                                                                                                                  | 表が無ければ作る(identity-authと同じ扱い)                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ## Architecture
 
@@ -157,16 +161,16 @@ graph TB
 
 ### Technology Stack
 
-| Layer    | Choice / Version                                                                       | Role in Feature                                | Notes                                          |
-| -------- | -------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
-| 認証部品 | identity-authの`auth`(Web Crypto・otpauth 9.5.2・Durable Object`LoginAttemptThrottle`) | パスワード・秘密・セッション・試行の制限・TOTP | 既存。スコープ`admin`・HMACの用途`admin-*`     |
-| 状態     | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                                  | 管理者・セッション・トークン・TOTP・監査ログ   | 新しいテーブル8つ                              |
-| 定期     | Cron Triggers(api)                                                                     | 期限切れの削除・監査ログの保持期間             | backend-platformの基盤                         |
-| メール   | email-deliveryの`EmailSender`・React Email                                             | 6種のトランザクションメール                    | 既存                                           |
-| 画面     | TanStack Start・React・react-hook-form・zod・shadcn/ui・`@marsidev/react-turnstile`    | 認証画面・シェル・一覧・設定                   | frontend-platformの版。`table`・`select`を追加 |
-| 画像     | media-pipelineの用途と部品                                                             | プロフィール画像のアップロードと表示           | 既存                                           |
-| コマンド | Bun・Wrangler(`wrangler d1 execute`)                                                   | 最上位管理者の招待の発行                       | 既存。新しいパッケージは無い                   |
-| テスト   | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1・Mailpit                  | 単体・Workers統合・ブラウザ・E2E               | 上流の版                                       |
+| Layer    | Choice / Version                                                                       | Role in Feature                                | Notes                                                                                            |
+| -------- | -------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 認証部品 | identity-authの`auth`(Web Crypto・otpauth 9.5.2・Durable Object`LoginAttemptThrottle`) | パスワード・秘密・セッション・試行の制限・TOTP | 既存。スコープ`admin`・HMACの用途`admin-*`                                                       |
+| 状態     | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                                  | 管理者・セッション・トークン・TOTP・監査ログ   | 新しいテーブル8つ                                                                                |
+| 定期     | Cron Triggers(api)                                                                     | 期限切れの削除・監査ログの保持期間             | backend-platformの基盤                                                                           |
+| メール   | email-deliveryの`EmailSender`・React Email                                             | 6種のトランザクションメール                    | 既存                                                                                             |
+| 画面     | TanStack Start・React・react-hook-form・zod・shadcn/ui・`@marsidev/react-turnstile`    | 認証画面・シェル・一覧・設定                   | frontend-platformの版。`table`・`select`を追加。`zod`の値は`utilities/validation/zod.ts`から読む |
+| 画像     | media-pipelineの用途と部品                                                             | プロフィール画像のアップロードと表示           | 既存                                                                                             |
+| コマンド | Bun・Wrangler(`wrangler d1 execute`)                                                   | 最上位管理者の招待の発行                       | 既存。新しいパッケージは無い                                                                     |
+| テスト   | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1・Mailpit                  | 単体・Workers統合・ブラウザ・E2E               | 上流の版                                                                                         |
 
 ## File Structure Plan
 
@@ -274,8 +278,11 @@ apps/
     │   ├── admin-navigation.ts                         # ADMIN_NAV_ITEMS(後続specが追記)
     │   ├── dashboard-cards.ts                          # DASHBOARD_CARDS(後続specが追記、初版は空)
     │   └── layout-slots.ts                             # (変更)navigation・headerAccount
-    └── graphql/operations/admin/
-        ├── viewer.ts · auth-operations.ts · account-operations.ts · self-operations.ts · audit-operations.ts
+    └── graphql/
+        ├── operations/admin/                           # 1ファイル1操作の*.graphql。操作名はAdminで始める(例: viewer.graphqlのAdminViewer)
+        │   ├── viewer.graphql
+        │   └── auth/*.graphql · account/*.graphql · self/*.graphql · audit/*.graphql
+        └── generated/                                  # (再生成)graphql:generateの生成物。画面はgraphql.tsの<操作名>Documentを読む
 e2e/
 ├── support/admin-bootstrap.ts                          # 指定したロールの管理者を招待・完了・ログインさせる補助(後続specのE2Eも使う)
 ├── support/local-d1.ts                                 # ローカルのD1へSQLを実行する補助(後続specのE2Eも使う)
@@ -1134,7 +1141,8 @@ export interface ConfirmActionDialogProps {
   readonly audited: boolean; // 監査ログに記録される旨の表示
   readonly onConfirm: (input: {
     readonly reason: string | undefined;
-  }) => Promise<void>;
+  }) => Promise<void>; // 失敗は例外で知らせる
+  readonly failureMessageOf: (error: unknown) => string; // 必須。管理者側の画面は(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)を渡す
 }
 export interface CategoryMasterEditorProps {
   readonly title: string;
@@ -1156,12 +1164,14 @@ export interface CategoryMasterEditorProps {
     id: string,
     input: { readonly name: string; readonly handle?: string },
   ) => Promise<void>;
-  readonly onDelete: (id: string) => Promise<void>; // 拒否の理由はGraphQLClientErrorの文言をそのまま表示
+  readonly onDelete: (id: string) => Promise<void>; // 拒否・失敗は例外で知らせ、部品はfailureMessageOfの文言を表示する
+  readonly failureMessageOf: (error: unknown) => string; // 管理者側の画面は(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)を渡す
 }
 ```
 
 - `AdminPageHeader({ title, description?, actions? })`、`AdminFilterBar({ children, onApply, onReset })`、`ReasonField({ required, ...fieldProps })`(500書記素・個人情報の注意、18.9)、`AdminAvatar({ image, nickname, size })`(`MediaPicture`で、画像が無い・表示できないときは`MediaPlaceholder`、16.6)、`CategoryFormDialog`(名前1〜30書記素・ハンドルの形式は呼び出す側が渡す検証)。
 - いずれもGraphQLとアプリの型に依存せず、Storybookに載せる(21.4)。日時は`DateTime`(`<time datetime>`)で表示する。
+- 失敗の文言: 共通部品はアプリのプロファイルを読まない。`AdminDataTable`の`error.message`には呼び出す側の画面が`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選んだ文言を渡し、`ConfirmActionDialog`・`CategoryMasterEditor`の`failureMessageOf`には`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を渡す。`ConfirmActionDialog`は`onConfirm`が例外を投げたら、ダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言をダイアログの中に`role="alert"`で示す。`AdminDataTable`のエラーの状態は`ErrorState`を`contactHref`無しで描く(問い合わせのボタンを出さない)。
 
 ### admin
 
@@ -1188,13 +1198,13 @@ export declare const DASHBOARD_CARDS: readonly DashboardCard[]; // 初版は空
 ```
 
 - メニューの`order`とURL(仮6、ページ配置の順): ダッシュボード`/`10・ユーザー`/users`20・プロダクト`/products`30・コメント`/comments`40・評価`/ratings`50・画像モデレーション`/media-moderation`60・通報`/reports`70・問い合わせ`/inquiries`80・スポンサー広告`/sponsorships`90・ヘルプ記事`/help-articles`100・カテゴリ`/categories`110・法務文書`/legal-documents`120・設定`/settings`130・管理者アカウント`/accounts`140・監査ログ`/audit-logs`150・自分のアカウント`/account`160。全ロールが全メニューを参照できるため、項目はロールで隠さない(Q3)。
-- `DashboardGrid`: `DASHBOARD_CARDS`を`order`順に並べ、各カードを個別のエラー境界で包む(20.7)。空なら`EmptyState`(「表示できる項目はまだありません。」、20.5)。`DashboardCardFrame({ title, href?, state, children })`は読み込み中・エラー・本文を切り替える。
+- `DashboardGrid`: `DASHBOARD_CARDS`を`order`順に並べ、各カードを個別のエラー境界で包む(20.7)。空なら`EmptyState`(「表示できる項目はまだありません。」、20.5)。`DashboardCardFrame({ title, href?, state, children })`は読み込み中・エラー・本文を切り替える。エラーは`ErrorState`を`contactHref`無しで描き、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ(エラー境界が捕まえた例外も同じ)。
 
 #### AuthenticatedLayout・AdminViewerContext・RoleGate・AdminNavigation・AdminAccountMenu
 
 - `__root.tsx`の`beforeLoad`: `adminViewer`を取得して文脈に入れる(失敗は未ログイン)。`_authenticated/route.tsx`: `viewer`が無ければ`redirect({ to: '/auth/login', search: { redirect } })`(8.5)。`AdminViewerProvider`でロールを配る。ログイン中に`/auth/login`を開いたら`/`へ移動する(20.8)。
 - `RoleGate({ minimum, fallback?, children })`と`useAdminRole()`: `hasRole`で判定する(17.5)。
-- `AdminNavigation`(`navigation`の区画): PCは左の縦の一覧、768px未満は`Sheet`。現在の項目は`aria-current="page"`(20.3)。`AdminAccountMenu`(`headerAccount`): `AdminAvatar`・ニックネーム・ロールの表示名、自分のアカウント・ログアウト(20.2)。
+- `AdminNavigation`(`navigation`の区画): 自身で名前付きの`nav`を描き、管理者側の画面シェルのナビゲーションのランドマークを満たす(`AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ち、フッターを持たない。frontend-platformの要件10.8)。PCは左の縦の一覧、768px未満は`Sheet`で、開閉ボタンはヘッダーと本文の間(区画の位置)に出る。現在の項目は`aria-current="page"`(20.3)。`AdminAccountMenu`(`headerAccount`): `AdminAvatar`・ニックネーム・ロールの表示名、自分のアカウント・ログアウト(20.2)。
 
 #### AdminAuthPages・InvitationPages・AdminsPage・AuditLogsPage・AccountPage
 
@@ -1210,7 +1220,7 @@ export declare const DASHBOARD_CARDS: readonly DashboardCard[]; // 初版は空
 
 - メールのリンクの画面は、フラグメントのトークンを`readFragmentToken`で読み、開いただけでは何もしない。
 - `audit-period.ts`: 入力の日付(閲覧者の地域の暦)を、開始日の0時を`occurredFrom`、終了日の翌日0時を`occurredBefore`とするUTCの時刻に変換する(19.2)。
-- 削除・ロールの変更・招待は`ConfirmActionDialog`(理由は任意、監査ログに記録される旨、15.10)。リカバリコードの表示では、両方を失うと復旧できない旨を示す(12.7)。
+- 削除・ロールの変更・招待は`ConfirmActionDialog`(理由は任意、監査ログに記録される旨、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、15.10)。リカバリコードの表示では、両方を失うと復旧できない旨を示す(12.7)。
 
 ### e2e・docs
 
@@ -1254,7 +1264,7 @@ export declare function currentTotpCode(secret: string, at?: Date): string;
 - `executeLocalD1`は、利用者の停止など画面から作れない状態の用意に後続specも使う。リモートのD1には書き込めない(Claude設定のdeny)。メールはMailpitの補助(identity-auth)で読む。
 - `security/007-admin-authorization.md`: 管理者の主体と利用者の主体の分離、ロールの順序と最低限のロールの宣言、所有権の判定、要求ごとのロールの読み込み、最後の最上位管理者の保護の書き込みの方式、管理者のセッションの期限、本人確認、bot判定の適用範囲。
 - `backend/008-audit-logging.md`: 操作種別の登録、記録の文を操作と同じ一括の書き込みに含める規約、個人情報を含めない規則(利用者は仮名化ID、検索文字列を残さない)、理由の要否、保持期間の削除、最新の日時の照会(1件と複数の対象、複数の対象はバインド変数の上限に合わせた分割)、利用側の単体テストが照会の偽物を自分で書かずに共有の偽物を使う規約(仮7)。
-- `frontend/009-admin-console-shell.md`: メニューとダッシュボードのカードの登録、カードの状態表示とエラーの分離、ロールによる操作の出し分け、共通部品の使い方。
+- `frontend/009-admin-console-shell.md`: メニューとダッシュボードのカードの登録、ナビゲーションのランドマーク(`navigation`の区画の部品が名前付きの`nav`を描き、画面シェルはフッターを持たない)、カードの状態表示とエラーの分離、失敗の文言の選び方(`errorMessageOf`とプロファイルの`contactAvailable`、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない)、ロールによる操作の出し分け、共通部品の使い方。
 - `operations/003-first-administrator-bootstrap.md`: 招待の発行コマンドの目的・実行者・環境ごとの手順・リンクの扱い・最後の最上位管理者が締め出された場合の手順(仮3)。プロジェクト名と固有の値はプレースホルダーにし、値は`docs/onboardings/project-values.md`へのリンクにする。
 
 ## Data Models
@@ -1305,7 +1315,7 @@ stateDiagram-v2
 
 - GraphQL: 「AdminSchemaModule」のSDLが契約で、管理者側の許可リストにだけ載る。
 - メール: `admin.invitation`・`admin.email-change-confirmation`・`admin.email-changed`・`admin.password-reset`・`admin.password-reset-completed`・`admin.password-changed`(すべてトランザクションメール、期限付きの3種は`deadline`にトークンの期限)。
-- アップロード: 用途`admin-avatar`(media-pipelineの中継の経路`/_bff/media/uploads/admin-avatar`)。
+- アップロード: 用途`admin-avatar`(media-pipelineの中継の経路`/_bff/uploads/admin-avatar`)。プロフィール画像の入力(`/account`の`ProfileSection`と`/accounts`の`AdminProfileDialog`)に置くmedia-pipelineの`ImageUploadField`には、`contactAvailable`として`ADMIN_PROFILE.contactAvailable`を渡し、アップロードの失敗の文言に問い合わせを促す文を出さない。
 
 ## Error Handling
 
@@ -1360,7 +1370,7 @@ stateDiagram-v2
   - プロフィールの編集と画像の登録・既定のアイコン、パスワードリセット、メールアドレス変更、パスワード変更、TOTPの再設定(16.1・9.4・10.4・11.2・12.2)。
   - 監査ログで招待・ロール変更・削除が表示され、操作種別と期間で絞り込める(19.1・19.2)。
   - E2Eの補助の確認: `signInAsNewAdmin`で閲覧のみ・モデレーター・最上位管理者を用意し、それぞれのロールでヘッダーのロールの表示とロールによる操作の出し分けが変わること、`signInAdmin`で再ログインできること(17.5・20.2)。
-- **ブラウザテスト**(Vitest Browser Mode): 共通部品(表の状態、確認のダイアログの理由の必須、カテゴリマスタの編集とシステム標準の削除不可、`ReasonField`の文字数と注意)、`RoleGate`、`DashboardGrid`の空状態と1つのカードの失敗の分離(20.7)、`AdminNavigation`の`aria-current`、各フォームの検証、`runAxe`の違反0件(20.9・21.4)。
+- **ブラウザテスト**(Vitest Browser Mode): 共通部品(表の状態、確認のダイアログの理由の必須、カテゴリマスタの編集とシステム標準の削除不可、`ReasonField`の文字数と注意)、`RoleGate`、`DashboardGrid`の空状態と1つのカードの失敗の分離(20.7、問い合わせのボタンと問い合わせを促す文が出ないこと)、`AdminNavigation`の名前付きの`nav`と`aria-current`、各フォームの検証、`runAxe`の違反0件(20.9・21.4)。
 
 ## Security Considerations
 

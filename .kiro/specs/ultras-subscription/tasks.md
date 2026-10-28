@@ -154,9 +154,9 @@
 
 - [ ] 7. 利用者側の画面
 - [ ] 7.1 クライアントの操作と、導線の表示の可否の部品を作る
-  - `ultrasOffer`・`viewerUltras`・`startUltrasCheckout`・`createUltrasPortalSession`の操作をclientに加え、型とpersisted operationsを生成する
+  - `ultrasOffer`・`viewerUltras`・`startUltrasCheckout`・`createUltrasPortalSession`の操作を、clientの`src/graphql/operations/ultras/`に1ファイル1操作の`.graphql`で書き(操作名は`ClientUltrasOffer`・`ClientViewerUltras`・`ClientStartUltrasCheckout`・`ClientCreateUltrasPortalSession`、`graphql()`を呼ばない)、clientで`bun run graphql:generate`を実行して型とpersisted operationsを生成する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない(frontend-platformの「操作の追加手順」)
   - 先に、ブラウザテストで、フラグがオンのときだけ子を描画し、読み込み中とエラーでは描画しないことを確かめる
-  - 完了状態: 型の生成とブラウザテストが成功し、`graphql:allowlist`でapiの許可リストを再生成して`graphql:check`が成功し、後続specが部品を読み込める
+  - 完了状態: 型の生成とブラウザテストが成功し、`graphql:allowlist`でapiの許可リストを再生成して`graphql:check`とclientの`codegen.unit.test.ts`(操作名の接頭辞)が成功し、後続specが部品を読み込める
   - _Depends: 5.1, 5.2_
   - _Requirements: 10.6, 10.8_
 
@@ -179,9 +179,9 @@
 
 - [ ] 8. 管理画面
 - [ ] 8.1 管理者の操作と機能フラグの区画を作る
-  - `ultrasPromotionSetting`・`updateUltrasPromotionSetting`の操作をadminに加え、型とpersisted operationsを生成する
-  - 先に、ブラウザテスト(axeの違反0件)で、現在の値・最後に変更した日時と管理者、最上位管理者以外では参照だけで説明が出ること、確認のダイアログ(理由は任意・監査ログに記録される旨)での確定、`version_conflict`での読み直しの案内を確かめる
-  - 完了状態: 型の生成とブラウザテストが成功し、`graphql:allowlist`でapiの許可リストを再生成して`graphql:check`が成功する(7.1の後に行い、許可リストの再生成が並行しないようにする)
+  - `ultrasPromotionSetting`・`updateUltrasPromotionSetting`の操作を、adminの`src/graphql/operations/ultras/`に1ファイル1操作の`.graphql`で書き(操作名は`AdminUltrasPromotionSetting`・`AdminUpdateUltrasPromotionSetting`、`graphql()`を呼ばない)、adminで`bun run graphql:generate`を実行して型とpersisted operationsを生成する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない
+  - 先に、ブラウザテスト(axeの違反0件)で、現在の値・最後に変更した日時と管理者、最上位管理者以外では参照だけで説明が出ること、確認のダイアログ(理由は任意・監査ログに記録される旨)での確定、切り替えの失敗でダイアログが理由の入力を保ったまま`failureMessageOf`の文言(`version_conflict`での読み直しの案内、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)を`role="alert"`で示すこと、取得の失敗の`ErrorState`に問い合わせのボタンが無く、`GraphQLClientError`でない失敗の文言が`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で問い合わせを促す文を含まないことを確かめる
+  - 完了状態: 型の生成とブラウザテストが成功し、`graphql:allowlist`でapiの許可リストを再生成して`graphql:check`とadminの`codegen.unit.test.ts`(操作名の接頭辞)が成功する(7.1の後に行い、許可リストの再生成が並行しないようにする)
   - _Depends: 5.3, 7.1_
   - _Requirements: 10.1, 10.2, 10.3, 10.4_
 

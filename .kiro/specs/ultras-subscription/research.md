@@ -301,3 +301,11 @@
 
 - (軽微)dev-toolingは実装済みで、タスク10.1が`createPlaywrightConfig`(プロジェクトの分割と`dependencies`)を変えるのに、dev-toolingの設計のE2EConfigの契約を直す担当が決まっていなかった。タスク10.1に、引数の形を変えたらdev-toolingの`design.md`のE2EConfigの契約(`createPlaywrightConfig`の宣言と組み立ての説明)を新しい形に合わせて直す旨と、その一致を完了状態に加え、`_Boundary:_`に`.kiro/specs/dev-tooling/design.md`を加えた。dev-toolingの設計のRevalidation Triggersにも、本specのタスク10.1が組み立てを拡張する旨が加わった。
 - (軽微)UltrasのE2Eが機能フラグの行を書き換えるため、フラグの値で表示が変わる画面を確かめる後続specのE2Eと並行に動くと結果が揺れる。設計の「上流への影響」の表の後に、後続specへの申し送り(フラグの値で表示が変わる画面を確かめる後続specのE2Eは、Ultrasのプロジェクトの依存に加えるか、フラグの値で結果が変わる部分を確かめない)を加えた。roadmapのShared seams「プラン判定」とproduct-launch・tournament-week・tournament-yearのbriefのConstraintsにも同じ規則が加わった。
+
+## frontend-platformの確定した契約の反映(2026-10-28)
+
+- **状態**: frontend-platformのタスク10.4として、frontend-platformが実装で確定した契約(frontend-platformのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に本specの設計とタスクを合わせた。2026-10-28に開発者が下流specの設計の改訂を決めた(frontend-platformの判断11)。受け入れ基準は変えていない。
+- **GraphQLの操作の置き場所**: 操作は`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名はclientが`Client`、adminが`Admin`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`だけを読む契約になった。clientの4つの操作とadminの2つの操作を`.graphql`に分けた。
+- **管理者側のエラーの案内文**: `ErrorState`に`contactHref`を渡さず、`GraphQLClientError`でない例外に代えて出す文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ契約になった。`PromotionSettingSection`の取得と切り替えの失敗をこの契約で書いた。
+- **変えた箇所**: design.mdのAllowed Dependencies・File Structure Plan・clientの節の冒頭(操作の規約)・adminの節(失敗の表示)、tasks.mdの7.1・8.1(`.graphql`・操作名・生成・`codegen.unit.test.ts`、8.1は管理者側の失敗の表示)。
+- **確認のダイアログの失敗の文言**: admin-foundationの`ConfirmActionDialogProps`が必須の`failureMessageOf: (error: unknown) => string`を受け、`onConfirm`の失敗時にダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言を`role="alert"`でダイアログの中に示す契約になった(同日のadmin-foundationの改訂)。共通部品はアプリのプロファイルを読まないため、呼び出す側が文言を決める。 `PromotionSettingSection`は`failureMessageOf`で`version_conflict`の読み直しの案内を返し、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返す形に書き改めた(design.mdの`PromotionSettingSection`と失敗の表示、tasks.mdの8.1)。

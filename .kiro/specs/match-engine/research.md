@@ -272,3 +272,10 @@
 - 他のspecの決定のうち本specに影響するものは無い(product-launchの仮4・仮5、notificationsの仮2などは、本specが使う照会口・登録口の形を変えない)。
 - 表の行を仮1〜仮7の順に並べた。tasks.mdは文言だけを変えた(1.2の予選ルールの注記と完了状態、10.2の報告の項目と完了状態)。
 - 軽いタスクの検証を新しいサブエージェントによる独立の確認で1回行い、PASSだった。軽微の指摘(1.2の完了状態で予選ルールへの決定の記載を確かめる)に従って直した。要件の108件はすべてタスクに割り当てられている。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28)
+
+- frontend-platformの実装と最終検証の後、開発者の決定(frontend-platformのタスク10.4)で、設計をfrontend-platformの設計の「実装で確定した契約による発火と影響を受ける下流spec」の表に合わせた。振る舞いを変えない整合の修正のため、改訂の番号は付けない。要件は変えていない。
+  - 操作の置き場所と生成物: clientの操作を`src/graphql/operations/match/`の1ファイル1操作の`.graphql`(操作名は`Client`で始める)にし、`graphql()`を呼ばず、部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読むとした(design.mdのAllowed Dependencies・File Structure Plan、tasks.mdの8.1)。
+  - 非表示のウィジェット: トップページのウィジェットを不可視で置く前提は`TurnstileWidget`の非表示の描画と合う。用語を「非表示」にそろえ、判定の枠と場所を設けないことを明記した(design.mdのTopPage、tasks.mdの8.10)。
+  - 失敗の文言: `useUpvote`の失敗のトーストの文言を`errorMessageOf`で選ぶとした(design.mdのUseUpvote)。

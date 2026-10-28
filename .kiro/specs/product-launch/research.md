@@ -334,3 +334,13 @@ cross-spec reviewの指摘による、承認の後の改訂である。仮13・�
 - user-profile-socialへの依存: ハンドル基盤の仮2(B)の改訂(他の対象の旧ハンドルを使用中としない`isHandleOccupied`・`handleOccupiedCondition`と、元の保持者の行を消す文`previousHandleRelease(db, ns, { handle, exceptOwnerId }): BatchItem<'sqlite'>`)を前提にする。名前と形はuser-profile-socialの改訂に合わせる。
 - 確認待ちの表現を全ての文書から取り除き、タスク3.3の保留の注記と12.3の確認待ちの報告を外した。
 - 確定の反映の後に、新しいサブエージェントによる独立した確認(independent)で、変更部分の設計のレビューとタスクのグラフのサニティレビューを1回行い、どちらもPASSだった。軽微5件(同じ旧ハンドルを2つのプロダクトが同時に設定するテスト、4.4の要件2.11、要件2.11の起点に登録を含めること、確認事項の表の仮5の根拠の注記、上流specの文書を変更しない旨の表現)も直した。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の判断)
+
+- frontend-platformが実装で確定した契約(同specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に、開発者の判断(下流specの設計を今回改訂する)で本specの設計を合わせた。
+- GraphQLの操作: 操作を各アプリの`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む。`graphql()`を呼んで`.ts`のファイルに操作を書くと、操作の本文がブラウザのバンドルに残るため(frontend-platformの要件6.3)。tasks.mdの操作のタスクに、各アプリの`graphql:generate`とapiの`graphql:allowlist`の手順を書いた。
+- フォーム: `useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`の形にした。画面側のスキーマの`zod`の値は`utilities/validation/zod.ts`から読む(CSPの下で`new Function`の試行を止める`jitless`の設定を済ませた`z`)。
+- 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。カテゴリの区画は、admin-foundationの`CategoryMasterEditor`の`failureMessageOf`(本改訂でadmin-foundationが加えた)に`errorMessageOf`を渡す。
+- bot判定: `TurnstileWidget`は非表示のウィジェットで場所を取らないため、判定の枠の表示と場所の記述を除いた。
+- 変えた箇所: design.mdのAllowed Dependencies、File Structure Planの`product-form-schema.ts`と両アプリの`graphql/operations/product/`、`MyProductListPage`の取得エラー、`ProductForm`・`ProductDeleteDialog`、`ProductCategorySection`、Error Strategy。tasks.mdの9.1・9.6・10。要件は変えていない。
+- アップロードの入力欄: media-pipelineの`ImageUploadField`が必須で受ける`contactAvailable`(アップロードの失敗の文言を選ぶ)に、`LogoField`と`ScreenshotsField`は`CLIENT_PROFILE.contactAvailable`を渡す(design.mdの両部品、tasks.mdの9.4)。

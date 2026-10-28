@@ -249,9 +249,9 @@
   - _Requirements: 4.12, 12.4_
 
 - [ ] 10.2 決済のGraphQLの操作と、Stripe.jsを1回だけ読み込む部品を作る
-  - 3つの操作のファイルを作り、コード生成と許可リストの生成をやり直す
+  - 5つの操作を、clientの`src/graphql/operations/payments/`に1ファイル1操作の`.graphql`(操作名は`ClientCheckout`・`ClientRecordCheckoutConsent`・`ClientStartSmokeCheckout`・`ClientConfirmCheckoutReturn`・`ClientPaymentHistory`)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して`src/graphql/generated/`を更新し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する。部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
   - 先に、単体テストで、Stripe.jsの読み込みが公開キーごとに1回だけ行われ、公開キーが無いときは読み込まないことを確かめる
-  - 完了状態: 生成物の検査が成功し、許可リストに決済の操作が載る
+  - 完了状態: 生成物の検査(`graphql:check`)とclientの`codegen.unit.test.ts`(操作名の接頭辞)が成功し、許可リストに決済の操作が載る
   - _Depends: 7.2, 10.1_
   - _Requirements: 4.12_
 

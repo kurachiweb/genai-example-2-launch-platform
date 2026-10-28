@@ -190,7 +190,7 @@
 - product-launch(上流、仮12として反映済み・タスク承認済み): `ProductStore.updateDescription`の結果に`'account-unavailable'`・`'hidden'`が加わり、`ProductDescriptionEditor.update`が`product_hidden`(文言「このプロダクトは公開が停止されているため、説明文を更新できません。」)・`product_not_found`・`account_unavailable`を投げる。本specの`OwnProductDescriptionService`はこれらを変えずに返し、事前の判定の`product_hidden`に同じ文言を使う。
 - backend-platform(上流、改訂1・改訂3として確定): 改訂1で`REDACTION_PATTERNS`の先頭に`lsk_[A-Za-z0-9_-]{43}`(`g`フラグ、`[REDACTED]`)が入る。改訂3(開発者が決定)で、Sentryの除去は伏せ字のパターンを例外のメッセージ・イベントのメッセージ・パンくずのメッセージとデータ・トレースのデータに適用し、全て`[REDACTED]`に置き換える。本specはそれに頼らず、平文のキーをメッセージに入れない。
 - backend-platform・api-gateway・identity-auth・user-profile-social・product-launch・match-engine・directory-discovery・engagement・media-pipeline(上流): 契約どおりに使い、登録箇所へ追記する。apiの`composition/rest-routes.ts`(`PUBLIC_API_REST_ROUTES`を展開)・`graphql-modules.ts`(`publicApiSchemaModule`)・`modules.ts`(`PUBLIC_API_PLATFORM_MODULE`・`PUBLIC_API_MODULE`)・`user-lifecycle-sync-handlers.ts`(`public-api.api-key-erasure`、`withdrawn`)・`env-schema.ts`と`wrangler.jsonc`(`PUBLIC_API_RATE_LIMITER`・`IMAGES_ORIGIN`)、eventの`composition/modules.ts`(`PUBLIC_API_PLATFORM_MODULE`)、clientの`composition/settings-navigation.ts`(`api-keys` 90)。
-- frontend-platform(上流): content-processing・paymentsと同じ手順で、clientの環境の検証に`PUBLIC_API_ORIGIN`(URLのオリジン)を加え、`PublicRuntimeConfig.publicApiOrigin`(client専用、adminは`undefined`)へ渡し、`runtimeSecurityPolicySources`の`connectSrc`に値があれば加える。
+- frontend-platform(上流): content-processing・paymentsと同じ手順で、clientの環境の検証に`PUBLIC_API_ORIGIN`(CSPの許可先の形まで検証する)を加え、`PublicRuntimeConfig.publicApiOrigin`(client専用、adminは`undefined`)へ渡し、`runtimeSecurityPolicySources`の`connectSrc`に値があれば加える。エントリの許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない。
 - infra-delivery(上流、改訂1として提供): design.mdのSupporting Referencesの「ホスト名から導かれる変数の値」の表に、apiの`IMAGES_ORIGIN`とclientの`PUBLIC_API_ORIGIN`の行(3環境の値)が入る(cross-spec reviewの指摘による依頼)。本specはその値をWrangler設定に書く。2つの変数の値と、`PUBLIC_API_RATE_LIMITER`の`namespace_id`(api 1005・2005・3005)を`docs/onboardings/project-values.md`の表へ加える。新しいシークレットは無い。
 - roadmap: 帯の割り当ての表の本specの「使用中の値」は「—」のままである(4:21のジョブ・非同期の波及処理が無い)。Requirement Ambiguitiesに本specの担当の行は無い。本specはroadmapを編集しない。
 - data-export(後続): `PUBLIC_API_PLATFORM_TYPES.ApiKeyExport`の`listByUser(userId)`で`account.json`の`apiKeys`を組み立てる。eventに束縛済みである。
@@ -257,3 +257,13 @@
 
 - api-gatewayの実装では、公開RESTの経路の登録箇所`REST_ROUTES`の型が`readonly PublicRestRoutes<Env>[]`(生成された`Env`)になった。Honoの環境の型引数は不変のため、`PublicRestRoutes<ApiEnv>`の経路は登録箇所へ加えた時点で型検査に失敗する。開発者の決定で、本specの設計をapi-gatewayの実装に合わせた。
 - design.mdの`PublicApiIpRateLimit`の`publicApiIpRateLimitRoutes`を`PublicRestRoutes<Env>`に改め、型引数の理由を説明に加えた。`bindingRateLimit`の`binding: (env) => env.PUBLIC_API_RATE_LIMITER`は、Wrangler設定へ`PUBLIC_API_RATE_LIMITER`を加えて型を再生成した`Env`で解決される。要件・タスクは変えていない。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の決定)
+
+- frontend-platformの実装と最終検証の後、開発者の決定(frontend-platformのタスク10.4)で、下流specの設計をfrontend-platformの設計の「実装で確定した契約による発火と影響を受ける下流spec」の表に合わせた。振る舞いを変えない整合の修正のため、改訂の番号は付けない。要件は変えていない。
+- 操作の置き場所と生成物: clientの操作を`src/graphql/operations/public-api/`の1ファイル1操作の`.graphql`(操作名は`Client`で始める)にし、`graphql()`を呼ばず、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読むとした(design.mdのDependency DirectionとFile Structure Plan、tasks.mdの6.1)。
+- Zodの値の読み込み元とフォーム部品の形: `api-key-form-schema.ts`はZodの値を`lib/utilities/validation/zod.ts`の`z`から読み、フォームを`useAppForm<TInput, TOutput>(schema, { defaultValues })`と`AppForm`(`serverFieldPrefix="input"`・必須の`onSubmitError`)で作り、想定外の失敗の文言を`errorMessageOf`で選ぶとした(design.mdのAllowed Dependencies・ApiKey画面の部品、tasks.mdの6.2)。
+- `SecurityPolicySources`と環境のキー: frontend-platformのエントリは、`runtimeSecurityPolicySources`の欄を1つの欄に1つの環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)で確かめ、不正な値のキー名をログへ出す。`PUBLIC_API_ORIGIN`を`connectSrc`へ加えると、`connectSrc`の不正が`SENTRY_DSN`と`PUBLIC_API_ORIGIN`のどちらに由来するかを対応から決められない。
+  - 案A(採用): `PUBLIC_API_ORIGIN`を環境の検証でCSPの許可先の形まで確かめ、形に合わない値を環境の検証の失敗(キー名`PUBLIC_API_ORIGIN`)にする。`connectSrc`の検査で不正になる値は`SENTRY_DSN`に由来するものに限られ、エントリの対応を変えずに済む。
+  - 案B: エントリの対応を環境のキーごとの検査(1つのキーに1つの欄)に改める。frontend-platformの確定した契約の形を変えるため採らない。
+  - design.mdのModified Files・ClientEnvExtension、tasks.mdの1.5、本書の「上流への影響」を直した。

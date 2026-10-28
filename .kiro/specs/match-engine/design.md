@@ -50,7 +50,7 @@
 - product-launch: `PRODUCT_PLATFORM_TYPES`の`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductDirectory`(`findSummaries`・`listLaunches`)、`visibleProducts()`、`products`・`product_launches`への外部キー、`ProductLifecycleEvent`・`ProductLifecycleSyncHandler`・`ProductLifecycleSyncRegistration`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`ProductLifecycleAsyncHandler`・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、GraphQLの`ProductCategory`・`productCategoryLoader`。
 - user-profile-social: `UserProfileDirectory`(`resolveHandle`・`findSummaries`)・`PROFILE_PLATFORM_TYPES`・GraphQLの`UserSummary`・`userSummaryLoader`・`PUBLIC_PROFILE_TABS`・`PublicProfileTab`・`PublicProfileSectionContext`・`UserAvatar`・`checkHandleFormat`・`USER_HANDLE_RULE`・`checkExternalUrl`。
 - media-pipeline: `mediaFileLoader`・`toMediaImage`・GraphQLの`MediaImage`・`MediaPicture`。
-- frontend-platform・inquiry-chat: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useTurnstileToken`・`TurnstileWidget`・`notify`・`buildPageHead`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・日時の表示部品・shadcn/uiの部品(ボタン・バッジ・ツールチップ・カード)・`LIVE_REFRESH_QUERY_OPTIONS`・`runAxe`・デザイントークン(`tokens.css`)。
+- frontend-platform・inquiry-chat: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`useTurnstileToken`・`TurnstileWidget`(非表示)・`notify`・`buildPageHead`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・日時の表示部品・shadcn/uiの部品(ボタン・バッジ・ツールチップ・カード)・`LIVE_REFRESH_QUERY_OPTIONS`・`runAxe`・デザイントークン(`tokens.css`)。
 - admin-foundation: E2Eの`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - npmパッケージ: 新規なし。
 - 後続specは、`core/match`・`workers/match`の公開の契約、`qualifierWins()`、apiの`MatchViewReader`・`matchViewLoader`・GraphQLの`Match`などの型、eventの`MATCH_EVENT_HANDLERS`、clientの`TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`・`MatchCard`・`ByeList`・`useUpvote`だけに依存し、本specのテーブルへ書き込まない。読み取りの問い合わせで本specのテーブルを結合してよいのは`qualifierWins()`を使う並べ替えと絞り込みだけとする。
@@ -287,10 +287,11 @@ apps/
 │   │   ├── upvote-history-panel.tsx
 │   │   └── upvote-history-item.tsx
 │   ├── composition/public-profile-sections.ts                # (変更)upvotes 20を追記
-│   └── graphql/operations/match/
-│       ├── qualifier-board.ts
-│       ├── upvote-mutations.ts
-│       └── upvote-history.ts
+│   └── graphql/operations/match/                             # 1ファイル1操作(操作名はClientで始める。フラグメントも.graphqlに置く。生成物はsrc/graphql/generated/)
+│       ├── qualifier-board.graphql                           # query ClientQualifierBoard(qualifierBoard)
+│       ├── upvote.graphql                                    # mutation ClientUpvote(upvote)
+│       ├── cancel-upvote.graphql                             # mutation ClientCancelUpvote(cancelUpvote)
+│       └── upvote-history.graphql                            # query ClientUpvoteHistory(upvoteHistory)
 e2e/
 ├── client/match.e2e.test.ts                                  # Upvote・付け替え・取り消し・自分のマッチ・Upvote履歴
 └── support/match-fixtures.ts                                 # ローカルD1にマッチ中のマッチを作る補助
@@ -1510,7 +1511,7 @@ export declare function useUpvote(options: UseUpvoteOptions): {
 #### TopPageRoute・TopPage・TopPageSections・FullTimeCountdown・GuestHero・QualifierSection・SectionHeading・EmptyLineup
 
 - `routes/index.tsx`: `loader`で`qualifierBoard`を`ensureQueryData`(サーバーで描画、8.16)、`head`は`buildPageHead({ title: 'Launch Stadium', description, canonicalUrl: clientSiteOrigin + '/' })`、`errorComponent`は`ErrorState`(「マッチを読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。」・再試行・問い合わせ)、`pendingComponent`は対戦カードの形のスケルトン。
-- `TopPage`: `TOP_PAGE_SECTIONS`を置き場所ごとに`order`順で、区画ごとのエラー境界で描く(9.1・9.2・9.4)。上部の行(`banner`、画面幅で1〜4列のグリッド)→未ログインなら`GuestHero`(8.17)→`showcase`(全幅)→本文(`main`の縦の列と`aside`の横の列、1024px未満は`aside`を本文の下)→`bottom`→フッター。`TurnstileWidget`(`action` `match_upvote`、不可視)を1つ置く。`qualifierBoard`は`LIVE_REFRESH_QUERY_OPTIONS`で30秒ごとに取り直し、カードの並びは最初の取得の順を保って値だけを差し替える(8.10)。
+- `TopPage`: `TOP_PAGE_SECTIONS`を置き場所ごとに`order`順で、区画ごとのエラー境界で描く(9.1・9.2・9.4)。上部の行(`banner`、画面幅で1〜4列のグリッド)→未ログインなら`GuestHero`(8.17)→`showcase`(全幅)→本文(`main`の縦の列と`aside`の横の列、1024px未満は`aside`を本文の下)→`bottom`→フッター。`TurnstileWidget`(`action` `match_upvote`)を1つ置く。ウィジェットは非表示で描くため、判定の枠と場所を設けない。`qualifierBoard`は`LIVE_REFRESH_QUERY_OPTIONS`で30秒ごとに取り直し、カードの並びは最初の取得の順を保って値だけを差し替える(8.10)。
 - `FullTimeCountdown`(`banner` 10): `phase`が`live`のときだけ「フルタイムまであと」と時:分:秒、`(<時刻>終了)`の`<time datetime>`。`useServerCountdown(fullTimeAt, serverTime)`で取得時のサーバーとの時刻の差を補正し、1秒ごとに更新、0になったら`qualifierBoard`を取り直す。数字は`aria-hidden`、読み上げ用に分単位の文言を`aria-live="off"`で持つ(8.11・8.14)。
 - `QualifierSection`(`main` 30): 見出し「予選」と「本日の予選マッチ{heldCount}試合」、`live`は「フルタイム<時刻>」、`result`は「明日のキックオフ<時刻>」(8.11・8.12)。対戦カードを2列(1280px以上、先頭は全幅)で並べ、`QUALIFIER_LIST_INSERTS`を`every`件ごとに差し込む(9.3)。末尾に`ByeList`(8.13)。対戦カードも不戦勝も無ければ`EmptyLineup`(「本日のマッチはありません。ローンチを予約しましょう。」と「ローンチを予約🚀」(未ログインは「ログインしてローンチを予約🚀」))(8.15)。
 - `GuestHero`: モックアップの文言(「1対1のマッチでローンチ。必ず半分は勝者になる。」と説明)と「登録してローンチする」(`/auth/register`)・「ログイン」(`/auth/login?redirect=/`)。
@@ -1530,7 +1531,7 @@ export declare function useUpvote(options: UseUpvoteOptions): {
   | `WEEK`・`YEAR` | 「対戦相手不在のため不戦勝。次のラウンドへ進みます。」           | 「対戦相手が不在になったためマッチ終了。{n}票のUpvoteで確定し、次のラウンドへ進みます。」                   |
 
 - `StadiumPitch`(`horizontal-pitch.tsx`・`vertical-pitch.tsx`・`pitch-model.ts`)・`TeamColors`(`colorIndex`→2色)・`stadium.css`: モックアップのSVGと演出を移植し、色はデザイントークンと配色の一覧から取る。装飾のため`aria-hidden`。
-- `useUpvote`: `GUEST`は`LoginRequiredDialog`(`returnTo`は現在のURL、8.7)。それ以外は`useTurnstileToken().consume()`のトークンで、押した側が現在のUpvoteなら`cancelUpvote`、それ以外は`upvote`(付け替えを含む)を送り、成功で`onUpdated`と`notify.success`(「Upvoteしました。」・「Upvoteを取り消しました。」)、失敗で表示を変えずに`GraphQLClientError`の文言を`notify.error`(8.8・8.9)。トークンが未取得の間はボタンを送信中にする。
+- `useUpvote`: `GUEST`は`LoginRequiredDialog`(`returnTo`は現在のURL、8.7)。それ以外は`useTurnstileToken().consume()`のトークンで、押した側が現在のUpvoteなら`cancelUpvote`、それ以外は`upvote`(付け替えを含む)を送り、成功で`onUpdated`と`notify.success`(「Upvoteしました。」・「Upvoteを取り消しました。」)、失敗で表示を変えずに`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言(`GraphQLClientError`はその文言)を`notify.error`(8.8・8.9)。トークンが未取得の間はボタンを送信中にする。
 - `MatchLabels`: 種別とラウンド(「予選」・「Week 準決勝」・「Year 2回戦」)、結果の文言の組み立て。
 
 #### UpvoteHistoryCount・UpvoteHistoryPanel・UpvoteHistoryItem

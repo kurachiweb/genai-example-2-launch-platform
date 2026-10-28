@@ -100,7 +100,7 @@
 - `apps`配下は未実装で、dev-toolingの品質ゲート・共有ディレクトリの配置の仕組みだけが実装済みである。backend-platform・api-gateway・email-delivery・frontend-platformは設計まで承認済みで、本specはその契約(登録箇所・メッセージ・定期実行・層の規則・共通部品・静的解析の設定)を前提にする。roadmapの依存(frontend-platformと、その上流のbackend-platform・api-gateway)の実装の完了後に着手する。email-deliveryはroadmapの依存ではなく、共有するのは4:21の定期実行だけのため、実装が無くても止めずに開発者へ報告する。
 - `config/workspace-layout.ts`の`SHARED_DIRS`は、`apps/db`・`apps/backend-lib`(検査担当api)と`apps/frontend-lib`(検査担当`self`)の3つで、フロントエンドとバックエンドの両方へ配置される共有ディレクトリが無い。`scripts/tooling/shared-dirs.ts`は定義を読むだけの汎用の仕組みで、定義の追加で新しい共有ディレクトリを扱える。
 - `docs/GUIDES/tech/db/002`は、FTS5のexternal contentとトリガーによる同期、カスタムマイグレーション、Time Travelによるバックアップを定めている。backend-platformは全文検索用のテーブルの主キーを連番とする規約だけを持ち、部品を提供しない。
-- frontend-platformは、`@eslint-react/dom/no-dangerously-set-innerhtml`を全体で禁止し、本specのサニタイズ済みHTMLの部品だけが理由のコメント付きで1行だけ無効化できる規約(`frontend/003`)を置いている。CSPはスクリプトにnonceと`'self'`、スタイルに`'unsafe-inline'`を許可する。
+- frontend-platformは、`@eslint-react/dom-no-dangerously-set-innerhtml`を全体で禁止し、本specのサニタイズ済みHTMLの部品だけが理由のコメント付きで1行だけ無効化できる規約(`frontend/003`)を置いている。CSPはスクリプトにnonceと`'self'`、スタイルに`'unsafe-inline'`を許可する。
 - Cron Triggersはapiだけに置き、重い処理はeventのQueueのconsumerへ委ねる(backend-platform)。email-deliveryが業務時刻4:21(`21 12 * * *`)の定期実行を登録する。
 
 ### Architecture Pattern & Boundary Map
@@ -867,7 +867,7 @@ export declare function useMarkdownOptions(input: {
 }): MarkdownRenderOptions; // siteOriginをルーターの文脈のPublicRuntimeConfig.clientSiteOriginから補う
 ```
 
-- `MarkdownContent`は`<div>`にモックアップの`prose`のクラス(`prose max-w-none wrap-anywhere dark:prose-invert`、見出し・リンク・コード・コードブロック・引用・表の調整、`size`による`prose-sm`・`sm:prose-base`)を付け、`dangerouslySetInnerHTML={{ __html: rendered.html }}`で挿入する。この1行だけが`@eslint-react/dom/no-dangerously-set-innerhtml`を理由のコメント付きで無効化する(5.5)。
+- `MarkdownContent`は`<div>`にモックアップの`prose`のクラス(`prose max-w-none wrap-anywhere dark:prose-invert`、見出し・リンク・コード・コードブロック・引用・表の調整、`size`による`prose-sm`・`sm:prose-base`)を付け、`dangerouslySetInnerHTML={{ __html: rendered.html }}`で挿入する。この1行だけが`@eslint-react/dom-no-dangerously-set-innerhtml`を理由のコメント付きで無効化する(5.5)。
 - `useRenderedMarkdown`は`useMemo`で、`markdown`と`options`の各値(`rel`は結合した文字列)を依存にする。ページのサーバー側の描画とブラウザの初期化で同じHTMLになる(4.15)。
 
 #### CollapsibleMarkdownContent
@@ -1007,8 +1007,8 @@ export default function CrepeEditorSurface(
 
 #### MarkdownLintRules・RawHtmlExceptionCheck・EditorBundleCheck
 
-- `MarkdownLintRules`(2.13): `frontend-lint.ts`の既存の`no-restricted-imports`(依存の方向)の設定へ、`patterns`として`@milkdown/*`・`vue`(`components/markdown-editor/crepe/**`以外)、`**/markdown-editor/crepe/**`(`crepe/`の外からの静的import・export-from)、`**/common-lib/validation/**`(`components/**`・`server/**`から)を統合する。`components/**`・`server/**`・`utilities/**`からの`common-lib`のその他のモジュールの読み込みは報告しない。ESLintのフラットな設定では、同じ規則を後の設定で再定義すると前の選択肢が置き換わるため、同じファイルの組に対する規則は1つの設定にまとめる。`no-restricted-syntax`で`ImportExpression[source.value=/markdown-editor\/crepe/]`を`load-crepe-editor.ts`以外で禁止する。client・adminにも同じ規則が適用される。
-- `RawHtmlExceptionCheck`(5.5): `config/raw-html-exception.ts`の純粋関数`findRawHtmlExceptions(rootDir)`が、指定したディレクトリのソースから、生のHTMLの規則(`@eslint-react/dom/no-dangerously-set-innerhtml`)の無効化のコメント・`innerHTML`への代入の規則の無効化・`as SanitizedHtml`の位置を返す。frontend-libの`config/raw-html-exception.unit.test.ts`は、frontend-libでは`components/markdown/markdown-content.tsx`の1箇所だけであることを、client・adminの`test/config/raw-html-exception.unit.test.ts`は自身の`src`で0箇所であることを確かめる。
+- `MarkdownLintRules`(2.13): `frontend-lint.ts`の既存の`no-restricted-imports`(依存の方向)の設定へ、`patterns`として`@milkdown/*`・`vue`(`components/markdown-editor/crepe/**`以外)、`**/markdown-editor/crepe/**`(`crepe/`の外からの静的import・export-from)、`**/common-lib/validation/**`(`components/**`・`server/**`から)を統合する。`components/**`・`server/**`・`utilities/**`からの`common-lib`のその他のモジュールの読み込みは報告しない。ESLintのフラットな設定では、同じ規則を後の設定で再定義すると前の選択肢が置き換わるため、同じファイルの組に対する規則は1つの設定にまとめる。型だけの読み込みを区別する`@typescript-eslint/no-restricted-imports`の設定は、frontend-platformの`restrictValueImports`が常に`ZOD_VALUE_RESTRICTION`(Zodの値は`utilities/validation/zod.ts`の`z`からだけ読む)を含めて組み立てるため、本specの制限をそちらへ加える場合も`restrictValueImports`を通し、Zodの制限を落とさない。`ZOD_VALUE_RESTRICTION`はfrontend-lib・client・adminのファイルの規則で、`zod`を直接読む`apps/common-lib`(自身の`eslint.config.ts`で検査する)には掛からない。`no-restricted-syntax`で`ImportExpression[source.value=/markdown-editor\/crepe/]`を`load-crepe-editor.ts`以外で禁止する。client・adminにも同じ規則が適用される。
+- `RawHtmlExceptionCheck`(5.5): `config/raw-html-exception.ts`の純粋関数`findRawHtmlExceptions(rootDir)`が、指定したディレクトリのソースから、生のHTMLの規則(`@eslint-react/dom-no-dangerously-set-innerhtml`)の無効化のコメント・`innerHTML`への代入の規則の無効化・`as SanitizedHtml`の位置を返す。frontend-libの`config/raw-html-exception.unit.test.ts`は、frontend-libでは`components/markdown/markdown-content.tsx`の1箇所だけであることを、client・adminの`test/config/raw-html-exception.unit.test.ts`は自身の`src`で0箇所であることを確かめる。
 - `EditorBundleCheck`(2.13): `scripts/check-editor-chunks.ts`が、`test/bundle/editor-entry.tsx`(`MarkdownEditor`を静的に読み込む入口)をViteのAPIでクライアント用とSSR用にビルドし、マニフェストの静的な読み込み(`imports`)をたどった範囲に`@milkdown`・`vue`・`prosemirror`のモジュールが無く、動的な読み込み(`dynamicImports`)の先にあることを確かめて終了コードで示す。frontend-libのスクリプト`check:editor-chunks`で実行する。
 
 #### SiteOriginConfig

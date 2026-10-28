@@ -52,7 +52,10 @@
 - product-launch: `PRODUCT_PLATFORM_TYPES.ProductDirectory`(`findSummaries`)。
 - admin-foundation: `requireAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AdminDirectory`・`RoleGate`・`useAdminRole`・`ConfirmActionDialog`・E2Eの`e2e/support/admin-bootstrap.ts`・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - ultras-subscription: `AdminSettingsSection`・`ADMIN_SETTINGS_SECTIONS`。
-- frontend-platform・content-processing: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`notify`・`buildPageHead`・`ErrorState`・`LoadingSkeleton`・日時の表示部品・shadcn/uiの`switch`・`button`・`input`・`label`・`textarea`・`badge`・`runAxe`、`apps/common-lib`の書記素の文字数の数え方。
+- frontend-platform・content-processing: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`AppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`notify`・`buildPageHead`・`ErrorState`・`LoadingSkeleton`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`・日時の表示部品・shadcn/uiの`switch`・`button`・`input`・`label`・`textarea`・`badge`・`runAxe`、`apps/common-lib`の書記素の文字数の数え方。
+  - GraphQLの操作は各アプリの`src/graphql/operations/notifications/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
+  - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。画面のスキーマの`zod`の値は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
+  - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
 - npmパッケージ: 新規なし。
 - 後続specは、`core/notifications`の公開の契約(`NotificationEvent`・`NotificationEventPublisher`・`ResultNoticeSupplement`・`ResultNoticeSupplementRegistration`・`NOTIFICATIONS_PLATFORM_TYPES`・`EveningDispatchGate`)、`workers/notifications`の`NOTIFICATIONS_PLATFORM_MODULE`、eventの`RESULT_NOTICE_SUPPLEMENTS`、apiの`EVENING_DISPATCH_PARTICIPANTS`、`NotificationSettingsExport`だけに依存し、本specのテーブルを読み書きしない。
 
@@ -289,14 +292,14 @@ apps/
 │   │   ├── delivery-status-notice.tsx                          # 抑止・未確認・停止中の案内
 │   │   ├── unsubscribe-confirmation.tsx
 │   │   └── notification-copy.ts                                # 画面の文言(*.unit.test.ts)
-│   └── graphql/operations/notifications/
-│       ├── notification-settings.ts
-│       └── unsubscribe.ts
+│   └── graphql/operations/notifications/                       # 1ファイル1操作の*.graphql(操作名はClientで始める)
+│       ├── notification-settings/*.graphql                     # 通知設定の照会と変更
+│       └── unsubscribe/*.graphql                               # 配信停止のリンクの照会と確定
 └── admin/src/
     ├── components/notifications/
     │   ├── sender-info-section.tsx                             # AdminSettingsSectionの部品
     │   └── sender-info-form.tsx
-    └── graphql/operations/notifications/sender-info.ts
+    └── graphql/operations/notifications/                       # 1ファイル1操作の*.graphql(操作名はAdminで始める。送信者情報の照会と保存)
 e2e/
 ├── client/notifications.e2e.test.ts                            # 通知設定・リンクとワンクリックの配信停止
 ├── admin/notification-sender.e2e.test.ts                       # 送信者情報の保存と監査ログ
@@ -581,7 +584,7 @@ export declare function checkSenderInfoLengths(input: {
   readonly businessName: string;
   readonly contactEmail: string;
   readonly postalAddress: string;
-}): readonly SenderInfoViolation[]; // 前後の空白を除いた値で判定。メールアドレスの形式はサーバーがisValidEmailAddress、画面がzodのz.email()で確かめる
+}): readonly SenderInfoViolation[]; // 前後の空白を除いた値で判定。メールアドレスの形式はサーバーがisValidEmailAddress、画面が`utilities/validation/zod.ts`の`z.email()`で確かめる
 
 // common-lib/admin/audit-actions/notifications.ts
 // defineAuditAction({ name: 'notification-sender.update', label: '通知メールの送信者情報の変更', targetKind: 'setting', reason: 'optional', detailKeys: ['fields'], maxTargets: 1 })
@@ -871,7 +874,7 @@ export declare function matchResultSubject(input: {
   readonly outcome: ResultOutcome;
   readonly ownVotes: number;
   readonly opponentVotes: number;
-  readonly nextRoundName: string | null; // 統合(4.4)
+  readonly nextRoundName: string | null; // 統合(4.4)。件名は「、次は<ラウンド名>」で、日付を基準にした相対表現を使わない
 }): string;
 export declare function followedMatchesSubject(
   productNames: readonly string[],
@@ -895,7 +898,7 @@ export declare function suppressionReasonOf(
 ): 'bounce' | 'complaint' | 'rejected'; // hard_bounce→bounce(データエクスポートと画面で共通)
 ```
 
-- 件名と本文の文は「Supporting References」の表のとおり(3.4・4.3・4.4・5.2・5.3・6.2)。
+- 件名と本文の文は「Supporting References」の表のとおり(3.4・4.3・4.4・5.2・5.3・6.2)。件名は日付を基準にした相対表現(「明日」「本日」)を含めず、統合は「次は<ラウンド名>」、開催通知は「キックオフします」とする。本文の「明日は<ラウンド名>です。」は件名と文字列の部品を共有せず、共有するのは`roundName`の結果だけである。
 
 #### NoticeEmail
 
@@ -1679,7 +1682,7 @@ export declare function unsubscribeQuestion(topicLabel: string): string; // '「
 
 - `routes/_authenticated/settings/notifications.tsx`: `_authenticated`の下に置き(未ログインはログインへ誘導して戻す、1.8)、`loader`で`viewerNotificationSettings`を`ensureQueryData`、`head`は`buildPageHead({ title: '通知', noIndex: true })`。ナビゲーションは`SETTINGS_NAV_ITEMS`の`notifications`(40)(1.9)。
 - `NotificationSettingsPanel`: 見出し「通知メール」と説明(初期設定はすべて受け取らない旨、1.3)、`DeliveryStatusNotice`、通知種別ごとの`NotificationTopicSwitch`(`NOTIFICATION_TOPICS`の順)。
-- `NotificationTopicSwitch`: shadcn/uiの`switch`(`aria-describedby`で説明)。切り替えで`updateNotificationPreference`を送り、送信中はスイッチを無効にし、成功でサーバーの値に更新して`notify.success('通知設定を保存しました。')`、失敗で元の値に保って`GraphQLClientError`の文言を`notify.error`(1.4・1.5)。`editable`が偽なら無効(1.6)。
+- `NotificationTopicSwitch`: shadcn/uiの`switch`(`aria-describedby`で説明)。切り替えで`updateNotificationPreference`を送り、送信中はスイッチを無効にし、成功でサーバーの値に更新して`notify.success('通知設定を保存しました。')`、失敗で元の値に保って`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言を`notify.error`(1.4・1.5)。`editable`が偽なら無効(1.6)。
 - `DeliveryStatusNotice`: `suppression`があれば理由ごとの文言(`REJECTED`は`until`を`<time datetime>`)と`/settings/account`への導線(2.1〜2.3)、`deliveryStatusAvailable`が偽なら「配信の状態を確認できませんでした。」(2.4)、`emailVerified`が偽なら未確認の案内(1.7)、`editable`が偽なら停止中の案内(1.6)。
 
 #### UnsubscribeRoute・UnsubscribeConfirmation
@@ -1693,7 +1696,8 @@ export declare function unsubscribeQuestion(topicLabel: string): string; // '「
 
 - 登録: `ADMIN_SETTINGS_SECTIONS`に`{ id: 'notifications.sender-info', order: 30, component: SenderInfoSection }`(11.1)。
 - `SenderInfoSection`: 見出し「通知メールの送信者情報」と説明、未設定なら「送信者情報が未設定のため、通知メールを送信していません。」の警告(11.2・仮3)、現在の値と最後に変更した日時(`<time datetime>`)と管理者のニックネーム。`RoleGate({ minimum: 'super_admin' })`のときだけ`SenderInfoForm`、それ以外は参照だけで「最上位管理者だけが変更できます」(11.3)。
-- `SenderInfoForm`: `useAppForm`と`checkSenderInfoLengths`・`z.email()`の検証(フォーカスアウト、11.4)、保存は`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`)で確定し`updateNotificationSenderInfo`、`validation_error`は`applyServerFieldErrors`、`version_conflict`は最新を読み直す案内(11.7)、成功で「送信者情報を保存しました。」。
+- `SenderInfoForm`: `useAppForm(<送信者情報のスキーマ>, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)、`checkSenderInfoLengths`・`utilities/validation/zod.ts`の`z.email()`の検証(フォーカスアウト、11.4)、保存は`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)で確定し`updateNotificationSenderInfo`を送る。確定の失敗はダイアログの中に`failureMessageOf`の文言で示し(`version_conflict`はAPIの最新を読み直す案内、11.7)、`validation_error`の欄ごとの詳細は`applyServerFieldErrors`でフォームの欄にも示す。成功で「送信者情報を保存しました。」。
+- `SenderInfoSection`の取得の失敗は`ErrorState`を`contactHref`無しで描き、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ。
 
 ### docs・e2e
 
@@ -1759,6 +1763,7 @@ erDiagram
 - 送り出しの失敗は例外として再試行し(`NOTIFICATION_RETRY_POLICY`)、`pending`の通知とカーソルから再開する。上限ではbackend-platformのデッドレターとSentryで知らせ、4:21の保守で送り直す。
 - 送らない判断(受信しない設定・抑止・送信者情報の未設定・表示できないプロダクト・古い予告)は例外にせず、通知を`skipped`と理由で確定する。
 - 結果の追記の提供元の例外は送り出しの段の再試行にする(決済期限の欠けたメールを送らない)。形式に合わない追記は捨てる。
+- 画面に出す失敗の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(利用者側は`CLIENT_PROFILE`、管理者側は`ADMIN_PROFILE`)。管理者側の送信者情報の区画は`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない。
 
 ### Error Categories and Responses
 
@@ -1840,17 +1845,17 @@ erDiagram
 
 ### 通知メールの文(文言規則に追加)
 
-| 種別・場面          | 件名                                                             | 本文の要点                                                                                                                                                                                                |
-| ------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 開始予告            | まもなくキックオフ: Pitch Notes vs Tactics Board(既存)           | 「明日、<自分>が<相手>と対戦します(<マッチの表記>)。」「キックオフ: 9月15日08:00(UTC)」「フルタイム: 9月16日07:40(UTC)」、ボタン「トップページを見る」                                                    |
-| 勝敗結果(勝利)      | フルタイム: Pitch Notesが12対9でTactics Boardに勝利(既存)        | 「<自分>は12対9で<相手>に勝利しました(<マッチの表記>)。」。最終Upvote時間なら「同数でしたが、最終Upvote時刻が早いため勝利しました。」                                                                     |
-| 勝敗結果(敗北)      | フルタイム: Pitch Notesは9対12でTactics Boardに敗れました        | 「<自分>は9対12で<相手>に敗れました。」。最終Upvote時間なら「同数でしたが、最終Upvote時刻が遅かったため敗れました。」                                                                                     |
-| 勝敗結果(両者敗北)  | フルタイム: Pitch NotesとTactics Boardは両者敗北(0対0)           | 「Upvoteが無かったため、両者敗北(0対0)となりました。」                                                                                                                                                    |
-| 勝敗結果(不戦勝)    | フルタイム: Pitch Notesは不戦勝                                  | 「対戦相手がいないため不戦勝となりました。」(相手の退会等による勝利も同じ表記)                                                                                                                            |
-| 統合                | フルタイム: Pitch NotesがTactics Boardに勝利、明日は準決勝(既存) | 結果の文に続けて「明日は<ラウンド名>です。<相手>と対戦します。」とキックオフ・フルタイムの時刻。不戦勝の統合は「フルタイム: Pitch Notesは不戦勝、明日は準決勝」                                           |
-| 開催通知(1件・複数) | 既存の2つ                                                        | 項目ごとに「<プロダクト>(<投稿者>さん)— <マッチの表記> vs <相手>」、残りは「ほか<n>件」、ボタン「トップページで応援する」                                                                                 |
-| 受賞結果            | Pitch NotesがProduct of the Weekを受賞(既存)                     | 「<投稿者>さんの<プロダクト>が<期間>のProduct of the Weekを受賞しました。」、ボタン「プロダクトを見る」                                                                                                   |
-| 全種別の末尾        | —                                                                | 「通知設定を変更する」(通知設定ページ)、配信停止の区画「この通知を配信停止」(email-deliveryの既定の文言)、統合したメールは「勝敗結果の通知を配信停止」「マッチ開始予告の通知を配信停止」の2つ、送信者情報 |
+| 種別・場面          | 件名                                                                                                                             | 本文の要点                                                                                                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 開始予告            | まもなくキックオフ: Pitch Notes vs Tactics Board(既存)                                                                           | 「明日、<自分>が<相手>と対戦します(<マッチの表記>)。」「キックオフ: 9月15日08:00(UTC)」「フルタイム: 9月16日07:40(UTC)」、ボタン「トップページを見る」                                                    |
+| 勝敗結果(勝利)      | フルタイム: Pitch Notesが12対9でTactics Boardに勝利(既存)                                                                        | 「<自分>は12対9で<相手>に勝利しました(<マッチの表記>)。」。最終Upvote時間なら「同数でしたが、最終Upvote時刻が早いため勝利しました。」                                                                     |
+| 勝敗結果(敗北)      | フルタイム: Pitch Notesは9対12でTactics Boardに敗れました                                                                        | 「<自分>は9対12で<相手>に敗れました。」。最終Upvote時間なら「同数でしたが、最終Upvote時刻が遅かったため敗れました。」                                                                                     |
+| 勝敗結果(両者敗北)  | フルタイム: Pitch NotesとTactics Boardは両者敗北(0対0)                                                                           | 「Upvoteが無かったため、両者敗北(0対0)となりました。」                                                                                                                                                    |
+| 勝敗結果(不戦勝)    | フルタイム: Pitch Notesは不戦勝                                                                                                  | 「対戦相手がいないため不戦勝となりました。」(相手の退会等による勝利も同じ表記)                                                                                                                            |
+| 統合                | フルタイム: Pitch NotesがTactics Boardに勝利、次は準決勝(既存)                                                                   | 結果の文に続けて「明日は<ラウンド名>です。<相手>と対戦します。」とキックオフ・フルタイムの時刻。不戦勝の統合の件名は「フルタイム: Pitch Notesは不戦勝、次は準決勝」                                       |
+| 開催通知(1件・複数) | Pitch Notesがキックオフします⚽️応援しましょう！・フォローしているユーザーの3プロダクトがキックオフします⚽️応援しましょう！(既存) | 項目ごとに「<プロダクト>(<投稿者>さん)— <マッチの表記> vs <相手>」、残りは「ほか<n>件」、ボタン「トップページで応援する」                                                                                 |
+| 受賞結果            | Pitch NotesがProduct of the Weekを受賞(既存)                                                                                     | 「<投稿者>さんの<プロダクト>が<期間>のProduct of the Weekを受賞しました。」、ボタン「プロダクトを見る」                                                                                                   |
+| 全種別の末尾        | —                                                                                                                                | 「通知設定を変更する」(通知設定ページ)、配信停止の区画「この通知を配信停止」(email-deliveryの既定の文言)、統合したメールは「勝敗結果の通知を配信停止」「マッチ開始予告の通知を配信停止」の2つ、送信者情報 |
 
 ### 画面の文言(文言規則に追加)
 

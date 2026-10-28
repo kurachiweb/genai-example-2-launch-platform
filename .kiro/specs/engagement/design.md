@@ -49,7 +49,7 @@
 - directory-discovery: clientの`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`ProductPageContext`・`ProductLaunchSectionContext`・`DIRECTORY_ITEM_METRICS`・`DirectoryItemMetric`、apiの`DIRECTORY_ITEM_METRIC_SOURCES`・`DirectoryItemMetricSource`・`DirectoryItemMetricRegistration`、見出しのID`launches-heading`、E2Eの`e2e/support/directory-fixtures.ts`。
 - content-processing: `countGraphemes`・`markdownTextSchema`・`MarkdownTextRule`、`MarkdownEditor`・`MarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`・`LinkRelToken`。
 - user-profile-social: GraphQLの`UserSummary`・`userSummaryLoader`、clientの`UserAvatar`。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`requireData`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`notify`・`PartialErrorState`・`LoadingSkeleton`・`formatElapsed`・`DateTime`・`useTurnstileToken`・`TurnstileWidget`・shadcn/uiの部品(ボタン・ダイアログ・ドロップダウンメニュー・ツールチップ・バッジ・スケルトン)・`runAxe`・デザイントークン。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`requireData`・`GraphQLClientError`・`errorMessageOf`・`useAppForm<TInput, TOutput>(schema, { defaultValues })`・`AppForm`(必須の`onSubmitError`・任意の`serverFieldPrefix`)・`FormField`・`SubmitButton`・`notify`・`PartialErrorState`・`LoadingSkeleton`・`formatElapsed`・`DateTime`・`useTurnstileToken`・`TurnstileWidget`(非表示)・Zodの値の読み込み元(`utilities/validation/zod.ts`の`z`)・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・shadcn/uiの部品(ボタン・ダイアログ・ドロップダウンメニュー・ツールチップ・バッジ・スケルトン)・`runAxe`・デザイントークン。
 - admin-foundation: E2Eの`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - npmパッケージ: 新規なし。
 - 後続specは、`common-lib/engagement`・`workers/engagement`・`db/schema/engagement/engagement-conditions.ts`の公開の契約、apiの`CommentModerationControl`・`RatingModerationControl`、clientの`COMMENT_ACTIONS`と`CommentActionContext`だけに依存し、本specのテーブルへ直接書き込まない。
@@ -221,7 +221,7 @@ apps/
 │   ├── components/engagement/                       # 1ファイル1コンポーネント(browser testを併置)
 │   │   ├── comment-action-types.ts                  # CommentAction・CommentActionContext(テストなし)
 │   │   ├── engagement-viewer.ts                     # 閲覧者の状態の判定(useEngagementViewer、*.unit.test.ts)
-│   │   ├── comment-form-schema.ts                   # 投稿欄の検証(*.unit.test.ts)
+│   │   ├── comment-form-schema.ts                   # 投稿欄の検証(Zodの値はlib/utilities/validation/zod.tsのz、*.unit.test.ts)
 │   │   ├── comment-tree.ts                          # スレッドの木の組み立てとキャッシュの更新(*.unit.test.ts)
 │   │   ├── use-comment-mutations.ts                 # 投稿・返信・編集・削除とキャッシュの更新
 │   │   ├── use-rating-mutations.ts                  # 評価・取消とキャッシュの更新
@@ -238,11 +238,16 @@ apps/
 │   │   ├── comment-time.tsx
 │   │   ├── comment-list-skeleton.tsx
 │   │   └── comment-count-metric.tsx                 # DIRECTORY_ITEM_METRICSのcomments
-│   └── graphql/operations/engagement/
-│       ├── comments.ts                              # launchComments・launchCommentCounts
-│       ├── comment-mutations.ts                     # postComment・updateComment・deleteComment
-│       ├── ratings.ts                               # productRating・rateProduct・cancelProductRating
-│       └── resend-verification.ts                   # resendVerificationEmail(未確認の案内、identity-authと異なる操作名)
+│   └── graphql/operations/engagement/               # 1ファイル1操作(操作名はClientで始める。生成物はsrc/graphql/generated/)
+│       ├── launch-comments.graphql                  # query ClientLaunchComments(launchComments)
+│       ├── launch-comment-counts.graphql            # query ClientLaunchCommentCounts(launchCommentCounts)
+│       ├── post-comment.graphql                     # mutation ClientPostComment(postComment)
+│       ├── update-comment.graphql                   # mutation ClientUpdateComment(updateComment)
+│       ├── delete-comment.graphql                   # mutation ClientDeleteComment(deleteComment)
+│       ├── product-rating.graphql                   # query ClientProductRating(productRating)
+│       ├── rate-product.graphql                     # mutation ClientRateProduct(rateProduct)
+│       ├── cancel-product-rating.graphql            # mutation ClientCancelProductRating(cancelProductRating)
+│       └── resend-verification-email.graphql        # mutation ClientEngagementResendVerificationEmail(未確認の案内、identity-authと異なる操作名)
 e2e/
 └── client/engagement.e2e.test.ts                    # コメント・返信・編集・削除・評価・コメント数
 docs/GUIDES/tech/
@@ -1100,8 +1105,8 @@ export declare function useEngagementViewer(context: {
 - `CommentTime`: `<time dateTime>`に`formatElapsed`(30日以上は`dateWeekday`)、`tabIndex=0`とツールチップの`longDateTime`(8.7)。
 - `CommentMenu`: 「…」(`aria-label="コメントの操作"`)のドロップダウンメニュー。自身の`SHOWN`のコメントには「編集」(その場の`CommentComposer`、「保存する」、トップレベルは評価付き)と「削除」、他者の`SHOWN`のコメントには`COMMENT_ACTIONS`を`order`順に描き、項目が無ければメニューを描かない(8.10・14.2)。
 - `DeleteCommentDialog`: shadcn/uiの`Dialog`で「コメントを削除しますか?」・「削除したコメントは「このコメントは削除されました。」と表示され、付いている返信はそのまま残ります。」・「キャンセル」・「削除」(破壊的)。`useTurnstileToken`(`comment_delete`)のトークンが用意できるまで「削除」を待たせる(8.11)。
-- `CommentComposer`: `useAppForm(commentFormSchema)`と`FormField`の中の`MarkdownEditor`(`maxGraphemes: 2000`、`preview`は本文と同じ描画の設定で`idScope: 'preview'`)、評価の行(「評価(任意)」と`StarRatingInput size="sm"`)、`useTurnstileToken`(投稿は`comment_post`、編集は`comment_edit`)と`TurnstileWidget`、`SubmitButton`。失敗は入力を保ったまま文言を示し(`applyServerFieldErrors`)、成功で入力を空にする(1.3・8.3・8.16・10.5)。
-- `CommentGate`: 未ログインは「ログインすると、コメントや返信を投稿できます。」と`/auth/login?redirect=<現在のパス>`への「ログインしてコメント」、未確認は文言規則のメールアドレス未確認の文言と「確認メールを再送」(`resend-verification.ts`、結果を「確認メールを再送しました。」・429の文言で通知)(8.4・8.5)。
+- `CommentComposer`: `useAppForm<TInput, TOutput>(commentFormSchema, { defaultValues })`(`defaultValues`は本文と評価の全欄。編集は現在の値)と`AppForm`(`serverFieldPrefix="input"`。投稿・編集の操作は`input`で引数を受けるため)の中に、`FormField`の中の`MarkdownEditor`(`maxGraphemes: 2000`、`preview`は本文と同じ描画の設定で`idScope: 'preview'`)、評価の行(「評価(任意)」と`StarRatingInput size="sm"`)、`useTurnstileToken`(投稿は`comment_post`、編集は`comment_edit`)と`TurnstileWidget`(非表示で描くため、判定の枠と場所を設けない)、`SubmitButton`を置く。失敗は入力を保ったまま文言を示し(欄の詳細は`AppForm`が`applyServerFieldErrors`で欄へ移し、欄に対応しない詳細と想定外の失敗は`onSubmitError`で`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言を示す)、成功で入力を空にする(1.3・8.3・8.16・10.5)。
+- `CommentGate`: 未ログインは「ログインすると、コメントや返信を投稿できます。」と`/auth/login?redirect=<現在のパス>`への「ログインしてコメント」、未確認は文言規則のメールアドレス未確認の文言と「確認メールを再送」(`ClientEngagementResendVerificationEmail`、結果を「確認メールを再送しました。」・429の文言で通知)(8.4・8.5)。
 - `UseCommentMutations`・`CommentTree`: 成功の後に`launchComments`の無限の取得のキャッシュを、投稿は最初のページの先頭へ、返信は親のスレッドの`replies`の末尾へ、編集は該当の項目の置き換え、削除は`REMOVED`への置き換えで更新し、`launchCommentCounts`を無効にして取り直す。評価を添えた場合は`productRating`のキャッシュを返り値で置き換える。通知の文言は8.15のとおり(8.15)。
 - `CommentCountMetric`: `DirectoryItemMetric`の部品。吹き出しのアイコンと数を`/p/$handle`の`#launches-heading`へのリンクにし、「コメント{n}件」を支援技術に伝える(14.1)。
 - 演出のアニメーションは使わない(開閉の矢印の回転などの状態の変化だけ、8.18)。

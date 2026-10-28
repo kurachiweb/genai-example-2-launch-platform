@@ -49,7 +49,9 @@
 - api-gateway: `defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`・`DateTime`のスカラー。形を変えない。
 - admin-foundation: `requireAdmin`(`presentation/graphql/admin-guard.ts`)・`CurrentAdmin`・`AdminDirectory`(`backend-lib/workers/admin`)・`ADMIN_NAV_ITEMS`への追記・`AdminPageHeader`・`AdminDataTable`・`ConfirmActionDialog`・`RoleGate`・`useAdminRole`・E2Eの補助`signInAsNewAdmin`(`e2e/support/admin-bootstrap.ts`)。監査ログの部品は使わない。
 - content-processing: `countGraphemes`・`hasForbiddenCharacters`・`markdownTextSchema`・`MarkdownTextRule`・`LinkRelToken`(common-lib)、`MarkdownEditor`・`MarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`(frontend-lib)。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`・`PublicRuntimeConfig.clientSiteOrigin`。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`・`PublicRuntimeConfig.clientSiteOrigin`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
+  - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。管理者側のフォームのファイルが`zod`の値を使う時は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
+  - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
 - `@tanstack/react-router`の`useBlocker`(frontend-platformの版)。新しいnpmパッケージは無い。
 
 ### Revalidation Triggers
@@ -120,17 +122,17 @@ graph TB
 
 - 共有コード: `apps/db/schema/legal` → `apps/common-lib/legal`(content-processingの`countGraphemes`・`hasForbiddenCharacters`・`markdownTextSchema`だけを読み込む) → アプリの`src`。
 - apiの`src`内: `domain/legal` ← `application/legal`(`backend-lib/workers/admin`の`AdminDirectory`を読み込む) ← `infrastructure/legal`・`presentation/graphql/modules/legal`(`admin-guard.ts`を読み込む) ← `composition`。`legal`の各層は`identity`の各層を読み込まない。
-- client・adminの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。GraphQLの操作はアプリの`src/graphql/operations/legal/`に置く。
+- client・adminの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。GraphQLの操作はアプリの`src/graphql/operations/legal/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
 
 ### Technology Stack
 
-| Layer        | Choice / Version                                                                   | Role in Feature                  | Notes                 |
-| ------------ | ---------------------------------------------------------------------------------- | -------------------------------- | --------------------- |
-| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                              | 文書の状態・下書き・版           | 新しいテーブル2つ     |
-| API          | GraphQL Yoga(api-gatewayの基盤)・Zod                                               | 公開の照会・管理の照会と変更     | 既存                  |
-| 画面         | TanStack Start・TanStack Router 1.170系(`useBlocker`)・React・react-hook-form・zod | 公開ページ・過去版・管理画面     | frontend-platformの版 |
-| マークダウン | content-processingの`MarkdownEditor`(Crepe 7.22.2)・`MarkdownContent`              | 編集とプレビュー・表示           | 既存                  |
-| テスト       | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1                       | 単体・Workers統合・ブラウザ・E2E | 上流の版              |
+| Layer        | Choice / Version                                                                   | Role in Feature                  | Notes                                                                   |
+| ------------ | ---------------------------------------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------- |
+| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                              | 文書の状態・下書き・版           | 新しいテーブル2つ                                                       |
+| API          | GraphQL Yoga(api-gatewayの基盤)・Zod                                               | 公開の照会・管理の照会と変更     | 既存                                                                    |
+| 画面         | TanStack Start・TanStack Router 1.170系(`useBlocker`)・React・react-hook-form・zod | 公開ページ・過去版・管理画面     | frontend-platformの版。`zod`の値は`utilities/validation/zod.ts`から読む |
+| マークダウン | content-processingの`MarkdownEditor`(Crepe 7.22.2)・`MarkdownContent`              | 編集とプレビュー・表示           | 既存                                                                    |
+| テスト       | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1                       | 単体・Workers統合・ブラウザ・E2E | 上流の版                                                                |
 
 ## File Structure Plan
 
@@ -173,7 +175,8 @@ apps/
 │   │   ├── legal-version-page.tsx                      # 版の名前・版番号・公開日・変更概要・本文
 │   │   ├── legal-version-notice.tsx                    # 過去の版・最新版である旨と公開ページへのリンク
 │   │   └── legal-revision-history.tsx                  # 改訂履歴の一覧
-│   └── graphql/operations/legal/legal-document-operations.ts
+│   └── graphql/operations/legal/                       # 1ファイル1操作の*.graphql(操作名はClientで始める)
+│       └── legal-document.graphql · legal-document-version.graphql
 └── admin/src/
     ├── routes/_authenticated/legal-documents/index.tsx · $kind/index.tsx · $kind/revisions/$versionNumber.tsx
     ├── components/legal/                               # *.browser.test.tsxを併置
@@ -188,7 +191,7 @@ apps/
     │   ├── use-unsaved-changes-guard.ts                # useBlockerによる離脱の確認の状態
     │   ├── legal-editor-errors.ts                      # GraphQLClientErrorのコードと表示の対応(単体テスト併置)
     │   └── legal-form-schemas.ts                       # 下書きと変更概要のフォームの規則
-    └── graphql/operations/legal/admin-legal-operations.ts
+    └── graphql/operations/legal/                       # 1ファイル1操作の*.graphql(操作名はAdminで始める。照会3つと変更3つ)
 e2e/
 ├── client/legal-pages.e2e.test.ts                      # フッターから3つの公開ページへの到達
 └── admin/legal-documents.e2e.test.ts                   # 下書きの保存・公開・公開ページ・過去版・続けての公開(管理者はadmin-foundationの`signInAsNewAdmin`で用意する)
@@ -733,7 +736,7 @@ export declare function legalVersionHead(
 - `LegalRevisionHistory({ kind, revisions })`: 見出し「改訂履歴」(`h2`)の`<ol>`で新しい順に、「第N版」のリンク(`legalRevisionPath`)・`DateTime`(`longDate`)・変更概要。管理者の情報は受け取らない(6.5)。
 - `LegalVersionPage({ kind, versionNumber })`: `h1`「<文書の名前>(第N版)」、`LegalVersionNotice`、公開日・変更概要、本文。
 - `LegalVersionNotice({ kind, isLatest, versionNumber })`: 本文より前に、過去の版なら「これは第N版です。最新版ではありません。」と「最新版を見る」、最新版なら「これは最新版です。」と「公開ページを見る」のリンクを、`role="note"`で表示する(7.2・7.3)。
-- 取得の失敗は`ErrorState`(再試行あり)、読み込み中は`LoadingSkeleton`(9.4)。
+- 取得の失敗は`ErrorState`(再試行あり、文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`)、読み込み中は`LoadingSkeleton`(9.4)。
 
 ### admin
 
@@ -759,8 +762,8 @@ export type LegalEditorErrorState =
   | { readonly kind: 'field'; readonly details: readonly FieldErrorDetail[] } // validation_error
   | { readonly kind: 'unexpected'; readonly message: string };
 export declare function toLegalEditorErrorState(
-  error: GraphQLClientError,
-): LegalEditorErrorState;
+  error: unknown,
+): LegalEditorErrorState; // GraphQLClientErrorでない例外とその他のコードはunexpectedで、messageはerrorMessageOf(error, ADMIN_PROFILE.contactAvailable)
 
 // use-unsaved-changes-guard.ts
 export declare function useUnsavedChangesGuard(dirty: boolean): {
@@ -777,12 +780,12 @@ export declare function useUnsavedChangesGuard(dirty: boolean): {
 | `/legal-documents/{種類}/revisions/{版番号}` | `LegalVersionDetail`: 版番号・公開日時・変更概要・公開者・本文(`MarkdownContent`)、利用者側の過去版のページへのリンク                              |
 
 - 種類・版番号の形式違反と存在しない版は`notFound()`(管理者側の404の画面)。
-- `LegalDraftForm`: `useAppForm(legalDraftFormSchema)`の`FormField`に`MarkdownEditor`(`maxGraphemes: 100000`・`preview: useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL, idScope: 'preview' })`・ラベル「本文」)。初期値は下書き、無ければ`latestBody`、無ければ空(3.1)。操作は「下書きを保存」(`SubmitButton`)・「下書きを破棄」(下書きがあるとき、`ConfirmActionDialog`の理由なし・監査ログの表示なし、「<文書の名前>の下書きを破棄しますか?」→「破棄」)・「公開する」(下書きがあるとき)。
+- `LegalDraftForm`: `useAppForm(legalDraftFormSchema, { defaultValues: { body } })`と`AppForm`(`serverFieldPrefix="input"`、`onSubmitError`は下の「失敗」の分岐)の`FormField`に`MarkdownEditor`(`maxGraphemes: 100000`・`preview: useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL, idScope: 'preview' })`・ラベル「本文」)。初期値は下書き、無ければ`latestBody`、無ければ空(3.1)。操作は「下書きを保存」(`SubmitButton`)・「下書きを破棄」(下書きがあるとき、`ConfirmActionDialog`の理由なし・監査ログの表示なし・`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、「<文書の名前>の下書きを破棄しますか?」→「破棄」。失敗はダイアログの中にその文言で示し、`legal_document_conflict`では`LegalConflictNotice`も表示する)・「公開する」(下書きがあるとき)。
 - 保存していない変更があるとき、「公開する」を無効にし「公開する前に下書きを保存してください。」を表示する(4.6)。`useUnsavedChangesGuard(dirty)`で離脱の確認(「保存していない変更があります。このページを離れると変更は失われます。」→「離れる」)を出す(3.11)。
 - `useAdminRole()`が最上位管理者でないとき、`MarkdownEditor`を`disabled`にし、3つの操作を描かない(3.8)。
-- `PublishLegalDocumentDialog`: タイトル「<文書の名前>を公開しますか?」、説明「公開すると利用者側のページに直ちに表示されます。公開した版は後から変更・削除できません。」、変更概要の入力欄(1行、`publishFormSchema`、フォーカスを外したときに検証、「1 / 200」の文字数)、「公開」(4.7・9.1)。
+- `PublishLegalDocumentDialog`: タイトル「<文書の名前>を公開しますか?」、説明「公開すると利用者側のページに直ちに表示されます。公開した版は後から変更・削除できません。」、変更概要の入力欄(1行、`useAppForm(publishFormSchema, { defaultValues: { changeSummary: '' } })`と`AppForm`(`serverFieldPrefix="input"`)、フォーカスを外したときに検証、「1 / 200」の文字数)、「公開」(4.7・9.1)。
 - 成功: 応答の`AdminLegalDocument`で取得の結果を置き換え、フォームを新しい初期値で作り直し、トースト(「下書きを保存しました。」「下書きを破棄しました。」「公開しました。」)。
-- 失敗: `toLegalEditorErrorState`で分岐する。`conflict`は`LegalConflictNotice`(「他の管理者がこの文書を更新しました。最新の内容を読み込んでから、もう一度操作してください。」と「最新の内容を読み込む」)を表示し、入力欄の内容は消さない(3.10・4.4)。`unchanged`・`no-draft`はダイアログ内のエラー、`too-large`は「本文が大きすぎるため保存できません。」、`field`は欄ごとのエラー(`applyServerFieldErrors`)。
+- 失敗: `AppForm`の`onSubmitError`で`toLegalEditorErrorState`により分岐する。`conflict`は`LegalConflictNotice`(「他の管理者がこの文書を更新しました。最新の内容を読み込んでから、もう一度操作してください。」と「最新の内容を読み込む」)を表示し、入力欄の内容は消さない(3.10・4.4)。`unchanged`・`no-draft`はダイアログ内のエラー、`too-large`は「本文が大きすぎるため保存できません。」、`field`は`AppForm`が`applyServerFieldErrors`で欄に示した残り(`unmatched`)、`unexpected`は`message`(問い合わせを促す文を含まない)をフォームに示す。一覧・版の表示の取得の失敗(`AdminDataTable`の`error`)も`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言にする。
 - `LegalDraftStatus`: 下書きがあれば「下書きがあります」と最終保存の`DateTime`(`dateTime`)・保存者(削除済みは「削除済みの管理者」)、無ければ「下書きはありません」(3.5)。
 - `LegalRevisionTable`: `AdminDataTable`(列: 版・公開日時(`dateTime`)・変更概要・公開した管理者・操作「表示」「公開ページで見る」)、空は「まだ公開した版はありません。」(5.1〜5.5)。
 

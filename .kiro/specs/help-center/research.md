@@ -291,3 +291,11 @@
 ## 技術ドキュメントの番号の記述の修正(2026-10-24、spec横断レビュー3回目)
 
 - product-launchが`frontend/012-business-date-calendar.md`を使うことに合わせ、タスク8・設計のRevalidation Triggers・本書のRisksと後続specへの影響の記述を「本specがroadmapの順で`frontend/011`、product-launchが`frontend/012`」に改めた(文言だけの変更)。新しいサブエージェントによる独立した軽い確認(1回)の判定はPASSだった。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の判断)
+
+- frontend-platformが実装で確定した契約(同specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に、開発者の判断(下流specの設計を今回改訂する)で本specの設計を合わせた。
+- GraphQLの操作: 操作を各アプリの`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む。`graphql()`を呼んで`.ts`のファイルに操作を書くと、操作の本文がブラウザのバンドルに残るため(frontend-platformの要件6.3)。tasks.mdの操作のタスクに、各アプリの`graphql:generate`とapiの`graphql:allowlist`の手順を書いた。
+- フォーム: `useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`の形にした。画面側のスキーマの`zod`の値は`utilities/validation/zod.ts`から読む(CSPの下で`new Function`の試行を止める`jitless`の設定を済ませた`z`)。
+- 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。カテゴリの区画は、admin-foundationの`CategoryMasterEditor`の`failureMessageOf`(本改訂でadmin-foundationが加えた)に`errorMessageOf`を渡す。
+- 変えた箇所: design.mdのAllowed Dependencies、File Structure Planの両アプリの`graphql/operations/help/`と`help-article-form-schema.ts`、`HelpArticleTable`・`HelpArticleForm`・`HelpArticleDeleteButton`(`ConfirmActionDialog`の`failureMessageOf`)・`HelpCategorySection`、Error Strategy。tasks.mdの6.1・7.1・7.3・7.5。要件は変えていない。

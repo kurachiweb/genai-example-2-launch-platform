@@ -292,3 +292,10 @@
 
 - api-gatewayの実装後の改訂3で、内部RESTに共通の後処理が加わった。サブアプリが要求ごとに`SessionAccess`を作って`c.var.session`で経路へ渡し、経路の後(共通エラー・想定外の例外の応答を含む)に`Cache-Control: no-store`とセッションの指示を付ける。経路が付けた`Cache-Control`は`no-store`で上書きされる(開発者の決定)。
 - そのため、ダウンロードの応答のヘッダーを`Cache-Control: private, no-store`から`no-store`に改めた(requirements.mdの該当の受け入れ基準、design.mdの経路の表と応答のヘッダーの説明)。`no-store`だけでどのキャッシュにも保存されないため、守るべき性質は変わらない。経路の`authorize`は`createSessionAccess`を作り直さず`c.var.session`を使う形に改めた。R2のオブジェクトのメタデータの`private, no-store`は応答ではないため変えていない。タスクは変えていない。
+
+## frontend-platformの確定した契約の反映(2026-10-28)
+
+- **状態**: frontend-platformのタスク10.4として、frontend-platformが実装で確定した契約(frontend-platformのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に本specの設計とタスクを合わせた。2026-10-28に開発者が下流specの設計の改訂を決めた(frontend-platformの判断11)。受け入れ基準は変えていない。
+- **中継の経路の形**: 中継の経路は`defineRelayRoute`で定義して凍結する契約になり、上流の5xxでJSONでない応答は503`upstream_unavailable`に置き換わる(frontend-platformの要件2.10の例外)。`DATA_EXPORT_DOWNLOAD_RELAY_ROUTE`を`defineRelayRoute`で定義し、clientの`RELAY_ROUTES`の完全一致の経路の後に置くこと、ZIPを返すダウンロードの経路も5xxは共通のエラー形式(JSON)で返すことを書いた。
+- **GraphQLの操作の置き場所**: 操作は`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名は`Client`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`だけを読む契約になった。`data-export.ts`を`ClientMyDataExports`・`ClientRequestDataExport`の`.graphql`に分けた。
+- **変えた箇所**: design.mdのAllowed Dependencies・File Structure Plan・Modified Files(`relay-routes.ts`・生成物)・clientの節(中継の経路・5xx・操作の規約)、tasks.mdの5.3(503のJSON)・7.1(`defineRelayRoute`・`.graphql`・操作名・`composition.unit.test.ts`・`codegen.unit.test.ts`)。

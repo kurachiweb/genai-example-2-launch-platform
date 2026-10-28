@@ -309,3 +309,13 @@
 - 新しいサブエージェントによる独立した変更部分のタスクのレビュー(independent)を1回行い、判定はPASSだった。軽微の指摘(要件2.2の末尾の「(仮1)」の位置)は、受け入れ基準の出典を末尾に置く本書の書式に合わせて保った。要件・設計・タスクの承認を保った。
 - 訂正: コーディネーターがsponsorshipの要件14.9に合わせて両方の文の退会の条件を確定し直した。停止と非公開化の文の末尾を、どちらも「掲載期間が終わる前に退会した場合や、プロダクトを削除した場合は返金されません。」とした(設計のModerationEmailKinds、タスク1.4、要件12.4・12.5の要約)。
 - 訂正後の文について、新しいサブエージェントによる独立した変更部分のタスクのレビュー(independent)を1回行い、判定はPASSだった。軽微の指摘(本書の記録の順序、設計の確かめ直しの条件にsponsorshipの要件14.9を挙げる)に従って直した。要件・設計・タスクの承認を保った。
+
+## frontend-platformの確定した契約の反映(2026-10-28)
+
+- **状態**: frontend-platformのタスク10.4として、frontend-platformが実装で確定した契約(frontend-platformのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に本specの設計とタスクを合わせた。2026-10-28に開発者が下流specの設計の改訂を決めた(frontend-platformの判断11)。受け入れ基準は変えていない。
+- **GraphQLの操作の置き場所**: 操作は`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名は`Admin`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`だけを読む契約になった。`graphql/operations/moderation/`の7つの`.ts`を、9つの照会と13の措置の操作の`.graphql`に分けた。
+- **Zodの値の読み込み元**: アプリのファイルは`zod`の値を共通部品の`utilities/validation/zod.ts`(`z.config({ jitless: true })`の後の`z`)からだけ読む契約になった(CSPの`script-src`の違反を避けるため)。`ModerationSearch`の検索パラメータのスキーマをこの契約で書いた。
+- **管理者側のエラーの案内文**: `ErrorState`に`contactHref`を渡さず、`GraphQLClientError`でない例外に代えて出す文言(`ErrorState`・`PartialErrorState`・措置の確認のダイアログの失敗・トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ契約になった。画面の部品の表の後に規約を加えた。
+- **変えた箇所**: design.mdのAllowed Dependencies・File Structure Plan・Modified Files(生成物と許可リスト)・画面の部品の表(`ModerationSearch`・`ModerationActionDialog`)と表の後の規約、tasks.mdの6.1・7.7(`.graphql`・操作名・生成と許可リストの再生成)・6.2(Zodの読み込み元、失敗の文言)・7.8(カードの失敗に問い合わせの導線が無いこと)。管理者側のCSPの`img-src 'self'`の前提は確定した契約と合う。
+- **確認のダイアログの失敗の文言**: admin-foundationの`ConfirmActionDialogProps`が必須の`failureMessageOf: (error: unknown) => string`を受け、`onConfirm`の失敗時にダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言を`role="alert"`でダイアログの中に示す契約になった(同日のadmin-foundationの改訂)。共通部品はアプリのプロファイルを読まないため、呼び出す側が文言を決める。 `ModerationActionDialog`(`AdministrativeWithdrawalDialog`を含む)は`failureMessageOf`に`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を渡す。あわせて、`AdminDataTable`の`error.message`も呼び出す側が同じ関数で選ぶことを管理者側の失敗の表示の規約に加えた(design.mdの画面の部品の表と規約、tasks.mdの6.2・6.8)。
+- **操作のファイル名**: 他のspecにそろえ、照会の`.graphql`のファイル名から`admin-`の接頭辞を除いた(`weekly-statistics.graphql`など。操作名の`Admin`の接頭辞は変えない)。design.mdのFile Structure Planとtasks.mdの7.7を直した。

@@ -267,3 +267,10 @@
 - 変更した部分について、新しいサブエージェントによる独立した設計のレビューとタスクのグラフのサニティレビュー(independent)を2回行った。1回目は設計がNEEDS_FIXES(必須2件: research.mdの決定の根拠とSynthesisに、ugc-moderationが照会を加える・本specが照会を持たないという現行の記述が残っていた)、タスクがPASS(軽微のみ)だった。必須と軽微(Summaryへの仮6の追記、ugc-moderationの改訂の状態の記述、backend-libでのカーソルの実装、2.7の完了状態・90件ずつの境界のテスト・依存の明示、9.2の見出し)をすべて直した。2回目は設計・タスクともPASSで、軽微3件(Testing Strategyへの90件ずつの境界、2.7のDIの解決の3経路、管理画面の一覧の索引の扱いの注記)に従って直した。要件・設計・タスクの承認を保った。
 - cross-spec reviewの3回目の指摘(2026-10-24)により、`AdminCommentDirectory`・`AdminRatingDirectory`の契約の正を本specの設計とし、ugc-moderationはそれを使う形に記述を改めた(design.mdのファイル構成の注記と2つの型の見出しのコメント、tasks.mdの2.7、本書のSimplificationとRisksと仮6の行)。シグネチャは変えていない。
 - この変更でタスク2.7の本文が変わったため、新しいサブエージェントによる独立した確認(independent)を行った。1回目はNEEDS_FIXES(必須1件: ugc-moderationへの申し送りの行に「形は同specの設計のとおり」が残っていた、軽微2件)で、すべて直した。2回目はPASSで、軽微の言い回しの重複を直した。タスクの承認を保った。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28)
+
+- frontend-platformの実装と最終検証の後、開発者の決定(frontend-platformのタスク10.4)で、設計をfrontend-platformの設計の「実装で確定した契約による発火と影響を受ける下流spec」の表に合わせた。振る舞いを変えない整合の修正のため、改訂の番号は付けない。要件は変えていない。
+  - 操作の置き場所と生成物: clientの操作を`src/graphql/operations/engagement/`の1ファイル1操作の`.graphql`(操作名は`Client`で始め、確認メールの再送は`ClientEngagementResendVerificationEmail`)にし、`graphql()`を呼ばず、部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読むとした(design.mdのAllowed Dependencies・File Structure Plan・CommentGate、tasks.mdの6.1)。
+  - Zodの値の読み込み元とフォーム部品の形: `comment-form-schema.ts`はZodの値を`lib/utilities/validation/zod.ts`の`z`から読み、`CommentComposer`を`useAppForm<TInput, TOutput>(schema, { defaultValues })`と`AppForm`(`serverFieldPrefix="input"`・必須の`onSubmitError`)で作り、欄に対応しない失敗の文言を`errorMessageOf`で選ぶとした(design.mdのCommentComposer、tasks.mdの7.1・7.3)。共有ディレクトリ`apps/common-lib/engagement`の`commentBodySchema`・`ratingScoreSchema`は`ZOD_VALUE_RESTRICTION`の対象外(フロントエンドのアプリと共通部品の規則)のため変えていない。
+  - 非表示のウィジェット: `CommentComposer`のbot対策のウィジェットは`TurnstileWidget`が非表示で描くため、判定の枠と場所を設けないとした(design.mdのCommentComposer、tasks.mdの7.3)。

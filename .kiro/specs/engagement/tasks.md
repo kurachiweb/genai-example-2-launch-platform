@@ -151,9 +151,9 @@
 
 - [ ] 6. 利用者側の画面: 評価欄
 - [ ] 6.1 評価・コメント・確認メールの再送のGraphQLの操作の文書を作り、許可リストを再生成する
-  - 評価欄の値・評価・取消、スレッドのページ・ローンチごとの件数・投稿・編集・削除、確認メールの再送の操作の文書を作り、型とpersisted operationsと許可リストを再生成する(返信は平たい一覧として読む)
-  - 確認メールの再送の文書はidentity-authの文書と異なる一意の操作名(例: `EngagementResendVerificationEmail`)にする
-  - 完了状態: 生成で操作名の重複エラーが出ず、生成物と許可リストの検査が成功し、clientの型検査で操作の型を読み込める
+  - 評価欄の値・評価・取消、スレッドのページ・ローンチごとの件数・投稿・編集・削除、確認メールの再送の操作の文書を、clientの`src/graphql/operations/engagement/`に1ファイル1操作の`.graphql`(操作名は`Client`で始める)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して型とpersisted operations(`src/graphql/generated/`)を生成し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する(返信は平たい一覧として読む)。部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
+  - 確認メールの再送の文書はidentity-authの文書と異なる一意の操作名(例: `ClientEngagementResendVerificationEmail`)にする
+  - 完了状態: 生成で操作名の重複エラーが出ず、生成物と許可リストの検査とclientの`codegen.unit.test.ts`(操作名の接頭辞)が成功し、clientの型検査で操作の型を読み込める
   - _Depends: 4.2, 4.3_
   - _Requirements: 1.1, 3.1, 3.6, 9.1, 9.3_
 
@@ -173,6 +173,7 @@
 
 - [ ] 7. 利用者側の画面: コメント欄
 - [ ] 7.1 (P) スレッドの木の組み立てとキャッシュの更新、投稿欄の検証を作る
+  - 投稿欄の検証のスキーマは、Zodの値を`lib/utilities/validation/zod.ts`の`z`から読んで組み立てる(`zod`からは型だけを読む)
   - 先に、単体テストで、平たい返信の一覧から親ごとの木を組むこと(返信は古い順)、スレッドのページの無限の取得のデータに対する投稿の先頭への追加・返信の親の末尾への追加・編集の置き換え・削除の置き換え表示への変更が元のデータを変えないこと、投稿欄の検証が共有の本文の規則と同じ文言を返すことを確かめる
   - 完了状態: 単体テストが成功する
   - _Depends: 6.1_
@@ -185,6 +186,7 @@
   - _Requirements: 8.4, 8.5, 8.7_
 
 - [ ] 7.3 コメントの投稿欄を作る
+  - フォームは`useAppForm<TInput, TOutput>(commentFormSchema, { defaultValues })`(全欄の既定値)と`AppForm`(`serverFieldPrefix="input"`・`onSubmitError`)で作り、欄に対応しない失敗の文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`で選ぶ。bot対策のウィジェットは`TurnstileWidget`(非表示)で置き、判定の枠と場所を設けない
   - 先に、ブラウザテスト(`runAxe`の違反0件)で、書式のツールバー・書く/プレビュー・「1,234 / 2,000」のカウンター、上限超過と空でフォーカスアウト時に文言が出て送れないこと、評価の行の有無(投稿者本人以外のトップレベルの投稿と編集だけ)と現在の評価の初期値、bot対策のトークンが用意できるまで送れないこと、送信の結果を呼び出し元へ渡し、失敗で入力が保たれ項目の文言が出ること、成功で入力が空になることを確かめる
   - 完了状態: ブラウザテストが成功する
   - _Depends: 6.3, 7.1_

@@ -241,3 +241,9 @@
 - 他specの回答のうち本specに関わるもの: product-launchの仮5の旧ハンドルの部分は(B)(他者も旧ハンドルを設定でき、設定された時点で元の保持者の旧ハンドルを消す)に決まった。旧ハンドルの解決と302の転送はproduct-launchの`ProductDirectory.resolveHandle`の結果に従うため、他者が設定した後の旧URLは新しい保持者のプロダクトとして解決され、本specの判定(`decideProductPageAccess`)と設計・タスクの変更は要らない。product-launchの仮4(選べるローンチ日を90日後まで)・sponsorshipの仮3(広告の自動の日割り返金)などは本specの振る舞いに影響しない。
 - 要件定義書の改訂の推奨(「要件定義書の改訂が必要な箇所」の表)は変わらない。
 - 確定の反映の後に、新しいサブエージェントによる独立した軽いタスクのレビュー(文言の変更のみのため1回)を行い、判定はPASSだった。軽微の指摘2件(design.mdのRevalidation Triggersに残る「確認の結果」の表現)に従って直した。承認は維持した。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28)
+
+- frontend-platformの実装と最終検証の後、開発者の決定(frontend-platformのタスク10.4)で、設計をfrontend-platformの設計の「実装で確定した契約による発火と影響を受ける下流spec」の表に合わせた。振る舞いを変えない整合の修正のため、改訂の番号は付けない。要件は変えていない。
+  - 操作の置き場所と生成物: clientの操作を`src/graphql/operations/directory/`の1ファイル1操作の`.graphql`(操作名は`Client`で始める)にし、`graphql()`を呼ばず、部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読むとした(design.mdのAllowed Dependencies・File Structure Plan・OwnerFollow・OwnerCard、tasks.mdの6.1・7.1)。
+  - 非表示のウィジェット: `TurnstileWidget`は非表示で描くため、詳細ページに置くbot対策のウィジェットに判定の枠と場所を設けないとした(design.mdのProductPage、tasks.mdの7.8)。
