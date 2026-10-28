@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
+import { createHmac } from 'node:crypto';
+
 import { getLogger } from '@logtape/logtape';
 
 import type { RateLimiter } from '../env/frontend-env.ts';
@@ -12,6 +14,13 @@ import {
 } from './ip-rate-limit.ts';
 
 const CLIENT_IP = '203.0.113.5';
+const PEPPER = 'test-pepper-for-ip-rate-limit';
+const BASE64URL_86_PATTERN = /^[A-Za-z0-9_-]{86}$/u;
+
+const hashedKeyOf = (rawKey: string): string =>
+  createHmac('sha512', PEPPER)
+    .update(`rate-limit-key\u0000${JSON.stringify([rawKey])}`)
+    .digest('base64url');
 
 interface RecordingLimiter extends RateLimiter {
   readonly keys: readonly string[];
@@ -66,7 +75,7 @@ describe('ipRateLimitKey', () => {
   test.each([
     ['203.0.113.5', 'ip:203.0.113.5'],
     ['2001:db8::1', 'ip:2001:db8::1'],
-  ])('IPアドレス%sのキーは%sである', (ip, expected) => {
+  ])('IPアドレス%sのハッシュ化する前のキーは%sである', (ip, expected) => {
     expect(ipRateLimitKey(ip)).toBe(expected);
   });
 
@@ -90,35 +99,79 @@ describe('ipRateLimitKey', () => {
 });
 
 describe('checkIpRateLimit', () => {
-  test('バインディングが許可すれば許可を返し、ip:<IP>のキーで数える', async () => {
+  test('バインディングが許可すれば許可を返し、ip:<IP>をペッパーでハッシュ化したキーで数える', async () => {
     const limiter = limiterReturning(true);
     const logger = recordingLogger();
 
-    const outcome = await checkIpRateLimit(limiter, CLIENT_IP, logger);
+    const outcome = await checkIpRateLimit(limiter, PEPPER, CLIENT_IP, logger);
 
     expect(outcome).toEqual({ allowed: true });
-    expect(limiter.keys).toEqual([`ip:${CLIENT_IP}`]);
+    expect(limiter.keys).toEqual([hashedKeyOf(`ip:${CLIENT_IP}`)]);
     expect(logger.warnings).toEqual([]);
+  });
+
+  test.each([CLIENT_IP, '2001:db8::1'])(
+    'バインディングへ渡すキーは86文字のハッシュ値で、IPアドレス%sもip:の接頭辞も含まない',
+    async (clientIp) => {
+      const limiter = limiterReturning(true);
+
+      await checkIpRateLimit(limiter, PEPPER, clientIp, recordingLogger());
+
+      const [key] = limiter.keys;
+      expect(key).toMatch(BASE64URL_86_PATTERN);
+      expect(key).not.toContain(clientIp);
+      expect(key).not.toContain('ip:');
+    },
+  );
+
+  test('送信元IPアドレスが違えば別のキーで数える', async () => {
+    const limiter = limiterReturning(true);
+    const logger = recordingLogger();
+
+    await checkIpRateLimit(limiter, PEPPER, CLIENT_IP, logger);
+    await checkIpRateLimit(limiter, PEPPER, '198.51.100.7', logger);
+
+    expect(new Set(limiter.keys).size).toBe(2);
   });
 
   test('バインディングが超過を返せば、Retry-Afterの10秒とともに拒否を返す', async () => {
     const limiter = limiterReturning(false);
     const logger = recordingLogger();
 
-    const outcome = await checkIpRateLimit(limiter, CLIENT_IP, logger);
+    const outcome = await checkIpRateLimit(limiter, PEPPER, CLIENT_IP, logger);
 
     expect(outcome).toEqual({ allowed: false, retryAfterSeconds: 10 });
     expect(logger.warnings).toEqual([]);
   });
 
-  test('不明な送信元はすべてip:unknownの1つのキーで数える', async () => {
+  test('不明な送信元はすべてip:unknownをハッシュ化した1つのキーで数える', async () => {
     const limiter = limiterReturning(true);
     const logger = recordingLogger();
 
-    await checkIpRateLimit(limiter, undefined, logger);
-    await checkIpRateLimit(limiter, undefined, logger);
+    await checkIpRateLimit(limiter, PEPPER, undefined, logger);
+    await checkIpRateLimit(limiter, PEPPER, undefined, logger);
 
-    expect(limiter.keys).toEqual(['ip:unknown', 'ip:unknown']);
+    const unknownKey = hashedKeyOf('ip:unknown');
+    expect(limiter.keys).toEqual([unknownKey, unknownKey]);
+  });
+
+  test('ハッシュ化が例外になれば、バインディングを呼ばずに例外をそのまま伝える', async () => {
+    const limiter = limiterReturning(true);
+    const logger = recordingLogger();
+
+    const error: unknown = await checkIpRateLimit(
+      limiter,
+      '',
+      CLIENT_IP,
+      logger,
+    ).then(
+      () => undefined,
+      (rejection: unknown) => rejection,
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect(limiter.keys).toEqual([]);
+    expect(logger.warnings).toEqual([]);
   });
 
   test.each([
@@ -136,7 +189,12 @@ describe('checkIpRateLimit', () => {
   ])('バインディングの%sでは要求を通し、警告を1件出す', async (_, limit) => {
     const logger = recordingLogger();
 
-    const outcome = await checkIpRateLimit({ limit }, CLIENT_IP, logger);
+    const outcome = await checkIpRateLimit(
+      { limit },
+      PEPPER,
+      CLIENT_IP,
+      logger,
+    );
 
     expect(outcome).toEqual({ allowed: true });
     expect(logger.warnings).toHaveLength(1);
@@ -144,18 +202,20 @@ describe('checkIpRateLimit', () => {
     expect(logger.warnings[0]?.properties['error']).toBeInstanceOf(Error);
   });
 
-  test('警告の属性はerrorだけで、IPアドレスとキーを含めない', async () => {
+  test('警告の属性はerrorだけで、IPアドレス・キー・ペッパーを含めない', async () => {
     const logger = recordingLogger();
     const limit = (): Promise<{ readonly success: boolean }> =>
       Promise.reject(new Error('limiter failed'));
 
-    await checkIpRateLimit({ limit }, CLIENT_IP, logger);
+    await checkIpRateLimit({ limit }, PEPPER, CLIENT_IP, logger);
 
     expect(Object.keys(logger.warnings[0]?.properties ?? {})).toEqual([
       'error',
     ]);
-    expect(logger.warnings[0]?.message).not.toContain(CLIENT_IP);
-    expect(JSON.stringify(logger.warnings)).not.toContain(CLIENT_IP);
+    const serialized = JSON.stringify(logger.warnings);
+    expect(serialized).not.toContain(CLIENT_IP);
+    expect(serialized).not.toContain(hashedKeyOf(`ip:${CLIENT_IP}`));
+    expect(serialized).not.toContain(PEPPER);
   });
 
   test('LogTapeのロガーをそのまま渡せる', async () => {
@@ -164,6 +224,7 @@ describe('checkIpRateLimit', () => {
 
     const outcome = await checkIpRateLimit(
       { limit },
+      PEPPER,
       CLIENT_IP,
       getLogger(['frontend-lib-test', 'rate-limit']),
     );

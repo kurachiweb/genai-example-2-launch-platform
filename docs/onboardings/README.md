@@ -92,14 +92,14 @@
 
 11. コンテナ内: シークレットをInfisicalに登録する(初回のみ、開発者の手作業)
 
-    `apps/api`・`apps/event`は、起動時に次のシークレットを必要とする。Infisicalのプロジェクトのローカル環境(`dev`)のルートフォルダ(`/`)に、Webの管理画面で登録する。登録済みであれば飛ばす。各値の意味は「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」を参照する。
+    `apps/api`・`apps/event`・`apps/client`・`apps/admin`は、起動時に次のシークレットを必要とする。Infisicalのプロジェクトのローカル環境(`dev`)のルートフォルダ(`/`)に、Webの管理画面で登録する。登録済みであれば飛ばす。各値の意味は「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」を参照する。
 
-    | キー                    | 登録する値                                                           | 使うアプリ               |
-    | ----------------------- | -------------------------------------------------------------------- | ------------------------ |
-    | `HASH_PEPPER`           | 次の`openssl rand -hex 64`で生成した128文字の16進数                  | `apps/api`・`apps/event` |
-    | `TURNSTILE_SECRET_KEY`  | 常に成功するテスト用の秘密鍵`1x0000000000000000000000000000000AA`    | `apps/api`               |
-    | `EMAIL_SMOKE_TOKEN`     | 次の`openssl rand -hex 32`で生成した64文字の16進数                   | `apps/event`             |
-    | `EMAIL_SMOKE_RECIPIENT` | 疎通確認メールの宛先。任意のアドレス(例:`smoke@local.example`)でよい | `apps/event`             |
+    | キー                    | 登録する値                                                           | 使うアプリ                                            |
+    | ----------------------- | -------------------------------------------------------------------- | ----------------------------------------------------- |
+    | `HASH_PEPPER`           | 次の`openssl rand -hex 64`で生成した128文字の16進数                  | `apps/api`・`apps/event`・`apps/client`・`apps/admin` |
+    | `TURNSTILE_SECRET_KEY`  | 常に成功するテスト用の秘密鍵`1x0000000000000000000000000000000AA`    | `apps/api`                                            |
+    | `EMAIL_SMOKE_TOKEN`     | 次の`openssl rand -hex 32`で生成した64文字の16進数                   | `apps/event`                                          |
+    | `EMAIL_SMOKE_RECIPIENT` | 疎通確認メールの宛先。任意のアドレス(例:`smoke@local.example`)でよい | `apps/event`                                          |
 
     ```sh
     openssl rand -hex 64 # 出力をHASH_PEPPERとして登録し、ファイルやチャットに残さない
@@ -108,8 +108,9 @@
     infisical --telemetry=false run --env dev -- sh -c 'test -n "$EMAIL_SMOKE_TOKEN" && test -n "$EMAIL_SMOKE_RECIPIENT" && echo "疎通確認のシークレットも登録済み"'
     ```
 
-    - `apps/client`・`apps/admin`は、ローカル環境でシークレットを必要としない。それでも起動・ビルド・プレビューのコマンドは、他のアプリと同じくInfisicalからの注入を付けて実行する(注入を付けないとWranglerが`SENTRY_DSN`の不足を警告し、`.dev.vars`の作成を促すが、`.dev.vars`は作らない)。ただし手順14の環境別のビルドは、理由を同じ手順に記したとおり注入を付けない。
-    - 未登録のまま起動すると、`wrangler dev`が足りないキーを警告し、ヘルスチェック以外の経路が環境の検証で500になる。ヘルスチェックは環境の検証より前に応答するため、未登録でも200を返す。
+    - `HASH_PEPPER`は4アプリで1つの値を共有し、アプリごとに別の値を登録しない。`apps/client`・`apps/admin`はWorker単位のIP制限のキーのハッシュ化に使う(「[フロントエンドのキーのハッシュ化](../GUIDES/tech/frontend/003-frontend-server-security.md#キーのハッシュ化)」)。
+    - `apps/client`・`apps/admin`の起動・ビルド・プレビューのコマンドも、Infisicalからの注入を付けて実行する(注入を付けないとWranglerが`HASH_PEPPER`の不足を警告して`.dev.vars`の作成を促し、すべての要求が環境の検証で500になる。`.dev.vars`は作らない)。ただし手順14の環境別のビルドは、理由を同じ手順に記したとおり注入を付けない。
+    - `apps/api`・`apps/event`を未登録のまま起動すると、`wrangler dev`が足りないキーを警告し、ヘルスチェック以外の経路が環境の検証で500になる。ヘルスチェックは環境の検証より前に応答するため、未登録でも200を返す。
     - `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`は、メールの疎通確認の経路(「[疎通確認の経路](#疎通確認の経路)」)だけが使う。未登録でもイベントサーバーは環境の検証に通り、疎通確認の経路だけが404になる。ローカル環境ではMailpitが全ての宛先のメールを受け取るため、外部へは送られない。
 
 12. コンテナ内: ローカルDBの初期化(マイグレーション適用)
@@ -216,7 +217,7 @@
 
     - 環境を指定したビルドは、ローカル環境向けの`dist`を上書きする。ローカル環境でプレビューする前に、環境を指定せずにビルドし直す。
     - ビルドは、Git管理外の`apps/client/.wrangler/deploy/config.json`・`apps/admin/.wrangler/deploy/config.json`も作る。
-    - `staging`・`prod`のビルドでは、Wranglerが`SENTRY_DSN`の不足を警告するが無視してよい。シークレットの値は出力に含まれない。
+    - `staging`・`prod`のビルドでは、Wranglerが`HASH_PEPPER`・`SENTRY_DSN`の不足を警告するが無視してよい。シークレットの値は出力に含まれない。
 
 ## スモークテスト
 

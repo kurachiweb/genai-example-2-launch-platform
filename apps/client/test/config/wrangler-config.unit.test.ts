@@ -101,7 +101,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       WEB_ANALYTICS_TOKEN: '',
     },
     validatedWebAnalyticsToken: undefined,
-    requiredSecrets: [],
+    requiredSecrets: ['HASH_PEPPER'],
   },
   {
     label: 'staging',
@@ -119,7 +119,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       WEB_ANALYTICS_TOKEN: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
     },
     validatedWebAnalyticsToken: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
-    requiredSecrets: ['SENTRY_DSN'],
+    requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
   },
   {
     label: 'prod',
@@ -136,7 +136,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       WEB_ANALYTICS_TOKEN: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
     },
     validatedWebAnalyticsToken: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
-    requiredSecrets: ['SENTRY_DSN'],
+    requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
   },
 ];
 
@@ -182,6 +182,12 @@ const bindingsOf = (
       fakeRateLimiter,
     ]),
   ]);
+
+// Infisicalから注入されるシークレットの代わりに、必須のキーへテスト用の値を置く
+const secretsOf = (config: EffectiveConfig): Readonly<Record<string, string>> =>
+  Object.fromEntries(
+    (config.secrets?.required ?? []).map((key) => [key, `test-${key}`]),
+  );
 
 describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env) => {
   const config = readClientConfig(env.wranglerEnv);
@@ -245,10 +251,11 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     expect(config.vars).toStrictEqual(env.vars);
   });
 
-  test('実効の変数とバインディングが、シークレットの無い状態で共通部品の環境の検証を通り、空のアクセス解析のトークンは未設定として扱われる', () => {
+  test('実効の変数とバインディングと必須のシークレットが共通部品の環境の検証を通り、空のアクセス解析のトークンは未設定として扱われる', () => {
     const validation = validateFrontendEnv({
       ...config.vars,
       ...bindingsOf(config),
+      ...secretsOf(config),
     });
 
     expect(validation.ok).toBe(true);
@@ -257,8 +264,17 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     );
   });
 
-  test('必須のシークレットはstaging・prodのSentryのDSNだけである', () => {
+  test('必須のシークレットは、全環境のペッパーとstaging・prodのSentryのDSNである', () => {
     expect(config.secrets?.required ?? []).toEqual([...env.requiredSecrets]);
+  });
+
+  test('必須のシークレットが注入されなければ、ペッパーの欠落として環境の検証が失敗する', () => {
+    const validation = validateFrontendEnv({
+      ...config.vars,
+      ...bindingsOf(config),
+    });
+
+    expect(validation).toEqual({ ok: false, invalidKeys: ['HASH_PEPPER'] });
   });
 
   test('変数のキーとシークレットのキーが重ならない', () => {

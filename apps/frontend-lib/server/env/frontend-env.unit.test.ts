@@ -11,6 +11,7 @@ import {
 const SENTRY_DSN = 'https://public-key@sentry.example/1';
 const SECRET_VALUE = 'secret-value-must-not-leak';
 const INVALID_VALUE = 'invalid-value-must-not-leak';
+const HASH_PEPPER = 'test-pepper-must-not-reach-browser';
 
 const fakeApi = {
   fetch: (): Promise<Response> => Promise.resolve(new Response(null)),
@@ -31,6 +32,7 @@ const validRawEnv = (): Record<string, unknown> => ({
   TURNSTILE_SITE_KEY: '1x00000000000000000000BB',
   IMAGES_ORIGIN: 'https://images.example',
   WEB_ANALYTICS_TOKEN: 'analytics-token',
+  HASH_PEPPER,
 });
 
 const CLIENT_LIKE_PROFILE: FrontendAppProfile = {
@@ -89,6 +91,7 @@ describe('validateFrontendEnv', () => {
         TURNSTILE_SITE_KEY: '1x00000000000000000000BB',
         IMAGES_ORIGIN: 'https://images.example',
         WEB_ANALYTICS_TOKEN: 'analytics-token',
+        HASH_PEPPER,
       });
     });
 
@@ -100,9 +103,9 @@ describe('validateFrontendEnv', () => {
     });
 
     test('宣言していないキーは検証後の環境に含めない', () => {
-      const env = envOf(validate({ HASH_PEPPER: SECRET_VALUE }));
+      const env = envOf(validate({ TURNSTILE_SECRET_KEY: SECRET_VALUE }));
 
-      expect(Object.keys(env)).not.toContain('HASH_PEPPER');
+      expect(Object.keys(env)).not.toContain('TURNSTILE_SECRET_KEY');
       expect(JSON.stringify(env)).not.toContain(SECRET_VALUE);
     });
 
@@ -204,6 +207,7 @@ describe('validateFrontendEnv', () => {
       'SENTRY_TRACES_SAMPLE_RATE',
       'TURNSTILE_SITE_KEY',
       'IMAGES_ORIGIN',
+      'HASH_PEPPER',
     ])('必要なキー%sが無ければ、その名前を返す', (key) => {
       const raw = rawEnvWithout(key);
 
@@ -216,7 +220,7 @@ describe('validateFrontendEnv', () => {
       ).toEqual(['TURNSTILE_SITE_KEY']);
     });
 
-    test.each(['TURNSTILE_SITE_KEY', 'SENTRY_ENVIRONMENT'])(
+    test.each(['TURNSTILE_SITE_KEY', 'SENTRY_ENVIRONMENT', 'HASH_PEPPER'])(
       '空文字の%sは欠落として名前を返す',
       (key) => {
         expect(invalidKeysOf(validate({ [key]: '' }))).toEqual([key]);
@@ -227,6 +231,7 @@ describe('validateFrontendEnv', () => {
       expect(invalidKeysOf(validateFrontendEnv(undefined))).toEqual([
         'API',
         'APP_ENVIRONMENT',
+        'HASH_PEPPER',
         'IMAGES_ORIGIN',
         'IP_RATE_LIMITER',
         'LOG_LEVEL',
@@ -300,6 +305,22 @@ describe('validateFrontendEnv', () => {
       expect(invalidKeysOf(validate({ [key]: value }))).toEqual([key]);
     });
 
+    test('ペッパーが文字列でなければ、値を含めずに不正なキーとして返す', () => {
+      const validation = validate({ HASH_PEPPER: { value: SECRET_VALUE } });
+
+      expect(invalidKeysOf(validation)).toEqual(['HASH_PEPPER']);
+      expect(Bun.inspect(validation)).not.toContain(SECRET_VALUE);
+    });
+
+    test('空のペッパーは、他のキーと同じく名前だけを返す', () => {
+      const validation = validate({ HASH_PEPPER: '', LOG_LEVEL: '' });
+
+      expect(validation).toEqual({
+        ok: false,
+        invalidKeys: ['HASH_PEPPER', 'LOG_LEVEL'],
+      });
+    });
+
     test('アクセス解析のトークンが文字列でなければ不正なキーとして返す', () => {
       expect(invalidKeysOf(validate({ WEB_ANALYTICS_TOKEN: 1 }))).toEqual([
         'WEB_ANALYTICS_TOKEN',
@@ -368,7 +389,7 @@ describe('toPublicRuntimeConfig', () => {
     });
   });
 
-  test('バインディング・ログのレベル・画像のオリジン・宣言していないシークレットを含まない', () => {
+  test('バインディング・ログのレベル・画像のオリジン・ペッパー・宣言していないシークレットを含まない', () => {
     const env = envOf(
       validate({
         HASH_PEPPER: SECRET_VALUE,
@@ -383,6 +404,7 @@ describe('toPublicRuntimeConfig', () => {
     const serialized = JSON.stringify(config);
     expect(serialized).not.toContain(SECRET_VALUE);
     expect(serialized).not.toContain('debug');
+    expect(Object.keys(config)).not.toContain('HASH_PEPPER');
     expect(serialized).not.toContain('internal-images.example');
     expect(Object.values(config)).not.toContain(fakeApi);
     expect(Object.values(config)).not.toContain(fakeRateLimiter);

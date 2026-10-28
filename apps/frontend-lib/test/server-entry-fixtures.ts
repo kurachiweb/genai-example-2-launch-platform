@@ -8,6 +8,7 @@ import {
 } from '../server/entry/create-frontend-server-entry.ts';
 import type { FrontendRequestContext } from '../server/entry/request-context.ts';
 import type { RateLimiter } from '../server/env/frontend-env.ts';
+import { BASE_SECURITY_HEADERS } from '../server/http/security-headers.ts';
 import { GRAPHQL_RELAY_ROUTE } from '../server/relay/relay-route.ts';
 import {
   CLIENT_COOKIE,
@@ -22,6 +23,7 @@ export const SENTRY_ORIGIN = 'https://o1.ingest.sentry.example';
 // シークレット検出が実物の値と誤検知しないよう、テスト用の値を部品から組み立てる
 export const SENTRY_DSN = `https://${['public', 'dsn', 'part'].join('-')}@o1.ingest.sentry.example/1`;
 export const ANALYTICS_ORIGIN = 'https://static.cloudflareinsights.example';
+export const HASH_PEPPER = 'test-pepper-for-server-entry';
 export const TRACE_HEADERS = Object.freeze({
   'sentry-trace': '771a43a4192642f0b136d5159a501700-b0e6f15b45c36b12-1',
   baggage: 'sentry-environment=prod',
@@ -94,7 +96,22 @@ export const baseEnvOf = (
   TURNSTILE_SITE_KEY: 'turnstile-site-key',
   IMAGES_ORIGIN,
   WEB_ANALYTICS_TOKEN: 'analytics-token',
+  HASH_PEPPER,
 });
+
+export const errorBodyOf = async (response: Response): Promise<unknown> =>
+  ((await response.json()) as { error: { code: string } }).error.code;
+
+export const expectSecurityHeaders = (response: Response): void => {
+  for (const [name, value] of Object.entries(BASE_SECURITY_HEADERS)) {
+    expect(response.headers.get(name)).toBe(value);
+  }
+  expect(response.headers.get('Cache-Control')).toBe('no-store');
+  expect(response.headers.get('Permissions-Policy')).toContain('camera=()');
+  expect(response.headers.get('Content-Security-Policy')).toContain(
+    "frame-ancestors 'none'",
+  );
+};
 
 export const htmlResponse = (): Response =>
   new Response('<!doctype html><html><body>page</body></html>', {

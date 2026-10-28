@@ -17,6 +17,8 @@ import {
   baseEnvOf,
   CLIENT_TEST_PROFILE,
   createHarness,
+  errorBodyOf,
+  expectSecurityHeaders,
   type Harness,
   IMAGES_ORIGIN,
   limiterOf,
@@ -32,7 +34,6 @@ import {
   toPublicRuntimeConfig,
   validateFrontendEnv,
 } from '../env/frontend-env.ts';
-import { BASE_SECURITY_HEADERS } from '../http/security-headers.ts';
 import { NON_PAGE_CONTENT_SECURITY_POLICY } from '../http/security-policy.ts';
 import { GRAPHQL_RELAY_ROUTE } from '../relay/relay-route.ts';
 import type { FrontendServerEntryOptions } from './create-frontend-server-entry.ts';
@@ -40,34 +41,9 @@ import type { FrontendServerEntryOptions } from './create-frontend-server-entry.
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 
-const ENV_KEYS = [
-  'API',
-  'APP_ENVIRONMENT',
-  'IMAGES_ORIGIN',
-  'IP_RATE_LIMITER',
-  'LOG_LEVEL',
-  'SENTRY_ENVIRONMENT',
-  'SENTRY_TRACES_SAMPLE_RATE',
-  'TURNSTILE_SITE_KEY',
-];
-
 afterEach(() => {
   resetSync();
 });
-
-const errorBodyOf = async (response: Response): Promise<unknown> =>
-  ((await response.json()) as { error: { code: string } }).error.code;
-
-const expectSecurityHeaders = (response: Response): void => {
-  for (const [name, value] of Object.entries(BASE_SECURITY_HEADERS)) {
-    expect(response.headers.get(name)).toBe(value);
-  }
-  expect(response.headers.get('Cache-Control')).toBe('no-store');
-  expect(response.headers.get('Permissions-Policy')).toContain('camera=()');
-  expect(response.headers.get('Content-Security-Policy')).toContain(
-    "frame-ancestors 'none'",
-  );
-};
 
 const onlyStartCall = (harness: Harness) => {
   expect(harness.startCalls).toHaveLength(1);
@@ -135,145 +111,6 @@ describe('createFrontendServerEntry(読み込みと組み立て)', () => {
     expect(getConfig()).not.toBeNull();
     expect(readKeys).toContain('LOG_LEVEL');
     expect(readKeys).toContain('IMAGES_ORIGIN');
-  });
-});
-
-describe('createFrontendServerEntry(環境の不備)', () => {
-  test('欠けた・不正なキーの名前だけを[caller, env]のerrorログに出し、500の静的なエラー画面を返して送信する', async () => {
-    const harness = createHarness({
-      env: { APP_ENVIRONMENT: 'production', TURNSTILE_SITE_KEY: undefined },
-    });
-
-    const response = await harness.fetch(pageRequest());
-
-    expect(response.status).toBe(500);
-    expect(response.headers.get('Content-Type')).toBe(
-      'text/html; charset=utf-8',
-    );
-    expect(await response.text()).toContain('ページを表示できませんでした');
-    expectSecurityHeaders(response);
-    expect(response.headers.get('Content-Security-Policy')).toBe(
-      NON_PAGE_CONTENT_SECURITY_POLICY,
-    );
-    const [logged, ...rest] = logsOf(harness, 'client.env');
-    expect(rest).toEqual([]);
-    expect(logged?.level).toBe('error');
-    expect(logged?.invalidEnvNames).toEqual([
-      'APP_ENVIRONMENT',
-      'TURNSTILE_SITE_KEY',
-    ]);
-    expect(JSON.stringify(harness.logs())).not.toContain('production');
-    expect(harness.reported).toHaveLength(1);
-    expect(harness.limiter.keys).toEqual([]);
-    expect(harness.startCalls).toEqual([]);
-    expect(harness.api.calls).toEqual([]);
-  });
-
-  test('環境がオブジェクトでなければ必要なキーをすべて名前で出す', async () => {
-    const harness = createHarness({ rawEnv: undefined });
-
-    const response = await harness.fetch(pageRequest());
-
-    expect(response.status).toBe(500);
-    expect(logsOf(harness, 'client.env')[0]?.invalidEnvNames).toEqual(ENV_KEYS);
-  });
-
-  test('環境の検証を通っても許可先として使えない値は、そのキーの名前だけを出して500にする', async () => {
-    const harness = createHarness({
-      env: { IMAGES_ORIGIN: 'https://images.example:8443' },
-    });
-
-    const response = await harness.fetch(pageRequest());
-
-    expect(response.status).toBe(500);
-    const [logged] = logsOf(harness, 'client.env');
-    expect(logged?.invalidEnvNames).toEqual(['IMAGES_ORIGIN']);
-    expect(JSON.stringify(harness.logs())).not.toContain('8443');
-    expect(harness.reported).toHaveLength(1);
-    expect(harness.limiter.keys).toEqual([]);
-    expect(harness.startCalls).toEqual([]);
-  });
-
-  test('送信する例外のメッセージには値を含めずキーの名前だけを入れる', async () => {
-    const harness = createHarness({
-      env: { SENTRY_TRACES_SAMPLE_RATE: '7.5' },
-    });
-
-    await harness.fetch(pageRequest());
-
-    const [reported] = harness.reported;
-    expect(reported).toBeInstanceOf(Error);
-    expect((reported as Error).message).toContain('SENTRY_TRACES_SAMPLE_RATE');
-    expect((reported as Error).message).not.toContain('7.5');
-  });
-});
-
-describe('createFrontendServerEntry(IP制限)', () => {
-  test('接続元のIPアドレスのキーで判定する', async () => {
-    const harness = createHarness();
-
-    await harness.fetch(pageRequest());
-
-    expect(harness.limiter.keys).toEqual(['ip:203.0.113.5']);
-  });
-
-  test('ページの要求の超過は429の静的なエラー画面とRetry-After: 10で返し、描画を呼ばない', async () => {
-    const harness = createHarness({ limited: true });
-
-    const response = await harness.fetch(pageRequest('/launches?page=2'));
-
-    expect(response.status).toBe(429);
-    expect(response.headers.get('Retry-After')).toBe('10');
-    expect(response.headers.get('Content-Type')).toBe(
-      'text/html; charset=utf-8',
-    );
-    expect(await response.text()).toContain('操作が集中しています');
-    expectSecurityHeaders(response);
-    const csp = response.headers.get('Content-Security-Policy') ?? '';
-    expect(csp).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/]{22}=='/u);
-    expect(csp).toContain("style-src 'self' 'unsafe-inline'");
-    expect(harness.startCalls).toEqual([]);
-    const [warning, ...rest] = logsOf(harness, 'client.http.rate-limit');
-    expect(rest).toEqual([]);
-    expect(warning?.level).toBe('warning');
-    expect(warning?.path).toBe('/launches');
-    expect(JSON.stringify(harness.logs())).not.toContain('203.0.113.5');
-    expect(harness.reported).toEqual([]);
-  });
-
-  test('ページ以外の要求の超過は429の共通のエラー形式で返し、CSRFの検証も中継もしない', async () => {
-    const harness = createHarness({ limited: true });
-
-    const response = await harness.fetch(
-      sameOriginPost('/_bff/graphql', { 'Sec-Fetch-Site': 'cross-site' }),
-    );
-
-    expect(response.status).toBe(429);
-    expect(response.headers.get('Retry-After')).toBe('10');
-    expect(await errorBodyOf(response)).toBe('rate_limit_exceeded');
-    expect(response.headers.get('Content-Security-Policy')).toBe(
-      NON_PAGE_CONTENT_SECURITY_POLICY,
-    );
-    expectSecurityHeaders(response);
-    expect(logsOf(harness, 'client.http.csrf')).toEqual([]);
-    expect(harness.api.calls).toEqual([]);
-    expect(harness.startCalls).toEqual([]);
-    expect(harness.reported).toEqual([]);
-  });
-
-  test('判定の例外では要求を通し、[caller, http, rate-limit]へ警告を出す', async () => {
-    const harness = createHarness({
-      env: {
-        IP_RATE_LIMITER: {
-          limit: () => Promise.reject(new Error('binding failure')),
-        },
-      },
-    });
-
-    const response = await harness.fetch(pageRequest());
-
-    expect(response.status).toBe(200);
-    expect(logsOf(harness, 'client.http.rate-limit')[0]?.level).toBe('warning');
   });
 });
 

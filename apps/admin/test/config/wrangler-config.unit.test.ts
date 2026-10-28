@@ -96,7 +96,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       TURNSTILE_SITE_KEY: LOCAL_TURNSTILE_SITE_KEY,
       IMAGES_ORIGIN: 'http://localhost:48043',
     },
-    requiredSecrets: [],
+    requiredSecrets: ['HASH_PEPPER'],
   },
   {
     label: 'staging',
@@ -112,7 +112,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       IMAGES_ORIGIN:
         'https://genai-example-2-images-staging.lab.kurachiweb.com',
     },
-    requiredSecrets: ['SENTRY_DSN'],
+    requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
   },
   {
     label: 'prod',
@@ -127,7 +127,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       TURNSTILE_SITE_KEY: PLACEHOLDER_TURNSTILE_SITE_KEY,
       IMAGES_ORIGIN: 'https://genai-example-2-images.lab.kurachiweb.com',
     },
-    requiredSecrets: ['SENTRY_DSN'],
+    requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
   },
 ];
 
@@ -173,6 +173,12 @@ const bindingsOf = (
       fakeRateLimiter,
     ]),
   ]);
+
+// Infisicalから注入されるシークレットの代わりに、必須のキーへテスト用の値を置く
+const secretsOf = (config: EffectiveConfig): Readonly<Record<string, string>> =>
+  Object.fromEntries(
+    (config.secrets?.required ?? []).map((key) => [key, `test-${key}`]),
+  );
 
 describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env) => {
   const config = readAdminConfig(env.wranglerEnv);
@@ -237,18 +243,28 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     expect(Object.keys(config.vars)).not.toContain('WEB_ANALYTICS_TOKEN');
   });
 
-  test('実効の変数とバインディングが、シークレットの無い状態で共通部品の環境の検証を通る', () => {
+  test('実効の変数とバインディングと必須のシークレットが共通部品の環境の検証を通る', () => {
     const validation = validateFrontendEnv({
       ...config.vars,
       ...bindingsOf(config),
+      ...secretsOf(config),
     });
 
     expect(validation.ok).toBe(true);
     expect(validation.ok && validation.env.WEB_ANALYTICS_TOKEN).toBe(undefined);
   });
 
-  test('必須のシークレットはstaging・prodのSentryのDSNだけである', () => {
+  test('必須のシークレットは、全環境のペッパーとstaging・prodのSentryのDSNである', () => {
     expect(config.secrets?.required ?? []).toEqual([...env.requiredSecrets]);
+  });
+
+  test('必須のシークレットが注入されなければ、ペッパーの欠落として環境の検証が失敗する', () => {
+    const validation = validateFrontendEnv({
+      ...config.vars,
+      ...bindingsOf(config),
+    });
+
+    expect(validation).toEqual({ ok: false, invalidKeys: ['HASH_PEPPER'] });
   });
 
   test('変数のキーとシークレットのキーが重ならない', () => {

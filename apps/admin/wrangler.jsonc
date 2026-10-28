@@ -31,6 +31,7 @@
     "TURNSTILE_SITE_KEY": "1x00000000000000000000BB",
     "IMAGES_ORIGIN": "http://localhost:48043",
   },
+  "secrets": { "required": ["HASH_PEPPER"] },
   "env": {
     "staging": {
       "services": [
@@ -56,7 +57,7 @@
         "TURNSTILE_SITE_KEY": "0x0000000000000000000000",
         "IMAGES_ORIGIN": "https://genai-example-2-images-staging.lab.kurachiweb.com",
       },
-      "secrets": { "required": ["SENTRY_DSN"] },
+      "secrets": { "required": ["HASH_PEPPER", "SENTRY_DSN"] },
     },
     "prod": {
       "services": [
@@ -82,7 +83,7 @@
         "TURNSTILE_SITE_KEY": "0x0000000000000000000000",
         "IMAGES_ORIGIN": "https://genai-example-2-images.lab.kurachiweb.com",
       },
-      "secrets": { "required": ["SENTRY_DSN"] },
+      "secrets": { "required": ["HASH_PEPPER", "SENTRY_DSN"] },
     },
   },
 }

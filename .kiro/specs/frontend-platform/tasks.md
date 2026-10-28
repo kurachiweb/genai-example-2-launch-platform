@@ -379,7 +379,7 @@
   - _Requirements: 15.3, 15.4, 15.7, 15.8_
 
 - [ ] 10. 最終検証後の判断の反映
-- [ ] 10.1 フロントエンドのIP制限のキーをハッシュ化する
+- [x] 10.1 フロントエンドのIP制限のキーをハッシュ化する
   - 前提: backend-platformの11.1(Worker単位のIP制限のキーのハッシュ化)が完了し、backend-libの`ipRateLimit`がハッシュ化したキーで数えていること。完了していなければ止めて報告する
   - 先に、共通部品の新しい`server/http/rate-limit-key-hash.ts`の`hashRateLimitKey(pepper, ...parts)`が、`node:crypto`の`createHmac('sha512', <ペッパー>).update('rate-limit-key\u0000' + JSON.stringify(parts)).digest('base64url')`と同じ値を返すこと(backend-libの`hashRateLimitKey`と同じ計算)、部品が空なら値を含まない例外になることを確かめる単体テストを書く
   - 先に、`checkIpRateLimit`がバインディングへ渡すキーが`ip:<IP>`(不明なら`ip:unknown`)をハッシュ化した値で、生のIPアドレスを含まないこと、環境の検証が`HASH_PEPPER`の欠落と空をキー名だけで返すこと、エントリが検証済みのペッパーでIP制限を呼ぶことを確かめる単体テストを書き、実装する
@@ -500,3 +500,4 @@
 - 10.2(結果): Turnstileのウィジェットは外側の要素を持たず、ライブラリの非表示の入れ物(幅0・高さ0)に`position: absolute`を渡して通常の流れから外し、親の`gap`・`space-y`を消費しない。失敗時は`FormMessage`だけが流れに入る。偽物のTurnstileも非表示の大きさを真似て描き、結果のボタンは`body`の直下に描く。5.6の「幅320pxで横スクロールの見込み」は非表示のウィジェットにしたことで解消した。`space-y`の親の最後の子に置くと、平常時に親の末尾へ余白が1つ残る
 - 10.3(結果と申し送り): 問い合わせの導線の有無はプロファイルの`contactAvailable`(利用者側は真・管理者側は偽)で決まり、`UnexpectedErrorView`・`ErrorState`は`contactHref`の有無で、`GraphQLClientError`でない例外の文言は`errorMessageOf(error, contactAvailable)`で、静的な500の画面は`renderStaticErrorPage({ status: 500, contactAvailable })`で出し分ける。利用者側の`ErrorPage`は`CONTACT_HREF`を常に渡し、プロファイルとの一致は`composition.unit.test.ts`と`ErrorPage`のブラウザテストで確かめる。`docs/onboardings/project-values.md`のプロファイルの表に`contactAvailable`の行を足すのは10.1の文書の更新で行う
 - 10.4(結果と開発者への確認): 下流23specを確定した契約に合わせ(1282d37)、design.mdの影響の表の該当箇所を合わせた後の位置にした。派生した契約として、admin-foundationの`ConfirmActionDialogProps`・`CategoryMasterEditorProps`の必須の`failureMessageOf`と、media-pipelineのアップロード部品の必須の`contactAvailable`が加わった。infra-deliveryに、非表示のTurnstileを使う条件としてプライバシーポリシーでCloudflareのTurnstile Privacy Addendumを参照する記述を足した(開発者の確認待ち)。product-launchとugc-moderationが同じ照会`adminProductCategories`を違う型で定義している(10.4より前からの食い違い)
+- 10.1(結果): フロントエンドは`server/http/rate-limit-key-hash.ts`でbackend-libと同じHMAC-SHA512を計算し(乱数の入力で不一致0)、要求ごとに鍵を読み込む。`HASH_PEPPER`はclient・adminのルート・staging・prodの`secrets.required`にあり、ローカルでもInfisicalの`dev`からの注入が要る。エントリの単体テストは800行の上限のため`create-frontend-server-entry.env-rate-limit.unit.test.ts`に環境の不備とIP制限の検査を分けた

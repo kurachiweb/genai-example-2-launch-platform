@@ -27,6 +27,7 @@ export interface ValidatedFrontendEnv {
   readonly TURNSTILE_SITE_KEY: string;
   readonly IMAGES_ORIGIN: string;
   readonly WEB_ANALYTICS_TOKEN: string | undefined;
+  readonly HASH_PEPPER: string;
 }
 
 export type EnvValidation =
@@ -97,6 +98,7 @@ const frontendEnvSchema = z.object({
   TURNSTILE_SITE_KEY: z.string().min(1),
   IMAGES_ORIGIN: z.string().refine(isOrigin),
   WEB_ANALYTICS_TOKEN: optionalText,
+  HASH_PEPPER: z.string().min(1),
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

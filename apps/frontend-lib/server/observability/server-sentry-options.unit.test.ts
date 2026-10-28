@@ -31,6 +31,7 @@ const validRawEnv = (): Record<string, unknown> => ({
   TURNSTILE_SITE_KEY: '1x00000000000000000000BB',
   IMAGES_ORIGIN: 'https://images.example',
   WEB_ANALYTICS_TOKEN: 'analytics-token',
+  HASH_PEPPER: 'test-pepper-for-sentry-options',
 });
 
 const build = (overrides: Record<string, unknown> = {}): ServerSentryOptions =>

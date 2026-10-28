@@ -224,6 +224,7 @@ const rateLimited = async (
   ]);
   const outcome = await checkIpRateLimit(
     env.IP_RATE_LIMITER,
+    env.HASH_PEPPER,
     resolveClientIp(request),
     logger,
   );

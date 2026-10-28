@@ -1,4 +1,5 @@
 import type { RateLimiter } from '../env/frontend-env.ts';
+import { hashRateLimitKey } from './rate-limit-key-hash.ts';
 
 export const IP_RATE_LIMIT = Object.freeze({
   limit: 100,
@@ -24,11 +25,13 @@ export function ipRateLimitKey(clientIp: string | undefined): string {
 
 export async function checkIpRateLimit(
   limiter: RateLimiter,
+  pepper: string,
   clientIp: string | undefined,
   logger: IpRateLimitLogger,
 ): Promise<RateLimitOutcome> {
+  const key = await hashRateLimitKey(pepper, ipRateLimitKey(clientIp));
   try {
-    const { success } = await limiter.limit({ key: ipRateLimitKey(clientIp) });
+    const { success } = await limiter.limit({ key });
     return success
       ? { allowed: true }
       : { allowed: false, retryAfterSeconds: IP_RATE_LIMIT.periodSeconds };
