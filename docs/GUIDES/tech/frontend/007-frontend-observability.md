@@ -213,7 +213,7 @@ installRouteErrorReporting(Object.values(router.routesById), (error) => {
 
 ## 除去の規則
 
-送信するイベントとスパンからは、「[個人情報と秘密情報の除去](../infra/004-logging-and-error-tracking.md#個人情報と秘密情報の除去)」と同じ2層(SDKの収集設定`dataCollection`と、送信前の除去の関数)で個人情報と秘密情報を除く。サーバーとブラウザは同じ`sentry-scrub.ts`を使う。値の形式による伏せ字のパターン`redaction-patterns.ts`はバックエンドの共通ライブラリの`REDACTION_PATTERNS`の写しで(正規表現に`u`フラグを付けた点だけが違う)、片方を変えたらもう片方も見直す。
+送信するイベントとスパンからは、「[個人情報と秘密情報の除去](../infra/004-logging-and-error-tracking.md#個人情報と秘密情報の除去)」と同じ2層(SDKの収集設定`dataCollection`と、送信前の除去の関数)で個人情報と秘密情報を除く。サーバーとブラウザは同じ`sentry-scrub.ts`を使う。値の形式による伏せ字のパターン`redaction-patterns.ts`はバックエンドの共通ライブラリの`REDACTION_PATTERNS`の写しで(正規表現に`u`フラグを付けた点だけが違う)、片方を変えたらもう片方も見直し、一致はルートの単体テストが照合する(「[アプリ間で写した値の照合](../testing/001-test-strategy.md#アプリ間で写した値の照合)」)。
 
 バックエンドとの違いは次のとおりである。
 
@@ -334,7 +334,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 ### ログの形式と相関ID
 
-- ログの形式と、属性名・値の形式による伏せ字は「[ログ管理とエラートラッキング](../infra/004-logging-and-error-tracking.md)」と同じである。`REDACTED_FIELD_PATTERNS`とログの組み立ては、バックエンドの共通ライブラリの写しで、片方を変えたらもう片方も見直す。値の形式の伏せ字は`redaction-patterns.ts`を使う。
+- ログの形式と、属性名・値の形式による伏せ字は「[ログ管理とエラートラッキング](../infra/004-logging-and-error-tracking.md)」と同じである。`REDACTED_FIELD_PATTERNS`とログの組み立ては、バックエンドの共通ライブラリの写しで、片方を変えたらもう片方も見直す。`REDACTED_FIELD_PATTERNS`の一致はルートの単体テストが照合する(「[アプリ間で写した値の照合](../testing/001-test-strategy.md#アプリ間で写した値の照合)」)。値の形式の伏せ字は`redaction-patterns.ts`を使う。
 - エントリは、要求ごとに`ensureFrontendLoggingConfigured`を呼んで(isolateの最初の呼び出しと、レベルなどが変わった時だけ設定し直す)から`withCorrelationId`で相関IDの文脈を作る。設定より前に作った文脈は相関IDを保てない。文脈は`node:async_hooks`の`AsyncLocalStorage`で保ち、互換性日付が2026-08-04以降なら`compatibility_flags`無しで使える。
 - ログの設定は`<呼び出し元の種類>`で始まるカテゴリにだけ出力先を付ける。設定と`logAccess`には同じ`<呼び出し元の種類>`(アプリのプロファイルの`caller`)を渡す。違う種類のカテゴリのログは捨てられる。
 - テストで出力先を差し替える時は`console`を渡す。出力先(LogTapeのSink)を差し替えると、整形と値の形式による伏せ字を通らなくなる。

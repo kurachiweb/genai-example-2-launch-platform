@@ -6,6 +6,7 @@ import {
   type RedactionPatterns,
 } from '@logtape/redaction';
 
+// REDACTEDからREDACTION_PATTERNSまではapps/backend-libのcore/logging/redaction.tsの同名の宣言の写しで、正規表現にuフラグを付けた点だけが違う。一致はルートのconfig/contract-copies.unit.test.tsが確かめる
 export const REDACTED = '[REDACTED]';
 
 // 公開APIのキー(lsk_と32バイトのbase64url)

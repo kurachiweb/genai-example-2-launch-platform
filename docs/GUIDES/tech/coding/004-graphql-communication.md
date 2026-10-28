@@ -324,5 +324,5 @@ export const ProductDetailDocument = {
 | それ以外(`payload_too_large`、Worker単位のIP制限の`rate_limit_exceeded`、各機能の想定内の失敗)      | APIサーバー                            | 真         |
 
 - `expected`が偽の失敗は、画面の誤り・デプロイの食い違い・障害を表すため、エラートラッキングへ送る。真の失敗は、利用者の操作や入力で起き得るため送らない。
-- 偽とするコードの一覧は、共通部品の`utilities/graphql/graphql-result.ts`にAPIサーバーの`GATEWAY_ERROR_CODES`の写しとして持つ。APIサーバーの実行前の拒否のコードを変えたら、この一覧も見直す。
+- 偽とするコードの一覧は、共通部品の`utilities/graphql/graphql-result.ts`で、APIサーバーの`GATEWAY_ERROR_CODES`の写し(公開しない同名の配列)と、フロントエンドだけのコード(`upstream_unavailable`・`upstream_timeout`・`network_error`・`invalid_response`)から作る。APIサーバーの実行前の拒否のコードを変えたら写しも合わせる。写しとAPIサーバーの一覧の一致はルートの単体テストが照合する(「[アプリ間で写した値の照合](../testing/001-test-strategy.md#アプリ間で写した値の照合)」)。
 - `network_error`の`message`は通信の失敗を、`invalid_response`の`message`は利用できないことを伝える固定の文言である。どちらも内部の詳細を含まない。

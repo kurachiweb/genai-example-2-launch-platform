@@ -18,8 +18,8 @@ export interface GraphQLClientErrorInit {
   readonly retryAfterSeconds?: number | undefined;
 }
 
-// 想定内の失敗はapi-gatewayのAppErrorのコードと、エラートラッキングへ送らない中継の拒否(CSRF・IP制限・未登録の経路など)である。api-gatewayの実行前の拒否と内部エラー(GATEWAY_ERROR_CODES)、APIへ届かなかったフロントエンドサーバーの中継の失敗、クライアント側で付ける通信の失敗と解釈できない応答は、エラートラッキングへ送るため想定外とする
-const UNEXPECTED_ERROR_CODES: ReadonlySet<string> = new Set([
+// apps/apiのsrc/presentation/graphql/error-codes.tsのGATEWAY_ERROR_CODESの写し。一致はルートのconfig/contract-copies.unit.test.tsが確かめる
+const GATEWAY_ERROR_CODES: readonly string[] = [
   'persisted_operation_required',
   'persisted_operation_not_found',
   'query_depth_exceeded',
@@ -31,10 +31,19 @@ const UNEXPECTED_ERROR_CODES: ReadonlySet<string> = new Set([
   'graphql_validation_failed',
   'graphql_request_invalid',
   'internal_error',
+];
+
+const FRONTEND_UNEXPECTED_ERROR_CODES: readonly string[] = [
   'upstream_unavailable',
   'upstream_timeout',
   'network_error',
   'invalid_response',
+];
+
+// 想定内の失敗はapi-gatewayのAppErrorのコードと、エラートラッキングへ送らない中継の拒否(CSRF・IP制限・未登録の経路など)である。api-gatewayの実行前の拒否と内部エラー、APIへ届かなかったフロントエンドサーバーの中継の失敗、クライアント側で付ける通信の失敗と解釈できない応答は、エラートラッキングへ送るため想定外とする
+const UNEXPECTED_ERROR_CODES: ReadonlySet<string> = new Set([
+  ...GATEWAY_ERROR_CODES,
+  ...FRONTEND_UNEXPECTED_ERROR_CODES,
 ]);
 
 const INVALID_RESPONSE_MESSAGE =

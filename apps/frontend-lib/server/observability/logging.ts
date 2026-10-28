@@ -64,7 +64,7 @@ interface AppliedLogging {
   readonly config: Config<string, string>;
 }
 
-// backend-libのREDACTED_FIELD_PATTERNSの写し。片方を変えたらもう片方も見直す
+// apps/backend-libのcore/logging/redaction.tsのREDACTED_FIELD_PATTERNSの写し。一致はルートのconfig/contract-copies.unit.test.tsが確かめる
 export const REDACTED_FIELD_PATTERNS: readonly FieldPattern[] = Object.freeze([
   ...DEFAULT_REDACT_FIELDS,
   /^ip$/i,

@@ -1,4 +1,4 @@
-// api-gatewayの契約の値の写し(apps/apiのgateway-headers.ts・session-verifier.ts)。片方を変えたらもう片方も見直す
+// apps/apiのsrc/presentation/gateway/gateway-headers.ts・session-access.ts・src/application/session/session-verifier.tsの契約の値の写し。一致はルートのconfig/contract-copies.unit.test.tsが確かめる
 // HTTPヘッダーは大文字小文字を区別しないため、Headersが返す小文字の名前で定義する
 export const RELAY_REQUEST_HEADERS = Object.freeze({
   clientIp: 'x-original-client-ip',

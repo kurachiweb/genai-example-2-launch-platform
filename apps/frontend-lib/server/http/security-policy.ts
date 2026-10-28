@@ -1,6 +1,6 @@
 import type { ValidatedFrontendEnv } from '../env/frontend-env.ts';
 
-// 並び順はapi-gatewayのPermissions-Policyと同じにする
+// apps/backend-libのworkers/http/security-headers.tsのPermissions-Policyの機能の並びの写し。一致はルートのconfig/contract-copies.unit.test.tsが確かめる
 const PERMISSION_FEATURES = [
   'accelerometer',
   'autoplay',
@@ -160,6 +160,7 @@ export const runtimeSecurityPolicySources = (
   });
 };
 
+// apps/backend-libのworkers/http/security-headers.tsのDEFAULT_CONTENT_SECURITY_POLICYの写し。一致はルートのconfig/contract-copies.unit.test.tsが確かめる
 export const NON_PAGE_CONTENT_SECURITY_POLICY =
   "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 

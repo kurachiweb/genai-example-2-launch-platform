@@ -1,4 +1,4 @@
-// backend-libのcore/rate-limit/rate-limit-key.tsと同じ値を作る写し。共通部品はbackend-libを読み込めないため、方式が変わったら合わせる
+// 共通部品はbackend-libを読み込めないため、apps/backend-libのcore/rate-limit/rate-limit-key.ts(core/crypto/keyed-hasher.ts)と同じ値を作る計算を写して持つ。同じ値になることはルートのconfig/contract-copies.unit.test.tsが両方を実行して確かめる
 export const RATE_LIMIT_KEY_PURPOSE = 'rate-limit-key';
 
 const PURPOSE_SEPARATOR = '\u0000';

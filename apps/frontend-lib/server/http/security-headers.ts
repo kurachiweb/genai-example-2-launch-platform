@@ -1,3 +1,4 @@
+// apps/backend-libのworkers/http/security-headers.tsのSECURITY_HEADERSのうちPermissions-Policy以外の写し。一致はルートのconfig/contract-copies.unit.test.tsが確かめる
 export const BASE_SECURITY_HEADERS = Object.freeze({
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'X-Content-Type-Options': 'nosniff',

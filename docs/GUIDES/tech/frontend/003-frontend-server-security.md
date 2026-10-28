@@ -110,7 +110,7 @@ flowchart TD
 
 - 同じ名前のCookieが複数あれば、最初の値だけを使う。
 - 予約名(`cookie`・`<元のクライアントIPのヘッダー>`・`<セッション識別子のヘッダー>`・`<呼び出し元のヘッダー>`・`<デバッグ用の呼び出し元のヘッダー>`)を追加の項目で渡すと、項目名だけを含む`TypeError`になる。
-- APIサーバーとの契約の値(項目名・`SESSION_TOKEN_PATTERN`・指示の値・有効期間の上限`MAX_SESSION_MAX_AGE_SECONDS`)は、共通部品の`server/relay/relay-contract.ts`にAPIサーバー側の定義の写しとして持つ。片方を変えたらもう片方も見直す。
+- APIサーバーとの契約の値(項目名・`SESSION_TOKEN_PATTERN`・指示の値・有効期間の上限`MAX_SESSION_MAX_AGE_SECONDS`)は、共通部品の`server/relay/relay-contract.ts`にAPIサーバー側の定義の写しとして持つ。片方を変えたらもう片方も見直し、一致はルートの単体テストが照合する(「[アプリ間で写した値の照合](../testing/001-test-strategy.md#アプリ間で写した値の照合)」)。
 
 ### 応答の扱い
 
@@ -327,7 +327,7 @@ import { StartClient } from '@tanstack/react-start/client';
 
 - Permissions-Policyの16機能は`accelerometer`・`autoplay`・`camera`・`display-capture`・`encrypted-media`・`fullscreen`・`geolocation`・`gyroscope`・`magnetometer`・`microphone`・`midi`・`payment`・`publickey-credentials-get`・`screen-wake-lock`・`usb`・`xr-spatial-tracking`で、APIサーバーと同じ並びである。
 - `Cache-Control: no-store`は、ログイン状態・エラー・404を問わないすべてのページと、中継の応答に付く。上流が付けた`Cache-Control`も置き換わる。
-- HSTS・`nosniff`・`Referrer-Policy`の値と16機能、ページ以外のCSPは、APIサーバーの「[セキュリティヘッダー](../backend/006-internal-gateway.md#セキュリティヘッダー)」の値の写しである。片方を変えたらもう片方も見直す。
+- HSTS・`nosniff`・`Referrer-Policy`の値と16機能、ページ以外のCSPは、バックエンドの共通ライブラリの`workers/http/security-headers.ts`の「[セキュリティヘッダー](../backend/006-internal-gateway.md#セキュリティヘッダー)」の値の写しである。片方を変えたらもう片方も見直し、一致はルートの単体テストが照合する(「[アプリ間で写した値の照合](../testing/001-test-strategy.md#アプリ間で写した値の照合)」)。
 
 | 応答                                                                    | CSP                                                                                                | Permissions-Policy |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------ |
@@ -384,7 +384,7 @@ import { StartClient } from '@tanstack/react-start/client';
 バインディングへ渡すキーは、`ip:<送信元IPアドレス>`(不明なら`ip:unknown`)を`<ペッパーのシークレットのキー>`でハッシュ化した値である(「[キーのハッシュ化](../backend/003-rate-limiting-and-bot-verification.md#キーのハッシュ化)」)。元のIPアドレスと`ip:`で始まる文字列はバインディングへ渡さない。
 
 - 共通部品はバックエンドの共通ライブラリを読み込めないため、`server/http/rate-limit-key-hash.ts`の`hashRateLimitKey(<ペッパー>, ...<部品>)`が同じ計算を写して持つ。HMAC-SHA512の鍵はペッパーのUTF-8、入力は`rate-limit-key`・NUL文字・部品の配列のJSONを連結したUTF-8、出力はパディングなしのbase64url(86文字)で、同じペッパーと同じ送信元からは共通ライブラリの`hashRateLimitKey`と同じ値になる。部品を1つも渡さないと`RangeError`で拒否する。
-- 単体テストは、期待する値をNode.js互換の`createHmac('sha512', <ペッパー>).update('rate-limit-key\u0000["ip:203.0.113.5"]').digest('base64url')`で求めて比べる。共通ライブラリがハッシュ化の方式を変えたら、この写しとテストを合わせる。
+- 単体テストは、期待する値をNode.js互換の`createHmac('sha512', <ペッパー>).update('rate-limit-key\u0000["ip:203.0.113.5"]').digest('base64url')`で求めて比べる。共通ライブラリがハッシュ化の方式を変えたら、この写しとテストを合わせる。共通ライブラリの`hashRateLimitKey`と同じ値になることは、ルートの単体テストが両方を子プロセスで実行して照合する(「[アプリ間で写した値の照合](../testing/001-test-strategy.md#アプリ間で写した値の照合)」)。
 - `<ペッパーのシークレットのキー>`は環境の検証で空でない文字列として必須にし、ブラウザへ渡す設定値に含めない。Wrangler設定のルートと`env.<環境種別>`の両方の`secrets.required`に挙げ、同じ環境のバックエンドのWorkerと同じ値を注入する(「[ペッパーの管理](../security/002-keyed-hashing.md#ペッパーの管理)」)。
 - 鍵の読み込み(`crypto.subtle.importKey`)は要求ごとに行う。環境の検証が要求ごとに行われるため、ペッパーをモジュールの状態に残さない。
 - ハッシュ化の例外は要求を通さず、エントリの外側の捕捉で500にする。ペッパーは環境の検証で空でないことを確かめ済みのため、通常は起きない。
