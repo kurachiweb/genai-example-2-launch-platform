@@ -369,7 +369,8 @@ describe('createWorkerHandler(グローバルスコープ)', () => {
     expect(response.status).toBe(200);
     expect(getConfig()).not.toBeNull();
     expect(harness.moduleLoads.count).toBe(1);
-    expect(importKey).toHaveBeenCalledTimes(1);
+    // 処理単位のコンテナより前に動くIP制限が自分のハッシュ化の部品を持つため、IP制限とコンテナが1回ずつ鍵を読み込む
+    expect(importKey).toHaveBeenCalledTimes(2);
   });
 
   test('定期実行と非同期メッセージを渡さなければ、それらのハンドラーを持たない', () => {

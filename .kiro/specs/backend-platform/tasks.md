@@ -377,8 +377,8 @@
   - _Boundary: ArchitectureDoc, AsyncProcessingDoc, LoggingDoc, OnboardingUpdates_
   - _Requirements: 15.3, 15.5, 15.6_
 
-- [ ] 11. frontend-platformの最終検証後の判断の反映(承認後の改訂9)
-- [ ] 11.1 Worker単位のIP制限のキーをハッシュ化する
+- [x] 11. frontend-platformの最終検証後の判断の反映(承認後の改訂9)
+- [x] 11.1 Worker単位のIP制限のキーをハッシュ化する
   - 先に、`ip-rate-limit.worker.test.ts`へ、バインディングへ渡すキーが`hashRateLimitKey(createKeyedHasher(<テスト用のペッパー>), 'ip:<IP>')`の値で生のIPアドレスを含まないこと(不明な送信元は`ip:unknown`のハッシュ値)、`HASH_PEPPER`が無い環境では数えずに後続へ渡し`/health`が200・他の経路が環境の不備の500になること、同じIPの101回目の429と別のIPの独立が変わらないことを確かめる検査を足す。`binding-rate-limit.worker.test.ts`へ、`key`が環境を受け取りPromiseを返しても数え、`undefined`なら数えないことを確かめる検査を足す。あわせて、最初の要求の`KeyedHasher`(と`Promise<CryptoKey>`)を使い回す同時の複数の要求が、workerdの要求の文脈の制約で失敗・停止せずにすべて数えられることを確かめる検査を足す(確かめられなければ要求ごとに`KeyedHasher`を作る)
   - `bindingRateLimit`の`key`を`(request, clientIp, env)`で値かPromise(`undefined`は数えない)を返す形にし、`ipRateLimit`の型制約に`HASH_PEPPER`を加え、`createKeyedHasher(env.HASH_PEPPER)`と`hashRateLimitKey`でハッシュ化したキーを渡す。最後に使ったペッパーの値と`KeyedHasher`の組を1つだけ保持し、同じペッパーの間は使い回す
   - `security/002`の「ハッシュ化の対象」「レート制限のキー」に、Rate Limitingバインディングへ渡すキーも`hashRateLimitKey`でハッシュ化することと、ペッパーを使う全アプリが環境ごとに1つの値を共有することを書く。`backend/003`のWorker単位のIP制限の規約表のキーの行・共通ライブラリを使わないWorkerの作り方・`bindingRateLimit`の`key`の説明を直す

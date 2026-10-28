@@ -9,6 +9,7 @@ import { ContainerModule } from 'inversify';
 import { afterAll, describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
+import { createKeyedHasher } from '../../core/crypto/keyed-hasher.ts';
 import type { AppModule } from '../../core/di/app-module.ts';
 import {
   type InvocationScopeInfo,
@@ -20,6 +21,7 @@ import {
   NOT_FOUND_RESPONSE,
 } from '../../core/errors/error-envelope.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
+import { hashRateLimitKey } from '../../core/rate-limit/rate-limit-key.ts';
 import type { InvocationScope } from '../di/invocation-container.ts';
 import { platformEnvShape } from '../env/platform-env.ts';
 import { ensureLoggingConfigured } from '../logging/configure-logging.ts';
@@ -232,6 +234,10 @@ function createRecordingRateLimit(keys: string[], success: boolean): RateLimit {
   };
 }
 
+async function ipRateLimitKeyOf(ip: string): Promise<string> {
+  return hashRateLimitKey(createKeyedHasher(env.HASH_PEPPER), `ip:${ip}`);
+}
+
 function logsOf(logs: readonly LoggedObject[], category: string) {
   return logs.filter((log) => log.category === category);
 }
@@ -277,7 +283,7 @@ describe('createWorkerApp', () => {
     expect(await response.json()).toMatchObject({
       error: { code: 'rate_limit_exceeded' },
     });
-    expect(keys).toStrictEqual([`ip:${CLIENT_IP}`]);
+    expect(keys).toStrictEqual([await ipRateLimitKeyOf(CLIENT_IP)]);
   });
 
   test('差し替えたクライアントIPの解決と、登録した除外規則をIP制限に使う', async () => {
@@ -299,7 +305,25 @@ describe('createWorkerApp', () => {
     expect((await counted.json<ScopeResponse>()).info.clientIp).toBe(
       '192.0.2.44',
     );
-    expect(keys).toStrictEqual(['ip:192.0.2.44']);
+    expect(keys).toStrictEqual([await ipRateLimitKeyOf('192.0.2.44')]);
+  });
+
+  test('ペッパーが無い環境ではIP制限で数えず、ヘルスチェックは200、他の経路は環境の検証の500になる', async () => {
+    configureRecordingLogs();
+    const keys: string[] = [];
+    const { app } = createTestApp();
+    const bindings = envWith({
+      HASH_PEPPER: undefined,
+      IP_RATE_LIMITER: createRecordingRateLimit(keys, false),
+    });
+
+    const health = await invoke(app, '/health', { bindings });
+    const route = await invoke(app, '/v1/scope', { bindings });
+
+    expect(health.status).toBe(200);
+    expect(route.status).toBe(INTERNAL_ERROR_RESPONSE.status);
+    expect(await route.json()).toStrictEqual(INTERNAL_ERROR_RESPONSE.body);
+    expect(keys).toStrictEqual([]);
   });
 
   test('環境の検証に失敗すると、キー名だけを記録して500の定型で応答し、ルートを実行しない', async () => {

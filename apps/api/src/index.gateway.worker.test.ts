@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { CLIENT_SYSTEM_STATUS_OPERATION } from '../test/fixtures/graphql/system-allowlist.ts';
@@ -15,10 +16,12 @@ import {
   graphqlRequest,
 } from '../test/support/graphql-request.ts';
 import type { LoggedObject } from '../test/support/observability-recording.ts';
+import { createKeyedHasher } from '../lib/core/crypto/keyed-hasher.ts';
 import {
   INTERNAL_ERROR_RESPONSE,
   NOT_FOUND_RESPONSE,
 } from '../lib/core/errors/error-envelope.ts';
+import { hashRateLimitKey } from '../lib/core/rate-limit/rate-limit-key.ts';
 import {
   DEFAULT_CONTENT_SECURITY_POLICY,
   SECURITY_HEADERS,
@@ -72,6 +75,10 @@ const CORS_HEADER_NAMES = [
 
 function deployed(environment: AppEnvironment): EnvOverrides {
   return { APP_ENVIRONMENT: environment };
+}
+
+async function ipRateLimitKeyOf(ip: string): Promise<string> {
+  return hashRateLimitKey(createKeyedHasher(env.HASH_PEPPER), `ip:${ip}`);
 }
 
 function externalRequest(url: string, init: ExternalRequestInit = {}): Request {
@@ -205,7 +212,7 @@ describe('内部経路(名前付きエントリポイント)の実際の結線',
       IP_RATE_LIMITER: limiter.binding,
     });
 
-    expect(limiter.keys).toStrictEqual([`ip:${RELAYED_IP}`]);
+    expect(limiter.keys).toStrictEqual([await ipRateLimitKeyOf(RELAYED_IP)]);
     expect(clientIpLogs(warnings)).toStrictEqual([]);
   });
 
@@ -221,7 +228,7 @@ describe('内部経路(名前付きエントリポイント)の実際の結線',
       { IP_RATE_LIMITER: limiter.binding },
     );
 
-    expect(limiter.keys).toStrictEqual(['ip:unknown']);
+    expect(limiter.keys).toStrictEqual([await ipRateLimitKeyOf('unknown')]);
     expect(clientIpLogs(warnings)).toMatchObject([{ reason: 'missing' }]);
     expect(JSON.stringify(clientIpLogs(warnings))).not.toContain(CONNECTING_IP);
   });
@@ -290,7 +297,7 @@ describe('外部経路(既定のエクスポート)の実際の結線', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(limiter.keys).toStrictEqual([`ip:${CONNECTING_IP}`]);
+    expect(limiter.keys).toStrictEqual([await ipRateLimitKeyOf(CONNECTING_IP)]);
   });
 
   test.each(DEPLOYED_ENVIRONMENTS)(
@@ -354,7 +361,7 @@ describe('外部経路(既定のエクスポート)の実際の結線', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(limiter.keys).toStrictEqual([`ip:${CONNECTING_IP}`]);
+    expect(limiter.keys).toStrictEqual([await ipRateLimitKeyOf(CONNECTING_IP)]);
   });
 
   test('公開APIの仕様を、CORSとセキュリティのヘッダーを付けて配信する', async () => {

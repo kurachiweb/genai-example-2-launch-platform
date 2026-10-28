@@ -4,9 +4,15 @@ import { AppError } from '../../core/errors/app-error.ts';
 import { toErrorResponse } from '../../core/errors/error-envelope.ts';
 import type { RateLimitExclusion } from './exclusions.ts';
 
+export type RateLimitKeyResolver<E> = (
+  request: Request,
+  clientIp: string | undefined,
+  env: E,
+) => string | undefined | Promise<string | undefined>;
+
 export interface BindingRateLimitOptions<E> {
   readonly binding: (env: E) => RateLimit;
-  readonly key: (request: Request, clientIp: string | undefined) => string;
+  readonly key: RateLimitKeyResolver<E>;
   readonly periodSeconds: 10 | 60;
   readonly exclusions?: readonly RateLimitExclusion<E>[];
 }
@@ -40,7 +46,11 @@ export function bindingRateLimit<E extends object>(
       await next();
       return;
     }
-    const key = options.key(request, c.get('clientIp'));
+    const key = await options.key(request, c.get('clientIp'), c.env);
+    if (key === undefined) {
+      await next();
+      return;
+    }
     const { success } = await options.binding(c.env).limit({ key });
     if (!success) {
       return c.json(exceeded.body, exceeded.status, exceeded.headers);

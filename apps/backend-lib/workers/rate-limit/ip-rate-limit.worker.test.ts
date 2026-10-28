@@ -1,7 +1,9 @@
 import { env } from 'cloudflare:workers';
 import { Hono } from 'hono';
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
+import { createKeyedHasher } from '../../core/crypto/keyed-hasher.ts';
+import { hashRateLimitKey } from '../../core/rate-limit/rate-limit-key.ts';
 import { type ClientIpResolver, resolveConnectingIp } from './client-ip.ts';
 import { excludePath, type RateLimitExclusion } from './exclusions.ts';
 import {
@@ -12,6 +14,7 @@ import {
 
 interface IpLimitedEnv {
   readonly IP_RATE_LIMITER: RateLimit;
+  readonly HASH_PEPPER: string;
 }
 
 interface TestHonoEnv {
@@ -25,6 +28,8 @@ const BURST_MARGIN_MILLISECONDS = 4_000;
 const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;
 const API_URL = 'https://api.launch.example/v1/items';
 const RELAYED_CLIENT_IP_HEADER = 'X-Test-Relayed-Client-Ip';
+const TEST_PEPPER = 'test-pepper-for-ip-rate-limit';
+const OTHER_TEST_PEPPER = 'another-test-pepper-for-ip-rate-limit';
 
 // 処理の文脈でクライアントIPを求めるinvocationContextの役割を、テストではこのミドルウェアが担う
 function createApp(
@@ -187,11 +192,24 @@ describe('ipRateLimit(Rate Limitingバインディング)', () => {
 });
 
 describe('ipRateLimit(数えるキー)', () => {
-  test('クライアントIPを接頭辞ip:に続けたキーで数え、不明ならip:unknownで数える', async () => {
-    const keys: string[] = [];
-    const recordingEnv: IpLimitedEnv = {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function recordingEnvWith(keys: string[], pepper: unknown): IpLimitedEnv {
+    return {
       IP_RATE_LIMITER: createRecordingRateLimit(keys),
+      HASH_PEPPER: pepper as string,
     };
+  }
+
+  async function expectedKey(pepper: string, rawKey: string): Promise<string> {
+    return hashRateLimitKey(createKeyedHasher(pepper), rawKey);
+  }
+
+  test('ip:に続けたクライアントIP、不明ならip:unknownを、ペッパーでハッシュ化したキーで数え、生のIPアドレスを渡さない', async () => {
+    const keys: string[] = [];
+    const recordingEnv = recordingEnvWith(keys, TEST_PEPPER);
     const app = createApp([]);
 
     await app.request(API_URL, fromIp('2001:db8::5'), recordingEnv);
@@ -199,6 +217,86 @@ describe('ipRateLimit(数えるキー)', () => {
 
     expect(IP_RATE_LIMIT_KEY_PREFIX).toBe('ip:');
     expect(UNKNOWN_CLIENT_IP).toBe('unknown');
-    expect(keys).toStrictEqual(['ip:2001:db8::5', 'ip:unknown']);
+    expect(keys).toStrictEqual([
+      await expectedKey(TEST_PEPPER, 'ip:2001:db8::5'),
+      await expectedKey(TEST_PEPPER, 'ip:unknown'),
+    ]);
+    expect(keys.join('\n')).not.toContain('2001:db8::5');
+    expect(keys.join('\n')).not.toContain('ip:');
+  });
+
+  test('同じペッパーの間は鍵の読み込みを繰り返さず、ペッパーが変わればそのペッパーで作り直す', async () => {
+    const importKey = vi.spyOn(crypto.subtle, 'importKey');
+    const keys: string[] = [];
+    const app = createApp([]);
+
+    await app.request(
+      API_URL,
+      fromIp('203.0.113.131'),
+      recordingEnvWith(keys, TEST_PEPPER),
+    );
+    await app.request(
+      API_URL,
+      fromIp('203.0.113.132'),
+      recordingEnvWith(keys, TEST_PEPPER),
+    );
+    const callsWithSamePepper = importKey.mock.calls.length;
+    await app.request(
+      API_URL,
+      fromIp('203.0.113.131'),
+      recordingEnvWith(keys, OTHER_TEST_PEPPER),
+    );
+
+    expect(callsWithSamePepper).toBe(1);
+    expect(importKey).toHaveBeenCalledTimes(2);
+    expect(keys).toStrictEqual([
+      await expectedKey(TEST_PEPPER, 'ip:203.0.113.131'),
+      await expectedKey(TEST_PEPPER, 'ip:203.0.113.132'),
+      await expectedKey(OTHER_TEST_PEPPER, 'ip:203.0.113.131'),
+    ]);
+  });
+
+  test.each<[string, unknown]>([
+    ['無い', undefined],
+    ['空の', ''],
+  ])(
+    'ペッパーが%s環境では数えずに後続の処理へ進める',
+    async (_state, pepper) => {
+      const keys: string[] = [];
+      const app = createApp([]);
+
+      const response = await app.request(
+        API_URL,
+        fromIp('203.0.113.141'),
+        recordingEnvWith(keys, pepper),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe('handled');
+      expect(keys).toStrictEqual([]);
+    },
+  );
+
+  test('同時の要求でも、同じペッパーのキーで失敗せずに数える', async () => {
+    const keys: string[] = [];
+    const recordingEnv = recordingEnvWith(keys, TEST_PEPPER);
+    const app = createApp([]);
+    const ips = Array.from(
+      { length: 20 },
+      (_, index) => `192.0.2.${String(index)}`,
+    );
+
+    const responses = await Promise.all(
+      ips.map(async (ip) => app.request(API_URL, fromIp(ip), recordingEnv)),
+    );
+
+    expect(responses.map((response) => response.status)).toStrictEqual(
+      ips.map(() => 200),
+    );
+    expect(keys.toSorted()).toStrictEqual(
+      (
+        await Promise.all(ips.map((ip) => expectedKey(TEST_PEPPER, `ip:${ip}`)))
+      ).toSorted(),
+    );
   });
 });

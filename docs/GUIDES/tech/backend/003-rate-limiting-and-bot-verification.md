@@ -27,6 +27,7 @@ Cloudflare Workersのサーバーで回数を制限する2つの方式(Rate Limi
 | `<IP制限のバインディング名>`            | Worker単位のIP制限に使うRate Limitingバインディングの名前。全Workerで同じ名前にする                           |
 | `<IP制限の名前空間>`                    | Worker単位のIP制限のバインディングの`namespace_id`。Worker・環境ごとに別の値にする                            |
 | `<厳密カウンタのバインディング名>`      | 厳密カウンタのDurable Objectのバインディングの名前                                                            |
+| `<ペッパーのシークレットのキー>`        | 「[秘密情報のハッシュ化](../security/002-keyed-hashing.md#前提と用語)」と同じ                                 |
 | `<bot判定の秘密鍵のシークレットのキー>` | Turnstileの秘密鍵(シークレットキー)を保持するシークレットの名前                                               |
 | `<期待するホスト名の変数のキー>`        | bot判定の結果のホスト名と照合するホスト名を、カンマ区切りで持つ変数の名前                                     |
 
@@ -50,14 +51,14 @@ Cloudflare Workersのサーバーで回数を制限する2つの方式(Rate Limi
 | バインディング   | Wrangler設定の`ratelimits`の`<IP制限のバインディング名>`                                                                                                                                                                                                                   |
 | 上限             | 送信元IPアドレスごとに10秒あたり100回(`simple: { limit: 100, period: 10 }`)                                                                                                                                                                                                |
 | 名前空間         | Worker・環境ごとに別の`namespace_id`(`<IP制限の名前空間>`)。Workerごとに独立して数える                                                                                                                                                                                     |
-| キー             | `ip:<送信元IPアドレス>`。送信元IPアドレスが分からなければ`ip:unknown`                                                                                                                                                                                                      |
+| キー             | `ip:<送信元IPアドレス>`(送信元IPアドレスが分からなければ`ip:unknown`)を、`<ペッパーのシークレットのキー>`を鍵として`hashRateLimitKey`でハッシュ化した値。元のIPアドレスをバインディングへ渡さない(「[キーのハッシュ化](#キーのハッシュ化)」)                               |
 | 送信元IPアドレス | ブラウザから直接要求を受けるWorkerは`CF-Connecting-IP`ヘッダーの値(前後の空白を除く)。他のWorkerから中継された要求は「[クライアントIPの解決の差し替え](#クライアントipの解決の差し替え)」に従う                                                                            |
 | 対象             | Workerが受け付ける全HTTPリクエスト。除外は登録した経路・ホスト名だけ(「[除外規則](#除外規則)」)                                                                                                                                                                            |
 | 超過時の応答     | 状態コード429、`Retry-After: 10`、`Cache-Control: no-store`。JSONを返すWorkerは共通のエラー形式`{ "error": { "code": "rate_limit_exceeded", "message": "<利用者に見せる文>" } }`。画面を返すWorkerは、画面の要求にはエラー画面を、それ以外の要求には共通のエラー形式を返す |
 
-- キーの接頭辞`ip:`と不明時の`unknown`は、共通ライブラリの`IP_RATE_LIMIT_KEY_PREFIX`・`UNKNOWN_CLIENT_IP`である。共通ライブラリを使わないWorkerも、同じ文字列でキーを作る。
+- キーの接頭辞`ip:`と不明時の`unknown`は、共通ライブラリの`IP_RATE_LIMIT_KEY_PREFIX`・`UNKNOWN_CLIENT_IP`である。
 - `Retry-After`は期間の秒数(10)を返す。バインディングは期間の残り時間を返さないため、実際に許可されるまでの時間とは一致しない。
-- 送信元IPアドレスが分からない要求は、すべて同じキー`ip:unknown`で数えられ、上限を共有する。
+- 送信元IPアドレスが分からない要求は、すべて同じキー(`ip:unknown`のハッシュ値)で数えられ、上限を共有する。
 - 同じ`namespace_id`を持つバインディングは、Workerが違っても同じロケーション内で同じキーの回数を共有する。Workerごとに独立して数えるため、`namespace_id`をWorker・環境ごとに分ける。`namespace_id`はアカウント内で一意な正の整数を文字列で書く。
 - `ratelimits`はWrangler設定の`env`へ継承されないため、ルートと`env.<環境種別>`のそれぞれに書く。
 
@@ -73,12 +74,22 @@ Cloudflare Workersのサーバーで回数を制限する2つの方式(Rate Limi
 }
 ```
 
+### キーのハッシュ化
+
+送信元IPアドレスから作ったキーは、「[レート制限のキー](../security/002-keyed-hashing.md#レート制限のキー)」の方式でハッシュ化してからバインディングへ渡す。
+
+- ハッシュ化する前の文字列は`ip:<送信元IPアドレス>`か`ip:unknown`である。この文字列を1つの部品として`hashRateLimitKey(createKeyedHasher(env.<ペッパーのシークレットのキー>), <ハッシュ化する前の文字列>)`に渡した結果(base64urlの86文字)をキーにする。
+- 共通ライブラリを使わないWorkerも、同じ計算で同じ値を作る。HMAC-SHA512の鍵はペッパーをUTF-8でエンコードしたバイト列、入力は用途`rate-limit-key`・NUL文字・部品の配列のJSON(例:`["ip:203.0.113.5"]`)を連結してUTF-8でエンコードしたバイト列、出力はパディングなしのbase64urlである(「[ハッシュ化の方法](../security/002-keyed-hashing.md#ハッシュ化の方法)」)。Node.js互換の`createHmac('sha512', <ペッパー>).update('rate-limit-key\u0000["ip:203.0.113.5"]').digest('base64url')`と同じ値になる。
+- ペッパーは「[ペッパーの管理](../security/002-keyed-hashing.md#ペッパーの管理)」に従い、同じ環境の全てのWorkerで1つの値を共有する。
+
 ### 組み込み位置
 
 共通ライブラリの`createWorkerApp`は、処理単位の文脈(相関IDとクライアントIPの解決)の直後、ヘルスチェック・環境の検証・各経路より前に`ipRateLimit`を置く(「[ミドルウェアの順序](002-layered-architecture-on-workers.md#ミドルウェアの順序)」)。アプリが自分で`ipRateLimit`を掛ける必要はない。
 
 - `ipRateLimit`は、Honoの文脈変数`clientIp`の値からキーを作る。`clientIp`は処理単位の文脈のミドルウェアが`resolveClientIp`で求める。
-- バインディングの呼び出しが例外になった場合は、例外の変換により500になる。
+- `ipRateLimit`は処理単位のコンテナと環境の検証より前に動くため、コンテナの`KeyedHasher`を使わず、環境の`<ペッパーのシークレットのキー>`から自分で`createKeyedHasher`を呼ぶ。最後に使ったペッパーの値と`KeyedHasher`の組を1つだけ保持し、同じペッパーの間は要求をまたいで使い回すため、鍵の読み込みは要求ごとに繰り返されない。
+- ペッパーが未定義か空文字の環境では、要求を数えずに後続へ渡す。ヘルスチェックは環境が欠けていても応答し、他の経路は環境の検証が500にする。
+- バインディングの呼び出しやハッシュ化が例外になった場合は、例外の変換により500になる。
 
 ### 除外規則
 
@@ -120,25 +131,32 @@ export const RATE_LIMIT_EXCLUSIONS: readonly RateLimitExclusion<Env>[] = [
 `bindingRateLimit`は、任意のRate Limitingバインディングとキーで数える汎用のミドルウェアである。IP制限と別のルール(特定の経路だけを1分あたりで制限するなど)に使う。次は、検索の経路だけを別のバインディングで制限する例である。
 
 ```typescript
+import { createKeyedHasher } from '<共通ライブラリの配置先>/core/crypto/keyed-hasher.ts';
+import { hashRateLimitKey } from '<共通ライブラリの配置先>/core/rate-limit/rate-limit-key.ts';
 import { bindingRateLimit } from '<共通ライブラリの配置先>/workers/rate-limit/binding-rate-limit.ts';
 
 app.use(
   '/search/*',
   bindingRateLimit<Env>({
     binding: (env) => env.SEARCH_RATE_LIMITER,
-    key: (_request, clientIp) => `search:${clientIp ?? 'unknown'}`,
+    key: async (_request, clientIp, env) =>
+      hashRateLimitKey(
+        createKeyedHasher(env.<ペッパーのシークレットのキー>),
+        `search:${clientIp ?? 'unknown'}`,
+      ),
     periodSeconds: 60,
   }),
 );
 ```
 
-| オプション      | 内容                                                                                     |
-| --------------- | ---------------------------------------------------------------------------------------- |
-| `binding`       | 環境からRate Limitingバインディングを返す関数                                            |
-| `key`           | 要求とクライアントIPからキーを作る関数。ルールごとに接頭辞を付けて、他のルールと区別する |
-| `periodSeconds` | `10`か`60`。Wrangler設定の`simple.period`と同じ値にする。超過時の`Retry-After`に使う     |
-| `exclusions`    | 除外規則(任意)                                                                           |
+| オプション      | 内容                                                                                                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `binding`       | 環境からRate Limitingバインディングを返す関数                                                                                                                                  |
+| `key`           | 要求・クライアントIP・環境からキーを作る関数。文字列か、文字列に解決するPromiseを返す。ルールごとに接頭辞を付けて、他のルールと区別する。`undefined`を返した要求は数えずに通す |
+| `periodSeconds` | `10`か`60`。Wrangler設定の`simple.period`と同じ値にする。超過時の`Retry-After`に使う                                                                                           |
+| `exclusions`    | 除外規則(任意)                                                                                                                                                                 |
 
+- IPアドレスやメールアドレスなどの元の値からキーを作る場合は、「[ハッシュ化の対象](../security/002-keyed-hashing.md#ハッシュ化の対象)」に従い、`hashRateLimitKey`でハッシュ化した値を返す。上の例は要求ごとに`createKeyedHasher`を呼ぶため、鍵の読み込みも要求ごとに行われる。全HTTPリクエストに掛けるルールでは、`ipRateLimit`のように`KeyedHasher`を要求をまたいで使い回す。
 - 超過時は、状態コード429・`Retry-After: <periodSeconds>`・`Cache-Control: no-store`と、コード`rate_limit_exceeded`の共通のエラー形式で応答する。
 - 上限(`simple.limit`)と期間(`simple.period`)はWrangler設定で決まる。ルールごとに別のバインディングと`namespace_id`を用意する。
 - 除外規則に当たる要求は数えずに通す。

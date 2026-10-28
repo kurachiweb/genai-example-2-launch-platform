@@ -138,6 +138,49 @@ describe('bindingRateLimit', () => {
     expect(keys).toStrictEqual(['/v1/items|198.51.100.20', '/v1/users|none']);
   });
 
+  test('キーの関数に環境を渡し、Promiseで返したキーで数える', async () => {
+    const { binding, keys } = createCountingRateLimit(10);
+    const app = createApp(
+      bindingRateLimit(
+        publicApiOptions({
+          key: (_, clientIp, e) =>
+            Promise.resolve(`${e.MEDIA_HOSTNAME}|${clientIp ?? 'none'}`),
+        }),
+      ),
+    );
+
+    const response = await send(
+      app,
+      createEnv(binding),
+      'https://api.launch.example/v1',
+      { headers: { [CLIENT_IP_HEADER]: '198.51.100.21' } },
+    );
+
+    expect(response.status).toBe(200);
+    expect(keys).toStrictEqual(['media.launch.example|198.51.100.21']);
+  });
+
+  test.each<[string, BindingRateLimitOptions<TestEnv>['key']]>([
+    ['同期', () => undefined],
+    ['Promise', () => Promise.resolve(undefined)],
+  ])(
+    'キーの関数が%sでundefinedを返した要求は数えずに後続の処理へ進める',
+    async (_kind, key) => {
+      const { binding, keys } = createCountingRateLimit(0);
+      const app = createApp(bindingRateLimit(publicApiOptions({ key })));
+
+      const response = await send(
+        app,
+        createEnv(binding),
+        'https://api.launch.example/v1',
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe('handled');
+      expect(keys).toStrictEqual([]);
+    },
+  );
+
   test('別のキーの回数は互いに影響しない', async () => {
     const { binding } = createCountingRateLimit(1);
     const env = createEnv(binding);

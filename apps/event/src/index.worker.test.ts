@@ -126,6 +126,33 @@ afterEach(() => {
 });
 
 describe('イベントサーバーのエントリ', () => {
+  // IP制限は最初の要求で作ったハッシュ化の鍵を後の要求でも待つため、エントリへの最初の要求を別々の要求の文脈から同時に送る。この検査はファイルの先頭に置く
+  test(
+    'エントリへの最初の要求が同時に届いても、IP制限が同じキーで数え、上限を超えた分だけを429にする',
+    async () => {
+      await waitForFreshWindow();
+
+      const responses = await Promise.all(
+        Array.from({ length: IP_LIMIT + 1 }, () =>
+          exports.default.fetch(
+            `${EVENT_ORIGIN}/health`,
+            fromIp('203.0.113.9'),
+          ),
+        ),
+      );
+      const statuses = responses.map((response) => response.status);
+      await Promise.all(
+        responses.map(async (response) => response.body?.cancel()),
+      );
+
+      expect(statuses.filter((status) => status === 200)).toHaveLength(
+        IP_LIMIT,
+      );
+      expect(statuses.filter((status) => status === 429)).toHaveLength(1);
+    },
+    BURST_TEST_TIMEOUT_MILLISECONDS,
+  );
+
   test('ヘルスチェックは認証なしで200・no-store・状態だけを返す', async () => {
     const response = await exports.default.fetch(
       `${EVENT_ORIGIN}/health`,
