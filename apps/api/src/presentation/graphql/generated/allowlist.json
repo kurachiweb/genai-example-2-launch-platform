@@ -2,6 +2,8 @@
   "version": 1,
   "operations": {
     "admin": {},
-    "client": {}
+    "client": {
+      "sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e": "query ClientSystemStatus { systemStatus { databaseReachable serverTime } }"
+    }
   }
 }
