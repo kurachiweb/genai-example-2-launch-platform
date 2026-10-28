@@ -10,12 +10,16 @@ export const SITE_TAGLINE =
 
 export const HOME_HREF = '/';
 
+export const DIRECTORY_HREF = '/p';
+
+export const CONTACT_HREF = '/contact';
+
 export const MAIN_NAVIGATION_LABEL = 'メイン';
 
 export const MENU_LABEL = 'メニュー';
 
 export const PRIMARY_NAVIGATION_LINKS: readonly SiteLink[] = Object.freeze([
-  { href: '/p', label: 'ディレクトリ' },
+  { href: DIRECTORY_HREF, label: 'ディレクトリ' },
   { href: '/help', label: 'ヘルプ' },
 ]);
 
@@ -48,5 +52,5 @@ export const FOOTER_POLICY_LINKS: readonly SiteLink[] = Object.freeze([
   { href: '/privacy', label: 'プライバシーポリシー' },
   { href: '/legal', label: '法的通知' },
   { href: '/pricing', label: '料金' },
-  { href: '/contact', label: 'お問い合わせ' },
+  { href: CONTACT_HREF, label: 'お問い合わせ' },
 ]);

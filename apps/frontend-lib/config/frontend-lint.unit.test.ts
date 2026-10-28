@@ -418,6 +418,32 @@ describe('画面向けの静的解析の規則', () => {
     );
 
     test(
+      'Error以外を投げる式の検査で、TanStack Routerの存在しないページとリダイレクトの合図だけを許す',
+      async () => {
+        const typeAwareLinter = new ESLint({
+          cwd: APP_DIR,
+          overrideConfigFile: join(APP_DIR, 'eslint.config.ts'),
+        });
+        const config = (await typeAwareLinter.calculateConfigForFile(
+          join(APP_DIR, 'start/sample.ts'),
+        )) as { readonly rules: Readonly<Record<string, unknown>> };
+
+        expect(config.rules['@typescript-eslint/only-throw-error']).toEqual([
+          ERROR_SEVERITY,
+          expect.objectContaining({
+            allow: [
+              {
+                from: 'package',
+                package: '@tanstack/router-core',
+                name: ['NotFoundError', 'Redirect'],
+              },
+            ],
+          }),
+        ]);
+      },
+      LINT_TIMEOUT_MS,
+    );
+    test(
       'ストーリーにカタログの書き方の規則を適用する',
       async () => {
         const rules = await enabledRulesOf(

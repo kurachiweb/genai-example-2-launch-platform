@@ -246,6 +246,15 @@ const reactHooksConflictsOf = (
 // 型情報付きの検査の対象外である設定ファイルには、型情報を使うReactの規則も当てない
 const CONFIG_FILES = ['**/*.config.ts'];
 
+// TanStack Routerは存在しないページとリダイレクトをErrorではない合図のオブジェクトを投げて伝えるため、その2つだけをError以外の例外として許す
+const ROUTER_THROWABLES = [
+  {
+    from: 'package',
+    package: '@tanstack/router-core',
+    name: ['NotFoundError', 'Redirect'],
+  },
+] as const;
+
 export function createFrontendLintConfig({
   eslintReact,
   reactHooks,
@@ -289,6 +298,17 @@ export function createFrontendLintConfig({
       rules: {
         '@eslint-react/dom-no-dangerously-set-innerhtml': 'error',
         'no-restricted-syntax': ['error', ...RAW_HTML_SYNTAX_RESTRICTIONS],
+      },
+    },
+    {
+      name: 'frontend/router-throwables',
+      files: ['**/*.ts', '**/*.tsx'],
+      ignores: CONFIG_FILES,
+      rules: {
+        '@typescript-eslint/only-throw-error': [
+          'error',
+          { allow: [...ROUTER_THROWABLES] },
+        ],
       },
     },
     ...DEPENDENCY_DIRECTION_RULES,
