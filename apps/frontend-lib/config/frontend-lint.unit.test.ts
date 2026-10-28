@@ -262,10 +262,33 @@ const RENDERING_POSITION_CASES: readonly PositionCase[] = [
       allowed("import { useQuery } from '@tanstack/react-query';"),
       allowed("import { createServerFn } from '@tanstack/react-start';"),
       allowed("import { env } from 'cloudflare:workers';"),
-      allowed("import * as Sentry from '@sentry/tanstackstart-react';"),
+      forbidden("import * as Sentry from '@sentry/tanstackstart-react';"),
+      forbidden(
+        "import { sentryGlobalRequestMiddleware } from '@sentry/tanstackstart-react';",
+      ),
+      allowed(
+        "import type * as SentryTypes from '@sentry/tanstackstart-react';",
+      ),
       allowed("import { c } from '../../server/relay/relay-route';"),
       allowed("import { d } from '../../utilities/class-names';"),
       allowed("import { e } from './execute-graphql.server';"),
+    ],
+  },
+  {
+    file: 'start/observability/violation.server.ts',
+    statements: [
+      allowed(
+        "import { sentryGlobalRequestMiddleware } from '@sentry/tanstackstart-react';",
+      ),
+      allowed("import { a } from './report-error.server';"),
+    ],
+  },
+  {
+    file: 'start/sample/violation.unit.test.ts',
+    statements: [
+      allowed(
+        "import { sentryGlobalRequestMiddleware } from '@sentry/tanstackstart-react';",
+      ),
     ],
   },
   {
@@ -280,6 +303,8 @@ const RENDERING_POSITION_CASES: readonly PositionCase[] = [
         "import { createFrontendServerEntry } from '../../server/entry/create-frontend-server-entry';",
       ),
       forbidden("import { d } from '../../../src/composition/relay-routes';"),
+      forbidden("import { init } from '@sentry/tanstackstart-react';"),
+      allowed("import type { init } from '@sentry/tanstackstart-react';"),
       allowed(
         "import type { FrontendRequestContext } from '../../server/entry/request-context';",
       ),
@@ -290,6 +315,21 @@ const RENDERING_POSITION_CASES: readonly PositionCase[] = [
       allowed("import { useState } from 'react';"),
       allowed("import { useQuery } from '@tanstack/react-query';"),
       allowed("import { f } from './form-field';"),
+    ],
+  },
+  {
+    file: 'src/routes/violation.tsx',
+    statements: [
+      forbidden("import { ErrorBoundary } from '@sentry/tanstackstart-react';"),
+      allowed("import type { init } from '@sentry/tanstackstart-react';"),
+    ],
+  },
+  {
+    file: 'src/server.ts',
+    statements: [
+      allowed(
+        "import { wrapFetchWithSentry } from '@sentry/tanstackstart-react';",
+      ),
     ],
   },
   {

@@ -25,15 +25,27 @@ const RESERVED_EXTRA_HEADER_NAMES: ReadonlySet<string> = new Set([
   GATEWAY_CALLER_HEADERS.debugCaller,
 ]);
 
+// Sentry.getTraceDataの型はbaggageなどを省略可能とし、値の無い項目を含み得る
+export type TraceData = Readonly<Record<string, string | undefined>>;
+
+const pickStringValues = (
+  traceData: TraceData,
+): Readonly<Record<string, string>> =>
+  Object.fromEntries(
+    Object.entries(traceData).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  );
+
 export function createRelayContext(
   request: Request,
   profile: FrontendAppProfile,
-  traceHeaders: Readonly<Record<string, string>>,
+  traceData: TraceData,
 ): RelayContext {
   return {
     clientIp: resolveClientIp(request),
     sessionToken: readSessionToken(request, profile.sessionCookieName),
-    traceHeaders,
+    traceHeaders: pickStringValues(traceData),
   };
 }
 

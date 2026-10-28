@@ -35,7 +35,7 @@ import {
   withCorrelationId,
 } from '../observability/logging.ts';
 import { RELAY_PATH_PREFIX } from '../relay/relay-contract.ts';
-import { createRelayContext } from '../relay/relay-headers.ts';
+import { createRelayContext, type TraceData } from '../relay/relay-headers.ts';
 import {
   findRelayRoute,
   type RelayRoute,
@@ -71,7 +71,7 @@ export interface FrontendServerEntryOptions {
   // アプリが@sentry/cloudflareのcaptureExceptionを渡す
   readonly reportUnexpected: (error: unknown) => void;
   // アプリがSentry.getTraceDataを渡す
-  readonly traceHeaders: () => Readonly<Record<string, string>>;
+  readonly traceHeaders: () => TraceData;
   readonly console?: Console;
   readonly now?: () => number;
 }

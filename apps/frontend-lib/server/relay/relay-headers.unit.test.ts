@@ -90,6 +90,16 @@ describe('createRelayContext', () => {
     });
   });
 
+  test('トレースの項目は値が文字列のものだけを持ち、値の無い項目を中継で付けない', () => {
+    const context = createRelayContext(browserRequest(), CLIENT_PROFILE, {
+      'sentry-trace': SENTRY_TRACE,
+      baggage: undefined,
+    });
+
+    expect(context.traceHeaders).toEqual({ 'sentry-trace': SENTRY_TRACE });
+    expect(buildRelayHeaders(context, undefined).has('baggage')).toBeFalse();
+  });
+
   test('管理者側は管理者側のCookieの値だけを持つ', () => {
     expect(
       createRelayContext(browserRequest(), ADMIN_PROFILE, {}).sessionToken,

@@ -80,6 +80,14 @@ const SERVER_VALUE_RESTRICTION: RestrictedImportPattern = {
     '画面部品はサーバーの部品から型だけを読み込めます。実行時の処理はstartの同型の関数を経由してください。',
 };
 
+// ブラウザのSentryのSDKは初期化の時に動的importで読み込む。ブラウザのバンドルに入るファイルが同じパッケージの実行時の値を静的に読み込むと、動的importが別のチャンクに分かれずSDK全体が主バンドルに入る
+const BROWSER_SENTRY_RESTRICTION: RestrictedImportPattern = {
+  regex: '^@sentry/tanstackstart-react(?:/.*)?$',
+  allowTypeImports: true,
+  message:
+    'ブラウザのバンドルに入るファイルはSentryのTanStack Start版の実行時の値を静的に読み込めません。サーバーの処理はサーバー専用ファイル(*.server.ts)に置いて同型の関数(createIsomorphicFn)のサーバーの分岐から読み込み、ブラウザの処理は動的importで読み込んでください。',
+};
+
 const COMPOSITION_TO_ROUTES_RESTRICTION: RestrictedImportPattern = {
   regex: relativeDirectoryPattern('routes'),
   message:
@@ -141,6 +149,22 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
       ]),
       '@typescript-eslint/no-restricted-imports': restrictImports([
         SERVER_VALUE_RESTRICTION,
+        BROWSER_SENTRY_RESTRICTION,
+      ]),
+    },
+  },
+  {
+    name: 'frontend/browser-bundle/start-and-app',
+    files: ['start/**', 'src/**'],
+    ignores: [
+      '**/*.server.ts',
+      'src/server.ts',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+    ],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': restrictImports([
+        BROWSER_SENTRY_RESTRICTION,
       ]),
     },
   },
