@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+
 import eslintReact from '@eslint-react/eslint-plugin';
 import js from '@eslint/js';
 import tanstackQuery from '@tanstack/eslint-plugin-query';
@@ -27,6 +29,16 @@ const config: Linter.Config[] = [
     tanstackRouter,
     storybook,
   }),
+  {
+    files: ['.storybook/main.ts'],
+    rules: {
+      // 規則は作業ディレクトリから package.json を探すため、ルートから起動するコミット時の検査でも共通部品の宣言を読ませる
+      'storybook/no-uninstalled-addons': [
+        'error',
+        { packageJsonLocation: join(import.meta.dirname, 'package.json') },
+      ],
+    },
+  },
   prettierConfig,
 ];
 

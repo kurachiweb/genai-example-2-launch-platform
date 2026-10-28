@@ -18,5 +18,10 @@
     "lib": ["ES2024", "DOM"],
     "types": ["bun", "vite/client"]
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx"
+  ]
 }

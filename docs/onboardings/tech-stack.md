@@ -315,5 +315,6 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### ドキュメント
 
 - Storybook(コンポーネントカタログ、`@storybook/tanstack-react`を使用)
+  - `@storybook/addon-a11y` ... カタログの各ストーリーのアクセシビリティを`axe-core`で検査して結果をパネルに表示(ブラウザテストと同じWCAG 2.2 AAのタグに絞って実行するが、検査には自身が依存する`axe-core`を使うため、ブラウザテストの`axe-core`と版が異なることがある)
 - GraphiQL(GraphQLスキーマ探索・クエリ試行、GraphQL Yogaに内蔵、デプロイ先環境では`graphiql: false`)
 - Swagger UI(APIサーバーが配信するOpenAPI仕様を閲覧、`swagger-ui-dist`をclientが同一オリジンで配信)

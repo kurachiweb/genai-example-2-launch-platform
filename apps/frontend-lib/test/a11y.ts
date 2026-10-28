@@ -8,7 +8,7 @@ export interface AxeViolationSummary {
   readonly nodes: readonly string[];
 }
 
-const WCAG_22_AA_TAGS: readonly string[] = [
+export const WCAG_22_AA_TAGS: readonly string[] = [
   'wcag2a',
   'wcag2aa',
   'wcag21a',
