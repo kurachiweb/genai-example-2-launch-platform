@@ -378,7 +378,7 @@
   - _Depends: 9.1, 9.2, 9.3, 9.4, 9.5_
   - _Requirements: 15.3, 15.4, 15.7, 15.8_
 
-- [ ] 10. 最終検証後の判断の反映
+- [x] 10. 最終検証後の判断の反映
 - [x] 10.1 フロントエンドのIP制限のキーをハッシュ化する
   - 前提: backend-platformの11.1(Worker単位のIP制限のキーのハッシュ化)が完了し、backend-libの`ipRateLimit`がハッシュ化したキーで数えていること。完了していなければ止めて報告する
   - 先に、共通部品の新しい`server/http/rate-limit-key-hash.ts`の`hashRateLimitKey(pepper, ...parts)`が、`node:crypto`の`createHmac('sha512', <ペッパー>).update('rate-limit-key\u0000' + JSON.stringify(parts)).digest('base64url')`と同じ値を返すこと(backend-libの`hashRateLimitKey`と同じ計算)、部品が空なら値を含まない例外になることを確かめる単体テストを書く
@@ -431,7 +431,7 @@
   - _Boundary: 技術ドキュメント群_
   - _Requirements: 2.7, 15.3, 15.4_
 
-- [ ] 10.6 Zodの設定をエントリの先頭で読み込む
+- [x] 10.6 Zodの設定をエントリの先頭で読み込む
   - 先に、client・adminの`test/config/entry-imports.unit.test.ts`(新規)で、ブラウザのエントリ`src/client.tsx`とサーバーのエントリ`src/server.ts`の最初のimportが`../lib/utilities/validation/zod.ts`の副作用の読み込み(束縛を持たない`import '…/zod.ts';`)で、他のどのモジュールの読み込みより先にあること、`vite.config.ts`の`tanstackStart()`がブラウザとサーバーのエントリ(`client.entry`・`server.entry`)を指定せず、Startの既定の名前で`src/client.tsx`・`src/server.ts`が使われることを確かめる単体テストを書く
   - `src/server.ts`の最初のimportに`import '../lib/utilities/validation/zod.ts';`を加える
   - TanStack Startの既定のブラウザのエントリには読み込みを足せないため、`src/client.tsx`(新規)を置き、最初のimportで`zod.ts`を読み込んだ後に、既定のエントリと同じく`startTransition`の中で`hydrateRoot(document, <StrictMode><StartClient /></StrictMode>)`を呼ぶ。Startが`src/client.tsx`をブラウザのエントリとして使うことをビルドの出力で確かめる
@@ -501,3 +501,4 @@
 - 10.3(結果と申し送り): 問い合わせの導線の有無はプロファイルの`contactAvailable`(利用者側は真・管理者側は偽)で決まり、`UnexpectedErrorView`・`ErrorState`は`contactHref`の有無で、`GraphQLClientError`でない例外の文言は`errorMessageOf(error, contactAvailable)`で、静的な500の画面は`renderStaticErrorPage({ status: 500, contactAvailable })`で出し分ける。利用者側の`ErrorPage`は`CONTACT_HREF`を常に渡し、プロファイルとの一致は`composition.unit.test.ts`と`ErrorPage`のブラウザテストで確かめる。`docs/onboardings/project-values.md`のプロファイルの表に`contactAvailable`の行を足すのは10.1の文書の更新で行う
 - 10.4(結果と開発者への確認): 下流23specを確定した契約に合わせ(1282d37)、design.mdの影響の表の該当箇所を合わせた後の位置にした。派生した契約として、admin-foundationの`ConfirmActionDialogProps`・`CategoryMasterEditorProps`の必須の`failureMessageOf`と、media-pipelineのアップロード部品の必須の`contactAvailable`が加わった。infra-deliveryに、非表示のTurnstileを使う条件としてプライバシーポリシーでCloudflareのTurnstile Privacy Addendumを参照する記述を足した(開発者の確認待ち)。product-launchとugc-moderationが同じ照会`adminProductCategories`を違う型で定義している(10.4より前からの食い違い)
 - 10.1(結果): フロントエンドは`server/http/rate-limit-key-hash.ts`でbackend-libと同じHMAC-SHA512を計算し(乱数の入力で不一致0)、要求ごとに鍵を読み込む。`HASH_PEPPER`はclient・adminのルート・staging・prodの`secrets.required`にあり、ローカルでもInfisicalの`dev`からの注入が要る。エントリの単体テストは800行の上限のため`create-frontend-server-entry.env-rate-limit.unit.test.ts`に環境の不備とIP制限の検査を分けた
+- 10.6(結果): client・adminのブラウザのエントリ`src/client.tsx`(Startの既定のエントリと同じ描画の処理)とサーバーのエントリ`src/server.ts`は、最初のimportで`../lib/utilities/validation/zod.ts`を副作用として読み込む。`test/config/entry-imports.unit.test.ts`(client・adminで同じ中身の写し)が最初の読み込み・Startの既定の名前での解決・`tanstackStart()`がエントリを指定しないことを確かめる。開発サーバーとビルド後のプレビューの両方でCSPの違反は0件。Startの版を上げる時は`src/client.tsx`を既定のエントリと見比べる

@@ -298,8 +298,17 @@ export const APP_SECURITY_POLICY: SecurityPolicySources = Object.freeze({
 
 ページのCSPは`'unsafe-eval'`を持たないため、ブラウザで`eval`・`new Function`を試すだけでも、例外を捕捉していてもCSPの違反として報告される。
 
-- Zod 4はスキーマを作る時にJITの可否を`new Function`で試す。共通部品の`utilities/validation/zod.ts`が`z.config({ jitless: true })`を済ませてから`z`を再エクスポートするため、Zodの値は必ずここから読み込む。ESモジュールは依存を先に評価するため、この設定はすべてのスキーマより前に効く。
+- Zod 4はスキーマを作る時にJITの可否を`new Function`で試す。共通部品の`utilities/validation/zod.ts`が`z.config({ jitless: true })`を済ませてから`z`を再エクスポートするため、Zodの値は必ずここから読み込む。
 - 静的解析(`ZOD_VALUE_RESTRICTION`)が、この部品以外での`zod`(サブパスを含む)の値のimportを禁止する。型だけのimportと、`@hookform/resolvers/zod`は許す。
+- 設定は、設定より後に作られたスキーマにだけ効く。Workerなど画面を持たないアプリと共有するディレクトリのように、`zod`を直接読むコードがアプリのバンドルに入る場合、そのスキーマを持つモジュールが設定の部品より先に評価されると、スキーマは設定の前に作られる。このため、ブラウザのエントリ(`src/client.tsx`)とサーバーのエントリ(`src/server.ts`)の最初のimportで、設定の部品を束縛を持たない副作用として読み込む。ESモジュールはimportの記述順に依存を評価するため、エントリの最初のimportは他のどのモジュールより先に評価される。ブラウザのエントリの置き方は「[独自のブラウザのエントリ](002-tanstack-start-on-workers.md#独自のブラウザのエントリ)」に従う。
+
+```typescript
+import '<共通部品の配置先>/utilities/validation/zod.ts';
+
+import { StartClient } from '@tanstack/react-start/client';
+```
+
+- 各アプリの単体テストで、両方のエントリの最初のモジュールの読み込み(静的な`import`と`export … from`)が設定の部品の副作用の読み込みであることを確かめる。サーバーのエントリでもworkerdはJITを試さないが、サーバーとブラウザで同じ設定のスキーマを作るため同じく読み込む。
 - 新しいライブラリを入れる時は、ビルド後のプレビューのブラウザで`securitypolicyviolation`が0件であることを確かめる。
 
 ## セキュリティヘッダー

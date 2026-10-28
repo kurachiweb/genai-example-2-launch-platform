@@ -1,3 +1,6 @@
+// Zodはスキーマを作る時点でJITの可否を判定するため、どのスキーマを持つモジュールよりも先にjitlessの設定を評価させる
+import '../lib/utilities/validation/zod.ts';
+
 import { captureException, getTraceData, withSentry } from '@sentry/cloudflare';
 import { wrapFetchWithSentry } from '@sentry/tanstackstart-react';
 import handler from '@tanstack/react-start/server-entry';

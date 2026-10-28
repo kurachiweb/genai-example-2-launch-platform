@@ -1,6 +1,6 @@
 # Cloudflare Workers上のTanStack Startの起動
 
-Cloudflare Workersで動かすTanStack Startアプリを、開発時とデプロイ前にどう起動して動作を確かめるか、及び開発サーバーからWranglerのローカル状態へ接続する設定を定める。あわせて、独自のサーバーのエントリ、サーバー専用のファイルと同型の関数、別プロセスで動くWorkerへのService Bindings、デプロイ先の環境のビルド時の指定を記す。
+Cloudflare Workersで動かすTanStack Startアプリを、開発時とデプロイ前にどう起動して動作を確かめるか、及び開発サーバーからWranglerのローカル状態へ接続する設定を定める。あわせて、独自のサーバーのエントリとブラウザのエントリ、サーバー専用のファイルと同型の関数、別プロセスで動くWorkerへのService Bindings、デプロイ先の環境のビルド時の指定を記す。
 
 ## 前提と用語
 
@@ -67,7 +67,7 @@ export default defineConfig({
 
 ## 独自のサーバーのエントリ
 
-Workerの入口に処理(セキュリティヘッダーの付与・IP制限・CSRFの検証・中継など)を加える場合は、TanStack Startの既定のサーバーのエントリを使わず、独自のサーバーのエントリ`src/server.ts`を置く。TanStack Startは`src/server.ts`があれば既定の代わりにそれをサーバーのエントリにし、Wrangler設定の`main`にも同じファイルを指定する。
+Workerの入口に処理(セキュリティヘッダーの付与・IP制限・CSRFの検証・中継など)を加える場合は、TanStack Startの既定のサーバーのエントリを使わず、独自のサーバーのエントリ`src/server.ts`を置く。TanStack Startは`src/server.ts`があれば既定の代わりにそれをサーバーのエントリにし、Wrangler設定の`main`にも同じファイルを指定する。実行時のコード生成を止める設定を先に済ませる部品がある場合は、その読み込みを`src/server.ts`の最初のimportにする(「[実行時のコード生成を試すライブラリ](003-frontend-server-security.md#実行時のコード生成を試すライブラリ)」)。
 
 ```jsonc
 {
@@ -108,6 +108,33 @@ declare module '@tanstack/react-start' {
 - 環境の型は、変数・シークレット・バインディングを検証する共通部品のZodのスキーマから作る。サーバーのエントリは最初の要求の中で環境をこのスキーマで検証し、検証済みの値だけを使う。バインディングは共通部品の構造的な型(Service Bindingsの`fetch`を持つ型、Rate Limitingバインディングの`limit`を持つ型)で扱う。
 - Wrangler設定とスキーマの食い違い(変数・シークレット・バインディングの欠落)は、各アプリの`wrangler-config.unit.test.ts`が、すべての環境の実効の値をスキーマの検証に通して検出する。型の生成と`cf-typegen:check`が担う食い違いの検出を、この単体テストが担う。
 - 生成した型の定義ファイルはWorkersの実行時の型を大域に宣言するため、画面のコードが使うDOMの型と同じ型検査の対象に入れると衝突する。
+
+## 独自のブラウザのエントリ
+
+ブラウザのエントリの先頭に処理(他のどのモジュールより先に評価させる設定の読み込みなど)を加える場合は、独自のブラウザのエントリ`src/client.tsx`を置く。TanStack Startは`src/client.tsx`があれば既定の代わりにそれをブラウザのエントリにし、無ければ自身の既定のエントリを使う。既定のエントリには処理を足せないため、加える処理の後に、既定のエントリと同じ描画の処理を書く。
+
+```tsx
+import '<先に評価させるモジュール>';
+
+import { StartClient } from '@tanstack/react-start/client';
+import { StrictMode, startTransition } from 'react';
+import { hydrateRoot } from 'react-dom/client';
+
+startTransition(() => {
+  hydrateRoot(
+    document,
+    <StrictMode>
+      <StartClient />
+    </StrictMode>,
+  );
+});
+```
+
+- TanStack Startは、`vite.config.ts`の`tanstackStart()`に`client.entry`・`server.entry`・`srcDirectory`を指定しなければ、`src`の下の`client`・`server`を拡張子`.ts`・`.js`・`.mts`・`.mjs`・`.tsx`・`.jsx`の順に探し、最初に見つかったファイルをエントリにする。`src/client.ts`など先に探される名前のファイルを同時に置かない。
+- 既定の名前のまま使い、`tanstackStart()`にエントリの場所を指定しない。アプリの単体テストで、エントリの場所を変える指定が無いことと、既定の名前で解決されるファイルが`src/client.tsx`・`src/server.ts`であることを確かめる。
+- `src/start.ts`・`src/router.tsx`はエントリではなく、ブラウザでは`@tanstack/react-start/client`、サーバーでは`@tanstack/react-start/server-entry`の先で読み込まれる。エントリの最初のimportより後に評価される。
+- ブラウザのエントリとして使われたことは、ソースマップ付きのビルド(`vite build --sourcemap`)の出力で、ブラウザ向けの主チャンク(`dist/client/assets/index-*.js`)のソースマップの`sources`に`src/client.tsx`が含まれることで確かめる。確かめた後は、ソースマップを付けずにビルドし直す。
+- TanStack Startの版を上げる時は、`src/client.tsx`の描画の処理を、新しい版の既定のブラウザのエントリ(`@tanstack/react-start`の`dist/plugin/default-entry/client.tsx`)と見比べ、違いがあれば合わせる。
 
 ## サーバー専用のファイルと同型の関数
 
