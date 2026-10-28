@@ -178,7 +178,7 @@
   - _Requirements: 3.4, 3.10, 4.10, 5.5, 5.10, 14.2, 14.3, 14.4_
 
 - [ ] 4.8 プロダクト・コメント・評価・画像のリゾルバを作る
-  - 先に、Workers統合テストで、`adminProducts`・`adminProduct`・`adminProductCategories`・`adminProductRatings`・`adminComments`・`adminRatings`・`adminQuarantinedImages`の形と不在、非公開化・復元・コメント・評価・4つの画像の操作の認可・結果・エラーコード(復元・コメントの復元・評価の取り消しの理由が無いときの拒否を含む)、画像の`path`が同一オリジンの配信経路であることを確かめる
+  - 先に、Workers統合テストで、`adminProducts`・`adminProduct`・`adminModerationCategoryOptions`・`adminProductRatings`・`adminComments`・`adminRatings`・`adminQuarantinedImages`の形と不在、非公開化・復元・コメント・評価・4つの画像の操作の認可・結果・エラーコード(復元・コメントの復元・評価の取り消しの理由が無いときの拒否を含む)、画像の`path`が同一オリジンの配信経路であることを確かめる
   - 完了状態: Workers統合テストが成功する
   - _Requirements: 8.9, 8.10, 9.10, 10.9, 11.14, 14.2, 14.3_
 

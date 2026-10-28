@@ -247,14 +247,13 @@
   - 準拠方針の「データの保存場所」とプライバシーポリシー骨子の「国外移転の記載事項」・保存場所の記載に、Cloudflareの項を書く(K7・N-1・R3-4)
     - 保存場所: D1・R2・Queuesは米国の管轄で保存する。所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信・bot判定(Turnstile)・アクセス解析(Web Analytics))は保存場所を保証せず、各地のデータセンターで行われ得るため処理する国を特定できない旨とその理由を書く。範囲は委託先の一覧のCloudflareの用途すべてに当たる。値の正は本プロジェクト固有の値の文書とする
     - 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合はCloudflareのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る
-    - bot判定: ウィジェットを非表示の種類(`invisible`)で使う条件として、CloudflareのTurnstileのプライバシー補遺(Turnstile Privacy Addendum)をプライバシーポリシーで参照する旨(改訂2)
     - プライバシーポリシー骨子の共通の「移転先の国」の行のうちCloudflareの記述は、Cloudflareの項への参照に改める。DISIFYとHave I Been Pwnedを対象外とする文は残す
   - プライバシーポリシー骨子の全委託先に共通の「移転の法的根拠」の行を、「標準契約条項等の該当するもの」から「DPFを主とし、DPFが無効になった場合は委託先のDPAに含まれるSCCに拠る。委託先の項がある委託先は、その項を正とする」に改める。本specはroadmapの順で最初に骨子を改めるため、この行を担当する(R3-6)
   - 委託先の項の書き方の型を、設計の「Modified Files」のとおりに示し、Cloudflareの項をその見本にする(R3-6)
     - 骨子: 共通の行の後に、委託先ごとの見出し(`### <委託先>(<サービス>)`)と「移転先」「移転の根拠」「委託先が講じる措置」の3項目を、委託先の一覧の順に置く
     - 準拠方針: 「データの保存場所」の表の下に委託先ごとの保存場所の箇条を設け、1つの箇条に1つの委託先を「保存または一時送信の場所・委託先側での保存の有無・移転の根拠は骨子の当該の項を正とする」の形で書く。表はCloudflareの資源の一覧のまま残す
     - 他specの項が既にあれば書き換えず、型と食い違う点を最終報告に挙げる
-  - 分担は委託先単位である。AWS(Rekognition)の項はmedia-pipelineが、Google Cloud(Natural Language API)の項はcontent-processingが書くため書き換えない。Stripe・Google Cloud・Sentry・DISIFY・Have I Been Pwnedの記述も変えない。法務文書の本文は開発者が用意するため、骨子と準拠方針の記載事項に留める
+  - 分担は委託先単位である。AWS(Rekognition)の項はmedia-pipelineが、Google Cloud(Natural Language API)の項はcontent-processingが書くため書き換えない。Cloudflareの項のうち非表示のbot判定のウィジェットを使う条件に関わる記述はlegal-pagesが加えるため、本specは書かない。Stripe・Google Cloud・Sentry・DISIFY・Have I Been Pwnedの記述も変えない。法務文書の本文は開発者が用意するため、骨子と準拠方針の記載事項に留める
   - 完了状態: 各文書の相対リンクが解決し、tech-stack.mdに検査でstagingを注入する記載が残らず、本プロジェクト固有の値の文書にキーの一覧の節がある。保存場所の表と箇条に米国と所在を限定しない処理の扱いが記載され、国外移転の記載事項にCloudflareの項(移転先・所在を限定しない処理・DPFとSCCの根拠)が型どおりにある。共通の「移転の法的根拠」の行がDPFを主とする根拠になり、DISIFYとHave I Been Pwnedを対象外とする文が残っている。本specの変更がCloudflare以外の委託先の項を変えていない。キーの一覧の節にWorkerごとのフォルダの行と優先の規則があり、オンボーディングと本プロジェクト固有の値の文書のAPIサーバー・イベントサーバーの起動がWorkerごとのフォルダを重ねるコマンドの形である(改訂1)
   - _Depends: 8.1, 8.2, 8.3, 8.4_
   - _Requirements: 2.5, 2.6, 2.7, 4.10, 9.10, 12.3, 13.5, 13.6, 13.7_

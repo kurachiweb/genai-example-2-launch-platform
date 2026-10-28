@@ -217,7 +217,7 @@
 
 - `/kiro-spec-design ugc-moderation -y`の手順で、要件を承認し(`-y`による自動の承認)、設計の下書きを作った。参照したスキルはcc-sddの`kiro-spec-design`の規則(design-principles・design-discovery-full・design-synthesis・design-review-gate)とテンプレート。外部の調査は、新しいパッケージの候補の版と公開日(npmレジストリ)に限った。
 - 機械的な確認: 要件の152件の受け入れ基準の番号がすべて追跡表にあることを、スクリプトで確かめた。境界の4節(This Spec Owns・Out of Boundary・Allowed Dependencies・Revalidation Triggers)は空でない。ファイル構成に全コンポーネントの置き場所がある。
-- 1回目の判断のレビューで、(1)プロダクト一覧のカテゴリの選択肢の照会が曖昧だったため`adminProductCategories`を加えた、(2)ユーザー一覧のプロフィール画像の隔離に要る隔離理由の照会(`MediaFiles.findMany`)を照会の処理に加えた、(3)管理者側のCSPが同一オリジンの画像を許す前提をSecurity Considerationsに明記した、(4)部品の表の要件の範囲の書き方(`4.x`)を明示の番号に直し、文書の半角スペースの規則の違反(表のセル・コードの注記)を直した。2回目で問題は無かった。
+- 1回目の判断のレビューで、(1)プロダクト一覧のカテゴリの選択肢の照会が曖昧だったため`adminModerationCategoryOptions`を加えた、(2)ユーザー一覧のプロフィール画像の隔離に要る隔離理由の照会(`MediaFiles.findMany`)を照会の処理に加えた、(3)管理者側のCSPが同一オリジンの画像を許す前提をSecurity Considerationsに明記した、(4)部品の表の要件の範囲の書き方(`4.x`)を明示の番号に直し、文書の半角スペースの規則の違反(表のセル・コードの注記)を直した。2回目で問題は無かった。
 - 境界の確認: 上流のテーブルへ書き込まず、上流の操作口と登録口と、上流のディレクトリに加える読み取りだけの照会を使う。上流の契約の変更は、照会の追加(5spec)と、契約で定められた束縛の差し替え(media-pipeline)だけである。
 - 技術ドキュメントの番号: 完了済みspecのdesign.mdの計画は`backend`001〜020、`frontend`001〜019、`db`001〜007、`security`001〜010、`infra`001〜008、`external`001〜008、`operations`001〜004、`coding`001〜004、`testing`001〜002である。本specは`backend/021`・`frontend/020`・`db/008`を取る。
 
@@ -319,3 +319,10 @@
 - **変えた箇所**: design.mdのAllowed Dependencies・File Structure Plan・Modified Files(生成物と許可リスト)・画面の部品の表(`ModerationSearch`・`ModerationActionDialog`)と表の後の規約、tasks.mdの6.1・7.7(`.graphql`・操作名・生成と許可リストの再生成)・6.2(Zodの読み込み元、失敗の文言)・7.8(カードの失敗に問い合わせの導線が無いこと)。管理者側のCSPの`img-src 'self'`の前提は確定した契約と合う。
 - **確認のダイアログの失敗の文言**: admin-foundationの`ConfirmActionDialogProps`が必須の`failureMessageOf: (error: unknown) => string`を受け、`onConfirm`の失敗時にダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言を`role="alert"`でダイアログの中に示す契約になった(同日のadmin-foundationの改訂)。共通部品はアプリのプロファイルを読まないため、呼び出す側が文言を決める。 `ModerationActionDialog`(`AdministrativeWithdrawalDialog`を含む)は`failureMessageOf`に`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を渡す。あわせて、`AdminDataTable`の`error.message`も呼び出す側が同じ関数で選ぶことを管理者側の失敗の表示の規約に加えた(design.mdの画面の部品の表と規約、tasks.mdの6.2・6.8)。
 - **操作のファイル名**: 他のspecにそろえ、照会の`.graphql`のファイル名から`admin-`の接頭辞を除いた(`weekly-statistics.graphql`など。操作名の`Admin`の接頭辞は変えない)。design.mdのFile Structure Planとtasks.mdの7.7を直した。
+
+## 管理者側のカテゴリの照会の分離(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断21(2026-10-28)を、frontend-platformのタスク11.6として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: 本specのプロダクト一覧の絞り込みの選択肢の照会`adminProductCategories: [AdminCategoryRef!]!`は、product-launchがプロダクトカテゴリの管理画面のために定義する`adminProductCategories: [ProductCategory!]!`と、名前が同じで型が異なっていた。管理者側の操作は1つのスキーマと1つの生成物(adminの`src/graphql/generated/graphql.ts`)に入るため、両方を定義するとスキーマの合成と操作名・生成物の型の名前が衝突する。
+- **決定**: product-launchの`adminProductCategories: [ProductCategory!]!`はそのままとし、本specの照会を別名の`adminModerationCategoryOptions: [AdminCategoryRef!]!`にした。操作名は`AdminModerationCategoryOptions`、操作のファイルは`moderation-category-options.graphql`(照会の名前から`admin`を除いた形)、生成物は`AdminModerationCategoryOptionsDocument`・`AdminModerationCategoryOptionsQuery`である。処理は`AdminProductReader.categories`(`ProductCategoryDirectory.list()`)のままで、選択肢に要る`id`・`name`だけを返す。
+- **変えた箇所**: design.mdのFile Structure Planの操作のファイル、照会の表の`AdminProductReader.categories`の行、GraphQLの`Query`の定義と照会の名前の規約、画面の部品の表の`ProductFilters`と操作名の例。tasks.mdの4.8(Workers統合テストの照会の一覧)。本ファイルの「設計のレビュー」の照会の名前。

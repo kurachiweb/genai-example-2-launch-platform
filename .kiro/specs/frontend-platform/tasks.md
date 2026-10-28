@@ -493,7 +493,7 @@
   - _Boundary: 技術ドキュメント群, ServiceDocs, モックアップ_
   - _Requirements: 7.1, 10.3, 11.9, 15.3, 15.4, 15.6_
 
-- [ ] 11.6 下流specを直す
+- [x] 11.6 下流specを直す
   - 判断15(legal-pages): requirements.mdの要件10.5(文書への反映)に、公開前にプライバシーポリシーの本文がCloudflareのTurnstile Privacy Addendumを参照していることを確かめ、無ければプライバシーポリシー骨子のCloudflareの項に参照を加えることを足し、design.mdのModified Filesと文書の節、tasks.mdの文書のタスクに同じ項目を加える
   - 判断15(infra-delivery): `design.md:284`(Cloudflareの項のbot判定)・`tasks.md:250`(8.5のbot判定の箇条)・`research.md:147`(付随する記述)からTurnstile Privacy Addendumの記述を外す。ウィジェットの種類を`invisible`にすることと`HASH_PEPPER`の登録先にclient・adminを含めることは残す。research.mdの「変えた箇所」にModified Filesのプライバシーポリシー骨子の記述があれば合わせる
   - 判断21(ugc-moderation): `design.md:1208`の`adminProductCategories: [AdminCategoryRef!]!`を`adminModerationCategoryOptions: [AdminCategoryRef!]!`にし、`design.md:1285`(`ProductFilters`のカテゴリの選択肢)・`tasks.md:181`(Workers統合テストの照会の一覧)・`research.md:220`の照会名、管理者側の操作名(`Admin`の接頭辞の操作)と生成物の型の名前、照会の表の行・使用箇所を同じ名前に合わせる。product-launchの`adminProductCategories: [ProductCategory!]!`(`design.md:1912`・`design.md:1941`)は変えない

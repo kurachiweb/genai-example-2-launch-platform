@@ -33,6 +33,7 @@
 - 利用者側の公開ページ`/terms`・`/privacy`・`/legal`と過去版のページ`/{同}/revisions/{版番号}`。
 - 管理画面の`/legal-documents`・`/legal-documents/{種類}`・`/legal-documents/{種類}/revisions/{版番号}`と、メニューの項目。
 - 技術ドキュメント`db/005`、サービス仕様のページ配置・文言規則・準拠方針・利用規約とプライバシーポリシーの大枠の追記。
+- 非表示のbot判定のウィジェットを使う条件として、プライバシーポリシーの本文がCloudflareのTurnstile Privacy Addendumを参照していることを公開前に確かめること(参照が無ければプライバシーポリシーの大枠のCloudflareの項に加える。10.5)。
 
 ### Out of Boundary
 
@@ -42,6 +43,7 @@
 - マークダウンの入力欄・描画・サニタイズ・書記素の数え方・検証規則の文言(content-processing)。
 - 監査ログの記録(Q1により使わない)。
 - 本番での初版の公開作業(開発者の手作業。launch-readinessが確かめる)。
+- プライバシーポリシーの大枠のCloudflareの項の移転先・移転の根拠・委託先が講じる措置(infra-delivery)。ウィジェットを非表示の種類で使うこと(frontend-platformの`TurnstileWidget`、infra-deliveryのウィジェットの資源)。
 
 ### Allowed Dependencies
 
@@ -62,6 +64,7 @@
 - GraphQLの`legal`モジュールの型・エラーコード(client・admin)。
 - admin-foundationの`requireAdmin`・`AdminDirectory`・`ADMIN_NAV_ITEMS`・共通部品のprops・E2Eの補助`signInAsNewAdmin`の形を変えたら、本specを確かめ直す。
 - content-processingの`MarkdownEditorProps`・`MarkdownContentProps`・`markdownTextSchema`の文言を変えたら、本specを確かめ直す。
+- frontend-platformの`TurnstileWidget`が描くウィジェット、またはinfra-deliveryのウィジェットの種類(`invisible`)を変えたら、プライバシーポリシーのTurnstile Privacy Addendumの参照の要否を確かめ直す。
 
 ## Architecture
 
@@ -211,6 +214,7 @@ docs/GUIDES/tech/db/005-draft-and-published-versions.md
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 入力欄の上限の表に法務文書の本文の行(上限100,000文字・必須・マークダウン・FR-ADMAG-007)を加え、本specの文言(「Error Handling」の表と、各画面部品に記した確認・状態・案内の文言)を追記する。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「法務文書の版(本文・変更概要・公開日時・公開した管理者のID)は無期限、削除の操作なし」「法務文書の下書きは公開・破棄で削除」の行を加え、「法務文書の改訂」を下書きと公開・過去版の掲示・周知の運用(Q4)・本番公開前の初版の公開(Q6)の内容に改める。
 - `docs/GUIDES/service/legal/002-terms-of-service-outline.md`・`003-privacy-policy-outline.md` — 章18・章13の要点に「改訂履歴と過去の各版の掲示」を加える。
+  - `003-privacy-policy-outline.md`のCloudflareの項(infra-deliveryが書く`### Cloudflare(<サービス>)`の項): 非表示のbot判定のウィジェットを使う条件として、CloudflareのTurnstile Privacy Addendumを参照する旨があるかを確かめ、無ければ「bot判定」の項目として加える。「記載上の注意」に、公開するプライバシーポリシーの本文がこの参照を含むことを記す。Cloudflareの項の移転先・移転の根拠・委託先が講じる措置の項目は書き換えない(10.5)。
 - `CLAUDE.md` — 「技術規則の参照先」に、下書きと公開した版を持つデータを設計する前に読む`db/005`へのリンクを加える。
 
 ## System Flows
@@ -883,7 +887,7 @@ flowchart LR
 ```
 
 - テーブルは新規のため、段階は追加だけである。初期データのマイグレーションはテーブルの作成の直後に適用する。
-- デプロイ後、stagingとprodでは開発者が管理画面で3文書の初版を公開するまで、公開ページは準備中を表示する(Q6)。prodでの初版の公開は本番公開の前に行い、launch-readinessが確かめる。
+- デプロイ後、stagingとprodでは開発者が管理画面で3文書の初版を公開するまで、公開ページは準備中を表示する(Q6)。prodでの初版の公開は本番公開の前に行い、launch-readinessが確かめる。公開の前に、プライバシーポリシーの本文がCloudflareのTurnstile Privacy Addendumを参照していることを確かめる(大枠の「記載上の注意」、10.5)。
 
 ## Supporting References
 

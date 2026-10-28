@@ -281,9 +281,8 @@ scripts/delivery/
   - Cloudflareの項の移転先: D1・R2・Queuesは米国の管轄で保存する。所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics))は、Cloudflareの各地のデータセンターで行われ得るため、処理する国を特定できない旨とその理由を記す。範囲は委託先の一覧のCloudflareの用途(ホスティング、データベース、ストレージ、メール送信、bot対策、解析)すべてに当たる。
   - Cloudflareの項の移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Cloudflareのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る。
   - Cloudflareの項の委託先が講じる措置: 共通の行(データ処理条項・暗号化通信と保存・アクセス制御)を参照する。
-  - Cloudflareの項のbot判定: bot判定のウィジェットを非表示の種類(`invisible`)で使う条件として、CloudflareがTurnstileのプライバシー補遺(Turnstile Privacy Addendum)をプライバシーポリシーで参照することを求めるため、Cloudflareの項にその参照を置く旨を記す(改訂2)。
   - 「記載上の注意」の保存場所の項には、値の正(`project-values.md`)を記す。
-  - 分担は委託先単位である。AWS(Rekognition、us-east-1)の項はmedia-pipelineが、Google Cloud(Natural Language API)の項はcontent-processingが、上記の型と同じ根拠の種類で書く。各specは互いの項と全委託先に共通の行(各specが自分の委託先の記述だけを改める「移転先の国」の行を除く)を書き換えない。本specはStripe・Google Cloud・Sentry・DISIFY・Have I Been Pwnedの記述を変えない。法務文書の本文は開発者が用意するため、本specは骨子の記載事項に留める。
+  - 分担は委託先単位である。AWS(Rekognition、us-east-1)の項はmedia-pipelineが、Google Cloud(Natural Language API)の項はcontent-processingが、上記の型と同じ根拠の種類で書く。各specは互いの項と全委託先に共通の行(各specが自分の委託先の記述だけを改める「移転先の国」の行を除く)を書き換えない。ただし、Cloudflareの項のうち非表示のbot判定のウィジェットを使う条件に関わる記述は、legal-pagesが確かめて加える。本specはStripe・Google Cloud・Sentry・DISIFY・Have I Been Pwnedの記述を変えない。法務文書の本文は開発者が用意するため、本specは骨子の記載事項に留める。
 
 ## System Flows
 

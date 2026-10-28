@@ -195,3 +195,11 @@ FR-ADMAG-001は改訂しない。Q1により法務文書の操作を監査ログ
 - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。
 - `toLegalEditorErrorState`は`AppForm`の`onSubmitError`から呼ぶため、引数を`unknown`にし、`GraphQLClientError`でない例外を`unexpected`(文言は`errorMessageOf`)にした。
 - 変えた箇所: design.mdのAllowed Dependencies、Dependency directionの操作の置き場所、Technology Stackの画面の行、File Structure Planの両アプリの`graphql/operations/legal/`、`ClientLegalPages`の取得の失敗、`AdminLegalPages`(`toLegalEditorErrorState`・`LegalDraftForm`と下書きの破棄の`ConfirmActionDialog`の`failureMessageOf`・`PublishLegalDocumentDialog`・失敗の分岐)。tasks.mdの5.3・6.1・6.3。要件は変えていない。
+
+## Turnstile Privacy Addendumの参照の持ち主の移管(2026-10-28、開発者の判断)
+
+- frontend-platformの最終検証の後の第2回の判断14・15(2026-10-28)を、frontend-platformのタスク11.6として本specへ反映した。
+- 判断14: bot判定のウィジェットを非表示(Invisible)で使う条件として、CloudflareはプライバシーポリシーでTurnstile Privacy Addendumを参照することを求める。プライバシーポリシーでこの参照を残す(確定)。
+- 判断15: 公開前にプライバシーポリシーの本文がAddendumを参照していることを確かめる(または骨子に加える)作業の持ち主を、infra-deliveryから本specへ移した。本specは法務文書の公開と、プライバシーポリシーの大枠の改訂を持つためである。infra-deliveryはウィジェットの種類(`invisible`)と`HASH_PEPPER`の登録先だけを持ち、プライバシーポリシーの大枠のCloudflareの項の移転先・移転の根拠・委託先が講じる措置は従来どおりinfra-deliveryが書く。
+- 確かめ方: 本specの実装の時点ではプライバシーポリシーの本文(開発者が管理画面で公開する版)が無いため、大枠のCloudflareの項に参照があるかを確かめて無ければ加え、「記載上の注意」に公開する本文がこの参照を含むことを記す。prodの初版の公開の前の確認は、launch-readinessでの初版の公開の確認とあわせて開発者への報告に載せる。
+- 変えた箇所: requirements.mdの要件10.5。design.mdのThis Spec Owns・Out of Boundary・Revalidation Triggers・Modified Files(`003-privacy-policy-outline.md`)・Migration Strategyの初版の公開。tasks.mdの7.4・7.5。要件番号の振り直しは無い。
