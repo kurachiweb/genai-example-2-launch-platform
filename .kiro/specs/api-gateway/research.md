@@ -363,3 +363,15 @@
   4. public-apiの`publicApiIpRateLimitRoutes`の型を`PublicRestRoutes<Env>`に改めた(Honoの環境の型引数が不変で、登録箇所`REST_ROUTES`が`Env`のため)。
   5. dev-toolingのdesign.mdの`check`の段階の一覧に`graphql:check`を加えた。
   6. `spec.json`の`ready_for_implementation`を`true`にした。
+
+## frontend-platformの最終検証による承認後の改訂(改訂4、2026-10-28)
+
+- **状態**: 2026-10-28に開発者が決定した改訂で、確定している。frontend-platformの実装と最終検証の後、開発者がAskUserQuestionで1件ずつ決めた判断のうちの1件(判断4)である。実装は追加タスク11.1で行う。
+- **Context**: frontend-platformの中継は、`x-session-max-age`が1〜34,560,000秒(400日、`MAX_SESSION_MAX_AGE_SECONDS`)の整数でなければ発行の指示を無視して警告する。ブラウザがCookieの`Max-Age`を400日で切り詰めるためである。一方、本specの`assertIssuable`(`apps/api/src/presentation/gateway/session-access.ts`)は1以上の整数であることだけを確かめ、`backend/006`・`coding/004`の指示ヘッダーの表も上限を持たない。APIサーバーが400日を超える発行を指示すると、フロントエンドは黙ってCookieを発行せず、ログインが成立しないまま原因がAPIサーバー側から見えない。要件の有効期間(利用者側90日・管理者側12時間)とは衝突しない。
+- **検討した案**:
+  - 案A: `backend/006`・`coding/004`に上限400日を書くだけにし、APIサーバーは検査しない。
+  - 案B(採用): `assertIssuable`にもフロントエンドと同じ上限を入れ、発行側で拒否する。
+  - 案C: フロントエンドも上限を設けず、400日を超える値はブラウザの切り詰めに任せる。
+- **決定**: 案B。`session-verifier.ts`に`MAX_SESSION_MAX_AGE_SECONDS`(34,560,000)を置き、`assertIssuable`は有効期間が1以上その値以下の整数でなければ、指示を付けずに値を含めない`RangeError`にする(識別子の形式の検査と同じ扱いで、共通の後処理が想定外の失敗の500にする)。フロントエンドの検査は、契約に反する指示が届いた時の防御として残す。
+- **要件**: 3.9を加えた。認証機能のspec(identity-auth・admin-foundation)が発行できる有効期間の約束が変わるため、`requirements.md`の「承認後の改訂」の表に改訂4の行を置いた。
+- **変えた箇所**: 設計のRevalidation Triggers(`SessionIssue`と上限)、File Structure Planの`session-verifier.ts`、追跡表の3.8・3.9、SessionAccessと`SessionVerifierPort`の要件、`applySessionInstructions`の説明、`SessionIssue.maxAgeSeconds`の説明と`MAX_SESSION_MAX_AGE_SECONDS`、指示ヘッダーの表、技術ドキュメント群(`backend/006`・`coding/004`)、Testing Strategyの`session-access.worker.test.ts`。tasks.mdに追加タスク11・11.1を加えた。

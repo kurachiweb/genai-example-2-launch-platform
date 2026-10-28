@@ -62,7 +62,7 @@
 - GraphQLの要求の形式(`documentId`)、エラーコードの一覧、状態コードを429・503・400にする条件(frontend-platform・全ドメインspec)。
 - 操作の一覧の場所・形式・識別子の形式、スキーマファイルの場所(frontend-platform)。
 - `GraphQLSchemaModule`・`GraphQLContext`・`defineLoader`・`withValidatedArgs`・ページングの型、上限値(全ドメインspec)。
-- `SessionVerifier`・`Principal`・`SessionIssue`の形(identity-auth・admin-foundation)。
+- `SessionVerifier`・`Principal`・`SessionIssue`の形と、発行できる有効期間の上限`MAX_SESSION_MAX_AGE_SECONDS`(identity-auth・admin-foundation、frontend-platformの同名の定数と同じ値、承認後の改訂4)。
 - 基準パス、`PublicRestRoutes`・応答のスキーマ部品・認証方式の名前、`createRestModule`の`options.info`の形、仕様書の相対の`servers`(public-api)。
 - `/internal`の接頭辞、`InternalRoutes`の形、`createSessionAccess`の形(media-pipeline)。
 - セキュリティヘッダーの値とCSPの置き換えの規則(media-pipeline・launch-readiness)。
@@ -174,7 +174,7 @@ apps/
 │   ├── src/
 │   │   ├── index.ts                             # (変更) 既定のエクスポートとClientGateway・AdminGateway・RateLimitCounter
 │   │   ├── application/
-│   │   │   ├── session/session-verifier.ts      # SessionVerifierポート・Principal・SessionIssue・SESSION_TYPES・SESSION_TOKEN_PATTERN
+│   │   │   ├── session/session-verifier.ts      # SessionVerifierポート・Principal・SessionIssue・SESSION_TYPES・SESSION_TOKEN_PATTERN・MAX_SESSION_MAX_AGE_SECONDS(新規、承認後の改訂4)
 │   │   │   ├── session/anonymous-session-verifier.ts  # 既定の実装(常に無効)
 │   │   │   └── system/system-status-query.ts    # 疎通確認のユースケース・DatabaseProbeポート・SYSTEM_TYPES
 │   │   ├── infrastructure/system/d1-database-probe.ts  # DatabaseProbeのD1実装(SELECT 1)
@@ -347,98 +347,99 @@ sequenceDiagram
 
 ## Requirements Traceability
 
-| Requirement | Summary                                   | Components                                                  | Interfaces                                                    | Flows      |
-| ----------- | ----------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------- | ---------- |
-| 1.1         | GraphQLは1経路・内部経路だけ              | GraphqlModule・GatewayEntrypoint                            | `POST /graphql`・`ClientGateway`・`AdminGateway`              | 内部経路   |
-| 1.2         | 外部経路のGraphQL・内部経路は404          | GraphqlModule・InternalOnly                                 | `AppError(not_found)`                                         | 外部経路   |
-| 1.3         | 実行基盤の設定で呼び出し元を識別          | GatewayEntrypoint・InternalRequest                          | `markInternalRequest`・`readInternalCaller`                   | 内部経路   |
-| 1.4         | 名乗るヘッダーを信頼しない                | PublicEntrypoint・InternalRequest                           | `stripGatewayHeaders`                                         | 外部経路   |
-| 1.5         | 外部経路の経路を限定                      | PublicEntrypoint・GraphqlModule・InternalOnly               | 経路の一覧                                                    | 外部経路   |
-| 1.6         | 内部RESTの追加規約                        | InternalOnly                                                | `InternalRoutes`・`internal-routes.ts`                        | —          |
-| 2.1         | 引き継いだIPを送信元に使う                | InternalRequest                                             | `resolveGatewayClientIp`                                      | 内部経路   |
-| 2.2         | 外部経路のIPヘッダーは無視                | InternalRequest・PublicEntrypoint                           | `stripGatewayHeaders`・`resolveConnectingIp`                  | 外部経路   |
-| 2.3         | IPが無い・不正なら不明と警告              | InternalRequest・InternalOnly・GraphqlModule                | `parseClientIp`・警告ログ                                     | 内部経路   |
-| 2.4         | ヘッダーの契約の文書化                    | GatewayHeaders・技術ドキュメント群                          | `GATEWAY_HEADERS`                                             | —          |
-| 3.1         | セッションの値を検証へ渡し結果を提供      | SessionAccess・GraphQLContext                               | `SessionAccess.principal`                                     | 内部経路   |
-| 3.2         | 呼び出し元の種類のセッションだけ          | SessionAccess                                               | `subjectKindOf`                                               | —          |
-| 3.3         | 実装が無ければ未ログイン                  | AnonymousSessionVerifier・ApiCompositionUpdates             | `SESSION_TYPES.SessionVerifier`                               | —          |
-| 3.4         | 形式不正は問い合わせない                  | SessionAccess                                               | `SESSION_TOKEN_PATTERN`                                       | —          |
-| 3.5         | 発行は本文に含めず指示で返す              | SessionAccess                                               | `issue`・`x-session-issue`                                    | 内部経路   |
-| 3.6         | 失効・無効は削除の指示                    | SessionAccess                                               | `clear`・`x-session-clear`                                    | 内部経路   |
-| 3.7         | 識別子をログ等に含めない                  | SessionAccess・OperationObservability・SentryScrubAdditions | 伏せ字・除外ヘッダー                                          | —          |
-| 3.8         | 受け渡しの契約の文書化                    | 技術ドキュメント群                                          | `coding/004`・`backend/006`                                   | —          |
-| 4.1         | 深さ8                                     | QueryLimits                                                 | `QUERY_LIMITS.maxDepth`                                       | 内部経路   |
-| 4.2         | コストの算出方法                          | QueryLimits                                                 | `objectCost`・`scalarCost`・`depthCostFactor`                 | —          |
-| 4.3         | コスト5000                                | QueryLimits                                                 | `QUERY_LIMITS.maxCost`                                        | 内部経路   |
-| 4.4         | エイリアス15                              | QueryLimits                                                 | `QUERY_LIMITS.maxAliases`                                     | 内部経路   |
-| 4.5         | バッチ拒否                                | GatewayServer・ErrorPolicy                                  | `batching: false`・`graphql_request_invalid`                  | —          |
-| 4.6         | 字句1000・ディレクティブ50                | QueryLimits                                                 | `maxTokens`・`maxDirectives`                                  | —          |
-| 4.7         | 上限の種類のコードと実行しない            | QueryLimits・ErrorPolicy                                    | `query_*_exceeded`                                            | 内部経路   |
-| 4.8         | デプロイ先では値を含めない                | QueryLimits                                                 | `exposeLimits`                                                | —          |
-| 4.9         | 登録済み操作の上限の検査                  | GraphQLScripts・GraphqlModule                               | `graphql:allowlist`・`graphql:check`                          | 許可リスト |
-| 5.1         | 内部経路は許可リストの操作だけ            | OperationAllowlist・GatewayServer                           | `getPersistedOperation`                                       | 内部経路   |
-| 5.2         | 本文だけは拒否                            | OperationAllowlist                                          | `persisted_operation_required`                                | —          |
-| 5.3         | 未登録は拒否                              | OperationAllowlist                                          | `persisted_operation_not_found`                               | —          |
-| 5.4         | 他方の呼び出し元の操作は拒否              | OperationAllowlist                                          | `find(caller, documentId)`                                    | 内部経路   |
-| 5.5         | 現行と直前のリリース                      | GraphQLScripts                                              | `buildAllowlist`の和集合                                      | 許可リスト |
-| 5.6         | 一覧からの生成コマンド                    | GraphQLScripts                                              | `graphql:allowlist --previous-ref`                            | 許可リスト |
-| 5.7         | 直前が無ければ現行だけ                    | GraphQLScripts                                              | 引数なしの実行                                                | 許可リスト |
-| 5.8         | 識別子の不一致・衝突で失敗                | GraphQLScripts                                              | `hash_mismatch`・`conflicting_document`                       | 許可リスト |
-| 5.9         | 直前の参照方法と場所・形式の文書化        | GraphQLScripts・技術ドキュメント群                          | `ALLOWLIST_SOURCES`・`coding/004`                             | —          |
-| 6.1         | デプロイ先はintrospection・GraphiQLなし   | GatewayServer                                               | `useDisableIntrospection`・`graphiql: false`                  | —          |
-| 6.2         | 候補を含めない                            | QueryLimits                                                 | `blockFieldSuggestion`                                        | —          |
-| 6.3         | ローカルのGraphiQLの経路                  | GraphqlModule・GatewayServer                                | `allowArbitraryOperations`                                    | 外部経路   |
-| 6.4         | GraphiQLではIPを信頼せずヘッダーで指定    | GraphqlModule・InternalRequest                              | `x-debug-caller`・`x-session-token`                           | 外部経路   |
-| 6.5         | GraphiQLにも上限                          | QueryLimits・GatewayServer                                  | 共通のプラグイン                                              | —          |
-| 6.6         | デプロイ先のGraphiQLの経路は404           | GraphqlModule                                               | `GET /graphql`                                                | 外部経路   |
-| 7.1         | AppErrorのコード・メッセージ・詳細        | ErrorPolicy                                                 | `maskError`                                                   | 内部経路   |
-| 7.2         | 想定外は定型で伏せて送る                  | ErrorPolicy                                                 | `internal_error`・`captureException`                          | —          |
-| 7.3         | 429・503とRetry-After                     | ErrorPolicy                                                 | `extensions.http`                                             | —          |
-| 7.4         | 実行前の拒否のコード                      | ErrorPolicy・QueryLimits・OperationAllowlist                | エラーコード表                                                | 内部経路   |
-| 7.5         | キャッシュ禁止                            | GraphqlModule                                               | `Cache-Control: no-store`                                     | —          |
-| 7.6         | AppErrorは送らない                        | ErrorPolicy                                                 | 分類                                                          | —          |
-| 7.7         | エラーコードの文書化                      | 技術ドキュメント群                                          | `coding/004`                                                  | —          |
-| 8.1         | 登録で1スキーマへ合成                     | SchemaComposer・ApiCompositionUpdates                       | `GRAPHQL_SCHEMA_MODULES`・`composeGatewaySchema`              | —          |
-| 8.2         | 重複・過剰なリゾルバで失敗                | SchemaComposer                                              | `SchemaCompositionError`                                      | —          |
-| 8.3         | 処理単位の一括読み込み                    | Loaders                                                     | `defineLoader`・`LoaderRegistry`                              | —          |
-| 8.4         | コンテナからユースケースを取得            | GraphQLContext・技術ドキュメント群                          | `GraphQLContext.resolve`                                      | —          |
-| 8.5         | Zodによる引数の検証                       | ValidatedArgs                                               | `withValidatedArgs`                                           | —          |
-| 8.6         | 日時のスカラーとページングの型            | PlatformTypeDefs・DateTimeScalar・Pagination                | `DateTime`・`PageInfo`・`OffsetPageInfo`                      | —          |
-| 8.7         | bot判定の呼び出し                         | GraphQLContext                                              | `assertHuman`                                                 | —          |
-| 8.8         | 疎通確認のクエリだけ                      | SystemModule・SystemStatusQuery・D1DatabaseProbe            | `Query.systemStatus`                                          | —          |
-| 9.1         | 正規化したスキーマファイルと型の生成      | GraphQLScripts・SchemaComposer                              | `graphql:generate`・`printGatewaySchema`                      | —          |
-| 9.2         | 再実行で内容が変わらない                  | SchemaComposer・GraphQLScripts                              | `lexicographicSortSchema`                                     | —          |
-| 9.3         | 食い違いで検査とテストが失敗              | GraphQLScripts・SchemaComposer                              | `graphql:check`(一括検査の段階)・スキーマファイルの比較テスト | —          |
-| 9.4         | スキーマファイルの契約とCIからの呼び出し  | 技術ドキュメント群・GraphQLScripts                          | `coding/004`                                                  | —          |
-| 10.1        | 版付きの基準パス                          | PublicApiApp                                                | `PUBLIC_API_BASE_PATH`(`/v1`)                                 | —          |
-| 10.2        | 経路の登録とOpenAPIの生成                 | RestModule・PublicApiApp                                    | `PublicRestRoutes`・`rest-routes.ts`                          | —          |
-| 10.3        | 認証なしのOpenAPI仕様                     | RestModule                                                  | `GET /v1/openapi.json`                                        | 外部経路   |
-| 10.4        | 検証失敗は400と詳細                       | PublicApiApp                                                | `defaultHook`                                                 | —          |
-| 10.5        | 未登録は404                               | RestModule                                                  | backend-platformの`notFound`                                  | —          |
-| 10.6        | 成功応答の共通の型                        | Responses                                                   | `dataEnvelope`・`offsetListEnvelope`・`cursorListEnvelope`    | —          |
-| 10.7        | Bearer認証の宣言                          | PublicApiApp・Responses                                     | `API_KEY_SECURITY`                                            | —          |
-| 10.8        | 仕様の配信経路だけ                        | RestModule・ApiCompositionUpdates                           | 空の`REST_ROUTES`                                             | —          |
-| 10.9        | 相対のサーバーで基準パスを示す            | RestModule                                                  | `doc31`の`servers: [{ url: '/v1' }]`                          | 外部経路   |
-| 10.10       | 登録箇所からの題名・版・説明の指定        | RestModule                                                  | `createRestModule`の`options.info`                            | —          |
-| 11.1        | 全応答にACAO・ACAM・ACAH                  | CorsPolicy・PublicEntrypoint・RouteTable                    | `headersFor`                                                  | 外部経路   |
-| 11.2        | 更新系はContent-Type                      | CorsPolicy                                                  | 本文を受け取るメソッドの判定                                  | —          |
-| 11.3        | プリフライトは204                         | RestModule                                                  | `OPTIONS /v1/*`                                               | 外部経路   |
-| 11.4        | Credentialsを付けない                     | CorsPolicy                                                  | ヘッダーの一覧                                                | —          |
-| 11.5        | 他の経路にCORSなし                        | CorsPolicy・PublicEntrypoint                                | `/v1`の判定                                                   | 外部経路   |
-| 12.1        | 全応答のセキュリティヘッダー              | SecurityHeaders・PublicEntrypoint・GatewayEntrypoint        | `applySecurityHeaders`・`withSecurityHeaders`                 | 外部経路   |
-| 12.2        | Permissions-Policyで無効化                | SecurityHeaders                                             | `SECURITY_HEADERS`                                            | —          |
-| 12.3        | 経路のCSPで置き換え                       | SecurityHeaders・GraphqlModule                              | CSPがあれば保つ規則                                           | —          |
-| 12.4        | 値と置き換え方の文書化                    | 技術ドキュメント群                                          | `backend/006`                                                 | —          |
-| 13.1        | 操作ログ                                  | OperationObservability・GraphqlModule                       | `['api', 'graphql', 'operation']`                             | 内部経路   |
-| 13.2        | トレースに操作名と呼び出し元              | OperationObservability                                      | ルートのスパンの属性・実行の子のスパン                        | —          |
-| 13.3        | 合成と許可リストは最初の要求で1回         | GatewayServer・OperationAllowlist                           | `getGatewayServer`                                            | —          |
-| 14.1        | カバレッジ80%                             | 全コンポーネントのテスト                                    | `coverage.include`の分担                                      | —          |
-| 14.2        | 内部・外部経路を再現するWorkers統合テスト | GatewayTestHarness                                          | `exports.ClientGateway`・`exports.default`                    | —          |
-| 14.3        | backendの文書                             | 技術ドキュメント群                                          | `backend/004`〜`006`                                          | —          |
-| 14.4        | codingの文書                              | 技術ドキュメント群                                          | `coding/004`                                                  | —          |
-| 14.5        | 固有値を含めない                          | 技術ドキュメント群                                          | `project-values.md`                                           | —          |
-| 14.6        | tech-stack.mdの更新                       | 技術ドキュメント群                                          | `tech-stack.md`                                               | —          |
-| 14.7        | オンボーディングの更新                    | 技術ドキュメント群                                          | `docs/onboardings/README.md`                                  | —          |
+| Requirement | Summary                                          | Components                                                  | Interfaces                                                    | Flows      |
+| ----------- | ------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------- | ---------- |
+| 1.1         | GraphQLは1経路・内部経路だけ                     | GraphqlModule・GatewayEntrypoint                            | `POST /graphql`・`ClientGateway`・`AdminGateway`              | 内部経路   |
+| 1.2         | 外部経路のGraphQL・内部経路は404                 | GraphqlModule・InternalOnly                                 | `AppError(not_found)`                                         | 外部経路   |
+| 1.3         | 実行基盤の設定で呼び出し元を識別                 | GatewayEntrypoint・InternalRequest                          | `markInternalRequest`・`readInternalCaller`                   | 内部経路   |
+| 1.4         | 名乗るヘッダーを信頼しない                       | PublicEntrypoint・InternalRequest                           | `stripGatewayHeaders`                                         | 外部経路   |
+| 1.5         | 外部経路の経路を限定                             | PublicEntrypoint・GraphqlModule・InternalOnly               | 経路の一覧                                                    | 外部経路   |
+| 1.6         | 内部RESTの追加規約                               | InternalOnly                                                | `InternalRoutes`・`internal-routes.ts`                        | —          |
+| 2.1         | 引き継いだIPを送信元に使う                       | InternalRequest                                             | `resolveGatewayClientIp`                                      | 内部経路   |
+| 2.2         | 外部経路のIPヘッダーは無視                       | InternalRequest・PublicEntrypoint                           | `stripGatewayHeaders`・`resolveConnectingIp`                  | 外部経路   |
+| 2.3         | IPが無い・不正なら不明と警告                     | InternalRequest・InternalOnly・GraphqlModule                | `parseClientIp`・警告ログ                                     | 内部経路   |
+| 2.4         | ヘッダーの契約の文書化                           | GatewayHeaders・技術ドキュメント群                          | `GATEWAY_HEADERS`                                             | —          |
+| 3.1         | セッションの値を検証へ渡し結果を提供             | SessionAccess・GraphQLContext                               | `SessionAccess.principal`                                     | 内部経路   |
+| 3.2         | 呼び出し元の種類のセッションだけ                 | SessionAccess                                               | `subjectKindOf`                                               | —          |
+| 3.3         | 実装が無ければ未ログイン                         | AnonymousSessionVerifier・ApiCompositionUpdates             | `SESSION_TYPES.SessionVerifier`                               | —          |
+| 3.4         | 形式不正は問い合わせない                         | SessionAccess                                               | `SESSION_TOKEN_PATTERN`                                       | —          |
+| 3.5         | 発行は本文に含めず指示で返す                     | SessionAccess                                               | `issue`・`x-session-issue`                                    | 内部経路   |
+| 3.6         | 失効・無効は削除の指示                           | SessionAccess                                               | `clear`・`x-session-clear`                                    | 内部経路   |
+| 3.7         | 識別子をログ等に含めない                         | SessionAccess・OperationObservability・SentryScrubAdditions | 伏せ字・除外ヘッダー                                          | —          |
+| 3.8         | 受け渡しの契約(有効期間の上限を含む)の文書化     | 技術ドキュメント群                                          | `coding/004`・`backend/006`                                   | —          |
+| 3.9         | 有効期間が400日を超える発行を拒否(承認後の改訂4) | SessionAccess・SessionVerifierPort                          | `assertIssuable`・`MAX_SESSION_MAX_AGE_SECONDS`               | 内部経路   |
+| 4.1         | 深さ8                                            | QueryLimits                                                 | `QUERY_LIMITS.maxDepth`                                       | 内部経路   |
+| 4.2         | コストの算出方法                                 | QueryLimits                                                 | `objectCost`・`scalarCost`・`depthCostFactor`                 | —          |
+| 4.3         | コスト5000                                       | QueryLimits                                                 | `QUERY_LIMITS.maxCost`                                        | 内部経路   |
+| 4.4         | エイリアス15                                     | QueryLimits                                                 | `QUERY_LIMITS.maxAliases`                                     | 内部経路   |
+| 4.5         | バッチ拒否                                       | GatewayServer・ErrorPolicy                                  | `batching: false`・`graphql_request_invalid`                  | —          |
+| 4.6         | 字句1000・ディレクティブ50                       | QueryLimits                                                 | `maxTokens`・`maxDirectives`                                  | —          |
+| 4.7         | 上限の種類のコードと実行しない                   | QueryLimits・ErrorPolicy                                    | `query_*_exceeded`                                            | 内部経路   |
+| 4.8         | デプロイ先では値を含めない                       | QueryLimits                                                 | `exposeLimits`                                                | —          |
+| 4.9         | 登録済み操作の上限の検査                         | GraphQLScripts・GraphqlModule                               | `graphql:allowlist`・`graphql:check`                          | 許可リスト |
+| 5.1         | 内部経路は許可リストの操作だけ                   | OperationAllowlist・GatewayServer                           | `getPersistedOperation`                                       | 内部経路   |
+| 5.2         | 本文だけは拒否                                   | OperationAllowlist                                          | `persisted_operation_required`                                | —          |
+| 5.3         | 未登録は拒否                                     | OperationAllowlist                                          | `persisted_operation_not_found`                               | —          |
+| 5.4         | 他方の呼び出し元の操作は拒否                     | OperationAllowlist                                          | `find(caller, documentId)`                                    | 内部経路   |
+| 5.5         | 現行と直前のリリース                             | GraphQLScripts                                              | `buildAllowlist`の和集合                                      | 許可リスト |
+| 5.6         | 一覧からの生成コマンド                           | GraphQLScripts                                              | `graphql:allowlist --previous-ref`                            | 許可リスト |
+| 5.7         | 直前が無ければ現行だけ                           | GraphQLScripts                                              | 引数なしの実行                                                | 許可リスト |
+| 5.8         | 識別子の不一致・衝突で失敗                       | GraphQLScripts                                              | `hash_mismatch`・`conflicting_document`                       | 許可リスト |
+| 5.9         | 直前の参照方法と場所・形式の文書化               | GraphQLScripts・技術ドキュメント群                          | `ALLOWLIST_SOURCES`・`coding/004`                             | —          |
+| 6.1         | デプロイ先はintrospection・GraphiQLなし          | GatewayServer                                               | `useDisableIntrospection`・`graphiql: false`                  | —          |
+| 6.2         | 候補を含めない                                   | QueryLimits                                                 | `blockFieldSuggestion`                                        | —          |
+| 6.3         | ローカルのGraphiQLの経路                         | GraphqlModule・GatewayServer                                | `allowArbitraryOperations`                                    | 外部経路   |
+| 6.4         | GraphiQLではIPを信頼せずヘッダーで指定           | GraphqlModule・InternalRequest                              | `x-debug-caller`・`x-session-token`                           | 外部経路   |
+| 6.5         | GraphiQLにも上限                                 | QueryLimits・GatewayServer                                  | 共通のプラグイン                                              | —          |
+| 6.6         | デプロイ先のGraphiQLの経路は404                  | GraphqlModule                                               | `GET /graphql`                                                | 外部経路   |
+| 7.1         | AppErrorのコード・メッセージ・詳細               | ErrorPolicy                                                 | `maskError`                                                   | 内部経路   |
+| 7.2         | 想定外は定型で伏せて送る                         | ErrorPolicy                                                 | `internal_error`・`captureException`                          | —          |
+| 7.3         | 429・503とRetry-After                            | ErrorPolicy                                                 | `extensions.http`                                             | —          |
+| 7.4         | 実行前の拒否のコード                             | ErrorPolicy・QueryLimits・OperationAllowlist                | エラーコード表                                                | 内部経路   |
+| 7.5         | キャッシュ禁止                                   | GraphqlModule                                               | `Cache-Control: no-store`                                     | —          |
+| 7.6         | AppErrorは送らない                               | ErrorPolicy                                                 | 分類                                                          | —          |
+| 7.7         | エラーコードの文書化                             | 技術ドキュメント群                                          | `coding/004`                                                  | —          |
+| 8.1         | 登録で1スキーマへ合成                            | SchemaComposer・ApiCompositionUpdates                       | `GRAPHQL_SCHEMA_MODULES`・`composeGatewaySchema`              | —          |
+| 8.2         | 重複・過剰なリゾルバで失敗                       | SchemaComposer                                              | `SchemaCompositionError`                                      | —          |
+| 8.3         | 処理単位の一括読み込み                           | Loaders                                                     | `defineLoader`・`LoaderRegistry`                              | —          |
+| 8.4         | コンテナからユースケースを取得                   | GraphQLContext・技術ドキュメント群                          | `GraphQLContext.resolve`                                      | —          |
+| 8.5         | Zodによる引数の検証                              | ValidatedArgs                                               | `withValidatedArgs`                                           | —          |
+| 8.6         | 日時のスカラーとページングの型                   | PlatformTypeDefs・DateTimeScalar・Pagination                | `DateTime`・`PageInfo`・`OffsetPageInfo`                      | —          |
+| 8.7         | bot判定の呼び出し                                | GraphQLContext                                              | `assertHuman`                                                 | —          |
+| 8.8         | 疎通確認のクエリだけ                             | SystemModule・SystemStatusQuery・D1DatabaseProbe            | `Query.systemStatus`                                          | —          |
+| 9.1         | 正規化したスキーマファイルと型の生成             | GraphQLScripts・SchemaComposer                              | `graphql:generate`・`printGatewaySchema`                      | —          |
+| 9.2         | 再実行で内容が変わらない                         | SchemaComposer・GraphQLScripts                              | `lexicographicSortSchema`                                     | —          |
+| 9.3         | 食い違いで検査とテストが失敗                     | GraphQLScripts・SchemaComposer                              | `graphql:check`(一括検査の段階)・スキーマファイルの比較テスト | —          |
+| 9.4         | スキーマファイルの契約とCIからの呼び出し         | 技術ドキュメント群・GraphQLScripts                          | `coding/004`                                                  | —          |
+| 10.1        | 版付きの基準パス                                 | PublicApiApp                                                | `PUBLIC_API_BASE_PATH`(`/v1`)                                 | —          |
+| 10.2        | 経路の登録とOpenAPIの生成                        | RestModule・PublicApiApp                                    | `PublicRestRoutes`・`rest-routes.ts`                          | —          |
+| 10.3        | 認証なしのOpenAPI仕様                            | RestModule                                                  | `GET /v1/openapi.json`                                        | 外部経路   |
+| 10.4        | 検証失敗は400と詳細                              | PublicApiApp                                                | `defaultHook`                                                 | —          |
+| 10.5        | 未登録は404                                      | RestModule                                                  | backend-platformの`notFound`                                  | —          |
+| 10.6        | 成功応答の共通の型                               | Responses                                                   | `dataEnvelope`・`offsetListEnvelope`・`cursorListEnvelope`    | —          |
+| 10.7        | Bearer認証の宣言                                 | PublicApiApp・Responses                                     | `API_KEY_SECURITY`                                            | —          |
+| 10.8        | 仕様の配信経路だけ                               | RestModule・ApiCompositionUpdates                           | 空の`REST_ROUTES`                                             | —          |
+| 10.9        | 相対のサーバーで基準パスを示す                   | RestModule                                                  | `doc31`の`servers: [{ url: '/v1' }]`                          | 外部経路   |
+| 10.10       | 登録箇所からの題名・版・説明の指定               | RestModule                                                  | `createRestModule`の`options.info`                            | —          |
+| 11.1        | 全応答にACAO・ACAM・ACAH                         | CorsPolicy・PublicEntrypoint・RouteTable                    | `headersFor`                                                  | 外部経路   |
+| 11.2        | 更新系はContent-Type                             | CorsPolicy                                                  | 本文を受け取るメソッドの判定                                  | —          |
+| 11.3        | プリフライトは204                                | RestModule                                                  | `OPTIONS /v1/*`                                               | 外部経路   |
+| 11.4        | Credentialsを付けない                            | CorsPolicy                                                  | ヘッダーの一覧                                                | —          |
+| 11.5        | 他の経路にCORSなし                               | CorsPolicy・PublicEntrypoint                                | `/v1`の判定                                                   | 外部経路   |
+| 12.1        | 全応答のセキュリティヘッダー                     | SecurityHeaders・PublicEntrypoint・GatewayEntrypoint        | `applySecurityHeaders`・`withSecurityHeaders`                 | 外部経路   |
+| 12.2        | Permissions-Policyで無効化                       | SecurityHeaders                                             | `SECURITY_HEADERS`                                            | —          |
+| 12.3        | 経路のCSPで置き換え                              | SecurityHeaders・GraphqlModule                              | CSPがあれば保つ規則                                           | —          |
+| 12.4        | 値と置き換え方の文書化                           | 技術ドキュメント群                                          | `backend/006`                                                 | —          |
+| 13.1        | 操作ログ                                         | OperationObservability・GraphqlModule                       | `['api', 'graphql', 'operation']`                             | 内部経路   |
+| 13.2        | トレースに操作名と呼び出し元                     | OperationObservability                                      | ルートのスパンの属性・実行の子のスパン                        | —          |
+| 13.3        | 合成と許可リストは最初の要求で1回                | GatewayServer・OperationAllowlist                           | `getGatewayServer`                                            | —          |
+| 14.1        | カバレッジ80%                                    | 全コンポーネントのテスト                                    | `coverage.include`の分担                                      | —          |
+| 14.2        | 内部・外部経路を再現するWorkers統合テスト        | GatewayTestHarness                                          | `exports.ClientGateway`・`exports.default`                    | —          |
+| 14.3        | backendの文書                                    | 技術ドキュメント群                                          | `backend/004`〜`006`                                          | —          |
+| 14.4        | codingの文書                                     | 技術ドキュメント群                                          | `coding/004`                                                  | —          |
+| 14.5        | 固有値を含めない                                 | 技術ドキュメント群                                          | `project-values.md`                                           | —          |
+| 14.6        | tech-stack.mdの更新                              | 技術ドキュメント群                                          | `tech-stack.md`                                               | —          |
+| 14.7        | オンボーディングの更新                           | 技術ドキュメント群                                          | `docs/onboardings/README.md`                                  | —          |
 
 ## Components and Interfaces
 
@@ -449,7 +450,7 @@ sequenceDiagram
 | GatewayEntrypoint                                              | presentation/gateway                      | 呼び出し元を固定した名前付きエントリポイント           | 1.1, 1.3, 12.1                                | WorkerHandler (P0)、SecurityHeaders (P0)         | API            |
 | PublicEntrypoint                                               | presentation/gateway                      | 外部経路の前処理と後処理                               | 1.4, 1.5, 2.2, 11.1, 11.5, 12.1               | WorkerHandler (P0)、CorsPolicy (P0)              | API            |
 | InternalOnly                                                   | presentation/gateway                      | 内部経路だけで受け付ける経路と内部RESTの登録           | 1.2, 1.5, 1.6, 2.3                            | AppModule (P0)                                   | API            |
-| SessionAccess                                                  | presentation/gateway                      | セッションの検証呼び出しとCookieの指示                 | 3.1〜3.7                                      | SessionVerifier (P0)                             | Service        |
+| SessionAccess                                                  | presentation/gateway                      | セッションの検証呼び出しとCookieの指示                 | 3.1〜3.7, 3.9                                 | SessionVerifier (P0)                             | Service        |
 | GraphqlModule                                                  | presentation/graphql                      | `/graphql`の受付・後処理                               | 1.1, 1.2, 1.5, 6.3, 6.4, 6.6, 7.5, 12.3, 13.1 | GatewayServer (P0)、InternalOnly (P0)            | API            |
 | GatewayServer                                                  | presentation/graphql                      | Yogaの組み立てと環境ごとのキャッシュ                   | 4.5, 5.1, 6.1, 6.3, 6.5, 13.3                 | graphql-yoga (P0)、QueryLimits・ErrorPolicy (P0) | Service        |
 | QueryLimits                                                    | presentation/graphql                      | 上限値とArmorの設定、拒否の種類                        | 4.1〜4.8, 6.2, 6.5                            | graphql-armor (P0)                               | Service        |
@@ -459,7 +460,7 @@ sequenceDiagram
 | OperationObservability                                         | presentation/graphql                      | 操作ログとトレース                                     | 3.7, 13.1, 13.2                               | LogTape (P1)、Sentry (P1)                        | Service        |
 | SchemaModule・SchemaComposer・PlatformTypeDefs・DateTimeScalar | presentation/graphql                      | モジュールの契約・合成・印字                           | 8.1, 8.2, 8.6, 9.1, 9.2, 9.3                  | graphql (P0)                                     | Service, State |
 | SystemModule・SystemStatusQuery・D1DatabaseProbe               | presentation・application・infrastructure | 疎通確認(参照実装)                                     | 8.4, 8.8                                      | Database (P0)                                    | API, Service   |
-| SessionVerifierPort・AnonymousSessionVerifier                  | application                               | セッションの検証のポートと既定の実装                   | 3.1〜3.4                                      | —                                                | Service        |
+| SessionVerifierPort・AnonymousSessionVerifier                  | application                               | セッションの検証のポートと既定の実装                   | 3.1〜3.4, 3.9                                 | —                                                | Service        |
 | PublicApiApp・Responses・RouteTable・CorsPolicy・RestModule    | presentation/rest                         | 公開RESTの骨格とCORS                                   | 10.1〜10.10, 11.1〜11.5                       | @hono/zod-openapi (P0)                           | API, Service   |
 | SecurityHeaders                                                | backend-lib/workers                       | セキュリティヘッダーの付与                             | 12.1〜12.3                                    | —                                                | Service        |
 | SentryScrubAdditions                                           | backend-lib/core                          | 追加ヘッダーのSentryからの除去                         | 2.2, 3.7                                      | backend-platformの`scrubEvent` (P0)              | Service        |
@@ -630,7 +631,7 @@ export declare function createInternalRoutesModule<E extends PlatformEnv>(
 | Field        | Detail                                       |
 | ------------ | -------------------------------------------- |
 | Intent       | セッションの検証呼び出しとCookieの指示の集約 |
-| Requirements | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7            |
+| Requirements | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.9       |
 
 **Contracts**: Service [x]
 
@@ -671,7 +672,7 @@ export declare function finishSessionResponse(
 - 呼び出し元から検証の種類を決める(利用者側→`user`、管理者側→`admin`、3.2)。
 - トークンが無い、または`SESSION_TOKEN_PATTERN`に合わなければ、`SessionVerifier`を呼ばずに未ログインとする(3.4)。
 - `verify`の結果が`invalid`なら未ログインとし、削除の指示を記録する(3.6)。`valid`で`renewal`があれば発行の指示を記録する。
-- `applySessionInstructions`: 発行は`x-session-issue`・`x-session-max-age`、削除は`x-session-clear: 1`。発行の値が`SESSION_TOKEN_PATTERN`に合わなければ設定せず例外にする(ヘッダーへの注入を防ぐ)。トークンは応答本文・ログ・Sentryに出さない(3.5・3.7)。
+- `applySessionInstructions`: 発行は`x-session-issue`・`x-session-max-age`、削除は`x-session-clear: 1`。発行の値が`SESSION_TOKEN_PATTERN`に合わなければ設定せず例外にする(ヘッダーへの注入を防ぐ)。有効期間が1以上`MAX_SESSION_MAX_AGE_SECONDS`(34,560,000秒、400日)以下の整数でなければ、同じく設定せず値を含めない`RangeError`にする(`assertIssuable`、3.9、承認後の改訂4)。上限はブラウザがCookieの`Max-Age`を400日で切り詰めることに合わせた値で、フロントエンドサーバーは上限を超える指示を無視する。例外は想定外の失敗として共通の後処理(`onError`)が500にする。トークンは応答本文・ログ・Sentryに出さない(3.5・3.7)。
 - `finishSessionResponse`(改訂3): `c.res`のヘッダーを複製して`Cache-Control: no-store`と`applySessionInstructions`の指示を書いた応答を作り、`c.res = undefined`の後に代入する(Honoの`c.res`のsetterが古い応答のヘッダーを書き戻すため)。GraphQLの経路と内部RESTの共通の後処理が使う。
 
 ### presentation/graphql
@@ -1142,7 +1143,7 @@ export interface SystemStatusQuery {
 | Field        | Detail                               |
 | ------------ | ------------------------------------ |
 | Intent       | セッションの検証のポートと既定の実装 |
-| Requirements | 3.1, 3.2, 3.3, 3.4                   |
+| Requirements | 3.1, 3.2, 3.3, 3.4, 3.9              |
 
 **Contracts**: Service [x]
 
@@ -1159,7 +1160,7 @@ export interface AuthenticatedPrincipal {
 export type Principal = { readonly kind: 'anonymous' } | AuthenticatedPrincipal;
 export interface SessionIssue {
   readonly token: string; // SESSION_TOKEN_PATTERNに合う値
-  readonly maxAgeSeconds: number; // 正の整数
+  readonly maxAgeSeconds: number; // 1以上MAX_SESSION_MAX_AGE_SECONDS以下の整数
 }
 export type SessionVerification =
   | {
@@ -1176,6 +1177,7 @@ export interface SessionVerifier {
 }
 export declare const SESSION_TYPES: { readonly SessionVerifier: unique symbol };
 export declare const SESSION_TOKEN_PATTERN: RegExp; // /^[A-Za-z0-9_-]{43}$/(32バイトの乱数のbase64url、NFR-SECUR-002)
+export declare const MAX_SESSION_MAX_AGE_SECONDS: 34_560_000; // 400日。発行・更新の有効期間の上限(3.9、承認後の改訂4)
 ```
 
 - `AnonymousSessionVerifier`は常に`invalid`を返す。`composition/session.ts`が束縛し、identity-authが同ファイルの束縛を本実装へ差し替える(3.3)。
@@ -1479,8 +1481,8 @@ export declare const SESSION_BINDINGS: ContainerModule; // SESSION_TYPES.Session
 
 - `backend/004-graphql-server.md`: 受付経路、上限と算出方法、許可リスト(呼び出し元別・現行と直前のリリース)、introspection・GraphiQL、エラーの分類と状態コード、スキーマモジュールの規約(合成・`extend`を使わない・重複の禁止・リゾルバに業務ロジックを置かない・`defineLoader`の使い方と件数の上限・`withValidatedArgs`・ページングの型と命名・日時のスカラー・`assertHuman`)、生成と検査のコマンド、操作ログ。
 - `backend/005-public-rest-api.md`: 基準パスと版、経路の登録、検証失敗の応答、成功応答の形式とページング、認証方式の宣言、OpenAPI仕様の配信(相対の`servers`で基準パスを示す理由、登録箇所からの`info`の指定)、CORSの規則とHonoの外で付ける理由。
-- `backend/006-internal-gateway.md`: 名前付きエントリポイントによる内部認証、呼び出し元の判定、元のクライアントIPの扱い、セッションの受け渡しと指示、内部RESTの追加規約、Hono内の順序とHono外の前処理・後処理の2段、セキュリティヘッダーの値とCSPの置き換え方。
-- `coding/004-graphql-communication.md`: サーバー側の契約(要求の形式、ヘッダーの一覧、応答の指示のヘッダー、エラーコード表、状態コード、スキーマファイルの場所、操作の一覧の場所・形式・識別子、許可リストの生成とデプロイの順序、直前のリリースの渡し方)。「クライアント側」の節は見出しだけを置き、frontend-platformが書く。
+- `backend/006-internal-gateway.md`: 名前付きエントリポイントによる内部認証、呼び出し元の判定、元のクライアントIPの扱い、セッションの受け渡しと指示(発行の有効期間の上限400日、承認後の改訂4)、内部RESTの追加規約、Hono内の順序とHono外の前処理・後処理の2段、セキュリティヘッダーの値とCSPの置き換え方。
+- `coding/004-graphql-communication.md`: サーバー側の契約(要求の形式、ヘッダーの一覧、応答の指示のヘッダー(`x-session-max-age`の範囲1〜34,560,000秒)、エラーコード表、状態コード、スキーマファイルの場所、操作の一覧の場所・形式・識別子、許可リストの生成とデプロイの順序、直前のリリースの渡し方)。「クライアント側」の節は見出しだけを置き、frontend-platformが書く。
 - 記述規則: `docs/GUIDES/tech`にはプロジェクト名と固有値を書かない。アプリのディレクトリ・エントリポイント名・経路などの固有値は`project-values.md`に置く(14.5)。
 
 ## Data Models
@@ -1536,11 +1538,11 @@ export declare const SESSION_BINDINGS: ContainerModule; // SESSION_TYPES.Session
 | `cf-turnstile-response` | フロントエンド        | ブラウザから受け取ったbot判定のトークン | `assertHuman`で検証する(8.7)                         |
 | `x-internal-caller`     | APIのエントリポイント | `client`・`admin`                       | フロントエンドが付けても上書きされる(1.3・1.4)       |
 
-| 指示ヘッダー(応答)  | 値                     | フロントエンドの処理                              |
-| ------------------- | ---------------------- | ------------------------------------------------- |
-| `x-session-issue`   | 新しいセッション識別子 | Cookieに設定し、ブラウザへの応答から除く          |
-| `x-session-max-age` | 秒数                   | Cookieの`Max-Age`に使い、ブラウザへの応答から除く |
-| `x-session-clear`   | `1`                    | Cookieを削除し、ブラウザへの応答から除く          |
+| 指示ヘッダー(応答)  | 値                        | フロントエンドの処理                                                    |
+| ------------------- | ------------------------- | ----------------------------------------------------------------------- |
+| `x-session-issue`   | 新しいセッション識別子    | Cookieに設定し、ブラウザへの応答から除く                                |
+| `x-session-max-age` | 1〜34,560,000の整数の秒数 | Cookieの`Max-Age`に使い、ブラウザへの応答から除く。範囲外の値は無視する |
+| `x-session-clear`   | `1`                       | Cookieを削除し、ブラウザへの応答から除く                                |
 
 ## Error Handling
 
@@ -1595,7 +1597,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
   - `internal-request.worker.test.ts`・`internal-only.worker.test.ts`: 内部経路の引き継ぎIPでIP制限が数えられ、外部経路の偽のIPヘッダーが無視され、欠落・不正で`ip:unknown`と警告になること。`/internal`の経路が外部経路で404になること(1.2・1.6・2.1〜2.3)。
   - `graphql-module.worker.test.ts`: 許可リストの操作の実行、本文だけ・未登録・他方の呼び出し元の操作の拒否、バッチの拒否、各上限の拒否とコード、デプロイ先でのintrospection・GraphiQLの拒否と候補の非表示・上限値の非表示、ローカルのGraphiQLの経路での任意の操作とintrospection、デプロイ先の外部経路での404、本文の上限の413、`no-store`(1.1・1.2・4.1〜4.8・5.1〜5.4・6.1〜6.6・7.4・7.5)。
   - `error-policy.worker.test.ts`: `AppError`のコードと詳細、429・503と`Retry-After`、想定外の例外の定型化とSentryへの1回の送信、`AppError`を送らないこと(7.1〜7.3・7.6)。
-  - `session-access.worker.test.ts`: 呼び出し元の種類で検証の種類が決まり、形式不正のトークンでは検証を呼ばず、`invalid`で削除の指示、`renewal`と`issue`で発行の指示が応答ヘッダーに出て、本文とログにトークンが出ないこと(3.1〜3.7)。
+  - `session-access.worker.test.ts`: 呼び出し元の種類で検証の種類が決まり、形式不正のトークンでは検証を呼ばず、`invalid`で削除の指示、`renewal`と`issue`で発行の指示が応答ヘッダーに出て、本文とログにトークンが出ないこと(3.1〜3.7)。有効期間が34,560,000秒は発行され、34,560,001秒・0・小数は指示が付かずに例外になり、例外のメッセージに値が出ないこと(3.9、承認後の改訂4)。
   - `schema-composer.worker.test.ts`: モジュールの合成、型・項目・モジュール名の重複での`SchemaCompositionError`、スキーマに無い項目のリゾルバでの失敗、登録箇所から合成した印字結果が`generated/schema.graphql`と一致すること(8.1・8.2・9.2・9.3)。
   - `loaders.worker.test.ts`: 同じ処理単位の3件の読み込みが1回の一括読み込みになり、別の処理単位では読み込み結果を共有せず、`maxBatchSize`で分割されること(8.3)。
   - `validated-args.worker.test.ts`・`pagination.worker.test.ts`・`date-time-scalar.worker.test.ts`: 検証失敗の`validation_error`と詳細、`toConnection`の`hasNextPage`、不正なカーソルの`invalid_cursor`、`toOffsetPage`の`totalPages`、日時の出力形式と不正な入力(8.5・8.6)。

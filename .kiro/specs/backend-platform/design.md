@@ -56,7 +56,7 @@
 - 共通のエラー形式、`AppError`の種類と状態コードの対応の変更(api-gateway・全ドメイン)。
 - `AppModule`・`ScheduledJobDefinition`・`MessageContract`・`QueueEnvelope`・`RateLimitExclusion`・`ClientIpResolver`・`BotVerifier`・`RateLimitCounterClient`の形の変更。
 - バインディング名・Queue名・バケット名・D1名・Worker名・Rate Limitingの`namespace_id`・シークレットと変数のキー名の変更(infra-delivery・frontend-platform)。
-- IP制限の上限・キー・応答の変更(frontend-platform)。
+- IP制限の上限・キー・キーのハッシュ化の方式(用途`rate-limit-key`・`hashRateLimitKey`の計算)・応答の変更(frontend-platform。フロントエンドの共通部品は同じ計算の写しを持つ、承認後の改訂9)。`bindingRateLimit`の`key`の形(`(request, clientIp, env)`で、値かPromiseを返す)の変更(public-api)。
 - 共通カラムの型(日時の保持形式・IDの形式)、列名の変換方式(`snakeCase.table`)の変更(全ドメインのスキーマ)。
 - 再試行の上限・間隔、デッドレターの扱いの変更(email-deliveryなどのメッセージ利用者)。本体のconsumerの`max_retries`を変える場合は`QUEUE_MAX_RETRIES`を同じ値にし、登録ごとの`retry.maxAttempts`がその値以下に収まるかを利用者のspecで確かめる(承認後の改訂8)。
 - ヘルスチェックの経路の変更(launch-readiness)。
@@ -464,13 +464,14 @@ sequenceDiagram
 | 12.6        | 0に戻ったら記録を残さない                                     | RateLimitCounter                                                                                        | `deleteAll`                                                                                 | —                |
 | 12.7        | ハッシュ化済みキーだけを保持                                  | RateLimitKey・RateLimitCounterClient                                                                    | `HashedRateLimitKey`                                                                        | —                |
 | 12.8        | 429・再試行秒数・共通形式                                     | RateLimitCounterClient・ErrorHandler                                                                    | `assertWithinLimit`                                                                         | —                |
-| 13.1        | IP単位・Worker単位で10秒100回                                 | IpRateLimit・WranglerConfigs                                                                            | `IP_RATE_LIMITER`・`ip:<IP>`                                                                | HTTPリクエスト   |
+| 13.1        | IP単位・Worker単位で10秒100回                                 | IpRateLimit・WranglerConfigs                                                                            | `IP_RATE_LIMITER`・ハッシュ化した`ip:<IP>`                                                  | HTTPリクエスト   |
 | 13.2        | 超過で429                                                     | IpRateLimit・BindingRateLimit                                                                           | `rate_limit_exceeded`・`Retry-After: 10`                                                    | HTTPリクエスト   |
 | 13.3        | Webhook・配信停止・画像配信の除外                             | RateLimitExclusions・AppComposition                                                                     | `RateLimitExclusion`                                                                        | HTTPリクエスト   |
 | 13.4        | 経路・ホスト名での除外登録                                    | RateLimitExclusions                                                                                     | `excludePath`・`excludeHostname`                                                            | —                |
 | 13.5        | 中継時は信頼済みの元IP                                        | ClientIp・WorkerApp                                                                                     | `ClientIpResolver`(api-gatewayが差し替え)                                                   | —                |
 | 13.6        | 規約の文書化                                                  | RateLimitingDoc・ProjectValuesDoc                                                                       | `backend/003`                                                                               | —                |
 | 13.7        | 汎用の部品                                                    | BindingRateLimit                                                                                        | `bindingRateLimit`                                                                          | —                |
+| 13.8        | IP制限のキーをハッシュ化して渡す(承認後の改訂9)               | IpRateLimit・BindingRateLimit・FixedWindow・RateLimitKey・KeyedHasher                                   | `hashRateLimitKey`・`createKeyedHasher(env.HASH_PEPPER)`                                    | HTTPリクエスト   |
 | 14.1        | トークンとIPで検証し成功だけ許可                              | TurnstileVerifier・SiteverifyResult                                                                     | `BotVerifier.verify`                                                                        | —                |
 | 14.2        | 無効・期限切れ・使用済みは403                                 | TurnstileVerifier・SiteverifyResult                                                                     | `bot_verification_failed`                                                                   | —                |
 | 14.3        | 到達不能・時間切れは503                                       | TurnstileVerifier                                                                                       | `bot_verification_unavailable`                                                              | —                |
@@ -489,42 +490,42 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                         | Domain/Layer | Intent                                                | Req Coverage                                                    | Key Dependencies (P0/P1)                                | Contracts      |
-| ----------------------------------------------------------------- | ------------ | ----------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------- | -------------- |
-| CommonColumns・TextNoCase                                         | db           | 共通カラムと大文字小文字を区別しない列                | 1.1, 1.3, 1.4, 1.5, 1.7                                         | drizzle-orm (P0)・ulid (P0)                             | State          |
-| DatabaseClient・DrizzleConfig                                     | db           | 接続・型付きクエリ・マイグレーション生成              | 1.6, 2.1, 2.2, 2.6, 2.7                                         | drizzle-orm・drizzle-kit (P0)                           | Service        |
-| MigrationCheck                                                    | api/scripts  | マイグレーションの検出確認                            | 2.5                                                             | wrangler (P0)                                           | Batch          |
-| BusinessTime                                                      | core         | 業務時刻の計算                                        | 3.1-3.4                                                         | なし                                                    | Service        |
-| KeyedHasher                                                       | core         | ペッパー鍵のHMACとその照合                            | 4.1-4.3, 12.7                                                   | Web Crypto (P0)                                         | Service        |
-| AppError・ErrorEnvelope                                           | core         | 想定内の失敗と共通のエラー形式                        | 4.4-4.6, 5.6, 12.8, 13.2, 14.2, 14.3                            | なし                                                    | State          |
-| PlatformIdentifiers・AppModuleContract                            | core         | 依存の識別子とモジュール登録の契約                    | 5.3, 5.5                                                        | inversify (P0)                                          | State          |
-| EnvSchema                                                         | core         | 環境の検証と欠けたキー名                              | 4.3, 7.5                                                        | zod (P0)                                                | Service        |
-| LogRecordFormat・LogRedaction                                     | core         | ログのJSON化と伏せ字の規則                            | 8.1, 8.3, 14.7                                                  | @logtape/logtape・@logtape/redaction (P0)               | Service        |
-| SentryScrubber                                                    | core         | エラーレポートの個人情報除去と想定内の除外            | 9.2, 9.3                                                        | LogRedaction (P0)                                       | Service        |
-| CronRegistry                                                      | core         | ジョブ定義の検証と起動時刻ごとの順序                  | 10.1-10.3, 10.5                                                 | BusinessTime (P0)                                       | Service        |
-| RunBudgetTable                                                    | core         | 起動時刻ごとの時間の予算と超過の判定(改訂2)           | 10.9                                                            | BusinessTime (P0)・CronRegistry (P1)                    | Service        |
-| Envelope・MessageContracts・RetryPolicy                           | core         | メッセージの封筒・契約・再試行判定                    | 11.1-11.3, 11.5-11.7                                            | zod (P0)                                                | Event          |
-| FixedWindow・RateLimitKey                                         | core         | 固定期間の状態遷移とハッシュ化済みキー                | 12.1, 12.3, 12.4, 12.7                                          | KeyedHasher (P0)                                        | State          |
-| SiteverifyResult                                                  | core         | siteverify応答の分類                                  | 14.1-14.4                                                       | なし                                                    | Service        |
-| PlatformEnv                                                       | workers      | 両サーバー共通の環境の型とスキーマ断片                | 7.4, 7.5                                                        | EnvSchema (P0)                                          | State          |
-| InvocationContainer                                               | workers      | 処理単位のコンテナとプラットフォームの束縛            | 5.2, 5.3, 10.6                                                  | inversify (P0)・DatabaseClient (P0)                     | Service        |
-| WorkerApp(InvocationContext・EnvGuard・HealthRoute・ErrorHandler) | workers      | Honoアプリとミドルウェアの順序                        | 4.5, 4.6, 5.6, 6.1-6.4, 7.5, 8.2, 8.5                           | hono (P0)・IpRateLimit (P0)・SentryInstrumentation (P1) | API            |
-| LoggingSetup                                                      | workers      | LogTapeの設定                                         | 8.1-8.3, 8.7, 8.8                                               | @logtape/* (P0)                                         | Service        |
-| SentryInstrumentation                                             | workers      | Sentryの初期化と計装                                  | 9.1-9.6                                                         | @sentry/hono・@sentry/cloudflare (P0)                   | Service        |
-| WorkerHandler                                                     | workers      | fetch・scheduled・queueの組み立て                     | 5.2, 5.7, 7.5, 8.2                                              | WorkerApp・Dispatchers (P0)                             | Service        |
-| ScheduledDispatcher                                               | workers      | 定期実行の振り分けと予算の超過の警告                  | 8.6, 10.3-10.5, 10.8, 10.9                                      | CronRegistry (P0)・RunBudgetTable (P0)                  | Batch          |
-| MessagePublisher                                                  | workers      | メッセージの検証と送信                                | 10.6, 11.2, 11.3                                                | Queues (P0)・MessageContracts (P0)                      | Service        |
-| QueueConsumer・DeadLetterConsumer                                 | workers      | 本体とデッドレターのconsumer                          | 8.6, 11.1, 11.4-11.8                                            | RetryPolicy (P0)・Queues (P0)                           | Batch, Event   |
-| RateLimitCounter・RateLimitCounterClient                          | workers      | 厳密カウンタ                                          | 12.1-12.8                                                       | Durable Objects (P0)・FixedWindow (P0)                  | Service, State |
-| BindingRateLimit・IpRateLimit・ClientIp・RateLimitExclusions      | workers      | バインディングによる制限とIP制限                      | 13.1-13.5, 13.7                                                 | Rate Limitingバインディング (P0)                        | API            |
-| TurnstileVerifier・TurnstileGuard                                 | workers      | bot判定の検証                                         | 14.1-14.7                                                       | siteverify (P0)・SiteverifyResult (P0)                  | Service, API   |
-| AppComposition(api・event)                                        | apps         | エントリと登録箇所                                    | 5.5, 5.7, 10.1, 10.9, 13.3                                      | WorkerHandler (P0)                                      | State          |
-| AppLayerRules                                                     | apps         | 層の依存方向の静的解析                                | 5.1                                                             | ESLint (P0)                                             | State          |
-| WranglerConfigs                                                   | apps         | 全環境のバインディング・変数・シークレットのキー名    | 2.4, 7.1-7.4, 7.6, 7.7, 8.4, 8.8, 11.7, 13.1                    | wrangler (P0)                                           | State          |
-| AppPackageScripts・VitestConfigs                                  | apps         | スクリプト契約とテスト設定                            | 7.8, 10.7, 15.1, 15.2                                           | dev-toolingのプリセット (P0)                            | API            |
-| DiSmokeTests・CronSyncTest                                        | apps/test    | 3経路のDI解決とcronの一致                             | 5.4, 10.2, 10.9                                                 | Bun・Vitest・Wrangler (P0)                              | Batch          |
-| ScheduledTriggerHelper                                            | e2e support  | ローカルの定期実行を業務日付と業務時刻で起こす(改訂2) | 10.7                                                            | BusinessTime (P0)・apiのローカルの定期実行 (P0)         | Service        |
-| 技術ドキュメント群・OnboardingUpdates                             | docs         | 規約と手順の文書化                                    | 1.2, 1.6, 2.3, 3.5, 6.4, 9.2, 10.7, 10.9, 11.9, 13.6, 15.3-15.8 | なし                                                    | —              |
+| Component                                                         | Domain/Layer | Intent                                                | Req Coverage                                                          | Key Dependencies (P0/P1)                                | Contracts      |
+| ----------------------------------------------------------------- | ------------ | ----------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------- | -------------- |
+| CommonColumns・TextNoCase                                         | db           | 共通カラムと大文字小文字を区別しない列                | 1.1, 1.3, 1.4, 1.5, 1.7                                               | drizzle-orm (P0)・ulid (P0)                             | State          |
+| DatabaseClient・DrizzleConfig                                     | db           | 接続・型付きクエリ・マイグレーション生成              | 1.6, 2.1, 2.2, 2.6, 2.7                                               | drizzle-orm・drizzle-kit (P0)                           | Service        |
+| MigrationCheck                                                    | api/scripts  | マイグレーションの検出確認                            | 2.5                                                                   | wrangler (P0)                                           | Batch          |
+| BusinessTime                                                      | core         | 業務時刻の計算                                        | 3.1-3.4                                                               | なし                                                    | Service        |
+| KeyedHasher                                                       | core         | ペッパー鍵のHMACとその照合                            | 4.1-4.3, 12.7, 13.8                                                   | Web Crypto (P0)                                         | Service        |
+| AppError・ErrorEnvelope                                           | core         | 想定内の失敗と共通のエラー形式                        | 4.4-4.6, 5.6, 12.8, 13.2, 14.2, 14.3                                  | なし                                                    | State          |
+| PlatformIdentifiers・AppModuleContract                            | core         | 依存の識別子とモジュール登録の契約                    | 5.3, 5.5                                                              | inversify (P0)                                          | State          |
+| EnvSchema                                                         | core         | 環境の検証と欠けたキー名                              | 4.3, 7.5                                                              | zod (P0)                                                | Service        |
+| LogRecordFormat・LogRedaction                                     | core         | ログのJSON化と伏せ字の規則                            | 8.1, 8.3, 14.7                                                        | @logtape/logtape・@logtape/redaction (P0)               | Service        |
+| SentryScrubber                                                    | core         | エラーレポートの個人情報除去と想定内の除外            | 9.2, 9.3                                                              | LogRedaction (P0)                                       | Service        |
+| CronRegistry                                                      | core         | ジョブ定義の検証と起動時刻ごとの順序                  | 10.1-10.3, 10.5                                                       | BusinessTime (P0)                                       | Service        |
+| RunBudgetTable                                                    | core         | 起動時刻ごとの時間の予算と超過の判定(改訂2)           | 10.9                                                                  | BusinessTime (P0)・CronRegistry (P1)                    | Service        |
+| Envelope・MessageContracts・RetryPolicy                           | core         | メッセージの封筒・契約・再試行判定                    | 11.1-11.3, 11.5-11.7                                                  | zod (P0)                                                | Event          |
+| FixedWindow・RateLimitKey                                         | core         | 固定期間の状態遷移とハッシュ化済みキー                | 12.1, 12.3, 12.4, 12.7, 13.8                                          | KeyedHasher (P0)                                        | State          |
+| SiteverifyResult                                                  | core         | siteverify応答の分類                                  | 14.1-14.4                                                             | なし                                                    | Service        |
+| PlatformEnv                                                       | workers      | 両サーバー共通の環境の型とスキーマ断片                | 7.4, 7.5                                                              | EnvSchema (P0)                                          | State          |
+| InvocationContainer                                               | workers      | 処理単位のコンテナとプラットフォームの束縛            | 5.2, 5.3, 10.6                                                        | inversify (P0)・DatabaseClient (P0)                     | Service        |
+| WorkerApp(InvocationContext・EnvGuard・HealthRoute・ErrorHandler) | workers      | Honoアプリとミドルウェアの順序                        | 4.5, 4.6, 5.6, 6.1-6.4, 7.5, 8.2, 8.5                                 | hono (P0)・IpRateLimit (P0)・SentryInstrumentation (P1) | API            |
+| LoggingSetup                                                      | workers      | LogTapeの設定                                         | 8.1-8.3, 8.7, 8.8                                                     | @logtape/* (P0)                                         | Service        |
+| SentryInstrumentation                                             | workers      | Sentryの初期化と計装                                  | 9.1-9.6                                                               | @sentry/hono・@sentry/cloudflare (P0)                   | Service        |
+| WorkerHandler                                                     | workers      | fetch・scheduled・queueの組み立て                     | 5.2, 5.7, 7.5, 8.2                                                    | WorkerApp・Dispatchers (P0)                             | Service        |
+| ScheduledDispatcher                                               | workers      | 定期実行の振り分けと予算の超過の警告                  | 8.6, 10.3-10.5, 10.8, 10.9                                            | CronRegistry (P0)・RunBudgetTable (P0)                  | Batch          |
+| MessagePublisher                                                  | workers      | メッセージの検証と送信                                | 10.6, 11.2, 11.3                                                      | Queues (P0)・MessageContracts (P0)                      | Service        |
+| QueueConsumer・DeadLetterConsumer                                 | workers      | 本体とデッドレターのconsumer                          | 8.6, 11.1, 11.4-11.8                                                  | RetryPolicy (P0)・Queues (P0)                           | Batch, Event   |
+| RateLimitCounter・RateLimitCounterClient                          | workers      | 厳密カウンタ                                          | 12.1-12.8                                                             | Durable Objects (P0)・FixedWindow (P0)                  | Service, State |
+| BindingRateLimit・IpRateLimit・ClientIp・RateLimitExclusions      | workers      | バインディングによる制限とIP制限                      | 13.1-13.5, 13.7, 13.8                                                 | Rate Limitingバインディング (P0)                        | API            |
+| TurnstileVerifier・TurnstileGuard                                 | workers      | bot判定の検証                                         | 14.1-14.7                                                             | siteverify (P0)・SiteverifyResult (P0)                  | Service, API   |
+| AppComposition(api・event)                                        | apps         | エントリと登録箇所                                    | 5.5, 5.7, 10.1, 10.9, 13.3                                            | WorkerHandler (P0)                                      | State          |
+| AppLayerRules                                                     | apps         | 層の依存方向の静的解析                                | 5.1                                                                   | ESLint (P0)                                             | State          |
+| WranglerConfigs                                                   | apps         | 全環境のバインディング・変数・シークレットのキー名    | 2.4, 7.1-7.4, 7.6, 7.7, 8.4, 8.8, 11.7, 13.1                          | wrangler (P0)                                           | State          |
+| AppPackageScripts・VitestConfigs                                  | apps         | スクリプト契約とテスト設定                            | 7.8, 10.7, 15.1, 15.2                                                 | dev-toolingのプリセット (P0)                            | API            |
+| DiSmokeTests・CronSyncTest                                        | apps/test    | 3経路のDI解決とcronの一致                             | 5.4, 10.2, 10.9                                                       | Bun・Vitest・Wrangler (P0)                              | Batch          |
+| ScheduledTriggerHelper                                            | e2e support  | ローカルの定期実行を業務日付と業務時刻で起こす(改訂2) | 10.7                                                                  | BusinessTime (P0)・apiのローカルの定期実行 (P0)         | Service        |
+| 技術ドキュメント群・OnboardingUpdates                             | docs         | 規約と手順の文書化                                    | 1.2, 1.6, 2.3, 3.5, 6.4, 9.2, 10.7, 10.9, 11.9, 13.6, 13.8, 15.3-15.8 | なし                                                    | —              |
 
 ### db
 
@@ -704,7 +705,7 @@ export declare function toUtcCronExpression(time: BusinessTimeOfDay): string; //
 | Field        | Detail                                                  |
 | ------------ | ------------------------------------------------------- |
 | Intent       | 高エントロピーの秘密情報とレート制限のキーのHMAC-SHA512 |
-| Requirements | 4.1, 4.2, 4.3, 12.7                                     |
+| Requirements | 4.1, 4.2, 4.3, 12.7, 13.8                               |
 
 **Contracts**: Service [x]
 
@@ -1156,7 +1157,7 @@ export declare const MESSAGE_CONTRACTS: readonly MessageContract<
 | Field        | Detail                                         |
 | ------------ | ---------------------------------------------- |
 | Intent       | 固定期間カウンタの状態遷移とハッシュ化済みキー |
-| Requirements | 12.1, 12.3, 12.4, 12.7                         |
+| Requirements | 12.1, 12.3, 12.4, 12.7, 13.8                   |
 
 **Contracts**: State [x]
 
@@ -1203,6 +1204,7 @@ export declare function hashRateLimitKey(
 
 - 状態遷移: 状態が無い、または`now >= windowStartedAt + windowSeconds×1000`なら新しい期間を始めて`count=1`とし、Alarmを予約する(12.3)。期間内で`count < limit`なら`count+1`。`count >= limit`なら拒否し、状態と`resetAt`を変えない(12.4)。
 - `HashedRateLimitKey`は`hashRateLimitKey`でしか作れない型で、`RateLimitCounterClient`はこの型だけを受け取る(12.7)。用途は`hashPurpose('rate-limit-key')`。
+- Worker単位のIP制限(`ipRateLimit`)も、Rate Limitingバインディングへ渡すキーを`hashRateLimitKey`で作る(13.8、承認後の改訂9)。
 
 #### SiteverifyResult
 
@@ -1367,7 +1369,7 @@ export declare function createWorkerApp<E extends PlatformEnv>(
 ): Hono<PlatformHonoEnv<E>>;
 ```
 
-- 順序: Sentryの`sentry(app, ...)` → `invocationContext`(相関IDの採番、クライアントIPの解決、LogTapeの`withContext`、終了時のアクセスログ) → `ipRateLimit` → `/health` → `envGuard` → `requestContainer` → 各モジュールの`routes` → `notFound`・`onError`。
+- 順序: Sentryの`sentry(app, ...)` → `invocationContext`(相関IDの採番、クライアントIPの解決、LogTapeの`withContext`、終了時のアクセスログ) → `ipRateLimit` → `/health` → `envGuard` → `requestContainer` → 各モジュールの`routes` → `notFound`・`onError`。`ipRateLimit`は`envGuard`と処理単位のコンテナより前にあるため、コンテナの`KeyedHasher`を使わず、生の環境の`HASH_PEPPER`から自分でハッシュ化の部品を作る(BindingRateLimit・IpRateLimit、承認後の改訂9)。
 - 相関IDは`crypto.randomUUID()`。Sentryのタグ`correlation_id`にも付ける。
 - アクセスログ(8.5): レベル`info`、カテゴリ`[アプリ名, 'http', 'access']`、属性は`method`・`path`(クエリ文字列を除く)・`status`・`durationMs`。`clientIp`は記録しない。
 - `envGuard`: `validateEnv`が失敗したら、`EnvValidationError`のキー名だけを`logEnvValidationFailure`で`error`に記録し、500の定型を返す(7.5)。検証の結果は使わず、元の`c.env`を使い続ける(`platformEnvShape`を`z.object`で使うと未宣言のキーを落とすため)(承認後の改訂8)。
@@ -1656,7 +1658,7 @@ export declare function createRateLimitCounterClient(
 | Field        | Detail                                                    |
 | ------------ | --------------------------------------------------------- |
 | Intent       | Rate Limitingバインディングによる制限とWorker単位のIP制限 |
-| Requirements | 13.1, 13.2, 13.3, 13.4, 13.5, 13.7                        |
+| Requirements | 13.1, 13.2, 13.3, 13.4, 13.5, 13.7, 13.8                  |
 
 **Contracts**: API [x]
 
@@ -1679,35 +1681,46 @@ export declare function excludeHostname<E>(
 
 export interface BindingRateLimitOptions<E> {
   readonly binding: (env: E) => RateLimit;
-  readonly key: (request: Request, clientIp: string | undefined) => string;
+  // 値かPromiseを返す。undefinedを返した要求は数えずに後続へ渡す(承認後の改訂9)
+  readonly key: (
+    request: Request,
+    clientIp: string | undefined,
+    env: E,
+  ) => string | undefined | Promise<string | undefined>;
   readonly periodSeconds: 10 | 60; // Retry-Afterに使う
   readonly exclusions?: readonly RateLimitExclusion<E>[];
 }
 export declare function bindingRateLimit<E>(
   options: BindingRateLimitOptions<E>,
 ): MiddlewareHandler;
-// IP制限に要るバインディングだけを型制約にする。PlatformEnvはこれを満たす(承認後の改訂8)
+// IP制限に要るバインディングとペッパーだけを型制約にする。PlatformEnvはこれを満たす(承認後の改訂8・改訂9)
 export declare function ipRateLimit<
-  E extends { readonly IP_RATE_LIMITER: RateLimit },
+  E extends {
+    readonly IP_RATE_LIMITER: RateLimit;
+    readonly HASH_PEPPER: string;
+  },
 >(exclusions: readonly RateLimitExclusion<E>[]): MiddlewareHandler;
 export declare const IP_RATE_LIMIT_KEY_PREFIX: 'ip:';
 export declare const UNKNOWN_CLIENT_IP: 'unknown';
 ```
 
-- `ipRateLimit`は`bindingRateLimit({ binding: (env) => env.IP_RATE_LIMITER, key: (_, ip) => 'ip:' + (ip ?? 'unknown'), periodSeconds: 10, exclusions })`。クライアントIPは`invocationContext`が`resolveClientIp`で求めた値を使う。
+- `ipRateLimit`は`bindingRateLimit({ binding: (env) => env.IP_RATE_LIMITER, key: (_, ip, env) => <ハッシュ化したキー>, periodSeconds: 10, exclusions })`。クライアントIPは`invocationContext`が`resolveClientIp`で求めた値を使う。
+- キーのハッシュ化(13.8、承認後の改訂9): `key`は`hashRateLimitKey(hasher, IP_RATE_LIMIT_KEY_PREFIX + (ip ?? UNKNOWN_CLIENT_IP))`の`HashedRateLimitKey`を返し、生のIPアドレスと`ip:<IP>`をバインディングへ渡さない。`hasher`は`createKeyedHasher(env.HASH_PEPPER)`で作る。Rate Limitingバインディングの`key`は公式文書で任意の文字列とされ、長さの上限の記載が無いため、ハッシュ値(86文字)をそのまま渡す。`ipRateLimit`は`envGuard`と`requestContainer`より前に動くため、コンテナの`PLATFORM_TYPES.KeyedHasher`を使えない。ミドルウェアは最後に使ったペッパーの値と`KeyedHasher`の組を1つだけ保持し、同じペッパーの間は使い回す(鍵の読み込みを要求ごとに繰り返さない。`KeyedHasher`は鍵を遅延して読み込み、要求をまたいで使っても値を変えない)。`KeyedHasher`は最初の要求で作った`Promise<CryptoKey>`を後の要求でも待つため、同時の要求でも、workerdの要求の文脈の制約(別の要求の文脈で作ったPromiseの待ち合わせ)で失敗・停止しないことをWorkers統合テストで確かめる。確かめられない場合は、要求ごとに`KeyedHasher`を作る。
+- ペッパーが無い・空の環境(`createKeyedHasher`が`HasherConfigurationError`を投げる)では、`key`は`undefined`を返し、要求を数えずに後続へ渡す。`/health`は環境が欠けていても応答し(6.1)、他の経路は後続の`envGuard`が環境の不備として500にする(7.5)。ハッシュ化のその他の例外は、想定外の例外として`onError`へ渡る。
+- `bindingRateLimit`は`key`の結果を`await`する。同期の関数も渡せる(public-apiの公開APIのIP単位の制限など)。他のルールでもIPアドレスやメールアドレスなどの元の値をキーにする場合は、`hashRateLimitKey`でハッシュ化した値を返す(security/002)。
 - 超過時: 429、`Retry-After: 10`、本文`{ "error": { "code": "rate_limit_exceeded", "message": ... } }`(13.2)。
 - 除外規則は各アプリの`src/composition/rate-limit-exclusions.ts`に登録する(13.4)。初版は空で、payments(Stripe Webhookの経路)・notifications(RFC 8058配信停止の経路)・media-pipeline(画像配信のホスト名)が追記する(13.3)。
 - 中継リクエストの元のIP(13.5): api-gatewayが、内部認証を伴う場合だけ引き継がれたIPを返し、それ以外は`resolveConnectingIp`へ委ねる`ClientIpResolver`をapiの`createWorkerApp`に渡す。本specの既定は`resolveConnectingIp`である。
 - Worker単位のIP制限の規約(frontend-platformもclient・adminに同じ値で適用する、13.6):
 
-| 項目             | 値                                                                                                    |
-| ---------------- | ----------------------------------------------------------------------------------------------------- |
-| バインディング名 | `IP_RATE_LIMITER`                                                                                     |
-| 上限             | `simple: { limit: 100, period: 10 }`                                                                  |
-| 名前空間         | Worker・環境ごとに別の`namespace_id`(値は`docs/onboardings/project-values.md`)                        |
-| キー             | `ip:<送信元IPアドレス>`(ブラウザから直接受けるWorkerは`CF-Connecting-IP`)、不明なら`ip:unknown`       |
-| 対象             | Workerが受け付ける全HTTPリクエスト。除外は登録した経路・ホスト名だけ                                  |
-| 超過時の応答     | 状態コード429と`Retry-After: 10`。APIは共通のエラー形式、画面を返すWorkerは表示の形式を各specが決める |
+| 項目             | 値                                                                                                                                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| バインディング名 | `IP_RATE_LIMITER`                                                                                                                                                                                   |
+| 上限             | `simple: { limit: 100, period: 10 }`                                                                                                                                                                |
+| 名前空間         | Worker・環境ごとに別の`namespace_id`(値は`docs/onboardings/project-values.md`)                                                                                                                      |
+| キー             | `ip:<送信元IPアドレス>`(ブラウザから直接受けるWorkerは`CF-Connecting-IP`)、不明なら`ip:unknown`を、`HASH_PEPPER`を鍵とした`hashRateLimitKey`(用途`rate-limit-key`)でハッシュ化した値(承認後の改訂9) |
+| 対象             | Workerが受け付ける全HTTPリクエスト。除外は登録した経路・ホスト名だけ                                                                                                                                |
+| 超過時の応答     | 状態コード429と`Retry-After: 10`。APIは共通のエラー形式、画面を返すWorkerは表示の形式を各specが決める                                                                                               |
 
 #### TurnstileVerifier・TurnstileGuard
 
@@ -1937,11 +1950,11 @@ export declare function isNearBusinessDayBoundary(now: Date): boolean; // UTCの
 | Requirements | 1.2, 1.6, 2.3, 3.5, 6.4, 9.2, 10.7, 10.9, 11.9, 13.6, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8 |
 
 - ArchitectureDoc(`backend/002-layered-architecture-on-workers.md`): 4層と合成ルート、依存方向と静的解析、処理単位のコンテナ(`jitless`の注意)、登録箇所、共通エラーと共通のエラー形式、ミドルウェアの順序、ヘルスチェック、層とテスト種別・カバレッジの分担。
-- RateLimitingDoc(`backend/003-rate-limiting-and-bot-verification.md`): 厳密カウンタ(ルール・キーのハッシュ化・リセット)、バインディングの制限、Worker単位のIP制限の規約表(13.6)、除外規則、クライアントIPの解決の差し替え、bot判定の検証(2形態・失敗の分類・テスト用の鍵)。
+- RateLimitingDoc(`backend/003-rate-limiting-and-bot-verification.md`): 厳密カウンタ(ルール・キーのハッシュ化・リセット)、バインディングの制限(`key`は値かPromiseを返してよく、IPアドレスなどの元の値はハッシュ化して渡す)、Worker単位のIP制限の規約表(キーのハッシュ化を含む、13.6・13.8)、除外規則、クライアントIPの解決の差し替え、bot判定の検証(2形態・失敗の分類・テスト用の鍵)。
 - SchemaConventionsDoc(`db/003-schema-conventions.md`): 主キー(ULID・全文検索用の連番、1.2)、共通カラムと日時の保持(3.5)、論理削除、列名の変換(`snakeCase.table`)、テーブル定義の配置(1.6)、手書きのマイグレーション(2.3、`db/001`への参照)、接続と一括実行。
 - AsyncProcessingDoc(`infra/003-async-processing.md`): 定期実行(業務時刻での登録・cron式との一致・ローカルでの起動(`--test-scheduled`と`/cdn-cgi/local/scheduled?cron=<式>&time=<ミリ秒>`、E2Eからは`triggerScheduled`))、非同期メッセージ(契約・封筒・送信・再試行・`defer`・デッドレター)、重複配信と冪等性(11.9)、ジョブとメッセージの使い分け。同じ時刻に直列で動くジョブ群の時間の予算(10.9、承認後の改訂2): 実行基盤の上限から導く規則(1日1回の起動の上限は実時間の上限15分の3分の2の10分、予算は上限の半分の5分、各ジョブの実時間の目安はHTTPの処理のCPU時間の上限と同じ値の30秒)、予算の超過で`warning`(タグ`cron`・所要時間)が送られること、目安を超えるジョブはメッセージ処理へ分割すること、予算の登録の方法(`ScheduledRunBudget`)。予算を適用する起動時刻と本プロジェクトが採用した旨は書かず、`project-values.md`への参照とする(15.6)。
 - LoggingDoc(`infra/004-logging-and-error-tracking.md`): ログの形式・カテゴリ・相関ID、伏せ字の規則(サービス固有のトークンの形式の値のパターンは、固有の値を書かずに「他のパターンより先に当たるよう先頭に置く」という一般的な規則として示す)、呼び出しログの無効化と保持期間、エラートラッキングの送信規則とトレースの割合、エラートラッキングで値の形式の伏せ字を適用する項目(例外の値と種類・メッセージ・パンくず・トランザクションとスパン)と、タグ・コンテキストに秘密情報と個人情報を入れない規則(承認後の改訂3)。SDKの収集設定(`dataCollection`)で個人情報を集めない設定と、除去処理をエラーイベントとスパンの両方に適用する2層の防御(承認後の改訂4・改訂6)。トレースはスパンの逐次送信のまま`beforeSendSpan`で除去し、非推奨の`beforeSendTransaction`を使わない規則(承認後の改訂6)。
-- KeyedHashingDoc(`security/002-keyed-hashing.md`): 高エントロピーの秘密情報とレート制限キーのHMAC化、用途の分離、照合の方法、ペッパーの管理。
+- KeyedHashingDoc(`security/002-keyed-hashing.md`): 高エントロピーの秘密情報とレート制限キーのHMAC化(厳密カウンタとRate Limitingバインディングの両方、承認後の改訂9)、用途の分離、照合の方法、ペッパーの管理(Infisicalの環境ごとに1つの値を、ペッパーを使う全アプリが共有する)。
 - ProjectValuesDoc: 「Supporting References」の固有値とヘルスチェックの経路(6.4)、定期実行の時間の予算を適用する起動時刻と値(4:21、予算300,000ms・上限600,000ms・各ジョブの目安30,000ms、10.9)を`docs/onboardings/project-values.md`へ記載する(15.6)。
 - OnboardingUpdates: tech-stack.md(15.7)、オンボーディングの手順(15.8)、依存の版の一覧、CLAUDE.mdの参照先。
 - 記述規則: `docs/GUIDES/tech`にはプロジェクト名・サービス固有の仕様・固有値を書かない(15.6)。
@@ -2035,7 +2048,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
 - **Integration Tests**(Workers統合テスト、workerd)
   - `create-worker-app.worker.test.ts`: `/health`が環境の欠けた状態でも200と`no-store`を返す。未登録の経路が404、`AppError`と想定外の例外が共通のエラー形式になる。アクセスログに1件、クエリ文字列とIPを含まずに出る。相関IDが同じ処理の全ログに付く(4.5・4.6・5.6・6.1〜6.3・7.5・8.2・8.5)。
   - `invocation-container.worker.test.ts`: 2つの同時リクエストが別の`Database`・単一インスタンスを受け取る(5.2)。
-  - `ip-rate-limit.worker.test.ts`・`binding-rate-limit.worker.test.ts`: 同じIPの101回目が429・`Retry-After: 10`になり、別のIPは影響を受けない。除外規則に当たるリクエストは数えない。差し替えたリゾルバの値で数える(13.1〜13.5・13.7)。
+  - `ip-rate-limit.worker.test.ts`・`binding-rate-limit.worker.test.ts`: 同じIPの101回目が429・`Retry-After: 10`になり、別のIPは影響を受けない。除外規則に当たるリクエストは数えない。差し替えたリゾルバの値で数える(13.1〜13.5・13.7)。バインディングへ渡すキーが`hashRateLimitKey(createKeyedHasher(<テスト用のペッパー>), 'ip:<IP>')`の値で生のIPアドレスを含まず、`HASH_PEPPER`が無い環境では数えずに後続へ渡し、`/health`は200・他の経路は`envGuard`の500になる。`key`がPromiseを返す汎用の制限も数える(13.8、承認後の改訂9)。
   - `rate-limit-counter.worker.test.ts`: 並行した`hit`が正確に数えられ、`runDurableObjectAlarm`の後に記録が消え、`reset`で途中から0に戻る。拒否時に`assertWithinLimit`が429と残り秒数を返す(12.1〜12.8)。
   - `scheduled-dispatcher.worker.test.ts`: 2つのジョブのうち1つ目が失敗しても2つ目が実行され、未登録の式で警告だけになり、0件で成功する(8.6・10.3〜10.5・10.8)。差し替えた時計とトランスポートで、予算のある式の合計が予算を1ms超えると`warning`のログとSentryの`warning`(タグ`cron`、コンテキストの所要時間)が1回送られ、予算ちょうど・予算の無い式・失敗したジョブを含む予算以内の起動では送られず、要約に`totalDurationMs`が出る(10.9)。
   - `queue-consumer.worker.test.ts`・`dead-letter-consumer.worker.test.ts`: `createMessageBatch`で、成功の`ack`、失敗の`retry`と遅延、上限到達・未登録の種別・不正な本文でのデッドレター通知、`defer`の再送、1件の失敗が他に影響しないこと、デッドレターのログとSentryに本文が含まれないことを確かめる(11.1〜11.8)。ハンドラーの外の想定外の例外のエラーログとSentryのイベントに封筒のIDの相関ID(タグ`correlation_id`)が付き、後続のメッセージのイベントには後続のIDが付くこと、登録の`retry.maxAttempts`が`QUEUE_MAX_RETRIES`を超えると組み立て時に`RangeError`になることを確かめる(9.1、承認後の改訂8)。
@@ -2056,7 +2069,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
 
 - 個人情報: ログはフィールド名と値のパターンの二段で伏せ字にし、呼び出しログを無効にする(DR-013)。Sentryは、SDKの収集設定(`dataCollection`)で利用者の情報・Cookie・ヘッダー・URLのクエリ文字列・HTTPの本文を集めず、最後の防御としてエラーイベント(`beforeSend`)とスパン(`beforeSendSpan`)の両方の除去処理でIPアドレス・Cookie・認証ヘッダー・本文を除く2層で防ぐ(承認後の改訂4・改訂6)。例外の値・メッセージ・パンくず・スパンの名前と属性に紛れた秘密情報も値の形式で伏せる(NFR-OBLOG-004、承認後の改訂3・改訂6)。デッドレターの通知に本文を含めない。
 - 秘密情報: `HASH_PEPPER`・`TURNSTILE_SECRET_KEY`・`SENTRY_DSN`はInfisicalで管理し、`secrets.required`でキー名だけを宣言する。ローカルでも`.dev.vars`を作らない。
-- レート制限キー: Durable Objectsに保存するキーは`HashedRateLimitKey`型で強制し、元のIPアドレス・メールアドレスを保存しない(FR-RLMIT-020)。
+- レート制限キー: Durable Objectsに保存するキーは`HashedRateLimitKey`型で強制し、元のIPアドレス・メールアドレスを保存しない(FR-RLMIT-020)。Worker単位のIP制限も、Rate Limitingバインディングへハッシュ化したキーだけを渡す(13.8、承認後の改訂9)。
 - IP制限の除外は、署名・トークンで真正性を確かめる経路と、エッジキャッシュの後ろの画像配信に限る(Q1)。除外の登録は各specのコードレビューの対象とする。
 - bot判定はフェイルクローズで、判定サービスの障害時も保護対象の操作を通さない。
 - 中継された元のクライアントIPは、api-gatewayの内部認証を伴う場合だけ信頼する(NFR-SECUR-015)。本specの既定のリゾルバは任意のヘッダーを信頼しない。

@@ -362,3 +362,18 @@
   - テーブル定義の配置: 技術ドキュメント`db/003`は`schema/<ドメイン>/<テーブル>.ts`(1テーブル1ファイル)に改められている(email-deliveryの1.2)。design.mdのDrizzleConfigの説明の`schema/<ドメイン>.ts`を合わせた。
 - 変えないもの: `createQueueDispatcher`の任意の第3引数`{ rawQueues }`(email-deliveryが互換を保って加えた封筒を持たないQueueの登録口)は、email-deliveryのresearch.mdのQ8の決定(本specの文書は変えず、変更点と影響をemail-deliveryの設計の「RawQueueDispatch」に記録する)に従い、design.mdの`createQueueDispatcher(MESSAGE_HANDLERS, MODULES)`の記述を変えていない。
 - 変えた箇所: design.mdのFile Structure Plan(apiの`test/support/`の2ファイルを外し、`config/vitest/`の2ファイルとeventの`bunfig.unit.toml`を加えた)、DrizzleConfigの`schema/<ドメイン>/<テーブル>.ts`、AppPackageScriptsの`test:unit`(event)とVitest(api・event)の説明、Testing Strategyの`read-nested-d1-migrations.unit.test.ts`の位置。
+
+## frontend-platformの最終検証による承認後の改訂(改訂9、2026-10-28)
+
+- **状態**: 2026-10-28に開発者が決定した改訂で、確定している。frontend-platformの実装と最終検証の後、開発者がAskUserQuestionで1件ずつ決めた判断のうちの1件(判断5)である。実装は追加タスク11.1で行う。
+- **Context**: `security/002`の「ハッシュ化の対象」は、レート制限のキーとなるIPアドレス・メールアドレスを方式を問わずハッシュ化の対象とする。一方、本specのWorker単位のIP制限(`ipRateLimit`)は生の`ip:<IP>`をRate Limitingバインディングへ渡し、`backend/003`の規約表もそのキーを定め、例外であることをどこにも書いていなかった。frontend-platformのclient・adminのIP制限も同じ規約で生のキーを渡しており、最終検証でこの食い違いが見つかった。
+- **検討した案**:
+  - 案A: `security/002`にWorker単位のIP制限(Rate Limitingバインディング)を例外として明記する。バインディングのカウンタはCloudflareの内部にだけあり、本プロジェクトの保存先に残らないことを理由にする。コードの変更は無い。
+  - 案B(採用): Rate Limitingバインディングのキーも`HASH_PEPPER`を鍵としたHMAC(`hashRateLimitKey`、用途`rate-limit-key`)でハッシュ化してから渡す。backend-lib(api・event)とフロントエンド(client・admin)の両方を変え、client・adminにも`HASH_PEPPER`をシークレットとして必須にする。
+- **決定**: 案B。全Workerでハッシュ化する。Infisicalは1つのプロジェクトで環境ごとに1つの`HASH_PEPPER`を持ち、api・event・client・adminが共有する。
+  - キー: `hashRateLimitKey(createKeyedHasher(env.HASH_PEPPER), IP_RATE_LIMIT_KEY_PREFIX + (clientIp ?? UNKNOWN_CLIENT_IP))`。ハッシュ化する前の文字列は従来の`ip:<IP>`・`ip:unknown`のままにし、共通ライブラリを使わないWorkerも同じ値を作れるようにする(frontend-platformの共通部品は同じ計算の写し`server/http/rate-limit-key-hash.ts`を持つ)。
+  - `ipRateLimit`は`envGuard`と処理単位のコンテナより前に動くため、コンテナの`KeyedHasher`を使わず、生の環境の`HASH_PEPPER`から作る。最後に使ったペッパーの値と`KeyedHasher`の組を1つ保持して使い回す。ペッパーが無い・空の環境では数えずに後続へ渡し、`/health`は応答し、他の経路は`envGuard`が環境の不備の500にする(ヘルスチェックは環境が欠けていても応答する約束を保つため)。
+  - `bindingRateLimit`の`key`を`(request, clientIp, env)`で値かPromise(`undefined`は数えない)を返す形にする。同期の関数も従来どおり渡せるため、public-apiの公開APIのIP単位の制限は変えなくてよい。
+  - キーの長さ: CloudflareのRate Limitingバインディングの公式文書は`key`を任意の文字列とだけ記し、長さの上限を記していない。ハッシュ値(base64urlの86文字)をそのまま渡す。
+- **要件**: 13.8を加え、13.6の文言にキーのハッシュ化の方式を加えた。利用者・運用者から見える振る舞い(個人情報の扱い)の約束を変えるため、`requirements.md`の「承認後の改訂」の表に改訂9の行を置いた。
+- **変えた箇所**: 設計のRevalidation Triggers、KeyedHasher・FixedWindow・RateLimitKeyの追跡、WorkerAppの順序の説明、BindingRateLimit・IpRateLimit(API Contractの`key`と`ipRateLimit`の型制約、キーのハッシュ化とペッパーが無い環境の扱い、規約表のキー)、追跡表の13.1・13.8、Testing Strategy、Security Considerations、技術ドキュメント群(RateLimitingDoc・KeyedHashingDoc)。tasks.mdに追加タスク11・11.1を加えた。

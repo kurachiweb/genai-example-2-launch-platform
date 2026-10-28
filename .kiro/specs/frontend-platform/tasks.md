@@ -378,6 +378,59 @@
   - _Depends: 9.1, 9.2, 9.3, 9.4, 9.5_
   - _Requirements: 15.3, 15.4, 15.7, 15.8_
 
+- [ ] 10. 最終検証後の判断の反映
+- [ ] 10.1 フロントエンドのIP制限のキーをハッシュ化する
+  - 前提: backend-platformの11.1(Worker単位のIP制限のキーのハッシュ化)が完了し、backend-libの`ipRateLimit`がハッシュ化したキーで数えていること。完了していなければ止めて報告する
+  - 先に、共通部品の新しい`server/http/rate-limit-key-hash.ts`の`hashRateLimitKey(pepper, ...parts)`が、`node:crypto`の`createHmac('sha512', <ペッパー>).update('rate-limit-key\u0000' + JSON.stringify(parts)).digest('base64url')`と同じ値を返すこと(backend-libの`hashRateLimitKey`と同じ計算)、部品が空なら値を含まない例外になることを確かめる単体テストを書く
+  - 先に、`checkIpRateLimit`がバインディングへ渡すキーが`ip:<IP>`(不明なら`ip:unknown`)をハッシュ化した値で、生のIPアドレスを含まないこと、環境の検証が`HASH_PEPPER`の欠落と空をキー名だけで返すこと、エントリが検証済みのペッパーでIP制限を呼ぶことを確かめる単体テストを書き、実装する
+  - 環境の検証スキーマに`HASH_PEPPER`(空でない文字列)を加え、ブラウザへ渡す設定値に含めない。client・adminのWrangler設定のルート・staging・prodの`secrets.required`に`HASH_PEPPER`を加え、`wrangler-config.unit.test.ts`の期待値を合わせる
+  - `frontend/003`のIP制限の適用の節(キーのハッシュ化とbackend-libと同じ値になること)、`project-values.md`の`HASH_PEPPER`を使うアプリ、オンボーディングのシークレットの表と「client・adminはシークレットを必要としない」の記載を直す
+  - 完了状態: 共通部品・client・adminの単体テストと一括検査が成功し、Infisicalの`dev`から注入して起動した両アプリの疎通確認の画面が表示され、IP制限のキーにIPアドレスが含まれないことを単体テストで確かめられる
+  - _Depends: backend-platformの11.1_
+  - _Boundary: IpRateLimit, RateLimitKeyHash, FrontendEnv, AppBuildConfig_
+  - _Requirements: 1.4, 5.1, 5.2, 5.7, 15.3, 15.4, 15.8_
+
+- [ ] 10.2 Turnstileのウィジェットを非表示で描き、ローカルのサイトキーを非表示のテスト用に替える
+  - 先に、ウィジェットのブラウザテストへ、ライブラリへ`size: 'invisible'`を渡すことと、失敗時の文言の表示が変わらないことを確かめる検査を足し、`TurnstileWidget`の`options`に`size: 'invisible'`を加える
+  - client・adminのWrangler設定のルートの`vars`の`TURNSTILE_SITE_KEY`を`1x00000000000000000000BB`(常に成功し表示しないテスト用)にし、`wrangler-config.unit.test.ts`の期待値を合わせる。staging・prodの仮の値は変えない
+  - 水平展開: 共通部品のテストとカタログが使うサイトキー(`.storybook/preview.tsx`、`test/start-request-fixtures.ts`、`server/env/frontend-env.unit.test.ts`・`server/observability/server-sentry-options.unit.test.ts`・`start/router-context.unit.test.ts`、`components/bot-protection/turnstile-widget.browser.test.tsx`・`components/app-shell/app-document.browser.test.tsx`)も`1x00000000000000000000BB`に揃える。揃えない箇所があれば、その理由をテストの定数の近くに書く
+  - `backend/003`の「テスト用の鍵」の表に、サイトキー`1x00000000000000000000BB`(常に成功・ウィジェットを表示しない)の行を加える。`frontend/005`のウィジェットの節に、非表示で描き表示の枠と場所を画面に設けないことを書き、`project-values.md`のローカルのサイトキーを直す
+  - 完了状態: 共通部品のブラウザテスト・単体テストとclient・adminの単体テストが成功し、`apps/frontend-lib`・`apps/client`・`apps/admin`(生成物の`dist`を除く)に`1x00000000000000000000AA`が理由の無いまま残らず、`backend/003`・`frontend/005`・`project-values.md`の記述がWrangler設定と一致する
+  - _Boundary: TurnstileWidget, AppBuildConfig, StorybookCatalog_
+  - _Requirements: 7.2, 8.8, 8.9, 15.3, 15.4_
+
+- [ ] 10.3 管理者側のエラーの表示と静的な500の画面の案内文を直し、通知メールの件名の例から相対表現を除き、型の生成を足さない理由を書く
+  - 先に、`UnexpectedErrorView`が`contactHref`を受けない時は案内文が「時間をおいて再度お試しください。」だけで「解決しない場合はお問い合わせください。」を含まず、受けた時は両方と問い合わせのボタンを出すことを確かめるブラウザテストを書く。`state-messages.ts`に`RETRY_LATER_GUIDANCE`・`CONTACT_GUIDANCE`・`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`(新規)を置き、`RETRY_GUIDANCE`と`UNEXPECTED_ERROR_MESSAGE`をその連結にする
+  - 先に、`ErrorState`が`contactHref`を受けない時は問い合わせのボタンを描かず、受けた時は描くことを確かめるブラウザテストを書き、`ErrorStateProps.contactHref`を任意にする
+  - 先に、`errorMessageOf(error, contactAvailable)`(新規、`utilities/graphql/graphql-result.ts`)が`GraphQLClientError`には`message`を返し、それ以外の例外には`contactAvailable`の真偽で`UNEXPECTED_ERROR_MESSAGE`と`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`を返すこと、`network_error`・`invalid_response`の文言と`ERROR_MESSAGES`が問い合わせを促す文を含まないことを確かめる単体テストを書き、実装する。client・adminの`ErrorPage`など`GraphQLClientError`でない例外の文言を出す画面(`ErrorState`・`PartialErrorState`・`AppForm`の`onSubmitError`・トースト)は、プロファイルの`contactAvailable`を渡して`errorMessageOf`を使う。`AppForm`の`onSubmitError`の例の`FormMessage`と、`notify.error`で失敗を出す例に`errorMessageOf`を使うことを、部品のストーリー・ブラウザテストの例でも示す
+  - 先に、`renderStaticErrorPage({ status: 500, contactAvailable })`が偽の時は「解決しない場合はお問い合わせください。」を含まない`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`を、真の時は`UNEXPECTED_ERROR_MESSAGE`を出すこと、サーバーのエントリが環境の不備・許可先の不正・例外の500でプロファイルの`contactAvailable`を渡すこと、client・adminのプロファイルの`contactAvailable`がそれぞれ真・偽であることを確かめる単体テストを書く。`FrontendAppProfile`に`contactAvailable`(新規)を加え、`StaticErrorPageInput`の500に必須の`contactAvailable`を加える
+  - 文言規則(`service/design/003`)に、画面内の表示と静的な500の画面のそれぞれで2通りの案内文を書き、通知メールの件名の例を日付を基準にしない文言(「フルタイム: Pitch NotesがTactics Boardに勝利、次は準決勝」「Pitch Notesがキックオフします⚽️応援しましょう！」「フォローしているユーザーの3プロダクトがキックオフします⚽️応援しましょう！」)にする。国際化方針のメールの日時の節に、件名で日付を基準にした相対表現を使わないことを書く
+  - `frontend/005`の`ErrorState`の`contactHref`を省略可にし、`AppForm`の`onSubmitError`とトーストで失敗を出す時も`errorMessageOf`で文言を選ぶことを書き、`frontend/006`のエラーの扱いの節の「`GraphQLClientError`でない例外は`UNEXPECTED_ERROR_MESSAGE`を表示する」を、`errorMessageOf`とプロファイルの`contactAvailable`による出し分け(問い合わせの導線が無い側は「時間をおいて再度お試しください。」で終える文言。`ErrorState`・`PartialErrorState`・`AppForm`の`onSubmitError`・トーストのどれにも適用する)に直す
+  - `frontend/002`に、client・adminに型生成のスクリプトを置かない理由(環境の型は共通部品のZodのスキーマから作り、Wrangler設定との食い違いは`wrangler-config.unit.test.ts`が検出する)を書く
+  - 判断待ちの記載を残さない: `frontend/006`の呼び出し回数の目安(3回以内)、オンボーディングのクイックスタートのAIエージェントの規則(手順1〜11は実行しない、12〜14は確認のため実行してよく、起動したプロセスは止める)、CLAUDE.mdの技術規則の参照先に足した3つ(frontend/005・coding/004・frontend/007)を確定した記述とし、文書・コメントに判断待ちの記載があれば消す
+  - 完了状態: 共通部品の単体テスト・ブラウザテストとclient・adminの単体テスト・エラーの画面のテストが成功し、管理者側の画面内の想定外のエラーの表示・`ErrorState`・`GraphQLClientError`でない例外の文言(フォームの`onSubmitError`・トーストを含む)・静的な500の画面のどれにも問い合わせの導線と「解決しない場合はお問い合わせください。」が出ず、利用者側の文言は変わらず、文言規則の文言が`utilities/messages/*.ts`の定数と一致し、件名の例に「明日」「本日」が含まれない
+  - _Boundary: ErrorViews, StateDisplays, GraphqlResult, FormParts, Toaster, ErrorResponses, AppProfile, FrontendServerEntry, 技術ドキュメント群_
+  - _Requirements: 1.6, 8.6, 8.10, 8.12, 8.13, 11.6, 11.10, 15.3, 15.4, 15.5, 15.6_
+
+- [ ] 10.4 下流specの設計を確定した契約に合わせる
+  - design.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の各行に挙げた下流spec(data-export・identity-auth・notifications・public-api・product-launch・content-reporting・help-center・ultras-subscription・sponsorship・legal-pages・tournament-week・tournament-year・inquiry-chat・user-profile-social・admin-foundation・directory-discovery・match-engine・payments・engagement・ugc-moderation・content-processing・media-pipeline・infra-delivery)のdesign.md(必要ならrequirements.md・tasks.md・research.md)を、表の確定した契約(操作の置き場所と生成物、Zodの値の読み込み元、フォーム部品の形、`RelayRoute`の形とJSONでない5xxの503、`SecurityPolicySources`と環境のキー、非表示のウィジェット、管理者側の画面シェル、`HASH_PEPPER`の共有、管理者側のエラーの案内文)に合わせる
+  - ウィジェットを置くspecから、判定の枠の表示と場所の記述を除く。admin-foundationの管理者側のランドマーク(フッターを持たず、ナビゲーションは`navigation`の区画の`nav`で満たす)を合わせる
+  - infra-delivery: Turnstileのウィジェットの種類(`design.md:587`の`mode: 'managed'`、`design.md:687`・`design.md:694`・`design.md:1502`の`mode = "managed"`)を`invisible`にし、stagingの`HASH_PEPPER`の登録先(`design.md:1517`・`design.md:1555`のapi・event)にclient・adminを加える。research.md・tasks.mdに同じ記述があれば合わせる
+  - `apps/admin/src`の`routes`・`components`・`composition/admin-*`にファイルを加える設計のspec(admin-foundation・content-reporting・help-center・inquiry-chat・legal-pages・notifications・product-launch・sponsorship・tournament-year・ugc-moderation・ultras-subscription・media-pipeline、該当箇所は表の行)は、管理者側の`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、`GraphQLClientError`でない例外に代えて出す文言(`ErrorState`・`PartialErrorState`・`AppForm`の`onSubmitError`・トースト)を`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ記述にする
+  - notificationsのrequirements.md・design.mdの件名から、日付を基準にした相対表現(「明日は準決勝」「本日キックオフ」)を除き、判断10の件名の例(「フルタイム: Pitch NotesがTactics Boardに勝利、次は準決勝」「Pitch Notesがキックオフします⚽️応援しましょう！」「フォローしているユーザーの3プロダクトがキックオフします⚽️応援しましょう！」)に合わせる
+  - 改訂した下流specの該当箇所を、この表の「該当箇所」の列から消すか更新する
+  - 完了状態: 表の各行の下流specの該当箇所が確定した契約と食い違わず、infra-deliveryのウィジェットの種類が`invisible`で`HASH_PEPPER`の登録先にclient・adminが含まれ、下流specの件名に日付を基準にした相対表現が無い
+  - _Boundary: 下流specの設計_
+  - _Requirements: 2.10, 2.14, 4.3, 5.7, 6.1, 6.3, 8.1, 8.6, 8.8, 8.13, 10.8, 11.4_
+
+- [ ] 10.5 セッションの有効期間の上限をAPIサーバーも検証することをフロントエンドの文書に書く
+  - 前提: api-gatewayの11.1(`assertIssuable`の400日の上限)が完了していること。完了していなければ止めて報告する
+  - `frontend/003`の「指示の解釈」に、APIサーバーも400日(34,560,000秒)を超える有効期間の発行を拒否し、フロントエンドの検査は契約に反する指示が届いた時の防御であることを書く
+  - 完了状態: `frontend/003`の上限の記述が`MAX_SESSION_MAX_AGE_SECONDS`とapiの上限と一致し、プロジェクト名と固有値を含まない
+  - _Depends: api-gatewayの11.1_
+  - _Boundary: 技術ドキュメント群_
+  - _Requirements: 2.7, 15.3, 15.4_
+
 ## Implementation Notes
 
 - 1.1(1.3・5.9・9.1への申し送り): `test:browser`は設定ファイルが無いとexit 1になるため、プリセット・ブラウザモード・Chromiumだけの最小の`vitest.browser.config.ts`を置いた。成果物の置き場所・共有Chromium(`browserOptionsPreset`・`resolveBrowserLaunchOptions`)・カバレッジの対象の絞り込みは1.3で加える。`@tanstack/react-router` 1.170.41を直接宣言した(`@tanstack/react-start` 1.168.60が完全固定する版と同じ)。`@tanstack/react-router-ssr-query`・`graphql`は未導入。`tsconfig.json`の`include`は`**/*.ts`・`**/*.tsx`で、TypeScriptの`**`はドットで始まるディレクトリに一致しないため、5.9で`.storybook/`を明示する。文書の相違: coding/001(59〜61行・94行)は全アプリの`tsconfig.json`が基底設定を`extends`すると定め、スクリプト契約の`test:browser`を「ブラウザテストを持つアプリ」に限るため、9.1で`coding/003`に加えて`coding/001`にも共通部品の例外を書く。
@@ -434,3 +487,4 @@
 - 9.4(9.6への申し送りと文書の相違): `docs/GUIDES/tech/frontend/007-frontend-observability.md`を新設した。新設したプレースホルダー`<アクセス解析のトークンの変数>`と、既存の`<呼び出し元の種類>`の参照先への007の追加、006の「観測の文書で扱う」からのリンク、索引への追加は9.6で行う。`infra/004`との相違(環境の不備のログのカテゴリがフロントエンドは`[caller,'env']`で`infra/004`は`[<アプリ名>,'http','env']`、アクセスログの`outcome`が`infra/004`の表に無い、収集するヘッダーの扱い)は007に違いとして書き、`infra/004`は変えていない。`SENTRY_TRACE_LIFECYCLE`をWrangler設定に定義しない注意と、`beforeSendSpan`が`null`を返しても例外を投げても元のスパンが除去されずに送られる注意はバックエンドにも当てはまるが`infra/004`に無い。`__SENTRY_DEBUG__`を置き換えていないため、逐次送信の形が合わないとき通常のバンドルでも初期化時に警告が出る
 - 9.5(9.6への申し送りと判断待ち): `docs/GUIDES/service/features/003-internationalization.md`を新設し、service/design/001〜003を実装に合わせた(文言は定数との照合スクリプトで全件一致)。画面の相対表現は残りの時間と経過した時間だけで暦の「明日」を出さないため、デザイン原則の用語の表の例を時間による表現に直した。日付だけの値(ローンチ日・週)は換算せず基準時刻の暦のまま扱い、共通の`DateTime`には渡さない。判断待ち: 通知メール件名「明日は準決勝」とメールのUTC表記の読み違いの可能性、ダークの`--destructive`の実装(`oklch(0.64 0.2 25)`)とデザイン案(`oklch(0.6 0.2 25)`)の相違、管理者側の想定外のエラーの画面の案内文(admin-foundationで見直す)。索引(`features/README.md`・`service/README.md`)への追加は9.6で行う
 - 9.6(開発者の確認待ち): 8.1(h)の見直しとして、オンボーディングのクイックスタートのAIエージェントの規則を「手順1〜11は実行しない。手順12〜14は動作確認のために実行してよく、起動したプロセスは止める」に変えた。新しい作業ツリーでは依存の導入→共有ディレクトリの配置→両アプリのビルド→カタログのビルド→利用者側の開発サーバーの起動までを確かめ、APIを起動した状態の疎通確認とスモークテストは現在の作業ツリーで確かめた。`project-values.md`の「記載している見出し」の列には、本spec以前からの漏れと`<呼び出し元の種類>`(007の一部の節)・`<IP制限のバインディング名>`(frontend/003の前提と用語)の漏れが残る
+- 2026-10-28(開発者の判断、10.1〜10.5の起点): 要件2.10にJSONでない5xxを503`upstream_unavailable`にする例外を加え、要件10.4を利用者側に限って管理者側を10.8とし、Turnstileのウィジェットを非表示(ローカルのサイトキー`1x00000000000000000000BB`)にし、apiの`assertIssuable`にも400日の上限を加え(api-gatewayの11.1、本specの文書は10.5)、全WorkerのIP制限のキーを`HASH_PEPPER`のHMACでハッシュ化し(backend-platformの11.1・本specの10.1、要件5.7)、管理者側では画面内の想定外のエラーの表示・`ErrorState`・`GraphQLClientError`でない例外の文言・静的な500の画面のどれにも問い合わせの導線と問い合わせを促す文を出さないとし(判断9とその追加、要件8.6・8.13・11.10)、通知メールの件名から日付を基準にした相対表現を除き、下流specの設計(infra-deliveryのウィジェットの種類と`HASH_PEPPER`の登録先を含む)を確定した契約へ合わせ(10.4)、client・adminに`cf-typegen`を足さないと決めた。1ページの呼び出し回数の目安3回以内・オンボーディングのAIエージェントの緩めた規則・CLAUDE.mdの参照先の3つは現状のまま確定した。staging・prodのTurnstileのサイトキーとアクセス解析のトークンの仮の値はinfra-deliveryの担当として残す。設計は「決定事項」に記した。

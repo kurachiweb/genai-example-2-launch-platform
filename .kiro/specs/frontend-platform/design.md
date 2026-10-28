@@ -6,7 +6,7 @@
 
 **Users**: 画面を持つ後続specの開発者とAIエージェントは、ルートのファイルとGraphQLの操作(`src/graphql/operations/`の`.graphql`ファイル)を追加し、登録箇所(レイアウトの区画・CSPの許可先・中継の経路)へ追記するだけで画面を載せる。identity-auth・admin-foundationはヘッダーとメニューの区画を差し込み、media-pipelineは中継の経路を追加し、演出を持つspecは停止の手段を用意する。infra-deliveryは本specのWrangler設定とコード生成の検査・スモークテストをCIで使う。
 
-**Impact**: 空の`apps/client`・`apps/admin`・`apps/frontend-lib`に骨格を作る。ルートの`e2e/`にスモークテストを加え、`docs/GUIDES/tech`の`frontend`・`coding`、`docs/GUIDES/service`の`features`・`design`、`docs/onboardings`、CLAUDE.mdを更新する。上流のapi・event・backend-libのコードは変えない。
+**Impact**: 空の`apps/client`・`apps/admin`・`apps/frontend-lib`に骨格を作る。ルートの`e2e/`にスモークテストを加え、`docs/GUIDES/tech`の`frontend`・`coding`、`docs/GUIDES/service`の`features`・`design`、`docs/onboardings`、CLAUDE.mdを更新する。上流のapi・event・backend-libのコードは本specでは変えない(Worker単位のIP制限のキーのハッシュ化はbackend-platform、セッションの有効期間の上限の検証はapi-gatewayの追加タスクが変える)。
 
 ### Goals
 
@@ -46,12 +46,12 @@
 - `/_bff/`の下のGraphQL以外の中継の経路の中身(media-pipeline)、決済などのCSP・Permissions-Policyの許可先(各spec)。
 - 5秒を超えて自動で動き続ける演出の停止手段(演出を持つspec)。
 - 通貨の表示形式(payments)、トップページ・ディレクトリ・ヘルプなどのページの中身(各spec)。
-- Cloudflareのリソース(カスタムドメイン・Web Analyticsのサイト・Turnstileのウィジェット)、staging・prodの変数の実値、CIのワークフロー、デプロイの順序(infra-delivery)。Sentryのプロジェクトと値、FCPとアクセシビリティの全体の検証(launch-readiness)。
+- Cloudflareのリソース(カスタムドメイン・Web Analyticsのサイト・非表示の種類のTurnstileのウィジェット)、staging・prodの変数の実値、CIのワークフロー、デプロイの順序(infra-delivery)。Sentryのプロジェクトと値、FCPとアクセシビリティの全体の検証(launch-readiness)。
 
 ### Allowed Dependencies
 
 - 上流(api-gateway): `ClientGateway`・`AdminGateway`、中継の項目(`x-original-client-ip`・`x-session-token`・`cf-turnstile-response`)と指示の項目(`x-session-issue`・`x-session-max-age`・`x-session-clear`)、`SESSION_TOKEN_PATTERN`の形式(43文字のbase64url)、`POST /graphql`の`{ documentId, operationName?, variables? }`、エラーコードと状態コードの規則、スキーマファイル`apps/api/src/presentation/graphql/generated/schema.graphql`、操作の一覧の場所。形を変えずに使う。
-- 上流(backend-platform): Worker単位のIP制限の規約表、共通のエラー形式`{ error: { code, message, details? } }`と`FieldErrorDetail`、ログの形式とカテゴリの規約、Sentryのトレースの割合の値、リソースの名前の規約。コードは読み込まず、値と形をそろえる。
+- 上流(backend-platform): Worker単位のIP制限の規約表とキーのハッシュ化の方式(`hashRateLimitKey`、用途`rate-limit-key`、ペッパー`HASH_PEPPER`)、共通のエラー形式`{ error: { code, message, details? } }`と`FieldErrorDetail`、ログの形式とカテゴリの規約、Sentryのトレースの割合の値、リソースの名前の規約。コードは読み込まず、値と形をそろえる。
 - 上流(dev-tooling): 基底設定、`browserTestPreset`・`browserOptionsPreset`・`resolveBrowserLaunchOptions`、テストの命名と生成コードの命名、スクリプト契約、共有ディレクトリの配置、E2Eの設定と対象の定義。
 - npmパッケージ: Technology Stackの表に挙げた版に限る。
 - `apps/frontend-lib/server/**`・`utilities/**`は`cloudflare:*`・`@tanstack/*`・`react`・`react-dom`・`@sentry/cloudflare`・`@sentry/tanstackstart-react`の実行時の値を読み込まない。`apps/frontend-lib/components/**`は`server/**`の実行時の値と`*.server.ts`を読み込まない。
@@ -70,21 +70,26 @@
 - ルートの失敗の送信の仕組み(`installRouteErrorReporting`が`loader`・`beforeLoad`を持つ全ルートの`onError`を補う、`reportRenderError(router, error)`)(後続の全画面spec)。
 - 演出の停止手段の義務: 本specはアニメーション演出の切替UIを持たず、OSの「視差効果を減らす」設定に従う基本のスタイルだけを提供する。5秒を超えて自動で動き続ける演出・点滅・自動スクロールを含む区画を追加するspec(match-engineなど)は、WCAG 2.2の達成基準2.2.2に従い、その区画の近くに利用者が一時停止・停止・非表示にできる手段を用意する。この規約(`frontend/004`)を変える場合、または本specが切替UIを加える場合は、演出を持つspecを再確認する。
 - 疎通確認の画面の経路と公開する環境(launch-readiness・infra-delivery)。
-- 両アプリの変数名・バインディング名・Worker名・`namespace_id`(infra-delivery)。
+- 両アプリの変数名・バインディング名・Worker名・`namespace_id`・シークレットのキー(`HASH_PEPPER`・`SENTRY_DSN`)(infra-delivery)。
+- IP制限のキーのハッシュ化の方式: backend-platformの`hashRateLimitKey`(用途`rate-limit-key`)と同じ値を作る規則と、Infisicalの環境ごとに1つの`HASH_PEPPER`を全アプリで共有すること。backend-platformが方式を変えた場合は`server/http/rate-limit-key-hash.ts`を合わせる(backend-platform・infra-delivery)。
+- `TurnstileWidget`を非表示(`size: 'invisible'`)で描くこと、アプリごとのサイトキーが非表示の種類のウィジェットであること(ウィジェットを置く全spec・infra-delivery)。
+- `UnexpectedErrorView`・`ErrorState`の案内文と`contactHref`の関係(`RETRY_LATER_GUIDANCE`・`CONTACT_GUIDANCE`)、`errorMessageOf`とプロファイルの`contactAvailable`(管理者側に画面を置く全spec)。
 
 #### 実装で確定した契約による発火と影響を受ける下流spec
 
 実装で確定した契約のうち、次の行は上のトリガーに当たり、下流specの設計の記述と食い違う。下流specは自身の設計を改訂する時にこの表の契約へ合わせる。「該当箇所」は2026-10-28時点の各specのファイルと行である。
 
-| 発火したトリガー                    | 確定した契約                                                                                                                                                                                                                                                      | 影響を受ける下流spec(該当箇所)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 操作の置き場所と生成物              | 操作とフラグメントは`src/graphql/operations/**/*.graphql`に書き、`graphql()`を呼ばない。操作名はアプリの接頭辞(`Client`・`Admin`)で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない(「操作の追加手順」) | 操作を`.ts`のファイルに置く: data-export(`design.md:263`)・identity-auth(`design.md:2713`)・notifications(`design.md:299`)・public-api(`design.md:237`)・product-launch(`design.md:325`)・content-reporting(`design.md:264`)・help-center(`design.md:253`)・ultras-subscription(`design.md:260`)・sponsorship(`design.md:296`)・legal-pages(`design.md:176`・`design.md:191`)・tournament-week(`design.md:1424`・`design.md:1425`・`tasks.md:277`・`research.md:201`)・tournament-year(`design.md:50`・`design.md:89`・`design.md:283`・`research.md:211`)。ディレクトリだけを示す(ファイルの形式と操作名の接頭辞を確かめる): inquiry-chat(`design.md:261`・`design.md:277`)・notifications(`design.md:292`)・user-profile-social(`design.md:286`)・product-launch(`design.md:318`)・identity-auth(`design.md:390`)・admin-foundation(`design.md:277`)・directory-discovery(`design.md:267`)・content-reporting(`design.md:280`)・match-engine(`design.md:290`)・tournament-year(`design.md:273`)・help-center(`design.md:272`)・ultras-subscription(`design.md:251`)・payments(`design.md:278`)・tournament-week(`design.md:298`)・engagement(`design.md:241`)・ugc-moderation(`design.md:285`)・sponsorship(`design.md:283`) |
-| Zodの値の読み込み元                 | 共通部品とアプリのファイルは`zod`の値を`utilities/validation/zod.ts`(`z.config({ jitless: true })`の後の`z`)からだけ読む。型だけの読み込みと`@hookform/resolvers/zod`は可                                                                                         | フォームの検証規則を画面側に持つ: public-api(`design.md:246`)・user-profile-social(`design.md:280`)・help-center(`design.md:264`)・product-launch(`design.md:303`)・engagement(`design.md:224`)。画面のバンドルに入る共有ディレクトリが`zod`を直接読む: content-processing(`design.md:186`・`design.md:226`・`design.md:567`・`design.md:789`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| フォーム部品の形                    | `useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)、`AppForm`は必須の`onSubmitError`と任意の`serverFieldPrefix`を受ける                                                                                                              | user-profile-social(`design.md:1244`)・notifications(`design.md:1696`)・content-reporting(`design.md:1390`)・product-launch(`design.md:2022`)・help-center(`design.md:1270`)・legal-pages(`design.md:780`)・engagement(`design.md:1103`)・public-api(`design.md:56`)・identity-auth(`design.md:698`)・admin-foundation(`design.md:64`)・inquiry-chat(`design.md:61`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `RelayRoute`の形と中継の応答        | 経路は`defineRelayRoute`で定義して凍結する(素のオブジェクトは検査を通らない)。上流の5xxでJSONでない応答は503`upstream_unavailable`になる                                                                                                                          | media-pipeline(`design.md:1744`・`design.md:1746`・`design.md:1747`)・data-export(`design.md:1032`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `SecurityPolicySources`と環境のキー | `runtimeSecurityPolicySources`は`IMAGES_ORIGIN`・`SENTRY_DSN`だけを読み、エントリは許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)で不正な値のキー名をログへ出す                                                                | public-api(`design.md:271`・`design.md:1136`、`PUBLIC_API_ORIGIN`を`connectSrc`へ加えると対応が1欄1キーで足りない)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| bot判定のウィジェット               | `TurnstileWidget`は`size`を指定せず幅300pxの固定のウィジェットを描く。表示の形式はサイトキーのウィジェットの種類で決まり、アプリごとにサイトキーは1つ(「未決事項」)                                                                                               | match-engine(`design.md:1513`、ウィジェットを不可視で置く前提)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| 管理者側の画面シェル                | `AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ち、フッターを持たない(「未決事項」)                                                                                                                                                                     | admin-foundation(`design.md:90`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 発火したトリガー                                                 | 確定した契約                                                                                                                                                                                                                                                                                                           | 影響を受ける下流spec(該当箇所)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 操作の置き場所と生成物                                           | 操作とフラグメントは`src/graphql/operations/**/*.graphql`に書き、`graphql()`を呼ばない。操作名はアプリの接頭辞(`Client`・`Admin`)で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない(「操作の追加手順」)                                                      | 操作を`.ts`のファイルに置く: data-export(`design.md:263`)・identity-auth(`design.md:2713`)・notifications(`design.md:299`)・public-api(`design.md:237`)・product-launch(`design.md:325`)・content-reporting(`design.md:264`)・help-center(`design.md:253`)・ultras-subscription(`design.md:260`)・sponsorship(`design.md:296`)・legal-pages(`design.md:176`・`design.md:191`)・tournament-week(`design.md:1424`・`design.md:1425`・`tasks.md:277`・`research.md:201`)・tournament-year(`design.md:50`・`design.md:89`・`design.md:283`・`research.md:211`)。ディレクトリだけを示す(ファイルの形式と操作名の接頭辞を確かめる): inquiry-chat(`design.md:261`・`design.md:277`)・notifications(`design.md:292`)・user-profile-social(`design.md:286`)・product-launch(`design.md:318`)・identity-auth(`design.md:390`)・admin-foundation(`design.md:277`)・directory-discovery(`design.md:267`)・content-reporting(`design.md:280`)・match-engine(`design.md:290`)・tournament-year(`design.md:273`)・help-center(`design.md:272`)・ultras-subscription(`design.md:251`)・payments(`design.md:278`)・tournament-week(`design.md:298`)・engagement(`design.md:241`)・ugc-moderation(`design.md:285`)・sponsorship(`design.md:283`) |
+| Zodの値の読み込み元                                              | 共通部品とアプリのファイルは`zod`の値を`utilities/validation/zod.ts`(`z.config({ jitless: true })`の後の`z`)からだけ読む。型だけの読み込みと`@hookform/resolvers/zod`は可                                                                                                                                              | フォームの検証規則を画面側に持つ: public-api(`design.md:246`)・user-profile-social(`design.md:280`)・help-center(`design.md:264`)・product-launch(`design.md:303`)・engagement(`design.md:224`)。画面のバンドルに入る共有ディレクトリが`zod`を直接読む: content-processing(`design.md:186`・`design.md:226`・`design.md:567`・`design.md:789`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| フォーム部品の形                                                 | `useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)、`AppForm`は必須の`onSubmitError`と任意の`serverFieldPrefix`を受ける                                                                                                                                                                   | user-profile-social(`design.md:1244`)・notifications(`design.md:1696`)・content-reporting(`design.md:1390`)・product-launch(`design.md:2022`)・help-center(`design.md:1270`)・legal-pages(`design.md:780`)・engagement(`design.md:1103`)・public-api(`design.md:56`)・identity-auth(`design.md:698`)・admin-foundation(`design.md:64`)・inquiry-chat(`design.md:61`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `RelayRoute`の形と中継の応答                                     | 経路は`defineRelayRoute`で定義して凍結する(素のオブジェクトは検査を通らない)。上流の5xxでJSONでない応答は503`upstream_unavailable`になる                                                                                                                                                                               | media-pipeline(`design.md:1744`・`design.md:1746`・`design.md:1747`)・data-export(`design.md:1032`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `SecurityPolicySources`と環境のキー                              | `runtimeSecurityPolicySources`は`IMAGES_ORIGIN`・`SENTRY_DSN`だけを読み、エントリは許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)で不正な値のキー名をログへ出す                                                                                                                     | public-api(`design.md:271`・`design.md:1136`、`PUBLIC_API_ORIGIN`を`connectSrc`へ加えると対応が1欄1キーで足りない)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| bot判定のウィジェット                                            | `TurnstileWidget`は`options.size: 'invisible'`で非表示のウィジェットを描き、画面に枠を出さず場所を取らない。アプリごとにサイトキーは1つで、Cloudflare側のウィジェットの種類も非表示にする(「決定事項」)                                                                                                                | match-engine(`design.md:1513`、ウィジェットを不可視で置く前提と合う)。ウィジェットを置くspec(identity-auth・inquiry-chat・content-reporting・engagement・sponsorship・user-profile-social・product-launch・directory-discovery・admin-foundation)は、ウィジェットの表示の枠と場所を画面に設けない。infra-delivery(`design.md:587`の`mode: 'managed'`・`design.md:687`・`design.md:694`・`design.md:1502`の`mode = "managed"`)は、ウィジェットの種類を`invisible`にする                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 管理者側の画面シェル                                             | `AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ち、フッターを持たない。ナビゲーションのランドマークは`navigation`の区画の部品が描く`nav`で満たす(要件10.8、「決定事項」)                                                                                                                                     | admin-foundation(`design.md:90`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 両アプリの変数名・シークレットのキー                             | client・adminも`HASH_PEPPER`を`secrets.required`(3環境)で必須にし、Infisicalの環境ごとに1つの値をapi・event・client・adminが共有する。IP制限のキーは`HASH_PEPPER`のHMACでハッシュ化する(「決定事項」)                                                                                                                  | infra-delivery(`design.md:1517`・`design.md:1555`、stagingの`HASH_PEPPER`の登録先をapi・eventに限る): 登録先にclient・adminを加える                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `UnexpectedErrorView`・`ErrorState`の案内文と`contactHref`の関係 | `ErrorState`の`contactHref`は任意で、管理者側は渡さない。`GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`・`AppForm`の`onSubmitError`・トースト)は`errorMessageOf(error, profile.contactAvailable)`で選び、管理者側では問い合わせを促す文を出さない(要件8.6・8.13、「決定事項」) | `apps/admin/src`の`routes`・`components`・`composition/admin-*`にファイルを加える設計のspec: admin-foundation(`design.md:246`・`design.md:255`)・content-reporting(`design.md:265`・`design.md:305`)・help-center(`design.md:254`・`design.md:289`)・inquiry-chat(`design.md:263`・`design.md:297`・`design.md:1215`・`design.md:1234`)・legal-pages(`design.md:177`・`design.md:205`・`design.md:785`)・notifications(`design.md:295`・`design.md:322`・`design.md:1692`〜`design.md:1696`)・product-launch(`design.md:323`・`design.md:345`)・sponsorship(`design.md:289`・`design.md:318`)・tournament-year(`design.md:277`・`design.md:304`)・ugc-moderation(`design.md:258`・`design.md:309`)・ultras-subscription(`design.md:255`・`design.md:274`)・media-pipeline(`design.md:331`、`routes/__root.tsx`の変更だけで失敗の表示を置かないことを確かめる)。管理者側の`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、失敗の文言を`errorMessageOf`で選ぶ                                                                                                                                                                                                                                                        |
 
 - `FrontendRequestContext`・`ThemeToggle`・`UnexpectedErrorView`・`reportRenderError`・`installRouteErrorReporting`を直接使う下流specは無い。payments(`design.md:297`)の`CLIENT_SECURITY_POLICY`の追記とugc-moderation(`design.md:1372`)の`img-src 'self'`の前提は、確定した契約と合う。
 
@@ -182,7 +187,7 @@ graph TB
 - `@sentry/cloudflare`・`@sentry/tanstackstart-react` 11.4.0は`sendDefaultPii`を持たない。個人情報を既定で集めないことは`dataCollection`(`SENTRY_DATA_COLLECTION`)で指定する。
 - `@storybook/addon-a11y`は自身の`axe-core`(4.14.0)を使い、ブラウザテストの`axe-core` 4.13.0と版が異なる。
 - `@cloudflare/vite-plugin`・`wrangler`・`@cloudflare/vitest-pool-workers`は同じ`wrangler`の版の組で一括して更新する規則を`coding/002`に加える。
-- `wrangler types`は使わない。環境はZodで検証し、バインディングは共通部品の構造的な型(`ServiceFetcher`・`RateLimiter`)で扱う。DOMの型とWorkersの実行時の型の衝突を避けるためである。
+- `wrangler types`は使わず、client・adminに型生成のスクリプト(`cf-typegen`・`cf-typegen:check`)を置かない。環境の型は共通部品のZodのスキーマ(`validateFrontendEnv`の`ValidatedFrontendEnv`)から作り、バインディングは共通部品の構造的な型(`ServiceFetcher`・`RateLimiter`)で扱う。Wrangler設定とスキーマの食い違い(変数・シークレット・バインディングの欠落)は、各アプリの`wrangler-config.unit.test.ts`が3環境の実効値を`validateFrontendEnv`に通して検出する。生成した型を読み込むとDOMの型とWorkersの実行時の型が衝突するためでもある。この理由を`frontend/002`に書く。
 
 ## File Structure Plan
 
@@ -223,7 +228,7 @@ apps/
 │   │   ├── number/number-format.ts                 # ロケールに従う数値の整形
 │   │   ├── theme/theme-preference.ts               # 保存キー・読み書き(ThemeRoot)・初回描画前のスクリプトの文字列
 │   │   ├── forms/server-field-errors.ts            # FieldErrorDetailとフォームの欄の対応付け(ServerFieldErrorTarget)
-│   │   ├── messages/state-messages.ts              # 404・想定外のエラー・利用不可・読み込み中・再試行・お問い合わせの文言(UNEXPECTED_ERROR_MESSAGEを含む)
+│   │   ├── messages/state-messages.ts              # 404・想定外のエラー・利用不可・読み込み中・再試行・お問い合わせの文言(UNEXPECTED_ERROR_MESSAGE・UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT・RETRY_LATER_GUIDANCE・CONTACT_GUIDANCEを含む)
 │   │   ├── messages/app-shell-messages.ts          # 「本文へ移動」・配色の切替ボタンの名前
 │   │   ├── messages/bot-protection-messages.ts     # BOT_CHECK_FAILED_MESSAGE
 │   │   ├── messages/system-status-messages.ts      # 疎通確認の画面の文言
@@ -239,12 +244,13 @@ apps/
 │   │   ├── env/frontend-env.ts                     # 環境の検証・PublicRuntimeConfig
 │   │   ├── http/client-ip.ts                       # CF-Connecting-IPの解釈
 │   │   ├── http/page-request.ts                    # ページの要求・サーバー関数の呼び出しの判定
-│   │   ├── http/ip-rate-limit.ts                   # キーの組み立てと判定
+│   │   ├── http/ip-rate-limit.ts                   # キーの組み立て・ハッシュ化したキーでの判定
+│   │   ├── http/rate-limit-key-hash.ts             # (新規、10.1)hashRateLimitKey: backend-libのcore/rate-limit/rate-limit-key.tsと同じ値を作るHMAC-SHA512
 │   │   ├── http/csrf.ts                            # CSRFの判定
 │   │   ├── http/nonce.ts                           # 推測できないnonceの生成
 │   │   ├── http/security-policy.ts                 # SecurityPolicySources・合成・CSP・Permissions-Policyの組み立て
 │   │   ├── http/security-headers.ts                # 付与する値と付与・検索除外・no-store
-│   │   ├── http/error-responses.ts                 # 共通のエラー形式と静的なエラー画面(ERROR_MESSAGES)
+│   │   ├── http/error-responses.ts                 # 共通のエラー形式と静的なエラー画面(ERROR_MESSAGES、500の文言はcontactAvailableで選ぶ)
 │   │   ├── relay/relay-contract.ts                 # api-gatewayの契約の値(項目名・識別子の形式・有効期間の上限・GRAPHQL_RELAY_PATH・GRAPHQL_UPSTREAM_PATH)
 │   │   ├── relay/relay-headers.ts                  # RelayContext・中継の項目の組み立て(許可した項目だけ)
 │   │   ├── relay/session-cookie.ts                 # Cookieの読み取り・指示の解釈・Set-Cookieの組み立てと合成
@@ -350,7 +356,8 @@ docs/
 
 ### Modified Files
 
-- `docs/GUIDES/tech/frontend/002-tanstack-start-on-workers.md`・`README.md`: 独自のサーバーのエントリ、`*.server.ts`と`createIsomorphicFn`、別プロセスのWorkerへのService Bindings、`CLOUDFLARE_ENV`のビルド時の指定、プレビューの手順を追記する。索引に`003`〜`007`を加える。
+- `docs/GUIDES/tech/frontend/002-tanstack-start-on-workers.md`・`README.md`: 独自のサーバーのエントリ、`*.server.ts`と`createIsomorphicFn`、別プロセスのWorkerへのService Bindings、`CLOUDFLARE_ENV`のビルド時の指定、プレビューの手順、型生成のスクリプトを置かない理由(Technology Stack)を追記する。索引に`003`〜`007`を加える。
+- `docs/GUIDES/tech/frontend/003-frontend-server-security.md`: Worker単位のIP制限の適用の節に、キーを`HASH_PEPPER`でハッシュ化してから数えることと、backend-platformの`hashRateLimitKey`と同じ値になることを書く。「指示の解釈」に、APIサーバーも400日を超える有効期間の発行を拒否することを書く。
 - `docs/GUIDES/tech/coding/002-dependency-versions.md`: `@cloudflare/vite-plugin`と`wrangler`・`@cloudflare/vitest-pool-workers`の版の組、client・admin・frontend-libで版をそろえるパッケージ、`graphql`・`@graphql-codegen/cli`をapiとそろえることを追記する。
 - `docs/GUIDES/tech/coding/003-shared-directories.md`・`001-javascript-typescript-conventions.md`: 検査担当が`self`の共有ディレクトリの`tsconfig.json`は`extends`を持たない自己完結にする理由と検証の結果を、「注意」の節に追記する。配置先の`lib/`を型検査に含めつつ除くファイル(`lib/*.ts`・`lib/**/*.stories.tsx`・`lib/**/*.test.ts(x)`)を書く。
 - `docs/GUIDES/tech/testing/001-test-strategy.md`: E2Eの共用の補助(`security-assertions.ts`・`system-status-page.ts`)と、Bunの単体テストが他アプリのソースを分母に数える注意を加える。
@@ -358,12 +365,16 @@ docs/
 - `docs/GUIDES/tech/coding/README.md`・`frontend/README.md`: 文書一覧へ追記する。
 - `docs/GUIDES/service/design/001-design-principles.md`: 「日時・数値の表示」の述語の欠けた箇条を「時刻の定義と日付の境界は原則として基準時刻(UTC-08:00)とする」に直し、国際化方針へのリンクを加える。相対表現の例は残りの時間と経過した時間の表現にする(画面は暦の「明日」を出さない)。
 - `docs/GUIDES/service/design/002-page-layouts.md`: 「共通レイアウト(利用者側)」のヘッダーの項目にダークモードの切替ボタンを加える。管理者側の基本レイアウトの項目を加える。
-- `docs/GUIDES/service/design/003-text-and-copy-rules.md`: `utilities/messages/*.ts`・`ERROR_MESSAGES`・`GraphQLClientError`の`network_error`・`invalid_response`の文言など、本specの部品が出す固定の文言を加える。
+- `docs/GUIDES/service/design/003-text-and-copy-rules.md`: `utilities/messages/*.ts`・`ERROR_MESSAGES`・`GraphQLClientError`の`network_error`・`invalid_response`の文言など、本specの部品が出す固定の文言を加える。想定外のエラーの案内文は、問い合わせの導線がある画面とない画面(管理者側)の2通りを書く。通知メールの件名の例は、日付を基準にした相対表現(「明日」「本日」)を使わない文言にする(例:「フルタイム: Pitch NotesがTactics Boardに勝利、次は準決勝」「Pitch Notesがキックオフします⚽️応援しましょう！」)。
+- `docs/GUIDES/service/features/003-internationalization.md`: メールの日時の節に、件名で日付を基準にした相対表現を使わないことを書く。
+- `docs/GUIDES/tech/frontend/005-shared-components.md`: bot判定のウィジェットは非表示で描き、表示の枠と場所を画面に設けないことを書く。`ErrorState`の`contactHref`を省略可にし、`AppForm`の`onSubmitError`とトーストで失敗を出す時も`errorMessageOf`で文言を選ぶことを書く。
+- `docs/GUIDES/tech/frontend/006-data-fetching.md`: `GraphQLClientError`でない例外の文言を、`ErrorState`・`PartialErrorState`・`AppForm`の`onSubmitError`・トーストのどれでも`errorMessageOf`とプロファイルの`contactAvailable`で選ぶことを書く。
+- `docs/GUIDES/tech/backend/003-rate-limiting-and-bot-verification.md`: 「テスト用の鍵」の表に、常に成功し表示しないサイトキー`1x00000000000000000000BB`の行を加える(テスト用の鍵の一覧の水平展開)。
 - `docs/GUIDES/service/design/001-design-principles.md`: ダーク配色の`--destructive`(`oklch(0.64 0.2 25)`)をデザイン案(`oklch(0.6 0.2 25)`)より明るくした理由(コントラスト比AA)を書く。
 - `docs/GUIDES/service/features/README.md`: 国際化方針を索引に加える。
 - `docs/onboardings/tech-stack.md`: 本specで新しく導入したパッケージを、導入した実装タスクの中で追記する(15.7)。
-- `docs/onboardings/project-values.md`: 「Supporting References」の固有値(Worker名・`namespace_id`・Cookieの名前・経路・変数の値・CSPの許可先)を記載する。
-- `docs/onboardings/README.md`: 起動の順序(API→client・admin)、コード生成と許可リストの再生成、プレビュー、Storybook、スモークテストの手順と、client・adminのインスペクターのポート(9231・9232)を更新する。
+- `docs/onboardings/project-values.md`: 「Supporting References」の固有値(Worker名・`namespace_id`・Cookieの名前・経路・変数の値・CSPの許可先)を記載する。`HASH_PEPPER`を使うアプリにclient・adminを加え、ローカルの`TURNSTILE_SITE_KEY`を非表示のテスト用のサイトキーにする。
+- `docs/onboardings/README.md`: 起動の順序(API→client・admin)、コード生成と許可リストの再生成、プレビュー、Storybook、スモークテストの手順と、client・adminのインスペクターのポート(9231・9232)を更新する。client・adminもInfisicalの`dev`の`HASH_PEPPER`(api・eventと同じ値)を必要とすることを書く。
 - `CLAUDE.md`: 「技術規則の参照先」に、画面・中継・CSPの登録・データ取得・アクセシビリティの文書を追記し、ディレクトリ構成の`frontend-lib`に`server`・`start`・`styles`・`config`を、`e2e/support/`の説明に`security-assertions.ts`・`system-status-page.ts`を加える。
 
 ## System Flows
@@ -451,147 +462,150 @@ sequenceDiagram
 
 ## Requirements Traceability
 
-| Requirement | Summary                              | Components                                                                                    | Interfaces                                                               | Flows       |
-| ----------- | ------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------- |
-| 1.1         | 開発サーバーとプレビューで動く       | AppBuildConfig、FrontendServerEntry                                                           | `vite.config.ts`・`wrangler.jsonc`                                       | 1要求の処理 |
-| 1.2         | 3環境の設定とビルド時の選択          | AppBuildConfig                                                                                | `env.staging`・`env.prod`・`CLOUDFLARE_ENV`                              | —           |
-| 1.3         | 共通のローカル状態・別プロセスのAPI  | AppBuildConfig                                                                                | `persistState`・`services`                                               | —           |
-| 1.4         | 設定の不備で500と名前のログ          | FrontendEnv、FrontendServerEntry、ErrorResponses、FrontendLogging                             | `validateFrontendEnv`                                                    | 1要求の処理 |
-| 1.5         | グローバルスコープで初期化しない     | FrontendServerEntry、RouterFactory                                                            | `createFrontendServerEntry`                                              | —           |
-| 1.6         | 同じ仕組みと違いの限定               | FrontendServerEntry、AppProfile                                                               | `FrontendAppProfile`                                                     | —           |
-| 1.7         | 消えたスクリプトで1回再読み込み      | PreloadRecovery                                                                               | `installPreloadRecovery`                                                 | —           |
-| 2.1         | 中継の経路から内部経路へ             | RelayCore、AppBuildConfig                                                                     | `GRAPHQL_RELAY_ROUTE`・`relayToApi`                                      | 描画と中継  |
-| 2.2         | 描画中のGraphQLも同じ引き継ぎ        | GraphqlExecutor、RelayCore                                                                    | `executeGraphQL`・`buildRelayHeaders`                                    | 描画と中継  |
-| 2.3         | 元のクライアントIPアドレス           | RelayCore、ClientIp                                                                           | `buildRelayHeaders`・`resolveClientIp`                                   | 描画と中継  |
-| 2.4         | セッションのCookieの引き継ぎ         | RelayCore                                                                                     | `readSessionToken`                                                       | 描画と中継  |
-| 2.5         | bot判定のトークンの引き継ぎ          | RelayCore、TurnstileWidget                                                                    | `buildRelayHeaders`・`ExecuteOptions.turnstileToken`                     | 描画と中継  |
-| 2.6         | 許可した項目だけ引き継ぐ             | RelayCore                                                                                     | `FORWARDED_BROWSER_HEADERS`                                              | —           |
-| 2.7         | Cookieの発行と指示の除去             | RelayCore、GraphqlExecutor、StartOptions                                                      | `readSessionInstruction`・`toBrowserResponse`                            | 描画と中継  |
-| 2.8         | Cookieの削除                         | RelayCore、GraphqlExecutor、StartOptions                                                      | 同上                                                                     | 描画と中継  |
-| 2.9         | 利用者側と管理者側で別のCookie       | AppProfile                                                                                    | `sessionCookieName`                                                      | —           |
-| 2.10        | 状態コード・本文・Retry-Afterを保つ  | RelayCore                                                                                     | `toBrowserResponse`(上流のJSONでない5xxは503、「未決事項」)              | —           |
-| 2.11        | 到達不能・15秒で503                  | RelayCore、ErrorResponses                                                                     | `relayToApi`・`UPSTREAM_RETRY_AFTER_SECONDS`                             | —           |
-| 2.12        | メソッド・形式の不一致で405・415     | RelayCore                                                                                     | `RelayRoute.methods`・`acceptContentTypes`                               | —           |
-| 2.13        | 秘密の値をログ等に含めない           | FrontendLogging、SentryScrub、RelayCore                                                       | `REDACTED_FIELD_PATTERNS`・`scrubSentryEvent`                            | —           |
-| 2.14        | 中継の経路の追加規約                 | RelayCore、AppComposition                                                                     | `defineRelayRoute`・`RELAY_ROUTES`                                       | —           |
-| 3.1         | Sec-Fetch-SiteとOriginの検証         | CsrfGuard                                                                                     | `verifyCsrf`                                                             | 1要求の処理 |
-| 3.2         | 失敗で403                            | CsrfGuard、FrontendServerEntry、ErrorResponses                                                | `errorEnvelopeResponse`                                                  | 1要求の処理 |
-| 3.3         | 全経路の状態変更に適用               | FrontendServerEntry、StartOptions                                                             | `requiresCsrfCheck`                                                      | 1要求の処理 |
-| 3.4         | Refererで代わりに判定しない          | CsrfGuard、StartOptions                                                                       | `verifyCsrf`・`createCsrfMiddleware({ referer: false })`                 | —           |
-| 3.5         | サーバー関数はメソッドを問わない     | CsrfGuard、StartOptions                                                                       | `requiresCsrfCheck`                                                      | —           |
-| 3.6         | 拒否の理由をログへ                   | FrontendServerEntry、FrontendLogging                                                          | `CsrfVerdict.reason`                                                     | —           |
-| 4.1         | 要求ごとのnonce                      | Nonce、SecurityPolicy、RouterFactory                                                          | `generateNonce`・`ssr.nonce`                                             | 1要求の処理 |
-| 4.2         | 許可先の個別の列挙                   | SecurityPolicy、AppComposition                                                                | `BASE_SECURITY_POLICY_SOURCES`・`runtimeSecurityPolicySources`           | —           |
-| 4.3         | 許可先の登録規約                     | SecurityPolicy、AppComposition                                                                | `SecurityPolicySources`・`CLIENT_SECURITY_POLICY`                        | —           |
-| 4.4         | 全応答のセキュリティヘッダー         | SecurityHeaders、StaticHeaders                                                                | `applySecurityHeaders`・`public/_headers`                                | 1要求の処理 |
-| 4.5         | Workerの応答にno-store               | SecurityHeaders                                                                               | `applySecurityHeaders`                                                   | 1要求の処理 |
-| 4.6         | 静的なファイルの長期キャッシュ       | StaticHeaders                                                                                 | `public/_headers`                                                        | —           |
-| 4.7         | staging・管理者側の検索除外          | SecurityHeaders、AppProfile、PageHead                                                         | `X-Robots-Tag`・`robots`のmeta                                           | —           |
-| 4.8         | 生のHTMLの挿入の禁止                 | FrontendLintConfig                                                                            | `createFrontendLintConfig`                                               | —           |
-| 5.1〜5.6    | Worker単位のIP制限                   | IpRateLimit、FrontendServerEntry、ErrorResponses、AppBuildConfig                              | `checkIpRateLimit`・`IP_RATE_LIMIT`                                      | 1要求の処理 |
-| 6.1         | 型付きの定義と操作の一覧の生成       | CodegenConfig                                                                                 | `graphql:generate`・`src/graphql/operations/**/*.graphql`                | —           |
-| 6.2         | 不一致で生成・検査が失敗             | CodegenConfig                                                                                 | `graphql:check`                                                          | —           |
-| 6.3         | 識別子と変数だけを送る               | CodegenConfig、PersistedDocument、GraphqlExecutor                                             | `mode: replaceDocumentWithHash`・`<操作名>Document`・`documentIdOf`      | 描画と中継  |
-| 6.4         | 呼び出し元ごとの一覧                 | CodegenConfig                                                                                 | `apps/{client,admin}/src/graphql/generated/`                             | —           |
-| 6.5         | SSRのデータを再取得しない            | RouterFactory、QueryDefaults                                                                  | `setupRouterSsrQueryIntegration`・`staleTime`                            | 描画と中継  |
-| 6.6         | エラーの型付きの受け渡し             | GraphqlResult                                                                                 | `GraphQLClientError`・`parseGraphQLResponse`                             | —           |
-| 6.7         | 429・想定内の失敗を再試行しない      | QueryDefaults                                                                                 | `shouldRetryQuery`・`createAppQueryClient({ isServer })`                 | —           |
-| 6.8         | 要求ごとに分ける                     | RouterFactory                                                                                 | `createAppQueryClient`・Jotaiのストア                                    | —           |
-| 6.9         | キャッシュと画面の状態の規約         | DataFetchingDoc                                                                               | `frontend/006`                                                           | —           |
-| 7.1〜7.2    | トークン・部品・320px                | DesignTokens、UiPrimitives、TurnstileWidget                                                   | `styles/tokens.css`(Turnstileの幅は「未決事項」)                         | —           |
-| 7.3〜7.6    | ダークモードの切替と保存             | ThemePreference、ThemeToggle、AppDocument                                                     | `THEME_BOOTSTRAP_SCRIPT`(`ScriptOnce`)・`setThemePreference`・`useTheme` | —           |
-| 7.7         | 視差効果の軽減                       | BaseStyles                                                                                    | `styles/base.css`                                                        | —           |
-| 7.8         | 演出の停止手段の規約                 | AccessibilityDoc                                                                              | `frontend/004`・Revalidation Triggers                                    | —           |
-| 7.9         | Webフォントを読み込まない            | DesignTokens                                                                                  | `--font-sans`                                                            | —           |
-| 8.1〜8.5    | フォーム                             | FormParts、ServerFieldErrors                                                                  | `useAppForm`・`AppForm`・`applyServerFieldErrors`                        | —           |
-| 8.6         | 状態表示                             | StateDisplays                                                                                 | 各部品のProps                                                            | —           |
-| 8.7         | トースト                             | Toaster                                                                                       | `notify`                                                                 | —           |
-| 8.8〜8.9    | Turnstileのウィジェット              | TurnstileWidget                                                                               | `useTurnstileToken`                                                      | —           |
-| 8.10        | 404・想定外のエラーの表示            | ErrorViews                                                                                    | `NotFoundView`・`UnexpectedErrorView`                                    | —           |
-| 8.11        | カタログ                             | StorybookCatalog                                                                              | `.storybook/*`・`*.stories.tsx`                                          | —           |
-| 8.12        | 文言の規則                           | FormParts、StateDisplays、ErrorViews、ErrorResponses                                          | `utilities/messages/*.ts`・`ERROR_MESSAGES`                              | —           |
-| 9.1         | `<time>`と`datetime`                 | DateTimeDisplay                                                                               | `DateTime`                                                               | —           |
-| 9.2         | サーバー側の推定                     | RequestDisplayPreferences、FrontendServerEntry、RouterFactory                                 | `resolveRequestDisplayPreferences`                                       | 表示設定    |
-| 9.3〜9.4    | ブラウザの値への置き換えと一致       | DateTimeDisplay                                                                               | `DisplayPreferencesProvider`                                             | 表示設定    |
-| 9.5         | UTCとja-JPへの代替                   | RequestDisplayPreferences                                                                     | `FALLBACK_DISPLAY_PREFERENCES`                                           | —           |
-| 9.6         | 基準時刻を表示しない                 | DateTimeDisplay                                                                               | `DATE_TIME_FORMATS`                                                      | —           |
-| 9.7         | 相対表現の併記と更新                 | DateTimeDisplay                                                                               | `RelativeTime`                                                           | —           |
-| 9.8         | 数値の整形                           | DateTimeDisplay                                                                               | `NumberText`・`formatNumber`                                             | —           |
-| 9.9         | 翻訳への耐性                         | UiPrimitives、ComponentsDoc                                                                   | `translate="no"`の規約                                                   | —           |
-| 10.1〜10.7  | アクセシビリティ                     | UiPrimitives、AppDocument、RouteAnnouncer、FormParts、SiteLayout、AdminLayout、A11yTestHelper | `runAxe`・`MAIN_CONTENT_ID`(10.4の管理者側は「未決事項」)                | —           |
-| 11.1〜11.3  | 利用者側の共通レイアウトと区画       | SiteLayout、AppComposition                                                                    | `SiteLayoutSlots`                                                        | —           |
-| 11.4        | 管理者側の基本レイアウト             | AdminLayout、AppComposition                                                                   | `AdminLayoutSlots`                                                       | —           |
-| 11.5        | 404の画面                            | NotFoundPage、ErrorViews                                                                      | `notFoundComponent`                                                      | —           |
-| 11.6        | 想定外のエラーの画面と送信           | ErrorPage、ReportError                                                                        | `errorComponent`・`installRouteErrorReporting`・`reportRenderError`      | —           |
-| 11.7        | 区画のエラー                         | StateDisplays                                                                                 | `PartialErrorState`                                                      | —           |
-| 11.8        | 仮のトップページ                     | PlaceholderHome                                                                               | `routes/index.tsx`                                                       | —           |
-| 11.9        | 正規のURLとタイトル                  | PageHead                                                                                      | `buildPageHead`                                                          | —           |
-| 12.1〜12.5  | 疎通確認の画面                       | StatusRoute、SystemStatusView、RouterFactory                                                  | `/system/status`・`executeGraphQL`・`SystemStatusResult`                 | 描画と中継  |
-| 12.6〜12.7  | スモークテスト                       | SmokeE2E                                                                                      | `e2e/{client,admin}/system-status.e2e.test.ts`・`e2e/support/*.ts`       | —           |
-| 13.1        | 想定外の失敗の送信と想定内の除外     | ReportError、SentryScrub、ServerSentryOptions、BrowserObservability                           | `reportUnexpectedError`・`scrubSentryEvent`                              | —           |
-| 13.2        | GraphQLの応答時間の計測と結び付け    | BrowserObservability、RelayCore                                                               | `tracesSampleRate`・`traceHeaders`                                       | 描画と中継  |
-| 13.3        | 送信前の除去                         | SentryScrub                                                                                   | `scrubSentryEvent`・`scrubSentrySpan`・`redactText`・`redactDeep`        | —           |
-| 13.4〜13.5  | 送信先が無ければ送らない・録画しない | ServerSentryOptions、BrowserObservability                                                     | `buildServerSentryOptions`                                               | —           |
-| 13.6〜13.7  | アクセス解析は利用者側だけ           | WebAnalytics、AppProfile                                                                      | `webAnalyticsHeadScript`                                                 | —           |
-| 13.8        | アクセスログ                         | FrontendLogging、FrontendServerEntry                                                          | `logAccess`                                                              | 1要求の処理 |
-| 13.9        | 呼び出しログの無効化                 | AppBuildConfig                                                                                | `observability.logs.invocation_logs`                                     | —           |
-| 13.10       | 送信の失敗が影響しない               | BrowserObservability、WebAnalytics、ServerSentryOptions                                       | 非同期の送信                                                             | —           |
-| 14.1〜14.4  | 初回表示の性能                       | RouterFactory、BrowserObservability、WebAnalytics、TurnstileWidget、DataFetchingDoc           | ストリーミングのSSR・`ensureQueryData`                                   | 描画と中継  |
-| 15.1〜15.2  | カバレッジと品質ゲート               | AppTestConfigs、FrontendLintConfig                                                            | `vitest.browser.config.ts`・`eslint.config.ts`                           | —           |
-| 15.3〜15.8  | 文書                                 | 技術ドキュメント群                                                                            | `docs/**`                                                                | —           |
+| Requirement | Summary                                                      | Components                                                                                      | Interfaces                                                                                             | Flows       |
+| ----------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------- |
+| 1.1         | 開発サーバーとプレビューで動く                               | AppBuildConfig、FrontendServerEntry                                                             | `vite.config.ts`・`wrangler.jsonc`                                                                     | 1要求の処理 |
+| 1.2         | 3環境の設定とビルド時の選択                                  | AppBuildConfig                                                                                  | `env.staging`・`env.prod`・`CLOUDFLARE_ENV`                                                            | —           |
+| 1.3         | 共通のローカル状態・別プロセスのAPI                          | AppBuildConfig                                                                                  | `persistState`・`services`                                                                             | —           |
+| 1.4         | 設定の不備で500と名前のログ                                  | FrontendEnv、FrontendServerEntry、ErrorResponses、FrontendLogging                               | `validateFrontendEnv`(`HASH_PEPPER`を含む)                                                             | 1要求の処理 |
+| 1.5         | グローバルスコープで初期化しない                             | FrontendServerEntry、RouterFactory                                                              | `createFrontendServerEntry`                                                                            | —           |
+| 1.6         | 同じ仕組みと違いの限定                                       | FrontendServerEntry、AppProfile                                                                 | `FrontendAppProfile`(`contactAvailable`を含む)                                                         | —           |
+| 1.7         | 消えたスクリプトで1回再読み込み                              | PreloadRecovery                                                                                 | `installPreloadRecovery`                                                                               | —           |
+| 2.1         | 中継の経路から内部経路へ                                     | RelayCore、AppBuildConfig                                                                       | `GRAPHQL_RELAY_ROUTE`・`relayToApi`                                                                    | 描画と中継  |
+| 2.2         | 描画中のGraphQLも同じ引き継ぎ                                | GraphqlExecutor、RelayCore                                                                      | `executeGraphQL`・`buildRelayHeaders`                                                                  | 描画と中継  |
+| 2.3         | 元のクライアントIPアドレス                                   | RelayCore、ClientIp                                                                             | `buildRelayHeaders`・`resolveClientIp`                                                                 | 描画と中継  |
+| 2.4         | セッションのCookieの引き継ぎ                                 | RelayCore                                                                                       | `readSessionToken`                                                                                     | 描画と中継  |
+| 2.5         | bot判定のトークンの引き継ぎ                                  | RelayCore、TurnstileWidget                                                                      | `buildRelayHeaders`・`ExecuteOptions.turnstileToken`                                                   | 描画と中継  |
+| 2.6         | 許可した項目だけ引き継ぐ                                     | RelayCore                                                                                       | `FORWARDED_BROWSER_HEADERS`                                                                            | —           |
+| 2.7         | Cookieの発行と指示の除去                                     | RelayCore、GraphqlExecutor、StartOptions                                                        | `readSessionInstruction`・`toBrowserResponse`                                                          | 描画と中継  |
+| 2.8         | Cookieの削除                                                 | RelayCore、GraphqlExecutor、StartOptions                                                        | 同上                                                                                                   | 描画と中継  |
+| 2.9         | 利用者側と管理者側で別のCookie                               | AppProfile                                                                                      | `sessionCookieName`                                                                                    | —           |
+| 2.10        | 状態コード・本文・Retry-Afterを保つ(JSONでない5xxは503)      | RelayCore                                                                                       | `toBrowserResponse`・`relayToApi`(上流のJSONでない5xxは503`upstream_unavailable`)                      | —           |
+| 2.11        | 到達不能・15秒で503                                          | RelayCore、ErrorResponses                                                                       | `relayToApi`・`UPSTREAM_RETRY_AFTER_SECONDS`                                                           | —           |
+| 2.12        | メソッド・形式の不一致で405・415                             | RelayCore                                                                                       | `RelayRoute.methods`・`acceptContentTypes`                                                             | —           |
+| 2.13        | 秘密の値をログ等に含めない                                   | FrontendLogging、SentryScrub、RelayCore                                                         | `REDACTED_FIELD_PATTERNS`・`scrubSentryEvent`                                                          | —           |
+| 2.14        | 中継の経路の追加規約                                         | RelayCore、AppComposition                                                                       | `defineRelayRoute`・`RELAY_ROUTES`                                                                     | —           |
+| 3.1         | Sec-Fetch-SiteとOriginの検証                                 | CsrfGuard                                                                                       | `verifyCsrf`                                                                                           | 1要求の処理 |
+| 3.2         | 失敗で403                                                    | CsrfGuard、FrontendServerEntry、ErrorResponses                                                  | `errorEnvelopeResponse`                                                                                | 1要求の処理 |
+| 3.3         | 全経路の状態変更に適用                                       | FrontendServerEntry、StartOptions                                                               | `requiresCsrfCheck`                                                                                    | 1要求の処理 |
+| 3.4         | Refererで代わりに判定しない                                  | CsrfGuard、StartOptions                                                                         | `verifyCsrf`・`createCsrfMiddleware({ referer: false })`                                               | —           |
+| 3.5         | サーバー関数はメソッドを問わない                             | CsrfGuard、StartOptions                                                                         | `requiresCsrfCheck`                                                                                    | —           |
+| 3.6         | 拒否の理由をログへ                                           | FrontendServerEntry、FrontendLogging                                                            | `CsrfVerdict.reason`                                                                                   | —           |
+| 4.1         | 要求ごとのnonce                                              | Nonce、SecurityPolicy、RouterFactory                                                            | `generateNonce`・`ssr.nonce`                                                                           | 1要求の処理 |
+| 4.2         | 許可先の個別の列挙                                           | SecurityPolicy、AppComposition                                                                  | `BASE_SECURITY_POLICY_SOURCES`・`runtimeSecurityPolicySources`                                         | —           |
+| 4.3         | 許可先の登録規約                                             | SecurityPolicy、AppComposition                                                                  | `SecurityPolicySources`・`CLIENT_SECURITY_POLICY`                                                      | —           |
+| 4.4         | 全応答のセキュリティヘッダー                                 | SecurityHeaders、StaticHeaders                                                                  | `applySecurityHeaders`・`public/_headers`                                                              | 1要求の処理 |
+| 4.5         | Workerの応答にno-store                                       | SecurityHeaders                                                                                 | `applySecurityHeaders`                                                                                 | 1要求の処理 |
+| 4.6         | 静的なファイルの長期キャッシュ                               | StaticHeaders                                                                                   | `public/_headers`                                                                                      | —           |
+| 4.7         | staging・管理者側の検索除外                                  | SecurityHeaders、AppProfile、PageHead                                                           | `X-Robots-Tag`・`robots`のmeta                                                                         | —           |
+| 4.8         | 生のHTMLの挿入の禁止                                         | FrontendLintConfig                                                                              | `createFrontendLintConfig`                                                                             | —           |
+| 5.1〜5.7    | Worker単位のIP制限(キーのハッシュ化を含む)                   | IpRateLimit、RateLimitKeyHash、FrontendEnv、FrontendServerEntry、ErrorResponses、AppBuildConfig | `checkIpRateLimit`・`IP_RATE_LIMIT`・`hashRateLimitKey`                                                | 1要求の処理 |
+| 6.1         | 型付きの定義と操作の一覧の生成                               | CodegenConfig                                                                                   | `graphql:generate`・`src/graphql/operations/**/*.graphql`                                              | —           |
+| 6.2         | 不一致で生成・検査が失敗                                     | CodegenConfig                                                                                   | `graphql:check`                                                                                        | —           |
+| 6.3         | 識別子と変数だけを送る                                       | CodegenConfig、PersistedDocument、GraphqlExecutor                                               | `mode: replaceDocumentWithHash`・`<操作名>Document`・`documentIdOf`                                    | 描画と中継  |
+| 6.4         | 呼び出し元ごとの一覧                                         | CodegenConfig                                                                                   | `apps/{client,admin}/src/graphql/generated/`                                                           | —           |
+| 6.5         | SSRのデータを再取得しない                                    | RouterFactory、QueryDefaults                                                                    | `setupRouterSsrQueryIntegration`・`staleTime`                                                          | 描画と中継  |
+| 6.6         | エラーの型付きの受け渡し                                     | GraphqlResult                                                                                   | `GraphQLClientError`・`parseGraphQLResponse`                                                           | —           |
+| 6.7         | 429・想定内の失敗を再試行しない                              | QueryDefaults                                                                                   | `shouldRetryQuery`・`createAppQueryClient({ isServer })`                                               | —           |
+| 6.8         | 要求ごとに分ける                                             | RouterFactory                                                                                   | `createAppQueryClient`・Jotaiのストア                                                                  | —           |
+| 6.9         | キャッシュと画面の状態の規約                                 | DataFetchingDoc                                                                                 | `frontend/006`                                                                                         | —           |
+| 7.1〜7.2    | トークン・部品・320px                                        | DesignTokens、UiPrimitives、TurnstileWidget                                                     | `styles/tokens.css`(Turnstileは非表示で場所を取らない)                                                 | —           |
+| 7.3〜7.6    | ダークモードの切替と保存                                     | ThemePreference、ThemeToggle、AppDocument                                                       | `THEME_BOOTSTRAP_SCRIPT`(`ScriptOnce`)・`setThemePreference`・`useTheme`                               | —           |
+| 7.7         | 視差効果の軽減                                               | BaseStyles                                                                                      | `styles/base.css`                                                                                      | —           |
+| 7.8         | 演出の停止手段の規約                                         | AccessibilityDoc                                                                                | `frontend/004`・Revalidation Triggers                                                                  | —           |
+| 7.9         | Webフォントを読み込まない                                    | DesignTokens                                                                                    | `--font-sans`                                                                                          | —           |
+| 8.1〜8.5    | フォーム                                                     | FormParts、ServerFieldErrors                                                                    | `useAppForm`・`AppForm`・`applyServerFieldErrors`                                                      | —           |
+| 8.6         | 状態表示(エラーの問い合わせの導線は任意)                     | StateDisplays                                                                                   | 各部品のProps・`ErrorState`の`contactHref?`                                                            | —           |
+| 8.7         | トースト                                                     | Toaster                                                                                         | `notify`                                                                                               | —           |
+| 8.8〜8.9    | 非表示のTurnstileのウィジェット                              | TurnstileWidget                                                                                 | `useTurnstileToken`・`options.size: 'invisible'`                                                       | —           |
+| 8.10        | 404・想定外のエラーの表示(導線の無い画面の案内文)            | ErrorViews                                                                                      | `NotFoundView`・`UnexpectedErrorView`・`RETRY_LATER_GUIDANCE`・`CONTACT_GUIDANCE`                      | —           |
+| 8.11        | カタログ                                                     | StorybookCatalog                                                                                | `.storybook/*`・`*.stories.tsx`                                                                        | —           |
+| 8.12        | 文言の規則                                                   | FormParts、StateDisplays、ErrorViews、ErrorResponses                                            | `utilities/messages/*.ts`・`ERROR_MESSAGES`                                                            | —           |
+| 8.13        | 導線の無い側の失敗の文言                                     | GraphqlResult、StateDisplays、FormParts、Toaster、AppProfile、ErrorResponses                    | `errorMessageOf`・`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`・`contactAvailable`                       | —           |
+| 9.1         | `<time>`と`datetime`                                         | DateTimeDisplay                                                                                 | `DateTime`                                                                                             | —           |
+| 9.2         | サーバー側の推定                                             | RequestDisplayPreferences、FrontendServerEntry、RouterFactory                                   | `resolveRequestDisplayPreferences`                                                                     | 表示設定    |
+| 9.3〜9.4    | ブラウザの値への置き換えと一致                               | DateTimeDisplay                                                                                 | `DisplayPreferencesProvider`                                                                           | 表示設定    |
+| 9.5         | UTCとja-JPへの代替                                           | RequestDisplayPreferences                                                                       | `FALLBACK_DISPLAY_PREFERENCES`                                                                         | —           |
+| 9.6         | 基準時刻を表示しない                                         | DateTimeDisplay                                                                                 | `DATE_TIME_FORMATS`                                                                                    | —           |
+| 9.7         | 相対表現の併記と更新                                         | DateTimeDisplay                                                                                 | `RelativeTime`                                                                                         | —           |
+| 9.8         | 数値の整形                                                   | DateTimeDisplay                                                                                 | `NumberText`・`formatNumber`                                                                           | —           |
+| 9.9         | 翻訳への耐性                                                 | UiPrimitives、ComponentsDoc                                                                     | `translate="no"`の規約                                                                                 | —           |
+| 10.1〜10.8  | アクセシビリティ(10.4は利用者側、10.8は管理者側の画面シェル) | UiPrimitives、AppDocument、RouteAnnouncer、FormParts、SiteLayout、AdminLayout、A11yTestHelper   | `runAxe`・`MAIN_CONTENT_ID`・`AdminLayoutSlots.navigation`                                             | —           |
+| 11.1〜11.3  | 利用者側の共通レイアウトと区画                               | SiteLayout、AppComposition                                                                      | `SiteLayoutSlots`                                                                                      | —           |
+| 11.4        | 管理者側の基本レイアウト                                     | AdminLayout、AppComposition                                                                     | `AdminLayoutSlots`                                                                                     | —           |
+| 11.5        | 404の画面                                                    | NotFoundPage、ErrorViews                                                                        | `notFoundComponent`                                                                                    | —           |
+| 11.6        | 想定外のエラーの画面と送信                                   | ErrorPage、ReportError                                                                          | `errorComponent`・`installRouteErrorReporting`・`reportRenderError`                                    | —           |
+| 11.7        | 区画のエラー                                                 | StateDisplays                                                                                   | `PartialErrorState`                                                                                    | —           |
+| 11.8        | 仮のトップページ                                             | PlaceholderHome                                                                                 | `routes/index.tsx`                                                                                     | —           |
+| 11.9        | 正規のURLとタイトル                                          | PageHead                                                                                        | `buildPageHead`                                                                                        | —           |
+| 11.10       | 静的な500の画面の案内文(管理者側は問い合わせを促さない)      | ErrorResponses、AppProfile、FrontendServerEntry                                                 | `renderStaticErrorPage({ status: 500, contactAvailable })`・`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT` | 1要求の処理 |
+| 12.1〜12.5  | 疎通確認の画面                                               | StatusRoute、SystemStatusView、RouterFactory                                                    | `/system/status`・`executeGraphQL`・`SystemStatusResult`                                               | 描画と中継  |
+| 12.6〜12.7  | スモークテスト                                               | SmokeE2E                                                                                        | `e2e/{client,admin}/system-status.e2e.test.ts`・`e2e/support/*.ts`                                     | —           |
+| 13.1        | 想定外の失敗の送信と想定内の除外                             | ReportError、SentryScrub、ServerSentryOptions、BrowserObservability                             | `reportUnexpectedError`・`scrubSentryEvent`                                                            | —           |
+| 13.2        | GraphQLの応答時間の計測と結び付け                            | BrowserObservability、RelayCore                                                                 | `tracesSampleRate`・`traceHeaders`                                                                     | 描画と中継  |
+| 13.3        | 送信前の除去                                                 | SentryScrub                                                                                     | `scrubSentryEvent`・`scrubSentrySpan`・`redactText`・`redactDeep`                                      | —           |
+| 13.4〜13.5  | 送信先が無ければ送らない・録画しない                         | ServerSentryOptions、BrowserObservability                                                       | `buildServerSentryOptions`                                                                             | —           |
+| 13.6〜13.7  | アクセス解析は利用者側だけ                                   | WebAnalytics、AppProfile                                                                        | `webAnalyticsHeadScript`                                                                               | —           |
+| 13.8        | アクセスログ                                                 | FrontendLogging、FrontendServerEntry                                                            | `logAccess`                                                                                            | 1要求の処理 |
+| 13.9        | 呼び出しログの無効化                                         | AppBuildConfig                                                                                  | `observability.logs.invocation_logs`                                                                   | —           |
+| 13.10       | 送信の失敗が影響しない                                       | BrowserObservability、WebAnalytics、ServerSentryOptions                                         | 非同期の送信                                                                                           | —           |
+| 14.1〜14.4  | 初回表示の性能                                               | RouterFactory、BrowserObservability、WebAnalytics、TurnstileWidget、DataFetchingDoc             | ストリーミングのSSR・`ensureQueryData`                                                                 | 描画と中継  |
+| 15.1〜15.2  | カバレッジと品質ゲート                                       | AppTestConfigs、FrontendLintConfig                                                              | `vitest.browser.config.ts`・`eslint.config.ts`                                                         | —           |
+| 15.3〜15.8  | 文書                                                         | 技術ドキュメント群                                                                              | `docs/**`                                                                                              | —           |
 
 ## Components and Interfaces
 
-| Component                                        | Domain/Layer          | Intent                                                         | Req Coverage                                      | Key Dependencies (P0/P1)                                     | Contracts      |
-| ------------------------------------------------ | --------------------- | -------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------ | -------------- |
-| AppProfile                                       | server/entry          | 呼び出し元の種類・Cookieの名前・検索除外・解析の有無           | 1.6, 2.9, 4.7, 13.6, 13.7                         | —                                                            | State          |
-| FrontendServerEntry                              | server/entry          | 処理の順序の唯一の定義                                         | 1.1, 1.4〜1.6, 3.2, 3.3, 3.6, 4.1, 5.6, 9.2, 13.8 | 下記のserverの部品(P0)、TanStackのハンドラー(P0)             | Service        |
-| FrontendEnv                                      | server/env            | 環境の検証と公開してよい設定値                                 | 1.2, 1.4, 13.4                                    | zod(`utilities/validation/zod.ts`経由) (P0)                  | Service, State |
-| ClientIp・PageRequest                            | server/http           | 接続元IP・ページの要求・サーバー関数の判定                     | 2.3, 3.5, 5.2, 5.3, 5.4                           | —                                                            | Service        |
-| IpRateLimit                                      | server/http           | キーの組み立てと判定                                           | 5.1〜5.6                                          | Rate Limitingバインディング(P0)                              | Service        |
-| CsrfGuard                                        | server/http           | CSRFの判定                                                     | 3.1〜3.6                                          | —                                                            | Service        |
-| Nonce・SecurityPolicy                            | server/http           | nonce・許可先の合成・CSP・Permissions-Policy                   | 4.1〜4.3                                          | —                                                            | Service, State |
-| SecurityHeaders                                  | server/http           | ヘッダーの付与・no-store・検索除外                             | 4.4, 4.5, 4.7                                     | SecurityPolicy (P0)                                          | Service        |
-| ErrorResponses                                   | server/http           | 共通のエラー形式と静的なエラー画面                             | 1.4, 2.11, 2.12, 3.2, 5.3, 5.4, 8.12              | —                                                            | Service        |
-| RelayCore                                        | server/relay          | 中継の項目・Cookie・経路の定義と実行                           | 2.1〜2.14, 13.2                                   | Service Bindings (P0)                                        | Service, API   |
-| RequestDisplayPreferences                        | server/display        | 表示設定の推定                                                 | 9.2, 9.5                                          | Intl (P0)                                                    | Service        |
-| FrontendLogging                                  | server/observability  | ログの設定・伏せ字・アクセスログ                               | 1.4, 2.13, 3.6, 13.8                              | LogTape (P1)                                                 | Service        |
-| ServerSentryOptions・SentryScrub                 | server・utilities     | Sentryのオプションと除去・値の形式による伏せ字                 | 2.13, 13.1, 13.3〜13.5, 13.10                     | @sentry/core(型だけ) (P1)                                    | Service        |
-| StartOptions                                     | start                 | TanStackのミドルウェア(Sentry・CSRF・応答の送り始めの記録)     | 2.7, 2.8, 3.3〜3.5                                | @tanstack/react-start (P0)                                   | Service        |
-| RouterFactory                                    | start                 | ルーターのcontext・nonce・QueryClient・dehydrate               | 1.5, 4.1, 6.5, 6.8, 9.2, 12.4, 14.1               | @tanstack/react-router-ssr-query (P0)                        | Service, State |
-| GraphqlExecutor・GraphqlResult                   | start・utilities      | 実行部品と応答の解析                                           | 2.2, 2.5, 2.7, 2.8, 6.3, 6.6                      | RelayCore (P0)                                               | Service        |
-| QueryDefaults                                    | start                 | 既定値と再試行                                                 | 6.5, 6.7                                          | @tanstack/react-query (P0)                                   | Service        |
-| ReportError・BrowserObservability                | start/observability   | 想定外の失敗の送信・ルートの失敗の送信の補い・ブラウザのSentry | 11.6, 13.1〜13.5, 13.10, 14.2                     | Sentry (P1)                                                  | Service        |
-| WebAnalytics                                     | start/observability   | 計測スクリプトのhead定義                                       | 13.6, 13.7, 13.10, 14.2                           | Web Analytics (P2)                                           | Service        |
-| PreloadRecovery                                  | start                 | 消えたスクリプトでの再読み込み                                 | 1.7                                               | —                                                            | Service        |
-| PageHead                                         | start                 | タイトル・正規のURL・検索除外                                  | 4.7, 10.5, 11.9, 12.5                             | —                                                            | Service        |
-| DesignTokens・BaseStyles                         | styles                | トークン・視差効果の軽減・フォーカス表示                       | 7.1, 7.2, 7.7, 7.9, 10.1, 10.3                    | Tailwind (P0)                                                | State          |
-| ThemePreference・ThemeToggle                     | utilities・components | 配色の保存と初回描画前の適用・切替ボタン                       | 7.3〜7.6                                          | —                                                            | Service, State |
-| AppDocument・RouteAnnouncer                      | components/app-shell  | 文書の外枠・スキップリンク・画面遷移の通知                     | 7.5, 10.4, 10.5                                   | TanStack Router (P0)                                         | —              |
-| FormParts・ServerFieldErrors                     | components・utilities | フォーム                                                       | 8.1〜8.5, 8.12, 10.6                              | react-hook-form・zod(`utilities/validation/zod.ts`経由) (P0) | Service        |
-| StateDisplays・Toaster・ErrorViews               | components            | 状態表示・トースト・404とエラーの表示                          | 8.6, 8.7, 8.10, 8.12, 11.5, 11.7                  | sonner (P1)                                                  | —              |
-| DateTimeDisplay                                  | components・utilities | 表示設定・日時・相対表現・数値                                 | 9.1〜9.8                                          | Intl (P0)                                                    | Service, State |
-| TurnstileWidget                                  | components            | bot判定のウィジェット                                          | 2.5, 7.2, 8.8, 8.9, 14.2                          | @marsidev/react-turnstile (P0)                               | Service        |
-| UiPrimitives                                     | components/ui         | shadcn/uiの部品                                                | 7.1, 9.9, 10.1, 10.2, 10.3                        | radix-ui (P0)                                                | —              |
-| SystemStatusView・StatusRoute                    | components・apps      | 疎通確認の表示と経路                                           | 12.1〜12.5                                        | GraphqlExecutor (P0)                                         | API            |
-| SiteLayout・AdminLayout                          | apps                  | 画面シェルと区画                                               | 11.1〜11.4, 10.4                                  | AppComposition (P0)                                          | State          |
-| AppComposition                                   | apps/composition      | 登録箇所                                                       | 2.14, 4.2, 4.3, 11.3, 11.4                        | —                                                            | State          |
-| NotFoundPage・ErrorPage・PlaceholderHome         | apps                  | 404・エラー・仮のトップ                                        | 11.5, 11.6, 11.8                                  | ErrorViews (P0)                                              | —              |
-| AppBuildConfig・StaticHeaders                    | apps                  | Vite・Wrangler・`_headers`                                     | 1.1〜1.3, 2.1, 4.4, 4.6, 5.1, 13.9                | wrangler (P0)                                                | State          |
-| CodegenConfig                                    | apps                  | コード生成の設定と生成物                                       | 6.1〜6.4                                          | GraphQL Code Generator (P0)                                  | Batch          |
-| FrontendLintConfig                               | frontend-lib/config   | 画面向けの静的解析                                             | 4.8, 15.2                                         | ESLintのプラグイン(P0)                                       | —              |
-| StorybookCatalog・A11yTestHelper・AppTestConfigs | frontend-lib・apps    | カタログ・検査の補助・テスト設定                               | 8.11, 10.7, 15.1                                  | storybook (P1)、axe-core (P0)                                | —              |
-| SmokeE2E                                         | e2e                   | 疎通とセキュリティのスモークテスト                             | 12.6, 12.7                                        | Playwright (P0)                                              | Batch          |
-| 技術ドキュメント群                               | docs                  | 規約と契約の文書化                                             | 6.9, 7.8, 9.9, 14.3, 14.4, 15.3〜15.8             | —                                                            | —              |
+| Component                                        | Domain/Layer          | Intent                                                                 | Req Coverage                                             | Key Dependencies (P0/P1)                                     | Contracts      |
+| ------------------------------------------------ | --------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------ | -------------- |
+| AppProfile                                       | server/entry          | 呼び出し元の種類・Cookieの名前・検索除外・解析と問い合わせの導線の有無 | 1.6, 2.9, 4.7, 8.13, 11.10, 13.6, 13.7                   | —                                                            | State          |
+| FrontendServerEntry                              | server/entry          | 処理の順序の唯一の定義                                                 | 1.1, 1.4〜1.6, 3.2, 3.3, 3.6, 4.1, 5.6, 9.2, 11.10, 13.8 | 下記のserverの部品(P0)、TanStackのハンドラー(P0)             | Service        |
+| FrontendEnv                                      | server/env            | 環境の検証と公開してよい設定値                                         | 1.2, 1.4, 5.7, 13.4                                      | zod(`utilities/validation/zod.ts`経由) (P0)                  | Service, State |
+| ClientIp・PageRequest                            | server/http           | 接続元IP・ページの要求・サーバー関数の判定                             | 2.3, 3.5, 5.2, 5.3, 5.4                                  | —                                                            | Service        |
+| IpRateLimit                                      | server/http           | キーの組み立てとハッシュ化したキーでの判定                             | 5.1〜5.7                                                 | Rate Limitingバインディング(P0)、RateLimitKeyHash (P0)       | Service        |
+| RateLimitKeyHash                                 | server/http           | backend-libと同じ値のレート制限のキーのハッシュ化                      | 5.7                                                      | Web Crypto (P0)                                              | Service        |
+| CsrfGuard                                        | server/http           | CSRFの判定                                                             | 3.1〜3.6                                                 | —                                                            | Service        |
+| Nonce・SecurityPolicy                            | server/http           | nonce・許可先の合成・CSP・Permissions-Policy                           | 4.1〜4.3                                                 | —                                                            | Service, State |
+| SecurityHeaders                                  | server/http           | ヘッダーの付与・no-store・検索除外                                     | 4.4, 4.5, 4.7                                            | SecurityPolicy (P0)                                          | Service        |
+| ErrorResponses                                   | server/http           | 共通のエラー形式と静的なエラー画面                                     | 1.4, 1.6, 2.11, 2.12, 3.2, 5.3, 5.4, 8.12, 11.10         | —                                                            | Service        |
+| RelayCore                                        | server/relay          | 中継の項目・Cookie・経路の定義と実行                                   | 2.1〜2.14, 13.2                                          | Service Bindings (P0)                                        | Service, API   |
+| RequestDisplayPreferences                        | server/display        | 表示設定の推定                                                         | 9.2, 9.5                                                 | Intl (P0)                                                    | Service        |
+| FrontendLogging                                  | server/observability  | ログの設定・伏せ字・アクセスログ                                       | 1.4, 2.13, 3.6, 13.8                                     | LogTape (P1)                                                 | Service        |
+| ServerSentryOptions・SentryScrub                 | server・utilities     | Sentryのオプションと除去・値の形式による伏せ字                         | 2.13, 13.1, 13.3〜13.5, 13.10                            | @sentry/core(型だけ) (P1)                                    | Service        |
+| StartOptions                                     | start                 | TanStackのミドルウェア(Sentry・CSRF・応答の送り始めの記録)             | 2.7, 2.8, 3.3〜3.5                                       | @tanstack/react-start (P0)                                   | Service        |
+| RouterFactory                                    | start                 | ルーターのcontext・nonce・QueryClient・dehydrate                       | 1.5, 4.1, 6.5, 6.8, 9.2, 12.4, 14.1                      | @tanstack/react-router-ssr-query (P0)                        | Service, State |
+| GraphqlExecutor・GraphqlResult                   | start・utilities      | 実行部品と応答の解析                                                   | 2.2, 2.5, 2.7, 2.8, 6.3, 6.6, 8.13                       | RelayCore (P0)                                               | Service        |
+| QueryDefaults                                    | start                 | 既定値と再試行                                                         | 6.5, 6.7                                                 | @tanstack/react-query (P0)                                   | Service        |
+| ReportError・BrowserObservability                | start/observability   | 想定外の失敗の送信・ルートの失敗の送信の補い・ブラウザのSentry         | 11.6, 13.1〜13.5, 13.10, 14.2                            | Sentry (P1)                                                  | Service        |
+| WebAnalytics                                     | start/observability   | 計測スクリプトのhead定義                                               | 13.6, 13.7, 13.10, 14.2                                  | Web Analytics (P2)                                           | Service        |
+| PreloadRecovery                                  | start                 | 消えたスクリプトでの再読み込み                                         | 1.7                                                      | —                                                            | Service        |
+| PageHead                                         | start                 | タイトル・正規のURL・検索除外                                          | 4.7, 10.5, 11.9, 12.5                                    | —                                                            | Service        |
+| DesignTokens・BaseStyles                         | styles                | トークン・視差効果の軽減・フォーカス表示                               | 7.1, 7.2, 7.7, 7.9, 10.1, 10.3                           | Tailwind (P0)                                                | State          |
+| ThemePreference・ThemeToggle                     | utilities・components | 配色の保存と初回描画前の適用・切替ボタン                               | 7.3〜7.6                                                 | —                                                            | Service, State |
+| AppDocument・RouteAnnouncer                      | components/app-shell  | 文書の外枠・スキップリンク・画面遷移の通知                             | 7.5, 10.4, 10.5, 10.8                                    | TanStack Router (P0)                                         | —              |
+| FormParts・ServerFieldErrors                     | components・utilities | フォーム                                                               | 8.1〜8.5, 8.12, 8.13, 10.6                               | react-hook-form・zod(`utilities/validation/zod.ts`経由) (P0) | Service        |
+| StateDisplays・Toaster・ErrorViews               | components            | 状態表示・トースト・404とエラーの表示                                  | 8.6, 8.7, 8.10, 8.12, 8.13, 11.5, 11.7                   | sonner (P1)                                                  | —              |
+| DateTimeDisplay                                  | components・utilities | 表示設定・日時・相対表現・数値                                         | 9.1〜9.8                                                 | Intl (P0)                                                    | Service, State |
+| TurnstileWidget                                  | components            | bot判定のウィジェット                                                  | 2.5, 7.2, 8.8, 8.9, 14.2                                 | @marsidev/react-turnstile (P0)                               | Service        |
+| UiPrimitives                                     | components/ui         | shadcn/uiの部品                                                        | 7.1, 9.9, 10.1, 10.2, 10.3                               | radix-ui (P0)                                                | —              |
+| SystemStatusView・StatusRoute                    | components・apps      | 疎通確認の表示と経路                                                   | 12.1〜12.5                                               | GraphqlExecutor (P0)                                         | API            |
+| SiteLayout・AdminLayout                          | apps                  | 画面シェルと区画                                                       | 11.1〜11.4, 10.4, 10.8                                   | AppComposition (P0)                                          | State          |
+| AppComposition                                   | apps/composition      | 登録箇所                                                               | 2.14, 4.2, 4.3, 11.3, 11.4                               | —                                                            | State          |
+| NotFoundPage・ErrorPage・PlaceholderHome         | apps                  | 404・エラー・仮のトップ                                                | 11.5, 11.6, 11.8                                         | ErrorViews (P0)                                              | —              |
+| AppBuildConfig・StaticHeaders                    | apps                  | Vite・Wrangler・`_headers`                                             | 1.1〜1.3, 2.1, 4.4, 4.6, 5.1, 13.9                       | wrangler (P0)                                                | State          |
+| CodegenConfig                                    | apps                  | コード生成の設定と生成物                                               | 6.1〜6.4                                                 | GraphQL Code Generator (P0)                                  | Batch          |
+| FrontendLintConfig                               | frontend-lib/config   | 画面向けの静的解析                                                     | 4.8, 15.2                                                | ESLintのプラグイン(P0)                                       | —              |
+| StorybookCatalog・A11yTestHelper・AppTestConfigs | frontend-lib・apps    | カタログ・検査の補助・テスト設定                                       | 8.11, 10.7, 15.1                                         | storybook (P1)、axe-core (P0)                                | —              |
+| SmokeE2E                                         | e2e                   | 疎通とセキュリティのスモークテスト                                     | 12.6, 12.7                                               | Playwright (P0)                                              | Batch          |
+| 技術ドキュメント群                               | docs                  | 規約と契約の文書化                                                     | 6.9, 7.8, 8.13, 9.9, 14.3, 14.4, 15.3〜15.8              | —                                                            | —              |
 
 ### server/entry
 
 #### AppProfile
 
-| Field        | Detail                            |
-| ------------ | --------------------------------- |
-| Intent       | 両アプリの違いを1つの値にまとめる |
-| Requirements | 1.6, 2.9, 4.7, 13.6, 13.7         |
+| Field        | Detail                                 |
+| ------------ | -------------------------------------- |
+| Intent       | 両アプリの違いを1つの値にまとめる      |
+| Requirements | 1.6, 2.9, 4.7, 8.13, 11.10, 13.6, 13.7 |
 
 **Contracts**: State [x]
 
@@ -609,25 +623,27 @@ export interface FrontendAppProfile {
   readonly sessionCookieName: `__Host-${string}`;
   readonly indexable: (environment: AppEnvironment) => boolean; // 検索エンジンへの登録を許すか
   readonly webAnalytics: boolean;
+  readonly contactAvailable: boolean; // 問い合わせの画面への導線を持つか。静的な500の画面の案内文と、画面のerrorMessageOfの文言を決める(1.6・8.13・11.10)
 }
 ```
 
-- `CLIENT_PROFILE`: `caller: 'client'`・`sessionCookieName: '__Host-ls_session'`・`indexable: (e) => e === 'prod'`・`webAnalytics: true`。
-- `ADMIN_PROFILE`: `caller: 'admin'`・`sessionCookieName: '__Host-ls_admin_session'`・`indexable: () => false`・`webAnalytics: false`。
+- `CLIENT_PROFILE`: `caller: 'client'`・`sessionCookieName: '__Host-ls_session'`・`indexable: (e) => e === 'prod'`・`webAnalytics: true`・`contactAvailable: true`。
+- `ADMIN_PROFILE`: `caller: 'admin'`・`sessionCookieName: '__Host-ls_admin_session'`・`indexable: () => false`・`webAnalytics: false`・`contactAvailable: false`(管理者側は問い合わせの画面を持たない)。
+- `contactAvailable`はアプリの問い合わせの導線の有無の唯一の定義で、エントリ(静的な500の画面)と、ルート・画面部品(`errorMessageOf`の第2引数)が読む。共通部品の`UnexpectedErrorView`・`ErrorState`は`contactHref`の有無で導線と案内文を決め、アプリは`contactAvailable`が真の時だけ`contactHref`を渡す(clientは渡し、adminは渡さない)。2つの値が食い違わないことを、各アプリの`composition.unit.test.ts`(プロファイルの値)と`ErrorPage`のブラウザテスト(問い合わせのボタンの有無)で確かめる。
 - 値はアプリの`src/composition/app-profile.ts`に置き、`Object.freeze`で凍結する。adminの`test/config/composition.unit.test.ts`がclientの`app-profile.ts`を読み込み、2つのCookieの名前が異なることを確かめる(2.9)。このためclientの`app-profile.ts`はadminの単体テストのカバレッジの分母にも入り、関数を加えたらadminのテストでも呼ぶ。
 
 #### FrontendServerEntry
 
-| Field        | Detail                                                 |
-| ------------ | ------------------------------------------------------ |
-| Intent       | 1要求の処理の順序を1箇所で定める                       |
-| Requirements | 1.1, 1.4, 1.5, 1.6, 3.2, 3.3, 3.6, 4.1, 5.6, 9.2, 13.8 |
+| Field        | Detail                                                        |
+| ------------ | ------------------------------------------------------------- |
+| Intent       | 1要求の処理の順序を1箇所で定める                              |
+| Requirements | 1.1, 1.4, 1.5, 1.6, 3.2, 3.3, 3.6, 4.1, 5.6, 9.2, 11.10, 13.8 |
 
 **Responsibilities & Constraints**
 
 - 「1要求の処理の順序」の図の順に、各部品を呼ぶ。部品の中身(判定・組み立て)は持たない。
 - モジュールの読み込み時はオブジェクトの組み立てだけを行い、ログの設定・環境の検証は最初の要求の中で行う(1.5)。
-- 例外は外側で捕まえ、静的なエラー画面(500)にしてヘッダーを付け、`reportUnexpected`へ渡す。
+- 例外は外側で捕まえ、静的なエラー画面(500、文言は`profile.contactAvailable`で選ぶ)にしてヘッダーを付け、`reportUnexpected`へ渡す。
 
 **Dependencies**
 
@@ -709,7 +725,7 @@ export interface FrontendRequestContext {
 | Field        | Detail                                   |
 | ------------ | ---------------------------------------- |
 | Intent       | 環境の検証と、ブラウザへ渡してよい設定値 |
-| Requirements | 1.2, 1.4, 13.4                           |
+| Requirements | 1.2, 1.4, 5.7, 13.4                      |
 
 **Contracts**: Service [x] / State [x]
 
@@ -736,6 +752,7 @@ export interface ValidatedFrontendEnv {
   readonly TURNSTILE_SITE_KEY: string;
   readonly IMAGES_ORIGIN: string; // URLのオリジン
   readonly WEB_ANALYTICS_TOKEN: string | undefined; // 利用者側だけが読む。空文字は未設定
+  readonly HASH_PEPPER: string; // シークレット。空でない文字列。IP制限のキーのハッシュ化だけに使う
 }
 export type EnvValidation =
   | { readonly ok: true; readonly env: ValidatedFrontendEnv }
@@ -761,7 +778,8 @@ export declare function toPublicRuntimeConfig(
 - Zodは`utilities/validation/zod.ts`の`z`を使う。バインディングは「`fetch`関数を持つ」「`limit`関数を持つ」ことだけをZodの`custom`で確かめ、種類の取り違えは各アプリの`wrangler-config.unit.test.ts`で確かめる。
 - 失敗は欠落と不正を区別せず、1つの`invalidKeys`(名前順・重複なし・凍結)で返す。環境がオブジェクトでなければ必要なキーをすべて返す。Zodの問題には入力値が入り得るため、キー名だけを取り出す。
 - `IMAGES_ORIGIN`は`http`・`https`のURLのオリジンであることだけを確かめる。ポート付きの`https`や`localhost`以外の`http`はここを通り、許可先の合成で不正になる(FrontendServerEntry)。
-- `toPublicRuntimeConfig`は、ブラウザへ渡してよい値(公開されるDSN・サイトキー・解析のトークン)だけを返す。`webAnalytics: false`のプロファイルでは`webAnalyticsToken`を常に`undefined`にする(13.7)。
+- `HASH_PEPPER`は空でない文字列であることだけを確かめ(backend-libの`platformEnvShape`と同じ)、欠落・空は他の環境の不備と同じくキー名だけのログと500にする(1.4)。値はInfisicalの環境ごとに1つで、api・event・client・adminが同じ値を共有する。
+- `toPublicRuntimeConfig`は、ブラウザへ渡してよい値(公開されるDSN・サイトキー・解析のトークン)だけを返し、`HASH_PEPPER`を含めない。`webAnalytics: false`のプロファイルでは`webAnalyticsToken`を常に`undefined`にする(13.7)。
 
 ### server/http
 
@@ -791,20 +809,21 @@ export declare function isServerFunctionCall(url: URL): boolean;
 | Field        | Detail                               |
 | ------------ | ------------------------------------ |
 | Intent       | backend-platformの規約どおりのIP制限 |
-| Requirements | 5.1, 5.2, 5.3, 5.4, 5.5, 5.6         |
+| Requirements | 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7    |
 
 **Contracts**: Service [x]
 
 ##### Service Interface
 
 ```typescript
+// server/http/ip-rate-limit.ts
 export declare const IP_RATE_LIMIT: {
   readonly limit: 100;
   readonly periodSeconds: 10;
   readonly keyPrefix: 'ip:';
   readonly unknownClient: 'unknown';
 };
-export declare function ipRateLimitKey(clientIp: string | undefined): string; // ip:<IP>、不明ならip:unknown
+export declare function ipRateLimitKey(clientIp: string | undefined): string; // ハッシュ化する前の値。ip:<IP>、不明ならip:unknown
 export type RateLimitOutcome =
   | { readonly allowed: true }
   | { readonly allowed: false; readonly retryAfterSeconds: 10 };
@@ -813,14 +832,24 @@ export interface IpRateLimitLogger {
 }
 export declare function checkIpRateLimit(
   limiter: RateLimiter,
+  pepper: string, // 検証済みの環境のHASH_PEPPER
   clientIp: string | undefined,
   logger: IpRateLimitLogger, // エントリが[caller, 'http', 'rate-limit']のロガーを渡す
 ): Promise<RateLimitOutcome>;
+
+// server/http/rate-limit-key-hash.ts(新規、10.1)
+export declare const RATE_LIMIT_KEY_PURPOSE: 'rate-limit-key';
+export declare function hashRateLimitKey(
+  pepper: string,
+  ...parts: readonly string[]
+): Promise<string>; // 1つ以上の部品。base64url(パディング無し)の86文字
 ```
 
 - 上限と期間はWrangler設定の`ratelimits`(`simple: { limit: 100, period: 10 }`)で決まり、この定数は応答の`Retry-After`と設定の検査(`wrangler-config.unit.test.ts`)に使う。
-- キーは生の`ip:<IP>`で、ハッシュ化しない(backend/003・backend-libと同じ。security/002との食い違いは「未決事項」)。`CF-Connecting-IP`はIPv4・IPv6として検証し、不正なら`ip:unknown`にする。
-- バインディングの呼び出しが例外になった場合は通し、`logger.warn`を出す(実行基盤の一時的な障害でサイト全体を止めないため)。
+- キー(5.7): `checkIpRateLimit`は`hashRateLimitKey(pepper, ipRateLimitKey(clientIp))`でハッシュ化した値だけをバインディングへ渡し、生のIPアドレスと`ip:<IP>`を渡さない。`CF-Connecting-IP`はIPv4・IPv6として検証し、不正なら`ip:unknown`をハッシュ化する。不明な送信元はすべて同じハッシュ値になり、上限を共有する(5.2)。Rate Limitingバインディングの`key`は公式文書で任意の文字列とされ、長さの上限の記載が無いため、ハッシュ値(86文字)をそのまま渡す。
+- `hashRateLimitKey`は、backend-libの`core/rate-limit/rate-limit-key.ts`の`hashRateLimitKey(createKeyedHasher(pepper), ...parts)`と同じ値を返す。HMAC-SHA512の鍵はペッパーをUTF-8にしたもの、入力は`rate-limit-key\u0000<JSON.stringify(parts)>`のUTF-8、出力はbase64url(パディング無し)である(security/002の「ハッシュ化の方法」「レート制限のキー」)。Web Crypto(`crypto.subtle`)だけを使い、`server/**`の読み込みの制限(`cloudflare:*`などを読まない)に収まる。共通部品はbackend-libのコードを読み込めないため、`utilities/observability/redaction-patterns.ts`と同じく写しとして置き、backend-platformが方式を変えたら合わせる(Revalidation Triggers)。部品が空なら値を含めない`RangeError`にする。
+- 鍵の読み込み(`crypto.subtle.importKey`)は要求ごとに行う。環境の検証が要求ごとに行われ、ペッパーをモジュールの状態に残さないためである。
+- バインディングの呼び出しが例外になった場合は通し、`logger.warn`を出す(実行基盤の一時的な障害でサイト全体を止めないため)。ハッシュ化の例外は通さず、エントリの外側の捕捉で500にする(ペッパーは環境の検証で空でないことを確かめ済みで、通常は起きない)。
 - 超過時(5.3・5.4): エントリが`[caller, 'http', 'rate-limit']`の`warning`ログを出し、ページの要求なら`renderStaticErrorPage({ status: 429, retryAfterSeconds: 10 })`(文言は`RATE_LIMIT_MESSAGE`)、それ以外は`errorEnvelopeResponse({ status: 429, code: 'rate_limit_exceeded', retryAfterSeconds: 10 })`。どちらも`Retry-After: 10`。
 
 #### CsrfGuard
@@ -956,10 +985,10 @@ export declare function applySecurityHeaders(
 
 #### ErrorResponses
 
-| Field        | Detail                               |
-| ------------ | ------------------------------------ |
-| Intent       | TanStackより前で返す応答の形         |
-| Requirements | 1.4, 2.11, 2.12, 3.2, 5.3, 5.4, 8.12 |
+| Field        | Detail                                           |
+| ------------ | ------------------------------------------------ |
+| Intent       | TanStackより前で返す応答の形                     |
+| Requirements | 1.4, 1.6, 2.11, 2.12, 3.2, 5.3, 5.4, 8.12, 11.10 |
 
 **Contracts**: Service [x]
 
@@ -997,7 +1026,7 @@ export declare function errorEnvelopeResponse(
 ): Response; // { error: { code, message } }、Content-Type: application/json
 export type StaticErrorPageInput =
   | { readonly status: 429; readonly retryAfterSeconds?: number }
-  | { readonly status: 500 };
+  | { readonly status: 500; readonly contactAvailable: boolean }; // エントリがプロファイルのcontactAvailableを渡す(省略不可)
 export declare function renderStaticErrorPage(
   input: StaticErrorPageInput,
 ): Response; // React・外部のファイルを使わない日本語のHTML(<style>1つとcolor-schemeのmeta)
@@ -1005,11 +1034,15 @@ export declare const ERROR_MESSAGES: Readonly<
   Record<FrontendErrorCode, string>
 >;
 export declare const RATE_LIMIT_MESSAGE: '操作が集中しています。しばらく待ってから再度お試しください。';
-export { UNEXPECTED_ERROR_MESSAGE }; // utilities/messages/state-messages.tsの値の再エクスポート(画面内の表示と共有)
+export {
+  UNEXPECTED_ERROR_MESSAGE, // 問い合わせの導線がある側の文言
+  UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT, // 新規(10.3)。問い合わせの導線がない側の文言
+}; // utilities/messages/state-messages.tsの値の再エクスポート(画面内の表示と共有)
 ```
 
 - 文言はコードごとに固定し(`ERROR_MESSAGES`)、`003-text-and-copy-rules.md`に載せる。`csrf_rejected`・`method_not_allowed`・`unsupported_media_type`は「この操作を受け付けられませんでした。ページを再読み込みして再度お試しください。」、`upstream_unavailable`・`upstream_timeout`は「現在ご利用いただけません。時間をおいて再度お試しください。」、`not_found`・`internal_error`はbackend-libの`core/errors/error-envelope.ts`の文言の写しとする。
 - `retryAfterSeconds`は省略できるため、503の`Retry-After: 5`は中継(`relayToApi`)が付ける。
+- 静的なエラー画面の500の文言(1.6・8.10・11.10): `contactAvailable`が真なら`UNEXPECTED_ERROR_MESSAGE`(「ページを表示できませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。」)、偽なら`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`(「ページを表示できませんでした。時間をおいて再度お試しください。」)。どちらも`state-messages.ts`の`UNEXPECTED_ERROR_TITLE`と`RETRY_LATER_GUIDANCE`(・`CONTACT_GUIDANCE`)の連結で、`UnexpectedErrorView`の`contactHref`の有無による案内文と同じ文になる。エントリは環境の不備・許可先の不正・例外の500のどれでも`renderStaticErrorPage({ status: 500, contactAvailable: options.profile.contactAvailable })`を呼ぶ。429の文言は両アプリで同じである。
 - 静的なエラー画面はOSのダークに`color-scheme`で従い、色の値は`styles/tokens.css`の写しである。ページ以外のCSPでは`<style>`が遮断され既定の見た目になる。
 
 ### server/relay
@@ -1054,7 +1087,7 @@ export declare const GATEWAY_CALLER_HEADERS: {
 }; // フロントエンドサーバーは付けない(Service Bindingsのentrypointが付ける)
 export declare const SESSION_CLEAR_VALUE: '1';
 export declare const SESSION_TOKEN_PATTERN: RegExp; // /^[A-Za-z0-9_-]{43}$/
-export declare const MAX_SESSION_MAX_AGE_SECONDS: 34_560_000; // 400日。上限の扱いは「未決事項」
+export declare const MAX_SESSION_MAX_AGE_SECONDS: 34_560_000; // 400日。apiのassertIssuableも同じ上限を超える発行を拒否する
 export declare const FORWARDED_BROWSER_HEADERS: readonly [
   'content-type',
   'accept',
@@ -1157,10 +1190,10 @@ export declare function relayToApi(
 - `relay-contract.ts`はapiの`gateway-headers.ts`・`session-verifier.ts`・`session-access.ts`の値の写しで、api側を変えたら見直す。
 - `readSessionToken`(2.4): `Cookie`ヘッダーから`cookieName`の値を取り出し、`SESSION_TOKEN_PATTERN`に合う場合だけ返す。
 - `buildRelayHeaders`(2.3〜2.6): ブラウザの`content-type`・`accept`・`cf-turnstile-response` → `extra` → トレース(`sentry-trace`・`baggage`) → `x-original-client-ip`(IPが分かる場合)・`x-session-token`(トークンが有る場合)の順に入れ、後の値で上書きする。`cookie`・`x-original-client-ip`・`x-session-token`・`x-internal-caller`・`x-debug-caller`を`extra`で渡すと、項目名だけを含む`TypeError`にする。
-- `readSessionInstruction`(2.7・2.8): 発行と削除が同時なら削除(警告`conflicting_instructions`)、削除は値`1`だけ(他は無視して警告`invalid_clear`)、発行は識別子の形式(`invalid_token`)と有効期間1〜`MAX_SESSION_MAX_AGE_SECONDS`秒の整数(`invalid_max_age`)を満たす時だけ受け、満たさなければ無視して警告する。
+- `readSessionInstruction`(2.7・2.8): 発行と削除が同時なら削除(警告`conflicting_instructions`)、削除は値`1`だけ(他は無視して警告`invalid_clear`)、発行は識別子の形式(`invalid_token`)と有効期間1〜`MAX_SESSION_MAX_AGE_SECONDS`秒の整数(`invalid_max_age`)を満たす時だけ受け、満たさなければ無視して警告する。上限はブラウザがCookieの`Max-Age`を400日で切り詰めることに合わせた値で、APIサーバー(api-gatewayの`assertIssuable`)も同じ上限を超える発行の指示を出さない。フロントエンドの検査は、契約に反する指示が届いた時の防御として残す。
 - `buildSessionSetCookie`(2.7・2.8): 発行は`<name>=<token>; Max-Age=<秒>; Path=/; Secure; HttpOnly; SameSite=Lax`、削除は`<name>=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax`。`Domain`は付けない。識別子と有効期間が不正なら値を含めない`RangeError`。
 - `defineRelayRoute`(2.14): 経路(`/_bff/`の下の完全一致か末尾`/*`の接頭辞)・メソッド(重複なく1つ以上)・待ち時間・受け付ける形式(POST・PUTは必須)・追加の項目(小文字、予約名の`cookie`・接続元・セッション・呼び出し元・トレース・Cookieの指示は不可)を定義時に検査し、例外で知らせ、凍結した経路を返す。アプリの`relay-routes.ts`と後続のspecは経路を必ず`defineRelayRoute`で定義し、`composition.unit.test.ts`で各経路が凍結されていることを確かめる。`/*`の経路は接頭辞そのものに一致せず、先に登録すると後の完全一致の経路を覆う。
-- `relayToApi`(2.10〜2.12): メソッドが`route.methods`に無ければ405(`Allow`付き)、POST・PUTで`Content-Type`の媒体の種類が`acceptContentTypes`に無ければ415。本文を上流へ渡すのはPOST・PUTだけである。上流へは`https://api.internal${upstreamPath(url)}`で、`upstreamPath`が絶対パスでなければ上流を呼ぶ前に例外(エントリの500)にする。`AbortSignal.timeout(route.timeoutMs)`の合図と競わせて打ち切り、合図は応答の本文の転送にも掛かる(待ち時間を過ぎたストリームは切れる)。時間切れは503`upstream_timeout`、例外は503`upstream_unavailable`。上流の5xxで`Content-Type`の媒体の種類が`application/json`・`application/*+json`でない(または無い)応答は、実行基盤がAPIサーバーに代わって返した失敗とみなし、本文を捨てて503`upstream_unavailable`にする(要件2.10との関係は「未決事項」)。503はどれも`Retry-After: 5`を付け、`logger.warn`へ`{ code, route }`(登録した経路の形)だけを出し、`reportUnexpected`で送る。それ以外は`toBrowserResponse`で状態コード・本文・`Retry-After`をそのまま返す。
+- `relayToApi`(2.10〜2.12): メソッドが`route.methods`に無ければ405(`Allow`付き)、POST・PUTで`Content-Type`の媒体の種類が`acceptContentTypes`に無ければ415。本文を上流へ渡すのはPOST・PUTだけである。上流へは`https://api.internal${upstreamPath(url)}`で、`upstreamPath`が絶対パスでなければ上流を呼ぶ前に例外(エントリの500)にする。`AbortSignal.timeout(route.timeoutMs)`の合図と競わせて打ち切り、合図は応答の本文の転送にも掛かる(待ち時間を過ぎたストリームは切れる)。時間切れは503`upstream_timeout`、例外は503`upstream_unavailable`。上流の5xxで`Content-Type`の媒体の種類が`application/json`・`application/*+json`でない(または無い)応答は、実行基盤がAPIサーバーに代わって返した失敗とみなし、本文を捨てて503`upstream_unavailable`にする(2.10の例外)。ローカルでAPIを止めた時のWranglerの`503 text/plain`もこれに当たり、疎通確認の画面は要件12.3の文言(「APIサーバーへ到達できません。」)になる。`application/*+json`を含めるのは、APIのGraphQLの500`internal_error`が`application/graphql-response+json`で返るためである。503はどれも`Retry-After: 5`を付け、`logger.warn`へ`{ code, route }`(登録した経路の形)だけを出し、`reportUnexpected`で送る。それ以外は`toBrowserResponse`で状態コード・本文・`Retry-After`をそのまま返す。
 
 ##### API Contract
 
@@ -1171,7 +1204,7 @@ export declare function relayToApi(
 
 **Implementation Notes**
 
-- Integration: 後続のspec(media-pipeline・data-export)は、`defineRelayRoute`で経路を定義してアプリの`src/composition/relay-routes.ts`の`RELAY_ROUTES`へ追加するだけで、同じ引き継ぎ・Cookieの扱い・CSRF・IP制限の経路を得る(2.14)。末尾が`/*`の経路は完全一致の経路より後に置く。上流は5xxを必ず共通のエラー形式(JSON)で返す(要件2.10との関係は「未決事項」の「中継が上流のJSONでない5xxを503にすること」)。
+- Integration: 後続のspec(media-pipeline・data-export)は、`defineRelayRoute`で経路を定義してアプリの`src/composition/relay-routes.ts`の`RELAY_ROUTES`へ追加するだけで、同じ引き継ぎ・Cookieの扱い・CSRF・IP制限の経路を得る(2.14)。末尾が`/*`の経路は完全一致の経路より後に置く。上流は5xxを必ず共通のエラー形式(JSON)で返す。ファイルのダウンロードなどJSON以外を返す経路も、5xxはJSONで返す(JSONでない5xxは2.10の例外として503`upstream_unavailable`になる)。
 - Validation: `relay-headers.unit.test.ts`・`session-cookie.unit.test.ts`・`relay-route.unit.test.ts`(偽物は`test/relay-route-fixtures.ts`)が、ブラウザの偽の項目の除去、Cookieの形式の検証、指示の除去とSet-Cookie、経路の定義の検査と凍結、405・415・503・時間切れ・JSONでない5xx、状態コードと`Retry-After`の保持を確かめる。
 - Risks: アップロードの中継は本文を流し続けるため、`timeoutMs`は経路ごとに決める。
 
@@ -1418,7 +1451,7 @@ export declare function readFrontendRequestContext(): FrontendRequestContext; //
 | Field        | Detail                                                |
 | ------------ | ----------------------------------------------------- |
 | Intent       | サーバーとブラウザで同じ形のGraphQLの実行と応答の解析 |
-| Requirements | 2.2, 2.5, 2.7, 2.8, 6.3, 6.6                          |
+| Requirements | 2.2, 2.5, 2.7, 2.8, 6.3, 6.6, 8.13                    |
 
 **Contracts**: Service [x]
 
@@ -1482,6 +1515,11 @@ export declare function requireData<TResult>(
 ): TResult; // 失敗なら例外(queryFn用)
 export declare function createNetworkError(cause: unknown): GraphQLClientError; // 状態0のnetwork_error
 export declare function isExpectedFailure(error: unknown): boolean;
+// 新規(10.3)。画面に出す失敗の文言。GraphQLClientErrorはmessage、それ以外はcontactAvailableでUNEXPECTED_ERROR_MESSAGE(_WITHOUT_CONTACT)
+export declare function errorMessageOf(
+  error: unknown,
+  contactAvailable: boolean,
+): string;
 
 // start/graphql/browser-transport.ts(純粋)
 export interface ExecuteOptions {
@@ -1538,6 +1576,7 @@ export declare function executeGraphQL<TResult, TVariables>(
 - 解析(6.6): 本文の`errors`の最初の要素の`extensions.code`・`message`・`extensions.details`と、応答の`Retry-After`(整数秒だけ)を取り出す。`data`があり`errors`が無ければ成功、`data`と`errors`が両方ある応答は失敗、`extensions.code`の無いエラーと解釈できない本文は`invalid_response`。共通のエラー形式(中継の経路が返す403・429・503など)も同じ型にする。
 - `expected`: apiの`GATEWAY_ERROR_CODES`の写し(実行前の拒否10個と`internal_error`)・`upstream_unavailable`・`upstream_timeout`・`network_error`・`invalid_response`は`false`、それ以外(api-gatewayの`AppError`のコードと、中継の`csrf_rejected`・`not_found`・`method_not_allowed`・`unsupported_media_type`・`rate_limit_exceeded`、apiの`payload_too_large`)は`true`。api-gatewayのエラーコードを変えたら見直す。
 - 操作は`documentIdOf`の識別子と変数だけを送る(6.3)。
+- 画面の失敗の文言(8.13): 画面は、`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言(欄に対応しない失敗の`FormMessage`など)、トースト(`notify.error`・`notify.warning`)で出す失敗の文言のすべてに`errorMessageOf(error, profile.contactAvailable)`を使い、例外の`message`を直接出さない。`GraphQLClientError`の`message`(APIサーバーの`internal_error`の「問題が発生しました。時間をおいて再度お試しください。」、中継の`ERROR_MESSAGES`、`network_error`・`invalid_response`の文言)は問い合わせを促す文を含まない契約で、そのまま返す。`GraphQLClientError`でない例外(プログラムの誤り、ブラウザへ渡る時にメッセージだけになった失敗)は文言を出さず、`contactAvailable`が真なら`UNEXPECTED_ERROR_MESSAGE`、偽なら`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`を返す。`contactAvailable`はアプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)から読み、ルートと画面部品が渡す(共通部品はアプリの値を持たない)。`graphql-result.unit.test.ts`は`network_error`・`invalid_response`の文言が、`error-responses.unit.test.ts`は`ERROR_MESSAGES`のどれも、`CONTACT_GUIDANCE`を含まないことを確かめる。
 
 #### QueryDefaults
 
@@ -1838,7 +1877,7 @@ export declare function useDisplayPreferences(): DisplayPreferences; // プロ�
 | Field        | Detail                                |
 | ------------ | ------------------------------------- |
 | Intent       | 検証規則をZodで定義するフォームの部品 |
-| Requirements | 8.1〜8.5, 8.12, 10.6                  |
+| Requirements | 8.1〜8.5, 8.12, 8.13, 10.6            |
 
 **Contracts**: Service [x]
 
@@ -1891,6 +1930,7 @@ export declare function applyServerFieldErrors<T extends FieldValues>(
 
 - `mode: 'onTouched'`で、最初にフォーカスを外した時に検証し、以降は入力のたびに検証する(8.2)。
 - `AppForm`は`FormProvider`と`noValidate`の`<form>`を描き、`onSubmit`の例外の`GraphQLClientError.details`から`serverFieldPrefix`の`<接頭辞>.`を外して`applyServerFieldErrors`へ渡す。詳細が無いか欄に対応しない詳細が残れば`onSubmitError(error, { unmatched })`を呼ぶ。想定外の失敗をSentryへ送るかは利用側の責任である。`onSubmitError`自体の例外は`globalThis.reportError`へ渡す。重ねての送信は`submittingRef`で止める。APIの`field`は引数のパスを`.`でつなぐため、`input`を取るmutationでは`serverFieldPrefix="input"`を渡す。
+- `onSubmitError(error, { unmatched })`で利用側が出す失敗の文言は`errorMessageOf(error, profile.contactAvailable)`で選ぶ(8.13、GraphqlExecutor・GraphqlResult)。`AppForm`自体は文言を出さない。
 - `SubmitButton`は未入力・検証エラーの間(`!isValid && !isSubmitting`)は`disabled`、送信中は`aria-disabled`・`aria-busy`と「送信中」を示す(8.3・8.4)。送信中に`disabled`にするとChromiumがフォーカスを`<body>`へ移して戻さないためである。このため`button-variants.ts`に`aria-disabled:pointer-events-none aria-disabled:opacity-50`を付ける(全Buttonに効く)。サーバーのエラーが複数の欄に出た後に1欄だけ直すと、残りの欄のエラーを表示したままボタンが有効に戻り得る。
 - `FormField`はラベル・説明・エラーを`aria-describedby`・`aria-invalid`で入力欄に関連付け、エラーは文言とアイコンで示す(10.6)。必須の印は自動で付けず、必須の欄はラベルか説明の文言で示し`aria-required`を渡す。
 
@@ -1927,16 +1967,18 @@ export declare function useTurnstileToken(): TurnstileTokenController;
 ```
 
 - 使い方は`const t = useTurnstileToken(); <TurnstileWidget {...t.widgetProps} action="..." />`で、送信時に`t.consume()`を`ExecuteOptions.turnstileToken`(または`GraphQLMutationInput.turnstileToken`)へ渡す。期限切れも`reset()`し、ウィジェット自身の更新は止める(`refreshExpired: 'never'`)。
-- `TurnstileWidget`は`@marsidev/react-turnstile`の`Turnstile`に、`appRuntimeOf(router.options.context).publicConfig.turnstileSiteKey`、`scriptOptions`(`nonce`は`router.options.ssr?.nonce`、`defer`・`async`)、`options`(`action`・`refreshExpired: 'never'`・`theme`は`useTheme()`の配色)を渡し、スクリプトはライブラリがマウント後に読み込む(14.2)。ルーターの文脈から読むため`RouterProvider`の下に置く。配色が変わるとウィジェットは作り直されるが、受け取り済みのトークンの状態は保つ。`size`は指定せず、幅300pxの固定のウィジェットになる(7.2との関係は「未決事項」)。
+- `TurnstileWidget`は`@marsidev/react-turnstile`の`Turnstile`に、`appRuntimeOf(router.options.context).publicConfig.turnstileSiteKey`、`scriptOptions`(`nonce`は`router.options.ssr?.nonce`、`defer`・`async`)、`options`(`action`・`refreshExpired: 'never'`・`theme`は`useTheme()`の配色・`size: 'invisible'`)を渡し、スクリプトはライブラリがマウント後に読み込む(14.2)。ルーターの文脈から読むため`RouterProvider`の下に置く。配色が変わるとウィジェットは作り直されるが、受け取り済みのトークンの状態は保つ。
+- 表示(8.8・7.2): `size: 'invisible'`は`@marsidev/react-turnstile`独自の指定で、ウィジェットの入れ物を描かず場所を取らない。Cloudflare側のウィジェットの種類も非表示(Invisible)にし、利用者に判定の枠を見せない。幅320pxでの横スクロールの検査の対象にウィジェットは入らない。サイトキーはアプリごとに1つで、ローカルは常に成功し表示しないテスト用の`1x00000000000000000000BB`、staging・prodはinfra-deliveryが非表示の種類のウィジェットで用意する。ウィジェットを置くspecは、判定の枠の表示と場所を画面に設けない。
 - 失敗時(8.9)は`FormMessage`の`role="alert"`で`BOT_CHECK_FAILED_MESSAGE`(「認証に失敗しました。ページを再読み込みして再度お試しください。」、backend-libの`turnstile-verifier.ts`の写し)を表示する。スクリプトの読み込みの失敗を検知できるのは最初のインスタンスだけで、2つ目のウィジェットや失敗後の再マウントは`idle`で止まる。
 
 #### AppDocument・RouteAnnouncer・UiPrimitives・StateDisplays・Toaster・ErrorViews・SystemStatusView
 
 - `AppDocument({ children })`: `<html lang="ja" suppressHydrationWarning>`、`<head>`に`ScriptOnce`(配色)と`HeadContent`、`<body>`にスキップリンク(「本文へ移動」→`#${MAIN_CONTENT_ID}`)、`DisplayPreferencesProvider`(`initial`は`appRuntimeOf(router.options.context).display`)・`TooltipProvider`(200ms)で包んだ中身、`Toaster`、`RouteAnnouncer`(パスの変わる画面遷移の後に`document.title`を`aria-live="polite"`で通知する。同じタイトルが続く遷移は再通知されない)、`Scripts`。マウント後に`initBrowserObservability({ router, config: runtime.publicConfig.sentry, queue: browserErrorQueue })`と`installPreloadRecovery`を呼ぶ(10.4・10.5)。レイアウトは本文の`<main>`に`id={MAIN_CONTENT_ID}`を付ける。部品のテストとストーリーで`AppDocument`を使う時は、`node:async_hooks`の読み込みで失敗するため`report-error.ts`・`browser-observability.ts`を差し替える。
 - `UiPrimitives`: モックアップの`components/ui`を部分ごとのファイル(`components/ui/<部品>/<部分>.tsx`、1ファイル1コンポーネント、他は型だけ)に分けて移植し、見た目の種類は`*-variants.ts`に置く。props型は名前付きのinterfaceにする。ボタン・タブ・バッジは固定幅を持たない(9.9)。Tailwind v4の`outline-none`などの輪郭を消す・上書きするクラスは`base.css`の`:focus-visible`の輪郭を打ち消すため付けない。非選択のタブの文字色は`text-muted-foreground`(コントラスト比AA)。Skeletonは`aria`を持たず、読み込み中の通知は`LoadingSkeleton`が担う。
-- `StateDisplays`: `LoadingSkeleton({ label?, children? })`(`role="status"`、既定の文言「読み込み中」)・`EmptyState({ title, description?, action?, headingLevel? })`(`headingLevel`は2〜6で、指定すると`section`+見出し+`aria-labelledby`)・`ErrorState({ message, onRetry, contactHref })`・`PartialErrorState({ message, onRetry })`・`UnavailableNotice({ reason })`(8.6・11.7)。固定の文言は`utilities/messages/state-messages.ts`に置く(`server/http/error-responses.ts`も`UNEXPECTED_ERROR_MESSAGE`をここから読む)。問い合わせの導線は通常の`<a href>`である。
+- `StateDisplays`: `LoadingSkeleton({ label?, children? })`(`role="status"`、既定の文言「読み込み中」)・`EmptyState({ title, description?, action?, headingLevel? })`(`headingLevel`は2〜6で、指定すると`section`+見出し+`aria-labelledby`)・`ErrorState({ message, onRetry, contactHref? })`(`contactHref`を省略すると問い合わせのボタンを描かない。管理者側は渡さない、8.6)・`PartialErrorState({ message, onRetry })`・`UnavailableNotice({ reason })`(8.6・11.7)。固定の文言は`utilities/messages/state-messages.ts`に置く(`server/http/error-responses.ts`も`UNEXPECTED_ERROR_MESSAGE`をここから読む)。問い合わせの導線は通常の`<a href>`である。
 - `Toaster`・`notify`: sonnerを下中央に置き(領域の名前「通知」)、`notify.success(message)`・`info`・`warning`・`error`で表示する。sonnerはトーストに`role`を付けずエラーも丁寧な通知で伝えるため、急ぐ失敗は`ErrorState`・フォームの`role="alert"`で示し、トーストは結果の通知に使う(8.7)。sonnerが差し込む`[data-sonner-toast]{outline:0}`を打ち消すため、`toastOptions.classNames.toast`に`!important`付きの`focus-visible:`の輪郭を付ける。
-- `ErrorViews`: `NotFoundView({ links })`(`links`は`NotFoundLink`(`{ href, label }`)の配列)・`UnexpectedErrorView({ onRetry, contactHref? })`(8.10)。`contactHref`は任意で、省略すると問い合わせのボタンを描かない(管理者側は問い合わせの画面が無いため渡さない。型の上ではclientの渡し忘れを検出しないため、clientのブラウザテストで守る)。
+- トーストで失敗を知らせる時の文言も`errorMessageOf(error, profile.contactAvailable)`で選ぶ(8.13)。`notify`は渡された文言をそのまま出す。
+- `ErrorViews`: `NotFoundView({ links })`(`links`は`NotFoundLink`(`{ href, label }`)の配列)・`UnexpectedErrorView({ onRetry, contactHref? })`(8.10)。`contactHref`は任意で、省略すると問い合わせのボタンを描かず、案内文も前半の`RETRY_LATER_GUIDANCE`(「時間をおいて再度お試しください。」)だけにする。渡した時は`RETRY_GUIDANCE`(`RETRY_LATER_GUIDANCE`と`CONTACT_GUIDANCE`(「解決しない場合はお問い合わせください。」)の連結)と問い合わせのボタンを出す。管理者側は問い合わせの画面が無いため渡さない。型の上ではclientの渡し忘れを検出しないため、clientのブラウザテストで守る。静的なエラー画面の500も、プロファイルの`contactAvailable`で同じ区別をする(ErrorResponses)。
 - `SystemStatusView({ server, browser?, onRecheck, rechecking })`(結果の型は`SystemStatusResult`): 見出し`h1`(「疎通確認」)と2つの区画(「サーバー側の描画時の結果」「ブラウザからの再確認の結果」)を持ち、「APIサーバーの時刻」「データベース」(「到達可能」・「到達できません」)を表示する。`isApiUnreachable`(`upstream_unavailable`・`upstream_timeout`・`network_error`)なら「APIサーバーへ到達できません。」、到達後の失敗は`error.message`を出す(12.1〜12.3)。ルート側は`h1`を足さない。文言は`utilities/messages/system-status-messages.ts`に置く。
 
 **Implementation Notes**
@@ -1955,10 +1997,10 @@ export declare function useTurnstileToken(): TurnstileTokenController;
 
 #### AppComposition・SiteLayout・AdminLayout
 
-| Field        | Detail                                       |
-| ------------ | -------------------------------------------- |
-| Intent       | 登録箇所と画面シェル                         |
-| Requirements | 2.14, 4.2, 4.3, 10.4, 11.1, 11.2, 11.3, 11.4 |
+| Field        | Detail                                             |
+| ------------ | -------------------------------------------------- |
+| Intent       | 登録箇所と画面シェル                               |
+| Requirements | 2.14, 4.2, 4.3, 10.4, 10.8, 11.1, 11.2, 11.3, 11.4 |
 
 **Contracts**: State [x]
 
@@ -2006,7 +2048,7 @@ export interface AdminLayoutProps {
 - 利用者側のヘッダー(11.1): ロゴ(「Launch Stadium」、`/`へ)・ナビゲーション「メイン」(ディレクトリ`/p`・ヘルプ`/help`)・`headerLaunchAction`・`ThemeToggle`・`headerAccount`。768px未満ではナビゲーションと`headerLaunchAction`・`headerAccount`を`Sheet`のメニューの中だけに出す。Sheetを開いている間、ヘッダーの区画の部品はヘッダーとSheetの2か所にマウントされるため、固定の`id`を持たない。既定の`SITE_LAYOUT_SLOTS`は未ログインの導線(ログイン`/auth/login`・登録`/auth/register`)と「ローンチする」(`/auth/login`)。
 - 利用者側のフッター(11.2): ナビゲーション「ヘルプ」(ヘルプトップ`/help`と`footerHelpLinks`)、ナビゲーション「規約・問い合わせ」(利用規約`/terms`・プライバシーポリシー`/privacy`・法的通知`/legal`・料金`/pricing`・お問い合わせ`/contact`)。`footerHelpLinks`の部品はフッターの`<ul>`の直下に置かれ、包む要素を持たない0個以上の`<li>`を描く。
 - 管理者側(11.4): ヘッダー(「⚽️ Launch Stadium管理」のトップへのリンク(絵文字は`aria-hidden`、名前は`admin-site.ts`)・`ThemeToggle`・`headerAccount`)→`navigation`の区画(包む要素無し、768px以上で左の列・未満で本文の上)→`<main id={MAIN_CONTENT_ID}>`。フッターは持たない。`ADMIN_LAYOUT_SLOTS`は`navigation`・`headerAccount`とも`null`(凍結)で、`null`の区画は入れ物ごと描画しない。`navigation`の部品は自身で名前付きの`nav`を描き、768px未満の開閉ボタンはヘッダーと本文の間に出る(ヘッダーに置くなら`AdminLayoutSlots`に区画を加える契約の変更になる)。
-- ランドマーク(10.4): 利用者側は`header`・`nav`(名前付き、ヘッダーとフッター)・`main id="main"`・`footer`。管理者側は`header`・`main id="main"`と、admin-foundationが`navigation`の区画に入れる`nav`で、`footer`を持たない(要件10.4との関係は「未決事項」)。
+- ランドマーク: 利用者側(10.4)は`header`・`nav`(名前付き、ヘッダーとフッター)・`main id="main"`・`footer`。管理者側(10.8)は`header`・`main id="main"`を必ず持ち、`footer`を持たない。ナビゲーションのランドマークは、admin-foundationが`navigation`の区画に入れる部品が描く名前付きの`nav`で満たし、区画が`null`の間は持たない。
 
 #### StatusRoute
 
@@ -2051,13 +2093,13 @@ export interface AdminLayoutProps {
 | `services`                       | `API` → `genai-example-2-api`(envで`-staging`・`-prod`)、`entrypoint: ClientGateway` | `entrypoint: AdminGateway`      |
 | `ratelimits`                     | `IP_RATE_LIMITER`・`simple: { limit: 100, period: 10 }`・`namespace_id`は表          | 同左                            |
 | `vars`                           | 「Supporting References」の値                                                        | `WEB_ANALYTICS_TOKEN`を持たない |
-| `secrets.required`               | ルートは無し、staging・prodは`SENTRY_DSN`                                            | 同左                            |
+| `secrets.required`               | ルートは`HASH_PEPPER`、staging・prodは`HASH_PEPPER`・`SENTRY_DSN`                    | 同左                            |
 
 - `vite.config.ts`: `cloudflare({ viteEnvironment: { name: 'ssr' }, persistState: { path: '/workspace/.wrangler/state' }, inspectorPort: 9231 })`(adminは`9232`)・`tanstackStart()`・`viteReact()`・`tailwindcss()`(1.3)。インスペクターのポートは、apiの`wrangler dev`の既定9229・eventの固定9230と同時に起動しても重ならない固定の値にし、ルートの`config/inspector-ports.unit.test.ts`が4つのポートを構文木から読んで互いに異なることを確かめる。
-- `SENTRY_TRACES_SAMPLE_RATE`は`"0.1"`のように文字列で書く。staging・prodの`TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`は形式の検証を通る仮の値(infra-deliveryが置き換える)。`compatibility_flags`は書かない。
+- `SENTRY_TRACES_SAMPLE_RATE`は`"0.1"`のように文字列で書く。ローカルの`TURNSTILE_SITE_KEY`は常に成功し表示しないテスト用の`1x00000000000000000000BB`。staging・prodの`TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`は形式の検証を通る仮の値(infra-deliveryが置き換える)。`HASH_PEPPER`はInfisicalから`infisical run`で注入し、`.dev.vars`を作らない。`compatibility_flags`は書かない。
 - バインディング・`vars`・`secrets`は継承されないため、ルート・`env.staging`・`env.prod`のそれぞれに書く。
 - `public/_headers`(4.4・4.6): `/*`に`BASE_SECURITY_HEADERS`・`Permissions-Policy`(既定値)・`Content-Security-Policy: <NON_PAGE_CONTENT_SECURITY_POLICY>`、`/assets/*`に`Cache-Control: public, max-age=31536000, immutable`。`static-headers.unit.test.ts`が共通部品の定数と一致することを確かめる。
-- `wrangler-config.unit.test.ts`: Wranglerの`unstable_readConfig`で3環境の実効値を読み、バインディング名・entrypoint・`namespace_id`(Worker・環境ごとに異なり、api・eventとも重ならない)・`limit`・`period`・呼び出しログの無効化・`compatibility_date`・`vars`の必須キー・`secrets.required`を確かめる。
+- `wrangler-config.unit.test.ts`: Wranglerの`unstable_readConfig`で3環境の実効値を読み、バインディング名・entrypoint・`namespace_id`(Worker・環境ごとに異なり、api・eventとも重ならない)・`limit`・`period`・呼び出しログの無効化・`compatibility_date`・`vars`の必須キー・`secrets.required`(3環境とも`HASH_PEPPER`を含む)を確かめる。実効の変数と偽のバインディング・偽のシークレットを`validateFrontendEnv`に通し、Wrangler設定と環境のスキーマの食い違いを検出する(型生成の検査の代わり)。
 
 ##### Batch / Job Contract
 
@@ -2122,15 +2164,15 @@ export interface AdminLayoutProps {
 
 #### 技術ドキュメント群
 
-| Field        | Detail                                |
-| ------------ | ------------------------------------- |
-| Intent       | 規約・契約・手順の文書化              |
-| Requirements | 6.9, 7.8, 9.9, 14.3, 14.4, 15.3〜15.8 |
+| Field        | Detail                                      |
+| ------------ | ------------------------------------------- |
+| Intent       | 規約・契約・手順の文書化                    |
+| Requirements | 6.9, 7.8, 8.13, 9.9, 14.3, 14.4, 15.3〜15.8 |
 
-- `frontend/003-frontend-server-security.md`: 処理の順序、中継の経路と項目・Cookieの属性と名前の分け方、`RelayRoute`の追加規約、CSRF(全経路・サーバー関数・状態を変えるサーバー関数は`POST`)、nonce付きCSPと許可先の登録、セキュリティヘッダー・`no-store`・`_headers`、検索除外、IP制限の適用(規約はbackendの文書を参照)、生のHTMLの禁止と例外。
+- `frontend/003-frontend-server-security.md`: 処理の順序、中継の経路と項目・Cookieの属性と名前の分け方、`RelayRoute`の追加規約、CSRF(全経路・サーバー関数・状態を変えるサーバー関数は`POST`)、nonce付きCSPと許可先の登録、セキュリティヘッダー・`no-store`・`_headers`、検索除外、IP制限の適用(規約はbackendの文書を参照し、キーはペッパーでハッシュ化してから数える)、生のHTMLの禁止と例外。
 - `frontend/004-accessibility-rules.md`: キーボード操作・フォーカス・ランドマーク・スキップリンク・画面遷移の通知・コントラスト・エラーの関連付け、自動検査(`runAxe`・Storybookのaddon)と手動で確かめる項目、視差効果の軽減と演出の停止手段の義務(WCAG 2.2.2)。
-- `frontend/005-shared-components.md`: 共通化する部品の一覧と使い方(フォーム・状態表示・トースト・日時・ウィジェット・エラー)、1ファイル1コンポーネントとshadcn/uiの分割の規則、カタログの書き方、翻訳への耐性(`translate="no"`・固定幅を持たない)。
-- `frontend/006-data-fetching.md`: 操作の置き場所、`graphqlQueryOptions`と`loader`の`ensureQueryData`、QueryClientの既定値と再試行、エラーの型と画面の分岐、Cookieの指示が反映される範囲、要求ごとのストア、サーバーのデータと画面の状態(Jotai・URLの検索パラメータ)の使い分け、取得の遅い区画のストリーミング、1ページの描画あたりの呼び出し回数の目安(6.9・14.3・14.4)。
+- `frontend/005-shared-components.md`: 共通化する部品の一覧と使い方(フォーム・状態表示・トースト・日時・非表示のウィジェット・エラーと問い合わせの導線の有無による案内文)、1ファイル1コンポーネントとshadcn/uiの分割の規則、カタログの書き方、翻訳への耐性(`translate="no"`・固定幅を持たない)。
+- `frontend/006-data-fetching.md`: 操作の置き場所、`graphqlQueryOptions`と`loader`の`ensureQueryData`、QueryClientの既定値と再試行、エラーの型と画面の分岐、Cookieの指示が反映される範囲、要求ごとのストア、サーバーのデータと画面の状態(Jotai・URLの検索パラメータ)の使い分け、取得の遅い区画のストリーミング、1ページの描画あたりの呼び出し回数の目安(3回以内)、失敗の文言(`errorMessageOf`とプロファイルの`contactAvailable`、問い合わせの導線が無い側の文言)(6.9・8.13・14.3・14.4)。
 - `frontend/007-frontend-observability.md`: Sentryの初期化(サーバー・ブラウザ)、除去の規則とスパンの注意、想定外の失敗の送信の入口、トレースの割合、アクセス解析、アクセスログ。
 - `coding/004-graphql-communication.md`のクライアント側の節: 操作の置き場所(`.graphql`)と操作名の接頭辞、コード生成の設定と生成物(画面が読む生成物)、操作の追加手順と許可リストの再生成、`documentId`の要求、エラーコードの扱い。
 - `service/features/003-internationalization.md`: 基準時刻(業務の日付・週・時刻の定義)と画面に出さない規則、ユーザーのタイムゾーンとロケールでの表示、サーバー側の推定とブラウザでの置き換え、相対表現の併記、メールはUTC表記(既存の規則への参照)、ブラウザ翻訳への耐性(15.5)。
@@ -2187,13 +2229,13 @@ export interface AdminLayoutProps {
 
 **中継の応答の処理**
 
-| 上流の項目                             | ブラウザへの扱い                                             |
-| -------------------------------------- | ------------------------------------------------------------ |
-| `x-session-issue`・`x-session-max-age` | 除き、セッションのCookieを発行する                           |
-| `x-session-clear`                      | 除き、セッションのCookieを削除する                           |
-| `Set-Cookie`                           | 除く(APIはCookieを発行しない契約)                            |
-| `Retry-After`・状態コード・本文        | そのまま返す(5xxでJSONでない応答は503`upstream_unavailable`) |
-| セキュリティヘッダー                   | フロントエンドの値で上書きする                               |
+| 上流の項目                             | ブラウザへの扱い                                                         |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| `x-session-issue`・`x-session-max-age` | 除き、セッションのCookieを発行する                                       |
+| `x-session-clear`                      | 除き、セッションのCookieを削除する                                       |
+| `Set-Cookie`                           | 除く(APIはCookieを発行しない契約)                                        |
+| `Retry-After`・状態コード・本文        | そのまま返す(5xxでJSONでない応答は503`upstream_unavailable`、2.10の例外) |
+| セキュリティヘッダー                   | フロントエンドの値で上書きする                                           |
 
 ## Error Handling
 
@@ -2206,21 +2248,21 @@ export interface AdminLayoutProps {
 
 ### Error Categories and Responses
 
-| 状況                                       | 応答                                                                     | 送信                                                     |
-| ------------------------------------------ | ------------------------------------------------------------------------ | -------------------------------------------------------- |
-| 環境の不備・環境の値が許可先の形に合わない | 500の静的なエラー画面(ページ以外のCSP)、キー名だけのログ                 | 呼ぶ(環境が不正だとSentryは無効のため実際には送られない) |
-| IP制限の超過(ページ)                       | 429の静的なエラー画面・`Retry-After: 10`                                 | しない                                                   |
-| IP制限の超過(その他)                       | 429 `rate_limit_exceeded`・`Retry-After: 10`                             | しない                                                   |
-| CSRFの拒否                                 | 403 `csrf_rejected`                                                      | しない                                                   |
-| `/_bff/`の未登録の経路                     | 404 `not_found`                                                          | しない                                                   |
-| 中継のメソッド・形式の不一致               | 405 `method_not_allowed`(`Allow`)・415 `unsupported_media_type`          | しない                                                   |
-| APIへ到達できない・15秒の時間切れ          | 503 `upstream_unavailable`・`upstream_timeout`・`Retry-After: 5`         | する(中継の処理だけが送る)                               |
-| 上流の5xxでJSONでない応答(実行基盤の失敗)  | 503 `upstream_unavailable`・`Retry-After: 5`(本文は捨てる、「未決事項」) | する(報告には状態コードだけ)                             |
-| GraphQLの想定内の失敗                      | APIの応答のまま(画面はエラーコードで分岐)                                | しない                                                   |
-| GraphQLの想定外の失敗・実行前の拒否        | APIの応答のまま(画面は`ErrorState`)                                      | する                                                     |
-| 存在しないページ・prodの疎通確認の画面     | 404の画面                                                                | しない                                                   |
-| 描画・`loader`・`beforeLoad`の想定外の例外 | 500の画面(画面遷移ではその画面)                                          | する                                                     |
-| エントリの処理中の想定外の例外             | 500の静的なエラー画面(ページ以外のCSP)                                   | する(送信の例外は名前だけのログ)                         |
+| 状況                                       | 応答                                                                                             | 送信                                                     |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| 環境の不備・環境の値が許可先の形に合わない | 500の静的なエラー画面(ページ以外のCSP、管理者側は問い合わせを促す文を出さない)、キー名だけのログ | 呼ぶ(環境が不正だとSentryは無効のため実際には送られない) |
+| IP制限の超過(ページ)                       | 429の静的なエラー画面・`Retry-After: 10`                                                         | しない                                                   |
+| IP制限の超過(その他)                       | 429 `rate_limit_exceeded`・`Retry-After: 10`                                                     | しない                                                   |
+| CSRFの拒否                                 | 403 `csrf_rejected`                                                                              | しない                                                   |
+| `/_bff/`の未登録の経路                     | 404 `not_found`                                                                                  | しない                                                   |
+| 中継のメソッド・形式の不一致               | 405 `method_not_allowed`(`Allow`)・415 `unsupported_media_type`                                  | しない                                                   |
+| APIへ到達できない・15秒の時間切れ          | 503 `upstream_unavailable`・`upstream_timeout`・`Retry-After: 5`                                 | する(中継の処理だけが送る)                               |
+| 上流の5xxでJSONでない応答(実行基盤の失敗)  | 503 `upstream_unavailable`・`Retry-After: 5`(本文は捨てる、2.10の例外)                           | する(報告には状態コードだけ)                             |
+| GraphQLの想定内の失敗                      | APIの応答のまま(画面はエラーコードで分岐)                                                        | しない                                                   |
+| GraphQLの想定外の失敗・実行前の拒否        | APIの応答のまま(画面は`ErrorState`)                                                              | する                                                     |
+| 存在しないページ・prodの疎通確認の画面     | 404の画面                                                                                        | しない                                                   |
+| 描画・`loader`・`beforeLoad`の想定外の例外 | 500の画面(画面遷移ではその画面)                                                                  | する                                                     |
+| エントリの処理中の想定外の例外             | 500の静的なエラー画面(ページ以外のCSP、管理者側は問い合わせを促す文を出さない)                   | する(送信の例外は名前だけのログ)                         |
 
 ### Monitoring
 
@@ -2232,17 +2274,18 @@ export interface AdminLayoutProps {
 TDDで進め、部品のテストを先に書く。frontend-lib・client・adminのそれぞれで、ファイルごとの行と関数のカバレッジ80%を満たす(15.1)。
 
 - **Unit Tests**(Bun)
-  - `create-frontend-server-entry.unit.test.ts`: 偽のバインディングとハンドラーで、環境の不備の500とキー名のログ、IP制限の429(ページはHTML・他はJSON、`Retry-After: 10`、CSRF・中継・描画が呼ばれない)、CSRFの403と理由のログ、`/_bff/graphql`の中継、未登録の`/_bff/*`の404、描画への`context`(nonce・表示設定・公開設定)、全応答のヘッダーと`no-store`、stagingと管理者側の`X-Robots-Tag`、例外時の500、アクセスログの属性(1.4・1.6・3.2・3.6・4.4・4.5・4.7・5.3・5.4・5.6・13.8)。
+  - `create-frontend-server-entry.unit.test.ts`: 偽のバインディングとハンドラーで、環境の不備の500とキー名のログ、IP制限の429(ページはHTML・他はJSON、`Retry-After: 10`、CSRF・中継・描画が呼ばれない)、CSRFの403と理由のログ、`/_bff/graphql`の中継、未登録の`/_bff/*`の404、描画への`context`(nonce・表示設定・公開設定)、全応答のヘッダーと`no-store`、stagingと管理者側の`X-Robots-Tag`、例外時の500(`contactAvailable`が偽のプロファイルでは環境の不備・例外の500の画面が問い合わせを促す文を含まない)、アクセスログの属性(1.4・1.6・3.2・3.6・4.4・4.5・4.7・5.3・5.4・5.6・11.10・13.8)。
+  - `error-responses.unit.test.ts`・`state-messages.unit.test.ts`: コードごとの状態コードと文言、429の`Retry-After`、静的な500の画面が`contactAvailable`の真偽で`UNEXPECTED_ERROR_MESSAGE`と`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`を出し分け、後者が「解決しない場合はお問い合わせください。」を含まないこと、2つの文言が`UNEXPECTED_ERROR_TITLE`・`RETRY_LATER_GUIDANCE`・`CONTACT_GUIDANCE`の連結であること(1.4・2.11・2.12・5.3・5.4・8.10・8.12・11.10)。
   - `csrf.unit.test.ts`: `Sec-Fetch-Site`の`same-origin`・`same-site`・`cross-site`・`none`、`Origin`の一致・不一致、両方の欠落、`Referer`だけでは拒否、GETのサーバー関数の検証(3.1〜3.5)。
   - `security-policy.unit.test.ts`・`security-headers.unit.test.ts`: CSPの各ディレクティブ、nonceの埋め込み、許可先の合成と重複の除去、不正な許可先の例外、Permissions-Policyの既定と許可、デプロイ先だけの`upgrade-insecure-requests`(4.1〜4.5・4.7)。
-  - `ip-rate-limit.unit.test.ts`・`client-ip.unit.test.ts`・`page-request.unit.test.ts`: キーの形式と`ip:unknown`、偽のバインディングでの許可と超過、例外時の通過と警告(5.1〜5.4)。
+  - `ip-rate-limit.unit.test.ts`・`rate-limit-key-hash.unit.test.ts`・`client-ip.unit.test.ts`・`page-request.unit.test.ts`: ハッシュ化前のキーの形式と`ip:unknown`、バインディングへ渡すキーがハッシュ値で生のIPアドレスを含まないこと、ハッシュ値が`node:crypto`の`createHmac('sha512', <ペッパー>).update('rate-limit-key\u0000' + JSON.stringify(parts)).digest('base64url')`(backend-libの`hashRateLimitKey`と同じ計算)と一致すること、偽のバインディングでの許可と超過、例外時の通過と警告(5.1〜5.4・5.7)。
   - `relay-headers.unit.test.ts`・`session-cookie.unit.test.ts`・`relay-route.unit.test.ts`: 許可した項目だけの引き継ぎとブラウザの偽の項目の除去、Cookieの読み取りと形式の検証、指示の解釈とSet-Cookieの属性、405・415・503・時間切れ、状態コード・本文・`Retry-After`の保持(2.3〜2.12)。
   - `frontend-env.unit.test.ts`・`request-display-preferences.unit.test.ts`: 欠けたキーの列挙と公開設定の範囲、タイムゾーン・言語タグの解釈と代替(1.4・9.2・9.5・13.7)。
   - `logging.unit.test.ts`・`sentry-scrub.unit.test.ts`・`server-sentry-options.unit.test.ts`: 伏せ字、イベントとスパンからのCookie・IP・クエリ・ヘッダーの除去、想定内の失敗の除外、DSN無しでの無効化(2.13・13.1・13.3・13.4)。
   - `graphql-result.unit.test.ts`・`persisted-document.unit.test.ts`・`date-time-formats.unit.test.ts`・`relative-time.unit.test.ts`・`number-format.unit.test.ts`・`theme-preference.unit.test.ts`・`server-field-errors.unit.test.ts`: エラーの型と`expected`の判定、識別子の取り出し、書式とタイムゾーン名を出さないこと、相対表現、数値、配色の保存の失敗、欄の対応付け(6.3・6.6・7.6・9.6〜9.8)。
   - `start/**/*.unit.test.ts`: 同型の関数のサーバーの分岐、サーバー側の描画のGraphQLの中継とCookieの合成・送り始めた後の破棄、ルートの失敗の送信の補い、ブラウザのSentryの初期化と列、QueryClientの既定値(2.2・2.7・2.8・6.5・6.7・11.6・13.1・13.2)。
   - `frontend-lint.unit.test.ts`・`eslint-config.unit.test.ts`・`prettier-config.unit.test.ts`・`storybook-catalog.unit.test.ts`(frontend-lib)、`codegen.unit.test.ts`(client・admin)、ルートの`config/inspector-ports.unit.test.ts`: 静的解析・整形・カタログの網羅・コード生成の生成物と接頭辞・ポートの重複(4.8・6.1〜6.4・8.11・15.2)。
-  - `tsconfig-sync.unit.test.ts`(frontend-lib)、`wrangler-config.unit.test.ts`・`static-headers.unit.test.ts`・`composition.unit.test.ts`(client・admin): 型検査設定の一致、3環境の設定、`_headers`の一致、Cookieの名前の違いと登録箇所の既定値(1.2・2.9・4.4・4.6・5.1・13.9)。
+  - `tsconfig-sync.unit.test.ts`(frontend-lib)、`wrangler-config.unit.test.ts`・`static-headers.unit.test.ts`・`composition.unit.test.ts`(client・admin): 型検査設定の一致、3環境の設定、`_headers`の一致、Cookieの名前の違いと登録箇所の既定値(プロファイルの`contactAvailable`はclientが真・adminが偽)(1.2・1.6・2.9・4.4・4.6・5.1・11.10・13.9)。
 - **Browser Tests**(Vitest Browser Mode・`vitest-browser-react`)
   - フォーム: フォーカスを外した時の表示、入力ごとの再検証、送信ボタンの無効化と処理中、サーバーの詳細の表示と最初の欄へのフォーカス(8.1〜8.5)。
   - `ThemeToggle`・`AppDocument`: 切替と保存、保存が無い時のOS設定、SSRの時点から正しい切り替え先の名前(`aria-pressed`を持たないこと)、ハイドレーション(`renderToReadableStream`とハイドレーション側のルーターの`router.ssr = { manifest: undefined }`で本番の`hydrate`を模す)(7.3〜7.6)。
@@ -2266,6 +2309,7 @@ TDDで進め、部品のテストを先に書く。frontend-lib・client・admin
 - CSPはnonceと個別の許可先だけでスクリプトを許し、`strict-dynamic`・`unsafe-eval`を使わない。許可先の登録は値の形を検査する。実行時にコード生成を試すライブラリ(Zod)は試行を止める設定(`jitless`)を済ませた入口からだけ読み込み、CSPの違反を出さない。
 - CSRFの判定はサーバー関数の経路のパーセントエンコードを解除した経路でも行い、エンコードした経路で検証を逃れさせない。
 - Workerの応答はすべて`no-store`で、nonceを含むHTMLを共有のキャッシュに残さない。
+- IP制限のキーはペッパー(`HASH_PEPPER`)を鍵としたHMACでハッシュ化してからRate Limitingバインディングへ渡し、送信元IPアドレスを実行基盤のカウンタへ渡さない。ペッパーはブラウザへ渡す設定値に含めない。
 - 要求ごとのQueryClient・Jotaiのストアで、利用者間のデータの混在を防ぐ。
 - Sentryへはイベントとスパンの両方からIP・Cookie・クエリ・本文を除き、残る文字列の値もメールアドレス・トークン・カード番号・IPアドレスの形式で伏せて送り、録画は行わない。ログも同じ値の形式とフィールド名で伏せる。
 
@@ -2291,58 +2335,54 @@ graph LR
 
 - 本specのタスクは、dev-tooling・backend-platform・api-gatewayの実装の完了を前提にする(apiのスキーマファイル・名前付きエントリポイント・許可リストの生成)。
 - 既存のデータは無い。データベースのテーブルは追加しない。
-- 新しいシークレットは`SENTRY_DSN`(staging・prod、launch-readinessが値を登録)だけである。staging・prodの`TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`は仮の値を置き、infra-deliveryが置き換える。
+- 新しいシークレットは`SENTRY_DSN`(staging・prod、launch-readinessが値を登録)である。`HASH_PEPPER`(全環境)はapi・eventと同じ値をInfisicalの環境ごとに1つ持ち、client・adminも同じ値を使う(ローカルは登録済みの`dev`の値、staging・prodのWorkerへの登録はinfra-delivery)。staging・prodの`TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`は仮の値を置き、infra-deliveryが置き換える。
 - デプロイの順序(APIを先、フロントエンドを後)と、Cloudflare側のWeb Analyticsの自動の挿入を無効にしておくことは、infra-deliveryが行う。AIエージェントはデプロイを実行しない。
 
-## 未決事項
+## 決定事項
 
-要件または技術文書と実装が食い違い、開発者の判断が要る事項である。決着するまでは現状の実装を契約とし、決着したら要件・設計・技術文書のどれを直すかをここに記してから反映する。
+要件・技術文書と実装の食い違いについて、2026-10-28に開発者が決めた契約である。本文の該当箇所はこの契約で書いてあり、実装と文書への反映はtasks.mdの10.1〜10.5で行う。
 
 ### 中継が上流のJSONでない5xxを503にすること(要件2.10)
 
-- 要件: 2.10は「APIサーバーの応答の状態コード・本文・`Retry-After`を変えずにブラウザへ返す」と定め、2.11は到達できない・15秒以内に応答が無い時だけ503とする。
-- 現状の実装: `relayToApi`は、上流の5xxで`Content-Type`の媒体の種類が`application/json`・`application/*+json`でない(または無い)応答を、実行基盤がAPIサーバーに代わって返した失敗(束縛先の不在・資源の超過など)とみなし、本文を捨てて503`upstream_unavailable`・`Retry-After: 5`にする(警告ログと送信を伴い、報告には状態コードだけを入れる)。ローカルでAPIを止めた時のWranglerの`503 text/plain`を要件12.3の文言(「APIサーバーへ到達できません。」)にするためである。`application/*+json`を含めるのは、APIのGraphQLの500`internal_error`が`application/graphql-response+json`で返るためである。
-- 選択肢:
-  1. 要件2.10に「APIサーバーの応答」を共通のエラー形式(JSON)の応答に限ると明記し、JSONでない5xxは2.11と同じ扱いとする(現状の実装)。`frontend/003`は「応答の扱い」の表(121〜123行)と中継の経路の追加規約(164行)に、JSONでない5xxを503`upstream_unavailable`にすることと「中継先は5xxを必ず共通のエラー形式(JSON)で返す」を記載済みで、文書の変更は要らない。
-  2. 要件2.10を字義どおりに守り、JSONでない5xxもそのまま返す。ローカルでAPIを止めた時の疎通確認の画面は要件12.3の文言にならず、`invalid_response`の文言になる。
-- 影響: 選択肢1では、ファイルのダウンロードなどJSON以外を返す中継の経路(media-pipeline・data-export)も、上流の5xxをJSONで返す必要がある。選択肢2では実装と`relay-route.unit.test.ts`を改め、`frontend/003`の121〜123行の表の行と164行の規約も改める。
+- 契約: 要求がAPIサーバーへ届かず、実行基盤がJSON(`application/json`・`application/*+json`)でない5xxを返した場合は、本文を捨てて503`upstream_unavailable`・`Retry-After: 5`の共通のエラー形式に置き換える(要件2.10の例外、RelayCoreの`relayToApi`)。それ以外の応答は状態コード・本文・`Retry-After`を変えない。
+- 中継先(APIサーバーと、ファイルを返す経路を加えるmedia-pipeline・data-export)は、5xxを必ず共通のエラー形式(JSON)で返す。`frontend/003`の「応答の扱い」と中継の経路の追加規約が同じ契約を記す。
 
-### 管理者側の画面シェルのランドマーク(要件10.4)
+### 管理者側の画面シェルのランドマーク(要件10.4・10.8)
 
-- 要件: 10.4は画面シェルに「ヘッダー・ナビゲーション・本文・フッターのランドマーク」を求め、利用者側と管理者側を区別していない。
-- 現状の実装: `AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ち、フッターを持たない。`ADMIN_LAYOUT_SLOTS.navigation`は`null`で、admin-foundationが中身を入れるまでナビゲーションのランドマークも無い。本設計の管理者側の構成(Components and Interfacesの`AppComposition・SiteLayout・AdminLayout`)とFile Structure Planにもフッターは無い。
-- 選択肢:
-  1. 要件10.4の対象を利用者側に限り、管理者側は「ヘッダー・ナビゲーション(admin-foundationが追加)・本文」と明記する(現状の実装)。
-  2. 管理者側にもフッター(例: サービス名だけ)を加え、`AdminLayoutSlots`か`AdminLayout`を変える。
-- 影響: admin-foundation(`design.md:90`)のナビゲーションの区画の前提。選択肢2は`AdminLayout`・ブラウザテスト・`002-page-layouts.md`の変更を伴う。
+- 契約: フッターのランドマークは利用者側の画面シェルだけが持つ(10.4)。管理者側の`AdminLayout`はヘッダー・`navigation`の区画・本文で、ヘッダーと本文のランドマークを必ず持ち、フッターを持たない。ナビゲーションのランドマークは、admin-foundationが`ADMIN_LAYOUT_SLOTS.navigation`に入れる部品の`nav`で満たす(10.8)。
+- `AdminLayout`・そのブラウザテスト・`002-page-layouts.md`の管理者側の基本レイアウトの記述は、この契約を満たす。
 
-### 幅320pxでのTurnstileのウィジェット(要件7.2)
+### bot判定のウィジェットの表示(要件7.2・8.8)
 
-- 要件: 7.2は共通部品と画面シェルを幅320pxでも横スクロール無しで表示することを求める。
-- 現状の実装: `TurnstileWidget`は`size`を指定せず、実物は幅300pxの固定のiframe(`flexible`も最小300px)になる。幅320pxで左右16pxの余白なら横スクロールが出る見込みで、ブラウザテストは偽物のウィジェットのため検出しない。表示の形式(管理・不可視)はサイトキーのウィジェットの種類で決まり、アプリごとにサイトキーは1つである。
-- 選択肢:
-  1. 常に`size: 'compact'`(幅150px)にする。
-  2. マウント後に画面幅で`size`を決める(SSRの`style`に出るため、マウント前の大きさの扱いに工夫が要る)。
-  3. Cloudflare側のウィジェットを不可視にし、画面に枠を出さない(サイトキーを共有する全specが不可視になる)。
-- 影響: ウィジェットを置く全spec(identity-auth・inquiry-chat・content-reporting・engagement・sponsorship・user-profile-social・admin-foundationなど)。match-engine(`design.md:1513`)はウィジェットを不可視で置く前提で、選択肢3以外では食い違う。実際のウィジェットの幅はE2Eで確かめる。
+- 契約: `TurnstileWidget`は`options.size: 'invisible'`で非表示のウィジェットを描き、画面に枠を出さず場所を取らない。Cloudflare側のウィジェットの種類も非表示にする。表示の大きさとスタイルを考慮せず、幅320pxでの横スクロールの対象にもならない。
+- ローカル(client・adminのWrangler設定のルートの`vars`)のサイトキーは、常に成功し表示しないテスト用の`1x00000000000000000000BB`。staging・prodのサイトキーは仮の値で、infra-deliveryが非表示の種類(`mode = "invisible"`)のウィジェットを作って置き換える。
+- 影響: ウィジェットを置く全spec(identity-auth・inquiry-chat・content-reporting・engagement・sponsorship・user-profile-social・product-launch・directory-discovery・admin-foundation)は、判定の枠の表示と場所を設けない。match-engineの不可視の前提と合う。
 
 ### セッションのCookieの有効期間の上限
 
-- 現状の実装: フロントエンドは`x-session-max-age`が1〜34560000秒(400日、`MAX_SESSION_MAX_AGE_SECONDS`)の整数でなければ発行の指示を無視して警告する(ブラウザがCookieの`Max-Age`を400日で切り詰めるため)。apiの`assertIssuable`(`apps/api/src/presentation/gateway/session-access.ts`)と`backend/006`・`coding/004`の表は上限を持たない。要件の有効期間(利用者側90日・管理者側12時間)とは衝突しない。
-- 選択肢:
-  1. `backend/006`・`coding/004`に上限400日を書く(現状の実装)。
-  2. apiの`assertIssuable`にも同じ上限を入れ、発行側で拒否する(api-gatewayの改訂)。
-  3. フロントエンドは上限を設けず、400日超はブラウザの切り詰めに任せる。
-- 影響: 決着したら`frontend/003`の「指示の解釈」の理由も見直す。
+- 契約: セッションの有効期間の上限は400日(34,560,000秒)で、フロントエンドとAPIサーバーの両方で持つ。フロントエンドは`x-session-max-age`が1〜`MAX_SESSION_MAX_AGE_SECONDS`の整数でなければ発行の指示を無視して警告する(RelayCore)。api-gatewayの`assertIssuable`(`apps/api/src/presentation/gateway/session-access.ts`)は、上限を超える有効期間の発行を拒否する(api-gatewayの追加タスク)。上限は、ブラウザがCookieの`Max-Age`を400日で切り詰めることに合わせた値である。
+- 文書: `backend/006`・`coding/004`の指示ヘッダーの表に上限を書き(api-gateway)、`frontend/003`の「指示の解釈」に、APIサーバーも同じ上限で拒否することを書く(10.5)。要件の有効期間(利用者側90日・管理者側12時間)とは衝突しない。
 
-### IP制限のキーのハッシュ化
+### IP制限のキーのハッシュ化(要件5.7)
 
-- 現状の実装: `checkIpRateLimit`のキーは生の`ip:<IP>`である(backend/003のWorker単位のIP制限とbackend-libの`IP_RATE_LIMIT_KEY_PREFIX`と同じ)。
-- 食い違い: `security/002`の「ハッシュ化の対象」はレート制限のキーのIPアドレスを方式を問わずハッシュ化の対象とするが、backend/003のWorker単位のIP制限はそれを例外と明記していない。
-- 選択肢:
-  1. `security/002`にWorker単位のIP制限(Rate Limitingバインディング)を例外として明記する(現状の実装。バインディングのカウンタはCloudflareの内部にだけあり、本プロジェクトの保存先に残らない)。
-  2. Rate Limitingバインディングのキーもペッパーでハッシュ化する(backend-libとフロントエンドの両方の変更。フロントエンドにペッパーのシークレットが要る)。
-- 影響: 決着したら`frontend/003`の「Rate Limitingバインディングの規約に合わせている」の理由と、backend-platformの設計・backend/003を見直す。
+- 契約: api・event(backend-libの`ipRateLimit`)とclient・admin(`checkIpRateLimit`)は、Worker単位のIP制限のキー`ip:<IP>`(不明なら`ip:unknown`)を、security/002の規則どおり`HASH_PEPPER`を鍵としたHMAC-SHA512(用途`rate-limit-key`)でハッシュ化してからRate Limitingバインディングへ渡す。ハッシュ値はbackend-libの`hashRateLimitKey`と同じ計算で、全Workerで同じ送信元から同じ値になる(名前空間はWorkerごとに別のため、数える対象は混ざらない)。
+- client・adminは`HASH_PEPPER`をシークレットとして必須にする(環境の検証スキーマとWrangler設定の`secrets.required`の3環境)。Infisicalは1つのプロジェクトで環境ごとに1つの`HASH_PEPPER`を持ち、api・event・client・adminが共有する。
+- 部品: 共通部品の`server/http/rate-limit-key-hash.ts`(新規)の`hashRateLimitKey(pepper, ...parts)`。backend-libのコードを読み込まず、同じ方式の写しとして置き、単体テストで`node:crypto`の`createHmac`による期待値と一致することを確かめる(IpRateLimit)。
+- 上流: backend-libの`ipRateLimit`はbackend-platformの追加タスク11.1が変える。本specの10.1はその完了を前提にする。
+- 影響: infra-deliveryは、stagingとprodの`HASH_PEPPER`の登録先(Workerへ配るシークレット)にclient・adminを含める。
+
+### 管理者側のエラーの案内文(要件1.6・8.6・8.10・8.13・11.6・11.10)
+
+- 契約: 管理者側には問い合わせの画面が無いため、どの画面にも問い合わせの導線と問い合わせを促す文を出さない。画面内の`UnexpectedErrorView`は`contactHref`が無い時に案内文を`RETRY_LATER_GUIDANCE`(「時間をおいて再度お試しください。」)だけにし、`ErrorState`は`contactHref`が無い時に問い合わせのボタンを描かない。`GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`・`AppForm`の`onSubmitError`・トースト)は`errorMessageOf(error, profile.contactAvailable)`で選び、`GraphQLClientError`の文言は両側とも問い合わせを促す文を含まない(GraphqlExecutor・GraphqlResult)。Workerが返す静的な500の画面は、`FrontendAppProfile.contactAvailable`(clientは真、adminは偽)に応じて`UNEXPECTED_ERROR_MESSAGE`と`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`を出し分ける(ErrorResponses・AppProfile)。利用者側の文言は変えない。
+- 文言の定数は`utilities/messages/state-messages.ts`の`UNEXPECTED_ERROR_TITLE`・`RETRY_LATER_GUIDANCE`・`CONTACT_GUIDANCE`(後の2つと`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`は新規)の連結で、画面内の表示と静的な画面で同じ文になる。`service/design/003`に2通りの文言を載せる。
+
+### 1ページの描画あたりの呼び出し回数の目安
+
+- 契約: 1ページの描画あたりのAPIサーバーの呼び出しは3回以内を目安とする(`frontend/006`)。
+
+### client・adminの型生成
+
+- 契約: client・adminに`cf-typegen`を置かない。環境の型は共通部品のZodのスキーマから作り、Wrangler設定との食い違いは各アプリの`wrangler-config.unit.test.ts`が検出する(Technology Stack)。理由を`frontend/002`に書く。
 
 ## Supporting References
 
@@ -2361,13 +2401,14 @@ graph LR
 | 操作名の接頭辞                    | client `Client`、admin `Admin`                                                                                     |
 | 初回の操作                        | client `ClientSystemStatus`、admin `AdminSystemStatus`(`src/graphql/operations/system-status.graphql`)             |
 
-| 変数                              | ローカル(ルート)                                 | staging                                                     | prod                                                |
-| --------------------------------- | ------------------------------------------------ | ----------------------------------------------------------- | --------------------------------------------------- |
-| `APP_ENVIRONMENT`                 | `local`                                          | `staging`                                                   | `prod`                                              |
-| `LOG_LEVEL`                       | `debug`                                          | `info`                                                      | `info`                                              |
-| `SENTRY_ENVIRONMENT`              | `local`                                          | `staging`                                                   | `prod`                                              |
-| `SENTRY_TRACES_SAMPLE_RATE`       | `0`                                              | `1`                                                         | `0.1`                                               |
-| `TURNSTILE_SITE_KEY`              | `1x00000000000000000000AA`(常に成功するテスト用) | 仮の値(infra-deliveryが置き換える)                          | 仮の値(infra-deliveryが置き換える)                  |
-| `IMAGES_ORIGIN`                   | `http://localhost:48043`                         | `https://genai-example-2-images-staging.lab.kurachiweb.com` | `https://genai-example-2-images.lab.kurachiweb.com` |
-| `WEB_ANALYTICS_TOKEN`(clientのみ) | 空(計測しない)                                   | 仮の値(infra-deliveryが置き換える)                          | 仮の値(infra-deliveryが置き換える)                  |
-| `SENTRY_DSN`(シークレット)        | 無し(送信しない)                                 | Infisicalの`staging`                                        | Infisicalの`prod`                                   |
+| 変数                              | ローカル(ルート)                                         | staging                                                     | prod                                                |
+| --------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------- |
+| `APP_ENVIRONMENT`                 | `local`                                                  | `staging`                                                   | `prod`                                              |
+| `LOG_LEVEL`                       | `debug`                                                  | `info`                                                      | `info`                                              |
+| `SENTRY_ENVIRONMENT`              | `local`                                                  | `staging`                                                   | `prod`                                              |
+| `SENTRY_TRACES_SAMPLE_RATE`       | `0`                                                      | `1`                                                         | `0.1`                                               |
+| `TURNSTILE_SITE_KEY`              | `1x00000000000000000000BB`(常に成功し表示しないテスト用) | 仮の値(infra-deliveryが置き換える)                          | 仮の値(infra-deliveryが置き換える)                  |
+| `IMAGES_ORIGIN`                   | `http://localhost:48043`                                 | `https://genai-example-2-images-staging.lab.kurachiweb.com` | `https://genai-example-2-images.lab.kurachiweb.com` |
+| `WEB_ANALYTICS_TOKEN`(clientのみ) | 空(計測しない)                                           | 仮の値(infra-deliveryが置き換える)                          | 仮の値(infra-deliveryが置き換える)                  |
+| `SENTRY_DSN`(シークレット)        | 無し(送信しない)                                         | Infisicalの`staging`                                        | Infisicalの`prod`                                   |
+| `HASH_PEPPER`(シークレット)       | Infisicalの`dev`(api・eventと共有)                       | Infisicalの`staging`(api・eventと共有)                      | Infisicalの`prod`(api・eventと共有)                 |

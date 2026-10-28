@@ -276,6 +276,16 @@
   - 完了状態: 一括検査(GraphQLの生成物の検査の段階を含む)・カバレッジ付きの一括テスト・スモークテスト・マイグレーションの検出確認がすべて成功する
   - _Requirements: 14.1, 14.2_
 
+- [ ] 11. frontend-platformの最終検証後の判断の反映(承認後の改訂4)
+- [ ] 11.1 セッションの有効期間の上限を検証する
+  - 先に、`session-access.worker.test.ts`へ、有効期間34,560,000秒(400日)の発行の指示は応答ヘッダーに出て、34,560,001秒・0・小数の指示はヘッダーを付けずに例外になり、例外のメッセージに有効期間とトークンの値が含まれないことを確かめる検査を足す。`session-verifier.unit.test.ts`へ上限の定数の値を確かめる検査を足す
+  - `session-verifier.ts`に`MAX_SESSION_MAX_AGE_SECONDS`(34,560,000、新規)を置き、`session-access.ts`の`assertIssuable`で有効期間が1以上その値以下の整数であることを確かめる
+  - `backend/006`のセッションの受け渡しと指示の節と、`coding/004`の指示ヘッダーの表に、有効期間の範囲(1〜34,560,000秒、400日)と、ブラウザがCookieの`Max-Age`を400日で切り詰めるためであることを書く
+  - 完了状態: apiのWorkers統合テスト・単体テストと一括検査が成功し、2つの技術ドキュメントの上限がフロントエンドの`MAX_SESSION_MAX_AGE_SECONDS`と同じ値で、プロジェクト名と固有値を含まない
+  - _Depends: 3.3_
+  - _Boundary: SessionAccess, SessionVerifierPort, 技術ドキュメント群_
+  - _Requirements: 3.5, 3.8, 3.9_
+
 ## Implementation Notes
 
 - 1.1(1.2への申し送り): `apps/api/src/composition/env-schema.ts`は`APP_ENVIRONMENT`の3値を暫定の定数`APP_ENVIRONMENT_VALUES`で持つ。1.2で`gateway-headers.ts`の`APP_ENVIRONMENTS`・`AppEnvironment`へ置き換え、定義を1箇所にする。依存の版の一覧は表に「導入先」の列を持つ形のため、`graphql`・`@graphql-codegen/cli`の導入先は「GraphQLのサーバーとクライアントを持つアプリ」と一般化した。`@escape.tech/graphql-armor-types`(任意の相手依存)は未導入。
@@ -321,3 +331,4 @@
 - 10.1(2026-10-27の結果、開発者の手動実行): 開発コンテナでのInfisicalへのログインと`wrangler deploy`はClaudeの設定で行えないため、開発者が確かめた。(1)`infisical --telemetry=false login --domain https://eu.infisical.com`でログインし、`dev`環境に`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`が登録されていた。(2)`/workspace/apps/api`で`infisical --telemetry=false run --env dev -- bun run dev`により起動し、`http://localhost:48042/graphql`のGraphiQLで`systemStatus`を実行できた。ブラウザのコンソールにCSP違反は出ず、Monacoは`'unsafe-eval'`を要さなかった(5.6のGraphiQLのCSPのままでよい)。`curl -i http://localhost:48042/v1/openapi.json`の応答にCORSとセキュリティヘッダーが付いた。(3)`/workspace/apps/api`で`bunx wrangler deploy --dry-run --outdir /tmp/api-dry-run`を実行し、Total Upload 3120.51KiB・gzip 574.68KiBで、上の`unstable_startWorker`のバンドルとほぼ同じ大きさ(無料プランの上限3MBの約19%)だった。オンボーディングの「ローカルのGraphiQL」の手順と実際の動作は一致していた。
 - 10.2(2026-10-26の結果): ルートの`check`は成功12件・失敗0件(GraphQLの生成物の検査はapiで成功、eventはスクリプト未定義で飛ばした)。`test:all:unit --coverage`はルート629件・api 763件が成功し閾値違反なし(ルートの最小は`business-time.ts`の行80.56%、apiの最小は`document-validator.ts`の行97.06%)。`test:all:worker --coverage`はapi 778件(関数100%・行99.4%、最小は`operation-observability.ts`の行95%)・event 6件(100%)が成功し閾値違反なし。`test:smoke`(DIの変換経路)と`db:migrations:check`(0件)も成功。1.2で申し送ったカバレッジ不足は解消済み。
 - 最終検証(2026-10-26、kiro-validate-impl): 判定はMANUAL_VERIFY_REQUIRED(10.1のローカル起動・GraphiQLのブラウザでの確認・デプロイのdry-runが開発者待ち。2026-10-27に開発者の手動実行で確かめ、解消)。一括検査・カバレッジ付きの全テスト・スモークは成功し、要件14件・受け入れ基準90件に実装がある(10.4の`Content-Type`の不一致に`details`が無い、9.3のテストはスキーマファイルの食い違いだけ、が軽微な不足)。依存の向きの違反は無い。上流・下流への申し送り: (1)public-apiのdesign.md 929行は`PublicRestRoutes<ApiEnv>`を前提にするが、`REST_ROUTES`は`PublicRestRoutes<Env>`(8.1。Honoの型引数が不変のため、public-apiの設計を`Env`に改める必要がある)。(2)identity-authが`GatewayRequestScope`へ`userAgent`を足す時は、`graphql-context.ts`の`GraphQLContextScope`と`graphql-module.ts`の`createRequestScope`にも追記が要る。(3)backend-platformの`AppError`に413・415が無い(5.6・7.1。改訂3で解消)。(4)dev-toolingの設計に`graphql:check`の段階が無い(6.4)。(5)infra-deliveryのCIでは`--previous-ref`付きの許可リストの生成の後に`graphql:check`を流さない。改善の候補: 生成コマンドがBunで読み込む`gateway-headers.ts`・`validated-args.ts`・`pagination.ts`・`loaders.ts`にも禁止importの規則を広げる、Allowed Dependenciesに`NOT_FOUND_RESPONSE`・`getAppLogger`・`ErrorEnvelope`・`AppErrorStatus`を追記する、テストのためだけのexport(`createGatewayServer`など)の整理。
+- 11.1(2026-10-28、承認後の改訂4): frontend-platformの最終検証の後に、開発者がAPIサーバーにもフロントエンドと同じセッションの有効期間の上限(400日)を持たせると決めたため、要件3.9と設計(SessionAccess)を改め、追加タスクにした。frontend-platformの10.5(`frontend/003`の「指示の解釈」)は本タスクの完了を前提にする。
