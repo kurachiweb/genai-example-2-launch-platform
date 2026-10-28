@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
 import { unstable_readConfig } from 'wrangler';
-import { z } from 'zod';
+
+import { z } from '../../lib/utilities/validation/zod.ts';
 
 const APP_DIR = join(import.meta.dirname, '..', '..');
 

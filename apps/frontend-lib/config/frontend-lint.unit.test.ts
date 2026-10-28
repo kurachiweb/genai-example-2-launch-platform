@@ -221,7 +221,6 @@ const RUNTIME_PACKAGE_STATEMENTS: readonly StatementCase[] = [
   allowed("import type { ExecutionContext } from 'cloudflare:workers';"),
   allowed("import type { Event } from '@sentry/cloudflare';"),
   allowed("import type { ErrorEvent } from '@sentry/core';"),
-  allowed("import { z } from 'zod';"),
   allowed("import { b } from './react';"),
 ];
 
@@ -343,7 +342,88 @@ const RENDERING_POSITION_CASES: readonly PositionCase[] = [
   },
 ];
 
+const ZOD_VALUE_STATEMENTS: readonly StatementCase[] = [
+  forbidden("import { z } from 'zod';"),
+  forbidden("import * as zod from 'zod';"),
+  forbidden("import z from 'zod';"),
+  forbidden("import { z as zv4 } from 'zod/v4';"),
+  forbidden("import { config } from 'zod/v4/core';"),
+  forbidden("import { z } from 'zod/mini';"),
+  forbidden("export { z } from 'zod';"),
+  allowed("import type { z } from 'zod';"),
+  allowed("import type { $ZodType } from 'zod/v4/core';"),
+  allowed("import { zodResolver } from '@hookform/resolvers/zod';"),
+];
+
+const ZOD_POSITION_CASES: readonly PositionCase[] = [
+  {
+    file: 'utilities/sample/violation.ts',
+    statements: [
+      ...ZOD_VALUE_STATEMENTS,
+      allowed("import { z } from '../validation/zod';"),
+    ],
+  },
+  {
+    file: 'server/http/violation.ts',
+    statements: [
+      ...ZOD_VALUE_STATEMENTS,
+      allowed("import { z } from '../../utilities/validation/zod';"),
+    ],
+  },
+  {
+    file: 'start/graphql/violation.ts',
+    statements: ZOD_VALUE_STATEMENTS,
+  },
+  {
+    file: 'components/form/violation.tsx',
+    statements: ZOD_VALUE_STATEMENTS,
+  },
+  {
+    file: 'components/form/violation.stories.tsx',
+    statements: ZOD_VALUE_STATEMENTS,
+  },
+  {
+    file: 'components/form/violation.browser.test.tsx',
+    statements: ZOD_VALUE_STATEMENTS,
+  },
+  {
+    file: 'src/routes/violation.tsx',
+    statements: [
+      ...ZOD_VALUE_STATEMENTS,
+      allowed("import { z } from '../../lib/utilities/validation/zod';"),
+    ],
+  },
+  {
+    file: 'src/composition/violation.ts',
+    statements: ZOD_VALUE_STATEMENTS,
+  },
+  {
+    file: 'test/config/violation.unit.test.ts',
+    statements: ZOD_VALUE_STATEMENTS,
+  },
+  {
+    file: 'utilities/validation/zod.ts',
+    statements: [
+      allowed("import { z } from 'zod';"),
+      forbidden("import { useState } from 'react';"),
+      forbidden("import { c } from '../../server/http/csrf';"),
+    ],
+  },
+];
+
 describe('画面向けの静的解析の規則', () => {
+  describe('ZodのJITを止める設定を経ないZodの値の読み込みを禁止する', () => {
+    test.each(ZOD_POSITION_CASES.map((position) => [position.file, position]))(
+      '%sで設定済みの部品以外からのZodの値の読み込みをエラーとして報告する',
+      async (_file, position) => {
+        expect(await reportedStatementsOf(position, IMPORT_RULE_IDS)).toEqual(
+          expectedStatementsOf(position),
+        );
+      },
+      LINT_TIMEOUT_MS,
+    );
+  });
+
   describe('生のHTMLの挿入を禁止する', () => {
     test.each(RAW_HTML_CASES.map((position) => [position.file, position]))(
       '%sで危険なHTMLの属性とinnerHTML・outerHTMLへの代入をエラーとして報告する',

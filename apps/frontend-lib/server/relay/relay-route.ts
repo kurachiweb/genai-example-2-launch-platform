@@ -195,6 +195,19 @@ const acceptsContentType = (route: RelayRoute, headers: Headers): boolean => {
   );
 };
 
+const JSON_MEDIA_TYPE_PATTERN = /^application\/(?:[a-z0-9!#$&^_.-]+\+)?json$/u;
+
+const SERVER_ERROR_STATUS = 500;
+
+// APIサーバーの応答は常に共通のエラー形式(JSON)のため、JSONでない5xxは実行基盤がAPIサーバーに代わって返した失敗(束縛先の不在・資源の超過など)とみなす
+const isPlatformFailure = (upstream: Response): boolean => {
+  if (upstream.status < SERVER_ERROR_STATUS) {
+    return false;
+  }
+  const mediaType = mediaTypeOf(upstream.headers.get('Content-Type'));
+  return mediaType === undefined || !JSON_MEDIA_TYPE_PATTERN.test(mediaType);
+};
+
 const resolveUpstreamUrl = (route: RelayRoute, url: URL): URL => {
   const path = route.upstreamPath(url);
   const upstream = new URL(path, API_INTERNAL_ORIGIN);
@@ -297,6 +310,18 @@ export async function relayToApi(
   }
   if (upstream === ABORTED) {
     return upstreamFailure(route, deps, signal.reason, true);
+  }
+  if (isPlatformFailure(upstream)) {
+    // 捨てる本文のストリームが既に失敗していても、実行基盤の失敗として応答する
+    await upstream.body?.cancel().catch(() => undefined);
+    return upstreamFailure(
+      route,
+      deps,
+      new Error(
+        `APIサーバーの代わりに共通のエラー形式ではない状態${String(upstream.status)}の応答が返りました`,
+      ),
+      false,
+    );
   }
   return toBrowserResponse(upstream, deps.cookieName, deps.sessionLogger);
 }

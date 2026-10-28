@@ -249,6 +249,144 @@ describe('relayToApi(GraphQL)', () => {
     ]);
   });
 
+  test.each([
+    [503, 'text/plain', 'Worker "api" not found'],
+    [502, 'text/html; charset=utf-8', '<html>Bad Gateway</html>'],
+    [500, '', 'Error 1102: Worker exceeded resource limits'],
+  ] as const)(
+    '上流が状態%iで形式「%s」の本文を返したら、503のupstream_unavailableとRetry-Afterで応答し、上流の本文を含めず、警告して送信する',
+    async (status, contentType, upstreamBody) => {
+      let canceled = false;
+      const api = respondingWith(
+        () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start: (controller) => {
+                controller.enqueue(new TextEncoder().encode(upstreamBody));
+              },
+              cancel: () => {
+                canceled = true;
+              },
+            }),
+            {
+              status,
+              headers:
+                contentType === '' ? {} : { 'Content-Type': contentType },
+            },
+          ),
+      );
+      const { deps, recorder } = depsOf(api);
+
+      const response = await relayToApi(
+        GRAPHQL_RELAY_ROUTE,
+        graphqlRequest(),
+        deps,
+      );
+
+      expect(response.status).toBe(503);
+      expect(response.headers.get('Retry-After')).toBe('5');
+      const text = await response.text();
+      expect(text).not.toContain(upstreamBody);
+      expect(JSON.parse(text)).toEqual(errorBodyOf('upstream_unavailable'));
+      expect(canceled).toBe(true);
+      expect(recorder.warnings.map(({ properties }) => properties)).toEqual([
+        { code: 'upstream_unavailable', route: '/_bff/graphql' },
+      ]);
+      expect(recorder.reported).toHaveLength(1);
+      expect(recorder.reported[0]).toBeInstanceOf(Error);
+      expect(String(recorder.reported[0])).not.toContain(upstreamBody);
+    },
+  );
+
+  test('上流の非JSONの5xxの本文のストリームが失敗していても、503のupstream_unavailableで応答する', async () => {
+    const api = respondingWith(
+      () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start: (controller) => {
+              controller.error(new Error('本文の受信に失敗'));
+            },
+          }),
+          { status: 503, headers: { 'Content-Type': 'text/plain' } },
+        ),
+    );
+    const { deps } = depsOf(api);
+
+    const response = await relayToApi(
+      GRAPHQL_RELAY_ROUTE,
+      graphqlRequest(),
+      deps,
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual(errorBodyOf('upstream_unavailable'));
+  });
+
+  test.each([
+    [
+      500,
+      'application/json',
+      '{"error":{"code":"internal_error","message":"x"}}',
+    ],
+    [
+      500,
+      'application/graphql-response+json; charset=utf-8',
+      '{"errors":[{"message":"x","extensions":{"code":"internal_error"}}]}',
+    ],
+    [
+      503,
+      'Application/JSON',
+      '{"error":{"code":"internal_error","message":"x"}}',
+    ],
+  ] as const)(
+    '上流が状態%iで%sの本文を返したら、状態コードと本文を変えずに返し、送信しない',
+    async (status, contentType, upstreamBody) => {
+      const { deps, recorder } = depsOf(
+        respondingWith(
+          () =>
+            new Response(upstreamBody, {
+              status,
+              headers: { 'Content-Type': contentType },
+            }),
+        ),
+      );
+
+      const response = await relayToApi(
+        GRAPHQL_RELAY_ROUTE,
+        graphqlRequest(),
+        deps,
+      );
+
+      expect(response.status).toBe(status);
+      expect(response.headers.get('Content-Type')).toBe(contentType);
+      expect(await response.text()).toBe(upstreamBody);
+      expect(recorder.reported).toHaveLength(0);
+      expect(recorder.warnings).toHaveLength(0);
+    },
+  );
+
+  test('上流の5xx未満の応答は本文の形式に関わらず変えずに返す', async () => {
+    const { deps, recorder } = depsOf(
+      respondingWith(
+        () =>
+          new Response('Not Found', {
+            status: 404,
+            headers: { 'Content-Type': 'text/plain' },
+          }),
+      ),
+    );
+
+    const response = await relayToApi(
+      GRAPHQL_RELAY_ROUTE,
+      graphqlRequest(),
+      deps,
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe('Not Found');
+    expect(recorder.reported).toHaveLength(0);
+  });
+
   test('中継の失敗のログに接続元のIP・セッション識別子・bot判定のトークンの値を含めない', async () => {
     const { deps, recorder } = depsOf(rejecting(new Error('unreachable')));
 
@@ -316,6 +454,17 @@ describe('relayToApi(時間切れ)', () => {
 
   test.each([
     ['upstream_unavailable', () => rejecting(new Error('x'))],
+    [
+      'upstream_unavailable',
+      () =>
+        respondingWith(
+          () =>
+            new Response('Worker "api" not found', {
+              status: 503,
+              headers: { 'Content-Type': 'text/plain' },
+            }),
+        ),
+    ],
     ['upstream_timeout', neverResponding],
   ] as const)(
     '503の%sはGraphQLの応答の解析で同じコード・再試行までの秒数の想定外の失敗になる',

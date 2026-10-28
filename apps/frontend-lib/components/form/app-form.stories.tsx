@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 import { fn } from 'storybook/test';
-import { z } from 'zod';
 
 import { GraphQLClientError } from '../../utilities/graphql/graphql-result.ts';
+import { z } from '../../utilities/validation/zod.ts';
 import { Input } from '../ui/input/input.tsx';
 import { Textarea } from '../ui/textarea/textarea.tsx';
 import { AppForm, type SubmitErrorContext } from './app-form.tsx';

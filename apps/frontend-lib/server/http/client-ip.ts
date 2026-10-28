@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '../../utilities/validation/zod.ts';
 
 const CONNECTING_IP_HEADER = 'CF-Connecting-IP';
 

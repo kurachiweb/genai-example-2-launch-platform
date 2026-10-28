@@ -94,9 +94,45 @@ const COMPOSITION_TO_ROUTES_RESTRICTION: RestrictedImportPattern = {
     '登録箇所(src/composition)はルート(src/routes)に依存できません。ルートから登録箇所を読み込んでください。',
 };
 
+const ZOD_ENTRY_FILE = 'utilities/validation/zod.ts';
+
+// ZodはZodObjectを作る時にnew Functionを試し、CSPの下のブラウザでは例外を捕捉しても違反として報告されるため、試行を止める設定を済ませた部品からだけ値を読み込ませる
+const ZOD_VALUE_RESTRICTION: RestrictedImportPattern = {
+  regex: '^zod(?:/.*)?$',
+  allowTypeImports: true,
+  message: `Zodの値はJITを止める設定を済ませた共通部品(${ZOD_ENTRY_FILE})のzから読み込んでください。型だけの読み込みはそのまま書けます。`,
+};
+
 const restrictImports = (
   patterns: readonly RestrictedImportPattern[],
 ): Linter.RuleEntry => ['error', { patterns }];
+
+// 同じ規則を設定する後の設定は前の設定の選択肢を置き換えるため、型を区別する読み込みの制限には常にZodの制限を含める
+const restrictValueImports = (
+  patterns: readonly RestrictedImportPattern[],
+): Linter.RuleEntry => restrictImports([ZOD_VALUE_RESTRICTION, ...patterns]);
+
+const PURE_VALUE_RESTRICTIONS: readonly RestrictedImportPattern[] = [
+  RUNTIME_PACKAGE_RESTRICTION,
+];
+
+const ZOD_ENTRY_RULE: Linter.Config = {
+  name: 'frontend/zod-entry',
+  files: ['**/*.ts', '**/*.tsx'],
+  rules: {
+    '@typescript-eslint/no-restricted-imports': restrictValueImports([]),
+  },
+};
+
+const ZOD_ENTRY_FILE_RULE: Linter.Config = {
+  name: 'frontend/zod-entry/file',
+  files: [ZOD_ENTRY_FILE],
+  rules: {
+    '@typescript-eslint/no-restricted-imports': restrictImports(
+      PURE_VALUE_RESTRICTIONS,
+    ),
+  },
+};
 
 const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
   {
@@ -111,9 +147,9 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
         ]),
         APP_SOURCE_RESTRICTION,
       ]),
-      '@typescript-eslint/no-restricted-imports': restrictImports([
-        RUNTIME_PACKAGE_RESTRICTION,
-      ]),
+      '@typescript-eslint/no-restricted-imports': restrictValueImports(
+        PURE_VALUE_RESTRICTIONS,
+      ),
     },
   },
   {
@@ -124,9 +160,9 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
         reverseDirectionRestriction('サーバーの部品', ['start', 'components']),
         APP_SOURCE_RESTRICTION,
       ]),
-      '@typescript-eslint/no-restricted-imports': restrictImports([
-        RUNTIME_PACKAGE_RESTRICTION,
-      ]),
+      '@typescript-eslint/no-restricted-imports': restrictValueImports(
+        PURE_VALUE_RESTRICTIONS,
+      ),
     },
   },
   {
@@ -147,7 +183,7 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
         SERVER_ONLY_FILE_RESTRICTION,
         APP_SOURCE_RESTRICTION,
       ]),
-      '@typescript-eslint/no-restricted-imports': restrictImports([
+      '@typescript-eslint/no-restricted-imports': restrictValueImports([
         SERVER_VALUE_RESTRICTION,
         BROWSER_SENTRY_RESTRICTION,
       ]),
@@ -163,7 +199,7 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
       '**/*.test.tsx',
     ],
     rules: {
-      '@typescript-eslint/no-restricted-imports': restrictImports([
+      '@typescript-eslint/no-restricted-imports': restrictValueImports([
         BROWSER_SENTRY_RESTRICTION,
       ]),
     },
@@ -311,6 +347,8 @@ export function createFrontendLintConfig({
         ],
       },
     },
+    ZOD_ENTRY_RULE,
     ...DEPENDENCY_DIRECTION_RULES,
+    ZOD_ENTRY_FILE_RULE,
   ];
 }

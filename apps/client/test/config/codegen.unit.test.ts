@@ -4,9 +4,9 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { Kind, type OperationDefinitionNode, parse, print } from 'graphql';
-import { z } from 'zod';
 
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
+import { z } from '../../lib/utilities/validation/zod.ts';
 import { ClientSystemStatusDocument } from '../../src/graphql/generated/graphql.ts';
 
 const SRC_DIR = join(import.meta.dirname, '..', '..', 'src');

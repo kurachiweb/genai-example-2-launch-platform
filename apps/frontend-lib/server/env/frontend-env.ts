@@ -1,5 +1,4 @@
-import { z } from 'zod';
-
+import { z } from '../../utilities/validation/zod.ts';
 import type {
   AppEnvironment,
   FrontendAppProfile,

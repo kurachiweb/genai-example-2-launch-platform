@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '../validation/zod.ts';
 
 export interface FieldErrorDetail {
   readonly field: string;
