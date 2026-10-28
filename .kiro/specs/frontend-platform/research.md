@@ -134,9 +134,10 @@
 - **Context**: 要件6、api-gatewayの契約(操作の一覧の場所・形式・識別子`sha256:<16進>`、`documentId`による要求)。
 - **Sources Consulted**: api-gatewayのresearch.md(`@graphql-codegen/client-preset` 6.2.0の`persistedDocuments`の出力)、npmの`@graphql-codegen/client-preset@6.2.0`(相手依存`graphql` ^16)。2026-10-26に`@graphql-codegen/client-preset@6.2.3`の配布物も確かめ、相手依存と`persisted-documents.json`の識別子の形式(`sha256:`の前置き)が6.2.0から変わっていないことを確かめた。
 - **Findings**:
-  - `persistedDocuments`を有効にすると、出力先に`persisted-documents.json`を出し、生成した文書に`__meta__.hash`(`sha256:<16進>`)を付ける。`mode: 'replaceDocumentWithHash'`では、生成物から操作の本文が消え、識別子だけが残る。
+  - `persistedDocuments`を有効にすると、出力先に`persisted-documents.json`を出し、生成した文書に`__meta__.hash`(`sha256:<16進>`)を付ける。`mode: 'replaceDocumentWithHash'`では、`graphql.ts`の`<操作名>Document`から操作の本文と構文木が消え、識別子だけが残る。
+  - 同じ出力先の`gql.ts`(`index.ts`が再公開する)の`graphql()`の関数は、操作の本文の文字列をキーに持つ対応表から文書を引く。この対応表のキーと`graphql()`の引数には本文が残るため、TypeScriptの中で`graphql()`を呼んで操作を書くと、ブラウザへ配信するスクリプトに本文が入る。
   - `@graphql-codegen/cli`の`--check`は、生成物が最新でなければ終了コード1を返す。
-- **Implications**: 出力先を`src/graphql/generated/`(api-gatewayの契約)にし、`mode: 'replaceDocumentWithHash'`でバンドルから本文を除く。`graphql`は16.14.2、`@graphql-codegen/cli`は7.4.6でapiとそろえ、`@graphql-codegen/client-preset`は6.2.3とする(2026-10-26、api-gatewayの承認後の改訂2への追従。下の「上流(api-gateway)の版の更新への追従」を参照)。操作は各アプリの`src`にだけ置き、共通部品には置かない(利用者側と管理者側の一覧を分けるため)。
+- **Implications**: 出力先を`src/graphql/generated/`(api-gatewayの契約)にし、`mode: 'replaceDocumentWithHash'`でバンドルから本文を除く。操作とフラグメントは`src/graphql/operations/**/*.graphql`に置き(`documents`は`src/**/*.graphql`)、`graphql()`を呼ばない。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と結果・変数の型を読み、`gql.ts`・`index.ts`は読み込まない。`graphql`は16.14.2、`@graphql-codegen/cli`は7.4.6でapiとそろえ、`@graphql-codegen/client-preset`は6.2.3とする(2026-10-26、api-gatewayの承認後の改訂2への追従。下の「上流(api-gateway)の版の更新への追従」を参照)。操作は各アプリの`src`にだけ置き、共通部品には置かない(利用者側と管理者側の一覧を分けるため)。
 
 ### ESLint 10と画面向けの静的解析
 

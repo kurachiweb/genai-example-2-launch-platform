@@ -9,7 +9,7 @@
 
 ただし、トップページと異なりスポンサー広告は表示しないでください。
 
-参考：`docs/GUIDES/service/design/002-page-layouts.md`の「[ディレクトリ](../GUIDES/service/design/002-page-layouts.md#ディレクトリ)」セクション
+参考：`docs/GUIDES/service/design/002-page-layouts.md`の「[ディレクトリ](../GUIDES/service/design/002-page-layouts.md#ディレクトリp)」セクション
 
 【表示する状態一覧】
 利用者側プロダクト詳細ページ同様、URL内のクエリパラメータ及び`position: fixed`で右下に表示する状態切り替えラジオボタン群(折りたたみ可能)により、以下の状態を切り替えて画面内で起こりうるあらゆるケースをカバーすること。なお検索・絞り込み・並び替え・ページ番号はこのリストには含めない。

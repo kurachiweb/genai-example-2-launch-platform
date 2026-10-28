@@ -273,6 +273,7 @@ captureEvent({
 
 - 処理単位の所要時間のパフォーマンストレースを、環境ごとに`<トレースの割合の変数>`で設定した割合で送る。ローカル環境では0とする。
 - トレースは、SDKの既定(`traceLifecycle`を指定しない)のスパンの逐次送信のままにする。逐次送信ではトランザクションのイベントが作られず`beforeSendTransaction`が呼ばれないため、スパンの除去処理は`beforeSendSpan`につなぐ。非推奨の`beforeSendTransaction`と、それを使い続けるための`traceLifecycle: 'static'`は使わない。
+- Wrangler設定の`vars`に`SENTRY_TRACE_LIFECYCLE`を定義しない。`@sentry/cloudflare`は`traceLifecycle`を指定しなければこの変数を読み、`static`になると、`withStaticSpan`で包んでいない`beforeSendSpan`を無視するため、スパンは除去されないまま送られる。
 
 ### 個人情報と秘密情報の除去
 
@@ -322,6 +323,7 @@ flowchart LR
 - IPアドレスを表すヘッダーは、Sentryが利用者のIPアドレスの取得に使う12種(`x-client-ip`・`x-forwarded-for`・`fly-client-ip`・`cf-connecting-ip`・`fastly-client-ip`・`true-client-ip`・`x-real-ip`・`x-cluster-client-ip`・`x-forwarded`・`forwarded-for`・`forwarded`・`x-vercel-forwarded-for`)である。
 - 中継ヘッダーは、他のWorkerが要求を中継するときに付ける、元のクライアントIPアドレス・セッション識別子・bot判定のトークン(`cf-turnstile-response`)のヘッダーである。中継ヘッダーの名前を加えたり変えたりしたら、除去処理の削除するヘッダーを合わせる。
 - `scrubSpan`はスパンを書き換えずに新しいスパンを返す。`beforeSendSpan`はスパンを捨てられないため、除去だけを行う。
+- `beforeSendSpan`が`null`を返しても例外を投げても、SDKは元のスパンを除去しないまま送る(`beforeSend`が例外を投げた時はイベントを捨てる)。`scrubSpan`は、想定しない形の属性でも例外を投げないように書く。
 - 例外の値などを書き換えても、Sentryのグループ化はスタックトレースと例外の種類で行われるため、グループは大きく変わらない。
 
 #### 除去処理の対象外の項目
