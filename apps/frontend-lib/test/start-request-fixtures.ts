@@ -101,7 +101,7 @@ export const renderContextOf = (
   display: { timeZone: 'Asia/Tokyo', locale: 'ja-JP' },
   publicConfig: {
     environment: 'staging',
-    turnstileSiteKey: '1x00000000000000000000AA',
+    turnstileSiteKey: '1x00000000000000000000BB',
     sentry: { dsn: undefined, environment: 'staging', tracesSampleRate: 0.1 },
     webAnalyticsToken: undefined,
   },

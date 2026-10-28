@@ -28,7 +28,7 @@ const validRawEnv = (): Record<string, unknown> => ({
   SENTRY_ENVIRONMENT: 'prod',
   SENTRY_TRACES_SAMPLE_RATE: '0.1',
   SENTRY_DSN,
-  TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
+  TURNSTILE_SITE_KEY: '1x00000000000000000000BB',
   IMAGES_ORIGIN: 'https://images.example',
   WEB_ANALYTICS_TOKEN: 'analytics-token',
 });

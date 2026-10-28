@@ -26,7 +26,7 @@ vi.mock(
   () => import('../../test/fake-turnstile.tsx'),
 );
 
-const SITE_KEY = '1x00000000000000000000AA';
+const SITE_KEY = '1x00000000000000000000BB';
 const NONCE = 'bm9uY2Utb2YtcmVxdWVzdA==';
 const FAILURE_MESSAGE =
   '認証に失敗しました。ページを再読み込みして再度お試しください。';
@@ -95,6 +95,34 @@ function TokenHarness({ action }: { readonly action?: string }) {
   );
 }
 
+interface LayoutHarnessProps {
+  readonly layoutClassName: string;
+}
+
+function LayoutHarness({ layoutClassName }: LayoutHarnessProps) {
+  const turnstile = useTurnstileToken();
+  return (
+    <div className={layoutClassName}>
+      <p data-testid="before">前の要素</p>
+      <TurnstileWidget {...turnstile.widgetProps} />
+      <p data-testid="after">後の要素</p>
+    </div>
+  );
+}
+
+const rectOf = (testId: string): DOMRect => {
+  const element = page.getByTestId(testId).element();
+  return element.getBoundingClientRect();
+};
+
+const remInPixels = (): number =>
+  Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+
+const LAYOUTS = [
+  { name: 'flexの間隔', layoutClassName: 'flex flex-col gap-4' },
+  { name: '兄弟の間の余白', layoutClassName: 'space-y-4' },
+] as const;
+
 const succeed = () =>
   userEvent.click(page.getByRole('button', { name: '判定を成功させる' }));
 const expire = () =>
@@ -142,6 +170,60 @@ describe('TurnstileWidget', () => {
       refreshExpired: 'never',
     });
   });
+
+  test('判定の枠を画面に出さず場所を取らない非表示の大きさで、ウィジェットを描画させる', async () => {
+    await renderInRouter(<TokenHarness />);
+
+    await expect
+      .element(page.getByTestId('fake-turnstile'))
+      .toBeInTheDocument();
+    expect(lastTurnstileProps().options).toMatchObject({ size: 'invisible' });
+  });
+
+  test('非表示のウィジェットでも、判定に失敗すると失敗の文言を画面に表示する', async () => {
+    await renderInRouter(<TokenHarness />);
+    await expect
+      .element(page.getByTestId('fake-turnstile'))
+      .toBeInTheDocument();
+
+    await fail();
+
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent(FAILURE_MESSAGE);
+    await expect.element(page.getByRole('alert')).toBeVisible();
+    expect(lastTurnstileProps().options?.size).toBe('invisible');
+  });
+
+  test.each(LAYOUTS)(
+    '親の$nameの中で、平常時のウィジェットは通常の流れに入らず、前後の要素の間を間隔1つ分だけにする',
+    async ({ layoutClassName }) => {
+      await renderInRouter(<LayoutHarness layoutClassName={layoutClassName} />);
+      await expect
+        .element(page.getByTestId('fake-turnstile'))
+        .toBeInTheDocument();
+
+      expect(rectOf('after').top - rectOf('before').bottom).toBe(remInPixels());
+    },
+  );
+
+  test.each(LAYOUTS)(
+    '親の$nameの中で、判定に失敗した時は失敗の文言だけが通常の流れに入り、文言の前後を間隔1つ分ずつにする',
+    async ({ layoutClassName }) => {
+      await renderInRouter(<LayoutHarness layoutClassName={layoutClassName} />);
+      await expect
+        .element(page.getByTestId('fake-turnstile'))
+        .toBeInTheDocument();
+
+      await fail();
+
+      const alert = page.getByRole('alert');
+      await expect.element(alert).toHaveTextContent(FAILURE_MESSAGE);
+      const message = alert.element().getBoundingClientRect();
+      expect(message.top - rectOf('before').bottom).toBe(remInPixels());
+      expect(rectOf('after').top - message.bottom).toBe(remInPixels());
+    },
+  );
 
   test('ルーターにnonceが無い時は、nonceを付けずにスクリプトを読み込ませる', async () => {
     await renderInRouter(<TokenHarness />, { nonce: undefined });

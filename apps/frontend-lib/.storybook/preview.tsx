@@ -23,7 +23,7 @@ const CATALOG_DISPLAY: DisplayPreferences = {
 const CATALOG_RUNTIME: AppRuntime = {
   publicConfig: {
     environment: 'local',
-    turnstileSiteKey: '1x00000000000000000000AA',
+    turnstileSiteKey: '1x00000000000000000000BB',
     sentry: { dsn: undefined, environment: 'local', tracesSampleRate: 0 },
     webAnalyticsToken: undefined,
   },

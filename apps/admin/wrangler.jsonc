@@ -27,8 +27,8 @@
     "LOG_LEVEL": "debug",
     "SENTRY_ENVIRONMENT": "local",
     "SENTRY_TRACES_SAMPLE_RATE": "0",
-    // Cloudflare Turnstileが公開している、常に成功を返すテスト用のサイトキー
-    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    // Cloudflare Turnstileが公開している、常に成功しウィジェットを表示しないテスト用のサイトキー
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000BB",
     "IMAGES_ORIGIN": "http://localhost:48043",
   },
   "env": {

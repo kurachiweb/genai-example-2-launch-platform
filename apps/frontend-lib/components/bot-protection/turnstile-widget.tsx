@@ -1,12 +1,14 @@
 import { Turnstile, type TurnstileProps } from '@marsidev/react-turnstile';
 import { useRouter } from '@tanstack/react-router';
-import { useId, useMemo } from 'react';
+import { type CSSProperties, useId, useMemo } from 'react';
 
 import { appRuntimeOf } from '../../start/router-context.ts';
 import { BOT_CHECK_FAILED_MESSAGE } from '../../utilities/messages/bot-protection-messages.ts';
 import { FormMessage } from '../form/form-message.tsx';
 import { useTheme } from '../theme/use-theme.ts';
 import type { TurnstileWidgetProps } from './use-turnstile-token.ts';
+
+const OUT_OF_FLOW_STYLE: CSSProperties = { position: 'absolute' };
 
 export function TurnstileWidget({
   action,
@@ -30,14 +32,17 @@ export function TurnstileWidget({
   );
 
   return (
-    <div data-slot="turnstile-widget" className="flex flex-col gap-2">
+    <>
       <Turnstile
         id={id}
         ref={widgetRef}
+        data-slot="turnstile-widget"
         siteKey={siteKey}
-        // 期限切れの時は使用済みと同じくトークンの管理側が再実行するため、ウィジェット自身の更新は止める。配色が変わるとウィジェットは作り直されて判定をやり直すが、受け取り済みのトークンは有効なまま残す
-        options={{ action, refreshExpired: 'never', theme }}
+        // 期限切れの時は使用済みと同じくトークンの管理側が再実行するため、ウィジェット自身の更新は止める。配色が変わるとウィジェットは作り直されて判定をやり直すが、受け取り済みのトークンは有効なまま残す。`size: 'invisible'`はライブラリ独自の指定でTurnstileへは渡らず、入れ物を幅と高さ0で描く
+        options={{ action, refreshExpired: 'never', theme, size: 'invisible' }}
         scriptOptions={scriptOptions}
+        // 幅と高さ0の入れ物も通常の流れに残ると置く側の`gap`・`space-y`の間隔を1つ余計に生むため、流れから外す
+        style={OUT_OF_FLOW_STYLE}
         onSuccess={onSuccess}
         onExpire={onExpire}
         onError={onError}
@@ -45,6 +50,6 @@ export function TurnstileWidget({
       {status === 'error' ? (
         <FormMessage role="alert">{BOT_CHECK_FAILED_MESSAGE}</FormMessage>
       ) : null}
-    </div>
+    </>
   );
 }

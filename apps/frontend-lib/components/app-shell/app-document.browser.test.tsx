@@ -65,7 +65,7 @@ const KICKOFF = new Date('2026-01-15T07:40:00.000Z');
 const RUNTIME: AppRuntime = {
   publicConfig: {
     environment: 'staging',
-    turnstileSiteKey: '1x00000000000000000000AA',
+    turnstileSiteKey: '1x00000000000000000000BB',
     sentry: {
       dsn: 'https://public@sentry.example/1',
       environment: 'staging',

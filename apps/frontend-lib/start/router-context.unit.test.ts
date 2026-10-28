@@ -20,7 +20,7 @@ const CORRELATION_ID = 'correlation-id-of-request';
 const APP_RUNTIME: AppRuntime = {
   publicConfig: {
     environment: 'staging',
-    turnstileSiteKey: '1x00000000000000000000AA',
+    turnstileSiteKey: '1x00000000000000000000BB',
     sentry: {
       dsn: undefined,
       environment: 'staging',
