@@ -122,45 +122,54 @@ export const Submitting: Story = {
   },
 };
 
-export const ServerFieldError: Story = {
-  args: {
-    onSubmit: fn(() =>
-      Promise.reject(
-        new GraphQLClientError({
-          code: 'validation_failed',
-          message: '入力内容を確認してください。',
-          status: 400,
-          details: [
-            {
-              field: 'input.title',
-              message: 'このプロダクト名は既に使われています。',
-              code: 'duplicated',
-            },
-          ],
-        }),
-      ),
-    ),
-  },
-  play: async ({ canvas, userEvent }) => {
-    await userEvent.type(
-      canvas.getByLabelText('プロダクト名'),
-      'Launch Stadium',
-    );
-    await userEvent.type(
-      canvas.getByLabelText('外部WebサイトURL'),
-      'https://launch.example',
-    );
-    await userEvent.click(canvas.getByRole('button', { name: '投稿する' }));
-  },
-};
-
-const submitValidProduct: Story['play'] = async ({ canvas, userEvent }) => {
+const submitValidProduct: NonNullable<Story['play']> = async ({
+  canvas,
+  userEvent,
+}) => {
   await userEvent.type(canvas.getByLabelText('プロダクト名'), 'Launch Stadium');
   await userEvent.type(
     canvas.getByLabelText('外部WebサイトURL'),
     'https://launch.example',
   );
   await userEvent.click(canvas.getByRole('button', { name: '投稿する' }));
+};
+
+const rejectWithFieldErrors = (): Promise<void> =>
+  Promise.reject(
+    new GraphQLClientError({
+      code: 'validation_failed',
+      message: '入力内容を確認してください。',
+      status: 400,
+      details: [
+        {
+          field: 'input.title',
+          message: 'このプロダクト名は既に使われています。',
+          code: 'duplicated',
+        },
+        {
+          field: 'input.url',
+          message: '外部WebサイトURLに接続できませんでした。',
+          code: 'unreachable',
+        },
+      ],
+    }),
+  );
+
+export const ServerFieldError: Story = {
+  args: { onSubmit: fn(rejectWithFieldErrors) },
+  play: submitValidProduct,
+};
+
+export const ServerFieldErrorPartiallyFixed: Story = {
+  args: { onSubmit: fn(rejectWithFieldErrors) },
+  play: async (context) => {
+    await submitValidProduct(context);
+    const { canvas, userEvent } = context;
+    await canvas.findByText('このプロダクト名は既に使われています。');
+    const title = canvas.getByLabelText('プロダクト名');
+    await userEvent.clear(title);
+    await userEvent.type(title, 'Launch Stadium 2');
+  },
 };
 
 const failUnexpectedly = (): Promise<void> =>

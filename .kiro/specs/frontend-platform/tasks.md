@@ -441,7 +441,7 @@
   - _Requirements: 4.2, 8.1, 12.6, 15.3, 15.4_
 
 - [ ] 11. 最終検証後の第2回の判断の反映
-- [ ] 11.1 送信ボタンをサーバーの欄のエラーが残る間は無効にする
+- [x] 11.1 送信ボタンをサーバーの欄のエラーが残る間は無効にする
   - 先に、`form.browser.test.tsx`へ、サーバーの詳細が2つの欄に出た後に1欄だけ直してもボタンが`disabled`のままで、もう1欄も直すと有効になること、直した欄のサーバーのエラーの表示だけが消えること、利用側が`setError('root.<名前>')`で付けたエラーだけでは無効にならないことを確かめるブラウザテストを書き、失敗を確かめる
   - `SubmitButton`で`useFormState()`の`errors`も購読し、`root`を除く欄のエラーが1つでもある間(`hasFieldErrors`)を`(!isValid || hasFieldErrors) && !isSubmitting`の条件で`disabled`にする。送信中の`aria-disabled`・`aria-busy`は変えない。`AppForm`の処理(`applyServerFieldErrors`・`onSubmitError`の呼び出し)は変えない
   - `AppForm`のストーリーのサーバーのエラーの例と、`frontend/005`の`SubmitButton`の行(無効になる条件にサーバーの欄のエラーを加える)を直し、入力欄を描かない値(条件によって描かない欄を含む)をスキーマの入力(`TInput`)に含めず`onSubmit`で加えることを`frontend/005`のフォームの節に書く(`defaultValues`は型で全欄を求めるため、既定値から外すだけでは避けられない)
@@ -564,3 +564,4 @@
 - 10.4(結果と開発者への確認): 下流23specを確定した契約に合わせ(1282d37)、design.mdの影響の表の該当箇所を合わせた後の位置にした。派生した契約として、admin-foundationの`ConfirmActionDialogProps`・`CategoryMasterEditorProps`の必須の`failureMessageOf`と、media-pipelineのアップロード部品の必須の`contactAvailable`が加わった。infra-deliveryに、非表示のTurnstileを使う条件としてプライバシーポリシーでCloudflareのTurnstile Privacy Addendumを参照する記述を足した(開発者の確認待ち)。product-launchとugc-moderationが同じ照会`adminProductCategories`を違う型で定義している(10.4より前からの食い違い)
 - 10.1(結果): フロントエンドは`server/http/rate-limit-key-hash.ts`でbackend-libと同じHMAC-SHA512を計算し(乱数の入力で不一致0)、要求ごとに鍵を読み込む。`HASH_PEPPER`はclient・adminのルート・staging・prodの`secrets.required`にあり、ローカルでもInfisicalの`dev`からの注入が要る。エントリの単体テストは800行の上限のため`create-frontend-server-entry.env-rate-limit.unit.test.ts`に環境の不備とIP制限の検査を分けた
 - 10.6(結果): client・adminのブラウザのエントリ`src/client.tsx`(Startの既定のエントリと同じ描画の処理)とサーバーのエントリ`src/server.ts`は、最初のimportで`../lib/utilities/validation/zod.ts`を副作用として読み込む。`test/config/entry-imports.unit.test.ts`(client・adminで同じ中身の写し)が最初の読み込み・Startの既定の名前での解決・`tanstackStart()`がエントリを指定しないことを確かめる。開発サーバーとビルド後のプレビューの両方でCSPの違反は0件。Startの版を上げる時は`src/client.tsx`を既定のエントリと見比べる
+- 11.1(結果と申し送り): `SubmitButton`は`(!isValid || hasFieldErrors) && !isSubmitting`で無効にし、`hasFieldErrors`は`root`以外の欄のエラー(サーバーのエラーと利用側が`setError`で欄に付けたエラー)を数える。サーバーの詳細がオブジェクトの値を持つ親の経路(例: `input.address`)に付くと、画面に出ないエラーで送信ボタンが無効のまま戻らない(開発者の判断待ち)。条件によって描かない欄をスキーマの入力に含める下流のフォーム(content-reportingの連絡先の欄など)は後続で直す

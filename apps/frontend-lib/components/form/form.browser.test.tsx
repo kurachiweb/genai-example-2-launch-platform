@@ -100,6 +100,42 @@ function ProductFormWithSubmitError({
   );
 }
 
+const ROOT_SUBMIT_ERROR = '送信できませんでした。';
+
+// 利用側が欄に対応しない失敗をフォームのrootのエラーとして持つ利用例
+function ProductFormWithRootError() {
+  const form = useAppForm(productSchema, {
+    defaultValues: { title: '', url: '' },
+  });
+  const rootError = form.formState.errors.root?.['submit']?.message;
+  return (
+    <AppForm
+      form={form}
+      onSubmit={() => {
+        throw new Error('想定外の失敗');
+      }}
+      onSubmitError={() => {
+        form.setError('root.submit', {
+          type: 'server',
+          message: ROOT_SUBMIT_ERROR,
+        });
+      }}
+      aria-label="プロダクトの登録"
+    >
+      {rootError === undefined ? null : (
+        <FormMessage role="alert">{rootError}</FormMessage>
+      )}
+      <FormField control={form.control} name="title" label="プロダクト名">
+        {(control) => <Input {...control} />}
+      </FormField>
+      <FormField control={form.control} name="url" label="外部WebサイトURL">
+        {(control) => <Input type="url" {...control} />}
+      </FormField>
+      <SubmitButton>登録する</SubmitButton>
+    </AppForm>
+  );
+}
+
 const contactSchema = z.object({ email: z.email() });
 
 function ContactForm() {
@@ -423,6 +459,66 @@ describe('フォーム部品', () => {
     await expect
       .element(page.getByText(TITLE_DUPLICATED))
       .not.toBeInTheDocument();
+  });
+
+  test('サーバーが返した欄のエラーが1つでも残る間は送信ボタンを無効にし、直した欄のエラーだけを消す', async () => {
+    const URL_UNREACHABLE = '外部WebサイトURLに接続できませんでした。';
+    await render(
+      <ProductForm
+        onSubmit={() => {
+          throw validationError([
+            {
+              field: 'input.title',
+              code: 'duplicated',
+              message: TITLE_DUPLICATED,
+            },
+            {
+              field: 'input.url',
+              code: 'unreachable',
+              message: URL_UNREACHABLE,
+            },
+          ]);
+        }}
+      />,
+    );
+    await fillValidProduct();
+    await userEvent.click(submitButton());
+    await expect.element(page.getByText(TITLE_DUPLICATED)).toBeVisible();
+    await expect.element(page.getByText(URL_UNREACHABLE)).toBeVisible();
+    await expect.element(submitButton()).toBeDisabled();
+
+    await userEvent.fill(titleInput(), 'Pitch Notes 2');
+
+    await expect
+      .element(page.getByText(TITLE_DUPLICATED))
+      .not.toBeInTheDocument();
+    await expect
+      .element(urlInput())
+      .toHaveAccessibleDescription(URL_UNREACHABLE);
+    await expect.element(submitButton()).toBeDisabled();
+
+    await userEvent.fill(urlInput(), 'https://pitch-notes.example/about');
+
+    await expect
+      .element(page.getByText(URL_UNREACHABLE))
+      .not.toBeInTheDocument();
+    await expect.element(submitButton()).toBeEnabled();
+  });
+
+  test('利用側がrootに付けたエラーだけが残る間は、欄の検証が通れば送信ボタンを有効にする', async () => {
+    await render(<ProductFormWithRootError />);
+    await fillValidProduct();
+    await userEvent.click(submitButton());
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent(ROOT_SUBMIT_ERROR);
+
+    await userEvent.fill(titleInput(), 'Pitch Notes 2');
+
+    await expect.element(submitButton()).toBeEnabled();
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent(ROOT_SUBMIT_ERROR);
   });
 
   test('欄に対応しない詳細や詳細の無い失敗は、欄に対応しない詳細とともに送信の失敗として渡す', async () => {
