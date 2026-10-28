@@ -440,6 +440,68 @@
   - _Boundary: AppComposition, FrontendServerEntry, 技術ドキュメント群_
   - _Requirements: 4.2, 8.1, 12.6, 15.3, 15.4_
 
+- [ ] 11. 最終検証後の第2回の判断の反映
+- [ ] 11.1 送信ボタンをサーバーの欄のエラーが残る間は無効にする
+  - 先に、`form.browser.test.tsx`へ、サーバーの詳細が2つの欄に出た後に1欄だけ直してもボタンが`disabled`のままで、もう1欄も直すと有効になること、直した欄のサーバーのエラーの表示だけが消えること、利用側が`setError('root.<名前>')`で付けたエラーだけでは無効にならないことを確かめるブラウザテストを書き、失敗を確かめる
+  - `SubmitButton`で`useFormState()`の`errors`も購読し、`root`を除く欄のエラーが1つでもある間(`hasFieldErrors`)を`(!isValid || hasFieldErrors) && !isSubmitting`の条件で`disabled`にする。送信中の`aria-disabled`・`aria-busy`は変えない。`AppForm`の処理(`applyServerFieldErrors`・`onSubmitError`の呼び出し)は変えない
+  - `AppForm`のストーリーのサーバーのエラーの例と、`frontend/005`の`SubmitButton`の行(無効になる条件にサーバーの欄のエラーを加える)を直し、入力欄を描かない値(条件によって描かない欄を含む)をスキーマの入力(`TInput`)に含めず`onSubmit`で加えることを`frontend/005`のフォームの節に書く(`defaultValues`は型で全欄を求めるため、既定値から外すだけでは避けられない)
+  - 水平展開: 下流specのdesign.mdに、入力欄を描かない値(条件によって描かない欄を含む)をスキーマの入力に含めるフォームの設計があれば、後続のタスクとして報告に挙げる(本タスクでは下流specを変えない)
+  - 完了状態: 共通部品のブラウザテストと一括検査が成功し、サーバーの欄のエラーが1つでも表示されている間は送信ボタンが`disabled`で、`frontend/005`の`SubmitButton`の記述が実装と一致する
+  - _Boundary: FormParts, 技術ドキュメント群_
+  - _Requirements: 8.3, 8.5, 15.3, 15.4_
+
+- [ ] 11.2 疎通確認の結果の見出しを実行した場所に合わせる
+  - 先に、共通部品の`utilities/system/execution-site.unit.test.ts`(新規)で、`currentExecutionSite(scope)`が`document`を持たない値で`'server'`、持つ値で`'browser'`を返すことを確かめる単体テストを書き、`execution-site.ts`(`ExecutionSite`・`currentExecutionSite(scope = globalThis)`)を作る
+  - 先に、`system-status-messages.unit.test.ts`へ`PAGE_LOAD_RESULT_HEADING`(「画面の読み込み時の結果」)と、3つの区画の見出しが互いに異なることを加え、`system-status-view.browser.test.tsx`へ、`initialExecutedOn`が`'server'`なら「サーバー側の描画時の結果」、`'browser'`なら「画面の読み込み時の結果」の区画に同じ中身(時刻・到達可否・失敗の文言)を出し、再確認の区画は変わらないことを確かめるブラウザテストを書く。`SystemStatusView`のpropsを`initial`・`initialExecutedOn`・`browser?`・`onRecheck`・`rechecking`にし、ストーリーにブラウザで実行した場合を加える
+  - 先に、client・adminの`src/graphql/system-status.unit.test.ts`へ、`toSystemStatusLoaderData(result, executedOn)`が`{ executedOn, result }`(失敗はErrorを含まない形)を返し、`fromSystemStatusLoaderData`が実行した場所と`GraphQLClientError`を戻すことを、`system-status-page.browser.test.tsx`へ実行した場所の見出しを確かめる検査を書く。`routes/system/status.tsx`の`loader`が`currentExecutionSite()`を渡し、`SystemStatusPage`(`initial`・`initialExecutedOn`・`recheck`)が`SystemStatusView`へ渡すようにする
+  - 文言規則(`service/design/003`)の「疎通確認の画面の文言」の区画の見出しに「画面の読み込み時の結果」を加え、`002-page-layouts.md`の疎通確認の節の「サーバー側の描画時の結果」の区画にブラウザの結果が出るとした箇条を、画面を表示した時の結果を実行した場所に合った見出しで示す記述に直す。`frontend/005`の疎通確認の節の`SystemStatusView`のprops(`server`を`initial`・`initialExecutedOn`にし、`browser`(省略可)・`onRecheck`・`rechecking`は残す)と、画面を表示した時の結果の区画の見出しを`initialExecutedOn`で切り替えることを直す
+  - スモークテストはページを直接開くため、`e2e/support/system-status-page.ts`の区画の見出しは変えない。ビルド後のプレビューで、直接開いた時にサーバー側の見出しが出ることを確かめる
+  - 完了状態: 共通部品の単体テスト・ブラウザテストとclient・adminの単体テスト・ブラウザテスト・スモークテストが成功し、文言規則と`002-page-layouts.md`の見出しが`system-status-messages.ts`の定数と一致し、`frontend/005`の`SystemStatusView`のpropsが実装と一致する
+  - _Boundary: SystemStatusView, StatusRoute, 技術ドキュメント群_
+  - _Requirements: 8.12, 12.1, 12.2, 12.3, 12.6, 15.3, 15.4_
+
+- [ ] 11.3 Turnstileのスクリプトの読み込みの失敗をウィジェットの間で共有する
+  - 先に、`turnstile-widget.browser.test.tsx`へ、偽物のウィジェットでスクリプトの読み込みの失敗を起こした後に、新しく置いたウィジェット・描き直した(`key`を変えた)ウィジェット・失敗の時に同じページに置いていた2つ目のウィジェットが、読み込みを待たずに失敗の文言を`role="alert"`で出し、`useTurnstileToken`の`status`が`'error'`になり、`Turnstile`の部品を描かないことと、判定の失敗(`error-callback`)は他のウィジェットへ広がらないことを確かめるブラウザテストを書き、失敗を確かめる。テストの間で記録が残らないよう、各テストの前に`resetTurnstileScriptFailure()`を呼ぶ
+  - `components/bot-protection/turnstile-script-failure.ts`(新規、`recordTurnstileScriptFailure`・`hasTurnstileScriptFailed`・`subscribeTurnstileScriptFailure`・`resetTurnstileScriptFailure`)を作る。`TurnstileWidget`の`scriptOptions.onError`は記録だけを行い、`useSyncExternalStore`(サーバーの値は常に偽)で記録を読んで、記録がある間は`Turnstile`を描かず、記録を読んだ時に`onError()`を1回呼ぶ
+  - 偽物(`test/fake-turnstile.tsx`)にスクリプトの読み込みの失敗を起こす手段が無ければ加え、Storybookのカタログの失敗の状態のストーリーが記録を消してから描くようにする
+  - `frontend/005`のウィジェットの節の「スクリプトの読み込みの失敗を検知できるのは最初に描画したウィジェットだけ」の箇条を、失敗をページの中のすべてのウィジェットで共有し、後から置いた・描き直したウィジェットもすぐ失敗の文言を出す記述に直す
+  - 完了状態: 共通部品のブラウザテスト・単体テストと一括検査が成功し、スクリプトの読み込みの失敗の後に`idle`のまま止まるウィジェットが無く、`frontend/005`の記述が実装と一致する
+  - _Boundary: TurnstileWidget, StorybookCatalog, 技術ドキュメント群_
+  - _Requirements: 8.8, 8.9, 8.11, 15.3, 15.4_
+
+- [ ] 11.4 写しを元と照合する単体テストを足す
+  - 先に、ルートの`config/contract-copies.unit.test.ts`(新規)を書き、元か写しの片方だけを変えると失敗することを、一時的に写しの値を1つ変えて確かめてから戻す。方式と対象は設計の「決定事項」の「写しの照合テスト」のとおりで、他のアプリのファイルを静的にも動的にもimportしない
+    - 定数は既存の`config/inspector-ports.unit.test.ts`と同じく、`readFileSync`で読んだソースを`typescript`の`ts.createSourceFile`で構文解析し、名前で探した宣言の初期化子から値を取り出す。`Object.freeze(…)`・`as const`・`satisfies`を外し、オブジェクトリテラル・文字列リテラルの配列・数値リテラル(区切りの`_`を除く)・文字列リテラル・正規表現リテラル・文字列リテラルの配列の`.join(<区切り>)`を値にし、それ以外の形や宣言が見つからない場合は名前とファイルを示す例外で失敗させる
+    - 中継の契約: `apps/frontend-lib/server/relay/relay-contract.ts`の`RELAY_REQUEST_HEADERS`・`GATEWAY_CALLER_HEADERS`(`apps/api/src/presentation/gateway/gateway-headers.ts`の`GATEWAY_HEADERS`の対応する項目)、`SESSION_INSTRUCTION_HEADERS`(`SESSION_RESPONSE_HEADERS`)、`SESSION_CLEAR_VALUE`(`apps/api/src/presentation/gateway/session-access.ts`の公開されていない`CLEAR_HEADER_VALUE`)、`SESSION_TOKEN_PATTERN`・`MAX_SESSION_MAX_AGE_SECONDS`(`apps/api/src/application/session/session-verifier.ts`の同名の値)
+    - エラーコード: `apps/frontend-lib/utilities/graphql/graphql-result.ts`の想定外の失敗のコードのうちapiの写しの部分を、`GATEWAY_ERROR_CODES`という名前の文字列リテラルの配列の宣言に分け(公開しない)、想定外の失敗のコードをこの写しとフロントエンドだけの4つのコードから作る。`apps/api/src/presentation/graphql/error-codes.ts`の`GATEWAY_ERROR_CODES`と要素の集合で比べ、`graphql-result.unit.test.ts`の`expected`の検査が変わらず成功することを確かめる
+    - セキュリティヘッダー: `apps/frontend-lib/server/http/security-headers.ts`の`BASE_SECURITY_HEADERS`を`apps/backend-lib/workers/http/security-headers.ts`の`SECURITY_HEADERS`のPermissions-Policy以外の項目と、`apps/frontend-lib/server/http/security-policy.ts`の`PERMISSION_FEATURES`を`SECURITY_HEADERS`のPermissions-Policyの配列の各要素から`=()`を除いた並びと、`NON_PAGE_CONTENT_SECURITY_POLICY`を`DEFAULT_CONTENT_SECURITY_POLICY`(配列の`.join('; ')`)と比べる
+    - 伏せ字: `apps/frontend-lib/server/observability/logging.ts`の`REDACTED_FIELD_PATTERNS`、`apps/frontend-lib/utilities/observability/redaction-patterns.ts`の`REDACTED`・`REDACTION_PATTERNS`とパターンの宣言(`API_KEY_PATTERN`・`BEARER_TOKEN_PATTERN`・`IPV4_OCTET`・`IPV4_PATTERN`・`H`・`IPV6_PATTERN`・`LIBRARY_CREDIT_CARD_NUMBER_REPLACEMENT`・`libraryCreditCardReplacement`・`CREDIT_CARD_PATTERN`)を、`apps/backend-lib/core/logging/redaction.ts`の同名の宣言と、`ts.createPrinter`で出力し直した初期化子の文字列で比べる。正規表現リテラルのフラグと`new RegExp`の第2引数の`u`だけは除いて比べる
+    - レート制限のキーのハッシュ化: 子プロセスの`bun --eval`(`process.execPath`)で、`apps/frontend-lib/server/http/rate-limit-key-hash.ts`の`hashRateLimitKey(pepper, ...parts)`と、`apps/backend-lib/core/rate-limit/rate-limit-key.ts`の`hashRateLimitKey(createKeyedHasher(pepper), ...parts)`(`apps/backend-lib/core/crypto/keyed-hasher.ts`)を、同じペッパーと複数の入力(`ip:<IPv4>`・`ip:<IPv6>`・`ip:unknown`・複数の部品・非ASCIIの部品)で実行し、標準出力のJSONを比べる。入力は環境の変数でJSONとして渡し、終了コードが0でなければ標準エラー出力を添えて失敗させる。評価するコードはテストの中の文字列にし、ルートの型検査の対象に入れない
+  - 写しの側のコメント(`relay-contract.ts`・`rate-limit-key-hash.ts`・`logging.ts`の`REDACTED_FIELD_PATTERNS`・`redaction-patterns.ts`・`security-policy.ts`)を、元の場所と照合テストの名前を示す形に直す。`testing/001`に、アプリ間で値を写した箇所は写しと元のソースを構文解析で読んで照合する単体テスト(実行して求める値は子プロセスで両方を実行して比べる)をルートに置き、ルートの型検査とカバレッジの分母に他のアプリのファイルを入れないことを、プロジェクト名と固有値を含めずに書く
+  - 完了状態: ルートの`bun run typecheck`・`bun run test:unit`・`bun run test:unit --coverage`と`bun run check`が成功し、ルートのカバレッジの出力に他のアプリのファイルが含まれず、5つの照合のどれも写しの値を1つ変えると失敗することを確かめられ、`testing/001`に照合テストの規則が載っている
+  - _Boundary: ContractCopies(ルートの単体テスト), GraphqlResult, RelayCore, SecurityHeaders, FrontendLogging, SentryScrub, RateLimitKeyHash, 技術ドキュメント群_
+  - _Requirements: 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 4.4, 5.7, 6.6, 13.3, 13.8, 15.2, 15.3, 15.4_
+
+- [ ] 11.5 文書とモックアップを直す
+  - 判断18: `002-page-layouts.md`の管理者側の基本レイアウトの節に、管理者側のページは検索の対象外のため正規のURLを出さないことを書く(要件・設計は本改訂で反映済み、実装は変えない)
+  - 判断20: `mockups/src/styles.css`のダークの`--destructive`を`oklch(0.64 0.2 25)`にし、`mockups/src/components/ui/button.tsx`のdestructiveに`dark:hover:bg-destructive/50`、`badge.tsx`のdestructiveに`dark:[a&]:hover:bg-destructive/50`を加えて実装の`button-variants.ts`・`badge-variants.ts`とそろえる。`001-design-principles.md`の「デザイン案の`oklch(0.6 0.2 25)`より明るい`oklch(0.64 0.2 25)`とする」と「赤を明るくした分」の箇条を、デザイン案と実装がともに`oklch(0.64 0.2 25)`で、その理由(コントラスト比AA)とダークのホバーを不透明度50%にする理由を述べる形に書き換え、変更前の値と経緯を残さない
+  - 判断22: 本specの`research.md`の「GraphQLのクライアント側のコード生成」の記述(137〜139行付近)を、操作とフラグメントを`src/graphql/operations/**/*.graphql`に置き`graphql()`を呼ばず、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む現在の形に書き換える。research.mdの他の箇所にも`graphql()`で操作を書く古い形があれば同じく直す
+  - `infra/004`のトレースの節と個人情報と秘密情報の除去の節に、バックエンドにも当てはまる注意として、Wrangler設定の`vars`に`SENTRY_TRACE_LIFECYCLE`を定義しないこと(`@sentry/cloudflare`は`traceLifecycle`を指定しなければこの変数を読む)と、`beforeSendSpan`が`null`を返しても例外を投げても元のスパンが除去されずに送られることを書く。`frontend/007`の「逐次送信のスパンの注意」と食い違わず、プロジェクト名と固有値を含めない
+  - `project-values.md`の「記載している見出し」の列を、各プレースホルダーを`docs/GUIDES/tech`で検索して現れるすべての見出し(本spec以前からの漏れを含む)にする。見出しのアンカーは実在の見出しから作る
+  - `docs/ai-prompts/008-create-mockup-client-directory.md`の`002-page-layouts.md#ディレクトリ`を、実在の見出し「ディレクトリ(`/p`)」のアンカー`#ディレクトリp`に直す
+  - 完了状態: ルートの整形検査が成功し、モックアップと実装のダークの`--destructive`とdestructiveのホバーが一致し、`001-design-principles.md`に食い違いの記述が無く、research.mdに`graphql()`で操作を書く形が無く、`project-values.md`の各プレースホルダーの見出しの列に`docs/GUIDES/tech`の出現箇所の見出しがすべて載り、`docs/ai-prompts/008`のアンカーが実在の見出しを指す
+  - _Boundary: 技術ドキュメント群, ServiceDocs, モックアップ_
+  - _Requirements: 7.1, 10.3, 11.9, 15.3, 15.4, 15.6_
+
+- [ ] 11.6 下流specを直す
+  - 判断15(legal-pages): requirements.mdの要件10.5(文書への反映)に、公開前にプライバシーポリシーの本文がCloudflareのTurnstile Privacy Addendumを参照していることを確かめ、無ければプライバシーポリシー骨子のCloudflareの項に参照を加えることを足し、design.mdのModified Filesと文書の節、tasks.mdの文書のタスクに同じ項目を加える
+  - 判断15(infra-delivery): `design.md:284`(Cloudflareの項のbot判定)・`tasks.md:250`(8.5のbot判定の箇条)・`research.md:147`(付随する記述)からTurnstile Privacy Addendumの記述を外す。ウィジェットの種類を`invisible`にすることと`HASH_PEPPER`の登録先にclient・adminを含めることは残す。research.mdの「変えた箇所」にModified Filesのプライバシーポリシー骨子の記述があれば合わせる
+  - 判断21(ugc-moderation): `design.md:1208`の`adminProductCategories: [AdminCategoryRef!]!`を`adminModerationCategoryOptions: [AdminCategoryRef!]!`にし、`design.md:1285`(`ProductFilters`のカテゴリの選択肢)・`tasks.md:181`(Workers統合テストの照会の一覧)・`research.md:220`の照会名、管理者側の操作名(`Admin`の接頭辞の操作)と生成物の型の名前、照会の表の行・使用箇所を同じ名前に合わせる。product-launchの`adminProductCategories: [ProductCategory!]!`(`design.md:1912`・`design.md:1941`)は変えない
+  - 本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の第2回の2行の「該当箇所」を、改訂後の位置に更新し、表の前置きの「末尾の2行は11.6で合わせるまで食い違いが残る」の文を消す
+  - 完了状態: infra-deliveryのdesign.md・tasks.md・research.mdにAddendumの記述が無く、legal-pagesの要件・設計・タスクにAddendumの参照を確かめる項目があり、ugc-moderationに`adminProductCategories`の照会の定義と使用が無く、`adminModerationCategoryOptions`の名前・型・使用箇所がそろっている
+  - _Boundary: 下流specの設計_
+  - _Requirements: 6.1, 6.4, 8.8_
+
 ## Implementation Notes
 
 - 1.1(1.3・5.9・9.1への申し送り): `test:browser`は設定ファイルが無いとexit 1になるため、プリセット・ブラウザモード・Chromiumだけの最小の`vitest.browser.config.ts`を置いた。成果物の置き場所・共有Chromium(`browserOptionsPreset`・`resolveBrowserLaunchOptions`)・カバレッジの対象の絞り込みは1.3で加える。`@tanstack/react-router` 1.170.41を直接宣言した(`@tanstack/react-start` 1.168.60が完全固定する版と同じ)。`@tanstack/react-router-ssr-query`・`graphql`は未導入。`tsconfig.json`の`include`は`**/*.ts`・`**/*.tsx`で、TypeScriptの`**`はドットで始まるディレクトリに一致しないため、5.9で`.storybook/`を明示する。文書の相違: coding/001(59〜61行・94行)は全アプリの`tsconfig.json`が基底設定を`extends`すると定め、スクリプト契約の`test:browser`を「ブラウザテストを持つアプリ」に限るため、9.1で`coding/003`に加えて`coding/001`にも共通部品の例外を書く。
