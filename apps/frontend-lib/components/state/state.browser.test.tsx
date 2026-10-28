@@ -203,6 +203,18 @@ describe('ErrorState', () => {
     await expect.element(contactLink()).toHaveFocus();
   });
 
+  test('管理者側のように問い合わせの導線を受けなければ、問い合わせのリンクを描かず再試行だけを出す', async () => {
+    const message =
+      '一覧を読み込めませんでした。時間をおいて再度お試しください。';
+    const { container } = await render(
+      <ErrorState message={message} onRetry={() => undefined} />,
+    );
+
+    await expect.element(retryButton()).toBeVisible();
+    expect(page.getByRole('link').elements()).toHaveLength(0);
+    expect(container.textContent).toBe(`${message}再試行`);
+  });
+
   test('失敗の利用者向けの文言だけを表示し、エラーコードや状態コードなどの技術的な詳細を出さない', async () => {
     const error = new GraphQLClientError({
       code: 'internal_error',

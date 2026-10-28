@@ -12,6 +12,9 @@ const NOT_FOUND_MESSAGE =
   'ページが見つかりません。お探しのページは見つかりませんでした。URLをご確認ください。';
 const UNEXPECTED_ERROR_MESSAGE =
   'ページを表示できませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。';
+const UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT =
+  'ページを表示できませんでした。時間をおいて再度お試しください。';
+const CONTACT_GUIDANCE = '解決しない場合はお問い合わせください。';
 const CONTACT_HREF = '/contact';
 
 const CLIENT_LINKS = [
@@ -96,7 +99,7 @@ describe('UnexpectedErrorView', () => {
     );
   });
 
-  test('管理者側のように問い合わせのページが無ければ、問い合わせへの導線を省いて再試行だけを出せる', async () => {
+  test('管理者側のように問い合わせの導線を受けなければ、案内を時間をおいた再試行だけにし、問い合わせを促す文と導線を出さない', async () => {
     const { container } = await render(
       <UnexpectedErrorView onRetry={() => undefined} />,
     );
@@ -105,7 +108,13 @@ describe('UnexpectedErrorView', () => {
       .element(page.getByRole('button', { name: '再試行' }))
       .toBeVisible();
     expect(page.getByRole('link').elements()).toHaveLength(0);
-    expect(container.textContent).toBe(`${UNEXPECTED_ERROR_MESSAGE}再試行`);
+    expect(page.getByRole('alert').element().textContent).toBe(
+      UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT,
+    );
+    expect(container.textContent).not.toContain(CONTACT_GUIDANCE);
+    expect(container.textContent).toBe(
+      `${UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT}再試行`,
+    );
   });
 });
 

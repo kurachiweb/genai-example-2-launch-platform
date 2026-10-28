@@ -14,7 +14,7 @@ export interface ErrorStateProps extends Omit<
 > {
   readonly message: string;
   readonly onRetry: () => void;
-  readonly contactHref: string;
+  readonly contactHref?: string;
 }
 
 export function ErrorState({
@@ -45,9 +45,11 @@ export function ErrorState({
           <RotateCwIcon aria-hidden="true" />
           {RETRY_LABEL}
         </Button>
-        <Button variant="outline" asChild>
-          <a href={contactHref}>{CONTACT_LABEL}</a>
-        </Button>
+        {contactHref === undefined ? null : (
+          <Button variant="outline" asChild>
+            <a href={contactHref}>{CONTACT_LABEL}</a>
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -14,8 +14,8 @@ import {
 } from '../../../test/page-router.tsx';
 
 const ERROR_TITLE = 'ページを表示できませんでした。';
-const ERROR_GUIDANCE =
-  '時間をおいて再度お試しください。解決しない場合はお問い合わせください。';
+const ERROR_GUIDANCE = '時間をおいて再度お試しください。';
+const CONTACT_GUIDANCE = '解決しない場合はお問い合わせください。';
 const RECOVERED_HEADING = '読み込めた内容';
 
 const main = () => page.getByRole('main');
@@ -64,6 +64,17 @@ describe('想定外のエラーの画面', () => {
       .toHaveTextContent(ERROR_TITLE);
     await expect.element(alert.getByText(ERROR_GUIDANCE)).toBeVisible();
     await expect.element(page.getByRole('banner')).toBeVisible();
+  });
+
+  test('問い合わせのページが無いため、案内を時間をおいた再試行だけにして問い合わせを促す文を出さない', async () => {
+    await renderLoaderFailure();
+
+    const alert = main().getByRole('alert');
+    await expect
+      .element(alert.getByRole('heading', { level: 1 }))
+      .toHaveTextContent(ERROR_TITLE);
+    expect(alert.element().textContent).toBe(`${ERROR_TITLE}${ERROR_GUIDANCE}`);
+    expect(document.body.textContent).not.toContain(CONTACT_GUIDANCE);
   });
 
   test('再試行のボタンを表示し、管理者側に無い問い合わせのページへの導線は出さない', async () => {

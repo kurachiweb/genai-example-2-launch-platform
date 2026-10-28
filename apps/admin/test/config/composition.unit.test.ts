@@ -18,6 +18,11 @@ describe('ADMIN_PROFILE', () => {
     expect(ADMIN_PROFILE.webAnalytics).toBe(false);
   });
 
+  test('問い合わせの画面を持たず、静的な500の画面と画面の失敗の文言で問い合わせを促さない', () => {
+    expect(ADMIN_PROFILE.contactAvailable).toBe(false);
+    expect(CLIENT_PROFILE.contactAvailable).toBe(true);
+  });
+
   test('利用者側とセッションのCookieの名前が異なる', () => {
     expect(ADMIN_PROFILE.sessionCookieName).not.toBe(
       CLIENT_PROFILE.sessionCookieName,

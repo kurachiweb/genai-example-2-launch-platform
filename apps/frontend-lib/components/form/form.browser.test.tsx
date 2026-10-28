@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
+import { useState } from 'react';
 import { render } from 'vitest-browser-react';
 
 import '../../styles/base.css';
 import { runAxe } from '../../test/a11y.ts';
 import { applyColorScheme, COLOR_SCHEMES } from '../../test/computed-style.ts';
 import {
+  errorMessageOf,
   type FieldErrorDetail,
   GraphQLClientError,
 } from '../../utilities/graphql/graphql-result.ts';
@@ -13,6 +15,7 @@ import { z } from '../../utilities/validation/zod.ts';
 import { Input } from '../ui/input/input.tsx';
 import { AppForm, type SubmitErrorContext } from './app-form.tsx';
 import { FormField } from './form-field.tsx';
+import { FormMessage } from './form-message.tsx';
 import { SubmitButton } from './submit-button.tsx';
 import { useAppForm } from './use-app-form.ts';
 
@@ -68,6 +71,32 @@ function ProductForm({
       </FormField>
       <SubmitButton>登録する</SubmitButton>
     </AppForm>
+  );
+}
+
+interface ProductFormWithSubmitErrorProps {
+  readonly contactAvailable: boolean;
+  readonly onSubmit: (values: ProductInput) => Promise<void> | void;
+}
+
+// 欄に対応しない失敗を、アプリのプロファイルの問い合わせの導線の有無で選んだ文言でフォームの近くに出す利用例
+function ProductFormWithSubmitError({
+  contactAvailable,
+  onSubmit,
+}: ProductFormWithSubmitErrorProps) {
+  const [submitError, setSubmitError] = useState<string>();
+  return (
+    <div className="flex flex-col gap-4">
+      {submitError === undefined ? null : (
+        <FormMessage role="alert">{submitError}</FormMessage>
+      )}
+      <ProductForm
+        onSubmit={onSubmit}
+        onSubmitError={(error) => {
+          setSubmitError(errorMessageOf(error, contactAvailable));
+        }}
+      />
+    </div>
   );
 }
 
@@ -433,6 +462,79 @@ describe('フォーム部品', () => {
     await expect.poll(() => onSubmitError).toHaveBeenCalledTimes(2);
     expect(onSubmitError).toHaveBeenLastCalledWith(failures[1], {
       unmatched: [],
+    });
+  });
+
+  describe('送信の失敗の文言', () => {
+    const CONTACT_GUIDANCE = '解決しない場合はお問い合わせください。';
+    const UNEXPECTED_FAILURE = new Error('Cannot read properties of undefined');
+
+    test('問い合わせの導線が無い側では、想定外の例外に代えて問い合わせを促さない文言を出し、例外の文言を出さない', async () => {
+      await render(
+        <ProductFormWithSubmitError
+          contactAvailable={false}
+          onSubmit={() => {
+            throw UNEXPECTED_FAILURE;
+          }}
+        />,
+      );
+      await fillValidProduct();
+
+      await userEvent.click(submitButton());
+
+      const alert = page.getByRole('alert');
+      await expect
+        .element(alert)
+        .toHaveTextContent(
+          'ページを表示できませんでした。時間をおいて再度お試しください。',
+        );
+      expect(alert.element().textContent).not.toContain(CONTACT_GUIDANCE);
+      expect(alert.element().textContent).not.toContain(
+        UNEXPECTED_FAILURE.message,
+      );
+    });
+
+    test('問い合わせの導線がある側では、想定外の例外に代えて問い合わせを案内する文言を出す', async () => {
+      await render(
+        <ProductFormWithSubmitError
+          contactAvailable
+          onSubmit={() => {
+            throw UNEXPECTED_FAILURE;
+          }}
+        />,
+      );
+      await fillValidProduct();
+
+      await userEvent.click(submitButton());
+
+      await expect
+        .element(page.getByRole('alert'))
+        .toHaveTextContent(
+          'ページを表示できませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。',
+        );
+    });
+
+    test('GraphQLの失敗は、問い合わせの導線の有無によらずその文言を出す', async () => {
+      const failure = new GraphQLClientError({
+        code: 'internal_error',
+        message: '問題が発生しました。時間をおいて再度お試しください。',
+        status: 500,
+      });
+      await render(
+        <ProductFormWithSubmitError
+          contactAvailable={false}
+          onSubmit={() => {
+            throw failure;
+          }}
+        />,
+      );
+      await fillValidProduct();
+
+      await userEvent.click(submitButton());
+
+      await expect
+        .element(page.getByRole('alert'))
+        .toHaveTextContent(failure.message);
     });
   });
 

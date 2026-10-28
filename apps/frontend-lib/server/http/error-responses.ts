@@ -1,4 +1,7 @@
-import { UNEXPECTED_ERROR_MESSAGE } from '../../utilities/messages/state-messages.ts';
+import {
+  UNEXPECTED_ERROR_MESSAGE,
+  UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT,
+} from '../../utilities/messages/state-messages.ts';
 
 const STATUS_BY_CODE = Object.freeze({
   rate_limit_exceeded: 429,
@@ -16,7 +19,7 @@ export type FrontendErrorCode = keyof typeof STATUS_BY_CODE;
 export const RATE_LIMIT_MESSAGE =
   '操作が集中しています。しばらく待ってから再度お試しください。';
 
-export { UNEXPECTED_ERROR_MESSAGE };
+export { UNEXPECTED_ERROR_MESSAGE, UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT };
 
 const REJECTED_OPERATION_MESSAGE =
   'この操作を受け付けられませんでした。ページを再読み込みして再度お試しください。';
@@ -62,7 +65,7 @@ export type ErrorEnvelopeInput =
 
 export type StaticErrorPageInput =
   | { readonly status: 429; readonly retryAfterSeconds?: number }
-  | { readonly status: 500 };
+  | { readonly status: 500; readonly contactAvailable: boolean };
 
 // RFC 9110のtokenの文字だけを許し、区切りの「,」や改行を含むメソッド名でAllowの一覧が壊れるのを防ぐ
 const METHOD_TOKEN_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
@@ -157,10 +160,14 @@ const STATIC_ERROR_PAGE_STYLE = [
   'h1{margin:0;font-size:1.125rem;font-weight:600;line-height:1.75}',
 ].join('');
 
-const STATIC_ERROR_MESSAGES = Object.freeze({
-  429: RATE_LIMIT_MESSAGE,
-  500: UNEXPECTED_ERROR_MESSAGE,
-} as const);
+const staticErrorMessageOf = (input: StaticErrorPageInput): string => {
+  if (input.status === 429) {
+    return RATE_LIMIT_MESSAGE;
+  }
+  return input.contactAvailable
+    ? UNEXPECTED_ERROR_MESSAGE
+    : UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT;
+};
 
 const staticErrorPageHtml = (message: string): string =>
   [
@@ -187,7 +194,7 @@ export function renderStaticErrorPage(input: StaticErrorPageInput): Response {
     readOptional(input, 'retryAfterSeconds'),
   );
 
-  return new Response(staticErrorPageHtml(STATIC_ERROR_MESSAGES[status]), {
+  return new Response(staticErrorPageHtml(staticErrorMessageOf(input)), {
     status,
     headers: baseHeaders('text/html; charset=utf-8', retryAfterSeconds),
   });

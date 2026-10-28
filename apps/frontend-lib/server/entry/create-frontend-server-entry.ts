@@ -172,7 +172,10 @@ const envFailure = (
     new Error(`環境の設定に不備があります: ${invalidEnvNames.join(', ')}`),
   );
   return {
-    response: renderStaticErrorPage({ status: 500 }),
+    response: renderStaticErrorPage({
+      status: 500,
+      contactAvailable: options.profile.contactAvailable,
+    }),
     outcome: 'static_error',
     security: failureSecurity(),
   };
@@ -363,7 +366,10 @@ const handleSafely = async (
     );
     options.reportUnexpected(error);
     return {
-      response: renderStaticErrorPage({ status: 500 }),
+      response: renderStaticErrorPage({
+        status: 500,
+        contactAvailable: options.profile.contactAvailable,
+      }),
       outcome: 'static_error',
       security: failureSecurity(),
     };

@@ -5,4 +5,5 @@ export const ADMIN_PROFILE: FrontendAppProfile = Object.freeze({
   sessionCookieName: '__Host-ls_admin_session',
   indexable: () => false,
   webAnalytics: false,
+  contactAvailable: false,
 });

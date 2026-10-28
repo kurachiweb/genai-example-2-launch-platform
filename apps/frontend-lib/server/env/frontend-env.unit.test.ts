@@ -38,6 +38,7 @@ const CLIENT_LIKE_PROFILE: FrontendAppProfile = {
   sessionCookieName: '__Host-test_session',
   indexable: (environment) => environment === 'prod',
   webAnalytics: true,
+  contactAvailable: true,
 };
 
 const ADMIN_LIKE_PROFILE: FrontendAppProfile = {
@@ -45,6 +46,7 @@ const ADMIN_LIKE_PROFILE: FrontendAppProfile = {
   sessionCookieName: '__Host-test_admin_session',
   indexable: () => false,
   webAnalytics: false,
+  contactAvailable: false,
 };
 
 const envOf = (validation: EnvValidation): ValidatedFrontendEnv => {

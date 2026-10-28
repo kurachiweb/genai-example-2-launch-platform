@@ -22,6 +22,10 @@ describe('CLIENT_PROFILE', () => {
     expect(CLIENT_PROFILE.webAnalytics).toBe(true);
   });
 
+  test('問い合わせの画面への導線を持ち、静的な500の画面と画面の失敗の文言で問い合わせを案内する', () => {
+    expect(CLIENT_PROFILE.contactAvailable).toBe(true);
+  });
+
   test('prodだけ検索エンジンへの登録を許す', () => {
     expect(CLIENT_PROFILE.indexable('prod')).toBe(true);
     expect(CLIENT_PROFILE.indexable('staging')).toBe(false);

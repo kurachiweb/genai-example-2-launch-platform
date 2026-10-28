@@ -6,25 +6,25 @@ Cloudflare Workersで動かすTanStack Startのフロントエンドサーバー
 
 起動の構成は「[Cloudflare Workers上のTanStack Startの起動](002-tanstack-start-on-workers.md)」、APIサーバー側の内部経路とセッションの指示は「[内部経路とセキュリティヘッダー](../backend/006-internal-gateway.md)」と「[GraphQL通信](../coding/004-graphql-communication.md)」に従う。フロントエンドサーバーは利用者側と管理者側の2つで、同じ共通部品を使い、違いを登録箇所(アプリの`src/composition/`)の値に限る。部品の置き場所は、共通部品の配置先からのパスで示す。
 
-| 部品                                                                                                              | 置き場所(共通部品内)                           | 役割                                                         |
-| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------ |
-| `createFrontendServerEntry`                                                                                       | `server/entry/create-frontend-server-entry.ts` | 処理の順序を合成したWorkerの入口                             |
-| `FrontendAppProfile`                                                                                              | `server/entry/app-profile.ts`                  | 呼び出し元の種類・Cookieの名前・検索除外・アクセス解析の有無 |
-| `validateFrontendEnv`                                                                                             | `server/env/frontend-env.ts`                   | 環境の検証                                                   |
-| `checkIpRateLimit`・`IP_RATE_LIMIT`                                                                               | `server/http/ip-rate-limit.ts`                 | Worker単位のIP制限                                           |
-| `resolveClientIp`                                                                                                 | `server/http/client-ip.ts`                     | 接続元のIPアドレスの解決                                     |
-| `requiresCsrfCheck`・`verifyCsrf`                                                                                 | `server/http/csrf.ts`                          | CSRFの検証の対象と判定                                       |
-| `isPageRequest`・`isServerFunctionCall`                                                                           | `server/http/page-request.ts`                  | ページの要求とサーバー関数の呼び出しの判定                   |
-| `generateNonce`                                                                                                   | `server/http/nonce.ts`                         | 要求ごとのnonce                                              |
-| `SecurityPolicySources`・`mergeSecurityPolicySources`・`buildPageContentSecurityPolicy`・`buildPermissionsPolicy` | `server/http/security-policy.ts`               | 許可先の合成とCSP・Permissions-Policyの組み立て              |
-| `applySecurityHeaders`・`BASE_SECURITY_HEADERS`                                                                   | `server/http/security-headers.ts`              | セキュリティヘッダー・`no-store`・検索除外の付与             |
-| `errorEnvelopeResponse`・`renderStaticErrorPage`                                                                  | `server/http/error-responses.ts`               | 共通のエラー形式の応答と静的なエラー画面                     |
-| `defineRelayRoute`・`findRelayRoute`・`relayToApi`・`GRAPHQL_RELAY_ROUTE`                                         | `server/relay/relay-route.ts`                  | 中継の経路の定義と実行                                       |
-| `buildRelayHeaders`                                                                                               | `server/relay/relay-headers.ts`                | 中継する要求の項目の組み立て                                 |
-| `toBrowserResponse`・`buildSessionSetCookie`                                                                      | `server/relay/session-cookie.ts`               | セッションの指示のCookieへの変換                             |
-| `relay-contract.ts`の定数                                                                                         | `server/relay/relay-contract.ts`               | APIサーバーとの契約の値の写し                                |
-| `createFrontendStartOptions`                                                                                      | `start/start-options.ts`                       | TanStack Startのグローバルのミドルウェア                     |
-| `createFrontendLintConfig`                                                                                        | `config/frontend-lint.ts`                      | 画面を持つアプリの静的解析の規則                             |
+| 部品                                                                                                              | 置き場所(共通部品内)                           | 役割                                                                                 |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `createFrontendServerEntry`                                                                                       | `server/entry/create-frontend-server-entry.ts` | 処理の順序を合成したWorkerの入口                                                     |
+| `FrontendAppProfile`                                                                                              | `server/entry/app-profile.ts`                  | 呼び出し元の種類・Cookieの名前・検索除外・アクセス解析の有無・問い合わせの導線の有無 |
+| `validateFrontendEnv`                                                                                             | `server/env/frontend-env.ts`                   | 環境の検証                                                                           |
+| `checkIpRateLimit`・`IP_RATE_LIMIT`                                                                               | `server/http/ip-rate-limit.ts`                 | Worker単位のIP制限                                                                   |
+| `resolveClientIp`                                                                                                 | `server/http/client-ip.ts`                     | 接続元のIPアドレスの解決                                                             |
+| `requiresCsrfCheck`・`verifyCsrf`                                                                                 | `server/http/csrf.ts`                          | CSRFの検証の対象と判定                                                               |
+| `isPageRequest`・`isServerFunctionCall`                                                                           | `server/http/page-request.ts`                  | ページの要求とサーバー関数の呼び出しの判定                                           |
+| `generateNonce`                                                                                                   | `server/http/nonce.ts`                         | 要求ごとのnonce                                                                      |
+| `SecurityPolicySources`・`mergeSecurityPolicySources`・`buildPageContentSecurityPolicy`・`buildPermissionsPolicy` | `server/http/security-policy.ts`               | 許可先の合成とCSP・Permissions-Policyの組み立て                                      |
+| `applySecurityHeaders`・`BASE_SECURITY_HEADERS`                                                                   | `server/http/security-headers.ts`              | セキュリティヘッダー・`no-store`・検索除外の付与                                     |
+| `errorEnvelopeResponse`・`renderStaticErrorPage`                                                                  | `server/http/error-responses.ts`               | 共通のエラー形式の応答と静的なエラー画面                                             |
+| `defineRelayRoute`・`findRelayRoute`・`relayToApi`・`GRAPHQL_RELAY_ROUTE`                                         | `server/relay/relay-route.ts`                  | 中継の経路の定義と実行                                                               |
+| `buildRelayHeaders`                                                                                               | `server/relay/relay-headers.ts`                | 中継する要求の項目の組み立て                                                         |
+| `toBrowserResponse`・`buildSessionSetCookie`                                                                      | `server/relay/session-cookie.ts`               | セッションの指示のCookieへの変換                                                     |
+| `relay-contract.ts`の定数                                                                                         | `server/relay/relay-contract.ts`               | APIサーバーとの契約の値の写し                                                        |
+| `createFrontendStartOptions`                                                                                      | `start/start-options.ts`                       | TanStack Startのグローバルのミドルウェア                                             |
+| `createFrontendLintConfig`                                                                                        | `config/frontend-lint.ts`                      | 画面を持つアプリの静的解析の規則                                                     |
 
 | 用語                                                                           | 意味                                                                                                                  |
 | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
@@ -71,7 +71,7 @@ flowchart TD
 
 - 環境の検証をIP制限より前に置くのは、Rate Limitingのバインディングが無い状態でIP制限を呼ばないためである。環境の不備は、不備のあるキーの名前だけをログへ出し、値を出さない。
 - 許可先の合成は、環境の検証の直後に要求ごとに1回だけ行う。登録箇所の許可先や環境の値が許可先の形式に合わなければ、すべての要求が500になる(「[許可先の登録](#許可先の登録)」)。
-- 処理の途中の想定外の例外は、ログとエラートラッキングへ送ってから500の静的なエラー画面を返す。エラートラッキングへの送信自体が例外を投げても、応答のヘッダーとアクセスログは失わない。
+- 処理の途中の想定外の例外は、ログとエラートラッキングへ送ってから500の静的なエラー画面を返す。500の静的なエラー画面の文言は、プロファイルの`contactAvailable`が真なら問い合わせを案内する`UNEXPECTED_ERROR_MESSAGE`、偽なら問い合わせを促さない`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`にする(環境の不備・許可先の不正の500も同じ)。エラートラッキングへの送信自体が例外を投げても、応答のヘッダーとアクセスログは失わない。
 - アクセスログの`outcome`は、IP制限・CSRF・未登録の中継の経路が`rejected`、中継が`relay`、描画が`page`、500の静的なエラー画面が`static_error`である。
 - 静的なファイル(ビルドが出力するスクリプト・スタイル・画像)の要求はWorkerを起動せずに配信されるため、この処理を通らない。ヘッダーは「[静的なファイルのヘッダー](#静的なファイルのヘッダー)」で付ける。
 

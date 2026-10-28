@@ -7,7 +7,9 @@ import {
   type FrontendErrorCode,
   RATE_LIMIT_MESSAGE,
   renderStaticErrorPage,
+  type StaticErrorPageInput,
   UNEXPECTED_ERROR_MESSAGE,
+  UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT,
 } from './error-responses.ts';
 import { IP_RATE_LIMIT } from './ip-rate-limit.ts';
 
@@ -99,6 +101,18 @@ describe('文言の定数', () => {
     );
   });
 
+  test('問い合わせの導線が無い側の想定外のエラーの文言は設計の定数と同じ', () => {
+    expect(UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT).toBe(
+      'ページを表示できませんでした。時間をおいて再度お試しください。',
+    );
+  });
+
+  test('コードごとの文言は、両方のアプリの画面にそのまま出るため問い合わせを促す文を含まない', () => {
+    for (const message of Object.values(ERROR_MESSAGES)) {
+      expect(message).not.toContain('解決しない場合はお問い合わせください。');
+    }
+  });
+
   test('コードごとの文言を固定し、凍結している', () => {
     expect(ERROR_MESSAGES).toStrictEqual(
       Object.fromEntries(
@@ -113,6 +127,7 @@ describe('文言の定数', () => {
       ...Object.values(ERROR_MESSAGES),
       RATE_LIMIT_MESSAGE,
       UNEXPECTED_ERROR_MESSAGE,
+      UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT,
     ]) {
       expect(message).toMatch(/(?:ください|ません|でした)。$/u);
     }
@@ -314,16 +329,33 @@ describe('errorEnvelopeResponse', () => {
 
 describe('renderStaticErrorPage', () => {
   const PAGES = [
-    { status: 429, message: RATE_LIMIT_MESSAGE },
-    { status: 500, message: UNEXPECTED_ERROR_MESSAGE },
-  ] as const;
+    {
+      name: '429',
+      input: { status: 429 },
+      message: RATE_LIMIT_MESSAGE,
+    },
+    {
+      name: '問い合わせの導線がある側の500',
+      input: { status: 500, contactAvailable: true },
+      message: UNEXPECTED_ERROR_MESSAGE,
+    },
+    {
+      name: '問い合わせの導線が無い側の500',
+      input: { status: 500, contactAvailable: false },
+      message: UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT,
+    },
+  ] as const satisfies readonly {
+    readonly name: string;
+    readonly input: StaticErrorPageInput;
+    readonly message: string;
+  }[];
 
   test.each(PAGES)(
-    '$statusは状態コードとHTMLの形式・no-storeを示す',
-    ({ status }) => {
-      const response = renderStaticErrorPage({ status });
+    '$nameは状態コードとHTMLの形式・no-storeを示す',
+    ({ input }) => {
+      const response = renderStaticErrorPage(input);
 
-      expect(response.status).toBe(status);
+      expect(response.status).toBe(input.status);
       expect(response.headers.get('Content-Type')).toBe(
         'text/html; charset=utf-8',
       );
@@ -332,9 +364,9 @@ describe('renderStaticErrorPage', () => {
   );
 
   test.each(PAGES)(
-    '$statusは日本語の文書として$messageを見出しに表示する',
-    async ({ status, message }) => {
-      const html = await renderStaticErrorPage({ status }).text();
+    '$nameは日本語の文書として$messageを見出しに表示する',
+    async ({ input, message }) => {
+      const html = await renderStaticErrorPage(input).text();
 
       expect(html.startsWith('<!doctype html>')).toBe(true);
       expect(html).toContain('<html lang="ja">');
@@ -348,22 +380,22 @@ describe('renderStaticErrorPage', () => {
   );
 
   test.each(PAGES)(
-    '$statusは他方の文言を含まない',
-    async ({ status, message }) => {
-      const html = await renderStaticErrorPage({ status }).text();
-      const other =
-        message === RATE_LIMIT_MESSAGE
-          ? UNEXPECTED_ERROR_MESSAGE
-          : RATE_LIMIT_MESSAGE;
+    '$nameは他方の文言を含まない',
+    async ({ input, message }) => {
+      const html = await renderStaticErrorPage(input).text();
 
-      expect(html).not.toContain(other);
+      for (const other of PAGES) {
+        if (other.message !== message) {
+          expect(html).not.toContain(`<h1>${other.message}</h1>`);
+        }
+      }
     },
   );
 
   test.each(PAGES)(
-    '$statusはスクリプトと外部のファイルの参照を含まない',
-    async ({ status }) => {
-      const html = await renderStaticErrorPage({ status }).text();
+    '$nameはスクリプトと外部のファイルの参照を含まない',
+    async ({ input }) => {
+      const html = await renderStaticErrorPage(input).text();
 
       expect(html).not.toMatch(/<script/iu);
       expect(html).not.toMatch(/<link/iu);
@@ -377,9 +409,9 @@ describe('renderStaticErrorPage', () => {
   );
 
   test.each(PAGES)(
-    '$statusはスタイルを要素のstyle属性ではなく1つのstyle要素だけで持つ',
-    async ({ status }) => {
-      const html = await renderStaticErrorPage({ status }).text();
+    '$nameはスタイルを要素のstyle属性ではなく1つのstyle要素だけで持つ',
+    async ({ input }) => {
+      const html = await renderStaticErrorPage(input).text();
 
       expect(html.match(/<style>/gu)).toHaveLength(1);
       expect(html).not.toMatch(/\sstyle\s*=/iu);
@@ -387,9 +419,9 @@ describe('renderStaticErrorPage', () => {
   );
 
   test.each(PAGES)(
-    '$statusはスクリプト無しでOSのダークモードの設定に従う',
-    async ({ status }) => {
-      const html = await renderStaticErrorPage({ status }).text();
+    '$nameはスクリプト無しでOSのダークモードの設定に従う',
+    async ({ input }) => {
+      const html = await renderStaticErrorPage(input).text();
 
       expect(html).toContain('<meta name="color-scheme" content="light dark">');
       expect(html).toContain('@media (prefers-color-scheme: dark)');
@@ -406,17 +438,31 @@ describe('renderStaticErrorPage', () => {
   });
 
   test.each(PAGES)(
-    '$statusは秒数の指定が無ければRetry-Afterを付けない',
-    ({ status }) => {
-      expect(renderStaticErrorPage({ status }).headers.has('Retry-After')).toBe(
+    '$nameは秒数の指定が無ければRetry-Afterを付けない',
+    ({ input }) => {
+      expect(renderStaticErrorPage(input).headers.has('Retry-After')).toBe(
         false,
       );
     },
   );
 
+  test('問い合わせの導線が無い側の500は、問い合わせを促す文を含まない', async () => {
+    const html = await renderStaticErrorPage({
+      status: 500,
+      contactAvailable: false,
+    }).text();
+
+    expect(html).not.toContain('解決しない場合はお問い合わせください。');
+    expect(html).not.toContain('問い合わせ');
+  });
+
   test('500にRetry-Afterの秒数を指定するとRangeErrorを投げる', () => {
     expect(() =>
-      renderStaticErrorPage({ status: 500, retryAfterSeconds: 10 } as never),
+      renderStaticErrorPage({
+        status: 500,
+        contactAvailable: true,
+        retryAfterSeconds: 10,
+      } as never),
     ).toThrow(RangeError);
   });
 
@@ -427,8 +473,14 @@ describe('renderStaticErrorPage', () => {
   });
 
   test('呼び出しごとに別の応答を返す', async () => {
-    const first = renderStaticErrorPage({ status: 500 });
-    const second = renderStaticErrorPage({ status: 500 });
+    const first = renderStaticErrorPage({
+      status: 500,
+      contactAvailable: true,
+    });
+    const second = renderStaticErrorPage({
+      status: 500,
+      contactAvailable: true,
+    });
 
     expect(first).not.toBe(second);
     expect(await first.text()).toBe(await second.text());

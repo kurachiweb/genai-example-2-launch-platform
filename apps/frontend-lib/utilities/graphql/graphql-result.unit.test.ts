@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   createNetworkError,
+  errorMessageOf,
   GraphQLClientError,
   type GraphQLResult,
   isExpectedFailure,
@@ -496,5 +497,62 @@ describe('isExpectedFailure', () => {
     expect(isExpectedFailure(errorOfCode('validation_failed'))).toBe(true);
     expect(isExpectedFailure(errorOfCode('internal_error'))).toBe(false);
     expect(isExpectedFailure(new Error('validation_failed'))).toBe(false);
+  });
+});
+
+describe('errorMessageOf', () => {
+  const CONTACT_GUIDANCE = '解決しない場合はお問い合わせください。';
+  const WITH_CONTACT =
+    'ページを表示できませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。';
+  const WITHOUT_CONTACT =
+    'ページを表示できませんでした。時間をおいて再度お試しください。';
+
+  test.each([true, false])(
+    'GraphQLClientErrorには、問い合わせの導線の有無(%p)によらずそのメッセージを返す',
+    (contactAvailable) => {
+      const error = new GraphQLClientError({
+        code: 'internal_error',
+        message: '問題が発生しました。時間をおいて再度お試しください。',
+        status: 500,
+      });
+
+      expect(errorMessageOf(error, contactAvailable)).toBe(error.message);
+    },
+  );
+
+  test.each([
+    ['Error', new Error('Cannot read properties of undefined')],
+    ['Errorでない値', 'redacted'],
+    ['undefined', undefined],
+  ])(
+    'GraphQLClientErrorでない例外(%s)には、例外の文言を出さず問い合わせの導線がある側の想定外のエラーの文言を返す',
+    (_name, error) => {
+      expect(errorMessageOf(error, true)).toBe(WITH_CONTACT);
+    },
+  );
+
+  test.each([
+    ['Error', new Error('Cannot read properties of undefined')],
+    ['Errorでない値', 'redacted'],
+    ['undefined', undefined],
+  ])(
+    'GraphQLClientErrorでない例外(%s)には、問い合わせの導線が無い側では問い合わせを促さない文言を返す',
+    (_name, error) => {
+      const message = errorMessageOf(error, false);
+
+      expect(message).toBe(WITHOUT_CONTACT);
+      expect(message).not.toContain(CONTACT_GUIDANCE);
+    },
+  );
+
+  test('通信の失敗と解釈できない応答の文言は、問い合わせを促す文を含まない', () => {
+    const networkError = createNetworkError(new TypeError('Failed to fetch'));
+    const invalid = errorOf(parse({ status: 502, body: '<html></html>' }));
+
+    expect(invalid.code).toBe('invalid_response');
+    for (const error of [networkError, invalid]) {
+      expect(error.message).not.toContain(CONTACT_GUIDANCE);
+      expect(errorMessageOf(error, false)).toBe(error.message);
+    }
   });
 });

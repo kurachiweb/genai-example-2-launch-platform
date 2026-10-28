@@ -1,12 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
+import { useState } from 'react';
 import { fn } from 'storybook/test';
 
-import { GraphQLClientError } from '../../utilities/graphql/graphql-result.ts';
+import {
+  errorMessageOf,
+  GraphQLClientError,
+} from '../../utilities/graphql/graphql-result.ts';
 import { z } from '../../utilities/validation/zod.ts';
 import { Input } from '../ui/input/input.tsx';
 import { Textarea } from '../ui/textarea/textarea.tsx';
 import { AppForm, type SubmitErrorContext } from './app-form.tsx';
 import { FormField } from './form-field.tsx';
+import { FormMessage } from './form-message.tsx';
 import { SubmitButton } from './submit-button.tsx';
 import { useAppForm } from './use-app-form.ts';
 
@@ -30,17 +35,29 @@ type ProductInput = z.input<typeof productSchema>;
 interface ProductFormProps {
   readonly onSubmit: (values: ProductInput) => Promise<void> | void;
   readonly onSubmitError: (error: unknown, context: SubmitErrorContext) => void;
+  readonly contactAvailable: boolean;
 }
 
-function ProductForm({ onSubmit, onSubmitError }: ProductFormProps) {
+function ProductForm({
+  onSubmit,
+  onSubmitError,
+  contactAvailable,
+}: ProductFormProps) {
   const form = useAppForm(productSchema, {
     defaultValues: { title: '', url: '', description: '' },
   });
+  const [submitError, setSubmitError] = useState<string>();
   return (
     <AppForm
       form={form}
-      onSubmit={onSubmit}
-      onSubmitError={onSubmitError}
+      onSubmit={async (values) => {
+        setSubmitError(undefined);
+        await onSubmit(values);
+      }}
+      onSubmitError={(error, context) => {
+        setSubmitError(errorMessageOf(error, contactAvailable));
+        onSubmitError(error, context);
+      }}
       serverFieldPrefix="input"
       aria-label="プロダクトの投稿"
       className="flex max-w-md flex-col gap-4"
@@ -59,6 +76,9 @@ function ProductForm({ onSubmit, onSubmitError }: ProductFormProps) {
       <FormField control={form.control} name="description" label="説明">
         {(control) => <Textarea {...control} />}
       </FormField>
+      {submitError === undefined ? null : (
+        <FormMessage role="alert">{submitError}</FormMessage>
+      )}
       <SubmitButton className="self-start">投稿する</SubmitButton>
     </AppForm>
   );
@@ -69,7 +89,7 @@ const neverSettles = (): Promise<void> => new Promise<void>(() => undefined);
 const meta = {
   title: 'フォーム/AppForm',
   component: ProductForm,
-  args: { onSubmit: fn(), onSubmitError: fn() },
+  args: { onSubmit: fn(), onSubmitError: fn(), contactAvailable: true },
 } satisfies Meta<typeof ProductForm>;
 
 export default meta;
@@ -132,4 +152,26 @@ export const ServerFieldError: Story = {
     );
     await userEvent.click(canvas.getByRole('button', { name: '投稿する' }));
   },
+};
+
+const submitValidProduct: Story['play'] = async ({ canvas, userEvent }) => {
+  await userEvent.type(canvas.getByLabelText('プロダクト名'), 'Launch Stadium');
+  await userEvent.type(
+    canvas.getByLabelText('外部WebサイトURL'),
+    'https://launch.example',
+  );
+  await userEvent.click(canvas.getByRole('button', { name: '投稿する' }));
+};
+
+const failUnexpectedly = (): Promise<void> =>
+  Promise.reject(new Error('Cannot read properties of undefined'));
+
+export const UnexpectedSubmitError: Story = {
+  args: { onSubmit: fn(failUnexpectedly) },
+  play: submitValidProduct,
+};
+
+export const UnexpectedSubmitErrorWithoutContact: Story = {
+  args: { onSubmit: fn(failUnexpectedly), contactAvailable: false },
+  play: submitValidProduct,
 };

@@ -8,4 +8,5 @@ export const CLIENT_PROFILE: FrontendAppProfile = Object.freeze({
   sessionCookieName: '__Host-ls_session',
   indexable: (environment: AppEnvironment) => environment === 'prod',
   webAnalytics: true,
+  contactAvailable: true,
 });

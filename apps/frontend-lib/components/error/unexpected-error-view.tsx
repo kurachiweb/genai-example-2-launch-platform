@@ -6,6 +6,7 @@ import {
   CONTACT_LABEL,
   RETRY_GUIDANCE,
   RETRY_LABEL,
+  RETRY_LATER_GUIDANCE,
   UNEXPECTED_ERROR_TITLE,
 } from '../../utilities/messages/state-messages.ts';
 import { Button } from '../ui/button/button.tsx';
@@ -25,6 +26,8 @@ export function UnexpectedErrorView({
   ...props
 }: UnexpectedErrorViewProps) {
   const headingId = useId();
+  const guidance =
+    contactHref === undefined ? RETRY_LATER_GUIDANCE : RETRY_GUIDANCE;
 
   return (
     <section
@@ -47,7 +50,7 @@ export function UnexpectedErrorView({
         >
           {UNEXPECTED_ERROR_TITLE}
         </h1>
-        <p className="mt-3 text-sm text-muted-foreground">{RETRY_GUIDANCE}</p>
+        <p className="mt-3 text-sm text-muted-foreground">{guidance}</p>
       </div>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button type="button" onClick={onRetry}>

@@ -23,6 +23,7 @@ const profileOf = (
   sessionCookieName,
   indexable: () => false,
   webAnalytics: false,
+  contactAvailable: false,
 });
 
 const CLIENT_PROFILE = profileOf('client', '__Host-test_session');

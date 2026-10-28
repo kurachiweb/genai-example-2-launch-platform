@@ -67,12 +67,18 @@
 Zodで検証規則を定義し、`useAppForm`で作ったフォームを`AppForm`・`FormField`・`SubmitButton`で描画する。Zodの値は、JITの試行を止める設定を済ませた`utilities/validation/zod.ts`の`z`から読み込む(「[実行時のコード生成を試すライブラリ](003-frontend-server-security.md#実行時のコード生成を試すライブラリ)」)。
 
 ```tsx
+import { useState } from 'react';
+
 import { AppForm } from '<共通部品の配置先>/components/form/app-form.tsx';
 import { FormField } from '<共通部品の配置先>/components/form/form-field.tsx';
+import { FormMessage } from '<共通部品の配置先>/components/form/form-message.tsx';
 import { SubmitButton } from '<共通部品の配置先>/components/form/submit-button.tsx';
 import { useAppForm } from '<共通部品の配置先>/components/form/use-app-form.ts';
 import { Input } from '<共通部品の配置先>/components/ui/input/input.tsx';
+import { errorMessageOf } from '<共通部品の配置先>/utilities/graphql/graphql-result.ts';
 import { z } from '<共通部品の配置先>/utilities/validation/zod.ts';
+
+import { APP_PROFILE } from '../../composition/app-profile.ts';
 
 const profileSchema = z.object({
   name: z.string().trim().min(1, '名前を入力してください。'),
@@ -80,17 +86,22 @@ const profileSchema = z.object({
 
 export function ProfileForm() {
   const form = useAppForm(profileSchema, { defaultValues: { name: '' } });
+  const [submitError, setSubmitError] = useState<string>();
   return (
     <AppForm
       form={form}
       onSubmit={async (values) => {
+        setSubmitError(undefined);
         await saveProfile(values);
       }}
-      onSubmitError={(error, { unmatched }) => {
-        showSubmitError(error, unmatched);
+      onSubmitError={(error) => {
+        setSubmitError(errorMessageOf(error, APP_PROFILE.contactAvailable));
       }}
       serverFieldPrefix="input"
     >
+      {submitError === undefined ? null : (
+        <FormMessage role="alert">{submitError}</FormMessage>
+      )}
       <FormField
         control={form.control}
         name="name"
@@ -114,21 +125,23 @@ export function ProfileForm() {
 
 - `defaultValues`は全欄を指定する。サーバーの詳細は、既定値に経路がある欄にだけ対応させるためである。
 - サーバーの詳細の`field`が`input.name`のように引数の名前で始まる時は、`serverFieldPrefix`に接頭辞(`input`)を渡して外す。
-- `onSubmitError`は必須で、欄に対応しない詳細(`unmatched`)が残った時と、詳細の無い失敗の時に呼ばれる。フォームの近くに`role="alert"`で文言を出すなど、利用者へ伝える処理を書く。想定外の失敗をエラートラッキングへ送るかは利用側が決める。`onSubmitError`自体が投げた例外は`globalThis.reportError`へ渡される。
+- `onSubmitError`は必須で、欄に対応しない詳細(`unmatched`)が残った時と、詳細の無い失敗の時に呼ばれる。フォームの近くに`role="alert"`で文言を出すなど、利用者へ伝える処理を書く。文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない(「[エラーの扱い](006-data-fetching.md#エラーの型と画面の分岐)」)。想定外の失敗をエラートラッキングへ送るかは利用側が決める。`onSubmitError`自体が投げた例外は`globalThis.reportError`へ渡される。
 - `FormField`は`<label for>`で名前を付けるため、名前を付けられる要素(`input`・`textarea`・`button`)を描く部品に使う。値の受け渡しの名前が`value`・`onChange`と異なる部品は、受け取った値を対応する名前で渡す。
 - 必須の印は自動で付かない。ラベルか説明の文言で示し、入力欄に`aria-required`を渡す。
 
 ### 状態表示
 
-| 部品                | props                                                                        | 表示                                                                                                |
-| ------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `LoadingSkeleton`   | `label`(既定は読み込み中を示す文言)・`children`(スケルトンの形、省略時は3行) | 読み込み中の文言を状態の領域で伝え、スケルトンの形を読み上げから外す                                |
-| `EmptyState`        | `title`・`description`・`action`・`headingLevel`(2〜6)                       | 空であることと次の行動への導線。`headingLevel`を指定すると見出し付きの`<section>`になる             |
-| `ErrorState`        | `message`・`onRetry`・`contactHref`                                          | ページや区画の読み込みの失敗。再試行のボタンと問い合わせのリンク。技術的な詳細を`message`に入れない |
-| `PartialErrorState` | `message`・`onRetry`                                                         | ページの一部の区画の失敗。ページ全体の表示を保ったまま、その区画に再試行のボタンを出す              |
-| `UnavailableNotice` | `reason`                                                                     | 縮退運転中。利用できないことを示す題と理由                                                          |
+| 部品                | props                                                                        | 表示                                                                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LoadingSkeleton`   | `label`(既定は読み込み中を示す文言)・`children`(スケルトンの形、省略時は3行) | 読み込み中の文言を状態の領域で伝え、スケルトンの形を読み上げから外す                                                                                       |
+| `EmptyState`        | `title`・`description`・`action`・`headingLevel`(2〜6)                       | 空であることと次の行動への導線。`headingLevel`を指定すると見出し付きの`<section>`になる                                                                    |
+| `ErrorState`        | `message`・`onRetry`・`contactHref`(省略可)                                  | ページや区画の読み込みの失敗。再試行のボタンと問い合わせのリンク。`contactHref`を省略すると問い合わせのリンクを描かない。技術的な詳細を`message`に入れない |
+| `PartialErrorState` | `message`・`onRetry`                                                         | ページの一部の区画の失敗。ページ全体の表示を保ったまま、その区画に再試行のボタンを出す                                                                     |
+| `UnavailableNotice` | `reason`                                                                     | 縮退運転中。利用できないことを示す題と理由                                                                                                                 |
 
 - 導線(`contactHref`・`EmptyState`の`action`の中のリンク)は通常の`<a href>`で描画し、クライアント側の遷移を行わない。
+- 問い合わせの画面を持たないアプリ(プロファイルの`contactAvailable`が偽)は、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない。`contactAvailable`が真のアプリだけが渡す。
+- `ErrorState`・`PartialErrorState`の`message`は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。`GraphQLClientError`でない例外では、問い合わせの導線が無いアプリに問い合わせを促す文を出さない(「[エラーの扱い](006-data-fetching.md#エラーの型と画面の分岐)」)。
 
 ### トースト
 
@@ -136,19 +149,23 @@ export function ProfileForm() {
 
 ```tsx
 import { notify } from '<共通部品の配置先>/components/feedback/notify.ts';
+import { errorMessageOf } from '<共通部品の配置先>/utilities/graphql/graphql-result.ts';
+
+import { APP_PROFILE } from '../../composition/app-profile.ts';
 
 notify.success('保存しました。');
+notify.error(errorMessageOf(error, APP_PROFILE.contactAvailable));
 ```
 
-- `notify`は`success`・`info`・`warning`・`error`の4種で、文言だけを受け取る。
+- `notify`は`success`・`info`・`warning`・`error`の4種で、文言だけを受け取る。失敗を知らせる時の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接渡さない。
 - トーストは操作の結果の通知に使い、利用者の対応が要る失敗は`ErrorState`・`PartialErrorState`かフォームの表示で示す(「[状態とエラーの伝え方](004-accessibility-rules.md#状態とエラーの伝え方)」)。
 
 ### エラーの表示
 
-| 部品                  | props                            | 表示                                                                                                |
-| --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `NotFoundView`        | `links`(`{ href, label }`の配列) | 存在しないページの見出し・案内と導線。最初の導線を主の見た目、残りを枠線の見た目にする              |
-| `UnexpectedErrorView` | `onRetry`・`contactHref`(省略可) | 想定外のエラーの見出し・案内と再試行のボタン。`contactHref`を省略すると問い合わせのリンクを描かない |
+| 部品                  | props                            | 表示                                                                                                                                                              |
+| --------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NotFoundView`        | `links`(`{ href, label }`の配列) | 存在しないページの見出し・案内と導線。最初の導線を主の見た目、残りを枠線の見た目にする                                                                            |
+| `UnexpectedErrorView` | `onRetry`・`contactHref`(省略可) | 想定外のエラーの見出し・案内と再試行のボタン。`contactHref`を省略すると問い合わせのリンクを描かず、案内を時間をおいた再試行だけにして問い合わせを促す文を出さない |
 
 - どちらも`<h1>`を持つ。アプリは、ルートの`notFoundComponent`・`errorComponent`に、導線やルーターの再読み込み(`router.invalidate()`)を結び付けたページの部品を置き、その中でこれらを描画する。
 - 共通レイアウトは、ルートの`errorComponent`・`notFoundComponent`も包むよう、ルートの`shellComponent`に`AppDocument`と合わせて置く(ルートの`component`はそれらに置き換えられるため)。

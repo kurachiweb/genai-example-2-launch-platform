@@ -33,6 +33,7 @@ export const CLIENT_TEST_PROFILE: FrontendAppProfile =
     sessionCookieName: CLIENT_COOKIE,
     indexable: (environment) => environment === 'prod',
     webAnalytics: true,
+    contactAvailable: true,
   });
 
 export const ADMIN_TEST_PROFILE: FrontendAppProfile =
@@ -41,6 +42,7 @@ export const ADMIN_TEST_PROFILE: FrontendAppProfile =
     sessionCookieName: '__Host-test_admin_session',
     indexable: () => false,
     webAnalytics: false,
+    contactAvailable: false,
   });
 
 export const APP_SECURITY_POLICY = Object.freeze({

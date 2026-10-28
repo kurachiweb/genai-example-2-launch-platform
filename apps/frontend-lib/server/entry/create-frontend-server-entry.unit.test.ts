@@ -814,3 +814,52 @@ describe('createFrontendServerEntry(アクセスログ)', () => {
     expect(logsOf(harness, 'client.http.access')).toEqual([]);
   });
 });
+
+describe('createFrontendServerEntry(静的な500の画面の案内文)', () => {
+  const CONTACT_GUIDANCE = '解決しない場合はお問い合わせください。';
+  const WITH_CONTACT =
+    'ページを表示できませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。';
+  const WITHOUT_CONTACT =
+    'ページを表示できませんでした。時間をおいて再度お試しください。';
+
+  const FAILURES = [
+    ['環境の不備', { env: { API: undefined } }],
+    ['許可先の不正', { env: { IMAGES_ORIGIN: 'https://images.example:8443' } }],
+    [
+      '想定外の例外',
+      { respond: () => Promise.reject(new Error('render failed')) },
+    ],
+  ] as const;
+
+  test.each(FAILURES)(
+    '%sの500は、問い合わせの導線を持つプロファイルでは問い合わせを促す案内文を出す',
+    async (_name, harnessOptions) => {
+      const harness = createHarness({
+        ...harnessOptions,
+        profile: CLIENT_TEST_PROFILE,
+      });
+
+      const response = await harness.fetch(pageRequest());
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).toContain(`<h1>${WITH_CONTACT}</h1>`);
+    },
+  );
+
+  test.each(FAILURES)(
+    '%sの500は、問い合わせの導線を持たないプロファイルでは問い合わせを促す文を出さない',
+    async (_name, harnessOptions) => {
+      const harness = createHarness({
+        ...harnessOptions,
+        profile: ADMIN_TEST_PROFILE,
+      });
+
+      const response = await harness.fetch(pageRequest());
+
+      expect(response.status).toBe(500);
+      const html = await response.text();
+      expect(html).toContain(`<h1>${WITHOUT_CONTACT}</h1>`);
+      expect(html).not.toContain(CONTACT_GUIDANCE);
+    },
+  );
+});

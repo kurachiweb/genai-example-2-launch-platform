@@ -5,11 +5,18 @@ export const NOT_FOUND_DESCRIPTION =
 
 export const UNEXPECTED_ERROR_TITLE = 'ページを表示できませんでした。';
 
+export const RETRY_LATER_GUIDANCE = '時間をおいて再度お試しください。';
+
+export const CONTACT_GUIDANCE = '解決しない場合はお問い合わせください。';
+
 export const RETRY_GUIDANCE =
-  '時間をおいて再度お試しください。解決しない場合はお問い合わせください。';
+  `${RETRY_LATER_GUIDANCE}${CONTACT_GUIDANCE}` as const;
 
 export const UNEXPECTED_ERROR_MESSAGE =
   `${UNEXPECTED_ERROR_TITLE}${RETRY_GUIDANCE}` as const;
+
+export const UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT =
+  `${UNEXPECTED_ERROR_TITLE}${RETRY_LATER_GUIDANCE}` as const;
 
 export const UNAVAILABLE_TITLE = '現在ご利用いただけません。';
 

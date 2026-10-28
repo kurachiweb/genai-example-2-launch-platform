@@ -6,17 +6,17 @@ Cloudflare Workersで動かすTanStack Startの画面が、APIサーバーのGra
 
 操作の書き方・コード生成・要求と応答の形は「[GraphQL通信](../coding/004-graphql-communication.md#クライアント側)」、中継とセッションのCookieは「[フロントエンドサーバーのセキュリティ](003-frontend-server-security.md)」、サーバー専用のファイルと同型の関数は「[Cloudflare Workers上のTanStack Startの起動](002-tanstack-start-on-workers.md#サーバー専用のファイルと同型の関数)」、フォームと状態表示の部品は「[共通化する部品](005-shared-components.md)」に従う。部品の置き場所は共通部品のディレクトリからのパスで示し、コードの例では`<共通部品の配置先>`までの相対パスを省いて書く。
 
-| 部品                                                                                            | 置き場所(共通部品内)                      | 役割                                                             |
-| ----------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
-| `executeGraphQL`                                                                                | `start/graphql/execute-graphql.ts`        | 操作を実行して`GraphQLResult`を返す同型の関数                    |
-| `graphqlQueryOptions`・`graphqlMutationOptions`                                                 | `start/graphql/graphql-query-options.ts`  | TanStack Queryの取得・変更の設定                                 |
-| `createAppQueryClient`・`shouldRetryQuery`・`QUERY_STALE_TIME_MS`・`MAX_QUERY_RETRIES`          | `start/query-client.ts`                   | QueryClientの既定値と再試行の方針                                |
-| `createRouterContext`・`dehydrateAppRuntime`・`hydrateAppRuntime`・`appRuntimeOf`               | `start/router-context.ts`                 | 要求ごとのルーターの文脈(QueryClient・Jotaiのストア・実行時の値) |
-| `readInitialRuntime`・`readRequestNonce`                                                        | `start/request-context.ts`                | 描画の文脈から実行時の値とnonceを読む同型の関数                  |
-| `responseCommitMiddleware`                                                                      | `start/response-commit.ts`                | ページの応答を送り始めた時点の記録                               |
-| `GraphQLClientError`・`GraphQLResult`・`requireData`・`createNetworkError`・`isExpectedFailure` | `utilities/graphql/graphql-result.ts`     | 応答の解釈とエラーの型                                           |
-| `documentIdOf`・`graphqlQueryKey`                                                               | `utilities/graphql/persisted-document.ts` | 操作の識別子と取得のキー                                         |
-| `UNEXPECTED_ERROR_MESSAGE`                                                                      | `utilities/messages/state-messages.ts`    | 想定外のエラーの固定の文言                                       |
+| 部品                                                                                                              | 置き場所(共通部品内)                      | 役割                                                             |
+| ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| `executeGraphQL`                                                                                                  | `start/graphql/execute-graphql.ts`        | 操作を実行して`GraphQLResult`を返す同型の関数                    |
+| `graphqlQueryOptions`・`graphqlMutationOptions`                                                                   | `start/graphql/graphql-query-options.ts`  | TanStack Queryの取得・変更の設定                                 |
+| `createAppQueryClient`・`shouldRetryQuery`・`QUERY_STALE_TIME_MS`・`MAX_QUERY_RETRIES`                            | `start/query-client.ts`                   | QueryClientの既定値と再試行の方針                                |
+| `createRouterContext`・`dehydrateAppRuntime`・`hydrateAppRuntime`・`appRuntimeOf`                                 | `start/router-context.ts`                 | 要求ごとのルーターの文脈(QueryClient・Jotaiのストア・実行時の値) |
+| `readInitialRuntime`・`readRequestNonce`                                                                          | `start/request-context.ts`                | 描画の文脈から実行時の値とnonceを読む同型の関数                  |
+| `responseCommitMiddleware`                                                                                        | `start/response-commit.ts`                | ページの応答を送り始めた時点の記録                               |
+| `GraphQLClientError`・`GraphQLResult`・`requireData`・`createNetworkError`・`isExpectedFailure`・`errorMessageOf` | `utilities/graphql/graphql-result.ts`     | 応答の解釈とエラーの型、画面に出す失敗の文言の選択               |
+| `documentIdOf`・`graphqlQueryKey`                                                                                 | `utilities/graphql/persisted-document.ts` | 操作の識別子と取得のキー                                         |
+| `UNEXPECTED_ERROR_MESSAGE`・`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`                                            | `utilities/messages/state-messages.ts`    | 想定外のエラーの固定の文言(問い合わせの導線がある側・無い側)     |
 
 | 用語             | 意味                                                                                                           |
 | ---------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -235,7 +235,9 @@ GraphQLの`DateTime`の値は、コード生成で`string`になり、APIサー�
 | 各機能の想定内のエラーコード(未認証・権限不足・対象の不在など) | 機能ごとに決める(ログインへの導線、`notFound()`など)                                                 |
 | それ以外(`internal_error`・`invalid_response`・実行前の拒否)   | `message`と再試行の操作を示す                                                                        |
 
-- `GraphQLClientError`の`message`は、そのまま画面に表示してよい。`GraphQLClientError`でない例外(プログラムの誤り、ブラウザへ渡る時にメッセージだけになった失敗)の文言は表示せず、`UNEXPECTED_ERROR_MESSAGE`を表示する。
+- 画面に出す失敗の文言は、`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で出す文言、トースト(`notify.error`・`notify.warning`)のどれでも`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。`<プロファイル>`はアプリの`src/composition/app-profile.ts`の値で、ルートと画面の部品が渡す(共通部品はアプリの値を持たない)。
+  - `GraphQLClientError`には、その`message`を返す。APIサーバーの`internal_error`・中継の共通のエラー形式・`network_error`・`invalid_response`の文言は、問い合わせを促す文を含まない。
+  - `GraphQLClientError`でない例外(プログラムの誤り、ブラウザへ渡る時にメッセージだけになった失敗)には、例外の文言を出さず、`contactAvailable`が真なら`UNEXPECTED_ERROR_MESSAGE`(問い合わせを案内する文言)、偽なら`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`(時間をおいた再試行の案内で終え、問い合わせを促さない文言)を返す。問い合わせの画面を持たないアプリは`contactAvailable`を偽にする。
 - 描画中の取得の失敗がブラウザへ渡ると、取得のキャッシュの失敗もメッセージだけの`Error`になる。HTMLを送り始めた時点で完了していなかった取得の失敗は、TanStack Queryがさらに固定の文言(`redacted`)の`Error`に置き換える。エラーコードで分岐したい区画は、ブラウザで取得し直した結果で分岐する。
 - GraphQLの想定外の失敗は`executeGraphQL`がエラートラッキングへ送るため、画面で送り直さない。APIサーバーへ届かなかった失敗(`upstream_*`)は中継の処理が送る。`AppForm`の`onSubmitError`では、GraphQL以外の想定外の例外を送るかを利用側で決める。
 

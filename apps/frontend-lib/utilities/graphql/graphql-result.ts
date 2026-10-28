@@ -1,3 +1,7 @@
+import {
+  UNEXPECTED_ERROR_MESSAGE,
+  UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT,
+} from '../messages/state-messages.ts';
 import { z } from '../validation/zod.ts';
 
 export interface FieldErrorDetail {
@@ -199,3 +203,16 @@ export const createNetworkError = (cause: unknown): GraphQLClientError =>
 // エラートラッキングの除外とブラウザの送信待ちの列で共用する。列は主バンドルに入るため、伏せ字のパターンを持つsentry-scrub.tsではなくここに置く
 export const isExpectedFailure = (error: unknown): boolean =>
   error instanceof GraphQLClientError && error.expected;
+
+// GraphQLClientErrorの文言は両側とも問い合わせを促さない契約のためそのまま返し、それ以外の例外は技術的な詳細を含み得るため固定の文言に代える
+export const errorMessageOf = (
+  error: unknown,
+  contactAvailable: boolean,
+): string => {
+  if (error instanceof GraphQLClientError) {
+    return error.message;
+  }
+  return contactAvailable
+    ? UNEXPECTED_ERROR_MESSAGE
+    : UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT;
+};

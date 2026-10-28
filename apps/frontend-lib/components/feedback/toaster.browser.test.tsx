@@ -12,6 +12,7 @@ import {
   ringOutline,
   tokenColorOf,
 } from '../../test/computed-style.ts';
+import { errorMessageOf } from '../../utilities/graphql/graphql-result.ts';
 import { notify, type NotifyKind } from './notify.ts';
 import { Toaster } from './toaster.tsx';
 
@@ -86,6 +87,27 @@ describe('Toaster・notify', () => {
       await expect.element(page.getByText(message)).toBeVisible();
       expect(toastOf(message).dataset.type).toBe(kind);
       expect(liveRegion().contains(toastOf(message))).toBe(true);
+    },
+  );
+
+  test.each([
+    [
+      true,
+      'ページを表示できませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。',
+    ],
+    [false, 'ページを表示できませんでした。時間をおいて再度お試しください。'],
+  ] as const)(
+    '想定外の例外の失敗は、問い合わせの導線の有無(%p)で選んだ文言をトーストに出し、例外の文言を出さない',
+    async (contactAvailable, expected) => {
+      await render(<Toaster />);
+      const failure = new Error('Cannot read properties of undefined');
+
+      notify.error(errorMessageOf(failure, contactAvailable));
+
+      await expect
+        .element(page.getByText(expected, { exact: true }))
+        .toBeVisible();
+      expect(liveRegion().textContent).not.toContain(failure.message);
     },
   );
 

@@ -18,3 +18,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const WithoutContact: Story = {
+  args: {
+    message: '一覧を読み込めませんでした。時間をおいて再度お試しください。',
+    contactHref: undefined,
+  },
+};
