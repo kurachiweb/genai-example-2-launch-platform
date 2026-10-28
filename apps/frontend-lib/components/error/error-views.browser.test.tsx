@@ -95,6 +95,18 @@ describe('UnexpectedErrorView', () => {
       `${UNEXPECTED_ERROR_MESSAGE}再試行お問い合わせ`,
     );
   });
+
+  test('管理者側のように問い合わせのページが無ければ、問い合わせへの導線を省いて再試行だけを出せる', async () => {
+    const { container } = await render(
+      <UnexpectedErrorView onRetry={() => undefined} />,
+    );
+
+    await expect
+      .element(page.getByRole('button', { name: '再試行' }))
+      .toBeVisible();
+    expect(page.getByRole('link').elements()).toHaveLength(0);
+    expect(container.textContent).toBe(`${UNEXPECTED_ERROR_MESSAGE}再試行`);
+  });
 });
 
 describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {

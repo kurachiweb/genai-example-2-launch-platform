@@ -15,7 +15,7 @@ export interface UnexpectedErrorViewProps extends Omit<
   'children'
 > {
   readonly onRetry: () => void;
-  readonly contactHref: string;
+  readonly contactHref?: string;
 }
 
 export function UnexpectedErrorView({
@@ -54,9 +54,11 @@ export function UnexpectedErrorView({
           <RotateCwIcon aria-hidden="true" />
           {RETRY_LABEL}
         </Button>
-        <Button variant="outline" asChild>
-          <a href={contactHref}>{CONTACT_LABEL}</a>
-        </Button>
+        {contactHref === undefined ? null : (
+          <Button variant="outline" asChild>
+            <a href={contactHref}>{CONTACT_LABEL}</a>
+          </Button>
+        )}
       </div>
     </section>
   );

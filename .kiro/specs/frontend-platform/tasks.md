@@ -274,7 +274,7 @@
   - _Depends: 5.7, 6.2, 6.3, 6.4_
   - _Requirements: 9.2, 11.5, 11.6, 11.8, 11.9, 12.1, 12.2, 12.4, 12.5, 14.1, 14.3, 14.4_
 
-- [ ] 7. 管理者側フロントエンドサーバー
+- [x] 7. 管理者側フロントエンドサーバー
 - [x] 7.1 (P) 管理者側のプロジェクト・ビルドと実行環境の設定・静的なファイルのヘッダーを作る
   - 6.1と同じ手順で、管理者側のWorker名・`AdminGateway`・管理者側の名前空間・アクセス解析のトークンを持たない変数で設定し、ブラウザテストの設定を置く。設定の単体テストを先に書く
   - 完了状態: 単体テストが成功し、ルートの一括検査に管理者側のアプリが参加して成功し、利用者側・api・eventと名前空間が重ならない
@@ -302,7 +302,7 @@
   - _Boundary: AdminLayout_
   - _Requirements: 10.4, 11.4_
 
-- [ ] 7.5 管理者側のルート・404とエラーの画面・仮のトップページ・疎通確認の画面を作る
+- [x] 7.5 管理者側のルート・404とエラーの画面・仮のトップページ・疎通確認の画面を作る
   - 6.5と同じ構成で、管理者側の基本レイアウトの中に存在しないページ(トップページへの導線)・想定外のエラー・仮のトップページ・疎通確認の画面を置く。アクセス解析のスクリプトは置かない
   - 先に、404とエラーの画面の文言と導線を確かめるブラウザテストを書く
   - 完了状態: ブラウザテストが成功し、`vite build`が成功し、ページにアクセス解析のスクリプトが含まれず、ローカルの開発サーバーで存在しないページが404・疎通確認の画面が管理者側の操作で結果を表示する
@@ -423,3 +423,4 @@
 - 7.2(9.3・9.6への申し送り): 管理者側のコード生成は6.2のclientの構成をそのまま写し、操作は`src/graphql/operations/system-status.graphql`の`AdminSystemStatus`(画面は`generated/graphql.ts`の`AdminSystemStatusDocument`を読む)。apiの`allowlist.json`の`admin`に`sha256:cfd1cd38…`の1件が入った。`test/config/codegen.unit.test.ts`は`Admin`の接頭辞と、clientの`persisted-documents.json`と識別子を共有しないこと(相対パスで読む)を確かめる(clientのテストには逆向きの検査は無い)。
 - 7.3(7.5・9.xへの申し送り): 管理者側の登録箇所は`ADMIN_PROFILE`(`admin`・`__Host-ls_admin_session`・`indexable: () => false`・`webAnalytics: false`)・空の`ADMIN_SECURITY_POLICY`・`RELAY_ROUTES`(`[GRAPHQL_RELAY_ROUTE]`)。`server.ts`はclientと同じ構成で値だけが違い、`start.ts`・`router.tsx`はclientと同一(設計のFile Structure Planどおり各アプリに置く)。最小の`__root.tsx`(`shellComponent: AppDocument`)と生成物`routeTree.gen.ts`は7.5で拡げる。`test/config/composition.unit.test.ts`はCookieの名前の違いを確かめるためclientの`src/composition/app-profile.ts`を静的にimportする(型の登録は混ざらないが、clientの`app-profile.ts`が型の登録を持つモジュールを読むようになると混入し得る。9.xで触れる)。`vite build`で主バンドルに`SDK_VERSION`無し・警告無し。
 - 7.4(要件と設計の不整合、7.5・admin-foundation・9.xへの申し送り): `AdminLayout`はヘッダー(「⚽️ Launch Stadium管理」のトップへのリンク、絵文字は`aria-hidden`・`ThemeToggle`・`headerAccount`)→`navigation`の区画(包む要素無し、768px以上で左の列・未満で本文の上)→`<main id="main">`で、`ADMIN_LAYOUT_SLOTS`は`navigation`・`headerAccount`とも`null`(凍結)。空の区画は入れ物ごと描画しない。【不整合】要件10.4は画面シェルに「ヘッダー・ナビゲーション・本文・フッターのランドマーク」を求めるが、設計1595行の管理者側の構成とFile Structure Planにフッターが無く(1596行のランドマークは利用者側と区別していない)、初版は区画が空のためナビゲーションのランドマークも無い。設計1596行を「管理者側は`header`・`nav`(admin-foundationが追加)・`main`」と明記するか、要件10.4の対象範囲を明確にする(設計の改訂候補)。【admin-foundationへ】`AdminNavigation`は自身で名前付きの`nav`を描き、768px未満のSheetの開閉ボタンはヘッダーと本文の間に出る(ヘッダーに置くなら`AdminLayoutSlots`に区画を加える契約の変更)。7.5は`__root.tsx`の`shellComponent`で`AdminLayout`(`ADMIN_LAYOUT_SLOTS`)を組み込む。設計に無い`admin-site.ts`(サービス名と`/`)を加えた。「Launch Stadium管理」は9.5の文言規則の対象。
+- 7.5(設計の改訂候補と8.x・9.x・admin-foundationへの申し送り): 管理者側のルートは6.5と同じ構成(`shellComponent: AdminDocument`=`AppDocument`の中に`AdminLayout slots={ADMIN_LAYOUT_SLOTS}`、疎通確認のloaderは`executeGraphQL(AdminSystemStatusDocument)`を直接呼び`{ code, message, status }`で返す、prodは`notFound()`、`noIndex`)。違いは、`head`にアクセス解析が無くルートのloaderも無い(実行時の値は`AppDocument`がルーターの文脈から読む)、404の導線はトップページだけ。共通部品の`UnexpectedErrorView`の`contactHref`を省略可能にし、管理者側のエラー画面は問い合わせのボタンを描かない(管理者側に問い合わせの画面もclientのオリジンの設定も無いため。要件8.10は共通部品が導線を提供できることを求め、管理者側の11.6は求めない。設計1539行の`contactHref`を任意と明記する改訂候補。型の上ではclientの渡し忘れを検出せず、clientのブラウザテストで守る)。管理者側のエラー画面は共通の案内文「…解決しない場合はお問い合わせください。」を導線無しで出すため、9.5かadmin-foundationで管理者側の案内文を見直す。`test/root-route.browser.test.tsx`は本物の`Route.options`の`notFoundComponent`・`errorComponent`が同じ部品かを確かめる(`AppDocument`を`vi.mock`)が、`shellComponent`の構成は検査しない(clientには未適用)。`system-status-page.tsx`・`graphql/system-status.ts`はclientの写し。開発サーバーとビルドで404・疎通確認と再確認・`X-Robots-Tag`・CSPの違反0件・アクセス解析無し・主バンドルに`SDK_VERSION`・本文無しを確認。prodのビルドで疎通確認が404になることは8.1・8.2で確かめる。
