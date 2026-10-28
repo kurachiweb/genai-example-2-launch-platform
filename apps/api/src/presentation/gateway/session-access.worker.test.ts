@@ -10,6 +10,7 @@ import { ensureLoggingConfigured } from '../../../lib/workers/logging/configure-
 import { createInvocationContainer } from '../../../lib/workers/di/invocation-container.ts';
 import {
   type AuthenticatedPrincipal,
+  MAX_SESSION_MAX_AGE_SECONDS,
   SESSION_TYPES,
   type SessionIssue,
   type SessionSubjectKind,
@@ -391,6 +392,10 @@ describe('applySessionInstructions', () => {
     ['負の有効期間', { token: ISSUED_TOKEN, maxAgeSeconds: -1 }],
     ['小数の有効期間', { token: ISSUED_TOKEN, maxAgeSeconds: 1.5 }],
     ['非数の有効期間', { token: ISSUED_TOKEN, maxAgeSeconds: Number.NaN }],
+    [
+      '上限を1秒超える有効期間',
+      { token: ISSUED_TOKEN, maxAgeSeconds: MAX_SESSION_MAX_AGE_SECONDS + 1 },
+    ],
   ] as const satisfies readonly (readonly [string, SessionIssue])[])(
     '%sの発行を拒否し、応答ヘッダーを設定しない',
     (_label, session) => {
@@ -404,10 +409,54 @@ describe('applySessionInstructions', () => {
 
       expect(error).toBeInstanceOf(Error);
       expect(error).not.toBeInstanceOf(AppError);
+      expect(error).toBeInstanceOf(RangeError);
       expect((error as Error).message).not.toContain(session.token);
+      expect((error as Error).message).not.toContain(
+        String(session.maxAgeSeconds),
+      );
       expect(sessionHeaderEntries(headers)).toStrictEqual({});
     },
   );
+
+  test('上限ちょうどの有効期間なら、発行の指示を応答ヘッダーに出す', () => {
+    const access = createAccess(createFakeVerifier());
+
+    access.issue({
+      token: ISSUED_TOKEN,
+      maxAgeSeconds: MAX_SESSION_MAX_AGE_SECONDS,
+    });
+
+    expect(sessionHeaderEntries(appliedHeaders(access))).toStrictEqual({
+      [SESSION_RESPONSE_HEADERS.issue]: ISSUED_TOKEN,
+      [SESSION_RESPONSE_HEADERS.maxAge]: '34560000',
+    });
+  });
+
+  test('検証の更新の有効期間が上限を超えれば、発行を拒否し、応答ヘッダーを設定しない', async () => {
+    const access = createAccess(
+      createFakeVerifier({
+        status: 'valid',
+        principal: USER_PRINCIPAL,
+        renewal: {
+          token: RENEWED_TOKEN,
+          maxAgeSeconds: MAX_SESSION_MAX_AGE_SECONDS + 1,
+        },
+      }),
+    );
+    const headers = new Headers();
+    await access.principal();
+
+    const error = captureThrown(() => {
+      applySessionInstructions(access, headers);
+    });
+
+    expect(error).toBeInstanceOf(RangeError);
+    expect((error as Error).message).not.toContain(RENEWED_TOKEN);
+    expect((error as Error).message).not.toContain(
+      String(MAX_SESSION_MAX_AGE_SECONDS + 1),
+    );
+    expect(sessionHeaderEntries(headers)).toStrictEqual({});
+  });
 
   test('指示の無い名前のセッションのヘッダーを残さない', () => {
     const issued = createAccess(createFakeVerifier());

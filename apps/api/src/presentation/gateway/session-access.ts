@@ -4,6 +4,7 @@ import type { Container } from 'inversify';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import {
   type AuthenticatedPrincipal,
+  MAX_SESSION_MAX_AGE_SECONDS,
   type Principal,
   SESSION_TOKEN_PATTERN,
   SESSION_TYPES,
@@ -137,9 +138,12 @@ function assertIssuable(session: SessionIssue): void {
   }
   if (
     !Number.isSafeInteger(session.maxAgeSeconds) ||
-    session.maxAgeSeconds <= 0
+    session.maxAgeSeconds <= 0 ||
+    session.maxAgeSeconds > MAX_SESSION_MAX_AGE_SECONDS
   ) {
-    throw new RangeError('セッションの有効期間は1以上の整数で指定してください');
+    throw new RangeError(
+      'セッションの有効期間が発行できる範囲の整数ではありません',
+    );
   }
 }
 

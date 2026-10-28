@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { SESSION_TOKEN_PATTERN, SESSION_TYPES } from './session-verifier.ts';
+import {
+  MAX_SESSION_MAX_AGE_SECONDS,
+  SESSION_TOKEN_PATTERN,
+  SESSION_TYPES,
+} from './session-verifier.ts';
 
 const SESSION_TOKEN_BYTE_LENGTH = 32;
 
@@ -40,6 +44,15 @@ describe('SESSION_TOKEN_PATTERN', () => {
     ['ドットを含む', `${'a'.repeat(42)}.`],
   ])('%sの値には合わない', (_label, value) => {
     expect(SESSION_TOKEN_PATTERN.test(value)).toBe(false);
+  });
+});
+
+describe('MAX_SESSION_MAX_AGE_SECONDS', () => {
+  test('ブラウザがCookieのMax-Ageを切り詰める400日を秒で表す', () => {
+    const SECONDS_PER_DAY = 24 * 60 * 60;
+
+    expect(MAX_SESSION_MAX_AGE_SECONDS).toBe(400 * SECONDS_PER_DAY);
+    expect(MAX_SESSION_MAX_AGE_SECONDS).toBe(34_560_000);
   });
 });
 

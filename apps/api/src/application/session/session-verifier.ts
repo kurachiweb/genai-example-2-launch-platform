@@ -38,3 +38,6 @@ export const SESSION_TYPES = Object.freeze({
 
 // 32バイトの乱数をパディング無しのbase64urlにした43文字
 export const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+
+// ブラウザはCookieのMax-Ageを400日で切り詰め、フロントエンドサーバーはそれを超える指示を捨てるため、発行できる有効期間をそこまでに限る
+export const MAX_SESSION_MAX_AGE_SECONDS = 34_560_000;
