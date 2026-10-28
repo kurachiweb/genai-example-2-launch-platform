@@ -160,14 +160,14 @@ TDDの各段階では、書いているテストだけを実行する。
 
 ### 共通設定の置き場所
 
-| ファイル                                     | 内容                                                                                                                                                                           |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `config/test-patterns.ts`                    | 4種の命名(`TEST_FILE_PATTERNS`)、テストとみなす名前(`TEST_LIKE_FILE_PATTERN`)、自動生成コードの命名(`GENERATED_CODE_PATTERNS`)、カバレッジの閾値(`COVERAGE_THRESHOLD_PERCENT`) |
-| `bunfig.toml`                                | 単体テストの共通設定(他の種別の除外、カバレッジの閾値・除外・出力先)。共有ディレクトリの検査担当でないアプリは、書き写した`bunfig.unit.toml`をアプリに置く                     |
-| `config/vitest/browser.ts`                   | ブラウザテストのプリセット(`browserTestPreset`・`browserOptionsPreset`)と、共有Chromiumの起動オプションを返す`resolveBrowserLaunchOptions`                                     |
-| `config/vitest/worker.ts`                    | Workers統合テストのプリセット(`workerTestPreset`)                                                                                                                              |
-| `config/vitest/read-nested-d1-migrations.ts` | D1のマイグレーションの保存先から`<名前>/migration.sql`の入れ子構造を読み、Workers統合テストへ渡す形にする`readNestedD1Migrations`                                              |
-| `playwright.config.ts`・`e2e/support/`       | E2Eテストの設定、E2Eの対象の定義、到達確認、0件を表示するレポーター、テストが共有する補助(ローカルの定期実行を業務日付と業務時刻で起こす`scheduled-trigger.ts`)                |
+| ファイル                                     | 内容                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `config/test-patterns.ts`                    | 4種の命名(`TEST_FILE_PATTERNS`)、テストとみなす名前(`TEST_LIKE_FILE_PATTERN`)、自動生成コードの命名(`GENERATED_CODE_PATTERNS`)、カバレッジの閾値(`COVERAGE_THRESHOLD_PERCENT`)                                                                                                                                                                                                             |
+| `bunfig.toml`                                | 単体テストの共通設定(他の種別の除外、カバレッジの閾値・除外・出力先)。共有ディレクトリの検査担当でないアプリは、書き写した`bunfig.unit.toml`をアプリに置く                                                                                                                                                                                                                                 |
+| `config/vitest/browser.ts`                   | ブラウザテストのプリセット(`browserTestPreset`・`browserOptionsPreset`)と、共有Chromiumの起動オプションを返す`resolveBrowserLaunchOptions`                                                                                                                                                                                                                                                 |
+| `config/vitest/worker.ts`                    | Workers統合テストのプリセット(`workerTestPreset`)                                                                                                                                                                                                                                                                                                                                          |
+| `config/vitest/read-nested-d1-migrations.ts` | D1のマイグレーションの保存先から`<名前>/migration.sql`の入れ子構造を読み、Workers統合テストへ渡す形にする`readNestedD1Migrations`                                                                                                                                                                                                                                                          |
+| `playwright.config.ts`・`e2e/support/`       | E2Eテストの設定、E2Eの対象の定義、到達確認、0件を表示するレポーター、テストが共有する補助(ローカルの定期実行を業務日付と業務時刻で起こす`scheduled-trigger.ts`、画面を持つアプリの応答のセキュリティヘッダー・HTMLのスクリプトのnonceと読み込み方・CSPの違反の記録を検査する`security-assertions.ts`、疎通確認の画面の経路・結果の検査・ブラウザからの再確認を行う`system-status-page.ts`) |
 
 - プリセットはnpmパッケージの値をimportせず、定数と関数だけを提供する。テストツールのプロバイダとプラグイン(`playwright()`・`cloudflareTest()`)は、アプリが自分のnode_modulesからimportして組み立てる。基底設定と同じく、値をimportするとルートに導入した版が使われるためである。`node:`で始まる組み込みモジュールはnode_modulesから解決されないため、importしてよい。
 - 設定ファイル(`vitest.<種別>.config.ts`・`playwright.config.ts`)はWorkersの実行環境ではなくBun・Node上で評価されるため、`process.env`を読んでよい。
@@ -285,6 +285,8 @@ test('トップページの見出しを表示する', async ({ page }) => {
 - ブラウザは、ブラウザテストと同じく`resolveBrowserLaunchOptions`の起動オプションで共有Chromiumを起動する。
 - E2Eテストのカバレッジは計測しない。
 - 複数の対象のテストが使う補助は`e2e/support/`に置き、テストごとに作らない。定期実行を起こすテストは、`e2e/support/scheduled-trigger.ts`の`triggerScheduled`を使う(「[E2Eからの起動](../infra/003-async-processing.md#e2eからの起動)」)。
+- 画面を持つアプリの応答のヘッダーは、`e2e/support/security-assertions.ts`の`findSecurityHeaderProblems`で、ページ(`page`)・ページ以外(`non-page`)・静的なファイル(`static-file`)の種類ごとに検査する。CSPの違反は、ページを開く前に`installCspViolationRecorder`で記録を始め、`readCspViolations`で読む(「[セキュリティヘッダー](../frontend/003-frontend-server-security.md#セキュリティヘッダー)」)。
+- テストは、対象のURLの環境変数を変えるだけでデプロイ先の検証環境にも向けられるように書き、ローカル固有・デプロイ先固有の値を持たない。対象によって確かめられない項目(ローカルに無いアクセス解析のスクリプトなど)は、飛ばしたことを`annotateSkippedCheck`でテストの結果に残す。
 
 ## カバレッジ
 
@@ -325,6 +327,10 @@ bun run test:all:worker --coverage
   - 単体テスト(Bun)は、テストから読み込まれた配置先のファイルも分母に数える。`test:unit`の`--path-ignore-patterns`で配置先を外しても、外れるのは配置先のテストファイルの実行だけで、分母からは外れない。分母から外す手段は設定ファイルの`coveragePathIgnorePatterns`だけである。そのため検査担当でないアプリは、`coveragePathIgnorePatterns`に配置先を加えた単体テスト専用の設定ファイル`bunfig.unit.toml`を使う。手順は「[検査担当でないアプリでの共有ディレクトリの除外](../coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外)」に従う。
   - 配置先を分母に残すと、アプリのテストが部分的にしか使わない共有ディレクトリのファイルが閾値を下回り、検査担当のアプリで網羅していても失敗する。
   - ブラウザテスト・Workers統合テスト(Vitest)は、`coverage.include`に配置先を含めないことで外す(「[計測対象の指定](#計測対象の指定)」)。
+- テストが読み込んだ他のアプリのソース
+  - 単体テスト(Bun)は、テストが読み込んだ他のアプリのソースも分母に数える。`bunfig.unit.toml`はルートの`bunfig.toml`に配置先の除外だけを加えた書き写しであることをルートの単体テストが確かめるため、他のアプリのソースを`bunfig.unit.toml`の`coveragePathIgnorePatterns`で外すことはできない。
+  - 他のアプリのソースを読み込むテストは、そのファイルの関数をすべて呼ぶか、読み込みを避ける。読み込んだファイルに後から関数が加わると、読み込む側のアプリの単体テストが閾値で失敗するため、関数を加えたら読み込む側のテストでも呼ぶ。
+  - 他のアプリのソースを読み込むと、そのファイルが読み込むモジュールも読み込む側のアプリの型検査に入る。型の登録(`declare module`による型の拡張)を持つモジュールを読み込むと、読み込む側のアプリの型に他のアプリの登録が混ざるため、読み込むのは型の登録を持つモジュールを読まないファイル(登録箇所の値など)に限る。
 
 ### 計測対象の指定
 

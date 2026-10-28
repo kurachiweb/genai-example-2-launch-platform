@@ -37,13 +37,13 @@ Launch Stadiumのプログラム一式、及びドキュメント。
 
 ### サービス固有ドキュメント(`docs/GUIDES/service/`)
 
-| ドキュメント                                        | 内容                                                                                       |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| [README.md](docs/GUIDES/service/README.md)          | サービス固有ドキュメントの索引                                                             |
-| [overview/](docs/GUIDES/service/overview/README.md) | サービス概要、料金及びプラン体系、予選・Week/Yearトーナメント・再ローンチの規則            |
-| [features/](docs/GUIDES/service/features/README.md) | ユーザーデータエクスポートのJSONスキーマとファイル構造、画像配信の名前付きバリアント       |
-| [design/](docs/GUIDES/service/design/README.md)     | デザイン原則、ページ構成、文言・文字数規則                                                 |
-| [legal/](docs/GUIDES/service/legal/README.md)       | 法令準拠方針、利用規約・プライバシーポリシー・法的通知の大枠、侵害コンテンツ削除請求フロー |
+| ドキュメント                                        | 内容                                                                                             |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [README.md](docs/GUIDES/service/README.md)          | サービス固有ドキュメントの索引                                                                   |
+| [overview/](docs/GUIDES/service/overview/README.md) | サービス概要、料金及びプラン体系、予選・Week/Yearトーナメント・再ローンチの規則                  |
+| [features/](docs/GUIDES/service/features/README.md) | ユーザーデータエクスポートのJSONスキーマとファイル構造、画像配信の名前付きバリアント、国際化方針 |
+| [design/](docs/GUIDES/service/design/README.md)     | デザイン原則、ページ構成、文言・文字数規則                                                       |
+| [legal/](docs/GUIDES/service/legal/README.md)       | 法令準拠方針、利用規約・プライバシーポリシー・法的通知の大枠、侵害コンテンツ削除請求フロー       |
 
 ### 技術ドキュメント(`docs/GUIDES/tech/`)
 

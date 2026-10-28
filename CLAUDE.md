@@ -45,6 +45,14 @@
 - `wrangler dev`などWranglerを起動する前に: [Wranglerを動かす実行環境](docs/GUIDES/tech/infra/001-wrangler-conventions.md#wranglerを動かす実行環境)
 - Wranglerのコマンドの実行やD1・R2のバインディングの定義の前に: [ローカル状態の永続化と共有](docs/GUIDES/tech/infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)
 - TanStack Startアプリを起動・ビルドする前に: [開発時とデプロイ前の起動](docs/GUIDES/tech/frontend/002-tanstack-start-on-workers.md#開発時とデプロイ前の起動)
+- 画面のルートや部品からサーバーだけで動かす処理を使う前に: [サーバー専用のファイルと同型の関数](docs/GUIDES/tech/frontend/002-tanstack-start-on-workers.md#サーバー専用のファイルと同型の関数)
+- 画面の部品を作る・共通部品へ移す前に: [共通化の対象](docs/GUIDES/tech/frontend/005-shared-components.md#共通化の対象)
+- 画面の部品やページを作る・改修する前に: [アクセシビリティ規則の前提と用語](docs/GUIDES/tech/frontend/004-accessibility-rules.md#前提と用語)
+- フロントエンドサーバーに中継の経路を追加する前に: [中継の経路の追加規約](docs/GUIDES/tech/frontend/003-frontend-server-security.md#中継の経路の追加規約)
+- 画面で外部のスクリプト・画像・接続先・埋め込みを使う前に: [許可先の登録](docs/GUIDES/tech/frontend/003-frontend-server-security.md#許可先の登録)
+- 画面でAPIサーバーのデータを取得・変更する処理を書く前に: [取得の補助とloader](docs/GUIDES/tech/frontend/006-data-fetching.md#取得の補助とloader)
+- フロントエンドのGraphQLの操作を追加・変更する前に: [操作の置き場所と名前](docs/GUIDES/tech/coding/004-graphql-communication.md#操作の置き場所と名前)
+- フロントエンドで想定外の失敗をエラートラッキングへ送る処理を書く前に: [送信の入口](docs/GUIDES/tech/frontend/007-frontend-observability.md#送信の入口)
 - シークレット・環境変数を使うコマンドの実行や設定の前に: [シークレットの注入](docs/GUIDES/tech/security/001-secret-management.md#シークレットの注入)
 - Wrangler設定やコマンドでデプロイ先を指定する前に: [デプロイ先の環境種別](docs/GUIDES/tech/infra/002-environments.md#デプロイ先の環境種別)
 - Infisicalの環境を指定する前に: [シークレット管理の環境種別](docs/GUIDES/tech/infra/002-environments.md#シークレット管理の環境種別)
@@ -130,7 +138,13 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   ├── frontend-lib/           # フロントエンド共通ファイル
+│   │   ├── .storybook/         # Storybookの設定 ... Tailwind CSS・bot判定の偽物・配色の切替・固定の表示設定・アクセシビリティ検査の対象の絞り込み
 │   │   ├── components/         # コンポーネント定義 ... Storybookによるプレビュー付き
+│   │   ├── config/             # 画面を持つアプリが使う静的解析の規則、設定ファイルとカタログの網羅性の検査
+│   │   ├── server/             # サーバーの部品 ... Workerの入口と処理の順序、環境の検証、CSRF・CSP・セキュリティヘッダー・IP制限、APIサーバーへの中継とセッションのCookie、ログとエラートラッキング
+│   │   ├── start/              # TanStack Startとの接続 ... グローバルのミドルウェア、ルーターの文脈、GraphQLの実行、ページのhead、ブラウザ側のエラートラッキングの初期化
+│   │   ├── styles/             # スタイル ... 配色のトークン、フォーカスの輪郭と視差効果を減らす設定での動きの抑制
+│   │   ├── test/               # テストの補助 ... アクセシビリティの自動検査、キーボード操作・表示設定・配色の再現、テストの偽物
 │   │   └── utilities/          # ユーティリティ
 │   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... TanStack Startを利用、公開API向けSwagger UIページも含む
 │   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
@@ -167,7 +181,7 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   ├── eslint/                 # バックエンドのアプリ(api・event)が共通で読み込む層の静的解析規則
 │   └── vitest/                 # ブラウザテスト・Workers統合テストのVitestプリセット、Workers統合テストへのD1マイグレーションの読み込み
 ├── e2e/                        # PlaywrightによるE2Eテスト(設定はルートの`playwright.config.ts`) ... 対象アプリ(`client`・`admin`)ごとのディレクトリにテストを置く
-│   └── support/                # 対象アプリのURL解決、Playwrightの設定値の組み立て、到達確認、対象0件の表示、ローカルの定期実行を業務日付と業務時刻で起こす補助
+│   └── support/                # 対象アプリのURL解決、Playwrightの設定値の組み立て、到達確認、対象0件の表示、ローカルの定期実行を業務日付と業務時刻で起こす補助、応答のセキュリティヘッダー・nonce・CSPの違反の検査、疎通確認の画面の検査
 ├── scripts/                    # 開発コンテナとツールのスクリプト ... コンテナ起動時の処理(Claude Codeの更新、ワークスペース信頼設定のマージ、Chromiumの導入、常駐プロセスの起動)
 │   └── tooling/                # 品質ゲートのツールスクリプト ... Gitフックの導入、コミット時の検査対象の振り分け、一括検査・一括実行、共有ディレクトリの配置、テスト命名の検査
 ├── test-support/               # ルートの単体テストの補助 ... 共通フィクスチャ、型だけの読み込みの判定、Git管理外の判定

@@ -6,7 +6,7 @@
 
 ## ローカル開発環境クイックスタート
 
-このクイックスタートは開発者向け手順書であり、AIエージェントはこのセクションのコマンドを実行しないこと。
+このクイックスタートは開発者向け手順書である。AIエージェントは、手順1〜11(ホスト環境の操作・各サービスへのログインと認証・依存パッケージの初期導入・シークレットの登録)のコマンドを実行しないこと。手順12〜14(ローカルDBの初期化・アプリケーションの起動・デプロイ前動作確認)は、AIエージェントも動作確認のために実行してよく、起動したプロセスは確認を終えたら止める。
 
 1. ホスト環境: DockerをインストールしてDocker Desktopアプリを開く
 
@@ -69,7 +69,7 @@
    claude mcp login cloudflare-observability --no-browser
    ```
 
-10. コンテナ内: DBスキーマ定義・APIサーバー・イベントサーバーの依存パッケージをインストールする(初回のみ)
+10. コンテナ内: DBスキーマ定義・APIサーバー・イベントサーバー・フロントエンド共通ファイル・利用者側と管理者側のフロントエンドの依存パッケージをインストールする(初回のみ)
 
     ```sh
     cd /workspace/apps/db
@@ -78,9 +78,16 @@
     bun install
     cd /workspace/apps/event
     bun install
+    cd /workspace/apps/frontend-lib
+    bun install
+    cd /workspace/apps/client
+    bun install
+    cd /workspace/apps/admin
+    bun install
     ```
 
     - `apps/db`と`apps/backend-lib`は、`apps/api`・`apps/event`へ`db`・`lib`として配置される共有ディレクトリである(「[共有ディレクトリの配置先](project-values.md#共有ディレクトリの配置先)」)。`apps/backend-lib`は依存パッケージを持たず、配置先のアプリの依存パッケージで動く。`apps/db`の依存パッケージは、`apps/db`で実行するマイグレーションの生成に使う。
+    - `apps/frontend-lib`は、`apps/client`・`apps/admin`へ`lib`として配置される共有ディレクトリである。自身の依存パッケージで静的解析・テスト・カタログ(Storybook)を動かし、配置先では`apps/client`・`apps/admin`の依存パッケージで動く。ルートの整形検査(`bun run format:check`)は`apps/frontend-lib`の整形のプラグインを読み込むため、`apps/frontend-lib`の`bun install`の前は失敗する。
     - 依存パッケージの版の追加・更新を含むコミットを取り込んだら、該当するディレクトリで`bun install`を再実行する。
 
 11. コンテナ内: シークレットをInfisicalに登録する(初回のみ、開発者の手作業)
@@ -101,6 +108,7 @@
     infisical --telemetry=false run --env dev -- sh -c 'test -n "$EMAIL_SMOKE_TOKEN" && test -n "$EMAIL_SMOKE_RECIPIENT" && echo "疎通確認のシークレットも登録済み"'
     ```
 
+    - `apps/client`・`apps/admin`は、ローカル環境でシークレットを必要としない。それでも起動・ビルド・プレビューのコマンドは、他のアプリと同じくInfisicalからの注入を付けて実行する(注入を付けないとWranglerが`SENTRY_DSN`の不足を警告し、`.dev.vars`の作成を促すが、`.dev.vars`は作らない)。ただし手順14の環境別のビルドは、理由を同じ手順に記したとおり注入を付けない。
     - 未登録のまま起動すると、`wrangler dev`が足りないキーを警告し、ヘルスチェック以外の経路が環境の検証で500になる。ヘルスチェックは環境の検証より前に応答するため、未登録でも200を返す。
     - `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`は、メールの疎通確認の経路(「[疎通確認の経路](#疎通確認の経路)」)だけが使う。未登録でもイベントサーバーは環境の検証に通り、疎通確認の経路だけが404になる。ローカル環境ではMailpitが全ての宛先のメールを受け取るため、外部へは送られない。
 
@@ -126,7 +134,7 @@
     infisical --telemetry=false run --env dev -- bun run dev
     ```
 
-    イベントサーバー(`bun run dev`は`wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --inspector-port 9230`を実行する。APIサーバーと同時に起動するため、開発者ツールの接続先(インスペクター)を既定の9229と重ならない9230にしている)
+    イベントサーバー(`bun run dev`は`wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --inspector-port 9230`を実行する。APIサーバーと同時に起動するため、開発者ツールの接続先(インスペクター)を既定の9229と重ならない9230にしている。利用者側・管理者側のフロントエンドは`vite.config.ts`でインスペクターのポートを9231・9232に固定しているため、4つを同時に起動しても重ならない)
 
     ```sh
     cd /workspace/apps/event
@@ -142,11 +150,12 @@
 
     APIサーバーの定期実行は自動では起動しないため、「[定期実行の手動起動](#定期実行の手動起動)」の手順で起こす。GraphQLの操作は、ブラウザで「[ローカルのGraphiQL](#ローカルのgraphiql)」から試せる。
 
-    利用者側フロントエンド
+    利用者側・管理者側のフロントエンドは、Service Bindingsで接続するAPIサーバーを先に起動し、ヘルスチェックが200を返してから起動する。APIサーバーが起動していない間は、疎通確認の画面が「APIサーバーへ到達できません。」を表示する(「[別プロセスのWorkerへのService Bindings](../GUIDES/tech/frontend/002-tanstack-start-on-workers.md#別プロセスのworkerへのservice-bindings)」)。起動はAPIサーバー→(必要ならイベントサーバー)→利用者側→管理者側の順に、前のサーバーが応答するのを待ってから次を起動する。
+
+    利用者側フロントエンド(`bun run dev`は`vite dev`を実行する。`--port`を付けないとViteの既定のポートで起動し、E2Eテストの既定のURLに届かない)
 
     ```sh
     cd /workspace/apps/client
-    bun install # 初回のみ
     infisical --telemetry=false run --env dev -- bun run dev --port 48044 --host 0.0.0.0
     ```
 
@@ -154,16 +163,21 @@
 
     ```sh
     cd /workspace/apps/admin
-    bun install # 初回のみ
     infisical --telemetry=false run --env dev -- bun run dev --port 48045 --host 0.0.0.0
     ```
 
-    Storybookコンポーネントカタログ
+    両フロントエンドの起動後、ブラウザで`http://localhost:48044/system/status`・`http://localhost:48045/system/status`の疎通確認の画面を開き、「サーバー側の描画時の結果」にAPIサーバーの時刻と「到達可能」が表示され、「再確認」を押すと「ブラウザからの再確認の結果」にも同じ表示が出ることを確かめる。経路は「[フロントエンドサーバーの経路](project-values.md#フロントエンドサーバーの経路)」を参照する。
+
+    - 開発サーバーは、ハイドレーションが終わる前の最初のクリックを取りこぼすことがある。「再確認」が反応しなければ、もう一度押す。
+    - 時刻は分の単位で表示するため、再確認で結果が更新されたことは時刻からは見分けられない。
+    - 操作(`.graphql`ファイル)を変えたときは、起動の前に「[GraphQLのスキーマや操作を変更したとき](#graphqlのスキーマや操作を変更したとき)」の手順で生成と許可リストの再生成を行う。
+
+    Storybookコンポーネントカタログ(`apps/frontend-lib`の部品のカタログ。書き方は「[カタログの書き方](../GUIDES/tech/frontend/005-shared-components.md#カタログの書き方)」)
 
     ```sh
     cd /workspace/apps/frontend-lib
-    bun install # 初回のみ
     bun run storybook:dev --port 48046 --host 0.0.0.0
+    bun run storybook:build # 静的なカタログを出力してビルドが通ることを確かめる場合
     ```
 
     利用者側・管理者側各画面モックアップ
@@ -176,16 +190,47 @@
 
 14. コンテナ内: デプロイ前動作確認
 
+    TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドし、ビルド後のプレビューで動作を確かめる(`bun run build`は`vite build`、`bun run preview`は`vite preview`を実行する。D1・R2のローカル永続化パスは`vite.config.ts`の`persistState`で指定している)。手順13と同じく、APIサーバーを先に起動しておく。
+
     ```sh
-    # TanStack Startアプリを`@cloudflare/vite-plugin`経由でCloudflare Workers向けにビルドして動作確認(D1・R2のローカル永続化パスはvite.config.tsのpersistStateオプションで指定する)
     cd /workspace/apps/client
-    infisical --telemetry=false run --env dev -- bunx vite build
-    infisical --telemetry=false run --env dev -- bunx vite preview --port 48044 --host 0.0.0.0
+    infisical --telemetry=false run --env dev -- bun run build
+    infisical --telemetry=false run --env dev -- bun run preview --port 48044 --host 0.0.0.0
 
     cd /workspace/apps/admin
-    infisical --telemetry=false run --env dev -- bunx vite build
-    infisical --telemetry=false run --env dev -- bunx vite preview --port 48045 --host 0.0.0.0
+    infisical --telemetry=false run --env dev -- bun run build
+    infisical --telemetry=false run --env dev -- bun run preview --port 48045 --host 0.0.0.0
     ```
+
+    - 開発サーバーとプレビューは同じポートを使うため、同じアプリの両方を同時に起動しない。プレビューの前に開発サーバーを止める。
+    - プレビューでも、手順13と同じく疎通確認の画面と「[スモークテスト](#スモークテスト)」で確かめる。
+    - ビルドが出力する500kBを超えるチャンクの警告と、`@cloudflare/vite-plugin`がAIエージェントの実行を検出したときの案内は、想定どおりの表示である。
+
+    デプロイ先の環境の設定(Worker名・`API`の接続先・`namespace_id`・変数)は、環境を指定したビルドの出力`dist/server/wrangler.json`で確かめる(「[デプロイ先の環境のビルド時の指定](../GUIDES/tech/frontend/002-tanstack-start-on-workers.md#デプロイ先の環境のビルド時の指定)」)。期待する値は「[Workerとリソースの名前と識別子](project-values.md#workerとリソースの名前と識別子)」を参照する。
+
+    ```sh
+    cd /workspace/apps/client
+    CLOUDFLARE_ENV=staging bun run build # 出力の設定を確かめるだけで、ビルドはシークレットを使わないため注入を付けない
+    infisical --telemetry=false run --env dev -- bun run build # 確かめた後、ローカル環境向けにビルドし直す
+    ```
+
+    - 環境を指定したビルドは、ローカル環境向けの`dist`を上書きする。ローカル環境でプレビューする前に、環境を指定せずにビルドし直す。
+    - ビルドは、Git管理外の`apps/client/.wrangler/deploy/config.json`・`apps/admin/.wrangler/deploy/config.json`も作る。
+    - `staging`・`prod`のビルドでは、Wranglerが`SENTRY_DSN`の不足を警告するが無視してよい。シークレットの値は出力に含まれない。
+
+## スモークテスト
+
+利用者側・管理者側の疎通確認の画面で、応答のセキュリティヘッダーとnonce付きのCSP、APIサーバーの時刻と「到達可能」の表示、再確認、CSPの違反が起きないこと、存在しないページの404、クロスサイトを名乗る中継の要求の403、スクリプトの読み込み方を、PlaywrightのE2Eテスト(`e2e/client/system-status.e2e.test.ts`・`e2e/admin/system-status.e2e.test.ts`)で確かめる。クイックスタートの手順13の開発サーバーか、手順14のプレビューで、APIサーバー・利用者側・管理者側を起動してから実行する。
+
+```sh
+cd /workspace
+bun run test:e2e
+```
+
+- 対象のURLは`E2E_CLIENT_URL`・`E2E_ADMIN_URL`で上書きでき、既定はローカルの`http://localhost:48044`・`http://localhost:48045`である(「[テスト戦略の前提と用語](../GUIDES/tech/testing/001-test-strategy.md#前提と用語)」)。デプロイ先検証環境に向けるときは、2つの環境変数に`staging`のURL(「[配信URL一覧](../../README.md#配信url一覧)」)を指定する。
+- ローカル環境にはアクセス解析のトークン・エラートラッキングのDSN・bot判定のウィジェットが無いため、それらに関わる確認は対象が無ければ飛ばし、飛ばしたことをテストの結果の注記(「確認の省略」)に残す。エラートラッキングのSDKの静的な取り込みと静的なファイルのセキュリティヘッダーの確認は、ビルド後の対象(プレビュー・`staging`)でだけ行う。
+- 存在しないページを開いたときのブラウザのコンソールの読み込みの失敗は、404の応答によるもので想定どおりである。
+- 開発サーバーに対する実行では、最初の再確認のクリックがハイドレーションの前で取りこぼされることがあるため、テストは押し直して確かめる。
 
 ## 定期実行の手動起動
 
@@ -338,10 +383,23 @@ bun run graphql:check
 フロントエンドの操作を加えた・変えた後は、次の順に生成し、生成物を同じコミットに含める(「[許可リストの生成とデプロイの順序](../GUIDES/tech/coding/004-graphql-communication.md#許可リストの生成とデプロイの順序)」)。
 
 1. スキーマモジュールも変えたなら、先に`/workspace/apps/api`で`bun run graphql:generate`を実行する。フロントエンドのコード生成がスキーマファイルを入力にするためである。
-2. `apps/client`・`apps/admin`のフロントエンドのコード生成で、操作の一覧(`src/graphql/generated/persisted-documents.json`)を出力する。
+2. 操作を変えたアプリ(`/workspace/apps/client`・`/workspace/apps/admin`)で`bun run graphql:generate`を実行し、生成物(`src/graphql/generated/`の`graphql.ts`・`persisted-documents.json`など)を出力する。スキーマモジュールを変えたときは両方のアプリで実行する。
 3. `/workspace/apps/api`で`bun run graphql:allowlist`を引数なしで実行し、現行の操作だけから許可リストを生成する。
 4. `/workspace/apps/api`で`bun run graphql:check`を実行し、成功することを確かめる。
-5. スキーマファイル・リゾルバの型・操作の一覧・許可リストを同じコミットに含める。
+5. スキーマファイル・リゾルバの型・フロントエンドの生成物・許可リストを同じコミットに含める。
+
+```sh
+cd /workspace/apps/client
+bun run graphql:generate
+cd /workspace/apps/admin
+bun run graphql:generate
+cd /workspace/apps/api
+bun run graphql:allowlist
+bun run graphql:check
+```
+
+- フロントエンドの操作は、各アプリの`src/graphql/operations/`に`.graphql`ファイルで書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める(「[操作の置き場所と名前](../GUIDES/tech/coding/004-graphql-communication.md#操作の置き場所と名前)」)。画面は生成物の`graphql.ts`だけを読み込み、操作の本文を含む`gql.ts`・`index.ts`を読み込まない。
+- `apps/client`・`apps/admin`の`bun run graphql:check`は、生成物が操作とスキーマファイルに食い違っていないかを確かめる。一括検査`bun run check`も実行する。
 
 - 起動中のAPIサーバーは、許可リストをバンドルに含めて読み込む。`wrangler dev`は許可リストのファイルの変更を検知してバンドルし直すため、生成し直した許可リストは起動し直さずに反映される。反映されなければ、APIサーバーを起動し直す。
 - `graphql:allowlist`の`--previous-ref <コミット>`は、デプロイの時にCIが直前のリリースの操作を加えるためのものである。ローカル環境では指定せず、指定して生成した許可リストはコミットしない(`graphql:check`は現行の操作だけで生成した許可リストと比べるため、直前のリリースの操作が現行と異なれば失敗する)。
@@ -410,7 +468,7 @@ bun add --dev --exact <パッケージ>@<版> <パッケージ>@<版> # 導入�
 | `bun run check`                                                                | 共有ディレクトリの配置確認・テスト命名の検査・整形検査・全アプリの静的解析・型生成の検査・GraphQLの生成物の検査・型検査を一括で実行する |
 | `bun run format`                                                               | リポジトリ全体を整形する                                                                                                                |
 | `bun run test:all:unit`・`bun run test:all:browser`・`bun run test:all:worker` | ルートと全アプリの単体テスト・ブラウザテスト・Workers統合テストを種別ごとに一括で実行する(`--coverage`を付けると各アプリへ渡る)         |
-| `bun run test:e2e`                                                             | E2Eテストを実行する(対象のアプリは事前に起動しておく)                                                                                   |
+| `bun run test:e2e`                                                             | E2Eテストを実行する(対象のアプリは事前に起動しておく。「[スモークテスト](#スモークテスト)」)                                            |
 
 APIサーバー・イベントサーバーだけを検査・テストするときは、各アプリのディレクトリ(`/workspace/apps/api`・`/workspace/apps/event`)で次のスクリプトを実行する。テストに必要なシークレットはテストの設定がテスト用の値で渡すため、Infisicalからの注入は要らない。
 
@@ -427,6 +485,17 @@ APIサーバー・イベントサーバーだけを検査・テストすると�
 | `bun run graphql:allowlist`         | `apps/api`               | フロントエンドの操作の一覧から、GraphQLの許可リストを生成する                                                                               |
 | `bun run graphql:check`             | `apps/api`               | GraphQLの生成物がスキーマモジュールと操作の一覧に食い違っていないかを確かめる。ルートの一括検査(`bun run check`)でも実行される              |
 
+画面を持つアプリ(`apps/frontend-lib`・`apps/client`・`apps/admin`)だけを検査・テストするときは、各アプリのディレクトリで次のスクリプトを実行する。
+
+| コマンド                                            | 対象                                             | 内容                                                                                         |
+| --------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `bun run lint`・`bun run typecheck`                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 静的解析・型検査。共有ディレクトリ(`lib`)の静的解析は検査担当の`apps/frontend-lib`が受け持つ |
+| `bun run test:unit`                                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 単体テスト(Bun)。`apps/client`・`apps/admin`は配置先の`lib`を除いた`bunfig.unit.toml`を使う  |
+| `bun run test:browser`                              | `apps/frontend-lib`・`apps/client`・`apps/admin` | ブラウザテスト(Vitest Browser Mode、共有Chromium)。部品のアクセシビリティの自動検査を含む    |
+| `bun run storybook:dev`・`bun run storybook:build`  | `apps/frontend-lib`                              | 部品のカタログの起動と静的な出力。起動の手順はクイックスタートの手順13に従う                 |
+| `bun run graphql:generate`・`bun run graphql:check` | `apps/client`・`apps/admin`                      | フロントエンドの操作の型・文書・操作の一覧の生成と、生成物の食い違いの検査                   |
+| `bun run dev`・`bun run build`・`bun run preview`   | `apps/client`・`apps/admin`                      | 開発サーバー・ビルド・ビルド後のプレビュー。手順はクイックスタートの手順13・14に従う         |
+
 ## ローカルポート一覧
 
 | アプリ              | 役割                                   | ポート |
@@ -438,6 +507,17 @@ APIサーバー・イベントサーバーだけを検査・テストすると�
 | `apps/admin`        | 管理者側フロントエンド(TanStack Start) | 48045  |
 | `apps/frontend-lib` | Storybookコンポーネントカタログ        | 48046  |
 | `mockups`           | 利用者側・管理者側各画面モックアップ   | 48047  |
+
+`apps/client`・`apps/admin`の開発サーバーとプレビューは同じポートを使うため、同じアプリの両方を同時に起動しない。
+
+Workerのデバッガー(インスペクター)の待ち受けポートは次のとおりである。4つを同時に起動しても重ならないよう固定し、互いに異なることをルートの単体テスト(`/workspace/config/inspector-ports.unit.test.ts`)が確かめる。
+
+| アプリ        | インスペクターのポート | 指定箇所                                  |
+| ------------- | ---------------------- | ----------------------------------------- |
+| `apps/api`    | 9229                   | `wrangler dev`の既定                      |
+| `apps/event`  | 9230                   | `package.json`の`dev`の`--inspector-port` |
+| `apps/client` | 9231                   | `vite.config.ts`の`inspectorPort`         |
+| `apps/admin`  | 9232                   | `vite.config.ts`の`inspectorPort`         |
 
 `apps/api`・`apps/event`のヘルスチェックの経路は`/health`である(「[ヘルスチェックとローカルのURL](project-values.md#ヘルスチェックとローカルのurl)」)。
 

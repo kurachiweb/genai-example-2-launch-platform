@@ -75,7 +75,7 @@ export function getRouter() {
 }
 ```
 
-- 例は、データ取得に関わる設定だけを示している。実際の`getRouter`は、ほかに`scrollRestoration`と、エラートラッキングへの送信の設定(`defaultOnCatch`・`installRouteErrorReporting`)を持つ。送信の設定は観測の文書で扱う。
+- 例は、データ取得に関わる設定だけを示している。実際の`getRouter`は、ほかに`scrollRestoration`と、エラートラッキングへの送信の設定(`defaultOnCatch`・`installRouteErrorReporting`)を持つ。送信の設定は「[フロントエンドの観測](007-frontend-observability.md#送信の入口)」の「送信の入口」に従う。
 - `createRouterContext`は、呼ぶたびに新しいQueryClient(`createAppQueryClient`)・Jotaiのストア・実行時の値の入れ物を作る。サーバーでは`getRouter`が要求ごとに呼ばれるため、取得したデータと画面の状態は要求ごとに分かれ、他の要求・他の利用者と共有されない。
 - QueryClient・Jotaiのストア・利用者のデータを持つ`Map`などを、モジュールのスコープに置かない。Workerの1つの実行環境は複数の要求を順に・並行に処理するため、モジュールのスコープの値は利用者の間で共有される。
 - `setupRouterSsrQueryIntegration`は、描画中に取得したQueryClientのキャッシュをHTMLへ書き出し、描画の後に完了した取得も同じ応答の中で後から送る。ブラウザはハイドレーションでそのキャッシュを読み込むため、同じデータを取得し直さない。`QueryClientProvider`も自動で置かれる。

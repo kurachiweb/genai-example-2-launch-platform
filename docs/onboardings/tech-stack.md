@@ -91,14 +91,17 @@
 ### フロントエンド側フレームワーク
 
 - TanStack Start(ルーティングはTanStack Router)
+- Vite ... 開発サーバー・ビルド・ビルド後のプレビュー(`vite dev`・`vite build`・`vite preview`)
 - @cloudflare/vite-plugin
 - `@vitejs/plugin-react` ... ViteでのReactのJSX変換と開発時の差し替え(Fast Refresh)
 - React
+  - `react-dom` ... ブラウザでの描画とハイドレーション、サーバーでのHTMLの描画
+  - `@types/react`・`@types/react-dom` ... `tsc`による型検査でReactとReact DOMの型を解決
 - TypeScript ... typescript-eslintと組み合わせるためv6を使用
 
 ### フロントエンド側スキーマ
 
-- GraphQL Code Generator(client-presetによりクエリからTypedDocumentNodeと型を生成)
+- GraphQL Code Generator(`@graphql-codegen/cli`・`@graphql-codegen/client-preset`により`.graphql`ファイルの操作から型と操作の本文を持たない文書(TypedDocumentNode)と操作の一覧を生成)
   - `@graphql-typed-document-node/core` ... 生成した操作の型(`TypedDocumentNode`)の定義、共通部品が操作の結果と変数の型を受け取るために使用
   - GraphQL(`graphql`) ... `TypedDocumentNode`が継承する`DocumentNode`の型の提供元、バックエンド側と同じ版を宣言する
 
@@ -175,6 +178,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### アプリケーション実行環境
 
 - Cloudflare Workers
+  - Wrangler ... Workersのローカル実行(`wrangler dev`)・D1のマイグレーション・デプロイ。`@cloudflare/vite-plugin`でビルドするアプリも同じ版を宣言する
 
 ### 定期実行基盤
 
