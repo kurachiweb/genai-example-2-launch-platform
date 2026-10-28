@@ -9,9 +9,20 @@ import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts'
 import { z } from '../../lib/utilities/validation/zod.ts';
 import { ClientSystemStatusDocument } from '../../src/graphql/generated/graphql.ts';
 
-const SRC_DIR = join(import.meta.dirname, '..', '..', 'src');
+const APP_DIR = join(import.meta.dirname, '..', '..');
+
+const SRC_DIR = join(APP_DIR, 'src');
 
 const GENERATED_DIR = join(SRC_DIR, 'graphql', 'generated');
+
+const ADMIN_GENERATED_DIR = join(
+  APP_DIR,
+  '..',
+  'admin',
+  'src',
+  'graphql',
+  'generated',
+);
 
 const PERSISTED_DOCUMENTS_FILE = 'persisted-documents.json';
 
@@ -25,10 +36,12 @@ const BODY_HOLDING_MODULE_IMPORT =
 
 const persistedDocumentsSchema = z.record(z.string(), z.string());
 
-const readPersistedDocuments = async (): Promise<Record<string, string>> =>
+const readPersistedDocuments = async (
+  generatedDir: string,
+): Promise<Record<string, string>> =>
   persistedDocumentsSchema.parse(
     JSON.parse(
-      await readFile(join(GENERATED_DIR, PERSISTED_DOCUMENTS_FILE), 'utf8'),
+      await readFile(join(generatedDir, PERSISTED_DOCUMENTS_FILE), 'utf8'),
     ),
   );
 
@@ -49,7 +62,7 @@ const appSourceFiles = async (): Promise<string[]> =>
 
 describe('利用者側のコード生成の生成物', () => {
   test('操作の一覧の識別子はすべてsha256:と64桁の小文字の16進で、本文のSHA-256と一致する', async () => {
-    const documents = await readPersistedDocuments();
+    const documents = await readPersistedDocuments(GENERATED_DIR);
 
     expect(Object.keys(documents).length).toBeGreaterThan(0);
     for (const [documentId, body] of Object.entries(documents)) {
@@ -59,7 +72,7 @@ describe('利用者側のコード生成の生成物', () => {
   });
 
   test('操作の一覧は疎通確認の操作ClientSystemStatusを持ち、APIサーバーの時刻とデータベースへの到達可否を取得する', async () => {
-    const documents = await readPersistedDocuments();
+    const documents = await readPersistedDocuments(GENERATED_DIR);
 
     const body = documents[documentIdOf(ClientSystemStatusDocument)];
 
@@ -74,7 +87,7 @@ describe('利用者側のコード生成の生成物', () => {
   });
 
   test('操作の一覧の操作はすべて利用者側の名前を持ち、管理者側の操作を含まない', async () => {
-    const documents = await readPersistedDocuments();
+    const documents = await readPersistedDocuments(GENERATED_DIR);
 
     const names = Object.values(documents)
       .flatMap(operationsOf)
@@ -86,6 +99,23 @@ describe('利用者側のコード生成の生成物', () => {
     }
   });
 
+  test('操作の一覧は管理者側の操作の一覧と識別子を共有しない', async () => {
+    const clientDocumentIds = Object.keys(
+      await readPersistedDocuments(GENERATED_DIR),
+    );
+
+    const adminDocumentIds = Object.keys(
+      await readPersistedDocuments(ADMIN_GENERATED_DIR),
+    );
+
+    expect(adminDocumentIds.length).toBeGreaterThan(0);
+    expect(
+      clientDocumentIds.filter((documentId) =>
+        adminDocumentIds.includes(documentId),
+      ),
+    ).toEqual([]);
+  });
+
   test('疎通確認の操作の文書は識別子だけを持ち、操作の構文木と位置の情報を持たない', () => {
     expect(Object.keys(ClientSystemStatusDocument)).toEqual(['__meta__']);
     expect(documentIdOf(ClientSystemStatusDocument)).toMatch(
@@ -94,7 +124,7 @@ describe('利用者側のコード生成の生成物', () => {
   });
 
   test('画面が読み込む生成物のgraphql.tsは操作の本文を含まない', async () => {
-    const bodies = Object.values(await readPersistedDocuments());
+    const bodies = Object.values(await readPersistedDocuments(GENERATED_DIR));
 
     const source = await readFile(
       join(GENERATED_DIR, DOCUMENT_MODULE_FILE),

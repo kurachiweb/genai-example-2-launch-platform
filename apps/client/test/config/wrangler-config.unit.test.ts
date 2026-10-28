@@ -3,6 +3,11 @@ import { join } from 'node:path';
 
 import { unstable_readConfig } from 'wrangler';
 
+import {
+  type RateLimiter,
+  type ServiceFetcher,
+  validateFrontendEnv,
+} from '../../lib/server/env/frontend-env.ts';
 import { z } from '../../lib/utilities/validation/zod.ts';
 
 const APP_DIR = join(import.meta.dirname, '..', '..');
@@ -16,6 +21,8 @@ const LOCAL_TURNSTILE_SITE_KEY = '1x00000000000000000000AA';
 const PLACEHOLDER_TURNSTILE_SITE_KEY = '0x0000000000000000000000';
 
 const PLACEHOLDER_WEB_ANALYTICS_TOKEN = '00000000000000000000000000000000';
+
+const RATE_LIMITED_APPS = ['client', 'admin', 'api', 'event'] as const;
 
 const effectiveConfigSchema = z.object({
   name: z.string(),
@@ -62,6 +69,8 @@ const effectiveConfigSchema = z.object({
 
 type EffectiveConfig = z.infer<typeof effectiveConfigSchema>;
 
+const workerNameSchema = z.object({ name: z.string() });
+
 const rateLimitsSchema = z.object({
   ratelimits: z.array(z.object({ namespace_id: z.string() })),
 });
@@ -72,6 +81,7 @@ interface ExpectedEnvironment {
   readonly workerNameSuffix: string;
   readonly rateLimitNamespaceId: string;
   readonly vars: Readonly<Record<string, string>>;
+  readonly validatedWebAnalyticsToken: string | undefined;
   readonly requiredSecrets: readonly string[];
 }
 
@@ -90,6 +100,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       IMAGES_ORIGIN: 'http://localhost:48043',
       WEB_ANALYTICS_TOKEN: '',
     },
+    validatedWebAnalyticsToken: undefined,
     requiredSecrets: [],
   },
   {
@@ -107,6 +118,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
         'https://genai-example-2-images-staging.lab.kurachiweb.com',
       WEB_ANALYTICS_TOKEN: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
     },
+    validatedWebAnalyticsToken: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
     requiredSecrets: ['SENTRY_DSN'],
   },
   {
@@ -123,31 +135,53 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       IMAGES_ORIGIN: 'https://genai-example-2-images.lab.kurachiweb.com',
       WEB_ANALYTICS_TOKEN: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
     },
+    validatedWebAnalyticsToken: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
     requiredSecrets: ['SENTRY_DSN'],
   },
 ];
 
-const readRawConfig = (
-  configPath: string,
-  wranglerEnv: string | undefined,
-): unknown =>
+const readRawConfig = (app: string, wranglerEnv: string | undefined): unknown =>
   unstable_readConfig(
-    { config: configPath, env: wranglerEnv },
+    { config: join(APPS_DIR, app, 'wrangler.jsonc'), env: wranglerEnv },
     { hideWarnings: true },
   );
 
 const readClientConfig = (wranglerEnv: string | undefined): EffectiveConfig =>
-  effectiveConfigSchema.parse(
-    readRawConfig(join(APP_DIR, 'wrangler.jsonc'), wranglerEnv),
-  );
+  effectiveConfigSchema.parse(readRawConfig('client', wranglerEnv));
+
+const apiWorkerNameOf = (wranglerEnv: string | undefined): string =>
+  workerNameSchema.parse(readRawConfig('api', wranglerEnv)).name;
 
 const rateLimitNamespaceIdsOf = (
   app: string,
   wranglerEnv: string | undefined,
 ): readonly string[] =>
   rateLimitsSchema
-    .parse(readRawConfig(join(APPS_DIR, app, 'wrangler.jsonc'), wranglerEnv))
+    .parse(readRawConfig(app, wranglerEnv))
     .ratelimits.map((entry) => entry.namespace_id);
+
+// workerdが注入するバインディングの代わりに、環境の検証が確かめる関数だけを持つ偽物を置く
+const fakeApi: ServiceFetcher = {
+  fetch: () => Promise.resolve(new Response(null)),
+};
+
+const fakeRateLimiter: RateLimiter = {
+  limit: () => Promise.resolve({ success: true }),
+};
+
+const bindingsOf = (
+  config: EffectiveConfig,
+): Readonly<Record<string, unknown>> =>
+  Object.fromEntries([
+    ...(config.services ?? []).map(({ binding }): [string, unknown] => [
+      binding,
+      fakeApi,
+    ]),
+    ...config.ratelimits.map(({ name }): [string, unknown] => [
+      name,
+      fakeRateLimiter,
+    ]),
+  ]);
 
 describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env) => {
   const config = readClientConfig(env.wranglerEnv);
@@ -164,6 +198,12 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
         service: `genai-example-2-api${env.workerNameSuffix}`,
         entrypoint: 'ClientGateway',
       },
+    ]);
+  });
+
+  test('APIのService Bindingsの接続先が、apiのWrangler設定の同じ環境の実効のWorker名と一致する', () => {
+    expect(config.services?.map(({ service }) => service)).toEqual([
+      apiWorkerNameOf(env.wranglerEnv),
     ]);
   });
 
@@ -205,6 +245,18 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     expect(config.vars).toStrictEqual(env.vars);
   });
 
+  test('実効の変数とバインディングが、シークレットの無い状態で共通部品の環境の検証を通り、空のアクセス解析のトークンは未設定として扱われる', () => {
+    const validation = validateFrontendEnv({
+      ...config.vars,
+      ...bindingsOf(config),
+    });
+
+    expect(validation.ok).toBe(true);
+    expect(validation.ok && validation.env.WEB_ANALYTICS_TOKEN).toBe(
+      env.validatedWebAnalyticsToken,
+    );
+  });
+
   test('必須のシークレットはstaging・prodのSentryのDSNだけである', () => {
     expect(config.secrets?.required ?? []).toEqual([...env.requiredSecrets]);
   });
@@ -219,14 +271,16 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
 });
 
 describe('Wrangler設定の環境をまたぐ整合', () => {
-  test('IP制限の名前空間が、利用者側・api・eventの環境・Workerごとにすべて異なる', () => {
+  test('IP制限の名前空間が、利用者側・管理者側・api・eventの環境・Workerごとにすべて異なる', () => {
     const namespaceIds = EXPECTED_ENVIRONMENTS.flatMap(({ wranglerEnv }) =>
-      ['client', 'api', 'event'].flatMap((app) =>
+      RATE_LIMITED_APPS.flatMap((app) =>
         rateLimitNamespaceIdsOf(app, wranglerEnv),
       ),
     );
 
-    expect(namespaceIds).toHaveLength(EXPECTED_ENVIRONMENTS.length * 3);
+    expect(namespaceIds).toHaveLength(
+      EXPECTED_ENVIRONMENTS.length * RATE_LIMITED_APPS.length,
+    );
     expect(new Set(namespaceIds).size).toBe(namespaceIds.length);
   });
 });

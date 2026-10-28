@@ -20,6 +20,11 @@ export interface PageRouterOptions {
   readonly createRoutes: (rootRoute: AnyRoute) => readonly AnyRoute[];
 }
 
+export const PAGE_ROUTER_ROOT_COMPONENTS = Object.freeze({
+  notFoundComponent: NotFoundPage,
+  errorComponent: ErrorPage,
+});
+
 function PageShell({ children }: { readonly children: ReactNode }) {
   return (
     <TooltipProvider>
@@ -32,8 +37,7 @@ function PageShell({ children }: { readonly children: ReactNode }) {
 export function createPageRouter({ path, createRoutes }: PageRouterOptions) {
   const rootRoute = createRootRoute({
     shellComponent: PageShell,
-    notFoundComponent: NotFoundPage,
-    errorComponent: ErrorPage,
+    ...PAGE_ROUTER_ROOT_COMPONENTS,
   });
   return createRouter({
     routeTree: rootRoute.addChildren([...createRoutes(rootRoute)]),
