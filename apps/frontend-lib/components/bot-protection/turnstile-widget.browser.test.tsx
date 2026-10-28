@@ -17,6 +17,7 @@ import {
   resetFakeTurnstile,
   turnstileResetCount,
 } from '../../test/fake-turnstile.tsx';
+import { setThemePreference } from '../../utilities/theme/theme-preference.ts';
 import { TurnstileWidget } from './turnstile-widget.tsx';
 import { useTurnstileToken } from './use-turnstile-token.ts';
 
@@ -115,6 +116,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setThemePreference(document.documentElement, undefined, 'light');
+  document.documentElement.style.colorScheme = '';
   resetFakeTurnstile();
   vi.restoreAllMocks();
 });
@@ -147,6 +150,26 @@ describe('TurnstileWidget', () => {
       .element(page.getByTestId('fake-turnstile'))
       .toBeInTheDocument();
     expect(lastTurnstileProps().scriptOptions?.nonce).toBeUndefined();
+  });
+
+  test('アプリの配色をウィジェットの配色として渡し、配色の切り替えに追従してもトークンの状態を保つ', async () => {
+    await renderInRouter(<TokenHarness />);
+    await expect
+      .element(page.getByTestId('fake-turnstile'))
+      .toBeInTheDocument();
+    expect(lastTurnstileProps().options).toMatchObject({ theme: 'light' });
+    await succeed();
+    await expect.element(statusText()).toHaveTextContent('ready');
+
+    setThemePreference(document.documentElement, undefined, 'dark');
+
+    await expect.poll(() => lastTurnstileProps().options?.theme).toBe('dark');
+    await expect.element(statusText()).toHaveTextContent('ready');
+    await expect.element(tokenText()).toHaveTextContent('turnstile-token-1');
+
+    setThemePreference(document.documentElement, undefined, 'light');
+
+    await expect.poll(() => lastTurnstileProps().options?.theme).toBe('light');
   });
 
   test('ルーターの文脈に実行時の値が無い時は、設定の誤りを示す例外で描画を止める', async () => {

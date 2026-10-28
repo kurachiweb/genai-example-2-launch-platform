@@ -58,6 +58,30 @@ export function createRouterContext(
   };
 }
 
+const hasRuntimeHolder = (
+  context: unknown,
+): context is Pick<RouterContext, 'runtime'> => {
+  if (typeof context !== 'object' || context === null) {
+    return false;
+  }
+  const runtime: unknown = Reflect.get(context, 'runtime');
+  return (
+    typeof runtime === 'object' &&
+    runtime !== null &&
+    typeof Reflect.get(runtime, 'get') === 'function'
+  );
+};
+
+// 共通部品はアプリのルーターの型を登録できず、ルーターの文脈が型の無い値になるため、実行時の値の入れ物を持つことを確かめてから読む
+export function appRuntimeOf(context: unknown): AppRuntime {
+  if (!hasRuntimeHolder(context)) {
+    throw new Error(
+      'ルーターの文脈に実行時の値がありません。createRouterContextで作った文脈をルーターへ渡してください。',
+    );
+  }
+  return context.runtime.get();
+}
+
 // dehydrateした値はHTMLへ書き出されるため、描画の文脈のうちブラウザへ渡してよい公開設定と表示設定だけを取り出す
 export function toAppRuntime(
   context: Pick<FrontendRequestContext, 'publicConfig' | 'display'>,

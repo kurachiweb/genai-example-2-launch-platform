@@ -4,6 +4,7 @@ import { QueryClient } from '@tanstack/react-query';
 import type { FrontendRequestContext } from '../server/entry/request-context.ts';
 import {
   type AppRuntime,
+  appRuntimeOf,
   createAppRuntimeHolder,
   createRouterContext,
   dehydrateAppRuntime,
@@ -168,5 +169,28 @@ describe('toAppRuntime', () => {
     expect(serialized).not.toContain('"relay"');
     expect(serialized).not.toContain('"api"');
     expect(serialized).not.toContain('__Host-');
+  });
+});
+
+describe('appRuntimeOf', () => {
+  test('ルーターの文脈の入れ物から実行時の値を読む', () => {
+    expect(appRuntimeOf(createRouterContext(APP_RUNTIME))).toBe(APP_RUNTIME);
+  });
+
+  test.each([
+    ['undefined', undefined],
+    ['null', null],
+    ['実行時の値の入れ物を持たない文脈', { queryClient: {} }],
+    ['読み取りの関数を持たない入れ物', { runtime: {} }],
+  ])('%sからは読めず、文脈の渡し方を示す例外になる', (_name, context) => {
+    expect(() => appRuntimeOf(context)).toThrow(
+      /ルーターの文脈に実行時の値がありません/u,
+    );
+  });
+
+  test('入れ物が未設定なら入れ物の例外をそのまま伝える', () => {
+    expect(() => appRuntimeOf(createRouterContext(undefined))).toThrow(
+      /実行時の値が未設定です/u,
+    );
   });
 });

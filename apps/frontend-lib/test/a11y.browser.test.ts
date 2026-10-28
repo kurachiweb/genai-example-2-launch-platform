@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest';
 
-import { runAxe } from './a11y.ts';
+import { runAxe, runAxeOnDocument } from './a11y.ts';
 
 function mount(...children: readonly HTMLElement[]): HTMLElement {
   const container = document.createElement('div');
@@ -97,5 +97,43 @@ describe('runAxe', () => {
     const violations = await runAxe(container);
 
     expect(violations).toStrictEqual([]);
+  });
+});
+
+async function openDocument(markup: string): Promise<Document> {
+  const frame = document.createElement('iframe');
+  frame.title = '検査する文書';
+  const loaded = new Promise<void>((resolve) => {
+    frame.addEventListener('load', () => {
+      resolve();
+    });
+  });
+  frame.srcdoc = markup;
+  document.body.append(frame);
+  await loaded;
+  const target = frame.contentDocument;
+  if (target === null) {
+    throw new Error('検査する文書を開けません。');
+  }
+  return target;
+}
+
+describe('runAxeOnDocument', () => {
+  test('言語の無い文書では、文書全体の規則の違反を返す', async () => {
+    const target = await openDocument(
+      '<!DOCTYPE html><html><head><title>確認</title></head><body><main><h1>本文</h1></main></body></html>',
+    );
+
+    const violations = await runAxeOnDocument(target);
+
+    expect(violations.map(({ id }) => id)).toStrictEqual(['html-has-lang']);
+  });
+
+  test('言語とタイトルを持つ文書では0件を返す', async () => {
+    const target = await openDocument(
+      '<!DOCTYPE html><html lang="ja"><head><title>確認</title></head><body><main><h1>本文</h1></main></body></html>',
+    );
+
+    expect(await runAxeOnDocument(target)).toStrictEqual([]);
   });
 });

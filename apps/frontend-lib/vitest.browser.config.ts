@@ -26,6 +26,8 @@ const PREBUNDLED_DEPENDENCIES = [
   'zod',
   'sonner',
   '@tanstack/react-router',
+  '@tanstack/react-query',
+  'jotai/vanilla',
   '@marsidev/react-turnstile',
 ];
 
