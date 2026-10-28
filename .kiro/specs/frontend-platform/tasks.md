@@ -412,7 +412,7 @@
   - _Boundary: ErrorViews, StateDisplays, GraphqlResult, FormParts, Toaster, ErrorResponses, AppProfile, FrontendServerEntry, 技術ドキュメント群_
   - _Requirements: 1.6, 8.6, 8.10, 8.12, 8.13, 11.6, 11.10, 15.3, 15.4, 15.5, 15.6_
 
-- [ ] 10.4 下流specの設計を確定した契約に合わせる
+- [x] 10.4 下流specの設計を確定した契約に合わせる
   - design.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の各行に挙げた下流spec(data-export・identity-auth・notifications・public-api・product-launch・content-reporting・help-center・ultras-subscription・sponsorship・legal-pages・tournament-week・tournament-year・inquiry-chat・user-profile-social・admin-foundation・directory-discovery・match-engine・payments・engagement・ugc-moderation・content-processing・media-pipeline・infra-delivery)のdesign.md(必要ならrequirements.md・tasks.md・research.md)を、表の確定した契約(操作の置き場所と生成物、Zodの値の読み込み元、フォーム部品の形、`RelayRoute`の形とJSONでない5xxの503、`SecurityPolicySources`と環境のキー、非表示のウィジェット、管理者側の画面シェル、`HASH_PEPPER`の共有、管理者側のエラーの案内文)に合わせる
   - ウィジェットを置くspecから、判定の枠の表示と場所の記述を除く。admin-foundationの管理者側のランドマーク(フッターを持たず、ナビゲーションは`navigation`の区画の`nav`で満たす)を合わせる
   - infra-delivery: Turnstileのウィジェットの種類(`design.md:587`の`mode: 'managed'`、`design.md:687`・`design.md:694`・`design.md:1502`の`mode = "managed"`)を`invisible`にし、stagingの`HASH_PEPPER`の登録先(`design.md:1517`・`design.md:1555`のapi・event)にclient・adminを加える。research.md・tasks.mdに同じ記述があれば合わせる
@@ -430,6 +430,15 @@
   - _Depends: api-gatewayの11.1_
   - _Boundary: 技術ドキュメント群_
   - _Requirements: 2.7, 15.3, 15.4_
+
+- [ ] 10.6 Zodの設定をエントリの先頭で読み込む
+  - 先に、client・adminの`test/config/entry-imports.unit.test.ts`(新規)で、ブラウザのエントリ`src/client.tsx`とサーバーのエントリ`src/server.ts`の最初のimportが`../lib/utilities/validation/zod.ts`の副作用の読み込み(束縛を持たない`import '…/zod.ts';`)で、他のどのモジュールの読み込みより先にあること、`vite.config.ts`の`tanstackStart()`がブラウザとサーバーのエントリ(`client.entry`・`server.entry`)を指定せず、Startの既定の名前で`src/client.tsx`・`src/server.ts`が使われることを確かめる単体テストを書く
+  - `src/server.ts`の最初のimportに`import '../lib/utilities/validation/zod.ts';`を加える
+  - TanStack Startの既定のブラウザのエントリには読み込みを足せないため、`src/client.tsx`(新規)を置き、最初のimportで`zod.ts`を読み込んだ後に、既定のエントリと同じく`startTransition`の中で`hydrateRoot(document, <StrictMode><StartClient /></StrictMode>)`を呼ぶ。Startが`src/client.tsx`をブラウザのエントリとして使うことをビルドの出力で確かめる
+  - `frontend/003`のZodの節の「ESモジュールは依存を先に評価するため、この設定はすべてのスキーマより前に効く」を、`zod`を直接読むコード(共有ディレクトリなど)がある場合はブラウザとサーバーのエントリの最初のimportで設定の部品を読み込む規則に直す。`frontend/002`に、ブラウザのエントリの先頭に処理を加える場合は`src/client.tsx`を置き、既定のエントリと同じ描画の処理を書くこと、Startの版を上げる時は`src/client.tsx`をStartの既定のブラウザのエントリと見比べることを加える。プロジェクト名と固有値を含めない
+  - 完了状態: client・adminのブラウザとサーバーのエントリで、`zod.ts`の読み込みが他のどのモジュールより先になることを確かめるテストが成功し、ビルド後のプレビューでCSPの違反(`securitypolicyviolation`)が出ず、両アプリの単体テストと一括検査が成功する
+  - _Boundary: AppComposition, FrontendServerEntry, 技術ドキュメント群_
+  - _Requirements: 4.2, 8.1, 12.6, 15.3, 15.4_
 
 ## Implementation Notes
 
@@ -490,3 +499,4 @@
 - 2026-10-28(開発者の判断、10.1〜10.5の起点): 要件2.10にJSONでない5xxを503`upstream_unavailable`にする例外を加え、要件10.4を利用者側に限って管理者側を10.8とし、Turnstileのウィジェットを非表示(ローカルのサイトキー`1x00000000000000000000BB`)にし、apiの`assertIssuable`にも400日の上限を加え(api-gatewayの11.1、本specの文書は10.5)、全WorkerのIP制限のキーを`HASH_PEPPER`のHMACでハッシュ化し(backend-platformの11.1・本specの10.1、要件5.7)、管理者側では画面内の想定外のエラーの表示・`ErrorState`・`GraphQLClientError`でない例外の文言・静的な500の画面のどれにも問い合わせの導線と問い合わせを促す文を出さないとし(判断9とその追加、要件8.6・8.13・11.10)、通知メールの件名から日付を基準にした相対表現を除き、下流specの設計(infra-deliveryのウィジェットの種類と`HASH_PEPPER`の登録先を含む)を確定した契約へ合わせ(10.4)、client・adminに`cf-typegen`を足さないと決めた。1ページの呼び出し回数の目安3回以内・オンボーディングのAIエージェントの緩めた規則・CLAUDE.mdの参照先の3つは現状のまま確定した。staging・prodのTurnstileのサイトキーとアクセス解析のトークンの仮の値はinfra-deliveryの担当として残す。設計は「決定事項」に記した。
 - 10.2(結果): Turnstileのウィジェットは外側の要素を持たず、ライブラリの非表示の入れ物(幅0・高さ0)に`position: absolute`を渡して通常の流れから外し、親の`gap`・`space-y`を消費しない。失敗時は`FormMessage`だけが流れに入る。偽物のTurnstileも非表示の大きさを真似て描き、結果のボタンは`body`の直下に描く。5.6の「幅320pxで横スクロールの見込み」は非表示のウィジェットにしたことで解消した。`space-y`の親の最後の子に置くと、平常時に親の末尾へ余白が1つ残る
 - 10.3(結果と申し送り): 問い合わせの導線の有無はプロファイルの`contactAvailable`(利用者側は真・管理者側は偽)で決まり、`UnexpectedErrorView`・`ErrorState`は`contactHref`の有無で、`GraphQLClientError`でない例外の文言は`errorMessageOf(error, contactAvailable)`で、静的な500の画面は`renderStaticErrorPage({ status: 500, contactAvailable })`で出し分ける。利用者側の`ErrorPage`は`CONTACT_HREF`を常に渡し、プロファイルとの一致は`composition.unit.test.ts`と`ErrorPage`のブラウザテストで確かめる。`docs/onboardings/project-values.md`のプロファイルの表に`contactAvailable`の行を足すのは10.1の文書の更新で行う
+- 10.4(結果と開発者への確認): 下流23specを確定した契約に合わせ(1282d37)、design.mdの影響の表の該当箇所を合わせた後の位置にした。派生した契約として、admin-foundationの`ConfirmActionDialogProps`・`CategoryMasterEditorProps`の必須の`failureMessageOf`と、media-pipelineのアップロード部品の必須の`contactAvailable`が加わった。infra-deliveryに、非表示のTurnstileを使う条件としてプライバシーポリシーでCloudflareのTurnstile Privacy Addendumを参照する記述を足した(開発者の確認待ち)。product-launchとugc-moderationが同じ照会`adminProductCategories`を違う型で定義している(10.4より前からの食い違い)
