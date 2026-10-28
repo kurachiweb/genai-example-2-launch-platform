@@ -12,6 +12,8 @@ export default defineConfig({
     cloudflare({
       viteEnvironment: { name: 'ssr' },
       persistState: { path: LOCAL_STATE_PATH },
+      // apiのwrangler devが既定の9229、eventが9230で固定しているため、同時に起動しても重ならない固定の値にする
+      inspectorPort: 9232,
     }),
     tanstackStart(),
     viteReact(),
