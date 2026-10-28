@@ -294,7 +294,7 @@
   - _Depends: 6.3, 7.1_
   - _Requirements: 1.6, 2.9, 4.3, 4.7, 13.7_
 
-- [ ] 7.4 (P) 管理者側の基本レイアウトと区画の登録箇所を作る
+- [x] 7.4 (P) 管理者側の基本レイアウトと区画の登録箇所を作る
   - サービス名と管理画面であることを示すヘッダー・ダークモードの切替・本文の領域と、メニューとログイン中の表示の区画を作る。初版の区画は空にする
   - 先に、ヘッダーの文言・切替ボタン・ランドマーク・区画へ差し込んだ部品の描画・検査の補助の違反0件を確かめるブラウザテストを書く
   - 完了状態: ブラウザテストが成功し、区画が空の時に空の領域を描画しない
@@ -422,3 +422,4 @@
 - 7.1(7.2〜7.5・9.6への申し送り): `apps/admin`は6.1時点のclientの構成を写し、違いはWorker名`genai-example-2-admin(-staging|-prod)`・`API`→`AdminGateway`・`IP_RATE_LIMITER`の名前空間1004/2004/3004・`WEB_ANALYTICS_TOKEN`無し。`bun.lock`はclientのロックを種にし、根の名前を`admin`に直した(Bunが正規に生成するものと同等で`--frozen-lockfile`は差分無し)。型検査は`lib/*.ts`・`lib/**/*.stories.tsx`・`lib/**/*.test.ts(x)`を除外済み。`wrangler-config.unit.test.ts`は6.1の改善を取り入れ、`service`名をapiの実効の`name`と比べ、実効の変数と偽のバインディングを`validateFrontendEnv`に通し、4アプリ12個の名前空間が一意であることを確かめる(clientのテストには未適用)。コード生成は7.2、エントリ・登録箇所は7.3。
 - 7.2(9.3・9.6への申し送り): 管理者側のコード生成は6.2のclientの構成をそのまま写し、操作は`src/graphql/operations/system-status.graphql`の`AdminSystemStatus`(画面は`generated/graphql.ts`の`AdminSystemStatusDocument`を読む)。apiの`allowlist.json`の`admin`に`sha256:cfd1cd38…`の1件が入った。`test/config/codegen.unit.test.ts`は`Admin`の接頭辞と、clientの`persisted-documents.json`と識別子を共有しないこと(相対パスで読む)を確かめる(clientのテストには逆向きの検査は無い)。
 - 7.3(7.5・9.xへの申し送り): 管理者側の登録箇所は`ADMIN_PROFILE`(`admin`・`__Host-ls_admin_session`・`indexable: () => false`・`webAnalytics: false`)・空の`ADMIN_SECURITY_POLICY`・`RELAY_ROUTES`(`[GRAPHQL_RELAY_ROUTE]`)。`server.ts`はclientと同じ構成で値だけが違い、`start.ts`・`router.tsx`はclientと同一(設計のFile Structure Planどおり各アプリに置く)。最小の`__root.tsx`(`shellComponent: AppDocument`)と生成物`routeTree.gen.ts`は7.5で拡げる。`test/config/composition.unit.test.ts`はCookieの名前の違いを確かめるためclientの`src/composition/app-profile.ts`を静的にimportする(型の登録は混ざらないが、clientの`app-profile.ts`が型の登録を持つモジュールを読むようになると混入し得る。9.xで触れる)。`vite build`で主バンドルに`SDK_VERSION`無し・警告無し。
+- 7.4(要件と設計の不整合、7.5・admin-foundation・9.xへの申し送り): `AdminLayout`はヘッダー(「⚽️ Launch Stadium管理」のトップへのリンク、絵文字は`aria-hidden`・`ThemeToggle`・`headerAccount`)→`navigation`の区画(包む要素無し、768px以上で左の列・未満で本文の上)→`<main id="main">`で、`ADMIN_LAYOUT_SLOTS`は`navigation`・`headerAccount`とも`null`(凍結)。空の区画は入れ物ごと描画しない。【不整合】要件10.4は画面シェルに「ヘッダー・ナビゲーション・本文・フッターのランドマーク」を求めるが、設計1595行の管理者側の構成とFile Structure Planにフッターが無く(1596行のランドマークは利用者側と区別していない)、初版は区画が空のためナビゲーションのランドマークも無い。設計1596行を「管理者側は`header`・`nav`(admin-foundationが追加)・`main`」と明記するか、要件10.4の対象範囲を明確にする(設計の改訂候補)。【admin-foundationへ】`AdminNavigation`は自身で名前付きの`nav`を描き、768px未満のSheetの開閉ボタンはヘッダーと本文の間に出る(ヘッダーに置くなら`AdminLayoutSlots`に区画を加える契約の変更)。7.5は`__root.tsx`の`shellComponent`で`AdminLayout`(`ADMIN_LAYOUT_SLOTS`)を組み込む。設計に無い`admin-site.ts`(サービス名と`/`)を加えた。「Launch Stadium管理」は9.5の文言規則の対象。
