@@ -90,7 +90,8 @@ function StatusView(props: Partial<SystemStatusViewProps>) {
   return (
     <DisplayPreferencesProvider initial={TOKYO_JA}>
       <SystemStatusView
-        server={REACHABLE}
+        initial={REACHABLE}
+        initialExecutedOn="server"
         onRecheck={() => undefined}
         rechecking={false}
         {...props}
@@ -101,6 +102,8 @@ function StatusView(props: Partial<SystemStatusViewProps>) {
 
 const serverRegion = () =>
   page.getByRole('region', { name: 'サーバー側の描画時の結果' });
+const pageLoadRegion = () =>
+  page.getByRole('region', { name: '画面の読み込み時の結果' });
 const browserRegion = () =>
   page.getByRole('region', { name: 'ブラウザからの再確認の結果' });
 const browserStatus = () => browserRegion().getByRole('status');
@@ -156,7 +159,7 @@ describe('SystemStatusView(サーバー側の描画時の結果)', () => {
   });
 
   test('データベースに到達できない時は、APIサーバーの時刻とともにデータベースを「到達できません」と表示する', async () => {
-    await render(<StatusView server={DATABASE_UNREACHABLE} />);
+    await render(<StatusView initial={DATABASE_UNREACHABLE} />);
 
     expect(definitionsOf(serverRegion().element())).toStrictEqual({
       APIサーバーの時刻: SERVER_TIME_TEXT,
@@ -170,7 +173,7 @@ describe('SystemStatusView(サーバー側の描画時の結果)', () => {
   test.each(API_UNREACHABLE_RESULTS)(
     'APIサーバーへ到達できない(%s)時は「APIサーバーへ到達できません。」を表示し、時刻とデータベースの項目を出さない',
     async (_code, result) => {
-      await render(<StatusView server={result} />);
+      await render(<StatusView initial={result} />);
 
       const region = serverRegion().element();
       expect(resultTextOf(region)).toBe(API_UNREACHABLE_MESSAGE);
@@ -180,7 +183,7 @@ describe('SystemStatusView(サーバー側の描画時の結果)', () => {
   );
 
   test('APIサーバーへ到達した後の失敗は、APIサーバーへ到達できない表示と区別して失敗の文言を表示する', async () => {
-    await render(<StatusView server={INTERNAL_ERROR} />);
+    await render(<StatusView initial={INTERNAL_ERROR} />);
 
     const region = serverRegion().element();
     expect(resultTextOf(region)).toBe(INTERNAL_ERROR_MESSAGE);
@@ -194,13 +197,83 @@ describe('SystemStatusView(サーバー側の描画時の結果)', () => {
       DATABASE_UNREACHABLE,
       UPSTREAM_UNAVAILABLE,
     ]) {
-      const screen = await render(<StatusView server={result} />);
+      const screen = await render(<StatusView initial={result} />);
       texts.push(resultTextOf(serverRegion().element()));
       await screen.unmount();
     }
 
     expect(new Set(texts).size).toBe(3);
     expect(texts.every((text) => text.length > 0)).toBe(true);
+  });
+});
+
+describe('SystemStatusView(画面を表示した時の結果を実行した場所)', () => {
+  test('サーバーで実行した結果は「サーバー側の描画時の結果」の区画に出し、「画面の読み込み時の結果」の区画を出さない', async () => {
+    await render(<StatusView initialExecutedOn="server" />);
+
+    await expect.element(serverRegion()).toBeVisible();
+    expect(pageLoadRegion().query()).toBeNull();
+  });
+
+  test('ブラウザで実行した結果は「画面の読み込み時の結果」の区画に出し、「サーバー側の描画時の結果」の区画を出さない', async () => {
+    await render(<StatusView initialExecutedOn="browser" />);
+
+    await expect.element(pageLoadRegion()).toBeVisible();
+    expect(serverRegion().query()).toBeNull();
+    expect(definitionsOf(pageLoadRegion().element())).toStrictEqual({
+      APIサーバーの時刻: SERVER_TIME_TEXT,
+      データベース: '到達可能',
+    });
+  });
+
+  test.each([
+    ['到達可能', REACHABLE],
+    ['データベースに到達できない', DATABASE_UNREACHABLE],
+    ['APIサーバーへ到達できない', UPSTREAM_UNAVAILABLE],
+    ['APIサーバーへ到達した後の失敗', INTERNAL_ERROR],
+  ] as const)(
+    '%sの結果は、実行した場所によらず区画に同じ中身を出す',
+    async (_label, result) => {
+      const server = await render(
+        <StatusView initial={result} initialExecutedOn="server" />,
+      );
+      const serverText = resultTextOf(serverRegion().element());
+      await server.unmount();
+
+      await render(<StatusView initial={result} initialExecutedOn="browser" />);
+
+      expect(serverText.length).toBeGreaterThan(0);
+      expect(resultTextOf(pageLoadRegion().element())).toBe(serverText);
+    },
+  );
+
+  test('ブラウザで実行した場合も、再確認の区画の見出しと案内は変わらない', async () => {
+    await render(<StatusView initialExecutedOn="browser" />);
+
+    await expect.element(browserRegion()).toBeVisible();
+    await expect
+      .element(browserStatus())
+      .toHaveTextContent(
+        '「再確認」を押すと、ブラウザから確認した結果を表示します。',
+      );
+  });
+
+  test('ブラウザで実行した結果と再確認の結果を、別々の区画に表示する', async () => {
+    await render(
+      <StatusView
+        initialExecutedOn="browser"
+        browser={reachableAt(BROWSER_TIME)}
+      />,
+    );
+
+    expect(definitionsOf(pageLoadRegion().element())).toStrictEqual({
+      APIサーバーの時刻: SERVER_TIME_TEXT,
+      データベース: '到達可能',
+    });
+    expect(definitionsOf(browserStatus().element())).toStrictEqual({
+      APIサーバーの時刻: BROWSER_TIME_TEXT,
+      データベース: '到達可能',
+    });
   });
 });
 
@@ -218,7 +291,7 @@ describe('SystemStatusView(ブラウザからの再確認)', () => {
 
   test('再確認の結果は、サーバー側の描画時の結果と区別して再確認の区画に表示する', async () => {
     await render(
-      <StatusView server={REACHABLE} browser={reachableAt(BROWSER_TIME)} />,
+      <StatusView initial={REACHABLE} browser={reachableAt(BROWSER_TIME)} />,
     );
 
     expect(definitionsOf(serverRegion().element())).toStrictEqual({
@@ -233,7 +306,7 @@ describe('SystemStatusView(ブラウザからの再確認)', () => {
 
   test('再確認でAPIサーバーへ到達できない時は、サーバー側の描画時の結果を残したまま再確認の区画にだけ表示する', async () => {
     await render(
-      <StatusView server={REACHABLE} browser={UPSTREAM_UNAVAILABLE} />,
+      <StatusView initial={REACHABLE} browser={UPSTREAM_UNAVAILABLE} />,
     );
 
     await expect
@@ -309,7 +382,7 @@ describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
   test('到達可能とデータベースに到達できない表示でアクセシビリティの検査の違反が0件', async () => {
     applyColorScheme(scheme);
     const { container } = await render(
-      <StatusView server={REACHABLE} browser={DATABASE_UNREACHABLE} />,
+      <StatusView initial={REACHABLE} browser={DATABASE_UNREACHABLE} />,
     );
 
     expect(await runAxe(container)).toStrictEqual([]);
@@ -318,7 +391,7 @@ describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
   test('APIサーバーへ到達できない表示と再確認中の表示でアクセシビリティの検査の違反が0件', async () => {
     applyColorScheme(scheme);
     const { container } = await render(
-      <StatusView server={UPSTREAM_UNAVAILABLE} rechecking />,
+      <StatusView initial={UPSTREAM_UNAVAILABLE} rechecking />,
     );
 
     expect(await runAxe(container)).toStrictEqual([]);
@@ -327,7 +400,19 @@ describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
   test('APIサーバーへ到達した後の失敗の表示でアクセシビリティの検査の違反が0件', async () => {
     applyColorScheme(scheme);
     const { container } = await render(
-      <StatusView server={INTERNAL_ERROR} browser={INTERNAL_ERROR} />,
+      <StatusView initial={INTERNAL_ERROR} browser={INTERNAL_ERROR} />,
+    );
+
+    expect(await runAxe(container)).toStrictEqual([]);
+  });
+
+  test('ブラウザで実行した結果の表示でアクセシビリティの検査の違反が0件', async () => {
+    applyColorScheme(scheme);
+    const { container } = await render(
+      <StatusView
+        initialExecutedOn="browser"
+        browser={reachableAt(BROWSER_TIME)}
+      />,
     );
 
     expect(await runAxe(container)).toStrictEqual([]);

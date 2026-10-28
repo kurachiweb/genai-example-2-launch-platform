@@ -9,12 +9,14 @@ import {
   DATABASE_LABEL,
   DATABASE_REACHABLE_LABEL,
   DATABASE_UNREACHABLE_LABEL,
+  PAGE_LOAD_RESULT_HEADING,
   RECHECK_GUIDANCE,
   RECHECK_LABEL,
   RECHECKING_LABEL,
   SERVER_RESULT_HEADING,
   SYSTEM_STATUS_TITLE,
 } from '../../utilities/messages/system-status-messages.ts';
+import type { ExecutionSite } from '../../utilities/system/execution-site.ts';
 import {
   isApiUnreachable,
   type SystemStatusResult,
@@ -26,11 +28,17 @@ export interface SystemStatusViewProps extends Omit<
   ComponentProps<'section'>,
   'children'
 > {
-  readonly server: SystemStatusResult;
+  readonly initial: SystemStatusResult;
+  readonly initialExecutedOn: ExecutionSite;
   readonly browser?: SystemStatusResult | undefined;
   readonly onRecheck: () => void;
   readonly rechecking: boolean;
 }
+
+const INITIAL_RESULT_HEADINGS: Readonly<Record<ExecutionSite, string>> = {
+  server: SERVER_RESULT_HEADING,
+  browser: PAGE_LOAD_RESULT_HEADING,
+};
 
 const PANEL_CLASS_NAME =
   'flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-sm';
@@ -83,7 +91,8 @@ function renderBrowserResult(
 }
 
 export function SystemStatusView({
-  server,
+  initial,
+  initialExecutedOn,
   browser,
   onRecheck,
   rechecking,
@@ -91,7 +100,7 @@ export function SystemStatusView({
   ...props
 }: SystemStatusViewProps) {
   const titleId = useId();
-  const serverHeadingId = useId();
+  const initialHeadingId = useId();
   const browserHeadingId = useId();
 
   // フォーカスのあるボタンをdisabledにするとフォーカスが文書の先頭へ失われるため、再確認中はaria-disabledで示してフォーカスを保ち、重ねての操作はここで止める
@@ -115,11 +124,11 @@ export function SystemStatusView({
       <h1 id={titleId} className="text-2xl font-extrabold tracking-tight">
         {SYSTEM_STATUS_TITLE}
       </h1>
-      <section aria-labelledby={serverHeadingId} className={PANEL_CLASS_NAME}>
-        <h2 id={serverHeadingId} className={PANEL_HEADING_CLASS_NAME}>
-          {SERVER_RESULT_HEADING}
+      <section aria-labelledby={initialHeadingId} className={PANEL_CLASS_NAME}>
+        <h2 id={initialHeadingId} className={PANEL_HEADING_CLASS_NAME}>
+          {INITIAL_RESULT_HEADINGS[initialExecutedOn]}
         </h2>
-        {renderResult(server)}
+        {renderResult(initial)}
       </section>
       <section aria-labelledby={browserHeadingId} className={PANEL_CLASS_NAME}>
         <h2 id={browserHeadingId} className={PANEL_HEADING_CLASS_NAME}>

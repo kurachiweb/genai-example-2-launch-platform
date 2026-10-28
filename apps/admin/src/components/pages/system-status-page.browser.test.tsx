@@ -7,6 +7,7 @@ import { DisplayPreferencesProvider } from '../../../lib/components/datetime/dis
 import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import type { DisplayPreferences } from '../../../lib/utilities/datetime/display-preferences.ts';
 import { GraphQLClientError } from '../../../lib/utilities/graphql/graphql-result.ts';
+import type { ExecutionSite } from '../../../lib/utilities/system/execution-site.ts';
 import type { SystemStatusResult } from '../../../lib/utilities/system/system-status-result.ts';
 import { SystemStatusPage } from './system-status-page.tsx';
 
@@ -38,6 +39,8 @@ const UPSTREAM_UNAVAILABLE: SystemStatusResult = {
 
 const serverRegion = () =>
   page.getByRole('region', { name: 'サーバー側の描画時の結果' });
+const pageLoadRegion = () =>
+  page.getByRole('region', { name: '画面の読み込み時の結果' });
 const browserRegion = () =>
   page.getByRole('region', { name: 'ブラウザからの再確認の結果' });
 const recheckButton = () => browserRegion().getByRole('button');
@@ -59,12 +62,17 @@ function deferred<T>(): Deferred<T> {
 }
 
 async function renderPage(
-  server: SystemStatusResult,
+  initial: SystemStatusResult,
   recheck: () => Promise<SystemStatusResult>,
+  initialExecutedOn: ExecutionSite = 'server',
 ) {
   await render(
     <DisplayPreferencesProvider initial={TOKYO_JA}>
-      <SystemStatusPage server={server} recheck={recheck} />
+      <SystemStatusPage
+        initial={initial}
+        initialExecutedOn={initialExecutedOn}
+        recheck={recheck}
+      />
     </DisplayPreferencesProvider>,
   );
 }
@@ -87,6 +95,30 @@ describe('SystemStatusPage', () => {
       .toHaveTextContent(
         '「再確認」を押すと、ブラウザから確認した結果を表示します。',
       );
+  });
+
+  test('ブラウザで実行した結果は「画面の読み込み時の結果」の見出しで表示し、「サーバー側の描画時の結果」の区画を出さない', async () => {
+    await renderPage(
+      SERVER_RESULT,
+      () => Promise.resolve(BROWSER_RESULT),
+      'browser',
+    );
+
+    await expect.element(pageLoadRegion()).toHaveTextContent(SERVER_TIME_TEXT);
+    expect(serverRegion().query()).toBeNull();
+  });
+
+  test('ブラウザで実行した結果を表示した後も、「再確認」の結果を再確認の区画に分けて表示する', async () => {
+    await renderPage(
+      SERVER_RESULT,
+      () => Promise.resolve(BROWSER_RESULT),
+      'browser',
+    );
+
+    await userEvent.click(recheckButton());
+
+    await expect.element(browserRegion()).toHaveTextContent(BROWSER_TIME_TEXT);
+    await expect.element(pageLoadRegion()).toHaveTextContent(SERVER_TIME_TEXT);
   });
 
   test('サーバー側でAPIサーバーへ到達できなかった結果を区別して表示する', async () => {

@@ -49,7 +49,12 @@ const INTERNAL_ERROR: SystemStatusResult = {
 const meta = {
   title: '疎通確認/SystemStatusView',
   component: SystemStatusView,
-  args: { server: REACHABLE, onRecheck: fn(), rechecking: false },
+  args: {
+    initial: REACHABLE,
+    initialExecutedOn: 'server',
+    onRecheck: fn(),
+    rechecking: false,
+  },
 } satisfies Meta<typeof SystemStatusView>;
 
 export default meta;
@@ -59,15 +64,15 @@ type Story = StoryObj<typeof meta>;
 export const Reachable: Story = {};
 
 export const DatabaseUnreachable: Story = {
-  args: { server: DATABASE_UNREACHABLE },
+  args: { initial: DATABASE_UNREACHABLE },
 };
 
 export const ApiUnreachable: Story = {
-  args: { server: API_UNREACHABLE },
+  args: { initial: API_UNREACHABLE },
 };
 
 export const UnexpectedError: Story = {
-  args: { server: INTERNAL_ERROR },
+  args: { initial: INTERNAL_ERROR },
 };
 
 export const Rechecking: Story = {
@@ -80,4 +85,8 @@ export const Rechecked: Story = {
 
 export const RecheckFailed: Story = {
   args: { browser: NETWORK_ERROR },
+};
+
+export const LoadedInBrowser: Story = {
+  args: { initialExecutedOn: 'browser' },
 };

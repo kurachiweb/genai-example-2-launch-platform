@@ -2,14 +2,20 @@ import { useState } from 'react';
 
 import { SystemStatusView } from '../../../lib/components/system/system-status-view.tsx';
 import { createNetworkError } from '../../../lib/utilities/graphql/graphql-result.ts';
+import type { ExecutionSite } from '../../../lib/utilities/system/execution-site.ts';
 import type { SystemStatusResult } from '../../../lib/utilities/system/system-status-result.ts';
 
 export interface SystemStatusPageProps {
-  readonly server: SystemStatusResult;
+  readonly initial: SystemStatusResult;
+  readonly initialExecutedOn: ExecutionSite;
   readonly recheck: () => Promise<SystemStatusResult>;
 }
 
-export function SystemStatusPage({ server, recheck }: SystemStatusPageProps) {
+export function SystemStatusPage({
+  initial,
+  initialExecutedOn,
+  recheck,
+}: SystemStatusPageProps) {
   const [browser, setBrowser] = useState<SystemStatusResult>();
   const [rechecking, setRechecking] = useState(false);
 
@@ -29,7 +35,8 @@ export function SystemStatusPage({ server, recheck }: SystemStatusPageProps) {
 
   return (
     <SystemStatusView
-      server={server}
+      initial={initial}
+      initialExecutedOn={initialExecutedOn}
       browser={browser}
       onRecheck={handleRecheck}
       rechecking={rechecking}

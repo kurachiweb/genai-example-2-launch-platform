@@ -7,6 +7,7 @@ import {
   DATABASE_LABEL,
   DATABASE_REACHABLE_LABEL,
   DATABASE_UNREACHABLE_LABEL,
+  PAGE_LOAD_RESULT_HEADING,
   RECHECK_GUIDANCE,
   RECHECK_LABEL,
   RECHECKING_LABEL,
@@ -43,6 +44,7 @@ describe('疎通確認の文言', () => {
     for (const label of [
       SYSTEM_STATUS_TITLE,
       SERVER_RESULT_HEADING,
+      PAGE_LOAD_RESULT_HEADING,
       BROWSER_RESULT_HEADING,
       API_SERVER_TIME_LABEL,
       DATABASE_LABEL,
@@ -53,7 +55,17 @@ describe('疎通確認の文言', () => {
     }
   });
 
-  test('サーバー側の描画時とブラウザからの再確認の見出しは互いに異なる', () => {
-    expect(SERVER_RESULT_HEADING).not.toBe(BROWSER_RESULT_HEADING);
+  test('ブラウザで画面を表示した時の結果の見出しは「画面の読み込み時の結果」にする', () => {
+    expect(PAGE_LOAD_RESULT_HEADING).toBe('画面の読み込み時の結果');
+  });
+
+  test('サーバー側の描画時・画面の読み込み時・ブラウザからの再確認の3つの区画の見出しは互いに異なる', () => {
+    const headings = [
+      SERVER_RESULT_HEADING,
+      PAGE_LOAD_RESULT_HEADING,
+      BROWSER_RESULT_HEADING,
+    ];
+
+    expect(new Set(headings).size).toBe(headings.length);
   });
 });

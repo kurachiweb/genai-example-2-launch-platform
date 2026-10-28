@@ -2,6 +2,8 @@ export const SYSTEM_STATUS_TITLE = '疎通確認';
 
 export const SERVER_RESULT_HEADING = 'サーバー側の描画時の結果';
 
+export const PAGE_LOAD_RESULT_HEADING = '画面の読み込み時の結果';
+
 export const BROWSER_RESULT_HEADING = 'ブラウザからの再確認の結果';
 
 export const API_SERVER_TIME_LABEL = 'APIサーバーの時刻';

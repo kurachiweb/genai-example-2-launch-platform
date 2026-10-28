@@ -233,7 +233,10 @@ const token = turnstile.consume();
 
 ### 疎通確認
 
-`SystemStatusView`は`server`(サーバー側の描画時の結果)・`browser`(ブラウザからの再確認の結果、省略可)・`onRecheck`・`rechecking`を受け、自身で`<h1>`と2つの区画を描く。疎通確認のルートは`<h1>`を足さない。
+`SystemStatusView`は`initial`(画面を表示した時の結果)・`initialExecutedOn`(その取得を実行した場所、`'server'`または`'browser'`)・`browser`(ブラウザからの再確認の結果、省略可)・`onRecheck`・`rechecking`を受け、自身で`<h1>`と2つの区画を描く。疎通確認のルートは`<h1>`を足さない。
+
+- 画面を表示した時の結果の区画の見出しは`initialExecutedOn`で切り替え、`'server'`なら`SERVER_RESULT_HEADING`、`'browser'`なら`PAGE_LOAD_RESULT_HEADING`(`utilities/messages/system-status-messages.ts`)を出す。区画の中身は実行した場所によらず同じである。
+- loaderは同型の関数のため、ページを直接開いた時はサーバーで、画面内の遷移・ルーターの再検証(`router.invalidate()`)・先読みではブラウザで実行される。loaderは`utilities/system/execution-site.ts`の`currentExecutionSite()`(大域に`document`が無ければ`'server'`、あれば`'browser'`)で実行した場所を得て、結果と組にしてloaderのデータで返す。サーバーで得た実行した場所はloaderのデータとしてハイドレーションへ渡るため、ハイドレーションの表示は食い違わない。
 
 ## 1ファイル1コンポーネントとshadcn/uiの分割
 
