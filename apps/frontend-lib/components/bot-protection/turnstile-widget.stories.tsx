@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 import { fn } from 'storybook/test';
 
+import { resetTurnstileScriptFailure } from './turnstile-script-failure.ts';
 import { TurnstileWidget } from './turnstile-widget.tsx';
 import { useTurnstileToken } from './use-turnstile-token.ts';
 
@@ -30,6 +31,10 @@ const meta = {
     onSuccess: fn(),
     onExpire: fn(),
     onError: fn(),
+  },
+  // スクリプトの読み込みの失敗の記録はカタログのページの再読み込みまで残るため、前に開いたストーリーで起こした失敗を持ち越さない
+  beforeEach: () => {
+    resetTurnstileScriptFailure();
   },
   argTypes: {
     status: {

@@ -2,9 +2,11 @@ import {
   createMemoryHistory,
   createRootRouteWithContext,
   createRouter,
+  RouterContextProvider,
   RouterProvider,
 } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -18,6 +20,10 @@ import {
   turnstileResetCount,
 } from '../../test/fake-turnstile.tsx';
 import { setThemePreference } from '../../utilities/theme/theme-preference.ts';
+import {
+  recordTurnstileScriptFailure,
+  resetTurnstileScriptFailure,
+} from './turnstile-script-failure.ts';
 import { TurnstileWidget } from './turnstile-widget.tsx';
 import { useTurnstileToken } from './use-turnstile-token.ts';
 
@@ -55,23 +61,29 @@ interface RouterOptions {
   readonly context?: object;
 }
 
-async function renderInRouter(
+function createTestRouter(
   ui: ReactNode,
-  { nonce, context = runtimeContext }: RouterOptions = { nonce: NONCE },
-): Promise<void> {
+  { nonce, context = runtimeContext }: RouterOptions,
+) {
   const rootRoute = createRootRouteWithContext<object>()({
     component: () => ui,
     errorComponent: ({ error }) => (
       <p role="alert">{error instanceof Error ? error.message : ''}</p>
     ),
   });
-  const router = createRouter({
+  return createRouter({
     routeTree: rootRoute,
     history: createMemoryHistory(),
     context,
     ssr: { nonce },
   });
-  await render(<RouterProvider router={router} />);
+}
+
+async function renderInRouter(
+  ui: ReactNode,
+  options: RouterOptions = { nonce: NONCE },
+): Promise<void> {
+  await render(<RouterProvider router={createTestRouter(ui, options)} />);
 }
 
 const consumed: (string | undefined)[] = [];
@@ -94,6 +106,63 @@ function TokenHarness({ action }: { readonly action?: string }) {
     </div>
   );
 }
+
+interface NamedHarnessProps {
+  readonly name: string;
+}
+
+// 同じページに複数置いた時に、どのウィジェットの状態と文言かを区画の名前で見分ける
+function NamedHarness({ name }: NamedHarnessProps) {
+  const turnstile = useTurnstileToken();
+  return (
+    <section aria-label={name}>
+      <TurnstileWidget {...turnstile.widgetProps} />
+      <p data-testid={`status-${name}`}>{turnstile.status}</p>
+    </section>
+  );
+}
+
+function LatePlacementHarness() {
+  const [placed, setPlaced] = useState(false);
+  return (
+    <>
+      <NamedHarness name="1つ目" />
+      <button
+        type="button"
+        onClick={() => {
+          setPlaced(true);
+        }}
+      >
+        2つ目のウィジェットを置く
+      </button>
+      {placed ? <NamedHarness name="2つ目" /> : null}
+    </>
+  );
+}
+
+function RemountHarness() {
+  const [generation, setGeneration] = useState(0);
+  return (
+    <>
+      <NamedHarness key={generation} name="描き直すウィジェット" />
+      <button
+        type="button"
+        onClick={() => {
+          setGeneration((current) => current + 1);
+        }}
+      >
+        描き直す
+      </button>
+    </>
+  );
+}
+
+const widgetProbe = {
+  status: 'idle',
+  widgetRef: { current: undefined },
+  onSuccess: () => undefined,
+  onExpire: () => undefined,
+} as const;
 
 interface LayoutHarnessProps {
   readonly layoutClassName: string;
@@ -133,6 +202,16 @@ const failScript = () =>
   userEvent.click(
     page.getByRole('button', { name: 'スクリプトの読み込みを失敗させる' }),
   );
+const failScriptFromFirstWidget = () =>
+  userEvent.click(
+    page
+      .getByRole('button', { name: 'スクリプトの読み込みを失敗させる' })
+      .first(),
+  );
+const regionOf = (name: string) => page.getByRole('region', { name });
+const statusOf = (name: string) => page.getByTestId(`status-${name}`);
+const renderedWidgetCount = () =>
+  page.getByTestId('fake-turnstile').elements().length;
 const submit = () =>
   userEvent.click(page.getByRole('button', { name: '送信する' }));
 const statusText = () => page.getByTestId('status');
@@ -140,6 +219,7 @@ const tokenText = () => page.getByTestId('token');
 
 beforeEach(() => {
   resetFakeTurnstile();
+  resetTurnstileScriptFailure();
   consumed.length = 0;
 });
 
@@ -147,6 +227,7 @@ afterEach(() => {
   setThemePreference(document.documentElement, undefined, 'light');
   document.documentElement.style.colorScheme = '';
   resetFakeTurnstile();
+  resetTurnstileScriptFailure();
   vi.restoreAllMocks();
 });
 
@@ -326,6 +407,146 @@ describe('TurnstileWidget', () => {
     await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
     await expect.element(statusText()).toHaveTextContent('ready');
     await expect.element(tokenText()).toHaveTextContent('turnstile-token-1');
+  });
+});
+
+describe('TurnstileWidgetのスクリプトの読み込みの失敗の共有', () => {
+  test('スクリプトの読み込みに失敗すると、失敗を知らせたウィジェットもウィジェットの部品を描かずに失敗の文言を出し続ける', async () => {
+    await renderInRouter(<TokenHarness />);
+    await expect
+      .element(page.getByTestId('fake-turnstile'))
+      .toBeInTheDocument();
+
+    await failScript();
+
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent(FAILURE_MESSAGE);
+    await expect.element(statusText()).toHaveTextContent('error');
+    await expect.poll(renderedWidgetCount).toBe(0);
+  });
+
+  test('失敗の時に同じページに置いていた2つ目のウィジェットも、読み込みを待たずに失敗の文言を出す', async () => {
+    await renderInRouter(
+      <>
+        <NamedHarness name="1つ目" />
+        <NamedHarness name="2つ目" />
+      </>,
+    );
+    await expect
+      .element(page.getByTestId('fake-turnstile').nth(1))
+      .toBeInTheDocument();
+
+    await failScriptFromFirstWidget();
+
+    for (const name of ['1つ目', '2つ目']) {
+      await expect
+        .element(regionOf(name).getByRole('alert'))
+        .toHaveTextContent(FAILURE_MESSAGE);
+      await expect.element(statusOf(name)).toHaveTextContent('error');
+    }
+    await expect.poll(renderedWidgetCount).toBe(0);
+  });
+
+  test('失敗の後に新しく置いたウィジェットは、読み込みを待たずに失敗の文言を出し、ウィジェットの部品を描かない', async () => {
+    await renderInRouter(<LatePlacementHarness />);
+    await expect
+      .element(page.getByTestId('fake-turnstile'))
+      .toBeInTheDocument();
+    await failScript();
+    await expect
+      .element(regionOf('1つ目').getByRole('alert'))
+      .toBeInTheDocument();
+
+    await userEvent.click(
+      page.getByRole('button', { name: '2つ目のウィジェットを置く' }),
+    );
+
+    await expect
+      .element(regionOf('2つ目').getByRole('alert'))
+      .toHaveTextContent(FAILURE_MESSAGE);
+    await expect.element(statusOf('2つ目')).toHaveTextContent('error');
+    expect(renderedWidgetCount()).toBe(0);
+  });
+
+  test('失敗の後に描き直したウィジェットは、読み込みを待たずに失敗の文言を出し、ウィジェットの部品を描かない', async () => {
+    await renderInRouter(<RemountHarness />);
+    await expect
+      .element(page.getByTestId('fake-turnstile'))
+      .toBeInTheDocument();
+    await failScript();
+    await expect
+      .element(statusOf('描き直すウィジェット'))
+      .toHaveTextContent('error');
+
+    await userEvent.click(page.getByRole('button', { name: '描き直す' }));
+
+    await expect
+      .element(regionOf('描き直すウィジェット').getByRole('alert'))
+      .toHaveTextContent(FAILURE_MESSAGE);
+    await expect
+      .element(statusOf('描き直すウィジェット'))
+      .toHaveTextContent('error');
+    expect(renderedWidgetCount()).toBe(0);
+  });
+
+  test('記録の後に置いたウィジェットは失敗を1回だけ知らせ、描画し直しても知らせ直さない', async () => {
+    recordTurnstileScriptFailure();
+    const onError = vi.fn<() => void>();
+
+    await renderInRouter(
+      <TurnstileWidget {...widgetProbe} onError={onError} />,
+    );
+
+    await expect.poll(() => onError.mock.calls.length).toBe(1);
+    setThemePreference(document.documentElement, undefined, 'dark');
+    await expect
+      .poll(() => document.documentElement.classList.contains('dark'))
+      .toBe(true);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(renderedWidgetCount()).toBe(0);
+  });
+
+  test('サーバーの描画では記録を読まず、ウィジェットの部品を描いて失敗の文言を出さない', () => {
+    recordTurnstileScriptFailure();
+    const onError = vi.fn<() => void>();
+    const router = createTestRouter(null, { nonce: NONCE });
+
+    const html = renderToString(
+      <RouterContextProvider router={router}>
+        <TurnstileWidget {...widgetProbe} onError={onError} />
+      </RouterContextProvider>,
+    );
+
+    expect(html).toContain('data-testid="fake-turnstile"');
+    expect(html).not.toContain(FAILURE_MESSAGE);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  test('判定の失敗は失敗したウィジェットだけに出し、同じページの他のウィジェットへ広げない', async () => {
+    await renderInRouter(
+      <>
+        <NamedHarness name="1つ目" />
+        <NamedHarness name="2つ目" />
+      </>,
+    );
+    await expect
+      .element(page.getByTestId('fake-turnstile').nth(1))
+      .toBeInTheDocument();
+
+    await userEvent.click(
+      page.getByRole('button', { name: '判定を失敗させる' }).first(),
+    );
+
+    await expect
+      .element(regionOf('1つ目').getByRole('alert'))
+      .toHaveTextContent(FAILURE_MESSAGE);
+    await expect.element(statusOf('1つ目')).toHaveTextContent('error');
+    await expect.element(statusOf('2つ目')).toHaveTextContent('idle');
+    await expect
+      .element(regionOf('2つ目').getByRole('alert'))
+      .not.toBeInTheDocument();
+    expect(renderedWidgetCount()).toBe(2);
   });
 });
 
