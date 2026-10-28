@@ -32,7 +32,7 @@ const config: Linter.Config[] = [
   {
     files: ['.storybook/main.ts'],
     rules: {
-      // 規則は作業ディレクトリから package.json を探すため、ルートから起動するコミット時の検査でも共通部品の宣言を読ませる
+      // 規則は作業ディレクトリからpackage.jsonを探すため、ルートから起動するコミット時の検査でも共通部品の宣言を読ませる
       'storybook/no-uninstalled-addons': [
         'error',
         { packageJsonLocation: join(import.meta.dirname, 'package.json') },
