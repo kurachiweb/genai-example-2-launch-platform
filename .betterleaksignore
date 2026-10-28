@@ -9,3 +9,4 @@
 .kiro/specs/admin-foundation/design.md:generic-password:1044
 apps/api/bun.lock:generic-password:378
 apps/client/bun.lock:generic-password:394
+apps/admin/bun.lock:generic-password:394

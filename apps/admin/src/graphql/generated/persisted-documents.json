@@ -1,0 +1,3 @@
+{
+  "sha256:cfd1cd38df39a20ba4d85b44cdc75b45715595ad92ef45f03d4bc5fd3146590c": "query AdminSystemStatus { systemStatus { databaseReachable serverTime } }"
+}

@@ -7,6 +7,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test:unit": "bun test --config=bunfig.unit.toml --pass-with-no-tests --path-ignore-patterns='lib/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test",
     "test:browser": "vitest run --config vitest.browser.config.ts",
+    "graphql:generate": "graphql-codegen --config codegen.config.ts",
+    "graphql:check": "graphql-codegen --config codegen.config.ts --check",
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview"
@@ -39,6 +41,8 @@
     "@cloudflare/vite-plugin": "1.53.0",
     "@eslint-react/eslint-plugin": "5.23.5",
     "@eslint/js": "10.0.1",
+    "@graphql-codegen/cli": "7.4.6",
+    "@graphql-codegen/client-preset": "6.2.3",
     "@tailwindcss/vite": "4.3.3",
     "@tanstack/eslint-plugin-query": "5.104.1",
     "@tanstack/eslint-plugin-router": "1.162.0",
