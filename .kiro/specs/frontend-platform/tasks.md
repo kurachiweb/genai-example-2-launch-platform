@@ -450,7 +450,7 @@
   - _Boundary: FormParts, 技術ドキュメント群_
   - _Requirements: 8.3, 8.5, 15.3, 15.4_
 
-- [ ] 11.2 疎通確認の結果の見出しを実行した場所に合わせる
+- [x] 11.2 疎通確認の結果の見出しを実行した場所に合わせる
   - 先に、共通部品の`utilities/system/execution-site.unit.test.ts`(新規)で、`currentExecutionSite(scope)`が`document`を持たない値で`'server'`、持つ値で`'browser'`を返すことを確かめる単体テストを書き、`execution-site.ts`(`ExecutionSite`・`currentExecutionSite(scope = globalThis)`)を作る
   - 先に、`system-status-messages.unit.test.ts`へ`PAGE_LOAD_RESULT_HEADING`(「画面の読み込み時の結果」)と、3つの区画の見出しが互いに異なることを加え、`system-status-view.browser.test.tsx`へ、`initialExecutedOn`が`'server'`なら「サーバー側の描画時の結果」、`'browser'`なら「画面の読み込み時の結果」の区画に同じ中身(時刻・到達可否・失敗の文言)を出し、再確認の区画は変わらないことを確かめるブラウザテストを書く。`SystemStatusView`のpropsを`initial`・`initialExecutedOn`・`browser?`・`onRecheck`・`rechecking`にし、ストーリーにブラウザで実行した場合を加える
   - 先に、client・adminの`src/graphql/system-status.unit.test.ts`へ、`toSystemStatusLoaderData(result, executedOn)`が`{ executedOn, result }`(失敗はErrorを含まない形)を返し、`fromSystemStatusLoaderData`が実行した場所と`GraphQLClientError`を戻すことを、`system-status-page.browser.test.tsx`へ実行した場所の見出しを確かめる検査を書く。`routes/system/status.tsx`の`loader`が`currentExecutionSite()`を渡し、`SystemStatusPage`(`initial`・`initialExecutedOn`・`recheck`)が`SystemStatusView`へ渡すようにする
@@ -460,7 +460,7 @@
   - _Boundary: SystemStatusView, StatusRoute, 技術ドキュメント群_
   - _Requirements: 8.12, 12.1, 12.2, 12.3, 12.6, 15.3, 15.4_
 
-- [ ] 11.3 Turnstileのスクリプトの読み込みの失敗をウィジェットの間で共有する
+- [x] 11.3 Turnstileのスクリプトの読み込みの失敗をウィジェットの間で共有する
   - 先に、`turnstile-widget.browser.test.tsx`へ、偽物のウィジェットでスクリプトの読み込みの失敗を起こした後に、新しく置いたウィジェット・描き直した(`key`を変えた)ウィジェット・失敗の時に同じページに置いていた2つ目のウィジェットが、読み込みを待たずに失敗の文言を`role="alert"`で出し、`useTurnstileToken`の`status`が`'error'`になり、`Turnstile`の部品を描かないことと、判定の失敗(`error-callback`)は他のウィジェットへ広がらないことを確かめるブラウザテストを書き、失敗を確かめる。テストの間で記録が残らないよう、各テストの前に`resetTurnstileScriptFailure()`を呼ぶ
   - `components/bot-protection/turnstile-script-failure.ts`(新規、`recordTurnstileScriptFailure`・`hasTurnstileScriptFailed`・`subscribeTurnstileScriptFailure`・`resetTurnstileScriptFailure`)を作る。`TurnstileWidget`の`scriptOptions.onError`は記録だけを行い、`useSyncExternalStore`(サーバーの値は常に偽)で記録を読んで、記録がある間は`Turnstile`を描かず、記録を読んだ時に`onError()`を1回呼ぶ
   - 偽物(`test/fake-turnstile.tsx`)にスクリプトの読み込みの失敗を起こす手段が無ければ加え、Storybookのカタログの失敗の状態のストーリーが記録を消してから描くようにする
@@ -469,7 +469,7 @@
   - _Boundary: TurnstileWidget, StorybookCatalog, 技術ドキュメント群_
   - _Requirements: 8.8, 8.9, 8.11, 15.3, 15.4_
 
-- [ ] 11.4 写しを元と照合する単体テストを足す
+- [x] 11.4 写しを元と照合する単体テストを足す
   - 先に、ルートの`config/contract-copies.unit.test.ts`(新規)を書き、元か写しの片方だけを変えると失敗することを、一時的に写しの値を1つ変えて確かめてから戻す。方式と対象は設計の「決定事項」の「写しの照合テスト」のとおりで、他のアプリのファイルを静的にも動的にもimportしない
     - 定数は既存の`config/inspector-ports.unit.test.ts`と同じく、`readFileSync`で読んだソースを`typescript`の`ts.createSourceFile`で構文解析し、名前で探した宣言の初期化子から値を取り出す。`Object.freeze(…)`・`as const`・`satisfies`を外し、オブジェクトリテラル・文字列リテラルの配列・数値リテラル(区切りの`_`を除く)・文字列リテラル・正規表現リテラル・文字列リテラルの配列の`.join(<区切り>)`を値にし、それ以外の形や宣言が見つからない場合は名前とファイルを示す例外で失敗させる
     - 中継の契約: `apps/frontend-lib/server/relay/relay-contract.ts`の`RELAY_REQUEST_HEADERS`・`GATEWAY_CALLER_HEADERS`(`apps/api/src/presentation/gateway/gateway-headers.ts`の`GATEWAY_HEADERS`の対応する項目)、`SESSION_INSTRUCTION_HEADERS`(`SESSION_RESPONSE_HEADERS`)、`SESSION_CLEAR_VALUE`(`apps/api/src/presentation/gateway/session-access.ts`の公開されていない`CLEAR_HEADER_VALUE`)、`SESSION_TOKEN_PATTERN`・`MAX_SESSION_MAX_AGE_SECONDS`(`apps/api/src/application/session/session-verifier.ts`の同名の値)
@@ -482,7 +482,7 @@
   - _Boundary: ContractCopies(ルートの単体テスト), GraphqlResult, RelayCore, SecurityHeaders, FrontendLogging, SentryScrub, RateLimitKeyHash, 技術ドキュメント群_
   - _Requirements: 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 4.4, 5.7, 6.6, 13.3, 13.8, 15.2, 15.3, 15.4_
 
-- [ ] 11.5 文書とモックアップを直す
+- [x] 11.5 文書とモックアップを直す
   - 判断18: `002-page-layouts.md`の管理者側の基本レイアウトの節に、管理者側のページは検索の対象外のため正規のURLを出さないことを書く(要件・設計は本改訂で反映済み、実装は変えない)
   - 判断20: `mockups/src/styles.css`のダークの`--destructive`を`oklch(0.64 0.2 25)`にし、`mockups/src/components/ui/button.tsx`のdestructiveに`dark:hover:bg-destructive/50`、`badge.tsx`のdestructiveに`dark:[a&]:hover:bg-destructive/50`を加えて実装の`button-variants.ts`・`badge-variants.ts`とそろえる。`001-design-principles.md`の「デザイン案の`oklch(0.6 0.2 25)`より明るい`oklch(0.64 0.2 25)`とする」と「赤を明るくした分」の箇条を、デザイン案と実装がともに`oklch(0.64 0.2 25)`で、その理由(コントラスト比AA)とダークのホバーを不透明度50%にする理由を述べる形に書き換え、変更前の値と経緯を残さない
   - 判断22: 本specの`research.md`の「GraphQLのクライアント側のコード生成」の記述(137〜139行付近)を、操作とフラグメントを`src/graphql/operations/**/*.graphql`に置き`graphql()`を呼ばず、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む現在の形に書き換える。research.mdの他の箇所にも`graphql()`で操作を書く古い形があれば同じく直す
@@ -501,6 +501,39 @@
   - 完了状態: infra-deliveryのdesign.md・tasks.md・research.mdにAddendumの記述が無く、legal-pagesの要件・設計・タスクにAddendumの参照を確かめる項目があり、ugc-moderationに`adminProductCategories`の照会の定義と使用が無く、`adminModerationCategoryOptions`の名前・型・使用箇所がそろっている
   - _Boundary: 下流specの設計_
   - _Requirements: 6.1, 6.4, 8.8_
+
+- [ ] 11.7 サーバーの詳細が欄をまとめた値と無効の欄に付く場合をフォーム全体の失敗にし、無効の欄の検証エラーを取り除く
+  - 先に、`server-field-errors.unit.test.ts`へ、経路の値がオブジェクト(`null`でなく、配列でなく、コンストラクタが`Object`のもの)の親の経路(例: `address`の下に欄を持つ値の`address`)の詳細を`setError`せず`unmatched`に入れること、配列の値の経路と`Date`・`null`の値の経路は欄として`setError`すること、親の経路の詳細の後に欄の詳細が来ても欄へフォーカスを移すことを確かめる単体テストを書く。判断28として、`isFieldDisabled`が真の経路とその子の経路の詳細を`setError`せず`unmatched`に入れ、フォーカスを移さないことも確かめる。`form.browser.test.tsx`へ、`serverFieldPrefix="input"`のフォームで`input.address`の詳細を返すと`onSubmitError`が`unmatched`にその詳細を受け、どの欄にもエラーが表示されず、欄の検証が通っていれば送信ボタンが有効のままであることを確かめるブラウザテストと、判断28として、`FormField`の`disabled`で無効にした欄(入力要素が`disabled`になる)の詳細を返すと`onSubmitError`が`unmatched`にその詳細を受け、その欄にエラーを表示せず送信ボタンが無効のまま残らないこと、無効の欄の値が`onSubmit`へ渡す値に入らないことを確かめるブラウザテストと、判断30・31として、`FormField`の`disabled`で無効にした欄をスキーマで任意(`.optional()`)にしたフォームで、その欄の値がスキーマを通らなくても、他の欄を正しく入力すると送信ボタンが有効になり、送信で`onSubmit`が変換を通った値(無効の欄を含まない)を受けること、無効の欄を任意にしないスキーマでも送信ボタンが無効のまま残らず送信できること、欄の再検証の後も送信ボタンが無効に戻らないことを確かめるブラウザテストを書く。`utilities/forms/disabled-field-errors.unit.test.ts`(新規)へ、`withoutDisabledFieldErrors`が、無効の欄の値を除いた複製を元のresolverへ渡し、受け取った`values`を変更しないこと(入れ子と配列の中の無効の欄を含む)、無効の欄が無ければ`values`をそのまま渡すこと、任意にした無効の欄の値がスキーマを通らなくても変換を通った値を返すこと、任意にしないスキーマでは無効の欄とその子の経路のエラーを除き空の親も除いて、無効の欄を除いた入力の値と空のエラーを返すこと(この時はオブジェクトの`refine`による項目をまたぐ検証も受けない値になること)、他の欄のエラーと`root`を残すことを確かめる単体テストを書き、いずれも失敗を確かめる
+  - `applyServerFieldErrors`の経路の判定(`isFieldPathOf`)で、経路の値が上のオブジェクトなら欄として扱わず`unmatched`に入れる。判定はreact-hook-formの`cloneObject`が入れ子として複製する値(コンストラクタが`Object`)にそろえ、`Date`・`File`・`FileList`などは欄の値として扱う。判断28として、`ServerFieldErrorTarget`に`isFieldDisabled(path)`を加え、経路そのものか祖先の経路で真なら`unmatched`に入れる。`AppForm`は`{ getValues: form.getValues, setError: form.setError, isFieldDisabled: (path) => form.control._names.disabled.has(path) }`を渡す(react-hook-formが無効の欄を入れ、`handleSubmit`が送信の値から外す集合。`_f.disabled`・`_f.ref`・`getFieldState`では判定できないことは設計の「決定事項」のとおり)。`FormField`に任意の`disabled?: boolean`を加えて`useController({ control, name, disabled })`へ渡す。`SubmitButton`の処理は変えない
+  - 判断30として、`utilities/forms/disabled-field-errors.ts`に`withoutDisabledFieldErrors(resolver, disabledNames)`を作り、`useAppForm`のresolverを包む。判断31として、包んだresolverは、`_names.disabled`が空でなければ`values`の複製(除く経路の上のオブジェクトと配列だけを浅く複製してキーを除き、`values`が指す`_formValues`は変更しない)を元のresolverへ渡し、結果にエラーが無ければそのまま返す。無効の欄にだけエラーが残れば(無効になり得る欄を任意にしないスキーマ)、そのエラーとその子の経路のエラーを除いて空の親も除き、無効の欄を除いた入力の値の複製と空のエラーを返す。他の欄のエラーが残れば`{ values: {}, errors }`を返す(`root`は除かない)。react-hook-formは`resolver(values, context, options)`に`_formValues`の全体と、`options`の`names`(検証する欄)・`fields`(その欄の`_f`)・`criteriaMode`・`shouldUseNativeValidation`を渡し、欄の再検証では`names`がその欄だけで`isValid`は`errors`の全体で決まるため、無効の欄の判定は`options.fields`ではなく`control._names.disabled`で行う。`useAppForm`は`useState`の初期化で1回だけ`createFormControl({ mode: 'onTouched', defaultValues })`で制御を作り、描画ごとに`withoutDisabledFieldErrors(zodResolver(schema, { error: fallbackMessage }), () => created.control._names.disabled)`を`useForm({ formControl: created.formControl, resolver, mode: 'onTouched', defaultValues })`へ渡す(`useForm`は描画ごとに`control._options`をpropsで置き換えるため`resolver`も渡す)。無効の欄の値は`handleSubmit`が`onSubmit`へ渡す値から外す(既存の振る舞い)ため、取り除いたエラーの値は送られない
+  - `frontend/005`のフォームの節に、サーバーの詳細が欄をまとめた値(配列でないオブジェクト)の経路に付く場合は欄に付けず、`onSubmitError`の`unmatched`へ渡してフォーム全体の失敗として示すことと、入力欄を描かない値をスキーマの入力に含めない制約はこの扱いでは代えられないこと(描かない値をオブジェクトにまとめても、その中の値の経路への詳細は欄に付く)を書く。描かれているが無効の欄の詳細も`onSubmitError`へ渡すことと、欄は`FormField`の`disabled`で無効にし入力要素の`disabled`の属性だけでは無効と扱わないこと、無効の欄の値は`onSubmit`へ渡す値から実行時に消えるが出力の型(`TOutput`)には残るため、型を頼りにせずAPIに要る値は`onSubmit`で読み込んだ値から足すことを書く。無効になり得る欄はスキーマで任意(`.optional()`)にし(`refine`などで参照する時はその欄が無い場合を扱う)、`useAppForm`が検証の前に無効の欄の値を除くため、無効の欄の値がスキーマを通らなくても変換を通った値で送信できることと、規則を守らないスキーマでは無効の欄のエラーを除いて変換と項目をまたぐ検証(`refine`・`superRefine`)を受けない入力の値が渡るため、規則は省けないことを書く。プロジェクト名と固有値を含めない
+  - 完了状態: 共通部品の単体テスト・ブラウザテストと一括検査が成功し、親の経路の詳細と`FormField`の`disabled`で無効にした欄の詳細を返してもサーバーの欄のエラーが残らず送信ボタンが無効のまま残らず、無効の欄の値がスキーマを通らなくても変換を通った値で送信できて、`frontend/005`の記述が実装と一致する
+  - _Boundary: FormParts, ServerFieldErrors, 技術ドキュメント群_
+  - _Requirements: 8.3, 8.5, 15.3, 15.4_
+
+- [ ] 11.8 描かない値をスキーマの入力に含める下流specの設計とフォームの値の経路を直す
+  - 判断26(content-reporting): `design.md:1395`(`ReportForm`)・`design.md:1396`(`ReportFormSchema`)・`tasks.md:215`の連絡先を、欄を描く間(`__root`の`viewer`が無いか`status === 'SUSPENDED'`で、権利侵害が選ばれた時)だけスキーマの入力に含める形にする(条件ごとにスキーマを分ける)。描かない間は送信の値に連絡先を入れない。ブラウザテストの項目に、連絡先を描かない状態で送信ボタンが連絡先のエラーで無効のまま残らないことを加える
+  - 判断26(engagement): `design.md:1108`(`CommentComposer`)・`design.md:1103`(`member`だけ評価)・`design.md:1106`(トップレベルの編集だけ評価)・`tasks.md:189`・`tasks.md:190`の評価を、評価の行を描く投稿欄(投稿者本人以外のトップレベルの投稿と、トップレベルの編集)だけスキーマの入力に含め、返信・投稿者本人の投稿欄・返信の編集では評価を含めないスキーマにする。`design.md:895`の返信の評価の`validation_error`(詳細`rating`)が描かない欄に付かないことを設計に書く
+  - 判断26(product-launch): `design.md:2026`(`ProductForm`)・`design.md:2031`(`LaunchDateField`)・`design.md:2032`(`ProductEditPage`)のローンチ日を、カレンダーを描く間(登録と、編集の`reschedule`・`new`)だけスキーマの入力に含め、固定の期間・`blocked`・`unknown`では含めず`onSubmit`で`launchDate: null`(ローンチを変えない)を足す。`design.md:1883`の`productHandle`・`design.md:1884`の`expectedVersion`もスキーマの入力に含めず`onSubmit`で足すことを確かめ、設計に明記する
+  - 判断26(identity-auth): `design.md:2767`(ログインの第2要素の切り替え)・`design.md:385`(`reauthentication-fields.tsx`)・`design.md:2779`(各フォームの形)・`tasks.md:384`(多要素認証が有効な時だけ第2要素)の第2要素を、描いている入力(認証コードとリカバリコードの一方)だけスキーマの入力に含め、切り替えと多要素認証の有無で条件ごとにスキーマを分ける。`design.md:2142`の詳細`secondFactor`は、スキーマが`secondFactor`をオブジェクトとして持てば判断25でフォーム全体の失敗になり、持たなければ経路が無く欄に対応しない詳細になることを設計に書く
+  - 判断26(版の値の確認): notificationsの`SenderInfoForm`(`design.md:1699`・`design.md:1567`の`expectedVersion`)、help-centerの`HelpArticleForm`(`design.md:1274`・`design.md:1252`の`HelpArticleFormValues`・`design.md:1116`の`expectedRevision`)、user-profile-socialの`ProfileEditForm`(`design.md:1249`・`design.md:1108`の`expectedHandle`)で、版の値をスキーマの入力に含めず`onSubmit`で足すことを確かめ、設計に明記する。含めていれば直す
+  - 判断27(help-center・product-launch): 編集する値をAPIの入力の`fields`の下に置く操作のフォームの値を、APIの入力の形に合わせて`fields`の下に置き(欄の名前を`fields.<名前>`にする)、`serverFieldPrefix="input"`を外した後のサーバーの詳細の経路とそろえる。help-centerは`design.md:1101`(`HelpArticleFields`)・`design.md:1110`(`CreateHelpArticleInput`)・`design.md:1114`(`UpdateHelpArticleInput`)に合わせて`design.md:1252`の`HelpArticleFormValues`と`design.md:1274`の`HelpArticleForm`(`fields.categoryId`の文言を含む)を、product-launchは`design.md:1868`(`ProductFieldsInput`)・`design.md:1878`(`RegisterProductInput`)・`design.md:1882`(`UpdateProductInput`)に合わせて`design.md:2026`の`ProductForm`と`product-form-schema.ts`の形を直す。`fields`の外の値(`reason`・`launchDate`)は`fields`の外に置く。各specのtasks.mdのフォームの項目とブラウザテストの項目にも反映する
+  - 判断28(product-launch): `design.md:2030`(`CategorySelect`の固定の期間の無効)・`design.md:2032`(`ProductEditPage`の固定の期間)のカテゴリを`FormField`の`disabled`で無効にし、スキーマで任意(`.optional()`)にして(判断31)、無効の欄の値は`onSubmit`へ渡す値から外れるため、APIの入力に要るカテゴリは`onSubmit`で読み込んだ値から足すことを設計に書く
+  - 水平展開: 本specのdesign.mdの表の「フォーム部品の形」の行の他の下流specにも、条件によって描かない欄や入力欄を描かない値をスキーマの入力に含めるフォーム、入力要素の`disabled`の属性だけで欄を無効にする設計、APIの入力と経路の形が合わないフォームが無いか確かめ、あれば同じく直す。無効になり得る欄をスキーマで任意にしていない設計があれば任意にする(判断31)。全欄を無効にするフォーム(help-centerの`readOnly`、user-profile-socialの停止中)は送信しないため、無効にする方法だけを確かめる
+  - 本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の「フォーム部品の形(描かない値とサーバーの欄のエラー、第2回の判断16・25〜28・30)」の行の「該当箇所」を改訂後の位置に更新し、表の前置きの「11.8で下流specを直すまで食い違いが残る」の文と、表の後の箇条の「判断26により11.8で直す」を、直した後の状態の記述にする
+  - 完了状態: 上の下流specのdesign.md・tasks.mdに、条件によって描かない欄の値と入力欄を描かない値(版の値・識別子)をスキーマの入力に含めるフォームの設計が無く、版の値と識別子を`onSubmit`で足すことが各設計に明記され、help-centerとproduct-launchのフォームの値がAPIの入力と同じく`fields`の下にあり、固定の期間のカテゴリが`FormField`の`disabled`で無効になりスキーマで任意にされ`onSubmit`で値を足すことが明記され、本specの表の該当箇所が改訂後の位置を指す
+  - _Boundary: 下流specの設計_
+  - _Requirements: 8.1, 8.3, 8.5_
+
+- [ ] 11.9 写しの照合テストが一括検査でも失敗することを文書に書き、確かめる
+  - 前提: dev-toolingの9.1(一括検査の段階「写しの照合」、ルートの`check:contract-copies`、`coding/001`の段階の一覧)が完了していること。完了していなければ止めて報告する
+  - `testing/001`の「アプリ間で写した値の照合」の節に、片方だけを変えるとルートの単体テスト・単体テストの一括実行と一括検査の段階「写しの照合」の両方で失敗することを書く。`docs/onboardings/README.md`のコマンドの表の`bun run check`の説明に写しの照合を加える。他の文書(`coding/003`・`CLAUDE.md`など)に一括検査の段階を列挙する記述があれば同じく直す(2026-10-28時点では`coding/001`だけで、dev-toolingの9.1が直す)。プロジェクト名と固有値を含めない
+  - 写しの値を一時的に1つ変えて、ルートの`bun run test:unit`と`bun run check`の段階「写しの照合」がどちらも失敗し、一括検査の他の段階は最後まで実行されることを確かめてから戻す
+  - 申し送り: 11.4の申し送り(照合は`bun run check`に含まれない)はdev-toolingの9.1と本タスクで変わるため、本タスクの結果の申し送りに、照合が一括検査にも含まれるようになったことを書く(11.4の申し送りは書き換えない)
+  - 完了状態: ルートの`bun run test:unit`と`bun run check`が成功し、写しの値を1つ変えると両方が失敗し、戻すと成功し、`testing/001`・オンボーディングの記述が一括検査の段階と一致する
+  - _Depends: dev-toolingの9.1_
+  - _Boundary: ContractCopies(ルートの単体テスト), 技術ドキュメント群_
+  - _Requirements: 15.2, 15.3, 15.4_
 
 ## Implementation Notes
 
@@ -564,4 +597,8 @@
 - 10.4(結果と開発者への確認): 下流23specを確定した契約に合わせ(1282d37)、design.mdの影響の表の該当箇所を合わせた後の位置にした。派生した契約として、admin-foundationの`ConfirmActionDialogProps`・`CategoryMasterEditorProps`の必須の`failureMessageOf`と、media-pipelineのアップロード部品の必須の`contactAvailable`が加わった。infra-deliveryに、非表示のTurnstileを使う条件としてプライバシーポリシーでCloudflareのTurnstile Privacy Addendumを参照する記述を足した(開発者の確認待ち)。product-launchとugc-moderationが同じ照会`adminProductCategories`を違う型で定義している(10.4より前からの食い違い)
 - 10.1(結果): フロントエンドは`server/http/rate-limit-key-hash.ts`でbackend-libと同じHMAC-SHA512を計算し(乱数の入力で不一致0)、要求ごとに鍵を読み込む。`HASH_PEPPER`はclient・adminのルート・staging・prodの`secrets.required`にあり、ローカルでもInfisicalの`dev`からの注入が要る。エントリの単体テストは800行の上限のため`create-frontend-server-entry.env-rate-limit.unit.test.ts`に環境の不備とIP制限の検査を分けた
 - 10.6(結果): client・adminのブラウザのエントリ`src/client.tsx`(Startの既定のエントリと同じ描画の処理)とサーバーのエントリ`src/server.ts`は、最初のimportで`../lib/utilities/validation/zod.ts`を副作用として読み込む。`test/config/entry-imports.unit.test.ts`(client・adminで同じ中身の写し)が最初の読み込み・Startの既定の名前での解決・`tanstackStart()`がエントリを指定しないことを確かめる。開発サーバーとビルド後のプレビューの両方でCSPの違反は0件。Startの版を上げる時は`src/client.tsx`を既定のエントリと見比べる
-- 11.1(結果と申し送り): `SubmitButton`は`(!isValid || hasFieldErrors) && !isSubmitting`で無効にし、`hasFieldErrors`は`root`以外の欄のエラー(サーバーのエラーと利用側が`setError`で欄に付けたエラー)を数える。サーバーの詳細がオブジェクトの値を持つ親の経路(例: `input.address`)に付くと、画面に出ないエラーで送信ボタンが無効のまま戻らない(開発者の判断待ち)。条件によって描かない欄をスキーマの入力に含める下流のフォーム(content-reportingの連絡先の欄など)は後続で直す
+- 11.1(結果と申し送り): `SubmitButton`は`(!isValid || hasFieldErrors) && !isSubmitting`で無効にし、`hasFieldErrors`は`root`以外の欄のエラー(サーバーのエラーと利用側が`setError`で欄に付けたエラー)を数える。サーバーの詳細がオブジェクトの値を持つ親の経路(例: `input.address`)に付くと、画面に出ないエラーで送信ボタンが無効のまま戻らない(判断25により11.7で直す)。条件によって描かない欄をスキーマの入力に含める下流のフォーム(content-reportingの連絡先の欄など)は判断26により11.8で直す
+- 11.2(結果、6fa4152): 疎通確認の画面のloaderは結果と`currentExecutionSite()`(`utilities/system/execution-site.ts`。大域に`document`があれば`'browser'`、無ければ`'server'`)の組を返し、ページを直接開いた時はサーバー、画面内の遷移・再試行・先読みではブラウザの値になる。`SystemStatusView`は`initial`・`initialExecutedOn`・`browser?`・`onRecheck`・`rechecking`を受け、画面を表示した時の結果の区画の見出しを`'server'`なら「サーバー側の描画時の結果」、`'browser'`なら`PAGE_LOAD_RESULT_HEADING`(「画面の読み込み時の結果」)に切り替え、中身と再確認の区画は変えない。client・adminの画面とloaderの単体テスト、`002-page-layouts.md`・`003-text-and-copy-rules.md`・`frontend/005`を合わせた
+- 11.3(結果、550d53c): スクリプトの読み込みの失敗は`components/bot-protection/turnstile-script-failure.ts`にページで1つ記録し(`recordTurnstileScriptFailure`・`hasTurnstileScriptFailed`・`subscribeTurnstileScriptFailure`、テスト用の`resetTurnstileScriptFailure`)、ライブラリの`scriptOptions.onError`は記録だけを行う。`TurnstileWidget`は記録を`useSyncExternalStore`(サーバーとハイドレーションでは常に偽)で読み、失敗の後はウィジェットを描かずに失敗の文言を出す。スクリプトの要素の`error`は要素を加えた最初のインスタンスにしか届かないため、利用側の`onError`は記録を読んだ時の`useEffect`から`useEffectEvent`で呼び、最初のインスタンスも含めて1回ずつ知らせる。偽物の`test/fake-turnstile.tsx`とストーリー、`frontend/005`を合わせた
+- 11.4(結果、b593a50): `config/contract-copies.unit.test.ts`の5つの照合(中継の契約・エラーコード・セキュリティヘッダー・伏せ字・レート制限のキーのハッシュ化)の10件のテストは、ルートの`bun run test:unit`と全アプリの`bun run test:all:unit`で効く。`bun run check`(テスト命名・整形・静的解析・型生成と操作の検査・型検査)はテストを実行しないため、照合は含まれない。写しの側のコメントは元の場所と照合テストの名前を示す形にし、`testing/001`に「アプリ間で写した値の照合」の節を、`coding/004`・`frontend/003`・`frontend/007`に写しの元と照合の記述を加えた
+- 11.5(結果、1cdd26f): 文書とモックアップだけを直した。`research.md`のGraphQLのクライアント側のコード生成の記述を`.graphql`に置く現在の形にし、`001-design-principles.md`のダークの`--destructive`をデザイン案と実装で同じ値とする記述に、`002-page-layouts.md`に管理者側は正規のURLを出さないことを、`infra/004`に`SENTRY_TRACE_LIFECYCLE`と`beforeSendSpan`の注意を加え、`project-values.md`の「記載している見出し」の列を`docs/GUIDES/tech`の出現箇所のすべての見出しにし、`docs/ai-prompts/008`のアンカーを直し、`mockups/src/styles.css`・`button.tsx`・`badge.tsx`のダークの`--destructive`とホバーを実装とそろえた

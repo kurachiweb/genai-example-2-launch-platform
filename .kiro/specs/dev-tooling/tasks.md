@@ -302,6 +302,17 @@
   - 完了状態: 一括検査・カバレッジ付き単体テスト・E2Eテストがすべて成功し、技術ドキュメントの固有値の検索結果が0件である
   - _Requirements: 5.7, 7.1, 10.3, 10.6_
 
+- [ ] 9. frontend-platformの最終検証後の判断の反映(承認後の改訂1)
+- [ ] 9.1 一括検査の段階に写しの照合を加える
+  - 前提: frontend-platformの11.4(ルートの`config/contract-copies.unit.test.ts`)が完了していること。完了していなければ止めて報告する
+  - 先に、`test-support/run-all-fixtures.ts`の`ROOT_CHECK_SCRIPTS`に`check:contract-copies`を加え、`scripts/tooling/run-all.unit.test.ts`の`check`の期待(呼び出しの順と結果の一覧で、型検査の後にルートだけで`bun run check:contract-copies`を実行すること、前段が失敗しても実行すること、ルートにスクリプトが無ければ「飛ばした(スクリプト未定義)」になること、結果の表のラベルが「写しの照合(check:contract-copies)」であること)と`run-all.step-errors.unit.test.ts`の期待を直し、失敗を確かめる
+  - ルートの`package.json`に`check:contract-copies`(`bun test ./config/contract-copies.unit.test.ts`。`./`を付けてパスとして渡す)を加え、`run-all.ts`の`CHECK_STEPS`の末尾(`typecheck`の後)に`{ script: 'check:contract-copies', targets: ROOT_ONLY, args: [] }`、`STEP_LABELS`に`['check:contract-copies', '写しの照合']`を加え、`USAGE`の`check`の説明の段階の並びに「写しの照合」を加える。`check`が引数を受け取らないことと、照合のテストがルートの`test:unit`にも残ることは変えない
+  - `coding/001`の「一括検査」の節の段階の一覧の末尾に「写しの照合(ルートの`check:contract-copies`)」を加え、テストを実行する段階のため型検査の後に置く理由と、結果の表の例(行と件数)を合わせる。プロジェクト名と固有値を含めない
+  - 完了状態: ルートの単体テスト(`run-all`のテストを含む)と`bun run check`が成功し、結果の表の最後の段階が「写しの照合(check:contract-copies)」で、`coding/001`の段階の一覧が`run-all.ts`と一致する
+  - _Boundary: AggregateRunner, CodingDocs_
+  - _Depends: 4.3_
+  - _Requirements: 5.7, 5.10_
+
 ## Implementation Notes
 
 - 1.1: ルートは`@playwright/test`だけを直接宣言し、`playwright`・`playwright-core`は`@playwright/test`の完全固定により1.63.0へ推移的に決まる。主要パッケージ一覧の文書化(7.1・7.3)ではこの点を明記する。

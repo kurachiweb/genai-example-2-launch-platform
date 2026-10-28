@@ -246,6 +246,16 @@
 - 利用側アプリの単体テストの設定: email-deliveryの8.2で、eventの単体テストが読み込む`lib/core`のファイルがBunのカバレッジの分母に入り閾値を割った。Bun 1.4.4では`--path-ignore-patterns`がテストファイルの選択にだけ効き、分母から外せるのはbunfigの`coveragePathIgnorePatterns`だけである。開発者の決定で、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に`lib/**`・`db/**`を加えた`apps/event/bunfig.unit.toml`を置き、eventの`test:unit`が`--config`で指す。`coveragePathIgnorePatterns`以外がルートと同じであることと配置先の除外は、`scripts/tooling/check-test-names.unit.test.ts`が検査する(client・adminも単体テストを持つと同じ設定が要る)。要件6.5(アプリ内でも共通のテスト設定)は、ルートの設定の書き写しとその同期の検査で満たす。
 - 変えた箇所: design.mdのAllowed Dependencies・Dependency Direction・File Structure Plan(`config/vitest/read-nested-d1-migrations.ts`)・VitestPresets・AppScriptContract(`test:unit`の行と、検査担当でない利用側アプリの外し方)・追跡表の6.5・Testing Strategyの`check-test-names.unit.test.ts`。要件・タスクと`spec.json`の承認の状態は変えていない。本書の「Design Decisions」の「簡素化」の「Vitestプリセットは値のimportを持たない定数にし」は、当時の決定の記録として残した。
 
+## frontend-platformの最終検証による承認後の改訂(改訂1、2026-10-28)
+
+- **状態**: 2026-10-28に開発者が決定した改訂で、確定している。frontend-platformの最終検証の後に開発者が決めた判断のうちの1件(判断29)である。実装は追加タスク9.1で行う。
+- **Context**: frontend-platformは、frontend-libがapi・backend-libから写した値(中継の契約・エラーコード・セキュリティヘッダー・伏せ字・レート制限のキーのハッシュ化)を元と照合するルートの単体テスト`config/contract-copies.unit.test.ts`を置いた(frontend-platformの11.4)。このテストはルートの`bun run test:unit`と`bun run test:all:unit`で実行されるが、一括検査(`bun run check`)はテストを実行しないため、一括検査だけを実行した開発者は写しの食い違いに気付かない。
+- **決定**: 一括検査の段階に「写しの照合」を加える。ルートの`package.json`に`check:contract-copies`(`bun test ./config/contract-copies.unit.test.ts`)を加え、`run-all.ts`の`CHECK_STEPS`の末尾(`typecheck`の後)にルートだけを対象とする段階として置く。他の段階と同じく`bun run <スクリプト>`で実行し、スクリプトが無ければ飛ばす。照合のテストはルートの`test:unit`にも残す。
+- **理由**: 写しの照合は構文解析と子プロセスの実行で他の段階の結果に依らないが、配置確認から型検査までの静的な検査と違いテストを実行するため、最後の段階に置く。`bun test`は`./`で始まらない引数をファイル名の部分一致として扱うため、パスとして渡す。
+- **持ち主**: `run-all.ts`・そのテスト(`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`)・補助(`test-support/run-all-fixtures.ts`)・ルートの`package.json`・`coding/001`は本specの成果物のため、変更は本specのタスク9.1で行う。照合のテストと`testing/001`の「アプリ間で写した値の照合」の節はfrontend-platformの持ち物で、frontend-platformの11.9が9.1に依存して文書と検証を行う(backend-platformの11.1とfrontend-platformの10.1と同じ分担)。
+- **要件**: 5.10を加えた。一括検査を使う開発者から見える振る舞いを変えるため、`requirements.md`に「承認後の改訂」の表を設けて改訂1の行を置いた。
+- **変えた箇所**: 設計のRevalidation Triggers・AggregateRunnerのBatch / Job Contract(`check`の段階と写しの照合のスクリプト)・追跡表の5.10・Testing Strategyの`run-all.unit.test.ts`、タスク9・9.1。`spec.json`の承認の状態は変えていない。
+
 ## References
 
 - [TypeScript 6.0 Release Notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html) — 既定値の変更と非推奨オプション

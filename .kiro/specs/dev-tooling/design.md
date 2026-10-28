@@ -59,6 +59,7 @@
 - `config/workspace-layout.ts`のアプリ一覧・共有ディレクトリの配置先・検査担当アプリの変更。
 - `config/test-patterns.ts`の命名パターン・生成コードのパターン・閾値の変更。
 - アプリのスクリプト契約(スクリプト名と意味)の変更。
+- 一括検査の段階の追加と順序の変更。frontend-platformの判断29(承認後の改訂1)で、型検査の後にルートの写しの照合(`check:contract-copies`)を加える。照合のテスト(`config/contract-copies.unit.test.ts`)の持ち主はfrontend-platformである。
 - `createBaseConfig`の引数の形の変更、`tsconfig.base.json`の型検査・変換オプションの変更。
 - 主要パッケージの一覧の版の変更(特にVitest・TypeScript・Playwright)。
 - compose.yamlのマウント構成の変更。
@@ -321,6 +322,7 @@ graph TB
 | 5.7         | 一括検査と失敗の表示                       | AggregateRunner                                                        | `runAggregate`・`formatSummary`                                                                                          | 一括検査         |
 | 5.8         | 未作成アプリを飛ばす                       | AggregateRunner                                                        | `StepOutcome.skipped`                                                                                                    | 一括検査         |
 | 5.9         | mockupsを含めない                          | WorkspaceLayout・PrettierConfig・StagedTaskPlanner                     | `QUALITY_GATE_EXCLUDED_DIRS`                                                                                             | —                |
+| 5.10        | 一括検査での写しの照合(承認後の改訂1)      | AggregateRunner                                                        | `CHECK_STEPS`・`check:contract-copies`                                                                                   | 一括検査         |
 | 6.1         | 単体テストの対象                           | BunTestConfig・AppScriptContract・TestNameChecker                      | `test:unit`・`findMisnamedTestFiles`(部分一致で拾う命名規約外の名前は一括検査で失敗)                                     | —                |
 | 6.2         | ブラウザテストの対象                       | VitestPresets                                                          | `browserTestPreset.include`                                                                                              | —                |
 | 6.3         | Workers統合テストの対象                    | VitestPresets                                                          | `workerTestPreset.include`                                                                                               | —                |
@@ -736,10 +738,10 @@ export declare function exitCodeOf(results: readonly StepResult[]): 0 | 1;
 ##### Batch / Job Contract
 
 - Trigger: `bun run check`・`bun run test:all:unit`・`bun run test:all:browser`・`bun run test:all:worker`。
-- `check`の段階: 共有ディレクトリの配置確認 → テスト命名検査 → ルートの`format:check` → ルートと各アプリの`lint` → 各アプリの`cf-typegen:check`(型生成の検査。ルートは対象外。backend-platformの承認後の改訂8で追加) → 各アプリの`graphql:check`(GraphQLの生成物の検査。アプリだけが対象で、スクリプトを持たないアプリは飛ばす。api-gatewayの承認後の改訂2で追加) → ルートと各アプリの`typecheck`。
+- `check`の段階: 共有ディレクトリの配置確認 → テスト命名検査 → ルートの`format:check` → ルートと各アプリの`lint` → 各アプリの`cf-typegen:check`(型生成の検査。ルートは対象外。backend-platformの承認後の改訂8で追加) → 各アプリの`graphql:check`(GraphQLの生成物の検査。アプリだけが対象で、スクリプトを持たないアプリは飛ばす。api-gatewayの承認後の改訂2で追加) → ルートと各アプリの`typecheck` → ルートの`check:contract-copies`(写しの照合。ルートだけが対象で、スクリプトが無ければ飛ばす。frontend-platformの判断29による承認後の改訂1で追加、5.10)。
 - `test:all:*`: ルートと各アプリの同名スクリプト(`test:all:unit`なら`test:unit`)を、`forwardedArgs`付きで実行する。
 - 出力: 段階・対象・結果(成功/失敗と終了コードまたは原因/飛ばした理由)の表を表示し、`cause`付きの失敗があれば原因(リポジトリ相対パスと理由)を重複を除いて続けて表示する。1つでも失敗があれば終了コード1で終える。
-- `check`は追加の引数を受け取らない(余分な引数で失敗する段階があるため)。配置確認と命名検査は、ルートのスクリプト`shared-dirs:verify`・`check:test-names`として実行する。
+- `check`は追加の引数を受け取らない(余分な引数で失敗する段階があるため)。配置確認と命名検査は、ルートのスクリプト`shared-dirs:verify`・`check:test-names`として実行する。写しの照合は、ルートのスクリプト`check:contract-copies`(`bun test ./config/contract-copies.unit.test.ts`。`bun test`は`./`で始まらない引数をファイル名の部分一致として扱うため、パスとして渡す)として実行する。静的な検査の後にテストを実行する段階のため、型検査の後に置く。照合のテストはルートの`test:unit`にも残す(承認後の改訂1)。
 - 冪等性: 読み取り専用の検査だけを実行する。
 
 #### SharedDirs
@@ -1148,7 +1150,7 @@ TDDで進め、ルートの単体テスト(`bun run test:unit`)はカバレッ�
     - `apps/backend-lib`・`apps/db`のファイルは`apps/api/lib`・`apps/api/db`へ読み替えられ、`apps/frontend-lib`のファイルはfrontend-libの所有になる。
     - マークダウンは整形だけの対象になる。
     - 検査担当アプリが無ければ`consumer-missing`になる。
-  - `run-all.unit.test.ts`: 失敗があっても後続を実行し、最後に終了コード1を返す。`package.json`が無いアプリは`project-missing`、スクリプトが無いアプリは`script-missing`になる。`--coverage`が各アプリへ渡る(5.7・5.8)。
+  - `run-all.unit.test.ts`: 失敗があっても後続を実行し、最後に終了コード1を返す。`package.json`が無いアプリは`project-missing`、スクリプトが無いアプリは`script-missing`になる。`--coverage`が各アプリへ渡る(5.7・5.8)。`check`は型検査の後にルートだけで`check:contract-copies`を実行し、結果の表に「写しの照合」と示す(5.10、承認後の改訂1)。
   - `shared-dirs.unit.test.ts`(8.2・8.4・8.5)
     - 一時ディレクトリで、コピー配置後は`copied`、node_modulesの中身があると`non-empty-node-modules`、配置先が無いと`missing`になる。
     - 配置元以外のマウントポイントは`mount-mismatch`になり、コピー配置はマウントポイント・同一性を読めない配置先・配置元と同じ実体に書き込まない。
