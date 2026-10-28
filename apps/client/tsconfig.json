@@ -14,5 +14,10 @@
     "lib/**/*.ts",
     "lib/**/*.tsx"
   ],
-  "exclude": ["lib/*.ts", "lib/**/*.stories.tsx"]
+  "exclude": [
+    "lib/*.ts",
+    "lib/**/*.stories.tsx",
+    "lib/**/*.test.ts",
+    "lib/**/*.test.tsx"
+  ]
 }
