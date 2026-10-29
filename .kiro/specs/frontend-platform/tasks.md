@@ -440,7 +440,7 @@
   - _Boundary: AppComposition, FrontendServerEntry, 技術ドキュメント群_
   - _Requirements: 4.2, 8.1, 12.6, 15.3, 15.4_
 
-- [ ] 11. 最終検証後の第2回・第3回の判断の反映
+- [x] 11. 最終検証後の第2回・第3回の判断の反映
 - [x] 11.1 送信ボタンをサーバーの欄のエラーが残る間は無効にする
   - 先に、`form.browser.test.tsx`へ、サーバーの詳細が2つの欄に出た後に1欄だけ直してもボタンが`disabled`のままで、もう1欄も直すと有効になること、直した欄のサーバーのエラーの表示だけが消えること、利用側が`setError('root.<名前>')`で付けたエラーだけでは無効にならないことを確かめるブラウザテストを書き、失敗を確かめる
   - `SubmitButton`で`useFormState()`の`errors`も購読し、`root`を除く欄のエラーが1つでもある間(`hasFieldErrors`)を`(!isValid || hasFieldErrors) && !isSubmitting`の条件で`disabled`にする。送信中の`aria-disabled`・`aria-busy`は変えない。`AppForm`の処理(`applyServerFieldErrors`・`onSubmitError`の呼び出し)は変えない
@@ -547,7 +547,7 @@
   - _Boundary: FormParts, ServerFieldErrors, 技術ドキュメント群_
   - _Requirements: 8.3, 8.5, 15.3, 15.4_
 
-- [ ] 11.11 検証規則の切り替えで、描かれている欄の表示中の検証のエラーも新しい規則の結果に置き換える
+- [x] 11.11 検証規則の切り替えで、描かれている欄の表示中の検証のエラーも新しい規則の結果に置き換える
   - 先に、`server-field-errors.unit.test.ts`へ欄に付けるエラーの種類が`SERVER_FIELD_ERROR_TYPE`であることを、`form-unmatched-fields.browser.test.tsx`へ、条件で欄を描く・描かないとスキーマを切り替えるフォームで、描かれている欄に表示中の検証のエラーが新しいスキーマの結果に置き換わり(新しい規則で正しければ消えて送信ボタンが有効になる)、描かれている欄のサーバーの欄のエラーは残ることを確かめるテストを書き、失敗を確かめる。11.10の「描かれている欄に表示中の検証のエラーは、その欄を次に検証するまで残す」テストは、この契約に書き直す
   - `utilities/forms/server-field-errors.ts`に`SERVER_FIELD_ERROR_TYPE`を加えて公開し、`applyServerFieldErrors`は`setError`の種類にサーバーのコードではなくこの値を使う
   - `useAppForm`は`schema`の同一性の変化で、エラーの付いた欄(`root`を除く)のうち、描かれていて(`mountStateOf(...) === true`)種類が`SERVER_FIELD_ERROR_TYPE`のエラーが付いた欄を除いた名前で`form.trigger(names)`を呼ぶ。`trigger()`(名前無し)と`control._setValid`は使わない
@@ -628,3 +628,4 @@
 - dev-toolingの9.1(結果、83836d3): ルートの`package.json`に`check:contract-copies`(`bun test ./config/contract-copies.unit.test.ts`)を、`run-all.ts`の`CHECK_STEPS`の末尾(型検査の後)にルートだけの段階「写しの照合」を加え、`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`・`test-support/run-all-fixtures.ts`と`coding/001`の「一括検査」の節を合わせた
 - 11.10(結果): `FormField`は`disabled`が真の間`clearErrors(name)`を呼び、`useAppForm`は`schema`の同一性の変化(最初の描画を含む)で描かれていない欄のエラーの経路だけを`trigger(names)`へ渡す。経路は`control._formState.errors`から集める(`form.formState`のproxyを読むとフォームがエラーの更新を購読するため)。マウント時にも`trigger([])`が1回動く(表示は変えない)。`_f.mount`の読み取りは`components/form/field-mount.ts`の`mountStateOf`(`react-hook-form`の実行時の`get`を読むため、`utilities/**`の依存の制約に合わせて`components/form`に置く)にまとめ、`AppForm`の`isFieldMounted`(`_f`が無ければ`control._names.array`)と共有する。`rules`を持たない一覧の経路そのものは、送信時は描かれている欄、再検証では描かれていない欄として扱い、design.mdの判断33・34の限界に書いた。`schema`を描画ごとに作るとフォームの状態を読む部品で検証と描き直しが止まらなくなるため、frontend/005の制約に書いた(静的解析での検出は未対応)。react-hook-formを上げる時は`_fields`・`_f.mount`・`_names.array`・`_formState`・`trigger`の配列の扱いを見直す。
 - 11.8(結果): 下流spec(content-reporting・engagement・product-launch・identity-auth・admin-foundation・help-center・notifications・user-profile-social・legal-pages・public-api・inquiry-chat・content-processing)の設計とタスクを判断16・25〜28・30・33〜36に合わせた(描く間だけ欄をスキーマに含め条件ごとの定数のスキーマを切り替える、値を`fields`の下に置く、`FormField`の`disabled`と`.optional()`、版の値・識別子を`onSubmit`で足す、全欄が無効のフォームは`SubmitButton`の`disabled`、`FormField`は`AppForm`の中だけ、`reauthentication_failed`の詳細は入力の形のとおりの経路)。位置はdesign.mdの影響の表の「フォーム部品の形(描かない値とサーバーの欄のエラー、第2回の判断16・25〜28・30・33〜36)」の行に移し、表の全参照(281件)を内容で照合して、それ以前の改訂でずれていたlegal-pages・ugc-moderation・infra-deliveryの参照も直した。
+- 11.11(結果): `applyServerFieldErrors`はサーバーの欄のエラーを`SERVER_FIELD_ERROR_TYPE`(`'server'`)で付け、`useAppForm`は`schema`の変化で`revalidationTargetsOf({ errors, fields, values })`(`components/form/revalidation-targets.ts`)の名前で`trigger`する。一覧全体の規則のエラー(`<一覧>.root`)は、`@hookform/resolvers`の`toNestErrors`が検証する名前に`<一覧>.<数字>`の経路がある時だけ`root`へ入れ子にするため、同じ一覧の中の経路が無ければ存在しない次の要素の経路を名前に加える(実在する要素を加えるとその欄のサーバーのエラーまで置き換わる)。欄のエラーの末端は`type`・`message`・`types`・`ref`のいずれかを持つオブジェクトとし、`ref`の中へ入らない(入れ子の値にこれらの名前の欄があると、まとめた値ごと末端と扱う)。`setError('list')`の一覧の経路そのもののエラーは一覧ごと検証し直され、一覧の中の欄だけが違反なら触れていない一覧の中の欄にもエラーが付く。振る舞いは`revalidation-targets.unit.test.ts`が実物の`createFormControl`・`zodResolver`・`trigger`で固定するため、react-hook-form・`@hookform/resolvers`を上げる時はこのテストで見直す。レビューは2回差し戻され、一覧全体のエラーの消失と、根拠の無い記述(一覧ごと消える限界・並べ替えの理由)を直した。

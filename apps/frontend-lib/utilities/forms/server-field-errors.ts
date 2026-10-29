@@ -10,6 +10,9 @@ export type ServerFieldErrorTarget<T extends FieldValues> = Pick<
   readonly isFieldMounted: (path: string) => boolean;
 };
 
+// スキーマを切り替えた時の再検証で、描かれている欄のサーバーのエラーを検証のエラー(種類はZodの問題のコード)と見分けて残すため、詳細のコードによらず固定の種類にする
+export const SERVER_FIELD_ERROR_TYPE = 'server';
+
 export interface ServerFieldErrorsResult {
   readonly unmatched: readonly FieldErrorDetail[];
 }
@@ -72,7 +75,7 @@ export const applyServerFieldErrors = <T extends FieldValues>(
     }
     form.setError(
       field,
-      { type: detail.code, message: detail.message },
+      { type: SERVER_FIELD_ERROR_TYPE, message: detail.message },
       { shouldFocus: applied.size === 0 },
     );
     applied.add(field);

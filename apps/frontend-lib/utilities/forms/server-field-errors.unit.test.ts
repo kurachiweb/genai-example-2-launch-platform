@@ -1,8 +1,12 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, expectTypeOf, test } from 'bun:test';
 import { createFormControl } from 'react-hook-form';
+import type { z } from 'zod';
 
 import type { FieldErrorDetail } from '../graphql/graphql-result.ts';
-import { applyServerFieldErrors } from './server-field-errors.ts';
+import {
+  applyServerFieldErrors,
+  SERVER_FIELD_ERROR_TYPE,
+} from './server-field-errors.ts';
 
 interface ProductForm {
   title: string;
@@ -82,11 +86,11 @@ describe('applyServerFieldErrors', () => {
     ]);
 
     expect(control.getFieldState('title').error).toMatchObject({
-      type: 'too_small',
+      type: SERVER_FIELD_ERROR_TYPE,
       message: '製品名を入力してください。',
     });
     expect(control.getFieldState('maker.name').error).toMatchObject({
-      type: 'invalid',
+      type: SERVER_FIELD_ERROR_TYPE,
       message: '作成者名は50文字以内で入力してください。',
     });
     expect(control.getFieldState('tagline').error).toBeUndefined();
@@ -142,10 +146,26 @@ describe('applyServerFieldErrors', () => {
     ]);
 
     expect(control.getFieldState('title').error).toMatchObject({
-      type: 'too_small',
+      type: SERVER_FIELD_ERROR_TYPE,
       message: '製品名を入力してください。',
     });
     expect(unmatched).toEqual([]);
+  });
+
+  test('欄のエラーの種類は詳細のコードによらず固定の種類にし、検証のエラーの種類(Zodの問題のコード)と重ならない', () => {
+    const { form, control } = createForm();
+
+    applyServerFieldErrors(form, [
+      detail('title', 'このプロダクト名は既に使われています。', 'custom'),
+    ]);
+
+    expect(SERVER_FIELD_ERROR_TYPE).toBe('server');
+    expect(control.getFieldState('title').error?.type).toBe(
+      SERVER_FIELD_ERROR_TYPE,
+    );
+    expectTypeOf<
+      Extract<z.core.$ZodIssueCode, typeof SERVER_FIELD_ERROR_TYPE>
+    >().toBeNever();
   });
 
   test('詳細が無ければ何もしない', () => {

@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import {
   createFormControl,
   type DefaultValues,
-  type FieldPath,
   type FieldValues,
   useForm,
   type UseFormReturn,
@@ -11,7 +10,7 @@ import {
 import type { z } from 'zod';
 
 import { withoutDisabledFieldErrors } from '../../utilities/forms/disabled-field-errors.ts';
-import { mountStateOf } from './field-mount.ts';
+import { revalidationTargetsOf } from './revalidation-targets.ts';
 
 export interface AppFormOptions<TInput extends FieldValues> {
   // サーバーの詳細は既定値に経路がある欄にだけ対応するため、部分的な既定値を受け付けず全欄を求める
@@ -24,19 +23,6 @@ const DEFAULT_INVALID_MESSAGE = '入力内容を確認してください。';
 const fallbackMessage = (): string => DEFAULT_INVALID_MESSAGE;
 
 const MODE = 'onTouched';
-
-// 入れ子のエラーのうち、typeかmessageを持つ項目を欄のエラーとみなして経路を集める。フォーム全体のrootは欄でないため除く
-const errorPathsOf = (errors: object, prefix = ''): string[] =>
-  Object.entries(errors).flatMap(([key, value]: [string, unknown]) => {
-    const isFormRoot = prefix === '' && key === 'root';
-    if (isFormRoot || typeof value !== 'object' || value === null) {
-      return [];
-    }
-    const path = `${prefix}${key}`;
-    return 'type' in value || 'message' in value
-      ? [path]
-      : errorPathsOf(value, `${path}.`);
-  });
 
 export function useAppForm<TInput extends FieldValues, TOutput>(
   schema: z.ZodType<TOutput, TInput>,
@@ -56,18 +42,19 @@ export function useAppForm<TInput extends FieldValues, TOutput>(
     resolver,
     defaultValues,
   });
-  const { trigger } = form;
+  const { trigger, getValues } = form;
 
-  // スキーマを切り替えるとisValidが古いスキーマの結果のまま残るため、新しいスキーマで検証し直す。名前の配列を渡したtriggerは全欄の検証の結果でisValidを計算し直し、渡した欄のエラーだけを置き換えるため、描かれている欄の表示中のエラー(サーバーのエラーを含む)を残し、利用者が直せない描かれていない欄のエラーだけを新しい結果にする
+  // スキーマを切り替えるとisValidと表示中のエラーが古いスキーマの結果のまま残るため、新しいスキーマで検証し直す。名前の配列を渡したtriggerは全欄の検証の結果でisValidを計算し直し、渡した欄のエラーだけを置き換えるため、描かれている欄のサーバーのエラーだけを残せる。errorsはformStateのproxyから読むとフォームがエラーの更新を購読するため、制御の内部の状態から読む
   useEffect(() => {
-    const unmountedErrorPaths = errorPathsOf(
-      created.control._formState.errors,
-    ).filter(
-      (path): path is FieldPath<TInput> =>
-        mountStateOf(created.control._fields, path) !== true,
+    const { _formState: formState, _fields: fields } = created.control;
+    void trigger(
+      revalidationTargetsOf({
+        errors: formState.errors,
+        fields,
+        values: getValues(),
+      }),
     );
-    void trigger(unmountedErrorPaths);
-  }, [schema, created, trigger]);
+  }, [schema, created, trigger, getValues]);
 
   return form;
 }

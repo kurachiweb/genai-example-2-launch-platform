@@ -21,6 +21,10 @@ const CITY_REQUIRED = '市区町村を入力してください。';
 const CATEGORY_REQUIRED = 'カテゴリを選んでください。';
 const CONTACT_TOO_SHORT = '連絡先は3文字以上で入力してください。';
 const TITLE_DUPLICATED = 'このプロダクト名は既に使われています。';
+const POSTAL_CODE_FORMAT =
+  '郵便番号はハイフン無しの7桁の数字で入力してください。';
+const POSTAL_CODE_REQUIRED = '郵便番号を入力してください。';
+const PREFECTURE_REQUIRED = '都道府県を入力してください。';
 
 type SubmitHandler = (values: unknown) => Promise<void> | void;
 type SubmitErrorHandler = (error: unknown, context: SubmitErrorContext) => void;
@@ -165,6 +169,53 @@ function ReportForm({
   );
 }
 
+interface ShippingInput {
+  postalCode: string;
+  prefecture?: string;
+}
+
+const domesticSchema: z.ZodType<ShippingInput, ShippingInput> = z.object({
+  postalCode: z.string().regex(/^\d{7}$/u, POSTAL_CODE_FORMAT),
+  prefecture: z.string().trim().min(1, PREFECTURE_REQUIRED),
+});
+
+const overseasSchema: z.ZodType<ShippingInput, ShippingInput> = z.object({
+  postalCode: z.string().trim().min(1, POSTAL_CODE_REQUIRED),
+});
+
+interface ShippingFormProps {
+  readonly domestic: boolean;
+  readonly onSubmit?: SubmitHandler;
+}
+
+// 条件で欄を描く・描かないと、描いたままの欄の規則も変わるスキーマを切り替える利用例
+function ShippingForm({
+  domestic,
+  onSubmit = () => undefined,
+}: ShippingFormProps) {
+  const form = useAppForm(domestic ? domesticSchema : overseasSchema, {
+    defaultValues: { postalCode: '', prefecture: '' },
+  });
+  return (
+    <AppForm
+      form={form}
+      onSubmit={onSubmit}
+      onSubmitError={() => undefined}
+      aria-label="配送先の登録"
+    >
+      <FormField control={form.control} name="postalCode" label="郵便番号">
+        {(control) => <Input {...control} />}
+      </FormField>
+      {domestic ? (
+        <FormField control={form.control} name="prefecture" label="都道府県">
+          {(control) => <Input {...control} />}
+        </FormField>
+      ) : null}
+      <SubmitButton>登録する</SubmitButton>
+    </AppForm>
+  );
+}
+
 const linksSchema = z.object({
   title: z.string().trim().min(1, TITLE_REQUIRED),
   links: z.array(z.object({ url: z.string() })),
@@ -208,6 +259,8 @@ const titleInput = () => page.getByRole('textbox', { name: 'プロダクト名' 
 const contactInput = () => page.getByRole('textbox', { name: '連絡先' });
 const cityInput = () => page.getByRole('textbox', { name: '市区町村' });
 const categoryInput = () => page.getByRole('textbox', { name: 'カテゴリ' });
+const postalCodeInput = () => page.getByRole('textbox', { name: '郵便番号' });
+const prefectureInput = () => page.getByRole('textbox', { name: '都道府県' });
 const submitButton = () =>
   page.getByRole('button', { name: '登録する', exact: true });
 
@@ -448,23 +501,56 @@ describe('フォーム部品の欄に対応しない経路', () => {
       expect(onSubmit.mock.calls).toStrictEqual([[{ title: 'Pitch Notes' }]]);
     });
 
-    test('切り替えても、描かれている欄に表示中の検証のエラーは、その欄を次に検証するまで残す', async () => {
-      const screen = await render(<ReportForm withContact />);
-      await userEvent.click(titleInput());
-      await userEvent.fill(contactInput(), 'ab');
+    test('切り替えると、描かれている欄に表示中の検証のエラーを新しい規則の結果に置き換え、新しい規則で正しければ消して送信ボタンを有効にし、送信できる', async () => {
+      const onSubmit = vi.fn<SubmitHandler>();
+      const screen = await render(
+        <ShippingForm domestic onSubmit={onSubmit} />,
+      );
+      await userEvent.fill(postalCodeInput(), 'SW1A 1AA');
+      await userEvent.click(prefectureInput());
       await userEvent.tab();
-      await expect.element(page.getByText(TITLE_REQUIRED)).toBeVisible();
-
-      await screen.rerender(<ReportForm withContact={false} />);
-
-      await expect.element(contactInput()).not.toBeInTheDocument();
-      await expect.element(page.getByText(TITLE_REQUIRED)).toBeVisible();
+      await expect.element(page.getByText(POSTAL_CODE_FORMAT)).toBeVisible();
+      await expect.element(page.getByText(PREFECTURE_REQUIRED)).toBeVisible();
       await expect.element(submitButton()).toBeDisabled();
 
-      await userEvent.fill(titleInput(), 'Pitch Notes');
+      await screen.rerender(
+        <ShippingForm domestic={false} onSubmit={onSubmit} />,
+      );
+
+      await expect.element(prefectureInput()).not.toBeInTheDocument();
+      await expect
+        .element(page.getByText(POSTAL_CODE_FORMAT))
+        .not.toBeInTheDocument();
+      await expect
+        .element(postalCodeInput())
+        .not.toHaveAttribute('aria-invalid');
+      await expect.element(submitButton()).toBeEnabled();
+
+      await userEvent.click(submitButton());
+
+      await expect.poll(() => onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit.mock.calls).toStrictEqual([[{ postalCode: 'SW1A 1AA' }]]);
+    });
+
+    test('切り替えると、描かれている欄に表示中の検証のエラーが新しい規則でも残る場合は、新しい規則の文言にする', async () => {
+      const screen = await render(<ShippingForm domestic />);
+      await userEvent.click(postalCodeInput());
+      await userEvent.tab();
+      await expect.element(page.getByText(POSTAL_CODE_FORMAT)).toBeVisible();
+
+      await screen.rerender(<ShippingForm domestic={false} />);
+
+      await expect.element(page.getByText(POSTAL_CODE_REQUIRED)).toBeVisible();
+      await expect
+        .element(page.getByText(POSTAL_CODE_FORMAT))
+        .not.toBeInTheDocument();
+      await expect.element(postalCodeInput()).toHaveAttribute('aria-invalid');
+      await expect.element(submitButton()).toBeDisabled();
+
+      await userEvent.fill(postalCodeInput(), 'SW1A 1AA');
 
       await expect
-        .element(page.getByText(TITLE_REQUIRED))
+        .element(page.getByText(POSTAL_CODE_REQUIRED))
         .not.toBeInTheDocument();
       await expect.element(submitButton()).toBeEnabled();
     });
