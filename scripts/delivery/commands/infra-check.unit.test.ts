@@ -35,6 +35,7 @@ const INFRA_FILES: readonly string[] = [
 const createFakeFiles = (paths: readonly string[]): RepoFiles => ({
   root: FAKE_ROOT,
   readText: () => Promise.reject(new Error('読み込みは使わない')),
+  writeText: () => Promise.reject(new Error('書き込みは使わない')),
   exists: (path) => Promise.resolve(paths.includes(path)),
   list: (pattern) => {
     const glob = new Bun.Glob(pattern);

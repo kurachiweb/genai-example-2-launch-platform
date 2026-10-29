@@ -7,12 +7,14 @@ export const FAKE_REPO_ROOT = '/repo';
 
 export interface FakeRepoFiles extends RepoFiles {
   readonly readPaths: () => readonly string[];
+  readonly written: () => Readonly<Record<string, string>>;
 }
 
 export const createFakeRepoFiles = (
   texts: Readonly<Record<string, string>>,
 ): FakeRepoFiles => {
   const readPaths: string[] = [];
+  const written = new Map<string, string>();
   const paths = Object.keys(texts);
   return {
     root: FAKE_REPO_ROOT,
@@ -32,7 +34,12 @@ export const createFakeRepoFiles = (
         paths.filter((path) => glob.match(path)).toSorted(),
       );
     },
+    writeText: (path, text) => {
+      written.set(path, text);
+      return Promise.resolve();
+    },
     readPaths: () => [...new Set(readPaths)].toSorted(),
+    written: () => Object.fromEntries(written),
   };
 };
 

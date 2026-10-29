@@ -76,7 +76,7 @@
   - _Boundary: CiInstaller, AuditGate_
   - _Requirements: 5.2, 5.3, 5.5_
 
-- [ ] 4.2 (P) 生成物と設定の検査のコマンドと、カバレッジの合算のコマンドを作る
+- [x] 4.2 (P) 生成物と設定の検査のコマンドと、カバレッジの合算のコマンドを作る
   - 先に、生成物と設定の検査の表(apiのマイグレーションの検出・DIのスモークテスト)の順に実行され、アプリにスクリプトが無ければ失敗すること、lcovの`SF:`にアプリのディレクトリを前置し、ルートと各アプリの単体・ブラウザ・Workers統合の結果を1つに合算することを確かめる単体テストを書く
   - 全アプリの型の鮮度とGraphQLの検査(apiの許可リストを含む。改訂3のclient・adminの型の鮮度もここに当たる)は、品質の検査で先に実行するルートの一括検査が行うため、表に含めない(改訂4)
   - 単体テストの結果は`coverage/unit/lcov.info`を明示して読む(一時ファイルを拾わない)
@@ -298,3 +298,4 @@
 - 3.3: `contract-check`・`policy-check`は5列が同一の違反を1行に統合する。読めない入力(解析エラー・ファイル無し・版の読み取り失敗)は違反の表に入れず`reportInputErrors`(`commands/shared/report-violations.ts`)で前提の不足として出し終了コード1。入力の読み込みは`commands/shared/load-input.ts`、偽のファイル読み込みは`test-fixtures/repo-files.ts`(いずれも9.1でdesign.mdへ反映)。複合アクションは`setup-toolchain/action.yml`の1つだけを読み、無ければ空の文書としてW9の違反になる。`pull-request.yml`・`delivery.yml`・`release-pr.yml`の存在はW1〜W10では検査されないため、7.3の`repo-contract.unit.test.ts`で確かめる。実リポジトリは現在contract-check 20件(C3×12・C5×8)、policy-check 9件(W7・W8・W10・W9×6)。
 - 4.1: 導入の対象は7件(ルート・api・event・frontend-lib・client・admin・db)。共通部品`commands/shared/install-targets.ts`(`findInstallTargets`・`runInTarget`)と偽の子プロセス`test-fixtures/command-runner.ts`を加えた。`createAuditCommand({exceptions, today})`・`todayInUtc`(見直し期限はUTCの日付で当日まで有効)、除外の識別子に数字も許すこと、不正な除外を失敗にすることは設計に無い(9.1で反映)。`audit`は全対象を確かめてから失敗する。`docs/GUIDES/tech/coding/003-shared-directories.md`の「CIでのコピー配置」は配置元(`apps/db`)の導入に触れておらず、docsのタスクで反映が要る。
 - 4.1(開発者の判断事項): 2026-10-29時点の実リポジトリで`audit`は終了コード1(api 9・event 9・frontend-lib 4(critical 1)・client 10・admin 10。zod・undici・sharp・Storybook・launch-editor)。6.3で`checks.yml`に組み込む前に、依存の更新か除外の登録を開発者が決める。
+- 4.2: `adapters/repo-files.ts`に`writeText`(ディレクトリ作成・リポジトリ外を拒否)を加えた(設計は読み取りのみ。9.1で反映)。`coverage-merge`はルートと`APPS`の`coverage/{unit,browser,worker}/lcov.info`だけを読み、無い種別は飛ばして`coverage/merged/lcov.info`へ書く。ルートの単体テストのlcovに`SF:../tmp/delivery-cli-*`(1.1の`cli.unit.test.ts`の一時ファイル)が入り合算にも残る(閾値には無影響。除外は後続で検討)。`core/app-checks.ts`の`appPackageJsonOf`は`core/install-targets.ts`の`packageJsonOf`と重複。設計に無いexport(`appCheckDirs`・`scriptNamesOf`・`planAppChecks`・`lcovReportsOf`・`prefixSourcePaths`・`COVERAGE_KINDS`・`MERGED_LCOV_PATH`)は9.1で反映。
