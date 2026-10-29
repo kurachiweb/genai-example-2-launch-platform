@@ -315,8 +315,9 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### IaC(Infrastructure as Code)
 
-- OpenTofu
-  - `infisical`プロバイダ
+- OpenTofu ... 1.13.2に完全固定
+  - Cloudflareプロバイダ(`cloudflare/cloudflare`) ... 5.27.0に完全固定
+  - `infisical`プロバイダ(`infisical/infisical`) ... 0.19.38に完全固定、Cloudflareプロバイダの資格情報を一時的なリソース(`ephemeral`)で取得
 
 ### ドキュメント
 

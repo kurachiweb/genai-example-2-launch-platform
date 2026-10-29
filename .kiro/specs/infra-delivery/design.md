@@ -193,7 +193,7 @@ apps/infra/
 │   └── prod.s3.hcl
 ├── live/                                # ルートモジュール(環境はinitのbackend設定と変数environmentで選ぶ)
 │   ├── versions.tf                      # required_version・required_providers(完全固定)・backend "s3"・encryption
-│   ├── variables.tf                     # environment・stateのパスフレーズと接続用の鍵(いずれもsensitive)
+│   ├── variables.tf                     # environment・stateのパスフレーズ(sensitive)
 │   ├── providers.tf                     # infisical(hostのみ)・ephemeral infisical_secret・cloudflare(api_token)
 │   ├── main.tf                          # 資源一覧の読み込み・4モジュールの呼び出し・環境の一致のcheck
 │   ├── outputs.tf                       # resource_ids(秘密でない識別子だけ)
@@ -729,9 +729,9 @@ output "email_sending_subdomain_id" { value = cloudflare_email_sending_subdomain
 
 **Responsibilities & Constraints**
 
-- `versions.tf`: `required_version = "1.13.2"`、`required_providers`に`cloudflare/cloudflare = "5.27.0"`・`infisical/infisical = "0.19.38"`(完全固定、1.8)。`backend "s3"`は`region = "auto"`・`use_lockfile = true`・`use_path_style = true`・`skip_credentials_validation`・`skip_region_validation`・`skip_requesting_account_id`・`skip_metadata_api_check`・`skip_s3_checksum`と、`access_key = var.state_access_key_id`・`secret_key = var.state_secret_access_key`を持ち、`bucket`・`key`・`endpoints`は`backends/<環境>.s3.hcl`で与える(3.1)。
+- `versions.tf`: `required_version = "1.13.2"`、`required_providers`に`cloudflare/cloudflare = "5.27.0"`・`infisical/infisical = "0.19.38"`(完全固定、1.8)。`backend "s3"`は`region = "auto"`・`use_lockfile = true`・`use_path_style = true`・`skip_credentials_validation`・`skip_region_validation`・`skip_requesting_account_id`・`skip_metadata_api_check`・`skip_s3_checksum`を持ち、`bucket`・`key`・`endpoints`は`backends/<環境>.s3.hcl`で与える(3.1)。接続用の鍵はbackendの設定に書かず、S3 backend専用の環境変数`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`で与える。OpenTofuはbackendの設定に`sensitive`な値があると初期化を拒否し、`sensitive`でない変数で渡した値は`.terraform/terraform.tfstate`と計画ファイルに保存されるためである(4.7。research.mdの「Decision: stateの保管先の鍵は環境変数で渡す」)。
 - `encryption`: `key_provider "pbkdf2" "state" { passphrase = var.state_passphrase }`、`method "aes_gcm" "state"`、`state { method = ...; enforced = true }`、`plan { method = ...; enforced = true }`(3.2・3.3)。
-- `variables.tf`: `environment`(`staging`・`prod`の検証)、`state_passphrase`・`state_access_key_id`・`state_secret_access_key`(いずれも`sensitive = true`)。値は環境変数`TF_VAR_*`で受け取り、tfvarsファイルを使わない。
+- `variables.tf`: `environment`(`staging`・`prod`の検証)、`state_passphrase`(`sensitive = true`)。値は環境変数`TF_VAR_state_passphrase`で受け取り、tfvarsファイルを使わない。
 - `main.tf`: `local.catalog = jsondecode(file("${path.module}/../environments/${var.environment}.json"))`。4モジュールへ資源一覧の値を渡す。`check "catalog_environment"`で`local.catalog.environment == var.environment`を確かめる。`import`ブロックは、上流specの手作業で作成済みの資源を取り込むときだけ一時的に置く(12.2)。
 - `providers.tf`: `provider "infisical" { host = local.catalog.infisical.host }`(認証は環境変数の`INFISICAL_AUTH_METHOD`などで選び、CIはOIDC、障害時のローカルの操作は有効期限の短いUniversal Auth、4.9)。`ephemeral "infisical_secret" "cloudflare_api_token" { name = "CLOUDFLARE_API_TOKEN", env_slug = var.environment, workspace_id = local.catalog.infisical.projectId, folder_path = "/ci/cloudflare" }`、`provider "cloudflare" { api_token = ephemeral.infisical_secret.cloudflare_api_token.value }`(4.4)。
 - `outputs.tf`: `resource_ids = { d1 = module.storage.database_ids, turnstile_sitekey = ..., web_analytics_site_token = ... }`。秘密値を出力しない(3.6)。
@@ -741,16 +741,16 @@ output "email_sending_subdomain_id" { value = cloudflare_email_sending_subdomain
 
 ##### Service Interface
 
-| 呼び出し                                                                                                                | 前提の環境変数                                                                            | 結果                                                                       |
-| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `tofu -chdir=apps/infra/live init -input=false -reconfigure -backend-config=../backends/<env>.s3.hcl`                   | `TF_VAR_state_access_key_id`・`TF_VAR_state_secret_access_key`・`TF_VAR_state_passphrase` | 状態の保管先へ接続                                                         |
-| `tofu ... plan -input=false -lock-timeout=5m -var environment=<env> [-exclude=module.worker_routing] -out=<env>.tfplan` | 上記+`INFISICAL_AUTH_METHOD`・`INFISICAL_MACHINE_IDENTITY_ID`・`INFISICAL_AUTH_JWT`       | 暗号化された計画ファイル(`apps/infra/live/<env>.tfplan`。Git管理外。改訂4) |
-| `tofu ... apply -input=false -lock-timeout=5m <env>.tfplan`                                                             | 同上                                                                                      | 資源の更新                                                                 |
-| `tofu ... output -json resource_ids`                                                                                    | 状態の接続の3つ                                                                           | 秘密でない識別子のJSON                                                     |
+| 呼び出し                                                                                                                | 前提の環境変数                                                                      | 結果                                                                       |
+| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `tofu -chdir=apps/infra/live init -input=false -reconfigure -backend-config=../backends/<env>.s3.hcl`                   | `AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`・`TF_VAR_state_passphrase`             | 状態の保管先へ接続                                                         |
+| `tofu ... plan -input=false -lock-timeout=5m -var environment=<env> [-exclude=module.worker_routing] -out=<env>.tfplan` | 上記+`INFISICAL_AUTH_METHOD`・`INFISICAL_MACHINE_IDENTITY_ID`・`INFISICAL_AUTH_JWT` | 暗号化された計画ファイル(`apps/infra/live/<env>.tfplan`。Git管理外。改訂4) |
+| `tofu ... apply -input=false -lock-timeout=5m <env>.tfplan`                                                             | 同上                                                                                | 資源の更新                                                                 |
+| `tofu ... output -json resource_ids`                                                                                    | 状態の接続の3つ                                                                     | 秘密でない識別子のJSON                                                     |
 
 **Implementation Notes**
 
-- Validation: `tests/live.tftest.hcl`が、モックのprovider(`mock_provider "cloudflare"`・`mock_provider "infisical"`)と`variables { environment = "staging" }`・`"prod"`で計画し、資源一覧の値がモジュールへ渡ることを確かめる。OpenTofu 1.13.2のモックが`ephemeral`リソースに対応しない場合は、このテストを置かずに`tofu validate`とTypeScriptの資源一覧の検査で代える(実装時に確かめ、research.mdに記録する)。
+- Validation: `tests/live.tftest.hcl`が、モックのprovider(`mock_provider "cloudflare"`・`mock_provider "infisical"`)と`variables { environment = "staging" }`・`"prod"`で計画し、資源一覧の値がモジュールへ渡ることを確かめる。OpenTofu 1.13.2のモックは`ephemeral`リソースに対応する(tasks 2.3で確かめ、research.mdに記録した)。テストはbackendの設定を使わないため、backendの鍵の環境変数を要らない。
 - Risks: providerのロックファイルは`tofu providers lock -platform=linux_amd64 -platform=linux_arm64`で作り、CIとArmの開発コンテナの両方で`-lockfile=readonly`の初期化を通す。
 
 ### scripts/delivery(core)
@@ -1529,7 +1529,7 @@ graph TB
 | `staging` | `/`                                   | 必須(Wave 1): `GOOGLE_NL_API_KEY`(event、content-processing)・`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`(event、media-pipeline)                                              | Workerのデプロイ                      | そのキーを`secrets.required`へ加える変更をmainへマージする前               |
 | `staging` | `/`・`/workers/api`・`/workers/event` | 必須(共通ドメイン): `STRIPE_API_KEY`(apiは`/workers/api`、eventは`/workers/event`に別々の制限付きキー。`/`には置かない、payments。改訂1)・`STRIPE_WEBHOOK_SECRET`(event、`/`、payments)        | Workerのデプロイ                      | そのキーを`secrets.required`へ加える変更をmainへマージする前               |
 | `staging` | `/`                                   | 任意(`OPTIONAL_WORKER_SECRETS`): `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`(event、email-delivery)・`MEDIA_SMOKE_TOKEN`(event、media-pipeline)・`DISIFY_API_KEY`(api・event、identity-auth)  | Workerのデプロイ                      | 任意。登録すると次のデプロイで反映される                                   |
-| `staging` | `/ci/tofu`                            | `TF_VAR_state_passphrase`(16文字以上)・`TF_VAR_state_access_key_id`・`TF_VAR_state_secret_access_key`                                                                                          | OpenTofu                              | 最初の実行の前                                                             |
+| `staging` | `/ci/tofu`                            | `TF_VAR_state_passphrase`(16文字以上)・`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`(stateのバケットだけを読み書きできるR2のAPIトークンの鍵)                                                    | OpenTofu                              | 最初の実行の前                                                             |
 | `staging` | `/ci/cloudflare`                      | `CLOUDFLARE_API_TOKEN`                                                                                                                                                                         | OpenTofuのprovider・Wrangler          | 最初の実行の前                                                             |
 | `prod`    | stagingと同じ構成                     | `/`・`/workers/api`・`/workers/event`はstagingと同じ必須のキー(`EMAIL_ALLOWED_RECIPIENTS`を除く)と任意の`DISIFY_API_KEY`。疎通確認のトークン(`EMAIL_SMOKE_*`・`MEDIA_SMOKE_TOKEN`)は登録しない | 同上                                  | launch-readinessがリリース時に登録する(本specと各specの手順では登録しない) |
 

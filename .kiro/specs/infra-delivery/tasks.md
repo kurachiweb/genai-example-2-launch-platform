@@ -32,8 +32,8 @@
   - _Boundary: EdgeServicesModule, WorkerRoutingModule_
   - _Requirements: 1.1, 1.4, 1.5, 1.6, 1.7, 1.9, 1.10_
 
-- [ ] 2.3 ルートモジュールとstateの保管先の設定を作る
-  - OpenTofu・Cloudflare provider・`infisical` providerの版を完全に固定し、S3互換のbackend(ロックファイル・接続用の鍵は変数)と、状態と計画の暗号化(鍵が無ければ書き込まない)を設定する。staging・prodのbackendの部分設定ファイルを資源一覧のバケットとキーで作る
+- [x] 2.3 ルートモジュールとstateの保管先の設定を作る
+  - OpenTofu・Cloudflare provider・`infisical` providerの版を完全に固定し、S3互換のbackend(ロックファイル・接続用の鍵はS3 backend専用の環境変数`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`)と、状態と計画の暗号化(鍵が無ければ書き込まない)を設定する。staging・prodのbackendの部分設定ファイルを資源一覧のバケットとキーで作る
   - 資源一覧を環境の変数で選んで読み込み、4モジュールへ渡し、資源一覧の環境と変数の一致を確かめる。Cloudflareのproviderの資格情報は一時的なリソースでInfisicalの`/ci/cloudflare`から取得し、Infisicalのproviderは接続先だけを指定して認証を環境変数に任せる
   - 出力は秘密でない識別子(D1の識別子・Turnstileのサイトキー・アクセス解析のトークン)だけにする。Workerのプログラム・メッセージの受信・定期実行・ゾーンのルールを定義しない
   - モックのproviderで両環境の結線を確かめるテストを置く。モックが一時的なリソースに対応しない場合はテストを置かず、検査とTypeScriptの資源一覧の検査で代えたことをresearch.mdに記録する
@@ -290,3 +290,4 @@
 - 1.2: 資源一覧の`cloudflare.accountId`・`zoneId`は本物の値がリポジトリに無く全桁0の仮の値。設計の初回の準備に記入の手順が無いため、stateの保管先の接続先・資源の作成・購読の前に開発者へ確認が必要(preflightの検査対象に加えるかも要判断)。
 - 2.1: 子モジュールは`required_providers`だけを宣言し、テストは`mock_provider "cloudflare"`と`command = plan`で書く。`prevent_destroy`とR2の`location`無しは計画のテストで確かめられないため7.3の`repo-contract.unit.test.ts`でHCLを検査する。ロックファイルは`tofu providers lock -platform=linux_amd64 -platform=linux_arm64`で作り、検証は`init -backend=false -lockfile=readonly`。Queueの名前の属性は`queue_name`。
 - 2.2: 2.3のルートモジュールは、資源一覧の`turnstile.hostnames`を`edge_services`の`turnstile.domains`へ、`hostnames.*.worker`(`workers`のキー)を`workers[<キー>].name`へ引き直して`worker_routing`の`service`へ渡す。`turnstile.mode`は`invisible`以外を変数の検証で拒否する(設計に無い追加。9.1でdesign.mdへ反映)。`cloudflare_workers_custom_domain`の非推奨`environment`を使わないこと、Turnstileの`prevent_destroy`、`outputs.tf`に`secret`が無いことは7.3でHCLを検査する。最初の適用後に、Turnstileの`domains`の順序とWeb Analyticsの`host`だけの登録で差分・拒否が無いか確かめる。
+- 2.3: OpenTofu 1.13.2はbackend設定にsensitiveな変数を使うと`tofu init`で拒否する(`validate`・`tofu test`では現れない)。stateの保管先の鍵はS3 backend専用の環境変数`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`で渡し、Infisicalの`/ci/tofu`のキー名もこれにする(2026-10-29に開発者が決定)。5.1のTofuRunnerは`/ci/tofu`の値をそのまま子プロセスの環境変数へ渡し、パスフレーズは`TF_VAR_state_passphrase`で渡す。backendの`endpoints.s3`はアカウントIDの仮の値を含む。`check "catalog_environment"`は警告で止まらない(9.1で`precondition`化を検討)。`live.tftest.hcl`は`web_analytics_host`・`email_sending_domain`・`account_id`・`zone_id`・`jurisdiction`の結線を確かめていない。モックのproviderは`ephemeral`に対応する。

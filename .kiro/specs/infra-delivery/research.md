@@ -307,6 +307,16 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
   - Infisicalのフォルダは、Workerの実行時のシークレット(`/`)、OpenTofuの起動前の値(`/ci/tofu`)、Cloudflareのトークン(`/ci/cloudflare`)に分け、各コマンドに必要なフォルダだけを渡す。
 - **Trade-offs**: 同じCloudflareのトークンを2つの経路で受け取るが、OpenTofuの経路はbriefと`security/001`の決定(`ephemeral`とOIDC)に従う。
 
+### Decision: stateの保管先の鍵は環境変数で渡す(2026-10-29に開発者が決定)
+
+- **Context**: 要件3.1・4.7、tasks 2.3。設計では`backend "s3"`の`access_key`・`secret_key`を`sensitive`な変数(`TF_VAR_state_access_key_id`・`TF_VAR_state_secret_access_key`)で受けるとしていた。OpenTofu 1.13.2で`tofu init`(backendあり)を実行すると、`Error: Backend config contains sensitive values`で拒否された。表示された理由は、backendの設定が`.terraform/terraform.tfstate`と計画ファイルに保存されるため、秘密の資格情報はbackend専用の環境変数で渡すよう推奨する、というものだった。`init -backend=false`・`tofu validate`・`tofu test`ではこの失敗は現れない。
+- **Alternatives Considered**:
+  1. backend専用の環境変数`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`で渡し、backendの設定に鍵を書かない
+  2. 変数のまま`sensitive`を外す(鍵が`.terraform/terraform.tfstate`に平文で残り、要件4.7の「リポジトリ内のファイルに書き出さない」と衝突する)
+- **Selected Approach**: 1。ルートモジュールの変数は`environment`と`state_passphrase`(`sensitive`のまま。暗号化の設定は`sensitive`な変数を受け付ける)だけにし、Infisicalの`/ci/tofu`のキーを`TF_VAR_state_passphrase`・`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`にする。
+- **Rationale**: OpenTofuの推奨に従い、鍵を作業ディレクトリのファイルにも計画にも残さない。
+- **Follow-up**: スクラッチのコピーで、接続先を`http://127.0.0.1:9`、鍵を環境変数のダミーにして`tofu init`を実行した。sensitiveのエラーは出ずに接続の段階まで進んだ(接続の拒否で終了)。パスフレーズが無いときは暗号化の設定を解決できずに失敗する(3.3)。
+
 ### Decision: 直前のリリースはWorkerの版のタグで特定する
 
 - **Context**: 要件7.4・7.5、api-gateway Q3(新しいリソースを使わない)。
@@ -482,7 +492,7 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
   - TruffleHogの公式アクションの版と、誤検知の除外の指定方法(G9)
   - 管理画面で作ったQueueの管轄の確かめ方(`wrangler queues info`の出力に管轄が出るか)と、購読ごと作り直す手順(G7)
   - stagingで動かせるスモークテストの範囲(G10)。最初のstagingのデプロイの後に確かめる
-  - OpenTofu 1.13.2のモックのproviderが`ephemeral`リソースに対応するか(設計時からの持ち越し。タスクで確かめる)
+  - OpenTofu 1.13.2のモックのproviderが`ephemeral`リソースに対応するか(設計時からの持ち越し。タスクで確かめる)。tasks 2.3で確かめ、対応すると分かった。`mock_provider "infisical"`で`ephemeral "infisical_secret"`を含むルートモジュールを`command = plan`で計画できるため、代替の検査ではなく`apps/infra/live/tests/live.tftest.hcl`で両環境の結線を確かめる
 
 ### 開発者の決定と反映(改訂4、2026-10-29)
 
