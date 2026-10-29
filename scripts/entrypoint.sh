@@ -5,10 +5,12 @@ set -euo pipefail
 # 別プロセスとして実行すると、ここで登録したtrapと各プロセスの親子関係がスクリプト終了時に失われ、停止時にMailpitへSIGTERMを転送できなくなるため。
 
 # `/home/bun/.claude`は名前付きボリュームで永続化されており、イメージの内容がコピーされるのはボリュームが空の初回マウント時のみである。
-# そのためワークスペース信頼設定とRTKフックの登録はDockerfileのビルド時ではなくここで毎起動時に行うことで、将来の仕様変更が反映されるようにする。
+# そのためワークスペース信頼設定・RTKフック・ベル音フックの登録はDockerfileのビルド時ではなくここで毎起動時に行うことで、将来の仕様変更が反映されるようにする。
 bun /workspace/scripts/merge-claude-trust-config.ts || echo '[entrypoint] 信頼設定のマージに失敗しました' >&2
 # RTKフックの登録
 HOME=/home/bun RTK_TELEMETRY_DISABLED=1 rtk init -g --auto-patch || echo '[entrypoint] RTKフックの登録に失敗しました' >&2
+# Claudeの質問・作業完了時にホスト側のVSCodeでベル音を鳴らすフックの登録
+bun /workspace/scripts/merge-claude-bell-hooks.ts || echo '[entrypoint] ベル音フックの登録に失敗しました' >&2
 
 # プロジェクトルートディレクトリの非所有者でもgitコマンドを実行できるよう、安全なディレクトリとして設定する。
 # `--add`ではコンテナ再起動のたびに重複行が増えるため、`--replace-all`で冪等にする。
