@@ -299,3 +299,10 @@
 - フォーム: `useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`の形にした。画面側のスキーマの`zod`の値は`utilities/validation/zod.ts`から読む(CSPの下で`new Function`の試行を止める`jitless`の設定を済ませた`z`)。
 - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。カテゴリの区画は、admin-foundationの`CategoryMasterEditor`の`failureMessageOf`(本改訂でadmin-foundationが加えた)に`errorMessageOf`を渡す。
 - 変えた箇所: design.mdのAllowed Dependencies、File Structure Planの両アプリの`graphql/operations/help/`と`help-article-form-schema.ts`、`HelpArticleTable`・`HelpArticleForm`・`HelpArticleDeleteButton`(`ConfirmActionDialog`の`failureMessageOf`)・`HelpCategorySection`、Error Strategy。tasks.mdの6.1・7.1・7.3・7.5。要件は変えていない。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: `HelpArticleForm`のフォームの値を`CreateHelpArticleInput`・`UpdateHelpArticleInput`の形に合わせ、編集する値を`fields`の下(欄の名前は`fields.<名前>`)、変更の理由を`fields`の外の`reason`に置き、`serverFieldPrefix="input"`で`input.`を除いたサーバーの詳細の経路(`fields.categoryId`など)とそろえた(判断27)。編集する記事の`id`と版の値の`expectedRevision`はスキーマの入力に含めず`onSubmit`で足す(判断26の確認)。閲覧のみの管理者の`readOnly`は送信しないため、全欄を`FormField`の`disabled`で無効にすることだけを確かめて書いた。
+- **変えた箇所**: design.mdの`HelpArticleFormValues`・`HelpArticleForm`、tasks.mdの7.5(フォームの値の形・サーバーの詳細の経路・閲覧のみの無効の方法)・7.6(記事のIDと版の送信)。

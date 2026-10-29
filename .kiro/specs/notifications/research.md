@@ -341,3 +341,10 @@
 - 通知メールの件名(開発者の判断10): 件名から日付を基準にした相対表現(「明日は準決勝」「本日キックオフ」)を除いた。統合は「フルタイム: Pitch NotesがTactics Boardに勝利、次は準決勝」、不戦勝の統合は「フルタイム: Pitch Notesは不戦勝、次は準決勝」、開催通知は「Pitch Notesがキックオフします⚽️応援しましょう！」と「フォローしているユーザーの3プロダクトがキックオフします⚽️応援しましょう！」。判断10は件名に限るため、統合の本文の「明日は<ラウンド名>です。」と開始予告の本文の「明日、…」は変えていない。件名(`matchResultSubject`の`nextRoundName`)と本文が共有するのは`roundName`の結果(ラウンド名)だけで、「明日は」の部分は共有しない。
 - requirements.mdの4.4・5.2・5.3の件名を改めた(番号は変えていない)。文言規則(`docs/GUIDES/service/design/003-text-and-copy-rules.md`)の件名の例はfrontend-platformのタスク10.3が直す。
 - 変えた箇所: design.mdのAllowed Dependencies、File Structure Planの両アプリの`graphql/operations/notifications/`、`SenderInfoViolation`の注記、`NoticeCopy`(`nextRoundName`の注記と件名の規則)、`NotificationTopicSwitch`・`SenderInfoForm`(`ConfirmActionDialog`の`failureMessageOf`と確定の失敗の表示)・`SenderInfoSection`、Error Strategy、Supporting Referencesの「通知メールの文」の統合と開催通知の行。tasks.mdの2.3・6.1・6.2・7.1。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: `SenderInfoForm`のスキーマの入力は描く3項目だけで、版の値の`expectedVersion`と確認のダイアログで受ける`reason`はスキーマの入力に含めず、`onSubmit`(確認のダイアログの確定)で足すことを確かめ、設計に明記した(判断26の確認)。
+- **変えた箇所**: design.mdの`SenderInfoForm`、tasks.mdの7.1のブラウザテスト。

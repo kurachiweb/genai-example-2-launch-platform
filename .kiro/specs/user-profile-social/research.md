@@ -264,3 +264,10 @@
   - Zodの値の読み込み元とフォーム部品の形: `profile-form-schema.ts`はZodの値を`lib/utilities/validation/zod.ts`の`z`から読み、`ProfileEditForm`を`useAppForm<TInput, TOutput>(schema, { defaultValues })`と`AppForm`(`serverFieldPrefix="input"`・必須の`onSubmitError`)で作り、`GraphQLClientError`でない例外の文言を`errorMessageOf`で選ぶとした(design.mdのAllowed Dependencies・ProfileEditForm・FollowButton、tasks.mdの8.1)。
   - 非表示のウィジェット: `TurnstileWidget`は非表示で描くため、`ProfileEditForm`の欄の順からウィジェットを外し、編集フォームとフォローボタンに判定の枠と場所を設けないとした(design.mdのProfileEditForm・FollowButton、tasks.mdの7.1・8.1)。
   - アップロード部品の問い合わせ先の有無: media-pipelineの`ImageUploadField`に必須の`contactAvailable: boolean`が加わり、想定外の応答などの文言を問い合わせ先の有無で選ぶ。利用者側のプロフィール画像の`AvatarField`は`CLIENT_PROFILE.contactAvailable`を渡すとした(design.mdのAllowed Dependencies・AvatarField、tasks.mdの8.1の説明と確認項目)。本specに`ConfirmActionDialog`を使う箇所は無い。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: `ProfileEditForm`のフォームの値は`UpdateMyProfileInput`の形に合わせ、版の値の`expectedHandle`はスキーマの入力に含めず`onSubmit`で足すことを確かめ、設計に明記した(判断26の確認)。停止中は送信しないため、全欄を`FormField`の`disabled`で無効にし、保存の送信ボタンを`SubmitButton`の`disabled`で無効にすることを書いた(判断35)。
+- **変えた箇所**: design.mdの`ProfileEditForm`、tasks.mdの8.1(停止中の無効の方法)・8.2(`expectedHandle`の送信)。

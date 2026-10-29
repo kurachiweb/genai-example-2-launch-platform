@@ -792,7 +792,8 @@ export declare const ADMIN_PLATFORM_MODULE: AppModule; // apiとeventのcomposit
 - `AdminLogin.withPassword`: `assertHuman('admin_login')`(リゾルバ)→`createLoginThrottleKeys`→`LoginThrottle.status('admin', keys)`(ロック中は`login_throttled`)→`findByEmail`→無い・招待中なら`verifyAgainstDummy`して`recordFailure`・`invalid_credentials`、有効なら`verify`(不一致は`recordFailure`・`invalid_credentials`)→待ちの値(`admin-login-challenge`、5分)を返す(6.1・6.2)。有効な管理者は必ずTOTPを持つため、パスワードだけでセッションを発行する経路は無い。
 - `withSecondFactor`: 待ちの値→管理者の現在のメールでキー→`status`→TOTPは`verify`と`advanceStep`、リカバリコードは`consume`→失敗は`recordFailure`・`invalid_second_factor`→成功は待ちを消し、`reset`して`AdminSessionIssuer.issue`(6.3・6.4・7.5)。
 - `logout`: 自分のセッションを削除し、リゾルバが`session.clear()`(6.6)。
-- `AdminReAuthenticator.verify(admin, { currentPassword, secondFactor }, meta)`: 第2要素は必須。ロック中は`login_throttled`(13.4)、誤りは`recordFailure`して`reauthentication_failed`(詳細`currentPassword`・`secondFactor`)、リカバリコードは消費する(13.1〜13.3・7.6)。
+- `AdminReAuthenticator.verify(admin, { currentPassword, secondFactor }, meta)`: 第2要素は必須。ロック中は`login_throttled`(13.4)、誤りは`recordFailure`して`reauthentication_failed`(詳細は現在のパスワードか第2要素)、リカバリコードは消費する(13.1〜13.3・7.6)。
+- `reauthentication_failed`の詳細の経路は、画面の欄の形(GraphQLの引数の形)のとおりにする。リゾルバは`reAuthentication.currentPassword`と、送った第2要素の`reAuthentication.secondFactor.totpCode`か`reAuthentication.secondFactor.recoveryCode`(どちらも送らなかった時は`reAuthentication.secondFactor`)を経路にする(identity-authの`reauthentication_failed`と同じ形)。
 - `AdminMailSendLimits.consume(kind, address, meta)`: 規則`admin-auth-mail:<kind>:address`(3回/3600秒)と`admin-auth-mail:<kind>:ip`(5回/3600秒)で`RateLimitCounterClient.hit`し、超過は`rate_limit_exceeded`(14.4)。有無の判定より前に数える。
 
 #### AdminInvitation
@@ -1170,7 +1171,7 @@ export interface CategoryMasterEditorProps {
 ```
 
 - `AdminPageHeader({ title, description?, actions? })`、`AdminFilterBar({ children, onApply, onReset })`、`ReasonField({ required, ...fieldProps })`(500書記素・個人情報の注意、18.9)、`AdminAvatar({ image, nickname, size })`(`MediaPicture`で、画像が無い・表示できないときは`MediaPlaceholder`、16.6)、`CategoryFormDialog`(名前1〜30書記素・ハンドルの形式は呼び出す側が渡す検証)。
-- いずれもGraphQLとアプリの型に依存せず、Storybookに載せる(21.4)。日時は`DateTime`(`<time datetime>`)で表示する。
+- いずれもGraphQLとアプリの型に依存せず、Storybookに載せる(21.4)。入力を持つ部品(`ConfirmActionDialog`の理由・`CategoryFormDialog`)は`useAppForm`と`AppForm`で作り、`ReasonField`は呼び出す側の`AppForm`の中の`FormField`として描く(frontend-platformの`FormField`は`AppForm`の中でだけ使う)。日時は`DateTime`(`<time datetime>`)で表示する。
 - 失敗の文言: 共通部品はアプリのプロファイルを読まない。`AdminDataTable`の`error.message`には呼び出す側の画面が`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選んだ文言を渡し、`ConfirmActionDialog`・`CategoryMasterEditor`の`failureMessageOf`には`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を渡す。`ConfirmActionDialog`は`onConfirm`が例外を投げたら、ダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言をダイアログの中に`role="alert"`で示す。`AdminDataTable`のエラーの状態は`ErrorState`を`contactHref`無しで描く(問い合わせのボタンを出さない)。
 
 ### admin
@@ -1219,6 +1220,7 @@ export declare const DASHBOARD_CARDS: readonly DashboardCard[]; // 初版は空
 | `/account`                         | プロフィール・メールアドレス変更・パスワード変更・TOTPの再設定・リカバリコードの再発行と残数                                         |
 
 - メールのリンクの画面は、フラグメントのトークンを`readFragmentToken`で読み、開いただけでは何もしない。
+- フォームの値: 入力欄を描かない値(ログインの第2要素の`challenge`、パスワードの再設定と招待の`token`、プロフィールの編集の対象の`id`)はスキーマの入力に含めず`onSubmit`で足す。ログインの第2要素は、認証コードの入力の間は`secondFactor.totpCode`だけ、リカバリコードの入力に切り替えた間は`secondFactor.recoveryCode`だけを持つスキーマを使い(条件ごとに分けた定数のスキーマから選んで`useAppForm`へ渡すだけにし、描画ごとに作らない。切り替えの後の検証のし直しは`useAppForm`に任せる)、本人確認の欄(`reauthentication-fields.tsx`)も現在のパスワードと、認証コードとリカバリコードのうち描いている一方だけをスキーマに含める。本人確認の失敗の詳細はAPIが欄の形のとおりの経路(`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`など)で返すため、現在のパスワードの欄と描いている第2要素の欄に示す。第2要素を送らなかった時の詳細(`reAuthentication.secondFactor`)は欄をまとめた値の経路のため、`onSubmitError`の`unmatched`に入ってフォーム全体の失敗として示す。
 - `audit-period.ts`: 入力の日付(閲覧者の地域の暦)を、開始日の0時を`occurredFrom`、終了日の翌日0時を`occurredBefore`とするUTCの時刻に変換する(19.2)。
 - 削除・ロールの変更・招待は`ConfirmActionDialog`(理由は任意、監査ログに記録される旨、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、15.10)。リカバリコードの表示では、両方を失うと復旧できない旨を示す(12.7)。
 
@@ -1327,20 +1329,20 @@ stateDiagram-v2
 
 ### Error Categories and Responses
 
-| エラーコード                                                                         | 種類(状態コード)     | 文言                                                                                              | 主な発生箇所                       |
-| ------------------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `validation_error`                                                                   | bad_request(400)     | 欄ごとの詳細(理由の未入力は「理由を入力してください。」)                                          | 全入力・監査ログの検証             |
-| `invalid_credentials`                                                                | unauthenticated(401) | メールアドレスまたはパスワードが正しくありません。                                                | ログイン(6.2)                      |
-| `invalid_second_factor`・`login_challenge_expired`                                   | unauthenticated(401) | identity-authと同じ文言                                                                           | 第2要素・招待の完了・再設定        |
-| `login_throttled`・`rate_limit_exceeded`                                             | rate_limited(429)    | identity-authと同じ文言(`Retry-After`)                                                            | ログイン・本人確認・送信回数       |
-| `reauthentication_failed`・`invalid_link`・`password_rejected`・`totp_setup_expired` | unprocessable(422)   | identity-authと同じ文言(招待のリンクの無効は「招待した管理者に再送を依頼してください。」を添える) | 本人確認・リンク・パスワード・TOTP |
-| `admin_email_in_use`                                                                 | conflict(409)        | このメールアドレスは既に管理者として登録されています。                                            | 招待(3.2)                          |
-| `last_super_admin`                                                                   | conflict(409)        | 最上位管理者が1人だけのため、この操作はできません。                                               | 削除・ロールの変更(15.8)           |
-| `self_deletion_forbidden`                                                            | forbidden(403)       | 自分自身のアカウントは削除できません。                                                            | 削除(15.5、仮1)                    |
-| `admin_state_conflict`                                                               | conflict(409)        | 処理が重なりました。時間をおいて再度お試しください。                                              | 削除・ロールの変更の競合           |
-| `invalid_upload`                                                                     | unprocessable(422)   | 画像を確認できませんでした。もう一度アップロードしてください。                                    | プロフィール画像の紐付け           |
-| `unauthenticated`・`forbidden`・`not_found`                                          | 401・403・404        | ログインが必要です。・この操作はできません。・対象が見つかりません。                              | 認可(17.1・17.3)・対象             |
-| `bot_verification_failed`・`bot_verification_unavailable`                            | 403・503             | backend-platformの定型                                                                            | ログイン・リセットの要求(6.7)      |
+| エラーコード                                                                         | 種類(状態コード)     | 文言                                                                                                                                                                                                                                       | 主な発生箇所                       |
+| ------------------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| `validation_error`                                                                   | bad_request(400)     | 欄ごとの詳細(理由の未入力は「理由を入力してください。」)                                                                                                                                                                                   | 全入力・監査ログの検証             |
+| `invalid_credentials`                                                                | unauthenticated(401) | メールアドレスまたはパスワードが正しくありません。                                                                                                                                                                                         | ログイン(6.2)                      |
+| `invalid_second_factor`・`login_challenge_expired`                                   | unauthenticated(401) | identity-authと同じ文言                                                                                                                                                                                                                    | 第2要素・招待の完了・再設定        |
+| `login_throttled`・`rate_limit_exceeded`                                             | rate_limited(429)    | identity-authと同じ文言(`Retry-After`)                                                                                                                                                                                                     | ログイン・本人確認・送信回数       |
+| `reauthentication_failed`・`invalid_link`・`password_rejected`・`totp_setup_expired` | unprocessable(422)   | identity-authと同じ文言(招待のリンクの無効は「招待した管理者に再送を依頼してください。」を添える)。`reauthentication_failed`の詳細は欄の形のとおりの経路(`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`など) | 本人確認・リンク・パスワード・TOTP |
+| `admin_email_in_use`                                                                 | conflict(409)        | このメールアドレスは既に管理者として登録されています。                                                                                                                                                                                     | 招待(3.2)                          |
+| `last_super_admin`                                                                   | conflict(409)        | 最上位管理者が1人だけのため、この操作はできません。                                                                                                                                                                                        | 削除・ロールの変更(15.8)           |
+| `self_deletion_forbidden`                                                            | forbidden(403)       | 自分自身のアカウントは削除できません。                                                                                                                                                                                                     | 削除(15.5、仮1)                    |
+| `admin_state_conflict`                                                               | conflict(409)        | 処理が重なりました。時間をおいて再度お試しください。                                                                                                                                                                                       | 削除・ロールの変更の競合           |
+| `invalid_upload`                                                                     | unprocessable(422)   | 画像を確認できませんでした。もう一度アップロードしてください。                                                                                                                                                                             | プロフィール画像の紐付け           |
+| `unauthenticated`・`forbidden`・`not_found`                                          | 401・403・404        | ログインが必要です。・この操作はできません。・対象が見つかりません。                                                                                                                                                                       | 認可(17.1・17.3)・対象             |
+| `bot_verification_failed`・`bot_verification_unavailable`                            | 403・503             | backend-platformの定型                                                                                                                                                                                                                     | ログイン・リセットの要求(6.7)      |
 
 ### Monitoring
 

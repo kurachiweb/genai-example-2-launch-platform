@@ -344,3 +344,10 @@ cross-spec reviewの指摘による、承認の後の改訂である。仮13・�
 - bot判定: `TurnstileWidget`は非表示のウィジェットで場所を取らないため、判定の枠の表示と場所の記述を除いた。
 - 変えた箇所: design.mdのAllowed Dependencies、File Structure Planの`product-form-schema.ts`と両アプリの`graphql/operations/product/`、`MyProductListPage`の取得エラー、`ProductForm`・`ProductDeleteDialog`、`ProductCategorySection`、Error Strategy。tasks.mdの9.1・9.6・10。要件は変えていない。
 - アップロードの入力欄: media-pipelineの`ImageUploadField`が必須で受ける`contactAvailable`(アップロードの失敗の文言を選ぶ)に、`LogoField`と`ScreenshotsField`は`CLIENT_PROFILE.contactAvailable`を渡す(design.mdの両部品、tasks.mdの9.4)。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: `ProductForm`のフォームの値を`RegisterProductInput`・`UpdateProductInput`の形に合わせ、編集する値を`fields`の下(欄の名前は`fields.<名前>`)、ローンチ日を`fields`の外の`launchDate`に置き、`serverFieldPrefix="input"`で`input.`を除いたサーバーの詳細の経路とそろえた(判断27)。スキーマはローンチ日の欄を描くかで分け、カレンダーを描かない間(固定の期間・`blocked`・`unknown`)は`launchDate`を含めず`onSubmit`で`launchDate: null`を足す(判断26)。`productHandle`・`expectedVersion`はスキーマの入力に含めず、`onSubmit`で読み込んだ値から足す。固定の期間のカテゴリは`FormField`の`disabled`で無効にし、編集のスキーマで`fields.categoryId`を任意にし、`UpdateProductInput`に要るカテゴリは`onSubmit`で読み込んだプロダクトのカテゴリから足す(判断28・31)。スキーマは定数から選んで渡すだけにする(判断33)。未確認の利用者の登録画面は各欄を`FormField`の`disabled`で無効にし、送信ボタンを`SubmitButton`の`disabled`で無効にする(判断35)。
+- **変えた箇所**: design.mdの`ProductForm`・`CategorySelect`・`LaunchDateField`・`ProductEditPage`とTesting Strategyのブラウザテストの`ProductForm`、tasks.mdの9.4(カテゴリの無効の方法)・9.6(フォームの値の形・スキーマの分け方・サーバーの詳細の経路・未確認の無効)・9.7(固定の期間のカテゴリとローンチ日・版の値)。

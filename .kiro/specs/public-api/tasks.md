@@ -179,7 +179,7 @@
   - _Requirements: 6.1_
 
 - [ ] 6.2 (P) 発行と編集のフォームと権限スコープの選択欄を作る
-  - フォームのスキーマはZodの値を`lib/utilities/validation/zod.ts`の`z`から読んで作り、フォームは`useAppForm<ApiKeyFormValues, ApiKeyFormValues>(apiKeyFormSchema, { defaultValues })`(全欄の既定値)と`AppForm`(`serverFieldPrefix="input"`・`onSubmitError`)で作る。`onSubmitError`は429を文言規則のレート制限の文言、それ以外を`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言で示す
+  - フォームのスキーマはZodの値を`lib/utilities/validation/zod.ts`の`z`から読んで作り、フォームは`useAppForm<ApiKeyFormValues, ApiKeyFormValues>(apiKeyFormSchema, { defaultValues })`(全欄の既定値)と`AppForm`(`serverFieldPrefix="input"`・`onSubmitError`)で作る。編集するキーの`id`はスキーマの入力に含めず`onSubmit`で足す。`onSubmitError`は429を文言規則のレート制限の文言、それ以外を`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言で示す
   - 先に、ブラウザテストで、名前の検証(空・51文字)のフォーカスアウトと送信時の表示、40文字を超えた後のカウンター、7機能の選択肢の数(2択と3択)、発行の初期値、編集で現在の値が入ること、429の文言、axe-coreの検査を確かめる
   - 完了状態: ブラウザテストとフォームのスキーマの単体テストが成功し、Storybookに状態ごとの例がある
   - _Depends: 1.1, 1.3_

@@ -186,8 +186,8 @@
   - _Requirements: 8.4, 8.5, 8.7_
 
 - [ ] 7.3 コメントの投稿欄を作る
-  - フォームは`useAppForm<TInput, TOutput>(commentFormSchema, { defaultValues })`(全欄の既定値)と`AppForm`(`serverFieldPrefix="input"`・`onSubmitError`)で作り、欄に対応しない失敗の文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`で選ぶ。bot対策のウィジェットは`TurnstileWidget`(非表示)で置き、判定の枠と場所を設けない
-  - 先に、ブラウザテスト(`runAxe`の違反0件)で、書式のツールバー・書く/プレビュー・「1,234 / 2,000」のカウンター、上限超過と空でフォーカスアウト時に文言が出て送れないこと、評価の行の有無(投稿者本人以外のトップレベルの投稿と編集だけ)と現在の評価の初期値、bot対策のトークンが用意できるまで送れないこと、送信の結果を呼び出し元へ渡し、失敗で入力が保たれ項目の文言が出ること、成功で入力が空になることを確かめる
+  - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(使うスキーマの全欄の既定値)と`AppForm`(`serverFieldPrefix="input"`・`onSubmitError`)で作る。評価の行を描く投稿欄(投稿者本人以外のトップレベルの投稿欄と編集欄)は本文と評価の`commentWithRatingFormSchema`、返信の投稿欄と編集欄と投稿者本人の投稿欄と編集欄は本文だけの`commentFormSchema`で作り、投稿先と編集するコメントのIDはスキーマの入力に含めず`onSubmit`で足す。欄に対応しない失敗の文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`で選ぶ。bot対策のウィジェットは`TurnstileWidget`(非表示)で置き、判定の枠と場所を設けない
+  - 先に、ブラウザテスト(`runAxe`の違反0件)で、書式のツールバー・書く/プレビュー・「1,234 / 2,000」のカウンター、上限超過と空でフォーカスアウト時に文言が出て送れないこと、評価の行の有無(投稿者本人以外のトップレベルの投稿と編集だけ)と現在の評価の初期値、評価の行を描かない投稿欄が`rating`を送らず、返信の評価の`validation_error`(詳細`rating`)をフォーム全体の失敗として示し送信ボタンが無効のまま残らないこと、bot対策のトークンが用意できるまで送れないこと、送信の結果を呼び出し元へ渡し、失敗で入力が保たれ項目の文言が出ること、成功で入力が空になることを確かめる
   - 完了状態: ブラウザテストが成功する
   - _Depends: 6.3, 7.1_
   - _Requirements: 1.3, 8.3, 8.16, 10.5_

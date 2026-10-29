@@ -203,3 +203,10 @@ FR-ADMAG-001は改訂しない。Q1により法務文書の操作を監査ログ
 - 判断15: 公開前にプライバシーポリシーの本文がAddendumを参照していることを確かめる(または骨子に加える)作業の持ち主を、infra-deliveryから本specへ移した。本specは法務文書の公開と、プライバシーポリシーの大枠の改訂を持つためである。infra-deliveryはウィジェットの種類(`invisible`)と`HASH_PEPPER`の登録先だけを持ち、プライバシーポリシーの大枠のCloudflareの項の移転先・移転の根拠・委託先が講じる措置は従来どおりinfra-deliveryが書く。
 - 確かめ方: 本specの実装の時点ではプライバシーポリシーの本文(開発者が管理画面で公開する版)が無いため、大枠のCloudflareの項に参照があるかを確かめて無ければ加え、「記載上の注意」に公開する本文がこの参照を含むことを記す。prodの初版の公開の前の確認は、launch-readinessでの初版の公開の確認とあわせて開発者への報告に載せる。
 - 変えた箇所: requirements.mdの要件10.5。design.mdのThis Spec Owns・Out of Boundary・Revalidation Triggers・Modified Files(`003-privacy-policy-outline.md`)・Migration Strategyの初版の公開。tasks.mdの7.4・7.5。要件番号の振り直しは無い。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: frontend-platformの影響の表の水平展開として確かめた。`LegalDraftForm`と`PublishLegalDocumentDialog`のスキーマの入力は描く欄(本文・変更概要)だけで、文書の種類の`kind`と版の値の`expectedStateVersion`は`onSubmit`で足すことを明記した。最上位管理者でない管理者の読み取り専用の表示は、`MarkdownEditor`の`disabled`だけで無効にする設計だったため、本文の欄を`FormField`の`disabled`で無効にする形に改めた(送信しないため、無効にする方法だけを直した)。
+- **変えた箇所**: design.mdの`LegalDraftForm`・最上位管理者でない時の表示・`PublishLegalDocumentDialog`、tasks.mdの6.2(読み取り専用の無効の方法と保存の`kind`・`expectedStateVersion`の送信)・6.4(公開の`kind`・`expectedStateVersion`の送信)のブラウザテスト。

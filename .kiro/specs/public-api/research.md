@@ -267,3 +267,10 @@
   - 案A(採用): `PUBLIC_API_ORIGIN`を環境の検証でCSPの許可先の形まで確かめ、形に合わない値を環境の検証の失敗(キー名`PUBLIC_API_ORIGIN`)にする。`connectSrc`の検査で不正になる値は`SENTRY_DSN`に由来するものに限られ、エントリの対応を変えずに済む。
   - 案B: エントリの対応を環境のキーごとの検査(1つのキーに1つの欄)に改める。frontend-platformの確定した契約の形を変えるため採らない。
   - design.mdのModified Files・ClientEnvExtension、tasks.mdの1.5、本書の「上流への影響」を直した。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: frontend-platformの影響の表の水平展開として確かめた。`ApiKeyFormDialog`のフォームの値は`ApiKeyInput`と同じ形で、編集するキーの`id`はスキーマの入力に含めず`onSubmit`で`updateApiKey`の引数に足すことを明記した。停止中の発行・編集・再発行の無効は操作のボタンの無効で、フォームの欄を無効にする設計は無い。
+- **変えた箇所**: design.mdの`ApiKeyFormDialog`、tasks.mdの6.2。

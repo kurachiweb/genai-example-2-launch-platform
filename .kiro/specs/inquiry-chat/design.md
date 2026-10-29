@@ -1173,13 +1173,13 @@ export interface InquirerAvatarProps {
 - `GuestInquiryForm`: カテゴリ(`<select>`)・ニックネーム・連絡先メールアドレス・メッセージ・`TurnstileWidget`(action`inquiry_guest`、非表示で場所を取らない)。成功で`GuestInquiryComplete`(「お問い合わせを受け付けました。回答は入力したメールアドレスへお送りする場合があります。」)に置き換える(要件3.2)。429は`Retry-After`の秒数から再送できる時刻を示す(要件4.5)。
 - `MemberInquiryForm`: `inquiryComposer`の`InquirerAvatar`とニックネーム、カテゴリ・メッセージ・`AttachmentUploadField`(`UploadConstraints`に用途・`ATTACHMENT_MEDIA_TYPES`・`maxBytes`・`maxCount` 20・`maxTotalBytes`、`contactAvailable`は`CLIENT_PROFILE.contactAvailable`)と`FileSelectionList`・`TurnstileWidget`(action`inquiry_member`、非表示で場所を取らない)。成功で`/inquiries/<ID>`へ遷移する(要件2.3・5.2・6.2・6.8)。
 - `MyInquiryList`: `useInfiniteQuery`で20件ずつ、各行は`InquiryStatusBadge`・カテゴリ・送信日時・最後のメッセージの日時・チャットへのリンク。0件は「送信した問い合わせはまだありません。」(要件9.1〜9.3)。
-- フォームは`useAppForm(<inquiry-form-schemas.tsのスキーマ>, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)で作る。入力欄はフォーカスを外した時点で`inquiry-form-schemas.ts`(common-libの規則)により検証し、サーバーの欄ごとのエラーは`AppForm`が`applyServerFieldErrors`で反映する(要件2.6・3.3・5.3)。欄に対応しない失敗は`onSubmitError`で、`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言(429は再送できる時刻)をフォームに示す。
+- フォームは`useAppForm(<inquiry-form-schemas.tsのスキーマ>, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)で作る。入力欄はフォーカスを外した時点で`inquiry-form-schemas.ts`(common-libの規則)により検証し、サーバーの欄ごとのエラーは`AppForm`が`applyServerFieldErrors`で反映する(要件2.6・3.3・5.3)。未ログイン(停止中を含む)と停止していないログイン中はフォームを分け、各フォームのスキーマの入力は描く欄だけにする(`GuestInquiryInput`・`MemberInquiryInput`と同じ形)。欄に対応しない失敗は`onSubmitError`で、`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言(429は再送できる時刻)をフォームに示す。
 
 #### InquiryChatView・InquiryMessageComposer・SuspendedChatNotice
 
 - `routes/_authenticated/inquiries/$inquiryId.tsx`: 未ログインはidentity-authの`_authenticated`がログインへ案内し、戻り先を保つ(要件7.2)。`memberInquiry`が`null`なら「問い合わせが見つかりません。」(要件7.3)。
 - `InquiryChatView`: `useQuery({ ...graphqlQueryOptions(memberInquiryDocument, { id }), ...LIVE_REFRESH_QUERY_OPTIONS })`で取得し、カテゴリ・ステータス・送信日時とメッセージを古い順に表示する(要件7.1・7.7)。管理者の返信は`InquirerAvatar`(`square-xs`)とニックネーム、削除済みは「削除済みの管理者」(要件7.4・7.5)。
-- `InquiryMessageComposer`: `canPost`が真のとき表示し、1,000書記素の検証・`AttachmentUploadField`(`contactAvailable`は`CLIENT_PROFILE.contactAvailable`)・送信中の無効化、成功で`invalidateQueries`(要件8.1・8.3・8.6)。偽なら`SuspendedChatNotice`(「このアカウントは停止中のため、メッセージを送信できません。運営への連絡はお問い合わせフォームから行えます。」と`/contact`へのリンク、要件7.8)。
+- `InquiryMessageComposer`: `canPost`が真のとき表示し、1,000書記素の検証(スキーマの入力は`InquiryMessageInput`と同じ本文と添付だけで、対象の`inquiryId`は`onSubmit`で足す)・`AttachmentUploadField`(`contactAvailable`は`CLIENT_PROFILE.contactAvailable`)・送信中の無効化、成功で`invalidateQueries`(要件8.1・8.3・8.6)。偽なら`SuspendedChatNotice`(「このアカウントは停止中のため、メッセージを送信できません。運営への連絡はお問い合わせフォームから行えます。」と`/contact`へのリンク、要件7.8)。
 
 ### admin
 
@@ -1187,7 +1187,7 @@ export interface InquirerAvatarProps {
 
 - `/inquiries`: `AdminFilterBar`(ステータス・種別・カテゴリの`select`、受付日の開始と終了の`<input type="date">`。`inquiry-period.ts`で閲覧者の地域の0時をUTCへ変換)と`AdminDataTable`(50件、前後のページ)。検索パラメータ`status`などをURLに保つ。退会済みは「退会済み」の表示(要件10.1〜10.3・10.7)。
 - `/inquiries/$inquiryId`: ログインは`MemberInquiryDetail`(利用者のニックネーム・ハンドル、メッセージ、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得、要件10.4・10.6)、未ログインは`GuestInquiryDetail`(ニックネーム・連絡先メールアドレス・本文、「この問い合わせへの回答は、連絡先メールアドレスへシステム外のメールで行ってください。」、要件10.5)。どちらの詳細も、問い合わせの情報の下に`InquiryDetailActionsView`を置き、後続specが登録した操作を表示する。
-- `InquiryReplyForm`: `RoleGate minimum="moderator"`、退会済み・未ログインでは表示しない。1,000書記素の検証と理由(任意)。`notificationQueued`が偽ならトーストで「返信は保存されましたが、通知メールを送れませんでした。」(要件11.4・11.7)。送信の失敗は`AppForm`の`onSubmitError`で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。
+- `InquiryReplyForm`: `RoleGate minimum="moderator"`、退会済み・未ログインでは表示しない。1,000書記素の検証と理由(任意)。対象の`inquiryId`はスキーマの入力に含めず`onSubmit`で足す。`notificationQueued`が偽ならトーストで「返信は保存されましたが、通知メールを送れませんでした。」(要件11.4・11.7)。送信の失敗は`AppForm`の`onSubmitError`で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。
 - `InquiryStatusControl`: 4種の`select`と`ConfirmActionDialog`(理由は任意、監査ログに記録される旨、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`。失敗はダイアログの中にその文言で示す。要件12.5)。退会済みでは表示しない(要件10.7)。
 - `UnhandledInquiriesCard`(`DASHBOARD_CARDS`へ`{ id: 'inquiry-chat.unhandled-inquiries', order: 20, width: 'half' }`): `adminUnhandledInquiryCount`を`DashboardCardFrame`で表示し、`/inquiries?status=OPEN`へのリンク。失敗はカードだけのエラーと再試行(文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、問い合わせの導線を出さない。要件14.1・14.3・14.4)。
 

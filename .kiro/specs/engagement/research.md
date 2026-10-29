@@ -274,3 +274,10 @@
   - 操作の置き場所と生成物: clientの操作を`src/graphql/operations/engagement/`の1ファイル1操作の`.graphql`(操作名は`Client`で始め、確認メールの再送は`ClientEngagementResendVerificationEmail`)にし、`graphql()`を呼ばず、部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読むとした(design.mdのAllowed Dependencies・File Structure Plan・CommentGate、tasks.mdの6.1)。
   - Zodの値の読み込み元とフォーム部品の形: `comment-form-schema.ts`はZodの値を`lib/utilities/validation/zod.ts`の`z`から読み、`CommentComposer`を`useAppForm<TInput, TOutput>(schema, { defaultValues })`と`AppForm`(`serverFieldPrefix="input"`・必須の`onSubmitError`)で作り、欄に対応しない失敗の文言を`errorMessageOf`で選ぶとした(design.mdのCommentComposer、tasks.mdの7.1・7.3)。共有ディレクトリ`apps/common-lib/engagement`の`commentBodySchema`・`ratingScoreSchema`は`ZOD_VALUE_RESTRICTION`の対象外(フロントエンドのアプリと共通部品の規則)のため変えていない。
   - 非表示のウィジェット: `CommentComposer`のbot対策のウィジェットは`TurnstileWidget`が非表示で描くため、判定の枠と場所を設けないとした(design.mdのCommentComposer、tasks.mdの7.3)。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: 投稿欄の評価は、評価の行を描く投稿欄(投稿者本人以外のトップレベルの投稿欄と編集欄)だけスキーマの入力に含める。本文と評価の`commentWithRatingFormSchema`と本文だけの`commentFormSchema`に分け、返信の投稿欄と編集欄、投稿者本人の投稿欄と編集欄は本文だけのスキーマを使う。投稿先と編集するコメントのIDはスキーマの入力に含めず`onSubmit`で足す。返信の評価の`validation_error`(詳細`rating`)は、返信の投稿欄が評価を送らないため起きず、起きても経路がフォームの値に無く、フォーム全体の失敗として示す。
+- **変えた箇所**: design.mdの`CommentThread`・`CommentMenu`・`CommentComposer`とTesting Strategyの単体テストのclientの項目、tasks.mdの7.3(フォームの形とブラウザテスト)。

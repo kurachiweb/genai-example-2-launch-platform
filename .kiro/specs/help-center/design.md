@@ -1250,15 +1250,17 @@ export declare function filterHelpArticles<
 
 ```typescript
 export interface HelpArticleFormValues {
-  readonly title: string;
-  readonly subtitle: string;
-  readonly handle: string;
-  readonly categoryId: string;
-  readonly pinned: boolean;
-  readonly status: HelpArticleStatus;
-  readonly body: string;
+  readonly fields: {
+    readonly title: string;
+    readonly subtitle: string;
+    readonly handle: string;
+    readonly categoryId: string;
+    readonly pinned: boolean;
+    readonly status: HelpArticleStatus;
+    readonly body: string;
+  }; // HelpArticleFieldsと同じ形
   readonly reason: string;
-}
+} // 編集する記事のidとexpectedRevisionは含めない
 export interface HelpArticleFormProps {
   readonly mode: 'create' | 'edit';
   readonly article?: AdminHelpArticle; // 編集時
@@ -1271,7 +1273,7 @@ export interface HelpArticleFormProps {
 - `/help-articles/new`(`new.tsx`): `adminHelpCategories`を読み、`HelpArticleForm`(`mode: 'create'`)。閲覧のみの管理者は一覧へ戻す。保存の成功で「ヘルプ記事を作成しました。」の`notify`と編集画面への移動(6.10)。
 - `/help-articles/$articleId`(`$articleId.tsx`): `adminHelpArticle`と`adminHelpCategories`を読む。`null`なら「このヘルプ記事は削除されています。」と一覧への導線。`HelpArticleForm`(`mode: 'edit'`、`readOnly`は`!hasRole(role, 'moderator')`)。公開なら「公開ページを開く」(`clientSiteOrigin + '/help/' + ハンドル`、`target="_blank"`・`rel="noopener"`、6.11)。モデレーター以上に`HelpArticleDeleteButton`。保存の成功で「ヘルプ記事を保存しました。」と再読み込み。
 - `HelpArticleFormSchema`: サーバーと同じ定数と判定(`checkHelpTitle`・`checkHelpSubtitle`・`checkHandleFormat`・`markdownTextSchema`(100,000書記素)・`AUDIT_REASON_MAX`)から組み立てる(6.1・6.2)。
-- `HelpArticleForm`: `useAppForm(HelpArticleFormSchema, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)。欄の順はタイトル・サブタイトル・ハンドル(`HelpArticleHandleField`)・カテゴリ(`select`、APIの並び順、11.7)・ピン留め(`checkbox`)・ステータス(`radio-group`、既定は下書き)・本文(`MarkdownEditor`、`maxGraphemes` 100000、`preview`は`useMarkdownOptions({ externalLinkRel: HELP_ARTICLE_EXTERNAL_LINK_REL, idScope: 'preview' })`)・変更の理由(`ReasonField`、任意)・保存。各欄はフォーカスアウトで検証する(6.3・6.4)。編集では`expectedRevision`を送る。`help_article_handle_unavailable`はハンドルの欄、`validation_error`は`AppForm`が`applyServerFieldErrors`で欄へ(`fields.categoryId`は「カテゴリを選択してください。」、6.5)、`onSubmitError`で`help_article_conflict`は再読み込みの案内(6.8)、`help_article_not_found`は削除の案内(6.9)、それ以外の失敗と欄に対応しない詳細は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。`readOnly`なら全欄を無効にし保存を出さない(12.2)。カテゴリを変えると保存で移動先のカテゴリの末尾に置かれる旨を、カテゴリの欄の説明に示す(6.12)。
+- `HelpArticleForm`: `useAppForm(HelpArticleFormSchema, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)。フォームの値は`CreateHelpArticleInput`・`UpdateHelpArticleInput`の形に合わせ、編集する値を`fields`の下に置き(欄の名前は`fields.title`・`fields.subtitle`・`fields.handle`・`fields.categoryId`・`fields.pinned`・`fields.status`・`fields.body`)、変更の理由は`fields`の外の`reason`に置くため、サーバーの詳細の経路(`input.fields.<名前>`・`input.reason`)から`input.`を除いた経路が欄の名前とそろう。`fields`そのものに付く詳細は欄をまとめた値の経路のため、フォーム全体の失敗になる。編集する記事の`id`と`expectedRevision`(読み込んだ`article.revision`)はスキーマの入力に含めず、`onSubmit`で足す。欄の順はタイトル・サブタイトル・ハンドル(`HelpArticleHandleField`)・カテゴリ(`select`、APIの並び順、11.7)・ピン留め(`checkbox`)・ステータス(`radio-group`、既定は下書き)・本文(`MarkdownEditor`、`maxGraphemes` 100000、`preview`は`useMarkdownOptions({ externalLinkRel: HELP_ARTICLE_EXTERNAL_LINK_REL, idScope: 'preview' })`)・変更の理由(`ReasonField`、任意)・保存。各欄はフォーカスアウトで検証する(6.3・6.4)。`help_article_handle_unavailable`はハンドルの欄(`fields.handle`)、`validation_error`は`AppForm`が`applyServerFieldErrors`で欄へ(`fields.categoryId`は「カテゴリを選択してください。」、6.5)、`onSubmitError`で`help_article_conflict`は再読み込みの案内(6.8)、`help_article_not_found`は削除の案内(6.9)、それ以外の失敗と欄に対応しない詳細は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。`readOnly`なら全欄を`FormField`の`disabled`で無効にし(入力要素の`disabled`の属性だけでは無効にしない)、保存を出さない(送信しないため、12.2)。カテゴリを変えると保存で移動先のカテゴリの末尾に置かれる旨を、カテゴリの欄の説明に示す(6.12)。
 - `HelpArticleHandleField`: フォーカスアウトで形式を検査し、正しければ`helpArticleHandleAvailability(handle, articleId)`で確かめ、`UNAVAILABLE`なら「このハンドルは既に使われています。別の文字列を入力してください。」、`AVAILABLE_RELEASES_PREVIOUS`なら「このハンドルは別の記事の以前のハンドルです。保存すると、その記事の以前のURLは転送されなくなります。」(7.7)。旧ハンドルがあれば「以前のハンドル<旧>のURLは、次にハンドルを変更するか、記事を削除するか、他の記事が同じハンドルを設定するまで新しいURLへ転送されます。」(7.11)。
 - `HelpArticleDeleteButton({ article })`: `ConfirmActionDialog`(タイトル「ヘルプ記事『<タイトル>』を削除しますか?」、説明「記事と以前のURLの転送は削除され、元に戻せません。」、確認「削除」、理由`optional`、`audited: true`、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、8.1)。成功で「ヘルプ記事を削除しました。」と一覧へ移動(8.5)。失敗はダイアログの中に`failureMessageOf`の文言で示し、`help_article_not_found`ではAPIの削除の案内に加えて一覧への導線を出す(8.4)。
 

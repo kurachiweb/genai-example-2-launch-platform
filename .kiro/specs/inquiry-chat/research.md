@@ -287,3 +287,10 @@
 - 要件2.2・2.3を「入力欄を表示し、bot判定を非表示で置き(判定の枠を画面に出さない)」の形に改めた(番号は変えていない)。
 - 変えた箇所: design.mdのAllowed Dependencies、Technology Stackの画面の行、File Structure Planの`inquiry-form-schemas.ts`と両アプリの`graphql/operations/inquiry/`、`GuestInquiryForm`・`MemberInquiryForm`とフォームの検証、`InquiryReplyForm`・`InquiryStatusControl`(`ConfirmActionDialog`の`failureMessageOf`)・`UnhandledInquiriesCard`・`InquiryDetailActionsView`・`CategorySectionsView`・`InquiryCategorySection`、Error Strategy。requirements.mdの2.2・2.3。tasks.mdの9.1・9.3・10.1・10.2・10.3。
 - アップロードの入力欄: media-pipelineの`AttachmentUploadField`が必須で受ける`contactAvailable`(アップロードの失敗の文言を選ぶ)に、`MemberInquiryForm`と`InquiryMessageComposer`は`CLIENT_PROFILE.contactAvailable`を渡す(design.mdの両部品、tasks.mdの9.1・9.3)。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: frontend-platformの影響の表の水平展開として確かめた。`/contact`のフォームは未ログイン(停止中を含む)と停止していないログイン中で既に分かれており、各フォームのスキーマの入力は描く欄だけにすることを明記した。`InquiryMessageComposer`と`InquiryReplyForm`の対象の`inquiryId`はスキーマの入力に含めず`onSubmit`で足すことを明記した。
+- **変えた箇所**: design.mdのフォームの規約・`InquiryMessageComposer`・`InquiryReplyForm`。

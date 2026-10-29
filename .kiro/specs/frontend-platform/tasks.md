@@ -440,7 +440,7 @@
   - _Boundary: AppComposition, FrontendServerEntry, 技術ドキュメント群_
   - _Requirements: 4.2, 8.1, 12.6, 15.3, 15.4_
 
-- [ ] 11. 最終検証後の第2回の判断の反映
+- [x] 11. 最終検証後の第2回の判断の反映
 - [x] 11.1 送信ボタンをサーバーの欄のエラーが残る間は無効にする
   - 先に、`form.browser.test.tsx`へ、サーバーの詳細が2つの欄に出た後に1欄だけ直してもボタンが`disabled`のままで、もう1欄も直すと有効になること、直した欄のサーバーのエラーの表示だけが消えること、利用側が`setError('root.<名前>')`で付けたエラーだけでは無効にならないことを確かめるブラウザテストを書き、失敗を確かめる
   - `SubmitButton`で`useFormState()`の`errors`も購読し、`root`を除く欄のエラーが1つでもある間(`hasFieldErrors`)を`(!isValid || hasFieldErrors) && !isSubmitting`の条件で`disabled`にする。送信中の`aria-disabled`・`aria-busy`は変えない。`AppForm`の処理(`applyServerFieldErrors`・`onSubmitError`の呼び出し)は変えない
@@ -511,7 +511,7 @@
   - _Boundary: FormParts, ServerFieldErrors, 技術ドキュメント群_
   - _Requirements: 8.3, 8.5, 15.3, 15.4_
 
-- [ ] 11.8 描かない値をスキーマの入力に含める下流specの設計とフォームの値の経路を直す
+- [x] 11.8 描かない値をスキーマの入力に含める下流specの設計とフォームの値の経路を直す
   - 判断26(content-reporting): `design.md:1395`(`ReportForm`)・`design.md:1396`(`ReportFormSchema`)・`tasks.md:215`の連絡先を、欄を描く間(`__root`の`viewer`が無いか`status === 'SUSPENDED'`で、権利侵害が選ばれた時)だけスキーマの入力に含める形にする(条件ごとにスキーマを分ける)。描かない間は送信の値に連絡先を入れない。条件ごとのスキーマを`useAppForm`へ渡すだけにし、切り替えの後の再検証は`useAppForm`(判断33)に、描かれていない連絡先の欄に付くサーバーの詳細の扱いは`applyServerFieldErrors`(判断34)に任せ、設計に`clearErrors`・`trigger`の手順を書かない(書いてあれば除く)。ブラウザテストの項目に、連絡先を描かない状態で送信ボタンが連絡先のエラーで無効のまま残らないことを加える
   - 判断26(engagement): `design.md:1108`(`CommentComposer`)・`design.md:1103`(`member`だけ評価)・`design.md:1106`(トップレベルの編集だけ評価)・`tasks.md:189`・`tasks.md:190`の評価を、評価の行を描く投稿欄(投稿者本人以外のトップレベルの投稿と、トップレベルの編集)だけスキーマの入力に含め、返信・投稿者本人の投稿欄・返信の編集では評価を含めないスキーマにする。`design.md:895`の返信の評価の`validation_error`(詳細`rating`)が描かない欄に付かないことを設計に書く
   - 判断26(product-launch): `design.md:2026`(`ProductForm`)・`design.md:2031`(`LaunchDateField`)・`design.md:2032`(`ProductEditPage`)のローンチ日を、カレンダーを描く間(登録と、編集の`reschedule`・`new`)だけスキーマの入力に含め、固定の期間・`blocked`・`unknown`では含めず`onSubmit`で`launchDate: null`(ローンチを変えない)を足す。`design.md:1883`の`productHandle`・`design.md:1884`の`expectedVersion`もスキーマの入力に含めず`onSubmit`で足すことを確かめ、設計に明記する
@@ -521,7 +521,7 @@
   - 判断28(product-launch): `design.md:2030`(`CategorySelect`の固定の期間の無効)・`design.md:2032`(`ProductEditPage`の固定の期間)のカテゴリを`FormField`の`disabled`で無効にし、スキーマで任意(`.optional()`)にして(判断31)、無効の欄の値は`onSubmit`へ渡す値から外れるため、APIの入力に要るカテゴリは`onSubmit`で読み込んだ値から足すことを設計に書く
   - 判断35(全欄が無効のフォーム): 閲覧のみ・停止中・固定などで全欄を無効にするフォームのうち、無効の`Button`を描く形にした設計(identity-authの停止中のメールアドレス変更・パスワード変更、product-launchの未確認の利用者の登録画面、user-profile-socialの停止中の`ProfileEditForm`など)を、`SubmitButton`の`disabled`で送信ボタンを無効にする形にする
   - 水平展開: 本specのdesign.mdの表の「フォーム部品の形」の行の他の下流specにも、条件によって描かない欄や入力欄を描かない値をスキーマの入力に含めるフォーム、入力要素の`disabled`の属性だけで欄を無効にする設計、APIの入力と経路の形が合わないフォームが無いか確かめ、あれば同じく直す。無効になり得る欄をスキーマで任意にしていない設計があれば任意にする(判断31)。全欄を無効にするフォーム(help-centerの`readOnly`、user-profile-socialの停止中)は送信しないため、無効にする方法だけを確かめる
-  - 本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の「フォーム部品の形(描かない値とサーバーの欄のエラー、第2回の判断16・25〜28・30・33〜35)」の行の「該当箇所」を改訂後の位置に更新し、表の前置きの「11.8で下流specを直すまで食い違いが残る」の文と、表の後の箇条の「判断26により11.8で直す」を、直した後の状態の記述にする
+  - 本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の「フォーム部品の形(描かない値とサーバーの欄のエラー、第2回の判断16・25〜28・30・33〜36)」の行の「該当箇所」を改訂後の位置に更新し、表の前置きの「11.8で下流specを直すまで食い違いが残る」の文と、表の後の箇条の「判断26により11.8で直す」を、直した後の状態の記述にする
   - 完了状態: 上の下流specのdesign.md・tasks.mdに、条件によって描かない欄の値と入力欄を描かない値(版の値・識別子)をスキーマの入力に含めるフォームの設計が無く、版の値と識別子を`onSubmit`で足すことが各設計に明記され、help-centerとproduct-launchのフォームの値がAPIの入力と同じく`fields`の下にあり、固定の期間のカテゴリが`FormField`の`disabled`で無効になりスキーマで任意にされ`onSubmit`で値を足すことが明記され、スキーマを切り替えるフォームの設計に`clearErrors`・`trigger`の手順が無く、全欄が無効のフォームが`SubmitButton`の`disabled`を使い、identity-authとadmin-foundationの`reauthentication_failed`の詳細の経路が入力の形のとおりであり、本specの表の該当箇所が改訂後の位置を指す
   - _Boundary: 下流specの設計_
   - _Requirements: 8.1, 8.3, 8.5_
@@ -536,7 +536,7 @@
   - _Boundary: ContractCopies(ルートの単体テスト), 技術ドキュメント群_
   - _Requirements: 15.2, 15.3, 15.4_
 
-- [ ] 11.10 後から無効にした欄・スキーマの切り替え・描かれていない欄・全欄が無効のフォームの送信ボタンを共通部品で扱う
+- [x] 11.10 後から無効にした欄・スキーマの切り替え・描かれていない欄・全欄が無効のフォームの送信ボタンを共通部品で扱う
   - 先に、`form-unmatched-fields.browser.test.tsx`へ、判断32として、検証のエラーとサーバーのエラーが付いた欄を`FormField`の`disabled`で後から無効にするとエラーの表示が消え、他の欄が正しければ送信ボタンが有効になること、判断33として、条件で欄を描く・描かないとスキーマを切り替えるフォームで、描いていた欄に検証のエラーを出した後に描かない条件へ切り替えると新しいスキーマの結果で送信ボタンが有効になり、描かれている欄の表示中のエラーとサーバーの欄のエラーは残ること、判断34として、既定値にあり描いていない欄の詳細を返すと`onSubmitError`の`unmatched`にその詳細が渡り、送信ボタンが無効のまま残らないことを確かめるブラウザテストを書く。`form.browser.test.tsx`へ、判断35として、`SubmitButton`に`disabled`を渡すと他の条件によらず`disabled`になり、外すと既存の条件に戻ることを確かめるブラウザテストを書く。`server-field-errors.unit.test.ts`へ、`isFieldMounted`が偽の経路の詳細を`unmatched`に入れてフォーカスを移さないことを確かめる単体テストを書く。いずれも失敗を確かめる(ブラウザテストのファイルは800行を超えない)
   - 判断32: `FormField`で`useFormContext()`の`clearErrors`を読み、`useEffect`で`disabled`が真になった時(最初の描画で真の時を含む)に`clearErrors(name)`を呼ぶ。`SubmitButton`の判定は変えない
   - 判断33: `useAppForm`に`schema`を依存にした`useEffect`を足し、エラーの付いた欄のうち描かれていない欄(`get(control._fields, name)?._f?.mount`が真でない、`root`を除く)の名前の配列(無ければ空の配列)で`form.trigger(names)`を呼ぶ。react-hook-form 7.89.0の`trigger`は名前の配列でresolverの全欄の検証から`isValid`を計算し直し、渡した名前の欄のエラーだけを置き換える。`trigger()`(名前無し)と`control._setValid`は使わない(設計の「決定事項」の「検証規則の切り替え」)
@@ -617,3 +617,5 @@
 - 11.7(結果、3dd30d2): `applyServerFieldErrors`は欄をまとめた値(コンストラクタが`Object`の値)と無効の欄(`isFieldDisabled`、`AppForm`が`form.control._names.disabled`で答える)とその子の経路の詳細を`unmatched`に入れ、`FormField`は`disabled`を`useController`へ渡す。`useAppForm`は`createFormControl`で作った制御に結んだ`withoutDisabledFieldErrors`(`utilities/forms/disabled-field-errors.ts`)でresolverを包み、検証の前に無効の欄の値を除いた複製をスキーマに通す。ブラウザテストは`form.browser.test.tsx`が800行の上限を超えるため`form-unmatched-fields.browser.test.tsx`に分けた。テストの欄の名前は、Betterleaksが秘密情報と誤検知しない名前に変えた。ストーリーと`frontend/005`を合わせた
 - 11.9(結果、2a1c04b): dev-toolingの9.1の後に、`testing/001`の「アプリ間で写した値の照合」の節に一括検査の段階「写しの照合」でも失敗することを書き、`testing/README.md`の概要と`docs/onboardings/README.md`のコマンドの表を合わせた。11.4の申し送り(照合は`bun run check`に含まれない)は変わり、照合はルートの単体テスト・単体テストの一括実行と一括検査の両方で効く
 - dev-toolingの9.1(結果、83836d3): ルートの`package.json`に`check:contract-copies`(`bun test ./config/contract-copies.unit.test.ts`)を、`run-all.ts`の`CHECK_STEPS`の末尾(型検査の後)にルートだけの段階「写しの照合」を加え、`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`・`test-support/run-all-fixtures.ts`と`coding/001`の「一括検査」の節を合わせた
+- 11.10(結果): `FormField`は`disabled`が真の間`clearErrors(name)`を呼び、`useAppForm`は`schema`の同一性の変化(最初の描画を含む)で描かれていない欄のエラーの経路だけを`trigger(names)`へ渡す。経路は`control._formState.errors`から集める(`form.formState`のproxyを読むとフォームがエラーの更新を購読するため)。マウント時にも`trigger([])`が1回動く(表示は変えない)。`_f.mount`の読み取りは`utilities/forms/field-mount.ts`の`mountStateOf`にまとめ、`AppForm`の`isFieldMounted`(`_f`が無ければ`control._names.array`)と共有する。`rules`を持たない一覧の経路そのものは、送信時は描かれている欄、再検証では描かれていない欄として扱い、design.mdの判断33・34の限界に書いた。`schema`を描画ごとに作るとフォームの状態を読む部品で検証と描き直しが止まらなくなるため、frontend/005の制約に書いた(静的解析での検出は未対応)。react-hook-formを上げる時は`_fields`・`_f.mount`・`_names.array`・`_formState`・`trigger`の配列の扱いを見直す。
+- 11.8(結果): 下流spec(content-reporting・engagement・product-launch・identity-auth・admin-foundation・help-center・notifications・user-profile-social・legal-pages・public-api・inquiry-chat・content-processing)の設計とタスクを判断16・25〜28・30・33〜36に合わせた(描く間だけ欄をスキーマに含め条件ごとの定数のスキーマを切り替える、値を`fields`の下に置く、`FormField`の`disabled`と`.optional()`、版の値・識別子を`onSubmit`で足す、全欄が無効のフォームは`SubmitButton`の`disabled`、`FormField`は`AppForm`の中だけ、`reauthentication_failed`の詳細は入力の形のとおりの経路)。位置はdesign.mdの影響の表の「フォーム部品の形(描かない値とサーバーの欄のエラー、第2回の判断16・25〜28・30・33〜36)」の行に移し、表の全参照(281件)を内容で照合して、それ以前の改訂でずれていたlegal-pages・ugc-moderation・infra-deliveryの参照も直した。

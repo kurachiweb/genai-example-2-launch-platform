@@ -953,7 +953,7 @@ export interface MarkdownEditorProps {
 }
 ```
 
-- 利用側は、frontend-platformの`FormField`の中でReact Hook Formの`Controller`から`value`・`onValueChange`・`onBlur`・`invalid`を渡し、検証規則には`markdownTextSchema`を使う。
+- 利用側は、`AppForm`の中に置いたfrontend-platformの`FormField`(`AppForm`の外では使わない)の中でReact Hook Formの`Controller`から`value`・`onValueChange`・`onBlur`・`invalid`を渡し、検証規則には`markdownTextSchema`を使う。欄を無効にする時は`FormField`の`disabled`で無効にし、子へ渡る`disabled`を`MarkdownEditor`の`disabled`へ渡す(`MarkdownEditor`の`disabled`だけを指定すると、React Hook Formが欄を無効と扱わず、送信の値と検証から外れない)。
 
 #### MarkdownToolbar・MarkdownLinkDialog・MarkdownLengthCounter・EditorPlaceholder・EditorLoadBoundary・LoadCrepeEditor
 

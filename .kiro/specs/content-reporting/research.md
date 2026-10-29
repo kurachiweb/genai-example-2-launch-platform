@@ -284,3 +284,10 @@
 - bot判定: `TurnstileWidget`は非表示のウィジェットで場所を取らないため、判定の枠の表示と場所の記述を除いた。
 - 要件2.6を「bot判定のウィジェットを非表示で置き(判定の枠を画面に出さない)、判定の結果とともに送信する」に改めた(番号は変えていない)。
 - 変えた箇所: design.mdのAllowed Dependencies、File Structure Planの両アプリの`graphql/operations/reporting/`、Modified Filesの生成物と許可リストの行、`ReportDialog`・`ReportForm`・`ReportFormSchema`・`UseSubmitReport`・`ReportSearch`・`ReportCaseActionDialog`(`ConfirmActionDialog`の`failureMessageOf`)・`UseReportCaseMutation`・`UnhandledReportsCard`・`ProductReportsSection`・`ReportCategorySection`(`CategoryMasterEditor`の`failureMessageOf`)、Error Strategy。requirements.mdの2.6。tasks.mdの7.1・7.2・8.1・8.2・8.5。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: 通報フォームの連絡先は、欄を描く間(未ログインか停止中で、権利侵害が選ばれた時)だけスキーマの入力に含める。連絡先を含まない`ReportFormSchema`と含む`ReportFormWithContactSchema`に分け、`ReportForm`が`requiresContactEmail`で2つの定数のスキーマから選んで`useAppForm`へ渡すだけにする(判断33により切り替えの後の検証のし直しは`useAppForm`が、判断34により描かれていない連絡先の欄の詳細は`applyServerFieldErrors`が扱うため、設計に再検証やエラーを消す手順を書かない)。連絡先を含まないスキーマは残った値を出力に含めないため、描かない間は連絡先を送らない。対象の種類と参照はスキーマの入力に含めず`onSubmit`で足す。
+- **変えた箇所**: design.mdの`ReportForm`・`ReportFormSchema`とTesting Strategyのブラウザテストの`ReportForm`、tasks.mdの7.2(スキーマの単体テストと、他のカテゴリへ変えると送信ボタンが有効になることと描かれていない連絡先の欄の詳細がフォーム全体の失敗になることのブラウザテスト)。
