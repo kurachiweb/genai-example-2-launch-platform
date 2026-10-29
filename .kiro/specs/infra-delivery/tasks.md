@@ -24,7 +24,7 @@
   - _Boundary: StorageModule, MessagingModule_
   - _Requirements: 1.1, 1.3, 1.9, 1.10, 2.1, 2.2_
 
-- [ ] 2.2 (P) ホスト名に閉じた資源のモジュール(Turnstile・Web Analytics・送信ドメイン)とホスト名の割り当てのモジュールをテスト先行で作る
+- [x] 2.2 (P) ホスト名に閉じた資源のモジュール(Turnstile・Web Analytics・送信ドメイン)とホスト名の割り当てのモジュールをテスト先行で作る
   - 先に、モックのproviderによる計画のテストで、Turnstileの対象のホスト名とモード(非表示の`invisible`)、アクセス解析の自動挿入の無効とホスト名、送信ドメインのプレビューの無効と抑止中の宛先の扱い、ホスト名とWorker名の対応を書き、失敗を確かめる
   - Turnstileは削除と作り直しを防ぎ、秘密鍵を出力しない。ゾーン全体に効く資源と送信用のDNSレコードを定義しない
   - 各モジュールのproviderのロックファイルを両プラットフォームのハッシュで作る
@@ -289,3 +289,4 @@
 - 1.2: `isPlaceholderId`は全桁0のUUIDと全桁0の32桁(Cloudflareのアカウント・ゾーンの識別子、上流のWrangler設定の仮の値)の両方を仮と判定する。mapのキーは英小文字で始まり英小文字・数字・ハイフンから成る(設計の「英小文字とハイフン」より緩い。9.1でdesign.mdへ反映する)。
 - 1.2: 資源一覧の`cloudflare.accountId`・`zoneId`は本物の値がリポジトリに無く全桁0の仮の値。設計の初回の準備に記入の手順が無いため、stateの保管先の接続先・資源の作成・購読の前に開発者へ確認が必要(preflightの検査対象に加えるかも要判断)。
 - 2.1: 子モジュールは`required_providers`だけを宣言し、テストは`mock_provider "cloudflare"`と`command = plan`で書く。`prevent_destroy`とR2の`location`無しは計画のテストで確かめられないため7.3の`repo-contract.unit.test.ts`でHCLを検査する。ロックファイルは`tofu providers lock -platform=linux_amd64 -platform=linux_arm64`で作り、検証は`init -backend=false -lockfile=readonly`。Queueの名前の属性は`queue_name`。
+- 2.2: 2.3のルートモジュールは、資源一覧の`turnstile.hostnames`を`edge_services`の`turnstile.domains`へ、`hostnames.*.worker`(`workers`のキー)を`workers[<キー>].name`へ引き直して`worker_routing`の`service`へ渡す。`turnstile.mode`は`invisible`以外を変数の検証で拒否する(設計に無い追加。9.1でdesign.mdへ反映)。`cloudflare_workers_custom_domain`の非推奨`environment`を使わないこと、Turnstileの`prevent_destroy`、`outputs.tf`に`secret`が無いことは7.3でHCLを検査する。最初の適用後に、Turnstileの`domains`の順序とWeb Analyticsの`host`だけの登録で差分・拒否が無いか確かめる。
