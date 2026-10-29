@@ -2,9 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createFormControl, get } from 'react-hook-form';
 
-import { SERVER_FIELD_ERROR_TYPE } from '../../utilities/forms/server-field-errors.ts';
-import { z } from '../../utilities/validation/zod.ts';
+import { z } from '../validation/zod.ts';
 import { revalidationTargetsOf } from './revalidation-targets.ts';
+import { SERVER_FIELD_ERROR_TYPE } from './server-field-errors.ts';
 
 interface ProductForm {
   title: string;
@@ -23,6 +23,11 @@ const REGISTERED_FIELDS = [
 ] as const;
 
 const UNMOUNTED_FIELD = 'contact';
+
+// 描かれている欄の判定は利用側(useAppForm)が渡す。ここでは登録して描いたままの欄を描かれている欄とする
+const MOUNTED_FIELDS: ReadonlySet<string> = new Set(
+  REGISTERED_FIELDS.filter((name) => name !== UNMOUNTED_FIELD),
+);
 
 // 描かれている欄のDOM要素は、エラーの形に似たオブジェクトを中に持ち得る
 const fieldElement = (name: string) => ({
@@ -52,8 +57,8 @@ const createControl = () => {
 const targetsOf = ({ control, getValues }: ReturnType<typeof createControl>) =>
   revalidationTargetsOf({
     errors: control._formState.errors,
-    fields: control._fields,
     values: getValues(),
+    isFieldMounted: (path) => MOUNTED_FIELDS.has(path),
   });
 
 const serverError = { type: SERVER_FIELD_ERROR_TYPE, message: '不正です。' };
@@ -172,8 +177,8 @@ const createLinksForm = (url: string) => {
     await trigger(
       revalidationTargetsOf({
         errors: control._formState.errors,
-        fields: control._fields,
         values: getValues(),
+        isFieldMounted: (path) => path === 'links.0.url',
       }),
     );
   };

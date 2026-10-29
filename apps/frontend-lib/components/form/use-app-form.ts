@@ -10,7 +10,8 @@ import {
 import type { z } from 'zod';
 
 import { withoutDisabledFieldErrors } from '../../utilities/forms/disabled-field-errors.ts';
-import { revalidationTargetsOf } from './revalidation-targets.ts';
+import { revalidationTargetsOf } from '../../utilities/forms/revalidation-targets.ts';
+import { mountStateOf } from './field-mount.ts';
 
 export interface AppFormOptions<TInput extends FieldValues> {
   // サーバーの詳細は既定値に経路がある欄にだけ対応するため、部分的な既定値を受け付けず全欄を求める
@@ -50,8 +51,8 @@ export function useAppForm<TInput extends FieldValues, TOutput>(
     void trigger(
       revalidationTargetsOf({
         errors: formState.errors,
-        fields,
         values: getValues(),
+        isFieldMounted: (path) => mountStateOf(fields, path) === true,
       }),
     );
   }, [schema, created, trigger, getValues]);

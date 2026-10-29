@@ -1,23 +1,21 @@
-import {
-  type FieldErrors,
-  type FieldPath,
-  type FieldRefs,
-  type FieldValues,
-  get,
-} from 'react-hook-form';
+import type { FieldErrors, FieldPath, FieldValues } from 'react-hook-form';
 
-import { SERVER_FIELD_ERROR_TYPE } from '../../utilities/forms/server-field-errors.ts';
-import { mountStateOf } from './field-mount.ts';
+import { SERVER_FIELD_ERROR_TYPE } from './server-field-errors.ts';
 
 export interface RevalidationState<T extends FieldValues> {
   readonly errors: FieldErrors<T>;
-  readonly fields: FieldRefs;
   readonly values: T;
+  readonly isFieldMounted: (path: string) => boolean;
 }
 
-interface FieldErrorEntry<TPath extends string = string> {
-  readonly path: TPath;
+interface FieldErrorEntry {
+  readonly path: string;
   readonly type: unknown;
+}
+
+interface ListRoot {
+  readonly listPath: string;
+  readonly length: number;
 }
 
 const LIST_ROOT_KEY = 'root';
@@ -40,20 +38,28 @@ const fieldErrorEntriesOf = (errors: object, prefix = ''): FieldErrorEntry[] =>
     return [{ path, type: 'type' in value ? value.type : undefined }];
   });
 
-// 描かれている欄のサーバーのエラーは利用者がその欄を直すまで残す。描かれていない欄(rulesの無い一覧の経路を含む)のサーバーのエラーは利用者が直せないため新しいスキーマの結果にする
-const keepsServerFieldError = (
-  fields: FieldRefs,
-  { path, type }: FieldErrorEntry,
-): boolean =>
-  type === SERVER_FIELD_ERROR_TYPE && mountStateOf(fields, path) === true;
+const valueAt = (values: unknown, path: string): unknown =>
+  path
+    .split('.')
+    .reduce<unknown>(
+      (current, segment) =>
+        typeof current === 'object' &&
+        current !== null &&
+        Object.hasOwn(current, segment)
+          ? (Reflect.get(current, segment) as unknown)
+          : undefined,
+      values,
+    );
 
-const listPathOf = (path: string, values: FieldValues): string | undefined => {
+// 一覧全体のエラーは、値が配列の経路の下のrootに付く
+const listRootOf = (path: string, values: unknown): ListRoot | undefined => {
   const suffix = `.${LIST_ROOT_KEY}`;
   if (!path.endsWith(suffix)) {
     return undefined;
   }
   const listPath = path.slice(0, -suffix.length);
-  return Array.isArray(get(values, listPath)) ? listPath : undefined;
+  const items = valueAt(values, listPath);
+  return Array.isArray(items) ? { listPath, length: items.length } : undefined;
 };
 
 const ITEM_INDEX = /^\d+$/u;
@@ -69,18 +75,17 @@ const isItemPathOf = (listPath: string, path: string): boolean => {
 // 一覧全体のエラー(<一覧>.root)は、検証する名前に一覧の中の経路がある時だけresolverが<一覧>.rootへ入れ子にして返し、無いとtriggerが新しいエラーを見つけられず消してしまう。一覧の中の欄を名前に加えるとその欄のエラーまで置き換えるため、エラーの付かない存在しない次の要素の経路を加えて入れ子にさせる
 const withListItemPlaceholders = (
   paths: readonly string[],
-  values: FieldValues,
+  values: unknown,
 ): string[] => {
   const placeholders = paths.flatMap((path) => {
-    const listPath = listPathOf(path, values);
+    const listRoot = listRootOf(path, values);
     if (
-      listPath === undefined ||
-      paths.some((other) => isItemPathOf(listPath, other))
+      listRoot === undefined ||
+      paths.some((other) => isItemPathOf(listRoot.listPath, other))
     ) {
       return [];
     }
-    const items: unknown = get(values, listPath);
-    return [`${listPath}.${String(Array.isArray(items) ? items.length : 0)}`];
+    return [`${listRoot.listPath}.${String(listRoot.length)}`];
   });
   return [...paths, ...placeholders];
 };
@@ -89,13 +94,17 @@ const isFieldPathOf = <T extends FieldValues>(
   path: string,
 ): path is FieldPath<T> => path.length > 0;
 
+// 描かれている欄のサーバーのエラーは利用者がその欄を直すまで残す。描かれていない欄(rulesの無い一覧の経路を含む)のサーバーのエラーは利用者が直せないため新しいスキーマの結果にする
 export const revalidationTargetsOf = <T extends FieldValues>({
   errors,
-  fields,
   values,
+  isFieldMounted,
 }: RevalidationState<T>): FieldPath<T>[] => {
   const paths = fieldErrorEntriesOf(errors)
-    .filter((entry) => !keepsServerFieldError(fields, entry))
+    .filter(
+      ({ path, type }) =>
+        type !== SERVER_FIELD_ERROR_TYPE || !isFieldMounted(path),
+    )
     .map(({ path }) => path);
   return withListItemPlaceholders(paths, values).filter(isFieldPathOf<T>);
 };
