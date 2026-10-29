@@ -40,6 +40,7 @@ interface ProductFormProps {
   readonly onSubmitError: (error: unknown, context: SubmitErrorContext) => void;
   readonly contactAvailable: boolean;
   readonly descriptionLocked: boolean;
+  readonly allLocked: boolean;
 }
 
 function ProductForm({
@@ -47,6 +48,7 @@ function ProductForm({
   onSubmitError,
   contactAvailable,
   descriptionLocked,
+  allLocked,
 }: ProductFormProps) {
   const form = useAppForm(productSchema, {
     defaultValues: { title: '', url: '', description: '' },
@@ -71,25 +73,33 @@ function ProductForm({
         control={form.control}
         name="title"
         label="プロダクト名"
+        disabled={allLocked}
         description="ディレクトリとプロダクトのページに表示されます。"
       >
         {(control) => <Input {...control} />}
       </FormField>
-      <FormField control={form.control} name="url" label="外部WebサイトURL">
+      <FormField
+        control={form.control}
+        name="url"
+        label="外部WebサイトURL"
+        disabled={allLocked}
+      >
         {(control) => <Input type="url" {...control} />}
       </FormField>
       <FormField
         control={form.control}
         name="description"
         label="説明"
-        disabled={descriptionLocked}
+        disabled={allLocked || descriptionLocked}
       >
         {(control) => <Textarea {...control} />}
       </FormField>
       {submitError === undefined ? null : (
         <FormMessage role="alert">{submitError}</FormMessage>
       )}
-      <SubmitButton className="self-start">投稿する</SubmitButton>
+      <SubmitButton className="self-start" disabled={allLocked}>
+        投稿する
+      </SubmitButton>
     </AppForm>
   );
 }
@@ -104,6 +114,7 @@ const meta = {
     onSubmitError: fn(),
     contactAvailable: true,
     descriptionLocked: false,
+    allLocked: false,
   },
 } satisfies Meta<typeof ProductForm>;
 
@@ -112,6 +123,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const AllFieldsDisabled: Story = {
+  args: { allLocked: true },
+};
 
 export const DisabledField: Story = {
   args: { descriptionLocked: true },

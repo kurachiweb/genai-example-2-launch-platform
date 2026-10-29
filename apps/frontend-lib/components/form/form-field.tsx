@@ -1,10 +1,11 @@
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useEffect, useId } from 'react';
 import {
   type Control,
   type ControllerRenderProps,
   type FieldPath,
   type FieldValues,
   useController,
+  useFormContext,
 } from 'react-hook-form';
 
 import { cn } from '../../utilities/class-names.ts';
@@ -50,6 +51,13 @@ export function FormField<
   children,
 }: FormFieldProps<TFieldValues, TName, TTransformedValues>) {
   const { field, fieldState } = useController({ control, name, disabled });
+  const { clearErrors } = useFormContext<TFieldValues>();
+  // 無効の欄は利用者が入力し直せず、付いていたエラーが欄の再検証でも消えないため、無効にした時に消す
+  useEffect(() => {
+    if (disabled === true) {
+      clearErrors(name);
+    }
+  }, [disabled, name, clearErrors]);
   const id = useId();
   const controlId = `${id}-control`;
   const descriptionId = `${id}-description`;

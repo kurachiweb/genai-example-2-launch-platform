@@ -7,6 +7,7 @@ export type ServerFieldErrorTarget<T extends FieldValues> = Pick<
   'getValues' | 'setError'
 > & {
   readonly isFieldDisabled: (path: string) => boolean;
+  readonly isFieldMounted: (path: string) => boolean;
 };
 
 export interface ServerFieldErrorsResult {
@@ -48,7 +49,7 @@ const isWithinDisabledField = <T extends FieldValues>(
   );
 };
 
-// 欄をまとめた親と無効の欄に付けたエラーは、利用者が入力し直して消せず送信ボタンが無効のまま残るため、欄に対応しない詳細として返す
+// 欄をまとめた親・無効の欄・描かれていない欄に付けたエラーは、利用者が入力し直して消せず送信ボタンが無効のまま残るため、欄に対応しない詳細として返す
 export const applyServerFieldErrors = <T extends FieldValues>(
   form: ServerFieldErrorTarget<T>,
   details: readonly FieldErrorDetail[],
@@ -58,7 +59,11 @@ export const applyServerFieldErrors = <T extends FieldValues>(
   const unmatched: FieldErrorDetail[] = [];
   for (const detail of details) {
     const { field } = detail;
-    if (isWithinDisabledField(form, field) || !isFieldPathOf(values, field)) {
+    if (
+      isWithinDisabledField(form, field) ||
+      !isFieldPathOf(values, field) ||
+      !form.isFieldMounted(field)
+    ) {
       unmatched.push(detail);
       continue;
     }

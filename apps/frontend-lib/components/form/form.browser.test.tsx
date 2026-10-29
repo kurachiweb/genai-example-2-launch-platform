@@ -36,6 +36,7 @@ type ProductInput = z.input<typeof productSchema>;
 
 interface ProductFormProps {
   readonly onSubmit?: (values: ProductInput) => Promise<void> | void;
+  readonly submitDisabled?: boolean;
   readonly onSubmitError?: (
     error: unknown,
     context: SubmitErrorContext,
@@ -45,6 +46,7 @@ interface ProductFormProps {
 function ProductForm({
   onSubmit = () => undefined,
   onSubmitError = () => undefined,
+  submitDisabled,
 }: ProductFormProps) {
   const form = useAppForm(productSchema, {
     defaultValues: { title: '', url: '' },
@@ -69,7 +71,7 @@ function ProductForm({
       <FormField control={form.control} name="url" label="外部WebサイトURL">
         {(control) => <Input type="url" {...control} />}
       </FormField>
-      <SubmitButton>登録する</SubmitButton>
+      <SubmitButton disabled={submitDisabled}>登録する</SubmitButton>
     </AppForm>
   );
 }
@@ -295,6 +297,21 @@ describe('フォーム部品', () => {
     await expect.element(submitButton()).toBeDisabled();
 
     await userEvent.fill(urlInput(), 'https://pitch-notes.example');
+
+    await expect.element(submitButton()).toBeEnabled();
+
+    await userEvent.fill(urlInput(), 'pitch-notes.example');
+
+    await expect.element(submitButton()).toBeDisabled();
+  });
+
+  test('送信ボタンにdisabledを渡すと他の条件によらず無効にし、外すと入力の状態による判定に戻す', async () => {
+    const screen = await render(<ProductForm submitDisabled />);
+    await fillValidProduct();
+
+    await expect.element(submitButton()).toBeDisabled();
+
+    await screen.rerender(<ProductForm />);
 
     await expect.element(submitButton()).toBeEnabled();
 

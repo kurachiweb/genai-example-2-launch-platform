@@ -8,12 +8,14 @@ export interface SubmitButtonProps extends Omit<
   'type' | 'disabled' | 'asChild'
 > {
   readonly pendingLabel?: string;
+  readonly disabled?: boolean;
 }
 
 const DEFAULT_PENDING_LABEL = '送信中';
 
 export function SubmitButton({
   pendingLabel = DEFAULT_PENDING_LABEL,
+  disabled,
   children,
   ...props
 }: SubmitButtonProps) {
@@ -26,7 +28,9 @@ export function SubmitButton({
   return (
     <Button
       type="submit"
-      disabled={(!isValid || hasFieldErrors) && !isSubmitting}
+      disabled={
+        disabled === true || ((!isValid || hasFieldErrors) && !isSubmitting)
+      }
       aria-disabled={isSubmitting ? true : undefined}
       aria-busy={isSubmitting ? true : undefined}
       {...props}

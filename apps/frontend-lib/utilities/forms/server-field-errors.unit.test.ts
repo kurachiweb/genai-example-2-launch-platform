@@ -32,7 +32,12 @@ const REGISTERED_FIELDS = [
   'note',
 ] as const;
 
-const createForm = (disabledFields: readonly string[] = []) => {
+interface FieldStates {
+  readonly disabled?: readonly string[];
+  readonly unmounted?: readonly string[];
+}
+
+const createForm = ({ disabled = [], unmounted = [] }: FieldStates = {}) => {
   const control = createFormControl<ProductForm>({
     defaultValues: DEFAULT_VALUES,
   });
@@ -46,11 +51,13 @@ const createForm = (disabledFields: readonly string[] = []) => {
       },
     });
   }
-  const disabled = new Set(disabledFields);
+  const disabledPaths = new Set(disabled);
+  const unmountedPaths = new Set(unmounted);
   const form = {
     getValues: control.getValues,
     setError: control.setError,
-    isFieldDisabled: (path: string) => disabled.has(path),
+    isFieldDisabled: (path: string) => disabledPaths.has(path),
+    isFieldMounted: (path: string) => !unmountedPaths.has(path),
   };
   return { form, control, focused };
 };
@@ -199,7 +206,9 @@ describe('applyServerFieldErrors', () => {
 
   describe('無効の欄の経路', () => {
     test('無効の欄とその子の経路の詳細は、欄のエラーにせず対応しない詳細として返し、フォーカスを移さない', () => {
-      const { form, control, focused } = createForm(['title', 'links']);
+      const { form, control, focused } = createForm({
+        disabled: ['title', 'links'],
+      });
       const titleDetail = detail('title', '製品名を入力してください。');
       const linkDetail = detail('links.0', 'URLの形式で入力してください。');
 
@@ -219,7 +228,7 @@ describe('applyServerFieldErrors', () => {
     });
 
     test('無効の欄の親や兄弟の欄の詳細は、欄のエラーにする', () => {
-      const { form, control } = createForm(['links.0']);
+      const { form, control } = createForm({ disabled: ['links.0'] });
 
       const { unmatched } = applyServerFieldErrors(form, [
         detail('links', 'URLは5件以内で入力してください。'),
@@ -233,6 +242,43 @@ describe('applyServerFieldErrors', () => {
       expect(control.getFieldState('title').error?.message).toBe(
         '製品名を入力してください。',
       );
+    });
+  });
+
+  describe('描かれていない欄の経路', () => {
+    test('描かれていない欄の詳細は、欄のエラーにせず対応しない詳細として返し、フォーカスを移さない', () => {
+      const { form, control, focused } = createForm({
+        unmounted: ['tagline', 'links.0'],
+      });
+      const taglineDetail = detail(
+        'tagline',
+        'キャッチコピーを入力してください。',
+      );
+      const linkDetail = detail('links.0', 'URLの形式で入力してください。');
+
+      const { unmatched } = applyServerFieldErrors(form, [
+        taglineDetail,
+        linkDetail,
+        detail('title', '製品名を入力してください。'),
+      ]);
+
+      expect(unmatched).toEqual([taglineDetail, linkDetail]);
+      expect(control.getFieldState('tagline').error).toBeUndefined();
+      expect(control.getFieldState('links.0').error).toBeUndefined();
+      expect(control.getFieldState('title').error?.message).toBe(
+        '製品名を入力してください。',
+      );
+      expect(focused).toEqual(['title']);
+    });
+
+    test('描かれていない欄だけに詳細があれば、どの欄へもフォーカスを移さない', () => {
+      const { form, focused } = createForm({ unmounted: ['maker.name'] });
+      const makerDetail = detail('maker.name', '作成者名を入力してください。');
+
+      const { unmatched } = applyServerFieldErrors(form, [makerDetail]);
+
+      expect(unmatched).toEqual([makerDetail]);
+      expect(focused).toEqual([]);
     });
   });
 });

@@ -5,6 +5,7 @@ import {
   type UseFormReturn,
 } from 'react-hook-form';
 
+import { mountStateOf } from '../../utilities/forms/field-mount.ts';
 import { applyServerFieldErrors } from '../../utilities/forms/server-field-errors.ts';
 import {
   type FieldErrorDetail,
@@ -70,6 +71,10 @@ export function AppForm<TFieldValues extends FieldValues, TTransformedValues>({
           getValues: form.getValues,
           setError: form.setError,
           isFieldDisabled: (path) => form.control._names.disabled.has(path),
+          // rulesの無い一覧は_fを持たないため、一覧の名前の集合で描かれているとみなす
+          isFieldMounted: (path) =>
+            mountStateOf(form.control._fields, path) ??
+            form.control._names.array.has(path),
         },
         withoutPrefix(details, serverFieldPrefix),
       );
