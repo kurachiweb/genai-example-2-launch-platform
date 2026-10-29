@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
@@ -10,6 +10,10 @@ import {
   outlineOf,
   ringOutline,
 } from '../../../test/computed-style.ts';
+import {
+  elementsOverflowingContainer,
+  elementsWithClippedContent,
+} from '../../../test/overflow.ts';
 import {
   emulateReducedMotion,
   REDUCED_MOTION_PREFERENCES,
@@ -26,6 +30,12 @@ import { DialogTrigger } from './dialog-trigger.tsx';
 
 const TITLE = 'プロダクト『Pitch Notes』を削除しますか?';
 const DESCRIPTION = '削除したプロダクトは元に戻せません。';
+
+const WIDE_VIEWPORT = { width: 1024, height: 768 } as const;
+const NARROW_PARENT_WIDTH = 462;
+const NARROW_PARENT_TEST_ID = 'narrow-parent';
+const LONG_DELETE_LABEL =
+  'Delete this product together with its whole launch history permanently';
 
 function DeleteProductDialog({
   onDelete = () => undefined,
@@ -154,6 +164,42 @@ describe('Dialog', () => {
 
     await expect.element(dialog()).not.toBeInTheDocument();
     await expect.element(trigger()).toHaveFocus();
+  });
+
+  describe('画面幅640px以上のフッター', () => {
+    let previousViewport = { width: 0, height: 0 };
+
+    beforeEach(async () => {
+      previousViewport = {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+      await page.viewport(WIDE_VIEWPORT.width, WIDE_VIEWPORT.height);
+    });
+
+    afterEach(async () => {
+      await page.viewport(previousViewport.width, previousViewport.height);
+    });
+
+    test('幅を絞った親の中で短い文言と長い文言のボタンを並べても、ボタンを折り返して並べ、親から溢れず文言が切れない', async () => {
+      await render(
+        <div
+          data-testid={NARROW_PARENT_TEST_ID}
+          style={{ width: NARROW_PARENT_WIDTH }}
+        >
+          <DialogFooter>
+            <Button variant="outline">キャンセル</Button>
+            <Button variant="destructive">{LONG_DELETE_LABEL}</Button>
+          </DialogFooter>
+        </div>,
+      );
+      const parent = page.getByTestId(NARROW_PARENT_TEST_ID).element();
+
+      expect(elementsOverflowingContainer(parent)).toStrictEqual([]);
+      expect(
+        elementsWithClippedContent(page.getByRole('button').elements()),
+      ).toStrictEqual([]);
+    });
   });
 
   test.each(COLOR_SCHEMES)(

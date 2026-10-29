@@ -7,10 +7,12 @@ import { runAxe } from '../../../test/a11y.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
+  isContentClipped,
   outlineOf,
   ringOutline,
 } from '../../../test/computed-style.ts';
 import { pressKeyUntilFocusMoves } from '../../../test/keyboard.ts';
+import { elementsOverflowingContainer } from '../../../test/overflow.ts';
 import { Tabs } from './tabs.tsx';
 import { TabsContent } from './tabs-content.tsx';
 import { TabsList } from './tabs-list.tsx';
@@ -44,6 +46,32 @@ function ProfileTabs({
       <TabsContent value="upvotes">
         まだUpvoteしたマッチはありません。
       </TabsContent>
+    </Tabs>
+  );
+}
+
+const NARROW_PARENT_WIDTH = 120;
+const NARROW_PARENT_TEST_ID = 'narrow-parent';
+const SHORT_TRANSLATED_LABEL = 'Awards';
+const LONG_TRANSLATED_LABEL = 'Products you have launched so far';
+
+function TranslatedProfileTabs({
+  variant,
+}: {
+  readonly variant?: TabsListVariant;
+}) {
+  return (
+    <Tabs defaultValue="launches">
+      <TabsList aria-label="Profile contents" variant={variant}>
+        <TabsTrigger value="launches">{LONG_TRANSLATED_LABEL}</TabsTrigger>
+        <TabsTrigger value="awards">{SHORT_TRANSLATED_LABEL}</TabsTrigger>
+        <TabsTrigger value="upvotes" translate="no">
+          Upvote
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="launches">No products launched yet.</TabsContent>
+      <TabsContent value="awards">No awards yet.</TabsContent>
+      <TabsContent value="upvotes">No upvoted matches yet.</TabsContent>
     </Tabs>
   );
 }
@@ -127,6 +155,42 @@ describe('Tabs', () => {
 
     await expect.element(panel('ローンチしたプロダクト')).toHaveFocus();
   });
+
+  test('トリガーの文言が翻訳で長くなっても、幅が文言に合わせて伸びて文言が切れない', async () => {
+    await render(<TranslatedProfileTabs />);
+    const short = tab(SHORT_TRANSLATED_LABEL).element();
+    const long = tab(LONG_TRANSLATED_LABEL).element();
+
+    expect(long.clientWidth).toBeGreaterThan(short.clientWidth * 2);
+    expect(long.scrollWidth).toBeLessThanOrEqual(long.clientWidth);
+    expect(isContentClipped(long)).toBe(false);
+  });
+
+  test('翻訳しない指定をトリガーの要素へ渡す', async () => {
+    await render(<TranslatedProfileTabs />);
+
+    await expect.element(tab('Upvote')).toHaveAttribute('translate', 'no');
+  });
+
+  test.each(VARIANTS)(
+    '見た目の種類が%sのとき、幅を絞った親の中ではトリガーを折り返して並べて長い文言も折り返し、親から溢れず文言が切れない',
+    async (variant) => {
+      await render(
+        <div
+          data-testid={NARROW_PARENT_TEST_ID}
+          style={{ width: NARROW_PARENT_WIDTH }}
+        >
+          <TranslatedProfileTabs variant={variant} />
+        </div>,
+      );
+      const parent = page.getByTestId(NARROW_PARENT_TEST_ID).element();
+
+      expect(elementsOverflowingContainer(parent)).toStrictEqual([]);
+      for (const trigger of page.getByRole('tab').elements()) {
+        expect(isContentClipped(trigger)).toBe(false);
+      }
+    },
+  );
 
   test.each(COLOR_SCHEMES)(
     '配色が%sのとき、キーボードで移ったフォーカスをタブと内容のリングの色の輪郭で示す',

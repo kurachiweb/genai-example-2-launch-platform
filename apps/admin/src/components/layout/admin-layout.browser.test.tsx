@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -5,6 +6,12 @@ import { render } from 'vitest-browser-react';
 import '../../styles.css';
 import { MAIN_CONTENT_ID } from '../../../lib/components/app-shell/main-content.ts';
 import { SkipLink } from '../../../lib/components/app-shell/skip-link.tsx';
+import { Badge } from '../../../lib/components/ui/badge/badge.tsx';
+import { Button } from '../../../lib/components/ui/button/button.tsx';
+import { Tabs } from '../../../lib/components/ui/tabs/tabs.tsx';
+import { TabsContent } from '../../../lib/components/ui/tabs/tabs-content.tsx';
+import { TabsList } from '../../../lib/components/ui/tabs/tabs-list.tsx';
+import { TabsTrigger } from '../../../lib/components/ui/tabs/tabs-trigger.tsx';
 import { TooltipProvider } from '../../../lib/components/ui/tooltip/tooltip-provider.tsx';
 import { runAxe } from '../../../lib/test/a11y.ts';
 import {
@@ -13,6 +20,11 @@ import {
   outlineOf,
   ringOutline,
 } from '../../../lib/test/computed-style.ts';
+import {
+  elementsBeyondViewportEdges,
+  elementsWithClippedContent,
+  hasHorizontalScroll,
+} from '../../../lib/test/overflow.ts';
 import {
   ADMIN_LAYOUT_SLOTS,
   type AdminLayoutSlots,
@@ -34,13 +46,40 @@ function PageBody() {
   );
 }
 
-function renderLayout(slots: AdminLayoutSlots = ADMIN_LAYOUT_SLOTS) {
+function TranslatedPageBody() {
+  return (
+    <>
+      <h1>Heading of the page body translated by the browser</h1>
+      <Badge>Waiting for the review by another administrator</Badge>
+      <Button>Suspend this account and notify the owner by email</Button>
+      <Tabs defaultValue="reports">
+        <TabsList aria-label="Moderation queues">
+          <TabsTrigger value="reports">Reports waiting for review</TabsTrigger>
+          <TabsTrigger value="appeals">
+            Appeals from suspended users
+          </TabsTrigger>
+          <TabsTrigger value="ultras" translate="no">
+            Ultras
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="reports">No reports yet.</TabsContent>
+        <TabsContent value="appeals">No appeals yet.</TabsContent>
+        <TabsContent value="ultras">No Ultras yet.</TabsContent>
+      </Tabs>
+    </>
+  );
+}
+
+function renderLayout(
+  slots: AdminLayoutSlots = ADMIN_LAYOUT_SLOTS,
+  Body: ComponentType = PageBody,
+) {
   return render(
     <TooltipProvider>
       <SkipLink />
       <div data-testid={LAYOUT_ROOT_TEST_ID}>
         <AdminLayout slots={slots}>
-          <PageBody />
+          <Body />
         </AdminLayout>
       </div>
     </TooltipProvider>,
@@ -63,11 +102,6 @@ function isBefore(first: Element, second: Element): boolean {
   return Boolean(
     first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
   );
-}
-
-function hasHorizontalScroll(): boolean {
-  const root = document.documentElement;
-  return root.scrollWidth > root.clientWidth;
 }
 
 // 文字も画像も操作も持たない要素は、区画が空のときに残った入れ物(空のnav・ul・余白だけのdivなど)とみなす
@@ -110,6 +144,40 @@ function TestAccountLink() {
 const FILLED_SLOTS: AdminLayoutSlots = {
   navigation: TestNavigation,
   headerAccount: TestAccountLink,
+};
+
+function TranslatedNavigation() {
+  return (
+    <nav aria-label="Administration menu" className="md:w-56">
+      <ul>
+        <li>
+          <a href="#users" className={TEST_NAVIGATION_LINK_CLASS_NAME}>
+            Users who registered with the service
+          </a>
+        </li>
+        <li>
+          <a href="#audit-logs" className={TEST_NAVIGATION_LINK_CLASS_NAME}>
+            Audit logs of operations by administrators
+          </a>
+        </li>
+      </ul>
+    </nav>
+  );
+}
+
+function TranslatedAccountLink() {
+  return (
+    <Button asChild size="sm" variant="outline">
+      <a href="#account">
+        Open the settings page of your administrator account and roles
+      </a>
+    </Button>
+  );
+}
+
+const TRANSLATED_SLOTS: AdminLayoutSlots = {
+  navigation: TranslatedNavigation,
+  headerAccount: TranslatedAccountLink,
 };
 
 beforeEach(async () => {
@@ -252,6 +320,21 @@ describe('AdminLayout', () => {
           window.innerWidth,
         );
       }
+    });
+
+    test('翻訳で長くなった文言の部品を区画と本文に差し込んでも、横スクロールが出ず、どの要素も画面の左右の端を越えない', async () => {
+      await renderLayout(TRANSLATED_SLOTS, TranslatedPageBody);
+
+      await expect.element(page.getByRole('main')).toBeVisible();
+      expect(hasHorizontalScroll()).toBe(false);
+      expect(
+        elementsBeyondViewportEdges(`[data-testid="${LAYOUT_ROOT_TEST_ID}"]`),
+      ).toStrictEqual([]);
+      expect(
+        elementsWithClippedContent(
+          layoutRoot().querySelectorAll('a, button, [role="tab"]'),
+        ),
+      ).toStrictEqual([]);
     });
   });
 

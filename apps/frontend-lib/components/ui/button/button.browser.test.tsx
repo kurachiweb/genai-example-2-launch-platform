@@ -12,8 +12,9 @@ import {
   ringOutline,
   tokenColorOf,
 } from '../../../test/computed-style.ts';
+import { elementsOverflowingContainer } from '../../../test/overflow.ts';
 import { Button } from './button.tsx';
-import type { ButtonVariant } from './button-variants.ts';
+import type { ButtonSize, ButtonVariant } from './button-variants.ts';
 
 const VARIANTS: readonly ButtonVariant[] = [
   'default',
@@ -23,6 +24,23 @@ const VARIANTS: readonly ButtonVariant[] = [
   'ghost',
   'link',
 ];
+
+const TEXT_SIZES: readonly ButtonSize[] = ['xs', 'sm', 'default', 'lg'];
+
+const NARROW_PARENT_WIDTH = 120;
+const NARROW_PARENT_TEST_ID = 'narrow-parent';
+const LONG_LABEL = 'Save your changes to this product page';
+
+// ボタンは縮まないため、折り返さない親に複数のボタンを並べる配置は文書の規則で禁じており、確かめるのは1つだけ置いた時
+const ROW_PARENT_LAYOUTS = [
+  ['flex', '長い文言のボタンを置いても', 'flex gap-2', [LONG_LABEL]],
+  [
+    'flex flex-wrap',
+    '短い文言のボタンと並べても',
+    'flex flex-wrap gap-2',
+    [LONG_LABEL, '保存'],
+  ],
+] as const;
 
 afterEach(() => {
   applyColorScheme('light');
@@ -121,6 +139,48 @@ describe('Button', () => {
     expect(long.clientWidth).toBeGreaterThan(short.clientWidth * 2);
     expect(isContentClipped(long)).toBe(false);
   });
+
+  test.each(TEXT_SIZES)(
+    '大きさが%sのとき、幅を絞った親の中では長い文言を折り返し、親から溢れず文言が切れない',
+    async (size) => {
+      await render(
+        <div
+          data-testid={NARROW_PARENT_TEST_ID}
+          style={{ width: NARROW_PARENT_WIDTH }}
+        >
+          <Button size={size}>{LONG_LABEL}</Button>
+        </div>,
+      );
+      const parent = page.getByTestId(NARROW_PARENT_TEST_ID).element();
+      const button = page.getByRole('button', { name: LONG_LABEL }).element();
+
+      expect(elementsOverflowingContainer(parent)).toStrictEqual([]);
+      expect(isContentClipped(button)).toBe(false);
+    },
+  );
+
+  test.each(ROW_PARENT_LAYOUTS)(
+    '幅を絞った%sの親の中で%s、長い文言を折り返し、親から溢れず文言が切れない',
+    async (_layout, _arrangement, className, labels) => {
+      await render(
+        <div
+          data-testid={NARROW_PARENT_TEST_ID}
+          className={className}
+          style={{ width: NARROW_PARENT_WIDTH }}
+        >
+          {labels.map((label) => (
+            <Button key={label}>{label}</Button>
+          ))}
+        </div>,
+      );
+      const parent = page.getByTestId(NARROW_PARENT_TEST_ID).element();
+
+      expect(elementsOverflowingContainer(parent)).toStrictEqual([]);
+      for (const button of page.getByRole('button').elements()) {
+        expect(isContentClipped(button)).toBe(false);
+      }
+    },
+  );
 
   test('翻訳しない指定をボタンの要素へ渡す', async () => {
     await render(<Button translate="no">Upvote</Button>);

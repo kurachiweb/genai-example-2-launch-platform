@@ -634,9 +634,9 @@
   - _Boundary: SmokeE2E_
   - _Requirements: 5.5, 6.5, 10.8, 12.6_
 
-- [ ] 12.10 (P) 翻訳で長くなる文言に耐えることをブラウザテストで確かめる
+- [x] 12.10 (P) 翻訳で長くなる文言に耐えることをブラウザテストで確かめる
   - 共通部品のタブ(`components/ui/tabs`)のブラウザテストへ、トリガーの長い文言が切れずに折り返すか伸びて表示されること(要素の幅と`scrollWidth`の比較)と`translate="no"`を付けられることを、`Button`・`Badge`・横向きのタブのブラウザテストへ、幅を絞った親(例: 幅120px)の中に長い文言の部品を置いても親から溢れないことを書く
-  - client・adminの`site-layout.browser.test.tsx`・`admin-layout.browser.test.tsx`へ、区画(ヘッダーの区画・本文など)に長い文言の部品を差し込んで幅320pxで横に溢れないこと(`elementsOverflowingViewport`・`hasHorizontalScroll`)を書く
+  - client・adminの`site-layout.browser.test.tsx`・`admin-layout.browser.test.tsx`へ、区画(ヘッダーの区画・本文など)に長い文言の部品を差し込んで幅320pxで横に溢れないこと(`elementsBeyondViewportEdges`・`hasHorizontalScroll`)を書く
   - 失敗した部品は固定幅・折り返しの禁止などのクラス名を直し、ストーリーの表示が崩れないことを確かめる
   - 完了状態: 共通部品・client・adminのブラウザテストと一括検査が成功する
   - _Boundary: UiPrimitives, SiteLayout, AdminLayout_
@@ -751,3 +751,4 @@
 - 12.2(結果): `use-app-form.ts`の切り替えの時のエラーの読み取りを、内部の`control._formState.errors`から公開の`form.getErrors()`(7.89.0では`{ ..._formState.errors }`を返し、購読も検証もしない)に置き換えた。`form-unmatched-fields.browser.test.tsx`が、フォームを作る部品がエラーの変化で描き直さないこと(`formState`のproxyから読むと失敗する)を確かめる。残した内部の値と理由(12.3の版の番人の対象): `app-form.tsx`の`isFieldDisabled`と`use-app-form.ts`のresolverの包みの`_names.disabled`(欄ごとの無効を返す公開のAPIが無く、`getFieldState`は無効を返さず、`formState.disabled`はフォーム全体だけ。`FormField`の登録簿では`register`・`useController`の直接の利用・フォーム全体の`disabled`・描かなくなった無効の欄が`_names.disabled`に残り送信の値から外れることと判定がずれる)、`app-form.tsx`の`isFieldMounted`・`use-app-form.ts`の再検証の対象選び・`field-mount.ts`の`_fields`の`_f.mount`と`_names.array`(描画の状態を返す公開のAPIが無く、登録簿は`FormField`の欄しか知らず、`rules`の無い`useFieldArray`は`_names.array`でしか分からない)。公開されていない振る舞いへの依存(`control._options`の描画ごとの置き換え、名前の配列を渡した`trigger`、resolverの`values`が`_formValues`、`handleSubmit`の`_names.disabled`の除外、`cloneObject`、`toNestErrors`)も12.3で見張る。
 - 12.4(結果): `RevalidationState`に`isFieldTouched: (path: FieldPath<T>) => boolean`(`useAppForm`が公開の`getFieldState(path).isTouched`で答える)と`isFieldArray`(`control._names.array.has(path)`)を加えた。触れた欄の候補は`values`の入れ子(配列と`Object`の値の中)の全経路のうち`!isFieldArray && isFieldMounted && isFieldTouched`の経路で、エラーの付いた経路と重複を除いて合わせてから、描かれていてサーバーのエラーの付いた経路を除く。一覧の経路を外すのは、`rules`を持つ一覧の経路が`_f.mount`真で、中の欄を触れると`isTouched`も真になり、`trigger`が一覧のエラーの部分木を置き換えてサーバーのエラーを消し、触れていない中の欄にエラーを出すため(レビューの差し戻し1回)。`getFieldState`が購読を増やさず購読の無いフォームでも触れた状態を答えることを版の番人の一覧に足した。`form-unmatched-fields.browser.test.tsx`は798行のため、12.5のブラウザテストは`form.browser.test.tsx`に置く。
 - 12.9(結果): E2Eにclient 2件・admin 3件を足し、到達確認を含めて25件(スモークテストは23件)になった(8.2の記録の件数はその時点の値)。静的なファイルの検査はビルド後の対象だけで行い、開発サーバーでは確認の省略の注記を残す。ハイドレーションの後の取得の検査のため、共通の補助`recheckFromBrowser`は再確認の案内が表示されている間だけ押し、案内の消失と応答の両方を待つ形にした。開発サーバーでE2Eを並列に多く回すと、機械の負荷でworkerdが落ちることがある(`--workers=2`では安定)。
+- 12.10(結果): テストが実際の欠陥を見つけ、`Button`・`Badge`・`TabsTrigger`の`whitespace-nowrap`と固定の高さをやめて`h-fit min-h-*`にし(`Button`は`max-w-full shrink-0`、`TabsList`は`flex-wrap`)、`DialogFooter`(640px以上)と利用者側・管理者側のヘッダーの右側の部品を次の行へ折り返すようにした。5.1の記録の「ボタン・バッジは`whitespace-nowrap`で、長くなる箇所は`whitespace-normal h-auto`を付ける」案内はこれで置き換わり、部品が既定で折り返す。1行の時の寸法は変わらない(タブのトリガーの高さだけ29pxから30px)。`Button`は縮まないため、折り返さない`flex`の親に複数を並べない(005)。はみ出しの判定の補助は`apps/frontend-lib/test/overflow.ts`(`elementsBeyondViewportEdges`は画面の左右の端、`elementsOverflowingContainer`・`elementsWithClippedContent`・`hasHorizontalScroll`)にまとめた。レビューの差し戻しは2回(横に並べたボタンと左端のはみ出しの見逃し、`DialogFooter`の水平展開の漏れ)。

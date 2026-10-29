@@ -12,8 +12,9 @@ import {
   ringOutline,
   tokenColorOf,
 } from '../../../test/computed-style.ts';
+import { elementsOverflowingContainer } from '../../../test/overflow.ts';
 import { Badge } from './badge.tsx';
-import type { BadgeVariant } from './badge-variants.ts';
+import type { BadgeSize, BadgeVariant } from './badge-variants.ts';
 
 const VARIANTS: readonly BadgeVariant[] = [
   'default',
@@ -23,6 +24,12 @@ const VARIANTS: readonly BadgeVariant[] = [
   'ghost',
   'link',
 ];
+
+const SIZES: readonly BadgeSize[] = ['default', 'lg'];
+
+const NARROW_PARENT_WIDTH = 120;
+const NARROW_PARENT_TEST_ID = 'narrow-parent';
+const LONG_LABEL = 'Winner of the weekly launch match';
 
 afterEach(() => {
   applyColorScheme('light');
@@ -57,6 +64,25 @@ describe('Badge', () => {
     expect(long.clientWidth).toBeGreaterThan(short.clientWidth * 2);
     expect(isContentClipped(long)).toBe(false);
   });
+
+  test.each(SIZES)(
+    '大きさが%sのとき、幅を絞った親の中では長い文言を折り返し、親から溢れず文言が切れない',
+    async (size) => {
+      await render(
+        <div
+          data-testid={NARROW_PARENT_TEST_ID}
+          style={{ width: NARROW_PARENT_WIDTH }}
+        >
+          <Badge size={size}>{LONG_LABEL}</Badge>
+        </div>,
+      );
+      const parent = page.getByTestId(NARROW_PARENT_TEST_ID).element();
+      const badge = page.getByText(LONG_LABEL).element();
+
+      expect(elementsOverflowingContainer(parent)).toStrictEqual([]);
+      expect(isContentClipped(badge)).toBe(false);
+    },
+  );
 
   test('翻訳しない指定をバッジの要素へ渡す', async () => {
     await render(<Badge translate="no">Ultras</Badge>);

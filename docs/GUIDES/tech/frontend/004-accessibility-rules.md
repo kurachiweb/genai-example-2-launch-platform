@@ -6,19 +6,20 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 
 部品の使い方は「[共通化する部品](005-shared-components.md)」、日時の要素は「[マークアップの規約](001-markup-conventions.md)」に従う。部品の置き場所は、共通部品のディレクトリからのパスで示す。
 
-| 部品                                                    | 置き場所(共通部品内)                       | 役割                                                                           |
-| ------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------ |
-| `AppDocument`                                           | `components/app-shell/app-document.tsx`    | `<html>`から描画する文書の外枠。スキップリンク・トースト・画面遷移の通知を置く |
-| `SkipLink`                                              | `components/app-shell/skip-link.tsx`       | 本文へ移動するリンク                                                           |
-| `MAIN_CONTENT_ID`                                       | `components/app-shell/main-content.ts`     | スキップリンクの移動先の`id`。画面シェルの`<main>`に付ける                     |
-| `RouteAnnouncer`                                        | `components/app-shell/route-announcer.tsx` | ブラウザ内の画面遷移を支援技術へ伝えるライブリージョン                         |
-| `FormField`                                             | `components/form/form-field.tsx`           | ラベル・説明・エラーを入力欄に関連付ける欄                                     |
-| `styles/base.css`                                       | `styles/base.css`                          | フォーカスの輪郭と、視差効果を減らす設定での動きの抑制                         |
-| `styles/tokens.css`                                     | `styles/tokens.css`                        | ライト・ダークの配色のトークン                                                 |
-| `runAxe`・`runAxeOnDocument`・`WCAG_22_AA_TAGS`         | `test/a11y.ts`                             | `axe-core`による自動検査の補助                                                 |
-| `pressKeyUntilFocusMoves`                               | `test/keyboard.ts`                         | Radix UIの矢印キーの操作をテストで再現する補助                                 |
-| `emulateReducedMotion`                                  | `test/reduced-motion.ts`                   | 視差効果を減らす設定をテストで真似る補助                                       |
-| `applyColorScheme`・`COLOR_SCHEMES`・`isContentClipped` | `test/computed-style.ts`                   | 配色の切り替えと、内容の切れの判定をテストで行う補助                           |
+| 部品                                                                                                               | 置き場所(共通部品内)                       | 役割                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `AppDocument`                                                                                                      | `components/app-shell/app-document.tsx`    | `<html>`から描画する文書の外枠。スキップリンク・トースト・画面遷移の通知を置く                         |
+| `SkipLink`                                                                                                         | `components/app-shell/skip-link.tsx`       | 本文へ移動するリンク                                                                                   |
+| `MAIN_CONTENT_ID`                                                                                                  | `components/app-shell/main-content.ts`     | スキップリンクの移動先の`id`。画面シェルの`<main>`に付ける                                             |
+| `RouteAnnouncer`                                                                                                   | `components/app-shell/route-announcer.tsx` | ブラウザ内の画面遷移を支援技術へ伝えるライブリージョン                                                 |
+| `FormField`                                                                                                        | `components/form/form-field.tsx`           | ラベル・説明・エラーを入力欄に関連付ける欄                                                             |
+| `styles/base.css`                                                                                                  | `styles/base.css`                          | フォーカスの輪郭と、視差効果を減らす設定での動きの抑制                                                 |
+| `styles/tokens.css`                                                                                                | `styles/tokens.css`                        | ライト・ダークの配色のトークン                                                                         |
+| `runAxe`・`runAxeOnDocument`・`WCAG_22_AA_TAGS`                                                                    | `test/a11y.ts`                             | `axe-core`による自動検査の補助                                                                         |
+| `pressKeyUntilFocusMoves`                                                                                          | `test/keyboard.ts`                         | Radix UIの矢印キーの操作をテストで再現する補助                                                         |
+| `emulateReducedMotion`                                                                                             | `test/reduced-motion.ts`                   | 視差効果を減らす設定をテストで真似る補助                                                               |
+| `applyColorScheme`・`COLOR_SCHEMES`・`isContentClipped`                                                            | `test/computed-style.ts`                   | 配色の切り替えと、内容の切れの判定をテストで行う補助                                                   |
+| `hasHorizontalScroll`・`elementsBeyondViewportEdges`・`elementsOverflowingContainer`・`elementsWithClippedContent` | `test/overflow.ts`                         | 文書の横スクロール、画面の左右の端や親の要素からのはみ出し、内容の切れた要素の一覧をテストで調べる補助 |
 
 | 用語       | 意味                                                                                                                                    |
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |

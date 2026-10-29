@@ -1,3 +1,4 @@
+import type { ComponentType } from 'react';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { type Locator, page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -5,6 +6,12 @@ import { render } from 'vitest-browser-react';
 import '../../styles.css';
 import { MAIN_CONTENT_ID } from '../../../lib/components/app-shell/main-content.ts';
 import { SkipLink } from '../../../lib/components/app-shell/skip-link.tsx';
+import { Badge } from '../../../lib/components/ui/badge/badge.tsx';
+import { Button } from '../../../lib/components/ui/button/button.tsx';
+import { Tabs } from '../../../lib/components/ui/tabs/tabs.tsx';
+import { TabsContent } from '../../../lib/components/ui/tabs/tabs-content.tsx';
+import { TabsList } from '../../../lib/components/ui/tabs/tabs-list.tsx';
+import { TabsTrigger } from '../../../lib/components/ui/tabs/tabs-trigger.tsx';
 import { TooltipProvider } from '../../../lib/components/ui/tooltip/tooltip-provider.tsx';
 import { runAxe } from '../../../lib/test/a11y.ts';
 import {
@@ -13,6 +20,12 @@ import {
   outlineOf,
   ringOutline,
 } from '../../../lib/test/computed-style.ts';
+import {
+  elementsBeyondViewportEdges,
+  elementsOverflowingContainer,
+  elementsWithClippedContent,
+  hasHorizontalScroll,
+} from '../../../lib/test/overflow.ts';
 import {
   SITE_LAYOUT_SLOTS,
   type SiteLayoutSlots,
@@ -23,6 +36,8 @@ const WIDE_VIEWPORT = { width: 1280, height: 800 } as const;
 const MENU_BREAKPOINT_WIDTH = 768;
 const NARROWEST_VIEWPORT_WIDTH = 320;
 const VIEWPORT_HEIGHT = 800;
+
+const LAYOUT_ROOT_TEST_ID = 'site-layout-root';
 
 const PRIMARY_LINKS = [
   ['ディレクトリ', '/p'],
@@ -51,13 +66,41 @@ function PageBody() {
   );
 }
 
-function renderLayout(slots: SiteLayoutSlots = SITE_LAYOUT_SLOTS) {
+function TranslatedPageBody() {
+  return (
+    <>
+      <h1>Heading of the page body translated by the browser</h1>
+      <Button>Save the changes you made to this product page</Button>
+      <Tabs defaultValue="launches">
+        <TabsList aria-label="Profile contents">
+          <TabsTrigger value="launches">
+            Products you have launched so far
+          </TabsTrigger>
+          <TabsTrigger value="awards">Awards won in matches</TabsTrigger>
+          <TabsTrigger value="upvotes" translate="no">
+            Upvote
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="launches">No products launched yet.</TabsContent>
+        <TabsContent value="awards">No awards yet.</TabsContent>
+        <TabsContent value="upvotes">No upvoted matches yet.</TabsContent>
+      </Tabs>
+    </>
+  );
+}
+
+function renderLayout(
+  slots: SiteLayoutSlots = SITE_LAYOUT_SLOTS,
+  Body: ComponentType = PageBody,
+) {
   return render(
     <TooltipProvider>
       <SkipLink />
-      <SiteLayout slots={slots}>
-        <PageBody />
-      </SiteLayout>
+      <div data-testid={LAYOUT_ROOT_TEST_ID}>
+        <SiteLayout slots={slots}>
+          <Body />
+        </SiteLayout>
+      </div>
     </TooltipProvider>,
   );
 }
@@ -83,23 +126,6 @@ function isBefore(first: Element, second: Element): boolean {
   return Boolean(
     first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
   );
-}
-
-function hasHorizontalScroll(): boolean {
-  const root = document.documentElement;
-  return root.scrollWidth > root.clientWidth;
-}
-
-// 親のoverflowで切り取られた子のはみ出しは文書の横スクロールに現れないため、描画された要素ごとに右端が画面の内側にあるかを見る
-function elementsOverflowingViewport(rootSelector: string): readonly string[] {
-  return Array.from(
-    document.querySelectorAll(`:is(${rootSelector}), :is(${rootSelector}) *`),
-  )
-    .filter((element) => {
-      const { width, right } = element.getBoundingClientRect();
-      return width > 0 && right > window.innerWidth;
-    })
-    .map((element) => element.outerHTML.slice(0, 80));
 }
 
 async function openMenuWithKeyboard(): Promise<void> {
@@ -167,6 +193,62 @@ const FILLED_SLOTS: SiteLayoutSlots = {
     TestUnloadedHelpLinks,
     TestPinnedHelpLinks,
   ],
+};
+
+function TranslatedBanner() {
+  return (
+    <div role="status">
+      <Badge>Action required for your account</Badge>
+      Your email address has not been verified yet, so please check your inbox.
+    </div>
+  );
+}
+
+function TranslatedSponsorAds() {
+  return (
+    <aside aria-label="Sponsors">
+      <Badge variant="outline">Sponsored placement of the week</Badge>
+      <a href="#sponsor">Advertisement of the sponsor of this tournament</a>
+    </aside>
+  );
+}
+
+function TranslatedHelpLink() {
+  return (
+    <li>
+      <a href="#upvote-rules">
+        How the weekly tournament and the voting rules work
+      </a>
+    </li>
+  );
+}
+
+function TranslatedAccountLink() {
+  return (
+    <Button asChild size="sm" variant="outline">
+      <a href="#account">
+        Open the page for managing your account settings and preferences
+      </a>
+    </Button>
+  );
+}
+
+function TranslatedLaunchLink() {
+  return (
+    <Button asChild size="sm">
+      <a href="#launch">
+        Register your product for this week&apos;s head-to-head launch match
+      </a>
+    </Button>
+  );
+}
+
+const TRANSLATED_SLOTS: SiteLayoutSlots = {
+  headerAccount: TranslatedAccountLink,
+  headerLaunchAction: TranslatedLaunchLink,
+  belowHeader: [TranslatedBanner],
+  beforeFooter: [TranslatedSponsorAds],
+  footerHelpLinks: [TranslatedHelpLink],
 };
 
 const FILLED_HELP_LINK_NAMES = [
@@ -239,6 +321,23 @@ describe('SiteLayout', () => {
       await expect.element(mainNavigation()).toBeVisible();
       await expect.element(menuButton()).not.toBeInTheDocument();
     });
+
+    test.each([MENU_BREAKPOINT_WIDTH, WIDE_VIEWPORT.width])(
+      '幅%ipxで、翻訳で長くなった文言の部品をヘッダーの区画に差し込んでも、横スクロールが出ず、ヘッダーの要素が画面の左右の端を越えず切れない',
+      async (width) => {
+        await page.viewport(width, VIEWPORT_HEIGHT);
+        await renderLayout(TRANSLATED_SLOTS, TranslatedPageBody);
+
+        await expect.element(linkIn(header(), 'Launch Stadium')).toBeVisible();
+        expect(hasHorizontalScroll()).toBe(false);
+        expect(elementsBeyondViewportEdges('header')).toStrictEqual([]);
+        expect(
+          elementsWithClippedContent(
+            header().element().querySelectorAll('a, button'),
+          ),
+        ).toStrictEqual([]);
+      },
+    );
   });
 
   describe('幅768px未満のメニュー', () => {
@@ -475,7 +574,7 @@ describe('SiteLayout', () => {
 
       await expect.element(menuButton()).toBeVisible();
       expect(hasHorizontalScroll()).toBe(false);
-      expect(elementsOverflowingViewport('header, footer')).toStrictEqual([]);
+      expect(elementsBeyondViewportEdges('header, footer')).toStrictEqual([]);
     });
 
     test('メニューを開いても横スクロールが出ず、中の導線が幅に収まる', async () => {
@@ -487,6 +586,34 @@ describe('SiteLayout', () => {
       for (const link of menu().getByRole('link').elements()) {
         expect(link.getBoundingClientRect().right).toBeLessThanOrEqual(right);
       }
+    });
+
+    test('翻訳で長くなった文言の部品を区画と本文に差し込んでも、横スクロールが出ず、どの要素も画面の左右の端を越えない', async () => {
+      await renderLayout(TRANSLATED_SLOTS, TranslatedPageBody);
+
+      await expect.element(menuButton()).toBeVisible();
+      expect(hasHorizontalScroll()).toBe(false);
+      expect(
+        elementsBeyondViewportEdges(`[data-testid="${LAYOUT_ROOT_TEST_ID}"]`),
+      ).toStrictEqual([]);
+      expect(
+        elementsWithClippedContent(
+          document.querySelectorAll(
+            'a:not([data-slot="skip-link"]), button, [role="tab"]',
+          ),
+        ),
+      ).toStrictEqual([]);
+    });
+
+    test('翻訳で長くなった文言のヘッダーの区画の部品も、開いたメニューの幅に収まる', async () => {
+      await renderLayout(TRANSLATED_SLOTS, TranslatedPageBody);
+      await openMenuWithKeyboard();
+
+      expect(hasHorizontalScroll()).toBe(false);
+      expect(elementsOverflowingContainer(menu().element())).toStrictEqual([]);
+      expect(
+        elementsWithClippedContent(menu().getByRole('link').elements()),
+      ).toStrictEqual([]);
     });
   });
 
