@@ -10,6 +10,7 @@ import {
   type FieldValues,
   get,
   type Resolver,
+  type UseFieldArrayProps,
   type UseFormProps,
   type UseFormReturn,
   useFieldArray,
@@ -110,13 +111,17 @@ const REVIEW_ITEMS: readonly ReviewItem[] = [
   },
   {
     subject:
-      '`useFieldArray`が一覧の名前を`control._names.array`に入れ、`rules`の無い一覧の経路は`_fields`に`_f`を持たないこと',
-    usedIn: ['components/form/app-form.tsx'],
-    unitTests: [THIS_TEST],
+      '`useFieldArray`が`rules`の有無によらず一覧の名前を`control._names.array`に入れ、`rules`の無い一覧の経路は`_fields`に`_f`を持たず、`rules`を持つ一覧の経路は描かれている欄(`_f.mount`が真)になること',
+    usedIn: ['components/form/app-form.tsx', 'components/form/use-app-form.ts'],
+    unitTests: [THIS_TEST, 'utilities/forms/revalidation-targets.unit.test.ts'],
     browserTests: [
       {
         file: UNMATCHED_FIELDS_TEST,
         name: 'rulesを持たない一覧を描いている間は、一覧の経路そのものの詳細を欄のエラーにする',
+      },
+      {
+        file: UNMATCHED_FIELDS_TEST,
+        name: 'rulesを持つ一覧の中の欄に触れて切り替えても、一覧の中の欄のサーバーのエラーを残し、まだ触れていない一覧の中の欄にエラーを出さない',
       },
     ],
   },
@@ -200,6 +205,18 @@ const REVIEW_ITEMS: readonly ReviewItem[] = [
       {
         file: UNMATCHED_FIELDS_TEST,
         name: '切り替えで検証し直す欄を選ぶために欄のエラーを読んでも、フォームを作る部品は欄のエラーの変化で描き直さない',
+      },
+    ],
+  },
+  {
+    subject:
+      '`getFieldState`がフォームの状態の購読を増やさず、触れた状態(`touchedFields`)を購読していないフォームでも、欄から離れた時に記録した値で入れ子と一覧の中の欄の`isTouched`を答えること',
+    usedIn: ['components/form/use-app-form.ts'],
+    unitTests: [THIS_TEST, 'utilities/forms/revalidation-targets.unit.test.ts'],
+    browserTests: [
+      {
+        file: UNMATCHED_FIELDS_TEST,
+        name: '切り替えると、触れてエラーの無い欄が新しい規則で違反ならエラーを表示して送信ボタンを無効にし、まだ触れていない欄にはエラーを出さない',
       },
     ],
   },
@@ -488,6 +505,19 @@ describe('フォームの部品が頼る内部の値', () => {
     expect(get(control._fields, 'links._f')).toBeUndefined();
   });
 
+  test('rulesを持つuseFieldArrayも一覧の名前を一覧の名前の集合に入れ、一覧の経路は描かれている欄になる', () => {
+    const { control } = createFormControl<ProductForm>({
+      defaultValues: DEFAULT_VALUES,
+    });
+
+    renderToString(
+      createElement(FieldArrayProbe, { control, rules: { maxLength: 5 } }),
+    );
+
+    expect(control._names.array.has('links')).toBe(true);
+    expect(mountOf(control, 'links')).toBe(true);
+  });
+
   test('useFormは描画のたびに設定を置き換え、最後の描画で渡したresolverで検証する', async () => {
     const created = createFormControl<ProductForm>({
       defaultValues: DEFAULT_VALUES,
@@ -673,14 +703,44 @@ describe('フォームの部品が頼る内部の値', () => {
     expect(viaGetErrors.control._proxyFormState.errors).toBe(false);
     expect(viaFormState.control._proxyFormState.errors).not.toBe(false);
   });
+
+  test('getFieldStateは触れた状態の購読を増やさず、購読していなくても欄から離れた時に記録した入れ子と一覧の中の欄の触れた状態を答える', async () => {
+    const created = createFormControl<ProductForm>({
+      defaultValues: DEFAULT_VALUES,
+    });
+    renderToString(
+      createElement(FormProbe, {
+        options: { formControl: created.formControl },
+        read: (form) => form.getFieldState('title'),
+      }),
+    );
+    const touchedNames = ['maker.name', 'links.0.url'] as const;
+    for (const name of [...touchedNames, 'title'] as const) {
+      created.control.register(name).ref(fieldElement(name));
+    }
+
+    for (const name of touchedNames) {
+      await created.control
+        .register(name)
+        .onBlur({ target: { name, value: '' }, type: 'blur' });
+    }
+
+    expect(created.control._proxyFormState.touchedFields).toBe(false);
+    expect(
+      touchedNames.map((name) => created.getFieldState(name).isTouched),
+    ).toEqual([true, true]);
+    expect(created.getFieldState('title').isTouched).toBe(false);
+  });
 });
 
 function FieldArrayProbe({
   control,
+  rules,
 }: {
   readonly control: Control<ProductForm>;
+  readonly rules?: UseFieldArrayProps<ProductForm, 'links'>['rules'];
 }) {
-  useFieldArray({ control, name: 'links' });
+  useFieldArray({ control, name: 'links', rules });
   return null;
 }
 

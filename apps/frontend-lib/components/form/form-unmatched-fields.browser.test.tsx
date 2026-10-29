@@ -258,7 +258,59 @@ function LinksForm({ onSubmit, onSubmitError }: LinksFormProps) {
   );
 }
 
+const URL_REQUIRED = 'URLを入力してください。';
+const URL_TAKEN = 'このURLは既に登録されています。';
+const LINK_FIELDS = ['links.0.url', 'links.1.url', 'links.2.url'] as const;
+
+const lenientLinksSchema = z.object({
+  links: z.array(z.object({ url: z.string() })),
+});
+
+const strictLinksSchema = z.object({
+  links: z.array(z.object({ url: z.string().min(1, URL_REQUIRED) })),
+});
+
+interface RulesLinksFormProps {
+  readonly strict: boolean;
+  readonly onSubmit: SubmitHandler;
+}
+
+// rulesを持つ一覧を描き、一覧の中の欄の規則を切り替える利用例
+function RulesLinksForm({ strict, onSubmit }: RulesLinksFormProps) {
+  const form = useAppForm(strict ? strictLinksSchema : lenientLinksSchema, {
+    defaultValues: { links: [{ url: '' }, { url: '' }, { url: '' }] },
+  });
+  useFieldArray({
+    control: form.control,
+    name: 'links',
+    rules: { maxLength: 5 },
+  });
+  return (
+    <AppForm
+      form={form}
+      onSubmit={onSubmit}
+      onSubmitError={() => undefined}
+      serverFieldPrefix="input"
+      aria-label="リンクの登録"
+    >
+      {LINK_FIELDS.map((name, index) => (
+        <FormField
+          key={name}
+          control={form.control}
+          name={name}
+          label={`リンク${String(index + 1)}`}
+        >
+          {(control) => <Input {...control} />}
+        </FormField>
+      ))}
+      <SubmitButton>登録する</SubmitButton>
+    </AppForm>
+  );
+}
+
 const titleInput = () => page.getByRole('textbox', { name: 'プロダクト名' });
+const linkInput = (index: number) =>
+  page.getByRole('textbox', { name: `リンク${String(index + 1)}` });
 const contactInput = () => page.getByRole('textbox', { name: '連絡先' });
 const cityInput = () => page.getByRole('textbox', { name: '市区町村' });
 const categoryInput = () => page.getByRole('textbox', { name: 'カテゴリ' });
@@ -556,6 +608,60 @@ describe('フォーム部品の欄に対応しない経路', () => {
         .element(page.getByText(POSTAL_CODE_REQUIRED))
         .not.toBeInTheDocument();
       await expect.element(submitButton()).toBeEnabled();
+    });
+
+    test('切り替えると、触れてエラーの無い欄が新しい規則で違反ならエラーを表示して送信ボタンを無効にし、まだ触れていない欄にはエラーを出さない', async () => {
+      const screen = await render(<ShippingForm domestic={false} />);
+      await userEvent.fill(postalCodeInput(), 'SW1A 1AA');
+      await userEvent.tab();
+      await expect
+        .element(postalCodeInput())
+        .not.toHaveAttribute('aria-invalid');
+      await expect.element(submitButton()).toBeEnabled();
+
+      await screen.rerender(<ShippingForm domestic />);
+
+      await expect.element(page.getByText(POSTAL_CODE_FORMAT)).toBeVisible();
+      await expect.element(postalCodeInput()).toHaveAttribute('aria-invalid');
+      await expect.element(prefectureInput()).toBeVisible();
+      await expect
+        .element(prefectureInput())
+        .not.toHaveAttribute('aria-invalid');
+      await expect
+        .element(page.getByText(PREFECTURE_REQUIRED))
+        .not.toBeInTheDocument();
+      await expect.element(submitButton()).toBeDisabled();
+
+      await userEvent.fill(postalCodeInput(), '1000001');
+      await userEvent.fill(prefectureInput(), '東京都');
+
+      await expect
+        .element(page.getByText(POSTAL_CODE_FORMAT))
+        .not.toBeInTheDocument();
+      await expect.element(submitButton()).toBeEnabled();
+    });
+
+    test('rulesを持つ一覧の中の欄に触れて切り替えても、一覧の中の欄のサーバーのエラーを残し、まだ触れていない一覧の中の欄にエラーを出さない', async () => {
+      const onSubmit = () => {
+        throw validationError([
+          { field: 'input.links.1.url', code: 'taken', message: URL_TAKEN },
+        ]);
+      };
+      const screen = await render(
+        <RulesLinksForm strict={false} onSubmit={onSubmit} />,
+      );
+      await userEvent.click(linkInput(0));
+      await userEvent.tab();
+      await userEvent.click(submitButton());
+      await expect.element(page.getByText(URL_TAKEN)).toBeVisible();
+
+      await screen.rerender(<RulesLinksForm strict onSubmit={onSubmit} />);
+
+      await expect.element(linkInput(0)).toHaveAttribute('aria-invalid');
+      await expect.element(page.getByText(URL_REQUIRED)).toBeVisible();
+      await expect.element(page.getByText(URL_TAKEN)).toBeVisible();
+      await expect.element(linkInput(2)).not.toHaveAttribute('aria-invalid');
+      await expect.element(submitButton()).toBeDisabled();
     });
 
     test('切り替えで検証し直す欄を選ぶために欄のエラーを読んでも、フォームを作る部品は欄のエラーの変化で描き直さない', async () => {

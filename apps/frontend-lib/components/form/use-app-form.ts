@@ -43,19 +43,24 @@ export function useAppForm<TInput extends FieldValues, TOutput>(
     resolver,
     defaultValues,
   });
-  const { trigger, getValues, getErrors } = form;
+  const { trigger, getValues, getErrors, getFieldState } = form;
 
-  // スキーマを切り替えるとisValidと表示中のエラーが古いスキーマの結果のまま残るため、新しいスキーマで検証し直す。名前の配列を渡したtriggerは全欄の検証の結果でisValidを計算し直し、渡した欄のエラーだけを置き換えるため、描かれている欄のサーバーのエラーだけを残せる。errorsはformStateのproxyから読むとフォームがエラーの更新を購読して描き直すため、購読しないgetErrorsで読む
+  // スキーマを切り替えるとisValidと表示中のエラーが古いスキーマの結果のまま残るため、新しいスキーマで検証し直す。名前の配列を渡したtriggerは全欄の検証の結果でisValidを計算し直し、渡した欄のエラーだけを置き換えるため、描かれている欄のサーバーのエラーだけを残し、まだ触れていない欄にエラーを出さずに済む。errorsとtouchedFieldsはformStateのproxyから読むとフォームが更新を購読して描き直すため、購読しないgetErrorsとgetFieldStateで読む
   useEffect(() => {
-    const { _fields: fields } = created.control;
+    const {
+      _fields: fields,
+      _names: { array: arrayNames },
+    } = created.control;
     void trigger(
       revalidationTargetsOf({
         errors: getErrors(),
         values: getValues(),
         isFieldMounted: (path) => mountStateOf(fields, path) === true,
+        isFieldTouched: (path) => getFieldState(path).isTouched,
+        isFieldArray: (path) => arrayNames.has(path),
       }),
     );
-  }, [schema, created, trigger, getValues, getErrors]);
+  }, [schema, created, trigger, getValues, getErrors, getFieldState]);
 
   return form;
 }

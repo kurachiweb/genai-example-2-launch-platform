@@ -6,6 +6,8 @@ export interface RevalidationState<T extends FieldValues> {
   readonly errors: FieldErrors<T>;
   readonly values: T;
   readonly isFieldMounted: (path: string) => boolean;
+  readonly isFieldTouched: (path: FieldPath<T>) => boolean;
+  readonly isFieldArray: (path: string) => boolean;
 }
 
 interface FieldErrorEntry {
@@ -94,17 +96,47 @@ const isFieldPathOf = <T extends FieldValues>(
   path: string,
 ): path is FieldPath<T> => path.length > 0;
 
-// 描かれている欄のサーバーのエラーは利用者がその欄を直すまで残す。描かれていない欄(rulesの無い一覧の経路を含む)のサーバーのエラーは利用者が直せないため新しいスキーマの結果にする
+// 欄の値の候補として、値の入れ子(配列とコンストラクタがObjectの値の中)の全ての経路を集める。Date・Fileなどは欄の値のため中へ入らない
+const valuePathsOf = (values: unknown, prefix = ''): string[] => {
+  const isNested =
+    Array.isArray(values) ||
+    (typeof values === 'object' &&
+      values !== null &&
+      values.constructor === Object);
+  if (!isNested) {
+    return [];
+  }
+  return Object.entries(values).flatMap(([key, value]: [string, unknown]) => {
+    const path = `${prefix}${key}`;
+    return [path, ...valuePathsOf(value, `${path}.`)];
+  });
+};
+
+// 描かれている欄のサーバーのエラーは利用者がその欄を直すまで残す。描かれていない欄(rulesの無い一覧の経路を含む)のサーバーのエラーは利用者が直せないため新しいスキーマの結果にする。描かれていない触れた欄は、新しい規則の違反を利用者が直せないため加えない。rulesを持つ一覧の経路そのものは描かれている欄になり、中の欄を1つ触れると触れた扱いになるが、名前に入れると一覧の中のエラーをまるごと置き換え、中の欄のサーバーのエラーを消してまだ触れていない中の欄にもエラーを出すため加えない
 export const revalidationTargetsOf = <T extends FieldValues>({
   errors,
   values,
   isFieldMounted,
+  isFieldTouched,
+  isFieldArray,
 }: RevalidationState<T>): FieldPath<T>[] => {
-  const paths = fieldErrorEntriesOf(errors)
+  const entries = fieldErrorEntriesOf(errors);
+  const serverErrorPaths = new Set(
+    entries
+      .filter(
+        ({ path, type }) =>
+          type === SERVER_FIELD_ERROR_TYPE && isFieldMounted(path),
+      )
+      .map(({ path }) => path),
+  );
+  const touchedPaths = valuePathsOf(values)
+    .filter(isFieldPathOf<T>)
     .filter(
-      ({ path, type }) =>
-        type !== SERVER_FIELD_ERROR_TYPE || !isFieldMounted(path),
-    )
-    .map(({ path }) => path);
+      (path) =>
+        !isFieldArray(path) && isFieldMounted(path) && isFieldTouched(path),
+    );
+  const paths = [
+    ...new Set([...entries.map(({ path }) => path), ...touchedPaths]),
+  ].filter((path) => !serverErrorPaths.has(path));
   return withListItemPlaceholders(paths, values).filter(isFieldPathOf<T>);
 };

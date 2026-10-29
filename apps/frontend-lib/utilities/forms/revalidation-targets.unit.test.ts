@@ -38,30 +38,41 @@ const fieldElement = (name: string) => ({
 });
 
 const createControl = () => {
-  const { control, getValues, getErrors } = createFormControl<ProductForm>({
-    defaultValues: {
-      title: '',
-      tagline: '',
-      contact: '',
-      maker: { name: '' },
-      links: [{ url: '' }],
-    },
-  });
+  const { control, getValues, getErrors, getFieldState, setValue } =
+    createFormControl<ProductForm>({
+      defaultValues: {
+        title: '',
+        tagline: '',
+        contact: '',
+        maker: { name: '' },
+        links: [{ url: '' }],
+      },
+    });
   for (const name of REGISTERED_FIELDS) {
     control.register(name).ref(fieldElement(name));
   }
   control.register(UNMOUNTED_FIELD).ref(null);
-  return { control, getValues, getErrors };
+  // 利用者が欄から離れた時と同じく、欄を触れた状態にする
+  const touch = (...names: (typeof REGISTERED_FIELDS)[number][]) => {
+    for (const name of names) {
+      setValue(name, getValues(name), { shouldTouch: true });
+    }
+  };
+  return { control, getValues, getErrors, getFieldState, touch };
 };
 
 const targetsOf = ({
+  control,
   getValues,
   getErrors,
+  getFieldState,
 }: ReturnType<typeof createControl>) =>
   revalidationTargetsOf({
     errors: getErrors(),
     values: getValues(),
     isFieldMounted: (path) => MOUNTED_FIELDS.has(path),
+    isFieldTouched: (path) => getFieldState(path).isTouched,
+    isFieldArray: (path) => control._names.array.has(path),
   });
 
 const serverError = { type: SERVER_FIELD_ERROR_TYPE, message: '不正です。' };
@@ -126,6 +137,37 @@ describe('revalidationTargetsOf', () => {
     expect(targetsOf(form)).toEqual(['links']);
   });
 
+  test('描かれていて触れた欄は、エラーが無くても入れ子と一覧の中の経路を含めて対象にし、まだ触れていない欄は対象にしない', () => {
+    const form = createControl();
+
+    form.touch('title', 'maker.name', 'links.0.url');
+
+    expect(targetsOf(form).toSorted()).toEqual([
+      'links.0.url',
+      'maker.name',
+      'title',
+    ]);
+  });
+
+  test('描かれていない触れた欄と、描かれていてサーバーの欄のエラーが付いた触れた欄は対象にしない', () => {
+    const form = createControl();
+    form.touch('title', 'tagline', UNMOUNTED_FIELD);
+    form.control.setError('title', serverError);
+
+    expect(targetsOf(form)).toEqual(['tagline']);
+  });
+
+  test('触れた欄にエラーも付いていれば、名前に1回だけ含める', () => {
+    const form = createControl();
+    form.touch('title');
+    form.control.setError('title', {
+      type: 'too_small',
+      message: '必須です。',
+    });
+
+    expect(targetsOf(form)).toEqual(['title']);
+  });
+
   test('フォーム全体のrootのエラーは対象にしない', () => {
     const form = createControl();
     form.control.setError('root', {
@@ -183,6 +225,8 @@ const createLinksForm = (url: string) => {
         errors: getErrors(),
         values: getValues(),
         isFieldMounted: (path) => path === 'links.0.url',
+        isFieldTouched: () => false,
+        isFieldArray: (path) => path === 'links',
       }),
     );
   };
@@ -302,4 +346,105 @@ describe('一覧の経路そのものに付いたエラーの切り替えによ�
       }).toEqual(expected);
     },
   );
+});
+
+describe('rulesを持つ一覧の中の触れた欄の切り替えによる置き換え', () => {
+  const LINK_FIELDS = ['links.0.url', 'links.1.url', 'links.2.url'] as const;
+
+  // useFieldArrayにrulesを渡すと、一覧の経路そのものも登録されて描かれている欄(_f.mountが真)になる
+  const createRulesLinksForm = () => {
+    let schemaName: SchemaName = 'atLeastOne';
+    const created = createFormControl<LinksForm>({
+      defaultValues: { links: [{ url: '' }, { url: '' }, { url: '' }] },
+      resolver: async (values, context, options) =>
+        zodResolver(SCHEMAS[schemaName])(values, context, options),
+    });
+    const { control } = created;
+    control._names.array.add('links');
+    control.register('links', { required: false });
+    for (const name of LINK_FIELDS) {
+      control.register(name).ref(fieldElement(name));
+    }
+    const targets = () =>
+      revalidationTargetsOf({
+        errors: created.getErrors(),
+        values: created.getValues(),
+        isFieldMounted: (path) =>
+          get(control._fields, `${path}._f.mount`) === true,
+        isFieldTouched: (path) => created.getFieldState(path).isTouched,
+        isFieldArray: (path) => control._names.array.has(path),
+      });
+    const switchTo = async (next: SchemaName) => {
+      schemaName = next;
+      await created.trigger(targets());
+    };
+    const messageAt = (path: string): unknown =>
+      get(created.getErrors(), `${path}.message`);
+    return { created, targets, switchTo, messageAt };
+  };
+
+  test('一覧の中の欄に触れても一覧の経路そのものを名前に入れず、触れた中の欄だけを対象にする', () => {
+    const form = createRulesLinksForm();
+    form.created.setValue('links.0.url', '', { shouldTouch: true });
+    form.created.setError('links.1.url', {
+      type: SERVER_FIELD_ERROR_TYPE,
+      message: URL_TAKEN,
+    });
+
+    expect(form.created.getFieldState('links').isTouched).toBe(true);
+    expect(form.targets()).toEqual(['links.0.url']);
+  });
+
+  test('切り替えると、描かれている中の欄のサーバーのエラーを残し、まだ触れていない中の欄にエラーを出さない', async () => {
+    const form = createRulesLinksForm();
+    form.created.setValue('links.0.url', '', { shouldTouch: true });
+    form.created.setError('links.1.url', {
+      type: SERVER_FIELD_ERROR_TYPE,
+      message: URL_TAKEN,
+    });
+
+    await form.switchTo('atLeastTwo');
+
+    expect(form.messageAt('links.0.url')).toBe(URL_REQUIRED);
+    expect(form.messageAt('links.1.url')).toBe(URL_TAKEN);
+    expect(form.messageAt('links.2.url')).toBeUndefined();
+  });
+});
+
+describe('触れた欄の候補にする値の経路', () => {
+  class Coordinates {
+    readonly latitude = 35;
+  }
+
+  test('配列とコンストラクタがObjectの値の中だけを辿り、Date・File・独自のクラスの値の中へは入らない', () => {
+    const values = {
+      launchedAt: Object.assign(new Date('2026-10-28T00:00:00Z'), {
+        zone: 'UTC',
+      }),
+      attachment: Object.assign(new File(['x'], 'pitch.txt'), {
+        label: '資料',
+      }),
+      coordinates: new Coordinates(),
+      maker: { name: 'Pitch Notes' },
+      tags: ['launch'],
+    };
+
+    const targets = revalidationTargetsOf<typeof values>({
+      errors: {},
+      values,
+      isFieldMounted: () => true,
+      isFieldTouched: () => true,
+      isFieldArray: () => false,
+    });
+
+    expect(targets.toSorted()).toEqual([
+      'attachment',
+      'coordinates',
+      'launchedAt',
+      'maker',
+      'maker.name',
+      'tags',
+      'tags.0',
+    ]);
+  });
 });
