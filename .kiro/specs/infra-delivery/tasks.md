@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 前提の確認・配布のスクリプトの骨格・資源一覧
-- [ ] 1.1 前提を確かめ、配布のスクリプトの入口と入出力の部品を作る
+- [x] 1.1 前提を確かめ、配布のスクリプトの入口と入出力の部品を作る
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platformの全タスクが完了し、4アプリのWrangler設定、ルートの`check`(全アプリの`cf-typegen:check`・`graphql:check`を含む)、apiの`db:migrations:check`・`graphql:allowlist`・`test:smoke`、client・adminの`build`、ルートの`test:e2e:dev-and-preview`(dev-toolingの10.1)、疎通確認のE2Eがあること。無ければ止めて報告する
   - 先に、サブコマンドの振り分け(コマンドのディレクトリのファイル名から解決し、未知のサブコマンドと引数の誤りで終了コード2、違反で1)、子プロセスの起動の部品(出力の取り込み・表示・行のフィルタ・標準入力・終了コード)、リポジトリのファイルの読み込みの部品、GitHub Actionsの入出力の部品(GitHub Actionsの外ではマスクを出さない、環境変数のファイルへの追記の前に値をマスクする、手順の要約への追記、OIDCのトークンの取得で必要な環境変数が無ければ失敗する)の単体テストと、判定の層が入出力の層・子プロセス・ファイル・ネットワークのAPIを読み込まないことを確かめる単体テストを書き、失敗を確かめる
   - 判定・入出力・手順・入口の4層の配置で部品を作る。構成検査とワークフローの検査が共有する違反の型(規則・ファイル・項目・実際・期待)を判定の層に置く。各コマンドは共通の形(名前・説明・実行)を公開し、後続のタスクは入口を編集せずにコマンドを追加できるようにする。ルートの`package.json`に配布のスクリプトの入口・IaCの検査・IaCの整形のスクリプトを加える
@@ -279,3 +279,9 @@
   - 同じ変更で、上流のWrangler設定の単体テストのstagingの期待値(apiのテストのstagingのD1の識別子、client・adminのテストのstagingのサイトキー、clientのテストのstagingのアクセス解析のトークン)と、本プロジェクト固有の値の文書のstagingの識別子・変数の値を反映した値に改める。これらは仮の値を期待値として固定しているため、設定だけを変えると失敗する(改訂4)
   - 完了状態: 構成検査と上流のWrangler設定の単体テストが成功し、照合のコマンドに同じ出力を与えると食い違いが0件になる
   - _Requirements: 8.2, 12.4_
+
+## Implementation Notes
+
+- 1.1: 入口は`commands/`直下の`.ts`(テストとサブディレクトリを除く)をサブコマンドにする。共通の形と依存の組み立ては`commands/shared/`(`delivery-command.ts`・`default-deps.ts`・`report-violations.ts`)にあり、`SecretSource`・`HttpProbe`は後続タスクで`DeliveryDeps`と`createDefaultDeps`へ加える(`cli.ts`は編集しない)。引数の誤りは`UsageError`を投げて終了コード2にする。違反の表は`reportViolations`で出す。
+- 1.1: 未解決の指摘(後続で対応): `github-actions.ts`の`escapeCommandValue`が`%`だけを変換し単独の`\r`を変換しない(4.3で`%0D`・`%0A`も変換する)。`command-runner.ts`の`runPiped`は`filter`が例外を投げると子プロセスを残す。`start`の停止はプロセスグループ単位でなく、孫プロセス(workerd)の停止を4.4・6.3で確かめる。`layering.unit.test.ts`の禁止APIに`Bun.env`・`node:process`の`env`・`node:os`等が無い。
+- 1.1: Bunの型定義では`expect().rejects`が待てる値を返さず静的解析で違反になるため、拒否の確認は`test-fixtures/rejection.ts`を使う。

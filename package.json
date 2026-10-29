@@ -18,7 +18,10 @@
     "test:e2e": "playwright test --pass-with-no-tests",
     "test:e2e:dev-and-preview": "bun ./scripts/tooling/e2e-dev-and-preview.ts",
     "shared-dirs:verify": "bun ./scripts/tooling/shared-dirs.ts verify",
-    "shared-dirs:place": "bun ./scripts/tooling/shared-dirs.ts place"
+    "shared-dirs:place": "bun ./scripts/tooling/shared-dirs.ts place",
+    "delivery": "bun ./scripts/delivery/cli.ts",
+    "infra:check": "bun ./scripts/delivery/cli.ts infra-check",
+    "infra:fmt": "tofu fmt -recursive apps/infra"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
