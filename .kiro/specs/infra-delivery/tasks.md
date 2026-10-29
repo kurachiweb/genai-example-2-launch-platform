@@ -101,7 +101,7 @@
   - _Boundary: E2eStack, HttpProbe_
   - _Requirements: 4.10, 6.4, 6.5_
 
-- [ ] 4.5 (P) staging・prodのデプロイの予行のコマンドを作る
+- [x] 4.5 (P) staging・prodのデプロイの予行のコマンドを作る
   - 先に、偽の子プロセスで、api・eventは環境を指定したdry-run、client・adminは環境を指定したビルドの後にビルドの設定でのdry-runが呼ばれ、秘密値を使わず資源を作らないことを確かめる単体テストを書く
   - 完了状態: 単体テストが成功する(dry-runはAIエージェントに拒否されるため、実行の確認はCIの検査で行う)
   - _Boundary: DeployRehearsal_
@@ -302,3 +302,4 @@
 - 4.3: `SecretSource`は設計の`adapters/secret-source.ts`でなく`adapters/infisical.ts`(`createInfisicalSecretSource`)にあり、`DeliveryDeps.secrets`で渡る。範囲と環境の解決は`commands/shared/infisical-target.ts`、オプションの解析は`commands/shared/parse-options.ts`、資源一覧の読み込みは`commands/shared/load-catalog.ts`(contract-checkと共用)。設計に無いexport(`SECRET_SCOPES`・`RUN_SECRETS_SCOPES`・`ENVIRONMENT_OF_SCOPE`・`SHARED_SECRET_FOLDER`・`InfisicalEnvironment`)と`infisical-login`の主体IDの仮の値の検査を含め、9.1でdesign.mdへ反映する。`escapeCommandValue`は`%`→`\r`→`\n`の順で変換するよう直した。`run-with-secrets`の子プロセスは親の`INFISICAL_TOKEN`を引き継ぐ(e2e-stackの入れ子の起動に必要)。JWTは`--jwt=`の引数で渡す(環境変数`INFISICAL_JWT`で渡せるかは未確認)。
 - 4.3(開発者の作業): 2026-10-29時点でInfisicalのdevにWorkerごとのフォルダ(`/workers/api`・`/workers/event`)が無く、`run-with-secrets --scope local --worker api`はフォルダの名前を示して失敗する。初回の準備の手順3でフォルダを作った後、research.mdに書いた空のフォルダの出力の確認を行う。6.3・8.5はこのフォルダを前提とする。
 - 4.4: `CommandRunner.start`は`detached: true`で新しいプロセスグループを作り、停止はグループへSIGTERM→猶予後SIGKILL(孫のworkerdまで止まる)。`runPiped`はfilterの例外時に子を止める。`HttpProbe`は`adapters/http-probe.ts`で`DeliveryDeps.probe`に入る(間隔500ms・1回10秒・redirectを追わない)。e2e-stackのapi・eventの`wrangler dev`には各アプリの`dev`スクリプトにそろえて`--test-scheduled`(api)・`--inspector-port 9230`(event)を付け、`repo-contract.unit.test.ts`が`dev`スクリプトとの一致を検査する(設計の表に無い。9.1で反映)。`MAILPIT_BIN`・`RUNNER_TEMP`の既定値、設計に無いexport、`StackStartError`が型であることも9.1で反映。中断のシグナルでサービスを止める処理は無い(ローカルで残り得る。6.3で対応か記録)。サービスがすぐ終了しても3分待つ。サービスは`127.0.0.1`で待ち受けるが`e2e/support/scheduled-trigger.ts`等は`localhost`を使うため、CIで届くか6.3で確かめる。
+- 4.5: `rehearse --env <env>`はapi・eventを`bun x wrangler deploy --dry-run --env <env> --outdir <RUNNER_TEMP|tmpdir>/rehearsal/<env>/<app>`、client・adminを`CLOUDFLARE_ENV=<env> bun run build`の後に`--env`無しのdry-runで呼ぶ。子はシェルの環境を引き継ぐため、6.3の`rehearsal`ジョブは`infisical-login`を呼ばず、秘密値の`env`を持たず、`permissions`を`contents: read`だけに絞る(呼び出し側が`id-token: write`を与えてもジョブで絞る)。`appDirOf`と「Viteでビルドするのはclient・admin」の知識は`core/e2e-stack-plan.ts`と重複しており、5.3で共通の値へ移す。dry-runはdenyで未実行(開発者の手動確認かCIで確かめる)。
