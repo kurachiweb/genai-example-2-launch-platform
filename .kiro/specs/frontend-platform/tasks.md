@@ -689,7 +689,7 @@
   - _Boundary: AppBuildConfig, 技術ドキュメント群_
   - _Requirements: 1.1, 1.8, 15.3, 15.4, 15.8_
 
-- [ ] 13.2 開発サーバーとビルド後のプレビューの両方のE2Eを、並列数の上限の下で確かめる
+- [x] 13.2 開発サーバーとビルド後のプレビューの両方のE2Eを、並列数の上限の下で確かめる
   - 前提: dev-toolingの11.1(E2Eの並列数の上限)と本specの13.1が完了していること。完了していなければ止めて報告する
   - APIサーバーを起動した状態で、シークレットの注入の下でルートの`bun run test:e2e:dev-and-preview`を`E2E_WORKERS`を設定せずに実行し、両方の起動で本specのE2Eが成功し、Playwrightの表示の並列数が上限(2)であることを確かめる。コマンドの後に各アプリの`dist/server/`にシークレットのファイルが無いこと(13.1でビルドの出力から除く)の`ls -A`による確認を、開発者の手動の作業として報告に書く
   - オンボーディングの「スモークテスト」の節と`frontend/002`の「開発時とデプロイ前の起動」の記述が、並列数の上限とシークレットのファイルの扱いについてdev-toolingの`testing/001`の記述と食い違わないことを確かめ、食い違えば本specが持つ記述を直す
@@ -792,3 +792,4 @@
   - 手動で確かめること: Claude設定のdenyによりこのファイル名を含むシェルのコマンドは実行できないため、開発者が、シークレットの注入の下で`bun run build`を実行した後に`ls -A`で`apps/client/dist/server`・`apps/admin/dist/server`にこのファイルが無いことを確かめる。この形にする前のビルドで書き出されたファイルが残っていれば、開発者が手動で消す。
   - `vars`の上書き: 開発サーバーと同じく、プレビューでも`process.env`に`vars`と同じ名前のキーがあると、Workerへ渡る値は`vars`の値ではなく`process.env`の値になる。注入するシークレットに`vars`と同じ名前のキーを置かない。
   - Bunの不具合の回避: 共通部品の単体テストで本物のViteの`build`を同じプロセスで呼ぶと、`frontend-lint.unit.test.ts`と一緒に実行した時だけBun 1.4.4で失敗したため、共通部品のテストは偽の出力の一覧にし、本物のビルドはclient・adminのテストで確かめる。
+- 13.2(結果): APIサーバーを起動し、注入の下で`E2E_WORKERS`を設定せずに`bun run test:e2e:dev-and-preview`を実行すると、両段階とも`Running 25 tests using 2 workers`で25件成功した。`E2E_WORKERS=1`では`using 1 worker`になった。ビルドとプレビューは`Using secrets defined in process.env`を表示し、ビルドの出力の一覧にシークレットのファイルは無い。ファイルそのものの有無は、開発者が`ls -A`で`apps/{client,admin}/dist/server`を確かめる(denyのため)。
