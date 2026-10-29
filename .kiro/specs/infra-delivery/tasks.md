@@ -62,7 +62,7 @@
   - _Boundary: WorkflowPolicyRules, ToolVersions, DeployStages_
   - _Requirements: 1.8, 7.3, 9.9, 11.5, 11.6, 11.7_
 
-- [ ] 3.3 構成検査とワークフローの検査のコマンドを作る
+- [x] 3.3 構成検査とワークフローの検査のコマンドを作る
   - 先に、偽のファイルの読み込みで、両環境の資源一覧・4アプリのWrangler設定・backend設定・全ワークフローと複合アクションを読み、違反を表で出して終了コード1になり、手順の要約にも書くことを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、違反の表に規則・ファイル・項目・実際・期待が並ぶ
   - _Depends: 3.1, 3.2_
@@ -295,3 +295,4 @@
 - 3.1: `readEffectiveConfig(jsoncText, env)`・`checkConfigContract(input)`は文字列・値を受け取る(読み込みは3.3の`commands`)。`EffectiveWranglerConfig`に設計に無い`queueConsumers`(C8用)と`sourcePaths`(継承するキーの違反のパス)を加え、C7の仮の値の除外は資源一覧の`accountId`が仮でかつ接続先がR2の形の時だけにした(本物のaccountIdに対する全桁0の接続先は違反)。いずれも9.1でdesign.mdへ反映する。backendのHCLは`readBackendSettings`の最小の読み取り。7.1の前の実リポジトリは両環境で違反14件(C3×6・C5×8)。
 - 3.2(6.xへの制約): W9はワークフローの版を(1)setupアクションの入力`bun-version`・`node-version`・`tofu_version`、(2)Dockerfileと同名の環境変数(`BUN_VERSION`・`NODE_VERSION`・`OPENTOFU_VERSION`・`INFISICAL_CLI_VERSION`・`WRANGLER_VERSION`・`MAILPIT_VERSION`・`PLAYWRIGHT_VERSION`。Bunは`BUN_IMAGE_TAG`でなく`BUN_VERSION`)、(3)`run`中の`wrangler@<版>`・`playwright@<版>`・`@playwright/test@<版>`から読む。複合アクションはplaywright以外の6ツールの版の宣言が必須。W7は`concurrency.group: deploy-${{ inputs.environment }}`と`cancel-in-progress: false`の明示を求める。W8は`deploy.yml`で`id`を持つ手順の並びが`DEPLOY_STAGES`と完全一致することを求める(段階以外の手順に`id`を付けない)。W1はローカル参照`./`を除外し、`docker://`はダイジェスト固定でも違反。W6は`run`の`${{ inputs.* }}`・`${{ github.event.* }}`だけを見る。`checks.yml`・`deploy.yml`が無い間はW7・W8・W10の違反が出る。
 - 3.2: `ExpectedToolVersions`に設計に無い`node`を加え、`scalarText`・`toolVersionsInStep`・`toolVersionsInEnv`・`WorkflowPolicyInput`・`WORKFLOWS_DIR`・`LIVE_VERSIONS_TF_PATH`等をexportした(9.1でdesign.mdへ反映)。providerの版の完全固定は本モジュールでは見ない。
+- 3.3: `contract-check`・`policy-check`は5列が同一の違反を1行に統合する。読めない入力(解析エラー・ファイル無し・版の読み取り失敗)は違反の表に入れず`reportInputErrors`(`commands/shared/report-violations.ts`)で前提の不足として出し終了コード1。入力の読み込みは`commands/shared/load-input.ts`、偽のファイル読み込みは`test-fixtures/repo-files.ts`(いずれも9.1でdesign.mdへ反映)。複合アクションは`setup-toolchain/action.yml`の1つだけを読み、無ければ空の文書としてW9の違反になる。`pull-request.yml`・`delivery.yml`・`release-pr.yml`の存在はW1〜W10では検査されないため、7.3の`repo-contract.unit.test.ts`で確かめる。実リポジトリは現在contract-check 20件(C3×12・C5×8)、policy-check 9件(W7・W8・W10・W9×6)。

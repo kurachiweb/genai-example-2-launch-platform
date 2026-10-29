@@ -27,3 +27,18 @@ export function reportViolations(
   stderr.write(report);
   return EXIT_FAILURE;
 }
+
+const INPUT_ERRORS = '検査の入力を読み込めません。';
+
+export function reportInputErrors(
+  title: string,
+  errors: readonly string[],
+  { stderr, github }: Pick<DeliveryDeps, 'stderr' | 'github'>,
+): number {
+  const items = errors.map((error) => `- ${error}`);
+  github.summary(
+    [`### ${title}`, '', INPUT_ERRORS, '', ...items, ''].join('\n'),
+  );
+  stderr.write([`${title}: ${INPUT_ERRORS}`, ...items, ''].join('\n'));
+  return EXIT_FAILURE;
+}
