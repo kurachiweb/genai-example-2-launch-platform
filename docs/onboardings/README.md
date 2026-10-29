@@ -205,6 +205,7 @@
 
     - 開発サーバーとプレビューは同じポートを使うため、同じアプリの両方を同時に起動しない。プレビューの前に開発サーバーを止める。
     - プレビューでも、手順13と同じく疎通確認の画面と「[スモークテスト](#スモークテスト)」で確かめる。
+    - `@cloudflare/vite-plugin`は注入の下のビルドで`HASH_PEPPER`を`dist/server/.dev.vars`として書き出すが、`apps/client`・`apps/admin`の`vite.config.ts`は共通部品の`excludeLocalSecretsFile`(`lib/config/local-secrets-output.ts`)でこのファイルを出力から除く。プレビューは`dist/server/wrangler.json`の`secrets.required`の`HASH_PEPPER`を注入した環境変数から読むため、ビルドとプレビューの両方に注入を付ける(「[ビルド結果のシークレットのファイル](../GUIDES/tech/frontend/002-tanstack-start-on-workers.md#ビルド結果のシークレットのファイル)」)。プレビューの起動時に`Using secrets defined in process.env`と表示されれば、ファイルではなく注入から読んでいる。
     - ビルドが出力する500kBを超えるチャンクの警告と、`@cloudflare/vite-plugin`がAIエージェントの実行を検出したときの案内は、想定どおりの表示である。
 
     デプロイ先の環境の設定(Worker名・`API`の接続先・`namespace_id`・変数)は、環境を指定したビルドの出力`dist/server/wrangler.json`で確かめる(「[デプロイ先の環境のビルド時の指定](../GUIDES/tech/frontend/002-tanstack-start-on-workers.md#デプロイ先の環境のビルド時の指定)」)。期待する値は「[Workerとリソースの名前と識別子](project-values.md#workerとリソースの名前と識別子)」を参照する。
@@ -249,6 +250,7 @@ infisical --telemetry=false run --env dev -- bun run test:e2e:dev-and-preview
 
 - 最後に段階ごとの結果の表を表示する。実行の順序、失敗した段階があるときの続け方と終了コード、起動しなかったときの表示、中断の扱いは「[開発サーバーとビルド後のプレビューの両方での実行](../GUIDES/tech/testing/001-test-strategy.md#開発サーバーとビルド後のプレビューの両方での実行)」に従う。
 - プレビューの段階の`bun run build`は環境を指定しないビルドのため、`apps/client`・`apps/admin`の`dist`をローカル環境向けのビルドで上書きする。
+- 注入の下のビルドでも、`dist/server/`にシークレットのファイルは残らない(手順14)。プレビューの段階は、注入したシークレットを環境変数から読む。
 
 ## 定期実行の手動起動
 

@@ -35,6 +35,7 @@ vite build && vite preview
 - 開発サーバーとビルド後のプレビューは同じHTTPポートを使うため、同じアプリで同時に動かさない。
 - `vite preview`は、ビルドが出力したWrangler設定(`dist/server/wrangler.json`)で動く。Wrangler設定を変えたらビルドし直す。デプロイ先の環境を指定したビルドの扱いは「[デプロイ先の環境のビルド時の指定](#デプロイ先の環境のビルド時の指定)」に従う。
 - Wrangler設定がデプロイ先の環境でシークレットを必須とする(`secrets.required`)場合、注入せずにビルド・プレビューするとWranglerが不足を警告し、ローカル用のシークレットのファイルの作成を案内する。シークレットのファイルは作らず、シークレットの注入を経由して起動する。ローカル環境の設定がシークレットを使わなければ、警告は動作に影響しない。
+- `@cloudflare/vite-plugin`は、注入の下のビルドでシークレットをビルド結果へファイルとして書き出す。書き出さないよう、`vite.config.ts`で出力から除く(「[ビルド結果のシークレットのファイル](#ビルド結果のシークレットのファイル)」)。
 
 バンドルに起因する不具合を見逃さないよう、E2Eテストは両方の起動で確かめる。ルートの次のコマンドは、E2Eの対象のアプリを開発サーバーで起動してE2Eテストを実行し、止めてからビルドしてビルド後のプレビューで起動し、同じE2Eテストを続けて実行する。
 
@@ -46,6 +47,34 @@ bun run test:e2e:dev-and-preview
 - E2Eの対象のTanStack Startアプリは起動しないでおく。対象のポートが使われていると、何も起動せずに失敗する。
 - コマンド全体をシークレットの注入の下で実行し、起動するアプリへシークレットを引き継ぐ。
 - 実行の順序・結果の表示・中断の扱いは「[開発サーバーとビルド後のプレビューの両方での実行](../testing/001-test-strategy.md#開発サーバーとビルド後のプレビューの両方での実行)」に従う。
+
+### ビルド結果のシークレットのファイル
+
+`@cloudflare/vite-plugin`は、ビルド時にWrangler設定の`secrets.required`のキーの値を`process.env`などから集め、値が1つでもあれば、ローカル用のシークレットのファイル(`.dev.vars`)としてビルド結果のWorkerのディレクトリ(`dist/server/`)へ平文で書き出す。シークレットの注入の下でビルドすると、注入したシークレットがファイルに残り、「[シークレットの注入](../security/001-secret-management.md#シークレットの注入)」の規則に反する。そこで、このファイルの資産をビルドの出力から除くViteのプラグインを置き、`vite.config.ts`の`plugins`に加える。
+
+```typescript
+import type { Plugin } from 'vite';
+
+export function excludeLocalSecretsFile(): Plugin {
+  return {
+    name: 'exclude-local-secrets-file',
+    enforce: 'post',
+    generateBundle: {
+      order: 'post',
+      handler(_options, bundle) {
+        Reflect.deleteProperty(bundle, '.dev.vars');
+      },
+    },
+  };
+}
+```
+
+- `@cloudflare/vite-plugin`はこのファイルを`generateBundle`で出力に加えるため、除く処理は`enforce: 'post'`と`order: 'post'`で、他のプラグインが出力を加えた後に動かす。`plugins`の中の位置に関わらず働く。
+- `vite preview`は、ビルド結果のWrangler設定(`dist/server/wrangler.json`)に残る`secrets.required`のキーを、同じディレクトリのこのファイルが無ければ`process.env`から読む。ファイルを除いても、プレビューをシークレットの注入の下で起動すれば値がWorkerへ渡る。注入せずに起動すると、Wranglerが不足を警告し、シークレットは渡らない。
+- シークレットを注入しないビルド(デプロイ先の環境を指定したビルドなど)は、集める値が無いため、除く処理が無くてもこのファイルを書き出さない。
+- 除く処理は、ビルドの出力の一覧の最上位にあるこのファイルの名前だけを対象にし、他の出力(Wrangler設定・Workerのコード)を変えない。
+- `@cloudflare/vite-plugin`の版を上げる時は、書き出すファイルの名前と、`vite preview`が`secrets.required`のキーを`process.env`から読む経路が変わっていないことを確かめ直す。偽のWorkerと偽のシークレットを一時ディレクトリに置き、本物のプラグインでビルドして、ファイルが出力に無いこととプレビューの設定に値が渡ることを確かめる単体テストを置くと、版の更新で検出できる。
+- 参照: Cloudflare Docsの「[Vite plugin](https://developers.cloudflare.com/workers/vite-plugin/)」・「[Configuration](https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property)」
 
 ### Wranglerのローカル状態への接続
 

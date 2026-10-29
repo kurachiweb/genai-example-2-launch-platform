@@ -676,7 +676,8 @@
   - _Requirements: 15.1, 15.2_
 
 - [ ] 13. 最終検証後の第5回の判断の反映
-- [ ] 13.1 ビルド後のプレビューへシークレットを渡す方法を調べ、ビルド結果に平文のシークレットのファイルを残さない
+- [x] 13.1 ビルド後のプレビューへシークレットを渡す方法を調べ、ビルド結果に平文のシークレットのファイルを残さない
+  - 決まった経路: 置き換える(Implementation Notesの「13.1(結果)」)。下の「置き換えられない場合」と「完了状態(消す場合)」の箇条は実施せず、完了の判定は「完了状態(置き換えた場合)」と「両方の完了状態に共通」で行う
   - 注意: Claude設定のdenyにより、Wranglerの開発用の変数のファイル名を含むシェルのコマンド(読む・消す・一覧)は拒否される。シークレットの保護のための拒否のため、globや文字列の組み立てで回避しない。実物のビルド結果のファイルを読まず、実物のファイルの有無の確認と既に書き出されたファイルの削除は、開発者の手動の作業として報告に書く。コードと文書にファイル名を書くのはEdit・Writeのツールで行う
   - 先に調べる: client・adminの`node_modules/@cloudflare/vite-plugin`(1.53.0)の`getLocalDevVarsForPreview`と、それを呼ぶ`generateBundle`の出力(ビルド時に`wrangler.unstable_getVarsForDev`の結果を`dist/server/`へ資産として出力する処理と、クライアントの`.assetsignore`)、`vite preview`がビルド結果のWrangler設定とこのファイルを読む経路、wrangler 4.124.0の`unstable_getVarsForDev`が`secrets.required`の宣言のある時に`process.env`を読む条件を読み、設計の「決定事項」の「ビルド後のプレビューへのシークレットの渡し方」の候補(a)プラグインの設定や環境の変数で書き出しを止める、(b)プレビューの時に`process.env`から読む経路があればビルドの出力からこのファイルを外す、(c)プレビューの起動の仕方を変える、と`process.env`を使う別の経路を確かめる。新しいパッケージは使わない。調べた候補・可否・理由の一覧を本タスクの申し送りに書き、置き換える経路と消す経路のどちらにするかを決めて、設計の同じ節に決めた経路と理由を書き足し、置く部品をFile Structure Planに加える
   - 置き換えられる場合: 先に、一時ディレクトリに置いた偽のビルドの出力(偽の値のこのファイルの資産と他の資産)に対して置き換えの処理(例: 共通部品の`config/`に置くViteのプラグインのフック)を呼び、このファイルの資産だけが除かれ他の資産が残ることを確かめる単体テストを書き、失敗を確かめてから実装し、client・adminの`vite.config.ts`で使う。シークレットの注入の下でビルドしたプレビューで疎通確認の画面が設定の不備の500にならない(`HASH_PEPPER`が渡る)ことを確かめる。置き換えたことを本タスクの申し送りに書く(dev-toolingの12.1はそれを前提に、実施せずに取り消しとして完了する)
@@ -689,16 +690,16 @@
   - _Requirements: 1.1, 1.8, 15.3, 15.4, 15.8_
 
 - [ ] 13.2 開発サーバーとビルド後のプレビューの両方のE2Eを、並列数の上限の下で確かめる
-  - 前提: dev-toolingの11.1(E2Eの並列数の上限)と、13.1で消す経路に決まった場合はdev-toolingの12.1(両方のE2Eの後の削除)が完了していること。完了していなければ止めて報告する
-  - APIサーバーを起動した状態で、シークレットの注入の下でルートの`bun run test:e2e:dev-and-preview`を`E2E_WORKERS`を設定せずに実行し、両方の起動で本specのE2Eが成功し、Playwrightの表示の並列数が上限(2)であることを確かめる。消す経路の場合は、コマンドの後に各アプリの`dist/server/`にシークレットのファイルが残らないことの確認を開発者の手動の作業として報告に書く
+  - 前提: dev-toolingの11.1(E2Eの並列数の上限)と本specの13.1が完了していること。完了していなければ止めて報告する
+  - APIサーバーを起動した状態で、シークレットの注入の下でルートの`bun run test:e2e:dev-and-preview`を`E2E_WORKERS`を設定せずに実行し、両方の起動で本specのE2Eが成功し、Playwrightの表示の並列数が上限(2)であることを確かめる。コマンドの後に各アプリの`dist/server/`にシークレットのファイルが無いこと(13.1でビルドの出力から除く)の`ls -A`による確認を、開発者の手動の作業として報告に書く
   - オンボーディングの「スモークテスト」の節と`frontend/002`の「開発時とデプロイ前の起動」の記述が、並列数の上限とシークレットのファイルの扱いについてdev-toolingの`testing/001`の記述と食い違わないことを確かめ、食い違えば本specが持つ記述を直す
   - 完了状態: ルートのコマンドで両方の起動のE2Eが上限の並列数で成功し、オンボーディングと`frontend/002`の記述が実装と`testing/001`に一致する
-  - _Depends: 13.1, dev-toolingの11.1, dev-toolingの12.1(13.1で消す経路に決まった場合)_
+  - _Depends: 13.1, dev-toolingの11.1_
   - _Boundary: SmokeE2E, 技術ドキュメント群_
   - _Requirements: 1.1, 1.8, 12.6, 12.7, 15.8_
 
 - [ ] 13.3 上流・下流への申し送りを確かめ、全体の検査とカバレッジを確かめる
-  - 判断50のlaunch-readinessの承認後の改訂1(要件10.9・S-22・タスク7.9)、判断51のdev-toolingの承認後の改訂3(11.1)、判断49のdev-toolingの承認後の改訂4(12.1。13.1で置き換えた場合は取り消されていること)が各specのrequirements.md・design.md・tasks.mdにあることと、infra-deliveryの検査のE2E・stagingのスモークテスト・デプロイのビルドが`E2E_WORKERS`とシークレットの注入について変更を要しないことを確かめ、本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の第5回の行と判断46の行の「該当箇所」を実際の位置に合わせる
+  - 判断50のlaunch-readinessの承認後の改訂1(要件10.9・S-22・タスク7.9)、判断51のdev-toolingの承認後の改訂3(11.1)、判断49のdev-toolingの承認後の改訂4の取り消し(要件6.14とタスク12.1が無く、改訂の表・Revalidation Triggers・Implementation Notes・research.mdに取り消しと理由があること)が各specのrequirements.md・design.md・tasks.mdにあることと、infra-deliveryの検査のE2E・stagingのスモークテスト・デプロイのビルドが`E2E_WORKERS`とシークレットの注入について変更を要しないことを確かめ、本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の第5回の行と判断46の行の「該当箇所」を実際の位置に合わせる
   - 共通部品・client・adminの単体テストとブラウザテストをカバレッジ付きで実行し、ファイルごとの行と関数の80%以上を確かめ、ルートの一括検査(`bun run check`)を実行する
   - 完了状態: 一括検査とカバレッジ付きのテストが成功し、表の該当箇所が上流・下流specの実際の位置を指す
   - _Depends: 13.1, 13.2_
@@ -786,3 +787,8 @@
 - 12.8(結果、f8e577b): ルートの`config/local-state-path.unit.test.ts`が、client・adminの`vite.config.ts`の`cloudflare()`の`persistState`(最上位の`const`の文字列まで辿る)と、api・eventの`package.json`の全スクリプトの`--persist-to`(空白区切りと`=`区切り)を`typescript`の構文木と文字列から読み、すべて同じ保存先であることを確かめる。読み取れない形はファイルと理由を示して失敗する。他のアプリのファイルは読み込まない。オンボーディングの手順12がこのテストを参照する(12.13)。
 - 12.12(結果、1ee6733): 実装は変えず、本物のSDKでブラウザの伝搬(中継の経路だけ)と割合、フロントエンドサーバーの`withSentry`での引き継ぎ(子のスパン)をテストで確かめた。api-gatewayの12.1は完了している(3a772b7。`operation-observability.worker.test.ts`が、受け取った`sentry-trace`のトレースIDと親のスパンIDをルートのスパンが引き継ぐことを確かめる)。本物のSDKは公開鍵に`-`を含むDSNを不正とするため、両テストは英数字だけの公開鍵を使う。
 - 12.14(結果): 判断42・44・46・47の申し送りがlegal-pages・sponsorship・infra-delivery・api-gateway・dev-toolingにあり、12.xの結果と食い違わないことを確かめた。legal-pagesのdesign.mdに確かめられなかったサーバー側の描画の500をlaunch-readinessへ申し送ることを足し、infra-deliveryのE2eStackの目的を「Mailpit・api・eventを起動し、client・adminを両方の起動で回す」に直した。影響の表の第4回の行を実際の位置に合わせ、判断46の行を加えた。共通部品・client・adminの単体テストとブラウザテストのカバレッジは、ファイルごとの行と関数がすべて80%以上(最小は共通部品のブラウザの`app-document.tsx`の関数80%)。PlaywrightのE2Eは`workers`を指定しておらず、開発サーバーで並列に多く回すとworkerdが落ちることがある(12.9)。
+- 13.1(結果): 選んだ経路は(b)の置き換えである。`vite preview`はビルド結果の`dist/server/wrangler.json`(`secrets.required`が残る)を読み、wrangler 4.124.0の`unstable_getMiniflareWorkerOptions`→`getBindings2`→`getVarsForDev(..., secrets)`で、同じディレクトリにローカルのシークレットのファイルが無ければ`loadDotEnv`が`includeProcessEnv: !!secrets`で`process.env`から宣言したキーだけを渡す。そこで共通部品の`config/local-secrets-output.ts`の`excludeLocalSecretsFile()`(`enforce: 'post'`、`generateBundle: { order: 'post' }`で出力の一覧からこのファイルだけを除く)を、client・adminの`vite.config.ts`の`plugins`に加えた。(a)プラグインの設定での停止は、`cloudflare()`に引数が無く、`CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false`はすべてのビルドに付け続ける必要があり同名のファイルがあればそれを書き出すため採らない。Wrangler設定から`secrets`を消す差し替えは、`wrangler deploy`の必須のキーの確認と`wrangler types`を壊すため採らない。(c)プレビューの起動の仕方の変更は不要である。`security/001`には例外を足していない。dev-toolingの承認後の改訂4(要件6.14・タスク12.1)は取り消した。
+  - テスト: 共通部品の`config/local-secrets-output.unit.test.ts`は偽の出力の一覧で確かめる。client・adminの`test/config/local-secrets-output.unit.test.ts`は一時ディレクトリの偽のWorkerを本物の`@cloudflare/vite-plugin`でビルドし、書き出されないこと・プラグインの位置に依らないこと・プレビューの設定が`process.env`から値を受けること・注入しない環境のビルドは書き出さないことを確かめる。注入しないstaging・prodのビルドは、プラグインの`getLocalDevVarsForPreview`が0件で`undefined`を返すため書き出されない。
+  - 手動で確かめること: Claude設定のdenyによりこのファイル名を含むシェルのコマンドは実行できないため、開発者が、シークレットの注入の下で`bun run build`を実行した後に`ls -A`で`apps/client/dist/server`・`apps/admin/dist/server`にこのファイルが無いことを確かめる。この形にする前のビルドで書き出されたファイルが残っていれば、開発者が手動で消す。
+  - `vars`の上書き: 開発サーバーと同じく、プレビューでも`process.env`に`vars`と同じ名前のキーがあると、Workerへ渡る値は`vars`の値ではなく`process.env`の値になる。注入するシークレットに`vars`と同じ名前のキーを置かない。
+  - Bunの不具合の回避: 共通部品の単体テストで本物のViteの`build`を同じプロセスで呼ぶと、`frontend-lint.unit.test.ts`と一緒に実行した時だけBun 1.4.4で失敗したため、共通部品のテストは偽の出力の一覧にし、本物のビルドはclient・adminのテストで確かめる。

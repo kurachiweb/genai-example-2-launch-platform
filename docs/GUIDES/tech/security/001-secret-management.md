@@ -40,7 +40,8 @@ infisical run --env <環境種別> -- bun run dev
 ```
 
 - `secrets`はWranglerの継承されないキー(non-inheritable keys)であり、ルートの指定は`env.<環境種別>`へ引き継がれない。ルートの指定はローカル環境(環境種別を指定しない`wrangler dev`・`vite dev`)で使われる。
-- `secrets`を定義すると、`wrangler dev`・`vite dev`は`secrets.required`に挙げたキーだけを`process.env`などから読み込み、`env`に渡す。挙げたキーが見つからなければ、足りないキーの名前を警告する。
+- `secrets`を定義すると、`wrangler dev`・`vite dev`は`secrets.required`に挙げたキーだけを`process.env`などから読み込み、`env`に渡す。挙げたキーが見つからなければ、足りないキーの名前を警告する。`vite preview`も、ビルド結果のWrangler設定に残る`secrets.required`のキーを同じく`process.env`から読み込むため、ビルド後のプレビューもシークレットの注入の下で起動する。`process.env`に`vars`と同じ名前のキーがあると、その値が`vars`の値に優先して渡るため、注入する値やシェルの変数に`vars`と同じ名前を使わない。
+- `@cloudflare/vite-plugin`のビルドは、`secrets.required`のキーの値が`process.env`にあると、その値をローカル用のシークレットのファイル(`.dev.vars`)としてビルド結果へ書き出す。シークレットの注入の下でビルドしてもファイルが残らないよう、ビルドの設定でこのファイルを出力から除く(「[ビルド結果のシークレットのファイル](../frontend/002-tanstack-start-on-workers.md#ビルド結果のシークレットのファイル)」)。
 - `wrangler deploy`・`wrangler versions upload`は、`secrets.required`のキーがすべてデプロイ先のWorkerに設定済みであることを確かめ、足りなければ失敗する。
 - `wrangler types`は、`secrets.required`からシークレットの型を生成する。
 - 参照: Cloudflare Docsの「[Configuration](https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property)」

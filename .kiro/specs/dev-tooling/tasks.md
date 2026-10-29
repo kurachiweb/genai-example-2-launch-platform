@@ -333,18 +333,6 @@
   - _Depends: 5.3_
   - _Requirements: 6.13_
 
-- [ ] 12. frontend-platformの第5回の判断49による条件付きの反映(承認後の改訂4)
-- [ ] 12.1 両方のE2Eのコマンドの後に、ビルドが書き出したシークレットのファイルを消す
-  - 前提: frontend-platformの13.1の調査で、ファイルを書かずにプレビューへシークレットを渡す方法が見つからず、消す経路に決まったこと。見つかって置き換えた場合は実施せず、要件6.14・design.mdの該当の記述・本タスクを取り消し、取り消したことと理由を申し送りに書いて完了にする。13.1が完了していなければ止めて報告する
-  - 注意: Claude設定のdenyにより、Wranglerの開発用の変数のファイル名を含むシェルのコマンド(読む・消す・一覧)は拒否される。シークレットの保護のための拒否のため、globや文字列の組み立てで回避しない。実物のビルド結果のファイルの確認と、既に書き出されたファイルの削除は、開発者の手動の作業として報告する
-  - 先に、`scripts/tooling/e2e-dev-and-preview.unit.test.ts`へ、一時ディレクトリに置いた偽のビルド結果(`apps/<対象名>/dist/server/`)と偽のファイル(値は偽物)で、成功・開発サーバーのE2Eの失敗・プレビューのE2Eの失敗・ビルドの失敗・中断のいずれでも、すべての対象を止めた後に各対象のそのファイルだけが消えて同じディレクトリの他のファイルが残ること、ファイルが無い対象で失敗しないこと、消せない時に対象とパスだけを示して内容を表示せず終了コード1になることを確かめるテストを書き、失敗を確かめる。偽物は`test-support/dual-mode-e2e-fixtures.ts`に置く
-  - `e2e-dev-and-preview.ts`の`runDualModeE2E`に、計画の各対象のビルド結果からそのファイルを消す処理(削除は`DualModeDependencies`から注入できる部品にする)を、すべての対象を止めた後の最後の段階として加える。結果の表に削除の段階を示す
-  - `testing/001`の「開発サーバーとビルド後のプレビューの両方での実行」の節に、ビルドが書き出したシークレットのファイルをコマンドの最後に消すことと、要件6.11(シークレットをファイルに書き出さない)の例外であることを、プロジェクト名と固有値を含めずに書く。`security/001`・オンボーディング・`frontend/002`の例外の記述はfrontend-platformの13.1が書くため、記述が食い違わないことを確かめる
-  - 完了状態: ルートの単体テスト(カバレッジ80%以上)と一括検査が成功し、`testing/001`の記述が実装と一致する。実際の両方の起動の後にファイルが残らないことは、frontend-platformの13.2で開発者の手動の確認として確かめる
-  - _Boundary: E2EDualModeRunner, TestingDocs_
-  - _Depends: 10.1, frontend-platformの13.1_
-  - _Requirements: 6.11, 6.14_
-
 ## Implementation Notes
 
 - 1.1: ルートは`@playwright/test`だけを直接宣言し、`playwright`・`playwright-core`は`@playwright/test`の完全固定により1.63.0へ推移的に決まる。主要パッケージ一覧の文書化(7.1・7.3)ではこの点を明記する。
@@ -424,3 +412,4 @@
 - 8.1後の機能検証(開発者判断済み): 要件7.1のBunの単体テストでの「未達の指標と実測値の表示」は、表の実測値と終了コード1で満たすものとし、上流の制約としてdesign.mdの追跡表とBunTestConfigに記録した。
 - 8.1後の機能検証(開発者判断済み): ルートの`tsconfig.json`を`include: ["**/*.ts"]`と、アプリ・品質ゲートの対象外・外部由来の`exclude`に変えた。TypeScriptの`**`はドットで始まるディレクトリに一致しない(実測)ため、`.github/`配下などにルート所有のTSを置く場合は`include`に明示する(infra-deliveryへの申し送り)。`tsconfig.unit.test.ts`が、`exclude`と単一定義の一致と、リポジトリにあるルート所有のTSがすべて型検査の対象に入っていることを確かめる。
 - 8.1後の機能検証: 書き写した値の一致テストを加えた(`bunfig.toml`の`coverageThreshold`・`coverageReporter`、`.gitignore`の共有ディレクトリの配置先、E2Eの既定URLのポート)。E2Eのポートは、compose.yamlの`ports`の行末コメント(利用者側フロントエンド・管理者側フロントエンド)で対象を識別するため、コメントの文言を変える場合は`e2e/support/targets.unit.test.ts`の`COMPOSE_PORT_LABELS`も直す。design.mdは、AppScriptContract(Bunの除外の書き写し)、VitestPresets(`CHROMIUM_PATH`の空文字)、構成図とComponentsの依存、Testing Strategyを実装に合わせた。
+- 承認後の改訂4の取り消し: 追加タスク12・12.1(両方のE2Eのコマンドの後のシークレットのファイルの削除)と要件6.14を取り消した。frontend-platformの13.1で、画面を持つアプリのビルドがシークレットのファイルを出力に含めず(共通部品の`excludeLocalSecretsFile()`)、ビルド後のプレビューが注入した値を`process.env`から受け取る形にしたため、両方のE2Eのコマンドに削除の段階は要らない。

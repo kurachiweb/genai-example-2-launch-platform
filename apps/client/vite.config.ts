@@ -4,6 +4,8 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+import { excludeLocalSecretsFile } from './lib/config/local-secrets-output.ts';
+
 // api・eventのwrangler dev --persist-toと同じ保存先にし、D1・R2などのローカル状態を共有する
 const LOCAL_STATE_PATH = '/workspace/.wrangler/state';
 
@@ -18,5 +20,6 @@ export default defineConfig({
     tanstackStart(),
     viteReact(),
     tailwindcss(),
+    excludeLocalSecretsFile(),
   ],
 });

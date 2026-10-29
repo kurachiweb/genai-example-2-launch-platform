@@ -274,15 +274,16 @@
 - **要件**: 6.13を加えた。E2Eを実行する開発者から見える振る舞い(並列数と上書きの変数)が変わるため、「承認後の改訂」の表に改訂3の行を置いた。
 - **変えた箇所**: 設計のRevalidation Triggers・File Structure Plan・追跡表の6.13・Components and Interfacesの表とE2EConfig・Testing Strategyの`playwright-config.unit.test.ts`・TestingDocsの`testing/001`、タスク11・11.1。`spec.json`の承認の状態は変えていない。
 
-## frontend-platformの第5回の判断による承認後の改訂(改訂4、2026-10-30、条件付き)
+## frontend-platformの第5回の判断による承認後の改訂(改訂4、2026-10-30、取り消し)
 
-- **状態**: 2026-10-30に開発者が決定した方針による改訂で、要否はfrontend-platformのタスク13.1の調査の結果で決まる。ファイルを書かずにプレビューへシークレットを渡す方法が見つかれば、本改訂(要件6.14・追加タスク12.1・設計の該当の記述)を取り消す。
+- **状態**: 取り消した。2026-10-30に開発者が決定した方針による条件付きの改訂で、要否はfrontend-platformのタスク13.1の調査の結果で決まるとしていた。13.1でファイルを書かずにプレビューへシークレットを渡す経路が見つかり置き換えたため、本改訂(要件6.14・追加タスク12・12.1・設計の該当の記述)は不要になった。
 - **Context**: シークレットの注入の下で画面を持つアプリをビルドすると、`@cloudflare/vite-plugin` 1.53.0の`getLocalDevVarsForPreview`が、Wrangler設定で宣言したシークレットをWranglerの開発用の変数のファイル(`.dev.vars`)として`dist/server/`へ平文で書き出す。`test:e2e:dev-and-preview`のプレビューの段階は注入の下で`bun run build`を実行するため、コマンドの後にファイルが残り、要件6.11(シークレットをファイルに書き出さない)に反する。
 - **決定(frontend-platformの判断49)**: まずファイルを書かずにプレビューへシークレットを渡す方法を調べて置き換える。無理なら、プレビューの終了時(frontend-platformのclient・adminの`preview`)と両方の起動のE2Eの後(本specの`test:e2e:dev-and-preview`)にファイルを消し、例外として文書に書く。
 - **持ち主**: `scripts/tooling/e2e-dev-and-preview.ts`・その単体テスト・`testing/001`は本specの成果物のため、コマンドの後の削除は本specのタスク12.1で行う。プレビューの終了時の削除と`security/001`・オンボーディング・`frontend/002`の例外の記述はfrontend-platformの13.1が持つ。
 - **要件**: 6.14を6.11の例外として加え、「承認後の改訂」の表に改訂4の行を置いた。
 - **確かめ方の制約**: Claude設定のdenyにより、このファイル名を含むシェルのコマンドは拒否される。テストは一時ディレクトリの偽のファイルで確かめ、実物のファイルの確認と削除は開発者の手動の作業とする。
-- **変えた箇所**: 設計のRevalidation Triggers・追跡表の6.14・Components and Interfacesの表とE2EDualModeRunner・Testing Strategyの`e2e-dev-and-preview.unit.test.ts`・TestingDocsの`testing/001`、タスク12・12.1。`spec.json`の承認の状態は変えていない。
+- **結果(frontend-platformの13.1)**: 選んだ経路は置き換えである。`vite preview`はビルド結果の`dist/server/wrangler.json`(`secrets.required`が残る)を読み、wrangler 4.124.0の`unstable_getMiniflareWorkerOptions`→`getBindings2`→`getVarsForDev(..., secrets)`で、同じディレクトリにこのファイルが無ければ`loadDotEnv`が`includeProcessEnv: !!secrets`で`process.env`から宣言したキーだけを渡す。そこでfrontend-platformの共通部品`apps/frontend-lib/config/local-secrets-output.ts`の`excludeLocalSecretsFile()`(`enforce: 'post'`、`generateBundle: { order: 'post' }`で出力の一覧からこのファイルだけを除く)を、client・adminの`vite.config.ts`の`plugins`に加えた。注入の下のビルドでもビルド結果にファイルが無く、注入の下のプレビューは値を`process.env`から受け取るため、`test:e2e:dev-and-preview`は削除の段階を持たず、要件6.11に例外を設けない。注入しないstaging・prodのビルドは、プラグインの`getLocalDevVarsForPreview`が0件で`undefined`を返すため、除く処理が無くても書き出さない。
+- **取り消した箇所**: 要件6.14と「承認後の改訂」の表の改訂4の内容(取り消しと理由に置き換えた)、設計の追跡表の6.14・Components and Interfacesの表とE2EDualModeRunnerの要件と「シークレットのファイルの削除」の契約・Testing Strategyの`e2e-dev-and-preview.unit.test.ts`の改訂4の確認・TestingDocsの`testing/001`の削除の記述、タスク12・12.1。設計のRevalidation Triggersには取り消したことと理由を1行残し、tasks.mdのImplementation Notesに取り消しを記録した。`scripts/tooling/e2e-dev-and-preview.ts`・`testing/001`は改訂4の前のままで変えていない。`spec.json`の承認の状態は変えていない。
 
 ## References
 
