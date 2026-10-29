@@ -142,6 +142,14 @@ Workers統合テスト(test:worker)  <アプリ名>  飛ばした(プロジェ�
 <対象のURLを示す環境変数>=<対象のURL> bun run test:e2e
 ```
 
+- 並列数(Playwright Testのワーカーの数)の上限は2とする(`e2e/support/playwright-config.ts`の`DEFAULT_E2E_WORKERS`)。開発サーバーに対して多く並列に実行すると、機械の負荷で実行環境が落ちることがあるためである。Playwright Testの既定(CPUのコア数の半分)は機械によって並列数が変わるため使わない。
+- ローカルとCIは環境変数`E2E_WORKERS`を設定せず、同じ上限で実行する。一時的に並列数を変えたいときだけ、`E2E_WORKERS`に1以上の整数を指定する。空文字は未設定と同じ扱いになる。1以上の整数でない値(`0`・負の数・小数・百分率など)を指定すると、設定の読み込みが`環境変数E2E_WORKERSには1以上の整数を指定してください: <値>`で失敗し、テストは実行されない。
+- コマンドの`--workers`の引数は、Playwright Testの規則どおり設定と`E2E_WORKERS`より優先される。
+
+```sh
+E2E_WORKERS=1 bun run test:e2e
+```
+
 - `e2e/<対象名>/`に`*.e2e.test.ts`が1つも無い対象は、プロジェクトが作られず実行されない。
 - 成果物は`test-results`(失敗時のエラーの文脈を記した`error-context.md`など)とHTMLレポートの`playwright-report`に出力する。トレース・スクリーンショット・動画は、Playwright Testの既定では記録されず、`--trace`の指定や設定の`use`(`trace`・`screenshot`・`video`)で有効にしたときに`test-results`へ出る。どちらもルートの`.gitignore`でGit管理外にする。HTMLレポートは自動で開かない(`open: 'never'`)。失敗時にレポートの配信サーバーが待ち続け、コマンドが終わらなくなるのを避けるためである。
 - `playwright test`は、実行ファイルのshebangにより`PATH`上の`node`で起動する。Nodeで実行する環境では、Node 22.5.0以上(20系では20.17.0以上)が要る。`playwright.config.ts`が`node:path`の`matchesGlob`と`import.meta.dirname`を使うためである。

@@ -979,7 +979,7 @@ export default class ZeroTestsReporter implements Reporter {
   - `use.launchOptions`には受け取った起動オプション(`resolveBrowserLaunchOptions(process.env)`)を使う。
   - `workers`には受け取った並列数(`resolveE2EWorkers(process.env)`)を使う(承認後の改訂3)。
   - レポーターは`list`・`html`・`ZeroTestsReporter`(`./e2e/support/zero-tests-reporter.ts`)とする。
-- `ZeroTestsReporter`: Playwright 1.63.0の標準のレポーターは`--pass-with-no-tests`で0件のとき何も表示しないため、実行対象が0件なら「実行対象のE2Eテストは0件です」を表示する(6.7)。
+- `ZeroTestsReporter`: Playwright 1.64.1の標準のレポーターは`--pass-with-no-tests`で0件のとき何も表示しないため、実行対象が0件なら「実行対象のE2Eテストは0件です」を表示する(6.7)。
 - `reachability.setup.ts`は、`baseURL`を`assertE2ETargetReachable`へ渡すだけとする。`assertE2ETargetReachable`は対象URLへHTTPのGETリクエストを送り、状態コードに関係なく応答があれば成功とし、リダイレクトは辿らない。接続できない・待ち時間(既定10秒)内に応答が無い・URLとして解釈できない場合は「E2E対象に到達できません: <URL>」で失敗し、原因を`cause`に残す(6.10)。URLが未設定なら「E2E対象のURLが設定されていません」で失敗する。アプリの起動はE2E設定では行わない。
 - ルートの`test:e2e`は`playwright test --pass-with-no-tests`とする。Bun 1.4.2はshebangが`node`の実行ファイルを、`bun run`・`bunx --bun`・`bun --bun`のいずれで起動しても`PATH`上の`node`で実行する。そのため開発コンテナではBunのシムで、Nodeのある環境ではNodeで実行される。
 

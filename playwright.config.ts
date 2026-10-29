@@ -1,7 +1,10 @@
 import { defineConfig } from '@playwright/test';
 
 import { resolveBrowserLaunchOptions } from './config/vitest/browser.ts';
-import { createPlaywrightConfig } from './e2e/support/playwright-config.ts';
+import {
+  createPlaywrightConfig,
+  resolveE2EWorkers,
+} from './e2e/support/playwright-config.ts';
 import {
   createE2ETestFileDetector,
   resolveE2EProjects,
@@ -15,5 +18,6 @@ export default defineConfig(
       createE2ETestFileDetector(import.meta.dirname),
     ),
     resolveBrowserLaunchOptions(process.env),
+    resolveE2EWorkers(process.env),
   ),
 );
