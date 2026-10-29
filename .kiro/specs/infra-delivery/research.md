@@ -3,7 +3,7 @@
 ## Summary
 
 - **Feature**: `infra-delivery`
-- **Discovery Scope**: Complex Integration(`apps/infra`と`.github`はリポジトリに無い。上流の5spec(dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform)はタスク一覧まで承認済みで、実装は未着手である。Cloudflare・Infisical・GitHubの3つの外部サービスを結ぶ)
+- **Discovery Scope**: Complex Integration(`apps/infra`と`.github`はリポジトリに無い。上流の5spec(dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform)は実装を完了している(2026-10-29に確認。照合の結果は「実装前のギャップ分析(2026-10-29)」)。Cloudflare・Infisical・GitHubの3つの外部サービスを結ぶ)
 - **Key Findings**:
   - Cloudflare provider 5.27.0(OpenTofu Registryで2026-10-03公開、本日時点で15日経過)の`cloudflare_d1_database`・`cloudflare_r2_bucket`・`cloudflare_queue`は、いずれも`jurisdiction`に`"us"`を受け付ける。開発者が選んだ米国の管轄(Q3)は、代替手段を使わずにOpenTofuだけで実現できる。5.28.0(2026-10-13公開)は2週間に満たないため採らない。
   - 米国の管轄のR2バケットは、Workersのバインディングに`jurisdiction`の指定が要り、S3 APIの接続先が`https://<ACCOUNT_ID>.us.r2.cloudflarestorage.com`になり、Data Access Logsを使えない。Queuesの管轄はバインディングに指定が要らないが、デッドレターキューは送り元と同じ管轄でなければならない。email-deliveryのメールイベント用Queueのデッドレターは本体のデッドレターなので、Queueはすべて同じ管轄にそろえる必要がある。
@@ -392,3 +392,116 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - [Infisical OIDC Auth for GitHub](https://infisical.com/docs/documentation/platform/identities/oidc-auth/github) — 主体の縛り方
 - [Infisical Pricing](https://infisical.com/pricing) — Freeプランの制約
 - [Infisical Role-based access controls](https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls) — 組み込みのロール
+
+---
+
+## 実装前のギャップ分析(2026-10-29)
+
+`/cc-sdd:kiro-validate-gap`による再分析である。設計時(2026-10-18)は上流の5spec(dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform)が未着手だったが、本日時点で5specのタスクはすべて完了している(dev-tooling 47件・backend-platform 57件・api-gateway 52件・email-delivery 34件・frontend-platform 97件)。本節は、設計とタスクが前提にした上流の成果物を実装済みのコードと照合し、食い違いと未決の点を挙げる。`apps/infra`・`.github`・`scripts/delivery`は未作成で、本specのタスク44件はすべて未着手である。
+
+### 分析の範囲と前提
+
+- `.kiro/steering`には`roadmap.md`だけがあり、`product.md`・`tech.md`・`structure.md`が無い。プロジェクトの文脈はCLAUDE.md・tech-stack.md・`docs/onboardings/project-values.md`から補った。
+- Cloudflare・Infisical・GitHubの外部仕様は設計時の調査(本書の「Research Log」)から変えていない。版の固定(Cloudflare provider 5.27.0・`infisical` provider 0.19.38)は本日も公開から2週間以上の条件を満たす。
+
+### 設計の前提どおりだった項目
+
+| 前提                                                                                                                                                                                                             | 確かめた場所                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 資源の名前(D1 1つ・R2 3つ・Queue 3つ・Worker 4つ)と、Wranglerの環境による`-staging`・`-prod`の接尾辞、Service Bindingsの接続先                                                                                   | 4アプリの`wrangler.jsonc`・`project-values.md`の「Workerとリソースの名前と識別子」     |
+| staging・prodの識別子の仮の値(D1の`database_id`・`TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`)と、`workers_dev`・`preview_urls`・R2の`jurisdiction`・`routes`が未記載であること                                   | 同上                                                                                   |
+| stagingの`secrets.required`(`HASH_PEPPER`・`TURNSTILE_SECRET_KEY`・`SENTRY_DSN`・`EMAIL_ALLOWED_RECIPIENTS`)が「Infisicalのフォルダとキー」の表と一致すること                                                    | 同上                                                                                   |
+| ルートの`check`・`test:all:{unit,browser,worker}`・`test:e2e`・`test:e2e:dev-and-preview`・`shared-dirs:place`                                                                                                   | ルートの`package.json`                                                                 |
+| apiの`cf-typegen:check`・`graphql:check`・`graphql:allowlist`(`--previous-ref`を省くと警告を出して現行の操作だけで生成する)・`db:migrations:check`・`test:smoke`・`db:migrate:local`                             | `apps/api/package.json`・`apps/api/scripts/graphql/build-allowlist.ts`                 |
+| カバレッジの出力先`coverage/{unit,browser,worker}/lcov.info`(アプリごと)                                                                                                                                         | `bunfig.toml`・`apps/*/bunfig.unit.toml`・`config/vitest/test-kind-preset.ts`          |
+| `CHROMIUM_PATH`が無い環境ではPlaywrightが導入したブラウザを使うこと                                                                                                                                              | `config/vitest/browser.ts`の`resolveBrowserLaunchOptions`                              |
+| E2Eの対象のURLを`E2E_CLIENT_URL`・`E2E_ADMIN_URL`で切り替えられること(スモークテストの宛先に使う)                                                                                                                | `e2e/support/targets.ts`                                                               |
+| 開発コンテナのOpenTofu 1.13.2・Wrangler 4.152.0・Infisical CLI 0.44.8・Playwright 1.64.1・Mailpit 1.32.0・Bun 1.4.4                                                                                              | `Dockerfile`の`ARG`                                                                    |
+| Claude設定の拒否(`*tofu apply*`・`*wrangler deploy*`・`*wrangler secret*`・`gh workflow run*`・`gh pr merge*`・`infisical secrets set*`など)                                                                     | `.claude/settings.json`                                                                |
+| `*.tfstate`・`.terraform`・`coverage`がGit管理外であること                                                                                                                                                       | `.gitignore`                                                                           |
+| 追記先の既存文書の現状(シークレット管理の文書に`ephemeral`とOIDCの節がある、骨子の共通の行が「標準契約条項等の該当するもの」のまま、文書番号`infra/005〜007`・`operations/001〜002`・`security/003`が空いている) | `docs/GUIDES/tech/security/001-secret-management.md`・`docs/GUIDES/service/legal/`ほか |
+
+### 要件と既存の資産の対応(食い違いと未決の点)
+
+凡例: **Missing**は設計またはタスクに無いもの、**Constraint**は既存のコードが課す制約、**Unknown**は確かめが要るもの。
+
+| #   | 要件          | 種別       | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --- | ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| G1  | 11.5・6.4     | Constraint | 開発コンテナのNodeは26.12.1(`Dockerfile`の`NODE_VERSION`、tech-stack.mdも「Node.js v26」)で、設計の「Node 24」と食い違う。11.5は開発コンテナとの版の一致を求めるため、CIのNodeは26.12.1にする必要がある。あわせて、tech-stack.mdのとおりBun上の`wrangler dev`はHTTPに応答しないため、CIのE2Eの起動(`e2e-stack`)もWranglerをNodeで動かす前提になる                                                                                                                                                                                                                                                                                                                                    |
+| G2  | 11.5          | Constraint | 開発コンテナはMailpitを「チェックサムが非公開のため未検証で取得する」。設計の「Mailpitは公式の配布物をSHA-256で検証して導入」は、公式のチェックサムが無いと成り立たない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| G3  | 5.2・5.6      | Constraint | ルートの`check`(`scripts/tooling/run-all.ts`の`CHECK_STEPS`)は、`shared-dirs:verify`・テストの命名・整形・静的解析に加え、全アプリの`cf-typegen:check`と`graphql:check`(許可リストの鮮度を含む)と`check:contract-copies`を既に実行する。設計の`APP_CHECKS`のうち`cf-typegen`の検査と`graphql:check`は重複する。また、設計が書くapi・eventの`cf-typegen --check`は、実際には専用のスクリプト`cf-typegen:check`である                                                                                                                                                                                                                                                                  |
+| G4  | 5.3・6.1・6.2 | Missing    | `config/workspace-layout.ts`の`APPS`は`frontend-lib`をアプリとして含む(`test:unit`・`test:browser`・`storybook:build`を持ち、Wrangler設定を持たない)。設計には`frontend-lib`の記述が無い。導入の対象(`resolveInstallTargets`)ではAPPSとSHARED_DIRSの配置元が重なるため重複を除く必要があり、カバレッジの合算(`mergeLcov`)では`apps/frontend-lib`の前置が要る。構成検査はWorkerを持つ4アプリだけを対象にする必要がある                                                                                                                                                                                                                                                                |
+| G5  | 8.2・12.4     | Constraint | 上流の単体テストが識別子の仮の値を期待値として固定している。`apps/api/test/config/wrangler-config.unit.test.ts`がapiとeventのstagingの`database_id`を、`apps/client/test/config/wrangler-config.unit.test.ts`と`apps/admin/test/config/wrangler-config.unit.test.ts`がstagingの`TURNSTILE_SITE_KEY`(clientは`WEB_ANALYTICS_TOKEN`も)を、仮の値として期待する。タスク9.2の完了状態「上流のWrangler設定の単体テストが成功」は、これらの期待値も同じ変更で直さないと満たせない。`project-values.md`の識別子の行と変数の値の表の「(仮の値)」も同時に直す必要がある。タスク7.1については、apiのテストのR2のスキーマが`z.object`(未知のキーを許す)のため、`jurisdiction`を加えても壊れない |
+| G6  | 11.1・13.5    | Missing    | ホスト名から導かれる値のうち、apiの`TURNSTILE_EXPECTED_HOSTNAMES`(client・adminのホスト名)と、eventの`send_email`の`allowed_sender_addresses`・`EMAIL_FROM_ADDRESS`(送信ドメイン)が、設計の「ホスト名から導かれる変数の値」の一覧にも、構成検査の規則C1〜C8にも無い。資源一覧のホスト名や送信ドメインを変えたときに、食い違いを検出できない                                                                                                                                                                                                                                                                                                                                          |
+| G7  | 12.2・2.2     | Unknown    | email-deliveryの手順(`docs/GUIDES/tech/external/001-email-sending.md`の「購読とQueueの作成」「送信ドメインの登録」、`project-values.md`の「開発者が管理画面で行う」)で、stagingのメールイベント用Queue・購読・送信ドメインが既に作られているかは分からない。管理画面の手順は管轄を指定していないため、Queueが既にあれば米国の管轄ではない可能性が高い。管轄は作成後に変えられないため、その場合は`import`による取り込みでは2.2を満たせず、削除して作り直すことになる(購読も作り直しになる)                                                                                                                                                                                           |
+| G8  | 13.7          | Missing    | 本specの導入で手作業の手順が変わる上流の文書が、設計の「Modified Files」に無い。`docs/GUIDES/tech/external/001-email-sending.md`の管理画面でQueueと購読を作る手順、`project-values.md`の「デプロイ先のメールイベント用Queueと配信不能イベントの購読、送信ドメインの登録は、開発者が管理画面で行う」の一文、オンボーディングの「stagingのメールのシークレット」節の、CIのデプロイの導入までは暫定としてWranglerのシークレットのコマンドで設定するという記述である(CLAUDE.mdの水平展開の規則)                                                                                                                                                                                          |
+| G9  | 5.4           | Unknown    | コミット時の検出はBetterleaksで、誤検知は`.betterleaksignore`のFingerprintで除外する。CIのTruffleHogは別の規則と別の除外の仕組みを持つため、Betterleaksで誤検知と判断した値がCIで失敗する場合と、逆に片方だけが検出する場合があり得る。設計には2つの除外の扱いの記述が無い                                                                                                                                                                                                                                                                                                                                                                                                           |
+| G10 | 7.10          | Unknown    | `@smoke`を付ける予定の`e2e/{client,admin}/system-status.e2e.test.ts`は、「ビルド後の対象でのみ」の分岐を含む。E2Eの補助にはローカル前提のもの(`e2e/support/scheduled-trigger.ts`はWranglerのローカルの経路`/cdn-cgi/local/scheduled`を使う)もある。stagingでは本物の非表示のTurnstile・Sentry・Web Analyticsが動くため、どのテストをスモークに含められるかは実際にstagingで確かめないと決まらない                                                                                                                                                                                                                                                                                    |
+| G11 | 3.1           | Missing    | `.gitignore`に計画のファイルが無い。計画は暗号化されるが、ローカルで`-out`に書いた計画を誤ってコミットしないよう、名前を決めて除外するのが安全である                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| G12 | —             | Missing    | design.mdの「Existing Architecture Analysis」と本書の「Summary」が「上流は実装が未着手」のままである                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+
+### 実装の進め方の選択肢
+
+本specは新しく作るもの(`apps/infra`・`.github`・`scripts/delivery`)が大半で、既存のファイルの変更はWrangler設定・E2Eのタグ・文書に限られる。設計は承認済みのため、選択肢は上の食い違いをどこで吸収するかで分ける。
+
+#### 選択肢A: 設計とタスクを先に直してから実装する(既存の設計の拡張)
+
+- G1〜G12をdesign.md・tasks.mdへ反映してから、タスク1から実装する。G3では`APP_CHECKS`をapiの`db:migrations:check`・`test:smoke`に絞り、`cf-typegen:check`・`graphql:check`は`check`に任せる。G6では一覧に3つの値を加え、送信ドメインの照合を構成検査の規則に加えるかを決める。G5・G8は該当するタスク(7.1・8.x・9.2)の作業と完了状態に加える。
+- ✅ 実装中に設計との差分を溜めず、タスク9.1(設計との食い違いの修正)が軽くなる
+- ✅ 開発者の判断が要る点(G2・G6・G7・G9)を実装の前に決められる
+- ❌ 実装の開始が遅れる。承認済みの文書の改訂(改訂4)として記録する手間が要る
+
+#### 選択肢B: 設計どおりに実装し、食い違いはタスク9.1でまとめて直す
+
+- タスクの順に実装し、上流の実体に合わない箇所(Nodeの版・`frontend-lib`・`APP_CHECKS`)は実装で実体に合わせ、最後のタスク9.1でdesign.mdとresearch.mdに反映する。
+- ✅ 今すぐ着手できる。9.1が元々この作業を想定している
+- ❌ G5(9.2の完了状態が満たせない)・G7(取り込みか作り直しか)・G8(上流の文書の更新)はタスクに無いため、実装中に判断を迫られて止まる
+- ❌ 構成検査(タスク3.x)の規則を先に作るため、G6を後から加えるとテストを書き直すことになる
+
+#### 選択肢C: 判断が要る点だけ先に決め、機械的な食い違いは実装で吸収する(組み合わせ)
+
+- 先に開発者がG2(Mailpitの検証の方法)・G6(送信ドメインとbot判定のホスト名を構成検査に加えるか)・G7(stagingのメールの資源が既にあるか)・G9(2つの検出器の除外の方針)を決め、決定をrequirements.mdの改訂の表とdesign.mdへ記録する。
+- G1・G3・G4・G11・G12は実装で実体に合わせ、タスク9.1で設計へ反映する。G5・G8は該当するタスクへ作業を1行ずつ足す。
+- ✅ 判断待ちで実装が止まる点だけを先に潰し、文書の改訂を最小にできる
+- ❌ 機械的な食い違いの反映を9.1まで持ち越すため、途中の設計書は実装と一部食い違う
+
+### 規模とリスク
+
+- **規模: L(1〜2週間)**。新しく作るものが大半(OpenTofuの4モジュール・TypeScriptのコマンド約20個と単体テスト・ワークフロー5つ・技術文書6つ)だが、上流のコマンドと設定が揃い、設計とタスクが細かく決まっているため、XLには当たらない。
+- **リスク: 高**。Cloudflare・Infisical・GitHubの3つの外部サービスを結び、AIエージェントは適用・デプロイ・CIの実行を確かめられない(Claude設定の拒否)。管轄は作成後に変えられないため、最初の適用の誤りは作り直しになる(G7)。CIでの実際の動作は、開発者がmainへマージした後の最初の実行まで分からない。
+
+### 設計フェーズ(改訂)への申し送り
+
+- 推奨: 選択肢C。G7とG5は実装中に必ず手が止まる点で、G2・G6・G9は開発者の方針の判断だからである。
+- 決める必要がある点:
+  - G2: Mailpitの配布物を、初回に取得した値から算出したSHA-256を固定して検証するか、開発コンテナと同じく検証しないか
+  - G6: eventの送信元アドレスとapiの`TURNSTILE_EXPECTED_HOSTNAMES`を、構成検査の照合の対象に加えるか、値の一覧への記載だけにするか
+  - G7: stagingのメールイベント用Queue・購読・送信ドメインを開発者が既に作ったか。作った場合、Queueの管轄の有無と、作り直すかどうか
+  - G9: TruffleHogの除外を`.betterleaksignore`とどう対応させるか(TruffleHogを検証済みの結果だけで失敗させるか、除外のファイルを別に持つか)
+- Research Needed:
+  - TruffleHogの公式アクションの版と、誤検知の除外の指定方法(G9)
+  - 管理画面で作ったQueueの管轄の確かめ方(`wrangler queues info`の出力に管轄が出るか)と、購読ごと作り直す手順(G7)
+  - stagingで動かせるスモークテストの範囲(G10)。最初のstagingのデプロイの後に確かめる
+  - OpenTofu 1.13.2のモックのproviderが`ephemeral`リソースに対応するか(設計時からの持ち越し。タスクで確かめる)
+
+### 開発者の決定と反映(改訂4、2026-10-29)
+
+選択肢Cで進めることにし、判断が要る4点を1件ずつ開発者に確かめた。決定はrequirements.mdの「承認後の改訂」の表に改訂4として記録した。受け入れ基準は変えていない。
+
+| #   | 提示した選択肢                                                                             | 決定                                     | 反映                                                                                                                                                                                                                       |
+| --- | ------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G2  | 公式のDockerイメージをdigestで固定する(推奨)/自前で算出したSHA-256を固定する/検証しない    | 検証しない                               | 開発コンテナと同じく、GitHubのリリースの配布物を検証せずに取得する。design.mdの技術スタックと複合アクション、tasks 6.2                                                                                                     |
+| G6  | 構成検査に照合の規則を足す(推奨)/値の一覧に書くだけ                                        | 値の一覧に書くだけ                       | design.mdの「ホスト名から導かれる変数の値」に表を加え、Out of Boundary・Revalidation Triggers・他specへの影響の表(backend-platform・email-delivery)に所有するspecを書いた。構成検査の規則C1〜C8は変えない                  |
+| G7  | まだ作っていない/作った(Queueは作り直す)/作ったか分からない                                | まだ作っていない                         | design.mdの「Migration Strategy」を、最初の適用で米国の管轄のQueueと送信ドメインを作る形に改めた。後から手作業の資源が見つかった場合の取り込みと、管轄を持たない資源の作り直しの規則を残す                                 |
+| G9  | 検証済みと未確定の検出で失敗させる(推奨)/検証済みだけで失敗させる/すべての検出で失敗させる | 検証済みと未確定の検出で失敗させる(推奨) | `--results=verified,unknown`と、`.betterleaksignore`とは別の除外のファイル`.github/trufflehog-exclude-paths.txt`。design.mdのディレクトリ構成・`checks.yml`・`infra/007`の記載事項・オンボーディングの更新、tasks 6.3・8.5 |
+
+選択肢Cのうち、実装前に反映した機械的な食い違いは次のとおりである。
+
+- G1: design.mdのNodeの版を26.12.1に改め、WranglerをNodeで動かす前提をExisting Architecture Analysisに書いた。tasks 6.2にも版を書いた。
+- G3の一部: design.mdのapi・eventの`cf-typegen --check`を、実際のスクリプト名`cf-typegen:check`に改めた。`check`との重複の解消(`APP_CHECKS`の縮小)は、実装で決めてタスク9.1で設計へ反映する。
+- G5: tasks 9.2に、上流のWrangler設定の単体テストのstagingの期待値と`project-values.md`の値を同じ変更で改める作業を加え、design.mdのModified Filesと他specへの影響の表に書いた。
+- G8: tasks 8.5とdesign.mdのModified Filesに、メール送信の技術ドキュメントの手作業の手順、`project-values.md`の注記、オンボーディングの暫定の手順の更新を加えた。
+- G12: design.mdのExisting Architecture Analysisと本書のSummaryを、上流の実装が完了した状態に改めた。
+- tech-stack.mdのCI/CDの節の「Infisical(staging環境)を注入」を、決定Q4のとおりdevに改め、CI内のE2Eとstagingのスモークテストを加えた。
+
+G4(`frontend-lib`の扱い)・G10(スモークテストの範囲)・G11(計画のファイルの除外)は、選択肢Cのとおり実装で吸収し、タスク9.1で設計へ反映する。
