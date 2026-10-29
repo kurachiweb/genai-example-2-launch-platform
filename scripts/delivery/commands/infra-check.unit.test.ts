@@ -83,6 +83,9 @@ const createDeps = (
       login: () => Promise.reject(new Error('ログインは使わない')),
       exportFolder: () => Promise.reject(new Error('取り出しは使わない')),
     },
+    probe: {
+      waitFor: () => Promise.reject(new Error('待ち合わせは使わない')),
+    },
     stdout,
     stderr,
   };

@@ -77,6 +77,9 @@ export const createFakeDeps = (files: RepoFiles): FakeDeps => {
         login: unused('Infisicalへのログイン'),
         exportFolder: unused('シークレットの取り出し'),
       },
+      probe: {
+        waitFor: unused('応答の待ち合わせ'),
+      },
       stdout,
       stderr,
     },

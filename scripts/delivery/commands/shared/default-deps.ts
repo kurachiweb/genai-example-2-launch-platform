@@ -3,6 +3,7 @@ import {
   type TextOutput,
 } from '../../adapters/command-runner.ts';
 import { createGithubActionsIo } from '../../adapters/github-actions.ts';
+import { createHttpProbe } from '../../adapters/http-probe.ts';
 import { createInfisicalSecretSource } from '../../adapters/infisical.ts';
 import { createRepoFiles } from '../../adapters/repo-files.ts';
 import type { DeliveryDeps } from './delivery-command.ts';
@@ -28,6 +29,7 @@ export function createDefaultDeps({
     files: createRepoFiles(repoRoot),
     github: createGithubActionsIo({ env, stdout, fetch }),
     secrets: createInfisicalSecretSource({ runner }),
+    probe: createHttpProbe({ fetch }),
     stdout,
     stderr,
   };

@@ -93,7 +93,7 @@
   - _Boundary: SecretSource, InfisicalSession, RunWithSecrets_
   - _Requirements: 4.1, 4.2, 4.7, 4.10, 6.3_
 
-- [ ] 4.4 (P) CIの中で全アプリとメールの受信箱を起動してE2Eを実行するコマンドを作る
+- [x] 4.4 (P) CIの中で全アプリとメールの受信箱を起動してE2Eを実行するコマンドを作る
   - 先に、偽の子プロセスと偽の応答の待ち合わせで、準備(ローカルのマイグレーションの適用)→3つのサービス(Mailpit・api・event)の起動→待ち合わせ→テストのコマンド→停止の順になり、client・adminを起動しないこと(改訂3。client・adminはテストのコマンド`test:e2e:dev-and-preview`が開発サーバーとビルド後のプレビューで起動する)、起動しないサービスがあればその名前とログの末尾50行を表示して失敗し、すべてのサービスを止めることを確かめる単体テストを書く
   - サービスの起動・待ち合わせの対象・ポートは設計の表のとおりにし、ログはランナーの一時ディレクトリへ書く
   - APIサーバーとイベントサーバーは、Workerごとのフォルダを重ねるシークレットの注入のコマンド(4.3、Workerの指定付き)を通して起動し、その値をテストのコマンドへ渡さない。単体テストでは起動の引数にWorkerの指定があることを確かめる。実際の起動は4.3のコマンドに依存し、その確認は6.3の検査の実行で行う(4.10、改訂1)
@@ -301,3 +301,4 @@
 - 4.2: `adapters/repo-files.ts`に`writeText`(ディレクトリ作成・リポジトリ外を拒否)を加えた(設計は読み取りのみ。9.1で反映)。`coverage-merge`はルートと`APPS`の`coverage/{unit,browser,worker}/lcov.info`だけを読み、無い種別は飛ばして`coverage/merged/lcov.info`へ書く。ルートの単体テストのlcovに`SF:../tmp/delivery-cli-*`(1.1の`cli.unit.test.ts`の一時ファイル)が入り合算にも残る(閾値には無影響。除外は後続で検討)。`core/app-checks.ts`の`appPackageJsonOf`は`core/install-targets.ts`の`packageJsonOf`と重複。設計に無いexport(`appCheckDirs`・`scriptNamesOf`・`planAppChecks`・`lcovReportsOf`・`prefixSourcePaths`・`COVERAGE_KINDS`・`MERGED_LCOV_PATH`)は9.1で反映。
 - 4.3: `SecretSource`は設計の`adapters/secret-source.ts`でなく`adapters/infisical.ts`(`createInfisicalSecretSource`)にあり、`DeliveryDeps.secrets`で渡る。範囲と環境の解決は`commands/shared/infisical-target.ts`、オプションの解析は`commands/shared/parse-options.ts`、資源一覧の読み込みは`commands/shared/load-catalog.ts`(contract-checkと共用)。設計に無いexport(`SECRET_SCOPES`・`RUN_SECRETS_SCOPES`・`ENVIRONMENT_OF_SCOPE`・`SHARED_SECRET_FOLDER`・`InfisicalEnvironment`)と`infisical-login`の主体IDの仮の値の検査を含め、9.1でdesign.mdへ反映する。`escapeCommandValue`は`%`→`\r`→`\n`の順で変換するよう直した。`run-with-secrets`の子プロセスは親の`INFISICAL_TOKEN`を引き継ぐ(e2e-stackの入れ子の起動に必要)。JWTは`--jwt=`の引数で渡す(環境変数`INFISICAL_JWT`で渡せるかは未確認)。
 - 4.3(開発者の作業): 2026-10-29時点でInfisicalのdevにWorkerごとのフォルダ(`/workers/api`・`/workers/event`)が無く、`run-with-secrets --scope local --worker api`はフォルダの名前を示して失敗する。初回の準備の手順3でフォルダを作った後、research.mdに書いた空のフォルダの出力の確認を行う。6.3・8.5はこのフォルダを前提とする。
+- 4.4: `CommandRunner.start`は`detached: true`で新しいプロセスグループを作り、停止はグループへSIGTERM→猶予後SIGKILL(孫のworkerdまで止まる)。`runPiped`はfilterの例外時に子を止める。`HttpProbe`は`adapters/http-probe.ts`で`DeliveryDeps.probe`に入る(間隔500ms・1回10秒・redirectを追わない)。e2e-stackのapi・eventの`wrangler dev`には各アプリの`dev`スクリプトにそろえて`--test-scheduled`(api)・`--inspector-port 9230`(event)を付け、`repo-contract.unit.test.ts`が`dev`スクリプトとの一致を検査する(設計の表に無い。9.1で反映)。`MAILPIT_BIN`・`RUNNER_TEMP`の既定値、設計に無いexport、`StackStartError`が型であることも9.1で反映。中断のシグナルでサービスを止める処理は無い(ローカルで残り得る。6.3で対応か記録)。サービスがすぐ終了しても3分待つ。サービスは`127.0.0.1`で待ち受けるが`e2e/support/scheduled-trigger.ts`等は`localhost`を使うため、CIで届くか6.3で確かめる。

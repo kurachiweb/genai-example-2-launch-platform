@@ -41,6 +41,30 @@ const createRunner = (overrides: Partial<CommandRunnerOptions> = {}) => {
 
 const script = (source: string) => ['-e', source] as const;
 
+const isAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const PID_READ_ATTEMPTS = 100;
+const PID_READ_INTERVAL_MS = 50;
+
+const pidFromLog = async (logFile: string): Promise<number> => {
+  for (let attempt = 0; attempt < PID_READ_ATTEMPTS; attempt += 1) {
+    const pid = Number.parseInt(
+      await readFile(logFile, 'utf8').catch(() => ''),
+      10,
+    );
+    if (Number.isInteger(pid) && pid > 0) return pid;
+    await Bun.sleep(PID_READ_INTERVAL_MS);
+  }
+  throw new Error(`${logFile}から孫のプロセスの番号を読めませんでした`);
+};
+
 describe('createCommandRunner().run', () => {
   test('captureでは標準出力と標準エラー出力を表示せずに取り込み、終了コードと共に返す', async () => {
     const { runner, stdout, stderr } = createRunner();
@@ -212,6 +236,28 @@ describe('createCommandRunner().run', () => {
     expect(result.code).toBe(143);
   });
 
+  test(
+    'フィルタが例外を投げたら子プロセスを止めてから失敗する',
+    async () => {
+      const { runner } = createRunner();
+      let childPid = 0;
+
+      const promise = runner.run({
+        command: 'sh',
+        args: ['-c', 'echo $$; exec sleep 300'],
+        output: 'filtered',
+        filter: (line) => {
+          childPid = Number(line);
+          throw new Error('フィルタの失敗');
+        },
+      });
+
+      expect(await rejectionMessageOf(promise)).toBe('フィルタの失敗');
+      expect(isAlive(childPid)).toBe(false);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
   test('起動できないコマンドはコマンド名を含むエラーで失敗する', async () => {
     const { runner } = createRunner();
 
@@ -284,6 +330,86 @@ describe('createCommandRunner().start', () => {
 
     await running.stop();
     expect(await running.tail(50)).toBe('done\n');
+  });
+
+  test(
+    '停止は子プロセスが起動した孫のプロセスまで止める',
+    async () => {
+      const { runner } = createRunner({ stopGraceMs: 1_000 });
+      const logFile = join(await createTempDir(), 'grandchild.log');
+
+      const running = runner.start({
+        command: 'sh',
+        args: ['-c', 'sleep 300 & echo $!; wait'],
+        output: 'inherit',
+        logFile,
+      });
+      const grandchildPid = await pidFromLog(logFile);
+
+      await running.stop();
+
+      expect(isAlive(grandchildPid)).toBe(false);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  test(
+    'SIGTERMを無視する孫のプロセスも猶予の後にSIGKILLで止める',
+    async () => {
+      const { runner } = createRunner({ stopGraceMs: 200 });
+      const logFile = join(await createTempDir(), 'stubborn-grandchild.log');
+
+      const running = runner.start({
+        command: 'sh',
+        args: ['-c', '(trap "" TERM; exec sleep 300) & echo $!; wait'],
+        output: 'inherit',
+        logFile,
+      });
+      const grandchildPid = await pidFromLog(logFile);
+
+      await running.stop();
+
+      expect(isAlive(grandchildPid)).toBe(false);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  test(
+    '子プロセスが先に終了していても、残った孫のプロセスを止める',
+    async () => {
+      const { runner } = createRunner({ stopGraceMs: 1_000 });
+      const logFile = join(await createTempDir(), 'orphan.log');
+
+      const running = runner.start({
+        command: 'sh',
+        args: ['-c', 'sleep 300 & echo $!'],
+        output: 'inherit',
+        logFile,
+      });
+      const grandchildPid = await pidFromLog(logFile);
+      await Bun.sleep(200);
+
+      await running.stop();
+
+      expect(isAlive(grandchildPid)).toBe(false);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  test('ログのディレクトリが無ければ作ってから書く', async () => {
+    const { runner } = createRunner();
+    const logFile = join(await createTempDir(), 'nested', 'logs', 'svc.log');
+
+    const running = runner.start({
+      command: BUN,
+      args: script('console.log("created")'),
+      output: 'inherit',
+      logFile,
+    });
+    await Bun.sleep(500);
+    await running.stop();
+
+    expect(await readFile(logFile, 'utf8')).toBe('created\n');
   });
 
   test('ログの行数が指定より少なければすべての行を返し、ログが空なら空を返す', async () => {

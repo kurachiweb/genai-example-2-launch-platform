@@ -13,6 +13,7 @@ import {
   parseResourceCatalog,
   resourceCatalogPath,
 } from './catalog/resource-catalog.ts';
+import { LOCAL_STATE_DIR, planE2eStack } from './core/e2e-stack-plan.ts';
 import { readExpectedToolVersions } from './core/tool-versions.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..');
@@ -174,5 +175,45 @@ describe('ツールの版', () => {
         playwright: '1.64.1',
       },
     });
+  });
+});
+
+describe('検査のE2Eで起動するサービス', () => {
+  const plan = planE2eStack({
+    cliPath: 'cli.ts',
+    mailpitBin: 'mailpit',
+    logDir: 'logs',
+  });
+
+  const scriptsOf = (dir: string): Readonly<Record<string, string>> =>
+    (
+      JSON.parse(readRepoText(`${dir}/package.json`)) as {
+        readonly scripts?: Readonly<Record<string, string>>;
+      }
+    ).scripts ?? {};
+
+  test.each(['api', 'event'] as const)(
+    '%sのwrangler devの引数は、devスクリプトの待ち受けのアドレスだけを127.0.0.1にしたものと一致する',
+    (name) => {
+      const service = plan.services.find(
+        (candidate) => candidate.name === name,
+      );
+      const dir = service?.dir ?? '';
+      const devScript = scriptsOf(dir).dev ?? '';
+      const separator = service?.args.indexOf('--') ?? -1;
+      const wranglerArgs = service?.args.slice(separator + 1) ?? [];
+
+      expect(wranglerArgs.join(' ')).toBe(
+        `bunx ${devScript.replace('--ip 0.0.0.0', '--ip 127.0.0.1')}`,
+      );
+    },
+  );
+
+  test('準備のスクリプトはapiに在り、wrangler devと同じローカル状態の保存先へマイグレーションを適用する', () => {
+    const script = scriptsOf(plan.prepare.dir)['db:migrate:local'] ?? '';
+
+    expect(plan.prepare.args).toEqual(['run', 'db:migrate:local']);
+    expect(script).toContain('--local');
+    expect(script).toContain(`--persist-to ${LOCAL_STATE_DIR}`);
   });
 });
