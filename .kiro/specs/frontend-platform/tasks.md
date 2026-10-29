@@ -675,7 +675,7 @@
   - _Boundary: 下流specの設計_
   - _Requirements: 15.1, 15.2_
 
-- [ ] 13. 最終検証後の第5回の判断の反映
+- [x] 13. 最終検証後の第5回の判断の反映
 - [x] 13.1 ビルド後のプレビューへシークレットを渡す方法を調べ、ビルド結果に平文のシークレットのファイルを残さない
   - 決まった経路: 置き換える(Implementation Notesの「13.1(結果)」)。下の「置き換えられない場合」と「完了状態(消す場合)」の箇条は実施せず、完了の判定は「完了状態(置き換えた場合)」と「両方の完了状態に共通」で行う
   - 注意: Claude設定のdenyにより、Wranglerの開発用の変数のファイル名を含むシェルのコマンド(読む・消す・一覧)は拒否される。シークレットの保護のための拒否のため、globや文字列の組み立てで回避しない。実物のビルド結果のファイルを読まず、実物のファイルの有無の確認と既に書き出されたファイルの削除は、開発者の手動の作業として報告に書く。コードと文書にファイル名を書くのはEdit・Writeのツールで行う
@@ -698,7 +698,7 @@
   - _Boundary: SmokeE2E, 技術ドキュメント群_
   - _Requirements: 1.1, 1.8, 12.6, 12.7, 15.8_
 
-- [ ] 13.3 上流・下流への申し送りを確かめ、全体の検査とカバレッジを確かめる
+- [x] 13.3 上流・下流への申し送りを確かめ、全体の検査とカバレッジを確かめる
   - 判断50のlaunch-readinessの承認後の改訂1(要件10.9・S-22・タスク7.9)、判断51のdev-toolingの承認後の改訂3(11.1)、判断49のdev-toolingの承認後の改訂4の取り消し(要件6.14とタスク12.1が無く、改訂の表・Revalidation Triggers・Implementation Notes・research.mdに取り消しと理由があること)が各specのrequirements.md・design.md・tasks.mdにあることと、infra-deliveryの検査のE2E・stagingのスモークテスト・デプロイのビルドが`E2E_WORKERS`とシークレットの注入について変更を要しないことを確かめ、本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の第5回の行と判断46の行の「該当箇所」を実際の位置に合わせる
   - 共通部品・client・adminの単体テストとブラウザテストをカバレッジ付きで実行し、ファイルごとの行と関数の80%以上を確かめ、ルートの一括検査(`bun run check`)を実行する
   - 完了状態: 一括検査とカバレッジ付きのテストが成功し、表の該当箇所が上流・下流specの実際の位置を指す
@@ -793,3 +793,4 @@
   - `vars`の上書き: 開発サーバーと同じく、プレビューでも`process.env`に`vars`と同じ名前のキーがあると、Workerへ渡る値は`vars`の値ではなく`process.env`の値になる。注入するシークレットに`vars`と同じ名前のキーを置かない。
   - Bunの不具合の回避: 共通部品の単体テストで本物のViteの`build`を同じプロセスで呼ぶと、`frontend-lint.unit.test.ts`と一緒に実行した時だけBun 1.4.4で失敗したため、共通部品のテストは偽の出力の一覧にし、本物のビルドはclient・adminのテストで確かめる。
 - 13.2(結果): APIサーバーを起動し、注入の下で`E2E_WORKERS`を設定せずに`bun run test:e2e:dev-and-preview`を実行すると、両段階とも`Running 25 tests using 2 workers`で25件成功した。`E2E_WORKERS=1`では`using 1 worker`になった。ビルドとプレビューは`Using secrets defined in process.env`を表示し、ビルドの出力の一覧にシークレットのファイルは無い。ファイルそのものの有無は、開発者が`ls -A`で`apps/{client,admin}/dist/server`を確かめる(denyのため)。
+- 13.3(結果): 判断50のlaunch-readinessの改訂1(要件10.9・S-22・タスク7.9)、判断51のdev-toolingの改訂3(要件6.13・タスク11.1)、判断49のdev-toolingの改訂4の取り消し(要件6.14とタスク12・12.1が無く、改訂の表・Revalidation Triggers・Implementation Notes・research.mdに取り消しと理由がある)が各specにあり、13.1・13.2の結果と食い違わないことを確かめた。infra-deliveryの検査のE2E(`e2e`のジョブ)とstagingのスモークテスト(`smoke-e2e`)は`E2E_WORKERS`を設定せず、失敗時の成果物にビルド結果を含めず、デプロイの`deploy-worker`のビルドはシークレットを注入しないため、変更を要しない。影響の表の第5回の行と判断46の行の「該当箇所」は、Bunのスクリプトで全参照の行を抜き出して1件ずつ確かめ、判断46の行のlaunch-readinessの`tasks.md:285`(`_Depends:_`)を完了状態の`tasks.md:284`に、判断51の行のdev-toolingの`design.md`の2行ずれた4件(944・974・980・1201)を942・972・978・1199に直し、要件の行(910)と`testing/001`の行(1128)を加えた。共通部品・client・adminの単体テストとブラウザテストのカバレッジは、ファイルごとの行と関数がすべて80%以上(最小は単体テストが共通部品の`start/start-options.ts`の関数83.33%、ブラウザテストが共通部品の`app-document.tsx`の関数80%。client・adminはどちらも100%)。ルートの一括検査とカバレッジ付きの`test:all:unit`・`test:all:browser`は成功した。
