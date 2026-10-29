@@ -10,6 +10,10 @@ import {
 import type { z } from 'zod';
 
 import { withoutDisabledFieldErrors } from '../../utilities/forms/disabled-field-errors.ts';
+import {
+  RESERVED_FIELD_NAMES,
+  reservedFieldNamePathsOf,
+} from '../../utilities/forms/reserved-field-names.ts';
 import { revalidationTargetsOf } from '../../utilities/forms/revalidation-targets.ts';
 import { mountStateOf } from './field-mount.ts';
 
@@ -25,14 +29,30 @@ const fallbackMessage = (): string => DEFAULT_INVALID_MESSAGE;
 
 const MODE = 'onTouched';
 
+const assertNoReservedFieldNames = (defaultValues: unknown): void => {
+  const paths = reservedFieldNamePathsOf(defaultValues);
+  if (paths.length > 0) {
+    throw new TypeError(
+      `既定値の入れ子のキーに、フォームが欄のエラーと見分けられない名前(${RESERVED_FIELD_NAMES.join('・')})があります。名前を変えてください: ${paths.join('、')}`,
+    );
+  }
+};
+
 export function useAppForm<TInput extends FieldValues, TOutput>(
   schema: z.ZodType<TOutput, TInput>,
   { defaultValues }: AppFormOptions<TInput>,
 ): UseFormReturn<TInput, unknown, TOutput> {
   // resolverが無効の欄の集合を読めるよう、制御を先に作ってからuseFormへ渡す
-  const [created] = useState(() =>
-    createFormControl<TInput, unknown, TOutput>({ mode: MODE, defaultValues }),
-  );
+  const [created] = useState(() => {
+    // 使い方の誤りを実装中に知らせる検査で、ビルド時にNODE_ENVが置き換わり本番のバンドルからは除かれる
+    if (process.env.NODE_ENV !== 'production') {
+      assertNoReservedFieldNames(defaultValues);
+    }
+    return createFormControl<TInput, unknown, TOutput>({
+      mode: MODE,
+      defaultValues,
+    });
+  });
   const resolver = withoutDisabledFieldErrors(
     zodResolver(schema, { error: fallbackMessage }),
     () => created.control._names.disabled,

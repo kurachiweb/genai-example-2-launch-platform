@@ -157,6 +157,30 @@ function ContactForm() {
   );
 }
 
+const contactMethodSchema = z.object({
+  contact: z.object({ type: z.string(), address: z.string() }),
+});
+
+// 欄をまとめた値の子の欄に、欄のエラーの末端の判定に使う名前を使う誤った利用例
+function ContactMethodForm() {
+  const form = useAppForm(contactMethodSchema, {
+    defaultValues: { contact: { type: '', address: '' } },
+  });
+  return (
+    <AppForm
+      form={form}
+      onSubmit={() => undefined}
+      onSubmitError={() => undefined}
+      aria-label="連絡方法"
+    >
+      <FormField control={form.control} name="contact.type" label="種類">
+        {(control) => <Input {...control} />}
+      </FormField>
+      <SubmitButton>保存する</SubmitButton>
+    </AppForm>
+  );
+}
+
 const titleInput = () => page.getByRole('textbox', { name: 'プロダクト名' });
 const urlInput = () => page.getByRole('textbox', { name: '外部WebサイトURL' });
 const submitButton = (name = '登録する') =>
@@ -576,6 +600,20 @@ describe('フォーム部品', () => {
     expect(onSubmitError).toHaveBeenLastCalledWith(failures[1], {
       unmatched: [],
     });
+  });
+
+  test('既定値の入れ子のキーに欄のエラーの末端と見分けられない名前があると、開発時とテストではフォームを作る時に経路を示す例外を投げる', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    await expect(render(<ContactMethodForm />)).rejects.toThrow(
+      /contact\.type/u,
+    );
+    await expect
+      .element(page.getByRole('form', { name: '連絡方法' }))
+      .not.toBeInTheDocument();
+    consoleError.mockRestore();
   });
 
   describe('送信の失敗の文言', () => {

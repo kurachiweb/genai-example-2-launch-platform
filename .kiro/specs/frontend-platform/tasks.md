@@ -591,7 +591,7 @@
   - _Boundary: FormParts, ServerFieldErrors, 技術ドキュメント群_
   - _Requirements: 8.2, 8.3, 15.3, 15.4_
 
-- [ ] 12.5 既定値の入れ子のキーの予約された名前を開発時とテストで例外にする
+- [x] 12.5 既定値の入れ子のキーの予約された名前を開発時とテストで例外にする
   - 先に、`utilities/forms/reserved-field-names.unit.test.ts`(新規)で、`reservedFieldNamePathsOf`が入れ子のオブジェクトと一覧の要素のキーの`type`・`message`・`types`・`ref`の経路を返し、最上位のキーと`Date`・`File`などの欄の値の中、配列の値(文字列の一覧)は返さないことを、`form-unmatched-fields.browser.test.tsx`(800行を超える場合は`form.browser.test.tsx`)で、`contact.type`を既定値に持つフォームで`useAppForm`が経路を示す例外を投げることを確かめるテストを書き、失敗を確かめる
   - `utilities/forms/reserved-field-names.ts`(新規、`RESERVED_FIELD_NAMES`・`reservedFieldNamePathsOf`)を作り、`useAppForm`の制御を作る`useState`の初期化で、`process.env.NODE_ENV !== 'production'`の時だけ経路があれば例外を投げる。既存のテスト・ストーリーの既定値に該当する名前があれば名前を変える
   - `frontend/005`のフォームの節の「フォームの値の欄にこれらの名前を使わない」を、開発時とテストで例外になり本番では投げないことに直す。プロジェクト名と固有値を含めない

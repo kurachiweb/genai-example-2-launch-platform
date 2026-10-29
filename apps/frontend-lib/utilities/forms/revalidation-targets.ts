@@ -1,5 +1,6 @@
 import type { FieldErrors, FieldPath, FieldValues } from 'react-hook-form';
 
+import { RESERVED_FIELD_NAMES } from './reserved-field-names.ts';
 import { SERVER_FIELD_ERROR_TYPE } from './server-field-errors.ts';
 
 export interface RevalidationState<T extends FieldValues> {
@@ -24,7 +25,7 @@ const LIST_ROOT_KEY = 'root';
 
 // react-hook-formは欄のエラーに必ずrefを付け、setError(name, {})やtypesだけのエラーも欄のエラーとして持つ。refの値は欄の要素のため、その中へは入らない
 const isFieldError = (value: object): boolean =>
-  'type' in value || 'message' in value || 'types' in value || 'ref' in value;
+  RESERVED_FIELD_NAMES.some((name) => name in value);
 
 // 入れ子のエラーから欄のエラーの経路を集める。フォーム全体のrootは欄でないため除く
 const fieldErrorEntriesOf = (errors: object, prefix = ''): FieldErrorEntry[] =>

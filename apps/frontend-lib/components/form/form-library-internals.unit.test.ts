@@ -154,7 +154,10 @@ const REVIEW_ITEMS: readonly ReviewItem[] = [
   {
     subject:
       '`setError`が欄のエラーに常に`ref`のキーを付け、種類も文言も持たない`setError(name, {})`も欄のエラーとして持つこと(型では`ref`は任意)',
-    usedIn: ['utilities/forms/revalidation-targets.ts'],
+    usedIn: [
+      'utilities/forms/revalidation-targets.ts',
+      'utilities/forms/reserved-field-names.ts',
+    ],
     unitTests: [THIS_TEST, 'utilities/forms/revalidation-targets.unit.test.ts'],
     browserTests: [],
   },
@@ -188,8 +191,15 @@ const REVIEW_ITEMS: readonly ReviewItem[] = [
   {
     subject:
       'フォームの値の複製(`cloneObject`)が、配列とコンストラクタが`Object`の値の中だけを入れ子として複製し、他のオブジェクトを欄の値として扱うこと',
-    usedIn: ['utilities/forms/server-field-errors.ts'],
-    unitTests: [THIS_TEST, 'utilities/forms/server-field-errors.unit.test.ts'],
+    usedIn: [
+      'utilities/forms/server-field-errors.ts',
+      'utilities/forms/reserved-field-names.ts',
+    ],
+    unitTests: [
+      THIS_TEST,
+      'utilities/forms/server-field-errors.unit.test.ts',
+      'utilities/forms/reserved-field-names.unit.test.ts',
+    ],
     browserTests: [
       {
         file: UNMATCHED_FIELDS_TEST,
