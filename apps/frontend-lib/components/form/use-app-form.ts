@@ -11,7 +11,7 @@ import {
 import type { z } from 'zod';
 
 import { withoutDisabledFieldErrors } from '../../utilities/forms/disabled-field-errors.ts';
-import { mountStateOf } from '../../utilities/forms/field-mount.ts';
+import { mountStateOf } from './field-mount.ts';
 
 export interface AppFormOptions<TInput extends FieldValues> {
   // サーバーの詳細は既定値に経路がある欄にだけ対応するため、部分的な既定値を受け付けず全欄を求める

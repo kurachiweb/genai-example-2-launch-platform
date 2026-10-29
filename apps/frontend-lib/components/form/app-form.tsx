@@ -5,7 +5,7 @@ import {
   type UseFormReturn,
 } from 'react-hook-form';
 
-import { mountStateOf } from '../../utilities/forms/field-mount.ts';
+import { mountStateOf } from './field-mount.ts';
 import { applyServerFieldErrors } from '../../utilities/forms/server-field-errors.ts';
 import {
   type FieldErrorDetail,
