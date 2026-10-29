@@ -16,7 +16,7 @@
   - _Requirements: 1.1, 1.2, 1.10, 3.1_
 
 - [ ] 2. IaC定義(OpenTofu)
-- [ ] 2.1 (P) データの資源のモジュール(D1・R2)と非同期メッセージのモジュール(Queues)をテスト先行で作る
+- [x] 2.1 (P) データの資源のモジュール(D1・R2)と非同期メッセージのモジュール(Queues)をテスト先行で作る
   - 先に、モックのproviderによる計画のテストで、全資源の管轄が米国、D1の読み取りレプリカが無効、mapの項目数どおりの資源が計画されること、許可しない管轄の値が変数の検証で拒否されることを書き、失敗を確かめる
   - D1・R2は削除と作り直しを防ぎ、ロケーションヒントと場所の指定を持たない。Queueは削除を防がない
   - 各モジュールのproviderのロックファイルを、CIとArmの開発コンテナの両方のプラットフォームのハッシュで作る
@@ -288,3 +288,4 @@
 - 1.2: `catalog`は`core`と同じく禁止APIの検査対象(純粋)。ファイルの読み込みは`commands`が行い、`checkSecretsSettings(yaml)`・`parseResourceCatalog(json, expectedEnvironment?)`は文字列・値を受け取る。実ファイルの検査は`repo-contract.unit.test.ts`に足していく。
 - 1.2: `isPlaceholderId`は全桁0のUUIDと全桁0の32桁(Cloudflareのアカウント・ゾーンの識別子、上流のWrangler設定の仮の値)の両方を仮と判定する。mapのキーは英小文字で始まり英小文字・数字・ハイフンから成る(設計の「英小文字とハイフン」より緩い。9.1でdesign.mdへ反映する)。
 - 1.2: 資源一覧の`cloudflare.accountId`・`zoneId`は本物の値がリポジトリに無く全桁0の仮の値。設計の初回の準備に記入の手順が無いため、stateの保管先の接続先・資源の作成・購読の前に開発者へ確認が必要(preflightの検査対象に加えるかも要判断)。
+- 2.1: 子モジュールは`required_providers`だけを宣言し、テストは`mock_provider "cloudflare"`と`command = plan`で書く。`prevent_destroy`とR2の`location`無しは計画のテストで確かめられないため7.3の`repo-contract.unit.test.ts`でHCLを検査する。ロックファイルは`tofu providers lock -platform=linux_amd64 -platform=linux_arm64`で作り、検証は`init -backend=false -lockfile=readonly`。Queueの名前の属性は`queue_name`。
