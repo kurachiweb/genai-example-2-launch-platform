@@ -141,6 +141,7 @@ export function ProfileForm() {
 - `FormField`は`AppForm`の中でだけ使う。`AppForm`が配るフォームの文脈(React Hook Formの`FormProvider`)から、欄のエラーを消す処理を読むためである。
 - `FormField`は`<label for>`で名前を付けるため、名前を付けられる要素(`input`・`textarea`・`button`)を描く部品に使う。値の受け渡しの名前が`value`・`onChange`と異なる部品は、受け取った値を対応する名前で渡す。
 - 必須の印は自動で付かない。ラベルか説明の文言で示し、入力欄に`aria-required`を渡す。
+- フォームの部品は、公開のAPIで置き換えられないReact Hook Formの内部の値(欄ごとの無効の集合、欄の描画の状態、一覧の名前の集合)と、公開されていない振る舞い(名前の配列を渡した検証のエラーの置き換えの範囲、resolverが受け取る値、送信の値から無効の欄を外すことなど)に頼る。頼る項目は版の番人テスト(`components/form/form-library-internals.unit.test.ts`)が一覧に持ち、`react-hook-form`・`@hookform/resolvers`の版が確かめた版と異なると失敗する。版を上げる時は「[内部の値に頼るパッケージの版を上げる手順](../coding/002-dependency-versions.md#内部の値に頼るパッケージの版を上げる手順)」に従う。
 
 ### 状態表示
 
