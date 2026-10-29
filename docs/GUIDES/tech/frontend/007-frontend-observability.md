@@ -273,6 +273,19 @@ installRouteErrorReporting(Object.values(router.routesById), (error) => {
 - ブラウザは画面の読み込みと遷移でトレースを始め(`tanstackRouterBrowserTracingIntegration`)、中継の経路への要求に`sentry-trace`・`baggage`を付ける。フロントエンドサーバーの`withSentry`はこの2つを受けてトレースを続け、中継の処理はその時点のトレースの値(`getTraceData()`)を、`sentry-trace`・`baggage`だけ(`RELAY_TRACE_HEADERS`)APIサーバーへ渡す。ブラウザから送った要求の`fetch`のスパンで、フロントエンドサーバーとAPIサーバーのスパンを結び付けて応答時間を追える。
 - 描画中の取得も、エントリが要求の初めに読んだトレースの値を中継の処理へ渡す。`getTraceData()`の`baggage`は値が無いことがあるため、エントリは値が文字列の項目だけを残す。
 
+### 伝搬と割合の確認の方法
+
+伝搬と割合は、本物のSDKを使う次のテストで確かめる。送信は記録するだけの偽物の`transport`に差し替え、実際のエラートラッキングへは送らない。APIサーバーが受け取ったトレースを続けることは、APIサーバーのWorkers統合テストで確かめる。
+
+| テスト                                                      | 確かめること                                                                                                                                                                                                                                                                    |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `start/observability/browser-observability.browser.test.ts` | `initBrowserObservability`で初期化すると、中継の経路への`fetch`にだけ`sentry-trace`・`baggage`が付き、エラートラッキング・bot判定・アクセス解析の宛先への`fetch`に付かないこと。`Math.random`を固定し、割合が`0.1`の時に`0.05`ならトレースのスパンを送り、`0.5`なら送らないこと |
+| `server/entry/server-trace-continuation.unit.test.ts`       | 本物の`withSentry`で包んだエントリが、`sentry-trace`付きの中継の要求を受けると、中継先への要求の`sentry-trace`に同じトレースIDを付けること                                                                                                                                      |
+
+- テストのDSNの公開鍵は英数字と`_`だけにする。SDKはそれ以外の文字を含むDSNを不正として`console`へ出し、送信できないクライアントになるため、トレースを続けず`sentry-trace`も付けない。
+- SDKは初めの初期化の時に大域の`fetch`を包むため、ブラウザテストでは初期化の前に大域の`fetch`を記録する偽物へ差し替える。SDKの初期化は大域の状態を残すため、テストごとに画面の読み込みのスパンを終えて`close`する。
+- TanStack StartのViteのプラグインが無いブラウザテストでは、`@tanstack/react-start`の入口がサーバーの部品まで読み込んで失敗する。`createClientOnlyFn`だけを、関数をそのまま返す偽物に差し替える(ブラウザのビルドの変換と同じ振る舞い)。
+
 ## アクセス解析
 
 - アクセス解析は、Cookieを使わないCloudflare Web Analyticsの計測スクリプトで行い、アプリのプロファイル(`FrontendAppProfile`)の`webAnalytics`が真のアプリにだけ入れる。偽のアプリは、公開の設定のトークンが常に`undefined`になり、計測スクリプトを出さない。

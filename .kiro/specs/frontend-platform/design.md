@@ -2689,7 +2689,7 @@ graph LR
 ### Sentryのトレースの伝搬と割合のテスト(要件13.2、第4回の判断46)
 
 - 契約: 要件13.2の「ブラウザから送ったGraphQLの要求の応答時間を10回に1回の割合で計測し、フロントエンドサーバーとAPIサーバーの処理と結び付ける」を、ブラウザ・フロントエンドサーバー・APIサーバーの3か所のテストで確かめる。実装は変えない(テストで食い違いが見つかれば直す)。
-- ブラウザ: `start/observability/browser-observability.browser.test.ts`で、本物の`@sentry/tanstackstart-react`を`initBrowserObservability`で初期化し(`load`に本物の読み込みを渡し、`transport`だけを送信を記録する偽物にする)、中継の経路(`/_bff/graphql`)への`fetch`に`sentry-trace`・`baggage`が付き、外部の宛先(エラートラッキングのDSNのオリジン・bot判定・アクセス解析の形のURL)への`fetch`に付かないことと、`Math.random`を固定して`tracesSampleRate: 0.1`の時に0.05ではトレースを送り0.5では送らないことを確かめる。
+- ブラウザ: `start/observability/browser-observability.browser.test.ts`で、本物の`@sentry/tanstackstart-react`を`initBrowserObservability`で初期化し(`load`に本物の読み込みを渡し、`transport`だけを送信を記録する偽物にする)、中継の経路(`/_bff/graphql`)への`fetch`に`sentry-trace`・`baggage`が付き、外部の宛先(エラートラッキングのDSNのオリジン・bot判定・アクセス解析の形のURL)への`fetch`に付かないことと、`Math.random`を固定して`tracesSampleRate: 0.1`の時に0.05ではトレースを送り0.5では送らないことを確かめる。TanStack StartのViteのプラグインが無いため、`@tanstack/react-start`は`createClientOnlyFn`を関数をそのまま返す偽物に差し替え、`load`は`loadBrowserSentryModules`の結果の`init`に偽の`transport`だけを足して渡す。SDKは大域の`fetch`を包むため、初期化の前に記録する偽物に差し替える。本物のSDKは公開鍵に`\w`の文字だけを受け付け、それ以外では送信できないクライアントになりトレースを続けないため、DSNは`-`を含まない公開鍵にする(サーバー側のテストも同じ)。
 - フロントエンドサーバー: `server/entry/server-trace-continuation.unit.test.ts`で、本物の`withSentry`(`@sentry/cloudflare`)で`createFrontendServerEntry`を包み、`sentry-trace`付きの`POST /_bff/graphql`を送って、偽の`API`のバインディングが受けた`sentry-trace`のトレースIDが元の要求と同じことを確かめる。テストファイルは判断39の制限の対象外である。
 - APIサーバー: apiの`operation-observability.worker.test.ts`に、受け取った`sentry-trace`のトレースを続けてルートのスパンを作ることの1件を、上流のapi-gatewayのタスク(api-gatewayの承認後の改訂5、12.1)として足す。
 - 限界: 3か所の結び付きを1つの実行で確かめるのはE2E(エラートラッキングの送信先が要る)で、ローカルには送信先が無いため確かめない。staging以降の確認はlaunch-readinessが行う。

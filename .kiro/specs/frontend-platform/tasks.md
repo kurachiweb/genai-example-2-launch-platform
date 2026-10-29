@@ -650,7 +650,7 @@
   - _Boundary: AdminLayout, StatusRoute, AppTestConfigs_
   - _Requirements: 10.8, 12.4_
 
-- [ ] 12.12 (P) Sentryのトレースの伝搬と割合をテストで確かめる
+- [x] 12.12 (P) Sentryのトレースの伝搬と割合をテストで確かめる
   - 共通部品の`start/observability/browser-observability.browser.test.ts`(新規)で、本物の`@sentry/tanstackstart-react`を`initBrowserObservability`で初期化し(送信は記録する偽の`transport`)、中継の経路への`fetch`にだけ`sentry-trace`・`baggage`が付き、外部の宛先(エラートラッキングのDSNのオリジン・bot判定・アクセス解析の形のURL)に付かないことと、`Math.random`を固定して`tracesSampleRate: 0.1`で0.05ならトレースを送り0.5なら送らないことを確かめる
   - 共通部品の`server/entry/server-trace-continuation.unit.test.ts`(新規)で、本物の`withSentry`で`createFrontendServerEntry`を包み、`sentry-trace`付きの`POST /_bff/graphql`の中継で偽の`API`のバインディングが受けた`sentry-trace`のトレースIDが元と同じことを確かめる(テストファイルは12.1の制限の対象外)
   - 既存の実装が満たしていれば成功してよい。失敗すれば原因を直す。APIサーバーがトレースを続けることはapi-gatewayの12.1が確かめるため、本タスクの申し送りにその完了の有無を書く
