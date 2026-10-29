@@ -9,11 +9,14 @@ export interface RecordingRunner {
   readonly calls: () => readonly CommandSpec[];
 }
 
+export type CommandOutputs = Partial<Pick<CommandResult, 'stdout' | 'stderr'>>;
+
 export const commandLineOf = ({ command, args }: CommandSpec): string =>
   [command, ...args].join(' ');
 
 export const createRecordingRunner = (
   exitCodeOf: (spec: CommandSpec) => number = () => 0,
+  outputsOf: (spec: CommandSpec) => CommandOutputs = () => ({}),
 ): RecordingRunner => {
   const calls: CommandSpec[] = [];
   return {
@@ -24,6 +27,7 @@ export const createRecordingRunner = (
           code: exitCodeOf(spec),
           stdout: '',
           stderr: '',
+          ...outputsOf(spec),
         };
         return Promise.resolve(result);
       },

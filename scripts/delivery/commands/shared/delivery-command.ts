@@ -3,6 +3,7 @@ import type {
   TextOutput,
 } from '../../adapters/command-runner.ts';
 import type { GithubActionsIo } from '../../adapters/github-actions.ts';
+import type { SecretSource } from '../../adapters/infisical.ts';
 import type { RepoFiles } from '../../adapters/repo-files.ts';
 
 export type { TextOutput };
@@ -17,6 +18,7 @@ export interface DeliveryDeps {
   readonly runner: CommandRunner;
   readonly files: RepoFiles;
   readonly github: GithubActionsIo;
+  readonly secrets: SecretSource;
   readonly stdout: TextOutput;
   readonly stderr: TextOutput;
 }

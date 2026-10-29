@@ -3,6 +3,7 @@ import {
   type TextOutput,
 } from '../../adapters/command-runner.ts';
 import { createGithubActionsIo } from '../../adapters/github-actions.ts';
+import { createInfisicalSecretSource } from '../../adapters/infisical.ts';
 import { createRepoFiles } from '../../adapters/repo-files.ts';
 import type { DeliveryDeps } from './delivery-command.ts';
 
@@ -19,12 +20,14 @@ export function createDefaultDeps({
   stdout,
   stderr,
 }: DefaultDepsOptions): DeliveryDeps {
+  const runner = createCommandRunner({ baseEnv: env, stdout, stderr });
   return {
     repoRoot,
     env,
-    runner: createCommandRunner({ baseEnv: env, stdout, stderr }),
+    runner,
     files: createRepoFiles(repoRoot),
     github: createGithubActionsIo({ env, stdout, fetch }),
+    secrets: createInfisicalSecretSource({ runner }),
     stdout,
     stderr,
   };

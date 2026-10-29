@@ -84,7 +84,7 @@
   - _Boundary: AppChecks, CoverageMerger_
   - _Requirements: 5.6, 6.1, 6.2_
 
-- [ ] 4.3 (P) Infisicalへのログインとシークレットの取り出し・注入のコマンドを作る
+- [x] 4.3 (P) Infisicalへのログインとシークレットの取り出し・注入のコマンドを作る
   - 先に、偽の子プロセスで、OIDCのトークンを主体と接続先とともにログインへ渡し、得たアクセストークンをマスクしてから環境変数のファイルへ追記すること、`export`の結果を表示せずに取り込み、すべての値(複数行は行ごと)をマスクしてから子プロセスの環境変数に渡すこと、検査・staging・prodの範囲ごとに、同じプロジェクトから環境とフォルダが正しく選ばれること(K3)を確かめる単体テストを書く
   - あわせて、Workerごとのフォルダの重ね合わせの単体テストを書く。同じキーはWorkerごとのフォルダの値になること、Workerごとに分けると定めたキー(設計の`WORKER_SCOPED_SECRETS`)は共通のフォルダの値が捨てられること、client・adminにはWorkerごとのフォルダが無いこと、注入のコマンドがWorkerの指定(api・event)でそのフォルダを重ね、指定が無ければ分けると定めたキーを除くこと、ローカルの範囲ではログインせずに開発者のログインでdevを取り出すこと、Workerごとのフォルダを取り出せなければ値を出さずにフォルダの名前だけを表示して失敗することを確かめる(4.10、改訂1)
   - Workerごとのフォルダの一覧と、Workerごとのフォルダからだけ取るシークレットの一覧(paymentsの`STRIPE_API_KEY`。paymentsのQ5)を、設計のとおりにフォルダとキーの判定の部品へ置く。空のWorkerごとのフォルダと存在しないフォルダを取り出したときのCLIの挙動を確かめ、空は空の一覧、取り出しの失敗はフォルダの名前だけを出して止める扱いに合わせ、research.mdに記録する(改訂1)
@@ -299,3 +299,5 @@
 - 4.1: 導入の対象は7件(ルート・api・event・frontend-lib・client・admin・db)。共通部品`commands/shared/install-targets.ts`(`findInstallTargets`・`runInTarget`)と偽の子プロセス`test-fixtures/command-runner.ts`を加えた。`createAuditCommand({exceptions, today})`・`todayInUtc`(見直し期限はUTCの日付で当日まで有効)、除外の識別子に数字も許すこと、不正な除外を失敗にすることは設計に無い(9.1で反映)。`audit`は全対象を確かめてから失敗する。`docs/GUIDES/tech/coding/003-shared-directories.md`の「CIでのコピー配置」は配置元(`apps/db`)の導入に触れておらず、docsのタスクで反映が要る。
 - 4.1(開発者の判断事項): 2026-10-29時点の実リポジトリで`audit`は終了コード1(api 9・event 9・frontend-lib 4(critical 1)・client 10・admin 10。zod・undici・sharp・Storybook・launch-editor)。6.3で`checks.yml`に組み込む前に、依存の更新か除外の登録を開発者が決める。
 - 4.2: `adapters/repo-files.ts`に`writeText`(ディレクトリ作成・リポジトリ外を拒否)を加えた(設計は読み取りのみ。9.1で反映)。`coverage-merge`はルートと`APPS`の`coverage/{unit,browser,worker}/lcov.info`だけを読み、無い種別は飛ばして`coverage/merged/lcov.info`へ書く。ルートの単体テストのlcovに`SF:../tmp/delivery-cli-*`(1.1の`cli.unit.test.ts`の一時ファイル)が入り合算にも残る(閾値には無影響。除外は後続で検討)。`core/app-checks.ts`の`appPackageJsonOf`は`core/install-targets.ts`の`packageJsonOf`と重複。設計に無いexport(`appCheckDirs`・`scriptNamesOf`・`planAppChecks`・`lcovReportsOf`・`prefixSourcePaths`・`COVERAGE_KINDS`・`MERGED_LCOV_PATH`)は9.1で反映。
+- 4.3: `SecretSource`は設計の`adapters/secret-source.ts`でなく`adapters/infisical.ts`(`createInfisicalSecretSource`)にあり、`DeliveryDeps.secrets`で渡る。範囲と環境の解決は`commands/shared/infisical-target.ts`、オプションの解析は`commands/shared/parse-options.ts`、資源一覧の読み込みは`commands/shared/load-catalog.ts`(contract-checkと共用)。設計に無いexport(`SECRET_SCOPES`・`RUN_SECRETS_SCOPES`・`ENVIRONMENT_OF_SCOPE`・`SHARED_SECRET_FOLDER`・`InfisicalEnvironment`)と`infisical-login`の主体IDの仮の値の検査を含め、9.1でdesign.mdへ反映する。`escapeCommandValue`は`%`→`\r`→`\n`の順で変換するよう直した。`run-with-secrets`の子プロセスは親の`INFISICAL_TOKEN`を引き継ぐ(e2e-stackの入れ子の起動に必要)。JWTは`--jwt=`の引数で渡す(環境変数`INFISICAL_JWT`で渡せるかは未確認)。
+- 4.3(開発者の作業): 2026-10-29時点でInfisicalのdevにWorkerごとのフォルダ(`/workers/api`・`/workers/event`)が無く、`run-with-secrets --scope local --worker api`はフォルダの名前を示して失敗する。初回の準備の手順3でフォルダを作った後、research.mdに書いた空のフォルダの出力の確認を行う。6.3・8.5はこのフォルダを前提とする。

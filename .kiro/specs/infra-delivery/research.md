@@ -193,6 +193,16 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
   - CLIは`infisical login --method=oidc-auth --machine-identity-id <ID> --jwt <JWT> --silent --plain`でアクセストークンだけを出力し、以降のコマンドは`INFISICAL_TOKEN`を読む。本プロジェクトのInfisicalはEUリージョン(`https://eu.infisical.com`)である(オンボーディング)。
 - **Implications**: `infisical` provider 0.19.38を採用する。providerの`auth`ブロックは書かず`host`だけを書き、CIはOIDC、障害時のローカルの操作は有効期限の短いUniversal Authの資格情報を環境変数で与える(Requirement 4.9)。
 
+### InfisicalのCLIのフォルダの取り出し(4.3、2026-10-29)
+
+- **Sources Consulted**: 開発コンテナのInfisical CLI 0.44.8の`infisical export --help`・`infisical login --help`、開発者のログインでのdevの環境への`infisical export`の実行(値を表示せず、件数・項目の名前・終了コード・標準エラー出力だけを確かめた。staging・prodには接続していない)、GitHubの`Infisical/cli`のタグ`v0.44.8`の`packages/cmd/export.go`・`packages/util/helper.go`。
+- **Findings**:
+  - `infisical --telemetry=false export --format=json --env=dev --path=/ --projectId=<ID> --domain=https://eu.infisical.com --silent`は、終了コード0で、`key`・`value`のほかに`_id`・`type`・`secretPath`・`tags`・`comment`などを持つオブジェクトの配列を標準出力へ出す。
+  - 存在しないフォルダ(`--path=/workers/api`。devのWorkerごとのフォルダは2026-10-29時点で未作成)は、終了コード1で、標準出力は空、標準エラー出力に要求のURLと`404 Not Found`・`Folder with path '<フォルダ>' in environment '<環境>' was not found`を出す。値は含まれない。
+  - 空のフォルダ(作成済みで値が無い)の出力は、Infisicalへの書き込み(フォルダの作成)が要るため実行しては確かめていない(未確認)。CLIのソースでは、取り出した一覧を件数を確かめずに`json.Marshal`へ渡すため、Goの規則で空の配列は`[]`、空のスライスが`nil`なら`null`になる。
+  - 認証は`--token`、`INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`、`INFISICAL_TOKEN`の順に読み、どれも無ければ開発者の`infisical login`のセッションを使う。
+- **Implications**: `parseInfisicalExport`は`[]`と`null`を空の一覧として取り込む。取り出しの失敗(終了コードが0以外)は、標準出力・標準エラー出力を表示せず、環境とフォルダの名前と終了コードだけを示して止める(4.7・4.10)。空のフォルダの実際の出力は、開発者が初回の準備(手順3)でWorkerごとのフォルダを作った後に`run-with-secrets --scope local --worker api -- true`で確かめる。`run-with-secrets --scope checks`は`INFISICAL_TOKEN`が無ければ取り出さずに失敗し、検査の主体の代わりに開発者のセッションを使わない。
+
 ### InfisicalのFreeプランの制約
 
 - **Sources Consulted**: Infisical「[Pricing](https://infisical.com/pricing)」、Infisical Docs「[Role-based access controls](https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls)」、第三者の料金の解説(2026-09)。
@@ -381,7 +391,7 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - **providerのドリフトの不具合**(roadmapの指摘): Cloudflare provider v5はドリフトの報告が続く。緩和: 版を完全に固定し、計画の要約で想定外の`update`・`replace`を確かめ、`prevent_destroy`で消失を止める。
 - **カスタムドメインの証明書の発行待ち**: 初回は証明書の発行に時間が掛かり、デプロイ後の確認が失敗し得る。緩和: 確認は`/health`の200を最大10分待ってから行う。
 - **公開リポジトリのログ**: Actionsのログは誰でも読める。緩和: Infisicalから受け取った値を起動時に`::add-mask::`で伏せ、計画は要約だけを出し、`tofu output`の値は秘密でない識別子だけを扱う。
-- **空のWorkerごとのフォルダの取り出し**(改訂1): `infisical export --path`が空のフォルダで空の一覧を返すか、存在しないフォルダで失敗するかは版で確かめていない。緩和: フォルダは初回の準備とlaunch-readinessで必ず作り、4.3の実装でCLIの挙動を確かめて、空のフォルダは空の一覧、取り出しの失敗はフォルダの名前だけを出して止める扱いに合わせる。
+- **空のWorkerごとのフォルダの取り出し**(改訂1): `infisical export --path`が空のフォルダで空の一覧を返すか、存在しないフォルダで失敗するかは版で確かめていない。緩和: フォルダは初回の準備とlaunch-readinessで必ず作り、4.3の実装でCLIの挙動を確かめて、空のフォルダは空の一覧、取り出しの失敗はフォルダの名前だけを出して止める扱いに合わせる。4.3で、存在しないフォルダは終了コード1で失敗することを確かめ、空のフォルダの出力(`[]`または`null`)は未確認のまま両方を空の一覧として扱った(「InfisicalのCLIのフォルダの取り出し」)。
 
 ## References
 

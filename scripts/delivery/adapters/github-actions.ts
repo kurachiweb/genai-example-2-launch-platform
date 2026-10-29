@@ -17,9 +17,9 @@ export interface GithubActionsIoOptions {
 
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-// ワークフローのコマンドの値は%を区切りの表記として解釈するため、値の%を表記に変換する
+// ワークフローのコマンドは改行でコマンドを区切り%を区切りの表記として解釈するため、値の%・\r・\nを表記に変換して1つのコマンドに収める
 const escapeCommandValue = (value: string): string =>
-  value.replaceAll('%', '%25');
+  value.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
 
 const isOidcResponse = (body: unknown): body is { readonly value: string } =>
   typeof body === 'object' &&

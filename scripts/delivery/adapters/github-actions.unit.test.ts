@@ -68,6 +68,14 @@ describe('mask', () => {
     );
   });
 
+  test('行の中の単独の\\rと%を、ワークフローのコマンドの表記に変換して1つのコマンドに収める', () => {
+    const { io, stdout } = createIo(IN_ACTIONS);
+
+    io.mask('a\rb%0Dc');
+
+    expect(stdout.text()).toBe('::add-mask::a%0Db%250Dc\n');
+  });
+
   test.each([{}, { GITHUB_ACTIONS: 'false' }])(
     'GitHub Actionsの外(%p)ではマスクのコマンドを出さない',
     (env) => {

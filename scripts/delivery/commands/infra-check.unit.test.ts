@@ -79,6 +79,10 @@ const createDeps = (
     runner,
     files,
     github,
+    secrets: {
+      login: () => Promise.reject(new Error('ログインは使わない')),
+      exportFolder: () => Promise.reject(new Error('取り出しは使わない')),
+    },
     stdout,
     stderr,
   };

@@ -73,6 +73,10 @@ export const createFakeDeps = (files: RepoFiles): FakeDeps => {
       runner: { run: unused('子プロセス'), start: unused('常駐の起動') },
       files,
       github,
+      secrets: {
+        login: unused('Infisicalへのログイン'),
+        exportFolder: unused('シークレットの取り出し'),
+      },
       stdout,
       stderr,
     },

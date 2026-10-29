@@ -31,6 +31,8 @@ describe('createDefaultDeps', () => {
       output: 'capture',
     });
     expect(result.stdout).toBe('value');
+    expect(typeof deps.secrets.login).toBe('function');
+    expect(typeof deps.secrets.exportFolder).toBe('function');
     deps.github.mask('outside-actions');
     expect(stdout.text()).toBe('');
   });

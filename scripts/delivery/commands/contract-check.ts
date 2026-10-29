@@ -2,11 +2,8 @@ import type { RepoFiles } from '../adapters/repo-files.ts';
 import {
   DEPLOY_ENVIRONMENTS,
   type DeployEnvironment,
-  type ResourceCatalog,
   WORKER_KEYS,
   type WorkerKey,
-  parseResourceCatalog,
-  resourceCatalogPath,
 } from '../catalog/resource-catalog.ts';
 import {
   type ContractInput,
@@ -16,13 +13,13 @@ import {
 import type { ContractViolation } from '../core/violation.ts';
 import { readEffectiveConfig } from '../core/wrangler-config.ts';
 import { type DeliveryCommand, UsageError } from './shared/delivery-command.ts';
+import { loadResourceCatalog, withPath } from './shared/load-catalog.ts';
 import {
   type Loaded,
   allLoaded,
   errorsOf,
   failed,
   loaded,
-  parseInput,
   readInput,
 } from './shared/load-input.ts';
 import {
@@ -36,24 +33,6 @@ const WRANGLER_CONFIG_FILE = 'wrangler.jsonc';
 
 export const backendSettingsPath = (env: DeployEnvironment): string =>
   `apps/infra/backends/${env}.s3.hcl`;
-
-const withPath = (path: string, errors: readonly string[]): readonly string[] =>
-  errors.map((error) => `${path}: ${error}`);
-
-const loadCatalog = async (
-  files: RepoFiles,
-  env: DeployEnvironment,
-): Promise<Loaded<ResourceCatalog>> => {
-  const path = resourceCatalogPath(env);
-  const text = await readInput(files, path);
-  if (!text.ok) return text;
-  const json = parseInput(path, text.value, 'JSON', JSON.parse);
-  if (!json.ok) return json;
-  const result = parseResourceCatalog(json.value, env);
-  return result.ok
-    ? loaded(result.catalog)
-    : failed(withPath(path, result.errors));
-};
 
 const loadWorker = async (
   files: RepoFiles,
@@ -89,7 +68,7 @@ const loadContractInput = async (
   files: RepoFiles,
   env: DeployEnvironment,
 ): Promise<Loaded<ContractInput>> => {
-  const catalog = await loadCatalog(files, env);
+  const catalog = await loadResourceCatalog(files, env);
   if (!catalog.ok) return catalog;
   const [workers, backendFile] = await Promise.all([
     Promise.all(
