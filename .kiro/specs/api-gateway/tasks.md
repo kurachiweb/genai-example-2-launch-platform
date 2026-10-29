@@ -286,6 +286,14 @@
   - _Boundary: SessionAccess, SessionVerifierPort, 技術ドキュメント群_
   - _Requirements: 3.5, 3.8, 3.9_
 
+- [ ] 12. frontend-platformの第4回の判断の反映(承認後の改訂5)
+- [ ] 12.1 中継の要求が持つトレースをAPIサーバーが続けることを確かめる
+  - `operation-observability.worker.test.ts`へ、`sentry-trace`(と`baggage`)を付けた`POST /graphql`の中継の要求を送り、Sentryの送信を差し替えたトランスポートで、ルートのスパンのトレースIDが受け取った`sentry-trace`のトレースIDと同じで、親のスパンIDが受け取った値であることを確かめる検査を1件足す。既存の実装が満たしていれば成功してよい。失敗すれば原因を調べ、実装を直す前に開発者へ報告する
+  - 完了状態: apiのWorkers統合テストと一括検査が成功する
+  - _Depends: 5.4_
+  - _Boundary: OperationObservability_
+  - _Requirements: 13.2_
+
 ## Implementation Notes
 
 - 1.1(1.2への申し送り): `apps/api/src/composition/env-schema.ts`は`APP_ENVIRONMENT`の3値を暫定の定数`APP_ENVIRONMENT_VALUES`で持つ。1.2で`gateway-headers.ts`の`APP_ENVIRONMENTS`・`AppEnvironment`へ置き換え、定義を1箇所にする。依存の版の一覧は表に「導入先」の列を持つ形のため、`graphql`・`@graphql-codegen/cli`の導入先は「GraphQLのサーバーとクライアントを持つアプリ」と一般化した。`@escape.tech/graphql-armor-types`(任意の相手依存)は未導入。

@@ -556,6 +556,125 @@
   - _Boundary: FormParts, ServerFieldErrors, 技術ドキュメント群_
   - _Requirements: 8.3, 15.3, 15.4_
 
+- [ ] 12. 最終検証後の第4回の判断の反映と未検証の要件のテスト
+- [ ] 12.1 共通部品の静的解析にフォームのライブラリの制限を加え、静的解析の設定のテストの時間の上限を延ばす
+  - 先に、`config/frontend-lint.unit.test.ts`へ、`utilities/**`・`server/**`のファイルで`react-hook-form`(例: `import { get } from 'react-hook-form'`)と`@hookform/*`(例: `import { zodResolver } from '@hookform/resolvers/zod'`)の値の読み込みが違反になり、型だけの読み込み(`import type { FieldValues } from 'react-hook-form'`)と`utilities/**/*.unit.test.ts`・`server/**/*.unit.test.ts`の値の読み込みが違反にならないことを確かめるテストを書き、失敗を確かめる
+  - `RUNTIME_PACKAGE_RESTRICTION`の正規表現に`react-hook-form`と`@hookform/`を加え、`message`をフォームのライブラリを含む文に直す。テストファイルを対象外にする設定を`frontend/direction/utilities`・`frontend/direction/server`に加える(`restrictValueImports`でZodの制限は常に含める)。既存の`utilities/forms`の単体テストが本物の`createFormControl`・`zodResolver`を読み込めることを`bun run lint`で確かめる
+  - 判断48: `config/eslint-config.unit.test.ts`の子プロセスのESLintを起動するテストに`{ timeout: 10_000 }`を付ける
+  - 完了状態: 共通部品・client・adminの`bun run lint`と共通部品の単体テストが成功し、design.mdのDependency Directionの一覧と`RUNTIME_PACKAGE_RESTRICTION`の対象が一致する
+  - _Boundary: FrontendLintConfig_
+  - _Requirements: 15.2_
+
+- [ ] 12.2 フォームの部品が頼るreact-hook-formの内部の値を調べ、公開のAPIで置き換えられる箇所を置き換える
+  - 設計の「決定事項」の「react-hook-formの内部の値への依存」の調べる対象を`apps/frontend-lib`で検索し直し(`_names`・`_fields`・`_f`・`_formState`・`_formValues`・`_options`・`_setValid`・`toNestErrors`)、使用箇所・頼る振る舞い・公開のAPIの候補(`getFieldState`・`formState`・`subscribe`・`FormField`が知る`disabled`と描画の状態を`AppForm`の文脈の登録簿で答える方法など)・置き換えの可否と理由の一覧を作る
+  - 置き換える箇所は、先に既存の単体テスト・ブラウザテスト(`form.browser.test.tsx`・`form-unmatched-fields.browser.test.tsx`・`server-field-errors.unit.test.ts`・`revalidation-targets.unit.test.ts`・`disabled-field-errors.unit.test.ts`・`field-mount.unit.test.ts`)が置き換えの前後の振る舞いを確かめていることを見直し、足りない検査(送信から外れる欄と無効の判定が一致すること、描かなくなった欄の判定など)を足してから置き換える。置き換えの後もすべて成功することを確かめる。送信から外れる欄の判定(`handleSubmit`の`_names.disabled`)と判定がずれる置き換えは行わない
+  - 置き換えた結果に合わせて、design.mdのFormPartsの節と「決定事項」の判断28・30・33・34・37の節の内部の値の記述、`frontend/005`のフォームの節を直し、調べた一覧(置き換えたもの・残したものと理由)を本タスクの申し送りに書く
+  - 完了状態: 共通部品の単体テスト・ブラウザテストと一括検査が成功し、置き換えられる内部の値の読み取りが残っておらず、残した項目と理由の一覧が申し送りにある
+  - _Depends: 12.1_
+  - _Boundary: FormParts, ServerFieldErrors, 技術ドキュメント群_
+  - _Requirements: 8.3, 8.5, 15.3_
+
+- [ ] 12.3 置き換えられない内部の値に版の番人テストと見直しの手順を置く
+  - 先に、`components/form/form-library-internals.unit.test.ts`(新規)を書く。`react-hook-form`・`@hookform/resolvers`の`package.json`の版が確かめた版(7.89.0・5.9.1)と一致することを確かめ、異なれば`coding/002`の見直しの手順を示すメッセージで失敗させる。12.2で残した項目を一覧にし、Bunの`createFormControl`で動かせる項目(`_names.disabled`への出し入れ、`_f.mount`、名前の配列を渡した`trigger`の置き換えの範囲、`toNestErrors`の一覧全体のエラーの入れ子、resolverへ渡る`values`の同一性など)の振る舞いを確かめ、DOMを要する項目は確かめているブラウザテストの名前を一覧に書く。版の定数を一時的に変えて失敗することを確かめて戻す
+  - `coding/002`に、内部の値に頼るパッケージの版を上げる時の手順(番人テストの失敗→一覧の各項目と関係するブラウザテストを確かめる→確かめた版を書き換える)を、`frontend/005`のフォームの節に、フォームの部品がreact-hook-formの内部の値に頼ることと版を上げる時の手順への参照を、プロジェクト名と固有値を含めずに書く
+  - 完了状態: 共通部品の単体テストが成功し、版を変えると番人テストが手順の文書を示して失敗し、`coding/002`と`frontend/005`に手順と参照がある
+  - _Depends: 12.2_
+  - _Boundary: FormParts, 技術ドキュメント群_
+  - _Requirements: 8.3, 8.5, 15.3, 15.4_
+
+- [ ] 12.4 スキーマの切り替えで描かれていて触れた欄も検証し直し、残したいエラーの付け方を文書に書く
+  - 先に、`utilities/forms/revalidation-targets.unit.test.ts`へ、`touchedFields`で描かれていて触れた欄(エラーの無い欄、入れ子と一覧の中の欄を含む)が名前に入り、描かれていない触れた欄と、描かれていてサーバーのエラー(`SERVER_FIELD_ERROR_TYPE`)の付いた触れた欄は入らないことを、`form-unmatched-fields.browser.test.tsx`へ、触れてエラーの無い欄が切り替えの後に新しい規則で違反ならエラーを表示して送信ボタンが無効になり、まだ触れていない欄にはエラーを出さないことを確かめるテストを書き、失敗を確かめる
+  - `RevalidationState`に`touchedFields`を加え、`revalidationTargetsOf`はエラーの付いた欄と描かれていて触れた欄を合わせてから、描かれていてサーバーのエラーの付いた欄を除く。`useAppForm`は12.2で選んだ手段で`touchedFields`を読んで渡す(フォームの購読を増やさない)
+  - 判断38: `frontend/005`のフォームの節に、切り替えでは描かれていて触れた欄も新しい規則で検証し直すことと、利用側が`setError`で`root`以外の欄に付けたエラーは切り替えで置き換わるため、切り替えの後も残したいエラーは`root`(`root.<名前>`)に付けることを、プロジェクト名と固有値を含めずに書く
+  - 完了状態: 共通部品の単体テスト・ブラウザテストと一括検査が成功し、切り替えの後に触れた欄の違反が表示され、`frontend/005`とdesign.mdの判断33・37・38・40の節が実装と一致する
+  - _Depends: 12.2_
+  - _Boundary: FormParts, ServerFieldErrors, 技術ドキュメント群_
+  - _Requirements: 8.2, 8.3, 15.3, 15.4_
+
+- [ ] 12.5 既定値の入れ子のキーの予約された名前を開発時とテストで例外にする
+  - 先に、`utilities/forms/reserved-field-names.unit.test.ts`(新規)で、`reservedFieldNamePathsOf`が入れ子のオブジェクトと一覧の要素のキーの`type`・`message`・`types`・`ref`の経路を返し、最上位のキーと`Date`・`File`などの欄の値の中、配列の値(文字列の一覧)は返さないことを、`form-unmatched-fields.browser.test.tsx`(800行を超える場合は`form.browser.test.tsx`)で、`contact.type`を既定値に持つフォームで`useAppForm`が経路を示す例外を投げることを確かめるテストを書き、失敗を確かめる
+  - `utilities/forms/reserved-field-names.ts`(新規、`RESERVED_FIELD_NAMES`・`reservedFieldNamePathsOf`)を作り、`useAppForm`の制御を作る`useState`の初期化で、`process.env.NODE_ENV !== 'production'`の時だけ経路があれば例外を投げる。既存のテスト・ストーリーの既定値に該当する名前があれば名前を変える
+  - `frontend/005`のフォームの節の「フォームの値の欄にこれらの名前を使わない」を、開発時とテストで例外になり本番では投げないことに直す。プロジェクト名と固有値を含めない
+  - 完了状態: 共通部品の単体テスト・ブラウザテストと一括検査が成功し、client・adminのビルドの出力に判定の処理が含まれないことを確かめられ、`frontend/005`とdesign.mdの判断41の記述が実装と一致する
+  - _Depends: 12.4_
+  - _Boundary: FormParts, 技術ドキュメント群_
+  - _Requirements: 8.1, 8.3, 15.3, 15.4_
+
+- [ ] 12.6 client・adminに型生成と環境の検証スキーマとの型の照合を置く
+  - 先に、`apps/client`で`bunx wrangler types --include-runtime=false --help`の範囲と生成の出力(実行時の型を参照するか、3環境の変数とシークレットの扱い)を確かめ、設計の「決定事項」の「client・adminの型生成」と食い違えば止めて報告する
+  - 先に、共通部品の`server/env/frontend-env.ts`が`FrontendEnvInput`(`z.input<typeof frontendEnvSchema>`)を公開することと、client・adminの`test/config/worker-env-contract.ts`(新規、型の表明だけ)の3つの照合((a)`Env`のキーが`FrontendEnvInput`に含まれる、(b)`FrontendEnvInput`の必須のキーが`Env`にある、(c)`Env`の変数の型が代入できる)を書き、生成物にスキーマに無いキーを一時的に足すと`tsc -p tsconfig.worker-env.json`が失敗することを確かめて戻す
+  - client・adminに`cf-typegen`(`wrangler types --include-runtime=false`)・`cf-typegen:check`(`wrangler types --include-runtime=false --check && tsc -p tsconfig.worker-env.json`)と`tsconfig.worker-env.json`を置き、`worker-configuration.d.ts`を生成してコミットの対象にする。アプリの`tsconfig.json`の`exclude`に生成物と照合のファイルを加え、静的解析の型情報の扱いを`bun run lint`が通る形にする。生成物が実行時の型を参照する場合は照合の設定にだけ補助の型定義を置く
+  - `frontend/002`の型生成の節を、画面を持つアプリも`Env`の型だけを生成して照合にだけ使うことと実行時の型を含めない理由に書き換え、`coding/001`のスクリプト契約の表の`cf-typegen:check`の行に実行時の型を生成しないアプリの形を加える。プロジェクト名と固有値を含めない
+  - 完了状態: client・adminの`bun run cf-typegen:check`・`bun run typecheck`・`bun run lint`と一括検査(段階「型生成の検査」にclient・adminが入る)が成功し、Wrangler設定に変数を足して生成し直さないと`cf-typegen:check`が失敗し、文書が実装と一致する
+  - _Boundary: AppBuildConfig, FrontendEnv, 技術ドキュメント群_
+  - _Requirements: 1.2, 1.4, 15.3, 15.4_
+
+- [ ] 12.7 コード生成の検査を包み、再実行すべき生成コマンドを示す
+  - 先に、共通部品の`config/codegen-check.unit.test.ts`(新規)で、偽の子プロセスの終了コード0で一致の文言と終了コード0、0以外で子プロセスの出力に続けて`bun run graphql:generate`の再実行の案内と終了コード1になることを、client・adminの`test/config/codegen-check.unit.test.ts`(新規)で、一時ディレクトリにスキーマ・操作・`codegen.config.ts`の写しを置いて本物の`graphql-codegen`で生成し、一致・操作の変更・スキーマに無い項目を選ぶ操作の3通りの終了コードと案内を確かめるテストを書き、現行の`graphql:check`の形では案内が無く失敗することを確かめる
+  - 共通部品の`config/codegen-check.ts`(新規)を、apiの`scripts/graphql/generated-check.ts`に倣い、表示と終了コードを組み立てる純粋な関数と、作業ディレクトリの`node_modules/.bin/graphql-codegen`を`--config codegen.config.ts --check`で起動する入口(`import.meta.main`)に分けて作る。Node.jsの組み込みモジュールだけを読み込む。client・adminの`graphql:check`を`bun ./lib/config/codegen-check.ts`に替える
+  - `coding/001`のスクリプト契約の表の`graphql:check`の行に、GraphQLの操作の生成物を持つアプリが再実行すべき生成コマンドを示して失敗することを加え、オンボーディングのコマンドの表の`graphql:check`の説明を合わせる。案内は開発者向けのコマンドの出力のため文言規則の対象外である
+  - 完了状態: 共通部品とclient・adminの単体テストと一括検査が成功し、操作を変えて生成しないと`bun run graphql:check`が再実行すべきコマンドを示して失敗する
+  - _Boundary: CodegenConfig, 技術ドキュメント群_
+  - _Requirements: 6.1, 6.2, 15.3_
+
+- [ ] 12.8 ローカル状態の保存先を照合する単体テストを足す
+  - ルートの`config/local-state-path.unit.test.ts`(新規)を`config/inspector-ports.unit.test.ts`と同じ書き方で書く。client・adminの`vite.config.ts`の`cloudflare()`の引数の`persistState.path`を`typescript`の構文木から読み(識別子なら初期化子の文字列リテラルをたどる)、api・eventの`package.json`のすべてのスクリプトの`--persist-to`の値(1件以上あること)と一致することを確かめる。値を取り出せない形はファイルと理由を示して失敗させる
+  - `vite.config.ts`の保存先を一時的に変えると失敗することを確かめて戻す
+  - 完了状態: ルートの`bun run test:unit`・`bun run typecheck`・`bun run test:unit --coverage`が成功し、ルートのカバレッジの出力に他のアプリのファイルが含まれない
+  - _Boundary: AppBuildConfig(ルートの単体テスト)_
+  - _Requirements: 1.3_
+
+- [ ] 12.9 静的なファイル・ハイドレーションの後の取得・管理者側のフッターをE2Eで確かめる
+  - 先に、`e2e/{client,admin}/system-status.e2e.test.ts`へ次を書き、ビルド後のプレビューで実行して結果を確かめる(既存の実装が満たしていれば成功してよい。失敗すれば原因を直す)
+    - R5.5(ビルド後の対象だけ。開発サーバーでは`annotateSkippedCheck`): ページのHTMLが読み込む`/assets/*.js`の1つの`Cache-Control`が`immutable`を含み`no-store`を含まないこと、`/favicon.ico`の応答に`no-store`も`X-Robots-Tag`も無いこと(Workerを通っていない証拠)。`e2e/support/security-assertions.ts`の`static-file`の検査と合わせて使い、補助を足すならその単体テストも足す
+    - R6.5の疎通確認の画面で確かめられる部分: `goto`の前から`/_bff/graphql`への`POST`を記録し、ハイドレーションの後(再確認のボタンが操作できる合図)・「再確認」の前の件数が0で、画面を表示した時の結果の区画の見出しがサーバー側の描画の見出しのままであること
+    - R10.8(管理者側だけ): `/system/status`に`footer`要素と`contentinfo`のランドマークが0件であること
+  - 開発サーバーでも同じテストが成功する(ビルド後の対象だけの確認は飛ばした記録が残る)ことを確かめる
+  - 完了状態: ローカルの開発サーバーとビルド後のプレビューの両方で`bun run test:e2e`が成功し、ルートの単体テスト(`e2e/support`の補助を変えた場合)が成功する
+  - _Boundary: SmokeE2E_
+  - _Requirements: 5.5, 6.5, 10.8, 12.6_
+
+- [ ] 12.10 (P) 翻訳で長くなる文言に耐えることをブラウザテストで確かめる
+  - 共通部品のタブ(`components/ui/tabs`)のブラウザテストへ、トリガーの長い文言が切れずに折り返すか伸びて表示されること(要素の幅と`scrollWidth`の比較)と`translate="no"`を付けられることを、`Button`・`Badge`・タブのブラウザテストへ、幅を絞った親(例: 幅120px)の中に長い文言の部品を置いても親から溢れないことを書く
+  - client・adminの`site-layout.browser.test.tsx`・`admin-layout.browser.test.tsx`へ、区画(ヘッダーの区画・本文など)に長い文言の部品を差し込んで幅320pxで横に溢れないこと(`elementsOverflowingViewport`・`hasHorizontalScroll`)を書く
+  - 失敗した部品は固定幅・折り返しの禁止などのクラス名を直し、ストーリーの表示が崩れないことを確かめる
+  - 完了状態: 共通部品・client・adminのブラウザテストと一括検査が成功する
+  - _Boundary: UiPrimitives, SiteLayout, AdminLayout_
+  - _Requirements: 7.2, 9.9_
+
+- [ ] 12.11 (P) 管理者側の画面シェルと疎通確認の経路の公開の判定をブラウザテストで確かめる
+  - R10.8: `admin-layout.browser.test.tsx`へ、`footer`要素と`contentinfo`のランドマークが0件で、ヘッダーと本文のランドマークがあることを書く
+  - R12.4: client・adminの`test/page-router.tsx`がルーターの文脈(環境の種類など`RouterContext`の値)を受け取れるようにし、`test/status-route.browser.test.tsx`(新規)で、本物の`routes/system/status.tsx`の`Route.options`の`beforeLoad`・`loader`・`component`(取得は偽の結果)を使い、`prod`なら存在しないページの表示、`staging`と`local`なら疎通確認の画面になることを確かめる
+  - 既存の実装が満たしていれば成功してよい。失敗すれば原因を直す
+  - 完了状態: client・adminのブラウザテストと一括検査が成功する
+  - _Boundary: AdminLayout, StatusRoute, AppTestConfigs_
+  - _Requirements: 10.8, 12.4_
+
+- [ ] 12.12 (P) Sentryのトレースの伝搬と割合をテストで確かめる
+  - 共通部品の`start/observability/browser-observability.browser.test.ts`(新規)で、本物の`@sentry/tanstackstart-react`を`initBrowserObservability`で初期化し(送信は記録する偽の`transport`)、中継の経路への`fetch`にだけ`sentry-trace`・`baggage`が付き、外部の宛先(エラートラッキングのDSNのオリジン・bot判定・アクセス解析の形のURL)に付かないことと、`Math.random`を固定して`tracesSampleRate: 0.1`で0.05ならトレースを送り0.5なら送らないことを確かめる
+  - 共通部品の`server/entry/server-trace-continuation.unit.test.ts`(新規)で、本物の`withSentry`で`createFrontendServerEntry`を包み、`sentry-trace`付きの`POST /_bff/graphql`の中継で偽の`API`のバインディングが受けた`sentry-trace`のトレースIDが元と同じことを確かめる(テストファイルは12.1の制限の対象外)
+  - 既存の実装が満たしていれば成功してよい。失敗すれば原因を直す。APIサーバーがトレースを続けることはapi-gatewayの12.1が確かめるため、本タスクの申し送りにその完了の有無を書く
+  - 完了状態: 共通部品のブラウザテスト・単体テストと一括検査が成功し、ブラウザテストのカバレッジの対象(`components/**`)が変わらない
+  - _Boundary: BrowserObservability, FrontendServerEntry_
+  - _Requirements: 13.2, 13.4_
+
+- [ ] 12.13 開発サーバーとビルド後のプレビューの両方でE2Eを続けて実行する
+  - 前提: dev-toolingの10.1(ルートの`test:e2e:dev-and-preview`)が完了していること。完了していなければ止めて報告する
+  - APIサーバーとイベントサーバーを起動した状態で、シークレットの注入の下でルートの`bun run test:e2e:dev-and-preview`を実行し、開発サーバーとビルド後のプレビューの両方で本specのE2Eが成功することを確かめる
+  - `docs/onboardings/README.md`の「スモークテスト」の節と`frontend/002`の「開発時とデプロイ前の起動」に、両方の起動で続けて実行するコマンドと前提(APIサーバーを先に起動し、client・adminは起動しないでおく)を書く。`frontend/002`にはプロジェクト名と固有値を含めない
+  - 完了状態: ルートのコマンドで両方の起動のE2Eが成功し、オンボーディングと`frontend/002`の記述がコマンドと一致する
+  - _Depends: 12.9, 12.11, dev-toolingの10.1_
+  - _Boundary: SmokeE2E, 技術ドキュメント群_
+  - _Requirements: 1.1, 1.3, 12.6, 12.7, 15.3, 15.8_
+
+- [ ] 12.14 下流specへの申し送りを確かめ、全体の検査とカバレッジを確かめる
+  - 判断44の申し送り(legal-pagesの7.6、sponsorshipの10.5)と、判断42・47のinfra-deliveryの改訂3、判断46のapi-gatewayの12.1、判断47のdev-toolingの10.1が各specのtasks.mdとdesign.mdにあることを確かめ、本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の第4回の行の「該当箇所」を実際の位置に合わせる
+  - 共通部品・client・adminの単体テストとブラウザテストをカバレッジ付きで実行し、ファイルごとの行と関数の80%以上を確かめ、ルートの一括検査(`bun run check`)を実行する
+  - 完了状態: 一括検査とカバレッジ付きのテストが成功し、表の該当箇所が下流specの実際の位置を指す
+  - _Depends: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9, 12.10, 12.11, 12.12, 12.13_
+  - _Boundary: 下流specの設計_
+  - _Requirements: 15.1, 15.2_
+
 ## Implementation Notes
 
 - 1.1(1.3・5.9・9.1への申し送り): `test:browser`は設定ファイルが無いとexit 1になるため、プリセット・ブラウザモード・Chromiumだけの最小の`vitest.browser.config.ts`を置いた。成果物の置き場所・共有Chromium(`browserOptionsPreset`・`resolveBrowserLaunchOptions`)・カバレッジの対象の絞り込みは1.3で加える。`@tanstack/react-router` 1.170.41を直接宣言した(`@tanstack/react-start` 1.168.60が完全固定する版と同じ)。`@tanstack/react-router-ssr-query`・`graphql`は未導入。`tsconfig.json`の`include`は`**/*.ts`・`**/*.tsx`で、TypeScriptの`**`はドットで始まるディレクトリに一致しないため、5.9で`.storybook/`を明示する。文書の相違: coding/001(59〜61行・94行)は全アプリの`tsconfig.json`が基底設定を`extends`すると定め、スクリプト契約の`test:browser`を「ブラウザテストを持つアプリ」に限るため、9.1で`coding/003`に加えて`coding/001`にも共通部品の例外を書く。

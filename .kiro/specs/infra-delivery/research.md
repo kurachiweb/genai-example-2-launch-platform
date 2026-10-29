@@ -148,6 +148,13 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - **変えた箇所**: 設計のRevalidation Triggers(ウィジェットの種類)・`ResourceCatalog`の`turnstile.mode`・EdgeServicesModuleの資源と検証・frontend-platformへの影響の行・Supporting Referencesの資源の表・Infisicalのキーの表のstagingの必須の行・初回の準備の手順10。本ファイルの「確認済みのため質問しない事項」のウィジェットのモードとproviderの調査の`mode`の値。tasks.mdの2.2(計画のテストのモード)。staging・prodのサイトキーとアクセス解析のトークンの仮の値は、従来どおり本specとlaunch-readinessが置き換える。
 - **参照**: [Turnstile(Cloudflare Challenges)](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/turnstile/)・[Turnstile Spin](https://developers.cloudflare.com/turnstile/spin/)・[Widget configurations](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/widget-configurations/)。
 
+### frontend-platformの第4回の判断による承認後の改訂(改訂3、2026-10-29)
+
+- **状態**: 2026-10-29に開発者が決定した改訂で、確定している。frontend-platformの最終報告の確認事項に対する第4回の判断(判断42・47)を、frontend-platformの第4回の判断の反映として本specの設計とタスクへ反映した。`requirements.md`の「承認後の改訂」の表に改訂3として記録し、6.4に開発サーバーとビルド後のプレビューの両方での実行を加えた。
+- **Context**: frontend-platformの要件1.1は、画面を持つアプリが開発サーバーとビルド後のプレビューの両方で動くことを求める。本specの検査のE2E(`e2e-stack`)はclient・adminをビルド後のプレビューだけで起動していた。また、frontend-platformはclient・adminに型生成のスクリプト(`cf-typegen`・`cf-typegen:check`)を置き、生成した`Env`と環境の検証スキーマの型の照合を`cf-typegen:check`に含めることにした。
+- **決定**: ルートに置くコマンド`test:e2e:dev-and-preview`(dev-toolingの承認後の改訂2)が、client・adminを開発サーバーで起動してE2Eを実行し、止めてからビルド後のプレビューで起動してE2Eを実行する。`e2e-stack`はMailpit・api・eventだけを起動し、そのコマンドを呼ぶ。client・adminが起動しない時の表示(6.5)はそのコマンドが行う。生成物と設定の検査の表(`APP_CHECKS`)にclient・adminの`cf-typegen:check`を加える。
+- **変えた箇所**: 要件の「承認後の改訂」の表と6.4、設計のRevalidation Triggers・コマンドの表(`app-checks`・`e2e-stack`)・E2eStackのサービスの表と準備・ワークフローの`e2e`のジョブ・frontend-platformへの影響の行、タスク4.2・4.4。`spec.json`の承認の状態は変えていない。
+
 ## Research Log
 
 ### Cloudflare providerの版と管轄の対応

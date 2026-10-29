@@ -256,6 +256,15 @@
 - **要件**: 5.10を加えた。一括検査を使う開発者から見える振る舞いを変えるため、`requirements.md`に「承認後の改訂」の表を設けて改訂1の行を置いた。
 - **変えた箇所**: 設計のRevalidation Triggers・AggregateRunnerのBatch / Job Contract(`check`の段階と写しの照合のスクリプト)・追跡表の5.10・Testing Strategyの`run-all.unit.test.ts`、タスク9・9.1。`spec.json`の承認の状態は変えていない。
 
+## frontend-platformの第4回の判断による承認後の改訂(改訂2、2026-10-29)
+
+- **状態**: 2026-10-29に開発者が決定した改訂で、確定している。frontend-platformの最終報告の確認事項に対する第4回の判断のうちの1件(判断47)である。実装は追加タスク10.1で行う。
+- **Context**: frontend-platformの要件1.1は、画面を持つアプリが開発サーバーとビルド後のプレビューの両方で動くことを求めるが、ルートの`test:e2e`は起動済みの対象に対して1回実行するだけで、両方の起動での確認は手作業だった。CIの検査のE2E(infra-delivery)もビルド後のプレビューだけを起動する設計だった。
+- **決定**: ルートに、E2Eの対象のアプリを開発サーバーで起動してE2Eを実行し、止めてからビルド後のプレビューで起動して同じE2Eを実行するコマンド`test:e2e:dev-and-preview`(`scripts/tooling/e2e-dev-and-preview.ts`)を置き、手順書とテストの方針に書く。CIの検査のE2Eはこのコマンドを呼ぶ(infra-deliveryの承認後の改訂3)。
+- **持ち主**: ルートの`package.json`と`scripts/tooling/`、`testing/001`は本specの成果物のため、コマンド・その単体テスト・文書は本specのタスク10.1で作る。frontend-platformの12.13が10.1に依存し、両方の起動でE2Eが成功することを確かめる。
+- **要件**: 6.12を加えた。ルートのコマンドを使う開発者から見える振る舞いが増えるため、「承認後の改訂」の表に改訂2の行を置いた。
+- **変えた箇所**: 設計のRevalidation Triggers・File Structure Plan・追跡表の6.12・Components and Interfacesの表とE2EDualModeRunner・Testing Strategyの`e2e-dev-and-preview.unit.test.ts`・TestingDocsの`testing/001`、タスク10・10.1。`spec.json`の承認の状態は変えていない。
+
 ## References
 
 - [TypeScript 6.0 Release Notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html) — 既定値の変更と非推奨オプション

@@ -375,3 +375,11 @@
 - **決定**: 案B。`session-verifier.ts`に`MAX_SESSION_MAX_AGE_SECONDS`(34,560,000)を置き、`assertIssuable`は有効期間が1以上その値以下の整数でなければ、指示を付けずに値を含めない`RangeError`にする(識別子の形式の検査と同じ扱いで、共通の後処理が想定外の失敗の500にする)。フロントエンドの検査は、契約に反する指示が届いた時の防御として残す。
 - **要件**: 3.9を加えた。認証機能のspec(identity-auth・admin-foundation)が発行できる有効期間の約束が変わるため、`requirements.md`の「承認後の改訂」の表に改訂4の行を置いた。
 - **変えた箇所**: 設計のRevalidation Triggers(`SessionIssue`と上限)、File Structure Planの`session-verifier.ts`、追跡表の3.8・3.9、SessionAccessと`SessionVerifierPort`の要件、`applySessionInstructions`の説明、`SessionIssue.maxAgeSeconds`の説明と`MAX_SESSION_MAX_AGE_SECONDS`、指示ヘッダーの表、技術ドキュメント群(`backend/006`・`coding/004`)、Testing Strategyの`session-access.worker.test.ts`。tasks.mdに追加タスク11・11.1を加えた。
+
+## frontend-platformの第4回の判断による承認後の改訂(改訂5、2026-10-29)
+
+- **状態**: 2026-10-29に開発者が決定した改訂で、確定している。frontend-platformの最終報告の確認事項に対する第4回の判断のうちの1件(判断46)である。実装は追加タスク12.1で行う。
+- **Context**: frontend-platformの要件13.2は、ブラウザから送ったGraphQLの要求の応答時間を、フロントエンドサーバーとAPIサーバーの処理と結び付けて追えることを求める。フロントエンドは中継の要求に`sentry-trace`・`baggage`を引き継ぐが、本specの`operation-observability.worker.test.ts`は、受け取ったトレースをAPIサーバーが続けること(ルートのスパンが同じトレースIDを持つこと)を確かめていない。
+- **決定**: `operation-observability.worker.test.ts`に、`sentry-trace`付きの中継の要求でルートのスパンのトレースIDと親のスパンIDが受け取った値になることの1件を足す。ブラウザでの伝搬と割合、フロントエンドサーバーでの引き継ぎはfrontend-platformの12.12が確かめる。
+- **要件**: 受け入れ基準(13.2)は変えないため、`requirements.md`の「承認後の改訂」の表には載せない。
+- **変えた箇所**: 設計のRevalidation Triggers・Testing Strategyの`operation-observability.worker.test.ts`、タスク12・12.1。`spec.json`の承認の状態は変えていない。

@@ -68,6 +68,7 @@
 - セキュリティヘッダーの値とCSPの置き換えの規則(media-pipeline・launch-readiness)。
 - `graphql:allowlist --previous-ref`の引数とデプロイの順序(infra-delivery)。
 - 一括検査の段階`graphql:check`の位置と名前(dev-tooling)(承認後の改訂2)。
+- 中継の要求の`sentry-trace`・`baggage`からトレースを続けること(frontend-platformの要件13.2。`operation-observability.worker.test.ts`が確かめる、承認後の改訂5)。
 - Sentry SDK(`@sentry/cloudflare`・`@sentry/hono`)の版の更新。Honoの計装が応答の時点でルートのスパンの名前を`<メソッド> <経路>`へ書き戻す挙動が変わったら、OperationObservabilityのトレースの付け方を見直す(承認後の改訂2)。
 
 ## Architecture
@@ -1602,7 +1603,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
   - `loaders.worker.test.ts`: 同じ処理単位の3件の読み込みが1回の一括読み込みになり、別の処理単位では読み込み結果を共有せず、`maxBatchSize`で分割されること(8.3)。
   - `validated-args.worker.test.ts`・`pagination.worker.test.ts`・`date-time-scalar.worker.test.ts`: 検証失敗の`validation_error`と詳細、`toConnection`の`hasNextPage`、不正なカーソルの`invalid_cursor`、`toOffsetPage`の`totalPages`、日時の出力形式と不正な入力(8.5・8.6)。
   - `system`モジュールと`d1-database-probe.worker.test.ts`: `systemStatus`がD1に到達できる場合に真、失敗を差し込んだ場合に偽を返すこと(8.8)。
-  - `operation-observability.worker.test.ts`: 操作ログの属性と、変数・トークンが含まれないこと(13.1)。Sentryの送信を差し替えたトランスポートで、ルートのスパンの名前が`POST /graphql`のまま3つの属性を持つこと、実行した操作だけに子のスパン`graphql <種類> <操作名>`があること、どちらも`scrubSpan`を通った後に値が残ることを確かめる(13.2、承認後の改訂2)。
+  - `operation-observability.worker.test.ts`: 操作ログの属性と、変数・トークンが含まれないこと(13.1)。Sentryの送信を差し替えたトランスポートで、ルートのスパンの名前が`POST /graphql`のまま3つの属性を持つこと、実行した操作だけに子のスパン`graphql <種類> <操作名>`があること、どちらも`scrubSpan`を通った後に値が残ることを確かめる(13.2、承認後の改訂2)。中継の要求の`sentry-trace`・`baggage`を受け取った時に、ルートのスパンがそのトレースIDを引き継ぎ、親のスパンIDが受け取った値になることを確かめる(13.2、承認後の改訂5。フロントエンドサーバーの処理と結び付けるfrontend-platformの要件13.2の検証)。
   - `gateway-server.worker.test.ts`: エントリの読み込みだけではYogaとスキーマが組み立てられず、最初の要求で1回だけ組み立てられること(13.3)。
   - `rest-module.worker.test.ts`・`cors-policy.worker.test.ts`・`route-table.worker.test.ts`: OpenAPI仕様の配信と認証方式、仕様書の`servers`が`[{ url: '/v1' }]`であること、`options.info`の未指定で既定の情報・指定でその値になること、テスト用の経路の検証失敗の400と詳細、未登録の404、プリフライトの204、IP制限の429を含む全応答のCORSヘッダー、更新系の`Content-Type`、他の経路にCORSが無いこと(10.1〜10.10・11.1〜11.5)。
   - `security-headers.worker.test.ts`(backend-lib): 既定の値の付与、応答のCSPを置き換えないこと、不変のヘッダーの応答の複製(12.1〜12.3)。
