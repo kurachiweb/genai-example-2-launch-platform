@@ -257,7 +257,7 @@ export const ProductDetailDocument = {
 
 - 生成物はすべてコミットする。カバレッジの分母と静的解析の対象からは、`generated/`の下として外れる。
 - `<利用者側のフロントエンドのアプリ>`・`<管理者側のフロントエンドのアプリ>`で`bun run graphql:generate`(`graphql-codegen --config codegen.config.ts`)を実行して生成する。
-- `bun run graphql:check`(`--check`付き)は、操作とスキーマから生成し直した結果がコミットした生成物と食い違えば失敗する。ルートの一括検査(`bun run check`)は、このスクリプトを持つすべてのアプリで実行する。操作がスキーマに合わなければ、生成も検査も失敗する。
+- `bun run graphql:check`は、画面の共有ディレクトリの`config/codegen-check.ts`を通して`graphql-codegen --config codegen.config.ts --check`を実行し、操作とスキーマから生成し直した結果がコミットした生成物と食い違えば、再実行すべき`bun run graphql:generate`を表示して失敗する。ルートの一括検査(`bun run check`)は、このスクリプトを持つすべてのアプリで実行する。操作がスキーマに合わなければ、生成も検査も失敗し、検査は検証の失敗の内容に続けて同じ案内を表示する。
 - 操作の一覧の本文は、空白と項目の並びを正規化して出力される。識別子はその本文から計算されるため、`.graphql`ファイルの整形だけを変えても識別子は変わらない。
 
 ### 操作の置き場所と名前

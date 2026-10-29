@@ -8,7 +8,7 @@
     "test:unit": "bun test --config=bunfig.unit.toml --pass-with-no-tests --path-ignore-patterns='lib/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "graphql:generate": "graphql-codegen --config codegen.config.ts",
-    "graphql:check": "graphql-codegen --config codegen.config.ts --check",
+    "graphql:check": "bun ./lib/config/codegen-check.ts",
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview"

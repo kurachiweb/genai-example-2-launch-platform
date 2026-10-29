@@ -316,15 +316,15 @@ export default config;
 
 一括検査は、ルートと各アプリで同じ名前のスクリプトを`bun run`で実行する。アプリは次のスクリプトを定義する。
 
-| スクリプト         | 定義するアプリ                       | 内容                                                                                                                            |
-| ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `lint`             | 全アプリ                             | `bun --bun eslint .`                                                                                                            |
-| `typecheck`        | 全アプリ                             | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める)                                                             |
-| `cf-typegen:check` | Wranglerで実行時の型を生成するアプリ | `wrangler types --check`(生成済みの`worker-configuration.d.ts`が設定と食い違えば失敗する)                                       |
-| `graphql:check`    | GraphQLのサーバーを持つアプリ        | GraphQLの生成物(スキーマファイル・リゾルバの型・許可リスト)の検査(定義と食い違えば、再実行すべき生成コマンドを表示して失敗する) |
-| `test:unit`        | 全アプリ                             | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test`                                                            |
-| `test:browser`     | ブラウザテストを持つアプリ           | `vitest run --config vitest.browser.config.ts`                                                                                  |
-| `test:worker`      | Workers統合テストを持つアプリ        | `vitest run --config vitest.worker.config.ts`                                                                                   |
+| スクリプト         | 定義するアプリ                                             | 内容                                                                                                                                                                                                                    |
+| ------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lint`             | 全アプリ                                                   | `bun --bun eslint .`                                                                                                                                                                                                    |
+| `typecheck`        | 全アプリ                                                   | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める)                                                                                                                                                     |
+| `cf-typegen:check` | Wranglerで実行時の型を生成するアプリ                       | `wrangler types --check`(生成済みの`worker-configuration.d.ts`が設定と食い違えば失敗する)                                                                                                                               |
+| `graphql:check`    | GraphQLのサーバー、またはGraphQLの操作の生成物を持つアプリ | GraphQLの生成物の検査。サーバーを持つアプリはスキーマファイル・リゾルバの型・許可リストを、操作の生成物を持つアプリは操作の型・文書・操作の一覧を検査する(定義と食い違えば、再実行すべき生成コマンドを表示して失敗する) |
+| `test:unit`        | 全アプリ                                                   | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test`                                                                                                                                                    |
+| `test:browser`     | ブラウザテストを持つアプリ                                 | `vitest run --config vitest.browser.config.ts`                                                                                                                                                                          |
+| `test:worker`      | Workers統合テストを持つアプリ                              | `vitest run --config vitest.worker.config.ts`                                                                                                                                                                           |
 
 ```json
 {
@@ -339,7 +339,8 @@ export default config;
 }
 ```
 
-- 定義していないスクリプトは、一括検査で「飛ばした(スクリプト未定義)」として扱われ、失敗にはならない。ブラウザテストもWorkers統合テストも持たないアプリは、`test:browser`・`test:worker`を定義しない。Wranglerで実行時の型を生成しないアプリは、`cf-typegen:check`を定義しない。GraphQLのサーバーを持たないアプリは、`graphql:check`を定義しない。
+- 定義していないスクリプトは、一括検査で「飛ばした(スクリプト未定義)」として扱われ、失敗にはならない。ブラウザテストもWorkers統合テストも持たないアプリは、`test:browser`・`test:worker`を定義しない。Wranglerで実行時の型を生成しないアプリは、`cf-typegen:check`を定義しない。GraphQLのサーバーも操作の生成物も持たないアプリは、`graphql:check`を定義しない。
+- GraphQLの操作の生成物を持つアプリの`graphql:check`は、画面の共有ディレクトリの`config/codegen-check.ts`を`bun ./<共有ディレクトリの配置先>/config/codegen-check.ts`で実行する。アプリのディレクトリの`node_modules/.bin/graphql-codegen`を`--config codegen.config.ts --check`で起動し、生成物が操作の定義と食い違うか、操作がスキーマに合わなければ、GraphQL Code Generatorの出力に続けて再実行すべき`bun run graphql:generate`を表示し、終了コード1で終える。案内は開発者向けのコマンドの出力のため、画面の文言の規則の対象外である。
 - `test:browser`を定義するアプリは、ブラウザテストが1件も無い段階でも`vitest.browser.config.ts`を置く。Vitestは設定ファイルが無いと失敗するため、テストより先にスクリプトを定義する共有ディレクトリ(検査担当が`self`のもの)は、プリセット・ブラウザモード・ブラウザの指定だけの最小の設定ファイルから始める。
 - 整形検査はルートで1回だけ実行するため、アプリに整形のスクリプトは要らない。
 - `test:unit`の`--config=../../bunfig.toml`は省略できない。Bunはアプリのディレクトリからルートの`bunfig.toml`をさかのぼって読まないため、省略すると他の種別のテストの除外・カバレッジ閾値・lcovの出力のいずれも適用されない。相対パスは、アプリのディレクトリがルートの2階層下にある場合の例である。

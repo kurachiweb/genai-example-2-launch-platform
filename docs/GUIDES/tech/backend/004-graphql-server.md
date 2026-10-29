@@ -363,7 +363,7 @@ bot判定が必要な操作は、リゾルバの先頭で`await context.assertHu
 
 - スキーマモジュールを変えたら`graphql:generate`を、フロントエンドの操作の一覧が変わったら`graphql:allowlist`を実行する。許可リストの検証は合成したスキーマを使うため、両方が必要なときは`graphql:generate`を先に実行する。
 - `graphql:check`は、食い違った生成物と、再実行すべき生成コマンドを実行する順に表示する。リゾルバの型の比較はスキーマファイルを入力にするため、スキーマファイルが古いときはスキーマファイルの比較が先に食い違いを示す。GraphQL Code Generatorの設定の誤りなども、リゾルバの型の食い違いとして表示される。
-- 一括検査(`bun run check`)は、型検査の前の段階「GraphQLの生成物の検査」で各アプリの`graphql:check`を実行する(「[一括検査](../coding/001-javascript-typescript-conventions.md#一括検査)」)。GraphQLのサーバーを持たないアプリは`graphql:check`を定義しない。
+- 一括検査(`bun run check`)は、型検査の前の段階「GraphQLの生成物の検査」で各アプリの`graphql:check`を実行する(「[一括検査](../coding/001-javascript-typescript-conventions.md#一括検査)」)。GraphQLのサーバーも操作の生成物(「[コード生成の設定と生成物](../coding/004-graphql-communication.md#コード生成の設定と生成物)」)も持たないアプリは`graphql:check`を定義しない。
 - 登録箇所のモジュールを合成して印字した結果がコミットしたスキーマファイルと一致することは、Workers統合テストでも確かめ、食い違えば`graphql:generate`の再実行を促す。
 - GraphQL Code Generatorの実行ファイルは`#!/usr/bin/env node`で始まり、Bunから起動してもNode.jsで動く。
 - 生成・検査のスクリプト(`scripts/graphql/`)の入口はファイルの読み書きと外部コマンドの起動だけを行い、判定は純粋関数に置いて単体テストで確かめる。入口はテストから読み込まない。Bunのカバレッジは読み込んだファイルだけを分母にするためである。

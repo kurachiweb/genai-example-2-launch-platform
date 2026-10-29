@@ -609,7 +609,7 @@
   - _Boundary: AppBuildConfig, FrontendEnv, 技術ドキュメント群_
   - _Requirements: 1.2, 1.4, 15.3, 15.4_
 
-- [ ] 12.7 コード生成の検査を包み、再実行すべき生成コマンドを示す
+- [x] 12.7 コード生成の検査を包み、再実行すべき生成コマンドを示す
   - 先に、共通部品の`config/codegen-check.unit.test.ts`(新規)で、偽の子プロセスの終了コード0で一致の文言と終了コード0、0以外で子プロセスの出力に続けて`bun run graphql:generate`の再実行の案内と終了コード1になることを、client・adminの`test/config/codegen-check.unit.test.ts`(新規)で、一時ディレクトリにスキーマ・操作・`codegen.config.ts`の写しを置いて本物の`graphql-codegen`で生成し、一致・操作の変更・スキーマに無い項目を選ぶ操作の3通りの終了コードと案内を確かめるテストを書き、現行の`graphql:check`の形では案内が無く失敗することを確かめる
   - 共通部品の`config/codegen-check.ts`(新規)を、apiの`scripts/graphql/generated-check.ts`に倣い、表示と終了コードを組み立てる純粋な関数と、作業ディレクトリの`node_modules/.bin/graphql-codegen`を`--config codegen.config.ts --check`で起動する入口(`import.meta.main`)に分けて作る。Node.jsの組み込みモジュールだけを読み込む。client・adminの`graphql:check`を`bun ./lib/config/codegen-check.ts`に替える
   - `coding/001`のスクリプト契約の表の`graphql:check`の行に、GraphQLの操作の生成物を持つアプリが再実行すべき生成コマンドを示して失敗することを加え、オンボーディングのコマンドの表の`graphql:check`の説明を合わせる。案内は開発者向けのコマンドの出力のため文言規則の対象外である
