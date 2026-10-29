@@ -6,10 +6,11 @@
 .dev.vars
 .dev.vars.*
 
-# OpenTofuの状態ファイル・変数ファイル(シークレットを含む)
+# OpenTofuの状態ファイル・計画ファイル・変数ファイル(シークレットを含む)
 .terraform
 *.tfstate
 *.tfstate.backup
+*.tfplan
 *.tfvars
 *.tfvars.json
 *.auto.tfvars

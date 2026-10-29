@@ -271,6 +271,7 @@ scripts/delivery/
 - `apps/api/test/config/wrangler-config.unit.test.ts` — stagingの`database_id`の期待値(api・eventの両方を確かめる)を、識別子の反映(tasks 9.2)と同じ変更で反映した値に改める。prodの期待値は仮の値のまま(改訂4)。
 - `apps/client/test/config/wrangler-config.unit.test.ts`・`apps/admin/test/config/wrangler-config.unit.test.ts` — stagingの`TURNSTILE_SITE_KEY`(clientは`WEB_ANALYTICS_TOKEN`も)の期待値を、識別子の反映(tasks 9.2)と同じ変更で反映した値に改める。prodの期待値は仮の値のまま(改訂4)。
 - `e2e/client/system-status.e2e.test.ts`・`e2e/admin/system-status.e2e.test.ts` — テストに`@smoke`タグを付ける(内容は変えない)。
+- `.gitignore`・`gitignore.unit.test.ts`(ルート) — 計画のファイル`*.tfplan`をGit管理外にし、OpenTofuの状態・計画・変数・クラッシュログが管理外で、プロバイダのロックファイルが管理対象であることを単体テストで確かめる。実装前のギャップ分析(G11)の後に、本specの実装に先立って反映済みである(改訂4)。
 - `docs/GUIDES/tech/external/001-email-sending.md` — 「購読とQueueの作成」と「送信ドメインの登録」「送信内容のプレビューを無効にする」の管理画面の手順を、IaC定義(送信ドメイン・プレビューの無効化・Queue)とデプロイのパイプライン(購読)が行う旨と、`infra/006`・`infra/007`へのリンクに改める。デプロイ先の環境で手作業により作る手順は残さない(改訂4)。
 - `package.json`(ルート) — `delivery`・`infra:check`・`infra:fmt`のスクリプトを加える。
 - `docs/GUIDES/tech/security/001-secret-management.md` — 「IaCで使うシークレット」に起動前の値(パスフレーズ・保管先の鍵)をCLIで注入する経路と、デプロイ時のWorkerのシークレットの反映を追記する。
@@ -740,12 +741,12 @@ output "email_sending_subdomain_id" { value = cloudflare_email_sending_subdomain
 
 ##### Service Interface
 
-| 呼び出し                                                                                                          | 前提の環境変数                                                                            | 結果                     |
-| ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------ |
-| `tofu -chdir=apps/infra/live init -input=false -reconfigure -backend-config=../backends/<env>.s3.hcl`             | `TF_VAR_state_access_key_id`・`TF_VAR_state_secret_access_key`・`TF_VAR_state_passphrase` | 状態の保管先へ接続       |
-| `tofu ... plan -input=false -lock-timeout=5m -var environment=<env> [-exclude=module.worker_routing] -out=<計画>` | 上記+`INFISICAL_AUTH_METHOD`・`INFISICAL_MACHINE_IDENTITY_ID`・`INFISICAL_AUTH_JWT`       | 暗号化された計画ファイル |
-| `tofu ... apply -input=false -lock-timeout=5m <計画>`                                                             | 同上                                                                                      | 資源の更新               |
-| `tofu ... output -json resource_ids`                                                                              | 状態の接続の3つ                                                                           | 秘密でない識別子のJSON   |
+| 呼び出し                                                                                                                | 前提の環境変数                                                                            | 結果                                                                       |
+| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `tofu -chdir=apps/infra/live init -input=false -reconfigure -backend-config=../backends/<env>.s3.hcl`                   | `TF_VAR_state_access_key_id`・`TF_VAR_state_secret_access_key`・`TF_VAR_state_passphrase` | 状態の保管先へ接続                                                         |
+| `tofu ... plan -input=false -lock-timeout=5m -var environment=<env> [-exclude=module.worker_routing] -out=<env>.tfplan` | 上記+`INFISICAL_AUTH_METHOD`・`INFISICAL_MACHINE_IDENTITY_ID`・`INFISICAL_AUTH_JWT`       | 暗号化された計画ファイル(`apps/infra/live/<env>.tfplan`。Git管理外。改訂4) |
+| `tofu ... apply -input=false -lock-timeout=5m <env>.tfplan`                                                             | 同上                                                                                      | 資源の更新                                                                 |
+| `tofu ... output -json resource_ids`                                                                                    | 状態の接続の3つ                                                                           | 秘密でない識別子のJSON                                                     |
 
 **Implementation Notes**
 

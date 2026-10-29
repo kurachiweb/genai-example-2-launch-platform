@@ -504,4 +504,6 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - G12: design.mdのExisting Architecture Analysisと本書のSummaryを、上流の実装が完了した状態に改めた。
 - tech-stack.mdのCI/CDの節の「Infisical(staging環境)を注入」を、決定Q4のとおりdevに改め、CI内のE2Eとstagingのスモークテストを加えた。
 
-G4(`frontend-lib`の扱い)・G10(スモークテストの範囲)・G11(計画のファイルの除外)は、選択肢Cのとおり実装で吸収し、タスク9.1で設計へ反映する。
+- G11: 開発者の指示(2026-10-29)により実装前に対応した。計画のファイルの名前を`apps/infra/live/<env>.tfplan`に決めてdesign.mdの`tofu`の呼び出しに書き、`.gitignore`に`*.tfplan`を加えた。ルートの`gitignore.unit.test.ts`で、OpenTofuの状態・計画・変数・クラッシュログが管理外で、`.terraform.lock.hcl`が管理対象であることを確かめる(先に計画のファイルの判定だけが失敗することを確かめてから`.gitignore`を直した)。
+
+G4(`frontend-lib`の扱い)・G10(スモークテストの範囲)は、選択肢Cのとおり実装で吸収し、タスク9.1で設計へ反映する。
