@@ -87,7 +87,7 @@
     ```
 
     - `apps/db`と`apps/backend-lib`は、`apps/api`・`apps/event`へ`db`・`lib`として配置される共有ディレクトリである(「[共有ディレクトリの配置先](project-values.md#共有ディレクトリの配置先)」)。`apps/backend-lib`は依存パッケージを持たず、配置先のアプリの依存パッケージで動く。`apps/db`の依存パッケージは、`apps/db`で実行するマイグレーションの生成に使う。
-    - `apps/frontend-lib`は、`apps/client`・`apps/admin`へ`lib`として配置される共有ディレクトリである。自身の依存パッケージで静的解析・テスト・カタログ(Storybook)を動かし、配置先では`apps/client`・`apps/admin`の依存パッケージで動く。ルートの整形検査(`bun run format:check`)は`apps/frontend-lib`の整形のプラグインを読み込むため、`apps/frontend-lib`の`bun install`の前は失敗する。
+    - `apps/frontend-lib`は、`apps/client`・`apps/admin`へ`lib`として配置される共有ディレクトリである。自身の依存パッケージで静的解析・テスト・カタログ(Storybook)を動かし、配置先では`apps/client`・`apps/admin`の依存パッケージで動く。ルートの整形検査(`bun run format:check`)は`apps/frontend-lib`・`apps/client`・`apps/admin`の整形の設定がそれぞれの`node_modules`から整形のプラグインを読み込むため、この3つの`bun install`の前は失敗する。
     - 依存パッケージの版の追加・更新を含むコミットを取り込んだら、該当するディレクトリで`bun install`を再実行する。
 
 11. コンテナ内: シークレットをInfisicalに登録する(初回のみ、開発者の手作業)
