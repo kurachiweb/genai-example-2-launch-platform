@@ -658,9 +658,9 @@
   - _Boundary: BrowserObservability, FrontendServerEntry_
   - _Requirements: 13.2, 13.4_
 
-- [ ] 12.13 開発サーバーとビルド後のプレビューの両方でE2Eを続けて実行する
+- [x] 12.13 開発サーバーとビルド後のプレビューの両方でE2Eを続けて実行する
   - 前提: dev-toolingの10.1(ルートの`test:e2e:dev-and-preview`)が完了していること。完了していなければ止めて報告する
-  - APIサーバーとイベントサーバーを起動した状態で、シークレットの注入の下でルートの`bun run test:e2e:dev-and-preview`を実行し、開発サーバーとビルド後のプレビューの両方で本specのE2Eが成功することを確かめる
+  - APIサーバーを起動した状態で(スモークテストはイベントサーバーを使わない)、シークレットの注入の下でルートの`bun run test:e2e:dev-and-preview`を実行し、開発サーバーとビルド後のプレビューの両方で本specのE2Eが成功することを確かめる
   - `docs/onboardings/README.md`の「スモークテスト」の節と`frontend/002`の「開発時とデプロイ前の起動」に、両方の起動で続けて実行するコマンドと前提(APIサーバーを先に起動し、client・adminは起動しないでおく)を書く。`frontend/002`にはプロジェクト名と固有値を含めない
   - 完了状態: ルートのコマンドで両方の起動のE2Eが成功し、オンボーディングと`frontend/002`の記述がコマンドと一致する
   - _Depends: 12.9, 12.11, dev-toolingの10.1_
@@ -753,3 +753,4 @@
 - 12.9(結果): E2Eにclient 2件・admin 3件を足し、到達確認を含めて25件(スモークテストは23件)になった(8.2の記録の件数はその時点の値)。静的なファイルの検査はビルド後の対象だけで行い、開発サーバーでは確認の省略の注記を残す。ハイドレーションの後の取得の検査のため、共通の補助`recheckFromBrowser`は再確認の案内が表示されている間だけ押し、案内の消失と応答の両方を待つ形にした。開発サーバーでE2Eを並列に多く回すと、機械の負荷でworkerdが落ちることがある(`--workers=2`では安定)。
 - 12.10(結果): テストが実際の欠陥を見つけ、`Button`・`Badge`・`TabsTrigger`の`whitespace-nowrap`と固定の高さをやめて`h-fit min-h-*`にし(`Button`は`max-w-full shrink-0`、`TabsList`は`flex-wrap`)、`DialogFooter`(640px以上)と利用者側・管理者側のヘッダーの右側の部品を次の行へ折り返すようにした。5.1の記録の「ボタン・バッジは`whitespace-nowrap`で、長くなる箇所は`whitespace-normal h-auto`を付ける」案内はこれで置き換わり、部品が既定で折り返す。1行の時の寸法は変わらない(タブのトリガーの高さだけ29pxから30px)。`Button`は縮まないため、折り返さない`flex`の親に複数を並べない(005)。はみ出しの判定の補助は`apps/frontend-lib/test/overflow.ts`(`elementsBeyondViewportEdges`は画面の左右の端、`elementsOverflowingContainer`・`elementsWithClippedContent`・`hasHorizontalScroll`)にまとめた。レビューの差し戻しは2回(横に並べたボタンと左端のはみ出しの見逃し、`DialogFooter`の水平展開の漏れ)。
 - 12.11(結果): R12.4は本物の`routes/system/status.tsx`の`Route.options`を`test/page-router.tsx`(ルーターの文脈を渡せる形にした)の経路へ写し、`executeGraphQL`だけを偽にして、prodでは存在しないページの表示と取得0回、staging・localでは疎通確認の画面と取得1回を確かめる。限界: ブラウザ側の読み込みには状態コードが無く、`beforeLoad`の`notFound()`でサーバー側の描画が404を返すことはTanStack Startの挙動に頼り、自動では確かめていない(存在しない経路の404はE2Eが状態コードまで確かめる。prodの実際の404はデプロイ後に人が確かめる)。本物の経路を読むテストは初回の事前バンドルでサーバー専用のパッケージを見つけて失敗するため、client・adminの`vitest.browser.config.ts`の`optimizeDeps.exclude`に`@tanstack/react-start/server`を加えた。
+- 12.8(結果、f8e577b): ルートの`config/local-state-path.unit.test.ts`が、client・adminの`vite.config.ts`の`cloudflare()`の`persistState`(最上位の`const`の文字列まで辿る)と、api・eventの`package.json`の全スクリプトの`--persist-to`(空白区切りと`=`区切り)を`typescript`の構文木と文字列から読み、すべて同じ保存先であることを確かめる。読み取れない形はファイルと理由を示して失敗する。他のアプリのファイルは読み込まない。オンボーディングの手順12がこのテストを参照する(12.13)。

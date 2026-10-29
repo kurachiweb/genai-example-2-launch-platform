@@ -36,6 +36,17 @@ vite build && vite preview
 - `vite preview`は、ビルドが出力したWrangler設定(`dist/server/wrangler.json`)で動く。Wrangler設定を変えたらビルドし直す。デプロイ先の環境を指定したビルドの扱いは「[デプロイ先の環境のビルド時の指定](#デプロイ先の環境のビルド時の指定)」に従う。
 - Wrangler設定がデプロイ先の環境でシークレットを必須とする(`secrets.required`)場合、注入せずにビルド・プレビューするとWranglerが不足を警告し、ローカル用のシークレットのファイルの作成を案内する。シークレットのファイルは作らず、シークレットの注入を経由して起動する。ローカル環境の設定がシークレットを使わなければ、警告は動作に影響しない。
 
+バンドルに起因する不具合を見逃さないよう、E2Eテストは両方の起動で確かめる。ルートの次のコマンドは、E2Eの対象のアプリを開発サーバーで起動してE2Eテストを実行し、止めてからビルドしてビルド後のプレビューで起動し、同じE2Eテストを続けて実行する。
+
+```sh
+bun run test:e2e:dev-and-preview
+```
+
+- 前提として、Service Bindingsで接続する相手のWorker(APIサーバーなど)を先に起動しておく(「[別プロセスのWorkerへのService Bindings](#別プロセスのworkerへのservice-bindings)」)。このコマンドは相手のWorkerを起動しない。
+- E2Eの対象のTanStack Startアプリは起動しないでおく。対象のポートが使われていると、何も起動せずに失敗する。
+- コマンド全体をシークレットの注入の下で実行し、起動するアプリへシークレットを引き継ぐ。
+- 実行の順序・結果の表示・中断の扱いは「[開発サーバーとビルド後のプレビューの両方での実行](../testing/001-test-strategy.md#開発サーバーとビルド後のプレビューの両方での実行)」に従う。
+
 ### Wranglerのローカル状態への接続
 
 TanStack Startアプリの開発サーバーからWranglerのローカル状態へ接続するには、`@cloudflare/vite-plugin`を使用し、`vite.config.ts`で`cloudflare({ persistState: { path: '<ローカル状態の保存先>' } })`と記述する。
