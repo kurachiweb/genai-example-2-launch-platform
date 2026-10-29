@@ -642,7 +642,7 @@
   - _Boundary: UiPrimitives, SiteLayout, AdminLayout_
   - _Requirements: 7.2, 9.9_
 
-- [ ] 12.11 (P) 管理者側の画面シェルと疎通確認の経路の公開の判定をブラウザテストで確かめる
+- [x] 12.11 (P) 管理者側の画面シェルと疎通確認の経路の公開の判定をブラウザテストで確かめる
   - R10.8: `admin-layout.browser.test.tsx`へ、`footer`要素と`contentinfo`のランドマークが0件で、ヘッダーと本文のランドマークがあることを書く
   - R12.4: client・adminの`test/page-router.tsx`がルーターの文脈(環境の種類など`RouterContext`の値)を受け取れるようにし、`test/status-route.browser.test.tsx`(新規)で、本物の`routes/system/status.tsx`の`Route.options`の`beforeLoad`・`loader`・`component`(取得は偽の結果)を使い、`prod`なら存在しないページの表示、`staging`と`local`なら疎通確認の画面になることを確かめる
   - 既存の実装が満たしていれば成功してよい。失敗すれば原因を直す
@@ -752,3 +752,4 @@
 - 12.4(結果): `RevalidationState`に`isFieldTouched: (path: FieldPath<T>) => boolean`(`useAppForm`が公開の`getFieldState(path).isTouched`で答える)と`isFieldArray`(`control._names.array.has(path)`)を加えた。触れた欄の候補は`values`の入れ子(配列と`Object`の値の中)の全経路のうち`!isFieldArray && isFieldMounted && isFieldTouched`の経路で、エラーの付いた経路と重複を除いて合わせてから、描かれていてサーバーのエラーの付いた経路を除く。一覧の経路を外すのは、`rules`を持つ一覧の経路が`_f.mount`真で、中の欄を触れると`isTouched`も真になり、`trigger`が一覧のエラーの部分木を置き換えてサーバーのエラーを消し、触れていない中の欄にエラーを出すため(レビューの差し戻し1回)。`getFieldState`が購読を増やさず購読の無いフォームでも触れた状態を答えることを版の番人の一覧に足した。`form-unmatched-fields.browser.test.tsx`は798行のため、12.5のブラウザテストは`form.browser.test.tsx`に置く。
 - 12.9(結果): E2Eにclient 2件・admin 3件を足し、到達確認を含めて25件(スモークテストは23件)になった(8.2の記録の件数はその時点の値)。静的なファイルの検査はビルド後の対象だけで行い、開発サーバーでは確認の省略の注記を残す。ハイドレーションの後の取得の検査のため、共通の補助`recheckFromBrowser`は再確認の案内が表示されている間だけ押し、案内の消失と応答の両方を待つ形にした。開発サーバーでE2Eを並列に多く回すと、機械の負荷でworkerdが落ちることがある(`--workers=2`では安定)。
 - 12.10(結果): テストが実際の欠陥を見つけ、`Button`・`Badge`・`TabsTrigger`の`whitespace-nowrap`と固定の高さをやめて`h-fit min-h-*`にし(`Button`は`max-w-full shrink-0`、`TabsList`は`flex-wrap`)、`DialogFooter`(640px以上)と利用者側・管理者側のヘッダーの右側の部品を次の行へ折り返すようにした。5.1の記録の「ボタン・バッジは`whitespace-nowrap`で、長くなる箇所は`whitespace-normal h-auto`を付ける」案内はこれで置き換わり、部品が既定で折り返す。1行の時の寸法は変わらない(タブのトリガーの高さだけ29pxから30px)。`Button`は縮まないため、折り返さない`flex`の親に複数を並べない(005)。はみ出しの判定の補助は`apps/frontend-lib/test/overflow.ts`(`elementsBeyondViewportEdges`は画面の左右の端、`elementsOverflowingContainer`・`elementsWithClippedContent`・`hasHorizontalScroll`)にまとめた。レビューの差し戻しは2回(横に並べたボタンと左端のはみ出しの見逃し、`DialogFooter`の水平展開の漏れ)。
+- 12.11(結果): R12.4は本物の`routes/system/status.tsx`の`Route.options`を`test/page-router.tsx`(ルーターの文脈を渡せる形にした)の経路へ写し、`executeGraphQL`だけを偽にして、prodでは存在しないページの表示と取得0回、staging・localでは疎通確認の画面と取得1回を確かめる。限界: ブラウザ側の読み込みには状態コードが無く、`beforeLoad`の`notFound()`でサーバー側の描画が404を返すことはTanStack Startの挙動に頼り、自動では確かめていない(存在しない経路の404はE2Eが状態コードまで確かめる。prodの実際の404はデプロイ後に人が確かめる)。本物の経路を読むテストは初回の事前バンドルでサーバー専用のパッケージを見つけて失敗するため、client・adminの`vitest.browser.config.ts`の`optimizeDeps.exclude`に`@tanstack/react-start/server`を加えた。

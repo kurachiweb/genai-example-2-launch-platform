@@ -237,6 +237,21 @@ describe('AdminLayout', () => {
         .toHaveTextContent('本文の見出し');
     });
 
+    test.each([
+      ['初版の区画', ADMIN_LAYOUT_SLOTS],
+      ['差し込んだ区画', FILLED_SLOTS],
+    ])(
+      '%sで、ヘッダーと本文のランドマークを持ち、フッターの要素とランドマークを持たない',
+      async (_name, slots) => {
+        await renderLayout(slots);
+
+        await expect.element(page.getByRole('banner')).toBeVisible();
+        await expect.element(page.getByRole('main')).toBeVisible();
+        expect(layoutRoot().querySelectorAll('footer')).toHaveLength(0);
+        expect(page.getByRole('contentinfo').elements()).toHaveLength(0);
+      },
+    );
+
     test.each(COLOR_SCHEMES)(
       '配色が%sのとき、スキップリンクをEnterで選ぶと本文へフォーカスが移り、リングの色の輪郭で示す',
       async (scheme) => {
