@@ -323,6 +323,28 @@
   - _Depends: 5.3_
   - _Requirements: 6.11, 6.12_
 
+- [ ] 11. frontend-platformの第5回の判断の反映(承認後の改訂3)
+- [ ] 11.1 E2Eテストの並列数に上限を設け、環境の変数で上書きできるようにする
+  - 先に、`e2e/support/playwright-config.unit.test.ts`へ、`createPlaywrightConfig`の結果の`workers`が受け取った並列数になることと、`resolveE2EWorkers`が`E2E_WORKERS`の未設定と空文字で`DEFAULT_E2E_WORKERS`(2)、`'1'`・`'4'`でその値を返し、`'0'`・`'-1'`・`'1.5'`・`'50%'`・`'abc'`で変数の名前と受け付ける形を示して例外を投げることを確かめるテストを書き、失敗を確かめる
+  - `e2e/support/playwright-config.ts`に`DEFAULT_E2E_WORKERS`と`resolveE2EWorkers`を加え、`createPlaywrightConfig`に第3引数`workers`を加えて設定の`workers`にする。ルートの`playwright.config.ts`は`resolveE2EWorkers(process.env)`を渡す結線だけを加える。ultras-subscriptionの10.1が後から組み立てを変える場合に並列数の引数を保てるよう、design.mdのE2EConfigの契約(Service Interfaceの宣言と組み立ての説明)が実装と一致することを確かめる
+  - `testing/001`のE2Eの節に、並列数の上限(2)と理由(開発サーバーでの並列の実行の負荷で実行環境が落ちることがある)、`E2E_WORKERS`による上書き、ローカルとCIは変数を設定せず同じ上限で実行すること、コマンドの`--workers`の引数が設定より優先されることを、プロジェクト名と固有値を含めずに書く。`docs/onboardings/README.md`のE2Eの説明(コマンドの表と「スモークテスト」の節)に、上書きの変数と既定の上限を書く
+  - 完了状態: ルートの単体テスト(カバレッジ80%以上)と一括検査が成功し、`E2E_WORKERS`を設定せずに`bun run test:e2e`を実行するとPlaywrightの表示の並列数が2で、`E2E_WORKERS=1`で1になり、`testing/001`とオンボーディングの記述が実装と一致する。両方の起動での成功はfrontend-platformの13.2で確かめる
+  - _Boundary: E2EConfig, TestingDocs_
+  - _Depends: 5.3_
+  - _Requirements: 6.13_
+
+- [ ] 12. frontend-platformの第5回の判断49による条件付きの反映(承認後の改訂4)
+- [ ] 12.1 両方のE2Eのコマンドの後に、ビルドが書き出したシークレットのファイルを消す
+  - 前提: frontend-platformの13.1の調査で、ファイルを書かずにプレビューへシークレットを渡す方法が見つからず、消す経路に決まったこと。見つかって置き換えた場合は実施せず、要件6.14・design.mdの該当の記述・本タスクを取り消し、取り消したことと理由を申し送りに書いて完了にする。13.1が完了していなければ止めて報告する
+  - 注意: Claude設定のdenyにより、Wranglerの開発用の変数のファイル名を含むシェルのコマンド(読む・消す・一覧)は拒否される。シークレットの保護のための拒否のため、globや文字列の組み立てで回避しない。実物のビルド結果のファイルの確認と、既に書き出されたファイルの削除は、開発者の手動の作業として報告する
+  - 先に、`scripts/tooling/e2e-dev-and-preview.unit.test.ts`へ、一時ディレクトリに置いた偽のビルド結果(`apps/<対象名>/dist/server/`)と偽のファイル(値は偽物)で、成功・開発サーバーのE2Eの失敗・プレビューのE2Eの失敗・ビルドの失敗・中断のいずれでも、すべての対象を止めた後に各対象のそのファイルだけが消えて同じディレクトリの他のファイルが残ること、ファイルが無い対象で失敗しないこと、消せない時に対象とパスだけを示して内容を表示せず終了コード1になることを確かめるテストを書き、失敗を確かめる。偽物は`test-support/dual-mode-e2e-fixtures.ts`に置く
+  - `e2e-dev-and-preview.ts`の`runDualModeE2E`に、計画の各対象のビルド結果からそのファイルを消す処理(削除は`DualModeDependencies`から注入できる部品にする)を、すべての対象を止めた後の最後の段階として加える。結果の表に削除の段階を示す
+  - `testing/001`の「開発サーバーとビルド後のプレビューの両方での実行」の節に、ビルドが書き出したシークレットのファイルをコマンドの最後に消すことと、要件6.11(シークレットをファイルに書き出さない)の例外であることを、プロジェクト名と固有値を含めずに書く。`security/001`・オンボーディング・`frontend/002`の例外の記述はfrontend-platformの13.1が書くため、記述が食い違わないことを確かめる
+  - 完了状態: ルートの単体テスト(カバレッジ80%以上)と一括検査が成功し、`testing/001`の記述が実装と一致する。実際の両方の起動の後にファイルが残らないことは、frontend-platformの13.2で開発者の手動の確認として確かめる
+  - _Boundary: E2EDualModeRunner, TestingDocs_
+  - _Depends: 10.1, frontend-platformの13.1_
+  - _Requirements: 6.11, 6.14_
+
 ## Implementation Notes
 
 - 1.1: ルートは`@playwright/test`だけを直接宣言し、`playwright`・`playwright-core`は`@playwright/test`の完全固定により1.63.0へ推移的に決まる。主要パッケージ一覧の文書化(7.1・7.3)ではこの点を明記する。
