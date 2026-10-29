@@ -13,6 +13,7 @@ import {
   parseResourceCatalog,
   resourceCatalogPath,
 } from './catalog/resource-catalog.ts';
+import { readExpectedToolVersions } from './core/tool-versions.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..');
 
@@ -150,5 +151,28 @@ describe('検査用の主体の設定', () => {
     const result = checkSecretsSettings(readRepoText(INFISICAL_CONFIG_PATH));
 
     expect(result.ok && result.settings.environment).toBe('dev');
+  });
+});
+
+describe('ツールの版', () => {
+  test('Dockerfile・ルートモジュールの版の指定・ルートのpackage.jsonから、技術スタックの表の版を読める', () => {
+    const result = readExpectedToolVersions({
+      dockerfile: readRepoText('Dockerfile'),
+      liveVersionsTf: readRepoText('apps/infra/live/versions.tf'),
+      rootPackageJson: readRepoText('package.json'),
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      versions: {
+        bun: '1.4.4',
+        node: '26.12.1',
+        opentofu: '1.13.2',
+        infisicalCli: '0.44.8',
+        wranglerTool: '4.152.0',
+        mailpit: '1.32.0',
+        playwright: '1.64.1',
+      },
+    });
   });
 });

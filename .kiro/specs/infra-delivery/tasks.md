@@ -55,7 +55,7 @@
   - _Boundary: WranglerConfigReader, ConfigContractRules_
   - _Requirements: 2.3, 11.1, 11.2, 11.3, 11.4, 11.7_
 
-- [ ] 3.2 (P) ワークフローの規則・ツールの版の照合・デプロイの段階の定数を作る
+- [x] 3.2 (P) ワークフローの規則・ツールの版の照合・デプロイの段階の定数を作る
   - 先に、YAMLの例で規則W1〜W10の各違反(SHAで固定していないアクション、最上位の権限の欠落と過大、`id-token`と`pull-requests`の書き込みの付与先、`pull_request_target`、チェックアウトの資格情報の保持、入力とイベントの値の直接の展開、デプロイのジョブの環境と直列化の欠落、段階の順の入れ替え、ツールの版の不一致、総合結果のジョブの`needs`の不足)と、Dockerfile・ルートモジュールの版の指定・ルートの`package.json`から期待する版を読むことを確かめる単体テストを書く
   - デプロイの段階は設計の順の定数として1か所に置く
   - 完了状態: 単体テストが成功し、各ファイルの行と関数のカバレッジが80%以上になる
@@ -293,3 +293,5 @@
 - 2.3: OpenTofu 1.13.2はbackend設定にsensitiveな変数を使うと`tofu init`で拒否する(`validate`・`tofu test`では現れない)。stateの保管先の鍵はS3 backend専用の環境変数`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`で渡し、Infisicalの`/ci/tofu`のキー名もこれにする(2026-10-29に開発者が決定)。5.1のTofuRunnerは`/ci/tofu`の値をそのまま子プロセスの環境変数へ渡し、パスフレーズは`TF_VAR_state_passphrase`で渡す。backendの`endpoints.s3`はアカウントIDの仮の値を含む。`check "catalog_environment"`は警告で止まらない(9.1で`precondition`化を検討)。`live.tftest.hcl`は`web_analytics_host`・`email_sending_domain`・`account_id`・`zone_id`・`jurisdiction`の結線を確かめていない。モックのproviderは`ephemeral`に対応する。
 - 2.4: `infra-check`は`apps/infra/modules/*/*.tf`を列挙してモジュールを見つけ、fmt→`live`→各モジュール(名前順)でディレクトリごとに`init -backend=false -lockfile=readonly -input=false`→`validate`→(テストがあれば)`test`を最初の失敗まで実行する。手順の組み立ては`core/infra-check-plan.ts`(設計に無い追加。9.1でFile Structure Planへ反映)。
 - 3.1: `readEffectiveConfig(jsoncText, env)`・`checkConfigContract(input)`は文字列・値を受け取る(読み込みは3.3の`commands`)。`EffectiveWranglerConfig`に設計に無い`queueConsumers`(C8用)と`sourcePaths`(継承するキーの違反のパス)を加え、C7の仮の値の除外は資源一覧の`accountId`が仮でかつ接続先がR2の形の時だけにした(本物のaccountIdに対する全桁0の接続先は違反)。いずれも9.1でdesign.mdへ反映する。backendのHCLは`readBackendSettings`の最小の読み取り。7.1の前の実リポジトリは両環境で違反14件(C3×6・C5×8)。
+- 3.2(6.xへの制約): W9はワークフローの版を(1)setupアクションの入力`bun-version`・`node-version`・`tofu_version`、(2)Dockerfileと同名の環境変数(`BUN_VERSION`・`NODE_VERSION`・`OPENTOFU_VERSION`・`INFISICAL_CLI_VERSION`・`WRANGLER_VERSION`・`MAILPIT_VERSION`・`PLAYWRIGHT_VERSION`。Bunは`BUN_IMAGE_TAG`でなく`BUN_VERSION`)、(3)`run`中の`wrangler@<版>`・`playwright@<版>`・`@playwright/test@<版>`から読む。複合アクションはplaywright以外の6ツールの版の宣言が必須。W7は`concurrency.group: deploy-${{ inputs.environment }}`と`cancel-in-progress: false`の明示を求める。W8は`deploy.yml`で`id`を持つ手順の並びが`DEPLOY_STAGES`と完全一致することを求める(段階以外の手順に`id`を付けない)。W1はローカル参照`./`を除外し、`docker://`はダイジェスト固定でも違反。W6は`run`の`${{ inputs.* }}`・`${{ github.event.* }}`だけを見る。`checks.yml`・`deploy.yml`が無い間はW7・W8・W10の違反が出る。
+- 3.2: `ExpectedToolVersions`に設計に無い`node`を加え、`scalarText`・`toolVersionsInStep`・`toolVersionsInEnv`・`WorkflowPolicyInput`・`WORKFLOWS_DIR`・`LIVE_VERSIONS_TF_PATH`等をexportした(9.1でdesign.mdへ反映)。providerの版の完全固定は本モジュールでは見ない。
