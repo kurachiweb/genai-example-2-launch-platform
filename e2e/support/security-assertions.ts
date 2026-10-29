@@ -132,14 +132,19 @@ const headerRulesFor = (target: SecurityHeaderTarget): readonly HeaderRule[] =>
     ? HEADER_RULES.filter(({ name }) => name !== CACHE_CONTROL_HEADER_NAME)
     : HEADER_RULES;
 
+const lowerCaseHeaderMap = (
+  headers: Readonly<Record<string, string>>,
+): ReadonlyMap<string, string> =>
+  new Map(
+    Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]),
+  );
+
 // 全応答に共通のセキュリティヘッダーと、ページならnonce付きのCSPを確かめ、問題を人が読める文で返す
 export function findSecurityHeaderProblems(
   headers: Readonly<Record<string, string>>,
   target: SecurityHeaderTarget,
 ): readonly string[] {
-  const lowerCaseHeaders = new Map(
-    Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]),
-  );
+  const lowerCaseHeaders = lowerCaseHeaderMap(headers);
   const headerProblems = headerRulesFor(target).flatMap(
     ({ name, displayName, isValid }) => {
       const value = lowerCaseHeaders.get(name);
@@ -253,6 +258,51 @@ export function staticScriptUrlsOf(
     .filter((url) => url.origin === origin && !isDevServerModule(url))
     .map((url) => url.href);
   return [...new Set(urls)];
+}
+
+const BUILT_ASSET_SCRIPT_PATH_PATTERN = /^\/assets\/.+\.js$/u;
+
+// ビルドがハッシュ付きの名前で`/assets/`の下へ出力したスクリプトのURLを返す。開発サーバーのHTMLには現れない
+export function builtAssetScriptUrlsOf(
+  html: string,
+  pageUrl: string,
+): readonly string[] {
+  return staticScriptUrlsOf(html, pageUrl).filter((url) =>
+    BUILT_ASSET_SCRIPT_PATH_PATTERN.test(new URL(url).pathname),
+  );
+}
+
+// ハッシュ付きの名前のファイルは内容が変われば名前も変わるため、再検証なしの長期のキャッシュを許していることを確かめる
+export function findImmutableCacheProblems(
+  headers: Readonly<Record<string, string>>,
+): readonly string[] {
+  const cacheControl = lowerCaseHeaderMap(headers).get(
+    CACHE_CONTROL_HEADER_NAME,
+  );
+  if (cacheControl === undefined) {
+    return ['Cache-Controlがありません'];
+  }
+  return directiveTokensOf(cacheControl, /,/u).includes('immutable')
+    ? []
+    : [`Cache-Controlにimmutableがありません: ${cacheControl}`];
+}
+
+const ROBOTS_HEADER_NAME = 'x-robots-tag';
+
+// Workerは全応答にno-storeを付け、検索から除く対象にはX-Robots-Tagも付けるため、どちらも無いことを静的なファイルがWorkerを通らずに配信された証拠とする
+export function findWorkerHeaderTraces(
+  headers: Readonly<Record<string, string>>,
+): readonly string[] {
+  const lowerCaseHeaders = lowerCaseHeaderMap(headers);
+  const cacheControl = lowerCaseHeaders.get(CACHE_CONTROL_HEADER_NAME);
+  const robots = lowerCaseHeaders.get(ROBOTS_HEADER_NAME);
+  return [
+    ...(cacheControl !== undefined &&
+    directiveTokensOf(cacheControl, /,/u).includes('no-store')
+      ? [`Cache-Controlにno-storeがあります: ${cacheControl}`]
+      : []),
+    ...(robots === undefined ? [] : [`X-Robots-Tagがあります: ${robots}`]),
+  ];
 }
 
 const hostOf = (src: string): string | undefined => {

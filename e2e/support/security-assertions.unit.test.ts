@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import {
+  builtAssetScriptUrlsOf,
   type CspViolation,
+  findImmutableCacheProblems,
   findParserBlockingScriptTags,
   findScriptTagsWithoutNonce,
   findSecurityHeaderProblems,
+  findWorkerHeaderTraces,
   installCspViolationRecorder,
   readCspViolations,
   readParserBlockingScriptSources,
@@ -275,6 +278,93 @@ describe('staticScriptUrlsOf', () => {
     expect(
       staticScriptUrlsOf(html, 'http://localhost:48044/system/status'),
     ).toEqual([]);
+  });
+});
+
+describe('builtAssetScriptUrlsOf', () => {
+  test('同じオリジンの`/assets/`の下のJavaScriptのファイルだけを返す', () => {
+    const html = [
+      '<link rel="stylesheet" href="/assets/styles.css">',
+      '<link rel="modulepreload" href="/assets/main-BX1r2k.js">',
+      '<script type="module" async="" src="/assets/main-BX1r2k.js"></script>',
+      '<link rel="modulepreload" href="/assets/routes/status-CNhx4n.js">',
+      '<script type="module" src="/src/entry.js"></script>',
+      '<script type="module" src="/assets/main.mjs"></script>',
+      '<script src="https://cdn.example/assets/library.js" defer></script>',
+    ].join('');
+
+    expect(
+      builtAssetScriptUrlsOf(html, 'http://localhost:48044/system/status'),
+    ).toEqual([
+      'http://localhost:48044/assets/main-BX1r2k.js',
+      'http://localhost:48044/assets/routes/status-CNhx4n.js',
+    ]);
+  });
+
+  test('開発サーバーのHTMLのように`/assets/`の下のスクリプトが無ければ空の配列を返す', () => {
+    const html = [
+      '<script type="module" src="/@vite/client"></script>',
+      '<script type="module" async="" src="/@id/virtual:tanstack-start-dev-client-entry"></script>',
+    ].join('');
+
+    expect(
+      builtAssetScriptUrlsOf(html, 'http://localhost:48044/system/status'),
+    ).toEqual([]);
+  });
+});
+
+describe('findImmutableCacheProblems', () => {
+  test('Cache-Controlがimmutableを含めば問題は無い', () => {
+    expect(
+      findImmutableCacheProblems({
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      }),
+    ).toEqual([]);
+  });
+
+  test('Cache-Controlが無ければ問題として挙げる', () => {
+    expect(findImmutableCacheProblems({})).toEqual([
+      'Cache-Controlがありません',
+    ]);
+  });
+
+  test('Cache-Controlがimmutableを含まなければ値を添えて問題として挙げる', () => {
+    expect(
+      findImmutableCacheProblems({ 'cache-control': 'public, max-age=0' }),
+    ).toEqual(['Cache-Controlにimmutableがありません: public, max-age=0']);
+  });
+
+  test('immutableを含む別の語をimmutableとみなさない', () => {
+    expect(
+      findImmutableCacheProblems({ 'cache-control': 'x-not-immutable' }),
+    ).toHaveLength(1);
+  });
+});
+
+describe('findWorkerHeaderTraces', () => {
+  test('no-storeもX-Robots-Tagも無ければ問題は無い', () => {
+    expect(
+      findWorkerHeaderTraces({
+        'cache-control': 'public, max-age=31536000, immutable',
+        'x-content-type-options': 'nosniff',
+      }),
+    ).toEqual([]);
+  });
+
+  test('Cache-Controlが無くても問題は無い', () => {
+    expect(findWorkerHeaderTraces({})).toEqual([]);
+  });
+
+  test('Cache-Controlのno-storeとX-Robots-Tagを、ヘッダー名の大文字と小文字を区別せずに挙げる', () => {
+    expect(
+      findWorkerHeaderTraces({
+        'Cache-Control': 'private, NO-STORE',
+        'X-Robots-Tag': 'noindex, nofollow',
+      }),
+    ).toEqual([
+      'Cache-Controlにno-storeがあります: private, NO-STORE',
+      'X-Robots-Tagがあります: noindex, nofollow',
+    ]);
   });
 });
 

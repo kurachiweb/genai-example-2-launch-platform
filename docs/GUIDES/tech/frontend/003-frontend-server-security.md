@@ -358,6 +358,7 @@ import { StartClient } from '@tanstack/react-start/client';
 - `/*`は、すべての静的なファイルにセキュリティヘッダー・すべて拒否のPermissions-Policy・ページ以外のCSPを付ける。
 - `/assets/*`は、ビルドが内容のハッシュを名前に含めて出力するスクリプト・スタイルを、1年間・変更なしとして長期キャッシュさせる。`/*`ではキャッシュを指定せず、名前の変わらないファイル(`favicon.ico`など)は実行基盤の既定(`public, max-age=0, must-revalidate`)に任せる。
 - 値が共通部品の定数(`BASE_SECURITY_HEADERS`・`buildPermissionsPolicy({})`・`NON_PAGE_CONTENT_SECURITY_POLICY`)と一致し、経路のパターンがこの2つだけであることを、各アプリの単体テスト(`test/config/static-headers.unit.test.ts`)で確かめる。
+- 静的なファイルがWorkerを通らずに配信され、`/assets/*`が長期キャッシュされることは、ビルド後の対象のE2Eで確かめる(「[E2Eテストの設定](../testing/001-test-strategy.md#e2eテストの設定)」)。
 
 ## 検索除外
 

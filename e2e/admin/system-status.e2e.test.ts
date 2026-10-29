@@ -3,9 +3,12 @@ import { expect, test } from '@playwright/test';
 import { NOT_FOUND_TITLE } from '../../apps/frontend-lib/utilities/messages/state-messages.ts';
 import { SYSTEM_STATUS_TITLE } from '../../apps/frontend-lib/utilities/messages/system-status-messages.ts';
 import {
+  builtAssetScriptUrlsOf,
+  findImmutableCacheProblems,
   findParserBlockingScriptTags,
   findScriptTagsWithoutNonce,
   findSecurityHeaderProblems,
+  findWorkerHeaderTraces,
   installCspViolationRecorder,
   readCspViolations,
   readParserBlockingScriptSources,
@@ -17,9 +20,12 @@ import {
   annotateSkippedCheck,
   browserResultRegion,
   expectReachableResult,
+  FAVICON_PATH,
   MISSING_PAGE_PATH,
+  pageLoadResultRegion,
   RECHECK_TEST_TIMEOUT_MS,
   recheckFromBrowser,
+  recordRelayGraphQLRequests,
   RELAY_GRAPHQL_PATH,
   SENTRY_SDK_MARKER,
   serverResultRegion,
@@ -127,6 +133,77 @@ test.describe('管理者側の疎通確認の画面', () => {
         false,
       );
     }
+  });
+
+  test('ハイドレーションの後も再確認までは中継へ取得し直さず、表示した時の結果の見出しがサーバー側の描画のままである', async ({
+    page,
+  }) => {
+    test.setTimeout(RECHECK_TEST_TIMEOUT_MS);
+    const relayRequests = recordRelayGraphQLRequests(page);
+
+    await page.goto(SYSTEM_STATUS_PATH);
+    await expectReachableResult(serverResultRegion(page));
+    // ハイドレーションの完了の合図が無いため、再確認のボタンが操作できたこと(押した操作で再確認の案内が消えたこと)を完了とみなす
+    const recheckRequest = (await recheckFromBrowser(page)).request();
+    await expectReachableResult(browserResultRegion(page));
+
+    expect(
+      relayRequests().map((request) =>
+        request === recheckRequest
+          ? '再確認'
+          : `${request.method()} ${request.url()}`,
+      ),
+    ).toEqual(['再確認']);
+    await expectReachableResult(serverResultRegion(page));
+    await expect(pageLoadResultRegion(page)).toHaveCount(0);
+  });
+
+  test('ビルド後の対象でのみ、ビルドの成果物のスクリプトとファビコンをWorkerを通さずに配信し、成果物のスクリプトを長期にキャッシュさせる', async ({
+    page,
+    request,
+  }) => {
+    const response = await page.goto(SYSTEM_STATUS_PATH);
+    const html = (await response?.text()) ?? '';
+
+    const assetUrls = builtAssetScriptUrlsOf(html, page.url()).slice(0, 1);
+    if (assetUrls.length === 0) {
+      annotateSkippedCheck(
+        'ビルドの成果物のスクリプトが無い対象(開発サーバー)のため、静的なファイルがWorkerを通らずに配信されることの確認を飛ばした',
+      );
+    }
+    for (const url of assetUrls) {
+      const asset = await request.get(url);
+      expect(asset.ok(), url).toBe(true);
+      expect(findImmutableCacheProblems(asset.headers()), url).toEqual([]);
+      expect(findWorkerHeaderTraces(asset.headers()), url).toEqual([]);
+      expect(
+        findSecurityHeaderProblems(asset.headers(), 'static-file'),
+        url,
+      ).toEqual([]);
+      const favicon = await request.get(FAVICON_PATH);
+      expect(favicon.ok(), FAVICON_PATH).toBe(true);
+      expect(findWorkerHeaderTraces(favicon.headers()), FAVICON_PATH).toEqual(
+        [],
+      );
+      expect(
+        findSecurityHeaderProblems(favicon.headers(), 'static-file'),
+        FAVICON_PATH,
+      ).toEqual([]);
+    }
+  });
+
+  test('画面シェルにフッターとcontentinfoのランドマークを持たない', async ({
+    page,
+  }) => {
+    await page.goto(SYSTEM_STATUS_PATH);
+    await expect(
+      page.getByRole('heading', { level: 1, name: SYSTEM_STATUS_TITLE }),
+    ).toBeVisible();
+    await expect(page.getByRole('banner')).toBeVisible();
+    await page.waitForLoadState('load');
+
+    await expect(page.locator('footer')).toHaveCount(0);
+    await expect(page.getByRole('contentinfo')).toHaveCount(0);
   });
 
   test.describe('スクリプトを実行しないブラウザ', () => {
