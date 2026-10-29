@@ -48,7 +48,7 @@
   - _Requirements: 5.6, 6.6_
 
 - [ ] 3. 構成検査とワークフローの規則
-- [ ] 3.1 (P) Wrangler設定の実効値の読み取りと、資源一覧との照合の規則を作る
+- [x] 3.1 (P) Wrangler設定の実効値の読み取りと、資源一覧との照合の規則を作る
   - 先に、固定のWrangler設定の例で、継承するキー(名前・既定の公開サブドメイン・プレビューURL・ルート)と継承しないキー(D1・R2・Queue・Service Bindings・変数・シークレット)の実効値、規則C1〜C8の各違反(資源一覧に無い名前・参照されない資源・R2の管轄の欠落・Worker名とService Bindingsの不一致・公開URLの有効とルートの記載・apiとeventのD1の識別子の不一致・backend設定の食い違い・配信不能イベントの受け皿のconsumerの欠落)、仮の値を違反にしないことを確かめる単体テストを書く
   - 違反は規則・ファイル・項目・実際・期待の形で返す
   - 完了状態: 単体テストが成功し、各ファイルの行と関数のカバレッジが80%以上になる
@@ -292,3 +292,4 @@
 - 2.2: 2.3のルートモジュールは、資源一覧の`turnstile.hostnames`を`edge_services`の`turnstile.domains`へ、`hostnames.*.worker`(`workers`のキー)を`workers[<キー>].name`へ引き直して`worker_routing`の`service`へ渡す。`turnstile.mode`は`invisible`以外を変数の検証で拒否する(設計に無い追加。9.1でdesign.mdへ反映)。`cloudflare_workers_custom_domain`の非推奨`environment`を使わないこと、Turnstileの`prevent_destroy`、`outputs.tf`に`secret`が無いことは7.3でHCLを検査する。最初の適用後に、Turnstileの`domains`の順序とWeb Analyticsの`host`だけの登録で差分・拒否が無いか確かめる。
 - 2.3: OpenTofu 1.13.2はbackend設定にsensitiveな変数を使うと`tofu init`で拒否する(`validate`・`tofu test`では現れない)。stateの保管先の鍵はS3 backend専用の環境変数`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`で渡し、Infisicalの`/ci/tofu`のキー名もこれにする(2026-10-29に開発者が決定)。5.1のTofuRunnerは`/ci/tofu`の値をそのまま子プロセスの環境変数へ渡し、パスフレーズは`TF_VAR_state_passphrase`で渡す。backendの`endpoints.s3`はアカウントIDの仮の値を含む。`check "catalog_environment"`は警告で止まらない(9.1で`precondition`化を検討)。`live.tftest.hcl`は`web_analytics_host`・`email_sending_domain`・`account_id`・`zone_id`・`jurisdiction`の結線を確かめていない。モックのproviderは`ephemeral`に対応する。
 - 2.4: `infra-check`は`apps/infra/modules/*/*.tf`を列挙してモジュールを見つけ、fmt→`live`→各モジュール(名前順)でディレクトリごとに`init -backend=false -lockfile=readonly -input=false`→`validate`→(テストがあれば)`test`を最初の失敗まで実行する。手順の組み立ては`core/infra-check-plan.ts`(設計に無い追加。9.1でFile Structure Planへ反映)。
+- 3.1: `readEffectiveConfig(jsoncText, env)`・`checkConfigContract(input)`は文字列・値を受け取る(読み込みは3.3の`commands`)。`EffectiveWranglerConfig`に設計に無い`queueConsumers`(C8用)と`sourcePaths`(継承するキーの違反のパス)を加え、C7の仮の値の除外は資源一覧の`accountId`が仮でかつ接続先がR2の形の時だけにした(本物のaccountIdに対する全桁0の接続先は違反)。いずれも9.1でdesign.mdへ反映する。backendのHCLは`readBackendSettings`の最小の読み取り。7.1の前の実リポジトリは両環境で違反14件(C3×6・C5×8)。
