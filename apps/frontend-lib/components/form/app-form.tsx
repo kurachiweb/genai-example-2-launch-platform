@@ -66,7 +66,11 @@ export function AppForm<TFieldValues extends FieldValues, TTransformedValues>({
       const details =
         error instanceof GraphQLClientError ? (error.details ?? []) : [];
       const { unmatched } = applyServerFieldErrors(
-        form,
+        {
+          getValues: form.getValues,
+          setError: form.setError,
+          isFieldDisabled: (path) => form.control._names.disabled.has(path),
+        },
         withoutPrefix(details, serverFieldPrefix),
       );
       if (details.length === 0 || unmatched.length > 0) {

@@ -9,6 +9,8 @@ interface ProductForm {
   tagline: string;
   maker: { name: string };
   links: string[];
+  launchedAt: Date;
+  note: string | null;
 }
 
 const DEFAULT_VALUES: ProductForm = {
@@ -16,22 +18,27 @@ const DEFAULT_VALUES: ProductForm = {
   tagline: '',
   maker: { name: '' },
   links: ['https://product.example'],
+  launchedAt: new Date('2026-10-28T00:00:00Z'),
+  note: null,
 };
 
 const REGISTERED_FIELDS = [
   'title',
   'tagline',
   'maker.name',
+  'links',
   'links.0',
+  'launchedAt',
+  'note',
 ] as const;
 
-const createForm = () => {
-  const form = createFormControl<ProductForm>({
+const createForm = (disabledFields: readonly string[] = []) => {
+  const control = createFormControl<ProductForm>({
     defaultValues: DEFAULT_VALUES,
   });
   const focused: string[] = [];
   for (const name of REGISTERED_FIELDS) {
-    form.register(name).ref({
+    control.register(name).ref({
       name,
       value: '',
       focus: () => {
@@ -39,7 +46,13 @@ const createForm = () => {
       },
     });
   }
-  return { form, focused };
+  const disabled = new Set(disabledFields);
+  const form = {
+    getValues: control.getValues,
+    setError: control.setError,
+    isFieldDisabled: (path: string) => disabled.has(path),
+  };
+  return { form, control, focused };
 };
 
 const detail = (
@@ -50,7 +63,7 @@ const detail = (
 
 describe('applyServerFieldErrors', () => {
   test('項目ごとの詳細を対応する欄のエラーにし、対応しない詳細を返す', () => {
-    const { form } = createForm();
+    const { form, control } = createForm();
     const unknownField = detail('price', '価格を入力してください。');
     const wholeInput = detail('', '入力内容を確認してください。');
 
@@ -61,20 +74,20 @@ describe('applyServerFieldErrors', () => {
       wholeInput,
     ]);
 
-    expect(form.getFieldState('title').error).toMatchObject({
+    expect(control.getFieldState('title').error).toMatchObject({
       type: 'too_small',
       message: '製品名を入力してください。',
     });
-    expect(form.getFieldState('maker.name').error).toMatchObject({
+    expect(control.getFieldState('maker.name').error).toMatchObject({
       type: 'invalid',
       message: '作成者名は50文字以内で入力してください。',
     });
-    expect(form.getFieldState('tagline').error).toBeUndefined();
+    expect(control.getFieldState('tagline').error).toBeUndefined();
     expect(unmatched).toEqual([unknownField, wholeInput]);
   });
 
   test('配列の要素の欄にも対応付ける', () => {
-    const { form } = createForm();
+    const { form, control } = createForm();
     const outOfRange = detail('links.3', 'URLの形式で入力してください。');
 
     const { unmatched } = applyServerFieldErrors(form, [
@@ -82,7 +95,7 @@ describe('applyServerFieldErrors', () => {
       outOfRange,
     ]);
 
-    expect(form.getFieldState('links.0').error?.message).toBe(
+    expect(control.getFieldState('links.0').error?.message).toBe(
       'URLの形式で入力してください。',
     );
     expect(unmatched).toEqual([outOfRange]);
@@ -114,14 +127,14 @@ describe('applyServerFieldErrors', () => {
   });
 
   test('同じ欄に複数の詳細があれば最初の詳細を表示する', () => {
-    const { form } = createForm();
+    const { form, control } = createForm();
 
     const { unmatched } = applyServerFieldErrors(form, [
       detail('title', '製品名を入力してください。', 'too_small'),
       detail('title', '製品名に使えない文字が含まれています。', 'invalid'),
     ]);
 
-    expect(form.getFieldState('title').error).toMatchObject({
+    expect(control.getFieldState('title').error).toMatchObject({
       type: 'too_small',
       message: '製品名を入力してください。',
     });
@@ -129,12 +142,97 @@ describe('applyServerFieldErrors', () => {
   });
 
   test('詳細が無ければ何もしない', () => {
-    const { form, focused } = createForm();
+    const { form, control, focused } = createForm();
 
     const { unmatched } = applyServerFieldErrors(form, []);
 
     expect(unmatched).toEqual([]);
     expect(focused).toEqual([]);
-    expect(form.getFieldState('title').error).toBeUndefined();
+    expect(control.getFieldState('title').error).toBeUndefined();
+  });
+
+  describe('欄をまとめた値の経路', () => {
+    test('値がオブジェクトの親の経路の詳細は、欄のエラーにせず対応しない詳細として返す', () => {
+      const { form, control } = createForm();
+      const makerDetail = detail('maker', '作成者の情報を確認してください。');
+
+      const { unmatched } = applyServerFieldErrors(form, [makerDetail]);
+
+      expect(unmatched).toEqual([makerDetail]);
+      expect(control.getFieldState('maker').error).toBeUndefined();
+      expect(control.getFieldState('maker.name').error).toBeUndefined();
+    });
+
+    test('配列・日時・nullの値の経路は欄のエラーにする', () => {
+      const { form, control } = createForm();
+
+      const { unmatched } = applyServerFieldErrors(form, [
+        detail('links', 'URLは5件以内で入力してください。'),
+        detail('launchedAt', '公開日を確認してください。'),
+        detail('note', 'メモを確認してください。'),
+      ]);
+
+      expect(unmatched).toEqual([]);
+      expect(control.getFieldState('links').error?.message).toBe(
+        'URLは5件以内で入力してください。',
+      );
+      expect(control.getFieldState('launchedAt').error?.message).toBe(
+        '公開日を確認してください。',
+      );
+      expect(control.getFieldState('note').error?.message).toBe(
+        'メモを確認してください。',
+      );
+    });
+
+    test('親の経路の詳細の後に欄の詳細が来ても、その欄へフォーカスを移す', () => {
+      const { form, focused } = createForm();
+
+      applyServerFieldErrors(form, [
+        detail('maker', '作成者の情報を確認してください。'),
+        detail('title', '製品名を入力してください。'),
+        detail('tagline', 'キャッチコピーを入力してください。'),
+      ]);
+
+      expect(focused).toEqual(['title']);
+    });
+  });
+
+  describe('無効の欄の経路', () => {
+    test('無効の欄とその子の経路の詳細は、欄のエラーにせず対応しない詳細として返し、フォーカスを移さない', () => {
+      const { form, control, focused } = createForm(['title', 'links']);
+      const titleDetail = detail('title', '製品名を入力してください。');
+      const linkDetail = detail('links.0', 'URLの形式で入力してください。');
+
+      const { unmatched } = applyServerFieldErrors(form, [
+        titleDetail,
+        linkDetail,
+        detail('tagline', 'キャッチコピーを入力してください。'),
+      ]);
+
+      expect(unmatched).toEqual([titleDetail, linkDetail]);
+      expect(control.getFieldState('title').error).toBeUndefined();
+      expect(control.getFieldState('links.0').error).toBeUndefined();
+      expect(control.getFieldState('tagline').error?.message).toBe(
+        'キャッチコピーを入力してください。',
+      );
+      expect(focused).toEqual(['tagline']);
+    });
+
+    test('無効の欄の親や兄弟の欄の詳細は、欄のエラーにする', () => {
+      const { form, control } = createForm(['links.0']);
+
+      const { unmatched } = applyServerFieldErrors(form, [
+        detail('links', 'URLは5件以内で入力してください。'),
+        detail('title', '製品名を入力してください。'),
+      ]);
+
+      expect(unmatched).toEqual([]);
+      expect(control.getFieldState('links').error?.message).toBe(
+        'URLは5件以内で入力してください。',
+      );
+      expect(control.getFieldState('title').error?.message).toBe(
+        '製品名を入力してください。',
+      );
+    });
   });
 });

@@ -30,6 +30,7 @@ export interface FormFieldProps<
   readonly label: ReactNode;
   readonly description?: ReactNode;
   readonly className?: string;
+  readonly disabled?: boolean;
   readonly children: (
     control: FormControlProps<TFieldValues, TName>,
   ) => ReactNode;
@@ -45,9 +46,10 @@ export function FormField<
   label,
   description,
   className,
+  disabled,
   children,
 }: FormFieldProps<TFieldValues, TName, TTransformedValues>) {
-  const { field, fieldState } = useController({ control, name });
+  const { field, fieldState } = useController({ control, name, disabled });
   const id = useId();
   const controlId = `${id}-control`;
   const descriptionId = `${id}-description`;

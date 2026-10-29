@@ -5,11 +5,20 @@ import type { FieldErrorDetail } from '../graphql/graphql-result.ts';
 export type ServerFieldErrorTarget<T extends FieldValues> = Pick<
   UseFormReturn<T>,
   'getValues' | 'setError'
->;
+> & {
+  readonly isFieldDisabled: (path: string) => boolean;
+};
 
 export interface ServerFieldErrorsResult {
   readonly unmatched: readonly FieldErrorDetail[];
 }
+
+// react-hook-formが入れ子の値として複製する値(cloneObject)にそろえ、Date・File・FileListなどは欄の値として扱う
+const isGroupedValue = (value: unknown): boolean =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  value.constructor === Object;
 
 const isFieldPathOf = <T extends FieldValues>(
   values: T,
@@ -26,9 +35,20 @@ const isFieldPathOf = <T extends FieldValues>(
     }
     current = Reflect.get(current, segment);
   }
-  return true;
+  return !isGroupedValue(current);
 };
 
+const isWithinDisabledField = <T extends FieldValues>(
+  form: ServerFieldErrorTarget<T>,
+  path: string,
+): boolean => {
+  const segments = path.split('.');
+  return segments.some((_, index) =>
+    form.isFieldDisabled(segments.slice(0, index + 1).join('.')),
+  );
+};
+
+// 欄をまとめた親と無効の欄に付けたエラーは、利用者が入力し直して消せず送信ボタンが無効のまま残るため、欄に対応しない詳細として返す
 export const applyServerFieldErrors = <T extends FieldValues>(
   form: ServerFieldErrorTarget<T>,
   details: readonly FieldErrorDetail[],
@@ -38,7 +58,7 @@ export const applyServerFieldErrors = <T extends FieldValues>(
   const unmatched: FieldErrorDetail[] = [];
   for (const detail of details) {
     const { field } = detail;
-    if (!isFieldPathOf(values, field)) {
+    if (isWithinDisabledField(form, field) || !isFieldPathOf(values, field)) {
       unmatched.push(detail);
       continue;
     }

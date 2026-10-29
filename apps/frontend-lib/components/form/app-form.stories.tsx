@@ -27,7 +27,10 @@ const productSchema = z.object({
       /^https?:\/\/\S+$/,
       '外部WebサイトURLは"https://"または"http://"から始まるURLを入力してください。',
     ),
-  description: z.string().max(200, '説明は200文字以内で入力してください。'),
+  description: z
+    .string()
+    .max(200, '説明は200文字以内で入力してください。')
+    .optional(),
 });
 
 type ProductInput = z.input<typeof productSchema>;
@@ -36,12 +39,14 @@ interface ProductFormProps {
   readonly onSubmit: (values: ProductInput) => Promise<void> | void;
   readonly onSubmitError: (error: unknown, context: SubmitErrorContext) => void;
   readonly contactAvailable: boolean;
+  readonly descriptionLocked: boolean;
 }
 
 function ProductForm({
   onSubmit,
   onSubmitError,
   contactAvailable,
+  descriptionLocked,
 }: ProductFormProps) {
   const form = useAppForm(productSchema, {
     defaultValues: { title: '', url: '', description: '' },
@@ -73,7 +78,12 @@ function ProductForm({
       <FormField control={form.control} name="url" label="外部WebサイトURL">
         {(control) => <Input type="url" {...control} />}
       </FormField>
-      <FormField control={form.control} name="description" label="説明">
+      <FormField
+        control={form.control}
+        name="description"
+        label="説明"
+        disabled={descriptionLocked}
+      >
         {(control) => <Textarea {...control} />}
       </FormField>
       {submitError === undefined ? null : (
@@ -89,7 +99,12 @@ const neverSettles = (): Promise<void> => new Promise<void>(() => undefined);
 const meta = {
   title: 'フォーム/AppForm',
   component: ProductForm,
-  args: { onSubmit: fn(), onSubmitError: fn(), contactAvailable: true },
+  args: {
+    onSubmit: fn(),
+    onSubmitError: fn(),
+    contactAvailable: true,
+    descriptionLocked: false,
+  },
 } satisfies Meta<typeof ProductForm>;
 
 export default meta;
@@ -97,6 +112,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const DisabledField: Story = {
+  args: { descriptionLocked: true },
+};
 
 export const ValidationError: Story = {
   play: async ({ canvas, userEvent }) => {
