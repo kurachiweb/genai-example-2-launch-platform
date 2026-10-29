@@ -57,7 +57,7 @@ import type { Plugin } from 'vite';
 
 export function excludeLocalSecretsFile(): Plugin {
   return {
-    name: 'exclude-local-secrets-file',
+    name: 'frontend:exclude-local-secrets-file',
     enforce: 'post',
     generateBundle: {
       order: 'post',
