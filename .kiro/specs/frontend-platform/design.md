@@ -222,6 +222,7 @@ apps/
 │   │   └── tsconfig-sync.unit.test.ts              # tsconfig.jsonが基底設定と差分(jsx・lib・types・include)以外で一致すること
 │   ├── test/                                       # テストの補助(テストではないファイル)
 │   │   ├── a11y.ts                                 # runAxe・runAxeOnDocument・WCAG_22_AA_TAGS(Storybookと共有)
+│   │   ├── overflow.ts                             # (第4回のR9.9)はみ出しの判定(elementsBeyondViewportEdges・elementsOverflowingContainer・elementsWithClippedContent・hasHorizontalScroll)。client・adminの画面シェルのテストと共有
 │   │   ├── computed-style.ts · keyboard.ts         # 計算値の色・輪郭の比較、Radixの矢印キーのフォーカスの移動を待つ押下
 │   │   ├── reduced-motion.ts · preferred-color-scheme.ts · display-emulation.ts  # 視差効果の軽減・OSの配色・タイムゾーンとロケールの再現(CDP)
 │   │   ├── fake-turnstile.tsx                      # @marsidev/react-turnstileの偽物(Cloudflareへ通信しない)
