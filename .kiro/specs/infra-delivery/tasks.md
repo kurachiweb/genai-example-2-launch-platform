@@ -8,7 +8,7 @@
   - 完了状態: 単体テストが成功し、入口のヘルプがサブコマンドの一覧を表示し、ルートの一括検査が配布のスクリプトを静的解析・型検査・テストの命名の検査に含めて成功する
   - _Requirements: 4.7, 11.7_
 
-- [ ] 1.2 資源一覧の型と解析を作り、staging・prodの資源一覧を置く
+- [x] 1.2 資源一覧の型と解析を作り、staging・prodの資源一覧を置く
   - 先に、資源一覧の解析の単体テスト(正しい例、項目の欠落、型の誤り、ホスト名がゾーン名で終わらない、Turnstile・アクセス解析の対象がホスト名一覧に無い、配信不能イベントの受け皿が非同期メッセージの一覧に無い、環境の名前の不一致、全桁0の識別子の判定)を書く
   - 上流specの命名(設計のSupporting Referencesの資源一覧の表)でstaging・prodの資源一覧を作る。Infisicalのプロジェクトの識別子は、両環境ともリポジトリの`.infisical.yaml`と同じ既存のプロジェクトの値にする(K3)。主体の識別子は全桁0の仮の値とし、stagingは初回の準備で開発者の情報を受けて記入する(prodはlaunch-readinessが記入する)
   - 検査用の主体の設定を、プロジェクトをリポジトリの`.infisical.yaml`の`secrets-management.project-id`から読む形で作る
@@ -285,3 +285,6 @@
 - 1.1: 入口は`commands/`直下の`.ts`(テストとサブディレクトリを除く)をサブコマンドにする。共通の形と依存の組み立ては`commands/shared/`(`delivery-command.ts`・`default-deps.ts`・`report-violations.ts`)にあり、`SecretSource`・`HttpProbe`は後続タスクで`DeliveryDeps`と`createDefaultDeps`へ加える(`cli.ts`は編集しない)。引数の誤りは`UsageError`を投げて終了コード2にする。違反の表は`reportViolations`で出す。
 - 1.1: 未解決の指摘(後続で対応): `github-actions.ts`の`escapeCommandValue`が`%`だけを変換し単独の`\r`を変換しない(4.3で`%0D`・`%0A`も変換する)。`command-runner.ts`の`runPiped`は`filter`が例外を投げると子プロセスを残す。`start`の停止はプロセスグループ単位でなく、孫プロセス(workerd)の停止を4.4・6.3で確かめる。`layering.unit.test.ts`の禁止APIに`Bun.env`・`node:process`の`env`・`node:os`等が無い。
 - 1.1: Bunの型定義では`expect().rejects`が待てる値を返さず静的解析で違反になるため、拒否の確認は`test-fixtures/rejection.ts`を使う。
+- 1.2: `catalog`は`core`と同じく禁止APIの検査対象(純粋)。ファイルの読み込みは`commands`が行い、`checkSecretsSettings(yaml)`・`parseResourceCatalog(json, expectedEnvironment?)`は文字列・値を受け取る。実ファイルの検査は`repo-contract.unit.test.ts`に足していく。
+- 1.2: `isPlaceholderId`は全桁0のUUIDと全桁0の32桁(Cloudflareのアカウント・ゾーンの識別子、上流のWrangler設定の仮の値)の両方を仮と判定する。mapのキーは英小文字で始まり英小文字・数字・ハイフンから成る(設計の「英小文字とハイフン」より緩い。9.1でdesign.mdへ反映する)。
+- 1.2: 資源一覧の`cloudflare.accountId`・`zoneId`は本物の値がリポジトリに無く全桁0の仮の値。設計の初回の準備に記入の手順が無いため、stateの保管先の接続先・資源の作成・購読の前に開発者へ確認が必要(preflightの検査対象に加えるかも要判断)。

@@ -26,7 +26,7 @@ const ALLOWED_IMPORTS: Readonly<Record<Layer, readonly Layer[]>> = {
   cli: ['catalog', 'core', 'commands'],
 };
 
-const PURE_LAYERS: readonly Layer[] = ['core'];
+const PURE_LAYERS: readonly Layer[] = ['catalog', 'core'];
 
 const FORBIDDEN_MODULES: ReadonlySet<string> = new Set(
   ['child_process', 'fs', 'fs/promises', 'http', 'https', 'net'].flatMap(
@@ -177,6 +177,8 @@ describe('scripts/deliveryの層構成', () => {
     const files = productionFiles();
     const expected = [
       'cli.ts',
+      'catalog/resource-catalog.ts',
+      'catalog/check-secrets.ts',
       'core/violation.ts',
       'adapters/command-runner.ts',
       'adapters/repo-files.ts',
