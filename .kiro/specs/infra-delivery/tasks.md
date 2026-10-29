@@ -42,7 +42,7 @@
   - _Depends: 1.2, 2.1, 2.2_
   - _Requirements: 1.2, 1.7, 1.8, 1.11, 3.1, 3.2, 3.3, 3.4, 3.6, 4.4, 4.9_
 
-- [ ] 2.4 IaC定義の検査のコマンドを作る
+- [x] 2.4 IaC定義の検査のコマンドを作る
   - 先に、偽の子プロセスで、整形の検査・ルートと各モジュールの初期化(backendなし・ロックファイルは読み取りのみ)・妥当性の検査・テストの順に呼ばれ、最初の失敗で止まることを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、ルートのIaCの検査のスクリプトがローカルで成功し、HCLの整形を崩すと失敗する
   - _Requirements: 5.6, 6.6_
@@ -291,3 +291,4 @@
 - 2.1: 子モジュールは`required_providers`だけを宣言し、テストは`mock_provider "cloudflare"`と`command = plan`で書く。`prevent_destroy`とR2の`location`無しは計画のテストで確かめられないため7.3の`repo-contract.unit.test.ts`でHCLを検査する。ロックファイルは`tofu providers lock -platform=linux_amd64 -platform=linux_arm64`で作り、検証は`init -backend=false -lockfile=readonly`。Queueの名前の属性は`queue_name`。
 - 2.2: 2.3のルートモジュールは、資源一覧の`turnstile.hostnames`を`edge_services`の`turnstile.domains`へ、`hostnames.*.worker`(`workers`のキー)を`workers[<キー>].name`へ引き直して`worker_routing`の`service`へ渡す。`turnstile.mode`は`invisible`以外を変数の検証で拒否する(設計に無い追加。9.1でdesign.mdへ反映)。`cloudflare_workers_custom_domain`の非推奨`environment`を使わないこと、Turnstileの`prevent_destroy`、`outputs.tf`に`secret`が無いことは7.3でHCLを検査する。最初の適用後に、Turnstileの`domains`の順序とWeb Analyticsの`host`だけの登録で差分・拒否が無いか確かめる。
 - 2.3: OpenTofu 1.13.2はbackend設定にsensitiveな変数を使うと`tofu init`で拒否する(`validate`・`tofu test`では現れない)。stateの保管先の鍵はS3 backend専用の環境変数`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`で渡し、Infisicalの`/ci/tofu`のキー名もこれにする(2026-10-29に開発者が決定)。5.1のTofuRunnerは`/ci/tofu`の値をそのまま子プロセスの環境変数へ渡し、パスフレーズは`TF_VAR_state_passphrase`で渡す。backendの`endpoints.s3`はアカウントIDの仮の値を含む。`check "catalog_environment"`は警告で止まらない(9.1で`precondition`化を検討)。`live.tftest.hcl`は`web_analytics_host`・`email_sending_domain`・`account_id`・`zone_id`・`jurisdiction`の結線を確かめていない。モックのproviderは`ephemeral`に対応する。
+- 2.4: `infra-check`は`apps/infra/modules/*/*.tf`を列挙してモジュールを見つけ、fmt→`live`→各モジュール(名前順)でディレクトリごとに`init -backend=false -lockfile=readonly -input=false`→`validate`→(テストがあれば)`test`を最初の失敗まで実行する。手順の組み立ては`core/infra-check-plan.ts`(設計に無い追加。9.1でFile Structure Planへ反映)。
