@@ -617,10 +617,10 @@
   - _Boundary: CodegenConfig, 技術ドキュメント群_
   - _Requirements: 6.1, 6.2, 15.3_
 
-- [ ] 12.8 ローカル状態の保存先を照合する単体テストを足す
+- [x] 12.8 ローカル状態の保存先を照合する単体テストを足す
   - ルートの`config/local-state-path.unit.test.ts`(新規)を`config/inspector-ports.unit.test.ts`と同じ書き方で書く。client・adminの`vite.config.ts`の`cloudflare()`の引数の`persistState.path`を`typescript`の構文木から読み(識別子なら初期化子の文字列リテラルをたどる)、api・eventの`package.json`のすべてのスクリプトの`--persist-to`の値(1件以上あること)と一致することを確かめる。値を取り出せない形はファイルと理由を示して失敗させる
   - `vite.config.ts`の保存先を一時的に変えると失敗することを確かめて戻す
-  - 完了状態: ルートの`bun run test:unit`・`bun run typecheck`・`bun run test:unit --coverage`が成功し、ルートのカバレッジの出力に他のアプリのファイルが含まれない
+  - 完了状態: ルートの`bun run test:unit`・`bun run typecheck`・`bun run test:unit --coverage`が成功し、追加したテストが他のアプリのファイルを読み込まない(単独で`--coverage`付きで実行するとカバレッジの表に他のアプリのファイルが出ない)
   - _Boundary: AppBuildConfig(ルートの単体テスト)_
   - _Requirements: 1.3_
 
