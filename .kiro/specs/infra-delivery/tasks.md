@@ -2,7 +2,7 @@
 
 - [ ] 1. 基盤: 前提の確認・配布のスクリプトの骨格・資源一覧
 - [ ] 1.1 前提を確かめ、配布のスクリプトの入口と入出力の部品を作る
-  - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platformの全タスクが完了し、4アプリのWrangler設定、apiの`cf-typegen`・`db:migrations:check`・`graphql:check`・`graphql:allowlist`・`test:smoke`、client・adminの`cf-typegen:check`・`graphql:check`・`build`、ルートの`test:e2e:dev-and-preview`(dev-toolingの10.1)、疎通確認のE2Eがあること。無ければ止めて報告する
+  - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platformの全タスクが完了し、4アプリのWrangler設定、ルートの`check`(全アプリの`cf-typegen:check`・`graphql:check`を含む)、apiの`db:migrations:check`・`graphql:allowlist`・`test:smoke`、client・adminの`build`、ルートの`test:e2e:dev-and-preview`(dev-toolingの10.1)、疎通確認のE2Eがあること。無ければ止めて報告する
   - 先に、サブコマンドの振り分け(コマンドのディレクトリのファイル名から解決し、未知のサブコマンドと引数の誤りで終了コード2、違反で1)、子プロセスの起動の部品(出力の取り込み・表示・行のフィルタ・標準入力・終了コード)、リポジトリのファイルの読み込みの部品、GitHub Actionsの入出力の部品(GitHub Actionsの外ではマスクを出さない、環境変数のファイルへの追記の前に値をマスクする、手順の要約への追記、OIDCのトークンの取得で必要な環境変数が無ければ失敗する)の単体テストと、判定の層が入出力の層・子プロセス・ファイル・ネットワークのAPIを読み込まないことを確かめる単体テストを書き、失敗を確かめる
   - 判定・入出力・手順・入口の4層の配置で部品を作る。構成検査とワークフローの検査が共有する違反の型(規則・ファイル・項目・実際・期待)を判定の層に置く。各コマンドは共通の形(名前・説明・実行)を公開し、後続のタスクは入口を編集せずにコマンドを追加できるようにする。ルートの`package.json`に配布のスクリプトの入口・IaCの検査・IaCの整形のスクリプトを加える
   - 完了状態: 単体テストが成功し、入口のヘルプがサブコマンドの一覧を表示し、ルートの一括検査が配布のスクリプトを静的解析・型検査・テストの命名の検査に含めて成功する
@@ -77,7 +77,8 @@
   - _Requirements: 5.2, 5.3, 5.5_
 
 - [ ] 4.2 (P) 生成物と設定の検査のコマンドと、カバレッジの合算のコマンドを作る
-  - 先に、生成物と設定の検査の表(apiの型の鮮度・マイグレーションの検出・GraphQLの検査・DIのスモークテスト、eventの型の鮮度、client・adminの型の鮮度とGraphQLの検査(改訂3))の順に実行され、アプリにスクリプトが無ければ失敗すること、lcovの`SF:`にアプリのディレクトリを前置し、ルートと各アプリの単体・ブラウザ・Workers統合の結果を1つに合算することを確かめる単体テストを書く
+  - 先に、生成物と設定の検査の表(apiのマイグレーションの検出・DIのスモークテスト)の順に実行され、アプリにスクリプトが無ければ失敗すること、lcovの`SF:`にアプリのディレクトリを前置し、ルートと各アプリの単体・ブラウザ・Workers統合の結果を1つに合算することを確かめる単体テストを書く
+  - 全アプリの型の鮮度とGraphQLの検査(apiの許可リストを含む。改訂3のclient・adminの型の鮮度もここに当たる)は、品質の検査で先に実行するルートの一括検査が行うため、表に含めない(改訂4)
   - 単体テストの結果は`coverage/unit/lcov.info`を明示して読む(一時ファイルを拾わない)
   - 完了状態: 単体テストが成功し、ローカルで生成物と設定の検査のコマンドが全アプリで成功する
   - _Boundary: AppChecks, CoverageMerger_

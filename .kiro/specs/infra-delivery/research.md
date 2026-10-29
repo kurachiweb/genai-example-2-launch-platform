@@ -498,7 +498,7 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 選択肢Cのうち、実装前に反映した機械的な食い違いは次のとおりである。
 
 - G1: design.mdのNodeの版を26.12.1に改め、WranglerをNodeで動かす前提をExisting Architecture Analysisに書いた。tasks 6.2にも版を書いた。
-- G3の一部: design.mdのapi・eventの`cf-typegen --check`を、実際のスクリプト名`cf-typegen:check`に改めた。`check`との重複の解消(`APP_CHECKS`の縮小)は、実装で決めてタスク9.1で設計へ反映する。
+- G3: design.mdのapi・eventの`cf-typegen --check`を、実際のスクリプト名`cf-typegen:check`に改めた。開発者の指示(2026-10-29)により、`check`との重複も実装前に解消した。`APP_CHECKS`はapiの`db:migrations:check`・`test:smoke`だけにし、全アプリの`cf-typegen:check`・`graphql:check`は`quality`ジョブで先に実行する`check`に任せる。design.mdの`app-checks`の行・要件の対応表(5.6)・frontend-platformへの影響の行、tasks 4.2と1.1の前提、requirements.mdの改訂4の行を改めた。`check`は失敗しても止めずにすべての段階を実行し、失敗があれば終了コードで失敗を返すため、5.2の「失敗した時点で後続の段階を実行しない」は`check`の後の段階について成り立つ。
 - G5: tasks 9.2に、上流のWrangler設定の単体テストのstagingの期待値と`project-values.md`の値を同じ変更で改める作業を加え、design.mdのModified Filesと他specへの影響の表に書いた。
 - G8: tasks 8.5とdesign.mdのModified Filesに、メール送信の技術ドキュメントの手作業の手順、`project-values.md`の注記、オンボーディングの暫定の手順の更新を加えた。
 - G12: design.mdのExisting Architecture Analysisと本書のSummaryを、上流の実装が完了した状態に改めた。
