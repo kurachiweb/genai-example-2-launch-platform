@@ -313,8 +313,8 @@
   - _Depends: 4.3_
   - _Requirements: 5.7, 5.10_
 
-- [ ] 10. frontend-platformの第4回の判断の反映(承認後の改訂2)
-- [ ] 10.1 開発サーバーとビルド後のプレビューの両方でE2Eを続けて実行するコマンドを作る
+- [x] 10. frontend-platformの第4回の判断の反映(承認後の改訂2)
+- [x] 10.1 開発サーバーとビルド後のプレビューの両方でE2Eを続けて実行するコマンドを作る
   - 先に、`scripts/tooling/e2e-dev-and-preview.unit.test.ts`(新規)で、偽の子プロセス・偽のポートの確認・偽の到達の確認を注入し、ポートの確認→各対象の`bun run dev --port <ポート>`の起動→到達の待ち合わせ→`bun run test:e2e`→停止→各対象の`bun run build`→`bun run preview --port <ポート>`の起動→待ち合わせ→`bun run test:e2e`→停止の順になること、開発サーバーのE2Eが失敗してもプレビューの段階を実行して終了コード1になること、使われているポートがあれば何も起動せずにポートと対象を示して失敗すること、起動しない対象(3分で応答しない・先に終了した)があればその名前と出力の末尾50行を表示してすべての対象を止めること、ローカルでないURLの対象で起動せずに失敗すること、`apps/<対象名>`の無い対象を飛ばすことを確かめるテストを書き、失敗を確かめる
   - `e2e-dev-and-preview.ts`を、計画を作る純粋な関数(`planDualModeE2E`、対象は`e2e/support/targets.ts`の`resolveE2ETargets`)と、子プロセスの起動・到達の確認(`assertE2ETargetReachable`と同じ判定)・停止(`SIGTERM`の10秒後に`SIGKILL`)を注入できる実行の関数(`runDualModeE2E`)と、両者をつなぐ入口に分けて作る。待ち受けのアドレスの引数はオンボーディングの起動の手順と同じにする。ルートの`package.json`に`test:e2e:dev-and-preview`(`bun ./scripts/tooling/e2e-dev-and-preview.ts`)を加える
   - `testing/001`のE2Eの節に、開発サーバーとビルド後のプレビューの両方でE2Eを続けて実行するコマンド、前提(APIサーバーを先に起動し、画面を持つアプリは起動しないでおく)、シークレットはコマンド全体を注入の下で実行して引き継ぐことを、プロジェクト名と固有値を含めずに書く。`docs/onboardings/README.md`のコマンドの表に1行を加える

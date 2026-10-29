@@ -747,6 +747,7 @@ export declare function exitCodeOf(results: readonly StepResult[]): 0 | 1;
 - 出力: 段階・対象・結果(成功/失敗と終了コードまたは原因/飛ばした理由)の表を表示し、`cause`付きの失敗があれば原因(リポジトリ相対パスと理由)を重複を除いて続けて表示する。1つでも失敗があれば終了コード1で終える。
 - `check`は追加の引数を受け取らない(余分な引数で失敗する段階があるため)。配置確認と命名検査は、ルートのスクリプト`shared-dirs:verify`・`check:test-names`として実行する。写しの照合は、ルートのスクリプト`check:contract-copies`(`bun test ./config/contract-copies.unit.test.ts`。`bun test`は`./`で始まらない引数をファイル名の部分一致として扱うため、パスとして渡す)として実行する。静的な検査の後にテストを実行する段階のため、型検査の後に置く。照合のテストはルートの`test:unit`にも残す(承認後の改訂1)。
 - 冪等性: 読み取り専用の検査だけを実行する。
+- `createSpawnRunner(repoRoot, output, { signal?, killGraceMs? })`: `signal`を渡すと、中断で実行中のコマンドへ`SIGTERM`、猶予(既定10秒)の後に`SIGKILL`を送り、中断の後はコマンドを起動せずに失敗する。一括実行は`signal`を渡さない(E2EDualModeRunnerが使う。承認後の改訂2)。シグナルの送り先は直接の子のプロセスだけで、`bun run`は単一のコマンドのスクリプトなら子まで止めるが、`sh -c "…"`のような複合のスクリプトは孫のプロセスを残すため、E2EDualModeRunnerが実行する`build`・`test:e2e`は単一のコマンドに保つ。
 
 #### SharedDirs
 
@@ -855,11 +856,11 @@ export declare function findMisnamedTestFiles(
 ##### Batch / Job Contract
 
 - Trigger: ルートの`bun run test:e2e:dev-and-preview`(`bun ./scripts/tooling/e2e-dev-and-preview.ts`)。引数を受け取らない。CIでは、infra-deliveryの検査のE2E(`e2e-stack`)がAPIサーバー・イベントサーバー・メールの受信箱を起動した後にこのコマンドを呼ぶ。
-- 対象: `resolveE2ETargets`が環境の変数から解決した各対象のうち、ルートからの`apps/<対象名>`にアプリがあるもの。URLがローカル(`localhost`・`127.0.0.1`)を指さない対象があれば、起動せずに理由を示して失敗する。ポートは対象のURLのポートを使う。
-- 順序: (1)対象のポートがすべて空いていることを確かめ、使われていればそのポートと対象を示して失敗する(古いサーバーを試さないため)。(2)各対象で`bun run dev --port <ポート>`を起動し、到達を待って`bun run test:e2e`を実行し、すべての対象を止める。(3)各対象で`bun run build`を実行してから`bun run preview --port <ポート>`を起動し、到達を待って`bun run test:e2e`を実行し、すべての対象を止める。待ち受けのアドレスの引数はオンボーディングの起動の手順と同じにする。(2)が失敗しても(3)を実行し、最後にどちらかが失敗していれば終了コード1を返す。結果は段階ごとに表示する。
-- 起動の失敗: 到達を待つ上限(3分)までに応答しない、または起動したプロセスが先に終了した対象があれば、その名前と出力の末尾50行を表示して、その段階を失敗にする。止める時は`SIGTERM`、10秒後に`SIGKILL`を送る。
+- 対象: `resolveE2ETargets`が環境の変数から解決した各対象のうち、ルートからの`apps/<対象名>`にアプリがあるもの(`apps/<対象名>/package.json`の有無で判定する。無いディレクトリで`bun run`を実行するとルートのスクリプトが実行されるため)。URLがローカル(`localhost`・`127.0.0.1`)を指さない対象があれば、起動せずに理由を示して失敗する。ポートは対象のURLのポートを使う。
+- 順序: (1)対象のポートがすべて空いていることを確かめ、使われていればそのポートと対象を示して失敗する(古いサーバーを試さないため)。(2)各対象で`bun run dev --port <ポート>`を起動し、到達を待って`bun run test:e2e`を実行し、すべての対象を止める。(3)各対象で`bun run build`を実行してから`bun run preview --port <ポート>`を起動し、到達を待って`bun run test:e2e`を実行し、すべての対象を止める。ビルド→起動→待ち合わせは対象ごとに順に行い、ビルドが失敗した対象があれば起動済みの対象を止め、その段階のE2Eを実行せずに失敗にする。ポートの使用は、URLのホスト名に関係なく`127.0.0.1`と`::1`の両方への接続で確かめる(Viteは使われているポートを避けて別のポートで起動するため)。待ち受けのアドレスの引数はオンボーディングの起動の手順と同じにする。(2)が失敗しても(3)を実行し、最後にどちらかが失敗していれば終了コード1を返す。結果は段階ごとに表示する。
+- 起動の失敗: 到達を待つ上限(3分)までに応答しない、または起動したプロセスが先に終了した対象があれば、その名前と出力の末尾50行を表示して、その段階を失敗にする。アプリは新しいプロセスグループで起動し、止める時はグループ全体へ`SIGTERM`、10秒後に`SIGKILL`を送る(Viteやworkerdの孫のプロセスを残さないため)。中断のシグナル(`SIGINT`・`SIGTERM`)は`process.on`で受け続け、最初の1回で本体へ中断(`AbortSignal`)を知らせてから`stopAll`を呼ぶ。中断の後は、段階・準備コマンド・起動・E2Eのいずれも新しく実行せず、到達の待ち合わせも打ち切る。実行中の準備コマンドとE2Eには`createSpawnRunner`が`SIGTERM`、10秒後に`SIGKILL`を送る。`stopAll`の後の`start`はプロセスを起動しない。結果の表では中断した段階を「中断」と示し、残りの段階は実行しない。`SIGINT`なら130、`SIGTERM`なら143で終える。停止中の2回目以降の中断は、既定の動作で即時に終了して別のプロセスグループのサーバーを残さないよう無視する。起動したアプリの出力は端末に流さず、起動しなかった時だけ末尾を表示する。ビルドとE2Eの出力は端末に流す。
 - 前提: APIサーバー(とイベントサーバー)は先に起動しておき、このコマンドは起動しない。シークレットは、コマンド全体をシークレットの注入(ローカルはInfisicalの`dev`の注入、CIはinfra-deliveryの`run-with-secrets`)の下で実行して子プロセスへ引き継ぎ、コマンドの中で注入しない(6.11)。
-- 構成: 段階の計画(対象・コマンド・ポート・順序)を作る純粋な関数`planDualModeE2E`と、子プロセスの起動・到達の確認・停止を注入できる実行の関数`runDualModeE2E`に分け、入口は両者をつなぐだけにする。到達の確認は`assertE2ETargetReachable`と同じ判定(状態コードに関係なく応答があれば到達)を使う。
+- 構成: 段階の計画(対象・コマンド・ポート・順序)を作る純粋な関数`planDualModeE2E`と、子プロセスの起動・到達の確認・停止を注入できる実行の関数`runDualModeE2E`に分け、入口`runDualModeE2EEntry`は両者をつなぐだけにする。`DualModeDependencies`は中断を知らせる`signal`を持ち、シグナルの受け取りは`handleInterruptSignals`、終了コードは`interruptedExitCodeOf`が担う。実際の部品`isLoopbackPortInUse`(ポートの使用の判定)・`waitUntilReachable`(到達確認を上限3分まで繰り返す)・`createServerStarter`(起動・出力の末尾50行の保持・停止・中断時の`stopAll`)と待ち合わせの上限`SERVER_START_TIMEOUT_MS`を同じファイルに置き、テストの偽物は`test-support/dual-mode-e2e-fixtures.ts`に置く。到達の確認は`assertE2ETargetReachable`と同じ判定(状態コードに関係なく応答があれば到達)を使う。
 
 ### Entry
 

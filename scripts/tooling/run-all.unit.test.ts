@@ -405,6 +405,73 @@ describe('createSpawnRunner', () => {
     },
     SPAWN_TIMEOUT_MS,
   );
+
+  test(
+    '中断を知らされると実行中のコマンドへSIGTERMを送り、その終了コードを返す',
+    async () => {
+      const repoRoot = await createDir('spawn-abort-');
+      const controller = new AbortController();
+      const runner = createSpawnRunner(repoRoot, createOutput(), {
+        signal: controller.signal,
+      });
+
+      const running = runner.run(['sleep', '30'], repoRoot);
+      await Bun.sleep(200);
+      controller.abort();
+
+      expect(await running).toBe(143);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  test(
+    'SIGTERMで終了しないコマンドには、猶予の後にSIGKILLを送る',
+    async () => {
+      const repoRoot = await createDir('spawn-kill-');
+      const controller = new AbortController();
+      const runner = createSpawnRunner(repoRoot, createOutput(), {
+        signal: controller.signal,
+        killGraceMs: 300,
+      });
+
+      const running = runner.run(
+        [
+          'sh',
+          '-c',
+          'trap "" TERM; touch ready; while true; do sleep 0.1; done',
+        ],
+        repoRoot,
+      );
+      while (!existsSync(join(repoRoot, 'ready'))) await Bun.sleep(20);
+      const abortedAt = performance.now();
+      controller.abort();
+
+      expect(await running).toBe(137);
+      expect(performance.now() - abortedAt).toBeGreaterThanOrEqual(250);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  test(
+    '中断の後は、コマンドを起動せずに失敗する',
+    async () => {
+      const repoRoot = await createDir('spawn-aborted-');
+      const controller = new AbortController();
+      controller.abort();
+      const output = createOutput();
+      const runner = createSpawnRunner(repoRoot, output, {
+        signal: controller.signal,
+      });
+
+      expect(runner.run(['touch', 'ran-here'], repoRoot)).rejects.toThrow(
+        '中断したため、`touch ran-here`を実行しませんでした',
+      );
+      await Bun.sleep(200);
+      expect(existsSync(join(repoRoot, 'ran-here'))).toBe(false);
+      expect(output.text()).toBe('');
+    },
+    SPAWN_TIMEOUT_MS,
+  );
 });
 
 describe('runAggregateEntry', () => {

@@ -332,20 +332,59 @@ export const readPackageScripts: PackageScriptsReader = (dir) => {
   return scripts;
 };
 
+export interface SpawnRunnerOptions {
+  // 中断を知らせる。実行中のコマンドへSIGTERMを送り、猶予の後も終了しなければSIGKILLを送る。中断の後はコマンドを起動しない
+  readonly signal?: AbortSignal;
+  readonly killGraceMs?: number;
+}
+
+const DEFAULT_KILL_GRACE_MS = 10_000;
+
+const terminateOnAbort = (
+  child: Bun.Subprocess,
+  signal: AbortSignal | undefined,
+  killGraceMs: number,
+): (() => void) => {
+  let killTimer: Timer | undefined;
+  const onAbort = () => {
+    child.kill('SIGTERM');
+    killTimer = setTimeout(() => {
+      child.kill('SIGKILL');
+    }, killGraceMs);
+  };
+  signal?.addEventListener('abort', onAbort);
+  return () => {
+    signal?.removeEventListener('abort', onAbort);
+    clearTimeout(killTimer);
+  };
+};
+
 export function createSpawnRunner(
   repoRoot: string,
   output: TextOutput,
+  { signal, killGraceMs = DEFAULT_KILL_GRACE_MS }: SpawnRunnerOptions = {},
 ): CommandRunner {
   return {
-    run: (command, cwd) => {
+    run: async (command, cwd) => {
+      if (signal?.aborted) {
+        throw new Error(
+          `中断したため、\`${command.join(' ')}\`を実行しませんでした`,
+        );
+      }
       output.write(
         `\n▶ ${relative(repoRoot, cwd) || 'ルート'}: ${command.join(' ')}\n`,
       );
       // 違反の内容や進捗を端末へそのまま流すため、子プロセスに標準入出力を引き継ぐ
-      return Bun.spawn([...command], {
+      const child = Bun.spawn([...command], {
         cwd,
         stdio: ['inherit', 'inherit', 'inherit'],
-      }).exited;
+      });
+      const release = terminateOnAbort(child, signal, killGraceMs);
+      try {
+        return await child.exited;
+      } finally {
+        release();
+      }
     },
   };
 }

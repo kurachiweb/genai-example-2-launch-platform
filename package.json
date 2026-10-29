@@ -16,6 +16,7 @@
     "test:all:browser": "bun ./scripts/tooling/run-all.ts test:browser",
     "test:all:worker": "bun ./scripts/tooling/run-all.ts test:worker",
     "test:e2e": "playwright test --pass-with-no-tests",
+    "test:e2e:dev-and-preview": "bun ./scripts/tooling/e2e-dev-and-preview.ts",
     "shared-dirs:verify": "bun ./scripts/tooling/shared-dirs.ts verify",
     "shared-dirs:place": "bun ./scripts/tooling/shared-dirs.ts place"
   },
