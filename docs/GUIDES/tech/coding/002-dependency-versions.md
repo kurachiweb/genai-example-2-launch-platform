@@ -105,7 +105,7 @@
 - `bun pm view @cloudflare/vitest-pool-workers@<版> dependencies`と`bun pm view @cloudflare/vite-plugin@<版> dependencies`で完全固定されている`wrangler`の版を調べ、2つが同じ`wrangler`の版を固定する組を選ぶ。`wrangler`をその版にする。片方の新しい版が無ければ、組がそろうまで3つとも上げない。
 - `bun pm view @cloudflare/vite-plugin@<版> peerDependencies`の`vite`の範囲が、画面を持つアプリの`vite`の版を含む。
 - `git grep -noE '\["wrangler@[^"]+"' -- '*bun.lock' ':!<対象外のディレクトリ>/'`で、各`bun.lock`に`wrangler`が1つの版だけ載っている。
-- Workers統合テストを持つアプリで、`wrangler types`で実行時の型の定義ファイル(`worker-configuration.d.ts`)を生成し直し、差分を確かめてコミットする。画面を持つアプリは`wrangler types`を使わない(「[環境の型](../frontend/002-tanstack-start-on-workers.md#環境の型)」)。
+- Wranglerで型を生成するすべてのアプリで、`bun run cf-typegen`で型の定義ファイル(`worker-configuration.d.ts`)を生成し直し、差分を確かめてコミットする。Workers統合テストを持つアプリは実行時の型を含めて、画面を持つアプリは環境の型だけを生成し(「[環境の型](../frontend/002-tanstack-start-on-workers.md#環境の型)」)、どちらも`bun run cf-typegen:check`が成功する。
 - `@cloudflare/vitest-pool-workers`の`peerDependencies`の`vitest`の範囲が、一覧の`vitest`の版を含む。
 - 画面を持つアプリで、開発サーバーとビルドの後のプレビューが起動し、ビルドの出力の設定(`dist/server/wrangler.json`)がデプロイ先の環境の値になる(「[デプロイ先の環境のビルド時の指定](../frontend/002-tanstack-start-on-workers.md#デプロイ先の環境のビルド時の指定)」)。
 

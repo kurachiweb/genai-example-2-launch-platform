@@ -9,6 +9,8 @@
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "graphql:generate": "graphql-codegen --config codegen.config.ts",
     "graphql:check": "bun ./lib/config/codegen-check.ts",
+    "cf-typegen": "wrangler types --include-runtime=false",
+    "cf-typegen:check": "wrangler types --include-runtime=false --check && tsc -p tsconfig.worker-env.json",
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview"

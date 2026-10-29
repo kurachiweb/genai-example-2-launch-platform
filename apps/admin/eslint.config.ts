@@ -32,6 +32,18 @@ const config: Linter.Config[] = [
     tanstackRouter,
     storybook,
   }),
+  // 型の照合のファイルは生成した型を画面のコードから隔てるためアプリの型検査の設定から外しており、照合だけの設定で型情報を解決する
+  {
+    name: 'admin/worker-env-contract',
+    files: ['test/config/worker-env-contract.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: './tsconfig.worker-env.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
   prettierConfig,
 ];
 

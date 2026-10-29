@@ -600,7 +600,7 @@
   - _Boundary: FormParts, 技術ドキュメント群_
   - _Requirements: 8.1, 8.3, 15.3, 15.4_
 
-- [ ] 12.6 client・adminに型生成と環境の検証スキーマとの型の照合を置く
+- [x] 12.6 client・adminに型生成と環境の検証スキーマとの型の照合を置く
   - 先に、`apps/client`で`bunx wrangler types --include-runtime=false --help`の範囲と生成の出力(実行時の型を参照するか、3環境の変数とシークレットの扱い)を確かめ、設計の「決定事項」の「client・adminの型生成」と食い違えば止めて報告する
   - 先に、共通部品の`server/env/frontend-env.ts`が`FrontendEnvInput`(`z.input<typeof frontendEnvSchema>`)を公開することと、client・adminの`test/config/worker-env-contract.ts`(新規、型の表明だけ)の3つの照合((a)`Env`のキーが`FrontendEnvInput`に含まれる、(b)`FrontendEnvInput`の必須のキーが`Env`にある、(c)`Env`の変数の型が代入できる)を書き、生成物にスキーマに無いキーを一時的に足すと`tsc -p tsconfig.worker-env.json`が失敗することを確かめて戻す
   - client・adminに`cf-typegen`(`wrangler types --include-runtime=false`)・`cf-typegen:check`(`wrangler types --include-runtime=false --check && tsc -p tsconfig.worker-env.json`)と`tsconfig.worker-env.json`を置き、`worker-configuration.d.ts`を生成してコミットの対象にする。アプリの`tsconfig.json`の`exclude`に生成物と照合のファイルを加え、静的解析の型情報の扱いを`bun run lint`が通る形にする。生成物が実行時の型を参照する場合は照合の設定にだけ補助の型定義を置く

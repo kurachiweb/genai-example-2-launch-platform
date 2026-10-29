@@ -101,6 +101,8 @@ const frontendEnvSchema = z.object({
   HASH_PEPPER: z.string().min(1),
 });
 
+export type FrontendEnvInput = z.input<typeof frontendEnvSchema>;
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 

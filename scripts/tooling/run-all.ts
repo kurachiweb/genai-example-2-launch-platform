@@ -93,7 +93,7 @@ const CHECK_STEPS: readonly PlannedStep[] = [
   { script: 'check:test-names', targets: ROOT_ONLY, args: [] },
   { script: 'format:check', targets: ROOT_ONLY, args: [] },
   { script: 'lint', targets: ROOT_AND_APPS, args: [] },
-  // 設定を変えて型を生成し直し忘れると型検査のエラーとして現れるため、型検査の前に確認して原因を先に表示する。実行時の型を生成するのはWorkersのアプリだけのため、ルートは対象にしない
+  // 設定を変えて型を生成し直し忘れると型検査のエラーとして現れるため、型検査の前に確認して原因を先に表示する。Wranglerで型を生成するのはアプリだけのため、ルートは対象にしない
   { script: 'cf-typegen:check', targets: APPS_ONLY, args: [] },
   // 生成し直し忘れたGraphQLのスキーマファイルやリゾルバの型も型検査のエラーとして現れるため、同じ理由で型検査の前に置く。生成物を持つのはアプリだけのため、ルートは対象にしない
   { script: 'graphql:check', targets: APPS_ONLY, args: [] },

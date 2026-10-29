@@ -18,6 +18,8 @@
     "lib/*.ts",
     "lib/**/*.stories.tsx",
     "lib/**/*.test.ts",
-    "lib/**/*.test.tsx"
+    "lib/**/*.test.tsx",
+    "worker-configuration.d.ts",
+    "test/config/worker-env-contract.ts"
   ]
 }

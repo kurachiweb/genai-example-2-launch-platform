@@ -489,14 +489,15 @@ APIサーバー・イベントサーバーだけを検査・テストすると�
 
 画面を持つアプリ(`apps/frontend-lib`・`apps/client`・`apps/admin`)だけを検査・テストするときは、各アプリのディレクトリで次のスクリプトを実行する。
 
-| コマンド                                            | 対象                                             | 内容                                                                                                                                             |
-| --------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `bun run lint`・`bun run typecheck`                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 静的解析・型検査。共有ディレクトリ(`lib`)の静的解析は検査担当の`apps/frontend-lib`が受け持つ                                                     |
-| `bun run test:unit`                                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 単体テスト(Bun)。`apps/client`・`apps/admin`は配置先の`lib`を除いた`bunfig.unit.toml`を使う                                                      |
-| `bun run test:browser`                              | `apps/frontend-lib`・`apps/client`・`apps/admin` | ブラウザテスト(Vitest Browser Mode、共有Chromium)。部品のアクセシビリティの自動検査を含む                                                        |
-| `bun run storybook:dev`・`bun run storybook:build`  | `apps/frontend-lib`                              | 部品のカタログの起動と静的な出力。起動の手順はクイックスタートの手順13に従う                                                                     |
-| `bun run graphql:generate`・`bun run graphql:check` | `apps/client`・`apps/admin`                      | フロントエンドの操作の型・文書・操作の一覧の生成と、生成物の食い違いの検査(食い違えば、再実行すべき`bun run graphql:generate`を表示して失敗する) |
-| `bun run dev`・`bun run build`・`bun run preview`   | `apps/client`・`apps/admin`                      | 開発サーバー・ビルド・ビルド後のプレビュー。手順はクイックスタートの手順13・14に従う                                                             |
+| コマンド                                            | 対象                                             | 内容                                                                                                                                                                                                                   |
+| --------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run lint`・`bun run typecheck`                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 静的解析・型検査。共有ディレクトリ(`lib`)の静的解析は検査担当の`apps/frontend-lib`が受け持つ                                                                                                                           |
+| `bun run test:unit`                                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 単体テスト(Bun)。`apps/client`・`apps/admin`は配置先の`lib`を除いた`bunfig.unit.toml`を使う                                                                                                                            |
+| `bun run test:browser`                              | `apps/frontend-lib`・`apps/client`・`apps/admin` | ブラウザテスト(Vitest Browser Mode、共有Chromium)。部品のアクセシビリティの自動検査を含む                                                                                                                              |
+| `bun run storybook:dev`・`bun run storybook:build`  | `apps/frontend-lib`                              | 部品のカタログの起動と静的な出力。起動の手順はクイックスタートの手順13に従う                                                                                                                                           |
+| `bun run cf-typegen`・`bun run cf-typegen:check`    | `apps/client`・`apps/admin`                      | Wrangler設定を変えた時の環境の型の定義ファイル`worker-configuration.d.ts`の生成し直し(実行時の型は含めない)と、生成物の食い違いと環境の検証スキーマとの型の照合の検査。ルートの一括検査(`bun run check`)でも実行される |
+| `bun run graphql:generate`・`bun run graphql:check` | `apps/client`・`apps/admin`                      | フロントエンドの操作の型・文書・操作の一覧の生成と、生成物の食い違いの検査(食い違えば、再実行すべき`bun run graphql:generate`を表示して失敗する)                                                                       |
+| `bun run dev`・`bun run build`・`bun run preview`   | `apps/client`・`apps/admin`                      | 開発サーバー・ビルド・ビルド後のプレビュー。手順はクイックスタートの手順13・14に従う                                                                                                                                   |
 
 ## ローカルポート一覧
 

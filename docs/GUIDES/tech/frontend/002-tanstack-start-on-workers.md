@@ -103,11 +103,42 @@ declare module '@tanstack/react-start' {
 
 ### 環境の型
 
-画面を持つアプリには、`wrangler types`で型を生成するスクリプト(`cf-typegen`・`cf-typegen:check`)を置かず、生成した型の定義ファイル(`worker-configuration.d.ts`)も読み込まない。
+画面のコードが使う環境の型は、変数・シークレット・バインディングを検証する共通部品のZodのスキーマから作る。画面を持つアプリも`wrangler types`で型を生成するが、生成するのは環境の型(`Env`)だけで、生成した型はWrangler設定とスキーマの型の照合にだけ使い、画面のコードからは読み込まない。
 
-- 環境の型は、変数・シークレット・バインディングを検証する共通部品のZodのスキーマから作る。サーバーのエントリは最初の要求の中で環境をこのスキーマで検証し、検証済みの値だけを使う。バインディングは共通部品の構造的な型(Service Bindingsの`fetch`を持つ型、Rate Limitingバインディングの`limit`を持つ型)で扱う。
-- Wrangler設定とスキーマの食い違い(変数・シークレット・バインディングの欠落)は、各アプリの`wrangler-config.unit.test.ts`が、すべての環境の実効の値をスキーマの検証に通して検出する。型の生成と`cf-typegen:check`が担う食い違いの検出を、この単体テストが担う。
-- 生成した型の定義ファイルはWorkersの実行時の型を大域に宣言するため、画面のコードが使うDOMの型と同じ型検査の対象に入れると衝突する。
+- サーバーのエントリは最初の要求の中で環境をスキーマで検証し、検証済みの値だけを使う。バインディングは共通部品の構造的な型(Service Bindingsの`fetch`を持つ型、Rate Limitingバインディングの`limit`を持つ型)で扱う。生成した`Env`を画面のコードから読まないのは、検証の前の環境の値を使えないようにするためである。
+- 生成は`wrangler types --include-runtime=false`で行い、Workersの実行時の型を含めない。実行時の型は`Request`・`Response`などを大域に宣言するため、画面のコードが使うDOMの型と同じ型検査の対象に入れると衝突する。`Env`の型だけなら衝突しない。
+- スクリプトは`cf-typegen`(`wrangler types --include-runtime=false`)と`cf-typegen:check`(`wrangler types --include-runtime=false --check && tsc -p tsconfig.worker-env.json`)を置き、生成物`worker-configuration.d.ts`をコミットする。`--check`が失敗した時は、案内に出る`wrangler types`ではなく`bun run cf-typegen`で生成し直す(引数を付けずに実行すると実行時の型を含めてしまう)。
+- アプリの`tsconfig.json`の`exclude`に生成物と照合のファイルを加え、画面のコードの型検査から外す。アプリ直下の`*.ts`を`include`に含めると、生成物の`.d.ts`も含まれるためである。
+
+#### スキーマとの型の照合
+
+照合のファイル(例: `test/config/worker-env-contract.ts`)は、生成した`Env`とスキーマの入力の型(`z.input<typeof <環境のスキーマ>>`)を型だけで比べ、次の項目に当てはまるキーの和集合が`never`でなければ型エラーにする。照合のファイルは実行しない。
+
+| 照合                                | 検出する食い違い                                                           |
+| ----------------------------------- | -------------------------------------------------------------------------- |
+| `Env`のキーがスキーマにある         | Wrangler設定にあり、スキーマが検証しない変数・シークレット・バインディング |
+| スキーマの必須のキーが`Env`にある   | スキーマが必須とし、Wrangler設定に無いキー                                 |
+| `Env`の型がスキーマの型へ代入できる | 変数の値(リテラルの型)がスキーマの受け付けない値である                     |
+| `Env`の型が型の無い値でない         | 宣言の無い実行時の型の名前を参照するバインディング                         |
+
+- 実行時の型を含めない生成物も、バインディングの型として実行時の型の名前(Service Bindingsの`Service`、Rate Limitingバインディングの`RateLimit`など)を宣言なしに参照する。照合のファイルの中で`declare global`により、それらの名前をスキーマが使う構造的な型の別名として宣言する。宣言はこのファイルにだけ置き、画面のコードには及ばない。
+- 宣言の無い型の名前は、基底設定の`skipLibCheck: true`により型の定義ファイルの中ではエラーにならず、どの型へも代入できる型になって代入の照合を素通りする。この型は`0 extends 1 & T`では見分けられないため、どの値も満たさない型(`declare const <記号>: unique symbol;`をキーに持つオブジェクトの型)へ`[T] extends [...]`で代入できるかで見分ける。新しい種類のバインディングを加えた時は、照合が失敗するので別名の宣言を足す。
+- 生成物は`Cloudflare.GlobalProps`の`mainModule`の型としてサーバーのエントリを`typeof import()`で読み込むため、照合の型検査にはサーバーのエントリとそこから読み込むファイルも含まれる。エントリがモジュールの型を拡張する(`declare module '<パッケージ>'`)場合、そのモジュールを読み込むファイルがプログラムに無いと拡張の対象として解決されず失敗するため、照合のファイルで`import type {} from '<パッケージ>';`として読み込んでおく。
+- 照合の型検査の設定`tsconfig.worker-env.json`は、アプリの`tsconfig.json`を継承し、`include`を生成物と照合のファイルに絞り、`exclude`を空にする(`exclude`は継承されるため、空にしないと両方が除かれる)。
+
+```json
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "worker-configuration.d.ts",
+    "test/config/worker-env-contract.ts"
+  ],
+  "exclude": []
+}
+```
+
+- 静的解析の型情報は、アプリの`tsconfig.json`から外した照合のファイルだけ、`parserOptions`の`projectService: false`と`project: './tsconfig.worker-env.json'`で照合の設定から解決する。
+- 型の照合はキーと型の食い違いだけを見る。`wrangler types`はすべての環境の値を1つの`Env`にまとめ(値はリテラルの型の和、一部の環境にだけあるキーは省略可能)、スキーマが省略可能とするキーの環境ごとの欠落は型の上では見えない(スキーマで必須のキーが一部の環境に無いと省略可能になり、代入の照合で失敗する)。値の形式(URLの形・数値の範囲など)と環境ごとの実効の値は、各アプリの`wrangler-config.unit.test.ts`が、すべての環境の実効の値をスキーマの検証に通して検出する。
 
 ## 独自のブラウザのエントリ
 
