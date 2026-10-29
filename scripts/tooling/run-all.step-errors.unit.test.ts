@@ -85,6 +85,7 @@ const CHECK_RESULTS_WITH_UNREADABLE_EVENT: readonly StepResult[] = [
   ...appResultsOf('cf-typegen:check', { event: UNREADABLE_EVENT }, PASSED),
   ...appResultsOf('graphql:check', { event: UNREADABLE_EVENT }, PASSED),
   ...resultsOf('typecheck', { event: UNREADABLE_EVENT }, PASSED),
+  { step: 'check:contract-copies', target: 'root', outcome: PASSED },
 ];
 
 const createWorkspaceWithUnreadableEvent = () =>
@@ -116,6 +117,7 @@ describe('runAggregate', () => {
         callOf(dir, 'bun', 'run', 'graphql:check'),
       ),
       ...DIRS_EXCEPT_EVENT.map((dir) => callOf(dir, 'bun', 'run', 'typecheck')),
+      callOf(ROOT_DIR, 'bun', 'run', 'check:contract-copies'),
     ]);
     expect(results).toEqual(CHECK_RESULTS_WITH_UNREADABLE_EVENT);
     expect(exitCodeOf(results)).toBe(1);
@@ -268,7 +270,7 @@ describe('runAggregateEntry', () => {
     );
 
     expect(calls).toHaveLength(
-      3 + DIRS_EXCEPT_EVENT.length * 2 + APP_DIRS_EXCEPT_EVENT.length * 2,
+      3 + DIRS_EXCEPT_EVENT.length * 2 + APP_DIRS_EXCEPT_EVENT.length * 2 + 1,
     );
     expect(stdout).toBe(
       `\n${formatSummary(CHECK_RESULTS_WITH_UNREADABLE_EVENT)}`,
@@ -323,6 +325,7 @@ describe('直接実行したときの入口', () => {
           'format:check': 'echo format',
           lint: 'echo lint-root',
           typecheck: 'echo typecheck-root',
+          'check:contract-copies': 'echo contract-copies',
         }),
         'apps/api/package.json': packageJsonOf({
           lint: 'exit 3',
@@ -340,6 +343,7 @@ describe('直接実行したときの入口', () => {
 
       expect(stdout).toContain('\nlint-frontend-lib\n');
       expect(stdout).toContain('\ntypecheck-frontend-lib\n');
+      expect(stdout).toContain('\ncontract-copies\n');
       expect(stdout).toEndWith(
         formatSummary([
           ...ROOT_STEPS_PASSED,
@@ -381,6 +385,7 @@ describe('直接実行したときの入口', () => {
             },
             PROJECT_MISSING,
           ),
+          { step: 'check:contract-copies', target: 'root', outcome: PASSED },
         ]),
       );
       expect(stderr).toEndWith(causesMessageOf(unreadableEventOf(reason)));

@@ -42,6 +42,7 @@ export const ROOT_CHECK_SCRIPTS = [
   'format:check',
   'lint',
   'typecheck',
+  'check:contract-copies',
 ];
 
 export const DIR_CHECK_SCRIPTS = [

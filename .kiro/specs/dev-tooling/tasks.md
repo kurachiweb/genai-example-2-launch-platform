@@ -302,8 +302,8 @@
   - 完了状態: 一括検査・カバレッジ付き単体テスト・E2Eテストがすべて成功し、技術ドキュメントの固有値の検索結果が0件である
   - _Requirements: 5.7, 7.1, 10.3, 10.6_
 
-- [ ] 9. frontend-platformの最終検証後の判断の反映(承認後の改訂1)
-- [ ] 9.1 一括検査の段階に写しの照合を加える
+- [x] 9. frontend-platformの最終検証後の判断の反映(承認後の改訂1)
+- [x] 9.1 一括検査の段階に写しの照合を加える
   - 前提: frontend-platformの11.4(ルートの`config/contract-copies.unit.test.ts`)が完了していること。完了していなければ止めて報告する
   - 先に、`test-support/run-all-fixtures.ts`の`ROOT_CHECK_SCRIPTS`に`check:contract-copies`を加え、`scripts/tooling/run-all.unit.test.ts`の`check`の期待(呼び出しの順と結果の一覧で、型検査の後にルートだけで`bun run check:contract-copies`を実行すること、前段が失敗しても実行すること、ルートにスクリプトが無ければ「飛ばした(スクリプト未定義)」になること、結果の表のラベルが「写しの照合(check:contract-copies)」であること)と`run-all.step-errors.unit.test.ts`の期待を直し、失敗を確かめる
   - ルートの`package.json`に`check:contract-copies`(`bun test ./config/contract-copies.unit.test.ts`。`./`を付けてパスとして渡す)を加え、`run-all.ts`の`CHECK_STEPS`の末尾(`typecheck`の後)に`{ script: 'check:contract-copies', targets: ROOT_ONLY, args: [] }`、`STEP_LABELS`に`['check:contract-copies', '写しの照合']`を加え、`USAGE`の`check`の説明の段階の並びに「写しの照合」を加える。`check`が引数を受け取らないことと、照合のテストがルートの`test:unit`にも残ることは変えない

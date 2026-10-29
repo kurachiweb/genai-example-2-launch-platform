@@ -41,7 +41,7 @@ import {
 
 const USAGE_MESSAGE = [
   '使い方: bun scripts/tooling/run-all.ts <check|lint|typecheck|test:unit|test:browser|test:worker> [引数...]',
-  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型生成の検査・GraphQLの生成物の検査・型検査を、失敗しても止めずにすべて実行する(引数は受け取らない)',
+  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型生成の検査・GraphQLの生成物の検査・型検査・写しの照合を、失敗しても止めずにすべて実行する(引数は受け取らない)',
   '  それ以外: ルートと各アプリの同名スクリプトを、残りの引数付きで実行する',
   '',
 ].join('\n');
@@ -49,7 +49,7 @@ const USAGE_MESSAGE = [
 const { createDir, createRepositoryWithScript } = useRunAllFixtures();
 
 describe('runAggregate', () => {
-  test('checkは配置確認・命名検査・整形検査をルートで、静的解析と型検査をルートと各アプリで、型生成の検査とGraphQLの生成物の検査を各アプリで、この順に実行する', async () => {
+  test('checkは配置確認・命名検査・整形検査をルートで、静的解析と型検査をルートと各アプリで、型生成の検査とGraphQLの生成物の検査を各アプリで、型検査の後に写しの照合をルートで、この順に実行する', async () => {
     const { deps, calls } = createFakeWorkspace({
       ...everyDirWith(...DIR_CHECK_SCRIPTS),
       [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS),
@@ -65,6 +65,7 @@ describe('runAggregate', () => {
       ...APP_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'cf-typegen:check')),
       ...APP_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'graphql:check')),
       ...ALL_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'typecheck')),
+      callOf(ROOT_DIR, 'bun', 'run', 'check:contract-copies'),
     ]);
     expect(results).toEqual([
       { step: 'shared-dirs:verify', target: 'root', outcome: PASSED },
@@ -74,6 +75,7 @@ describe('runAggregate', () => {
       ...appResultsOf('cf-typegen:check', {}, PASSED),
       ...appResultsOf('graphql:check', {}, PASSED),
       ...resultsOf('typecheck', {}, PASSED),
+      { step: 'check:contract-copies', target: 'root', outcome: PASSED },
     ]);
   });
 
@@ -89,12 +91,15 @@ describe('runAggregate', () => {
         'apps/event cf-typegen:check': 1,
         'apps/api graphql:check': 1,
         '. typecheck': 2,
+        '. check:contract-copies': 1,
       },
     );
 
     const results = await runAggregate('check', [], deps);
 
-    expect(calls).toHaveLength(3 + ALL_DIRS.length * 2 + APP_DIRS.length * 2);
+    expect(calls).toHaveLength(
+      3 + ALL_DIRS.length * 2 + APP_DIRS.length * 2 + 1,
+    );
     expect(results).toEqual([
       { step: 'shared-dirs:verify', target: 'root', outcome: failedWith(1) },
       { step: 'check:test-names', target: 'root', outcome: PASSED },
@@ -103,6 +108,11 @@ describe('runAggregate', () => {
       ...appResultsOf('cf-typegen:check', { event: failedWith(1) }, PASSED),
       ...appResultsOf('graphql:check', { api: failedWith(1) }, PASSED),
       ...resultsOf('typecheck', { root: failedWith(2) }, PASSED),
+      {
+        step: 'check:contract-copies',
+        target: 'root',
+        outcome: failedWith(1),
+      },
     ]);
   });
 
@@ -145,6 +155,11 @@ describe('runAggregate', () => {
         { root: SCRIPT_MISSING, api: SCRIPT_MISSING, client: SCRIPT_MISSING },
         PROJECT_MISSING,
       ),
+      {
+        step: 'check:contract-copies',
+        target: 'root',
+        outcome: SCRIPT_MISSING,
+      },
     ]);
   });
 
@@ -289,6 +304,7 @@ describe('formatSummary', () => {
   test.each([
     ['cf-typegen:check', '型生成の検査(cf-typegen:check)'],
     ['graphql:check', 'GraphQLの生成物の検査(graphql:check)'],
+    ['check:contract-copies', '写しの照合(check:contract-copies)'],
   ])('%sの段階を日本語の名前付きで表示する', (step, label) => {
     const [, row = ''] = linesOf(
       formatSummary([{ step, target: 'api', outcome: PASSED }]),
@@ -426,6 +442,7 @@ describe('runAggregateEntry', () => {
         ...appResultsOf('cf-typegen:check', {}, PROJECT_MISSING),
         ...appResultsOf('graphql:check', {}, PROJECT_MISSING),
         ...resultsOf('typecheck', { root: PASSED }, PROJECT_MISSING),
+        { step: 'check:contract-copies', target: 'root', outcome: PASSED },
       ])}`,
     );
     expect(stderr).toBe('');
@@ -506,6 +523,7 @@ describe('直接実行したときの入口', () => {
           'format:check': 'echo format',
           lint: 'echo lint-root',
           typecheck: 'echo typecheck-root',
+          'check:contract-copies': 'echo contract-copies',
         }),
         'apps/api/package.json': packageJsonOf({
           lint: 'exit 2',
@@ -520,6 +538,7 @@ describe('直接実行したときの入口', () => {
       expect(stdout).toContain('\ntypegen-api\n');
       expect(stdout).toContain('\ngraphql-api\n');
       expect(stdout).toContain('\ntypecheck-api\n');
+      expect(stdout).toContain('\ncontract-copies\n');
       expect(stdout).toEndWith(
         formatSummary([
           { step: 'shared-dirs:verify', target: 'root', outcome: PASSED },
@@ -537,6 +556,7 @@ describe('直接実行したときの入口', () => {
             { root: PASSED, api: PASSED },
             PROJECT_MISSING,
           ),
+          { step: 'check:contract-copies', target: 'root', outcome: PASSED },
         ]),
       );
       expect(exitCode).toBe(1);
@@ -546,9 +566,10 @@ describe('直接実行したときの入口', () => {
 });
 
 describe('ルートのpackage.json', () => {
-  test('一括検査・命名検査・テスト種別ごとの一括実行・共有ディレクトリの確認とコピー配置のスクリプトが、それぞれの入口を呼び出す', () => {
+  test('一括検査・命名検査・写しの照合・テスト種別ごとの一括実行・共有ディレクトリの確認とコピー配置のスクリプトが、それぞれの入口を呼び出す', () => {
     expect(readPackageScripts(REPO_ROOT)).toMatchObject({
       check: 'bun ./scripts/tooling/run-all.ts check',
+      'check:contract-copies': 'bun test ./config/contract-copies.unit.test.ts',
       'check:test-names': 'bun ./scripts/tooling/check-test-names.ts',
       'test:all:unit': 'bun ./scripts/tooling/run-all.ts test:unit',
       'test:all:browser': 'bun ./scripts/tooling/run-all.ts test:browser',
