@@ -43,19 +43,19 @@ export function useAppForm<TInput extends FieldValues, TOutput>(
     resolver,
     defaultValues,
   });
-  const { trigger, getValues } = form;
+  const { trigger, getValues, getErrors } = form;
 
-  // スキーマを切り替えるとisValidと表示中のエラーが古いスキーマの結果のまま残るため、新しいスキーマで検証し直す。名前の配列を渡したtriggerは全欄の検証の結果でisValidを計算し直し、渡した欄のエラーだけを置き換えるため、描かれている欄のサーバーのエラーだけを残せる。errorsはformStateのproxyから読むとフォームがエラーの更新を購読するため、制御の内部の状態から読む
+  // スキーマを切り替えるとisValidと表示中のエラーが古いスキーマの結果のまま残るため、新しいスキーマで検証し直す。名前の配列を渡したtriggerは全欄の検証の結果でisValidを計算し直し、渡した欄のエラーだけを置き換えるため、描かれている欄のサーバーのエラーだけを残せる。errorsはformStateのproxyから読むとフォームがエラーの更新を購読して描き直すため、購読しないgetErrorsで読む
   useEffect(() => {
-    const { _formState: formState, _fields: fields } = created.control;
+    const { _fields: fields } = created.control;
     void trigger(
       revalidationTargetsOf({
-        errors: formState.errors,
+        errors: getErrors(),
         values: getValues(),
         isFieldMounted: (path) => mountStateOf(fields, path) === true,
       }),
     );
-  }, [schema, created, trigger, getValues]);
+  }, [schema, created, trigger, getValues, getErrors]);
 
   return form;
 }

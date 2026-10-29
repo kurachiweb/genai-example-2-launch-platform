@@ -38,7 +38,7 @@ const fieldElement = (name: string) => ({
 });
 
 const createControl = () => {
-  const { control, getValues } = createFormControl<ProductForm>({
+  const { control, getValues, getErrors } = createFormControl<ProductForm>({
     defaultValues: {
       title: '',
       tagline: '',
@@ -51,12 +51,15 @@ const createControl = () => {
     control.register(name).ref(fieldElement(name));
   }
   control.register(UNMOUNTED_FIELD).ref(null);
-  return { control, getValues };
+  return { control, getValues, getErrors };
 };
 
-const targetsOf = ({ control, getValues }: ReturnType<typeof createControl>) =>
+const targetsOf = ({
+  getValues,
+  getErrors,
+}: ReturnType<typeof createControl>) =>
   revalidationTargetsOf({
-    errors: control._formState.errors,
+    errors: getErrors(),
     values: getValues(),
     isFieldMounted: (path) => MOUNTED_FIELDS.has(path),
   });
@@ -165,25 +168,26 @@ type SchemaName = keyof typeof SCHEMAS;
 // useAppFormと同じく、スキーマを切り替えたら対象の欄だけをtriggerで検証し直す
 const createLinksForm = (url: string) => {
   let schemaName: SchemaName = 'atLeastTwo';
-  const { control, getValues, trigger } = createFormControl<LinksForm>({
-    defaultValues: { links: [{ url }] },
-    resolver: async (values, context, options) =>
-      zodResolver(SCHEMAS[schemaName])(values, context, options),
-  });
+  const { control, getValues, getErrors, trigger } =
+    createFormControl<LinksForm>({
+      defaultValues: { links: [{ url }] },
+      resolver: async (values, context, options) =>
+        zodResolver(SCHEMAS[schemaName])(values, context, options),
+    });
   control._names.array.add('links');
   control.register('links.0.url').ref(fieldElement('links.0.url'));
   const switchTo = async (next: SchemaName) => {
     schemaName = next;
     await trigger(
       revalidationTargetsOf({
-        errors: control._formState.errors,
+        errors: getErrors(),
         values: getValues(),
         isFieldMounted: (path) => path === 'links.0.url',
       }),
     );
   };
   const messageAt = (path: string): unknown =>
-    get(control._formState.errors, `${path}.message`);
+    get(getErrors(), `${path}.message`);
   // 一覧全体のエラーは、react-hook-formが古い規則で検証した結果の形(<一覧>.root)で用意する
   const validateAll = async () => {
     await trigger();

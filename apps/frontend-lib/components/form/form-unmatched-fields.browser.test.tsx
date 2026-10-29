@@ -136,6 +136,7 @@ interface ReportFormProps {
   readonly withContact: boolean;
   readonly onSubmit?: SubmitHandler;
   readonly onSubmitError?: SubmitErrorHandler;
+  readonly onRender?: () => void;
 }
 
 // 条件で欄を描く・描かないと、条件ごとの定数のスキーマを切り替える利用例
@@ -143,7 +144,9 @@ function ReportForm({
   withContact,
   onSubmit = () => undefined,
   onSubmitError = () => undefined,
+  onRender = () => undefined,
 }: ReportFormProps) {
+  onRender();
   const form = useAppForm(
     withContact ? withContactSchema : withoutContactSchema,
     { defaultValues: { title: '', contact: '' } },
@@ -553,6 +556,31 @@ describe('フォーム部品の欄に対応しない経路', () => {
         .element(page.getByText(POSTAL_CODE_REQUIRED))
         .not.toBeInTheDocument();
       await expect.element(submitButton()).toBeEnabled();
+    });
+
+    test('切り替えで検証し直す欄を選ぶために欄のエラーを読んでも、フォームを作る部品は欄のエラーの変化で描き直さない', async () => {
+      const onRender = vi.fn();
+      const screen = await render(
+        <ReportForm withContact onRender={onRender} />,
+      );
+      await expect.element(submitButton()).toBeDisabled();
+      const rendersBeforeError = onRender.mock.calls.length;
+
+      await userEvent.fill(contactInput(), 'ab');
+      await userEvent.tab();
+      await expect.element(page.getByText(CONTACT_TOO_SHORT)).toBeVisible();
+
+      expect(onRender).toHaveBeenCalledTimes(rendersBeforeError);
+
+      await screen.rerender(
+        <ReportForm withContact={false} onRender={onRender} />,
+      );
+      await expect.element(contactInput()).not.toBeInTheDocument();
+      await userEvent.click(titleInput());
+      await userEvent.tab();
+      await expect.element(page.getByText(TITLE_REQUIRED)).toBeVisible();
+
+      expect(onRender).toHaveBeenCalledTimes(rendersBeforeError + 1);
     });
 
     test('切り替えても、描かれている欄のサーバーのエラーは残し、その欄を直すまで送信ボタンを無効にする', async () => {
