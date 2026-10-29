@@ -286,8 +286,8 @@
   - _Boundary: SessionAccess, SessionVerifierPort, 技術ドキュメント群_
   - _Requirements: 3.5, 3.8, 3.9_
 
-- [ ] 12. frontend-platformの第4回の判断の反映(承認後の改訂5)
-- [ ] 12.1 中継の要求が持つトレースをAPIサーバーが続けることを確かめる
+- [x] 12. frontend-platformの第4回の判断の反映(承認後の改訂5)
+- [x] 12.1 中継の要求が持つトレースをAPIサーバーが続けることを確かめる
   - `operation-observability.worker.test.ts`へ、`sentry-trace`(と`baggage`)を付けた`POST /graphql`の中継の要求を送り、Sentryの送信を差し替えたトランスポートで、ルートのスパンのトレースIDが受け取った`sentry-trace`のトレースIDと同じで、親のスパンIDが受け取った値であることを確かめる検査を1件足す。既存の実装が満たしていれば成功してよい。失敗すれば原因を調べ、実装を直す前に開発者へ報告する
   - 完了状態: apiのWorkers統合テストと一括検査が成功する
   - _Depends: 5.4_

@@ -54,6 +54,7 @@ interface RecordingFetch {
 interface SentSpan {
   readonly name: string;
   readonly trace_id: string;
+  readonly parent_span_id?: string;
   readonly is_segment: boolean;
   readonly attributes: Record<string, { readonly value: unknown } | undefined>;
 }
@@ -84,6 +85,9 @@ const TEST_ENV: SentryEnv = { SENTRY_ENVIRONMENT: 'test' };
 const VARIABLE_VALUE = 'variable-value-must-not-be-logged';
 const SESSION_TOKEN = 'A'.repeat(43);
 const BOT_TOKEN = 'bot-token-must-not-be-logged';
+
+const INCOMING_TRACE_ID = '0123456789abcdef0123456789abcdef';
+const INCOMING_PARENT_SPAN_ID = 'fedcba9876543210';
 
 const SCHEMA = createSchema<OperationObservabilityContext & YogaInitialContext>(
   {
@@ -563,6 +567,29 @@ describe('トレース', () => {
       caller: 'admin',
     });
     expect(executeSpansOf(spans)).toHaveLength(0);
+  });
+
+  test('中継の要求のsentry-traceとbaggageを受け取ると、ルートのスパンがそのトレースIDを引き継ぎ、親のスパンIDを受け取った値にする', async () => {
+    const recording = createRecordingFetch();
+
+    await invoke('query ReadValue { value }', {
+      recording,
+      headers: {
+        'sentry-trace': `${INCOMING_TRACE_ID}-${INCOMING_PARENT_SPAN_ID}-1`,
+        baggage: [
+          `sentry-trace_id=${INCOMING_TRACE_ID}`,
+          'sentry-environment=test',
+          'sentry-public_key=publickey',
+          'sentry-sample_rate=1',
+          'sentry-sampled=true',
+        ].join(','),
+      },
+    });
+
+    const root = rootSpanOf(sentSpans(recording));
+    expect(root?.name).toBe('POST /graphql');
+    expect(root?.trace_id).toBe(INCOMING_TRACE_ID);
+    expect(root?.parent_span_id).toBe(INCOMING_PARENT_SPAN_ID);
   });
 
   test('送ったスパンに、変数・セッション識別子・bot判定のトークンを含めない', async () => {
