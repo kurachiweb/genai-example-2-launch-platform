@@ -69,7 +69,7 @@
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7_
 
 - [ ] 4. CIの検査のコマンド
-- [ ] 4.1 (P) 依存パッケージの導入と既知の脆弱性の確認のコマンドを作る
+- [x] 4.1 (P) 依存パッケージの導入と既知の脆弱性の確認のコマンドを作る
   - 先に、導入の対象がルート・アプリの一覧・共有ディレクトリの配置元のうち`package.json`を持つものになり、共有ディレクトリ(`apps/common-lib`の例を含む)を加えると自動で対象に入ること、導入が`CI=true`と`--frozen-lockfile`で呼ばれ最初の失敗で止まること、脆弱性の確認が重大度高以上と除外の一覧で呼ばれ、見直し期限を過ぎた除外で失敗することを確かめる単体テストを書く
   - 脆弱性の除外の一覧は、識別子・理由・見直し期限の形で空の初版を置く
   - 完了状態: 単体テストが成功し、新しいcloneに相当する一時ディレクトリで導入のコマンドを実行すると全対象が導入される
@@ -296,3 +296,5 @@
 - 3.2(6.xへの制約): W9はワークフローの版を(1)setupアクションの入力`bun-version`・`node-version`・`tofu_version`、(2)Dockerfileと同名の環境変数(`BUN_VERSION`・`NODE_VERSION`・`OPENTOFU_VERSION`・`INFISICAL_CLI_VERSION`・`WRANGLER_VERSION`・`MAILPIT_VERSION`・`PLAYWRIGHT_VERSION`。Bunは`BUN_IMAGE_TAG`でなく`BUN_VERSION`)、(3)`run`中の`wrangler@<版>`・`playwright@<版>`・`@playwright/test@<版>`から読む。複合アクションはplaywright以外の6ツールの版の宣言が必須。W7は`concurrency.group: deploy-${{ inputs.environment }}`と`cancel-in-progress: false`の明示を求める。W8は`deploy.yml`で`id`を持つ手順の並びが`DEPLOY_STAGES`と完全一致することを求める(段階以外の手順に`id`を付けない)。W1はローカル参照`./`を除外し、`docker://`はダイジェスト固定でも違反。W6は`run`の`${{ inputs.* }}`・`${{ github.event.* }}`だけを見る。`checks.yml`・`deploy.yml`が無い間はW7・W8・W10の違反が出る。
 - 3.2: `ExpectedToolVersions`に設計に無い`node`を加え、`scalarText`・`toolVersionsInStep`・`toolVersionsInEnv`・`WorkflowPolicyInput`・`WORKFLOWS_DIR`・`LIVE_VERSIONS_TF_PATH`等をexportした(9.1でdesign.mdへ反映)。providerの版の完全固定は本モジュールでは見ない。
 - 3.3: `contract-check`・`policy-check`は5列が同一の違反を1行に統合する。読めない入力(解析エラー・ファイル無し・版の読み取り失敗)は違反の表に入れず`reportInputErrors`(`commands/shared/report-violations.ts`)で前提の不足として出し終了コード1。入力の読み込みは`commands/shared/load-input.ts`、偽のファイル読み込みは`test-fixtures/repo-files.ts`(いずれも9.1でdesign.mdへ反映)。複合アクションは`setup-toolchain/action.yml`の1つだけを読み、無ければ空の文書としてW9の違反になる。`pull-request.yml`・`delivery.yml`・`release-pr.yml`の存在はW1〜W10では検査されないため、7.3の`repo-contract.unit.test.ts`で確かめる。実リポジトリは現在contract-check 20件(C3×12・C5×8)、policy-check 9件(W7・W8・W10・W9×6)。
+- 4.1: 導入の対象は7件(ルート・api・event・frontend-lib・client・admin・db)。共通部品`commands/shared/install-targets.ts`(`findInstallTargets`・`runInTarget`)と偽の子プロセス`test-fixtures/command-runner.ts`を加えた。`createAuditCommand({exceptions, today})`・`todayInUtc`(見直し期限はUTCの日付で当日まで有効)、除外の識別子に数字も許すこと、不正な除外を失敗にすることは設計に無い(9.1で反映)。`audit`は全対象を確かめてから失敗する。`docs/GUIDES/tech/coding/003-shared-directories.md`の「CIでのコピー配置」は配置元(`apps/db`)の導入に触れておらず、docsのタスクで反映が要る。
+- 4.1(開発者の判断事項): 2026-10-29時点の実リポジトリで`audit`は終了コード1(api 9・event 9・frontend-lib 4(critical 1)・client 10・admin 10。zod・undici・sharp・Storybook・launch-editor)。6.3で`checks.yml`に組み込む前に、依存の更新か除外の登録を開発者が決める。
