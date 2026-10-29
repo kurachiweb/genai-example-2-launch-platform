@@ -557,7 +557,7 @@
   - _Requirements: 8.3, 15.3, 15.4_
 
 - [ ] 12. 最終検証後の第4回の判断の反映と未検証の要件のテスト
-- [ ] 12.1 共通部品の静的解析にフォームのライブラリの制限を加え、静的解析の設定のテストの時間の上限を延ばす
+- [x] 12.1 共通部品の静的解析にフォームのライブラリの制限を加え、静的解析の設定のテストの時間の上限を延ばす
   - 先に、`config/frontend-lint.unit.test.ts`へ、`utilities/**`・`server/**`のファイルで`react-hook-form`(例: `import { get } from 'react-hook-form'`)と`@hookform/*`(例: `import { zodResolver } from '@hookform/resolvers/zod'`)の値の読み込みが違反になり、型だけの読み込み(`import type { FieldValues } from 'react-hook-form'`)と`utilities/**/*.unit.test.ts`・`server/**/*.unit.test.ts`の値の読み込みが違反にならないことを確かめるテストを書き、失敗を確かめる
   - `RUNTIME_PACKAGE_RESTRICTION`の正規表現に`react-hook-form`と`@hookform/`を加え、`message`をフォームのライブラリを含む文に直す。テストファイルを対象外にする設定を`frontend/direction/utilities`・`frontend/direction/server`に加える(`restrictValueImports`でZodの制限は常に含める)。既存の`utilities/forms`の単体テストが本物の`createFormControl`・`zodResolver`を読み込めることを`bun run lint`で確かめる
   - 判断48: `config/eslint-config.unit.test.ts`の子プロセスのESLintを起動するテストに`{ timeout: 10_000 }`を付ける

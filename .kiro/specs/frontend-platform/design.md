@@ -167,11 +167,11 @@ graph TB
 
 - `utilities` ← `server` ← `start` ← `components` ← アプリ。共通部品はアプリの`src`を読み込まない。
 - アプリの中は`src/composition`が`src/routes`を読み込まないことだけを静的解析で禁止する(`frontend/direction/app-composition`)。`src/composition`は区画の既定の部品として`src/components`を読み込む。アプリから共通部品へは`lib/`の相対パスで読み込む。
-- `utilities/**`・`server/**`は`react`・`react-dom`・`react-hook-form`・`@hookform/*`・`@tanstack/*`・`cloudflare:*`・`@sentry/cloudflare`・`@sentry/tanstackstart-react`の実行時の値を読み込まない(Bunの単体テストで読み込むため。`RUNTIME_PACKAGE_RESTRICTION`)。型だけのimport(`@sentry/core`・`react-hook-form`の型など)は許す。テストファイル(`*.unit.test.ts`)は、検査の対象の振る舞いを本物のライブラリで動かすため対象外にする(`utilities/forms`のテストは`createFormControl`・`zodResolver`を使う)。`frontend-lint.unit.test.ts`が、両パッケージの値の読み込みを`utilities/**`・`server/**`で検出し、型だけの読み込みとテストファイルを検出しないことを確かめる(第4回の判断39)。
+- `utilities/**`・`server/**`は`react`・`react-dom`・`react-hook-form`・`@hookform/*`・`@tanstack/*`・`cloudflare:*`・`@sentry/cloudflare`・`@sentry/tanstackstart-react`の実行時の値を読み込まない(Bunの単体テストで読み込むため。`RUNTIME_PACKAGE_RESTRICTION`)。型だけのimport(`@sentry/core`・`react-hook-form`の型など)は許す。テストファイル(`utilities/**`・`server/**`の`*.test.ts(x)`)は、検査の対象の振る舞いを本物のライブラリで動かすため対象外にする(設定`frontend/direction/pure-tests`。Zodの値の制限と依存の向きは残す。`utilities/forms`のテストは`createFormControl`・`zodResolver`を使う)。`frontend-lint.unit.test.ts`が、両パッケージの値の読み込みを`utilities/**`・`server/**`で検出し、型だけの読み込みとテストファイルを検出しないことを確かめる(第4回の判断39)。
 - `start/**`の`*.server.ts`は、`start/**`の同型の関数(`createIsomorphicFn().server()`)のサーバーの分岐で使う値として読み込むか、他の`*.server.ts`から読み込む(`start/graphql/execute-graphql.server.ts`は`start/request-context.server.ts`を読む)。`components/**`は`*.server.ts`を読み込まない。
 - `components/**`は`start/**`の`*.server.ts`以外と`utilities/**`を読み込める。`server/**`は型だけを読み込める。
 - ブラウザのバンドルに入るファイル(`components/**`・`start/**`・アプリの`src/**`のうち、`*.server.ts`・`src/server.ts`・テスト以外)は`@sentry/tanstackstart-react`の実行時の値を静的に読み込まない(`frontend/browser-bundle/start-and-app`の`BROWSER_SENTRY_RESTRICTION`)。静的に読み込むとブラウザのSDKの動的importが別のチャンクに分かれず、SDKが主バンドルに入る。動的importは検出しない。
-- 共通部品とアプリは`zod`の値を`utilities/validation/zod.ts`からだけ読み込む(`ZOD_VALUE_RESTRICTION`、設定の名前`frontend/zod-entry`)。型だけの読み込みと`@hookform/resolvers/zod`は許す。ESLintは同じ規則の設定を合成しないため、`@typescript-eslint/no-restricted-imports`を設定する箇所は`restrictValueImports`で組み立て、Zodの制限を常に含める。client・adminのブラウザのエントリ(`src/client.tsx`)とサーバーのエントリ(`src/server.ts`)は、最初のimportで`zod.ts`を副作用として読み込む(「決定事項」)。
+- 共通部品とアプリは`zod`の値を`utilities/validation/zod.ts`からだけ読み込む(`ZOD_VALUE_RESTRICTION`、設定の名前`frontend/zod-entry`)。型だけの読み込みは許す。`@hookform/resolvers/zod`は、`utilities/**`・`server/**`のテストファイル以外では`RUNTIME_PACKAGE_RESTRICTION`で禁じ、それ以外の場所とテストファイルで許す。ESLintは同じ規則の設定を合成しないため、`@typescript-eslint/no-restricted-imports`を設定する箇所は`restrictValueImports`で組み立て、Zodの制限を常に含める。client・adminのブラウザのエントリ(`src/client.tsx`)とサーバーのエントリ(`src/server.ts`)は、最初のimportで`zod.ts`を副作用として読み込む(「決定事項」)。
 - GraphQLの操作はアプリの`src/graphql/operations/`の`.graphql`ファイルにだけ置き、`graphql()`を呼ばない。共通部品には操作を置かない。
 
 ### Technology Stack
@@ -2665,7 +2665,7 @@ graph LR
 
 - 契約: `apps/frontend-lib/config/frontend-lint.ts`の`RUNTIME_PACKAGE_RESTRICTION`の正規表現に`react-hook-form`と`@hookform/*`を加え、`utilities/**`・`server/**`でこれらの実行時の値の読み込みを禁止する。型だけの読み込み(`allowTypeImports`)は許し、テストファイル(`**/*.test.ts`)は対象外にする。Dependency Directionの一覧にも加える。
 - 理由: `utilities/forms`の関数はreact-hook-formの型だけに依存し、Bunの単体テストのカバレッジの分母に入る。実行時の値を読むと`components`に置くべき処理(`field-mount.ts`と同じ扱い)が`utilities`へ紛れ込み、依存の向きの規則が守られなくなる。テストは本物の`createFormControl`・`zodResolver`で振る舞いを確かめるため対象外にする。
-- 方法: テストファイルを対象外にするため、`frontend/direction/utilities`・`frontend/direction/server`の`@typescript-eslint/no-restricted-imports`に`ignores`を足すか、テストファイルだけに制限を外した設定を後に置く(`restrictValueImports`でZodの制限は常に含める)。
+- 方法: テストファイル(`utilities/**`・`server/**`の`*.test.ts(x)`)だけに`RUNTIME_PACKAGE_RESTRICTION`を外した設定`frontend/direction/pure-tests`を`frontend/direction/server`の後に置く(`restrictValueImports([])`でZodの制限は残す)。`ignores`を足す方法は依存の向きの検査までテストファイルから外すため使わない。`@hookform/resolvers/zod`の許可は`utilities`・`server`以外の場所とテストファイルにだけ適用する。
 - テスト: `frontend-lint.unit.test.ts`に、`utilities/**`・`server/**`のファイルで`import { get } from 'react-hook-form'`・`import { zodResolver } from '@hookform/resolvers/zod'`が違反になり、`import type { FieldValues } from 'react-hook-form'`と`utilities/**/*.unit.test.ts`の値の読み込みが違反にならないことを、先に書いて失敗を確かめる。
 
 ### react-hook-formの内部の値への依存(要件8.3・8.5、第4回の判断43)

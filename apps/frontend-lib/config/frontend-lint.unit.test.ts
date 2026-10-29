@@ -216,7 +216,12 @@ const RUNTIME_PACKAGE_STATEMENTS: readonly StatementCase[] = [
   forbidden("import { env } from 'cloudflare:workers';"),
   forbidden("import * as SentryCloudflare from '@sentry/cloudflare';"),
   forbidden("import { init } from '@sentry/tanstackstart-react';"),
+  forbidden("import { get } from 'react-hook-form';"),
+  forbidden("import { zodResolver } from '@hookform/resolvers/zod';"),
+  forbidden("import { standardSchemaResolver } from '@hookform/resolvers';"),
   allowed("import type { ReactNode } from 'react';"),
+  allowed("import type { FieldValues } from 'react-hook-form';"),
+  allowed("import type { Resolver } from '@hookform/resolvers';"),
   allowed("import type { QueryKey } from '@tanstack/react-query';"),
   allowed("import type { ExecutionContext } from 'cloudflare:workers';"),
   allowed("import type { Event } from '@sentry/cloudflare';"),
@@ -248,6 +253,26 @@ const PURE_POSITION_CASES: readonly PositionCase[] = [
       allowed("import { f } from '../../utilities/class-names';"),
       allowed("import { g } from '../relay/relay-route';"),
       allowed("import { h } from './csrf';"),
+    ],
+  },
+  {
+    file: 'utilities/forms/violation.unit.test.ts',
+    statements: [
+      allowed("import { createFormControl, get } from 'react-hook-form';"),
+      allowed("import { zodResolver } from '@hookform/resolvers/zod';"),
+      allowed("import { useState } from 'react';"),
+      forbidden("import { c } from '../../server/http/csrf';"),
+      forbidden("import { d } from '../../components/form/use-app-form';"),
+    ],
+  },
+  {
+    file: 'server/entry/violation.unit.test.ts',
+    statements: [
+      allowed("import { withSentry } from '@sentry/cloudflare';"),
+      allowed("import { createFormControl } from 'react-hook-form';"),
+      allowed("import { env } from 'cloudflare:workers';"),
+      forbidden("import { c } from '../../start/query-client';"),
+      forbidden("import { d } from '../../components/ui/button/button';"),
     ],
   },
 ];
@@ -352,6 +377,11 @@ const ZOD_VALUE_STATEMENTS: readonly StatementCase[] = [
   forbidden("export { z } from 'zod';"),
   allowed("import type { z } from 'zod';"),
   allowed("import type { $ZodType } from 'zod/v4/core';"),
+];
+
+// 純粋な関数とサーバーの部品はフォームのライブラリの値も読み込めないため、Zodのリゾルバを許すことはそれ以外の場所とテストファイルで確かめる
+const ZOD_RESOLVER_STATEMENTS: readonly StatementCase[] = [
+  ...ZOD_VALUE_STATEMENTS,
   allowed("import { zodResolver } from '@hookform/resolvers/zod';"),
 ];
 
@@ -371,35 +401,43 @@ const ZOD_POSITION_CASES: readonly PositionCase[] = [
     ],
   },
   {
+    file: 'utilities/forms/violation.unit.test.ts',
+    statements: ZOD_RESOLVER_STATEMENTS,
+  },
+  {
+    file: 'server/entry/violation.unit.test.ts',
+    statements: ZOD_RESOLVER_STATEMENTS,
+  },
+  {
     file: 'start/graphql/violation.ts',
-    statements: ZOD_VALUE_STATEMENTS,
+    statements: ZOD_RESOLVER_STATEMENTS,
   },
   {
     file: 'components/form/violation.tsx',
-    statements: ZOD_VALUE_STATEMENTS,
+    statements: ZOD_RESOLVER_STATEMENTS,
   },
   {
     file: 'components/form/violation.stories.tsx',
-    statements: ZOD_VALUE_STATEMENTS,
+    statements: ZOD_RESOLVER_STATEMENTS,
   },
   {
     file: 'components/form/violation.browser.test.tsx',
-    statements: ZOD_VALUE_STATEMENTS,
+    statements: ZOD_RESOLVER_STATEMENTS,
   },
   {
     file: 'src/routes/violation.tsx',
     statements: [
-      ...ZOD_VALUE_STATEMENTS,
+      ...ZOD_RESOLVER_STATEMENTS,
       allowed("import { z } from '../../lib/utilities/validation/zod';"),
     ],
   },
   {
     file: 'src/composition/violation.ts',
-    statements: ZOD_VALUE_STATEMENTS,
+    statements: ZOD_RESOLVER_STATEMENTS,
   },
   {
     file: 'test/config/violation.unit.test.ts',
-    statements: ZOD_VALUE_STATEMENTS,
+    statements: ZOD_RESOLVER_STATEMENTS,
   },
   {
     file: 'utilities/validation/zod.ts',

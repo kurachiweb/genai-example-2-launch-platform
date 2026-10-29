@@ -47,11 +47,19 @@ const relativeDirectoryPattern = (directory: string): string =>
 
 const RUNTIME_PACKAGE_RESTRICTION: RestrictedImportPattern = {
   regex:
-    '^(?:react|react-dom)(?:/.*)?$|^@tanstack/|^cloudflare:|^@sentry/(?:cloudflare|tanstackstart-react)(?:/.*)?$',
+    '^(?:react|react-dom|react-hook-form)(?:/.*)?$|^@hookform/|^@tanstack/|^cloudflare:|^@sentry/(?:cloudflare|tanstackstart-react)(?:/.*)?$',
   allowTypeImports: true,
   message:
-    'Bunの単体テストで読み込むため、純粋な関数とサーバーの部品はReact・TanStack・Workersの実行環境・Sentryの実行時の値に依存できません。型だけを読み込んでください。',
+    'Bunの単体テストで読み込むため、純粋な関数とサーバーの部品はReact・フォームのライブラリ(react-hook-form・@hookform)・TanStack・Workersの実行環境・Sentryの実行時の値に依存できません。型だけを読み込み、フォームのライブラリの値を使う処理は画面部品に置いてください。',
 };
+
+// テストは検査の対象の振る舞いを本物のライブラリで動かすため、実行時の値の制限を外す
+const PURE_POSITION_TEST_FILES = [
+  'utilities/**/*.test.ts',
+  'utilities/**/*.test.tsx',
+  'server/**/*.test.ts',
+  'server/**/*.test.tsx',
+];
 
 const APP_SOURCE_RESTRICTION: RestrictedImportPattern = {
   regex: relativeDirectoryPattern('src'),
@@ -163,6 +171,13 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
       '@typescript-eslint/no-restricted-imports': restrictValueImports(
         PURE_VALUE_RESTRICTIONS,
       ),
+    },
+  },
+  {
+    name: 'frontend/direction/pure-tests',
+    files: PURE_POSITION_TEST_FILES,
+    rules: {
+      '@typescript-eslint/no-restricted-imports': restrictValueImports([]),
     },
   },
   {
