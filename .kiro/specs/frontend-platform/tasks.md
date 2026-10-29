@@ -556,7 +556,7 @@
   - _Boundary: FormParts, ServerFieldErrors, 技術ドキュメント群_
   - _Requirements: 8.3, 15.3, 15.4_
 
-- [ ] 12. 最終検証後の第4回の判断の反映と未検証の要件のテスト
+- [x] 12. 最終検証後の第4回の判断の反映と未検証の要件のテスト
 - [x] 12.1 共通部品の静的解析にフォームのライブラリの制限を加え、静的解析の設定のテストの時間の上限を延ばす
   - 先に、`config/frontend-lint.unit.test.ts`へ、`utilities/**`・`server/**`のファイルで`react-hook-form`(例: `import { get } from 'react-hook-form'`)と`@hookform/*`(例: `import { zodResolver } from '@hookform/resolvers/zod'`)の値の読み込みが違反になり、型だけの読み込み(`import type { FieldValues } from 'react-hook-form'`)と`utilities/**/*.unit.test.ts`・`server/**/*.unit.test.ts`の値の読み込みが違反にならないことを確かめるテストを書き、失敗を確かめる
   - `RUNTIME_PACKAGE_RESTRICTION`の正規表現に`react-hook-form`と`@hookform/`を加え、`message`をフォームのライブラリを含む文に直す。テストファイルを対象外にする設定を`frontend/direction/utilities`・`frontend/direction/server`に加える(`restrictValueImports`でZodの制限は常に含める)。既存の`utilities/forms`の単体テストが本物の`createFormControl`・`zodResolver`を読み込めることを`bun run lint`で確かめる
@@ -667,7 +667,7 @@
   - _Boundary: SmokeE2E, 技術ドキュメント群_
   - _Requirements: 1.1, 1.3, 12.6, 12.7, 15.3, 15.8_
 
-- [ ] 12.14 下流specへの申し送りを確かめ、全体の検査とカバレッジを確かめる
+- [x] 12.14 下流specへの申し送りを確かめ、全体の検査とカバレッジを確かめる
   - 判断44の申し送り(legal-pagesの7.6、sponsorshipの10.5)と、判断42・47のinfra-deliveryの改訂3、判断46のapi-gatewayの12.1、判断47のdev-toolingの10.1が各specのtasks.mdとdesign.mdにあることを確かめ、本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の第4回の行の「該当箇所」を実際の位置に合わせる
   - 共通部品・client・adminの単体テストとブラウザテストをカバレッジ付きで実行し、ファイルごとの行と関数の80%以上を確かめ、ルートの一括検査(`bun run check`)を実行する
   - 完了状態: 一括検査とカバレッジ付きのテストが成功し、表の該当箇所が下流specの実際の位置を指す
@@ -754,3 +754,5 @@
 - 12.10(結果): テストが実際の欠陥を見つけ、`Button`・`Badge`・`TabsTrigger`の`whitespace-nowrap`と固定の高さをやめて`h-fit min-h-*`にし(`Button`は`max-w-full shrink-0`、`TabsList`は`flex-wrap`)、`DialogFooter`(640px以上)と利用者側・管理者側のヘッダーの右側の部品を次の行へ折り返すようにした。5.1の記録の「ボタン・バッジは`whitespace-nowrap`で、長くなる箇所は`whitespace-normal h-auto`を付ける」案内はこれで置き換わり、部品が既定で折り返す。1行の時の寸法は変わらない(タブのトリガーの高さだけ29pxから30px)。`Button`は縮まないため、折り返さない`flex`の親に複数を並べない(005)。はみ出しの判定の補助は`apps/frontend-lib/test/overflow.ts`(`elementsBeyondViewportEdges`は画面の左右の端、`elementsOverflowingContainer`・`elementsWithClippedContent`・`hasHorizontalScroll`)にまとめた。レビューの差し戻しは2回(横に並べたボタンと左端のはみ出しの見逃し、`DialogFooter`の水平展開の漏れ)。
 - 12.11(結果): R12.4は本物の`routes/system/status.tsx`の`Route.options`を`test/page-router.tsx`(ルーターの文脈を渡せる形にした)の経路へ写し、`executeGraphQL`だけを偽にして、prodでは存在しないページの表示と取得0回、staging・localでは疎通確認の画面と取得1回を確かめる。限界: ブラウザ側の読み込みには状態コードが無く、`beforeLoad`の`notFound()`でサーバー側の描画が404を返すことはTanStack Startの挙動に頼り、自動では確かめていない(存在しない経路の404はE2Eが状態コードまで確かめる。prodの実際の404はデプロイ後に人が確かめる)。本物の経路を読むテストは初回の事前バンドルでサーバー専用のパッケージを見つけて失敗するため、client・adminの`vitest.browser.config.ts`の`optimizeDeps.exclude`に`@tanstack/react-start/server`を加えた。
 - 12.8(結果、f8e577b): ルートの`config/local-state-path.unit.test.ts`が、client・adminの`vite.config.ts`の`cloudflare()`の`persistState`(最上位の`const`の文字列まで辿る)と、api・eventの`package.json`の全スクリプトの`--persist-to`(空白区切りと`=`区切り)を`typescript`の構文木と文字列から読み、すべて同じ保存先であることを確かめる。読み取れない形はファイルと理由を示して失敗する。他のアプリのファイルは読み込まない。オンボーディングの手順12がこのテストを参照する(12.13)。
+- 12.12(結果、1ee6733): 実装は変えず、本物のSDKでブラウザの伝搬(中継の経路だけ)と割合、フロントエンドサーバーの`withSentry`での引き継ぎ(子のスパン)をテストで確かめた。api-gatewayの12.1は完了している(3a772b7。`operation-observability.worker.test.ts`が、受け取った`sentry-trace`のトレースIDと親のスパンIDをルートのスパンが引き継ぐことを確かめる)。本物のSDKは公開鍵に`-`を含むDSNを不正とするため、両テストは英数字だけの公開鍵を使う。
+- 12.14(結果): 判断42・44・46・47の申し送りがlegal-pages・sponsorship・infra-delivery・api-gateway・dev-toolingにあり、12.xの結果と食い違わないことを確かめた。legal-pagesのdesign.mdに確かめられなかったサーバー側の描画の500をlaunch-readinessへ申し送ることを足し、infra-deliveryのE2eStackの目的を「Mailpit・api・eventを起動し、client・adminを両方の起動で回す」に直した。影響の表の第4回の行を実際の位置に合わせ、判断46の行を加えた。共通部品・client・adminの単体テストとブラウザテストのカバレッジは、ファイルごとの行と関数がすべて80%以上(最小は共通部品のブラウザの`app-document.tsx`の関数80%)。PlaywrightのE2Eは`workers`を指定しておらず、開発サーバーで並列に多く回すとworkerdが落ちることがある(12.9)。
