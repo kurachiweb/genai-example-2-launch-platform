@@ -49,7 +49,7 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`AppError`・`getAppLogger`・`captureMessage`の規約・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`)・`ScheduledJobDefinition`・`ScheduledJobHandler`、E2Eの`e2e/support/scheduled-trigger.ts`(`triggerScheduled`、backend-platformの改訂2)。形を変えない。
+- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く)・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`)・`ScheduledJobDefinition`・`ScheduledJobHandler`、E2Eの`e2e/support/scheduled-trigger.ts`(`triggerScheduled`、backend-platformの改訂2)。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`caller`・`loaders`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`PageInfo`・`DateTime`、`SessionView`。
 - admin-foundation: `requireAdmin`・`CurrentAdmin`・`AdminRole`・`hasRole`・`AuditLogRecorder`(`prepare`・`record`)・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AUDIT_REASON_MAX`・`checkAuditReason`・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`、adminの`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCard`・`DashboardCardFrame`・`RoleGate`・`useAdminRole`、frontend-libの`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`、E2Eの`e2e/support/admin-bootstrap.ts`(`signInAsNewAdmin`)・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - identity-auth: `IDENTITY_TYPES.UserSuspension`・`IDENTITY_TYPES.AdministrativeWithdrawal`・`SuspensionResult`・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`DisposableEmailStatus`・`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`(`AdminUserDirectory`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserStatus`、identity-authの仮7が実装・束縛)、E2Eの`e2e/support/mailpit.ts`。
@@ -309,7 +309,7 @@ docs/
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`user-lifecycle-sync-handlers.ts`・`product-lifecycle-sync-handlers.ts`・`media-review-policy.ts` — モジュール・スキーマモジュール・2つのジョブ・2つの同期の処理・隔離画像の閲覧の判定の差し替え。
 - `apps/event/src/composition/modules.ts`・`user-lifecycle-async-handlers.ts`・`product-lifecycle-async-handlers.ts` — モジュール・2つの物理削除の処理。
 - `apps/admin/src/composition/admin-navigation.ts`・`dashboard-cards.ts` — メニュー5件・カード。
-- `apps/admin/package.json`・`bun.lock` — `recharts`(版を完全に固定、`^`・`~`を付けない)。
+- `apps/admin/package.json`・`bun.lock` — `recharts`(版を完全に固定、`^`・`~`を付けない)。 管理者側の`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)にも加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)。
 - adminの生成物`src/graphql/generated/`(adminの`bun run graphql:generate`)と、apiの許可リスト(apiの`bun run graphql:allowlist`)。
 - `docs/GUIDES/tech/backend/README.md`・`db/README.md`・`frontend/README.md` — 文書一覧の行。
 - `docs/onboardings/project-values.md` — ジョブ・処理・同期の処理・登録の名前と`order`、メール種別、監査ログの操作種別、統計の表示の週数。
@@ -351,7 +351,7 @@ sequenceDiagram
 ```
 
 - `UserSuspension`が`unchanged`を返したとき(既に同じ状態)はイベントも同期の処理も無く、保留中の措置を破棄して`changed: false`を返す(4.7)。版の競合は`account_state_conflict`で、記録も監査ログも残らない(4.11)。
-- `changed`なのに保留中の措置が取り出されていなければ、束縛の誤りとして`captureMessage`(`moderation-record-missing`)で通知する。状態は変わっているため結果は成功として返す。
+- `changed`なのに保留中の措置が取り出されていなければ、束縛の誤りとして`captureEvent`(`moderation-record-missing`)で通知する。状態は変わっているため結果は成功として返す。
 - プロダクトの非公開化・復元(`ProductVisibilityControl`→`ProductLifecycleCommitter`→`ProductModerationRecordSyncHandler`)と代理の退会(`AdministrativeWithdrawal`→`withdrawn`)も同じ流れである。コメントと評価は保留中の措置を使わず、`statements`で直接渡す。
 
 ### 代理の退会
@@ -960,10 +960,10 @@ export interface ModerationNotifier {
 
 **Contracts**: Batch [x]
 
-| ジョブの名前                       | 時刻 | `order` | 処理                                                                                                                                                                                                                |
-| ---------------------------------- | ---- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ugc-moderation.weekly-statistics` | 4:21 | 1900    | 「週ごとの統計の集計」の流れ。前週が未確定なら週の終わりの時点で集計して確定し、今週を実行時刻の時点で集計する。照会の失敗は`captureMessage`(`statistics-failed`)で、次の実行で集計し直す                           |
-| `ugc-moderation.maintenance`       | 4:21 | 1910    | (1)`listPendingNotices({ occurredBefore: 実行時刻 − 1時間, limit: 100 })`を`dispatch`し、失敗の件数が1以上なら`captureMessage`(`notice-redispatch-failed`)。(2)`eraseOccurredBefore(実行時刻 − 3年, 500)`を最大10回 |
+| ジョブの名前                       | 時刻 | `order` | 処理                                                                                                                                                                                                              |
+| ---------------------------------- | ---- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ugc-moderation.weekly-statistics` | 4:21 | 1900    | 「週ごとの統計の集計」の流れ。前週が未確定なら週の終わりの時点で集計して確定し、今週を実行時刻の時点で集計する。照会の失敗は`captureEvent`(`statistics-failed`)で、次の実行で集計し直す                           |
+| `ugc-moderation.maintenance`       | 4:21 | 1910    | (1)`listPendingNotices({ occurredBefore: 実行時刻 − 1時間, limit: 100 })`を`dispatch`し、失敗の件数が1以上なら`captureEvent`(`notice-redispatch-failed`)。(2)`eraseOccurredBefore(実行時刻 − 3年, 500)`を最大10回 |
 
 - Trigger: apiのCron Triggers(`21 12 * * *`、上流で追加済み)。どちらも2回実行しても結果が変わらない。上流の値より前に動く必要は無い。
 
@@ -1327,20 +1327,20 @@ type Mutation {
 
 ### Error Categories and Responses
 
-| 種類               | 例                                                                     | 応答                                                    |
-| ------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------- |
-| 管理者の誤り       | 理由が空・500書記素超、期間の逆転                                      | `validation_error`と詳細                                |
-| 権限               | 閲覧のみの措置、最上位管理者でない代理の退会、管理者側以外・未ログイン | `forbidden`・`unauthenticated`                          |
-| 対象なし           | 退会済みの利用者、論理削除済みのプロダクト                             | `*_not_found`                                           |
-| 業務の規則         | 自動判定の理由が無い画像の公開承認                                     | `image_action_not_applicable`                           |
-| 競合               | 同じ利用者の同時の状態の変更                                           | `account_state_conflict`(画面は読み直しの案内)          |
-| 既に同じ状態       | 停止中の利用者の停止                                                   | `changed: false`(エラーにしない)                        |
-| 外部の一時的な失敗 | メールの送信の依頼・D1・Queue                                          | 通知は`pending`のまま送り直し、ジョブは`captureMessage` |
-| 記録の取り出し漏れ | 状態は変わったが同期の処理が記録を返さない                             | `captureMessage`(`moderation-record-missing`)           |
+| 種類               | 例                                                                     | 応答                                                  |
+| ------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------- |
+| 管理者の誤り       | 理由が空・500書記素超、期間の逆転                                      | `validation_error`と詳細                              |
+| 権限               | 閲覧のみの措置、最上位管理者でない代理の退会、管理者側以外・未ログイン | `forbidden`・`unauthenticated`                        |
+| 対象なし           | 退会済みの利用者、論理削除済みのプロダクト                             | `*_not_found`                                         |
+| 業務の規則         | 自動判定の理由が無い画像の公開承認                                     | `image_action_not_applicable`                         |
+| 競合               | 同じ利用者の同時の状態の変更                                           | `account_state_conflict`(画面は読み直しの案内)        |
+| 既に同じ状態       | 停止中の利用者の停止                                                   | `changed: false`(エラーにしない)                      |
+| 外部の一時的な失敗 | メールの送信の依頼・D1・Queue                                          | 通知は`pending`のまま送り直し、ジョブは`captureEvent` |
+| 記録の取り出し漏れ | 状態は変わったが同期の処理が記録を返さない                             | `captureEvent`(`moderation-record-missing`)           |
 
 ### Monitoring
 
-- ログは`getAppLogger`で、措置の種類・対象と操作者のID・結果・件数だけを記録し、メールアドレス・ハンドル・ニックネーム・名称・理由・検索文字列を含めない(15.4)。`captureMessage`のタグは`job`・理由(`statistics-failed`・`notice-redispatch-failed`・`moderation-record-missing`)。
+- ログは`getAppLogger`で、措置の種類・対象と操作者のID・結果・件数だけを記録し、メールアドレス・ハンドル・ニックネーム・名称・理由・検索文字列を含めない(15.4)。`captureEvent`(文言は`logentry`、`fingerprint`は理由)のタグは`job`・理由(`statistics-failed`・`notice-redispatch-failed`・`moderation-record-missing`)。
 
 ## Testing Strategy
 

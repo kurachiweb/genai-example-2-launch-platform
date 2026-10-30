@@ -68,7 +68,7 @@
 
 - **Context**: FR-ADMAG-001、admin-foundationの規約(管理操作の文と`buildAuditLogStatements`を同じ一括の書き込みにする)、上流の操作口の形。
 - **Findings**: `UserSuspension`・`AdministrativeWithdrawal`・`ProductVisibilityControl`は呼び出し側の文を受け取らない。両ライフサイクルの確定は、処理単位のコンテナから解決した同期の処理の文を状態の変更と同じ`db.batch()`に入れ、条件の違反で全体を取り消す。backend-platformのコンテナは処理単位(HTTPの要求ごと)である。
-- **Implications**: 処理単位で1つの`PendingModerationRecord`に措置の記録と準備済みの監査ログを置き、同期の処理がイベントの種類と対象の一致で取り出して文を返す。措置でないイベント(本人の退会など)では何も返さない。上流の形は変えない。取り出し漏れ(束縛の誤り)は`captureMessage`で検知する。
+- **Implications**: 処理単位で1つの`PendingModerationRecord`に措置の記録と準備済みの監査ログを置き、同期の処理がイベントの種類と対象の一致で取り出して文を返す。措置でないイベント(本人の退会など)では何も返さない。上流の形は変えない。取り出し漏れ(束縛の誤り)は`captureEvent`で検知する。
 
 ### 管理画面の一覧と統計の照会
 
@@ -92,7 +92,7 @@
 
 | Option                                       | Description                                                              | Strengths                                                      | Risks / Limitations                                                | Notes                                   |
 | -------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------- |
-| 要求単位の保留中の措置+同期の処理(採用)      | 上流の確定の一括の書き込みに、同期の処理として記録と監査ログの文を載せる | 上流の形を変えずに一体の確定。product-launchの設計の想定どおり | 同期の処理が処理単位のコンテナから解決されることに依存する         | 取り出し漏れを`captureMessage`で検知    |
+| 要求単位の保留中の措置+同期の処理(採用)      | 上流の確定の一括の書き込みに、同期の処理として記録と監査ログの文を載せる | 上流の形を変えずに一体の確定。product-launchの設計の想定どおり | 同期の処理が処理単位のコンテナから解決されることに依存する         | 取り出し漏れを`captureEvent`で検知      |
 | 上流の操作口に`statements`を足す             | `UserSuspension`などの引数を変える                                       | 明示的                                                         | 上流3specの契約の変更と再検証、identity-authの承認済みの形を変える | 不採用                                  |
 | 操作の後に別の書き込みで記録                 | 状態の変更の後に監査ログを単独で書く                                     | 単純                                                           | 記録の欠落・状態だけの変更が残る(admin-foundationの規約に反する)   | 画像の操作だけ採用(冪等で列挙の外)      |
 | 措置ごとのライフサイクルの非同期の処理で通知 | eventで`suspended`・`hidden`を受けて送る                                 | 実行器の再試行を使える                                         | コメントの通知は別の仕組みが要り、2系統になる                      | 不採用(1系統の依頼待ちと日次の送り直し) |
@@ -150,9 +150,9 @@
 
 ## Risks & Mitigations
 
-- 同期の処理が処理単位のコンテナから解決されない(上流の実装の差) — Workers統合テストで本物の`UserSuspension`・`ProductVisibilityControl`を通して確かめ、取り出し漏れを`captureMessage`で検知する。外れた場合は上流の操作口への`statements`の追加を上流specへ依頼する(代替案)。
+- 同期の処理が処理単位のコンテナから解決されない(上流の実装の差) — Workers統合テストで本物の`UserSuspension`・`ProductVisibilityControl`を通して確かめ、取り出し漏れを`captureEvent`で検知する。外れた場合は上流の操作口への`statements`の追加を上流specへ依頼する(代替案)。
 - 部分一致の検索が利用者・プロダクトの増加で遅くなる — 1ページ50件とカーソルで抑え、launch-readinessの性能の検証で全文検索や前方一致への切り替えを判断する。
-- 統計のジョブの停止で週が欠ける — `captureMessage`で検知し、欠けた週は表に出さない(値を推測しない)。
+- 統計のジョブの停止で週が欠ける — `captureEvent`で検知し、欠けた週は表に出さない(値を推測しない)。
 - 代理の退会の取り違え — 最上位管理者だけに限り、理由を必須にし、監査ログで追跡する。本人の意思の確かめはシステムの外の運用で行う(仮4)。
 - 管理者側のCSPが同一オリジンの画像を許さない — タスクで確かめ、必要ならfrontend-platformへ`img-src 'self'`を依頼する。
 
@@ -326,3 +326,9 @@
 - **Context**: 本specのプロダクト一覧の絞り込みの選択肢の照会`adminProductCategories: [AdminCategoryRef!]!`は、product-launchがプロダクトカテゴリの管理画面のために定義する`adminProductCategories: [ProductCategory!]!`と、名前が同じで型が異なっていた。管理者側の操作は1つのスキーマと1つの生成物(adminの`src/graphql/generated/graphql.ts`)に入るため、両方を定義するとスキーマの合成と操作名・生成物の型の名前が衝突する。
 - **決定**: product-launchの`adminProductCategories: [ProductCategory!]!`はそのままとし、本specの照会を別名の`adminModerationCategoryOptions: [AdminCategoryRef!]!`にした。操作名は`AdminModerationCategoryOptions`、操作のファイルは`moderation-category-options.graphql`(照会の名前から`admin`を除いた形)、生成物は`AdminModerationCategoryOptionsDocument`・`AdminModerationCategoryOptionsQuery`である。処理は`AdminProductReader.categories`(`ProductCategoryDirectory.list()`)のままで、選択肢に要る`id`・`name`だけを返す。
 - **変えた箇所**: design.mdのFile Structure Planの操作のファイル、照会の表の`AdminProductReader.categories`の行、GraphQLの`Query`の定義と照会の名前の規約、画面の部品の表の`ProductFilters`と操作名の例。tasks.mdの4.8(Workers統合テストの照会の一覧)。本ファイルの「設計のレビュー」の照会の名前。
+
+## 実装済みの上流との食い違いの水平展開(2026-10-30、開発者の指示)
+
+- **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
+- **ブラウザテストの事前バンドル**: frontend-platformの`vitest.browser.config.ts`は、テストの実行中に依存の事前バンドルをやり直すとページが再読み込みされReactが2つ読み込まれるため、画面部品の依存を`PREBUNDLED_DEPENDENCIES`に列挙している(content-processingの差分の分析のG-3)。本specが加える`recharts`を、管理者側の一覧へ加える手順をdesign.mdのModified Filesとtasks.mdの導入のタスクに加えた。
+- 要件と受け入れ基準は変えていない。
