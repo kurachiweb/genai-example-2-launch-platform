@@ -213,7 +213,8 @@ scripts/delivery/
 ├── repo-contract.unit.test.ts           # 実際のリポジトリに構成検査とワークフローの検査を掛ける
 ├── catalog/
 │   ├── resource-catalog.ts              # ResourceCatalogの型と解析(純粋)
-│   └── check-secrets.ts                 # 検査用の主体とInfisicalの設定(プロジェクトは.infisical.yamlから)
+│   ├── check-secrets.ts                 # 検査用の主体とInfisicalの設定(プロジェクトは.infisical.yamlから)
+│   └── error-message.ts                 # 例外の文言の取り出し(messageOf)。全層が読み込めるよう最も下の層に置く
 ├── core/                                # 純粋な判定と変換
 │   ├── violation.ts                     # ContractViolation(構成検査とワークフローの検査で共有)
 │   ├── deploy-stages.ts                 # DEPLOY_STAGES

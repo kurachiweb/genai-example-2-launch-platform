@@ -1,3 +1,4 @@
+import { messageOf } from '../../catalog/error-message.ts';
 import type { RepoFiles } from '../../adapters/repo-files.ts';
 
 export type Loaded<T> =
@@ -10,9 +11,6 @@ export const failed = <T>(errors: readonly string[]): Loaded<T> => ({
   ok: false,
   errors,
 });
-
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 export const errorsOf = (
   results: readonly Loaded<unknown>[],

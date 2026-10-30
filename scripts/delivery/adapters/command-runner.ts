@@ -2,6 +2,8 @@ import { closeSync, mkdirSync, openSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
+import { messageOf } from '../catalog/error-message.ts';
+
 export interface TextOutput {
   readonly write: (text: string) => unknown;
 }
@@ -55,9 +57,6 @@ const definedEntriesOf = (
       (entry): entry is [string, string] => entry[1] !== undefined,
     ),
   );
-
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 const spawnOrThrow = (
   { command, args }: CommandSpec,

@@ -1,6 +1,8 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
+import { messageOf } from '../catalog/error-message.ts';
+
 export interface RepoFiles {
   readonly root: string;
   readText(path: string): Promise<string>;
@@ -8,9 +10,6 @@ export interface RepoFiles {
   exists(path: string): Promise<boolean>;
   list(pattern: string): Promise<readonly string[]>;
 }
-
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 const isOutside = (root: string, path: string): boolean => {
   if (isAbsolute(path)) return true;

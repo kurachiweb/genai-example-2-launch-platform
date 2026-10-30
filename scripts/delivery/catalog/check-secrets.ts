@@ -1,3 +1,4 @@
+import { messageOf } from './error-message.ts';
 import { isUuid } from './resource-catalog.ts';
 
 export const INFISICAL_CONFIG_PATH = '.infisical.yaml';
@@ -25,9 +26,6 @@ export type CheckSecretsResult =
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 const parseYaml = (
   text: string,

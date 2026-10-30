@@ -1,6 +1,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { messageOf } from '../catalog/error-message.ts';
 import type { RunningProcess } from '../adapters/command-runner.ts';
 import {
   E2E_STACK_LOG_TAIL_LINES,
@@ -36,9 +37,6 @@ type StartOutcome =
       readonly started: readonly StartedService[];
       readonly error: StackStartError;
     };
-
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
 
 const nonEmpty = (value: string | undefined): string | undefined =>
   value === undefined || value === '' ? undefined : value;
