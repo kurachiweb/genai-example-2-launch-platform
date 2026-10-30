@@ -11,7 +11,7 @@
   - 完了状態: 配置定義の単体テスト(compose.yamlとの一致・配置先がGit管理外・配置先が利用側アプリの配下)が成功し、`bun run shared-dirs:verify`の表に共用部品の4つの配置先が現れる
   - _Requirements: 1.4_
 
-- [ ] 1.2 共用部品のプロジェクトを作り、自己完結の型検査設定と読み込みの境界を単体テストで保証する
+- [x] 1.2 共用部品のプロジェクトを作り、自己完結の型検査設定と読み込みの境界を単体テストで保証する
   - 先に、型検査設定が基底設定と差分(lib・types・include)以外で一致すること、全ソースのimportとexport-fromが共用部品の外を指さず許可したパッケージ(描画の9パッケージ・zod・テストの`bun:test`)だけであること、許可外の読み込みの標本が検出されることを確かめる単体テストを書き、失敗を確かめてから設定を置く
   - 品質ツール6種・`@types/bun`と、実行時の依存(描画の9パッケージ・zod)を設計の版で完全に固定して導入し、スクリプト契約(静的解析・型検査・単体テスト)を定義する
   - 型検査設定は継承を持たない自己完結の設定とし、DOMの型を含めない
@@ -349,3 +349,5 @@
 
 - 1.1: このコンテナにはcommon-libの4つの配置先のbind mountが無いため、利用側アプリで確かめる前に`bun run shared-dirs:place`でコピー配置する(開発コンテナの再作成は開発者の手作業。Dockerfileも変えたため`docker compose up -d --build`)
 - 1.1: common-libを配置先に加えたことで、ルートの`check-test-names.unit.test.ts`の2件が4.1・4.2まで失敗する。4.1ではapiに`bunfig.unit.toml`を新設して`test:unit`をそちらへ切り替え、4アプリの`test:unit`と`bunfig.unit.toml`のカバレッジの除外に`common-lib/**`を加える(設計のModified Filesに無い)
+- 1.2: 配置先(コピーまたはbind mount)がある状態では、利用側4アプリの静的解析が配置先の`common-lib/eslint.config.ts`を読んで失敗する。4.1・4.2で4アプリの`eslint.config.ts`の`ignores`に`common-lib/`を加えるまでルートの`bun run check`は赤い
+- 1.2: common-libの読み込みの境界の単体テストは`Bun.Transpiler.scanImports`で走査し、型だけの読み込みは修飾子を外してから走査する。静的解析は`consistent-type-imports`で型の位置の`import()`を禁止する

@@ -119,13 +119,14 @@ describe('install', () => {
     expect(recording.calls()).toEqual([]);
   });
 
-  test('実際のリポジトリでは、ルート・5つのアプリ・DBスキーマの配置元を導入する', async () => {
+  test('実際のリポジトリでは、ルート・6つのアプリ・DBスキーマの配置元を導入する', async () => {
     const { code, calls } = await runWith(createRepoFiles(REPO_ROOT));
 
     expect(code).toBe(EXIT_SUCCESS);
     expect(calls.map((spec) => spec.cwd)).toEqual(
       [
         '.',
+        'apps/common-lib',
         'apps/api',
         'apps/event',
         'apps/frontend-lib',
