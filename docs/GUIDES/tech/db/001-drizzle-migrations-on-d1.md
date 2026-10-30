@@ -19,6 +19,7 @@ ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`
 
 - マイグレーションのSQLは`drizzle-kit generate`で生成する。
 - スキーマ定義で表現できない内容(仮想テーブル・トリガーなど)は、`drizzle-kit generate --custom`で空のマイグレーションを作成し、その中に生のSQLで記述する。
+  - 複数の文を書くときは、`drizzle-kit generate`の出力と同じく文の間に`--> statement-breakpoint`の行を挟む。Workers統合テストなどでマイグレーションを適用する処理は、この区切りで文を分けて1文ずつ実行する。区切りの無い文を別のSQLの後に貼り足すときも、間に区切りを挟む。
 - マイグレーションの適用は`wrangler d1 migrations apply`で行う。ローカル環境への適用では、「[ローカル状態の永続化と共有](../infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)」に従って`--local`と`--persist-to`を付ける。
 - `drizzle-kit migrate`・`drizzle-kit push`は使用しない。適用済みのマイグレーションはWranglerがデータベース内の`d1_migrations`テーブルに記録する。Drizzleの適用コマンドを併用すると、適用の状態がWranglerの記録と食い違う(`drizzle-kit migrate`はDrizzle独自のテーブルに記録し、`drizzle-kit push`はマイグレーションを経ずにスキーマを直接変更する)。そのため、適用の管理をWranglerに一本化する。
 

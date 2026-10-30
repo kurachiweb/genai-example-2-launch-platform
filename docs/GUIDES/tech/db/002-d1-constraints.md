@@ -116,28 +116,36 @@ wrangler d1 time-travel restore <データベース名> --bookmark=<ブックマ
 
 #### 全文検索の仮想テーブルの同期
 
-FTS5の仮想テーブルは、元のテーブルへの書き込みに自動では追随しない。そのため、FTS5の`external content`テーブルの構成(索引だけを持ち、本文は元のテーブルから読む構成)を採り、SQLiteのトリガー(`CREATE TRIGGER`)で元のテーブルへの追加・更新・削除のたびに索引を同期させる。
+FTS5の仮想テーブルは、元のテーブルへの書き込みに自動では追随しない。そのため、FTS5の`external content`テーブルの構成(索引だけを持ち、本文は元のテーブルから読む構成)を採り、SQLiteのトリガー(`CREATE TRIGGER`)で元のテーブルへの追加・更新・削除のたびに索引を同期させる。トリガーの名前は`<元のテーブル>_fts_ai`(追加)・`_fts_ad`(削除)・`_fts_au`(更新)とする。
 
 ```sql
-CREATE VIRTUAL TABLE article_search_documents_fts USING fts5(title, body, content='article_search_documents', content_rowid='id');
-
-CREATE TRIGGER article_search_documents_fts_after_insert AFTER INSERT ON article_search_documents BEGIN
-  INSERT INTO article_search_documents_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
+CREATE VIRTUAL TABLE article_search_documents_fts USING fts5(
+  title, body, keywords,
+  content='article_search_documents', content_rowid='id',
+  tokenize='unicode61 remove_diacritics 2', prefix='2 3'
+);
+--> statement-breakpoint
+CREATE TRIGGER article_search_documents_fts_ai AFTER INSERT ON article_search_documents BEGIN
+  INSERT INTO article_search_documents_fts(rowid, title, body, keywords) VALUES (new.id, new.title, new.body, new.keywords);
 END;
-
-CREATE TRIGGER article_search_documents_fts_after_delete AFTER DELETE ON article_search_documents BEGIN
-  INSERT INTO article_search_documents_fts(article_search_documents_fts, rowid, title, body) VALUES ('delete', old.id, old.title, old.body);
+--> statement-breakpoint
+CREATE TRIGGER article_search_documents_fts_ad AFTER DELETE ON article_search_documents BEGIN
+  INSERT INTO article_search_documents_fts(article_search_documents_fts, rowid, title, body, keywords) VALUES ('delete', old.id, old.title, old.body, old.keywords);
 END;
-
-CREATE TRIGGER article_search_documents_fts_after_update AFTER UPDATE ON article_search_documents BEGIN
-  INSERT INTO article_search_documents_fts(article_search_documents_fts, rowid, title, body) VALUES ('delete', old.id, old.title, old.body);
-  INSERT INTO article_search_documents_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
+--> statement-breakpoint
+CREATE TRIGGER article_search_documents_fts_au AFTER UPDATE OF title, body, keywords ON article_search_documents BEGIN
+  INSERT INTO article_search_documents_fts(article_search_documents_fts, rowid, title, body, keywords) VALUES ('delete', old.id, old.title, old.body, old.keywords);
+  INSERT INTO article_search_documents_fts(rowid, title, body, keywords) VALUES (new.id, new.title, new.body, new.keywords);
 END;
 ```
 
+- `tokenize='unicode61 remove_diacritics 2'`は、大文字小文字と発音区別符号(`é`と`e`など)の違いを無視して照合させる。`prefix`は前方一致の検索語(`"ab"*`)を速くする、指定した文字数の前方一致の索引を加える。
+- 更新のトリガーは`AFTER UPDATE OF <索引する列>`にし、索引する列を`SET`に含む更新でだけ動かす。索引の対象でない状態の列だけを更新するたびに索引を書き換えないためである。
+- 元のテーブルへの書き込みに、`REPLACE`(`INSERT OR REPLACE`・`REPLACE INTO`・`ON CONFLICT REPLACE`の制約)と、`content_rowid`の列(`id`)の更新を使わない。`REPLACE`が消す行では削除のトリガーが動かず、`id`の更新では更新のトリガーが動かないため、索引が元のテーブルと食い違う。一意の列での追加か更新は`INSERT ... ON CONFLICT(<一意の列>) DO UPDATE`で行う。
 - `content_rowid`を省略すると、元のテーブルの`rowid`で索引と行を対応させる。`INTEGER PRIMARY KEY`を明示しないテーブルの`rowid`は`VACUUM`で変わり得る(SQLiteの「[VACUUM](https://sqlite.org/lang_vacuum.html)」)ため、元のテーブルの`INTEGER PRIMARY KEY`のカラムを`content_rowid`に指定する。元のテーブル(全文検索用のテーブル)の主キーを連番にする規約は「[全文検索用のテーブルの連番](003-schema-conventions.md#全文検索用のテーブルの連番)」に従う。
-- 参照: SQLiteの「[External Content Tables](https://sqlite.org/fts5.html#external_content_tables)」
+- 元のテーブルの列を変えて`drizzle-kit generate`がテーブルを作り直すと(新しいテーブルへの写しと元のテーブルの削除)、トリガーも一緒に消える。続くカスタムマイグレーションで3つのトリガーを`DROP TRIGGER IF EXISTS`の後に作り直し、`INSERT INTO <仮想テーブル>(<仮想テーブル>) VALUES('rebuild');`で索引を元のテーブルから全件作り直す。
+- 参照: SQLiteの「[External Content Tables](https://sqlite.org/fts5.html#external_content_tables)」・「[The CREATE TRIGGER Statement](https://sqlite.org/lang_createtrigger.html)」
 
 #### 仮想テーブルとトリガーの記述場所
 
-仮想テーブルとトリガーはDrizzleのスキーマ定義で表現できないため、カスタムマイグレーション(生のSQL)で記述する。作成方法は「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」に従う。
+仮想テーブルとトリガーはDrizzleのスキーマ定義で表現できないため、カスタムマイグレーション(生のSQL)で記述する。作成方法は「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」に従う。文の間には`--> statement-breakpoint`の行を挟む(トリガーのSQLの後に`rebuild`の1文を続けるときも同じ)。

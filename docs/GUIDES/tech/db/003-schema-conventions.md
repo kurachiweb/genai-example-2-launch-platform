@@ -161,10 +161,14 @@ CREATE INDEX `article_search_documents_status_idx` ON `article_search_documents`
 ```
 
 ```sql
-CREATE VIRTUAL TABLE article_search_documents_fts USING fts5(title, body, content='article_search_documents', content_rowid='id');
+CREATE VIRTUAL TABLE article_search_documents_fts USING fts5(
+  title, body, keywords,
+  content='article_search_documents', content_rowid='id',
+  tokenize='unicode61 remove_diacritics 2', prefix='2 3'
+);
 ```
 
-- 仮想テーブルと、索引を同期するトリガーは、カスタムマイグレーションで記述する(「[マイグレーション](#マイグレーション)」)。
+- 仮想テーブルと、索引を同期するトリガーは、カスタムマイグレーションで記述する(「[マイグレーション](#マイグレーション)」)。トリガーの例と、更新のトリガーを索引する列に限る理由は「[全文検索の仮想テーブルの同期](002-d1-constraints.md#全文検索の仮想テーブルの同期)」に従う。
 
 ## 共通カラム
 

@@ -188,7 +188,7 @@
   - _Boundary: SearchDocumentColumns_
   - _Requirements: 8.2_
 
-- [ ] 7.2 索引の定義の検証と、全文検索の索引・トリガー・再構築のSQLのひな形を作る
+- [x] 7.2 索引の定義の検証と、全文検索の索引・トリガー・再構築のSQLのひな形を作る
   - 先に、bun:sqliteで、生成したSQLの索引が追加・更新・削除で同期し`integrity-check`に通ること、状態の列だけの更新では全文検索の索引を書き換えないこと、前方一致と`prefix`、列ごとの重みの並び順、発音区別符号と大文字小文字の無視、トリガーの作り直しと`rebuild`、定義の検証(名前・共通の列・列の所属と重複・重み・`prefix`)の例外を確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、テーブルを作り直した後にトリガーを作り直して`rebuild`すると検索結果が元に戻る
   - _Boundary: SearchIndexDefinition, SearchIndexSql_
@@ -370,3 +370,4 @@
 - 6.4: ツールバーの項目は`editor-actions.ts`の`kind`(toggle・insert・dialog)で区別し、`aria-pressed`は切り替えの8項目だけ、表は無し、リンクは`aria-haspopup="dialog"`。押下中の箇条書き・番号付きリスト・引用・コードブロックを押すと解除する(`crepe/editor-commands.ts`を変更)。制御器が無い間は`aria-controls`を出さない。リンクのhttp(s)は`URL.canParse`とホストの非空を要求する。6.5への申し送り: (1) macOSの`⌘[`・`⌘]`の既定の動作を編集領域の中で止める(`crepe/editor-features.ts`。ヒントがCommandのキーを案内しているため最優先)、(2) キー操作の説明`EDITOR_KEYBOARD_HINT`を編集領域の`aria-describedby`へ移し、ツールバーとの重複を見直す、(3) 選択時のツールバーの文言(太字・斜体・取り消し線・コード・リンク)を`markdown-messages.ts`の定数にして文言規則003へ載せる
 - 6.5: Chromiumではwindowへの通知で捕捉の段階の聞き手も加えた順に呼ばれるため、設計の`capture: true`は効かない。`preload-recovery.ts`は全ての聞き手の後にマイクロタスクで`defaultPrevented`を確かめ、読み込み関数は通常の聞き手を使う(design.mdのLoadCrepeEditor・System Flows・Modified Filesは古い)。`FormControlProps.labelId`は列挙不可のプロパティで、`{...control}`では渡らない。編集領域の描画の失敗は`EditorLoadBoundary`(TanStack Routerの`CatchBoundary`)の`onFailure`で古い制御器を捨て、`reportUnexpectedError(error, 'render')`で送る。フォームへ渡す値はMilkdownが付ける末尾の改行1つを除く。入力欄を描画するブラウザテストは、Vitestのブラウザテストの設定がTanStack Startのコンパイルを通さず`report-error.ts`がサーバー専用の依存を読み込むため、`start/observability/report-error.ts`を`vi.mock`で差し替える必要がある(下流specが入力欄を使う前に、サーバー専用の依存を持たない送信の入口を切り出すか、共有のブラウザテストの設定で`.server`の分岐を消すかを開発者が判断する)。チャンクの評価時の例外も`EditorLoadError`として送られず、`editor.create()`の拒否では空の枠が残る(観測の改善の余地)
 - 6.6: `check:editor-chunks`は`manifest.json`ではなくRolldownの出力のチャンク情報(`moduleIds`・`imports`・`dynamicImports`)で判定する(manifestにはチャンク内のモジュールの一覧が無く、SSR用にも無いため。設計と相違)。検査用のビルドはTanStack Startのコンパイラを通らないため、ブラウザ向けだけ`*.server.ts`とNodeの組み込みモジュールを外部化する。手動の実行で、ルートの一括検査とCIには組み込んでいない(設計どおり)。`scripts/check-editor-chunks.ts`の実行部分には単体テストが無い。CLAUDE.mdのディレクトリ構成に`apps/frontend-lib/scripts/`が無い(11.3で扱う)
+- 7.2: 全文検索のSQLのひな形は文の間に`--> statement-breakpoint`を入れる(Workers統合テストのマイグレーションの読み込みがこの区切りで1文ずつ実行するため。`renderSearchIndexRebuildSql`は区切りの無い1文なので、貼る時に区切りを挟む)。更新のトリガーは`AFTER UPDATE OF <索引する列>`。`REPLACE`と`id`の更新はexternal contentの索引を壊すため使わない(`docs/GUIDES/tech/db/002`)。列名はSQLiteの予約語(`apps/db/search/sqlite-keywords.ts`、設計に無い)を拒否する
