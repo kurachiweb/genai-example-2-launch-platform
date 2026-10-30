@@ -29,9 +29,16 @@ const ALLOWED_IMPORTS: Readonly<Record<Layer, readonly Layer[]>> = {
 const PURE_LAYERS: readonly Layer[] = ['catalog', 'core'];
 
 const FORBIDDEN_MODULES: ReadonlySet<string> = new Set(
-  ['child_process', 'fs', 'fs/promises', 'http', 'https', 'net'].flatMap(
-    (name) => [name, `node:${name}`],
-  ),
+  [
+    'child_process',
+    'fs',
+    'fs/promises',
+    'http',
+    'https',
+    'net',
+    'os',
+    'process',
+  ].flatMap((name) => [name, `node:${name}`]),
 );
 
 const FORBIDDEN_BUN_MEMBERS: ReadonlySet<string> = new Set([
@@ -44,6 +51,15 @@ const FORBIDDEN_BUN_MEMBERS: ReadonlySet<string> = new Set([
   'connect',
   'listen',
   'serve',
+  'env',
+  'argv',
+]);
+
+const FORBIDDEN_PROCESS_MEMBERS: ReadonlySet<string> = new Set([
+  'env',
+  'exit',
+  'cwd',
+  'argv',
 ]);
 
 const layerOf = (absolutePath: string): Layer | undefined => {
@@ -68,7 +84,9 @@ const forbiddenUseOf = (node: ts.Node): string | undefined => {
     if (owner === 'Bun' && FORBIDDEN_BUN_MEMBERS.has(member)) {
       return `Bun.${member}`;
     }
-    if (owner === 'process' && member === 'env') return 'process.env';
+    if (owner === 'process' && FORBIDDEN_PROCESS_MEMBERS.has(member)) {
+      return `process.${member}`;
+    }
     if (owner === 'globalThis' && member === 'fetch') return 'globalThis.fetch';
   }
   if (
@@ -158,6 +176,15 @@ describe('検査の部品', () => {
     ["await Bun.file('a').text();", 'Bun.file'],
     ["await Bun.write('a', 'b');", 'Bun.write'],
     ['const token = process.env.TOKEN;', 'process.env'],
+    ['const token = Bun.env.TOKEN;', 'Bun.env'],
+    ['const args = Bun.argv;', 'Bun.argv'],
+    ["import { homedir } from 'node:os';", 'node:os'],
+    ["import { tmpdir } from 'os';", 'os'],
+    ["import { env } from 'node:process';", 'node:process'],
+    ["import process from 'process';", 'process'],
+    ['process.exit(1);', 'process.exit'],
+    ['const root = process.cwd();', 'process.cwd'],
+    ['const args = process.argv;', 'process.argv'],
   ])('判定の層で禁じたAPIの使用%sを検出する', (source, expected) => {
     expect(forbiddenApisOf(source)).toEqual([expected]);
   });
@@ -194,7 +221,7 @@ describe('scripts/deliveryの層構成', () => {
     expect(productionFiles().flatMap(directionViolationsOf)).toEqual([]);
   });
 
-  test('判定の層は子プロセス・ファイル・ネットワーク・環境変数のAPIを使わない', () => {
+  test('判定の層は子プロセス・ファイル・ネットワーク・環境変数・プロセスの状態・OSのAPIを使わない', () => {
     const violations = productionFiles()
       .filter((path) => {
         const layer = layerOf(resolve(DELIVERY_DIR, path));
