@@ -84,27 +84,42 @@ export const scalarText = (value: unknown): string =>
     ? String(value)
     : '';
 
+interface DockerfileArgConflict {
+  readonly name: string;
+  readonly previous: string;
+  readonly value: string;
+}
+
 interface DockerfileArgs {
   readonly args: ReadonlyMap<string, string>;
-  readonly errors: readonly string[];
+  readonly conflicts: readonly DockerfileArgConflict[];
 }
+
+export type DockerfileToolVersion =
+  | { readonly ok: true; readonly version: string }
+  | { readonly ok: false; readonly error: string };
 
 const readDockerfileArgs = (dockerfile: string): DockerfileArgs => {
   const args = new Map<string, string>();
-  const errors: string[] = [];
+  const conflicts: DockerfileArgConflict[] = [];
   for (const [, name = '', raw = ''] of dockerfile.matchAll(DOCKERFILE_ARG)) {
     const value = QUOTED.exec(raw)?.[2] ?? raw;
     const previous = args.get(name);
     if (previous === undefined) {
       args.set(name, value);
     } else if (previous !== value) {
-      errors.push(
-        `DockerfileのARG ${name}の既定値が食い違っています: ${previous}・${value}`,
-      );
+      conflicts.push({ name, previous, value });
     }
   }
-  return { args, errors };
+  return { args, conflicts };
 };
+
+const conflictMessageOf = ({
+  name,
+  previous,
+  value,
+}: DockerfileArgConflict): string =>
+  `DockerfileのARG ${name}の既定値が食い違っています: ${previous}・${value}`;
 
 const exactVersionOf = (tool: ToolName, value: string): string | undefined =>
   tool === 'bun'
@@ -113,29 +128,54 @@ const exactVersionOf = (tool: ToolName, value: string): string | undefined =>
       ? value
       : undefined;
 
+const toolVersionOf = (
+  args: ReadonlyMap<string, string>,
+  tool: ToolName,
+): DockerfileToolVersion => {
+  const name = DOCKERFILE_ARGS[tool];
+  const value = args.get(name);
+  if (value === undefined) {
+    return { ok: false, error: `DockerfileにARG ${name}がありません` };
+  }
+  const version = exactVersionOf(tool, value);
+  return version === undefined
+    ? {
+        ok: false,
+        error: `DockerfileのARG ${name}が完全に固定した版ではありません: ${value}`,
+      }
+    : { ok: true, version };
+};
+
 const readDockerfileVersions = (
   dockerfile: string,
 ): {
   readonly versions: Partial<Record<ToolName, string>>;
   readonly errors: readonly string[];
 } => {
-  const { args, errors } = readDockerfileArgs(dockerfile);
+  const { args, conflicts } = readDockerfileArgs(dockerfile);
   const versions: Partial<Record<ToolName, string>> = {};
   const versionErrors = TOOL_NAMES.flatMap((tool) => {
-    const name = DOCKERFILE_ARGS[tool];
-    const value = args.get(name);
-    if (value === undefined) return [`DockerfileにARG ${name}がありません`];
-    const version = exactVersionOf(tool, value);
-    if (version === undefined) {
-      return [
-        `DockerfileのARG ${name}が完全に固定した版ではありません: ${value}`,
-      ];
-    }
-    versions[tool] = version;
+    const result = toolVersionOf(args, tool);
+    if (!result.ok) return [result.error];
+    versions[tool] = result.version;
     return [];
   });
-  return { versions, errors: [...errors, ...versionErrors] };
+  return {
+    versions,
+    errors: [...conflicts.map(conflictMessageOf), ...versionErrors],
+  };
 };
+
+export function dockerfileToolVersion(
+  dockerfile: string,
+  tool: ToolName,
+): DockerfileToolVersion {
+  const { args, conflicts } = readDockerfileArgs(dockerfile);
+  const conflict = conflicts.find(({ name }) => name === DOCKERFILE_ARGS[tool]);
+  return conflict === undefined
+    ? toolVersionOf(args, tool)
+    : { ok: false, error: conflictMessageOf(conflict) };
+}
 
 const opentofuErrors = (
   liveVersionsTf: string,

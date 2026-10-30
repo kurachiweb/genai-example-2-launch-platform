@@ -8,6 +8,7 @@ import {
   replaceOnce,
 } from '../test-fixtures/workflows.ts';
 import {
+  dockerfileToolVersion,
   readExpectedToolVersions,
   toolVersionsInEnv,
   toolVersionsInStep,
@@ -120,6 +121,53 @@ describe('readExpectedToolVersions', () => {
     expect(errorsOf({ rootPackageJson: '{' })).toEqual([
       'package.jsonをJSONとして読めません',
     ]);
+  });
+});
+
+describe('dockerfileToolVersion', () => {
+  test('Dockerfileから1つのツールの版だけを読む', () => {
+    expect(dockerfileToolVersion(DOCKERFILE, 'wranglerTool')).toEqual({
+      ok: true,
+      version: '4.152.0',
+    });
+  });
+
+  test('ほかのツールの版の誤りは、そのツールの版の読み取りに影響しない', () => {
+    const dockerfile = replaceOnce(
+      DOCKERFILE,
+      'ARG MAILPIT_VERSION=1.32.0\n',
+      'ARG MAILPIT_VERSION=latest\n',
+    );
+
+    expect(dockerfileToolVersion(dockerfile, 'wranglerTool')).toEqual({
+      ok: true,
+      version: '4.152.0',
+    });
+  });
+
+  test.each([
+    [
+      'ARG WRANGLER_VERSION=4.152.0\n',
+      '',
+      'DockerfileにARG WRANGLER_VERSIONがありません',
+    ],
+    [
+      'WRANGLER_VERSION=4.152.0',
+      'WRANGLER_VERSION=latest',
+      'DockerfileのARG WRANGLER_VERSIONが完全に固定した版ではありません: latest',
+    ],
+    [
+      'ARG PLAYWRIGHT_VERSION=1.64.1\n',
+      'ARG PLAYWRIGHT_VERSION=1.64.1\nARG WRANGLER_VERSION=4.153.0\n',
+      'DockerfileのARG WRANGLER_VERSIONの既定値が食い違っています: 4.152.0・4.153.0',
+    ],
+  ])('%pを%pに変えると、誤りを返す', (search, replacement, error) => {
+    const dockerfile = replaceOnce(DOCKERFILE, search, replacement);
+
+    expect(dockerfileToolVersion(dockerfile, 'wranglerTool')).toEqual({
+      ok: false,
+      error,
+    });
   });
 });
 

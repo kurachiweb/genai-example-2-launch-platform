@@ -54,7 +54,7 @@ export const validCatalogJson = (): Record<string, unknown> => ({
       'message.rejected',
       'message.failed',
     ],
-    subscriptionName: 'app-email-events-staging',
+    subscriptionName: 'app-email-subscription-staging',
   },
   state: { bucket: 'app-tofu-state-staging', key: 'live/terraform.tfstate' },
   infisical: {
