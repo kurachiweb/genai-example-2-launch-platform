@@ -324,8 +324,8 @@ sequenceDiagram
     participant Tofu as OpenTofu
     participant Wr as Wrangler
     participant CF as Cloudflare
-    Job->>Inf: OIDC login with environment identity
     Job->>Job: preflight branch and catalog and contract
+    Job->>Inf: OIDC login with environment identity
     Job->>Inf: export ci tofu folder
     Job->>Tofu: plan and apply excluding worker routing
     Tofu->>CF: create or update d1 r2 queues turnstile analytics email
@@ -344,8 +344,8 @@ sequenceDiagram
 
 - 各段階は`deploy.yml`の手順の`id`(`preflight`・`tofu-foundation`・`reconcile-ids`・`migrate`・`deploy-api`・`deploy-event`・`deploy-client`・`deploy-admin`・`tofu-routing`・`email-subscription`・`verify`)で、`DEPLOY_STAGES`と同じ順に並ぶ(7.3・11.6)。
 - いずれかが失敗するとジョブは止まり、自動では戻さない(7.7)。最初のデプロイでは、識別子の照合が仮の値を検出して止まる(8.1)。開発者がTurnstileの秘密鍵を登録し、表示された識別子をWrangler設定へ反映してmainへマージすると、次の実行で先へ進む。
-- ジョブは`concurrency: deploy-<環境>`(`cancel-in-progress: false`)で、同じ環境のデプロイを直列にする(7.8)。
-- `preflight`は、ブランチ・資源一覧・構成検査に加え、資源一覧のInfisicalの識別子とCloudflareのアカウントID・ゾーンIDが仮の値でないことを確かめる。仮の値なら記入先のファイルを示して止まる(8.3。2026-10-29に開発者が決定)。
+- ジョブは`concurrency: deploy-<環境>`(`cancel-in-progress: false`)で、同じ環境のデプロイを直列にする(7.8)。加えて`delivery.yml`は最上位の`concurrency: delivery-${{ github.ref_name }}`(`cancel-in-progress: false`)で、同じブランチの検査とデプロイを到着順に直列にし、古いコミットの検査が後に終わって古い版とIaCが新しい版の後に適用されることを防ぐ。GitHubの待機は1件だけで、待機中の古い実行は新しい実行の到着で取り消される(2026-10-30に開発者が決定)。
+- `preflight`は、ブランチ・資源一覧・構成検査に加え、資源一覧のInfisicalの識別子とCloudflareのアカウントID・ゾーンIDが仮の値でないことを確かめる。仮の値なら記入先のファイルを示して止まる(8.3。2026-10-29に開発者が決定)。`preflight`は秘密値を使わないため`infisical-login`より前に実行し、主体のIDが仮の値でも、ログインの失敗より先に仮の値の案内をまとめて出す(2026-10-30に開発者が決定)。
 - `tofu-foundation`・`tofu-routing`は、計画を資源のアドレスと操作の種類に要約して表示し、適用は資源の行と完了の行だけを表示する。適用が失敗した時だけ、OpenTofuが標準エラー出力へ出す誤りの診断を表示する。警告は標準出力に出るため表示しない(7.12。2026-10-29に開発者が決定)。
 
 ### リリースと承認
@@ -1298,14 +1298,14 @@ export interface HttpProbe {
 | ------------------ | ----------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `checks.yml`       | `workflow_call`                                 | `contents: read`      | `secret-scan`(TruffleHog、`fetch-depth: 0`、PRはbase〜head、pushはbefore〜after、新しいブランチのpushは`main`との分岐点〜head。`--results=verified,unknown`で検証済みと未確定の検出だけで失敗させ、除外は`.github/trufflehog-exclude-paths.txt`。改訂4) → `quality`(`install`・`audit`・`shared-dirs:place`・`check`・`app-checks`・`contract-check`・`policy-check`・`infra:check`) → `tests`・`e2e`・`rehearsal` → `ci-gate` |
 | `pull-request.yml` | `pull_request`(main・prod)、`push`(`hotfix/**`) | `contents: read`      | `checks`(`uses: ./.github/workflows/checks.yml`、ジョブの`permissions: { contents: read, id-token: write }`)。`concurrency: pr-${{ github.ref }}`(`cancel-in-progress: true`)                                                                                                                                                                                                                                                  |
-| `delivery.yml`     | `push`(main・prod)                              | `contents: read`      | `checks`(同上) → `deploy`(`uses: ./.github/workflows/deploy.yml`、ジョブの`permissions: { contents: read, id-token: write }`、`environment`はブランチがprodなら`prod`、それ以外は`staging`)                                                                                                                                                                                                                                    |
+| `delivery.yml`     | `push`(main・prod)                              | `contents: read`      | `checks`(同上) → `deploy`(`uses: ./.github/workflows/deploy.yml`、ジョブの`permissions: { contents: read, id-token: write }`、`environment`はブランチがprodなら`prod`、それ以外は`staging`)。最上位の`concurrency: delivery-${{ github.ref_name }}`(`cancel-in-progress: false`)                                                                                                                                               |
 | `deploy.yml`       | `workflow_call`(入力`environment`)              | `contents: read`      | `deploy`(`environment: ${{ inputs.environment }}`、`permissions: { contents: read, id-token: write }`、`concurrency: deploy-${{ inputs.environment }}`、`timeout-minutes: 60`)の手順は`DEPLOY_STAGES`の順                                                                                                                                                                                                                      |
 | `release-pr.yml`   | `workflow_dispatch`(入力`head`、既定`main`)     | `contents: read`      | `release-pr`(ジョブの`permissions: { contents: read, pull-requests: write }`、`fetch-depth: 0`、`RELEASE_HEAD`を環境変数で渡して`delivery release-pr`)                                                                                                                                                                                                                                                                         |
 
 - `tests`: 準備(Node付き)→`install`→Chromiumの導入(ルートで`bunx playwright install --with-deps chromium`)→`shared-dirs:place`→`infisical-login --scope checks`→`run-with-secrets --scope checks -- bun run test:all:unit --coverage`(browser・workerも同様)→`coverage-merge`→成果物`coverage-lcov`。
 - `e2e`: 準備(Node・Mailpit付き)→`install`→Chromiumの導入→`shared-dirs:place`→`sudo ln -sfn "$GITHUB_WORKSPACE" /workspace`→`infisical-login --scope checks`→`run-with-secrets --scope checks -- bun scripts/delivery/cli.ts e2e-stack -- bun run test:e2e:dev-and-preview`(改訂3)→失敗時にPlaywrightの報告とE2Eのログを成果物にする。
 - `rehearsal`: `rehearse --env staging`→`rehearse --env prod`。資源を作らず、秘密値を使わない(6.6)。
-- `deploy`: `fetch-depth: 0`のチェックアウト→準備(Bun・Node・OpenTofu・Infisical CLI・Wrangler 4.152.0)→`install`→Chromiumの導入(stagingのスモークテスト用)→`shared-dirs:place`→`infisical-login --scope <env>`→`DEPLOY_STAGES`の各手順。
+- `deploy`: `fetch-depth: 0`のチェックアウト→準備(Bun・Node・OpenTofu・Infisical CLI・Wrangler 4.152.0)→`install`→Chromiumの導入(`if: inputs.environment == 'staging'`。スモークテストを実行するstagingだけ)→`shared-dirs:place`→`preflight`→`infisical-login --scope <env>`→`preflight`以降の`DEPLOY_STAGES`の各手順。`infisical-login`は段階ではないため`id`を持たない(W8)。
 - フォークからのPRでは`id-token`が発行されず、`tests`・`e2e`の`infisical-login`が失敗する(5.8)。
 
 #### SetupToolchainAction・CodeOwners

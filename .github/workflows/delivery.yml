@@ -1,0 +1,29 @@
+name: delivery
+
+on:
+  push:
+    branches: [main, prod]
+
+permissions:
+  contents: read
+
+# 古いコミットが新しいコミットの後にデプロイされて古いIaCが適用されないよう、同じブランチの検査とデプロイを到着順に直列にする。待機は1件だけで、待機中の古い実行は新しい実行の到着で取り消される
+concurrency:
+  group: delivery-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+    permissions:
+      contents: read
+      id-token: write
+
+  deploy:
+    needs: checks
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: ${{ github.ref_name == 'prod' && 'prod' || 'staging' }}

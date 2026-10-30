@@ -178,7 +178,7 @@
   - _Depends: 2.4, 4.1, 4.2, 4.3, 4.4, 4.5, 6.2_
   - _Requirements: 4.1, 5.1, 5.2, 5.3, 5.4, 5.7, 5.8, 6.1, 9.9_
 
-- [ ] 6.4 デプロイのワークフローと、main・prodへのpushで検査とデプロイを呼ぶワークフローを作る
+- [x] 6.4 デプロイのワークフローと、main・prodへのpushで検査とデプロイを呼ぶワークフローを作る
   - 再利用のデプロイのワークフローを、環境の入力・Environmentの指定・環境ごとの直列化・60分の上限・履歴付きのチェックアウトで作り、手順の`id`を段階の定数の順に並べる
   - main・prodへのpushで検査を呼び、成功したらブランチに応じた環境でデプロイを呼ぶワークフローを作る。自動のロールバックの手順を持たない
   - 完了状態: ワークフローの検査のコマンドが段階の順・権限・環境・直列化について違反0件を返す
@@ -313,3 +313,4 @@
 - 6.1: `release-pr`はheadを環境変数`RELEASE_HEAD`からだけ受け取り(`--head`は引数の誤り。design.mdのDeliveryCliの表とトレーサビリティの`--head <head>`は9.1で直す)、`gh pr list … --json url,isCrossRepository`で同じリポジトリのPR(`isCrossRepository === false`)だけを既存とみなす(フォークの同名ブランチからのPRへの誘導を防ぐ。design.mdの`--json url`は9.1で改める)。本文のコミットは囲みのコードブロックに入れ、先頭200件・1行200コードポイントで打ち切り、超過時は`…ほかN件`と比較のURLを示す(`releasePrBody`の第4引数`compareUrl`)。既存のPRがある時・差分が0件の時は終了コード0。`GITHUB_TOKEN`・`GITHUB_SERVER_URL`・`GITHUB_REPOSITORY`・`GITHUB_RUN_ID`が必須。6.5の`release-pr.yml`は`fetch-depth: 0`のチェックアウトと`env`の`GITHUB_TOKEN: ${{ github.token }}`・`RELEASE_HEAD: ${{ inputs.head }}`が要る。
 - 6.2(6.3〜6.5への結線): 複合アクション`.github/actions/setup-toolchain`の入力は`node`・`tofu`・`infisical`・`wrangler-tool`・`mailpit`(既定`'false'`、Bunは常に導入)。Mailpitは出力`mailpit-bin`だけでPATHへ入れず、設計の「`MAILPIT_BIN`を出力」とは違う(9.1で表記を直す)。6.3のe2eジョブは準備の手順に`id`を付け、`e2e-stack`へ`env: MAILPIT_BIN: ${{ steps.<id>.outputs.mailpit-bin }}`を渡す。購読用のWranglerは`$RUNNER_TEMP/wrangler-tool`へ`bun add -g`しPATHへ加える(アプリの`bun x wrangler`はローカルの版を優先)。`wrangler-tool`だけだとランナーのNodeで動くため、6.4のデプロイは`node: 'true'`も渡す。Infisical CLIはリリースの`checksums.txt`(`cli_<版>_checksums.txt`ではない)で検証する。固定したアクション: setup-bun v2.2.0・setup-node v7.1.0・setup-opentofu v2.0.2(いずれも軽量タグのコミットSHA)。GitHubのランナーでの実行は6.3以降で確かめる。
 - 6.3: `checks.yml`のsecret-scanは強制pushでbeforeが履歴に無い時も`origin/main`との分岐点から検出し、範囲の両端が同じなら飛ばす(設計に無い。9.1で反映)。qualityの準備に`node`・`tofu`、rehearsalの準備に`node`・`install`・`shared-dirs:place`を補った。TruffleHogはアクションv3.99.2とイメージ`3.99.2`(タグ固定。`version: '3.99.2@sha256:<digest>'`でダイジェストまで固定する強化を9.1で検討)、checkout v7.0.1、upload-artifact v7.0.2。どのジョブにも`timeout-minutes`が無い(9.1で検討)。`/workspace`のシンボリックリンクはe2eだけ。tech-stack.mdのCI/CDの節の起動条件にhotfixブランチへのpushが無い(8.5で直す)。2026-10-30時点で`audit`(開発者は保留を選択)と`contract-check`(7.1まで)によりqualityが失敗するため、`checks / ci-gate`は成功しない。ランナーでの実行(localhostと127.0.0.1、rehearseのdry-run等)は最初のPRのCIで確かめる。
+- 6.4(開発者の決定 2026-10-30): `delivery.yml`の最上位に`concurrency: delivery-${{ github.ref_name }}`(`cancel-in-progress: false`)を置き、同じブランチの検査とデプロイを到着順に直列化する(古いコミットが後からデプロイされ、古いIaCで資源が消えるのを防ぐ)。`deploy.yml`は`preflight`→`infisical-login`(`id`無し)の順にし、Chromiumの導入は`if: inputs.environment == 'staging'`。design.md・research.mdへ反映済み。トレーサビリティの7.8の行に`delivery.yml`の直列化を足すかは9.1で判断する。入れ子の`concurrency`・OIDCのクレーム・手順の`if`の評価は最初のstagingのデプロイで確かめる。

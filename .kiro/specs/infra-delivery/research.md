@@ -347,6 +347,18 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - **Rationale**: 開発者がCIのログだけで失敗の原因を判断できる。
 - **Follow-up**: OpenTofu 1.13.2の出力の向きをスクラッチの構成で確かめた。`-no-color`の`tofu plan`で、誤りの診断(`Error:`の塊)は標準エラー出力へ、計画の本文・警告(`Warning:`の塊)・「Planning failed.」の行は標準出力へ出た。警告の診断は`sensitive`でない属性の値を引用するため(例: `terraform_data.x.input is "..."`)、標準出力は失敗時も表示しない。誤りの診断も`sensitive`でない値を引用し得るが、`sensitive`な値は`(sensitive value)`と伏せられる。`tofu apply`はClaude設定のdenyで実行できなかったため、適用の診断も同じ向きであること(OpenTofuの同じ診断の表示の部品を使う)は、最初のstagingのデプロイで開発者が確かめる。
 
+### Decision: デプロイのワークフローの直列化・順序・Chromiumの導入(2026-10-30に開発者が決定)
+
+- **Context**: tasks 6.4のレビュー。`deploy.yml`のジョブの`concurrency`だけでは、同じブランチへ続けてpushした時に検査が並行に走り、古いコミットの検査が後に終わると古い版が新しい版の後にデプロイされ得た。また`infisical-login`を`preflight`より前に置くと、主体のIDが仮の値の時にログインの失敗で止まり、`preflight`の仮の値の案内に届かなかった。prodの確認はヘルスチェックだけで、Chromiumを使わない。
+- **Selected Approach**:
+  1. `delivery.yml`の最上位に`concurrency: { group: delivery-${{ github.ref_name }}, cancel-in-progress: false }`を置き、同じブランチの検査とデプロイを到着順に直列にする。
+  2. `deploy.yml`の順を`preflight`→`infisical-login`にする。`infisical-login`には`id`を付けず、`id`の並びは`DEPLOY_STAGES`のまま保つ(W8)。
+  3. Chromiumの導入は`if: inputs.environment == 'staging'`でstagingだけにする。
+- **Rationale**:
+  1. 古いコミットが後からデプロイされると、古いIaCの適用で新しいコミットが加えた資源が消え得る。直列にすれば古い実行が新しい実行の後に走らない。GitHubの`concurrency`の待機は1件だけで、待機中の古い実行は新しい実行の到着で取り消されるが、新しいコミットは古いコミットを含むため、取り消しで失われる変更は無い。
+  2. `preflight`は秘密値を使わないため、ログインより先に実行しても秘密値の扱いは変わらない。仮の値の案内(Infisicalの識別子・CloudflareのアカウントID・ゾーンID)をまとめて出してから止められ、5.1の決定の意図に合う。
+  3. スモークテストを実行するのはstagingだけのため、prodのデプロイで不要な取得と実行時間を省く。`if:`の式は`run`への展開でないため、W6の対象外である。
+
 ### Decision: 直前のリリースはWorkerの版のタグで特定する
 
 - **Context**: 要件7.4・7.5、api-gateway Q3(新しいリソースを使わない)。
