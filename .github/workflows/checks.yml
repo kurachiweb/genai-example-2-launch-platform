@@ -1,0 +1,172 @@
+name: checks
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # 新しいブランチのpushではbeforeが全桁0になり、強制pushではbeforeが履歴から消えているため、mainとの分岐点から検出する
+      - id: scan-range
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_AFTER_SHA: ${{ github.event.after }}
+        run: |
+          case "$EVENT_NAME" in
+            pull_request)
+              base="$PR_BASE_SHA"
+              head="$PR_HEAD_SHA"
+              ;;
+            push)
+              head="$PUSH_AFTER_SHA"
+              if git cat-file -e "${PUSH_BEFORE_SHA}^{commit}" 2>/dev/null; then
+                base="$PUSH_BEFORE_SHA"
+              else
+                base="$(git merge-base origin/main "$head")"
+              fi
+              ;;
+            *)
+              echo "::error::シークレットの検出の範囲を決められないイベントです: $EVENT_NAME"
+              exit 1
+              ;;
+          esac
+          echo "検出の範囲: $base..$head"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          # TruffleHogのアクションは範囲の両端が同じだと失敗するため、新しいコミットが無いpushでは検出を飛ばす
+          if [ "$base" = "$head" ]; then
+            echo "新しいコミットが無いため、シークレットの検出を飛ばします"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.scan-range.outputs.skip != 'true'
+        uses: trufflesecurity/trufflehog@e76dff8a7e57d6df0c60ad8cbf5d5cba505a8fc9 # v3.99.2
+        with:
+          base: ${{ steps.scan-range.outputs.base }}
+          head: ${{ steps.scan-range.outputs.head }}
+          version: '3.99.2'
+          extra_args: --results=verified,unknown --exclude-paths=.github/trufflehog-exclude-paths.txt
+
+  quality:
+    needs: secret-scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          node: 'true'
+          tofu: 'true'
+      - run: bun scripts/delivery/cli.ts install
+      - run: bun scripts/delivery/cli.ts audit
+      - run: bun run shared-dirs:place
+      - run: bun run check
+      - run: bun scripts/delivery/cli.ts app-checks
+      - run: bun scripts/delivery/cli.ts contract-check
+      - run: bun scripts/delivery/cli.ts policy-check
+      - run: bun run infra:check
+
+  tests:
+    needs: quality
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          node: 'true'
+          infisical: 'true'
+      - run: bun scripts/delivery/cli.ts install
+      # Chromiumのリビジョンを、導入したルートの@playwright/testの版に合わせる
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run shared-dirs:place
+      - run: bun scripts/delivery/cli.ts infisical-login --scope checks
+      - run: bun scripts/delivery/cli.ts run-with-secrets --scope checks -- bun run test:all:unit --coverage
+      - run: bun scripts/delivery/cli.ts run-with-secrets --scope checks -- bun run test:all:browser --coverage
+      - run: bun scripts/delivery/cli.ts run-with-secrets --scope checks -- bun run test:all:worker --coverage
+      - run: bun scripts/delivery/cli.ts coverage-merge
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-lcov
+          path: coverage/merged/lcov.info
+          if-no-files-found: error
+
+  e2e:
+    needs: quality
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: toolchain
+        uses: ./.github/actions/setup-toolchain
+        with:
+          node: 'true'
+          infisical: 'true'
+          mailpit: 'true'
+      - run: bun scripts/delivery/cli.ts install
+      # Chromiumのリビジョンを、導入したルートの@playwright/testの版に合わせる
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run shared-dirs:place
+      # アプリのスクリプトと設定がローカル状態の保存先を開発コンテナの絶対パスで指すため、同じパスでワークスペースを指す
+      - run: sudo ln -sfn "$GITHUB_WORKSPACE" /workspace
+      - run: bun scripts/delivery/cli.ts infisical-login --scope checks
+      - env:
+          MAILPIT_BIN: ${{ steps.toolchain.outputs.mailpit-bin }}
+        run: bun scripts/delivery/cli.ts run-with-secrets --scope checks -- bun scripts/delivery/cli.ts e2e-stack -- bun run test:e2e:dev-and-preview
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-report
+          path: |
+            playwright-report/
+            test-results/
+            ${{ runner.temp }}/e2e-logs/
+          if-no-files-found: ignore
+
+  # 予行は資源を作らず秘密値を使わないため、呼び出し側がOIDCの発行を許しても、このジョブでは読み取りだけに絞る
+  rehearsal:
+    needs: quality
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          node: 'true'
+      - run: bun scripts/delivery/cli.ts install
+      - run: bun run shared-dirs:place
+      - run: bun scripts/delivery/cli.ts rehearse --env staging
+      - run: bun scripts/delivery/cli.ts rehearse --env prod
+
+  ci-gate:
+    if: always()
+    needs: [secret-scan, quality, tests, e2e, rehearsal]
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          NEEDS_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$NEEDS_RESULTS"
+          jq -e 'all(.[]; .result == "success")' <<< "$NEEDS_RESULTS" > /dev/null

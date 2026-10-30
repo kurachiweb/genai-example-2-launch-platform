@@ -181,6 +181,8 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
   - Infisical CLI ... GitHubのリリースの配布物を、同じリリースの`checksums.txt`によるSHA-256検証付きで導入
   - Wrangler 4.152.0 ... メールの購読の操作用に`bun add -g`で導入(各アプリのデプロイはアプリが固定する版を使う)
   - Mailpit 1.32.0 ... 公式のチェックサムが無いため、開発コンテナと同じく検証せずにGitHubのリリースの配布物を導入
+- シークレット検出 ... TruffleHog 3.99.2を公式のアクション`trufflesecurity/trufflehog` v3.99.2で実行し、本体も同じ版のコンテナイメージに固定する。誤検知の除外は`.github/trufflehog-exclude-paths.txt`に書き、コミット前の検出(Betterleaks)の`.betterleaksignore`とは別に管理する
+- その他の公式アクション ... `actions/checkout` v7.0.1(認証情報を残さない`persist-credentials: false`で使う)、`actions/upload-artifact` v7.0.2(カバレッジの合算結果とE2Eの失敗時の報告の保存)
 
 ## デプロイ先のインフラ構成
 
