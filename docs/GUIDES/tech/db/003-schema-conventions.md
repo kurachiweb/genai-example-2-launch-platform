@@ -28,6 +28,7 @@ ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`
 └── schema/
     ├── _shared/
     │   ├── columns.ts      # ulidPrimaryKey・timestamps・softDelete・notDeleted
+    │   ├── search-documents.ts # searchDocumentColumns・searchTextColumn・searchDocumentStatusIndex・KEYWORD_STATUSES
     │   └── text-no-case.ts # textNoCase
     ├── <ドメイン>/
     │   └── <テーブル>.ts   # テーブルごとの定義
@@ -98,10 +99,10 @@ CREATE TABLE `articles` (
 
 ## 主キー
 
-| テーブル                       | 主キー                              | 定義                     |
-| ------------------------------ | ----------------------------------- | ------------------------ |
-| 全文検索用のテーブル以外の全て | ULIDの文字列(`id TEXT PRIMARY KEY`) | `ulidPrimaryKey()`       |
-| 全文検索用のテーブル           | 連番(`id INTEGER PRIMARY KEY`)      | `integer().primaryKey()` |
+| テーブル                       | 主キー                              | 定義                      |
+| ------------------------------ | ----------------------------------- | ------------------------- |
+| 全文検索用のテーブル以外の全て | ULIDの文字列(`id TEXT PRIMARY KEY`) | `ulidPrimaryKey()`        |
+| 全文検索用のテーブル           | 連番(`id INTEGER PRIMARY KEY`)      | `searchDocumentColumns()` |
 
 ### ULID
 
@@ -111,25 +112,52 @@ CREATE TABLE `articles` (
 
 ### 全文検索用のテーブルの連番
 
-全文検索用のテーブルは、ULIDではなく連番を主キーにする。共通の部品は無く、`integer().primaryKey()`で定義する。
+全文検索用のテーブルは、ULIDではなく連番を主キーにする。主キーを含む共通の列は`schema/_shared/search-documents.ts`の`searchDocumentColumns()`をスプレッド構文で展開して定義し、主キーは`integer('id').primaryKey()`(`id INTEGER PRIMARY KEY`)になる。
 
 - 全文検索用のテーブルでは、`ulidPrimaryKey()`・`timestamps()`・`softDelete()`を使わない。
+- `searchDocumentColumns()`は、主キー`id`、元の行のULIDを持つ一意の列`source_id`、索引の更新の状態を記録する列(`source_version`・`keywords`・`keyword_status`・`extraction_input_hash`・`status_changed_at`)を返す。`keyword_status`の値は`KEYWORD_STATUSES`のいずれかに限る。
+- 索引の対象の元テキストの列は`searchTextColumn(<列名>)`(`TEXT NOT NULL DEFAULT ''`)で定義し、状態の列の索引は`searchDocumentStatusIndex(<テーブル名>, table)`(`<テーブル名>_status_idx`)で定義する。
+- 共通の列と元テキストの列は、全文検索の索引のSQLが列名を直接参照するため、列名を明示して定義する。`snakeCase.table`の変換に関係なく、渡した名前がそのまま列名になる。
 - FTS5の索引は、整数の`rowid`で全文検索用のテーブルの行と対応する。`INTEGER PRIMARY KEY`の列は`rowid`の別名になり、追加時に値を渡さなければSQLiteが連番を採番する。
 - FTS5の仮想テーブルの`content_rowid`には、この主キーの列を指定する。`INTEGER PRIMARY KEY`を持たないテーブルの`rowid`は`VACUUM`で変わり得るため、索引と行の対応が崩れる(「[全文検索の仮想テーブルの同期](002-d1-constraints.md#全文検索の仮想テーブルの同期)」)。
 - 業務のテーブルの主キーはULIDのままにし、全文検索用のテーブルを別に定義して、元の行のULIDを一意の列で持つ。
 
 ```typescript
-import { integer, snakeCase, text } from 'drizzle-orm/sqlite-core';
+import { snakeCase } from 'drizzle-orm/sqlite-core';
+
+import {
+  searchDocumentColumns,
+  searchDocumentStatusIndex,
+  searchTextColumn,
+} from '../_shared/search-documents.ts';
 
 export const articleSearchDocuments = snakeCase.table(
   'article_search_documents',
   {
-    id: integer().primaryKey(),
-    articleId: text().notNull().unique(),
-    title: text().notNull(),
-    body: text().notNull(),
+    ...searchDocumentColumns(),
+    title: searchTextColumn('title'),
+    body: searchTextColumn('body'),
   },
+  (table) => [searchDocumentStatusIndex('article_search_documents', table)],
 );
+```
+
+`drizzle-kit generate`は、この定義から次のSQLを生成する。
+
+```sql
+CREATE TABLE `article_search_documents` (
+	`id` integer PRIMARY KEY,
+	`source_id` text NOT NULL UNIQUE,
+	`source_version` integer DEFAULT 0 NOT NULL,
+	`keywords` text DEFAULT '' NOT NULL,
+	`keyword_status` text DEFAULT 'pending' NOT NULL,
+	`extraction_input_hash` text,
+	`status_changed_at` integer NOT NULL,
+	`title` text DEFAULT '' NOT NULL,
+	`body` text DEFAULT '' NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `article_search_documents_status_idx` ON `article_search_documents` (`keyword_status`,`status_changed_at`);
 ```
 
 ```sql
@@ -256,6 +284,11 @@ const articleId = ulid();
 
 await db.batch([
   db.insert(articles).values({ id: articleId, slug, title }),
-  db.insert(articleSearchDocuments).values({ articleId, title, body }),
+  db.insert(articleSearchDocuments).values({
+    sourceId: articleId,
+    title,
+    body,
+    statusChangedAt: new Date(),
+  }),
 ]);
 ```
