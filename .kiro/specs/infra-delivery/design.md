@@ -258,6 +258,7 @@ scripts/delivery/
 │       ├── load-input.ts · load-catalog.ts · contract-input.ts  # 入力の読み込み・資源一覧・構成検査の入力とWrangler設定
 │       ├── install-targets.ts           # 導入の対象の列挙(install・audit)と、対象のディレクトリでの手順の実行(runInTarget)
 │       ├── infisical-target.ts          # 範囲ごとのInfisicalのプロジェクト・環境・主体の解決
+│       ├── infisical-folders.ts         # INFISICAL_TOKENの確認(INFISICAL_TOKEN_ENV)とフォルダの取り出し・マスク(tofu-session・cloudflare-secrets・run-with-secrets)
 │       ├── tofu-session.ts              # /ci/tofuの取り出しとtofuの初期化・手順の実行(tofu・reconcile-ids)
 │       ├── cloudflare-secrets.ts        # /ci/cloudflare・/・Workerごとのフォルダの取り出しとマスク(deploy-worker・migrate・ensure-email-subscription)
 │       └── previous-release-allowlist.ts # 直前のリリースの特定と許可リストの生成(apiのdeploy-worker)
@@ -275,7 +276,7 @@ scripts/delivery/
     └── release-pr.yml                   # 手動起動: main・hotfixからprodへのPRをbotが作る
 ```
 
-- 各`commands/*.ts`・`core/*.ts`・`adapters/*.ts`・`catalog/*.ts`の隣に同名の`*.unit.test.ts`を置く(省略して記載)。`commands/shared/*.ts`は、判定を持つもの(`parse-options.ts`・`report-violations.ts`・`load-input.ts`・`infisical-target.ts`・`default-deps.ts`)だけが自分の単体テストを持ち、残りは使うサブコマンドの単体テストで確かめる。`layering.unit.test.ts`は`catalog`を`core`と同じく純粋な層(禁止APIの検査の対象)として扱い、依存の向きを`catalog`←`core`←`adapters`←`commands`←`cli`(`cli`は`adapters`を直接読まない)に限る。
+- 各`commands/*.ts`・`core/*.ts`・`adapters/*.ts`・`catalog/*.ts`の隣に同名の`*.unit.test.ts`を置く(省略して記載)。`commands/shared/*.ts`は、判定を持つもの(`parse-options.ts`・`report-violations.ts`・`load-input.ts`・`infisical-target.ts`・`infisical-folders.ts`・`default-deps.ts`)だけが自分の単体テストを持ち、残りは使うサブコマンドの単体テストで確かめる。`layering.unit.test.ts`は`catalog`を`core`と同じく純粋な層(禁止APIの検査の対象)として扱い、依存の向きを`catalog`←`core`←`adapters`←`commands`←`cli`(`cli`は`adapters`を直接読まない)に限る。
 - 技術ドキュメント: `docs/GUIDES/tech/infra/005-infrastructure-overview.md`・`006-iac-with-opentofu.md`・`007-ci-cd-pipelines.md`、`operations/001-deployment.md`・`002-rollback-and-recovery.md`、`security/003-ci-secrets-and-repository-protection.md`。番号はWave 1の横断レビューI-4の割り当てで固定し、他のspecの番号(content-processingの`security/004`、media-pipelineの`infra/008`・`security/005`、identity-authの`security/006`など)と重ならない。
 
 ### Modified Files

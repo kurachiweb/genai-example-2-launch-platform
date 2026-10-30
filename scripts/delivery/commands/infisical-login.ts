@@ -5,6 +5,7 @@ import {
   EXIT_FAILURE,
   EXIT_SUCCESS,
 } from './shared/delivery-command.ts';
+import { INFISICAL_TOKEN_ENV } from './shared/infisical-folders.ts';
 import {
   type ChecksIdentity,
   loadInfisicalTarget,
@@ -14,7 +15,6 @@ import { reportInputErrors } from './shared/report-violations.ts';
 
 const NAME = 'infisical-login';
 const TITLE = 'Infisicalへのログイン';
-const TOKEN_ENV = 'INFISICAL_TOKEN';
 
 export interface InfisicalLoginCommandOptions {
   readonly checksIdentity?: ChecksIdentity;
@@ -25,7 +25,7 @@ export function createInfisicalLoginCommand({
 }: InfisicalLoginCommandOptions = {}): DeliveryCommand {
   return {
     name: NAME,
-    description: `範囲の主体でOIDCによりInfisicalへログインし、アクセストークンをマスクして${TOKEN_ENV}として後続の手順へ渡す`,
+    description: `範囲の主体でOIDCによりInfisicalへログインし、アクセストークンをマスクして${INFISICAL_TOKEN_ENV}として後続の手順へ渡す`,
     run: async (args, deps) => {
       const { options } = parseOptions(args, {
         names: ['scope'],
@@ -49,9 +49,9 @@ export function createInfisicalLoginCommand({
       const jwt = await deps.github.oidcToken(oidcAudience);
       const token = await deps.secrets.login({ identityId, jwt, host });
       deps.github.mask(token);
-      deps.github.exportEnv(TOKEN_ENV, token);
+      deps.github.exportEnv(INFISICAL_TOKEN_ENV, token);
       deps.stdout.write(
-        `${NAME}: 範囲${scope}の主体${identityId}でInfisicalにログインし、${TOKEN_ENV}を後続の手順へ渡しました(取り出す環境: ${environment})。\n`,
+        `${NAME}: 範囲${scope}の主体${identityId}でInfisicalにログインし、${INFISICAL_TOKEN_ENV}を後続の手順へ渡しました(取り出す環境: ${environment})。\n`,
       );
       return EXIT_SUCCESS;
     },

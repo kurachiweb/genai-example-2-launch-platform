@@ -3,13 +3,9 @@ import type {
   CommandSpec,
 } from '../../adapters/command-runner.ts';
 import type { DeployEnvironment } from '../../catalog/resource-catalog.ts';
-import { type SecretEntry, maskableValues } from '../../core/secret-scope.ts';
 import { type DeliveryDeps, EXIT_FAILURE } from './delivery-command.ts';
-import {
-  type InfisicalTarget,
-  loadInfisicalTarget,
-} from './infisical-target.ts';
-import { reportInputErrors } from './report-violations.ts';
+import { openInfisicalFolders } from './infisical-folders.ts';
+import type { InfisicalTarget } from './infisical-target.ts';
 
 export const TOFU = 'tofu';
 export const LIVE_DIR_ARG = '-chdir=apps/infra/live';
@@ -20,7 +16,6 @@ export const TOFU_STATE_SECRET_KEYS: readonly string[] = [
   'TF_VAR_state_passphrase',
 ];
 
-const TOKEN_ENV = 'INFISICAL_TOKEN';
 const TITLE = 'OpenTofuの実行';
 
 export interface TofuSession {
@@ -31,9 +26,6 @@ export interface TofuSession {
 
 export type TofuStep = Omit<CommandSpec, 'command' | 'cwd'>;
 
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
 const writeError = (
   name: string,
   message: string,
@@ -42,57 +34,34 @@ const writeError = (
   deps.stderr.write(`${name}: ${message}\n`);
 };
 
-// 取り出しの失敗は、値を含み得る出力を出さずに環境とフォルダの名前だけを示す
-const exportTofuFolder = async (
-  name: string,
-  { projectId, environment, host }: InfisicalTarget,
-  deps: DeliveryDeps,
-): Promise<readonly SecretEntry[] | undefined> => {
-  try {
-    return await deps.secrets.exportFolder({
-      projectId,
-      environment,
-      folder: TOFU_SECRET_FOLDER,
-      host,
-    });
-  } catch (error) {
-    writeError(name, messageOf(error), deps);
-    return undefined;
-  }
-};
-
 // /ci/tofuの値(stateの保管先の鍵と暗号化のパスフレーズ)をマスクしてから、子プロセスの環境変数として使える形で返す
 export async function openTofuSession(
   name: string,
   env: DeployEnvironment,
   deps: DeliveryDeps,
 ): Promise<TofuSession | number> {
-  if ((deps.env[TOKEN_ENV] ?? '') === '') {
-    writeError(
-      name,
-      `${TOKEN_ENV}がありません。先に\`infisical-login --scope ${env}\`を実行してください。`,
-      deps,
-    );
-    return EXIT_FAILURE;
-  }
-  const target = await loadInfisicalTarget(deps.files, env);
-  if (!target.ok) return reportInputErrors(TITLE, target.errors, deps);
-  const entries = await exportTofuFolder(name, target.value, deps);
-  if (entries === undefined) return EXIT_FAILURE;
-  for (const value of maskableValues(entries)) deps.github.mask(value);
+  const opened = await openInfisicalFolders(
+    name,
+    TITLE,
+    env,
+    [TOFU_SECRET_FOLDER],
+    deps,
+  );
+  if (typeof opened === 'number') return opened;
+  const [entries = []] = opened.folders;
   const present = new Set(entries.map(({ key }) => key));
   const missing = TOFU_STATE_SECRET_KEYS.filter((key) => !present.has(key));
   if (missing.length > 0) {
     writeError(
       name,
-      `Infisicalの${target.value.environment}のフォルダ${TOFU_SECRET_FOLDER}にキーがありません: ${missing.join('・')}`,
+      `Infisicalの${opened.target.environment}のフォルダ${TOFU_SECRET_FOLDER}にキーがありません: ${missing.join('・')}`,
       deps,
     );
     return EXIT_FAILURE;
   }
   return {
     env,
-    target: target.value,
+    target: opened.target,
     stateEnv: Object.fromEntries(entries.map(({ key, value }) => [key, value])),
   };
 }
