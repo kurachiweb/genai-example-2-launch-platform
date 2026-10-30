@@ -157,7 +157,7 @@ bun test --config=/workspace/bunfig.toml unit.test
 ```
 
 - 各アプリの`package.json`の`test:unit`スクリプトでは、アプリのディレクトリからの相対パス`--config=../../bunfig.toml`で指定する([スクリプト契約](../GUIDES/tech/coding/001-javascript-typescript-conventions.md#スクリプト契約))。
-- 共有ディレクトリ(`apps/db`・`apps/backend-lib`)の検査担当でない`apps/event`は、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に配置先の`lib/**`・`db/**`を加えた`/workspace/apps/event/bunfig.unit.toml`を`--config=bunfig.unit.toml`で指定する([検査担当でないアプリでの共有ディレクトリの除外](../GUIDES/tech/coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外))。同じく画面の共通部品(`apps/frontend-lib`)の検査担当でない`apps/client`・`apps/admin`は、配置先の`lib/**`を加えた各アプリの`bunfig.unit.toml`を指定する。`/workspace/bunfig.toml`を変えたときは、これらのファイルも同じく変える。
+- 共有ディレクトリ(`apps/db`・`apps/backend-lib`・`apps/common-lib`)の検査担当でない`apps/event`は、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に配置先の`lib/**`・`db/**`・`common-lib/**`を加えた`/workspace/apps/event/bunfig.unit.toml`を`--config=bunfig.unit.toml`で指定する([検査担当でないアプリでの共有ディレクトリの除外](../GUIDES/tech/coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外))。`apps/db`・`apps/backend-lib`の検査担当の`apps/api`も、共用部品(`apps/common-lib`)の検査担当ではないため、配置先の`common-lib/**`を加えた`/workspace/apps/api/bunfig.unit.toml`を指定する。同じく画面の共通部品(`apps/frontend-lib`)の検査担当でない`apps/client`・`apps/admin`は、配置先の`lib/**`を加えた各アプリの`bunfig.unit.toml`を指定する。`/workspace/bunfig.toml`を変えたときは、これらのファイルも同じく変える。
 
 ```sh
 cd /workspace/apps/event

@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 import { workerTestPreset } from '../../config/vitest/worker.ts';
 import { readNestedD1Migrations } from '../../config/vitest/read-nested-d1-migrations.ts';
@@ -34,6 +34,8 @@ export default defineConfig({
   test: {
     ...workerTestPreset,
     setupFiles: ['./test/setup/apply-migrations.ts'],
+    // 共用部品のテストは検査担当の共用部品自身が受け持つため、配置先を重ねて実行しない
+    exclude: [...configDefaults.exclude, 'common-lib/**'],
     coverage: {
       ...workerTestPreset.coverage,
       include: [

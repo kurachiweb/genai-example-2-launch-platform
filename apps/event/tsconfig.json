@@ -10,6 +10,13 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "db/**/*.ts",
-    "lib/**/*.ts"
+    "lib/**/*.ts",
+    "common-lib/**/*.ts"
+  ],
+  "exclude": [
+    "common-lib/*.config.ts",
+    "common-lib/**/*.test.ts",
+    "common-lib/config/**",
+    "common-lib/markdown/fixtures/**"
   ]
 }

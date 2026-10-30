@@ -27,11 +27,11 @@ const REACT_CONFINEMENT_RULES: Linter.Config[] = [
   },
 ];
 
-// 共有ディレクトリの静的解析は検査担当のapiが受け持つため、配置先を重ねて検査しない
+// 共有ディレクトリの静的解析は検査担当(apiと共用部品自身)が受け持つため、配置先を重ねて検査しない
 const config: Linter.Config[] = [
   {
     name: 'event/ignores',
-    ignores: ['db/', 'lib/'],
+    ignores: ['db/', 'lib/', 'common-lib/'],
   },
   ...createBaseConfig({
     js,

@@ -34,8 +34,8 @@ export default defineConfig({
   ],
   test: {
     ...workerTestPreset,
-    // 共有ディレクトリのWorkers統合テストは検査担当のapiが受け持つため、配置先を重ねて実行しない
-    exclude: [...configDefaults.exclude, 'db/**', 'lib/**'],
+    // 共有ディレクトリのWorkers統合テストは検査担当(apiと共用部品自身)が受け持つため、配置先を重ねて実行しない
+    exclude: [...configDefaults.exclude, 'db/**', 'lib/**', 'common-lib/**'],
     coverage: {
       ...workerTestPreset.coverage,
       include: [

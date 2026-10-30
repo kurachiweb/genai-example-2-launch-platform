@@ -269,7 +269,12 @@ const REACT_FORBIDDEN_RULES: Linter.Config[] = [
   },
 ];
 
+// 共用部品の静的解析は検査担当の共用部品自身が受け持つため、配置先を重ねて検査しない
 const config: Linter.Config[] = [
+  {
+    name: 'api/ignores',
+    ignores: ['common-lib/'],
+  },
   ...createBaseConfig({
     js,
     tseslint,
