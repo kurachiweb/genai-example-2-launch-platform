@@ -29,7 +29,7 @@ const FAST: Omit<HttpProbeOptions, 'fetch'> = {
 };
 
 describe('createHttpProbe().waitFor', () => {
-  test('期待する状態コードが返るまで間隔を空けて問い合わせ、返れば真を返す', async () => {
+  test('期待する状態コードが返るまで間隔を空けて問い合わせ、返れば届いたことをその状態コードとともに返す', async () => {
     const { fetch, calls } = respondingFetch([
       new Error('ECONNREFUSED'),
       503,
@@ -37,43 +37,55 @@ describe('createHttpProbe().waitFor', () => {
     ]);
     const probe = createHttpProbe({ fetch, ...FAST });
 
-    const reached = await probe.waitFor(URL_UNDER_TEST, {
+    const result = await probe.waitFor(URL_UNDER_TEST, {
       timeoutMs: 5_000,
       expectStatus: 200,
     });
 
-    expect(reached).toBe(true);
+    expect(result).toEqual({ reached: true, lastStatus: 200 });
     expect(calls()).toEqual([URL_UNDER_TEST, URL_UNDER_TEST, URL_UNDER_TEST]);
   });
 
-  test('anyでは状態コードを問わず最初の応答で真を返す', async () => {
+  test('anyでは状態コードを問わず最初の応答で届いたことを返す', async () => {
     const { fetch, calls } = respondingFetch([new Error('ECONNREFUSED'), 404]);
     const probe = createHttpProbe({ fetch, ...FAST });
 
-    const reached = await probe.waitFor(URL_UNDER_TEST, {
+    const result = await probe.waitFor(URL_UNDER_TEST, {
       timeoutMs: 5_000,
       expectStatus: 'any',
     });
 
-    expect(reached).toBe(true);
+    expect(result).toEqual({ reached: true, lastStatus: 404 });
     expect(calls()).toHaveLength(2);
   });
 
-  test('時間の上限までに期待する応答が無ければ偽を返す', async () => {
-    const { fetch } = respondingFetch([500]);
+  test('時間の上限までに期待する応答が無ければ、届かなかったことと最後の状態コードを返す', async () => {
+    const { fetch } = respondingFetch([503, 500]);
     const probe = createHttpProbe({ fetch, ...FAST });
     const startedAt = performance.now();
 
-    const reached = await probe.waitFor(URL_UNDER_TEST, {
+    const result = await probe.waitFor(URL_UNDER_TEST, {
       timeoutMs: 100,
       expectStatus: 200,
     });
 
-    expect(reached).toBe(false);
+    expect(result).toEqual({ reached: false, lastStatus: 500 });
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
-  test('応答しない問い合わせは1回ごとの上限で打ち切り、全体の上限で偽を返す', async () => {
+  test('応答した後に接続できなくなっても、最後に受け取った状態コードを返す', async () => {
+    const { fetch } = respondingFetch([503, new Error('ECONNREFUSED')]);
+    const probe = createHttpProbe({ fetch, ...FAST });
+
+    const result = await probe.waitFor(URL_UNDER_TEST, {
+      timeoutMs: 100,
+      expectStatus: 200,
+    });
+
+    expect(result).toEqual({ reached: false, lastStatus: 503 });
+  });
+
+  test('応答しない問い合わせは1回ごとの上限で打ち切り、全体の上限で状態コードの無い未到達を返す', async () => {
     const signals: AbortSignal[] = [];
     const probe = createHttpProbe({
       fetch: (_input, init) => {
@@ -91,12 +103,12 @@ describe('createHttpProbe().waitFor', () => {
       ...FAST,
     });
 
-    const reached = await probe.waitFor(URL_UNDER_TEST, {
+    const result = await probe.waitFor(URL_UNDER_TEST, {
       timeoutMs: 200,
       expectStatus: 'any',
     });
 
-    expect(reached).toBe(false);
+    expect(result).toEqual({ reached: false, lastStatus: undefined });
     expect(signals.length).toBeGreaterThan(1);
     expect(signals.every((signal) => signal.aborted)).toBe(true);
   });
@@ -113,12 +125,12 @@ describe('createHttpProbe().waitFor', () => {
       ...FAST,
     });
 
-    const reached = await probe.waitFor(URL_UNDER_TEST, {
+    const result = await probe.waitFor(URL_UNDER_TEST, {
       timeoutMs: 100,
       expectStatus: 200,
     });
 
-    expect(reached).toBe(false);
+    expect(result).toEqual({ reached: false, lastStatus: 302 });
     expect(new Set(redirects)).toEqual(new Set(['manual']));
   });
 });
@@ -146,12 +158,12 @@ describe('createHttpProbe(実際のHTTP)', () => {
         timeoutMs: 5_000,
         expectStatus: 200,
       }),
-    ).toBe(true);
+    ).toEqual({ reached: true, lastStatus: 200 });
     expect(
       await probe.waitFor(`${origin}/missing`, {
         timeoutMs: 100,
         expectStatus: 200,
       }),
-    ).toBe(false);
+    ).toEqual({ reached: false, lastStatus: 404 });
   });
 });

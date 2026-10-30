@@ -105,7 +105,11 @@ const createStack = ({
     waitFor: (url, { timeoutMs, expectStatus }) => {
       waits.push({ url, timeoutMs, expectStatus });
       timeline.push(`wait:${url}`);
-      return Promise.resolve(reachable(url));
+      const reached = reachable(url);
+      return Promise.resolve({
+        reached,
+        lastStatus: reached ? 200 : undefined,
+      });
     },
   };
   const fake = createFakeDeps(createFakeRepoFiles({}));

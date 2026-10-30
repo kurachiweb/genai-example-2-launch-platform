@@ -3,8 +3,13 @@ export interface HttpProbeWaitOptions {
   readonly expectStatus: number | 'any';
 }
 
+export interface HttpProbeResult {
+  readonly reached: boolean;
+  readonly lastStatus: number | undefined;
+}
+
 export interface HttpProbe {
-  waitFor(url: string, opts: HttpProbeWaitOptions): Promise<boolean>;
+  waitFor(url: string, opts: HttpProbeWaitOptions): Promise<HttpProbeResult>;
 }
 
 export interface HttpProbeOptions {
@@ -28,38 +33,39 @@ export function createHttpProbe({
 }: HttpProbeOptions): HttpProbe {
   const attempt = async (
     url: string,
-    expectStatus: HttpProbeWaitOptions['expectStatus'],
     timeoutMs: number,
-  ): Promise<boolean> => {
+  ): Promise<number | undefined> => {
     try {
       const response = await fetch(url, {
         redirect: 'manual',
         signal: AbortSignal.timeout(timeoutMs),
       });
       await response.body?.cancel();
-      return matches(response.status, expectStatus);
+      return response.status;
     } catch {
-      return false;
+      return undefined;
     }
   };
 
   return {
     waitFor: async (url, { timeoutMs, expectStatus }) => {
       const deadline = performance.now() + timeoutMs;
+      let lastStatus: number | undefined;
       for (;;) {
         const remaining = deadline - performance.now();
-        if (remaining <= 0) return false;
-        if (
-          await attempt(
-            url,
-            expectStatus,
-            Math.min(attemptTimeoutMs, remaining),
-          )
-        ) {
-          return true;
+        if (remaining <= 0) return { reached: false, lastStatus };
+        const status = await attempt(
+          url,
+          Math.min(attemptTimeoutMs, remaining),
+        );
+        if (status !== undefined) {
+          if (matches(status, expectStatus)) {
+            return { reached: true, lastStatus: status };
+          }
+          lastStatus = status;
         }
         const afterAttempt = deadline - performance.now();
-        if (afterAttempt <= 0) return false;
+        if (afterAttempt <= 0) return { reached: false, lastStatus };
         await Bun.sleep(Math.min(intervalMs, afterAttempt));
       }
     },

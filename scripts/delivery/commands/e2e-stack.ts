@@ -88,7 +88,7 @@ const waitForServices = async (
 ): Promise<readonly StackStartError[]> => {
   const results = await Promise.all(
     started.map(async ({ service, running }) => {
-      const reached = await probe.waitFor(service.wait.url, {
+      const { reached } = await probe.waitFor(service.wait.url, {
         timeoutMs: E2E_STACK_WAIT_TIMEOUT_MS,
         expectStatus: service.wait.expectStatus,
       });
