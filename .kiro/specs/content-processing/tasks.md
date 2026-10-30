@@ -153,7 +153,7 @@
   - _Boundary: CrepeEditorSurface_
   - _Requirements: 2.5, 2.10, 2.14, 2.15, 3.2_
 
-- [ ] 6.3 編集領域で見出しレベル1・画像・ファイルを挿入させず、Tabキーで抜けられるようにする
+- [x] 6.3 編集領域で見出しレベル1・画像・ファイルを挿入させず、Tabキーで抜けられるようにする
   - 先に、行頭の`# `の入力が見出しにならず「# 」付きの段落のままであること、`## `〜`###### `は見出しになること、見出しレベル1のショートカットが効かないこと、見出しレベル1や画像を含むマークダウン・HTMLの貼り付けと既存の値の読み込みが文字列になること、画像の記法の入力が画像にならないこと、ファイルの貼り付けとドロップで何も挿入されないこと、Tabキー・Shift+Tabキーで前後の要素へ移ること(リストと表の中を含む)、リストの階層の変更が`Mod-]`・`Mod-[`で動くことを確かめるブラウザテストを書く
   - 完了状態: ブラウザテストが成功し、どの経路でも保存されるマークダウンに見出しレベル1と画像の構文が現れない(文字列としてエスケープされる)
   - _Boundary: CrepeEditorSurface_
@@ -366,3 +366,4 @@
 - 5.3: 強調表示の`<mark>`の文字色はモックアップの`text-inherit`ではなく`text-foreground`にした(控えめな文字色の上ではAAに届かないため。理由はサービス仕様`001-design-principles.md`)。強調は塗りと文字色だけで示す(WCAG 1.4.1の対象外と判断。太字や下線を加えるかは開発者の判断)
 - 6.1: 遅延読み込みのモジュールの判定は、設計の`**/markdown-editor/crepe/**`ではなく`crepe`のディレクトリを含む相対パス全般(`./crepe/…`を拾うため)。`@vue/*`も禁止に加えた。静的解析の設定`frontend/no-raw-html`を`frontend/restricted-syntax`へ改名し、読み込み関数(`components/markdown-editor/load-crepe-editor.ts`)には`editor-loader`、モジュールの中には`editor-module`の設定を掛ける。読み込み関数自身も`@milkdown/*`・`vue`を動的importできない。frontend-platformのdesign.mdは旧名のまま
 - 6.2: Crepeのリスト機能(list-item)は`ul>div>li`になりaxeの`list`・`listitem`違反になるため組み込まず(P1と相違)、素の`ul`・`ol`・`li`を`crepe-theme.css`で整形する。タスク項目の状態は`crepe/task-item-state.ts`(設計に無い)の装飾で視覚的に隠した「完了」「未完了」を置いて伝える。リンクの設定・解除はリンク全体に掛ける独自のトランザクション(設計の`updateLinkCommand`ではない)。CJKの強調は`/parseOnly`(Milkdownが強調の書き戻しを上書きするため)、取り消し線は`/bidi`。エディタの事前バンドルの一覧は`config/editor-prebundled-dependencies.ts`(設計に無い)に集約し、3つのブラウザテストの設定と`.storybook/main.ts`が読む。`Mod-k`でリンクのダイアログを要求する。Milkdownの変更通知は入力が止まってから約200ms後のため、6.5ではフォーカスアウトの時に`readMarkdown()`で最新の値を渡す
+- 6.3: 見出しレベル1・画像は全経路で`crepe/forbidden-node-normalizer.ts`が文字列にし、保存は`\# …`・`!\[alt]\(…)`(再保存で1回だけ`(<URL>)`へ変わり、以後は安定)。`insertImageInputRule`は7.22.3で登録されていないため外していない(設計と相違)。ファイルの貼り付け・ドロップは`crepe/file-transfer-guard.ts`(設計に無い)がエディタのviewのハンドラーで止める(Crepeのdrop-indicatorがプラグインより先に挿入するため)。`prosemirror-drop-indicator`は破棄の時に30msのタイマーを消さず、ドラッグの直後30ms以内に入力欄を破棄するとエラートラッキングに1件の誤報が届く(ライブラリの更新時に再確認)。Tabは編集領域から抜け、リストの階層と表のセルの移動は`Mod-]`・`Mod-[`だけになった。6.4・6.5で、この操作方法を入力欄の説明文(`aria-describedby`)か`aria-keyshortcuts`で支援技術へ伝え、macOSのブラウザで`⌘[`・`⌘]`が戻る・進むにならないよう、編集領域の中では常に処理済みとして既定の動作を止める

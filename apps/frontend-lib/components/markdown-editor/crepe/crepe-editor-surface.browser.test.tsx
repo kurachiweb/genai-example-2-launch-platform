@@ -1,6 +1,5 @@
-import { afterEach, describe, expect, type Mock, test, vi } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';
-import { render } from 'vitest-browser-react';
 
 import '../../../styles/base.css';
 import { runAxe } from '../../../test/a11y.ts';
@@ -12,152 +11,18 @@ import {
   ringOutline,
   tokenColorOf,
 } from '../../../test/computed-style.ts';
-import type {
-  EditorAction,
-  EditorController,
-  EditorSurfaceProps,
-} from '../editor-controller.ts';
-import CrepeEditorSurface from './crepe-editor-surface.tsx';
-
-const EDITABLE_ID = 'editor-body';
-
-const LABEL_ID = 'editor-label';
-
-const DESCRIPTION_ID = 'editor-description';
-
-const ERROR_ID = 'editor-error';
-
-const PLACEHOLDER = '本文を入力してください';
-
-interface SurfaceHandlers {
-  readonly onReady: Mock<EditorSurfaceProps['onReady']>;
-  readonly onMarkdownChange: Mock<EditorSurfaceProps['onMarkdownChange']>;
-  readonly onActiveActionsChange: Mock<
-    EditorSurfaceProps['onActiveActionsChange']
-  >;
-  readonly onBlur: Mock<EditorSurfaceProps['onBlur']>;
-  readonly onRequestLink: Mock<EditorSurfaceProps['onRequestLink']>;
-}
-
-const createHandlers = (): SurfaceHandlers => ({
-  onReady: vi.fn<EditorSurfaceProps['onReady']>(),
-  onMarkdownChange: vi.fn<EditorSurfaceProps['onMarkdownChange']>(),
-  onActiveActionsChange: vi.fn<EditorSurfaceProps['onActiveActionsChange']>(),
-  onBlur: vi.fn<EditorSurfaceProps['onBlur']>(),
-  onRequestLink: vi.fn<EditorSurfaceProps['onRequestLink']>(),
-});
-
-type SurfaceOverrides = Partial<
-  Omit<EditorSurfaceProps, keyof SurfaceHandlers>
->;
-
-const surfaceElement = (
-  handlers: SurfaceHandlers,
-  overrides: SurfaceOverrides = {},
-) => (
-  <div>
-    <span id={LABEL_ID}>本文</span>
-    <p id={DESCRIPTION_ID}>マークダウンで書けます。</p>
-    <p id={ERROR_ID}>本文を入力してください。</p>
-    <CrepeEditorSurface
-      initialValue=""
-      editableId={EDITABLE_ID}
-      labelledBy={LABEL_ID}
-      describedBy={DESCRIPTION_ID}
-      invalid={false}
-      disabled={false}
-      placeholder={PLACEHOLDER}
-      {...handlers}
-      {...overrides}
-    />
-  </div>
-);
-
-interface RenderedSurface {
-  readonly container: HTMLElement;
-  readonly editable: HTMLElement;
-  readonly controller: EditorController;
-  readonly handlers: SurfaceHandlers;
-  readonly rerender: (overrides: SurfaceOverrides) => Promise<void>;
-}
-
-const editableOf = (container: HTMLElement): HTMLElement => {
-  const editable = container.querySelector<HTMLElement>(`#${EDITABLE_ID}`);
-  if (editable === null) {
-    throw new Error('編集領域が描画されていません。');
-  }
-  return editable;
-};
-
-async function renderSurface(
-  overrides: SurfaceOverrides = {},
-): Promise<RenderedSurface> {
-  const handlers = createHandlers();
-  const screen = await render(surfaceElement(handlers, overrides));
-  await expect.poll(() => handlers.onReady.mock.calls.length).toBe(1);
-  const [[controller]] = handlers.onReady.mock.calls as [[EditorController]];
-  return {
-    container: screen.container,
-    editable: editableOf(screen.container),
-    controller,
-    handlers,
-    rerender: async (next) => {
-      await screen.rerender(
-        surfaceElement(handlers, { ...overrides, ...next }),
-      );
-    },
-  };
-}
-
-// ProseMirrorはブラウザの選択範囲の変化(selectionchange)を受けて自身の選択範囲を更新するため、範囲を選んだ後は通知と次の描画を待つ
-async function applyRange(editable: HTMLElement, range: Range): Promise<void> {
-  editable.focus();
-  const applied = new Promise((resolve) => {
-    document.addEventListener(
-      'selectionchange',
-      () => requestAnimationFrame(resolve),
-      { once: true },
-    );
-  });
-  const selection = window.getSelection();
-  selection?.removeAllRanges();
-  selection?.addRange(range);
-  await applied;
-}
-
-async function selectTextOf(
-  editable: HTMLElement,
-  element: Element,
-): Promise<void> {
-  const range = document.createRange();
-  range.selectNodeContents(element);
-  await applyRange(editable, range);
-}
-
-async function selectRange(
-  editable: HTMLElement,
-  node: Node,
-  start: number,
-  end: number,
-): Promise<void> {
-  const range = document.createRange();
-  range.setStart(node, start);
-  range.setEnd(node, end);
-  await applyRange(editable, range);
-}
-
-async function selectAll(editable: HTMLElement): Promise<void> {
-  editable.focus();
-  await userEvent.keyboard('{ControlOrMeta>}a{/ControlOrMeta}');
-}
-
-const elementIn = (root: Element, selector: string): HTMLElement => {
-  const element = root.querySelector<HTMLElement>(selector);
-  if (element === null) {
-    throw new Error(`${selector}が描画されていません。`);
-  }
-  return element;
-};
+import type { EditorAction } from '../editor-controller.ts';
+import {
+  DESCRIPTION_ID,
+  elementIn,
+  ERROR_ID,
+  LABEL_ID,
+  PLACEHOLDER,
+  renderSurface,
+  selectAll,
+  selectRange,
+  selectTextOf,
+} from './surface-test-harness.ts';
 
 afterEach(() => {
   applyColorScheme('light');
