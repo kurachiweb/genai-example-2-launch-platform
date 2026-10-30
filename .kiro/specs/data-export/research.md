@@ -299,3 +299,8 @@
 - **中継の経路の形**: 中継の経路は`defineRelayRoute`で定義して凍結する契約になり、上流の5xxでJSONでない応答は503`upstream_unavailable`に置き換わる(frontend-platformの要件2.10の例外)。`DATA_EXPORT_DOWNLOAD_RELAY_ROUTE`を`defineRelayRoute`で定義し、clientの`RELAY_ROUTES`の完全一致の経路の後に置くこと、ZIPを返すダウンロードの経路も5xxは共通のエラー形式(JSON)で返すことを書いた。
 - **GraphQLの操作の置き場所**: 操作は`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名は`Client`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`だけを読む契約になった。`data-export.ts`を`ClientMyDataExports`・`ClientRequestDataExport`の`.graphql`に分けた。
 - **変えた箇所**: design.mdのAllowed Dependencies・File Structure Plan・Modified Files(`relay-routes.ts`・生成物)・clientの節(中継の経路・5xx・操作の規約)、tasks.mdの5.3(503のJSON)・7.1(`defineRelayRoute`・`.graphql`・操作名・`composition.unit.test.ts`・`codegen.unit.test.ts`)。
+
+## 実装済みの上流との食い違いの水平展開(2026-10-30、開発者の指示)
+
+- **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
+- 要件と受け入れ基準は変えていない。
