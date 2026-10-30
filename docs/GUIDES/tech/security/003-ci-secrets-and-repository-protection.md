@@ -20,7 +20,7 @@ GitHub ActionsからInfisicalのシークレットを取り出す経路(主体�
 | ルールセット              | GitHubのブランチの保護の規則の組(Rulesets)                                                                                                     |
 | Environment               | GitHubのデプロイ先の環境の定義。デプロイ対象のブランチを制限でき、OIDCトークンのsubjectに名前が入る                                            |
 | `<コードオーナー>`        | 全ファイルのコードオーナーとして登録する人間のGitHubのユーザー(またはチーム)                                                                   |
-| 総合結果                  | 検査の全ジョブの成否をまとめた1つの結果`checks / ci-gate`                                                                                      |
+| 総合結果                  | 検査の全ジョブの成否をまとめた1つの結果`<必須チェックの名前>`                                                                                  |
 | `<配布のスクリプト>`      | 検査とデプロイの手順のコマンド群を置くディレクトリ(「[検査とデプロイのパイプラインの前提と用語](../infra/007-ci-cd-pipelines.md#前提と用語)」) |
 
 ## CIのシークレットの供給経路
@@ -163,7 +163,7 @@ GitHub Actionsのログは、公開リポジトリでは誰でも読める。ロ
 
 ### フォークのプルリクエスト
 
-- フォークからのプルリクエストの実行には、GitHubがOIDCトークンもシークレットも渡さない。検査の`tests`・`e2e`のログイン(`infisical-login`)が失敗し、総合結果`checks / ci-gate`が失敗するため、そのままではマージできない。シークレットを要さない`secret-scan`・`quality`・`rehearsal`は実行される。
+- フォークからのプルリクエストの実行には、GitHubがOIDCトークンもシークレットも渡さない。検査の`tests`・`e2e`のログイン(`infisical-login`)が失敗し、総合結果`<必須チェックの名前>`が失敗するため、そのままではマージできない。シークレットを要さない`secret-scan`・`quality`・`rehearsal`は実行される。
 - `pull_request_target`・`workflow_run`で起動しない。これらは基準のリポジトリの権限とシークレットで動くため、フォークの変更を実行すると取り出した値を読み出され得る。ワークフローの検査(規則W5)が確かめる。
 - フォークの変更を受け入れるときは、開発者が差分(特にワークフロー・`<配布のスクリプト>`・依存パッケージ)を確かめてから、同じリポジトリのブランチへコミットを取り込み、そのブランチからプルリクエストを作り直して検査を通す。
 - リリースのプルリクエストを作るコマンドは、同じリポジトリのブランチからのプルリクエストだけを既存とみなす。フォークの同名のブランチからのプルリクエストへ誘導されないようにするためである。
@@ -176,21 +176,21 @@ prodへの反映を、コードオーナーとして登録した人間の承認�
 
 ### ルールセット
 
-| 項目                                                                                             | main                   | prod               |
-| ------------------------------------------------------------------------------------------------ | ---------------------- | ------------------ |
-| 削除の禁止(Restrict deletions)                                                                   | 有効                   | 有効               |
-| 強制pushの禁止(Block force pushes)                                                               | 有効                   | 有効               |
-| 例外の主体(Bypass list)                                                                          | なし                   | なし               |
-| プルリクエストを必須にする(Require a pull request before merging)                                | 有効                   | 有効               |
-| 必要な承認の数(Required approvals)                                                               | 0                      | 1                  |
-| コードオーナーの承認を求める(Require review from Code Owners)                                    | 無効                   | 有効               |
-| 新しいpushで古い承認を取り消す(Dismiss stale pull request approvals when new commits are pushed) | 無効                   | 有効               |
-| 最後のpushを他人が承認する(Require approval of the most recent reviewable push)                  | 無効                   | 無効               |
-| 許可するマージの方式(Allowed merge methods)                                                      | マージコミットを含める | マージコミットだけ |
-| 必須のチェック(Require status checks to pass)                                                    | `checks / ci-gate`     | `checks / ci-gate` |
+| 項目                                                                                             | main                   | prod                   |
+| ------------------------------------------------------------------------------------------------ | ---------------------- | ---------------------- |
+| 削除の禁止(Restrict deletions)                                                                   | 有効                   | 有効                   |
+| 強制pushの禁止(Block force pushes)                                                               | 有効                   | 有効                   |
+| 例外の主体(Bypass list)                                                                          | なし                   | なし                   |
+| プルリクエストを必須にする(Require a pull request before merging)                                | 有効                   | 有効                   |
+| 必要な承認の数(Required approvals)                                                               | 0                      | 1                      |
+| コードオーナーの承認を求める(Require review from Code Owners)                                    | 無効                   | 有効                   |
+| 新しいpushで古い承認を取り消す(Dismiss stale pull request approvals when new commits are pushed) | 無効                   | 有効                   |
+| 最後のpushを他人が承認する(Require approval of the most recent reviewable push)                  | 無効                   | 無効                   |
+| 許可するマージの方式(Allowed merge methods)                                                      | マージコミットを含める | マージコミットだけ     |
+| 必須のチェック(Require status checks to pass)                                                    | `<必須チェックの名前>` | `<必須チェックの名前>` |
 
 - 削除と強制pushの禁止は、例外の主体を置かずに両ブランチへ掛ける。管理者も例外にしない。
-- 必須のチェックは総合結果`checks / ci-gate`の1つだけにする。個々のジョブを必須にすると、ジョブを増やすたびにルールセットを改める必要がある。チェックの提供元を指定できる場合は、GitHub Actionsに限る。
+- 必須のチェックは総合結果`<必須チェックの名前>`の1つだけにする。個々のジョブを必須にすると、ジョブを増やすたびにルールセットを改める必要がある。チェックの提供元を指定できる場合は、GitHub Actionsに限る。
 - 自動化の主体が作ったプルリクエストは新しいワークフローを起動しない。リリースのプルリクエストの必須のチェックは、同じheadのコミットへのpush(mainへのマージ、`hotfix/**`へのpush)の検査結果で満たされる。
 - 「最後のpushを他人が承認する」はprodでも無効にする。mainへのマージ(開発者の操作)もpushとして数えられ、リリースのプルリクエストのheadの最後のpushが開発者になるため、有効にすると開発者自身の承認が数えられなくなる。
 - 新しいpushで古い承認を取り消すことで、承認の後にheadへ加わったコミットは、改めて承認するまでマージできない。

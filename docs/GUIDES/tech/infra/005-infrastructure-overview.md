@@ -111,12 +111,12 @@ graph LR
     Approve --> PushProd["prodへのマージ(push)"]
     PushProd --> ChecksProd["検査(checks)"]
     ChecksProd --> DeployProd["prodへのデプロイ"]
-    Checks --> Gate["総合結果(checks / ci-gate)"]
+    Checks --> Gate["総合結果(#lt;必須チェックの名前#gt;)"]
     ChecksMain --> Gate
     ChecksProd --> Gate
 ```
 
-- 検査はプルリクエストとpushの両方で同じ再利用ワークフローを呼び、1つの総合結果`checks / ci-gate`を報告する。ブランチ保護はこの1つを必須にする。
+- 検査はプルリクエストとpushの両方で同じ再利用ワークフローを呼び、1つの総合結果`<必須チェックの名前>`を報告する。ブランチ保護はこの1つを必須にする。
 - mainへのpushは`staging`へ、prodへのpushは`prod`へ、検査が成功した後に同じ手順でデプロイする。段階と順序は「[デプロイの段階](007-ci-cd-pipelines.md#デプロイの段階)」に従う。
 - prodへの変更は、リリースのワークフローが作るプルリクエストを開発者が承認してマージする。手順は「[デプロイ手順](../operations/001-deployment.md)」に従う。
 - デプロイが失敗しても、自動では前の版へ戻さない。戻す手順は「[ロールバックと復旧](../operations/002-rollback-and-recovery.md)」に従う。
