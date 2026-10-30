@@ -100,7 +100,7 @@ export default withSentry(
 | `beforeSendSpan`   | `scrubSentrySpan`                                                                                   |
 
 - 環境の検証に失敗すると、DSNがあっても`enabled: false`・`environment: 'unknown'`・`tracesSampleRate: 0`で返す。環境の不備による500はエラートラッキングへ届かず、不備のあるキーの名前だけのログが残る(バックエンドの共通ライブラリは環境を検証せずに送る)。
-- Sentry SDK 11.4.0の`@sentry/cloudflare`・`@sentry/tanstackstart-react`には`sendDefaultPii`が無い。個人情報を既定で集めないことは`dataCollection`で指定する(`userInfo: false`で利用者のIPアドレスの自動の収集も止まる)。
+- Sentry SDK 11.10.0の`@sentry/cloudflare`・`@sentry/tanstackstart-react`には`sendDefaultPii`が無い。個人情報を既定で集めないことは`dataCollection`で指定する(`userInfo: false`で利用者のIPアドレスの自動の収集も止まる)。
 - `integrations`・`defaultIntegrations`を指定せず、画面操作の録画(Session Replay)と利用者のフィードバックの統合を加えない。
 - `@sentry/cloudflare`は、オプションで指定しなかった項目を環境の変数(`SENTRY_TRACE_LIFECYCLE`・`SENTRY_RELEASE`・`SENTRY_DEBUG`・`SENTRY_TUNNEL`など)から読む。Wrangler設定の`vars`に`SENTRY_TRACE_LIFECYCLE`を定義しない(「[逐次送信のスパンの注意](#逐次送信のスパンの注意)」)。
 - TanStack Startのグローバルのミドルウェアの先頭に、Sentryの要求と関数のミドルウェアを置く(「[TanStack Startの中の順序](003-frontend-server-security.md#tanstack-startの中の順序)」)。ブラウザ向けの同じミドルウェアは何もしない空の実装のため、`start/sentry-middleware.server.ts`から再エクスポートし、`createFrontendStartOptions`の同型の関数の`.server`の実装だけで読み込む。
@@ -237,13 +237,13 @@ installRouteErrorReporting(Object.values(router.routesById), (error) => {
 収集設定の`dataCollection`だけでは、スパンから個人情報を除き切れない。
 
 - `dataCollection`は、SDKが自身の補助を通して集めた値だけを絞る。統合やアプリが`setAttribute`などで直接付けた属性と、スパンの名前には`dataCollection`が掛からない。
-- `urlQueryParams: false`でも、URLのフラグメントは残る。SDK 11.4.0では、URLからクエリを除く処理(`filterUrlQuery`)が`#`以降をそのまま残して`url.full`に入れ、`fetch`のスパンは`dataCollection`を見ずにフラグメントを`url.fragment`に入れる。フラグメントには、認証の応答のトークンなどが入り得る。
+- `urlQueryParams: false`でも、URLのフラグメントは残る。SDK 11.10.0では、URLからクエリを除く処理(`filterUrlQuery`)が`#`以降をそのまま残して`url.full`に入れ、`fetch`のスパンは`dataCollection`を見ずにフラグメントを`url.fragment`に入れる。フラグメントには、認証の応答のトークンなどが入り得る。
 - ブラウザのスパンは画面の遷移と中継への要求のURLを、サーバーのスパンは受けた要求のURLとヘッダー(Cookie・接続元のIPアドレスを含む)を持つ。旧来の属性名(`http.url`・`net.peer.ip`など)は、収集設定の対象の属性名と異なる。
 - エラーイベントの`beforeSend`はスパンを受け取らず、逐次送信ではトランザクションのイベントが作られない(「[逐次送信のスパンの注意](#逐次送信のスパンの注意)」)。スパンを除去できるのは`beforeSendSpan`だけである。
 
 ### 逐次送信のスパンの注意
 
-- SDK 11.4.0の既定のトレースの送り方(`traceLifecycle`)は、サーバー・ブラウザともスパンの逐次送信(`'stream'`)である。ブラウザでは、ルーターのトレースの統合が逐次送信の統合を加える。このままにする。
+- SDK 11.10.0の既定のトレースの送り方(`traceLifecycle`)は、サーバー・ブラウザともスパンの逐次送信(`'stream'`)である。ブラウザでは、ルーターのトレースの統合が逐次送信の統合を加える。このままにする。
 - 逐次送信では、`beforeSendSpan`は`StreamedSpanJSON`を受け取る。属性の値は値そのものか、単位を伴う`{ value, unit }`の形を取るため、除去の関数は両方の形を扱う。
 - `traceLifecycle: 'static'`を指定しない。`@sentry/cloudflare`は`traceLifecycle`を指定しなければ環境の変数`SENTRY_TRACE_LIFECYCLE`を読むため、Wrangler設定の`vars`にも定義しない。`scrubSentrySpan`を`withStaticSpan`で包まない。SDKは`beforeSendSpan`の形と`traceLifecycle`が合わない時に`beforeSendSpan`を無視する。通常のバンドルでは初期化の時に`console`へ警告が1回出るだけで(ビルドで`__SENTRY_DEBUG__`を`false`に置き換えた場合は出ない)、スパンは除去されないまま送られる。
 - 逐次送信では`beforeSendTransaction`・`ignoreTransactions`が呼ばれないため使わない。

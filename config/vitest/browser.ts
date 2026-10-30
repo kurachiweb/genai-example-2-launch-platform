@@ -35,7 +35,7 @@ export const browserTestPreset: TestKindPreset = createTestKindPreset(
 
 const REFERENCE_SCREENSHOT_DIRECTORY = '__screenshots__';
 
-// Vitest 4.1.11はscreenshotDirectoryを指定すると基準画像の既定の保存先も変わり、テストのディレクトリの下へ絶対パスを連結した場所になる。
+// Vitest 4.1.12はscreenshotDirectoryを指定すると基準画像の既定の保存先も変わり、テストのディレクトリの下へ絶対パスを連結した場所になる。
 // 基準画像はコミットするため、既定と同じ並びでテストファイルの隣の__screenshots__に固定する
 function resolveReferenceScreenshotPath({
   arg,

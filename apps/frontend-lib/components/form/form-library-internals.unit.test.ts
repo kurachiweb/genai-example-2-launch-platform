@@ -25,8 +25,8 @@ const REVIEW_PROCEDURE =
   'docs/GUIDES/tech/coding/002-dependency-versions.md#内部の値に頼るパッケージの版を上げる手順';
 
 const VERIFIED_VERSIONS = {
-  'react-hook-form': '7.89.0',
-  '@hookform/resolvers': '5.9.1',
+  'react-hook-form': '7.91.0',
+  '@hookform/resolvers': '6.0.2',
 } as const;
 
 type GuardedPackage = keyof typeof VERIFIED_VERSIONS;
@@ -190,7 +190,7 @@ const REVIEW_ITEMS: readonly ReviewItem[] = [
   },
   {
     subject:
-      'フォームの値の複製(`cloneObject`)が、配列とコンストラクタが`Object`の値の中だけを入れ子として複製し、他のオブジェクトを欄の値として扱うこと',
+      'フォームの値の複製(`cloneObject`)が、配列と、プロトタイプがnullかコンストラクタが`Object`の値の中だけを入れ子として複製し、他のオブジェクトを欄の値として扱うこと',
     usedIn: [
       'utilities/forms/server-field-errors.ts',
       'utilities/forms/reserved-field-names.ts',
@@ -425,7 +425,7 @@ const fieldElement = (name: string) => ({
 const mountOf = <T extends FieldValues>(
   control: Control<T>,
   path: string,
-): unknown => get(control._fields, `${path}._f.mount`) as unknown;
+): unknown => get<unknown>(control._fields, `${path}._f.mount`);
 
 describe('フォームの部品が頼る内部の値', () => {
   describe('無効の欄の集合(_names.disabled)', () => {
@@ -653,7 +653,7 @@ describe('フォームの部品が頼る内部の値', () => {
     expect(received[0]?.names).toEqual(['title']);
   });
 
-  test('フォームの値の複製は、配列とコンストラクタがObjectの値の中だけを複製し、他のオブジェクトは同じ参照のまま持つ', () => {
+  test('フォームの値の複製は、配列と、プロトタイプがnullかコンストラクタがObjectの値の中だけを複製し、他のオブジェクトは同じ参照のまま持つ', () => {
     class Coordinates {
       readonly latitude = 35;
     }
@@ -683,7 +683,8 @@ describe('フォームの部品が頼る内部の値', () => {
     expect(values.maker).toStrictEqual(maker);
     expect(values.tags).not.toBe(tags);
     expect(values.coordinates).toBe(coordinates);
-    expect(values.bareRecord).toBe(bareRecord);
+    expect(values.bareRecord).not.toBe(bareRecord);
+    expect(values.bareRecord).toStrictEqual(bareRecord);
     expect(values.attachment).toBe(attachment);
     expect(values.launchedAt).toBeInstanceOf(Date);
     expect(values.launchedAt.getTime()).toBe(launchedAt.getTime());

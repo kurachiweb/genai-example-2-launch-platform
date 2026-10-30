@@ -9,6 +9,8 @@ export function createFailingD1(): D1Database {
     batch: fail,
     exec: fail,
     withSession: fail,
+    // D1Databaseの型が非推奨のdumpも必須にするため、偽物でも実装する
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     dump: fail,
   };
 }

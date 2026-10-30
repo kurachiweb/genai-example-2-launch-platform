@@ -77,6 +77,8 @@ function createRecordingD1(): RecordingD1 {
     batch: (statements) => env.DB.batch(statements),
     exec: (query) => env.DB.exec(query),
     withSession: (constraint) => env.DB.withSession(constraint),
+    // D1Databaseの型が非推奨のdumpも必須にするため、偽物でも実装する
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     dump: () => Promise.reject(new Error('テストでは使わない')),
   };
   return { d1, placeholderCounts };

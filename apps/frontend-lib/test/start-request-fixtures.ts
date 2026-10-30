@@ -1,4 +1,7 @@
-import { requestHandler } from '@tanstack/react-start/server';
+import {
+  createServerEntry,
+  getResponseHeaders,
+} from '@tanstack/react-start/server';
 // @tanstack/react-startが完全固定の版で推移的に依存するパッケージ。描画中の要求の文脈をテストで作る公開の手段がここにしか無いため直接読み込む
 import {
   runWithStartContext,
@@ -155,35 +158,58 @@ export interface StartRequestOptions {
   readonly render: () => Promise<Response>;
 }
 
-// TanStack Startと同じく、h3の応答の項目の入れ物と要求の文脈の中で、応答の送り始めのミドルウェアを通して描画の処理を実行する
-export const runInStartRequest = async (
+// TanStack Startは後続の処理が返した応答を要求のミドルウェアへ渡す時に、それまでにsetResponseHeaderなどで設定した項目を合成する(createStartHandlerのreconcileResponse)。テストではその合成を公開の読み取りで再現する
+const withHelperHeaders = (response: Response): Response => {
+  const helperHeaders = getResponseHeaders();
+  const headers = new Headers(response.headers);
+  for (const [name, value] of helperHeaders) {
+    if (name !== 'set-cookie') {
+      headers.set(name, value);
+    }
+  }
+  for (const cookie of helperHeaders.getSetCookie()) {
+    headers.append('set-cookie', cookie);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+};
+
+// TanStack Startと同じく、要求の範囲と文脈の中で、応答の送り始めのミドルウェアを通して描画の処理を実行する
+export const runInStartRequest = (
   options: StartRequestOptions,
 ): Promise<Response> => {
   const request = options.request ?? pageRequestOf();
   const server = commitMiddlewareServer();
-  const handler = requestHandler((incoming: Request) => {
-    const startContext: StartStorageContext = {
-      getRouter: () => {
-        throw new Error('テストではルーターを使わない');
-      },
-      request: incoming,
-      startOptions: {},
-      contextAfterGlobalMiddlewares: options.context,
-      executedRequestMiddlewares: new Set(),
-      handlerType: 'router',
-    };
-    return runWithStartContext(startContext, async () => {
-      const result = await server({
+  const entry = createServerEntry({
+    fetch: (incoming: Request) => {
+      const startContext: StartStorageContext = {
+        getRouter: () => {
+          throw new Error('テストではルーターを使わない');
+        },
         request: incoming,
-        pathname: new URL(incoming.url).pathname,
-        context: {},
+        startOptions: {},
+        contextAfterGlobalMiddlewares: options.context,
+        executedRequestMiddlewares: new Set(),
         handlerType: 'router',
-        next: async () => ({ response: await options.render() }),
+      };
+      return runWithStartContext(startContext, async () => {
+        const result = await server({
+          request: incoming,
+          pathname: new URL(incoming.url).pathname,
+          context: {},
+          handlerType: 'router',
+          next: async () => ({
+            response: withHelperHeaders(await options.render()),
+          }),
+        });
+        return result.response;
       });
-      return result.response;
-    });
+    },
   });
-  return handler(request, undefined);
+  return Promise.resolve(entry.fetch(request));
 };
 
 export const htmlResponse = (headers: HeadersInit = {}): Response =>
