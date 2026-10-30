@@ -401,7 +401,7 @@ import { StartClient } from '@tanstack/react-start/client';
 
 ## 生のHTMLの禁止と例外
 
-画面を持つアプリと共通部品は、生のHTMLを挿入する処理を書かない。要素はJSXで組み立て、文字列は`textContent`かJSXの子として設定する。`createFrontendLintConfig`の`frontend/no-raw-html`が次を違反として報告する。
+画面を持つアプリと共通部品は、生のHTMLを挿入する処理を書かない。要素はJSXで組み立て、文字列は`textContent`かJSXの子として設定する。`createFrontendLintConfig`の`frontend/restricted-syntax`が次を違反として報告する。同じ設定は、エディタの実装のパッケージの動的`import()`を遅延読み込みのモジュールの外で、そのモジュールの動的`import()`を読み込み関数の外で禁止する。読み込み関数にはパッケージの制限と生のHTMLの禁止だけを(`frontend/restricted-syntax/editor-loader`)、モジュールの中には生のHTMLの禁止だけを掛ける(`frontend/restricted-syntax/editor-module`)(「[画面を持つアプリの静的解析](../coding/001-javascript-typescript-conventions.md#画面を持つアプリの静的解析)」)。
 
 | 検出する書き方                                                          | 規則                                             |
 | ----------------------------------------------------------------------- | ------------------------------------------------ |

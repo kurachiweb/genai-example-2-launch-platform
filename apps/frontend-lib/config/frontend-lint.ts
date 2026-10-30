@@ -111,6 +111,66 @@ const ZOD_VALUE_RESTRICTION: RestrictedImportPattern = {
   message: `Zodの値はJITを止める設定を済ませた共通部品(${ZOD_ENTRY_FILE})のzから読み込んでください。型だけの読み込みはそのまま書けます。`,
 };
 
+const EDITOR_MODULE_DIRECTORY = 'components/markdown-editor/crepe';
+
+const EDITOR_LOADER_FILE = 'components/markdown-editor/load-crepe-editor.ts';
+
+const EDITOR_PACKAGE_RESTRICTION: RestrictedImportPattern = {
+  regex: '^@milkdown/|^@vue/|^vue(?:/.*)?$',
+  message: `エディタの実装(@milkdown/*・vue・@vue/*)は、ページの最初の読み込みとサーバー側の描画に含めないため、遅延読み込みのモジュール(${EDITOR_MODULE_DIRECTORY}/)の中だけで読み込めます。型も${EDITOR_MODULE_DIRECTORY}/の外へ出さないでください。`,
+};
+
+// 読み込む側の位置(同じディレクトリ・別の部品・アプリのlib/経由)によって相対パスの形が変わるため、途中にcrepeのディレクトリを含む相対パスをすべて遅延読み込みのモジュールとみなす
+const EDITOR_MODULE_RESTRICTION: RestrictedImportPattern = {
+  regex: '^\\.{1,2}/(?:.+/)?crepe(?:/|$)',
+  message: `遅延読み込みのモジュール(${EDITOR_MODULE_DIRECTORY}/)は静的にimport・export-fromできません。${EDITOR_LOADER_FILE}のloadCrepeEditorを経由してください。`,
+};
+
+const EDITOR_ISOLATION_RESTRICTIONS: readonly RestrictedImportPattern[] = [
+  EDITOR_PACKAGE_RESTRICTION,
+  EDITOR_MODULE_RESTRICTION,
+];
+
+// esqueryの正規表現は/を含められないため、区切りの/を\x2Fで書く
+const EDITOR_PACKAGE_SPECIFIER = '/^@milkdown\\x2F|^@vue\\x2F|^vue(?:\\x2F|$)/';
+
+const EDITOR_PACKAGE_LAZY_IMPORT_MESSAGE = `エディタの実装(@milkdown/*・vue・@vue/*)は、遅延読み込みのモジュール(${EDITOR_MODULE_DIRECTORY}/)の中だけで動的importできます。`;
+
+// テンプレートリテラルの指定は、パッケージ名が先頭の文字列の部分に現れる
+const EDITOR_PACKAGE_LAZY_IMPORT_RESTRICTIONS = [
+  {
+    selector: `ImportExpression[source.value=${EDITOR_PACKAGE_SPECIFIER}]`,
+    message: EDITOR_PACKAGE_LAZY_IMPORT_MESSAGE,
+  },
+  {
+    selector: `ImportExpression > TemplateLiteral.source > TemplateElement:first-child[value.raw=${EDITOR_PACKAGE_SPECIFIER}]`,
+    message: EDITOR_PACKAGE_LAZY_IMPORT_MESSAGE,
+  },
+];
+
+const EDITOR_MODULE_LAZY_IMPORT_MESSAGE = `遅延読み込みのモジュール(${EDITOR_MODULE_DIRECTORY}/)を動的importできるのは${EDITOR_LOADER_FILE}だけです。loadCrepeEditorを使ってください。`;
+
+// テンプレートリテラルの指定は、埋め込む式の前後のどの文字列の部分にcrepeのディレクトリが現れても遅延読み込みのモジュールとみなす
+const EDITOR_MODULE_LAZY_IMPORT_RESTRICTIONS = [
+  {
+    selector:
+      'ImportExpression[source.value=/^\\.{1,2}\\x2F(?:.+\\x2F)?crepe(?:\\x2F|$)/]',
+    message: EDITOR_MODULE_LAZY_IMPORT_MESSAGE,
+  },
+  {
+    selector:
+      'ImportExpression > TemplateLiteral.source > TemplateElement[value.raw=/(?:^|\\x2F)crepe(?:\\x2F|$)/]',
+    message: EDITOR_MODULE_LAZY_IMPORT_MESSAGE,
+  },
+];
+
+// 共用部品のvalidationはZodを直接読み込む。共通部品の位置では共用部品のnode_modulesのZodに解決され、共通部品のZodと別の実体になり得るため、部品とサーバーの部品からは読み込ませない
+const COMMON_LIB_VALIDATION_RESTRICTION: RestrictedImportPattern = {
+  regex: relativeDirectoryPattern('common-lib/validation'),
+  message:
+    '部品とサーバーの部品は、Zodを使う共用部品の検証規則(common-lib/validation)を読み込めません。検証規則は利用側アプリの画面で読み込んでください。',
+};
+
 const restrictImports = (
   patterns: readonly RestrictedImportPattern[],
 ): Linter.RuleEntry => ['error', { patterns }];
@@ -119,6 +179,18 @@ const restrictImports = (
 const restrictValueImports = (
   patterns: readonly RestrictedImportPattern[],
 ): Linter.RuleEntry => restrictImports([ZOD_VALUE_RESTRICTION, ...patterns]);
+
+// 同じ理由で、依存の向きの制限には常にエディタの実装の読み込みの制限を含める
+const restrictDirectionImports = (
+  patterns: readonly RestrictedImportPattern[],
+): Linter.RuleEntry =>
+  restrictImports([...patterns, ...EDITOR_ISOLATION_RESTRICTIONS]);
+
+const COMPONENT_DIRECTION_RESTRICTIONS: readonly RestrictedImportPattern[] = [
+  SERVER_ONLY_FILE_RESTRICTION,
+  APP_SOURCE_RESTRICTION,
+  COMMON_LIB_VALIDATION_RESTRICTION,
+];
 
 const PURE_VALUE_RESTRICTIONS: readonly RestrictedImportPattern[] = [
   RUNTIME_PACKAGE_RESTRICTION,
@@ -144,10 +216,17 @@ const ZOD_ENTRY_FILE_RULE: Linter.Config = {
 
 const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
   {
+    name: 'frontend/editor-isolation',
+    files: ['**/*.ts', '**/*.tsx'],
+    rules: {
+      'no-restricted-imports': restrictDirectionImports([]),
+    },
+  },
+  {
     name: 'frontend/direction/utilities',
     files: ['utilities/**'],
     rules: {
-      'no-restricted-imports': restrictImports([
+      'no-restricted-imports': restrictDirectionImports([
         reverseDirectionRestriction('純粋な関数', [
           'server',
           'start',
@@ -164,9 +243,10 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
     name: 'frontend/direction/server',
     files: ['server/**'],
     rules: {
-      'no-restricted-imports': restrictImports([
+      'no-restricted-imports': restrictDirectionImports([
         reverseDirectionRestriction('サーバーの部品', ['start', 'components']),
         APP_SOURCE_RESTRICTION,
+        COMMON_LIB_VALIDATION_RESTRICTION,
       ]),
       '@typescript-eslint/no-restricted-imports': restrictValueImports(
         PURE_VALUE_RESTRICTIONS,
@@ -184,7 +264,7 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
     name: 'frontend/direction/start',
     files: ['start/**'],
     rules: {
-      'no-restricted-imports': restrictImports([
+      'no-restricted-imports': restrictDirectionImports([
         reverseDirectionRestriction('TanStack Startとの接続', ['components']),
         APP_SOURCE_RESTRICTION,
       ]),
@@ -194,14 +274,22 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
     name: 'frontend/direction/components',
     files: ['components/**'],
     rules: {
-      'no-restricted-imports': restrictImports([
-        SERVER_ONLY_FILE_RESTRICTION,
-        APP_SOURCE_RESTRICTION,
-      ]),
+      'no-restricted-imports': restrictDirectionImports(
+        COMPONENT_DIRECTION_RESTRICTIONS,
+      ),
       '@typescript-eslint/no-restricted-imports': restrictValueImports([
         SERVER_VALUE_RESTRICTION,
         BROWSER_SENTRY_RESTRICTION,
       ]),
+    },
+  },
+  {
+    name: 'frontend/editor-isolation/editor-module',
+    files: [`${EDITOR_MODULE_DIRECTORY}/**`],
+    rules: {
+      'no-restricted-imports': restrictImports(
+        COMPONENT_DIRECTION_RESTRICTIONS,
+      ),
     },
   },
   {
@@ -223,7 +311,7 @@ const DEPENDENCY_DIRECTION_RULES: Linter.Config[] = [
     name: 'frontend/direction/app-composition',
     files: ['src/composition/**'],
     rules: {
-      'no-restricted-imports': restrictImports([
+      'no-restricted-imports': restrictDirectionImports([
         COMPOSITION_TO_ROUTES_RESTRICTION,
       ]),
     },
@@ -345,9 +433,32 @@ export function createFrontendLintConfig({
       'disable-type-checked',
     ]).map((config) => ({ ...config, files: CONFIG_FILES })),
     {
-      name: 'frontend/no-raw-html',
+      name: 'frontend/restricted-syntax',
       rules: {
         '@eslint-react/dom-no-dangerously-set-innerhtml': 'error',
+        'no-restricted-syntax': [
+          'error',
+          ...RAW_HTML_SYNTAX_RESTRICTIONS,
+          ...EDITOR_PACKAGE_LAZY_IMPORT_RESTRICTIONS,
+          ...EDITOR_MODULE_LAZY_IMPORT_RESTRICTIONS,
+        ],
+      },
+    },
+    {
+      name: 'frontend/restricted-syntax/editor-loader',
+      files: [EDITOR_LOADER_FILE],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          ...RAW_HTML_SYNTAX_RESTRICTIONS,
+          ...EDITOR_PACKAGE_LAZY_IMPORT_RESTRICTIONS,
+        ],
+      },
+    },
+    {
+      name: 'frontend/restricted-syntax/editor-module',
+      files: [`${EDITOR_MODULE_DIRECTORY}/**`],
+      rules: {
         'no-restricted-syntax': ['error', ...RAW_HTML_SYNTAX_RESTRICTIONS],
       },
     },

@@ -137,7 +137,7 @@
   - _Requirements: 13.4_
 
 - [ ] 6. 共通部品: マークダウンの入力欄
-- [ ] 6.1 エディタの読み込みを遅延読み込みのモジュールに限る静的解析の規則を加える
+- [x] 6.1 エディタの読み込みを遅延読み込みのモジュールに限る静的解析の規則を加える
   - 先に、遅延読み込みのディレクトリの外での`@milkdown/*`・`vue`の読み込み、そのディレクトリの静的なimportとexport-from(バレル)、読み込み関数以外からのそのディレクトリの`import()`、frontend-libの`components/**`・`server/**`からの共用部品の検証規則の読み込みが報告され、`components/**`・`server/**`・`utilities/**`からの共用部品のその他のモジュールの読み込みは報告されず、既存の依存の方向の違反も引き続き報告されることを、ESLintのNode APIで確かめる単体テストを書く
   - frontend-platformの依存の方向の規則と同じ設定に統合し、後の設定による選択肢の置き換えで既存の規則を失わないようにする
   - 完了状態: 違反例の単体テストとfrontend-platformの規則の単体テストが成功し、client・adminにも同じ規則が適用される
@@ -364,3 +364,4 @@
 - 5.1: タスクリストのチェックボックスにはaxeの`label`違反を避けるため、common-libの`plugins/task-list-label.ts`(サニタイズの後の信頼できる変換)で項目の文字列から`aria-label`を付ける(設計のMarkdownRendererの事後条件に無い。11.2の`security/004`のサニタイズの後の変換に含める)。コードブロックの色はデザイントークン`--code-block`・`--code-block-foreground`を`tokens.css`へ加えた(frontend-platformの境界)。GFMの列揃えは`markdown.css`の`[align]`の規則でtypographyの`text-align`を上書きする。2つ以上の表を持つ本文は、同名のregionになりaxeのベストプラクティス`landmark-unique`に当たる(WCAGの規則では違反0)。生のHTMLの例外の走査は`interface`・型のリテラル・汎用の変換関数を経由した偽造を検出しない(11.2の文書に限界として書く)
 - 5.2: 折りたたみの表示部品は、折りたたんだ部分へフォーカスが移った時と、ページ内の移動(脚注・見出しのアンカー・ハッシュ付きのURL)で本文の中がスクロールした時に展開し、移動先を見える位置へ戻す(WCAG 2.4.11。設計に無い振る舞い)。「続きを読む」「折りたたむ」は`utilities/messages/markdown-messages.ts`(設計に無い)に置き、文言規則`003`へ追記済み
 - 5.3: 強調表示の`<mark>`の文字色はモックアップの`text-inherit`ではなく`text-foreground`にした(控えめな文字色の上ではAAに届かないため。理由はサービス仕様`001-design-principles.md`)。強調は塗りと文字色だけで示す(WCAG 1.4.1の対象外と判断。太字や下線を加えるかは開発者の判断)
+- 6.1: 遅延読み込みのモジュールの判定は、設計の`**/markdown-editor/crepe/**`ではなく`crepe`のディレクトリを含む相対パス全般(`./crepe/…`を拾うため)。`@vue/*`も禁止に加えた。静的解析の設定`frontend/no-raw-html`を`frontend/restricted-syntax`へ改名し、読み込み関数(`components/markdown-editor/load-crepe-editor.ts`)には`editor-loader`、モジュールの中には`editor-module`の設定を掛ける。読み込み関数自身も`@milkdown/*`・`vue`を動的importできない。frontend-platformのdesign.mdは旧名のまま
