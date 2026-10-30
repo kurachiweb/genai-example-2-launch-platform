@@ -301,7 +301,7 @@
 - paymentsの確認(2026-10-24)の反映: 自動返金の通知は`reflection:`の依頼だけのため本specの掲載終了・強制終了の通知が返金を知らせる。依頼キーは広告ごと・種類ごとに2つ。返金できる残りを超える拒否は残りの全額で依頼し直す。物理削除の後の`purchase_not_found`は、退会・プロダクトの削除の広告を返金しないため通常の流れでは起きず、起きた場合は`failed`とSentryへの通知で扱う。paymentsの変更は要らない。
 - レビュー: 新しいサブエージェントによる独立した確認を、設計の変更部分(kiro-spec-designのレビューゲート)とタスク(kiro-spec-tasksのサニティレビュー)について通常の2回の上限で行った。
   - 1回目: 設計・タスクともNEEDS_FIXES(必須5件)。決済画面の追加事項の文言の残り、終了通知の条件の不一致(`ends_on < today`と精算済みにそろえた)、未精算の照会`listUnsettledEnded`と申込の返金の列の欠け、2.4のテストの条件、2.1の前提を直し、軽微の指摘(図・束縛の一覧・技術の表・Componentsの表・`duplicate`の表現・残りの全額の金額の記録・精算前の退会の扱いの明記・briefの古い記述・9.2の依存・2.8の分割)も直した。
-  - 2回目: 設計・タスクともNEEDS_FIXES(必須2件)。research.mdの「波及処理を持たない」の記述が表示停止の同期の処理と食い違う点と、テストとE2Eで返金の依頼を確かめるためのpaymentsの購入の行を作る補助が無い点である。いずれも直した(research.mdの3か所、2.1・10.1の補助に購入の行(テスト専用の書き込み)を加え、10.3の確認を依頼の行までにした)。軽微の指摘(残りの全額の表記、強制終了の結果の依頼した額の欄、未精算の部分索引、Componentsの表の要件、`captureMessage`の依存、briefの決定事項の帯、10.2の`_Depends`、1.3の文言の正)も直した。
+  - 2回目: 設計・タスクともNEEDS_FIXES(必須2件)。research.mdの「波及処理を持たない」の記述が表示停止の同期の処理と食い違う点と、テストとE2Eで返金の依頼を確かめるためのpaymentsの購入の行を作る補助が無い点である。いずれも直した(research.mdの3か所、2.1・10.1の補助に購入の行(テスト専用の書き込み)を加え、10.3の確認を依頼の行までにした)。軽微の指摘(残りの全額の表記、強制終了の結果の依頼した額の欄、未精算の部分索引、Componentsの表の要件、`captureEvent`の依存、briefの決定事項の帯、10.2の`_Depends`、1.3の文言の正)も直した。
   - 規則(2回目の判定がPASSでなければ繰り返さない)に従い3回目のレビューを行っていない。設計とタスクの承認(`approvals.design.approved`・`approvals.tasks.approved`)は偽にした。2回目の指摘を直した設計とタスクを引き継いで`/kiro-spec-design sponsorship -y`(変更部分)と`/kiro-spec-tasks sponsorship -y`を再実行し、レビューがPASSになれば承認される。
 
 ## 最終のレビュー(2026-10-24、コーディネーターの指示による再実行)
@@ -325,3 +325,8 @@
 - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。
 - bot判定: `TurnstileWidget`は非表示のウィジェットで場所を取らないため、判定の枠の表示と場所の記述を除いた。
 - 変えた箇所: design.mdのAllowed Dependencies、File Structure Planの両アプリの`graphql/operations/sponsorship/`、Modified Filesの生成物と許可リストの行、`SponsorshipApplicationForm`・`MySponsorshipList`・`ResumeCheckoutButton`・`AdminSponsorshipTable`・`TerminateSponsorshipDialog`(`ConfirmActionDialog`の`failureMessageOf`と確定の失敗の表示)、Error Strategy。tasks.mdの6.1・7.2・8.1・8.2・8.3。要件は変えていない。
+
+## 実装済みの上流との食い違いの水平展開(2026-10-30、開発者の指示)
+
+- **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
+- 要件と受け入れ基準は変えていない。
