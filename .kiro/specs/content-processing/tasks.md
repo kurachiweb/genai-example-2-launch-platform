@@ -123,7 +123,7 @@
   - _Depends: 3.4, 4.2, 4.3_
   - _Requirements: 3.6, 4.12, 4.13, 4.15, 5.5_
 
-- [ ] 5.2 折りたたみ付きの表示部品を作る
+- [x] 5.2 折りたたみ付きの表示部品を作る
   - 先に、指定の高さを超える本文が初めから折りたたまれ、測定後にあふれる場合だけ「続きを読む」と下端のぼかしを表示し、押すと「折りたたむ」に変わって展開の状態を支援技術へ伝えること、あふれない本文にはボタンが出ないこと、違反0件を確かめるブラウザテストを書く
   - 完了状態: ブラウザテストが成功し、カタログで240pxと480pxの折りたたみを確かめられる
   - _Boundary: CollapsibleMarkdownContent_
@@ -362,3 +362,4 @@
 - 4.1: apiに`bunfig.unit.toml`(ルートの`bunfig.toml`にカバレッジの除外`common-lib/**`を加えた写し)を新設した。api・eventの型検査は`common-lib/**/*.ts`を含め、`common-lib/*.config.ts`・`**/*.test.ts`・`config/**`・`markdown/fixtures/**`を除く(`coding/001`の既存の規則は`<配置先>/*.ts`で、設計とずれる)。`docs/onboardings/README.md`のコマンドの表は`test:unit`の行だけ更新したため、11.3で`lint`・`typecheck`・`test:worker`の行にも配置先の除外を書く
 - 4.2: ルートの`bun run check`と`check-test-names`の赤は解消した。Vueの機能フラグは`apps/frontend-lib/config/vue-feature-flags.ts`(設計に無い)を6つのVite・Storybookの設定で共有する。frontend-libは描画の9パッケージを宣言しないため、`PREBUNDLED_DEPENDENCIES`の4つ(remark-rehype・rehype-sanitize・rehype-stringify・hast-util-to-text)はfrontend-libの位置で"Failed to resolve dependency"の警告が出るが、Viteが共用部品の`node_modules`からたどって事前バンドルするため再読み込みは起きない。frontend-libの位置ではunified・remark-parse・remark-gfmがMilkdownの推移的な依存の写しに解決されるため、11.3で`coding/002`の版をそろえる一覧に推移的な版の照合も検討する。frontend-libの単体テストはカバレッジの都合で共用部品のうち`text/graphemes.ts`だけを読み込む
 - 5.1: タスクリストのチェックボックスにはaxeの`label`違反を避けるため、common-libの`plugins/task-list-label.ts`(サニタイズの後の信頼できる変換)で項目の文字列から`aria-label`を付ける(設計のMarkdownRendererの事後条件に無い。11.2の`security/004`のサニタイズの後の変換に含める)。コードブロックの色はデザイントークン`--code-block`・`--code-block-foreground`を`tokens.css`へ加えた(frontend-platformの境界)。GFMの列揃えは`markdown.css`の`[align]`の規則でtypographyの`text-align`を上書きする。2つ以上の表を持つ本文は、同名のregionになりaxeのベストプラクティス`landmark-unique`に当たる(WCAGの規則では違反0)。生のHTMLの例外の走査は`interface`・型のリテラル・汎用の変換関数を経由した偽造を検出しない(11.2の文書に限界として書く)
+- 5.2: 折りたたみの表示部品は、折りたたんだ部分へフォーカスが移った時と、ページ内の移動(脚注・見出しのアンカー・ハッシュ付きのURL)で本文の中がスクロールした時に展開し、移動先を見える位置へ戻す(WCAG 2.4.11。設計に無い振る舞い)。「続きを読む」「折りたたむ」は`utilities/messages/markdown-messages.ts`(設計に無い)に置き、文言規則`003`へ追記済み

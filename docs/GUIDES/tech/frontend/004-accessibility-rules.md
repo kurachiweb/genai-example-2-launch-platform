@@ -114,6 +114,7 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 | bot判定の失敗                    | `TurnstileWidget`                                  | `role="alert"`の文言                                             |
 | 操作の結果                       | `notify`(トースト)                                 | 名前付きの領域の丁寧な通知(`role`を持たない)                     |
 | 処理中のボタン                   | `SubmitButton`・`SystemStatusView`の再確認のボタン | `aria-busy`と、送信中などを示すボタンの文言への変更              |
+| 本文の折りたたみと展開           | `CollapsibleMarkdownContent`                       | 切替ボタンの`aria-expanded`と、本文の枠を指す`aria-controls`     |
 
 - `Skeleton`自体は`aria`を持たない。読み込み中の表示には`Skeleton`を直接置かず、`LoadingSkeleton`で包む。
 - トーストは一定の時間で消え、丁寧な通知で伝える。利用者の対応が要る失敗はトーストだけで伝えず、`ErrorState`・`PartialErrorState`か、フォームの`role="alert"`の表示で示す。トーストは操作の結果の通知に使う。
