@@ -266,7 +266,7 @@
   - _Requirements: 2.5, 2.6, 2.7, 4.10, 9.10, 12.3, 13.5, 13.6, 13.7_
 
 - [ ] 9. 検証と識別子の反映
-- [ ] 9.1 全体を検証し、設計との食い違いを直す
+- [x] 9.1 全体を検証し、設計との食い違いを直す
   - ルートの一括検査、カバレッジ付きの一括の単体テスト(配布のスクリプトの各ファイルが80%以上)、IaCの検査、構成検査、ワークフローの検査を実行する
   - 技術ドキュメントに固有の値が無いことを、README・資源一覧・オンボーディング・シークレットのキーの一覧から導いた語で検索して確かめる
   - 実装で判明した設計との差分(モックの対応・標準入力の扱い・購読の一覧の形式など)をdesign.mdとresearch.mdに反映し、AIエージェントが実行できなかった確認(CIでの実行・stagingの最初のデプロイ)を開発者の手作業として報告する
@@ -279,6 +279,7 @@
   - 同じ変更で、上流のWrangler設定の単体テストのstagingの期待値(apiのテストのstagingのD1の識別子、client・adminのテストのstagingのサイトキー、clientのテストのstagingのアクセス解析のトークン)と、本プロジェクト固有の値の文書のstagingの識別子・変数の値を反映した値に改める。これらは仮の値を期待値として固定しているため、設定だけを変えると失敗する(改訂4)
   - 完了状態: 構成検査と上流のWrangler設定の単体テストが成功し、照合のコマンドに同じ出力を与えると食い違いが0件になる
   - _Requirements: 8.2, 12.4_
+  - _Blocked: 前提(開発者による初回の準備と、mainへのマージ後の最初のstagingのデプロイが識別子の照合で止まって照合の表が得られること)が未完了。2026-10-30時点で資源一覧のアカウントID・ゾーンID・主体IDは仮の値で、CIもまだ一度も動いていない_
 
 ## Implementation Notes
 
@@ -323,3 +324,4 @@
 - 8.3: `security/003`を書き、`security/001`の「IaCで使うシークレット」を実装に合わせて書き直した(providerは`host`だけで認証は環境変数、`/ci/cloudflare`、起動前の値のCLIでの注入、`--secrets-file /dev/stdin`)。設計に無い推奨4つ(必須チェックの提供元をGitHub Actionsに限る、prodの許すマージ方式をマージコミットだけ、EnvironmentのRequired reviewersを使わない、外部協力者のPRのワークフロー承認を緩めない)を書いた(9.1でdesign.mdへ反映を検討)。`gh auth token`は拒否の一覧に無く、拒否は推奨にとどめた(開発者の判断)。8.5への申し送り: プレースホルダー`<所有者>`・`<リポジトリ名>`・`<コードオーナー>`・`<Environment名>`(security/003)、`<フォルダ>`・`<状態の保管先の鍵を置くフォルダ>`・`<状態の保管先の部分設定>`・`<CIが発行したOIDCトークン>`・`<変数名>`(security/001)を`project-values.md`へ加え、`<Infisicalのホスト>`・`<OIDCのaudience>`の記載先にsecurity/001・003を足し、`<マシンアイデンティティのID>`の「未確定」をデプロイの主体のIDの記入先(資源一覧)に合わせる。CLAUDE.mdの「技術規則の参照先」にsecurity/003を足すか判断する。
 - 8.4: テスト戦略の文書に「デプロイ後のスモークテスト」(用語を限定。DIのスモークテスト等の別の用法を断る)・「タグの規約」・「CIでのE2Eの実行」・「IaC定義のテスト」を追記した。一括検査(`bun run check`)はテストを実行せず、`check:test-names`と`check:contract-copies`(照合の単体テスト)だけを含む。8.5への申し送り: オンボーディングの「スモークテスト」の節(E2E全体の実行の意味)とそれを指す2か所を、デプロイ後のスモークテストと区別できる名前・説明にそろえる。`docs/GUIDES/tech/README.md`・ルートの`README.md`・CLAUDE.mdのtestingの説明を合わせる。infra/006の「テスト」・infra/007の「デプロイ後の確認」からテスト戦略へのリンクに`#iac定義のテスト`・`#デプロイ後のスモークテスト`のアンカーを付ける(8.5か9.1)。
 - 8.5: `project-values.md`にプレースホルダーの値・「IaC定義とデプロイのパイプライン」・「Workerのシークレットのキーの一覧」(正とする旨・Workerごとのフォルダの行と優先の規則。`MEDIA_SMOKE_TOKEN`・`DISIFY_API_KEY`の宣言したspecの列は予定のspec、`STRIPE_API_KEY`はpaymentsが行を足す)を置いた。オンボーディングのapi・eventの起動は`run-with-secrets --scope local --worker <api|event> -- bun run dev`(design.mdの`-- wrangler dev …`は9.1で合わせる)。オンボーディングの「スモークテスト」の節は「ローカルでのE2Eテスト」に改名。CLAUDE.mdの技術規則の参照先にoperations/001・infra/006・007・security/003の4件を加えた。法務の2文書にCloudflareの項と書き方の型を置いた(他specの項はまだ無い)。準拠方針の保存場所の表に列を加えた。
+- 9.1: 全検査(delivery 857件・各ファイル80%以上、ルート1638件、`check`・`infra:check`・`contract-check`・`policy-check`・`format:check`)が成功。`audit`だけは開発者が保留を選んだ脆弱性で終了コード1。design.md・research.mdを実装に合わせた(「9.1で反映」の項目をすべて反映)。任意の強化(verifyの`@smoke`0件の扱い・`timeout-minutes`・TruffleHogのダイジェスト固定・`INFISICAL_TOKEN`の上書き・`CLOUDFLARE_ACCOUNT_ID`・`GH_REPO`と`if`・`precondition`化・`live.tftest.hcl`のassert・HCLの検査の拡張・lcovの一時ファイル・`checks / ci-gate`のプレースホルダー化)は実装せず、開発者の判断事項として報告した。

@@ -162,22 +162,22 @@ graph TB
 
 ### Dependency Direction
 
-- `scripts/delivery`: `catalog`(資源一覧の型と解析) ← `core`(純粋な判定) ← `commands`(手順) ← `cli.ts`。`adapters`(子プロセス・ファイル・GitHub Actionsの出力・Infisical・HTTP)は`commands`だけが読み込む。
-- `core`は`node:child_process`・`node:fs`・`fetch`・`Bun.spawn`・`process.env`を使わず、文字列とオブジェクトを受け取って結果を返す。`scripts/delivery/layering.unit.test.ts`がimportの向きと禁止したAPIの不使用を確かめる。
+- `scripts/delivery`: `catalog`(資源一覧の型と解析) ← `core`(純粋な判定) ← `commands`(手順) ← `cli.ts`。`adapters`(子プロセス・ファイル・GitHub Actionsの出力・Infisical・HTTP)は`commands`だけが読み込む(`cli.ts`は`commands/shared/default-deps.ts`を通して組み立てる)。`adapters`は`catalog`・`core`の型を読み込んでよい(`adapters/infisical.ts`が`core/secret-scope.ts`の`parseInfisicalExport`を使う)。
+- `catalog`と`core`は`node:child_process`・`node:fs`・`fetch`・`Bun.spawn`・`process.env`を使わず、文字列とオブジェクトを受け取って結果を返す。`scripts/delivery/layering.unit.test.ts`がimportの向きと禁止したAPIの不使用を確かめる。
 - `apps/infra`: `live` → `modules/{storage,messaging,edge-services,worker-routing}`。子モジュールはproviderの設定を持たず、`required_providers`だけを宣言する。
 
 ### Technology Stack
 
-| Layer              | Choice / Version                                                                 | Role in Feature                                         | Notes                                                                            |
-| ------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| IaC                | OpenTofu 1.13.2・Cloudflare provider 5.27.0・`infisical` provider 0.19.38        | 資源の定義・状態の暗号化・`ephemeral`での資格情報の取得 | 版は完全に固定。providerはOpenTofu Registryの公開から2週間以上                   |
-| State              | Cloudflare R2(S3互換backend、`use_lockfile`)                                     | 環境ごとの状態と計画の保管                              | 環境ごとのバケット、管轄なし(K2)                                                 |
-| Secrets            | Infisical(EUリージョン)・Infisical CLI 0.44.8                                    | OIDCでの認証、`infisical export`による取り出し          | 既存の1つのプロジェクトのdev・staging・prodの環境(K3)                            |
-| CI/CD              | GitHub Actions(ホステッドランナー`ubuntu`)、再利用ワークフロー、Environments     | 検査・デプロイ・リリースのPR                            | アクションはコミットSHAで固定                                                    |
-| Workers            | Wrangler(アプリの版と、購読の操作用に4.152.0)・`@cloudflare/vite-plugin`のビルド | マイグレーション・デプロイ・版のタグ・購読・予行        | デプロイはアプリが固定する版で行う                                               |
-| Scripts            | Bun 1.4.4・TypeScript 6.0.3(既存)                                                | `scripts/delivery`のコマンドと単体テスト                | `Bun.JSONC`・`Bun.YAML`を使い、新しいパッケージを入れない                        |
-| Quality / Security | TruffleHog(公式アクション)・`bun audit`                                          | 変更履歴のシークレット検出、既知の脆弱性の確認          | TruffleHogの版は実装時に固定し、tech-stack.mdへ記載                              |
-| Test runtime in CI | Node 26.12.1・Playwright 1.64.1のChromium・Mailpit 1.32.0                        | ブラウザテスト・E2E・開発用のメール受信箱               | Mailpitは公式のチェックサムが無いため、開発コンテナと同じく検証せずに導入(改訂4) |
+| Layer              | Choice / Version                                                                 | Role in Feature                                         | Notes                                                                                           |
+| ------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| IaC                | OpenTofu 1.13.2・Cloudflare provider 5.27.0・`infisical` provider 0.19.38        | 資源の定義・状態の暗号化・`ephemeral`での資格情報の取得 | 版は完全に固定。providerはOpenTofu Registryの公開から2週間以上                                  |
+| State              | Cloudflare R2(S3互換backend、`use_lockfile`)                                     | 環境ごとの状態と計画の保管                              | 環境ごとのバケット、管轄なし(K2)                                                                |
+| Secrets            | Infisical(EUリージョン)・Infisical CLI 0.44.8                                    | OIDCでの認証、`infisical export`による取り出し          | 既存の1つのプロジェクトのdev・staging・prodの環境(K3)                                           |
+| CI/CD              | GitHub Actions(ホステッドランナー`ubuntu`)、再利用ワークフロー、Environments     | 検査・デプロイ・リリースのPR                            | アクションはコミットSHAで固定                                                                   |
+| Workers            | Wrangler(アプリの版と、購読の操作用に4.152.0)・`@cloudflare/vite-plugin`のビルド | マイグレーション・デプロイ・版のタグ・購読・予行        | デプロイはアプリが固定する版で行う                                                              |
+| Scripts            | Bun 1.4.4・TypeScript 6.0.3(既存)                                                | `scripts/delivery`のコマンドと単体テスト                | `Bun.JSONC`・`Bun.YAML`を使い、新しいパッケージを入れない                                       |
+| Quality / Security | TruffleHog(公式アクション)・`bun audit`                                          | 変更履歴のシークレット検出、既知の脆弱性の確認          | TruffleHogはアクションv3.99.2(コミットSHA)とイメージ`3.99.2`(タグ)で固定し、tech-stack.mdへ記載 |
+| Test runtime in CI | Node 26.12.1・Playwright 1.64.1のChromium・Mailpit 1.32.0                        | ブラウザテスト・E2E・開発用のメール受信箱               | Mailpitは公式のチェックサムが無いため、開発コンテナと同じく検証せずに導入(改訂4)                |
 
 ## File Structure Plan
 
@@ -226,6 +226,8 @@ scripts/delivery/
 │   ├── app-checks.ts                    # APP_CHECKS(生成物と設定の検査の表)
 │   ├── lcov.ts                          # lcovのパスの前置と合算
 │   ├── e2e-stack-plan.ts                # E2Eの起動の準備・サービス・待ち合わせの表
+│   ├── infra-check-plan.ts              # IaC定義の検査の手順(fmt→live→各モジュールのinit・validate・test)の組み立て
+│   ├── worker-apps.ts                   # アプリのディレクトリ(appDirOf)とViteでビルドするWorker(client・admin)
 │   ├── secret-scope.ts                  # Infisicalのフォルダとキー、WORKER_SCOPED_SECRETSとWorkerごとのフォルダの重ね合わせ、マスクする値の抽出
 │   ├── plan-summary.ts                  # 計画のJSONを資源のアドレスと操作の種類に要約
 │   ├── apply-output.ts                  # 適用の出力から表示してよい行だけを残す
@@ -237,17 +239,28 @@ scripts/delivery/
 │   ├── verification-plan.ts             # デプロイ後の確認の対象と方法
 │   └── release-pr.ts                    # リリースのPRのheadの検証・題名・本文
 ├── adapters/
-│   ├── command-runner.ts                # 子プロセスの起動・出力の取り込み・標準入力・終了コード
-│   ├── repo-files.ts                    # リポジトリのファイルの読み込み
+│   ├── command-runner.ts                # 子プロセスの起動・出力の取り込み・標準入力・終了コード・プロセスグループ単位の停止
+│   ├── repo-files.ts                    # リポジトリのファイルの読み込み・列挙・書き込み(リポジトリの外を拒否)
 │   ├── github-actions.ts                # ::add-mask::・GITHUB_ENV・手順の要約・OIDCのトークンの取得
-│   ├── secret-source.ts                 # infisical login・exportの呼び出し
+│   ├── infisical.ts                     # SecretSource(infisical login・exportの呼び出し)
 │   └── http-probe.ts                    # 応答の待ち合わせ
-├── commands/                            # 各サブコマンド(core+adaptersの組み合わせ)
+├── commands/                            # 各サブコマンド(core+adaptersの組み合わせ)。直下の.tsだけがサブコマンドになる
 │   ├── install.ts · audit.ts · app-checks.ts · contract-check.ts · policy-check.ts · infra-check.ts
 │   ├── coverage-merge.ts · e2e-stack.ts · rehearse.ts · run-with-secrets.ts
 │   ├── infisical-login.ts · preflight.ts · tofu.ts · reconcile-ids.ts · migrate.ts
 │   ├── deploy-worker.ts · ensure-email-subscription.ts · verify.ts · release-pr.ts
-└── test-fixtures/                       # Wrangler設定・計画のJSON・購読の一覧・ワークフローの例
+│   └── shared/                          # サブコマンドにならない共通部品
+│       ├── delivery-command.ts          # DeliveryCommand・DeliveryDeps・UsageError・終了コード
+│       ├── default-deps.ts              # 実物のadaptersからDeliveryDepsを組み立てる
+│       ├── parse-options.ts             # オプションの解析と選択肢の検証
+│       ├── report-violations.ts         # 違反の表(reportViolations)と読めない入力(reportInputErrors)の表示
+│       ├── load-input.ts · load-catalog.ts · contract-input.ts  # 入力の読み込み・資源一覧・構成検査の入力とWrangler設定
+│       ├── install-targets.ts           # 導入の対象の列挙(install・audit)と、対象のディレクトリでの手順の実行(runInTarget)
+│       ├── infisical-target.ts          # 範囲ごとのInfisicalのプロジェクト・環境・主体の解決
+│       ├── tofu-session.ts              # /ci/tofuの取り出しとtofuの初期化・手順の実行(tofu・reconcile-ids)
+│       ├── cloudflare-secrets.ts        # /ci/cloudflare・/・Workerごとのフォルダの取り出しとマスク(deploy-worker・migrate・ensure-email-subscription)
+│       └── previous-release-allowlist.ts # 直前のリリースの特定と許可リストの生成(apiのdeploy-worker)
+└── test-fixtures/                       # 偽のCommandRunner・RepoFiles・SecretSource・出力先、Wrangler設定・資源一覧・計画のJSON・ワークフローの例、HCLの最小の読み取り(hcl-blocks.ts)、拒否の確認(rejection.ts)
 
 .github/
 ├── CODEOWNERS                           # 全ファイルのコードオーナー(開発者)
@@ -261,16 +274,17 @@ scripts/delivery/
     └── release-pr.yml                   # 手動起動: main・hotfixからprodへのPRをbotが作る
 ```
 
-- 各`commands/*.ts`・`core/*.ts`・`adapters/*.ts`・`catalog/*.ts`の隣に同名の`*.unit.test.ts`を置く(省略して記載)。
+- 各`commands/*.ts`・`core/*.ts`・`adapters/*.ts`・`catalog/*.ts`の隣に同名の`*.unit.test.ts`を置く(省略して記載)。`commands/shared/*.ts`は、判定を持つもの(`parse-options.ts`・`report-violations.ts`・`load-input.ts`・`infisical-target.ts`・`default-deps.ts`)だけが自分の単体テストを持ち、残りは使うサブコマンドの単体テストで確かめる。`layering.unit.test.ts`は`catalog`を`core`と同じく純粋な層(禁止APIの検査の対象)として扱い、依存の向きを`catalog`←`core`←`adapters`←`commands`←`cli`(`cli`は`adapters`を直接読まない)に限る。
 - 技術ドキュメント: `docs/GUIDES/tech/infra/005-infrastructure-overview.md`・`006-iac-with-opentofu.md`・`007-ci-cd-pipelines.md`、`operations/001-deployment.md`・`002-rollback-and-recovery.md`、`security/003-ci-secrets-and-repository-protection.md`。番号はWave 1の横断レビューI-4の割り当てで固定し、他のspecの番号(content-processingの`security/004`、media-pipelineの`infra/008`・`security/005`、identity-authの`security/006`など)と重ならない。
 
 ### Modified Files
 
 - `apps/api/wrangler.jsonc`・`apps/event/wrangler.jsonc` — 最上位に`workers_dev: false`・`preview_urls: false`、`env.staging`・`env.prod`の`r2_buckets`の各要素に`jurisdiction: "us"`、`env.staging`のD1の`database_id`をstagingの値へ(最初のstagingのデプロイの後)。
 - `apps/client/wrangler.jsonc`・`apps/admin/wrangler.jsonc` — 最上位に`workers_dev: false`・`preview_urls: false`、`env.staging.vars`の`TURNSTILE_SITE_KEY`(両方)・`WEB_ANALYTICS_TOKEN`(clientのみ)をstagingの値へ(最初のstagingのデプロイの後)。
+- `apps/api/test/config/wrangler-config.unit.test.ts`(api・eventの両方)・`apps/{client,admin}/test/config/wrangler-config.unit.test.ts` — Wrangler設定への反映(tasks 7.1)と同じ変更で、R2の管轄(api・eventのstaging・prod)と`workers_dev: false`・`preview_urls: false`を期待値に加えて固定する。
 - `apps/api/test/config/wrangler-config.unit.test.ts` — stagingの`database_id`の期待値(api・eventの両方を確かめる)を、識別子の反映(tasks 9.2)と同じ変更で反映した値に改める。prodの期待値は仮の値のまま(改訂4)。
 - `apps/client/test/config/wrangler-config.unit.test.ts`・`apps/admin/test/config/wrangler-config.unit.test.ts` — stagingの`TURNSTILE_SITE_KEY`(clientは`WEB_ANALYTICS_TOKEN`も)の期待値を、識別子の反映(tasks 9.2)と同じ変更で反映した値に改める。prodの期待値は仮の値のまま(改訂4)。
-- `e2e/client/system-status.e2e.test.ts`・`e2e/admin/system-status.e2e.test.ts` — テストに`@smoke`タグを付ける(内容は変えない)。
+- `e2e/client/system-status.e2e.test.ts`・`e2e/admin/system-status.e2e.test.ts` — 最上位の`test.describe`3つ(疎通確認の画面・存在しないページ・中継の経路)に`{ tag: '@smoke' }`を付ける(内容は変えない)。
 - `.gitignore`・`gitignore.unit.test.ts`(ルート) — 計画のファイル`*.tfplan`をGit管理外にし、OpenTofuの状態・計画・変数・クラッシュログが管理外で、プロバイダのロックファイルが管理対象であることを単体テストで確かめる。実装前のギャップ分析(G11)の後に、本specの実装に先立って反映済みである(改訂4)。
 - `docs/GUIDES/tech/external/001-email-sending.md` — 「購読とQueueの作成」と「送信ドメインの登録」「送信内容のプレビューを無効にする」の管理画面の手順を、IaC定義(送信ドメイン・プレビューの無効化・Queue)とデプロイのパイプライン(購読)が行う旨と、`infra/006`・`infra/007`へのリンクに改める。デプロイ先の環境で手作業により作る手順は残さない(改訂4)。
 - `package.json`(ルート) — `delivery`・`infra:check`・`infra:fmt`のスクリプトを加える。
@@ -279,8 +293,8 @@ scripts/delivery/
 - `docs/GUIDES/tech/{infra,operations,security}/README.md` — 文書一覧に追加する。
 - `docs/onboardings/tech-stack.md` — CI/CD(検査でdevを注入、フェーズの構成)、IaCのprovider、CIのアクション・TruffleHog・Node・Mailpit、stateの保管先を記載する。
 - `docs/onboardings/project-values.md` — 本specの技術ドキュメントのプレースホルダーに当てはまる値(資源一覧の場所、stateのバケット、Infisicalのプロジェクトと主体とフォルダ、Environment、必須チェックの名前、ルールセット、コードオーナー、管轄)を加える。Workerのシークレットのキーの一覧の節を、「Supporting References」のInfisicalのフォルダとキーの表の形で作る(環境・フォルダ・キー・使うWorker・宣言したspec・必須か任意か・登録の時期)。行は、作成の時点でmainのWrangler設定の`secrets.required`・`OPTIONAL_WORKER_SECRETS`・`/ci/*`のフォルダにあるキーを載せる。この節をキーの一覧の正とし、後続specはキーを宣言する変更と同じ変更で行を足す(既にあれば食い違いを確かめるだけにする。12.3、N-5)。「Workerとリソースの名前と識別子」の注記の「デプロイ先のメールイベント用Queueと配信不能イベントの購読、送信ドメインの登録は、開発者が管理画面で行う」を、IaC定義とデプロイのパイプラインが行う旨に改める。識別子の反映(tasks 9.2)と同じ変更で、同じ節のstagingの`database_id`と、変数の値の表のstagingの`TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`から「(仮の値)」を外して反映した値にし、仮の値の注記をprodだけに当てる(改訂4)。
-- `docs/onboardings/README.md` — 初回の準備(開発者の手作業)、stagingへのデプロイの流れ、リリースとhotfixの手順へのリンクを加える。api・eventのローカルの起動のコマンド(`infisical --telemetry=false run --env dev -- wrangler dev ...`)を、Workerごとのフォルダを重ねる`bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker <api|event> -- wrangler dev ...`に改める(4.10、改訂1)。`project-values.md`の「シークレット注入の実行接頭辞」の節とプレースホルダーの表の`infisical run`の行にも、api・eventの起動だけはこの形を使う例外を書く。「stagingのメールのシークレット」の節の、CIのデプロイの導入までの暫定の手順(Wranglerのシークレットのコマンドで設定する記述)を削り、Infisicalへの登録だけで次のデプロイが反映する形にする。Betterleaksの誤検知の手順の後に、CIのTruffleHogの誤検知は`.github/trufflehog-exclude-paths.txt`へ理由のコメント付きで追記し、`.betterleaksignore`とは別に管理することを書く(改訂4)。
-- `CLAUDE.md` — ディレクトリ構成の`apps/infra`の内訳、`.github`の説明、`scripts/delivery/`を更新する。
+- `docs/onboardings/README.md` — 初回の準備(開発者の手作業)、stagingへのデプロイの流れ、リリースとhotfixの手順へのリンクを加える。api・eventのローカルの起動のコマンド(`infisical --telemetry=false run --env dev -- wrangler dev ...`)を、Workerごとのフォルダを重ねる`bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker <api|event> -- bun run dev`に改める(各アプリの`dev`スクリプトが`wrangler dev`の引数を持つため。4.10、改訂1)。オンボーディングの「スモークテスト」の節(E2E全体の実行の意味)は、デプロイ後のスモークテストと区別するため「ローカルでのE2Eテスト」に改名する。`project-values.md`の「シークレット注入の実行接頭辞」の節とプレースホルダーの表の`infisical run`の行にも、api・eventの起動だけはこの形を使う例外を書く。「stagingのメールのシークレット」の節の、CIのデプロイの導入までの暫定の手順(Wranglerのシークレットのコマンドで設定する記述)を削り、Infisicalへの登録だけで次のデプロイが反映する形にする。Betterleaksの誤検知の手順の後に、CIのTruffleHogの誤検知は`.github/trufflehog-exclude-paths.txt`へ理由のコメント付きで追記し、`.betterleaksignore`とは別に管理することを書く(改訂4)。
+- `CLAUDE.md` — ディレクトリ構成の`apps/infra`の内訳、`.github`の説明、`scripts/delivery/`を更新する。「技術規則の参照先」に`operations/001`(シークレットの登録の規則)・`infra/006`(資源の追加手順)・`infra/007`(ワークフローの規則)・`security/003`(CIのシークレットの供給経路)の4件を加える。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — 「データの保存場所」の表のCloudflareの行に、D1・R2・Queuesは米国(管轄の保証)、所在を限定しない処理(Durable Objectsのレート制限のカウントなど、ハッシュ化した一時的な値・Workers Logs)は保存場所を保証しないと記す。表の下に、委託先ごとの保存場所の箇条を設け、最初の箇条にCloudflareを書く(K7・N-1・R3-4・R3-6)。
   - Cloudflareの箇条: D1・R2・Queuesは米国の管轄で保存すること、所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics))は保存場所を保証しないこと、移転の根拠はプライバシーポリシー骨子のCloudflareの項を正とすること、値の正は`docs/onboardings/project-values.md`であること。
   - 書き方の型(他specはこれに合わせる): 箇条1つに委託先1つを、`- **<委託先>(<サービス>)**: <保存または一時送信の場所>。<委託先側での保存の有無>。移転の根拠はプライバシーポリシー骨子の<委託先>の項を正とする。`の形で書く。並びは骨子の委託先の一覧の順にする。表はデータごとの保存先(Cloudflareの資源)の一覧のまま残し、他の委託先は表へ行を足さず箇条だけを足す。既存の「外部サービスへ一時送信する情報と保持しない旨は委託先の一覧を正とする」の一文は残す。
@@ -401,106 +415,106 @@ graph LR
 
 ## Requirements Traceability
 
-| Requirement | Summary                                | Components                                                                                | Interfaces                                                                       | Flows        |
-| ----------- | -------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------ |
-| 1.1         | 両環境の資源一式                       | ResourceCatalog・StorageModule・MessagingModule・EdgeServicesModule・WorkerRoutingModule  | `environments/*.json`・各モジュールの変数                                        | デプロイ     |
-| 1.2         | 同じ定義と資源一覧の差分               | LiveRoot・ResourceCatalog                                                                 | `var.environment`・`jsondecode(file())`                                          | デプロイ     |
-| 1.3         | 読み取りレプリカの無効                 | StorageModule                                                                             | `read_replication = { mode = "disabled" }`                                       | —            |
-| 1.4         | Turnstileは1つで両ホスト               | EdgeServicesModule                                                                        | `turnstile.hostnames`                                                            | —            |
-| 1.5         | 解析はclientだけ・自動挿入なし         | EdgeServicesModule                                                                        | `auto_install = false`・`host`                                                   | —            |
-| 1.6         | プレビューの無効                       | EdgeServicesModule                                                                        | `preview_enabled = false`                                                        | —            |
-| 1.7         | ゾーン全体のルールを持たない           | LiveRoot・InfraDocs                                                                       | 資源の型の一覧                                                                   | —            |
-| 1.8         | providerの完全固定                     | LiveRoot・ToolVersions                                                                    | `required_providers`・`.terraform.lock.hcl`                                      | —            |
-| 1.9         | データと秘密の資源の削除防止           | StorageModule・EdgeServicesModule・RepoContractTest                                       | `prevent_destroy = true`                                                         | —            |
-| 1.10        | 資源一覧への追加だけで定義             | ResourceCatalog・各モジュール                                                             | `for_each`のmap                                                                  | —            |
-| 1.11        | Workerの定義はWranglerに任せる         | LiveRoot                                                                                  | 資源の型の一覧                                                                   | —            |
-| 2.1         | D1・R2の米国の管轄                     | StorageModule                                                                             | `jurisdiction`                                                                   | —            |
-| 2.2         | Queueの米国の管轄                      | MessagingModule                                                                           | `jurisdiction`                                                                   | —            |
-| 2.3         | R2のバインディングの管轄               | RuntimeConfigPatch・ConfigContractRules                                                   | `r2_buckets[].jurisdiction`                                                      | 検査         |
-| 2.4         | S3の接続先と使えない機能               | InfraDocs                                                                                 | `infra/006`                                                                      | —            |
-| 2.5         | 準拠方針とポリシー骨子                 | ProjectDocsUpdate                                                                         | `legal/001`・`legal/003`・project-values                                         | —            |
-| 2.6         | 国外移転の記載事項のCloudflareの項     | ProjectDocsUpdate                                                                         | `legal/001`・`legal/003`の「国外移転の記載事項」                                 | —            |
-| 2.7         | 共通の移転の法的根拠の行と書き方の型   | ProjectDocsUpdate                                                                         | `legal/003`の共通の行・`legal/001`の委託先ごとの箇条                             | —            |
-| 3.1         | 専用の保管先・リポジトリに置かない     | LiveRoot・ResourceCatalog                                                                 | `backend "s3"`・`backends/*.s3.hcl`                                              | デプロイ     |
-| 3.2         | 状態と計画の暗号化と鍵の注入           | LiveRoot・TofuRunner・SecretSource                                                        | `encryption`・`/ci/tofu`                                                         | シークレット |
-| 3.3         | 鍵が無ければ失敗                       | LiveRoot                                                                                  | `enforced = true`                                                                | —            |
-| 3.4         | 同時の更新の排他                       | LiveRoot・TofuRunner                                                                      | `use_lockfile`・`-lock-timeout`                                                  | —            |
-| 3.5         | 保管先の鍵の範囲                       | OperationsDocs                                                                            | バケット単位のR2トークン                                                         | —            |
-| 3.6         | 秘密値を出力しない                     | LiveRoot                                                                                  | `resource_ids`                                                                   | —            |
-| 4.1         | 短期の証明で認証                       | InfisicalSession・Workflows                                                               | `id-token: write`・`infisical login --method=oidc-auth`                          | シークレット |
-| 4.2         | 環境ごとの主体                         | InfisicalSession・SecurityDocs                                                            | `SecretScope`・主体の表                                                          | シークレット |
-| 4.3         | 所定のワークフローとブランチ以外を拒否 | SecurityDocs・Workflows                                                                   | subject・`job_workflow_ref`・Environmentの対象ブランチ                           | シークレット |
-| 4.4         | 状態に残らないクラウドの資格情報       | LiveRoot                                                                                  | `ephemeral "infisical_secret"`                                                   | シークレット |
-| 4.5         | 宣言したシークレットだけを同時に反映   | WorkerDeployer                                                                            | `selectWorkerSecrets`・`--secrets-file`                                          | デプロイ     |
-| 4.6         | 書き込み権限を与えない                 | SecurityDocs                                                                              | 主体のロールViewer                                                               | —            |
-| 4.7         | 値をログ・成果物・ファイルに出さない   | SecretSource・GithubActionsIo・TofuRunner・WorkerDeployer                                 | `::add-mask::`・標準入力・計画の要約                                             | シークレット |
-| 4.8         | Turnstileの秘密鍵の登録手順            | OperationsDocs                                                                            | `operations/001`                                                                 | —            |
-| 4.9         | CIの外での操作の手順                   | OperationsDocs・LiveRoot                                                                  | providerの認証を環境変数で選ぶ                                                   | —            |
-| 4.10        | Workerごとのフォルダの優先             | WorkerDeployer・RunWithSecrets・E2eStack・OperationsDocs・SecurityDocs・ProjectDocsUpdate | `WORKER_SECRET_FOLDERS`・`layerWorkerSecrets`・`WORKER_SCOPED_SECRETS`           | シークレット |
-| 5.1         | 起動の条件                             | PullRequestWorkflow・DeliveryWorkflow                                                     | `on.pull_request`・`on.push`                                                     | 検査         |
-| 5.2         | 段階の順と失敗時の停止                 | ChecksWorkflow                                                                            | ジョブの`needs`                                                                  | 検査         |
-| 5.3         | 共有ディレクトリの配置の再現           | CiInstaller・ChecksWorkflow                                                               | `install`・`shared-dirs:place`                                                   | 検査         |
-| 5.4         | シークレットの検出                     | ChecksWorkflow                                                                            | `secret-scan`ジョブ                                                              | 検査         |
-| 5.5         | 既知の脆弱性                           | AuditGate                                                                                 | `bun audit --audit-level=high`・`AUDIT_EXCEPTIONS`                               | 検査         |
-| 5.6         | 生成物・設定・IaCの検査                | ルートの`check`(dev-tooling)・AppChecks・InfraCheck                                       | `check`・`APP_CHECKS`・`infra:check`                                             | 検査         |
-| 5.7         | 総合結果                               | ChecksWorkflow                                                                            | `ci-gate`                                                                        | 検査         |
-| 5.8         | フォークのPR                           | ChecksWorkflow・SecurityDocs                                                              | OIDCが得られず失敗                                                               | —            |
-| 6.1         | カバレッジ付きの3種のテスト            | ChecksWorkflow                                                                            | `test:all:* --coverage`                                                          | 検査         |
-| 6.2         | カバレッジの合算                       | CoverageMerger                                                                            | `mergeLcov`                                                                      | 検査         |
-| 6.3         | devの値の注入                          | RunWithSecrets・InfisicalSession                                                          | `run-with-secrets --scope checks`(api・eventのE2EはWorkerごとのフォルダを重ねる) | シークレット |
-| 6.4         | CI内でのE2E                            | E2eStack                                                                                  | `E2E_STACK_SERVICES`                                                             | 検査         |
-| 6.5         | 起動しないアプリの表示                 | E2eStack                                                                                  | `StackStartError`                                                                | 検査         |
-| 6.6         | 両環境の予行                           | DeployRehearsal・InfraCheck                                                               | `rehearse --env`・`tofu test`                                                    | 検査         |
-| 7.1         | mainからstaging                        | DeliveryWorkflow                                                                          | `on.push.branches`                                                               | デプロイ     |
-| 7.2         | prodからprod                           | DeliveryWorkflow                                                                          | `on.push.branches`                                                               | デプロイ     |
-| 7.3         | 段階の順序                             | DeployWorkflow・DeployStages                                                              | `DEPLOY_STAGES`                                                                  | デプロイ     |
-| 7.4         | 直前のリリースの許可リスト             | PreviousReleaseResolver・WorkerDeployer                                                   | `--previous-ref`                                                                 | デプロイ     |
-| 7.5         | 特定できない場合の警告                 | PreviousReleaseResolver                                                                   | `PreviousRelease`                                                                | デプロイ     |
-| 7.6         | 版のコミットと起動時間                 | WorkerDeployer                                                                            | `--tag`・`parseDeployOutput`                                                     | デプロイ     |
-| 7.7         | 失敗時に止まり自動で戻さない           | DeployWorkflow                                                                            | 手順の既定の失敗時の停止                                                         | デプロイ     |
-| 7.8         | 環境ごとの直列化                       | DeployWorkflow                                                                            | `concurrency`                                                                    | デプロイ     |
-| 7.9         | 購読の確認と作成                       | EmailSubscriptionEnsurer                                                                  | `diffSubscription`                                                               | デプロイ     |
-| 7.10        | stagingのスモークテスト                | PostDeployVerifier・SmokeTag                                                              | `test:e2e --grep @smoke`                                                         | デプロイ     |
-| 7.11        | prodの応答の確認                       | PostDeployVerifier                                                                        | `VerificationPlan`                                                               | デプロイ     |
-| 7.12        | 変更の要約と秘密値の非表示             | TofuRunner・GithubActionsIo                                                               | `summarizePlan`・`filterApplyOutput`                                             | デプロイ     |
-| 7.13        | Expand/Contractの記載                  | InfraDocs                                                                                 | `infra/007`                                                                      | —            |
-| 8.1         | 識別子の照合                           | ResourceIdReconciler                                                                      | `reconcileResourceIds`                                                           | デプロイ     |
-| 8.2         | stagingの識別子の反映                  | RuntimeConfigPatch                                                                        | Wrangler設定のstagingの値                                                        | —            |
-| 8.3         | prodは仮の値のまま                     | RuntimeConfigPatch・Preflight                                                             | 仮の値の検出                                                                     | —            |
-| 8.4         | prodの準備の手順                       | OperationsDocs                                                                            | `operations/001`                                                                 | —            |
-| 9.1         | リリースのPRの作成                     | ReleasePrCreator・ReleasePrWorkflow                                                       | `release-pr --head main`                                                         | リリース     |
-| 9.2         | hotfixのPR                             | ReleasePrCreator                                                                          | `release-pr --head hotfix/<名前>`                                                | リリース     |
-| 9.3         | 不正なheadの拒否                       | ReleasePrCreator                                                                          | `validateReleaseHead`                                                            | —            |
-| 9.4         | コードオーナーの承認と総合結果         | CodeOwners・RepositoryProtection                                                          | prodのルールセット                                                               | リリース     |
-| 9.5         | ワークフローの承認を数えない           | CodeOwners・RepositoryProtection                                                          | コードオーナーの規則                                                             | リリース     |
-| 9.6         | 古い承認の取り消し                     | RepositoryProtection                                                                      | `dismiss_stale_reviews_on_push`                                                  | リリース     |
-| 9.7         | mainの必須チェック                     | RepositoryProtection                                                                      | 既存のルールセットへの追加                                                       | —            |
-| 9.8         | 削除と強制pushの禁止                   | RepositoryProtection                                                                      | 既存のルールセット                                                               | —            |
-| 9.9         | ワークフローの権限                     | RepositoryProtection・WorkflowPolicyRules                                                 | Actionsの設定・`permissions`                                                     | —            |
-| 9.10        | 設定を文書化                           | SecurityDocs・ProjectDocsUpdate                                                           | `security/003`・project-values                                                   | —            |
-| 9.11        | 残るリスクとAIの対策                   | SecurityDocs                                                                              | `security/003`                                                                   | —            |
-| 10.1        | 逆順のロールバック                     | OperationsDocs                                                                            | `operations/002`                                                                 | —            |
-| 10.2        | 戻す版の特定                           | OperationsDocs・WorkerDeployer                                                            | 版のタグ                                                                         | —            |
-| 10.3        | データベースと戻せない変更             | OperationsDocs                                                                            | `operations/002`                                                                 | —            |
-| 10.4        | 実行者                                 | OperationsDocs                                                                            | `operations/002`                                                                 | —            |
-| 11.1        | 名前の一致                             | ConfigContractRules                                                                       | 規則C1・C2・C4                                                                   | 検査         |
-| 11.2        | 管轄の一致                             | ConfigContractRules                                                                       | 規則C3                                                                           | 検査         |
-| 11.3        | 公開URLの無効とroutesなし              | ConfigContractRules                                                                       | 規則C5                                                                           | 検査         |
-| 11.4        | 保管先の設定の一致                     | ConfigContractRules                                                                       | 規則C7                                                                           | 検査         |
-| 11.5        | ツールの版・SHA・権限                  | WorkflowPolicyRules・ToolVersions                                                         | 規則W1〜W6・W9                                                                   | 検査         |
-| 11.6        | 段階の順序                             | WorkflowPolicyRules・DeployStages                                                         | 規則W8                                                                           | 検査         |
-| 11.7        | 食い違いの表示                         | ConfigContractRules・WorkflowPolicyRules                                                  | `ContractViolation`                                                              | 検査         |
-| 12.1        | 自動化しない準備                       | OperationsDocs・SecurityDocs                                                              | `operations/001`の準備の表                                                       | —            |
-| 12.2        | 既存の資源の取り込み                   | OperationsDocs・LiveRoot                                                                  | `import`ブロック                                                                 | —            |
-| 12.3        | シークレットの登録の規則とキーの一覧   | OperationsDocs・ProjectDocsUpdate                                                         | `operations/001`の登録の規則・project-valuesのキーの一覧                         | —            |
-| 12.4        | stagingの最初のデプロイ                | OperationsDocs                                                                            | 初回の手順                                                                       | デプロイ     |
-| 13.1        | infraの文書                            | InfraDocs                                                                                 | `infra/005`〜`007`                                                               | —            |
-| 13.2        | operationsの文書                       | OperationsDocs                                                                            | `operations/001`・`002`                                                          | —            |
-| 13.3        | securityの文書                         | SecurityDocs                                                                              | `security/003`・`001`への追記                                                    | —            |
-| 13.4        | testingの文書                          | TestingDocsUpdate                                                                         | `testing/001`への追記                                                            | —            |
-| 13.5        | 固有の値を書かない                     | 全文書・ProjectDocsUpdate                                                                 | project-values                                                                   | —            |
-| 13.6        | tech-stack.md                          | ProjectDocsUpdate                                                                         | CI/CD・IaCの節                                                                   | —            |
-| 13.7        | オンボーディングとCLAUDE.md            | ProjectDocsUpdate                                                                         | 手順とディレクトリ構成                                                           | —            |
+| Requirement | Summary                                | Components                                                                                | Interfaces                                                                                               | Flows        |
+| ----------- | -------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------ |
+| 1.1         | 両環境の資源一式                       | ResourceCatalog・StorageModule・MessagingModule・EdgeServicesModule・WorkerRoutingModule  | `environments/*.json`・各モジュールの変数                                                                | デプロイ     |
+| 1.2         | 同じ定義と資源一覧の差分               | LiveRoot・ResourceCatalog                                                                 | `var.environment`・`jsondecode(file())`                                                                  | デプロイ     |
+| 1.3         | 読み取りレプリカの無効                 | StorageModule                                                                             | `read_replication = { mode = "disabled" }`                                                               | —            |
+| 1.4         | Turnstileは1つで両ホスト               | EdgeServicesModule                                                                        | `turnstile.hostnames`                                                                                    | —            |
+| 1.5         | 解析はclientだけ・自動挿入なし         | EdgeServicesModule                                                                        | `auto_install = false`・`host`                                                                           | —            |
+| 1.6         | プレビューの無効                       | EdgeServicesModule                                                                        | `preview_enabled = false`                                                                                | —            |
+| 1.7         | ゾーン全体のルールを持たない           | LiveRoot・InfraDocs                                                                       | 資源の型の一覧                                                                                           | —            |
+| 1.8         | providerの完全固定                     | LiveRoot・ToolVersions                                                                    | `required_providers`・`.terraform.lock.hcl`                                                              | —            |
+| 1.9         | データと秘密の資源の削除防止           | StorageModule・EdgeServicesModule・RepoContractTest                                       | `prevent_destroy = true`                                                                                 | —            |
+| 1.10        | 資源一覧への追加だけで定義             | ResourceCatalog・各モジュール                                                             | `for_each`のmap                                                                                          | —            |
+| 1.11        | Workerの定義はWranglerに任せる         | LiveRoot                                                                                  | 資源の型の一覧                                                                                           | —            |
+| 2.1         | D1・R2の米国の管轄                     | StorageModule                                                                             | `jurisdiction`                                                                                           | —            |
+| 2.2         | Queueの米国の管轄                      | MessagingModule                                                                           | `jurisdiction`                                                                                           | —            |
+| 2.3         | R2のバインディングの管轄               | RuntimeConfigPatch・ConfigContractRules                                                   | `r2_buckets[].jurisdiction`                                                                              | 検査         |
+| 2.4         | S3の接続先と使えない機能               | InfraDocs                                                                                 | `infra/006`                                                                                              | —            |
+| 2.5         | 準拠方針とポリシー骨子                 | ProjectDocsUpdate                                                                         | `legal/001`・`legal/003`・project-values                                                                 | —            |
+| 2.6         | 国外移転の記載事項のCloudflareの項     | ProjectDocsUpdate                                                                         | `legal/001`・`legal/003`の「国外移転の記載事項」                                                         | —            |
+| 2.7         | 共通の移転の法的根拠の行と書き方の型   | ProjectDocsUpdate                                                                         | `legal/003`の共通の行・`legal/001`の委託先ごとの箇条                                                     | —            |
+| 3.1         | 専用の保管先・リポジトリに置かない     | LiveRoot・ResourceCatalog                                                                 | `backend "s3"`・`backends/*.s3.hcl`                                                                      | デプロイ     |
+| 3.2         | 状態と計画の暗号化と鍵の注入           | LiveRoot・TofuRunner・SecretSource                                                        | `encryption`・`/ci/tofu`                                                                                 | シークレット |
+| 3.3         | 鍵が無ければ失敗                       | LiveRoot                                                                                  | `enforced = true`                                                                                        | —            |
+| 3.4         | 同時の更新の排他                       | LiveRoot・TofuRunner                                                                      | `use_lockfile`・`-lock-timeout`                                                                          | —            |
+| 3.5         | 保管先の鍵の範囲                       | OperationsDocs                                                                            | バケット単位のR2トークン                                                                                 | —            |
+| 3.6         | 秘密値を出力しない                     | LiveRoot                                                                                  | `resource_ids`                                                                                           | —            |
+| 4.1         | 短期の証明で認証                       | InfisicalSession・Workflows                                                               | `id-token: write`・`infisical login --method=oidc-auth`                                                  | シークレット |
+| 4.2         | 環境ごとの主体                         | InfisicalSession・SecurityDocs                                                            | `SecretScope`・主体の表                                                                                  | シークレット |
+| 4.3         | 所定のワークフローとブランチ以外を拒否 | SecurityDocs・Workflows                                                                   | subject・`job_workflow_ref`・Environmentの対象ブランチ                                                   | シークレット |
+| 4.4         | 状態に残らないクラウドの資格情報       | LiveRoot                                                                                  | `ephemeral "infisical_secret"`                                                                           | シークレット |
+| 4.5         | 宣言したシークレットだけを同時に反映   | WorkerDeployer                                                                            | `selectWorkerSecrets`・`--secrets-file`                                                                  | デプロイ     |
+| 4.6         | 書き込み権限を与えない                 | SecurityDocs                                                                              | 主体のロールViewer                                                                                       | —            |
+| 4.7         | 値をログ・成果物・ファイルに出さない   | SecretSource・GithubActionsIo・TofuRunner・WorkerDeployer                                 | `::add-mask::`・標準入力・計画の要約                                                                     | シークレット |
+| 4.8         | Turnstileの秘密鍵の登録手順            | OperationsDocs                                                                            | `operations/001`                                                                                         | —            |
+| 4.9         | CIの外での操作の手順                   | OperationsDocs・LiveRoot                                                                  | providerの認証を環境変数で選ぶ                                                                           | —            |
+| 4.10        | Workerごとのフォルダの優先             | WorkerDeployer・RunWithSecrets・E2eStack・OperationsDocs・SecurityDocs・ProjectDocsUpdate | `WORKER_SECRET_FOLDERS`・`layerWorkerSecrets`・`WORKER_SCOPED_SECRETS`                                   | シークレット |
+| 5.1         | 起動の条件                             | PullRequestWorkflow・DeliveryWorkflow                                                     | `on.pull_request`・`on.push`                                                                             | 検査         |
+| 5.2         | 段階の順と失敗時の停止                 | ChecksWorkflow                                                                            | ジョブの`needs`                                                                                          | 検査         |
+| 5.3         | 共有ディレクトリの配置の再現           | CiInstaller・ChecksWorkflow                                                               | `install`・`shared-dirs:place`                                                                           | 検査         |
+| 5.4         | シークレットの検出                     | ChecksWorkflow                                                                            | `secret-scan`ジョブ                                                                                      | 検査         |
+| 5.5         | 既知の脆弱性                           | AuditGate                                                                                 | `bun audit --audit-level=high`・`AUDIT_EXCEPTIONS`                                                       | 検査         |
+| 5.6         | 生成物・設定・IaCの検査                | ルートの`check`(dev-tooling)・AppChecks・InfraCheck                                       | `check`・`APP_CHECKS`・`infra:check`                                                                     | 検査         |
+| 5.7         | 総合結果                               | ChecksWorkflow                                                                            | `ci-gate`                                                                                                | 検査         |
+| 5.8         | フォークのPR                           | ChecksWorkflow・SecurityDocs                                                              | OIDCが得られず失敗                                                                                       | —            |
+| 6.1         | カバレッジ付きの3種のテスト            | ChecksWorkflow                                                                            | `test:all:* --coverage`                                                                                  | 検査         |
+| 6.2         | カバレッジの合算                       | CoverageMerger                                                                            | `mergeLcov`                                                                                              | 検査         |
+| 6.3         | devの値の注入                          | RunWithSecrets・InfisicalSession                                                          | `run-with-secrets --scope checks`(api・eventのE2EはWorkerごとのフォルダを重ねる)                         | シークレット |
+| 6.4         | CI内でのE2E                            | E2eStack                                                                                  | `E2E_STACK_SERVICES`                                                                                     | 検査         |
+| 6.5         | 起動しないアプリの表示                 | E2eStack                                                                                  | `StackStartError`・`stackStartErrorReport`                                                               | 検査         |
+| 6.6         | 両環境の予行                           | DeployRehearsal・InfraCheck                                                               | `rehearse --env`・`tofu test`                                                                            | 検査         |
+| 7.1         | mainからstaging                        | DeliveryWorkflow                                                                          | `on.push.branches`                                                                                       | デプロイ     |
+| 7.2         | prodからprod                           | DeliveryWorkflow                                                                          | `on.push.branches`                                                                                       | デプロイ     |
+| 7.3         | 段階の順序                             | DeployWorkflow・DeployStages                                                              | `DEPLOY_STAGES`                                                                                          | デプロイ     |
+| 7.4         | 直前のリリースの許可リスト             | PreviousReleaseResolver・WorkerDeployer                                                   | `--previous-ref`                                                                                         | デプロイ     |
+| 7.5         | 特定できない場合の警告                 | PreviousReleaseResolver                                                                   | `PreviousRelease`                                                                                        | デプロイ     |
+| 7.6         | 版のコミットと起動時間                 | WorkerDeployer                                                                            | `--tag`・`parseDeployOutput`                                                                             | デプロイ     |
+| 7.7         | 失敗時に止まり自動で戻さない           | DeployWorkflow                                                                            | 手順の既定の失敗時の停止                                                                                 | デプロイ     |
+| 7.8         | 環境ごとの直列化                       | DeployWorkflow・DeliveryWorkflow                                                          | `deploy.yml`の`concurrency`・`delivery.yml`の最上位の`concurrency`(同じブランチの検査とデプロイの直列化) | デプロイ     |
+| 7.9         | 購読の確認と作成                       | EmailSubscriptionEnsurer                                                                  | `diffSubscription`                                                                                       | デプロイ     |
+| 7.10        | stagingのスモークテスト                | PostDeployVerifier・SmokeTag                                                              | `test:e2e --grep @smoke`                                                                                 | デプロイ     |
+| 7.11        | prodの応答の確認                       | PostDeployVerifier                                                                        | `VerificationPlan`                                                                                       | デプロイ     |
+| 7.12        | 変更の要約と秘密値の非表示             | TofuRunner・GithubActionsIo                                                               | `summarizePlan`・`filterApplyOutput`                                                                     | デプロイ     |
+| 7.13        | Expand/Contractの記載                  | InfraDocs                                                                                 | `infra/007`                                                                                              | —            |
+| 8.1         | 識別子の照合                           | ResourceIdReconciler                                                                      | `reconcileResourceIds`                                                                                   | デプロイ     |
+| 8.2         | stagingの識別子の反映                  | RuntimeConfigPatch                                                                        | Wrangler設定のstagingの値                                                                                | —            |
+| 8.3         | prodは仮の値のまま                     | RuntimeConfigPatch・Preflight                                                             | 仮の値の検出                                                                                             | —            |
+| 8.4         | prodの準備の手順                       | OperationsDocs                                                                            | `operations/001`                                                                                         | —            |
+| 9.1         | リリースのPRの作成                     | ReleasePrCreator・ReleasePrWorkflow                                                       | `RELEASE_HEAD=main release-pr`                                                                           | リリース     |
+| 9.2         | hotfixのPR                             | ReleasePrCreator                                                                          | `RELEASE_HEAD=hotfix/<名前> release-pr`                                                                  | リリース     |
+| 9.3         | 不正なheadの拒否                       | ReleasePrCreator                                                                          | `validateReleaseHead`                                                                                    | —            |
+| 9.4         | コードオーナーの承認と総合結果         | CodeOwners・RepositoryProtection                                                          | prodのルールセット                                                                                       | リリース     |
+| 9.5         | ワークフローの承認を数えない           | CodeOwners・RepositoryProtection                                                          | コードオーナーの規則                                                                                     | リリース     |
+| 9.6         | 古い承認の取り消し                     | RepositoryProtection                                                                      | `dismiss_stale_reviews_on_push`                                                                          | リリース     |
+| 9.7         | mainの必須チェック                     | RepositoryProtection                                                                      | 既存のルールセットへの追加                                                                               | —            |
+| 9.8         | 削除と強制pushの禁止                   | RepositoryProtection                                                                      | 既存のルールセット                                                                                       | —            |
+| 9.9         | ワークフローの権限                     | RepositoryProtection・WorkflowPolicyRules                                                 | Actionsの設定・`permissions`                                                                             | —            |
+| 9.10        | 設定を文書化                           | SecurityDocs・ProjectDocsUpdate                                                           | `security/003`・project-values                                                                           | —            |
+| 9.11        | 残るリスクとAIの対策                   | SecurityDocs                                                                              | `security/003`                                                                                           | —            |
+| 10.1        | 逆順のロールバック                     | OperationsDocs                                                                            | `operations/002`                                                                                         | —            |
+| 10.2        | 戻す版の特定                           | OperationsDocs・WorkerDeployer                                                            | 版のタグ                                                                                                 | —            |
+| 10.3        | データベースと戻せない変更             | OperationsDocs                                                                            | `operations/002`                                                                                         | —            |
+| 10.4        | 実行者                                 | OperationsDocs                                                                            | `operations/002`                                                                                         | —            |
+| 11.1        | 名前の一致                             | ConfigContractRules                                                                       | 規則C1・C2・C4                                                                                           | 検査         |
+| 11.2        | 管轄の一致                             | ConfigContractRules                                                                       | 規則C3                                                                                                   | 検査         |
+| 11.3        | 公開URLの無効とroutesなし              | ConfigContractRules                                                                       | 規則C5                                                                                                   | 検査         |
+| 11.4        | 保管先の設定の一致                     | ConfigContractRules                                                                       | 規則C7                                                                                                   | 検査         |
+| 11.5        | ツールの版・SHA・権限                  | WorkflowPolicyRules・ToolVersions                                                         | 規則W1〜W6・W9                                                                                           | 検査         |
+| 11.6        | 段階の順序                             | WorkflowPolicyRules・DeployStages                                                         | 規則W8                                                                                                   | 検査         |
+| 11.7        | 食い違いの表示                         | ConfigContractRules・WorkflowPolicyRules                                                  | `ContractViolation`                                                                                      | 検査         |
+| 12.1        | 自動化しない準備                       | OperationsDocs・SecurityDocs                                                              | `operations/001`の準備の表                                                                               | —            |
+| 12.2        | 既存の資源の取り込み                   | OperationsDocs・LiveRoot                                                                  | `import`ブロック                                                                                         | —            |
+| 12.3        | シークレットの登録の規則とキーの一覧   | OperationsDocs・ProjectDocsUpdate                                                         | `operations/001`の登録の規則・project-valuesのキーの一覧                                                 | —            |
+| 12.4        | stagingの最初のデプロイ                | OperationsDocs                                                                            | 初回の手順                                                                                               | デプロイ     |
+| 13.1        | infraの文書                            | InfraDocs                                                                                 | `infra/005`〜`007`                                                                                       | —            |
+| 13.2        | operationsの文書                       | OperationsDocs                                                                            | `operations/001`・`002`                                                                                  | —            |
+| 13.3        | securityの文書                         | SecurityDocs                                                                              | `security/003`・`001`への追記                                                                            | —            |
+| 13.4        | testingの文書                          | TestingDocsUpdate                                                                         | `testing/001`への追記                                                                                    | —            |
+| 13.5        | 固有の値を書かない                     | 全文書・ProjectDocsUpdate                                                                 | project-values                                                                                           | —            |
+| 13.6        | tech-stack.md                          | ProjectDocsUpdate                                                                         | CI/CD・IaCの節                                                                                           | —            |
+| 13.7        | オンボーディングとCLAUDE.md            | ProjectDocsUpdate                                                                         | 手順とディレクトリ構成                                                                                   | —            |
 
 ## Components and Interfaces
 
@@ -557,24 +571,36 @@ graph LR
 
 - `apps/infra/environments/staging.json`・`prod.json`に置き、OpenTofu(`jsondecode(file())`)と`scripts/delivery`(`parseResourceCatalog`)の両方が読む。秘密値を持たない。
 - 値は上流specの命名(「Supporting References」の資源一覧の表)に従う。`infisical.projectId`は、両環境とも既存のプロジェクト(`.infisical.yaml`の`secrets-management.project-id`)と同じ値にする(K3)。prodの主体の識別子(`infisical.identityId`)は、launch-readinessが作るまで全桁0のUUIDとする。
-- 後続specは`r2`・`queues`・`hostnames`のmapに項目を加えて資源を追加する(1.10)。キーは英小文字とハイフンで、Wrangler設定のバインディング名とは独立している。
+- 後続specは`r2`・`queues`・`hostnames`のmapに項目を加えて資源を追加する(1.10)。キーは英小文字で始まり英小文字・数字・ハイフンから成り(`^[a-z][a-z0-9-]*$`)、Wrangler設定のバインディング名とは独立している。
+- `catalog`は`core`と同じく純粋で、ファイルを読まない。読み込みは`commands`(`commands/shared/load-catalog.ts`)が行い、`parseResourceCatalog`には解析済みの値と、期待する環境(ファイル名の環境)を渡す。
 
 **Contracts**: State [x]
 
 ##### State Management
 
 ```typescript
-export type DeployEnvironment = 'staging' | 'prod';
-export type WorkerKey = 'api' | 'event' | 'client' | 'admin';
+export const DEPLOY_ENVIRONMENTS = ['staging', 'prod'] as const;
+export type DeployEnvironment = (typeof DEPLOY_ENVIRONMENTS)[number];
+export const WORKER_KEYS = ['api', 'event', 'client', 'admin'] as const;
+export type WorkerKey = (typeof WORKER_KEYS)[number];
 export type Jurisdiction = 'us';
-export type EmailSendingEvent =
-  | 'message.bounced'
-  | 'message.complained'
-  | 'message.rejected'
-  | 'message.failed';
+export const EMAIL_SENDING_EVENTS = [
+  'message.bounced',
+  'message.complained',
+  'message.rejected',
+  'message.failed',
+] as const;
+export type EmailSendingEvent = (typeof EMAIL_SENDING_EVENTS)[number];
 
 export interface NamedResource {
   readonly name: string;
+}
+export interface WorkerResource extends NamedResource {
+  readonly appDir: string;
+}
+export interface HostnameAssignment {
+  readonly hostname: string;
+  readonly worker: WorkerKey;
 }
 
 export interface ResourceCatalog {
@@ -588,12 +614,8 @@ export interface ResourceCatalog {
   readonly d1: Readonly<Record<string, NamedResource>>; // 'main'
   readonly r2: Readonly<Record<string, NamedResource>>; // 'images'・'files'・'quarantine'
   readonly queues: Readonly<Record<string, NamedResource>>; // 'jobs'・'jobs-dlq'・'email-events'
-  readonly workers: Readonly<
-    Record<WorkerKey, NamedResource & { readonly appDir: string }>
-  >;
-  readonly hostnames: Readonly<
-    Record<string, { readonly hostname: string; readonly worker: WorkerKey }>
-  >;
+  readonly workers: Readonly<Record<WorkerKey, WorkerResource>>;
+  readonly hostnames: Readonly<Record<string, HostnameAssignment>>;
   readonly turnstile: {
     readonly name: string;
     readonly hostnames: readonly string[];
@@ -623,11 +645,16 @@ export type CatalogParseResult =
   | { readonly ok: true; readonly catalog: ResourceCatalog }
   | { readonly ok: false; readonly errors: readonly string[] }; // 項目のパスと理由
 
-export declare function parseResourceCatalog(json: unknown): CatalogParseResult;
-export declare function isPlaceholderId(value: string): boolean; // 全桁0のUUID
+export declare function resourceCatalogPath(env: DeployEnvironment): string; // 'apps/infra/environments/<env>.json'
+export declare function parseResourceCatalog(
+  json: unknown,
+  expectedEnvironment?: DeployEnvironment, // 指定すると`environment`との一致を確かめる
+): CatalogParseResult;
+export declare function isUuid(value: string): boolean;
+export declare function isPlaceholderId(value: string): boolean; // 全桁0のUUIDと全桁0の32桁(Cloudflareのアカウント・ゾーンの識別子)
 ```
 
-- 不変条件: `environment`はファイル名と一致し、`github.environment`と同じ。`hostnames`の値はすべて`zoneName`で終わる。`turnstile.hostnames`と`webAnalytics.hostname`は`hostnames`の値のいずれか。`emailSending.eventsQueue`は`queues`のキー。`emailSending.domain`は`zoneName`で終わる。
+- 不変条件: `environment`はファイル名(`expectedEnvironment`)と一致し、`github.environment`と同じ。`hostnames`の値はすべて`zoneName`で終わる。`turnstile.hostnames`と`webAnalytics.hostname`は`hostnames`の値のいずれか。`emailSending.eventsQueue`は`queues`のキー。`emailSending.domain`は`zoneName`で終わる。
 
 **Implementation Notes**
 
@@ -688,7 +715,7 @@ output "queue_ids" { value = { for k, q in cloudflare_queue.this : k => q.queue_
 ```hcl
 variable "account_id" { type = string }
 variable "zone_id"    { type = string }
-variable "turnstile"  { type = object({ name = string, domains = list(string), mode = string }) }
+variable "turnstile"  { type = object({ name = string, domains = list(string), mode = string }) } # validation: modeは"invisible"だけ
 variable "web_analytics_host" { type = string }
 variable "email_sending_domain" { type = string }
 
@@ -704,7 +731,9 @@ output "email_sending_subdomain_id" { value = cloudflare_email_sending_subdomain
 
 **Implementation Notes**
 
-- Validation: `tests/edge-services.tftest.hcl`で、Turnstileの`domains`・`mode`(`invisible`)、Web Analyticsの`auto_install = false`、送信ドメインの`preview_enabled = false`を確かめる。
+- Validation: `tests/edge-services.tftest.hcl`で、Turnstileの`domains`・`mode`(`invisible`)、Web Analyticsの`auto_install = false`、送信ドメインの`preview_enabled = false`を確かめる。`turnstile.mode`が`invisible`以外なら変数の検証で拒否する(frontend-platformの`TurnstileWidget`が非表示の描画を前提にするため)。
+- ルートモジュールは、資源一覧の`turnstile.hostnames`を`turnstile.domains`へ、`hostnames.*.worker`(`workers`のキー)を`workers[<キー>].name`へ引き直して`worker_routing`の`service`へ渡す。
+- 最初の適用の後に、Turnstileの`domains`の順序とWeb Analyticsの`host`だけの登録で差分・拒否が出ないことを確かめる(最初のstagingのデプロイ)。
 - Risks: APIでの登録で送信用のDNSレコードが作られない場合は、research.mdのRisksの手順で`cloudflare_dns_record`を本モジュールへ加える。
 
 #### WorkerRoutingModule
@@ -734,7 +763,7 @@ output "email_sending_subdomain_id" { value = cloudflare_email_sending_subdomain
 - `versions.tf`: `required_version = "1.13.2"`、`required_providers`に`cloudflare/cloudflare = "5.27.0"`・`infisical/infisical = "0.19.38"`(完全固定、1.8)。`backend "s3"`は`region = "auto"`・`use_lockfile = true`・`use_path_style = true`・`skip_credentials_validation`・`skip_region_validation`・`skip_requesting_account_id`・`skip_metadata_api_check`・`skip_s3_checksum`を持ち、`bucket`・`key`・`endpoints`は`backends/<環境>.s3.hcl`で与える(3.1)。接続用の鍵はbackendの設定に書かず、S3 backend専用の環境変数`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`で与える。OpenTofuはbackendの設定に`sensitive`な値があると初期化を拒否し、`sensitive`でない変数で渡した値は`.terraform/terraform.tfstate`と計画ファイルに保存されるためである(4.7。research.mdの「Decision: stateの保管先の鍵は環境変数で渡す」)。
 - `encryption`: `key_provider "pbkdf2" "state" { passphrase = var.state_passphrase }`、`method "aes_gcm" "state"`、`state { method = ...; enforced = true }`、`plan { method = ...; enforced = true }`(3.2・3.3)。
 - `variables.tf`: `environment`(`staging`・`prod`の検証)、`state_passphrase`(`sensitive = true`)。値は環境変数`TF_VAR_state_passphrase`で受け取り、tfvarsファイルを使わない。
-- `main.tf`: `local.catalog = jsondecode(file("${path.module}/../environments/${var.environment}.json"))`。4モジュールへ資源一覧の値を渡す。`check "catalog_environment"`で`local.catalog.environment == var.environment`を確かめる。`import`ブロックは、上流specの手作業で作成済みの資源を取り込むときだけ一時的に置く(12.2)。
+- `main.tf`: `local.catalog = jsondecode(file("${path.module}/../environments/${var.environment}.json"))`。4モジュールへ資源一覧の値を渡す。`check "catalog_environment"`で`local.catalog.environment == var.environment`を確かめる(`check`は失敗しても警告にとどまり計画を止めない。食い違いは`preflight`の構成検査と`parseResourceCatalog`の環境の一致で先に止まる)。`import`ブロックは、上流specの手作業で作成済みの資源を取り込むときだけ一時的に置く(12.2)。
 - `providers.tf`: `provider "infisical" { host = local.catalog.infisical.host }`(認証は環境変数の`INFISICAL_AUTH_METHOD`などで選び、CIはOIDC、障害時のローカルの操作は有効期限の短いUniversal Auth、4.9)。`ephemeral "infisical_secret" "cloudflare_api_token" { name = "CLOUDFLARE_API_TOKEN", env_slug = var.environment, workspace_id = local.catalog.infisical.projectId, folder_path = "/ci/cloudflare" }`、`provider "cloudflare" { api_token = ephemeral.infisical_secret.cloudflare_api_token.value }`(4.4)。
 - `outputs.tf`: `resource_ids = { d1 = module.storage.database_ids, turnstile_sitekey = ..., web_analytics_site_token = ... }`。秘密値を出力しない(3.6)。
 - `cloudflare_workers_script`・`cloudflare_queue_consumer`・Cron・ゾーンのルールセットを定義しない(1.7・1.11)。
@@ -743,12 +772,12 @@ output "email_sending_subdomain_id" { value = cloudflare_email_sending_subdomain
 
 ##### Service Interface
 
-| 呼び出し                                                                                                                | 前提の環境変数                                                                      | 結果                                                                       |
-| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `tofu -chdir=apps/infra/live init -input=false -reconfigure -backend-config=../backends/<env>.s3.hcl`                   | `AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`・`TF_VAR_state_passphrase`             | 状態の保管先へ接続                                                         |
-| `tofu ... plan -input=false -lock-timeout=5m -var environment=<env> [-exclude=module.worker_routing] -out=<env>.tfplan` | 上記+`INFISICAL_AUTH_METHOD`・`INFISICAL_MACHINE_IDENTITY_ID`・`INFISICAL_AUTH_JWT` | 暗号化された計画ファイル(`apps/infra/live/<env>.tfplan`。Git管理外。改訂4) |
-| `tofu ... apply -input=false -lock-timeout=5m <env>.tfplan`                                                             | 同上                                                                                | 資源の更新                                                                 |
-| `tofu ... output -json resource_ids`                                                                                    | 状態の接続の3つ                                                                     | 秘密でない識別子のJSON                                                     |
+| 呼び出し                                                                                                                          | 前提の環境変数                                                                           | 結果                                                                                       |
+| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `tofu -chdir=apps/infra/live init -input=false -reconfigure -backend-config=../backends/<env>.s3.hcl`                             | `AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`・`TF_VAR_state_passphrase`                  | 状態の保管先へ接続                                                                         |
+| `tofu ... plan -input=false -no-color -lock-timeout=5m -var environment=<env> [-exclude=module.worker_routing] -out=<env>.tfplan` | 上記+`INFISICAL_AUTH_METHOD=oidc`・`INFISICAL_MACHINE_IDENTITY_ID`・`INFISICAL_AUTH_JWT` | 暗号化された計画ファイル(`apps/infra/live/<env>.tfplan`。Git管理外で、適用後も残る。改訂4) |
+| `tofu ... apply -input=false -no-color -lock-timeout=5m <env>.tfplan`                                                             | 同上(OIDCのトークンは計画と適用の直前に毎回取り直す)                                     | 資源の更新                                                                                 |
+| `tofu ... output -json -no-color`                                                                                                 | 状態の接続の3つ                                                                          | 全出力のJSON。`resource_ids`だけを使い、`sensitive`の出力は値に触れずに飛ばす              |
 
 **Implementation Notes**
 
@@ -769,25 +798,37 @@ output "email_sending_subdomain_id" { value = cloudflare_email_sending_subdomain
 ##### Service Interface
 
 ```typescript
+export interface D1Binding {
+  readonly binding: string;
+  readonly databaseName: string;
+  readonly databaseId: string;
+}
+export interface R2Binding {
+  readonly binding: string;
+  readonly bucketName: string;
+  readonly jurisdiction: string | undefined;
+}
+export interface InheritedKeyPaths {
+  // 継承するキーの値をどこから読んだか('env.staging.workers_dev'・'workers_dev'など)。違反の表のパスに使う
+  readonly name: string;
+  readonly workersDev: string;
+  readonly previewUrls: string;
+  readonly routes: string;
+}
+
 export interface EffectiveWranglerConfig {
   readonly workerName: string; // env.nameが無ければ`${name}-${env}`
   readonly workersDev: boolean | undefined; // 継承するキー
   readonly previewUrls: boolean | undefined; // 継承するキー
   readonly hasRoutes: boolean; // route・routesのいずれか(継承するキー)
-  readonly d1: readonly {
-    readonly binding: string;
-    readonly databaseName: string;
-    readonly databaseId: string;
-  }[];
-  readonly r2: readonly {
-    readonly binding: string;
-    readonly bucketName: string;
-    readonly jurisdiction: string | undefined;
-  }[];
+  readonly d1: readonly D1Binding[];
+  readonly r2: readonly R2Binding[];
   readonly queueNames: readonly string[]; // producers・consumers・dead_letter_queue
+  readonly queueConsumers: readonly string[]; // consumersのqueueだけ(C8)
   readonly services: readonly string[]; // Service Bindingsのservice
   readonly vars: Readonly<Record<string, string>>;
   readonly requiredSecrets: readonly string[];
+  readonly sourcePaths: InheritedKeyPaths;
 }
 
 export type WranglerParseResult =
@@ -796,9 +837,11 @@ export type WranglerParseResult =
 
 export declare function readEffectiveConfig(
   jsoncText: string,
-  environment: 'staging' | 'prod',
+  environment: DeployEnvironment,
 ): WranglerParseResult;
 ```
+
+- `readEffectiveConfig`は文字列を受け取り、ファイルを読まない。読み込みは`commands/shared/contract-input.ts`(`loadWorkerConfig`・`loadWorkerConfigs`)が行う。
 
 - 継承しないキー(`d1_databases`・`r2_buckets`・`queues`・`services`・`vars`・`secrets`)は`env.<環境>`だけから読み、継承するキー(`name`・`workers_dev`・`preview_urls`・`route`・`routes`)は`env.<環境>`が無ければ最上位を使う。解析は`Bun.JSONC.parse`(呼び出し元が渡す関数)で行う。
 - Risks: Wranglerの継承の規則の全体は再現しない。検査のキーを増やすときは、そのキーが継承するかをCloudflare Docsで確かめて表に加える。
@@ -823,15 +866,31 @@ export interface ContractViolation {
   readonly actual: string;
   readonly expected: string;
 }
+export type TableRow = readonly string[];
+export declare function formatTextTable(
+  header: TableRow,
+  rows: readonly TableRow[],
+): readonly string[]; // 表の行。構成検査・ワークフローの検査・識別子の照合の表で共有
+export declare function formatMarkdownTable(
+  header: TableRow,
+  rows: readonly TableRow[],
+): readonly string[]; // 手順の要約用
+export declare function formatViolationTable(
+  violations: readonly ContractViolation[],
+): string;
+export declare function formatViolationMarkdown(
+  title: string,
+  violations: readonly ContractViolation[],
+): string;
 
+// core/config-contract.ts
+export interface WorkerConfigFile {
+  readonly file: string;
+  readonly config: EffectiveWranglerConfig;
+}
 export interface ContractInput {
   readonly catalog: ResourceCatalog;
-  readonly workers: Readonly<
-    Record<
-      WorkerKey,
-      { readonly file: string; readonly config: EffectiveWranglerConfig }
-    >
-  >;
+  readonly workers: Readonly<Record<WorkerKey, WorkerConfigFile>>;
   readonly backendFile: { readonly file: string; readonly text: string };
 }
 
@@ -852,6 +911,10 @@ export declare function checkConfigContract(
 | C8   | `emailSending.eventsQueue`のQueueがeventのconsumerにある                                                                   | 11.1      |
 
 - 仮の値(全桁0のUUID、上流が置いた仮の文字列)は本規則では違反にしない。仮の値の検出は`preflight`と`reconcile-ids`が行う(8.1・8.3)。
+  - C6は、apiとeventのどちらかの`database_id`が仮の値なら比べない。
+  - C7の`endpoints.s3`は、資源一覧の`accountId`が仮の値で、かつ接続先が`https://<32桁の16進>.r2.cloudflarestorage.com`の形の時だけ違反にしない。本物の`accountId`に対して全桁0の接続先が残っていれば違反にする(記入漏れを検出する)。backendの部分設定は、`bucket`・`key`・`endpoints.s3`だけを読む最小の読み取りで解析する。
+- C8はeventの`queues.consumers`(`EffectiveWranglerConfig.queueConsumers`)を見る。
+- 継承するキー(C4・C5)の違反のパスは、値を読んだ場所(`sourcePaths`。`env.<環境>`に無ければ最上位のキー)を示す。
 
 #### WorkflowPolicyRules・ToolVersions・DeployStages
 
@@ -887,26 +950,56 @@ export interface WorkflowDocument {
 
 export interface ExpectedToolVersions {
   readonly bun: string; // DockerfileのBUN_IMAGE_TAGから'-slim'を除いた値
+  readonly node: string; // NODE_VERSION
   readonly opentofu: string; // OPENTOFU_VERSION・versions.tfのrequired_version
   readonly infisicalCli: string; // INFISICAL_CLI_VERSION
   readonly wranglerTool: string; // WRANGLER_VERSION
   readonly mailpit: string; // MAILPIT_VERSION
   readonly playwright: string; // PLAYWRIGHT_VERSION・ルートの@playwright/test
 }
-
-export declare function readExpectedToolVersions(input: {
+export type ToolName = keyof ExpectedToolVersions;
+export interface ToolVersionOccurrence {
+  readonly tool: ToolName;
+  readonly key: string; // 版を読んだ入力・環境変数・runの中の位置
+  readonly value: string;
+}
+export interface ToolVersionSources {
   readonly dockerfile: string;
   readonly liveVersionsTf: string;
   readonly rootPackageJson: string;
-}):
+}
+export const LIVE_VERSIONS_TF_PATH = 'apps/infra/live/versions.tf';
+
+export declare function readExpectedToolVersions(
+  input: ToolVersionSources,
+):
   | { readonly ok: true; readonly versions: ExpectedToolVersions }
   | { readonly ok: false; readonly errors: readonly string[] };
+export type DockerfileToolVersion =
+  | { readonly ok: true; readonly version: string }
+  | { readonly ok: false; readonly error: string };
+export declare function dockerfileToolVersion(
+  dockerfile: string,
+  tool: ToolName,
+): DockerfileToolVersion; // 1つのツールの版(ensure-email-subscriptionがWranglerの版の照合に使う)
+export declare function scalarText(value: unknown): string; // YAMLのスカラーを文字列にする
+export declare function toolVersionsInStep(
+  step: unknown,
+): readonly ToolVersionOccurrence[]; // setupアクションの入力とrunの中の`<ツール>@<版>`
+export declare function toolVersionsInEnv(
+  env: unknown,
+): readonly ToolVersionOccurrence[]; // Dockerfileと同名の環境変数
 
-export declare function checkWorkflowPolicy(input: {
+// core/workflow-policy.ts
+export const WORKFLOWS_DIR = '.github/workflows';
+export interface WorkflowPolicyInput {
   readonly workflows: readonly WorkflowDocument[];
   readonly setupAction: WorkflowDocument;
   readonly versions: ExpectedToolVersions;
-}): readonly ContractViolation[];
+}
+export declare function checkWorkflowPolicy(
+  input: WorkflowPolicyInput,
+): readonly ContractViolation[];
 ```
 
 | 規則 | 内容                                                                                                                                                                               | 要件      |
@@ -922,6 +1015,12 @@ export declare function checkWorkflowPolicy(input: {
 | W9   | 複合アクションとワークフローのツールの版が`ExpectedToolVersions`と一致する                                                                                                         | 1.8, 11.5 |
 | W10  | `checks.yml`の`ci-gate`が全検査ジョブを`needs`に持ち、`if: always()`である                                                                                                         | 5.7       |
 
+- W1は`docker://`の参照をダイジェストで固定していても違反にする。W6は`run`の中の`${{ inputs.* }}`・`${{ github.event.* }}`・`${{ github.head_ref }}`を見る。
+- W7は`concurrency.group: deploy-${{ inputs.environment }}`と、`cancel-in-progress: false`の明示を求める。
+- W8は、`deploy.yml`の`id`を持つ手順の並びが`DEPLOY_STAGES`と完全に一致することを求める(段階以外の手順に`id`を付けない)。
+- W9はワークフローの版を、(1)setupアクションの入力`bun-version`・`node-version`・`tofu_version`、(2)Dockerfileと同名の環境変数(`BUN_VERSION`・`NODE_VERSION`・`OPENTOFU_VERSION`・`INFISICAL_CLI_VERSION`・`WRANGLER_VERSION`・`MAILPIT_VERSION`・`PLAYWRIGHT_VERSION`。Bunは`BUN_IMAGE_TAG`でなく`BUN_VERSION`)、(3)`run`の中の`wrangler@<版>`・`playwright@<版>`・`@playwright/test@<版>`から読む。複合アクションには、Playwright以外の6ツールの版の宣言を必須にする。複合アクションは`setup-toolchain/action.yml`の1つだけを読み、無ければ空の文書としてW9の違反になる。
+- `checks.yml`・`deploy.yml`が無ければ、W7・W8・W10の違反になる。`pull-request.yml`・`delivery.yml`・`release-pr.yml`・`CODEOWNERS`の存在はW1〜W10では見ないため、`repo-contract.unit.test.ts`で確かめる。providerの版の完全固定はW9では見ない(ロックファイルと`infra-check`の`-lockfile=readonly`で確かめる)。
+
 #### Secret scope・Plan summary・Resource IDs・Worker secrets・Previous release・Email subscription・Verification・Release PR
 
 | Field        | Detail                                                                        |
@@ -935,11 +1034,18 @@ export declare function checkWorkflowPolicy(input: {
 
 ```typescript
 // secret-scope.ts
-export type SecretScope = 'checks' | 'staging' | 'prod';
-export type RunSecretsScope = 'checks' | 'local'; // localはログインせず開発者のinfisical loginを使う
+export const SECRET_SCOPES = ['checks', 'staging', 'prod'] as const;
+export type SecretScope = (typeof SECRET_SCOPES)[number];
+export const RUN_SECRETS_SCOPES = ['checks', 'local'] as const;
+export type RunSecretsScope = (typeof RUN_SECRETS_SCOPES)[number]; // localはログインせず開発者のinfisical loginを使う
+export type InfisicalEnvironment = 'dev' | 'staging' | 'prod';
+export const ENVIRONMENT_OF_SCOPE: Readonly<
+  Record<SecretScope, InfisicalEnvironment>
+>; // { checks: 'dev', staging: 'staging', prod: 'prod' }
 export type WorkerSecretFolder = '/workers/api' | '/workers/event';
 export type SecretFolder =
   '/' | WorkerSecretFolder | '/ci/tofu' | '/ci/cloudflare';
+export const SHARED_SECRET_FOLDER = '/';
 export const WORKER_SECRET_FOLDERS: Readonly<
   Record<WorkerKey, WorkerSecretFolder | undefined>
 >; // { api: '/workers/api', event: '/workers/event', client: undefined, admin: undefined }
@@ -970,16 +1076,26 @@ export interface PlanChange {
 export declare function summarizePlan(
   planJson: string,
 ): readonly PlanChange[] | { readonly error: string };
+export declare function formatPlanSummary(
+  changes: readonly PlanChange[],
+): string; // no-opを除いた行。delete・replaceがあれば先頭に警告。importの取り込みは件数にだけ現れる
 // apply-output.ts
 export declare function filterApplyOutput(line: string): string | undefined; // 資源のアドレスで始まる行と完了の行だけ。適用が失敗した時の標準エラー出力の診断は、この関数を通さずにコマンドが表示する
 
 // resource-ids.ts
+export const RESOURCE_IDS_OUTPUT = 'resource_ids';
+export type ResourceIdField =
+  { readonly d1Binding: string } | { readonly varName: string }; // D1のバインディング名か変数名
 export interface ResourceIdTarget {
   readonly output: readonly string[]; // ['d1', 'main']など
   readonly worker: WorkerKey;
-  readonly configPath: string; // 'env.staging.d1_databases[DB].database_id' など
+  readonly field: ResourceIdField;
 }
 export const RESOURCE_ID_TARGETS: readonly ResourceIdTarget[]; // D1→api・event、sitekey→client・admin、token→client
+export declare function configPathOf(
+  field: ResourceIdField,
+  environment: DeployEnvironment,
+): string; // 'env.staging.d1_databases[DB].database_id'・'env.staging.vars.TURNSTILE_SITE_KEY'
 export interface ResourceIdMismatch {
   readonly worker: WorkerKey;
   readonly file: string;
@@ -987,20 +1103,31 @@ export interface ResourceIdMismatch {
   readonly current: string;
   readonly expected: string; // 秘密でない値だけ
 }
+export type ResourceIdConfigs = Readonly<Record<WorkerKey, WorkerConfigFile>>;
 export declare function reconcileResourceIds(
-  outputsJson: string,
-  configs: Readonly<
-    Record<
-      WorkerKey,
-      { readonly file: string; readonly config: EffectiveWranglerConfig }
-    >
-  >,
+  outputsJson: string, // `tofu output -json`の全出力
+  configs: ResourceIdConfigs,
+  environment: DeployEnvironment,
 ): readonly ResourceIdMismatch[] | { readonly error: string };
+export declare function formatMismatchTable(
+  mismatches: readonly ResourceIdMismatch[],
+): string;
+export declare function formatMismatchMarkdown(
+  title: string,
+  mismatches: readonly ResourceIdMismatch[],
+): string;
 
 // previous-release.ts
 export type PreviousRelease =
   | { readonly kind: 'found'; readonly commit: string }
   | { readonly kind: 'unknown'; readonly reason: string };
+export type DeployedVersion =
+  | { readonly kind: 'found'; readonly versionId: string }
+  | { readonly kind: 'unknown'; readonly reason: string };
+export declare function isCommitSha(value: string): boolean; // 40桁の16進
+export declare function fullyDeployedVersionOf(
+  statusJson: string,
+): DeployedVersion; // 配信率100%の版が1つだけの時に'found'
 export declare function previousReleaseFromVersions(
   deploymentsStatusJson: string,
   versionViewJson: (versionId: string) => string | undefined,
@@ -1044,6 +1171,7 @@ export type SubscriptionState =
   | { readonly kind: 'present' }
   | { readonly kind: 'absent' }
   | { readonly kind: 'mismatch'; readonly differences: readonly string[] };
+export const EMAIL_SENDING_SOURCE = 'email.sending';
 export declare function diffSubscription(
   listJson: string,
   desired: DesiredSubscription,
@@ -1057,12 +1185,31 @@ export type VerificationPlan =
       readonly adminUrl: string;
       readonly waitForHealth: string;
     }
-  | { readonly kind: 'health'; readonly urls: readonly string[] };
+  | { readonly kind: 'health'; readonly urls: readonly string[] }; // api・eventの/healthとclientの/
+export type SmokeE2ePlan = Extract<VerificationPlan, { kind: 'smoke-e2e' }>;
+export type VerificationPlanResult =
+  | { readonly ok: true; readonly plan: VerificationPlan }
+  | { readonly ok: false; readonly errors: readonly string[] }; // hostnamesにアプリ名のキーが無い
+export const VERIFY_WAIT_TIMEOUT_MS = 600_000;
+export const VERIFY_EXPECT_STATUS = 200;
+export const SMOKE_TAG = '@smoke';
 export declare function verificationPlanFor(
   catalog: ResourceCatalog,
-): VerificationPlan; // stagingはsmoke-e2e、prodはhealth
+): VerificationPlanResult; // stagingはsmoke-e2e、prodはhealth。hostnamesのキーがアプリ名と同じ前提
+export declare function smokeE2eCommandOf(plan: SmokeE2ePlan): {
+  readonly command: string; // 'bun'
+  readonly args: readonly string[]; // ['run', 'test:e2e', '--grep', '@smoke']
+  readonly env: Readonly<Record<string, string>>; // E2E_CLIENT_URL・E2E_ADMIN_URL
+};
+export declare function waitFailureReport(
+  failures: readonly {
+    readonly url: string;
+    readonly lastStatus: number | undefined;
+  }[],
+): string;
 
 // release-pr.ts
+export const RELEASE_BASE = 'prod';
 export type ReleaseHead =
   | { readonly ok: true; readonly head: string }
   | { readonly ok: false; readonly reason: string };
@@ -1072,7 +1219,29 @@ export declare function releasePrBody(
   head: string,
   commits: readonly string[],
   runUrl: string,
+  compareUrl: string, // 一覧を打ち切った時に示す比較の画面のURL
 ): string;
+export type ExistingPullRequest =
+  | { readonly ok: true; readonly url: string | undefined }
+  | { readonly ok: false };
+export declare function existingPullRequestUrlOf(
+  json: string,
+): ExistingPullRequest; // `gh pr list --json url,isCrossRepository`の出力から、同じリポジトリのPRだけを既存とみなす
+export declare function commitLinesOf(gitLog: string): readonly string[];
+
+// worker-apps.ts
+export const VITE_BUILT_WORKERS: ReadonlySet<WorkerKey>; // client・admin
+export declare function appDirOf(app: AppName): string; // config/workspace-layout.tsのAPPSから
+
+// infra-check-plan.ts
+export interface InfraCheckStep {
+  readonly command: string;
+  readonly args: readonly string[];
+}
+export declare function planInfraCheck(files: {
+  readonly configFiles: readonly string[]; // apps/infra/live/*.tf・apps/infra/modules/*/*.tf
+  readonly testFiles: readonly string[];
+}): readonly InfraCheckStep[]; // fmt→live→各モジュール(名前順)のinit・validate・(テストがあれば)test
 ```
 
 - `summarizePlan`は資源のアドレスと操作の種類だけを返し、属性の値を返さない(7.12)。`delete`・`replace`があれば要約の先頭に警告を出す。
@@ -1082,7 +1251,9 @@ export declare function releasePrBody(
 - `WORKER_SCOPED_SECRETS`は、同じキー名でWorkerごとに異なる値を持つと各specが宣言したシークレットの一覧である(paymentsの`STRIPE_API_KEY`。api用とevent用の制限付きキーを分けるQ5)。`secret-scope.ts`に置き、`run-with-secrets`(4.3)と`selectWorkerSecrets`(5.3)が共有する。`OPTIONAL_WORKER_SECRETS`と同じく、本specの4.3が宣言済みのキーを先に入れ、後続specが同じ要求を持てばこの一覧と`project-values.md`の節へ追記する(改訂1)。
 - `WORKER_SECRET_FOLDERS`のフォルダは、dev・stagingは本specの初回の準備で、prodはlaunch-readinessが空のまま作る。取り出しに失敗したら、値を出さずにフォルダの名前だけを表示して失敗する(4.10、改訂1)。
 - `OPTIONAL_WORKER_SECRETS`は、各specが宣言した任意のシークレットの一覧である(email-deliveryの`EMAIL_SMOKE_*`、media-pipelineの`MEDIA_SMOKE_TOKEN`、identity-authの`DISIFY_API_KEY`)。任意のシークレットを持つ後続specは、この一覧と、キーの一覧の正である`project-values.md`の節へ追記する。各アプリの宣言から読む形にはしない。
-- `releasePrBody`は、headとprodの間のコミットの一覧、stagingでの確認・Expand/Contract・prodの識別子の反映のチェック項目、作成したワークフローの実行のURLを持つ。
+- `releasePrBody`は、headとprodの間のコミットの一覧、stagingでの確認・Expand/Contract・prodの識別子の反映のチェック項目、作成したワークフローの実行のURLを持つ。コミットは囲みのコードブロックに入れ(題名に含まれるMarkdownやメンションを解釈させない)、先頭200件・1行200コードポイントで打ち切り、超えた時は`…ほかN件`と比較の画面のURLを示す。
+- `reconcileResourceIds`は`tofu output -json`の全出力を受け取る。OpenTofu 1.13.2の`tofu output -json <名前>`は値だけを出してsensitiveの印を落とすため、名前を指定しない。`sensitive`が`false`でない出力は値に触れずに飛ばし、`resource_ids`がsensitiveか印が無ければ誤りにする。仮の値は判定せず一致だけで比べる(仮の値のままなら食い違いとして止まる)。
+- `diffSubscription`の判定: Queueの購読の一覧のうち送信元が`email.sending`のものだけを見る。無ければ`absent`。`subscriptionName`の名前の購読(無ければ唯一の購読)の名前・送信ドメイン・ゾーン・イベントの過不足・有効か無効かを比べ、ほかに送信のイベントの購読があればそれも差分にする(配信不能イベントが重複して届くため)。名前の違う購読しか無ければ`mismatch`。ゾーンは一覧に在る時だけ比べる。一覧の`null`は空として扱う。コマンドは一覧の1ページ(Wranglerの既定の20件)だけを読む。
 
 ### scripts/delivery(adapters)
 
@@ -1129,6 +1300,7 @@ export interface GithubActionsIo {
   oidcToken(audience: string): Promise<string>; // ACTIONS_ID_TOKEN_REQUEST_URL・TOKEN
 }
 
+// adapters/infisical.ts(createInfisicalSecretSource)
 export interface SecretSource {
   login(input: {
     readonly identityId: string;
@@ -1137,22 +1309,54 @@ export interface SecretSource {
   }): Promise<string>; // アクセストークン
   exportFolder(input: {
     readonly projectId: string;
-    readonly environment: 'dev' | 'staging' | 'prod';
+    readonly environment: InfisicalEnvironment;
     readonly folder: SecretFolder;
     readonly host: string;
   }): Promise<readonly SecretEntry[]>; // infisical export --format jsonの取り込み。ログに出さない
 }
 
+// adapters/http-probe.ts(createHttpProbe)
+export interface HttpProbeWaitOptions {
+  readonly timeoutMs: number;
+  readonly expectStatus: number | 'any';
+}
+export interface HttpProbeResult {
+  readonly reached: boolean;
+  readonly lastStatus: number | undefined; // 最後に受け取った状態コード。応答が無ければundefined
+}
 export interface HttpProbe {
-  waitFor(
-    url: string,
-    opts: { readonly timeoutMs: number; readonly expectStatus: number | 'any' },
-  ): Promise<boolean>;
+  waitFor(url: string, opts: HttpProbeWaitOptions): Promise<HttpProbeResult>;
+}
+
+// adapters/repo-files.ts(createRepoFiles)
+export interface RepoFiles {
+  readonly root: string;
+  readText(path: string): Promise<string>;
+  writeText(path: string, text: string): Promise<void>; // 親ディレクトリを作る。リポジトリの外を指すパスは拒否
+  exists(path: string): Promise<boolean>;
+  list(pattern: string): Promise<readonly string[]>; // Bun.Globの結果をリポジトリ相対で
+}
+
+// commands/shared/delivery-command.ts
+export interface DeliveryDeps {
+  readonly repoRoot: string;
+  readonly env: Readonly<Record<string, string | undefined>>;
+  readonly runner: CommandRunner;
+  readonly files: RepoFiles;
+  readonly github: GithubActionsIo;
+  readonly secrets: SecretSource;
+  readonly probe: HttpProbe;
+  readonly stdout: TextOutput;
+  readonly stderr: TextOutput;
 }
 ```
 
-- `CommandRunner.run`は`capture`のとき出力を表示せず返す。`--secrets-file`・`infisical login`・`infisical export`・`tofu show -json`・`tofu output -json`は必ず`capture`で呼ぶ(4.7)。
-- `SecretSource`は`infisical --telemetry=false`を付け、`INFISICAL_TOKEN`(ログイン後)を環境から渡す。取り出した値はコマンドの側で`GithubActionsIo.mask`に渡してから使う。
+- `CommandRunner.run`は`capture`のとき出力を表示せず返す。`--secrets-file`・`infisical login`・`infisical export`・`tofu show -json`・`tofu output -json`は必ず`capture`で呼ぶ(4.7)。`filtered`は`filter`が例外を投げたら子プロセスを止めてから失敗する。
+- `CommandRunner.start`は`detached: true`で新しいプロセスグループを作り、`stop`はグループへ`SIGTERM`、猶予(既定10秒)の後に`SIGKILL`を送る(`wrangler dev`の孫プロセスのworkerdまで止める)。
+- `GithubActionsIo`の`mask`は`GITHUB_ACTIONS`が`true`の時だけ出す。複数行の値は行に分け、空白だけの行を除いて、行ごとに`::add-mask::`を出す。ワークフローのコマンドに載せる値は、`%`・`\r`・`\n`を`%25`・`%0D`・`%0A`へこの順に変換する。
+- `SecretSource`は`infisical --telemetry=false`を付け、`INFISICAL_TOKEN`(ログイン後)を環境から渡す。JWTは`--jwt=<JWT>`の引数で渡す(環境変数で渡せるかは未確認)。取り出しが失敗したら、出力を表示せず、環境・フォルダの名前と終了コードだけを示す。取り出した値はコマンドの側で`GithubActionsIo.mask`に渡してから使う。
+- `HttpProbe`は500msごとに問い合わせ、1回の問い合わせは10秒で打ち切り、リダイレクトを追わない。
+- `DeliveryDeps`の実物は`commands/shared/default-deps.ts`の`createDefaultDeps`が組み立て、テストは`test-fixtures/`の偽物を渡す。
 
 ### scripts/delivery(commands)
 
@@ -1167,30 +1371,32 @@ export interface HttpProbe {
 
 ##### Batch / Job Contract
 
-| サブコマンド                                                                 | 主な処理                                                                                                                                                                                                                                                                                         | 秘密値                                     | 要件                |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ | ------------------- |
-| `install`                                                                    | `resolveInstallTargets`(ルート・`APPS`・`SHARED_DIRS`の配置元のうち`package.json`があるもの)で`CI=true bun install --frozen-lockfile`                                                                                                                                                            | なし                                       | 5.2, 5.3            |
-| `audit`                                                                      | 導入の対象ごとに`bun audit --audit-level=high`と`AUDIT_EXCEPTIONS`の`--ignore`。見直し期限を過ぎた除外があれば失敗                                                                                                                                                                               | なし                                       | 5.5                 |
-| `app-checks`                                                                 | `APP_CHECKS`(api: `db:migrations:check`・`test:smoke`)を実行。アプリはあるがスクリプトが無ければ失敗。型の鮮度(全アプリの`cf-typegen:check`)とGraphQLの生成物(全アプリの`graphql:check`、apiは許可リストを含む)は、直前の`check`が実行するため含めない(改訂4)                                    | なし                                       | 5.6                 |
-| `contract-check`                                                             | 両環境の資源一覧・4アプリのWrangler設定・backend設定に`checkConfigContract`を掛け、違反を表で出す                                                                                                                                                                                                | なし                                       | 11.1–11.4, 11.7     |
-| `policy-check`                                                               | `.github`の全ワークフローと複合アクションに`checkWorkflowPolicy`を掛ける                                                                                                                                                                                                                         | なし                                       | 11.5–11.7           |
-| `infra-check`                                                                | `tofu fmt -check -recursive apps/infra`、`live`と各モジュールで`init -backend=false -lockfile=readonly`・`validate`、テストを持つものは`tofu test`                                                                                                                                               | なし                                       | 5.6, 6.6            |
-| `coverage-merge`                                                             | ルートと`APPS`の`coverage/{unit,browser,worker}/lcov.info`を読み、`SF:`にアプリのディレクトリを前置して`coverage/merged/lcov.info`へ合算                                                                                                                                                         | なし                                       | 6.2                 |
-| `run-with-secrets --scope checks\|local [--worker api\|event] -- <コマンド>` | 検査用の主体(`checks`)または開発者のログイン(`local`)でdevの`/`を取り出し、`--worker`があればそのWorkerのフォルダを`layerWorkerSecrets`で重ね(無ければ`WORKER_SCOPED_SECRETS`のキーを除き)、maskしてから環境変数としてコマンドを起動                                                             | dev                                        | 6.3                 |
-| `e2e-stack -- <コマンド>`                                                    | 準備(`db:migrate:local`)→Mailpit・api・eventの起動(api・eventはdevのWorkerごとのフォルダの値を重ねる)→待ち合わせ→コマンド→停止。起動しなければそのサービスとログの末尾50行を出して失敗。client・adminはコマンド(`test:e2e:dev-and-preview`)が開発サーバーとビルド後のプレビューで起動する(改訂3) | 親の環境(dev)                              | 6.4, 6.5            |
-| `rehearse --env <env>`                                                       | api・eventは`wrangler deploy --dry-run --env <env> --outdir <一時>`、client・adminは`CLOUDFLARE_ENV=<env> bun run build`の後に`wrangler deploy --dry-run --outdir <一時>`                                                                                                                        | なし                                       | 6.6                 |
-| `infisical-login --scope <scope>`                                            | OIDCのトークンを得て`infisical login --method=oidc-auth`、アクセストークンをmaskして`INFISICAL_TOKEN`として`GITHUB_ENV`へ                                                                                                                                                                        | アクセストークン                           | 4.1–4.3             |
-| `preflight --env <env>`                                                      | `GITHUB_REF_NAME`が`github.branch`と一致、資源一覧の解析と構成検査、Infisicalの識別子とCloudflareのアカウントID・ゾーンIDが仮の値でない(仮の値なら記入先を示して失敗。prodは加えてlaunch-readinessの準備が必要と表示)                                                                            | なし                                       | 8.3, 11.x           |
-| `tofu --env <env> --phase foundation\|routing`                               | `/ci/tofu`を取り出してmask、新しいOIDCのトークンでproviderの認証の環境変数を作り、init→plan(`foundation`は`-exclude=module.worker_routing`)→`show -json`の要約→apply(出力は`filterApplyOutput`。失敗時だけ標準エラー出力の診断を表示)                                                            | stateの鍵・パスフレーズ・OIDCのトークン    | 3.2, 3.4, 7.3, 7.12 |
-| `reconcile-ids --env <env>`                                                  | `tofu output -json resource_ids`を取り込み、`reconcileResourceIds`。食い違いがあれば表(ファイル・項目・現在の値・反映すべき値)を出して失敗                                                                                                                                                       | stateの鍵・パスフレーズ                    | 8.1                 |
-| `migrate --env <env>`                                                        | `/ci/cloudflare`を取り出し、apiで`wrangler d1 migrations apply <D1名> --env <env> --remote`                                                                                                                                                                                                      | Cloudflareのトークン                       | 7.3                 |
-| `deploy-worker --env <env> --app <app>`                                      | 後述「WorkerDeployer」                                                                                                                                                                                                                                                                           | Cloudflareのトークン・Workerのシークレット | 4.5, 7.3–7.6        |
-| `ensure-email-subscription --env <env>`                                      | 後述「EmailSubscriptionEnsurer」                                                                                                                                                                                                                                                                 | Cloudflareのトークン                       | 7.9                 |
-| `verify --env <env>`                                                         | 後述「PostDeployVerifier」                                                                                                                                                                                                                                                                       | なし                                       | 7.10, 7.11          |
-| `release-pr --head <head>`                                                   | 後述「ReleasePrCreator」                                                                                                                                                                                                                                                                         | `GITHUB_TOKEN`                             | 9.1–9.3             |
+| サブコマンド                                                                 | 主な処理                                                                                                                                                                                                                                                                                                                                                                                | 秘密値                                     | 要件                |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------- |
+| `install`                                                                    | `resolveInstallTargets`(ルート・`APPS`・`SHARED_DIRS`の配置元のうち`package.json`があるもの。重複を除き、`frontend-lib`を含む7件)で`CI=true bun install --frozen-lockfile`                                                                                                                                                                                                              | なし                                       | 5.2, 5.3            |
+| `audit`                                                                      | 導入の対象ごとに`bun audit --audit-level=high`と`AUDIT_EXCEPTIONS`の`--ignore`。全対象を確かめてから失敗を返す。見直し期限(UTCの日付で当日まで有効)を過ぎた除外・形の不正な除外(識別子はGHSAか数字)があれば実行せずに失敗                                                                                                                                                               | なし                                       | 5.5                 |
+| `app-checks`                                                                 | `APP_CHECKS`(api: `db:migrations:check`・`test:smoke`)を実行。アプリはあるがスクリプトが無ければ失敗。型の鮮度(全アプリの`cf-typegen:check`)とGraphQLの生成物(全アプリの`graphql:check`、apiは許可リストを含む)は、直前の`check`が実行するため含めない(改訂4)                                                                                                                           | なし                                       | 5.6                 |
+| `contract-check`                                                             | 両環境の資源一覧・4アプリのWrangler設定・backend設定に`checkConfigContract`を掛け、違反を表で出す(5列が同じ違反は1行にまとめる)                                                                                                                                                                                                                                                         | なし                                       | 11.1–11.4, 11.7     |
+| `policy-check`                                                               | `.github`の全ワークフローと複合アクションに`checkWorkflowPolicy`を掛ける(5列が同じ違反は1行にまとめる)                                                                                                                                                                                                                                                                                  | なし                                       | 11.5–11.7           |
+| `infra-check`                                                                | `planInfraCheck`の順に、`tofu fmt -check -recursive apps/infra`、`live`と各モジュール(`apps/infra/modules/*/*.tf`から見つけ、名前順)で`init -backend=false -lockfile=readonly -input=false`・`validate`、テストを持つものは`tofu test`を、最初の失敗まで実行                                                                                                                            | なし                                       | 5.6, 6.6            |
+| `coverage-merge`                                                             | ルートと`APPS`の`coverage/{unit,browser,worker}/lcov.info`を読み、`SF:`にアプリのディレクトリを前置して`coverage/merged/lcov.info`へ合算(無い種別は飛ばす)                                                                                                                                                                                                                              | なし                                       | 6.2                 |
+| `run-with-secrets --scope checks\|local [--worker api\|event] -- <コマンド>` | 検査用の主体(`checks`)または開発者のログイン(`local`)でdevの`/`を取り出し、`--worker`があればそのWorkerのフォルダを`layerWorkerSecrets`で重ね(無ければ`WORKER_SCOPED_SECRETS`のキーを除き)、maskしてから環境変数としてコマンドを起動                                                                                                                                                    | dev                                        | 6.3                 |
+| `e2e-stack -- <コマンド>`                                                    | 準備(`db:migrate:local`)→Mailpit・api・eventの起動(api・eventはdevのWorkerごとのフォルダの値を重ねる)→待ち合わせ→コマンド→停止。起動しなければそのサービスとログの末尾50行を出して失敗。client・adminはコマンド(`test:e2e:dev-and-preview`)が開発サーバーとビルド後のプレビューで起動する(改訂3)                                                                                        | 親の環境(dev)                              | 6.4, 6.5            |
+| `rehearse --env <env>`                                                       | api・eventは`bun x wrangler deploy --dry-run --env <env> --outdir <RUNNER_TEMPか一時>/rehearsal/<env>/<app>`、client・adminは`CLOUDFLARE_ENV=<env> bun run build`の後に`--env`無しのdry-run。子はシェルの環境を引き継ぐため、ジョブは秘密値を持たない                                                                                                                                   | なし                                       | 6.6                 |
+| `infisical-login --scope <scope>`                                            | 主体のIDが仮の値なら記入先を示して失敗。OIDCのトークンを得て`infisical login --method=oidc-auth`、アクセストークンをmaskして`INFISICAL_TOKEN`として`GITHUB_ENV`へ                                                                                                                                                                                                                       | アクセストークン                           | 4.1–4.3             |
+| `preflight --env <env>`                                                      | `GITHUB_REF_NAME`が`github.branch`と一致、資源一覧の解析と構成検査、Infisicalの識別子とCloudflareのアカウントID・ゾーンIDが仮の値でない(仮の値なら記入先を示して失敗。prodは加えてlaunch-readinessの準備が必要と表示)                                                                                                                                                                   | なし                                       | 8.3, 11.x           |
+| `tofu --env <env> --phase foundation\|routing`                               | `/ci/tofu`を取り出して必須の3キー(`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`・`TF_VAR_state_passphrase`)を確かめてmask、init→plan(`foundation`は`-exclude=module.worker_routing`)→`show -json`の要約(`formatPlanSummary`)→apply(出力は`filterApplyOutput`。失敗時だけ標準エラー出力の診断を表示)。planとapplyの直前に毎回OIDCのトークンを取り直し、`INFISICAL_AUTH_METHOD=oidc`で渡す | stateの鍵・パスフレーズ・OIDCのトークン    | 3.2, 3.4, 7.3, 7.12 |
+| `reconcile-ids --env <env>`                                                  | `tofu output -json -no-color`(全出力)を取り込み、`reconcileResourceIds`。食い違いがあれば表(ファイル・項目・現在の値・反映すべき値)を出して失敗                                                                                                                                                                                                                                         | stateの鍵・パスフレーズ                    | 8.1                 |
+| `migrate --env <env>`                                                        | `/ci/cloudflare`を取り出し、apiで`wrangler d1 migrations apply <D1名> --env <env> --remote`                                                                                                                                                                                                                                                                                             | Cloudflareのトークン                       | 7.3                 |
+| `deploy-worker --env <env> --app <app>`                                      | 後述「WorkerDeployer」                                                                                                                                                                                                                                                                                                                                                                  | Cloudflareのトークン・Workerのシークレット | 4.5, 7.3–7.6        |
+| `ensure-email-subscription --env <env>`                                      | 後述「EmailSubscriptionEnsurer」                                                                                                                                                                                                                                                                                                                                                        | Cloudflareのトークン                       | 7.9                 |
+| `verify --env <env>`                                                         | 後述「PostDeployVerifier」                                                                                                                                                                                                                                                                                                                                                              | なし                                       | 7.10, 7.11          |
+| `release-pr`(`RELEASE_HEAD`)                                                 | 後述「ReleasePrCreator」                                                                                                                                                                                                                                                                                                                                                                | `GITHUB_TOKEN`                             | 9.1–9.3             |
 
 - 終了コード: 成功0、検査の違反・前提の不足1、引数の誤り2。違反は表で出し、手順の要約(`GITHUB_STEP_SUMMARY`)にも書く(11.7)。
-- サブコマンドは`commands/<名前>.ts`のファイル名から解決し、各ファイルは共通の形`DeliveryCommand`(`name`・`description`・`run(args, deps): Promise<number>`)を公開する。コマンドの追加で`cli.ts`を編集しない。
+- サブコマンドは`commands/<名前>.ts`のファイル名から解決し(`commands/`直下の`.ts`。テストとサブディレクトリを除く)、各ファイルは共通の形`DeliveryCommand`(`name`・`description`・`run(args, deps): Promise<number>`)を公開する。コマンドの追加で`cli.ts`を編集しない。引数の誤りは`UsageError`を投げ、`cli.ts`が終了コード2にする。オプションの解析は`commands/shared/parse-options.ts`で共通にする。
+- 違反の表は`reportViolations`(`commands/shared/report-violations.ts`)が標準出力と手順の要約へ出す。読めない入力(解析の誤り・ファイルが無い・版の読み取りの失敗)は違反の表に入れず、`reportInputErrors`で前提の不足として出して終了コード1にする。入力の読み込みは`commands/shared/load-input.ts`(`Loaded<T>`・`readInput`・`parseInput`・`allLoaded`)に揃える。`policy-check.ts`はワークフローの検査の入力の読み込み`loadWorkflowPolicyInput`を公開し、`repo-contract.unit.test.ts`が使う。
+- `run-with-secrets`の子プロセスは親の`INFISICAL_TOKEN`を引き継ぐ(`e2e-stack`がapi・eventを`run-with-secrets`の入れ子で起動するため)。`deploy-worker`は`GITHUB_SHA`(40桁の16進)・`GITHUB_SERVER_URL`・`GITHUB_REPOSITORY`・`GITHUB_RUN_ID`が、`release-pr`は`GITHUB_TOKEN`・`GITHUB_SERVER_URL`・`GITHUB_REPOSITORY`・`GITHUB_RUN_ID`が無ければ、実行せずに失敗する。
 
 #### WorkerDeployer
 
@@ -1207,9 +1413,9 @@ export interface HttpProbe {
 - Input / validation:
   1. 資源一覧とアプリの`wrangler.jsonc`から、その環境の`secrets.required`を読む。`OPTIONAL_WORKER_SECRETS[app]`を加える。
   2. `/ci/cloudflare`・`/`と、`WORKER_SECRET_FOLDERS[app]`があればそのフォルダ(api・event)を取り出し、すべての値をmaskする。`selectWorkerSecrets`(Workerごとのフォルダを優先し、`WORKER_SCOPED_SECRETS`は`/`の値を使わない)で必須の欠落があれば、キー名だけを出して失敗する(4.10)。
-  3. apiのとき: clientのWorkerについて`wrangler deployments status --name <client名> --json`と`wrangler versions view <ID> --name <client名> --json`を取り込み、`previousReleaseFromVersions`で直前のリリースを得る。`git cat-file -e <commit>^{commit}`で存在を確かめ、`bun run graphql:allowlist --previous-ref <commit>`を実行する。特定できなければ警告を出して`graphql:allowlist`を引数なしで実行する(7.4・7.5)。
+  3. apiのとき(`commands/shared/previous-release-allowlist.ts`): clientのアプリのディレクトリで`bun x wrangler deployments status --name <資源一覧のclient名> --json`を取り込み、配信率100%の版が1つなら`bun x wrangler versions view <ID> --name <client名> --json`を取り込み、`annotations["workers/tag"]`が40桁の16進ならその版のコミットとする(`fullyDeployedVersionOf`・`previousReleaseFromVersions`)。`git cat-file -e <commit>^{commit}`で存在を確かめ(履歴付きのチェックアウトが前提)、`bun run graphql:allowlist --previous-ref <commit>`を実行する。いずれかで特定できなければ、警告を標準エラー出力と手順の要約に出し、`graphql:allowlist`を引数なしで実行して続ける(初回のデプロイの「no deployments」を含む。7.4・7.5)。clientのディレクトリにビルドの転送先の設定`.wrangler/deploy/config.json`が残っているとWranglerが標準出力へ案内を出してJSONの解析に失敗し、常に「特定できない」になるため、`deploy.yml`はapiのデプロイをclientのビルドより前に置く。
   4. client・adminのとき: `CLOUDFLARE_ENV=<env> bun run build`。
-- Output / destination: アプリのディレクトリで`bunx wrangler deploy [--env <env>] --tag <GITHUB_SHA> --message "<GITHUB_SHA> <実行のURL>" --secrets-file /dev/stdin`(client・adminは`--env`を付けずビルドの設定を使う)。シークレットのJSONは標準入力で渡し、出力は表示する(バインディングの名前と変数の値だけで、秘密値を含まない)。`parseDeployOutput`で版のIDと起動時間を読み、手順の要約に書く(7.6)。
+- Output / destination: アプリのディレクトリで`bunx wrangler deploy [--env <env>] --tag <GITHUB_SHA> --message "<GITHUB_SHA> <実行のURL>" --secrets-file /dev/stdin`(client・adminは`--env`を付けずビルドの設定を使う)。シークレットのJSONは標準入力で渡し、出力は取り込んでから表示する(バインディングの名前と変数の値だけで、秘密値を含まない)。`parseDeployOutput`で版のIDと起動時間を読み、手順の要約に書く(7.6)。版のID・起動時間が読めなければ警告を出して成功とする。`GITHUB_SHA`(40桁の16進)・`GITHUB_SERVER_URL`・`GITHUB_REPOSITORY`・`GITHUB_RUN_ID`が無ければ実行しない。`/ci/cloudflare`・`/`・Workerごとのフォルダの全値は、最初の子プロセスより前にマスクする(`commands/shared/cloudflare-secrets.ts`の`openCloudflareSecrets`)。子プロセスは親の環境(`INFISICAL_TOKEN`を含む)を引き継ぐ(Security Considerationsの「アクセストークンの受け渡し」で受け入れたリスク)。
 - Idempotency & recovery: 同じコミットで再実行すると新しい版になる(内容は同じ)。失敗したらジョブを止め、自動で戻さない(7.7)。`/dev/stdin`を読めない場合の代替はresearch.mdのRisksに従う。
 - Durable Objectのマイグレーション: Wrangler設定の`migrations`(クラスの追加など)は、`wrangler deploy`が同じ版で適用する。本specの導入後は、後続specが加えたDurable Object(identity-authの`LoginAttemptThrottle`など)もmainへのマージでstagingへ適用され、開発者の手作業は要らない。戻せない変更になる点はロールバックの制約(10.3)に従う。
 
@@ -1222,7 +1428,8 @@ export interface HttpProbe {
 
 **Contracts**: Service [x]
 
-- `wrangler queues subscription list <eventsQueueの名前> --json`(Dockerfileと同じ4.152.0のWrangler)を取り込み、`diffSubscription`で判定する。
+- PATHの`wrangler`(複合アクションの`wrangler-tool`が入れる、Dockerfileと同じ4.152.0)を使う。シークレットを取り出す前に`wrangler --version`とDockerfileの`WRANGLER_VERSION`(`dockerfileToolVersion`)を比べ、違えば失敗する。
+- `wrangler queues subscription list <eventsQueueの名前> --json`を取り込み、`diffSubscription`で判定する。アカウントIDを渡さないため、Cloudflareのトークンが複数のアカウントに届くと失敗し得る(最初のstagingのデプロイで確かめる)。
 - `absent`なら`wrangler queues subscription create <Queue> --source email.sending --events message.bounced,message.complained,message.rejected,message.failed --zone-id <zoneId> --domain <domain> --name <subscriptionName>`を実行する。`present`なら何もしない。`mismatch`なら差分を表示して失敗し、作り直しは開発者が判断する(7.9)。
 - Risks: 管轄付きのQueueへの購読の到達は未確認(K1)。stagingの最初のデプロイで確かめる手順を`operations/001`に置く。
 
@@ -1235,10 +1442,11 @@ export interface HttpProbe {
 
 **Contracts**: Batch [x]
 
-- `verificationPlanFor(catalog)`に従う。共通: apiの`https://<ホスト名>/health`が200になるまで最大10分待つ(初回の証明書の発行を待つ)。
-- staging(`smoke-e2e`): `E2E_CLIENT_URL`・`E2E_ADMIN_URL`にstagingのhttpsのURLを渡し、ルートで`bun run test:e2e --grep @smoke`を実行する(7.10)。
-- prod(`health`): apiとeventの`/health`が200、clientの`/`が200であることを確かめる(7.11)。
-- 失敗したら対象と状態コードを表示して失敗する。自動で戻さない。
+- `verificationPlanFor(catalog)`に従う。待ち合わせは`HttpProbe`で、各URLが200になるまで最大10分待つ(初回の証明書の発行を待つ)。
+- staging(`smoke-e2e`): apiの`https://<ホスト名>/health`を待ってから、`E2E_CLIENT_URL`・`E2E_ADMIN_URL`にstagingのhttpsのURLを渡し、ルートで`bun run test:e2e --grep @smoke`を実行する(7.10)。Playwright 1.64.1の`--grep`は、依存のsetupプロジェクト(到達確認)を絞り落とさない。
+- prod(`health`): apiとeventの`/health`とclientの`/`を並行に待ち、すべて200であることを確かめる(7.11)。
+- 失敗したら対象のURLと最後に受け取った状態コード(`HttpProbeResult.lastStatus`。応答が無ければその旨)を表示して失敗する。自動で戻さない。
+- `@smoke`の付いたテストが0件だと、`test:e2e`の`--pass-with-no-tests`により成功してしまう。0件を失敗にする仕組みは持たない(タグの規約は`testing/001`に書く)。
 
 #### E2eStack
 
@@ -1249,13 +1457,16 @@ export interface HttpProbe {
 
 **Contracts**: Batch [x]
 
-| サービス | 作業ディレクトリ | 起動                                                                                                                                                                             | 待ち合わせ                           |
-| -------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| mailpit  | ルート           | `$MAILPIT_BIN --listen 127.0.0.1:48041`                                                                                                                                          | `http://127.0.0.1:48041/`の応答      |
-| api      | `apps/api`       | `bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope checks --worker api -- bunx wrangler dev --port 48042 --ip 127.0.0.1 --persist-to /workspace/.wrangler/state`   | `http://127.0.0.1:48042/health`の200 |
-| event    | `apps/event`     | `bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope checks --worker event -- bunx wrangler dev --port 48043 --ip 127.0.0.1 --persist-to /workspace/.wrangler/state` | `http://127.0.0.1:48043/health`の200 |
+| サービス | 作業ディレクトリ | 起動                                                                                                                                                                                                   | 待ち合わせ                           |
+| -------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| mailpit  | ルート           | `$MAILPIT_BIN --listen 127.0.0.1:48041`                                                                                                                                                                | `http://127.0.0.1:48041/`の応答      |
+| api      | `apps/api`       | `bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope checks --worker api -- bunx wrangler dev --port 48042 --ip 127.0.0.1 --persist-to /workspace/.wrangler/state --test-scheduled`        | `http://127.0.0.1:48042/health`の200 |
+| event    | `apps/event`     | `bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope checks --worker event -- bunx wrangler dev --port 48043 --ip 127.0.0.1 --persist-to /workspace/.wrangler/state --inspector-port 9230` | `http://127.0.0.1:48043/health`の200 |
 
-- 準備: apiで`bun run db:migrate:local`。各サービスの出力は`$RUNNER_TEMP/e2e-logs/<名前>.log`へ書く。
+- 準備: apiで`bun run db:migrate:local`。各サービスの出力は`$RUNNER_TEMP/e2e-logs/<名前>.log`(`RUNNER_TEMP`が無ければOSの一時ディレクトリ)へ書く。Mailpitの実行ファイルは環境変数`MAILPIT_BIN`(無ければPATHの`mailpit`)。
+- api・eventの`wrangler dev`の追加の引数(apiの`--test-scheduled`、eventの`--inspector-port 9230`)は各アプリの`dev`スクリプトにそろえ、`repo-contract.unit.test.ts`が`dev`スクリプトとの一致を確かめる。
+- サービスは`127.0.0.1`で待ち受ける。`e2e/support/scheduled-trigger.ts`などは`localhost`を使うため、CIのランナーで届くことを最初のPRの検査で確かめる。
+- 起動しなかったサービスの表示は`StackStartError`(`service`・`reason`・`logFile`・`tail`の型)を`stackStartErrorReport`で整形する。サービスがすぐに終了しても、待ち合わせは時間切れまで続く。中断のシグナルでサービスを止める処理は持たない(CIのランナーはジョブごとに破棄される。ローカルで中断するとサービスが残り得る)。
 - client・adminは起動しない(改訂3)。ワークフローが渡すコマンド(`bun run test:e2e:dev-and-preview`、dev-toolingの承認後の改訂2)が、client・adminを開発サーバーで起動してE2Eを実行し、止めてからビルド後のプレビューで起動してE2Eを実行する。client・adminが起動しない時の表示(6.5)はこのコマンドが行う(起動しなかったアプリの名前と出力の末尾50行)。コマンドは親の環境(devの`/`の値)を引き継ぐため、client・adminの`HASH_PEPPER`はその値で満たす。
 - 待ち合わせは各3分。起動しないサービスがあれば、その名前とログの末尾50行を出して失敗する(6.5)。E2Eの後は`SIGTERM`、10秒後に`SIGKILL`で止める。
 - 前提: ワークフローが`/workspace`を`$GITHUB_WORKSPACE`へのシンボリックリンクにし、`run-with-secrets --scope checks`の下で起動する(devの`/`の値が子プロセスに渡る。`WORKER_SCOPED_SECRETS`のキーは除かれている)。
@@ -1270,14 +1481,19 @@ export interface HttpProbe {
 
 **Contracts**: Service [x] / Batch [x]
 
-- Input: 環境変数`RELEASE_HEAD`(ワークフローの入力`head`を直接展開しない)。`validateReleaseHead`で検証し、不正なら作らずに失敗する(9.3)。
-- `gh pr list --base prod --head <head> --state open --json url`で既存を探し、あればそのURLを出して終わる(9.1)。無ければ`git log --oneline --no-merges origin/prod..origin/<head>`で一覧を作り、`gh pr create --base prod --head <head> --title <題名> --body-file -`(本文は標準入力)で作る。`GH_TOKEN`は`GITHUB_TOKEN`。
-- headとprodの間にコミットが無ければ作らずに知らせる。
+- Input: 環境変数`RELEASE_HEAD`だけ(ワークフローの入力`head`を直接展開しない。`--head`などの引数は引数の誤り)。`validateReleaseHead`で検証し、不正なら作らずに失敗する(9.3)。`GITHUB_TOKEN`・`GITHUB_SERVER_URL`・`GITHUB_REPOSITORY`・`GITHUB_RUN_ID`が必須。
+- `gh pr list --base prod --head <head> --state open --json url,isCrossRepository`で既存を探し、同じリポジトリのPR(`isCrossRepository`が`false`)があればそのURLを出して終わる(9.1)。`gh`の`--head`はブランチ名だけで比べ、フォークの同名のブランチからのPRも返すため、それを既存とみなさない(承認者をフォークのPRへ誘導しないため)。無ければ`git log --oneline --no-merges origin/prod..origin/<head>`で一覧を作り、`gh pr create --base prod --head <head> --title <題名> --body-file -`(本文は標準入力)で作る。`GH_TOKEN`は`GITHUB_TOKEN`。比較の画面のURL(`<リポジトリのURL>/compare/prod...<head>`)を`releasePrBody`へ渡す。
+- headとprodの間にコミットが無ければ作らずに知らせる。既存のPRがある時とコミットが無い時は終了コード0。
+- `release-pr.yml`は`fetch-depth: 0`のチェックアウトと、`env`の`GITHUB_TOKEN: ${{ github.token }}`・`RELEASE_HEAD: ${{ inputs.head }}`が要る。Bunだけを導入して`scripts/delivery/cli.ts`を実行し、依存パッケージを導入しない。
 
 #### CiInstaller・AuditGate・AppChecks・InfraCheck・CoverageMerger・DeployRehearsal・RunWithSecrets・InfisicalSession・Preflight・TofuRunner・ResourceIdReconciler・MigrationRunner
 
 - 「DeliveryCli」のサブコマンドの表のとおり。いずれも`core`の判定と`adapters`の呼び出しの組み合わせで、新しい境界を持たない。
-- `AUDIT_EXCEPTIONS`は`{ advisory: 'GHSA-...', reason: string, reviewBy: 'YYYY-MM-DD' }`の配列で、初版は空である(5.5)。
+- `AUDIT_EXCEPTIONS`は`{ advisory: 'GHSA-...'または数字, reason: string, reviewBy: 'YYYY-MM-DD' }`の配列で、初版は空である(5.5)。`audit`は`createAuditCommand({ exceptions, today })`で除外の一覧と今日の日付(`todayInUtc`)を注入して作り、`auditExceptionProblems`が識別子・理由・日付の形と見直し期限を確かめる。
+- `install`・`audit`・`app-checks`・`rehearse`・`migrate`・`deploy-worker`は、対象のディレクトリでの手順の実行を`commands/shared/install-targets.ts`の`runInTarget`に揃える。`APP_CHECKS`の実行の計画は`core/app-checks.ts`(`appCheckDirs`・`scriptNamesOf`・`planAppChecks`)、合算は`core/lcov.ts`(`COVERAGE_KINDS`・`MERGED_LCOV_PATH`・`lcovReportsOf`・`prefixSourcePaths`・`mergeLcov`)、アプリのディレクトリとViteでビルドするWorkerは`core/worker-apps.ts`が持つ。`frontend-lib`はWranglerの設定を持たないアプリとして導入とカバレッジの合算の対象になり、構成検査の対象(Workerを持つ4アプリ)には入らない。
+- 構成検査の入力の読み込みは`commands/shared/contract-input.ts`(`loadContractInput`・`loadWorkerConfigs`)で、`contract-check`・`preflight`・`reconcile-ids`・`deploy-worker`が共用する。資源一覧の読み込みは`commands/shared/load-catalog.ts`。
+- `TofuRunner`と`ResourceIdReconciler`は、`/ci/tofu`の取り出し・必須キーの確認・`tofu init`を`commands/shared/tofu-session.ts`(`openTofuSession`・`initTofu`・`runTofuStep`)で共用する。`/ci/tofu`の値はそのまま子プロセスの環境変数(`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`・`TF_VAR_state_passphrase`)になる。
+- `RunWithSecrets`・`InfisicalSession`の範囲と環境の解決は`commands/shared/infisical-target.ts`(`loadInfisicalTarget`)。
 - `Preflight`の仮の値の検査: 資源一覧の`infisical.projectId`・`infisical.identityId`と`cloudflare.accountId`・`cloudflare.zoneId`を`isPlaceholderId`で判定する。アカウントIDはstateの保管先の接続先にも含まれるため、記入先として資源一覧と`apps/infra/backends/<env>.s3.hcl`の`endpoints.s3`を示し、ゾーンIDは資源一覧を示す。prodでは加えて「launch-readinessの準備が必要」と表示する(8.3。2026-10-29に開発者が決定)。
 - `InfisicalSession`の主体と対象: `checks`は`catalog/check-secrets.ts`(プロジェクトは`.infisical.yaml`の`secrets-management.project-id`、環境`dev`)、`staging`・`prod`は資源一覧の`infisical`。3つとも同じプロジェクトで、取り出す環境だけが異なる(K3)。
 
@@ -1294,23 +1510,24 @@ export interface HttpProbe {
 
 ##### Batch / Job Contract
 
-| ワークフロー       | 起動                                            | 最上位の`permissions` | ジョブ                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------------ | ----------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `checks.yml`       | `workflow_call`                                 | `contents: read`      | `secret-scan`(TruffleHog、`fetch-depth: 0`、PRはbase〜head、pushはbefore〜after、新しいブランチのpushは`main`との分岐点〜head。`--results=verified,unknown`で検証済みと未確定の検出だけで失敗させ、除外は`.github/trufflehog-exclude-paths.txt`。改訂4) → `quality`(`install`・`audit`・`shared-dirs:place`・`check`・`app-checks`・`contract-check`・`policy-check`・`infra:check`) → `tests`・`e2e`・`rehearsal` → `ci-gate` |
-| `pull-request.yml` | `pull_request`(main・prod)、`push`(`hotfix/**`) | `contents: read`      | `checks`(`uses: ./.github/workflows/checks.yml`、ジョブの`permissions: { contents: read, id-token: write }`)。`concurrency: pr-${{ github.ref }}`(`cancel-in-progress: true`)                                                                                                                                                                                                                                                  |
-| `delivery.yml`     | `push`(main・prod)                              | `contents: read`      | `checks`(同上) → `deploy`(`uses: ./.github/workflows/deploy.yml`、ジョブの`permissions: { contents: read, id-token: write }`、`environment`はブランチがprodなら`prod`、それ以外は`staging`)。最上位の`concurrency: delivery-${{ github.ref_name }}`(`cancel-in-progress: false`)                                                                                                                                               |
-| `deploy.yml`       | `workflow_call`(入力`environment`)              | `contents: read`      | `deploy`(`environment: ${{ inputs.environment }}`、`permissions: { contents: read, id-token: write }`、`concurrency: deploy-${{ inputs.environment }}`、`timeout-minutes: 60`)の手順は`DEPLOY_STAGES`の順                                                                                                                                                                                                                      |
-| `release-pr.yml`   | `workflow_dispatch`(入力`head`、既定`main`)     | `contents: read`      | `release-pr`(ジョブの`permissions: { contents: read, pull-requests: write }`、`fetch-depth: 0`、`RELEASE_HEAD`を環境変数で渡して`delivery release-pr`)                                                                                                                                                                                                                                                                         |
+| ワークフロー       | 起動                                            | 最上位の`permissions` | ジョブ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------ | ----------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `checks.yml`       | `workflow_call`                                 | `contents: read`      | `secret-scan`(TruffleHog、`fetch-depth: 0`、PRはbase〜head、pushはbefore〜after、beforeが履歴に無いpush(新しいブランチ・強制push)は`origin/main`との分岐点〜head、範囲の両端が同じなら飛ばす。TruffleHogはアクションv3.99.2・イメージ`3.99.2`。`--results=verified,unknown`で検証済みと未確定の検出だけで失敗させ、除外は`.github/trufflehog-exclude-paths.txt`。改訂4) → `quality`(準備はNode・OpenTofu付き。`install`・`audit`・`shared-dirs:place`・`check`・`app-checks`・`contract-check`・`policy-check`・`infra:check`) → `tests`・`e2e`・`rehearsal` → `ci-gate` |
+| `pull-request.yml` | `pull_request`(main・prod)、`push`(`hotfix/**`) | `contents: read`      | `checks`(`uses: ./.github/workflows/checks.yml`、ジョブの`permissions: { contents: read, id-token: write }`)。`concurrency: pr-${{ github.ref }}`(`cancel-in-progress: true`)                                                                                                                                                                                                                                                                                                                                                                                            |
+| `delivery.yml`     | `push`(main・prod)                              | `contents: read`      | `checks`(同上) → `deploy`(`uses: ./.github/workflows/deploy.yml`、ジョブの`permissions: { contents: read, id-token: write }`、`environment`はブランチがprodなら`prod`、それ以外は`staging`)。最上位の`concurrency: delivery-${{ github.ref_name }}`(`cancel-in-progress: false`)                                                                                                                                                                                                                                                                                         |
+| `deploy.yml`       | `workflow_call`(入力`environment`)              | `contents: read`      | `deploy`(`environment: ${{ inputs.environment }}`、`permissions: { contents: read, id-token: write }`、`concurrency: deploy-${{ inputs.environment }}`、`timeout-minutes: 60`)の手順は`DEPLOY_STAGES`の順                                                                                                                                                                                                                                                                                                                                                                |
+| `release-pr.yml`   | `workflow_dispatch`(入力`head`、既定`main`)     | `contents: read`      | `release-pr`(ジョブの`permissions: { contents: read, pull-requests: write }`、`fetch-depth: 0`、`RELEASE_HEAD`を環境変数で渡して`delivery release-pr`)                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 - `tests`: 準備(Node付き)→`install`→Chromiumの導入(ルートで`bunx playwright install --with-deps chromium`)→`shared-dirs:place`→`infisical-login --scope checks`→`run-with-secrets --scope checks -- bun run test:all:unit --coverage`(browser・workerも同様)→`coverage-merge`→成果物`coverage-lcov`。
 - `e2e`: 準備(Node・Mailpit付き)→`install`→Chromiumの導入→`shared-dirs:place`→`sudo ln -sfn "$GITHUB_WORKSPACE" /workspace`→`infisical-login --scope checks`→`run-with-secrets --scope checks -- bun scripts/delivery/cli.ts e2e-stack -- bun run test:e2e:dev-and-preview`(改訂3)→失敗時にPlaywrightの報告とE2Eのログを成果物にする。
-- `rehearsal`: `rehearse --env staging`→`rehearse --env prod`。資源を作らず、秘密値を使わない(6.6)。
-- `deploy`: `fetch-depth: 0`のチェックアウト→準備(Bun・Node・OpenTofu・Infisical CLI・Wrangler 4.152.0)→`install`→Chromiumの導入(`if: inputs.environment == 'staging'`。スモークテストを実行するstagingだけ)→`shared-dirs:place`→`preflight`→`infisical-login --scope <env>`→`preflight`以降の`DEPLOY_STAGES`の各手順。`infisical-login`は段階ではないため`id`を持たない(W8)。
+- `rehearsal`: 準備(Node付き)→`install`→`shared-dirs:place`→`rehearse --env staging`→`rehearse --env prod`。資源を作らず、秘密値を使わない(6.6)。`rehearse`の子はシェルの環境を引き継ぐため、`infisical-login`を呼ばず、秘密値の`env`を持たず、ジョブの`permissions`を`contents: read`だけに絞る(呼び出し側が`id-token: write`を与えてもジョブで絞る)。
+- `e2e`は、`e2e-stack`へ`env: MAILPIT_BIN: ${{ steps.<準備のid>.outputs.mailpit-bin }}`を渡す(準備の手順に`id`を付ける)。`/workspace`のシンボリックリンクは`e2e`だけが作る。
+- `deploy`: `fetch-depth: 0`のチェックアウト→準備(Bun・Node・OpenTofu・Infisical CLI・Wrangler 4.152.0。購読用のWranglerはランナーのNodeで動くため`node: 'true'`も渡す)→`install`→Chromiumの導入(`if: inputs.environment == 'staging'`。スモークテストを実行するstagingだけ)→`shared-dirs:place`→`preflight`→`infisical-login --scope <env>`→`preflight`以降の`DEPLOY_STAGES`の各手順。`infisical-login`は段階ではないため`id`を持たない(W8)。
 - フォークからのPRでは`id-token`が発行されず、`tests`・`e2e`の`infisical-login`が失敗する(5.8)。
 
 #### SetupToolchainAction・CodeOwners
 
-- `.github/actions/setup-toolchain/action.yml`(複合アクション): 入力`node`・`tofu`・`infisical`・`wrangler-tool`・`mailpit`(真偽)で導入するツールを選ぶ。Bun(`oven-sh/setup-bun`、1.4.4)は常に導入する。Node 26.12.1(`actions/setup-node`)、OpenTofu 1.13.2(`opentofu/setup-opentofu`、ラッパーなし)、Infisical CLI 0.44.8(GitHubのリリースの配布物をSHA-256で検証)、Wrangler 4.152.0(`bun add -g`)、Mailpit 1.32.0(GitHubのリリースの配布物を取得し、`MAILPIT_BIN`を出力。公式のチェックサムが無いため、開発コンテナと同じく検証しない。改訂4)。Chromiumはルートの`@playwright/test`の版に合わせるため、依存パッケージの導入の後にワークフローの手順で導入する。
+- `.github/actions/setup-toolchain/action.yml`(複合アクション): 入力`node`・`tofu`・`infisical`・`wrangler-tool`・`mailpit`(真偽)で導入するツールを選ぶ。Bun(`oven-sh/setup-bun`、1.4.4)は常に導入する。Node 26.12.1(`actions/setup-node`)、OpenTofu 1.13.2(`opentofu/setup-opentofu`、ラッパーなし)、Infisical CLI 0.44.8(GitHubのリリースの配布物をSHA-256で検証)、Wrangler 4.152.0(`$RUNNER_TEMP/wrangler-tool`へ`bun add -g`してPATHへ加える。アプリの`bun x wrangler`はアプリのローカルの版を優先する)、Mailpit 1.32.0(GitHubのリリースの配布物を取得し、実行ファイルのパスを出力`mailpit-bin`に出す。PATHへは入れない。公式のチェックサムが無いため、開発コンテナと同じく検証しない。改訂4)。Infisical CLIの検証にはリリースの`checksums.txt`を使う。入力の既定値はすべて`'false'`。外部のアクションはsetup-bun v2.2.0・setup-node v7.1.0・setup-opentofu v2.0.2をコミットSHAで固定する。Chromiumはルートの`@playwright/test`の版に合わせるため、依存パッケージの導入の後にワークフローの手順で導入する。
 - `.github/CODEOWNERS`: `* @kurachiweb`。prodのルールセットの「コードオーナーの承認」と組み合わせて、ワークフローの承認を数えない(9.4・9.5)。
 
 ### apps・e2e integration
@@ -1324,16 +1541,17 @@ export interface HttpProbe {
 
 **Contracts**: State [x]
 
-| ファイル                                       | 変更                                                                                          | いつ                        |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------- |
-| `apps/{api,event,client,admin}/wrangler.jsonc` | 最上位に`"workers_dev": false`・`"preview_urls": false`                                       | 実装時                      |
-| `apps/{api,event}/wrangler.jsonc`              | `env.staging`・`env.prod`の`r2_buckets`の各要素に`"jurisdiction": "us"`                       | 実装時                      |
-| `apps/{api,event}/wrangler.jsonc`              | `env.staging`のD1の`database_id`をstagingの値へ(両アプリ同時)                                 | stagingの最初のデプロイの後 |
-| `apps/{client,admin}/wrangler.jsonc`           | `env.staging.vars.TURNSTILE_SITE_KEY`(両方)・`WEB_ANALYTICS_TOKEN`(clientのみ)をstagingの値へ | stagingの最初のデプロイの後 |
-| `apps/*/wrangler.jsonc`のprod                  | 仮の値のまま(8.3)                                                                             | launch-readinessが反映      |
-| `e2e/{client,admin}/system-status.e2e.test.ts` | `test.describe`に`{ tag: '@smoke' }`を付ける                                                  | 実装時                      |
+| ファイル                                       | 変更                                                                                                  | いつ                        |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------- |
+| `apps/{api,event,client,admin}/wrangler.jsonc` | 最上位に`"workers_dev": false`・`"preview_urls": false`                                               | 実装時                      |
+| `apps/{api,event}/wrangler.jsonc`              | `env.staging`・`env.prod`の`r2_buckets`の各要素に`"jurisdiction": "us"`                               | 実装時                      |
+| `apps/{api,event}/wrangler.jsonc`              | `env.staging`のD1の`database_id`をstagingの値へ(両アプリ同時)                                         | stagingの最初のデプロイの後 |
+| `apps/{client,admin}/wrangler.jsonc`           | `env.staging.vars.TURNSTILE_SITE_KEY`(両方)・`WEB_ANALYTICS_TOKEN`(clientのみ)をstagingの値へ         | stagingの最初のデプロイの後 |
+| `apps/*/wrangler.jsonc`のprod                  | 仮の値のまま(8.3)                                                                                     | launch-readinessが反映      |
+| `e2e/{client,admin}/system-status.e2e.test.ts` | 最上位の`test.describe`3つ(疎通確認の画面・存在しないページ・中継の経路)に`{ tag: '@smoke' }`を付ける | 実装時                      |
 
-- 上流の検査(backend-platform・frontend-platformの`wrangler-config.unit.test.ts`)は追加のキーを許すため、変更後も成功することを確かめる。食い違えば上流の検査の側へ管轄と公開URLの期待値を加える(再検証)。
+- 上流の検査(backend-platform・frontend-platformの`wrangler-config.unit.test.ts`)は追加のキーを許すため、変更後も成功することを確かめる。食い違えば上流の検査の側へ管轄と公開URLの期待値を加える(再検証)。実装では、上流の検査に管轄と公開URLの期待値を加えて固定した。
+- `--grep @smoke --list`は到達確認2件と疎通確認23件の25件である。ローカルの開発サーバーに対して25件の成功を確かめた。stagingでのCSPの違反の検査と、IP単位のレート制限(10秒に100回)の下での25件の成功は、最初のstagingのデプロイで確かめる。
 
 ### docs
 
@@ -1400,9 +1618,15 @@ export interface HttpProbe {
 | 状況                                       | 応答                                                                                                                       | 要件            |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | --------------- |
 | 資源一覧・Wrangler設定・ワークフローの違反 | 規則・ファイル・項目・実際・期待を表示して失敗                                                                             | 11.7            |
+| 検査の入力を読めない                       | 違反の表に入れず、ファイルと理由を前提の不足として表示して失敗(`reportInputErrors`、終了コード1)                           | 11.7            |
+| 引数の誤り                                 | 使い方を表示して終了コード2(`UsageError`)                                                                                  | —               |
+| 必要な環境変数(`GITHUB_*`など)が無い       | 名前を表示し、子プロセスを起動せずに失敗                                                                                   | 7.6, 9.1        |
+| 購読用のWranglerの版がDockerfileと異なる   | シークレットを取り出す前に、両方の版を表示して失敗                                                                         | 7.9, 11.5       |
+| 主体のIDが仮の値                           | `infisical-login`が記入先のファイルを示して失敗                                                                            | 4.2, 8.3        |
 | 識別子が仮の値・食い違い                   | 反映すべき項目と値(秘密でないもの)を表示し、Workerのデプロイの前に失敗                                                     | 8.1             |
 | prodの準備が未実施                         | `preflight`が「launch-readinessの準備が必要」と表示して失敗                                                                | 8.3             |
 | CloudflareのアカウントID・ゾーンIDが仮の値 | `preflight`が記入先のファイル(資源一覧、アカウントIDはbackendの部分設定の`endpoints.s3`も)を示して失敗                     | 8.3             |
+| `/ci/tofu`の必須のキーの欠落               | キー名だけを表示し、`tofu init`の前に失敗                                                                                  | 3.2, 4.7        |
 | 計画・適用の失敗                           | 失敗した手順と終了コード、OpenTofuが標準エラー出力へ出した誤りの診断を表示して失敗。計画の本文・警告(標準出力)は表示しない | 4.7, 7.12       |
 | 必須シークレットの欠落                     | キー名だけを表示して失敗                                                                                                   | 4.5, 4.7, 4.10  |
 | Workerごとのフォルダを取り出せない         | フォルダの名前だけを表示して失敗(値は出さない)                                                                             | 4.7, 4.10       |
@@ -1411,7 +1635,8 @@ export interface HttpProbe {
 | 直前のリリースを特定できない               | 警告を出し、現行の操作だけで許可リストを生成して続ける                                                                     | 7.5             |
 | 購読の内容が異なる                         | 差分を表示して失敗(開発者が判断)                                                                                           | 7.9             |
 | E2Eの前にアプリが起動しない                | サービス名とログの末尾を表示して失敗                                                                                       | 6.5             |
-| デプロイ後の確認の失敗                     | 対象と状態コードを表示して失敗。ロールバックは`operations/002`の手順で開発者が行う                                         | 7.7, 7.10, 7.11 |
+| デプロイの出力から版・起動時間が読めない   | 警告を出してデプロイは成功とする                                                                                           | 7.6             |
+| デプロイ後の確認の失敗                     | 対象と最後に受け取った状態コードを表示して失敗。ロールバックは`operations/002`の手順で開発者が行う                         | 7.7, 7.10, 7.11 |
 | 不正なリリースのhead                       | PRを作らずに理由を表示して失敗                                                                                             | 9.3             |
 
 ### Monitoring
@@ -1432,10 +1657,11 @@ export interface HttpProbe {
   - `validateReleaseHead`・`releasePrBody`: `main`・`hotfix/x`は通り、`prod`・`feature/x`・空・改行を含む値は拒否(9.1〜9.3)。
   - `resolveInstallTargets`・`mergeLcov`・`APP_CHECKS`の実行: `SHARED_DIRS`に`package.json`を持つ配置元が加わると対象に入る(5.3)、`SF:`の前置(6.2)、スクリプトの欠落で失敗(5.6)。
   - コマンド(`commands/*.ts`): 偽の`CommandRunner`・`GithubActionsIo`・`SecretSource`・`HttpProbe`で、呼び出しの順序と引数(`-exclude=module.worker_routing`・`--secrets-file /dev/stdin`・`--tag`)、`capture`で呼ぶべきコマンドが表示されないこと、マスクがシークレットの使用より先に行われること、E2Eのサービスが起動しない場合の表示(6.5)、`deploy-worker`・`run-with-secrets --worker`がWorkerごとのフォルダを取り出して重ね、`e2e-stack`がapi・eventを`run-with-secrets --worker`を通して起動すること(4.10)を確かめる。
-  - `layering.unit.test.ts`: `core`が`adapters`・`node:child_process`・`node:fs`・`fetch`を読み込まない。
-  - `repo-contract.unit.test.ts`: 実際の資源一覧・4アプリのWrangler設定・backend設定・ワークフロー・複合アクション・Dockerfileに、構成検査とワークフローの検査を掛けて違反0件。HCLの`storage`と`edge-services`の該当ブロックに`prevent_destroy = true`、`storage`に`read_replication`の`disabled`がある(1.3・1.9)。
+  - コマンドのテストの偽物は`test-fixtures/`に置く(`command-runner.ts`・`repo-files.ts`・`infisical.ts`・`text-output.ts`のほか、資源一覧・Wrangler設定・計画のJSON・ワークフローの例)。Bunの型定義では`expect().rejects`が待てる値を返さず静的解析の違反になるため、拒否の確認は`test-fixtures/rejection.ts`を使う。テストの偽の秘密値は`fake-<用途>`のような低エントロピーの値にする(コミット時のシークレットの検出に掛からないため)。
+  - `layering.unit.test.ts`: 依存の向き(`catalog`←`core`←`adapters`←`commands`←`cli`)と、`catalog`・`core`が`adapters`・`node:child_process`・`node:fs`・`fetch`などの禁止APIを読み込まないこと。
+  - `repo-contract.unit.test.ts`: 実際の資源一覧・4アプリのWrangler設定・backend設定に構成検査(`loadContractInput`)を、ワークフロー・複合アクション・Dockerfileにワークフローの検査(`loadWorkflowPolicyInput`)を掛けて違反0件。W1〜W10が見ない8ファイル(5つのワークフロー・`CODEOWNERS`・複合アクション・TruffleHogの除外)の存在、`e2e-stack`のapi・eventの`wrangler dev`の追加の引数と各アプリの`dev`スクリプトの一致を確かめる。HCLは資源の種類ごとに、D1・R2・Turnstileの`prevent_destroy = true`、D1の`read_replication.mode = "disabled"`、R2に`location`が無いこと、Queueに`prevent_destroy`が無いこと、custom_domainに`environment`が無いこと、出力に`secret`が無いことを確かめる(1.3・1.9・3.6)。HCLはテスト用の最小の読み取り部品`test-fixtures/hcl-blocks.ts`(コメント・文字列・補間・ヒアドキュメントを扱い、読めない構造は誤り)で読み、対象は`apps/infra/live/*.tf`と`apps/infra/modules/*/*.tf`である(Bun.Globは波括弧の中に`/`を含むパターンで0件になるため2つに分ける)。データを持つ資源の種類は固定の一覧で、後続specがKVなどを足すときは一覧に加える。
   - カバレッジ: `--coverage`付きで各ファイルの行と関数が80%以上(dev-toolingの閾値)。
-- **IaCのテスト(`tofu test`、モックのprovider)**: 各モジュールの管轄・読み取りレプリカ・Turnstileの対象・Web Analyticsの自動挿入・プレビュー・カスタムドメインの対応(1.3〜1.6・2.1・2.2)。`live`で両環境の資源一覧がモジュールへ渡る(1.2)。
+- **IaCのテスト(`tofu test`、モックのprovider)**: 各モジュールの管轄・読み取りレプリカ・Turnstileの対象・Web Analyticsの自動挿入・プレビュー・カスタムドメインの対応(1.3〜1.6・2.1・2.2)。`live`で両環境の資源一覧がモジュールへ渡る(1.2)。子モジュールは`required_providers`だけを宣言し、テストは`mock_provider "cloudflare"`と`command = plan`で書く。`live.tftest.hcl`は`web_analytics_host`・`email_sending_domain`・`account_id`・`zone_id`・`jurisdiction`の結線を確かめていない。
 - **CIでの結合の確認(実装の最後のPR)**: PRで`checks / ci-gate`まで成功し、`tests`の成果物に合算したlcovがあり、`e2e`で疎通確認のE2Eが成功し、`rehearsal`でstaging・prodのdry-runが成功する(5.x・6.x)。
 - **E2E/スモーク**: frontend-platformの疎通確認のE2Eに`@smoke`タグを付け、ローカル(`bun run test:e2e --grep @smoke`)で成功することを確かめる(7.10)。stagingへの実行は最初のstagingのデプロイで開発者が確かめる。
 - **開発者が確かめること(手作業)**: stagingの最初のデプロイの各段階、送信用のDNSレコード、配信不能イベントの購読と到達(K1)、Turnstileの秘密鍵の登録、2回目のデプロイの成功とスモークテスト。prodのルールセットのコードオーナーの承認が効くこと(最初のリリースでlaunch-readinessが確かめる)。
@@ -1455,7 +1681,8 @@ export interface HttpProbe {
 - **ワークフローの注入**: `pull_request_target`を使わず、入力とイベントの値を`run`に直接展開しない。チェックアウトの資格情報を残さない(W5・W6)。
 - **承認の偽装**: コードオーナーの承認を必須にし、botの承認を数えない。開発者の名義での承認・マージを防ぐため、Claude設定に`Bash(gh pr review*)`・`Bash(gh api*)`の拒否を加えるよう開発者に依頼する(9.11)。
 - **同じアカウントの資格情報**(K5): stagingのトークンがprodの資源に届くリスクを受け入れ、`prevent_destroy`・Time Travel・値の非表示で緩和する。
-- **アクセストークンの受け渡し**: Infisicalのアクセストークンは`GITHUB_ENV`で同じジョブの後続の手順に渡る。後続の手順は本リポジトリのコマンドとSHAで固定したアクションだけにし、主体のトークンの有効期限を短くする。
+- **アクセストークンの受け渡し**: Infisicalのアクセストークンは`GITHUB_ENV`で同じジョブの後続の手順に渡る。後続の手順は本リポジトリのコマンドとSHAで固定したアクションだけにし、主体のトークンの有効期限を短くする。配布のスクリプトが起動する子プロセス(`wrangler deploy`・`graphql:allowlist`・`run-with-secrets`の子など)は親の環境を引き継ぐため、`INFISICAL_TOKEN`も見える。子のコマンドはリポジトリの依存パッケージとして固定され、PRの差分で確かめる前提で、このリスクを受け入れる。
+- **リポジトリの保護の追加の推奨**(`security/003`に記載): 必須のチェックの提供元を指定できる場合はGitHub Actionsに限る。prodのルールセットが許すマージの方式はマージコミットだけにする(`release-pr`がprodとheadのコミットの差で本文を作るため、スカッシュ・リベースではリリース済みのコミットを再び並べる。mainはprodからの戻しのためマージコミットを含める)。EnvironmentのRequired reviewersは設定せず、prodへの反映の承認はリリースのPRの承認で行う。外部協力者のPRのワークフローの承認の設定を緩めない。
 - **公開リポジトリ**: 資源一覧のアカウントIDとゾーンID、主体のIDとプロジェクトのIDは秘密でない識別子としてコミットする(OIDCのクレームと組み合わせないと使えない)。
 
 ## Performance & Scalability

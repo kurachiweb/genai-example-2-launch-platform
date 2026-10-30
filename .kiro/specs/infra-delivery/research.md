@@ -273,6 +273,27 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 ### 未確認の版(実装時に固定する)
 
 - GitHubへの外部アクセスがこのセッションでは許可されず、GitHub Actionsのアクション(`actions/checkout`・`oven-sh/setup-bun`・`actions/setup-node`・`opentofu/setup-opentofu`・`actions/upload-artifact`・`trufflesecurity/trufflehog`)とTruffleHog本体・Node 24の版を確認できなかった。実装時に、公開から2週間以上経った版をコミットSHAで固定し、tech-stack.mdへ記載する。
+- 実装で固定した版(tasks 6.2・6.3): checkout v7.0.1・setup-bun v2.2.0・setup-node v7.1.0・setup-opentofu v2.0.2・upload-artifact v7.0.2・TruffleHogのアクションv3.99.2(いずれもコミットSHA。setup系は軽量タグのコミット)、TruffleHogのイメージ`3.99.2`(タグ)、Node 26.12.1(G1)。
+
+### 実装で判明した事実(tasks 1.1〜8.5、9.1でまとめた)
+
+- **Sources Consulted**: 各タスクの実装と単体テスト、開発コンテナのツールの実行(OpenTofu 1.13.2・Wrangler 4.124.0(アプリ)・Playwright 1.64.1・Bun 1.4.4・Infisical CLI 0.44.8)、`Infisical/cli`のリリースの配布物の一覧。Cloudflare・Infisical(dev以外)・GitHubのランナーへは接続していない。
+- **Findings**:
+  - OpenTofu 1.13.2の`tofu output -json <名前>`は値だけを出し、sensitiveの印を落とす(sensitiveな値も平文で出る)。名前を指定しない`tofu output -json`は、出力ごとに`sensitive`・`type`・`value`を持つ。そのため`reconcile-ids`は全出力を取り込み、`sensitive`が`false`でない出力の値に触れない。
+  - OpenTofu 1.13.2はbackendの設定に`sensitive`な変数を使うと`tofu init`で拒否する(`validate`・`tofu test`では現れない)。`check`ブロックの失敗は警告で、計画を止めない。モックのproviderは`ephemeral`リソースに対応する。
+  - Wrangler 4.124.0はデプロイ先(`routes`・カスタムドメイン・`workers_dev`)の無いWorkerを「No targets deployed」のログだけでデプロイし、失敗しない。カスタムドメインは2段目の適用で割り当てるため、最初のデプロイが失敗しないことの前提になる。
+  - Wrangler 4.124.0は、アプリのディレクトリにビルドの転送先の設定`.wrangler/deploy/config.json`があると、`deployments status --json`などの標準出力の先頭へ案内の行を出し、JSONとして解析できなくなる。apiのデプロイ(直前のリリースの特定)をclientのビルドより前に置けば起きない。初回のデプロイでは`deployments status`が「no deployments」で失敗する(「特定できない」として続ける)。版の`annotations["workers/tag"]`に`--tag`の値が入る。
+  - Wrangler 4.124.0の`wrangler rollback --message`は確認の問い合わせを省かない(Cloudflare Docsの記述と異なる。版を上げたら確かめ直す)。
+  - `wrangler queues subscription list <Queue> --json`は購読の配列(`name`・`enabled`・`source`(`type`・`zone_id`・`domain`)・`events`)を返す形として実装し、購読が無い場合の`null`も空として扱った。一覧は既定で1ページ20件である。実際のアカウントでの出力の形は、Cloudflareへ接続していないため、最初のstagingのデプロイで確かめる。
+  - `gh pr list --head <ブランチ>`はブランチ名だけで絞り込み、フォークの同名のブランチからのPRも返す。`--json isCrossRepository`で同じリポジトリのPRを見分けられる。`gh`は`persist-credentials: false`のチェックアウトでも残る`origin`のURLからリポジトリを解決する。
+  - Infisical CLIのリリースのチェックサムのファイルは`checksums.txt`である(`cli_<版>_checksums.txt`ではない)。CLIのログインのJWTは`--jwt=<JWT>`の引数で渡した(環境変数で渡せるかは確かめていない)。
+  - Playwright 1.64.1の`--grep`は、依存のsetupプロジェクト(到達確認)を絞り落とさない。どのテストにも合わない`--grep`ではsetupも外れて0件になり、`--pass-with-no-tests`で成功する。`--grep @smoke --list`は到達確認2件と疎通確認23件の25件である。
+  - `Bun.Glob`は、波括弧の中に`/`を含むパターン(`apps/infra/{live,modules/*}/*.tf`)で0件を返す。パターンを分ける。
+  - Bunの型定義では`expect().rejects`が待てる値(Promise)を返さないため、`await expect(...).rejects`が静的解析の違反になる。拒否の確認は補助関数(`test-fixtures/rejection.ts`)で書く。
+  - `wrangler dev`はworkerdを孫プロセスとして起動するため、子プロセスだけへのシグナルでは止まらない。`Bun.spawn`の`detached: true`で新しいプロセスグループを作り、グループへシグナルを送ると止まる。
+  - `HttpProbe`はリダイレクトを追わず(`redirect: 'manual'`)、待ち合わせる対象の状態コードそのものを見る。
+  - 2026-10-29時点の実リポジトリで`bun audit --audit-level=high`は終了コード1(api 9・event 9・frontend-lib 4(critical 1)・client 10・admin 10件。zod・undici・sharp・Storybook・launch-editor)。開発者は対応を保留した(tasks 4.1)。
+- **Implications**: いずれもdesign.mdの該当するコンポーネントの記述へ反映した。CIのランナーとstagingで初めて確かめられる事項は、tasks 9.1の報告で開発者の手作業として挙げた。
 
 ### 参照したスキル
 
@@ -560,3 +581,6 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - G11: 開発者の指示(2026-10-29)により実装前に対応した。計画のファイルの名前を`apps/infra/live/<env>.tfplan`に決めてdesign.mdの`tofu`の呼び出しに書き、`.gitignore`に`*.tfplan`を加えた。ルートの`gitignore.unit.test.ts`で、OpenTofuの状態・計画・変数・クラッシュログが管理外で、`.terraform.lock.hcl`が管理対象であることを確かめる(先に計画のファイルの判定だけが失敗することを確かめてから`.gitignore`を直した)。
 
 G4(`frontend-lib`の扱い)・G10(スモークテストの範囲)は、選択肢Cのとおり実装で吸収し、タスク9.1で設計へ反映する。
+
+- G4の結果(9.1で反映): `frontend-lib`は導入の対象(重複を除いた7件)とカバレッジの合算の対象に入り、構成検査はWorkerを持つ4アプリだけを対象にする。design.mdの`install`の行と「CiInstaller・AuditGate…」の節に書いた。
+- G10の結果(9.1で反映): `@smoke`は両アプリの疎通確認のE2Eの最上位の`test.describe`3つずつ(疎通確認の画面・存在しないページ・中継の経路)に付け、到達確認2件と合わせて25件になった。ローカルの開発サーバーでは25件が成功した。stagingで実行できるか(CSPの違反の検査・IP単位のレート制限・本物の非表示のTurnstile)は、最初のstagingのデプロイで確かめる。design.mdのModified Files・SmokeTag・PostDeployVerifierに書いた。
