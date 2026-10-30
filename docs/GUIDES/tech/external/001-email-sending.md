@@ -366,13 +366,11 @@ Email Sendingは、送信ドメインごとの購読(Event Subscriptions)で、�
 
 ### 購読とQueueの作成
 
-イベントは封筒を持たないため、本体のQueueとは別のメールイベント用Queueで受け取り、封筒を持たないQueueの登録口で処理する(「[封筒を持たないQueue](../infra/003-async-processing.md#封筒を持たないqueue)」)。デプロイ先の環境ごとに、次の手順でQueueと購読を作る。
+イベントは封筒を持たないため、本体のQueueとは別のメールイベント用Queueで受け取り、封筒を持たないQueueの登録口で処理する(「[封筒を持たないQueue](../infra/003-async-processing.md#封筒を持たないqueue)」)。デプロイ先の環境のQueueと購読は、管理画面で手作業により作らず、次のとおりIaC定義とデプロイのパイプラインが作る。
 
-1. Cloudflareの管理画面の**Queues**で、`<メールイベント用Queueの名前>`のQueueを作る。
-2. 作ったQueueを選び、**Subscriptions** > **Subscribe to events**を選ぶ。
-3. 購読の名前を入力し、ソースに**Email Sending**を選ぶ。
-4. 送信ドメインに`<送信ドメイン>`を選び、イベントに`message.bounced`・`message.complained`・`message.rejected`・`message.failed`を選ぶ。
-5. **Subscribe**を選ぶ。
+- `<メールイベント用Queueの名前>`のQueueは、IaC定義が資源一覧の項目から作る(「[資源一覧の項目](../infra/006-iac-with-opentofu.md#資源一覧の項目)」)。
+- 購読はOpenTofuのproviderに資源が無いため、デプロイのパイプラインがデプロイのたびに、`<送信ドメイン>`の`message.bounced`・`message.complained`・`message.rejected`・`message.failed`をこのQueueへ届ける購読の有無と内容を確かめ、無ければ作る(「[配信不能イベントの購読](../infra/007-ci-cd-pipelines.md#配信不能イベントの購読)」)。
+- 管理画面の**Queues**のQueueの**Subscriptions**は、購読ができたことを確かめるためだけに使う。名前や内容の違う購読を手作業で作ると、デプロイのパイプラインが差分を表示して失敗する。
 
 `<メッセージを受信するアプリ>`のWrangler設定には、メールイベント用Queueのconsumerと、その名前を持つ変数を置く。デッドレターには本体のデッドレターQueueを使う。
 
@@ -511,26 +509,25 @@ Email Sending自身も、ソフトバウンスを24時間、一部の恒久バ�
 
 ## 管理画面の設定
 
+送信ドメインの登録と設定は、IaC定義が送信ドメインの資源(`cloudflare_email_sending_subdomain`)で行う(「[モジュールの境界](../infra/006-iac-with-opentofu.md#モジュールの境界)」)。管理画面では設定を変えず、反映を確かめるためだけに使う。管理画面で変えた設定は、次のデプロイの適用でIaC定義の値に戻る。
+
 ### 送信ドメインの登録
 
-1. Cloudflareの管理画面の**Compute** > **Email Service** > **Email Sending**で**Onboard Domain**を選び、`<送信ドメイン>`を登録する。
-2. 表示されたSPF・DKIMなどのDNSレコードを登録する。Cloudflare DNSのドメインなら通常5〜15分、長いと24時間で反映される。
-3. 続けて、下の「送信内容のプレビューを無効にする」と「宛先の抑止の扱い」を確かめる。
+1. 資源一覧に送信ドメイン`<送信ドメイン>`を書き、デプロイのパイプラインの適用で登録する(「[2段階の適用](../infra/006-iac-with-opentofu.md#2段階の適用)」)。
+2. SPF・DKIMなどのDNSレコードは、Email Serviceが登録時に作る。Cloudflare DNSのドメインなら通常5〜15分、長いと24時間で反映される。
+3. 管理画面の**Compute** > **Email Service** > **Email Sending**で、送信ドメインとDNSレコードが有効になったことと、下の「送信内容のプレビューを無効にする」と「宛先の抑止の扱い」の設定を確かめる。
 
 ### 送信内容のプレビューを無効にする
 
 Email Sendingには、送信したメールの内容(HTML・テキスト・ヘッダー・添付・元のソース)をActivity logで約7日間見られる**Email preview**の設定がある。2026-07-02以降に登録した送信ドメインでは既定で有効になる。本文には有効期限付きのトークンを含むリンクが入るため、送信ドメインごとに無効にする。
 
-1. **Compute** > **Email Service** > **Email Sending**を開く。
-2. 送信ドメインを選び、**Settings**を開く。
-3. **Enable email preview**を無効にする。
-
-- 無効にする前に送ったメールのプレビューは、保持期間(約7日)が過ぎるまで残る。
-- 送信ドメインを登録し直したときと、新しい環境の送信ドメインを登録したときは、毎回確かめる。
+- IaC定義が、送信ドメインの資源でプレビューを無効(`preview_enabled = false`)にして登録する。IaC定義のテストがこの値を確かめる(「[IaC定義の構成のテスト](../infra/006-iac-with-opentofu.md#テスト)」)。
+- 管理画面では、送信ドメインの**Settings**の**Enable email preview**が無効であることを確かめる。
+- 無効にする前に送ったメールのプレビューは、保持期間(約7日)が過ぎるまで残る。IaC定義の外で登録した送信ドメインを取り込んだときは、取り込みの後の適用で無効になったことを確かめる(「[既存の資源の取り込み](../infra/006-iac-with-opentofu.md#既存の資源の取り込み)」)。
 
 ### 宛先の抑止の扱い
 
-送信ドメインの**Settings**の**Drop suppressed recipients**は無効(既定)のままにする。無効なら、抑止された宛先への`send()`は`E_RECIPIENT_SUPPRESSED`で失敗し、送信処理がそれを記録できる。有効にすると抑止された宛先が黙って除かれ、送信が成功したように見える。
+送信ドメインの**Settings**の**Drop suppressed recipients**は無効(既定)のままにする。IaC定義は送信ドメインの資源でこの設定を無効(`drop_suppressed_recipients = false`)と明示する。無効なら、抑止された宛先への`send()`は`E_RECIPIENT_SUPPRESSED`で失敗し、送信処理がそれを記録できる。有効にすると抑止された宛先が黙って除かれ、送信が成功したように見える。
 
 ## 疎通確認
 

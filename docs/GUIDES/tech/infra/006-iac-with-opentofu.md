@@ -387,7 +387,7 @@ run "places_every_queue_in_given_jurisdiction" {
 - ルートモジュールのテストはbackendの設定を使わないため、状態の保管先の鍵を要らない。モックのproviderは`ephemeral`リソースにも対応する。
 - `bun run infra:check`(`bun <配布のスクリプト>/cli.ts infra-check`)が、`tofu fmt -check -recursive <IaCのディレクトリ>`の後、`live`と各子モジュール(名前順)で`init -backend=false -lockfile=readonly -input=false`→`validate`→(テストがあれば)`test`を、最初の失敗まで実行する。整形は`bun run infra:fmt`で直す。
 - 計画のテストで確かめられないHCLの記述(`prevent_destroy`、R2に`location`が無いこと、カスタムドメインに非推奨の`environment`が無いこと、出力に`secret`が無いこと)は、リポジトリの単体テストがHCLを読んで確かめる。
-- テストの書き方と実行の位置づけは「[テスト戦略](../testing/001-test-strategy.md)」に従う。
+- テストの書き方と実行の位置づけは「[IaC定義のテスト](../testing/001-test-strategy.md#iac定義のテスト)」に従う。
 
 ## 管轄の注意
 

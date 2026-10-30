@@ -56,6 +56,10 @@
 - シークレット・環境変数を使うコマンドの実行や設定の前に: [シークレットの注入](docs/GUIDES/tech/security/001-secret-management.md#シークレットの注入)
 - Wrangler設定やコマンドでデプロイ先を指定する前に: [デプロイ先の環境種別](docs/GUIDES/tech/infra/002-environments.md#デプロイ先の環境種別)
 - Infisicalの環境を指定する前に: [シークレット管理の環境種別](docs/GUIDES/tech/infra/002-environments.md#シークレット管理の環境種別)
+- Workerのシークレットを宣言・追加・削除する前に: [シークレットの登録の規則](docs/GUIDES/tech/operations/001-deployment.md#シークレットの登録の規則)
+- IaC定義に資源を追加・変更する前に: [資源の追加手順](docs/GUIDES/tech/infra/006-iac-with-opentofu.md#資源の追加手順)
+- GitHub Actionsのワークフローや複合アクションを作成・変更する前に: [ワークフローの規則](docs/GUIDES/tech/infra/007-ci-cd-pipelines.md#ワークフローの規則)
+- CIでシークレットを取り出す処理やリポジトリ保護の設定を変更する前に: [CIのシークレットの供給経路](docs/GUIDES/tech/security/003-ci-secrets-and-repository-protection.md#ciのシークレットの供給経路)
 - Inversifyで注入するクラスを書く前に: [コンストラクタ引数の注入](docs/GUIDES/tech/backend/001-dependency-injection-on-workers.md#コンストラクタ引数の注入)
 - Wrangler設定を作成・変更する前に: [互換性日付](docs/GUIDES/tech/infra/001-wrangler-conventions.md#互換性日付)
 - テストファイルの作成やテストの実行の前に: [テストの種別と命名](docs/GUIDES/tech/testing/001-test-strategy.md#テストの種別と命名)
@@ -119,12 +123,20 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ```
 /
 ├── .claude/                    # Claude拡張設定 ... 詳細はClaude拡張ファイル解説(docs/onboardings/claude-extensions.md)を参照
-├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・OpenTofu適用を含む)を担当
+├── .github/                    # GitHub ActionsによるCI/CD全般(検査・OpenTofu適用を含むデプロイ・リリースのプルリクエストの作成)を担当
+│   ├── workflows/              # 起動条件ごとのワークフロー(pull-request・delivery・release-pr)と、検査(checks)・デプロイ(deploy)の再利用ワークフロー
+│   ├── actions/                # 複合アクション ... 開発コンテナと同じ版のツールをジョブへ導入(setup-toolchain)
+│   ├── CODEOWNERS              # 全ファイルのコードオーナー ... prodへのマージに人間の承認を求める
+│   └── trufflehog-exclude-paths.txt # CIのシークレット検出(TruffleHog)の誤検知の除外 ... コミット前の検出の`.betterleaksignore`とは別に管理
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
 ├── .wrangler/                  # WranglerのD1・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`や`apps/event`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
 ├── apps/                       # アプリケーション実装
 │   ├── infra/                  # インフラ構成定義 ... OpenTofuを使用、Cloudflareを主としてインフラを設計
+│   │   ├── environments/       # 環境(staging・prod)ごとの資源一覧 ... 資源の名前・管轄・ホスト名・stateの保管先・Infisicalの主体
+│   │   ├── backends/           # 環境ごとのstateの保管先(R2)の部分設定
+│   │   ├── live/               # ルートモジュール ... 資源一覧を読み、providerとstateの保管先・暗号化を設定して子モジュールを呼ぶ(両環境の結線のテストを含む)
+│   │   └── modules/            # 子モジュール(storage・messaging・edge-services・worker-routing)とそのテスト
 │   ├── db/                     # DBへの接続処理を含む
 │   │   ├── migrations/         # DBマイグレーション履歴
 │   │   └── schema/             # DBスキーマ定義
@@ -163,15 +175,15 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   ├── CODEMAPS/               # ecc:doc-updaterエージェントによる自動生成コードマップ
 │   └── GUIDES/                 # 要件定義書を元にした開発者ドキュメント、ecc:doc-updaterエージェントにより都度更新
 │       ├── tech/               # 本プロジェクトに限らず同じ技術選定のプロジェクトにコピーできる、技術的な資料
-│       │   ├── infra/          # インフラ・ネットワーク構成図、実行環境の設定規約と環境種別、ログ管理方針、非同期処理設計
+│       │   ├── infra/          # インフラ・ネットワーク構成図、IaC定義の構成と資源の追加方法、検査とデプロイのパイプライン、実行環境の設定規約と環境種別、ログ管理方針、非同期処理設計
 │       │   ├── external/       # 各種外部APIの仕様、料金、リクエスト制限、認証方式、エラーハンドリング及びリトライ戦略
 │       │   ├── db/             # データベース設計原則、テーブル・カラムの命名規則、マイグレーションの生成と適用の手順、データベース固有の制約と対処
 │       │   ├── backend/        # バックエンドのコーディングルール ... アーキテクチャ設計(依存性注入を含む)、API設計
 │       │   ├── frontend/       # フロントエンドのコーディングルール ... アクセシビリティ規則、マークアップ規約、コンポーネント共通化対象、開発時とデプロイ前の起動方法
 │       │   ├── coding/         # バックエンド/フロントエンド共通のコーディングルール ... JavaScript・TypeScriptの記法、設定ファイルの記述規約と基底設定の継承、整形検査・静的解析・型検査のコマンド、依存パッケージの版管理、共有ディレクトリの配置方式、GraphQL通信、入力値バリデーション
-│       │   ├── testing/        # テスト方針(テストの種別と命名規約、実行コマンド)、カバレッジ設定、TDDの進め方、E2Eテストツールの版の更新手順
-│       │   ├── operations/     # 運用ガイド ... デプロイ手順、障害対応、ロールバック手順、決済データ操作
-│       │   └── security/       # 包括的なセキュリティガイド、認証認可設計、シークレット管理、システム監視及び対応方針
+│       │   ├── testing/        # テスト方針(テストの種別と命名規約、実行コマンド)、カバレッジ設定、IaC定義のテストとCIでのE2Eテストの実行方法、デプロイ後のスモークテスト、TDDの進め方、E2Eテストツールの版の更新手順
+│       │   ├── operations/     # 運用ガイド ... デプロイ手順(初回の準備・stagingへのデプロイ・prodへのリリース・hotfix)、障害対応、ロールバックと復旧、決済データ操作
+│       │   └── security/       # 包括的なセキュリティガイド、認証認可設計、シークレット管理、CIのシークレットの供給経路とリポジトリ保護、システム監視及び対応方針
 │       └── service/            # 本プロジェクト特有の資料
 │           ├── overview/       # サービス概要、コンセプト、料金及びプラン体系
 │           ├── features/       # 国際化方針や決済実装方針など特筆すべき機能仕様
@@ -183,6 +195,7 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ├── e2e/                        # PlaywrightによるE2Eテスト(設定はルートの`playwright.config.ts`) ... 対象アプリ(`client`・`admin`)ごとのディレクトリにテストを置く
 │   └── support/                # 対象アプリのURL解決、Playwrightの設定値の組み立て、到達確認、対象0件の表示、ローカルの定期実行を業務日付と業務時刻で起こす補助、応答のセキュリティヘッダー・nonce・CSPの違反の検査、疎通確認の画面の検査
 ├── scripts/                    # 開発コンテナとツールのスクリプト ... コンテナ起動時の処理(Claude Codeの更新、ワークスペース信頼設定のマージ、RTKフックとベル音フックの登録、Chromiumの導入、常駐プロセスの起動)、Claudeの入力待ちや作業完了をホスト側のVSCodeのベル音で知らせる処理
+│   ├── delivery/               # 検査・デプロイ・リリースの配布のスクリプト(`cli.ts`のサブコマンド) ... 依存パッケージの導入と脆弱性の確認、構成検査・ワークフローの検査・IaCの検査、Infisicalへのログインとシークレットの注入、CIでのE2Eの実行環境、デプロイの予行と各段階、リリースのプルリクエストの作成
 │   └── tooling/                # 品質ゲートのツールスクリプト ... Gitフックの導入、コミット時の検査対象の振り分け、一括検査・一括実行、共有ディレクトリの配置、テスト命名の検査
 ├── test-support/               # ルートの単体テストの補助 ... 共通フィクスチャ、型だけの読み込みの判定、Git管理外の判定
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進める開発コンテナ

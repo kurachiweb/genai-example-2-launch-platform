@@ -156,9 +156,14 @@
 
 ## CI/CD
 
-main/prodブランチへのプルリクエストをトリガーにして、GitHub Actionsにより検査フェーズを実行する。
+main/prodブランチへのプルリクエストと、hotfixブランチ(`hotfix/**`)へのプッシュをトリガーにして、GitHub Actionsにより検査フェーズを実行する。
 main/prodブランチへのプッシュをトリガーにして、GitHub Actionsにより検査フェーズ及びデプロイフェーズを実行する。
 
+- フェーズの構成 ... 検査フェーズは再利用ワークフロー`checks.yml`、デプロイフェーズは再利用ワークフロー`deploy.yml`にまとめ、起動条件ごとのワークフローから呼び出す
+  - `pull-request.yml` ... main/prodへのプルリクエストとhotfixブランチへのプッシュで、検査フェーズだけを実行する
+  - `delivery.yml` ... main/prodへのプッシュで、検査フェーズの成功後にデプロイフェーズを実行する(mainはstaging環境、prodはprod環境)。同じブランチの実行は到着順に直列化する
+  - `release-pr.yml` ... 開発者が手動で起動し、mainまたはhotfixブランチからprodへのリリースのプルリクエストを作る。prodへのマージには開発者の承認を必須とする
+  - 検査フェーズはシークレット検出 → 品質検査 → テスト・E2E・デプロイの予行(並行)の順に進み、総合結果`checks / ci-gate`をブランチ保護の必須チェックにする
 - 検査フェーズ ... 各段階のいずれかが失敗すれば後続タスクを実行せずに中止
   - TruffleHogによるシークレット検出(検証済みと未確定の検出で失敗させ、無効と確かめた値では失敗させない)
   - Bunによるパッケージインストール及び既知の脆弱性確認
@@ -168,12 +173,14 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
   - Infisical(dev環境)の環境変数を注入 ... ローカル環境と同じ値を使い、staging・prod環境の値は使わない
     - 単体テスト、ブラウザテスト、Cloudflare Workers統合テスト、及びカバレッジ閾値チェックを実行(テスト成功かつカバレッジ目標達成なら続行)
     - CIの実行環境の中で全アプリと開発用のメール受信箱(Mailpit)をローカル環境の設定で起動し、E2Eテストを実行
-- デプロイフェーズ
-  - OpenTofuによるインフラ構成変更(Wranglerの担当範囲を除く)
-  - Infisical(pushされたブランチが`main`ならstaging環境、`prod`ならprod環境)の環境変数を注入
+- デプロイフェーズ ... 段階のいずれかが失敗すれば後続の段階を実行せずに中止(自動では戻さない)
+  - 資源一覧の仮の値と実行中のブランチの事前確認(シークレットを使わないため、Infisicalへのログインより前に行う)
+  - Infisical(pushされたブランチが`main`ならstaging環境、`prod`ならprod環境)へOIDCでログインし、以降の段階が必要な値を取り出して注入
+    - OpenTofuによるインフラ構成変更の1段目(データの資源・bot判定・アクセス解析・送信ドメイン。Wranglerの担当範囲を除く)と、作成した資源の識別子とWrangler設定の照合
     - WranglerによるDBマイグレーション
     - Wranglerによる各Workerのビルド・デプロイ(`--secrets-file`で環境シークレットを同時反映)
-  - staging環境へのデプロイの後、staging環境のURLに対してスモークテストを実行
+    - OpenTofuによるインフラ構成変更の2段目(Workerへのホスト名の割り当て)と、メールの配信不能イベントの購読の確認(無ければ作成)
+  - staging環境へのデプロイの後、staging環境のURLに対してスモークテスト(`@smoke`タグのE2E)を実行し、prod環境ではヘルスチェックと利用者側のページの応答を確認
 - ツールの導入 ... 複合アクション`.github/actions/setup-toolchain`が、開発コンテナの`Dockerfile`と同じ版でジョブに必要なツールだけを導入する。公式のアクションは公開から2週間以上経った版のコミットSHAで固定する
   - Bun ... `oven-sh/setup-bun` v2.2.0で導入
   - Node.js 26.12.1 ... `actions/setup-node` v7.1.0で導入、ブラウザテスト・E2E・デプロイでWranglerやViteを動かす
@@ -327,6 +334,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 - OpenTofu ... 1.13.2に完全固定
   - Cloudflareプロバイダ(`cloudflare/cloudflare`) ... 5.27.0に完全固定
   - `infisical`プロバイダ(`infisical/infisical`) ... 0.19.38に完全固定、Cloudflareプロバイダの資格情報を一時的なリソース(`ephemeral`)で取得
+  - 状態の保管先 ... 環境ごとのCloudflare R2のバケット(S3互換のbackend、ロックファイルによる排他)、状態と計画はOpenTofuの暗号化(PBKDF2の鍵とAES-GCM)で暗号化
 
 ### ドキュメント
 

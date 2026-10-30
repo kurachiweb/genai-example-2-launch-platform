@@ -50,23 +50,23 @@ Launch Stadiumのプログラム一式、及びドキュメント。
 | ドキュメント                                         | 内容                                                                                                                                                                                              |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [README.md](docs/GUIDES/tech/README.md)              | 技術ドキュメントの索引、記述規則、文書の追加方法                                                                                                                                                  |
-| [infra/](docs/GUIDES/tech/infra/README.md)           | インフラ・ネットワーク構成図、実行環境の設定規約と環境種別、ログ管理方針、非同期処理設計                                                                                                          |
+| [infra/](docs/GUIDES/tech/infra/README.md)           | インフラ・ネットワーク構成図、IaC定義の構成と資源の追加方法、検査とデプロイのパイプライン、実行環境の設定規約と環境種別、ログ管理方針、非同期処理設計                                             |
 | [external/](docs/GUIDES/tech/external/README.md)     | 各種外部APIの仕様、料金、リクエスト制限、認証方式、エラーハンドリング及びリトライ戦略                                                                                                             |
 | [db/](docs/GUIDES/tech/db/README.md)                 | データベース設計原則、テーブル・カラムの命名規則、マイグレーションの生成と適用の手順、データベース固有の制約と対処                                                                                |
 | [backend/](docs/GUIDES/tech/backend/README.md)       | アーキテクチャ設計(依存性注入を含む)、API設計                                                                                                                                                     |
 | [frontend/](docs/GUIDES/tech/frontend/README.md)     | アクセシビリティ規則、マークアップ規約、コンポーネント共通化対象、開発時とデプロイ前の起動方法                                                                                                    |
 | [coding/](docs/GUIDES/tech/coding/README.md)         | JavaScript・TypeScriptの記法、設定ファイルの記述規約と基底設定の継承、整形検査・静的解析・型検査のコマンド、依存パッケージの版管理、共有ディレクトリの配置方式、GraphQL通信、入力値バリデーション |
-| [testing/](docs/GUIDES/tech/testing/README.md)       | テスト方針(テストの種別と命名規約、実行コマンド)、カバレッジ設定、TDDの進め方、E2Eテストツールの版の更新手順                                                                                      |
-| [operations/](docs/GUIDES/tech/operations/README.md) | デプロイ手順、障害対応、ロールバック手順、決済データ操作                                                                                                                                          |
-| [security/](docs/GUIDES/tech/security/README.md)     | 包括的なセキュリティガイド、認証認可設計、シークレット管理、システム監視及び対応方針                                                                                                              |
+| [testing/](docs/GUIDES/tech/testing/README.md)       | テスト方針(テストの種別と命名規約、実行コマンド)、カバレッジ設定、IaC定義のテストとCIでのE2Eテストの実行方法、デプロイ後のスモークテスト、TDDの進め方、E2Eテストツールの版の更新手順              |
+| [operations/](docs/GUIDES/tech/operations/README.md) | デプロイ手順(初回の準備・stagingへのデプロイ・prodへのリリース・hotfix)、障害対応、ロールバックと復旧、決済データ操作                                                                             |
+| [security/](docs/GUIDES/tech/security/README.md)     | 包括的なセキュリティガイド、認証認可設計、シークレット管理、CIのシークレットの供給経路とリポジトリ保護、システム監視及び対応方針                                                                  |
 
 ### エージェント・開発支援(`docs/onboardings/`)
 
-| ドキュメント                                                  | 内容                                                                                         |
-| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| [claude-extensions.md](docs/onboardings/claude-extensions.md) | `.claude/`配下のスキル・コマンド・ルール・エージェント定義の解説                             |
-| [tech-stack.md](docs/onboardings/tech-stack.md)               | 技術選定(データベース・バックエンド・フロントエンド・インフラ等)                             |
-| [project-values.md](docs/onboardings/project-values.md)       | 技術ドキュメントの一般的な表記に当てはまる本プロジェクト固有の値(パス・日付・リソース名など) |
+| ドキュメント                                                  | 内容                                                                                                                                                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [claude-extensions.md](docs/onboardings/claude-extensions.md) | `.claude/`配下のスキル・コマンド・ルール・エージェント定義の解説                                                                                                    |
+| [tech-stack.md](docs/onboardings/tech-stack.md)               | 技術選定(データベース・バックエンド・フロントエンド・インフラ等)                                                                                                    |
+| [project-values.md](docs/onboardings/project-values.md)       | 技術ドキュメントの一般的な表記に当てはまる本プロジェクト固有の値(パス・日付・リソース名・IaC定義とデプロイのパイプラインの値・Workerのシークレットのキーの一覧など) |
 
 ### AIエージェント向け外部ガイドライン(`docs/ai-extensions/`)
 

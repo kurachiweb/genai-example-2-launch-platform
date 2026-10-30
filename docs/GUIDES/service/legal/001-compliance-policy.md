@@ -65,15 +65,19 @@
 
 ## データの保存場所(DR-012)
 
-プライバシーポリシーに保存先を明示する。具体的なリージョン・ロケーションはインフラ構成(`docs/GUIDES/tech/infra`)を正とし、変更時はプライバシーポリシーの改訂履歴に記録する。
+プライバシーポリシーに保存先を明示する。保存場所の値(管轄)は[本プロジェクト固有の値](../../../onboardings/project-values.md#workerとリソースの名前と識別子)を正とし、変更時はプライバシーポリシーの改訂履歴に記録する。
 
-| データ                                         | 保存先                     |
-| ---------------------------------------------- | -------------------------- |
-| アカウント・投稿・決済履歴等                   | Cloudflare D1              |
-| 画像・添付ファイル・エクスポート               | Cloudflare R2              |
-| アプリケーションログ                           | Cloudflare Workers Logs    |
-| レート制限カウント(一時的)                     | Cloudflare Durable Objects |
-| 通知・エクスポート等のジョブメッセージ(一時的) | Cloudflare Queues          |
+| データ                                         | 保存先                     | 保存場所                                                   |
+| ---------------------------------------------- | -------------------------- | ---------------------------------------------------------- |
+| アカウント・投稿・決済履歴等                   | Cloudflare D1              | 米国(管轄の指定により保証する)                             |
+| 画像・添付ファイル・エクスポート               | Cloudflare R2              | 米国(管轄の指定により保証する)                             |
+| アプリケーションログ                           | Cloudflare Workers Logs    | 保証しない(所在を限定しない処理)                           |
+| レート制限カウント(一時的)                     | Cloudflare Durable Objects | 保証しない(所在を限定しない処理。ハッシュ化した一時的な値) |
+| 通知・エクスポート等のジョブメッセージ(一時的) | Cloudflare Queues          | 米国(管轄の指定により保証する)                             |
+
+委託先ごとの保存場所は次のとおりとする。1つの箇条に1つの委託先を`- **<委託先>(<サービス>)**: <保存または一時送信の場所>。<委託先側での保存の有無>。移転の根拠はプライバシーポリシー骨子の<委託先>の項を正とする。`の形で書き、[委託先の一覧](003-privacy-policy-outline.md#委託先の一覧)の順に並べる。上の表はCloudflareの資源ごとの一覧とし、他の委託先は表へ行を足さず箇条だけを足す。
+
+- **Cloudflare(Workers・D1・R2・Queues・Durable Objects・Email Sending・Turnstile・Web Analytics)**: D1・R2・Queuesは米国の管轄で保存する(値は[本プロジェクト固有の値](../../../onboardings/project-values.md#workerとリソースの名前と識別子)を正とする)。所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics))は保存場所を保証せず、Cloudflareの各地のデータセンターで行われ得る。サービス上の全データをCloudflare側で保存する。移転の根拠はプライバシーポリシー骨子の[Cloudflareの項](003-privacy-policy-outline.md#cloudflareworkersd1r2queuesdurable-objectsemail-sendingturnstileweb-analytics)を正とする。
 
 外部サービスへ一時送信する情報と保持しない旨は[委託先の一覧](003-privacy-policy-outline.md#委託先の一覧)を正とする。
 

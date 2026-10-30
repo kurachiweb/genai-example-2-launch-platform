@@ -112,6 +112,7 @@
     - `apps/client`・`apps/admin`の起動・ビルド・プレビューのコマンドも、Infisicalからの注入を付けて実行する(注入を付けないとWranglerが`HASH_PEPPER`の不足を警告して`.dev.vars`の作成を促し、すべての要求が環境の検証で500になる。`.dev.vars`は作らない)。ただし手順14の環境別のビルドは、理由を同じ手順に記したとおり注入を付けない。
     - `apps/api`・`apps/event`を未登録のまま起動すると、`wrangler dev`が足りないキーを警告し、ヘルスチェック以外の経路が環境の検証で500になる。ヘルスチェックは環境の検証より前に応答するため、未登録でも200を返す。
     - `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`は、メールの疎通確認の経路(「[疎通確認の経路](#疎通確認の経路)」)だけが使う。未登録でもイベントサーバーは環境の検証に通り、疎通確認の経路だけが404になる。ローカル環境ではMailpitが全ての宛先のメールを受け取るため、外部へは送られない。
+    - `dev`には、APIサーバーとイベントサーバーのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)もある。同じキー名でWorkerごとに異なる値が要るシークレットを置き、現時点では空である。各環境のフォルダとキーの一覧は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を参照する。
 
 12. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
@@ -128,18 +129,20 @@
 
     Wranglerは開発コンテナのNode.jsで動く(`node --version`がv26を返す。Bunで動かすと`wrangler dev`がHTTPに応答しない。理由は「[Wranglerを動かす実行環境](../GUIDES/tech/infra/001-wrangler-conventions.md#wranglerを動かす実行環境)」)。`node --version`がBunの版を返す古いコンテナでは、コンテナを作り直す。
 
+    APIサーバーとイベントサーバーは、`infisical run`の代わりに配布のスクリプトの`run-with-secrets --scope local --worker <Worker>`でシークレットを注入して起動する。Infisicalの`dev`の共通のフォルダ(`/`)の値に、そのWorkerのフォルダ(`/workers/api`・`/workers/event`)の値を重ね、デプロイとCIのE2Eと同じ規則でWorkerごとの値を渡すためである(「[シークレット注入の実行接頭辞](project-values.md#シークレット注入の実行接頭辞)」)。
+
     APIサーバー(`bun run dev`は`wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --test-scheduled`を実行する)
 
     ```sh
     cd /workspace/apps/api
-    infisical --telemetry=false run --env dev -- bun run dev
+    bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker api -- bun run dev
     ```
 
     イベントサーバー(`bun run dev`は`wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --inspector-port 9230`を実行する。APIサーバーと同時に起動するため、開発者ツールの接続先(インスペクター)を既定の9229と重ならない9230にしている。利用者側・管理者側のフロントエンドは`vite.config.ts`でインスペクターのポートを9231・9232に固定しているため、4つを同時に起動しても重ならない)
 
     ```sh
     cd /workspace/apps/event
-    infisical --telemetry=false run --env dev -- bun run dev
+    bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker event -- bun run dev
     ```
 
     両サーバーの起動後、別のターミナルでヘルスチェックに到達できることを確かめる。どちらも200と本文`{"status":"ok"}`を返す。
@@ -204,7 +207,7 @@
     ```
 
     - 開発サーバーとプレビューは同じポートを使うため、同じアプリの両方を同時に起動しない。プレビューの前に開発サーバーを止める。
-    - プレビューでも、手順13と同じく疎通確認の画面と「[スモークテスト](#スモークテスト)」で確かめる。
+    - プレビューでも、手順13と同じく疎通確認の画面と「[ローカルでのE2Eテスト](#ローカルでのe2eテスト)」で確かめる。
     - `@cloudflare/vite-plugin`は注入の下のビルドで`HASH_PEPPER`を`dist/server/.dev.vars`として書き出すが、`apps/client`・`apps/admin`の`vite.config.ts`は共通部品の`excludeLocalSecretsFile`(`lib/config/local-secrets-output.ts`)でこのファイルを出力から除く。プレビューは`dist/server/wrangler.json`の`secrets.required`の`HASH_PEPPER`を注入した環境変数から読むため、ビルドとプレビューの両方に注入を付ける(「[ビルド結果のシークレットのファイル](../GUIDES/tech/frontend/002-tanstack-start-on-workers.md#ビルド結果のシークレットのファイル)」)。プレビューの起動時に`Using secrets defined in process.env`と表示されれば、ファイルではなく注入から読んでいる。
     - ビルドが出力する500kBを超えるチャンクの警告と、`@cloudflare/vite-plugin`がAIエージェントの実行を検出したときの案内は、想定どおりの表示である。
 
@@ -220,7 +223,9 @@
     - ビルドは、Git管理外の`apps/client/.wrangler/deploy/config.json`・`apps/admin/.wrangler/deploy/config.json`も作る。
     - `staging`・`prod`のビルドでは、Wranglerが`HASH_PEPPER`・`SENTRY_DSN`の不足を警告するが無視してよい。シークレットの値は出力に含まれない。
 
-## スモークテスト
+## ローカルでのE2Eテスト
+
+ローカルで起動したアプリに対して、すべてのE2Eテストを実行する。デプロイの後に公開のURLに対して`@smoke`タグのテストだけを実行する「[デプロイ後のスモークテスト](../GUIDES/tech/testing/001-test-strategy.md#デプロイ後のスモークテスト)」とは別である。
 
 利用者側・管理者側の疎通確認の画面で、応答のセキュリティヘッダーとnonce付きのCSP、APIサーバーの時刻と「到達可能」の表示、再確認、ハイドレーションの後も再確認までは中継へ取得し直さないこと、CSPの違反が起きないこと、存在しないページの404、クロスサイトを名乗る中継の要求の403、スクリプトの読み込み方、静的なファイルがWorkerを通らずに配信されること、管理者側の画面にフッターが無いことを、PlaywrightのE2Eテスト(`e2e/client/system-status.e2e.test.ts`・`e2e/admin/system-status.e2e.test.ts`)で確かめる。クイックスタートの手順13の開発サーバーか、手順14のプレビューで、APIサーバー・利用者側・管理者側を起動してから実行する。両方の起動で続けて確かめるときは、「[開発サーバーとビルド後のプレビューの両方での実行](#開発サーバーとビルド後のプレビューの両方での実行)」のコマンドを使う。
 
@@ -237,7 +242,7 @@ bun run test:e2e
 
 ### 開発サーバーとビルド後のプレビューの両方での実行
 
-ルートの`bun run test:e2e:dev-and-preview`は、利用者側・管理者側のフロントエンドを開発サーバー(`bun run dev --port 48044 --host 0.0.0.0`・`bun run dev --port 48045 --host 0.0.0.0`)で起動してスモークテストを実行し、止めてから`bun run build`の後にプレビュー(`bun run preview`に同じ引数)で起動して、同じスモークテストを実行する。開発サーバーでは飛ばすビルド後の対象だけの確認も、同じ1回の実行のプレビューの段階で確かめる。
+ルートの`bun run test:e2e:dev-and-preview`は、利用者側・管理者側のフロントエンドを開発サーバー(`bun run dev --port 48044 --host 0.0.0.0`・`bun run dev --port 48045 --host 0.0.0.0`)で起動してE2Eテストを実行し、止めてから`bun run build`の後にプレビュー(`bun run preview`に同じ引数)で起動して、同じE2Eテストを実行する。開発サーバーでは飛ばすビルド後の対象だけの確認も、同じ1回の実行のプレビューの段階で確かめる。
 
 1. APIサーバーをクイックスタートの手順13のとおり先に起動し、ヘルスチェックが200を返すことを確かめる。このコマンドはAPIサーバーを起動しない。
 2. 利用者側・管理者側のフロントエンドは起動しないでおく。48044・48045のどちらかが使われていると、何も起動せずにポートと対象を示して失敗する。
@@ -340,6 +345,19 @@ http://localhost:48041
 
 - staging環境での確かめ方は「[stagingでの確認](../GUIDES/tech/external/001-email-sending.md#stagingでの確認)」に従う。URLは「[メール送信](project-values.md#メール送信)」を参照する。
 
+## stagingへのデプロイとリリース
+
+検査とデプロイはGitHub Actionsが行う(フェーズの構成は「[技術選定のCI/CD](tech-stack.md#cicd)」)。デプロイ・リリースの承認とマージ・シークレットの登録・資源やリポジトリの設定は開発者が行い、AIエージェントは行わない(「[AIエージェントが実行しない操作](../GUIDES/tech/operations/001-deployment.md#aiエージェントが実行しない操作)」)。本プロジェクトの値は「[IaC定義とデプロイのパイプライン](project-values.md#iac定義とデプロイのパイプライン)」と「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を参照する。
+
+| 場面                               | 手順                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 最初のデプロイの前(開発者の手作業) | 「[初回の準備](../GUIDES/tech/operations/001-deployment.md#初回の準備)」                                                                                                                                                                                                                                                   |
+| stagingへのデプロイ                | mainへのマージで、検査の後に自動でデプロイされる(「[mainからstagingへの自動デプロイ](../GUIDES/tech/operations/001-deployment.md#mainからstagingへの自動デプロイ)」)。最初のデプロイは「[stagingの最初のデプロイと識別子の反映](../GUIDES/tech/operations/001-deployment.md#stagingの最初のデプロイと識別子の反映)」に従う |
+| prodへのリリース                   | 「[prodへのリリース](../GUIDES/tech/operations/001-deployment.md#prodへのリリース)」                                                                                                                                                                                                                                       |
+| hotfix                             | 「[hotfixとprodからmainへの戻し](../GUIDES/tech/operations/001-deployment.md#hotfixとprodからmainへの戻し)」                                                                                                                                                                                                               |
+| シークレットの追加と削除           | 「[シークレットの追加と削除](../GUIDES/tech/operations/001-deployment.md#シークレットの追加と削除)」                                                                                                                                                                                                                       |
+| デプロイの失敗・不具合の戻し       | 「[ロールバックと復旧](../GUIDES/tech/operations/002-rollback-and-recovery.md)」                                                                                                                                                                                                                                           |
+
 ## stagingのメールのシークレット
 
 デプロイ先検証環境(`staging`)のイベントサーバーは、検証済みの宛先にだけメールを送る(`EMAIL_RECIPIENT_POLICY`が`allowlist`)。次のシークレットは開発者がInfisicalの`staging`環境へ手作業で登録し、AIエージェントは登録しない。Infisicalの値を正とする。
@@ -351,18 +369,11 @@ http://localhost:48041
 | `EMAIL_SMOKE_RECIPIENT`    | `EMAIL_ALLOWED_RECIPIENTS`に含めた宛先の1つ                                                  | 任意。疎通確認の経路を使うときだけ                           |
 
 1. Infisicalのプロジェクトの`staging`環境のルートフォルダ(`/`)に、Webの管理画面で上の値を登録する。必須の`EMAIL_ALLOWED_RECIPIENTS`は、そのキーを`secrets.required`へ加える変更を`main`へマージする前に登録する。
-2. CIのデプロイ(infra-delivery)が導入された後は、登録だけで次のstagingへのデプロイがWorkerへ反映する。`wrangler secret put`は使わない(使っても次のデプロイでInfisicalの値に戻る)。
-3. CIのデプロイが導入されるまでの暫定の手順として、登録した値をInfisicalから注入し、`wrangler secret put`でイベントサーバーのWorkerへ設定する。値はコマンドやファイルに書かず、標準入力で渡す。
-
-   ```sh
-   cd /workspace/apps/event
-   infisical --telemetry=false run --env staging -- sh -c 'printf %s "$EMAIL_ALLOWED_RECIPIENTS" | wrangler secret put EMAIL_ALLOWED_RECIPIENTS --env staging'
-   infisical --telemetry=false run --env staging -- sh -c 'printf %s "$EMAIL_SMOKE_TOKEN" | wrangler secret put EMAIL_SMOKE_TOKEN --env staging'
-   infisical --telemetry=false run --env staging -- sh -c 'printf %s "$EMAIL_SMOKE_RECIPIENT" | wrangler secret put EMAIL_SMOKE_RECIPIENT --env staging'
-   ```
+2. 登録だけで、次のstagingへのデプロイがWorkerへ反映する(「[stagingへのデプロイとリリース](#stagingへのデプロイとリリース)」)。Wranglerのシークレットのコマンドで直接設定しない(設定しても次のデプロイでInfisicalの値に戻る)。
 
 - 本番環境(`prod`)には`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`を設定しない。疎通確認の経路は404のままになる。
-- 送信ドメインの登録・送信内容のプレビューの無効化・メールイベント用Queueと購読の作成は「[管理画面の設定](../GUIDES/tech/external/001-email-sending.md#管理画面の設定)」と「[購読とQueueの作成](../GUIDES/tech/external/001-email-sending.md#購読とqueueの作成)」に従う。
+- 送信ドメインの登録と送信内容のプレビューの無効化、メールイベント用Queueの作成はIaC定義が、配信不能イベントの購読の作成はデプロイのパイプラインが行い、管理画面では行わない(「[管理画面の設定](../GUIDES/tech/external/001-email-sending.md#管理画面の設定)」「[購読とQueueの作成](../GUIDES/tech/external/001-email-sending.md#購読とqueueの作成)」)。
+- 他のシークレットの登録先と時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」に従う。
 
 ## DBスキーマを変更したとき
 
@@ -381,7 +392,7 @@ bun run db:migrations:check
 ```
 
 - マイグレーションの適用は`apps/api`での1回でよい。`apps/event`は同じローカル状態とデータベースを参照する。
-- `db:migrations:check`は、CIからも同じスクリプトを呼ぶ(infra-deliveryで設定する)。共有のローカル状態を変えずに一時ディレクトリで検出を確かめ、検出されなかったマイグレーションがあれば名前を表示して失敗する。
+- `db:migrations:check`は、CIの検査の品質検査でも、配布のスクリプトの`app-checks`が同じスクリプトを呼ぶ。共有のローカル状態を変えずに一時ディレクトリで検出を確かめ、検出されなかったマイグレーションがあれば名前を表示して失敗する。
 
 ## GraphQLのスキーマや操作を変更したとき
 
@@ -447,6 +458,8 @@ bun run graphql:check
 
 Fingerprintの書式の注意(行末にコメントを付けない、行番号が変わったら登録し直す)、`git revert`・`git cherry-pick`がフックを通らないこと、調査時の注意(`GIT_TRACE=1`・`--log-level debug`)は「[シークレットの管理](../GUIDES/tech/security/001-secret-management.md#シークレットの検出)」の「シークレットの検出」に従う。
 
+CIの検査も、TruffleHogで変更履歴からシークレットを検出する(「[CIのシークレットの検出](../GUIDES/tech/infra/007-ci-cd-pipelines.md#シークレットの検出)」)。CIの検出が誤検知であれば、`/workspace/.github/trufflehog-exclude-paths.txt`に、対象のファイルのパスの正規表現を1行で追記し、直前の行に`#`で始まるコメントで誤検知と判断した理由を書く。このファイルは`.betterleaksignore`とは別に管理し、片方に登録しても他方の検出からは除かれない。
+
 ## compose.yamlを変更したとき
 
 `compose.yaml`を変更したら(特に共有ディレクトリのbind mountや、`node_modules`の名前付きボリュームのマウント)、ホスト環境でコンテナを再作成する。実行中のコンテナには`compose.yaml`の変更が反映されず、変更前のマウントが残るためである。
@@ -488,7 +501,7 @@ bun add --dev --exact <パッケージ>@<版> <パッケージ>@<版> # 導入�
 | `bun run check`                                                                | 共有ディレクトリの配置確認・テスト命名の検査・整形検査・全アプリの静的解析・型生成の検査・GraphQLの生成物の検査・型検査・写しの照合を一括で実行する                                                                                          |
 | `bun run format`                                                               | リポジトリ全体を整形する                                                                                                                                                                                                                     |
 | `bun run test:all:unit`・`bun run test:all:browser`・`bun run test:all:worker` | ルートと全アプリの単体テスト・ブラウザテスト・Workers統合テストを種別ごとに一括で実行する(`--coverage`を付けると各アプリへ渡る)                                                                                                              |
-| `bun run test:e2e`                                                             | E2Eテストを実行する(対象のアプリは事前に起動しておく。並列数の上限は既定で2、`E2E_WORKERS`で上書きできる。「[スモークテスト](#スモークテスト)」)                                                                                             |
+| `bun run test:e2e`                                                             | E2Eテストを実行する(対象のアプリは事前に起動しておく。並列数の上限は既定で2、`E2E_WORKERS`で上書きできる。「[ローカルでのE2Eテスト](#ローカルでのe2eテスト)」)                                                                               |
 | `bun run test:e2e:dev-and-preview`                                             | 利用者側・管理者側のフロントエンドを開発サーバーとビルド後のプレビューで順に起動し、それぞれでE2Eテストを実行する(前提と実行方法は「[開発サーバーとビルド後のプレビューの両方での実行](#開発サーバーとビルド後のプレビューの両方での実行)」) |
 
 APIサーバー・イベントサーバーだけを検査・テストするときは、各アプリのディレクトリ(`/workspace/apps/api`・`/workspace/apps/event`)で次のスクリプトを実行する。テストに必要なシークレットはテストの設定がテスト用の値で渡すため、Infisicalからの注入は要らない。
