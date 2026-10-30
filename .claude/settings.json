@@ -70,6 +70,8 @@
       "Bash(*--no-verify*)",
       "Bash(git commit * -n)",
       "Bash(git commit * -n *)",
+      "Bash(gh api*)",
+      "Bash(gh pr review*)",
       "Bash(gh pr merge*)",
       "Bash(gh repo delete*)",
       "Bash(gh workflow run*)",
