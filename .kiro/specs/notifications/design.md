@@ -1368,7 +1368,7 @@ export interface NotificationIncidentReporter {
 }
 ```
 
-- `SentryNotificationIncidentReporter`(`workers/notifications/sentry-notification-incident-reporter.ts`): `@sentry/cloudflare`の`captureMessage`で、`slot-overdue`・`send-rejected`・`event-stalled`は`error`、`sender-info-missing`・`evening-dispatch-incomplete`は`warning`。タグ`notification_incident`、fingerprint`['notifications', <種類>]`。メールアドレス・名称・トークンを送らない(14.4)。apiの保守(4:21)とeventの送信の両方で使う。
+- `SentryNotificationIncidentReporter`(`workers/notifications/sentry-notification-incident-reporter.ts`): `@sentry/cloudflare`の`captureEvent`(定型の文言を`logentry.message`に置く。`infra/004`の「同じ文言を繰り返し送る通知」)で、`slot-overdue`・`send-rejected`・`event-stalled`は`error`、`sender-info-missing`・`evening-dispatch-incomplete`は`warning`。タグ`notification_incident`、fingerprint`['notifications', <種類>]`。メールアドレス・名称・トークンを送らない(14.4)。apiの保守(4:21)とeventの送信の両方で使う。
 - `MessageWorkRequester`(`NotificationWorkRequester`の実装)は`MessagePublisher.publish`で2つのメッセージを送る。apiとeventの`application`は`lib/workers`を読み込めないため、メッセージの送信をこのポート越しに行う。
 - `NOTIFICATIONS_PLATFORM_MODULE`は上の部品と`NotificationEventPublisher`・`NotificationEventExpander`・`NotificationWorkRequester`・`NotificationIncidentReporter`を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる(12.1)。DIの識別子は`NOTIFICATIONS_PLATFORM_TYPES`(`Symbol.for('notifications.<名前>')`、`core/notifications/identifiers.ts`)。
 
