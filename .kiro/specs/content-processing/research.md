@@ -383,3 +383,151 @@ infra-delivery・content-processing・media-pipeline・identity-authとroadmap�
 - **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
 - **決定**: frontend-platformの影響の表の水平展開として確かめた。`MarkdownEditor`の利用側の結合の記述に、欄を無効にする時は`FormField`の`disabled`で無効にし、子へ渡る`disabled`を`MarkdownEditor`の`disabled`へ渡すことを加えた(`MarkdownEditor`の`disabled`だけではReact Hook Formが欄を無効と扱わないため)。あわせて、`FormField`を`AppForm`の中でだけ使うことを利用側の結合の記述とカタログの例のタスクに書いた。
 - **変えた箇所**: design.mdの`MarkdownEditor`の利用側の結合の記述、tasks.mdの6.5のカタログの例の項目。
+
+---
+
+## 実装済みの上流specとの差分の分析(2026-10-30)
+
+### 分析の範囲と方法
+
+- **状態**: 上流のdev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-deliveryは全タスクが完了している(`ready_for_implementation: true`)。本specは要件・設計・タスクが承認済みで、`apps/common-lib`を含む本spec固有のファイルは未実装である。
+- **目的**: design.mdは上流が設計段階の時点で書かれた。email-delivery(2026-10-27)とfrontend-platform(2026-10-28)の実装の反映は済んでいるため、今回はbackend-platform・api-gateway・dev-tooling・infra-deliveryの実装と、frontend-platformの未反映の箇所を、設計が前提にする契約と照合した。
+- **方法**: Allowed Dependencies・Modified Files・Components and Interfacesに挙がる識別子・登録箇所・設定ファイルを、実装のコードと技術ドキュメントで1つずつ確かめた。新しいパッケージは、npmの公開日時(2026-10-30時点)を確かめた。
+- **注意**: `.kiro/steering`には`roadmap.md`だけがあり、中核のsteering(`product.md`・`tech.md`・`structure.md`)が無い。プロジェクトの文脈はCLAUDE.md・`docs/onboardings`・技術ドキュメントで補った。
+
+### 設計の前提どおりに実装されている契約
+
+| 設計の前提                                                                                                              | 実装の場所                                                                                               | 照合の結果                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AppName`・`APPS`・`SHARED_DIRS`(共有ディレクトリ3つ、検査担当`self`の形)                                               | `config/workspace-layout.ts`                                                                             | 一致。CIの依存の導入(`install-targets.ts`)・一括実行(`run-all.ts`)・コミット時の振り分け(`staged-tasks.ts`)・網羅(`lcov.ts`)は`APPS`から導くため、共用部品を加えるだけで参加する。共用部品に無いスクリプト(`cf-typegen:check`など)は「スクリプト未定義」として飛ばされる |
+| bind mountと名前付きボリューム、`.gitignore`の「共通ディレクトリのエイリアス」                                          | `compose.yaml`・`.gitignore`                                                                             | 一致。共有ディレクトリのnode_modulesを利用側アプリへマウントしない方針(compose.yamlの注記)も設計の解決順序の前提と同じ                                                                                                                                                   |
+| `defineMessageContract`・`MessageHandlerRegistration`・`retry`は`Partial<RetryPolicy>`                                  | `backend-lib/core/messaging`                                                                             | 一致。`search-index.refresh`は種別の形(`<ドメイン>.<動詞句>`、ハイフン可)を満たす。試行回数の上限は`QUEUE_MAX_RETRIES`(6)以下で、設計の5回は通る                                                                                                                         |
+| 処理の例外は`warn`ログと再試行だけで、エラートラッキングへ送らない                                                      | `backend-lib/workers/messaging/queue-consumer.ts`の`handleFailure`                                       | 一致。`SearchKeywordExtractionRetryError`を投げる設計で、一時的な失敗がSentryへ送られない(設計の「一時的な失敗はwarningログだけ」)                                                                                                                                       |
+| `ScheduledJobDefinition`・`createCronRegistry`、`email-delivery.cleanup`(4:21・`order` 900)                             | `backend-lib/core/scheduling/cron-registry.ts`・`api/src/composition/scheduled-jobs.ts`                  | 一致。email-deliveryの実装はあるため、タスク1.1・10の「cron式が無ければ加える」の分岐は通らない                                                                                                                                                                          |
+| 4:21の時間の予算                                                                                                        | `SCHEDULED_RUN_BUDGETS`(300,000ms)、`project-values.md`の「定期実行の時間の予算」(各ジョブの目安30秒)    | 設計に記載は無いが矛盾しない。再抽出のジョブは検索対象ごとに最大200件を順に送るため、目安の30秒に収まるかをタスク10で要約のログから確かめる                                                                                                                              |
+| `AppModule`・`PLATFORM_TYPES`・束縛の形                                                                                 | `backend-lib/core/di`・`workers/email/email-platform-module.ts`・`event/src/composition/email-module.ts` | 一致。経路を持たない共通の束縛は`Omit<AppModule, 'routes'>`、アプリの束縛は`composition/<機能>-module.ts`という先例に`createSearchPlatformModule`・`composition/search-module.ts`が沿う                                                                                  |
+| eventの環境の検証の条件付きの必須キー                                                                                   | `event/src/composition/env-schema.ts`の`requiredConditionalKeys`と`.check(z.superRefine(...))`           | 設計の`KEYWORD_EXTRACTOR`が`google-natural-language`のとき`GOOGLE_NL_API_KEY`を必須にする規則は、この関数へ条件を足す形で入る                                                                                                                                            |
+| `Database`・`createDatabase`・`snakeCase.table`・`BatchItem`(`drizzle-orm/batch`)                                       | `apps/db/client.ts`・drizzle-orm 1.0.0-rc.5                                                              | 一致                                                                                                                                                                                                                                                                     |
+| マイグレーションのフォルダの形(`migrations/<時刻>_<名前>/migration.sql`)と`drizzle-kit generate --custom`               | `apps/db/migrations`・`db/001`                                                                           | 一致。設計の突き合わせの検査が読む形と同じ                                                                                                                                                                                                                               |
+| 層の静的解析(`lib/core/**`は`**/db/**`・`**/workers/**`を読めない、`src/application/**`は`**/lib/workers/**`を読めない) | `apps/api/eslint.config.ts`・`config/eslint/backend-layers.ts`                                           | 一致。`core/search`が`apps/db`を読まない設計、`application/search`がポートだけを読む設計と合う。`**/lib/**`・`**/db/**`の形は`common-lib`の名前に当たらない                                                                                                              |
+| `withValidatedArgs`                                                                                                     | `api/src/presentation/graphql/validated-args.ts`                                                         | 存在する                                                                                                                                                                                                                                                                 |
+| CSP(`script-src 'self' 'nonce-…'`・`style-src 'self' 'unsafe-inline'`)                                                  | `frontend-lib/server/http/security-policy.ts`                                                            | 一致。遅延読み込みの別チャンクは`'self'`で読める                                                                                                                                                                                                                         |
+| 環境の検証のオリジンの形(`isOrigin`)と`toPublicRuntimeConfig`                                                           | `frontend-lib/server/env/frontend-env.ts`(`IMAGES_ORIGIN`が先例)                                         | `CLIENT_SITE_ORIGIN`は同じ形で足せる。3環境の値はinfra-deliveryの資源一覧(`apps/infra/environments/*.json`のホスト名)・ローカルのポート48044と一致                                                                                                                       |
+| 技術ドキュメントの番号`external/002`・`db/004`・`frontend/008`・`security/004`                                          | `docs/GUIDES/tech`                                                                                       | いずれも未使用                                                                                                                                                                                                                                                           |
+| 日次タイムラインの4:21のジョブの表、`infra/003`のジョブの名前の規約                                                     | `docs/GUIDES/service/overview/007-daily-timeline.md`・`docs/GUIDES/tech/infra/003-async-processing.md`   | どちらもまだ無い。タスク11.4・11.5で作る前提どおり                                                                                                                                                                                                                       |
+
+### 要件と資産の対応
+
+| 要件                           | 主な資産(既存 → 新設)                                                                                                                            | 状態                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| 1(共用部品の配置)              | `workspace-layout.ts`・`compose.yaml`・`.gitignore`・CIの導入 → `apps/common-lib`                                                                | Missing(新設)。仕組みは既存で、定義の追記で足りる                                         |
+| 2・3(入力欄とアクセシビリティ) | `FormField`・`Label`・`Tabs`・`Dialog`・`runAxe` → `MarkdownEditor`と`crepe/`                                                                    | Missing。**Constraint**: G-1(ラベルのID)・G-2(`ref`)・G-3(事前バンドル)、**Unknown**: G-8 |
+| 4〜6(描画・サニタイズ・抽出)   | 生のHTMLの規則`frontend/no-raw-html` → `renderMarkdown`・`MarkdownContent`                                                                       | Missing。上流の制約との食い違いは無い                                                     |
+| 7(文字数と検証)                | `useAppForm`・`withValidatedArgs`・`zod.ts`の`jitless` → `markdownTextSchema`                                                                    | Missing。Zodの実体と`jitless`はfrontend-platformの反映(2026-10-28)で整理済み              |
+| 8・11・12(索引・削除・照合)    | `db/002`・`db/003`の全文検索の規約、`db.batch()` → `apps/db/search`・`workers/search`                                                            | Missing。上流の制約との食い違いは無い                                                     |
+| 9・10(正規化・縮退・再抽出)    | `QueueConsumer`・`MessagePublisher`・`createCronRegistry`・`SCHEDULED_RUN_BUDGETS` → `SearchIndexRefreshHandler`・再抽出のジョブ                 | Missing。**Constraint**: G-4(Sentryの送り方)・G-5(`fetchMock`)                            |
+| 13(強調表示)                   | → `findHighlightRanges`・`HighlightedText`                                                                                                       | Missing                                                                                   |
+| 14(検索対象の登録)             | → `SEARCH_TARGETS`・`SEARCH_INDEXES`                                                                                                             | Missing                                                                                   |
+| 15(運用と観測)                 | ログ・エラートラッキングの規約、`project-values.md`のシークレットの表、`OPTIONAL_WORKER_SECRETS`・`WORKER_SCOPED_SECRETS` → 疎通確認のスクリプト | Missing。**Constraint**: G-4・G-7                                                         |
+| 16(テストと文書)               | テストの命名・カバレッジ・版の管理(`coding/002`) → 4つの技術ドキュメント                                                                         | Missing。**Constraint**: G-6(版の表)                                                      |
+
+### 設計と実装済みの上流との食い違い
+
+#### G-1: `FormField`がラベルの要素のIDを子へ渡さない(Constraint、影響: 高)
+
+- **事実**: `components/form/form-field.tsx`は、子へ`ControllerRenderProps`と`id`(入力の要素のID)・`aria-invalid`・`aria-describedby`だけを渡す。`Label`は`htmlFor={controlId}`で関連付け、`id`を持たない。
+- **設計との差**: `MarkdownEditorProps.labelId`は「表示しているラベルの要素のID(FormFieldが持つ)」としているが、そのIDは`FormField`から得られない。編集領域は`contenteditable`の`div`(`role="textbox"`)で、HTMLの`<label for>`が関連付けられる要素ではないため、`htmlFor`だけでは名前が付かない(要件3.2)。ラベルを押しても編集領域へフォーカスが移らない。
+- **選択肢**:
+  - A: frontend-platformの`FormField`を改め、`Label`に`id`を付けて`FormControlProps`へ`labelId`を加える。既存の欄は使わない項目が1つ増えるだけで、振る舞いは変わらない。frontend-platformの`form-field`のブラウザテストとカタログの記述に波及する。
+  - B: `MarkdownEditor`が`FormControlProps.id`を受け取り、外枠の要素に置いてラベルのクリックを受け、編集領域には`aria-labelledby`の代わりにラベルの文字列を`aria-label`で渡す。`label`が`ReactNode`のため文字列を別に渡す必要があり、表示と読み上げが二重の定義になる。
+  - C: `FormField`を使わず、`MarkdownEditor`専用の欄の部品を作る。サーバーのエラーの対応・無効の欄のエラーの消去など`FormField`の振る舞いを写すことになり、2026-10-28の反映(`FormField`の`disabled`で無効にする)とも食い違う。
+
+#### G-2: 欄の部品に`FormField`の`ref`を付けないと、エラーの欄へフォーカスが移らない(Constraint、影響: 中)
+
+- **事実**: `frontend/004`の「処理の後のフォーカス」は、サーバーが欄ごとのエラーを返した時に`AppForm`が最初のエラーの欄へフォーカスを移し、欄の部品に`FormField`が渡す`ref`を付けないと移らないと定めている。
+- **設計との差**: `MarkdownEditorProps`に`ref`が無く、`EditorController.focus()`はあるが`FormField`の`ref`へつなぐ経路が無い。編集領域の読み込み前(仮の表示)のフォーカス先も決まっていない。
+- **Research Needed**: React Hook Formが`ref`の`focus`だけを呼ぶ(要素でなくてもよい)かを確かめ、`focus`を持つ値を`ref`へ渡して、読み込み前は仮の表示の要素、読み込み後は`EditorController.focus()`へ委ねる形で足りるかを設計で決める。
+
+#### G-3: ブラウザテストの依存の事前バンドルの一覧に新しいパッケージが無い(Constraint、影響: 中)
+
+- **事実**: frontend-lib・client・adminの`vitest.browser.config.ts`は、実行中に依存の事前バンドルをやり直すとページが再読み込みされReactが2つ読み込まれてフックが失敗するため、画面部品の依存を`optimizeDeps.include`(`PREBUNDLED_DEPENDENCIES`)に列挙している。
+- **設計との差**: design.md・tasks.mdに事前バンドルの記述が無い。描画の9パッケージ(表示部品とプレビュー)と、`@milkdown/*`・`vue`(遅延読み込みの編集領域)を一覧へ加えないと、テストの実行中に初めて読み込まれた時点で再読み込みが起き得る。Storybookの`.storybook/main.ts`にも同じ扱いが要るかは未確認である。
+- **対処の候補**: タスク4.2のVite設定の変更に、3つの`vitest.browser.config.ts`の一覧への追加(と必要ならStorybook)を含める。`check:editor-chunks`の分離の検査はビルドの検査で、事前バンドルの一覧はテストの実行環境だけに効くため、両立する。
+
+#### G-4: エラートラッキングへの定型の通知に`captureMessage`を使う設計になっている(Constraint、影響: 中)
+
+- **事実**: `infra/004`の「同じ文言を繰り返し送る通知」は、設定の誤りなど定型の文言で繰り返し起こり得る出来事を、`captureMessage`ではなく`captureEvent`で`logentry`に文言を、`fingerprint`に出来事の種類を入れて送ると定めている。`captureMessage`は`dedupeIntegration`により2件目以降が捨てられる。email-deliveryは、アプリケーション層のポート`EmailIncidentReporter`とインフラ層の`SentryEmailIncidentReporter`でこれを行い、`application`からSentryを直接呼ばない。
+- **設計との差**: `SearchIndexRefreshHandler`の手順1(未登録の検索対象)が`captureMessage`を使い、外部APIの設定の誤りの通知(10.5)の送り方も明示されていない。いずれも`application/search`に置く処理からSentryを呼ぶ形で、email-deliveryの先例と層の置き方が異なる(静的解析は`application`からの`@sentry/*`の読み込みを禁止していないため、検査では検出されない)。
+- **選択肢**:
+  - A: email-deliveryに合わせ、`application/search`に通知のポート(例: 未登録の検索対象・設定の誤り・要求の送信の失敗の種類を持つもの)を置き、`infrastructure/search`に`captureEvent`の実装を置く。
+  - B: 処理から`captureEvent`を直接呼び、`logentry`と`fingerprint`の規則だけを合わせる。
+- 送信の失敗を伝える`QueueSearchIndexRefreshRequester`は`workers`に置くため、`captureException`(例外の値を持ち、スタックトレースがあるため重複の除外の対象外)のままでよい。
+
+#### G-5: Workers統合テストの`fetchMock`が上流の版に無い(Constraint、影響: 中)
+
+- **事実**: `@cloudflare/vitest-pool-workers` 0.23.0の`cloudflare:test`の型定義に`fetchMock`は無い。eventの既存のテスト(`create-email-provider.worker.test.ts`など)は、`vi.fn`で作った`fetch`の代わりを部品へ注入している。
+- **設計との差**: design.mdのテストの方針(KeywordExtractorsのテストの行、環境の値の表の後の注記)が`fetchMock`で外部への通信を止めるとしている。`GoogleNaturalLanguageExtractor`のコンストラクタは既に`fetcher`を受け取るため、実装の形は変えず、テストの記述を「`fetcher`の注入で止める」に改めれば足りる。`createKeywordExtractor`を通す結合のテスト(Queueから送って処理する9.3)で外部へ出ないことの確かめ方は、`createKeywordExtractor`へ`fetch`を渡す引数を足すか、束縛を差し替えるかを決める必要がある。
+
+#### G-6: 版の表が上流の更新に追随していない(Constraint、影響: 低)
+
+- **事実**: 2026-10-28以降の依存の更新(コミット`68a605b5`)で、上流の版が`zod` 4.6.7・`vitest`系 4.1.12・`@cloudflare/vitest-pool-workers` 0.23.0・`axe-core` 4.14.0になった。design.mdのTechnology Stackの表は`zod` 4.6.5・`vitest` 4.1.11・`@cloudflare/vitest-pool-workers` 0.22.0・`axe-core` 4.13.0のままである。表は「上流と同じ版」を意図しているため、実装は現在の上流の版に従う。
+- **新しいパッケージの公開日時(2026-10-30時点、2週間の規則)**:
+
+  | パッケージ                                                                                                     | 設計の版   | 新しい版と公開日   | 2週間の規則              |
+  | -------------------------------------------------------------------------------------------------------------- | ---------- | ------------------ | ------------------------ |
+  | `@milkdown/crepe`・`kit`・`react`                                                                              | 7.22.2     | 7.22.3(2026-10-10) | 満たす(Q2の時点では未満) |
+  | 同上                                                                                                           | 7.22.2     | 7.23.0(2026-10-27) | 満たさない               |
+  | `remark-cjk-friendly`                                                                                          | 2.3.2      | 2.3.3(2026-10-21)  | 満たさない               |
+  | `remark-cjk-friendly-gfm-strikethrough`                                                                        | 2.3.1      | 2.3.2(2026-10-21)  | 満たさない               |
+  | `hast-util-to-text`                                                                                            | 4.0.2      | 4.0.3(2026-10-25)  | 満たさない               |
+  | unified・remark-parse・remark-gfm・remark-rehype・rehype-sanitize・rehype-stringify・`@tailwindcss/typography` | 設計どおり | 更新なし           | —                        |
+
+- **選択肢**: Crepeは、research.mdの容量・アクセシビリティ・入力経路の調査を行った7.22.2のままにするか、2週間の規則を満たした7.22.3へ上げて同じ調査(バンドルの分離・ブラウザテスト)をやり直すかを開発者が決める。他の新しいパッケージは設計の版のままにする。
+
+#### G-7: シークレットの宣言先が増えた(Constraint、影響: 低)
+
+- **事実**: infra-deliveryの実装で、Workerのシークレットのキーの一覧の正が`project-values.md`の節になり、キーを宣言する変更(Wrangler設定の`secrets.required`、`scripts/delivery/core/worker-secrets.ts`の`OPTIONAL_WORKER_SECRETS`、`scripts/delivery/core/secret-scope.ts`の`WORKER_SCOPED_SECRETS`)と同じ変更で表へ行を足す規則になった。表には下流のmedia-pipeline・identity-authの行が先に載っているが、`GOOGLE_NL_API_KEY`の行は無い。
+- **設計との差**: 設計(staging・prodの`secrets.required`に含め、`dev`には置かない、表への行の追加は9.1)は規則に沿う。必須のキーのため`OPTIONAL_WORKER_SECRETS`への追加は要らない。
+- **選択肢**: キーを使うのはeventだけのため、`/`(全Workerへ渡る)に置くか、`/workers/event`に置いて`WORKER_SCOPED_SECRETS`へ加え、APIサーバーへ渡さないようにするかを開発者が決める。後者は`dev`・`staging`の`/workers/event`の行と、`WORKER_SCOPED_SECRETS`の単体テストの更新が加わる。
+
+#### G-8: チャンクの読み込みの失敗時に、ページの再読み込みが入力欄の再試行より先に動き得る(Unknown、影響: 低)
+
+- **事実**: frontend-platformの`start/preload-recovery.ts`は、`vite:preloadError`を受けると、セッションで1回だけページを再読み込みする(デプロイ後の古いチャンクへの対処)。
+- **設計との差**: 設計は、編集領域の読み込みの失敗を`EditorLoadBoundary`で受けて「再試行」を表示し、それまでの値を失わない(要件2.12)としている。`React.lazy`の`import()`がViteの読み込みの補助を通り、失敗時に`vite:preloadError`が送られる場合、境界の表示より先にページが再読み込みされ、同じフォームの他の欄の未保存の値が失われ得る。
+- **Research Needed**: Vite 8.3の本番のビルドで、遅延読み込みの`import()`の失敗が`vite:preloadError`を送るかを確かめる。送る場合、再読み込みを受け入れる(デプロイ後の初回だけで、新しい版で再試行される)か、編集領域の読み込みだけ`preventDefault`で再読み込みを止めるかを決める。
+
+### 実装の進め方の選択肢
+
+- **A: 設計を改めてから実装する**: G-1〜G-5を、これまでの反映の節と同じ形でdesign.md・tasks.mdへ反映し(要件は変えない)、G-6〜G-8の判断を記録してから着手する。食い違いを残さずに実装へ渡せる。G-1のAを採るとfrontend-platformの部品を本specが改めることになり、「上流・並行specへの変更」の表に行が増える。
+- **B: 実装の中で吸収する**: 該当のタスク(G-1・G-2は6.2〜6.5、G-3は4.2、G-4は9.2、G-5は9.1・9.3)の実装の時に食い違いを直す。着手は早いが、design.mdと実装が食い違ったまま下流spec(共用部品の上に定義を置くmedia-pipeline・identity-authと、入力欄を使う全spec)が設計を参照する期間ができる。
+- **C: 組み合わせる**: 下流specが参照する契約の変更(G-1・G-2の`MarkdownEditorProps`の形、G-4の層の置き方)だけを先にdesign.mdへ反映し、テストと設定の記述(G-3・G-5・G-6)はタスクの実装の中で直す。
+
+### 規模とリスク
+
+- **規模**: XL(2週間以上)。新しい共有ディレクトリ兼アプリ・遅延読み込みのエディタ・描画とサニタイズ・FTS5の索引と非同期の正規化・外部APIを含み、12の大項目に分かれる。今回の食い違いの反映だけならS(1〜3日)。
+- **リスク**: 中。上流の仕組み(共有ディレクトリ・メッセージ・定期実行・層の規則)は設計の前提どおりで、追記で足りる。残るリスクは、Crepeの組み込みの調整(アクセシビリティ・入力経路)と、D1のFTS5がbun:sqliteと同じに振る舞うか(research.mdのRisks & Mitigations)で、G-1・G-2はアクセシビリティの要件3.2に直接効く。
+
+### 設計への申し送り
+
+- G-1〜G-5は、要件を変えずに設計の記述で直せる。G-1・G-4は選択肢の判断が要る。
+- G-6のCrepeの版、G-7のシークレットの置き場所、G-8の再読み込みの扱いは、開発者の判断を要する。
+- 実装の前提の確認は、タスク1.1の「上流の全タスクの完了」とemail-deliveryのcron式の有無の両方が満たされている。
+
+## 差分の分析の反映(2026-10-30、開発者の決定)
+
+- **方針**: 開発者の指示で、G-1〜G-8は実装済みのコードを正とし、コードに明らかな誤りがある場合と判断が付かない場合だけを開発者へ確認した。要件は変えていない。
+- **開発者へ確認した事項**:
+  - G-1: frontend-platformの`FormField`を改め、`Label`に`id`を付けて`FormControlProps.labelId`で子へ渡す(推奨案を採用)。
+  - G-6: Crepe(`@milkdown/crepe`・`kit`・`react`)を7.22.3へ上げる(推奨案を採用)。7.22.3は使う機能(リスト・選択時のツールバー)に当たる不具合の修正を含む。容量・アクセシビリティ・入力経路の調査は7.22.2で行ったため、バンドルの分離の検査とブラウザテストを7.22.3で行う。
+  - G-8: 入力欄の読み込みの失敗ではページを再読み込みさせない(推奨案を採用)。入力欄の読み込み関数は自身の`import()`が未決の間の`vite:preloadError`を捕捉の段階で受けて既定の動作を止め、frontend-platformの`preload-recovery.ts`は`defaultPrevented`の出来事で再読み込みしない。
+- **コードを正として決めた事項**:
+  - G-2: React Hook Formの`Controller`の`ref`は受け取った値の`focus`が関数なら呼ぶだけのため(react-hook-form 7.91.0)、`MarkdownEditor`は`ref`に`focus`だけを持つ値を渡し、読み込み前は要求を保留する。
+  - G-3: 事前バンドルの一覧は3つの`vitest.browser.config.ts`だけが持つため、そこへ描画の9パッケージ・`@milkdown/*`の3つ・`vue`を加え、Storybookには一覧を持たせない。
+  - G-4: email-deliveryの`EmailIncidentReporter`と同じく、eventの`application/search/ports.ts`に`SearchIncidentReporter`を置き、`infrastructure/search`の実装が`captureEvent`(`logentry`と`fingerprint`)で送る。`workers/search`の要求の送信の失敗は`captureException`のままにする。
+  - G-5: `fetch`は引数で受け取り(email-deliveryの`createEmailProvider(env, fetcher)`と同じ)、単体の検査は`vi.fn`の注入、Queueからの結合は`vi.spyOn(globalThis, 'fetch')`で外部への通信を差し替える。workerdの`fetch`を保持したフィールドのメソッドとして呼ばない(APIサーバーの`modules.ts`の注記と同じ理由)。
+  - G-6: Crepe以外の上流と共有するパッケージ(`zod`・`vitest`系・`@cloudflare/vitest-pool-workers`・`axe-core`)は上流の現在の版に従う。2週間の規則を満たさない`remark-cjk-friendly` 2.3.3・`remark-cjk-friendly-gfm-strikethrough` 2.3.2・`hast-util-to-text` 4.0.3は採らず、設計の版のままにする。
+  - G-7: `GOOGLE_NL_API_KEY`は、eventだけが使う既存のキー(`EMAIL_SMOKE_TOKEN`・`MEDIA_SMOKE_TOKEN`)と同じくフォルダ`/`に置き、`WORKER_SCOPED_SECRETS`・`OPTIONAL_WORKER_SECRETS`へは加えない。
+- **変えた箇所**:
+  - design.md: 上流・並行specへの変更の表(frontend-platformの行)、Existing Architecture Analysis(上流の実装済みの状態)、Allowed Dependencies、Revalidation Triggers、Technology Stackの版、File Structure Plan(eventの通知のポートと実装)、Modified Files(`vitest.browser.config.ts`・`form-field.tsx`・`preload-recovery.ts`)、入力欄の読み込みと値の流れ、`MarkdownEditorProps`(`ref`・`labelId`の出どころ・`MarkdownEditorFocusTarget`)、`LoadCrepeEditor`、CrepeEditorSurfaceのIntegration、Components and Interfacesの表、`SearchIndexRefreshHandler`、`SearchIncidentReporter`(新設)、KeywordExtractors・EventSearchComposition、Error Categories・Monitoring、Testing Strategy、Supporting Referencesのシークレットの注記。
+  - tasks.md: 4.2(Crepeの版・上流の版・事前バンドル)、6.5(`FormField`の`labelId`・`preload-recovery.ts`・`ref`・再読み込みの抑止)、9.1(`fetch`の注入・シークレットのフォルダ)、9.2(通知のポートとSentryの実装)、9.3(`fetch`の差し替え・束縛)。
+  - 水平展開: legal-pagesのdesign.mdの技術スタックの表の`Crepe 7.22.2`を7.22.3に改めた。

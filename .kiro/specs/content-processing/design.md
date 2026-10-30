@@ -52,7 +52,7 @@
 
 - 上流(dev-tooling): 基底設定(`tsconfig.base.json`・`eslint.config.base.ts`・`prettier.config.ts`・`bunfig.toml`)、スクリプト契約、テストの命名、`config/workspace-layout.ts`と`shared-dirs`の仕組み(定義への追記だけ)、`config/vitest`のプリセット。
 - 上流(backend-platform): `apps/db`の`Database`・`createDatabase`・テーブル定義の`snakeCase.table`、`core`の`defineMessageContract`・`MessageContract`・`MessageHandler`・`MessageMeta`・`MessageHandlingResult`・`RetryPolicy`・`DEFAULT_RETRY_POLICY`・`ScheduledJobDefinition`・`ScheduledJobHandler`・`AppModule`・`PLATFORM_TYPES`・`Clock`・`getAppLogger`・`AppError`、`workers`の`MessagePublisher`・`PlatformEnv`、登録箇所(`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`MODULES`・`env-schema.ts`)。
-- 上流(frontend-platform): `components/ui`のボタン・タブ・ダイアログ・テキスト入力・ラベル、`components/state`の状態表示、`utilities/class-names.ts`の`cn`、`test/a11y.ts`の`runAxe`、`config/frontend-lint.ts`、`styles/tokens.css`・`base.css`、ルーターの文脈の`PublicRuntimeConfig`、Storybookの設定。
+- 上流(frontend-platform): `components/ui`のボタン・タブ・ダイアログ・テキスト入力・ラベル、`components/state`の状態表示、`utilities/class-names.ts`の`cn`、`test/a11y.ts`の`runAxe`、`config/frontend-lint.ts`、`styles/tokens.css`・`base.css`、ルーターの文脈の`PublicRuntimeConfig`、`components/form`の`FormField`・`FormControlProps`(`labelId`は本specが加える)、`start/preload-recovery.ts`、Storybookの設定。
 - npmパッケージ: Technology Stackの表に挙げた版に限る。
 - 依存の方向: 「Dependency Direction」に従う。`apps/common-lib`は他のアプリのコードを読み込まない。`@milkdown/*`と`vue`を読み込めるのは`apps/frontend-lib/components/markdown-editor/crepe/**`だけである。
 
@@ -60,6 +60,7 @@
 
 - `renderMarkdown`・`MarkdownRenderOptions`(`siteOrigin`・`externalLinkRel`・`sameOriginLinkRel`・`idScope`)・`RenderedMarkdown`(`html`・`headings`・`plainText`)の形、見出しのIDの変換・接頭辞・連番の規則(help-center・user-profile-social・product-launch・engagement・legal-pages)。
 - `MarkdownEditorProps`・`MarkdownContentProps`・`CollapsibleMarkdownContentProps`・`HighlightedTextProps`の形(画面を持つ全下流spec)。
+- frontend-platformの`FormControlProps.labelId`(本specが加える)と、`preload-recovery.ts`が`defaultPrevented`の出来事で再読み込みしない規則(`FormField`の子で独自の入力欄を作るspec、遅延読み込みを使う全画面)。
 - `markdownTextSchema`の引数と文言、書記素の数え方と`countGraphemes`の形(入力欄を持つ全下流spec・identity-auth)。
 - `SearchTargetDefinition`・`SearchIndexDefinition`・`SearchIndexStatements`・`SearchIndexRefreshRequester`の形、索引文書の共通の列と`KEYWORD_STATUSES`、全文検索の索引とトリガーの名前の規約、`ftsRankedSources`・`bm25Rank`の返す列(directory-discovery・help-center)。
 - メッセージ`search-index.refresh`の本文と再試行の方針、再抽出のジョブの名前・時刻・順序・件数の上限(運用・infra-delivery・4:21にジョブを足すmedia-pipeline・identity-auth)。
@@ -85,19 +86,22 @@
 
 #### 上流・並行specへの変更(本specが行う)
 
-| spec              | 変更                                                                                                                                                                                                                                                                                                                                                                                | 再確認の要否                                     |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| dev-tooling       | `AppName`・`APPS`・`SHARED_DIRS`に`common-lib`を加え、`compose.yaml`のbind mountと名前付きボリューム、`.gitignore`の配置先、`workspace-layout.unit.test.ts`の期待値を更新する。`coding/002`・`coding/003`に追記する                                                                                                                                                                 | 要(共有ディレクトリが5つになる)                  |
-| backend-platform  | api・eventの依存・型検査の対象・静的解析とテストの除外に`common-lib/`を加える。`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`MODULES`・eventの`env-schema.ts`・Wrangler設定に追記する。`infra/003-async-processing.md`の定期実行の説明に、ジョブ・波及処理とメッセージ種別の名前の規約を追記する                                                                      | 不要(登録箇所と文書への追記の範囲)               |
-| frontend-platform | `frontend-lint.ts`の`no-restricted-imports`にMilkdownの制限と、common-libの読み込みの許可(`components/**`・`server/**`・`utilities/**`)と`validation/**`の制限を加える。client・admin・frontend-libの依存・型検査の対象・Vite設定(Vueの機能フラグ・`server.fs.allow`)、`styles/base.css`の取り込み、変数`CLIENT_SITE_ORIGIN`と`PublicRuntimeConfig.clientSiteOrigin`を加える        | 要(環境の検証と公開する設定の形が変わる)         |
-| infra-delivery    | eventの`GOOGLE_NL_API_KEY`を、Infisicalのキーの表(infra-deliveryが所有)に載せる。実装後のキーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節で、本specが行を加える。client・adminの`CLIENT_SITE_ORIGIN`の3環境の値を、infra-deliveryの一覧の値と一致させる。CIは`APPS`に従って`apps/common-lib`の依存を導入し、`shared-dirs:place`で配置する | 要(キーと値の一覧への追加はinfra-deliveryが行う) |
-| email-delivery    | 業務時刻4:21のcron式`21 12 * * *`を共有する(順序950で後に並ぶ)。email-deliveryはroadmapの依存ではないため、実装の有無はタスク1.1で確かめ、無ければ開発者へ報告して進める。cron式が無ければタスク10で加える                                                                                                                                                                          | 不要                                             |
+| spec              | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 再確認の要否                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| dev-tooling       | `AppName`・`APPS`・`SHARED_DIRS`に`common-lib`を加え、`compose.yaml`のbind mountと名前付きボリューム、`.gitignore`の配置先、`workspace-layout.unit.test.ts`の期待値を更新する。`coding/002`・`coding/003`に追記する                                                                                                                                                                                                                                                                                                                                                                                                           | 要(共有ディレクトリが5つになる)                                  |
+| backend-platform  | api・eventの依存・型検査の対象・静的解析とテストの除外に`common-lib/`を加える。`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`SCHEDULED_JOBS`・`MODULES`・eventの`env-schema.ts`・Wrangler設定に追記する。`infra/003-async-processing.md`の定期実行の説明に、ジョブ・波及処理とメッセージ種別の名前の規約を追記する                                                                                                                                                                                                                                                                                                                | 不要(登録箇所と文書への追記の範囲)                               |
+| frontend-platform | `frontend-lint.ts`の`no-restricted-imports`にMilkdownの制限と、common-libの読み込みの許可(`components/**`・`server/**`・`utilities/**`)と`validation/**`の制限を加える。client・admin・frontend-libの依存・型検査の対象・Vite設定(Vueの機能フラグ・`server.fs.allow`)、ブラウザテストの事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)、`styles/base.css`の取り込み、変数`CLIENT_SITE_ORIGIN`と`PublicRuntimeConfig.clientSiteOrigin`を加える。`FormField`の`Label`に`id`を付けて`FormControlProps.labelId`で子へ渡す。`start/preload-recovery.ts`を、既定の動作が止められた`vite:preloadError`では再読み込みしないように改める | 要(環境の検証と公開する設定の形、`FormControlProps`の形が変わる) |
+| infra-delivery    | eventの`GOOGLE_NL_API_KEY`を、Infisicalのキーの表(infra-deliveryが所有)に載せる。実装後のキーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節で、本specが行を加える。client・adminの`CLIENT_SITE_ORIGIN`の3環境の値を、infra-deliveryの一覧の値と一致させる。CIは`APPS`に従って`apps/common-lib`の依存を導入し、`shared-dirs:place`で配置する                                                                                                                                                                                                                                           | 要(キーと値の一覧への追加はinfra-deliveryが行う)                 |
+| email-delivery    | 業務時刻4:21のcron式`21 12 * * *`を共有する(順序950で後に並ぶ)。email-deliveryはroadmapの依存ではないため、実装の有無はタスク1.1で確かめ、無ければ開発者へ報告して進める。cron式が無ければタスク10で加える                                                                                                                                                                                                                                                                                                                                                                                                                    | 不要                                                             |
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- `apps`配下は未実装で、dev-toolingの品質ゲート・共有ディレクトリの配置の仕組みだけが実装済みである。backend-platform・api-gateway・email-delivery・frontend-platformは設計まで承認済みで、本specはその契約(登録箇所・メッセージ・定期実行・層の規則・共通部品・静的解析の設定)を前提にする。roadmapの依存(frontend-platformと、その上流のbackend-platform・api-gateway)の実装の完了後に着手する。email-deliveryはroadmapの依存ではなく、共有するのは4:21の定期実行だけのため、実装が無くても止めずに開発者へ報告する。
+- 上流のdev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-deliveryは実装済みで、本specはその契約(登録箇所・メッセージ・定期実行・層の規則・共通部品・静的解析の設定・シークレットの宣言)を前提にする。email-deliveryは4:21の定期実行(`21 12 * * *`、`email-delivery.cleanup`・900)と4:21の時間の予算(`SCHEDULED_RUN_BUDGETS`の300,000ms、各ジョブの目安30秒)を登録済みである。上流の実装との照合の結果はresearch.mdの「実装済みの上流specとの差分の分析(2026-10-30)」に記録した。
+- frontend-platformの`FormField`は、子へ入力の要素のID・`aria-invalid`・`aria-describedby`・`ref`を渡し、`Label`は`htmlFor`で入力の要素と関連付ける。編集領域のような`contenteditable`の要素は`htmlFor`で名前が付かないため、本specが`Label`の`id`を`FormControlProps.labelId`として渡すよう改める。`AppForm`は、サーバーが欄ごとのエラーを返すと、`FormField`が渡す`ref`の`focus`で最初のエラーの欄へフォーカスを移す(`frontend/004`)。
+- frontend-platformの`start/preload-recovery.ts`は、`vite:preloadError`を受けるとセッションで1回だけページを再読み込みする。Viteの読み込みの補助は遅延読み込みの`import()`の失敗でもこの出来事を送る(Vite 8.3.5で確認)。
+- frontend-lib・client・adminの`vitest.browser.config.ts`は、テストの実行中に依存の事前バンドルをやり直すとページが再読み込みされReactが2つ読み込まれるため、画面部品の依存を`optimizeDeps.include`(`PREBUNDLED_DEPENDENCIES`)に列挙している。Storybookの設定は列挙していない。
 - `config/workspace-layout.ts`の`SHARED_DIRS`は、`apps/db`・`apps/backend-lib`(検査担当api)と`apps/frontend-lib`(検査担当`self`)の3つで、フロントエンドとバックエンドの両方へ配置される共有ディレクトリが無い。`scripts/tooling/shared-dirs.ts`は定義を読むだけの汎用の仕組みで、定義の追加で新しい共有ディレクトリを扱える。
 - `docs/GUIDES/tech/db/002`は、FTS5のexternal contentとトリガーによる同期、カスタムマイグレーション、Time Travelによるバックアップを定めている。backend-platformは全文検索用のテーブルの主キーを連番とする規約だけを持ち、部品を提供しない。
 - frontend-platformは、`@eslint-react/dom-no-dangerously-set-innerhtml`を全体で禁止し、本specのサニタイズ済みHTMLの部品だけが理由のコメント付きで1行だけ無効化できる規約(`frontend/003`)を置いている。CSPはスクリプトにnonceと`'self'`、スタイルに`'unsafe-inline'`を許可する。
@@ -191,17 +195,17 @@ graph TB
 
 ### Technology Stack
 
-| Layer            | Choice / Version                                                                                                                                                                                                             | Role in Feature                                      | Notes                                                                                                           |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 描画             | unified 11.0.5・remark-parse 11.0.0・remark-gfm 4.0.1・remark-cjk-friendly 2.3.2・remark-cjk-friendly-gfm-strikethrough 2.3.1・remark-rehype 11.1.2・rehype-sanitize 6.0.0・rehype-stringify 10.0.1・hast-util-to-text 4.0.2 | 解析・文字列化・サニタイズ・HTMLとテキストの出力     | tech-stack記載済み。common-libと4アプリで版をそろえる。rehype-slugは使わない(仮決定P2)                          |
-| 検証             | zod 4.6.5                                                                                                                                                                                                                    | マークダウンの入力の検証規則                         | backend-platform・frontend-platformと同じ版                                                                     |
-| エディタ         | @milkdown/crepe 7.22.2・@milkdown/kit 7.22.2・@milkdown/react 7.22.2                                                                                                                                                         | 編集領域(遅延読み込み)                               | 7.22.3は公開から2週間未満(Q2)。`@milkdown/kit`の明示の宣言は仮決定P3。frontend-lib・client・adminで版をそろえる |
-| 文字組み         | @tailwindcss/typography 0.5.20                                                                                                                                                                                               | 本文の`prose`の文字組み                              | 新規(Q6)。frontend-lib・client・adminで版をそろえる                                                             |
-| 標準API          | `Intl.Segmenter`・`String.prototype.normalize`・`String.prototype.isWellFormed`・Web Crypto(`crypto.subtle.digest`)・`fetch`・`AbortSignal.timeout`                                                                          | 書記素・NFKC・不正なUnicodeの判定・ハッシュ・外部API | workerd・ブラウザ・Bunの標準。パッケージを追加しない                                                            |
-| データ           | Cloudflare D1(SQLite FTS5)・drizzle-orm 1.0.0-rc.5                                                                                                                                                                           | 索引文書のテーブル・全文検索の索引・トリガー         | backend-platformの版                                                                                            |
-| 非同期・定期実行 | Cloudflare Queues(`JOBS_QUEUE`)・Cron Triggers(api)                                                                                                                                                                          | 索引の更新・日次の再抽出                             | backend-platformの基盤。新しいQueueは作らない                                                                   |
-| 外部API          | Google Cloud Natural Language v2 `documents:analyzeEntities`                                                                                                                                                                 | キーワード抽出                                       | tech-stack記載済み。`fetch`でRESTを呼ぶ                                                                         |
-| テスト           | bun test(bun:sqlite)・vitest 4.1.11(Browser Mode・`@cloudflare/vitest-pool-workers` 0.22.0)・vitest-browser-react 2.3.0・axe-core 4.13.0                                                                                     | 単体・ブラウザ・Workers統合テスト                    | 上流の版                                                                                                        |
+| Layer            | Choice / Version                                                                                                                                                                                                             | Role in Feature                                      | Notes                                                                                                                                                               |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 描画             | unified 11.0.5・remark-parse 11.0.0・remark-gfm 4.0.1・remark-cjk-friendly 2.3.2・remark-cjk-friendly-gfm-strikethrough 2.3.1・remark-rehype 11.1.2・rehype-sanitize 6.0.0・rehype-stringify 10.0.1・hast-util-to-text 4.0.2 | 解析・文字列化・サニタイズ・HTMLとテキストの出力     | tech-stack記載済み。common-libと4アプリで版をそろえる。rehype-slugは使わない(仮決定P2)                                                                              |
+| 検証             | zod 4.6.7                                                                                                                                                                                                                    | マークダウンの入力の検証規則                         | 上流の現在の版(実装時に上流が更新していればそれに従う)                                                                                                              |
+| エディタ         | @milkdown/crepe 7.22.3・@milkdown/kit 7.22.3・@milkdown/react 7.22.3                                                                                                                                                         | 編集領域(遅延読み込み)                               | 調査は7.22.2で行い、2週間の規則を満たした7.22.3へ上げた(2026-10-30の開発者の決定)。`@milkdown/kit`の明示の宣言は仮決定P3。frontend-lib・client・adminで版をそろえる |
+| 文字組み         | @tailwindcss/typography 0.5.20                                                                                                                                                                                               | 本文の`prose`の文字組み                              | 新規(Q6)。frontend-lib・client・adminで版をそろえる                                                                                                                 |
+| 標準API          | `Intl.Segmenter`・`String.prototype.normalize`・`String.prototype.isWellFormed`・Web Crypto(`crypto.subtle.digest`)・`fetch`・`AbortSignal.timeout`                                                                          | 書記素・NFKC・不正なUnicodeの判定・ハッシュ・外部API | workerd・ブラウザ・Bunの標準。パッケージを追加しない                                                                                                                |
+| データ           | Cloudflare D1(SQLite FTS5)・drizzle-orm 1.0.0-rc.5                                                                                                                                                                           | 索引文書のテーブル・全文検索の索引・トリガー         | backend-platformの版                                                                                                                                                |
+| 非同期・定期実行 | Cloudflare Queues(`JOBS_QUEUE`)・Cron Triggers(api)                                                                                                                                                                          | 索引の更新・日次の再抽出                             | backend-platformの基盤。新しいQueueは作らない                                                                                                                       |
+| 外部API          | Google Cloud Natural Language v2 `documents:analyzeEntities`                                                                                                                                                                 | キーワード抽出                                       | tech-stack記載済み。`fetch`でRESTを呼ぶ                                                                                                                             |
+| テスト           | bun test(bun:sqlite)・vitest 4.1.12(Browser Mode・`@cloudflare/vitest-pool-workers` 0.23.0)・vitest-browser-react 2.3.0・axe-core 4.14.0                                                                                     | 単体・ブラウザ・Workers統合テスト                    | 上流の現在の版(実装時に上流が更新していればそれに従う)                                                                                                              |
 
 - common-libのコードが実行時に使うパッケージ(描画の9つとzod)は、api・event・client・adminも同じ版で宣言する(共有ディレクトリの規約)。エディタの3つと`@tailwindcss/typography`・remark-cjk-friendlyの2つは、frontend-lib・client・adminが宣言する。版をそろえるパッケージの一覧を`coding/002`に加える。
 - hast・mdastの型パッケージは宣言せず、変換で触る節点だけの構造的な型を`markdown/hast-types.ts`に置く(推移的な型パッケージに頼らない)。
@@ -313,6 +317,8 @@ apps/
 │   ├── scripts/smoke-keyword-extraction.ts        # 実際のAPIへの疎通確認(開発者が手元で実行)
 │   └── src/
 │       ├── application/search/search-index-refresh-handler.ts  # search-index.refreshの処理
+│       ├── application/search/ports.ts            # SearchIncidentReporter・SearchIncident(email-deliveryのEmailIncidentReporterと同じ置き方)
+│       ├── infrastructure/search/sentry-search-incident-reporter.ts  # captureEventでlogentryとfingerprintを送る実装
 │       ├── infrastructure/search/google-natural-language-extractor.ts
 │       ├── infrastructure/search/disabled-keyword-extractor.ts
 │       ├── infrastructure/search/create-keyword-extractor.ts   # 環境の値による実装の選択
@@ -336,10 +342,12 @@ docs/
 - `compose.yaml` — 4つのbind mount(`./apps/common-lib:/workspace/apps/<アプリ>/common-lib`)と名前付きボリューム`node_modules_common_lib:/workspace/apps/common-lib/node_modules`を加える。
 - `.gitignore` — 「共通ディレクトリのエイリアス」に4つの配置先を加える。
 - `apps/api`・`apps/event`の`package.json`・`bun.lock`(描画の9パッケージ、`test:unit`の`--path-ignore-patterns='common-lib/**'`)、`tsconfig.json`(`include`に`common-lib/**/*.ts`、`exclude`に`common-lib/**/*.test.ts`・`common-lib/config/**`・`common-lib/markdown/fixtures/**`・`common-lib/*.config.ts`)、`eslint.config.ts`(`ignores`に`common-lib/`)、`vitest.worker.config.ts`(`exclude`に`common-lib/**`)。
-- `apps/client`・`apps/admin`の`package.json`・`bun.lock`(描画の9パッケージ・エディタの3パッケージ・`@tailwindcss/typography`、`test:unit`の除外)、`tsconfig.json`(api・eventと同じ`include`・`exclude`)、`eslint.config.ts`(`ignores`に`common-lib/`)、`vitest.browser.config.ts`(`exclude`に`common-lib/**`)、`vite.config.ts`(Vueの機能フラグの`define`)、`wrangler.jsonc`(3環境の`vars.CLIENT_SITE_ORIGIN`)、`test/config/wrangler-config.unit.test.ts`(変数の検査)、`test/config/raw-html-exception.unit.test.ts`(新規。自身の`src`に生のHTMLの例外が0箇所であること)。
+- `apps/client`・`apps/admin`の`package.json`・`bun.lock`(描画の9パッケージ・エディタの3パッケージ・`@tailwindcss/typography`、`test:unit`の除外)、`tsconfig.json`(api・eventと同じ`include`・`exclude`)、`eslint.config.ts`(`ignores`に`common-lib/`)、`vitest.browser.config.ts`(`exclude`に`common-lib/**`、`PREBUNDLED_DEPENDENCIES`に描画の9パッケージ・`@milkdown/*`の3つ・`vue`)、`vite.config.ts`(Vueの機能フラグの`define`)、`wrangler.jsonc`(3環境の`vars.CLIENT_SITE_ORIGIN`)、`test/config/wrangler-config.unit.test.ts`(変数の検査)、`test/config/raw-html-exception.unit.test.ts`(新規。自身の`src`に生のHTMLの例外が0箇所であること)。
 - `apps/frontend-lib/package.json`・`bun.lock` — エディタの3パッケージ・remark-cjk-friendlyの2つ・`@tailwindcss/typography`と、スクリプト`check:editor-chunks`。
 - `apps/frontend-lib/config/frontend-lint.ts` — `no-restricted-imports`へ、`@milkdown/*`・`vue`の`crepe/`以外での禁止、`crepe/**`の静的importとexport-fromの禁止、`components/**`・`server/**`での`common-lib/validation/**`の禁止を、既存の依存の方向の規則と同じ設定へ統合する。`no-restricted-syntax`に`crepe/`への`import()`を`load-crepe-editor.ts`以外で禁止する規則を加える。
-- `apps/frontend-lib/vitest.browser.config.ts`・`.storybook/main.ts` — `server.fs.allow`に配置元の`../common-lib`を加え、Vueの機能フラグを`define`する。
+- `apps/frontend-lib/vitest.browser.config.ts`・`.storybook/main.ts` — `server.fs.allow`に配置元の`../common-lib`を加え、Vueの機能フラグを`define`する。`vitest.browser.config.ts`の`PREBUNDLED_DEPENDENCIES`に、描画の9パッケージ・`@milkdown/*`の3つ・`vue`を加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)。Storybookは既存の設定どおり事前バンドルの一覧を持たせない。
+- `apps/frontend-lib/components/form/form-field.tsx`・`form-field`のブラウザテスト・`docs/GUIDES/tech/frontend/005-shared-components.md` — `Label`に`useId`から作った`id`を付け、`FormControlProps`に`labelId`を加えて子へ渡す。既存の欄は受け取る値が1つ増えるだけで、振る舞いを変えない。カタログの`FormField`の行の「子の関数が受け取る値」に`labelId`を加える。
+- `apps/frontend-lib/start/preload-recovery.ts`・同名の単体テスト — `vite:preloadError`の`defaultPrevented`が真なら再読み込みせず、印も書かない。既定の動作を止めるのは入力欄の読み込み関数だけである(「LoadCrepeEditor」)。
 - `apps/frontend-lib/styles/base.css` — `@import './markdown.css'`を加える。
 - `apps/frontend-lib/server/env/frontend-env.ts`・同名の単体テスト — `ValidatedFrontendEnv.CLIENT_SITE_ORIGIN`(URLのオリジン)と`PublicRuntimeConfig.clientSiteOrigin`を加える。
 - `apps/db/package.json` — スクリプト`db:search-index-sql`(`bun ./scripts/print-search-index-sql.ts`)を加える。
@@ -412,7 +420,7 @@ sequenceDiagram
     E->>S: replace document when differs
 ```
 
-- 読み込みに失敗した場合は、`EditorLoadBoundary`が「エディタを読み込めませんでした。」と再試行のボタンを出し、再試行で新しい読み込みを始める。値はフォームの状態にあるため失われない。
+- 読み込みに失敗した場合は、`EditorLoadBoundary`が「エディタを読み込めませんでした。」と再試行のボタンを出し、再試行で新しい読み込みを始める。値はフォームの状態にあるため失われない。読み込み関数は自身の`import()`が未決の間に送られた`vite:preloadError`の既定の動作を止め、frontend-platformの`preload-recovery.ts`によるページの再読み込み(同じフォームの未保存の値が失われる)を起こさせない(要件2.12、2026-10-30の開発者の決定)。
 - 編集領域の変更は約150msの間隔で間引いてフォームへ渡し、フォーカスが外れた時に最新の値を必ず渡す。送信ボタンの押下はフォーカスを外すため、送信時の値は最新である。
 
 ### 索引の更新
@@ -589,7 +597,8 @@ sequenceDiagram
 | SearchIndexRepository                                                                                                                            | workers/search                     | 条件付きの追加・更新・削除・再抽出の候補               | 9.2, 9.3, 9.7, 9.8, 10.6, 11.3, 16.2      | Database (P0)、SearchTargetRegistry (P0)                | Service        |
 | SearchIndexStatements                                                                                                                            | workers/search                     | ドメインの一括の書き込みに含める文                     | 9.1, 9.10, 11.1, 11.2, 14.2               | Database (P0)                                           | Service        |
 | SearchIndexRefreshRequester・SearchSourceProvider・SearchPlatformModule                                                                          | workers/search                     | 更新の要求・元データの読み取り・共通の束縛             | 9.1, 9.10, 10.7, 14.2                     | MessagePublisher (P0)                                   | Service        |
-| SearchIndexRefreshHandler                                                                                                                        | event/application                  | 索引の更新の処理                                       | 9.1〜9.10, 10.1〜10.5, 11.3, 14.3, 15.1   | ports (P0)、Clock (P1)                                  | Batch          |
+| SearchIndexRefreshHandler                                                                                                                        | event/application                  | 索引の更新の処理                                       | 9.1〜9.10, 10.1〜10.5, 11.3, 14.3, 15.1   | ports (P0)、SearchIncidentReporter (P0)、Clock (P1)     | Batch          |
+| SearchIncidentReporter                                                                                                                           | event/application・infrastructure  | 運用者へ知らせる異常の通知                             | 10.5, 14.3                                | `@sentry/cloudflare`の`captureEvent` (P0)               | Service        |
 | KeywordExtractors                                                                                                                                | event/infrastructure               | Google Cloud Natural Language・無効化・選択            | 9.5, 10.1, 10.4, 10.5, 10.8, 15.4         | fetch (P0)、NaturalLanguageProtocol (P0)                | Service        |
 | EventSearchComposition                                                                                                                           | event/composition                  | 環境・束縛・メッセージの登録                           | 9.1, 15.2                                 | backend-platformの登録箇所 (P0)                         | State          |
 | KeywordExtractionSmoke                                                                                                                           | event/scripts                      | 実際のAPIへの疎通確認                                  | 15.5                                      | NaturalLanguageProtocol (P0)                            | Batch          |
@@ -943,7 +952,8 @@ export interface MarkdownEditorProps {
   readonly value: string;
   readonly onValueChange: (markdown: string) => void;
   readonly onBlur: () => void;
-  readonly labelId: string; // 表示しているラベルの要素のID(FormFieldが持つ)
+  readonly ref?: Ref<MarkdownEditorFocusTarget>; // FormFieldが渡すref(AppFormがエラーの欄へフォーカスを移す)
+  readonly labelId: string; // 表示しているラベルの要素のID(FormFieldのFormControlProps.labelId)
   readonly describedById?: string; // 説明・エラーの要素のID
   readonly invalid?: boolean;
   readonly disabled?: boolean;
@@ -951,9 +961,14 @@ export interface MarkdownEditorProps {
   readonly placeholder: string;
   readonly preview: MarkdownRenderOptions; // 表示場所と同じ指定(idScopeは'preview'を推奨)
 }
+
+export interface MarkdownEditorFocusTarget {
+  focus(): void;
+}
 ```
 
-- 利用側は、`AppForm`の中に置いたfrontend-platformの`FormField`(`AppForm`の外では使わない)の中でReact Hook Formの`Controller`から`value`・`onValueChange`・`onBlur`・`invalid`を渡し、検証規則には`markdownTextSchema`を使う。欄を無効にする時は`FormField`の`disabled`で無効にし、子へ渡る`disabled`を`MarkdownEditor`の`disabled`へ渡す(`MarkdownEditor`の`disabled`だけを指定すると、React Hook Formが欄を無効と扱わず、送信の値と検証から外れない)。
+- `ref`へは`useImperativeHandle`で`focus`だけを持つ値を渡す。React Hook Formの`Controller`の`ref`は、受け取った値の`focus`が関数なら呼ぶだけで、要素であることを求めない。`focus`は、制御器を受け取っていれば`EditorController.focus()`を呼び、読み込み前・読み込み失敗の間は要求を保留して、制御器を受け取った時にフォーカスする。
+- 利用側は、`AppForm`の中に置いたfrontend-platformの`FormField`(`AppForm`の外では使わない)の子の関数が受け取る値から、`value`・`onValueChange`(`onChange`)・`onBlur`・`ref`・`labelId`・`aria-describedby`・`aria-invalid`を渡し、検証規則には`markdownTextSchema`を使う。欄を無効にする時は`FormField`の`disabled`で無効にし、子へ渡る`disabled`を`MarkdownEditor`の`disabled`へ渡す(`MarkdownEditor`の`disabled`だけを指定すると、React Hook Formが欄を無効と扱わず、送信の値と検証から外れない)。
 
 #### MarkdownToolbar・MarkdownLinkDialog・MarkdownLengthCounter・EditorPlaceholder・EditorLoadBoundary・LoadCrepeEditor
 
@@ -962,7 +977,7 @@ export interface MarkdownEditorProps {
 - `MarkdownLengthCounter`(2.8・3.5): 「1,234 / 2,000」(`Intl.NumberFormat('ja-JP')`)を表示し、超過で注意色にする。視覚的に隠したライブリージョン(`aria-live="polite"`)は、超過した時に「文字数が上限の2,000文字を超えています。」、上限以内に戻った時に「文字数が上限以内に戻りました。」だけを読み上げる。
 - `EditorPlaceholder`(2.11・2.12): 状態`loading`は、編集領域と同じ最小の高さの枠に現在の値の描画結果(空ならプレースホルダーの文)と、視覚的に隠した「エディタを読み込んでいます」を`aria-busy="true"`で表示する。状態`failed`は「エディタを読み込めませんでした。」と「再試行」のボタンを`role="alert"`で表示する。
 - `EditorLoadBoundary`: 子の読み込みの例外を捕まえて`failed`を表示し、「再試行」で`key`を変えて新しい`React.lazy`を作り直す(同じ失敗した読み込みを再利用しない)。
-- `LoadCrepeEditor`: `export const loadCrepeEditor = () => lazy(() => import('./crepe/crepe-editor-surface'))`だけを持ち、`crepe/`への唯一の参照とする。
+- `LoadCrepeEditor`: `export const loadCrepeEditor = () => lazy(...)`だけを持ち、`crepe/`への唯一の参照とする。`lazy`の読み込み関数は、`import('./crepe/crepe-editor-surface')`の前に`window`へ`vite:preloadError`の聞き手を捕捉の段階(`capture: true`)で加え、受けた出来事の`preventDefault()`を呼び、`import()`が決着したら(成功・失敗とも)外す(2.12)。捕捉の段階の聞き手は、`preload-recovery.ts`が通常の段階で加えた聞き手より先に呼ばれるため、`preload-recovery.ts`は`defaultPrevented`を見て再読み込みしない。失敗は`lazy`の例外として`EditorLoadBoundary`へ届く。未決の間に別の遅延読み込み(画面遷移のチャンクなど)が失敗した場合も再読み込みしないが、その失敗はその読み込みの例外として既存の扱いに届く。
 
 #### CrepeEditorSurface
 
@@ -997,7 +1012,7 @@ export default function CrepeEditorSurface(
 
 **Implementation Notes**
 
-- Integration: client・admin・frontend-libのVite設定で`__VUE_OPTIONS_API__`・`__VUE_PROD_DEVTOOLS__`・`__VUE_PROD_HYDRATION_MISMATCH_DETAILS__`を`false`に定義する。
+- Integration: client・admin・frontend-libのVite設定で`__VUE_OPTIONS_API__`・`__VUE_PROD_DEVTOOLS__`・`__VUE_PROD_HYDRATION_MISMATCH_DETAILS__`を`false`に定義する。client・admin・frontend-libの`vitest.browser.config.ts`の`PREBUNDLED_DEPENDENCIES`に`@milkdown/crepe`・`@milkdown/kit`・`@milkdown/react`・`vue`と描画の9パッケージを加える。
 - Validation: ブラウザテストで、ツールバーの各操作、`# `の入力と見出しレベル1の貼り付けが「# 」付きの段落になること、画像の記法の入力・画像を含むHTMLの貼り付け・ファイルの貼り付けで画像が入らないこと、`**太字。**の`が強調になり往復で保たれること、Tabキーで次の要素へ移ること、外部の値の置き換え、読み取り専用、`runAxe`の違反0件を確かめる。
 - Risks: Milkdownの文字列化は記法を統一・エスケープするため、保存される原文は利用者の入力した記法と異なり得る(research.mdのRisks)。
 
@@ -1555,13 +1570,38 @@ export declare function createSearchIndexStatements(
 
 - Trigger: backend-platformの`QueueConsumer`が`search-index.refresh`を本文の検証の後に渡す。
 - 処理(「System Flows」の索引の更新):
-  1. `catalog.find(target)`が無ければ、`error`ログとSentryの`captureMessage`(タグ`search_target`)を送り、`done`(14.3。再試行しない)。
+  1. `catalog.find(target)`が無ければ、`error`ログと`SearchIncidentReporter`への`unregistered-target`の通知を送り、`done`(14.3。再試行しない)。
   2. `provider.read`が`undefined`なら`store.delete`して`done`(9.3)。
   3. `buildIndexDocument`→`store.findState`→`planRefresh`。`skip-stale`は書かずに`done`(9.7)。`store-empty`・`reuse-keywords`は抽出せずに書く(9.6)。
-  4. `extract`なら`extractor.extract(document.extractionInput)`→`decideAfterExtraction`(`maxAttempts`は`SEARCH_INDEX_REFRESH_RETRY.maxAttempts`)→`store.upsert`。`notify`ならSentryへ設定の誤りを送る(10.5)。`retry`なら書いた後に`SearchKeywordExtractionRetryError`(本文・キーワードを含まない)を投げ、backend-platformの再試行に委ねる(10.1)。
+  4. `extract`なら`extractor.extract(document.extractionInput)`→`decideAfterExtraction`(`maxAttempts`は`SEARCH_INDEX_REFRESH_RETRY.maxAttempts`)→`store.upsert`。`notify`なら`SearchIncidentReporter`へ`extractor-misconfigured`を通知する(10.5)。`retry`なら書いた後に`SearchKeywordExtractionRetryError`(本文・キーワードを含まない)を投げ、backend-platformの再試行に委ねる(10.1)。
   5. `upsert`が`skipped`なら、元データの削除・対象外・新しい版のいずれかとして`done`(11.3)。
 - Idempotency & recovery: 同じ本文を何度処理しても、処理時点の元データから同じ書き込みになる(9.9)。
 - ログ(15.1): 1件ごとに`info`(カテゴリ`['search','index']`)で`target`・`sourceId`・結果(`extracted`・`reused`・`fallback`・`unsupported`・`disabled`・`removed`・`stale`・`skipped`・`retrying`)・送った文字数(抽出した場合)を出す。本文とキーワードは出さない。
+
+#### SearchIncidentReporter
+
+| Field        | Detail                                                       |
+| ------------ | ------------------------------------------------------------ |
+| Intent       | 運用者へ知らせる索引の更新の異常を、エラートラッキングへ送る |
+| Requirements | 10.5, 14.3                                                   |
+
+```typescript
+// event/src/application/search/ports.ts
+export type SearchIncident =
+  | { readonly kind: 'unregistered-target'; readonly target: string }
+  | {
+      readonly kind: 'extractor-misconfigured';
+      readonly target: string;
+      readonly status: number | undefined; // 外部APIの状態コード(応答の形の不一致はundefined)
+    };
+export interface SearchIncidentReporter {
+  report(incident: SearchIncident): void;
+}
+```
+
+- email-deliveryの`EmailIncidentReporter`と同じく、ポートを`application`に、Sentryの実装`SentrySearchIncidentReporter`を`infrastructure/search`に置き、処理はSentryを直接呼ばない。
+- 実装は`infra/004`の「同じ文言を繰り返し送る通知」に従い、`captureMessage`ではなく`captureEvent`で送る。レベルは`error`、`logentry.message`は種類ごとの定型の文言(「検索対象が登録されていません」「キーワード抽出の外部APIの設定に誤りがあります」)、`fingerprint`は`['search-unregistered-target', target]`・`['search-extractor-misconfigured', String(status)]`、タグは`search_target`(と`status`)とする。本文・キーワード・APIキーを含めない。
+- `workers/search`の`QueueSearchIndexRefreshRequester`の送信の失敗は、例外の値を持つため`captureException`(タグ`search_target`)のままとする(スタックトレースを持つイベントは重複の除外の対象外)。
 
 #### KeywordExtractors
 
@@ -1576,14 +1616,19 @@ export declare function createSearchIndexStatements(
 
 ```typescript
 export declare class GoogleNaturalLanguageExtractor implements KeywordExtractor {
-  constructor(apiKey: string, fetcher?: typeof fetch, timeoutMs?: number); // 既定はグローバルのfetchと10000ms
+  constructor(apiKey: string, fetcher: typeof fetch, timeoutMs?: number); // 既定は10000ms
 }
 export declare class DisabledKeywordExtractor implements KeywordExtractor {} // 常に{ kind: 'disabled' }
-export declare function createKeywordExtractor(env: {
-  readonly KEYWORD_EXTRACTOR: 'google-natural-language' | 'disabled';
-  readonly GOOGLE_NL_API_KEY?: string;
-}): KeywordExtractor;
+export declare function createKeywordExtractor(
+  env: {
+    readonly KEYWORD_EXTRACTOR: 'google-natural-language' | 'disabled';
+    readonly GOOGLE_NL_API_KEY?: string;
+  },
+  fetcher: typeof fetch,
+): KeywordExtractor;
 ```
+
+- email-deliveryの`createEmailProvider(env, fetcher)`と同じく、`fetch`は引数で受け取り、`composition/search-module.ts`が束縛の時に大域の`fetch`を渡す。workerdの`fetch`は別のオブジェクトのメソッドとして呼ぶと不正な呼び出しになるため、受け取った関数は保持したフィールドのメソッドとして呼ばず(`this.fetcher(...)`としない)、変数に取り出して呼ぶ。
 
 - `GoogleNaturalLanguageExtractor`は`POST ANALYZE_ENTITIES_ENDPOINT`に`content-type: application/json`・`x-goog-api-key`と`buildAnalyzeEntitiesRequest(text)`を送り、`AbortSignal.timeout(timeoutMs)`で打ち切る(15.4)。時間切れは`timeout`、通信の例外は`network`の`temporary-failure`、応答は`interpretAnalyzeEntitiesResponse`で分類する。APIキーをログ・例外に含めない。
 
@@ -1599,7 +1644,7 @@ export declare function createKeywordExtractor(env: {
 ##### State Management
 
 - `env-schema.ts`: `KEYWORD_EXTRACTOR`(`google-natural-language`・`disabled`)を必須にし、`google-natural-language`のとき`GOOGLE_NL_API_KEY`(空でない文字列)を必須にする(15.2)。
-- `composition/search-module.ts`: `KeywordExtractor`(`createKeywordExtractor(env)`)と`RefreshHandler`を束縛する。
+- `composition/search-module.ts`: `KeywordExtractor`(`createKeywordExtractor(env, fetch)`)・`SearchIncidentReporter`(`SentrySearchIncidentReporter`)と`RefreshHandler`を束縛する。
 - `message-handlers.ts`: `{ contract: SEARCH_INDEX_REFRESH_MESSAGE, handler: SEARCH_TYPES.RefreshHandler, retry: SEARCH_INDEX_REFRESH_RETRY }`を加える。
 - Wrangler設定は「Supporting References」の表のとおりで、継承されないキーは環境ごとに書く。
 
@@ -1723,21 +1768,21 @@ const COMMON_LIB: SharedDirDefinition = {
 
 ### Error Categories and Responses
 
-| 種類                     | 発生箇所              | 応答                                                                                  |
-| ------------------------ | --------------------- | ------------------------------------------------------------------------------------- |
-| 入力の検証の失敗         | フォーム・APIサーバー | `markdownTextSchema`の文言。APIは`validation_error`(api-gatewayの`withValidatedArgs`) |
-| 描画の指定の誤り         | 呼び出し側のコード    | `MarkdownOptionsError`(開発時に検出)                                                  |
-| エディタの読み込みの失敗 | ブラウザ              | 「エディタを読み込めませんでした。」と再試行。値は保持                                |
-| 外部APIの一時的な失敗    | イベントサーバー      | 書き込み後に再試行(最大5回)、上限で縮退索引                                           |
-| 外部APIの非対応言語      | イベントサーバー      | 縮退索引(`unsupported`)、再試行しない                                                 |
-| 外部APIの設定の誤り      | イベントサーバー      | 縮退索引(`fallback`)とSentryへの通知、日次で再抽出                                    |
-| 未登録の検索対象         | イベントサーバー      | `error`ログとSentry、処理しない                                                       |
-| 要求の送信の失敗         | APIサーバー           | `error`ログとSentry、ドメインの書き込みは成功のまま、日次で更新待ちを回復             |
-| 検索対象の登録の誤り     | 単体テスト            | `SearchTargetRegistryError`・`SearchIndexDefinitionError`                             |
+| 種類                     | 発生箇所              | 応答                                                                                          |
+| ------------------------ | --------------------- | --------------------------------------------------------------------------------------------- |
+| 入力の検証の失敗         | フォーム・APIサーバー | `markdownTextSchema`の文言。APIは`validation_error`(api-gatewayの`withValidatedArgs`)         |
+| 描画の指定の誤り         | 呼び出し側のコード    | `MarkdownOptionsError`(開発時に検出)                                                          |
+| エディタの読み込みの失敗 | ブラウザ              | 「エディタを読み込めませんでした。」と再試行。値は保持                                        |
+| 外部APIの一時的な失敗    | イベントサーバー      | 書き込み後に再試行(最大5回)、上限で縮退索引                                                   |
+| 外部APIの非対応言語      | イベントサーバー      | 縮退索引(`unsupported`)、再試行しない                                                         |
+| 外部APIの設定の誤り      | イベントサーバー      | 縮退索引(`fallback`)と`SearchIncidentReporter`(`captureEvent`)への通知、日次で再抽出          |
+| 未登録の検索対象         | イベントサーバー      | `error`ログと`SearchIncidentReporter`(`captureEvent`)、処理しない                             |
+| 要求の送信の失敗         | APIサーバー           | `error`ログとSentryの`captureException`、ドメインの書き込みは成功のまま、日次で更新待ちを回復 |
+| 検索対象の登録の誤り     | 単体テスト            | `SearchTargetRegistryError`・`SearchIndexDefinitionError`                                     |
 
 ### Monitoring
 
-- Sentry: 外部APIの設定の誤り(タグ`search_target`・`status`)、未登録の検索対象、要求の送信の失敗。一時的な失敗と縮退は`warning`ログだけにし、Sentryへ送らない(障害時の通知の洪水を避ける)。
+- Sentry: 外部APIの設定の誤り(タグ`search_target`・`status`)と未登録の検索対象は`SearchIncidentReporter`が`captureEvent`(`logentry`と`fingerprint`、`infra/004`の「同じ文言を繰り返し送る通知」)で、要求の送信の失敗は`captureException`で送る。一時的な失敗と縮退は`warning`ログだけにし、Sentryへ送らない(障害時の通知の洪水を避ける)。
 - ログ: 索引の更新の結果と送った文字数(料金の目安)、再抽出の件数。本文・キーワード・APIキーを含めない。
 
 ## Testing Strategy
@@ -1750,13 +1795,14 @@ const COMMON_LIB: SharedDirDefinition = {
   - `apps/db`(bun:sqlite): `renderSearchIndexSql`で作った索引が追加・更新・削除で同期し`integrity-check`に通ること、状態の列だけの更新で全文検索の索引を書き換えないこと、前方一致・列の重み・`rebuild`・トリガーの作り直し、条件付きの追加・更新(版と存在)、`defineSearchIndex`の検証、`findMissingSearchIndexSql`。
   - `core/search`: 項目の正規化と抽出の入力・ハッシュの安定性、`planRefresh`の全分岐、`decideAfterExtraction`の表の全行、応答の分類(各状態コードと`languageSupported`)、キーワードの選別。
   - アプリ: `SearchIndexRefreshHandler`の全分岐(偽のポート)、`SearchKeywordReextractionJob`、検索対象の集約点の検証。
+  - frontend-platformの`preload-recovery.unit.test.ts`: 既定の動作が止められた`vite:preloadError`では再読み込みせず印も書かないこと、止められていなければ従来どおり1回だけ再読み込みすること。
 - Workers統合テスト(D1・Queues):
   - `workers/search`: 固定の検索対象で、条件付きの追加・更新(古い版・削除済み・対象外は書かない)、`keep`のキーワード、削除と全文検索の索引の連動、再抽出の候補、`markPending`と`deleteSources`(91件以上の分割)を`db.batch()`に入れた場合、`ftsRankedSources`・`bm25Rank`の結果と並び順(16.2)。
-  - event: `GoogleNaturalLanguageExtractor`(`fetchMock`で200・`languageSupported: false`・言語の400・その他の400・401・429・500・時間切れ)、Queueから`search-index.refresh`を送って索引文書が作られること、再試行と最後の試行での縮退、環境の検証(キーの欠落)。
+  - event: `GoogleNaturalLanguageExtractor`(`vi.fn`で作った`fetch`の代わりを注入して200・`languageSupported: false`・言語の400・その他の400・401・429・500・時間切れ)、Queueから`search-index.refresh`を送って索引文書が作られること、再試行と最後の試行での縮退、環境の検証(キーの欠落)、`SentrySearchIncidentReporter`が`captureEvent`で種類ごとの`fingerprint`を送ること。Queueからの結合では、email-deliveryの`email-module.worker.test.ts`と同じく`vi.spyOn(globalThis, 'fetch')`で外部への通信を差し替える(`@cloudflare/vitest-pool-workers` 0.23.0の`cloudflare:test`は`fetchMock`を持たない)。
   - api: 要求の部品がQueueへ送ること、送信の失敗で例外にならないこと、cronの一致の検査(backend-platform)に再抽出の式が含まれること。
 - ブラウザテスト(Vitest Browser Mode・`runAxe`):
   - `MarkdownContent`: 文字組み・ライトとダーク・表の枠のキーボードでのフォーカス・違反0件。`CollapsibleMarkdownContent`: あふれる場合とあふれない場合、`aria-expanded`。`HighlightedText`: `<mark>`の範囲。
-  - `MarkdownEditor`: サーバー側の描画相当(読み込み前)の仮の表示と操作できないツールバー、読み込み後のツールバーの全操作(キーボード)、リンクのダイアログ(設定・解除・取り消し・形式違反・フォーカスの戻り)、見出しレベル1と画像の入力・貼り付け・ファイルの貼り付け、CJKの強調、Tabキーで抜けること、カウンターと超過の読み上げ、フォーカスアウトと間引きの値の受け渡し、外部の値の置き換え、無効、読み込み失敗と再試行、プレビュー(空・表示場所と同じHTML)、「書く」「プレビュー」の両方で違反0件(3.6)。
+  - `MarkdownEditor`: サーバー側の描画相当(読み込み前)の仮の表示と操作できないツールバー、読み込み後のツールバーの全操作(キーボード)、リンクのダイアログ(設定・解除・取り消し・形式違反・フォーカスの戻り)、見出しレベル1と画像の入力・貼り付け・ファイルの貼り付け、CJKの強調、Tabキーで抜けること、カウンターと超過の読み上げ、フォーカスアウトと間引きの値の受け渡し、外部の値の置き換え、無効、読み込み失敗と再試行(読み込みの`vite:preloadError`の既定の動作が止められ、ページが再読み込みされないこと)、`FormField`の`labelId`による編集領域の名前、`ref`の`focus`による読み込み前後のフォーカス(読み込み前は保留)、プレビュー(空・表示場所と同じHTML)、「書く」「プレビュー」の両方で違反0件(3.6)。frontend-platformの`FormField`のブラウザテストに`Label`の`id`と`labelId`の一致を加える。
 - 静的解析・ビルド: `markdown-lint-rules.unit.test.ts`(違反例の報告)、`raw-html-exception.unit.test.ts`、`check:editor-chunks`(遅延読み込みの分離)。
 - E2E: 本specは画面の経路を持たない。入力欄と検索を使う画面のE2Eは、engagement・directory-discovery・help-centerが書く。
 
@@ -1813,6 +1859,6 @@ flowchart LR
 | `GOOGLE_NL_API_KEY`(eventのシークレット) | 無し(`secrets.required`に含めない) | Infisicalの`staging`(`secrets.required`に含める)            | Infisicalの`prod`(`secrets.required`に含める)       |
 | `CLIENT_SITE_ORIGIN`(client・admin)      | `http://localhost:48044`           | `https://genai-example-2-client-staging.lab.kurachiweb.com` | `https://genai-example-2-client.lab.kurachiweb.com` |
 
-- `GOOGLE_NL_API_KEY`は、infra-deliveryのInfisicalのキーの表に載る。実装後のキーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節で、本specが`secrets.required`へ加える変更(タスク9.1)と同じ変更で行を加える(技術ドキュメントには写さない)。stagingの値は、`secrets.required`に加える変更をmainへマージする前に開発者がInfisicalの`staging`へ登録する(未登録のままマージすると、以後のstagingのデプロイがシークレットの欠落で止まる)。prodの値の登録はlaunch-readinessがリリース時に行う。
+- `GOOGLE_NL_API_KEY`は、Infisicalの各環境のフォルダ`/`に置く(eventだけが使う`EMAIL_SMOKE_TOKEN`・`MEDIA_SMOKE_TOKEN`と同じ扱いで、`WORKER_SCOPED_SECRETS`には加えない)。staging・prodで必須のため`secrets.required`で宣言し、`OPTIONAL_WORKER_SECRETS`には加えない。キーは、infra-deliveryのInfisicalのキーの表に載る。実装後のキーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節で、本specが`secrets.required`へ加える変更(タスク9.1)と同じ変更で行を加える(技術ドキュメントには写さない)。stagingの値は、`secrets.required`に加える変更をmainへマージする前に開発者がInfisicalの`staging`へ登録する(未登録のままマージすると、以後のstagingのデプロイがシークレットの欠落で止まる)。prodの値の登録はlaunch-readinessがリリース時に行う。
 - `CLIENT_SITE_ORIGIN`の3環境の値は、identity-authがapiに置く同名の変数と、infra-deliveryの一覧の値と同じにする。
-- eventのWorkers統合テストでは`KEYWORD_EXTRACTOR`を`google-natural-language`、`GOOGLE_NL_API_KEY`をテスト用の固定値にし、`fetchMock`で外部への通信を止める。
+- eventのWorkers統合テストでは`KEYWORD_EXTRACTOR`を`google-natural-language`、`GOOGLE_NL_API_KEY`をテスト用の固定値にし、`fetch`の代わりの注入か`vi.spyOn(globalThis, 'fetch')`で外部への通信を止める。
