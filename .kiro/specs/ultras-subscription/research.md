@@ -113,7 +113,7 @@
   - 支払いの再試行(Smart Retries)の後の扱いは、ダッシュボードの「Manage failed payments」で「サブスクリプションをキャンセル」を選べる。料金とプランはこの設定を前提にする。
   - 支払いの失敗・カードの期限切れなどの顧客向けメールは、ダッシュボードのBillingの設定で個別に送らないようにできる。
   - sandboxのtest clockで時刻を進めると、更新・再試行・期間末の終了をWebhookまで含めて再現できる。支払いの失敗はテストカード`4000 0000 0000 0341`(Customerへの紐付けは成功し、請求で失敗する)で再現できる。
-- **Implications**: 設定と検証の手順を`operations/004`の「定期課金とCustomer Portal」の節と`external/008`に書く。`unpaid`・`paused`は設定上起きないため、受け取ったら終了として扱い`captureMessage`で知らせる。
+- **Implications**: 設定と検証の手順を`operations/004`の「定期課金とCustomer Portal」の節と`external/008`に書く。`unpaid`・`paused`は設定上起きないため、受け取ったら終了として扱い`captureEvent`で知らせる。
 
 ## Architecture Pattern Evaluation
 
@@ -182,7 +182,7 @@
 - ドイツ民法典312k条の解約ボタンの文言と確認ページの要件を、プラン管理画面のボタン「解約・支払い方法の管理」とStripeのPortalの画面で満たせるか不確か — 解約の受付の確認メール(仮1)でテキスト形式の確認は満たす。ボタンの文言と確認ページは、開発者が法務の確認を経て判断する事項として報告する。
 - paymentsへの`afterCommit`・`cancelAt`の追加(仮5)は承認され、paymentsのタスクが実装する。`afterCommit`の呼び出しが失敗しても、4:21の日次の確認で送り出せる(最大1日遅れる)。
 - Webhookが長く届かず、加入の行が古いまま残る(例: 再試行の後の終了を受け取れない) — Stripeの再送(最大3日)とpaymentsの冪等な反映に頼る。運用手順書に、Stripeのダッシュボードの定期課金と本サービスのプラン管理画面の状態を突き合わせる手順を書く。
-- `unpaid`・`paused`の受信(設定の誤り) — 終了として扱い、`captureMessage`で運営者に知らせる。
+- `unpaid`・`paused`の受信(設定の誤り) — 終了として扱い、`captureEvent`で運営者に知らせる。
 - 機能フラグの初期値がオフのため、prodでフラグをオンにし忘れる — launch-readinessへの申し送りとして報告する。
 
 ## References
@@ -309,3 +309,8 @@
 - **管理者側のエラーの案内文**: `ErrorState`に`contactHref`を渡さず、`GraphQLClientError`でない例外に代えて出す文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ契約になった。`PromotionSettingSection`の取得と切り替えの失敗をこの契約で書いた。
 - **変えた箇所**: design.mdのAllowed Dependencies・File Structure Plan・clientの節の冒頭(操作の規約)・adminの節(失敗の表示)、tasks.mdの7.1・8.1(`.graphql`・操作名・生成・`codegen.unit.test.ts`、8.1は管理者側の失敗の表示)。
 - **確認のダイアログの失敗の文言**: admin-foundationの`ConfirmActionDialogProps`が必須の`failureMessageOf: (error: unknown) => string`を受け、`onConfirm`の失敗時にダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言を`role="alert"`でダイアログの中に示す契約になった(同日のadmin-foundationの改訂)。共通部品はアプリのプロファイルを読まないため、呼び出す側が文言を決める。 `PromotionSettingSection`は`failureMessageOf`で`version_conflict`の読み直しの案内を返し、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返す形に書き改めた(design.mdの`PromotionSettingSection`と失敗の表示、tasks.mdの8.1)。
+
+## 実装済みの上流との食い違いの水平展開(2026-10-30、開発者の指示)
+
+- **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
+- 要件と受け入れ基準は変えていない。

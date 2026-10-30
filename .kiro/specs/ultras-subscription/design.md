@@ -1050,7 +1050,7 @@ export declare const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[]; /
 ### Monitoring
 
 - `getAppLogger(['api'|'event', 'application', 'ultras'])`で、加入のID・定期課金のID・知らせのID・ジョブの件数だけを記録する(12.3)。メールアドレスとニックネームは記録しない。
-- Sentry: 知らせの処理のデッドレター(backend-platformの既定)、解約の再試行の上限(identity-authの既定)、`unpaid`・`paused`の受信と`stripeSubscriptionId`の無い購入(`captureMessage`)。
+- Sentry: 知らせの処理のデッドレター(backend-platformの既定)、解約の再試行の上限(identity-authの既定)、`unpaid`・`paused`の受信と`stripeSubscriptionId`の無い購入(`captureEvent`。定型の文言を`logentry`、種類を`fingerprint`に置く。`infra/004`の「同じ文言を繰り返し送る通知」)。
 
 ## Testing Strategy
 
