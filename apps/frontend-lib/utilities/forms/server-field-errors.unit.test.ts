@@ -190,6 +190,28 @@ describe('applyServerFieldErrors', () => {
       expect(control.getFieldState('maker.name').error).toBeUndefined();
     });
 
+    test('プロトタイプがnullの値の経路も、react-hook-formと同じく欄をまとめた値として扱い、欄のエラーにしない', () => {
+      const extra = Object.assign(
+        Object.create(null) as Record<string, string>,
+        { name: '' },
+      );
+      const control = createFormControl<{ extra: Record<string, string> }>({
+        defaultValues: { extra },
+      });
+      const form = {
+        getValues: control.getValues,
+        setError: control.setError,
+        isFieldDisabled: () => false,
+        isFieldMounted: () => true,
+      };
+      const extraDetail = detail('extra', '追加の情報を確認してください。');
+
+      const { unmatched } = applyServerFieldErrors(form, [extraDetail]);
+
+      expect(unmatched).toEqual([extraDetail]);
+      expect(control.getFieldState('extra').error).toBeUndefined();
+    });
+
     test('配列・日時・nullの値の経路は欄のエラーにする', () => {
       const { form, control } = createForm();
 

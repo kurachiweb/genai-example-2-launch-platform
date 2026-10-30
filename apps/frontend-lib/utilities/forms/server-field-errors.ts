@@ -17,12 +17,14 @@ export interface ServerFieldErrorsResult {
   readonly unmatched: readonly FieldErrorDetail[];
 }
 
-// react-hook-formが入れ子の値として複製する値(cloneObject)にそろえ、Date・File・FileListなどは欄の値として扱う
-const isGroupedValue = (value: unknown): boolean =>
-  typeof value === 'object' &&
-  value !== null &&
-  !Array.isArray(value) &&
-  value.constructor === Object;
+// react-hook-formが入れ子の値として複製する値(cloneObject。プロトタイプがnullかコンストラクタがObjectの値)にそろえ、Date・File・FileListなどは欄の値として扱う
+const isGroupedValue = (value: unknown): boolean => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === null || value.constructor === Object;
+};
 
 const isFieldPathOf = <T extends FieldValues>(
   values: T,

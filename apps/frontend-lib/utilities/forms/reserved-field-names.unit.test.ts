@@ -84,6 +84,16 @@ describe('reservedFieldNamePathsOf', () => {
     ).toEqual([]);
   });
 
+  test('プロトタイプがnullの値も、react-hook-formと同じく入れ子の値として中を調べる', () => {
+    const meta = Object.assign(Object.create(null) as Record<string, string>, {
+      type: 'launch',
+    });
+
+    expect(reservedFieldNamePathsOf({ product: { meta } })).toEqual([
+      'product.meta.type',
+    ]);
+  });
+
   test.each([
     ['null', null],
     ['undefined', undefined],

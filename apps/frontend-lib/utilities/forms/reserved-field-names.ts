@@ -8,10 +8,17 @@ export const RESERVED_FIELD_NAMES = [
 const isReservedName = (key: string): boolean =>
   RESERVED_FIELD_NAMES.some((name) => name === key);
 
-// react-hook-formが入れ子の値として複製する値(cloneObject)にそろえ、Date・Fileなどは欄の値として扱う
-const isNestedValue = (value: unknown): value is object =>
-  Array.isArray(value) ||
-  (typeof value === 'object' && value !== null && value.constructor === Object);
+// react-hook-formが入れ子の値として複製する値(cloneObject。配列と、プロトタイプがnullかコンストラクタがObjectの値)にそろえ、Date・Fileなどは欄の値として扱う
+const isNestedValue = (value: unknown): value is object => {
+  if (Array.isArray(value)) {
+    return true;
+  }
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === null || value.constructor === Object;
+};
 
 const pathsWithin = (value: object, prefix: string): string[] =>
   Object.entries(value).flatMap(([key, child]: [string, unknown]) => {
