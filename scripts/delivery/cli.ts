@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { TEST_LIKE_FILE_PATTERN } from '../../config/test-patterns.ts';
+import { messageOf } from './catalog/error-message.ts';
 import { createDefaultDeps } from './commands/shared/default-deps.ts';
 import {
   type DeliveryCommand,
@@ -13,9 +14,12 @@ import {
   UsageError,
 } from './commands/shared/delivery-command.ts';
 
+export type ModuleLoader = (path: string) => Promise<unknown>;
+
 export interface CliOptions {
   readonly args: readonly string[];
   readonly commandsDir: string;
+  readonly loadModule?: ModuleLoader;
   readonly createDeps: () => DeliveryDeps;
   readonly stdout: TextOutput;
   readonly stderr: TextOutput;
@@ -30,9 +34,6 @@ class CommandDefinitionError extends Error {
   override readonly name = 'CommandDefinitionError';
 }
 
-const messageOf = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
-
 const isDeliveryCommand = (value: unknown): value is DeliveryCommand =>
   typeof value === 'object' &&
   value !== null &&
@@ -46,12 +47,15 @@ const isDeliveryCommand = (value: unknown): value is DeliveryCommand =>
 
 const commandFileOf = (name: string): string => `${name}${COMMAND_FILE_SUFFIX}`;
 
+const importModule: ModuleLoader = (path) => import(path);
+
 const loadCommand = async (
   commandsDir: string,
   name: string,
+  loadModule: ModuleLoader,
 ): Promise<DeliveryCommand> => {
   const file = commandFileOf(name);
-  const loaded: unknown = await import(join(commandsDir, file));
+  const loaded = await loadModule(join(commandsDir, file));
   const command =
     typeof loaded === 'object' && loaded !== null && 'command' in loaded
       ? loaded.command
@@ -84,9 +88,12 @@ const commandNamesIn = (commandsDir: string): readonly string[] =>
 
 export async function loadCommands(
   commandsDir: string,
+  loadModule: ModuleLoader = importModule,
 ): Promise<readonly DeliveryCommand[]> {
   return Promise.all(
-    commandNamesIn(commandsDir).map((name) => loadCommand(commandsDir, name)),
+    commandNamesIn(commandsDir).map((name) =>
+      loadCommand(commandsDir, name, loadModule),
+    ),
   );
 }
 
@@ -135,25 +142,33 @@ const runCommand = async (
 };
 
 const dispatch = async (options: CliOptions): Promise<number> => {
-  const { args, commandsDir, stdout, stderr } = options;
+  const {
+    args,
+    commandsDir,
+    loadModule = importModule,
+    stdout,
+    stderr,
+  } = options;
+  const usage = async (): Promise<string> =>
+    usageOf(await loadCommands(commandsDir, loadModule));
   const [name, ...rest] = args;
   if (name === undefined) {
-    stderr.write(
-      `サブコマンドを指定してください。\n${usageOf(await loadCommands(commandsDir))}`,
-    );
+    stderr.write(`サブコマンドを指定してください。\n${await usage()}`);
     return EXIT_USAGE;
   }
   if (HELP_FLAGS.has(name)) {
-    stdout.write(usageOf(await loadCommands(commandsDir)));
+    stdout.write(await usage());
     return EXIT_SUCCESS;
   }
   if (!isKnownCommand(commandsDir, name)) {
-    stderr.write(
-      `未知のサブコマンドです: ${name}\n${usageOf(await loadCommands(commandsDir))}`,
-    );
+    stderr.write(`未知のサブコマンドです: ${name}\n${await usage()}`);
     return EXIT_USAGE;
   }
-  return runCommand(await loadCommand(commandsDir, name), rest, options);
+  return runCommand(
+    await loadCommand(commandsDir, name, loadModule),
+    rest,
+    options,
+  );
 };
 
 export async function runCli(options: CliOptions): Promise<number> {

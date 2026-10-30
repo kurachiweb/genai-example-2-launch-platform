@@ -1,86 +1,87 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
-import { type CliOptions, loadCommands, runCli } from './cli.ts';
-import type { DeliveryDeps } from './commands/shared/delivery-command.ts';
+import {
+  type CliOptions,
+  type ModuleLoader,
+  loadCommands,
+  runCli,
+} from './cli.ts';
+import {
+  type DeliveryCommand,
+  type DeliveryDeps,
+  UsageError,
+} from './commands/shared/delivery-command.ts';
 import { createRecordingOutput } from './test-fixtures/text-output.ts';
 
 const SPAWN_TIMEOUT_MS = 30_000;
 const CLI_PATH = join(import.meta.dirname, 'cli.ts');
 const REAL_COMMANDS_DIR = join(import.meta.dirname, 'commands');
-const DELIVERY_COMMAND_MODULE = join(
-  import.meta.dirname,
-  'commands',
-  'shared',
-  'delivery-command.ts',
-);
 
 let root: string;
 let commandsDir: string;
 
-const writeFiles = async (
-  dir: string,
-  files: Readonly<Record<string, string>>,
-): Promise<void> => {
-  for (const [path, text] of Object.entries(files)) {
-    await mkdir(join(dir, path, '..'), { recursive: true });
-    await writeFile(join(dir, path), text);
-  }
-};
-
+// 一時ディレクトリはファイルの一覧を与えるだけにし、中身を読み込まない(一時ファイルをカバレッジの計測の対象に入れない)
 const createCommandsDir = async (
   name: string,
-  files: Readonly<Record<string, string>>,
+  files: readonly string[],
 ): Promise<string> => {
   const dir = join(root, name);
-  await writeFiles(dir, files);
+  for (const path of files) {
+    await mkdir(join(dir, path, '..'), { recursive: true });
+    await writeFile(join(dir, path), '');
+  }
   return dir;
 };
 
-const ALPHA_SOURCE = `
-export const command = {
+const ALPHA: DeliveryCommand = {
   name: 'alpha',
   description: '引数をそのまま表示し、最初の引数を終了コードにする',
-  run: async (args, deps) => {
-    deps.stdout.write(JSON.stringify({ args, marker: deps.env.DELIVERY_MARKER }));
-    return Number(args[0] ?? '0');
+  run: (args, deps) => {
+    deps.stdout.write(
+      JSON.stringify({ args, marker: deps.env['DELIVERY_MARKER'] }),
+    );
+    return Promise.resolve(Number(args[0] ?? '0'));
   },
 };
-`;
 
-// 実行されないコマンドの関数がカバレッジの分母で0%にならないよう、ソースに関数を持たない組み込みの関数を実行の値にする
-const NEVER_RUN_ALPHA_SOURCE = `
-export const command = {
-  name: 'alpha',
-  description: '実行されない',
-  run: Promise.resolve.bind(Promise, 0),
-};
-`;
-
-const BETA_SOURCE = `
-import { UsageError } from ${JSON.stringify(DELIVERY_COMMAND_MODULE)};
-export const command = {
+const BETA: DeliveryCommand = {
   name: 'beta-check',
   description: '引数の誤りと想定外の失敗を起こす',
-  run: async (args) => {
+  run: (args) => {
     if (args.includes('--bad')) throw new UsageError('--badは使えません');
     if (args.includes('--boom')) throw new Error('壊れました');
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- Error以外の値が投げられた時の表示を確かめる
     throw 'エラーでない値';
   },
 };
-`;
+
+// ファイル名で読み込む値を差し替え、一覧に無いファイルを読み込めば失敗させる
+const modulesOf =
+  (modules: Readonly<Record<string, unknown>>): ModuleLoader =>
+  (path) => {
+    const file = basename(path);
+    return file in modules
+      ? Promise.resolve(modules[file])
+      : Promise.reject(new Error(`${file}は読み込まない`));
+  };
+
+const VALID_MODULES = modulesOf({
+  'alpha.ts': { command: ALPHA },
+  'beta-check.ts': { command: BETA },
+});
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'delivery-cli-'));
-  commandsDir = await createCommandsDir('valid', {
-    'beta-check.ts': BETA_SOURCE,
-    'alpha.ts': ALPHA_SOURCE,
-    'alpha.unit.test.ts': "throw new Error('テストファイルは読み込まない');\n",
-    'shared/helper.ts': "throw new Error('サブディレクトリは読み込まない');\n",
-    'README.md': '# 読み込まない\n',
-  });
+  commandsDir = await createCommandsDir('valid', [
+    'beta-check.ts',
+    'alpha.ts',
+    'alpha.unit.test.ts',
+    'shared/helper.ts',
+    'README.md',
+  ]);
 });
 
 afterAll(async () => {
@@ -97,6 +98,7 @@ const run = async (
   const code = await runCli({
     args,
     commandsDir,
+    loadModule: VALID_MODULES,
     createDeps: () => {
       depsCreated += 1;
       return {
@@ -192,13 +194,20 @@ describe('runCli', () => {
   });
 
   test('共通の形を公開しないコマンドのファイルがあれば、一覧も実行もファイルを示して終了コード1を返す', async () => {
-    const brokenDir = await createCommandsDir('broken', {
-      'alpha.ts': NEVER_RUN_ALPHA_SOURCE,
-      'broken.ts': 'export const other = 1;\n',
+    const brokenDir = await createCommandsDir('broken', [
+      'alpha.ts',
+      'broken.ts',
+    ]);
+    const loadModule = modulesOf({
+      'alpha.ts': { command: ALPHA },
+      'broken.ts': { other: 1 },
     });
 
-    const help = await run(['--help'], { commandsDir: brokenDir });
-    const direct = await run(['broken'], { commandsDir: brokenDir });
+    const help = await run(['--help'], { commandsDir: brokenDir, loadModule });
+    const direct = await run(['broken'], {
+      commandsDir: brokenDir,
+      loadModule,
+    });
 
     expect(help.code).toBe(1);
     expect(help.stderr).toBe(
@@ -209,11 +218,12 @@ describe('runCli', () => {
   });
 
   test('ファイル名と名前が異なるコマンドは、一覧も実行もファイルを示して終了コード1を返す', async () => {
-    const mismatchDir = await createCommandsDir('mismatch', {
-      'gamma.ts': NEVER_RUN_ALPHA_SOURCE,
-    });
+    const mismatchDir = await createCommandsDir('mismatch', ['gamma.ts']);
 
-    const result = await run(['gamma'], { commandsDir: mismatchDir });
+    const result = await run(['gamma'], {
+      commandsDir: mismatchDir,
+      loadModule: modulesOf({ 'gamma.ts': { command: ALPHA } }),
+    });
 
     expect(result.code).toBe(1);
     expect(result.stderr).toBe(
@@ -222,7 +232,7 @@ describe('runCli', () => {
   });
 
   test('コマンドが1つも無ければ、一覧に無い旨を表示する', async () => {
-    const emptyDir = await createCommandsDir('empty', { 'README.md': '' });
+    const emptyDir = await createCommandsDir('empty', ['README.md']);
 
     const result = await run(['--help'], { commandsDir: emptyDir });
 
