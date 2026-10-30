@@ -7,6 +7,7 @@ import {
 import {
   WORKFLOWS_DIR,
   type WorkflowDocument,
+  type WorkflowPolicyInput,
   checkWorkflowPolicy,
 } from '../core/workflow-policy.ts';
 import { type DeliveryCommand, UsageError } from './shared/delivery-command.ts';
@@ -82,6 +83,24 @@ const loadSetupAction = async (
     ? loadDocument(files, SETUP_ACTION_PATH)
     : loaded({ file: SETUP_ACTION_PATH, parsed: undefined });
 
+export async function loadWorkflowPolicyInput(
+  files: RepoFiles,
+): Promise<Loaded<WorkflowPolicyInput>> {
+  const [versions, workflows, setupAction] = await Promise.all([
+    loadVersions(files),
+    loadWorkflows(files),
+    loadSetupAction(files),
+  ]);
+  if (!versions.ok || !workflows.ok || !setupAction.ok) {
+    return failed(errorsOf([versions, workflows, setupAction]));
+  }
+  return loaded({
+    workflows: workflows.value,
+    setupAction: setupAction.value,
+    versions: versions.value,
+  });
+}
+
 export const command: DeliveryCommand = {
   name: 'policy-check',
   description:
@@ -90,26 +109,8 @@ export const command: DeliveryCommand = {
     if (args.length > 0) {
       throw new UsageError(`引数は受け取りません: ${args.join(' ')}`);
     }
-    const [versions, workflows, setupAction] = await Promise.all([
-      loadVersions(deps.files),
-      loadWorkflows(deps.files),
-      loadSetupAction(deps.files),
-    ]);
-    if (!versions.ok || !workflows.ok || !setupAction.ok) {
-      return reportInputErrors(
-        TITLE,
-        errorsOf([versions, workflows, setupAction]),
-        deps,
-      );
-    }
-    return reportViolations(
-      TITLE,
-      checkWorkflowPolicy({
-        workflows: workflows.value,
-        setupAction: setupAction.value,
-        versions: versions.value,
-      }),
-      deps,
-    );
+    const input = await loadWorkflowPolicyInput(deps.files);
+    if (!input.ok) return reportInputErrors(TITLE, input.errors, deps);
+    return reportViolations(TITLE, checkWorkflowPolicy(input.value), deps);
   },
 };

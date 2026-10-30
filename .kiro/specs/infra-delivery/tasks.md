@@ -206,7 +206,7 @@
   - _Boundary: SmokeTag_
   - _Requirements: 7.10_
 
-- [ ] 7.3 実際のリポジトリに構成検査とワークフローの検査を掛ける単体テストを加える
+- [x] 7.3 実際のリポジトリに構成検査とワークフローの検査を掛ける単体テストを加える
   - 実際の資源一覧・4アプリのWrangler設定・backend設定・全ワークフロー・複合アクション・Dockerfileを読み、違反0件を確かめる単体テストと、データの資源とTurnstileのHCLに削除の防止が、D1に読み取りレプリカの無効があることを確かめる単体テストを書く
   - 完了状態: ルートの単体テストで実リポジトリの検査が成功し、Wrangler設定の管轄を消すと失敗する
   - _Depends: 2.3, 6.4, 6.5, 7.1_
@@ -317,3 +317,4 @@
 - 6.5: `release-pr.yml`はBunだけを導入して`scripts/delivery/cli.ts`を実行する(依存パッケージの導入は不要。`typescript`を読むのは`layering.unit.test.ts`だけ)。`gh`は`persist-credentials: false`でも残る`origin`のURLからリポジトリを解決する(`GH_REPO`の明示と、ジョブに`if: github.ref == 'refs/heads/main'`を付ける強化は9.1で検討)。CODEOWNERSは`* @kurachiweb`(GitHubの個人ユーザー)。`release-pr.yml`・`CODEOWNERS`・`delivery.yml`・`pull-request.yml`の存在はW1〜W10で検査されないため7.3で確かめる。
 - 7.1: 4アプリの最上位に`workers_dev: false`・`preview_urls: false`、api・eventのstaging・prodのR2の全バインディングに`jurisdiction: "us"`を加えた(ローカルには付けない)。上流のテスト(`apps/api`のテストがapi・eventの両方、`apps/{client,admin}`)に管轄と公開URLの期待値を加えて固定した。`contract-check`は違反0件。Wrangler 4.124.0はデプロイ先の無いWorker(client・admin)を「No targets deployed」のログだけでデプロイする(失敗しない)ことを配布物で確認。`project-values.md`にR2の管轄の行と注記を加えたため、8.5で管轄(D1・Queues)を足す時は表の行をまとめる。
 - 7.2: 両アプリの疎通確認のE2Eの最上位の`test.describe`3つずつ(疎通確認の画面・存在しないページ・中継の経路)に`{ tag: '@smoke' }`を付けた(設計の単数の記述は9.1で直すか判断)。`--grep @smoke --list`は到達確認2件+疎通確認23件の25件で、ローカルの開発サーバーに対して25件成功(ビルド後のプレビューは未実行)。どのテストにも合わない`--grep`ではsetupも外れて0件になり`--pass-with-no-tests`で成功することを確かめたため、`verify`で`@smoke`の件数を確かめる(`--list`で1件以上を求める、または`--pass-with-no-tests`無しで`playwright test`を直接呼ぶ)かを9.1で決める。stagingでのCSPの違反の検査とIP単位のレート制限(10秒に100回)の下での25件は、最初のstagingのデプロイで確かめる。8.4・8.5で`@smoke`の規約を書き、オンボーディングの「スモークテスト」(全E2Eの実行の意味)と用語をそろえる。
+- 7.3: `repo-contract.unit.test.ts`が実データに構成検査(`loadContractInput`)とワークフローの検査(`commands/policy-check.ts`から公開した`loadWorkflowPolicyInput`)を掛け、W1〜W10が見ない8ファイル(5つのワークフロー・CODEOWNERS・複合アクション・TruffleHogの除外)の存在、HCLの資源の種類ごとの検査(D1・R2・Turnstileの`prevent_destroy = true`、D1の`read_replication.mode = "disabled"`、R2に`location`無し、Queueに`prevent_destroy`無し、custom_domainに`environment`無し、出力に`secret`無し)を行う。HCLはテスト用の最小の読み取り部品`test-fixtures/hcl-blocks.ts`で読む(コメント・文字列・補間・ヒアドキュメントを扱い、読めない構造は誤り)。対象は`apps/infra/live/*.tf`と`apps/infra/modules/*/*.tf`(Bun.Globは波括弧の中の`/`を含むパターンで0件になるため2つに分けた)。任意の強化(9.1以降): 探索を`apps/infra/**/*.tf`(`.terraform/`除外)にする、Turnstileの`secret`への参照を`resource`の外で全面的に禁じる(`local`経由の出力を検出できない)、`$${`・`%%{`のエスケープを解釈する。データを持つ資源の種類は固定の一覧で、後続specがKV等を足す時は一覧に加える。`loadWorkflowPolicyInput`・`hcl-blocks.ts`は設計に無い(9.1で反映)。
