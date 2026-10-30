@@ -82,9 +82,8 @@
   - remark-cjk-friendly-gfm-strikethrough
   - remark-rehype ... AST(mdast)からAST(hast)への変換
 - rehype-sanitize ... AST(hast)上でのアローリスト方式HTMLサニタイズ、Raw HTMLの無効化に対応
-- rehype-slug ... 見出しへのアンカーID付与(CJK見出しのURLエンコード仕様のみ独自実装で補う)
 - rehype-stringify ... AST(hast)からHTML文字列への変換
-- hast-util-to-text ... サニタイズ済みAST(hast)からのプレーンテキスト抽出、全文検索インデックスの正規化に使用
+- hast-util-to-text ... サニタイズ済みAST(hast)からのプレーンテキスト抽出、全文検索インデックスの正規化と見出しのアンカーIDの元になる文字列の取得に使用(アンカーIDの変換と連番は独自実装)
 
 ## フロントエンド
 
