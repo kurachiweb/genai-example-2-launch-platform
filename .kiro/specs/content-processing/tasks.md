@@ -65,7 +65,7 @@
   - 完了状態: 単体テストが成功し、出力の全てのIDが接頭辞で始まり、tech-stack.mdにrehype-slugが残っていない
   - _Requirements: 4.4, 4.5, 4.6, 4.7, 5.1, 5.3, 16.5_
 
-- [ ] 3.4 リンクの方針・表の枠・見出しの一覧と、表示用の描画を作る
+- [x] 3.4 リンクの方針・表の枠・見出しの一覧と、表示用の描画を作る
   - 先に、同一オリジン・別オリジン・`mailto:`・`#`のリンクのタブと`rel`(表示場所ごとの指定・空の指定)、相対URL・プロトコル相対URL・`javascript:`・`data:`のリンクの解除(文字列は残す)、表の横スクロールの枠(キーボードで移動できる名前付きの領域)、見出しの一覧(階層・最終的なID・文字列、脚注の見出しを除く)、サニタイズ済みの型で返ること、同じ入力と指定で同じHTMLになることを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、描画結果のHTMLに`target="_blank"`が付くのは別オリジンのリンクだけで、許可外の参照の`href`が1つも無い
   - _Boundary: MarkdownRenderer_
@@ -356,3 +356,5 @@
 - 3.1: 前後の空白の除去は`text/white-space.ts`の`trimWhiteSpace`を使う(`/^\p{White_Space}+|\p{White_Space}+$/`は途中の長い空白で処理時間が2乗になる。設計のFile Structure Planに無いファイル)。後読みや末尾に固定した量指定子の正規表現、`reduce`での配列の作り直しは利用者の入力の長さで2乗になるため避け、20,000文字の回帰テストを置く。`normalizeAnchorFragment`は`#`を除いたフラグメントを受け取り、空なら`heading`を返す(`[x](#)`を書き換えるかは3.3で決める)
 - 3.2: `markdown-processor.ts`は未サニタイズの木を返す`markdownToHast`を暫定でexportしている。3.3でサニタイズまでを`processMarkdown(markdown, idPrefix)`にまとめ、`markdownToHast`をモジュールの外へ出さない(テストも`processMarkdown`経由にする)。参照画像は設計の`![alt][識別子]`ではなく入力の形(`![alt][label]`・`![alt][]`・`![alt]`)で文字列化する。CJKのプラグインは`/parseOnly`の入口を使う(エディタでマークダウンへ書き戻す側は`/bidi`)。引用の20,000段の入れ子はremark-rehypeがスタックあふれで失敗するため、3.4・3.5で例外の扱いを確かめる。`[`を20,000個入れ子にしたリンクは解析に約6.6秒かかるため、3.6の性能の計測で攻撃的な入力の扱いも確かめる
 - 3.3: `processMarkdown(markdown, idPrefix)`はサニタイズまでを行い、`idPrefix`は必ず`idPrefixFor`の戻り値を渡す(空文字列だと接頭辞が付かない。3.4の`renderMarkdown`で確かめる)。空の`[x](#)`はページ先頭の意味として書き換えない。脚注のIDも`normalizeAnchorFragment`で正規化してから予約する。`ol`の`start`を許可する。正規化後に同じになる脚注のラベル(`[^a!b]`と`[^a%21b]`)はIDが重複する既知の制限がある
+- 3.4: `processMarkdown`は入れ子の深さ100(`MAX_NESTING_DEPTH`)を超える文書と、解析でスタックあふれ(`RangeError`)した文書を、原文を1つの段落の文字列として返す(環境で結果をそろえるため。設計に無い挙動)。プレーンテキストは`markdown/plain-text.ts`の`plainTextOf`にあり、3.5の`extractSearchText`はこれを使う(設計の`extract-search-text.ts`の中身を分けた)。`markdown/stack-overflow.ts`も設計に無いファイル。表の枠は`div`に`tabindex`・`role`・`aria-label`を付けるため、3.6の攻撃パターン集の許可リストの検査はこれを許す
+- 3.4: 攻撃的な入力の解析はremark-parse(micromark)で2乗になる。実測は引用20,000段でBun 2.2秒・Node 0.36秒、強調の記号10,000組で約3.2秒、`[`の20,000段の入れ子で6.6秒。Workersでの描画のたびにCPU時間を使うため、3.6で入力の上限や解析前の打ち切りを確かめる。`markdown-processor.ts`の解析のスタックあふれの`catch`はBunで実行されないため、3.6で解析の関数を差し替えて試せるようにする

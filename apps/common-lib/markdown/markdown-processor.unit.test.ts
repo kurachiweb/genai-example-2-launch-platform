@@ -445,6 +445,29 @@ describe('processMarkdown', () => {
     });
   });
 
+  describe('入れ子の深さの上限', () => {
+    test('最も深い節点の深さが100以内の文書を通常どおり変換する', () => {
+      const html = toHtml(`${'>'.repeat(98)} 最深`);
+
+      expect(html.match(/<blockquote>/gu)).toHaveLength(98);
+      expect(html).toContain('<p>最深</p>');
+    });
+
+    test('最も深い節点の深さが100を超える文書を原文の文字列だけの段落にする', () => {
+      const markdown = `${'>'.repeat(99)} **最深** <b>x</b>`;
+
+      expect(toHtml(markdown)).toBe(
+        `<p>${'>'.repeat(99)} **最深** &#x3C;b>x&#x3C;/b></p>`,
+      );
+    });
+
+    test('深さの上限を超えた文書の原文のURLをリンクにしない', () => {
+      expect(toHtml(`${'>'.repeat(99)} https://site.example`)).toBe(
+        `<p>${'>'.repeat(99)} https://site.example</p>`,
+      );
+    });
+  });
+
   test(`同じ見出しが続く${LONG_RUN_LENGTH.toLocaleString('en-US')}文字の入力を線形の時間で処理する`, () => {
     const repeated = '## a\n\n[x](#a)\n\n';
     const count = Math.floor(LONG_RUN_LENGTH / repeated.length);
