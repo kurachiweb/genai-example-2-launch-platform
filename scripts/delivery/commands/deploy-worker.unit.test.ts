@@ -160,10 +160,58 @@ const textsOf = (
   ),
 });
 
-type Step = 'build' | 'deploy';
+const PREVIOUS_SHA = '89abcdef0123456789abcdef0123456789abcdef';
+const CLIENT_VERSION_ID = '00000000-0000-4000-8000-000000000001';
+
+const statusStdoutOf = (
+  versions: readonly {
+    readonly version_id: string;
+    readonly percentage: number;
+  }[],
+): string =>
+  `${JSON.stringify(
+    {
+      id: '00000000-0000-4000-8000-000000000002',
+      created_on: '2026-10-29T00:00:00.000000Z',
+      source: 'wrangler',
+      strategy: 'percentage',
+      author_email: 'ci@launch.example',
+      versions,
+    },
+    null,
+    2,
+  )}\n`;
+
+const STATUS_STDOUT = statusStdoutOf([
+  { version_id: CLIENT_VERSION_ID, percentage: 100 },
+]);
+
+const viewStdoutOf = (annotations: Readonly<Record<string, string>>): string =>
+  `${JSON.stringify(
+    {
+      id: CLIENT_VERSION_ID,
+      number: 3,
+      metadata: { created_on: '2026-10-29T00:00:00.000000Z' },
+      annotations,
+    },
+    null,
+    2,
+  )}\n`;
+
+const VIEW_STDOUT = viewStdoutOf({
+  'workers/tag': PREVIOUS_SHA,
+  'workers/message': `${PREVIOUS_SHA} ${RUN_URL}`,
+});
+
+type Step = 'build' | 'deploy' | 'status' | 'view' | 'git' | 'allowlist';
 
 const stepOf = (spec: CommandSpec): Step | undefined => {
-  if (spec.args.join(' ') === 'run build') return 'build';
+  if (spec.command === 'git') return 'git';
+  const line = spec.args.join(' ');
+  if (line === 'run build') return 'build';
+  if (line.startsWith('run graphql:allowlist')) return 'allowlist';
+  if (line.startsWith('x wrangler deployments status')) return 'status';
+  if (line.startsWith('x wrangler versions view')) return 'view';
   return spec.args.includes('deploy') ? 'deploy' : undefined;
 };
 
@@ -173,6 +221,8 @@ interface RunOptions {
   readonly texts?: Readonly<Record<string, string>>;
   readonly failAt?: Step;
   readonly deployStdout?: string;
+  readonly statusStdout?: string;
+  readonly viewStdout?: string;
 }
 
 const runWith = async (
@@ -183,10 +233,17 @@ const runWith = async (
     texts = textsOf(),
     failAt,
     deployStdout = DEPLOY_STDOUT,
+    statusStdout = STATUS_STDOUT,
+    viewStdout = VIEW_STDOUT,
   }: RunOptions = {},
 ) => {
   const timeline: string[] = [];
   const calls: CommandSpec[] = [];
+  const stdoutOf: Partial<Record<Step, string>> = {
+    deploy: deployStdout,
+    status: statusStdout,
+    view: viewStdout,
+  };
   const runner: CommandRunner = {
     run: (spec) => {
       calls.push(spec);
@@ -195,7 +252,7 @@ const runWith = async (
       const failed = failAt !== undefined && step === failAt;
       return Promise.resolve({
         code: failed ? 1 : 0,
-        stdout: step === 'deploy' ? deployStdout : '',
+        stdout: failed || step === undefined ? '' : (stdoutOf[step] ?? ''),
         stderr: failed ? `✘ [ERROR] ${failAt}の失敗の診断\n` : '',
       });
     },
@@ -283,8 +340,10 @@ describe('deploy-worker', () => {
             exportOf(env, `/workers/${app}`),
           ],
         );
-        expect(calls).toHaveLength(1);
-        const [deploy] = calls;
+        const deploys = calls.filter((spec) => stepOf(spec) === 'deploy');
+        expect(deploys).toHaveLength(1);
+        expect(calls.at(-1)).toBe(deploys[0]);
+        const [deploy] = deploys;
         expect(deploy?.command).toBe('bun');
         expect(deploy?.args).toEqual(deployArgsOf(['--env', env]));
         expect(deploy?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/${app}`);
@@ -325,6 +384,146 @@ describe('deploy-worker', () => {
         expectNoSecretShown(shown);
       },
     );
+
+    test('apiは、clientのWorkerの版の状態と版の情報を読み、コミットの存在を確かめてから直前のコミットを渡して許可リストを生成し、その後にデプロイする', async () => {
+      const { code, calls, stdout, shown } = await runWith(
+        ['--env', env, '--app', 'api'],
+        { folders: foldersOf(env) },
+      );
+
+      expect(code).toBe(EXIT_SUCCESS);
+      expect(calls.map((spec) => commandLineOf(spec))).toEqual([
+        `bun x wrangler deployments status --name app-client-${env} --json`,
+        `bun x wrangler versions view ${CLIENT_VERSION_ID} --name app-client-${env} --json`,
+        `git cat-file -e ${PREVIOUS_SHA}^{commit}`,
+        `bun run graphql:allowlist --previous-ref ${PREVIOUS_SHA}`,
+        ['bun', ...deployArgsOf(['--env', env])].join(' '),
+      ]);
+      const [status, view, git, allowlist] = calls;
+      for (const spec of [status, view]) {
+        expect(spec?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/client`);
+        expect(spec?.env).toEqual({ CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN });
+        expect(spec?.output).toBe('capture');
+        expect(spec?.stdin).toBeUndefined();
+      }
+      expect(git?.cwd).toBe(FAKE_REPO_ROOT);
+      expect(git?.output).toBe('capture');
+      expect(allowlist?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/api`);
+      expect(allowlist?.env).toBeUndefined();
+      expect(allowlist?.output).toBe('inherit');
+      expect(stdout.text()).toContain(PREVIOUS_SHA);
+      expect(stdout.text()).toContain(CLIENT_VERSION_ID);
+      expectSecretsOnlyInStdin(calls);
+      expectNoSecretShown(shown);
+    });
+  });
+
+  test.each(['event', 'client', 'admin'] as const)(
+    '%sは、clientのWorkerの版を読まず、許可リストも生成しない',
+    async (app) => {
+      const { code, calls } = await runWith(['--env', 'staging', '--app', app]);
+
+      expect(code).toBe(EXIT_SUCCESS);
+      expect(
+        calls
+          .map((spec) => stepOf(spec))
+          .filter((step) => step !== 'build' && step !== 'deploy'),
+      ).toEqual([]);
+    },
+  );
+
+  const NO_PREVIOUS_ALLOWLIST = 'bun run graphql:allowlist';
+  const API_DEPLOY = ['bun', ...deployArgsOf(['--env', 'staging'])].join(' ');
+  const STATUS_LINE =
+    'bun x wrangler deployments status --name app-client-staging --json';
+  const VIEW_LINE = `bun x wrangler versions view ${CLIENT_VERSION_ID} --name app-client-staging --json`;
+
+  test.each<[string, RunOptions, readonly string[], readonly string[]]>([
+    [
+      '版の状態を取得できない(初回のデプロイ)',
+      { failAt: 'status' },
+      [STATUS_LINE],
+      ['statusの失敗の診断', '終了コード1'],
+    ],
+    [
+      '分割配信中',
+      {
+        statusStdout: statusStdoutOf([
+          { version_id: CLIENT_VERSION_ID, percentage: 90 },
+          {
+            version_id: '00000000-0000-4000-8000-000000000003',
+            percentage: 10,
+          },
+        ]),
+      },
+      [STATUS_LINE],
+      ['分割配信', `${CLIENT_VERSION_ID} 90%`],
+    ],
+    [
+      '版の情報を取得できない',
+      { failAt: 'view' },
+      [STATUS_LINE, VIEW_LINE],
+      ['viewの失敗の診断', CLIENT_VERSION_ID],
+    ],
+    [
+      '版にタグが無い',
+      { viewStdout: viewStdoutOf({ 'workers/message': 'manual' }) },
+      [STATUS_LINE, VIEW_LINE],
+      ['タグがありません'],
+    ],
+    [
+      '版のタグがコミットのSHAでない',
+      { viewStdout: viewStdoutOf({ 'workers/tag': 'v1.0.0' }) },
+      [STATUS_LINE, VIEW_LINE],
+      ['v1.0.0', '40桁の16進'],
+    ],
+    [
+      'コミットが履歴に無い',
+      { failAt: 'git' },
+      [STATUS_LINE, VIEW_LINE, `git cat-file -e ${PREVIOUS_SHA}^{commit}`],
+      [PREVIOUS_SHA, '履歴'],
+    ],
+  ])(
+    '%sなら、理由を示す警告を出し、引数なしで許可リストを生成してからデプロイする',
+    async (_, options, reads, reasons) => {
+      const { code, calls, stderr, summaries, shown } = await runWith(
+        ['--env', 'staging', '--app', 'api'],
+        options,
+      );
+
+      expect(code).toBe(EXIT_SUCCESS);
+      expect(calls.map((spec) => commandLineOf(spec))).toEqual([
+        ...reads,
+        NO_PREVIOUS_ALLOWLIST,
+        API_DEPLOY,
+      ]);
+      expect(stderr.text()).toContain('警告');
+      expect(stderr.text()).toContain('現行の操作だけ');
+      for (const reason of reasons) expect(stderr.text()).toContain(reason);
+      const warning = summaries.find((summary) => summary.includes('警告'));
+      expect(warning).toBeDefined();
+      expect(warning).toContain('現行の操作だけ');
+      expectNoSecretShown(shown);
+    },
+  );
+
+  test('許可リストの生成が失敗したら、APIサーバーをデプロイせずに失敗する', async () => {
+    const { code, calls, stderr } = await runWith(
+      ['--env', 'staging', '--app', 'api'],
+      { failAt: 'allowlist' },
+    );
+
+    expect(code).toBe(EXIT_FAILURE);
+    expect(calls.map((spec) => stepOf(spec))).toEqual([
+      'status',
+      'view',
+      'git',
+      'allowlist',
+    ]);
+    expect(stderr.text()).toContain(
+      `bun run graphql:allowlist --previous-ref ${PREVIOUS_SHA}`,
+    );
+    expect(stderr.text()).toContain('終了コード1');
   });
 
   test('取り出したすべてのフォルダの値を、行ごとに最初の子プロセスの起動より先にマスクする', async () => {

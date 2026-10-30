@@ -7,6 +7,7 @@ import {
   type WorkerKey,
 } from '../catalog/resource-catalog.ts';
 import { type DeployOutput, parseDeployOutput } from '../core/deploy-output.ts';
+import { isCommitSha } from '../core/previous-release.ts';
 import {
   type SecretFolder,
   SHARED_SECRET_FOLDER,
@@ -34,13 +35,13 @@ import {
 } from './shared/install-targets.ts';
 import { loadResourceCatalog } from './shared/load-catalog.ts';
 import { parseOptions, requiredChoice } from './shared/parse-options.ts';
+import { generateAllowlist } from './shared/previous-release-allowlist.ts';
 import { reportInputErrors } from './shared/report-violations.ts';
 
 const NAME = 'deploy-worker';
 const TITLE = 'Workerのデプロイ';
 const SECRETS_FROM_STDIN = '/dev/stdin';
 const UNREADABLE = '(読み取れませんでした)';
-const COMMIT_SHA_PATTERN = /^[\da-f]{40}$/;
 const RUN_ENV_KEYS = [
   'GITHUB_SHA',
   'GITHUB_SERVER_URL',
@@ -59,6 +60,7 @@ interface DeployTarget {
   readonly workerName: string;
   readonly appDir: string;
   readonly requiredSecrets: readonly string[];
+  readonly clientWorker: { readonly name: string; readonly appDir: string };
 }
 
 const writeError = (message: string, deps: DeliveryDeps): void => {
@@ -78,7 +80,7 @@ const annotationOf = (deps: DeliveryDeps): VersionAnnotation | undefined => {
     return undefined;
   }
   const commit = value('GITHUB_SHA');
-  if (!COMMIT_SHA_PATTERN.test(commit)) {
+  if (!isCommitSha(commit)) {
     writeError('GITHUB_SHAが40桁の16進のコミットではありません。', deps);
     return undefined;
   }
@@ -102,6 +104,7 @@ const loadDeployTarget = async (
     workerName: name,
     appDir,
     requiredSecrets: config.value.config.requiredSecrets,
+    clientWorker: catalog.value.workers.client,
   };
 };
 
@@ -232,6 +235,34 @@ const deploy = async (
   return EXIT_SUCCESS;
 };
 
+const prepare = async (
+  target: DeployTarget,
+  cloudflareEnv: Readonly<Record<string, string>>,
+  deps: DeliveryDeps,
+): Promise<number> => {
+  if (target.app === 'api') {
+    return generateAllowlist(
+      NAME,
+      {
+        env: target.env,
+        apiDir: target.appDir,
+        clientWorker: target.clientWorker,
+        cloudflareEnv,
+      },
+      deps,
+    );
+  }
+  if (!VITE_BUILT_WORKERS.has(target.app)) return EXIT_SUCCESS;
+  const build = buildStepOf(target.env);
+  const code = await runInTarget(target.appDir, build, deps);
+  if (code === 0) return EXIT_SUCCESS;
+  writeError(
+    `(${target.appDir}) ${stepLineOf(build)} が終了コード${String(code)}で失敗しました。`,
+    deps,
+  );
+  return EXIT_FAILURE;
+};
+
 const deployWorker = async (
   env: DeployEnvironment,
   app: WorkerKey,
@@ -258,17 +289,8 @@ const deployWorker = async (
   if (!selection.ok) {
     return reportMissingSecrets(target, folders, selection.missing, deps);
   }
-  if (VITE_BUILT_WORKERS.has(app)) {
-    const build = buildStepOf(env);
-    const code = await runInTarget(target.appDir, build, deps);
-    if (code !== 0) {
-      writeError(
-        `(${target.appDir}) ${stepLineOf(build)} が終了コード${String(code)}で失敗しました。`,
-        deps,
-      );
-      return EXIT_FAILURE;
-    }
-  }
+  const prepared = await prepare(target, opened.cloudflareEnv, deps);
+  if (prepared !== EXIT_SUCCESS) return prepared;
   return deploy(
     target,
     annotation,
@@ -281,7 +303,7 @@ const deployWorker = async (
 export const command: DeliveryCommand = {
   name: NAME,
   description:
-    '宣言した必須と任意のシークレット(Workerごとのフォルダを優先)を標準入力で渡し、コミットのタグと実行のURLを付けて1つのWorkerをデプロイし、版のIDと起動時間を要約に書く(client・adminは環境を指定してビルドしてから)',
+    '宣言した必須と任意のシークレット(Workerごとのフォルダを優先)を標準入力で渡し、コミットのタグと実行のURLを付けて1つのWorkerをデプロイし、版のIDと起動時間を要約に書く(apiはclientのWorkerの版から特定した直前のリリースを含めて許可リストを生成してから、client・adminは環境を指定してビルドしてから)',
   run: async (args, deps) => {
     const { options } = parseOptions(args, {
       names: ['env', 'app'],
