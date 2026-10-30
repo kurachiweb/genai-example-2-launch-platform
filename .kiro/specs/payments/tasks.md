@@ -4,6 +4,7 @@
 - [ ] 1.1 Stripeの3パッケージを導入し、各Workerのシークレットと変数を宣言する
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-delivery・content-processing・media-pipeline・identity-auth・admin-foundation・legal-pagesの全タスクが完了していること(層構成・GraphQL基盤・メール送信・画面の骨格・共有ディレクトリ・ユーザーライフサイクル・利用者の連絡先の照会(`UserContactDirectory`)・設定ページのシェル・`/legal`)。無ければ該当するタスクを保留して開発者へ報告する
   - 公開から2週間を過ぎた最新のパッチ版を選び、`stripe` 23.0.x(api・event)・`@stripe/stripe-js` 10系・`@stripe/react-stripe-js` 7.0.x(client)を完全固定で加える。選んだ版と公開日を記録する
+  - clientの`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)に`@stripe/stripe-js`・`@stripe/react-stripe-js`を加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)
   - 先に、各アプリの設定の単体テスト(Wrangler設定の3環境の比較)に、apiの`STRIPE_API_KEY`(必須のシークレット)と`PAYMENTS_SMOKE_ENABLED`、eventの`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`(必須のシークレット)と`PAYMENTS_SMOKE_ENABLED`・`CLIENT_SITE_ORIGIN`、clientの`STRIPE_PUBLISHABLE_KEY`の宣言を確かめる項目を加える。`PAYMENTS_SMOKE_ENABLED`はローカル・stagingで`true`、prodで`false`
   - api・eventの環境の検証に、`rk_test_`・`rk_live_`で始まる制限付きキー、`whsec_`で始まる署名の秘密、`true`・`false`の変数、オリジンの形式を加え、不足が既存の設定の不足として検知されることをテストで確かめる
   - 型の生成をやり直し、Infisicalのキーの表と変数の値の表(`docs/onboardings/project-values.md`)に行を加える。`STRIPE_API_KEY`の行はWorkerごとのフォルダ(apiは`/workers/api`、eventは`/workers/event`)で書き、`STRIPE_WEBHOOK_SECRET`の行は`/`で書く。stagingの値は必須にする変更をmainへマージする前に開発者が登録する必要がある旨(api用とevent用の制限付きキーを別々のWorkerごとのフォルダへ)を、作業の報告に含める(仮7)

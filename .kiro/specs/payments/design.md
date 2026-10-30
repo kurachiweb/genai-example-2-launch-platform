@@ -295,7 +295,7 @@ apps/
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`user-lifecycle-async-handlers.ts`・`rate-limit-exclusions.ts`・`env-schema.ts` — 束縛と経路、`payments.refund-payment`の処理、2つの波及処理、`excludePath('/webhooks/stripe', 'POST')`、`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`・`CLIENT_SITE_ORIGIN`・`PAYMENTS_SMOKE_ENABLED`の検証。
 - `apps/event/src/infrastructure/email/templates/index.ts`(`EMAIL_TEMPLATES`) — 2つのテンプレートを加える。
 - `apps/api/wrangler.jsonc`・`apps/event/wrangler.jsonc`・`apps/client/wrangler.jsonc`と各`worker-configuration.d.ts` — 3環境の`secrets.required`・`vars`、apiの`triggers.crons`に`40 7 * * *`を加える(4:21は既存)。
-- `apps/api/package.json`・`apps/event/package.json`・`apps/client/package.json`・`bun.lock` — Stripeの3パッケージを完全固定で加える。
+- `apps/api/package.json`・`apps/event/package.json`・`apps/client/package.json`・`bun.lock` — Stripeの3パッケージを完全固定で加える。 clientの`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)に`@stripe/stripe-js`・`@stripe/react-stripe-js`を加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)。
 - `apps/client/src/composition/security-policy.ts` — `CLIENT_SECURITY_POLICY`に`scriptSrc: ['https://js.stripe.com']`・`frameSrc: ['https://js.stripe.com', 'https://hooks.stripe.com']`・`connectSrc: ['https://api.stripe.com']`・`permissions.payment: ['self', '"https://js.stripe.com"']`を加える。
 - `apps/client/src/composition/settings-navigation.ts` — `{ to: '/settings/billing', label: '決済履歴', order: 70 }`を加える。
 - clientの環境の検証と公開設定(frontend-platformの`ValidatedFrontendEnv`のclientの拡張・`toPublicRuntimeConfig`) — `STRIPE_PUBLISHABLE_KEY`を`pk_test_`または`pk_live_`で始まる文字列として検証し、`PublicRuntimeConfig.stripePublishableKey`(client専用、adminは`undefined`)へ渡す。content-processingの`CLIENT_SITE_ORIGIN`の追加と同じ手順で行う。
@@ -395,7 +395,7 @@ sequenceDiagram
     S->>H: refund.updated Webhook経由
 ```
 
-- 一時的な失敗は例外で再試行し(`maxAttempts` 5)、上限でデッドレターからSentryへ通知される(8.6)。恒久的な拒否は`failed`を記録し`captureMessage`で通知する(8.7)。
+- 一時的な失敗は例外で再試行し(`maxAttempts` 5)、上限でデッドレターからSentryへ通知される(8.6)。恒久的な拒否は`failed`を記録し`captureEvent`で通知する(8.7)。
 - 送信の失敗や中断で`dispatched_at`が空のままの行は、4:21の日次の確認で送り直す(10.6)。
 
 ### 23:40の突合
@@ -1236,7 +1236,7 @@ export interface CheckoutStartLimits {
 
 | ジョブの名前                       | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                  |
 | ---------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `payments.checkout-reconciliation` | 23:40    | 10      | `deadline_at`が実行時刻以前かつ24時間以内で`open`・`processing`・`superseded`の購入を最大200件、`retrieveCheckoutSession` → `reflectCheckoutSnapshot`。失敗した購入は`captureMessage`(タグ`job`・購入ID)で通知して続ける(10.1〜10.4)                  |
+| `payments.checkout-reconciliation` | 23:40    | 10      | `deadline_at`が実行時刻以前かつ24時間以内で`open`・`processing`・`superseded`の購入を最大200件、`retrieveCheckoutSession` → `reflectCheckoutSnapshot`。失敗した購入は`captureEvent`(タグ`job`・購入ID)で通知して続ける(10.1〜10.4)                    |
 | `payments.pending-checkout-sweep`  | 4:21     | 400     | (1)有効期限を1時間以上過ぎた`open`・`processing`・`superseded`の購入を最大200件突合(10.5)。(2)`dispatched_at`が空で10分以上経った返金の依頼を最大100件`dispatch`。(3)`pending`のまま10分以上経った購入確認メール・自動返金の通知を最大100件依頼(10.6) |
 | `payments.history-retention`       | 4:21     | 410     | `recorded_at`が実行時刻の7年前より前の決済履歴を1回500件、最大20回物理削除(12.7)                                                                                                                                                                      |
 
@@ -1387,8 +1387,8 @@ type Mutation {
 **Contracts**: Event [x]
 
 - Subscribed: `payments.refund-payment`(`{ refundRequestId: string }`、ULID)。`retry`: `{ maxAttempts: 5, baseDelaySeconds: 60, maxDelaySeconds: 3600 }`。
-- 処理: 依頼の行を読み、`submitted`・`succeeded`なら`done`。依頼の`purchase_id`で購入を読み、`stripe_payment_intent_id`(反映の前進の文が保存した値)を取る(どの依頼の経路でも同じ読み方)。購入が定期課金で`rejected`なら先に`cancelSubscription(atPeriodEnd: false)`(既に解約済みは無視)。`createRefund`(PaymentIntentのID・冪等キー`refund:<依頼キー>`)の結果のIDを保存して`submitted`にする。購入やPaymentIntentのIDが無い依頼は`failed`(`missing_payment_intent`)とし、`captureMessage`で通知する。
-- 失敗: `StripeUnavailableError`は例外(再試行、上限でデッドレター→Sentry、8.6)。`StripeRejectedError`は`failed`と拒否のコードを保存し、`captureMessage`(タグ`message_type`・`stripe_error_code`)で通知して`done`(8.7)。
+- 処理: 依頼の行を読み、`submitted`・`succeeded`なら`done`。依頼の`purchase_id`で購入を読み、`stripe_payment_intent_id`(反映の前進の文が保存した値)を取る(どの依頼の経路でも同じ読み方)。購入が定期課金で`rejected`なら先に`cancelSubscription(atPeriodEnd: false)`(既に解約済みは無視)。`createRefund`(PaymentIntentのID・冪等キー`refund:<依頼キー>`)の結果のIDを保存して`submitted`にする。購入やPaymentIntentのIDが無い依頼は`failed`(`missing_payment_intent`)とし、`captureEvent`で通知する。
+- 失敗: `StripeUnavailableError`は例外(再試行、上限でデッドレター→Sentry、8.6)。`StripeRejectedError`は`failed`と拒否のコードを保存し、`captureEvent`(タグ`message_type`・`stripe_error_code`)で通知して`done`(8.7)。
 - Idempotency: 同じメッセージを何度受けても、Stripeの冪等キーと行の状態で返金は1回。
 
 #### CustomerErasureHandler・OpenCheckoutExpiryHandler
@@ -1566,7 +1566,7 @@ export interface MoneyTextProps {
 ### Monitoring
 
 - `getAppLogger(['api'|'event', 'application', 'payments'])`で、購入ID・StripeのオブジェクトのID・通知の種類・Stripeの`request-id`だけを記録する(15.8)。
-- Sentry: 反映の例外(`captureException`、タグ`stripe_event_type`)、返金の恒久的な拒否(`captureMessage`、タグ`stripe_error_code`)、突合の失敗(タグ`job`)、結び付かない通知は`warn`のログだけ。
+- Sentry: 反映の例外(`captureException`、タグ`stripe_event_type`)、返金の恒久的な拒否(`captureEvent`、タグ`stripe_error_code`)、突合の失敗(`captureEvent`、タグ`job`)、結び付かない通知は`warn`のログだけ。定型の通知の`captureEvent`は、文言を`logentry`、種類(拒否のコード・ジョブ)を`fingerprint`に置く(`infra/004`の「同じ文言を繰り返し送る通知」)。
 - 設定の不足(`EnvValidationError`)は起動時に`configuration_error`として検知される(15.4)。
 
 ## Testing Strategy

@@ -336,3 +336,9 @@ ultras-subscriptionの要件と設計の作成中に、本specの口に足りな
 - frontend-platformの実装と最終検証の後、開発者の決定(frontend-platformのタスク10.4)で、設計をfrontend-platformの設計の「実装で確定した契約による発火と影響を受ける下流spec」の表に合わせた。振る舞いを変えない整合の修正のため、改訂の番号は付けない。要件は変えていない。
   - 操作の置き場所と生成物: clientの操作を`src/graphql/operations/payments/`の1ファイル1操作の`.graphql`(操作名は`Client`で始める)にし、`graphql()`を呼ばず、部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読むとした。1ファイルにまとめていた3つの操作を分けたため、操作のファイルは5つになった(design.mdのAllowed Dependencies・File Structure Plan、tasks.mdの10.2)。
   - `CLIENT_SECURITY_POLICY`への追記は、確定した`SecurityPolicySources`の形と許可先の形の規則に合うため変えていない。
+
+## 実装済みの上流との食い違いの水平展開(2026-10-30、開発者の指示)
+
+- **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
+- **ブラウザテストの事前バンドル**: frontend-platformの`vitest.browser.config.ts`は、テストの実行中に依存の事前バンドルをやり直すとページが再読み込みされReactが2つ読み込まれるため、画面部品の依存を`PREBUNDLED_DEPENDENCIES`に列挙している(content-processingの差分の分析のG-3)。本specが加える`@stripe/stripe-js`・`@stripe/react-stripe-js`を、clientの一覧へ加える手順をdesign.mdのModified Filesとtasks.mdの導入のタスクに加えた。
+- 要件と受け入れ基準は変えていない。
