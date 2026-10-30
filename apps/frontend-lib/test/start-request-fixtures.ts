@@ -105,6 +105,7 @@ export const renderContextOf = (
   publicConfig: {
     environment: 'staging',
     turnstileSiteKey: '1x00000000000000000000BB',
+    clientSiteOrigin: 'https://client.example',
     sentry: { dsn: undefined, environment: 'staging', tracesSampleRate: 0.1 },
     webAnalyticsToken: undefined,
   },

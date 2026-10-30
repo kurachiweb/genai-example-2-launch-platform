@@ -32,6 +32,7 @@
     // Cloudflare Turnstileが公開している、常に成功しウィジェットを表示しないテスト用のサイトキー
     "TURNSTILE_SITE_KEY": "1x00000000000000000000BB",
     "IMAGES_ORIGIN": "http://localhost:48043",
+    "CLIENT_SITE_ORIGIN": "http://localhost:48044",
     "WEB_ANALYTICS_TOKEN": "",
   },
   "secrets": { "required": ["HASH_PEPPER"] },
@@ -59,6 +60,7 @@
         // 仮の値。infra-deliveryが作成したTurnstileのウィジェットとWeb Analyticsのサイトの値に置き換える
         "TURNSTILE_SITE_KEY": "0x0000000000000000000000",
         "IMAGES_ORIGIN": "https://genai-example-2-images-staging.lab.kurachiweb.com",
+        "CLIENT_SITE_ORIGIN": "https://genai-example-2-client-staging.lab.kurachiweb.com",
         "WEB_ANALYTICS_TOKEN": "00000000000000000000000000000000",
       },
       "secrets": { "required": ["HASH_PEPPER", "SENTRY_DSN"] },
@@ -86,6 +88,7 @@
         // 仮の値。infra-deliveryが作成したTurnstileのウィジェットとWeb Analyticsのサイトの値に置き換える
         "TURNSTILE_SITE_KEY": "0x0000000000000000000000",
         "IMAGES_ORIGIN": "https://genai-example-2-images.lab.kurachiweb.com",
+        "CLIENT_SITE_ORIGIN": "https://genai-example-2-client.lab.kurachiweb.com",
         "WEB_ANALYTICS_TOKEN": "00000000000000000000000000000000",
       },
       "secrets": { "required": ["HASH_PEPPER", "SENTRY_DSN"] },

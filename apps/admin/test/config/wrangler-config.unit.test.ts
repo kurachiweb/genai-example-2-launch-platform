@@ -73,6 +73,8 @@ type EffectiveConfig = z.infer<typeof effectiveConfigSchema>;
 
 const workerNameSchema = z.object({ name: z.string() });
 
+const varsSchema = z.object({ vars: z.record(z.string(), z.unknown()) });
+
 const rateLimitsSchema = z.object({
   ratelimits: z.array(z.object({ namespace_id: z.string() })),
 });
@@ -99,6 +101,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       SENTRY_TRACES_SAMPLE_RATE: '0',
       TURNSTILE_SITE_KEY: LOCAL_TURNSTILE_SITE_KEY,
       IMAGES_ORIGIN: 'http://localhost:48043',
+      CLIENT_SITE_ORIGIN: 'http://localhost:48044',
     },
     requiredSecrets: ['HASH_PEPPER'],
   },
@@ -115,6 +118,8 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       TURNSTILE_SITE_KEY: PLACEHOLDER_TURNSTILE_SITE_KEY,
       IMAGES_ORIGIN:
         'https://genai-example-2-images-staging.lab.kurachiweb.com',
+      CLIENT_SITE_ORIGIN:
+        'https://genai-example-2-client-staging.lab.kurachiweb.com',
     },
     requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
   },
@@ -130,6 +135,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       SENTRY_TRACES_SAMPLE_RATE: '0.1',
       TURNSTILE_SITE_KEY: PLACEHOLDER_TURNSTILE_SITE_KEY,
       IMAGES_ORIGIN: 'https://genai-example-2-images.lab.kurachiweb.com',
+      CLIENT_SITE_ORIGIN: 'https://genai-example-2-client.lab.kurachiweb.com',
     },
     requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
   },
@@ -288,6 +294,20 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
 });
 
 describe('Wrangler設定の環境をまたぐ整合', () => {
+  test.each(EXPECTED_ENVIRONMENTS)(
+    '利用者側のオリジンが利用者側と管理者側で同じ値である($label)',
+    ({ wranglerEnv }) => {
+      const [clientOrigin, adminOrigin] = (['client', 'admin'] as const).map(
+        (app) => varsSchema.parse(readRawConfig(app, wranglerEnv)).vars,
+      );
+
+      expect(clientOrigin?.CLIENT_SITE_ORIGIN).toBeString();
+      expect(adminOrigin?.CLIENT_SITE_ORIGIN).toBe(
+        clientOrigin?.CLIENT_SITE_ORIGIN,
+      );
+    },
+  );
+
   test('IP制限の名前空間が、利用者側・管理者側・api・eventの環境・Workerごとにすべて異なる', () => {
     const namespaceIds = EXPECTED_ENVIRONMENTS.flatMap(({ wranglerEnv }) =>
       RATE_LIMITED_APPS.flatMap((app) =>

@@ -19,6 +19,7 @@ import {
 
 export const APP_ORIGIN = 'https://app.example';
 export const IMAGES_ORIGIN = 'https://images.example';
+export const CLIENT_SITE_ORIGIN = 'https://client.example';
 export const SENTRY_ORIGIN = 'https://o1.ingest.sentry.example';
 // シークレット検出が実物の値と誤検知しないよう、テスト用の値を部品から組み立てる
 export const SENTRY_DSN = `https://${['public', 'dsn', 'part'].join('-')}@o1.ingest.sentry.example/1`;
@@ -95,6 +96,7 @@ export const baseEnvOf = (
   SENTRY_DSN,
   TURNSTILE_SITE_KEY: 'turnstile-site-key',
   IMAGES_ORIGIN,
+  CLIENT_SITE_ORIGIN,
   WEB_ANALYTICS_TOKEN: 'analytics-token',
   HASH_PEPPER,
 });

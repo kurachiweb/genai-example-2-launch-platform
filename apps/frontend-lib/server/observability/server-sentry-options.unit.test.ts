@@ -30,6 +30,7 @@ const validRawEnv = (): Record<string, unknown> => ({
   SENTRY_DSN,
   TURNSTILE_SITE_KEY: '1x00000000000000000000BB',
   IMAGES_ORIGIN: 'https://images.example',
+  CLIENT_SITE_ORIGIN: 'https://client.example',
   WEB_ANALYTICS_TOKEN: 'analytics-token',
   HASH_PEPPER: 'test-pepper-for-sentry-options',
 });

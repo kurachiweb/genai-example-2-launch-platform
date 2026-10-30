@@ -12,6 +12,7 @@ const SENTRY_DSN = 'https://public-key@sentry.example/1';
 const SECRET_VALUE = 'secret-value-must-not-leak';
 const INVALID_VALUE = 'invalid-value-must-not-leak';
 const HASH_PEPPER = 'test-pepper-must-not-reach-browser';
+const CLIENT_SITE_ORIGIN = 'https://client.example';
 
 const fakeApi = {
   fetch: (): Promise<Response> => Promise.resolve(new Response(null)),
@@ -31,6 +32,7 @@ const validRawEnv = (): Record<string, unknown> => ({
   SENTRY_DSN,
   TURNSTILE_SITE_KEY: '1x00000000000000000000BB',
   IMAGES_ORIGIN: 'https://images.example',
+  CLIENT_SITE_ORIGIN,
   WEB_ANALYTICS_TOKEN: 'analytics-token',
   HASH_PEPPER,
 });
@@ -90,6 +92,7 @@ describe('validateFrontendEnv', () => {
         SENTRY_DSN,
         TURNSTILE_SITE_KEY: '1x00000000000000000000BB',
         IMAGES_ORIGIN: 'https://images.example',
+        CLIENT_SITE_ORIGIN,
         WEB_ANALYTICS_TOKEN: 'analytics-token',
         HASH_PEPPER,
       });
@@ -145,6 +148,15 @@ describe('validateFrontendEnv', () => {
         const env = envOf(validate({ IMAGES_ORIGIN: origin }));
 
         expect(env.IMAGES_ORIGIN).toBe(origin);
+      },
+    );
+
+    test.each(['http://localhost:48044', 'https://client.example'])(
+      '利用者側のオリジン%sを受け付ける',
+      (origin) => {
+        const env = envOf(validate({ CLIENT_SITE_ORIGIN: origin }));
+
+        expect(env.CLIENT_SITE_ORIGIN).toBe(origin);
       },
     );
 
@@ -207,6 +219,7 @@ describe('validateFrontendEnv', () => {
       'SENTRY_TRACES_SAMPLE_RATE',
       'TURNSTILE_SITE_KEY',
       'IMAGES_ORIGIN',
+      'CLIENT_SITE_ORIGIN',
       'HASH_PEPPER',
     ])('必要なキー%sが無ければ、その名前を返す', (key) => {
       const raw = rawEnvWithout(key);
@@ -231,6 +244,7 @@ describe('validateFrontendEnv', () => {
       expect(invalidKeysOf(validateFrontendEnv(undefined))).toEqual([
         'API',
         'APP_ENVIRONMENT',
+        'CLIENT_SITE_ORIGIN',
         'HASH_PEPPER',
         'IMAGES_ORIGIN',
         'IP_RATE_LIMITER',
@@ -290,6 +304,22 @@ describe('validateFrontendEnv', () => {
     ])('オリジンの形式でない%pを拒否する', (origin) => {
       expect(invalidKeysOf(validate({ IMAGES_ORIGIN: origin }))).toEqual([
         'IMAGES_ORIGIN',
+      ]);
+    });
+
+    test.each([
+      'client.example',
+      'https://client.example/',
+      'https://client.example/path',
+      'https://client.example#fragment',
+      'ftp://client.example',
+      'javascript:alert(1)',
+      'https://user@client.example',
+      '',
+      42,
+    ])('オリジンの形式でない利用者側のオリジン%pを拒否する', (origin) => {
+      expect(invalidKeysOf(validate({ CLIENT_SITE_ORIGIN: origin }))).toEqual([
+        'CLIENT_SITE_ORIGIN',
       ]);
     });
 
@@ -380,6 +410,7 @@ describe('toPublicRuntimeConfig', () => {
     expect(toPublicRuntimeConfig(env, CLIENT_LIKE_PROFILE)).toEqual({
       environment: 'staging',
       turnstileSiteKey: '1x00000000000000000000BB',
+      clientSiteOrigin: CLIENT_SITE_ORIGIN,
       sentry: {
         dsn: SENTRY_DSN,
         environment: 'staging',
@@ -409,6 +440,7 @@ describe('toPublicRuntimeConfig', () => {
     expect(Object.values(config)).not.toContain(fakeApi);
     expect(Object.values(config)).not.toContain(fakeRateLimiter);
     expect(Object.keys(config).toSorted()).toEqual([
+      'clientSiteOrigin',
       'environment',
       'sentry',
       'turnstileSiteKey',
@@ -421,6 +453,19 @@ describe('toPublicRuntimeConfig', () => {
     const config = toPublicRuntimeConfig(env, CLIENT_LIKE_PROFILE);
 
     expect(JSON.parse(JSON.stringify(config))).toEqual(config);
+  });
+
+  test.each([
+    ['利用者側', CLIENT_LIKE_PROFILE],
+    ['管理者側', ADMIN_LIKE_PROFILE],
+  ])('%sのプロファイルでも利用者側のオリジンを渡す', (_label, profile) => {
+    const env = envOf(
+      validate({ CLIENT_SITE_ORIGIN: 'http://localhost:48044' }),
+    );
+
+    expect(toPublicRuntimeConfig(env, profile).clientSiteOrigin).toBe(
+      'http://localhost:48044',
+    );
   });
 
   test('アクセス解析を持たないプロファイルでは解析のトークンを渡さない', () => {

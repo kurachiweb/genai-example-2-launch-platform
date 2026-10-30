@@ -15,6 +15,7 @@ import {
   ANALYTICS_ORIGIN,
   APP_ORIGIN,
   baseEnvOf,
+  CLIENT_SITE_ORIGIN,
   CLIENT_TEST_PROFILE,
   createHarness,
   errorBodyOf,
@@ -403,14 +404,14 @@ describe('createFrontendServerEntry(検索除外)', () => {
     },
   );
 
-  test('管理者側のログのカテゴリはadminで始まり、公開設定に解析のトークンを含めない', async () => {
+  test('管理者側のログのカテゴリはadminで始まり、公開設定に解析のトークンを含めず利用者側のオリジンを含める', async () => {
     const harness = createHarness({ profile: ADMIN_TEST_PROFILE });
 
     await harness.fetch(pageRequest());
 
-    expect(onlyStartCall(harness).context.publicConfig.webAnalyticsToken).toBe(
-      undefined,
-    );
+    const { publicConfig } = onlyStartCall(harness).context;
+    expect(publicConfig.webAnalyticsToken).toBe(undefined);
+    expect(publicConfig.clientSiteOrigin).toBe(CLIENT_SITE_ORIGIN);
     expect(logsOf(harness, 'admin.http.access')).toHaveLength(1);
   });
 });

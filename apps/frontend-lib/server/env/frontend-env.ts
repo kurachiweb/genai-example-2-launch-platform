@@ -26,6 +26,7 @@ export interface ValidatedFrontendEnv {
   readonly SENTRY_DSN: string | undefined;
   readonly TURNSTILE_SITE_KEY: string;
   readonly IMAGES_ORIGIN: string;
+  readonly CLIENT_SITE_ORIGIN: string;
   readonly WEB_ANALYTICS_TOKEN: string | undefined;
   readonly HASH_PEPPER: string;
 }
@@ -37,6 +38,7 @@ export type EnvValidation =
 export interface PublicRuntimeConfig {
   readonly environment: AppEnvironment;
   readonly turnstileSiteKey: string;
+  readonly clientSiteOrigin: string;
   readonly sentry: {
     readonly dsn: string | undefined;
     readonly environment: string;
@@ -97,6 +99,7 @@ const frontendEnvSchema = z.object({
   SENTRY_DSN: optionalText,
   TURNSTILE_SITE_KEY: z.string().min(1),
   IMAGES_ORIGIN: z.string().refine(isOrigin),
+  CLIENT_SITE_ORIGIN: z.string().refine(isOrigin),
   WEB_ANALYTICS_TOKEN: optionalText,
   HASH_PEPPER: z.string().min(1),
 });
@@ -132,6 +135,7 @@ export const toPublicRuntimeConfig = (
 ): PublicRuntimeConfig => ({
   environment: env.APP_ENVIRONMENT,
   turnstileSiteKey: env.TURNSTILE_SITE_KEY,
+  clientSiteOrigin: env.CLIENT_SITE_ORIGIN,
   sentry: {
     dsn: env.SENTRY_DSN,
     environment: env.SENTRY_ENVIRONMENT,

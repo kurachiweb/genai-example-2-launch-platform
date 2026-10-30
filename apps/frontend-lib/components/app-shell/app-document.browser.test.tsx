@@ -66,6 +66,7 @@ const RUNTIME: AppRuntime = {
   publicConfig: {
     environment: 'staging',
     turnstileSiteKey: '1x00000000000000000000BB',
+    clientSiteOrigin: 'https://client.example',
     sentry: {
       dsn: 'https://public@sentry.example/1',
       environment: 'staging',
