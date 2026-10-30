@@ -158,7 +158,7 @@
 
 - tournament-weekの共用のブラケットの部品の形が変わる — tournament-weekの仮7の契約(`buildBracketRoundsView`・`BracketViewProps`・2つのフラグメント)をRevalidation Triggersに挙げ、変われば本specの照会とページを確かめ直す。
 - 23:45のジョブが失敗して0:00までに次ラウンドを作れない — `decided`の処理が先に進めるため通常は影響しない。両方失敗した場合はtournament-weekの部品がラウンドを1日遅らせ、`round-late`をSentryへ通知する(要件8.9)。決勝が決勝日の翌日以降になり得る旨をYearトーナメント規則に書く。
-- 年の行の作成漏れ(23:45の`tournament-year.evening-bracket`が動かないまま組み合わせ決定の時刻を過ぎる) — その年は「開催しなかった年」として扱われ、枠は翌年の対象になる。行の用意は毎晩行い、管理画面の照会と保存でも行う。失敗は`captureMessage`で検知する。
+- 年の行の作成漏れ(23:45の`tournament-year.evening-bracket`が動かないまま組み合わせ決定の時刻を過ぎる) — その年は「開催しなかった年」として扱われ、枠は翌年の対象になる。行の用意は毎晩行い、管理画面の照会と保存でも行う。失敗は`captureEvent`で検知する。
 - 組み合わせ決定と同時の変更(削除・退会・Ultrasの加入・決済の反映・Week優勝の取り込み) — 凍結(`draw_started_at`)と「凍結済みの年の決済期限日がWeek優勝の日より後」の条件付きの書き込み、同じ依頼キーの返金。
 - 決勝日の変更で、決済済みの枠が翌年の対象へ移る — FR-TOURY-001の帰結であり、確認の画面で対象期間が変わる旨を示す(要件2.13)。発生は変更の境界の数日に限られる。
 - 返金の依頼の失敗 — 枠に`refund_status = 'pending'`を残し、4:21のジョブで依頼し直す。
@@ -272,7 +272,7 @@
 - 関連する他specの確定: tournament-weekの仮1〜仮7(本specが前提にする除外と返金・期限後の決済・自動返金の知らせ・ブラケットのページ・共用のブラケットの表示)とmatch-engineの仮7(Yearの不戦勝の文言)は推奨どおり確定し、本specの前提は変わらない。sponsorshipの仮3(広告の日割り返金、推奨と異なる)は返金ポリシーの広告の行を変えるが、本specのタスク1.3が書き換えるトーナメントの行とは別の行で、影響しない。
 - notificationsの仮2は推奨と異なる案C(トーナメントの23:45のジョブの最後に夜の枠の送り出しの入口を呼ばせる)に確定し、notificationsが契約`EveningDispatchGate`(`core/notifications/evening-dispatch.ts`、apiだけの`NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate`)を定めた。本specは次のとおり採用した。
   - 23:45のジョブ3つ(`tournament-year.champion-sync` 1700・`tournament-year.bracket-draw` 1710・`tournament-year.round-progress` 1720)を、1つの`tournament-year.evening-bracket`(1700)にまとめた。理由は、送り出しの準備の完了を「全ての処理と発行を終えた最後に1回」伝える契約を、ジョブの境界をまたがずに1つの処理の中で守れるため(別々のジョブでは、前のジョブの失敗を後のジョブが知ることができない)。
-  - 毎晩、(1)次に開催する年の行の用意とWeek優勝の取り込み、(2)組み合わせ決定、(3)進行(確定のマッチイベントの処理が終わっていなくても、マッチの結果から同期で追いつく)、(4)その夜の一括の発行(`YearNotificationPublisher.publishEvening`: その日の確定したYearのマッチの結果・翌日の予告・その日の受賞。`dedupe`で冪等)、(5)`markReady({ participant: 'tournament-year.evening-bracket', date: context.business.date, at: clock.now() })`の順に行う。組み合わせや進行の無い夜(大半の夜)も呼ぶ。(1)〜(4)のどれかが失敗した夜は、残りの段を続けて`captureMessage`したうえで`markReady`を呼ばずに例外を投げ、notificationsの23:55の期限の送り出しと`evening-dispatch-incomplete`の検知に任せる。戻り値で処理を分けない。
+  - 毎晩、(1)次に開催する年の行の用意とWeek優勝の取り込み、(2)組み合わせ決定、(3)進行(確定のマッチイベントの処理が終わっていなくても、マッチの結果から同期で追いつく)、(4)その夜の一括の発行(`YearNotificationPublisher.publishEvening`: その日の確定したYearのマッチの結果・翌日の予告・その日の受賞。`dedupe`で冪等)、(5)`markReady({ participant: 'tournament-year.evening-bracket', date: context.business.date, at: clock.now() })`の順に行う。組み合わせや進行の無い夜(大半の夜)も呼ぶ。(1)〜(4)のどれかが失敗した夜は、残りの段を続けて`captureEvent`したうえで`markReady`を呼ばずに例外を投げ、notificationsの23:55の期限の送り出しと`evening-dispatch-incomplete`の検知に任せる。戻り値で処理を分けない。
   - 送り出しは23:50ではなく、前提の全機能の準備の完了の後(遅くとも23:55)に始まる。23:50を前提にした記述(要件14.2・14.3、設計の時刻の連鎖・発行の時刻・結果通知の追記、タスク1.3・8.1)を改めた。数日前の組み合わせ決定で発行した1回戦の予告は、notificationsが前日の夜の枠まで保持する。Week決勝の勝利の結果通知へのYearの決済期限の追記(`RESULT_NOTICE_SUPPLEMENTS`の種別`week`、Week優勝の側だけ)は変えない。
   - 変えた要件: 14.2・14.3(23:50を準備の完了の通知の前に改めた)、14.7(新設。受け入れ基準は131件)。変えたタスク: 1.1(前提に`EveningDispatchGate`・`EVENING_DISPATCH_PARTICIPANTS`)・1.3(日次タイムライン)・3.9(一括の発行)・5.1(2つのジョブと5段の順序と失敗の扱い)・5.10(前提の登録と名前の検証)・8.1(送り出しの依頼までの時刻の連鎖)。
   - 要件定義書の改訂: 本specとしての新しい改訂は無い(notificationsの仮2による日次タイムラインのサービス仕様の改訂は、本specのタスク1.3とnotificationsのタスクが行う)。
@@ -286,3 +286,8 @@
 - **管理者側のエラーの案内文**: 管理者側には問い合わせの画面が無いため、`ErrorState`に`contactHref`を渡さず、`GraphQLClientError`でない例外に代えて出す文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ契約になった。決勝実施日の区画の取得の失敗と、フォームの想定外の失敗をこの契約で書いた。
 - **変えた箇所**: design.mdのAllowed Dependencies(tournament-weekのフラグメントの場所、frontend-platformの部品と操作の追加手順)・上流への影響の表・File Structure Plan・clientの節(操作の規約)・adminの節(`FinalDateSection`・`FinalDateForm`の失敗)、tasks.mdの6.1・7.1(`.graphql`・操作名・生成と許可リストの再生成)・7.3・7.4(管理者側の失敗の表示)、本ファイルの「上流・後続specへの影響」のtournament-weekの行。
 - **確認のダイアログの失敗の文言**: admin-foundationの`ConfirmActionDialogProps`が必須の`failureMessageOf: (error: unknown) => string`を受け、`onConfirm`の失敗時にダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言を`role="alert"`でダイアログの中に示す契約になった(同日のadmin-foundationの改訂)。共通部品はアプリのプロファイルを読まないため、呼び出す側が文言を決める。 `FinalDateForm`は`failureMessageOf`で`validation_error`・`final_date_locked`・`version_conflict`の案内(`FinalDateLabels`)を返し、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返す形に書き改めた(design.mdの`FinalDateForm`、tasks.mdの7.3)。
+
+## 実装済みの上流との食い違いの水平展開(2026-10-30、開発者の指示)
+
+- **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
+- 要件と受け入れ基準は変えていない。

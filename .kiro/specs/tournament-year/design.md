@@ -43,7 +43,7 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`AppError`・`getAppLogger`・`captureMessage`の規約・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`・`BusinessTimeOfDay`)・`ScheduledJobDefinition`・`ScheduledJobHandler`。形を変えない。E2Eの`e2e/support/scheduled-trigger.ts`の`triggerScheduled`(backend-platformの改訂2。ローカルの定期実行の起動は独自に作らない)。
+- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く)・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`・`BusinessTimeOfDay`)・`ScheduledJobDefinition`・`ScheduledJobHandler`。形を変えない。E2Eの`e2e/support/scheduled-trigger.ts`の`triggerScheduled`(backend-platformの改訂2。ローカルの定期実行の起動は独自に作らない)。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`caller`・`loaders`)・`withValidatedArgs`・`DateTime`。
 - identity-auth: `AccountGuard`(`requireUser`)・`CurrentUser`・`users`(外部キーだけ)・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)。
 - admin-foundation: `requireAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AdminDirectory`・`AdminRole`・adminの`RoleGate`・`ConfirmActionDialog`、E2Eの`e2e/support/admin-bootstrap.ts`(`signInAsNewAdmin`)・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
@@ -397,7 +397,7 @@ sequenceDiagram
 ### Week優勝の取り込み(`YearEntryRegistrar.syncChampions`)
 
 1. `WeekChampionDirectory.listChampions({ awardedFrom, awardedBefore: now })`でWeek優勝を読む(`decided`・`week`の処理は直近8日、23:45のジョブは`YearCalendar.openPeriodStart`(凍結済みの最新の年の決済期限日の0:00、無ければ起点なし)から)。
-2. `YearEntryStore.findByWeekTournaments`で既存の枠を除き、残りのローンチについて`MatchDirectory.findQualifierResults`で予選のマッチを引き、`findMatches`の側の`upvoteCount`・`lastUpvoteElapsedMs`と`matchDate`(ローンチ日)を写す(3.2)。予選が見つからない枠は作らず`captureMessage`(次の実行で再試行)。
+2. `YearEntryStore.findByWeekTournaments`で既存の枠を除き、残りのローンチについて`MatchDirectory.findQualifierResults`で予選のマッチを引き、`findMatches`の側の`upvoteCount`・`lastUpvoteElapsedMs`と`matchDate`(ローンチ日)を写す(3.2)。予選が見つからない枠は作らず`captureEvent`(次の実行で再試行)。
 3. `YearCalendar.resolveAward(Week優勝の日, now)`で対象年を求め、`open`なら`UltrasEntitlements.wasEntitledDuring(投稿者, Week優勝の日時, その年の決済期限)`が真なら`entitled`(`ultras`)、偽なら`awaiting_payment`で挿入する(5.1)。`late`なら期限切れで挿入する(3.7)。
 4. 挿入は1文で、凍結済みの年のうち決済期限日がWeek優勝の日より後の年があれば`expired`(`late_entry`、`classified_year`はその年)にし、`week_tournament_id`の一意索引で`onConflictDoNothing()`する。手順3の判定と挿入の間に凍結されても、文の条件で期限切れになる(3.3・3.7)。
 
@@ -481,7 +481,7 @@ sequenceDiagram
 | 15.2, 15.3                                     | 帯の値と処理の順序         | YearTournamentJobs、各処理の登録                                                                                           | `order` 1700・1710                                                  | 組み合わせ決定の日の23:45 |
 | 15.4                                           | 物理削除                   | EntryUnlinkHandler、YearEntryStore                                                                                         | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS`                                  | —                         |
 | 15.5                                           | エクスポート               | YearAwardExport                                                                                                            | `listForLaunches`                                                   | —                         |
-| 15.6, 15.7                                     | ログと検知                 | 全コンポーネント(ログの規約)、YearTournamentJobs                                                                           | `getAppLogger`・`captureMessage`                                    | —                         |
+| 15.6, 15.7                                     | ログと検知                 | 全コンポーネント(ログの規約)、YearTournamentJobs                                                                           | `getAppLogger`・`captureEvent`                                      | —                         |
 | 15.8                                           | 問い合わせの集約           | YearBoardReader、YearBracketReader                                                                                         | `matchViewLoader`・`MatchViewReader.findViews`                      | —                         |
 | 16.1, 16.2, 16.3, 16.4                         | テスト                     | Testing Strategy、YearTournamentE2E、YearTournamentFixtures                                                                | —                                                                   | —                         |
 | 16.5                                           | 技術ドキュメント           | YearTechDocs                                                                                                               | —                                                                   | —                         |
@@ -912,7 +912,7 @@ export interface YearEntryRegistrar {
 }
 ```
 
-- 手順はSystem Flows「Week優勝の取り込み」。1回の呼び出しの読み取りは、`listChampions` 1回・`findByWeekTournaments`・`findQualifierResults`・`findMatches`(各90件ずつ)・`YearCalendar.describe` 1回・`entitledUsersDuring`(候補を絞る)と、絞った投稿者ごとの`wasEntitledDuring`に限る。遅れは`captureMessage`(タグ`job`・`weekTournamentId`、理由`late-entry`)。
+- 手順はSystem Flows「Week優勝の取り込み」。1回の呼び出しの読み取りは、`listChampions` 1回・`findByWeekTournaments`・`findQualifierResults`・`findMatches`(各90件ずつ)・`YearCalendar.describe` 1回・`entitledUsersDuring`(候補を絞る)と、絞った投稿者ごとの`wasEntitledDuring`に限る。遅れは`captureEvent`(タグ`job`・`weekTournamentId`、理由`late-entry`)。
 
 #### YearEntryOfferPolicy・YearEntryFulfillment
 
@@ -976,7 +976,7 @@ export interface YearNotificationPublisher {
 }
 ```
 
-- `drawDue`: System Flows「組み合わせ決定」の手順。年ごとに独立して行い、失敗した年は`captureMessage`(タグ`job`・`year`)で通知して次の年へ進む(15.7)。Yearの比較の型は`YearOrderingKey`、`BracketDrawCandidate`の`ref`は枠のID、`tieBreaker`はローンチのID、`participant`はローンチ・プロダクト・投稿者(7.3〜7.6)。1回戦の日は`yearFirstRoundDate`、マッチの時刻は`tournamentMatchWindow`(tournament-weekの部品が使う)で0:00と23:40(1.4・1.5・7.9)。組み合わせ決定から1回戦までの日にはマッチの予定が無い(8.10)。
+- `drawDue`: System Flows「組み合わせ決定」の手順。年ごとに独立して行い、失敗した年は`captureEvent`(タグ`job`・`year`)で通知して次の年へ進む(15.7)。Yearの比較の型は`YearOrderingKey`、`BracketDrawCandidate`の`ref`は枠のID、`tieBreaker`はローンチのID、`participant`はローンチ・プロダクト・投稿者(7.3〜7.6)。1回戦の日は`yearFirstRoundDate`、マッチの時刻は`tournamentMatchWindow`(tournament-weekの部品が使う)で0:00と23:40(1.4・1.5・7.9)。組み合わせ決定から1回戦までの日にはマッチの予定が無い(8.10)。
 - `advance`: `BracketProgression.advance(bracketId, dailyRoundPolicy(first_round_date, now), now)`を呼び、`applyResult`する。勝敗・即時の終了・開始時点の決着・不戦勝の連鎖・段階の記録・遅れの回復はtournament-weekの部品とmatch-engineが行う(8.1〜8.9)。
 - `applyResult`: `finished`なら`recordFinish`(`championRef`は枠のID)。確定させた場合だけ、優勝者があれば`publishAward`(9.1〜9.4・14.4)。どの結果でも`publishRound`で`decidedMatchIds`を`match_result`、`previewMatchIds`を`match_preview`として発行する(14.1〜14.3)。
 - `publishRound`: 50件ずつ`NotificationEventPublisher.publish({ publisher: 'tournament-year', events, at })`。`match-not-previewable`は`info`のログで捨て、その他の拒否は`error`のログ、一時的な失敗は呼び出し元へ返す。発行は`dedupe`で冪等である(14.5)。`publishAward`は`{ type: 'award', award: 'product_of_the_year', period: '<対象年>', productId }`。
@@ -1149,7 +1149,7 @@ export interface YearFinalDateWriter {
 | `tournament-year.entry-follow-up` | 4:21     | 1700    | `listPendingFollowUps(10分前, 100)`を`YearEntryFollowUp.process`(6.8)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 - Trigger: apiのCron Triggers(`45 7 * * *`・`21 12 * * *`、上流で追加済み)。23:45はmatch-engine(1100)・notifications(1300)・tournament-week(`tournament-week.evening-bracket`、1500)の後、4:21は上流(100〜1600)の後に動く(15.2・15.3)。
-- 23:45のジョブの失敗: (1)〜(4)は年ごと・段ごとに失敗を集めて残りを続け、失敗は`captureMessage`(タグ`job`・`year`)で通知する。1つでも失敗した夜は`markReady`を呼ばずに例外を投げ、notificationsの23:55の期限の送り出しに任せる(14.7・15.7)。`markReady`の戻り値(`waiting`・`dispatch-requested`・`already-requested`)はログにだけ使い、処理を分けない。`EveningDispatchError`(`unknown-participant`・`invalid-date`)はそのまま例外にする。
+- 23:45のジョブの失敗: (1)〜(4)は年ごと・段ごとに失敗を集めて残りを続け、失敗は`captureEvent`(タグ`job`・`year`)で通知する。1つでも失敗した夜は`markReady`を呼ばずに例外を投げ、notificationsの23:55の期限の送り出しに任せる(14.7・15.7)。`markReady`の戻り値(`waiting`・`dispatch-requested`・`already-requested`)はログにだけ使い、処理を分けない。`EveningDispatchError`(`unknown-participant`・`invalid-date`)はそのまま例外にする。
 - Idempotency: すべて条件付きの書き込みと`onConflictDoNothing()`で、2回実行しても結果が変わらない(15.7)。`markReady`も冪等である(notificationsの契約)。
 
 ### api/presentation
@@ -1401,22 +1401,22 @@ erDiagram
 
 ### Error Categories and Responses
 
-| 種類                 | 例                                                           | 応答                                                                                                |
-| -------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| 利用者の誤り         | 他人の枠・期限後・資格を得た枠の決済の開始                   | `year_entry_*`の`unprocessable`、paymentsの`checkout_closed`                                        |
-| 管理者の誤り         | 日曜日でない日・8日後より前・64週以上空く日                  | `validation_error`と理由                                                                            |
-| 権限・期限           | 最上位管理者以外の保存、変更期限以降の保存                   | `forbidden`、`final_date_locked`                                                                    |
-| 業務の競合           | 凍結と反映の同時の発生、管理者の同時の保存                   | 反映の文のNOT NULL制約の違反→paymentsが拒否して自動返金、保存の`version_conflict`                   |
-| 外部の一時的な失敗   | Stripe・Queue・D1                                            | イベントの処理は再試行、ジョブは`captureMessage`で通知し次の実行で補う                              |
-| 進行の遅れ           | 0:00を過ぎてから次ラウンドを作る                             | tournament-weekの部品が実施日を1日遅らせ`round-late`を`captureMessage`                              |
-| 返金の依頼の拒否     | `not_paid`・`purchase_not_found`                             | `not_needed`と`error`のログ(購入のIDだけ)                                                           |
-| 遅れて届いたWeek優勝 | 凍結の後の取り込み                                           | `expired`(`late_entry`)で記録し`captureMessage`                                                     |
-| 年の行の用意の失敗   | 23:45の`tournament-year.evening-bracket`の(1)の失敗          | `captureMessage`。その夜は`markReady`を呼ばずに例外(次の行と同じ)。翌晩と管理画面の照会で用意し直す |
-| 夜の処理の失敗       | 23:45の`tournament-year.evening-bracket`のいずれかの段の失敗 | `markReady`を呼ばずに例外。notificationsが23:55に送り出し、`evening-dispatch-incomplete`で検知する  |
+| 種類                 | 例                                                           | 応答                                                                                               |
+| -------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| 利用者の誤り         | 他人の枠・期限後・資格を得た枠の決済の開始                   | `year_entry_*`の`unprocessable`、paymentsの`checkout_closed`                                       |
+| 管理者の誤り         | 日曜日でない日・8日後より前・64週以上空く日                  | `validation_error`と理由                                                                           |
+| 権限・期限           | 最上位管理者以外の保存、変更期限以降の保存                   | `forbidden`、`final_date_locked`                                                                   |
+| 業務の競合           | 凍結と反映の同時の発生、管理者の同時の保存                   | 反映の文のNOT NULL制約の違反→paymentsが拒否して自動返金、保存の`version_conflict`                  |
+| 外部の一時的な失敗   | Stripe・Queue・D1                                            | イベントの処理は再試行、ジョブは`captureEvent`で通知し次の実行で補う                               |
+| 進行の遅れ           | 0:00を過ぎてから次ラウンドを作る                             | tournament-weekの部品が実施日を1日遅らせ`round-late`を`captureEvent`                               |
+| 返金の依頼の拒否     | `not_paid`・`purchase_not_found`                             | `not_needed`と`error`のログ(購入のIDだけ)                                                          |
+| 遅れて届いたWeek優勝 | 凍結の後の取り込み                                           | `expired`(`late_entry`)で記録し`captureEvent`                                                      |
+| 年の行の用意の失敗   | 23:45の`tournament-year.evening-bracket`の(1)の失敗          | `captureEvent`。その夜は`markReady`を呼ばずに例外(次の行と同じ)。翌晩と管理画面の照会で用意し直す  |
+| 夜の処理の失敗       | 23:45の`tournament-year.evening-bracket`のいずれかの段の失敗 | `markReady`を呼ばずに例外。notificationsが23:55に送り出し、`evening-dispatch-incomplete`で検知する |
 
 ### Monitoring
 
-- ログは`getAppLogger`で、対象年・枠・ブラケット・マッチ・購入・管理者の識別と件数だけを記録し、名称・メールアドレス・ハンドルを含めない(15.6)。`captureMessage`のタグは`job`・`year`・`bracketId`・理由(`round-late`・`draw-failed`・`late-entry`・`refund-rejected`・`qualifier-missing`・`calendar-failed`)。
+- ログは`getAppLogger`で、対象年・枠・ブラケット・マッチ・購入・管理者の識別と件数だけを記録し、名称・メールアドレス・ハンドルを含めない(15.6)。`captureEvent`(文言は`logentry`、`fingerprint`は理由)のタグは`job`・`year`・`bracketId`・理由(`round-late`・`draw-failed`・`late-entry`・`refund-rejected`・`qualifier-missing`・`calendar-failed`)。
 
 ## Testing Strategy
 
