@@ -31,10 +31,16 @@ export const installPreloadRecovery = ({
   storage,
   reload,
 }: PreloadRecoveryInput): (() => void) => {
-  const onPreloadError = (): void => {
-    if (markReloadOnce(storage)) {
-      reload();
-    }
+  // 遅延読み込みの失敗を自分で扱う読み込み(入力欄の編集領域など)は既定の動作を止め、再読み込みで同じページの未保存の値を失わせない。windowへの通知は聞き手を加えた順に呼ばれ、捕捉の段階の聞き手も先に呼ばれるとは限らないため、通知の全ての聞き手が終わってから判定する
+  const onPreloadError = (event: Event): void => {
+    queueMicrotask(() => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      if (markReloadOnce(storage)) {
+        reload();
+      }
+    });
   };
   target.addEventListener(PRELOAD_ERROR_EVENT, onPreloadError);
   return () => {

@@ -1,11 +1,7 @@
 import { Toolbar as ToolbarPrimitive } from 'radix-ui';
-import { useId } from 'react';
 
 import { cn } from '../../utilities/class-names.ts';
-import {
-  EDITOR_KEYBOARD_HINT,
-  FORMAT_TOOLBAR_LABEL,
-} from '../../utilities/messages/markdown-messages.ts';
+import { FORMAT_TOOLBAR_LABEL } from '../../utilities/messages/markdown-messages.ts';
 import { Button } from '../ui/button/button.tsx';
 import { EDITOR_TOOLBAR_ITEMS } from './editor-actions.ts';
 import type { EditorAction, EditorController } from './editor-controller.ts';
@@ -29,7 +25,6 @@ export function MarkdownToolbar({
   onRequestLink,
   className,
 }: MarkdownToolbarProps) {
-  const hintId = useId();
   const isDisabled = disabled || controller === undefined;
 
   const runAction = (action: EditorAction): void => {
@@ -49,7 +44,6 @@ export function MarkdownToolbar({
       data-slot="markdown-toolbar"
       aria-label={FORMAT_TOOLBAR_LABEL}
       aria-controls={controller === undefined ? undefined : controlsId}
-      aria-describedby={hintId}
       className={cn('flex flex-wrap items-center gap-0.5', className)}
     >
       {EDITOR_TOOLBAR_ITEMS.map(({ action, kind, label, icon: Icon }) => (
@@ -74,9 +68,6 @@ export function MarkdownToolbar({
           </Button>
         </ToolbarPrimitive.Button>
       ))}
-      <span id={hintId} className="sr-only">
-        {EDITOR_KEYBOARD_HINT}
-      </span>
     </ToolbarPrimitive.Root>
   );
 }

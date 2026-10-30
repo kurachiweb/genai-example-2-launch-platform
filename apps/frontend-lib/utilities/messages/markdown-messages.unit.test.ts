@@ -7,6 +7,8 @@ import {
   CODE_BLOCK_ACTION_LABEL,
   COLLAPSE_LABEL,
   EDITOR_KEYBOARD_HINT,
+  EDITOR_LOAD_FAILED_MESSAGE,
+  EDITOR_LOADING_LABEL,
   FORMAT_TOOLBAR_LABEL,
   HEADING_ACTION_LABEL,
   INLINE_CODE_ACTION_LABEL,
@@ -17,12 +19,18 @@ import {
   LINK_DIALOG_TITLE,
   LINK_REMOVE_LABEL,
   LINK_URL_FORMAT_ERROR,
+  LENGTH_WITHIN_LIMIT_ANNOUNCEMENT,
+  lengthOverLimitAnnouncement,
   LINK_URL_LABEL,
   ORDERED_LIST_ACTION_LABEL,
+  PREVIEW_EMPTY_MESSAGE,
+  PREVIEW_TAB_LABEL,
   READ_MORE_LABEL,
+  STRIKETHROUGH_ACTION_LABEL,
   TABLE_ACTION_LABEL,
   TASK_ITEM_CHECKED_LABEL,
   TASK_ITEM_UNCHECKED_LABEL,
+  WRITE_TAB_LABEL,
 } from './markdown-messages.ts';
 
 const TOOLBAR_ACTION_LABELS = [
@@ -37,6 +45,16 @@ const TOOLBAR_ACTION_LABELS = [
   CODE_BLOCK_ACTION_LABEL,
   TABLE_ACTION_LABEL,
 ];
+
+const SELECTION_TOOLBAR_LABELS = [
+  BOLD_ACTION_LABEL,
+  ITALIC_ACTION_LABEL,
+  STRIKETHROUGH_ACTION_LABEL,
+  INLINE_CODE_ACTION_LABEL,
+  LINK_ACTION_LABEL,
+];
+
+const EDITOR_TAB_LABELS = [WRITE_TAB_LABEL, PREVIEW_TAB_LABEL];
 
 const LINK_DIALOG_LABELS = [
   LINK_DIALOG_TITLE,
@@ -90,6 +108,41 @@ describe('マークダウンの表示の文言', () => {
     );
   });
 
+  test('選択時のツールバーの5つの操作の名前は文言規則と同じ', () => {
+    expect(SELECTION_TOOLBAR_LABELS).toStrictEqual([
+      '太字',
+      '斜体',
+      '取り消し線',
+      'コード',
+      'リンク',
+    ]);
+  });
+
+  test('入力欄のタブの名前は設計の文言と同じ', () => {
+    expect(EDITOR_TAB_LABELS).toStrictEqual(['書く', 'プレビュー']);
+  });
+
+  test('読み込み中の通知は、読み込み中の状態を示す文言として句点を付けない', () => {
+    expect(EDITOR_LOADING_LABEL).toBe('エディタを読み込んでいます');
+  });
+
+  test('読み込みの失敗とプレビューの空の文言は設計の文言と同じ', () => {
+    expect(EDITOR_LOAD_FAILED_MESSAGE).toBe('エディタを読み込めませんでした。');
+    expect(PREVIEW_EMPTY_MESSAGE).toBe('プレビューする内容がありません。');
+  });
+
+  test('文字数の超過の読み上げは上限を3桁区切りで示し、戻りの読み上げは上限の値を含まない', () => {
+    expect(lengthOverLimitAnnouncement(2000)).toBe(
+      '文字数が上限の2,000文字を超えています。',
+    );
+    expect(lengthOverLimitAnnouncement(300)).toBe(
+      '文字数が上限の300文字を超えています。',
+    );
+    expect(LENGTH_WITHIN_LIMIT_ANNOUNCEMENT).toBe(
+      '文字数が上限以内に戻りました。',
+    );
+  });
+
   test('リストの階層の変更と表のセルの移動のキー操作の説明は、両方のキーとmacOSの修飾キーを示す', () => {
     expect(EDITOR_KEYBOARD_HINT).toBe(
       'リストの項目の階層を下げる操作と表の次のセルへの移動はCtrl+]、階層を上げる操作と表の前のセルへの移動はCtrl+[で行います(macOSではCtrlの代わりにCommand)。',
@@ -104,6 +157,8 @@ describe('マークダウンの表示の文言', () => {
       TASK_ITEM_UNCHECKED_LABEL,
       FORMAT_TOOLBAR_LABEL,
       ...TOOLBAR_ACTION_LABELS,
+      ...SELECTION_TOOLBAR_LABELS,
+      ...EDITOR_TAB_LABELS,
       ...LINK_DIALOG_LABELS,
     ]) {
       expect(label).not.toMatch(/(?:。|です|ます)$/u);
@@ -111,7 +166,14 @@ describe('マークダウンの表示の文言', () => {
   });
 
   test('案内とエラーの文言は句点で終わる', () => {
-    for (const sentence of [EDITOR_KEYBOARD_HINT, LINK_URL_FORMAT_ERROR]) {
+    for (const sentence of [
+      EDITOR_KEYBOARD_HINT,
+      LINK_URL_FORMAT_ERROR,
+      EDITOR_LOAD_FAILED_MESSAGE,
+      PREVIEW_EMPTY_MESSAGE,
+      lengthOverLimitAnnouncement(2000),
+      LENGTH_WITHIN_LIMIT_ANNOUNCEMENT,
+    ]) {
       expect(sentence).toMatch(/。$/u);
     }
   });

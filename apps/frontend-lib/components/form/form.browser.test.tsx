@@ -157,6 +157,8 @@ function ContactForm() {
   );
 }
 
+const noteSchema = z.object({ note: z.string() });
+
 const contactMethodSchema = z.object({
   contact: z.object({ type: z.string(), address: z.string() }),
 });
@@ -277,6 +279,52 @@ describe('フォーム部品', () => {
       .closest('[data-slot="form-message"]')
       ?.querySelector('svg');
     expect(icon?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  test('ラベルの要素のIDを子へ渡し、名前を付けられない要素もラベルで名前を付けられる', async () => {
+    const received: string[] = [];
+    function NoteForm() {
+      const form = useAppForm(noteSchema, { defaultValues: { note: '' } });
+      return (
+        <AppForm
+          form={form}
+          onSubmit={() => undefined}
+          onSubmitError={() => undefined}
+          aria-label="メモ"
+        >
+          <FormField control={form.control} name="note" label="メモの本文">
+            {({ labelId }) => {
+              received.push(labelId);
+              return (
+                <div
+                  role="textbox"
+                  aria-multiline="true"
+                  aria-labelledby={labelId}
+                  tabIndex={0}
+                />
+              );
+            }}
+          </FormField>
+        </AppForm>
+      );
+    }
+
+    const { container } = await render(<NoteForm />);
+
+    const label = container.querySelector('[data-slot="label"]');
+    expect(label?.id).not.toBe('');
+    expect(received.at(-1)).toBe(label?.id);
+    await expect
+      .element(page.getByRole('textbox', { name: 'メモの本文' }))
+      .toBeInTheDocument();
+  });
+
+  test('子へ渡す値を入力要素へ展開しても、ラベルの要素のIDは属性として出力しない', async () => {
+    await render(<ProductForm />);
+
+    const input = titleInput().element();
+    expect(input.hasAttribute('labelid')).toBe(false);
+    expect(input.hasAttribute('labelId')).toBe(false);
   });
 
   test('エラーの文言は「です・ます」調で末尾に「。」を付ける', async () => {

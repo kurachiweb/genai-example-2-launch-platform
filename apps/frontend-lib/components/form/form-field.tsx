@@ -19,7 +19,19 @@ export type FormControlProps<
   readonly id: string;
   readonly 'aria-invalid': true | undefined;
   readonly 'aria-describedby': string | undefined;
+  // 列挙しない値のため{...control}の展開では写らない。名前を付けられない要素のaria-labelledbyへはcontrol.labelIdで読んで渡す
+  readonly labelId: string;
 };
+
+// 子は受け取った値を入力要素へそのまま展開できる。DOMの属性に無いlabelIdが要素へ出力されないよう、展開で写らない列挙しない値として加える
+const withLabelId = <TControl extends object>(
+  control: TControl,
+  labelId: string,
+): TControl & { readonly labelId: string } =>
+  Object.defineProperty(control, 'labelId', {
+    value: labelId,
+    enumerable: false,
+  }) as TControl & { readonly labelId: string };
 
 export interface FormFieldProps<
   TFieldValues extends FieldValues,
@@ -60,6 +72,7 @@ export function FormField<
   }, [disabled, name, clearErrors]);
   const id = useId();
   const controlId = `${id}-control`;
+  const labelId = `${id}-label`;
   const descriptionId = `${id}-description`;
   const messageId = `${id}-message`;
   const message = fieldState.error?.message;
@@ -76,13 +89,20 @@ export function FormField<
       data-slot="form-field"
       className={cn('flex flex-col gap-2', className)}
     >
-      <Label htmlFor={controlId}>{label}</Label>
-      {children({
-        ...field,
-        id: controlId,
-        'aria-invalid': hasError ? true : undefined,
-        'aria-describedby': describedBy === '' ? undefined : describedBy,
-      })}
+      <Label id={labelId} htmlFor={controlId}>
+        {label}
+      </Label>
+      {children(
+        withLabelId(
+          {
+            ...field,
+            id: controlId,
+            'aria-invalid': hasError ? true : undefined,
+            'aria-describedby': describedBy === '' ? undefined : describedBy,
+          },
+          labelId,
+        ),
+      )}
       {description === undefined ? null : (
         <p id={descriptionId} className="text-sm text-muted-foreground">
           {description}

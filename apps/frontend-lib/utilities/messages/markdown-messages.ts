@@ -28,6 +28,29 @@ export const CODE_BLOCK_ACTION_LABEL = 'コードブロック';
 
 export const TABLE_ACTION_LABEL = '表';
 
+export const STRIKETHROUGH_ACTION_LABEL = '取り消し線';
+
+export const WRITE_TAB_LABEL = '書く';
+
+export const PREVIEW_TAB_LABEL = 'プレビュー';
+
+export const PREVIEW_EMPTY_MESSAGE = 'プレビューする内容がありません。';
+
+export const EDITOR_LOADING_LABEL = 'エディタを読み込んでいます';
+
+export const EDITOR_LOAD_FAILED_MESSAGE = 'エディタを読み込めませんでした。';
+
+// サーバー側の描画とブラウザで同じ文言にするため、利用者のロケールによらず日本語の3桁区切りにする
+const countFormat = new Intl.NumberFormat('ja-JP');
+
+export const formatCount = (count: number): string => countFormat.format(count);
+
+export const lengthOverLimitAnnouncement = (max: number): string =>
+  `文字数が上限の${formatCount(max)}文字を超えています。`;
+
+export const LENGTH_WITHIN_LIMIT_ANNOUNCEMENT =
+  '文字数が上限以内に戻りました。';
+
 export const EDITOR_KEYBOARD_HINT =
   'リストの項目の階層を下げる操作と表の次のセルへの移動はCtrl+]、階層を上げる操作と表の前のセルへの移動はCtrl+[で行います(macOSではCtrlの代わりにCommand)。';
 

@@ -39,7 +39,9 @@
   outline-offset: 2px;
 }
 
+/* 読み込み前の仮の表示(min-h-28)と同じ大きさにする */
 .milkdown .ProseMirror {
+  min-height: 7rem;
   padding: 0.5rem 0.75rem;
 }
 

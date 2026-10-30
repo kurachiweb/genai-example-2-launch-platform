@@ -57,9 +57,6 @@ const RUNNABLE_ACTIONS: readonly (readonly [
   ['表', 'table'],
 ];
 
-const KEYBOARD_HINT =
-  'リストの項目の階層を下げる操作と表の次のセルへの移動はCtrl+]、階層を上げる操作と表の前のセルへの移動はCtrl+[で行います(macOSではCtrlの代わりにCommand)。';
-
 type FakeController = {
   readonly [Key in keyof EditorController]: Mock<EditorController[Key]>;
 };
@@ -189,10 +186,10 @@ describe('MarkdownToolbar', () => {
       .toHaveAttribute('aria-controls', EDITABLE_ID);
   });
 
-  test('リストの階層の変更と表のセルの移動のキー操作を、ツールバーの説明として支援技術へ伝える', async () => {
+  test('編集領域のキー操作の説明はツールバーに重ねて付けない', async () => {
     await renderToolbar();
 
-    await expect.element(toolbar()).toHaveAccessibleDescription(KEYBOARD_HINT);
+    await expect.element(toolbar()).not.toHaveAttribute('aria-describedby');
   });
 
   test('Tabキーで最初の項目へ入り、矢印キー・Home・Endで項目を移り、端からは反対の端へ回る', async () => {

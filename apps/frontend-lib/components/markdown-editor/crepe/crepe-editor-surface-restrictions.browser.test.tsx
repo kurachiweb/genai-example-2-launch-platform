@@ -357,6 +357,48 @@ describe('CrepeEditorSurfaceの入力の制限', () => {
       expect(document.activeElement).toBe(editable);
     });
 
+    test.each<[string, KeyboardEventInit]>([
+      ['Command+[', { key: '[', code: 'BracketLeft', metaKey: true }],
+      ['Command+]', { key: ']', code: 'BracketRight', metaKey: true }],
+      ['Ctrl+[', { key: '[', code: 'BracketLeft', ctrlKey: true }],
+      ['Ctrl+]', { key: ']', code: 'BracketRight', ctrlKey: true }],
+    ])(
+      'リストと表の外の%sでも、ブラウザの戻る・進むの既定の動作を止め、内容を変えない',
+      async (_, init) => {
+        const { editable, controller } = await renderSurface({
+          initialValue: '本文',
+        });
+        await placeCursorAtEnd(editable, elementIn(editable, 'p'));
+        const before = controller.readMarkdown();
+
+        const event = new KeyboardEvent('keydown', {
+          ...init,
+          bubbles: true,
+          cancelable: true,
+        });
+        editable.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(controller.readMarkdown()).toBe(before);
+      },
+    );
+
+    test('角括弧以外のキーとの組み合わせの既定の動作は止めない', async () => {
+      const { editable } = await renderSurface({ initialValue: '本文' });
+      await placeCursorAtEnd(editable, elementIn(editable, 'p'));
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'l',
+        code: 'KeyL',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      editable.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+
     test('表のセルをMod-]で次へ移る', async () => {
       const { editable, controller } = await renderSurface({
         initialValue: '| 項目 | 説明 |\n| --- | --- |\n| 投票 | 回数 |',
