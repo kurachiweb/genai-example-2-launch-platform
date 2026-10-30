@@ -48,7 +48,7 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`)・`AppError`・`getAppLogger`・`captureMessage`の規約・`ulidPrimaryKey`・`timestamps`・`textNoCase`・`ScheduledJobDefinition`・`hashRateLimitKey`・`HashedRateLimitKey`・`CounterRule`・`RateLimitCounterClient`。形を変えない。
+- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く)・`ulidPrimaryKey`・`timestamps`・`textNoCase`・`ScheduledJobDefinition`・`hashRateLimitKey`・`HashedRateLimitKey`・`CounterRule`・`RateLimitCounterClient`。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`caller`・`clientIp`・`assertHuman`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`DateTime`・`SessionView`・`CallerKind`。
 - admin-foundation: `requireAdmin`・`CurrentAdmin`・`AuditLogRecorder.prepare`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AUDIT_REASON_MAX`・`checkAuditReason`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`AuditLogReader`(`latestFor`とadmin-foundationの仮7の`latestForMany`)とテストの共有の偽物`createFakeAuditLogReader`、adminの`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCard`・`DashboardCardFrame`・`RoleGate`・`useAdminRole`、frontend-libの`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`CategoryMasterEditor`、E2Eの`e2e/support/admin-bootstrap.ts`(`signInAsNewAdmin`)・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - ugc-moderation: apiの`MODERATION_TYPES`の`ProductModerationService.hide`・`CommentModerationService.hide`・`UserModerationService.suspend`、`ModerationCommand`(`statements`)・`ModerationOutcome`(`changed`・`actionId`)、adminの`ADMIN_PRODUCT_DETAIL_SECTIONS`・`AdminProductDetailContext`、ugc-moderationの各管理画面のURLと検索パラメータ(導線だけ)。
@@ -376,7 +376,7 @@ sequenceDiagram
     F-->>R: resolved
 ```
 
-- 完了の文は、案件の`status`を「現在が未対応・対応中なら対応済、そうでなければNULL」とする`CASE`式の更新(NOT NULL制約の違反で上流の確定ごと取り消す)・`resolution`・`closing_reason`・`closed_at`の設定、通報の申出者への通知の状態の`pending`(宛先の無い未ログインの通報は`none`)、`buildAuditLogStatements`(`report.resolve`、詳細`resolution`)である。上流が`changed: true`を返したら、結果の`actionId`を`ReportCaseStatements.linkResolutionAction(caseId, actionId)`で案件の`resolution_action_id`に残す(9.3)。`actionId`は上流の確定の中で採番されるため、確定の後の単独の条件付きの更新(措置の対応済で`resolution_action_id`が未設定の案件だけ)で書く。この更新の例外または`false`(更新した行が無い)は措置と完了を取り消さず、`captureMessage`(`resolution-action-link-failed`、案件と措置の記録のID)で知らせ、結果は成功とする。
+- 完了の文は、案件の`status`を「現在が未対応・対応中なら対応済、そうでなければNULL」とする`CASE`式の更新(NOT NULL制約の違反で上流の確定ごと取り消す)・`resolution`・`closing_reason`・`closed_at`の設定、通報の申出者への通知の状態の`pending`(宛先の無い未ログインの通報は`none`)、`buildAuditLogStatements`(`report.resolve`、詳細`resolution`)である。上流が`changed: true`を返したら、結果の`actionId`を`ReportCaseStatements.linkResolutionAction(caseId, actionId)`で案件の`resolution_action_id`に残す(9.3)。`actionId`は上流の確定の中で採番されるため、確定の後の単独の条件付きの更新(措置の対応済で`resolution_action_id`が未設定の案件だけ)で書く。この更新の例外または`false`(更新した行が無い)は措置と完了を取り消さず、`captureEvent`(`resolution-action-link-failed`、案件と措置の記録のID)で知らせ、結果は成功とする。
 - 上流が`changed: false`(既に非公開化・停止)を返したら、上流は書き込まないため本specの文も書かれない。`report_measure_already_applied`を返し、画面は措置なしの対応済を案内する(9.5)。上流の`*_not_found`は`report_target_unavailable`に変える(9.7)。上流の確定が失敗したら案件を読み直し、完了済みなら`report_case_state_conflict`、そうでなければ上流のエラーをそのまま返す(9.8)。
 - 措置なしの対応済と却下は、同じ完了の文(`resolution`は`none`・null、却下は投稿者がいれば投稿者への通知の状態も`pending`、対象への参照を消した案件なら`skipped`)を`ReportCaseStatements.commit`の単独の一括の書き込みで確定する。
 
@@ -427,7 +427,7 @@ sequenceDiagram
 ```
 
 - 申出者は、ログイン中の通報を利用者のID、未ログインの通報を連絡先メールアドレスの照合キー(`toMatchingKey`)でまとめ、宛先ごとに1通送る(11.4)。送信の成功の後に、その宛先の通報だけを`pending`→`requested`へ条件付きで進め、宛先が無ければ`skipped`にする(11.5・11.8)。送信の例外は`pending`のまま残し、ジョブが送り直す。
-- 照会(`InfringementInquiryService`)は、宛先を引いて`EmailSender.send`を先に行い、依頼できた後に案件の照会の日時と内容の更新と監査ログ(`report.inquire`)を1つの一括の書き込みで確定する。記録が回答の期限の起算点より前になることを避けるためである(12.3)。送信の失敗は何も記録せず`report_inquiry_send_failed`を返す(12.8)。送信の後の記録の失敗は`captureMessage`(`inquiry-record-failed`)で知らせ、`report_case_state_conflict`を返す(管理者は読み直して再送できる)。
+- 照会(`InfringementInquiryService`)は、宛先を引いて`EmailSender.send`を先に行い、依頼できた後に案件の照会の日時と内容の更新と監査ログ(`report.inquire`)を1つの一括の書き込みで確定する。記録が回答の期限の起算点より前になることを避けるためである(12.3)。送信の失敗は何も記録せず`report_inquiry_send_failed`を返す(12.8)。送信の後の記録の失敗は`captureEvent`(`inquiry-record-failed`)で知らせ、`report_case_state_conflict`を返す(管理者は読み直して再送できる)。
 
 ## Requirements Traceability
 
@@ -902,7 +902,7 @@ export interface ReportCaseWorkflow {
 
 - 操作(措置・措置なしの対応済・却下)の共通の手順: `checkReportAdminReason`(違反は`validation_error`、詳細`reason`)→`ReportCaseStore.find`(無ければ`report_case_not_found`)→完了済みなら`report_case_closed`→`AuditLogRecorder.prepare`(詳細`mode`は`operation`)→文の組み立て→確定→通知。
 - `changeStatus`(仮3): `canChangeStatusManually(from, to)`でなければ`validation_error`(詳細`status`)→`manualStatusChangeKind(from, to)`で種類を決め、`checkReportAdminReason`(`status-progress`は任意、`status-close`・`status-reopen`は必須、詳細`reason`)→`find`(無ければ`report_case_not_found`)→現在が`from`でなければ`report_case_state_conflict`→`prepare`(`progress`・`reopen`は`report.status-change`、詳細`fromStatus`・`toStatus`。`close`は`to`に応じて`report.resolve`(詳細`resolution`は`none`)・`report.reject`、詳細`mode`は`manual`と`fromStatus`)→`forStatusChange`を`commit`する。`conflict`なら`report_case_state_conflict`(8.6)、`open-case-exists`なら`report_case_open_exists`(8.8)。完了済みの案件も変更でき(`report_case_closed`にしない)、措置のユースケースを呼ばず、`ReportNotifier`を呼ばない(8.3・8.4・11.9)。
-- `resolveWithMeasure`: 案件の`targetId`がnull(対象への参照を消した案件、仮7)なら上流を呼ばずに`report_target_unavailable`(9.7)。そうでなければ`measureFor(kind)`のugc-moderationのユースケースを`{ targetId, reason, operator, at, statements: forClosing(...) }`で呼ぶ(「措置による対応済」の流れ)。結果の振り分けは流れの節のとおり。`changed: true`なら`linkResolutionAction(caseId, outcome.actionId)`で案件に措置の記録のIDを残し(例外または`false`は`captureMessage`の`resolution-action-link-failed`で知らせて握る、9.3)、その後に`ReportNotifier.dispatch(caseId)`(例外は`warning`のログで握り、結果は成功)。
+- `resolveWithMeasure`: 案件の`targetId`がnull(対象への参照を消した案件、仮7)なら上流を呼ばずに`report_target_unavailable`(9.7)。そうでなければ`measureFor(kind)`のugc-moderationのユースケースを`{ targetId, reason, operator, at, statements: forClosing(...) }`で呼ぶ(「措置による対応済」の流れ)。結果の振り分けは流れの節のとおり。`changed: true`なら`linkResolutionAction(caseId, outcome.actionId)`で案件に措置の記録のIDを残し(例外または`false`は`captureEvent`の`resolution-action-link-failed`で知らせて握る、9.3)、その後に`ReportNotifier.dispatch(caseId)`(例外は`warning`のログで握り、結果は成功)。
 - `resolveWithoutMeasure`・`reject`: `forClosing`を`commit`する。却下は`target_owner_user_id`があれば投稿者への通知を`pending`、対象への参照を消した案件なら`skipped`(送らなかった記録、11.5)にする。成功の後に`dispatch`。
 - 全ユースケースは`requireAdmin`を行わない。認可はリゾルバが行う(18.3)。
 
@@ -921,7 +921,7 @@ export interface InfringementInquiryService {
 }
 ```
 
-- 手順: 内容の検証(前後の空白を除き1〜1,000書記素、`validation_error`の`message`)と理由(任意・500書記素)→`find`→権利侵害の案件で`in_progress`で`target_owner_user_id`があることを確かめる(無ければ`report_inquiry_not_applicable`)→`UserContactDirectory.findContact(owner)`(`undefined`なら`report_inquiry_not_applicable`)→`ReportTargetResolver.describe`で表示名と利用者側のURL→`prepare`(`report.inquire`)→`EmailSender.send('content-reporting.infringement-inquiry')`(失敗は`report_inquiry_send_failed`)→`forInquiry`を`commit`(`conflict`・例外は`captureMessage`の`inquiry-record-failed`と`report_case_state_conflict`)(「通知と照会」の流れ)。
+- 手順: 内容の検証(前後の空白を除き1〜1,000書記素、`validation_error`の`message`)と理由(任意・500書記素)→`find`→権利侵害の案件で`in_progress`で`target_owner_user_id`があることを確かめる(無ければ`report_inquiry_not_applicable`)→`UserContactDirectory.findContact(owner)`(`undefined`なら`report_inquiry_not_applicable`)→`ReportTargetResolver.describe`で表示名と利用者側のURL→`prepare`(`report.inquire`)→`EmailSender.send('content-reporting.infringement-inquiry')`(失敗は`report_inquiry_send_failed`)→`forInquiry`を`commit`(`conflict`・例外は`captureEvent`の`inquiry-record-failed`と`report_case_state_conflict`)(「通知と照会」の流れ)。
 
 #### ReportNotifier
 
@@ -983,7 +983,7 @@ export interface ReportCategoryService {
 
 | ジョブの名前                          | 時刻 | `order` | 処理                                                                                                                                                                                                                                                        |
 | ------------------------------------- | ---- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content-reporting.notice-redispatch` | 4:21 | 2000    | `listCasesWithPendingNotices({ closedBefore: 実行時刻 − 1時間, limit: 100 })`の各案件を`dispatch`し、失敗の件数が1以上なら`captureMessage`(`notice-redispatch-failed`)(11.8・19.5)                                                                          |
+| `content-reporting.notice-redispatch` | 4:21 | 2000    | `listCasesWithPendingNotices({ closedBefore: 実行時刻 − 1時間, limit: 100 })`の各案件を`dispatch`し、失敗の件数が1以上なら`captureEvent`(`notice-redispatch-failed`)(11.8・19.5)                                                                            |
 | `content-reporting.report-retention`  | 4:21 | 2010    | `eraseGuestReportsClosedBefore(実行時刻 − 14日, 500)`を最大20回、`eraseDetachedCasesBefore(実行時刻 − 3年(UTCの暦の3年), 100)`を最大20回、続けて`eraseEmptyCases(500)`を最大20回。残りは翌日に続ける。件数を`info`で記録する(17.1・17.2・17.6・17.9・17.10) |
 
 - Trigger: apiのCron Triggers(`21 12 * * *`、上流で追加済み)。どちらも2回実行しても結果が変わらない。送り直しを保持期間の削除より先に動かし、削除の前に最後の送信を試みる。上流の値より前に動く必要は無い。
@@ -1470,11 +1470,11 @@ erDiagram
 | 対象なし           | 案件・カテゴリが無い                                                                                                                     | `report_case_not_found`・`report_category_not_found`                                                                                              |
 | 業務の規則         | 完了済みの案件の操作(措置・措置なしの対応済・却下・照会)、措置済み、対象が消えた・対象への参照を消した、照会の条件外、標準カテゴリの変更 | `report_case_closed`・`report_measure_already_applied`・`report_target_unavailable`・`report_inquiry_not_applicable`・`report_category_protected` |
 | 競合               | 同時の状態の変更・完了、同じ対象に未完了の案件がある再開、カテゴリ名の重複                                                               | `report_case_state_conflict`(画面は読み直しの案内)・`report_case_open_exists`・`report_category_name_taken`                                       |
-| 外部の一時的な失敗 | メールの送信の依頼・D1・Queue                                                                                                            | 通知は`pending`のまま送り直し、照会は`report_inquiry_send_failed`、ジョブは`captureMessage`                                                       |
+| 外部の一時的な失敗 | メールの送信の依頼・D1・Queue                                                                                                            | 通知は`pending`のまま送り直し、照会は`report_inquiry_send_failed`、ジョブは`captureEvent`                                                         |
 
 ### Monitoring
 
-- ログは`getAppLogger`で、操作の種類・案件と対象と操作者のID・結果・件数だけを記録し、メールアドレス・申出者の理由・照会の内容・ハンドル・ニックネーム・名称・送信元IPアドレスを含めない(19.4)。`captureMessage`のタグは`job`・理由(`notice-redispatch-failed`・`inquiry-record-failed`・`resolution-action-link-failed`)。送信元IPアドレスが不明な通報は`warning`の`report-ip-missing`。
+- ログは`getAppLogger`で、操作の種類・案件と対象と操作者のID・結果・件数だけを記録し、メールアドレス・申出者の理由・照会の内容・ハンドル・ニックネーム・名称・送信元IPアドレスを含めない(19.4)。`captureEvent`(文言は`logentry`、`fingerprint`は理由)のタグは`job`・理由(`notice-redispatch-failed`・`inquiry-record-failed`・`resolution-action-link-failed`)。送信元IPアドレスが不明な通報は`warning`の`report-ip-missing`。
 
 ## Testing Strategy
 

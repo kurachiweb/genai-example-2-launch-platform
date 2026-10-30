@@ -111,7 +111,7 @@
   3. 上流の操作口を本specが直接呼ぶ
 - **Selected Approach**: 1。`ReportCaseStatements.forClosing`の文を渡し、上流の結果の`actionId`を確定の後に`linkResolutionAction`で案件の`resolution_action_id`に残す(cross-spec reviewの修正1)。
 - **Rationale**: 措置・措置の記録・投稿者への通知の仕組みを重複させず、記録の一体の確定を上流と同じ規約で守れる。ugc-moderationの入力・記録・テーブルを変えずに、案件から措置の記録をたどれる。
-- **Trade-offs**: `actionId`は上流の確定の中で採番されるため、連結は確定の後の単独の書き込みになり、失敗すると案件に措置の記録のIDが残らない。その場合も措置と完了は確定済みで、`captureMessage`(`resolution-action-link-failed`)で知らせ、案件の`resolution`と監査ログ(`report.resolve`の詳細`resolution`)で通報由来を追える。
+- **Trade-offs**: `actionId`は上流の確定の中で採番されるため、連結は確定の後の単独の書き込みになり、失敗すると案件に措置の記録のIDが残らない。その場合も措置と完了は確定済みで、`captureEvent`(`resolution-action-link-failed`)で知らせ、案件の`resolution`と監査ログ(`report.resolve`の詳細`resolution`)で通報由来を追える。
 - **Follow-up**: 本物の3つのユースケースを通したWorkers統合テストで、競合・措置済みで何も残らないことを確かめる。
 
 ### Decision: 1つの対象に未完了の案件は1つで、新しい通報は完了した案件へ集約しない(仮1・仮3)
@@ -128,7 +128,7 @@
 ### Decision: 照会は送信の依頼の後に記録する(仮4)
 
 - **Selected Approach**: `EmailSender.send`の成功の後に、照会の日時・内容と監査ログを1つの一括の書き込みで確定する。
-- **Rationale**: 回答の期限の起算点(監査ログの日時)が、実際に依頼した時刻より前にならない。記録の失敗は`captureMessage`で検知し、管理者が再送する。
+- **Rationale**: 回答の期限の起算点(監査ログの日時)が、実際に依頼した時刻より前にならない。記録の失敗は`captureEvent`で検知し、管理者が再送する。
 
 ### Decision: 採らなかった案
 
@@ -145,7 +145,7 @@
 
 ## Risks & Mitigations
 
-- 措置の記録のIDの連結(確定の後の単独の書き込み)が失敗する — 措置と完了は確定済みのまま、`captureMessage`(`resolution-action-link-failed`)で知らせる。案件の`resolution`と本specの監査ログ(`report.resolve`の詳細`resolution`)で通報由来を追える。
+- 措置の記録のIDの連結(確定の後の単独の書き込み)が失敗する — 措置と完了は確定済みのまま、`captureEvent`(`resolution-action-link-failed`)で知らせる。案件の`resolution`と本specの監査ログ(`report.resolve`の詳細`resolution`)で通報由来を追える。
 - 上流の確定が呼び出し側の文の違反で全体を取り消さない(上流の実装の差) — Workers統合テストで本物の確定を通して確かめ、外れた場合は作業を止めて上流specへ報告する。
 - 回数制限の2つの規則の数え方で1回分を余分に数える — 上限に近い利用者だけに影響し、制限の目的(連投の抑止)に反しない。`security/011`に記す。
 - 未ログインの送信のE2EでIPアドレスの回数が衝突する — 実行ごとに文書用の範囲の`CF-Connecting-IP`を付ける(inquiry-chatと同じ)。上書きできない場合はWorkers統合テストで回数制限を確かめ、E2Eのタスクで報告する。
@@ -230,7 +230,7 @@
 
 - **状態**: 要件・設計・タスクの承認の後の修正で、cross-spec reviewの指摘による。admin-foundationの仮7(推奨どおり)とともに2026-10-24に開発者が確定した。利用者・運営者に見える振る舞いは変わらないため、`requirements.md`の仮の表には行を加えない(要件9.3は案件の側に結び付きを残す表現へ改めた)。
 - **修正1(分担の整理)**: 本specがugc-moderationのスキーマと措置の入力の契約を編集していた(`moderation_actions.report_case_id`・`ModerationCommand.reportCaseId`・`NewModerationRecord.reportCaseId`の追加と3つのユースケースの変更)のをやめ、ugc-moderationが既に返す`ModerationOutcome.actionId`を本specの`report_cases.resolution_action_id`に残す。
-  - **Decision**: `changed: true`の措置の後に、`ReportCaseStatements.linkResolutionAction(caseId, actionId)`(措置による対応済で未設定の案件だけの条件付きの更新)を単独で実行する。失敗は措置と完了を取り消さず、`captureMessage`(`resolution-action-link-failed`)で知らせ、結果は成功とする。列は外部キーを持たず、措置による対応済の案件だけが値を持てるCHECKを置く。
+  - **Decision**: `changed: true`の措置の後に、`ReportCaseStatements.linkResolutionAction(caseId, actionId)`(措置による対応済で未設定の案件だけの条件付きの更新)を単独で実行する。失敗は措置と完了を取り消さず、`captureEvent`(`resolution-action-link-failed`)で知らせ、結果は成功とする。列は外部キーを持たず、措置による対応済の案件だけが値を持てるCHECKを置く。
   - **Reason**: 各specのスキーマと契約はそのspecが所有する。ugc-moderationのData Contractsは「結果の`actionId`で自分の記録と結べる」と定めており、Risksに記していた代替の形でも要件9.3の目的(案件と措置の記録の結び付き)を満たせる。`actionId`は上流の確定の中で採番されるため、確定と同じ一括の書き込みには入れられない。
   - **変えた箇所**: 要件9.3とAdjacent expectations、設計のImpact・境界の4節・上流への影響の表・措置による対応済の流れ・追跡表・コンポーネントの表・`ReportCaseWorkflow`・`ReportCaseStatements`・物理モデル・Testing Strategy・Monitoring・Migration Strategy・ファイル構成のModified Files、本書のKey Findings・Implications・Design Decisions・Risks・上流への影響、タスク1.1・1.2・3.5・4.6・9.6。ugc-moderationを編集するタスク(旧2.2)を削除した。
 - **修正2(admin-foundationの仮7の利用)**: `AuditLogReader.latestForMany`とその保存の照会(90件ずつ)とテストの共有の偽物`createFakeAuditLogReader`は、admin-foundationが仮7で所有・実装する。本specは使うだけで、admin-foundationの実装や他specのテストの偽物を編集しない。
@@ -291,3 +291,8 @@
 - **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
 - **決定**: 通報フォームの連絡先は、欄を描く間(未ログインか停止中で、権利侵害が選ばれた時)だけスキーマの入力に含める。連絡先を含まない`ReportFormSchema`と含む`ReportFormWithContactSchema`に分け、`ReportForm`が`requiresContactEmail`で2つの定数のスキーマから選んで`useAppForm`へ渡すだけにする(判断33により切り替えの後の検証のし直しは`useAppForm`が、判断34により描かれていない連絡先の欄の詳細は`applyServerFieldErrors`が扱うため、設計に再検証やエラーを消す手順を書かない)。連絡先を含まないスキーマは残った値を出力に含めないため、描かない間は連絡先を送らない。対象の種類と参照はスキーマの入力に含めず`onSubmit`で足す。
 - **変えた箇所**: design.mdの`ReportForm`・`ReportFormSchema`とTesting Strategyのブラウザテストの`ReportForm`、tasks.mdの7.2(スキーマの単体テストと、他のカテゴリへ変えると送信ボタンが有効になることと描かれていない連絡先の欄の詳細がフォーム全体の失敗になることのブラウザテスト)。
+
+## 実装済みの上流との食い違いの水平展開(2026-10-30、開発者の指示)
+
+- **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
+- 要件と受け入れ基準は変えていない。
