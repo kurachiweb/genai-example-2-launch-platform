@@ -35,7 +35,7 @@ import {
 
 const RELAY_REQUEST_BODY = { query: '{ __typename }' };
 
-test.describe('利用者側の疎通確認の画面', () => {
+test.describe('利用者側の疎通確認の画面', { tag: '@smoke' }, () => {
   test('応答にセキュリティヘッダーとnonce付きのCSPが付き、HTMLのすべてのスクリプトが同じnonceを持つ', async ({
     page,
   }) => {
@@ -210,7 +210,7 @@ test.describe('利用者側の疎通確認の画面', () => {
   });
 });
 
-test.describe('利用者側の存在しないページ', () => {
+test.describe('利用者側の存在しないページ', { tag: '@smoke' }, () => {
   test('404で、レイアウトの中に存在しないページの表示とトップページ・ディレクトリへの導線を表示し、CSPの違反が起きない', async ({
     page,
   }) => {
@@ -238,7 +238,7 @@ test.describe('利用者側の存在しないページ', () => {
   });
 });
 
-test.describe('利用者側の中継の経路', () => {
+test.describe('利用者側の中継の経路', { tag: '@smoke' }, () => {
   test('クロスサイトを名乗る要求を403と共通のエラー形式で拒否する', async ({
     request,
   }) => {

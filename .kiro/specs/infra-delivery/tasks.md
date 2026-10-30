@@ -200,7 +200,7 @@
   - _Depends: 3.3_
   - _Requirements: 2.3, 8.3, 11.3_
 
-- [ ] 7.2 (P) 疎通確認のE2Eに`@smoke`タグを付ける
+- [x] 7.2 (P) 疎通確認のE2Eに`@smoke`タグを付ける
   - 利用者側・管理者側の疎通確認のE2Eに、内容を変えずに`@smoke`タグを付ける
   - 完了状態: ローカルで`@smoke`に絞ったE2Eが両アプリの疎通確認のテストだけを実行して成功する
   - _Boundary: SmokeTag_
@@ -316,3 +316,4 @@
 - 6.4(開発者の決定 2026-10-30): `delivery.yml`の最上位に`concurrency: delivery-${{ github.ref_name }}`(`cancel-in-progress: false`)を置き、同じブランチの検査とデプロイを到着順に直列化する(古いコミットが後からデプロイされ、古いIaCで資源が消えるのを防ぐ)。`deploy.yml`は`preflight`→`infisical-login`(`id`無し)の順にし、Chromiumの導入は`if: inputs.environment == 'staging'`。design.md・research.mdへ反映済み。トレーサビリティの7.8の行に`delivery.yml`の直列化を足すかは9.1で判断する。入れ子の`concurrency`・OIDCのクレーム・手順の`if`の評価は最初のstagingのデプロイで確かめる。
 - 6.5: `release-pr.yml`はBunだけを導入して`scripts/delivery/cli.ts`を実行する(依存パッケージの導入は不要。`typescript`を読むのは`layering.unit.test.ts`だけ)。`gh`は`persist-credentials: false`でも残る`origin`のURLからリポジトリを解決する(`GH_REPO`の明示と、ジョブに`if: github.ref == 'refs/heads/main'`を付ける強化は9.1で検討)。CODEOWNERSは`* @kurachiweb`(GitHubの個人ユーザー)。`release-pr.yml`・`CODEOWNERS`・`delivery.yml`・`pull-request.yml`の存在はW1〜W10で検査されないため7.3で確かめる。
 - 7.1: 4アプリの最上位に`workers_dev: false`・`preview_urls: false`、api・eventのstaging・prodのR2の全バインディングに`jurisdiction: "us"`を加えた(ローカルには付けない)。上流のテスト(`apps/api`のテストがapi・eventの両方、`apps/{client,admin}`)に管轄と公開URLの期待値を加えて固定した。`contract-check`は違反0件。Wrangler 4.124.0はデプロイ先の無いWorker(client・admin)を「No targets deployed」のログだけでデプロイする(失敗しない)ことを配布物で確認。`project-values.md`にR2の管轄の行と注記を加えたため、8.5で管轄(D1・Queues)を足す時は表の行をまとめる。
+- 7.2: 両アプリの疎通確認のE2Eの最上位の`test.describe`3つずつ(疎通確認の画面・存在しないページ・中継の経路)に`{ tag: '@smoke' }`を付けた(設計の単数の記述は9.1で直すか判断)。`--grep @smoke --list`は到達確認2件+疎通確認23件の25件で、ローカルの開発サーバーに対して25件成功(ビルド後のプレビューは未実行)。どのテストにも合わない`--grep`ではsetupも外れて0件になり`--pass-with-no-tests`で成功することを確かめたため、`verify`で`@smoke`の件数を確かめる(`--list`で1件以上を求める、または`--pass-with-no-tests`無しで`playwright test`を直接呼ぶ)かを9.1で決める。stagingでのCSPの違反の検査とIP単位のレート制限(10秒に100回)の下での25件は、最初のstagingのデプロイで確かめる。8.4・8.5で`@smoke`の規約を書き、オンボーディングの「スモークテスト」(全E2Eの実行の意味)と用語をそろえる。
