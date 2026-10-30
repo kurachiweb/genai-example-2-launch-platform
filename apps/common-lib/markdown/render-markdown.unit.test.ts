@@ -126,6 +126,17 @@ describe('renderMarkdown', () => {
     );
   });
 
+  test('タスクリストのチェックボックスに項目の文字列を名前として付け、プレーンテキストには含めない', () => {
+    const markdown = '- [ ] 未完了の**項目**\n- [x] 完了した項目';
+
+    expect(htmlOf(markdown)).toBe(
+      '<ul class="contains-task-list">\n<li class="task-list-item"><input type="checkbox" disabled aria-label="未完了の項目"> 未完了の<strong>項目</strong></li>\n<li class="task-list-item"><input type="checkbox" checked disabled aria-label="完了した項目"> 完了した項目</li>\n</ul>',
+    );
+    expect(renderMarkdown(markdown, OPTIONS).plainText).toBe(
+      ' 未完了の項目\n 完了した項目',
+    );
+  });
+
   describe('見出しの一覧', () => {
     test('脚注の見出しを除いた見出しを表示と同じIDとともに返す', () => {
       const { html, headings } = renderMarkdown(

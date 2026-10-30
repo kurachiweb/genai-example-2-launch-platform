@@ -114,7 +114,7 @@
   - _Requirements: 4.8, 4.9_
 
 - [ ] 5. 共通部品: 表示
-- [ ] 5.1 本文の文字組みと表示部品を作り、生のHTMLの挿入を1箇所に限る
+- [x] 5.1 本文の文字組みと表示部品を作り、生のHTMLの挿入を1箇所に限る
   - 先に、モックアップの文字組み(見出し・リンク・コード・コードブロック・引用・表、引用符を付けない)とライト・ダーク、大きさの指定、表の枠へのキーボードでの移動、同じ入力と指定でメモ化された描画が再計算されないこと、サイトのオリジンをルーターの文脈から補うこと、アクセシビリティの自動検査の違反0件を確かめるブラウザテストを書く
   - 先に、生のHTMLの規則の無効化とサニタイズ済みの型への型の主張の位置を走査する関数と、frontend-libでは表示部品の1箇所だけ、client・adminでは0箇所であることを確かめる単体テストを書く
   - `@tailwindcss/typography`の取り込みと本文の補助のスタイル(表の枠・脚注の見出し・タスクリスト)を基本のスタイルから読み込み、表示部品の1行だけで理由のコメント付きで規則を無効化する
@@ -361,3 +361,4 @@
 - 3.6: `markdown/parse-guard.ts`(設計に無い)が解析の前に線形の走査で9種の負荷(行頭のコンテナの記号・行内の範囲ごとの強調の記号・角括弧の入れ子と対応の無い`]`・遅延継続行・setextの下線・項目の中でコンテナを開くリストの項目・`www.`など)を見積もり、上限を超える入力を原文の1段落に縮退させる。コードブロックの中も数える(フェンスの判定はHTMLブロックや字下げしたフェンスでmicromarkとずれ、ガードを無効にできるため撤回した)。既知の制限: 対応の無い`]`を1行に2個持つコードが空行無しで約830行以上続くと縮退する。残存リスク(Bun/Node、1秒未満): 空の箇条書き`+\n`×10,000で約330/750ms(hast-util-to-textの2乗)、上限直前の`*_\n`で約340/640ms。リンクの方針はhttp・httpsのスキームの後に`//`が無い参照(`https:evil.example`)を相対URLとして解除する。攻撃パターン集は`markdown/fixtures/`に置き、読み込めるのは単体テストとテスト専用のファイルだけ(4.1で利用側アプリの型検査から`common-lib/markdown/fixtures/**`を除く)
 - 4.1: apiに`bunfig.unit.toml`(ルートの`bunfig.toml`にカバレッジの除外`common-lib/**`を加えた写し)を新設した。api・eventの型検査は`common-lib/**/*.ts`を含め、`common-lib/*.config.ts`・`**/*.test.ts`・`config/**`・`markdown/fixtures/**`を除く(`coding/001`の既存の規則は`<配置先>/*.ts`で、設計とずれる)。`docs/onboardings/README.md`のコマンドの表は`test:unit`の行だけ更新したため、11.3で`lint`・`typecheck`・`test:worker`の行にも配置先の除外を書く
 - 4.2: ルートの`bun run check`と`check-test-names`の赤は解消した。Vueの機能フラグは`apps/frontend-lib/config/vue-feature-flags.ts`(設計に無い)を6つのVite・Storybookの設定で共有する。frontend-libは描画の9パッケージを宣言しないため、`PREBUNDLED_DEPENDENCIES`の4つ(remark-rehype・rehype-sanitize・rehype-stringify・hast-util-to-text)はfrontend-libの位置で"Failed to resolve dependency"の警告が出るが、Viteが共用部品の`node_modules`からたどって事前バンドルするため再読み込みは起きない。frontend-libの位置ではunified・remark-parse・remark-gfmがMilkdownの推移的な依存の写しに解決されるため、11.3で`coding/002`の版をそろえる一覧に推移的な版の照合も検討する。frontend-libの単体テストはカバレッジの都合で共用部品のうち`text/graphemes.ts`だけを読み込む
+- 5.1: タスクリストのチェックボックスにはaxeの`label`違反を避けるため、common-libの`plugins/task-list-label.ts`(サニタイズの後の信頼できる変換)で項目の文字列から`aria-label`を付ける(設計のMarkdownRendererの事後条件に無い。11.2の`security/004`のサニタイズの後の変換に含める)。コードブロックの色はデザイントークン`--code-block`・`--code-block-foreground`を`tokens.css`へ加えた(frontend-platformの境界)。GFMの列揃えは`markdown.css`の`[align]`の規則でtypographyの`text-align`を上書きする。2つ以上の表を持つ本文は、同名のregionになりaxeのベストプラクティス`landmark-unique`に当たる(WCAGの規則では違反0)。生のHTMLの例外の走査は`interface`・型のリテラル・汎用の変換関数を経由した偽造を検出しない(11.2の文書に限界として書く)

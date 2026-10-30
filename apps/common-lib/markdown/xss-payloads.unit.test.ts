@@ -23,7 +23,7 @@ const FORBIDDEN_PROPERTY = /^(?:on|style$|src$|srcSet$)/iu;
 
 const FORBIDDEN_ATTRIBUTE = /^(?:on|style$|src$|srcset$)/iu;
 
-// 表示用のHTMLに現れてよい要素と属性。サニタイズの許可リストに、リンクの方針と表の枠が加える属性と枠のdivを足したもの
+// 表示用のHTMLに現れてよい要素と属性。サニタイズの許可リストに、リンクの方針と表の枠とタスクリストの名前が加える属性と枠のdivを足したもの
 const ALLOWED_HTML_ATTRIBUTES: Readonly<
   Record<string, readonly string[] | undefined>
 > = {
@@ -50,7 +50,7 @@ const ALLOWED_HTML_ATTRIBUTES: Readonly<
   h5: ['id'],
   h6: ['id'],
   hr: [],
-  input: ['type', 'checked', 'disabled'],
+  input: ['type', 'checked', 'disabled', 'aria-label'],
   li: ['id', 'class'],
   ol: ['start', 'class'],
   p: [],

@@ -17,11 +17,11 @@
 
 ## 共通化の対象
 
-| 置き場所                   | 置くもの                                                                                                                                                  |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 共通部品の`components/`    | 複数のアプリで同じ見た目と振る舞いを持つ部品。基本部品・フォーム・状態表示・トースト・エラーの表示・日時と数値・bot判定・配色の切替・文書の外枠・疎通確認 |
-| アプリの`src/components/`  | 1つのアプリだけの部品。レイアウト(ヘッダー・ナビゲーション・フッター)、ルーターやアプリの導線を共通部品へ結び付けるページの部品(404・エラーの画面など)    |
-| アプリの`src/composition/` | アプリ固有の値(導線・レイアウトに差し込む区画など)の登録箇所                                                                                              |
+| 置き場所                   | 置くもの                                                                                                                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 共通部品の`components/`    | 複数のアプリで同じ見た目と振る舞いを持つ部品。基本部品・フォーム・状態表示・トースト・エラーの表示・日時と数値・bot判定・配色の切替・文書の外枠・疎通確認・マークダウンの表示 |
+| アプリの`src/components/`  | 1つのアプリだけの部品。レイアウト(ヘッダー・ナビゲーション・フッター)、ルーターやアプリの導線を共通部品へ結び付けるページの部品(404・エラーの画面など)                        |
+| アプリの`src/composition/` | アプリ固有の値(導線・レイアウトに差し込む区画など)の登録箇所                                                                                                                  |
 
 - 共通部品は、アプリ固有の値(リンク先・問い合わせの導線・サービス名など)を持たず、propsで受け取る。共通部品から利用側アプリの`src`への読み込みは、静的解析の`frontend/direction/*`(「[画面を持つアプリの静的解析](../coding/001-javascript-typescript-conventions.md#画面を持つアプリの静的解析)」)が禁止する。
 - 共通部品の`components/`は、`utilities/`・`start/`の値と、`server/`の型だけを読み込める。サーバー専用のファイル(`*.server.ts`)は読み込めない。
@@ -40,6 +40,7 @@
 | `components/bot-protection/` | `TurnstileWidget`・`useTurnstileToken`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | bot判定のウィジェットとトークンの管理                    |
 | `components/theme/`          | `ThemeToggle`・`useTheme`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | ライト・ダークの配色の切替                               |
 | `components/app-shell/`      | `AppDocument`・`SkipLink`・`RouteAnnouncer`・`MAIN_CONTENT_ID`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `<html>`から描画する文書の外枠                           |
+| `components/markdown/`       | `MarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | マークダウンの本文の表示と、描画のメモ化・描画の指定     |
 | `components/system/`         | `SystemStatusView`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 疎通確認の画面の本体                                     |
 
 ## 使い方
@@ -250,6 +251,24 @@ const token = turnstile.consume();
 - 画面を表示した時の結果の区画の見出しは`initialExecutedOn`で切り替え、`'server'`なら`SERVER_RESULT_HEADING`、`'browser'`なら`PAGE_LOAD_RESULT_HEADING`(`utilities/messages/system-status-messages.ts`)を出す。区画の中身は実行した場所によらず同じである。
 - loaderは同型の関数のため、ページを直接開いた時はサーバーで、画面内の遷移・ルーターの再検証(`router.invalidate()`)・先読みではブラウザで実行される。loaderは`utilities/system/execution-site.ts`の`currentExecutionSite()`(大域に`document`が無ければ`'server'`、あれば`'browser'`)で実行した場所を得て、結果と組にしてloaderのデータで返す。サーバーで得た実行した場所はloaderのデータとしてハイドレーションへ渡るため、ハイドレーションの表示は食い違わない。
 
+### マークダウンの表示
+
+マークダウンの本文は、共用部品の描画部品(`renderMarkdown`)の結果を`MarkdownContent`へ渡して表示する。`MarkdownContent`は、サニタイズ済みの型の値だけを受け取り、生のHTMLを挿入する唯一の部品である。
+
+```tsx
+const options = useMarkdownOptions({ externalLinkRel: ['noopener', 'ugc'] });
+const rendered = useRenderedMarkdown(body, options);
+
+return <MarkdownContent rendered={rendered} size="sm" />;
+```
+
+- `useMarkdownOptions`は、表示場所ごとの`rel`と本文の識別子に、ルーターの文脈の公開設定の利用者側のオリジン(`clientSiteOrigin`)をサイトのオリジンとして補う。
+- `useRenderedMarkdown`は、本文と指定の値が同じ間は描画をやり直さない。呼び出し側は描画のたびに指定のオブジェクトや配列を作り直してよい。ページのサーバー側の描画とブラウザの初期化は同じ描画結果になり、表示は食い違わない。
+- `size`は`'base'`(既定。640px未満は小さい文字)と`'sm'`(常に小さい文字)から選ぶ。
+- 文字組みは`@tailwindcss/typography`の`prose`で付け、本文の補助のスタイル(表の枠・タスクリスト・脚注)は`styles/markdown.css`に置く。コードブロックの配色はトークン`code-block`・`code-block-foreground`を使う。
+- 表は名前付きの領域(`role="region"`)の横スクロールの枠に入り、Tabキーで枠へ移動して矢印キーでスクロールできる。全ての表の枠が同じ名前のため、1つのページに表が複数あると`axe-core`のベストプラクティスの規則`landmark-unique`が報告する(WCAG 2.2のAAの規則の違反ではない)。
+- 生のHTMLの規則の無効化とサニタイズ済みの型への型の主張は、`config/raw-html-exception.ts`の`findRawHtmlExceptions`が走査する。共通部品の単体テストは`MarkdownContent`の1箇所だけであることを、利用側アプリの単体テスト(`test/config/raw-html-exception.unit.test.ts`)は自身の`src`で0箇所であることを確かめる。
+
 ## 1ファイル1コンポーネントとshadcn/uiの分割
 
 1つの部品のファイル(`.tsx`)がエクスポートするReactの部品は1つだけにする。同じファイルからは、その部品のpropsの型などの型だけを併せてエクスポートしてよい。
@@ -317,9 +336,9 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 ```
 
-- `title`は`<分類>/<部品名>`にする。分類は、基本部品・重ねて表示する部品・フォーム・状態表示・フィードバック・エラーの表示・日時と数値・bot判定・文書の外枠・疎通確認のいずれかにする。
+- `title`は`<分類>/<部品名>`にする。分類は、基本部品・重ねて表示する部品・フォーム・状態表示・フィードバック・エラーの表示・日時と数値・bot判定・文書の外枠・疎通確認・マークダウンのいずれかにする。
 - 主要な状態(既定・無効・エラー・読み込み中・送信中・開いた状態など)ごとにストーリーを分ける。操作で作る状態(検証エラー・送信中など)は`play`で操作する。押した時の処理などの関数のpropsには`fn()`を渡す。
-- ライト・ダークはツールバーで切り替えるため、配色ごとのストーリーは作らない。
+- ライト・ダークはツールバーで切り替えるため、配色ごとのストーリーは作らない。ただし、配色そのものを確かめる対象にする部品(本文の文字組みのように、配色で文字色や背景色の組み合わせが大きく変わる部品)は、ダークの配色を確かめるストーリーを作ってよい。そのストーリーはツールバーの値をストーリーの`globals`(`globals: { theme: 'dark' }`)で指定し、配色の切り替えを部品のpropsにしない。
 - 日時の表示は固定の表示設定で描画する。`DisplayPreferencesProvider`はブラウザの値で上書きするため、カタログでは使わず、`preview.tsx`が`DisplayPreferencesContext`へ固定の値を直接渡す。
 - ルーターを使う部品(`TurnstileWidget`など)には、`preview.tsx`の`parameters.tanstack.router.context`がルーターの文脈を渡す。
 - モーダルなメニューを開いたストーリーは、`parameters: { a11y: { context: '[data-slot="dropdown-menu-content"]' } }`のように検査の範囲を開いたメニューに絞る。開いた元のボタンを`axe-core`が`aria-hidden-focus`と誤って判定するためである。

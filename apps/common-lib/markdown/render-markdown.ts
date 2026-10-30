@@ -9,6 +9,7 @@ import { processMarkdown } from './markdown-processor.ts';
 import { plainTextOf } from './plain-text.ts';
 import { applyLinkPolicy } from './plugins/link-policy.ts';
 import { wrapTables } from './plugins/table-scroll.ts';
+import { labelTaskCheckboxes } from './plugins/task-list-label.ts';
 
 export type {
   MarkdownHeading,
@@ -35,9 +36,11 @@ export const renderMarkdown = (
 ): RenderedMarkdown => {
   validateRenderOptions(options);
   const tree = processMarkdown(markdown, idPrefixFor(options.idScope));
-  const displayTree = wrapTables(applyLinkPolicy(tree, options));
+  const displayTree = labelTaskCheckboxes(
+    wrapTables(applyLinkPolicy(tree, options)),
+  );
   return {
-    // サニタイズ済みの木にリンクの方針と表の枠だけを適用したHTMLであり、サニタイズ済みの型を作れる唯一の箇所である
+    // サニタイズ済みの木にリンクの方針と表の枠とタスクリストの名前だけを適用したHTMLであり、サニタイズ済みの型を作れる唯一の箇所である
     html: stringifier.stringify(
       displayTree as unknown as StringifiableTree,
     ) as SanitizedHtml,
