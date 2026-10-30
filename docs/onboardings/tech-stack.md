@@ -174,6 +174,13 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
     - WranglerによるDBマイグレーション
     - Wranglerによる各Workerのビルド・デプロイ(`--secrets-file`で環境シークレットを同時反映)
   - staging環境へのデプロイの後、staging環境のURLに対してスモークテストを実行
+- ツールの導入 ... 複合アクション`.github/actions/setup-toolchain`が、開発コンテナの`Dockerfile`と同じ版でジョブに必要なツールだけを導入する。公式のアクションは公開から2週間以上経った版のコミットSHAで固定する
+  - Bun ... `oven-sh/setup-bun` v2.2.0で導入
+  - Node.js 26.12.1 ... `actions/setup-node` v7.1.0で導入、ブラウザテスト・E2E・デプロイでWranglerやViteを動かす
+  - OpenTofu ... `opentofu/setup-opentofu` v2.0.2でラッパー無しに導入
+  - Infisical CLI ... GitHubのリリースの配布物を、同じリリースの`checksums.txt`によるSHA-256検証付きで導入
+  - Wrangler 4.152.0 ... メールの購読の操作用に`bun add -g`で導入(各アプリのデプロイはアプリが固定する版を使う)
+  - Mailpit 1.32.0 ... 公式のチェックサムが無いため、開発コンテナと同じく検証せずにGitHubのリリースの配布物を導入
 
 ## デプロイ先のインフラ構成
 
