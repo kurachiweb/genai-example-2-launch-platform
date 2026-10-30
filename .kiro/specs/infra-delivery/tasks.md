@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 前提の確認・配布のスクリプトの骨格・資源一覧
+- [x] 1. 基盤: 前提の確認・配布のスクリプトの骨格・資源一覧
 - [x] 1.1 前提を確かめ、配布のスクリプトの入口と入出力の部品を作る
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platformの全タスクが完了し、4アプリのWrangler設定、ルートの`check`(全アプリの`cf-typegen:check`・`graphql:check`を含む)、apiの`db:migrations:check`・`graphql:allowlist`・`test:smoke`、client・adminの`build`、ルートの`test:e2e:dev-and-preview`(dev-toolingの10.1)、疎通確認のE2Eがあること。無ければ止めて報告する
   - 先に、サブコマンドの振り分け(コマンドのディレクトリのファイル名から解決し、未知のサブコマンドと引数の誤りで終了コード2、違反で1)、子プロセスの起動の部品(出力の取り込み・表示・行のフィルタ・標準入力・終了コード)、リポジトリのファイルの読み込みの部品、GitHub Actionsの入出力の部品(GitHub Actionsの外ではマスクを出さない、環境変数のファイルへの追記の前に値をマスクする、手順の要約への追記、OIDCのトークンの取得で必要な環境変数が無ければ失敗する)の単体テストと、判定の層が入出力の層・子プロセス・ファイル・ネットワークのAPIを読み込まないことを確かめる単体テストを書き、失敗を確かめる
@@ -15,7 +15,7 @@
   - 完了状態: 単体テストが成功し、両環境の資源一覧が解析でき、名前・ホスト名・stateのバケットが設計の表と一致する
   - _Requirements: 1.1, 1.2, 1.10, 3.1_
 
-- [ ] 2. IaC定義(OpenTofu)
+- [x] 2. IaC定義(OpenTofu)
 - [x] 2.1 (P) データの資源のモジュール(D1・R2)と非同期メッセージのモジュール(Queues)をテスト先行で作る
   - 先に、モックのproviderによる計画のテストで、全資源の管轄が米国、D1の読み取りレプリカが無効、mapの項目数どおりの資源が計画されること、許可しない管轄の値が変数の検証で拒否されることを書き、失敗を確かめる
   - D1・R2は削除と作り直しを防ぎ、ロケーションヒントと場所の指定を持たない。Queueは削除を防がない
@@ -47,7 +47,7 @@
   - 完了状態: 単体テストが成功し、ルートのIaCの検査のスクリプトがローカルで成功し、HCLの整形を崩すと失敗する
   - _Requirements: 5.6, 6.6_
 
-- [ ] 3. 構成検査とワークフローの規則
+- [x] 3. 構成検査とワークフローの規則
 - [x] 3.1 (P) Wrangler設定の実効値の読み取りと、資源一覧との照合の規則を作る
   - 先に、固定のWrangler設定の例で、継承するキー(名前・既定の公開サブドメイン・プレビューURL・ルート)と継承しないキー(D1・R2・Queue・Service Bindings・変数・シークレット)の実効値、規則C1〜C8の各違反(資源一覧に無い名前・参照されない資源・R2の管轄の欠落・Worker名とService Bindingsの不一致・公開URLの有効とルートの記載・apiとeventのD1の識別子の不一致・backend設定の食い違い・配信不能イベントの受け皿のconsumerの欠落)、仮の値を違反にしないことを確かめる単体テストを書く
   - 違反は規則・ファイル・項目・実際・期待の形で返す
@@ -68,7 +68,7 @@
   - _Depends: 3.1, 3.2_
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7_
 
-- [ ] 4. CIの検査のコマンド
+- [x] 4. CIの検査のコマンド
 - [x] 4.1 (P) 依存パッケージの導入と既知の脆弱性の確認のコマンドを作る
   - 先に、導入の対象がルート・アプリの一覧・共有ディレクトリの配置元のうち`package.json`を持つものになり、共有ディレクトリ(`apps/common-lib`の例を含む)を加えると自動で対象に入ること、導入が`CI=true`と`--frozen-lockfile`で呼ばれ最初の失敗で止まること、脆弱性の確認が重大度高以上と除外の一覧で呼ばれ、見直し期限を過ぎた除外で失敗することを確かめる単体テストを書く
   - 脆弱性の除外の一覧は、識別子・理由・見直し期限の形で空の初版を置く
@@ -107,7 +107,7 @@
   - _Boundary: DeployRehearsal_
   - _Requirements: 6.6_
 
-- [ ] 5. デプロイのコマンド
+- [x] 5. デプロイのコマンド
 - [x] 5.1 (P) 事前確認とOpenTofuの2段階の実行のコマンドを作る
   - 先に、計画のJSONの例から資源のアドレスと操作の種類だけが返り属性の値が含まれないこと、削除と作り直しで警告が付くこと、適用の出力から資源の行と完了の行だけが残ること、偽の子プロセスで初期化(環境のbackend設定)→計画(1段目はホスト名の割り当てを除外)→計画の要約→適用の順に呼ばれ、計画とJSONの出力を表示しないこと、`/ci/tofu`の値と新しいOIDCのトークンが子プロセスの環境変数だけに渡ることを確かめる単体テストを書く
   - 事前確認は、実行中のブランチと資源一覧のブランチの一致、資源一覧の解析と構成検査、Infisicalの識別子が仮の値でないこと(prodが未準備ならlaunch-readinessの準備が必要と表示)を確かめる
@@ -155,7 +155,7 @@
   - _Boundary: PostDeployVerifier_
   - _Requirements: 7.10, 7.11_
 
-- [ ] 6. リリースのPRとワークフロー
+- [x] 6. リリースのPRとワークフロー
 - [x] 6.1 (P) リリースのPRを作るコマンドを作る
   - 先に、`main`と`hotfix/<名前>`は受け付け、`prod`・ほかのブランチ・空・改行を含む値は拒否すること、既存のPRがあればその場所を示して作らないこと、差分のコミットが無ければ作らないこと、本文にコミットの一覧・確認項目(stagingでの確認・Expand/Contract・prodの識別子の反映)・実行のURLが入り、headが環境変数から渡されることを、偽の子プロセスで確かめる単体テストを書く
   - 完了状態: 単体テストが成功する
@@ -192,7 +192,7 @@
   - _Depends: 6.1, 6.2_
   - _Requirements: 9.1, 9.4, 9.5_
 
-- [ ] 7. 上流の設定とE2Eへの反映(結合)
+- [x] 7. 上流の設定とE2Eへの反映(結合)
 - [x] 7.1 4アプリのWrangler設定へ、R2の管轄と既定の公開URLの無効化を反映する
   - 4アプリの最上位に既定の公開サブドメインとプレビューURLの無効を、api・eventのstaging・prodのR2のバインディングに米国の管轄を加える。prodの識別子の仮の値は変えない
   - 上流のWrangler設定の単体テスト・型の鮮度の検査が変わらず成功することを確かめ、食い違えば上流の検査へ管轄と公開URLの期待値を加える
@@ -212,7 +212,7 @@
   - _Depends: 2.3, 6.4, 6.5, 7.1_
   - _Requirements: 1.3, 1.9, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7_
 
-- [ ] 8. 技術ドキュメントと既存文書
+- [x] 8. 技術ドキュメントと既存文書
 - [x] 8.1 (P) インフラの技術ドキュメントを書く
   - 構成図とCI/CD・シークレットの流れの図、IaC定義の構成(資源一覧の項目・モジュールの境界・資源の追加手順・状態の保管と暗号化・一時的な資格情報・providerの固定とロックファイル・2段階の適用・削除の防止・テスト・管轄の注意・既存の資源の取り込み)、検査とデプロイのパイプライン(ジョブの構成・E2Eの実行環境・予行・段階・Durable Objectのマイグレーションがデプロイで適用されること・直前のリリース・購読・確認・直列化・ログの規則・版の固定と同期・Expand/Contractの前提)の3文書を書き、インフラの索引へ加える。番号は`infra/005`〜`007`に固定する(Wave 1の横断レビューI-4の割り当て)
   - ゾーン全体のルールを持たない方針を構成図の文書に書く
@@ -326,3 +326,4 @@
 - 8.5: `project-values.md`にプレースホルダーの値・「IaC定義とデプロイのパイプライン」・「Workerのシークレットのキーの一覧」(正とする旨・Workerごとのフォルダの行と優先の規則。`MEDIA_SMOKE_TOKEN`・`DISIFY_API_KEY`の宣言したspecの列は予定のspec、`STRIPE_API_KEY`はpaymentsが行を足す)を置いた。オンボーディングのapi・eventの起動は`run-with-secrets --scope local --worker <api|event> -- bun run dev`(design.mdの`-- wrangler dev …`は9.1で合わせる)。オンボーディングの「スモークテスト」の節は「ローカルでのE2Eテスト」に改名。CLAUDE.mdの技術規則の参照先にoperations/001・infra/006・007・security/003の4件を加えた。法務の2文書にCloudflareの項と書き方の型を置いた(他specの項はまだ無い)。準拠方針の保存場所の表に列を加えた。
 - 9.1: 全検査(delivery 857件・各ファイル80%以上、ルート1638件、`check`・`infra:check`・`contract-check`・`policy-check`・`format:check`)が成功。`audit`だけは開発者が保留を選んだ脆弱性で終了コード1。design.md・research.mdを実装に合わせた(「9.1で反映」の項目をすべて反映)。任意の強化(verifyの`@smoke`0件の扱い・`timeout-minutes`・TruffleHogのダイジェスト固定・`INFISICAL_TOKEN`の上書き・`CLOUDFLARE_ACCOUNT_ID`・`GH_REPO`と`if`・`precondition`化・`live.tftest.hcl`のassert・HCLの検査の拡張・lcovの一時ファイル・`checks / ci-gate`のプレースホルダー化)は実装せず、開発者の判断事項として報告した。
 - 9.1後(開発者の決定 2026-10-30): 採用: verifyは`@smoke`の件数を`--list --reporter=json`の`specs[].tags`で数え0件なら失敗、`checks.yml`の各ジョブと`release-pr.yml`に`timeout-minutes`、`live.tftest.hcl`に5つの結線のassert(4モジュールへ秘密でない出力`placement`を追加)、Wranglerの子プロセスへ`CLOUDFLARE_ACCOUNT_ID`、`release-pr.yml`に`GH_REPO`とmainからの起動の限定、HCLの検査を`apps/infra/**/*.tf`へ広げTurnstileの資源の参照をresourceの外で禁止(`moved`・`import`を使う時は除外が要る)。不採用: TruffleHogのダイジェスト固定(アクションはSHA・イメージはタグのまま)、`INFISICAL_TOKEN`の引き継ぎの変更。research.md・design.md・技術ドキュメントへ反映済み。開発者が`.claude/settings.json`の`deny`へ`Bash(gh api*)`・`Bash(gh pr review*)`を追加した。`rehearse --env staging|prod`は開発者の手動実行で4件とも成功した。
+- 実装の検証の後(開発者の決定 2026-10-30): 開発者が検査用の主体のID(`CHECK_SECRETS_IDENTITY.identityId`)を実際の値にした。改訂5で`audit`を`--audit-level=critical`にし、TruffleHogの未検証の結果では失敗させないことを明記した。任意の改善として、`layering.unit.test.ts`の禁止APIに`Bun.env`・`Bun.argv`・`os`・`process`のモジュールと`process.exit`・`cwd`・`argv`を加え、資源一覧の`workers.*`を名前だけ(未知の項目は誤り)にしてアプリのディレクトリを`APPS`の`appDirOf`へ統合し、`appPackageJsonOf`を`packageJsonOf`へ、INFISICAL_TOKENの確認とフォルダの取り出し・マスクを`commands/shared/infisical-folders.ts`へ、`messageOf`を`catalog/error-message.ts`へまとめた。ルートモジュールの`check "catalog_environment"`を出力`resource_ids`の`precondition`にし、テスト用の変数`catalog_directory`と環境の食い違う資源一覧のフィクスチャで計画が止まることを確かめた。`cli.unit.test.ts`はモジュールの読み込みを差し替え(`CliOptions.loadModule`)、一時ディレクトリのファイルを読み込まない(lcovに一時ファイルが入らない)。技術ドキュメントの`checks / ci-gate`を`<必須チェックの名前>`にした。`run-with-secrets`は渡す値だけをマスクする振る舞いを保つため、共通部品の取り出し(`exportInfisicalFolders`)だけを使う。同じ日に開発者の指示で依存パッケージを組み合わせの制約の中の最新へ更新し(TypeScript 7・Vitest 5・GraphQL 17・GraphQL Yoga 6・Wrangler 4.124.0より新しい版は制約で見送り)、Storybookの重大度が最大の脆弱性が解消して`audit`が成功した。

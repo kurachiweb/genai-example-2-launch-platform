@@ -55,7 +55,7 @@
 
 - 上流のコマンド: ルートの`check`・`test:all:{unit,browser,worker}`・`test:e2e`・`test:e2e:dev-and-preview`(改訂3)・`shared-dirs:place`、apiの`cf-typegen:check`・`db:migrations:check`・`graphql:check`・`graphql:allowlist`・`test:smoke`、eventの`cf-typegen:check`、client・adminの`cf-typegen:check`(改訂3)・`graphql:check`・`build`・`dev`・`preview`、`config/workspace-layout.ts`の`APPS`・`SHARED_DIRS`(読むだけ)。
 - 外部: OpenTofu 1.13.2、Cloudflare provider 5.27.0、`infisical` provider 0.19.38、Infisical CLI 0.44.8、Wrangler(アプリが固定する版と、Dockerfileの4.152.0)、Mailpit 1.32.0、Playwright 1.64.1、Bun 1.4.4、Node 26.12.1(Dockerfileの`NODE_VERSION`)、TruffleHog・GitHub Actionsの公式アクション(実装時にSHAで固定)。新しいnpmパッケージは導入しない。
-- 依存の方向(後述): `scripts/delivery`は`catalog` → `core` → `commands` → `cli.ts`の向きにだけ参照し、`adapters`は`commands`からだけ参照する。`core`は外部コマンド・ファイル・ネットワークに触れない。`scripts/delivery`はアプリのコード(`apps/**/src`)をimportしない。
+- 依存の方向(後述): `scripts/delivery`は`catalog` ← `core` ← `commands` ← `cli.ts`(矢印は読み込まれる側を指す)の向きにだけ参照し、`adapters`は`commands`からだけ参照する。`core`は外部コマンド・ファイル・ネットワークに触れない。`scripts/delivery`はアプリのコード(`apps/**/src`)をimportしない。
 - OpenTofuは`live` → `modules/*`の向きだけで、子モジュール同士は参照しない。資源一覧はルートだけが読む。
 
 ### Revalidation Triggers
@@ -1467,6 +1467,22 @@ export interface DeliveryDeps {
 | Requirements | 4.10, 6.4, 6.5                                                                                      |
 
 **Contracts**: Batch [x]
+
+##### Service Interface
+
+```typescript
+// core/e2e-stack-plan.ts(純粋)。commands/e2e-stack.tsが実行する
+export interface E2eStackPlanInput {
+  readonly cliPath: string; // 配布のスクリプトの入口(run-with-secretsを呼ぶ)
+  readonly mailpitBin: string; // MAILPIT_BIN、無ければ'mailpit'
+  readonly logDir: string; // $RUNNER_TEMP/e2e-logs
+}
+export interface E2eStackPlan {
+  readonly prepare: E2eStackStep; // apiでのbun run db:migrate:local
+  readonly services: readonly E2eStackService[]; // 下の表の順(名前・起動・待ち合わせ・ログのファイル)
+}
+export declare function planE2eStack(input: E2eStackPlanInput): E2eStackPlan;
+```
 
 | サービス | 作業ディレクトリ | 起動                                                                                                                                                                                                   | 待ち合わせ                           |
 | -------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
