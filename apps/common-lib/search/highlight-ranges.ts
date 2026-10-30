@@ -22,16 +22,31 @@ const graphemeSegmenter = new Intl.Segmenter('und', {
 
 const WORD_CHARACTER = /[\p{L}\p{N}\p{Co}]/u;
 
-// FTS5のunicode61(remove_diacritics 2)は合成済みのラテン文字の発音区別符号と単独の結合文字(U+0300〜U+036F)だけを除き、濁点・半濁点やギリシャ文字・キリル文字の合成済みの符号、異体字セレクタは区別する
-const LATIN_DIACRITICS = /(?<=\p{Script=Latin}\p{M}*)[\u0300-\u036f]/gu;
+const LATIN_CHARACTER = /^\p{Script=Latin}$/u;
+const MARK_CHARACTER = /^\p{M}$/u;
+const COMBINING_DIACRITIC = /^[\u0300-\u036f]$/u;
 const COMBINING_DIACRITICS = /[\u0300-\u036f]/gu;
 
+// ラテン文字に続く結合文字の並びの中のU+0300〜U+036Fを除く。後読みの正規表現は長い結合文字の並びで2乗の時間になるため、直前の結合文字でない文字がラテン文字かを持ち回って1回の走査で判定する(ラテン文字かつ結合文字である文字は無い)
+const removeLatinDiacritics = (text: string): string => {
+  let afterLatin = false;
+  let result = '';
+  for (const character of text) {
+    if (!MARK_CHARACTER.test(character)) {
+      afterLatin = LATIN_CHARACTER.test(character);
+      result += character;
+    } else if (!afterLatin || !COMBINING_DIACRITIC.test(character)) {
+      result += character;
+    }
+  }
+  return result;
+};
+
+// FTS5のunicode61(remove_diacritics 2)は合成済みのラテン文字の発音区別符号と単独の結合文字(U+0300〜U+036F)だけを除き、濁点・半濁点やギリシャ文字・キリル文字の合成済みの符号、異体字セレクタは区別する
 const foldGrapheme = (grapheme: string): string =>
-  grapheme
-    .normalize('NFKC')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(LATIN_DIACRITICS, '')
+  removeLatinDiacritics(
+    grapheme.normalize('NFKC').toLowerCase().normalize('NFD'),
+  )
     .normalize('NFC')
     .replace(COMBINING_DIACRITICS, '');
 
@@ -106,19 +121,22 @@ const findPhraseRanges = (
 
 const mergeRanges = (
   ranges: readonly HighlightRange[],
-): readonly HighlightRange[] =>
-  [...ranges]
-    .sort((a, b) => a.start - b.start || a.end - b.end)
-    .reduce<readonly HighlightRange[]>((merged, range) => {
-      const previous = merged.at(-1);
-      if (previous === undefined || previous.end < range.start) {
-        return [...merged, range];
-      }
-      return [
-        ...merged.slice(0, -1),
-        { start: previous.start, end: Math.max(previous.end, range.end) },
-      ];
-    }, []);
+): readonly HighlightRange[] => {
+  const sorted = ranges.toSorted((a, b) => a.start - b.start || a.end - b.end);
+  const merged: HighlightRange[] = [];
+  for (const range of sorted) {
+    const previous = merged.at(-1);
+    if (previous === undefined || previous.end < range.start) {
+      merged.push(range);
+    } else {
+      merged[merged.length - 1] = {
+        start: previous.start,
+        end: Math.max(previous.end, range.end),
+      };
+    }
+  }
+  return merged;
+};
 
 export const findHighlightRanges = (
   text: string,

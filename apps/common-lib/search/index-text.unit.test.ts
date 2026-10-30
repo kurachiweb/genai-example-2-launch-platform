@@ -41,6 +41,15 @@ describe('normalizeIndexText', () => {
     expect(normalizeIndexText(text)).toBe('');
   });
 
+  test('途中に長い空白の並びがある文字列を線形の時間で正規化する', () => {
+    const startedAt = performance.now();
+    const normalized = normalizeIndexText(`a${' '.repeat(20_000)}b`);
+    const elapsed = performance.now() - startedAt;
+
+    expect(normalized).toBe('a b');
+    expect(elapsed).toBeLessThan(50);
+  });
+
   test('大文字小文字と発音区別符号を変えない', () => {
     expect(normalizeIndexText('Café Résumé')).toBe('Café Résumé');
   });

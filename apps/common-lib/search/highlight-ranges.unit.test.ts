@@ -224,6 +224,34 @@ describe('findHighlightRanges', () => {
     ]);
   });
 
+  test('一致の多い長い文字列を線形の時間で処理する', () => {
+    const text = 'a '.repeat(10_000);
+    const startedAt = performance.now();
+    const ranges = findHighlightRanges(text, ['a']);
+    const elapsed = performance.now() - startedAt;
+
+    expect(ranges).toHaveLength(10_000);
+    expect(ranges.at(0)).toEqual({ start: 0, end: 1 });
+    expect(ranges.at(-1)).toEqual({ start: 19_998, end: 19_999 });
+    expect(elapsed).toBeLessThan(50);
+  });
+
+  test.each([
+    ['ラテン文字', 'e'],
+    ['ラテン文字以外', 'あ'],
+  ])(
+    '%sの後に長い結合文字の並びがある文字列を線形の時間で処理する',
+    (_, base) => {
+      const text = `${base}${'\u0301'.repeat(20_000)} x`;
+      const startedAt = performance.now();
+      const ranges = findHighlightRanges(text, [base]);
+      const elapsed = performance.now() - startedAt;
+
+      expect(ranges).toEqual([{ start: 0, end: 20_001 }]);
+      expect(elapsed).toBeLessThan(50);
+    },
+  );
+
   test.each([
     ['Cafe\u0301 au lait', ['cafe', 'au']],
     ['ﾀｽｸ管理・ﬁle ①', ['ﾀｽｸ管', 'ＦＩ', '①']],
