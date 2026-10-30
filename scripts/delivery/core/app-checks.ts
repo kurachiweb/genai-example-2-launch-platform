@@ -4,6 +4,8 @@ import {
   APPS,
 } from '../../../config/workspace-layout.ts';
 
+import { packageJsonOf } from './install-targets.ts';
+
 export interface AppCheck {
   readonly app: AppName;
   readonly script: string;
@@ -29,8 +31,6 @@ export interface AppCheckStep {
 export type AppCheckPlan =
   | { readonly ok: true; readonly steps: readonly AppCheckStep[] }
   | { readonly ok: false; readonly errors: readonly string[] };
-
-export const appPackageJsonOf = (dir: string): string => `${dir}/package.json`;
 
 const dirOf = (app: AppName, { apps }: AppCheckLayout): string => {
   const found = apps.find(({ name }) => name === app);
@@ -73,7 +73,7 @@ export function planAppChecks(
     .filter(({ dir, script }) => !scriptsByDir.get(dir)?.includes(script))
     .map(
       ({ dir, script }) =>
-        `${appPackageJsonOf(dir)}: スクリプト${script}がありません`,
+        `${packageJsonOf(dir)}: スクリプト${script}がありません`,
     );
   return errors.length > 0 ? { ok: false, errors } : { ok: true, steps };
 }

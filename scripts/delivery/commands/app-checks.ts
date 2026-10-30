@@ -2,10 +2,10 @@ import type { RepoFiles } from '../adapters/repo-files.ts';
 import {
   type AppCheckStep,
   appCheckDirs,
-  appPackageJsonOf,
   planAppChecks,
   scriptNamesOf,
 } from '../core/app-checks.ts';
+import { packageJsonOf } from '../core/install-targets.ts';
 import {
   type DeliveryCommand,
   type DeliveryDeps,
@@ -36,7 +36,7 @@ const loadScripts = async (
   files: RepoFiles,
   dir: string,
 ): Promise<Loaded<DirScripts>> => {
-  const path = appPackageJsonOf(dir);
+  const path = packageJsonOf(dir);
   const text = await readInput(files, path);
   if (!text.ok) return text;
   const json = parseInput(path, text.value, 'JSON', JSON.parse);
