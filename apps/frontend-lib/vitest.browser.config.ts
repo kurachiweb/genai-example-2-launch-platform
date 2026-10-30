@@ -1,6 +1,9 @@
+import { join } from 'node:path';
+
 import tailwindcss from '@tailwindcss/vite';
 import viteReact from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
+import { searchForWorkspaceRoot } from 'vite';
 import { defineConfig } from 'vitest/config';
 
 import {
@@ -8,6 +11,7 @@ import {
   browserTestPreset,
   resolveBrowserLaunchOptions,
 } from '../../config/vitest/browser.ts';
+import { VUE_FEATURE_FLAGS } from './config/vue-feature-flags.ts';
 
 // 実行中に依存の事前バンドルをやり直すとページが再読み込みされ、Reactが2つ読み込まれてフックが失敗するため、画面部品の依存を最初から事前バンドルする
 const PREBUNDLED_DEPENDENCIES = [
@@ -29,12 +33,37 @@ const PREBUNDLED_DEPENDENCIES = [
   '@tanstack/react-query',
   'jotai/vanilla',
   '@marsidev/react-turnstile',
+  'unified',
+  'remark-parse',
+  'remark-gfm',
+  'remark-cjk-friendly',
+  'remark-cjk-friendly-gfm-strikethrough',
+  'remark-rehype',
+  'rehype-sanitize',
+  'rehype-stringify',
+  'hast-util-to-text',
+  '@milkdown/crepe',
+  '@milkdown/kit',
+  '@milkdown/react',
+  'vue',
 ];
+
+// 共用部品は利用側アプリへの配置と同じ兄弟の相対パスで読み込み、自身の位置ではプロジェクトの外にある配置元を指すため、開発サーバーの配信を許可する
+const COMMON_LIB_SOURCE_DIR = join(import.meta.dirname, '..', 'common-lib');
 
 export default defineConfig({
   plugins: [viteReact(), tailwindcss()],
+  define: VUE_FEATURE_FLAGS,
   optimizeDeps: {
     include: PREBUNDLED_DEPENDENCIES,
+  },
+  server: {
+    fs: {
+      allow: [
+        searchForWorkspaceRoot(import.meta.dirname),
+        COMMON_LIB_SOURCE_DIR,
+      ],
+    },
   },
   test: {
     ...browserTestPreset,

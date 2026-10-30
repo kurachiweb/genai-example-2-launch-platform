@@ -94,7 +94,7 @@
   - _Boundary: ConsumerAppIntegration_
   - _Requirements: 1.5_
 
-- [ ] 4.2 (P) 利用者側・管理者側とfrontend-libに共用部品・エディタ・文字組みのパッケージを組み込む
+- [x] 4.2 (P) 利用者側・管理者側とfrontend-libに共用部品・エディタ・文字組みのパッケージを組み込む
   - client・adminに描画の9パッケージ、client・admin・frontend-libに`@milkdown/crepe`・`@milkdown/kit`・`@milkdown/react`の7.22.3と`@tailwindcss/typography` 0.5.20、frontend-libにremark-cjk-friendlyの2つを、設計の版で完全に固定して導入する。zodなど上流と共有するパッケージは、上流の現在の版に合わせる
   - client・adminの型検査・静的解析・単体テスト・ブラウザテストの対象をAPIサーバーと同じ規約で設定する
   - frontend-libのブラウザテストとStorybookの開発サーバーが共用部品の配置元を読み込めるようにし、client・admin・frontend-libのVite設定でVueの機能フラグを無効に定義する
@@ -360,3 +360,4 @@
 - 3.4: 攻撃的な入力の解析はremark-parse(micromark)で2乗になる。実測は引用20,000段でBun 2.2秒・Node 0.36秒、強調の記号10,000組で約3.2秒、`[`の20,000段の入れ子で6.6秒。Workersでの描画のたびにCPU時間を使うため、3.6で入力の上限や解析前の打ち切りを確かめる。`markdown-processor.ts`の解析のスタックあふれの`catch`はBunで実行されないため、3.6で解析の関数を差し替えて試せるようにする
 - 3.6: `markdown/parse-guard.ts`(設計に無い)が解析の前に線形の走査で9種の負荷(行頭のコンテナの記号・行内の範囲ごとの強調の記号・角括弧の入れ子と対応の無い`]`・遅延継続行・setextの下線・項目の中でコンテナを開くリストの項目・`www.`など)を見積もり、上限を超える入力を原文の1段落に縮退させる。コードブロックの中も数える(フェンスの判定はHTMLブロックや字下げしたフェンスでmicromarkとずれ、ガードを無効にできるため撤回した)。既知の制限: 対応の無い`]`を1行に2個持つコードが空行無しで約830行以上続くと縮退する。残存リスク(Bun/Node、1秒未満): 空の箇条書き`+\n`×10,000で約330/750ms(hast-util-to-textの2乗)、上限直前の`*_\n`で約340/640ms。リンクの方針はhttp・httpsのスキームの後に`//`が無い参照(`https:evil.example`)を相対URLとして解除する。攻撃パターン集は`markdown/fixtures/`に置き、読み込めるのは単体テストとテスト専用のファイルだけ(4.1で利用側アプリの型検査から`common-lib/markdown/fixtures/**`を除く)
 - 4.1: apiに`bunfig.unit.toml`(ルートの`bunfig.toml`にカバレッジの除外`common-lib/**`を加えた写し)を新設した。api・eventの型検査は`common-lib/**/*.ts`を含め、`common-lib/*.config.ts`・`**/*.test.ts`・`config/**`・`markdown/fixtures/**`を除く(`coding/001`の既存の規則は`<配置先>/*.ts`で、設計とずれる)。`docs/onboardings/README.md`のコマンドの表は`test:unit`の行だけ更新したため、11.3で`lint`・`typecheck`・`test:worker`の行にも配置先の除外を書く
+- 4.2: ルートの`bun run check`と`check-test-names`の赤は解消した。Vueの機能フラグは`apps/frontend-lib/config/vue-feature-flags.ts`(設計に無い)を6つのVite・Storybookの設定で共有する。frontend-libは描画の9パッケージを宣言しないため、`PREBUNDLED_DEPENDENCIES`の4つ(remark-rehype・rehype-sanitize・rehype-stringify・hast-util-to-text)はfrontend-libの位置で"Failed to resolve dependency"の警告が出るが、Viteが共用部品の`node_modules`からたどって事前バンドルするため再読み込みは起きない。frontend-libの位置ではunified・remark-parse・remark-gfmがMilkdownの推移的な依存の写しに解決されるため、11.3で`coding/002`の版をそろえる一覧に推移的な版の照合も検討する。frontend-libの単体テストはカバレッジの都合で共用部品のうち`text/graphemes.ts`だけを読み込む

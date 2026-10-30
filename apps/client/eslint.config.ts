@@ -12,11 +12,16 @@ import tseslint from 'typescript-eslint';
 import { createBaseConfig } from '../../eslint.config.base.ts';
 import { createFrontendLintConfig } from './lib/config/frontend-lint.ts';
 
-// 共有ディレクトリの静的解析は検査担当の共通部品が受け持つため、配置先を重ねて検査しない
+// 共有ディレクトリの静的解析は検査担当の共通部品・共用部品が受け持つため、配置先を重ねて検査しない
 const config: Linter.Config[] = [
   {
     name: 'client/ignores',
-    ignores: ['lib/', 'src/graphql/generated/', 'src/routeTree.gen.ts'],
+    ignores: [
+      'lib/',
+      'common-lib/',
+      'src/graphql/generated/',
+      'src/routeTree.gen.ts',
+    ],
   },
   ...createBaseConfig({
     js,

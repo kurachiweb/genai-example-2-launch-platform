@@ -5,11 +5,13 @@ import viteReact from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 import { excludeLocalSecretsFile } from './lib/config/local-secrets-output.ts';
+import { VUE_FEATURE_FLAGS } from './lib/config/vue-feature-flags.ts';
 
 // api・eventのwrangler dev --persist-toと同じ保存先にし、D1・R2などのローカル状態を共有する
 const LOCAL_STATE_PATH = '/workspace/.wrangler/state';
 
 export default defineConfig({
+  define: VUE_FEATURE_FLAGS,
   plugins: [
     cloudflare({
       viteEnvironment: { name: 'ssr' },

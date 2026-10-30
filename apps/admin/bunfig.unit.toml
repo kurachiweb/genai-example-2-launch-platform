@@ -13,5 +13,5 @@ coverageReporter = ["text", "lcov"]
 coverageDir = "coverage/unit"
 
 # 自動生成コードはテストで網羅する対象ではないため分母から除外する
-# 共有ディレクトリの配置先(lib)は検査担当の共通部品が網羅を確かめるため分母から除外する。コマンドラインの--path-ignore-patternsはテストファイルの選択にだけ効き、分母からは外さない
-coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**", "lib/**"]
+# 共有ディレクトリの配置先(lib・common-lib)は検査担当の共通部品・共用部品が網羅を確かめるため分母から除外する。コマンドラインの--path-ignore-patternsはテストファイルの選択にだけ効き、分母からは外さない
+coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**", "lib/**", "common-lib/**"]

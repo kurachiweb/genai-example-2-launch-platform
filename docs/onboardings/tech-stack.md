@@ -114,6 +114,7 @@
 
 - Tailwind CSS
   - `@tailwindcss/vite` ... ViteでTailwind CSSのスタイルシートを処理するプラグイン
+  - `@tailwindcss/typography` ... マークダウンを描画した本文の文字組み(`prose`のクラス)
   - `tw-animate-css` ... shadcn/uiの部品が使う出入りのアニメーションのクラス
 - shadcn/ui
   - `radix-ui` ... shadcn/uiの部品が土台にするアクセシブルな部品群(全部品を1つにまとめたパッケージ)
@@ -130,7 +131,8 @@
 
 ### マークダウンエディタ
 
-- `@milkdown/crepe` ... ProseMirrorベースのマークダウン向けWYSIWYGエディタ
+- `@milkdown/crepe` ... ProseMirrorベースのマークダウン向けWYSIWYGエディタ、builder(`@milkdown/crepe/builder`)で使う機能だけを組み立て、別チャンクに分けて遅延読み込みする
+- `@milkdown/kit` ... Crepeが土台にするMilkdownの部品群(コア・ProseMirror・プラグイン)、入力規則やコマンド、remarkのプラグインの登録で直接読み込むため、Crepeが固定する版と同じ版を明示して宣言する
 - `@milkdown/react` ... Reactコンポーネント、SSRでは描画せずクライアント側でのみマウント
 
 ### 画像編集UI
