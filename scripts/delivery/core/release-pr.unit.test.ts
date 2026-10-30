@@ -63,6 +63,12 @@ describe('validateReleaseHead', () => {
 
     expect(result.ok ? '' : result.reason).toContain('"hotfix/fix\\nmain"');
   });
+
+  test('拒否の理由には、受け付ける名前の長さの上限を受け付ける最長の名前と同じ63文字として示す', () => {
+    const result = validateReleaseHead(`hotfix/a${'b'.repeat(63)}`);
+
+    expect(result.ok ? '' : result.reason).toContain('63文字まで');
+  });
 });
 
 describe('releasePrTitle', () => {

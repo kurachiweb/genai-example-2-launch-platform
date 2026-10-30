@@ -23,7 +23,7 @@ export function validateReleaseHead(input: string): ReleaseHead {
   if (RELEASE_HEAD_PATTERN.test(input)) return { ok: true, head: input };
   return {
     ok: false,
-    reason: `リリースのheadはmainか、hotfix/<英小文字・数字・ハイフンの名前>(64文字まで、先頭は英小文字か数字)にしてください(実際: ${JSON.stringify(input)})`,
+    reason: `リリースのheadはmainか、hotfix/<英小文字・数字・ハイフンの名前>(63文字まで、先頭は英小文字か数字)にしてください(実際: ${JSON.stringify(input)})`,
   };
 }
 
