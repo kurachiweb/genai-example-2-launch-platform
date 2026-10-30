@@ -87,3 +87,22 @@ run "rejects_managed_turnstile_mode" {
 
   expect_failures = [var.turnstile]
 }
+
+run "reports_account_zone_and_hosts_of_planned_resources" {
+  command = plan
+
+  variables {
+    account_id = "0123456789abcdef0123456789abcdef"
+    zone_id    = "fedcba9876543210fedcba9876543210"
+  }
+
+  assert {
+    condition = output.placement == {
+      account_ids          = toset(["0123456789abcdef0123456789abcdef"])
+      zone_ids             = toset(["fedcba9876543210fedcba9876543210"])
+      web_analytics_host   = "app-client-staging.example"
+      email_sending_domain = "app-mail-staging.example"
+    }
+    error_message = "bot判定・アクセス解析・メール送信の計画のアカウント・ゾーン・ホスト名・送信ドメインが出力placementに現れない"
+  }
+}

@@ -21,6 +21,10 @@ export interface SmokeE2eCommand {
   readonly env: Readonly<Record<string, string>>;
 }
 
+export type SmokeCountResult =
+  | { readonly ok: true; readonly count: number }
+  | { readonly ok: false; readonly error: string };
+
 export interface WaitFailure {
   readonly url: string;
   readonly lastStatus: number | undefined;
@@ -111,6 +115,95 @@ export const smokeE2eCommandOf = ({
   args: ['run', 'test:e2e', '--grep', SMOKE_TAG],
   env: { E2E_CLIENT_URL: clientUrl, E2E_ADMIN_URL: adminUrl },
 });
+
+export const smokeListCommandOf = (plan: SmokeE2ePlan): SmokeE2eCommand => {
+  const run = smokeE2eCommandOf(plan);
+  return { ...run, args: [...run.args, '--list', '--reporter=json'] };
+};
+
+// PlaywrightのJSONの報告はタグを先頭の`@`を除いて持つ
+const SMOKE_TAG_IN_REPORT = SMOKE_TAG.slice(1);
+
+class ListShapeError extends Error {}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const arrayAt = (
+  record: Record<string, unknown>,
+  key: string,
+): readonly unknown[] => {
+  const value = record[key] ?? [];
+  if (!Array.isArray(value)) {
+    throw new ListShapeError(`${key}が配列ではありません`);
+  }
+  return value;
+};
+
+const smokeTestsOfSpec = (spec: unknown): number => {
+  if (!isRecord(spec))
+    throw new ListShapeError('specがオブジェクトではありません');
+  const tests = arrayAt(spec, 'tests');
+  return arrayAt(spec, 'tags').includes(SMOKE_TAG_IN_REPORT) ? tests.length : 0;
+};
+
+// 到達確認のsetupは`--grep`で絞り落とされずタグも持たないため、タグで数えて除く
+const smokeTestsOfSuite = (suite: unknown): number => {
+  if (!isRecord(suite)) {
+    throw new ListShapeError('suiteがオブジェクトではありません');
+  }
+  const own = arrayAt(suite, 'specs').reduce<number>(
+    (sum, spec) => sum + smokeTestsOfSpec(spec),
+    0,
+  );
+  return arrayAt(suite, 'suites').reduce<number>(
+    (sum, child) => sum + smokeTestsOfSuite(child),
+    own,
+  );
+};
+
+const messageOfListError = (error: unknown): string =>
+  isRecord(error) && typeof error.message === 'string'
+    ? error.message
+    : JSON.stringify(error);
+
+const parseJson = (text: string): unknown => {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new ListShapeError('JSONとして読めません');
+  }
+};
+
+export function countSmokeTests(listJson: string): SmokeCountResult {
+  try {
+    const report = parseJson(listJson);
+    if (!isRecord(report)) {
+      throw new ListShapeError('JSONがオブジェクトではありません');
+    }
+    const errors = arrayAt(report, 'errors');
+    if (errors.length > 0) {
+      return {
+        ok: false,
+        error: `テストの一覧の作成で誤りがありました: ${errors.map(messageOfListError).join('、')}`,
+      };
+    }
+    if (!Array.isArray(report.suites)) {
+      throw new ListShapeError('suitesが配列ではありません');
+    }
+    const count = report.suites.reduce<number>(
+      (sum, suite) => sum + smokeTestsOfSuite(suite),
+      0,
+    );
+    return { ok: true, count };
+  } catch (error) {
+    if (!(error instanceof ListShapeError)) throw error;
+    return {
+      ok: false,
+      error: `テストの一覧の件数を数えられません(${error.message})`,
+    };
+  }
+}
 
 const WAIT_MINUTES = String(VERIFY_WAIT_TIMEOUT_MS / MS_PER_MINUTE);
 

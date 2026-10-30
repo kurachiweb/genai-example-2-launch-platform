@@ -65,3 +65,20 @@ run "adds_custom_domains_by_adding_catalog_entries" {
     error_message = "資源一覧に加えたホスト名とWorker名の対応が計画と一致しない"
   }
 }
+
+run "reports_account_and_zone_of_planned_custom_domains" {
+  command = plan
+
+  variables {
+    account_id = "0123456789abcdef0123456789abcdef"
+    zone_id    = "fedcba9876543210fedcba9876543210"
+  }
+
+  assert {
+    condition = output.placement == {
+      account_ids = toset(["0123456789abcdef0123456789abcdef"])
+      zone_ids    = toset(["fedcba9876543210fedcba9876543210"])
+    }
+    error_message = "ホスト名の割り当ての計画のアカウントとゾーンが出力placementに現れない"
+  }
+}

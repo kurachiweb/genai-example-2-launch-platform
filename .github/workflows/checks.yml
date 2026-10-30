@@ -9,6 +9,7 @@ permissions:
 jobs:
   secret-scan:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,6 +61,7 @@ jobs:
   quality:
     needs: secret-scan
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -80,6 +82,7 @@ jobs:
   tests:
     needs: quality
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
@@ -109,6 +112,7 @@ jobs:
   e2e:
     needs: quality
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     permissions:
       contents: read
       id-token: write
@@ -146,6 +150,7 @@ jobs:
   rehearsal:
     needs: quality
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -164,6 +169,7 @@ jobs:
     if: always()
     needs: [secret-scan, quality, tests, e2e, rehearsal]
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - env:
           NEEDS_RESULTS: ${{ toJSON(needs) }}

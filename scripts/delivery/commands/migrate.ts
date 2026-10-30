@@ -36,7 +36,13 @@ export const command: DeliveryCommand = {
         deps,
       );
     }
-    const secrets = await openCloudflareSecrets(NAME, env, [], deps);
+    const secrets = await openCloudflareSecrets(
+      NAME,
+      env,
+      catalog.value.cloudflare.accountId,
+      [],
+      deps,
+    );
     if (typeof secrets === 'number') return secrets;
     const { appDir } = catalog.value.workers.api;
     const migrationArgs = [

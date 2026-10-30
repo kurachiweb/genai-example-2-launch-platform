@@ -69,6 +69,40 @@ run "wires_staging_catalog_into_modules" {
   }
 
   assert {
+    condition = module.storage.placement == {
+      account_ids   = toset([local.catalog.cloudflare.accountId])
+      jurisdictions = toset(["us"])
+    }
+    error_message = "D1・R2が資源一覧のアカウントと管轄に計画されない"
+  }
+
+  assert {
+    condition = module.messaging.placement == {
+      account_ids   = toset([local.catalog.cloudflare.accountId])
+      jurisdictions = toset(["us"])
+    }
+    error_message = "Queueが資源一覧のアカウントと管轄に計画されない"
+  }
+
+  assert {
+    condition = module.worker_routing.placement == {
+      account_ids = toset([local.catalog.cloudflare.accountId])
+      zone_ids    = toset([local.catalog.cloudflare.zoneId])
+    }
+    error_message = "ホスト名の割り当てが資源一覧のアカウントとゾーンに計画されない"
+  }
+
+  assert {
+    condition = module.edge_services.placement == {
+      account_ids          = toset([local.catalog.cloudflare.accountId])
+      zone_ids             = toset([local.catalog.cloudflare.zoneId])
+      web_analytics_host   = "genai-example-2-client-staging.lab.kurachiweb.com"
+      email_sending_domain = "genai-example-2-mail-staging.lab.kurachiweb.com"
+    }
+    error_message = "bot判定・アクセス解析・メール送信のアカウント・ゾーン・アクセス解析のホスト名・送信ドメインが資源一覧と一致しない"
+  }
+
+  assert {
     condition     = toset(keys(output.resource_ids)) == toset(["d1", "turnstile_sitekey", "web_analytics_site_token"])
     error_message = "出力が秘密でない識別子(D1・Turnstileのサイトキー・アクセス解析のトークン)だけになっていない"
   }
@@ -123,6 +157,40 @@ run "wires_prod_catalog_into_modules" {
       mode    = "invisible"
     }
     error_message = "Turnstileの名前・対象のホスト名・モードが資源一覧と一致しない"
+  }
+
+  assert {
+    condition = module.storage.placement == {
+      account_ids   = toset([local.catalog.cloudflare.accountId])
+      jurisdictions = toset(["us"])
+    }
+    error_message = "D1・R2が資源一覧のアカウントと管轄に計画されない"
+  }
+
+  assert {
+    condition = module.messaging.placement == {
+      account_ids   = toset([local.catalog.cloudflare.accountId])
+      jurisdictions = toset(["us"])
+    }
+    error_message = "Queueが資源一覧のアカウントと管轄に計画されない"
+  }
+
+  assert {
+    condition = module.worker_routing.placement == {
+      account_ids = toset([local.catalog.cloudflare.accountId])
+      zone_ids    = toset([local.catalog.cloudflare.zoneId])
+    }
+    error_message = "ホスト名の割り当てが資源一覧のアカウントとゾーンに計画されない"
+  }
+
+  assert {
+    condition = module.edge_services.placement == {
+      account_ids          = toset([local.catalog.cloudflare.accountId])
+      zone_ids             = toset([local.catalog.cloudflare.zoneId])
+      web_analytics_host   = "genai-example-2-client.lab.kurachiweb.com"
+      email_sending_domain = "genai-example-2-mail.lab.kurachiweb.com"
+    }
+    error_message = "bot判定・アクセス解析・メール送信のアカウント・ゾーン・アクセス解析のホスト名・送信ドメインが資源一覧と一致しない"
   }
 
   assert {

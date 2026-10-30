@@ -13,6 +13,7 @@ import { reportInputErrors } from './report-violations.ts';
 
 export const CLOUDFLARE_SECRET_FOLDER = '/ci/cloudflare';
 export const CLOUDFLARE_TOKEN_KEY = 'CLOUDFLARE_API_TOKEN';
+export const CLOUDFLARE_ACCOUNT_ID_KEY = 'CLOUDFLARE_ACCOUNT_ID';
 
 const TOKEN_ENV = 'INFISICAL_TOKEN';
 const TITLE = 'Cloudflareのシークレットの取り出し';
@@ -53,9 +54,11 @@ const exportFolders = async (
 };
 
 // /ci/cloudflareと指定したフォルダを取り出し、子プロセスへ渡す前にすべての値をマスクする
+// トークンが複数のアカウントに届いてもWranglerが操作先を選べるよう、資源一覧のアカウントIDをトークンと並べて渡す
 export async function openCloudflareSecrets(
   name: string,
   env: DeployEnvironment,
+  accountId: string,
   folders: readonly SecretFolder[],
   deps: DeliveryDeps,
 ): Promise<CloudflareSecrets | number> {
@@ -85,7 +88,10 @@ export async function openCloudflareSecrets(
   }
   return {
     target: target.value,
-    cloudflareEnv: { [CLOUDFLARE_TOKEN_KEY]: token.value },
+    cloudflareEnv: {
+      [CLOUDFLARE_TOKEN_KEY]: token.value,
+      [CLOUDFLARE_ACCOUNT_ID_KEY]: accountId,
+    },
     folders: rest,
   };
 }

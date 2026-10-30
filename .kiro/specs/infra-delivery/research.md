@@ -287,7 +287,7 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
   - `wrangler queues subscription list <Queue> --json`は購読の配列(`name`・`enabled`・`source`(`type`・`zone_id`・`domain`)・`events`)を返す形として実装し、購読が無い場合の`null`も空として扱った。一覧は既定で1ページ20件である。実際のアカウントでの出力の形は、Cloudflareへ接続していないため、最初のstagingのデプロイで確かめる。
   - `gh pr list --head <ブランチ>`はブランチ名だけで絞り込み、フォークの同名のブランチからのPRも返す。`--json isCrossRepository`で同じリポジトリのPRを見分けられる。`gh`は`persist-credentials: false`のチェックアウトでも残る`origin`のURLからリポジトリを解決する。
   - Infisical CLIのリリースのチェックサムのファイルは`checksums.txt`である(`cli_<版>_checksums.txt`ではない)。CLIのログインのJWTは`--jwt=<JWT>`の引数で渡した(環境変数で渡せるかは確かめていない)。
-  - Playwright 1.64.1の`--grep`は、依存のsetupプロジェクト(到達確認)を絞り落とさない。どのテストにも合わない`--grep`ではsetupも外れて0件になり、`--pass-with-no-tests`で成功する。`--grep @smoke --list`は到達確認2件と疎通確認23件の25件である。
+  - Playwright 1.64.1の`--grep`は、依存のsetupプロジェクト(到達確認)を絞り落とさない。どのテストにも合わない`--grep`ではsetupも外れて0件になり、`--pass-with-no-tests`で成功する。`--grep @smoke --list`は到達確認2件と疎通確認23件の25件である。`verify`はこのため`--list --reporter=json`のタグで`@smoke`の件数を数え、0件を失敗にする(「Decision: 9.1後の任意の強化」)。
   - `Bun.Glob`は、波括弧の中に`/`を含むパターン(`apps/infra/{live,modules/*}/*.tf`)で0件を返す。パターンを分ける。
   - Bunの型定義では`expect().rejects`が待てる値(Promise)を返さないため、`await expect(...).rejects`が静的解析の違反になる。拒否の確認は補助関数(`test-fixtures/rejection.ts`)で書く。
   - `wrangler dev`はworkerdを孫プロセスとして起動するため、子プロセスだけへのシグナルでは止まらない。`Bun.spawn`の`detached: true`で新しいプロセスグループを作り、グループへシグナルを送ると止まる。
@@ -379,6 +379,24 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
   1. 古いコミットが後からデプロイされると、古いIaCの適用で新しいコミットが加えた資源が消え得る。直列にすれば古い実行が新しい実行の後に走らない。GitHubの`concurrency`の待機は1件だけで、待機中の古い実行は新しい実行の到着で取り消されるが、新しいコミットは古いコミットを含むため、取り消しで失われる変更は無い。
   2. `preflight`は秘密値を使わないため、ログインより先に実行しても秘密値の扱いは変わらない。仮の値の案内(Infisicalの識別子・CloudflareのアカウントID・ゾーンID)をまとめて出してから止められ、5.1の決定の意図に合う。
   3. スモークテストを実行するのはstagingだけのため、prodのデプロイで不要な取得と実行時間を省く。`if:`の式は`run`への展開でないため、W6の対象外である。
+
+### Decision: 9.1後の任意の強化(2026-10-30に開発者が決定)
+
+- **Context**: tasks 9.1の報告で、実装しなかった任意の強化を開発者の判断事項として挙げた。開発者は次の4件を採用し、2件を採用しなかった。
+- **Selected Approach(採用)**:
+  1. `verify`は、stagingのスモークのE2Eの前に同じ絞り込みと環境変数で`bun run test:e2e --grep @smoke --list --reporter=json`を取り込み、`@smoke`のタグを持つテストを数え、0件なら絞り込みと理由を標準エラーと手順の要約に示して終了コード1で失敗する。一覧の作成の失敗・読めない形も実行せずに失敗にする。
+  2. 手順を持つ全ジョブに`timeout-minutes`を付ける(`checks.yml`はsecret-scan 15・quality 30・tests 30・e2e 45・rehearsal 30・ci-gate 5、`release-pr.yml`は10。`deploy.yml`は既存の60)。`release-pr.yml`は`env`に`GH_REPO: ${{ github.repository }}`を加え、ジョブに`if: github.ref == 'refs/heads/main'`を付ける。
+  3. `live.tftest.hcl`で、両環境の`web_analytics_host`・`email_sending_domain`・`account_id`・`zone_id`・`jurisdiction`が資源一覧どおりに各モジュールへ渡ることを確かめる。`migrate`・`deploy-worker`(デプロイ・ビルド・直前のリリースの読み取り)・`ensure-email-subscription`のWranglerの子プロセスへ、資源一覧の`cloudflare.accountId`を`CLOUDFLARE_ACCOUNT_ID`として`CLOUDFLARE_API_TOKEN`と並べて渡す。
+  4. `repo-contract.unit.test.ts`のHCLの検査の探索を`apps/infra/**/*.tf`(`.terraform/`配下を除く)へ広げ、resourceブロックの外ではTurnstileの資源の`secret`への参照と資源全体の参照を全面的に禁じる。
+- **採用しなかった項目**:
+  1. TruffleHogのアクションはコミットSHA、イメージはタグ`3.99.2`のまま固定し、ダイジェストで固定しない(要件11.5・W1のとおり)。
+  2. 子プロセスへの`INFISICAL_TOKEN`の引き継ぎは今のまま維持する(設計が受け入れたリスク。Security Considerationsの「アクセストークンの受け渡し」)。
+- **Rationale**:
+  1. `test:e2e`は`--pass-with-no-tests`付きのため、タグの付け忘れや絞り込みの誤りで0件になってもスモークテストが成功してしまう。Playwright 1.64.1の`--grep`は依存のsetupプロジェクト(到達確認)を絞り落とさず、`--list`の「Total: 25 tests in 3 files」も到達確認の2件を含む。合計から到達確認の件数を引く方法は対象のアプリの数に依存するため、JSONの報告の`specs[].tags`(先頭の`@`を除いた`smoke`)を持つテストを数える。`--list`はテストを実行せず、`E2E_CLIENT_URL`・`E2E_ADMIN_URL`が無くても既定のURLで一覧を作れる(実行と同じ値を渡して設定をそろえる)。どのテストにも合わない`--grep`では`suites`が空になり0件と数える。
+  2. 止まった子プロセス(待ち合わせ・ブラウザ・Wrangler)がランナーとOIDCのトークンの有効な時間を使い続けないようにする。`workflow_dispatch`は任意のブランチを選んで起動でき、チェックアウトしたそのブランチの配布のスクリプトを`pull-requests: write`の権限で実行するため、mainから起動した時だけ動かす(hotfixのブランチは入力`head`で選べる)。ワークフローの定義そのものを書き換えたブランチからの起動は`if`では防げず、pushの権限を持つ者の操作として受け入れる。`gh`の操作先をチェックアウトの`origin`のURLに頼らず明示する。いずれも`run`への展開でないため、W6の対象外である。
+  3. `tofu test`のassertは子モジュールの変数・資源を参照できず、出力だけを参照できる(OpenTofu 1.13.2で`module.<名前>.<資源>`の参照が「Unsupported attribute」になることを確かめた)。そのため各モジュールに、計画した資源の属性から読む出力`placement`を加えた。子モジュールの出力はルートの出力に含めないため、状態の出力と`reconcile-ids`に影響しない。誤った結線(取り違え・別の値)を一時的に入れて、両環境のテストが失敗することを確かめた。ただし資源一覧のアカウントIDとゾーンIDが同じ仮の値(全桁0)の間は、`live`のテストでは両者の取り違えを区別できない(各モジュールのテストは異なる値で確かめる)。アカウントIDは、トークンが複数のアカウントに届いてもWranglerが操作先を選べるように渡す。秘密値ではないがトークンと同じ経路で渡す。仮の値は`DEPLOY_STAGES`の先頭の`preflight`が止めるため、各コマンドでは重ねて確かめない。`rehearse`はトークンを使わない`--dry-run`のため渡さない。
+  4. 波括弧の中に`/`を含むパターンは`Bun.Glob`で0件になるが、`**`のパターンは深い場所のファイルと`.terraform/`配下(`dot: true`のため)の両方を返す。`.terraform/`は`tofu init`が取得したモジュールの写しで、リポジトリの定義ではないため除く。出力だけを見る検査は`local`や`module`の引数を経由した出力を検出できないため、参照の起点を禁じる。資源全体の参照も`secret`の属性を含むため同じく禁じる。
+- **Trade-offs**: `verify`はPlaywrightのJSONの報告の形(`suites`・`specs`・`tags`・`tests`・`errors`)に依存し、形が変わると「数えられない」として失敗する(安全側)。Playwrightの版を上げる時に確かめ直す。
 
 ### Decision: 直前のリリースはWorkerの版のタグで特定する
 

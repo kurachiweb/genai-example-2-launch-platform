@@ -122,3 +122,19 @@ run "rejects_empty_jurisdiction" {
 
   expect_failures = [var.jurisdiction]
 }
+
+run "reports_account_and_jurisdiction_of_planned_resources" {
+  command = plan
+
+  variables {
+    account_id = "0123456789abcdef0123456789abcdef"
+  }
+
+  assert {
+    condition = output.placement == {
+      account_ids   = toset(["0123456789abcdef0123456789abcdef"])
+      jurisdictions = toset(["us"])
+    }
+    error_message = "D1・R2の計画のアカウントと管轄が出力placementに現れない"
+  }
+}

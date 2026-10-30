@@ -13,8 +13,11 @@ permissions:
   contents: read
 
 jobs:
+  # workflow_dispatchは任意のブランチを選んで起動でき、そのブランチの配布のスクリプトを書き込みの権限で実行するため、mainから起動した時だけ動かす(hotfixのブランチは入力headで選ぶ)
   release-pr:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -26,6 +29,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-toolchain
       - env:
+          GH_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
           RELEASE_HEAD: ${{ inputs.head }}
         run: bun scripts/delivery/cli.ts release-pr

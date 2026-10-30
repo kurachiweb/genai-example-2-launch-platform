@@ -4,10 +4,16 @@ import {
   type ResourceCatalog,
   parseResourceCatalog,
 } from '../catalog/resource-catalog.ts';
+import {
+  playwrightListJson,
+  smokeSpec,
+} from '../test-fixtures/playwright-list.ts';
 import { validCatalogJson } from '../test-fixtures/resource-catalog.ts';
 import {
   VERIFY_WAIT_TIMEOUT_MS,
+  countSmokeTests,
   smokeE2eCommandOf,
+  smokeListCommandOf,
   verificationPlanFor,
   waitFailureReport,
 } from './verification-plan.ts';
@@ -112,6 +118,93 @@ describe('smokeE2eCommandOf', () => {
         E2E_CLIENT_URL: 'https://client-staging.launch.example',
         E2E_ADMIN_URL: 'https://admin-staging.launch.example',
       },
+    });
+  });
+});
+
+const STAGING_SMOKE_PLAN = {
+  kind: 'smoke-e2e',
+  clientUrl: 'https://client-staging.launch.example',
+  adminUrl: 'https://admin-staging.launch.example',
+  waitForHealth: 'https://api-staging.launch.example/health',
+} as const;
+
+describe('smokeListCommandOf', () => {
+  test('実行と同じ絞り込みと環境変数で、実行せずに対象のテストをJSONで一覧にする', () => {
+    expect(smokeListCommandOf(STAGING_SMOKE_PLAN)).toEqual({
+      command: 'bun',
+      args: [
+        'run',
+        'test:e2e',
+        '--grep',
+        '@smoke',
+        '--list',
+        '--reporter=json',
+      ],
+      env: {
+        E2E_CLIENT_URL: 'https://client-staging.launch.example',
+        E2E_ADMIN_URL: 'https://admin-staging.launch.example',
+      },
+    });
+  });
+});
+
+describe('countSmokeTests', () => {
+  test('`@smoke`のタグを持つテストを入れ子のsuiteまで数え、タグの無い到達確認のsetupを数えない', () => {
+    const json = playwrightListJson([
+      smokeSpec('疎通確認の画面を表示する'),
+      { title: '管理者側', tags: ['smoke'], projects: ['admin', 'admin-2'] },
+      { title: 'タグ無し', tags: ['slow'], projects: ['client'] },
+    ]);
+
+    expect(countSmokeTests(json)).toEqual({ ok: true, count: 3 });
+  });
+
+  test('`@smoke`のテストが無く到達確認のsetupだけが一覧に残っても0件と数える', () => {
+    expect(countSmokeTests(playwrightListJson([]))).toEqual({
+      ok: true,
+      count: 0,
+    });
+    expect(
+      countSmokeTests(playwrightListJson([], { withSetup: false })),
+    ).toEqual({ ok: true, count: 0 });
+  });
+
+  test.each([
+    ['JSONでない', 'Listing tests:\nTotal: 25 tests in 3 files\n'],
+    ['JSONがオブジェクトでない', JSON.stringify([])],
+    ['suitesが配列でない', JSON.stringify({ suites: {}, errors: [] })],
+    ['suiteがオブジェクトでない', JSON.stringify({ suites: [1], errors: [] })],
+    [
+      'specがオブジェクトでない',
+      JSON.stringify({ suites: [{ specs: [null] }], errors: [] }),
+    ],
+    [
+      'specのtestsが配列でない',
+      JSON.stringify({
+        suites: [{ specs: [{ tags: ['smoke'], tests: 1 }] }],
+        errors: [],
+      }),
+    ],
+    [
+      '入れ子のsuitesが配列でない',
+      JSON.stringify({ suites: [{ specs: [], suites: 'x' }], errors: [] }),
+    ],
+  ])('一覧の形が想定と違えば(%s)誤りにする', (_label, text) => {
+    const result = countSmokeTests(text);
+
+    expect(result.ok).toBe(false);
+  });
+
+  test('一覧の作成時の誤り(テストファイルの読み込みの失敗など)があれば、その内容を示して誤りにする', () => {
+    const json = playwrightListJson([smokeSpec('疎通確認')], {
+      errors: [{ message: 'SyntaxError: Unexpected token' }],
+    });
+
+    expect(countSmokeTests(json)).toEqual({
+      ok: false,
+      error:
+        'テストの一覧の作成で誤りがありました: SyntaxError: Unexpected token',
     });
   });
 });

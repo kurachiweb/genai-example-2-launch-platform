@@ -122,12 +122,12 @@
 
 ## モジュールの境界
 
-| モジュール       | 資源                                                                                                             | 主な入力                                                                           | 出力                                                                          |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `storage`        | `cloudflare_d1_database`(読み取りレプリカの無効・管轄・削除の防止)、`cloudflare_r2_bucket`(管轄・削除の防止)     | `account_id`・`jurisdiction`・`databases`・`buckets`                               | `database_ids`・`bucket_names`                                                |
-| `messaging`      | `cloudflare_queue`(管轄)                                                                                         | `account_id`・`jurisdiction`・`queues`                                             | `queue_ids`                                                                   |
-| `edge-services`  | `cloudflare_turnstile_widget`(削除の防止)、`cloudflare_web_analytics_site`、`cloudflare_email_sending_subdomain` | `account_id`・`zone_id`・`turnstile`・`web_analytics_host`・`email_sending_domain` | `turnstile_sitekey`・`web_analytics_site_token`・`email_sending_subdomain_id` |
-| `worker-routing` | `cloudflare_workers_custom_domain`                                                                               | `account_id`・`zone_id`・`domains`(ホスト名とWorker名のmap)                        | `hostnames`                                                                   |
+| モジュール       | 資源                                                                                                             | 主な入力                                                                           | 出力                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `storage`        | `cloudflare_d1_database`(読み取りレプリカの無効・管轄・削除の防止)、`cloudflare_r2_bucket`(管轄・削除の防止)     | `account_id`・`jurisdiction`・`databases`・`buckets`                               | `database_ids`・`bucket_names`・`placement`                                                |
+| `messaging`      | `cloudflare_queue`(管轄)                                                                                         | `account_id`・`jurisdiction`・`queues`                                             | `queue_ids`・`placement`                                                                   |
+| `edge-services`  | `cloudflare_turnstile_widget`(削除の防止)、`cloudflare_web_analytics_site`、`cloudflare_email_sending_subdomain` | `account_id`・`zone_id`・`turnstile`・`web_analytics_host`・`email_sending_domain` | `turnstile_sitekey`・`web_analytics_site_token`・`email_sending_subdomain_id`・`placement` |
+| `worker-routing` | `cloudflare_workers_custom_domain`                                                                               | `account_id`・`zone_id`・`domains`(ホスト名とWorker名のmap)                        | `hostnames`・`placement`                                                                   |
 
 - 依存の向きは`live`→`modules/*`だけにする。子モジュール同士は参照しない。資源一覧はルートモジュールだけが読み、値を変数で子モジュールへ渡す。
 - 子モジュールはproviderの設定を持たず、`required_providers`だけを宣言する。
@@ -139,6 +139,7 @@
   - 送信ドメインのDNSレコード。Email Serviceが送信ドメインの登録時に作ってロックする。APIでの登録で作られない場合に限り、`cloudflare_dns_record`を`edge-services`へ加える。
   - 配信不能イベントの購読。providerに資源が無いため、デプロイパイプラインが確かめる(「[配信不能イベントの購読](007-ci-cd-pipelines.md#配信不能イベントの購読)」)。
 - ルートモジュールは`check`ブロックで、資源一覧の`environment`と変数`environment`の一致を確かめる。`check`の失敗は警告で、計画を止めない。
+- 各子モジュールの`placement`は、計画した資源の属性から読んだアカウント・管轄・ゾーン(`edge-services`はアクセス解析のホスト名と送信ドメインも)を返す。`tofu test`のassertは子モジュールの変数と資源を参照できず出力だけを参照できるため、ルートモジュールのテストが入力の結線を確かめるのに使う。ルートモジュールの出力には含めない。
 
 ### 秘密でない識別子の出力
 
@@ -153,7 +154,7 @@
 ```
 
 - 識別子は状態が正で、Wrangler設定はその写しである。デプロイパイプラインの識別子の照合(`reconcile-ids`)が、写しの一致を確かめる(「[デプロイの段階](007-ci-cd-pipelines.md#デプロイの段階)」)。
-- Turnstileの秘密鍵(`secret`)などの秘密値は、出力にしない。`tofu output -json`は`sensitive`な出力の値も平文で表示するためである。`tofu output -json <出力名>`は`sensitive`の印も落とすため、照合は全出力を`tofu output -json`で読み、`sensitive`な出力の値に触れずに飛ばす。
+- Turnstileの秘密鍵(`secret`)などの秘密値は、出力にしない。`locals`や子モジュールの引数を経由して出力されるのを防ぐため、resourceブロックの外では秘密鍵(`cloudflare_turnstile_widget.<名前>.secret`)も資源全体(`secret`を含む)も参照しない。`tofu output -json`は`sensitive`な出力の値も平文で表示するためである。`tofu output -json <出力名>`は`sensitive`の印も落とすため、照合は全出力を`tofu output -json`で読み、`sensitive`な出力の値に触れずに飛ばす。
 
 ## 資源の追加手順
 
@@ -375,18 +376,19 @@ run "places_every_queue_in_given_jurisdiction" {
 }
 ```
 
-| テスト                      | 確かめること                                                                                                                                          |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `storage.tftest.hcl`        | mapの項目数どおりの資源、全資源の管轄、D1の読み取りレプリカの無効とロケーションヒント無し、R2の保存クラス、項目の追加で資源が増える、不正な管轄の拒否 |
-| `messaging.tftest.hcl`      | mapの項目数どおりのQueue、全Queueの管轄、項目の追加でQueueが増える、不正な管轄の拒否                                                                  |
-| `edge-services.tftest.hcl`  | Turnstileの対象のホスト名と非表示の種類、Web Analyticsの対象のホスト名と自動挿入の無効、送信ドメインのプレビューの無効、非表示以外の種類の拒否        |
-| `worker-routing.tftest.hcl` | ホスト名とWorker名の対応、項目の追加でカスタムドメインが増える                                                                                        |
-| `live.tftest.hcl`           | 両環境の資源一覧の値が各モジュールへ渡る(`mock_provider "infisical"`も使う)                                                                           |
+| テスト                      | 確かめること                                                                                                                                                                     |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `storage.tftest.hcl`        | mapの項目数どおりの資源、全資源の管轄、D1の読み取りレプリカの無効とロケーションヒント無し、R2の保存クラス、項目の追加で資源が増える、不正な管轄の拒否                            |
+| `messaging.tftest.hcl`      | mapの項目数どおりのQueue、全Queueの管轄、項目の追加でQueueが増える、不正な管轄の拒否                                                                                             |
+| `edge-services.tftest.hcl`  | Turnstileの対象のホスト名と非表示の種類、Web Analyticsの対象のホスト名と自動挿入の無効、送信ドメインのプレビューの無効、非表示以外の種類の拒否、`placement`の値                  |
+| `worker-routing.tftest.hcl` | ホスト名とWorker名の対応、項目の追加でカスタムドメインが増える                                                                                                                   |
+| `live.tftest.hcl`           | 両環境の資源一覧の値が各モジュールへ渡る。アカウント・ゾーン・管轄・アクセス解析のホスト名・送信ドメインは各モジュールの`placement`で確かめる(`mock_provider "infisical"`も使う) |
 
 - 子モジュールのテストの変数の名前・ホスト名は、`app-`で始まる名前や`.example`のドメインなど、実際の資源と区別できる値にする。ルートモジュールのテストは実際の資源一覧を読む。
+- 子モジュールのテストの`placement`の確認では、アカウントIDとゾーンIDに互いに異なる値を渡し、取り違えを検出できるようにする。資源一覧のアカウントIDとゾーンIDが同じ仮の値の間は、ルートモジュールのテストでは両者の取り違えを区別できない。
 - ルートモジュールのテストはbackendの設定を使わないため、状態の保管先の鍵を要らない。モックのproviderは`ephemeral`リソースにも対応する。
 - `bun run infra:check`(`bun <配布のスクリプト>/cli.ts infra-check`)が、`tofu fmt -check -recursive <IaCのディレクトリ>`の後、`live`と各子モジュール(名前順)で`init -backend=false -lockfile=readonly -input=false`→`validate`→(テストがあれば)`test`を、最初の失敗まで実行する。整形は`bun run infra:fmt`で直す。
-- 計画のテストで確かめられないHCLの記述(`prevent_destroy`、R2に`location`が無いこと、カスタムドメインに非推奨の`environment`が無いこと、出力に`secret`が無いこと)は、リポジトリの単体テストがHCLを読んで確かめる。
+- 計画のテストで確かめられないHCLの記述(`prevent_destroy`、R2に`location`が無いこと、カスタムドメインに非推奨の`environment`が無いこと、出力に`secret`が無いこと、resourceブロックの外でTurnstileの秘密鍵と資源全体を参照しないこと)は、リポジトリの単体テストがHCLを読んで確かめる。対象は`<IaCのディレクトリ>`配下の全`.tf`で、`tofu init`が取得した写し(`.terraform/`配下)を除く。
 - テストの書き方と実行の位置づけは「[IaC定義のテスト](../testing/001-test-strategy.md#iac定義のテスト)」に従う。
 
 ## 管轄の注意

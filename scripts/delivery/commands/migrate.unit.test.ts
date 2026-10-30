@@ -20,7 +20,7 @@ import {
   createFakeDeps,
   createFakeRepoFiles,
 } from '../test-fixtures/repo-files.ts';
-import { PROJECT_ID } from '../test-fixtures/resource-catalog.ts';
+import { ACCOUNT_ID, PROJECT_ID } from '../test-fixtures/resource-catalog.ts';
 import { command } from './migrate.ts';
 import {
   EXIT_FAILURE,
@@ -29,6 +29,10 @@ import {
 } from './shared/delivery-command.ts';
 
 const CLOUDFLARE_TOKEN = 'fake-cloudflare-api-token';
+const CLOUDFLARE_CHILD_ENV = {
+  CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN,
+  CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+};
 
 const CLOUDFLARE_FOLDER: readonly SecretEntry[] = [
   { key: 'CLOUDFLARE_API_TOKEN', value: CLOUDFLARE_TOKEN },
@@ -126,9 +130,7 @@ describe('migrate', () => {
       );
       const [migration] = calls;
       expect(migration?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/api`);
-      expect(migration?.env).toEqual({
-        CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN,
-      });
+      expect(migration?.env).toEqual(CLOUDFLARE_CHILD_ENV);
       expect(migration?.stdin).toBeUndefined();
       expect(migration?.output).toBe('inherit');
       expect(migration?.args.join(' ')).not.toContain(CLOUDFLARE_TOKEN);

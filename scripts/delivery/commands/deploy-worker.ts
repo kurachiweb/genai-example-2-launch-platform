@@ -19,7 +19,10 @@ import {
   OPTIONAL_WORKER_SECRETS,
   selectWorkerSecrets,
 } from '../core/worker-secrets.ts';
-import { openCloudflareSecrets } from './shared/cloudflare-secrets.ts';
+import {
+  CLOUDFLARE_ACCOUNT_ID_KEY,
+  openCloudflareSecrets,
+} from './shared/cloudflare-secrets.ts';
 import { loadWorkerConfig } from './shared/contract-input.ts';
 import {
   type DeliveryCommand,
@@ -57,6 +60,7 @@ interface VersionAnnotation {
 interface DeployTarget {
   readonly env: DeployEnvironment;
   readonly app: WorkerKey;
+  readonly accountId: string;
   readonly workerName: string;
   readonly appDir: string;
   readonly requiredSecrets: readonly string[];
@@ -101,6 +105,7 @@ const loadDeployTarget = async (
   return {
     env,
     app,
+    accountId: catalog.value.cloudflare.accountId,
     workerName: name,
     appDir,
     requiredSecrets: config.value.config.requiredSecrets,
@@ -130,9 +135,9 @@ const reportMissingSecrets = (
   return EXIT_FAILURE;
 };
 
-const buildStepOf = (env: DeployEnvironment): TargetStep => ({
+const buildStepOf = ({ env, accountId }: DeployTarget): TargetStep => ({
   args: ['run', 'build'],
-  env: { CLOUDFLARE_ENV: env },
+  env: { CLOUDFLARE_ENV: env, [CLOUDFLARE_ACCOUNT_ID_KEY]: accountId },
 });
 
 const deployArgsOf = (
@@ -253,7 +258,7 @@ const prepare = async (
     );
   }
   if (!VITE_BUILT_WORKERS.has(target.app)) return EXIT_SUCCESS;
-  const build = buildStepOf(target.env);
+  const build = buildStepOf(target);
   const code = await runInTarget(target.appDir, build, deps);
   if (code === 0) return EXIT_SUCCESS;
   writeError(
@@ -277,7 +282,13 @@ const deployWorker = async (
     workerFolder === undefined
       ? [SHARED_SECRET_FOLDER]
       : [SHARED_SECRET_FOLDER, workerFolder];
-  const opened = await openCloudflareSecrets(NAME, env, folders, deps);
+  const opened = await openCloudflareSecrets(
+    NAME,
+    env,
+    target.accountId,
+    folders,
+    deps,
+  );
   if (typeof opened === 'number') return opened;
   const [shared = [], perWorker = []] = opened.folders;
   const selection = selectWorkerSecrets({

@@ -2,12 +2,14 @@ export const PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000';
 
 export const PLACEHOLDER_CLOUDFLARE_ID = '00000000000000000000000000000000';
 
+export const ACCOUNT_ID = '0123456789abcdef0123456789abcdef';
+
 export const PROJECT_ID = '0f8b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d';
 
 export const validCatalogJson = (): Record<string, unknown> => ({
   environment: 'staging',
   cloudflare: {
-    accountId: '0123456789abcdef0123456789abcdef',
+    accountId: ACCOUNT_ID,
     zoneId: 'fedcba9876543210fedcba9876543210',
     zoneName: 'launch.example',
   },

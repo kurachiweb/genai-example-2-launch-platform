@@ -22,7 +22,7 @@ import {
   createFakeDeps,
   createFakeRepoFiles,
 } from '../test-fixtures/repo-files.ts';
-import { PROJECT_ID } from '../test-fixtures/resource-catalog.ts';
+import { ACCOUNT_ID, PROJECT_ID } from '../test-fixtures/resource-catalog.ts';
 import { command } from './deploy-worker.ts';
 import {
   EXIT_FAILURE,
@@ -52,6 +52,10 @@ const DEPLOY_STDOUT = [
 ].join('\n');
 
 const CLOUDFLARE_TOKEN = 'fake-cloudflare-api-token';
+const CLOUDFLARE_CHILD_ENV = {
+  CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN,
+  CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+};
 
 const CLOUDFLARE_FOLDER: readonly SecretEntry[] = [
   { key: 'CLOUDFLARE_API_TOKEN', value: CLOUDFLARE_TOKEN },
@@ -347,7 +351,7 @@ describe('deploy-worker', () => {
         expect(deploy?.command).toBe('bun');
         expect(deploy?.args).toEqual(deployArgsOf(['--env', env]));
         expect(deploy?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/${app}`);
-        expect(deploy?.env).toEqual({ CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN });
+        expect(deploy?.env).toEqual(CLOUDFLARE_CHILD_ENV);
         expect(deploy?.output).toBe('capture');
         expect(JSON.parse(deploy?.stdin ?? '')).toEqual(EXPECTED_SECRETS[app]);
         expectSecretsOnlyInStdin(calls);
@@ -373,11 +377,14 @@ describe('deploy-worker', () => {
         ]);
         const [build, deploy] = calls;
         expect(build?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/${app}`);
-        expect(build?.env).toEqual({ CLOUDFLARE_ENV: env });
+        expect(build?.env).toEqual({
+          CLOUDFLARE_ENV: env,
+          CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        });
         expect(build?.stdin).toBeUndefined();
         expect(build?.output).toBe('inherit');
         expect(deploy?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/${app}`);
-        expect(deploy?.env).toEqual({ CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN });
+        expect(deploy?.env).toEqual(CLOUDFLARE_CHILD_ENV);
         expect(deploy?.output).toBe('capture');
         expect(JSON.parse(deploy?.stdin ?? '')).toEqual(EXPECTED_SECRETS[app]);
         expectSecretsOnlyInStdin(calls);
@@ -402,7 +409,7 @@ describe('deploy-worker', () => {
       const [status, view, git, allowlist] = calls;
       for (const spec of [status, view]) {
         expect(spec?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/client`);
-        expect(spec?.env).toEqual({ CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN });
+        expect(spec?.env).toEqual(CLOUDFLARE_CHILD_ENV);
         expect(spec?.output).toBe('capture');
         expect(spec?.stdin).toBeUndefined();
       }

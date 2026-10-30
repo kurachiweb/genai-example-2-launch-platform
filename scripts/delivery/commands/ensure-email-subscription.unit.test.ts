@@ -24,7 +24,7 @@ import {
   createFakeDeps,
   createFakeRepoFiles,
 } from '../test-fixtures/repo-files.ts';
-import { PROJECT_ID } from '../test-fixtures/resource-catalog.ts';
+import { ACCOUNT_ID, PROJECT_ID } from '../test-fixtures/resource-catalog.ts';
 import { DOCKERFILE, replaceOnce } from '../test-fixtures/workflows.ts';
 import { command } from './ensure-email-subscription.ts';
 import {
@@ -34,6 +34,10 @@ import {
 } from './shared/delivery-command.ts';
 
 const CLOUDFLARE_TOKEN = 'fake-cloudflare-api-token';
+const CLOUDFLARE_CHILD_ENV = {
+  CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN,
+  CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+};
 const ZONE_ID = 'fedcba9876543210fedcba9876543210';
 const EVENTS = [
   'message.bounced',
@@ -190,7 +194,7 @@ describe('ensure-email-subscription', () => {
       expect(version?.output).toBe('capture');
       for (const spec of [list, create]) {
         expect(spec?.cwd).toBe(FAKE_REPO_ROOT);
-        expect(spec?.env).toEqual({ CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN });
+        expect(spec?.env).toEqual(CLOUDFLARE_CHILD_ENV);
         expect(spec?.stdin).toBeUndefined();
         expect(spec?.args.join(' ')).not.toContain(CLOUDFLARE_TOKEN);
       }

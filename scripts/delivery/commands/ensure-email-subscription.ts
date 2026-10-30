@@ -58,12 +58,24 @@ const desiredOf = (
   });
 };
 
-const loadDesired = async (
+interface EnsureTarget {
+  readonly desired: DesiredSubscription;
+  readonly accountId: string;
+}
+
+const loadTarget = async (
   deps: DeliveryDeps,
   env: DeployEnvironment,
-): Promise<Loaded<DesiredSubscription>> => {
+): Promise<Loaded<EnsureTarget>> => {
   const catalog = await loadResourceCatalog(deps.files, env);
-  return catalog.ok ? desiredOf(catalog.value, env) : catalog;
+  if (!catalog.ok) return catalog;
+  const desired = desiredOf(catalog.value, env);
+  return desired.ok
+    ? loaded({
+        desired: desired.value,
+        accountId: catalog.value.cloudflare.accountId,
+      })
+    : desired;
 };
 
 const loadWranglerVersion = async (
@@ -197,17 +209,18 @@ export const command: DeliveryCommand = {
   run: async (args, deps) => {
     const { options } = parseOptions(args, { names: ['env'], rest: 'none' });
     const env = requiredChoice(options, 'env', DEPLOY_ENVIRONMENTS);
-    const [desired, version] = await Promise.all([
-      loadDesired(deps, env),
+    const [target, version] = await Promise.all([
+      loadTarget(deps, env),
       loadWranglerVersion(deps),
     ]);
-    if (!desired.ok || !version.ok) {
-      return reportInputErrors(TITLE, errorsOf([desired, version]), deps);
+    if (!target.ok || !version.ok) {
+      return reportInputErrors(TITLE, errorsOf([target, version]), deps);
     }
     const versionFailure = await checkWranglerVersion(deps, version.value);
     if (versionFailure !== undefined) return versionFailure;
-    const secrets = await openCloudflareSecrets(NAME, env, [], deps);
+    const { desired, accountId } = target.value;
+    const secrets = await openCloudflareSecrets(NAME, env, accountId, [], deps);
     if (typeof secrets === 'number') return secrets;
-    return ensure(deps, env, desired.value, secrets.cloudflareEnv);
+    return ensure(deps, env, desired, secrets.cloudflareEnv);
   },
 };

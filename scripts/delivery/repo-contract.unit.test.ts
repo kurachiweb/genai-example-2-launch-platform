@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { createRepoFiles } from './adapters/repo-files.ts';
+import { type RepoFiles, createRepoFiles } from './adapters/repo-files.ts';
 import {
   CHECK_SECRETS_IDENTITY,
   INFISICAL_CONFIG_PATH,
@@ -30,6 +30,7 @@ import {
   blocksOf,
   parseHcl,
 } from './test-fixtures/hcl-blocks.ts';
+import { createFakeRepoFiles } from './test-fixtures/repo-files.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..');
 
@@ -274,20 +275,72 @@ describe('ワークフローの検査', () => {
   });
 });
 
-const INFRA_TF_PATTERNS = [
-  'apps/infra/live/*.tf',
-  'apps/infra/modules/*/*.tf',
-] as const;
+interface WorkflowJob {
+  readonly 'timeout-minutes'?: unknown;
+  readonly if?: unknown;
+  readonly steps?: readonly { readonly env?: Record<string, unknown> }[];
+}
 
-const loadInfraHcl = async (): Promise<readonly HclBody[]> => {
-  const paths = (
-    await Promise.all(
-      INFRA_TF_PATTERNS.map((pattern) => repoFiles.list(pattern)),
-    )
-  ).flat();
+const jobsOf = (path: string): Readonly<Record<string, WorkflowJob>> =>
+  (Bun.YAML.parse(readRepoText(path)) as { jobs: Record<string, WorkflowJob> })
+    .jobs;
+
+describe('ワークフローのジョブの上限時間と起動条件', () => {
+  // 再利用のワークフローを呼ぶジョブ(uses)は上限時間を持てないため、手順を持つジョブだけが対象
+  test.each([
+    [
+      '.github/workflows/checks.yml',
+      {
+        'secret-scan': 15,
+        quality: 30,
+        tests: 30,
+        e2e: 45,
+        rehearsal: 30,
+        'ci-gate': 5,
+      },
+    ],
+    ['.github/workflows/deploy.yml', { deploy: 60 }],
+    ['.github/workflows/release-pr.yml', { 'release-pr': 10 }],
+  ])('%sの手順を持つ全ジョブに設計の上限時間がある', (path, expected) => {
+    const jobs = jobsOf(path);
+
+    expect(
+      Object.fromEntries(
+        Object.entries(jobs)
+          .filter(([, job]) => job.steps !== undefined)
+          .map(([name, job]) => [name, job['timeout-minutes']]),
+      ),
+    ).toEqual(expected);
+  });
+
+  test('リリースのPRの作成はmainから起動した時だけ動き、ghの操作先のリポジトリを環境変数で明示する', () => {
+    const job = jobsOf('.github/workflows/release-pr.yml')['release-pr'];
+    const runStep = job?.steps?.find(({ env }) => env?.RELEASE_HEAD);
+
+    expect(job?.if).toBe("github.ref == 'refs/heads/main'");
+    expect(runStep?.env).toEqual({
+      GH_REPO: '${{ github.repository }}',
+      GITHUB_TOKEN: '${{ github.token }}',
+      RELEASE_HEAD: '${{ inputs.head }}',
+    });
+  });
+});
+
+const INFRA_TF_PATTERN = 'apps/infra/**/*.tf';
+
+// tofu initが取得したモジュールの写し(.terraform)はリポジトリの定義ではないため読まない
+const isInitCache = (path: string): boolean =>
+  path.split('/').includes('.terraform');
+
+const loadInfraHcl = async (
+  files: RepoFiles = repoFiles,
+): Promise<readonly HclBody[]> => {
+  const paths = (await files.list(INFRA_TF_PATTERN)).filter(
+    (path) => !isInitCache(path),
+  );
   return Promise.all(
     paths.map(async (path) => {
-      const text = await repoFiles.readText(path);
+      const text = await files.readText(path);
       try {
         return parseHcl(text);
       } catch (error) {
@@ -311,6 +364,107 @@ const preventsDestroy = ({ body }: HclBlock): boolean =>
   );
 
 const nameOf = ({ labels }: HclBlock): string => labels.join('.');
+
+const TURNSTILE_REFERENCE =
+  /\bcloudflare_turnstile_widget\s*\.\s*[A-Za-z_][\w-]*(?:\s*\[[^\]]*\])*(?:\s*\.\s*([A-Za-z_][\w-]*))?/g;
+
+// 資源全体の参照はsecretの属性を含むため、secretの参照と同じく扱う
+const referencesTurnstileSecret = (text: string): boolean =>
+  [...text.matchAll(TURNSTILE_REFERENCE)].some(
+    ([, attribute]) => attribute === undefined || attribute === 'secret',
+  );
+
+const expressionTextsOf = (body: HclBody): readonly string[] => [
+  ...[...body.attributes.values()].map(({ tokens }) => tokens.join(' ')),
+  ...body.blocks.flatMap((block) => expressionTextsOf(block.body)),
+];
+
+const addressOf = ({ type, labels }: HclBlock): string =>
+  [type, ...labels].join('.');
+
+// localsやmoduleの引数を経由して出力されるのを防ぐため、resourceブロックの外では参照そのものを禁じる
+const turnstileSecretReferencesOf = (
+  bodies: readonly HclBody[],
+): readonly string[] =>
+  bodies
+    .flatMap(({ blocks }) => blocks)
+    .filter(({ type }) => type !== 'resource')
+    .filter(({ body }) =>
+      expressionTextsOf(body).some(referencesTurnstileSecret),
+    )
+    .map(addressOf);
+
+const d1Of = (name: string, guarded: boolean): string =>
+  [
+    `resource "cloudflare_d1_database" "${name}" {`,
+    `  name = "${name}"`,
+    ...(guarded ? ['  lifecycle {', '    prevent_destroy = true', '  }'] : []),
+    '}',
+    '',
+  ].join('\n');
+
+describe('IaC定義の読み取り', () => {
+  test('apps/infra配下の深い場所の.tfも読み、プロバイダーとモジュールの取得先(.terraform)の中は読まない', async () => {
+    const files = createFakeRepoFiles({
+      'apps/infra/live/main.tf': d1Of('live', true),
+      'apps/infra/modules/storage/nested/extra.tf': d1Of('deep', false),
+      'apps/infra/.terraform/modules/remote/main.tf': d1Of('cached', false),
+      'apps/infra/live/.terraform/modules/remote/main.tf': d1Of(
+        'live_cached',
+        false,
+      ),
+    });
+
+    const resources = resourcesOf(
+      await loadInfraHcl(files),
+      'cloudflare_d1_database',
+    );
+
+    expect(resources.map(nameOf).toSorted()).toEqual([
+      'cloudflare_d1_database.deep',
+      'cloudflare_d1_database.live',
+    ]);
+  });
+
+  test('bot判定の資源のsecretへの参照と資源全体の参照を、resourceブロックの外(locals・output・module引数・補間)から見つける', () => {
+    const body = parseHcl(
+      [
+        'locals {',
+        '  widget_secret = cloudflare_turnstile_widget.this.secret',
+        '}',
+        'output "via_local" {',
+        '  value = local.widget_secret',
+        '}',
+        'module "worker" {',
+        '  source = "./worker"',
+        '  secret = cloudflare_turnstile_widget.this.secret',
+        '}',
+        'output "interpolated" {',
+        '  value = "key=${cloudflare_turnstile_widget.indexed[0].secret}"',
+        '}',
+        'output "whole" {',
+        '  value = cloudflare_turnstile_widget.this',
+        '}',
+        'output "sitekey" {',
+        '  value = cloudflare_turnstile_widget.this.sitekey',
+        '}',
+        'output "other_secret" {',
+        '  value = var.secret_name',
+        '}',
+        'resource "cloudflare_workers_secret" "turnstile" {',
+        '  text = cloudflare_turnstile_widget.this.secret',
+        '}',
+      ].join('\n'),
+    );
+
+    expect(turnstileSecretReferencesOf([body])).toEqual([
+      'locals',
+      'module.worker',
+      'output.interpolated',
+      'output.whole',
+    ]);
+  });
+});
 
 describe('IaC定義', () => {
   test.each([
@@ -372,6 +526,10 @@ describe('IaC定義', () => {
         .filter(({ body }) => body.attributes.has('environment'))
         .map(nameOf),
     ).toEqual([]);
+  });
+
+  test('resourceブロックの外ではbot判定の秘密鍵(secret)とその資源全体を参照しない', async () => {
+    expect(turnstileSecretReferencesOf(await loadInfraHcl())).toEqual([]);
   });
 
   test('出力はbot判定の秘密鍵(secret)を参照しない', async () => {
