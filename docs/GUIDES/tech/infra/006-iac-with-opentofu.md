@@ -31,11 +31,12 @@
 │   └── prod.s3.hcl
 ├── live/                         # ルートモジュール。環境は初期化のbackend設定と変数environmentで選ぶ
 │   ├── versions.tf               # required_version・required_providers(完全固定)・backend "s3"・encryption
-│   ├── variables.tf              # environment・状態のパスフレーズ(sensitive)
+│   ├── variables.tf              # environment・状態のパスフレーズ(sensitive)・資源一覧のディレクトリ(テストだけが差し替える)
 │   ├── providers.tf              # infisical(hostだけ)・ephemeralのシークレット・cloudflare
-│   ├── main.tf                   # 資源一覧の読み込み・子モジュールの呼び出し・環境の一致の確認
-│   ├── outputs.tf                # resource_ids(秘密でない識別子だけ)
-│   ├── tests/live.tftest.hcl     # 両環境の資源一覧がモジュールへ渡ることのテスト
+│   ├── main.tf                   # 資源一覧の読み込み・子モジュールの呼び出し
+│   ├── outputs.tf                # resource_ids(秘密でない識別子だけ)。資源一覧の環境が変数environmentと食い違えば計画を止める
+│   ├── tests/live.tftest.hcl     # 両環境の資源一覧がモジュールへ渡ること・環境の食い違う資源一覧で計画が止まることのテスト
+│   ├── tests/fixtures/           # テストだけが読む、環境の食い違う資源一覧
 │   └── .terraform.lock.hcl
 └── modules/
     ├── storage/                  # D1・R2

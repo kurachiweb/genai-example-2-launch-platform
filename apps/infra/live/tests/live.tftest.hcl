@@ -208,3 +208,14 @@ run "rejects_unknown_environment" {
 
   expect_failures = [var.environment]
 }
+
+run "rejects_catalog_of_another_environment" {
+  command = plan
+
+  variables {
+    environment       = "staging"
+    catalog_directory = "tests/fixtures/mismatched-environment"
+  }
+
+  expect_failures = [output.resource_ids]
+}

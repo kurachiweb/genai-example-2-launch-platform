@@ -1,5 +1,5 @@
 locals {
-  catalog = jsondecode(file("${path.module}/../environments/${var.environment}.json"))
+  catalog = jsondecode(file("${path.module}/${var.catalog_directory}/${var.environment}.json"))
 
   turnstile = {
     name    = local.catalog.turnstile.name
@@ -12,13 +12,6 @@ locals {
       hostname = host.hostname
       service  = local.catalog.workers[host.worker].name
     }
-  }
-}
-
-check "catalog_environment" {
-  assert {
-    condition     = local.catalog.environment == var.environment
-    error_message = "資源一覧の環境(${local.catalog.environment})が変数environment(${var.environment})と一致しない。"
   }
 }
 
