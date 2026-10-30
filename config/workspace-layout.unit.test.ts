@@ -45,8 +45,9 @@ const readSubdirectoryBindMounts = (): readonly string[] => {
 };
 
 describe('APPS', () => {
-  test('一括実行の対象をapi・event・frontend-lib・client・adminの順に並べる', () => {
+  test('一括実行の対象をcommon-lib・api・event・frontend-lib・client・adminの順に並べる', () => {
     expect(APPS.map((app) => app.name)).toEqual([
+      'common-lib',
       'api',
       'event',
       'frontend-lib',
@@ -90,6 +91,16 @@ describe('SHARED_DIRS', () => {
         mounts: [
           { consumer: 'client', target: 'apps/client/lib' },
           { consumer: 'admin', target: 'apps/admin/lib' },
+        ],
+        checkedBy: 'self',
+      },
+      {
+        source: 'apps/common-lib',
+        mounts: [
+          { consumer: 'api', target: 'apps/api/common-lib' },
+          { consumer: 'event', target: 'apps/event/common-lib' },
+          { consumer: 'client', target: 'apps/client/common-lib' },
+          { consumer: 'admin', target: 'apps/admin/common-lib' },
         ],
         checkedBy: 'self',
       },

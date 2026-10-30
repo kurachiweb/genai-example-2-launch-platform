@@ -1,4 +1,5 @@
-export type AppName = 'api' | 'event' | 'frontend-lib' | 'client' | 'admin';
+export type AppName =
+  'common-lib' | 'api' | 'event' | 'frontend-lib' | 'client' | 'admin';
 
 export interface AppDefinition {
   readonly name: AppName;
@@ -17,6 +18,7 @@ export interface SharedDirDefinition {
 }
 
 export const APPS: readonly AppDefinition[] = [
+  { name: 'common-lib', dir: 'apps/common-lib' },
   { name: 'api', dir: 'apps/api' },
   { name: 'event', dir: 'apps/event' },
   { name: 'frontend-lib', dir: 'apps/frontend-lib' },
@@ -47,6 +49,16 @@ export const SHARED_DIRS: readonly SharedDirDefinition[] = [
     mounts: [
       { consumer: 'client', target: 'apps/client/lib' },
       { consumer: 'admin', target: 'apps/admin/lib' },
+    ],
+    checkedBy: 'self',
+  },
+  {
+    source: 'apps/common-lib',
+    mounts: [
+      { consumer: 'api', target: 'apps/api/common-lib' },
+      { consumer: 'event', target: 'apps/event/common-lib' },
+      { consumer: 'client', target: 'apps/client/common-lib' },
+      { consumer: 'admin', target: 'apps/admin/common-lib' },
     ],
     checkedBy: 'self',
   },

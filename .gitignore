@@ -39,6 +39,10 @@ apps/api/lib
 apps/event/lib
 apps/client/lib
 apps/admin/lib
+apps/api/common-lib
+apps/event/common-lib
+apps/client/common-lib
+apps/admin/common-lib
 
 # ローカル開発の蓄積データ
 apps/email

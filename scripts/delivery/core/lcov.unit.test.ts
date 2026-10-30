@@ -64,6 +64,7 @@ describe('lcovReportsOf', () => {
 
     expect(dirs).toEqual([
       '.',
+      'apps/common-lib',
       'apps/api',
       'apps/event',
       'apps/frontend-lib',

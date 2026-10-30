@@ -368,6 +368,8 @@ describe('placeByCopy', () => {
       allTargetsIn('consumer-missing', {
         'apps/client/lib': 'copied',
         'apps/admin/lib': 'copied',
+        'apps/client/common-lib': 'copied',
+        'apps/admin/common-lib': 'copied',
       }),
     );
     expect(existsSync(join(repoRoot, 'apps/api'))).toBe(false);

@@ -83,6 +83,7 @@ describe('resolveInstallTargets', () => {
     expect(installCandidates()).toEqual(installCandidates(WORKSPACE_LAYOUT));
     expect(installCandidates()).toEqual([
       '.',
+      'apps/common-lib',
       'apps/api',
       'apps/event',
       'apps/frontend-lib',

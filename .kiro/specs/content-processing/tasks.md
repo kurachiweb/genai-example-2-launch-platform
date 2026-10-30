@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共用部品の配置とプロジェクト
-- [ ] 1.1 共有ディレクトリの定義に共用部品を加え、開発コンテナとCI相当環境の配置を揃える
+- [x] 1.1 共有ディレクトリの定義に共用部品を加え、開発コンテナとCI相当環境の配置を揃える
   - 前提: dev-tooling・backend-platform・api-gateway・frontend-platformの全タスクが完了していること(4アプリとfrontend-libの骨格・登録箇所・静的解析の設定がある。roadmapの依存)。無ければ止めて報告する
   - email-deliveryの実装(4:21のcron式`21 12 * * *`とジョブ`email-delivery.cleanup`)はroadmapの依存ではないため、有無を確かめ、無ければ開発者へ報告して作業を続ける(止めない)。cron式が無ければタスク10で加える
   - 下流: media-pipelineは本タスクと1.2・4.1・4.2・6.1、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成の完了を、identity-authはそれに加えて2.1の完了を前提にする(設計の「本specのタスクを前提にする下流spec」)。日次タイムラインの表は、下流specが先に4:21のジョブを足す場合はそのspecが作る
@@ -344,3 +344,8 @@
   - Infisicalの`prod`へのキーの登録を、launch-readinessへの引き継ぎ事項として報告にまとめる
   - 完了状態: 一括検査と一括テストが成功してカバレッジが閾値を満たし、手作業の一覧とlaunch-readinessへの引き継ぎ事項が報告に含まれている
   - _Requirements: 1.2, 2.13, 16.1, 16.2_
+
+## Implementation Notes
+
+- 1.1: このコンテナにはcommon-libの4つの配置先のbind mountが無いため、利用側アプリで確かめる前に`bun run shared-dirs:place`でコピー配置する(開発コンテナの再作成は開発者の手作業。Dockerfileも変えたため`docker compose up -d --build`)
+- 1.1: common-libを配置先に加えたことで、ルートの`check-test-names.unit.test.ts`の2件が4.1・4.2まで失敗する。4.1ではapiに`bunfig.unit.toml`を新設して`test:unit`をそちらへ切り替え、4アプリの`test:unit`と`bunfig.unit.toml`のカバレッジの除外に`common-lib/**`を加える(設計のModified Filesに無い)

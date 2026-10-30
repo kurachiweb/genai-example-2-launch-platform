@@ -161,7 +161,9 @@ RUN mkdir -p /workspace/node_modules \
   && mkdir -p /workspace/apps/admin/node_modules \
   && chown -R bun:bun /workspace/apps/admin/node_modules \
   && mkdir -p /workspace/apps/frontend-lib/node_modules \
-  && chown -R bun:bun /workspace/apps/frontend-lib/node_modules
+  && chown -R bun:bun /workspace/apps/frontend-lib/node_modules \
+  && mkdir -p /workspace/apps/common-lib/node_modules \
+  && chown -R bun:bun /workspace/apps/common-lib/node_modules
 
 USER bun
 WORKDIR /workspace
