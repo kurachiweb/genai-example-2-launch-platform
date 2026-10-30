@@ -266,7 +266,7 @@
   - roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は1500、波及処理は1500」のまま(23:45のジョブは1500だけになった)。
 - 変更したタスク: 1.1(前提)・1.3(日次タイムラインの記述)・4.3(受賞の一覧の読み取り)・4.7(`publishNight`)・6.1(夜の処理の順序と`markReady`)・6.9(ジョブ2件と前提の登録)・8.1(`markReady`の順序の統合テスト)。タスクの数(56)は変えていない。
 - 要件定義書の改訂: 本specの持ち分では不要(23:45の送り出しの時刻に関するFR-NOTIF-001・004の改訂の要否はnotificationsが判断する)。
-- 変更部分の設計とタスクのレビュー(新しいサブエージェントによる独立した確認、上限2回): 1回目は設計・タスクともNEEDS_FIXES(必須2件)。`publishNight`がその夜の受賞を読む口が無かったため、`WeekTournamentStore.listAwardedBetween(from, to)`を加え(タスク4.3)、4.7はストアを変えずに読む形にして`_Depends: 4.3_`を明記した。軽微の指摘(Testing Strategyの夜の処理の記述をタスクの分担(6.1の単体テスト・8.1の統合テスト)に合わせる、失敗の分類の行に予選の枠の追いつきを加える、6.1で`captureMessage`を確かめる、構成図の名前)にも従った。
+- 変更部分の設計とタスクのレビュー(新しいサブエージェントによる独立した確認、上限2回): 1回目は設計・タスクともNEEDS_FIXES(必須2件)。`publishNight`がその夜の受賞を読む口が無かったため、`WeekTournamentStore.listAwardedBetween(from, to)`を加え(タスク4.3)、4.7はストアを変えずに読む形にして`_Depends: 4.3_`を明記した。軽微の指摘(Testing Strategyの夜の処理の記述をタスクの分担(6.1の単体テスト・8.1の統合テスト)に合わせる、失敗の分類の行に予選の枠の追いつきを加える、6.1で`captureEvent`を確かめる、構成図の名前)にも従った。
 - 2回目は設計・タスクともPASSだった(116件の受け入れ基準がすべて設計の追跡表とタスクにあること、notificationsの呼ぶ側の契約との一致、23:50と廃止したジョブの名前が残っていないことを確認)。軽微の指摘4件(`publishNight`の`at`の明記、`drawDue`・`advanceAll`の失敗の一覧が空でない場合も失敗として扱う旨、部品の表の12.7、変更タスクの一覧の4.3)に従って直した。承認を維持した。
 
 ## frontend-platformの確定した契約の反映(2026-10-28)
@@ -274,3 +274,8 @@
 - **状態**: frontend-platformのタスク10.4として、frontend-platformが実装で確定した契約(frontend-platformのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に本specの設計とタスクを合わせた。2026-10-28に開発者が下流specの設計の改訂を決めた(frontend-platformの判断11)。受け入れ基準は変えていない。
 - **GraphQLの操作の置き場所**: TypeScriptで`graphql()`を呼ぶと操作の本文がブラウザへ配信するスクリプトに残るため、操作とフラグメントは`src/graphql/operations/**/*.graphql`に1ファイル1つで書き、操作名はアプリの接頭辞(`Client`)で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`だけを読む契約になった。`graphql/operations/week-tournament/`の4つの`.ts`を、5つの操作(`ClientWeekTournamentBoard`・`ClientWeekBracket`・`ClientMyWeekEntry`・`ClientStartWeekTournamentCheckout`・`ClientProductTrophies`)と3つのフラグメント(`BracketRoundFields`・`BracketMatchProductFields`・`WeekBoardRoundFields`)の`.graphql`に分けた。トップページの区画の`splitBoardRound`は、match-engineに無いフラグメントの型(`MatchFragment`・`MatchByeFragment`)を使っていたため、`WeekBoardRoundFieldsFragment`とその`matches`・`byes`の要素の型を受ける形にした。フラグメントの型は`src/graphql/generated/graphql.ts`の`…Fragment`で、tournament-yearの照会はフラグメントを名前で展開する。
 - **変えた箇所**: design.mdのAllowed Dependencies(操作の追加手順)・File Structure Plan・clientの節(フラグメントの定義と操作の規約)、tasks.mdの7.1(`.graphql`・操作名・生成と許可リストの再生成の手順・`codegen.unit.test.ts`)、本ファイルの「上流・後続specへの影響」のtournament-yearの行。本specは管理者側に画面を持たず、フォーム部品・中継の経路・bot判定のウィジェットを使わないため、他の契約の影響は無い。
+
+## 実装済みの上流との食い違いの水平展開(2026-10-30、開発者の指示)
+
+- **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
+- 要件と受け入れ基準は変えていない。
