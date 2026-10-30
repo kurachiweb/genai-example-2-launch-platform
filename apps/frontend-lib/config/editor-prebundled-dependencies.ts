@@ -1,0 +1,17 @@
+// エディタの遅延読み込みのモジュールが読み込むパッケージの入口。Viteは入口ごとに事前バンドルし、最初の表示の途中で見つけた入口があるとページを再読み込みするため、ブラウザテストとカタログの設定で最初から事前バンドルする
+export const EDITOR_PREBUNDLED_DEPENDENCIES: readonly string[] = [
+  '@milkdown/crepe/builder',
+  '@milkdown/crepe/feature/cursor',
+  '@milkdown/crepe/feature/placeholder',
+  '@milkdown/crepe/feature/toolbar',
+  '@milkdown/kit/core',
+  '@milkdown/kit/preset/commonmark',
+  '@milkdown/kit/preset/gfm',
+  '@milkdown/kit/prose/state',
+  '@milkdown/kit/prose/view',
+  '@milkdown/kit/utils',
+  '@milkdown/react',
+  'remark-cjk-friendly/parseOnly',
+  'remark-cjk-friendly-gfm-strikethrough/bidi',
+  'vue',
+];

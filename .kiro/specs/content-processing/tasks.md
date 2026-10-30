@@ -145,7 +145,7 @@
   - _Boundary: MarkdownLintRules_
   - _Requirements: 2.13, 5.5_
 
-- [ ] 6.2 遅延読み込みの編集領域を組み立て、制御器・CJKの強調・テーマ・支援技術への属性を提供する
+- [x] 6.2 遅延読み込みの編集領域を組み立て、制御器・CJKの強調・テーマ・支援技術への属性を提供する
   - 先に、初期値の表示、制御器による書式の操作とリンクの設定・解除・マークダウンの読み取りと置き換え、変更の通知、`**太字。**の`が強調になり往復で保たれること、読み取り専用、編集領域の役割・ラベル・説明・不正な状態の属性と、その更新を確かめるブラウザテストを書く
   - Crepeのbuilderで設計の機能だけ(リスト・プレースホルダー・カーソル・日本語のラベルを付けた選択時のツールバー)を組み込み、選択時のツールバーのリンクの操作をリンクのダイアログの要求に置き換える(仮決定P1)
   - Crepeの使う機能のCSSだけを取り込み、色とフォントの変数をデザイントークンとOSのフォントに対応付ける
@@ -365,3 +365,4 @@
 - 5.2: 折りたたみの表示部品は、折りたたんだ部分へフォーカスが移った時と、ページ内の移動(脚注・見出しのアンカー・ハッシュ付きのURL)で本文の中がスクロールした時に展開し、移動先を見える位置へ戻す(WCAG 2.4.11。設計に無い振る舞い)。「続きを読む」「折りたたむ」は`utilities/messages/markdown-messages.ts`(設計に無い)に置き、文言規則`003`へ追記済み
 - 5.3: 強調表示の`<mark>`の文字色はモックアップの`text-inherit`ではなく`text-foreground`にした(控えめな文字色の上ではAAに届かないため。理由はサービス仕様`001-design-principles.md`)。強調は塗りと文字色だけで示す(WCAG 1.4.1の対象外と判断。太字や下線を加えるかは開発者の判断)
 - 6.1: 遅延読み込みのモジュールの判定は、設計の`**/markdown-editor/crepe/**`ではなく`crepe`のディレクトリを含む相対パス全般(`./crepe/…`を拾うため)。`@vue/*`も禁止に加えた。静的解析の設定`frontend/no-raw-html`を`frontend/restricted-syntax`へ改名し、読み込み関数(`components/markdown-editor/load-crepe-editor.ts`)には`editor-loader`、モジュールの中には`editor-module`の設定を掛ける。読み込み関数自身も`@milkdown/*`・`vue`を動的importできない。frontend-platformのdesign.mdは旧名のまま
+- 6.2: Crepeのリスト機能(list-item)は`ul>div>li`になりaxeの`list`・`listitem`違反になるため組み込まず(P1と相違)、素の`ul`・`ol`・`li`を`crepe-theme.css`で整形する。タスク項目の状態は`crepe/task-item-state.ts`(設計に無い)の装飾で視覚的に隠した「完了」「未完了」を置いて伝える。リンクの設定・解除はリンク全体に掛ける独自のトランザクション(設計の`updateLinkCommand`ではない)。CJKの強調は`/parseOnly`(Milkdownが強調の書き戻しを上書きするため)、取り消し線は`/bidi`。エディタの事前バンドルの一覧は`config/editor-prebundled-dependencies.ts`(設計に無い)に集約し、3つのブラウザテストの設定と`.storybook/main.ts`が読む。`Mod-k`でリンクのダイアログを要求する。Milkdownの変更通知は入力が止まってから約200ms後のため、6.5ではフォーカスアウトの時に`readMarkdown()`で最新の値を渡す

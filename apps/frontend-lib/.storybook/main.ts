@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import type { StorybookConfig } from '@storybook/tanstack-react';
 import { mergeConfig, searchForWorkspaceRoot } from 'vite';
 
+import { EDITOR_PREBUNDLED_DEPENDENCIES } from '../config/editor-prebundled-dependencies.ts';
 import { VUE_FEATURE_FLAGS } from '../config/vue-feature-flags.ts';
 
 // カタログの表示中にCloudflareへ通信してウィジェットを読み込まないよう、判定の結果をボタンで起こすテスト用の部品へ差し替える
@@ -26,6 +27,7 @@ const config: StorybookConfig = {
     mergeConfig(viteConfig, {
       plugins: [tailwindcss()],
       define: VUE_FEATURE_FLAGS,
+      optimizeDeps: { include: [...EDITOR_PREBUNDLED_DEPENDENCIES] },
       resolve: {
         alias: { '@marsidev/react-turnstile': FAKE_TURNSTILE_PATH },
       },

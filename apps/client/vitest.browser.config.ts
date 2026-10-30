@@ -8,6 +8,7 @@ import {
   browserTestPreset,
   resolveBrowserLaunchOptions,
 } from '../../config/vitest/browser.ts';
+import { EDITOR_PREBUNDLED_DEPENDENCIES } from './lib/config/editor-prebundled-dependencies.ts';
 import { VUE_FEATURE_FLAGS } from './lib/config/vue-feature-flags.ts';
 
 // 実行中に依存の事前バンドルをやり直すとページが再読み込みされ、Reactが2つ読み込まれてフックが失敗するため、画面部品の依存を最初から事前バンドルする
@@ -39,10 +40,7 @@ const PREBUNDLED_DEPENDENCIES = [
   'rehype-sanitize',
   'rehype-stringify',
   'hast-util-to-text',
-  '@milkdown/crepe',
-  '@milkdown/kit',
-  '@milkdown/react',
-  'vue',
+  ...EDITOR_PREBUNDLED_DEPENDENCIES,
 ];
 
 // 本物の経路の設定を読むテストから依存をたどると同型の関数のサーバーの分岐が読み込むサーバー専用のパッケージも見つかり、ブラウザ向けに事前バンドルできずテストの実行全体が失敗するため、事前バンドルから外す

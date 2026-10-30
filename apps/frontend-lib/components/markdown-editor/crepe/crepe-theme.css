@@ -1,0 +1,121 @@
+/* 全機能を読み込むstyle.cssとテーマのCSSはKaTeXとWebフォントを取り込むため、使う機能の分だけを読み込む */
+@import '@milkdown/crepe/theme/common/prosemirror.css';
+@import '@milkdown/crepe/theme/common/reset.css';
+@import '@milkdown/crepe/theme/common/cursor.css';
+@import '@milkdown/crepe/theme/common/placeholder.css';
+@import '@milkdown/crepe/theme/common/toolbar.css';
+@import '@milkdown/kit/prose/tables/style/tables.css';
+
+.milkdown {
+  --crepe-color-background: transparent;
+  --crepe-color-on-background: var(--foreground);
+  --crepe-color-surface: var(--popover);
+  --crepe-color-surface-low: var(--muted);
+  --crepe-color-on-surface: var(--popover-foreground);
+  --crepe-color-on-surface-variant: var(--muted-foreground);
+  --crepe-color-outline: var(--muted-foreground);
+  --crepe-color-primary: var(--primary);
+  --crepe-color-secondary: var(--secondary);
+  --crepe-color-on-secondary: var(--secondary-foreground);
+  --crepe-color-inverse: var(--foreground);
+  --crepe-color-on-inverse: var(--background);
+  --crepe-color-inline-code: var(--foreground);
+  --crepe-color-error: var(--destructive);
+  --crepe-color-hover: var(--accent);
+  --crepe-color-selected: var(--accent);
+  --crepe-color-inline-area: var(--muted);
+  --crepe-base-font-size: 1rem;
+  --crepe-font-default: var(--font-sans);
+  --crepe-font-title: var(--font-sans);
+  --crepe-font-code:
+    ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --crepe-shadow-1: var(--shadow-md);
+}
+
+/* reset.cssはフォーカスの輪郭を消すため、共通部品と同じ輪郭を付け直す */
+.milkdown :focus-visible,
+.milkdown button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.milkdown .ProseMirror {
+  padding: 0.5rem 0.75rem;
+}
+
+.milkdown .ProseMirror h2 {
+  font-size: 1.375em;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-top: 1rem;
+}
+
+.milkdown .ProseMirror h3 {
+  font-size: 1.25em;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-top: 0.75rem;
+}
+
+.milkdown .ProseMirror h4,
+.milkdown .ProseMirror h5,
+.milkdown .ProseMirror h6 {
+  font-size: 1.125em;
+  font-weight: 700;
+  line-height: 1.5;
+  margin-top: 0.75rem;
+}
+
+/* Crepeのリストの機能はulの直下にdivを挟みリストの意味を壊すため組み込まず、Milkdownの既定のul・ol・liに記号を付ける */
+.milkdown .ProseMirror ul,
+.milkdown .ProseMirror ol {
+  padding-inline-start: 1.5em;
+  margin: 0.25rem 0;
+}
+
+.milkdown .ProseMirror ul {
+  list-style: disc;
+}
+
+.milkdown .ProseMirror ol {
+  list-style: decimal;
+}
+
+.milkdown .ProseMirror li[data-item-type='task'] {
+  list-style: none;
+  position: relative;
+}
+
+.milkdown .ProseMirror li[data-item-type='task']::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: -1.25em;
+  top: 0.55em;
+  width: 0.875em;
+  height: 0.875em;
+  border: 1px solid var(--muted-foreground);
+  border-radius: 0.2em;
+}
+
+.milkdown .ProseMirror li[data-item-type='task'][data-checked='true']::before {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.milkdown .ProseMirror table {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+
+.milkdown .ProseMirror th,
+.milkdown .ProseMirror td {
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.5rem;
+  min-width: 4rem;
+  text-align: start;
+}
+
+/* placeholder.cssは本文色の透明度を下げてプレースホルダーの色を作りコントラストが基準を割るため、共通の入力欄と同じ控えめな文字色にする */
+.milkdown .crepe-placeholder::before {
+  color: var(--muted-foreground);
+}
