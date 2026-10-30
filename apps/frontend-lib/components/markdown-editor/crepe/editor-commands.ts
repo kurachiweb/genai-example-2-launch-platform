@@ -1,4 +1,8 @@
-import { commandsCtx, editorViewCtx } from '@milkdown/kit/core';
+import {
+  type CommandManager,
+  commandsCtx,
+  editorViewCtx,
+} from '@milkdown/kit/core';
 import type { Ctx } from '@milkdown/kit/ctx';
 import {
   blockquoteSchema,
@@ -8,6 +12,7 @@ import {
   emphasisSchema,
   headingSchema,
   inlineCodeSchema,
+  liftListItemCommand,
   linkSchema,
   orderedListSchema,
   strongSchema,
@@ -30,6 +35,7 @@ import type {
   ResolvedPos,
 } from '@milkdown/kit/prose/model';
 import type { EditorState } from '@milkdown/kit/prose/state';
+import { liftTarget } from '@milkdown/kit/prose/transform';
 
 import type { EditorAction, EditorLink } from '../editor-controller.ts';
 
@@ -67,6 +73,57 @@ const isEveryTextblockOf = (state: EditorState, type: NodeType): boolean => {
 const isHeadingBlock = (state: EditorState, ctx: Ctx): boolean =>
   isEveryTextblockOf(state, headingSchema.type(ctx));
 
+const isInside = ($pos: ResolvedPos, type: NodeType): boolean =>
+  Array.from({ length: $pos.depth + 1 }, (_, depth) => $pos.node(depth)).some(
+    (node) => node.type === type,
+  );
+
+interface WrapperToggle {
+  readonly wrap: (commands: CommandManager) => boolean;
+  readonly liftOnce: (ctx: Ctx) => boolean;
+}
+
+const MAX_LIFT_STEPS = 100;
+
+const liftListItemOnce = (ctx: Ctx): boolean =>
+  ctx.get(commandsCtx).call(liftListItemCommand.key);
+
+const liftBlockquoteOnce = (ctx: Ctx): boolean => {
+  const view = ctx.get(editorViewCtx);
+  const { $from, $to } = view.state.selection;
+  const type = blockquoteSchema.type(ctx);
+  const range = $from.blockRange($to, (node) => node.type === type);
+  const target = range === null ? null : liftTarget(range);
+  if (range === null || target === null) {
+    return false;
+  }
+  view.dispatch(view.state.tr.lift(range, target).scrollIntoView());
+  return true;
+};
+
+// 選択の起点が包む節点の中にあれば、入れ子を含めて外へ出るまで1段ずつ持ち上げて書式を外し、外にあれば包む
+const toggleWrapper = (
+  ctx: Ctx,
+  state: EditorState,
+  type: NodeType,
+  { wrap, liftOnce }: WrapperToggle,
+): void => {
+  if (!isInside(state.selection.$from, type)) {
+    wrap(ctx.get(commandsCtx));
+    return;
+  }
+  const view = ctx.get(editorViewCtx);
+  for (
+    let step = 0;
+    step < MAX_LIFT_STEPS && isInside(view.state.selection.$from, type);
+    step += 1
+  ) {
+    if (!liftOnce(ctx)) {
+      return;
+    }
+  }
+};
+
 const ACTION_RUNNERS: Readonly<
   Record<RunnableAction, (ctx: Ctx, state: EditorState) => void>
 > = {
@@ -81,10 +138,32 @@ const ACTION_RUNNERS: Readonly<
   bold: (ctx) => ctx.get(commandsCtx).call(toggleStrongCommand.key),
   italic: (ctx) => ctx.get(commandsCtx).call(toggleEmphasisCommand.key),
   inlineCode: (ctx) => ctx.get(commandsCtx).call(toggleInlineCodeCommand.key),
-  bulletList: (ctx) => ctx.get(commandsCtx).call(wrapInBulletListCommand.key),
-  orderedList: (ctx) => ctx.get(commandsCtx).call(wrapInOrderedListCommand.key),
-  blockquote: (ctx) => ctx.get(commandsCtx).call(wrapInBlockquoteCommand.key),
-  codeBlock: (ctx) => ctx.get(commandsCtx).call(createCodeBlockCommand.key),
+  bulletList: (ctx, state) => {
+    toggleWrapper(ctx, state, bulletListSchema.type(ctx), {
+      wrap: (commands) => commands.call(wrapInBulletListCommand.key),
+      liftOnce: liftListItemOnce,
+    });
+  },
+  orderedList: (ctx, state) => {
+    toggleWrapper(ctx, state, orderedListSchema.type(ctx), {
+      wrap: (commands) => commands.call(wrapInOrderedListCommand.key),
+      liftOnce: liftListItemOnce,
+    });
+  },
+  blockquote: (ctx, state) => {
+    toggleWrapper(ctx, state, blockquoteSchema.type(ctx), {
+      wrap: (commands) => commands.call(wrapInBlockquoteCommand.key),
+      liftOnce: liftBlockquoteOnce,
+    });
+  },
+  codeBlock: (ctx, state) => {
+    const commands = ctx.get(commandsCtx);
+    if (isEveryTextblockOf(state, codeBlockSchema.type(ctx))) {
+      commands.call(turnIntoTextCommand.key);
+      return;
+    }
+    commands.call(createCodeBlockCommand.key);
+  },
   table: (ctx) => ctx.get(commandsCtx).call(insertTableCommand.key),
 };
 
@@ -99,11 +178,6 @@ const hasMark = (state: EditorState, type: MarkType): boolean => {
   }
   return state.doc.rangeHasMark(from, to, type);
 };
-
-const isInside = ($pos: ResolvedPos, type: NodeType): boolean =>
-  Array.from({ length: $pos.depth + 1 }, (_, depth) => $pos.node(depth)).some(
-    (node) => node.type === type,
-  );
 
 export function activeEditorActions(
   ctx: Ctx,

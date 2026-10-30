@@ -11,6 +11,7 @@ export const EDITOR_PREBUNDLED_DEPENDENCIES: readonly string[] = [
   '@milkdown/kit/preset/gfm',
   '@milkdown/kit/prose/inputrules',
   '@milkdown/kit/prose/state',
+  '@milkdown/kit/prose/transform',
   '@milkdown/kit/prose/view',
   '@milkdown/kit/utils',
   '@milkdown/react',

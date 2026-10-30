@@ -18,6 +18,7 @@ import {
   ERROR_ID,
   LABEL_ID,
   PLACEHOLDER,
+  placeCursorAtEnd,
   renderSurface,
   selectAll,
   selectRange,
@@ -138,6 +139,56 @@ describe('CrepeEditorSurface', () => {
 
       expect(controller.readMarkdown()).toBe('本文\n');
     });
+
+    test.each<[Exclude<EditorAction, 'link'>, string]>([
+      ['bulletList', '* 本文\n'],
+      ['orderedList', '1. 本文\n'],
+      ['blockquote', '> 本文\n'],
+      ['codeBlock', '```\n本文\n```\n'],
+    ])(
+      '%sの操作は、書式の中で押すと押下状態を外して段落に戻す往復の切り替えになる',
+      async (action, applied) => {
+        const { editable, controller, handlers } = await renderSurface({
+          initialValue: '本文',
+        });
+        await placeCursorAtEnd(editable, elementIn(editable, 'p'));
+
+        controller.run(action);
+        expect(controller.readMarkdown()).toBe(applied);
+        expect(handlers.onActiveActionsChange.mock.lastCall?.[0]).toContain(
+          action,
+        );
+
+        controller.run(action);
+        expect(controller.readMarkdown()).toBe('本文\n');
+        expect(handlers.onActiveActionsChange.mock.lastCall?.[0]).not.toContain(
+          action,
+        );
+      },
+    );
+
+    test.each<[Exclude<EditorAction, 'link'>, string]>([
+      ['bulletList', '* 外の項目\n  * 中の項目'],
+      ['orderedList', '1. 外の項目\n   1. 中の項目'],
+      ['blockquote', '> 外の引用\n>\n> > 中の引用'],
+    ])(
+      '入れ子の%sの中で押すと、入れ子を全て抜けて段落に戻す',
+      async (action, initialValue) => {
+        const { editable, controller } = await renderSurface({ initialValue });
+        const inner = [...editable.querySelectorAll('p')].at(-1);
+        if (inner === undefined) {
+          throw new Error('中の段落が描画されていません。');
+        }
+        await placeCursorAtEnd(editable, inner);
+
+        controller.run(action);
+
+        const lifted = [...editable.querySelectorAll('p')].at(-1);
+        expect(lifted?.parentElement).toBe(editable);
+        expect(lifted?.closest('li, blockquote')).toBeNull();
+        expect(editable.querySelectorAll('li, blockquote')).toHaveLength(1);
+      },
+    );
 
     test('表の操作で既定の大きさの表を挿入する', async () => {
       const { editable, controller } = await renderSurface({
