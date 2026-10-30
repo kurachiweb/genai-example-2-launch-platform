@@ -345,6 +345,8 @@ sequenceDiagram
 - 各段階は`deploy.yml`の手順の`id`(`preflight`・`tofu-foundation`・`reconcile-ids`・`migrate`・`deploy-api`・`deploy-event`・`deploy-client`・`deploy-admin`・`tofu-routing`・`email-subscription`・`verify`)で、`DEPLOY_STAGES`と同じ順に並ぶ(7.3・11.6)。
 - いずれかが失敗するとジョブは止まり、自動では戻さない(7.7)。最初のデプロイでは、識別子の照合が仮の値を検出して止まる(8.1)。開発者がTurnstileの秘密鍵を登録し、表示された識別子をWrangler設定へ反映してmainへマージすると、次の実行で先へ進む。
 - ジョブは`concurrency: deploy-<環境>`(`cancel-in-progress: false`)で、同じ環境のデプロイを直列にする(7.8)。
+- `preflight`は、ブランチ・資源一覧・構成検査に加え、資源一覧のInfisicalの識別子とCloudflareのアカウントID・ゾーンIDが仮の値でないことを確かめる。仮の値なら記入先のファイルを示して止まる(8.3。2026-10-29に開発者が決定)。
+- `tofu-foundation`・`tofu-routing`は、計画を資源のアドレスと操作の種類に要約して表示し、適用は資源の行と完了の行だけを表示する。適用が失敗した時だけ、OpenTofuが標準エラー出力へ出す誤りの診断を表示する。警告は標準出力に出るため表示しない(7.12。2026-10-29に開発者が決定)。
 
 ### リリースと承認
 
@@ -969,7 +971,7 @@ export declare function summarizePlan(
   planJson: string,
 ): readonly PlanChange[] | { readonly error: string };
 // apply-output.ts
-export declare function filterApplyOutput(line: string): string | undefined; // 資源のアドレスで始まる行と完了の行だけ
+export declare function filterApplyOutput(line: string): string | undefined; // 資源のアドレスで始まる行と完了の行だけ。適用が失敗した時の標準エラー出力の診断は、この関数を通さずにコマンドが表示する
 
 // resource-ids.ts
 export interface ResourceIdTarget {
@@ -1074,6 +1076,7 @@ export declare function releasePrBody(
 ```
 
 - `summarizePlan`は資源のアドレスと操作の種類だけを返し、属性の値を返さない(7.12)。`delete`・`replace`があれば要約の先頭に警告を出す。
+- `filterApplyOutput`は適用の標準出力と標準エラー出力の行に掛ける。`tofu`は、`plan`・`show -json`・`apply`が0以外で終わった時に限り、取り込んだ標準エラー出力(OpenTofuの誤りの診断)を表示する。OpenTofuは誤りの診断を標準エラー出力へ、計画の本文と警告を標準出力へ出すため、標準出力は失敗時も表示しない(2026-10-29に開発者が決定)。
 - `reconcileResourceIds`は、出力のうち`sensitive`のものを読み飛ばし、値を返さない(8.1)。
 - `selectWorkerSecrets`は必須のキーの欠落をキー名だけで返し、値を返さない(4.5・4.7)。Workerごとのフォルダの値を`/`の値より優先し、`WORKER_SCOPED_SECRETS`のキーが`/`にしか無ければ欠落として返す(4.10、改訂1)。
 - `WORKER_SCOPED_SECRETS`は、同じキー名でWorkerごとに異なる値を持つと各specが宣言したシークレットの一覧である(paymentsの`STRIPE_API_KEY`。api用とevent用の制限付きキーを分けるQ5)。`secret-scope.ts`に置き、`run-with-secrets`(4.3)と`selectWorkerSecrets`(5.3)が共有する。`OPTIONAL_WORKER_SECRETS`と同じく、本specの4.3が宣言済みのキーを先に入れ、後続specが同じ要求を持てばこの一覧と`project-values.md`の節へ追記する(改訂1)。
@@ -1177,8 +1180,8 @@ export interface HttpProbe {
 | `e2e-stack -- <コマンド>`                                                    | 準備(`db:migrate:local`)→Mailpit・api・eventの起動(api・eventはdevのWorkerごとのフォルダの値を重ねる)→待ち合わせ→コマンド→停止。起動しなければそのサービスとログの末尾50行を出して失敗。client・adminはコマンド(`test:e2e:dev-and-preview`)が開発サーバーとビルド後のプレビューで起動する(改訂3) | 親の環境(dev)                              | 6.4, 6.5            |
 | `rehearse --env <env>`                                                       | api・eventは`wrangler deploy --dry-run --env <env> --outdir <一時>`、client・adminは`CLOUDFLARE_ENV=<env> bun run build`の後に`wrangler deploy --dry-run --outdir <一時>`                                                                                                                        | なし                                       | 6.6                 |
 | `infisical-login --scope <scope>`                                            | OIDCのトークンを得て`infisical login --method=oidc-auth`、アクセストークンをmaskして`INFISICAL_TOKEN`として`GITHUB_ENV`へ                                                                                                                                                                        | アクセストークン                           | 4.1–4.3             |
-| `preflight --env <env>`                                                      | `GITHUB_REF_NAME`が`github.branch`と一致、資源一覧の解析と構成検査、Infisicalの識別子が仮の値でない(prodが未準備なら失敗)                                                                                                                                                                        | なし                                       | 8.3, 11.x           |
-| `tofu --env <env> --phase foundation\|routing`                               | `/ci/tofu`を取り出してmask、新しいOIDCのトークンでproviderの認証の環境変数を作り、init→plan(`foundation`は`-exclude=module.worker_routing`)→`show -json`の要約→apply(出力は`filterApplyOutput`)                                                                                                  | stateの鍵・パスフレーズ・OIDCのトークン    | 3.2, 3.4, 7.3, 7.12 |
+| `preflight --env <env>`                                                      | `GITHUB_REF_NAME`が`github.branch`と一致、資源一覧の解析と構成検査、Infisicalの識別子とCloudflareのアカウントID・ゾーンIDが仮の値でない(仮の値なら記入先を示して失敗。prodは加えてlaunch-readinessの準備が必要と表示)                                                                            | なし                                       | 8.3, 11.x           |
+| `tofu --env <env> --phase foundation\|routing`                               | `/ci/tofu`を取り出してmask、新しいOIDCのトークンでproviderの認証の環境変数を作り、init→plan(`foundation`は`-exclude=module.worker_routing`)→`show -json`の要約→apply(出力は`filterApplyOutput`。失敗時だけ標準エラー出力の診断を表示)                                                            | stateの鍵・パスフレーズ・OIDCのトークン    | 3.2, 3.4, 7.3, 7.12 |
 | `reconcile-ids --env <env>`                                                  | `tofu output -json resource_ids`を取り込み、`reconcileResourceIds`。食い違いがあれば表(ファイル・項目・現在の値・反映すべき値)を出して失敗                                                                                                                                                       | stateの鍵・パスフレーズ                    | 8.1                 |
 | `migrate --env <env>`                                                        | `/ci/cloudflare`を取り出し、apiで`wrangler d1 migrations apply <D1名> --env <env> --remote`                                                                                                                                                                                                      | Cloudflareのトークン                       | 7.3                 |
 | `deploy-worker --env <env> --app <app>`                                      | 後述「WorkerDeployer」                                                                                                                                                                                                                                                                           | Cloudflareのトークン・Workerのシークレット | 4.5, 7.3–7.6        |
@@ -1275,6 +1278,7 @@ export interface HttpProbe {
 
 - 「DeliveryCli」のサブコマンドの表のとおり。いずれも`core`の判定と`adapters`の呼び出しの組み合わせで、新しい境界を持たない。
 - `AUDIT_EXCEPTIONS`は`{ advisory: 'GHSA-...', reason: string, reviewBy: 'YYYY-MM-DD' }`の配列で、初版は空である(5.5)。
+- `Preflight`の仮の値の検査: 資源一覧の`infisical.projectId`・`infisical.identityId`と`cloudflare.accountId`・`cloudflare.zoneId`を`isPlaceholderId`で判定する。アカウントIDはstateの保管先の接続先にも含まれるため、記入先として資源一覧と`apps/infra/backends/<env>.s3.hcl`の`endpoints.s3`を示し、ゾーンIDは資源一覧を示す。prodでは加えて「launch-readinessの準備が必要」と表示する(8.3。2026-10-29に開発者が決定)。
 - `InfisicalSession`の主体と対象: `checks`は`catalog/check-secrets.ts`(プロジェクトは`.infisical.yaml`の`secrets-management.project-id`、環境`dev`)、`staging`・`prod`は資源一覧の`infisical`。3つとも同じプロジェクトで、取り出す環境だけが異なる(K3)。
 
 ### .github
@@ -1393,20 +1397,22 @@ export interface HttpProbe {
 
 ### Error Categories and Responses
 
-| 状況                                       | 応答                                                                               | 要件            |
-| ------------------------------------------ | ---------------------------------------------------------------------------------- | --------------- |
-| 資源一覧・Wrangler設定・ワークフローの違反 | 規則・ファイル・項目・実際・期待を表示して失敗                                     | 11.7            |
-| 識別子が仮の値・食い違い                   | 反映すべき項目と値(秘密でないもの)を表示し、Workerのデプロイの前に失敗             | 8.1             |
-| prodの準備が未実施                         | `preflight`が「launch-readinessの準備が必要」と表示して失敗                        | 8.3             |
-| 必須シークレットの欠落                     | キー名だけを表示して失敗                                                           | 4.5, 4.7, 4.10  |
-| Workerごとのフォルダを取り出せない         | フォルダの名前だけを表示して失敗(値は出さない)                                     | 4.7, 4.10       |
-| 状態のロックの取得失敗                     | 5分待ってから失敗。ロックの解除は開発者の手順(`operations/002`)                    | 3.4             |
-| 計画に`delete`・`replace`がある            | 要約の先頭に警告。`prevent_destroy`の資源なら計画自体が失敗                        | 1.9, 7.12       |
-| 直前のリリースを特定できない               | 警告を出し、現行の操作だけで許可リストを生成して続ける                             | 7.5             |
-| 購読の内容が異なる                         | 差分を表示して失敗(開発者が判断)                                                   | 7.9             |
-| E2Eの前にアプリが起動しない                | サービス名とログの末尾を表示して失敗                                               | 6.5             |
-| デプロイ後の確認の失敗                     | 対象と状態コードを表示して失敗。ロールバックは`operations/002`の手順で開発者が行う | 7.7, 7.10, 7.11 |
-| 不正なリリースのhead                       | PRを作らずに理由を表示して失敗                                                     | 9.3             |
+| 状況                                       | 応答                                                                                                                       | 要件            |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| 資源一覧・Wrangler設定・ワークフローの違反 | 規則・ファイル・項目・実際・期待を表示して失敗                                                                             | 11.7            |
+| 識別子が仮の値・食い違い                   | 反映すべき項目と値(秘密でないもの)を表示し、Workerのデプロイの前に失敗                                                     | 8.1             |
+| prodの準備が未実施                         | `preflight`が「launch-readinessの準備が必要」と表示して失敗                                                                | 8.3             |
+| CloudflareのアカウントID・ゾーンIDが仮の値 | `preflight`が記入先のファイル(資源一覧、アカウントIDはbackendの部分設定の`endpoints.s3`も)を示して失敗                     | 8.3             |
+| 計画・適用の失敗                           | 失敗した手順と終了コード、OpenTofuが標準エラー出力へ出した誤りの診断を表示して失敗。計画の本文・警告(標準出力)は表示しない | 4.7, 7.12       |
+| 必須シークレットの欠落                     | キー名だけを表示して失敗                                                                                                   | 4.5, 4.7, 4.10  |
+| Workerごとのフォルダを取り出せない         | フォルダの名前だけを表示して失敗(値は出さない)                                                                             | 4.7, 4.10       |
+| 状態のロックの取得失敗                     | 5分待ってから失敗。ロックの解除は開発者の手順(`operations/002`)                                                            | 3.4             |
+| 計画に`delete`・`replace`がある            | 要約の先頭に警告。`prevent_destroy`の資源なら計画自体が失敗                                                                | 1.9, 7.12       |
+| 直前のリリースを特定できない               | 警告を出し、現行の操作だけで許可リストを生成して続ける                                                                     | 7.5             |
+| 購読の内容が異なる                         | 差分を表示して失敗(開発者が判断)                                                                                           | 7.9             |
+| E2Eの前にアプリが起動しない                | サービス名とログの末尾を表示して失敗                                                                                       | 6.5             |
+| デプロイ後の確認の失敗                     | 対象と状態コードを表示して失敗。ロールバックは`operations/002`の手順で開発者が行う                                         | 7.7, 7.10, 7.11 |
+| 不正なリリースのhead                       | PRを作らずに理由を表示して失敗                                                                                             | 9.3             |
 
 ### Monitoring
 
@@ -1445,7 +1451,7 @@ export interface HttpProbe {
   - `security/003`に、このリスクと緩和策、プランを上げた場合の分離の手順を書く(13.3)。
 - **Workerごとの値**: 同じキー名で権限の異なる値(api用とevent用の制限付きキーなど)はWorkerごとのフォルダに置き、そのWorkerにだけ渡す。`WORKER_SCOPED_SECRETS`のキーは`/`に置いても使わないため、誤って共通のフォルダへ登録した値が両方のWorkerへ渡らない(4.10、改訂1)。
 - **長期の認証情報を持たない**: GitHubのSecretsとVariablesにInfisicalの資格情報を置かない。CloudflareのトークンとR2の鍵はInfisicalにだけある(4.1)。
-- **ログ**: 取り出した値は使う前にmaskし、`capture`で取り込む出力(計画のJSON・`tofu output`・`infisical export`)は表示しない。計画は要約、適用は資源の行だけを表示する(4.7・7.12)。
+- **ログ**: 取り出した値は使う前にmaskし、`capture`で取り込む出力(計画のJSON・`tofu output`・`infisical export`)は表示しない。計画は要約、適用は資源の行と完了の行だけを表示する。計画・適用が失敗した時だけ、OpenTofuの誤りの診断(標準エラー出力)を表示する。診断は`sensitive`な値を伏せるが、`sensitive`でない属性の値は引用し得る(4.7・7.12)。
 - **ワークフローの注入**: `pull_request_target`を使わず、入力とイベントの値を`run`に直接展開しない。チェックアウトの資格情報を残さない(W5・W6)。
 - **承認の偽装**: コードオーナーの承認を必須にし、botの承認を数えない。開発者の名義での承認・マージを防ぐため、Claude設定に`Bash(gh pr review*)`・`Bash(gh api*)`の拒否を加えるよう開発者に依頼する(9.11)。
 - **同じアカウントの資格情報**(K5): stagingのトークンがprodの資源に届くリスクを受け入れ、`prevent_destroy`・Time Travel・値の非表示で緩和する。
@@ -1552,18 +1558,18 @@ graph TB
 
 ### 初回の準備(開発者の手作業)
 
-| 順  | 項目                                                                                                                                                                                                                                                                                        | 確認の方法                                         |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| 1   | stagingのstateのR2バケットを作り、そのバケットだけを読み書きできるR2のAPIトークンを発行する                                                                                                                                                                                                 | ダッシュボードでバケットとトークンの範囲を確かめる |
-| 2   | stagingのCloudflareのAPIトークンを作る(D1・R2・Queues・Workers Scripts・Turnstile・Web Analytics・Email Sendingの編集、アカウント設定の読み取り、ゾーン`kurachiweb.com`のDNS・Workers Routesの編集と読み取り。正確な権限名は作成時に確かめる)                                               | `wrangler whoami`相当の確認をCIの初回の実行で行う  |
-| 3   | 既存のInfisicalのプロジェクトのstagingの環境に、フォルダ`/ci/tofu`・`/ci/cloudflare`を作り、上の表のそのフォルダのキーを登録する。devとstagingの環境に、Workerごとのフォルダ`/workers/api`・`/workers/event`を空のまま作る(改訂1。値は各specの手順で登録する)(プロジェクトは新設しない。K3) | ダッシュボードの一覧                               |
-| 4   | 既存のプロジェクトに主体`ci-checks`・`ci-deploy-staging`を作り、OIDC認証を上の表のとおりに縛り、ロールをViewerにする                                                                                                                                                                        | Viewerが割り当てられること(Risks)                  |
-| 5   | 資源一覧`staging.json`に`ci-deploy-staging`の主体のIDを、`check-secrets.ts`に`ci-checks`の主体のIDを記入するPRを作る(プロジェクトのIDは`.infisical.yaml`と同じで記入済み。AIエージェントが行える)                                                                                           | `contract-check`の成功                             |
-| 6   | GitHubのEnvironment`staging`(対象ブランチ`main`)・`prod`(対象ブランチ`prod`)を作る                                                                                                                                                                                                          | Settings → Environments                            |
-| 7   | Actionsの設定で、ワークフローの既定の権限を読み取りにし、「GitHub ActionsにPRの作成と承認を許可」を有効にする                                                                                                                                                                               | Settings → Actions → General                       |
-| 8   | 既存のルールセット(main・prod)に必須チェック`checks / ci-gate`を加え、prodのルールセット(承認1・コードオーナーの承認・push時に古い承認を取り消す・最後のpushの承認は無効・例外なし)を作る                                                                                                   | 本specのPRで必須チェックが表示される               |
-| 9   | Claude設定のdenyに`Bash(gh pr review*)`・`Bash(gh api*)`を加える                                                                                                                                                                                                                            | AIエージェントのコマンドが拒否される               |
-| 10  | stagingの`/`に`HASH_PEPPER`(api・event・client・adminが共有する1つの値)・`SENTRY_DSN`(K8)・`EMAIL_ALLOWED_RECIPIENTS`を登録する。Wave 1以降のspecが宣言する必須のキーは、上の表の「登録の時期」のとおり各specのマージの前に登録する                                                         | ダッシュボードの一覧                               |
+| 順  | 項目                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | 確認の方法                                         |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 1   | stagingのstateのR2バケットを作り、そのバケットだけを読み書きできるR2のAPIトークンを発行する                                                                                                                                                                                                                                                                                                                                                                            | ダッシュボードでバケットとトークンの範囲を確かめる |
+| 2   | stagingのCloudflareのAPIトークンを作る(D1・R2・Queues・Workers Scripts・Turnstile・Web Analytics・Email Sendingの編集、アカウント設定の読み取り、ゾーン`kurachiweb.com`のDNS・Workers Routesの編集と読み取り。正確な権限名は作成時に確かめる)                                                                                                                                                                                                                          | `wrangler whoami`相当の確認をCIの初回の実行で行う  |
+| 3   | 既存のInfisicalのプロジェクトのstagingの環境に、フォルダ`/ci/tofu`・`/ci/cloudflare`を作り、上の表のそのフォルダのキーを登録する。devとstagingの環境に、Workerごとのフォルダ`/workers/api`・`/workers/event`を空のまま作る(改訂1。値は各specの手順で登録する)(プロジェクトは新設しない。K3)                                                                                                                                                                            | ダッシュボードの一覧                               |
+| 4   | 既存のプロジェクトに主体`ci-checks`・`ci-deploy-staging`を作り、OIDC認証を上の表のとおりに縛り、ロールをViewerにする                                                                                                                                                                                                                                                                                                                                                   | Viewerが割り当てられること(Risks)                  |
+| 5   | 資源一覧`staging.json`に`ci-deploy-staging`の主体のIDと、CloudflareのアカウントID(`cloudflare.accountId`)・ゾーンID(`cloudflare.zoneId`)を記入し、`apps/infra/backends/staging.s3.hcl`の`endpoints.s3`の全桁0の部分をアカウントIDにし、`check-secrets.ts`に`ci-checks`の主体のIDを記入するPRを作る(プロジェクトのIDは`.infisical.yaml`と同じで記入済み。値は開発者から受け取り、AIエージェントが行える。prodの資源一覧とbackendの部分設定はlaunch-readinessが記入する) | `contract-check`の成功                             |
+| 6   | GitHubのEnvironment`staging`(対象ブランチ`main`)・`prod`(対象ブランチ`prod`)を作る                                                                                                                                                                                                                                                                                                                                                                                     | Settings → Environments                            |
+| 7   | Actionsの設定で、ワークフローの既定の権限を読み取りにし、「GitHub ActionsにPRの作成と承認を許可」を有効にする                                                                                                                                                                                                                                                                                                                                                          | Settings → Actions → General                       |
+| 8   | 既存のルールセット(main・prod)に必須チェック`checks / ci-gate`を加え、prodのルールセット(承認1・コードオーナーの承認・push時に古い承認を取り消す・最後のpushの承認は無効・例外なし)を作る                                                                                                                                                                                                                                                                              | 本specのPRで必須チェックが表示される               |
+| 9   | Claude設定のdenyに`Bash(gh pr review*)`・`Bash(gh api*)`を加える                                                                                                                                                                                                                                                                                                                                                                                                       | AIエージェントのコマンドが拒否される               |
+| 10  | stagingの`/`に`HASH_PEPPER`(api・event・client・adminが共有する1つの値)・`SENTRY_DSN`(K8)・`EMAIL_ALLOWED_RECIPIENTS`を登録する。Wave 1以降のspecが宣言する必須のキーは、上の表の「登録の時期」のとおり各specのマージの前に登録する                                                                                                                                                                                                                                    | ダッシュボードの一覧                               |
 
 ### ホスト名から導かれる変数の値(M-1)
 

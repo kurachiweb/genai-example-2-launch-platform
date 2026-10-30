@@ -327,6 +327,26 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - **Rationale**: OpenTofuの推奨に従い、鍵を作業ディレクトリのファイルにも計画にも残さない。
 - **Follow-up**: スクラッチのコピーで、接続先を`http://127.0.0.1:9`、鍵を環境変数のダミーにして`tofu init`を実行した。sensitiveのエラーは出ずに接続の段階まで進んだ(接続の拒否で終了)。パスフレーズが無いときは暗号化の設定を解決できずに失敗する(3.3)。
 
+### Decision: preflightでCloudflareのアカウントID・ゾーンIDの仮の値を止める(2026-10-29に開発者が決定)
+
+- **Context**: 要件8.3、tasks 1.2・5.1。資源一覧の`cloudflare.accountId`・`zoneId`とbackendの部分設定の`endpoints.s3`は全桁0の仮の値で、設計の初回の準備に記入の手順が無かった。仮の値のまま進むと、stateの保管先への接続か資源の作成で、原因の分かりにくい失敗になる。
+- **Alternatives Considered**:
+  1. `preflight`で仮の値を止め、記入先のファイルを示す
+  2. `tofu`の初期化・計画の失敗に任せる
+- **Selected Approach**: 1。`preflight`は`isPlaceholderId`でアカウントID・ゾーンIDを判定し、アカウントIDは資源一覧と`apps/infra/backends/<env>.s3.hcl`の`endpoints.s3`、ゾーンIDは資源一覧を記入先として示して失敗する。prodでは主体のIDと同じく「launch-readinessの準備が必要」を加える。初回の準備の手順5に、stagingの資源一覧とbackendの部分設定へ記入する作業を加えた。
+- **Rationale**: デプロイの最初の段階で、開発者の次の作業(どのファイルへ何を記入するか)を示せる。
+- **Follow-up**: 構成検査のC7は、資源一覧のアカウントIDが仮でbackendの接続先がR2の形の時に違反としないため、両方が仮の間はこの検査だけが止める。
+
+### Decision: 適用が失敗した時だけOpenTofuの診断を表示する(2026-10-29に開発者が決定)
+
+- **Context**: 要件4.7・7.12、tasks 5.1。適用の出力を資源の行と完了の行だけに絞ると、適用が失敗した時に原因(`Error:`の診断)が表示されず、失敗した手順と終了コードしか分からなかった。
+- **Alternatives Considered**:
+  1. 適用が0以外で終わった時に限り、取り込んだ標準エラー出力(誤りの診断)を表示する
+  2. 常に資源の行と完了の行だけにし、原因はCIの外での操作で調べる
+- **Selected Approach**: 1。計画・`show -json`の失敗時と同じ扱いにする。成功時は従来どおり資源の行と完了の行だけを表示する。
+- **Rationale**: 開発者がCIのログだけで失敗の原因を判断できる。
+- **Follow-up**: OpenTofu 1.13.2の出力の向きをスクラッチの構成で確かめた。`-no-color`の`tofu plan`で、誤りの診断(`Error:`の塊)は標準エラー出力へ、計画の本文・警告(`Warning:`の塊)・「Planning failed.」の行は標準出力へ出た。警告の診断は`sensitive`でない属性の値を引用するため(例: `terraform_data.x.input is "..."`)、標準出力は失敗時も表示しない。誤りの診断も`sensitive`でない値を引用し得るが、`sensitive`な値は`(sensitive value)`と伏せられる。`tofu apply`はClaude設定のdenyで実行できなかったため、適用の診断も同じ向きであること(OpenTofuの同じ診断の表示の部品を使う)は、最初のstagingのデプロイで開発者が確かめる。
+
 ### Decision: 直前のリリースはWorkerの版のタグで特定する
 
 - **Context**: 要件7.4・7.5、api-gateway Q3(新しいリソースを使わない)。

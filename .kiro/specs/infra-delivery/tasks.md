@@ -108,7 +108,7 @@
   - _Requirements: 6.6_
 
 - [ ] 5. デプロイのコマンド
-- [ ] 5.1 (P) 事前確認とOpenTofuの2段階の実行のコマンドを作る
+- [x] 5.1 (P) 事前確認とOpenTofuの2段階の実行のコマンドを作る
   - 先に、計画のJSONの例から資源のアドレスと操作の種類だけが返り属性の値が含まれないこと、削除と作り直しで警告が付くこと、適用の出力から資源の行と完了の行だけが残ること、偽の子プロセスで初期化(環境のbackend設定)→計画(1段目はホスト名の割り当てを除外)→計画の要約→適用の順に呼ばれ、計画とJSONの出力を表示しないこと、`/ci/tofu`の値と新しいOIDCのトークンが子プロセスの環境変数だけに渡ることを確かめる単体テストを書く
   - 事前確認は、実行中のブランチと資源一覧のブランチの一致、資源一覧の解析と構成検査、Infisicalの識別子が仮の値でないこと(prodが未準備ならlaunch-readinessの準備が必要と表示)を確かめる
   - 完了状態: 単体テストが成功し、各ファイルの行と関数のカバレッジが80%以上になる
@@ -303,3 +303,5 @@
 - 4.3(開発者の作業): 2026-10-29時点でInfisicalのdevにWorkerごとのフォルダ(`/workers/api`・`/workers/event`)が無く、`run-with-secrets --scope local --worker api`はフォルダの名前を示して失敗する。初回の準備の手順3でフォルダを作った後、research.mdに書いた空のフォルダの出力の確認を行う。6.3・8.5はこのフォルダを前提とする。
 - 4.4: `CommandRunner.start`は`detached: true`で新しいプロセスグループを作り、停止はグループへSIGTERM→猶予後SIGKILL(孫のworkerdまで止まる)。`runPiped`はfilterの例外時に子を止める。`HttpProbe`は`adapters/http-probe.ts`で`DeliveryDeps.probe`に入る(間隔500ms・1回10秒・redirectを追わない)。e2e-stackのapi・eventの`wrangler dev`には各アプリの`dev`スクリプトにそろえて`--test-scheduled`(api)・`--inspector-port 9230`(event)を付け、`repo-contract.unit.test.ts`が`dev`スクリプトとの一致を検査する(設計の表に無い。9.1で反映)。`MAILPIT_BIN`・`RUNNER_TEMP`の既定値、設計に無いexport、`StackStartError`が型であることも9.1で反映。中断のシグナルでサービスを止める処理は無い(ローカルで残り得る。6.3で対応か記録)。サービスがすぐ終了しても3分待つ。サービスは`127.0.0.1`で待ち受けるが`e2e/support/scheduled-trigger.ts`等は`localhost`を使うため、CIで届くか6.3で確かめる。
 - 4.5: `rehearse --env <env>`はapi・eventを`bun x wrangler deploy --dry-run --env <env> --outdir <RUNNER_TEMP|tmpdir>/rehearsal/<env>/<app>`、client・adminを`CLOUDFLARE_ENV=<env> bun run build`の後に`--env`無しのdry-runで呼ぶ。子はシェルの環境を引き継ぐため、6.3の`rehearsal`ジョブは`infisical-login`を呼ばず、秘密値の`env`を持たず、`permissions`を`contents: read`だけに絞る(呼び出し側が`id-token: write`を与えてもジョブで絞る)。`appDirOf`と「Viteでビルドするのはclient・admin」の知識は`core/e2e-stack-plan.ts`と重複しており、5.3で共通の値へ移す。dry-runはdenyで未実行(開発者の手動確認かCIで確かめる)。
+- 5.1(開発者の決定 2026-10-29): preflightはInfisicalの識別子に加えてCloudflareのアカウントID・ゾーンIDの仮の値でも記入先を示して止める。`tofu apply`は失敗した時だけ標準エラーの診断を表示する(design.md・research.mdへ反映済み)。applyの診断の出力先はdenyで未検証(最初のstagingのデプロイで確かめる)。
+- 5.1: 初期化と`/ci/tofu`の受け渡しは`commands/shared/tofu-session.ts`(`openTofuSession`・`initTofu`・`runTofuStep`)で5.2も使う。構成検査の入力の読み込みは`commands/shared/contract-input.ts`(contract-check・preflightで共用)。plan・applyの`-no-color`、計画と適用の直前に毎回OIDCトークンを取り直すこと、`/ci/tofu`の必須3キー(`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`・`TF_VAR_state_passphrase`)の確認、`INFISICAL_AUTH_METHOD=oidc`、`formatPlanSummary`は設計に無い(9.1で反映)。計画の要約は`no-op`を除くため`import`の取り込みは件数にしか現れない。`<env>.tfplan`は適用後も残る(暗号化・Git管理外)。
