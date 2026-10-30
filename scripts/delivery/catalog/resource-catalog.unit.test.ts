@@ -90,7 +90,7 @@ describe('parseResourceCatalog', () => {
     'queues.jobs.name',
     'workers',
     'workers.admin',
-    'workers.api.appDir',
+    'workers.api.name',
     'hostnames',
     'hostnames.api.worker',
     'turnstile',
@@ -164,13 +164,18 @@ describe('parseResourceCatalog', () => {
 
   test('Workerの一覧に4つのWorker以外があれば、そのWorkerのパスを誤りとして返す', () => {
     const result = parseResourceCatalog(
-      catalogWith('workers.web', {
-        name: 'app-web-staging',
-        appDir: 'apps/web',
-      }),
+      catalogWith('workers.web', { name: 'app-web-staging' }),
     );
 
     expect(errorPathsOf(result)).toEqual(['workers.web']);
+  });
+
+  test('Workerの項目に名前以外があれば、その項目のパスを誤りとして返す(アプリのディレクトリはアプリの一覧から引く)', () => {
+    const result = parseResourceCatalog(
+      catalogWith('workers.api.appDir', 'apps/api'),
+    );
+
+    expect(errorPathsOf(result)).toEqual(['workers.api.appDir']);
   });
 
   test.each(['d1', 'r2', 'queues', 'hostnames'])(

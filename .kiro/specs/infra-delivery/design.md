@@ -228,7 +228,7 @@ scripts/delivery/
 │   ├── lcov.ts                          # lcovのパスの前置と合算
 │   ├── e2e-stack-plan.ts                # E2Eの起動の準備・サービス・待ち合わせの表
 │   ├── infra-check-plan.ts              # IaC定義の検査の手順(fmt→live→各モジュールのinit・validate・test)の組み立て
-│   ├── worker-apps.ts                   # アプリのディレクトリ(appDirOf)とViteでビルドするWorker(client・admin)
+│   ├── worker-apps.ts                   # アプリのディレクトリ(appDirOf、全コマンドの唯一の情報源)とViteでビルドするWorker(client・admin)
 │   ├── secret-scope.ts                  # Infisicalのフォルダとキー、WORKER_SCOPED_SECRETSとWorkerごとのフォルダの重ね合わせ、マスクする値の抽出
 │   ├── plan-summary.ts                  # 計画のJSONを資源のアドレスと操作の種類に要約
 │   ├── apply-output.ts                  # 適用の出力から表示してよい行だけを残す
@@ -597,9 +597,6 @@ export type EmailSendingEvent = (typeof EMAIL_SENDING_EVENTS)[number];
 export interface NamedResource {
   readonly name: string;
 }
-export interface WorkerResource extends NamedResource {
-  readonly appDir: string;
-}
 export interface HostnameAssignment {
   readonly hostname: string;
   readonly worker: WorkerKey;
@@ -616,7 +613,7 @@ export interface ResourceCatalog {
   readonly d1: Readonly<Record<string, NamedResource>>; // 'main'
   readonly r2: Readonly<Record<string, NamedResource>>; // 'images'・'files'・'quarantine'
   readonly queues: Readonly<Record<string, NamedResource>>; // 'jobs'・'jobs-dlq'・'email-events'
-  readonly workers: Readonly<Record<WorkerKey, WorkerResource>>;
+  readonly workers: Readonly<Record<WorkerKey, NamedResource>>; // 各Workerは名前だけ(未知の項目は誤り)。アプリのディレクトリはAPPSからappDirOfで引く
   readonly hostnames: Readonly<Record<string, HostnameAssignment>>;
   readonly turnstile: {
     readonly name: string;

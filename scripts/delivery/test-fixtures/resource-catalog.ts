@@ -26,10 +26,10 @@ export const validCatalogJson = (): Record<string, unknown> => ({
     'email-events': { name: 'app-email-events-staging' },
   },
   workers: {
-    api: { name: 'app-api-staging', appDir: 'apps/api' },
-    event: { name: 'app-event-staging', appDir: 'apps/event' },
-    client: { name: 'app-client-staging', appDir: 'apps/client' },
-    admin: { name: 'app-admin-staging', appDir: 'apps/admin' },
+    api: { name: 'app-api-staging' },
+    event: { name: 'app-event-staging' },
+    client: { name: 'app-client-staging' },
+    admin: { name: 'app-admin-staging' },
   },
   hostnames: {
     api: { hostname: 'api-staging.launch.example', worker: 'api' },

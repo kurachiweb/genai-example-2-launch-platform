@@ -109,10 +109,10 @@ describe.each(['staging', 'prod'] as const)('資源一覧(%s)', (env) => {
       'email-events': named('email-events'),
     });
     expect(catalog.workers).toEqual({
-      api: { ...named('api'), appDir: 'apps/api' },
-      event: { ...named('event'), appDir: 'apps/event' },
-      client: { ...named('client'), appDir: 'apps/client' },
-      admin: { ...named('admin'), appDir: 'apps/admin' },
+      api: named('api'),
+      event: named('event'),
+      client: named('client'),
+      admin: named('admin'),
     });
   });
 

@@ -1,7 +1,6 @@
 import type { RepoFiles } from '../../adapters/repo-files.ts';
 import {
   type DeployEnvironment,
-  type ResourceCatalog,
   WORKER_KEYS,
   type WorkerKey,
 } from '../../catalog/resource-catalog.ts';
@@ -10,6 +9,7 @@ import type {
   WorkerConfigFile,
 } from '../../core/config-contract.ts';
 import type { ContractViolation } from '../../core/violation.ts';
+import { appDirOf } from '../../core/worker-apps.ts';
 import { readEffectiveConfig } from '../../core/wrangler-config.ts';
 import { loadResourceCatalog, withPath } from './load-catalog.ts';
 import {
@@ -59,13 +59,10 @@ const workersOf = (
 export async function loadWorkerConfigs(
   files: RepoFiles,
   env: DeployEnvironment,
-  catalog: ResourceCatalog,
 ): Promise<Loaded<Readonly<Record<WorkerKey, WorkerConfigFile>>>> {
   const workers = allLoaded(
     await Promise.all(
-      WORKER_KEYS.map((key) =>
-        loadWorkerConfig(files, env, catalog.workers[key].appDir),
-      ),
+      WORKER_KEYS.map((key) => loadWorkerConfig(files, env, appDirOf(key))),
     ),
   );
   return workers.ok ? loaded(workersOf(workers.value)) : failed(workers.errors);
@@ -78,7 +75,7 @@ export async function loadContractInput(
   const catalog = await loadResourceCatalog(files, env);
   if (!catalog.ok) return catalog;
   const [workers, backendFile] = await Promise.all([
-    loadWorkerConfigs(files, env, catalog.value),
+    loadWorkerConfigs(files, env),
     loadBackend(files, env),
   ]);
   if (!workers.ok || !backendFile.ok) {

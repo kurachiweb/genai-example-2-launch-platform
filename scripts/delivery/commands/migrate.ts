@@ -4,6 +4,7 @@ import {
   DEPLOY_ENVIRONMENTS,
   resourceCatalogPath,
 } from '../catalog/resource-catalog.ts';
+import { appDirOf } from '../core/worker-apps.ts';
 import { openCloudflareSecrets } from './shared/cloudflare-secrets.ts';
 import {
   type DeliveryCommand,
@@ -44,7 +45,7 @@ export const command: DeliveryCommand = {
       deps,
     );
     if (typeof secrets === 'number') return secrets;
-    const { appDir } = catalog.value.workers.api;
+    const appDir = appDirOf('api');
     const migrationArgs = [
       'x',
       'wrangler',

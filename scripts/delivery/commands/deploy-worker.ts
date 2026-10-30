@@ -14,7 +14,7 @@ import {
   WORKER_SCOPED_SECRETS,
   WORKER_SECRET_FOLDERS,
 } from '../core/secret-scope.ts';
-import { VITE_BUILT_WORKERS } from '../core/worker-apps.ts';
+import { VITE_BUILT_WORKERS, appDirOf } from '../core/worker-apps.ts';
 import {
   OPTIONAL_WORKER_SECRETS,
   selectWorkerSecrets,
@@ -99,17 +99,20 @@ const loadDeployTarget = async (
 ): Promise<DeployTarget | number> => {
   const catalog = await loadResourceCatalog(deps.files, env);
   if (!catalog.ok) return reportInputErrors(TITLE, catalog.errors, deps);
-  const { name, appDir } = catalog.value.workers[app];
+  const appDir = appDirOf(app);
   const config = await loadWorkerConfig(deps.files, env, appDir);
   if (!config.ok) return reportInputErrors(TITLE, config.errors, deps);
   return {
     env,
     app,
     accountId: catalog.value.cloudflare.accountId,
-    workerName: name,
+    workerName: catalog.value.workers[app].name,
     appDir,
     requiredSecrets: config.value.config.requiredSecrets,
-    clientWorker: catalog.value.workers.client,
+    clientWorker: {
+      name: catalog.value.workers.client.name,
+      appDir: appDirOf('client'),
+    },
   };
 };
 

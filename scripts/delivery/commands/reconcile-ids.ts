@@ -35,9 +35,7 @@ const loadConfigs = async (
   deps: DeliveryDeps,
 ): Promise<Loaded<ResourceIdConfigs>> => {
   const catalog = await loadResourceCatalog(deps.files, env);
-  return catalog.ok
-    ? loadWorkerConfigs(deps.files, env, catalog.value)
-    : catalog;
+  return catalog.ok ? loadWorkerConfigs(deps.files, env) : catalog;
 };
 
 // 出力の名前を指定するとsensitiveかを判別できないため、全ての出力を取り込んでsensitiveなものを照合で飛ばす

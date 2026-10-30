@@ -18,13 +18,10 @@
     "email-events": { "name": "genai-example-2-email-events-prod" }
   },
   "workers": {
-    "api": { "name": "genai-example-2-api-prod", "appDir": "apps/api" },
-    "event": { "name": "genai-example-2-event-prod", "appDir": "apps/event" },
-    "client": {
-      "name": "genai-example-2-client-prod",
-      "appDir": "apps/client"
-    },
-    "admin": { "name": "genai-example-2-admin-prod", "appDir": "apps/admin" }
+    "api": { "name": "genai-example-2-api-prod" },
+    "event": { "name": "genai-example-2-event-prod" },
+    "client": { "name": "genai-example-2-client-prod" },
+    "admin": { "name": "genai-example-2-admin-prod" }
   },
   "hostnames": {
     "api": {

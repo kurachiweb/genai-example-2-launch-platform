@@ -18,10 +18,6 @@ export interface NamedResource {
   readonly name: string;
 }
 
-export interface WorkerResource extends NamedResource {
-  readonly appDir: string;
-}
-
 export interface HostnameAssignment {
   readonly hostname: string;
   readonly worker: WorkerKey;
@@ -38,7 +34,7 @@ export interface ResourceCatalog {
   readonly d1: Readonly<Record<string, NamedResource>>;
   readonly r2: Readonly<Record<string, NamedResource>>;
   readonly queues: Readonly<Record<string, NamedResource>>;
-  readonly workers: Readonly<Record<WorkerKey, WorkerResource>>;
+  readonly workers: Readonly<Record<WorkerKey, NamedResource>>;
   readonly hostnames: Readonly<Record<string, HostnameAssignment>>;
   readonly turnstile: {
     readonly name: string;
@@ -251,10 +247,11 @@ const httpsUrl = matching(/^https:\/\/\S+$/, 'https://で始まるURL');
 
 const namedResource = object<NamedResource>({ name: nonEmptyString });
 
-const workerResource = object<WorkerResource>({
-  name: nonEmptyString,
-  appDir: nonEmptyString,
-});
+// アプリのディレクトリはアプリの一覧(config/workspace-layout.ts)から引くため、資源一覧には名前だけを書く
+const workerResource = object<NamedResource>(
+  { name: nonEmptyString },
+  { exact: true },
+);
 
 const readCatalogShape = object<ResourceCatalog>({
   environment: oneOf(DEPLOY_ENVIRONMENTS),
