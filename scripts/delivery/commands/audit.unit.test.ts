@@ -58,7 +58,7 @@ describe('audit', () => {
     expect(todayInUtc()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  test('導入の対象ごとに、重大度高以上と除外の一覧の--ignoreで脆弱性を確かめる', async () => {
+  test('導入の対象ごとに、重大度が最大(critical)の脆弱性だけと除外の一覧の--ignoreで脆弱性を確かめる', async () => {
     const { code, calls, stdout, stderr } = await runWith({
       exceptions: [EXCEPTION],
     });
@@ -72,11 +72,13 @@ describe('audit', () => {
     expect(calls.map(commandLineOf)).toEqual(
       Array.from(
         { length: 3 },
-        () => 'bun audit --audit-level=high --ignore=GHSA-mrhx-c7xc-m3w5',
+        () => 'bun audit --audit-level=critical --ignore=GHSA-mrhx-c7xc-m3w5',
       ),
     );
     expect(calls.every((spec) => spec.output === 'inherit')).toBe(true);
-    expect(stdout.text()).toContain('$ (apps/db) bun audit --audit-level=high');
+    expect(stdout.text()).toContain(
+      '$ (apps/db) bun audit --audit-level=critical',
+    );
     expect(stdout.text()).toContain(
       '既知の脆弱性の確認: 3件すべて成功しました。',
     );
@@ -91,7 +93,7 @@ describe('audit', () => {
     expect(code).toBe(EXIT_FAILURE);
     expect(calls).toHaveLength(3);
     expect(stderr.text()).toBe(
-      '既知の脆弱性の確認: 重大度が高以上の脆弱性が見つかった対象があります(apps/api・apps/db)。\n',
+      '既知の脆弱性の確認: 重大度が最大(critical)の脆弱性が見つかった対象があります(apps/api・apps/db)。\n',
     );
     expect(stdout.text()).not.toContain('成功しました');
   });

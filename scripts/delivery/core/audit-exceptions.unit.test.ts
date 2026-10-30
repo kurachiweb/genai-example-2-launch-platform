@@ -21,13 +21,13 @@ describe('AUDIT_EXCEPTIONS', () => {
 });
 
 describe('auditArgs', () => {
-  test('重大度高以上だけを失敗にし、除外の識別子ごとに--ignoreを付ける', () => {
-    expect(auditArgs([])).toEqual(['audit', '--audit-level=high']);
+  test('重大度が最大(critical)の脆弱性だけを失敗にし、除外の識別子ごとに--ignoreを付ける', () => {
+    expect(auditArgs([])).toEqual(['audit', '--audit-level=critical']);
     expect(
       auditArgs([EXCEPTION, { ...EXCEPTION, advisory: '1112233' }]),
     ).toEqual([
       'audit',
-      '--audit-level=high',
+      '--audit-level=critical',
       '--ignore=GHSA-mrhx-c7xc-m3w5',
       '--ignore=1112233',
     ]);

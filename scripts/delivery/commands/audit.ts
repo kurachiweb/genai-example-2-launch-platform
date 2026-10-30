@@ -42,7 +42,7 @@ const auditTargets = async (
   }
   if (failed.length > 0) {
     deps.stderr.write(
-      `${TITLE}: 重大度が高以上の脆弱性が見つかった対象があります(${failed.join('・')})。\n`,
+      `${TITLE}: 重大度が最大(critical)の脆弱性が見つかった対象があります(${failed.join('・')})。\n`,
     );
     return EXIT_FAILURE;
   }
@@ -59,7 +59,7 @@ export function createAuditCommand({
   return {
     name: 'audit',
     description:
-      '導入の対象ごとに、除外の一覧を除いた重大度が高以上の既知の脆弱性を確かめる',
+      '導入の対象ごとに、除外の一覧を除いた重大度が最大(critical)の既知の脆弱性を確かめる',
     run: async (args, deps) => {
       if (args.length > 0) {
         throw new UsageError(`引数は受け取りません: ${args.join(' ')}`);

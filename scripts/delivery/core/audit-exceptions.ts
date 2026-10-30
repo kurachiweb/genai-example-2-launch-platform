@@ -9,7 +9,7 @@ export const AUDIT_EXCEPTIONS_FILE =
 
 export const AUDIT_EXCEPTIONS: readonly AuditException[] = [];
 
-export const AUDIT_LEVEL = 'high';
+export const AUDIT_LEVEL = 'critical';
 
 const ADVISORY_PATTERN = /^(?:GHSA(?:-[0-9a-z]{4}){3}|\d+)$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;

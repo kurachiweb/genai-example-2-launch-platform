@@ -155,6 +155,13 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 - **決定**: ルートに置くコマンド`test:e2e:dev-and-preview`(dev-toolingの承認後の改訂2)が、client・adminを開発サーバーで起動してE2Eを実行し、止めてからビルド後のプレビューで起動してE2Eを実行する。`e2e-stack`はMailpit・api・eventだけを起動し、そのコマンドを呼ぶ。client・adminが起動しない時の表示(6.5)はそのコマンドが行う。生成物と設定の検査の表(`APP_CHECKS`)にclient・adminの`cf-typegen:check`を加える。
 - **変えた箇所**: 要件の「承認後の改訂」の表と6.4、設計のRevalidation Triggers・コマンドの表(`app-checks`・`e2e-stack`)・E2eStackのサービスの表と準備・ワークフローの`e2e`のジョブ・frontend-platformへの影響の行、タスク4.2・4.4。`spec.json`の承認の状態は変えていない。
 
+### 実装の検証の後の改訂(改訂5、2026-10-30)
+
+- **状態**: 2026-10-30に開発者が決定した改訂で、確定している。`requirements.md`の「承認後の改訂」の表に改訂5として記録し、5.5の受け入れ基準を改めた。
+- **Context**: 実装の検証(`/kiro-validate-impl`)で、`audit`が上流のアプリの依存パッケージの重大度が高の脆弱性で失敗し、`checks / ci-gate`が成功しないことが分かった。また、TruffleHogの`--results=verified,unknown`は検証の仕組みを持たない検出器の結果(`unverified`)で失敗せず、その範囲が要件にも改訂4にも明示されていなかった。
+- **決定**: 既知の脆弱性の確認は`bun audit --audit-level=critical`で、重大度が最大の脆弱性だけで失敗させる。重大度が高以下の脆弱性は依存パッケージの更新で解消する。TruffleHogの判定は変えず、未検証の結果では失敗させないことを仕様として明記し、検証できない種類の秘密値はコミット時の検出器(Betterleaks)が受け持つ。
+- **変えた箇所**: 要件の「承認後の改訂」の表と5.5、設計の要件トレーサビリティ(5.5)・コマンドの表(`audit`)・`infra/007`の記載事項、`core/audit-exceptions.ts`の`AUDIT_LEVEL`と`audit`の表示、`infra/007`。
+
 ## Research Log
 
 ### Cloudflare providerの版と管轄の対応
@@ -258,7 +265,7 @@ Wave 1の3回目の横断レビューの指摘(R3-1〜R3-8)と開発者の回答
 
 - **Sources Consulted**: Bun 1.4.2で`Bun.JSONC.parse`・`Bun.YAML.parse`・`bun audit --help`を実行した。
 - **Findings**: JSONC(コメント・末尾のカンマ)とYAMLを追加のパッケージなしに解析できる。`bun audit`は`--audit-level`・`--ignore`(GHSAまたは番号)・`--json`を持つ。
-- **Implications**: Wrangler設定とワークフローの検査を、新しいパッケージを入れずにルートのTypeScriptで書く。脆弱性の確認は`bun audit --audit-level=high`と、理由を書いた除外の一覧で行う。
+- **Implications**: Wrangler設定とワークフローの検査を、新しいパッケージを入れずにルートのTypeScriptで書く。脆弱性の確認は`bun audit --audit-level=critical`と、理由を書いた除外の一覧で行う(改訂5で`high`から改めた)。
 
 ### dev-toolingからの申し送りとCIの実行環境
 
