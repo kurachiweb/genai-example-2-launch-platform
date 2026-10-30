@@ -1,8 +1,8 @@
 {
   "environment": "staging",
   "cloudflare": {
-    "accountId": "00000000000000000000000000000000",
-    "zoneId": "00000000000000000000000000000000",
+    "accountId": "8aceee56e05453394783940bd2779736",
+    "zoneId": "17c0b01faa7ff96f63a231a1f772fa64",
     "zoneName": "kurachiweb.com"
   },
   "jurisdiction": "us",
@@ -80,7 +80,7 @@
   "infisical": {
     "host": "https://eu.infisical.com",
     "projectId": "19e6b39b-e1bb-4b71-b15c-96ed8de9ba00",
-    "identityId": "00000000-0000-0000-0000-000000000000",
+    "identityId": "408ab354-b8c7-4bd1-b418-f276cd44ced2",
     "oidcAudience": "https://github.com/kurachiweb"
   },
   "github": { "environment": "staging", "branch": "main" }

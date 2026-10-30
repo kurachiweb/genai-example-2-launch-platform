@@ -15,7 +15,7 @@ export interface CheckSecretsSettings {
 export const CHECK_SECRETS_IDENTITY: Omit<CheckSecretsSettings, 'projectId'> = {
   environment: 'dev',
   host: 'https://eu.infisical.com',
-  identityId: '00000000-0000-0000-0000-000000000000',
+  identityId: '408ab354-b8c7-4bd1-b418-f276cd44ced2',
   oidcAudience: 'https://github.com/kurachiweb',
 };
 
