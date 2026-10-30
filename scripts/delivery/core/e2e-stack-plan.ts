@@ -1,4 +1,5 @@
-import { type AppName, APPS } from '../../../config/workspace-layout.ts';
+import type { AppName } from '../../../config/workspace-layout.ts';
+import { appDirOf } from './worker-apps.ts';
 
 export type E2eStackServiceName = 'mailpit' | 'api' | 'event';
 export type E2eStackWorker = Extract<AppName, 'api' | 'event'>;
@@ -70,14 +71,6 @@ export const E2E_STACK_SERVICES: readonly ServiceDefinition[] = [
     extraArgs: ['--inspector-port', '9230'],
   },
 ];
-
-const appDirOf = (app: AppName): string => {
-  const found = APPS.find(({ name }) => name === app);
-  if (found === undefined) {
-    throw new Error(`アプリの一覧に${app}がありません。`);
-  }
-  return found.dir;
-};
 
 export const e2eLogDirOf = (tempDir: string): string =>
   `${tempDir.replace(/\/+$/u, '')}/${E2E_LOG_DIR_NAME}`;

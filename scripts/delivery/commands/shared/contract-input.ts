@@ -26,7 +26,7 @@ const WRANGLER_CONFIG_FILE = 'wrangler.jsonc';
 export const backendSettingsPath = (env: DeployEnvironment): string =>
   `apps/infra/backends/${env}.s3.hcl`;
 
-const loadWorker = async (
+export const loadWorkerConfig = async (
   files: RepoFiles,
   env: DeployEnvironment,
   appDir: string,
@@ -64,7 +64,7 @@ export async function loadWorkerConfigs(
   const workers = allLoaded(
     await Promise.all(
       WORKER_KEYS.map((key) =>
-        loadWorker(files, env, catalog.workers[key].appDir),
+        loadWorkerConfig(files, env, catalog.workers[key].appDir),
       ),
     ),
   );

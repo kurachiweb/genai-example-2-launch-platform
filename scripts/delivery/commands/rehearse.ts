@@ -1,12 +1,13 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { type AppName, APPS } from '../../../config/workspace-layout.ts';
 import {
   DEPLOY_ENVIRONMENTS,
   type DeployEnvironment,
   WORKER_KEYS,
+  type WorkerKey,
 } from '../catalog/resource-catalog.ts';
+import { VITE_BUILT_WORKERS, appDirOf } from '../core/worker-apps.ts';
 import {
   type DeliveryCommand,
   type DeliveryDeps,
@@ -24,23 +25,10 @@ import { parseOptions, requiredChoice } from './shared/parse-options.ts';
 const NAME = 'rehearse';
 const OUTDIR_NAME = 'rehearsal';
 
-type WorkerApp = (typeof WORKER_KEYS)[number];
-
-// @cloudflare/vite-pluginでビルドするアプリは環境をビルドの時に決め、wrangler deployはビルドが出力したWrangler設定を使う
-const VITE_BUILT_WORKERS: ReadonlySet<WorkerApp> = new Set(['client', 'admin']);
-
 interface RehearsalStep {
   readonly dir: string;
   readonly step: TargetStep;
 }
-
-const appDirOf = (app: AppName): string => {
-  const found = APPS.find(({ name }) => name === app);
-  if (found === undefined) {
-    throw new Error(`アプリの一覧に${app}がありません。`);
-  }
-  return found.dir;
-};
 
 const nonEmpty = (value: string | undefined): string | undefined =>
   value === undefined || value === '' ? undefined : value;
@@ -58,7 +46,7 @@ const dryRunOf = (envArgs: readonly string[], outdir: string): TargetStep => ({
 });
 
 const stepsOf = (
-  app: WorkerApp,
+  app: WorkerKey,
   env: DeployEnvironment,
   tempDir: string,
 ): readonly RehearsalStep[] => {
