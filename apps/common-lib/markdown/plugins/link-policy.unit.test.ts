@@ -103,6 +103,11 @@ describe('applyLinkPolicy', () => {
       ['data:', 'data:text/html,a'],
       ['vbscript:', 'vbscript:msgbox(1)'],
       ['ftp:', 'ftp://files.example/a'],
+      ['スラッシュの無いhttps:', 'https:evil.example'],
+      ['スラッシュの無いhttp:', 'HTTP:evil.example/a'],
+      ['スラッシュが1つのhttps:', 'https:/evil.example'],
+      ['バックスラッシュのhttps:', 'https:\\\\evil.example'],
+      ['スラッシュとバックスラッシュのhttps:', 'https:/\\evil.example'],
       ['空の参照', ''],
     ])('%sのリンクを外してリンクの文字列を残す', (_, href) => {
       expect(applyLinkPolicy(root(link(href)), OPTIONS)).toEqual(

@@ -29,6 +29,22 @@ const NON_SOURCE_PATH_PATTERNS = [
   /^[^/]+\.config\.ts$/,
 ] as const;
 
+const SANITIZED_HTML_TYPE = 'SanitizedHtml';
+
+// サニタイズ済みの型の値を作れるのは表示用の描画だけにするため、型の主張とその抜け道になる別名の付与を数える
+const SANITIZED_HTML_ASSERTION_PATTERNS = [
+  new RegExp(String.raw`\bas\s+${SANITIZED_HTML_TYPE}\b`, 'gu'),
+  new RegExp(
+    String.raw`(?:^|[^\w$\s])\s*<\s*${SANITIZED_HTML_TYPE}\s*>`,
+    'gmu',
+  ),
+  new RegExp(String.raw`\b${SANITIZED_HTML_TYPE}\s+as\b`, 'gu'),
+] as const;
+
+const SANITIZED_HTML_ASSERTION_PATH = 'markdown/render-markdown.ts';
+
+const TEST_ONLY_DIRECTORY_PATTERN = /(?:^|\/)fixtures\//u;
+
 const EXACT_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/;
 
 const transpiler = new Bun.Transpiler({ loader: 'ts' });
@@ -78,6 +94,45 @@ const findImportViolations = (
     .map(({ path: specifier }) => specifier)
     .filter((specifier) => !isAllowedSpecifier(path, specifier));
 
+const countSanitizedHtmlAssertions = (source: string): number =>
+  SANITIZED_HTML_ASSERTION_PATTERNS.reduce(
+    (count, pattern) => count + Array.from(source.matchAll(pattern)).length,
+    0,
+  );
+
+const resolvesIntoTestOnlyDirectory = (
+  path: string,
+  specifier: string,
+): boolean =>
+  isPathSpecifier(specifier) &&
+  TEST_ONLY_DIRECTORY_PATTERN.test(
+    new URL(specifier, new URL(path, APP_DIR_URL)).href.slice(
+      APP_DIR_URL.href.length,
+    ),
+  );
+
+// テスト専用のファイルは利用側アプリの型検査から除くため、単体テストとテスト専用のファイルだけが読み込める
+const findTestOnlyImports = (
+  path: string,
+  source: string,
+): readonly string[] =>
+  UNIT_TEST_FILE_PATTERN.test(path) || TEST_ONLY_DIRECTORY_PATTERN.test(path)
+    ? []
+    : transpiler
+        .scanImports(exposeTypeOnlyReferences(source))
+        .map(({ path: specifier }) => specifier)
+        .filter((specifier) => resolvesIntoTestOnlyDirectory(path, specifier));
+
+const readSources = async (
+  paths: readonly string[],
+): Promise<readonly (readonly [string, string])[]> =>
+  Promise.all(
+    paths.map(
+      async (path) =>
+        [path, await Bun.file(new URL(path, APP_DIR_URL)).text()] as const,
+    ),
+  );
+
 const listSourcePaths = async (): Promise<readonly string[]> => {
   const paths = await Array.fromAsync(
     new Bun.Glob(SOURCE_GLOB).scan({ cwd: Bun.fileURLToPath(APP_DIR_URL) }),
@@ -119,6 +174,88 @@ describe('共用部品の読み込みの境界', () => {
     expect(paths).toContain('config/import-boundary.unit.test.ts');
     expect(violations).toEqual({});
   });
+
+  test(`サニタイズ済みの型への型の主張が${SANITIZED_HTML_ASSERTION_PATH}の1箇所だけにある`, async () => {
+    const sources = await readSources(await listSourcePaths());
+
+    expect(
+      Object.fromEntries(
+        sources
+          .map(
+            ([path, source]) =>
+              [path, countSanitizedHtmlAssertions(source)] as const,
+          )
+          .filter(([, count]) => count > 0),
+      ),
+    ).toEqual({ [SANITIZED_HTML_ASSERTION_PATH]: 1 });
+  });
+
+  test('テスト専用のファイルを単体テストとテスト専用のファイルだけが読み込む', async () => {
+    const sources = await readSources(await listSourcePaths());
+
+    expect(sources.map(([path]) => path)).toContain(
+      'markdown/fixtures/xss-payloads.ts',
+    );
+    expect(
+      Object.fromEntries(
+        sources
+          .map(
+            ([path, source]) =>
+              [path, findTestOnlyImports(path, source)] as const,
+          )
+          .filter(([, specifiers]) => specifiers.length > 0),
+      ),
+    ).toEqual({});
+  });
+
+  test.each([
+    [`const html = value as ${SANITIZED_HTML_TYPE};`, 1],
+    [`const html = value as unknown as ${SANITIZED_HTML_TYPE};`, 1],
+    [`const html = value as\n  ${SANITIZED_HTML_TYPE};`, 1],
+    [`const html = <${SANITIZED_HTML_TYPE}>value;`, 1],
+    [`render(< ${SANITIZED_HTML_TYPE} >value);`, 1],
+    [`import type { ${SANITIZED_HTML_TYPE} as Html } from './a.ts';`, 1],
+    [`const html: ${SANITIZED_HTML_TYPE} = rendered.html;`, 0],
+    [`const list: readonly Array<${SANITIZED_HTML_TYPE}> = [];`, 0],
+    [`type Pair = Record<string, ${SANITIZED_HTML_TYPE}>;`, 0],
+    [`expectTypeOf<string>().not.toExtend<${SANITIZED_HTML_TYPE}>();`, 0],
+    [`const html = value as ${SANITIZED_HTML_TYPE}Like;`, 0],
+  ])('「%s」の型の主張を%i箇所と数える', (source, count) => {
+    expect(countSanitizedHtmlAssertions(source)).toBe(count);
+  });
+
+  test.each([
+    [
+      'markdown/sample.ts',
+      "import { XSS_PAYLOADS } from './fixtures/xss-payloads.ts';",
+      1,
+    ],
+    [
+      'text/sample.ts',
+      "import type { XssPayload } from '../markdown/fixtures/xss-payloads.ts';",
+      1,
+    ],
+    [
+      'markdown/sample.unit.test.ts',
+      "import { XSS_PAYLOADS } from './fixtures/xss-payloads.ts';",
+      0,
+    ],
+    [
+      'markdown/fixtures/sample.ts',
+      "import { XSS_PAYLOADS } from './xss-payloads.ts';",
+      0,
+    ],
+    [
+      'markdown/sample.ts',
+      "import { renderMarkdown } from './render-markdown.ts';",
+      0,
+    ],
+  ])(
+    '%sの「%s」をテスト専用のファイルの読み込みとして%i件検出する',
+    (path, source, count) => {
+      expect(findTestOnlyImports(path, source)).toHaveLength(count);
+    },
+  );
 
   test('許可したパッケージが共用部品の実行時の依存の宣言と一致する', async () => {
     const { dependencies } = await readPackageJson();

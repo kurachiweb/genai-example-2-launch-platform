@@ -1,5 +1,10 @@
 import { describe, expect, expectTypeOf, test } from 'bun:test';
 
+import { PATHOLOGICAL_MARKDOWN } from './fixtures/pathological-markdown.ts';
+import {
+  REPRESENTATIVE_MARKDOWN,
+  REPRESENTATIVE_MARKDOWN_LENGTH,
+} from './fixtures/representative-markdown.ts';
 import type { MarkdownRenderOptions } from './markdown-options.ts';
 import { DEFAULT_ID_PREFIX, MarkdownOptionsError } from './markdown-options.ts';
 import { processMarkdown } from './markdown-processor.ts';
@@ -15,6 +20,16 @@ const OPTIONS: MarkdownRenderOptions = {
 const STACK_OVERFLOW_DEPTH = 20_000;
 
 const STACK_OVERFLOW_TIMEOUT_MILLISECONDS = 30_000;
+
+const REPRESENTATIVE_RENDER_BUDGET_MILLISECONDS = 300;
+
+const PATHOLOGICAL_RENDER_BUDGET_MILLISECONDS = 1_000;
+
+const elapsedMillisecondsOf = (render: () => unknown): number => {
+  const startedAt = performance.now();
+  render();
+  return performance.now() - startedAt;
+};
 
 const DOCUMENT = [
   '## 概要',
@@ -205,4 +220,33 @@ describe('renderMarkdown', () => {
     },
     STACK_OVERFLOW_TIMEOUT_MILLISECONDS,
   );
+
+  describe('性能', () => {
+    test(`${REPRESENTATIVE_MARKDOWN_LENGTH.toLocaleString('en-US')}文字の代表的な文書を${String(REPRESENTATIVE_RENDER_BUDGET_MILLISECONDS)}ms以内に描画する`, () => {
+      const options = { ...OPTIONS, idScope: 'post1' };
+      const { headings } = renderMarkdown(REPRESENTATIVE_MARKDOWN, options);
+
+      const elapsed = elapsedMillisecondsOf(() =>
+        renderMarkdown(REPRESENTATIVE_MARKDOWN, options),
+      );
+
+      expect(REPRESENTATIVE_MARKDOWN).toHaveLength(
+        REPRESENTATIVE_MARKDOWN_LENGTH,
+      );
+      expect(headings.length).toBeGreaterThan(50);
+      expect(elapsed).toBeLessThan(REPRESENTATIVE_RENDER_BUDGET_MILLISECONDS);
+    });
+
+    test.each(
+      PATHOLOGICAL_MARKDOWN.map(({ name, markdown }) => [name, markdown]),
+    )(
+      `解析の負荷が過大な%sを${String(PATHOLOGICAL_RENDER_BUDGET_MILLISECONDS)}ms以内に描画する`,
+      (_, markdown) => {
+        expect(
+          elapsedMillisecondsOf(() => renderMarkdown(markdown, OPTIONS)),
+        ).toBeLessThan(PATHOLOGICAL_RENDER_BUDGET_MILLISECONDS);
+      },
+      STACK_OVERFLOW_TIMEOUT_MILLISECONDS,
+    );
+  });
 });

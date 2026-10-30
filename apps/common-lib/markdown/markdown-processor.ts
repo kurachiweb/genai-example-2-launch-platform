@@ -14,11 +14,11 @@ import type {
   MdastRoot,
   MdastText,
 } from './hast-types.ts';
+import { parseWithGuard } from './parse-guard.ts';
 import { rehypeAnchorPrefix } from './plugins/anchor-prefix.ts';
 import { rehypeHeadingIds } from './plugins/heading-ids.ts';
 import { remarkLiteralSyntax } from './plugins/literal-syntax.ts';
 import { sanitizeSchemaFor } from './sanitize-schema.ts';
-import { isStackOverflowError } from './stack-overflow.ts';
 
 declare const sanitizedTreeBrand: unique symbol;
 
@@ -70,17 +70,9 @@ const literalDocument = (markdown: string): ParsedTree => {
   return root as unknown as ParsedTree;
 };
 
-// 深い入れ子では解析そのものがスタックあふれを起こす環境もあり、深さの上限を超えた文書と同じ扱いにする
 const parseWithinNestingDepth = (markdown: string): ParsedTree => {
-  try {
-    const tree = unsanitizedProcessor.parse(markdown);
-    return exceedsNestingDepth(tree) ? literalDocument(markdown) : tree;
-  } catch (error: unknown) {
-    if (isStackOverflowError(error)) {
-      return literalDocument(markdown);
-    }
-    throw error;
-  }
+  const tree = unsanitizedProcessor.parse(markdown);
+  return exceedsNestingDepth(tree) ? literalDocument(markdown) : tree;
 };
 
 export const processMarkdown = (
@@ -90,5 +82,7 @@ export const processMarkdown = (
   const processor = unsanitizedProcessor()
     .use(rehypeSanitize, sanitizeSchemaFor(idPrefix))
     .use(rehypeAnchorPrefix, idPrefix);
-  return processor.runSync(parseWithinNestingDepth(markdown)) as SanitizedTree;
+  return processor.runSync(
+    parseWithGuard(markdown, parseWithinNestingDepth, literalDocument),
+  ) as SanitizedTree;
 };

@@ -24,6 +24,9 @@ const ALLOWED_PROTOCOLS: ReadonlySet<string> = new Set([
 
 const MAILTO_PROTOCOL = 'mailto:';
 
+// ブラウザはhttps:a.exampleのように//の無い参照を、同じスキームのページでは相対URLとして解釈するため、スキームの直後に//が続くものだけをリンクにする
+const HTTP_URL_WITH_AUTHORITY = /^https?:\/\//iu;
+
 const isElement = (node: HastNode): node is HastElement =>
   node.type === 'element';
 
@@ -52,6 +55,9 @@ const classifyLink = (href: unknown, siteOrigin: string): LinkKind => {
   }
   if (url.protocol === MAILTO_PROTOCOL) {
     return 'in-page';
+  }
+  if (!HTTP_URL_WITH_AUTHORITY.test(href)) {
+    return 'unlinked';
   }
   return url.origin === siteOrigin ? 'same-origin' : 'external';
 };

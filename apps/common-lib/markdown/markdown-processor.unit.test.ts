@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import rehypeStringify from 'rehype-stringify';
 import { unified } from 'unified';
 
+import { PATHOLOGICAL_MARKDOWN } from './fixtures/pathological-markdown.ts';
 import type { HastElement, HastRoot } from './hast-types.ts';
 import { DEFAULT_ID_PREFIX, idPrefixFor } from './markdown-options.ts';
 import { processMarkdown } from './markdown-processor.ts';
@@ -40,6 +41,20 @@ const propertyValues = (tree: HastRoot, name: string): readonly string[] =>
     }
     return typeof value === 'object' && value !== null ? value.map(String) : [];
   });
+
+const escapeText = (text: string): string =>
+  text.replaceAll('&', '&#x26;').replaceAll('<', '&#x3C;');
+
+// remark-rehypeは文字列の改行の前後の空白とタブを除く
+const trimAroundLineEndings = (text: string): string => {
+  const lines = text.split('\n');
+  return lines
+    .map((line, index) => {
+      const start = index === 0 ? line : line.replace(/^[ \t]+/u, '');
+      return index === lines.length - 1 ? start : start.replace(/[ \t]+$/u, '');
+    })
+    .join('\n');
+};
 
 const RICH_DOCUMENT = [
   '## 概要 Hello World!',
@@ -458,6 +473,14 @@ describe('processMarkdown', () => {
 
       expect(toHtml(markdown)).toBe(
         `<p>${'>'.repeat(99)} **最深** &#x3C;b>x&#x3C;/b></p>`,
+      );
+    });
+
+    test.each(
+      PATHOLOGICAL_MARKDOWN.map(({ name, markdown }) => [name, markdown]),
+    )('解析の負荷が過大な%sを原文の文字列だけの段落にする', (_, markdown) => {
+      expect(toHtml(markdown)).toBe(
+        `<p>${escapeText(trimAroundLineEndings(markdown))}</p>`,
       );
     });
 
