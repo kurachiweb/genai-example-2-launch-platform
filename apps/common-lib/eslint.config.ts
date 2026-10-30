@@ -83,8 +83,8 @@ const config: Linter.Config[] = [
     rules: restrictImports([
       ...RUNTIME_RESTRICTIONS,
       {
-        regex: '^node:|^bun(?::(?!test$).*)?$',
-        message: `${NODE_AND_BUN_MESSAGE}単体テストはbun:testだけを読み込めます。`,
+        regex: '^node:|^bun(?::(?!(?:test|sqlite)$).*)?$',
+        message: `${NODE_AND_BUN_MESSAGE}単体テストはbun:testとbun:sqliteだけを読み込めます。`,
       },
     ]),
   },

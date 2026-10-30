@@ -33,7 +33,7 @@
   - _Boundary: MarkdownTextSchema_
   - _Requirements: 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [ ] 2.3 (P) 検索語の正規化・検索式・索引用テキストの正規化を作る
+- [x] 2.3 (P) 検索語の正規化・検索式・索引用テキストの正規化を作る
   - 先に、NFKC正規化(全角英数字・半角カナ・全角空白)、空白での分割と空の語の除去、二重引用符の重ねによるエスケープ、各語の前方一致の指定とAND結合、語が無い場合に検索式を作らないこと、演算子・列の指定・記号だけの語が引用符の中に入ること、索引用テキストの空白の畳み込みを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、作った検索式をbun:sqliteのFTS5(unicode61・`remove_diacritics 2`)の`MATCH`に渡しても構文の誤りにならない
   - _Boundary: SearchTerms_
@@ -351,3 +351,4 @@
 - 1.1: common-libを配置先に加えたことで、ルートの`check-test-names.unit.test.ts`の2件が4.1・4.2まで失敗する。4.1ではapiに`bunfig.unit.toml`を新設して`test:unit`をそちらへ切り替え、4アプリの`test:unit`と`bunfig.unit.toml`のカバレッジの除外に`common-lib/**`を加える(設計のModified Filesに無い)
 - 1.2: 配置先(コピーまたはbind mount)がある状態では、利用側4アプリの静的解析が配置先の`common-lib/eslint.config.ts`を読んで失敗する。4.1・4.2で4アプリの`eslint.config.ts`の`ignores`に`common-lib/`を加えるまでルートの`bun run check`は赤い
 - 1.2: common-libの読み込みの境界の単体テストは`Bun.Transpiler.scanImports`で走査し、型だけの読み込みは修飾子を外してから走査する。静的解析は`consistent-type-imports`で型の位置の`import()`を禁止する
+- 2.3: FTS5の検索式を確かめるため、common-libの単体テストだけ`bun:sqlite`も読み込めるようにした(設計の190・623・624行は`bun:test`だけと書いており相違)。空白の判定は`\p{White_Space}`で行い(`\s`・`trim`はU+FEFFを含み、NELを含まない)、強調表示(2.4)の語の区切りもこれにそろえる

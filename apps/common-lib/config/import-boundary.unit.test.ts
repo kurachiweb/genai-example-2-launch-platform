@@ -15,7 +15,8 @@ const RUNTIME_PACKAGES = [
   'zod',
 ] as const;
 
-const UNIT_TEST_ONLY_MODULES = ['bun:test'] as const;
+// bun:sqliteは全文検索の検索式がFTS5の構文として成立することを単体テストで確かめるために使う
+const UNIT_TEST_ONLY_MODULES = ['bun:test', 'bun:sqlite'] as const;
 
 const UNIT_TEST_FILE_PATTERN = /\.unit\.test\.ts$/;
 
@@ -158,6 +159,8 @@ describe('共用部品の読み込みの境界', () => {
     ],
     ['markdown/sample.ts', "export * from '../../../config/test-patterns.ts';"],
     ['text/graphemes.ts', "import { describe } from 'bun:test';"],
+    ['search/search-terms.ts', "import { Database } from 'bun:sqlite';"],
+    ['search/sample.unit.test.ts', "import { serve } from 'bun';"],
   ])('%sの「%s」を許可外の読み込みとして検出する', (path, source) => {
     expect(findImportViolations(path, source)).toHaveLength(1);
   });
@@ -173,6 +176,10 @@ describe('共用部品の読み込みの境界', () => {
     ],
     ['markdown/sample.ts', "export * from './plugins/heading-ids.ts';"],
     ['text/graphemes.unit.test.ts', "import { describe } from 'bun:test';"],
+    [
+      'search/search-terms.unit.test.ts',
+      "import { Database } from 'bun:sqlite';",
+    ],
     ['markdown/sample.ts', 'const sample = "import { Hono } from \'hono\'";'],
     ['markdown/sample.ts', "export type LinkRelToken = 'a' | 'b';"],
     ['markdown/sample.ts', 'export type Foo<T> = readonly T[];'],
