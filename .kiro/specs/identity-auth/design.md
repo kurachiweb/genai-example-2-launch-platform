@@ -1619,7 +1619,7 @@ export declare function loginThrottleObjectName(
 - TOTP: `otpauth`の`Secret({ size: 20 })`・`TOTP({ issuer, label, algorithm: 'SHA1', digits: 6, period: 30 })`。照合は`validate({ token, timestamp, window: 1 })`の差から時間窓の番号`TOTP.counter({ period: 30, timestamp }) + delta`を返す。ラベルは`@<ハンドル>`とし、メールアドレスを含めない。
 - 秘密鍵の暗号化: 鍵は`HASH_PEPPER`からHKDF-SHA-256(情報の文字列`totp-secret-v1`)で導出したAES-256-GCMの鍵。IVは12バイトの乱数、追加認証データは`context`(利用者のID)。D1の内容だけでは復元できない(13.10)。
 - 乱数: `crypto.getRandomValues`で、文字の選択は棄却法で偏りを無くす。トークンは32バイトのbase64url(43文字、`SESSION_TOKEN_PATTERN`と同じ形)。
-- 通知: `@sentry/cloudflare`の`captureMessage`。`pwned-password-check-unavailable`・`disposable-email-check-unavailable`・`login-throttle-ip-missing`は`warning`、`lifecycle-events-redispatched`(送り直し3回目以降を含む場合)・`purge-overdue`・`lifecycle-publish-failed`は`error`。fingerprintは`['identity', <種類>]`。メールアドレス・IP・トークンを含めない。
+- 通知: `@sentry/cloudflare`の`captureEvent`(定型の文言を`logentry.message`に置く。`infra/004`の「同じ文言を繰り返し送る通知」)。`pwned-password-check-unavailable`・`disposable-email-check-unavailable`・`login-throttle-ip-missing`は`warning`、`lifecycle-events-redispatched`(送り直し3回目以降を含む場合)・`purge-overdue`・`lifecycle-publish-failed`は`error`。fingerprintは`['identity', <種類>]`。メールアドレス・IP・トークンを含めない。
 
 ### api/application/identity
 
