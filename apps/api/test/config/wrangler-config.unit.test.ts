@@ -27,6 +27,10 @@ const effectiveConfigSchema = z.object({
   main: z.string().optional(),
   compatibility_date: z.string().optional(),
   compatibility_flags: z.array(z.string()),
+  workers_dev: z.boolean().optional(),
+  preview_urls: z.boolean().optional(),
+  route: z.unknown().optional(),
+  routes: z.array(z.unknown()).optional(),
   cache: z.object({ enabled: z.boolean() }).optional(),
   observability: z
     .object({
@@ -56,6 +60,7 @@ const effectiveConfigSchema = z.object({
       binding: z.string(),
       bucket_name: z.string().optional(),
       preview_bucket_name: z.string().optional(),
+      jurisdiction: z.string().optional(),
     }),
   ),
   queues: z.object({
@@ -114,6 +119,7 @@ interface ExpectedEnvironment {
   readonly workerNameSuffix: string;
   readonly resourceSuffix: string;
   readonly databaseId: string;
+  readonly r2Jurisdiction: string | undefined;
   readonly rateLimitNamespaceIds: Readonly<Record<AppName, string>>;
   readonly logLevel: string;
   readonly sentryEnvironment: string;
@@ -130,6 +136,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     workerNameSuffix: '',
     resourceSuffix: 'dev',
     databaseId: '00000000-0000-4000-8000-000000000001',
+    r2Jurisdiction: undefined,
     rateLimitNamespaceIds: { api: '1001', event: '1002' },
     logLevel: 'debug',
     sentryEnvironment: 'local',
@@ -144,6 +151,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     workerNameSuffix: '-staging',
     resourceSuffix: 'staging',
     databaseId: '00000000-0000-0000-0000-000000000000',
+    r2Jurisdiction: 'us',
     rateLimitNamespaceIds: { api: '2001', event: '2002' },
     logLevel: 'info',
     sentryEnvironment: 'staging',
@@ -159,6 +167,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     workerNameSuffix: '-prod',
     resourceSuffix: 'prod',
     databaseId: '00000000-0000-0000-0000-000000000000',
+    r2Jurisdiction: 'us',
     rateLimitNamespaceIds: { api: '3001', event: '3002' },
     logLevel: 'info',
     sentryEnvironment: 'prod',
@@ -278,6 +287,23 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
         (candidate) => candidate.binding === bucket.binding,
       );
       expect(counterpart?.preview_bucket_name).toBe(bucket.preview_bucket_name);
+    }
+  });
+
+  test('R2のバインディングの管轄が、両アプリでstaging・prodは米国、ローカルは指定なしである', () => {
+    for (const config of [api, event]) {
+      expect(config.r2_buckets.map((bucket) => bucket.jurisdiction)).toEqual(
+        R2_BINDINGS.map(() => env.r2Jurisdiction),
+      );
+    }
+  });
+
+  test('両アプリが既定の公開サブドメインとプレビューURLを無効にし、ホスト名を設定で割り当てない', () => {
+    for (const config of [api, event]) {
+      expect(config.workers_dev).toBe(false);
+      expect(config.preview_urls).toBe(false);
+      expect(config.route).toBeUndefined();
+      expect(config.routes ?? []).toEqual([]);
     }
   });
 

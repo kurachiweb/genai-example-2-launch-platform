@@ -193,7 +193,7 @@
   - _Requirements: 9.1, 9.4, 9.5_
 
 - [ ] 7. 上流の設定とE2Eへの反映(結合)
-- [ ] 7.1 4アプリのWrangler設定へ、R2の管轄と既定の公開URLの無効化を反映する
+- [x] 7.1 4アプリのWrangler設定へ、R2の管轄と既定の公開URLの無効化を反映する
   - 4アプリの最上位に既定の公開サブドメインとプレビューURLの無効を、api・eventのstaging・prodのR2のバインディングに米国の管轄を加える。prodの識別子の仮の値は変えない
   - 上流のWrangler設定の単体テスト・型の鮮度の検査が変わらず成功することを確かめ、食い違えば上流の検査へ管轄と公開URLの期待値を加える
   - 完了状態: 構成検査のコマンドが識別子の仮の値以外の違反0件を返し、上流の単体テストと一括検査が成功する
@@ -315,3 +315,4 @@
 - 6.3: `checks.yml`のsecret-scanは強制pushでbeforeが履歴に無い時も`origin/main`との分岐点から検出し、範囲の両端が同じなら飛ばす(設計に無い。9.1で反映)。qualityの準備に`node`・`tofu`、rehearsalの準備に`node`・`install`・`shared-dirs:place`を補った。TruffleHogはアクションv3.99.2とイメージ`3.99.2`(タグ固定。`version: '3.99.2@sha256:<digest>'`でダイジェストまで固定する強化を9.1で検討)、checkout v7.0.1、upload-artifact v7.0.2。どのジョブにも`timeout-minutes`が無い(9.1で検討)。`/workspace`のシンボリックリンクはe2eだけ。tech-stack.mdのCI/CDの節の起動条件にhotfixブランチへのpushが無い(8.5で直す)。2026-10-30時点で`audit`(開発者は保留を選択)と`contract-check`(7.1まで)によりqualityが失敗するため、`checks / ci-gate`は成功しない。ランナーでの実行(localhostと127.0.0.1、rehearseのdry-run等)は最初のPRのCIで確かめる。
 - 6.4(開発者の決定 2026-10-30): `delivery.yml`の最上位に`concurrency: delivery-${{ github.ref_name }}`(`cancel-in-progress: false`)を置き、同じブランチの検査とデプロイを到着順に直列化する(古いコミットが後からデプロイされ、古いIaCで資源が消えるのを防ぐ)。`deploy.yml`は`preflight`→`infisical-login`(`id`無し)の順にし、Chromiumの導入は`if: inputs.environment == 'staging'`。design.md・research.mdへ反映済み。トレーサビリティの7.8の行に`delivery.yml`の直列化を足すかは9.1で判断する。入れ子の`concurrency`・OIDCのクレーム・手順の`if`の評価は最初のstagingのデプロイで確かめる。
 - 6.5: `release-pr.yml`はBunだけを導入して`scripts/delivery/cli.ts`を実行する(依存パッケージの導入は不要。`typescript`を読むのは`layering.unit.test.ts`だけ)。`gh`は`persist-credentials: false`でも残る`origin`のURLからリポジトリを解決する(`GH_REPO`の明示と、ジョブに`if: github.ref == 'refs/heads/main'`を付ける強化は9.1で検討)。CODEOWNERSは`* @kurachiweb`(GitHubの個人ユーザー)。`release-pr.yml`・`CODEOWNERS`・`delivery.yml`・`pull-request.yml`の存在はW1〜W10で検査されないため7.3で確かめる。
+- 7.1: 4アプリの最上位に`workers_dev: false`・`preview_urls: false`、api・eventのstaging・prodのR2の全バインディングに`jurisdiction: "us"`を加えた(ローカルには付けない)。上流のテスト(`apps/api`のテストがapi・eventの両方、`apps/{client,admin}`)に管轄と公開URLの期待値を加えて固定した。`contract-check`は違反0件。Wrangler 4.124.0はデプロイ先の無いWorker(client・admin)を「No targets deployed」のログだけでデプロイする(失敗しない)ことを配布物で確認。`project-values.md`にR2の管轄の行と注記を加えたため、8.5で管轄(D1・Queues)を足す時は表の行をまとめる。

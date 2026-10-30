@@ -27,6 +27,10 @@ const effectiveConfigSchema = z.object({
   main: z.string().optional(),
   compatibility_date: z.string().optional(),
   compatibility_flags: z.array(z.string()),
+  workers_dev: z.boolean().optional(),
+  preview_urls: z.boolean().optional(),
+  route: z.unknown().optional(),
+  routes: z.array(z.unknown()).optional(),
   cache: z.object({ enabled: z.boolean() }).optional(),
   observability: z
     .object({
@@ -227,6 +231,13 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     expect(config.observability?.logs?.destinations ?? []).toEqual([]);
     expect(config.logpush ?? false).toBe(false);
     expect(config.tail_consumers ?? []).toEqual([]);
+  });
+
+  test('既定の公開サブドメインとプレビューURLを無効にし、ホスト名を設定で割り当てない', () => {
+    expect(config.workers_dev).toBe(false);
+    expect(config.preview_urls).toBe(false);
+    expect(config.route).toBeUndefined();
+    expect(config.routes ?? []).toEqual([]);
   });
 
   test('Workerの前段のキャッシュを無効にする', () => {

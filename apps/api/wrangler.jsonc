@@ -3,6 +3,8 @@
   "name": "genai-example-2-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-04",
+  "workers_dev": false,
+  "preview_urls": false,
   "cache": { "enabled": false },
   "observability": {
     "enabled": true,
@@ -68,14 +70,17 @@
         {
           "binding": "IMAGES_BUCKET",
           "bucket_name": "genai-example-2-images-staging",
+          "jurisdiction": "us",
         },
         {
           "binding": "FILES_BUCKET",
           "bucket_name": "genai-example-2-files-staging",
+          "jurisdiction": "us",
         },
         {
           "binding": "QUARANTINE_BUCKET",
           "bucket_name": "genai-example-2-quarantine-staging",
+          "jurisdiction": "us",
         },
       ],
       "queues": {
@@ -121,14 +126,17 @@
         {
           "binding": "IMAGES_BUCKET",
           "bucket_name": "genai-example-2-images-prod",
+          "jurisdiction": "us",
         },
         {
           "binding": "FILES_BUCKET",
           "bucket_name": "genai-example-2-files-prod",
+          "jurisdiction": "us",
         },
         {
           "binding": "QUARANTINE_BUCKET",
           "bucket_name": "genai-example-2-quarantine-prod",
+          "jurisdiction": "us",
         },
       ],
       "queues": {

@@ -195,6 +195,7 @@ Playwrightを更新するときに同期すべき4箇所(「[同期すべき4箇
 | D1の`database_name`                                   | `genai-example-2-dev`                                                                 | `genai-example-2-staging`                                                             | `genai-example-2-prod`                                                                |
 | D1の`database_id`                                     | `00000000-0000-4000-8000-000000000001`                                                | `00000000-0000-0000-0000-000000000000`(仮の値)                                        | `00000000-0000-0000-0000-000000000000`(仮の値)                                        |
 | R2のバケット名(画像・ファイル・隔離)                  | `genai-example-2-{images,files,quarantine}-dev`                                       | `genai-example-2-{images,files,quarantine}-staging`                                   | `genai-example-2-{images,files,quarantine}-prod`                                      |
+| R2のバインディングの管轄(`jurisdiction`)              | なし                                                                                  | `us`                                                                                  | `us`                                                                                  |
 | 本体Queueの名前                                       | `genai-example-2-jobs-dev`                                                            | `genai-example-2-jobs-staging`                                                        | `genai-example-2-jobs-prod`                                                           |
 | デッドレターQueueの名前                               | `genai-example-2-jobs-dlq-dev`                                                        | `genai-example-2-jobs-dlq-staging`                                                    | `genai-example-2-jobs-dlq-prod`                                                       |
 | `IP_RATE_LIMITER`の`namespace_id`                     | `apps/api`は`1001`・`apps/event`は`1002`・`apps/client`は`1003`・`apps/admin`は`1004` | `apps/api`は`2001`・`apps/event`は`2002`・`apps/client`は`2003`・`apps/admin`は`2004` | `apps/api`は`3001`・`apps/event`は`3002`・`apps/client`は`3003`・`apps/admin`は`3004` |
@@ -204,6 +205,9 @@ Playwrightを更新するときに同期すべき4箇所(「[同期すべき4箇
 
 - D1の`database_name`・`database_id`とR2のバケット名は、環境ごとに両アプリで同じ値にする(「[ローカル状態の保存先と共有するアプリ](#ローカル状態の保存先と共有するアプリ)」)。
 - デプロイ先の`database_id`は仮の値である。OpenTofuで作成したD1の値に、両アプリ同時に置き換える。
+- デプロイ先のR2のバインディングには、OpenTofuで作成するバケットと同じ米国の管轄を指定する。ローカルのR2には管轄を指定しない。
+- 4アプリのWrangler設定のルートに`workers_dev: false`・`preview_urls: false`を書き、`env.staging`・`env.prod`へ継承させて既定の公開サブドメインとプレビューURLを無効にする。Workerへのホスト名の割り当ては`route`・`routes`で行わず、OpenTofuで行う。
+- R2の管轄と公開URLの設定は、構成検査(`bun run --cwd /workspace delivery contract-check`)と各アプリの`test/config/wrangler-config.unit.test.ts`(api・eventは`apps/api`のテスト)が確かめる。
 - `namespace_id`は全Worker・全環境で重複させない。4アプリ12個の値が互いに異なることは`apps/admin/test/config/wrangler-config.unit.test.ts`が確かめる。
 - `apps/client`・`apps/admin`の`API`の`service`は、`apps/api`の同じ環境のWorker名である。`services`・`ratelimits`はWrangler設定の`env`へ継承されないため、ルートと`env.staging`・`env.prod`のそれぞれに書く。
 - `IP_RATE_LIMITER`の上限は、全Worker・全環境で送信元IPアドレスごとに10秒あたり100回(`simple: { limit: 100, period: 10 }`)である。
