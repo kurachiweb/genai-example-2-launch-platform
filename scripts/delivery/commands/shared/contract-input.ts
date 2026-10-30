@@ -1,6 +1,7 @@
 import type { RepoFiles } from '../../adapters/repo-files.ts';
 import {
   type DeployEnvironment,
+  type ResourceCatalog,
   WORKER_KEYS,
   type WorkerKey,
 } from '../../catalog/resource-catalog.ts';
@@ -55,6 +56,21 @@ const workersOf = (
     WORKER_KEYS.map((key, index) => [key, configs[index]]),
   ) as Record<WorkerKey, WorkerConfigFile>;
 
+export async function loadWorkerConfigs(
+  files: RepoFiles,
+  env: DeployEnvironment,
+  catalog: ResourceCatalog,
+): Promise<Loaded<Readonly<Record<WorkerKey, WorkerConfigFile>>>> {
+  const workers = allLoaded(
+    await Promise.all(
+      WORKER_KEYS.map((key) =>
+        loadWorker(files, env, catalog.workers[key].appDir),
+      ),
+    ),
+  );
+  return workers.ok ? loaded(workersOf(workers.value)) : failed(workers.errors);
+}
+
 export async function loadContractInput(
   files: RepoFiles,
   env: DeployEnvironment,
@@ -62,11 +78,7 @@ export async function loadContractInput(
   const catalog = await loadResourceCatalog(files, env);
   if (!catalog.ok) return catalog;
   const [workers, backendFile] = await Promise.all([
-    Promise.all(
-      WORKER_KEYS.map((key) =>
-        loadWorker(files, env, catalog.value.workers[key].appDir),
-      ),
-    ).then(allLoaded),
+    loadWorkerConfigs(files, env, catalog.value),
     loadBackend(files, env),
   ]);
   if (!workers.ok || !backendFile.ok) {
@@ -74,7 +86,7 @@ export async function loadContractInput(
   }
   return loaded({
     catalog: catalog.value,
-    workers: workersOf(workers.value),
+    workers: workers.value,
     backendFile: backendFile.value,
   });
 }

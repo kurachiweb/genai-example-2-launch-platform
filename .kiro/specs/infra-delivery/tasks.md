@@ -116,7 +116,7 @@
   - _Boundary: TofuRunner, Preflight_
   - _Requirements: 3.2, 3.4, 4.7, 7.3, 7.12, 8.3_
 
-- [ ] 5.2 資源の識別子とWrangler設定の照合のコマンドを作る
+- [x] 5.2 資源の識別子とWrangler設定の照合のコマンドを作る
   - 先に、OpenTofuの出力の例で、D1の識別子(apiとeventの両方)・Turnstileのサイトキー(clientとadmin)・アクセス解析のトークン(client)の一致、仮の値、食い違い、sensitiveな出力の読み飛ばしを確かめ、食い違いの表にファイル・項目・現在の値・反映すべき値が出て終了コード1になる単体テストを書く
   - OpenTofuの出力の読み出しは、5.1の初期化と`/ci/tofu`の値の受け渡しの手順を使う
   - 完了状態: 単体テストが成功し、表に秘密値が現れない
@@ -305,3 +305,4 @@
 - 4.5: `rehearse --env <env>`はapi・eventを`bun x wrangler deploy --dry-run --env <env> --outdir <RUNNER_TEMP|tmpdir>/rehearsal/<env>/<app>`、client・adminを`CLOUDFLARE_ENV=<env> bun run build`の後に`--env`無しのdry-runで呼ぶ。子はシェルの環境を引き継ぐため、6.3の`rehearsal`ジョブは`infisical-login`を呼ばず、秘密値の`env`を持たず、`permissions`を`contents: read`だけに絞る(呼び出し側が`id-token: write`を与えてもジョブで絞る)。`appDirOf`と「Viteでビルドするのはclient・admin」の知識は`core/e2e-stack-plan.ts`と重複しており、5.3で共通の値へ移す。dry-runはdenyで未実行(開発者の手動確認かCIで確かめる)。
 - 5.1(開発者の決定 2026-10-29): preflightはInfisicalの識別子に加えてCloudflareのアカウントID・ゾーンIDの仮の値でも記入先を示して止める。`tofu apply`は失敗した時だけ標準エラーの診断を表示する(design.md・research.mdへ反映済み)。applyの診断の出力先はdenyで未検証(最初のstagingのデプロイで確かめる)。
 - 5.1: 初期化と`/ci/tofu`の受け渡しは`commands/shared/tofu-session.ts`(`openTofuSession`・`initTofu`・`runTofuStep`)で5.2も使う。構成検査の入力の読み込みは`commands/shared/contract-input.ts`(contract-check・preflightで共用)。plan・applyの`-no-color`、計画と適用の直前に毎回OIDCトークンを取り直すこと、`/ci/tofu`の必須3キー(`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`・`TF_VAR_state_passphrase`)の確認、`INFISICAL_AUTH_METHOD=oidc`、`formatPlanSummary`は設計に無い(9.1で反映)。計画の要約は`no-op`を除くため`import`の取り込みは件数にしか現れない。`<env>.tfplan`は適用後も残る(暗号化・Git管理外)。
+- 5.2: OpenTofu 1.13.2の`tofu output -json <名前>`は値だけを出してsensitiveの印を落とす(sensitiveな値も平文)ため、`reconcile-ids`は`tofu output -json -no-color`(全出力)を取り込み、`sensitive !== false`の出力は値に触れずに飛ばし、`resource_ids`がsensitiveか印無しなら誤りにする(design.mdの`output -json resource_ids`は9.1で改める)。`reconcileResourceIds(outputsJson, configs, environment)`の第3引数、`ResourceIdTarget.field`(設計は`configPath`)、表の整形の共用化(`core/violation.ts`の`formatTextTable`・`formatMarkdownTable`)、`commands/shared/contract-input.ts`の`loadWorkerConfigs`、設計に無いexportも9.1で反映。仮の値は判定せず一致だけで比べるため、実リポジトリでは最初のstagingのデプロイがこの段階で止まる(設計どおり)。暗号化されたリモートのstateへの`tofu output`が`/ci/tofu`の3キーだけで通るかは最初のstagingのデプロイで確かめる。
