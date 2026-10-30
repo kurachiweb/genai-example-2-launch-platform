@@ -1,0 +1,31 @@
+name: release-pr
+
+on:
+  workflow_dispatch:
+    inputs:
+      head:
+        description: prodへ反映するブランチ(mainまたはhotfix/<名前>)
+        type: string
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      # prodとheadの差分のコミットをリモート追跡ブランチの間で数えるため、全ブランチの履歴を取り出す
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-toolchain
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_HEAD: ${{ inputs.head }}
+        run: bun scripts/delivery/cli.ts release-pr
