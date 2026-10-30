@@ -174,7 +174,7 @@
   - _Depends: 5.1, 6.2, 6.3, 6.4_
   - _Requirements: 2.6, 2.7, 2.8, 2.9, 2.11, 2.12, 2.13, 2.14, 3.5, 3.6_
 
-- [ ] 6.6 編集領域がページの最初の読み込みとサーバー側の描画に含まれないことを検査するスクリプトを作る
+- [x] 6.6 編集領域がページの最初の読み込みとサーバー側の描画に含まれないことを検査するスクリプトを作る
   - 入力欄を静的に読み込む検査用の入口を、ViteのAPIでクライアント用とSSR用にビルドし、マニフェストの静的な読み込みをたどった範囲にMilkdown・Vue・ProseMirrorのモジュールが無く、動的な読み込みの先にあることを確かめて終了コードで示す
   - 先に、検査の判定(静的・動的の読み込みの集合の比較)を純粋な関数として切り出し、違反を含むマニフェストの標本で失敗することを確かめる単体テストを書く
   - 完了状態: frontend-libで`bun run check:editor-chunks`が成功し、入口で編集領域を静的にimportするよう書き換えると失敗する
@@ -369,3 +369,4 @@
 - 6.3: 見出しレベル1・画像は全経路で`crepe/forbidden-node-normalizer.ts`が文字列にし、保存は`\# …`・`!\[alt]\(…)`(再保存で1回だけ`(<URL>)`へ変わり、以後は安定)。`insertImageInputRule`は7.22.3で登録されていないため外していない(設計と相違)。ファイルの貼り付け・ドロップは`crepe/file-transfer-guard.ts`(設計に無い)がエディタのviewのハンドラーで止める(Crepeのdrop-indicatorがプラグインより先に挿入するため)。`prosemirror-drop-indicator`は破棄の時に30msのタイマーを消さず、ドラッグの直後30ms以内に入力欄を破棄するとエラートラッキングに1件の誤報が届く(ライブラリの更新時に再確認)。Tabは編集領域から抜け、リストの階層と表のセルの移動は`Mod-]`・`Mod-[`だけになった。6.4・6.5で、この操作方法を入力欄の説明文(`aria-describedby`)か`aria-keyshortcuts`で支援技術へ伝え、macOSのブラウザで`⌘[`・`⌘]`が戻る・進むにならないよう、編集領域の中では常に処理済みとして既定の動作を止める
 - 6.4: ツールバーの項目は`editor-actions.ts`の`kind`(toggle・insert・dialog)で区別し、`aria-pressed`は切り替えの8項目だけ、表は無し、リンクは`aria-haspopup="dialog"`。押下中の箇条書き・番号付きリスト・引用・コードブロックを押すと解除する(`crepe/editor-commands.ts`を変更)。制御器が無い間は`aria-controls`を出さない。リンクのhttp(s)は`URL.canParse`とホストの非空を要求する。6.5への申し送り: (1) macOSの`⌘[`・`⌘]`の既定の動作を編集領域の中で止める(`crepe/editor-features.ts`。ヒントがCommandのキーを案内しているため最優先)、(2) キー操作の説明`EDITOR_KEYBOARD_HINT`を編集領域の`aria-describedby`へ移し、ツールバーとの重複を見直す、(3) 選択時のツールバーの文言(太字・斜体・取り消し線・コード・リンク)を`markdown-messages.ts`の定数にして文言規則003へ載せる
 - 6.5: Chromiumではwindowへの通知で捕捉の段階の聞き手も加えた順に呼ばれるため、設計の`capture: true`は効かない。`preload-recovery.ts`は全ての聞き手の後にマイクロタスクで`defaultPrevented`を確かめ、読み込み関数は通常の聞き手を使う(design.mdのLoadCrepeEditor・System Flows・Modified Filesは古い)。`FormControlProps.labelId`は列挙不可のプロパティで、`{...control}`では渡らない。編集領域の描画の失敗は`EditorLoadBoundary`(TanStack Routerの`CatchBoundary`)の`onFailure`で古い制御器を捨て、`reportUnexpectedError(error, 'render')`で送る。フォームへ渡す値はMilkdownが付ける末尾の改行1つを除く。入力欄を描画するブラウザテストは、Vitestのブラウザテストの設定がTanStack Startのコンパイルを通さず`report-error.ts`がサーバー専用の依存を読み込むため、`start/observability/report-error.ts`を`vi.mock`で差し替える必要がある(下流specが入力欄を使う前に、サーバー専用の依存を持たない送信の入口を切り出すか、共有のブラウザテストの設定で`.server`の分岐を消すかを開発者が判断する)。チャンクの評価時の例外も`EditorLoadError`として送られず、`editor.create()`の拒否では空の枠が残る(観測の改善の余地)
+- 6.6: `check:editor-chunks`は`manifest.json`ではなくRolldownの出力のチャンク情報(`moduleIds`・`imports`・`dynamicImports`)で判定する(manifestにはチャンク内のモジュールの一覧が無く、SSR用にも無いため。設計と相違)。検査用のビルドはTanStack Startのコンパイラを通らないため、ブラウザ向けだけ`*.server.ts`とNodeの組み込みモジュールを外部化する。手動の実行で、ルートの一括検査とCIには組み込んでいない(設計どおり)。`scripts/check-editor-chunks.ts`の実行部分には単体テストが無い。CLAUDE.mdのディレクトリ構成に`apps/frontend-lib/scripts/`が無い(11.3で扱う)

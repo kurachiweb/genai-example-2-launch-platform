@@ -7,6 +7,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests unit.test",
     "test:browser": "vitest run --config vitest.browser.config.ts",
+    "check:editor-chunks": "bun ./scripts/check-editor-chunks.ts",
     "storybook:dev": "storybook dev",
     "storybook:build": "storybook build"
   },
