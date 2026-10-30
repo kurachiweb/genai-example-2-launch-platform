@@ -326,7 +326,7 @@ docs/
 - `apps/event/wrangler.jsonc`・`worker-configuration.d.ts` — `exports`(`default`はキャッシュ無効、`ImageDelivery`は有効)、3環境の`vars`(Supporting References)、staging・prodの`secrets.required`に判定サービスの2つのキーを加える。
 - `apps/event/package.json`・`bun.lock` — `image-size`・`fast-xml-parser`・`wasm-image-optimization`・`aws4fetch`を版固定で加える。
 - `apps/event/vitest.worker.config.ts` — テスト用の変数(画像配信のホスト名・代替の判定・閾値)と`.wasm`の読み込みを加える。
-- `apps/frontend-lib/package.json`・`bun.lock`、`apps/client`・`apps/admin`の`package.json`・`bun.lock` — `react-easy-crop`を版固定で加える。
+- `apps/frontend-lib/package.json`・`bun.lock`、`apps/client`・`apps/admin`の`package.json`・`bun.lock` — `react-easy-crop`を版固定で加える。 client・admin・frontend-libの`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)にも加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)。
 - `apps/frontend-lib/server/env/frontend-env.ts` — `PublicRuntimeConfig`に`imagesOrigin`を加える(frontend-platformの所有。Revalidation Triggers)。
 - `apps/client/src/routes/__root.tsx`・`apps/admin/src/routes/__root.tsx` — `ImagesOriginProvider`で画像配信のオリジンを配る。変更はこの配置だけで、エラーの画面(`errorComponent`の`ErrorPage`が描く`UnexpectedErrorView`)と`contactHref`の扱いはfrontend-platformのままにし、本specは管理者側のルートに失敗の表示(`ErrorState`・`UnexpectedErrorView`)を置かない。管理者側の画面に置かれる共通部品のアップロードの入力欄は、失敗の文言を`contactAvailable`(`ADMIN_PROFILE.contactAvailable`)で選び、問い合わせを促さない(アップロードの部品群)。
 - `apps/client/src/composition/relay-routes.ts`・`apps/admin/src/composition/relay-routes.ts` — `defineRelayRoute`で定義した`UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE`を`RELAY_ROUTES`の完全一致の経路の後に加える。

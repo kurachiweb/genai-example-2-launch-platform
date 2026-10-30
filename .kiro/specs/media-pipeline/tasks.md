@@ -6,6 +6,7 @@
   - `server/**`の許可(M-2)は、content-processingの6.1の単体テストの成功と`coding/003`の記述で確かめる。日次タイムラインの表を除く前提が無ければ止めて報告する。日次タイムラインの表が無いことを理由には止めず、タスク9.2で作る
   - 先に、`image-size`と`fast-xml-parser`をimportして小さな画像の寸法とXMLの検証を行うBunの単体テストと、`wasm-image-optimization/workerd`で小さなPNGを縮小するイベントサーバーのWorkers統合テストを書き、失敗を確かめる
   - api・eventに`image-size` 2.0.4・`fast-xml-parser` 5.11.2、eventに`wasm-image-optimization` 2.0.11・`aws4fetch` 1.0.20、client・admin・frontend-libに`react-easy-crop` 6.2.3を、完全に固定した版で導入する。eventのテスト設定が`.wasm`をモジュールとして読めない場合は、読み込みの規則を加える
+  - client・admin・frontend-libの`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)に`react-easy-crop`を加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)
   - 同じ変更で、tech-stack.mdの画像処理に`image-size`を加えて各パッケージの役割を更新し、依存パッケージの版の一覧に、api・eventでそろえる2つとclient・admin・frontend-libでそろえる`react-easy-crop`を加える
   - 完了状態: 2つのテストが成功し、ロックファイルの版が設計の表と一致し、tech-stack.mdと版の一覧に新しいパッケージが載っている
   - _Requirements: 6.2, 17.6_
