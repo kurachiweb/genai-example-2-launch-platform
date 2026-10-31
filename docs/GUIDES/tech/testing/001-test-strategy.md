@@ -465,6 +465,18 @@ bun run test:all:worker --coverage
   - 他の種別のテストで検査するソースを含めると、そのソースは0%として数えられ、閾値で失敗する(例: 単体テストで検査するユーティリティを、ブラウザテストの`coverage.include`に含める)。
   - `coverage.include`をディレクトリで指定する場合(例: `components/**/*.{ts,tsx}`)、その下の`.ts`のファイルは、単体テストで網羅していてもブラウザテストの分母に入り、ブラウザテストが通らない分岐で閾値を下回り得る。ブラウザを要さない純粋な処理(値やエラーの組み立てなど)は、部品の近くでもブラウザテストの対象外のディレクトリ(`utilities/`など)に置き、単体テストで検査する。部品は描画に要る値(Reactの状態や実行時の部品の値)をその処理へ引数で渡す。ただし、`utilities/`の依存の制約で読み込めない実行時の値(UIやフォームのライブラリの関数など)を使う処理と、ページの中で部品どうしが共有する状態の記録は部品の側に置き、部品のブラウザテストでもその分岐を通して閾値を満たす。
   - 検査担当でないアプリは、共有ディレクトリの配置先を`coverage.include`に含めない。
+  - Workers統合テストの`coverage.include`をディレクトリで指定し、その中にWorkersの実行環境を要さず単体テストで検査するソース(登録の検証など)がある場合は、そのソースを単体テストのカバレッジで数え、Workers統合テストの分母から外す。`config/vitest/unit-tested-sources.ts`の`listUnitTestedSources(<アプリのディレクトリ>, <ディレクトリ>)`が、同名の`*.unit.test.ts`を隣に持つソースを列挙するため、その結果をプリセットの`coverage.exclude`に続けて`coverage.exclude`へ加える。外したソースの網羅は、単体テストだけで閾値を満たす。
+
+```typescript
+coverage: {
+  ...workerTestPreset.coverage,
+  include: ['src/infrastructure/**/*.ts', '<共有ディレクトリの配置先>/workers/**/*.ts'],
+  exclude: [
+    ...workerTestPreset.coverage.exclude,
+    ...listUnitTestedSources(import.meta.dirname, '<共有ディレクトリの配置先>/workers'),
+  ],
+},
+```
 
 ### 対象0件と計測の関係
 

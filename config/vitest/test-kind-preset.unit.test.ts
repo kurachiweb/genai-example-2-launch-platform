@@ -206,6 +206,7 @@ describe('config/vitest配下のモジュール', () => {
       'browser.ts',
       'read-nested-d1-migrations.ts',
       'test-kind-preset.ts',
+      'unit-tested-sources.ts',
       'worker.ts',
     ]);
   });

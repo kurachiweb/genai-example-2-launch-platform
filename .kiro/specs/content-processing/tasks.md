@@ -235,7 +235,7 @@
   - _Boundary: SearchTargetRegistry_
   - _Requirements: 14.1, 14.4, 14.5_
 
-- [ ] 8.6 索引の保存を作り、D1上で条件付きの書き込みと検索のSQL断片を確かめる
+- [x] 8.6 索引の保存を作り、D1上で条件付きの書き込みと検索のSQL断片を確かめる
   - Workers統合テスト専用の検索対象(元データのテーブル・索引文書のテーブル・全文検索の索引を生成したSQLで作る)を用意する
   - 先に、D1上で、新規の書き込み、新しい版の更新、古い版・削除済み・対象外の元データの書き込みが無視されること、前回のキーワードを保つ更新、削除と全文検索の索引の連動、再抽出の候補(縮退と1時間以上の更新待ち、上限件数)、検索のSQL断片の結果と並び順を確かめるWorkers統合テストを書く
   - 完了状態: Workers統合テストが成功し、D1のFTS5で`prefix`と列の重みが使えることを確かめた記録が残る(使えなければ設計どおり`prefix`を外す)
@@ -376,3 +376,4 @@
 - 8.3: 200の応答の`languageSupported`はproto3で`false`が省かれ`true`は必ず出るため、項目が無ければ非対応言語にする(設計1445行の「`false`でなければ`extracted`」と相違)。9.4の疎通確認で、対応言語の実際の応答に`languageSupported: true`が付くことを確かめる(付かなければ全件が縮退する)。設計の表に無い状態コード(200以外の2xx・3xx・405・408・409・413・499など)はその状態コードの`configuration-error`。どちらも11.1の`external/002`に書く
 - 8.4: `markPending`はハッシュを残すため、編集前の状態(extracted・unsupported)が失われる。`planRefresh`は「pendingで同じハッシュ」を`reuse-keywords`(状態`extracted`)にし、非対応言語の文書は状態がextractedへ付け替わる(キーワードの列と再抽出しないことは変わらない。状態を正確に保つには`StoredIndexState`に前回の状態を足すか、`markPending`で`unsupported`の時だけハッシュを消す設計の変更が要る。開発者の判断)。9.2への申し送り: `store-empty`・`reuse-keywords`の書き込み(状態・ハッシュ・キーワードの列・`statusChangedAt`)は設計に無く9.2で決める(推奨: store-emptyは空のキーワード・`extracted`・ハッシュ、reuse-keywordsは`keep`・文書のハッシュ・`plan.status`・`now`)。上限未満の一時的な失敗は`statusChangedAt`を現在時刻に更新する
 - 8.5: 登録は設計に加えて、2つの検索対象が同じ索引文書のテーブルを使うことを拒否し、集約点のテストで各対象の`index`が`SEARCH_INDEXES`にあること(参照の一致)を確かめる。元テキストの列の項目名はDBの列名(`short_description`)と一致させる(11.1の`db/004`に明記)。状態の値の一致は`workers/search/search-target-definition.ts`の`SEARCH_KEYWORD_STATUSES`の型で保証する
+- 8.6: D1のFTS5で`prefix='2 3'`・bm25の列の重み・external contentのトリガーの同期・`integrity-check`が使えることを確かめた(`docs/GUIDES/tech/db/002`に記録。research.md 348行の「未確認」は古い)。`D1SearchIndexRepository`は設計どおり`@injectable`のクラス(既存の`workers/email`のリポジトリはファクトリ関数)。テキスト列の値の欠落は`TypeError`、同時刻の再抽出の候補は`id`で並べる。Workers統合テスト専用の検索対象`workers/search/testing/fixture-search-target.ts`の`CREATE TABLE`は手書き(全文検索の索引だけ生成したSQL)。8.5以降、`lib/workers`の単体テストだけで覆うファイルがapiのWorkers統合テストのカバレッジで閾値を割っていたため、`config/vitest/unit-tested-sources.ts`の`listUnitTestedSources`で隣に`*.unit.test.ts`を持つソースをWorkersのカバレッジから除く(testing/001に追記)

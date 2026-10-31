@@ -72,6 +72,21 @@ await db
   });
 ```
 
+#### 版と元データの存在を条件にした追加か更新
+
+非同期処理が元データから作る派生の行(全文検索の索引文書など)は、古い版の処理が新しい版の後に届いたり、処理の途中で元データが削除されたりする。版の比較と元データの存在の確認を、追加か更新の1文の条件にする。
+
+```sql
+INSERT INTO article_search_documents (source_id, source_version, title)
+SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM articles WHERE id = ? AND deleted_at IS NULL)
+ON CONFLICT(source_id) DO UPDATE SET source_version = excluded.source_version, title = excluded.title
+WHERE excluded.source_version >= article_search_documents.source_version;
+```
+
+- 元データが無い場合は`SELECT`が行を返さず、何も追加しない。既にある行の版より古い書き込みは`DO UPDATE`の`WHERE`で更新しない。同じ版は上書きし、同じ処理が重複して届いても同じ結果にする。
+- `INSERT … SELECT`に`ON CONFLICT`を続けるときは、`SELECT`に`WHERE`句を必ず付ける。`WHERE`句が無いと、SQLiteが`ON`を結合の条件と解釈して構文の誤りになる(SQLiteの「[UPSERT](https://sqlite.org/lang_upsert.html)」の「Parsing Ambiguity」)。
+- 書き込んだか無視したかは、`db.run()`の戻り値の`meta.changes`(0なら無視)で判定する。トリガーが書き込んだ行の数は`meta.changes`に含まれない。
+
 ### バインド変数の上限
 
 D1では1クエリあたりのバインド変数が100個までである。次の値の数がこの上限に収まるよう、クエリを分割する。
@@ -139,7 +154,7 @@ CREATE TRIGGER article_search_documents_fts_au AFTER UPDATE OF title, body, keyw
 END;
 ```
 
-- `tokenize='unicode61 remove_diacritics 2'`は、大文字小文字と発音区別符号(`é`と`e`など)の違いを無視して照合させる。`prefix`は前方一致の検索語(`"ab"*`)を速くする、指定した文字数の前方一致の索引を加える。
+- `tokenize='unicode61 remove_diacritics 2'`は、大文字小文字と発音区別符号(`é`と`e`など)の違いを無視して照合させる。`prefix`は前方一致の検索語(`"ab"*`)を速くする、指定した文字数の前方一致の索引を加える。D1(Workers統合テストのローカルのD1)は、`prefix`の指定・`bm25()`の列ごとの重み・external contentとトリガーによる同期・`integrity-check`を、SQLiteと同じに扱う。前方一致の索引の長さを超える前方一致の検索語も一致する。
 - 更新のトリガーは`AFTER UPDATE OF <索引する列>`にし、索引する列を`SET`に含む更新でだけ動かす。索引の対象でない状態の列だけを更新するたびに索引を書き換えないためである。
 - 元のテーブルへの書き込みに、`REPLACE`(`INSERT OR REPLACE`・`REPLACE INTO`・`ON CONFLICT REPLACE`の制約)と、`content_rowid`の列(`id`)の更新を使わない。`REPLACE`が消す行では削除のトリガーが動かず、`id`の更新では更新のトリガーが動かないため、索引が元のテーブルと食い違う。一意の列での追加か更新は`INSERT ... ON CONFLICT(<一意の列>) DO UPDATE`で行う。
 - `content_rowid`を省略すると、元のテーブルの`rowid`で索引と行を対応させる。`INTEGER PRIMARY KEY`を明示しないテーブルの`rowid`は`VACUUM`で変わり得る(SQLiteの「[VACUUM](https://sqlite.org/lang_vacuum.html)」)ため、元のテーブルの`INTEGER PRIMARY KEY`のカラムを`content_rowid`に指定する。元のテーブル(全文検索用のテーブル)の主キーを連番にする規約は「[全文検索用のテーブルの連番](003-schema-conventions.md#全文検索用のテーブルの連番)」に従う。

@@ -5,6 +5,7 @@ import { configDefaults, defineConfig } from 'vitest/config';
 
 import { workerTestPreset } from '../../config/vitest/worker.ts';
 import { readNestedD1Migrations } from '../../config/vitest/read-nested-d1-migrations.ts';
+import { listUnitTestedSources } from '../../config/vitest/unit-tested-sources.ts';
 
 // Cloudflare Turnstileが公開している、常に成功を返すテスト用のシークレット
 const TURNSTILE_ALWAYS_PASSES_SECRET_KEY =
@@ -43,6 +44,11 @@ export default defineConfig({
         'src/index.ts',
         'lib/workers/**/*.ts',
         'db/client.ts',
+      ],
+      // 共有ディレクトリの中で単体テストが検査するソースは、単体テストのカバレッジで数えるため分母から外す
+      exclude: [
+        ...workerTestPreset.coverage.exclude,
+        ...listUnitTestedSources(import.meta.dirname, 'lib/workers'),
       ],
     },
   },
