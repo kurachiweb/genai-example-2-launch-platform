@@ -5,7 +5,7 @@
   - 前提: dev-tooling・backend-platform・api-gateway・frontend-platformの全タスクが完了していること(4アプリとfrontend-libの骨格・登録箇所・静的解析の設定がある。roadmapの依存)。無ければ止めて報告する
   - email-deliveryの実装(4:21のcron式`21 12 * * *`とジョブ`email-delivery.cleanup`)はroadmapの依存ではないため、有無を確かめ、無ければ開発者へ報告して作業を続ける(止めない)。cron式が無ければタスク10で加える
   - 下流: media-pipelineは本タスクと1.2・4.1・4.2・6.1、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成の完了を、identity-authはそれに加えて2.1の完了を前提にする(設計の「本specのタスクを前提にする下流spec」)。日次タイムラインの表は、下流specが先に4:21のジョブを足す場合はそのspecが作る
-  - 先に、配置定義の単体テストの期待値(アプリの一覧の先頭に共用部品、共有ディレクトリが5つ、共用部品の4つの配置先、検査担当`self`)を書き換え、失敗を確かめる
+  - 先に、配置定義の単体テストの期待値(アプリの一覧の先頭に共用部品、共有ディレクトリが4つ、共用部品の4つの配置先、検査担当`self`)を書き換え、失敗を確かめる
   - アプリの名前・アプリの一覧・共有ディレクトリの一覧に共用部品を加え、開発コンテナの定義に4つのbind mountと、共用部品の位置だけにマウントするnode_modulesの名前付きボリュームを加え、4つの配置先をGit管理外にする
   - 開発コンテナの再作成(ホストでの`docker compose up -d`)は開発者へ依頼する手作業として報告に残す
   - 完了状態: 配置定義の単体テスト(compose.yamlとの一致・配置先がGit管理外・配置先が利用側アプリの配下)が成功し、`bun run shared-dirs:verify`の表に共用部品の4つの配置先が現れる
@@ -387,3 +387,6 @@
 - 11.2: `frontend/008`・`security/004`で新しいプレースホルダー`<共用部品の配置先>`(値は`common-lib`)を使う。既存の`coding/001`264行は`<共用部品>`と書いており表記が2通りある。11.3でproject-values.mdへ対応付け、表記をそろえる。`frontend/005`のマークダウンの節は008を正にして要約とリンクにした
 - 11.4: 日次タイムラインの「日次バッチ(4:21)の内容」にジョブの名前と順序の表(順序・ジョブの名前・処理・対応要件)を作った(900・950)。product-launchが4:21に1000番台の削除のジョブを足す場合、「検索のキーワードの再抽出は削除の処理より後に置き」の文が成り立たなくなるため確かめる。委託先の一覧の「Natural Language AI」(SW-024)と国外移転の項の見出し「Natural Language API」(16.9)の表記が異なる
 - 12: 一括検査と単体・ブラウザ・Workers統合テストの一括実行(CIと同じカバレッジ付き)と`check:editor-chunks`が成功し、本specで追加したソースのうち計測されるものは全て行・関数80%以上(型だけのファイル4件と設定・再エクスポートの2件は計測の対象外)。開発コンテナの再作成の後は`apps/common-lib`で`bun install`し直す(`docs/onboardings/README.md`)
+- 最終検証: 既知の制限として、`FormField`の`Label`の`htmlFor`は入力欄の編集領域を指さない(`contenteditable`はラベル付け可能な要素ではない)ため、ラベルを押しても編集領域へフォーカスが移らない(支援技術への名前は`labelId`の`aria-labelledby`で付く)。ラベルの押下で`MarkdownEditor`の`focus`を呼ぶかは開発者の判断
+- 最終検証: common-libのZodは、`validation/**`の外でも共用部品の静的解析と読み込みの境界の単体テストで許可されている。下流specが`common-lib/media`などの`validation/**`以外でZodを使い、frontend-libの`components/**`・`server/**`から読み込むと、frontend-libの位置では共用部品の`node_modules`のZodに解決され、Zodの実体が2つになり得る(frontend-libの静的解析が禁止するのは`common-lib/validation/**`だけ)
+- 最終検証: ロガーのカテゴリーの2番目は、層ではなくモジュールの`'search'`にした(`['event','search','index']`・`[<アプリ名>,'search','refresh']`・`['api','search','reextraction']`)。`infra/004`の`[<アプリ名>, <層>, <モジュール>]`は2番目を層と読めるため、2番目に横断のモジュールを置いてよいと規則に書き足すか、カテゴリーを層の形へ改めるかは開発者の判断(`infra/004`のカテゴリーの表には`[<アプリ名>, 'search', 'refresh']`の行がある)

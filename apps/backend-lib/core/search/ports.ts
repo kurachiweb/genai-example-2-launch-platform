@@ -47,7 +47,7 @@ export interface SearchTargetCatalog {
 }
 
 export interface SearchIndexRefreshRequester {
-  // ドメインの書き込みを索引の更新の失敗で止めないため、送信の失敗は記録して例外にしない
+  // 未登録の検索対象と契約に合わない本文は要求し直しても失敗する呼び出し側の誤りのため例外にする。それ以外の送信の失敗は、ドメインの書き込みを索引の更新の失敗で止めないため記録して例外にしない
   requestRefresh(target: string, sourceId: string): Promise<void>;
 }
 
