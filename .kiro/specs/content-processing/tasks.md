@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 共用部品の配置とプロジェクト
+- [x] 1. 基盤: 共用部品の配置とプロジェクト
 - [x] 1.1 共有ディレクトリの定義に共用部品を加え、開発コンテナとCI相当環境の配置を揃える
   - 前提: dev-tooling・backend-platform・api-gateway・frontend-platformの全タスクが完了していること(4アプリとfrontend-libの骨格・登録箇所・静的解析の設定がある。roadmapの依存)。無ければ止めて報告する
   - email-deliveryの実装(4:21のcron式`21 12 * * *`とジョブ`email-delivery.cleanup`)はroadmapの依存ではないため、有無を確かめ、無ければ開発者へ報告して作業を続ける(止めない)。cron式が無ければタスク10で加える
@@ -19,7 +19,7 @@
   - 完了状態: ルートの一括検査で共用部品が静的解析・型検査・テスト命名の検査に参加して成功し、2つの単体テストが成功し、ロックファイルの版が設計の表と一致する
   - _Requirements: 1.1, 1.3_
 
-- [ ] 2. 共用部品: 文字数・入力の検証規則・検索語
+- [x] 2. 共用部品: 文字数・入力の検証規則・検索語
 - [x] 2.1 (P) 書記素の数え方と禁止文字の判定を作る
   - 先に、絵文字の結合の並び・肌色の修飾・国旗・結合文字・CRLFをそれぞれ1文字と数えること、孤立したサロゲート・NUL・DEL・タブと改行以外の制御文字を禁止文字と判定し、タブ・改行・CRを許すことを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、各ファイルの行と関数のカバレッジが80%以上になる
@@ -45,7 +45,7 @@
   - _Boundary: HighlightRanges_
   - _Requirements: 13.1, 13.2, 13.3, 13.5_
 
-- [ ] 3. 共用部品: 描画パイプライン
+- [x] 3. 共用部品: 描画パイプライン
 - [x] 3.1 描画の指定の検証と、見出しのスラッグとアンカーの正規化を作る
   - 先に、英字の小文字化・数字とハイフンとアンダースコアの維持・空白のハイフン化・記号とCJK文字のUTF-8でのURLエンコード・空の見出しの既定値、`#`のフラグメントのデコードとスラッグ化(デコードできない値はそのまま変換)、接頭辞(既定と本文の識別子)、指定の誤り(オリジンでないURL・許可外や重複した`rel`・形式違反の識別子)の例外を確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、「概要 Hello World!」が`%E6%A6%82%E8%A6%81-hello-world%21`になる
@@ -86,7 +86,7 @@
   - 完了状態: 攻撃パターン集の全件と性能の単体テストが成功し、共用部品の全ファイルの行と関数のカバレッジが80%以上になる
   - _Requirements: 1.2, 5.4, 5.6_
 
-- [ ] 4. 利用側アプリへの組み込み
+- [x] 4. 利用側アプリへの組み込み
 - [x] 4.1 (P) APIサーバーとイベントサーバーに共用部品を組み込む
   - 描画の9パッケージを共用部品と同じ版で完全に固定して宣言する(zodは既存)
   - 型検査の対象に配置先の実行時のファイルを含め、テスト・設定・攻撃パターン集を除く。静的解析・単体テスト・Workers統合テストの対象から配置先を除く(検査担当でないアプリの規約)
@@ -113,7 +113,7 @@
   - _Boundary: SiteOriginConfig_
   - _Requirements: 4.8, 4.9_
 
-- [ ] 5. 共通部品: 表示
+- [x] 5. 共通部品: 表示
 - [x] 5.1 本文の文字組みと表示部品を作り、生のHTMLの挿入を1箇所に限る
   - 先に、モックアップの文字組み(見出し・リンク・コード・コードブロック・引用・表、引用符を付けない)とライト・ダーク、大きさの指定、表の枠へのキーボードでの移動、同じ入力と指定でメモ化された描画が再計算されないこと、サイトのオリジンをルーターの文脈から補うこと、アクセシビリティの自動検査の違反0件を確かめるブラウザテストを書く
   - 先に、生のHTMLの規則の無効化とサニタイズ済みの型への型の主張の位置を走査する関数と、frontend-libでは表示部品の1箇所だけ、client・adminでは0箇所であることを確かめる単体テストを書く
@@ -136,7 +136,7 @@
   - _Boundary: HighlightedText_
   - _Requirements: 13.4_
 
-- [ ] 6. 共通部品: マークダウンの入力欄
+- [x] 6. 共通部品: マークダウンの入力欄
 - [x] 6.1 エディタの読み込みを遅延読み込みのモジュールに限る静的解析の規則を加える
   - 先に、遅延読み込みのディレクトリの外での`@milkdown/*`・`vue`の読み込み、そのディレクトリの静的なimportとexport-from(バレル)、読み込み関数以外からのそのディレクトリの`import()`、frontend-libの`components/**`・`server/**`からの共用部品の検証規則の読み込みが報告され、`components/**`・`server/**`・`utilities/**`からの共用部品のその他のモジュールの読み込みは報告されず、既存の依存の方向の違反も引き続き報告されることを、ESLintのNode APIで確かめる単体テストを書く
   - frontend-platformの依存の方向の規則と同じ設定に統合し、後の設定による選択肢の置き換えで既存の規則を失わないようにする
@@ -181,7 +181,7 @@
   - _Boundary: EditorBundleCheck_
   - _Requirements: 2.13_
 
-- [ ] 7. 全文検索: データ層の部品
+- [x] 7. 全文検索: データ層の部品
 - [x] 7.1 索引文書の共通の列と状態の値を定義する
   - 先に、共通の列の型・NOT NULL・既定値・一意制約・明示した列名、元テキストの列、状態と日時の索引の定義を確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、検証用のテーブルの定義からdrizzle-kitが生成するSQLで、主キーが`INTEGER PRIMARY KEY`になる
@@ -201,7 +201,7 @@
   - _Boundary: FtsQuery, SearchIndexAggregation_
   - _Requirements: 8.4, 8.6, 12.5_
 
-- [ ] 8. 全文検索: 共有の部品
+- [x] 8. 全文検索: 共有の部品
 - [x] 8.1 検索の型・ポート・DIの識別子と、索引の更新のメッセージ契約を作る
   - 先に、検索対象の名前の形式、メッセージの本文の検証(名前の形式・識別子の長さ)、再試行の方針が5回・30秒から倍であること、メッセージ契約の集約点に種別の重複が無いことを確かめる単体テストを書く
   - メッセージ契約の集約点へ索引の更新の契約を加える
@@ -249,7 +249,7 @@
   - _Boundary: SearchIndexStatements, SearchIndexRefreshRequester, SearchSourceProvider, SearchPlatformModule_
   - _Requirements: 9.1, 9.10, 10.7, 11.1, 11.2, 14.2_
 
-- [ ] 9. イベントサーバー: 索引の更新
+- [x] 9. イベントサーバー: 索引の更新
 - [x] 9.1 キーワード抽出の実装と、環境の変数・シークレットを加える
   - 先に、`fetch`の代わりを`vi.fn`で注入して(`cloudflare:test`の`fetchMock`は使わない)、外部APIへの要求の形(キーのヘッダー・本文)、200・言語の400・その他の400・401・429・500・時間切れ(10秒)・通信の失敗の分類、キーがログと例外に含まれないこと、無効の実装、環境の値による実装の選択、抽出を有効にした環境でのキーの欠落を環境の検証が報告することを確かめるWorkers統合テストと単体テストを書く
   - 3環境の変数、staging・prodの必須のシークレット、テスト用の値を設計の表どおりに加え、実行時の環境の型を生成し直す
@@ -337,7 +337,7 @@
   - _Boundary: TechDocs_
   - _Requirements: 16.8_
 
-- [ ] 12. 一括検査・カバレッジ・遅延読み込みの分離を確かめ、開発者の手作業を引き継ぐ
+- [x] 12. 一括検査・カバレッジ・遅延読み込みの分離を確かめ、開発者の手作業を引き継ぐ
   - ルートの一括検査と単体・ブラウザ・Workers統合テストの一括実行を行い、共用部品・frontend-lib・api・event・client・adminで追加したファイルの行と関数のカバレッジ80%以上と、`check:editor-chunks`の成功を確かめる
   - 開発者の手作業(開発コンテナの再作成、Google CloudのNatural Language APIの有効化とAPIの制限を掛けたキーの発行、Infisicalの`staging`へのキーの登録(9.1の変更をmainへマージする前)、実際のキーでの疎通確認のスクリプトの実行、infra-deliveryのInfisicalの表に`GOOGLE_NL_API_KEY`が載っていることの確認)を、実行するコマンドや画面の操作とともに報告にまとめる
   - タスク1.1でemail-deliveryの実装が無かった場合は、その旨とタスク10で加えたcron式を報告に含める
@@ -369,7 +369,7 @@
 - 6.3: 見出しレベル1・画像は全経路で`crepe/forbidden-node-normalizer.ts`が文字列にし、保存は`\# …`・`!\[alt]\(…)`(再保存で1回だけ`(<URL>)`へ変わり、以後は安定)。`insertImageInputRule`は7.22.3で登録されていないため外していない(設計と相違)。ファイルの貼り付け・ドロップは`crepe/file-transfer-guard.ts`(設計に無い)がエディタのviewのハンドラーで止める(Crepeのdrop-indicatorがプラグインより先に挿入するため)。`prosemirror-drop-indicator`は破棄の時に30msのタイマーを消さず、ドラッグの直後30ms以内に入力欄を破棄するとエラートラッキングに1件の誤報が届く(ライブラリの更新時に再確認)。Tabは編集領域から抜け、リストの階層と表のセルの移動は`Mod-]`・`Mod-[`だけになった。6.4・6.5で、この操作方法を入力欄の説明文(`aria-describedby`)か`aria-keyshortcuts`で支援技術へ伝え、macOSのブラウザで`⌘[`・`⌘]`が戻る・進むにならないよう、編集領域の中では常に処理済みとして既定の動作を止める
 - 6.4: ツールバーの項目は`editor-actions.ts`の`kind`(toggle・insert・dialog)で区別し、`aria-pressed`は切り替えの8項目だけ、表は無し、リンクは`aria-haspopup="dialog"`。押下中の箇条書き・番号付きリスト・引用・コードブロックを押すと解除する(`crepe/editor-commands.ts`を変更)。制御器が無い間は`aria-controls`を出さない。リンクのhttp(s)は`URL.canParse`とホストの非空を要求する。6.5への申し送り: (1) macOSの`⌘[`・`⌘]`の既定の動作を編集領域の中で止める(`crepe/editor-features.ts`。ヒントがCommandのキーを案内しているため最優先)、(2) キー操作の説明`EDITOR_KEYBOARD_HINT`を編集領域の`aria-describedby`へ移し、ツールバーとの重複を見直す、(3) 選択時のツールバーの文言(太字・斜体・取り消し線・コード・リンク)を`markdown-messages.ts`の定数にして文言規則003へ載せる
 - 6.5: Chromiumではwindowへの通知で捕捉の段階の聞き手も加えた順に呼ばれるため、設計の`capture: true`は効かない。`preload-recovery.ts`は全ての聞き手の後にマイクロタスクで`defaultPrevented`を確かめ、読み込み関数は通常の聞き手を使う(design.mdのLoadCrepeEditor・System Flows・Modified Filesは古い)。`FormControlProps.labelId`は列挙不可のプロパティで、`{...control}`では渡らない。編集領域の描画の失敗は`EditorLoadBoundary`(TanStack Routerの`CatchBoundary`)の`onFailure`で古い制御器を捨て、`reportUnexpectedError(error, 'render')`で送る。フォームへ渡す値はMilkdownが付ける末尾の改行1つを除く。入力欄を描画するブラウザテストは、Vitestのブラウザテストの設定がTanStack Startのコンパイルを通さず`report-error.ts`がサーバー専用の依存を読み込むため、`start/observability/report-error.ts`を`vi.mock`で差し替える必要がある(下流specが入力欄を使う前に、サーバー専用の依存を持たない送信の入口を切り出すか、共有のブラウザテストの設定で`.server`の分岐を消すかを開発者が判断する)。チャンクの評価時の例外も`EditorLoadError`として送られず、`editor.create()`の拒否では空の枠が残る(観測の改善の余地)
-- 6.6: `check:editor-chunks`は`manifest.json`ではなくRolldownの出力のチャンク情報(`moduleIds`・`imports`・`dynamicImports`)で判定する(manifestにはチャンク内のモジュールの一覧が無く、SSR用にも無いため。設計と相違)。検査用のビルドはTanStack Startのコンパイラを通らないため、ブラウザ向けだけ`*.server.ts`とNodeの組み込みモジュールを外部化する。手動の実行で、ルートの一括検査とCIには組み込んでいない(設計どおり)。`scripts/check-editor-chunks.ts`の実行部分には単体テストが無い。CLAUDE.mdのディレクトリ構成に`apps/frontend-lib/scripts/`が無い(11.3で扱う)
+- 6.6: `check:editor-chunks`は`manifest.json`ではなくRolldownの出力のチャンク情報(`moduleIds`・`imports`・`dynamicImports`)で判定する(manifestにはチャンク内のモジュールの一覧が無く、SSR用にも無いため。設計と相違)。検査用のビルドはTanStack Startのコンパイラを通らないため、ブラウザ向けだけ`*.server.ts`とNodeの組み込みモジュールを外部化する。手動の実行で、ルートの一括検査とCIには組み込んでいない(設計どおり)。`scripts/check-editor-chunks.ts`の実行部分は12でビルドを差し替える単体テストを加えた(Viteはトップレベルで読み込むと単体テストの一括実行で初期化に失敗するため動的に読み込む)。CLAUDE.mdのディレクトリ構成に`apps/frontend-lib/scripts/`が無い(11.3で扱う)
 - 7.2: 全文検索のSQLのひな形は文の間に`--> statement-breakpoint`を入れる(Workers統合テストのマイグレーションの読み込みがこの区切りで1文ずつ実行するため。`renderSearchIndexRebuildSql`は区切りの無い1文なので、貼る時に区切りを挟む)。更新のトリガーは`AFTER UPDATE OF <索引する列>`。`REPLACE`と`id`の更新はexternal contentの索引を壊すため使わない(`docs/GUIDES/tech/db/002`)。列名はSQLiteの予約語(`apps/db/search/sqlite-keywords.ts`、設計に無い)を拒否する
 - 7.3: `findMissingSearchIndexSql`はマイグレーションを名前順に読み、後の`DROP TRIGGER`・仮想テーブルの`DROP TABLE`・索引文書の`DROP TABLE`で消えた作成文も欠けとして扱う(設計より広い)。SQLの出力スクリプト`db:search-index-sql`に`--drop`・`--recreate`を加え(設計に無い)、変更の種類ごとの手順は`docs/GUIDES/tech/db/003`にある(索引する列の削除は、定義を変える前に`--drop`のカスタムマイグレーションを置く)。`SearchIndexDefinition`は`defineSearchIndex`だけが作れるブランド型。`docs/GUIDES/tech/db/003`に足した全文検索の節は11.1の`db/004`と重なるため、11.1で移すか要約とリンクにする。CLAUDE.mdのディレクトリ構成に`apps/db/search/`・`apps/db/scripts/`が無い(11.3)
 - 8.2: 抽出の入力は、正規化して空になった抽出の対象の項目を結合から外す(全項目が空なら`store-empty`)。ハッシュは`KEYWORD_SELECTION_VERSION`とNUL文字と入力の連結のSHA-256(設計は「連結」とだけ記述)。宣言した項目の文字列が元データに無ければ`TypeError`(再試行の上限の後にdead-letterへ)。8.3の選別の規則を変えたら`KEYWORD_SELECTION_VERSION`を上げる(11.1の`external/002`に書く)
@@ -386,3 +386,4 @@
 - 11.1: `external/002`・`db/004`で新しいプレースホルダー`<抽出の方式の変数>`・`<自然言語APIのキーのシークレット>`を使う。11.3でproject-values.mdに対応付けの行(`KEYWORD_EXTRACTOR`・`GOOGLE_NL_API_KEY`)、`KEYWORD_EXTRACTOR`の変数の行、使う文書の欄への`external/002`・`db/004`、定期実行の節への再抽出のジョブの名前・時刻・順序・件数を加え、`coding/003`で「共用部品」を定義する。`db/003`の全文検索の節は`db/004`へ移し、要約とリンクにした
 - 11.2: `frontend/008`・`security/004`で新しいプレースホルダー`<共用部品の配置先>`(値は`common-lib`)を使う。既存の`coding/001`264行は`<共用部品>`と書いており表記が2通りある。11.3でproject-values.mdへ対応付け、表記をそろえる。`frontend/005`のマークダウンの節は008を正にして要約とリンクにした
 - 11.4: 日次タイムラインの「日次バッチ(4:21)の内容」にジョブの名前と順序の表(順序・ジョブの名前・処理・対応要件)を作った(900・950)。product-launchが4:21に1000番台の削除のジョブを足す場合、「検索のキーワードの再抽出は削除の処理より後に置き」の文が成り立たなくなるため確かめる。委託先の一覧の「Natural Language AI」(SW-024)と国外移転の項の見出し「Natural Language API」(16.9)の表記が異なる
+- 12: 一括検査と単体・ブラウザ・Workers統合テストの一括実行(CIと同じカバレッジ付き)と`check:editor-chunks`が成功し、本specで追加したソースのうち計測されるものは全て行・関数80%以上(型だけのファイル4件と設定・再エクスポートの2件は計測の対象外)。開発コンテナの再作成の後は`apps/common-lib`で`bun install`し直す(`docs/onboardings/README.md`)

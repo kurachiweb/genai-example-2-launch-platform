@@ -505,7 +505,7 @@ cd /workspace
 bun run shared-dirs:verify
 ```
 
-- 共有ディレクトリを追加した変更(共用部品`apps/common-lib`の4つの配置先のbind mountと`node_modules`の名前付きボリュームの追加など)を取り込んだときも、`docker compose up -d --build`で作り直す。作り直すまでは配置先のbind mountが無く、`bun run shared-dirs:verify`が`missing`を報告する。作り直す前に検査を通すときは、ルートで`bun run shared-dirs:place`を実行して配置先へコピーする(配置先はGit管理外)。
+- 共有ディレクトリを追加した変更(共用部品`apps/common-lib`の4つの配置先のbind mountと`node_modules`の名前付きボリュームの追加など)を取り込んだときも、`docker compose up -d --build`で作り直す。作り直すまでは配置先のbind mountが無く、`bun run shared-dirs:verify`が`missing`を報告する。作り直す前に検査を通すときは、ルートで`bun run shared-dirs:place`を実行して配置先へコピーする(配置先はGit管理外)。作り直した後は、新しい名前付きボリュームが空で作られて作り直す前の`node_modules`が隠れるため、`cd /workspace/apps/common-lib && bun install`で依存を導入し直す。
 - 変更前のマウントが残ると、例えば共有ディレクトリの`node_modules`を利用側アプリの配置先(`apps/api/db`など)へ見せるマウントにより、共有ディレクトリのコードと利用側アプリが同じパッケージを別々の実体として読み込む(二重実体)。
 - この状態は、`bun run shared-dirs:verify`と、その確認を最初の段階で行う一括検査`bun run check`が、`non-empty-node-modules`(配置先のマウントの誤りは`mount-mismatch`)として検出し、コンテナの再作成を案内する。各状態の意味は「[配置状態](../GUIDES/tech/coding/003-shared-directories.md#配置状態)」を参照する。
 

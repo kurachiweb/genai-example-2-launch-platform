@@ -1,8 +1,7 @@
 import { builtinModules } from 'node:module';
 import { join } from 'node:path';
 
-import viteReact from '@vitejs/plugin-react';
-import { build, type InlineConfig } from 'vite';
+import type { build, InlineConfig } from 'vite';
 
 import { VUE_FEATURE_FLAGS } from '../config/vue-feature-flags.ts';
 import {
@@ -27,6 +26,17 @@ interface BuildTarget {
 
 type BuildResult = Awaited<ReturnType<typeof build>>;
 
+export type BundleBuilder = (config: InlineConfig) => Promise<BuildResult>;
+
+// ViteはBunの単体テストの一括実行の中で読み込むと初期化で例外を投げるため、検査の関数を単体テストで読み込めるよう、ビルドを始める時に初めて読み込む
+const viteBuild: BundleBuilder = async (config) => {
+  const [{ build: buildWithVite }, { default: viteReact }] = await Promise.all([
+    import('vite'),
+    import('@vitejs/plugin-react'),
+  ]);
+  return buildWithVite({ ...config, plugins: [viteReact()] });
+};
+
 const LIB_DIR = join(import.meta.dirname, '..');
 
 const ENTRY = join(LIB_DIR, 'test', 'bundle', 'editor-entry.tsx');
@@ -42,7 +52,6 @@ const sharedConfig = (): InlineConfig => ({
   root: LIB_DIR,
   configFile: false,
   logLevel: 'warn',
-  plugins: [viteReact()],
   define: VUE_FEATURE_FLAGS,
 });
 
@@ -101,13 +110,14 @@ function errorMessage(error: unknown): string {
 
 export async function runEditorChunksCheck(
   output: CommandOutput,
+  buildBundle: BundleBuilder = viteBuild,
 ): Promise<number> {
   let passed = true;
   for (const target of BUILD_TARGETS) {
     try {
       const report = formatEditorChunkReport(
         target.label,
-        inspectEditorChunks(chunksOf(await build(target.config))),
+        inspectEditorChunks(chunksOf(await buildBundle(target.config))),
       );
       const sink = report.passed ? output.stdout : output.stderr;
       sink.write(report.lines.map((line) => `${line}\n`).join(''));
