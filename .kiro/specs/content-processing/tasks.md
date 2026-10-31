@@ -222,7 +222,7 @@
   - _Boundary: NaturalLanguageProtocol, KeywordSelection_
   - _Requirements: 9.5, 10.1, 10.4, 10.5_
 
-- [ ] 8.4 (P) 更新の計画と、抽出結果からの書き込みと再試行の判定を作る
+- [x] 8.4 (P) 更新の計画と、抽出結果からの書き込みと再試行の判定を作る
   - 先に、計画の全分岐(古い版・空の入力・同じハッシュの抽出済みと非対応言語・抽出)と、判定の表の全行(抽出済み・非対応言語・無効・一時的な失敗の上限未満と上限・設定の誤り)で、キーワードの列・状態・ハッシュ・再試行・通知が設計どおりになり、元テキストの列が常に最新になることを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、各ファイルの行と関数のカバレッジが80%以上になる
   - _Boundary: RefreshDecision_
@@ -374,3 +374,4 @@
 - 7.3: `findMissingSearchIndexSql`はマイグレーションを名前順に読み、後の`DROP TRIGGER`・仮想テーブルの`DROP TABLE`・索引文書の`DROP TABLE`で消えた作成文も欠けとして扱う(設計より広い)。SQLの出力スクリプト`db:search-index-sql`に`--drop`・`--recreate`を加え(設計に無い)、変更の種類ごとの手順は`docs/GUIDES/tech/db/003`にある(索引する列の削除は、定義を変える前に`--drop`のカスタムマイグレーションを置く)。`SearchIndexDefinition`は`defineSearchIndex`だけが作れるブランド型。`docs/GUIDES/tech/db/003`に足した全文検索の節は11.1の`db/004`と重なるため、11.1で移すか要約とリンクにする。CLAUDE.mdのディレクトリ構成に`apps/db/search/`・`apps/db/scripts/`が無い(11.3)
 - 8.2: 抽出の入力は、正規化して空になった抽出の対象の項目を結合から外す(全項目が空なら`store-empty`)。ハッシュは`KEYWORD_SELECTION_VERSION`とNUL文字と入力の連結のSHA-256(設計は「連結」とだけ記述)。宣言した項目の文字列が元データに無ければ`TypeError`(再試行の上限の後にdead-letterへ)。8.3の選別の規則を変えたら`KEYWORD_SELECTION_VERSION`を上げる(11.1の`external/002`に書く)
 - 8.3: 200の応答の`languageSupported`はproto3で`false`が省かれ`true`は必ず出るため、項目が無ければ非対応言語にする(設計1445行の「`false`でなければ`extracted`」と相違)。9.4の疎通確認で、対応言語の実際の応答に`languageSupported: true`が付くことを確かめる(付かなければ全件が縮退する)。設計の表に無い状態コード(200以外の2xx・3xx・405・408・409・413・499など)はその状態コードの`configuration-error`。どちらも11.1の`external/002`に書く
+- 8.4: `markPending`はハッシュを残すため、編集前の状態(extracted・unsupported)が失われる。`planRefresh`は「pendingで同じハッシュ」を`reuse-keywords`(状態`extracted`)にし、非対応言語の文書は状態がextractedへ付け替わる(キーワードの列と再抽出しないことは変わらない。状態を正確に保つには`StoredIndexState`に前回の状態を足すか、`markPending`で`unsupported`の時だけハッシュを消す設計の変更が要る。開発者の判断)。9.2への申し送り: `store-empty`・`reuse-keywords`の書き込み(状態・ハッシュ・キーワードの列・`statusChangedAt`)は設計に無く9.2で決める(推奨: store-emptyは空のキーワード・`extracted`・ハッシュ、reuse-keywordsは`keep`・文書のハッシュ・`plan.status`・`now`)。上限未満の一時的な失敗は`statusChangedAt`を現在時刻に更新する
