@@ -209,7 +209,7 @@
   - _Boundary: SearchContracts, SearchIndexRefreshContract_
   - _Requirements: 9.1, 10.1, 14.1, 14.2_
 
-- [ ] 8.2 (P) 索引文書の組み立てを作る
+- [x] 8.2 (P) 索引文書の組み立てを作る
   - 先に、プレーンテキストとマークダウンの項目の正規化、元テキストの列の項目だけが列に入ること、抽出の対象の項目だけを宣言順に結合すること、上限を超える入力の書記素の境界での切り詰め、同じ入力と選別の規則の版で同じハッシュになることを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、抽出の入力に抽出の対象でない項目の文字列が含まれない
   - _Depends: 2.3, 3.5_
@@ -372,3 +372,4 @@
 - 6.6: `check:editor-chunks`は`manifest.json`ではなくRolldownの出力のチャンク情報(`moduleIds`・`imports`・`dynamicImports`)で判定する(manifestにはチャンク内のモジュールの一覧が無く、SSR用にも無いため。設計と相違)。検査用のビルドはTanStack Startのコンパイラを通らないため、ブラウザ向けだけ`*.server.ts`とNodeの組み込みモジュールを外部化する。手動の実行で、ルートの一括検査とCIには組み込んでいない(設計どおり)。`scripts/check-editor-chunks.ts`の実行部分には単体テストが無い。CLAUDE.mdのディレクトリ構成に`apps/frontend-lib/scripts/`が無い(11.3で扱う)
 - 7.2: 全文検索のSQLのひな形は文の間に`--> statement-breakpoint`を入れる(Workers統合テストのマイグレーションの読み込みがこの区切りで1文ずつ実行するため。`renderSearchIndexRebuildSql`は区切りの無い1文なので、貼る時に区切りを挟む)。更新のトリガーは`AFTER UPDATE OF <索引する列>`。`REPLACE`と`id`の更新はexternal contentの索引を壊すため使わない(`docs/GUIDES/tech/db/002`)。列名はSQLiteの予約語(`apps/db/search/sqlite-keywords.ts`、設計に無い)を拒否する
 - 7.3: `findMissingSearchIndexSql`はマイグレーションを名前順に読み、後の`DROP TRIGGER`・仮想テーブルの`DROP TABLE`・索引文書の`DROP TABLE`で消えた作成文も欠けとして扱う(設計より広い)。SQLの出力スクリプト`db:search-index-sql`に`--drop`・`--recreate`を加え(設計に無い)、変更の種類ごとの手順は`docs/GUIDES/tech/db/003`にある(索引する列の削除は、定義を変える前に`--drop`のカスタムマイグレーションを置く)。`SearchIndexDefinition`は`defineSearchIndex`だけが作れるブランド型。`docs/GUIDES/tech/db/003`に足した全文検索の節は11.1の`db/004`と重なるため、11.1で移すか要約とリンクにする。CLAUDE.mdのディレクトリ構成に`apps/db/search/`・`apps/db/scripts/`が無い(11.3)
+- 8.2: 抽出の入力は、正規化して空になった抽出の対象の項目を結合から外す(全項目が空なら`store-empty`)。ハッシュは`KEYWORD_SELECTION_VERSION`とNUL文字と入力の連結のSHA-256(設計は「連結」とだけ記述)。宣言した項目の文字列が元データに無ければ`TypeError`(再試行の上限の後にdead-letterへ)。8.3の選別の規則を変えたら`KEYWORD_SELECTION_VERSION`を上げる(11.1の`external/002`に書く)
