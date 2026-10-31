@@ -68,7 +68,7 @@
 - `UltrasPlanExport`の形と`plan.status`の値(data-export。データエクスポートの文書と一致させる)。
 - paymentsの`SubscriptionChange`・`SubscriptionEventSink`・`PurchaseFulfillment`の形、または古い通知を捨てる規則を変えたら、本specを確かめ直す(仮5で本specが足す`afterCommit`・`cancelAt`を含む)。
 - identity-authのユーザーライフサイクルの`order`の範囲・`purge_due`の順序・`UserContactDirectory`の形(`findContact`が退会済み・物理削除済みの利用者で`undefined`を返す規則)、admin-foundationの`requireAdmin`・`AuditLogRecorder`の形を変えたら、本specを確かめ直す。
-- 4:21の`order` 500、波及処理の`order` 500(同じ時刻・種類に登録する全spec)。波及処理の`order`は、各specが4:21のジョブの`order`と同じ百の位の帯を使う(spec横断レビュー、2026-10-23)。本specは500番台を使い、identity-auth(100番台と10000以上)・admin-foundation(200番台)・inquiry-chat(300番台)・payments(400番台)・media-pipeline(800番台)・email-delivery(900)・content-processing(950)の帯と重ねない。帯の割り当てが変わったら、本specを確かめ直す。
+- 4:21の`order` 500、波及処理の`order` 500(同じ時刻・種類に登録する全spec)。波及処理の`order`は、各specが4:21のジョブの`order`と同じ百の位の帯を使う(spec横断レビュー、2026-10-23)。本specは500番台を使い、identity-auth(100番台と10000以上)・admin-foundation(200番台)・inquiry-chat(300番台)・payments(400番台)・media-pipeline(800番台)・email-delivery(900)・content-processing(2300)の帯と重ねない。帯の割り当てが変わったら、本specを確かめ直す。
 - dev-toolingの`createPlaywrightConfig`の形・プロジェクトの名前の規則(`<対象>`・`<対象>-reachability`)、admin-foundationの`executeLocalD1`・`sqlStringLiteral`の形を変えたら、本specのE2Eとその設定を確かめ直す。
 
 ### 上流への影響
@@ -835,7 +835,7 @@ export interface SubscriptionChange {
 | -------------------------------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ultras-subscription.pending-dispatch-sweep` | 4:21     | 500     | (1)`completed_at`が空で、`dispatched_at`が空かつ作成から10分以上、または`dispatched_at`から24時間以上の知らせを最大100件`dispatch`(4.5)。(2)`pending`のまま10分以上のメールの依頼を最大100件`send`(8.9)。(3)完了から30日以上の知らせと、`requested`・`skipped`から30日以上のメールの依頼を1回500件・最大20回削除(11.3) |
 
-- Trigger: apiのCron Triggers(`21 12 * * *`、既存)。`order` 500は上流の100〜120・200・210・300・400・410・810〜830・900・950と重ならない。日次タイムラインの表に載せる。
+- Trigger: apiのCron Triggers(`21 12 * * *`、既存)。`order` 500は上流の100〜120・200・210・300・400・410・810〜830・900・2300と重ならない。日次タイムラインの表に載せる。
 - 再送された知らせは、ハンドラの冪等性で結果が変わらない。
 
 #### UltrasSchemaModule

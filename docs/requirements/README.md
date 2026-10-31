@@ -105,7 +105,7 @@ Launch Stadiumは、Product HuntやUneedの競合として位置づけられる�
 
 - **クライアント**: モダンWebブラウザ(Chrome, Firefox, Safari, Edge最新版)
 - **サーバー**: Cloudflare Workers(Workers Paidプラン)
-- **インフラ**: Cloudflare各種サービス(ゾーンFreeプラン)、AWS(Amazon Rekognition)、Google Cloud(Natural Language AI)
+- **インフラ**: Cloudflare各種サービス(ゾーンFreeプラン)、AWS(Amazon Rekognition)、Google Cloud(Natural Language API)
 
 ### 2.5 設計・実装の制約
 
@@ -129,7 +129,7 @@ Launch Stadiumは、Product HuntやUneedの競合として位置づけられる�
 - DISIFY API(使い捨てメールアドレス判定基盤)の利用可能性
 - Sentry(エラートラッキング基盤)の利用可能性
 - FlareWarden(外部ステータスページ・死活監視基盤)の利用可能性
-- Google Cloud Natural Language AI(文章分析基盤)の利用可能性
+- Google Cloud Natural Language API(文章分析基盤)の利用可能性
 
 ---
 
@@ -856,7 +856,7 @@ Product of the Year決定トーナメントの決勝実施日(FR-ADMCF-001)は�
 - **SW-021**: システムは、DISIFY APIによる使い捨てメールアドレス判定を提供しなければならない(FR-USER-014に対応)
 - **SW-022**: システムは、Sentryによるエラートラッキング及びパフォーマンストレーシングを提供しなければならない(NFR-OBLOG-003に対応)
 - **SW-023**: システムは、不適切と判定された、または公開すべきでなくなった画像やスクリプトを含むSVGを一時的に保管するCloudflare R2隔離バケットを提供しなければならない(FR-FILEU-013、FR-FILEU-014、FR-ADMUG-017、FR-ADMUG-047〜049に対応)
-- **SW-024**: システムは、Google Cloud Natural Language AIによる多言語対応のキーワード抽出を提供しなければならない(FR-FTS-006に対応)
+- **SW-024**: システムは、Google Cloud Natural Language APIによる多言語対応のキーワード抽出を提供しなければならない(FR-FTS-006に対応)
 
 ### 5.4 通信インターフェース
 

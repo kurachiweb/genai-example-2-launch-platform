@@ -173,7 +173,7 @@ graph TB
 - アプリの中は`src/composition`が`src/routes`を読み込まないことだけを静的解析で禁止する(`frontend/direction/app-composition`)。`src/composition`は区画の既定の部品として`src/components`を読み込む。アプリから共通部品へは`lib/`の相対パスで読み込む。
 - `utilities/**`・`server/**`は`react`・`react-dom`・`react-hook-form`・`@hookform/*`・`@tanstack/*`・`cloudflare:*`・`@sentry/cloudflare`・`@sentry/tanstackstart-react`の実行時の値を読み込まない(Bunの単体テストで読み込むため。`RUNTIME_PACKAGE_RESTRICTION`)。型だけのimport(`@sentry/core`・`react-hook-form`の型など)は許す。テストファイル(`utilities/**`・`server/**`の`*.test.ts(x)`)は、検査の対象の振る舞いを本物のライブラリで動かすため対象外にする(設定`frontend/direction/pure-tests`。Zodの値の制限と依存の向きは残す。`utilities/forms`のテストは`createFormControl`・`zodResolver`を使う)。`frontend-lint.unit.test.ts`が、両パッケージの値の読み込みを`utilities/**`・`server/**`で検出し、型だけの読み込みとテストファイルを検出しないことを確かめる(第4回の判断39)。
 - `start/**`の`*.server.ts`は、`start/**`の同型の関数(`createIsomorphicFn().server()`)のサーバーの分岐で使う値として読み込むか、他の`*.server.ts`から読み込む(`start/graphql/execute-graphql.server.ts`は`start/request-context.server.ts`を読む)。`components/**`は`*.server.ts`を読み込まない。
-- `components/**`は`start/**`の`*.server.ts`以外と`utilities/**`を読み込める。`server/**`は型だけを読み込める。
+- `components/**`は`start/**`の`*.server.ts`と同型の関数の`start/observability/report-error.ts`以外と、`utilities/**`を読み込める。想定外の失敗をブラウザだけで動く処理から送る時は`start/observability/browser-error-reporting.ts`を読み込む(`report-error.ts`の禁止は型だけの読み込みも含む)。`server/**`は型だけを読み込める。
 - ブラウザのバンドルに入るファイル(`components/**`・`start/**`・アプリの`src/**`のうち、`*.server.ts`・`src/server.ts`・テスト以外)は`@sentry/tanstackstart-react`の実行時の値を静的に読み込まない(`frontend/browser-bundle/start-and-app`の`BROWSER_SENTRY_RESTRICTION`)。静的に読み込むとブラウザのSDKの動的importが別のチャンクに分かれず、SDKが主バンドルに入る。動的importは検出しない。
 - 共通部品とアプリは`zod`の値を`utilities/validation/zod.ts`からだけ読み込む(`ZOD_VALUE_RESTRICTION`、設定の名前`frontend/zod-entry`)。型だけの読み込みは許す。`@hookform/resolvers/zod`は、`utilities/**`・`server/**`のテストファイル以外では`RUNTIME_PACKAGE_RESTRICTION`で禁じ、それ以外の場所とテストファイルで許す。ESLintは同じ規則の設定を合成しないため、`@typescript-eslint/no-restricted-imports`を設定する箇所は`restrictValueImports`で組み立て、Zodの制限を常に含める。client・adminのブラウザのエントリ(`src/client.tsx`)とサーバーのエントリ(`src/server.ts`)は、最初のimportで`zod.ts`を副作用として読み込む(「決定事項」)。
 - GraphQLの操作はアプリの`src/graphql/operations/`の`.graphql`ファイルにだけ置き、`graphql()`を呼ばない。共通部品には操作を置かない。
@@ -295,7 +295,8 @@ apps/
 │   │   ├── graphql/execute-graphql.server.ts       # relayToApiへの直接の受け渡しとCookieの指示の反映
 │   │   ├── graphql/graphql-query-options.ts        # graphqlQueryOptions・graphqlMutationOptions(キーはutilitiesのgraphqlQueryKey)
 │   │   ├── observability/error-queue.ts            # 純粋: ブラウザの送信待ちの列(上限・重複・送る対象の判定)
-│   │   ├── observability/report-error.ts           # 同型の関数: reportUnexpectedError(サーバーは*.server.ts、ブラウザはerror-queue)・reportRenderError
+│   │   ├── observability/browser-error-reporting.ts  # ブラウザ専用: browserErrorQueue・reportUnexpectedErrorInBrowser(error-queueだけに依存)
+│   │   ├── observability/report-error.ts           # 同型の関数: reportUnexpectedError(サーバーは*.server.ts、ブラウザはbrowser-error-reporting)・reportRenderError・browserErrorQueueの再エクスポート
 │   │   ├── observability/report-error.server.ts    # 描画の文脈のreportUnexpectedとerrorログ
 │   │   ├── observability/route-error-reporting.ts  # installRouteErrorReporting: loader・beforeLoadを持つ全ルートのonErrorで送る
 │   │   ├── observability/browser-observability.ts  # マウント後のSentryのSDKと除去の関数の動的読み込み(読み込み関数を注入)
@@ -793,6 +794,7 @@ export interface ValidatedFrontendEnv {
   readonly SENTRY_DSN: string | undefined;
   readonly TURNSTILE_SITE_KEY: string;
   readonly IMAGES_ORIGIN: string; // URLのオリジン
+  readonly CLIENT_SITE_ORIGIN: string; // URLのオリジン。利用者側のサイトのオリジン(content-processingが加える)
   readonly WEB_ANALYTICS_TOKEN: string | undefined; // 利用者側だけが読む。空文字は未設定
   readonly HASH_PEPPER: string; // シークレット。空でない文字列。IP制限のキーのハッシュ化だけに使う
 }
@@ -804,6 +806,7 @@ export declare function validateFrontendEnv(raw: unknown): EnvValidation;
 export interface PublicRuntimeConfig {
   readonly environment: AppEnvironment;
   readonly turnstileSiteKey: string;
+  readonly clientSiteOrigin: string;
   readonly sentry: {
     readonly dsn: string | undefined;
     readonly environment: string;
@@ -819,9 +822,9 @@ export declare function toPublicRuntimeConfig(
 
 - Zodは`utilities/validation/zod.ts`の`z`を使う。バインディングは「`fetch`関数を持つ」「`limit`関数を持つ」ことだけをZodの`custom`で確かめ、種類の取り違えは各アプリの`wrangler-config.unit.test.ts`で確かめる。
 - 失敗は欠落と不正を区別せず、1つの`invalidKeys`(名前順・重複なし・凍結)で返す。環境がオブジェクトでなければ必要なキーをすべて返す。Zodの問題には入力値が入り得るため、キー名だけを取り出す。
-- `IMAGES_ORIGIN`は`http`・`https`のURLのオリジンであることだけを確かめる。ポート付きの`https`や`localhost`以外の`http`はここを通り、許可先の合成で不正になる(FrontendServerEntry)。
+- `IMAGES_ORIGIN`・`CLIENT_SITE_ORIGIN`は`http`・`https`のURLのオリジンであることだけを確かめる。ポート付きの`https`や`localhost`以外の`http`の`IMAGES_ORIGIN`はここを通り、許可先の合成で不正になる(FrontendServerEntry)。
 - `HASH_PEPPER`は空でない文字列であることだけを確かめ(backend-libの`platformEnvShape`と同じ)、欠落・空は他の環境の不備と同じくキー名だけのログと500にする(1.4)。値はInfisicalの環境ごとに1つで、api・event・client・adminが同じ値を共有する。
-- `toPublicRuntimeConfig`は、ブラウザへ渡してよい値(公開されるDSN・サイトキー・解析のトークン)だけを返し、`HASH_PEPPER`を含めない。`webAnalytics: false`のプロファイルでは`webAnalyticsToken`を常に`undefined`にする(13.7)。
+- `toPublicRuntimeConfig`は、ブラウザへ渡してよい値(公開されるDSN・サイトキー・利用者側のサイトのオリジン・解析のトークン)だけを返し、`HASH_PEPPER`を含めない。`webAnalytics: false`のプロファイルでは`webAnalyticsToken`を常に`undefined`にする(13.7)。
 
 ### server/http
 
@@ -1690,8 +1693,15 @@ export declare function createBrowserErrorQueue(
   limit?: number,
 ): BrowserErrorQueue;
 
-// start/observability/report-error.ts(同型の関数)
+// start/observability/browser-error-reporting.ts(ブラウザ専用。error-queue.tsだけに依存する)
 export declare const browserErrorQueue: BrowserErrorQueue; // ブラウザで1つ。initBrowserObservabilityへ同じ列を渡す
+export declare const reportUnexpectedErrorInBrowser: (
+  error: unknown,
+  source: ReportSource,
+) => void; // browserErrorQueueへ積む。送信元はイベントに載せない
+
+// start/observability/report-error.ts(同型の関数)
+export { browserErrorQueue } from './browser-error-reporting.ts';
 export declare function reportUnexpectedError(
   error: unknown,
   source: ReportSource,
@@ -1783,13 +1793,13 @@ export interface PageHead {
 export declare function buildPageHead(input: PageHeadInput): PageHead;
 ```
 
-- `reportUnexpectedError`(11.6・13.1): サーバーでは`report-error.server.ts`が描画の文脈の`reportUnexpected`(`guardReporter`で包んだ`captureException`)と`[caller, 'http', 'error']`の`error`ログ(属性`source`)、ブラウザでは初期化前の送信を最大10件まで列に積み、初期化の後に送る。どちらも`isReportableFailure`で想定内の失敗と`upstream_*`(中継が元の例外を送っている)を除き、同じオブジェクトの2回目を除く。ブラウザは`network_error`を最大2回再試行するため、1つの取得で最大3件送られ得る。
+- `reportUnexpectedError`(11.6・13.1): サーバーでは`report-error.server.ts`が描画の文脈の`reportUnexpected`(`guardReporter`で包んだ`captureException`)と`[caller, 'http', 'error']`の`error`ログ(属性`source`)、ブラウザでは初期化前の送信を最大10件まで列に積み、初期化の後に送る。ブラウザの実装は`browser-error-reporting.ts`の`reportUnexpectedErrorInBrowser`(`browserErrorQueue`へ積む)で、`report-error.ts`は`.client`にこの関数を渡し、`browserErrorQueue`を再エクスポートする。`browser-error-reporting.ts`は`error-queue.ts`だけに依存する。共通部品の画面部品(`components/**`)は、ブラウザだけで動く処理(マウントの後の効果・イベントの処理・描画の境界)から`browser-error-reporting.ts`を直接読み込み(`AppDocument`の`browserErrorQueue`、content-processingのマークダウンの入力欄の遅延読み込みの境界の`reportUnexpectedErrorInBrowser`)、同型の関数の`report-error.ts`を読み込まない。TanStack Startのコンパイラが無いVitestのブラウザテストでは同型の関数の`.server`の実装が残り、サーバー専用の依存(`node:async_hooks`)を読み込んで失敗するためである。サーバーの描画でも動く処理(ルーター・`loader`・GraphQLの実行)は`reportUnexpectedError`を使う。どちらも`isReportableFailure`で想定内の失敗と`upstream_*`(中継が元の例外を送っている)を除き、同じオブジェクトの2回目を除く。ブラウザは`network_error`を最大2回再試行するため、1つの取得で最大3件送られ得る。
 - 呼び出し元: `installRouteErrorReporting`が補う全ルートの`onError`(`loader`・`beforeLoad`の失敗)、ルーターの`defaultOnCatch`の`reportRenderError`(描画の失敗)、`executeGraphQL`(想定外の失敗)。TanStack Routerにはルーター全体の`loader`の失敗のフックが無く、`onError`は子のルートへ継承されないため、`installRouteErrorReporting`は`loader`か`beforeLoad`を持つすべてのルートの`options.onError`を、送ってからルート自身の`onError`を呼ぶ関数に置き換える(ルートの定義はモジュールに1つで、2回目以降は包み直さない)。ルートが`onError`で想定内の失敗を`notFound`などに変えても元の例外は送られ、`SearchParamError`も送られる。
 - `reportRenderError`は、`router.state.matches`のどれかの`error`と同一の例外を送らない。ハイドレーションでは`ShallowErrorPlugin`がloaderの失敗をメッセージだけの`new Error`に復元し、想定内かどうかを判定できないためである(loaderの失敗はサーバーかルートの`onError`が送っている)。
 - 共通部品とブラウザのバンドルに入るアプリのファイルは`@sentry/tanstackstart-react`の実行時の値を静的にimportしない(Dependency Direction)。
 - `initBrowserObservability`(13.2・13.4・14.2): `AppDocument`のマウント後に`loadBrowserSentryModules`でSDKと`sentry-scrub.ts`を一緒に動的に読み込み(伏せ字のパターンは約20.9KB(gzip約5.8KB)で主バンドルに入れない)、`dsn`・`environment`・`tracesSampleRate`・`tanstackRouterBrowserTracingIntegration(router)`・`tracePropagationTargets: RELAY_TRACE_PROPAGATION_TARGETS`・`dataCollection: SENTRY_DATA_COLLECTION`・`beforeSend`・`beforeSendSpan`で初期化し、列を`captureException`で流す。`loadBrowserSentryModules`は`createClientOnlyFn`で包み、サーバーのビルドでは動的importごと落ちる(Workersの条件ではSDKが`@sentry/node`を含むサーバー版に解決されるため)。読み込みや初期化の失敗は再試行せず`console`へも出さず、画面へ影響させない(13.10)。
 - `webAnalyticsHeadScript`(13.6): トークンがあれば`WEB_ANALYTICS_BEACON_SRC`を`defer`で読み込む`head`のスクリプト(nonceはルーターが付ける)。
-- `installPreloadRecovery`(1.7): `vite:preloadError`で、`sessionStorage`の印(`PRELOAD_RECOVERY_STORAGE_KEY`)が無ければ印を付けて再読み込みし、印があるか印を読み書きできなければ何もしない(再読み込みの繰り返しを防ぐ)。`preventDefault`しないため、エラー画面と`reportRenderError`にも読み込みの失敗が届き得る。印はタブを開いている間残る。`AppDocument`は`window.sessionStorage`の参照自体を`try`で包み、例外なら`storage: undefined`を渡す。
+- `installPreloadRecovery`(1.7): `vite:preloadError`で、`sessionStorage`の印(`PRELOAD_RECOVERY_STORAGE_KEY`)が無ければ印を付けて再読み込みし、印があるか印を読み書きできなければ何もしない(再読み込みの繰り返しを防ぐ)。判定は通知を受けた時でなく`queueMicrotask`で後回しにし、通知の全ての聞き手が終わってから`event.defaultPrevented`を見る。他の聞き手が`preventDefault`した通知では再読み込みせず印も付けない(遅延読み込みの失敗を自分で扱う読み込み、例えばcontent-processingのマークダウンの入力欄の編集領域の読み込みが、同じページの未保存の値を再読み込みで失わせないため。windowの聞き手は加えた順に呼ばれ、先に呼ばれるとは限らない)。自身は`preventDefault`しないため、エラー画面と`reportRenderError`にも読み込みの失敗が届き得る。印はタブを開いている間残る。`AppDocument`は`window.sessionStorage`の参照自体を`try`で包み、例外なら`storage: undefined`を渡す。
 - `buildPageHead`(11.9・4.7・12.5): `title`のmetaに`<ページ名> | <サイト名>`(ページ名が空ならサイト名だけ)、`canonicalUrl`が`/`で始まる同じオリジンのパスならクエリとフラグメントを除いた正規のURLの`link`(絶対URLや外部を指し得る値では付けない)、`noIndex`なら`robots`の`NO_INDEX_ROBOTS_CONTENT`。戻り値は凍結した`readonly`の配列のため、アプリの`src/head/page-heads.ts`(`buildRootHead`・`buildSitePageHead`・`buildAdminPageHead`)が`{ meta: [...head.meta], links: [...head.links] }`に広げてTanStack Routerの`head`へ渡す。
 - 管理者側の正規のURL(11.9、「決定事項」): 管理者側はすべての応答に`X-Robots-Tag`の検索除外を付け(4.7)、検索の対象外のため正規のURLを出さない。`buildAdminPageHead`の入力(`AdminPageHeadInput`)は`title`と`noIndex`だけで`canonicalUrl`を持たず、`buildPageHead`へ`canonicalUrl`を渡さない。利用者側の`buildSitePageHead`だけが`canonicalUrl`を受ける。
 
@@ -2029,7 +2039,7 @@ export declare function applyServerFieldErrors<T extends FieldValues>(
   - 任意にする規則(判断31): 無効になり得る欄はスキーマで任意(`.optional()`)にする。値を除いた欄はスキーマで`undefined`として扱われ、任意の欄は検証を通るため、元のresolverの結果の`values`(変換を通った値。無効の欄は含まない)がそのまま`onSubmit`へ渡る。有効な間は`defaultValues`が全欄に値を入れるため、任意にしても値の検証は効く。無効になり得る欄を参照するオブジェクトの検証(`refine`・`superRefine`)は、その欄が無い場合を扱う。
   - 規則を守らないスキーマ(フォールバック): 元のresolverの結果の`errors`(入れ子の`FieldErrors`)から、`_names.disabled`の各名前の経路とその子の経路のエラーを除き、空になった親を除く(`errors.root`は除かない)。除いた後もエラーが残れば`{ values: {}, errors }`を返す。無効の欄にだけエラーが残っていた時は、スキーマを通らず出力の値が無いため、無効の欄を除いた入力の値の複製と空の`errors`を返し、送信を進める。この時に限り、無効でない欄の値もスキーマの変換を受けず、オブジェクトの`refine`・`superRefine`による項目をまたぐ検証(確認用の入力の一致など)も受けずに`onSubmit`へ渡る。このため、無効になり得る欄を任意にする規則は省けない。元の結果にエラーが無ければ元の結果を返す。
 - 入力欄を描かない値: `useAppForm`の`defaultValues`は型(`TInput & DefaultValues<TInput>`)でスキーマの入力の全欄を求め、サーバーの詳細は既定値に経路がある欄(親の経路を除く)に付く。このため、入力欄を描かない値(識別子・版の値など)や条件によって描かない欄をスキーマの入力(`TInput`)に含めると、その値へのエラーを利用者が直せず送信ボタンが無効のまま残る。画面はそうした値をスキーマの入力に含めず、`onSubmit`で加える。条件によって描かない欄は、描かない間はスキーマからも外す(条件ごとにスキーマを分ける、別のスキーマのフォームに分けるなど)。親の経路の扱いは欄をまとめた値だけが対象で、描かない値をオブジェクトにまとめてスキーマに含めても、その中の値の経路への詳細は欄に付くため、この制約は親の経路の扱いでは代えられない。
-- `FormField`はラベル・説明・エラーを`aria-describedby`・`aria-invalid`で入力欄に関連付け、エラーは文言とアイコンで示す(10.6)。任意の`disabled?: boolean`を`useController({ control, name, disabled })`へ渡し、子へ渡す`field`の`disabled`で入力欄を無効にする(無効の欄の経路の判定に使う)。`disabled`が真になった時はその欄のエラーを消す(判断32)。必須の印は自動で付けず、必須の欄はラベルか説明の文言で示し`aria-required`を渡す。
+- `FormField`はラベル・説明・エラーを`aria-describedby`・`aria-invalid`で入力欄に関連付け、エラーは文言とアイコンで示す(10.6)。子の関数へ渡す制御(`FormControlProps`)は`field`の値と`id`・`aria-invalid`・`aria-describedby`に加え、ラベルの要素の`id`を`labelId`として持つ。`labelId`は`Object.defineProperty`で列挙しない(non-enumerable)プロパティとして付け、`{...control}`の展開では写らず、DOMの属性に無い値が入力要素へ出力されない。`label`要素で名前を付けられない部品(`aria-labelledby`で名前を付ける部品。マークダウンの入力欄など)へは、`control.labelId`で読んで明示的に渡す。任意の`disabled?: boolean`を`useController({ control, name, disabled })`へ渡し、子へ渡す`field`の`disabled`で入力欄を無効にする(無効の欄の経路の判定に使う)。`disabled`が真になった時はその欄のエラーを消す(判断32)。必須の印は自動で付けず、必須の欄はラベルか説明の文言で示し`aria-required`を渡す。
 - 既定値の予約された名前(判断41): `useAppForm`は`useState`の初期化で制御を作る時、`process.env.NODE_ENV !== 'production'`なら`reservedFieldNamePathsOf(defaultValues)`の経路が1つでもあれば、経路と名前を示す例外を投げる。欄のエラーの末端を`type`・`message`・`types`・`ref`のいずれかを持つオブジェクトで判定する(`revalidationTargetsOf`)ため、子の欄にこれらの名前を持つ値は値の経路ごと末端と扱われ、切り替えで描かれている子の欄のサーバーのエラーも置き換わるからである。最上位のキー(`type`という名前の欄)は末端の判定に影響しないため対象にしない。`process.env.NODE_ENV`はViteがビルド時に置き換え、Bun・Vitestでは`production`でないため、本番のバンドルでは判定が除かれる。本番のビルドの出力に判定が含まれないことは、`components/form/use-app-form-build.unit.test.ts`がNodeの子プロセスで`NODE_ENV`を渡さずにViteで`use-app-form.ts`を入口にビルドし、例外の文言が含まれないこと(開発時のビルドでは含まれること)で確かめる。Workerのバンドルでは`@cloudflare/vite-plugin`が`process.env.NODE_ENV`を置き換える。
 - 内部の値への依存(判断43): フォームの部品は、react-hook-formの内部の値(`control._names.disabled`・`control._names.array`・`control._fields`の`_f.mount`)と、公開されていない振る舞い(名前の配列を渡した`trigger`が全欄の検証から`isValid`を計算し直し渡した名前のエラーだけを置き換えること、resolverの`values`が`_formValues`そのものであること、`handleSubmit`が`_names.disabled`の値を外すこと、`useForm`が描画ごとに`control._options`を置き換えること、`cloneObject`が入れ子として複製する値、`@hookform/resolvers`の`toNestErrors`が一覧全体のエラーを入れ子にする条件、`setError`が欄のエラーに常に`ref`のキーを付け、種類も文言も持たない`setError(name, {})`も欄のエラーとして持つこと(型では`ref`は任意))に頼る。12.2の調査で、切り替えの時のエラーの読み取りは公開の`getErrors()`(購読も検証もしない)に置き換えた。無効の欄の判定(`_names.disabled`)と描画の状態(`_f.mount`・`_names.array`)は、それらを返す公開のAPIが無く、`FormField`の登録簿では`register`・`useController`の直接の利用やフォーム全体の`disabled`、描かなくなった無効の欄が`_names.disabled`に残ることと判定がずれるため残した。置き換えられない項目は`form-library-internals.unit.test.ts`(版の番人)に一覧として持ち、導入済みの版が確かめた版(react-hook-form 7.89.0・`@hookform/resolvers` 5.9.1)と異なると失敗させ、各項目の振る舞いをBunで動かせる範囲で確かめる。DOMを要する項目は既存のブラウザテストが確かめる。版を上げる手順は`coding/002`に書く。
 
@@ -2081,7 +2091,7 @@ export declare function resetTurnstileScriptFailure(): void; // テストとカ�
 
 #### AppDocument・RouteAnnouncer・UiPrimitives・StateDisplays・Toaster・ErrorViews・SystemStatusView
 
-- `AppDocument({ children })`: `<html lang="ja" suppressHydrationWarning>`、`<head>`に`ScriptOnce`(配色)と`HeadContent`、`<body>`にスキップリンク(「本文へ移動」→`#${MAIN_CONTENT_ID}`)、`DisplayPreferencesProvider`(`initial`は`appRuntimeOf(router.options.context).display`)・`TooltipProvider`(200ms)で包んだ中身、`Toaster`、`RouteAnnouncer`(パスの変わる画面遷移の後に`document.title`を`aria-live="polite"`で通知する。同じタイトルが続く遷移は再通知されない)、`Scripts`。マウント後に`initBrowserObservability({ router, config: runtime.publicConfig.sentry, queue: browserErrorQueue })`と`installPreloadRecovery`を呼ぶ(10.4・10.5)。レイアウトは本文の`<main>`に`id={MAIN_CONTENT_ID}`を付ける。部品のテストとストーリーで`AppDocument`を使う時は、`node:async_hooks`の読み込みで失敗するため`report-error.ts`・`browser-observability.ts`を差し替える。
+- `AppDocument({ children })`: `<html lang="ja" suppressHydrationWarning>`、`<head>`に`ScriptOnce`(配色)と`HeadContent`、`<body>`にスキップリンク(「本文へ移動」→`#${MAIN_CONTENT_ID}`)、`DisplayPreferencesProvider`(`initial`は`appRuntimeOf(router.options.context).display`)・`TooltipProvider`(200ms)で包んだ中身、`Toaster`、`RouteAnnouncer`(パスの変わる画面遷移の後に`document.title`を`aria-live="polite"`で通知する。同じタイトルが続く遷移は再通知されない)、`Scripts`。マウント後に`initBrowserObservability({ router, config: runtime.publicConfig.sentry, queue: browserErrorQueue })`と`installPreloadRecovery`を呼ぶ(10.4・10.5)。レイアウトは本文の`<main>`に`id={MAIN_CONTENT_ID}`を付ける。部品のテストとストーリーで`AppDocument`を使う時は、`browser-observability.ts`を差し替える(`AppDocument`は送信待ちの列を`browser-error-reporting.ts`から読み込み、`report-error.ts`を読み込まない)。
 - `UiPrimitives`: モックアップの`components/ui`を部分ごとのファイル(`components/ui/<部品>/<部分>.tsx`、1ファイル1コンポーネント、他は型だけ)に分けて移植し、見た目の種類は`*-variants.ts`に置く。props型は名前付きのinterfaceにする。ボタン・タブ・バッジは固定幅を持たない(9.9)(文言の行を`whitespace-nowrap`で禁止せず、高さは`min-h-*`で下限だけを決め、`TabsList`はトリガーを折り返す。`Button`は`max-w-full`で親の幅を上限にし、`shrink-0`のため折り返さない親に複数を並べない。`DialogFooter`は640px以上で横に並べ、並ばない時は折り返す)。Tailwind v4の`outline-none`などの輪郭を消す・上書きするクラスは`base.css`の`:focus-visible`の輪郭を打ち消すため付けない。非選択のタブの文字色は`text-muted-foreground`(コントラスト比AA)。Skeletonは`aria`を持たず、読み込み中の通知は`LoadingSkeleton`が担う。
 - `StateDisplays`: `LoadingSkeleton({ label?, children? })`(`role="status"`、既定の文言「読み込み中」)・`EmptyState({ title, description?, action?, headingLevel? })`(`headingLevel`は2〜6で、指定すると`section`+見出し+`aria-labelledby`)・`ErrorState({ message, onRetry, contactHref? })`(`contactHref`を省略すると問い合わせのボタンを描かない。管理者側は渡さない、8.6)・`PartialErrorState({ message, onRetry })`・`UnavailableNotice({ reason })`(8.6・11.7)。固定の文言は`utilities/messages/state-messages.ts`に置く(`server/http/error-responses.ts`も`UNEXPECTED_ERROR_MESSAGE`をここから読む)。問い合わせの導線は通常の`<a href>`である。
 - `Toaster`・`notify`: sonnerを下中央に置き(領域の名前「通知」)、`notify.success(message)`・`info`・`warning`・`error`で表示する。sonnerはトーストに`role`を付けずエラーも丁寧な通知で伝えるため、急ぐ失敗は`ErrorState`・フォームの`role="alert"`で示し、トーストは結果の通知に使う(8.7)。sonnerが差し込む`[data-sonner-toast]{outline:0}`を打ち消すため、`toastOptions.classNames.toast`に`!important`付きの`focus-visible:`の輪郭を付ける。
@@ -2240,7 +2250,7 @@ export interface AdminLayoutProps {
 
 #### FrontendLintConfig・AppTestConfigs
 
-- `apps/frontend-lib/config/frontend-lint.ts`(アプリからは`lib/config/frontend-lint.ts`): `createFrontendLintConfig({ eslintReact, reactHooks, jsxA11y, tanstackQuery, tanstackRouter, storybook })`(引数は`FrontendLintDependencies`)が、各プラグインの推奨設定、`@eslint-react/dom-no-dangerously-set-innerhtml: error`と`no-restricted-syntax`(`innerHTML`・`outerHTML`への代入、`insertAdjacentHTML`、`createElement`の第2引数の`dangerouslySetInnerHTML`の禁止、4.8。計算したキーの代入・`Object.assign`は検出しない)の`frontend/no-raw-html`、`frontend/router-throwables`、「Dependency Direction」の規則(`frontend/zod-entry`・`frontend/direction/*`・`frontend/browser-bundle/start-and-app`)を返す。各プラグインの型は`ESLint.Plugin`へ代入できないため、引数は構造的な型`PluginWithConfigs`で受けて推奨設定の形を実行時に確かめる。フックの規則は`@eslint-react`の推奨が有効にする同名の規則だけ`react-hooks`側を止め(`frontend/react-hooks-conflicts`)、refs・immutability・globalsは`react-hooks`側が担う。動的`import()`と別のディレクトリの`*.server.ts`の読み込みは検出しない。マークダウンのサニタイズ済みHTMLの部品(content-processing)だけが、理由のコメント付きで1行の無効化を使える規約を`frontend/003`に書く。
+- `apps/frontend-lib/config/frontend-lint.ts`(アプリからは`lib/config/frontend-lint.ts`): `createFrontendLintConfig({ eslintReact, reactHooks, jsxA11y, tanstackQuery, tanstackRouter, storybook })`(引数は`FrontendLintDependencies`)が、各プラグインの推奨設定、`@eslint-react/dom-no-dangerously-set-innerhtml: error`と`no-restricted-syntax`(`innerHTML`・`outerHTML`への代入、`insertAdjacentHTML`、`createElement`の第2引数の`dangerouslySetInnerHTML`の禁止、4.8。計算したキーの代入・`Object.assign`は検出しない)と、エディタの実装(`@milkdown/*`・`vue`・`@vue/*`)と遅延読み込みのモジュール(`components/markdown-editor/crepe/`)の動的`import()`の禁止(content-processingが加える。文字列とテンプレートリテラルの指定を検出する。読み込みの入口の`components/markdown-editor/load-crepe-editor.ts`は遅延読み込みのモジュールを、遅延読み込みのモジュールの中はどちらも動的`import()`できる。`frontend/restricted-syntax/editor-loader`・`frontend/restricted-syntax/editor-module`)の`frontend/restricted-syntax`、`frontend/router-throwables`、「Dependency Direction」の規則(`frontend/zod-entry`・`frontend/direction/*`・`frontend/browser-bundle/start-and-app`)を返す。各プラグインの型は`ESLint.Plugin`へ代入できないため、引数は構造的な型`PluginWithConfigs`で受けて推奨設定の形を実行時に確かめる。フックの規則は`@eslint-react`の推奨が有効にする同名の規則だけ`react-hooks`側を止め(`frontend/react-hooks-conflicts`)、refs・immutability・globalsは`react-hooks`側が担う。「Dependency Direction」の規則は、動的`import()`と別のディレクトリの`*.server.ts`の読み込みを検出しない(`frontend/restricted-syntax`が検出する動的`import()`は、エディタの実装と遅延読み込みのモジュールだけ)。マークダウンのサニタイズ済みHTMLの部品(content-processing)だけが、理由のコメント付きで1行の無効化を使える規約を`frontend/003`に書く。
 - 共通部品の`eslint.config.ts`は、`storybook/no-uninstalled-addons`が作業ディレクトリから`package.json`を探すため、`.storybook/main.ts`に`packageJsonLocation`の絶対パスを渡す。アプリの`eslint.config.ts`で作業ディレクトリに依存する規則を使う時も同じ扱いにする。
 - 各アプリの`eslint.config.ts`: `ignores`(`lib/`・`src/graphql/generated/`・`src/routeTree.gen.ts`)→`createBaseConfig`→`createFrontendLintConfig`→`prettierConfig`。
 - `prettier.config.ts`: ルートの設定を展開し、`plugins`に`prettier-plugin-tailwindcss`を`fileURLToPath(import.meta.resolve(...))`の絶対パスで渡す(ルートのPrettierは実行したディレクトリからプラグイン名を解決するため)。`tailwindStylesheet`は共通部品が`./styles/base.css`、アプリが`./src/styles.css`。CIでは整形検査の前に共通部品の依存を入れる。
@@ -2777,6 +2787,7 @@ graph LR
 | `SENTRY_TRACES_SAMPLE_RATE`       | `0`                                                      | `1`                                                         | `0.1`                                               |
 | `TURNSTILE_SITE_KEY`              | `1x00000000000000000000BB`(常に成功し表示しないテスト用) | 仮の値(infra-deliveryが置き換える)                          | 仮の値(infra-deliveryが置き換える)                  |
 | `IMAGES_ORIGIN`                   | `http://localhost:48043`                                 | `https://genai-example-2-images-staging.lab.kurachiweb.com` | `https://genai-example-2-images.lab.kurachiweb.com` |
+| `CLIENT_SITE_ORIGIN`              | `http://localhost:48044`                                 | `https://genai-example-2-client-staging.lab.kurachiweb.com` | `https://genai-example-2-client.lab.kurachiweb.com` |
 | `WEB_ANALYTICS_TOKEN`(clientのみ) | 空(計測しない)                                           | 仮の値(infra-deliveryが置き換える)                          | 仮の値(infra-deliveryが置き換える)                  |
 | `SENTRY_DSN`(シークレット)        | 無し(送信しない)                                         | Infisicalの`staging`                                        | Infisicalの`prod`                                   |
 | `HASH_PEPPER`(シークレット)       | Infisicalの`dev`(api・eventと共有)                       | Infisicalの`staging`(api・eventと共有)                      | Infisicalの`prod`(api・eventと共有)                 |

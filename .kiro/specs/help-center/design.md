@@ -328,7 +328,7 @@ sequenceDiagram
 - 更新の一括の書き込み: (1)記事の存在と版の確認の文(`helpArticleExistsGuard`)。(2)記事の更新(同じ`CASE`式、`revision = revision + 1`、`updated_at = now`、カテゴリが変わるときだけ`sort_order`を移動先のカテゴリの末尾の値にする。`created_by_admin_id`・ピン留めの切り替えでの`sort_order`は変えない)。(3)`handleChange.kind`が`changed`のときだけ`previousHandleRelease`(`exceptOwnerId`は記事自身)。(4)`changed`のときだけ`previousHandleUpsert`(変更前のハンドルは記事自身の現在のハンドルだったため、他の記事の旧ハンドルとは重ならない)。(5)公開なら`markPending`、下書きなら`deleteSources`。(6)`buildAuditLogStatements`。
 - `handleOccupiedCondition`・`isHandleOccupied`は他の記事の現在のハンドルだけを使用中とし、他の記事の旧ハンドルは使用中としない(user-profile-socialの仮2の確定によるハンドル基盤の共通の規則。`includePrevious`は使わない)。解放の文は現在のハンドルの書き込みの後に置き(ハンドル基盤の解放の規約)、同じトランザクションで確定するため、同時の保存でも、ある記事の現在のハンドルと同じ文字列が他の記事の旧ハンドルとして残らない。同じ旧ハンドルを2つの保存が同時に取りにいく場合は、現在のハンドルの一意索引により一方だけが確定し、もう一方は`handle-unavailable`になる。
 - 失敗の分類は取り消しの後の読み直しで行う(記事が無い→`not-found`、版が違う→`conflict`、カテゴリが無い→`category-missing`、それ以外→`handle-unavailable`)。取り消された場合は解放の文も取り消され、元の記事の旧ハンドルは残る。
-- `requestRefresh`の送信の失敗は例外にならず(content-processing)、索引文書は`pending`のまま残り、日次の再抽出が1時間後以降に再処理する(要件10.4)。
+- `requestRefresh`の送信の失敗は例外にならず(content-processing)、索引文書は`pending`のまま残り、日次の再抽出が1時間後以降に再処理する(要件10.4)。例外になるのは呼び出し側の誤りだけで、未登録の検索対象は`SearchTargetRegistryError`、契約に合わない本文などの送信前の検証の失敗は`MessagePublishError`を投げる。
 
 ### 記事の削除とカテゴリの削除
 
@@ -626,7 +626,7 @@ export declare const HELP_ARTICLE_SEARCH_TARGET: SearchTargetDefinition<
 
 - `read`が`undefined`を返すと、content-processingの処理が索引文書を削除する。外部へ送るのはcontent-processingの`buildIndexDocument`が`extract: true`の項目(本文)から作る正規化テキストだけである(要件10.6)。100,000文字の本文はUTF-8で約300,000バイトで、抽出の入力の上限(`MAX_EXTRACTION_INPUT_BYTES`の900,000バイト)に収まる。
 - 並べ替え・カテゴリの付け替えは`revision`を変えず、索引の対象の項目も変えないため、索引の更新を依頼しない。
-- `SEARCH_TARGETS`への追加で、api・eventの両方の`createSearchPlatformModule(SEARCH_TARGETS)`に入る。eventの束縛の変更は無い。
+- `SEARCH_TARGETS`への追加で、api・eventの両方の`createSearchPlatformModule(SEARCH_TARGETS, appName)`(`appName`はapiが`'api'`、eventが`'event'`)に入る。eventの束縛の変更は無い。
 
 ### api/domain
 
@@ -871,7 +871,7 @@ export interface HelpArticleEditor {
 - `delete`: `findById`で無ければ`help_article_not_found`(8.4)→`prepare`(`help-article.delete`)→`HelpArticleStore.delete`(`not-found`も同じコード)。
 - `reorder`: `prepare`(`help-article.reorder`、対象はカテゴリ、詳細`count`)→`HelpArticleStore.reorder`。`outdated`は`help_order_outdated`(9.10)。結果は`listAll`のうちそのカテゴリの記事。索引の更新は依頼しない。
 - 作成者は`admin.id`を作成時だけ記録し、更新では渡さない(6.6)。時刻は`Clock`、IDは`IdGenerator`。
-- `requestRefresh`は送信の失敗を例外にしない(content-processing)。保存は成功のまま返す(10.4)。
+- `requestRefresh`は送信の失敗を例外にしない(content-processing)。保存は成功のまま返す(10.4)。未登録の検索対象の`SearchTargetRegistryError`と、契約に合わない本文などの送信前の検証の失敗の`MessagePublishError`だけは呼び出し側の誤りとして投げる(`help-article`は`SEARCH_TARGETS`に登録し、本文は`{ target, sourceId }`のため、正しい実装では起きない)。
 
 #### HelpArticleAdminReader
 
@@ -1273,7 +1273,7 @@ export interface HelpArticleFormProps {
 - `/help-articles/new`(`new.tsx`): `adminHelpCategories`を読み、`HelpArticleForm`(`mode: 'create'`)。閲覧のみの管理者は一覧へ戻す。保存の成功で「ヘルプ記事を作成しました。」の`notify`と編集画面への移動(6.10)。
 - `/help-articles/$articleId`(`$articleId.tsx`): `adminHelpArticle`と`adminHelpCategories`を読む。`null`なら「このヘルプ記事は削除されています。」と一覧への導線。`HelpArticleForm`(`mode: 'edit'`、`readOnly`は`!hasRole(role, 'moderator')`)。公開なら「公開ページを開く」(`clientSiteOrigin + '/help/' + ハンドル`、`target="_blank"`・`rel="noopener"`、6.11)。モデレーター以上に`HelpArticleDeleteButton`。保存の成功で「ヘルプ記事を保存しました。」と再読み込み。
 - `HelpArticleFormSchema`: サーバーと同じ定数と判定(`checkHelpTitle`・`checkHelpSubtitle`・`checkHandleFormat`・`markdownTextSchema`(100,000書記素)・`AUDIT_REASON_MAX`)から組み立てる(6.1・6.2)。
-- `HelpArticleForm`: `useAppForm(HelpArticleFormSchema, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)。フォームの値は`CreateHelpArticleInput`・`UpdateHelpArticleInput`の形に合わせ、編集する値を`fields`の下に置き(欄の名前は`fields.title`・`fields.subtitle`・`fields.handle`・`fields.categoryId`・`fields.pinned`・`fields.status`・`fields.body`)、変更の理由は`fields`の外の`reason`に置くため、サーバーの詳細の経路(`input.fields.<名前>`・`input.reason`)から`input.`を除いた経路が欄の名前とそろう。`fields`そのものに付く詳細は欄をまとめた値の経路のため、フォーム全体の失敗になる。編集する記事の`id`と`expectedRevision`(読み込んだ`article.revision`)はスキーマの入力に含めず、`onSubmit`で足す。欄の順はタイトル・サブタイトル・ハンドル(`HelpArticleHandleField`)・カテゴリ(`select`、APIの並び順、11.7)・ピン留め(`checkbox`)・ステータス(`radio-group`、既定は下書き)・本文(`MarkdownEditor`、`maxGraphemes` 100000、`preview`は`useMarkdownOptions({ externalLinkRel: HELP_ARTICLE_EXTERNAL_LINK_REL, idScope: 'preview' })`)・変更の理由(`ReasonField`、任意)・保存。各欄はフォーカスアウトで検証する(6.3・6.4)。`help_article_handle_unavailable`はハンドルの欄(`fields.handle`)、`validation_error`は`AppForm`が`applyServerFieldErrors`で欄へ(`fields.categoryId`は「カテゴリを選択してください。」、6.5)、`onSubmitError`で`help_article_conflict`は再読み込みの案内(6.8)、`help_article_not_found`は削除の案内(6.9)、それ以外の失敗と欄に対応しない詳細は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。`readOnly`なら全欄を`FormField`の`disabled`で無効にし(入力要素の`disabled`の属性だけでは無効にしない)、保存を出さない(送信しないため、12.2)。カテゴリを変えると保存で移動先のカテゴリの末尾に置かれる旨を、カテゴリの欄の説明に示す(6.12)。
+- `HelpArticleForm`: `useAppForm(HelpArticleFormSchema, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)。フォームの値は`CreateHelpArticleInput`・`UpdateHelpArticleInput`の形に合わせ、編集する値を`fields`の下に置き(欄の名前は`fields.title`・`fields.subtitle`・`fields.handle`・`fields.categoryId`・`fields.pinned`・`fields.status`・`fields.body`)、変更の理由は`fields`の外の`reason`に置くため、サーバーの詳細の経路(`input.fields.<名前>`・`input.reason`)から`input.`を除いた経路が欄の名前とそろう。`fields`そのものに付く詳細は欄をまとめた値の経路のため、フォーム全体の失敗になる。編集する記事の`id`と`expectedRevision`(読み込んだ`article.revision`)はスキーマの入力に含めず、`onSubmit`で足す。欄の順はタイトル・サブタイトル・ハンドル(`HelpArticleHandleField`)・カテゴリ(`select`、APIの並び順、11.7)・ピン留め(`checkbox`)・ステータス(`radio-group`、既定は下書き)・本文(`MarkdownEditor`、`maxGraphemes` 100000、`preview`は`useMarkdownOptions({ externalLinkRel: HELP_ARTICLE_EXTERNAL_LINK_REL, idScope: 'preview' })`、`labelId={control.labelId}`を明示的に渡す(ラベルとの関連付けとラベルの押下でのフォーカスのため))・変更の理由(`ReasonField`、任意)・保存。各欄はフォーカスアウトで検証する(6.3・6.4)。`help_article_handle_unavailable`はハンドルの欄(`fields.handle`)、`validation_error`は`AppForm`が`applyServerFieldErrors`で欄へ(`fields.categoryId`は「カテゴリを選択してください。」、6.5)、`onSubmitError`で`help_article_conflict`は再読み込みの案内(6.8)、`help_article_not_found`は削除の案内(6.9)、それ以外の失敗と欄に対応しない詳細は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。`readOnly`なら全欄を`FormField`の`disabled`で無効にし(入力要素の`disabled`の属性だけでは無効にしない)、保存を出さない(送信しないため、12.2)。カテゴリを変えると保存で移動先のカテゴリの末尾に置かれる旨を、カテゴリの欄の説明に示す(6.12)。
 - `HelpArticleHandleField`: フォーカスアウトで形式を検査し、正しければ`helpArticleHandleAvailability(handle, articleId)`で確かめ、`UNAVAILABLE`なら「このハンドルは既に使われています。別の文字列を入力してください。」、`AVAILABLE_RELEASES_PREVIOUS`なら「このハンドルは別の記事の以前のハンドルです。保存すると、その記事の以前のURLは転送されなくなります。」(7.7)。旧ハンドルがあれば「以前のハンドル<旧>のURLは、次にハンドルを変更するか、記事を削除するか、他の記事が同じハンドルを設定するまで新しいURLへ転送されます。」(7.11)。
 - `HelpArticleDeleteButton({ article })`: `ConfirmActionDialog`(タイトル「ヘルプ記事『<タイトル>』を削除しますか?」、説明「記事と以前のURLの転送は削除され、元に戻せません。」、確認「削除」、理由`optional`、`audited: true`、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、8.1)。成功で「ヘルプ記事を削除しました。」と一覧へ移動(8.5)。失敗はダイアログの中に`failureMessageOf`の文言で示し、`help_article_not_found`ではAPIの削除の案内に加えて一覧への導線を出す(8.4)。
 

@@ -73,7 +73,7 @@
 - `CLIENT_SECURITY_POLICY`へ加えたStripeの許可先と、`PublicRuntimeConfig.stripePublishableKey`(frontend-platform)。frontend-platformが`SecurityPolicySources`の形や許可先の形の規則を変えたら、本specを確かめ直す。
 - Stripeのシークレット・変数の名前(infra-delivery・launch-readiness)。infra-deliveryのWorkerごとのフォルダの構成・優先の規則・`WORKER_SCOPED_SECRETS`の変更(api用とevent用の制限付きキーの登録先と、ローカルの起動のコマンドに効く。仮7)。
 - identity-authの`AccountGuard`・`UserLifecycleAsyncRegistration`の`order`の範囲・`purge_due`の順序・`UserContactDirectory`の形(`findContact`が退会済み・物理削除済みの利用者で`undefined`を返す規則)・frontend-libの`Checkbox`のprops(ラベルの関連付け・チェック状態の受け渡し)を変えたら、本specを確かめ直す。
-- ユーザーライフサイクルの波及処理の`order`は、各specが4:21のジョブの`order`と同じ百の位の帯を使う(spec横断レビュー、2026-10-23)。本specは400番台を使い、identity-auth(100番台、波及処理はidentity-auth専用の10000以上)・admin-foundation(200番台)・inquiry-chat(300番台)・media-pipeline(800番台)・email-delivery(900)・content-processing(950)と、roadmapの帯の割り当ての表で後続specに割り当てた帯(500番台・600番台・700番台・1000番台以降)と重ねない。帯の割り当てが変わったら、本specを確かめ直す。
+- ユーザーライフサイクルの波及処理の`order`は、各specが4:21のジョブの`order`と同じ百の位の帯を使う(spec横断レビュー、2026-10-23)。本specは400番台を使い、identity-auth(100番台、波及処理はidentity-auth専用の10000以上)・admin-foundation(200番台)・inquiry-chat(300番台)・media-pipeline(800番台)・email-delivery(900)・content-processing(2300)と、roadmapの帯の割り当ての表で後続specに割り当てた帯(500番台・600番台・700番台・1000番台以降)と重ねない。帯の割り当てが変わったら、本specを確かめ直す。
 - 後続specが`PURCHASE_KIND_REGISTRATIONS`・`SUBSCRIPTION_EVENT_SINKS`に登録するServiceIdentifierは、後続spec自身が`backend-lib/workers/<ドメイン>`の共有モジュールでapi・eventの両方に束縛する(反映が両アプリで動くため)。
 - Stripe SDKのメジャー版とAPI版の変更(Webhook endpointのAPI版・テストの模擬応答・`operations/004`の手順を同時に更新する)。
 
@@ -1240,7 +1240,7 @@ export interface CheckoutStartLimits {
 | `payments.pending-checkout-sweep`  | 4:21     | 400     | (1)有効期限を1時間以上過ぎた`open`・`processing`・`superseded`の購入を最大200件突合(10.5)。(2)`dispatched_at`が空で10分以上経った返金の依頼を最大100件`dispatch`。(3)`pending`のまま10分以上経った購入確認メール・自動返金の通知を最大100件依頼(10.6) |
 | `payments.history-retention`       | 4:21     | 410     | `recorded_at`が実行時刻の7年前より前の決済履歴を1回500件、最大20回物理削除(12.7)                                                                                                                                                                      |
 
-- Trigger: apiのCron Triggers(`40 7 * * *`・`21 12 * * *`)。23:40の`order` 10は、同時刻のマッチの確定(match-engine)より先に動くための値で、match-engineは10より大きい`order`を使う(10.2)。4:21の`order`は上流の100〜120・200・210・300・810〜830・900・950と重ならない。ジョブの名前と順序は日次タイムラインの表に載せる。
+- Trigger: apiのCron Triggers(`40 7 * * *`・`21 12 * * *`)。23:40の`order` 10は、同時刻のマッチの確定(match-engine)より先に動くための値で、match-engineは10より大きい`order`を使う(10.2)。4:21の`order`は上流の100〜120・200・210・300・810〜830・900・2300と重ならない。ジョブの名前と順序は日次タイムラインの表に載せる。
 - Idempotency: すべての処理は2回実行しても結果が変わらない(反映は状態の前進、削除は条件付き)。件数の上限を超えた分は翌日(4:21)に続ける。23:40の対象は200件を超えない想定(週ごとの予選の勝者の数)で、超えた場合は`warn`を記録する。
 
 #### PaymentsSchemaModule

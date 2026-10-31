@@ -100,13 +100,13 @@ describe('APIサーバーの検索のモジュール', () => {
     );
   });
 
-  test('再抽出のジョブを業務時刻4:21の起動に順序950で、日次の後始末の後に登録する', () => {
+  test('再抽出のジョブを業務時刻4:21の起動に、各specの削除のジョブの帯より後の順序2300で登録する', () => {
     expect(
       SCHEDULED_JOBS.find(({ name }) => name === REEXTRACTION_JOB_NAME),
     ).toEqual({
       name: REEXTRACTION_JOB_NAME,
       at: { hour: 4, minute: 21 },
-      order: 950,
+      order: 2300,
       handler: SEARCH_TYPES.ReextractionJob,
     });
     expect(

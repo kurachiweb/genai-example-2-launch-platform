@@ -13,7 +13,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   {
     name: 'content-processing.keyword-reextraction',
     at: { hour: 4, minute: 21 },
-    order: 950,
+    order: 2300,
     handler: SEARCH_TYPES.ReextractionJob,
   },
 ];

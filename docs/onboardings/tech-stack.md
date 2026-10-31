@@ -63,7 +63,7 @@
 
 ### 自然言語分析
 
-- [Google Cloud Natural Language AI](https://cloud.google.com/natural-language/docs) ... 多言語対応のキーワード抽出、APIキーで認証
+- [Google Cloud Natural Language API](https://cloud.google.com/natural-language/docs) ... 多言語対応のキーワード抽出、APIキーで認証
 
 ### 画像処理
 

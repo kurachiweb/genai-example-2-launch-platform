@@ -285,7 +285,7 @@
 
 - [x] 10. APIサーバーに日次の再抽出のジョブを登録する
   - 先に、偽のポートで、全ての検索対象について縮退と1時間以上の更新待ちの識別子を上限200件で取得して更新を要求すること、1件の要求の失敗で残りを止めないこと、検索対象ごとの件数をログに出すことを確かめる単体テストを書く
-  - 共通の束縛とAPIサーバーの検索のモジュールを登録し、ジョブを名前`content-processing.keyword-reextraction`・業務時刻4:21・順序950で登録する。cron式`21 12 * * *`は、APIサーバーの3環境の`triggers.crons`に既にあれば変更せず、無ければ加える(email-deliveryの実装の有無によらない)
+  - 共通の束縛とAPIサーバーの検索のモジュールを登録し、ジョブを名前`content-processing.keyword-reextraction`・業務時刻4:21・順序2300で登録する。cron式`21 12 * * *`は、APIサーバーの3環境の`triggers.crons`に既にあれば変更せず、無ければ加える(email-deliveryの実装の有無によらない)
   - 完了状態: 単体テストとbackend-platformのcron式の一致の検査が成功し、ローカルで4:21の定期実行を手動で起こすと検索対象ごとの件数がログに出る
   - _Depends: 8.6, 8.7_
   - _Requirements: 9.10, 10.6, 15.6_
@@ -319,7 +319,7 @@
   - _Requirements: 1.4, 16.5, 16.6_
 
 - [x] 11.4 (P) サービス仕様を更新する
-  - 日次タイムラインの「日次バッチ(4:21)の内容」に、ジョブの名前と順序の表が無ければ作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、既に下流specが作っていれば行だけを加える。検索のキーワードの再抽出(`content-processing.keyword-reextraction`・950)の行を順序どおりに加える(仮決定P6)。表の作成は下流specの前提に含まれる(設計の「本specのタスクを前提にする下流spec」)
+  - 日次タイムラインの「日次バッチ(4:21)の内容」に、ジョブの名前と順序の表が無ければ作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、既に下流specが作っていれば行だけを加える。検索のキーワードの再抽出(`content-processing.keyword-reextraction`・2300)の行を順序どおりに加える(仮決定P6)。表の作成は下流specの前提に含まれる(設計の「本specのタスクを前提にする下流spec」)
   - 文言規則に、マークダウンの入力の検証の文言(必須・禁止文字)、リンクのURLの形式違反、エディタの読み込み失敗、プレビューの空、文字数の超過と戻りの読み上げの文言を加える
   - ページ構成のコメントの投稿欄に、書く側が書式を適用した見た目で編集すること、ツールバーに表を含めることを加え、準拠方針のデータ保持期間の一覧に検索索引の行を加える
   - プライバシーポリシーの大枠の「国外移転の記載事項」に、委託先Google Cloud(Natural Language API)の項を、Cloudflare・AWSの項と同じ「移転先・移転の根拠・委託先が講じる措置」の形で加える。移転先には送る情報(抽出の対象の項目の公開用のテキストだけ)と処理する場所(処理のリージョンを指定しないため保証されない)を、根拠にはDPFを主としDPFが無効になった場合はGoogle CloudのDPAに含まれるSCCに拠ることを、措置には共通の記述への参照・Google側で保存も学習への利用もされないこと・APIの制限を掛けた専用のキーを書く。共通の「移転先の国」の行は、Google Cloudの記述だけをこの項への参照に改める
@@ -390,3 +390,4 @@
 - 最終検証: 既知の制限として、`FormField`の`Label`の`htmlFor`は入力欄の編集領域を指さない(`contenteditable`はラベル付け可能な要素ではない)ため、ラベルを押しても編集領域へフォーカスが移らない(支援技術への名前は`labelId`の`aria-labelledby`で付く)。ラベルの押下で`MarkdownEditor`の`focus`を呼ぶかは開発者の判断
 - 最終検証: common-libのZodは、`validation/**`の外でも共用部品の静的解析と読み込みの境界の単体テストで許可されている。下流specが`common-lib/media`などの`validation/**`以外でZodを使い、frontend-libの`components/**`・`server/**`から読み込むと、frontend-libの位置では共用部品の`node_modules`のZodに解決され、Zodの実体が2つになり得る(frontend-libの静的解析が禁止するのは`common-lib/validation/**`だけ)
 - 最終検証: ロガーのカテゴリーの2番目は、層ではなくモジュールの`'search'`にした(`['event','search','index']`・`[<アプリ名>,'search','refresh']`・`['api','search','reextraction']`)。`infra/004`の`[<アプリ名>, <層>, <モジュール>]`は2番目を層と読めるため、2番目に横断のモジュールを置いてよいと規則に書き足すか、カテゴリーを層の形へ改めるかは開発者の判断(`infra/004`のカテゴリーの表には`[<アプリ名>, 'search', 'refresh']`の行がある)
+- 開発者の決定(2026-10-31、最終報告の判断の要る点への回答): (1) 絵文字を索引と検索語の区切りにした(`search/emoji-separator.ts`の`separateEmoji`、`db/004`の「絵文字の区切り」。抽出の入力も変わるが`KEYWORD_SELECTION_VERSION`は上げない)。(2) 8.4の非対応の言語の状態の表示の問題は既知の制限として受け入れ、変更しない。(3) 入力欄の部品はブラウザ用の送信の入口`start/observability/browser-error-reporting.ts`の`reportUnexpectedErrorInBrowser`を使い、ブラウザテストは`report-error.ts`を差し替えず`vi.mock(path, { spy: true })`で記録する(frontend-platformの所有物の変更)。(4) `labelId`の要素の押下で編集領域へフォーカスを移し、最終検証の既知の制限(ラベルを押してもフォーカスが移らない)を解消した。(5) 再抽出の順序を950から2300にし、roadmapの帯の表のcontent-processingに2300番台を加えた(11.4の「削除の処理より後」の懸念を解消。他specの設計の順序の一覧も直した)。(6) 要件1.2をBun・Chromium・workerdの照合のテストで確かめる(`markdown/fixtures/cross-runtime-cases.ts`)。(7) 仮表示と編集領域の文字組みをそろえた(2.11、`crepe-theme.css`、高さの差2px以内)。(8) C1制御文字(U+0080〜U+009F)も禁止の文字に含めた(7.5)。(9) 委託先・技術選定・要件定義書の表記を「Natural Language API」に統一した(11.4の表記の相違を解消)
