@@ -79,6 +79,11 @@
 - テーブル定義のファイルを追加する前に: [テーブル定義の配置](docs/GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)
 - テーブルの主キーを定義する前に: [主キー](docs/GUIDES/tech/db/003-schema-conventions.md#主キー)
 - テーブルに作成日時・更新日時・論理削除のカラムを定義する前に: [共通カラム](docs/GUIDES/tech/db/003-schema-conventions.md#共通カラム)
+- 全文検索の検索対象・索引文書のテーブル・検索のクエリを追加・変更する前に: [全文検索の索引の前提と用語](docs/GUIDES/tech/db/004-full-text-search.md#前提と用語)
+- キーワード抽出の外部APIへ送る項目や呼び出し方を変える前に: [キーワード抽出の送る情報の範囲](docs/GUIDES/tech/external/002-natural-language-keyword-extraction.md#送る情報の範囲)
+- マークダウンの入力欄・表示部品・検索語の強調を画面に置く前に: [マークダウンの入力欄と表示部品の前提と用語](docs/GUIDES/tech/frontend/008-markdown-editor-and-content.md#前提と用語)
+- マークダウンの描画・サニタイズの許可リスト・サニタイズの後の変換を変える前に: [マークダウンのサニタイズの処理の順序](docs/GUIDES/tech/security/004-markdown-sanitization.md#処理の順序)
+- 共有ディレクトリから別の共有ディレクトリ(共用部品など)を読み込む前に: [別の共有ディレクトリの参照](docs/GUIDES/tech/coding/003-shared-directories.md#別の共有ディレクトリの参照)
 - 定期実行のジョブを追加する前に: [定期実行](docs/GUIDES/tech/infra/003-async-processing.md#定期実行)
 - 非同期メッセージを送る処理や受信する処理を書く前に: [非同期メッセージ](docs/GUIDES/tech/infra/003-async-processing.md#非同期メッセージ)
 - 定期実行のジョブやメッセージの処理で書き込みを行う前に: [重複配信と冪等性](docs/GUIDES/tech/infra/003-async-processing.md#重複配信と冪等性)
@@ -139,29 +144,39 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   │   └── modules/            # 子モジュール(storage・messaging・edge-services・worker-routing)とそのテスト
 │   ├── db/                     # DBへの接続処理を含む
 │   │   ├── migrations/         # DBマイグレーション履歴
-│   │   └── schema/             # DBスキーマ定義
+│   │   ├── schema/             # DBスキーマ定義
+│   │   ├── search/             # 全文検索の索引の定義と検証・SQLのひな形・検索のSQL断片・索引の定義の集約点・マイグレーションとの突き合わせ
+│   │   └── scripts/            # 索引の定義からカスタムマイグレーションに貼る全文検索のSQLを出力するスクリプト
 │   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用
 │   ├── backend-lib/            # バックエンド共通ファイル(node_modulesディレクトリは無し)
-│   │   └── utilities/          # ユーティリティ
+│   │   ├── core/               # 実行環境に依存しない部品 ... 検索対象の型・索引文書の組み立て・更新の計画・自然言語APIの要求と応答の解釈・キーワードの選別(`search/`)などを含む
+│   │   └── workers/            # workerdのAPI・バインディング・Honoに依存する部品 ... 検索対象の定義と集約点・索引の保存・更新の要求・共通の束縛(`search/`)などを含む
+│   ├── common-lib/             # フロントエンドとバックエンドの共用部品 ... マークダウンの描画とサニタイズ・書記素の文字数と禁止文字・入力の検証規則・検索語の正規化と検索式・強調表示の範囲、攻撃パターン集
 │   ├── api/                    # APIサーバー ... Honoを利用、フロントエンド向け内部API(GraphQL)と公開API(REST・OpenAPI仕様書)を提供
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   ├── event/                  # イベントサーバー ... Honoを利用、Stripe Webhook・RFC 8058メール配信停止・Queuesのconsumer・画像配信ドメイン(SW-012)を担当
+│   │   ├── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   └── common-lib/         # 共用部品(`apps/common-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   ├── event/                  # イベントサーバー ... Honoを利用、Stripe Webhook・RFC 8058メール配信停止・Queuesのconsumer・画像配信ドメイン(SW-012)・全文検索の索引の更新とキーワード抽出を担当
+│   │   ├── scripts/            # 実際の外部API(キーワード抽出)への疎通確認のスクリプト
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   ├── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   └── common-lib/         # 共用部品(`apps/common-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   ├── frontend-lib/           # フロントエンド共通ファイル
 │   │   ├── .storybook/         # Storybookの設定 ... Tailwind CSS・bot判定の偽物・配色の切替・固定の表示設定・アクセシビリティ検査の対象の絞り込み
 │   │   ├── components/         # コンポーネント定義 ... Storybookによるプレビュー付き
-│   │   ├── config/             # 画面を持つアプリが使う静的解析の規則とGraphQLのコード生成の検査、Viteのビルドのプラグイン(ビルドの出力からローカルのシークレットのファイルを除く)、設定ファイルとカタログの網羅性の検査
+│   │   ├── config/             # 画面を持つアプリが使う静的解析の規則とGraphQLのコード生成の検査、Viteのビルドのプラグイン(ビルドの出力からローカルのシークレットのファイルを除く)、設定ファイルとカタログの網羅性の検査、生のHTMLの例外の検査、エディタの事前バンドルの一覧とVueの機能フラグ
+│   │   ├── scripts/            # マークダウンの入力欄の編集領域がページの最初の読み込みとサーバー側の描画に含まれないことの検査(`check:editor-chunks`)
 │   │   ├── server/             # サーバーの部品 ... Workerの入口と処理の順序、環境の検証、CSRF・CSP・セキュリティヘッダー・IP制限、APIサーバーへの中継とセッションのCookie、ログとエラートラッキング
 │   │   ├── start/              # TanStack Startとの接続 ... グローバルのミドルウェア、ルーターの文脈、GraphQLの実行、ページのhead、ブラウザ側のエラートラッキングの初期化
 │   │   ├── styles/             # スタイル ... 配色のトークン、フォーカスの輪郭と視差効果を減らす設定での動きの抑制
 │   │   ├── test/               # テストの補助 ... アクセシビリティの自動検査、キーボード操作・表示設定・配色の再現、テストの偽物
 │   │   └── utilities/          # ユーティリティ
 │   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... TanStack Startを利用、公開API向けSwagger UIページも含む
-│   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   ├── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   └── common-lib/         # 共用部品(`apps/common-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... TanStack Startを利用
-│       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│       ├── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│       └── common-lib/         # 共用部品(`apps/common-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 ├── mockups/src/routes/         # 画面デザイン案 ... TanStack Start・Tailwind CSS・shadcn/uiを利用、フロントエンド共通ファイルは不使用
 │   ├── client/                 # 利用者側画面のモックアップ
 │   └── admin/                  # 管理者側画面のモックアップ

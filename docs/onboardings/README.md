@@ -69,10 +69,12 @@
    claude mcp login cloudflare-observability --no-browser
    ```
 
-10. コンテナ内: DBスキーマ定義・APIサーバー・イベントサーバー・フロントエンド共通ファイル・利用者側と管理者側のフロントエンドの依存パッケージをインストールする(初回のみ)
+10. コンテナ内: DBスキーマ定義・共用部品・APIサーバー・イベントサーバー・フロントエンド共通ファイル・利用者側と管理者側のフロントエンドの依存パッケージをインストールする(初回のみ)
 
     ```sh
     cd /workspace/apps/db
+    bun install
+    cd /workspace/apps/common-lib
     bun install
     cd /workspace/apps/api
     bun install
@@ -88,6 +90,7 @@
 
     - `apps/db`と`apps/backend-lib`は、`apps/api`・`apps/event`へ`db`・`lib`として配置される共有ディレクトリである(「[共有ディレクトリの配置先](project-values.md#共有ディレクトリの配置先)」)。`apps/backend-lib`は依存パッケージを持たず、配置先のアプリの依存パッケージで動く。`apps/db`の依存パッケージは、`apps/db`で実行するマイグレーションの生成に使う。
     - `apps/frontend-lib`は、`apps/client`・`apps/admin`へ`lib`として配置される共有ディレクトリである。自身の依存パッケージで静的解析・テスト・カタログ(Storybook)を動かし、配置先では`apps/client`・`apps/admin`の依存パッケージで動く。ルートの整形検査(`bun run format:check`)は`apps/frontend-lib`・`apps/client`・`apps/admin`の整形の設定がそれぞれの`node_modules`から整形のプラグインを読み込むため、この3つの`bun install`の前は失敗する。
+    - `apps/common-lib`は、`apps/api`・`apps/event`・`apps/client`・`apps/admin`へ`common-lib`として配置される共用部品である(マークダウンの描画とサニタイズ・文字数・入力の検証規則・検索語の処理)。自身の依存パッケージで静的解析・単体テストを動かし、`apps/frontend-lib`の位置の検査(兄弟の相対パスで`apps/common-lib`を読み込む)もこの依存パッケージで解決される。配置先では各アプリの依存パッケージで動く(「[別の共有ディレクトリの参照](../GUIDES/tech/coding/003-shared-directories.md#別の共有ディレクトリの参照)」)。`apps/common-lib`の`bun install`の前は、`apps/common-lib`の検査と`apps/frontend-lib`のテスト・カタログが失敗する。
     - 依存パッケージの版の追加・更新を含むコミットを取り込んだら、該当するディレクトリで`bun install`を再実行する。
 
 11. コンテナ内: シークレットをInfisicalに登録する(初回のみ、開発者の手作業)
@@ -112,6 +115,7 @@
     - `apps/client`・`apps/admin`の起動・ビルド・プレビューのコマンドも、Infisicalからの注入を付けて実行する(注入を付けないとWranglerが`HASH_PEPPER`の不足を警告して`.dev.vars`の作成を促し、すべての要求が環境の検証で500になる。`.dev.vars`は作らない)。ただし手順14の環境別のビルドは、理由を同じ手順に記したとおり注入を付けない。
     - `apps/api`・`apps/event`を未登録のまま起動すると、`wrangler dev`が足りないキーを警告し、ヘルスチェック以外の経路が環境の検証で500になる。ヘルスチェックは環境の検証より前に応答するため、未登録でも200を返す。
     - `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`は、メールの疎通確認の経路(「[疎通確認の経路](#疎通確認の経路)」)だけが使う。未登録でもイベントサーバーは環境の検証に通り、疎通確認の経路だけが404になる。ローカル環境ではMailpitが全ての宛先のメールを受け取るため、外部へは送られない。
+    - `dev`にはキーワード抽出の外部APIのキー(`GOOGLE_NL_API_KEY`)を登録しない。ローカル環境ではキーワード抽出が無効(`KEYWORD_EXTRACTOR`が`disabled`)で、イベントサーバーはキーを注入せずに起動する(「[キーワード抽出の外部API](#キーワード抽出の外部api)」)。
     - `dev`には、APIサーバーとイベントサーバーのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)もある。同じキー名でWorkerごとに異なる値が要るシークレットを置き、現時点では空である。各環境のフォルダとキーの一覧は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を参照する。
 
 12. コンテナ内: ローカルDBの初期化(マイグレーション適用)
@@ -375,6 +379,29 @@ http://localhost:48041
 - 送信ドメインの登録と送信内容のプレビューの無効化、メールイベント用Queueの作成はIaC定義が、配信不能イベントの購読の作成はデプロイのパイプラインが行い、管理画面では行わない(「[管理画面の設定](../GUIDES/tech/external/001-email-sending.md#管理画面の設定)」「[購読とQueueの作成](../GUIDES/tech/external/001-email-sending.md#購読とqueueの作成)」)。
 - 他のシークレットの登録先と時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」に従う。
 
+## キーワード抽出の外部API
+
+全文検索の索引の更新では、イベントサーバーがGoogle Cloud Natural Language APIで検索のキーワードを抽出する(「[外部の自然言語APIによるキーワード抽出](../GUIDES/tech/external/002-natural-language-keyword-extraction.md)」)。
+
+- ローカル環境ではキーワード抽出が無効である(`apps/event`の`KEYWORD_EXTRACTOR`が`disabled`)。外部APIを呼ばず、抽出の対象のテキストがある索引文書を状態`disabled`の縮退索引にする(抽出の対象のテキストが空の索引文書は、空のキーワードで`extracted`になる)ため、キーが無くてもアプリを起動でき、料金も発生しない。ローカルで`KEYWORD_EXTRACTOR`を`google-natural-language`に変えても、ローカル環境の`secrets.required`にキーが無いため`wrangler dev`はキーを渡さず、環境の検証で失敗する。
+- 実際の外部APIは、次の疎通確認のスクリプトで手元から確かめる。Infisicalの`staging`の`GOOGLE_NL_API_KEY`を注入して実行し、日本語と英語の短文ごとに抽出の結果・言語・キーワードの数を表示する。全て抽出できれば終了コード0、抽出できない短文があれば1、キーが注入されていなければ登録と実行の手順を表示して2で終わる。キーの値は表示しない。
+
+  ```sh
+  cd /workspace/apps/event
+  infisical --telemetry=false run --env staging -- bun run smoke:keyword-extraction
+  ```
+
+- 結果の種類ごとの原因の切り分けは「[疎通確認](../GUIDES/tech/external/002-natural-language-keyword-extraction.md#疎通確認)」に従う。
+
+キーは開発者が用意して登録し、AIエージェントは登録しない。
+
+1. Google Cloudのプロジェクトで、Natural Language APIを有効にし、APIの制限(Cloud Natural Language APIだけ)を掛けた専用のAPIキーを発行する(「[APIキーの渡し方とAPIの制限](../GUIDES/tech/external/002-natural-language-keyword-extraction.md#apiキーの渡し方とapiの制限)」)。
+2. Infisicalのプロジェクトの`staging`環境のルートフォルダ(`/`)に、Webの管理画面で`GOOGLE_NL_API_KEY`を登録する。`staging`の`secrets.required`にキーを加える変更を`main`へマージする前に登録する。未登録のままマージすると、イベントサーバーのデプロイが欠けたキーの名前を示して止まり、登録するまで`staging`へのデプロイがすべて止まる。
+3. 登録だけで、次のstagingへのデプロイがWorkerへ反映する。Wranglerのシークレットのコマンドで直接設定しない。
+
+- 本番環境(`prod`)の`GOOGLE_NL_API_KEY`は、launch-readinessがリリース時に登録する。
+- 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」、変数の各環境の値は「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」を正とする。
+
 ## DBスキーマを変更したとき
 
 テーブル定義を`apps/db/schema/`に書き(「[テーブル定義の配置](../GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)」)、次の順でマイグレーションを生成して適用する。各手順の詳細は「[スキーマ規約のマイグレーション](../GUIDES/tech/db/003-schema-conventions.md#マイグレーション)」に従う。
@@ -468,6 +495,7 @@ CIの検査も、TruffleHogで変更履歴からシークレットを検出す�
 
 ```zsh
 docker compose up -d # 設定が変わったコンテナを作り直す。ログイン情報などの名前付きボリュームは引き継がれる
+docker compose up -d --build # Dockerfileも変わったとき(新しい名前付きボリュームのマウント先の作成など)は、イメージを作り直してからコンテナを作り直す
 ```
 
 再作成後、コンテナ内で共有ディレクトリの配置状態を確かめる。
@@ -477,6 +505,7 @@ cd /workspace
 bun run shared-dirs:verify
 ```
 
+- 共有ディレクトリを追加した変更(共用部品`apps/common-lib`の4つの配置先のbind mountと`node_modules`の名前付きボリュームの追加など)を取り込んだときも、`docker compose up -d --build`で作り直す。作り直すまでは配置先のbind mountが無く、`bun run shared-dirs:verify`が`missing`を報告する。作り直す前に検査を通すときは、ルートで`bun run shared-dirs:place`を実行して配置先へコピーする(配置先はGit管理外)。
 - 変更前のマウントが残ると、例えば共有ディレクトリの`node_modules`を利用側アプリの配置先(`apps/api/db`など)へ見せるマウントにより、共有ディレクトリのコードと利用側アプリが同じパッケージを別々の実体として読み込む(二重実体)。
 - この状態は、`bun run shared-dirs:verify`と、その確認を最初の段階で行う一括検査`bun run check`が、`non-empty-node-modules`(配置先のマウントの誤りは`mount-mismatch`)として検出し、コンテナの再作成を案内する。各状態の意味は「[配置状態](../GUIDES/tech/coding/003-shared-directories.md#配置状態)」を参照する。
 
@@ -510,9 +539,9 @@ APIサーバー・イベントサーバーだけを検査・テストすると�
 
 | コマンド                            | 対象                     | 内容                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ----------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bun run lint`・`bun run typecheck` | `apps/api`・`apps/event` | 静的解析・型検査。共有ディレクトリ(`db`・`lib`)の静的解析は検査担当の`apps/api`が受け持つ                                                                                                                                                                                                                                                                                                                                     |
+| `bun run lint`・`bun run typecheck` | `apps/api`・`apps/event` | 静的解析・型検査。共有ディレクトリ(`db`・`lib`)の静的解析は検査担当の`apps/api`が受け持ち、共用部品の配置先`common-lib`は両アプリとも静的解析から除く(検査担当は`apps/common-lib`自身)。型検査は配置先`common-lib`の実行時のコードを含め、設定ファイル(`common-lib/*.config.ts`)・テスト・`common-lib/config/`・`common-lib/markdown/fixtures/`を除く                                                                         |
 | `bun run test:unit`                 | `apps/api`・`apps/event` | 単体テスト(Bun)。共有ディレクトリ(`apps/db`・`apps/backend-lib`)の単体テストは`apps/api`が実行し、共用部品(`apps/common-lib`)の配置先は両アプリとも除いた`bunfig.unit.toml`を使う                                                                                                                                                                                                                                             |
-| `bun run test:worker`               | `apps/api`・`apps/event` | Workers統合テスト(Vitest、workerd上)。`apps/api`はマイグレーションを適用したD1と共有ディレクトリのWorkers統合テストを含む                                                                                                                                                                                                                                                                                                     |
+| `bun run test:worker`               | `apps/api`・`apps/event` | Workers統合テスト(Vitest、workerd上)。`apps/api`はマイグレーションを適用したD1と共有ディレクトリのWorkers統合テストを含む。共用部品の配置先`common-lib`は両アプリとも除く                                                                                                                                                                                                                                                     |
 | `bun run test:smoke`                | `apps/api`               | 依存性注入のスモークテスト。Wranglerでバンドルして起動したWorkerが、`@inject`付きのコンストラクタ引数を持つクラスを解決できることを確かめる                                                                                                                                                                                                                                                                                   |
 | `bun run smoke:keyword-extraction`  | `apps/event`             | 実際のGoogle Cloud Natural Language APIへの疎通確認。テストと異なりキーの注入が要り、`infisical --telemetry=false run --env staging -- bun run smoke:keyword-extraction`で`staging`の`GOOGLE_NL_API_KEY`を注入する。日本語と英語の短文ごとに抽出の結果・言語・キーワードの数を表示し、全て抽出できれば終了コード0、できない短文があれば1、キーが注入されていなければ登録と実行の手順を表示して2で終わる。キーの値は表示しない |
 | `bun run db:migrations:check`       | `apps/api`               | マイグレーションがWranglerに検出されることを確かめる                                                                                                                                                                                                                                                                                                                                                                          |
@@ -524,16 +553,16 @@ APIサーバー・イベントサーバーだけを検査・テストすると�
 
 画面を持つアプリ(`apps/frontend-lib`・`apps/client`・`apps/admin`)だけを検査・テストするときは、各アプリのディレクトリで次のスクリプトを実行する。
 
-| コマンド                                            | 対象                                             | 内容                                                                                                                                                                                                                                                        |
-| --------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bun run lint`・`bun run typecheck`                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 静的解析・型検査。共有ディレクトリ(`lib`)の静的解析は検査担当の`apps/frontend-lib`が受け持つ                                                                                                                                                                |
-| `bun run test:unit`                                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 単体テスト(Bun)。`apps/client`・`apps/admin`は配置先の`lib`・`common-lib`を除いた`bunfig.unit.toml`を使う                                                                                                                                                   |
-| `bun run test:browser`                              | `apps/frontend-lib`・`apps/client`・`apps/admin` | ブラウザテスト(Vitest Browser Mode、共有Chromium)。部品のアクセシビリティの自動検査を含む                                                                                                                                                                   |
-| `bun run storybook:dev`・`bun run storybook:build`  | `apps/frontend-lib`                              | 部品のカタログの起動と静的な出力。起動の手順はクイックスタートの手順13に従う                                                                                                                                                                                |
-| `bun run check:editor-chunks`                       | `apps/frontend-lib`                              | マークダウンの入力欄の編集領域(Milkdown・Vue・ProseMirror)が、ページの最初の読み込みとサーバー側の描画に含まれず動的な読み込みの先にだけあることを、クライアント用とSSR用のビルドで確かめる。エディタの版を更新した時や入力欄の読み込みを変えた時に実行する |
-| `bun run cf-typegen`・`bun run cf-typegen:check`    | `apps/client`・`apps/admin`                      | Wrangler設定を変えた時の環境の型の定義ファイル`worker-configuration.d.ts`の生成し直し(実行時の型は含めない)と、生成物の食い違いと環境の検証スキーマとの型の照合の検査。ルートの一括検査(`bun run check`)でも実行される                                      |
-| `bun run graphql:generate`・`bun run graphql:check` | `apps/client`・`apps/admin`                      | フロントエンドの操作の型・文書・操作の一覧の生成と、生成物の食い違いの検査(食い違えば、再実行すべき`bun run graphql:generate`を表示して失敗する)                                                                                                            |
-| `bun run dev`・`bun run build`・`bun run preview`   | `apps/client`・`apps/admin`                      | 開発サーバー・ビルド・ビルド後のプレビュー。手順はクイックスタートの手順13・14に従う                                                                                                                                                                        |
+| コマンド                                            | 対象                                             | 内容                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run lint`・`bun run typecheck`                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 静的解析・型検査。共有ディレクトリ(`lib`)の静的解析は検査担当の`apps/frontend-lib`が受け持ち、共用部品の配置先`common-lib`は`apps/client`・`apps/admin`の静的解析から除く。型検査は`lib`・`common-lib`の実行時のコードを含め、それぞれの設定ファイル・テスト・カタログ(`common-lib`は`config/`・`markdown/fixtures/`も)を除く |
+| `bun run test:unit`                                 | `apps/frontend-lib`・`apps/client`・`apps/admin` | 単体テスト(Bun)。`apps/client`・`apps/admin`は配置先の`lib`・`common-lib`を除いた`bunfig.unit.toml`を使う                                                                                                                                                                                                                     |
+| `bun run test:browser`                              | `apps/frontend-lib`・`apps/client`・`apps/admin` | ブラウザテスト(Vitest Browser Mode、共有Chromium)。部品のアクセシビリティの自動検査を含む。`apps/client`・`apps/admin`は配置先の`lib`・`common-lib`を実行と網羅の対象から除く                                                                                                                                                 |
+| `bun run storybook:dev`・`bun run storybook:build`  | `apps/frontend-lib`                              | 部品のカタログの起動と静的な出力。起動の手順はクイックスタートの手順13に従う                                                                                                                                                                                                                                                  |
+| `bun run check:editor-chunks`                       | `apps/frontend-lib`                              | マークダウンの入力欄の編集領域(Milkdown・Vue・ProseMirror)が、ページの最初の読み込みとサーバー側の描画に含まれず動的な読み込みの先にだけあることを、クライアント用とSSR用のビルドで確かめる。エディタの版を更新した時や入力欄の読み込みを変えた時に実行する                                                                   |
+| `bun run cf-typegen`・`bun run cf-typegen:check`    | `apps/client`・`apps/admin`                      | Wrangler設定を変えた時の環境の型の定義ファイル`worker-configuration.d.ts`の生成し直し(実行時の型は含めない)と、生成物の食い違いと環境の検証スキーマとの型の照合の検査。ルートの一括検査(`bun run check`)でも実行される                                                                                                        |
+| `bun run graphql:generate`・`bun run graphql:check` | `apps/client`・`apps/admin`                      | フロントエンドの操作の型・文書・操作の一覧の生成と、生成物の食い違いの検査(食い違えば、再実行すべき`bun run graphql:generate`を表示して失敗する)                                                                                                                                                                              |
+| `bun run dev`・`bun run build`・`bun run preview`   | `apps/client`・`apps/admin`                      | 開発サーバー・ビルド・ビルド後のプレビュー。手順はクイックスタートの手順13・14に従う                                                                                                                                                                                                                                          |
 
 ## ローカルポート一覧
 
