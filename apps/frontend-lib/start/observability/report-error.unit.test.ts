@@ -13,7 +13,9 @@ import {
   runInStartRequest,
 } from '../../test/start-request-fixtures.ts';
 import { GraphQLClientError } from '../../utilities/graphql/graphql-result.ts';
+import { browserErrorQueue as browserOnlyErrorQueue } from './browser-error-reporting.ts';
 import {
+  browserErrorQueue,
   type RenderErrorRouter,
   reportRenderError,
   reportUnexpectedError,
@@ -107,6 +109,12 @@ describe('reportUnexpectedError(サーバーの分岐)', () => {
     });
 
     expect(reported).toEqual([]);
+  });
+});
+
+describe('browserErrorQueue', () => {
+  test('ブラウザ専用の入口と同じ送信待ちの列を公開する', () => {
+    expect(browserErrorQueue).toBe(browserOnlyErrorQueue);
   });
 });
 

@@ -7,7 +7,7 @@ import {
 import { type ReactNode, useEffect } from 'react';
 
 import { initBrowserObservability } from '../../start/observability/browser-observability.ts';
-import { browserErrorQueue } from '../../start/observability/report-error.ts';
+import { browserErrorQueue } from '../../start/observability/browser-error-reporting.ts';
 import { installPreloadRecovery } from '../../start/preload-recovery.ts';
 import { appRuntimeOf } from '../../start/router-context.ts';
 import { THEME_BOOTSTRAP_SCRIPT } from '../../utilities/theme/theme-preference.ts';

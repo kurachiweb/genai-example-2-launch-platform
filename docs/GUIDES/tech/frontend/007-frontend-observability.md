@@ -6,20 +6,21 @@ Cloudflare Workersで動かすTanStack Startのフロントエンドサーバー
 
 ログの形式・伏せ字の規則・呼び出しログの無効化・エラートラッキングの送信規則と2層の除去は「[ログ管理とエラートラッキング](../infra/004-logging-and-error-tracking.md)」に従い、本文書はフロントエンドに固有の構成と、その文書との違いだけを記す。処理の順序とCSPの許可先の登録は「[フロントエンドサーバーのセキュリティ](003-frontend-server-security.md)」、サーバー専用のファイルと同型の関数は「[Cloudflare Workers上のTanStack Startの起動](002-tanstack-start-on-workers.md#サーバー専用のファイルと同型の関数)」、GraphQLの取得と失敗の型は「[データ取得](006-data-fetching.md)」に従う。部品の置き場所は共通部品のディレクトリからのパスで示し、コードの例では`<共通部品の配置先>`までの相対パスを省いて書く。
 
-| 部品                                                                                             | 置き場所(共通部品内)                            | 役割                                                                     |
-| ------------------------------------------------------------------------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------ |
-| `SENTRY_DATA_COLLECTION`・`scrubSentryEvent`・`scrubSentrySpan`・`isExpectedFailure`             | `utilities/observability/sentry-scrub.ts`       | サーバーとブラウザで共用する収集の設定と、送信前のイベントとスパンの除去 |
-| `REDACTED`・`REDACTION_PATTERNS`・`redactText`・`redactDeep`                                     | `utilities/observability/redaction-patterns.ts` | 値の形式による伏せ字のパターン(ログとエラートラッキングで共用)           |
-| `buildServerSentryOptions`                                                                       | `server/observability/server-sentry-options.ts` | サーバーのSentryの初期化オプション                                       |
-| `ensureFrontendLoggingConfigured`・`getFrontendLogger`・`withCorrelationId`・`logAccess`         | `server/observability/logging.ts`               | ログの設定・ロガーの取得・相関IDの文脈・アクセスログ                     |
-| `createFrontendServerEntry`                                                                      | `server/entry/create-frontend-server-entry.ts`  | 相関IDの採番、想定外の例外の送信、アクセスログの出力                     |
-| `sentryGlobalRequestMiddleware`・`sentryGlobalFunctionMiddleware`の再エクスポート                | `start/sentry-middleware.server.ts`             | TanStack Startのグローバルのミドルウェア(サーバーだけで読み込む)         |
-| `initBrowserObservability`・`loadBrowserSentryModules`・`RELAY_TRACE_PROPAGATION_TARGETS`        | `start/observability/browser-observability.ts`  | ブラウザのSentryの遅延読み込みと初期化                                   |
-| `reportUnexpectedError`・`reportRenderError`・`browserErrorQueue`                                | `start/observability/report-error.ts`           | 想定外の失敗を送る同型の関数と、ルーターの描画の失敗の入口               |
-| `reportUnexpectedErrorOnServer`                                                                  | `start/observability/report-error.server.ts`    | サーバーでの送信(errorログと描画の文脈の送信の関数)                      |
-| `createBrowserErrorQueue`・`isReportableFailure`・`createFirstReportFilter`・`MAX_QUEUED_ERRORS` | `start/observability/error-queue.ts`            | 送る失敗の判定、同じ例外の2回目の除外、ブラウザの初期化前の送信待ちの列  |
-| `installRouteErrorReporting`                                                                     | `start/observability/route-error-reporting.ts`  | `loader`・`beforeLoad`を持つ全ルートの`onError`で失敗を送る仕組み        |
-| `webAnalyticsHeadScript`・`WEB_ANALYTICS_BEACON_SRC`                                             | `start/observability/web-analytics.ts`          | アクセス解析の計測スクリプトの`head`の要素                               |
+| 部品                                                                                             | 置き場所(共通部品内)                             | 役割                                                                            |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `SENTRY_DATA_COLLECTION`・`scrubSentryEvent`・`scrubSentrySpan`・`isExpectedFailure`             | `utilities/observability/sentry-scrub.ts`        | サーバーとブラウザで共用する収集の設定と、送信前のイベントとスパンの除去        |
+| `REDACTED`・`REDACTION_PATTERNS`・`redactText`・`redactDeep`                                     | `utilities/observability/redaction-patterns.ts`  | 値の形式による伏せ字のパターン(ログとエラートラッキングで共用)                  |
+| `buildServerSentryOptions`                                                                       | `server/observability/server-sentry-options.ts`  | サーバーのSentryの初期化オプション                                              |
+| `ensureFrontendLoggingConfigured`・`getFrontendLogger`・`withCorrelationId`・`logAccess`         | `server/observability/logging.ts`                | ログの設定・ロガーの取得・相関IDの文脈・アクセスログ                            |
+| `createFrontendServerEntry`                                                                      | `server/entry/create-frontend-server-entry.ts`   | 相関IDの採番、想定外の例外の送信、アクセスログの出力                            |
+| `sentryGlobalRequestMiddleware`・`sentryGlobalFunctionMiddleware`の再エクスポート                | `start/sentry-middleware.server.ts`              | TanStack Startのグローバルのミドルウェア(サーバーだけで読み込む)                |
+| `initBrowserObservability`・`loadBrowserSentryModules`・`RELAY_TRACE_PROPAGATION_TARGETS`        | `start/observability/browser-observability.ts`   | ブラウザのSentryの遅延読み込みと初期化                                          |
+| `reportUnexpectedError`・`reportRenderError`・`browserErrorQueue`の再エクスポート                | `start/observability/report-error.ts`            | 想定外の失敗を送る同型の関数と、ルーターの描画の失敗の入口                      |
+| `reportUnexpectedErrorInBrowser`・`browserErrorQueue`                                            | `start/observability/browser-error-reporting.ts` | ブラウザ専用の送信の入口と、1つだけの送信待ちの列(サーバー専用の依存を持たない) |
+| `reportUnexpectedErrorOnServer`                                                                  | `start/observability/report-error.server.ts`     | サーバーでの送信(errorログと描画の文脈の送信の関数)                             |
+| `createBrowserErrorQueue`・`isReportableFailure`・`createFirstReportFilter`・`MAX_QUEUED_ERRORS` | `start/observability/error-queue.ts`             | 送る失敗の判定、同じ例外の2回目の除外、ブラウザの初期化前の送信待ちの列         |
+| `installRouteErrorReporting`                                                                     | `start/observability/route-error-reporting.ts`   | `loader`・`beforeLoad`を持つ全ルートの`onError`で失敗を送る仕組み               |
+| `webAnalyticsHeadScript`・`WEB_ANALYTICS_BEACON_SRC`                                             | `start/observability/web-analytics.ts`           | アクセス解析の計測スクリプトの`head`の要素                                      |
 
 | 用語                             | 意味                                                                                                                                                                            |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -166,16 +167,16 @@ SDKと除去の関数を静的に読み込むと、主バンドルが大きく�
 
 ### 送信の入口
 
-| 入口                                      | 呼ぶ場所                                                                                        | 送る失敗                                                                                                                         |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `reportUnexpectedError(error, 'loader')`  | `installRouteErrorReporting`が全ルートの`onError`に掛ける                                       | `loader`・`beforeLoad`の失敗                                                                                                     |
-| `reportRenderError(router, error)`        | ルーターの`defaultOnCatch`                                                                      | 描画の失敗                                                                                                                       |
-| `reportUnexpectedError(error, 'graphql')` | `executeGraphQL`                                                                                | GraphQLの想定外の失敗(区画の中で表示し、例外として届かない失敗を含む)                                                            |
-| `reportUnexpectedError(error, 'render')`  | マークダウンの入力欄の遅延読み込みの境界(`components/markdown-editor/editor-load-boundary.tsx`) | 読み込みの後の編集領域の描画の失敗。境界が捕まえてルーターの`defaultOnCatch`へ届かないため。モジュールの読み込みの失敗は送らない |
-| エントリが包んだ`reportUnexpected`        | 中継の処理(`relayToApi`)                                                                        | APIサーバーへ届かなかった失敗と、共通のエラー形式でない5xxの応答(報告には状態コードだけを入れる)                                 |
-| エントリが包んだ`reportUnexpected`        | エントリ(`createFrontendServerEntry`)                                                           | 処理の途中の想定外の例外。環境の不備も呼ぶが、その時はSentryが無効のため実際には送られない                                       |
-| Sentryの要求と関数のミドルウェア          | TanStack Startのグローバルのミドルウェア                                                        | 描画やサーバー関数の処理から投げ出された例外。除外は`scrubSentryEvent`の想定内の失敗の判定だけが掛かる                           |
-| ブラウザのSDKの既定の統合                 | 初期化の後の`window`                                                                            | 処理されなかった例外と`Promise`の拒否。初期化の前に起きたものは送られない                                                        |
+| 入口                                              | 呼ぶ場所                                                                                        | 送る失敗                                                                                                                         |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `reportUnexpectedError(error, 'loader')`          | `installRouteErrorReporting`が全ルートの`onError`に掛ける                                       | `loader`・`beforeLoad`の失敗                                                                                                     |
+| `reportRenderError(router, error)`                | ルーターの`defaultOnCatch`                                                                      | 描画の失敗                                                                                                                       |
+| `reportUnexpectedError(error, 'graphql')`         | `executeGraphQL`                                                                                | GraphQLの想定外の失敗(区画の中で表示し、例外として届かない失敗を含む)                                                            |
+| `reportUnexpectedErrorInBrowser(error, 'render')` | マークダウンの入力欄の遅延読み込みの境界(`components/markdown-editor/editor-load-boundary.tsx`) | 読み込みの後の編集領域の描画の失敗。境界が捕まえてルーターの`defaultOnCatch`へ届かないため。モジュールの読み込みの失敗は送らない |
+| エントリが包んだ`reportUnexpected`                | 中継の処理(`relayToApi`)                                                                        | APIサーバーへ届かなかった失敗と、共通のエラー形式でない5xxの応答(報告には状態コードだけを入れる)                                 |
+| エントリが包んだ`reportUnexpected`                | エントリ(`createFrontendServerEntry`)                                                           | 処理の途中の想定外の例外。環境の不備も呼ぶが、その時はSentryが無効のため実際には送られない                                       |
+| Sentryの要求と関数のミドルウェア                  | TanStack Startのグローバルのミドルウェア                                                        | 描画やサーバー関数の処理から投げ出された例外。除外は`scrubSentryEvent`の想定内の失敗の判定だけが掛かる                           |
+| ブラウザのSDKの既定の統合                         | 初期化の後の`window`                                                                            | 処理されなかった例外と`Promise`の拒否。初期化の前に起きたものは送られない                                                        |
 
 アプリの`src/router.tsx`は、ルーターを作るたびに次の2つを設定する。データ取得に関わるルーターの設定は「[データ取得](006-data-fetching.md#ルーターと要求ごとのストア)」の「ルーターと要求ごとのストア」に従う。
 
@@ -197,10 +198,12 @@ installRouteErrorReporting(Object.values(router.routesById), (error) => {
 - `reportRenderError`は、`router.state.matches`のどれかの`error`と同じ例外を送らない。TanStack Routerは`loader`の失敗を描画の境界で投げ直すが、ブラウザ内の遷移ではルートの`onError`が、ハイドレーションではサーバーが既に送っている。ハイドレーションで復元した`loader`の失敗はメッセージだけの別の`Error`になり、想定内かどうかも判定できないため、描画の失敗として送らない。
 - `executeGraphQL`は想定外の失敗の結果を送ってから返す。取得の補助(`requireData`)が同じ失敗を投げ直して`loader`の失敗として届いても、同じオブジェクトのため2回目として除かれる。画面のコードでGraphQLの失敗を送り直さない。
 - フォームの送信の処理(`AppForm`の`onSubmitError`)に届いた、GraphQL以外の想定外の例外を送るかは利用側で決める(「[共通化する部品](005-shared-components.md)」)。
+- 共通部品の部品(`components/**`)は、ブラウザだけで動く処理(マウントの後の効果・イベントの処理・描画の境界の`onCatch`)から送り、`browser-error-reporting.ts`の`reportUnexpectedErrorInBrowser`と`browserErrorQueue`を読み込む。同型の関数のファイル(`report-error.ts`)を読み込まない(型だけの読み込みも含め、静的解析の`frontend/direction/components`と遅延読み込みのモジュールの`frontend/editor-isolation/editor-module`が禁止する)。同型の関数はTanStack Startのコンパイラが無い環境(Vitestのブラウザテスト)で`.server`の実装が残り、サーバー専用の依存(`node:async_hooks`)を読み込んで失敗するため、部品のテストごとに差し替えが要るようになる。サーバーの描画でも動く処理(ルーター・`loader`・GraphQLの実行)は、同型の関数の`reportUnexpectedError`を使う。
+- 部品のテストでエラートラッキングへ送ったことを確かめる時は、`browser-error-reporting.ts`を`vi.mock(<パス>, { spy: true })`で実物のまま記録し、`reportUnexpectedErrorInBrowser`の呼び出しを確かめる。
 
 ### サーバーとブラウザの違い
 
-`reportUnexpectedError`は同型の関数で、サーバーとブラウザで送り方が違う。
+`reportUnexpectedError`は同型の関数で、サーバーとブラウザで送り方が違う。ブラウザの実装は`reportUnexpectedErrorInBrowser`そのもので、部品が直接呼んでも同じ送り方になる。
 
 | 実行環境 | 送り方                                                                                                                                                                                                       |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

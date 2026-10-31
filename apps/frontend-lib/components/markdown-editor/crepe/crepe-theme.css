@@ -39,40 +39,163 @@
   outline-offset: 2px;
 }
 
-/* 読み込み前の仮の表示(min-h-28)と同じ大きさにする */
+/* 読み込み前の仮の表示とプレビューはMarkdownContentのsize="sm"(@tailwindcss/typographyのprose-sm)で描くため、読み込みの前後で入力欄の高さが変わらないよう、余白・文字の大きさ・行の高さ・要素の間隔を同じ値にする。reset.cssが全要素の余白を消し、レイヤーの外の規則としてproseのクラスより優先されるため、クラスを付けずに値を書き写す */
 .milkdown .ProseMirror {
   min-height: 7rem;
   padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.7142857;
+  overflow-wrap: anywhere;
+}
+
+.milkdown .ProseMirror p {
+  font-size: 1em;
+  line-height: inherit;
+  padding: 0;
+  margin-block: 1.1428571em;
+}
+
+.milkdown .ProseMirror :is(h2, h3, h4, h5, h6) {
+  font-size: 1em;
+  font-weight: 800;
+  line-height: inherit;
+  letter-spacing: -0.025em;
+  padding: 0;
+  margin-block: 0;
 }
 
 .milkdown .ProseMirror h2 {
-  font-size: 1.375em;
-  font-weight: 700;
+  font-size: 1.4285714em;
   line-height: 1.4;
-  margin-top: 1rem;
+  margin-block: 1.6em 0.8em;
 }
 
 .milkdown .ProseMirror h3 {
-  font-size: 1.25em;
-  font-weight: 700;
-  line-height: 1.4;
-  margin-top: 0.75rem;
+  font-size: 1.2857143em;
+  line-height: 1.5555556;
+  margin-block: 1.5555556em 0.4444444em;
 }
 
-.milkdown .ProseMirror h4,
-.milkdown .ProseMirror h5,
-.milkdown .ProseMirror h6 {
-  font-size: 1.125em;
-  font-weight: 700;
-  line-height: 1.5;
-  margin-top: 0.75rem;
+.milkdown .ProseMirror h4 {
+  line-height: 1.4285714;
+  margin-block: 1.4285714em 0.5714286em;
+}
+
+.milkdown .ProseMirror :is(h2, h3, h4, hr) + * {
+  margin-top: 0;
+}
+
+.milkdown .ProseMirror a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.milkdown .ProseMirror blockquote {
+  position: static;
+  box-sizing: border-box;
+  margin-block: 1.3333333em;
+  padding: 0 0 0 1.1111111em;
+  border-inline-start: 0.25rem solid
+    color-mix(in oklab, var(--primary) 40%, transparent);
+}
+
+.milkdown .ProseMirror blockquote::before {
+  content: none;
+}
+
+.milkdown .ProseMirror code {
+  display: inline;
+  line-height: inherit;
+  color: inherit;
+  font-family: var(--crepe-font-code);
+  font-size: 0.8571429em;
+  border-radius: 0.25rem;
+  background: var(--muted);
+  padding: 0.125rem 0.25rem;
+}
+
+.milkdown .ProseMirror h2 code {
+  font-size: 0.9em;
+}
+
+.milkdown .ProseMirror h3 code {
+  font-size: 0.8888889em;
+}
+
+.milkdown .ProseMirror pre {
+  font-size: 0.8571429em;
+  line-height: 1.6666667;
+  margin-block: 1.6666667em;
+  border-radius: 0.25rem;
+  padding: 0.6666667em 1em;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  background: var(--code-block);
+  color: var(--code-block-foreground);
+}
+
+.milkdown .ProseMirror pre code {
+  font-size: inherit;
+  background: transparent;
+  padding: 0;
+}
+
+.milkdown .ProseMirror hr {
+  margin-block: 2.8571429em;
+  height: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--border);
 }
 
 /* Crepeのリストの機能はulの直下にdivを挟みリストの意味を壊すため組み込まず、Milkdownの既定のul・ol・liに記号を付ける */
 .milkdown .ProseMirror ul,
 .milkdown .ProseMirror ol {
-  padding-inline-start: 1.5em;
-  margin: 0.25rem 0;
+  padding-inline-start: 1.5714286em;
+  margin-block: 1.1428571em;
+}
+
+.milkdown .ProseMirror li {
+  margin-block: 0.2857143em;
+  padding-inline-start: 0.4285714em;
+}
+
+.milkdown .ProseMirror :is(ul, ol) :is(ul, ol) {
+  margin-block: 0.5714286em;
+}
+
+.milkdown .ProseMirror > ul > li p {
+  margin-block: 0.5714286em;
+}
+
+.milkdown .ProseMirror > :is(ul, ol) > li > p:first-child {
+  margin-top: 1.1428571em;
+}
+
+.milkdown .ProseMirror > :is(ul, ol) > li > p:last-child {
+  margin-bottom: 1.1428571em;
+}
+
+/* 編集領域はリストの項目の中身を常に段落で包むが、描画結果は詰めたリスト(項目の間にも、どの項目の中にも空行の無いリスト)の項目を段落で包まないため、その段落には余白を付けない */
+.milkdown
+  .ProseMirror
+  :is(ul, ol):not([data-spread='true'], :has(> li[data-spread='true']))
+  > li
+  > p {
+  margin-block: 0;
+}
+
+/* 仮想カーソルの部品が編集領域の先頭に高さの無い要素を置くため、その次の要素も先頭として扱う */
+.milkdown
+  .ProseMirror
+  > :is(:first-child, .ProseMirror-widget:first-child + *) {
+  margin-top: 0;
+}
+
+.milkdown .ProseMirror > :last-child {
+  margin-bottom: 0;
 }
 
 .milkdown .ProseMirror ul {
@@ -106,15 +229,47 @@
 
 .milkdown .ProseMirror table {
   border-collapse: collapse;
-  margin: 0.5rem 0;
+  font-size: 0.8571429em;
+  line-height: 1.5;
+  margin-block: 3.3333333em;
 }
 
+/* 表示は表を横スクロールの枠で包み、表の余白が枠の外の余白と重ならずに足されるため、編集領域では足した値を余白にし、先頭と末尾では表の余白だけを残す */
+.milkdown
+  .ProseMirror
+  > table:is(:first-child, .ProseMirror-widget:first-child + *) {
+  margin-top: 2em;
+}
+
+.milkdown .ProseMirror > table:last-child {
+  margin-bottom: 2em;
+}
+
+/* 編集中にセルの境目が分かるよう全ての辺に線を引き、上下の余白は表示の行の高さに合わせる */
 .milkdown .ProseMirror th,
 .milkdown .ProseMirror td {
   border: 1px solid var(--border);
-  padding: 0.25rem 0.5rem;
+  padding: 0.6666667em 1em;
   min-width: 4rem;
   text-align: start;
+}
+
+.milkdown .ProseMirror th {
+  font-weight: 800;
+  padding-top: 0;
+}
+
+/* 表示は表の上端と下端に線を引かないため、行の数による線の分の高さの違いが出ないよう外側の上下の線を引かない */
+.milkdown .ProseMirror tr:first-child > :is(th, td) {
+  border-top-width: 0;
+}
+
+.milkdown .ProseMirror tr:last-child > :is(th, td) {
+  border-bottom-width: 0;
+}
+
+.milkdown .ProseMirror :is(th, td) p {
+  margin-block: 0;
 }
 
 /* placeholder.cssは本文色の透明度を下げてプレースホルダーの色を作りコントラストが基準を割るため、共通の入力欄と同じ控えめな文字色にする */

@@ -1,23 +1,19 @@
 import { createIsomorphicFn } from '@tanstack/react-start';
 
-import {
-  type BrowserErrorQueue,
-  createBrowserErrorQueue,
-  type ReportSource,
-} from './error-queue.ts';
+import { reportUnexpectedErrorInBrowser } from './browser-error-reporting.ts';
+import type { ReportSource } from './error-queue.ts';
 import { reportUnexpectedErrorOnServer } from './report-error.server.ts';
 
 export type { ReportSource };
 
-// ブラウザで1つだけ持ち、Sentryを読み込むまでの失敗を積む。initBrowserObservabilityへ同じ列を渡す
-export const browserErrorQueue: BrowserErrorQueue = createBrowserErrorQueue();
+export { browserErrorQueue } from './browser-error-reporting.ts';
 
 // サーバーの分岐は、ブラウザ向けのビルドで分岐ごと消えてサーバー専用のファイルのimportも消えるよう、その場の関数で書く
 const reportIsomorphic = createIsomorphicFn()
   .server((error: unknown, source: ReportSource): void => {
     reportUnexpectedErrorOnServer(error, source);
   })
-  .client(browserErrorQueue.enqueue);
+  .client(reportUnexpectedErrorInBrowser);
 
 export function reportUnexpectedError(
   error: unknown,

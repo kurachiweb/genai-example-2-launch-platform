@@ -274,6 +274,18 @@ const RENDERING_POSITION_CASES: readonly PositionCase[] = [
       allowed(
         "import { readRequestNonce } from '../../start/request-context';",
       ),
+      forbidden(
+        "import { reportUnexpectedError } from '../../start/observability/report-error';",
+      ),
+      forbidden(
+        "import { reportRenderError } from '../../start/observability/report-error.ts';",
+      ),
+      forbidden(
+        "import type { ReportUnexpectedError } from '../../start/observability/report-error.ts';",
+      ),
+      allowed(
+        "import { reportUnexpectedErrorInBrowser } from '../../start/observability/browser-error-reporting.ts';",
+      ),
       allowed("import { e } from '../../utilities/class-names';"),
       allowed("import { useState } from 'react';"),
       allowed("import { useQuery } from '@tanstack/react-query';"),

@@ -143,7 +143,7 @@ export function ProfileForm() {
 - `onSubmitError`は必須で、欄に対応しない詳細(`unmatched`)が残った時と、詳細の無い失敗の時に呼ばれる。フォームの近くに`role="alert"`で文言を出すなど、利用者へ伝える処理を書く。文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない(「[エラーの扱い](006-data-fetching.md#エラーの型と画面の分岐)」)。想定外の失敗をエラートラッキングへ送るかは利用側が決める。`onSubmitError`自体が投げた例外は`globalThis.reportError`へ渡される。
 - `FormField`は`AppForm`の中でだけ使う。`AppForm`が配るフォームの文脈(React Hook Formの`FormProvider`)から、欄のエラーを消す処理を読むためである。
 - `FormField`は`<label for>`で名前を付けるため、名前を付けられる要素(`input`・`textarea`・`button`)を描く部品に使う。値の受け渡しの名前が`value`・`onChange`と異なる部品は、受け取った値を対応する名前で渡す。
-- `<label for>`で名前を付けられない要素(`contenteditable`の要素など)を描く部品には、子の関数が受け取る`labelId`を渡し、その要素の`aria-labelledby`に使う。`labelId`は入力要素へ展開しても属性として出力されない値で、`{...control}`で写らないため、`control.labelId`で読んで渡す。
+- `<label for>`で名前を付けられない要素(`contenteditable`の要素など)を描く部品には、子の関数が受け取る`labelId`を渡し、その要素の`aria-labelledby`に使う。`labelId`は入力要素へ展開しても属性として出力されない値で、`{...control}`で写らないため、`control.labelId`で読んで渡す。`<label for>`の関連付けが無いため、ラベルの押下で要素へフォーカスが移らない。部品が`labelId`の要素の押下(`click`)を聞き、要素へフォーカスを移す(ラベルの文字を選択している時と無効の時の押下では移さず、ラベルの外の選択は見ない)。
 - 必須の印は自動で付かない。ラベルか説明の文言で示し、入力欄に`aria-required`を渡す。
 - フォームの部品は、公開のAPIで置き換えられないReact Hook Formの内部の値(欄ごとの無効の集合、欄の描画の状態、一覧の名前の集合)と、公開されていない振る舞い(名前の配列を渡した検証のエラーの置き換えの範囲、resolverが受け取る値、送信の値から無効の欄を外すこと、購読していないフォームでも触れた状態を記録することなど)に頼る。頼る項目は版の番人テスト(`components/form/form-library-internals.unit.test.ts`)が一覧に持ち、`react-hook-form`・`@hookform/resolvers`の版が確かめた版と異なると失敗する。版を上げる時は「[内部の値に頼るパッケージの版を上げる手順](../coding/002-dependency-versions.md#内部の値に頼るパッケージの版を上げる手順)」に従う。
 
@@ -245,7 +245,7 @@ const token = turnstile.consume();
 | `RouteAnnouncer`                           | 画面遷移の通知                                     |
 
 - マウントの後に、ブラウザ側のエラートラッキングの初期化と、消えたスクリプトの再読み込みの仕組みを入れる。
-- 部品のテストで`AppDocument`を描画する時は、`start/observability/report-error.ts`・`start/observability/browser-observability.ts`を`vi.mock`で差し替える。差し替えないと、サーバー専用の依存(`node:async_hooks`)の読み込みで失敗する。
+- 部品のテストで`AppDocument`を描画する時は、`start/observability/browser-observability.ts`を`vi.mock`で差し替える。差し替えないと、TanStack Startのパッケージの入口が読み込むサーバー専用の依存(`node:async_hooks`)で失敗する。送信待ちの列は、サーバー専用の依存を持たない`start/observability/browser-error-reporting.ts`から読み込むため差し替えない(「[送信の入口](007-frontend-observability.md#送信の入口)」)。
 
 ### 疎通確認
 

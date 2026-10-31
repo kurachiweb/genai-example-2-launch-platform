@@ -18,6 +18,7 @@ import {
   vi,
 } from 'vitest';
 
+import { browserErrorQueue } from '../../start/observability/browser-error-reporting.ts';
 import {
   type AppRuntime,
   createAppRuntimeHolder,
@@ -40,14 +41,9 @@ import { AppDocument } from './app-document.tsx';
 import { MAIN_CONTENT_ID } from './main-content.ts';
 
 const mounted = vi.hoisted(() => ({
-  queue: { enqueue: vi.fn(), flush: vi.fn() },
   initBrowserObservability: vi.fn(() => Promise.resolve()),
   uninstallPreloadRecovery: vi.fn(),
   installPreloadRecovery: vi.fn<(input: PreloadRecoveryInput) => () => void>(),
-}));
-
-vi.mock('../../start/observability/report-error.ts', () => ({
-  browserErrorQueue: mounted.queue,
 }));
 
 vi.mock('../../start/observability/browser-observability.ts', () => ({
@@ -328,7 +324,7 @@ describe('AppDocument', () => {
     expect(mounted.initBrowserObservability).toHaveBeenCalledWith({
       router,
       config: RUNTIME.publicConfig.sentry,
-      queue: mounted.queue,
+      queue: browserErrorQueue,
     });
   });
 

@@ -1,7 +1,7 @@
 import { CatchBoundary } from '@tanstack/react-router';
 import { type ReactNode, Suspense, useState } from 'react';
 
-import { reportUnexpectedError } from '../../start/observability/report-error.ts';
+import { reportUnexpectedErrorInBrowser } from '../../start/observability/browser-error-reporting.ts';
 import { EditorLoadError } from './editor-load-error.ts';
 import {
   type EditorSurfaceComponent,
@@ -55,7 +55,7 @@ export function EditorLoadBoundary({
       onCatch={(error) => {
         // 編集中の描画の失敗は編集領域の外へ伝えず、想定外の失敗として報告する。チャンクの読み込みの失敗は再試行で回復するため報告しない
         if (!(error instanceof EditorLoadError)) {
-          reportUnexpectedError(error, 'render');
+          reportUnexpectedErrorInBrowser(error, 'render');
         }
         onFailure();
         setAttempt((current) =>

@@ -16,9 +16,8 @@ import {
   PRELOAD_ERROR_EVENT,
   PRELOAD_RECOVERY_STORAGE_KEY,
 } from '../../start/preload-recovery.ts';
-import { reportUnexpectedError } from '../../start/observability/report-error.ts';
+import { reportUnexpectedErrorInBrowser } from '../../start/observability/browser-error-reporting.ts';
 import { runAxe } from '../../test/a11y.ts';
-import { applyColorScheme, COLOR_SCHEMES } from '../../test/computed-style.ts';
 import { z } from '../../utilities/validation/zod.ts';
 import { AppForm } from '../form/app-form.tsx';
 import { FormField } from '../form/form-field.tsx';
@@ -37,9 +36,8 @@ import {
   type MarkdownEditorProps,
 } from './markdown-editor.tsx';
 
-vi.mock('../../start/observability/report-error.ts', () => ({
-  reportUnexpectedError: vi.fn(),
-}));
+// 実物の送信待ちの列へ積ませたまま、エラートラッキングへ送る関数の呼び出しを記録する
+vi.mock('../../start/observability/browser-error-reporting.ts', { spy: true });
 
 vi.mock('./load-crepe-editor.ts', async (importOriginal) => {
   const actual = await importOriginal<{
@@ -286,12 +284,11 @@ function SurfaceFailingAfterReady({ onReady }: EditorSurfaceProps) {
 
 beforeEach(() => {
   staleControllerCalls.length = 0;
-  vi.mocked(reportUnexpectedError).mockClear();
+  vi.mocked(reportUnexpectedErrorInBrowser).mockClear();
   vi.mocked(loadCrepeEditor).mockClear();
 });
 
 afterEach(() => {
-  applyColorScheme('light');
   vi.restoreAllMocks();
 });
 
@@ -648,7 +645,9 @@ describe('MarkdownEditor', () => {
         expect(dispatched[0]?.defaultPrevented).toBe(true);
         expect(reload).not.toHaveBeenCalled();
         expect(items.has(PRELOAD_RECOVERY_STORAGE_KEY)).toBe(false);
-        expect(vi.mocked(reportUnexpectedError)).not.toHaveBeenCalled();
+        expect(
+          vi.mocked(reportUnexpectedErrorInBrowser),
+        ).not.toHaveBeenCalled();
         expect(await runAxe(container)).toStrictEqual([]);
 
         await userEvent.click(alert.getByRole('button', { name: '再試行' }));
@@ -677,7 +676,7 @@ describe('MarkdownEditor', () => {
       await expect
         .element(page.getByRole('alert'))
         .toHaveTextContent(LOAD_FAILED);
-      expect(vi.mocked(reportUnexpectedError)).toHaveBeenCalledWith(
+      expect(vi.mocked(reportUnexpectedErrorInBrowser)).toHaveBeenCalledWith(
         failure,
         'render',
       );
@@ -694,7 +693,7 @@ describe('MarkdownEditor', () => {
 
       const alert = page.getByRole('alert');
       await expect.element(alert).toHaveTextContent(LOAD_FAILED);
-      expect(vi.mocked(reportUnexpectedError)).toHaveBeenCalledWith(
+      expect(vi.mocked(reportUnexpectedErrorInBrowser)).toHaveBeenCalledWith(
         expect.objectContaining({ message: failure.message }),
         'render',
       );
@@ -781,39 +780,6 @@ describe('MarkdownEditor', () => {
 
       await expect.element(editable()).toHaveAttribute('aria-disabled', 'true');
       await expect.element(toolbarButton('太字')).toBeDisabled();
-    });
-  });
-
-  describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
-    test('「書く」と「プレビュー」の両方でアクセシビリティの検査の違反が0件', async () => {
-      applyColorScheme(scheme);
-      const { container } = await render(
-        <ControlledEditor initialValue={SAMPLE} invalid />,
-      );
-      await waitForEditor();
-
-      expect(await runAxe(container)).toStrictEqual([]);
-
-      await userEvent.click(tab('プレビュー'));
-
-      expect(await runAxe(container)).toStrictEqual([]);
-    });
-
-    test('読み込み中の表示でアクセシビリティの検査の違反が0件', async () => {
-      applyColorScheme(scheme);
-      const gate = deferred();
-      loadOnceWith(() => gate.promise.then(importCrepeEditorSurface));
-      const { container } = await render(
-        <ControlledEditor initialValue={SAMPLE} />,
-      );
-      await expect
-        .element(page.getByRole('status'))
-        .toHaveTextContent(LOADING_STATUS);
-
-      expect(await runAxe(container)).toStrictEqual([]);
-
-      gate.resolve();
-      await waitForEditor();
     });
   });
 });

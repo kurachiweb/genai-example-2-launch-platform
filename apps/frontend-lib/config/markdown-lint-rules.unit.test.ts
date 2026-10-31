@@ -106,6 +106,9 @@ const EDITOR_POSITION_CASES: readonly PositionCase[] = [
       forbidden(
         "import { f } from '../../../../common-lib/validation/markdown-text-schema';",
       ),
+      forbidden(
+        "import { reportUnexpectedError } from '../../../start/observability/report-error.ts';",
+      ),
       forbidden("import { init } from '@sentry/tanstackstart-react';"),
       forbidden("import { z } from 'zod';"),
     ],

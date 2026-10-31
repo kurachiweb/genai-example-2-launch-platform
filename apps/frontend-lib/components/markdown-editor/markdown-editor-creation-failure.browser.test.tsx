@@ -5,7 +5,7 @@ import { render } from 'vitest-browser-react';
 
 import type { MarkdownRenderOptions } from '../../../common-lib/markdown/markdown-options.ts';
 import '../../styles/base.css';
-import { reportUnexpectedError } from '../../start/observability/report-error.ts';
+import { reportUnexpectedErrorInBrowser } from '../../start/observability/browser-error-reporting.ts';
 import { runAxe } from '../../test/a11y.ts';
 import { applyColorScheme, COLOR_SCHEMES } from '../../test/computed-style.ts';
 import { MarkdownEditor } from './markdown-editor.tsx';
@@ -14,9 +14,8 @@ const { creationFailures } = vi.hoisted(() => ({
   creationFailures: [] as Error[],
 }));
 
-vi.mock('../../start/observability/report-error.ts', () => ({
-  reportUnexpectedError: vi.fn(),
-}));
+// 実物の送信待ちの列へ積ませたまま、エラートラッキングへ送る関数の呼び出しを記録する
+vi.mock('../../start/observability/browser-error-reporting.ts', { spy: true });
 
 // 実物の編集領域の作成を拒否させるため、編集領域が組み込むプラグインの末尾に、予約した失敗を作成の途中で投げるプラグインを加える。エディタの型は遅延読み込みのモジュールの外へ出さないため、プラグインの形(文脈を受けて読み込みの処理を返す関数)だけを書く
 vi.mock('./crepe/cjk-remark-plugins.ts', async (importOriginal) => {
@@ -91,7 +90,7 @@ const placeholderText = (container: Element): string | undefined =>
 
 beforeEach(() => {
   creationFailures.length = 0;
-  vi.mocked(reportUnexpectedError).mockClear();
+  vi.mocked(reportUnexpectedErrorInBrowser).mockClear();
 });
 
 afterEach(() => {
@@ -127,8 +126,10 @@ describe('MarkdownEditor', () => {
       await expect
         .element(page.getByRole('alert'))
         .toHaveTextContent(LOAD_FAILED);
-      expect(vi.mocked(reportUnexpectedError)).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(reportUnexpectedError)).toHaveBeenCalledWith(
+      expect(vi.mocked(reportUnexpectedErrorInBrowser)).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(vi.mocked(reportUnexpectedErrorInBrowser)).toHaveBeenCalledWith(
         failure,
         'render',
       );
@@ -148,7 +149,9 @@ describe('MarkdownEditor', () => {
       expect(body.textContent).toBe(INITIAL_VALUE);
       await expect.poll(() => document.activeElement).toBe(body);
       expect(page.getByRole('alert').query()).toBeNull();
-      expect(vi.mocked(reportUnexpectedError)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(reportUnexpectedErrorInBrowser)).toHaveBeenCalledTimes(
+        1,
+      );
     });
 
     describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {

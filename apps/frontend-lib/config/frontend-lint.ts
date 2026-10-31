@@ -88,6 +88,13 @@ const SERVER_VALUE_RESTRICTION: RestrictedImportPattern = {
     '画面部品はサーバーの部品から型だけを読み込めます。実行時の処理はstartの同型の関数を経由してください。',
 };
 
+// 同型の関数はTanStack Startのコンパイラが無い環境(Vitestのブラウザテスト)で.serverの実装を残し、サーバー専用の依存を読み込んで失敗するため、ブラウザだけで送る部品にはブラウザ用の入口を使わせる
+const ISOMORPHIC_ERROR_REPORTING_RESTRICTION: RestrictedImportPattern = {
+  regex: '^(?:\\.\\./)+start/observability/report-error(?:\\.tsx?)?$',
+  message:
+    '画面部品は同型の関数のファイル(start/observability/report-error.ts)を読み込めません。ブラウザだけで動く処理から、start/observability/browser-error-reporting.tsのreportUnexpectedErrorInBrowserで送ってください。',
+};
+
 // ブラウザのSentryのSDKは初期化の時に動的importで読み込む。ブラウザのバンドルに入るファイルが同じパッケージの実行時の値を静的に読み込むと、動的importが別のチャンクに分かれずSDK全体が主バンドルに入る
 const BROWSER_SENTRY_RESTRICTION: RestrictedImportPattern = {
   regex: '^@sentry/tanstackstart-react(?:/.*)?$',
@@ -190,6 +197,7 @@ const COMPONENT_DIRECTION_RESTRICTIONS: readonly RestrictedImportPattern[] = [
   SERVER_ONLY_FILE_RESTRICTION,
   APP_SOURCE_RESTRICTION,
   COMMON_LIB_VALIDATION_RESTRICTION,
+  ISOMORPHIC_ERROR_REPORTING_RESTRICTION,
 ];
 
 const PURE_VALUE_RESTRICTIONS: readonly RestrictedImportPattern[] = [

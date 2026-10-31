@@ -2,6 +2,7 @@ import { ClientOnly } from '@tanstack/react-router';
 import {
   type Ref,
   useEffect,
+  useEffectEvent,
   useId,
   useImperativeHandle,
   useRef,
@@ -184,6 +185,37 @@ export function MarkdownEditor({
   };
 
   useImperativeHandle(ref, () => ({ focus: requestFocus }), []);
+
+  const handleLabelClick = useEffectEvent((label: Node): void => {
+    if (disabled) {
+      return;
+    }
+    // ラベルの文字を選択し終えた時の押下でフォーカスを移すと、選択した文字をコピーできなくなる。文字を選択させないラベルでは押しても他の場所の選択が消えないため、ラベルの中の選択だけを見る
+    const selection = window.getSelection();
+    if (
+      selection !== null &&
+      !selection.isCollapsed &&
+      selection.containsNode(label, true)
+    ) {
+      return;
+    }
+    requestFocus();
+  });
+
+  // 編集領域はラベル付け可能な要素でなく、ラベルのforの関連付けで押下がフォーカスに変わらないため、ラベルの要素の押下を聞いて移す
+  useEffect(() => {
+    const label = document.getElementById(labelId);
+    if (label === null) {
+      return undefined;
+    }
+    const listener = (): void => {
+      handleLabelClick(label);
+    };
+    label.addEventListener('click', listener);
+    return () => {
+      label.removeEventListener('click', listener);
+    };
+  }, [labelId]);
 
   useEffect(() => {
     if (
