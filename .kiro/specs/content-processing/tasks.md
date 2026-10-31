@@ -243,7 +243,7 @@
   - _Boundary: SearchIndexRepository_
   - _Requirements: 9.2, 9.3, 9.7, 9.8, 10.6, 11.3, 12.5, 16.2_
 
-- [ ] 8.7 ドメイン向けの文・更新の要求・元データの読み取り・共通の束縛を作る
+- [x] 8.7 ドメイン向けの文・更新の要求・元データの読み取り・共通の束縛を作る
   - 先に、更新待ちの印が新規の行と既存の行で設計どおりになること、91件以上の削除が分割されて同じ一括の書き込みで成功すること、更新の要求がQueueへ送られること、未登録の検索対象が呼び出し側の誤りになること、送信の失敗が例外にならずログとSentryへ送られること、元データの読み取りが定義へ委ねられること、共通の束縛から各部品を解決できることを確かめるWorkers統合テストを書く
   - 完了状態: Workers統合テストが成功し、ドメインが自身の書き込みと同じ一括の書き込みに印と削除の文を含められる
   - _Boundary: SearchIndexStatements, SearchIndexRefreshRequester, SearchSourceProvider, SearchPlatformModule_
@@ -377,3 +377,4 @@
 - 8.4: `markPending`はハッシュを残すため、編集前の状態(extracted・unsupported)が失われる。`planRefresh`は「pendingで同じハッシュ」を`reuse-keywords`(状態`extracted`)にし、非対応言語の文書は状態がextractedへ付け替わる(キーワードの列と再抽出しないことは変わらない。状態を正確に保つには`StoredIndexState`に前回の状態を足すか、`markPending`で`unsupported`の時だけハッシュを消す設計の変更が要る。開発者の判断)。9.2への申し送り: `store-empty`・`reuse-keywords`の書き込み(状態・ハッシュ・キーワードの列・`statusChangedAt`)は設計に無く9.2で決める(推奨: store-emptyは空のキーワード・`extracted`・ハッシュ、reuse-keywordsは`keep`・文書のハッシュ・`plan.status`・`now`)。上限未満の一時的な失敗は`statusChangedAt`を現在時刻に更新する
 - 8.5: 登録は設計に加えて、2つの検索対象が同じ索引文書のテーブルを使うことを拒否し、集約点のテストで各対象の`index`が`SEARCH_INDEXES`にあること(参照の一致)を確かめる。元テキストの列の項目名はDBの列名(`short_description`)と一致させる(11.1の`db/004`に明記)。状態の値の一致は`workers/search/search-target-definition.ts`の`SEARCH_KEYWORD_STATUSES`の型で保証する
 - 8.6: D1のFTS5で`prefix='2 3'`・bm25の列の重み・external contentのトリガーの同期・`integrity-check`が使えることを確かめた(`docs/GUIDES/tech/db/002`に記録。research.md 348行の「未確認」は古い)。`D1SearchIndexRepository`は設計どおり`@injectable`のクラス(既存の`workers/email`のリポジトリはファクトリ関数)。テキスト列の値の欠落は`TypeError`、同時刻の再抽出の候補は`id`で並べる。Workers統合テスト専用の検索対象`workers/search/testing/fixture-search-target.ts`の`CREATE TABLE`は手書き(全文検索の索引だけ生成したSQL)。8.5以降、`lib/workers`の単体テストだけで覆うファイルがapiのWorkers統合テストのカバレッジで閾値を割っていたため、`config/vitest/unit-tested-sources.ts`の`listUnitTestedSources`で隣に`*.unit.test.ts`を持つソースをWorkersのカバレッジから除く(testing/001に追記)
+- 8.7: ロガーのカテゴリーの先頭はアプリ名でないと出力されないため(`infra/004`)、`createSearchPlatformModule(targets, appName)`でカテゴリーを`[appName, 'search', 'refresh']`にする(設計は`(targets)`と`['search','refresh']`)。9.3・10は`'event'`・`'api'`を渡し、9.2の処理のカテゴリーは`['event','search','index']`にする。文は`SEARCH_TYPES.IndexStatements`(8つ目の識別子、設計に無い)で処理単位ごとに束縛し、`createSearchIndexStatements`も公開する。`requestRefresh`は未登録の検索対象(`SearchTargetRegistryError`)と契約に合わない本文(`MessagePublishError`)を投げ、それ以外の送信の失敗だけをログとSentryで握る。10の再抽出のジョブは1件ごとに例外を捕まえて残りを止めない。`markPending`・`deleteSources`は空・64文字超の識別子を`RangeError`にする。`markPending`は元データの存在を確かめない(対象外の行は9.2で削除)

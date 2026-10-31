@@ -146,3 +146,16 @@ function assertExtractedField(definition: SearchTargetDefinition): void {
     );
   }
 }
+
+export function requireSearchTargetDefinition(
+  registry: SearchTargetRegistry,
+  target: string,
+): SearchTargetDefinition {
+  const definition = registry.definition(target);
+  if (definition === undefined) {
+    throw new SearchTargetRegistryError(
+      `検索対象${target}は登録されていません。`,
+    );
+  }
+  return definition;
+}

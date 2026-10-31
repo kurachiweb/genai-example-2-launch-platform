@@ -11,9 +11,9 @@ import type {
   StoredIndexState,
 } from '../../core/search/ports.ts';
 import {
+  requireSearchTargetDefinition,
   type SearchTargetDefinition,
   type SearchTargetRegistry,
-  SearchTargetRegistryError,
 } from './search-target-definition.ts';
 
 interface StoredStateRow {
@@ -122,13 +122,7 @@ export class D1SearchIndexRepository implements SearchIndexStore {
   }
 
   private definitionOf(target: string): SearchTargetDefinition {
-    const definition = this.registry.definition(target);
-    if (definition === undefined) {
-      throw new SearchTargetRegistryError(
-        `検索対象${target}は登録されていません。`,
-      );
-    }
-    return definition;
+    return requireSearchTargetDefinition(this.registry, target);
   }
 
   private documentsTable(target: string): SQL {

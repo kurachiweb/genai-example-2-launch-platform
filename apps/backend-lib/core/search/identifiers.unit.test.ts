@@ -7,13 +7,14 @@ const EXPECTED_NAMES = [
   'SourceProvider',
   'IndexStore',
   'RefreshRequester',
+  'IndexStatements',
   'KeywordExtractor',
   'RefreshHandler',
   'ReextractionJob',
 ] as const;
 
 describe('SEARCH_TYPES', () => {
-  test('両アプリと検索を持つドメインが共有する7種の識別子だけを持つ', () => {
+  test('両アプリと検索を持つドメインが共有する8種の識別子だけを持つ', () => {
     expect(Object.keys(SEARCH_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

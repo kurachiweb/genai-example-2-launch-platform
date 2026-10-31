@@ -16,6 +16,7 @@ import type {
 import {
   createSearchTargetRegistry,
   defineSearchTarget,
+  requireSearchTargetDefinition,
   SEARCH_KEYWORD_STATUSES,
   type SearchTargetDefinition,
   SearchTargetRegistryError,
@@ -253,5 +254,24 @@ describe('SEARCH_KEYWORD_STATUSES', () => {
       'pending',
       'unsupported',
     ]);
+  });
+});
+
+describe('requireSearchTargetDefinition', () => {
+  test('登録した検索対象の定義を返す', () => {
+    const registry = createSearchTargetRegistry([probeTarget]);
+
+    expect(requireSearchTargetDefinition(registry, 'probe')).toBe(probeTarget);
+  });
+
+  test('登録されていない検索対象は呼び出し側の誤りとして例外にする', () => {
+    const registry = createSearchTargetRegistry([probeTarget]);
+
+    expect(() =>
+      requireSearchTargetDefinition(registry, 'other-target-2'),
+    ).toThrow(SearchTargetRegistryError);
+    expect(() =>
+      requireSearchTargetDefinition(registry, 'other-target-2'),
+    ).toThrow('検索対象other-target-2は登録されていません。');
   });
 });
