@@ -291,7 +291,7 @@
   - _Requirements: 9.10, 10.6, 15.6_
 
 - [ ] 11. 技術ドキュメントと関連文書
-- [ ] 11.1 (P) 外部の自然言語APIと全文検索の技術ドキュメントを書く
+- [x] 11.1 (P) 外部の自然言語APIと全文検索の技術ドキュメントを書く
   - 文書は`external/002-natural-language-keyword-extraction.md`と`db/004-full-text-search.md`とする(roadmapの順で割り当てた固定の番号)
   - 外部APIの文書に、エンティティ分析の要求と応答、キーの渡し方とAPIの制限、料金と上限、失敗の分類と再試行・縮退、対応言語、送る情報の範囲、手元の疎通確認の手順を書く
   - 全文検索の文書に、索引文書のテーブルと全文検索の索引の構成、ひな形と集約点とSQLの出力の使い方、検索式と関連度の組み込み、条件付きの書き込み、更新待ちの印と削除の一括の書き込み、列を変えた後のトリガーの作り直しと再構築、Time Travelでのバックアップ、マークダウンの原文を保存してHTMLを保存しない規約を書く
@@ -383,3 +383,4 @@
 - 9.3: Queueからの結合のWorkers統合テストは、テストファイルの中だけ`vi.mock('../../lib/workers/search/targets/index.ts')`で集約点をテスト専用の検索対象へ差し替え、本物のエントリを通す(本番の`SEARCH_TARGETS`は空のまま。11.1の`db/004`か`testing/001`に書く)。`search-module.ts`は共通の束縛`EVENT_SEARCH_PLATFORM_MODULE`とeventの検索のモジュール`EVENT_SEARCH_MODULE`の2つをexportする。`FetcherQueueResult`のglobal宣言が`email-module.worker.test.ts`と重複している
 - 9.4: 疎通確認の`smoke:keyword-extraction`は、キーが無ければ終了コード2、全件抽出で0、抽出できない短文があれば1(0・1は設計に無い。11.1の`external/002`に書く)。実行は`cd /workspace/apps/event && infisical --telemetry=false run --env staging -- bun run smoke:keyword-extraction`。日本語と英語が`extracted`になれば、実際の応答に`languageSupported: true`が付いている(8.3)。実際のキーでの実行は開発者の手作業
 - 10: 再抽出のジョブは要求と候補の取得の失敗を1件ごとに捕まえて続け、全件の処理と要約のログの後に`SearchKeywordReextractionError`を1件投げる(設計に無い)。候補の取得の失敗は`lookup-failed`。要約の`failed`はジョブまで届いた例外だけを数え、要求の部品が握るQueueの送信の失敗は`api.search.refresh`のログに出る(11.1か11.3に書く)。1時間前の基準は`Clock`の現在時刻。カテゴリーは`['api','search','reextraction']`。apiのエントリはDurable Objectを公開するためテストより先に読み込まれ`vi.mock`で集約点を差し替えられず、テスト専用の検索対象の結合テストは本物の`SCHEDULED_JOBS`と検索の共通の束縛だけ差し替えた`MODULES`から`createWorkerHandler`を組み立てる(11.1の`db/004`か`testing/001`に書く)。メールの定期実行のテストは、4:21の要約の`jobs`に`email-delivery.cleanup`の成功が含まれることだけを確かめる
+- 11.1: `external/002`・`db/004`で新しいプレースホルダー`<抽出の方式の変数>`・`<自然言語APIのキーのシークレット>`を使う。11.3でproject-values.mdに対応付けの行(`KEYWORD_EXTRACTOR`・`GOOGLE_NL_API_KEY`)、`KEYWORD_EXTRACTOR`の変数の行、使う文書の欄への`external/002`・`db/004`、定期実行の節への再抽出のジョブの名前・時刻・順序・件数を加え、`coding/003`で「共用部品」を定義する。`db/003`の全文検索の節は`db/004`へ移し、要約とリンクにした

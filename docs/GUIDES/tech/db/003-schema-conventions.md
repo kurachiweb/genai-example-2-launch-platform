@@ -4,7 +4,7 @@ Cloudflare D1のテーブルをDrizzleで定義するときの、テーブル定
 
 ## 前提と用語
 
-ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`、データベースにCloudflare D1を使う構成を前提とする。マイグレーションの生成と適用・大文字小文字を区別しないカラム・命名規則は「[DrizzleとCloudflare D1のマイグレーションと命名規則](001-drizzle-migrations-on-d1.md)」に、トランザクション・バインド変数・全文検索の索引の同期は「[Cloudflare D1の制約と対処](002-d1-constraints.md#d1の制約と対処)」に従う。
+ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`、データベースにCloudflare D1を使う構成を前提とする。マイグレーションの生成と適用・大文字小文字を区別しないカラム・命名規則は「[DrizzleとCloudflare D1のマイグレーションと命名規則](001-drizzle-migrations-on-d1.md)」に、トランザクション・バインド変数は「[Cloudflare D1の制約と対処](002-d1-constraints.md#d1の制約と対処)」に、全文検索の索引の構成と同期は「[全文検索の索引](004-full-text-search.md)」に従う。
 
 | 用語                         | 意味                                                                                                                                                                    |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -119,7 +119,7 @@ CREATE TABLE `articles` (
 - 索引の対象の元テキストの列は`searchTextColumn(<列名>)`(`TEXT NOT NULL DEFAULT ''`)で定義し、状態の列の索引は`searchDocumentStatusIndex(<テーブル名>, table)`(`<テーブル名>_status_idx`)で定義する。
 - 共通の列と元テキストの列は、全文検索の索引のSQLが列名を直接参照するため、列名を明示して定義する。`snakeCase.table`の変換に関係なく、渡した名前がそのまま列名になる。
 - FTS5の索引は、整数の`rowid`で全文検索用のテーブルの行と対応する。`INTEGER PRIMARY KEY`の列は`rowid`の別名になり、追加時に値を渡さなければSQLiteが連番を採番する。
-- FTS5の仮想テーブルの`content_rowid`には、この主キーの列を指定する。`INTEGER PRIMARY KEY`を持たないテーブルの`rowid`は`VACUUM`で変わり得るため、索引と行の対応が崩れる(「[全文検索の仮想テーブルの同期](002-d1-constraints.md#全文検索の仮想テーブルの同期)」)。
+- FTS5の仮想テーブルの`content_rowid`には、この主キーの列を指定する。`INTEGER PRIMARY KEY`を持たないテーブルの`rowid`は`VACUUM`で変わり得るため、索引と行の対応が崩れる(「[全文検索の索引](004-full-text-search.md#全文検索の索引)」)。
 - 業務のテーブルの主キーはULIDのままにし、全文検索用のテーブルを別に定義して、元の行のULIDを一意の列で持つ。
 
 ```typescript
@@ -136,7 +136,7 @@ export const articleSearchDocuments = snakeCase.table(
   {
     ...searchDocumentColumns(),
     title: searchTextColumn('title'),
-    body: searchTextColumn('body'),
+    summary: searchTextColumn('summary'),
   },
   (table) => [searchDocumentStatusIndex('article_search_documents', table)],
 );
@@ -154,21 +154,13 @@ CREATE TABLE `article_search_documents` (
 	`extraction_input_hash` text,
 	`status_changed_at` integer NOT NULL,
 	`title` text DEFAULT '' NOT NULL,
-	`body` text DEFAULT '' NOT NULL
+	`summary` text DEFAULT '' NOT NULL
 );
 --> statement-breakpoint
 CREATE INDEX `article_search_documents_status_idx` ON `article_search_documents` (`keyword_status`,`status_changed_at`);
 ```
 
-```sql
-CREATE VIRTUAL TABLE article_search_documents_fts USING fts5(
-  title, body, keywords,
-  content='article_search_documents', content_rowid='id',
-  tokenize='unicode61 remove_diacritics 2', prefix='2 3'
-);
-```
-
-- 仮想テーブルと、索引を同期するトリガーは、カスタムマイグレーションで記述する(「[マイグレーション](#マイグレーション)」)。トリガーの例と、更新のトリガーを索引する列に限る理由は「[全文検索の仮想テーブルの同期](002-d1-constraints.md#全文検索の仮想テーブルの同期)」に従う。
+- 全文検索の仮想テーブルと、索引を同期するトリガーは、カスタムマイグレーションで記述する(「[マイグレーション](#マイグレーション)」)。列の意味と状態の値、仮想テーブルとトリガーの構成は「[全文検索の索引](004-full-text-search.md#索引文書のテーブルと全文検索の索引の構成)」に従う。
 
 ## 共通カラム
 
@@ -249,58 +241,15 @@ const visible = await db
 テーブル定義を変えたら、次の順でマイグレーションを生成して適用する。各コマンドの詳細は「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」に従う。
 
 1. `<DBディレクトリ>`で`drizzle-kit generate`(スクリプト`db:generate`)を実行し、`<マイグレーションの保存先>/<日時>_<名前>/migration.sql`を生成する。テーブル定義に変更が無ければ、新しいマイグレーションは生成されない。
-2. テーブル定義で表現できない内容(全文検索の仮想テーブル・トリガーなど)は、`drizzle-kit generate --custom --name=<マイグレーションの名前>`で空のマイグレーションを作り、生のSQLを書き足す。全文検索の仮想テーブルとトリガーのSQLは手で書かず、索引の定義を集約点`search/search-indexes.ts`の`SEARCH_INDEXES`へ登録してから、スクリプト`db:search-index-sql`で出力して貼る(「[全文検索の索引のSQLの出力](#全文検索の索引のsqlの出力)」)。
+2. テーブル定義で表現できない内容(全文検索の仮想テーブル・トリガーなど)は、`drizzle-kit generate --custom --name=<マイグレーションの名前>`で空のマイグレーションを作り、生のSQLを書き足す。全文検索の仮想テーブルとトリガーのSQLは手で書かず、索引の定義を集約点`search/search-indexes.ts`の`SEARCH_INDEXES`へ登録してから、スクリプト`db:search-index-sql`で出力して貼る(「[全文検索の索引](#全文検索の索引)」)。
 3. 同じD1を使うアプリのうち1つで、`wrangler d1 migrations apply <データベース名> --local --persist-to <ローカル状態の保存先>`(スクリプト`db:migrate:local`)を実行する。ローカル状態の保存先とリソースIDを共有していれば、1回の適用で全アプリから同じデータベースを参照できる(「[ローカル状態の永続化と共有](../infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)」)。
 4. 生成したマイグレーションがWranglerに検出されることを、スクリプト`db:migrations:check`で確かめる。CIからも同じスクリプトを呼ぶ。
 
 - `db:migrations:check`は、空の一時ディレクトリを`--persist-to`に指定して`wrangler d1 migrations list <データベース名> --local`を実行し、未適用として一覧された名前を`<マイグレーションの保存先>`のディレクトリ名と突き合わせる。共有のローカル状態を変えずに、検出の設定(「[マイグレーションの検出設定](001-drizzle-migrations-on-d1.md#マイグレーションの検出設定)」)の誤りを見つけるためである。食い違えば、検出されなかったマイグレーションの名前を表示して終了コード1で終わる。
 
-### 全文検索の索引のSQLの出力
+### 全文検索の索引
 
-索引の定義は`search/search-index-definition.ts`の`defineSearchIndex`で作る。名前・列・重み・前方一致の長さの検証を通さずに組み立てた値は、索引の定義の型(`SearchIndexDefinition`)として受け取れない。SQLのひな形が名前を引用符無しで埋め込むためである。
-
-`<DBディレクトリ>`で、索引文書のテーブル名を引数にしてスクリプト`db:search-index-sql`を実行すると、`SEARCH_INDEXES`に登録した定義のSQLを標準出力へ出す。出力をカスタムマイグレーションに貼る。
-
-| 引数                                          | 出力                                                                            | 使う場面                                                                                  |
-| --------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `<索引文書のテーブル名>`                      | 全文検索の仮想テーブルと3つのトリガーの作成文                                   | 索引を新しく作るとき。既にある索引に貼ると`table <仮想テーブル> already exists`で失敗する |
-| `<索引文書のテーブル名> --drop`               | 仮想テーブルの`DROP TABLE IF EXISTS`と、3つのトリガーの`DROP TRIGGER IF EXISTS` | 索引する列を消すときに、列を消すマイグレーションより前に置く                              |
-| `<索引文書のテーブル名> --recreate`           | `--drop`の出力の後に、文の区切りを挟んで作成文と`rebuild`の1文を続けたもの      | 索引する列や前方一致の長さを変えたとき                                                    |
-| `<索引文書のテーブル名> --triggers`           | 3つのトリガーの`DROP TRIGGER IF EXISTS`と作成文                                 | 索引しない列を変えて、`drizzle-kit generate`が索引文書のテーブルを作り直したとき          |
-| `<索引文書のテーブル名> --rebuild`            | 全文検索の索引を元のテーブルから全件作り直す`rebuild`の1文                      | 索引の内容が元のテーブルと食い違ったとき                                                  |
-| `<索引文書のテーブル名> --triggers --rebuild` | トリガーの作り直しの後に、文の区切りを挟んで`rebuild`の1文を続けたもの          | テーブルの作り直しの後に、トリガーと索引をまとめて作り直すとき                            |
-
-`--drop`と`--recreate`は他のオプションと組み合わせない。変更の種類ごとに、次の順でマイグレーションを作る。
-
-- 索引を新しく作る: 索引文書のテーブルを作る`drizzle-kit generate`の後に、カスタムマイグレーションへ引数なしの出力を貼る。
-- 索引する列を加える・前方一致の長さを変える: テーブル定義と索引の定義を変えて`drizzle-kit generate`を実行した後に、カスタムマイグレーションへ`--recreate`の出力を貼る。仮想テーブルの列と`prefix`は作り直さないと変わらないため、索引を消してから新しい定義で作り、`rebuild`で元のテーブルから索引を作り直す。
-- 索引する列を消す: テーブル定義を変える前に、カスタムマイグレーションへ`--drop`の出力を貼る。次にテーブル定義と索引の定義を変えて`drizzle-kit generate`を実行し、その後のカスタムマイグレーションへ`--recreate`の出力を貼る(`--recreate`の`DROP`は対象が無いため何もしない)。トリガーが消す列を参照したままだと、`drizzle-kit generate`が出力する`ALTER TABLE … DROP COLUMN`が`error in trigger <索引文書のテーブル>_fts_ai after drop column: no such column: new.<列>`で失敗するためである。
-- 索引しない列を変えて、`drizzle-kit generate`が索引文書のテーブルを作り直した: その後のカスタムマイグレーションへ`--triggers --rebuild`の出力を貼る。
-
-```sh
-cd <DBディレクトリ>
-bunx drizzle-kit generate --custom --name=<マイグレーションの名前>
-bun run --silent db:search-index-sql <索引文書のテーブル名> --recreate
-```
-
-- 登録されていない名前や未知のオプションを渡すと、登録済みの名前か使い方を表示して終了コード1で終わる。
-- 単体テスト`search/search-index-migrations.unit.test.ts`が、`<マイグレーションの保存先>/*/migration.sql`を名前の昇順(Wranglerの適用順)に読み、`SEARCH_INDEXES`の全ての定義について、仮想テーブルと3つのトリガーの作成文(空白の違いは無視する)が、全マイグレーションの適用後に残っていることを確かめる。作成文がどのマイグレーションにも無い場合のほか、作成文より後に`DROP TRIGGER`・仮想テーブルの`DROP TABLE`・索引文書のテーブルの`DROP TABLE`(テーブルの作り直しでトリガーも消える)がある場合も欠けとし、欠けた作成文を表示して失敗する。
-- 重みだけの変更は作成文を変えないため、マイグレーションを要しない。重みは検索のSQL断片(「[検索のSQL断片](#検索のsql断片)」)が定義から読む。
-
-### 検索のSQL断片
-
-`search/fts-query.ts`は、ドメインの検索のクエリに組み込むSQL断片を提供する。
-
-- `ftsRankedSources(<索引の定義>, <検索式>)`は、`SELECT d.source_id AS source_id, bm25(<仮想テーブル>, <重み>…) AS rank FROM <仮想テーブル> JOIN <索引文書のテーブル> AS d ON d.id = <仮想テーブル>.rowid WHERE <仮想テーブル> MATCH ?`を返す。検索式は必ずバインド変数で渡り、SQLに埋め込まれない。
-- `bm25Rank(<索引の定義>)`は、定義の列の順(元テキストの列、キーワードの列)に重みを並べた`bm25(…)`の式を返す。値が小さいほど関連度が高い。
-- ドメインは`ftsRankedSources`を副問い合わせとして元データのテーブルと`source_id`で結合し、可視性の条件とページングを外側のクエリに加えて、`rank`の昇順で並べる。
-
-```typescript
-const ranked = ftsRankedSources(articleSearchIndex, matchExpression);
-const rows = await db.all(
-  sql`SELECT a.id FROM articles AS a JOIN (${ranked}) AS r ON r.source_id = a.id WHERE a.deleted_at IS NULL ORDER BY r.rank, a.id LIMIT ${limit}`,
-);
-```
+全文検索の仮想テーブルとトリガーのSQLは、索引の定義から出力してカスタムマイグレーションに貼る。SQLの出力のオプション、索引する列を変えるときのマイグレーションの順、マイグレーションとの突き合わせの単体テスト、検索のクエリに組み込むSQL断片は「[全文検索の索引](004-full-text-search.md)」に従う。
 
 ## 接続と一括実行
 
@@ -335,11 +284,6 @@ const articleId = ulid();
 
 await db.batch([
   db.insert(articles).values({ id: articleId, slug, title }),
-  db.insert(articleSearchDocuments).values({
-    sourceId: articleId,
-    title,
-    body,
-    statusChangedAt: new Date(),
-  }),
+  db.insert(articleRevisions).values({ articleId, title }),
 ]);
 ```
