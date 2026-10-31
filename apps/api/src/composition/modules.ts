@@ -26,6 +26,10 @@ import { createGraphQLModule } from '../presentation/graphql/graphql-module.ts';
 import { API_EMAIL_MODULE } from './email-module.ts';
 import { GRAPHQL_SCHEMA_MODULES } from './graphql-modules.ts';
 import { INTERNAL_ROUTES } from './internal-routes.ts';
+import {
+  API_SEARCH_MODULE,
+  API_SEARCH_PLATFORM_MODULE,
+} from './search-module.ts';
 import { SESSION_BINDINGS } from './session.ts';
 
 function parseExpectedHostnames(value: string): readonly string[] {
@@ -83,4 +87,6 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   createInternalRoutesModule<Env>(INTERNAL_ROUTES),
   EMAIL_PLATFORM_MODULE,
   API_EMAIL_MODULE,
+  API_SEARCH_PLATFORM_MODULE,
+  API_SEARCH_MODULE,
 ];

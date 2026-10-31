@@ -235,14 +235,19 @@ describe('定期実行からの日次の後始末', () => {
       sendRecordsDeleted: 1,
       unlinkedCheck: 'skipped-directory-unavailable',
     });
-    expect(
-      logs.find(({ message }) => message === '定期実行を終えました'),
-    ).toMatchObject({
+    const dispatchSummary = logs.find(
+      ({ message }) => message === '定期実行を終えました',
+    );
+    expect(dispatchSummary).toMatchObject({
       level: 'info',
       cron: CLEANUP_CRON,
-      result: 'succeeded',
-      jobs: [expect.objectContaining({ name: 'email-delivery.cleanup' })],
     });
+    expect(dispatchSummary?.['jobs']).toContainEqual(
+      expect.objectContaining({
+        name: 'email-delivery.cleanup',
+        result: 'succeeded',
+      }),
+    );
     expect(JSON.stringify(logs)).not.toContain(RECIPIENT_DOMAIN);
     expect(await db.select().from(emailCleanupCursors)).toEqual([]);
   });

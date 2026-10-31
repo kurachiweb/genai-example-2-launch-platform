@@ -1,5 +1,6 @@
 import type { ScheduledJobDefinition } from '../../lib/core/scheduling/cron-registry.ts';
 import type { ScheduledRunBudget } from '../../lib/core/scheduling/run-budget.ts';
+import { SEARCH_TYPES } from '../../lib/core/search/identifiers.ts';
 import { API_EMAIL_TYPES } from '../application/email/email-cleanup-job.ts';
 
 export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
@@ -8,6 +9,12 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     at: { hour: 4, minute: 21 },
     order: 900,
     handler: API_EMAIL_TYPES.EmailCleanupJob,
+  },
+  {
+    name: 'content-processing.keyword-reextraction',
+    at: { hour: 4, minute: 21 },
+    order: 950,
+    handler: SEARCH_TYPES.ReextractionJob,
   },
 ];
 

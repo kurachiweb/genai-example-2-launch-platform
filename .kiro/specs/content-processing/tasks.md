@@ -283,7 +283,7 @@
   - _Boundary: KeywordExtractionSmoke_
   - _Requirements: 15.5_
 
-- [ ] 10. APIサーバーに日次の再抽出のジョブを登録する
+- [x] 10. APIサーバーに日次の再抽出のジョブを登録する
   - 先に、偽のポートで、全ての検索対象について縮退と1時間以上の更新待ちの識別子を上限200件で取得して更新を要求すること、1件の要求の失敗で残りを止めないこと、検索対象ごとの件数をログに出すことを確かめる単体テストを書く
   - 共通の束縛とAPIサーバーの検索のモジュールを登録し、ジョブを名前`content-processing.keyword-reextraction`・業務時刻4:21・順序950で登録する。cron式`21 12 * * *`は、APIサーバーの3環境の`triggers.crons`に既にあれば変更せず、無ければ加える(email-deliveryの実装の有無によらない)
   - 完了状態: 単体テストとbackend-platformのcron式の一致の検査が成功し、ローカルで4:21の定期実行を手動で起こすと検索対象ごとの件数がログに出る
@@ -382,3 +382,4 @@
 - 9.2: 空の入力はキーワード`''`・`extracted`・文書のハッシュ・現在時刻で書き、ログは`extracted`(抽出を無効にした環境でも)。前回のキーワードの再利用は`keep`・文書のハッシュ・計画の状態・現在時刻で、ログは`reused`。未登録の検索対象は`skipped`・`reason: 'unregistered-target'`・`error`。縮退と再試行は`warning`、設定の誤りは`error`(設計の「1件ごとに`info`」と相違、Monitoringの節に合わせた)。再試行の例外は書いた後に投げる。通知の状態コードは`number`(8.3が形の不一致を200で返すため。設計は`number | undefined`)。9.3で束縛する識別子は`SEARCH_TYPES.KeywordExtractor`・`EVENT_SEARCH_TYPES.SearchIncidentReporter`(`application/search/search-types.ts`、設計に無い)・`SEARCH_TYPES.RefreshHandler`
 - 9.3: Queueからの結合のWorkers統合テストは、テストファイルの中だけ`vi.mock('../../lib/workers/search/targets/index.ts')`で集約点をテスト専用の検索対象へ差し替え、本物のエントリを通す(本番の`SEARCH_TARGETS`は空のまま。11.1の`db/004`か`testing/001`に書く)。`search-module.ts`は共通の束縛`EVENT_SEARCH_PLATFORM_MODULE`とeventの検索のモジュール`EVENT_SEARCH_MODULE`の2つをexportする。`FetcherQueueResult`のglobal宣言が`email-module.worker.test.ts`と重複している
 - 9.4: 疎通確認の`smoke:keyword-extraction`は、キーが無ければ終了コード2、全件抽出で0、抽出できない短文があれば1(0・1は設計に無い。11.1の`external/002`に書く)。実行は`cd /workspace/apps/event && infisical --telemetry=false run --env staging -- bun run smoke:keyword-extraction`。日本語と英語が`extracted`になれば、実際の応答に`languageSupported: true`が付いている(8.3)。実際のキーでの実行は開発者の手作業
+- 10: 再抽出のジョブは要求と候補の取得の失敗を1件ごとに捕まえて続け、全件の処理と要約のログの後に`SearchKeywordReextractionError`を1件投げる(設計に無い)。候補の取得の失敗は`lookup-failed`。要約の`failed`はジョブまで届いた例外だけを数え、要求の部品が握るQueueの送信の失敗は`api.search.refresh`のログに出る(11.1か11.3に書く)。1時間前の基準は`Clock`の現在時刻。カテゴリーは`['api','search','reextraction']`。apiのエントリはDurable Objectを公開するためテストより先に読み込まれ`vi.mock`で集約点を差し替えられず、テスト専用の検索対象の結合テストは本物の`SCHEDULED_JOBS`と検索の共通の束縛だけ差し替えた`MODULES`から`createWorkerHandler`を組み立てる(11.1の`db/004`か`testing/001`に書く)。メールの定期実行のテストは、4:21の要約の`jobs`に`email-delivery.cleanup`の成功が含まれることだけを確かめる
