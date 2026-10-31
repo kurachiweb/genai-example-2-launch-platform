@@ -17,6 +17,7 @@ import {
 import {
   defineSearchIndex,
   SEARCH_DOCUMENT_COLUMN_NAMES,
+  type SearchIndexDefinition,
   SearchIndexDefinitionError,
 } from './search-index-definition.ts';
 import { SQLITE_KEYWORDS } from './sqlite-keywords.ts';
@@ -77,7 +78,7 @@ describe('SEARCH_DOCUMENT_COLUMN_NAMES', () => {
 
 describe('defineSearchIndex', () => {
   test('テーブル名・全文検索の索引の名前・DBの列名と重み・前方一致の長さの既定値を持つ定義を返す', () => {
-    expect(defineSearchIndex(validInput)).toEqual({
+    expect<object>(defineSearchIndex(validInput)).toEqual({
       documentsTableName: 'probe_search_documents',
       ftsTableName: 'probe_search_documents_fts',
       textColumns: [
@@ -87,6 +88,21 @@ describe('defineSearchIndex', () => {
       keywordsWeight: 1,
       prefixLengths: [2, 3],
     });
+  });
+
+  test('defineSearchIndexを通さずに組み立てた値は、索引の定義の型として受け取れない', () => {
+    const forged = {
+      documentsTableName: 'probe_search_documents; DROP TABLE users',
+      ftsTableName: 'probe_search_documents_fts',
+      textColumns: [{ name: 'name', weight: 10 }],
+      keywordsWeight: 1,
+      prefixLengths: [2, 3],
+    };
+
+    // @ts-expect-error 検証を通していない値は索引の定義の型に代入できない
+    const definition: SearchIndexDefinition = forged;
+
+    expect<object>(definition).toBe(forged);
   });
 
   test('前方一致の長さを指定すると、その長さを持つ', () => {

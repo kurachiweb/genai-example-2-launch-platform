@@ -384,6 +384,7 @@ http://localhost:48041
 cd /workspace/apps/db
 bun run db:generate --name=<マイグレーションの名前>
 bunx drizzle-kit generate --custom --name=<マイグレーションの名前> # テーブル定義で表せない内容(全文検索の仮想テーブル・トリガーなど)を生のSQLで書く場合
+bun run --silent db:search-index-sql <索引文書のテーブル名> [--drop | --recreate | --triggers --rebuild] # 全文検索の索引のSQLを、apps/db/search/search-indexes.tsに登録した定義から出力してカスタムマイグレーションに貼る
 
 # 2. ローカルのD1に適用し、生成したマイグレーションがWranglerに検出されることを確かめる
 cd /workspace/apps/api
@@ -391,6 +392,7 @@ bun run db:migrate:local
 bun run db:migrations:check
 ```
 
+- 全文検索の索引する列や前方一致の長さを変える場合のオプションの使い分けと、マイグレーションを作る順は「[全文検索の索引のSQLの出力](../GUIDES/tech/db/003-schema-conventions.md#全文検索の索引のsqlの出力)」に従う。索引する列を消す場合は、テーブル定義を変える前に`--drop`の出力を貼ったカスタムマイグレーションを作る。
 - マイグレーションの適用は`apps/api`での1回でよい。`apps/event`は同じローカル状態とデータベースを参照する。
 - `db:migrations:check`は、CIの検査の品質検査でも、配布のスクリプトの`app-checks`が同じスクリプトを呼ぶ。共有のローカル状態を変えずに一時ディレクトリで検出を確かめ、検出されなかったマイグレーションがあれば名前を表示して失敗する。
 

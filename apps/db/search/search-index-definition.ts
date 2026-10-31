@@ -26,12 +26,16 @@ const DEFAULT_PREFIX_LENGTHS: readonly number[] = [2, 3];
 const MIN_PREFIX_LENGTH = 1;
 const MAX_PREFIX_LENGTH = 4;
 
+// SQLのひな形は名前を引用符無しで埋め込むため、検証を通さずに組み立てた値を型で拒否する
+declare const validatedSearchIndex: unique symbol;
+
 export interface SearchIndexColumnInput {
   readonly column: SQLiteColumn;
   readonly weight: number;
 }
 
 export interface SearchIndexDefinition {
+  readonly [validatedSearchIndex]: true;
   readonly documentsTableName: string;
   readonly ftsTableName: string;
   readonly textColumns: readonly {
@@ -66,7 +70,7 @@ export function defineSearchIndex(
   assertWeight(KEYWORDS_COLUMN_NAME, input.keywordsWeight);
   assertPrefixLengths(prefixLengths);
 
-  return {
+  const definition: Omit<SearchIndexDefinition, typeof validatedSearchIndex> = {
     documentsTableName,
     ftsTableName,
     textColumns: input.textColumns.map(({ column, weight }) => ({
@@ -76,6 +80,7 @@ export function defineSearchIndex(
     keywordsWeight: input.keywordsWeight,
     prefixLengths: [...prefixLengths],
   };
+  return definition as SearchIndexDefinition;
 }
 
 function assertDocumentsTableName(name: string): void {

@@ -4,7 +4,7 @@ import {
 } from './search-index-definition.ts';
 
 // Workers統合テストのマイグレーションの読み込みはdrizzle-kitの区切りで文を分けて1文ずつ実行するため、文ごとに区切る
-const STATEMENT_SEPARATOR = '\n--> statement-breakpoint\n';
+export const STATEMENT_SEPARATOR = '\n--> statement-breakpoint\n';
 
 const TRIGGER_SUFFIXES = ['ai', 'ad', 'au'] as const;
 
@@ -20,12 +20,19 @@ export function renderSearchIndexSql(
 export function renderSearchIndexTriggersSql(
   definition: SearchIndexDefinition,
 ): string {
-  const dropStatements = TRIGGER_SUFFIXES.map(
-    (suffix) => `DROP TRIGGER IF EXISTS ${triggerName(definition, suffix)};`,
-  );
-  return [...dropStatements, ...createTriggerStatements(definition)].join(
-    STATEMENT_SEPARATOR,
-  );
+  return [
+    ...dropTriggerStatements(definition),
+    ...createTriggerStatements(definition),
+  ].join(STATEMENT_SEPARATOR);
+}
+
+export function renderSearchIndexDropSql(
+  definition: SearchIndexDefinition,
+): string {
+  return [
+    `DROP TABLE IF EXISTS ${definition.ftsTableName};`,
+    ...dropTriggerStatements(definition),
+  ].join(STATEMENT_SEPARATOR);
 }
 
 export function renderSearchIndexRebuildSql(
@@ -33,6 +40,12 @@ export function renderSearchIndexRebuildSql(
 ): string {
   const { ftsTableName } = definition;
   return `INSERT INTO ${ftsTableName}(${ftsTableName}) VALUES('rebuild');`;
+}
+
+function dropTriggerStatements(definition: SearchIndexDefinition): string[] {
+  return TRIGGER_SUFFIXES.map(
+    (suffix) => `DROP TRIGGER IF EXISTS ${triggerName(definition, suffix)};`,
+  );
 }
 
 function indexedColumnNames(definition: SearchIndexDefinition): string[] {

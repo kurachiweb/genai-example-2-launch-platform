@@ -12,6 +12,7 @@ import {
   type SearchIndexDefinition,
 } from './search-index-definition.ts';
 import {
+  renderSearchIndexDropSql,
   renderSearchIndexRebuildSql,
   renderSearchIndexSql,
   renderSearchIndexTriggersSql,
@@ -359,5 +360,98 @@ describe('renderSearchIndexRebuildSql', () => {
     checkIntegrity();
     expect(search('stadium').toSorted()).toEqual(['a', 'b', 'd']);
     expect(search('galaxy')).toEqual(['b']);
+  });
+});
+
+describe('renderSearchIndexDropSql', () => {
+  const nameOnlyDefinition = defineSearchIndex({
+    documents: probeSearchDocuments,
+    textColumns: [{ column: probeSearchDocuments.name, weight: 10 }],
+    keywordsWeight: 1,
+  });
+
+  const seedDocuments = () => {
+    insertDocument({ sourceId: 'a', name: 'Launch Stadium', tagline: 'orbit' });
+    insertDocument({ sourceId: 'b', tagline: 'stadium tour' });
+  };
+
+  test('全文検索の索引と3つのトリガーを、存在する場合だけ消すSQLを、文の区切りで分けて返す', () => {
+    expect(renderSearchIndexDropSql(definition)).toBe(
+      [
+        'DROP TABLE IF EXISTS probe_search_documents_fts;',
+        'DROP TRIGGER IF EXISTS probe_search_documents_fts_ai;',
+        'DROP TRIGGER IF EXISTS probe_search_documents_fts_ad;',
+        'DROP TRIGGER IF EXISTS probe_search_documents_fts_au;',
+      ].join(`\n${STATEMENT_BREAKPOINT}\n`),
+    );
+  });
+
+  test('既存の索引に作成文だけを重ねると、索引が既にあるため失敗する', () => {
+    setUp();
+
+    expect(() => db.run(renderSearchIndexSql(nameOnlyDefinition))).toThrow(
+      /already exists/,
+    );
+  });
+
+  test('索引している列は、先にトリガーを消さないと列の削除が失敗する', () => {
+    setUp();
+
+    expect(() =>
+      db.run('ALTER TABLE probe_search_documents DROP COLUMN tagline'),
+    ).toThrow(/no such column: new\.tagline/);
+  });
+
+  test('消してから列を削除し、新しい定義で作り直して再構築すると、残った列で検索できる', () => {
+    setUp();
+    seedDocuments();
+
+    db.run(renderSearchIndexDropSql(definition));
+    db.run('ALTER TABLE probe_search_documents DROP COLUMN tagline');
+    db.run(renderSearchIndexSql(nameOnlyDefinition));
+    db.run(renderSearchIndexRebuildSql(nameOnlyDefinition));
+
+    checkIntegrity();
+    expect(search('stadium', nameOnlyDefinition)).toEqual(['a']);
+    expect(search('orbit', nameOnlyDefinition)).toEqual([]);
+    db.run(
+      "INSERT INTO probe_search_documents (source_id, name, status_changed_at) VALUES ('c', 'Stadium Map', 0)",
+    );
+    checkIntegrity();
+    expect(search('stadium', nameOnlyDefinition)).toEqual(['a', 'c']);
+  });
+
+  test('消してから前方一致の長さを変えた定義で作り直して再構築すると、新しい前方一致の長さの索引になる', () => {
+    const longerPrefix = defineProbeIndex(
+      { name: 10, tagline: 5, keywords: 1 },
+      [2, 3, 4],
+    );
+    setUp();
+    seedDocuments();
+
+    db.run(renderSearchIndexDropSql(longerPrefix));
+    db.run(renderSearchIndexSql(longerPrefix));
+    db.run(renderSearchIndexRebuildSql(longerPrefix));
+
+    checkIntegrity();
+    expect(
+      db
+        .query<{ sql: string }, []>(
+          "SELECT sql FROM sqlite_master WHERE name = 'probe_search_documents_fts'",
+        )
+        .get()?.sql,
+    ).toContain("prefix='2 3 4'");
+    expect(search('"stad"*', longerPrefix)).toEqual(['a', 'b']);
+    expect(triggerNames()).toEqual([
+      'probe_search_documents_fts_ad',
+      'probe_search_documents_fts_ai',
+      'probe_search_documents_fts_au',
+    ]);
+  });
+
+  test('索引もトリガーも無い状態で実行しても失敗しない', () => {
+    db.run(CREATE_DOCUMENTS_TABLE_SQL);
+
+    expect(() => db.run(renderSearchIndexDropSql(definition))).not.toThrow();
   });
 });

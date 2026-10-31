@@ -194,7 +194,7 @@
   - _Boundary: SearchIndexDefinition, SearchIndexSql_
   - _Requirements: 8.1, 8.3, 8.4, 8.5, 8.6, 12.6_
 
-- [ ] 7.3 検索のSQL断片と、索引の定義の集約点・SQLの出力・マイグレーションとの突き合わせを作る
+- [x] 7.3 検索のSQL断片と、索引の定義の集約点・SQLの出力・マイグレーションとの突き合わせを作る
   - 先に、bun:sqliteで、関連度の付いた元データの識別子の副問い合わせが検索式をバインド変数で受けて重みどおりに並ぶこと、マイグレーションの文字列から欠けた索引とトリガーの作成文を返す判定、集約点の全定義が欠けていないことを確かめる単体テストを書く
   - 集約点の定義からカスタムマイグレーションに貼るSQL(索引・トリガーの作り直し・再構築)を出力するスクリプトと、その実行の手順をデータ層のスクリプトに加える
   - 完了状態: 単体テストが成功し(初版の集約点は0件)、検証用の定義を一時的に登録するとスクリプトが設計のSQLを出力する
@@ -371,3 +371,4 @@
 - 6.5: Chromiumではwindowへの通知で捕捉の段階の聞き手も加えた順に呼ばれるため、設計の`capture: true`は効かない。`preload-recovery.ts`は全ての聞き手の後にマイクロタスクで`defaultPrevented`を確かめ、読み込み関数は通常の聞き手を使う(design.mdのLoadCrepeEditor・System Flows・Modified Filesは古い)。`FormControlProps.labelId`は列挙不可のプロパティで、`{...control}`では渡らない。編集領域の描画の失敗は`EditorLoadBoundary`(TanStack Routerの`CatchBoundary`)の`onFailure`で古い制御器を捨て、`reportUnexpectedError(error, 'render')`で送る。フォームへ渡す値はMilkdownが付ける末尾の改行1つを除く。入力欄を描画するブラウザテストは、Vitestのブラウザテストの設定がTanStack Startのコンパイルを通さず`report-error.ts`がサーバー専用の依存を読み込むため、`start/observability/report-error.ts`を`vi.mock`で差し替える必要がある(下流specが入力欄を使う前に、サーバー専用の依存を持たない送信の入口を切り出すか、共有のブラウザテストの設定で`.server`の分岐を消すかを開発者が判断する)。チャンクの評価時の例外も`EditorLoadError`として送られず、`editor.create()`の拒否では空の枠が残る(観測の改善の余地)
 - 6.6: `check:editor-chunks`は`manifest.json`ではなくRolldownの出力のチャンク情報(`moduleIds`・`imports`・`dynamicImports`)で判定する(manifestにはチャンク内のモジュールの一覧が無く、SSR用にも無いため。設計と相違)。検査用のビルドはTanStack Startのコンパイラを通らないため、ブラウザ向けだけ`*.server.ts`とNodeの組み込みモジュールを外部化する。手動の実行で、ルートの一括検査とCIには組み込んでいない(設計どおり)。`scripts/check-editor-chunks.ts`の実行部分には単体テストが無い。CLAUDE.mdのディレクトリ構成に`apps/frontend-lib/scripts/`が無い(11.3で扱う)
 - 7.2: 全文検索のSQLのひな形は文の間に`--> statement-breakpoint`を入れる(Workers統合テストのマイグレーションの読み込みがこの区切りで1文ずつ実行するため。`renderSearchIndexRebuildSql`は区切りの無い1文なので、貼る時に区切りを挟む)。更新のトリガーは`AFTER UPDATE OF <索引する列>`。`REPLACE`と`id`の更新はexternal contentの索引を壊すため使わない(`docs/GUIDES/tech/db/002`)。列名はSQLiteの予約語(`apps/db/search/sqlite-keywords.ts`、設計に無い)を拒否する
+- 7.3: `findMissingSearchIndexSql`はマイグレーションを名前順に読み、後の`DROP TRIGGER`・仮想テーブルの`DROP TABLE`・索引文書の`DROP TABLE`で消えた作成文も欠けとして扱う(設計より広い)。SQLの出力スクリプト`db:search-index-sql`に`--drop`・`--recreate`を加え(設計に無い)、変更の種類ごとの手順は`docs/GUIDES/tech/db/003`にある(索引する列の削除は、定義を変える前に`--drop`のカスタムマイグレーションを置く)。`SearchIndexDefinition`は`defineSearchIndex`だけが作れるブランド型。`docs/GUIDES/tech/db/003`に足した全文検索の節は11.1の`db/004`と重なるため、11.1で移すか要約とリンクにする。CLAUDE.mdのディレクトリ構成に`apps/db/search/`・`apps/db/scripts/`が無い(11.3)

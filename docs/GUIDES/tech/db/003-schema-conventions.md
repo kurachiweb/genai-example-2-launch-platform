@@ -249,11 +249,58 @@ const visible = await db
 テーブル定義を変えたら、次の順でマイグレーションを生成して適用する。各コマンドの詳細は「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」に従う。
 
 1. `<DBディレクトリ>`で`drizzle-kit generate`(スクリプト`db:generate`)を実行し、`<マイグレーションの保存先>/<日時>_<名前>/migration.sql`を生成する。テーブル定義に変更が無ければ、新しいマイグレーションは生成されない。
-2. テーブル定義で表現できない内容(全文検索の仮想テーブル・トリガーなど)は、`drizzle-kit generate --custom --name=<マイグレーションの名前>`で空のマイグレーションを作り、生のSQLを書き足す。
+2. テーブル定義で表現できない内容(全文検索の仮想テーブル・トリガーなど)は、`drizzle-kit generate --custom --name=<マイグレーションの名前>`で空のマイグレーションを作り、生のSQLを書き足す。全文検索の仮想テーブルとトリガーのSQLは手で書かず、索引の定義を集約点`search/search-indexes.ts`の`SEARCH_INDEXES`へ登録してから、スクリプト`db:search-index-sql`で出力して貼る(「[全文検索の索引のSQLの出力](#全文検索の索引のsqlの出力)」)。
 3. 同じD1を使うアプリのうち1つで、`wrangler d1 migrations apply <データベース名> --local --persist-to <ローカル状態の保存先>`(スクリプト`db:migrate:local`)を実行する。ローカル状態の保存先とリソースIDを共有していれば、1回の適用で全アプリから同じデータベースを参照できる(「[ローカル状態の永続化と共有](../infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)」)。
 4. 生成したマイグレーションがWranglerに検出されることを、スクリプト`db:migrations:check`で確かめる。CIからも同じスクリプトを呼ぶ。
 
 - `db:migrations:check`は、空の一時ディレクトリを`--persist-to`に指定して`wrangler d1 migrations list <データベース名> --local`を実行し、未適用として一覧された名前を`<マイグレーションの保存先>`のディレクトリ名と突き合わせる。共有のローカル状態を変えずに、検出の設定(「[マイグレーションの検出設定](001-drizzle-migrations-on-d1.md#マイグレーションの検出設定)」)の誤りを見つけるためである。食い違えば、検出されなかったマイグレーションの名前を表示して終了コード1で終わる。
+
+### 全文検索の索引のSQLの出力
+
+索引の定義は`search/search-index-definition.ts`の`defineSearchIndex`で作る。名前・列・重み・前方一致の長さの検証を通さずに組み立てた値は、索引の定義の型(`SearchIndexDefinition`)として受け取れない。SQLのひな形が名前を引用符無しで埋め込むためである。
+
+`<DBディレクトリ>`で、索引文書のテーブル名を引数にしてスクリプト`db:search-index-sql`を実行すると、`SEARCH_INDEXES`に登録した定義のSQLを標準出力へ出す。出力をカスタムマイグレーションに貼る。
+
+| 引数                                          | 出力                                                                            | 使う場面                                                                                  |
+| --------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `<索引文書のテーブル名>`                      | 全文検索の仮想テーブルと3つのトリガーの作成文                                   | 索引を新しく作るとき。既にある索引に貼ると`table <仮想テーブル> already exists`で失敗する |
+| `<索引文書のテーブル名> --drop`               | 仮想テーブルの`DROP TABLE IF EXISTS`と、3つのトリガーの`DROP TRIGGER IF EXISTS` | 索引する列を消すときに、列を消すマイグレーションより前に置く                              |
+| `<索引文書のテーブル名> --recreate`           | `--drop`の出力の後に、文の区切りを挟んで作成文と`rebuild`の1文を続けたもの      | 索引する列や前方一致の長さを変えたとき                                                    |
+| `<索引文書のテーブル名> --triggers`           | 3つのトリガーの`DROP TRIGGER IF EXISTS`と作成文                                 | 索引しない列を変えて、`drizzle-kit generate`が索引文書のテーブルを作り直したとき          |
+| `<索引文書のテーブル名> --rebuild`            | 全文検索の索引を元のテーブルから全件作り直す`rebuild`の1文                      | 索引の内容が元のテーブルと食い違ったとき                                                  |
+| `<索引文書のテーブル名> --triggers --rebuild` | トリガーの作り直しの後に、文の区切りを挟んで`rebuild`の1文を続けたもの          | テーブルの作り直しの後に、トリガーと索引をまとめて作り直すとき                            |
+
+`--drop`と`--recreate`は他のオプションと組み合わせない。変更の種類ごとに、次の順でマイグレーションを作る。
+
+- 索引を新しく作る: 索引文書のテーブルを作る`drizzle-kit generate`の後に、カスタムマイグレーションへ引数なしの出力を貼る。
+- 索引する列を加える・前方一致の長さを変える: テーブル定義と索引の定義を変えて`drizzle-kit generate`を実行した後に、カスタムマイグレーションへ`--recreate`の出力を貼る。仮想テーブルの列と`prefix`は作り直さないと変わらないため、索引を消してから新しい定義で作り、`rebuild`で元のテーブルから索引を作り直す。
+- 索引する列を消す: テーブル定義を変える前に、カスタムマイグレーションへ`--drop`の出力を貼る。次にテーブル定義と索引の定義を変えて`drizzle-kit generate`を実行し、その後のカスタムマイグレーションへ`--recreate`の出力を貼る(`--recreate`の`DROP`は対象が無いため何もしない)。トリガーが消す列を参照したままだと、`drizzle-kit generate`が出力する`ALTER TABLE … DROP COLUMN`が`error in trigger <索引文書のテーブル>_fts_ai after drop column: no such column: new.<列>`で失敗するためである。
+- 索引しない列を変えて、`drizzle-kit generate`が索引文書のテーブルを作り直した: その後のカスタムマイグレーションへ`--triggers --rebuild`の出力を貼る。
+
+```sh
+cd <DBディレクトリ>
+bunx drizzle-kit generate --custom --name=<マイグレーションの名前>
+bun run --silent db:search-index-sql <索引文書のテーブル名> --recreate
+```
+
+- 登録されていない名前や未知のオプションを渡すと、登録済みの名前か使い方を表示して終了コード1で終わる。
+- 単体テスト`search/search-index-migrations.unit.test.ts`が、`<マイグレーションの保存先>/*/migration.sql`を名前の昇順(Wranglerの適用順)に読み、`SEARCH_INDEXES`の全ての定義について、仮想テーブルと3つのトリガーの作成文(空白の違いは無視する)が、全マイグレーションの適用後に残っていることを確かめる。作成文がどのマイグレーションにも無い場合のほか、作成文より後に`DROP TRIGGER`・仮想テーブルの`DROP TABLE`・索引文書のテーブルの`DROP TABLE`(テーブルの作り直しでトリガーも消える)がある場合も欠けとし、欠けた作成文を表示して失敗する。
+- 重みだけの変更は作成文を変えないため、マイグレーションを要しない。重みは検索のSQL断片(「[検索のSQL断片](#検索のsql断片)」)が定義から読む。
+
+### 検索のSQL断片
+
+`search/fts-query.ts`は、ドメインの検索のクエリに組み込むSQL断片を提供する。
+
+- `ftsRankedSources(<索引の定義>, <検索式>)`は、`SELECT d.source_id AS source_id, bm25(<仮想テーブル>, <重み>…) AS rank FROM <仮想テーブル> JOIN <索引文書のテーブル> AS d ON d.id = <仮想テーブル>.rowid WHERE <仮想テーブル> MATCH ?`を返す。検索式は必ずバインド変数で渡り、SQLに埋め込まれない。
+- `bm25Rank(<索引の定義>)`は、定義の列の順(元テキストの列、キーワードの列)に重みを並べた`bm25(…)`の式を返す。値が小さいほど関連度が高い。
+- ドメインは`ftsRankedSources`を副問い合わせとして元データのテーブルと`source_id`で結合し、可視性の条件とページングを外側のクエリに加えて、`rank`の昇順で並べる。
+
+```typescript
+const ranked = ftsRankedSources(articleSearchIndex, matchExpression);
+const rows = await db.all(
+  sql`SELECT a.id FROM articles AS a JOIN (${ranked}) AS r ON r.source_id = a.id WHERE a.deleted_at IS NULL ORDER BY r.rank, a.id LIMIT ${limit}`,
+);
+```
 
 ## 接続と一括実行
 

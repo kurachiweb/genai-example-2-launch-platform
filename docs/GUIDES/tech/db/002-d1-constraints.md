@@ -143,9 +143,9 @@ END;
 - 更新のトリガーは`AFTER UPDATE OF <索引する列>`にし、索引する列を`SET`に含む更新でだけ動かす。索引の対象でない状態の列だけを更新するたびに索引を書き換えないためである。
 - 元のテーブルへの書き込みに、`REPLACE`(`INSERT OR REPLACE`・`REPLACE INTO`・`ON CONFLICT REPLACE`の制約)と、`content_rowid`の列(`id`)の更新を使わない。`REPLACE`が消す行では削除のトリガーが動かず、`id`の更新では更新のトリガーが動かないため、索引が元のテーブルと食い違う。一意の列での追加か更新は`INSERT ... ON CONFLICT(<一意の列>) DO UPDATE`で行う。
 - `content_rowid`を省略すると、元のテーブルの`rowid`で索引と行を対応させる。`INTEGER PRIMARY KEY`を明示しないテーブルの`rowid`は`VACUUM`で変わり得る(SQLiteの「[VACUUM](https://sqlite.org/lang_vacuum.html)」)ため、元のテーブルの`INTEGER PRIMARY KEY`のカラムを`content_rowid`に指定する。元のテーブル(全文検索用のテーブル)の主キーを連番にする規約は「[全文検索用のテーブルの連番](003-schema-conventions.md#全文検索用のテーブルの連番)」に従う。
-- 元のテーブルの列を変えて`drizzle-kit generate`がテーブルを作り直すと(新しいテーブルへの写しと元のテーブルの削除)、トリガーも一緒に消える。続くカスタムマイグレーションで3つのトリガーを`DROP TRIGGER IF EXISTS`の後に作り直し、`INSERT INTO <仮想テーブル>(<仮想テーブル>) VALUES('rebuild');`で索引を元のテーブルから全件作り直す。
+- 元のテーブルの列を変えて`drizzle-kit generate`がテーブルを作り直すと(新しいテーブルへの写しと元のテーブルの削除)、トリガーも一緒に消える。続くカスタムマイグレーションで3つのトリガーを`DROP TRIGGER IF EXISTS`の後に作り直し、`INSERT INTO <仮想テーブル>(<仮想テーブル>) VALUES('rebuild');`で索引を元のテーブルから全件作り直す。このSQLは索引の定義から出力できる(「[全文検索の索引のSQLの出力](003-schema-conventions.md#全文検索の索引のsqlの出力)」)。作り直しを忘れてトリガーが消えたままのマイグレーションは、単体テストが欠けとして検出する。索引する列を消す場合は、トリガーが消す列を参照していると列の削除(`ALTER TABLE … DROP COLUMN`)がトリガーの誤りで失敗するため、列を消すマイグレーションより前に仮想テーブルとトリガーを消し、列を消した後に作り直す。
 - 参照: SQLiteの「[External Content Tables](https://sqlite.org/fts5.html#external_content_tables)」・「[The CREATE TRIGGER Statement](https://sqlite.org/lang_createtrigger.html)」
 
 #### 仮想テーブルとトリガーの記述場所
 
-仮想テーブルとトリガーはDrizzleのスキーマ定義で表現できないため、カスタムマイグレーション(生のSQL)で記述する。作成方法は「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」に従う。文の間には`--> statement-breakpoint`の行を挟む(トリガーのSQLの後に`rebuild`の1文を続けるときも同じ)。
+仮想テーブルとトリガーはDrizzleのスキーマ定義で表現できないため、カスタムマイグレーション(生のSQL)で記述する。作成方法は「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」に従う。文の間には`--> statement-breakpoint`の行を挟む(トリガーのSQLの後に`rebuild`の1文を続けるときも同じ)。SQLは手で書かず、索引の定義から出力して貼る(「[全文検索の索引のSQLの出力](003-schema-conventions.md#全文検索の索引のsqlの出力)」)。
