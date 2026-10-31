@@ -9,6 +9,10 @@ const APPS_DIR = join(import.meta.dirname, '..', '..', '..');
 // メールの設定はメール送信基盤の設定の検査が受け持ち、他の設定の検査はこのキーを除いて比べる
 export const EMAIL_CONFIG_KEY_PATTERN: RegExp = /^(?:EMAIL_|MAILPIT_)/;
 
+// キーワード抽出の設定は全文検索の設定の検査が受け持ち、他の設定の検査はこのキーを除いて比べる
+export const SEARCH_CONFIG_KEY_PATTERN: RegExp =
+  /^(?:KEYWORD_EXTRACTOR|GOOGLE_NL_API_KEY)$/;
+
 export function appPath(app: WranglerAppName, ...segments: string[]): string {
   return join(APPS_DIR, app, ...segments);
 }

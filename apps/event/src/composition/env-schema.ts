@@ -9,24 +9,36 @@ import {
 import type { QueueConsumerEnv } from '../../lib/workers/messaging/queue-consumer.ts';
 import type { SendEmailBindingLike } from '../infrastructure/email/providers/cloudflare-email-provider.ts';
 import type { EventEmailEnv } from '../infrastructure/email/providers/create-email-provider.ts';
+import type { EventKeywordExtractorEnv } from '../infrastructure/search/create-keyword-extractor.ts';
 
-export interface EventPlatformEnv extends QueueConsumerEnv, EventEmailEnv {
+export interface EventPlatformEnv
+  extends QueueConsumerEnv, EventEmailEnv, EventKeywordExtractorEnv {
   readonly IMAGES: ImagesBinding;
   readonly EMAIL_FROM_ADDRESS: string;
   readonly EMAIL_EVENTS_QUEUE_NAME: string;
 }
 
-type ConditionalKey = 'MAILPIT_API_URL' | 'EMAIL' | 'EMAIL_ALLOWED_RECIPIENTS';
+type ConditionalKey =
+  | 'MAILPIT_API_URL'
+  | 'EMAIL'
+  | 'EMAIL_ALLOWED_RECIPIENTS'
+  | 'GOOGLE_NL_API_KEY';
 
-// 送信プロバイダと宛先の制限の方針ごとに、送信に欠かせない設定のキー
+// 送信プロバイダ・宛先の制限の方針・キーワード抽出の実装ごとに、動作に欠かせない設定のキー
 function requiredConditionalKeys(
-  env: Pick<EventPlatformEnv, 'EMAIL_PROVIDER' | 'EMAIL_RECIPIENT_POLICY'>,
+  env: Pick<
+    EventPlatformEnv,
+    'EMAIL_PROVIDER' | 'EMAIL_RECIPIENT_POLICY' | 'KEYWORD_EXTRACTOR'
+  >,
 ): readonly ConditionalKey[] {
   return [
     ...(env.EMAIL_PROVIDER === 'mailpit' ? (['MAILPIT_API_URL'] as const) : []),
     ...(env.EMAIL_PROVIDER === 'cloudflare' ? (['EMAIL'] as const) : []),
     ...(env.EMAIL_RECIPIENT_POLICY === 'allowlist'
       ? (['EMAIL_ALLOWED_RECIPIENTS'] as const)
+      : []),
+    ...(env.KEYWORD_EXTRACTOR === 'google-natural-language'
+      ? (['GOOGLE_NL_API_KEY'] as const)
       : []),
   ];
 }
@@ -45,6 +57,8 @@ export const eventEnvSchema = z
     MAILPIT_API_URL: z.url({ protocol: /^https?$/u }).optional(),
     EMAIL: bindingSchema<SendEmailBindingLike>().optional(),
     EMAIL_ALLOWED_RECIPIENTS: z.string().min(1).optional(),
+    KEYWORD_EXTRACTOR: z.enum(['google-natural-language', 'disabled']),
+    GOOGLE_NL_API_KEY: z.string().min(1).optional(),
   })
   // 他のキーに不備があっても条件付きの必須キーの欠落を一緒に報告するよう、環境がオブジェクトなら検査する。問題の経路にキーを入れ、欠けたキーとして分類させる
   .check(

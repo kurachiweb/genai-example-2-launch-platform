@@ -15,6 +15,12 @@ const TEST_EMAIL_FROM_ADDRESS = 'noreply@test.example';
 
 const TEST_EMAIL_EVENTS_QUEUE_NAME = 'genai-example-2-email-events-test';
 
+// デプロイ先と同じく抽出を有効にして試す。外部への通信は各テストがfetchの代わりで止める
+const TEST_KEYWORD_EXTRACTOR = 'google-natural-language';
+
+const TEST_GOOGLE_NL_API_KEY =
+  'test-google-nl-api-key-for-workers-integration-tests';
+
 export default defineConfig({
   plugins: [
     cloudflareTest(async () => ({
@@ -25,6 +31,8 @@ export default defineConfig({
           MAILPIT_API_URL: TEST_MAILPIT_API_URL,
           EMAIL_FROM_ADDRESS: TEST_EMAIL_FROM_ADDRESS,
           EMAIL_EVENTS_QUEUE_NAME: TEST_EMAIL_EVENTS_QUEUE_NAME,
+          KEYWORD_EXTRACTOR: TEST_KEYWORD_EXTRACTOR,
+          GOOGLE_NL_API_KEY: TEST_GOOGLE_NL_API_KEY,
           TEST_MIGRATIONS: await readNestedD1Migrations(
             join(import.meta.dirname, 'db', 'migrations'),
           ),

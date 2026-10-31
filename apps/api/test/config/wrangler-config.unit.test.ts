@@ -9,6 +9,7 @@ import {
   appPath,
   EMAIL_CONFIG_KEY_PATTERN,
   readWranglerConfig,
+  SEARCH_CONFIG_KEY_PATTERN,
   type WranglerAppName,
 } from '../support/wrangler-config.ts';
 
@@ -186,17 +187,24 @@ function readEffectiveConfig(
   return effectiveConfigSchema.parse(readWranglerConfig(app, wranglerEnv));
 }
 
-function withoutEmailKeys(keys: readonly string[]): string[] {
-  return keys.filter((key) => !EMAIL_CONFIG_KEY_PATTERN.test(key));
+const DELEGATED_KEY_PATTERNS = [
+  EMAIL_CONFIG_KEY_PATTERN,
+  SEARCH_CONFIG_KEY_PATTERN,
+] as const;
+
+function isDelegatedKey(key: string): boolean {
+  return DELEGATED_KEY_PATTERNS.some((pattern) => pattern.test(key));
 }
 
-function withoutEmailEntries(
+function withoutDelegatedKeys(keys: readonly string[]): string[] {
+  return keys.filter((key) => !isDelegatedKey(key));
+}
+
+function withoutDelegatedEntries(
   record: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(record).filter(
-      ([key]) => !EMAIL_CONFIG_KEY_PATTERN.test(key),
-    ),
+    Object.entries(record).filter(([key]) => !isDelegatedKey(key)),
   );
 }
 
@@ -336,8 +344,8 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     ]);
   });
 
-  test('eventはメール以外の必須シークレットとしてペッパーのキー名だけを宣言する', () => {
-    expect(withoutEmailKeys(event.secrets?.required ?? [])).toEqual([
+  test('eventはメール・キーワード抽出以外の必須シークレットとしてペッパーのキー名だけを宣言する', () => {
+    expect(withoutDelegatedKeys(event.secrets?.required ?? [])).toEqual([
       'HASH_PEPPER',
       ...(env.requiresSentryDsn ? ['SENTRY_DSN'] : []),
     ]);
@@ -353,8 +361,8 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     });
   });
 
-  test('eventのメール以外の変数はシークレットを含まず、環境ごとの値とQueue名を持つ', () => {
-    expect(withoutEmailEntries(event.vars)).toStrictEqual({
+  test('eventのメール・キーワード抽出以外の変数はシークレットを含まず、環境ごとの値とQueue名を持つ', () => {
+    expect(withoutDelegatedEntries(event.vars)).toStrictEqual({
       LOG_LEVEL: env.logLevel,
       SENTRY_ENVIRONMENT: env.sentryEnvironment,
       SENTRY_TRACES_SAMPLE_RATE: env.sentryTracesSampleRate,
