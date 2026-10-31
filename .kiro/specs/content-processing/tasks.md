@@ -268,7 +268,7 @@
   - _Boundary: SearchIndexRefreshHandler, SearchIncidentReporter_
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9, 10.1, 10.2, 10.3, 10.4, 10.5, 11.3, 14.3, 15.1_
 
-- [ ] 9.3 イベントサーバーに索引の更新を登録し、Queueからの結合を確かめる
+- [x] 9.3 イベントサーバーに索引の更新を登録し、Queueからの結合を確かめる
   - 共通の束縛とイベントサーバーの検索のモジュール(抽出の実装へは束縛の時に大域の`fetch`を渡す、通知のポートのSentryの実装)、メッセージの処理と再試行の方針を登録箇所へ加える
   - 先に、テスト専用の検索対象と、`vi.spyOn(globalThis, 'fetch')`で差し替えた外部APIの偽の応答で、Queueへ送った索引の更新が索引文書と全文検索の索引を作ること、一時的な失敗が再試行されて上限で縮退索引になること、非対応言語が再試行されないことを確かめるWorkers統合テストを書く
   - 完了状態: Workers統合テストが成功し、検索のSQL断片で作られた索引文書が見つかる
@@ -380,3 +380,4 @@
 - 8.7: ロガーのカテゴリーの先頭はアプリ名でないと出力されないため(`infra/004`)、`createSearchPlatformModule(targets, appName)`でカテゴリーを`[appName, 'search', 'refresh']`にする(設計は`(targets)`と`['search','refresh']`)。9.3・10は`'event'`・`'api'`を渡し、9.2の処理のカテゴリーは`['event','search','index']`にする。文は`SEARCH_TYPES.IndexStatements`(8つ目の識別子、設計に無い)で処理単位ごとに束縛し、`createSearchIndexStatements`も公開する。`requestRefresh`は未登録の検索対象(`SearchTargetRegistryError`)と契約に合わない本文(`MessagePublishError`)を投げ、それ以外の送信の失敗だけをログとSentryで握る。10の再抽出のジョブは1件ごとに例外を捕まえて残りを止めない。`markPending`・`deleteSources`は空・64文字超の識別子を`RangeError`にする。`markPending`は元データの存在を確かめない(対象外の行は9.2で削除)
 - 9.1: 開発者の手作業: この変更をmainへマージする前にInfisicalの`staging`のフォルダ`/`へ`GOOGLE_NL_API_KEY`を登録する(未登録だと以後のstagingのデプロイが止まる)。prodはlaunch-readinessが登録、devには登録しない。`wrangler dev`は`secrets.required`のキーだけを`env`へ渡すため、ローカルで`KEYWORD_EXTRACTOR`を`google-natural-language`に変えてもキーは届かない(9.4の疎通確認は`infisical run`でstagingのキーを注入する手順にする)。backend-platformの設定の単体テストは`SEARCH_CONFIG_KEY_PATTERN`で2つのキーを基底の検査から外し、`apps/api/test/config/search-wrangler-config.unit.test.ts`で確かめる。時間切れは打ち切りの信号の状態で判定する(本文の読み取り中も`timeout`)。`composition/search-module.ts`は9.3で作る。project-values.mdの変数の表の`KEYWORD_EXTRACTOR`は11.3で加える
 - 9.2: 空の入力はキーワード`''`・`extracted`・文書のハッシュ・現在時刻で書き、ログは`extracted`(抽出を無効にした環境でも)。前回のキーワードの再利用は`keep`・文書のハッシュ・計画の状態・現在時刻で、ログは`reused`。未登録の検索対象は`skipped`・`reason: 'unregistered-target'`・`error`。縮退と再試行は`warning`、設定の誤りは`error`(設計の「1件ごとに`info`」と相違、Monitoringの節に合わせた)。再試行の例外は書いた後に投げる。通知の状態コードは`number`(8.3が形の不一致を200で返すため。設計は`number | undefined`)。9.3で束縛する識別子は`SEARCH_TYPES.KeywordExtractor`・`EVENT_SEARCH_TYPES.SearchIncidentReporter`(`application/search/search-types.ts`、設計に無い)・`SEARCH_TYPES.RefreshHandler`
+- 9.3: Queueからの結合のWorkers統合テストは、テストファイルの中だけ`vi.mock('../../lib/workers/search/targets/index.ts')`で集約点をテスト専用の検索対象へ差し替え、本物のエントリを通す(本番の`SEARCH_TARGETS`は空のまま。11.1の`db/004`か`testing/001`に書く)。`search-module.ts`は共通の束縛`EVENT_SEARCH_PLATFORM_MODULE`とeventの検索のモジュール`EVENT_SEARCH_MODULE`の2つをexportする。`FetcherQueueResult`のglobal宣言が`email-module.worker.test.ts`と重複している
