@@ -256,4 +256,4 @@ remark-parse(micromark)は、入れ子の深さや記号の数の2乗の時間�
 
 解析の負荷が過大な入力を見つけた時は、`fixtures/pathological-markdown.ts`の`PATHOLOGICAL_MARKDOWN`に入力の上限の長さ(`PATHOLOGICAL_MARKDOWN_MAX_LENGTH`)以内の入力を加える。判定されなければ`parse-guard.ts`の見積もりを直し、普通の文書を過大と判定しないことを`parse-guard.unit.test.ts`の普通の文書の例で確かめる。
 
-攻撃パターン集と負荷が過大な入力の集まりは`markdown/fixtures/`に置き、共用部品の単体テストとテスト専用のファイルだけが読み込める(共用部品の`config/import-boundary.unit.test.ts`が検査する)。利用側アプリの型検査の対象から`<共用部品の配置先>/markdown/fixtures/**`を除く。
+攻撃パターン集と負荷が過大な入力の集まりは`markdown/fixtures/`に置き、共用部品の単体テストとテスト専用のファイルだけが読み込める(共用部品の`config/import-boundary.unit.test.ts`が検査する)。利用側アプリの型検査の対象から`<共用部品の配置先>/markdown/fixtures/**`を除く。利用側アプリと共通部品のテストが実行環境の間の照合の標本(「[実行環境の間の照合](../frontend/008-markdown-editor-and-content.md#実行環境の間の照合)」)を読み込む場合は、読み込んだ標本のファイルだけが読み込みを通じて型検査される。実行時のコードからは読み込まない。

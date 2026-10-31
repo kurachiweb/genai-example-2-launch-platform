@@ -50,6 +50,38 @@ describe('normalizeIndexText', () => {
     expect(elapsed).toBeLessThan(50);
   });
 
+  test.each([
+    ['Unicode 6.1より後の絵文字', '🦄Unicorn', 'Unicorn'],
+    ['語の間の絵文字', 'foo🤣bar', 'foo bar'],
+    ['肌色の修飾', 'a👍🏽b', 'a b'],
+    ['単独の肌色の修飾', 'a🏽b', 'a b'],
+    ['ゼロ幅接合子でつないだ絵文字', '家族👨‍👩‍👧‍👦写真', '家族 写真'],
+    ['地域指示記号の国旗', '🇯🇵Japan', 'Japan'],
+    ['タグ文字の旗', '🏴󠁧󠁢󠁳󠁣󠁴󠁿Scotland', 'Scotland'],
+    ['異体字セレクタ', '❤️love❤︎', 'love'],
+    ['絵文字だけ', '🦄 🤣', ''],
+  ])('%sを区切りの空白にする', (_, text, expected) => {
+    expect(normalizeIndexText(text)).toBe(expected);
+  });
+
+  test.each([
+    ['キーキャップの数字', '1️⃣2️⃣', '1 2'],
+    ['キーキャップの#と*', '#️⃣*️⃣', '# *'],
+    ['互換分解で文字になる絵文字', '™ℹⓂ㊗🈂️', 'TMiM祝サ'],
+    ['日本語の記号', '〇〒〆々', '〇〒〆々'],
+  ])('%sの文字を残す', (_, text, expected) => {
+    expect(normalizeIndexText(text)).toBe(expected);
+  });
+
+  test('絵文字の多い長い文字列を線形の時間で正規化する', () => {
+    const startedAt = performance.now();
+    const normalized = normalizeIndexText(`${'👨‍👩‍👧‍👦🏽'.repeat(20_000)}a`);
+    const elapsed = performance.now() - startedAt;
+
+    expect(normalized).toBe('a');
+    expect(elapsed).toBeLessThan(50);
+  });
+
   test('大文字小文字と発音区別符号を変えない', () => {
     expect(normalizeIndexText('Café Résumé')).toBe('Café Résumé');
   });

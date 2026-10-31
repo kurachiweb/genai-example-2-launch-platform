@@ -54,6 +54,29 @@ describe('normalizeSearchTerms', () => {
   test('大文字小文字と発音区別符号を変えない', () => {
     expect(normalizeSearchTerms('Café')).toEqual(['Café']);
   });
+
+  test.each([
+    ['Unicode 6.1より後の絵文字', '🦄Unicorn', ['Unicorn']],
+    ['語の間の絵文字', 'foo🤣bar', ['foo', 'bar']],
+    ['肌色の修飾', 'a👍🏽b', ['a', 'b']],
+    ['ゼロ幅接合子でつないだ絵文字', '👨‍👩‍👧‍👦家族', ['家族']],
+    ['国旗とタグ文字の旗', '🇯🇵Japan 🏴󠁧󠁢󠁳󠁣󠁴󠁿Scotland', ['Japan', 'Scotland']],
+    ['異体字セレクタ', '❤️love', ['love']],
+  ])('%sで語に分ける', (_, input, expected) => {
+    expect(normalizeSearchTerms(input)).toEqual(expected);
+  });
+
+  test.each([
+    ['キーキャップの数字', '1️⃣2️⃣', ['1', '2']],
+    ['互換分解で文字になる絵文字', '㊗🈂️', ['祝サ']],
+    ['日本語の記号', '〇〒', ['〇〒']],
+  ])('%sの文字を残す', (_, input, expected) => {
+    expect(normalizeSearchTerms(input)).toEqual(expected);
+  });
+
+  test('絵文字だけの検索語は語を返さない', () => {
+    expect(normalizeSearchTerms('🦄 👨‍👩‍👧‍👦 🇯🇵')).toEqual([]);
+  });
 });
 
 describe('buildFtsMatchExpression', () => {
@@ -116,6 +139,11 @@ describe('FTS5での検索式の照合', () => {
     2,
     normalizeIndexText('タスク管理ツール'),
     normalizeIndexText('ﾁｰﾑの\u3000進捗を\n共有'),
+  );
+  insertDocument.run(
+    3,
+    normalizeIndexText('🦄Unicorn'),
+    normalizeIndexText('笑顔🤣と👍🏽ジョーク'),
   );
   const matchDocuments = database.prepare<{ rowid: number }, [string]>(
     'SELECT rowid FROM documents_fts WHERE documents_fts MATCH ? ORDER BY rowid',
@@ -189,6 +217,15 @@ describe('FTS5での検索式の照合', () => {
 
   test('半角カナと全角カナの違いを無視して照合する', () => {
     expect(searchRowIds('ﾀｽｸ チーム')).toEqual([2]);
+  });
+
+  test.each([
+    ['絵文字の後の語', 'unicorn', [3]],
+    ['絵文字を含む検索語', '🦄uni', [3]],
+    ['肌色の修飾の後の語', 'ジョーク', [3]],
+    ['絵文字の前の語', '笑顔', [3]],
+  ])('%sで照合する', (_, input, expected) => {
+    expect(searchRowIds(input)).toEqual(expected);
   });
 
   test('語の途中には一致させない', () => {

@@ -30,6 +30,7 @@ ORMにDrizzle、データベースにCloudflare D1を使う構成を前提とす
 | スクリプト`db:search-index-sql`                                                                                   | `<DBディレクトリ>/scripts/print-search-index-sql.ts`               | 索引の定義からSQLを標準出力へ出す                          |
 | `normalizeSearchTerms`・`buildFtsMatchExpression`                                                                 | 共用部品の`search/search-terms.ts`                                 | 検索語の分割と検索式の組み立て                             |
 | `normalizeIndexText`                                                                                              | 共用部品の`search/index-text.ts`                                   | 索引するテキストの正規化                                   |
+| `separateEmoji`                                                                                                   | 共用部品の`search/emoji-separator.ts`                              | 絵文字の並びを構成する文字の、区切りの空白への置き換え     |
 | `findHighlightRanges`                                                                                             | 共用部品の`search/highlight-ranges.ts`                             | 検索語に一致した範囲(強調表示)                             |
 | `SEARCH_INDEX_REFRESH_MESSAGE`・`SEARCH_INDEX_REFRESH_RETRY`                                                      | 共通ライブラリの`core/messaging/contracts/search-index-refresh.ts` | 索引の更新のメッセージ`search-index.refresh`と再試行の規則 |
 | `buildIndexDocument`・`planRefresh`・`decideAfterExtraction`                                                      | 共通ライブラリの`core/search/`                                     | 索引文書の組み立てと、書き込む内容の決定                   |
@@ -287,7 +288,7 @@ if (matchExpression === undefined) {
 }
 ```
 
-- `normalizeSearchTerms`は、入力をNFKCで正規化し、Unicodeの空白(`\p{White_Space}`、全角空白を含む)の連続で区切って、空の語を除く。
+- `normalizeSearchTerms`は、入力をNFKCで正規化し、絵文字の並びを構成する文字を空白に置き換え(「[絵文字の区切り](#絵文字の区切り)」)、Unicodeの空白(`\p{White_Space}`、全角空白を含む)の連続で区切って、空の語を除く。絵文字だけの検索語は語が無くなる。
 - `buildFtsMatchExpression`は、各語を二重引用符で囲んで前方一致(`"<語>"*`)にし、半角スペースで並べる(全ての語を含む文書に一致する)。語の中の`"`は`""`にエスケープする。引用符の中の`AND`・`OR`・`NOT`・`NEAR`・`*`・`:`(列の指定)などは演算子でなく文字列として扱われ、構文の誤りにならない。語が無ければ`undefined`を返す。
 - 1つの語が記号で区切られた複数の語(`foo-bar`など)を含む場合、FTS5は語の並びとして照合し、最後の語だけを前方一致にする。
 - 検索式は必ずバインド変数で渡し、SQLに埋め込まない。
@@ -315,7 +316,28 @@ const rows = await db.all(
 
 - 書記素ごとにNFKC→小文字化→NFD→ラテン文字の後のU+0300〜U+036Fの除去→NFC→残りのU+0300〜U+036Fの除去を行う。
 - 折りたたんだ後の`\p{L}`・`\p{N}`・`\p{Co}`の連続を語とし、それ以外の文字で区切る。語の先頭からの一致だけを強調し、記号を含む検索語は語の並びとして最後の語だけを前方一致にする。
-- 既知の制限: unicode61はUnicode 6.1の文字の表を使うため、6.1より後に加わった絵文字(🦄・🤣など)を語の文字として扱う。そのため「🦄Unicorn」は検索語`unicorn`で一致しない。索引と検索語の正規化で絵文字を区切りにする場合は、`normalizeIndexText`と`normalizeSearchTerms`と`findHighlightRanges`を同時に変え、索引を再構築する。
+
+### 絵文字の区切り
+
+unicode61はUnicode 6.1の文字の表を使うため、6.1より後に加わった絵文字(🦄・🤣など)や肌色の修飾を語の文字として扱う。そのままでは「🦄Unicorn」が検索語`unicorn`で一致しない。そこで、索引するテキストの正規化(`normalizeIndexText`)と検索語の正規化(`normalizeSearchTerms`)は、NFKCの後に絵文字の並びを構成する文字を1文字ずつ半角スペースに置き換えてから空白を畳む。強調表示(`findHighlightRanges`)は語の文字を`\p{L}`・`\p{N}`・`\p{Co}`に限るため、絵文字はもともと語の区切りになり、索引と同じ位置で語が分かれる。置き換えは共用部品の`search/emoji-separator.ts`の`separateEmoji`に1つだけ置く。
+
+| 区切りにする文字   | 範囲                                                  |
+| ------------------ | ----------------------------------------------------- |
+| 絵文字             | `\p{Extended_Pictographic}`(未割り当ての予約分を含む) |
+| 肌色の修飾         | U+1F3FB〜U+1F3FF                                      |
+| 地域指示記号(国旗) | U+1F1E6〜U+1F1FF                                      |
+| ゼロ幅接合子       | U+200D                                                |
+| キーキャップ       | U+20E3                                                |
+| 異体字セレクタ     | U+FE0E・U+FE0F                                        |
+| タグ文字(地域の旗) | U+E0020〜U+E007F                                      |
+
+- キーキャップの土台の数字・`#`・`*`は通常の文字として残す。「1️⃣2️⃣」は語`1`と`2`になる。
+- 置き換えをNFKCの後に行うのは、互換分解で文字になる絵文字(™→TM、ℹ→i、Ⓜ→M、㊗→祝、🈂→サなど)を文字として残すためである。NFKCの後も絵文字のまま残る文字に、`\p{L}`・`\p{N}`の文字は無い。
+- 日本語の記号のうち`\p{Extended_Pictographic}`に含まれるのは〰・〽(もともと区切りの約物)と㊗・㊙(NFKCで漢字になる)だけで、〇・〒・〆・々は含まれない。
+- ゼロ幅接合子と異体字セレクタは、絵文字以外の文脈(デーヴァナーガリーの結合など)でも空白になる。unicode61はもともとこれらを区切りとして扱うため、照合の結果は変わらない。
+- 置き換えは文字の集合の正規表現による1回の走査で、入力の長さに比例する時間で終わる。
+- 既知の制限: Unicode 6.1より後に加わった絵文字でない記号(⮕ U+2B95・₿ U+20BFなど)は、unicode61が語の文字として扱う一方、強調表示は語の文字にしない。このため「₿coin」は検索語`coin`で全文検索には一致しないが、強調表示の照合では`coin`が一致する。
+- 正規化の規則を変えたら、保存済みの元テキストの列とキーワードの列を作り直すため、索引文書の更新を要求する(「[列の変更とトリガーの作り直し](#列の変更とトリガーの作り直し)」)。抽出の入力も変わるため、絵文字を含む文書は次の更新でキーワードを抽出し直す。
 
 ## 索引の更新
 

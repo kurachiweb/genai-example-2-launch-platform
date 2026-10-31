@@ -118,6 +118,32 @@ describe('findHighlightRanges', () => {
     },
   );
 
+  test.each([
+    [
+      'Unicode 6.1より後の絵文字の後の語',
+      '🦄Unicorn',
+      ['unicorn'],
+      ['Unicorn'],
+    ],
+    ['語の間の絵文字の後の語', 'foo🤣bar', ['bar'], ['bar']],
+    ['肌色の修飾の後の語', 'a👍🏽b', ['b'], ['b']],
+    ['ゼロ幅接合子でつないだ絵文字の後の語', '👨‍👩‍👧‍👦家族', ['家族'], ['家族']],
+    ['国旗の後の語', '🇯🇵Japan', ['japan'], ['Japan']],
+    ['タグ文字の旗の後の語', '🏴󠁧󠁢󠁳󠁣󠁴󠁿Scotland', ['scotland'], ['Scotland']],
+    ['絵文字を含む検索語', '🦄Unicorn', ['🦄uni'], ['Uni']],
+    ['キーキャップの数字', '1️⃣2️⃣', ['1'], ['1️⃣']],
+    ['互換分解で文字になる絵文字', '🈂️の案内', ['サ'], ['🈂️']],
+  ])('絵文字を語の区切りにする(%s)', (_, text, terms, expected) => {
+    expect(highlightedSlices(text, terms)).toEqual(expected);
+  });
+
+  test.each([
+    ['絵文字だけの検索語', '🦄Unicorn', ['🦄']],
+    ['キーキャップを挟んだ数字', '1️⃣2️⃣', ['12']],
+  ])('%sは一致しない', (_, text, terms) => {
+    expect(findHighlightRanges(text, terms)).toEqual([]);
+  });
+
   test('ラテン文字の後の異体字セレクタを発音区別符号として除かない', () => {
     expect(findHighlightRanges('ab\ufe0fc', ['abc'])).toEqual([]);
   });
@@ -339,6 +365,24 @@ describe('全文検索との一致の規則', () => {
     ['ab\ufe0fc', 'ab'],
     ['ab\ufe0fc', 'c'],
     ['eclair', 'e\u094d\u0301'],
+    ['🦄Unicorn', 'unicorn'],
+    ['🦄Unicorn', '🦄uni'],
+    ['🦄Unicorn', '🦄'],
+    ['foo🤣bar', 'bar'],
+    ['foo🤣bar', 'foo'],
+    ['a👍🏽b', 'b'],
+    ['a🏽b', 'b'],
+    ['👨‍👩‍👧‍👦家族', '家族'],
+    ['🇯🇵Japan', 'japan'],
+    ['🏴󠁧󠁢󠁳󠁣󠁴󠁿Scotland', 'scotland'],
+    ['❤️love', 'love'],
+    ['1️⃣2️⃣', '1'],
+    ['1️⃣2️⃣', '2'],
+    ['1️⃣2️⃣', '12'],
+    ['#️⃣tag', 'tag'],
+    ['™ℹⓂ', 'tmim'],
+    ['㊗🈂️', '祝サ'],
+    ['〇〒〆々', '〇〒'],
   ])('%sと%sの一致の有無が全文検索と同じになる', (text, term) => {
     expect(findHighlightRanges(text, [term]).length > 0).toBe(
       matchesFts(text, term),

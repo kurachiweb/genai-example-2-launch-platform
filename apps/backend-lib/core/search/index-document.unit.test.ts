@@ -32,6 +32,9 @@ const PRODUCT_SOURCE: SearchSource<ProductField> = {
 
 const FAMILY_EMOJI = '\u{1F468}‍\u{1F469}‍\u{1F467}';
 
+// 正規化で変わらない、複数のコードポイントからなる書記素(9バイト)。絵文字は正規化で区切りの空白になるため使わない
+const COMBINING_CLUSTER = 'x\u0301\u0302\u0303\u0304';
+
 const textEncoder = new TextEncoder();
 
 const utf8ByteLength = (text: string): number =>
@@ -204,9 +207,18 @@ describe('buildIndexDocument', () => {
       );
     });
 
+    test('絵文字を区切りの空白にした入力を抽出に使う', async () => {
+      const document = await buildIndexDocument(
+        SINGLE_FIELD_TARGET,
+        singleFieldSource(`${FAMILY_EMOJI}家族の🦄Unicorn`),
+      );
+
+      expect(document.extractionInput).toBe('家族の Unicorn');
+    });
+
     test('上限が書記素の途中に当たる場合は、その書記素の前で切り詰める', async () => {
       const prefix = 'a'.repeat(MAX_EXTRACTION_INPUT_BYTES - 5);
-      const text = `${prefix}${FAMILY_EMOJI}${'b'.repeat(10)}`;
+      const text = `${prefix}${COMBINING_CLUSTER}${'b'.repeat(10)}`;
 
       const document = await buildIndexDocument(
         SINGLE_FIELD_TARGET,
@@ -249,7 +261,7 @@ describe('buildIndexDocument', () => {
     });
 
     test('切り詰めた入力は書記素を壊さず、上限を超えない', async () => {
-      const text = `${FAMILY_EMOJI}éあa`.repeat(
+      const text = `${COMBINING_CLUSTER}éあa`.repeat(
         MAX_EXTRACTION_INPUT_BYTES / 12,
       );
 
@@ -264,12 +276,13 @@ describe('buildIndexDocument', () => {
       expect(text.startsWith(document.extractionInput)).toBe(true);
       expect(document.extractionInput.endsWith('a')).toBe(true);
       expect(
-        utf8ByteLength(document.extractionInput) + utf8ByteLength(FAMILY_EMOJI),
+        utf8ByteLength(document.extractionInput) +
+          utf8ByteLength(COMBINING_CLUSTER),
       ).toBeGreaterThan(MAX_EXTRACTION_INPUT_BYTES);
     });
 
     test('上限の数倍の入力も、入力の長さに比例する時間で切り詰める', async () => {
-      const text = `${FAMILY_EMOJI}あa`.repeat(MAX_EXTRACTION_INPUT_BYTES);
+      const text = `${COMBINING_CLUSTER}あa`.repeat(MAX_EXTRACTION_INPUT_BYTES);
 
       const startedAt = performance.now();
       const document = await buildIndexDocument(

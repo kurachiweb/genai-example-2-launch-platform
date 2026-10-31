@@ -1,10 +1,11 @@
+import { separateEmoji } from './emoji-separator.ts';
+
 const WHITESPACE_RUN = /\p{White_Space}+/u;
 
 const DOUBLE_QUOTE = /"/g;
 
 export const normalizeSearchTerms = (input: string): readonly string[] =>
-  input
-    .normalize('NFKC')
+  separateEmoji(input.normalize('NFKC'))
     .split(WHITESPACE_RUN)
     .filter((term) => term !== '');
 
