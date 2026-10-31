@@ -228,7 +228,7 @@
   - _Boundary: RefreshDecision_
   - _Requirements: 9.6, 9.7, 10.2, 10.3, 10.4, 10.5, 10.8_
 
-- [ ] 8.5 検索対象の定義と登録の検証、集約点を作る
+- [x] 8.5 検索対象の定義と登録の検証、集約点を作る
   - 先に、名前の形式と重複、元テキストの列の項目と索引の定義の列の不一致、抽出の対象の項目が無いこと、テーブル名の不一致を例外にすること、集約点の全定義が例外にならないこと、データ層と共有の部品の状態の値が同じであることの型の保証を確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、初版の集約点(0件)で登録が成功する
   - _Depends: 7.2, 8.1_
@@ -375,3 +375,4 @@
 - 8.2: 抽出の入力は、正規化して空になった抽出の対象の項目を結合から外す(全項目が空なら`store-empty`)。ハッシュは`KEYWORD_SELECTION_VERSION`とNUL文字と入力の連結のSHA-256(設計は「連結」とだけ記述)。宣言した項目の文字列が元データに無ければ`TypeError`(再試行の上限の後にdead-letterへ)。8.3の選別の規則を変えたら`KEYWORD_SELECTION_VERSION`を上げる(11.1の`external/002`に書く)
 - 8.3: 200の応答の`languageSupported`はproto3で`false`が省かれ`true`は必ず出るため、項目が無ければ非対応言語にする(設計1445行の「`false`でなければ`extracted`」と相違)。9.4の疎通確認で、対応言語の実際の応答に`languageSupported: true`が付くことを確かめる(付かなければ全件が縮退する)。設計の表に無い状態コード(200以外の2xx・3xx・405・408・409・413・499など)はその状態コードの`configuration-error`。どちらも11.1の`external/002`に書く
 - 8.4: `markPending`はハッシュを残すため、編集前の状態(extracted・unsupported)が失われる。`planRefresh`は「pendingで同じハッシュ」を`reuse-keywords`(状態`extracted`)にし、非対応言語の文書は状態がextractedへ付け替わる(キーワードの列と再抽出しないことは変わらない。状態を正確に保つには`StoredIndexState`に前回の状態を足すか、`markPending`で`unsupported`の時だけハッシュを消す設計の変更が要る。開発者の判断)。9.2への申し送り: `store-empty`・`reuse-keywords`の書き込み(状態・ハッシュ・キーワードの列・`statusChangedAt`)は設計に無く9.2で決める(推奨: store-emptyは空のキーワード・`extracted`・ハッシュ、reuse-keywordsは`keep`・文書のハッシュ・`plan.status`・`now`)。上限未満の一時的な失敗は`statusChangedAt`を現在時刻に更新する
+- 8.5: 登録は設計に加えて、2つの検索対象が同じ索引文書のテーブルを使うことを拒否し、集約点のテストで各対象の`index`が`SEARCH_INDEXES`にあること(参照の一致)を確かめる。元テキストの列の項目名はDBの列名(`short_description`)と一致させる(11.1の`db/004`に明記)。状態の値の一致は`workers/search/search-target-definition.ts`の`SEARCH_KEYWORD_STATUSES`の型で保証する
