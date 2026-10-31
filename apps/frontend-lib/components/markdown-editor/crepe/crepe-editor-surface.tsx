@@ -5,7 +5,13 @@ import { EditorStatus, editorViewCtx } from '@milkdown/kit/core';
 import { Plugin } from '@milkdown/kit/prose/state';
 import { $prose, replaceAll } from '@milkdown/kit/utils';
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react';
-import { type ReactElement, useEffect, useLayoutEffect, useRef } from 'react';
+import {
+  type ReactElement,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import type {
   EditorAction,
@@ -95,18 +101,51 @@ const applyLatestState = (
   builder.editor.action(updateEditableAccessibility(accessibilityOf(props)));
 };
 
+interface CreationFailure {
+  readonly error: unknown;
+}
+
+// Milkdownのマウントは作成の拒否をコンソールへ出すだけで、拒否された編集領域の破棄は作成中の状態が終わるのを待ち続けるため、拒否を通知し、その後の破棄を省く
+const observeCreation = (
+  builder: CrepeBuilder,
+  onCreationFailed: (error: unknown) => void,
+): CrepeBuilder => {
+  const create = builder.create.bind(builder);
+  const destroy = builder.destroy.bind(builder);
+  let failed = false;
+  builder.create = async () => {
+    try {
+      return await create();
+    } catch (error) {
+      failed = true;
+      onCreationFailed(error);
+      throw error;
+    }
+  };
+  builder.destroy = () =>
+    failed ? Promise.resolve(builder.editor) : destroy();
+  return builder;
+};
+
 function EditorMount(props: EditorSurfaceProps): ReactElement {
   const latestPropsRef = useRef(props);
   const builderRef = useRef<CrepeBuilder | undefined>(undefined);
+  const [creationFailure, setCreationFailure] = useState<CreationFailure>();
   const { editableId, labelledBy, describedBy, invalid, disabled } = props;
 
   useLayoutEffect(() => {
     latestPropsRef.current = props;
   });
 
-  // 編集領域は1度だけ作り、通知の関数や属性の指定は作成後も最新の値を読む
+  // 編集領域は1度だけ作り、通知の関数や属性の指定は作成後も最新の値を読む。作成が拒否された編集領域は、作成の途中で登録した通知を後から届けても入力欄へ伝えない
   useEditor((root) => {
     const initial = latestPropsRef.current;
+    let rejected = false;
+    const notify = (send: (latest: EditorSurfaceProps) => void): void => {
+      if (!rejected) {
+        send(latestPropsRef.current);
+      }
+    };
     const builder = new CrepeBuilder({
       root,
       defaultValue: initial.initialValue,
@@ -114,7 +153,9 @@ function EditorMount(props: EditorSurfaceProps): ReactElement {
     addEditorFeatures(builder, {
       placeholder: initial.placeholder,
       requestLink: () => {
-        latestPropsRef.current.onRequestLink();
+        notify((latest) => {
+          latest.onRequestLink();
+        });
       },
     });
     builder.editor
@@ -123,25 +164,38 @@ function EditorMount(props: EditorSurfaceProps): ReactElement {
       .use(taskItemStatePlugin)
       .use(
         activeActionsPlugin((active) => {
-          latestPropsRef.current.onActiveActionsChange(active);
+          notify((latest) => {
+            latest.onActiveActionsChange(active);
+          });
         }),
       );
     builder.setReadonly(initial.disabled);
     builder.on((listener) => {
       listener
         .mounted(() => {
-          applyLatestState(builder, latestPropsRef.current);
-          latestPropsRef.current.onReady(controllerOf(builder));
+          notify((latest) => {
+            applyLatestState(builder, latest);
+            latest.onReady(controllerOf(builder));
+          });
         })
         .markdownUpdated((_, markdown) => {
-          latestPropsRef.current.onMarkdownChange(markdown);
+          notify((latest) => {
+            latest.onMarkdownChange(markdown);
+          });
         })
         .blur(() => {
-          latestPropsRef.current.onBlur();
+          notify((latest) => {
+            latest.onBlur();
+          });
         });
     });
     builderRef.current = builder;
-    return builder;
+    return observeCreation(builder, (error) => {
+      rejected = true;
+      if (builderRef.current === builder) {
+        setCreationFailure({ error });
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -151,6 +205,11 @@ function EditorMount(props: EditorSurfaceProps): ReactElement {
     }
     applyLatestState(builder, latestPropsRef.current);
   }, [editableId, labelledBy, describedBy, invalid, disabled]);
+
+  // 作成の拒否を描画の失敗として投げ、読み込みの境界に失敗の表示と再試行を任せる
+  if (creationFailure !== undefined) {
+    throw creationFailure.error;
+  }
 
   return <Milkdown />;
 }
