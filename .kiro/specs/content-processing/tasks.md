@@ -216,7 +216,7 @@
   - _Boundary: IndexDocumentBuilder_
   - _Requirements: 9.4, 9.6, 15.3_
 
-- [ ] 8.3 (P) 自然言語APIの要求の組み立て・応答の分類・キーワードの選別を作る
+- [x] 8.3 (P) 自然言語APIの要求の組み立て・応答の分類・キーワードの選別を作る
   - 先に、要求の本文、200の応答(対応言語・`languageSupported: false`・形の合わない応答)、言語を理由とする400・その他の400・401・403・404・429・500の分類、除外する種類のエンティティの除去、名前の正規化と重複の除去、出現順と500件の上限、半角スペースでの結合を確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、全ての状態コードの分類が設計の表と一致する
   - _Boundary: NaturalLanguageProtocol, KeywordSelection_
@@ -373,3 +373,4 @@
 - 7.2: 全文検索のSQLのひな形は文の間に`--> statement-breakpoint`を入れる(Workers統合テストのマイグレーションの読み込みがこの区切りで1文ずつ実行するため。`renderSearchIndexRebuildSql`は区切りの無い1文なので、貼る時に区切りを挟む)。更新のトリガーは`AFTER UPDATE OF <索引する列>`。`REPLACE`と`id`の更新はexternal contentの索引を壊すため使わない(`docs/GUIDES/tech/db/002`)。列名はSQLiteの予約語(`apps/db/search/sqlite-keywords.ts`、設計に無い)を拒否する
 - 7.3: `findMissingSearchIndexSql`はマイグレーションを名前順に読み、後の`DROP TRIGGER`・仮想テーブルの`DROP TABLE`・索引文書の`DROP TABLE`で消えた作成文も欠けとして扱う(設計より広い)。SQLの出力スクリプト`db:search-index-sql`に`--drop`・`--recreate`を加え(設計に無い)、変更の種類ごとの手順は`docs/GUIDES/tech/db/003`にある(索引する列の削除は、定義を変える前に`--drop`のカスタムマイグレーションを置く)。`SearchIndexDefinition`は`defineSearchIndex`だけが作れるブランド型。`docs/GUIDES/tech/db/003`に足した全文検索の節は11.1の`db/004`と重なるため、11.1で移すか要約とリンクにする。CLAUDE.mdのディレクトリ構成に`apps/db/search/`・`apps/db/scripts/`が無い(11.3)
 - 8.2: 抽出の入力は、正規化して空になった抽出の対象の項目を結合から外す(全項目が空なら`store-empty`)。ハッシュは`KEYWORD_SELECTION_VERSION`とNUL文字と入力の連結のSHA-256(設計は「連結」とだけ記述)。宣言した項目の文字列が元データに無ければ`TypeError`(再試行の上限の後にdead-letterへ)。8.3の選別の規則を変えたら`KEYWORD_SELECTION_VERSION`を上げる(11.1の`external/002`に書く)
+- 8.3: 200の応答の`languageSupported`はproto3で`false`が省かれ`true`は必ず出るため、項目が無ければ非対応言語にする(設計1445行の「`false`でなければ`extracted`」と相違)。9.4の疎通確認で、対応言語の実際の応答に`languageSupported: true`が付くことを確かめる(付かなければ全件が縮退する)。設計の表に無い状態コード(200以外の2xx・3xx・405・408・409・413・499など)はその状態コードの`configuration-error`。どちらも11.1の`external/002`に書く
