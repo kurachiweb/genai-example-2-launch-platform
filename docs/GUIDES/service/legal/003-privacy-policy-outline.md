@@ -58,7 +58,7 @@ AWS organizationsのダッシュボードでAIサービスのオプトアウト�
 
 個人情報保護法28条に基づき、第6章に次を記載する。
 
-- 移転先の国: 米国(Stripe・AWS・Google Cloud・Sentryの所在国)。Cloudflareは[Cloudflareの項](#cloudflareworkersd1r2queuesdurable-objectsemail-sendingturnstileweb-analytics)を参照。DISIFYとHave I Been Pwnedには個人を識別できる情報を渡さないため対象外
+- 移転先の国: 米国(Stripe・AWS・Sentryの所在国)。Cloudflareは[Cloudflareの項](#cloudflareworkersd1r2queuesdurable-objectsemail-sendingturnstileweb-analytics)を、Google Cloudは[Google Cloudの項](#google-cloudnatural-language-api)を参照。DISIFYとHave I Been Pwnedには個人を識別できる情報を渡さないため対象外
 - 当該国の制度: 個人情報保護委員会が公表する米国の制度調査に基づき概要を記載する
 - 委託先が講じる措置: 委託契約のデータ処理条項、暗号化通信・保存、アクセス制御
 - 移転の法的根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は委託先のデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る。委託先の項がある委託先は、その項を正とする
@@ -75,6 +75,12 @@ AWS organizationsのダッシュボードでAIサービスのオプトアウト�
 - 移転先: D1・R2・Queuesは米国の管轄で保存する(保存場所の値は[本プロジェクト固有の値](../../../onboardings/project-values.md#workerとリソースの名前と識別子)を正とする)。所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics))は、処理する国を特定できない。これらは保存場所を指定する設定(管轄)を持たないか本サービスで指定せず、利用者の接続に近い拠点などCloudflareの各地のデータセンターで行われ得るためである。この範囲は[委託先の一覧](#委託先の一覧)のCloudflareの用途(ホスティング、データベース、ストレージ、メール送信、bot対策、解析)すべてに当たる
 - 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Cloudflareのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る
 - 委託先が講じる措置: 共通の「委託先が講じる措置」(委託契約のデータ処理条項、暗号化通信・保存、アクセス制御)による
+
+### Google Cloud(Natural Language API)
+
+- 移転先: 送る情報は、検索のキーワード抽出の対象の項目の公開用のテキスト(マークダウンは書式の記号を除いたテキスト)だけであり、対象の項目は[委託先の一覧](#委託先の一覧)のGoogle Cloudの渡す情報を正とする。利用者を識別する情報と、抽出の対象でない項目は送らない。送る情報はGoogle側で保存されない。処理のリージョンを指定しない接続先へ送るため、処理する国を特定できず、委託先の所在国である米国以外の国を含むGoogleの各地のデータセンターで処理され得る
+- 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Google Cloudのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る
+- 委託先が講じる措置: 共通の「委託先が講じる措置」(委託契約のデータ処理条項、暗号化通信・保存、アクセス制御)による。加えて、送ったテキストはGoogle側で保存されず、モデルの学習を含むサービスの提供以外の目的に使われない(要求の時刻・大きさなどのメタデータだけが一時的に記録される。[Data Usage FAQ](https://cloud.google.com/natural-language/docs/data_usage))。本サービスは、Natural Language APIだけを呼べるようにAPIの制限を掛けた専用のキーで送る
 
 ## 記載上の注意
 

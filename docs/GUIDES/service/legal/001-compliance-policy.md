@@ -78,6 +78,7 @@
 委託先ごとの保存場所は次のとおりとする。1つの箇条に1つの委託先を`- **<委託先>(<サービス>)**: <保存または一時送信の場所>。<委託先側での保存の有無>。移転の根拠はプライバシーポリシー骨子の<委託先>の項を正とする。`の形で書き、[委託先の一覧](003-privacy-policy-outline.md#委託先の一覧)の順に並べる。上の表はCloudflareの資源ごとの一覧とし、他の委託先は表へ行を足さず箇条だけを足す。
 
 - **Cloudflare(Workers・D1・R2・Queues・Durable Objects・Email Sending・Turnstile・Web Analytics)**: D1・R2・Queuesは米国の管轄で保存する(値は[本プロジェクト固有の値](../../../onboardings/project-values.md#workerとリソースの名前と識別子)を正とする)。所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics))は保存場所を保証せず、Cloudflareの各地のデータセンターで行われ得る。サービス上の全データをCloudflare側で保存する。移転の根拠はプライバシーポリシー骨子の[Cloudflareの項](003-privacy-policy-outline.md#cloudflareworkersd1r2queuesdurable-objectsemail-sendingturnstileweb-analytics)を正とする。
+- **Google Cloud(Natural Language API)**: 検索のキーワード抽出の対象のテキストを、処理のリージョンを指定せずに一時送信するため、処理する場所は保証しない。Google側では保存しない。移転の根拠はプライバシーポリシー骨子の[Google Cloudの項](003-privacy-policy-outline.md#google-cloudnatural-language-api)を正とする。
 
 外部サービスへ一時送信する情報と保持しない旨は[委託先の一覧](003-privacy-policy-outline.md#委託先の一覧)を正とする。
 
@@ -121,6 +122,7 @@
 | 未ログインユーザーの通報(注4)                                   | ステータスが「対応済」または「却下」になってから14日                                                          | 日次バッチで物理削除                                                                                                          | FR-ADMUG-020、DR-022                                   |
 | ユーザー・プロダクトの旧ハンドル文字列(注5)                     | 無期限                                                                                                        | 新たに別のハンドル文字列が設定された時点で置き換え。退会から14日後に物理削除                                                  | FR-USER-019、FR-UPROF-010・012、FR-PRDCT-020・021      |
 | ヘルプ記事の旧ハンドル文字列(注5)                               | 無期限                                                                                                        | 新たに別のハンドル文字列が設定された時点で置き換え。ヘルプ記事の削除時に物理削除                                              | FR-ADMAG-026、FR-HELP-011                              |
+| 検索索引(索引文書)                                              | 元データの削除まで                                                                                            | 元データの削除と同時に物理削除                                                                                                | FR-FTS-009                                             |
 | D1のバックアップ(注6)                                           | 30日                                                                                                          | 自動失効                                                                                                                      | NFR-AVAIL-008、DR-002                                  |
 
 日次バッチの実行時刻は[日次タイムライン](../overview/007-daily-timeline.md#日次タイムライン)を参照。
