@@ -275,7 +275,7 @@
   - _Depends: 9.1, 9.2_
   - _Requirements: 9.1, 9.9, 10.1, 10.3, 10.4_
 
-- [ ] 9.4 (P) 実際の外部APIへの疎通を確かめるスクリプトを作る
+- [x] 9.4 (P) 実際の外部APIへの疎通を確かめるスクリプトを作る
   - キーが注入されていなければ登録の手順を案内して終了コード2で終え、あれば日本語と英語の短文で抽出の結果・言語・キーワードの数を表示する
   - 先に、キーの有無による分岐と表示の内容を、外部APIの呼び出しを差し替えて確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、キーを注入しない実行で案内が表示される
@@ -381,3 +381,4 @@
 - 9.1: 開発者の手作業: この変更をmainへマージする前にInfisicalの`staging`のフォルダ`/`へ`GOOGLE_NL_API_KEY`を登録する(未登録だと以後のstagingのデプロイが止まる)。prodはlaunch-readinessが登録、devには登録しない。`wrangler dev`は`secrets.required`のキーだけを`env`へ渡すため、ローカルで`KEYWORD_EXTRACTOR`を`google-natural-language`に変えてもキーは届かない(9.4の疎通確認は`infisical run`でstagingのキーを注入する手順にする)。backend-platformの設定の単体テストは`SEARCH_CONFIG_KEY_PATTERN`で2つのキーを基底の検査から外し、`apps/api/test/config/search-wrangler-config.unit.test.ts`で確かめる。時間切れは打ち切りの信号の状態で判定する(本文の読み取り中も`timeout`)。`composition/search-module.ts`は9.3で作る。project-values.mdの変数の表の`KEYWORD_EXTRACTOR`は11.3で加える
 - 9.2: 空の入力はキーワード`''`・`extracted`・文書のハッシュ・現在時刻で書き、ログは`extracted`(抽出を無効にした環境でも)。前回のキーワードの再利用は`keep`・文書のハッシュ・計画の状態・現在時刻で、ログは`reused`。未登録の検索対象は`skipped`・`reason: 'unregistered-target'`・`error`。縮退と再試行は`warning`、設定の誤りは`error`(設計の「1件ごとに`info`」と相違、Monitoringの節に合わせた)。再試行の例外は書いた後に投げる。通知の状態コードは`number`(8.3が形の不一致を200で返すため。設計は`number | undefined`)。9.3で束縛する識別子は`SEARCH_TYPES.KeywordExtractor`・`EVENT_SEARCH_TYPES.SearchIncidentReporter`(`application/search/search-types.ts`、設計に無い)・`SEARCH_TYPES.RefreshHandler`
 - 9.3: Queueからの結合のWorkers統合テストは、テストファイルの中だけ`vi.mock('../../lib/workers/search/targets/index.ts')`で集約点をテスト専用の検索対象へ差し替え、本物のエントリを通す(本番の`SEARCH_TARGETS`は空のまま。11.1の`db/004`か`testing/001`に書く)。`search-module.ts`は共通の束縛`EVENT_SEARCH_PLATFORM_MODULE`とeventの検索のモジュール`EVENT_SEARCH_MODULE`の2つをexportする。`FetcherQueueResult`のglobal宣言が`email-module.worker.test.ts`と重複している
+- 9.4: 疎通確認の`smoke:keyword-extraction`は、キーが無ければ終了コード2、全件抽出で0、抽出できない短文があれば1(0・1は設計に無い。11.1の`external/002`に書く)。実行は`cd /workspace/apps/event && infisical --telemetry=false run --env staging -- bun run smoke:keyword-extraction`。日本語と英語が`extracted`になれば、実際の応答に`languageSupported: true`が付いている(8.3)。実際のキーでの実行は開発者の手作業
