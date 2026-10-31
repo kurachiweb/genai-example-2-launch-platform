@@ -301,7 +301,7 @@
   - _Boundary: TechDocs_
   - _Requirements: 7.7, 8.7, 16.3, 16.4_
 
-- [ ] 11.2 (P) 入力欄・表示部品とサニタイズの技術ドキュメントを書く
+- [x] 11.2 (P) 入力欄・表示部品とサニタイズの技術ドキュメントを書く
   - 文書は`frontend/008-markdown-editor-and-content.md`と`security/004-markdown-sanitization.md`とし、各索引に1行ずつ加える(roadmapの順で割り当てた固定の番号)
   - 入力欄と表示部品の文書に、フォームとの結合と検証規則、遅延読み込みと読み込みの制限、表示部品と折りたたみ、目次の作り方、カウンターと保存される原文の関係、アクセシビリティの規約、強調表示部品を書く
   - サニタイズの文書に、許可リスト、参照先の制限、処理の順序とサニタイズの後の変換の限定、接頭辞とDOM clobbering、生のHTMLの例外の1箇所と検査、攻撃パターン集の追加の手順を書き、frontend-platformのフロントエンドサーバーのセキュリティの文書(`frontend/003`)の例外の記述から`security/004`へリンクする
@@ -384,3 +384,4 @@
 - 9.4: 疎通確認の`smoke:keyword-extraction`は、キーが無ければ終了コード2、全件抽出で0、抽出できない短文があれば1(0・1は設計に無い。11.1の`external/002`に書く)。実行は`cd /workspace/apps/event && infisical --telemetry=false run --env staging -- bun run smoke:keyword-extraction`。日本語と英語が`extracted`になれば、実際の応答に`languageSupported: true`が付いている(8.3)。実際のキーでの実行は開発者の手作業
 - 10: 再抽出のジョブは要求と候補の取得の失敗を1件ごとに捕まえて続け、全件の処理と要約のログの後に`SearchKeywordReextractionError`を1件投げる(設計に無い)。候補の取得の失敗は`lookup-failed`。要約の`failed`はジョブまで届いた例外だけを数え、要求の部品が握るQueueの送信の失敗は`api.search.refresh`のログに出る(11.1か11.3に書く)。1時間前の基準は`Clock`の現在時刻。カテゴリーは`['api','search','reextraction']`。apiのエントリはDurable Objectを公開するためテストより先に読み込まれ`vi.mock`で集約点を差し替えられず、テスト専用の検索対象の結合テストは本物の`SCHEDULED_JOBS`と検索の共通の束縛だけ差し替えた`MODULES`から`createWorkerHandler`を組み立てる(11.1の`db/004`か`testing/001`に書く)。メールの定期実行のテストは、4:21の要約の`jobs`に`email-delivery.cleanup`の成功が含まれることだけを確かめる
 - 11.1: `external/002`・`db/004`で新しいプレースホルダー`<抽出の方式の変数>`・`<自然言語APIのキーのシークレット>`を使う。11.3でproject-values.mdに対応付けの行(`KEYWORD_EXTRACTOR`・`GOOGLE_NL_API_KEY`)、`KEYWORD_EXTRACTOR`の変数の行、使う文書の欄への`external/002`・`db/004`、定期実行の節への再抽出のジョブの名前・時刻・順序・件数を加え、`coding/003`で「共用部品」を定義する。`db/003`の全文検索の節は`db/004`へ移し、要約とリンクにした
+- 11.2: `frontend/008`・`security/004`で新しいプレースホルダー`<共用部品の配置先>`(値は`common-lib`)を使う。既存の`coding/001`264行は`<共用部品>`と書いており表記が2通りある。11.3でproject-values.mdへ対応付け、表記をそろえる。`frontend/005`のマークダウンの節は008を正にして要約とリンクにした

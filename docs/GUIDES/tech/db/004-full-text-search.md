@@ -311,7 +311,7 @@ const rows = await db.all(
 
 ### 強調表示との一致
 
-検索結果の強調表示は、共用部品の`findHighlightRanges`で求める(画面の部品は「[検索語の強調](../frontend/005-shared-components.md#検索語の強調)」)。FTS5のunicode61(`remove_diacritics 2`)と同じ照合になるよう、次のように折りたたむ。
+検索結果の強調表示は、共用部品の`findHighlightRanges`で求める(画面の部品は「[検索語の強調](../frontend/008-markdown-editor-and-content.md#検索語の強調)」)。FTS5のunicode61(`remove_diacritics 2`)と同じ照合になるよう、次のように折りたたむ。
 
 - 書記素ごとにNFKC→小文字化→NFD→ラテン文字の後のU+0300〜U+036Fの除去→NFC→残りのU+0300〜U+036Fの除去を行う。
 - 折りたたんだ後の`\p{L}`・`\p{N}`・`\p{Co}`の連続を語とし、それ以外の文字で区切る。語の先頭からの一致だけを強調し、記号を含む検索語は語の並びとして最後の語だけを前方一致にする。
