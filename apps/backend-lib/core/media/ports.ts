@@ -94,6 +94,8 @@ export interface QuarantinedImage {
   readonly findings: readonly ModerationFinding[];
 }
 
+export const QUARANTINED_IMAGE_LIST_MAX_LIMIT = 100;
+
 export interface QuarantinedImageListInput {
   readonly reason: QuarantineReason;
   readonly cursor: string | undefined;
@@ -124,6 +126,7 @@ export interface MediaQuarantine {
     owner: OwnerRef,
     reason: QuarantineReason,
   ): Promise<OwnerBatchResult>;
+  // limitが1〜QUARANTINED_IMAGE_LIST_MAX_LIMITの整数でなければAppError(bad_request)を投げる
   listByReason(input: QuarantinedImageListInput): Promise<QuarantinedImageList>;
 }
 

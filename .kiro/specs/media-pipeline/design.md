@@ -221,7 +221,7 @@ apps/
 │       ├── media-eraser.ts                        # 物理削除(全バケット→パージの依頼→記録の削除)
 │       ├── media-files-service.ts                 # MediaFilesの実装(紐付け・論理削除・即時削除・保有者単位の削除・保有者の識別子の列挙・取得・内容)
 │       ├── media-quarantine-service.ts            # MediaQuarantineの実装(理由の追加・解除と移動の依頼・一覧)
-│       └── media-platform-module.ts               # 両アプリ共通の束縛(MEDIA_PLATFORM_MODULE)
+│       └── media-platform-module.ts               # 両アプリ共通の束縛(createMediaPlatformModule(appName))
 ├── api/
 │   ├── src/application/session/session-view.ts    # SessionView(api-gatewayの契約。identity-authの2.3が追記する。実装時に無ければ5.1が同じ形で置く。R3-1)
 │   ├── src/application/media/                     # Bunの単体テスト(各ファイルに同名の*.unit.test.ts)
@@ -318,13 +318,13 @@ docs/
 
 - `apps/db/schema/index.ts` — メディアの2テーブルを集約点に加える。`apps/db/migrations/<日時>_media_pipeline/migration.sql`を生成する。並行するspec(identity-authなど)とスナップショットが分岐しないよう、mainの最新を取り込んでから生成し、番号の衝突があれば生成し直す(M-6)。
 - `apps/backend-lib/core/messaging/contracts/index.ts` — 3種のメッセージ契約を`MESSAGE_CONTRACTS`へ加える。
-- `apps/api/src/composition/modules.ts`・`internal-routes.ts`・`graphql-modules.ts`・`scheduled-jobs.ts` — `MEDIA_PLATFORM_MODULE`・apiのメディアモジュール、2つの内部REST、`mediaSchemaModule`、日次バッチ3種(4:21、順序810・820・830)を登録する。
+- `apps/api/src/composition/modules.ts`・`internal-routes.ts`・`graphql-modules.ts`・`scheduled-jobs.ts` — `createMediaPlatformModule('api')`・apiのメディアモジュール、2つの内部REST、`mediaSchemaModule`、日次バッチ3種(4:21、順序810・820・830)を登録する。
 - `apps/backend-lib/core/errors/app-error.ts` — `AppErrorKind`に`length_required`、`AppErrorStatus`と`STATUS_BY_KIND`に411を加える(backend-platformの所有。Revalidation Triggers)。同じ変更で`app-error.unit.test.ts`・`error-envelope.unit.test.ts`の期待値、apiの公開RESTの`responses.ts`の状態コードの一覧と説明・`responses.worker.test.ts`、`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の共通エラーの種類の表、backend-platform・api-gatewayのdesign.mdとresearch.mdの改訂の記録を改める(api-gatewayの改訂3で413・415を加えたときと同じ範囲)。
 - `apps/api/test/support/wrangler-config.ts`・`apps/api/test/config/wrangler-config.unit.test.ts` — メディアの変数とシークレットのキーの除外パターン`MEDIA_CONFIG_KEY_PATTERN`(`^(?:IMAGE_DELIVERY_|MODERATION_|REKOGNITION_|MEDIA_)`)を加え、backend-platformの設定の検査(eventの`vars`・`secrets.required`の比較)をそのキーを除いて比べる(メール・全文検索と同じ受け持ちの分け方)。メディアのキーは本specの`media-wrangler-config.unit.test.ts`が検査する。
 - `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 変えない。4:21の定期実行の式(`21 12 * * *`)とR2バインディングの管轄(staging・prodの`jurisdiction: "us"`)は設定済みである。
 - `apps/api/package.json`・`bun.lock` — `image-size`・`fast-xml-parser`・`fast-xml-validator`を版固定で加える。
 - `apps/event/src/index.ts` — `ImageDelivery`をエクスポートする。既定のエクスポートは変えない。
-- `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`rate-limit-exclusions.ts`・`env-schema.ts` — 画像配信の関門のモジュールを`MODULES`の先頭に、`MEDIA_PLATFORM_MODULE`・eventのメディアモジュール・動作確認のモジュールを続けて登録する。3種のメッセージの処理と再試行の方針、画像配信の除外規則、メディアの変数とシークレットの検証を加える。
+- `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`rate-limit-exclusions.ts`・`env-schema.ts` — 画像配信の関門のモジュールを`MODULES`の先頭に、`createMediaPlatformModule('event')`・eventのメディアモジュール・動作確認のモジュールを続けて登録する。3種のメッセージの処理と再試行の方針、画像配信の除外規則、メディアの変数とシークレットの検証を加える。
 - `apps/event/wrangler.jsonc`・`worker-configuration.d.ts` — `exports`(`default`はキャッシュ無効、`ImageDelivery`は有効)、3環境の`vars`(Supporting References)、ルート(ローカル)の`secrets.required`に`MEDIA_SMOKE_TOKEN`を、staging・prodの`secrets.required`に判定サービスの2つのキーを加える。
 - `apps/event/package.json`・`bun.lock` — `image-size`・`fast-xml-parser`・`fast-xml-validator`・`wasm-image-optimization`・`aws4fetch`を版固定で加える。
 - `apps/event/vitest.worker.config.ts` — テスト用の変数(画像配信のホスト名・代替の判定・閾値)を加える。`wasm-image-optimization/workerd`の`.wasm`は読み込みの規則を加えずにWorkers統合テストから読める(タスク1.1で確認)。
@@ -1081,8 +1081,8 @@ export declare const MEDIA_TYPES: {
 ```
 
 - 前提: 呼び出し元(ドメインspec)は、自分の業務の認可を済ませてから呼ぶ。本specの操作は主体の権限を判定しない(紐付けは保有者の一致だけを確かめる)。
-- 事後: `addReason`・`removeReason`・`addReasonForOwner`・`removeReasonForOwner`は隔離理由をD1に確定させてから`media.relocate-files`を送り、送信に失敗した場合は`AppError(unavailable)`を投げる(呼び出し元は同じ操作を再実行できる)。
-- 保有者単位の操作(9.10・13.6・13.9): 対象は呼び出しのたびにD1の状態から求め直す(物理削除は保有者のファイル、理由の追加はその理由を持たない画像、解除はその理由を持つ画像)。そのため進み具合を呼び出し元が持つ必要は無く、途中の失敗や重複の呼び出しでも結果が変わらない。`hasMore`が真なら呼び出し元が同じ操作を繰り返す。user-profile-socialは、identity-authの非同期の波及処理(`purge_due`で`eraseOwnedBy`、`suspended`で`addReasonForOwner(owner, 'user_suspended')`、`unsuspended`で`removeReasonForOwner(owner, 'user_suspended')`)として登録し、`hasMore`を`LifecycleHandlerOutcome`の`continue`へ対応付ける。
+- 事後: `addReason`・`removeReason`・`addReasonForOwner`・`removeReasonForOwner`は隔離理由をD1に確定させてから`media.relocate-files`を送り、送信に失敗した場合は`AppError(unavailable)`を投げる(呼び出し元は同じ操作を再実行できる)。ファイルを指定する`addReason`・`removeReason`は、記録の保存先と目的の保存先が食い違う画像も依頼の対象にするため、再実行で移動を依頼し直す。保有者単位の`addReasonForOwner`・`removeReasonForOwner`は、再実行の時には理由を確定させた画像が対象から外れるため移動を依頼し直さず、送れなかった移動は日次の保存先の照合(830、9.8)が最大約1日で回収する。これは既知の制限として受け入れる(開発者の決定(2026-11-01))。
+- 保有者単位の操作(9.10・13.6・13.9): 対象は呼び出しのたびにD1の状態から求め直す(物理削除は保有者のファイル、理由の追加はその理由を持たない画像、解除はその理由を持つ画像)。そのため進み具合を呼び出し元が持つ必要は無く、途中の失敗や重複の呼び出しでもD1の状態は同じ結果になる。ただし理由の追加・解除で移動の依頼の送信に失敗した後の再実行は、移動を依頼し直さない(開発者の決定(2026-11-01)。送れなかった移動は日次の保存先の照合(9.8)が最大約1日で回収する既知の制限)。`hasMore`が真なら呼び出し元が同じ操作を繰り返す。user-profile-socialは、identity-authの非同期の波及処理(`purge_due`で`eraseOwnedBy`、`suspended`で`addReasonForOwner(owner, 'user_suspended')`、`unsuspended`で`removeReasonForOwner(owner, 'user_suspended')`)として登録し、`hasMore`を`LifecycleHandlerOutcome`の`continue`へ対応付ける。
 - 保有者の識別子の列挙(13.10、承認後の改訂1): `listOwnerIds`は、`owner_kind`が`kind`の`media_files`の`owner_id`を重複を除いて昇順に最大`limit`件返す。`after`があれば、その値より後(その値を含まない)の識別子から返す。続きがあれば`ownerIds`の最後の識別子を`next`に入れ、無ければ`next`は`undefined`になる。用途・保存の完了・紐付け・論理削除・削除待ち・隔離中かどうかによらず列挙する。`limit`が1〜`OWNER_ID_LIST_MAX_LIMIT`(500)の整数でなければ`AppError(bad_request)`を投げる。列挙は読み取りだけで、ファイルも保有者も変えない。user-profile-socialの4:21のジョブ`user-profile-social.orphaned-file-sweep`が、`kind: 'user'`・`limit: 90`で列挙し、`users`に行の無い保有者ごとに`eraseOwnedBy`を`hasMore`が偽になるまで呼ぶ(2026-10-24に開発者が確定したuser-profile-social仮1による)。列挙と削除の間に増減したファイルは、次の日の実行で求め直す。
 - 停止中の利用者のアップロードは、identity-authが`UploaderEligibility`を束縛した後、受付の時点で拒否される(1.8・1.9。N-7)。そのため、停止の波及処理の後に理由を持たない画像が新たに保存されることは無い。紐付けなど業務データの保存は、ドメインspecがidentity-authの判定の部品で拒否する。
 
@@ -1244,7 +1244,7 @@ export interface MediaObjectStore {
 - `claim`: 全件の記録を読み、存在・保存完了・未削除・削除待ちでない・用途の一致・保有者の一致を確かめる。1件でも満たさなければ何も変えずに理由の一覧を返す(5.2)。満たせば`attach`(既に紐付け済みなら変えない、5.3)。
 - `eraseNow`: `markEraseRequested`の後に`MediaEraser.erase`を呼ぶ。削除待ちの印が付いたファイルは、紐付け・非公開ファイルの配信・`openContent`の対象から外れる(13.2)。
 - `eraseOwnedBy`: `findIdsOwnedBy`で保有者のファイルを`OWNER_OPERATION_BATCH_LIMIT`+1件まで読み、先頭の上限件数を`eraseNow`する。読めた件数が上限を超えていれば`hasMore: true`を返す(13.6・13.9)。
-- `addReasonForOwner`・`removeReasonForOwner`: `findOwnedImageIdsByReason`で対象を上限+1件まで読み、先頭の上限件数に`addReasons`・`removeReasons`を行い、25件ずつ`RELOCATE_FILES_MESSAGE`を送る。`hasMore`は`eraseOwnedBy`と同じ規則で決める(9.10・13.9)。
+- `addReasonForOwner`・`removeReasonForOwner`: `findOwnedImageIdsByReason`で対象を上限+1件まで読み、先頭の上限件数に`addReasons`・`removeReasons`を行い、25件ずつ`RELOCATE_FILES_MESSAGE`を送る。`hasMore`は`eraseOwnedBy`と同じ規則で決める(9.10・13.9)。送信に失敗した後の再実行は、理由を確定させた画像が対象から外れるため移動を依頼し直さず、日次の保存先の照合(830、9.8)が最大約1日で回収する(開発者の決定(2026-11-01)。既知の制限)。
 - `listOwnerIds`(13.10、承認後の改訂1): `limit`が1〜`OWNER_ID_LIST_MAX_LIMIT`の整数でなければ、照会せずに`AppError(bad_request)`を投げる。`findOwnerIds`で`limit`+1件まで読み、読めた件数が`limit`を超えていれば先頭の`limit`件を`ownerIds`に、その最後の識別子を`next`に入れる。超えていなければ読めた全件を返し、`next`は`undefined`にする。
 - `markDeleted`: 論理削除の日時を付ける。論理削除されたファイルは紐付けできないが、画像配信はバケットの有無だけで応答するため止まらない(13.4、仮決定1。2026-10-18に開発者が承認)。
 - `openContent`: 保存完了・未削除・削除待ちでない・隔離中でないファイルの内容を、現在の保存先から読み出す(13.8)。

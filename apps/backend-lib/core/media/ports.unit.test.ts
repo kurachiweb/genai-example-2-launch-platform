@@ -8,6 +8,7 @@ import {
   OWNER_ID_LIST_MAX_LIMIT,
   OWNER_OPERATION_BATCH_LIMIT,
   type OwnerBatchResult,
+  QUARANTINED_IMAGE_LIST_MAX_LIMIT,
   type UploadOutcome,
 } from './ports.ts';
 
@@ -20,6 +21,12 @@ describe('OWNER_OPERATION_BATCH_LIMIT', () => {
 describe('OWNER_ID_LIST_MAX_LIMIT', () => {
   test('保有者の識別子の列挙は1回の呼び出しで500件まで返す', () => {
     expect(OWNER_ID_LIST_MAX_LIMIT).toBe(500);
+  });
+});
+
+describe('QUARANTINED_IMAGE_LIST_MAX_LIMIT', () => {
+  test('理由ごとの隔離の一覧は1回の呼び出しで100件まで返す', () => {
+    expect(QUARANTINED_IMAGE_LIST_MAX_LIMIT).toBe(100);
   });
 });
 

@@ -1,6 +1,5 @@
 import type { Logger } from '@logtape/logtape';
 
-import { AppError } from '../../core/errors/app-error.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import type {
   MediaFileView,
@@ -25,34 +24,17 @@ import {
   type OwnerRef,
 } from '../../core/media/ports.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
+import {
+  invalidLimit,
+  isValidLimit,
+  storageUnavailable,
+} from './media-operation-errors.ts';
 
 export interface MediaFilesServiceDependencies {
   readonly files: MediaFileStore;
   readonly objects: MediaObjectStore;
   readonly eraser: MediaEraser;
   readonly appName: LoggingOptions['appName'];
-}
-
-const STORAGE_RETRY_AFTER_SECONDS = 5;
-
-const STORAGE_UNAVAILABLE_MESSAGE =
-  '現在ご利用いただけません。しばらく待ってから再度お試しください。';
-
-function storageUnavailable(): AppError {
-  return new AppError({
-    kind: 'unavailable',
-    code: 'storage_unavailable',
-    message: STORAGE_UNAVAILABLE_MESSAGE,
-    retryAfterSeconds: STORAGE_RETRY_AFTER_SECONDS,
-  });
-}
-
-function invalidLimit(): AppError {
-  return new AppError({
-    kind: 'bad_request',
-    code: 'invalid_limit',
-    message: `件数は1以上${String(OWNER_ID_LIST_MAX_LIMIT)}以下の整数で指定してください。`,
-  });
 }
 
 function isOwnedBy(file: MediaFileView, owner: OwnerRef): boolean {
@@ -162,12 +144,8 @@ export class MediaFilesService implements MediaFiles {
 
   async listOwnerIds(input: OwnerIdListInput): Promise<OwnerIdList> {
     const { limit } = input;
-    if (
-      !Number.isInteger(limit) ||
-      limit < 1 ||
-      limit > OWNER_ID_LIST_MAX_LIMIT
-    ) {
-      throw invalidLimit();
+    if (!isValidLimit(limit, OWNER_ID_LIST_MAX_LIMIT)) {
+      throw invalidLimit(OWNER_ID_LIST_MAX_LIMIT);
     }
     // 1件多く読み、続きがあるかを次の呼び出しを待たずに判定する
     const found = await this.files.findOwnerIds({ ...input, limit: limit + 1 });

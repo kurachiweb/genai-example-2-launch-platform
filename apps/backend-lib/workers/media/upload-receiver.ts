@@ -52,6 +52,10 @@ import {
   type MessagePublisher,
   MessagePublishError,
 } from '../messaging/queue-publisher.ts';
+import {
+  STORAGE_RETRY_AFTER_SECONDS,
+  STORAGE_UNAVAILABLE_MESSAGE,
+} from './media-operation-errors.ts';
 
 export interface MediaUploadReceiverDependencies {
   readonly files: MediaFileStore;
@@ -62,8 +66,6 @@ export interface MediaUploadReceiverDependencies {
   readonly randomBytes?: (length: number) => Uint8Array;
   readonly pixelLimits?: PixelLimits;
 }
-
-const STORAGE_RETRY_AFTER_SECONDS = 5;
 
 const TEXT_MEDIA_TYPE = 'text/plain';
 
@@ -79,9 +81,6 @@ const SVG_DECLARATION_MESSAGE =
 
 const DIMENSIONS_EXCEEDED_MESSAGE =
   '画像の縦横の大きさが上限を超えています。小さくしてから選択してください。';
-
-const STORAGE_UNAVAILABLE_MESSAGE =
-  '現在ご利用いただけません。しばらく待ってから再度お試しください。';
 
 const LENGTH_MISMATCH: UploadRejection = Object.freeze({
   kind: 'bad_request',
