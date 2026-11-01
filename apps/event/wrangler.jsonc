@@ -2,8 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "genai-example-2-event",
   "main": "src/index.ts",
-  // 判定用画像のSVGの文字を描く書体を、バイト列(ArrayBuffer)として読み込む
-  "rules": [{ "type": "Data", "globs": ["**/*.ttf"] }],
+  // 判定用画像のSVGの文字を描く書体を、バイト列(ArrayBuffer)として読み込む。既定のDataの規則(`**/*.bin`)を無効にしないよう次の規則へ進める
+  "rules": [{ "type": "Data", "globs": ["**/*.ttf"], "fallthrough": true }],
   "compatibility_date": "2026-08-04",
   "workers_dev": false,
   "preview_urls": false,

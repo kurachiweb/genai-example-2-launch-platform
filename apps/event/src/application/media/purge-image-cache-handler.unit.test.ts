@@ -1,4 +1,5 @@
 import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
+import { redactByField } from '@logtape/redaction';
 import {
   afterAll,
   beforeAll,
@@ -16,6 +17,10 @@ import {
   assertRetryPolicy,
   decideOnFailure,
 } from '../../../lib/core/messaging/retry-policy.ts';
+import {
+  REDACTED,
+  REDACTED_FIELD_PATTERNS,
+} from '../../../lib/core/logging/redaction.ts';
 import type { PurgeImageCacheBody } from '../../../lib/core/media/media-messages.ts';
 import type { ImageCachePurger, ImageCachePurgeResult } from './ports.ts';
 import {
@@ -41,7 +46,12 @@ const records: LogRecord[] = [];
 beforeAll(() => {
   configureSync({
     reset: true,
-    sinks: { capture: (record) => records.push(record) },
+    sinks: {
+      capture: redactByField((record) => records.push(record), {
+        fieldPatterns: REDACTED_FIELD_PATTERNS,
+        action: () => REDACTED,
+      }),
+    },
     loggers: [
       { category: ['event'], sinks: ['capture'], lowestLevel: 'debug' },
       { category: ['logtape', 'meta'], sinks: [], lowestLevel: 'warning' },
@@ -88,7 +98,7 @@ describe('PurgeImageCacheHandler', () => {
     expect(purger.calls).toEqual([OBJECT_KEYS]);
   });
 
-  test('パージした件数を、オブジェクトキーを含めずにログへ出す', async () => {
+  test('パージした件数を、オブジェクトキーを含めず、属性名による伏せ字に当たらない名前でログへ出す', async () => {
     const handler: MessageHandler<PurgeImageCacheBody> =
       new PurgeImageCacheHandler(createPurger({ ok: true }));
 
@@ -97,7 +107,7 @@ describe('PurgeImageCacheHandler', () => {
     const logs = purgeLogs();
     expect(logs).toHaveLength(1);
     expect(logs[0]?.level).toBe('info');
-    expect(logs[0]?.properties).toEqual({ objectKeys: 2 });
+    expect(logs[0]?.properties).toEqual({ purgedCount: 2 });
   });
 
   test('パージの部品が拒否すれば、間隔を伸ばして再試行させるため拒否のエラーコードを持つ例外を投げる', async () => {

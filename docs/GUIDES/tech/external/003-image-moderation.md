@@ -103,7 +103,7 @@ flowchart TD
 - resvg自身が解釈した寸法の縦横比のまま、作り方の幅・高さの箱に収まるよう`fitTo`(幅、収まらなければ高さ)で描く。描く画素は箱の大きさまでで、宣言の寸法が大きくても確保しない。乗算済みの画素を戻し、`resize`は作り方の寸法、`pad`はキャンバスの中央に置いて白で埋め、PNGにする。
 - 幅・高さ・`viewBox`の無いSVGも、resvgは原点から内容の右下の端までを描く(ブラウザの既定の箱より広い)ため隔離しない。
 - ルートを読めないSVGと、resvgが読み込めない文書(XMLの構文・表示領域の大きさ・要素の数の上限(`<use>`の展開を含む)・UTF-8・gzip)は、恒久的な失敗(`undecodable`)として隔離する。
-- wasm版のresvgは書体を持たないため、ラテン文字の再配布可能な書体(Liberation Sans 2.1.5のRegular、SIL Open Font License 1.1)を同梱し、`fontBuffers`で渡して`<text>`を描く。Wrangler設定の`rules`で`.ttf`をDataのモジュールとして読む。書体を1つだけ渡すため、`font-family`の指定に関わらずこの書体で描かれる。
+- wasm版のresvgは書体を持たないため、ラテン文字の再配布可能な書体(Liberation Sans 2.1.5のRegular、SIL Open Font License 1.1)を同梱し、`fontBuffers`で渡して`<text>`を描く。Wrangler設定の`rules`で`.ttf`をDataのモジュールとして読む。この規則には`"fallthrough": true`を付け、Wranglerの既定のDataの規則(`**/*.bin`)が無視されないようにする(付けないと起動とビルドのたびに既定の規則を無視する旨の警告が出る)。書体を1つだけ渡すため、`font-family`の指定に関わらずこの書体で描かれる。
 - `<image>`のdata URIは、resvgが描くPNG・JPEG・GIFだけを許可リストで許す。
 
 ### 描画の既知の制限

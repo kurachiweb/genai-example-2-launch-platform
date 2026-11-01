@@ -443,18 +443,41 @@ http://localhost:48043/<オブジェクトキー>/<バリアント名>.<拡張�
    infisical --telemetry=false run --env dev -- sh -c 'curl -s -X POST -H "Authorization: Bearer $MEDIA_SMOKE_TOKEN" -H "Content-Type: image/png" -H "x-upload-file-name: media-smoke-640.png" --data-binary @/tmp/media-smoke-640.png http://localhost:48043/internal/media/smoke/images'
    ```
 
+   - Infisicalの注入は、プロジェクトの設定`/workspace/.infisical.yaml`を見つけられる`/workspace`の配下で実行する(配下の外では「Please either run infisical init…」で失敗する)。以降の手順の注入も同じ。
+
 4. 201と本文`{"data":{"fileId":"<ファイルの識別子>",…,"objectKey":"<オブジェクトキー>"}}`が返ることを確かめ、`fileId`と`objectKey`を控える。
 5. 状態を取得し、`moderationStatus`が`passed`、`location`が`images`、`quarantineReasons`と`findings`が空になることを確かめる。判定は非同期のため、`pending`なら数秒おいて取得し直す。
 
    ```sh
+   cd /workspace/apps/event
    infisical --telemetry=false run --env dev -- sh -c 'curl -s -H "Authorization: Bearer $MEDIA_SMOKE_TOKEN" http://localhost:48043/internal/media/smoke/images/<ファイルの識別子>'
    ```
 
 6. 画像のURL(`curl -i http://localhost:48043/<オブジェクトキー>/square-sm.webp`)が200と`Content-Type: image/webp`を返すことを確かめる。
 7. `POST /internal/media/smoke/images/<ファイルの識別子>/quarantine`で隔離し(202)、状態の`location`が`quarantine`・`quarantineReasons`が`["admin_action"]`になった後、画像のURLが404になることを確かめる。`POST …/release`で隔離を解除し(202)、`location`が`images`に戻った後、再び200になることを確かめる。保存先の移動は非同期のため、数秒おいて確かめる。
+
+   ```sh
+   cd /workspace/apps/event
+   infisical --telemetry=false run --env dev -- sh -c 'curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Authorization: Bearer $MEDIA_SMOKE_TOKEN" http://localhost:48043/internal/media/smoke/images/<ファイルの識別子>/quarantine'
+   infisical --telemetry=false run --env dev -- sh -c 'curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Authorization: Bearer $MEDIA_SMOKE_TOKEN" http://localhost:48043/internal/media/smoke/images/<ファイルの識別子>/release'
+   ```
+
 8. 99×99の画像を同じ手順でアップロードし、状態の`moderationStatus`が`flagged`、`location`が`quarantine`、`quarantineReasons`が`["auto"]`、`findings`にカテゴリ`Explicit`・信頼度99の検出があり、画像のURLが404になることを確かめる。
+
+   ```sh
+   cd /workspace/apps/event
+   infisical --telemetry=false run --env dev -- sh -c 'curl -s -X POST -H "Authorization: Bearer $MEDIA_SMOKE_TOKEN" -H "Content-Type: image/png" -H "x-upload-file-name: media-smoke-99.png" --data-binary @/tmp/media-smoke-99.png http://localhost:48043/internal/media/smoke/images'
+   ```
+
 9. `DELETE /internal/media/smoke/images/<ファイルの識別子>`で即時に物理削除し(202)、画像のURLと状態の取得がどちらも404になることを確かめる。
-10. イベントサーバーのログで、判定(カテゴリ`['event', 'media', 'moderation']`)・保存先の移動(`['event', 'media', 'relocation']`)・パージ(`['event', 'media', 'purge']`の「エッジキャッシュをパージしました」。ローカル環境はエッジキャッシュが無いため、何もせず成功する)の記録を確かめる。
+
+   ```sh
+   cd /workspace/apps/event
+   infisical --telemetry=false run --env dev -- sh -c 'curl -s -o /dev/null -w "%{http_code}\n" -X DELETE -H "Authorization: Bearer $MEDIA_SMOKE_TOKEN" http://localhost:48043/internal/media/smoke/images/<ファイルの識別子>'
+   ```
+
+10. イベントサーバーのログで、判定(カテゴリ`['event', 'media', 'moderation']`)・保存先の移動(`['event', 'media', 'relocation']`)・パージ(`['event', 'media', 'purge']`の「エッジキャッシュをパージしました」と件数`purgedCount`。ローカル環境はエッジキャッシュが無いため、何もせず成功する)の記録を確かめる。
+    - `relocation`のログ(「保存先をそろえました」)は、管理者の操作の隔離・解除(手順7)でだけ出る。判定による隔離(手順8)の保存先の移動は、判定の処理の中で行い、判定のログ(「画像の判定を終えました」)の`moved`に移動した件数が記録される。
 
 | 応答                              | 原因と対処                                                                                                                              |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |

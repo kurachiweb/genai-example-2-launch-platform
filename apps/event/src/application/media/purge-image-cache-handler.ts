@@ -43,7 +43,7 @@ export class PurgeImageCacheHandler implements MessageHandler<PurgeImageCacheBod
       throw new ImageCachePurgeError(result.errorCodes);
     }
     logger.info('エッジキャッシュをパージしました', {
-      objectKeys: body.objectKeys.length,
+      purgedCount: body.objectKeys.length,
     });
     return { kind: 'done' };
   }
