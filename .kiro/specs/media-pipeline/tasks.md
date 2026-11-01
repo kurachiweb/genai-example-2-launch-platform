@@ -183,7 +183,7 @@
   - _Boundary: ModerationImagePlan, PngEncoder_
   - _Requirements: 6.2, 6.3, 6.4_
 
-- [ ] 6.3 (P) SVGの許可リスト検査を作る
+- [x] 6.3 (P) SVGの許可リスト検査を作る
   - 先に、Inkscape・Illustrator・Figma・Affinityの書き出しの標本が許可され、`script`・`foreignObject`・`on`で始まる属性(編集ソフトの名前空間を含む)・断片以外の`href`・`javascript:`・`url()`の外部参照・`@import`・`xml-stylesheet`・`set`と`animate`・`feImage`・許可外のdata URI・違反の要素名と属性名だけが記録されることを確かめる単体テストを書く
   - 実体を展開しない設定と入れ子の上限でXMLを解析し、設計の許可リストの表で検査する
   - 完了状態: 単体テストが成功し、技術ドキュメントに載せる許可リストの一覧と実装の表が一致する
@@ -378,3 +378,4 @@
 - 5.6: apiの束縛は`apps/api/src/composition/media-module.ts`(`API_MEDIA_PLATFORM_MODULE`・`createApiMediaModule`・`API_MEDIA_MODULE`)、登録箇所は`upload-purposes.ts`・`file-read-policies.ts`(空)・`media-review-policy.ts`(`MEDIA_REVIEW_POLICY_BINDINGS`、全拒否)・`uploader-eligibility.ts`(全許可)。差し替えられる既定値の期待値は`apps/api/test/config/media-registrations.unit.test.ts`の1か所だけ(identity-authの8.5・ugc-moderationが直すのはこのファイル)。閲覧の方針の登録先の検査`assertFileReadPolicyRegistrations`はモジュールの読み込み時に実行する。手書きのGraphQLのモデルと生成型の一致は`mappers.unit.test.ts`の`expectTypeOf`。検索の2つのworkerテストは4:21のジョブ名を完全一致で列挙しており、4:21のジョブを足すspecが直す必要がある
 - 6.1: eventのポートと`EVENT_MEDIA_TYPES`(5種)は`apps/event/src/application/media/ports.ts`。ImageSource・ImageTransformerも`ports.ts`にあり(設計のService Interfaceのコメントの`image-delivery.ts`ではない)、7.2はここから読む。設定の解析`parseModerationConfig`はカテゴリの空の値・空の項目・重複・大文字小文字の違いを失敗にする(空の集合で判定が黙って無効になるのを防ぐ。開発者の確認待ち)。`judgeLabels`は`parentName`をたどり、応答に無い親の名前を最上位とみなす(第3階層だけが返った場合は最上位を求められない。6.5で`taxonomyLevel`の扱いを検討)。代替の判定の規則は`decideStubModeration`(寸法だけを受け取る。判定用画像の寸法の読み取りは6.5)
 - 6.2: `planModerationImage`・`MODERATION_IMAGE_LIMITS`は`application/media/moderation-image-plan.ts`、`padRgba`・`encodePng`は`png-encoder.ts`(`CompressionStream('deflate')`はWHATWGの仕様でzlib形式。workerdでの実物の確認は6.6で余白の経路を通して行う)。寸法の無いSVGの640×640は6.4が渡す。6.6への申し送り: 計画の寸法はEXIFの向き5〜8で入れ替えた後の表示上の寸法なので、`optimizeImage`が向きを適用しない場合は描画の結果と食い違う。小さいSVGは拡大せず80×80の余白の中央に置く
+- 6.3: `inspectSvg`は`application/media/svg-allowlist.ts`、表は`svg-allowlist-table.ts`の`SVG_ALLOWLIST`(`svg-allowlist-document.unit.test.ts`がdesign.mdの表と照合。9.1で`security/005`へ切り替える)。名前空間は接頭辞から宣言先をたどって判定する。CSSはコメントを除かずに検索し(コメントの中の`url(`も保守側に検出)、CDATAの中は文字参照を戻さない。違反の記録は先頭50件(`SVG_MAX_RECORDED_VIOLATIONS`、切り詰めの印は無い)。設計の表に無い調整: `data-*`属性の許可、Sodipodi・Creative Commonsの旧URI、`image-set(`・`src(`の検出(9.1で`security/005`の一覧に載せる)。標本のAffinity・Illustratorの「別名で保存」はDOCTYPE・実体の参照を除いた形(受付を通らないため)。Objectのプロトタイプと同じ名前は`__toString`などで記録される
