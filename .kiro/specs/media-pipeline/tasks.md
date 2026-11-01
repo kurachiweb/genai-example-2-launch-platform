@@ -62,7 +62,7 @@
   - _Depends: 1.4_
   - _Requirements: 1.1, 1.2, 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 3.2 (P) マジックバイトの表と、寸法の読み取り・画素数の上限を作る
+- [x] 3.2 (P) マジックバイトの表と、寸法の読み取り・画素数の上限を作る
   - 先に、JPEG・PNG・GIF・WebP・PDFの判定と偽装(PNGの申告にJPEGの本文)、JPEGの向き1〜8での幅と高さ、SVGの幅・高さ・viewBoxと寸法なし、判定した形式と申告の不一致、先頭1MiBに寸法が無い画像、1,600万画素と各辺12,000pxの境界を確かめる単体テストを書く
   - 寸法の読み取りは判定する形式を5形式に絞り、向き5〜8で幅と高さを入れ替える
   - 完了状態: 単体テストが成功し、標本の画像(各形式・向き付きJPEG)で期待どおりの寸法と判定が返る
@@ -361,3 +361,4 @@
 - 2.1: `UploadedFile.contentType`・`MediaFileView.contentType`は`MediaType`(引数無し)で、引数付きの文字列(`text/plain; charset=utf-8`)は記録の`NewMediaFileRecord`とD1の列だけ。記録から画面向けの型へ変換する4.x・5.xで引数を除く。`parseMediaType`は`text/plain`のcharset以外の引数を無視する(SVGのUTF-8の検査は3.3)。`downloadPathOf`は識別子を百分率符号化する。`media/`は外部パッケージと共用部品の他のディレクトリを読み込まない(`config/import-boundary.unit.test.ts`)。配置先の`common-lib`が古い時は`bun run shared-dirs:place`で配置し直す
 - 2.2: `image-variants.unit.test.ts`はサービス仕様`002-image-variants.md`の「バリアント一覧」「出力フォーマット」の表を読んで照合する(9.2で表の形を変えない)。設計に無い型の別名`ImageFit`・`ImageOriginal`・`ScreenshotDisplayKind`を公開した。`IMAGE_PATH_PATTERN`はキーの`[0-9a-f]{32}`を`OBJECT_KEY_PATTERN`と別に書いている。`buildImagePath`はキーの形式を検証しない
 - 3.1: `backend-lib/core/media`からcommon-libは兄弟の相対パス`../../../common-lib/media/...`で読む(`core/search`と同じ)。`precheckUpload`は拒否(`AppError`の引数)を返し、413・415の文言は用途の表示名が無いため用途を省いて上限・形式の一覧から作る。`Content-Length`は数字だけを受け、安全な整数を超える桁は413。登録表`createUploadPurposeRegistry`は名前の重複だけを検査する(各定義は`defineUploadPurpose`を通す前提)。`MEDIA_SMOKE_PURPOSE`は主体の種類が空で、`defineUploadPurpose`を通さない定数
+- 3.2: `image-size` 2.0.4はJPEGの走査で毎バイト`slice()`を複製し、壊れた本文で時間が長さの2乗になる(1MiBで約40秒)ため、`readImageDimensions`は先頭1MiBを1度だけ複製し`slice()`が`subarray()`を返す派生クラスで渡す(`image-size`は`.buffer`からDataViewで長さ無しに読むため、呼び出し元のバッファを共有しない)。`disableTypes`で5形式に絞る設定はisolate全体に効く(他の`image-size`の利用はPNGだけ)。SVGの寸法なしとラスターの読めないはどちらも`undefined`で、3.9と3.7の振り分けと`detectSignature`と申告の比較は4.3で行う。`image-size`のSVGの寸法の読み取りは正規表現で先頭1000文字の`<svg`しか判定しないため、3.3の構文の検査の後に呼ぶ
