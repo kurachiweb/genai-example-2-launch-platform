@@ -175,15 +175,16 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
   - 公開は2026-09-13で、公開から2週間以上経っている。
 - **Implications**: 判定用の画像は、縮小だけなら`optimizeImage()`の`png`・`jpeg`で作る。余白が要る場合は`raw`で縮小した画素を受け取り、余白を足してPNGに符号化する(PNGの符号化は`CompressionStream('deflate')`を使う数十行の自前の部品にする)。Workers統合テストでwasmが読めない場合は、描画の部品を注入できる形にして、実物の確認をローカルの`wrangler dev`の動作確認へ回す。
 
-### image-size 2.0.4・fast-xml-parser 5.11.2・aws4fetch 1.0.20・react-easy-crop 6.2.4
+### image-size 2.0.4・fast-xml-parser 5.11.2・fast-xml-validator 1.4.2・aws4fetch 1.0.20・react-easy-crop 6.2.4
 
 - **Sources Consulted**: 各パッケージの配布物の`package.json`と型定義。
 - **Findings**:
   - `image-size`: 依存無し。`imageSize(input: Uint8Array)`が`{ width, height, orientation?, type? }`を返し、`disableTypes()`で判定する形式を絞れる。`fromFile`の入口だけがNode.jsのファイルAPIを使う。
-  - `fast-xml-parser`: ESMの入口`src/fxp.js`。`XMLValidator.validate()`と`XMLParser`(`preserveOrder`・`ignoreAttributes`・`processEntities`・`maxNestedTags`など)を持つ。依存は`@nodable/entities`・`strnum`など純粋なJSである。
+  - `fast-xml-parser`: ESMの入口`src/fxp.js`。`XMLParser`(`preserveOrder`・`ignoreAttributes`・`processEntities`・`maxNestedTags`など)を持つ。依存は`@nodable/entities`・`strnum`など純粋なJSである。`XMLValidator`と`XMLParser.parse`の検証の引数は5.11.2で非推奨になり、型定義が`fast-xml-validator`を後継に名指しする(開発者の決定(2026-11-01)で構文の検査を`fast-xml-validator`へ移した。下の節)。
+  - `fast-xml-validator`: 同じ作者のパッケージ。ESMの入口`src/fxv.js`が`SyntaxValidator`と`BusinessRulesValidator`を公開する。依存は`detailed-xml-validator`・`path-expression-matcher`・`xml-naming`の純粋なJSである。
   - `aws4fetch`: 依存無し。`worker`条件の入口があり、`AwsClient`の`fetch`でSigV4に署名する。
   - `react-easy-crop`: 相手依存はReact・ReactDOM 16.4以上、依存は`normalize-wheel`。`onCropComplete`が切り取り範囲の画素座標(`croppedAreaPixels`)を返し、`keyboardStep`でキーボード操作の移動量を指定できる。
-- **Implications**: `image-size`と`fast-xml-parser`はapi・eventの両方(共有の`backend-lib`から使う)、`wasm-image-optimization`と`aws4fetch`はeventだけ、`react-easy-crop`はclient・admin・frontend-libに版を固定して宣言する。`image-size`の`fromFile`は使わない。
+- **Implications**: `image-size`と`fast-xml-parser`・`fast-xml-validator`はapi・eventの両方(共有の`backend-lib`から使う)、`wasm-image-optimization`と`aws4fetch`はeventだけ、`react-easy-crop`はclient・admin・frontend-libに版を固定して宣言する。`image-size`の`fromFile`は使わない。
 
 ### 参照したスキル
 
@@ -304,7 +305,7 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
   - 隔離・復元・削除後のパージ・日次の食い違いの修復を、「目的の保存先へそろえる」1つの処理で表す。
   - 未使用・論理削除の期限切れ・削除待ちの3種の物理削除を、1つの`MediaEraser`で行う。
 - **Build vs Adopt**:
-  - 採用: Images Binding・Workers Cache・R2の条件付き書き込み(プラットフォーム機能)、`image-size`(寸法)、`fast-xml-parser`(SVGの構文と構造)、`wasm-image-optimization`(判定用画像)、`aws4fetch`(SigV4)、`react-easy-crop`(切り取りのUI)。
+  - 採用: Images Binding・Workers Cache・R2の条件付き書き込み(プラットフォーム機能)、`image-size`(寸法)、`fast-xml-parser`(SVGの構造)、`fast-xml-validator`(SVGの構文)、`wasm-image-optimization`(判定用画像)、`aws4fetch`(SigV4)、`react-easy-crop`(切り取りのUI)。
   - 自作: マジックバイトの表(5形式とPDFで数行、Q6)、SVGの許可リスト(製品ごとに要る値の表)、元のファイル名の整形と`Content-Disposition`の組み立て(RFC 6266・5987の小さな関数)、余白付きの判定用画像のPNG符号化(`CompressionStream`で数十行。新規パッケージを避ける)。
   - 不採用: `file-type`(決定Q6)、DOMPurifyなどによるSVGの書き換え(原本を変えない方針。判定と隔離で扱う)。
 - **Simplification**:
@@ -512,3 +513,16 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
   - 必須の3件目: 大文字から拡張子への変換と`MediaImageView`の定義の受け持ちを、`PictureSources`を持つ8.2へ移した。
   - 軽微の4件は次のように直した。1.4の更新する文書に`backend/005-public-rest-api.md`の状態コードの列挙を加えた。8.4に`optimizeDeps.include`のエディタ専用の一覧とは別の項目へ加えることと、完了の確かめ方を加えた。10.2の古い前提を直した。1.3で改める2つのテスト名を挙げた。
   - 2回目はPASSだった。軽微の指摘5件に従って直した。設計のImpactの管轄の古い記述を改め、ファイル構成の`picture-sources.ts`の注記に`MediaImageView`・`MediaImageFallbackFormat`を加えた。8.5・8.6の完了状態にStorybookのカタログの検査を加え、10.2のマージ前の手作業にInfisical(dev)への動作確認のトークンの登録を加え、1.4の完了状態に上流specへの改訂の記録を加えた。タスクの承認(`approvals.tasks.approved: true`)を保ち、`ready_for_implementation`を`true`にした。
+
+## 実装中の開発者の決定(2026-11-01、タスク1.1)
+
+- **論点**: `fast-xml-parser` 5.11.2の`XMLValidator`は型定義で`@deprecated Use fast-xml-validator instead`とされ、基底の静的解析の規則`@typescript-eslint/no-deprecated`(`error`)に報告される。`XMLParser.parse`の第2引数での検証も同じく非推奨である。
+- **開発者の決定(2026-11-01)**: SVGの構文の検査を`fast-xml-validator` 1.4.2(`SyntaxValidator`)へ移し、api・eventに版を固定して加える。構造の検査は引き続き`fast-xml-parser`の`XMLParser`(`processEntities: false`)で行う。採らなかった案は、`XMLValidator`を静的解析の抑止付きで使い続ける案(次のメジャー版で消えるおそれ)と、構文の検査をやめて`XMLParser`に頼る案(`XMLParser`は寛容で要件7の守りが弱まる)である。
+- **配布物の型定義と実装で確かめた振る舞い**(タスク3.3の前提。`apps/api/test/packages/media-packages.unit.test.ts`(Bun)と`apps/event/src/infrastructure/media/media-packages.worker.test.ts`(workerd)で確かめた):
+  - `SyntaxValidator.validate(xml: string, options?)`は、整形式なら`true`を返し、不正なら`Error`の派生(`name`が`ValidationError`、`code`・`line`・`col`を持つ)を投げる。型定義は戻り値を`true`だけとし、`ValidationError`型を`{ err: { code, msg, line, col } }`と書くが、実装はその形を返さない。派生クラスは公開されないため、`instanceof`ではなく例外の捕捉で判定する。
+  - `multipleRoots`は型定義の注記では既定`false`だが、実装の既定値は`true`である。最上位の要素を1つに限るには`multipleRoots: false`を明示する。
+  - `allowBooleanAttributes`の既定は`false`で、値の無い属性を拒否する。
+  - DOCTYPEと内部サブセットのENTITYの宣言は構文として受け入れ、件数と大きさの上限(`docType.maxEntityCount`・`maxEntitySize`)の既定は無制限である。そのため、設計どおり検証の前に`<!DOCTYPE`・`<!ENTITY`を大文字小文字を問わず探して`svg_declaration_not_allowed`で拒否する。
+  - 最上位の要素の名前は検査しない。最上位が`svg`かは`XMLParser`の結果で確かめる。
+  - 入力は文字列だけを受ける。先頭のBOMは読み飛ばす。要素が1つも無ければ`Start tag expected.`で失敗する。
+- **反映した箇所**: design.mdのTechnology Stack・Modified Files・コンポーネントの依存の表・SVGの検査の記述、本書のResearch Log、`docs/onboardings/tech-stack.md`、`docs/GUIDES/tech/coding/002-dependency-versions.md`。

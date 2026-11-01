@@ -1,11 +1,11 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 前提の確認・依存パッケージ・テーブル・Wrangler設定
-- [ ] 1.1 前提を確かめ、依存パッケージを版固定で導入し、workerdとBunで読めることを確かめる
+- [x] 1.1 前提を確かめ、依存パッケージを版固定で導入し、workerdとBunで読めることを確かめる
   - 前提: backend-platform・api-gateway・frontend-platformの全タスクと、content-processingが下流向けに示す最小の区切りが完了していること(仮決定2、roadmapの順はcontent-processing→media-pipeline。N-3)。区切りは、content-processingのタスク1.1(共有ディレクトリの定義への共用部品の追加)・1.2(共用部品のプロジェクトと読み込みの境界)・4.1(APIサーバーとイベントサーバーへの組み込み)・4.2(利用者側・管理者側とfrontend-libへの組み込み。兄弟の相対パスの検査と開発サーバーの配信の許可を含む)・6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`validation/**`の禁止の静的解析の規則)、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成である
   - `server/**`の許可(M-2)は、content-processingの6.1の単体テストの成功と`coding/003`の記述で確かめる。日次タイムラインの表を除く前提が無ければ止めて報告する。日次タイムラインの表が無いことを理由には止めず、タスク9.2で作る
   - 先に、`image-size`と`fast-xml-parser`をimportして小さな画像の寸法とXMLの検証を行うBunの単体テストと、`wasm-image-optimization/workerd`で小さなPNGを縮小するイベントサーバーのWorkers統合テストを書き、失敗を確かめる
-  - api・eventに`image-size` 2.0.4・`fast-xml-parser` 5.11.2、eventに`wasm-image-optimization` 2.0.11・`aws4fetch` 1.0.20、client・admin・frontend-libに`react-easy-crop` 6.2.4を、完全に固定した版で導入する。eventのテスト設定が`.wasm`をモジュールとして読めない場合は、読み込みの規則を加える
+  - api・eventに`image-size` 2.0.4・`fast-xml-parser` 5.11.2・`fast-xml-validator` 1.4.2(開発者の決定(2026-11-01)。`fast-xml-parser`の`XMLValidator`が非推奨のため、構文の検証を移す)、eventに`wasm-image-optimization` 2.0.11・`aws4fetch` 1.0.20、client・admin・frontend-libに`react-easy-crop` 6.2.4を、完全に固定した版で導入する。eventのテスト設定が`.wasm`をモジュールとして読めない場合は、読み込みの規則を加える
   - client・admin・frontend-libの`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)に`react-easy-crop`を加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)
   - 同じ変更で、tech-stack.mdの画像処理に`image-size`を加えて各パッケージの役割を更新し、依存パッケージの版の一覧に、api・eventでそろえる2つとclient・admin・frontend-libでそろえる`react-easy-crop`を加える
   - 完了状態: 2つのテストが成功し、ロックファイルの版が設計の表と一致し、tech-stack.mdと版の一覧に新しいパッケージが載っている
@@ -352,3 +352,7 @@
     - launch-readinessへの引き継ぎ: prodのアクセスキーの登録(prodの値はlaunch-readinessがリリース時に登録する。prodには動作確認のトークンを登録しない)、画像変換の無料枠と費用の判断
   - 完了状態: 一括検査と一括テストが成功してカバレッジが閾値を満たし、手作業の一覧(マージ前・マージ後・引き継ぎの区分)が報告に含まれている
   - _Requirements: 11.6, 16.3, 17.1_
+
+## Implementation Notes
+
+- 1.1: 開発者の決定(2026-11-01)で、SVGの構文の検証は`fast-xml-parser`の非推奨の`XMLValidator`ではなく`fast-xml-validator` 1.4.2の`SyntaxValidator.validate(xml, options)`を使う。整形式なら`true`、不正なら`name: 'ValidationError'`・`code`・`line`・`col`を持つ例外を投げる(型定義の`{ err }`の戻り値とは違い、派生クラスは非公開のため`try/catch`で判定)。型定義の注記と違い`multipleRoots`の既定は`true`のため`multipleRoots: false`を明示する。DOCTYPE・ENTITYは受け入れ、最上位の要素の名前も検査しないため、3.3は事前の宣言の拒否と`XMLParser`での最上位の確認が要る。`wasm-image-optimization/workerd`はeventのWorkers統合テストから読み込みの規則無しで読める。パッケージの確認のテストは`apps/api/test/packages/`と`apps/event/src/infrastructure/media/media-packages.worker.test.ts`

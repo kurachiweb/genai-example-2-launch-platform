@@ -34,6 +34,7 @@ const PREBUNDLED_DEPENDENCIES = [
   '@tanstack/react-query',
   'jotai/vanilla',
   '@marsidev/react-turnstile',
+  'react-easy-crop',
   'unified',
   'remark-parse',
   'remark-gfm',

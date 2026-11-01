@@ -67,8 +67,10 @@
 
 ### 画像処理
 
-- wasm-image-optimization(画像のデコード・フォーマット変換・リサイズ)
-- fast-xml-parser(SVGの構文チェック・自前検索ルールによるスクリプトの検出)
+- image-size(アップロードされた画像の先頭部分からの幅・高さの読み取り、APIサーバーとイベントサーバーで使用)
+- wasm-image-optimization(判定用の画像のデコード・PNGへの変換・縮小・RGBAの画素の取り出し、`wasm-image-optimization/workerd`の入口をイベントサーバーだけで使用)
+- fast-xml-validator(SVGの構文の検査(`SyntaxValidator`)、APIサーバーとイベントサーバーで使用)
+- fast-xml-parser(実体参照を展開しない解析(`XMLParser`の`processEntities: false`)による最上位の要素と要素・属性の許可リストの検査、APIサーバーとイベントサーバーで使用)
 
 ### アーカイブ生成
 
@@ -137,7 +139,7 @@
 
 ### 画像編集UI
 
-- react-easy-crop
+- react-easy-crop(アップロード前の編集ダイアログでの画像の切り取りと拡大縮小)
 
 ### フォーム・バリデーション
 
