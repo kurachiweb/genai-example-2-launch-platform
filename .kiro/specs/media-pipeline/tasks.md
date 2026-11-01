@@ -53,7 +53,7 @@
   - _Requirements: 10.1, 10.4, 10.6, 10.7, 15.1, 15.2_
 
 - [ ] 3. 受付の純粋な規則(`backend-lib/core/media`、Bunの単体テスト)
-- [ ] 3.1 (P) 用途の定義・登録表と、ヘッダーの事前検証を作る
+- [x] 3.1 (P) 用途の定義・登録表と、ヘッダーの事前検証を作る
   - 先に、用途の名前の形式・保存先と許可形式の範囲・主体の種類の空・上限の範囲(全用途は20,971,520バイトちょうどを受け付け1バイト超を拒否し、画像用は20,000,000バイトちょうどを受け付け1バイト超を拒否する)・名前の重複の違反と、事前検証の411→400→413→415の順序と境界(上限ちょうど・1バイト超・0・数値でない値)を確かめる単体テストを書く
   - 動作確認用の固定の用途を、登録表に入れない定数として用意する
   - 拒否は状態コードではなく`AppError`の種類(`length_required`・`bad_request`・`payload_too_large`・`unsupported_media_type`など)で表す
@@ -360,3 +360,4 @@
 - 1.3: eventの`exports`(`ImageDelivery`)はトップレベルに書き、staging・prodへ継承される。`ImageDelivery`は7.3までエクスポートされない(Wranglerは名前付きのworkerのエクスポートの存在を検査しない。デプロイで受け付けられるかはstagingで確かめる)。`wrangler types`は7.3の後に生成し直す。メディアの設定の単体テストは`apps/api/test/config/media-wrangler-config.unit.test.ts`。Workers統合テストの変数は画像配信のホスト名`images.test.example`・専用ホスト`true`・`stub`・閾値60・全10カテゴリで、`MODERATION_REGION`はWrangler設定の値を使う
 - 2.1: `UploadedFile.contentType`・`MediaFileView.contentType`は`MediaType`(引数無し)で、引数付きの文字列(`text/plain; charset=utf-8`)は記録の`NewMediaFileRecord`とD1の列だけ。記録から画面向けの型へ変換する4.x・5.xで引数を除く。`parseMediaType`は`text/plain`のcharset以外の引数を無視する(SVGのUTF-8の検査は3.3)。`downloadPathOf`は識別子を百分率符号化する。`media/`は外部パッケージと共用部品の他のディレクトリを読み込まない(`config/import-boundary.unit.test.ts`)。配置先の`common-lib`が古い時は`bun run shared-dirs:place`で配置し直す
 - 2.2: `image-variants.unit.test.ts`はサービス仕様`002-image-variants.md`の「バリアント一覧」「出力フォーマット」の表を読んで照合する(9.2で表の形を変えない)。設計に無い型の別名`ImageFit`・`ImageOriginal`・`ScreenshotDisplayKind`を公開した。`IMAGE_PATH_PATTERN`はキーの`[0-9a-f]{32}`を`OBJECT_KEY_PATTERN`と別に書いている。`buildImagePath`はキーの形式を検証しない
+- 3.1: `backend-lib/core/media`からcommon-libは兄弟の相対パス`../../../common-lib/media/...`で読む(`core/search`と同じ)。`precheckUpload`は拒否(`AppError`の引数)を返し、413・415の文言は用途の表示名が無いため用途を省いて上限・形式の一覧から作る。`Content-Length`は数字だけを受け、安全な整数を超える桁は413。登録表`createUploadPurposeRegistry`は名前の重複だけを検査する(各定義は`defineUploadPurpose`を通す前提)。`MEDIA_SMOKE_PURPOSE`は主体の種類が空で、`defineUploadPurpose`を通さない定数
