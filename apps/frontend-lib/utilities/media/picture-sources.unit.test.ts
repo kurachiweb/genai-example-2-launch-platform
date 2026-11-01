@@ -5,6 +5,7 @@ import {
   fallbackExtensionOf,
   type MediaImageFallbackFormat,
   type MediaImageView,
+  pictureSizeOf,
 } from './picture-sources.ts';
 
 const ORIGIN = 'https://images.example';
@@ -207,5 +208,32 @@ describe('<picture>の候補の組み立て', () => {
         display: { kind: 'screenshot', variant: 'thumb' },
       }).img,
     ).toMatchObject({ width: 480, height: 1 });
+  });
+});
+
+describe('表示する寸法', () => {
+  test('正方形は、画像の有無によらず表示サイズにする', () => {
+    expect(pictureSizeOf({ kind: 'square', size: 128 }, null)).toEqual({
+      width: 128,
+      height: 128,
+    });
+    expect(
+      pictureSizeOf({ kind: 'square', size: 32 }, { width: 900, height: 300 }),
+    ).toEqual({ width: 32, height: 32 });
+  });
+
+  test('スクリーンショットは、<img>と同じく1xの上限と原本の縦横比から求める', () => {
+    expect(
+      pictureSizeOf(
+        { kind: 'screenshot', variant: 'thumb' },
+        { width: 1920, height: 1080 },
+      ),
+    ).toEqual({ width: 480, height: 270 });
+  });
+
+  test('画像の無いスクリーンショットは、1xの上限の正方形にする', () => {
+    expect(
+      pictureSizeOf({ kind: 'screenshot', variant: 'full' }, null),
+    ).toEqual({ width: 1920, height: 1920 });
   });
 });

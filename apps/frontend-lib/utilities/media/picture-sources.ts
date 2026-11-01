@@ -47,7 +47,7 @@ export interface PictureSourcesInput {
   readonly display: PictureDisplay;
 }
 
-interface Size {
+export interface PictureSize {
   readonly width: number;
   readonly height: number;
 }
@@ -73,8 +73,12 @@ const isPositive = (value: number | null): value is number =>
   value !== null && value > 0;
 
 // スクリーンショットのバリアントは縮小だけのため、上限の正方形に収まるよう縮め、上限より小さい原本は拡大しない
-const fittedSize = (limit: number, image: MediaImageView): Size => {
-  const { width, height } = image;
+const fittedSize = (
+  limit: number,
+  image: Pick<MediaImageView, 'width' | 'height'> | null,
+): PictureSize => {
+  const width = image?.width ?? null;
+  const height = image?.height ?? null;
   if (!isPositive(width) || !isPositive(height)) {
     return { width: limit, height: limit };
   }
@@ -85,14 +89,14 @@ const fittedSize = (limit: number, image: MediaImageView): Size => {
   };
 };
 
-const displaySizeOf = (
+// 画像が無い・表示できない場合のプレースホルダーも、<img>と同じ寸法にしてレイアウトのずれを防ぐ
+export const pictureSizeOf = (
   display: PictureDisplay,
-  variants: DisplayVariants,
-  image: MediaImageView,
-): Size =>
+  image: Pick<MediaImageView, 'width' | 'height'> | null,
+): PictureSize =>
   display.kind === 'square'
     ? { width: display.size, height: display.size }
-    : fittedSize(IMAGE_VARIANTS[variants.x1].width, image);
+    : fittedSize(IMAGE_VARIANTS[variantsOf(display).x1].width, image);
 
 export const buildPictureSources = (
   input: PictureSourcesInput,
@@ -105,7 +109,7 @@ export const buildPictureSources = (
     variants.x2 === undefined
       ? urlOf(variants.x1, extension)
       : `${urlOf(variants.x1, extension)} 1x, ${urlOf(variants.x2, extension)} 2x`;
-  const size = displaySizeOf(display, variants, image);
+  const size = pictureSizeOf(display, image);
   const fallback = fallbackExtensionOf(image.fallbackFormat);
   if (fallback === 'svg') {
     return {

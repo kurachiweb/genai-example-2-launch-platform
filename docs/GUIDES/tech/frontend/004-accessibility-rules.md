@@ -125,6 +125,7 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 | ファイルのドラッグ中                         | `FileDropZone`                                     | 枠の色と、案内の文言の変更                                                                                                                                                                                                                                   |
 | 画像の切り取り                               | `ImageCropDialog`                                  | 範囲の`role="group"`の名前とキー操作の説明の`aria-describedby`、拡大率の`aria-valuetext`(百分率)、読み込み中は`role="status"`の見えない文言、読み込み・作り直しの失敗は`role="alert"`の文言、作り直し中は確定のボタンの`aria-busy`と文言の変更               |
 | ファイルの検査と送信の結果                   | `ImageUploadField`・`AttachmentUploadField`        | 最初から置いた`aria-live="polite"`の領域で、エラーの文言(選択のボタンへ`aria-describedby`で結び付け、`aria-invalid`を付ける)か、送信中・成功の見えない文言を入れ替える。送信中は選択のボタンの`aria-disabled`・`aria-busy`と、一覧のファイルごとの状態の文言 |
+| 表示できない画像                             | `MediaPicture`(`MediaPlaceholder`)                 | プレースホルダーの`role="img"`と、`alt`を名前にする(スクリーンショットは`alt`に「(<表示できないことを示す文>)」を添えた名前)。`alt`が空の飾りの画像は、プレースホルダーも`aria-hidden`にする                                                                 |
 
 - `Skeleton`自体は`aria`を持たない。読み込み中の表示には`Skeleton`を直接置かず、`LoadingSkeleton`で包む。
 - トーストは一定の時間で消え、丁寧な通知で伝える。利用者の対応が要る失敗はトーストだけで伝えず、`ErrorState`・`PartialErrorState`か、フォームの`role="alert"`の表示で示す。トーストは操作の結果の通知に使う。

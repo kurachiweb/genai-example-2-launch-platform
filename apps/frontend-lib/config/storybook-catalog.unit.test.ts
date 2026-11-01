@@ -41,6 +41,11 @@ const INTERNAL_COMPONENTS: Readonly<Record<string, InternalComponent>> = {
     reason:
       '選んだファイルの一覧の各行に置く縮小の表示で、画像と画像でないファイルの表示を一覧のストーリーで確かめる',
   },
+  'components/media/media-placeholder.tsx': {
+    parent: 'components/media/media-picture.tsx',
+    reason:
+      '画像の表示部品が未設定・隔離中・読み込みの失敗のときに描く代わりの表示で、正方形とスクリーンショットの表示を画像の表示部品のストーリーで確かめる',
+  },
   'components/media/upload-field-frame.tsx': {
     parent: 'components/media/attachment-upload-field.tsx',
     reason:
