@@ -30,7 +30,7 @@ const CATEGORY_SEPARATOR = ',';
 const isModerationCategory = (value: string): value is ModerationCategory =>
   (MODERATION_CATEGORIES as readonly string[]).includes(value);
 
-const parseMinConfidence = (value: string): number => {
+export const parseMinConfidence = (value: string): number => {
   const confidence = Number(value);
   if (!MIN_CONFIDENCE_PATTERN.test(value) || confidence > MAX_CONFIDENCE) {
     throw new Error(
@@ -40,7 +40,7 @@ const parseMinConfidence = (value: string): number => {
   return confidence;
 };
 
-const parseBlockedCategories = (value: string): readonly string[] => {
+export const parseBlockedCategories = (value: string): readonly string[] => {
   const categories = value.split(CATEGORY_SEPARATOR).map((item) => item.trim());
   const invalid = categories.filter((item) => !isModerationCategory(item));
   if (invalid.length > 0) {

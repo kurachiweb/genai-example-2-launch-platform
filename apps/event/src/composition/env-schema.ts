@@ -10,9 +10,19 @@ import type { QueueConsumerEnv } from '../../lib/workers/messaging/queue-consume
 import type { SendEmailBindingLike } from '../infrastructure/email/providers/cloudflare-email-provider.ts';
 import type { EventEmailEnv } from '../infrastructure/email/providers/create-email-provider.ts';
 import type { EventKeywordExtractorEnv } from '../infrastructure/search/create-keyword-extractor.ts';
+import {
+  type EventMediaEnv,
+  type MediaConditionalKey,
+  mediaEnvShape,
+  requiredMediaConditionalKeys,
+} from './media-env.ts';
 
 export interface EventPlatformEnv
-  extends QueueConsumerEnv, EventEmailEnv, EventKeywordExtractorEnv {
+  extends
+    QueueConsumerEnv,
+    EventEmailEnv,
+    EventKeywordExtractorEnv,
+    EventMediaEnv {
   readonly IMAGES: ImagesBinding;
   readonly EMAIL_FROM_ADDRESS: string;
   readonly EMAIL_EVENTS_QUEUE_NAME: string;
@@ -22,13 +32,17 @@ type ConditionalKey =
   | 'MAILPIT_API_URL'
   | 'EMAIL'
   | 'EMAIL_ALLOWED_RECIPIENTS'
-  | 'GOOGLE_NL_API_KEY';
+  | 'GOOGLE_NL_API_KEY'
+  | MediaConditionalKey;
 
-// 送信プロバイダ・宛先の制限の方針・キーワード抽出の実装ごとに、動作に欠かせない設定のキー
+// 送信プロバイダ・宛先の制限の方針・キーワード抽出の実装・判定サービスの実装ごとに、動作に欠かせない設定のキー
 function requiredConditionalKeys(
   env: Pick<
     EventPlatformEnv,
-    'EMAIL_PROVIDER' | 'EMAIL_RECIPIENT_POLICY' | 'KEYWORD_EXTRACTOR'
+    | 'EMAIL_PROVIDER'
+    | 'EMAIL_RECIPIENT_POLICY'
+    | 'KEYWORD_EXTRACTOR'
+    | 'MODERATION_PROVIDER'
   >,
 ): readonly ConditionalKey[] {
   return [
@@ -40,6 +54,7 @@ function requiredConditionalKeys(
     ...(env.KEYWORD_EXTRACTOR === 'google-natural-language'
       ? (['GOOGLE_NL_API_KEY'] as const)
       : []),
+    ...requiredMediaConditionalKeys(env),
   ];
 }
 
@@ -59,6 +74,7 @@ export const eventEnvSchema = z
     EMAIL_ALLOWED_RECIPIENTS: z.string().min(1).optional(),
     KEYWORD_EXTRACTOR: z.enum(['google-natural-language', 'disabled']),
     GOOGLE_NL_API_KEY: z.string().min(1).optional(),
+    ...mediaEnvShape,
   })
   // 他のキーに不備があっても条件付きの必須キーの欠落を一緒に報告するよう、環境がオブジェクトなら検査する。問題の経路にキーを入れ、欠けたキーとして分類させる
   .check(

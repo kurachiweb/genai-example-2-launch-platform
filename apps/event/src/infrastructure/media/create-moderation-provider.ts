@@ -10,7 +10,7 @@ export interface EventModerationProviderEnv {
 }
 
 // リージョンは宛先のホスト名に埋め込むため、AWSのリージョン名の形だけを受け付けて別のホストへ送らないようにする
-const REGION_PATTERN = /^[a-z]{2}(?:-[a-z]+)+-\d+$/;
+export const MODERATION_REGION_PATTERN = /^[a-z]{2}(?:-[a-z]+)+-\d+$/;
 
 const isMissing = (value: string | undefined): boolean =>
   value === undefined || value === '';
@@ -30,7 +30,7 @@ function createRekognitionProvider(
       `画像の判定サービスに必要な設定がありません: ${missingEnvNames.join(', ')}`,
     );
   }
-  if (!REGION_PATTERN.test(env.MODERATION_REGION)) {
+  if (!MODERATION_REGION_PATTERN.test(env.MODERATION_REGION)) {
     throw new Error(
       'MODERATION_REGIONは判定サービスのリージョン名(us-east-1など)で指定してください。',
     );

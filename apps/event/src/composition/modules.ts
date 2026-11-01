@@ -6,6 +6,11 @@ import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-mo
 import { createImageGatewayModule } from '../presentation/media/image-gateway-module.ts';
 import { EVENT_EMAIL_MODULE } from './email-module.ts';
 import type { EventEnv } from './env-schema.ts';
+import { MEDIA_SMOKE_MODULE } from './media-smoke-module.ts';
+import {
+  EVENT_MEDIA_MODULE,
+  EVENT_MEDIA_PLATFORM_MODULE,
+} from './media-module.ts';
 import {
   EVENT_SEARCH_MODULE,
   EVENT_SEARCH_PLATFORM_MODULE,
@@ -14,6 +19,9 @@ import {
 export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
   Object.freeze([
     createImageGatewayModule<EventEnv>(),
+    EVENT_MEDIA_PLATFORM_MODULE,
+    EVENT_MEDIA_MODULE,
+    MEDIA_SMOKE_MODULE,
     EMAIL_PLATFORM_MODULE,
     EVENT_EMAIL_MODULE,
     EVENT_SEARCH_PLATFORM_MODULE,

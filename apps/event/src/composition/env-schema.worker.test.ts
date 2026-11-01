@@ -226,3 +226,107 @@ describe('eventEnvSchemaのキーワード抽出の設定', () => {
     expect(error.message).not.toContain(SECRET_API_KEY);
   });
 });
+
+describe('eventEnvSchemaのメディアの設定', () => {
+  const SECRET_ACCESS_KEY = 'rekognition-secret-value-must-not-leak';
+
+  const REKOGNITION_CREDENTIALS = Object.freeze({
+    REKOGNITION_ACCESS_KEY_ID: 'rekognition-access-key-id-for-tests',
+    REKOGNITION_SECRET_ACCESS_KEY: SECRET_ACCESS_KEY,
+  });
+
+  test('Workers統合テストの環境は代替の判定を使い、判定サービスの資格情報を持たない', () => {
+    expect(env.MODERATION_PROVIDER).toBe('stub');
+    expect(env.REKOGNITION_ACCESS_KEY_ID).toBeUndefined();
+    expect(env.REKOGNITION_SECRET_ACCESS_KEY).toBeUndefined();
+  });
+
+  test('動作確認のトークンが無い環境も受け付ける', () => {
+    expect(() =>
+      validateEnv(eventEnvSchema, copyEnv({}, ['MEDIA_SMOKE_TOKEN'])),
+    ).not.toThrow();
+  });
+
+  test('判定サービスを使う環境は、2つの資格情報があれば受け付ける', () => {
+    expect(() =>
+      validateEnv(
+        eventEnvSchema,
+        copyEnv({
+          MODERATION_PROVIDER: 'rekognition',
+          ...REKOGNITION_CREDENTIALS,
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  test('判定サービスを使う環境で資格情報が欠けると、そのキー名だけを欠けたキーにする', () => {
+    const error = captureValidationError(
+      copyEnv({ MODERATION_PROVIDER: 'rekognition' }, [
+        'REKOGNITION_ACCESS_KEY_ID',
+        'REKOGNITION_SECRET_ACCESS_KEY',
+      ]),
+    );
+
+    expect(error.missingKeys).toEqual([
+      'REKOGNITION_ACCESS_KEY_ID',
+      'REKOGNITION_SECRET_ACCESS_KEY',
+    ]);
+    expect(error.invalidKeys).toEqual([]);
+  });
+
+  test.each([
+    'IMAGE_DELIVERY_HOSTNAME',
+    'IMAGE_DELIVERY_DEDICATED_HOST',
+    'MODERATION_PROVIDER',
+    'MODERATION_REGION',
+    'MODERATION_MIN_CONFIDENCE',
+    'MODERATION_BLOCKED_CATEGORIES',
+  ])('常に必須の%sが欠けると、そのキー名だけを欠けたキーにする', (key) => {
+    const error = captureValidationError(copyEnv({}, [key]));
+
+    expect(error.missingKeys).toEqual([key]);
+    expect(error.invalidKeys).toEqual([]);
+  });
+
+  test.each<[string, string]>([
+    ['IMAGE_DELIVERY_HOSTNAME', ''],
+    ['IMAGE_DELIVERY_DEDICATED_HOST', 'yes-value-must-not-leak'],
+    ['MODERATION_PROVIDER', 'vision-value-must-not-leak'],
+    ['MODERATION_REGION', 'region.example-value-must-not-leak'],
+    ['MODERATION_MIN_CONFIDENCE', '101'],
+    ['MODERATION_MIN_CONFIDENCE', 'sixty-value-must-not-leak'],
+    ['MODERATION_BLOCKED_CATEGORIES', 'Unknown-value-must-not-leak'],
+    ['MODERATION_BLOCKED_CATEGORIES', 'Explicit,Explicit'],
+  ])(
+    '%sの不正な値(%s)は値を含めずにキー名だけを不正なキーにする',
+    (key, value) => {
+      const error = captureValidationError(copyEnv({ [key]: value }));
+
+      expect(error.invalidKeys).toEqual([key]);
+      expect(error.missingKeys).toEqual([]);
+      if (value.includes('must-not-leak')) {
+        expect(error.message).not.toContain(value);
+      }
+    },
+  );
+
+  test('判定サービスの資格情報の欠落は他の条件付きの必須キーの欠落と一緒に報告し、値を含めない', () => {
+    const error = captureValidationError(
+      copyEnv(
+        {
+          MODERATION_PROVIDER: 'rekognition',
+          REKOGNITION_SECRET_ACCESS_KEY: SECRET_ACCESS_KEY,
+          EMAIL_PROVIDER: 'mailpit',
+        },
+        ['REKOGNITION_ACCESS_KEY_ID', 'MAILPIT_API_URL'],
+      ),
+    );
+
+    expect(error.missingKeys).toEqual([
+      'MAILPIT_API_URL',
+      'REKOGNITION_ACCESS_KEY_ID',
+    ]);
+    expect(JSON.stringify(error)).not.toContain(SECRET_ACCESS_KEY);
+    expect(error.message).not.toContain(SECRET_ACCESS_KEY);
+  });
+});
