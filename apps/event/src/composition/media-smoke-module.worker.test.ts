@@ -170,7 +170,8 @@ async function send(request: SmokeRequest): Promise<Response> {
     }),
     {
       ...env,
-      ...(token === null ? {} : { MEDIA_SMOKE_TOKEN: token }),
+      // シークレットを注入した実行ではenvに注入したトークンが入るため、未設定の環境は値を上書きして消す
+      MEDIA_SMOKE_TOKEN: token ?? undefined,
       JOBS_QUEUE: queue.queue,
       IP_RATE_LIMITER: alwaysAllowedRateLimiter,
     },

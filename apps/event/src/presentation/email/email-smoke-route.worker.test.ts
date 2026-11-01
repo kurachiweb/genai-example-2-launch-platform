@@ -79,7 +79,13 @@ async function requestSmoke(
   const ctx = createExecutionContext();
   const response = await fetch(
     request,
-    { ...env, ...secrets, JOBS_QUEUE: queue },
+    {
+      ...env,
+      EMAIL_SMOKE_TOKEN: undefined,
+      EMAIL_SMOKE_RECIPIENT: undefined,
+      ...secrets,
+      JOBS_QUEUE: queue,
+    },
     ctx,
   );
   await waitOnExecutionContext(ctx);

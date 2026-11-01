@@ -338,6 +338,7 @@ describe('fetchハンドラー', () => {
 
 - D1を使うテストには、`miniflare.bindings`にテスト用のバインディング(例: `TEST_MIGRATIONS`)として`readNestedD1Migrations`の結果を渡し、`cloudflare:test`の`applyD1Migrations`で適用する。適用は`setupFiles`か、D1を使うテストファイルの`beforeAll`で行う。`setupFiles`で`cloudflare:test`を読み込むと、テストファイルの`vi.mock`より先にWorkerのエントリが読み込まれ、エントリが読み込むモジュールの差し替えが効かなくなる。エントリの読み込むモジュールを`vi.mock`で差し替えるテストを持つアプリでは、テストファイルで適用する。
 - 型検査設定の差分は「[Workers統合テストを持つアプリの差分](../coding/001-javascript-typescript-conventions.md#workers統合テストを持つアプリの差分)」に従う。
+- CIでシークレットを注入して実行すると、Wrangler設定の`secrets.required`のキーに開発用の値が入る。任意のシークレットが無い状態を確かめるテストは、`env`を展開した後にそのキーを`undefined`で上書きしてから渡す。
 - `wrangler types`が出力する`worker-configuration.d.ts`(実行時の型と環境の型)を生成してコミットする。生成し直しが要るかは、アプリのスクリプト`cf-typegen:check`(`wrangler types --check`)で確かめる。一括検査(`bun run check`)の段階「型生成の検査」でも毎回実行される(「[一括検査](../coding/001-javascript-typescript-conventions.md#一括検査)」)。
 
 ### プリセットの取り込みの注意
