@@ -6,7 +6,7 @@
 
 **Users**: ドメインspec(user-profile-social・product-launch・admin-foundation・inquiry-chat)の開発者とAIエージェントは、APIサーバーの登録箇所へ用途を追記し、画面ではアップロード部品と画像の表示部品を置き、業務データの保存時に紐付け・削除の操作を呼ぶ。ugc-moderation・product-launchはファイル単位の隔離理由の追加・解除と削除を呼び、user-profile-socialはidentity-authのユーザーライフサイクルイベントの波及処理として保有者単位の物理削除と隔離理由の付け外しを呼び、identity-authはアップロードできる利用者かの差し込み口(`UploaderEligibility`)を`AccountGuard`の判定で束縛し、data-exportはファイルの情報と内容を読む。運用者は画像配信ドメインのキャッシュと判定の状態を、ログ・Sentry・動作確認の経路で確かめる。
 
-**Impact**: 上流のbackend-platform・api-gateway・frontend-platformの登録箇所(モジュール・内部REST・メッセージ種別・定期実行・IP制限の除外・中継の経路・スキーマモジュール)へ追記し、eventのWrangler設定に名前付きエントリポイント単位のキャッシュと判定の変数・シークレットを加える。D1にメディアの2テーブルを加える。staging・prodのR2バインディングの米国管轄(`jurisdiction: "us"`)はinfra-deliveryが加え、本specはそれを前提にする。
+**Impact**: 上流のbackend-platform・api-gateway・frontend-platformの登録箇所(モジュール・内部REST・メッセージ種別・定期実行・IP制限の除外・中継の経路・スキーマモジュール)へ追記し、eventのWrangler設定に名前付きエントリポイント単位のキャッシュと判定の変数・シークレットを加える。D1にメディアの2テーブルを加える。staging・prodのR2バインディングの米国管轄(`jurisdiction: "us"`)はinfra-deliveryが設定済みで、本specはそれを前提にする。
 
 ### Goals
 
@@ -47,16 +47,16 @@
 - 管理者が隔離中の画像を見る権限の判定の実装(ugc-moderationが`AdminMediaReviewPolicy`を差し替える)。用途ごとの閲覧の可否の実装(inquiry-chatなどが`FileReadPolicy`を登録する)。
 - アップロードできる利用者かの判定の実装(停止中の拒否、メールアドレス未確認の利用者の扱い)。identity-authが`UploaderEligibility`の束縛を`AccountGuard`の判定で差し替える(N-7)。
 - エクスポートのZIPと、そのファイル用バケット上のオブジェクト(data-exportが直接扱い、本specの記録を持たない)。
-- 3つのバケット(米国管轄)・画像配信ドメイン・DNS・WAFの作成と、api・eventのR2バインディングへの`jurisdiction: "us"`の指定(infra-deliveryの要件2.3。backend-platformのWrangler設定を変える)。InfisicalのキーとWorkerへ渡すシークレットの一覧(`OPTIONAL_WORKER_SECRETS`など)への本specのキーの記載(infra-delivery)。Images Paidの判断とprodのシークレットの登録(launch-readiness)。IAMユーザー・ポリシー・アクセスキーとAIサービスのオプトアウト(開発者の手作業)。
+- 3つのバケット(米国管轄)・画像配信ドメイン・DNS・WAFの作成と、api・eventのR2バインディングへの`jurisdiction: "us"`の指定(infra-deliveryの要件2.3。3つのバケット・画像配信ドメインの割り当て・staging・prodのR2バインディングの管轄は設定済み)。InfisicalのキーとWorkerへ渡す任意のシークレットの一覧(`OPTIONAL_WORKER_SECRETS`。eventの`MEDIA_SMOKE_TOKEN`は記載済み)への本specのキーの記載(infra-delivery)。Images Paidの判断とprodのシークレットの登録(launch-readiness)。IAMユーザー・ポリシー・アクセスキーとAIサービスのオプトアウト(開発者の手作業)。
 - プライバシーポリシーの大枠と準拠方針の国外移転の記載事項・データの保存場所のうち、Cloudflareの項(D1・R2・Queuesの米国での保存、Durable Objects・Workersの実行・エッジキャッシュ・ログ・メール送信・bot判定(Turnstile)・Web Analyticsなど所在を限定しない処理の扱い、それらの移転の根拠。infra-delivery)、Google Cloud(Natural Language API)の項(content-processing。R3-5)と、AWS以外の委託先の項。本specはAWS(Rekognition、us-east-1)の項だけを書き、互いの項を書き換えない(委託先単位の分担。N-1)。法務文書の本文は開発者が用意し、本specは大枠と準拠方針の記載事項として扱う。
 - 中継の共通処理(`relayToApi`・CSRF・IP制限・セキュリティヘッダー)と内部経路の認証(frontend-platform・api-gateway)。本specは経路を登録するだけである。
 - 要件定義書の改訂(本specは報告だけ行う)。
 
 ### Allowed Dependencies
 
-- backend-platform: `AppModule`と登録箇所(`modules.ts`・`scheduled-jobs.ts`・`message-handlers.ts`・`rate-limit-exclusions.ts`)、DIの識別子`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`MessagePublisher`)、`defineMessageContract`と`MESSAGE_CONTRACTS`、`MessageHandlerRegistration.retry`、`ScheduledJobDefinition`、`RateLimitExclusion`、`AppError`と共通のエラー形式、`createDatabase`・共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`)、ログとSentry。
+- backend-platform: `AppModule`と登録箇所(`modules.ts`・`scheduled-jobs.ts`・`message-handlers.ts`・`rate-limit-exclusions.ts`)、DIの識別子`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`MessagePublisher`)、`defineMessageContract`と`MESSAGE_CONTRACTS`、`MessageHandlerRegistration.retry`、`ScheduledJobDefinition`、`RateLimitExclusion`、`AppError`と共通のエラー形式(`AppErrorKind`への`length_required`(411)の追加は本specが行う)、`createDatabase`・共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`)、ログとSentry。
 - api-gateway: `createInternalRoutesModule`・`InternalHonoEnv`(`c.var.session`)・`CallerKind`・`AuthenticatedPrincipal`・`Principal`、application層のセッションの読み取り専用の型`SessionView`(`application/session/session-view.ts`。api-gatewayの契約への追記で、identity-authのタスク2.3が追記する。無い場合の扱いは「UploaderEligibility・既定の実装」。R3-1)、`defineSchemaModule`・`defineLoader`、`withSecurityHeaders`(応答のCSPを保つ規則)。
-- frontend-platform: `RelayRoute`・`defineRelayRoute`と`relay-routes.ts`の登録箇所(`RELAY_ROUTES`)、`PublicRuntimeConfig`、UI部品(dialog・button・label)・`notify`・アクセシビリティの検査の補助、`IMAGES_ORIGIN`、`errorMessageOf`(想定外の応答の文言の選択)、client・adminの`CLIENT_PROFILE`・`ADMIN_PROFILE`の`contactAvailable`(入力欄を置く画面が渡す)。
+- frontend-platform: `RelayRoute`・`defineRelayRoute`と`relay-routes.ts`の登録箇所(`RELAY_ROUTES`)、`PublicRuntimeConfig`と`appRuntimeOf`(ルーターの文脈から公開の設定を読む)、UI部品(dialog・button・label)・`notify`・アクセシビリティの検査の補助、`IMAGES_ORIGIN`、`errorMessageOf`(想定外の応答の文言の選択)、client・adminの`CLIENT_PROFILE`・`ADMIN_PROFILE`の`contactAvailable`(入力欄を置く画面が渡す)。
 - content-processing: `apps/common-lib`の配置と参照の方法(仮決定2)と、frontend-libの`server/**`から`../common-lib/**`を読み込む許可(横断レビューM-2でcontent-processingが加える)、日次タイムラインの「日次バッチ(4:21)の内容」のジョブの名前と順序の表。本specの実装は、content-processingが下流向けに示す最小の区切りの完了を前提にする(roadmapの順はinfra-delivery→content-processing→media-pipeline→identity-auth)。区切りは次のとおりである(横断レビュー2回目のN-3)。
   - タスク1.1(共有ディレクトリの定義への共用部品の追加)・1.2(共用部品のプロジェクトと読み込みの境界)・4.1(APIサーバーとイベントサーバーへの組み込み)・4.2(利用者側・管理者側とfrontend-libへの組み込み)。
   - タスク6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`common-lib/validation/**`の禁止の静的解析の規則)と、11.3のうち`coding/003`への`server/**`の許可の記述。確かめ方は、6.1の単体テストの成功と`coding/003`の記述である(content-processingの設計の「`server/**`の許可の確かめ方」)。
@@ -80,17 +80,17 @@
   - GraphQLの`MediaImage`・`MediaAttachment`、部品のprops、アップロードとダウンロードの経路・エラーコード。
   - 画像バリアントの表、日次バッチの時刻と順序、メッセージ種別。
 - 上流(本specの設計が変更を求めるもの。上流のspecは本specに合わせて再確認する):
-  - backend-platform: eventのWrangler設定の`exports`(`default`はキャッシュ無効、`ImageDelivery`は有効)、変数とシークレット、設定の単体テストの期待値(eventのキャッシュ)、`MESSAGE_CONTRACTS`への3種の追加。判定の実測で1バッチのCPU時間が上限に近い場合の`limits.cpu_ms`。
-  - frontend-platform: `PublicRuntimeConfig`への画像配信のオリジンの追加、`relay-routes.ts`への2経路の追加、`toBrowserResponse`がダウンロードの`Content-Type`・`Content-Disposition`・`Content-Length`を保つこと、client・adminのルートへの`ImagesOriginProvider`の配置。`relayToApi`の415(`unsupported_media_type`)の判定と応答の形が変わる場合は、本specの`UPLOAD_RELAY_ROUTE`と`parseUploadResponse`の対応付けを再確認する(M-10)。
-  - api-gateway: `internal-routes.ts`への2経路、`graphql-modules.ts`への`media`モジュールの追加。application層の`SessionView`(`application/session/session-view.ts`)の形と置き場所、`SessionAccess`がそれを拡張すること(identity-authのタスク2.3が契約へ追記する。本specのタスク5.1が先に定義を置いた場合は、2.3が型名・置き場所・形の一致を確かめる。R3-1)。
+  - backend-platform: eventのWrangler設定の`exports`(`default`はキャッシュ無効、`ImageDelivery`は有効)、変数とシークレット(ルートの`secrets.required`への`MEDIA_SMOKE_TOKEN`を含む)、設定の単体テストのメディアのキーの除外パターン(`MEDIA_CONFIG_KEY_PATTERN`。メールの`EMAIL_CONFIG_KEY_PATTERN`・全文検索の`SEARCH_CONFIG_KEY_PATTERN`と同じ受け持ちの分け方)、`MESSAGE_CONTRACTS`への3種の追加、`AppErrorKind`・`AppErrorStatus`・`STATUS_BY_KIND`への`length_required`(411)の追加(api-gatewayの改訂3で413・415を加えたときと同じ手順)。判定の実測で1バッチのCPU時間が上限に近い場合の`limits.cpu_ms`。
+  - frontend-platform: `PublicRuntimeConfig`・`toPublicRuntimeConfig`への画像配信のオリジン(`imagesOrigin`)の追加と、`PublicRuntimeConfig`を直接書くテスト用データ・Storybookの設定の更新(`IMAGES_ORIGIN`の検証とCSPの`img-src`への登録はfrontend-platformで実装済み)、`relay-routes.ts`への2経路の追加と構成テストの`RELAY_ROUTES`の期待値、`toBrowserResponse`がダウンロードの`Content-Type`・`Content-Disposition`・`Content-Length`を保つこと。`relayToApi`の415(`unsupported_media_type`)の判定と応答の形が変わる場合は、本specの`UPLOAD_RELAY_ROUTE`と`parseUploadResponse`の対応付けを再確認する(M-10)。
+  - api-gateway: `internal-routes.ts`への2経路、`graphql-modules.ts`への`media`モジュールの追加、公開RESTの状態コードの一覧(`responses.ts`の`ErrorStatus`は`AppErrorStatus`と同じ型のため、411の説明の追加が要る)。application層の`SessionView`(`application/session/session-view.ts`)の形と置き場所、`SessionAccess`がそれを拡張すること(identity-authのタスク2.3が契約へ追記する。本specのタスク5.1が先に定義を置いた場合は、2.3が型名・置き場所・形の一致を確かめる。R3-1)。
   - content-processing: `apps/common-lib`の配置先・参照方法の変更(仮決定2)、frontend-libの`server/**`からcommon-libを読み込む許可(M-2)、本specが前提にする最小の区切り(1.1・1.2・4.1・4.2・6.1、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインの表の作成。N-3)の範囲の変更、日次タイムラインの表の形、ジョブ名の規約(content-processingのタスク11.5が`infra/003`へ追記する。N-4)、プライバシーポリシーの大枠と準拠方針の国外移転の記載事項のGoogle Cloud(Natural Language API)の項(content-processingが本specのAWSの項と同じ形と根拠の種類で書く。本specは書き換えない。R3-5)。
-  - infra-delivery: 3つのバケットの管轄とR2バインディングへの管轄の指定(api・eventのWrangler設定。backend-platformへの影響)、画像配信ドメインのイベントサーバーへの割り当て、InfisicalのキーとWorkerへ渡すシークレットの一覧への本specのキー(必須の`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`、eventの任意の`MEDIA_SMOKE_TOKEN`)の記載、`docs/onboardings/project-values.md`のシークレットのキーの一覧(キーの一覧の正。N-5)の形、プライバシーポリシーの大枠と準拠方針の国外移転の記載事項・データの保存場所のCloudflareの項(本specは書き換えない)と委託先単位の項の形(本specのAWSの項を同じ形にそろえる。N-1)、移転の根拠の種類(両項とも同じ。DPFを主、SCCを予備)。本specは画像判定専用のQueueなどの資源を追加しない。
+  - infra-delivery: 3つのバケットの管轄とR2バインディングへの管轄の指定(api・eventのstaging・prodのWrangler設定に設定済み)、画像配信ドメインのイベントサーバーへの割り当て(資源一覧とIaCに設定済み)、InfisicalのキーとWorkerへ渡すシークレットの一覧への本specのキー(必須の`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`、eventの任意の`MEDIA_SMOKE_TOKEN`。`MEDIA_SMOKE_TOKEN`は`OPTIONAL_WORKER_SECRETS`とstagingの行に記載済み)の記載、`docs/onboardings/project-values.md`のシークレットのキーの一覧(キーの一覧の正。N-5)の形、プライバシーポリシーの大枠と準拠方針の国外移転の記載事項・データの保存場所のCloudflareの項(本specは書き換えない)と委託先単位の項の形(本specのAWSの項を同じ形にそろえる。N-1)、移転の根拠の種類(両項とも同じ。DPFを主、SCCを予備)。本specは画像判定専用のQueueなどの資源を追加しない。
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- 上流のbackend-platform・api-gateway・frontend-platformは設計が承認済みで、実装は本specより先に行う。content-processingの`apps/common-lib`の新設と組み込みのタスク(Allowed Dependencies)も、roadmapの順で本specより先に完了する。本specは各specの登録箇所への追記と、Revalidation Triggersに挙げた最小の変更だけを行う。
+- 上流のbackend-platform・api-gateway・frontend-platform・email-delivery・content-processingは実装済みである(2026-11-01のギャップ分析で確かめた。research.mdの「実装前のギャップ分析」)。content-processingの`apps/common-lib`の新設と組み込みのタスク(Allowed Dependencies)も完了している。本specは各specの登録箇所への追記と、Revalidation Triggersに挙げた最小の変更だけを行う。
 - backend-platformの受信部は、バッチ内のメッセージを1件ずつ処理し、メッセージ種別ごとに再試行の方針を上書きできる。デッドレターでは本文が捨てられるため、失ってはならない状態(判定の待ち・保存先のずれ)はD1に残し、日次バッチで回復する。
 - api-gatewayの内部REST(`/internal`)はフロントエンドサーバーの中継からだけ届き、サブアプリが要求ごとに作って渡す`c.var.session`(api-gatewayの改訂3)で呼び出し元(利用者側・管理者側)に応じたセッションを判定できる。api-gatewayの`withSecurityHeaders`は、応答が自らCSPを持てば既定のCSPで置き換えない(SVGの配信で使う)。
 - frontend-platformの中継は、`defineRelayRoute`で定義した`RelayRoute`を`src/composition/relay-routes.ts`へ追加するだけで、CSRF・IP制限・セッションの引き継ぎ・セキュリティヘッダー(`no-store`)の経路に乗る。
@@ -169,19 +169,19 @@ graph TB
 
 ### Technology Stack
 
-| Layer                    | Choice / Version                                                    | Role in Feature                                          | Notes                                                                                                     |
-| ------------------------ | ------------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Frontend                 | react-easy-crop 6.2.3                                               | 編集ダイアログの切り取りと拡大縮小                       | tech-stack.md記載済み。最新6.2.4は公開から2週間未満のため6.2.3に固定。client・admin・frontend-libで同じ版 |
-| Frontend                 | Canvas(`createImageBitmap`・`toBlob`)                               | 切り取った画像の縮小と作り直し(JPEG・PNG)                | ブラウザ標準                                                                                              |
-| Backend(共有)            | image-size 2.0.4                                                    | 先頭部分からの幅・高さの読み取り                         | 新規(決定Q7)。api・eventで同じ版                                                                          |
-| Backend(共有)            | fast-xml-parser 5.11.2                                              | SVGの構文の検査(`XMLValidator`)と構造の検査(`XMLParser`) | tech-stack.md記載済み。`processEntities: false`。api・eventで同じ版                                       |
-| Backend(event)           | wasm-image-optimization 2.0.11(`/workerd`)                          | 判定用画像の変換・縮小・RGBAの取り出し                   | tech-stack.md記載済み。eventだけ                                                                          |
-| Backend(event)           | aws4fetch 1.0.20                                                    | 判定サービスへの要求のSigV4署名                          | tech-stack.md記載済み。eventだけ                                                                          |
-| External                 | Amazon Rekognition DetectModerationLabels(us-east-1)                | 不適切な画像の判定                                       | 決定Q3・Q8。ローカル・CIは決定論的な代替                                                                  |
-| Data / Storage           | D1(Drizzle ORM)・R2の3バケット(staging・prodは`jurisdiction: "us"`) | ファイルの記録と隔離理由、原本の保存                     | 条件付きの`put()`(`If-None-Match: *`)                                                                     |
-| Messaging / Events       | Queues(`JOBS_QUEUE`)                                                | 判定・保存先の修正・パージの依頼                         | 専用のQueueは作らない                                                                                     |
-| Infrastructure / Runtime | Images Binding・Workers Cache(エントリポイント単位)・`ctx.exports`  | 変換配信・エッジキャッシュ・パージ                       | Wrangler 4.124.0(4.107.0以上が必要)                                                                       |
-| Infrastructure / Runtime | `CompressionStream('deflate')`                                      | 余白付きの判定用画像のPNG符号化                          | workerd・Bunの標準                                                                                        |
+| Layer                    | Choice / Version                                                    | Role in Feature                                          | Notes                                                               |
+| ------------------------ | ------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------- |
+| Frontend                 | react-easy-crop 6.2.4                                               | 編集ダイアログの切り取りと拡大縮小                       | tech-stack.md記載済み。client・admin・frontend-libで同じ版          |
+| Frontend                 | Canvas(`createImageBitmap`・`toBlob`)                               | 切り取った画像の縮小と作り直し(JPEG・PNG)                | ブラウザ標準                                                        |
+| Backend(共有)            | image-size 2.0.4                                                    | 先頭部分からの幅・高さの読み取り                         | 新規(決定Q7)。api・eventで同じ版                                    |
+| Backend(共有)            | fast-xml-parser 5.11.2                                              | SVGの構文の検査(`XMLValidator`)と構造の検査(`XMLParser`) | tech-stack.md記載済み。`processEntities: false`。api・eventで同じ版 |
+| Backend(event)           | wasm-image-optimization 2.0.11(`/workerd`)                          | 判定用画像の変換・縮小・RGBAの取り出し                   | tech-stack.md記載済み。eventだけ                                    |
+| Backend(event)           | aws4fetch 1.0.20                                                    | 判定サービスへの要求のSigV4署名                          | tech-stack.md記載済み。eventだけ                                    |
+| External                 | Amazon Rekognition DetectModerationLabels(us-east-1)                | 不適切な画像の判定                                       | 決定Q3・Q8。ローカル・CIは決定論的な代替                            |
+| Data / Storage           | D1(Drizzle ORM)・R2の3バケット(staging・prodは`jurisdiction: "us"`) | ファイルの記録と隔離理由、原本の保存                     | 条件付きの`put()`(`If-None-Match: *`)                               |
+| Messaging / Events       | Queues(`JOBS_QUEUE`)                                                | 判定・保存先の修正・パージの依頼                         | 専用のQueueは作らない                                               |
+| Infrastructure / Runtime | Images Binding・Workers Cache(エントリポイント単位)・`ctx.exports`  | 変換配信・エッジキャッシュ・パージ                       | Wrangler 4.124.0(4.107.0以上が必要)                                 |
+| Infrastructure / Runtime | `CompressionStream('deflate')`                                      | 余白付きの判定用画像のPNG符号化                          | workerd・Bunの標準                                                  |
 
 ## File Structure Plan
 
@@ -285,7 +285,7 @@ apps/
 │   │   ├── upload-messages.ts                     # エラーコード・選択の違反から文言規則の文言へ
 │   │   ├── file-size-label.ts                     # kB・MBの表記
 │   │   ├── crop-geometry.ts                       # 切り取り範囲と最大寸法から出力の寸法・形式を決める
-│   │   ├── picture-sources.ts                     # 表示サイズから<source>・<img>のsrcsetと幅・高さを組み立てる
+│   │   ├── picture-sources.ts                     # MediaImageView・MediaImageFallbackFormatと、表示サイズから<source>・<img>のsrcsetと幅・高さを組み立てる
 │   │   └── placeholder-appearance.ts              # 先頭1文字(書記素)・背景色・文字色の決定
 │   ├── server/media/media-relay-routes.ts         # UPLOAD_RELAY_ROUTE・FILE_DOWNLOAD_RELAY_ROUTE(defineRelayRouteで定義、単体テスト併置)
 │   └── components/media/                          # 画面部品(ブラウザテスト・Storybook。1ファイル1コンポーネント、*.browser.test.tsx・*.stories.tsxを併置)
@@ -298,8 +298,7 @@ apps/
 │       ├── media-picture.tsx                      # <picture>・SVGの<img>・プレースホルダーへの切り替え
 │       ├── media-placeholder.tsx                  # 先頭1文字の正方形と「画像を表示できません」
 │       ├── private-file-link.tsx                  # 非公開ファイルのダウンロードのリンク
-│       ├── images-origin-provider.tsx             # 画像配信のオリジンを配るContextの提供部品
-│       ├── use-images-origin.ts                   # 画像配信のオリジンの取得
+│       ├── use-images-origin.ts                   # 画像配信のオリジンの取得(ルーターの文脈の公開の設定から読む)
 │       ├── use-file-upload.ts                     # 送信の順番待ち・状態・中止
 │       └── encode-cropped-image.ts                # Canvasでの縮小と作り直し(ブラウザテスト)
 ├── client/src/composition/relay-routes.ts         # (変更)2経路を追加
@@ -319,17 +318,20 @@ docs/
 - `apps/db/schema/index.ts` — メディアの2テーブルを集約点に加える。`apps/db/migrations/<日時>_media_pipeline/migration.sql`を生成する。並行するspec(identity-authなど)とスナップショットが分岐しないよう、mainの最新を取り込んでから生成し、番号の衝突があれば生成し直す(M-6)。
 - `apps/backend-lib/core/messaging/contracts/index.ts` — 3種のメッセージ契約を`MESSAGE_CONTRACTS`へ加える。
 - `apps/api/src/composition/modules.ts`・`internal-routes.ts`・`graphql-modules.ts`・`scheduled-jobs.ts` — `MEDIA_PLATFORM_MODULE`・apiのメディアモジュール、2つの内部REST、`mediaSchemaModule`、日次バッチ3種(4:21、順序810・820・830)を登録する。
-- `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 4:21の定期実行の式が無ければ3環境に加える(email-deliveryで加わっていれば変えない)。R2バインディングの管轄はinfra-deliveryが加える。
+- `apps/backend-lib/core/errors/app-error.ts` — `AppErrorKind`に`length_required`、`AppErrorStatus`と`STATUS_BY_KIND`に411を加える(backend-platformの所有。Revalidation Triggers)。同じ変更で`app-error.unit.test.ts`・`error-envelope.unit.test.ts`の期待値、apiの公開RESTの`responses.ts`の状態コードの一覧と説明・`responses.worker.test.ts`、`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の共通エラーの種類の表、backend-platform・api-gatewayのdesign.mdとresearch.mdの改訂の記録を改める(api-gatewayの改訂3で413・415を加えたときと同じ範囲)。
+- `apps/api/test/support/wrangler-config.ts`・`apps/api/test/config/wrangler-config.unit.test.ts` — メディアの変数とシークレットのキーの除外パターン`MEDIA_CONFIG_KEY_PATTERN`(`^(?:IMAGE_DELIVERY_|MODERATION_|REKOGNITION_|MEDIA_)`)を加え、backend-platformの設定の検査(eventの`vars`・`secrets.required`の比較)をそのキーを除いて比べる(メール・全文検索と同じ受け持ちの分け方)。メディアのキーは本specの`media-wrangler-config.unit.test.ts`が検査する。
+- `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 変えない。4:21の定期実行の式(`21 12 * * *`)とR2バインディングの管轄(staging・prodの`jurisdiction: "us"`)は設定済みである。
 - `apps/api/package.json`・`bun.lock` — `image-size`・`fast-xml-parser`を版固定で加える。
 - `apps/event/src/index.ts` — `ImageDelivery`をエクスポートする。既定のエクスポートは変えない。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`rate-limit-exclusions.ts`・`env-schema.ts` — 画像配信の関門のモジュールを`MODULES`の先頭に、`MEDIA_PLATFORM_MODULE`・eventのメディアモジュール・動作確認のモジュールを続けて登録する。3種のメッセージの処理と再試行の方針、画像配信の除外規則、メディアの変数とシークレットの検証を加える。
-- `apps/event/wrangler.jsonc`・`worker-configuration.d.ts` — `exports`(`default`はキャッシュ無効、`ImageDelivery`は有効)、3環境の`vars`(Supporting References)、staging・prodの`secrets.required`に判定サービスの2つのキーを加える。
+- `apps/event/wrangler.jsonc`・`worker-configuration.d.ts` — `exports`(`default`はキャッシュ無効、`ImageDelivery`は有効)、3環境の`vars`(Supporting References)、ルート(ローカル)の`secrets.required`に`MEDIA_SMOKE_TOKEN`を、staging・prodの`secrets.required`に判定サービスの2つのキーを加える。
 - `apps/event/package.json`・`bun.lock` — `image-size`・`fast-xml-parser`・`wasm-image-optimization`・`aws4fetch`を版固定で加える。
 - `apps/event/vitest.worker.config.ts` — テスト用の変数(画像配信のホスト名・代替の判定・閾値)と`.wasm`の読み込みを加える。
 - `apps/frontend-lib/package.json`・`bun.lock`、`apps/client`・`apps/admin`の`package.json`・`bun.lock` — `react-easy-crop`を版固定で加える。 client・admin・frontend-libの`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)にも加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)。
-- `apps/frontend-lib/server/env/frontend-env.ts` — `PublicRuntimeConfig`に`imagesOrigin`を加える(frontend-platformの所有。Revalidation Triggers)。
-- `apps/client/src/routes/__root.tsx`・`apps/admin/src/routes/__root.tsx` — `ImagesOriginProvider`で画像配信のオリジンを配る。変更はこの配置だけで、エラーの画面(`errorComponent`の`ErrorPage`が描く`UnexpectedErrorView`)と`contactHref`の扱いはfrontend-platformのままにし、本specは管理者側のルートに失敗の表示(`ErrorState`・`UnexpectedErrorView`)を置かない。管理者側の画面に置かれる共通部品のアップロードの入力欄は、失敗の文言を`contactAvailable`(`ADMIN_PROFILE.contactAvailable`)で選び、問い合わせを促さない(アップロードの部品群)。
-- `apps/client/src/composition/relay-routes.ts`・`apps/admin/src/composition/relay-routes.ts` — `defineRelayRoute`で定義した`UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE`を`RELAY_ROUTES`の完全一致の経路の後に加える。
+- `apps/frontend-lib/server/env/frontend-env.ts` — `PublicRuntimeConfig`と`toPublicRuntimeConfig`に`imagesOrigin`(検証済みの`IMAGES_ORIGIN`)を加える(frontend-platformの所有。Revalidation Triggers)。同じ変更で、`PublicRuntimeConfig`を直接書くテスト用データとStorybookの設定(`.storybook/preview.tsx`・`test/start-request-fixtures.ts`・client・adminの`test/page-router.tsx`・`start/router-context.unit.test.ts`・`frontend-env.unit.test.ts`と、公開の設定を組み立てるブラウザテスト)に値を加える(content-processingが`CLIENT_SITE_ORIGIN`を加えたときと同じ範囲)。
+- client・adminの`routes/__root.tsx`は変えない。画像配信のオリジンは、`useImagesOrigin`がfrontend-platformの`appRuntimeOf(useRouter().options.context).publicConfig.imagesOrigin`から読む(Turnstile・マークダウンの部品と同じ読み方。Providerを作らない)。エラーの画面(`errorComponent`の`ErrorPage`が描く`UnexpectedErrorView`)と`contactHref`の扱いはfrontend-platformのままにし、本specは管理者側のルートに失敗の表示(`ErrorState`・`UnexpectedErrorView`)を置かない。管理者側の画面に置かれる共通部品のアップロードの入力欄は、失敗の文言を`contactAvailable`(`ADMIN_PROFILE.contactAvailable`)で選び、問い合わせを促さない(アップロードの部品群)。
+- `apps/client/src/composition/relay-routes.ts`・`apps/admin/src/composition/relay-routes.ts` — `defineRelayRoute`で定義した`UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE`を`RELAY_ROUTES`の完全一致の経路の後に加える。同じ変更で、client・adminの`test/config/composition.unit.test.ts`の`RELAY_ROUTES`の期待値(`[GRAPHQL_RELAY_ROUTE]`との完全一致)を3経路に改める。
+- `apps/frontend-lib/config/storybook-catalog.unit.test.ts` — `components/media`のうちストーリーを持たず親の中でだけ描く部品(`file-thumbnail.tsx`など)を`INTERNAL_COMPONENTS`に加える。
 - `docs/GUIDES/service/features/002-image-variants.md` — 出力フォーマットのメタデータの行を決定Q1に合わせ、パージの実行経路を「画像配信の名前付きエントリポイントのRPC」に改める。
 - `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — Exifの記述(決定Q1・Q2)、委託先の一覧のAWS(Rekognition)の行の所在(米国東部、us-east-1)と渡す情報(判定用画像だけ)を改める。「国外移転の記載事項」に委託先AWSの項を加える(16.4、N-1)。項の書き方の型はinfra-deliveryのタスク8.5が示し、Cloudflareの項を見本にする(R3-6)。本specはその型に合わせ、共通の行の後に見出し`### AWS(Rekognition)`を委託先の一覧の順の位置に置き、「移転先」「移転の根拠」「委託先が講じる措置」の3項目を書く。
   - 移転先: 米国(us-east-1)。送る情報は判定用画像だけで、元のファイル名・アップロードした主体の情報を送らない。
@@ -551,7 +553,7 @@ sequenceDiagram
 | 14.8                    | SVG・添付はそのまま                          | ImageUploadField・AttachmentUploadField                             | —                                                                | —            |
 | 14.9, 14.10, 14.11      | 拒否・一時的な不可・成功の表示               | UseFileUpload・UploadRequest・UploadMessages                        | `parseUploadResponse`                                            | アップロード |
 | 14.12                   | アクセシビリティ                             | FileDropZone・ImageCropDialog・FileSelectionList                    | `aria-live`・axe-coreの検査                                      | —            |
-| 15.1, 15.2, 15.3, 15.4  | バリアントと形式とサイズ                     | MediaPicture・PictureSources・ImagesOriginProvider                  | `buildPictureSources`                                            | —            |
+| 15.1, 15.2, 15.3, 15.4  | バリアントと形式とサイズ                     | MediaPicture・PictureSources・useImagesOrigin                       | `buildPictureSources`                                            | —            |
 | 15.5                    | プレースホルダー                             | MediaPlaceholder・PlaceholderAppearance                             | —                                                                | —            |
 | 15.6                    | 遅延読み込み                                 | MediaPicture                                                        | `loading`                                                        | —            |
 | 16.1                    | us-east-1と専用の資格情報                    | RekognitionModerationProvider・EventWranglerConfig                  | `MODERATION_REGION`・`REKOGNITION_*`                             | —            |
@@ -782,7 +784,18 @@ export declare const MEDIA_SMOKE_PURPOSE: UploadPurpose; // media-smoke・images
 
 ```typescript
 export interface UploadRejection {
-  readonly status: 400 | 401 | 403 | 404 | 411 | 413 | 415 | 422 | 503;
+  readonly kind: Extract<
+    AppErrorKind,
+    | 'bad_request'
+    | 'unauthenticated'
+    | 'forbidden'
+    | 'not_found'
+    | 'length_required'
+    | 'payload_too_large'
+    | 'unsupported_media_type'
+    | 'unprocessable'
+    | 'unavailable'
+  >; // 状態コードはbackend-platformのSTATUS_BY_KINDで決まる(400・401・403・404・411・413・415・422・503)
   readonly code: UploadErrorCode;
   readonly message: string; // 利用者に見せてよい文
   readonly retryAfterSeconds?: number;
@@ -853,6 +866,7 @@ export declare function generateObjectKey(
 ): string; // 16バイト→32文字の小文字16進
 ```
 
+- 拒否の表し方: `UploadRejection`は状態コードではなくbackend-platformの`AppErrorKind`を持つ。受付の経路は拒否を同じ`kind`・`code`・`message`・`retryAfterSeconds`の`AppError`にして投げ、共通の例外の変換が状態コード・共通のエラー形式・`no-store`の応答を作る(411は本specが加える`length_required`。経路で応答の本文を組み立てない)。
 - シグネチャの表: JPEG(`FF D8 FF`)、PNG(`89 50 4E 47 0D 0A 1A 0A`)、GIF(`GIF87a`・`GIF89a`)、WebP(`RIFF`+4バイト+`WEBP`)、PDF(`%PDF-`)。申告がSVG・テキストの場合はこの判定を使わない(3.1)。
 - 寸法: `image-size`の判定形式をJPEG・PNG・GIF・WebP・SVGに絞る(`disableTypes`)。申告の形式と`image-size`の判定した形式が違えば読めないものとして扱う。
 - SVG: `TextDecoder('utf-8', { fatal: true })`で復号し、BOMを除く。大文字小文字を問わず`<!DOCTYPE`・`<!ENTITY`を含めば`svg_declaration_not_allowed`。`XMLValidator.validate`(`allowBooleanAttributes: false`)が失敗すれば`invalid_svg`。最上位の要素が`svg`でなければ`invalid_svg`。
@@ -1852,9 +1866,10 @@ export interface AttachmentUploadFieldProps {
 **Contracts**: State [x]
 
 ```typescript
+export type MediaImageFallbackFormat = 'JPG' | 'PNG' | 'SVG'; // GraphQLの列挙MediaImageFallbackFormatのcodegen(enumsAsTypes)の型と同じ値
 export interface MediaImageView {
   readonly objectKey: string | null; // nullは隔離中・削除待ち・未設定
-  readonly fallbackFormat: FallbackFormat;
+  readonly fallbackFormat: MediaImageFallbackFormat;
   readonly width: number | null;
   readonly height: number | null;
 }
@@ -1894,7 +1909,8 @@ export interface PrivateFileLinkProps {
 ```
 
 - `buildPictureSources`: 正方形は`squareVariants`、スクリーンショットは`screenshotVariants`で1x・2xを決め、`avif`を提供するバリアントだけAVIFの`<source>`を出す。`<img>`の`src`・`srcSet`はフォールバックの形式(`jpg`・`png`)。幅・高さは正方形なら表示サイズ、スクリーンショットは1xのバリアントの上限と原本の縦横比から求める(原本の寸法が無ければ上限の正方形)。SVGは`<source>`を出さず`svg`だけを返す(15.1〜15.4)。
-- `MediaPicture`: 画像が`null`・`objectKey`が`null`・`onError`のとき`MediaPlaceholder`を表示する(15.5)。`loading`はそのまま`<img>`に渡す(15.6)。画像配信のオリジンは`useImagesOrigin`(`ImagesOriginProvider`が`PublicRuntimeConfig.imagesOrigin`を配る)から得る。
+- `MediaPicture`: 画像が`null`・`objectKey`が`null`・`onError`のとき`MediaPlaceholder`を表示する(15.5)。`loading`はそのまま`<img>`に渡す(15.6)。画像配信のオリジンは`useImagesOrigin`から得る。`useImagesOrigin`は`appRuntimeOf(useRouter().options.context).publicConfig.imagesOrigin`を返し、Providerを使わない(frontend-libの既存の部品と同じ読み方)。テストとStorybookは、ルーターの文脈の公開の設定でオリジンを与える。
+- 列挙値の受け取り: `MediaImageView.fallbackFormat`は、GraphQLの`MediaImage.fallbackFormat`の生成型と同じ大文字の値(`'JPG' | 'PNG' | 'SVG'`)を受ける。下流のspecはGraphQLの結果をそのまま`image`に渡し、変換を書かない。大文字から配信のURLの拡張子(`common-lib/media`の`FallbackFormat`、`jpg`・`png`・`svg`)への変換は`buildPictureSources`の中で行う。client-presetは操作の結果の型だけを生成し、本specには`MediaImage`を返す操作が無いため、列挙値の一致を確かめる専用の検査は置かない。下流のspecがGraphQLの操作の結果を`image`へそのまま渡す箇所の型検査が、列挙値の食い違いを見つける(最初に画像を表示するspecの時点で検出される)。本specのテストは固定の値で部品を確かめる。
 - `MediaPlaceholder`: 正方形では先頭1文字(`Intl.Segmenter`の書記素)と、`seed`のハッシュから決めた背景色、コントラスト比を満たす白か黒の文字色。スクリーンショットでは薄灰色の背景に「画像を表示できません」(デザイン原則)。
 - `PrivateFileLink`: `downloadPathOf(fileId)`への`<a>`(`download`属性は付けない。サーバーの`Content-Disposition`に任せる)と、ファイル名・サイズの表示(12.9)。
 
@@ -1981,7 +1997,7 @@ erDiagram
 
 ### Error Strategy
 
-- アップロード: 拒否の理由ごとに状態コードとエラーコードを決め(Supporting References)、共通のエラー形式`{ "error": { "code", "message" } }`で返す。413・415はbackend-platformの`AppError`の種類(`payload_too_large`・`unsupported_media_type`、api-gatewayの改訂3で追加)で表せる。411は`AppError`の種類に無いため、受付の経路が共通のエラー形式の組み立て部品で直接応答を作る(413・415も同じ部品で作ってよい)。
+- アップロード: 拒否の理由ごとに状態コードとエラーコードを決め(Supporting References)、共通のエラー形式`{ "error": { "code", "message" } }`で返す。拒否はすべて`AppError`で投げ、共通の例外の変換が応答を作る。413・415はbackend-platformの`AppError`の種類(`payload_too_large`・`unsupported_media_type`、api-gatewayの改訂3で追加)、411は本specが同じ手順で加える`length_required`で表す。任意の状態コードを受ける共通のエラー形式の組み立て部品は作らない。種類から状態コードが決まるという共通エラーの規則に抜け道を作らず、411のほかに使う経路も無いためである。
 - 判定: 一時的な失敗は再試行し、最後の試行で未判定にして状態を残す(デッドレターへ送らない)。恒久的な失敗(復号できない・判定サービスが受け付けない)は隔離する。設定の誤りは未判定と同じ扱いにしてSentryへエラーを送る。
 - 保存先の移動・パージ・物理削除: 例外で再試行させ、再試行の上限ではbackend-platformのデッドレターの通知になる。状態はD1から求め直せるため、日次バッチが残りを修復する。
 - 画像配信: 404・405・503は`no-store`で、キャッシュに残さない。変換の想定外の例外は500になり、Sentryへ送る。
@@ -2029,7 +2045,7 @@ erDiagram
 - backend-lib/workers: `MediaFilesService`の紐付け(全件の検査と一部不正での不変)、`MediaEraser`の再実行の冪等性(途中で失敗させた後の再実行)、`MediaQuarantineService`の理由の追加・解除と送信、保有者単位の操作(上限件数の境界での`hasMore`、繰り返しで全件が処理されること、途中の失敗の後の再実行で同じ結果になること、他の保有者のファイルを変えないこと)、日次バッチの対象の照会(5.1〜5.5・9.1〜9.10・13.1〜13.9)。保有者の識別子の列挙(`listOwnerIds`、承認後の改訂1)で、複数のファイルを持つ保有者が1回だけ現れること、昇順に並ぶこと、`after`がその値を含まない続きになり`next`をたどると全保有者が重複も欠けも無くそろうこと、続きが無いと`next`が`undefined`になること(件数が`limit`ちょうどの場合を含む)、`limit`の境界(1と500は受け付け、0・501・整数でない値は`AppError(bad_request)`)、受付中・論理削除・削除待ち・隔離中・ファイル用の用途のファイルの保有者も列挙されること、`kind`の違う保有者(`admin`・`system`)が混ざらないこと、列挙がファイルを変えないこと(13.10)。
 - event: 代替の判定とwasmの描画で、不適切→隔離バケットへ移動・理由と検出内容・パージの依頼、問題なし→公開のまま、重複の依頼で変わらないこと、未判定、復号できない画像の隔離、SVGの違反の隔離(6.1〜6.10・7.1〜7.5・8.1〜8.8)。wasmがテスト環境で読めない場合は描画を偽物に差し替え、実物はローカルの動作確認で確かめる。
 - event: `FileRelocator`の移動・復元・途中の失敗からの再実行、パージの処理(`ctx.cache`が無い環境で`skipped`)、関門→`ImageDelivery`の配信(Images Bindingの簡易版で形式と寸法、SVGのCSP、404の`no-store`、クエリ文字列の無視、IP制限の除外、専用ホストでの404)、動作確認の経路のトークンの有無(9.1〜9.9・10.1〜10.12・11.1〜11.5・17.2・17.3)。
-- 設定: eventのWrangler設定で、`exports`のキャッシュの設定、変数とシークレットのキー名(11.1・16.1・16.2)。R2バインディングの管轄はinfra-deliveryの構成検査が確かめる。
+- 設定: eventのWrangler設定で、`exports`のキャッシュの設定、変数とシークレットのキー名(ルートの`secrets.required`の`MEDIA_SMOKE_TOKEN`を含む。11.1・16.1・16.2)。backend-platformの設定の単体テストは、`withoutDelegatedKeys`・`withoutDelegatedEntries`がメディアのキー(`MEDIA_CONFIG_KEY_PATTERN`)を除いて比べる。eventのキャッシュの期待値は既存のテストに無いため、本specのテストで新しく足す。R2バインディングの管轄は、backend-platformの設定の単体テスト(staging・prodは米国、ローカルは指定なし)とinfra-deliveryの構成検査が確かめる。
 
 ### Browser Tests(Vitest Browser Mode)
 
@@ -2063,30 +2079,31 @@ erDiagram
 ## Migration Strategy
 
 - 新しい2テーブルの追加だけで、既存のテーブルを変えない(Expand/Contractの「拡張」だけ、NFR-AVAIL-009)。マイグレーションの適用をデプロイより先に行うbackend-platform・infra-deliveryの順序に従う。
-- staging・prodのR2バインディングへの`jurisdiction: "us"`の指定(infra-delivery)は、バケットが米国管轄で作られていることが前提である。管轄の無いバケットが既にある環境では、バケットの作り直しが要る(作成後に管轄を変えられない)。
+- staging・prodのR2バインディングへの`jurisdiction: "us"`の指定(infra-deliveryが設定済み。資源一覧の3つのバケットも米国管轄で定義済み)は、バケットが米国管轄で作られていることが前提である。管轄の無いバケットが既にある環境では、バケットの作り直しが要る(作成後に管轄を変えられない)。
 
 ## Supporting References
 
 ### 環境ごとの設定値(event)
 
-| 項目                             | ローカル(ルート)                                          | staging                                                      | prod                                        |
-| -------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------- |
-| `IMAGE_DELIVERY_HOSTNAME`        | `localhost`                                               | `genai-example-2-images-staging.lab.kurachiweb.com`          | `genai-example-2-images.lab.kurachiweb.com` |
-| `IMAGE_DELIVERY_DEDICATED_HOST`  | `false`                                                   | `true`                                                       | `true`                                      |
-| `MODERATION_PROVIDER`            | `stub`                                                    | `rekognition`                                                | `rekognition`                               |
-| `MODERATION_REGION`              | `us-east-1`                                               | `us-east-1`                                                  | `us-east-1`                                 |
-| `MODERATION_MIN_CONFIDENCE`      | `60`                                                      | `60`                                                         | `60`                                        |
-| `MODERATION_BLOCKED_CATEGORIES`  | 全10カテゴリ(カンマ区切り)                                | 同左                                                         | 同左                                        |
-| `secrets.required`(追加分)       | なし                                                      | `REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY` | 同左                                        |
-| 任意のシークレット               | `MEDIA_SMOKE_TOKEN`(Infisicalのdevに登録した場合だけ有効) | `MEDIA_SMOKE_TOKEN`                                          | 登録しない                                  |
-| R2バインディングの`jurisdiction` | なし                                                      | `us`(3バケット、apiも同じ。infra-deliveryが設定)             | `us`(同左)                                  |
-| `exports`                        | `default`: キャッシュ無効、`ImageDelivery`: 有効          | 同左(トップレベルの設定)                                     | 同左                                        |
+| 項目                             | ローカル(ルート)                                                                                                                  | staging                                                      | prod                                        |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------- |
+| `IMAGE_DELIVERY_HOSTNAME`        | `localhost`                                                                                                                       | `genai-example-2-images-staging.lab.kurachiweb.com`          | `genai-example-2-images.lab.kurachiweb.com` |
+| `IMAGE_DELIVERY_DEDICATED_HOST`  | `false`                                                                                                                           | `true`                                                       | `true`                                      |
+| `MODERATION_PROVIDER`            | `stub`                                                                                                                            | `rekognition`                                                | `rekognition`                               |
+| `MODERATION_REGION`              | `us-east-1`                                                                                                                       | `us-east-1`                                                  | `us-east-1`                                 |
+| `MODERATION_MIN_CONFIDENCE`      | `60`                                                                                                                              | `60`                                                         | `60`                                        |
+| `MODERATION_BLOCKED_CATEGORIES`  | 全10カテゴリ(カンマ区切り)                                                                                                        | 同左                                                         | 同左                                        |
+| `secrets.required`(追加分)       | `MEDIA_SMOKE_TOKEN`(`wrangler dev`は`secrets.required`のキーだけを`env`へ渡すため。未登録なら警告して起動し、動作確認の経路は404) | `REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY` | 同左                                        |
+| 任意のシークレット               | なし(上の必須に含める)                                                                                                            | `MEDIA_SMOKE_TOKEN`(`secrets.required`に挙げない)            | 登録しない                                  |
+| R2バインディングの`jurisdiction` | なし                                                                                                                              | `us`(3バケット、apiも同じ。infra-deliveryが設定済み)         | `us`(同左)                                  |
+| `exports`                        | `default`: キャッシュ無効、`ImageDelivery`: 有効                                                                                  | 同左(トップレベルの設定)                                     | 同左                                        |
 
 - 全10カテゴリ: `Explicit`・`Non-Explicit Nudity of Intimate parts and Kissing`・`Swimwear or Underwear`・`Violence`・`Visually Disturbing`・`Drugs & Tobacco`・`Alcohol`・`Rude Gestures`・`Gambling`・`Hate Symbols`。
 - シークレットの登録とWorkerへの受け渡し(I-3):
   - stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する(`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`はタスク1.3が必須にする)。任意の`MEDIA_SMOKE_TOKEN`も、マージ後のstagingの確認に使うため同じマージの前に登録する。未登録のままマージすると、infra-deliveryのデプロイが必須のシークレットの欠落で失敗し、以後のstagingのデプロイが止まる。AIエージェントはInfisicalへ書き込まない。
   - prodの値はlaunch-readinessがリリース時に登録する(prodの資源と最初のprodのデプロイもリリース時にlaunch-readinessが行う)。prodには`MEDIA_SMOKE_TOKEN`を登録しない。
-  - Workerへの受け渡しは、infra-deliveryのタスク5.3で追記される(Infisicalの表に必須の`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`、`OPTIONAL_WORKER_SECRETS`のeventに`MEDIA_SMOKE_TOKEN`)。必須の2つはeventの`secrets.required`(タスク1.3)からデプロイの対象になる。本specは`scripts/delivery`を編集せず、タスク1.3で追記の有無を確かめ、無ければ開発者へ報告して進める(止めない)。infra-deliveryはroadmapの依存に無く、未実装でもCIのデプロイが無いだけで本specの実装は進められるためである(N-2)。
+  - ローカルの値は、開発者がInfisicalの`dev`に`MEDIA_SMOKE_TOKEN`を登録する(メールの`EMAIL_SMOKE_TOKEN`と同じ扱い)。未登録でもイベントサーバーは警告を出して起動し、動作確認の経路は404になる。
+  - Workerへの受け渡しは、infra-deliveryのタスク5.3で追記された(`OPTIONAL_WORKER_SECRETS`のeventの`MEDIA_SMOKE_TOKEN`と、`project-values.md`のstagingの行は記載済み。必須の`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`はinfra-deliveryのdesign.mdのInfisicalの表にあり、`project-values.md`にはまだ無い)。必須の2つはeventの`secrets.required`(タスク1.3)からデプロイの対象になり、`scripts/delivery`の変更は要らない。本specは`scripts/delivery`を編集しない(N-2)。
   - キーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節である(N-5)。本specはタスク1.3で行を足すか、既にある行との食い違いを確かめる。
 - ローカルの画像配信のオリジン(`http://localhost:48043`)はfrontend-platformの`IMAGES_ORIGIN`と同じである。
 

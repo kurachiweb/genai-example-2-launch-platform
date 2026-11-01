@@ -5,7 +5,7 @@
   - 前提: backend-platform・api-gateway・frontend-platformの全タスクと、content-processingが下流向けに示す最小の区切りが完了していること(仮決定2、roadmapの順はcontent-processing→media-pipeline。N-3)。区切りは、content-processingのタスク1.1(共有ディレクトリの定義への共用部品の追加)・1.2(共用部品のプロジェクトと読み込みの境界)・4.1(APIサーバーとイベントサーバーへの組み込み)・4.2(利用者側・管理者側とfrontend-libへの組み込み。兄弟の相対パスの検査と開発サーバーの配信の許可を含む)・6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`validation/**`の禁止の静的解析の規則)、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成である
   - `server/**`の許可(M-2)は、content-processingの6.1の単体テストの成功と`coding/003`の記述で確かめる。日次タイムラインの表を除く前提が無ければ止めて報告する。日次タイムラインの表が無いことを理由には止めず、タスク9.2で作る
   - 先に、`image-size`と`fast-xml-parser`をimportして小さな画像の寸法とXMLの検証を行うBunの単体テストと、`wasm-image-optimization/workerd`で小さなPNGを縮小するイベントサーバーのWorkers統合テストを書き、失敗を確かめる
-  - api・eventに`image-size` 2.0.4・`fast-xml-parser` 5.11.2、eventに`wasm-image-optimization` 2.0.11・`aws4fetch` 1.0.20、client・admin・frontend-libに`react-easy-crop` 6.2.3を、完全に固定した版で導入する。eventのテスト設定が`.wasm`をモジュールとして読めない場合は、読み込みの規則を加える
+  - api・eventに`image-size` 2.0.4・`fast-xml-parser` 5.11.2、eventに`wasm-image-optimization` 2.0.11・`aws4fetch` 1.0.20、client・admin・frontend-libに`react-easy-crop` 6.2.4を、完全に固定した版で導入する。eventのテスト設定が`.wasm`をモジュールとして読めない場合は、読み込みの規則を加える
   - client・admin・frontend-libの`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)に`react-easy-crop`を加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)
   - 同じ変更で、tech-stack.mdの画像処理に`image-size`を加えて各パッケージの役割を更新し、依存パッケージの版の一覧に、api・eventでそろえる2つとclient・admin・frontend-libでそろえる`react-easy-crop`を加える
   - 完了状態: 2つのテストが成功し、ロックファイルの版が設計の表と一致し、tech-stack.mdと版の一覧に新しいパッケージが載っている
@@ -19,15 +19,23 @@
   - _Requirements: 4.7, 9.1_
 
 - [ ] 1.3 eventのWrangler設定にメディアの項目を加え、設定の整合を単体テストで保証する
-  - 先に、環境ごとの実効値で、eventの`exports`で既定のエクスポートのキャッシュが無効で`ImageDelivery`が有効なこと、eventの変数(画像配信のホスト名・専用ホストかどうか・判定の実装・リージョン・閾値・カテゴリ)の値、staging・prodの必須シークレットに判定サービスの2つのキーがあり変数に秘密の値が無いことを確かめる単体テストを書く
-  - 設計の「環境ごとの設定値」の表どおりに、継承されないキーは環境ごとに書く。R2バインディングの管轄はinfra-deliveryが加えるため、本タスクでは変えない。backend-platformの設定の単体テストのうち、eventのキャッシュの期待値を本specの設定(トップレベルは無効、`ImageDelivery`だけ有効)に合わせる
+  - 先に、環境ごとの実効値で、eventの`exports`で既定のエクスポートのキャッシュが無効で`ImageDelivery`が有効なこと、eventの変数(画像配信のホスト名・専用ホストかどうか・判定の実装・リージョン・閾値・カテゴリ)の値、ルート(ローカル)の必須シークレットに動作確認のトークンが、staging・prodの必須シークレットに判定サービスの2つのキーがあり、staging・prodの必須シークレットに動作確認のトークンが無く、変数に秘密の値が無いことを確かめる単体テストを書く。eventのキャッシュの期待値は既存のテストに無いため、このテストで新しく足す
+  - 設計の「環境ごとの設定値」の表どおりに、継承されないキーは環境ごとに書く。ローカルの動作確認のトークンはルートの`secrets.required`に入れる(`wrangler dev`は`secrets.required`のキーだけを`env`へ渡すため。メールの疎通確認のトークンと同じ扱いで、未登録なら警告して起動し経路は404になる)。R2バインディングの管轄はinfra-deliveryが設定済みのため、本タスクでは変えない
+  - backend-platformの設定の単体テストが本specのキーで失敗しないよう、`apps/api/test/support/wrangler-config.ts`にメディアの変数とシークレットのキーの除外パターン(`MEDIA_CONFIG_KEY_PATTERN`。`IMAGE_DELIVERY_`・`MODERATION_`・`REKOGNITION_`・`MEDIA_`で始まるキー)を加え、`wrangler-config.unit.test.ts`の受け持ちの外のキーの一覧(`DELEGATED_KEY_PATTERNS`)へ加える(メールの`EMAIL_CONFIG_KEY_PATTERN`・全文検索の`SEARCH_CONFIG_KEY_PATTERN`と同じ受け持ちの分け方)。eventの必須シークレットのテスト(「eventはメール・キーワード抽出以外の必須シークレットとして…」)と変数のテスト(「eventのメール・キーワード抽出以外の変数は…」)の2つの名前も、「メール・キーワード抽出・メディア以外」に改める
   - eventのWorkers統合テストの設定に、テスト用の変数(画像配信のホスト名・専用ホストかどうか・代替の判定・閾値・カテゴリ)を加える
   - 実行時の環境の型を生成し直してコミットする
-  - infra-deliveryで、Infisicalの表に判定サービスの2つのキー(必須)が、Workerへ渡す任意のシークレットの一覧(`OPTIONAL_WORKER_SECRETS`のevent)に動作確認のトークンが追記済みであることを確かめる。無ければ開発者へ報告し、作業は止めない(infra-deliveryはroadmapの依存に無く、未実装でもCIのデプロイが無いだけで本specの実装は進められる。N-2)。本specは`scripts/delivery`を編集しない
-  - 同じ変更で、`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節(キーの一覧の正。infra-deliveryのタスク8.5が作る。N-5)に、判定サービスの2つのキーと動作確認のトークンの行を、節の形(環境・フォルダ・キー・使うWorker・宣言したspec・必須か任意か・登録の時期)で足す。既に行があれば食い違いを確かめるだけにする。節が無ければ開発者へ報告して進める
-  - stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する(未登録のままマージするとstagingのデプロイが止まる)。このことを作業の報告とPRの説明に書き、判定サービスの2つのキーと動作確認のトークンの登録を開発者へ依頼する。prodの値はlaunch-readinessがリリース時に登録する(I-3)
-  - 完了状態: メディアの設定の単体テストとbackend-platformの設定の単体テスト、型生成の検査が成功し、マージ前の登録の依頼と、infra-deliveryの追記・キーの一覧の節の確認結果(無かった場合は報告)が報告に含まれている
+  - Workerへ渡す任意のシークレットの一覧(`OPTIONAL_WORKER_SECRETS`のevent)の動作確認のトークンは、infra-deliveryが追記済みである(2026-11-01のギャップ分析で確認)。必須の判定サービスの2つのキーは`secrets.required`からデプロイの対象になるため、`scripts/delivery`の変更は要らない。本specは`scripts/delivery`を編集しない(N-2)
+  - 同じ変更で、`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節(キーの一覧の正。N-5)に、判定サービスの2つのキー(staging・prod、必須)と、動作確認のトークンのdevの行(必須。未登録でも起動し、動作確認の経路が404になる)を、節の形(環境・フォルダ・キー・使うWorker・宣言したspec・必須か任意か・登録の時期)で足し、トークンの生成方法の表と注記にも動作確認のトークンを加える(メールの疎通確認のトークンの行を見本にする)。stagingの動作確認のトークンの行は記載済みのため、食い違いを確かめるだけにする
+  - ローカルの値は開発者がInfisicalの`dev`へ登録する。stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する(未登録のままマージするとstagingのデプロイが止まる)。このことを作業の報告とPRの説明に書き、devの動作確認のトークンと、stagingの判定サービスの2つのキーと動作確認のトークンの登録を開発者へ依頼する。prodの値はlaunch-readinessがリリース時に登録する(I-3)
+  - 完了状態: メディアの設定の単体テストとbackend-platformの設定の単体テスト、型生成の検査が成功し、マージ前の登録の依頼と、キーの一覧の節の確認結果が報告に含まれている
   - _Requirements: 11.1, 16.1, 16.2, 17.7_
+
+- [ ] 1.4 共通エラーに411の種類を加える
+  - 先に、`length_required`の`AppError`が411と共通のエラー形式・`no-store`で応答されること、`STATUS_BY_KIND`の411、公開RESTの状態コードの一覧と説明に411があることを確かめる単体テストとWorkers統合テストの期待値を書き、失敗を確かめる
+  - backend-platformの`AppErrorKind`に`length_required`、`AppErrorStatus`と`STATUS_BY_KIND`に411を加え、apiの公開RESTの状態コードの一覧(`ERROR_STATUSES`)と説明に411を加える。api-gatewayの改訂3で413・415を加えたときと同じ範囲で変え、任意の状態コードを受ける組み立て部品は作らない
+  - 同じ変更で、`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の共通エラーの種類の表と、`docs/GUIDES/tech/backend/005-public-rest-api.md`の`errorResponses`に指定できる状態コードの列挙と、backend-platform・api-gatewayのdesign.mdとresearch.mdへ、本specの依頼による改訂として記録する
+  - 完了状態: 共通エラーと公開RESTの単体テスト・Workers統合テストと型検査が成功し、2つの技術ドキュメントに411があり、backend-platform・api-gatewayのdesign.mdとresearch.mdに改訂の記録がある
+  - _Requirements: 2.1_
 
 - [ ] 2. 前後で共有する定義(`apps/common-lib/media`)
 - [ ] 2.1 (P) 形式の一覧・アップロードのプロトコル・エラーコードを作る
@@ -48,8 +56,10 @@
 - [ ] 3.1 (P) 用途の定義・登録表と、ヘッダーの事前検証を作る
   - 先に、用途の名前の形式・保存先と許可形式の範囲・主体の種類の空・上限の範囲(全用途は20,971,520バイトちょうどを受け付け1バイト超を拒否し、画像用は20,000,000バイトちょうどを受け付け1バイト超を拒否する)・名前の重複の違反と、事前検証の411→400→413→415の順序と境界(上限ちょうど・1バイト超・0・数値でない値)を確かめる単体テストを書く
   - 動作確認用の固定の用途を、登録表に入れない定数として用意する
-  - 完了状態: 単体テストが成功し、各拒否が設計のエラーの表の状態コードとエラーコードを返す
+  - 拒否は状態コードではなく`AppError`の種類(`length_required`・`bad_request`・`payload_too_large`・`unsupported_media_type`など)で表す
+  - 完了状態: 単体テストが成功し、各拒否が設計のエラーの表の状態コードに当たる`AppError`の種類とエラーコードを返す
   - _Boundary: UploadPurposeRegistry, UploadPrecheck_
+  - _Depends: 1.4_
   - _Requirements: 1.1, 1.2, 2.1, 2.2, 2.3, 2.4_
 
 - [ ] 3.2 (P) マジックバイトの表と、寸法の読み取り・画素数の上限を作る
@@ -121,7 +131,7 @@
   - 差し込み口のポート(`UploaderEligibility`)・DIの識別子(`UPLOAD_ACCESS_TYPES.UploaderEligibility`)・既定の全許可の実装(`AllowAllUploaderEligibility`)と、束縛の置き場所(`composition/uploader-eligibility.ts`)を作る。経路は主体の種類の確認の後、受付処理の前に、利用者側の要求だけで判定を呼ぶ
   - 差し込み口の`session`は、application層の読み取りの型`SessionView`(`apps/api/src/application/session/session-view.ts`)で受け取り、presentation層の`SessionAccess`を読み込まない(R3-1)。`SessionView`の追加はidentity-authのタスク2.3の担当だが、roadmapの順では本タスクが先に実装される。本タスクの時点で無ければ、2.3と同じ形・同じ場所で置く。形はメンバーが`principal(): Promise<Principal>`だけで(`Principal`は`application/session/session-verifier.ts`から読み込む。セッションのIDは`AuthenticatedPrincipal.sessionId`で読む)、`requireAuthenticated`・`issue`・`clear`を含めない。api-gatewayの`SessionAccess`は変えず(`SessionView`の拡張に改めるのは2.3)、経路は`createSessionAccess`の結果をそのまま渡す。既にあればそれを使い、形が食い違えば開発者へ報告する
   - identity-authは、本タスクと5.6の後に、identity-authのタスク8.5で、この束縛を`AccountGuard`の判定による実装へ差し替える(N-7)
-  - 411・413・415は共通のエラー形式の組み立て部品で直接応答を作る
+  - 拒否はすべて`AppError`で投げ、共通の例外の変換に応答を作らせる(411はタスク1.4で加えた`length_required`)。経路で応答の本文を組み立てない
   - 完了状態: 経路のWorkers統合テストと既定の実装の単体テストが成功する
   - _Boundary: UploadRoute, UploaderEligibility_
   - _Requirements: 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 4.9, 4.10_
@@ -247,27 +257,29 @@
   - 先に、2つの経路のパス・メソッド・上流のパス(用途名とファイルの識別子の符号化)・受け付ける形式・引き継ぐ項目・時間切れと、経路が凍結されていることを確かめる単体テストと、ダウンロードの中継で`Content-Type`・`Content-Disposition`・`Content-Length`がブラウザへの応答に残ることを確かめる単体テストと、受け付ける形式に無い`Content-Type`のアップロードが中継の415(`unsupported_media_type`)になることを確かめる単体テストを書く
   - 2つの経路はfrontend-platformの`defineRelayRoute`で定義する(素のオブジェクトにしない)。経路の定義は`common-lib/media`だけを読み込む(M-2)。中継の415の挙動と、上流のJSONでない5xxを503`upstream_unavailable`にする挙動はfrontend-platformの定めのまま変えない(M-10)
   - 中継がこれらのヘッダーを落とす場合は、frontend-platformの応答の変換を互換を保って直す(Revalidation Triggers)
-  - 公開設定に画像配信のオリジンを加え、client・adminの登録箇所(`RELAY_ROUTES`)に2経路を完全一致の経路の後に加える
-  - 完了状態: 単体テストとfrontend-platformの中継・登録箇所のテスト(client・adminの`composition.unit.test.ts`の凍結の検査を含む)が成功する
+  - 公開設定(`PublicRuntimeConfig`・`toPublicRuntimeConfig`)に画像配信のオリジン(`imagesOrigin`。検証済みの`IMAGES_ORIGIN`)を加え、公開設定を直接書くテスト用データとStorybookの設定に値を加える。`IMAGES_ORIGIN`の検証とCSPの`img-src`への登録はfrontend-platformで実装済みのため変えない
+  - client・adminの登録箇所(`RELAY_ROUTES`)に2経路を完全一致の経路の後に加え、client・adminの`composition.unit.test.ts`の`RELAY_ROUTES`の期待値(GraphQLの経路だけとの完全一致)を3経路に改める
+  - 完了状態: 単体テストとfrontend-platformの中継・登録箇所のテスト(client・adminの`composition.unit.test.ts`の凍結の検査を含む)と、公開設定の単体テストが成功する
   - _Requirements: 1.3, 2.4, 12.1, 12.8_
 
 - [ ] 8.2 (P) 選択・切り取り・送信・表示の純粋な関数を作る
-  - 先に、選択の検査(形式・サイズ・個数・既存分を含む合計)、出力の寸法と形式(JPEG原本はJPEG、他はPNG、最大寸法以下)、送信の組み立て(`Content-Type`に引数を付けない)と応答の解析(201・各拒否・中継の415`unsupported_media_type`をAPIの`unsupported_file_type`と同じ文言にすること・403の`account_unavailable`・`email_not_verified`を文言規則の既存の文言にして再試行不可とすること・429・503・通信の失敗と再試行の可否・想定外の応答と`upload_purpose_not_found`の文言が`contactAvailable`の真で`UNEXPECTED_ERROR_MESSAGE`、偽で`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`になること)、エラーコードと選択の違反から文言規則の文言への対応、サイズの表記、`<picture>`の候補と幅・高さ(正方形・スクリーンショットの縦横比・寸法なし・SVG)、プレースホルダーの先頭1文字(書記素)と配色のコントラスト比を確かめる単体テストを書く
+  - 先に、選択の検査(形式・サイズ・個数・既存分を含む合計)、出力の寸法と形式(JPEG原本はJPEG、他はPNG、最大寸法以下)、送信の組み立て(`Content-Type`に引数を付けない)と応答の解析(201・各拒否・中継の415`unsupported_media_type`をAPIの`unsupported_file_type`と同じ文言にすること・403の`account_unavailable`・`email_not_verified`を文言規則の既存の文言にして再試行不可とすること・429・503・通信の失敗と再試行の可否・想定外の応答と`upload_purpose_not_found`の文言が`contactAvailable`の真で`UNEXPECTED_ERROR_MESSAGE`、偽で`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`になること)、エラーコードと選択の違反から文言規則の文言への対応、サイズの表記、`<picture>`の候補と幅・高さ(正方形・スクリーンショットの縦横比・寸法なし・SVG)と、大文字のフォールバックの形式(`JPG`・`PNG`・`SVG`)から配信のURLの拡張子(`jpg`・`png`・`svg`)への変換、プレースホルダーの先頭1文字(書記素)と配色のコントラスト比を確かめる単体テストを書く
+  - 表示部品が受け取る画像の型(`MediaImageView`)とフォールバックの形式の型(`MediaImageFallbackFormat`。GraphQLの列挙の生成型と同じ大文字の値)を`utilities/media`に定義し、`<picture>`の候補の組み立てが大文字の値を受けて拡張子へ変換する
   - 完了状態: 単体テストが成功し、文言が設計のエラーの表と一致する
   - _Boundary: UploadConstraints, UploadRequest, UploadMessages, FileSizeLabel, CropGeometry, PictureSources, PlaceholderAppearance_
   - _Requirements: 14.4, 14.6, 14.7, 14.9, 14.10, 15.1, 15.2, 15.4, 15.5_
 
 - [ ] 8.3 ファイルの選択の部品を作る
   - 先に、クリック・Enter・Spaceで選択が始まり、ドラッグ&ドロップで選べ、`accept`が許可形式になり、選んだファイルの名前・サイズ・形式とサムネイルが表示され、オブジェクトURLが破棄され、結果が通知の領域で読み上げられ、axe-coreの違反が0件であることを確かめるブラウザテストを書く
-  - 部品ごとにStorybookのストーリーを置く
-  - 完了状態: ブラウザテストが成功する
+  - 部品ごとにStorybookのストーリーを置く。ストーリーを持たず親の中でだけ描く部品(サムネイルなど)は、frontend-libのStorybookのカタログの検査の内部部品の一覧(`INTERNAL_COMPONENTS`)に加える
+  - 完了状態: ブラウザテストとStorybookのカタログの検査が成功する
   - _Boundary: FileDropZone, FileSelectionList, FileThumbnail_
   - _Requirements: 14.1, 14.2, 14.3, 14.12_
 
 - [ ] 8.4 (P) 編集ダイアログと、切り取った画像の作り直しを作る
   - 先に、ダイアログがフォーカスを閉じ込めて閉じると選択のボタンへ戻ること、キーボード・ポインターで移動と拡大縮小ができること、縦横比の指定、確定で最大寸法以下のJPEGまたはPNGが作られること(向き付きのJPEGが正しい向きになること)、axe-coreの違反が0件であることを確かめるブラウザテストを書く
-  - 部品にStorybookのストーリーを置く
-  - 完了状態: ブラウザテストが成功する
+  - 部品にStorybookのストーリーを置く。Storybookの開発サーバーでダイアログのストーリーを開き、`react-easy-crop`の事前バンドルのやり直しによる再読み込みが起きる場合は、`.storybook/main.ts`の`optimizeDeps.include`へ加える。エディタ専用の一覧(`EDITOR_PREBUNDLED_DEPENDENCIES`。検査の対象)には加えず、別の項目として並べる
+  - 完了状態: ブラウザテストが成功し、Storybookでダイアログのストーリーを開いても再読み込みが起きない
   - _Boundary: ImageCropDialog, EncodeCroppedImage_
   - _Depends: 8.2_
   - _Requirements: 14.5, 14.6, 14.12_
@@ -276,15 +288,16 @@
   - 先に、偽の`fetch`で、SVG以外の画像で編集ダイアログを経て作り直したファイルが送られること、作り直し後の超過の文言、SVGと添付がダイアログを経ずに選んだファイルで判定されて送られること、複数の画像を1枚ずつ編集すること、拒否の文言と選び直し、503の再試行、成功で呼び出し元へ識別子が渡ってプレビューが出ること、送信中の状態の通知、`contactAvailable`が偽(管理者側の`ADMIN_PROFILE.contactAvailable`)なら想定外の応答で問い合わせを促す文(「解決しない場合はお問い合わせください。」)が出ず、真なら出ることを確かめるブラウザテストを書く
   - 送信は1件ずつ順に行う
   - 2つの入力欄は必須の`contactAvailable`を受け、`useFileUpload`・`parseUploadResponse`へ渡す。想定外の応答の文言はfrontend-platformの`errorMessageOf(error, contactAvailable)`で選ぶ。利用者側の画面は`CLIENT_PROFILE.contactAvailable`、管理者側の画面は`ADMIN_PROFILE.contactAvailable`を渡す
-  - 完了状態: ブラウザテストが成功し、axe-coreの違反が0件である
+  - 完了状態: ブラウザテストとStorybookのカタログの検査が成功し、axe-coreの違反が0件である
   - _Depends: 8.3, 8.4_
   - _Requirements: 14.4, 14.5, 14.7, 14.8, 14.9, 14.10, 14.11, 14.12_
 
-- [ ] 8.6 (P) 画像の表示部品・ダウンロードのリンク・画像配信のオリジンの提供を作る
-  - 先に、AVIF(提供するバリアントだけ)・WebPの`<source>`とフォールバックの`<img>`、1x・2xの`srcset`、幅・高さの属性、SVGの`<img>`だけの表示、未設定・隔離中・読み込みの失敗でのプレースホルダー、遅延読み込み、ダウンロードのリンクの宛先と表示、axe-coreの違反0件を確かめるブラウザテストを書く
-  - client・adminのルートで画像配信のオリジンを配る
-  - 完了状態: ブラウザテストが成功し、client・adminの型検査とテストが成功する
-  - _Boundary: MediaPicture, MediaPlaceholder, PrivateFileLink, ImagesOriginProvider_
+- [ ] 8.6 (P) 画像の表示部品・ダウンロードのリンク・画像配信のオリジンの取得を作る
+  - 先に、AVIF(提供するバリアントだけ)・WebPの`<source>`とフォールバックの`<img>`、1x・2xの`srcset`、幅・高さの属性、SVGの`<img>`だけの表示、未設定・隔離中・読み込みの失敗でのプレースホルダー、遅延読み込み、ダウンロードのリンクの宛先と表示、axe-coreの違反0件を確かめるブラウザテストを書く。オリジンはルーターの文脈の公開の設定で与える
+  - 画像配信のオリジンは、`useImagesOrigin`がfrontend-platformの`appRuntimeOf`でルーターの文脈の公開の設定から読む。Providerを作らず、client・adminのルートを変えない
+  - 表示部品は、8.2で定義した画像の型(大文字のフォールバックの形式)をそのまま受ける。列挙値の一致を確かめる専用の検査は置かず、下流のspecがGraphQLの操作の結果を表示部品へそのまま渡す箇所の型検査に任せる(本specには`MediaImage`を返す操作が無いため)
+  - 完了状態: ブラウザテストとStorybookのカタログの検査が成功し、client・adminの型検査とテストが成功する
+  - _Boundary: MediaPicture, MediaPlaceholder, PrivateFileLink, useImagesOrigin_
   - _Depends: 8.1, 8.2_
   - _Requirements: 12.9, 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
 
@@ -334,8 +347,8 @@
 - [ ] 10.2 一括検査とカバレッジ80%を確かめ、開発者の手作業とstagingでの確認を引き継ぐ
   - ルートの一括検査と一括テストを実行し、本specのコードの単体テスト・ブラウザテスト・Workers統合テストで行と関数のカバレッジ80%以上を確かめる
   - 開発者の手作業を、実行するコマンドや画面の操作とともに報告にまとめる:
-    - 本specの変更をmainへマージする前: us-east-1のIAMユーザーとポリシーの作成、AIサービスのオプトアウトの有効化、Infisical(staging)へのアクセスキーと動作確認のトークンの登録(stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する。I-3)
-    - マージの後: stagingでのキャッシュとパージ・`fit`と品質・JPEG出力のメタデータ・判定サービスとの疎通・判定のCPU時間とメモリの確認(技術ドキュメントの手順。infra-deliveryがWorkerへ渡すシークレットの一覧に動作確認のトークンを載せていることが前提)
+    - 本specの変更をmainへマージする前: us-east-1のIAMユーザーとポリシーの作成、AIサービスのオプトアウトの有効化、Infisical(dev)への動作確認のトークンの登録、Infisical(staging)へのアクセスキーと動作確認のトークンの登録(stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する。I-3)
+    - マージの後: stagingでのキャッシュとパージ・`fit`と品質・JPEG出力のメタデータ・判定サービスとの疎通・判定のCPU時間とメモリの確認(技術ドキュメントの手順。Workerへ渡す任意のシークレットの一覧の動作確認のトークンは、infra-deliveryが載せ済み)
     - launch-readinessへの引き継ぎ: prodのアクセスキーの登録(prodの値はlaunch-readinessがリリース時に登録する。prodには動作確認のトークンを登録しない)、画像変換の無料枠と費用の判断
   - 完了状態: 一括検査と一括テストが成功してカバレッジが閾値を満たし、手作業の一覧(マージ前・マージ後・引き継ぎの区分)が報告に含まれている
   - _Requirements: 11.6, 16.3, 17.1_

@@ -55,7 +55,7 @@
 - 変換配信の仕様: 画像バリアント仕様で決定済み(バリアント・URL・`Cache-Control`・パージ・404の`no-store`・「GIFは最初のフレームのみ」)。Q1の結果だけを反映する。
 - HW-001のカメラ: モバイルでは、ネイティブのファイル選択(`<input type="file">`)がカメラ撮影を選択肢に出す。`getUserMedia`は使わず、Permissions-Policyの`camera=()`も変えない。iOSは、`accept`にHEICが無ければJPEGへ変換して渡す。
 - Rekognitionの呼び出し方式: FR-FILEU-013のとおり、640px以下のPNG・JPEGをバイト列で同期API(DetectModerationLabels)に送る。ローカルとCIでは、tech-stack.mdどおり決定論的スタブを使う。
-- aws4fetch・react-easy-crop: どちらもtech-stack.mdで採用済み。aws4fetchは1.0.20(2024-08)以降リリースが無いが、依存が無くSigV4の仕様も安定しているので変えない。react-easy-cropの最新の6.2.4は2026-10-06公開で、公開から2週間に満たないため、2週間以上前の6.2.3(2026-07-24公開)に固定する(共通指示の版の規則)。
+- aws4fetch・react-easy-crop: どちらもtech-stack.mdで採用済み。aws4fetchは1.0.20(2024-08)以降リリースが無いが、依存が無くSigV4の仕様も安定しているので変えない。react-easy-cropは6.2.4(2026-10-06公開)に固定する。設計時は公開から2週間に満たないため6.2.3(2026-07-24公開)としたが、2026-11-01のギャップ分析で2週間以上経ったことを確かめ、開発者の決定(G-9)で上げた。依存(`normalize-wheel` ^1.0.1)と相手依存(React・ReactDOM 16.4以上)は6.2.3と同じである。
 - Requirement Ambiguities: roadmapの表に、担当がmedia-pipelineの行は無い。
 
 ### 仮決定(2026-10-18に開発者が承認)
@@ -175,7 +175,7 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
   - 公開は2026-09-13で、公開から2週間以上経っている。
 - **Implications**: 判定用の画像は、縮小だけなら`optimizeImage()`の`png`・`jpeg`で作る。余白が要る場合は`raw`で縮小した画素を受け取り、余白を足してPNGに符号化する(PNGの符号化は`CompressionStream('deflate')`を使う数十行の自前の部品にする)。Workers統合テストでwasmが読めない場合は、描画の部品を注入できる形にして、実物の確認をローカルの`wrangler dev`の動作確認へ回す。
 
-### image-size 2.0.4・fast-xml-parser 5.11.2・aws4fetch 1.0.20・react-easy-crop 6.2.3
+### image-size 2.0.4・fast-xml-parser 5.11.2・aws4fetch 1.0.20・react-easy-crop 6.2.4
 
 - **Sources Consulted**: 各パッケージの配布物の`package.json`と型定義。
 - **Findings**:
@@ -383,3 +383,132 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
 
 - **ブラウザテストの事前バンドル**: frontend-platformの`vitest.browser.config.ts`は、テストの実行中に依存の事前バンドルをやり直すとページが再読み込みされReactが2つ読み込まれるため、画面部品の依存を`PREBUNDLED_DEPENDENCIES`に列挙している(content-processingの差分の分析のG-3)。本specが加える`react-easy-crop`を、client・admin・frontend-libの一覧へ加える手順をdesign.mdのModified Filesとtasks.mdの導入のタスクに加えた。
 - 要件と受け入れ基準は変えていない。
+
+---
+
+## 実装前のギャップ分析(2026-11-01、kiro-validate-gap)
+
+### 分析の前提
+
+- 要件・設計・タスクは承認済みで、`spec.json`の`ready_for_implementation`は`false`である。本節は新しい設計の選択肢を探すのではなく、設計の前提にした上流の契約と、実装済みのコードとの食い違いを洗い出す。
+- 上流の実装状況: backend-platform(57/57)・api-gateway(52/52)・frontend-platform(97/97)・content-processing(55/55)・email-delivery(34/34)・dev-tooling(47/47)はすべて完了している。infra-deliveryは9と9.2だけが未完了で、9.2は開発者によるstagingの初回の準備を待っている。本specの前提にはならない。
+- content-processingの前提の区切り(1.1・1.2・4.1・4.2・6.1・11.3・11.4)は完了している。`apps/common-lib`は4アプリへ配置され、frontend-libの`server/**`からの読み込みも許可されている([frontend-lint.ts](../../../apps/frontend-lib/config/frontend-lint.ts))。日次タイムラインの表(900・2300)もある。タスク1.1の前提の確認は通る見込みである。
+- steeringは`roadmap.md`だけで、`product.md`・`tech.md`・`structure.md`は無い。本プロジェクトの規則とtechドキュメントで代わりにした。
+- 調査はバックエンド・フロントエンド・インフラと依存パッケージと文書の3観点で並列に行い、主な相違は設計の該当行で確かめた。
+
+### 要件と資産の対応表
+
+凡例: **既存**=上流が用意済みで使うだけ、**Missing**=本specが作る(設計どおり)、**Constraint**=設計の修正か実装時の手当てが要る、**Unknown**=実装時に確かめる。
+
+| 要件                                | 既存の資産                                                                                                                                           | ギャップ                                                                                                                                                                        |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 用途と受付の条件                  | 内部RESTの登録口`createInternalRoutesModule`・空の`INTERNAL_ROUTES`、`c.var.session`(`SessionAccess.principal()`)、既定の`AnonymousSessionVerifier`  | Missing: 用途の登録表・`UploaderEligibility`・`SessionView`(`application/session/session-view.ts`は未作成。5.1が置く)                                                           |
+| 2 事前検証                          | `AppErrorKind`の`payload_too_large`・`unsupported_media_type`                                                                                        | **Constraint G-1**: 411を表す種類も、任意の状態コードで共通のエラー形式を組む公開の部品も無い                                                                                   |
+| 3 実体の検証                        | `apps/common-lib`の配置の仕組み                                                                                                                      | Missing: シグネチャ表・SVGの検査・寸法の読み取り。依存パッケージ4つは未導入                                                                                                     |
+| 4 保存と応答                        | R2の3バケット(api・event、staging・prodは`jurisdiction: "us"`)、本文はバッファせずストリームのまま中継・内部REST                                     | Missing: 記録・オブジェクトストア・受付処理。Unknown U-1(workerd上の`Content-Length`)                                                                                           |
+| 5 紐付けと未使用の削除              | `ScheduledJobDefinition`・4:21の`cron`(追加不要)・順序810〜830は衝突しない                                                                           | Constraint G-11(4:21の時間の予算)                                                                                                                                               |
+| 6〜8 自動判定・SVG・冪等性          | `defineMessageContract`(例に`media.purge-image-cache`)・`RetryPolicy`(最大6回)・デッドレターの通知、eventの`IMAGES`                                  | Missing: 判定の処理一式。Rekognitionのシークレットは未宣言。Constraint G-12(処理の戻り値の型)                                                                                   |
+| 9 隔離理由                          | `ulidPrimaryKey`・`timestamps`・`softDelete`、`snakeCase.table`                                                                                      | Missing: 2テーブル。Constraint G-13(初めての外部キー)                                                                                                                           |
+| 10・11 変換配信・キャッシュ         | 画像配信ホスト名のeventへの割り当て(IaC済み)、Wrangler 4.124.0(`exports.<名前>.cache`を受け付ける)、`RateLimitExclusion.excludeHostname`             | Missing: 関門・`ImageDelivery`・パージ。Unknown U-2(miniflareのImages Binding)。Constraint G-3(eventの設定テスト)                                                               |
+| 12 非公開ファイルの配信             | `defineRelayRoute`・`toBrowserResponse`(`Content-Type`・`Content-Disposition`・`Content-Length`を残す)・CSRF・`no-store`の後処理                     | Constraint G-7(`RELAY_ROUTES`の期待値)。Unknown U-1                                                                                                                             |
+| 13 削除とライフサイクル             | 同上の定期実行・`PLATFORM_TYPES`                                                                                                                     | Missing(設計どおり)                                                                                                                                                             |
+| 14 アップロード部品・編集ダイアログ | `ui/dialog`・`ui/button`・`form-field`・`errorMessageOf(error, contactAvailable)`・`*_PROFILE.contactAvailable`・`runAxe`・`pressKeyUntilFocusMoves` | Missing: ファイル選択・ドロップ・スライダーの部品(`ui/slider`は無い)。Constraint G-8(Storybookのカタログ)・G-9(react-easy-cropの版)。アップロードと切り取りのモックアップは無い |
+| 15 画像の表示部品                   | CSPの`img-src`に`IMAGES_ORIGIN`が登録済み、`IMAGES_ORIGIN`の検証済みの変数、プレースホルダーのモックアップ                                           | **Constraint G-5**(オリジンの配り方)・**G-6**(GraphQLの列挙値の大文字と小文字)・G-14(プレースホルダーの形)                                                                      |
+| 16 外部サービスとデータの所在       | プライバシーポリシーの大枠と準拠方針の委託先ごとの型(Cloudflare・Google Cloudの項)                                                                   | Missing: AWSの項                                                                                                                                                                |
+| 17 動作確認・テスト・文書           | 任意のシークレット`MEDIA_SMOKE_TOKEN`は登録済み(`worker-secrets.ts`)、`002-image-variants.md`はある                                                  | **Constraint G-2**(ローカルにトークンが届かない)。Missing: techドキュメント3つ                                                                                                  |
+
+### 設計と実装済みの上流との相違
+
+#### 設計かタスクの改訂が要るもの
+
+- **G-1 411の応答の組み立て部品が無い**: design.mdのエラー処理の節は「411は`AppError`の種類に無いため、受付の経路が共通のエラー形式の組み立て部品で直接応答を作る」とする。しかし[error-envelope.ts](../../../apps/backend-lib/core/errors/error-envelope.ts)で公開されているのは`toErrorResponse(error: AppError)`・`ErrorEnvelope`型・2つの定数だけで、`ErrorResponseParts.status`は`AppErrorStatus | 500`である。任意の状態コードを受ける`createEnvelope`は公開されていない。
+  - 選択肢A: presentation層で`ErrorEnvelope`型に合わせて411の本文を自前で組む(上流は変えない。形のずれは型検査で防げる)
+  - 選択肢B: backend-platformに、状態コードを引数に取る組み立て関数を公開させる(上流の変更。後続specでも使える)
+  - 選択肢C: `AppErrorKind`に`length_required`(411)を加える(上流の種類の追加。`AppErrorStatus`・GraphQLの対応表・文書へ波及する)
+- **G-2 ローカルで`MEDIA_SMOKE_TOKEN`が届かない**: [secret-management](../../../docs/GUIDES/tech/security/001-secret-management.md)のとおり、`secrets`を宣言したWorkerでは`wrangler dev`も`secrets.required`のキーしか読まない。design.mdのeventの設定の表は、ローカルの`secrets.required`の追加を「なし」、`MEDIA_SMOKE_TOKEN`を「Infisicalのdevに登録した場合だけ有効」としているため、ローカルの動作確認(タスク10.1)ができない。メールの疎通確認は`EMAIL_SMOKE_TOKEN`をトップレベルの`secrets.required`へ入れて回避している([event/wrangler.jsonc](../../../apps/event/wrangler.jsonc))。`project-values.md`のdevにも行が無い。
+  - 選択肢A: メールと同じく、トップレベル(ローカル)の`secrets.required`へ入れ、Infisicalのdevに登録してdevの行を足す(先例どおり。ローカルではトークンが必須になる)
+  - 選択肢B: ローカルだけは固定のトークンを変数で渡す(シークレットの規則から外れる)
+  - 選択肢C: ローカルの動作確認を統合テストで代え、ローカルの経路は404のままにする(タスク10.1の範囲が狭まる)
+- **G-3 eventのWrangler設定の既存テストが壊れる**: backend-platformの[wrangler-config.unit.test.ts](../../../apps/api/test/config/wrangler-config.unit.test.ts)は、eventの変数とシークレットを`toStrictEqual`で比べる。メディアの変数・シークレットを足すと失敗する。先例のメールと全文検索は、[test/support/wrangler-config.ts](../../../apps/api/test/support/wrangler-config.ts)の除外パターン(`EMAIL_CONFIG_KEY_PATTERN`・`SEARCH_CONFIG_KEY_PATTERN`)で受け持ちを分けている。タスク1.3に`MEDIA_CONFIG_KEY_PATTERN`(`IMAGE_DELIVERY_`・`MODERATION_`・`REKOGNITION_`・`MEDIA_`)の追加が無い。また1.3の「eventのキャッシュの期待値を合わせる」とあるが、既存テストが期待値を持つのはapiのキャッシュだけで、eventの期待値は新しく足すことになる。
+- **G-5 画像配信のオリジンの配り方が既存の流儀と合わない**: design.mdは`ImagesOriginProvider`を両アプリの`routes/__root.tsx`に置くとする。frontend-libの既存の部品は、Providerを使わず`appRuntimeOf(useRouter().options.context).publicConfig`から設定を直接読む(`turnstile-widget.tsx`・`use-markdown-options.ts`)。文脈を配るProviderは`AppDocument`にまとめられ、`__root.tsx`は`shellComponent`で包むだけである。一方`IMAGES_ORIGIN`は、検証済みの変数・CSPの`img-src`・両アプリのWrangler設定にすでにある。足りないのは`PublicRuntimeConfig.imagesOrigin`と`toPublicRuntimeConfig`への追加と、`PublicRuntimeConfig`を直接書いているテスト用データ・Storybookの約10箇所の更新である(先例はcontent-processingの`CLIENT_SITE_ORIGIN`の追加)。
+  - 選択肢A: `useImagesOrigin`が`appRuntimeOf`から読み、Providerと`__root.tsx`の変更をやめる(既存の流儀どおり。ルートの変更が無くなる)
+  - 選択肢B: Providerを`AppDocument`に置く(テストでオリジンを差し替えやすい。カタログの除外の登録が要る)
+  - 選択肢C: 設計どおり`__root.tsx`に置く(既存の流儀と食い違う)
+- **G-6 GraphQLの列挙値の大文字と小文字をつなぐ規則が無い**: スキーマの`MediaImageFallbackFormat`は`JPG`・`PNG`・`SVG`で、codegenは`enumsAsTypes: true`なので`'JPG' | 'PNG' | 'SVG'`になる。表示部品が受け取る`MediaImageView.fallbackFormat`は`FallbackFormat = 'jpg' | 'png' | 'svg'`で、変換がどこにも定義されていない。
+  - 選択肢A: frontend-libの`utilities/media`に変換関数を置き、ドメインspecが画面のデータを作るときに使う
+  - 選択肢B: `MediaPicture`の受け取る型をGraphQLの生成型に合わせて大文字にする(`common-lib/media`の`FallbackFormat`と2種類の表記が並ぶ)
+  - 選択肢C: スキーマにfallbackの拡張子を文字列で返す項目を足す(列挙の型の安全性が下がる)
+- **G-9 react-easy-cropを6.2.3に固定した理由が古い**: research.mdの「6.2.4は公開から2週間に満たない」は、2026-11-01時点で当てはまらない(6.2.4は2026-10-06公開)。上げるか据え置くかを決め、tech-stack.mdと設計の版を合わせる。他の4パッケージ(fast-xml-parser 5.11.2・image-size 2.0.4・aws4fetch 1.0.20・wasm-image-optimization 2.0.11)は据え置きでよい。wasm-image-optimizationの最新2.0.13は2026-10-22公開で2週間未満であり、5.11.2より後のfast-xml-parserの勧告は無い。
+
+#### 文書の記述だけが古いもの(実装には影響しない)
+
+- **G-4 R2の管轄は設定済み**: design.mdの依存の一覧とeventの設定の表は「infra-deliveryが設定する」と書くが、api・eventのstaging・prodのR2バインディングに`jurisdiction: "us"`がすでにあり、テストもある。画像配信のホスト名の割り当て(IaC)も済んでいる。
+- **G-10 時制の古い記述**: Revalidation Triggersの「frontend-platform: `PublicRuntimeConfig`への画像配信のオリジンの追加」は、CSPと変数の検証がすでに済み、公開の設定への追加だけが残っている(G-5)。
+
+#### 実装時の手当てで足りるもの
+
+- **G-7 中継の経路の構成テストの期待値**: client・adminの`composition.unit.test.ts`は`RELAY_ROUTES`を`[GRAPHQL_RELAY_ROUTE]`と完全一致で比べる。8.1で期待値を改める。「末尾`/*`の経路は完全一致の経路の後に置く」はコメントだけで検査が無いため、検査を足すかを8.1で決める。
+- **G-8 Storybookのカタログ**: `storybook-catalog.unit.test.ts`は、`components/**/*.tsx`にストーリーがあるか、除外か内部部品の一覧に載っていることを求める。親の中でだけ描く部品(サムネイルなど)を`INTERNAL_COMPONENTS`に載せる。Storybookの事前バンドル(`.storybook/main.ts`)にreact-easy-cropが要るかは、8.xで確かめる。
+- **G-11 4:21の時間の予算**: backend-platformは`SCHEDULED_RUN_BUDGETS`(4:21の合計300,000ms)と、1ジョブ30秒の目安を持つ([003-async-processing.md](../../../docs/GUIDES/tech/infra/003-async-processing.md))。design.mdの3つのジョブ(1回最大1,000件の物理削除・R2の削除・パージの要求)は、この目安に触れていない。目安を超えるならメッセージの処理へ移す規則がある。
+- **G-12 メッセージの処理の戻り値**: 処理の型は`handle(body, meta): Promise<{ kind: 'done' } | { kind: 'defer'; delaySeconds }>`で、`meta.attempts`を受け取れる。最後の試行で未判定にする設計(`meta.attempts`による判定)と合うが、design.mdは戻り値の型を明記していない。
+- **G-13 初めての外部キー**: 既存のスキーマに外部キーは無く、`media_file_quarantine_reasons`の連鎖削除が最初の例になる。D1は外部キーの制約を既定で有効にする。drizzle-kitの生成と、統合テストでの連鎖削除を1.2・4.1で確かめる。
+- **G-14 プレースホルダーの形**: モックアップの`initial-placeholder.tsx`は`shape: 'rounded' | 'circle'`を持つ。設計の`placeholder: { label, seed }`には形の指定が無く、`className`で代えるかを8.xで決める。
+- **G-15 エディタと同じ画面でのドロップ**: content-processingのエディタは、ファイルのドロップと貼り付けを握りつぶす(`file-transfer-guard.ts`)。同じ画面にアップロードの入力欄を置いても、互いのドロップの処理がぶつからないことを確かめる。
+
+### 実装の進め方の選択肢
+
+- **選択肢A 実装の前に設計とタスクを改訂する**: G-1・G-2・G-3・G-5・G-6・G-9を開発者の決定に基づいてdesign.md・tasks.mdへ反映し、タスクの承認を取り直してから`ready_for_implementation`を`true`にする。
+  - ✅ 実装中に設計と食い違うのを防げる。G-2(10.1が止まる)とG-3(1.3で既存テストが壊れる)を前もって解消できる。
+  - ❌ 実装の開始が改訂とレビューの分だけ遅れる。
+- **選択肢B 設計のまま実装し、食い違いを各タスクで直す**: 各タスクで見つかった時点で直し、最後に設計へ反映する(content-processingの進め方)。
+  - ✅ すぐに始められる。
+  - ❌ G-5・G-6はコンポーネントの契約(`MediaPictureProps`・Providerの有無)を変えるため、8.xの途中で決め直すとテストの書き直しが出る。G-1は2.x・3.1・5.1の境界にまたがる。
+- **選択肢C 混合**: 契約を変えるG-1・G-2・G-5・G-6・G-9だけを先に決めてdesign.mdへ反映する。G-3・G-4・G-7・G-8・G-10〜G-15は該当タスクの実装時に手当てし、最後のタスクで設計へ反映する。
+  - ✅ 改訂の範囲が小さく、契約の食い違いは前もって解消できる。
+  - ❌ 実装時の手当ての記録を漏らさないよう、tasks.mdのImplementation Notesへの記録が要る。
+
+### 工数とリスク
+
+- **工数: XL(2週間超)** — 実装の量は設計どおりで、変わらない。17の要件、api・event・frontend-lib・common-lib・dbにまたがる約40のサブタスク、外部サービス(Rekognition)・wasm・Images Binding・Workers Cacheとの結合がある。本節の相違による追加は、改訂の数日に収まる。
+- **リスク: Medium** — 上流の契約がそろい、資源もバインディングも用意済みのため、未知の上流の変更による手戻りは小さい。残るのは、workerd・miniflareでしか分からない挙動(U-1〜U-3)と、判定用画像の作成のメモリとCPU(research.mdのRisks)である。
+
+### Research Needed(実装時に確かめる)
+
+- **U-1**: workerd上で、ストリームの本文の中継とR2から流すダウンロードの応答で`Content-Length`が保たれるか(Bunの単体テストでしか確かめられていない)。5.3・8.1の統合テストで確かめる。
+- **U-2**: miniflare(`@cloudflare/vitest-pool-workers`)で`IMAGES`バインディングがどこまで使えるか。7.3の「簡易版」の前提である。
+- **U-3**: `exports.default`のキャッシュ無効の設定がデプロイ時に受け付けられるか(`unstable_readConfig`では読めることを確かめた)。stagingの最初のデプロイで確かめる。
+- **U-4**: 1,000件の物理削除のジョブが、4:21の1ジョブ30秒の目安に収まるか(G-11)。stagingの合成データで要約のログから実測する。
+
+### 設計フェーズへの推奨
+
+- 推奨は選択肢C。契約を変える相違(G-1・G-5・G-6)と、実装を止める相違(G-2・G-3)だけを先に決めて設計とタスクへ反映する。
+- 開発者の判断が要るのは、G-1(411の組み立て)、G-2(ローカルのトークン)、G-5(オリジンの配り方)、G-6(列挙値の変換)、G-9(react-easy-cropの版)の5件である。G-3は先例どおり除外パターンを足すだけで、判断は要らない。
+
+### 開発者の決定と反映(2026-11-01)
+
+ギャップ分析の相違を、1件ずつ開発者に確認した。いずれも推奨の選択肢に決まり、design.md・tasks.mdへ反映した。要件と受け入れ基準は変えていない。
+
+| #   | 論点                         | 決定                                                                                                                                                                                                                                                                                                | 反映した箇所                                                                                                                                                                                          |
+| --- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G-1 | 411の応答の作り方            | backend-platformの`AppErrorKind`に`length_required`(411)を加え、拒否はすべて`AppError`で投げる。任意の状態コードを受ける組み立て部品は作らない                                                                                                                                                      | 設計のAllowed Dependencies・Revalidation Triggers・Modified Files・`UploadRejection`(状態コードを`kind`に改めた)・拒否の表し方・Error Strategy。タスク1.4を新設し、3.1(`_Depends: 1.4_`)・5.1を改めた |
+| G-2 | ローカルの動作確認のトークン | メールの先例どおり、eventのルート(ローカル)の`secrets.required`へ`MEDIA_SMOKE_TOKEN`を入れ、Infisicalの`dev`に登録する。未登録なら警告して起動し、経路は404になる                                                                                                                                   | 設計のRevalidation Triggers・Modified Files・環境ごとの設定値の表・シークレットの登録・Testing Strategy。タスク1.3                                                                                    |
+| G-3 | eventの設定テストの手当て    | `apps/api/test/support/wrangler-config.ts`に`MEDIA_CONFIG_KEY_PATTERN`を加え、backend-platformの設定の検査はメディアのキーを除いて比べる。eventのキャッシュの期待値は本specのテストで新しく足す                                                                                                     | 設計のRevalidation Triggers・Modified Files・Testing Strategy。タスク1.3                                                                                                                              |
+| G-5 | 画像配信のオリジンの配り方   | `useImagesOrigin`が`appRuntimeOf(useRouter().options.context).publicConfig.imagesOrigin`から読む。`ImagesOriginProvider`を作らず、client・adminの`__root.tsx`を変えない                                                                                                                             | 設計のAllowed Dependencies・Revalidation Triggers・File Structure Plan・Modified Files・追跡表(15.1〜15.4)・`MediaPicture`の説明。タスク8.1・8.6                                                      |
+| G-6 | 列挙値の大文字と小文字       | 表示部品の`MediaImageView.fallbackFormat`をGraphQLの生成型と同じ`'JPG' \| 'PNG' \| 'SVG'`(`MediaImageFallbackFormat`)にし、拡張子への変換は`buildPictureSources`の中で行う。列挙値の一致は、下流のspecがGraphQLの結果を表示部品へそのまま渡す箇所の型検査に任せる(タスクのレビューの後の追加の決定) | 設計の`MediaImageView`の型と列挙値の受け取りの説明。タスク8.2・8.6                                                                                                                                    |
+| G-9 | react-easy-cropの版          | 6.2.4に上げる                                                                                                                                                                                                                                                                                       | 設計のTechnology Stack。research.mdのResearch Log。タスク1.1                                                                                                                                          |
+
+- **G-1の検討の記録**: 任意の状態コードを受ける共通のエラー形式の組み立て部品(`createEnvelope`の公開など)は、次の理由で作らないことにした。
+  - backend-platformの共通エラーは「`AppError`の種類から状態コードが決まる」(`STATUS_BY_KIND`)ことで、全経路の失敗の応答・アクセスログ・GraphQLの`extensions`の対応付けをそろえている。任意の状態コードを受ける部品は、この不変条件に抜け道を作り、後続の経路が`AppError`を経ずに応答を作れるようになる。
+  - 411を使うのは本specのアップロードの受付だけで、他のspecの設計にも411や`AppError`の種類に無い状態コードの需要は無い(2026-11-01に全specのdesign.mdとコードで確かめた)。
+  - 経路で本文を自前で組む案は変更が最小だが、`docs/GUIDES/tech/backend/002`の「想定内の失敗は`AppError`で投げる」「応答の組み立ては`toErrorResponse`などで行う」の例外になり、例外を文書に書き足す必要がある。
+  - `AppErrorKind`への追加は、api-gatewayの改訂3(コミット`693a9381`、413・415)と同じ手順で、変更の範囲(`app-error.ts`・単体テスト・公開RESTの状態コードの一覧と説明・文書の種類の表)も分かっている。
+- **文書の記述だけが古い相違(G-4・G-10)**: コードを正として直した。R2バインディングの管轄と画像配信ドメインの割り当ては設定済み、`OPTIONAL_WORKER_SECRETS`のeventの`MEDIA_SMOKE_TOKEN`とstagingの行は記載済み、`IMAGES_ORIGIN`の検証とCSPの`img-src`への登録は実装済み、上流は実装済みと改めた(設計のOut of Boundary・Revalidation Triggers・Existing Architecture Analysis・Modified Files・環境ごとの設定値の表・Migration Strategy、タスク1.3)。
+- **実装時の手当て(G-7・G-8)**: client・adminの`composition.unit.test.ts`の`RELAY_ROUTES`の期待値の改訂をタスク8.1に、Storybookのカタログの内部部品の登録をタスク8.3に、Storybookの事前バンドルの確認をタスク8.4に加えた。G-11〜G-15とU-1〜U-4は、該当タスクの実装時に確かめる。
+- 「frontend-platformの確定した契約の反映(2026-10-28)」の節の`__root.tsx`への`ImagesOriginProvider`の配置は、G-5の決定で取りやめた。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントで行った(independent)。
+  - 1回目はNEEDS_FIXES(必須3件・軽微4件)だった。
+  - 必須の1件目: 8.6の「生成された`MediaImage`の型が`MediaImageView`へ代入できることの型だけの検査」は作れない。client-presetは操作の結果の型だけを生成し、本specには`MediaImage`を返す操作が無いためである。開発者に確認し、専用の検査を置かず、下流のspecがGraphQLの結果を表示部品へそのまま渡す箇所の型検査に任せることにした。設計とG-6の行を改めた。
+  - 必須の2件目: 8.6の5.4への依存の欠落。専用の検査をやめたため依存は要らなくなり、変えていない。
+  - 必須の3件目: 大文字から拡張子への変換と`MediaImageView`の定義の受け持ちを、`PictureSources`を持つ8.2へ移した。
+  - 軽微の4件は次のように直した。1.4の更新する文書に`backend/005-public-rest-api.md`の状態コードの列挙を加えた。8.4に`optimizeDeps.include`のエディタ専用の一覧とは別の項目へ加えることと、完了の確かめ方を加えた。10.2の古い前提を直した。1.3で改める2つのテスト名を挙げた。
+  - 2回目はPASSだった。軽微の指摘5件に従って直した。設計のImpactの管轄の古い記述を改め、ファイル構成の`picture-sources.ts`の注記に`MediaImageView`・`MediaImageFallbackFormat`を加えた。8.5・8.6の完了状態にStorybookのカタログの検査を加え、10.2のマージ前の手作業にInfisical(dev)への動作確認のトークンの登録を加え、1.4の完了状態に上流specへの改訂の記録を加えた。タスクの承認(`approvals.tasks.approved: true`)を保ち、`ready_for_implementation`を`true`にした。
