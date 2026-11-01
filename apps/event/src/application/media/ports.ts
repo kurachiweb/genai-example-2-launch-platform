@@ -1,4 +1,5 @@
 import type { ImageVariantSpec } from '../../../common-lib/media/image-variants.ts';
+import type { ModerationFinding } from '../../../lib/core/media/media-file.ts';
 
 export type ModerationImageFormat = 'png' | 'jpeg';
 
@@ -68,6 +69,11 @@ export interface MediaIncidentReporter {
   misconfigured(reason: string): void;
 }
 
+// 動作確認の経路が判定の結果を確かめるため、記録された検出内容を読む
+export interface ModerationFindingsReader {
+  findingsOf(fileId: string): Promise<readonly ModerationFinding[]>;
+}
+
 export interface FileRelocator {
   reconcile(fileIds: readonly string[]): Promise<{ readonly moved: number }>;
 }
@@ -121,6 +127,9 @@ const MediaIncidentReporter: unique symbol = Symbol.for(
 );
 const FileRelocator: unique symbol = Symbol.for('media.FileRelocator');
 const ImageCachePurger: unique symbol = Symbol.for('media.ImageCachePurger');
+const ModerationFindingsReader: unique symbol = Symbol.for(
+  'media.ModerationFindingsReader',
+);
 
 export const EVENT_MEDIA_TYPES = Object.freeze({
   ModerationProvider,
@@ -128,4 +137,5 @@ export const EVENT_MEDIA_TYPES = Object.freeze({
   MediaIncidentReporter,
   FileRelocator,
   ImageCachePurger,
+  ModerationFindingsReader,
 });

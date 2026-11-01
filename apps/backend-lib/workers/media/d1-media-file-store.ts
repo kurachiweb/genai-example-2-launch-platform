@@ -198,7 +198,9 @@ function isModerationFinding(value: unknown): value is ModerationFinding {
 }
 
 // moderation_detailは要素の型を持たないJSONの列のため、読み出す時に検出内容の形のものだけを残す
-function toFindings(detail: unknown): readonly ModerationFinding[] {
+export function toModerationFindings(
+  detail: unknown,
+): readonly ModerationFinding[] {
   return Array.isArray(detail) ? detail.filter(isModerationFinding) : [];
 }
 
@@ -538,7 +540,7 @@ export class D1MediaFileStore implements MediaFileStore {
             {
               file,
               quarantinedAt: row.quarantinedAt,
-              findings: toFindings(row.detail),
+              findings: toModerationFindings(row.detail),
             },
           ];
     });

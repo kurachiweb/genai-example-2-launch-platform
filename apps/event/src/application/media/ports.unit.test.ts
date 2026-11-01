@@ -18,10 +18,11 @@ const EXPECTED_NAMES = [
   'MediaIncidentReporter',
   'FileRelocator',
   'ImageCachePurger',
+  'ModerationFindingsReader',
 ] as const;
 
 describe('EVENT_MEDIA_TYPES', () => {
-  test('イベントサーバーだけが束縛する5種のポートの識別子だけを持つ', () => {
+  test('イベントサーバーだけが束縛する6種のポートの識別子だけを持つ', () => {
     expect(Object.keys(EVENT_MEDIA_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );
