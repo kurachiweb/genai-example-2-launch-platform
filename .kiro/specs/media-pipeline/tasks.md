@@ -18,7 +18,7 @@
   - 完了状態: 列の単体テストが成功し、生成したマイグレーションがマイグレーションの検出確認のコマンドで検出され、ローカルに適用できる
   - _Requirements: 4.7, 9.1_
 
-- [ ] 1.3 eventのWrangler設定にメディアの項目を加え、設定の整合を単体テストで保証する
+- [x] 1.3 eventのWrangler設定にメディアの項目を加え、設定の整合を単体テストで保証する
   - 先に、環境ごとの実効値で、eventの`exports`で既定のエクスポートのキャッシュが無効で`ImageDelivery`が有効なこと、eventの変数(画像配信のホスト名・専用ホストかどうか・判定の実装・リージョン・閾値・カテゴリ)の値、ルート(ローカル)の必須シークレットに動作確認のトークンが、staging・prodの必須シークレットに判定サービスの2つのキーがあり、staging・prodの必須シークレットに動作確認のトークンが無く、変数に秘密の値が無いことを確かめる単体テストを書く。eventのキャッシュの期待値は既存のテストに無いため、このテストで新しく足す
   - 設計の「環境ごとの設定値」の表どおりに、継承されないキーは環境ごとに書く。ローカルの動作確認のトークンはルートの`secrets.required`に入れる(`wrangler dev`は`secrets.required`のキーだけを`env`へ渡すため。メールの疎通確認のトークンと同じ扱いで、未登録なら警告して起動し経路は404になる)。R2バインディングの管轄はinfra-deliveryが設定済みのため、本タスクでは変えない
   - backend-platformの設定の単体テストが本specのキーで失敗しないよう、`apps/api/test/support/wrangler-config.ts`にメディアの変数とシークレットのキーの除外パターン(`MEDIA_CONFIG_KEY_PATTERN`。`IMAGE_DELIVERY_`・`MODERATION_`・`REKOGNITION_`・`MEDIA_`で始まるキー)を加え、`wrangler-config.unit.test.ts`の受け持ちの外のキーの一覧(`DELEGATED_KEY_PATTERNS`)へ加える(メールの`EMAIL_CONFIG_KEY_PATTERN`・全文検索の`SEARCH_CONFIG_KEY_PATTERN`と同じ受け持ちの分け方)。eventの必須シークレットのテスト(「eventはメール・キーワード抽出以外の必須シークレットとして…」)と変数のテスト(「eventのメール・キーワード抽出以外の変数は…」)の2つの名前も、「メール・キーワード抽出・メディア以外」に改める
@@ -357,3 +357,4 @@
 
 - 1.1: 開発者の決定(2026-11-01)で、SVGの構文の検証は`fast-xml-parser`の非推奨の`XMLValidator`ではなく`fast-xml-validator` 1.4.2の`SyntaxValidator.validate(xml, options)`を使う。整形式なら`true`、不正なら`name: 'ValidationError'`・`code`・`line`・`col`を持つ例外を投げる(型定義の`{ err }`の戻り値とは違い、派生クラスは非公開のため`try/catch`で判定)。型定義の注記と違い`multipleRoots`の既定は`true`のため`multipleRoots: false`を明示する。DOCTYPE・ENTITYは受け入れ、最上位の要素の名前も検査しないため、3.3は事前の宣言の拒否と`XMLParser`での最上位の確認が要る。`wasm-image-optimization/workerd`はeventのWorkers統合テストから読み込みの規則無しで読める。パッケージの確認のテストは`apps/api/test/packages/`と`apps/event/src/infrastructure/media/media-packages.worker.test.ts`
 - 1.2: テーブル定義は`apps/db/schema/media/`。`content_type`は値を限らないテキスト(テキストは`text/plain; charset=utf-8`)。保存先・保有者の種類・判定の状態・隔離理由の値の一覧はテーブル定義に直書きで、2.x・3.5の型との照合のテストは無い(3.5で型を作る時に一覧をそろえる)。`moderation_detail`は要素の型の無いJSON列で、型付けは4.1のストアで行う。索引名は`<テーブル>_<列>_idx`・一意は`_unique`
+- 1.3: eventの`exports`(`ImageDelivery`)はトップレベルに書き、staging・prodへ継承される。`ImageDelivery`は7.3までエクスポートされない(Wranglerは名前付きのworkerのエクスポートの存在を検査しない。デプロイで受け付けられるかはstagingで確かめる)。`wrangler types`は7.3の後に生成し直す。メディアの設定の単体テストは`apps/api/test/config/media-wrangler-config.unit.test.ts`。Workers統合テストの変数は画像配信のホスト名`images.test.example`・専用ホスト`true`・`stub`・閾値60・全10カテゴリで、`MODERATION_REGION`はWrangler設定の値を使う

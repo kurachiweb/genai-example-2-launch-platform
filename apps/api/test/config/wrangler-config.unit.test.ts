@@ -8,6 +8,7 @@ import {
 import {
   appPath,
   EMAIL_CONFIG_KEY_PATTERN,
+  MEDIA_CONFIG_KEY_PATTERN,
   readWranglerConfig,
   SEARCH_CONFIG_KEY_PATTERN,
   type WranglerAppName,
@@ -190,6 +191,7 @@ function readEffectiveConfig(
 const DELEGATED_KEY_PATTERNS = [
   EMAIL_CONFIG_KEY_PATTERN,
   SEARCH_CONFIG_KEY_PATTERN,
+  MEDIA_CONFIG_KEY_PATTERN,
 ] as const;
 
 function isDelegatedKey(key: string): boolean {
@@ -344,7 +346,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     ]);
   });
 
-  test('eventはメール・キーワード抽出以外の必須シークレットとしてペッパーのキー名だけを宣言する', () => {
+  test('eventはメール・キーワード抽出・メディア以外の必須シークレットとしてペッパーのキー名だけを宣言する', () => {
     expect(withoutDelegatedKeys(event.secrets?.required ?? [])).toEqual([
       'HASH_PEPPER',
       ...(env.requiresSentryDsn ? ['SENTRY_DSN'] : []),
@@ -361,7 +363,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     });
   });
 
-  test('eventのメール・キーワード抽出以外の変数はシークレットを含まず、環境ごとの値とQueue名を持つ', () => {
+  test('eventのメール・キーワード抽出・メディア以外の変数はシークレットを含まず、環境ごとの値とQueue名を持つ', () => {
     expect(withoutDelegatedEntries(event.vars)).toStrictEqual({
       LOG_LEVEL: env.logLevel,
       SENTRY_ENVIRONMENT: env.sentryEnvironment,

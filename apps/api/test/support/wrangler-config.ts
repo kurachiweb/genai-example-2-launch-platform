@@ -13,6 +13,10 @@ export const EMAIL_CONFIG_KEY_PATTERN: RegExp = /^(?:EMAIL_|MAILPIT_)/;
 export const SEARCH_CONFIG_KEY_PATTERN: RegExp =
   /^(?:KEYWORD_EXTRACTOR|GOOGLE_NL_API_KEY)$/;
 
+// 画像配信・画像判定・動作確認の設定はメディアの設定の検査が受け持ち、他の設定の検査はこのキーを除いて比べる
+export const MEDIA_CONFIG_KEY_PATTERN: RegExp =
+  /^(?:IMAGE_DELIVERY_|MODERATION_|REKOGNITION_|MEDIA_)/;
+
 export function appPath(app: WranglerAppName, ...segments: string[]): string {
   return join(APPS_DIR, app, ...segments);
 }

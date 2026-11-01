@@ -6,6 +6,11 @@
   "workers_dev": false,
   "preview_urls": false,
   "cache": { "enabled": false },
+  // 既定のエクスポートが返すAPIの応答はキャッシュせず、変換した画像の応答だけを前段に保存して2回目以降の読み出しと変換を省く
+  "exports": {
+    "default": { "type": "worker", "cache": { "enabled": false } },
+    "ImageDelivery": { "type": "worker", "cache": { "enabled": true } },
+  },
   "observability": {
     "enabled": true,
     "logs": { "invocation_logs": false },
@@ -74,9 +79,20 @@
     "EMAIL_EVENTS_QUEUE_NAME": "genai-example-2-email-events-dev",
     "MAILPIT_API_URL": "http://127.0.0.1:48041",
     "KEYWORD_EXTRACTOR": "disabled",
+    "IMAGE_DELIVERY_HOSTNAME": "localhost",
+    "IMAGE_DELIVERY_DEDICATED_HOST": "false",
+    "MODERATION_PROVIDER": "stub",
+    "MODERATION_REGION": "us-east-1",
+    "MODERATION_MIN_CONFIDENCE": "60",
+    "MODERATION_BLOCKED_CATEGORIES": "Explicit,Non-Explicit Nudity of Intimate parts and Kissing,Swimwear or Underwear,Violence,Visually Disturbing,Drugs & Tobacco,Alcohol,Rude Gestures,Gambling,Hate Symbols",
   },
   "secrets": {
-    "required": ["HASH_PEPPER", "EMAIL_SMOKE_TOKEN", "EMAIL_SMOKE_RECIPIENT"],
+    "required": [
+      "HASH_PEPPER",
+      "EMAIL_SMOKE_TOKEN",
+      "EMAIL_SMOKE_RECIPIENT",
+      "MEDIA_SMOKE_TOKEN",
+    ],
   },
   "env": {
     "staging": {
@@ -164,6 +180,12 @@
         "EMAIL_RECIPIENT_POLICY": "allowlist",
         "EMAIL_EVENTS_QUEUE_NAME": "genai-example-2-email-events-staging",
         "KEYWORD_EXTRACTOR": "google-natural-language",
+        "IMAGE_DELIVERY_HOSTNAME": "genai-example-2-images-staging.lab.kurachiweb.com",
+        "IMAGE_DELIVERY_DEDICATED_HOST": "true",
+        "MODERATION_PROVIDER": "rekognition",
+        "MODERATION_REGION": "us-east-1",
+        "MODERATION_MIN_CONFIDENCE": "60",
+        "MODERATION_BLOCKED_CATEGORIES": "Explicit,Non-Explicit Nudity of Intimate parts and Kissing,Swimwear or Underwear,Violence,Visually Disturbing,Drugs & Tobacco,Alcohol,Rude Gestures,Gambling,Hate Symbols",
       },
       "secrets": {
         "required": [
@@ -171,6 +193,8 @@
           "SENTRY_DSN",
           "EMAIL_ALLOWED_RECIPIENTS",
           "GOOGLE_NL_API_KEY",
+          "REKOGNITION_ACCESS_KEY_ID",
+          "REKOGNITION_SECRET_ACCESS_KEY",
         ],
       },
     },
@@ -256,9 +280,21 @@
         "EMAIL_RECIPIENT_POLICY": "any",
         "EMAIL_EVENTS_QUEUE_NAME": "genai-example-2-email-events-prod",
         "KEYWORD_EXTRACTOR": "google-natural-language",
+        "IMAGE_DELIVERY_HOSTNAME": "genai-example-2-images.lab.kurachiweb.com",
+        "IMAGE_DELIVERY_DEDICATED_HOST": "true",
+        "MODERATION_PROVIDER": "rekognition",
+        "MODERATION_REGION": "us-east-1",
+        "MODERATION_MIN_CONFIDENCE": "60",
+        "MODERATION_BLOCKED_CATEGORIES": "Explicit,Non-Explicit Nudity of Intimate parts and Kissing,Swimwear or Underwear,Violence,Visually Disturbing,Drugs & Tobacco,Alcohol,Rude Gestures,Gambling,Hate Symbols",
       },
       "secrets": {
-        "required": ["HASH_PEPPER", "SENTRY_DSN", "GOOGLE_NL_API_KEY"],
+        "required": [
+          "HASH_PEPPER",
+          "SENTRY_DSN",
+          "GOOGLE_NL_API_KEY",
+          "REKOGNITION_ACCESS_KEY_ID",
+          "REKOGNITION_SECRET_ACCESS_KEY",
+        ],
       },
     },
   },
