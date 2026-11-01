@@ -92,6 +92,7 @@ logger.info('注文を確定しました', { orderId, itemCount });
 | `[<定期実行を受け持つアプリ>, 'application', 'email-cleanup']`     | `createSuppressionMaintenance`(日次の後始末)                   | 利用者のアドレスの照会口が使えず、利用者に紐づかない抑止記録の削除を省いたこと                                                                                                             |
 | `[<アプリ名>, 'search', 'refresh']`                                | `QueueSearchIndexRefreshRequester`(全文検索の索引の更新の要求) | 要求のメッセージの送信の失敗(検索対象と元データの識別子だけを添える)                                                                                                                       |
 | `[<アプリ名>, 'media', 'upload']`                                  | `MediaUploadReceiver`(ファイルのアップロードの受付)            | 受付・拒否の結果、保存先の一時的な障害と後始末の失敗、画像の判定の依頼の送信の失敗(用途・形式・バイト数・ファイルの識別子・状態コード・エラーコードだけを添え、ファイル名と内容を出さない) |
+| `[<アプリ名>, 'media', 'files']`                                   | `MediaFilesService`(ファイルの紐付け・削除などの操作)          | 即時の物理削除を完了できなかったこと(対象の件数と例外だけを添え、ファイル名と内容を出さない)                                                                                               |
 
 - LogTape自身の警告(伏せ字の処理の失敗など)は、カテゴリ`['logtape', 'meta']`で`warning`以上だけを、同じ伏せ字付きの出力先へ出す。
 
