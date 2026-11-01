@@ -90,7 +90,7 @@
 
     - `apps/db`と`apps/backend-lib`は、`apps/api`・`apps/event`へ`db`・`lib`として配置される共有ディレクトリである(「[共有ディレクトリの配置先](project-values.md#共有ディレクトリの配置先)」)。`apps/backend-lib`は依存パッケージを持たず、配置先のアプリの依存パッケージで動く。`apps/db`の依存パッケージは、`apps/db`で実行するマイグレーションの生成に使う。
     - `apps/frontend-lib`は、`apps/client`・`apps/admin`へ`lib`として配置される共有ディレクトリである。自身の依存パッケージで静的解析・テスト・カタログ(Storybook)を動かし、配置先では`apps/client`・`apps/admin`の依存パッケージで動く。ルートの整形検査(`bun run format:check`)は`apps/frontend-lib`・`apps/client`・`apps/admin`の整形の設定がそれぞれの`node_modules`から整形のプラグインを読み込むため、この3つの`bun install`の前は失敗する。
-    - `apps/common-lib`は、`apps/api`・`apps/event`・`apps/client`・`apps/admin`へ`common-lib`として配置される共用部品である(マークダウンの描画とサニタイズ・文字数・入力の検証規則・検索語の処理)。自身の依存パッケージで静的解析・単体テストを動かし、`apps/frontend-lib`の位置の検査(兄弟の相対パスで`apps/common-lib`を読み込む)もこの依存パッケージで解決される。配置先では各アプリの依存パッケージで動く(「[別の共有ディレクトリの参照](../GUIDES/tech/coding/003-shared-directories.md#別の共有ディレクトリの参照)」)。`apps/common-lib`の`bun install`の前は、`apps/common-lib`の検査と`apps/frontend-lib`のテスト・カタログが失敗する。
+    - `apps/common-lib`は、`apps/api`・`apps/event`・`apps/client`・`apps/admin`へ`common-lib`として配置される共用部品である(マークダウンの描画とサニタイズ・文字数・入力の検証規則・検索語の処理・メディアの形式とアップロードのプロトコル)。自身の依存パッケージで静的解析・単体テストを動かし、`apps/frontend-lib`の位置の検査(兄弟の相対パスで`apps/common-lib`を読み込む)もこの依存パッケージで解決される。配置先では各アプリの依存パッケージで動く(「[別の共有ディレクトリの参照](../GUIDES/tech/coding/003-shared-directories.md#別の共有ディレクトリの参照)」)。`apps/common-lib`の`bun install`の前は、`apps/common-lib`の検査と`apps/frontend-lib`のテスト・カタログが失敗する。
     - 依存パッケージの版の追加・更新を含むコミットを取り込んだら、該当するディレクトリで`bun install`を再実行する。
 
 11. コンテナ内: シークレットをInfisicalに登録する(初回のみ、開発者の手作業)

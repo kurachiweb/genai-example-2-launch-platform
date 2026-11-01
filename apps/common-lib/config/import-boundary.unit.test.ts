@@ -94,6 +94,27 @@ const findImportViolations = (
     .map(({ path: specifier }) => specifier)
     .filter((specifier) => !isAllowedSpecifier(path, specifier));
 
+// メディアの定義は画面の共通部品の位置でも読み込まれるため、パッケージを読み込むと共通部品の同じパッケージと別の実体になり得る
+const SELF_CONTAINED_DIRECTORY = 'media/';
+
+const findOutsideDirectoryImports = (
+  path: string,
+  source: string,
+): readonly string[] =>
+  transpiler
+    .scanImports(exposeTypeOnlyReferences(source))
+    .map(({ path: specifier }) => specifier)
+    .filter((specifier) =>
+      isPathSpecifier(specifier)
+        ? !new URL(specifier, new URL(path, APP_DIR_URL)).href.startsWith(
+            new URL(SELF_CONTAINED_DIRECTORY, APP_DIR_URL).href,
+          )
+        : !(
+            UNIT_TEST_FILE_PATTERN.test(path) &&
+            (UNIT_TEST_ONLY_MODULES as readonly string[]).includes(specifier)
+          ),
+    );
+
 const countSanitizedHtmlAssertions = (source: string): number =>
   SANITIZED_HTML_ASSERTION_PATTERNS.reduce(
     (count, pattern) => count + Array.from(source.matchAll(pattern)).length,
@@ -174,6 +195,47 @@ describe('共用部品の読み込みの境界', () => {
     expect(paths).toContain('config/import-boundary.unit.test.ts');
     expect(violations).toEqual({});
   });
+
+  test('メディアの定義はパッケージと共用部品の他のディレクトリを読み込まない', async () => {
+    const sources = await readSources(
+      (await listSourcePaths()).filter((path) =>
+        path.startsWith(SELF_CONTAINED_DIRECTORY),
+      ),
+    );
+
+    expect(sources.map(([path]) => path)).toContain('media/media-types.ts');
+    expect(
+      Object.fromEntries(
+        sources
+          .map(
+            ([path, source]) =>
+              [path, findOutsideDirectoryImports(path, source)] as const,
+          )
+          .filter(([, specifiers]) => specifiers.length > 0),
+      ),
+    ).toEqual({});
+  });
+
+  test.each([
+    ['media/sample.ts', "import { z } from 'zod';", 1],
+    ['media/sample.ts', "import type { Root } from 'hast';", 1],
+    [
+      'media/sample.ts',
+      "import { countGraphemes } from '../text/graphemes.ts';",
+      1,
+    ],
+    ['media/sample.unit.test.ts', "import { describe } from 'bun:test';", 0],
+    [
+      'media/sample.ts',
+      "import type { MediaType } from './media-types.ts';",
+      0,
+    ],
+  ])(
+    '%sの「%s」をメディアの外の読み込みとして%i件検出する',
+    (path, source, count) => {
+      expect(findOutsideDirectoryImports(path, source)).toHaveLength(count);
+    },
+  );
 
   test(`サニタイズ済みの型への型の主張が${SANITIZED_HTML_ASSERTION_PATH}の1箇所だけにある`, async () => {
     const sources = await readSources(await listSourcePaths());

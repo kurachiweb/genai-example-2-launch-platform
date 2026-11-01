@@ -38,7 +38,7 @@
   - _Requirements: 2.1_
 
 - [ ] 2. 前後で共有する定義(`apps/common-lib/media`)
-- [ ] 2.1 (P) 形式の一覧・アップロードのプロトコル・エラーコードを作る
+- [x] 2.1 (P) 形式の一覧・アップロードのプロトコル・エラーコードを作る
   - 先に、`Content-Type`の解析(引数の除去・大文字小文字・テキストのcharsetはUTF-8だけ・未知の形式)、フォールバックの形式(JPEG→jpg・SVG→svg・他→png)、ファイル名のヘッダーの符号化と不正な値の復号、ダウンロードのパスを確かめる単体テストを書く
   - 画像5形式と添付の範囲(画像5形式・PDF・テキスト)、用途の上限の最大値(20,971,520バイト。1,024を基数とする20MB)と画像用の用途の上限の最大値(20,000,000バイト。Images Bindingの入力上限)、形式の表示名、エラーコードの型を定義する。エラーコードには、アップロードできる利用者かの判定の拒否(`account_unavailable`・`email_not_verified`)を含める
   - 完了状態: 単体テストが成功し、外部パッケージと他の層をimportしていない
@@ -358,3 +358,4 @@
 - 1.1: 開発者の決定(2026-11-01)で、SVGの構文の検証は`fast-xml-parser`の非推奨の`XMLValidator`ではなく`fast-xml-validator` 1.4.2の`SyntaxValidator.validate(xml, options)`を使う。整形式なら`true`、不正なら`name: 'ValidationError'`・`code`・`line`・`col`を持つ例外を投げる(型定義の`{ err }`の戻り値とは違い、派生クラスは非公開のため`try/catch`で判定)。型定義の注記と違い`multipleRoots`の既定は`true`のため`multipleRoots: false`を明示する。DOCTYPE・ENTITYは受け入れ、最上位の要素の名前も検査しないため、3.3は事前の宣言の拒否と`XMLParser`での最上位の確認が要る。`wasm-image-optimization/workerd`はeventのWorkers統合テストから読み込みの規則無しで読める。パッケージの確認のテストは`apps/api/test/packages/`と`apps/event/src/infrastructure/media/media-packages.worker.test.ts`
 - 1.2: テーブル定義は`apps/db/schema/media/`。`content_type`は値を限らないテキスト(テキストは`text/plain; charset=utf-8`)。保存先・保有者の種類・判定の状態・隔離理由の値の一覧はテーブル定義に直書きで、2.x・3.5の型との照合のテストは無い(3.5で型を作る時に一覧をそろえる)。`moderation_detail`は要素の型の無いJSON列で、型付けは4.1のストアで行う。索引名は`<テーブル>_<列>_idx`・一意は`_unique`
 - 1.3: eventの`exports`(`ImageDelivery`)はトップレベルに書き、staging・prodへ継承される。`ImageDelivery`は7.3までエクスポートされない(Wranglerは名前付きのworkerのエクスポートの存在を検査しない。デプロイで受け付けられるかはstagingで確かめる)。`wrangler types`は7.3の後に生成し直す。メディアの設定の単体テストは`apps/api/test/config/media-wrangler-config.unit.test.ts`。Workers統合テストの変数は画像配信のホスト名`images.test.example`・専用ホスト`true`・`stub`・閾値60・全10カテゴリで、`MODERATION_REGION`はWrangler設定の値を使う
+- 2.1: `UploadedFile.contentType`・`MediaFileView.contentType`は`MediaType`(引数無し)で、引数付きの文字列(`text/plain; charset=utf-8`)は記録の`NewMediaFileRecord`とD1の列だけ。記録から画面向けの型へ変換する4.x・5.xで引数を除く。`parseMediaType`は`text/plain`のcharset以外の引数を無視する(SVGのUTF-8の検査は3.3)。`downloadPathOf`は識別子を百分率符号化する。`media/`は外部パッケージと共用部品の他のディレクトリを読み込まない(`config/import-boundary.unit.test.ts`)。配置先の`common-lib`が古い時は`bun run shared-dirs:place`で配置し直す
