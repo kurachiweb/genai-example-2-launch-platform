@@ -57,6 +57,32 @@
   --ball-stroke: oklch(0.25 0.02 160);
   --net: oklch(0.98 0 0 / 0.75);
   --flood: oklch(0.99 0.05 95 / 0);
+
+  /* 画像のプレースホルダーの配色。IDのハッシュで組を選び、各組の文字色は背景とのコントラスト比4.5:1以上にする */
+  --placeholder-1: oklch(0.511 0.086 186.4);
+  --placeholder-1-foreground: oklch(0.99 0 0);
+  --placeholder-2: oklch(0.488 0.217 264.4);
+  --placeholder-2-foreground: oklch(0.99 0 0);
+  --placeholder-3: oklch(0.541 0.247 293);
+  --placeholder-3-foreground: oklch(0.99 0 0);
+  --placeholder-4: oklch(0.514 0.198 16.9);
+  --placeholder-4-foreground: oklch(0.99 0 0);
+  --placeholder-5: oklch(0.553 0.174 38.4);
+  --placeholder-5-foreground: oklch(0.99 0 0);
+  --placeholder-6: oklch(0.532 0.141 131.6);
+  --placeholder-6-foreground: oklch(0.99 0 0);
+  --placeholder-7: oklch(0.52 0.094 223.1);
+  --placeholder-7-foreground: oklch(0.99 0 0);
+  --placeholder-8: oklch(0.554 0.121 66.4);
+  --placeholder-8-foreground: oklch(0.99 0 0);
+  --placeholder-9: oklch(0.81 0.106 11.6);
+  --placeholder-9-foreground: oklch(0.2 0 0);
+  --placeholder-10: oklch(0.917 0.077 205);
+  --placeholder-10-foreground: oklch(0.2 0 0);
+  --placeholder-11: oklch(0.938 0.122 124.3);
+  --placeholder-11-foreground: oklch(0.2 0 0);
+  --placeholder-12: oklch(0.924 0.115 95.7);
+  --placeholder-12-foreground: oklch(0.2 0 0);
 }
 
 .dark {
@@ -118,6 +144,32 @@
   --ball-stroke: oklch(0.15 0.02 160);
   --net: oklch(0.95 0 0 / 0.6);
   --flood: oklch(0.99 0.06 95 / 0.55);
+
+  /* 白の文字の組は背景を暗く、黒の文字の組は背景を落ち着かせ、暗い面の上で浮かない明るさにする */
+  --placeholder-1: oklch(0.45 0.07 186.4);
+  --placeholder-1-foreground: oklch(0.99 0 0);
+  --placeholder-2: oklch(0.45 0.2 264.4);
+  --placeholder-2-foreground: oklch(0.99 0 0);
+  --placeholder-3: oklch(0.47 0.22 293);
+  --placeholder-3-foreground: oklch(0.99 0 0);
+  --placeholder-4: oklch(0.45 0.17 16.9);
+  --placeholder-4-foreground: oklch(0.99 0 0);
+  --placeholder-5: oklch(0.47 0.15 38.4);
+  --placeholder-5-foreground: oklch(0.99 0 0);
+  --placeholder-6: oklch(0.45 0.12 131.6);
+  --placeholder-6-foreground: oklch(0.99 0 0);
+  --placeholder-7: oklch(0.45 0.075 223.1);
+  --placeholder-7-foreground: oklch(0.99 0 0);
+  --placeholder-8: oklch(0.47 0.1 66.4);
+  --placeholder-8-foreground: oklch(0.99 0 0);
+  --placeholder-9: oklch(0.78 0.1 11.6);
+  --placeholder-9-foreground: oklch(0.2 0 0);
+  --placeholder-10: oklch(0.82 0.08 205);
+  --placeholder-10-foreground: oklch(0.2 0 0);
+  --placeholder-11: oklch(0.84 0.12 124.3);
+  --placeholder-11-foreground: oklch(0.2 0 0);
+  --placeholder-12: oklch(0.83 0.11 95.7);
+  --placeholder-12-foreground: oklch(0.2 0 0);
 }
 
 @theme inline {
