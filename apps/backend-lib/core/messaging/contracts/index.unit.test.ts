@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 
 import { EMAIL_SEND_MESSAGE } from '../../email/send-message.ts';
+import {
+  MODERATE_IMAGE_MESSAGE,
+  PURGE_IMAGE_CACHE_MESSAGE,
+  RELOCATE_FILES_MESSAGE,
+} from '../../media/media-messages.ts';
 import { MESSAGE_CONTRACTS } from './index.ts';
 import { SEARCH_INDEX_REFRESH_MESSAGE } from './search-index-refresh.ts';
 
@@ -20,6 +25,17 @@ describe('MESSAGE_CONTRACTS', () => {
 
   test('索引の更新の契約search-index.refreshを集約している', () => {
     expect(MESSAGE_CONTRACTS).toContain(SEARCH_INDEX_REFRESH_MESSAGE);
+  });
+
+  test.each([
+    ['画像の判定の契約media.moderate-image', MODERATE_IMAGE_MESSAGE],
+    ['保存先の移動の契約media.relocate-files', RELOCATE_FILES_MESSAGE],
+    [
+      'キャッシュのパージの契約media.purge-image-cache',
+      PURGE_IMAGE_CACHE_MESSAGE,
+    ],
+  ])('%sを集約している', (_label, contract) => {
+    expect(MESSAGE_CONTRACTS).toContain(contract);
   });
 
   test('集約点は凍結されていて実行時に契約を追加できない', () => {

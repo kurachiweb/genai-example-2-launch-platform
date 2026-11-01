@@ -82,7 +82,7 @@
   - _Boundary: FileName, ObjectKey_
   - _Requirements: 4.1, 4.5, 4.6, 12.5_
 
-- [ ] 3.5 (P) ファイルの型・目的の保存先の規則・メッセージ契約・ポートとDIの識別子を定義する
+- [x] 3.5 (P) ファイルの型・目的の保存先の規則・メッセージ契約・ポートとDIの識別子を定義する
   - 先に、目的の保存先の全組み合わせ(ファイル用、画像用で理由なし・1つ・複数)と、3種のメッセージ契約の本文の検証(件数の上限25・100、ULIDとオブジェクトキーの形式)、メッセージ契約の集約点に種別の重複が無いことを確かめる単体テストを書く
   - ドメインへ提供する操作(紐付け・論理削除・即時削除・保有者単位の削除・保有者の識別子の列挙・取得・内容・隔離理由の追加と解除・保有者単位の隔離理由の追加と解除・一覧)と、保有者単位の操作の1回の上限件数・結果の型、保有者の識別子の列挙の1回の上限件数(承認後の改訂1)、リポジトリ・オブジェクトストア・受付処理・物理削除のポートを設計の型で定義する
   - 3種のメッセージ契約をメッセージ契約の集約点へ加える
@@ -364,3 +364,4 @@
 - 3.2: `image-size` 2.0.4はJPEGの走査で毎バイト`slice()`を複製し、壊れた本文で時間が長さの2乗になる(1MiBで約40秒)ため、`readImageDimensions`は先頭1MiBを1度だけ複製し`slice()`が`subarray()`を返す派生クラスで渡す(`image-size`は`.buffer`からDataViewで長さ無しに読むため、呼び出し元のバッファを共有しない)。`disableTypes`で5形式に絞る設定はisolate全体に効く(他の`image-size`の利用はPNGだけ)。SVGの寸法なしとラスターの読めないはどちらも`undefined`で、3.9と3.7の振り分けと`detectSignature`と申告の比較は4.3で行う。`image-size`のSVGの寸法の読み取りは正規表現で先頭1000文字の`<svg`しか判定しないため、3.3の構文の検査の後に呼ぶ
 - 3.3: `fast-xml-parser`の`maxNestedTags`の既定は100で、超えると例外になるため、受付の最上位の確認は`SVG_MAX_NESTED_TAGS`(256、`core/media/svg-syntax.ts`)を明示する。6.3の`inspectSvg`も同じ定数を解析器の`maxNestedTags`に使い、受付で通るSVGを許可リストの検査で解析できるようにする。処理命令(`<?xml-stylesheet?>`など)は受付では拒否されず、6.3で違反として扱う。DOCTYPEの拒否は本文の部分一致で、コメント・CDATAの中も拒否する。Affinity Designerや旧IllustratorのSVG 1.1の書き出しはDOCTYPEを含み受付で`svg_declaration_not_allowed`になるため、6.3の「Affinityの書き出しの標本」は開発者の判断が要る。`TextContentError`は`reason`(`invalid_utf8`・`nul_character`)を持つ。workerdでの流しながらの検査は4.3のWorkers統合テストで確かめる
 - 3.4: `sanitizeFileName`は先頭のドットと空白の並びをまとめて除き、切り詰めの後にも前後の空白を除く(設計の「先頭の`.`→前後の空白」の順だと`" .profile"`が`.profile`になり要件4.5を満たさないため。9.1の`security/005`はこの順で書く)。書式文字(U+202Eなど)は要件どおり除かず、拡張子の偽装への対策と`filename`の代替に残る`%`(RFC 6266の4.3)は9.1で検討する。書記素の切り詰めは`Intl.Segmenter`を直接使い、空白の除去は共用部品の`trimWhiteSpace`。`generateObjectKey`は乱数源が16バイト以外を返すと例外
+- 3.5: ポートは`core/media/ports.ts`、DIの識別子は`core/media/identifiers.ts`の`MEDIA_TYPES`(7種、`Symbol.for('media.<名前>')`)、契約は`core/media/media-messages.ts`(`MODERATE_IMAGE_MESSAGE`・`RELOCATE_FILES_MESSAGE`・`PURGE_IMAGE_CACHE_MESSAGE`・`MEDIA_MESSAGE_LIMITS`)。設計のインラインの型に`ClaimFailure`・`OwnerIdListInput`・`OwnerIdList`・`QuarantinedImageListInput`・`QuarantinedImageList`・`OwnedImageQuery`・`EraseCandidateQuery`・`ModerationRequeueQuery`、本文の型に`ModerateImageBody`・`RelocateFilesBody`・`PurgeImageCacheBody`の名前を付けた。テーブル定義の値の一覧と型の照合は`workers/media/media-file-columns.unit.test.ts`(coreはDBスキーマを読めない)。project-values.mdのメッセージの表は9.3で加える
