@@ -1,6 +1,7 @@
 import type { ServiceIdentifier } from 'inversify';
 
 import type { MediaFileView } from '../../../lib/core/media/media-file.ts';
+import type { UploadPurposeRegistry } from '../../../lib/core/media/upload-purpose.ts';
 import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import type {
   AdminMediaReviewPolicy,
@@ -47,6 +48,27 @@ function indexRegistrations(
     byPurpose.set(registration.purpose, registration.policy);
   }
   return byPurpose;
+}
+
+// 画像は画像配信の経路で見せ、用途ごとの方針を使わないため、方針はファイル用の用途にだけ登録できる
+export function assertFileReadPolicyRegistrations(
+  registrations: readonly FileReadPolicyRegistration[],
+  purposes: UploadPurposeRegistry,
+): void {
+  indexRegistrations(registrations);
+  for (const { purpose } of registrations) {
+    const registered = purposes.find(purpose);
+    if (registered === undefined) {
+      throw new FileAccessRegistrationError(
+        `閲覧の可否の方針を登録した用途${JSON.stringify(purpose)}が用途の登録表にありません`,
+      );
+    }
+    if (registered.storage !== 'files') {
+      throw new FileAccessRegistrationError(
+        `用途${JSON.stringify(purpose)}は画像用のため、閲覧の可否の方針を登録できません`,
+      );
+    }
+  }
 }
 
 // 画像は画像配信の経路で見せるため、この判定では管理者側の管理者による確認だけを通す

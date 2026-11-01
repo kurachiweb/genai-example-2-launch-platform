@@ -1,6 +1,37 @@
 """UTCのRFC 3339形式の日時"""
 scalar DateTime
 
+"""ファイル用の用途のファイル"""
+type MediaAttachment {
+  byteSize: Int!
+  contentType: String!
+
+  """フロントエンドサーバーのダウンロードのパス"""
+  downloadPath: String!
+  id: ID!
+  originalFileName: String!
+}
+
+"""画像用の用途のファイル"""
+type MediaImage {
+  fallbackFormat: MediaImageFallbackFormat!
+  height: Int
+  id: ID!
+
+  """隔離中・削除待ち・保存未完了の画像は空"""
+  objectKey: String
+  width: Int
+}
+
+"""
+AVIF・WebPに非対応のブラウザ向けの形式。原本がJPEGならJPG、SVGならSVG(SVGはこの形式だけで表示する)、それ以外はPNG
+"""
+enum MediaImageFallbackFormat {
+  JPG
+  PNG
+  SVG
+}
+
 type OffsetPageInfo {
   page: Int!
   perPage: Int!

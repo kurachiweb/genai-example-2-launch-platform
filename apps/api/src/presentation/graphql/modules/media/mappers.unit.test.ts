@@ -1,11 +1,22 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, expectTypeOf, test } from 'bun:test';
 
 import type { ImageMediaType } from '../../../../../common-lib/media/media-types.ts';
 import {
   imageFileViewOf,
   mediaFileViewOf,
 } from '../../../../../test/support/media-file-view.ts';
-import { toMediaAttachment, toMediaImage } from './mappers.ts';
+import type {
+  MediaAttachment,
+  MediaImage,
+  MediaImageFallbackFormat as GeneratedFallbackFormat,
+} from '../../generated/resolvers-types.ts';
+import {
+  type MediaAttachmentModel,
+  type MediaImageFallbackFormat,
+  type MediaImageModel,
+  toMediaAttachment,
+  toMediaImage,
+} from './mappers.ts';
 
 const OBJECT_KEY = 'fedcba9876543210'.repeat(2);
 
@@ -143,5 +154,23 @@ describe('toMediaAttachment', () => {
       toMediaAttachment(mediaFileViewOf({ contentType: 'text/plain' }))
         .contentType,
     ).toBe('text/plain');
+  });
+});
+
+// 手書きのモデルはリゾルバの戻り値として生成型の代わりに渡すため、スキーマを変えたときに型検査で食い違いを検出する
+describe('生成したリゾルバの型との一致', () => {
+  test('MediaImageModelは生成したMediaImageと同じ項目を持ち、生成型へ代入できる', () => {
+    expectTypeOf<keyof MediaImageModel>().toEqualTypeOf<
+      Exclude<keyof MediaImage, '__typename'>
+    >();
+    expectTypeOf<MediaImageModel>().toExtend<MediaImage>();
+    expectTypeOf<MediaImageFallbackFormat>().toEqualTypeOf<GeneratedFallbackFormat>();
+  });
+
+  test('MediaAttachmentModelは生成したMediaAttachmentと同じ項目を持ち、生成型へ代入できる', () => {
+    expectTypeOf<keyof MediaAttachmentModel>().toEqualTypeOf<
+      Exclude<keyof MediaAttachment, '__typename'>
+    >();
+    expectTypeOf<MediaAttachmentModel>().toExtend<MediaAttachment>();
   });
 });

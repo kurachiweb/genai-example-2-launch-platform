@@ -2,11 +2,20 @@ import { describe, expect, test } from 'bun:test';
 import type { ServiceIdentifier } from 'inversify';
 
 import {
+  ATTACHMENT_MEDIA_TYPES,
+  IMAGE_MEDIA_TYPES,
+} from '../../../common-lib/media/media-types.ts';
+import {
+  createUploadPurposeRegistry,
+  defineUploadPurpose,
+} from '../../../lib/core/media/upload-purpose.ts';
+import {
   imageFileViewOf,
   mediaFileViewOf,
 } from '../../../test/support/media-file-view.ts';
 import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import {
+  assertFileReadPolicyRegistrations,
   type FileAccessAuthorizer,
   type FileAccessCaller,
   FileAccessRegistrationError,
@@ -251,5 +260,67 @@ describe('PolicyFileAccessAuthorizer', () => {
       expect(allowed).toBe(false);
       expect(harness.registered.calls).toEqual([]);
     });
+  });
+});
+
+describe('assertFileReadPolicyRegistrations', () => {
+  const purposes = createUploadPurposeRegistry([
+    defineUploadPurpose({
+      name: 'inquiry-attachment',
+      storage: 'files',
+      uploaderKinds: ['user'],
+      allowedTypes: ATTACHMENT_MEDIA_TYPES,
+      maxBytes: 1024,
+    }),
+    defineUploadPurpose({
+      name: 'product-image',
+      storage: 'images',
+      uploaderKinds: ['user'],
+      allowedTypes: IMAGE_MEDIA_TYPES,
+      maxBytes: 1024,
+    }),
+  ]);
+
+  const assertWith =
+    (registrations: Parameters<typeof assertFileReadPolicyRegistrations>[0]) =>
+    (): void => {
+      assertFileReadPolicyRegistrations(registrations, purposes);
+    };
+
+  test('用途の登録表にあるファイル用の用途への登録と、空の登録を受け入れる', () => {
+    expect(
+      assertWith([{ purpose: 'inquiry-attachment', policy: INQUIRY_POLICY }]),
+    ).not.toThrow();
+    expect(() => {
+      assertFileReadPolicyRegistrations([], createUploadPurposeRegistry([]));
+    }).not.toThrow();
+  });
+
+  test('用途の登録表に無い用途への登録は、用途の名前を示して失敗する', () => {
+    const assert = assertWith([
+      { purpose: 'unknown-attachment', policy: INQUIRY_POLICY },
+    ]);
+
+    expect(assert).toThrow(FileAccessRegistrationError);
+    expect(assert).toThrow('"unknown-attachment"');
+  });
+
+  test('画像用の用途への登録は、用途の名前を示して失敗する', () => {
+    const assert = assertWith([
+      { purpose: 'product-image', policy: INQUIRY_POLICY },
+    ]);
+
+    expect(assert).toThrow(FileAccessRegistrationError);
+    expect(assert).toThrow('"product-image"');
+  });
+
+  test('同じ用途への重複した登録は、用途の名前を示して失敗する', () => {
+    const assert = assertWith([
+      { purpose: 'inquiry-attachment', policy: INQUIRY_POLICY },
+      { purpose: 'inquiry-attachment', policy: OTHER_POLICY },
+    ]);
+
+    expect(assert).toThrow(FileAccessRegistrationError);
+    expect(assert).toThrow('"inquiry-attachment"');
   });
 });

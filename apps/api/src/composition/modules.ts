@@ -26,11 +26,14 @@ import { createGraphQLModule } from '../presentation/graphql/graphql-module.ts';
 import { API_EMAIL_MODULE } from './email-module.ts';
 import { GRAPHQL_SCHEMA_MODULES } from './graphql-modules.ts';
 import { INTERNAL_ROUTES } from './internal-routes.ts';
+import { API_MEDIA_MODULE, API_MEDIA_PLATFORM_MODULE } from './media-module.ts';
+import { MEDIA_REVIEW_POLICY_BINDINGS } from './media-review-policy.ts';
 import {
   API_SEARCH_MODULE,
   API_SEARCH_PLATFORM_MODULE,
 } from './search-module.ts';
 import { SESSION_BINDINGS } from './session.ts';
+import { UPLOADER_ELIGIBILITY_BINDINGS } from './uploader-eligibility.ts';
 
 function parseExpectedHostnames(value: string): readonly string[] {
   return value
@@ -89,4 +92,8 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_EMAIL_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,
+  API_MEDIA_PLATFORM_MODULE,
+  API_MEDIA_MODULE,
+  { name: 'media-review-policy', bindings: MEDIA_REVIEW_POLICY_BINDINGS },
+  { name: 'uploader-eligibility', bindings: UPLOADER_ELIGIBILITY_BINDINGS },
 ];

@@ -201,6 +201,13 @@ describe('検索対象のある日次の再抽出', () => {
     expect(dailySummary(logs)).toMatchObject({
       result: 'succeeded',
       jobs: [
+        expect.objectContaining({
+          name: 'media-pipeline.expired-file-erasure',
+        }),
+        expect.objectContaining({ name: 'media-pipeline.moderation-requeue' }),
+        expect.objectContaining({
+          name: 'media-pipeline.location-reconciliation',
+        }),
         expect.objectContaining({ name: 'email-delivery.cleanup' }),
         expect.objectContaining({
           name: REEXTRACTION_JOB_NAME,

@@ -28,3 +28,15 @@ describe('GRAPHQL_SCHEMA_MODULES', () => {
     expect(schema.getType('SystemStatus')?.toString()).toBe('SystemStatus');
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(メディア)', () => {
+  test('下流のドメインが項目に使うメディアの型と形式の列挙型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    expect(String(schema.getType('MediaImage'))).toBe('MediaImage');
+    expect(String(schema.getType('MediaAttachment'))).toBe('MediaAttachment');
+    expect(String(schema.getType('MediaImageFallbackFormat'))).toBe(
+      'MediaImageFallbackFormat',
+    );
+  });
+});
