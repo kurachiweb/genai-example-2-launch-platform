@@ -196,7 +196,7 @@
   - 完了状態: 単体テストが成功し、どの経路でも判定の記録と保存先をそろえる処理の呼び出しが設計の順序になる
   - _Requirements: 6.1, 6.7, 6.8, 8.1, 8.2, 8.4, 8.6, 8.7, 8.8_
 
-- [ ] 6.5 (P) 判定サービスの実装(Rekognition・代替・選択)と通知を作る
+- [x] 6.5 (P) 判定サービスの実装(Rekognition・代替・選択)と通知を作る
   - 先に、注入した`fetch`で、署名付きの要求の宛先・ヘッダー・本文(base64の画像と閾値だけで、ファイル名・主体を含まない)、ラベルの応答の変換、各エラー(スロットリング・内部エラー・処理量の上限・画像の大きさ・形式・引数・アクセス拒否・署名の誤り)の分類、10秒の時間切れ、代替の判定が外部へ送らないこと、環境の値による実装の選択、資格情報がログとSentryに出ないことを確かめるWorkers統合テストを書く
   - 未判定・受け付けない画像・設定の誤りをSentryへ送る通知を作る
   - 完了状態: Workers統合テストが成功する
@@ -380,3 +380,4 @@
 - 6.2: `planModerationImage`・`MODERATION_IMAGE_LIMITS`は`application/media/moderation-image-plan.ts`、`padRgba`・`encodePng`は`png-encoder.ts`(`CompressionStream('deflate')`はWHATWGの仕様でzlib形式。workerdでの実物の確認は6.6で余白の経路を通して行う)。寸法の無いSVGの640×640は6.4が渡す。6.6への申し送り: 計画の寸法はEXIFの向き5〜8で入れ替えた後の表示上の寸法なので、`optimizeImage`が向きを適用しない場合は描画の結果と食い違う。小さいSVGは拡大せず80×80の余白の中央に置く
 - 6.3: `inspectSvg`は`application/media/svg-allowlist.ts`、表は`svg-allowlist-table.ts`の`SVG_ALLOWLIST`(`svg-allowlist-document.unit.test.ts`がdesign.mdの表と照合。9.1で`security/005`へ切り替える)。名前空間は接頭辞から宣言先をたどって判定する。CSSはコメントを除かずに検索し(コメントの中の`url(`も保守側に検出)、CDATAの中は文字参照を戻さない。違反の記録は先頭50件(`SVG_MAX_RECORDED_VIOLATIONS`、切り詰めの印は無い)。設計の表に無い調整: `data-*`属性の許可、Sodipodi・Creative Commonsの旧URI、`image-set(`・`src(`の検出(9.1で`security/005`の一覧に載せる)。標本のAffinity・Illustratorの「別名で保存」はDOCTYPE・実体の参照を除いた形(受付を通らないため)。Objectのプロトタイプと同じ名前は`__toString`などで記録される
 - 6.4: `ModerateImageHandler`・`MODERATION_RETRY_POLICY`(5回・60秒・1,800秒)は`application/media/moderate-image-handler.ts`。`@injectable`でなく依存をまとめて受け取るクラスで、7.6は`toDynamicValue`で`MEDIA_TYPES.MediaFileStore`・`MediaObjectStore`・`EVENT_MEDIA_TYPES`のポート・`parseModerationConfig(env)`・`PLATFORM_TYPES.Clock`を渡し、`retry: MODERATION_RETRY_POLICY`で登録する(envの検証に`MODERATION_*`はまだ無い)。復号できない画像はwarningのログだけでSentryへ送らない(設計のポートとMonitoringのとおり。tasks.mdの「隔離と通知」とは異なる)。`misconfigured`は一時的な失敗として扱い最終試行でだけ通知する(通知は最大900秒遅れる)。`undetermined`・`rejectedByService`は`recordModeration`が真の時だけ通知する。`readLocationsOf`の重複は`media-files-service.ts`・`file-content-route.ts`と本ファイルの3か所(7.1でまとめる時は3か所を直す)。`isModeratable`の「画像でない形式」の分岐にテストが無い
+- 6.5: 部品は`apps/event/src/infrastructure/media/`の`rekognition-moderation-provider.ts`(`AwsClient.sign`だけを使い注入した`fetch`で1回送る。aws4fetchの自前の再試行を使わない。署名の対象は`host;x-amz-date;x-amz-target`)・`stub-moderation-provider.ts`(寸法を読めない画像は`invalid-image`)・`create-moderation-provider.ts`(`createModerationProvider(env, fetcher)`、資格情報の欠落と不正なリージョンを拒否)・`sentry-media-incident-reporter.ts`(指紋`media-moderation-<種類>`と理由、タグ`media_file_id`・`moderation_reason`)。分類表に無い4xx・3xxは設定の誤り、429・`LimitExceededException`は`throttled`、200で形の合わない応答と`ModerationLabels`の無い応答は`service-error`、`TaxonomyLevel`の無いラベルは応答全体を不正。7.6で環境の検証に`MODERATION_*`・`REKOGNITION_*`を加えるか決める。9.1の`external/003`に分類表・指紋とタグ・代替の判定の扱い・署名の対象を載せる
