@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   checkSelection,
+  EDITED_IMAGE_TYPES,
+  selectionConstraintsOf,
   type UploadConstraints,
 } from './upload-constraints.ts';
 
@@ -180,5 +182,37 @@ describe('選択の検査', () => {
 
   test('何も選ばなければ違反は無い', () => {
     expect(checkSelection([], SCREENSHOTS)).toEqual([]);
+  });
+});
+
+describe('編集ダイアログで作り直す形式', () => {
+  test('SVG以外の画像の4形式で、SVGと文書を含まない', () => {
+    expect(EDITED_IMAGE_TYPES).toEqual([
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ]);
+    expect(Object.isFrozen(EDITED_IMAGE_TYPES)).toBe(true);
+  });
+});
+
+describe('入力欄の選択の上限', () => {
+  test('複数を選べる入力欄は、呼び出し元の上限をそのまま使う', () => {
+    expect(selectionConstraintsOf(SCREENSHOTS, true)).toBe(SCREENSHOTS);
+  });
+
+  test('1件だけの入力欄は、置き換える前提で既存の個数を数えず1件を上限にする', () => {
+    expect(selectionConstraintsOf(SCREENSHOTS, false)).toEqual({
+      ...SCREENSHOTS,
+      maxCount: 1,
+      existingCount: 0,
+    });
+    expect(
+      checkSelection(
+        [fileOf('a.png', 'image/png', 1), fileOf('b.png', 'image/png', 1)],
+        selectionConstraintsOf(LOGO, false),
+      ),
+    ).toEqual([{ kind: 'count' }]);
   });
 });

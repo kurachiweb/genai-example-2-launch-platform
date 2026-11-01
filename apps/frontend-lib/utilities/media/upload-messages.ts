@@ -149,3 +149,18 @@ export const rejectionOf = (
   constraints: UploadConstraints,
 ): UploadRejection | undefined =>
   isRejectionCode(code) ? REJECTIONS[code](constraints) : undefined;
+
+// 作り直したファイルのサイズの違反は、選び直しでなく切り取る範囲の調整を案内する
+export const selectionMessagesOf = (
+  violations: readonly SelectionViolation[],
+  constraints: UploadConstraints,
+  editedFileNames: ReadonlySet<string> = new Set(),
+): readonly string[] => [
+  ...new Set(
+    violations.map((violation) =>
+      violation.kind === 'size' && editedFileNames.has(violation.fileName)
+        ? croppedFileTooLargeMessage(constraints)
+        : selectionViolationMessage(violation, constraints),
+    ),
+  ),
+];

@@ -2,6 +2,7 @@ import { UploadIcon } from 'lucide-react';
 import {
   type ChangeEvent,
   type DragEvent,
+  type Ref,
   useId,
   useRef,
   useState,
@@ -20,7 +21,11 @@ export interface FileDropZoneProps {
   readonly accept: readonly MediaType[];
   readonly multiple?: boolean;
   readonly disabled?: boolean;
+  // 送信中など処理中の間。フォーカスを選択のボタンに残したまま、選択とドロップを受け付けない
+  readonly pending?: boolean;
   readonly onSelect: (files: readonly File[]) => void;
+  // 選択のボタンの要素。閉じたダイアログのフォーカスの戻り先や、フォームのエラーの欄へのフォーカスの移動に使う
+  readonly ref?: Ref<HTMLButtonElement>;
   // 欄のラベルの要素のID(FormFieldのlabelId)。ボタンの見えている文言と合わせて名前にする
   readonly 'aria-labelledby'?: string;
   readonly 'aria-describedby'?: string;
@@ -38,7 +43,9 @@ export function FileDropZone({
   accept,
   multiple = false,
   disabled = false,
+  pending = false,
   onSelect,
+  ref,
   'aria-labelledby': labelledBy,
   'aria-describedby': describedBy,
   'aria-invalid': invalid,
@@ -50,7 +57,7 @@ export function FileDropZone({
   const dragDepthRef = useRef(0);
   const [dragging, setDragging] = useState(false);
   const acceptsDrag = (event: DragEvent<HTMLElement>): boolean =>
-    !disabled && carriesFiles(event);
+    !disabled && !pending && carriesFiles(event);
 
   const handleDragEnter = (event: DragEvent<HTMLElement>) => {
     if (!acceptsDrag(event)) {
@@ -118,6 +125,7 @@ export function FileDropZone({
     >
       {/* 欄のラベルを<label for>で結ぶとボタンの見えている文言が名前から外れ、音声操作で見えている文言を言っても届かないため、両方を名前にする */}
       <Button
+        ref={ref}
         type="button"
         variant="outline"
         aria-labelledby={
@@ -125,8 +133,14 @@ export function FileDropZone({
         }
         aria-describedby={describedBy}
         aria-invalid={invalid}
+        aria-disabled={pending ? true : undefined}
+        aria-busy={pending ? true : undefined}
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => {
+          if (!pending) {
+            inputRef.current?.click();
+          }
+        }}
       >
         <UploadIcon aria-hidden="true" />
         <span id={labelTextId}>{label}</span>

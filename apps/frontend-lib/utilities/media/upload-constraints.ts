@@ -90,3 +90,18 @@ export const checkSelection = (
       : []),
   ];
 };
+
+// SVG以外の画像は、編集ダイアログで切り取って作り直してから送る
+export const EDITED_IMAGE_TYPES: readonly MediaType[] = Object.freeze([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+]);
+
+// 1件だけの入力欄は選び直すと前のファイルを置き換えるため、既存の個数を数えずに1件を上限にする
+export const selectionConstraintsOf = (
+  constraints: UploadConstraints,
+  multiple: boolean,
+): UploadConstraints =>
+  multiple ? constraints : { ...constraints, maxCount: 1, existingCount: 0 };

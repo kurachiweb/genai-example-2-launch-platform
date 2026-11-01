@@ -4,6 +4,7 @@ import type { UploadConstraints } from './upload-constraints.ts';
 import {
   croppedFileTooLargeMessage,
   rejectionOf,
+  selectionMessagesOf,
   selectionViolationMessage,
   UPLOAD_NETWORK_ERROR_MESSAGE,
   UPLOAD_RATE_LIMITED_MESSAGE,
@@ -99,6 +100,48 @@ describe('編集後のサイズ超過の文言', () => {
     expect(croppedFileTooLargeMessage(LOGO)).toBe(
       '編集後の画像が500kBを超えました。切り取る範囲を狭めるか、別の画像を選択してください。',
     );
+  });
+});
+
+describe('選択の違反の文言の一覧', () => {
+  test('違反の順に文言を並べ、同じ文言は1つにまとめる', () => {
+    expect(
+      selectionMessagesOf(
+        [
+          { kind: 'size', fileName: 'a.png' },
+          { kind: 'type', fileName: 'b.bmp' },
+          { kind: 'size', fileName: 'c.png' },
+          { kind: 'count' },
+          { kind: 'total' },
+        ],
+        SCREENSHOTS,
+      ),
+    ).toEqual([
+      'スクリーンショットは5MB以内の画像を選択してください。',
+      'JPEG・PNGの画像を選択してください。',
+      '画像は20枚以内で選択してください。',
+      'ファイルは合計20MB以内で選択してください。',
+    ]);
+  });
+
+  test('作り直したファイルのサイズの違反は、編集後のサイズ超過の文言にする', () => {
+    expect(
+      selectionMessagesOf(
+        [
+          { kind: 'size', fileName: 'photo.png' },
+          { kind: 'size', fileName: 'logo.svg' },
+        ],
+        LOGO,
+        new Set(['photo.png']),
+      ),
+    ).toEqual([
+      '編集後の画像が500kBを超えました。切り取る範囲を狭めるか、別の画像を選択してください。',
+      'ロゴは500kB以内の画像を選択してください。',
+    ]);
+  });
+
+  test('違反が無ければ文言も無い', () => {
+    expect(selectionMessagesOf([], LOGO)).toEqual([]);
   });
 });
 

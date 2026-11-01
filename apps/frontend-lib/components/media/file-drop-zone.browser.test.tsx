@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -233,6 +234,42 @@ describe('FileDropZone', () => {
     expect(dragOver.defaultPrevented).toBe(false);
     expect(zone.dataset['dragging']).toBeUndefined();
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  test('処理中の間はフォーカスを保ったまま押せないことを伝え、押しても選択の画面を開かず、ドロップしても渡さない', async () => {
+    const { container, onSelect } = await renderZone({ pending: true });
+    const openings = countPickerOpenings(fileInputOf(container));
+    const zone = dropZoneOf(container);
+    const transfer = transferOf([createSvgFile('logo.svg')]);
+
+    await userEvent.tab();
+    await expect.element(selectButton()).toHaveFocus();
+    await expect
+      .element(selectButton())
+      .toHaveAttribute('aria-disabled', 'true');
+    await expect.element(selectButton()).toHaveAttribute('aria-busy', 'true');
+    await userEvent.keyboard('{Enter}');
+    selectButton()
+      .element()
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    dispatchDrag(zone, 'dragenter', transfer);
+    const dragOver = dispatchDrag(zone, 'dragover', transfer);
+    dispatchDrag(zone, 'drop', transfer);
+
+    expect(openings.count).toBe(0);
+    expect(dragOver.defaultPrevented).toBe(false);
+    expect(zone.dataset['dragging']).toBeUndefined();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  test('refでボタンの要素を受け取り、閉じたダイアログなどからフォーカスを戻せる', async () => {
+    const ref = createRef<HTMLButtonElement>();
+    await renderZone({ ref });
+
+    expect(ref.current).toBe(selectButton().element());
+    ref.current?.focus();
+    await expect.element(selectButton()).toHaveFocus();
   });
 
   test('ボタンに説明とエラーの関連付け・エラーの状態を渡す', async () => {

@@ -41,6 +41,11 @@ const INTERNAL_COMPONENTS: Readonly<Record<string, InternalComponent>> = {
     reason:
       '選んだファイルの一覧の各行に置く縮小の表示で、画像と画像でないファイルの表示を一覧のストーリーで確かめる',
   },
+  'components/media/upload-field-frame.tsx': {
+    parent: 'components/media/attachment-upload-field.tsx',
+    reason:
+      '画像と添付の入力欄が共有する選択の領域・一覧・エラー・再試行の並びで、状態ごとの表示を両方の入力欄のストーリーで確かめる',
+  },
   'components/ui/dialog/dialog-overlay.tsx': {
     parent: 'components/ui/dialog/dialog-content.tsx',
     reason: 'ダイアログの本体が背景の覆いとして描画する',
