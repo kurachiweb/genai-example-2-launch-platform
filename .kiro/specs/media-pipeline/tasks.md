@@ -177,7 +177,7 @@
   - 完了状態: 単体テストが成功し、初期値(全カテゴリ・60)で全カテゴリのラベルが不適切になる
   - _Requirements: 6.5, 6.6, 6.9_
 
-- [ ] 6.2 (P) 判定用画像の作り方の決定とPNGの符号化を作る
+- [x] 6.2 (P) 判定用画像の作り方の決定とPNGの符号化を作る
   - 先に、そのまま送る・縮小・余白の3つの境界(長辺640px・短辺80px・5,242,880バイト、JPEG・PNG以外の形式、SVGで寸法が無い場合)と、余白を足したRGBAから作ったPNGがシグネチャと寸法の読み取りで期待どおりに読めることを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、極端な縦横比の画像でも長辺640px以下・短辺80px以上の計画になる
   - _Boundary: ModerationImagePlan, PngEncoder_
@@ -377,3 +377,4 @@
 - 5.5: 3つのジョブと`MEDIA_JOB_TYPES`は`apps/api/src/application/media/media-daily-jobs.ts`。application層はworkersの`MessagePublisher`を読めないため同形の`MediaJobMessagePublisher`を置き、5.6で`PLATFORM_TYPES.MessagePublisher`から注入する。基準は`scheduledTime`。13.5の「13日以上」に合わせ論理削除の境界は13日前+1ms(ストアは`<`)、24時間・1時間はちょうどを含めない。1回の起動で最大1,000件、超えた分は翌日(Batch Contract)。ログは件数と`hasMore`(残数の件数は出さない)。820・830は1件の送信の失敗で残りを続け、最後に`MediaDailyJobError`を投げる。810の削除の直前に候補の条件を確かめ直さない(`erase`自身が`findViews`で読み、競合を閉じるには条件付きの削除が要る。既知の制限)。ログのカテゴリ`['api', 'media', 'expired-file-erasure' | 'moderation-requeue' | 'location-reconciliation']`。偽物のストア`apps/api/test/support/media-daily-job-fakes.ts`の820の並びは`id`だけで、D1は`createdAt, id`
 - 5.6: apiの束縛は`apps/api/src/composition/media-module.ts`(`API_MEDIA_PLATFORM_MODULE`・`createApiMediaModule`・`API_MEDIA_MODULE`)、登録箇所は`upload-purposes.ts`・`file-read-policies.ts`(空)・`media-review-policy.ts`(`MEDIA_REVIEW_POLICY_BINDINGS`、全拒否)・`uploader-eligibility.ts`(全許可)。差し替えられる既定値の期待値は`apps/api/test/config/media-registrations.unit.test.ts`の1か所だけ(identity-authの8.5・ugc-moderationが直すのはこのファイル)。閲覧の方針の登録先の検査`assertFileReadPolicyRegistrations`はモジュールの読み込み時に実行する。手書きのGraphQLのモデルと生成型の一致は`mappers.unit.test.ts`の`expectTypeOf`。検索の2つのworkerテストは4:21のジョブ名を完全一致で列挙しており、4:21のジョブを足すspecが直す必要がある
 - 6.1: eventのポートと`EVENT_MEDIA_TYPES`(5種)は`apps/event/src/application/media/ports.ts`。ImageSource・ImageTransformerも`ports.ts`にあり(設計のService Interfaceのコメントの`image-delivery.ts`ではない)、7.2はここから読む。設定の解析`parseModerationConfig`はカテゴリの空の値・空の項目・重複・大文字小文字の違いを失敗にする(空の集合で判定が黙って無効になるのを防ぐ。開発者の確認待ち)。`judgeLabels`は`parentName`をたどり、応答に無い親の名前を最上位とみなす(第3階層だけが返った場合は最上位を求められない。6.5で`taxonomyLevel`の扱いを検討)。代替の判定の規則は`decideStubModeration`(寸法だけを受け取る。判定用画像の寸法の読み取りは6.5)
+- 6.2: `planModerationImage`・`MODERATION_IMAGE_LIMITS`は`application/media/moderation-image-plan.ts`、`padRgba`・`encodePng`は`png-encoder.ts`(`CompressionStream('deflate')`はWHATWGの仕様でzlib形式。workerdでの実物の確認は6.6で余白の経路を通して行う)。寸法の無いSVGの640×640は6.4が渡す。6.6への申し送り: 計画の寸法はEXIFの向き5〜8で入れ替えた後の表示上の寸法なので、`optimizeImage`が向きを適用しない場合は描画の結果と食い違う。小さいSVGは拡大せず80×80の余白の中央に置く
