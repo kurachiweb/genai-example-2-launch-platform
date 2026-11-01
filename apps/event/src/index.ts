@@ -8,10 +8,12 @@ import {
   type SentryOptionsFactory,
 } from '../lib/workers/observability/sentry.ts';
 import { type EventEnv, eventEnvSchema } from './composition/env-schema.ts';
+import { createImageDeliveryDeps } from './composition/image-delivery-deps.ts';
 import { MESSAGE_HANDLERS } from './composition/message-handlers.ts';
 import { MODULES } from './composition/modules.ts';
 import { RAW_QUEUE_HANDLERS } from './composition/raw-queue-handlers.ts';
 import { RATE_LIMIT_EXCLUSIONS } from './composition/rate-limit-exclusions.ts';
+import { createImageDeliveryEntrypointClass } from './presentation/media/image-delivery-entrypoint.ts';
 
 const sentry: SentryOptionsFactory<EventEnv> = (env) =>
   buildSentryOptions(readSentryRuntimeOptions(env));
@@ -35,3 +37,8 @@ export default withSecurityHeaders(
     }),
   }),
 );
+
+// 前段のWorkers Cacheを有効にした名前付きエントリポイント。既定のエクスポートから`ctx.exports`で呼ぶ
+export class ImageDelivery extends createImageDeliveryEntrypointClass<EventEnv>(
+  createImageDeliveryDeps,
+) {}
