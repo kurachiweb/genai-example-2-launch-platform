@@ -37,6 +37,7 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 - ボタンの見た目のリンクは`<Button asChild><a href="…">…</a></Button>`で作る。要素は`<a>`のまま残る。
 - ラジオボタンの組・タブ・メニューの項目の間の移動は、Radix UIの部品が矢印キー・`Home`・`End`で提供する。同じ操作を独自に作らない。
 - Tabでの移動の順序は文書の順序に従わせる。`tabIndex`に正の値を使わない。
+- ドラッグで行う操作(画像の位置の調整など)には、ドラッグしない単一のポインターの操作(ボタンなど)で同じことをできる代わりの手段を用意する(2.5.7)。キーボードの操作だけでは代わりにならない。
 
 ### 操作できない状態
 
@@ -57,6 +58,7 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 
 - 部品とページに、輪郭を消す・上書きするクラス(`outline-none`・`outline-hidden`・`focus-visible:outline-1`など)を付けない。Tailwind CSS v4のユーティリティはユーティリティのレイヤーにあり、ベースのレイヤーの輪郭に勝つ。shadcn/uiの部品のコードを取り込む時は、これらのクラスを取り除く。
 - どのレイヤーにも属さないCSSを差し込むライブラリ(例:トーストのライブラリの`outline: 0`)は、レイヤー内の規則に勝って輪郭を消す。その部品にだけ`!important`付きのユーティリティ(`focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-ring! focus-visible:outline-solid!`)で同じ輪郭を付け直す。
+- ライブラリの部品が`overflow: hidden`の枠の端にフォーカスする要素を置き、外側の輪郭が枠で切れる場合(例:画像の切り取りのライブラリの切り取る範囲)は、その要素に限り`focus-visible:-outline-offset-*`で輪郭の位置だけを内側へずらしてよい。輪郭の色・太さ・線の種類は変えず、ブラウザテストで輪郭が`ringOutline()`と一致し、`outline-offset`が負の値であることを確かめる。
 - 固定表示のヘッダーなどが、フォーカスした要素を完全に隠さないようにする(2.4.11)。自動検査では確かめられないため、手動で確かめる。
 
 ### 重ねて表示する部品
@@ -66,6 +68,7 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 - `Popover`は`modal`を指定しないとフォーカスを閉じ込めない。中で入力を完結させる場合は`modal`を指定する。
 - `Sheet`は開いた時、中のリンクを飛ばして最初のリンク以外の操作へフォーカスを移す。
 - `DialogContent`・`SheetContent`には`DialogTitle`・`SheetTitle`を必ず置き、題名を支援技術へ伝える。右上の「閉じる」ボタンは画面に見えない名前を持つ。
+- `DialogTrigger`を使わずに状態で開くダイアログは、Radix UIが閉じた後のフォーカスを戻す先を持たない。部品の側で戻り先を受け取り(`returnFocusRef`のようなprops)、`onCloseAutoFocus`で既定の動作を止めてその要素へ移す。戻り先が無い時は、開いた時にフォーカスのあった要素へ戻す。ドラッグ&ドロップなど、開く操作がフォーカスを伴わない場合があるため、開く元の操作(選択のボタンなど)を戻り先として渡す。
 
 ### 処理の後のフォーカス
 
@@ -104,21 +107,22 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 
 状態とエラーは、色だけでなく文言で示し(1.4.1)、支援技術へ伝える(4.1.3)。
 
-| 伝える内容                                   | 部品                                               | 支援技術への伝え方                                                                                           |
-| -------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 読み込み中                                   | `LoadingSkeleton`                                  | `role="status"`の中の見えない文言。スケルトンの形は`aria-hidden`                                             |
-| 区画またはページの読み込みの失敗             | `ErrorState`・`PartialErrorState`                  | `role="alert"`の文言                                                                                         |
-| 縮退運転中                                   | `UnavailableNotice`                                | `role="status"`の題と理由                                                                                    |
-| 想定外のエラーの画面                         | `UnexpectedErrorView`                              | `role="alert"`の見出しと案内                                                                                 |
-| 入力のエラー                                 | `FormField`                                        | 欄の`aria-invalid`と、`aria-describedby`で関連付けた文言                                                     |
-| bot判定の失敗                                | `TurnstileWidget`                                  | `role="alert"`の文言                                                                                         |
-| 操作の結果                                   | `notify`(トースト)                                 | 名前付きの領域の丁寧な通知(`role`を持たない)                                                                 |
-| 処理中のボタン                               | `SubmitButton`・`SystemStatusView`の再確認のボタン | `aria-busy`と、送信中などを示すボタンの文言への変更                                                          |
-| 本文の折りたたみと展開                       | `CollapsibleMarkdownContent`                       | 切替ボタンの`aria-expanded`と、本文の枠を指す`aria-controls`                                                 |
-| 入力欄の編集領域の読み込み中・読み込みの失敗 | `MarkdownEditor`(`EditorPlaceholder`)              | 読み込み中は`role="status"`の見えない文言と仮の表示の`aria-busy`、失敗は`role="alert"`の文言と再試行のボタン |
-| 入力欄の文字数の上限の超過と戻り             | `MarkdownEditor`(`MarkdownLengthCounter`)          | 超えた時と戻った時だけ変わる`aria-live="polite"`の見えない文言                                               |
-| アップロードするファイルの選択の結果         | `FileSelectionList`                                | 選んだファイルが変わった時だけ変わる`aria-live="polite"`の見えない文言(ファイル名と件数)                     |
-| ファイルのドラッグ中                         | `FileDropZone`                                     | 枠の色と、案内の文言の変更                                                                                   |
+| 伝える内容                                   | 部品                                               | 支援技術への伝え方                                                                                                                                                                                                                             |
+| -------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 読み込み中                                   | `LoadingSkeleton`                                  | `role="status"`の中の見えない文言。スケルトンの形は`aria-hidden`                                                                                                                                                                               |
+| 区画またはページの読み込みの失敗             | `ErrorState`・`PartialErrorState`                  | `role="alert"`の文言                                                                                                                                                                                                                           |
+| 縮退運転中                                   | `UnavailableNotice`                                | `role="status"`の題と理由                                                                                                                                                                                                                      |
+| 想定外のエラーの画面                         | `UnexpectedErrorView`                              | `role="alert"`の見出しと案内                                                                                                                                                                                                                   |
+| 入力のエラー                                 | `FormField`                                        | 欄の`aria-invalid`と、`aria-describedby`で関連付けた文言                                                                                                                                                                                       |
+| bot判定の失敗                                | `TurnstileWidget`                                  | `role="alert"`の文言                                                                                                                                                                                                                           |
+| 操作の結果                                   | `notify`(トースト)                                 | 名前付きの領域の丁寧な通知(`role`を持たない)                                                                                                                                                                                                   |
+| 処理中のボタン                               | `SubmitButton`・`SystemStatusView`の再確認のボタン | `aria-busy`と、送信中などを示すボタンの文言への変更                                                                                                                                                                                            |
+| 本文の折りたたみと展開                       | `CollapsibleMarkdownContent`                       | 切替ボタンの`aria-expanded`と、本文の枠を指す`aria-controls`                                                                                                                                                                                   |
+| 入力欄の編集領域の読み込み中・読み込みの失敗 | `MarkdownEditor`(`EditorPlaceholder`)              | 読み込み中は`role="status"`の見えない文言と仮の表示の`aria-busy`、失敗は`role="alert"`の文言と再試行のボタン                                                                                                                                   |
+| 入力欄の文字数の上限の超過と戻り             | `MarkdownEditor`(`MarkdownLengthCounter`)          | 超えた時と戻った時だけ変わる`aria-live="polite"`の見えない文言                                                                                                                                                                                 |
+| アップロードするファイルの選択の結果         | `FileSelectionList`                                | 選んだファイルが変わった時だけ変わる`aria-live="polite"`の見えない文言(ファイル名と件数)                                                                                                                                                       |
+| ファイルのドラッグ中                         | `FileDropZone`                                     | 枠の色と、案内の文言の変更                                                                                                                                                                                                                     |
+| 画像の切り取り                               | `ImageCropDialog`                                  | 範囲の`role="group"`の名前とキー操作の説明の`aria-describedby`、拡大率の`aria-valuetext`(百分率)、読み込み中は`role="status"`の見えない文言、読み込み・作り直しの失敗は`role="alert"`の文言、作り直し中は確定のボタンの`aria-busy`と文言の変更 |
 
 - `Skeleton`自体は`aria`を持たない。読み込み中の表示には`Skeleton`を直接置かず、`LoadingSkeleton`で包む。
 - トーストは一定の時間で消え、丁寧な通知で伝える。利用者の対応が要る失敗はトーストだけで伝えず、`ErrorState`・`PartialErrorState`か、フォームの`role="alert"`の表示で示す。トーストは操作の結果の通知に使う。
@@ -232,6 +236,7 @@ E2Eテストでは自動検査を行わない。
 | スクリーンリーダー(VoiceOver・NVDAなど)で、名前・役割・状態・エラー・状態の通知・画面遷移の通知が読まれる | 1.3.1・4.1.2・4.1.3 |
 | 幅320pxで横スクロールが出ず、文字を200%に拡大しても内容と操作が欠けない                                   | 1.4.4・1.4.10       |
 | 操作の大きさが24×24 CSSピクセル以上か、隣の操作と十分に離れている                                         | 2.5.8               |
+| ドラッグで行う操作を、ドラッグせずに単一のポインターでも行える                                            | 2.5.7               |
 | ライト・ダークの両方で、自動検査が測れない箇所のコントラストが基準以上                                    | 1.4.3・1.4.11       |
 | 視差効果を減らす設定で、動きが止まり、状態が文言で分かる                                                  | 2.3.3               |
 | 演出を持つ区画に停止の手段があり、キーボードで操作できる                                                  | 2.2.2               |

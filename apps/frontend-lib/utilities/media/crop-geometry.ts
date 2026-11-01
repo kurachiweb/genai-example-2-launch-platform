@@ -1,5 +1,20 @@
 import type { RasterImageMediaType } from '../../../common-lib/media/media-types.ts';
 
+export interface ImageEditOptions {
+  // 'free'は原本の縦横比のまま切り取る
+  readonly aspect: number | 'free';
+  readonly maxLongSide: number;
+  readonly cropShape?: 'rect' | 'round';
+}
+
+// 向きを反映した原本の画素の座標での切り取る範囲
+export interface CropArea {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface CropOutputInput {
   readonly area: { readonly width: number; readonly height: number };
   readonly maxLongSide: number;
