@@ -1241,7 +1241,7 @@ export declare function cursorListEnvelope<T extends z.ZodType>(
   }>;
 }>;
 export type ErrorStatus =
-  400 | 401 | 403 | 404 | 409 | 413 | 415 | 422 | 429 | 503;
+  400 | 401 | 403 | 404 | 409 | 411 | 413 | 415 | 422 | 429 | 503;
 export declare function errorResponses(
   statuses: readonly ErrorStatus[],
 ): Readonly<

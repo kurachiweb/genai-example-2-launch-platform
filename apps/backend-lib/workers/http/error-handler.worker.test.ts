@@ -58,6 +58,13 @@ function createApp(): Hono {
       details: [{ field: 'title', message: '必須です。', code: 'required' }],
     });
   });
+  app.post('/length-required', () => {
+    throw new AppError({
+      kind: 'length_required',
+      code: 'content_length_required',
+      message: 'ファイルを送信できませんでした。もう一度お試しください。',
+    });
+  });
   app.get('/unexpected', () => {
     throw new TypeError(`設定の読み込みに失敗しました: ${API_KEY}`);
   });
@@ -90,6 +97,25 @@ describe('createErrorHandler', () => {
         code: 'validation_failed',
         message: '入力内容を確認してください。',
         details: [{ field: 'title', message: '必須です。', code: 'required' }],
+      },
+    });
+    expect(logs).toStrictEqual([]);
+  });
+
+  test('length_requiredの共通エラーを411・Cache-Control: no-store・共通のエラー形式にし、Retry-Afterを付けない', async () => {
+    const logs = configureRecordingLogs();
+
+    const response = await createApp().request('/length-required', {
+      method: 'POST',
+    });
+
+    expect(response.status).toBe(411);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+    expect(response.headers.get('Retry-After')).toBeNull();
+    expect(await response.json()).toStrictEqual({
+      error: {
+        code: 'content_length_required',
+        message: 'ファイルを送信できませんでした。もう一度お試しください。',
       },
     });
     expect(logs).toStrictEqual([]);

@@ -383,3 +383,11 @@
 - **決定**: `operation-observability.worker.test.ts`に、`sentry-trace`付きの中継の要求でルートのスパンのトレースIDと親のスパンIDが受け取った値になることの1件を足す。ブラウザでの伝搬と割合、フロントエンドサーバーでの引き継ぎはfrontend-platformの12.12が確かめる。
 - **要件**: 受け入れ基準(13.2)は変えないため、`requirements.md`の「承認後の改訂」の表には載せない。
 - **変えた箇所**: 設計のRevalidation Triggers・Testing Strategyの`operation-observability.worker.test.ts`、タスク12・12.1。`spec.json`の承認の状態は変えていない。
+
+## media-pipelineの依頼による承認後の改訂(改訂6、2026-11-01)
+
+- **状態**: media-pipelineの実装前のギャップ分析の決定G-1(2026-11-01に開発者が決定)による改訂で、確定している。実装はmedia-pipelineのタスク1.4で行った。
+- **Context**: media-pipelineのアップロードの受付は、`Content-Length`ヘッダーが無い要求を411と共通のエラー形式で拒否する(media-pipelineの要件2.1)。backend-platformの`AppErrorKind`に`length_required`(411)が加わり、本specの公開RESTの`ErrorStatus`は`AppErrorStatus`と同じ型のため、状態コードの一覧(`ERROR_STATUSES`)と説明(`ERROR_DESCRIPTIONS`)に411が要る。
+- **決定**: 改訂3で413・415を加えたときと同じ範囲で、`apps/api/src/presentation/rest/responses.ts`の`ERROR_STATUSES`と説明に411(「要求にContent-Lengthヘッダーがありません。」)を加え、`responses.worker.test.ts`の期待値を改めた。任意の状態コードを受ける共通のエラー形式の組み立て部品は作らない。公開RESTの既存の経路とGraphQLの経路の応答は変わらない。
+- **要件**: 受け入れ基準は変えないため、`requirements.md`の「承認後の改訂」の表には載せない。
+- **変えた箇所**: design.mdの公開RESTの`ErrorStatus`、`docs/GUIDES/tech/backend/005-public-rest-api.md`の`errorResponses`に指定できる状態コードの列挙。`spec.json`の承認の状態とタスクは変えていない。

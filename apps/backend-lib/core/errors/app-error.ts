@@ -4,6 +4,7 @@ export type AppErrorKind =
   | 'forbidden'
   | 'not_found'
   | 'conflict'
+  | 'length_required'
   | 'payload_too_large'
   | 'unsupported_media_type'
   | 'unprocessable'
@@ -11,7 +12,7 @@ export type AppErrorKind =
   | 'unavailable';
 
 export type AppErrorStatus =
-  400 | 401 | 403 | 404 | 409 | 413 | 415 | 422 | 429 | 503;
+  400 | 401 | 403 | 404 | 409 | 411 | 413 | 415 | 422 | 429 | 503;
 
 export const STATUS_BY_KIND: Readonly<Record<AppErrorKind, AppErrorStatus>> =
   Object.freeze({
@@ -20,6 +21,7 @@ export const STATUS_BY_KIND: Readonly<Record<AppErrorKind, AppErrorStatus>> =
     forbidden: 403,
     not_found: 404,
     conflict: 409,
+    length_required: 411,
     payload_too_large: 413,
     unsupported_media_type: 415,
     unprocessable: 422,

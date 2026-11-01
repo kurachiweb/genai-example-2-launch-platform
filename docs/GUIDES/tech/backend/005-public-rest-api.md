@@ -136,7 +136,7 @@ export const REST_ROUTES: readonly PublicRestRoutes<Env>[] = [
 - オフセット型の`meta`は、`total`・`total_pages`が0以上、`page`・`per_page`が1以上の整数である。
 - カーソル型の`meta`は、最後のページなら`has_next`が`false`、`next_cursor`が`null`である。
 - ページングの引数(クエリ)の検証規則は骨格が持たず、各経路が定義する。
-- エラー応答は`errorResponses([<状態コード>...])`で経路の`responses`に加える。指定した状態コードだけが、説明と共通のエラー形式のスキーマ(仕様書の部品`ErrorEnvelope`)付きで仕様に載る。指定できる状態コードは`AppError`の種類の状態コード(400・401・403・404・409・413・415・422・429・503)である。本文を受け取る経路は、`Content-Type`の不一致の415も加える。
+- エラー応答は`errorResponses([<状態コード>...])`で経路の`responses`に加える。指定した状態コードだけが、説明と共通のエラー形式のスキーマ(仕様書の部品`ErrorEnvelope`)付きで仕様に載る。指定できる状態コードは`AppError`の種類の状態コード(400・401・403・404・409・411・413・415・422・429・503)である。本文を受け取る経路は、`Content-Type`の不一致の415も加える。
 
 ## 認証方式の宣言
 

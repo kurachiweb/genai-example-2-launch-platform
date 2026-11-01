@@ -17,6 +17,7 @@ const EXPECTED_STATUS_BY_KIND: readonly (readonly [
   ['forbidden', 403],
   ['not_found', 404],
   ['conflict', 409],
+  ['length_required', 411],
   ['payload_too_large', 413],
   ['unsupported_media_type', 415],
   ['unprocessable', 422],
@@ -32,7 +33,7 @@ describe('STATUS_BY_KIND', () => {
     },
   );
 
-  test('10種の失敗だけを持ち、実行時に書き換えられない', () => {
+  test('11種の失敗だけを持ち、実行時に書き換えられない', () => {
     expect(Object.keys(STATUS_BY_KIND).toSorted()).toEqual(
       EXPECTED_STATUS_BY_KIND.map(([kind]) => kind).toSorted(),
     );
@@ -131,6 +132,7 @@ describe('AppError', () => {
     'forbidden',
     'not_found',
     'conflict',
+    'length_required',
     'payload_too_large',
     'unsupported_media_type',
     'unprocessable',

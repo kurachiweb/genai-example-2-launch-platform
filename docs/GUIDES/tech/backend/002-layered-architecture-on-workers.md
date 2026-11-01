@@ -264,6 +264,7 @@ flowchart TD
 | `forbidden`              | 403        | 権限が無い・bot判定の失敗                        |
 | `not_found`              | 404        | 対象が存在しない                                 |
 | `conflict`               | 409        | 状態の競合                                       |
+| `length_required`        | 411        | 要求に`Content-Length`ヘッダーが無い             |
 | `payload_too_large`      | 413        | 要求の本文が上限を超えた                         |
 | `unsupported_media_type` | 415        | 要求の本文の形式(`Content-Type`)に対応していない |
 | `unprocessable`          | 422        | 形式は正しいが意味的に不正                       |

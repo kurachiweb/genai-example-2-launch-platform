@@ -377,3 +377,9 @@
   - キーの長さ: CloudflareのRate Limitingバインディングの公式文書は`key`を任意の文字列とだけ記し、長さの上限を記していない。ハッシュ値(base64urlの86文字)をそのまま渡す。
 - **要件**: 13.8を加え、13.6の文言にキーのハッシュ化の方式を加えた。利用者・運用者から見える振る舞い(個人情報の扱い)の約束を変えるため、`requirements.md`の「承認後の改訂」の表に改訂9の行を置いた。
 - **変えた箇所**: 設計のRevalidation Triggers、KeyedHasher・FixedWindow・RateLimitKeyの追跡、WorkerAppの順序の説明、BindingRateLimit・IpRateLimit(API Contractの`key`と`ipRateLimit`の型制約、キーのハッシュ化とペッパーが無い環境の扱い、規約表のキー)、追跡表の13.1・13.8、Testing Strategy、Security Considerations、技術ドキュメント群(RateLimitingDoc・KeyedHashingDoc)。tasks.mdに追加タスク11・11.1を加えた。
+
+## media-pipelineの依頼による共通エラーの種類の追加(2026-11-01、開発者の決定)
+
+- media-pipelineの実装前のギャップ分析の決定G-1(2026-11-01に開発者が決定)により、`AppErrorKind`に`length_required`(411)を加えた(`apps/backend-lib/core/errors/app-error.ts`・単体テスト・`workers/http/error-handler.worker.test.ts`)。アップロードの受付で`Content-Length`ヘッダーが無い要求を、本文を読まずに411と共通のエラー形式で拒否するため(media-pipelineの要件2.1)。`retryAfterSeconds`を受け付けず、`AppError`なのでエラートラッキングへ送らない。手順と範囲はapi-gatewayの改訂3(413・415)と同じである。
+- 任意の状態コードを受ける共通のエラー形式の組み立て部品は作らない。「`AppError`の種類から状態コードが決まる」(`STATUS_BY_KIND`)という本specの不変条件に抜け道を作らないためで、411を使うのはmedia-pipelineのアップロードの受付だけである(検討の記録はmedia-pipelineのresearch.mdのG-1)。
+- design.mdの`AppErrorKind`と`STATUS_BY_KIND`の状態コードの型、`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の共通エラーの表を改めた。要件・タスクは変えていない。

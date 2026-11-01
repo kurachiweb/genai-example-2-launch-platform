@@ -30,7 +30,7 @@
   - 完了状態: メディアの設定の単体テストとbackend-platformの設定の単体テスト、型生成の検査が成功し、マージ前の登録の依頼と、キーの一覧の節の確認結果が報告に含まれている
   - _Requirements: 11.1, 16.1, 16.2, 17.7_
 
-- [ ] 1.4 共通エラーに411の種類を加える
+- [x] 1.4 共通エラーに411の種類を加える
   - 先に、`length_required`の`AppError`が411と共通のエラー形式・`no-store`で応答されること、`STATUS_BY_KIND`の411、公開RESTの状態コードの一覧と説明に411があることを確かめる単体テストとWorkers統合テストの期待値を書き、失敗を確かめる
   - backend-platformの`AppErrorKind`に`length_required`、`AppErrorStatus`と`STATUS_BY_KIND`に411を加え、apiの公開RESTの状態コードの一覧(`ERROR_STATUSES`)と説明に411を加える。api-gatewayの改訂3で413・415を加えたときと同じ範囲で変え、任意の状態コードを受ける組み立て部品は作らない
   - 同じ変更で、`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の共通エラーの種類の表と、`docs/GUIDES/tech/backend/005-public-rest-api.md`の`errorResponses`に指定できる状態コードの列挙と、backend-platform・api-gatewayのdesign.mdとresearch.mdへ、本specの依頼による改訂として記録する
