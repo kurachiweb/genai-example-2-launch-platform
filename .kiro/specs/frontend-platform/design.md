@@ -807,6 +807,7 @@ export interface PublicRuntimeConfig {
   readonly environment: AppEnvironment;
   readonly turnstileSiteKey: string;
   readonly clientSiteOrigin: string;
+  readonly imagesOrigin: string; // media-pipelineの依頼による改訂(画像の表示部品が配信のURLを組み立てる)
   readonly sentry: {
     readonly dsn: string | undefined;
     readonly environment: string;
