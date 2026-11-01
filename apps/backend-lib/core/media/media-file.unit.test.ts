@@ -8,6 +8,7 @@ import {
   type ModerationStatus,
   QUARANTINE_REASONS,
   type QuarantineReason,
+  readLocationsOf,
 } from './media-file.ts';
 import type { MediaStorage } from './upload-purpose.ts';
 
@@ -101,6 +102,27 @@ describe('desiredLocation', () => {
       'files',
       'files',
     ]);
+  });
+});
+
+describe('readLocationsOf', () => {
+  test('ファイル用の保存先はファイル用非公開バケットだけを読む', () => {
+    expect(readLocationsOf({ storage: 'files', location: 'files' })).toEqual([
+      'files',
+    ]);
+  });
+
+  test('画像用非公開バケットにあると記録された画像は、画像用非公開バケット→隔離バケットの順に読む', () => {
+    expect(readLocationsOf({ storage: 'images', location: 'images' })).toEqual([
+      'images',
+      'quarantine',
+    ]);
+  });
+
+  test('隔離バケットにあると記録された画像は、隔離バケット→画像用非公開バケットの順に読む', () => {
+    expect(
+      readLocationsOf({ storage: 'images', location: 'quarantine' }),
+    ).toEqual(['quarantine', 'images']);
   });
 });
 

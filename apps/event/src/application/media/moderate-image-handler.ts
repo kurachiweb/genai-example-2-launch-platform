@@ -3,11 +3,11 @@ import {
   isImageMediaType,
 } from '../../../common-lib/media/media-types.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
-import type {
-  MediaFileView,
-  MediaLocation,
-  ModerationFinding,
-  ModerationStatus,
+import {
+  type MediaFileView,
+  type ModerationFinding,
+  type ModerationStatus,
+  readLocationsOf,
 } from '../../../lib/core/media/media-file.ts';
 import type { ModerateImageBody } from '../../../lib/core/media/media-messages.ts';
 import type {
@@ -135,13 +135,6 @@ function isModeratable(file: MediaFileView | undefined): file is ImageFileView {
     file.storage === 'images' &&
     isImageMediaType(file.contentType)
   );
-}
-
-// 隔離・復元の移動はコピー→元の削除→保存先の記録の更新の順のため、記録の保存先に無ければ移動先に既に写っている
-function readLocationsOf(file: MediaFileView): readonly MediaLocation[] {
-  return file.location === 'quarantine'
-    ? ['quarantine', 'images']
-    : ['images', 'quarantine'];
 }
 
 function flagged(

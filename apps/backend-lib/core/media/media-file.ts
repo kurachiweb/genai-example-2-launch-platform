@@ -61,6 +61,18 @@ export interface MediaFileView {
   readonly createdAt: Date;
 }
 
+// 隔離・復元の移動はコピー→元の削除→保存先の記録の更新の順のため、記録の保存先に無ければ移動先に既に写っている
+export function readLocationsOf(
+  file: Pick<MediaFileView, 'storage' | 'location'>,
+): readonly MediaLocation[] {
+  if (file.storage === 'files') {
+    return ['files'];
+  }
+  return file.location === 'quarantine'
+    ? ['quarantine', 'images']
+    : ['images', 'quarantine'];
+}
+
 // ファイル用の用途は隔離の対象外で、画像用の用途は理由が1つでも残る間は隔離バケットに置く
 export function desiredLocation(
   storage: MediaStorage,

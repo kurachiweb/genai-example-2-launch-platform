@@ -4,9 +4,9 @@ import { z } from 'zod';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { attachmentDisposition } from '../../../lib/core/media/file-name.ts';
 import { MEDIA_TYPES } from '../../../lib/core/media/identifiers.ts';
-import type {
-  MediaFileView,
-  MediaLocation,
+import {
+  type MediaFileView,
+  readLocationsOf,
 } from '../../../lib/core/media/media-file.ts';
 import type {
   MediaFiles,
@@ -41,16 +41,6 @@ const logger = getAppLogger(['api', 'media', 'download']);
 
 function isAvailable(file: MediaFileView): boolean {
   return file.stored && file.deletedAt === null && !file.eraseRequested;
-}
-
-// 隔離・復元の移動はコピー→元の削除→保存先の記録の更新の順のため、記録の保存先に無ければ移動先に既に写っている
-function readLocationsOf(file: MediaFileView): readonly MediaLocation[] {
-  if (file.storage === 'files') {
-    return ['files'];
-  }
-  return file.location === 'quarantine'
-    ? ['quarantine', 'images']
-    : ['images', 'quarantine'];
 }
 
 function callerOf<E extends PlatformEnv>(

@@ -1645,7 +1645,7 @@ export declare function inspectSvg(
 ##### Event Contract
 
 - `media.relocate-files`(既定の再試行の方針): `FileRelocator.reconcile(fileIds)`を呼ぶ。
-- `FileRelocator.reconcile`: 各ファイルについて記録と隔離理由を読み、削除待ちなら何もしない。`desiredLocation`と現在の保存先が同じなら何もしない。違えば`copy`(目的の保存先に既にあれば省く。元にも目的にも無ければ記録の保存先だけを目的の値にする)→元の保存先から`delete`→画像用非公開バケットから出た場合は`PURGE_IMAGE_CACHE_MESSAGE`を送る→`updateLocation(from, to)`。1件の失敗は例外としてメッセージ全体を再試行させる(処理済みのファイルは次の試行で何もしない)。
+- `FileRelocator.reconcile`: 各ファイルについて記録と隔離理由を読み、削除待ちか保存未完了なら何もしない(受付処理は記録の保存先によらず画像用非公開バケットへ書くため、保存の前に記録だけを動かすと実体が公開側に残り照合でも見つからない。保存の完了後は判定の処理の`reconcile`か日次の照合が移す)。`desiredLocation`と現在の保存先が同じなら何もしない。違えば`copy`(目的の保存先に既にあれば省く。元にも目的にも無ければ記録の保存先だけを目的の値にする)→元の保存先から`delete`→画像用非公開バケットから出た場合は`PURGE_IMAGE_CACHE_MESSAGE`を送る→`updateLocation(from, to)`。1件の失敗は例外としてメッセージ全体を再試行させる(処理済みのファイルは次の試行で何もしない)。
 - `media.purge-image-cache`(再試行の方針: 最大5回・60秒起点): `ImageCachePurger.purge(objectKeys)`。`ok: false`(回数の上限など)は例外で再試行させ、上限に達すればbackend-platformのデッドレターの通知(ログとSentry)になる(11.5)。
 - `WorkersCachePurger`: backend-platformの`PLATFORM_TYPES.InvocationScope`から処理単位の`executionCtx`を受け取り、`executionCtx.exports.ImageDelivery.purgeObjectKeys(objectKeys)`を呼ぶ(`queue`ハンドラーの処理単位でも同じ)。
 

@@ -1,9 +1,9 @@
 import type { Logger } from '@logtape/logtape';
 
 import { getAppLogger } from '../../core/logging/app-logger.ts';
-import type {
-  MediaFileView,
-  MediaLocation,
+import {
+  type MediaFileView,
+  readLocationsOf,
 } from '../../core/media/media-file.ts';
 import {
   type ClaimFailure,
@@ -71,16 +71,6 @@ function isReadable(file: MediaFileView): boolean {
     !file.eraseRequested &&
     !file.quarantined
   );
-}
-
-// 隔離・復元の移動はコピー→元の削除→保存先の記録の更新の順のため、記録の保存先に無ければ移動先に既に写っている
-function readLocationsOf(file: MediaFileView): readonly MediaLocation[] {
-  if (file.storage === 'files') {
-    return ['files'];
-  }
-  return file.location === 'quarantine'
-    ? ['quarantine', 'images']
-    : ['images', 'quarantine'];
 }
 
 export class MediaFilesService implements MediaFiles {
