@@ -171,7 +171,7 @@
   - _Requirements: 1.1, 1.8, 5.4, 12.2, 12.7_
 
 - [ ] 6. イベントサーバー: 自動判定
-- [ ] 6.1 判定のポートと、判定の設定・規則・代替の判定の規則を作る
+- [x] 6.1 判定のポートと、判定の設定・規則・代替の判定の規則を作る
   - 先に、環境の値の解析(閾値0〜100・カテゴリが全10カテゴリの部分集合・不正値の失敗)、ラベルの親をたどった最上位のカテゴリでの判定(閾値ちょうど・設定外のカテゴリ・空のラベル)、代替の判定の規則(99×99・98×98・97×97・その他)を確かめる単体テストを書く
   - 判定サービス・判定用画像の描画・通知・保存先をそろえる処理・パージ・画像の読み出しと変換のポートとeventのDIの識別子を設計の型で定義する
   - 完了状態: 単体テストが成功し、初期値(全カテゴリ・60)で全カテゴリのラベルが不適切になる
@@ -376,3 +376,4 @@
 - 5.4: `mediaSchemaModule`(`apps/api/src/presentation/graphql/modules/media/`)は未登録。5.6で`GRAPHQL_SCHEMA_MODULES`へ登録した後に`bun run graphql:generate`を実行し、`generated/schema.graphql`と`generated/resolvers-types.ts`の差分を同じ変更に含める(`src/composition/graphql-modules.worker.test.ts`がスキーマファイルの一致を確かめる)。手書きの`MediaImageModel`・`MediaAttachmentModel`と生成型の一致を確かめる手段(`satisfies`など)を5.6で決める。`toMediaImage`は画像用以外、`toMediaAttachment`はファイル用以外で`TypeError`。隔離中(理由1つ以上)・削除待ち・保存未完了は`objectKey`が空、論理削除済みは返す(13.4)。`mediaFileLoader`は見つからないキーに`null`(設計どおり。`backend/004`の`Error`と異なる)
 - 5.5: 3つのジョブと`MEDIA_JOB_TYPES`は`apps/api/src/application/media/media-daily-jobs.ts`。application層はworkersの`MessagePublisher`を読めないため同形の`MediaJobMessagePublisher`を置き、5.6で`PLATFORM_TYPES.MessagePublisher`から注入する。基準は`scheduledTime`。13.5の「13日以上」に合わせ論理削除の境界は13日前+1ms(ストアは`<`)、24時間・1時間はちょうどを含めない。1回の起動で最大1,000件、超えた分は翌日(Batch Contract)。ログは件数と`hasMore`(残数の件数は出さない)。820・830は1件の送信の失敗で残りを続け、最後に`MediaDailyJobError`を投げる。810の削除の直前に候補の条件を確かめ直さない(`erase`自身が`findViews`で読み、競合を閉じるには条件付きの削除が要る。既知の制限)。ログのカテゴリ`['api', 'media', 'expired-file-erasure' | 'moderation-requeue' | 'location-reconciliation']`。偽物のストア`apps/api/test/support/media-daily-job-fakes.ts`の820の並びは`id`だけで、D1は`createdAt, id`
 - 5.6: apiの束縛は`apps/api/src/composition/media-module.ts`(`API_MEDIA_PLATFORM_MODULE`・`createApiMediaModule`・`API_MEDIA_MODULE`)、登録箇所は`upload-purposes.ts`・`file-read-policies.ts`(空)・`media-review-policy.ts`(`MEDIA_REVIEW_POLICY_BINDINGS`、全拒否)・`uploader-eligibility.ts`(全許可)。差し替えられる既定値の期待値は`apps/api/test/config/media-registrations.unit.test.ts`の1か所だけ(identity-authの8.5・ugc-moderationが直すのはこのファイル)。閲覧の方針の登録先の検査`assertFileReadPolicyRegistrations`はモジュールの読み込み時に実行する。手書きのGraphQLのモデルと生成型の一致は`mappers.unit.test.ts`の`expectTypeOf`。検索の2つのworkerテストは4:21のジョブ名を完全一致で列挙しており、4:21のジョブを足すspecが直す必要がある
+- 6.1: eventのポートと`EVENT_MEDIA_TYPES`(5種)は`apps/event/src/application/media/ports.ts`。ImageSource・ImageTransformerも`ports.ts`にあり(設計のService Interfaceのコメントの`image-delivery.ts`ではない)、7.2はここから読む。設定の解析`parseModerationConfig`はカテゴリの空の値・空の項目・重複・大文字小文字の違いを失敗にする(空の集合で判定が黙って無効になるのを防ぐ。開発者の確認待ち)。`judgeLabels`は`parentName`をたどり、応答に無い親の名前を最上位とみなす(第3階層だけが返った場合は最上位を求められない。6.5で`taxonomyLevel`の扱いを検討)。代替の判定の規則は`decideStubModeration`(寸法だけを受け取る。判定用画像の寸法の読み取りは6.5)
