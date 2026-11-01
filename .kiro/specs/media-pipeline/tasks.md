@@ -76,7 +76,7 @@
   - _Boundary: SvgSyntax, TextContentCheck_
   - _Requirements: 3.2, 3.3, 3.4_
 
-- [ ] 3.4 (P) ファイル名の整形・`Content-Disposition`の組み立て・オブジェクトキーの採番を作る
+- [x] 3.4 (P) ファイル名の整形・`Content-Disposition`の組み立て・オブジェクトキーの採番を作る
   - 先に、パス区切り文字・C0とC1の制御文字・DEL・先頭のドットの除去、前後の空白、UTF-8で255バイトの書記素の境界での切り詰め(絵文字・結合文字)、空になった場合の形式ごとの既定名、日本語名の`filename*`とASCIIの代替、注入した乱数源から32文字の小文字16進のキーができることを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、どの入力でも255バイトを超える名前や改行を含むヘッダー値が作られない
   - _Boundary: FileName, ObjectKey_
@@ -363,3 +363,4 @@
 - 3.1: `backend-lib/core/media`からcommon-libは兄弟の相対パス`../../../common-lib/media/...`で読む(`core/search`と同じ)。`precheckUpload`は拒否(`AppError`の引数)を返し、413・415の文言は用途の表示名が無いため用途を省いて上限・形式の一覧から作る。`Content-Length`は数字だけを受け、安全な整数を超える桁は413。登録表`createUploadPurposeRegistry`は名前の重複だけを検査する(各定義は`defineUploadPurpose`を通す前提)。`MEDIA_SMOKE_PURPOSE`は主体の種類が空で、`defineUploadPurpose`を通さない定数
 - 3.2: `image-size` 2.0.4はJPEGの走査で毎バイト`slice()`を複製し、壊れた本文で時間が長さの2乗になる(1MiBで約40秒)ため、`readImageDimensions`は先頭1MiBを1度だけ複製し`slice()`が`subarray()`を返す派生クラスで渡す(`image-size`は`.buffer`からDataViewで長さ無しに読むため、呼び出し元のバッファを共有しない)。`disableTypes`で5形式に絞る設定はisolate全体に効く(他の`image-size`の利用はPNGだけ)。SVGの寸法なしとラスターの読めないはどちらも`undefined`で、3.9と3.7の振り分けと`detectSignature`と申告の比較は4.3で行う。`image-size`のSVGの寸法の読み取りは正規表現で先頭1000文字の`<svg`しか判定しないため、3.3の構文の検査の後に呼ぶ
 - 3.3: `fast-xml-parser`の`maxNestedTags`の既定は100で、超えると例外になるため、受付の最上位の確認は`SVG_MAX_NESTED_TAGS`(256、`core/media/svg-syntax.ts`)を明示する。6.3の`inspectSvg`も同じ定数を解析器の`maxNestedTags`に使い、受付で通るSVGを許可リストの検査で解析できるようにする。処理命令(`<?xml-stylesheet?>`など)は受付では拒否されず、6.3で違反として扱う。DOCTYPEの拒否は本文の部分一致で、コメント・CDATAの中も拒否する。Affinity Designerや旧IllustratorのSVG 1.1の書き出しはDOCTYPEを含み受付で`svg_declaration_not_allowed`になるため、6.3の「Affinityの書き出しの標本」は開発者の判断が要る。`TextContentError`は`reason`(`invalid_utf8`・`nul_character`)を持つ。workerdでの流しながらの検査は4.3のWorkers統合テストで確かめる
+- 3.4: `sanitizeFileName`は先頭のドットと空白の並びをまとめて除き、切り詰めの後にも前後の空白を除く(設計の「先頭の`.`→前後の空白」の順だと`" .profile"`が`.profile`になり要件4.5を満たさないため。9.1の`security/005`はこの順で書く)。書式文字(U+202Eなど)は要件どおり除かず、拡張子の偽装への対策と`filename`の代替に残る`%`(RFC 6266の4.3)は9.1で検討する。書記素の切り詰めは`Intl.Segmenter`を直接使い、空白の除去は共用部品の`trimWhiteSpace`。`generateObjectKey`は乱数源が16バイト以外を返すと例外

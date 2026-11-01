@@ -209,7 +209,7 @@ apps/
 │   │   ├── file-signature.ts                      # マジックバイトの表とdetectSignature
 │   │   ├── image-dimensions.ts                    # readImageDimensions(image-size・向きの入れ替え)・画素数の上限
 │   │   ├── svg-syntax.ts                          # UTF-8の復号・DOCTYPEとENTITYの拒否・XMLの構文の検査
-│   │   ├── text-content.ts                        # UTF-8とNUL文字を流しながら検査するTransformStream
+│   │   ├── text-content-check.ts                  # UTF-8とNUL文字を流しながら検査するTransformStream
 │   │   ├── file-name.ts                           # sanitizeFileName・attachmentDisposition
 │   │   ├── object-key.ts                          # generateObjectKey(乱数源を注入)
 │   │   └── media-messages.ts                      # 3種のメッセージ契約と件数の上限
