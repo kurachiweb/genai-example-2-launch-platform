@@ -171,6 +171,8 @@ describe('ImageSource・ImageTransformer', () => {
           avif: true,
         },
         format: 'image/webp',
+        quality: 80,
+        anim: false,
       }),
     ).toEqual({ ok: false, reason: 'unavailable' });
     expect(Object.keys(reasons)).toHaveLength(2);

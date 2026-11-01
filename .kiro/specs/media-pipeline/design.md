@@ -1700,6 +1700,8 @@ export interface ImageTransformer {
     readonly body: ReadableStream<Uint8Array>;
     readonly variant: ImageVariantSpec;
     readonly format: 'image/avif' | 'image/webp' | 'image/jpeg' | 'image/png';
+    readonly quality: number; // deliverImageが80を渡す
+    readonly anim: boolean; // deliverImageがfalse(最初のフレームだけ)を渡す
   }): Promise<
     | {
         readonly ok: true;
@@ -1727,7 +1729,7 @@ export declare function deliverImage(
 
 - `ImageGatewayModule`(既定のエクスポートのHonoの経路。`MODULES`の先頭に登録する): `matchImageRequest`が`image`なら、メソッドが`GET`・`HEAD`以外は405、それ以外は`new Request(<origin><path>, { method })`(クエリ文字列と要求ヘッダーを落とす)で`c.executionCtx.exports.ImageDelivery.fetch()`へ渡し、応答をそのまま返す。`reject-on-dedicated-host`は404(`no-store`)。`not-image-host`は次の経路へ進める。
 - `deliverImage`: `parseImagePath`が`undefined-variant`なら404。原本が無ければ404。原本の`contentType`が`image/svg+xml`なら、`isDeliverable`を満たす場合だけ原本をそのまま返す。ラスターなら`isDeliverable`を満たす場合だけ`IMAGE_VARIANTS`の幅・高さ・`fit`(`scale-down`・`cover`)と拡張子の形式で、品質80・`anim: false`で変換する。`invalid-image`は404、`unavailable`は503(`Retry-After: 5`)。404・405・503はすべて`no-store`。
-- `ImagesBindingTransformer`: `env.IMAGES.input(body).transform({ width, height, fit }).output({ format, quality: 80, anim: false })`。JPEG出力のメタデータは指定しない(決定Q1、10.8)。
+- `ImagesBindingTransformer`: `env.IMAGES.input(body).transform({ width, height, fit }).output({ format, quality, anim })`(`quality`・`anim`は`deliverImage`が渡す80・`false`)。JPEG出力のメタデータは指定しない(決定Q1、10.8)。
 - `purgeObjectKeys`: `this.ctx.cache`があれば`purge({ pathPrefixes: objectKeys.map((k) => '/' + k + '/') })`の結果を返し、無ければ(ローカル・テスト)`skipped: true`で成功とする。1回の呼び出しは100件以下(`MEDIA_MESSAGE_LIMITS`)。
 - IP制限の除外(10.10): `rate-limit-exclusions.ts`へ「`matchImageRequest`が`image`」を条件とする規則を加える。
 - Wrangler設定(11.1): トップレベルの`cache.enabled: false`はそのまま、`exports`に`default`(キャッシュ無効)と`ImageDelivery`(キャッシュ有効)を書く。版をまたぐキャッシュは使わない。

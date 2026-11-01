@@ -105,6 +105,8 @@ export interface ImageTransformer {
     readonly body: ReadableStream<Uint8Array>;
     readonly variant: ImageVariantSpec;
     readonly format: ImageTransformFormat;
+    readonly quality: number;
+    readonly anim: boolean;
   }): Promise<ImageTransformResult>;
 }
 
