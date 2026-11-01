@@ -45,9 +45,10 @@ export default defineConfig({
         'lib/workers/**/*.ts',
         'db/client.ts',
       ],
-      // 共有ディレクトリの中で単体テストが検査するソースは、単体テストのカバレッジで数えるため分母から外す
+      // 単体テストが検査するソースは、単体テストのカバレッジで数えるため分母から外す
       exclude: [
         ...workerTestPreset.coverage.exclude,
+        ...listUnitTestedSources(import.meta.dirname, 'src/infrastructure'),
         ...listUnitTestedSources(import.meta.dirname, 'lib/workers'),
       ],
     },
