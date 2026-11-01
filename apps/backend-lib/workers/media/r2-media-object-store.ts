@@ -108,14 +108,21 @@ export class R2MediaObjectStore implements MediaObjectStore {
     httpMetadata: R2HTTPMetadata,
   ): Promise<'stored' | 'exists'> {
     const fixed = new FixedLengthStream(length);
-    const [stored] = await Promise.all([
+    const [stored, piped] = await Promise.allSettled([
       this.bucketOf(location).put(key, fixed.readable, {
         onlyIf: ifAbsent(),
         httpMetadata,
       }),
       body.pipeTo(fixed.writable),
     ]);
-    return stored === null ? 'exists' : 'stored';
+    // 本文の流れの失敗は書き込みの失敗も引き起こし、拒否の決着の順序は決まらないため、呼び出し元が原因を見分けられるよう本文側の理由を優先する
+    if (piped.status === 'rejected') {
+      throw piped.reason;
+    }
+    if (stored.status === 'rejected') {
+      throw stored.reason;
+    }
+    return stored.value === null ? 'exists' : 'stored';
   }
 
   private bucketOf(location: MediaLocation): R2Bucket {

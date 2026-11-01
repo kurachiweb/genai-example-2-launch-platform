@@ -102,8 +102,8 @@
   - _Boundary: R2MediaObjectStore_
   - _Requirements: 2.5, 2.6, 4.2, 4.3, 4.4_
 
-- [ ] 4.3 受付処理を作る
-  - 先に、画像用とファイル用の用途で201の結果・記録・オブジェクト・判定の依頼(画像用だけ)ができること、事前検証と実体検証の各拒否で記録もオブジェクトも残らないこと、テキストの違反と長さの不一致で記録の削除が試みられること、キーの衝突での1回の採り直し、保存先の失敗が503と再試行の秒数になること、判定の依頼の送信に失敗してもアップロードが成功することを確かめるWorkers統合テストを書く
+- [x] 4.3 受付処理を作る
+  - 先に、画像用とファイル用の用途で201の結果・記録・オブジェクト・判定の依頼(画像用だけ)ができること、事前検証と実体検証の各拒否で記録もオブジェクトも残らないこと、テキストの違反と長さの不一致で記録の削除が試みられること、キーの衝突で記録を消して想定外の例外になること(開発者の決定(2026-11-01)。採り直さない)、保存先の失敗が503と再試行の秒数になること、判定の依頼の送信に失敗してもアップロードが成功することを確かめるWorkers統合テストを書く
   - 処理の順序は設計のとおりにし、SVGは全体、テキストは流しながら、他は先頭最大1MiBで検査する
   - ログに用途・形式・バイト数・識別子だけを出し、ファイル名と内容を出さない
   - 完了状態: 受付処理のWorkers統合テストが成功し、判定サービスやQueueが失敗する場合も受付が完了する
@@ -367,3 +367,4 @@
 - 3.5: ポートは`core/media/ports.ts`、DIの識別子は`core/media/identifiers.ts`の`MEDIA_TYPES`(7種、`Symbol.for('media.<名前>')`)、契約は`core/media/media-messages.ts`(`MODERATE_IMAGE_MESSAGE`・`RELOCATE_FILES_MESSAGE`・`PURGE_IMAGE_CACHE_MESSAGE`・`MEDIA_MESSAGE_LIMITS`)。設計のインラインの型に`ClaimFailure`・`OwnerIdListInput`・`OwnerIdList`・`QuarantinedImageListInput`・`QuarantinedImageList`・`OwnedImageQuery`・`EraseCandidateQuery`・`ModerationRequeueQuery`、本文の型に`ModerateImageBody`・`RelocateFilesBody`・`PurgeImageCacheBody`の名前を付けた。テーブル定義の値の一覧と型の照合は`workers/media/media-file-columns.unit.test.ts`(coreはDBスキーマを読めない)。project-values.mdのメッセージの表は9.3で加える
 - 4.1: `D1MediaFileStore`(`workers/media/d1-media-file-store.ts`)のWorkers統合テストはapiの`test:worker`だけで走る(eventは`lib/**`を除外)。テストの補助は`workers/media/testing/media-file-store-fixtures.ts`(800行のフックでテストを書き込み用・照会用に分けた)。設計で決まっていない振る舞い: `addReasons`は存在しない識別子を無視する(拒否は4.5が`findViews`で決める)、`listQuarantined`は削除待ちを除き、カーソルはストアの内部の形式`<ms>-<ULID>`(不正なら`AppError(bad_request, invalid_cursor)`。公開する層で包み直すかは4.5・5.4で決める)、`findOwnedImageIdsByReason`の理由なしは論理削除済み・保存未完了を含む(13.4)、期限は`<`、`findModerationRequeueCandidates`は保存未完了の判定待ちも返す(処理側で保存未完了は何もせず完了し、記録は810で消える)。日次の照会(`findLocationMismatches`・`findEraseCandidates`)は5.5で`EXPLAIN QUERY PLAN`を確かめる
 - 4.2: `R2MediaObjectStore.putIfAbsent`は本文を`FixedLengthStream`に通し`put`と`pipeTo`を待つ。長さの不一致はworkerdの`TypeError`(長い本文は`pipeTo`、短い本文は`put`だけが拒否)でR2の障害と区別できないため、4.3の受付処理は本文の前段にバイト数を数える変換を挟み、自前の例外で`content_length_mismatch`を見分ける(ストアは上流の例外をそのまま通す)。`Promise.all`は先に決着した拒否を返し順序の保証が無いため、4.3で`Promise.allSettled`にして`pipeTo`の理由を優先する変更を検討する。`copy`は目的に既にある場合も元の本文を読む(先に`head`で確かめれば省ける)
+- 4.3: `MediaUploadReceiver`(`workers/media/upload-receiver.ts`)は`@injectable`でなく、依存と`appName`をまとめて受け取るクラス(4.5で`toDynamicValue`で束縛。検索の`QueueSearchIndexRefreshRequester`と同じ)。ログのカテゴリは`[appName, 'media', 'upload']`。本文の前段で宣言した長さとバイト数を数え(`ContentLengthMismatchError`)、R2の書き込みは`Promise.allSettled`で`pipeTo`の理由を優先する。記録の作成後の失敗はオブジェクトを先に消し、消せたときだけ記録を消す(残った記録は810が拾う)。開発者の決定(2026-11-01): キーの衝突は採り直さず、記録を消して`ObjectKeyCollisionError`(500)。判定の依頼の送信の失敗はwarning、`MessagePublishError`はerror(アップロードはどちらも成功)。保存先の障害はwarningのログだけ。422・503の文言は受付処理の定数(503の文言は文言規則の「時間をおいて再度お試しください。」と異なり、9.2でそろえる)。ファイル用の用途の画像にも寸法の検査をかける。テストのworkerdの`Network connection lost`のログはminiflareのR2の内部のもの

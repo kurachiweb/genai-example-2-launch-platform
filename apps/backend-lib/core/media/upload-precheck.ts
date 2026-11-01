@@ -41,7 +41,7 @@ export interface UploadRequestHeaders {
 // Content-Lengthの文法は1*DIGITのため、符号・小数・空白・複数の値の結合を数値として扱わない
 const CONTENT_LENGTH_PATTERN = /^[0-9]+$/u;
 
-const RESEND_MESSAGE =
+export const UPLOAD_RESEND_MESSAGE =
   'ファイルを送信できませんでした。もう一度お試しください。';
 
 const BYTES_PER_KB = 1024;
@@ -82,7 +82,7 @@ export function precheckUpload(
     return reject({
       kind: 'length_required',
       code: 'content_length_required',
-      message: RESEND_MESSAGE,
+      message: UPLOAD_RESEND_MESSAGE,
     });
   }
   const declaredLength = CONTENT_LENGTH_PATTERN.test(headers.contentLength)
@@ -92,7 +92,7 @@ export function precheckUpload(
     return reject({
       kind: 'bad_request',
       code: 'invalid_content_length',
-      message: RESEND_MESSAGE,
+      message: UPLOAD_RESEND_MESSAGE,
     });
   }
   if (declaredLength > purpose.maxBytes) {

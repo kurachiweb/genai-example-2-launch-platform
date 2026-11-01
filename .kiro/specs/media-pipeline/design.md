@@ -1218,9 +1218,9 @@ export interface MediaObjectStore {
 **Responsibilities & Constraints**
 
 - 処理の順序: `precheckUpload` → ファイル名の整形 → 形式ごとの実体検証(SVGは全体、テキストは流しながら、他は先頭最大1MiB) → オブジェクトキーとULIDの採番 → `insertReceiving` → `putIfAbsent`(保存先は用途の`storage`、ファイル用は`attachmentDisposition`と`private, no-store`) → `markStored` → 画像用なら`MODERATE_IMAGE_MESSAGE`の送信。
-- `putIfAbsent`が`exists`を返したら(採番の衝突)、キーを採り直して1回だけやり直す。2回目も衝突なら500相当の例外にする。
+- `putIfAbsent`が`exists`を返したら(採番の衝突)、キーを採り直さずに記録を消し、500相当の想定外の例外にする(Sentryへ送られる)。既存のオブジェクトは他の記録のものであるため触れない(開発者の決定(2026-11-01))。採り直さない理由: 条件付きの書き込みが失敗した時点で本文は読み切られており同じ本文で書き直せない。128ビットの暗号論的乱数のキーの衝突は乱数源の故障を意味し、採り直しで救う対象ではない。書き込みの前の存在の確認(アップロードごとのR2の照会)も行わない。
 - 保存先・記録の一時的な失敗は`storage_unavailable`(503・`Retry-After: 5`)。テキストの検査の失敗は`invalid_text_file`、長さの食い違いは`content_length_mismatch`。記録を作った後の失敗では、記録とオブジェクトの削除を試みてから拒否を返す。
-- 判定の依頼の送信の失敗はログ(`warning`)とSentryに送り、アップロードは成功として返す(8.3が回復する)。
+- 判定の依頼の送信の失敗はログ(`warning`)とSentryに送り、アップロードは成功として返す(8.3が回復する)。送信前の検証の失敗(`MessagePublishError`。呼び出し側の誤りで8.3でも回復しない)は`error`の水準で送る。
 - ログには用途・形式・バイト数・ファイルの識別子だけを出し、ファイル名と内容を出さない。
 
 **Dependencies**
