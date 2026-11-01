@@ -1125,7 +1125,7 @@ export interface MediaFileStore {
   markStored(id: string): Promise<void>;
   findViews(
     ids: readonly string[],
-  ): Promise<ReadonlyMap<string, MediaFileView>>; // 100件ごとに分けて照会
+  ): Promise<ReadonlyMap<string, MediaFileView>>; // 90件ごとに分けて照会
   attach(ids: readonly string[]): Promise<void>; // attached_atが空のものだけ設定
   markDeleted(ids: readonly string[]): Promise<void>;
   markEraseRequested(ids: readonly string[]): Promise<void>;
