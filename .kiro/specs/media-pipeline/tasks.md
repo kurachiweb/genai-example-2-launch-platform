@@ -45,7 +45,7 @@
   - _Boundary: MediaTypes, UploadProtocol_
   - _Requirements: 1.2, 1.9, 14.4_
 
-- [ ] 2.2 (P) 画像バリアントの表と、URLの組み立て・解析・配信可否を作る
+- [x] 2.2 (P) 画像バリアントの表と、URLの組み立て・解析・配信可否を作る
   - 先に、画像バリアント仕様の7バリアントの寸法・切り取り方・AVIFの提供可否、パスの解析(大文字の16進・長さ違い・余分な階層・二重の拡張子・未定義の名前と拡張子)、配信可否の全組み合わせ(SVG原本に`svg`以外、ラスター原本に`svg`、`screenshot-full`に`avif`)、表示サイズと1x・2xのバリアントの対応を確かめる単体テストを書く
   - `Cache-Control`の値とオブジェクトキーの形式を定数にする
   - 完了状態: 単体テストが成功し、表の値が画像バリアント仕様と一致する
@@ -359,3 +359,4 @@
 - 1.2: テーブル定義は`apps/db/schema/media/`。`content_type`は値を限らないテキスト(テキストは`text/plain; charset=utf-8`)。保存先・保有者の種類・判定の状態・隔離理由の値の一覧はテーブル定義に直書きで、2.x・3.5の型との照合のテストは無い(3.5で型を作る時に一覧をそろえる)。`moderation_detail`は要素の型の無いJSON列で、型付けは4.1のストアで行う。索引名は`<テーブル>_<列>_idx`・一意は`_unique`
 - 1.3: eventの`exports`(`ImageDelivery`)はトップレベルに書き、staging・prodへ継承される。`ImageDelivery`は7.3までエクスポートされない(Wranglerは名前付きのworkerのエクスポートの存在を検査しない。デプロイで受け付けられるかはstagingで確かめる)。`wrangler types`は7.3の後に生成し直す。メディアの設定の単体テストは`apps/api/test/config/media-wrangler-config.unit.test.ts`。Workers統合テストの変数は画像配信のホスト名`images.test.example`・専用ホスト`true`・`stub`・閾値60・全10カテゴリで、`MODERATION_REGION`はWrangler設定の値を使う
 - 2.1: `UploadedFile.contentType`・`MediaFileView.contentType`は`MediaType`(引数無し)で、引数付きの文字列(`text/plain; charset=utf-8`)は記録の`NewMediaFileRecord`とD1の列だけ。記録から画面向けの型へ変換する4.x・5.xで引数を除く。`parseMediaType`は`text/plain`のcharset以外の引数を無視する(SVGのUTF-8の検査は3.3)。`downloadPathOf`は識別子を百分率符号化する。`media/`は外部パッケージと共用部品の他のディレクトリを読み込まない(`config/import-boundary.unit.test.ts`)。配置先の`common-lib`が古い時は`bun run shared-dirs:place`で配置し直す
+- 2.2: `image-variants.unit.test.ts`はサービス仕様`002-image-variants.md`の「バリアント一覧」「出力フォーマット」の表を読んで照合する(9.2で表の形を変えない)。設計に無い型の別名`ImageFit`・`ImageOriginal`・`ScreenshotDisplayKind`を公開した。`IMAGE_PATH_PATTERN`はキーの`[0-9a-f]{32}`を`OBJECT_KEY_PATTERN`と別に書いている。`buildImagePath`はキーの形式を検証しない
