@@ -190,7 +190,7 @@
   - _Boundary: SvgAllowlist_
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 6.4 判定の処理を作る
+- [x] 6.4 判定の処理を作る
   - 先に、偽のポートで、記録が無い・保存未完了・削除済み・ファイル用での完了、判定済みの依頼(重複・管理者の解除後)が判定せず保存先だけをそろえること、SVGの違反の隔離、復号できない画像と判定サービスが受け付けない画像の隔離と通知、問題なしの記録、試行回数ごとの一時的な失敗(上限未満は例外、上限で未判定と警告)、設定の誤りの通知を確かめる単体テストを書く
   - 再試行の方針(最大5回・60秒起点・上限1,800秒)を定数として持つ
   - 完了状態: 単体テストが成功し、どの経路でも判定の記録と保存先をそろえる処理の呼び出しが設計の順序になる
@@ -379,3 +379,4 @@
 - 6.1: eventのポートと`EVENT_MEDIA_TYPES`(5種)は`apps/event/src/application/media/ports.ts`。ImageSource・ImageTransformerも`ports.ts`にあり(設計のService Interfaceのコメントの`image-delivery.ts`ではない)、7.2はここから読む。設定の解析`parseModerationConfig`はカテゴリの空の値・空の項目・重複・大文字小文字の違いを失敗にする(空の集合で判定が黙って無効になるのを防ぐ。開発者の確認待ち)。`judgeLabels`は`parentName`をたどり、応答に無い親の名前を最上位とみなす(第3階層だけが返った場合は最上位を求められない。6.5で`taxonomyLevel`の扱いを検討)。代替の判定の規則は`decideStubModeration`(寸法だけを受け取る。判定用画像の寸法の読み取りは6.5)
 - 6.2: `planModerationImage`・`MODERATION_IMAGE_LIMITS`は`application/media/moderation-image-plan.ts`、`padRgba`・`encodePng`は`png-encoder.ts`(`CompressionStream('deflate')`はWHATWGの仕様でzlib形式。workerdでの実物の確認は6.6で余白の経路を通して行う)。寸法の無いSVGの640×640は6.4が渡す。6.6への申し送り: 計画の寸法はEXIFの向き5〜8で入れ替えた後の表示上の寸法なので、`optimizeImage`が向きを適用しない場合は描画の結果と食い違う。小さいSVGは拡大せず80×80の余白の中央に置く
 - 6.3: `inspectSvg`は`application/media/svg-allowlist.ts`、表は`svg-allowlist-table.ts`の`SVG_ALLOWLIST`(`svg-allowlist-document.unit.test.ts`がdesign.mdの表と照合。9.1で`security/005`へ切り替える)。名前空間は接頭辞から宣言先をたどって判定する。CSSはコメントを除かずに検索し(コメントの中の`url(`も保守側に検出)、CDATAの中は文字参照を戻さない。違反の記録は先頭50件(`SVG_MAX_RECORDED_VIOLATIONS`、切り詰めの印は無い)。設計の表に無い調整: `data-*`属性の許可、Sodipodi・Creative Commonsの旧URI、`image-set(`・`src(`の検出(9.1で`security/005`の一覧に載せる)。標本のAffinity・Illustratorの「別名で保存」はDOCTYPE・実体の参照を除いた形(受付を通らないため)。Objectのプロトタイプと同じ名前は`__toString`などで記録される
+- 6.4: `ModerateImageHandler`・`MODERATION_RETRY_POLICY`(5回・60秒・1,800秒)は`application/media/moderate-image-handler.ts`。`@injectable`でなく依存をまとめて受け取るクラスで、7.6は`toDynamicValue`で`MEDIA_TYPES.MediaFileStore`・`MediaObjectStore`・`EVENT_MEDIA_TYPES`のポート・`parseModerationConfig(env)`・`PLATFORM_TYPES.Clock`を渡し、`retry: MODERATION_RETRY_POLICY`で登録する(envの検証に`MODERATION_*`はまだ無い)。復号できない画像はwarningのログだけでSentryへ送らない(設計のポートとMonitoringのとおり。tasks.mdの「隔離と通知」とは異なる)。`misconfigured`は一時的な失敗として扱い最終試行でだけ通知する(通知は最大900秒遅れる)。`undetermined`・`rejectedByService`は`recordModeration`が真の時だけ通知する。`readLocationsOf`の重複は`media-files-service.ts`・`file-content-route.ts`と本ファイルの3か所(7.1でまとめる時は3か所を直す)。`isModeratable`の「画像でない形式」の分岐にテストが無い
