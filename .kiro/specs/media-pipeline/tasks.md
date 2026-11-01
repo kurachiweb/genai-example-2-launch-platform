@@ -328,7 +328,7 @@
   - _Boundary: ServiceDocsAlignment_
   - _Requirements: 16.4, 17.5_
 
-- [ ] 9.3 (P) 固有の値・オンボーディング・CLAUDE.mdの参照先を更新する
+- [x] 9.3 (P) 固有の値・オンボーディング・CLAUDE.mdの参照先を更新する
   - 本プロジェクト固有の値に、画像配信のホスト名、eventの変数、用途の命名規約、メッセージ種別、ジョブ名と順序を加える。シークレットのキーの行はタスク1.3でキーの一覧の節へ足したものを正とし、他の節へ写さない(N-5)
   - オンボーディングに、ローカルでの画像配信のURL、動作確認の経路の使い方、Infisicalへのシークレット(判定サービスの2つのキー・動作確認のトークン)の登録を加える。「stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する」「prodの値はlaunch-readinessがリリース時に登録する」旨を書く(I-3)
   - CLAUDE.mdの「技術規則の参照先」に、アップロードを扱う前(`security/005`)・画像を配信または表示する前(`infra/008`)・画像判定を呼ぶ前(`external/003`)に読む3文書へのリンクを加える
@@ -396,3 +396,4 @@
 - 8.6: `MediaPicture`・`MediaPlaceholder`(`INTERNAL_COMPONENTS`)・`PrivateFileLink`・`useImagesOrigin`は`apps/frontend-lib/components/media/`。ハイドレーション前に読み込みに失敗した画像は、refの時点の`complete && naturalWidth === 0`で検出する(設計に無い。`decode()`はWebKitで読めた画像でも拒否するため使わない。寸法の無いSVGの`naturalWidth`が0にならないことはChromiumでだけ確認)。`MediaPlaceholder`のpropsは`kind`・`placeholder`・`alt`・`size`・`className`で、`alt`が空なら`aria-hidden`。`picture-sources.ts`の`pictureSizeOf`・`PictureSize`を公開。テストは`test/served-media-images.ts`(Git管理外の`.vitest-attachments/`に画像を書いてテストのサーバーで配信)で読み込みの成功を確かめる。Storybookの画像のストーリーはローカルのイベントサーバー(48043)が配信していなければ失敗のプレースホルダーになる
 - 9.1: 技術文書は`docs/GUIDES/tech/external/003-image-moderation.md`・`infra/008-image-delivery.md`・`security/005-file-upload-security.md`。SVGの許可リストの正は`security/005`の3つの表で、`svg-allowlist-document.unit.test.ts`はそこと照合する(design.mdの「SVGの許可リスト(初版)」は実装の調整を含まない古い表)。9.3で`project-values.md`に対応付ける新しいプレースホルダー: `<判定の実装の変数>`・`<判定のリージョンの変数>`・`<判定のリージョン>`・`<判定の閾値の変数>`・`<判定のカテゴリの変数>`・`<判定サービスの資格情報のシークレット>`・`<判定のIAMポリシー名>`・`<判定のIAMユーザー名>`・`<AWSのアカウントID>`・`<画像配信のホスト名の変数>`・`<専用ホストの変数>`・`<画像配信のホスト名>`・`<画像配信のオリジン>`・`<画像用非公開バケットのバインディング>`・`<ファイル用非公開バケットのバインディング>`・`<隔離バケットのバインディング>`・`<画像変換のバインディング>`・`<画像の動作確認の経路>`・`<動作確認のトークンのシークレット>`。`infra/README.md`の「範囲」と`docs/GUIDES/tech/README.md`のサブディレクトリの表、CLAUDE.mdのディレクトリ構成の説明に画像配信・画像判定がまだ無い(9.3でそろえる)。`/health`の既知の例外・`filename`の`%`・カテゴリの厳格な検証は、開発者の確認待ちの事項を文書では既知の挙動として書いている
 - 9.2: 文言規則にはコードと設計の503の文言(「しばらく待ってから再度お試しください。」)を載せた(既存の中継先の障害は「時間をおいて再度お試しください。」で食い違う)。503の定数の1か所への集約(4.4・4.5・7.2の申し送り)はコードの変更のため行っていない。画像配信の405の短い文言は画面に出ないため文言規則に載せていない。国外移転の`### AWS(Rekognition)`(アンカー`#awsrekognition`)と委託先の一覧の「Amazon Web Services(Rekognition)」の表記がそろっていない。`docs/onboardings/tech-stack.md`の226行目の「Exif削除」は決定Q1と食い違う(9.3で直す)
+- 9.3: 固有の値は`docs/onboardings/project-values.md`の節「画像のアップロード・判定・配信」とプレースホルダーの表(9.1の19個。IAMのポリシー名・ユーザー名・AWSのアカウントIDは未定で開発者が記入)、動作確認の経路の手順はオンボーディング`docs/onboardings/README.md`の「画像のアップロード・判定・配信」の節(10.1はこの手順で行う。確認用の画像はWranglerが間接に入れる`sharp`で作る)。`infra/004`のカテゴリの表に`['api','media','download']`と日次ジョブ3件(`expired-file-erasure`・`moderation-requeue`・`location-reconciliation`)の行が無い(未対応)

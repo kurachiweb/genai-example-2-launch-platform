@@ -223,7 +223,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### 画像配信
 
-- Cloudflare WorkersのImages Binding ... R2に保存した画像をWorker内でフォーマット変換・リサイズ・Exif削除
+- Cloudflare WorkersのImages Binding ... R2に保存した画像をWorker内でフォーマット変換・リサイズ。WebP・AVIF・PNGの出力ではExif等のメタデータを常に除き、JPEGの出力は変換基盤の既定(著作権情報以外を除く)に任せる。編集ダイアログを経た画像は、ブラウザが作り直すためアップロードの前にメタデータが除かれる
 - Cloudflare Workers Cache ... 変換済み画像をWorker前段でエッジキャッシュ
 
 ### 実行環境のセキュリティ

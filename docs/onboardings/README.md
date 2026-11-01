@@ -97,25 +97,30 @@
 
     `apps/api`・`apps/event`・`apps/client`・`apps/admin`は、起動時に次のシークレットを必要とする。Infisicalのプロジェクトのローカル環境(`dev`)のルートフォルダ(`/`)に、Webの管理画面で登録する。登録済みであれば飛ばす。各値の意味は「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」を参照する。
 
-    | キー                    | 登録する値                                                           | 使うアプリ                                            |
-    | ----------------------- | -------------------------------------------------------------------- | ----------------------------------------------------- |
-    | `HASH_PEPPER`           | 次の`openssl rand -hex 64`で生成した128文字の16進数                  | `apps/api`・`apps/event`・`apps/client`・`apps/admin` |
-    | `TURNSTILE_SECRET_KEY`  | 常に成功するテスト用の秘密鍵`1x0000000000000000000000000000000AA`    | `apps/api`                                            |
-    | `EMAIL_SMOKE_TOKEN`     | 次の`openssl rand -hex 32`で生成した64文字の16進数                   | `apps/event`                                          |
-    | `EMAIL_SMOKE_RECIPIENT` | 疎通確認メールの宛先。任意のアドレス(例:`smoke@local.example`)でよい | `apps/event`                                          |
+    | キー                    | 登録する値                                                                    | 使うアプリ                                            |
+    | ----------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------- |
+    | `HASH_PEPPER`           | 次の`openssl rand -hex 64`で生成した128文字の16進数                           | `apps/api`・`apps/event`・`apps/client`・`apps/admin` |
+    | `TURNSTILE_SECRET_KEY`  | 常に成功するテスト用の秘密鍵`1x0000000000000000000000000000000AA`             | `apps/api`                                            |
+    | `EMAIL_SMOKE_TOKEN`     | 次の`openssl rand -hex 32`で生成した64文字の16進数                            | `apps/event`                                          |
+    | `EMAIL_SMOKE_RECIPIENT` | 疎通確認メールの宛先。任意のアドレス(例:`smoke@local.example`)でよい          | `apps/event`                                          |
+    | `MEDIA_SMOKE_TOKEN`     | 次の`openssl rand -hex 32`で、`EMAIL_SMOKE_TOKEN`と別に生成した64文字の16進数 | `apps/event`                                          |
 
     ```sh
     openssl rand -hex 64 # 出力をHASH_PEPPERとして登録し、ファイルやチャットに残さない
     openssl rand -hex 32 # 出力をEMAIL_SMOKE_TOKENとして登録し、ファイルやチャットに残さない
+    openssl rand -hex 32 # もう1度実行し、出力をMEDIA_SMOKE_TOKENとして登録し、ファイルやチャットに残さない
     infisical --telemetry=false run --env dev -- sh -c 'test -n "$HASH_PEPPER" && test -n "$TURNSTILE_SECRET_KEY" && echo "登録済み"' # 値を表示せずに登録を確かめる
     infisical --telemetry=false run --env dev -- sh -c 'test -n "$EMAIL_SMOKE_TOKEN" && test -n "$EMAIL_SMOKE_RECIPIENT" && echo "疎通確認のシークレットも登録済み"'
+    infisical --telemetry=false run --env dev -- sh -c 'test -n "$MEDIA_SMOKE_TOKEN" && echo "画像の動作確認のトークンも登録済み"'
     ```
 
     - `HASH_PEPPER`は4アプリで1つの値を共有し、アプリごとに別の値を登録しない。`apps/client`・`apps/admin`はWorker単位のIP制限のキーのハッシュ化に使う(「[フロントエンドのキーのハッシュ化](../GUIDES/tech/frontend/003-frontend-server-security.md#キーのハッシュ化)」)。
     - `apps/client`・`apps/admin`の起動・ビルド・プレビューのコマンドも、Infisicalからの注入を付けて実行する(注入を付けないとWranglerが`HASH_PEPPER`の不足を警告して`.dev.vars`の作成を促し、すべての要求が環境の検証で500になる。`.dev.vars`は作らない)。ただし手順14の環境別のビルドは、理由を同じ手順に記したとおり注入を付けない。
     - `apps/api`・`apps/event`を未登録のまま起動すると、`wrangler dev`が足りないキーを警告し、ヘルスチェック以外の経路が環境の検証で500になる。ヘルスチェックは環境の検証より前に応答するため、未登録でも200を返す。
     - `EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`は、メールの疎通確認の経路(「[疎通確認の経路](#疎通確認の経路)」)だけが使う。未登録でもイベントサーバーは環境の検証に通り、疎通確認の経路だけが404になる。ローカル環境ではMailpitが全ての宛先のメールを受け取るため、外部へは送られない。
+    - `MEDIA_SMOKE_TOKEN`は、画像の動作確認の経路(「[画像の動作確認の経路](#画像の動作確認の経路)」)だけが使う。未登録でもイベントサーバーは警告を出して起動し、動作確認の経路だけが404になる。
     - `dev`にはキーワード抽出の外部APIのキー(`GOOGLE_NL_API_KEY`)を登録しない。ローカル環境ではキーワード抽出が無効(`KEYWORD_EXTRACTOR`が`disabled`)で、イベントサーバーはキーを注入せずに起動する(「[キーワード抽出の外部API](#キーワード抽出の外部api)」)。
+    - `dev`には画像判定サービスの資格情報(`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`)を登録しない。ローカル環境は代替の判定(`MODERATION_PROVIDER`が`stub`)で判定サービスを呼ばず、イベントサーバーはキーを注入せずに起動する(「[画像のアップロード・判定・配信](#画像のアップロード判定配信)」)。
     - `dev`には、APIサーバーとイベントサーバーのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)もある。同じキー名でWorkerごとに異なる値が要るシークレットを置き、現時点では空である。各環境のフォルダとキーの一覧は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を参照する。
 
 12. コンテナ内: ローカルDBの初期化(マイグレーション適用)
@@ -402,6 +407,83 @@ http://localhost:48041
 - 本番環境(`prod`)の`GOOGLE_NL_API_KEY`は、launch-readinessがリリース時に登録する。
 - 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」、変数の各環境の値は「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」を正とする。
 
+## 画像のアップロード・判定・配信
+
+アップロードされたファイルは、APIサーバーが受け付けてR2に保存し、画像はイベントサーバーが自動判定・保存先の移動・配信を行う(「[アップロードの安全対策](../GUIDES/tech/security/005-file-upload-security.md)」「[画像判定サービス](../GUIDES/tech/external/003-image-moderation.md)」「[画像の変換配信とエッジキャッシュ](../GUIDES/tech/infra/008-image-delivery.md)」)。本プロジェクトの値は「[画像のアップロード・判定・配信](project-values.md#画像のアップロード判定配信)」を参照する。
+
+### ローカルでの画像配信のURL
+
+ローカル環境では、イベントサーバーのオリジン`http://localhost:48043`が画像配信のオリジンを兼ねる(`IMAGE_DELIVERY_HOSTNAME`が`localhost`、`IMAGE_DELIVERY_DEDICATED_HOST`が`false`)。画像のURLの形の要求だけを画像配信として扱い、ヘルスチェックや動作確認の経路などの他の要求は通常どおり応答する。
+
+```text
+http://localhost:48043/<オブジェクトキー>/<バリアント名>.<拡張子>
+```
+
+- `<オブジェクトキー>`はアップロードの応答の`objectKey`(32文字の小文字の16進)である。`<バリアント名>`は`square-xs`・`square-sm`・`square-md`・`square-lg`・`screenshot-thumb`・`screenshot-thumb-2x`・`screenshot-full`、`<拡張子>`はラスター画像なら`webp`・`jpg`・`png`(長辺1,200px以下のバリアントは`avif`も)、SVGなら`svg`だけである(「[画像バリアント仕様](../GUIDES/service/features/002-image-variants.md)」)。
+- 利用者側・管理者側のフロントエンドとStorybookの画像の表示部品も、`IMAGES_ORIGIN`(ローカル環境は`http://localhost:48043`)からこのURLを組み立てる。イベントサーバーを起動していない間は、画像の代わりにプレースホルダーが表示される。
+- ローカルの画像変換は簡易版で`fit`・`quality`が効かず、エッジキャッシュも無い。隔離・削除した画像はすぐに404になる。キャッシュとパージ・変換の品質・JPEGの出力のメタデータはstagingで確かめる(「[画像配信のローカルとテストでの差](../GUIDES/tech/infra/008-image-delivery.md#ローカルとテストでの差)」)。
+- 判定は代替の判定(`MODERATION_PROVIDER`が`stub`)で、判定サービスを呼ばずに判定用画像の寸法で結果を決める。99×99の画像は不適切として隔離され、98×98の画像は一時的な失敗が続いて約15分後に未判定になり、97×97の画像は判定サービスが受け付けない画像として隔離される(「[代替の判定](../GUIDES/tech/external/003-image-moderation.md#代替の判定)」)。
+
+### 画像の動作確認の経路
+
+イベントサーバーの`/internal/media/smoke/images`は、`MEDIA_SMOKE_TOKEN`を登録した環境だけで有効になる、トークン付きの動作確認の経路である。本番と同じ受付処理・判定・保存先の移動・パージ・配信を通り、画像のアップロード・状態の取得・隔離・隔離の解除・即時の削除ができる(経路と応答の一覧は「[画像の動作確認の経路](../GUIDES/tech/infra/008-image-delivery.md#動作確認の経路)」)。アップロードしたファイルは紐付けないため、日次のジョブが48時間以内に物理削除する。
+
+1. クイックスタートの手順11で`MEDIA_SMOKE_TOKEN`を登録し、手順12でマイグレーションを適用し、手順13でイベントサーバーを起動する。この経路の確認だけなら、APIサーバーの起動は要らない。
+2. 確かめる画像を作る。次の例は、Wranglerのローカルの画像変換が使う`sharp`(`apps/event`の直接の依存ではなくWranglerが間接に入れるため、Wranglerの更新で使えなくなることがある)で、640×640(代替の判定で問題なし)と99×99(代替の判定で不適切)のPNGを作る。
+
+   ```sh
+   cd /workspace/apps/event
+   bun -e "import sharp from 'sharp'; for (const size of [640, 99]) await sharp({ create: { width: size, height: size, channels: 3, background: '#808080' } }).png().toFile('/tmp/media-smoke-' + size + '.png')"
+   ```
+
+3. 別のターミナルで、Infisicalから注入したトークンを使って640×640の画像をアップロードする。トークンの値をコマンドに直接書かない。
+
+   ```sh
+   cd /workspace/apps/event
+   infisical --telemetry=false run --env dev -- sh -c 'curl -s -X POST -H "Authorization: Bearer $MEDIA_SMOKE_TOKEN" -H "Content-Type: image/png" -H "x-upload-file-name: media-smoke-640.png" --data-binary @/tmp/media-smoke-640.png http://localhost:48043/internal/media/smoke/images'
+   ```
+
+4. 201と本文`{"data":{"fileId":"<ファイルの識別子>",…,"objectKey":"<オブジェクトキー>"}}`が返ることを確かめ、`fileId`と`objectKey`を控える。
+5. 状態を取得し、`moderationStatus`が`passed`、`location`が`images`、`quarantineReasons`と`findings`が空になることを確かめる。判定は非同期のため、`pending`なら数秒おいて取得し直す。
+
+   ```sh
+   infisical --telemetry=false run --env dev -- sh -c 'curl -s -H "Authorization: Bearer $MEDIA_SMOKE_TOKEN" http://localhost:48043/internal/media/smoke/images/<ファイルの識別子>'
+   ```
+
+6. 画像のURL(`curl -i http://localhost:48043/<オブジェクトキー>/square-sm.webp`)が200と`Content-Type: image/webp`を返すことを確かめる。
+7. `POST /internal/media/smoke/images/<ファイルの識別子>/quarantine`で隔離し(202)、状態の`location`が`quarantine`・`quarantineReasons`が`["admin_action"]`になった後、画像のURLが404になることを確かめる。`POST …/release`で隔離を解除し(202)、`location`が`images`に戻った後、再び200になることを確かめる。保存先の移動は非同期のため、数秒おいて確かめる。
+8. 99×99の画像を同じ手順でアップロードし、状態の`moderationStatus`が`flagged`、`location`が`quarantine`、`quarantineReasons`が`["auto"]`、`findings`にカテゴリ`Explicit`・信頼度99の検出があり、画像のURLが404になることを確かめる。
+9. `DELETE /internal/media/smoke/images/<ファイルの識別子>`で即時に物理削除し(202)、画像のURLと状態の取得がどちらも404になることを確かめる。
+10. イベントサーバーのログで、判定(カテゴリ`['event', 'media', 'moderation']`)・保存先の移動(`['event', 'media', 'relocation']`)・パージ(`['event', 'media', 'purge']`の「エッジキャッシュをパージしました」。ローカル環境はエッジキャッシュが無いため、何もせず成功する)の記録を確かめる。
+
+| 応答                              | 原因と対処                                                                                                                              |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 401                               | トークンが一致しない。`--env dev`で注入しているか、イベントサーバーを起動したときと同じ値かを確かめる                                   |
+| 404(全ての経路)                   | `MEDIA_SMOKE_TOKEN`が未登録。登録した後、イベントサーバーを起動し直す                                                                   |
+| 404(状態の取得・隔離・解除・削除) | ファイルの識別子が誤っているか、動作確認の用途以外のファイル・削除済みのファイルを指している                                            |
+| 415・413・422など                 | 受付の検証による拒否。本文の`error.code`の意味は「[アップロードの安全対策](../GUIDES/tech/security/005-file-upload-security.md)」に従う |
+
+- stagingでは、URLを「[画像のアップロード・判定・配信](project-values.md#画像のアップロード判定配信)」のstagingの経路と画像配信のホスト名に、注入を`--env staging`に替えて同じ手順で確かめる。stagingで確かめる項目(キャッシュのヒットとパージ・`fit`と品質・JPEGの出力のメタデータ・判定のCPU時間とメモリ・判定サービスとの疎通)と手順は「[画像配信のstagingでの確認](../GUIDES/tech/infra/008-image-delivery.md#stagingでの確認)」と「[判定サービスとの疎通](../GUIDES/tech/external/003-image-moderation.md#判定サービスとの疎通)」に従う。
+- 本番環境(`prod`)には`MEDIA_SMOKE_TOKEN`を設定せず、動作確認の経路は404のままになる。
+
+### stagingの画像判定のシークレット
+
+デプロイ先検証環境(`staging`)のイベントサーバーは、Amazon Rekognitionで画像を判定する(`MODERATION_PROVIDER`が`rekognition`)。次のシークレットは開発者がInfisicalの`staging`環境へ手作業で登録し、AIエージェントは登録しない。Infisicalの値を正とする。
+
+| キー                                                         | 登録する値                                                                                                 | 必須                                                         |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY` | 判定の呼び出し(`rekognition:DetectModerationLabels`)だけを許可した、staging専用のIAMユーザーのアクセスキー | 必須。`secrets.required`にあり、未設定ではデプロイが失敗する |
+| `MEDIA_SMOKE_TOKEN`                                          | `openssl rand -hex 32`で生成した、ローカル環境と別の値                                                     | 任意。動作確認の経路を使うときだけ                           |
+
+1. AWSで、staging用のIAMのポリシーとユーザーを作ってアクセスキーを発行し(「[IAMユーザーとポリシーを作る](../GUIDES/tech/external/003-image-moderation.md#iamユーザーとポリシーを作る)」)、AIサービスのオプトアウトを有効にする(「[AIサービスのオプトアウト](../GUIDES/tech/external/003-image-moderation.md#aiサービスのオプトアウト)」)。決めた名前とアカウントIDは「[画像のアップロード・判定・配信](project-values.md#画像のアップロード判定配信)」の表に記入する。
+2. Infisicalのプロジェクトの`staging`環境のルートフォルダ(`/`)に、Webの管理画面で上の値を登録する。stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する。任意の`MEDIA_SMOKE_TOKEN`も、マージの後のstagingの確認に使うため、同じマージの前に登録する。未登録のままマージすると、イベントサーバーのデプロイが欠けたキーの名前を示して止まり、登録するまで`staging`へのデプロイがすべて止まる。
+3. 登録だけで、次のstagingへのデプロイがWorkerへ反映する(「[stagingへのデプロイとリリース](#stagingへのデプロイとリリース)」)。Wranglerのシークレットのコマンドで直接設定しない(設定しても次のデプロイでInfisicalの値に戻る)。
+4. デプロイの後、動作確認の経路で通常の画像の判定が`passed`になることを確かめる(「[判定サービスとの疎通](../GUIDES/tech/external/003-image-moderation.md#判定サービスとの疎通)」)。
+
+- prodの値はlaunch-readinessがリリース時に登録する。prodのIAMユーザーはstagingと別に作り、prodには`MEDIA_SMOKE_TOKEN`を登録しない。
+- アクセスキーが漏れたときは「[資格情報の漏えい時の手順](../GUIDES/tech/external/003-image-moderation.md#資格情報の漏えい時の手順)」に従う。
+- 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」、変数の各環境の値は「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」を正とする。
+
 ## DBスキーマを変更したとき
 
 テーブル定義を`apps/db/schema/`に書き(「[テーブル定義の配置](../GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)」)、次の順でマイグレーションを生成して適用する。各手順の詳細は「[スキーマ規約のマイグレーション](../GUIDES/tech/db/003-schema-conventions.md#マイグレーション)」に従う。
@@ -589,4 +671,4 @@ Workerのデバッガー(インスペクター)の待ち受けポートは次の
 
 `apps/api`・`apps/event`のヘルスチェックの経路は`/health`である(「[ヘルスチェックとローカルのURL](project-values.md#ヘルスチェックとローカルのurl)」)。
 
-ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモードを使う。
+ローカルではD1の代わりにWranglerのD1ローカルモード、Cloudflare Email Serviceの代わりにMailpit、Cloudflare R2の代わりにWranglerのR2ローカルモード、Amazon Rekognitionの代わりに代替の判定(「[画像のアップロード・判定・配信](#画像のアップロード判定配信)」)を使う。
