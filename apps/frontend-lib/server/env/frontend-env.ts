@@ -39,6 +39,7 @@ export interface PublicRuntimeConfig {
   readonly environment: AppEnvironment;
   readonly turnstileSiteKey: string;
   readonly clientSiteOrigin: string;
+  readonly imagesOrigin: string;
   readonly sentry: {
     readonly dsn: string | undefined;
     readonly environment: string;
@@ -136,6 +137,7 @@ export const toPublicRuntimeConfig = (
   environment: env.APP_ENVIRONMENT,
   turnstileSiteKey: env.TURNSTILE_SITE_KEY,
   clientSiteOrigin: env.CLIENT_SITE_ORIGIN,
+  imagesOrigin: env.IMAGES_ORIGIN,
   sentry: {
     dsn: env.SENTRY_DSN,
     environment: env.SENTRY_ENVIRONMENT,

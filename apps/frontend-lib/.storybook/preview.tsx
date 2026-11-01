@@ -25,6 +25,7 @@ const CATALOG_RUNTIME: AppRuntime = {
     environment: 'local',
     turnstileSiteKey: '1x00000000000000000000BB',
     clientSiteOrigin: 'http://localhost:48044',
+    imagesOrigin: 'http://localhost:48043',
     sentry: { dsn: undefined, environment: 'local', tracesSampleRate: 0 },
     webAnalyticsToken: undefined,
   },

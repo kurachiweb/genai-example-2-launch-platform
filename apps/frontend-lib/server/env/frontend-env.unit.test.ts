@@ -13,6 +13,7 @@ const SECRET_VALUE = 'secret-value-must-not-leak';
 const INVALID_VALUE = 'invalid-value-must-not-leak';
 const HASH_PEPPER = 'test-pepper-must-not-reach-browser';
 const CLIENT_SITE_ORIGIN = 'https://client.example';
+const IMAGES_ORIGIN = 'https://images.example';
 
 const fakeApi = {
   fetch: (): Promise<Response> => Promise.resolve(new Response(null)),
@@ -31,7 +32,7 @@ const validRawEnv = (): Record<string, unknown> => ({
   SENTRY_TRACES_SAMPLE_RATE: '1',
   SENTRY_DSN,
   TURNSTILE_SITE_KEY: '1x00000000000000000000BB',
-  IMAGES_ORIGIN: 'https://images.example',
+  IMAGES_ORIGIN,
   CLIENT_SITE_ORIGIN,
   WEB_ANALYTICS_TOKEN: 'analytics-token',
   HASH_PEPPER,
@@ -411,6 +412,7 @@ describe('toPublicRuntimeConfig', () => {
       environment: 'staging',
       turnstileSiteKey: '1x00000000000000000000BB',
       clientSiteOrigin: CLIENT_SITE_ORIGIN,
+      imagesOrigin: IMAGES_ORIGIN,
       sentry: {
         dsn: SENTRY_DSN,
         environment: 'staging',
@@ -420,13 +422,12 @@ describe('toPublicRuntimeConfig', () => {
     });
   });
 
-  test('バインディング・ログのレベル・画像のオリジン・ペッパー・宣言していないシークレットを含まない', () => {
+  test('バインディング・ログのレベル・ペッパー・宣言していないシークレットを含まない', () => {
     const env = envOf(
       validate({
         HASH_PEPPER: SECRET_VALUE,
         TURNSTILE_SECRET_KEY: SECRET_VALUE,
         LOG_LEVEL: 'debug',
-        IMAGES_ORIGIN: 'https://internal-images.example',
       }),
     );
 
@@ -436,12 +437,12 @@ describe('toPublicRuntimeConfig', () => {
     expect(serialized).not.toContain(SECRET_VALUE);
     expect(serialized).not.toContain('debug');
     expect(Object.keys(config)).not.toContain('HASH_PEPPER');
-    expect(serialized).not.toContain('internal-images.example');
     expect(Object.values(config)).not.toContain(fakeApi);
     expect(Object.values(config)).not.toContain(fakeRateLimiter);
     expect(Object.keys(config).toSorted()).toEqual([
       'clientSiteOrigin',
       'environment',
+      'imagesOrigin',
       'sentry',
       'turnstileSiteKey',
       'webAnalyticsToken',
@@ -467,6 +468,20 @@ describe('toPublicRuntimeConfig', () => {
       'http://localhost:48044',
     );
   });
+
+  test.each([
+    ['利用者側', CLIENT_LIKE_PROFILE],
+    ['管理者側', ADMIN_LIKE_PROFILE],
+  ])(
+    '%sのプロファイルでも検証済みの画像配信のオリジンを渡す',
+    (_label, profile) => {
+      const env = envOf(validate({ IMAGES_ORIGIN: 'http://localhost:48043' }));
+
+      expect(toPublicRuntimeConfig(env, profile).imagesOrigin).toBe(
+        'http://localhost:48043',
+      );
+    },
+  );
 
   test('アクセス解析を持たないプロファイルでは解析のトークンを渡さない', () => {
     const env = envOf(validateFrontendEnv(validRawEnv()));

@@ -25,6 +25,7 @@ const RUNTIME: AppRuntime = {
     environment: 'staging',
     turnstileSiteKey: '1x00000000000000000000BB',
     clientSiteOrigin: CLIENT_SITE_ORIGIN,
+    imagesOrigin: 'https://images.example',
     sentry: { dsn: undefined, environment: 'staging', tracesSampleRate: 0.1 },
     webAnalyticsToken: undefined,
   },

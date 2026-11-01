@@ -5,6 +5,10 @@ import {
   mergeSecurityPolicySources,
 } from '../../lib/server/http/security-policy.ts';
 import { RELAY_PATH_PREFIX } from '../../lib/server/relay/relay-contract.ts';
+import {
+  FILE_DOWNLOAD_RELAY_ROUTE,
+  UPLOAD_RELAY_ROUTE,
+} from '../../lib/server/media/media-relay-routes.ts';
 import { GRAPHQL_RELAY_ROUTE } from '../../lib/server/relay/relay-route.ts';
 import { WEB_ANALYTICS_BEACON_SRC } from '../../lib/start/observability/web-analytics.ts';
 import { CLIENT_PROFILE } from '../../src/composition/app-profile.ts';
@@ -69,8 +73,18 @@ describe('CLIENT_SECURITY_POLICY', () => {
 });
 
 describe('RELAY_ROUTES', () => {
-  test('初版はGraphQLの中継の経路だけを持つ', () => {
-    expect(RELAY_ROUTES).toEqual([GRAPHQL_RELAY_ROUTE]);
+  test('GraphQLの中継の経路の後に、アップロードとダウンロードの中継の経路を持つ', () => {
+    expect(RELAY_ROUTES).toEqual([
+      GRAPHQL_RELAY_ROUTE,
+      UPLOAD_RELAY_ROUTE,
+      FILE_DOWNLOAD_RELAY_ROUTE,
+    ]);
+  });
+
+  test('末尾が/*の経路を完全一致の経路より後に置く', () => {
+    const isPrefixRoute = RELAY_ROUTES.map(({ path }) => path.endsWith('/*'));
+
+    expect(isPrefixRoute).toEqual(isPrefixRoute.toSorted());
   });
 
   test('一覧と各経路が凍結されていて、defineRelayRouteの検査を経ている', () => {

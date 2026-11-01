@@ -404,7 +404,7 @@ describe('createFrontendServerEntry(検索除外)', () => {
     },
   );
 
-  test('管理者側のログのカテゴリはadminで始まり、公開設定に解析のトークンを含めず利用者側のオリジンを含める', async () => {
+  test('管理者側のログのカテゴリはadminで始まり、公開設定に解析のトークンを含めず利用者側と画像配信のオリジンを含める', async () => {
     const harness = createHarness({ profile: ADMIN_TEST_PROFILE });
 
     await harness.fetch(pageRequest());
@@ -412,6 +412,7 @@ describe('createFrontendServerEntry(検索除外)', () => {
     const { publicConfig } = onlyStartCall(harness).context;
     expect(publicConfig.webAnalyticsToken).toBe(undefined);
     expect(publicConfig.clientSiteOrigin).toBe(CLIENT_SITE_ORIGIN);
+    expect(publicConfig.imagesOrigin).toBe(IMAGES_ORIGIN);
     expect(logsOf(harness, 'admin.http.access')).toHaveLength(1);
   });
 });

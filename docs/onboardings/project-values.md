@@ -319,7 +319,7 @@ Playwrightを更新するときに同期すべき4箇所(「[同期すべき4箇
 - `apps/client`・`apps/admin`の`LOG_LEVEL`は`debug`か`info`にする。アクセスログが`info`のため、`warning`以上にすると要求ごとの記録が残らない(「[フロントエンドの観測のアクセスログ](../GUIDES/tech/frontend/007-frontend-observability.md#アクセスログ)」)。
 - `SENTRY_TRACES_SAMPLE_RATE`は`0`以上`1`以下の10進表記の文字列で書く。`apps/client`・`apps/admin`のブラウザ側のトレースの割合も、同じ変数の値を公開の設定で受け取って使う(「[トレースの割合](../GUIDES/tech/frontend/007-frontend-observability.md#トレースの割合)」)。
 - `TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`のデプロイ先の値は、形式の検証を通る仮の値である。infra-deliveryが作成したTurnstileのウィジェットとWeb Analyticsのサイトの値に置き換える。`WEB_ANALYTICS_TOKEN`が空文字の環境では、計測スクリプトを出さない。
-- `IMAGES_ORIGIN`の値はCSPの`img-src`に加わる(「[CSPの許可先](#cspの許可先)」)。ローカル環境は画像配信を担う`apps/event`のオリジンである。
+- `IMAGES_ORIGIN`の値はCSPの`img-src`に加わる(「[CSPの許可先](#cspの許可先)」)。ローカル環境は画像配信を担う`apps/event`のオリジンである。環境の検証を通った値を、公開の設定の`imagesOrigin`としてブラウザへ渡し、画像の表示部品が画像配信のURLを組み立てる基準に使う。
 - `CLIENT_SITE_ORIGIN`は利用者側(`apps/client`)のオリジンで、`apps/client`・`apps/admin`の3環境で同じ値にする。環境の検証がパス・クエリ・フラグメントを持たないhttp・httpsのオリジンであることを確かめ、公開の設定の`clientSiteOrigin`としてブラウザへ渡す。マークダウンの描画が、リンクの参照先を同じタブで開くか別のタブで開くかを判定する基準に使う(管理者側のプレビューでも利用者側への絶対URLのリンクを同一オリジンとして扱うため)。APIサーバー・イベントサーバーへ同名の変数を加える場合も同じ値にする。
 
 シークレットはInfisicalで管理し、Wrangler設定の`secrets.required`にキーだけを書く。ローカル環境(Infisicalの`dev`)には次の値を登録する(手順は「[オンボーディングガイド](README.md#ローカル開発環境クイックスタート)」)。
@@ -468,30 +468,33 @@ Infisicalの機械の主体とOIDCの縛りは次のとおりである。audienc
 
 ### フロントエンドサーバーの経路
 
-| 経路                    | 技術ドキュメントでの表記 | ローカルのURL                                                                  | 定義場所                                                                                                                          |
-| ----------------------- | ------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `/_bff/`とその下        | `<中継の接頭辞>`         | なし(登録した経路だけを受け付け、他は404)                                      | `apps/frontend-lib/server/relay/relay-contract.ts`の`RELAY_PATH_PREFIX`                                                           |
-| `/_bff/graphql`(`POST`) | GraphQLの中継の経路      | `http://localhost:48044/_bff/graphql`・`http://localhost:48045/_bff/graphql`   | `apps/frontend-lib/server/relay/relay-contract.ts`の`GRAPHQL_RELAY_PATH`(中継先は`apps/api`の`/graphql`、`GRAPHQL_UPSTREAM_PATH`) |
-| `/system/status`        | 疎通確認の画面           | `http://localhost:48044/system/status`・`http://localhost:48045/system/status` | 各アプリの`src/routes/system/status.tsx`                                                                                          |
+| 経路                                    | 技術ドキュメントでの表記 | ローカルのURL                                                                                                  | 定義場所                                                                                                                                                                                                        |
+| --------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/_bff/`とその下                        | `<中継の接頭辞>`         | なし(登録した経路だけを受け付け、他は404)                                                                      | `apps/frontend-lib/server/relay/relay-contract.ts`の`RELAY_PATH_PREFIX`                                                                                                                                         |
+| `/_bff/graphql`(`POST`)                 | GraphQLの中継の経路      | `http://localhost:48044/_bff/graphql`・`http://localhost:48045/_bff/graphql`                                   | `apps/frontend-lib/server/relay/relay-contract.ts`の`GRAPHQL_RELAY_PATH`(中継先は`apps/api`の`/graphql`、`GRAPHQL_UPSTREAM_PATH`)                                                                               |
+| `/_bff/uploads/<用途名>`(`POST`)        | アップロードの中継の経路 | `http://localhost:48044/_bff/uploads/<用途名>`・`http://localhost:48045/_bff/uploads/<用途名>`                 | `apps/frontend-lib/server/media/media-relay-routes.ts`の`UPLOAD_RELAY_ROUTE`(接頭辞は`apps/common-lib/media/upload-protocol.ts`の`UPLOAD_RELAY_PREFIX`、中継先は`apps/api`の`/internal/media/uploads/<用途名>`) |
+| `/_bff/files/<ファイルの識別子>`(`GET`) | ダウンロードの中継の経路 | `http://localhost:48044/_bff/files/<ファイルの識別子>`・`http://localhost:48045/_bff/files/<ファイルの識別子>` | `apps/frontend-lib/server/media/media-relay-routes.ts`の`FILE_DOWNLOAD_RELAY_ROUTE`(接頭辞は`FILE_RELAY_PREFIX`、中継先は`apps/api`の`/internal/media/files/<ファイルの識別子>`)                                |
+| `/system/status`                        | 疎通確認の画面           | `http://localhost:48044/system/status`・`http://localhost:48045/system/status`                                 | 各アプリの`src/routes/system/status.tsx`                                                                                                                                                                        |
 
 - 疎通確認の画面は、サーバー側の描画時と、ブラウザからの再確認のそれぞれで、`apps/api`の時刻とデータベースへの到達可否を表示する。`APP_ENVIRONMENT`が`prod`の環境では404を返す。
-- 中継の経路は、各アプリの`src/composition/relay-routes.ts`の`RELAY_ROUTES`に登録する。現在はGraphQLの中継の経路(`GRAPHQL_RELAY_ROUTE`)だけである。
+- 中継の経路は、各アプリの`src/composition/relay-routes.ts`の`RELAY_ROUTES`に登録する。現在はGraphQLの中継の経路(`GRAPHQL_RELAY_ROUTE`)と、その後に置くアップロード・ダウンロードの中継の経路(`UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE`)である。
+- アップロード・ダウンロードの中継の経路は、接頭辞より後ろ(用途名・ファイルの識別子)を1つの値として百分率符号化し直して上流へ渡し、待ち時間は120秒である。アップロードは全用途の許可形式の範囲(`ATTACHMENT_MEDIA_TYPES`)の`Content-Type`だけを受け付け(範囲外は中継の415 `unsupported_media_type`)、`content-length`と`x-upload-file-name`(`UPLOAD_FILE_NAME_HEADER`)を追加で引き継ぐ。用途ごとの許可形式はAPIサーバーが判定する。
 - ポートは「[ローカルポート一覧](README.md#ローカルポート一覧)」に従う。E2Eで対象のURLを上書きする環境変数は`E2E_CLIENT_URL`・`E2E_ADMIN_URL`である。
 
 ### フロントエンドサーバーの登録箇所
 
 アプリ固有の値は、各アプリの`src/composition/`に置く。
 
-| 項目                                          | `apps/client`                                      | `apps/admin`                                  | 定義場所                                                                |
-| --------------------------------------------- | -------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------- |
-| 呼び出し元の種類(`caller`)                    | `client`                                           | `admin`                                       | `app-profile.ts`の`CLIENT_PROFILE`・`ADMIN_PROFILE`                     |
-| セッションのCookieの名前(`sessionCookieName`) | `__Host-ls_session`                                | `__Host-ls_admin_session`                     | 同上                                                                    |
-| 検索エンジンの登録(`indexable`)               | `prod`だけ許す                                     | すべての環境で除外する                        | 同上                                                                    |
-| アクセス解析(`webAnalytics`)                  | 入れる                                             | 入れない                                      | 同上                                                                    |
-| 問い合わせの導線(`contactAvailable`)          | 持つ(`true`)                                       | 持たない(`false`)                             | 同上                                                                    |
-| CSPの許可先                                   | 「[CSPの許可先](#cspの許可先)」                    | なし                                          | `security-policy.ts`の`CLIENT_SECURITY_POLICY`・`ADMIN_SECURITY_POLICY` |
-| 中継の経路                                    | `GRAPHQL_RELAY_ROUTE`                              | `GRAPHQL_RELAY_ROUTE`                         | `relay-routes.ts`の`RELAY_ROUTES`                                       |
-| レイアウトの区画                              | 未ログインの導線(ログイン・登録)と「ローンチする」 | なし(`navigation`・`headerAccount`とも`null`) | `layout-slots.ts`の`SITE_LAYOUT_SLOTS`・`ADMIN_LAYOUT_SLOTS`            |
+| 項目                                          | `apps/client`                                                            | `apps/admin`                                                             | 定義場所                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| 呼び出し元の種類(`caller`)                    | `client`                                                                 | `admin`                                                                  | `app-profile.ts`の`CLIENT_PROFILE`・`ADMIN_PROFILE`                     |
+| セッションのCookieの名前(`sessionCookieName`) | `__Host-ls_session`                                                      | `__Host-ls_admin_session`                                                | 同上                                                                    |
+| 検索エンジンの登録(`indexable`)               | `prod`だけ許す                                                           | すべての環境で除外する                                                   | 同上                                                                    |
+| アクセス解析(`webAnalytics`)                  | 入れる                                                                   | 入れない                                                                 | 同上                                                                    |
+| 問い合わせの導線(`contactAvailable`)          | 持つ(`true`)                                                             | 持たない(`false`)                                                        | 同上                                                                    |
+| CSPの許可先                                   | 「[CSPの許可先](#cspの許可先)」                                          | なし                                                                     | `security-policy.ts`の`CLIENT_SECURITY_POLICY`・`ADMIN_SECURITY_POLICY` |
+| 中継の経路                                    | `GRAPHQL_RELAY_ROUTE`・`UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE` | `GRAPHQL_RELAY_ROUTE`・`UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE` | `relay-routes.ts`の`RELAY_ROUTES`                                       |
+| レイアウトの区画                              | 未ログインの導線(ログイン・登録)と「ローンチする」                       | なし(`navigation`・`headerAccount`とも`null`)                            | `layout-slots.ts`の`SITE_LAYOUT_SLOTS`・`ADMIN_LAYOUT_SLOTS`            |
 
 - 登録した値と凍結されていることは、各アプリの`test/config/composition.unit.test.ts`が確かめる。
 

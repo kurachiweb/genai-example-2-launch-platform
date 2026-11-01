@@ -43,6 +43,7 @@ export const createPageRouterContext = (
       environment,
       turnstileSiteKey: '1x00000000000000000000BB',
       clientSiteOrigin: 'https://client.example',
+      imagesOrigin: 'https://images.example',
       sentry: { dsn: undefined, environment, tracesSampleRate: 0 },
       webAnalyticsToken: undefined,
     },
