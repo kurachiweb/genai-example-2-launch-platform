@@ -117,6 +117,8 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 | 本文の折りたたみと展開                       | `CollapsibleMarkdownContent`                       | 切替ボタンの`aria-expanded`と、本文の枠を指す`aria-controls`                                                 |
 | 入力欄の編集領域の読み込み中・読み込みの失敗 | `MarkdownEditor`(`EditorPlaceholder`)              | 読み込み中は`role="status"`の見えない文言と仮の表示の`aria-busy`、失敗は`role="alert"`の文言と再試行のボタン |
 | 入力欄の文字数の上限の超過と戻り             | `MarkdownEditor`(`MarkdownLengthCounter`)          | 超えた時と戻った時だけ変わる`aria-live="polite"`の見えない文言                                               |
+| アップロードするファイルの選択の結果         | `FileSelectionList`                                | 選んだファイルが変わった時だけ変わる`aria-live="polite"`の見えない文言(ファイル名と件数)                     |
+| ファイルのドラッグ中                         | `FileDropZone`                                     | 枠の色と、案内の文言の変更                                                                                   |
 
 - `Skeleton`自体は`aria`を持たない。読み込み中の表示には`Skeleton`を直接置かず、`LoadingSkeleton`で包む。
 - トーストは一定の時間で消え、丁寧な通知で伝える。利用者の対応が要る失敗はトーストだけで伝えず、`ErrorState`・`PartialErrorState`か、フォームの`role="alert"`の表示で示す。トーストは操作の結果の通知に使う。
@@ -130,6 +132,7 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 
 - `<label for>`で入力欄に名前を付ける。名前を付けられる要素(`input`・`textarea`・`button`)を描く部品に使う。
 - `<label for>`で名前を付けられない要素(`contenteditable`の要素など)には、子へ渡すラベルの要素のID(`labelId`)を`aria-labelledby`に使う。
+- 見えている文言を持つ`button`を欄の入力に使う部品(ファイルの選択のボタンなど)は、`<label for>`で名前を上書きすると見えている文言が名前から消える(WCAG 2.5.3)ため、`labelId`とボタン自身の文言の両方を`aria-labelledby`に並べる([共通部品の「ファイルの選択」](005-shared-components.md#ファイルの選択))。
 - 説明とエラーの文言の`id`を`aria-describedby`で入力欄に関連付け、エラーのある間は`aria-invalid`を付ける。エラーは文言とアイコンで示す。
 - 最初にフォーカスを外した時に検証し、以降は入力のたびに検証し直す(`useAppForm`の`mode: 'onTouched'`)。
 - 必須の印は自動で付けない。必須の欄は、ラベルか説明の文言で必須であることを示し、入力欄に`aria-required`を渡す。

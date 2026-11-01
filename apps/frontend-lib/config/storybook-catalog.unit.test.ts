@@ -36,6 +36,11 @@ const INTERNAL_COMPONENTS: Readonly<Record<string, InternalComponent>> = {
     reason:
       '入力欄が編集領域の遅延読み込みを包み、読み込み中と失敗の表示は仮の表示の部品のストーリーで確かめる',
   },
+  'components/media/file-thumbnail.tsx': {
+    parent: 'components/media/file-selection-list.tsx',
+    reason:
+      '選んだファイルの一覧の各行に置く縮小の表示で、画像と画像でないファイルの表示を一覧のストーリーで確かめる',
+  },
   'components/ui/dialog/dialog-overlay.tsx': {
     parent: 'components/ui/dialog/dialog-content.tsx',
     reason: 'ダイアログの本体が背景の覆いとして描画する',

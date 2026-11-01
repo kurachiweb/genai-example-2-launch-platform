@@ -17,11 +17,11 @@
 
 ## 共通化の対象
 
-| 置き場所                   | 置くもの                                                                                                                                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 共通部品の`components/`    | 複数のアプリで同じ見た目と振る舞いを持つ部品。基本部品・フォーム・状態表示・トースト・エラーの表示・日時と数値・bot判定・配色の切替・文書の外枠・疎通確認・マークダウンの表示・検索語の強調 |
-| アプリの`src/components/`  | 1つのアプリだけの部品。レイアウト(ヘッダー・ナビゲーション・フッター)、ルーターやアプリの導線を共通部品へ結び付けるページの部品(404・エラーの画面など)                                      |
-| アプリの`src/composition/` | アプリ固有の値(導線・レイアウトに差し込む区画など)の登録箇所                                                                                                                                |
+| 置き場所                   | 置くもの                                                                                                                                                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 共通部品の`components/`    | 複数のアプリで同じ見た目と振る舞いを持つ部品。基本部品・フォーム・状態表示・トースト・エラーの表示・日時と数値・bot判定・配色の切替・文書の外枠・疎通確認・マークダウンの表示・検索語の強調・ファイルの選択 |
+| アプリの`src/components/`  | 1つのアプリだけの部品。レイアウト(ヘッダー・ナビゲーション・フッター)、ルーターやアプリの導線を共通部品へ結び付けるページの部品(404・エラーの画面など)                                                      |
+| アプリの`src/composition/` | アプリ固有の値(導線・レイアウトに差し込む区画など)の登録箇所                                                                                                                                                |
 
 - 共通部品は、アプリ固有の値(リンク先・問い合わせの導線・サービス名など)を持たず、propsで受け取る。共通部品から利用側アプリの`src`への読み込みは、静的解析の`frontend/direction/*`(「[画面を持つアプリの静的解析](../coding/001-javascript-typescript-conventions.md#画面を持つアプリの静的解析)」)が禁止する。
 - 共通部品の`components/`は、`utilities/`・`start/`の値と、`server/`の型だけを読み込める。サーバー専用のファイル(`*.server.ts`)は読み込めない。
@@ -42,6 +42,7 @@
 | `components/app-shell/`       | `AppDocument`・`SkipLink`・`RouteAnnouncer`・`MAIN_CONTENT_ID`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `<html>`から描画する文書の外枠                                 |
 | `components/markdown/`        | `MarkdownContent`・`CollapsibleMarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | マークダウンの本文の表示と折りたたみ、描画のメモ化・描画の指定 |
 | `components/markdown-editor/` | `MarkdownEditor`・`MarkdownToolbar`・`MarkdownLinkDialog`・`MarkdownLengthCounter`・`EditorPlaceholder`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | マークダウンの入力欄(編集領域は遅延読み込み)                   |
+| `components/media/`           | `FileDropZone`・`FileSelectionList`・`FileThumbnail`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | アップロードするファイルの選択と、選んだファイルの一覧         |
 | `components/search/`          | `HighlightedText`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 検索語の一致箇所の`<mark>`による強調                           |
 | `components/system/`          | `SystemStatusView`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 疎通確認の画面の本体                                           |
 
@@ -266,6 +267,53 @@ const token = turnstile.consume();
 
 検索結果の項目の見出しや要約のうち検索語に一致した箇所は、`HighlightedText`で`<mark>`の強調にする。使い方は「[検索語の強調](008-markdown-editor-and-content.md#検索語の強調)」に従う。
 
+### ファイルの選択
+
+アップロードするファイルは`FileDropZone`で選ばせ、選んだファイルを`FileSelectionList`で示す。どちらも検査と送信を行わず、選んだファイルの検査・拒否の文言・送信は呼び出し側の入力欄が行う。
+
+```tsx
+import { useState } from 'react';
+
+import { FileDropZone } from '<共通部品の配置先>/components/media/file-drop-zone.tsx';
+import { FileSelectionList } from '<共通部品の配置先>/components/media/file-selection-list.tsx';
+
+function LogoPicker() {
+  const [files, setFiles] = useState<readonly File[]>([]);
+  return (
+    <>
+      <FileDropZone
+        label="画像を選択"
+        accept={['image/jpeg', 'image/png', 'image/svg+xml']}
+        onSelect={setFiles}
+      />
+      <FileSelectionList items={files.map((file) => ({ file }))} />
+    </>
+  );
+}
+```
+
+- `FileDropZone`は、ボタンのクリック・Enter・Spaceで端末標準のファイル選択の画面を開き、ファイルのドラッグ&ドロップでも選べる。ドラッグ中は枠と案内の文言を変える。隠した`<input type="file">`の`accept`属性は、propsの`accept`に渡した形式の一覧になり、`capture`を付けないため、モバイル端末ではカメラでの撮影と端末内のファイルを利用者が選べる。
+- 選んだ後は入力欄の値を空に戻し、拒否された同じファイルを選び直せるようにする。`multiple`が偽でも、ドロップした複数のファイルはそのまま`onSelect`へ渡すため、個数の検査は呼び出し側が行う。
+- `FormField`の欄に置くときは、`id`を渡さず(`<label for>`で関連付けず)、子へ渡る`labelId`を`aria-labelledby`に、`aria-describedby`・`aria-invalid`をそのまま渡す。ボタンは`aria-labelledby`に欄のラベルとボタンの見えている文言の両方を指定し、名前を「<欄のラベル> <ボタンの文言>」にする。`<label for>`で関連付けると欄のラベルだけが名前になり、見えている文言を言う音声操作でボタンに届かない(2.5.3)。
+
+```tsx
+<FormField control={form.control} name="logo" label="ロゴ">
+  {(control) => (
+    <FileDropZone
+      label="画像を選択"
+      accept={['image/jpeg', 'image/png', 'image/svg+xml']}
+      onSelect={handleSelect}
+      aria-labelledby={control.labelId}
+      aria-describedby={control['aria-describedby']}
+      aria-invalid={control['aria-invalid']}
+    />
+  )}
+</FormField>
+```
+
+- `FileSelectionList`は名前・形式・サイズ(1,024を基数とするkB・MB)とサムネイルを並べ、項目ごとの状態の文言(`status`)を添えられる。選んだファイルが変わった時だけ、ファイル名と件数を`aria-live="polite"`の見えない領域で読み上げ、最初の表示では読み上げない。読み上げの領域を最初から置いておくため、ファイルが0件でも描画したままにする。
+- `FileThumbnail`は画像を、読み込んだ時点の1コマだけを`canvas`へ描いた静止画にし、描いた後にオブジェクトURLを破棄する。GIFなどのアニメーションを動かし続けない(「[演出の停止手段の義務](004-accessibility-rules.md#演出の停止手段の義務)」)。画像でないファイルはアイコンにする。
+
 ## 1ファイル1コンポーネントとshadcn/uiの分割
 
 1つの部品のファイル(`.tsx`)がエクスポートするReactの部品は1つだけにする。同じファイルからは、その部品のpropsの型などの型だけを併せてエクスポートしてよい。
@@ -333,7 +381,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 ```
 
-- `title`は`<分類>/<部品名>`にする。分類は、基本部品・重ねて表示する部品・フォーム・状態表示・フィードバック・エラーの表示・日時と数値・bot判定・文書の外枠・疎通確認・マークダウン・検索のいずれかにする。
+- `title`は`<分類>/<部品名>`にする。分類は、基本部品・重ねて表示する部品・フォーム・状態表示・フィードバック・エラーの表示・日時と数値・bot判定・文書の外枠・疎通確認・マークダウン・検索・メディアのいずれかにする。
 - 主要な状態(既定・無効・エラー・読み込み中・送信中・開いた状態など)ごとにストーリーを分ける。操作で作る状態(検証エラー・送信中など)は`play`で操作する。押した時の処理などの関数のpropsには`fn()`を渡す。
 - ライト・ダークはツールバーで切り替えるため、配色ごとのストーリーは作らない。ただし、配色そのものを確かめる対象にする部品(本文の文字組みのように、配色で文字色や背景色の組み合わせが大きく変わる部品)は、ダークの配色を確かめるストーリーを作ってよい。そのストーリーはツールバーの値をストーリーの`globals`(`globals: { theme: 'dark' }`)で指定し、配色の切り替えを部品のpropsにしない。
 - 日時の表示は固定の表示設定で描画する。`DisplayPreferencesProvider`はブラウザの値で上書きするため、カタログでは使わず、`preview.tsx`が`DisplayPreferencesContext`へ固定の値を直接渡す。
