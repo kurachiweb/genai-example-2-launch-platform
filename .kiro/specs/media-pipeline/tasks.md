@@ -11,7 +11,7 @@
   - 完了状態: 2つのテストが成功し、ロックファイルの版が設計の表と一致し、tech-stack.mdと版の一覧に新しいパッケージが載っている
   - _Requirements: 6.2, 17.6_
 
-- [ ] 1.2 ファイルの記録と隔離理由のテーブルを定義し、マイグレーションを生成する
+- [x] 1.2 ファイルの記録と隔離理由のテーブルを定義し、マイグレーションを生成する
   - 先に、2テーブルの列の型・NOT NULL・オブジェクトキーの一意制約・ファイルと理由の組の一意制約・ファイル削除での理由の連鎖削除・共通カラム・索引を確かめる単体テストを書く
   - ファイルの記録は、設計の物理データモデルの列(保存先・保存先の現在値・保有者・元のファイル名・形式・バイト数・幅・高さ・保存完了・紐付け・判定の状態と検出内容・削除待ち・論理削除)を持ち、保有者・未紐付け・論理削除・判定の状態・削除待ち・保存先の照会の索引を付ける
   - スキーマの集約点に2テーブルを加え、マイグレーションを生成する。マイグレーションはmainの最新を取り込んでから生成し、番号の衝突があれば生成し直す(並行するspecとのスナップショットの分岐を防ぐ。M-6)
@@ -356,3 +356,4 @@
 ## Implementation Notes
 
 - 1.1: 開発者の決定(2026-11-01)で、SVGの構文の検証は`fast-xml-parser`の非推奨の`XMLValidator`ではなく`fast-xml-validator` 1.4.2の`SyntaxValidator.validate(xml, options)`を使う。整形式なら`true`、不正なら`name: 'ValidationError'`・`code`・`line`・`col`を持つ例外を投げる(型定義の`{ err }`の戻り値とは違い、派生クラスは非公開のため`try/catch`で判定)。型定義の注記と違い`multipleRoots`の既定は`true`のため`multipleRoots: false`を明示する。DOCTYPE・ENTITYは受け入れ、最上位の要素の名前も検査しないため、3.3は事前の宣言の拒否と`XMLParser`での最上位の確認が要る。`wasm-image-optimization/workerd`はeventのWorkers統合テストから読み込みの規則無しで読める。パッケージの確認のテストは`apps/api/test/packages/`と`apps/event/src/infrastructure/media/media-packages.worker.test.ts`
+- 1.2: テーブル定義は`apps/db/schema/media/`。`content_type`は値を限らないテキスト(テキストは`text/plain; charset=utf-8`)。保存先・保有者の種類・判定の状態・隔離理由の値の一覧はテーブル定義に直書きで、2.x・3.5の型との照合のテストは無い(3.5で型を作る時に一覧をそろえる)。`moderation_detail`は要素の型の無いJSON列で、型付けは4.1のストアで行う。索引名は`<テーブル>_<列>_idx`・一意は`_unique`
