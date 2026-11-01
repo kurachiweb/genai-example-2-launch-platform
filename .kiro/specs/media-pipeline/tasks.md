@@ -96,7 +96,7 @@
   - 完了状態: リポジトリのWorkers統合テストが成功し、判定の記録を2回呼んでも理由が1件・状態が最初の結果のままになる
   - _Requirements: 4.7, 6.7, 6.8, 8.6, 8.7, 9.1, 9.2, 9.3, 9.8, 9.9, 9.10, 13.5, 13.10_
 
-- [ ] 4.2 (P) 3つのバケットへのオブジェクトストアを作る
+- [x] 4.2 (P) 3つのバケットへのオブジェクトストアを作る
   - 先に、同じキーへの2回目の書き込みが上書きせず`exists`になること、宣言した長さと本文の長さの不一致で書き込みが失敗しオブジェクトが残らないこと、ファイル用のメタデータの保存、読み出しと存在の確認、1,000件を超える削除、バケット間のコピー(目的に既にある・元が無い)を確かめるWorkers統合テストを書く
   - 完了状態: オブジェクトストアのWorkers統合テストが成功する
   - _Boundary: R2MediaObjectStore_
@@ -366,3 +366,4 @@
 - 3.4: `sanitizeFileName`は先頭のドットと空白の並びをまとめて除き、切り詰めの後にも前後の空白を除く(設計の「先頭の`.`→前後の空白」の順だと`" .profile"`が`.profile`になり要件4.5を満たさないため。9.1の`security/005`はこの順で書く)。書式文字(U+202Eなど)は要件どおり除かず、拡張子の偽装への対策と`filename`の代替に残る`%`(RFC 6266の4.3)は9.1で検討する。書記素の切り詰めは`Intl.Segmenter`を直接使い、空白の除去は共用部品の`trimWhiteSpace`。`generateObjectKey`は乱数源が16バイト以外を返すと例外
 - 3.5: ポートは`core/media/ports.ts`、DIの識別子は`core/media/identifiers.ts`の`MEDIA_TYPES`(7種、`Symbol.for('media.<名前>')`)、契約は`core/media/media-messages.ts`(`MODERATE_IMAGE_MESSAGE`・`RELOCATE_FILES_MESSAGE`・`PURGE_IMAGE_CACHE_MESSAGE`・`MEDIA_MESSAGE_LIMITS`)。設計のインラインの型に`ClaimFailure`・`OwnerIdListInput`・`OwnerIdList`・`QuarantinedImageListInput`・`QuarantinedImageList`・`OwnedImageQuery`・`EraseCandidateQuery`・`ModerationRequeueQuery`、本文の型に`ModerateImageBody`・`RelocateFilesBody`・`PurgeImageCacheBody`の名前を付けた。テーブル定義の値の一覧と型の照合は`workers/media/media-file-columns.unit.test.ts`(coreはDBスキーマを読めない)。project-values.mdのメッセージの表は9.3で加える
 - 4.1: `D1MediaFileStore`(`workers/media/d1-media-file-store.ts`)のWorkers統合テストはapiの`test:worker`だけで走る(eventは`lib/**`を除外)。テストの補助は`workers/media/testing/media-file-store-fixtures.ts`(800行のフックでテストを書き込み用・照会用に分けた)。設計で決まっていない振る舞い: `addReasons`は存在しない識別子を無視する(拒否は4.5が`findViews`で決める)、`listQuarantined`は削除待ちを除き、カーソルはストアの内部の形式`<ms>-<ULID>`(不正なら`AppError(bad_request, invalid_cursor)`。公開する層で包み直すかは4.5・5.4で決める)、`findOwnedImageIdsByReason`の理由なしは論理削除済み・保存未完了を含む(13.4)、期限は`<`、`findModerationRequeueCandidates`は保存未完了の判定待ちも返す(処理側で保存未完了は何もせず完了し、記録は810で消える)。日次の照会(`findLocationMismatches`・`findEraseCandidates`)は5.5で`EXPLAIN QUERY PLAN`を確かめる
+- 4.2: `R2MediaObjectStore.putIfAbsent`は本文を`FixedLengthStream`に通し`put`と`pipeTo`を待つ。長さの不一致はworkerdの`TypeError`(長い本文は`pipeTo`、短い本文は`put`だけが拒否)でR2の障害と区別できないため、4.3の受付処理は本文の前段にバイト数を数える変換を挟み、自前の例外で`content_length_mismatch`を見分ける(ストアは上流の例外をそのまま通す)。`Promise.all`は先に決着した拒否を返し順序の保証が無いため、4.3で`Promise.allSettled`にして`pipeTo`の理由を優先する変更を検討する。`copy`は目的に既にある場合も元の本文を読む(先に`head`で確かめれば省ける)
