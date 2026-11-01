@@ -64,7 +64,7 @@
 - npmパッケージ: Technology Stackの表に挙げた版に限る。
 - 依存の方向(後述の矢印の向きだけを許す):
   - サーバー: `common-lib/media` → `backend-lib/core/media` → `backend-lib/workers/media` → 各アプリの`application` → `infrastructure`・`presentation` → `composition`。`apps/db/schema/media`は`backend-lib/workers/media`から読む。
-  - `backend-lib/core/media`とeventの`application/media`は、`cloudflare:*`・Hono・`wasm-image-optimization`・`aws4fetch`・`backend-lib/workers`・`apps/db`を読み込まない(Bunの単体テストで検査する純粋な層)。
+  - `backend-lib/core/media`とeventの`application/media`は、`cloudflare:*`・Hono・`wasm-image-optimization`・`@cf-wasm/resvg`・`aws4fetch`・`backend-lib/workers`・`apps/db`を読み込まない(Bunの単体テストで検査する純粋な層)。
   - フロント: `common-lib/media` → `frontend-lib/utilities/media` → `frontend-lib/components/media`・`frontend-lib/server/media` → `apps/{client,admin}`。`frontend-lib/server/media`は`common-lib/media`(`ATTACHMENT_MEDIA_TYPES`・経路の接頭辞)を直接読み込む(content-processingが加える`server/**`の許可に従う。M-2)。frontend-libの`components/**`・`server/**`は`common-lib/media`だけを読み込み、`common-lib/validation/**`(Zodを使う)を読み込まない。
   - `common-lib/media`は他のどの層も読み込まず、外部パッケージにも依存しない。
 
@@ -169,20 +169,22 @@ graph TB
 
 ### Technology Stack
 
-| Layer                    | Choice / Version                                                    | Role in Feature                           | Notes                                                                                                                      |
-| ------------------------ | ------------------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Frontend                 | react-easy-crop 6.2.4                                               | 編集ダイアログの切り取りと拡大縮小        | tech-stack.md記載済み。client・admin・frontend-libで同じ版                                                                 |
-| Frontend                 | Canvas(`createImageBitmap`・`toBlob`)                               | 切り取った画像の縮小と作り直し(JPEG・PNG) | ブラウザ標準                                                                                                               |
-| Backend(共有)            | image-size 2.0.4                                                    | 先頭部分からの幅・高さの読み取り          | 新規(決定Q7)。api・eventで同じ版                                                                                           |
-| Backend(共有)            | fast-xml-parser 5.11.2                                              | SVGの構造の検査(`XMLParser`)              | tech-stack.md記載済み。`processEntities: false`。api・eventで同じ版                                                        |
-| Backend(共有)            | fast-xml-validator 1.4.2                                            | SVGの構文の検査(`SyntaxValidator`)        | 新規(開発者の決定(2026-11-01)。fast-xml-parser 5.11.2の`XMLValidator`は非推奨で後継に名指しされている)。api・eventで同じ版 |
-| Backend(event)           | wasm-image-optimization 2.0.11(`/workerd`)                          | 判定用画像の変換・縮小・RGBAの取り出し    | tech-stack.md記載済み。eventだけ                                                                                           |
-| Backend(event)           | aws4fetch 1.0.20                                                    | 判定サービスへの要求のSigV4署名           | tech-stack.md記載済み。eventだけ                                                                                           |
-| External                 | Amazon Rekognition DetectModerationLabels(us-east-1)                | 不適切な画像の判定                        | 決定Q3・Q8。ローカル・CIは決定論的な代替                                                                                   |
-| Data / Storage           | D1(Drizzle ORM)・R2の3バケット(staging・prodは`jurisdiction: "us"`) | ファイルの記録と隔離理由、原本の保存      | 条件付きの`put()`(`If-None-Match: *`)                                                                                      |
-| Messaging / Events       | Queues(`JOBS_QUEUE`)                                                | 判定・保存先の修正・パージの依頼          | 専用のQueueは作らない                                                                                                      |
-| Infrastructure / Runtime | Images Binding・Workers Cache(エントリポイント単位)・`ctx.exports`  | 変換配信・エッジキャッシュ・パージ        | Wrangler 4.124.0(4.107.0以上が必要)                                                                                        |
-| Infrastructure / Runtime | `CompressionStream('deflate')`                                      | 余白付きの判定用画像のPNG符号化           | workerd・Bunの標準                                                                                                         |
+| Layer                    | Choice / Version                                                    | Role in Feature                                      | Notes                                                                                                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend                 | react-easy-crop 6.2.4                                               | 編集ダイアログの切り取りと拡大縮小                   | tech-stack.md記載済み。client・admin・frontend-libで同じ版                                                                                                                                |
+| Frontend                 | Canvas(`createImageBitmap`・`toBlob`)                               | 切り取った画像の縮小と作り直し(JPEG・PNG)            | ブラウザ標準                                                                                                                                                                              |
+| Backend(共有)            | image-size 2.0.4                                                    | 先頭部分からの幅・高さの読み取り                     | 新規(決定Q7)。api・eventで同じ版                                                                                                                                                          |
+| Backend(共有)            | fast-xml-parser 5.11.2                                              | SVGの構造の検査(`XMLParser`)                         | tech-stack.md記載済み。`processEntities: false`。api・eventで同じ版                                                                                                                       |
+| Backend(共有)            | fast-xml-validator 1.4.2                                            | SVGの構文の検査(`SyntaxValidator`)                   | 新規(開発者の決定(2026-11-01)。fast-xml-parser 5.11.2の`XMLValidator`は非推奨で後継に名指しされている)。api・eventで同じ版                                                                |
+| Backend(event)           | wasm-image-optimization 2.0.11(`/workerd`)                          | ラスター画像の判定用画像の変換・縮小・RGBAの取り出し | tech-stack.md記載済み。eventだけ                                                                                                                                                          |
+| Backend(event)           | @cf-wasm/resvg 0.4.0(`/workerd`。依存の`@resvg/resvg-wasm` 2.6.2)   | SVGの判定用画像の描画                                | 新規(開発者の決定(2026-11-01))。eventだけ。書体は持たず、同梱のLiberation Sansを`fontBuffers`で渡して文字を描く(書体に無い文字(日本語など)は代替の四角形で描かれ、文字の形は判定されない) |
+| Backend(event)           | Liberation Sans 2.1.5 Regular(TTF)                                  | SVGの判定用画像の文字の描画                          | 新規(開発者の決定(2026-11-01))。SIL Open Font License 1.1。リポジトリに同梱(ラテン文字だけ)                                                                                               |
+| Backend(event)           | aws4fetch 1.0.20                                                    | 判定サービスへの要求のSigV4署名                      | tech-stack.md記載済み。eventだけ                                                                                                                                                          |
+| External                 | Amazon Rekognition DetectModerationLabels(us-east-1)                | 不適切な画像の判定                                   | 決定Q3・Q8。ローカル・CIは決定論的な代替                                                                                                                                                  |
+| Data / Storage           | D1(Drizzle ORM)・R2の3バケット(staging・prodは`jurisdiction: "us"`) | ファイルの記録と隔離理由、原本の保存                 | 条件付きの`put()`(`If-None-Match: *`)                                                                                                                                                     |
+| Messaging / Events       | Queues(`JOBS_QUEUE`)                                                | 判定・保存先の修正・パージの依頼                     | 専用のQueueは作らない                                                                                                                                                                     |
+| Infrastructure / Runtime | Images Binding・Workers Cache(エントリポイント単位)・`ctx.exports`  | 変換配信・エッジキャッシュ・パージ                   | Wrangler 4.124.0(4.107.0以上が必要)                                                                                                                                                       |
+| Infrastructure / Runtime | `CompressionStream('deflate')`                                      | 余白付きの判定用画像のPNG符号化                      | workerd・Bunの標準                                                                                                                                                                        |
 
 ## File Structure Plan
 
@@ -207,7 +209,8 @@ apps/
 │   │   ├── upload-purpose.ts                      # UploadPurpose・defineUploadPurpose・createUploadPurposeRegistry・MEDIA_SMOKE_PURPOSE
 │   │   ├── upload-precheck.ts                     # UploadRejection・precheckUpload(411・400・413・415)
 │   │   ├── file-signature.ts                      # マジックバイトの表とdetectSignature
-│   │   ├── image-dimensions.ts                    # readImageDimensions(image-size・向きの入れ替え)・画素数の上限
+│   │   ├── image-dimensions.ts                    # readImageDimensions(image-size・向きの入れ替え、SVGはsvg-root.ts)・画素数の上限
+│   │   ├── svg-root.ts                            # readSvgRoot(SVGのルートの開始タグの位置・属性・幅・高さ・viewBox)・intrinsicSizeOfSvg
 │   │   ├── svg-syntax.ts                          # UTF-8の復号・DOCTYPEとENTITYの拒否・XMLの構文の検査
 │   │   ├── text-content-check.ts                  # UTF-8とNUL文字を流しながら検査するTransformStream
 │   │   ├── file-name.ts                           # sanitizeFileName・attachmentDisposition
@@ -255,6 +258,7 @@ apps/
 │   │   ├── moderation-verdict.ts                  # ラベルから最上位のカテゴリを求めて判定する
 │   │   ├── moderation-image-plan.ts               # 判定用画像の作り方(そのまま・縮小・余白)の決定
 │   │   ├── png-encoder.ts                         # RGBAへの余白の追加とPNGの符号化
+│   │   ├── svg-render-size.ts                     # 描画器へ渡すSVGのルートの書き直し(幅・高さ・viewBoxのブラウザの解釈・変形と非表示の打ち消し)
 │   │   ├── svg-allowlist.ts                       # SVGの要素・属性・処理命令・参照の許可リスト検査
 │   │   ├── moderate-image-handler.ts              # media.moderate-imageの処理
 │   │   ├── relocate-files-handler.ts              # media.relocate-filesの処理
@@ -265,7 +269,8 @@ apps/
 │   │   ├── rekognition-moderation-provider.ts     # DetectModerationLabelsの呼び出し・時間切れ・失敗の分類
 │   │   ├── stub-moderation-provider.ts            # 代替の判定(外部へ送信しない)
 │   │   ├── create-moderation-provider.ts          # 環境の値による実装の選択
-│   │   ├── wasm-moderation-image-renderer.ts      # wasm-image-optimizationによる変換・縮小・RGBA
+│   │   ├── wasm-moderation-image-renderer.ts      # ラスター画像はwasm-image-optimization、SVGはresvgで描く判定用画像(テストはラスターとSVGの2つのworker.test.tsと.fixtures.ts)
+│   │   ├── fonts/                                 # 判定用画像の文字を描く書体(LiberationSans-Regular.ttf)とライセンスの文(LiberationSans-LICENSE)
 │   │   ├── file-relocator.ts                      # 目的の保存先へそろえる処理
 │   │   ├── r2-image-source.ts                     # 画像用非公開バケットからの読み出し
 │   │   ├── images-binding-transformer.ts          # Images Bindingでの変換
@@ -325,9 +330,9 @@ docs/
 - `apps/api/package.json`・`bun.lock` — `image-size`・`fast-xml-parser`・`fast-xml-validator`を版固定で加える。
 - `apps/event/src/index.ts` — `ImageDelivery`をエクスポートする。既定のエクスポートは変えない。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`rate-limit-exclusions.ts`・`env-schema.ts` — 画像配信の関門のモジュールを`MODULES`の先頭に、`createMediaPlatformModule('event')`・eventのメディアモジュール・動作確認のモジュールを続けて登録する。3種のメッセージの処理と再試行の方針、画像配信の除外規則、メディアの変数とシークレットの検証を加える。
-- `apps/event/wrangler.jsonc`・`worker-configuration.d.ts` — `exports`(`default`はキャッシュ無効、`ImageDelivery`は有効)、3環境の`vars`(Supporting References)、ルート(ローカル)の`secrets.required`に`MEDIA_SMOKE_TOKEN`を、staging・prodの`secrets.required`に判定サービスの2つのキーを加える。
-- `apps/event/package.json`・`bun.lock` — `image-size`・`fast-xml-parser`・`fast-xml-validator`・`wasm-image-optimization`・`aws4fetch`を版固定で加える。
-- `apps/event/vitest.worker.config.ts` — テスト用の変数(画像配信のホスト名・代替の判定・閾値)を加える。`wasm-image-optimization/workerd`の`.wasm`は読み込みの規則を加えずにWorkers統合テストから読める(タスク1.1で確認)。
+- `apps/event/wrangler.jsonc`・`worker-configuration.d.ts` — 判定用画像の書体を読み込むため`rules`に`.ttf`のData(`wrangler types`が`*.ttf`の型を生成する)、`exports`(`default`はキャッシュ無効、`ImageDelivery`は有効)、3環境の`vars`(Supporting References)、ルート(ローカル)の`secrets.required`に`MEDIA_SMOKE_TOKEN`を、staging・prodの`secrets.required`に判定サービスの2つのキーを加える。
+- `apps/event/package.json`・`bun.lock` — `image-size`・`fast-xml-parser`・`fast-xml-validator`・`wasm-image-optimization`・`@cf-wasm/resvg`・`aws4fetch`を版固定で加える。
+- `apps/event/vitest.worker.config.ts` — テスト用の変数(画像配信のホスト名・代替の判定・閾値)を加える。`wasm-image-optimization/workerd`の`.wasm`は読み込みの規則を加えずにWorkers統合テストから読める(タスク1.1で確認。`@cf-wasm/resvg/workerd`もタスク6.6で同じく確認)。
 - `apps/frontend-lib/package.json`・`bun.lock`、`apps/client`・`apps/admin`の`package.json`・`bun.lock` — `react-easy-crop`を版固定で加える。 client・admin・frontend-libの`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)にも加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)。
 - `apps/frontend-lib/server/env/frontend-env.ts` — `PublicRuntimeConfig`と`toPublicRuntimeConfig`に`imagesOrigin`(検証済みの`IMAGES_ORIGIN`)を加える(frontend-platformの所有。Revalidation Triggers)。同じ変更で、`PublicRuntimeConfig`を直接書くテスト用データとStorybookの設定(`.storybook/preview.tsx`・`test/start-request-fixtures.ts`・client・adminの`test/page-router.tsx`・`start/router-context.unit.test.ts`・`frontend-env.unit.test.ts`と、公開の設定を組み立てるブラウザテスト)に値を加える(content-processingが`CLIENT_SITE_ORIGIN`を加えたときと同じ範囲)。
 - client・adminの`routes/__root.tsx`は変えない。画像配信のオリジンは、`useImagesOrigin`がfrontend-platformの`appRuntimeOf(useRouter().options.context).publicConfig.imagesOrigin`から読む(Turnstile・マークダウンの部品と同じ読み方。Providerを作らない)。エラーの画面(`errorComponent`の`ErrorPage`が描く`UnexpectedErrorView`)と`contactHref`の扱いはfrontend-platformのままにし、本specは管理者側のルートに失敗の表示(`ErrorState`・`UnexpectedErrorView`)を置かない。管理者側の画面に置かれる共通部品のアップロードの入力欄は、失敗の文言を`contactAvailable`(`ADMIN_PROFILE.contactAvailable`)で選び、問い合わせを促さない(アップロードの部品群)。
@@ -584,7 +589,7 @@ sequenceDiagram
 | FileAccessAuthorizer・方針の既定実装                                                                       | api/application・infrastructure    | 閲覧の可否と管理者の画像確認                         | 12.2-12.4, 12.6, 12.7                                    | Principal(P0)                                                          | Service      |
 | MediaDailyJobs                                                                                             | api/application                    | 物理削除・判定の再依頼・保存先の修復                 | 5.4, 5.5, 8.3, 9.8, 13.2, 13.5                           | backend-platformの定期実行(P0)                                         | Batch        |
 | MediaGraphqlModule                                                                                         | api/presentation                   | GraphQLの共通の型と変換・DataLoader                  | 13.8, 15.2                                               | api-gatewayのスキーマモジュール(P0)                                    | API          |
-| ModerateImageHandler・判定の規則と部品                                                                     | event/application・infrastructure  | 自動判定                                             | 6.1-6.10, 7.1-7.5, 8.1-8.8                               | wasm-image-optimization(P0)・Rekognition(P0)                           | Event        |
+| ModerateImageHandler・判定の規則と部品                                                                     | event/application・infrastructure  | 自動判定                                             | 6.1-6.10, 7.1-7.5, 8.1-8.8                               | wasm-image-optimization(P0)・@cf-wasm/resvg(P0)・Rekognition(P0)       | Event        |
 | FileRelocator・RelocateFilesHandler・PurgeImageCacheHandler                                                | event                              | 保存先をそろえる処理とパージ                         | 9.2-9.7, 11.2-11.5                                       | R2(P0)・ImageDelivery(P0)                                              | Event        |
 | ImageGatewayModule・ImageDeliveryEntrypoint・ImageDelivery                                                 | event                              | 画像の変換配信とキャッシュ                           | 10.1-10.12, 11.1                                         | Images Binding(P0)・Workers Cache(P0)                                  | API          |
 | MediaSmokeModule                                                                                           | event/presentation                 | トークン付きの動作確認                               | 11.6, 17.2, 17.3                                         | UploadReceiver(P0)                                                     | API          |
@@ -869,7 +874,7 @@ export declare function generateObjectKey(
 
 - 拒否の表し方: `UploadRejection`は状態コードではなくbackend-platformの`AppErrorKind`を持つ。受付の経路は拒否を同じ`kind`・`code`・`message`・`retryAfterSeconds`の`AppError`にして投げ、共通の例外の変換が状態コード・共通のエラー形式・`no-store`の応答を作る(411は本specが加える`length_required`。経路で応答の本文を組み立てない)。
 - シグネチャの表: JPEG(`FF D8 FF`)、PNG(`89 50 4E 47 0D 0A 1A 0A`)、GIF(`GIF87a`・`GIF89a`)、WebP(`RIFF`+4バイト+`WEBP`)、PDF(`%PDF-`)。申告がSVG・テキストの場合はこの判定を使わない(3.1)。
-- 寸法: `image-size`の判定形式をJPEG・PNG・GIF・WebP・SVGに絞る(`disableTypes`)。申告の形式と`image-size`の判定した形式が違えば読めないものとして扱う。
+- 寸法: `image-size`の判定形式をJPEG・PNG・GIF・WebP・SVGに絞る(`disableTypes`)。申告の形式と`image-size`の判定した形式が違えば読めないものとして扱う。開発者の決定(2026-11-01): SVGは`image-size`の正規表現(先頭1000文字の最初の`<svg`・コメントの中も対象・`=`の前後の空白に非対応)で寸法を誤るため、`svg-root.ts`の`readSvgRoot`でXML宣言・処理命令・コメントを飛ばしたルートの開始タグを読む。寸法・`viewBox`は可能な限りブラウザと同じ文法で解釈する(閉じる側に倒しすぎない): 属性値はXML 1.0の3.3.3どおり空白の文字を空白にしてから文字参照・定義済み実体を戻し、数値は`[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?`、`viewBox`の区切りは空白・カンマ(前後の空白可)・区切りの無い連結(`-0-0 100 100`)で、4つでない・末尾の`.`・余分なカンマなどブラウザが無効とする値と幅か高さが0以下の値は無効とする。長さの単位は大文字小文字を区別せず、CSSの換算(`px`・`in`・`cm`・`mm`・`q`・`pt`・`pc`=16px。`image-size`の表は写さない)とし、`em`・`rem`はブラウザの既定の文字の大きさ16pxで換算する(resvgも同じ大きさで解釈させる)。`ex`・`ch`(ChromiumとresvgでCSSの書体により長さが違う)と`vw`・`lh`などの換算しない単位は寸法を未設定にする。百分率・無効な値・0以下の値は指定が無いものとして扱う。`width`・`height`の両方があればその値、片方なら`viewBox`の縦横比から、どちらも無ければ`viewBox`の幅・高さを寸法とし、求められなければ要件3.9のとおり未設定とする(拒否しない)。ルートの`font-size`による`em`の変化は寸法に反映しない(描画はresvgが解釈した寸法で行うため判定用画像には影響しない)。
 - SVG: `TextDecoder('utf-8', { fatal: true })`で復号し、BOMを除く。大文字小文字を問わず`<!DOCTYPE`・`<!ENTITY`を含めば`svg_declaration_not_allowed`。`fast-xml-validator`の`SyntaxValidator.validate`(`allowBooleanAttributes: false`・`multipleRoots: false`)が例外を投げれば`invalid_svg`(開発者の決定(2026-11-01)。成功は`true`を返し、失敗は`code`・`line`・`col`を持つ`Error`を投げる。`multipleRoots`の実際の既定値は型定義の注記と違い`true`のため明示する)。最上位の要素が`svg`でなければ`invalid_svg`。
 - テキスト: 各断片を`stream: true`で復号し、NUL(`\u0000`)を含めば失敗させる。最後に`flush`で不完全な文字を検出する。
 - ファイル名: `/`・`\`・C0制御文字・DEL・C1制御文字を除き、先頭の`.`をすべて除き、前後の空白を除いてから、UTF-8で255バイトを超えないよう書記素の境界で切る(`Intl.Segmenter`)。空なら`<形式の既定名>`(例: `image.png`・`document.pdf`・`text.txt`)。
@@ -1565,7 +1570,7 @@ export declare const MODERATION_RETRY_POLICY: {
 
 - 判定の規則: `judgeLabels`はラベルの`parentName`をたどって最上位のカテゴリを求め、カテゴリが`blockedCategories`に含まれ、信頼度が`minConfidence`以上のものを検出内容にする。設定の初期値は全10カテゴリ・60(決定Q3、Supporting References)。
 - 判定用画像の作り方(6.2〜6.4): JPEG・PNGで長辺640px以下・短辺80px以上・5,242,880バイト以下なら`as-is`。長辺640pxへの縮小後(または縮小不要のまま)短辺が80px以上なら`resize`(JPEG原本はJPEG、他はPNG)。短辺が80px未満になるなら`pad`(縮小した画素の周りに白の余白を足し、各辺を80px以上にしたPNG)。アニメーションは最初のフレームだけを使う。
-- `WasmModerationImageRenderer`: `wasm-image-optimization/workerd`の`optimizeImage`で`resize`は`png`・`jpeg`、`pad`は`raw`(RGBA)で縮小し、`png-encoder.ts`の`padRgba`・`encodePng`でPNGにする。読み込みの失敗は`undecodable`。
+- `WasmModerationImageRenderer`: ラスター画像(JPEG・PNG・GIF・WebP)は`wasm-image-optimization/workerd`の`optimizeImage`で`resize`は`png`・`jpeg`、`pad`は`raw`(RGBA)で縮小し、`png-encoder.ts`の`padRgba`・`encodePng`でPNGにする。読み込みの失敗は`undecodable`。開発者の決定(2026-11-01): `wasm-image-optimization`のSkiaは`<use href>`・`<symbol>`・グラデーションの`href`・`<style>`・`<switch>`・子の`visibility="visible"`などをブラウザと違う形で描き、寸法の書き換えでは判定のすり抜けを塞げないため、SVG(先頭のバイト列が`<`で始まる本文)は`@cf-wasm/resvg/workerd`の`Resvg`で描く。描く前に`application/media/svg-render-size.ts`の`prepareSvgForRendering`でルートの開始タグだけを書き直す: `width`・`height`・`viewBox`は`readSvgRoot`のブラウザの解釈で、resvgが同じに読む書き方(画素数・`em`・`ex`・4つの数値)にし、ブラウザが無効とする値・百分率・換算しない単位・`ch`は取り除く(resvgの方が寛容な値でブラウザより狭い範囲を描かせない)。ブラウザの`<img>`がルートに適用しない`display`と、resvgと別の座標で適用される`transform`は属性とstyleの宣言から取り除き、文書内のスタイルシートの指定も打ち消すようstyle属性の末尾に`display:inline;transform:none`を足す(ブラウザより多くの内容を描く側にそろえる)。resvgにはフォントの既定の大きさ16pxを渡し、resvg自身が解釈した寸法の縦横比のまま計画の幅・高さの箱に収まるよう`fitTo`(幅、収まらなければ高さ)で描く(描く画素は箱の大きさまでで、宣言の寸法が大きくても確保しない)。乗算済みの画素を戻し、`resize`は計画の寸法、`pad`はキャンバスの中央に置いて白で埋め、PNGにする。幅・高さ・`viewBox`の無いSVGもresvgは原点から内容の右下の端までを描くため隔離しない。ルートを読めないSVGと、resvgが読み込めない文書(XMLの構文・表示領域の大きさ・要素の数の上限(`<use>`の展開を含む))は`undecodable`(隔離)。読み込み以外の描画の例外(符号化の失敗・wasmの実行時エラー)は`undecodable`にせず投げ、キューの再試行の後にデッドレターへ移る既知の制限とする。resvgでもブラウザと描画が分かれ、判定をすり抜けられる書き方は、開発者の決定(2026-11-01)で既知の差分を`inspectSvg`の違反にするが、網羅は保証しない(SvgAllowlistの項。残る差分はSvgAllowlistの項の既知の制限とresearch.mdの「実装中の開発者の決定(2026-11-01、タスク6.6): SVGの描画器の切り替えと寸法の解釈」)。`<text>`はresvgへ`fontBuffers`で渡す同梱の書体(Liberation Sans 2.1.5のRegular)で描き、`font-family`の指定に関わらずこの書体で描かれる。既知の制限: 書体に無い文字(日本語など)は代替の四角形で描かれ、文字の形は判定されない。Workerの大きさ: wasmのgzip後の合計は約3.2MB(resvg約0.95MB・`wasm-image-optimization`約2.3MB)と書体の約0.2MBで、Workers Paid(10MB)を前提とする。7.6の登録の後に開発者が`wrangler deploy --dry-run`で確かめる。
 - `RekognitionModerationProvider`: `aws4fetch`の`AwsClient`(サービス`rekognition`・リージョンは`MODERATION_REGION`)で`https://rekognition.<region>.amazonaws.com/`へ`X-Amz-Target: RekognitionService.DetectModerationLabels`・`Content-Type: application/x-amz-json-1.1`のJSON(`Image.Bytes`はbase64、`MinConfidence`)を送る。10秒で打ち切る。エラーの分類はresearch.mdのとおり(一時的・恒久的・設定の誤り)。`fetch`は注入できる。
 - `StubModerationProvider`: 外部へ送らず、判定用画像の寸法で決める(`stub-moderation-rules.ts`)。99×99は「Explicit」信頼度99、98×98は一時的な失敗、97×97は画像として受け付けない、それ以外は検出なし。
 
@@ -1598,6 +1603,8 @@ export type SvgViolationKind =
   | 'event-attribute'
   | 'external-reference'
   | 'disallowed-data-uri'
+  | 'unsupported-css'
+  | 'invalid-view-box'
   | 'processing-instruction'
   | 'declaration'
   | 'unparseable';
@@ -1613,9 +1620,18 @@ export declare function inspectSvg(
 ```
 
 - `XMLParser`を`preserveOrder: true`・`ignoreAttributes: false`・`processEntities: false`・`maxNestedTags: 256`で使い、全要素を走査する。許可リストはSupporting Referencesの表に従う。
-- 参照: `href`・`xlink:href`は`#`で始まる断片だけを許す。`image`要素の参照だけは`data:image/(png|jpeg|gif|webp);base64,`を許す(7.5)。属性値と`style`属性・`style`要素の中の`url(...)`は`#`で始まる断片だけを許し、`@import`・`javascript:`・`expression(`を違反にする(7.3)。
+- 参照: `href`・`xlink:href`は`#`で始まる断片だけを許す。`image`要素の参照だけは`data:image/(png|jpeg|gif);base64,`を許す(7.5。WebPは判定用画像の描画器(resvg)が描かないため、開発者の決定(2026-11-01)で外した)。属性値と`style`属性・`style`要素の中の`url(...)`は`#`で始まる断片だけを許し、`@import`・`javascript:`・`expression(`を違反にする(7.3)。
 - 名前空間: SVG・XLink・XMLの名前空間の許可リストの要素・属性と、Inkscape・Sodipodi・Illustrator・RDF・Dublin Core・Creative Commons・Sketch・Serif(Affinity)などの編集ソフトの名前空間の要素・属性を許す(7.4)。編集ソフトの名前空間の属性でも`on`で始まるものは違反にする。
 - `xml-stylesheet`などの処理命令(XML宣言を除く)は違反にする。
+- 開発者の決定(2026-11-01): 判定用画像の描画器(resvg)とブラウザの`<img>`で描画が分かれる書き方は、覆いの要素をブラウザでだけ消して判定用画像に写らない内容を見せられるため、差分の比較で分かった既知のものを違反にする。網羅は保証しない(下の既知の制限)。CSSは`unsupported-css`の違反にする(`svg-unsupported-css.ts`。外部の参照の違反がある値には重ねない)。`style`要素と`style`属性では、`@import`以外のat規則(`@media`・`@supports`・`@layer`など)、`!important`、描画器がブラウザと同じに解釈する関数(`url`・カンマ区切りの`rgb`・`rgba`・`hsl`・`hsla`・`matrix`・`scale`・フィルターの関数)以外の関数(`var()`・`calc()`・`translate()`などの変形・`inset()`などの図形・グラデーション・`oklch()`・`color-mix()`・`light-dark()`・関数の擬似クラス)、空白区切りや`/`の透明度の色、幾何のプロパティ(`x`・`y`・`width`・`height`・`cx`・`cy`・`r`・`rx`・`ry`・`d`)、`-webkit-`の接頭辞のプロパティ、`display:contents`を違反にする。表示属性の値では関数と色の書き方だけを検査する(`transform`などの変形の属性はSVGの文法のため対象外)。文字列の中の関数のような書き方も保守側に違反にする。ルート以外の要素の`viewBox`で、ブラウザが無効とする値(`readSvgRoot`と同じ文法で判定)は、描画器がブラウザより狭い範囲を描くため`invalid-view-box`(対象は要素名)の違反にする(ルートは描画の前に書き直す)。`switch`の子の選択に使う`systemLanguage`は、描画器(英語で選ぶ)と閲覧者のブラウザの言語で選ぶ子が食い違うため許可リストから外した。
+- 既知の制限(開発者の決定(2026-11-01)。許可リストはこれ以上強めない): 独立のレビューで、新しい標本73件のうち28件が許可リストを通り、判定用画像に写らずブラウザで見えた。
+  - resvgが適用しブラウザが適用しないもの: `media="print"`・`media="not all"`の`style`要素、存在しない要素を指す`filter="url(#nope)"`、`clipPath`以外の要素を指す`clip-path`、`font:`の一括指定。
+  - resvgが対応しないCSSのセレクター: `~`・`:last-child`・`:root`・`:empty`・`:only-of-type`、無効なセレクターを含むセレクターの一覧、CSSのエスケープ、属性セレクターの`i`、CDATAの中のCDO・CDC(`<!--`・`-->`)。
+  - 値の大文字小文字の扱い(`display="None"`など)、`href`と`xlink:href`を併用した場合の優先順位。
+  - data URIの申告の形式と中身の不一致(`data:image/png`と申告したWebPなど)。許可リストは申告の形式だけを見るため、要件7.5の改訂2(WebPを外す)は実質的に効かない。
+  - resvgが対応しないプロパティ: `transform-origin`・`transform-box`・`vector-effect`。
+  - 影響: SVGは`<img>`で表示し、配信のCSPでスクリプトも動かないため、影響は不適切な画像の判定のすり抜けに限る(スクリプトの実行や閲覧者の情報の外部送信には及ばない)。
+  - 根本的な対策の候補: 判定に使った形へ正規化したSVGを配信する、要素・属性・CSSのプロパティと値を厳密な許可リストで限る、判定用画像をブラウザで描く。
 
 #### FileRelocator・RelocateFilesHandler・PurgeImageCacheHandler
 
@@ -2121,14 +2137,14 @@ erDiagram
 
 ### SVGの許可リスト(初版)
 
-| 区分                 | 許可するもの                                                                                                                                                                                                                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 構造の要素           | `svg`・`g`・`defs`・`symbol`・`use`・`title`・`desc`・`metadata`・`switch`・`style`(中身を検査)                                                                                                                                                                                       |
-| 図形・文字の要素     | `path`・`rect`・`circle`・`ellipse`・`line`・`polyline`・`polygon`・`text`・`tspan`・`textPath`・`image`(data URIだけ)・`marker`                                                                                                                                                      |
-| 塗り・効果の要素     | `linearGradient`・`radialGradient`・`stop`・`pattern`・`clipPath`・`mask`・`filter`と`fe`で始まるフィルタの要素(`feImage`を除く)                                                                                                                                                      |
-| 属性                 | SVG 1.1・SVG 2の表示属性と幾何の属性(`d`・`x`・`y`・`width`・`height`・`viewBox`・`fill`・`stroke`・`transform`・`opacity`・`class`・`id`など)、`xmlns`と`xmlns:*`、`xml:space`・`xml:lang`、`xlink:href`・`href`(断片だけ)、`style`(中身を検査)                                      |
-| 編集ソフトの名前空間 | Inkscape・Sodipodi・Adobe Illustrator(`i:`・`x:`・`graph:`)・RDF・Dublin Core(`dc:`)・Creative Commons(`cc:`)・Sketch・Serif(Affinity)の要素と属性(`on`で始まる属性を除く)                                                                                                            |
-| 違反にするもの(例)   | `script`・`foreignObject`・`iframe`・`object`・`embed`・`a`・`animate`・`animateTransform`・`animateMotion`・`set`・`feImage`・`handler`・`listener`、`on`で始まる属性、断片以外の参照、`url()`の外部参照、`@import`、`javascript:`、`xml-stylesheet`などの処理命令、許可外のdata URI |
+| 区分                 | 許可するもの                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 構造の要素           | `svg`・`g`・`defs`・`symbol`・`use`・`title`・`desc`・`metadata`・`switch`・`style`(中身を検査)                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 図形・文字の要素     | `path`・`rect`・`circle`・`ellipse`・`line`・`polyline`・`polygon`・`text`・`tspan`・`textPath`・`image`(JPEG・PNG・GIFのdata URIだけ)・`marker`                                                                                                                                                                                                                                                                                                                                                         |
+| 塗り・効果の要素     | `linearGradient`・`radialGradient`・`stop`・`pattern`・`clipPath`・`mask`・`filter`と`fe`で始まるフィルタの要素(`feImage`を除く)                                                                                                                                                                                                                                                                                                                                                                         |
+| 属性                 | SVG 1.1・SVG 2の表示属性と幾何の属性(`d`・`x`・`y`・`width`・`height`・`viewBox`・`fill`・`stroke`・`transform`・`opacity`・`class`・`id`など)、`xmlns`と`xmlns:*`、`xml:space`・`xml:lang`、`xlink:href`・`href`(断片だけ)、`style`(中身を検査)                                                                                                                                                                                                                                                         |
+| 編集ソフトの名前空間 | Inkscape・Sodipodi・Adobe Illustrator(`i:`・`x:`・`graph:`)・RDF・Dublin Core(`dc:`)・Creative Commons(`cc:`)・Sketch・Serif(Affinity)の要素と属性(`on`で始まる属性を除く)                                                                                                                                                                                                                                                                                                                               |
+| 違反にするもの(例)   | `script`・`foreignObject`・`iframe`・`object`・`embed`・`a`・`animate`・`animateTransform`・`animateMotion`・`set`・`feImage`・`handler`・`listener`、`on`で始まる属性、断片以外の参照、`url()`の外部参照、`@import`、`javascript:`、`xml-stylesheet`などの処理命令、許可外のdata URI、描画器が解釈しないCSS(`@media`などのat規則・`!important`・`var()`・`calc()`・単位付きの変形の関数・`inset()`・CSS Color 4の色など)、ルート以外の要素の無効な`viewBox`、言語で表示を切り替える`systemLanguage`属性 |
 
 - 許可リストは実装時に標本(Inkscape 1.x・Illustrator・Figma・Affinityの書き出し)で調整し、技術ドキュメントに一覧を載せる。
 

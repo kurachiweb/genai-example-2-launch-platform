@@ -1,6 +1,7 @@
 import { disableTypes, imageSize, types } from 'image-size';
 
 import type { ImageMediaType } from '../../../common-lib/media/media-types.ts';
+import { intrinsicSizeOfSvg, readSvgRoot } from './svg-root.ts';
 
 export interface ImageDimensions {
   readonly width: number;
@@ -55,10 +56,21 @@ const prefixViewOf = (bytes: Uint8Array): SharedViewBytes =>
 const isPositiveLength = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 
+// image-sizeのSVGの読み取りは正規表現で先頭1000文字の最初の`<svg`を拾い、コメントの中の要素や`=`の前後の空白で寸法を誤るため、ルートの開始タグを読む部品で求める
+function readSvgDimensions(bytes: Uint8Array): ImageDimensions | undefined {
+  const root = readSvgRoot(
+    new TextDecoder().decode(bytes.subarray(0, DIMENSION_PREFIX_BYTES)),
+  );
+  return root === undefined ? undefined : intrinsicSizeOfSvg(root);
+}
+
 export function readImageDimensions(
   bytes: Uint8Array,
   type: ImageMediaType,
 ): ImageDimensions | undefined {
+  if (type === 'image/svg+xml') {
+    return readSvgDimensions(bytes);
+  }
   let size: ReturnType<typeof imageSize>;
   try {
     size = imageSize(prefixViewOf(bytes));

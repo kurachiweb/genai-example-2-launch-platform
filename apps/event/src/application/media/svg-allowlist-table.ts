@@ -80,7 +80,6 @@ export const SVG_ALLOWLIST = Object.freeze({
     'href',
     'requiredFeatures',
     'requiredExtensions',
-    'systemLanguage',
     'externalResourcesRequired',
     'enable-background',
   ],
@@ -316,5 +315,5 @@ export const SVG_ALLOWLIST = Object.freeze({
       uri: 'http://www.serif.com/',
     },
   ] satisfies readonly SvgEditorNamespace[],
-  dataUriImageTypes: ['png', 'jpeg', 'gif', 'webp'],
+  dataUriImageTypes: ['png', 'jpeg', 'gif'],
 } as const);

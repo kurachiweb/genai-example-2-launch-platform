@@ -220,6 +220,9 @@ describe('readImageDimensions', () => {
     ['viewBoxだけ', 'viewBox="0 0 300 150"', 300, 150],
     ['幅とviewBox', 'width="600" viewBox="0 0 300 150"', 600, 300],
     ['高さとviewBox', 'height="300" viewBox="0 0 300 150"', 600, 300],
+    ['カンマ区切りのviewBoxだけ', 'viewBox="0,0,300,150"', 300, 150],
+    ['pcの幅と大文字の単位の高さ', 'width="12.5pc" height="100PX"', 200, 100],
+    ['文字参照の入った幅と高さ', 'width="2&#48;0" height="1&#x30;0"', 200, 100],
   ])('SVGの%sから寸法を読み取る', (_label, attributes, width, height) => {
     expect(readImageDimensions(svg(attributes), 'image/svg+xml')).toEqual({
       width,
@@ -227,11 +230,38 @@ describe('readImageDimensions', () => {
     });
   });
 
+  test.each<readonly [string, string]>([
+    [
+      '1,000文字を超えるコメントの後のルート',
+      `<!--${'x'.repeat(1200)}--><svg xmlns="http://www.w3.org/2000/svg" width="8000" height="8000"/>`,
+    ],
+    [
+      'ルートの前のコメントの中の偽のsvg要素',
+      '<!-- <svg width="10" height="10"> --><svg xmlns="http://www.w3.org/2000/svg" width="8000" height="8000"/>',
+    ],
+    [
+      '`=`の前後に空白と改行のある属性',
+      `<svg\nxmlns="http://www.w3.org/2000/svg"\n width = "8000"\n height='8000'/>`,
+    ],
+    [
+      'XML宣言と処理命令の後のルート',
+      '<?xml version="1.0"?><?foo bar?><svg xmlns="http://www.w3.org/2000/svg" width="8000" height="8000"/>',
+    ],
+  ])('SVGの%sから幅と高さを読み取る', (_label, text) => {
+    expect(readImageDimensions(utf8(text), 'image/svg+xml')).toEqual({
+      width: 8000,
+      height: 8000,
+    });
+  });
+
   test.each([
     ['幅・高さ・viewBoxのいずれも無い', ''],
+    ['単位付きの値を含むviewBox', 'viewBox="0 0 300px 150px"'],
+    ['子要素だけの幅と高さ', 'data-x="1"><svg width="200" height="100"></svg'],
     ['幅だけ', 'width="200"'],
     ['百分率の幅と高さ', 'width="100%" height="100%"'],
-    ['カンマ区切りで読み取れないviewBox', 'viewBox="0,0,300,150"'],
+    ['ブラウザが無効とする末尾のカンマのviewBox', 'viewBox="0,0,300,150,"'],
+    ['書体で長さが変わるexの幅と高さ', 'width="100ex" height="100ex"'],
     ['幅と高さが0', 'width="0" height="0"'],
   ])('SVGの%sは寸法を未設定にする', (_label, attributes) => {
     expect(

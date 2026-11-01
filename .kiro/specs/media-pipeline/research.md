@@ -368,6 +368,20 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
   - 1回目はNEEDS_FIXES(必須1件・軽微2件)だった。必須の指摘は、契約を置く`MediaFile・MediaMessages・ports`の要件の欄とコンポーネントの表の行に13.10が無く、13.10を対応付けたタスク3.5の境界と食い違ったこと(両方に13.10を加えた)。軽微の指摘(要件のIn scopeへの列挙の追加、`spec.json`の`updated_at`の更新)も直した。
   - 2回目はPASSだった。軽微の指摘2件(File Structure Planの`media-files-service.ts`の注記への列挙の追加、`system`の行の`owner_id`を「空」ではなく「NULL」と書くこと)に従って直した。タスクの承認(`approvals.tasks.approved: true`)を保った。
 
+## タスク6.6の開発者の決定による承認後の改訂(改訂2、2026-11-01)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、2026-11-01にタスク6.6の実装中に開発者が決定した。本specの生成中の仮決定(仮1〜仮3)とは別の項目で、`requirements.md`の「承認後の改訂」の表に改訂2として記録した。4回目のレビューで、申告の形式と中身の違うdata URI(`data:image/png`と申告したWebPなど)は許可リストを通ることが分かり、開発者はこれを既知の制限として進めると決めた(「実装中の開発者の決定(2026-11-01、タスク6.6): SVGの描画器の切り替えと寸法の解釈」の既知の制限)。開発者の判断を待つ論点は残っていない。
+- **Context**: 判定用画像のSVGの描画器を`@cf-wasm/resvg`(`@resvg/resvg-wasm` 2.6.2)へ替えたところ、resvgは`<image>`のWebPのdata URIを描かず(`imagesToResolve()`にも挙がらない)、ブラウザの`<img>`にだけ見える画像で判定をすり抜けられることが、差分の比較で分かった。
+- **改訂の内容**: SVGに埋め込まれた画像として許可するdata URIの形式からWebPを外し、JPEG・PNG・GIFに限る(7.5)。`svg-allowlist-table.ts`の`dataUriImageTypes`から`webp`を除き、`image/webp`のdata URIを`disallowed-data-uri`の違反にする。
+- **Alternatives Considered**:
+  1. WebPを許可の形式から外す(採用。許可リストの値を1つ減らすだけで済む)
+  2. WebPのdata URIを判定の前にPNGへ変換してから描画器へ渡す(文書の属性値の書き換えになり、文字参照・空白を含むdata URIの扱いと、埋め込まれた大きな画像の復号の負荷を抱える)
+  3. 要件を変えず既知の制限にする(ブラウザにだけ見える画像を判定できないまま残る)
+- **Rationale**: 編集ソフトの書き出しの標本にWebPの埋め込みは無く、利用者への影響が小さい。
+- **要件**: 既存の要件7(SVGの安全性の検査)の受け入れ基準7.5を「JPEG・PNG・GIF」に改めた。
+- **変えた箇所**: 要件の「承認後の改訂」の表・7.5。設計のSvgAllowlistの項の参照の記述・「SVGの許可リスト(初版)」の表の`image`。`svg-allowlist-table.ts`・`svg-allowlist.unit.test.ts`・`svg-allowlist-document.unit.test.ts`・`svg-allowlist-rendering.unit.test.ts`。
+- **後続への影響**: 9.1の技術ドキュメント(`security/005`)の許可するdata URIの形式の一覧を、JPEG・PNG・GIFで書く。
+
 ## 上流(api-gateway)の改訂3の反映(2026-10-27)
 
 - api-gatewayの実装後の改訂3で、backend-platformの`AppErrorKind`に`payload_too_large`(413)と`unsupported_media_type`(415)が加わった。design.mdの「アップロード」の説明にあった「411・413・415は`AppError`の種類に無い」は事実と合わなくなったため、413・415は`AppError`で表せ、411だけが種類に無いと改めた。受付の経路が共通のエラー形式の組み立て部品で応答を作る設計は変えていない(413・415も同じ部品で作ってよい)。要件・タスクは変えていない。
@@ -526,3 +540,49 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
   - 最上位の要素の名前は検査しない。最上位が`svg`かは`XMLParser`の結果で確かめる。
   - 入力は文字列だけを受ける。先頭のBOMは読み飛ばす。要素が1つも無ければ`Start tag expected.`で失敗する。
 - **反映した箇所**: design.mdのTechnology Stack・Modified Files・コンポーネントの依存の表・SVGの検査の記述、本書のResearch Log、`docs/onboardings/tech-stack.md`、`docs/GUIDES/tech/coding/002-dependency-versions.md`。
+
+## 実装中の開発者の決定(2026-11-01、タスク6.6): SVGの描画器の切り替えと寸法の解釈
+
+- **論点**: `wasm-image-optimization`の描画器(Skia)は、`<use href>`(SVG2)・`<symbol>`・グラデーションの`href`・`<style>`要素の規則・`<switch>`・子の`visibility="visible"`・CSSの`transform`・ルートの`transform`などをブラウザの`<img>`と違う形で描く。ブラウザに見える内容が判定用画像に写らず、ルートの幅・高さ・`viewBox`を書き換えても判定のすり抜けを塞げない(デバッグで、描画器の出力とChromiumの`<img>`の描画を画素で比べて確かめた)。
+- **開発者の決定(2026-11-01)**:
+  1. SVGの描画器を`@cf-wasm/resvg` 0.4.0(依存の`@resvg/resvg-wasm` 2.6.2)へ替える。ラスター画像(JPEG・PNG・GIF・WebP)は`wasm-image-optimization`のまま。resvg自身が解釈した寸法・`viewBox`で描き、自前の寸法の書き換えはresvgとブラウザの解釈が分かれる範囲に減らす。余白は従来どおり`padRgba`・`encodePng`。
+  2. 寸法・`viewBox`は可能な限りブラウザと同じ文法で解釈する(閉じる側に倒しすぎない)。区切りは空白・カンマ、数値は`[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?`、属性値はXML 1.0の3.3.3どおり文字参照・定義済み実体を戻す。区切りの無い連結(`-0-0 100 100`)などブラウザで有効な値も受ける。解釈できない値は要件3.9のとおり寸法を未設定にする(拒否しない)。
+  3. 単位はCSSの換算(`px`・`in`・`cm`・`mm`・`q`・`pt`・`pc`=16px)とし、`image-size`の表を写さない。`em`・`ex`などの扱いは差分で確かめて決める。
+  4. 読み込み以外の描画の例外は既知の制限のまま(再試行→デッドレター)。
+- **配布物で確かめたこと**(`node_modules`の型定義・実装と、Bun・workerdでの実行):
+  - `@cf-wasm/resvg/workerd`は読み込み時に同梱の`.wasm`を`initResvg`へ渡すため、呼び出し側でwasmを読み込む処理は要らない。eventのWorkers統合テストは読み込みの規則を加えずに読める。`Resvg.async(svg, options)`で初期化を待ってから作る(`new Resvg`は初期化前に例外)。gzip後の大きさは約0.95MB(`wasm-image-optimization`は約2.3MB)。
+  - 入力は文字列または`Uint8Array`。大きさの上限の設定は無く、文書の節点の数の上限(`<use>`の展開を含む)を超えると`SVG data parsing failed cause nodes limit reached`で失敗する。10万個の要素はworkerdで描ける(Bunで30万個が約0.5秒)。`fitTo`(`width`・`height`・`zoom`)で描く画素数を決め、宣言の寸法が20000×20000でも確保するのは`fitTo`の大きさだけ。`width`・`height`の値は`fitTo`を指定しても元の寸法を返す。描画の結果の`pixels`は透明度を乗算済み。
+  - 例外は文言だけで区別できる`Error`: `SVG data parsing failed cause …`(XMLの構文・節点の数の上限)、`SVG has an invalid size`、`provided data has not an UTF-8 encoding`、`provided data has a malformed GZip content`。wasmの実行時の失敗は別の例外になる。インスタンスと描画の結果は`free()`で解放する。
+  - wasm版は書体を持たず(`loadSystemFonts`は効かない)、`fontBuffers`で書体のバイト列を渡さない限り`<text>`は描かれない。`font.defaultFontSize`の既定は12pxで、`em`・`ex`はこの大きさ(`ex`はその半分)で解釈される。
+  - `<image>`のデータURIはPNG・JPEG・GIFを描き、WebPは描かない(`imagesToResolve()`にも挙がらない)。
+- **差分で確かめたこと**(resvgの経路とChromiumの`<img>`の描画を、右下の4分の1の緑の画素の割合で比べた。`cases.mjs`〜`cases4.mjs`と追加の標本、計181件):
+  - `em`: Chromiumはルートの文字の大きさ(既定16px、ルートの`font-size`で変わる)で、resvgも`defaultFontSize`を16pxにすると同じ値になる。寸法は16pxで換算し、resvgには16pxを渡す。`rem`はSVGを画像として表示する場合ルート自身の文字の大きさが基準でresvgは解釈しないため、描画では`em`に書き換える。
+  - `ex`・`ch`: Chromiumは書体により`ex`≒0.459em(7.34px)・`ch`=0.5em(8px)、resvgは`ex`=0.5emで`ch`を解釈しない。書体で変わるため寸法は未設定にする。
+  - resvgは大文字の単位(`PX`)・`q`・`rem`・百分率のルートの幅を正しく解釈せず、末尾の`.`(`100.`)・余分なカンマ・5つの数値の`viewBox`を有効とする(ブラウザは無効)。前者は縦横比、後者は描く範囲がブラウザより狭くなり、判定をすり抜けられる。ルートでは`readSvgRoot`のブラウザの解釈で書き直して塞いだ。
+  - ブラウザの`<img>`はルートの`display:none`(属性・style・スタイルシート)を無視し、ルートの`transform`は中心を原点とするCSSの変形として適用する。resvgはどちらも別の形で適用するため、取り除いてブラウザより多くの内容を描く側にそろえた。
+  - 幅・高さ・`viewBox`の無いSVGは、ブラウザは表示する箱(既定300×150)の範囲を、resvgは原点から内容の右下の端までを描く。resvgの方が広いため隔離しない(以前の「描く範囲を決められないSVGは隔離」をやめた)。
+- **resvgの経路で残った食い違い**(判定用画像に見えず、ブラウザで見える書き方):
+  - `<text>`(書体が無いため描かれない)。
+  - `<style>`の`@media`(`prefers-color-scheme: dark`・`screen`)・`@supports`・`@layer`の中の規則(resvgは読み飛ばし、ダーク表示の閲覧者にだけ別の内容を見せられる)、`!important`、`var()`・`calc()`・`env()`。
+  - CSSの`transform`の、単位付きの値(`translate(10000px,0)`・`rotate(90deg)`)・`translateX()`・単位の無い`rotate(180)`・`-webkit-transform`。resvgは`matrix()`と単位の無い値だけを解釈し、Chromiumは単位の無い`rotate()`などを無効とするため、どちらの書き方も食い違う(`matrix()`・`scale()`だけが一致する)。
+  - CSSの`clip-path`の図形関数(`inset()`など)、`mask`・`mask-image`・`-webkit-mask-image`のグラデーション、CSSの幾何のプロパティ(`width:0`など)、`display:contents`。
+  - CSS Color 4の色(`rgb(0 0 255 / 0)`・`hsl(… / α)`。resvgは無効とみなし黒で塗る)、`oklch()`・`color-mix()`・`light-dark()`。
+  - 入れ子の`<svg>`・`<symbol>`などの、ブラウザが無効とする`viewBox`(`100.`など。ルート以外は書き直さない)。
+  - `<image>`のWebPのデータURI(要件7.5で許可していた)。
+  - `<switch>`の`systemLanguage`はresvgが英語(`en`)で選び、閲覧者のブラウザの言語と食い違う(日本語の閲覧者にだけ別の子を見せられる)。
+  - 表示する箱の縦横比が画像の縦横比と違うページ(`object-fit`の無い固定の大きさの`<img>`)では、`viewBox`の外の帯がブラウザにだけ見える。画面側で縦横比を保って表示することを前提にする。
+- **開発者の決定(2026-11-01、残った食い違いへの対処)**: 「書体を同梱して他は違反」。
+  - `<text>`は、ラテン文字だけの小さな再配布可能な書体を同梱してresvgへ渡して描く。開発者の決定(2026-11-01)で、書体はLiberation Sans 2.1.5のRegular(SIL Open Font License 1.1)とした。GitHubの`liberationfonts/liberation-fonts`の2.1.5のリリースの`liberation-fonts-ttf-2.1.5.tar.gz`(SHA-256 `7191c669bf38899f73a2094ed00f7b800553364f90e2637010a69c0e268f25d0`)の`LiberationSans-Regular.ttf`(410,712バイト、SHA-256 `76d04c18ea243f426b7de1f3ad208e927008f961dc5945e5aad352d0dfde8ee8`)を、同じアーカイブの`LICENSE`と一緒に`apps/event/src/infrastructure/media/fonts/`へ置いた(開発コンテナのDebianのパッケージの同じ名前のファイルは別のビルドでハッシュが違うため使わない。リリースはハッシュを公開していないため、ハッシュは取得したファイルから求めた値)。eventのWrangler設定の`rules`で`.ttf`をDataのモジュールとして読み、`fontBuffers`で渡す(`wrangler types`が`*.ttf`の型を生成する。Workers統合テストもWrangler設定の`rules`で読める)。書体を1つだけ渡すと、`font-family`の指定(Arial・serif・存在しない名前)に関わらずこの書体で描かれる。書体に無い文字(日本語など)は代替の四角形で描かれ、文字の形は判定されない既知の制限とする。gzip後の大きさは約0.2MBで、Workerの大きさに加わる。
+  - 他は6.3の許可リスト(`inspectSvg`)の違反にする。違反にするのは差分の比較で分かった既知の差分で、網羅は保証しない(下の既知の制限)。CSSは`svg-unsupported-css.ts`の`hasUnsupportedCss`で`unsupported-css`とし、`@import`以外のat規則・`!important`・描画器がブラウザと同じに解釈する関数(`url`・カンマ区切りの`rgb`・`rgba`・`hsl`・`hsla`・`matrix`・`scale`・フィルターの関数)以外の関数・空白区切りや`/`の透明度の色・幾何のプロパティ・`-webkit-`の接頭辞のプロパティ・`display:contents`を、`style`要素と`style`属性で検出する(表示属性の値は関数と色だけ)。関数を許可の一覧で絞るため、関数の擬似クラス(`:not()`など)と、文字列の中の関数のような書き方も保守側に違反になる。WebPのデータURIは許可の形式から外した(要件7.5もrequirements.mdの改訂2として改めた)。
+  - 実装者の判断(重さを見て決めた): 入れ子の要素のブラウザが無効とする`viewBox`は、内容の全体を隠せる手軽な書き方で、編集ソフトの書き出しには現れないため`invalid-view-box`の違反にする(ルートは描画の前に書き直すため対象外)。`systemLanguage`は、閲覧者の言語に合わせて日本語の閲覧者だけに別の内容を見せられ、`languages`の設定では全ての閲覧者に合わせられないため、許可リストから外して`disallowed-attribute`の違反にする。
+  - Workerの大きさ: wasmのgzip後の合計は約3.2MB(resvg約0.95MB・`wasm-image-optimization`約2.3MB)で、Workers Free(3MB)を超え、Workers Paid(10MB)を前提とする。7.6で描画の部品を登録した後に、開発者が`wrangler deploy --dry-run`で確かめる(書体を同梱する場合はその大きさも加わる)。
+- **既知の制限(4回目のレビュー、開発者の決定(2026-11-01))**: 独立のレビュアーの新しい標本73件のうち28件が、許可リストを通り、判定用画像に写らずブラウザで見えた。開発者は「既知の制限として進める」と決め、許可リストはこれ以上強めない。
+  - resvgが適用しブラウザが適用しないもの: `media="print"`・`media="not all"`の`style`要素、存在しない要素を指す`filter="url(#nope)"`、`clipPath`以外の要素を指す`clip-path`、`font:`の一括指定。
+  - resvgが対応しないCSSのセレクター: `~`・`:last-child`・`:root`・`:empty`・`:only-of-type`、無効なセレクターを含むセレクターの一覧、CSSのエスケープ、属性セレクターの`i`、CDATAの中のCDO・CDC(`<!--`・`-->`)。
+  - 値の大文字小文字の扱い(`display="None"`など)、`href`と`xlink:href`を併用した場合の優先順位。
+  - data URIの申告の形式と中身の不一致(`data:image/png`と申告したWebPなど)。許可リストは申告の形式だけを見るため、要件7.5の改訂2(WebPを外す)は実質的に効かない。
+  - resvgが対応しないプロパティ: `transform-origin`・`transform-box`・`vector-effect`。
+  - 影響: SVGは`<img>`で表示し、配信のCSPでスクリプトも動かないため、影響は不適切な画像の判定のすり抜けに限る(スクリプトの実行や閲覧者の情報の外部送信には及ばない)。
+  - 根本的な対策の候補: 判定に使った形へ正規化したSVGを配信する(判定とブラウザの表示を同じ文書にする)、要素・属性・CSSのプロパティと値を厳密な許可リストで限る、判定用画像をブラウザで描く。
+- **採らなかった案**: 寸法の書き換えを続けてSkiaで描く案(描画器そのものの解釈の違いを塞げない)。CSSを自前で書き換えて単位付きの`transform`などをresvgに読ませる案(文字参照・CDATA・コメントを含むCSSの書き換えになり、範囲が広い)。
+- **反映した箇所**: design.mdのTechnology Stack・File Structure Plan・Modified Files・依存の表・ImageDimensionsの寸法・`WasmModerationImageRenderer`・SvgAllowlistの項・「SVGの許可リスト(初版)」の表、`docs/onboardings/tech-stack.md`、`docs/GUIDES/tech/coding/002-dependency-versions.md`。

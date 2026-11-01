@@ -562,12 +562,13 @@ describe('inspectSvg の参照', () => {
     ).toEqual([{ kind: 'external-reference', target: 'style' }]);
   });
 
+  // 文字列の中の関数のような書き方も描画器が解釈しないCSSとして保守側に記録するが、外部の参照にはしない
   test('CDATAの中の文字参照はブラウザと同じく戻さずに検査する', () => {
     expect(
       violationsOf(
         svg('<style><![CDATA[ text{font-family:"&#117;rl(x)"} ]]></style>'),
       ),
-    ).toEqual([]);
+    ).toEqual([{ kind: 'unsupported-css', target: 'style' }]);
   });
 
   test('style要素とstyle属性の文書内の断片のurl()は許可される', () => {
@@ -582,7 +583,7 @@ describe('inspectSvg の参照', () => {
 });
 
 describe('inspectSvg のdata URI', () => {
-  test.each(['png', 'jpeg', 'gif', 'webp', 'PNG'])(
+  test.each(['png', 'jpeg', 'gif', 'PNG'])(
     'image要素のimage/%sのbase64のdata URIは許可される',
     (type) => {
       expect(

@@ -1,7 +1,9 @@
 import { XMLParser } from 'fast-xml-parser';
 
+import { parseSvgViewBox } from '../../../lib/core/media/svg-root.ts';
 import { SVG_MAX_NESTED_TAGS } from '../../../lib/core/media/svg-syntax.ts';
 import { SVG_ALLOWLIST } from './svg-allowlist-table.ts';
+import { type CssContext, hasUnsupportedCss } from './svg-unsupported-css.ts';
 
 export type SvgViolationKind =
   | 'disallowed-element'
@@ -9,6 +11,8 @@ export type SvgViolationKind =
   | 'event-attribute'
   | 'external-reference'
   | 'disallowed-data-uri'
+  | 'unsupported-css'
+  | 'invalid-view-box'
   | 'processing-instruction'
   | 'declaration'
   | 'unparseable';
@@ -46,6 +50,10 @@ const ALLOWED_ATTRIBUTES: ReadonlySet<string> = new Set([
 
 const localNamesOf = (qualifiedNames: readonly string[]): ReadonlySet<string> =>
   new Set(qualifiedNames.map((name) => name.slice(name.indexOf(':') + 1)));
+
+const PRESENTATION_ATTRIBUTES: ReadonlySet<string> = new Set(
+  SVG_ALLOWLIST.presentationAttributes,
+);
 
 const ALLOWED_XML_ATTRIBUTES = localNamesOf(SVG_ALLOWLIST.xmlAttributes);
 const ALLOWED_XLINK_ATTRIBUTES = localNamesOf(SVG_ALLOWLIST.xlinkAttributes);
@@ -199,7 +207,10 @@ const urlArgumentOf = (css: string, start: number): string =>
     .replace(/^[\s'"]+/u, '')
     .replace(URL_STRIPPED_CHARACTERS, '');
 
-const inspectCss = (value: string): readonly SvgViolationKind[] => {
+const inspectCss = (
+  value: string,
+  context: CssContext | undefined,
+): readonly SvgViolationKind[] => {
   const css = normalizeCss(value);
   const compact = css.replace(URL_STRIPPED_CHARACTERS, '');
   const kinds: SvgViolationKind[] = CSS_EXTERNAL_PATTERNS.some((pattern) =>
@@ -215,6 +226,14 @@ const inspectCss = (value: string): readonly SvgViolationKind[] => {
     if (kind !== undefined) {
       kinds.push(kind);
     }
+  }
+  // 外部の参照を含む値はその違反だけを記録する
+  if (
+    kinds.length === 0 &&
+    context !== undefined &&
+    hasUnsupportedCss(css, context)
+  ) {
+    kinds.push('unsupported-css');
   }
   return kinds;
 };
@@ -319,14 +338,45 @@ const isReferenceAttribute = (name: ResolvedName): boolean =>
     name.namespace === XLINK_NAMESPACE ||
     name.namespace === SVG_NAMESPACE);
 
+interface AttributeContext {
+  readonly scope: NamespaceScope;
+  readonly realm: ElementRealm;
+  readonly isImage: boolean;
+  readonly element: string;
+  readonly isRoot: boolean;
+}
+
+const isSvgAttribute = (name: ResolvedName): boolean =>
+  !name.prefixed || name.namespace === SVG_NAMESPACE;
+
+const cssContextOf = (name: ResolvedName): CssContext | undefined => {
+  if (!isSvgAttribute(name)) {
+    return undefined;
+  }
+  if (name.localName === 'style') {
+    return 'declarations';
+  }
+  return PRESENTATION_ATTRIBUTES.has(name.localName) ? 'value' : undefined;
+};
+
+// ルートのviewBoxは描画の前にブラウザの解釈で書き直すため、入れ子の要素のviewBoxだけを検査する
+const isNestedViewBox = (
+  name: ResolvedName,
+  context: AttributeContext,
+): boolean =>
+  context.realm === 'svg' &&
+  !context.isRoot &&
+  isSvgAttribute(name) &&
+  name.localName === 'viewBox';
+
+// 描画器はブラウザが無効とする値(末尾の`.`・余分なカンマ・5つの数値など)も表示領域として使い、ブラウザより狭い範囲を描くため
+const isRenderableViewBox = (value: string): boolean =>
+  parseSvgViewBox(decodeXmlReferences(value)).kind === 'valid';
+
 const inspectAttribute = (
   qualifiedName: string,
   value: string,
-  context: {
-    readonly scope: NamespaceScope;
-    readonly realm: ElementRealm;
-    readonly isImage: boolean;
-  },
+  context: AttributeContext,
   report: Report,
 ): void => {
   const name = resolveName(qualifiedName, context.scope, undefined);
@@ -347,7 +397,13 @@ const inspectAttribute = (
     }
     return;
   }
-  for (const kind of inspectCss(decodeXmlReferences(value))) {
+  if (isNestedViewBox(name, context) && !isRenderableViewBox(value)) {
+    report('invalid-view-box', context.element);
+  }
+  for (const kind of inspectCss(
+    decodeXmlReferences(value),
+    cssContextOf(name),
+  )) {
     report(kind, qualifiedName);
   }
 };
@@ -384,6 +440,7 @@ const inspectElement = (
   node: Readonly<Record<string, unknown>>,
   parentScope: NamespaceScope,
   report: Report,
+  isRoot: boolean,
 ): void => {
   const attributes = isRecord(node[ATTRIBUTES_KEY]) ? node[ATTRIBUTES_KEY] : {};
   const scope = scopeOf(attributes, parentScope);
@@ -399,6 +456,8 @@ const inspectElement = (
     scope,
     realm,
     isImage: realm === 'svg' && name.localName === 'image',
+    element: qualifiedName,
+    isRoot,
   };
   for (const [attribute, value] of Object.entries(attributes)) {
     if (!isNamespaceDeclaration(attribute)) {
@@ -407,17 +466,18 @@ const inspectElement = (
   }
   const children = childrenOf(node[qualifiedName]);
   if (realm === 'svg' && name.localName === 'style') {
-    for (const kind of inspectCss(textOf(children))) {
+    for (const kind of inspectCss(textOf(children), 'stylesheet')) {
       report(kind, qualifiedName);
     }
   }
-  inspectNodes(children, scope, report);
+  inspectNodes(children, scope, report, false);
 };
 
 function inspectNodes(
   nodes: readonly unknown[],
   scope: NamespaceScope,
   report: Report,
+  isTopLevel: boolean,
 ): void {
   for (const node of nodes.filter(isRecord)) {
     for (const key of Object.keys(node)) {
@@ -431,7 +491,7 @@ function inspectNodes(
         }
         continue;
       }
-      inspectElement(key, node, scope, report);
+      inspectElement(key, node, scope, report, isTopLevel);
     }
   }
 }
@@ -479,7 +539,7 @@ export function inspectSvg(text: string): SvgInspection {
   }
   return resultOf(
     collectViolations((report) => {
-      inspectNodes(nodes, ROOT_SCOPE, report);
+      inspectNodes(nodes, ROOT_SCOPE, report, true);
     }),
   );
 }

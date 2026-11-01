@@ -144,9 +144,10 @@ describe('SVGの許可リストと設計の表の一致', () => {
     }
   });
 
-  test('許可するdata URIの画像の形式がJPEG・PNG・GIF・WebPである', () => {
+  // 判定用画像の描画器がWebPを描かないため、要件7.5のWebPを開発者の決定(2026-11-01)で外した
+  test('許可するdata URIの画像の形式がJPEG・PNG・GIFである', () => {
     expect(sorted(SVG_ALLOWLIST.dataUriImageTypes)).toEqual(
-      sorted(['gif', 'jpeg', 'png', 'webp']),
+      sorted(['gif', 'jpeg', 'png']),
     );
   });
 });

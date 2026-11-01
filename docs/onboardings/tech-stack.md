@@ -67,8 +67,10 @@
 
 ### 画像処理
 
-- image-size(アップロードされた画像の先頭部分からの幅・高さの読み取り、APIサーバーとイベントサーバーで使用)
-- wasm-image-optimization(判定用の画像のデコード・PNGへの変換・縮小・RGBAの画素の取り出し、`wasm-image-optimization/workerd`の入口をイベントサーバーだけで使用)
+- image-size(アップロードされたラスター画像(JPEG・PNG・GIF・WebP)の先頭部分からの幅・高さの読み取り、APIサーバーとイベントサーバーで使用。SVGの寸法はルートの開始タグをブラウザと同じ文法で読む自前の部品で求める)
+- wasm-image-optimization(判定用の画像のうちラスター画像(JPEG・PNG・GIF・WebP)のデコード・PNGへの変換・縮小・RGBAの画素の取り出し、`wasm-image-optimization/workerd`の入口をイベントサーバーだけで使用)
+- @cf-wasm/resvg(判定用の画像のうちSVGの描画。Rust製のresvgのwasm版`@resvg/resvg-wasm`をWorkers向けに包んだもので、`@cf-wasm/resvg/workerd`の入口をイベントサーバーだけで使用。書体は持たず、下のLiberation Sansを渡して文字を描く)
+- Liberation Sans 2.1.5 Regular(判定用の画像のSVGの文字を描く書体。SIL Open Font License 1.1。[liberationfonts/liberation-fonts](https://github.com/liberationfonts/liberation-fonts)の2.1.5のリリースのTTFをライセンスの文と一緒にイベントサーバーへ同梱。ラテン文字だけを持ち、書体に無い文字(日本語など)は代替の四角形で描かれ、文字の形は判定されない)
 - fast-xml-validator(SVGの構文の検査(`SyntaxValidator`)、APIサーバーとイベントサーバーで使用)
 - fast-xml-parser(実体参照を展開しない解析(`XMLParser`の`processEntities: false`)による最上位の要素と要素・属性の許可リストの検査、APIサーバーとイベントサーバーで使用)
 
