@@ -325,11 +325,12 @@ attachment; filename="<ASCIIの代替>"; filename*=UTF-8''<百分率符号化>
 
 | ヘッダー                  | 値                                                                                                              |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `Content-Type`            | `image/svg+xml`                                                                                                 |
+| `Content-Type`            | `image/svg+xml; charset=utf-8`                                                                                  |
 | `Content-Security-Policy` | `sandbox; default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'`(`SVG_CONTENT_SECURITY_POLICY`) |
 | `Cache-Control`           | `public, max-age=1209600, immutable`                                                                            |
 
 - CSPの`sandbox`と`default-src 'none'`で、SVGを直接開いた場合もスクリプトの実行と外部の読み込みを止める。`style-src 'unsafe-inline'`は、SVGの`style`要素・属性による表示を保つためである。
+- `charset=utf-8`は、XML宣言の`encoding`より優先される。受付の構文の検査と判定は本文をUTF-8として読む(受付はUTF-8として正しくない本文を拒否する)ため、宣言で別の符号化を指定した文書もブラウザに同じ解釈をさせ、判定と表示の食い違いを防ぐ。
 - セキュリティヘッダーの付与は、応答が自らCSPを持てば既定のCSPで置き換えない(「[CSPの置き換え方](../backend/006-internal-gateway.md#cspの置き換え方)」)。SVGのCSPはそのまま届く。`X-Content-Type-Options: nosniff`などの他のセキュリティヘッダーは付く。
 
 ### 非公開ファイル

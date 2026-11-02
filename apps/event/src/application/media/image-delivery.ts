@@ -47,8 +47,11 @@ const TRANSFORM_FORMATS: Readonly<
   png: 'image/png',
 });
 
+// 受付と判定は本文をUTF-8として読むため、XML宣言のencodingより優先されるcharsetでブラウザにも同じ解釈をさせる
+const SVG_CONTENT_TYPE = `${SVG_MEDIA_TYPE}; charset=utf-8`;
+
 const SVG_HEADERS: Readonly<Record<string, string>> = Object.freeze({
-  'Content-Type': SVG_MEDIA_TYPE,
+  'Content-Type': SVG_CONTENT_TYPE,
   'Content-Security-Policy': SVG_CONTENT_SECURITY_POLICY,
   'Cache-Control': IMAGE_CACHE_CONTROL,
 });

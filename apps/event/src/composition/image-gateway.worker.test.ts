@@ -108,7 +108,9 @@ describe('イベントサーバーの画像配信の関門', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('Content-Type')).toBe('image/svg+xml');
+    expect(response.headers.get('Content-Type')).toBe(
+      'image/svg+xml; charset=utf-8',
+    );
     expect(response.headers.get('Content-Security-Policy')).toBe(
       SVG_CONTENT_SECURITY_POLICY,
     );
@@ -128,7 +130,9 @@ describe('イベントサーバーの画像配信の関門', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('Content-Type')).toBe('image/svg+xml');
+    expect(response.headers.get('Content-Type')).toBe(
+      'image/svg+xml; charset=utf-8',
+    );
     expect(await response.text()).toBe('');
   });
 

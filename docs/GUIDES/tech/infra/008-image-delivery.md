@@ -87,7 +87,7 @@ sequenceDiagram
 
 `deliverImage`は、原本の`Content-Type`と拡張子で次のように応答する。
 
-- SVG原本の`svg`は、変換せずに原本を返す。応答のヘッダーは「[配信のヘッダー](../security/005-file-upload-security.md#配信のヘッダー)」のSVGのCSPと`Content-Type: image/svg+xml`である。
+- SVG原本の`svg`は、変換せずに原本を返す。応答のヘッダーは「[配信のヘッダー](../security/005-file-upload-security.md#配信のヘッダー)」のSVGのCSPと`Content-Type: image/svg+xml; charset=utf-8`である。
 - ラスター原本は、`ImagesBindingTransformer`が`<画像変換のバインディング>`で次のように変換する。
 
 ```typescript

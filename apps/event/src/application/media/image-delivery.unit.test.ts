@@ -181,7 +181,7 @@ describe('deliverImage: 画像のURLの解析と原本の有無', () => {
 
 describe('deliverImage: SVG原本', () => {
   test.each(VARIANT_NAMES)(
-    '%sのsvgは原本をそのまま形式とCSPと長期のキャッシュで返す',
+    '%sのsvgは原本をそのまま、UTF-8のcharset付きの形式とCSPと長期のキャッシュで返す',
     async (variant) => {
       const transformer = fakeTransformer();
 
@@ -191,7 +191,9 @@ describe('deliverImage: SVG原本', () => {
       );
 
       expect(response.status).toBe(200);
-      expect(response.headers.get('Content-Type')).toBe('image/svg+xml');
+      expect(response.headers.get('Content-Type')).toBe(
+        'image/svg+xml; charset=utf-8',
+      );
       expect(response.headers.get('Content-Security-Policy')).toBe(
         SVG_CONTENT_SECURITY_POLICY,
       );
@@ -220,7 +222,9 @@ describe('deliverImage: SVG原本', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('Content-Type')).toBe('image/svg+xml');
+    expect(response.headers.get('Content-Type')).toBe(
+      'image/svg+xml; charset=utf-8',
+    );
   });
 
   test.each(['avif', 'webp', 'jpg', 'png'])(
