@@ -45,7 +45,7 @@
   - _Boundary: UserAgentRelay_
   - _Requirements: 8.4, 8.9_
 
-- [ ] 2.3 (P) api-gatewayの契約に、application層が受け取るセッションの読み取りの型`SessionView`を加える
+- [x] 2.3 (P) api-gatewayの契約に、application層が受け取るセッションの読み取りの型`SessionView`を加える
   - 先に、APIサーバーの層の規則の単体テストに、application層から`presentation/gateway/session-access.ts`を型だけで読み込む例が違反として報告されること、`application/session/session-view.ts`の読み込みは報告されないことを加える
   - `apps/api/src/application/session/session-view.ts`に、主体を読む`principal()`だけを持つ`SessionView`を定義し、`presentation/gateway/session-access.ts`の`SessionAccess`がそれを拡張する形に改める。`SessionAccess`のメンバーと`createSessionAccess`の振る舞いは変えない。セッションのIDは主体の`sessionId`で読むため、別のメンバーは設けない
   - roadmapの順で先に実装されるmedia-pipelineが既に`SessionView`を置いていれば、型の定義は作り直さず、型名・置き場所・形がこの定義と一致することを確かめ、食い違いがあれば開発者へ報告する。その場合も、`SessionAccess`を`SessionView`の拡張に改める作業と層の規則の単体テストは本タスクで行う(2026-11-02の時点で、media-pipelineが設計どおりの形で作成済み。`SessionAccess`には`extends`が無い)

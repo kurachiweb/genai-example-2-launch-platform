@@ -12,13 +12,13 @@ import {
   type SessionSubjectKind,
   type SessionVerifier,
 } from '../../application/session/session-verifier.ts';
+import type { SessionView } from '../../application/session/session-view.ts';
 import {
   type CallerKind,
   SESSION_RESPONSE_HEADERS,
 } from './gateway-headers.ts';
 
-export interface SessionAccess {
-  principal(): Promise<Principal>;
+export interface SessionAccess extends SessionView {
   requireAuthenticated(): Promise<AuthenticatedPrincipal>;
   issue(session: SessionIssue): void;
   clear(): void;
