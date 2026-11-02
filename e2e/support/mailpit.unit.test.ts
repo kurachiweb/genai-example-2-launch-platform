@@ -4,6 +4,7 @@ import {
   extractLinks,
   resolveMailpitOrigin,
   waitForEmailLink,
+  waitForEmailWithSubject,
   waitForLatestEmail,
 } from './mailpit.ts';
 
@@ -326,6 +327,59 @@ describe('waitForEmailLink', () => {
 
     expect(error.message).toContain(
       `${RECIPIENT}へ/auth/verify-emailのリンクを含むメールが100ミリ秒以内に届きませんでした`,
+    );
+  });
+});
+
+describe('waitForEmailWithSubject', () => {
+  test('件名が一致する最新のメールを、後に届いた別の件名のメールより優先して返す', async () => {
+    const mailpit = startFakeMailpit([
+      verificationMessage({ id: 'completed', subject: '完了しました' }),
+      verificationMessage({
+        id: 'later',
+        created: '2026-11-02T10:00:01.000Z',
+      }),
+    ]);
+
+    const message = await waitForEmailWithSubject(
+      { to: RECIPIENT, subject: '完了しました' },
+      { origin: mailpit.origin, intervalMs: 10, timeoutMs: 2_000 },
+    );
+
+    expect(message.id).toBe('completed');
+  });
+
+  test('件名が一致するメールが届くまで待つ', async () => {
+    const mailpit = startFakeMailpit([verificationMessage()]);
+
+    const waiting = waitForEmailWithSubject(
+      { to: RECIPIENT, subject: '完了しました' },
+      { origin: mailpit.origin, intervalMs: 10, timeoutMs: 2_000 },
+    );
+    await Bun.sleep(50);
+    mailpit.deliver(
+      verificationMessage({
+        id: 'completed',
+        subject: '完了しました',
+        created: '2026-11-02T10:00:01.000Z',
+      }),
+    );
+
+    expect((await waiting).id).toBe('completed');
+  });
+
+  test('期限までに届かなければ、宛先と件名を示して失敗する', async () => {
+    const mailpit = startFakeMailpit([verificationMessage()]);
+
+    const error = await rejectionOf(
+      waitForEmailWithSubject(
+        { to: RECIPIENT, subject: '完了しました' },
+        { origin: mailpit.origin, intervalMs: 10, timeoutMs: 100 },
+      ),
+    );
+
+    expect(error.message).toContain(
+      `${RECIPIENT}へ件名「完了しました」のメールが100ミリ秒以内に届きませんでした`,
     );
   });
 });

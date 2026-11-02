@@ -15,7 +15,18 @@ import {
   VERIFY_EMAIL_ACTION_LABEL,
   VERIFY_EMAIL_BANNER_MESSAGE,
 } from '../../../apps/client/src/components/auth/account-messages.ts';
-import { userMenuLabel } from '../../../apps/client/src/components/layout/site-links.ts';
+import {
+  LOGOUT_LABEL,
+  SETTINGS_LINK,
+  userMenuLabel,
+} from '../../../apps/client/src/components/layout/site-links.ts';
+import {
+  ACCOUNT_SETTINGS_PAGE_TITLE,
+  CURRENT_PASSWORD_LABEL,
+  SECURITY_SETTINGS_PAGE_TITLE,
+  SETTINGS_NAVIGATION_LABEL,
+} from '../../../apps/client/src/components/settings/settings-messages.ts';
+import { SETTINGS_NAV_ITEMS } from '../../../apps/client/src/composition/settings-navigation.ts';
 import { waitForEmailLink } from '../../support/mailpit.ts';
 
 export interface TestAccount {
@@ -26,9 +37,24 @@ export interface TestAccount {
 
 export const VERIFY_EMAIL_PATH = '/auth/verify-email';
 
+const ACCOUNT_SETTINGS_PATH = '/settings/account';
+
+export const SECURITY_SETTINGS_PATH = '/settings/security';
+
+// 退会済みの利用者も未登録のメールアドレスと同じ文言で拒否されるため、ログインの拒否はこの1つの文言で確かめる
+export const INVALID_CREDENTIALS_MESSAGE =
+  'メールアドレスまたはパスワードが正しくありません。';
+
 const TEST_EMAIL_DOMAIN = 'test.example';
 
 const BOT_TOKEN_FIELD_SELECTOR = 'input[name="cf-turnstile-response"]';
+
+// ハイドレーションの前に押したボタンは何もしないため、操作の効果が現れるまで押し直す。効果が現れるまでの短い待ちは、ハイドレーションの後の操作が同じ描画の中で表示を変えることによる
+export const REACTION_TIMEOUT_MS = 2_000;
+export const RETRY_TIMEOUT_MS = 20_000;
+
+// 1つの流れで複数のメールの到着とログインを待つため、既定の30秒では開発サーバーの負荷で足りなくなることがある
+export const MAIL_FLOW_TIMEOUT_MS = 90_000;
 
 // 前のテストや前回の実行のデータと衝突せず、漏洩パスワードの照合にも当たらないよう、実行ごとに乱数から作る
 export function createTestAccount(): TestAccount {
@@ -109,4 +135,73 @@ export async function verifyEmailFromMail(
   await page.goto(link);
   await page.getByRole('button', { name: VERIFY_EMAIL_ACTION_LABEL }).click();
   await expect(page.getByText(EMAIL_VERIFIED_MESSAGE)).toBeVisible();
+}
+
+async function chooseUserMenuItem(
+  page: Page,
+  account: TestAccount,
+  item: Locator,
+): Promise<void> {
+  await expect(async () => {
+    if (!(await item.isVisible())) {
+      await userMenuButton(page, account).click();
+    }
+    await expect(item).toBeVisible({ timeout: REACTION_TIMEOUT_MS });
+  }).toPass({ timeout: RETRY_TIMEOUT_MS });
+  await item.click();
+}
+
+export const currentPasswordField = (form: Locator): Locator =>
+  form.getByLabel(`${CURRENT_PASSWORD_LABEL}${REQUIRED_SUFFIX}`, {
+    exact: true,
+  });
+
+export async function logoutFromUserMenu(
+  page: Page,
+  account: TestAccount,
+): Promise<void> {
+  await chooseUserMenuItem(
+    page,
+    account,
+    page.getByRole('menuitem', { name: LOGOUT_LABEL }),
+  );
+}
+
+const settingsNavLabelOf = (path: string): string => {
+  const item = SETTINGS_NAV_ITEMS.find(({ to }) => to === path);
+  if (item === undefined) {
+    throw new Error(`設定のナビゲーションに${path}の項目がありません`);
+  }
+  return item.label;
+};
+
+// 設定ページのフォームの多くはbot判定のウィジェットを持たず、ハイドレーションの完了を待つ手掛かりが無いため、ハイドレーション済みの画面からルーターの遷移で開く。ハイドレーションの前に入力した値はフォームの状態に入らず、送信ボタンが無効のまま残る
+export async function openAccountSettings(
+  page: Page,
+  account: TestAccount,
+): Promise<void> {
+  await chooseUserMenuItem(
+    page,
+    account,
+    page.getByRole('menuitem', { name: SETTINGS_LINK.label }),
+  );
+  await expect(page).toHaveURL(ACCOUNT_SETTINGS_PATH);
+  await expect(
+    page.getByRole('heading', { level: 1, name: ACCOUNT_SETTINGS_PAGE_TITLE }),
+  ).toBeVisible();
+}
+
+export async function openSecuritySettings(
+  page: Page,
+  account: TestAccount,
+): Promise<void> {
+  await openAccountSettings(page, account);
+  await page
+    .getByRole('navigation', { name: SETTINGS_NAVIGATION_LABEL })
+    .getByRole('link', { name: settingsNavLabelOf(SECURITY_SETTINGS_PATH) })
+    .click();
+  await expect(page).toHaveURL(SECURITY_SETTINGS_PATH);
+  await expect(
+    page.getByRole('heading', { level: 1, name: SECURITY_SETTINGS_PAGE_TITLE }),
+  ).toBeVisible();
 }

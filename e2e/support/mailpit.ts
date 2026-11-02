@@ -211,3 +211,21 @@ export async function waitForEmailLink(
       `${query.to}へ${query.linkPath}のリンクを含むメールが${String(timeoutMs)}ミリ秒以内に届きませんでした`,
   );
 }
+
+export interface EmailSubjectQuery extends LatestEmailQuery {
+  readonly subject: string;
+}
+
+// 同じ宛先へ別の種類のメールが前後して届いても、件名の一致で目的のメールを選ぶ
+export async function waitForEmailWithSubject(
+  query: EmailSubjectQuery,
+  options: MailpitWaitOptions = {},
+): Promise<MailpitMessage> {
+  return pollMessages(
+    query,
+    options,
+    (message) => (message.subject === query.subject ? message : undefined),
+    (timeoutMs) =>
+      `${query.to}へ件名「${query.subject}」のメールが${String(timeoutMs)}ミリ秒以内に届きませんでした`,
+  );
+}

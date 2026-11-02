@@ -4,7 +4,6 @@ import {
   LOGGED_OUT_MESSAGE,
   LOGIN_LABEL,
 } from '../../../apps/client/src/components/auth/account-messages.ts';
-import { LOGOUT_LABEL } from '../../../apps/client/src/components/layout/site-links.ts';
 import {
   CURRENT_DEVICE_LABEL,
   REVOKE_SESSION_LABEL,
@@ -15,25 +14,20 @@ import {
 } from '../../../apps/client/src/components/settings/settings-messages.ts';
 import {
   createTestAccount,
+  INVALID_CREDENTIALS_MESSAGE,
   loginAs,
   loginForm,
+  logoutFromUserMenu,
+  REACTION_TIMEOUT_MS,
   registerAccount,
+  RETRY_TIMEOUT_MS,
+  SECURITY_SETTINGS_PATH,
   submitLogin,
-  type TestAccount,
   userMenuButton,
   waitForBotToken,
 } from './account-steps.ts';
 import { assumeDistinctClientIp } from '../../support/client-ip.ts';
 import { expect, test } from './auth-test.ts';
-
-const INVALID_CREDENTIALS_MESSAGE =
-  'メールアドレスまたはパスワードが正しくありません。';
-
-const SECURITY_SETTINGS_PATH = '/settings/security';
-
-// ハイドレーションの前に押したボタンは何もしないため、操作の効果が現れるまで押し直す。効果が現れるまでの短い待ちは、ハイドレーションの後の操作が同じ描画の中で表示を変えることによる
-const REACTION_TIMEOUT_MS = 2_000;
-const RETRY_TIMEOUT_MS = 20_000;
 
 const sessionsSection = (page: Page): Locator =>
   page.getByRole('region', { name: SESSIONS_SECTION_TITLE });
@@ -50,20 +44,6 @@ const otherSessionItems = (page: Page): Locator =>
   sessionItems(page).filter({
     hasNot: page.getByText(CURRENT_DEVICE_LABEL, { exact: true }),
   });
-
-async function logoutFromUserMenu(
-  page: Page,
-  account: TestAccount,
-): Promise<void> {
-  const logoutItem = page.getByRole('menuitem', { name: LOGOUT_LABEL });
-  await expect(async () => {
-    if (!(await logoutItem.isVisible())) {
-      await userMenuButton(page, account).click();
-    }
-    await expect(logoutItem).toBeVisible({ timeout: REACTION_TIMEOUT_MS });
-  }).toPass({ timeout: RETRY_TIMEOUT_MS });
-  await logoutItem.click();
-}
 
 test.describe('ログインとログアウト', () => {
   test('ユーザーメニューからログアウトし、誤ったパスワードは文言で拒否され、正しいパスワードでログインできる', async ({
