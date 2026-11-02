@@ -10,12 +10,14 @@ export interface DialogContentProps extends ComponentProps<
   typeof DialogPrimitive.Content
 > {
   readonly showCloseButton?: boolean;
+  readonly closeButtonDisabled?: boolean;
 }
 
 export function DialogContent({
   className,
   children,
   showCloseButton = true,
+  closeButtonDisabled = false,
   ...props
 }: DialogContentProps) {
   return (
@@ -33,7 +35,8 @@ export function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            disabled={closeButtonDisabled}
+            className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
             <span className="sr-only">閉じる</span>

@@ -40,10 +40,12 @@ const LONG_DELETE_LABEL =
 function DeleteProductDialog({
   onDelete = () => undefined,
   showCloseButton = true,
+  closeButtonDisabled = false,
   showFooterCloseButton = false,
 }: {
   readonly onDelete?: () => void;
   readonly showCloseButton?: boolean;
+  readonly closeButtonDisabled?: boolean;
   readonly showFooterCloseButton?: boolean;
 }) {
   return (
@@ -53,7 +55,10 @@ function DeleteProductDialog({
         <DialogTrigger asChild>
           <Button variant="destructive">プロダクトを削除する</Button>
         </DialogTrigger>
-        <DialogContent showCloseButton={showCloseButton}>
+        <DialogContent
+          showCloseButton={showCloseButton}
+          closeButtonDisabled={closeButtonDisabled}
+        >
           <DialogHeader>
             <DialogTitle>{TITLE}</DialogTitle>
             <DialogDescription>{DESCRIPTION}</DialogDescription>
@@ -164,6 +169,17 @@ describe('Dialog', () => {
 
     await expect.element(dialog()).not.toBeInTheDocument();
     await expect.element(trigger()).toHaveFocus();
+  });
+
+  test('右上の「閉じる」を無効にする指定では、押せず、Tabの停止位置から外す', async () => {
+    await render(<DeleteProductDialog closeButtonDisabled />);
+    await openWithKeyboard();
+
+    await expect.element(buttonInDialog('閉じる')).toBeDisabled();
+    await userEvent.tab();
+    await expect.element(buttonInDialog('削除')).toHaveFocus();
+    await userEvent.tab();
+    await expect.element(buttonInDialog('キャンセル')).toHaveFocus();
   });
 
   describe('画面幅640px以上のフッター', () => {

@@ -16,7 +16,7 @@ React・TanStack Start・shadcn/ui(Radix UI)・Tailwind CSSで作る画面を、
 | `styles/base.css`                                                                                                  | `styles/base.css`                          | フォーカスの輪郭と、視差効果を減らす設定での動きの抑制                                                 |
 | `styles/tokens.css`                                                                                                | `styles/tokens.css`                        | ライト・ダークの配色のトークン                                                                         |
 | `runAxe`・`runAxeOnDocument`・`WCAG_22_AA_TAGS`                                                                    | `test/a11y.ts`                             | `axe-core`による自動検査の補助                                                                         |
-| `pressKeyUntilFocusMoves`                                                                                          | `test/keyboard.ts`                         | Radix UIの矢印キーの操作をテストで再現する補助                                                         |
+| `pressKeyUntilFocusMoves`・`holdEscapeKey`                                                                         | `test/keyboard.ts`                         | Radix UIの矢印キーの操作と、押し続けたキーの繰り返しをテストで再現する補助                             |
 | `emulateReducedMotion`                                                                                             | `test/reduced-motion.ts`                   | 視差効果を減らす設定をテストで真似る補助                                                               |
 | `applyColorScheme`・`COLOR_SCHEMES`・`isContentClipped`                                                            | `test/computed-style.ts`                   | 配色の切り替えと、内容の切れの判定をテストで行う補助                                                   |
 | `hasHorizontalScroll`・`elementsBeyondViewportEdges`・`elementsOverflowingContainer`・`elementsWithClippedContent` | `test/overflow.ts`                         | 文書の横スクロール、画面の左右の端や親の要素からのはみ出し、内容の切れた要素の一覧をテストで調べる補助 |
@@ -220,6 +220,7 @@ describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
 - 重ねて表示する部品は、開いた状態を描画して検査する。モーダルなメニューを開くと、外側の`aria-hidden`の要素の中の開いた元のボタンを`axe-core`が`aria-hidden-focus`の違反と数える。メニューは、閉じた状態の`container`と、開いたメニューごと(開いたメニューが0件なら失敗にする)に分けて検査する。
 - 自動検査のテストでは、視差効果を減らす設定を真似ない。Chromiumで配色の切り替えの途中の色が残り、コントラストを誤って測る。視差効果の軽減は、別のテストで`emulateReducedMotion('reduce')`の後に計算済みのスタイルを確かめる。
 - Radix UIの矢印キーの操作は、押している間に移ったフォーカスで項目を選ぶ。テストの操作は押下と解放を間を置かずに送るため、`pressKeyUntilFocusMoves(key)`でフォーカスが移るまで押したままにする。
+- テストのキー操作は、押し続けた時のキーの繰り返し(`KeyboardEvent.repeat`が真の押下)を送らない。押し続けたEscapeの振る舞いは`holdEscapeKey`で再現する。内部でブラウザの開発者向けの操作の規約(CDP)の`Input.dispatchKeyEvent`を`autoRepeat`付きで送るため、Chromiumのテストでだけ使える。`afterFirstPress`で、最初の押下の後、繰り返しを送る前に待つ状態を指定する。
 
 ### カタログ
 

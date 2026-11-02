@@ -19,6 +19,7 @@ import {
   type DecodedImage,
   decodeImage,
 } from '../../test/media-files.ts';
+import { holdImageDecoding } from '../../test/held-image-decoding.ts';
 import {
   emulateReducedMotion,
   REDUCED_MOTION_PREFERENCES,
@@ -93,6 +94,13 @@ const cropArea = () => dialog().getByRole('group', { name: '切り取る範囲' 
 const buttonInDialog = (name: string) =>
   dialog().getByRole('button', { name, exact: true });
 const zoomSlider = () => dialog().getByRole('slider', { name: '拡大率' });
+const overlay = () =>
+  page.elementLocator(
+    document.querySelector('[data-slot="dialog-overlay"]') ?? document.body,
+  );
+
+const SECOND_DESCRIPTION =
+  'second.jpgの切り取る範囲を、位置と拡大率で調整してください。';
 
 async function splitImage(type: 'image/png' | 'image/jpeg' = 'image/png') {
   return createSplitImageFile(
@@ -191,6 +199,7 @@ async function pressRepeatedly(key: string, times: number) {
 }
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
   applyColorScheme('light');
   await emulateReducedMotion('no-preference');
 });
@@ -593,6 +602,125 @@ describe('ImageCropDialog', () => {
       'split.png',
       'second.jpg',
     ]);
+  });
+
+  test('画像を読み込むまでは「キャンセル」と右上の「閉じる」を無効にし、Escapeとダイアログの外の操作でも閉じない', async () => {
+    const file = await splitImage();
+    const release = holdImageDecoding();
+    const onCancel = vi.fn();
+    await render(
+      <Harness file={file} onConfirm={vi.fn()} onCancel={onCancel} />,
+    );
+    await userEvent.click(opener());
+    await expect.element(dialog()).toBeInTheDocument();
+
+    await expect.element(buttonInDialog('キャンセル')).toBeDisabled();
+    await expect.element(buttonInDialog('閉じる')).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(overlay(), { position: { x: 4, y: 4 } });
+
+    await expect.element(dialog()).toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(dialog().element().contains(document.activeElement)).toBe(true);
+
+    release();
+    await expect.element(buttonInDialog('確定')).toBeEnabled();
+    await expect.element(buttonInDialog('キャンセル')).toBeEnabled();
+    await expect.element(buttonInDialog('閉じる')).toBeEnabled();
+    await userEvent.keyboard('{Escape}');
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(opener()).toHaveFocus();
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  test('右上の「閉じる」で取り消して次の画像へ替わると、読み込むまで取り消しを受け付けず、フォーカスをダイアログの中に留める', async () => {
+    const files = [
+      await splitImage(),
+      await createImageFile('second.jpg', 'image/jpeg', {
+        width: 300,
+        height: 300,
+      }),
+    ];
+    const onCancel = vi.fn();
+    function QueueHarness() {
+      const [index, setIndex] = useState(0);
+      return (
+        <ImageCropDialog
+          file={files[index]}
+          edit={SQUARE}
+          onConfirm={() => undefined}
+          onCancel={() => {
+            onCancel();
+            setIndex((current) => current + 1);
+          }}
+        />
+      );
+    }
+    await render(<QueueHarness />);
+    await expect.element(buttonInDialog('確定')).toBeEnabled();
+    const release = holdImageDecoding();
+
+    await userEvent.click(buttonInDialog('閉じる'));
+
+    await expect
+      .element(dialog())
+      .toHaveAccessibleDescription(SECOND_DESCRIPTION);
+    await expect.element(buttonInDialog('閉じる')).toBeDisabled();
+    await expect.element(buttonInDialog('キャンセル')).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
+    await nextFrame();
+    await nextFrame();
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(dialog().element().contains(document.activeElement)).toBe(true);
+
+    release();
+    await expect.element(buttonInDialog('確定')).toBeEnabled();
+    await userEvent.click(buttonInDialog('閉じる'));
+    await expect.element(dialog()).not.toBeInTheDocument();
+    expect(onCancel).toHaveBeenCalledTimes(2);
+  });
+
+  test('押し続けたEscapeのキーの繰り返しでは閉じず、押し直すと閉じる', async () => {
+    const onCancel = vi.fn();
+    await openWith(await splitImage(), { onCancel });
+
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        repeat: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    await nextFrame();
+
+    await expect.element(dialog()).toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
+    await userEvent.keyboard('{Escape}');
+    await expect.element(dialog()).not.toBeInTheDocument();
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  test('読み込めない画像は、「キャンセル」と右上の「閉じる」を押せ、Escapeで取り消して閉じられる', async () => {
+    const onCancel = vi.fn();
+    await render(
+      <Harness
+        file={createDocumentFile('broken.png', 'image/png', 16)}
+        onConfirm={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+    await userEvent.click(opener());
+    await expect.element(dialog().getByRole('alert')).toBeInTheDocument();
+
+    await expect.element(buttonInDialog('キャンセル')).toBeEnabled();
+    await expect.element(buttonInDialog('閉じる')).toBeEnabled();
+    await userEvent.keyboard('{Escape}');
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(opener()).toHaveFocus();
+    expect(onCancel).toHaveBeenCalledOnce();
   });
 
   test('読み込めない画像は、エラーを伝えて確定できないようにする', async () => {

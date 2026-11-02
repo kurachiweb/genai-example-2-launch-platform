@@ -7,7 +7,14 @@ import {
   MinusIcon,
   PlusIcon,
 } from 'lucide-react';
-import { type RefObject, useEffect, useId, useRef, useState } from 'react';
+import {
+  type RefObject,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import Cropper, { type Area, type Point, type Size } from 'react-easy-crop';
 
 import type {
@@ -139,10 +146,19 @@ const MOVE_CONTROLS: readonly MoveControl[] = [
 interface CropEditorProps {
   readonly file: File;
   readonly edit: ImageEditOptions;
+  readonly cancelable: boolean;
+  // 画像を読み込んで確定できるようになったか、読み込めなかった時に呼ぶ
+  readonly onSettled: () => void;
   readonly onConfirm: (source: File, encoded: File) => void;
 }
 
-function CropEditor({ file, edit, onConfirm }: CropEditorProps) {
+function CropEditor({
+  file,
+  edit,
+  cancelable,
+  onSettled,
+  onConfirm,
+}: CropEditorProps) {
   const id = useId();
   const hintId = `${id}-hint`;
   const zoomId = `${id}-zoom`;
@@ -155,6 +171,7 @@ function CropEditor({ file, edit, onConfirm }: CropEditorProps) {
   const [cropSize, setCropSize] = useState<Size>();
   const [confirming, setConfirming] = useState(false);
   const [encodeFailed, setEncodeFailed] = useState(false);
+  const notifySettled = useEffectEvent(onSettled);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -172,6 +189,7 @@ function CropEditor({ file, edit, onConfirm }: CropEditorProps) {
       .catch(() => {
         if (active) {
           setSource({ status: 'failed' });
+          notifySettled();
         }
       });
     return () => {
@@ -247,12 +265,14 @@ function CropEditor({ file, edit, onConfirm }: CropEditorProps) {
             }}
             onCropAreaChange={(_percentages: Area, pixels: Area) => {
               setArea(pixels);
+              onSettled();
             }}
             setMediaSize={setMediaSize}
             setCropSize={setCropSize}
             mediaProps={{
               onError: () => {
                 setSource({ status: 'failed' });
+                onSettled();
               },
             }}
             cropperProps={{
@@ -346,7 +366,7 @@ function CropEditor({ file, edit, onConfirm }: CropEditorProps) {
       ) : null}
       <DialogFooter>
         <DialogClose asChild>
-          <Button type="button" variant="outline">
+          <Button type="button" variant="outline" disabled={!cancelable}>
             {IMAGE_CROP_CANCEL_LABEL}
           </Button>
         </DialogClose>
@@ -373,14 +393,23 @@ export function ImageCropDialog({
   onCancel,
   returnFocusRef,
 }: ImageCropDialogProps) {
-  // 閉じる動きの間も中身を描き続けるため最後に開いた画像を持ち、画像が替わる度に編集の状態を始め直す
-  const [shown, setShown] = useState({ file, generation: 0 });
-  if (file !== undefined && file !== shown.file) {
-    setShown({ file, generation: shown.generation + 1 });
+  // 閉じる動きの間も中身を描き続けるため最後に開いた画像を持ち、画像が替わるか開き直す度に編集の状態を始め直す
+  const open = file !== undefined;
+  const [shown, setShown] = useState({ file, generation: 0, open });
+  if (open !== shown.open || (open && file !== shown.file)) {
+    setShown({
+      file: file ?? shown.file,
+      generation: open ? shown.generation + 1 : shown.generation,
+      open,
+    });
   }
+  // 取り消した直後に同じ位置へ描く次の画像の操作が、読み込みの前に届いた押下で続けて取り消されないよう、取り消しは表示中の画像を読み込むか読み込めなかった後だけ受け付ける
+  const [settledGeneration, setSettledGeneration] = useState<number>();
+  const cancelable = settledGeneration === shown.generation;
   const shownFile = shown.file;
   const currentFileRef = useRef(file);
   const openerRef = useRef<Element | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     currentFileRef.current = file;
@@ -388,16 +417,34 @@ export function ImageCropDialog({
 
   return (
     <Dialog
-      open={file !== undefined}
-      onOpenChange={(open) => {
-        if (!open) {
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && cancelable) {
           onCancel();
         }
       }}
     >
       {shownFile === undefined ? null : (
         <DialogContent
+          ref={contentRef}
           className="sm:max-w-xl"
+          closeButtonDisabled={!cancelable}
+          onEscapeKeyDown={(event) => {
+            // 押し続けたEscapeの繰り返しで、読み込んだ次の画像まで取り消さない
+            if (event.repeat) {
+              event.preventDefault();
+            }
+          }}
+          onBlur={(event) => {
+            // 取り消しを受け付けない間は、フォーカスのある右上の「閉じる」の無効化や受け付けなかったダイアログの外の押下が、フォーカスを<body>へ落として戻さないため、ダイアログへ戻す。ウィンドウの切り替えではフォーカスのある要素が変わらないため何もしない
+            if (
+              !cancelable &&
+              event.relatedTarget === null &&
+              document.activeElement === document.body
+            ) {
+              contentRef.current?.focus();
+            }
+          }}
           onOpenAutoFocus={() => {
             openerRef.current = document.activeElement;
           }}
@@ -419,6 +466,10 @@ export function ImageCropDialog({
             key={shown.generation}
             file={shownFile}
             edit={edit}
+            cancelable={cancelable}
+            onSettled={() => {
+              setSettledGeneration(shown.generation);
+            }}
             onConfirm={(source, encoded) => {
               // 作り直しの間に取り消された、または別の画像へ切り替わった結果は渡さない
               if (currentFileRef.current === source) {

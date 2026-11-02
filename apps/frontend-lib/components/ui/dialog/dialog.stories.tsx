@@ -62,3 +62,34 @@ export const FooterCloseButton: Story = {
     </Dialog>
   ),
 };
+
+export const CloseButtonDisabled: Story = {
+  args: { defaultOpen: true },
+  render: (args) => (
+    <Dialog {...args}>
+      <DialogContent
+        closeButtonDisabled
+        onEscapeKeyDown={(event) => {
+          event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          event.preventDefault();
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>画像を読み込んでいます</DialogTitle>
+          <DialogDescription>
+            読み込みが終わるまで、このダイアログは閉じられません。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" disabled>
+              キャンセル
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  ),
+};

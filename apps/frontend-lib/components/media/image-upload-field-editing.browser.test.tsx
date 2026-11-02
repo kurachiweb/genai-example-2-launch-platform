@@ -10,7 +10,13 @@ import {
   uploadedReply,
   type UploadFetchStub,
 } from '../../test/fake-upload-fetch.ts';
-import { createImageFile, createSvgFile } from '../../test/media-files.ts';
+import { holdImageDecoding } from '../../test/held-image-decoding.ts';
+import { holdEscapeKey } from '../../test/keyboard.ts';
+import {
+  createDocumentFile,
+  createImageFile,
+  createSvgFile,
+} from '../../test/media-files.ts';
 import type { ImageEditOptions } from '../../utilities/media/crop-geometry.ts';
 import type { UploadConstraints } from '../../utilities/media/upload-constraints.ts';
 import {
@@ -105,12 +111,16 @@ async function sentBodyAt(
   return body;
 }
 
-async function expectEditing(fileName: string) {
+async function expectShowing(fileName: string) {
   await expect
     .element(dialog())
     .toHaveAccessibleDescription(
       `${fileName}の切り取る範囲を、位置と拡大率で調整してください。`,
     );
+}
+
+async function expectEditing(fileName: string) {
+  await expectShowing(fileName);
   await expect.element(confirmButton()).toBeEnabled();
 }
 
@@ -125,6 +135,23 @@ async function confirmCrop() {
 
 const pngOf = async (name: string): Promise<File> =>
   createImageFile(name, 'image/png', { width: 64, height: 64 });
+
+const threePngs = async (): Promise<File[]> =>
+  Promise.all(['a.png', 'b.png', 'c.png'].map(pngOf));
+
+// a.pngを外した後の残りの2枚を確定し、選んだ順に送ったことを確かめる
+async function expectSentAfterConfirmingBAndC(fetch: UploadFetchStub) {
+  await expectEditing('b.png');
+  await confirmCrop();
+  await expectEditing('c.png');
+  await confirmCrop();
+
+  const sentSecond = await sentBodyAt(fetch, 0);
+  expect(sentSecond.name).toBe('b.png');
+  expect(listItems().all()).toHaveLength(2);
+  await expect.element(listItems().nth(0)).toHaveTextContent('b.png');
+  await expect.element(listItems().nth(1)).toHaveTextContent('c.png');
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -230,6 +257,73 @@ describe('ImageUploadFieldの複数の画像の編集の取り消し', () => {
       .element(liveRegionOf(container))
       .toHaveTextContent('earlier.svgをアップロードしました。');
     expect(onUploaded).toHaveBeenCalledOnce();
+  });
+
+  test('次の画像を読み込む間は取り消しを受け付けず、その間に届いたダブルクリックの2回目とEscapeでは次の画像を外さない', async () => {
+    const fetch = stubUploadFetch();
+    const { container } = await renderField();
+    await userEvent.upload(fileInputOf(container), await threePngs());
+    await expectEditing('a.png');
+    const release = holdImageDecoding();
+
+    await userEvent.dblClick(cancelButton());
+
+    await expectShowing('b.png');
+    await expect.element(cancelButton()).toBeDisabled();
+    await expect.element(confirmButton()).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
+    await expectShowing('b.png');
+    expect(dialog().element().contains(document.activeElement)).toBe(true);
+    release();
+    await expectSentAfterConfirmingBAndC(fetch);
+  });
+
+  test('Escapeを押し続けると、最初の押下で表示中の画像だけを外し、読み込んだ後に届くキーの繰り返しでは次の画像を外さない', async () => {
+    const fetch = stubUploadFetch();
+    const { container } = await renderField();
+    await userEvent.upload(fileInputOf(container), await threePngs());
+    await expectEditing('a.png');
+    const repeats: boolean[] = [];
+    const recordRepeat = (event: KeyboardEvent) => {
+      repeats.push(event.repeat);
+    };
+    document.addEventListener('keydown', recordRepeat, { capture: true });
+    try {
+      await holdEscapeKey({
+        afterFirstPress: () => expectEditing('b.png'),
+        repeats: 2,
+      });
+    } finally {
+      document.removeEventListener('keydown', recordRepeat, { capture: true });
+    }
+
+    expect(repeats).toStrictEqual([false, true, true]);
+    await expectSentAfterConfirmingBAndC(fetch);
+  });
+
+  test('次の画像を読み込めない時は、取り消してその画像を外し、残りの画像を送る', async () => {
+    const fetch = stubUploadFetch();
+    const { container } = await renderField();
+
+    await userEvent.upload(fileInputOf(container), [
+      await pngOf('a.png'),
+      createDocumentFile('broken.png', 'image/png', 16),
+    ]);
+    await expectEditing('a.png');
+    await confirmCrop();
+
+    await expectShowing('broken.png');
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent('画像を読み込めませんでした。');
+    await expect.element(cancelButton()).toBeEnabled();
+    await cancelCrop();
+
+    const sent = await sentBodyAt(fetch, 0);
+    expect(sent.name).toBe('a.png');
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(selectButton()).toHaveFocus();
+    expect(listItems().all()).toHaveLength(1);
   });
 
   test('取り消して外した後の選択で、既存の合計を含めて上限を判定する', async () => {
