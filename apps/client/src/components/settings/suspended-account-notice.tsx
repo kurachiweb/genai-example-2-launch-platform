@@ -10,8 +10,13 @@ import {
   SUSPENDED_NOTICE_SUFFIX,
 } from './settings-messages.ts';
 
+export interface SuspendedAccountNoticeProps {
+  // ページごとに、停止中に行えない操作と行える操作を示す文
+  readonly lead: string;
+}
+
 // 停止中の利用者はログインできず、セッションが切れた後は設定ページから退会できないため、問い合わせによる退会の依頼の導線を示す
-export function SuspendedAccountNotice() {
+export function SuspendedAccountNotice({ lead }: SuspendedAccountNoticeProps) {
   return (
     <div
       role="note"
@@ -23,6 +28,7 @@ export function SuspendedAccountNotice() {
         className="mt-0.5 size-4 shrink-0 text-destructive"
       />
       <p>
+        {lead}
         {SUSPENDED_NOTICE_PREFIX}
         <PathLink href={CONTACT_HREF} className={INLINE_LINK_CLASS_NAME}>
           {CONTACT_LINK_LABEL}

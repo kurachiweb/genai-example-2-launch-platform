@@ -8,12 +8,29 @@ import { runAxe } from '../lib/test/a11y.ts';
 import { applyColorScheme, COLOR_SCHEMES } from '../lib/test/computed-style.ts';
 import { resetFakeTurnstile } from '../lib/test/fake-turnstile.tsx';
 import { redirectToFirstSettings } from '../src/components/settings/redirect-to-first-settings.ts';
-import type { ClientViewerQuery } from '../src/graphql/generated/graphql.ts';
+import {
+  ClientMySessionsDocument,
+  type ClientViewerQuery,
+} from '../src/graphql/generated/graphql.ts';
 import type { buildSitePageHead } from '../src/head/page-heads.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
 import { Route as AccountSettingsRoute } from '../src/routes/_authenticated/settings/account.tsx';
 import { Route as SettingsRoute } from '../src/routes/_authenticated/settings/route.tsx';
-import { type PageRootRoute, renderPageRouter } from './page-router.tsx';
+import { Route as SecuritySettingsRoute } from '../src/routes/_authenticated/settings/security.tsx';
+import {
+  CURRENT_SESSION,
+  mySessionsQuery,
+  mySessionsResult,
+} from './security-fixtures.tsx';
+import {
+  loadMySessions,
+  mySessionsQueryOptions,
+} from '../src/components/settings/my-sessions-query.ts';
+import {
+  createPageRouterContext,
+  type PageRootRoute,
+  renderPageRouter,
+} from './page-router.tsx';
 import { signedInViewerQuery, VIEWER_NICKNAME } from './viewer-fixtures.ts';
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
@@ -64,10 +81,18 @@ const createRoutes = (rootRoute: PageRootRoute) => {
           path: 'account',
           component: AccountSettingsRoute.options.component,
         }),
+        createRoute({
+          getParentRoute: () => settingsRoute,
+          path: 'security',
+          loader: loadMySessions,
+          component: SecuritySettingsRoute.options.component,
+        }),
       ]),
     ]),
   ];
 };
+
+const PREVIOUS_VIEWER_ID = '01JC0PREVIOUSVIEWER00000000';
 
 const renderAt = (path: string, cachedViewer?: ClientViewerQuery) =>
   renderPageRouter({
@@ -144,6 +169,71 @@ describe('設定ページの経路', () => {
 
     await expect.element(pageTitle()).toHaveTextContent('アカウント');
     expect(router.state.location.pathname).toBe('/settings/account');
+  });
+
+  test('同じタブに前の利用者のログイン中の端末の取得結果が残っていても、ログイン中の利用者の取得結果だけを示す', async () => {
+    executeGraphQL.mockImplementation((document: unknown) => {
+      if (document === ClientMySessionsDocument) {
+        return Promise.resolve(mySessionsResult());
+      }
+      throw new Error('想定していない操作が実行されました。');
+    });
+    const context = createPageRouterContext('local');
+    context.queryClient.setQueryData(
+      mySessionsQueryOptions(PREVIOUS_VIEWER_ID).queryKey,
+      mySessionsQuery({
+        sessions: [CURRENT_SESSION],
+        totpEnabled: true,
+        remainingRecoveryCodes: 2,
+      }),
+    );
+
+    await renderPageRouter({
+      path: '/settings/security',
+      createRoutes,
+      context,
+      cachedViewer: signedInViewerQuery(),
+    });
+
+    await expect
+      .element(page.getByRole('region', { name: 'ログイン中の端末' }))
+      .toHaveTextContent('3台の端末でログインしています。');
+    await expect
+      .element(page.getByText('多要素認証は無効です。'))
+      .toBeVisible();
+    expect(
+      page.getByRole('region', { name: 'リカバリコード' }).elements(),
+    ).toHaveLength(0);
+  });
+
+  test('セキュリティの設定ページを、ログイン中の端末を取得してから設定のナビゲーションの中に描き、現在の項目を示す', async () => {
+    executeGraphQL.mockImplementation((document: unknown) => {
+      if (document === ClientMySessionsDocument) {
+        return Promise.resolve(mySessionsResult());
+      }
+      throw new Error('想定していない操作が実行されました。');
+    });
+    await renderAt('/settings/security', signedInViewerQuery());
+
+    await expect.element(pageTitle()).toHaveTextContent('セキュリティ');
+    await expect
+      .element(settingsNavigation().getByRole('link', { name: 'セキュリティ' }))
+      .toHaveAttribute('aria-current', 'page');
+    await expect
+      .element(page.getByRole('region', { name: 'ログイン中の端末' }))
+      .toHaveTextContent('3台の端末でログインしています。');
+  });
+
+  test('セキュリティの設定ページのタイトルは「セキュリティ」で、検索エンジンに登録させない', () => {
+    const head = SecuritySettingsRoute.options.head as
+      (() => PageHead) | undefined;
+    const meta = head?.().meta ?? [];
+
+    expect(meta).toContainEqual({ title: 'セキュリティ | Launch Stadium' });
+    expect(meta).toContainEqual({
+      name: 'robots',
+      content: 'noindex, nofollow',
+    });
   });
 
   test('アカウントの設定ページのタイトルは「アカウント」で、検索エンジンに登録させない', () => {

@@ -7,8 +7,10 @@ import {
   PASSWORD_RESET_FORM_SCHEMA,
   PASSWORD_RESET_REQUEST_FORM_SCHEMA,
   RECOVERY_CODE_FORM_SCHEMA,
+  REAUTHENTICATION_FORM_SCHEMAS,
   REGISTER_FORM_SCHEMA,
   TOTP_CODE_FORM_SCHEMA,
+  TOTP_ENABLE_FORM_SCHEMA,
   WITHDRAWAL_FORM_SCHEMAS,
 } from './account-form-schemas.ts';
 
@@ -301,5 +303,34 @@ describe('本人確認の欄を持つスキーマ', () => {
         }),
       ),
     ).toEqual(['パスワードは8文字以上128文字以内で入力してください。']);
+  });
+});
+
+describe('多要素認証の操作のスキーマ', () => {
+  test('本人確認だけを送る操作のスキーマは、描いている欄だけを出力する', () => {
+    expect(
+      REAUTHENTICATION_FORM_SCHEMAS.recovery.parse(REAUTHENTICATION_INPUT),
+    ).toEqual({
+      currentPassword: VALID_PASSWORD,
+      secondFactor: { recoveryCode: 'abcd-efgh' },
+    });
+    expect(
+      REAUTHENTICATION_FORM_SCHEMAS.password.parse(REAUTHENTICATION_INPUT),
+    ).toEqual({ currentPassword: VALID_PASSWORD });
+  });
+
+  test('有効化のスキーマは、認証コードだけを出力する', () => {
+    expect(TOTP_ENABLE_FORM_SCHEMA.parse({ totpCode: '123456' })).toEqual({
+      totpCode: '123456',
+    });
+  });
+
+  test.each([
+    ['空白だけの認証コード', ' ', '認証コードを入力してください。'],
+    ['65文字の認証コード', '1'.repeat(65), '認証コードが正しくありません。'],
+  ])('有効化のスキーマは%sを拒否する', (_name, totpCode, message) => {
+    expect(messagesOf(TOTP_ENABLE_FORM_SCHEMA.safeParse({ totpCode }))).toEqual(
+      [message],
+    );
   });
 });

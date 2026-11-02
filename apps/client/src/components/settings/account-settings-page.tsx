@@ -1,7 +1,10 @@
 import type { ClientViewer } from '../../graphql/viewer.ts';
 import { EmailChangeSection } from './email-change-section.tsx';
 import { PasswordChangeSection } from './password-change-section.tsx';
-import { ACCOUNT_SETTINGS_PAGE_TITLE } from './settings-messages.ts';
+import {
+  ACCOUNT_SETTINGS_PAGE_TITLE,
+  SUSPENDED_ACCOUNT_NOTICE_LEAD,
+} from './settings-messages.ts';
 import { SuspendedAccountNotice } from './suspended-account-notice.tsx';
 import { WithdrawalSection } from './withdrawal-section.tsx';
 
@@ -18,7 +21,9 @@ export function AccountSettingsPage({ viewer }: AccountSettingsPageProps) {
       <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
         {ACCOUNT_SETTINGS_PAGE_TITLE}
       </h1>
-      {suspended ? <SuspendedAccountNotice /> : null}
+      {suspended ? (
+        <SuspendedAccountNotice lead={SUSPENDED_ACCOUNT_NOTICE_LEAD} />
+      ) : null}
       <EmailChangeSection
         totpEnabled={viewer.totpEnabled}
         disabled={suspended}

@@ -197,16 +197,27 @@ const byMode = <TSchema>(
     recovery: build('recovery'),
   });
 
-export type WithdrawalFormInput = ReauthenticationFormInput;
-
-export type WithdrawalFormSchema = z.ZodType<
+export type ReauthenticationFormSchema = z.ZodType<
   ReauthenticationFormValues,
-  WithdrawalFormInput
+  ReauthenticationFormInput
 >;
 
-export const WITHDRAWAL_FORM_SCHEMAS = byMode<WithdrawalFormSchema>(
+// 入力が本人確認だけの操作(退会・多要素認証の開始・無効化・リカバリコードの再発行)のスキーマ
+export const REAUTHENTICATION_FORM_SCHEMAS = byMode<ReauthenticationFormSchema>(
   (mode) => REAUTHENTICATION_SHAPES[mode],
 );
+
+export type WithdrawalFormInput = ReauthenticationFormInput;
+
+export type WithdrawalFormSchema = ReauthenticationFormSchema;
+
+export const WITHDRAWAL_FORM_SCHEMAS = REAUTHENTICATION_FORM_SCHEMAS;
+
+export const TOTP_ENABLE_FORM_SCHEMA = z.object({
+  totpCode: secondFactorCode(ACCOUNT_FORM_MESSAGES.totpCodeRequired),
+});
+
+export type TotpEnableFormInput = z.input<typeof TOTP_ENABLE_FORM_SCHEMA>;
 
 export interface EmailChangeFormInput {
   readonly newEmail: string;
