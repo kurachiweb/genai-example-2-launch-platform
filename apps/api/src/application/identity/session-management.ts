@@ -1,12 +1,12 @@
 import { inject, injectable } from 'inversify';
 
-import { AppError } from '../../../lib/core/errors/app-error.ts';
 import {
   evaluateSession,
   USER_SESSION_POLICY,
 } from '../../domain/auth/session-policy.ts';
 import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
+import { notFoundError } from './not-found.ts';
 import type {
   DeviceDescriber,
   StoredSession,
@@ -37,15 +37,6 @@ export interface SessionManagement {
   // 操作している端末以外の自分のセッションをすべて削除し、件数を返す
   revokeOthers(principal: AuthenticatedPrincipal): Promise<number>;
 }
-
-const NOT_FOUND_MESSAGE = '対象が見つかりません。';
-
-const notFoundError = (): AppError =>
-  new AppError({
-    kind: 'not_found',
-    code: 'not_found',
-    message: NOT_FOUND_MESSAGE,
-  });
 
 const isUser = (principal: AuthenticatedPrincipal): boolean =>
   principal.subjectKind === 'user';
