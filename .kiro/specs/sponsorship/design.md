@@ -6,7 +6,7 @@
 
 **Users**: 投稿者は料金ページ(`/pricing`)で申し込み、決済画面(payments)で支払い、自分の広告一覧(`/settings/sponsorships`)で掲載状況を確かめ、通知メールを受け取る。閲覧者は各ページの広告を見て、広告主のサイトを別タブで開く。管理者は管理画面の`/sponsorships`で申込状況を見て強制終了する。後続spec(data-export)はエクスポートの部品を、ugc-moderationは非公開化・停止の操作で本specの表示の条件を間接に動かす。
 
-**Impact**: D1に2テーブル(`sponsorships`・`sponsorship_display_stops`)を足す。`apps/common-lib/sponsorship`に期間・状態・返金目安額の規則、`apps/backend-lib/workers/sponsorship`に申込のストア・表示の読み取り・購入種別の口の実装・エクスポートの部品・表示停止の区間のストア・日割りの返金の精算と両アプリ共通の束縛を新設する。apiにスキーマモジュール`sponsorship`・申込と強制終了のユースケース・0:07と4:21のジョブ(日割りの返金の精算の依頼を含む)・退会とプロダクトの削除と表示停止の同期の処理を、eventに通知の送信の処理・掲載の終わりの表示停止の返金の精算の処理・2つの物理削除の処理・3つのメールのテンプレートを、clientに料金ページの区画・広告スペースの部品・自分の広告一覧・削除の確認の注記を、adminに一覧と強制終了の画面を足す。apiのCron Triggersに`7 8 * * *`(0:07)を足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレット・パッケージは無い。
+**Impact**: D1に2テーブル(`sponsorships`・`sponsorship_display_stops`)を足す。`apps/common-lib/sponsorship`に期間・状態・返金目安額の規則、`apps/backend-lib/core/sponsorship`にapi・eventのapplication層と後続specが受け取る契約とDIの識別子、`apps/backend-lib/workers/sponsorship`に申込のストア・表示の読み取り・購入種別の口の実装・エクスポートの部品・表示停止の区間のストア・日割りの返金の精算と両アプリ共通の束縛を新設する。apiにスキーマモジュール`sponsorship`・申込と強制終了のユースケース・0:07と4:21のジョブ(日割りの返金の精算の依頼を含む)・退会とプロダクトの削除と表示停止の同期の処理を、eventに通知の送信の処理・掲載の終わりの表示停止の返金の精算の処理・2つの物理削除の処理・3つのメールのテンプレートを、clientに料金ページの区画・広告スペースの部品・自分の広告一覧・削除の確認の注記を、adminに一覧と強制終了の画面を足す。apiのCron Triggersに`7 8 * * *`(0:07)を足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレット・パッケージは無い。
 
 ### Goals
 
@@ -28,9 +28,9 @@
 
 - 申込のデータ: `sponsorships`(`apps/db/schema/sponsorship/`)。掲載権・強制終了・通知の依頼・日割りの返金の依頼の状態を含む。表示停止の区間`sponsorship_display_stops`(プロダクトの非公開化と投稿者の停止の始まりと終わり)。
 - 申込の規則(`apps/common-lib/sponsorship/`): ティアと価格の`lookup_key`、掲載期間の検証と日数、状態の導出と表示名、未掲載日数と返金目安額、表示停止日数。
-- 共有部品(`apps/backend-lib/workers/sponsorship/`): 申込のストア`SponsorshipStore`、表示の読み取り`PlacementReader`、申込の対象の判定`EligibleProductReader`、購入種別`sponsorship`の`SponsorshipOfferPolicy`・`SponsorshipFulfillment`、通知の予定と依頼(`NoticeScheduler`・`NoticeRequester`)、表示停止の区間のストア`DisplayStopStore`、日割りの返金の精算`RefundSettlement`、データエクスポートの部品`SponsorshipExport`、両アプリ共通の束縛`SPONSORSHIP_PLATFORM_MODULE`。メッセージ種別`sponsorship.dispatch-notices`・`sponsorship.settle-period-end`とメール種別3つ。
+- 共有部品: 申込のストア`SponsorshipStore`、表示の読み取り`PlacementReader`、申込の対象の判定`EligibleProductReader`、購入種別`sponsorship`の`SponsorshipOfferPolicy`・`SponsorshipFulfillment`、通知の予定と依頼(`NoticeScheduler`・`NoticeRequester`)、表示停止の区間のストア`DisplayStopStore`と区間の記録の文`DisplayStopStatements`、強制終了の返金の見積もり`RefundEstimator`と日割りの返金の精算`RefundSettlement`、データエクスポートの部品`SponsorshipExport`、両アプリ共通の束縛`SPONSORSHIP_PLATFORM_MODULE`。application層と後続specが受け取る契約(`SponsorshipStore`・`EligibleProductReader`・`PlacementReader`・`NoticeScheduler`・`NoticeRequester`・`DisplayStopStore`・`RefundEstimator`・`SponsorshipExport`と入出力の型)と識別子`SPONSORSHIP_PLATFORM_TYPES`は`apps/backend-lib/core/sponsorship`(`ports.ts`・`identifiers.ts`)、D1の実装・購入種別の口の実装・データベースの文を返す契約(`DisplayStopStatements`・`RefundSettlement`)と束縛は`apps/backend-lib/workers/sponsorship`に置く。メッセージ種別`sponsorship.dispatch-notices`・`sponsorship.settle-period-end`とメール種別3つ。
 - apiのユースケース(申込・決済の再開・料金の照会・自分の一覧・削除の確認の件数・管理者の一覧・強制終了)、スキーマモジュール`sponsorship`、ジョブ`sponsorship.daily-notices`(0:07)・`sponsorship.maintenance`(4:21)、ユーザーの同期の処理`sponsorship.account-withdrawal`・`sponsorship.account-display-stop`、プロダクトの同期の処理`sponsorship.product-deletion`・`sponsorship.product-display-stop`、監査ログの操作種別`sponsorship.terminate`。
-- eventの通知の送信の処理`sponsorship.dispatch-notices`・掲載の終わりの精算の処理`sponsorship.settle-period-end`、非同期の処理`sponsorship.account-purge`(ユーザー)・`sponsorship.product-purge`(プロダクト)、テンプレート3つ。
+- eventの通知の送信の処理`sponsorship.dispatch-notices`・掲載の終わりの精算の処理`sponsorship.settle-period-end`、非同期の処理`sponsorship.account-purge`(ユーザー)・`sponsorship.product-purge`(プロダクト)、テンプレート3つ。精算と物理削除の書き込みは、application層のポート(`PeriodEndSettlementCommitter`・`SponsorshipPurgeStore`)とinfrastructure層の実装(`D1PeriodEndSettlementCommitter`・`D1SponsorshipPurgeStore`)に分ける。apiの強制終了の書き込みも同じく、ポート`SponsorshipTerminationWriter`と実装`D1TerminationWriter`に分ける。
 - clientの料金ページの区画`sponsorship.sponsorship-pricing`、広告スペースの部品(Legend・Gold・Silver・Goldの一覧への差し込み)とその登録、`/settings/sponsorships`、削除の確認の注記`sponsorship.active-ads`。adminの`/sponsorships`。
 - 技術ドキュメント`backend/018-date-range-entitlements.md`・`frontend/017-sponsored-placements.md`の新規作成と、サービス仕様(ページ配置・文言規則・返金ポリシー・料金とプラン・日次タイムライン・データエクスポート)とオンボーディングの追記。
 
@@ -40,19 +40,19 @@
 - プロダクト・ローンチ・利用者のデータ(product-launch・identity-auth・user-profile-social)。本specは照会口と`visibleProducts()`の絞り込みだけを使い、それらのテーブルへ書き込まない。
 - ページの枠と区画の登録口(match-engine・directory-discovery・ultras-subscription・identity-auth・admin-foundation・product-launch)。本specは区画の中身と登録の行だけを持つ。
 - 非公開化・停止の操作と通知(ugc-moderation)、プロダクトの削除・退会の操作(product-launch・identity-auth)、メールの描画と送信の基盤(email-delivery)、監査ログの保存と閲覧(admin-foundation)。
-- 返金の依頼の記録・Stripeでの実行・決済履歴への反映・依頼の送り直し(payments)。本specは`PaymentRefunds.prepare`・`dispatch`で金額と依頼キーを指定して依頼するだけで、Stripeを呼ばない。
+- 返金の依頼の記録・Stripeでの実行・決済履歴への反映・依頼の送り直し(payments)。本specは`PaymentRefundStatements.prepare`・`PaymentRefunds.dispatch`で金額と依頼キーを指定して依頼するだけで、Stripeを呼ばない。
 
 ### Allowed Dependencies
 
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`MessagePublisher`)・`AppError`・`getAppLogger`・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`・`BusinessTimeOfDay`。前日・翌日は固定オフセットのため24時間の加減で求める)・`ScheduledJobDefinition`・`ScheduledJobHandler`・`ScheduledJobContext`・`defineMessageContract`・`MESSAGE_CONTRACTS`・`MessageHandler`・`MessageHandlingResult`・`MessageHandlerRegistration`、Sentryの`captureEvent`(定型の文言を`logentry`、まとめる単位を`fingerprint`に置く。`infra/004`の「同じ文言を繰り返し送る通知」。backend-platformのログとエラートラッキングの規約。paymentsの突合の失敗と同じ呼び出し方)、E2Eの`e2e/support/scheduled-trigger.ts`(`triggerScheduled`、backend-platformの改訂2)。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`caller`・`session`・`assertHuman`・`loaders`)・`withValidatedArgs`・`encodeCursor`・`decodeCursor`・`DateTime`・`PageInfo`。
-- payments: `PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseOfferDecision`・`PurchaseOfferRequest`・`PurchaseFulfillment`・`FulfillablePurchase`・`FulfillmentPlan`・`PURCHASE_KIND_REGISTRATIONS`(`apps/backend-lib/workers/payments/purchase-kind-registrations.ts`)・`PriceCatalog`・`PaymentRefunds`(`prepare`・`dispatch`)・`RefundRequestInput`・`RefundRequestResult`・`PAYMENTS_TYPES`・`MinorUnitAmount`・apiの`CheckoutStarter`・`API_PAYMENTS_TYPES`・GraphQLの`Money`・`CheckoutStart`・frontend-libの`MoneyText`。
-- identity-auth: `AccountGuard`(`currentUser`・`requireUser`・`requireWritableUser`・`requireVerifiedUser`)・`CurrentUser`・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`users`(外部キーと`visibleProducts()`の結合だけ)・`SETTINGS_NAV_ITEMS`・`SettingsShell`・`_authenticated`のレイアウト・`viewerQueryOptions`・E2Eの`e2e/support/mailpit.ts`。
-- product-launch: `PRODUCT_PLATFORM_TYPES`の`ProductDirectory`(`findSummaries`・`resolveHandle`・`listLaunches`)・`LaunchExport`(`listByUser`)・`ProductExport`(`listByUser`)、`visibleProducts()`(`sponsorships`と`products`・`users`を結合した表示の絞り込みだけ)、`products`への外部キー、`ProductLifecycleEvent`・`ProductLifecycleSyncHandler`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`ProductLifecycleAsyncHandler`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、`LaunchStatus`、clientの`ProductDeleteNotice`・`PRODUCT_DELETE_NOTICES`。
+- payments: `core/payments`の`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseOfferDecision`・`PurchaseOfferRequest`・`PriceCatalog`・`PAYMENTS_TYPES`・`MinorUnitAmount`、`core/payments`の`FulfillablePurchase`・`PaymentRefunds`(`dispatch`)・`RefundRequestInput`・`RefundRequestResult`、`workers/payments`のデータベースの文を扱う契約`PurchaseKindRegistration`・`PurchaseFulfillment`・`FulfillmentPlan`・`PaymentRefundStatements`(`prepare`。`workers/sponsorship`とinfrastructure層だけが使う)・`PURCHASE_KIND_REGISTRATIONS`(`apps/backend-lib/workers/payments/purchase-kind-registrations.ts`)、apiの`CheckoutStarter`・`API_PAYMENTS_TYPES`・GraphQLの`Money`・`CheckoutStart`・frontend-libの`MoneyText`。
+- identity-auth: `AccountGuard`(`currentUser`・`requireUser`・`requireWritableUser`・`requireVerifiedUser`)・`CurrentUser`・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`core/identity`の`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`users`(外部キーと`visibleProducts()`の結合だけ)・`SETTINGS_NAV_ITEMS`・`SettingsShell`・`_authenticated`のレイアウト・`viewerQueryOptions`・E2Eの`e2e/support/mailpit.ts`。
+- product-launch: `core/product`の`PRODUCT_PLATFORM_TYPES`・`ProductDirectory`(`findSummaries`・`resolveHandle`・`listLaunches`)・`ProductSummaryRecord`・`LaunchExport`(`listByUser`)・`ProductExport`(`listByUser`)、`visibleProducts()`(`sponsorships`と`products`・`users`を結合した表示の絞り込みだけ)、`products`への外部キー、`ProductLifecycleEvent`・`ProductLifecycleSyncHandler`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`ProductLifecycleAsyncHandler`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、`LaunchStatus`、clientの`ProductDeleteNotice`・`PRODUCT_DELETE_NOTICES`。
 - match-engine: clientの`TopPageSection`・`TopPageSectionContext`・`TOP_PAGE_SECTIONS`・`QualifierListInsert`・`QUALIFIER_LIST_INSERTS`。
 - directory-discovery: clientの`DirectorySection`・`DirectorySectionContext`・`DIRECTORY_PAGE_SECTIONS`・`DirectoryListInsert`・`DIRECTORY_LIST_INSERTS`・`ProductPageSection`・`ProductPageContext`・`PRODUCT_PAGE_SECTIONS`。
 - ultras-subscription: clientの`PricingSection`・`PRICING_SECTIONS`。
-- user-profile-social: `PROFILE_PLATFORM_TYPES.UserProfileDirectory`(`findSummaries`、管理画面の申込者のニックネーム)・`checkExternalUrl`。
+- user-profile-social: `core/profile`の`PROFILE_PLATFORM_TYPES.UserProfileDirectory`(`findSummaries`、管理画面の申込者のニックネーム)・`checkExternalUrl`。
 - media-pipeline: `mediaFileLoader`・`toMediaImage`・GraphQLの`MediaImage`・`MediaPicture`。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EmailSendError`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`。
 - admin-foundation: `requireAdmin`・`CurrentAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkAuditReason`・`AUDIT_REASON_MAX`・`ADMIN_NAV_ITEMS`・`AdminPageHeader`・`AdminFilterBar`・`AdminDataTable`・`ConfirmActionDialog`・`RoleGate`・`useAdminRole`・E2Eの`e2e/support/admin-bootstrap.ts`・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
@@ -61,14 +61,16 @@
   - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、フォームの失敗の文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
   - bot判定の`TurnstileWidget`は非表示のウィジェットで場所を取らないため、申込のフォームと決済の再開のボタンの近くに判定の枠の表示と場所を設けない。
 - npmパッケージ: 新規なし。
-- 後続specは、`common-lib/sponsorship`の公開の規則、`workers/sponsorship`の`SponsorshipExport`と`SPONSORSHIP_PLATFORM_TYPES`だけに依存し、本specのテーブルを読み書きしない。
+- api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため(backend-platformの層の規則)、上流の契約と識別子は`core/<ドメイン>`から読み込む。`workers`の契約(paymentsの`PurchaseFulfillment`・`PaymentRefundStatements`、本specの`DisplayStopStatements`・`RefundSettlement`、上流の同期の処理の文)は`workers/sponsorship`とinfrastructure層だけが使う。
+- 後続specは、`common-lib/sponsorship`の公開の規則、`core/sponsorship`の`SponsorshipExport`と`SPONSORSHIP_PLATFORM_TYPES`だけに依存し、本specのテーブルを読み書きしない。
 
 ### Revalidation Triggers
 
 - `SponsorshipExport`の形と`sponsorships.json`の項目・状態の値(data-export、データエクスポートの文書)。
+- `core/sponsorship`の契約(`SponsorshipStore`・`EligibleProductReader`・`PlacementReader`・`NoticeScheduler`・`NoticeRequester`・`DisplayStopStore`・`RefundEstimator`・`SponsorshipExport`)と`SPONSORSHIP_PLATFORM_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(本specと後続specのapplication層が読み込むため)。上流の契約の置き場所(`core/product`・`core/identity`・`core/profile`・`core/payments`と`workers/payments`の分け方)を変えたら、本specの読み込み先を確かめ直す。
 - 表示の条件(決済済み・強制終了でない・期間内・`visibleProducts()`)と、状態の値(`SPONSORSHIP_STATUSES`)の変更(ugc-moderation・data-export)。
 - 処理の名前と`order`(1600)、0:07のCronの式(backend-platformのCronの一致の検査・日次タイムライン)。
-- 上流の`PurchaseOfferPolicy`・`PurchaseFulfillment`・`FulfillablePurchase`・`CheckoutStarter`・`PriceCatalog`・`PaymentRefunds`(`prepare`の拒否の理由・同じ依頼キーの2回目の扱い・依頼キーと理由の値の規則)の形、反映の期限と`exclusivityKey`の規則、決済期限の無い購入の有効期限(paymentsの仮4)を変えたら、本specを確かめ直す。
+- 上流の`PurchaseOfferPolicy`・`PurchaseFulfillment`・`FulfillablePurchase`・`CheckoutStarter`・`PriceCatalog`・`PaymentRefundStatements`(`prepare`の拒否の理由・同じ依頼キーの2回目の扱い・依頼キーと理由の値の規則)の形、反映の期限と`exclusivityKey`の規則、決済期限の無い購入の有効期限(paymentsの仮4)を変えたら、本specを確かめ直す。
 - 上流の`TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`・`DIRECTORY_PAGE_SECTIONS`・`DIRECTORY_LIST_INSERTS`・`PRODUCT_PAGE_SECTIONS`・`PRICING_SECTIONS`・`PRODUCT_DELETE_NOTICES`・`SETTINGS_NAV_ITEMS`・`ADMIN_NAV_ITEMS`の形・置き場所の描画(特にトップページの`banner`のグリッドと、ディレクトリの`aside`の配置)を変えたら、広告スペースの部品を確かめ直す。
 - 上流の`ProductDirectory`・`LaunchExport`・`ProductExport`・`visibleProducts()`・`UserContactDirectory`・`UserProfileDirectory`・`AuditLogRecorder`・`EmailSender`の形を変えたら、本specを確かめ直す。
 - backend-platformの改訂2の`triggerScheduled`の引数(`worker`・`businessDate`・`businessTime`)を変えたら、E2Eの0:07のジョブの起動(10.1・10.2)を確かめ直す。
@@ -101,6 +103,7 @@
 - apiはクリーンアーキテクチャ(`domain`→`application`→`infrastructure`・`presentation`→`composition`)、処理単位のDIコンテナ、D1の`db.batch()`を使う。条件付きの前進は、条件を満たさなければNOT NULL制約の違反で一括の書き込み全体を取り消す文で表す(identity-auth・paymentsの方式、`db/005`)。
 - paymentsの反映はapi(決済後のランディング・突合)とevent(Webhook)の両方で動くため、購入種別の口の実装は`backend-lib/workers/<ドメイン>`に置き、両アプリに同じ束縛を入れる(paymentsのRevalidation Triggers)。口の`prepare`は副作用を持たずD1の文だけを返し、`afterCommit`は確定させた側だけが1回呼ぶ。
 - Cron Triggersはapiだけにあり、重い処理と外部への送信はeventのQueueの処理へ委ねる。メールはemail-deliveryの`EmailSender`が`email.send`をQueueへ送り、eventが描画して送る。
+- backend-platformの層の規則([層構成と合成ルート](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md))により、api・eventの`src/application/**`・`src/domain/**`は`**/lib/workers/**`を型だけでも読み込めず、application層はデータベースの接続・SQLの文・一括の書き込みを扱わない。application層が受け取る契約と識別子は`core/<ドメイン>`に置き、文を返す契約は`workers`に置いて`infrastructure`と`workers`だけが使う。
 
 ### Architecture Pattern & Boundary Map
 
@@ -175,13 +178,13 @@ graph TB
 
 **Architecture Integration**:
 
-- Selected pattern: クリーンアーキテクチャ。期間・状態・返金目安額は`common-lib`の純粋な関数、決済の口と表示の読み取りは`backend-lib/workers/sponsorship`の部品、ユースケースはapiの`application`。表示の条件は写しを持たず表示の時点の問い合わせで判定する(research.mdの比較)。
+- Selected pattern: クリーンアーキテクチャ。期間・状態・返金目安額は`common-lib`の純粋な関数、application層が受け取る契約と識別子は`backend-lib/core/sponsorship`、決済の口と表示の読み取りの実装は`backend-lib/workers/sponsorship`の部品、ユースケースはapiの`application`。データベースの文を組み立てて一括の書き込みを実行する処理(強制終了・掲載の終わりの精算・物理削除)は、application層のポートとinfrastructure層の実装に分ける。表示の条件は写しを持たず表示の時点の問い合わせで判定する(research.mdの比較)。
 - Domain/feature boundaries: 申込・掲載権・表示の条件・通知・強制終了は本spec、決済はpayments、プロダクトと可視性はproduct-launch、ページの枠はmatch-engine・directory-discovery・ultras-subscription・identity-auth・admin-foundation。
 - Existing patterns preserved: `backend-lib/workers/<ドメイン>`の共有の束縛、`<spec名>.<名詞句>`の処理とジョブの名前、`<ドメイン>.<動詞句>`のメッセージ種別、帯の`order`、登録箇所への追記による拡張、依頼待ちの状態を記録してから外部へ送る方式(paymentsの返金とメールの依頼と同じ形)、条件付きの前進の文。
 - New components rationale: `NoticeScheduler`・`NoticeRequester`は、0:07のジョブ・4:21の確認・決済の反映(仮2)・強制終了の4つの契機から同じ依頼待ちの記録と送信の処理を使うため。`EligibleProductReader`は申込の画面・申込の受付・決済の確定で同じ判定を使うため。`DisplayStopStore`・`RefundSettlement`は、強制終了と掲載の終わりの2つの契機から同じ日割りの返金の計算と依頼を使うため(仮3)。
 - Steering compliance: Inversifyの`@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、新しいパッケージなし。
 
-**Dependency direction**: `apps/common-lib/sponsorship` → `apps/db/schema/sponsorship` → `backend-lib/core/messaging/contracts/sponsorship.ts`・`backend-lib/core/email/kinds/sponsorship.ts` → `backend-lib/workers/sponsorship` → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib`は他の層を読み込まない。`backend-lib/workers/sponsorship`は`backend-lib/core/payments`の契約と`workers/product`・`workers/identity`の公開の契約だけを読み込み、`backend-lib/workers/payments`の登録箇所(`purchase-kind-registrations.ts`)からだけ参照される。client・adminは`common-lib/sponsorship`とGraphQLの操作と上流の画面部品だけを読み込む。
+**Dependency direction**: `apps/common-lib/sponsorship` → `apps/db/schema/sponsorship` → `backend-lib/core/messaging/contracts/sponsorship.ts`・`backend-lib/core/email/kinds/sponsorship.ts`・`backend-lib/core/sponsorship`(契約・識別子・純粋な部品) → `backend-lib/workers/sponsorship`(D1・購入種別の口の実装・文を返す契約) → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib`は他の層を読み込まない。`backend-lib/core/sponsorship`は`core`の他の部品(`core/product`の`ProductSummaryRecord`など)と`common-lib/sponsorship`だけを読み込み、`workers`と`apps/db`を読み込まない。`backend-lib/workers/sponsorship`は`core/sponsorship`・`core/payments`・`core/product`・`core/identity`の契約と`workers/payments`の文を扱う契約(`PurchaseFulfillment`・`PaymentRefunds`)だけを読み込み、`backend-lib/workers/payments`の登録箇所(`purchase-kind-registrations.ts`)と各アプリの`infrastructure`・`composition`からだけ参照される。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、受け取る契約と識別子を`core/sponsorship`から読み込み、`workers`の部品を使わない(identity-authの`core/identity`・media-pipelineの`core/media`と同じ配置)。client・adminは`common-lib/sponsorship`とGraphQLの操作と上流の画面部品だけを読み込む。
 
 ### Technology Stack
 
@@ -211,19 +214,22 @@ apps/
 ├── backend-lib/
 │   ├── core/messaging/contracts/sponsorship.ts                # SPONSORSHIP_DISPATCH_NOTICES_MESSAGE・SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE
 │   ├── core/email/kinds/sponsorship.ts                        # 3つのメール種別(入力のzodスキーマ)
-│   └── workers/sponsorship/                                   # api・event共通(Workers統合テスト)
-│       ├── sponsorship-platform-types.ts                      # SPONSORSHIP_PLATFORM_TYPES(テストなし)
-│       ├── sponsorship-store.ts                               # SponsorshipStore・SponsorshipRecord(型)
-│       ├── d1-sponsorship-store.ts                            # 作成・照会・一覧・重なり・削除
-│       ├── eligible-product-reader.ts                         # EligibleProductReader(型と実装)
-│       ├── placement-reader.ts                                # PlacementReader(型とD1の実装、無作為の並び)
+│   ├── core/sponsorship/                                      # api・eventと後続specのapplication層が読み込める部品(Bunの単体テスト)
+│   │   ├── ports.ts                                           # SponsorshipStore・EligibleProductReader・PlacementReader・NoticeScheduler・NoticeRequester・DisplayStopStore・RefundEstimator・SponsorshipExportの契約と型(RefundOutcomeなど)
+│   │   ├── shuffle-by-tier.ts                                 # shuffleByTier(Fisher-Yates、同名の*.unit.test.ts)
+│   │   └── identifiers.ts                                     # SPONSORSHIP_PLATFORM_TYPES(api・event共通の識別子、同名の*.unit.test.ts)
+│   └── workers/sponsorship/                                   # D1の実装・購入種別の口・文を返す契約と束縛(api・event共通、各ファイルに同名の*.worker.test.ts)
+│       ├── d1-sponsorship-store.ts                            # SponsorshipStoreのD1実装(作成・照会・一覧・重なり・削除)
+│       ├── d1-eligible-product-reader.ts                      # EligibleProductReaderの実装
+│       ├── d1-placement-reader.ts                             # PlacementReaderのD1実装(無作為の並びはshuffleByTier)
 │       ├── sponsorship-offer-policy.ts                        # PurchaseOfferPolicyの実装
 │       ├── sponsorship-fulfillment.ts                         # PurchaseFulfillmentの実装(条件付きの前進の文)
-│       ├── notice-scheduler.ts                                # NoticeScheduler(依頼待ちの記録の文)
-│       ├── notice-requester.ts                                # NoticeRequester(sponsorship.dispatch-noticesの送信)
-│       ├── display-stop-store.ts                              # DisplayStopStore(区間の記録の文・重なる区間の照会・削除)
-│       ├── refund-settlement.ts                               # RefundSettlement(強制終了と表示停止の日割りの返金の計画と依頼)
-│       ├── sponsorship-export.ts                              # SponsorshipExport(sponsorships.jsonの項目)
+│       ├── d1-notice-scheduler.ts                             # NoticeSchedulerのD1実装(依頼待ちの記録の2文を1回の一括の書き込みで実行)
+│       ├── queue-notice-requester.ts                          # NoticeRequesterの実装(sponsorship.dispatch-notices・sponsorship.settle-period-endの送信)
+│       ├── display-stop-statements.ts                         # DisplayStopStatements(区間の記録の文を返す契約と実装。infrastructure層の同期の処理だけが使う)
+│       ├── d1-display-stop-store.ts                           # DisplayStopStoreのD1実装(重なる区間の照会・削除)
+│       ├── refund-settlement.ts                               # RefundSettlement(返金の計画の文と依頼を返す契約。infrastructure層だけが使う)とRefundEstimatorを兼ねる実装
+│       ├── d1-sponsorship-export.ts                           # SponsorshipExportの実装(sponsorships.jsonの項目)
 │       ├── sponsorship-platform-module.ts                     # SPONSORSHIP_PLATFORM_MODULE
 │       └── test-support/sponsorship-rows.ts                   # Workers統合テストの行の作成の補助(テストだけが読み込む、テストなし)
 ├── api/src/
@@ -233,7 +239,7 @@ apps/
 │   │   ├── sponsorship-offer-reader.ts                        # 料金ページの価格と申込の対象
 │   │   ├── my-sponsorships-reader.ts                          # 自分の一覧と削除の確認の件数
 │   │   ├── admin-sponsorships-reader.ts                       # 管理画面の一覧
-│   │   ├── sponsorship-termination.ts                         # 強制終了の照会と確定(ポートSponsorshipTerminationWriterを含む)
+│   │   ├── sponsorship-termination.ts                         # 強制終了の照会と確定(書き込みのポートSponsorshipTerminationWriterを含む)
 │   │   └── jobs/
 │   │       ├── daily-notices-job.ts                           # 0:07(order 1600)
 │   │       └── maintenance-job.ts                             # 4:21(order 1600)
@@ -241,7 +247,7 @@ apps/
 │   │   ├── account-withdrawal-sync-handler.ts                 # sponsorship.account-withdrawal
 │   │   ├── product-deletion-sync-handler.ts                   # sponsorship.product-deletion
 │   │   ├── display-stop-sync-handlers.ts                      # sponsorship.product-display-stop・sponsorship.account-display-stop
-│   │   └── d1-termination-writer.ts                           # 強制終了と監査ログの一括の書き込み
+│   │   └── d1-termination-writer.ts                           # SponsorshipTerminationWriterの実装(返金の計画・強制終了と返金の依頼と監査ログの一括の書き込み・依頼の送信)
 │   ├── presentation/graphql/modules/sponsorship/              # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts                                          # 引数の検証
@@ -254,10 +260,15 @@ apps/
 ├── event/src/
 │   ├── application/sponsorship/                               # Bunの単体テスト
 │   │   ├── event-sponsorship-types.ts                         # EVENT_SPONSORSHIP_TYPES
+│   │   ├── ports.ts                                           # PeriodEndSettlementCommitter・SponsorshipPurgeStore・NoticeClaimStore
 │   │   ├── notice-dispatch-handler.ts                         # sponsorship.dispatch-notices
 │   │   ├── period-end-settlement-handler.ts                   # sponsorship.settle-period-end(表示停止の返金の精算)
 │   │   ├── account-purge-handler.ts                           # ユーザーのpurge_due 1600
 │   │   └── product-purge-handler.ts                           # プロダクトのpurge_due 1600
+│   ├── infrastructure/sponsorship/                            # Workers統合テスト
+│   │   ├── d1-period-end-settlement-committer.ts              # 返金の計画・申込の列の更新と返金の依頼の一括の書き込み・依頼の送信
+│   │   ├── d1-sponsorship-purge-store.ts                      # 申込の行と主体の表示停止の区間の物理削除
+│   │   └── d1-notice-claim-store.ts                           # 依頼待ちの通知の取得と状態の更新
 │   ├── infrastructure/email/templates/sponsorship/            # 本文の*-body.tsxと定義の*-template.ts(3種)
 │   └── composition/sponsorship-module.ts
 ├── common-lib/admin/audit-actions/sponsorship.ts              # sponsorship.terminate
@@ -414,7 +425,7 @@ sequenceDiagram
     Q-->>S: same order for all placements
 ```
 
-- 問い合わせの形(`placement-reader.ts`):
+- 問い合わせの形(`workers/sponsorship/d1-placement-reader.ts`):
 
 ```sql
 SELECT sponsorships.id, sponsorships.tier, sponsorships.product_id
@@ -466,7 +477,7 @@ sequenceDiagram
 | 4:21のジョブ                                | 開始・終了         | 0:07のジョブと同じ条件(0:07の失敗と、0:07の直前の決済の確定との競合を拾う)。依頼待ちが残っていれば送信を依頼する(8.9)                               |
 | 精算の処理(`sponsorship.settle-period-end`) | 終了               | 精算の後に、0:07のジョブと同じ条件(`ends_on`が今日より前・精算済み)で記録し、送信を依頼する(8.2・14.3)                                              |
 
-- 送信の処理は、依頼待ちの通知を最大20件読み、通知ごとに`pending`→`requested`の条件付きの更新で取り(同時の処理で重ねて送らない、8.5)、送信の時点の条件を確かめる。開始は、`state = 'paid'`・論理削除なし・今日が終了日以前・プロダクトが`visible`(8.6)。終了は、`state = 'paid'`・論理削除なし・プロダクトが論理削除されていない(8.7)。強制終了は`state = 'terminated'`・論理削除なし。条件に合わない・宛先が無い(`UserContactDirectory`が`undefined`)なら`skipped`にする。
+- 送信の処理は、依頼待ちの通知を最大20件読み、通知ごとに`pending`→`requested`の条件付きの更新で取り(同時の処理で重ねて送らない、8.5)、送信の時点の条件を確かめる。開始は、`state = 'paid'`・論理削除なし・今日が終了日以前・プロダクトが`visible`(8.6)。終了は、`state = 'paid'`・論理削除なし・プロダクトが論理削除されていない(8.7)。強制終了は`state = 'terminated'`・論理削除なし。条件に合わない・宛先が無い(`UserContactDirectory`が`undefined`)なら`skipped`にする。依頼待ちの読み出しと状態の更新は、eventのapplication層のポート`NoticeClaimStore`を通し、条件付きの更新の文はinfrastructure層の`D1NoticeClaimStore`が実行する。
 - `EmailSender.send`の`EmailSendError`(恒久的)は`skipped`と`warn`、それ以外の失敗は`pending`に戻して例外を返し、メッセージの再試行に任せる(8.9)。依頼待ちが残れば`defer`(5秒)で続ける。
 - 0:07のジョブ・4:21のジョブ・決済の確定・強制終了の送信の依頼(メッセージの送信)が失敗しても、依頼待ちの行が残り、次の4:21のジョブが送り直す(8.9)。
 - 0:07のジョブは、掲載終了日が過ぎた広告の表示停止の返金の精算を`sponsorship.settle-period-end`のメッセージでeventへ委ねる(「表示停止の日割りの返金」)。掲載終了通知は精算の後にだけ依頼待ちになり(精算の処理が精算した後に依頼待ちの記録と送信の依頼を行う)、本文に表示停止の返金の日数と金額を含められる(8.8・14.3)。
@@ -480,6 +491,7 @@ sequenceDiagram
     participant J as daily notices job 0:07
     participant Q as Queues
     participant H as PeriodEndSettlementHandler
+    participant C as D1PeriodEndSettlementCommitter
     participant S as RefundSettlement
     participant P as PaymentRefunds
     L->>D: hidden or suspended inserts stop interval
@@ -487,14 +499,16 @@ sequenceDiagram
     J->>Q: sponsorship.settle-period-end
     Q->>H: handle
     H->>D: up to 20 paid ads ended before today and unsettled
-    H->>S: planPeriodEnd
+    H->>C: settle per ad
+    C->>S: planPeriodEnd
     S->>D: overlapping intervals of product and owner
     S->>S: countStoppedDays and computeRefundEstimate
     S->>P: prepare amount and request key
     P-->>S: refund request statements
-    S-->>H: plan with guarded update
-    H->>D: commit in one batch per ad
-    H->>P: dispatch
+    S-->>C: plan with guarded update
+    C->>D: commit in one batch per ad
+    C->>P: dispatch
+    C-->>H: settled or skipped
     H->>D: mark end notices due
     H-->>Q: defer when more unsettled
 ```
@@ -503,7 +517,7 @@ sequenceDiagram
 - **表示停止日数**: 掲載期間のうち、数え終わりの日(掲載終了日、強制終了では強制終了日の前日)までの日で、その日の一部でもプロダクトの非公開化または投稿者の停止の区間に含まれる日の数。区間の始まりと終わりは確定の時刻(`occurredAt`)で記録し、基準時刻の日付に直して数える(終わりが0:00ちょうどの日は含めない)(14.2)。
 - **強制終了**: 強制終了日以降は未掲載日数として返金目安額で返金するため、表示停止日数は強制終了日の前日までで数え、同じ日を2回返金しない(14.4)。
 - **返金しない場合**: 返金額が0、申込の論理削除(退会)・プロダクトの論理削除のある広告は依頼せず`not_needed`にする(14.5・14.9)。退会とプロダクトの削除の同期の処理が、未精算の広告を同じ書き込みで`not_needed`にする。掲載終了日の翌日0:00から0:07の精算までの数分の間に退会・削除が確定した広告も返金しない(返金ポリシーの「削除・退会に伴う掲載終了」と同じ扱いにし、精算の漏れを作らない単純さを優先する)。
-- **依頼できない場合**: `PaymentRefunds.prepare`が`amount_exceeds_refundable`を返せば残りの全額(金額`null`)で依頼し直し、それ以外の拒否(`purchase_not_found`・`not_paid`・`invalid_amount`)は`failed`を記録して`captureEvent`(タグ`sponsorship_refund`・申込ID)で知らせ、掲載の処理を止めない(14.7・14.8)。依頼の送信(`dispatch`)の失敗は、paymentsの4:21の日次の確認が送り直す(14.10)。
+- **依頼できない場合**: `PaymentRefundStatements.prepare`が`amount_exceeds_refundable`を返せば残りの全額(金額`null`)で依頼し直し、それ以外の拒否(`purchase_not_found`・`not_paid`・`invalid_amount`)は`failed`を記録して`captureEvent`(タグ`sponsorship_refund`・申込ID)で知らせ、掲載の処理を止めない(14.7・14.8)。依頼の送信(`dispatch`)の失敗は、paymentsの4:21の日次の確認が送り直す(14.10)。
 - **利用者への通知**: paymentsの自動返金の通知メールは`reflection:`で始まる依頼(paymentsの自動返金)だけに送られるため、本specの日割りの返金は本specのメールで知らせる。強制終了の返金は強制終了の通知、表示停止の返金は掲載終了通知(強制終了ではその通知)に、依頼した日数と金額を載せる(8.8・10.5)。依頼できなかった返金(`failed`)はメールに載せず、運営者がSentryの通知から対応する。
 - **依頼キーと金額の上限**: 依頼キーは広告ごと・返金の種類ごとに`sponsorship-termination:<申込ID>`と`sponsorship-display-stop:<申込ID>`の2つで、表示停止の返金は掲載の終わりに1回だけ、停止の後の強制終了でも強制終了の返金とは別の鍵になる(paymentsは同じ鍵を1回しか実行しない)。金額はpaymentsが数える返金できる残り(支払額−取り消し・失敗以外の依頼の合計)を超えると拒否されるため、その場合は金額`null`(残りの全額)で依頼し直して残りで頭打ちにする。端数はそれぞれの返金額でセント未満を切り捨てる(14.6・14.7)。
 - **物理削除との関係**: 利用者の物理削除の後はpaymentsの購入の行が消え、依頼は`purchase_not_found`で拒否される。本specは退会(物理削除の前提)とプロダクトの論理削除の広告の表示停止の返金を依頼しない(`not_needed`、返金ポリシー)ため、精算は物理削除より前に終わるか不要になる。強制終了は退会済みの申込に行えない。それでも`purchase_not_found`になった場合は`failed`を記録してSentryへ知らせ、返金しない扱いで処理を進める(14.8・14.9)。
@@ -523,89 +537,93 @@ sequenceDiagram
     M->>UI: 理由を入力して確定
     UI->>A: terminateSponsorship id reason
     A->>A: requireAdmin moderator and terminable and estimate
-    A->>A: RefundSettlement planTermination
-    A->>W: guarded update refund requests and audit log in one batch
-    A->>A: PaymentRefunds dispatch
+    A->>W: commit with reason and audit entry
+    W->>W: RefundSettlement planTermination
+    W->>W: guarded update refund requests and audit log in one batch
+    W->>W: PaymentRefunds dispatch
+    W-->>A: committed with refund outcomes
     A->>Q: sponsorship.dispatch-notices
     A-->>UI: result with refunds and purchase id
 ```
 
 - 強制終了できるのは`state = 'paid'`・論理削除なし・`ends_on`が今日以降で、プロダクトが論理削除されていない申込(掲載予定・掲載中・表示停止中)だけで、それ以外は`sponsorship_not_terminable`(10.8)。前進の文の条件(`CASE WHEN state = 'paid' AND deleted_at IS NULL AND product_deleted_at IS NULL AND ends_on >= ? THEN 'terminated' ELSE NULL END`)で同時の強制終了・終了の切り替わり・退会と競合しても1回だけ確定する。
-- 未掲載日数と返金目安額は、照会と確定で同じ`computeUnexposedDays`・`computeRefundEstimate`(今日は処理の時点の基準時刻)を使う(10.3)。確定では`RefundSettlement.planTermination`が、返金目安額(依頼キー`sponsorship-termination:<申込ID>`、理由`sponsorship_terminated`)と、強制終了日の前日までの表示停止の返金額(依頼キー`sponsorship-display-stop:<申込ID>`、理由`sponsorship_display_stopped`)の2つの依頼の文を作り、強制終了の前進の文・監査ログと同じ一括の書き込みで確定する。前進の文が取り消されれば依頼の行も作られない。確定の後に`PaymentRefunds.dispatch`で送る(10.7・10.11・14.4・14.6)。
+- 未掲載日数と返金目安額は、照会と確定で同じ`computeUnexposedDays`・`computeRefundEstimate`(今日は処理の時点の基準時刻)を使う(10.3)。確定では、infrastructure層の`D1TerminationWriter`の中で`RefundSettlement.planTermination`が、返金目安額(依頼キー`sponsorship-termination:<申込ID>`、理由`sponsorship_terminated`)と、強制終了日の前日までの表示停止の返金額(依頼キー`sponsorship-display-stop:<申込ID>`、理由`sponsorship_display_stopped`)の2つの依頼の文を作り、強制終了の前進の文・監査ログと同じ一括の書き込みで確定する。前進の文が取り消されれば依頼の行も作られない。確定の後に`PaymentRefunds.dispatch`で送る(10.7・10.11・14.4・14.6)。
 
 ## Requirements Traceability
 
-| Requirement                                 | Summary                     | Components                                                                                                                              | Interfaces                                                              | Flows                      |
-| ------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------- |
-| 1.1, 1.2, 1.9                               | 申込の対象                  | EligibleProductReader、SponsorshipOfferReader、SponsorshipApplicationForm                                                               | `sponsorshipOffer.eligibleProducts`・`listEligible`・`isEligible`       | 申込から掲載権の確定まで   |
-| 1.3, 1.4, 1.5, 1.6, 1.7                     | ティアと掲載期間            | SponsorshipTiers、SponsorshipPeriod、SponsorshipApplicationForm、SponsorshipApplication                                                 | `validatePeriod`・`countDays`                                           | —                          |
-| 1.8                                         | 重なり                      | SponsorshipPeriod、D1SponsorshipStore、SponsorshipApplication                                                                           | `hasPaidOverlap`                                                        | 申込から掲載権の確定まで   |
-| 1.10                                        | 受付と確定での再判定        | SponsorshipApplication、SponsorshipOfferPolicy、SponsorshipFulfillment                                                                  | `describe`・`prepare`                                                   | 申込から掲載権の確定まで   |
-| 2.1, 2.2, 2.3, 2.4, 2.5                     | 価格の表示と導線            | SponsorshipPricingSection、TierPriceList、SponsorshipApplicationForm、SponsorshipOfferReader                                            | `PriceCatalog.getPrices`・`MoneyText`                                   | —                          |
-| 2.6, 2.7, 2.8, 2.9, 2.10                    | 申込と決済の開始            | SponsorshipApplication、SponsorshipOfferPolicy、ClientResolvers                                                                         | `applySponsorship`・`CheckoutStarter.start`・`assertHuman`              | 申込から掲載権の確定まで   |
-| 2.11, 2.12                                  | 決済の再開                  | SponsorshipApplication、ResumeCheckoutButton                                                                                            | `resumeSponsorshipCheckout`                                             | 申込から掲載権の確定まで   |
-| 2.13                                        | 未決済の削除                | MaintenanceJob、D1SponsorshipStore                                                                                                      | `deleteExpiredUnpaid`                                                   | —                          |
-| 3.1, 3.2, 3.3, 3.4                          | 掲載権の確定と拒否          | SponsorshipFulfillment、SponsorshipOfferPolicy                                                                                          | `FulfillmentPlan`・`exclusivityKey`・`fulfillableUntil`                 | 申込から掲載権の確定まで   |
-| 3.5, 3.6                                    | 返金・期間の不変            | SponsorshipFulfillment、PlacementReader                                                                                                 | —                                                                       | 申込の状態                 |
-| 4.1, 4.2, 4.3, 4.4, 4.5, 4.6                | 表示の条件                  | PlacementReader                                                                                                                         | `visibleProducts()`                                                     | 広告の表示                 |
-| 5.1                                         | 3ページへの配置             | 区画の登録(SponsorshipPlacementsRegistration)                                                                                           | `TOP_PAGE_SECTIONS`・`DIRECTORY_PAGE_SECTIONS`・`PRODUCT_PAGE_SECTIONS` | —                          |
-| 5.2                                         | Legend                      | LegendPlacement、SponsoredAdCard                                                                                                        | —                                                                       | —                          |
-| 5.3, 5.4                                    | Gold                        | GoldListPlacement、GoldSidebarPlacement、GoldListInsert、GoldAdStack、GoldInsertTracker                                                 | `QUALIFIER_LIST_INSERTS`・`DIRECTORY_LIST_INSERTS`                      | 広告の表示                 |
-| 5.5                                         | Silver                      | SilverPlacement                                                                                                                         | —                                                                       | —                          |
-| 5.6                                         | 表示内容                    | SponsoredAdCard、SponsorshipViews                                                                                                       | `MediaPicture`                                                          | —                          |
-| 5.7, 5.8                                    | 申込の導線と0件             | SponsorshipApplyLink、GoldAdStack、SilverPlacement、LegendPlacement                                                                     | `viewer.signedIn`                                                       | —                          |
-| 5.9, 5.10, 5.11                             | SSR・失敗・静止             | UseSponsoredPlacements、各Placement                                                                                                     | `useSuspenseQuery`                                                      | 広告の表示                 |
-| 6.1                                         | 無作為の並び                | PlacementReader、UseSponsoredPlacements、GoldInsertTracker                                                                              | `shuffleByTier`                                                         | 広告の表示                 |
-| 6.2, 6.3, 6.4, 6.5                          | リンクとラベル              | SponsoredAdCard、SponsorLabel、SponsorshipViews                                                                                         | `checkExternalUrl`                                                      | —                          |
-| 6.6                                         | 計測しない                  | PlacementReader、SponsoredAdCard                                                                                                        | —                                                                       | —                          |
-| 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9 | 自分の一覧                  | MySponsorshipsReader、MySponsorshipList、MySponsorshipItem、SponsorshipStatusBadge、ResumeCheckoutButton                                | `mySponsorships`・`deriveSponsorshipStatus`                             | 申込の状態                 |
-| 7.10                                        | 設定のナビゲーション        | 登録(`SETTINGS_NAV_ITEMS`)、SettingsSponsorshipsRoute                                                                                   | `SETTINGS_NAV_ITEMS`                                                    | —                          |
-| 8.1, 8.2, 8.3                               | 0:07の通知                  | DailyNoticesJob、NoticeScheduler、NoticeRequester、NoticeDispatchHandler                                                                | `sponsorship.dispatch-notices`                                          | 開始・終了・強制終了の通知 |
-| 8.4                                         | 当日0:07以降の開始通知      | SponsorshipFulfillment、NoticeRequester                                                                                                 | `afterCommit`                                                           | 開始・終了・強制終了の通知 |
-| 8.5, 8.6, 8.7, 8.8, 8.9                     | 1回だけ・条件・本文・再試行 | NoticeDispatchHandler、SponsorshipEmailTemplates、MaintenanceJob                                                                        | `EmailSender.send`                                                      | 開始・終了・強制終了の通知 |
-| 9.1, 9.2, 9.3, 9.4, 9.5, 9.6                | 管理者の一覧                | AdminSponsorshipsReader、AdminSponsorshipTable、SponsorshipStatusFilter、AdminResolvers                                                 | `adminSponsorships`・`ADMIN_NAV_ITEMS`                                  | —                          |
-| 10.1, 10.2, 10.3, 10.9, 10.10               | 強制終了の照会と入力        | SponsorshipTermination、TerminateSponsorshipDialog、RefundEstimate                                                                      | `sponsorshipTerminationPreview`                                         | 強制終了                   |
-| 10.4, 10.5, 10.6, 10.7, 10.8, 10.11         | 強制終了の確定と通知        | SponsorshipTermination、D1TerminationWriter、TerminationResultNotice、NoticeDispatchHandler                                             | `terminateSponsorship`・`sponsorship.terminate`                         | 強制終了                   |
-| 11.1                                        | 退会                        | AccountWithdrawalSyncHandler、ProductDeletionSyncHandler                                                                                | `USER_LIFECYCLE_SYNC_HANDLERS`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`       | —                          |
-| 11.2, 11.3                                  | 物理削除                    | AccountPurgeHandler、ProductPurgeHandler                                                                                                | `USER_LIFECYCLE_ASYNC_HANDLERS`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`     | —                          |
-| 11.4, 11.5                                  | 削除の確認の注記            | ProductSponsorshipDeleteNotice、MySponsorshipsReader                                                                                    | `PRODUCT_DELETE_NOTICES`・`activeSponsorshipCount`                      | —                          |
-| 11.6                                        | 決済履歴を消さない          | AccountPurgeHandler、ProductPurgeHandler                                                                                                | —                                                                       | —                          |
-| 12.1                                        | エクスポートの部品          | SponsorshipExport                                                                                                                       | `SponsorshipExport.listByUser`                                          | —                          |
-| 12.2, 12.5, 12.6                            | 帯の値・再試行・冪等        | DailyNoticesJob、MaintenanceJob、NoticeDispatchHandler、各処理                                                                          | `order` 1600                                                            | 開始・終了・強制終了の通知 |
-| 12.3                                        | ログ                        | 全コンポーネント                                                                                                                        | `getAppLogger`                                                          | —                          |
-| 12.4                                        | まとめた照会                | PlacementReader、MySponsorshipsReader、AdminSponsorshipsReader                                                                          | `findSummaries`・`mediaFileLoader`                                      | 広告の表示                 |
-| 13.1, 13.2, 13.3                            | テスト                      | Testing Strategy                                                                                                                        | —                                                                       | —                          |
-| 13.4                                        | 技術ドキュメント            | SponsorshipTechDocs                                                                                                                     | —                                                                       | —                          |
-| 13.5                                        | サービス仕様                | SponsorshipServiceSpecs                                                                                                                 | —                                                                       | —                          |
-| 14.1                                        | 表示停止の区間の記録        | DisplayStopSyncHandlers、DisplayStopStore                                                                                               | `PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`USER_LIFECYCLE_SYNC_HANDLERS`       | 表示停止の日割りの返金     |
-| 14.2, 14.5, 14.7, 14.8, 14.10               | 日数・0円・残り・失敗・委任 | RefundEstimate、RefundSettlement                                                                                                        | `countStoppedDays`・`PaymentRefunds.prepare`・`dispatch`                | 表示停止の日割りの返金     |
-| 14.3, 14.6, 14.9                            | 掲載の終わりの精算と1回だけ | DailyNoticesJob、MaintenanceJob、PeriodEndSettlementHandler、RefundSettlement、AccountWithdrawalSyncHandler、ProductDeletionSyncHandler | `planPeriodEnd`・依頼キー                                               | 表示停止の日割りの返金     |
-| 14.4                                        | 強制終了の返金              | SponsorshipTermination、RefundSettlement、D1TerminationWriter                                                                           | `planTermination`                                                       | 強制終了                   |
-| 14.11                                       | 一覧の返金の表示            | MySponsorshipsReader、MySponsorshipItem                                                                                                 | `MySponsorship.terminationRefund`・`displayStopRefund`                  | —                          |
+| Requirement                                 | Summary                     | Components                                                                                                                                                            | Interfaces                                                                       | Flows                      |
+| ------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------- |
+| 1.1, 1.2, 1.9                               | 申込の対象                  | EligibleProductReader、SponsorshipOfferReader、SponsorshipApplicationForm                                                                                             | `sponsorshipOffer.eligibleProducts`・`listEligible`・`isEligible`                | 申込から掲載権の確定まで   |
+| 1.3, 1.4, 1.5, 1.6, 1.7                     | ティアと掲載期間            | SponsorshipTiers、SponsorshipPeriod、SponsorshipApplicationForm、SponsorshipApplication                                                                               | `validatePeriod`・`countDays`                                                    | —                          |
+| 1.8                                         | 重なり                      | SponsorshipPeriod、D1SponsorshipStore、SponsorshipApplication                                                                                                         | `hasPaidOverlap`                                                                 | 申込から掲載権の確定まで   |
+| 1.10                                        | 受付と確定での再判定        | SponsorshipApplication、SponsorshipOfferPolicy、SponsorshipFulfillment                                                                                                | `describe`・`prepare`                                                            | 申込から掲載権の確定まで   |
+| 2.1, 2.2, 2.3, 2.4, 2.5                     | 価格の表示と導線            | SponsorshipPricingSection、TierPriceList、SponsorshipApplicationForm、SponsorshipOfferReader                                                                          | `PriceCatalog.getPrices`・`MoneyText`                                            | —                          |
+| 2.6, 2.7, 2.8, 2.9, 2.10                    | 申込と決済の開始            | SponsorshipApplication、SponsorshipOfferPolicy、ClientResolvers                                                                                                       | `applySponsorship`・`CheckoutStarter.start`・`assertHuman`                       | 申込から掲載権の確定まで   |
+| 2.11, 2.12                                  | 決済の再開                  | SponsorshipApplication、ResumeCheckoutButton                                                                                                                          | `resumeSponsorshipCheckout`                                                      | 申込から掲載権の確定まで   |
+| 2.13                                        | 未決済の削除                | MaintenanceJob、D1SponsorshipStore                                                                                                                                    | `deleteExpiredUnpaid`                                                            | —                          |
+| 3.1, 3.2, 3.3, 3.4                          | 掲載権の確定と拒否          | SponsorshipFulfillment、SponsorshipOfferPolicy                                                                                                                        | `FulfillmentPlan`・`exclusivityKey`・`fulfillableUntil`                          | 申込から掲載権の確定まで   |
+| 3.5, 3.6                                    | 返金・期間の不変            | SponsorshipFulfillment、PlacementReader                                                                                                                               | —                                                                                | 申込の状態                 |
+| 4.1, 4.2, 4.3, 4.4, 4.5, 4.6                | 表示の条件                  | PlacementReader                                                                                                                                                       | `visibleProducts()`                                                              | 広告の表示                 |
+| 5.1                                         | 3ページへの配置             | 区画の登録(SponsorshipPlacementsRegistration)                                                                                                                         | `TOP_PAGE_SECTIONS`・`DIRECTORY_PAGE_SECTIONS`・`PRODUCT_PAGE_SECTIONS`          | —                          |
+| 5.2                                         | Legend                      | LegendPlacement、SponsoredAdCard                                                                                                                                      | —                                                                                | —                          |
+| 5.3, 5.4                                    | Gold                        | GoldListPlacement、GoldSidebarPlacement、GoldListInsert、GoldAdStack、GoldInsertTracker                                                                               | `QUALIFIER_LIST_INSERTS`・`DIRECTORY_LIST_INSERTS`                               | 広告の表示                 |
+| 5.5                                         | Silver                      | SilverPlacement                                                                                                                                                       | —                                                                                | —                          |
+| 5.6                                         | 表示内容                    | SponsoredAdCard、SponsorshipViews                                                                                                                                     | `MediaPicture`                                                                   | —                          |
+| 5.7, 5.8                                    | 申込の導線と0件             | SponsorshipApplyLink、GoldAdStack、SilverPlacement、LegendPlacement                                                                                                   | `viewer.signedIn`                                                                | —                          |
+| 5.9, 5.10, 5.11                             | SSR・失敗・静止             | UseSponsoredPlacements、各Placement                                                                                                                                   | `useSuspenseQuery`                                                               | 広告の表示                 |
+| 6.1                                         | 無作為の並び                | PlacementReader、UseSponsoredPlacements、GoldInsertTracker                                                                                                            | `shuffleByTier`                                                                  | 広告の表示                 |
+| 6.2, 6.3, 6.4, 6.5                          | リンクとラベル              | SponsoredAdCard、SponsorLabel、SponsorshipViews                                                                                                                       | `checkExternalUrl`                                                               | —                          |
+| 6.6                                         | 計測しない                  | PlacementReader、SponsoredAdCard                                                                                                                                      | —                                                                                | —                          |
+| 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9 | 自分の一覧                  | MySponsorshipsReader、MySponsorshipList、MySponsorshipItem、SponsorshipStatusBadge、ResumeCheckoutButton                                                              | `mySponsorships`・`deriveSponsorshipStatus`                                      | 申込の状態                 |
+| 7.10                                        | 設定のナビゲーション        | 登録(`SETTINGS_NAV_ITEMS`)、SettingsSponsorshipsRoute                                                                                                                 | `SETTINGS_NAV_ITEMS`                                                             | —                          |
+| 8.1, 8.2, 8.3                               | 0:07の通知                  | DailyNoticesJob、NoticeScheduler、NoticeRequester、NoticeDispatchHandler                                                                                              | `sponsorship.dispatch-notices`                                                   | 開始・終了・強制終了の通知 |
+| 8.4                                         | 当日0:07以降の開始通知      | SponsorshipFulfillment、NoticeRequester                                                                                                                               | `afterCommit`                                                                    | 開始・終了・強制終了の通知 |
+| 8.5, 8.6, 8.7, 8.8, 8.9                     | 1回だけ・条件・本文・再試行 | NoticeDispatchHandler、NoticeClaimStore、SponsorshipEmailTemplates、MaintenanceJob                                                                                    | `EmailSender.send`                                                               | 開始・終了・強制終了の通知 |
+| 9.1, 9.2, 9.3, 9.4, 9.5, 9.6                | 管理者の一覧                | AdminSponsorshipsReader、AdminSponsorshipTable、SponsorshipStatusFilter、AdminResolvers                                                                               | `adminSponsorships`・`ADMIN_NAV_ITEMS`                                           | —                          |
+| 10.1, 10.2, 10.3, 10.9, 10.10               | 強制終了の照会と入力        | SponsorshipTermination、TerminateSponsorshipDialog、RefundEstimate                                                                                                    | `sponsorshipTerminationPreview`                                                  | 強制終了                   |
+| 10.4, 10.5, 10.6, 10.7, 10.8, 10.11         | 強制終了の確定と通知        | SponsorshipTermination、D1TerminationWriter、TerminationResultNotice、NoticeDispatchHandler                                                                           | `terminateSponsorship`・`sponsorship.terminate`                                  | 強制終了                   |
+| 11.1                                        | 退会                        | AccountWithdrawalSyncHandler、ProductDeletionSyncHandler                                                                                                              | `USER_LIFECYCLE_SYNC_HANDLERS`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`                | —                          |
+| 11.2, 11.3                                  | 物理削除                    | AccountPurgeHandler、ProductPurgeHandler、SponsorshipPurgeStore                                                                                                       | `USER_LIFECYCLE_ASYNC_HANDLERS`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`              | —                          |
+| 11.4, 11.5                                  | 削除の確認の注記            | ProductSponsorshipDeleteNotice、MySponsorshipsReader                                                                                                                  | `PRODUCT_DELETE_NOTICES`・`activeSponsorshipCount`                               | —                          |
+| 11.6                                        | 決済履歴を消さない          | AccountPurgeHandler、ProductPurgeHandler                                                                                                                              | —                                                                                | —                          |
+| 12.1                                        | エクスポートの部品          | SponsorshipExport                                                                                                                                                     | `SponsorshipExport.listByUser`                                                   | —                          |
+| 12.2, 12.5, 12.6                            | 帯の値・再試行・冪等        | DailyNoticesJob、MaintenanceJob、NoticeDispatchHandler、各処理                                                                                                        | `order` 1600                                                                     | 開始・終了・強制終了の通知 |
+| 12.3                                        | ログ                        | 全コンポーネント                                                                                                                                                      | `getAppLogger`                                                                   | —                          |
+| 12.4                                        | まとめた照会                | PlacementReader、MySponsorshipsReader、AdminSponsorshipsReader                                                                                                        | `findSummaries`・`mediaFileLoader`                                               | 広告の表示                 |
+| 13.1, 13.2, 13.3                            | テスト                      | Testing Strategy                                                                                                                                                      | —                                                                                | —                          |
+| 13.4                                        | 技術ドキュメント            | SponsorshipTechDocs                                                                                                                                                   | —                                                                                | —                          |
+| 13.5                                        | サービス仕様                | SponsorshipServiceSpecs                                                                                                                                               | —                                                                                | —                          |
+| 14.1                                        | 表示停止の区間の記録        | DisplayStopSyncHandlers、DisplayStopStatements                                                                                                                        | `PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`USER_LIFECYCLE_SYNC_HANDLERS`                | 表示停止の日割りの返金     |
+| 14.2, 14.5, 14.7, 14.8, 14.10               | 日数・0円・残り・失敗・委任 | RefundEstimate、RefundSettlement                                                                                                                                      | `countStoppedDays`・`PaymentRefundStatements.prepare`・`PaymentRefunds.dispatch` | 表示停止の日割りの返金     |
+| 14.3, 14.6, 14.9                            | 掲載の終わりの精算と1回だけ | DailyNoticesJob、MaintenanceJob、PeriodEndSettlementHandler、PeriodEndSettlementCommitter、RefundSettlement、AccountWithdrawalSyncHandler、ProductDeletionSyncHandler | `planPeriodEnd`・依頼キー                                                        | 表示停止の日割りの返金     |
+| 14.4                                        | 強制終了の返金              | SponsorshipTermination、RefundSettlement、D1TerminationWriter                                                                                                         | `planTermination`                                                                | 強制終了                   |
+| 14.11                                       | 一覧の返金の表示            | MySponsorshipsReader、MySponsorshipItem                                                                                                                               | `MySponsorship.terminationRefund`・`displayStopRefund`                           | —                          |
 
 ## Components and Interfaces
 
-| Component                                                                                                                                                                                                                                 | Domain/Layer        | Intent                                         | Req Coverage                                                 | Key Dependencies                                  | Contracts    |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ---------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- | ------------ |
-| SponsorshipTiers・SponsorshipPeriod・SponsorshipStatus・RefundEstimate                                                                                                                                                                    | common-lib          | ティア・期間・状態・返金目安額の規則           | 1.3〜1.8, 3.6, 7.3, 10.3, 14.2                               | —                                                 | Service      |
-| SponsorshipsSchema                                                                                                                                                                                                                        | db                  | 申込のテーブル                                 | 3.1, 11.1〜11.3, 14.1                                        | product-launch (P0)、identity-auth (P0)           | State        |
-| SponsorshipMessage・SponsorshipEmailKinds                                                                                                                                                                                                 | backend-lib/core    | メッセージ種別とメール種別                     | 8.3, 8.8                                                     | backend-platform (P0)、email-delivery (P0)        | Event        |
-| SponsorshipStore(D1SponsorshipStore)・EligibleProductReader・PlacementReader・SponsorshipExport・SponsorshipPlatformModule                                                                                                                | backend-lib/workers | 申込の読み書き・対象の判定・表示・出力         | 1.1, 1.8, 2.13, 4.\*, 6.1, 6.6, 12.1, 12.4                   | ProductDirectory (P0)、LaunchExport (P0)、D1 (P0) | Service      |
-| SponsorshipOfferPolicy・SponsorshipFulfillment                                                                                                                                                                                            | backend-lib/workers | 購入種別`sponsorship`の口                      | 1.10, 2.6, 2.10, 3.1〜3.5, 8.4                               | payments (P0)                                     | Service      |
-| NoticeScheduler・NoticeRequester                                                                                                                                                                                                          | backend-lib/workers | 通知の依頼待ちの記録と送信の依頼               | 8.1〜8.4, 8.9                                                | MessagePublisher (P0)                             | Service      |
-| DisplayStopStore・RefundSettlement                                                                                                                                                                                                        | backend-lib/workers | 表示停止の区間と日割りの返金の依頼             | 10.7, 10.11, 14.1〜14.10                                     | PaymentRefunds (P0)、D1 (P0)                      | Service      |
-| DisplayStopSyncHandlers                                                                                                                                                                                                                   | api/infrastructure  | 非公開化・停止の区間の記録                     | 14.1                                                         | identity-auth (P0)、product-launch (P0)           | Event        |
-| SponsorshipApplication・SponsorshipOfferReader・MySponsorshipsReader・AdminSponsorshipsReader・SponsorshipTermination                                                                                                                     | api/application     | 申込・照会・強制終了                           | 1.\*, 2.\*, 7.\*, 9.\*, 10.\*, 11.4, 11.5, 14.4, 14.8, 14.11 | CheckoutStarter (P0)、AuditLogRecorder (P0)       | Service      |
-| DailyNoticesJob・MaintenanceJob                                                                                                                                                                                                           | api/application     | 0:07と4:21のジョブ                             | 2.13, 8.1, 8.2, 8.9, 12.2, 12.5, 12.6, 14.3, 14.6            | NoticeScheduler (P0)                              | Batch        |
-| AccountWithdrawalSyncHandler・ProductDeletionSyncHandler・D1TerminationWriter                                                                                                                                                             | api/infrastructure  | 退会の論理削除・削除の記録・強制終了の書き込み | 7.7, 9.3, 10.4, 11.1, 11.5, 10.7, 14.4, 14.9                 | identity-auth (P0)、admin-foundation (P0)         | Event, State |
-| SponsorshipSchemaModule(SponsorshipViews・ClientResolvers・AdminResolvers)                                                                                                                                                                | api/presentation    | GraphQLの型と操作                              | 2.\*, 5.6, 6.2, 6.3, 7.\*, 9.\*, 10.\*, 11.4, 14.11          | api-gateway (P0)                                  | API          |
-| NoticeDispatchHandler・AccountPurgeHandler・ProductPurgeHandler・SponsorshipEmailTemplates・PeriodEndSettlementHandler                                                                                                                    | event               | 通知の送信・物理削除・本文                     | 8.5〜8.9, 10.5, 11.2, 11.3, 11.6, 14.3, 14.6                 | EmailSender (P0)、UserContactDirectory (P0)       | Event, Batch |
-| SponsorshipPricingSection・TierPriceList・SponsorshipApplicationForm                                                                                                                                                                      | client              | 料金ページの区画と申込                         | 1.2, 1.6, 1.7, 2.1〜2.8, 2.11                                | PRICING_SECTIONS (P0)、MoneyText (P1)             | State        |
-| SponsorLabel・SponsoredAdCard・LegendPlacement・GoldAdStack・GoldListPlacement・GoldSidebarPlacement・GoldListInsert・SilverPlacement・SponsorshipApplyLink・GoldInsertTracker・UseSponsoredPlacements・SponsorshipPlacementsRegistration | client              | 広告スペース                                   | 5.\*, 6.\*                                                   | 各ページの区画の登録口 (P0)                       | State        |
-| SettingsSponsorshipsRoute・MySponsorshipList・MySponsorshipItem・SponsorshipStatusBadge・ResumeCheckoutButton・ProductSponsorshipDeleteNotice                                                                                             | client              | 自分の一覧と削除の確認の注記                   | 2.11, 2.12, 7.\*, 11.4, 14.11                                | SettingsShell (P0)、PRODUCT_DELETE_NOTICES (P1)   | State        |
-| AdminSponsorshipsRoute・AdminSponsorshipTable・SponsorshipStatusFilter・TerminateSponsorshipDialog・TerminationResultNotice                                                                                                               | admin               | 一覧と強制終了                                 | 9.\*, 10.1, 10.2, 10.6, 10.9                                 | AdminDataTable (P0)、ConfirmActionDialog (P0)     | State        |
-| SponsorshipAuditActions                                                                                                                                                                                                                   | common-lib/admin    | 監査ログの操作種別                             | 10.4                                                         | admin-foundation (P0)                             | State        |
-| SponsorshipTechDocs・SponsorshipServiceSpecs                                                                                                                                                                                              | docs                | 技術ドキュメントとサービス仕様                 | 13.4, 13.5                                                   | —                                                 | —            |
+| Component                                                                                                                                                                                                                                 | Domain/Layer                                                                                       | Intent                                                      | Req Coverage                                                 | Key Dependencies                                                                                                        | Contracts    |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ------------ |
+| SponsorshipTiers・SponsorshipPeriod・SponsorshipStatus・RefundEstimate                                                                                                                                                                    | common-lib                                                                                         | ティア・期間・状態・返金目安額の規則                        | 1.3〜1.8, 3.6, 7.3, 10.3, 14.2                               | —                                                                                                                       | Service      |
+| SponsorshipsSchema                                                                                                                                                                                                                        | db                                                                                                 | 申込のテーブル                                              | 3.1, 11.1〜11.3, 14.1                                        | product-launch (P0)、identity-auth (P0)                                                                                 | State        |
+| SponsorshipMessage・SponsorshipEmailKinds                                                                                                                                                                                                 | backend-lib/core                                                                                   | メッセージ種別とメール種別                                  | 8.3, 8.8                                                     | backend-platform (P0)、email-delivery (P0)                                                                              | Event        |
+| SponsorshipContracts(ports・identifiers・shuffleByTier)                                                                                                                                                                                   | backend-lib/core                                                                                   | application層と後続specが受け取る契約・識別子・無作為の並び | 4.\*, 6.1, 12.1                                              | core/product (P0)                                                                                                       | Service      |
+| SponsorshipStore(D1SponsorshipStore)・EligibleProductReader・PlacementReader・SponsorshipExport・SponsorshipPlatformModule                                                                                                                | backend-lib/core(契約)・backend-lib/workers(実装)                                                  | 申込の読み書き・対象の判定・表示・出力                      | 1.1, 1.8, 2.13, 4.\*, 6.1, 6.6, 12.1, 12.4                   | ProductDirectory (P0)、LaunchExport (P0)、D1 (P0)                                                                       | Service      |
+| SponsorshipOfferPolicy・SponsorshipFulfillment                                                                                                                                                                                            | backend-lib/workers                                                                                | 購入種別`sponsorship`の口                                   | 1.10, 2.6, 2.10, 3.1〜3.5, 8.4                               | payments (P0)                                                                                                           | Service      |
+| NoticeScheduler・NoticeRequester                                                                                                                                                                                                          | backend-lib/core(契約)・backend-lib/workers(実装)                                                  | 通知の依頼待ちの記録と送信の依頼                            | 8.1〜8.4, 8.9                                                | MessagePublisher (P0)                                                                                                   | Service      |
+| DisplayStopStore・DisplayStopStatements・RefundEstimator・RefundSettlement                                                                                                                                                                | backend-lib/core(DisplayStopStore・RefundEstimatorの契約)・backend-lib/workers(実装と文を返す契約) | 表示停止の区間と日割りの返金の依頼                          | 10.2, 10.7, 10.11, 14.1〜14.10                               | PaymentRefunds (P0)、D1 (P0)                                                                                            | Service      |
+| DisplayStopSyncHandlers                                                                                                                                                                                                                   | api/infrastructure                                                                                 | 非公開化・停止の区間の記録                                  | 14.1                                                         | identity-auth (P0)、product-launch (P0)、DisplayStopStatements (P0)                                                     | Event        |
+| SponsorshipApplication・SponsorshipOfferReader・MySponsorshipsReader・AdminSponsorshipsReader・SponsorshipTermination                                                                                                                     | api/application                                                                                    | 申込・照会・強制終了                                        | 1.\*, 2.\*, 7.\*, 9.\*, 10.\*, 11.4, 11.5, 14.4, 14.8, 14.11 | CheckoutStarter (P0)、AuditLogRecorder (P0)、SponsorshipTerminationWriter (P0)                                          | Service      |
+| DailyNoticesJob・MaintenanceJob                                                                                                                                                                                                           | api/application                                                                                    | 0:07と4:21のジョブ                                          | 2.13, 8.1, 8.2, 8.9, 12.2, 12.5, 12.6, 14.3, 14.6            | NoticeScheduler・NoticeRequester・DisplayStopStore (P0)                                                                 | Batch        |
+| AccountWithdrawalSyncHandler・ProductDeletionSyncHandler・D1TerminationWriter                                                                                                                                                             | api/infrastructure                                                                                 | 退会の論理削除・削除の記録・強制終了の書き込み              | 7.7, 9.3, 10.4, 11.1, 11.5, 10.7, 14.4, 14.9                 | identity-auth (P0)、admin-foundation (P0)、RefundSettlement (P0)                                                        | Event, State |
+| SponsorshipSchemaModule(SponsorshipViews・ClientResolvers・AdminResolvers)                                                                                                                                                                | api/presentation                                                                                   | GraphQLの型と操作                                           | 2.\*, 5.6, 6.2, 6.3, 7.\*, 9.\*, 10.\*, 11.4, 14.11          | api-gateway (P0)                                                                                                        | API          |
+| NoticeDispatchHandler・AccountPurgeHandler・ProductPurgeHandler・SponsorshipEmailTemplates・PeriodEndSettlementHandler                                                                                                                    | event                                                                                              | 通知の送信・物理削除・本文                                  | 8.5〜8.9, 10.5, 11.2, 11.3, 11.6, 14.3, 14.6                 | EmailSender (P0)、UserContactDirectory (P0)、PeriodEndSettlementCommitter・SponsorshipPurgeStore・NoticeClaimStore (P0) | Event, Batch |
+| D1PeriodEndSettlementCommitter・D1SponsorshipPurgeStore・D1NoticeClaimStore                                                                                                                                                               | event/infrastructure                                                                               | 精算・物理削除・通知の状態の書き込み                        | 8.5, 11.2, 11.3, 14.3, 14.6                                  | RefundSettlement (P0)、D1 (P0)                                                                                          | Batch        |
+| SponsorshipPricingSection・TierPriceList・SponsorshipApplicationForm                                                                                                                                                                      | client                                                                                             | 料金ページの区画と申込                                      | 1.2, 1.6, 1.7, 2.1〜2.8, 2.11                                | PRICING_SECTIONS (P0)、MoneyText (P1)                                                                                   | State        |
+| SponsorLabel・SponsoredAdCard・LegendPlacement・GoldAdStack・GoldListPlacement・GoldSidebarPlacement・GoldListInsert・SilverPlacement・SponsorshipApplyLink・GoldInsertTracker・UseSponsoredPlacements・SponsorshipPlacementsRegistration | client                                                                                             | 広告スペース                                                | 5.\*, 6.\*                                                   | 各ページの区画の登録口 (P0)                                                                                             | State        |
+| SettingsSponsorshipsRoute・MySponsorshipList・MySponsorshipItem・SponsorshipStatusBadge・ResumeCheckoutButton・ProductSponsorshipDeleteNotice                                                                                             | client                                                                                             | 自分の一覧と削除の確認の注記                                | 2.11, 2.12, 7.\*, 11.4, 14.11                                | SettingsShell (P0)、PRODUCT_DELETE_NOTICES (P1)                                                                         | State        |
+| AdminSponsorshipsRoute・AdminSponsorshipTable・SponsorshipStatusFilter・TerminateSponsorshipDialog・TerminationResultNotice                                                                                                               | admin                                                                                              | 一覧と強制終了                                              | 9.\*, 10.1, 10.2, 10.6, 10.9                                 | AdminDataTable (P0)、ConfirmActionDialog (P0)                                                                           | State        |
+| SponsorshipAuditActions                                                                                                                                                                                                                   | common-lib/admin                                                                                   | 監査ログの操作種別                                          | 10.4                                                         | admin-foundation (P0)                                                                                                   | State        |
+| SponsorshipTechDocs・SponsorshipServiceSpecs                                                                                                                                                                                              | docs                                                                                               | 技術ドキュメントとサービス仕様                              | 13.4, 13.5                                                   | —                                                                                                                       | —            |
 
 ### common-lib
 
@@ -868,14 +886,14 @@ export declare const SPONSORSHIP_TERMINATION_NOTICE_EMAIL: EmailKind<
 
 - 件名は文言規則の通知メールの件名(「{名称}のスポンサー広告掲載が始まりました」「{名称}のスポンサー広告掲載期間が終了しました」「{名称}のスポンサー広告掲載を終了しました」)。本文は宛名・本文・自分の広告一覧へのボタンで、掲載期間は「2026年11月1日〜11月7日(UTC-08:00の日付)」と表す。配信停止のリンクを持たない(8.8)。強制終了の本文は理由・強制終了日と、未掲載日数分と表示停止の日数分を決済に使った支払い方法へ自動で返金する旨(日数と金額、反映まで数日かかる場合がある旨)と法的通知へのリンクを含む(10.5)。掲載終了通知は、表示停止の返金があればその日数と金額を自動で返金する旨を含む(8.8・14.3)。
 
-### backend-lib/workers
+### backend-lib/core・backend-lib/workers
 
 #### SponsorshipStore・EligibleProductReader・PlacementReader・SponsorshipExport
 
 **Contracts**: Service [x]
 
 ```typescript
-// sponsorship-store.ts
+// core/sponsorship/ports.ts(D1の実装はworkers/sponsorship/d1-sponsorship-store.ts)
 export interface SponsorshipRecord {
   readonly id: string;
   readonly userId: string;
@@ -954,7 +972,7 @@ export interface SponsorshipStore {
   ): Promise<readonly SponsorshipRecord[]>; // paid・論理削除なし・プロダクトの論理削除なし・ends_onが今日より前・stop_refund_status = 'none'を、ends_onとidの昇順で
 }
 
-// eligible-product-reader.ts
+// core/sponsorship/ports.ts(続き。実装はworkers/sponsorship/d1-eligible-product-reader.ts)
 export interface EligibleProduct {
   readonly productId: string;
   readonly handle: string;
@@ -966,7 +984,7 @@ export interface EligibleProductReader {
   isEligible(userId: string, productId: string, now: Date): Promise<boolean>;
 }
 
-// placement-reader.ts
+// core/sponsorship/ports.ts(続き。D1の実装はworkers/sponsorship/d1-placement-reader.ts)
 export interface PlacedAd {
   readonly sponsorshipId: string;
   readonly tier: SponsorshipTier;
@@ -977,12 +995,13 @@ export interface PlacementReader {
     now: Date,
   ): Promise<Readonly<Record<SponsorshipTier, readonly PlacedAd[]>>>; // ティアごとに無作為の順
 }
+// core/sponsorship/shuffle-by-tier.ts(純粋)
 export declare function shuffleByTier<T>(
   items: readonly T[],
   random: (bound: number) => number,
 ): readonly T[]; // Fisher-Yates。randomは0以上bound未満の整数
 
-// sponsorship-export.ts
+// core/sponsorship/ports.ts(続き。実装はworkers/sponsorship/d1-sponsorship-export.ts)
 export interface SponsorshipExportRecord {
   readonly id: string;
   readonly product: { readonly name: string; readonly handle: string };
@@ -1000,18 +1019,36 @@ export interface SponsorshipExport {
     now: Date,
   ): Promise<readonly SponsorshipExportRecord[]>; // 論理削除済みを除く・申込の順
 }
+
+// core/sponsorship/identifiers.ts
+export declare const SPONSORSHIP_PLATFORM_TYPES: {
+  readonly SponsorshipStore: unique symbol;
+  readonly EligibleProductReader: unique symbol;
+  readonly PlacementReader: unique symbol;
+  readonly SponsorshipOfferPolicy: unique symbol;
+  readonly SponsorshipFulfillment: unique symbol;
+  readonly NoticeScheduler: unique symbol;
+  readonly NoticeRequester: unique symbol;
+  readonly DisplayStopStore: unique symbol;
+  readonly DisplayStopStatements: unique symbol;
+  readonly RefundEstimator: unique symbol;
+  readonly RefundSettlement: unique symbol;
+  readonly SponsorshipExport: unique symbol;
+}; // Object.freezeした凍結のオブジェクト。値はSymbol.for('sponsorship.<名前>')
 ```
 
-- `EligibleProductReader.list`: product-launchの`LaunchExport.listByUser(userId, now)`から`status`が`in_progress`・`finished`のローンチのプロダクトのIDを集め、`ProductDirectory.findSummaries(ids, 'visible')`で可視のものを得て、`ownerUserId`が利用者のものに絞る(1.1)。`isEligible`は`findSummaries([productId], 'visible')`と`ProductDirectory.listLaunches([productId], now)`で同じ判定を1件で行う。`LaunchExport`は利用者単位のローンチの読み出しとしてproduct-launchが`workers/product`の公開の契約に置いた部品で、本specはその読み取りだけを使う。
+- 置き場所: api・eventのapplication層と後続spec(data-export)から読み込めるよう、契約と入出力の型は`apps/backend-lib/core/sponsorship/ports.ts`、識別子は`core/sponsorship/identifiers.ts`(`core/media/identifiers.ts`と同じ形で、同名の`*.unit.test.ts`で値と凍結を確かめる)、純粋な`shuffleByTier`は`core/sponsorship/shuffle-by-tier.ts`に置き、D1の実装・購入種別の口・文を返す契約と束縛だけを`apps/backend-lib/workers/sponsorship`に置く(application層は`**/lib/workers/**`を型も含めて読み込めないため)。`core/sponsorship`は`apps/db`と`workers`を読み込まない。`DisplayStopStatements`・`RefundSettlement`の識別子も同じ`SPONSORSHIP_PLATFORM_TYPES`に置くが、契約の型は`workers/sponsorship`にあり、infrastructure層と`workers/sponsorship`だけが受け取る。
+- `EligibleProductReader.list`: product-launchの`LaunchExport.listByUser(userId, now)`から`status`が`in_progress`・`finished`のローンチのプロダクトのIDを集め、`ProductDirectory.findSummaries(ids, 'visible')`で可視のものを得て、`ownerUserId`が利用者のものに絞る(1.1)。`isEligible`は`findSummaries([productId], 'visible')`と`ProductDirectory.listLaunches([productId], now)`で同じ判定を1件で行う。`LaunchExport`は利用者単位のローンチの読み出しとしてproduct-launchが`core/product`の公開の契約に置いた部品で、本specはその読み取りだけを使う。
 - `PlacementReader.read`は「広告の表示」の問い合わせでIDを得て、`ProductDirectory.findSummaries(ids, 'visible')`(90件ずつ)で表示の情報を読み、問い合わせとの間に可視でなくなったものを除き、ティアごとに`shuffleByTier`(乱数は`crypto.getRandomValues`)で並べる(4.\*・6.1・12.4)。表示とクリックを記録しない(6.6)。
 - `SponsorshipExport.listByUser`は、本specの行とproduct-launchの`ProductExport.listByUser(userId)`(論理削除済みを含む)でプロダクトの名称とハンドルを得て、`deriveSponsorshipStatus`→`toExportStatus`で状態を求める(プロダクトの論理削除で終わった広告は`ended`)。data-exportは本specのテーブルを直接読まずにこれを呼ぶ(12.1)。
-- `SPONSORSHIP_PLATFORM_MODULE`はストア・3つの読み取り・口の2つ・通知の2つ・エクスポート・表示停止の区間のストア・返金の精算を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる。DIの識別子は`SPONSORSHIP_PLATFORM_TYPES`(`Symbol.for('sponsorship.<名前>')`)。
+- `SPONSORSHIP_PLATFORM_MODULE`(`workers/sponsorship/sponsorship-platform-module.ts`)はストア・3つの読み取り・口の2つ・通知の2つ・エクスポート・表示停止の区間のストアと記録の文・返金の見積もりと精算を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる。DIの識別子は`core/sponsorship`の`SPONSORSHIP_PLATFORM_TYPES`(`Symbol.for('sponsorship.<名前>')`)。
 
 #### SponsorshipOfferPolicy・SponsorshipFulfillment
 
 **Contracts**: Service [x]
 
 ```typescript
+// workers/sponsorship/sponsorship-offer-policy.ts・sponsorship-fulfillment.ts(PurchaseOfferPolicy・FulfillablePurchaseはcore/payments、PurchaseFulfillment・FulfillmentPlan・PurchaseKindRegistrationはworkers/paymentsの契約)
 export declare class SponsorshipOfferPolicy implements PurchaseOfferPolicy {
   describe(request: PurchaseOfferRequest): Promise<PurchaseOfferDecision>; // targetIdは申込ID
 }
@@ -1051,11 +1088,9 @@ WHERE id = ?
 **Contracts**: Service [x]
 
 ```typescript
+// core/sponsorship/ports.ts(続き。実装はworkers/sponsorship/d1-notice-scheduler.ts・queue-notice-requester.ts)
 export interface NoticeScheduler {
-  markDueStatements(
-    today: BusinessDate,
-    db: Database,
-  ): readonly BatchItem<'sqlite'>[]; // 開始(starts_on = today)と終了(ends_on < today・stop_refund_status <> 'none')をnone→pendingにする2文
+  markDue(today: BusinessDate): Promise<void>; // 開始(starts_on = today)と終了(ends_on < today・stop_refund_status <> 'none')をnone→pendingにする2文を1回の一括の書き込みで実行する
   hasPending(): Promise<boolean>;
 }
 export interface NoticeRequester {
@@ -1064,14 +1099,15 @@ export interface NoticeRequester {
 }
 ```
 
-- `markDueStatements`は集合の条件付きの更新だけで、2回実行しても結果が変わらない(12.6)。終了の文の条件は「開始・終了・強制終了の通知」の表のとおり、表示停止の返金の精算済みを含む。
+- `markDue`は集合の条件付きの更新だけで、2回実行しても結果が変わらない(12.6)。終了の文の条件は「開始・終了・強制終了の通知」の表のとおり、表示停止の返金の精算済みを含む。文の組み立てと一括の書き込みは`D1NoticeScheduler`の中に閉じ、application層(0:07・4:21のジョブ、精算の処理)はデータベースの接続と文を扱わない。
+- `NoticeRequester`の実装は`PLATFORM_TYPES.MessagePublisher`を`workers/sponsorship`の中で受け取り、application層は`NoticeRequester`の契約だけを受け取る(application層が`MessagePublisher`を直接受け取らない)。
 
-#### DisplayStopStore・RefundSettlement
+#### DisplayStopStore・DisplayStopStatements・RefundEstimator・RefundSettlement
 
 **Contracts**: Service [x]
 
 ```typescript
-// display-stop-store.ts
+// core/sponsorship/ports.ts(続き。D1の実装はworkers/sponsorship/d1-display-stop-store.ts・refund-settlement.ts)
 export type DisplayStopSubject =
   | { readonly kind: 'product'; readonly productId: string }
   | { readonly kind: 'user'; readonly userId: string };
@@ -1080,6 +1116,42 @@ export interface DisplayStopInterval {
   readonly endedAt: Date | null;
 }
 export interface DisplayStopStore {
+  listOverlapping(input: {
+    readonly productId: string;
+    readonly userId: string;
+    readonly from: Date; // 掲載開始日の0:00
+    readonly to: Date; // 数え終わりの日の翌日0:00
+  }): Promise<readonly DisplayStopInterval[]>; // プロダクトと投稿者の両方の区間
+  deleteSubject(subject: DisplayStopSubject): Promise<void>;
+  deleteEndedBefore(cutoff: Date, limit: number): Promise<number>;
+}
+export type RefundKind = 'termination' | 'display_stop';
+export type RefundStatus = 'requested' | 'not_needed' | 'failed';
+export interface RefundOutcome {
+  readonly kind: RefundKind;
+  readonly days: number;
+  readonly amount: number | null; // 依頼した額(最小通貨単位)。残りの全額で依頼し直したときはnull
+  readonly status: RefundStatus;
+  readonly refundRequestId: string | null;
+}
+export interface RefundEstimator {
+  estimateTermination(
+    record: SponsorshipRecord,
+    today: BusinessDate,
+  ): Promise<{
+    readonly unexposedDays: number;
+    readonly refundEstimate: number;
+    readonly stoppedDays: number;
+    readonly stopRefundAmount: number;
+  }>; // 照会(preview)用。paymentsを呼ばない
+}
+export declare const SPONSORSHIP_REFUND_REASONS: {
+  readonly termination: 'sponsorship_terminated';
+  readonly displayStop: 'sponsorship_display_stopped';
+};
+
+// workers/sponsorship/display-stop-statements.ts(データベースの文を返す契約と実装。infrastructure層の同期の処理だけが使う)
+export interface DisplayStopStatements {
   startStatement(
     subject: DisplayStopSubject,
     at: Date,
@@ -1090,37 +1162,13 @@ export interface DisplayStopStore {
     at: Date,
     db: Database,
   ): BatchItem<'sqlite'>; // 継続中の区間のended_atを記録する
-  listOverlapping(input: {
-    readonly productId: string;
-    readonly userId: string;
-    readonly from: Date; // 掲載開始日の0:00
-    readonly to: Date; // 数え終わりの日の翌日0:00
-  }): Promise<readonly DisplayStopInterval[]>; // プロダクトと投稿者の両方の区間
-  deleteSubject(subject: DisplayStopSubject): Promise<void>;
-  deleteEndedBefore(cutoff: Date, limit: number): Promise<number>;
 }
 
-// refund-settlement.ts
-export type RefundKind = 'termination' | 'display_stop';
-export type RefundStatus = 'requested' | 'not_needed' | 'failed';
-export interface RefundPlan {
-  readonly kind: RefundKind;
-  readonly days: number;
-  readonly amount: number | null; // 依頼した額(最小通貨単位)。残りの全額で依頼し直したときはnull
-  readonly status: RefundStatus;
-  readonly refundRequestId: string | null;
-  readonly statements: readonly BatchItem<'sqlite'>[]; // PaymentRefunds.prepareが返した文
+// workers/sponsorship/refund-settlement.ts(データベースの文を返す契約。D1TerminationWriter・D1PeriodEndSettlementCommitterだけが使う。実装はRefundEstimatorを兼ねる)
+export interface RefundPlan extends RefundOutcome {
+  readonly statements: readonly BatchItem<'sqlite'>[]; // PaymentRefundStatements.prepareが返した文
 }
 export interface RefundSettlement {
-  estimateTermination(
-    record: SponsorshipRecord,
-    today: BusinessDate,
-  ): Promise<{
-    readonly unexposedDays: number;
-    readonly refundEstimate: number;
-    readonly stoppedDays: number;
-    readonly stopRefundAmount: number;
-  }>; // 照会(preview)用。paymentsを呼ばない
   planTermination(
     record: SponsorshipRecord,
     today: BusinessDate,
@@ -1137,13 +1185,10 @@ export interface RefundSettlement {
   ): BatchItem<'sqlite'>; // stop_refund_*の更新。条件(state = 'paid'・論理削除なし・プロダクトの論理削除なし・stop_refund_status = 'none')が崩れればNOT NULL制約の違反で全体を取り消す
   dispatch(plans: readonly RefundPlan[]): Promise<void>; // requestedの依頼をPaymentRefunds.dispatchで送る。失敗はwarnだけ
 }
-export declare const SPONSORSHIP_REFUND_REASONS: {
-  readonly termination: 'sponsorship_terminated';
-  readonly displayStop: 'sponsorship_display_stopped';
-};
 ```
 
-- 計画の手順: (1)日数を求める(強制終了は`computeUnexposedDays`、表示停止は`listOverlapping`の区間を基準時刻の日付に直して`countStoppedDays`)。(2)金額は`computeRefundEstimate`。0なら`not_needed`(14.5)。(3)`PaymentRefunds.prepare({ purchaseId, amount, reason, requestKey })`。`accepted`なら`requested`と文(同じ依頼キーの2回目はpaymentsが既存の依頼の識別を返し、新しい行を作らない、14.6)。`amount_exceeds_refundable`なら金額`null`(残りの全額)で1回だけ依頼し直し、申込の`*_refund_amount`を`null`(残りの全額)として記録する(14.7)。通知・自分の一覧・管理画面は`null`を「残りの全額」と表示する(自分の一覧の文言は「表示を止めた{n}日分(残りの全額)を返金します」「未掲載の{n}日分(残りの全額)を返金します」)。それ以外の拒否は`failed`・文なしで、`captureEvent`で知らせる(14.8)。
+- 分け方: application層(強制終了の照会)は文を扱わない`RefundEstimator`だけを`core/sponsorship`から受け取る。返金の計画は`PaymentRefundStatements.prepare`(paymentsの`workers/payments/statement-contracts.ts`の契約)が返す文を含み、区間の記録は確定と同じ書き込みの文を返すため、`RefundSettlement`・`DisplayStopStatements`は`workers/sponsorship`に置き、infrastructure層の書き込みの実装(`D1TerminationWriter`・`D1PeriodEndSettlementCommitter`・同期の処理)だけが使う。`RefundOutcome`は`RefundPlan`から文を除いた結果で、書き込みのポートがapplication層へ返す。
+- 計画の手順: (1)日数を求める(強制終了は`computeUnexposedDays`、表示停止は`listOverlapping`の区間を基準時刻の日付に直して`countStoppedDays`)。(2)金額は`computeRefundEstimate`。0なら`not_needed`(14.5)。(3)`PaymentRefundStatements.prepare({ purchaseId, amount, reason, requestKey })`。`accepted`なら`requested`と文(同じ依頼キーの2回目はpaymentsが既存の依頼の識別を返し、新しい行を作らない、14.6)。`amount_exceeds_refundable`なら金額`null`(残りの全額)で1回だけ依頼し直し、申込の`*_refund_amount`を`null`(残りの全額)として記録する(14.7)。通知・自分の一覧・管理画面は`null`を「残りの全額」と表示する(自分の一覧の文言は「表示を止めた{n}日分(残りの全額)を返金します」「未掲載の{n}日分(残りの全額)を返金します」)。それ以外の拒否は`failed`・文なしで、`captureEvent`で知らせる(14.8)。
 - 申込が論理削除されている、またはプロダクトの論理削除がある広告の表示停止は計画せず`not_needed`(14.9)。返金の実行と決済履歴への反映はpaymentsが行い、本specはStripeを呼ばない(14.10)。
 
 ### api/application
@@ -1277,36 +1322,41 @@ export interface SponsorshipTermination {
     readonly now: Date;
   }): Promise<TerminationResult>;
 }
-// 同じファイルのポート(実装はinfrastructure/sponsorship/d1-termination-writer.ts)
+// 同じファイルの書き込みのポート(実装はinfrastructure/sponsorship/d1-termination-writer.ts)
+export type TerminationCommitResult =
+  | {
+      readonly kind: 'committed';
+      readonly termination: RefundOutcome; // 未掲載日数分の返金の結果
+      readonly displayStop: RefundOutcome; // 強制終了日の前日までの表示停止日数分の返金の結果
+    }
+  | { readonly kind: 'not_terminable' };
 export interface SponsorshipTerminationWriter {
   commit(input: {
-    readonly sponsorshipId: string;
+    readonly record: SponsorshipRecord;
     readonly today: BusinessDate;
     readonly reason: string;
     readonly at: Date;
     readonly audit: PreparedAuditEntry;
-    readonly refunds: {
-      readonly termination: RefundPlan;
-      readonly displayStop: RefundPlan;
-    };
-  }): Promise<'committed' | 'not_terminable'>;
+  }): Promise<TerminationCommitResult>; // 返金の計画・強制終了の前進と返金の依頼と監査ログの一括の書き込み・確定の後の依頼の送信(失敗はwarn)
 }
 ```
 
 - `preview`・`terminate`は`requireAdmin(session, caller, 'moderator')`(10.10) → `findById`(論理削除済みは無い) → `product_deleted_at`でプロダクトの論理削除を判定する → 申込が無い・`isTerminable`が偽(未決済・終了・強制終了済み・プロダクトの論理削除で終了)なら`AppError(conflict, sponsorship_not_terminable)`(10.8) → `computeUnexposedDays`・`computeRefundEstimate`(10.3)。管理画面の一覧の`terminable`も同じ`isTerminable`で求める。
-- `terminate`は加えて、理由を`checkAuditReason`で検証し(空・500文字超は`validation_error`、10.9)、`RefundSettlement.planTermination(record, today)`(14.4) → `AuditLogRecorder.prepare({ action: 'sponsorship.terminate', targetIds: [id], reason, detail: { unexposedDays, refundEstimate, stoppedDays, stopRefundAmount }, occurredAt })` → `SponsorshipTerminationWriter.commit`(返金の依頼の文を含む) → `not_terminable`なら`sponsorship_not_terminable` → `RefundSettlement.dispatch`と`NoticeRequester.request()`(どちらも失敗は`warn`、10.5・10.7) → 結果を返す(10.4・10.6)。`preview`は`RefundSettlement.estimateTermination`で同じ日数と金額を返し、paymentsを呼ばない(10.2)。
+- `terminate`は加えて、理由を`checkAuditReason`で検証し(空・500文字超は`validation_error`、10.9)、`RefundEstimator.estimateTermination(record, today)`で監査の詳細の値を求め → `AuditLogRecorder.prepare({ action: 'sponsorship.terminate', targetIds: [id], reason, detail: { unexposedDays, refundEstimate, stoppedDays, stopRefundAmount }, occurredAt })` → `SponsorshipTerminationWriter.commit`(14.4) → `not_terminable`なら`sponsorship_not_terminable` → `NoticeRequester.request()`(失敗は`warn`、10.5) → 結果を返す(10.4・10.6)。`preview`は`RefundEstimator.estimateTermination`で同じ日数と金額を返し、paymentsを呼ばない(10.2)。
+- 依存: ユースケースはapplication層に置き、`SponsorshipStore`・`RefundEstimator`・`NoticeRequester`の型を`core/sponsorship`から読み込み、`SPONSORSHIP_PLATFORM_TYPES`の識別子で受け取る。返金の計画の文(`RefundSettlement`)・`PaymentRefunds`・データベースの接続は`D1TerminationWriter`の中に閉じ、application層は`**/lib/workers/**`を読み込まない(identity-authの`UserLifecycleCommitter`と同じ分け方)。
 
 #### DailyNoticesJob・MaintenanceJob
 
 **Contracts**: Batch [x]
 
-| ジョブの名前                | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                                                                                        |
-| --------------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sponsorship.daily-notices` | 0:07     | 1600    | (1)`markDueStatements(今日)`を1回の`db.batch()`で実行し、`NoticeRequester.request()`(8.1〜8.3)。(2)`NoticeRequester.requestSettlement()`で`sponsorship.settle-period-end`を送る(14.3)                                                                                                                                       |
-| `sponsorship.maintenance`   | 4:21     | 1600    | (1)`deleteExpiredUnpaid(今日, 500)`を最大20回(2.13)。(2)未精算の終了した広告があれば`NoticeRequester.requestSettlement()`(0:07の送信の失敗と精算の漏れの補い、14.3)。(3)`markDueStatements(今日)`(0:07の失敗と競合の補い)。(4)`deleteEndedBefore(今日 − 400日, 500)`。(5)`hasPending()`なら`NoticeRequester.request()`(8.9) |
+| ジョブの名前                | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                                                                              |
+| --------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sponsorship.daily-notices` | 0:07     | 1600    | (1)`NoticeScheduler.markDue(今日)`(2文を1回の一括の書き込みで実行する)と`NoticeRequester.request()`(8.1〜8.3)。(2)`NoticeRequester.requestSettlement()`で`sponsorship.settle-period-end`を送る(14.3)                                                                                                              |
+| `sponsorship.maintenance`   | 4:21     | 1600    | (1)`deleteExpiredUnpaid(今日, 500)`を最大20回(2.13)。(2)未精算の終了した広告があれば`NoticeRequester.requestSettlement()`(0:07の送信の失敗と精算の漏れの補い、14.3)。(3)`markDue(今日)`(0:07の失敗と競合の補い)。(4)`deleteEndedBefore(今日 − 400日, 500)`。(5)`hasPending()`なら`NoticeRequester.request()`(8.9) |
 
 - Trigger: apiのCron Triggers(`7 8 * * *`・`21 12 * * *`)。0:07は他のspecのジョブが無い時刻で、帯の値1600を使う。4:21の1600はroadmapの帯の割り当てのとおりで、上流の値(〜1500)の後に動く(12.2)。
 - Idempotency: 削除は条件付き、依頼待ちと精算は`none`からだけ進め、返金の依頼キーは広告ごと・種類ごとに一意なため、2回実行しても結果が変わらない(12.6・14.6)。精算の一括の書き込みが条件の崩れで取り消された広告は、読み直して次へ進む。例外はbackend-platformの定期実行の規約でSentryへ通知される(12.5)。
+- 依存: ジョブはapplication層に置き、`SponsorshipStore`・`NoticeScheduler`・`NoticeRequester`・`DisplayStopStore`の型を`core/sponsorship`から読み込み、`SPONSORSHIP_PLATFORM_TYPES`の識別子で受け取る。データベースの接続・文・一括の書き込みとメッセージの送信の部品を直接扱わず、`**/lib/workers/**`を読み込まない。
 
 ### api/infrastructure
 
@@ -1316,8 +1366,8 @@ export interface SponsorshipTerminationWriter {
 
 - 登録: `USER_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'sponsorship.account-withdrawal', events: ['withdrawn'], handler: SPONSORSHIP_TYPES.AccountWithdrawalSyncHandler }`。`UPDATE sponsorships SET deleted_at = ?, stop_refund_status = CASE WHEN stop_refund_status = 'none' THEN 'not_needed' ELSE stop_refund_status END, updated_at = ? WHERE user_id = ? AND deleted_at IS NULL`の1文を返し、読み取りをしない(11.1・14.9)。未完了の決済セッションの失効はpaymentsの`payments.open-checkout-expiry`(全ての購入種別)が行う。
 - 登録: `PRODUCT_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'sponsorship.product-deletion', events: ['deleted'], handler: SPONSORSHIP_TYPES.ProductDeletionSyncHandler }`。`UPDATE sponsorships SET product_deleted_at = ?, stop_refund_status = CASE WHEN stop_refund_status = 'none' THEN 'not_needed' ELSE stop_refund_status END, updated_at = ? WHERE product_id = ? AND product_deleted_at IS NULL`の1文を返し、読み取りをしない(7.7・9.3・11.5・14.9)。プロダクトの`deleted`は投稿者による個別の削除だけで、退会による削除は`sponsorship.account-withdrawal`が扱う。
-- 登録: `PRODUCT_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'sponsorship.product-display-stop', events: ['hidden', 'unhidden'], handler: SPONSORSHIP_TYPES.ProductDisplayStopSyncHandler }`、`USER_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'sponsorship.account-display-stop', events: ['suspended', 'unsuspended'], handler: SPONSORSHIP_TYPES.AccountDisplayStopSyncHandler }`。非公開化・停止は`DisplayStopStore.startStatement`、復元・停止の解除は`endStatement`の1文を、イベントの`occurredAt`で返す(14.1)。確定と同じ書き込みに入るため、確定が取り消されれば区間も記録されない。
-- `D1TerminationWriter.commit`: [`UPDATE sponsorships SET state = CASE WHEN state = 'paid' AND deleted_at IS NULL AND product_deleted_at IS NULL AND ends_on >= ? THEN 'terminated' ELSE NULL END, terminated_at = ?, termination_reason = ?, termination_notice = 'pending', termination_refund_status = ?, termination_refund_days = ?, termination_refund_amount = ?, termination_refund_request_id = ?, stop_refund_status = ?, stop_refund_days = ?, stop_refund_amount = ?, stop_refund_request_id = ?, updated_at = ? WHERE id = ?`、2つの`RefundPlan`の文、`buildAuditLogStatements(audit)`]を1回の`db.batch()`で確定し、NOT NULL制約の違反を`not_terminable`に変換する(10.4・10.7・10.8・14.4)。
+- 登録: `PRODUCT_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'sponsorship.product-display-stop', events: ['hidden', 'unhidden'], handler: SPONSORSHIP_TYPES.ProductDisplayStopSyncHandler }`、`USER_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'sponsorship.account-display-stop', events: ['suspended', 'unsuspended'], handler: SPONSORSHIP_TYPES.AccountDisplayStopSyncHandler }`。非公開化・停止は`workers/sponsorship`の`DisplayStopStatements.startStatement`、復元・停止の解除は`endStatement`の1文を、イベントの`occurredAt`で返す(14.1)。確定と同じ書き込みに入るため、確定が取り消されれば区間も記録されない。
+- `D1TerminationWriter.commit`: `RefundSettlement.planTermination(record, today)`で2つの返金の計画(依頼の文を含む)を作り、[`UPDATE sponsorships SET state = CASE WHEN state = 'paid' AND deleted_at IS NULL AND product_deleted_at IS NULL AND ends_on >= ? THEN 'terminated' ELSE NULL END, terminated_at = ?, termination_reason = ?, termination_notice = 'pending', termination_refund_status = ?, termination_refund_days = ?, termination_refund_amount = ?, termination_refund_request_id = ?, stop_refund_status = ?, stop_refund_days = ?, stop_refund_amount = ?, stop_refund_request_id = ?, updated_at = ? WHERE id = ?`、2つの`RefundPlan`の文、`buildAuditLogStatements(audit)`]を1回の`db.batch()`で確定し、NOT NULL制約の違反を`not_terminable`に変換する(10.4・10.7・10.8・14.4)。確定の後に`RefundSettlement.dispatch`で依頼を送り(失敗は`warn`、10.7)、2つの計画から文を除いた`RefundOutcome`を返す。`RefundSettlement`・`DisplayStopStatements`・上流の同期の処理の契約は`workers`の文を扱う契約のため、infrastructure層のこれらの部品だけが読み込む。
 
 ### api/presentation
 
@@ -1512,15 +1562,46 @@ type Mutation {
 
 **Contracts**: Event [x] / Batch [x]
 
-| 名前                            | 登録口                             | 種類        | `order` | 処理                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------------------------- | ---------------------------------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `sponsorship.dispatch-notices`  | `MESSAGE_HANDLERS`                 | メッセージ  | —       | 「開始・終了・強制終了の通知」の送信の処理。最大20件、残れば`defer`(5秒)。再試行は既定の方針(5回)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `sponsorship.settle-period-end` | `MESSAGE_HANDLERS`                 | メッセージ  | —       | `listUnsettledEnded(今日, 20)`の広告を1件ずつ`planPeriodEnd`→[`periodEndStatement`・依頼の文]の一括の書き込み(前進の文を先に置き、同時の精算はNOT NULL制約の違反として取り消しと判定する)→`dispatch`。返金の拒否以外の例外(D1の失敗など)は広告ごとに`captureException`(申込IDだけ)で知らせて次の広告へ進む。条件の崩れで取り消された広告は飛ばす。その後に`markDueStatements(今日)`と`NoticeRequester.request()`を必ず行う。20件を処理して1件以上精算できれば`defer`(5秒)で続け、全件が例外の回は続けない(次の4:21・0:07で再試行)。常に例外になる広告が先頭に溜まって後ろを止めないよう、1回の処理の中で例外になった申込IDを除いて読み足す(14.3・14.6・12.5) |
-| `sponsorship.account-purge`     | `USER_LIFECYCLE_ASYNC_HANDLERS`    | `purge_due` | 1600    | `DELETE FROM sponsorships WHERE user_id = ?`。`done`(11.2)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `sponsorship.product-purge`     | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS` | `purge_due` | 1600    | `DELETE FROM sponsorships WHERE product_id = ?`。`done`(11.3)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 名前                            | 登録口                             | 種類        | `order` | 処理                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------- | ---------------------------------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sponsorship.dispatch-notices`  | `MESSAGE_HANDLERS`                 | メッセージ  | —       | 「開始・終了・強制終了の通知」の送信の処理。最大20件、残れば`defer`(5秒)。再試行は既定の方針(5回)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `sponsorship.settle-period-end` | `MESSAGE_HANDLERS`                 | メッセージ  | —       | `listUnsettledEnded(今日, 20)`の広告を1件ずつ`PeriodEndSettlementCommitter.settle`で精算する(実装が`planPeriodEnd`→[`periodEndStatement`・依頼の文]の一括の書き込み(前進の文を先に置き、同時の精算はNOT NULL制約の違反として取り消しと判定する)→`dispatch`を行う)。返金の拒否以外の例外(D1の失敗など)は広告ごとに`captureException`(申込IDだけ)で知らせて次の広告へ進む。条件の崩れで取り消された広告(`skipped`)は飛ばす。その後に`NoticeScheduler.markDue(今日)`と`NoticeRequester.request()`を必ず行う。20件を処理して1件以上精算できれば`defer`(5秒)で続け、全件が例外の回は続けない(次の4:21・0:07で再試行)。常に例外になる広告が先頭に溜まって後ろを止めないよう、1回の処理の中で例外になった申込IDを除いて読み足す(14.3・14.6・12.5) |
+| `sponsorship.account-purge`     | `USER_LIFECYCLE_ASYNC_HANDLERS`    | `purge_due` | 1600    | `SponsorshipPurgeStore.purgeByUser(userId)`(実装は`DELETE FROM sponsorships WHERE user_id = ?`と利用者の表示停止の区間の削除)。`done`(11.2)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `sponsorship.product-purge`     | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS` | `purge_due` | 1600    | `SponsorshipPurgeStore.purgeByProduct(productId)`(実装は`DELETE FROM sponsorships WHERE product_id = ?`とプロダクトの表示停止の区間の削除)。`done`(11.3)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+
+```typescript
+// event/src/application/sponsorship/ports.ts(実装はevent/src/infrastructure/sponsorship/)
+export type SponsorshipNoticeKind = 'start' | 'end' | 'termination';
+export interface PendingSponsorshipNotice {
+  readonly sponsorshipId: string;
+  readonly kind: SponsorshipNoticeKind;
+}
+export interface NoticeClaimStore {
+  listPending(limit: number): Promise<readonly PendingSponsorshipNotice[]>;
+  claim(
+    notice: PendingSponsorshipNotice,
+    at: Date,
+  ): Promise<SponsorshipRecord | undefined>; // pending→requestedの条件付きの更新。取れなければundefined(8.5)
+  markSkipped(notice: PendingSponsorshipNotice, at: Date): Promise<void>;
+  release(notice: PendingSponsorshipNotice, at: Date): Promise<void>; // requested→pending(一時的な失敗、8.9)
+}
+export type PeriodEndSettlementResult =
+  | { readonly kind: 'settled'; readonly displayStop: RefundOutcome }
+  | { readonly kind: 'skipped' }; // 条件の崩れ(同時の精算を含む)で一括の書き込みが取り消された
+export interface PeriodEndSettlementCommitter {
+  settle(
+    record: SponsorshipRecord,
+    at: Date,
+  ): Promise<PeriodEndSettlementResult>; // 返金の拒否以外の例外はそのまま投げる
+}
+export interface SponsorshipPurgeStore {
+  purgeByUser(userId: string): Promise<void>; // 申込の行と利用者の表示停止の区間
+  purgeByProduct(productId: string): Promise<void>; // 申込の行とプロダクトの表示停止の区間
+}
+```
 
 - 送信の処理の宛先は`UserContactDirectory.findContact(userId)`の`email`と`nickname`、プロダクトの名称は`ProductDirectory.findSummaries([productId], 'not-deleted')`で引く(8.6〜8.8)。掲載終了通知には`stop_refund_*`、強制終了の通知には`termination_refund_*`と`stop_refund_*`の日数と金額(`requested`のときだけ)を入力に渡す(8.8・10.5)。
-- `sponsorship.account-purge`・`sponsorship.product-purge`は、主体の表示停止の区間も`DisplayStopStore.deleteSubject`で消す。
+- 置き場所: 3つのポートはeventのapplication層に置き、実装`D1NoticeClaimStore`・`D1PeriodEndSettlementCommitter`(`RefundSettlement`の計画の文と`db.batch()`・確定の後の`dispatch`)・`D1SponsorshipPurgeStore`(申込の行の削除と`DisplayStopStore.deleteSubject`)はinfrastructure層に置く。eventのapplication層の処理は`SponsorshipStore`・`NoticeScheduler`・`NoticeRequester`・`UserContactDirectory`・`ProductDirectory`の型を`core/<ドメイン>`から読み込み、データベースの接続・文・一括の書き込みを扱わず、`**/lib/workers/**`を読み込まない。
 - 物理削除の処理は決済履歴に触れない(paymentsの`payment_records`は仮名化IDで保持される、11.6)。いずれも2回実行しても結果が変わらない。
 - ログはカテゴリ`['event', 'sponsorship']`、属性は申込・プロダクト・利用者のIDと件数と結果の種類だけ(12.3)。
 
@@ -1635,7 +1716,7 @@ erDiagram
 - GraphQL: 「SponsorshipSchemaModule」のSDLが契約。利用者側と管理者側の許可リストに本specの操作が載る。
 - 購入種別`sponsorship`: `relatedId`は申込ID(決済履歴の`relatedId`、データエクスポートの`payments.json`)、数量は日数。
 - メッセージ`sponsorship.dispatch-notices`・`sponsorship.settle-period-end`: 本文は依頼の時刻だけで、送る対象・精算する対象は行の状態から決まる。
-- 返金の依頼: paymentsの`PaymentRefunds.prepare`の`RefundRequestInput`(`purchaseId`・`amount`・`reason`は`sponsorship_terminated`または`sponsorship_display_stopped`・`requestKey`は`sponsorship-termination:<申込ID>`または`sponsorship-display-stop:<申込ID>`)。決済履歴には返金の記録として残る(paymentsのWebhookの反映)。
+- 返金の依頼: paymentsの`PaymentRefundStatements.prepare`の`RefundRequestInput`(`purchaseId`・`amount`・`reason`は`sponsorship_terminated`または`sponsorship_display_stopped`・`requestKey`は`sponsorship-termination:<申込ID>`または`sponsorship-display-stop:<申込ID>`)。決済履歴には返金の記録として残る(paymentsのWebhookの反映)。
 - エクスポート: `SponsorshipExportRecord`がデータエクスポートの文書の`sponsorships.json`の1件に対応する。
 
 ## Error Handling
@@ -1678,20 +1759,23 @@ erDiagram
   - `sponsorship-period`: 今日・365日後・366日後の開始日、366日と367日の期間、終了日が開始日より前、実在しない日付、重なりの両端(終了日と開始日が同じ日)(1.4〜1.8)。
   - `sponsorship-status`: 「申込の状態」の表の全ての行(開始日の前日・当日・終了日・翌日、非公開化・論理削除)、`toExportStatus`の`paused`の振り分け、`isTerminable`(3.6・7.3・7.4・7.7)。
   - `refund-estimate`: 掲載前(全日数)・初日・最終日(1日)・終了日の翌日(0)の未掲載日数、端数の切り捨て(例: 2,100セント×1÷7)、表示停止日数(掲載前に始まった停止・日の途中の停止と解除・0:00ちょうどの解除・非公開化と停止の重なり・継続中の区間・数え終わりが開始日より前・強制終了日をまたぐ停止)(10.3・14.2)。
-  - `RefundSettlement`(模擬の`PaymentRefunds`): 0円で依頼しないこと、`amount_exceeds_refundable`で残りの全額で1回だけ依頼し直すこと、他の拒否で`failed`と`captureEvent`、同じ依頼キーの2回目、強制終了の2つの依頼の日数が重ならないこと、論理削除とプロダクトの論理削除での`not_needed`(14.4〜14.9)。
-  - ユースケース(模擬のポート): `SponsorshipApplication`の判定の順(bot判定の前に記録しない、停止中・未確認、重なり・対象外)と`CheckoutStarter`の失敗での行の削除、`resume`の他人・開始日の経過、`SponsorshipOfferReader`の価格の縮退、`SponsorshipTermination`のロール・終了済み・理由の検証・監査の詳細、ジョブの手順(1.8〜1.10・2.5〜2.13・10.\*)。
+  - `core/sponsorship/identifiers`: `SPONSORSHIP_PLATFORM_TYPES`の各値が`Symbol.for('sponsorship.<名前>')`で、オブジェクトが凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形)。`shuffle-by-tier`: 乱数を差し替えて全ての並びを作り得ること(6.1)。
+  - `RefundSettlement`(模擬の`PaymentRefundStatements`・`PaymentRefunds`): 0円で依頼しないこと、`amount_exceeds_refundable`で残りの全額で1回だけ依頼し直すこと、他の拒否で`failed`と`captureEvent`、同じ依頼キーの2回目、強制終了の2つの依頼の日数が重ならないこと、論理削除とプロダクトの論理削除での`not_needed`(14.4〜14.9)。
+  - ユースケース(模擬のポート。書き込みのポート`SponsorshipTerminationWriter`も偽物): `SponsorshipApplication`の判定の順(bot判定の前に記録しない、停止中・未確認、重なり・対象外)と`CheckoutStarter`の失敗での行の削除、`resume`の他人・開始日の経過、`SponsorshipOfferReader`の価格の縮退、`SponsorshipTermination`のロール・終了済み・理由の検証・監査の詳細、ジョブの手順(1.8〜1.10・2.5〜2.13・10.\*)。
   - event: `NoticeDispatchHandler`の条件ごとの`skipped`(開始の表示停止・強制終了、終了の退会・削除)、`EmailSendError`の`skipped`と一時的な失敗の`pending`への戻し、20件を超えると`defer`(8.5〜8.9)。
-  - event: `PeriodEndSettlementHandler`の広告ごとの例外の分離と次への進行、取り消された広告の飛ばし、続けるかどうかの判定、精算の後に必ず依頼待ちの記録と送信の依頼を行うこと(14.3・14.6・12.5)。
-- Integration Tests(Vitestのworkerd、`*.worker.test.ts`、ローカルD1。返金の依頼を確かめるテストは、`test-support/sponsorship-rows.ts`が申込の`purchase_id`に対応するpaymentsの購入の行(`fulfilled`・ダミーのPaymentIntentのID・`amount_total`)をテスト専用の書き込みとして作り、`PaymentRefunds.prepare`が実際の行を読む):
+  - event(偽の`PeriodEndSettlementCommitter`・`NoticeClaimStore`・`SponsorshipPurgeStore`): `PeriodEndSettlementHandler`の広告ごとの例外の分離と次への進行、`skipped`の広告の飛ばし、続けるかどうかの判定、精算の後に必ず依頼待ちの記録と送信の依頼を行うこと(14.3・14.6・12.5)。
+- Integration Tests(Vitestのworkerd、`*.worker.test.ts`、ローカルD1。返金の依頼を確かめるテストは、`test-support/sponsorship-rows.ts`が申込の`purchase_id`に対応するpaymentsの購入の行(`fulfilled`・ダミーのPaymentIntentのID・`amount_total`)をテスト専用の書き込みとして作り、`PaymentRefundStatements.prepare`が実際の行を読む):
   - `PlacementReader`: 開始日・終了日と基準時刻の0:00の前後での表示の有無、未決済・強制終了・論理削除・非公開化・投稿者の停止と退会の除外、解除で戻ること、件数の上限が無いこと、ティアごとの並びが乱数で変わること(4.\*・6.1・13.2)。
   - 購入種別の口(paymentsの反映を模擬のStripeで実行): 決済の確定で`paid`と金額・記録の識別が保存されること、申込の論理削除・プロダクトの非公開化・重なりで拒否になること、前進の文の条件が崩れたときに取り消されて拒否になること、開始日の翌日0:00以降の確定が反映の期限切れになること、同じ申込の2回目の決済が二重決済になること、開始日の0:07以降の確定で開始通知が依頼待ちになり`afterCommit`で送信が依頼されること、0:07より前なら`none`のままであること(3.\*・8.4・13.2)。
   - `EligibleProductReader`: キックオフ前・取消だけのローンチのプロダクトの除外、マッチ中と確定済みの包含、非公開化・他人のプロダクトの除外(1.1)。
   - ジョブと送信の処理: 0:07のジョブが当日開始と、終了日が過ぎて表示停止の返金を精算した広告(終了日が2日以上前のものを含む)だけを依頼待ちにし、未精算の広告を依頼待ちにしないこと、2回実行で変わらないこと、送信の処理が1回だけ送りMailpitに届くこと、4:21のジョブが開始日を過ぎた未決済を消し依頼待ちを送り直すこと(2.13・8.1〜8.3・8.5・12.6)。
-  - 強制終了: 監査ログと2つの返金の依頼(paymentsの`payment_refunds`の行)と同じ一括の書き込みで確定し、同時の2回目が`sponsorship_not_terminable`になり返金の依頼が増えないこと、表示から消えること、通知が依頼されること(10.4・10.5・10.7・10.8・14.4・14.6)。
+  - 強制終了(`D1TerminationWriter`): 監査ログと2つの返金の依頼(paymentsの`payment_refunds`の行)と同じ一括の書き込みで確定し、同時の2回目が`sponsorship_not_terminable`になり返金の依頼が増えないこと、表示から消えること、通知が依頼されること(10.4・10.5・10.7・10.8・14.4・14.6)。
+  - eventのinfrastructure層: `D1PeriodEndSettlementCommitter`が申込の列の更新と返金の依頼を同じ一括の書き込みで確定し、条件の崩れ(同時の精算)で両方が取り消されて`skipped`になること、`D1NoticeClaimStore`が同じ通知を2回取らないこと、`D1SponsorshipPurgeStore`が申込の行と主体の表示停止の区間を消すこと(8.5・11.2・11.3・14.3・14.6)。
   - 表示停止の返金: product-launchの非公開化と復元・identity-authの停止と解除の確定で区間が記録され、確定の失敗で記録されないこと、掲載終了日の翌日の0:07のジョブが依頼する精算のメッセージの処理で表示停止日数分の返金が1回だけ依頼され、2回の処理で増えず、精算の後にだけ掲載終了通知が依頼待ちになること、退会・プロダクトの論理削除の広告で依頼されないこと(14.1・14.3・14.6・14.9)。
   - 波及処理: 退会の確定で論理削除され表示と一覧から消えること、プロダクトの削除の確定と同じ書き込みで`product_deleted_at`が記録され、管理画面の「終了」の絞り込みに入り「掲載中」から外れ、強制終了できなくなること、ユーザー・プロダクトの`purge_due`で行が消えproduct-launch・identity-authの最後の物理削除が外部キーで失敗しないこと(11.1〜11.3)。
   - スキーマモジュール: `sponsoredPlacements`の`tagline`・`websiteUrl`の縮退、`mySponsorships`の状態と他人の申込の非表示、`activeSponsorshipCount`の本人以外の0、`adminSponsorships`の絞り込みとロール、`client`・`admin`以外の拒否(5.6・6.3・7.\*・9.\*・11.4)。
   - `SponsorshipExport`: `sponsorships.json`の項目と状態、論理削除済みのプロダクトの名称(12.1)。
+  - 層の規則: api・eventの`src/application/sponsorship/**`に`**/lib/workers/**`の読み込み(型だけの読み込みを含む)とデータベースの接続の読み込みが無いことを、各アプリの静的解析(backend-platformの`createBackendLayerRules`)で確かめる。`core/sponsorship`が`workers`・`apps/db`を読み込まないことも検査担当のアプリの静的解析で確かめる。
 - E2E/UI Tests:
   - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `SponsoredAdCard`(ティアごとの表示内容・`rel`・読み上げの名前・リンクの無い場合)、`SponsorLabel`、`LegendPlacement`(0件と列)、`GoldListPlacement`と`GoldListInsert`(差し込みと余りの数、サーバーの描画で余りを描かないこと)、`SilverPlacement`・`GoldAdStack`(ログイン中の導線と0件)、`SponsorshipApplicationForm`(未ログイン・未確認・停止中・対象0件・期間の文言・合計・送信)、`TierPriceList`(価格の縮退)、`MySponsorshipItem`(6つの状態・削除したプロダクト・決済へ進む)、`ProductSponsorshipDeleteNotice`、`TerminateSponsorshipDialog`(返金目安額・理由の必須・確定後の購入ID)、`AdminSponsorshipTable`(ロールによる操作の有無)。
   - E2E(`e2e/client/sponsorship.e2e.test.ts`): identity-authの`e2e/support/mailpit.ts`で確認済みの利用者を登録し、product-launchの画面でプロダクトを登録し、`e2e/support/sponsorship-fixtures.ts`(admin-foundationの`executeLocalD1`)でローンチ日を過去にする。常に実行する部分: 補助で今日から始まる決済済みの申込を作り、トップページ・ディレクトリ・プロダクト詳細ページにラベル「スポンサー」と`rel="sponsored noopener"`付きの広告が出ること、自分の広告一覧に「掲載中」と出ること、backend-platformの改訂2の`triggerScheduled({ worker: 'api', businessDate: <当日の業務日付>, businessTime: '00:07' })`で0:07のジョブを動かすと掲載開始通知メールがMailpitに届くこと。Stripeのsandboxのキーと`stripe listen`の転送がある環境だけで実行する部分: 料金ページから申し込み、テストカードで支払い、決済後のランディングから自分の広告一覧へ進み、当日開始の広告の掲載開始通知が届くこと(仮2)(13.3)。無い環境では対象外である旨を表示する(e2eの「対象0件の表示」の規約)。
