@@ -282,7 +282,7 @@
   - _Depends: 6.5, 7.1, 7.5_
   - _Requirements: 4.4, 15.1, 15.2, 15.3, 15.6, 15.7, 15.8, 15.9, 16.8, 16.9, 16.10_
 
-- [ ] 7.10 (P) 日次の4つのジョブを作る
+- [x] 7.10 (P) 日次の4つのジョブを作る
   - 先に、物理削除の候補の業務日付による境界(13日前の業務日付以前)と件数の上限、送り直しの対象と3回目以降の通知、14日を過ぎた未完了の通知、期限切れのセッション・トークン・待ち・保留の削除の件数の記録、未判定の判定し直しの依頼の対象と上限を確かめる単体テストを書く
   - メッセージの送信は`IdentityMessagePublisher`、イベントの記録は`core/identity`の`UserLifecycleStore`の型で受け取る。期限切れの削除はテーブルごとに条件付きの1文で行い、件数の上限を設けない(開発者の決定。4:21の起動の予算を上流のジョブと共有し、超過はディスパッチャの警告で検知する)
   - 完了状態: 単体テストが成功し、APIサーバーの静的解析で層の規則の違反が無い
@@ -486,3 +486,4 @@
 - 7.7: `StoreEmailChange`(`email-change.ts`)・`StorePasswordChange`(`password-change.ts`)、テストの偽物は`testing/credential-change-fakes.ts`。bot判定と停止中の拒否はユースケースではなく8.3のリゾルバが`requireWritableUser`→`assertHuman('email_change'|'password_change')`→`request`の順で行う(`requireUser`を使うと停止中の利用者が変更できてしまう)。8.3でこの2つの操作のbot判定の失敗(403・503)と停止中の拒否(`account_unavailable`)のWorkers統合テストを加える。確定後の使い捨て判定の保存の失敗はログに留めるため、その利用者の判定は空のまま残り、7.10の判定し直し(`undetermined`だけが対象)にも入らない(7.3の確認も同じ)。8.1の束縛: `IDENTITY_TYPES.EmailChange`→`StoreEmailChange`、`PasswordChange`→`StorePasswordChange`
 - 7.8: `StoreTotpManagement`(`totp-management.ts`)、偽物は`testing/totp-management-fakes.ts`。6.4の競合は`TotpCredentialStore.enable(userId, sealedSecret, step, codes, at)`で照合した秘密鍵の一致を条件にして閉じた(design.mdも更新済み)。4操作すべてで停止中・退会済みを拒否し、開始と有効化は未確認も拒否する。有効化済みでの有効化は`totp_already_enabled`(design.mdの表も更新済み)。残る改善点: 無効化と再発行が重なると`replaceAll`は何も書かずに平文10個を返す(`replaceAll`の結果を返して`totp_not_enabled`にする余地)。設定の確定と全セッションの削除が別の書き込みのため、削除の失敗で他の端末のセッションが残り得る。エラーの文言は8.2で集約する。8.1の束縛: `IDENTITY_TYPES.TotpManagement`→`StoreTotpManagement`
 - 7.9: `StoreWithdrawal`・`commitWithdrawal`(`withdrawal.ts`)・`StoreAdministrativeWithdrawal`(`administrative-withdrawal.ts`、呼び出し元は文字列`ADMINISTRATIVE_CALLER = 'admin'`)・`StoreUserSuspension`(`user-suspension.ts`)、共通の`user-lifecycle-transition.ts`(確定と送信)・`not-found.ts`(どちらもファイル計画に無い)、偽物は`testing/user-lifecycle-fakes.ts`。bot判定は8.3のリゾルバ(`requireUser`→`assertHuman('withdraw')`→`withdraw`)で、8.3で退会のbot判定の失敗(403・503)と停止中の利用者の退会のWorkers統合テストを加える。8.1で`ADMINISTRATIVE_CALLER`が`CALLER_KINDS`に含まれることを確かめるテストを加える。8.1の束縛: `IDENTITY_TYPES.Withdrawal`→`StoreWithdrawal`、`AdministrativeWithdrawal`→`StoreAdministrativeWithdrawal`、`UserSuspension`→`StoreUserSuspension`。文言(`forbidden`・`not_found`・`account_state_conflict`)は8.2で集約する
+- 7.10: ジョブ本体は`apps/api/src/application/identity/jobs/`の`PurgeOrchestratorJob`・`CredentialCleanupJob`・`DisposableRecheckSweepJob`・`LifecycleRedispatchJob`と共通の`daily-job-support.ts`(ファイル計画に無い)、偽物は`testing/daily-job-fakes.ts`。本体は名前・業務時刻・順序を持たず、`ScheduledJobContext`の`scheduledTime`・`business.date`だけを使う(名前と順序と業務時刻は8.4の`composition/scheduled-jobs.ts`で登録する)。1件ずつの送信・削除の失敗はログに残して続け、最後に`IdentityDailyJobError`で投げる。送り直しの通知は送り直す前の送信回数が3以上のイベントを含むときだけ
