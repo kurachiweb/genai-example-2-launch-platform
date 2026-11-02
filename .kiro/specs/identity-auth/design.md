@@ -344,14 +344,14 @@ apps/
 ├── event/src/
 │   ├── application/identity/                           # Bunの単体テスト
 │   │   ├── event-identity-types.ts                     # EVENT_IDENTITY_TYPES
-│   │   ├── ports.ts                                    # LifecycleHandlerResolver・IdentityPurgeStore・DisposableStatusStore・LifecycleIncidentReporter
+│   │   ├── ports.ts                                    # LifecycleHandlerResolver・IdentityPurgeStore・DisposableStatusStore・UserEmailLookup
 │   │   ├── user-lifecycle-runner.ts                    # identity.run-user-lifecycleの処理
 │   │   ├── email-suppression-cleanup-handler.ts        # 退会時の抑止記録の削除(非同期の波及処理)
 │   │   └── disposable-email-recheck-handler.ts         # identity.recheck-disposable-emailの処理
 │   ├── infrastructure/identity/                        # eventのWorkers統合テスト
 │   │   ├── d1-identity-purge-store.ts                  # 利用者自身の行の物理削除
 │   │   ├── d1-disposable-status-store.ts               # 判定し直しの対象の読み取りと結果の保存
-│   │   └── sentry-lifecycle-incident-reporter.ts
+│   │   └── d1-user-email-lookup.ts                     # 退会済みを含む利用者のメールアドレスの読み取り
 │   ├── infrastructure/email/templates/identity/        # 7種のテンプレート(本文の*.tsxと定義の*-template.ts)
 │   └── composition/
 │       ├── identity-module.ts                          # 束縛(SuppressionMaintenance・UserAddressDirectoryを含む)
@@ -2685,7 +2685,7 @@ export declare const LIFECYCLE_ORDER_WAIT_SECONDS: 60;
 #### IdentityPurgeStore・EventIdentityComposition
 
 - `D1IdentityPurgeStore.purge`: `user_recovery_codes`・`user_totp_credentials`・`user_login_challenges`・`user_auth_tokens`・`user_sessions`・`user_lifecycle_handler_runs`(利用者のイベントのもの)・`user_lifecycle_events`・`users`の順に削除する一括の書き込み(17.2・17.5)。監査ログと決済履歴は仮名化IDだけを持つため対象外(17.6)。
-- `composition/identity-module.ts`(event): `LifecycleHandlerResolver`(処理単位のコンテナから解決)・`UserLifecycleStore`・`IdentityPurgeStore`・`DisposableStatusStore`・`DisposableEmailChecker`・`EMAIL_TYPES.UserAddressDirectory`(`D1UserAddressDirectory`を`.to()`)・`EMAIL_TYPES.SuppressionMaintenance`(email-deliveryの実装)・`LifecycleIncidentReporter`・3つのハンドラー。
+- `composition/identity-module.ts`(event): `LifecycleHandlerResolver`(処理単位のコンテナから解決)・`UserLifecycleStore`・`IdentityPurgeStore`・`DisposableStatusStore`・`UserEmailLookup`・`DisposableEmailChecker`・`EMAIL_TYPES.UserAddressDirectory`(`D1UserAddressDirectory`を`.to()`)・`EMAIL_TYPES.SuppressionMaintenance`(email-deliveryの実装)・3つのハンドラー。
 - `EMAIL_TYPES.SuppressionMaintenance`の束縛: email-deliveryのapiの`API_EMAIL_MODULE`と同じく、`createSuppressionMaintenance(createSuppressionRepository(db, clock), createSendRecordRepository(db), context.get(EMAIL_TYPES.UserAddressDirectory), createCleanupCursorRepository(db))`の4引数(いずれも`apps/backend-lib/workers/email/`。`db`は`PLATFORM_TYPES.Database`、`clock`は`PLATFORM_TYPES.Clock`)を`toDynamicValue`で束縛する。本specがeventで使うのは`EmailSuppressionCleanupHandler`の`deleteByAddress`だけで、`runDailyCleanup`は呼ばない(日次の後始末はemail-deliveryのapiのジョブが行う)。`deleteByAddress`は抑止記録を消し、1年の判定の続きの位置が同じ照合キーなら位置の行も消す(`resetIfAt`)ため、続きの位置のストアも渡す必要がある。後始末の警告ログのカテゴリは`['api', 'application', 'email-cleanup']`に固定されており、eventで`runDailyCleanup`を呼ぶとログが捨てられるが、`deleteByAddress`はログを出さないため影響しない。
 - `composition/user-lifecycle-async-handlers.ts`: `USER_LIFECYCLE_ASYNC_HANDLERS`(初版は`identity-auth.email-suppression-cleanup`だけ)。`createAsyncLifecycleRegistry`で検証する。
 - `message-handlers.ts`: 2つのメッセージの処理を登録する。`env-schema.ts`: 任意の`DISIFY_API_KEY`。
@@ -2972,7 +2972,7 @@ stateDiagram-v2
 ### Monitoring
 
 - ログ(LogTape、カテゴリ`['api', 'identity', <機能>]`・`['event', 'identity', <機能>]`): ログインの成否と理由(`invalid_credentials`・`login_throttled`など)、ロックの発生、外部サービスの未使用、ライフサイクルの処理の結果と所要時間、日次のジョブの件数。メールアドレス・IP・トークン・パスワードは属性に入れない(backend-platformの伏せ字でも除く)。
-- Sentry: `AuthIncidentReporter`・`LifecycleIncidentReporter`の`warning`・`error`。`AppError`は送らない。
+- Sentry: `AuthIncidentReporter`の`warning`・`error`(イベントサーバーの再試行を使い切った失敗はbackend-platformのデッドレターの処理が送る)。`AppError`は送らない。
 - 運用者が見る指標: `pwned-password-check-unavailable`・`disposable-email-check-unavailable`の頻度、`lifecycle-events-redispatched`・`purge-overdue`の発生。
 
 ## Testing Strategy

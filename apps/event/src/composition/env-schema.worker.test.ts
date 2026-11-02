@@ -330,3 +330,27 @@ describe('eventEnvSchemaのメディアの設定', () => {
     expect(error.message).not.toContain(SECRET_ACCESS_KEY);
   });
 });
+
+describe('eventEnvSchemaの使い捨てメールアドレスの判定の設定', () => {
+  test.each([
+    { label: '未設定', value: undefined },
+    { label: '空文字', value: '' },
+    { label: '文字列', value: ['disify', 'test', 'key'].join('-') },
+  ])('任意のDISIFY_API_KEYが$labelなら受け付ける', ({ value }) => {
+    expect(() =>
+      validateEnv(
+        eventEnvSchema,
+        value === undefined
+          ? copyEnv({}, ['DISIFY_API_KEY'])
+          : copyEnv({ DISIFY_API_KEY: value }),
+      ),
+    ).not.toThrow();
+  });
+
+  test('DISIFY_API_KEYが文字列でなければ、キー名だけを不正なキーにする', () => {
+    const error = captureValidationError(copyEnv({ DISIFY_API_KEY: 1 }));
+
+    expect(error.invalidKeys).toEqual(['DISIFY_API_KEY']);
+    expect(error.missingKeys).toEqual([]);
+  });
+});

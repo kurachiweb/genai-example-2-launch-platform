@@ -339,7 +339,7 @@
   - _Depends: 3.4_
   - _Requirements: 16.3, 16.4, 16.5, 16.7, 17.2, 17.3, 17.5, 17.6_
 
-- [ ] 9.2 抑止記録の削除・判定し直しの処理と、イベントサーバーの組み立てを作る
+- [x] 9.2 抑止記録の削除・判定し直しの処理と、イベントサーバーの組み立てを作る
   - 先に、退会のイベントで利用者のメールアドレスの抑止記録の削除が呼ばれること(利用者の行が無ければ完了)、判定し直しが退会済み・未確認・判定済みで何もしないこと、結果の保存と未判定でも例外にしないこと、ライフサイクルの実行のメッセージのバッチで登録した偽の波及処理が順に呼ばれ失敗で再試行されることを確かめるWorkers統合テストを書く
   - 非同期の波及処理の登録箇所(初版は抑止記録の削除だけで、実行順は本spec専用の10000)、2つのメッセージの処理と再試行の方針、照会口と抑止記録の後始末の束縛(email-deliveryの実装)、任意のDISIFYのキーの環境の検証を加える
   - 完了状態: Workers統合テストとbackend-platform・email-deliveryのイベントサーバーのテストが成功する
@@ -493,3 +493,4 @@
 - 8.4: ジョブは`composition/scheduled-jobs.ts`に登録済み(4:21の3つと16:21の送り直し)、apiのルートの`triggers.crons`に`21 0 * * *`。照会口は`email-registrations.ts`の`USER_ADDRESS_DIRECTORY = D1UserAddressDirectory`で、未使用になった`UnavailableUserAddressDirectory`は削除した(email-deliveryのdesign.mdには初期の既定として記述が残る)。ログの属性名は`@logtape/redaction`の既定の伏せ字の規則(`/token/i`・`/auth/i`・`/key/i`・`/address/i`・`/email/i`など部分一致)に当たると値が`[REDACTED]`になるため、件数などの属性名にこれらの語を含めない(期限切れの削除の対象名は`mailLinks`)。日次タイムラインの表(`007-daily-timeline.md`)は12.2で更新する
 - 8.5: `AccountUploaderEligibility`(`application/identity/account-uploader-eligibility.ts`)を処理単位で単一に束縛し、`composition/uploader-eligibility.ts`は`UPLOAD_ACCESS_TYPES.UploaderEligibility`を`toService(IDENTITY_TYPES.AccountUploaderEligibility)`で転送する。`AllowAllUploaderEligibility`はmedia-pipelineの5.1のテストが使うため残す
 - 9.1: eventの`UserLifecycleRunner`(`apps/event/src/application/identity/user-lifecycle-runner.ts`、依存`{ store, registry, resolver, purgeStore, clock }`をまとめて受け取り`@injectable`無し、9.2で`toDynamicValue`で組み立てる)、ポートは`application/identity/ports.ts`(`LifecycleHandlerResolver`・`IdentityPurgeStore`。設計の`DisposableStatusStore`・`LifecycleIncidentReporter`は9.2で加える)、物理削除は`infrastructure/identity/d1-identity-purge-store.ts`(`@injectable`、イベントの行も消すため物理削除の後の再配信は「イベントが無い」で終わる)。ログのカテゴリは`['event','identity','lifecycle']`
+- 9.2: eventの組み立ては`apps/event/src/composition/identity-module.ts`(`createEventIdentityModule({ asyncHandlers })`)、非同期の波及処理の登録箇所は`user-lifecycle-async-handlers.ts`(初版は`identity-auth.email-suppression-cleanup`、`withdrawn`、order 10000)、識別子は`application/identity/event-identity-types.ts`(`Symbol.for('identity.event.<名前>')`)。退会済みの利用者のメールアドレスは新しいポート`UserEmailLookup`(`D1UserEmailLookup`)で読む。判定し直しは判定がnullの確認済みも対象にし、保存は同じメールアドレス・未退会・確認済み・未確定を条件にした更新。設計の`LifecycleIncidentReporter`は作らない(eventに固有の通知の種類が無く、16.6・17.4はapiの`AuthIncidentReporter`、使い切った再試行はbackend-platformのデッドレターの処理がSentryへ送る。design.mdも合わせて改めた)。identityのテストの補助の`userIdOf`(`01JC0USER...`)はULIDでないため、本文を`z.ulid()`で検証するメッセージのテストでは正しいULIDを使う(誤ると黙ってデッドレターになる)

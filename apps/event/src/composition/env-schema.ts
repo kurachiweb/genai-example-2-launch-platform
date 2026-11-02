@@ -26,6 +26,8 @@ export interface EventPlatformEnv
   readonly IMAGES: ImagesBinding;
   readonly EMAIL_FROM_ADDRESS: string;
   readonly EMAIL_EVENTS_QUEUE_NAME: string;
+  // 空文字は未設定として扱う
+  readonly DISIFY_API_KEY?: string;
 }
 
 type ConditionalKey =
@@ -74,6 +76,7 @@ export const eventEnvSchema = z
     EMAIL_ALLOWED_RECIPIENTS: z.string().min(1).optional(),
     KEYWORD_EXTRACTOR: z.enum(['google-natural-language', 'disabled']),
     GOOGLE_NL_API_KEY: z.string().min(1).optional(),
+    DISIFY_API_KEY: z.string().optional(),
     ...mediaEnvShape,
   })
   // 他のキーに不備があっても条件付きの必須キーの欠落を一緒に報告するよう、環境がオブジェクトなら検査する。問題の経路にキーを入れ、欠けたキーとして分類させる
