@@ -20,7 +20,7 @@
   - _Boundary: IdentitySchema, IdentityVisibility_
   - _Requirements: 1.4, 1.5, 1.6, 1.7, 3.6, 4.2, 4.5, 8.9, 16.1_
 
-- [ ] 1.3 (P) ニックネーム・メールアドレス・パスワードの入力規則を、4アプリが共有するディレクトリに作る
+- [x] 1.3 (P) ニックネーム・メールアドレス・パスワードの入力規則を、4アプリが共有するディレクトリに作る
   - 前提: content-processingの設計の「本specのタスクを前提にする下流spec」が示す最小の区切りが完了していること(roadmapの依存)。対象は、タスク1.1(共有ディレクトリの定義と配置)・1.2(共用部品のプロジェクトと読み込みの境界)・2.1(書記素の数え方)・4.1(APIサーバー・イベントサーバーへの組み込み)・4.2(利用者側・管理者側・frontend-libへの組み込み。4.1とともに配置先を静的解析とテストの対象から外す)・6.1(frontend-libの`server/**`からの読み込みの許可と`validation/**`の禁止の静的解析の規則)と、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインのジョブの名前と順序の表の作成である。無ければ止めて報告する。ただし日次タイムラインの表が無いことでは止めず、12.2で作る
   - 先に、絵文字・結合文字を含むニックネームの25・26書記素、前後の空白だけの入力、パスワードの7・8・128・129コードポイント、メールアドレスの254・255文字を確かめる単体テストを書く
   - ニックネームの上限と判定(前後の空白を除いて1〜25書記素)、メールアドレスの長さの上限、パスワードの長さの判定(コードポイント数)を作る。書記素の数え方は共有の部品を使い、コードポイント数だけを本タスクで数える
@@ -455,3 +455,4 @@
 
 - 1.1: 導入確認のテストは`apps/api/src/infrastructure/auth/identity-packages.worker.test.ts`と`apps/frontend-lib/components/auth/qr-code-package.browser.test.ts`(後のタスクで本来のテストに置き換える)。`uqr`の`encode`は既定で四辺に1セルの余白(`border: 1`)を加える。`bowser`は解釈できないUser-Agentに空文字列のブラウザ名・OS名を返す。`otpauth`の`validate({ window: 1 })`は一致した時間窓の差分(0・-1・1)を返し、範囲外は`null`。TOTPの試験用の秘密鍵はBase32の文字列で書くとBetterleaksに誤検知されるため、`Secret.fromLatin1(...)`で組み立てる
 - 1.2: テーブル定義は`apps/db/schema/identity/`、マイグレーションは`20261102060846_identity_auth`。部分一意索引とCHECKは`.inlineParams()`で値を埋め込んで生成した(カスタムマイグレーション無し)。部分一意索引`users_email_not_deleted_unique`・`user_lifecycle_events_user_id_purge_due_unique`を衝突の対象(`onConflictDoNothing({ target, where })`など)に使うときは同じWHEREの条件を含める。`USER_STATUSES`・`DISPOSABLE_EMAIL_STATUSES`は`users.ts`に定義し`visibility.ts`から再エクスポートする。トークンの用途・イベントの種類と状態の値は各テーブルの非公開の定数のため、backend-libやapiのdomainに同じ値の定数を作るタスク(3.1・6.1)で、両者が一致することを確かめる単体テスト(先例: media-pipelineの`workers/media/media-file-columns.unit.test.ts`)を加える。`apps/db/schema/index.unit.test.ts`は完全一致ではなく`test.each`と`toContain`の形
+- 1.3: 入力規則は`apps/common-lib/identity/account-input-rules.ts`。ニックネームの前後の空白は共有の`trimWhiteSpace`(`\p{White_Space}`)で除くため、zodの`.trim()`(`String.prototype.trim`)とは集合が異なる。ニックネームを保存・検証する後続(`inputs.ts`・AccountFormSchemas・Registration)も`trimWhiteSpace`を使い、判定と保存値を食い違わせない。開発コンテナでは各アプリの`common-lib/`がコピーで古いことがあり、`shared-dirs:verify`が失敗したら`bun run shared-dirs:place`で配置し直す
