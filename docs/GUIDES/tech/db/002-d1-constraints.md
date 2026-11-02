@@ -72,6 +72,38 @@ await db
   });
 ```
 
+- 制約違反を無視せず、どの一意制約に当たったかで結果を変える場合(同じ`db.batch()`で追加した行を参照する子の行も追加する場合や、一意の列を`UPDATE`で書き換える場合)は、`ON CONFLICT`を付けずに`db.batch()`の失敗を捕まえ、エラーの文言の`UNIQUE constraint failed: <テーブル>.<列>`で違反した列を判別する。`db.batch()`は全体がロールバックされるため、どの文も反映されない。
+  - `db.batch()`の実行の失敗はD1のエラーがそのまま投げられ、`cause`にSQLiteのエラーを持つ。単文の失敗と、`db.batch()`の中の文の組み立ての失敗は、Drizzleが`DrizzleQueryError`で包み、D1のエラーを`cause`に持つ。どちらも文言は`cause`をたどって調べる。
+  - 文言は`UNIQUE constraint failed: users.email: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)`のように列名の後に`: SQLITE_CONSTRAINT ...`が続くため、列名は`:`の手前までを取る。
+  - 部分一意索引(`CREATE UNIQUE INDEX ... WHERE`)の違反も、索引の名前ではなく同じ`<テーブル>.<列>`の形で報告される。
+  - 判別したい列以外の違反とその他の失敗は、そのまま投げ直す。
+
+```typescript
+const UNIQUE_VIOLATION_PATTERN = /UNIQUE constraint failed: ([^:]+)/;
+
+function uniqueViolationColumns(error: unknown): ReadonlySet<string> {
+  for (let current = error; current instanceof Error; current = current.cause) {
+    const columns = UNIQUE_VIOLATION_PATTERN.exec(current.message)?.[1];
+    if (columns !== undefined) {
+      return new Set(columns.split(',').map((column) => column.trim()));
+    }
+  }
+  return new Set();
+}
+
+try {
+  await db.batch([
+    db.insert(users).values(user),
+    db.insert(userSessions).values(session),
+  ]);
+} catch (error) {
+  if (uniqueViolationColumns(error).has('users.handle')) {
+    return 'handle-in-use';
+  }
+  throw error;
+}
+```
+
 #### 版と元データの存在を条件にした追加か更新
 
 非同期処理が元データから作る派生の行(全文検索の索引文書など)は、古い版の処理が新しい版の後に届いたり、処理の途中で元データが削除されたりする。版の比較と元データの存在の確認を、追加か更新の1文の条件にする。

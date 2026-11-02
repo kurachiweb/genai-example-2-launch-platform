@@ -174,7 +174,7 @@
   - 完了状態: 単体テストが成功し、ポートを参照する後続の部品の型検査の土台ができている(APIサーバーの型検査と静的解析が成功し、application層に`**/lib/workers/**`の読み込みが無い)
   - _Requirements: 1.6, 4.3, 4.4, 4.5, 4.6, 14.2_
 
-- [ ] 6.2 (P) 利用者アカウントのストアと既定のハンドルの重複判定をD1上に作る
+- [x] 6.2 (P) 利用者アカウントのストアと既定のハンドルの重複判定をD1上に作る
   - 先に、利用者・確認のトークン・セッションの同時の作成と、メールアドレスの重複・ハンドルの重複の判別、大文字小文字を区別しない検索、退会済みを除く重複判定と退会直後の同じメールでの作成、確認済みの更新、パスワードリセット・メールアドレス変更・パスワード変更の一括の書き込み(セッションと対象のトークンの削除を含む)、変更先の重複時の判別、ハンドルの重複判定が退会済みの行も対象にすることを確かめるWorkers統合テストを書く
   - 一括の書き込みと一意制約の違反の判別を実装する
   - 完了状態: Workers統合テストが成功する
@@ -472,3 +472,4 @@
 - 5.2: `HibpPwnedPasswordChecker`は`@injectable`無しで、8.1で`toDynamicValue`により`fetch`と`userAgent: 'genai-example-2-api'`を渡す。`OtpauthTotpAuthenticator`のラベルは呼び出し側が`@<ハンドル>`を渡す(先頭以外の`@`は`RangeError`)。秘密鍵の形式違反は`TotpSecretFormatError`。`SentryAuthIncidentReporter`のログのカテゴリは設計の`['api','identity',…]`ではなく`['api','auth','incident']`(認証部品は主体に依存しないため。`infra/004`に記載済み)、指紋は`['identity', <種類>]`。1.1の導入確認のテストにはbowserの部分だけが残り、6.6で置き換える。新しいログのカテゴリやSentryへの通知を作るタスクは、同じ変更で`infra/004`の表に行を足す
 - 5.3: Durable Objectは`infrastructure/auth/login-attempt-throttle.ts`の`LoginAttemptThrottle`(バインディング`LOGIN_ATTEMPT_THROTTLE`、`migrations`の`v2`で`new_sqlite_classes`)、2つの単位の実装は`durable-login-throttle.ts`の`createDurableLoginThrottle`(まだ束縛していない。8.1で束縛し、`env-schema.ts`の検証を加える)。IPが不明な場合の`login-throttle-ip-missing`の通知は`status`のときだけ行うため、ログイン・本人確認の各経路(7.4・7.5)は必ず照合の前に`status`を呼ぶ。12.2で本プロジェクト固有の値にバインディングとクラスを加える
 - 6.1: 規則は`apps/api/src/domain/identity/`(`user-account.ts`・`handle.ts`・`auth-token-purpose.ts`)、ポートと識別子は`apps/api/src/application/identity/`(`ports.ts`・`identity-types.ts`の`IDENTITY_TYPES` 34個・`request-meta.ts`)。トークンのハッシュの用途は`user-auth-token-email-verification`・`-email-change`・`-password-reset`・`-password-change`で確定(design.mdも同じ形に改めた)。確定時に失効させる用途の集合`AUTH_TOKEN_PURPOSES_REVOKED_ON_COMPLETION`は、6.2の`D1UserAccountStore`がパスワードリセット・メールアドレス変更・パスワード変更の一括の書き込みで唯一の正として使う。`IdentityMessagePublisher`は識別子を持たず`PLATFORM_TYPES.MessagePublisher`から受け取る。DBの値との一致は`application/identity/identity-columns.unit.test.ts`
+- 6.2: `apps/api/src/infrastructure/identity/`の`D1UserAccountStore`・`D1HandleAvailability`(`@injectable`、`@inject(PLATFORM_TYPES.Database)`、束縛は8.1)。一意制約の違反は`db.batch()`の失敗の`cause`の連鎖の文言`UNIQUE constraint failed: users.email|users.handle`で判別し、他の違反と障害はそのまま投げる(`docs/GUIDES/tech/db/002-d1-constraints.md`に汎用の節を追加)。パスワードリセットは未確認のときだけ確認日時を入れる。`listUndetermined(checkedBefore)`は境界を`lt`で比べるため、7.10のジョブは「1時間以上経った」を満たすよう`checkedBefore`を決める。テストの補助`clearIdentityTables`はセッションとトークンを消さない(6.2のテストは自前で消す)ため、6.3で補助に加えてよい
