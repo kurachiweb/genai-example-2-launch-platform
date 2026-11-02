@@ -211,10 +211,12 @@ apps/
 │   │   ├── file-signature.ts                      # マジックバイトの表とdetectSignature
 │   │   ├── image-dimensions.ts                    # readImageDimensions(image-size・向きの入れ替え、SVGはsvg-root.ts)・画素数の上限
 │   │   ├── svg-root.ts                            # readSvgRoot(SVGのルートの開始タグの位置・属性・幅・高さ・viewBox)・intrinsicSizeOfSvg
-│   │   ├── svg-syntax.ts                          # UTF-8の復号・DOCTYPEとENTITYの拒否・XMLの構文の検査
+│   │   ├── svg-prolog.ts                          # scanSvgProlog・blankStandardSvgDoctype(ルートの前の読み飛ばしとSVG 1.0・1.1の標準の文書型宣言の判定。改訂3)
+│   │   ├── svg-syntax.ts                          # UTF-8の復号・標準でないDOCTYPEとENTITYの拒否・XMLの構文の検査
 │   │   ├── text-content-check.ts                  # UTF-8とNUL文字を流しながら検査するTransformStream
 │   │   ├── file-name.ts                           # sanitizeFileName・attachmentDisposition
 │   │   ├── object-key.ts                          # generateObjectKey(乱数源を注入)
+│   │   ├── media-unavailable.ts                   # 保存の操作と画像配信の一時的な障害(503)の文言と再試行の秒数(workersとeventのapplication層が共用)
 │   │   └── media-messages.ts                      # 3種のメッセージ契約と件数の上限
 │   ├── core/messaging/contracts/index.ts          # (変更)MESSAGE_CONTRACTSへ3種を追加
 │   └── workers/media/                             # D1・R2・Queueを使う部品(apiのWorkers統合テスト。各ファイルに同名の*.worker.test.ts)
@@ -480,17 +482,17 @@ sequenceDiagram
 ```
 
 - 関門は既定のエクスポート(キャッシュ無効)のHonoの経路で、IP制限の除外・アクセスログ・Sentryの計装は既存の仕組みに乗る。`withSecurityHeaders`は応答のCSPを保つため、SVGのCSPがそのまま届く。
-- 画像配信ドメインが専用のホスト(staging・prod)の場合、画像のURLの形式に合わない要求は404にする(10.12)。ローカルではイベントサーバーと画像配信が同じ`localhost:48043`のため、画像のURLの形式の要求だけを画像配信として扱い、他は通常の経路へ流す。
+- 画像配信ドメインが専用のホスト(staging・prod)の場合、画像のURLの形式に合わない要求は404にする(10.12)。既知の例外(要件の改訂4、2026-11-02に開発者が決定): backend-platformの`createWorkerApp`がヘルスチェックをモジュールの経路より前に登録するため、専用のホストでも`GET`・`HEAD /health`は200(`{"status":"ok"}`・`no-store`・セキュリティヘッダー付き)を返す。画像や内部の情報を返さないため影響は軽微とし、共通部品は変えない。ローカルではイベントサーバーと画像配信が同じ`localhost:48043`のため、画像のURLの形式の要求だけを画像配信として扱い、他は通常の経路へ流す。
 
 ### 日次バッチ(基準時刻4:21)
 
-| 順序 | ジョブ名                                 | 対象                                                                                     | 処理                                             |
-| ---- | ---------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| 810  | `media-pipeline.expired-file-erasure`    | 削除待ち、論理削除から13日以上、アップロードから24時間を過ぎた未紐付け(保存未完了を含む) | `MediaEraser`で物理削除(最大1,000件ずつ繰り返す) |
-| 820  | `media-pipeline.moderation-requeue`      | 未判定、判定待ちのまま作成から1時間以上(削除されていないもの)                            | `media.moderate-image`を送り直す(最大1,000件)    |
-| 830  | `media-pipeline.location-reconciliation` | 隔離理由があるのに画像用非公開バケットにある、または理由が無いのに隔離バケットにある画像 | `media.relocate-files`を25件ずつ送る             |
+| 順序 | ジョブ名                                 | 対象                                                                                     | 処理                                                 |
+| ---- | ---------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| 810  | `media-pipeline.expired-file-erasure`    | 削除待ち、論理削除から13日以上、アップロードから24時間を過ぎた未紐付け(保存未完了を含む) | `MediaEraser`で物理削除(1,000件ずつ最大10回繰り返す) |
+| 820  | `media-pipeline.moderation-requeue`      | 未判定、判定待ちのまま作成から1時間以上(削除されていないもの)                            | `media.moderate-image`を送り直す(最大1,000件)        |
+| 830  | `media-pipeline.location-reconciliation` | 隔離理由があるのに画像用非公開バケットにある、または理由が無いのに隔離バケットにある画像 | `media.relocate-files`を25件ずつ送る                 |
 
-- 各ジョブは前回の結果に依存せず、同じ日に重複して起動しても結果が変わらない。件数の上限を超えた分は翌日に回る(ログに残数を出す)。
+- 各ジョブは前回の結果に依存せず、同じ日に重複して起動しても結果が変わらない。820・830は1回の照会の上限(1,000件)を、810は繰り返しの上限(10回。1回の起動で10,000件)を超えた分を翌日に回し、ログに続きの有無を出す。810は繰り返しの上限で止めた場合に警告のログも出す(開発者の決定(2026-11-02)。1日に1,000件を超える日が続いても、準拠方針の「最大48時間」と「14日が経つ前の削除」を守るため)。
 
 ## Requirements Traceability
 
@@ -503,7 +505,7 @@ sequenceDiagram
 | 2.1, 2.2, 2.3, 2.4      | ヘッダーの事前検証                           | UploadPrecheck                                                      | `precheckUpload`                                                 | アップロード |
 | 2.5, 2.6                | 長さの不一致・拒否時に残さない               | UploadReceiver・R2MediaObjectStore                                  | `FixedLengthStream`・`putIfAbsent`                               | アップロード |
 | 3.1                     | マジックバイト                               | FileSignature・UploadReceiver                                       | `detectSignature`                                                | アップロード |
-| 3.2, 3.3                | SVGの構文とDOCTYPE・ENTITY                   | SvgSyntax                                                           | `checkSvgSyntax`                                                 | アップロード |
+| 3.2, 3.3                | SVGの構文と標準でないDOCTYPE・ENTITY         | SvgSyntax                                                           | `checkSvgSyntax`                                                 | アップロード |
 | 3.4                     | テキストの検査                               | TextContentCheck                                                    | `createTextContentCheck`                                         | アップロード |
 | 3.5, 3.6, 3.7, 3.8, 3.9 | 寸法・向き・上限・SVGの寸法                  | ImageDimensions                                                     | `readImageDimensions`・`exceedsPixelLimits`                      | アップロード |
 | 4.1, 4.2                | 推測できないキーと上書きの拒否               | ObjectKey・R2MediaObjectStore                                       | `generateObjectKey`・`putIfAbsent`                               | アップロード |
@@ -874,10 +876,10 @@ export declare function generateObjectKey(
 
 - 拒否の表し方: `UploadRejection`は状態コードではなくbackend-platformの`AppErrorKind`を持つ。受付の経路は拒否を同じ`kind`・`code`・`message`・`retryAfterSeconds`の`AppError`にして投げ、共通の例外の変換が状態コード・共通のエラー形式・`no-store`の応答を作る(411は本specが加える`length_required`。経路で応答の本文を組み立てない)。
 - シグネチャの表: JPEG(`FF D8 FF`)、PNG(`89 50 4E 47 0D 0A 1A 0A`)、GIF(`GIF87a`・`GIF89a`)、WebP(`RIFF`+4バイト+`WEBP`)、PDF(`%PDF-`)。申告がSVG・テキストの場合はこの判定を使わない(3.1)。
-- 寸法: `image-size`の判定形式をJPEG・PNG・GIF・WebP・SVGに絞る(`disableTypes`)。申告の形式と`image-size`の判定した形式が違えば読めないものとして扱う。開発者の決定(2026-11-01): SVGは`image-size`の正規表現(先頭1000文字の最初の`<svg`・コメントの中も対象・`=`の前後の空白に非対応)で寸法を誤るため、`svg-root.ts`の`readSvgRoot`でXML宣言・処理命令・コメントを飛ばしたルートの開始タグを読む。寸法・`viewBox`は可能な限りブラウザと同じ文法で解釈する(閉じる側に倒しすぎない): 属性値はXML 1.0の3.3.3どおり空白の文字を空白にしてから文字参照・定義済み実体を戻し、数値は`[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?`、`viewBox`の区切りは空白・カンマ(前後の空白可)・区切りの無い連結(`-0-0 100 100`)で、4つでない・末尾の`.`・余分なカンマなどブラウザが無効とする値と幅か高さが0以下の値は無効とする。長さの単位は大文字小文字を区別せず、CSSの換算(`px`・`in`・`cm`・`mm`・`q`・`pt`・`pc`=16px。`image-size`の表は写さない)とし、`em`・`rem`はブラウザの既定の文字の大きさ16pxで換算する(resvgも同じ大きさで解釈させる)。`ex`・`ch`(ChromiumとresvgでCSSの書体により長さが違う)と`vw`・`lh`などの換算しない単位は寸法を未設定にする。百分率・無効な値・0以下の値は指定が無いものとして扱う。`width`・`height`の両方があればその値、片方なら`viewBox`の縦横比から、どちらも無ければ`viewBox`の幅・高さを寸法とし、求められなければ要件3.9のとおり未設定とする(拒否しない)。ルートの`font-size`による`em`の変化は寸法に反映しない(描画はresvgが解釈した寸法で行うため判定用画像には影響しない)。
-- SVG: `TextDecoder('utf-8', { fatal: true })`で復号し、BOMを除く。大文字小文字を問わず`<!DOCTYPE`・`<!ENTITY`を含めば`svg_declaration_not_allowed`。`fast-xml-validator`の`SyntaxValidator.validate`(`allowBooleanAttributes: false`・`multipleRoots: false`)が例外を投げれば`invalid_svg`(開発者の決定(2026-11-01)。成功は`true`を返し、失敗は`code`・`line`・`col`を持つ`Error`を投げる。`multipleRoots`の実際の既定値は型定義の注記と違い`true`のため明示する)。最上位の要素が`svg`でなければ`invalid_svg`。
+- 寸法: `image-size`の判定形式をJPEG・PNG・GIF・WebP・SVGに絞る(`disableTypes`)。申告の形式と`image-size`の判定した形式が違えば読めないものとして扱う。開発者の決定(2026-11-01): SVGは`image-size`の正規表現(先頭1000文字の最初の`<svg`・コメントの中も対象・`=`の前後の空白に非対応)で寸法を誤るため、`svg-root.ts`の`readSvgRoot`でXML宣言・処理命令・コメントと標準の文書型宣言(`svg-prolog.ts`の`scanSvgProlog`。改訂3)を飛ばしたルートの開始タグを読む。寸法・`viewBox`は可能な限りブラウザと同じ文法で解釈する(閉じる側に倒しすぎない): 属性値はXML 1.0の3.3.3どおり空白の文字を空白にしてから文字参照・定義済み実体を戻し、数値は`[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?`、`viewBox`の区切りは空白・カンマ(前後の空白可)・区切りの無い連結(`-0-0 100 100`)で、4つでない・末尾の`.`・余分なカンマなどブラウザが無効とする値と幅か高さが0以下の値は無効とする。長さの単位は大文字小文字を区別せず、CSSの換算(`px`・`in`・`cm`・`mm`・`q`・`pt`・`pc`=16px。`image-size`の表は写さない)とし、`em`・`rem`はブラウザの既定の文字の大きさ16pxで換算する(resvgも同じ大きさで解釈させる)。`ex`・`ch`(ChromiumとresvgでCSSの書体により長さが違う)と`vw`・`lh`などの換算しない単位は寸法を未設定にする。百分率・無効な値・0以下の値は指定が無いものとして扱う。`width`・`height`の両方があればその値、片方なら`viewBox`の縦横比から、どちらも無ければ`viewBox`の幅・高さを寸法とし、求められなければ要件3.9のとおり未設定とする(拒否しない)。ルートの`font-size`による`em`の変化は寸法に反映しない(描画はresvgが解釈した寸法で行うため判定用画像には影響しない)。
+- SVG: `TextDecoder('utf-8', { fatal: true })`で復号し、BOMを除く。ルートの前の1つ目の標準の文書型宣言(改訂3)を`svg-prolog.ts`の`blankStandardSvgDoctype`で同じ長さの空白に置き換えた文書に対して、大文字小文字を問わず`<!DOCTYPE`・`<!ENTITY`を含めば`svg_declaration_not_allowed`とし、構文の検査と最上位の要素の確認もこの文書で行う。標準の文書型宣言は、ルート名が`svg`で、外部識別子がW3Cの定めるSVG 1.0(`-//W3C//DTD SVG 1.0//EN`・`http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd`)・SVG 1.1(`-//W3C//DTD SVG 1.1//EN`・`http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd`)・SVG 1.1 Basic・SVG 1.1 Tinyの公開識別子とシステム識別子の組の`PUBLIC`だけから成り、内部サブセットを持たない宣言とする(XMLの空白の揺れと`"`・`'`の引用符は許し、識別子は完全に一致させる。`<!DOCTYPE`・`PUBLIC`・`svg`は大文字小文字を区別する)。外部のDTDは読まない。保存する本文と応答の`text`は宣言を含む元のテキストのままにする。`fast-xml-validator`の`SyntaxValidator.validate`(`allowBooleanAttributes: false`・`multipleRoots: false`)が例外を投げれば`invalid_svg`(開発者の決定(2026-11-01)。成功は`true`を返し、失敗は`code`・`line`・`col`を持つ`Error`を投げる。`multipleRoots`の実際の既定値は型定義の注記と違い`true`のため明示する)。最上位の要素が`svg`でなければ`invalid_svg`。
 - テキスト: 各断片を`stream: true`で復号し、NUL(`\u0000`)を含めば失敗させる。最後に`flush`で不完全な文字を検出する。
-- ファイル名: `/`・`\`・C0制御文字・DEL・C1制御文字を除き、先頭の`.`をすべて除き、前後の空白を除いてから、UTF-8で255バイトを超えないよう書記素の境界で切る(`Intl.Segmenter`)。空なら`<形式の既定名>`(例: `image.png`・`document.pdf`・`text.txt`)。
+- ファイル名: `/`・`\`・C0制御文字・DEL・C1制御文字と、双方向の制御文字(U+061C・U+200E・U+200F・U+202A〜U+202E・U+2066〜U+2069。表示の向きを変えて拡張子を偽装できるため。改訂3)を除き、先頭の`.`をすべて除き、前後の空白を除いてから、UTF-8で255バイトを超えないよう書記素の境界で切る(`Intl.Segmenter`)。空なら`<形式の既定名>`(例: `image.png`・`document.pdf`・`text.txt`)。
 - `Content-Disposition`: ASCIIの代替は表示可能なASCII以外と`"`・`\`を`_`に置き換えた名前とする(RFC 6266・RFC 5987)。
 
 #### MediaFile・MediaMessages・ports
@@ -1131,7 +1133,7 @@ export interface MediaFileStore {
   findViews(
     ids: readonly string[],
   ): Promise<ReadonlyMap<string, MediaFileView>>; // 90件ごとに分けて照会
-  attach(ids: readonly string[]): Promise<void>; // attached_atが空のものだけ設定
+  attach(ids: readonly string[]): Promise<readonly string[]>; // 存在しない・論理削除済み・削除待ちの識別子を返し、1件でもあれば何も変えない。attached_atが空のものだけ設定
   markDeleted(ids: readonly string[]): Promise<void>;
   markEraseRequested(ids: readonly string[]): Promise<void>;
   remove(ids: readonly string[]): Promise<void>; // 隔離理由は連鎖削除
@@ -1246,7 +1248,7 @@ export interface MediaObjectStore {
 **Responsibilities & Constraints**
 
 - `MediaEraser.erase`: 記録を読み、画像用の用途は画像用非公開バケットと隔離バケット、ファイル用の用途はファイル用非公開バケットからオブジェクトを削除する → 画像のオブジェクトキーを100件ずつ`PURGE_IMAGE_CACHE_MESSAGE`で送る → 記録を削除する。どの段階で失敗しても例外を投げ、再実行で同じ結果になる(13.7)。
-- `claim`: 全件の記録を読み、存在・保存完了・未削除・削除待ちでない・用途の一致・保有者の一致を確かめる。1件でも満たさなければ何も変えずに理由の一覧を返す(5.2)。満たせば`attach`(既に紐付け済みなら変えない、5.3)。
+- `claim`: 全件の記録を読み、存在・保存完了・未削除・削除待ちでない・用途の一致・保有者の一致を確かめる。1件でも満たさなければ何も変えずに理由の一覧を返す(5.2)。満たせば`attach`(既に紐付け済みなら変えない、5.3)。確認と`attach`の間に論理削除・削除待ち・物理削除が割り込んだ場合は、`attach`が識別子の一覧をJSONの1つのバインド変数で受け取って全件の状態を1文で確かめ、どのファイルも紐付けずに該当する識別子を返す。`claim`はその識別子の状態を読み直し、`deleted`(物理削除されていれば`not_found`)の理由で返す(5.2。開発者の決定(2026-11-02))。
 - `eraseNow`: `markEraseRequested`の後に`MediaEraser.erase`を呼ぶ。削除待ちの印が付いたファイルは、紐付け・非公開ファイルの配信・`openContent`の対象から外れる(13.2)。
 - `eraseOwnedBy`: `findIdsOwnedBy`で保有者のファイルを`OWNER_OPERATION_BATCH_LIMIT`+1件まで読み、先頭の上限件数を`eraseNow`する。読めた件数が上限を超えていれば`hasMore: true`を返す(13.6・13.9)。
 - `addReasonForOwner`・`removeReasonForOwner`: `findOwnedImageIdsByReason`で対象を上限+1件まで読み、先頭の上限件数に`addReasons`・`removeReasons`を行い、25件ずつ`RELOCATE_FILES_MESSAGE`を送る。`hasMore`は`eraseOwnedBy`と同じ規則で決める(9.10・13.9)。送信に失敗した後の再実行は、理由を確定させた画像が対象から外れるため移動を依頼し直さず、日次の保存先の照合(830、9.8)が最大約1日で回収する(開発者の決定(2026-11-01)。既知の制限)。
@@ -1390,8 +1392,8 @@ export interface FileAccessAuthorizer {
 
 - Trigger: backend-platformの定期実行。業務時刻4:21、順序810・820・830(System Flowsの表)。email-deliveryなどと同じ時刻のジョブとは独立に動く。
 - Input / validation: 予定時刻`scheduledTime`から、論理削除の境界(13日前)・未紐付けの境界(24時間前)・判定待ちの境界(1時間前)を求める。
-- Output / destination: 物理削除(`MediaEraser`)、`media.moderate-image`・`media.relocate-files`の送信。処理件数と残数をログへ出す。
-- Idempotency & recovery: 対象はD1の状態から毎回求め直すため、重複して起動しても結果は変わらない。1回の上限(1,000件)を超えた分と失敗した分は翌日に回る。失敗はログとSentryへ送り、同じ時刻の後続のジョブは続ける(backend-platformの規約)。
+- Output / destination: 物理削除(`MediaEraser`)、`media.moderate-image`・`media.relocate-files`の送信。処理件数と続きの有無をログへ出す(810は繰り返しの回数も出し、繰り返しの上限で止めた場合は警告する)。
+- Idempotency & recovery: 対象はD1の状態から毎回求め直すため、重複して起動しても結果は変わらない。810は照会と物理削除を1,000件ずつ、候補が無くなるか繰り返しの上限(`EXPIRED_FILE_ERASURE_MAX_ROUNDS` = 10)に達するまで繰り返す。上限は、1回の繰り返しのサブリクエスト(候補の照会1・記録の読み出し12・3バケットの削除3・パージの依頼10・記録の削除1の最大27回)の10回分(270回)が、同じ起動の他のジョブとWorkers Paidの1起動あたり10,000回を分け合える値として決めた。D1の照会(候補の照会1・記録の読み出し12・記録の削除の一括実行1の14回)も10回で140回となり、1起動あたり1,000回の上限に収まる。処理の大半はI/Oの待ちで、CPU時間の既定の上限(30秒。`limits.cpu_ms`は未設定)には届かない。実時間が1ジョブ30秒の目安に収まるかはstagingの要約のログ(`durationMs`)で確かめる(research.mdのU-4)。820・830は1回の照会の上限(1,000件)を超えた分を、全てのジョブは失敗した分を翌日に回す。同じ候補を重複した起動が同時に消しても、存在しないオブジェクトと記録の削除は成功し、パージの依頼が重なるだけのため結果は変わらない。失敗はログとSentryへ送り、同じ時刻の後続のジョブは続ける(backend-platformの規約)。
 
 #### MediaGraphqlModule
 
@@ -1540,7 +1542,7 @@ export interface ModerationConfig {
 export declare function parseModerationConfig(vars: {
   readonly MODERATION_MIN_CONFIDENCE: string;
   readonly MODERATION_BLOCKED_CATEGORIES: string;
-}): ModerationConfig; // 0〜100の数値、カテゴリはMODERATION_CATEGORIESの部分集合(カンマ区切り)
+}): ModerationConfig; // 0〜100の数値、カテゴリはMODERATION_CATEGORIESの空でない部分集合(カンマ区切り。空の値・空の項目・重複は失敗にし、空の集合で判定を無効にする設定はできない。2026-11-02に開発者が確定)
 export declare function judgeLabels(
   labels: readonly ModerationLabel[],
   config: ModerationConfig,
@@ -1568,9 +1570,9 @@ export declare const MODERATION_RETRY_POLICY: {
 };
 ```
 
-- 判定の規則: `judgeLabels`はラベルの`parentName`をたどって最上位のカテゴリを求め、カテゴリが`blockedCategories`に含まれ、信頼度が`minConfidence`以上のものを検出内容にする。設定の初期値は全10カテゴリ・60(決定Q3、Supporting References)。
+- 判定の規則: `judgeLabels`はラベルの`parentName`をたどって最上位のカテゴリを求め、カテゴリが`blockedCategories`に含まれ、信頼度が`minConfidence`以上のものを検出内容にする。設定の初期値は全10カテゴリ・60(決定Q3、Supporting References)。既知の制限(2026-11-02に開発者が決定): 親が応答に無いラベルは親の名前を最上位とみなすため、第3階層だけが返り第2階層が欠けた場合は最上位を求められず、問題なしと判定され得る。判定サービスの文書は祖先も返すと定めるため、判定モデルの版に依存する対応表は持たない。
 - 判定用画像の作り方(6.2〜6.4): JPEG・PNGで長辺640px以下・短辺80px以上・5,242,880バイト以下なら`as-is`。長辺640pxへの縮小後(または縮小不要のまま)短辺が80px以上なら`resize`(JPEG原本はJPEG、他はPNG)。短辺が80px未満になるなら`pad`(縮小した画素の周りに白の余白を足し、各辺を80px以上にしたPNG)。アニメーションは最初のフレームだけを使う。
-- `WasmModerationImageRenderer`: ラスター画像(JPEG・PNG・GIF・WebP)は`wasm-image-optimization/workerd`の`optimizeImage`で`resize`は`png`・`jpeg`、`pad`は`raw`(RGBA)で縮小し、`png-encoder.ts`の`padRgba`・`encodePng`でPNGにする。読み込みの失敗は`undecodable`。開発者の決定(2026-11-01): `wasm-image-optimization`のSkiaは`<use href>`・`<symbol>`・グラデーションの`href`・`<style>`・`<switch>`・子の`visibility="visible"`などをブラウザと違う形で描き、寸法の書き換えでは判定のすり抜けを塞げないため、SVG(先頭のバイト列が`<`で始まる本文)は`@cf-wasm/resvg/workerd`の`Resvg`で描く。描く前に`application/media/svg-render-size.ts`の`prepareSvgForRendering`でルートの開始タグだけを書き直す: `width`・`height`・`viewBox`は`readSvgRoot`のブラウザの解釈で、resvgが同じに読む書き方(画素数・`em`・`ex`・4つの数値)にし、ブラウザが無効とする値・百分率・換算しない単位・`ch`は取り除く(resvgの方が寛容な値でブラウザより狭い範囲を描かせない)。ブラウザの`<img>`がルートに適用しない`display`と、resvgと別の座標で適用される`transform`は属性とstyleの宣言から取り除き、文書内のスタイルシートの指定も打ち消すようstyle属性の末尾に`display:inline;transform:none`を足す(ブラウザより多くの内容を描く側にそろえる)。resvgにはフォントの既定の大きさ16pxを渡し、resvg自身が解釈した寸法の縦横比のまま計画の幅・高さの箱に収まるよう`fitTo`(幅、収まらなければ高さ)で描く(描く画素は箱の大きさまでで、宣言の寸法が大きくても確保しない)。乗算済みの画素を戻し、`resize`は計画の寸法、`pad`はキャンバスの中央に置いて白で埋め、PNGにする。幅・高さ・`viewBox`の無いSVGもresvgは原点から内容の右下の端までを描くため隔離しない。ルートを読めないSVGと、resvgが読み込めない文書(XMLの構文・表示領域の大きさ・要素の数の上限(`<use>`の展開を含む))は`undecodable`(隔離)。読み込み以外の描画の例外(符号化の失敗・wasmの実行時エラー)は`undecodable`にせず投げ、キューの再試行の後にデッドレターへ移る既知の制限とする。resvgでもブラウザと描画が分かれ、判定をすり抜けられる書き方は、開発者の決定(2026-11-01)で既知の差分を`inspectSvg`の違反にするが、網羅は保証しない(SvgAllowlistの項。残る差分はSvgAllowlistの項の既知の制限とresearch.mdの「実装中の開発者の決定(2026-11-01、タスク6.6): SVGの描画器の切り替えと寸法の解釈」)。`<text>`はresvgへ`fontBuffers`で渡す同梱の書体(Liberation Sans 2.1.5のRegular)で描き、`font-family`の指定に関わらずこの書体で描かれる。既知の制限: 書体に無い文字(日本語など)は代替の四角形で描かれ、文字の形は判定されない。Workerの大きさ: wasmのgzip後の合計は約3.2MB(resvg約0.95MB・`wasm-image-optimization`約2.3MB)と書体の約0.2MBで、Workers Paid(10MB)を前提とする。7.6の登録の後に開発者が`wrangler deploy --dry-run`で確かめる。
+- `WasmModerationImageRenderer`: ラスター画像(JPEG・PNG・GIF・WebP)は`wasm-image-optimization/workerd`の`optimizeImage`で`resize`は`png`・`jpeg`、`pad`は`raw`(RGBA)で縮小し、`png-encoder.ts`の`padRgba`・`encodePng`でPNGにする。読み込みの失敗は`undecodable`。開発者の決定(2026-11-01): `wasm-image-optimization`のSkiaは`<use href>`・`<symbol>`・グラデーションの`href`・`<style>`・`<switch>`・子の`visibility="visible"`などをブラウザと違う形で描き、寸法の書き換えでは判定のすり抜けを塞げないため、SVG(先頭のバイト列が`<`で始まる本文)は`@cf-wasm/resvg/workerd`の`Resvg`で描く。描く前に`application/media/svg-render-size.ts`の`prepareSvgForRendering`でルートの開始タグだけを書き直す: `width`・`height`・`viewBox`は`readSvgRoot`のブラウザの解釈で、resvgが同じに読む書き方(画素数・`em`・`ex`・4つの数値)にし、ブラウザが無効とする値・百分率・換算しない単位・`ch`は取り除く(resvgの方が寛容な値でブラウザより狭い範囲を描かせない)。ブラウザの`<img>`がルートに適用しない`display`と、resvgと別の座標で適用される`transform`は属性とstyleの宣言から取り除き、文書内のスタイルシートの指定も打ち消すようstyle属性の末尾に`display:inline;transform:none`を足す(ブラウザより多くの内容を描く側にそろえる)。resvgにはフォントの既定の大きさ16pxを渡し、resvg自身が解釈した寸法の縦横比のまま計画の幅・高さの箱に収まるよう`fitTo`(幅、収まらなければ高さ)で描く(描く画素は箱の大きさまでで、宣言の寸法が大きくても確保しない)。乗算済みの画素を戻し、`resize`は計画の寸法、`pad`はキャンバスの中央に置いて白で埋め、PNGにする。幅・高さ・`viewBox`の無いSVGもresvgは原点から内容の右下の端までを描くため隔離しない。ルートを読めないSVGと、resvgが読み込めない文書(XMLの構文・表示領域の大きさ・要素の数の上限(`<use>`の展開を含む))は`undecodable`(隔離)。読み込み以外の描画の例外(符号化の失敗・wasmの実行時エラー)は`undecodable`にせず投げ、キューの再試行の後にデッドレターへ移る既知の制限とする。resvgでもブラウザと描画が分かれ、判定をすり抜けられる書き方は、開発者の決定(2026-11-01)で既知の差分を`inspectSvg`の違反にするが、網羅は保証しない(SvgAllowlistの項。残る差分はSvgAllowlistの項の既知の制限とresearch.mdの「実装中の開発者の決定(2026-11-01、タスク6.6): SVGの描画器の切り替えと寸法の解釈」)。`<text>`はresvgへ`fontBuffers`で渡す同梱の書体(Liberation Sans 2.1.5のRegular)で描き、`font-family`の指定に関わらずこの書体で描かれる。既知の制限: 書体に無い文字(日本語など)は代替の四角形で描かれ、文字の形は判定されない。Workerの大きさ: 上限はどのプランでも非圧縮の64MiBだけで(Cloudflareが2026-09-04に圧縮後の上限を廃止)、開発者の予行(2026-11-02)で`Total Upload`は14,278.13KiB(gzip後4,357.46KiB)だった。起動時間の上限(1秒)はstagingへのデプロイで確かめる。
 - `RekognitionModerationProvider`: `aws4fetch`の`AwsClient`(サービス`rekognition`・リージョンは`MODERATION_REGION`)で`https://rekognition.<region>.amazonaws.com/`へ`X-Amz-Target: RekognitionService.DetectModerationLabels`・`Content-Type: application/x-amz-json-1.1`のJSON(`Image.Bytes`はbase64、`MinConfidence`)を送る。10秒で打ち切る。エラーの分類はresearch.mdのとおり(一時的・恒久的・設定の誤り)。`fetch`は注入できる。
 - `StubModerationProvider`: 外部へ送らず、判定用画像の寸法で決める(`stub-moderation-rules.ts`)。99×99は「Explicit」信頼度99、98×98は一時的な失敗、97×97は画像として受け付けない、それ以外は検出なし。
 
@@ -1623,6 +1625,7 @@ export declare function inspectSvg(
 - 参照: `href`・`xlink:href`は`#`で始まる断片だけを許す。`image`要素の参照だけは`data:image/(png|jpeg|gif);base64,`を許す(7.5。WebPは判定用画像の描画器(resvg)が描かないため、開発者の決定(2026-11-01)で外した)。属性値と`style`属性・`style`要素の中の`url(...)`は`#`で始まる断片だけを許し、`@import`・`javascript:`・`expression(`を違反にする(7.3)。
 - 名前空間: SVG・XLink・XMLの名前空間の許可リストの要素・属性と、Inkscape・Sodipodi・Illustrator・RDF・Dublin Core・Creative Commons・Sketch・Serif(Affinity)などの編集ソフトの名前空間の要素・属性を許す(7.4)。編集ソフトの名前空間の属性でも`on`で始まるものは違反にする。
 - `xml-stylesheet`などの処理命令(XML宣言を除く)は違反にする。
+- 宣言: ルートの前の1つ目の標準の文書型宣言(SvgSyntaxの項と同じ判定。改訂3)を`blankStandardSvgDoctype`で空白に置き換えた文書を検査する。残った`<!DOCTYPE`・`<!ENTITY`・`<!ELEMENT`・`<!ATTLIST`・`<!NOTATION`は、解析せずに`declaration`の違反にする。判定用画像の描画器(resvg)は標準の文書型宣言を含む文書をそのまま描く。標準の文書型宣言を持つ文書の未宣言の実体参照(`&nbsp;`など)は、ブラウザが致命的な誤りにせず残りを表示し得るが、resvgが読み込めず`undecodable`(隔離)になる。
 - 開発者の決定(2026-11-01): 判定用画像の描画器(resvg)とブラウザの`<img>`で描画が分かれる書き方は、覆いの要素をブラウザでだけ消して判定用画像に写らない内容を見せられるため、差分の比較で分かった既知のものを違反にする。網羅は保証しない(下の既知の制限)。CSSは`unsupported-css`の違反にする(`svg-unsupported-css.ts`。外部の参照の違反がある値には重ねない)。`style`要素と`style`属性では、`@import`以外のat規則(`@media`・`@supports`・`@layer`など)、`!important`、描画器がブラウザと同じに解釈する関数(`url`・カンマ区切りの`rgb`・`rgba`・`hsl`・`hsla`・`matrix`・`scale`・フィルターの関数)以外の関数(`var()`・`calc()`・`translate()`などの変形・`inset()`などの図形・グラデーション・`oklch()`・`color-mix()`・`light-dark()`・関数の擬似クラス)、空白区切りや`/`の透明度の色、幾何のプロパティ(`x`・`y`・`width`・`height`・`cx`・`cy`・`r`・`rx`・`ry`・`d`)、`-webkit-`の接頭辞のプロパティ、`display:contents`を違反にする。表示属性の値では関数と色の書き方だけを検査する(`transform`などの変形の属性はSVGの文法のため対象外)。文字列の中の関数のような書き方も保守側に違反にする。ルート以外の要素の`viewBox`で、ブラウザが無効とする値(`readSvgRoot`と同じ文法で判定)は、描画器がブラウザより狭い範囲を描くため`invalid-view-box`(対象は要素名)の違反にする(ルートは描画の前に書き直す)。`switch`の子の選択に使う`systemLanguage`は、描画器(英語で選ぶ)と閲覧者のブラウザの言語で選ぶ子が食い違うため許可リストから外した。
 - 既知の制限(開発者の決定(2026-11-01)。許可リストはこれ以上強めない): 独立のレビューで、新しい標本73件のうち28件が許可リストを通り、判定用画像に写らずブラウザで見えた。
   - resvgが適用しブラウザが適用しないもの: `media="print"`・`media="not all"`の`style`要素、存在しない要素を指す`filter="url(#nope)"`、`clipPath`以外の要素を指す`clip-path`、`font:`の一括指定。
@@ -1811,7 +1814,7 @@ export interface UploadConstraints {
   readonly existingTotalBytes?: number;
 }
 export interface ImageEditOptions {
-  readonly aspect: number | 'free'; // 正方形は1
+  readonly aspect: number | 'free'; // 正方形は1。'free'は原本の縦横比の範囲を拡大と位置で切り取る(範囲の縦横を自由に伸縮する操作は無い。2026-11-02に開発者が確定)
   readonly maxLongSide: number; // 用途ごとの最大寸法(各ドメインspecが決める)
   readonly cropShape?: 'rect' | 'round';
 }
@@ -1869,9 +1872,9 @@ export interface AttachmentUploadFieldProps {
 ```
 
 - `FileDropZone`: ボタンの見た目のラベルと隠した`<input type="file" accept="<形式の一覧>" multiple?>`を持ち、Enter・Spaceで選択を始める。ドラッグ中の状態を視覚とテキストで示す(14.1・14.2)。
-- `ImageUploadField`: 選択→`checkSelection`→SVG以外は`ImageCropDialog`(複数なら1枚ずつ順に)→`encodeCroppedImage`(`createImageBitmap`で向きを反映し、`computeCropOutput`の寸法へ縮小して`toBlob`。JPEGは品質0.9)→作り直したサイズの検査(14.7)→`useFileUpload`で送信。SVGは編集を省き選んだファイルのサイズで判定する(14.8)。
+- `ImageUploadField`: 選択→`checkSelection`→SVG以外は`ImageCropDialog`(複数なら1枚ずつ順に)→`encodeCroppedImage`(`createImageBitmap`で向きを反映し、`computeCropOutput`の寸法へ縮小して`toBlob`。JPEGは品質0.9)→作り直したサイズの検査(14.7)→`useFileUpload`で送信。SVGは編集を省き選んだファイルのサイズで判定する(14.8)。複数の画像の編集の途中で取り消すと、その画像だけを選択から外し、編集済みの画像と編集しないSVGを残して残りの画像の編集を続ける(開発者の決定 2026-11-02)。作り直したサイズ・枚数・合計の検査は外した後の選択で行い、`existingCount`・`existingTotalBytes`と、`multiple`が偽の欄の置き換え(`selectionConstraintsOf`)の扱いは変えない。全ての画像を取り消した選択は何も加えず、前の一覧と結果の表示を残す。取り消した後に次の画像があればダイアログを開いたまま中身を次の画像に替え、フォーカスはダイアログの中に留め、ダイアログの説明(`aria-describedby`)が次の画像のファイル名を伝える。次の画像が無ければダイアログを閉じて選択のボタンへフォーカスを戻す。取り消しそのものは利用者の操作の結果のため別に読み上げず、送る選択は一覧の選択の読み上げと送信の読み上げで伝わる。
 - `AttachmentUploadField`: 編集ダイアログを出さず、選んだファイルをそのまま送る(14.8)。
-- `useFileUpload`: 1件ずつ順に`fetch`で`POST /_bff/uploads/<purpose>`(`Content-Type`は確定した形式を引数なしで、`x-upload-file-name`は`encodeFileNameHeader`)を送り、`parseUploadResponse`で`UploadedFile`か拒否の文言にする。中継の415`unsupported_media_type`はAPIの`unsupported_file_type`と同じ文言にする(M-10)。503(中継の`upstream_unavailable`・`upstream_timeout`を含む)・429・通信の失敗は`retryable: true`で「現在ご利用いただけません」系の文言を出し、同じファイルで再試行できる(14.9〜14.11)。想定外の応答(エラーの表に無い状態コード・エラーコード、`upload_purpose_not_found`、解釈できない本文)は、frontend-platformの`errorMessageOf(error, contactAvailable)`で文言を選ぶ。想定外の応答を表す値は`GraphQLClientError`でないため、`contactAvailable`が真なら`UNEXPECTED_ERROR_MESSAGE`、偽なら問い合わせを促さない`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`になる。
+- `useFileUpload`: 1件ずつ順に`fetch`で`POST /_bff/uploads/<purpose>`(`Content-Type`は確定した形式を引数なしで、`x-upload-file-name`は`encodeFileNameHeader`)を送り、`parseUploadResponse`で`UploadedFile`か拒否の文言にする。中継の415`unsupported_media_type`はAPIの`unsupported_file_type`と同じ文言にする(M-10)。503・429・通信の失敗は`retryable: true`で同じファイルで再試行できる(14.9〜14.11)。503の`storage_unavailable`はエラーの表の文言、中継の`upstream_unavailable`・`upstream_timeout`と429は本文の文言(文言規則の共通のエラー応答の文言)、本文に文言が無い503・429は状態コードの文言(`UPLOAD_UNAVAILABLE_MESSAGE`・`UPLOAD_RATE_LIMITED_MESSAGE`)、通信の失敗は文言規則の`network_error`の文言にする。エラーの表に無いエラーコード(中継の`csrf_rejected`・`method_not_allowed`・`not_found`・`internal_error`など)は、本文が共通のエラー形式(frontend-platformの`errorEnvelopeSchema`)で空でない文言を持てば、その文言をそのまま欄に出し`retryable: false`にする(開発者の決定 2026-11-02。中継とAPIの文言は両側の画面にそのまま出せる契約のため)。想定外の応答(`upload_purpose_not_found`、JSONでない本文、共通のエラー形式でない本文、空や空白だけの文言)は、frontend-platformの`errorMessageOf(error, contactAvailable)`で文言を選ぶ。エラートラッキングへ送るのは想定外の応答と、本文の文言を示した失敗のうちGraphQLの失敗と同じ基準(`isUnexpectedErrorCode`)で想定外のコード(`internal_error`など)で、中継の拒否と`AppError`のコードは送らない。中継の`upstream_*`は中継が送っているため送らない。想定外の応答を表す値は`GraphQLClientError`でないため、`contactAvailable`が真なら`UNEXPECTED_ERROR_MESSAGE`、偽なら問い合わせを促さない`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`になる。
 - `contactAvailable`(入力欄の必須のprops): 共通部品は利用者側と管理者側の両方に置かれるため、問い合わせの導線の有無を呼び出し元から受ける。利用者側の画面は`CLIENT_PROFILE.contactAvailable`(真)を、管理者側の画面(admin-foundationの管理者のプロフィール画像`admin-avatar`など)は`ADMIN_PROFILE.contactAvailable`(偽)を渡し、管理者側では問い合わせを促す文を出さない(frontend-platformの決定事項「管理者側のエラーの案内文」)。
 - 結果の通知: 選択・検証・送信中・成功・失敗を`aria-live="polite"`の領域で読み上げ、エラーは入力欄に`aria-describedby`で結び付ける。ダイアログはフォーカスを閉じ込め、閉じたら選択のボタンへ戻す(14.12)。
 
@@ -2035,11 +2038,12 @@ erDiagram
 | 上限サイズの超過                                                                       | 413        | `file_too_large`                                                             | {用途}は{上限}以内の{画像・ファイル}を選択してください。                                                                                                                                |
 | 許可されない形式                                                                       | 415        | `unsupported_file_type`(API)・`unsupported_media_type`(中継。M-10)           | {形式の一覧}の{画像・ファイル}を選択してください。                                                                                                                                      |
 | 内容と申告の不一致・壊れたSVG・テキスト不正・寸法を読めない                            | 422        | `file_type_mismatch`・`invalid_svg`・`invalid_text_file`・`image_unreadable` | ファイルを読み込めませんでした。ファイルが壊れていないか確認して、もう一度選択してください。                                                                                            |
-| DOCTYPE・ENTITYを含むSVG                                                               | 422        | `svg_declaration_not_allowed`                                                | このSVGは読み込めません。編集ソフトでSVGとして書き出し直してから選択してください。                                                                                                      |
+| 標準でないDOCTYPE・ENTITYを含むSVG(改訂3)                                              | 422        | `svg_declaration_not_allowed`                                                | このSVGは読み込めません。編集ソフトでSVGとして書き出し直してから選択してください。                                                                                                      |
 | 画素数・辺の長さの超過                                                                 | 422        | `image_dimensions_exceeded`                                                  | 画像の縦横の大きさが上限を超えています。小さくしてから選択してください。                                                                                                                |
 | 保存先の一時的な障害                                                                   | 503        | `storage_unavailable`                                                        | 現在ご利用いただけません。しばらく待ってから再度お試しください。                                                                                                                        |
 | 編集後のサイズ超過(ブラウザ)                                                           | —          | —                                                                            | 編集後の画像が{上限}を超えました。切り取る範囲を狭めるか、別の画像を選択してください。                                                                                                  |
 | 合計サイズの超過(ブラウザ)                                                             | —          | —                                                                            | ファイルは合計{上限}以内で選択してください。                                                                                                                                            |
+| この表に無いエラーコード(中継の拒否・中継先の障害・サーバー内部の失敗など)             | 任意       | `csrf_rejected`・`upstream_unavailable`・`internal_error`など                | 共通のエラー形式の本文の文言をそのまま示す(文言規則の共通のエラー応答の文言)。本文が共通のエラー形式でない・文言が空なら`upload_purpose_not_found`と同じ想定外のエラーの文言            |
 
 ### Monitoring
 
@@ -2052,7 +2056,7 @@ erDiagram
 ### Unit Tests(Bun)
 
 - `common-lib/media`: `parseImagePath`・`isDeliverable`・`squareVariants`・`parseMediaType`の境界と全組み合わせ(10.1・10.4・15.1)。
-- `backend-lib/core/media`: `precheckUpload`の411→400→413→415の順序と境界値(上限ちょうど・1バイト超)、`detectSignature`の5形式と偽装(PNGの申告にJPEGの本文)、`readImageDimensions`の向き1〜8とSVGのviewBox・寸法なし、`exceedsPixelLimits`の境界、`checkSvgSyntax`のDOCTYPE・ENTITY(大文字小文字)・壊れたXML・UTF-8でない本文、テキストの検査(NUL・不完全なUTF-8・断片の境界で分かれた文字)、`sanitizeFileName`(パス区切り・制御文字・先頭のドット・255バイトの書記素境界・空)、`attachmentDisposition`、`desiredLocation`の全組み合わせ、`defineUploadPurpose`の違反(2.1〜2.4・3.1〜3.9・4.5・4.6・9.3・9.4)。
+- `backend-lib/core/media`: `precheckUpload`の411→400→413→415の順序と境界値(上限ちょうど・1バイト超)、`detectSignature`の5形式と偽装(PNGの申告にJPEGの本文)、`readImageDimensions`の向き1〜8とSVGのviewBox・寸法なし、`exceedsPixelLimits`の境界、`checkSvgSyntax`のDOCTYPE・ENTITY(大文字小文字)・標準の文書型宣言の受け付けと標準でない宣言(内部サブセット・SYSTEMだけ・他の公開識別子・2つ目の宣言)の拒否・壊れたXML・UTF-8でない本文、`scanSvgProlog`・`blankStandardSvgDoctype`、テキストの検査(NUL・不完全なUTF-8・断片の境界で分かれた文字)、`sanitizeFileName`(パス区切り・制御文字・双方向の制御文字と残す書式文字・先頭のドット・255バイトの書記素境界・空)、`attachmentDisposition`、`desiredLocation`の全組み合わせ、`defineUploadPurpose`の違反(2.1〜2.4・3.1〜3.9・4.5・4.6・9.3・9.4)。
 - eventの`application/media`: `judgeLabels`(親をたどる・閾値ちょうど・設定外のカテゴリ)、`parseModerationConfig`、`planModerationImage`(as-is・resize・padの境界、640・80・5,242,880バイト)、`encodePng`(生成したPNGを`image-size`とシグネチャで読み戻す)、`inspectSvg`(Inkscape・Illustrator・Figmaの書き出しの標本は許可、script・foreignObject・`onload`・外部`href`・`javascript:`・`@import`・`xml-stylesheet`・`set`・許可外のdata URIは違反)、判定の処理(偽のポートで、重複・解除後・削除済み・一時的な失敗の試行回数ごとの再試行と未判定・恒久的な失敗の隔離)、`deliverImage`(404・SVG・変換・503とヘッダー)(6.1〜6.10・7.1〜7.5・8.1〜8.8・10.1〜10.12)。
 - apiの`application/media`・`infrastructure/media`: `FileAccessAuthorizer`(用途の方針・既定の保有者・管理者の画像確認・利用者側の画像の拒否)、`AllowAllUploaderEligibility`が常に許可すること、日次バッチの境界日時(13日・24時間・1時間)(1.8・5.4・8.3・12.2〜12.7・13.5)。
 - frontend-libの`utilities/media`: `checkSelection`・`computeCropOutput`・`buildPictureSources`・文言の対応(中継の415`unsupported_media_type`、再試行できない403の`account_unavailable`・`email_not_verified`、`contactAvailable`の真偽による想定外の応答の`UNEXPECTED_ERROR_MESSAGE`・`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`を含む)・送信の`Content-Type`に引数が無いこと・`placeholder-appearance`(書記素とコントラスト比)・`media-relay-routes`の経路と転送する項目(14.4・14.6・14.9・15.1〜15.5)。
@@ -2069,7 +2073,7 @@ erDiagram
 ### Browser Tests(Vitest Browser Mode)
 
 - `FileDropZone`: クリック・Enter・Spaceで選択を始め、ドラッグ&ドロップで選べ、`accept`が許可形式になる(14.1・14.2)。
-- `ImageUploadField`: 許可外・上限超過・個数超過のエラーの表示、SVG以外で編集ダイアログが開き、キーボードで拡大縮小・移動でき、確定でJPEG原本はJPEG・PNG原本はPNGの最大寸法以下のファイルが偽の`fetch`へ送られる。作り直し後の超過の文言、SVGはダイアログを開かない、503で再試行できる、成功で`onUploaded`が呼ばれる、`contactAvailable`が偽(管理者側)なら想定外の応答で問い合わせを促す文が出ない(14.3〜14.11)。
+- `ImageUploadField`: 許可外・上限超過・個数超過のエラーの表示、SVG以外で編集ダイアログが開き、キーボードで拡大縮小・移動でき、確定でJPEG原本はJPEG・PNG原本はPNGの最大寸法以下のファイルが偽の`fetch`へ送られる。作り直し後の超過の文言、SVGはダイアログを開かない、503で再試行できる、成功で`onUploaded`が呼ばれる、`contactAvailable`が偽(管理者側)なら想定外の応答で問い合わせを促す文が出ない、表に無いエラーコードは本文の文言がそのまま出てJSONでない本文・空の文言は想定外の文言になる、複数の画像の編集の途中の取り消しでその画像だけが外れて残りの編集と送信が続き、全部を取り消すと何も加えない(14.3〜14.12)。
 - `AttachmentUploadField`・`FileSelectionList`・`MediaPicture`(AVIF・WebPの`<source>`、フォールバック、`width`・`height`、`onError`でプレースホルダー)・`PrivateFileLink`(12.9・14.8・15.1〜15.6)。
 - 全部品でaxe-coreの違反が0件であり、通知の領域に結果が読み上げられる(14.12)。
 
@@ -2080,7 +2084,7 @@ erDiagram
 
 ## Security Considerations
 
-- 受付: 形式は申告ではなく内容で判定し、拡張子は使わない。オブジェクトキーは128ビットの乱数で、クライアントの指定を受け付けない。上書きは条件付きの書き込みで拒否する。DOCTYPE・ENTITYを含むSVGは受け付けず、`processEntities: false`で実体を展開しない。
+- 受付: 形式は申告ではなく内容で判定し、拡張子は使わない。オブジェクトキーは128ビットの乱数で、クライアントの指定を受け付けない。上書きは条件付きの書き込みで拒否する。SVG 1.0・1.1の標準の文書型宣言(内部サブセット無し)の他にDOCTYPE・ENTITYを含むSVGは受け付けず、外部のDTDを読まず、`processEntities: false`で実体を展開しない。ファイル名から双方向の制御文字を除く(改訂3)。
 - 配信: ユーザーの画像は認証Cookieの届かない別のサブドメインから配信する(NFR-SECUR-042)。SVGは`sandbox`付きのCSPで配信し、`<img>`からだけ参照する。非公開ファイルは`attachment`・`nosniff`・`no-store`で返し、利用者側からは画像用バケットのファイルを返さない。
 - 認可: 拒否と不存在を区別せず404にする。管理者の画像確認は既定で全拒否とし、ugc-moderationの実装でだけ開く。
 - 停止中の利用者: 停止では既存のセッションが消えないため、利用者側のアップロードは受付の前に`UploaderEligibility`で判定し、identity-authの束縛で停止中の利用者を拒否する(FR-USER-026、1.8・1.9)。既定の全許可は、identity-authの実装前にログインが成立しないため穴にならない。

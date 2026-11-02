@@ -350,8 +350,9 @@ stagingへデプロイした後、動作確認の経路で次を確かめる(開
 
 ## Workerの大きさ
 
-`<メッセージを受信するアプリ>`は、判定用画像の描画のwasm(`wasm-image-optimization`のgzip後約2.3MBと`@cf-wasm/resvg`の約0.95MB)と同梱の書体(約0.2MB)を含み、gzip後の合計は約3.4MBになる。Workers Freeの上限(gzip後3MB)を超えるため、Workers Paid(gzip後10MB)を前提とする。
+`<メッセージを受信するアプリ>`は、判定用画像の描画のwasm(`wasm-image-optimization`と`@cf-wasm/resvg`)と同梱の書体を含むため、バンドルが大きい。Workerの大きさの上限は、どのプランでも非圧縮の64MiBだけである(予行の出力の`Total Upload`の値が数えられ、gzip後の値は参考の表示)。
 
+- 大きなバンドルは起動時間を延ばす。Workerはモジュールの最上位の処理を1秒以内に終える必要がある。デプロイ時にWranglerが表示する`startup_time_ms`を確かめる。
 - 描画の部品や依存を変えたときは、開発者がデプロイの予行で大きさを確かめる。
 
   ```sh
@@ -359,7 +360,7 @@ stagingへデプロイした後、動作確認の経路で次を確かめる(開
   wrangler deploy --dry-run --outdir <出力先> --env staging
   ```
 
-- 出力の`Total Upload`のgzip後の値を記録する。Workers Paidの上限に近づいた場合は、描画を別のWorkerへ分けるかを開発者が判断する。
+- 出力の`Total Upload`の値を記録する。64MiBの上限か起動時間の上限に近づいた場合は、描画を別のWorkerへ分けるかを開発者が判断する。
 
 ## 費用の目安
 

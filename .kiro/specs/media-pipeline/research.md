@@ -382,6 +382,30 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
 - **変えた箇所**: 要件の「承認後の改訂」の表・7.5。設計のSvgAllowlistの項の参照の記述・「SVGの許可リスト(初版)」の表の`image`。`svg-allowlist-table.ts`・`svg-allowlist.unit.test.ts`・`svg-allowlist-document.unit.test.ts`・`svg-allowlist-rendering.unit.test.ts`。
 - **後続への影響**: 9.1の技術ドキュメント(`security/005`)の許可するdata URIの形式の一覧を、JPEG・PNG・GIFで書く。
 
+## 最終報告への開発者の回答による承認後の改訂(改訂3、2026-11-02)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、2026-11-02に全タスクの最終報告の「判断が必要な点」へ開発者が回答して決定した。`requirements.md`の「承認後の改訂」の表に改訂3として記録した。
+- **Context(SVGの文書型宣言)**: 受付は文書型宣言(DOCTYPE)を持つSVGをすべて`svg_declaration_not_allowed`で拒否していた。Affinity Designerと旧IllustratorのSVG 1.1の書き出しは`<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">`を含み、書き出し直しても受け付けられなかった。
+- **改訂の内容(SVGの文書型宣言)**: ルート名が`svg`で、外部識別子がW3Cの定めるSVG 1.0・1.1・1.1 Basic・1.1 Tinyの公開識別子とシステム識別子の組の`PUBLIC`だけから成り、内部サブセットを持たない宣言を、ルートの前(XML宣言・処理命令・コメント・空白の後)に1つだけ許す(3.3)。空白の揺れと引用符の種類(`"`・`'`)は許し、識別子の文字列は完全に一致させる。外部のDTDは読まない。受付の構文の検査・ルートの読み取り・判定の許可リストは、許した宣言を同じ長さの空白とみなして、宣言を拒否する検査と解析器へ渡す。描画器(resvg)は宣言を含む文書をそのまま描ける。
+- **Alternatives Considered(SVGの文書型宣言)**:
+  1. 標準の組だけを許す(採用。外部のDTDも内部サブセットも読まないため、要素・属性の既定値と実体が加わらない)
+  2. 内部サブセットの無い任意のDOCTYPEを許す(他の公開識別子で、ブラウザが組み込みの実体の一覧を読む文書型(XHTMLなど)を通し得る)
+  3. 受付で宣言を取り除いた本文を保存する(原本を書き換えることになり、保存した内容と利用者が送った内容が食い違う)
+- **SVG 1.1 Basic・Tinyを含めた理由**: Illustratorの書き出しのプロファイルにSVG Basic 1.1・SVG Tiny 1.1があり、宣言の形と危険はSVG 1.1と同じである。SVG 1.0の勧告候補の公開識別子(`-//W3C//DTD SVG 20010904//EN`)などの旧い識別子は含めない。
+- **Context(ファイル名)**: ファイル名の正規化は制御文字だけを除き、U+202E(RIGHT-TO-LEFT OVERRIDE)などの書式文字を残していたため、表示上の拡張子を偽装できた。
+- **改訂の内容(ファイル名)**: 双方向の制御文字U+061C・U+200E・U+200F・U+202A〜U+202E・U+2066〜U+2069を除く(4.5)。絵文字の結合に使うU+200D(ZWJ)・U+FE0F(異体字セレクタ)などの他の書式文字は残す。除いた結果が空、または先頭のドットを除いて拡張子の文字だけになる場合の扱いは、制御文字を除いた場合と同じ(4.6の既定名・先頭のドットの除去)にする。
+- **要件**: 既存の要件3(ファイルの実体の検証)の受け入れ基準3.3と、要件4(ファイルの保存と応答)の受け入れ基準4.5を改めた。
+- **変えた箇所**: 要件の「承認後の改訂」の表・3.3・4.5。設計のFile Structure Plan(`svg-prolog.ts`)・要件の対応表の3.3・SvgSyntaxとファイル名の項・SvgAllowlistの宣言の扱い・エラーの表・Testing Strategy・Security Considerations。`svg-prolog.ts`・`svg-syntax.ts`・`svg-root.ts`・`file-name.ts`・`svg-allowlist.ts`とそれぞれのテスト。技術ドキュメント`security/005`と文言規則(`service/design/003`)。
+
+## 画像配信の専用ホストのヘルスチェックの例外(改訂4、2026-11-02)
+
+- **状態**: 改訂3と同じ最終報告への回答で、2026-11-02に開発者が決定した。`requirements.md`の「承認後の改訂」の表に改訂4として記録した。
+- **Context**: backend-platformの`createWorkerApp`はヘルスチェック(`GET`・`HEAD /health`)をモジュールの経路より前に登録するため、画像配信の専用ホストでも`/health`は200(`{"status":"ok"}`・`no-store`・セキュリティヘッダー付き)を返し、要件10.12(形式外は404)に厳密には反していた。
+- **Alternatives Considered**:
+  1. 既知の例外として要件・設計・技術ドキュメントに記録する(採用。応答は固定で画像や内部の情報を返さず、影響は軽微。上流の共通部品を変えない)
+  2. eventの入口で、専用ホストへの`/health`をアプリへ渡す前に404にする(入口の処理が増え、上流の規約から外れる)
+- **変えた箇所**: 要件の「承認後の改訂」の表・10.12。設計のURLと配信ドメインの項。`infra/008`の「専用のホストのヘルスチェック」は実装時から例外として記載済み。
+
 ## 上流(api-gateway)の改訂3の反映(2026-10-27)
 
 - api-gatewayの実装後の改訂3で、backend-platformの`AppErrorKind`に`payload_too_large`(413)と`unsupported_media_type`(415)が加わった。design.mdの「アップロード」の説明にあった「411・413・415は`AppError`の種類に無い」は事実と合わなくなったため、413・415は`AppError`で表せ、411だけが種類に無いと改めた。受付の経路が共通のエラー形式の組み立て部品で応答を作る設計は変えていない(413・415も同じ部品で作ってよい)。要件・タスクは変えていない。
@@ -575,7 +599,7 @@ Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の�
   - `<text>`は、ラテン文字だけの小さな再配布可能な書体を同梱してresvgへ渡して描く。開発者の決定(2026-11-01)で、書体はLiberation Sans 2.1.5のRegular(SIL Open Font License 1.1)とした。GitHubの`liberationfonts/liberation-fonts`の2.1.5のリリースの`liberation-fonts-ttf-2.1.5.tar.gz`(SHA-256 `7191c669bf38899f73a2094ed00f7b800553364f90e2637010a69c0e268f25d0`)の`LiberationSans-Regular.ttf`(410,712バイト、SHA-256 `76d04c18ea243f426b7de1f3ad208e927008f961dc5945e5aad352d0dfde8ee8`)を、同じアーカイブの`LICENSE`と一緒に`apps/event/src/infrastructure/media/fonts/`へ置いた(開発コンテナのDebianのパッケージの同じ名前のファイルは別のビルドでハッシュが違うため使わない。リリースはハッシュを公開していないため、ハッシュは取得したファイルから求めた値)。eventのWrangler設定の`rules`で`.ttf`をDataのモジュールとして読み、`fontBuffers`で渡す(`wrangler types`が`*.ttf`の型を生成する。Workers統合テストもWrangler設定の`rules`で読める)。書体を1つだけ渡すと、`font-family`の指定(Arial・serif・存在しない名前)に関わらずこの書体で描かれる。書体に無い文字(日本語など)は代替の四角形で描かれ、文字の形は判定されない既知の制限とする。gzip後の大きさは約0.2MBで、Workerの大きさに加わる。
   - 他は6.3の許可リスト(`inspectSvg`)の違反にする。違反にするのは差分の比較で分かった既知の差分で、網羅は保証しない(下の既知の制限)。CSSは`svg-unsupported-css.ts`の`hasUnsupportedCss`で`unsupported-css`とし、`@import`以外のat規則・`!important`・描画器がブラウザと同じに解釈する関数(`url`・カンマ区切りの`rgb`・`rgba`・`hsl`・`hsla`・`matrix`・`scale`・フィルターの関数)以外の関数・空白区切りや`/`の透明度の色・幾何のプロパティ・`-webkit-`の接頭辞のプロパティ・`display:contents`を、`style`要素と`style`属性で検出する(表示属性の値は関数と色だけ)。関数を許可の一覧で絞るため、関数の擬似クラス(`:not()`など)と、文字列の中の関数のような書き方も保守側に違反になる。WebPのデータURIは許可の形式から外した(要件7.5もrequirements.mdの改訂2として改めた)。
   - 実装者の判断(重さを見て決めた): 入れ子の要素のブラウザが無効とする`viewBox`は、内容の全体を隠せる手軽な書き方で、編集ソフトの書き出しには現れないため`invalid-view-box`の違反にする(ルートは描画の前に書き直すため対象外)。`systemLanguage`は、閲覧者の言語に合わせて日本語の閲覧者だけに別の内容を見せられ、`languages`の設定では全ての閲覧者に合わせられないため、許可リストから外して`disallowed-attribute`の違反にする。
-  - Workerの大きさ: wasmのgzip後の合計は約3.2MB(resvg約0.95MB・`wasm-image-optimization`約2.3MB)で、Workers Free(3MB)を超え、Workers Paid(10MB)を前提とする。7.6で描画の部品を登録した後に、開発者が`wrangler deploy --dry-run`で確かめる(書体を同梱する場合はその大きさも加わる)。
+  - Workerの大きさ: wasmのgzip後の合計は約3.2MB(resvg約0.95MB・`wasm-image-optimization`約2.3MB)で、Workers Free(3MB)を超え、Workers Paid(10MB)を前提とする。7.6で描画の部品を登録した後に、開発者が`wrangler deploy --dry-run`で確かめる(書体を同梱する場合はその大きさも加わる)。追記(2026-11-02): Cloudflareは2026-09-04に圧縮後の上限(Free 3MB・Paid 10MB)を廃止し、上限はどのプランでも非圧縮の64MiBだけになった。開発者の予行で`Total Upload`は14,278.13KiB(gzip後4,357.46KiB)で上限内。大きさを理由にWorkers Paidを前提とする必要は無い(起動時間の上限1秒はstagingで確かめる)。
 - **既知の制限(4回目のレビュー、開発者の決定(2026-11-01))**: 独立のレビュアーの新しい標本73件のうち28件が、許可リストを通り、判定用画像に写らずブラウザで見えた。開発者は「既知の制限として進める」と決め、許可リストはこれ以上強めない。
   - resvgが適用しブラウザが適用しないもの: `media="print"`・`media="not all"`の`style`要素、存在しない要素を指す`filter="url(#nope)"`、`clipPath`以外の要素を指す`clip-path`、`font:`の一括指定。
   - resvgが対応しないCSSのセレクター: `~`・`:last-child`・`:root`・`:empty`・`:only-of-type`、無効なセレクターを含むセレクターの一覧、CSSのエスケープ、属性セレクターの`i`、CDATAの中のCDO・CDC(`<!--`・`-->`)。
