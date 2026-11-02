@@ -45,3 +45,15 @@ export interface UserLifecycleStore {
   // 物理削除が終わっていない退会済みの利用者を、物理削除の開始の有無によらず数える
   countOverduePurges(deletedBefore: Date): Promise<number>;
 }
+
+export interface UserContact {
+  readonly userId: string;
+  readonly email: string;
+  readonly nickname: string;
+  readonly emailVerified: boolean;
+}
+
+export interface UserContactDirectory {
+  // 退会済み・物理削除済みの利用者はundefined。停止中の利用者は返す
+  findContact(userId: string): Promise<UserContact | undefined>;
+}

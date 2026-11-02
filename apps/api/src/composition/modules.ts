@@ -9,6 +9,7 @@ import {
 } from '../../lib/workers/bot-protection/turnstile-verifier.ts';
 import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
+import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-platform-module.ts';
 import {
   createRateLimitCounterClient,
   type RateLimitCounterClient,
@@ -90,6 +91,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   createInternalRoutesModule<Env>(INTERNAL_ROUTES),
   EMAIL_PLATFORM_MODULE,
   API_EMAIL_MODULE,
+  IDENTITY_PLATFORM_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,
   API_MEDIA_PLATFORM_MODULE,

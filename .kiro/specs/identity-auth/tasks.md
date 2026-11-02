@@ -85,7 +85,7 @@
   - _Depends: 1.2, 3.1_
   - _Requirements: 15.3, 16.3, 16.4, 16.6, 17.1_
 
-- [ ] 3.5 (P) 後続specが通知メールの宛先を引く利用者の連絡先の照会を作り、APIサーバーとイベントサーバーの両方に束縛する
+- [x] 3.5 (P) 後続specが通知メールの宛先を引く利用者の連絡先の照会を作り、APIサーバーとイベントサーバーの両方に束縛する
   - 先に、通常の利用者で`userId`・`email`・`nickname`・`emailVerified`(確認済みは真、未確認は偽)が返ること、停止中の利用者も返ること、退会済み(`deleted_at`あり)と存在しない利用者で`undefined`になること、D1の失敗が例外になることを確かめるWorkers統合テストを書く
   - 同じく先に、APIサーバーとイベントサーバーの処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.UserContactDirectory`がD1の実装に解決されることを、両アプリのWorkers統合テストで確かめる
   - 同じく先に、識別子`IDENTITY_PLATFORM_TYPES`が`Symbol.for('identity.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
@@ -462,3 +462,4 @@
 - 3.2: `createDisifyClient`(`workers/identity/disify-client.ts`)は設計に無い`appName`を受け取る(ログのカテゴリ`[appName, 'identity', 'disposable-email']`)。api・eventで組み立てるタスク(8.1・9.2)で`appName`を渡す。200以外の2xxも未判定。backend-libのWorkers統合テストはapiの`test:worker`だけで走る
 - 3.3: 種別は`core/email/kinds/identity.ts`、テンプレートは`apps/event/src/infrastructure/email/templates/identity/`。URLの入力は`https://`か、ホスト名が`localhost`と一致する`http://`だけを受け付ける(IdentityMailerはこの形のURLを組む)。完了の3種は問い合わせ(`contactUrl`)へのボタン「お問い合わせ」を持つ。本文の文言は文言規則に未記載のため、12.2で要点を追記する
 - 3.4: 契約は`core/identity/ports.ts`(`USER_LIFECYCLE_EVENT_STATUSES`を追加)、実装は`workers/identity/d1-user-lifecycle-store.ts`(`createUserLifecycleStore`)・`d1-user-address-directory.ts`、テストの補助は`workers/identity/testing/identity-store-fixtures.ts`。`countOverduePurges(deletedBefore)`は、設計のジョブの表の「pendingの`purge_due`を数える」ではなく、要件17.4に合わせて`deleted_at`が境界より前で行が残る利用者をイベントの有無によらず数える(7.10のジョブはこの意味で使う)。`markRedispatched`・`markEventCompleted`は`pending`の行だけを更新する
+- 3.5: 識別子は`core/identity/identifiers.ts`の`IDENTITY_PLATFORM_TYPES`(3.6・3.7は単体テストの`EXPECTED_NAMES`も更新する)、束縛は`workers/identity/identity-platform-module.ts`の`IDENTITY_PLATFORM_MODULE`(型は`EMAIL_PLATFORM_MODULE`と同じ`Omit<AppModule, 'routes'>`)。両アプリの解決の確認は`apps/{api,event}/src/composition/identity-platform.worker.test.ts`で、3.6・3.7はここに加える。12.1・12.2の文書では、共通の束縛の置き場所・両アプリでの束縛・後続specは契約を注入して`users`の列を直接読まないことを書く
