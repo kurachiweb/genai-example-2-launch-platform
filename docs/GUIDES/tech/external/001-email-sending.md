@@ -505,6 +505,7 @@ Email Sending自身も、ソフトバウンスを24時間、一部の恒久バ�
 | `DELETE /api/v1/messages`                   | 全てのメッセージの削除                                                                  |
 
 - 他のテストが送ったメールと混ざらないよう、検索式には宛先などテストごとに一意な値を入れる。
+- E2Eテストは、この検索とメッセージの取得を直接書かず、共有の補助`e2e/support/mailpit.ts`の`waitForLatestEmail`・`waitForEmailLink`で、宛先ごとの最新のメールと本文のリンクを届くまで待って読む(「[E2Eテストの設定](../testing/001-test-strategy.md#e2eテストの設定)」)。
 - APIの一覧は`<MailpitのURL>/api/v1/swagger.json`と文書「[Mailpit API v1](https://mailpit.axllent.org/docs/api-v1/)」で確かめる。
 
 ## 管理画面の設定
