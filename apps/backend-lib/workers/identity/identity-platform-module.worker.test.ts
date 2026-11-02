@@ -8,11 +8,13 @@ import type { AppModule } from '../../core/di/app-module.ts';
 import { IDENTITY_PLATFORM_TYPES } from '../../core/identity/identifiers.ts';
 import type {
   AccountExport,
+  AdminUserDirectory,
   UserContactDirectory,
 } from '../../core/identity/ports.ts';
 import { createInvocationContainer } from '../di/invocation-container.ts';
 import type { PlatformHonoEnv } from '../http/hono-env.ts';
 import { D1AccountExport } from './d1-account-export.ts';
+import { D1AdminUserDirectory } from './d1-admin-user-directory.ts';
 import { D1UserContactDirectory } from './d1-user-contact-directory.ts';
 import { IDENTITY_PLATFORM_MODULE } from './identity-platform-module.ts';
 import {
@@ -91,9 +93,34 @@ describe('IDENTITY_PLATFORM_MODULE', () => {
     });
   });
 
+  test('管理画面の利用者の照会をD1の実装に解決し、処理単位のD1から利用者の検索・引き当て・登録者数の数え上げができる', async () => {
+    await insertUser(1, { createdAt: after(1000) });
+
+    const directory = createContainer().get<AdminUserDirectory>(
+      IDENTITY_PLATFORM_TYPES.AdminUserDirectory,
+    );
+
+    expect(directory).toBeInstanceOf(D1AdminUserDirectory);
+    await expect(
+      directory.search({ handle: 'USER1' }, { limit: 50 }),
+    ).resolves.toMatchObject({
+      users: [{ userId: userIdOf(1), handle: 'user1' }],
+      nextCursor: null,
+    });
+    await expect(directory.findByIds([userIdOf(1)])).resolves.toHaveProperty(
+      'size',
+      1,
+    );
+    await expect(
+      directory.findByEmail('user1@mail.example'),
+    ).resolves.toMatchObject({ userId: userIdOf(1) });
+    await expect(directory.countRegisteredAt(after(2000))).resolves.toBe(1);
+  });
+
   test.each([
     ['UserContactDirectory', IDENTITY_PLATFORM_TYPES.UserContactDirectory],
     ['AccountExport', IDENTITY_PLATFORM_TYPES.AccountExport],
+    ['AdminUserDirectory', IDENTITY_PLATFORM_TYPES.AdminUserDirectory],
   ])(
     '%sは処理単位の中では同じインスタンスを返し、別の処理単位では別のインスタンスを返す',
     (_name, identifier) => {

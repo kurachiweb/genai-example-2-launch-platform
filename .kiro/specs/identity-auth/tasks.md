@@ -106,7 +106,7 @@
   - _Boundary: AccountExport, D1AccountExport, IdentityPlatformModule_
   - _Requirements: 4.9_
 
-- [ ] 3.7 管理画面の利用者の検索・一覧の照会を作り、APIサーバーとイベントサーバーの両方に束縛する(仮7)
+- [x] 3.7 管理画面の利用者の検索・一覧の照会を作り、APIサーバーとイベントサーバーの両方に束縛する(仮7)
   - 先に、退会済みを除いて作成日時とIDの降順に並ぶこと、ハンドル・ニックネームの大文字小文字を区別しない部分一致と`%`・`_`・`\`が文字として照合されること、メールアドレスの前後の空白を除いた大文字小文字を区別しない完全一致(メールアドレスでの引き当ても同じ)、状態の絞り込み、件数の上限の境界(0と51の拒否)とカーソルによる続きの取得・不正なカーソルの拒否、IDでの引き当てが91件以上で分割され退会済みを含めないこと、メールアドレスでの引き当てが退会済みを返さないこと、時点の登録者数が時点以後の登録を数えず時点以後の退会を数えること、結果にメールアドレス・パスワードハッシュの項目が無いことを確かめるWorkers統合テストを書く
   - 同じく先に、APIサーバーとイベントサーバーの処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`がD1の実装に解決されることを、3.5の両アプリのWorkers統合テストに加えて確かめる
   - 設計の契約(`AdminUserStatus`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserDirectory`)を`apps/backend-lib/core/identity/ports.ts`に、D1の実装`D1AdminUserDirectory`を共有のWorkers向けの部品(`apps/backend-lib/workers/identity/d1-admin-user-directory.ts`)に作り、3.5の`IDENTITY_PLATFORM_TYPES`に識別子を、`IDENTITY_PLATFORM_MODULE`に束縛を加える
@@ -464,3 +464,4 @@
 - 3.4: 契約は`core/identity/ports.ts`(`USER_LIFECYCLE_EVENT_STATUSES`を追加)、実装は`workers/identity/d1-user-lifecycle-store.ts`(`createUserLifecycleStore`)・`d1-user-address-directory.ts`、テストの補助は`workers/identity/testing/identity-store-fixtures.ts`。`countOverduePurges(deletedBefore)`は、設計のジョブの表の「pendingの`purge_due`を数える」ではなく、要件17.4に合わせて`deleted_at`が境界より前で行が残る利用者をイベントの有無によらず数える(7.10のジョブはこの意味で使う)。`markRedispatched`・`markEventCompleted`は`pending`の行だけを更新する
 - 3.5: 識別子は`core/identity/identifiers.ts`の`IDENTITY_PLATFORM_TYPES`(3.6・3.7は単体テストの`EXPECTED_NAMES`も更新する)、束縛は`workers/identity/identity-platform-module.ts`の`IDENTITY_PLATFORM_MODULE`(型は`EMAIL_PLATFORM_MODULE`と同じ`Omit<AppModule, 'routes'>`)。両アプリの解決の確認は`apps/{api,event}/src/composition/identity-platform.worker.test.ts`で、3.6・3.7はここに加える。12.1・12.2の文書では、共通の束縛の置き場所・両アプリでの束縛・後続specは契約を注入して`users`の列を直接読まないことを書く
 - 3.6: `D1AccountExport`は`workers/identity/d1-account-export.ts`。テストの補助`clearIdentityTables`は`user_totp_credentials`も消し、TOTPの行は`insertTotpCredential`で入れる。テストの補助へ別のテーブルを足すときは外部キーの順(子→`users`)で消す
+- 3.7: `D1AdminUserDirectory`は`workers/identity/d1-admin-user-directory.ts`。カーソルは`base64url('<ミリ秒>:<ID>')`で、件数とカーソルの不正は設計どおり`validation_error`(既存のページングは`invalid_cursor`)。空のフィルタ文字列は全件に一致するため、正規化は呼び出し元が行う。eventの`test:worker`は既定の並列数ではメモリ不足でSIGKILLになることがあり、`bunx vitest run --config vitest.worker.config.ts --maxWorkers=3`で回す

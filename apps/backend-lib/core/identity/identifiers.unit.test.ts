@@ -2,7 +2,11 @@ import { describe, expect, test } from 'bun:test';
 
 import { IDENTITY_PLATFORM_TYPES } from './identifiers.ts';
 
-const EXPECTED_NAMES = ['UserContactDirectory', 'AccountExport'] as const;
+const EXPECTED_NAMES = [
+  'UserContactDirectory',
+  'AccountExport',
+  'AdminUserDirectory',
+] as const;
 
 describe('IDENTITY_PLATFORM_TYPES', () => {
   test('両アプリと後続specが共有する識別子だけを持つ', () => {

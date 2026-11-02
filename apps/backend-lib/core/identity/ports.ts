@@ -1,3 +1,4 @@
+import type { DisposableEmailStatus } from './disposable-email.ts';
 import type { UserLifecycleEvent } from './user-lifecycle.ts';
 
 export const USER_LIFECYCLE_EVENT_STATUSES = Object.freeze([
@@ -71,4 +72,47 @@ export interface AccountExportRecord {
 export interface AccountExport {
   // 退会済み・物理削除済みの利用者はundefined。停止中の利用者は返す
   find(userId: string): Promise<AccountExportRecord | undefined>;
+}
+
+export type AdminUserStatus = 'active' | 'suspended';
+
+export interface AdminUserRecord {
+  readonly userId: string;
+  readonly pseudonymousId: string;
+  readonly handle: string;
+  readonly nickname: string;
+  readonly status: AdminUserStatus;
+  readonly suspendedAt: Date | null;
+  readonly registeredAt: Date;
+  readonly emailVerified: boolean;
+  // 確認前はnull
+  readonly disposableEmailStatus: DisposableEmailStatus | null;
+}
+
+export interface AdminUserSearchFilter {
+  // ハンドルとニックネームは大文字小文字を区別しない部分一致
+  readonly handle?: string;
+  readonly nickname?: string;
+  // 前後の空白を除いた大文字小文字を区別しない完全一致
+  readonly email?: string;
+  readonly status?: AdminUserStatus;
+}
+
+export interface AdminUserDirectory {
+  // 退会済みを除き、作成日時とIDの降順に並べる。limitは1〜50
+  search(
+    filter: AdminUserSearchFilter,
+    page: { readonly after?: string; readonly limit: number },
+  ): Promise<{
+    readonly users: readonly AdminUserRecord[];
+    readonly nextCursor: string | null;
+  }>;
+  // 退会済み・存在しないIDは結果に含めない
+  findByIds(
+    userIds: readonly string[],
+  ): Promise<ReadonlyMap<string, AdminUserRecord>>;
+  // 退会していない利用者だけを、前後の空白を除いた大文字小文字を区別しない完全一致で引く
+  findByEmail(email: string): Promise<AdminUserRecord | undefined>;
+  // 時点より前に登録し、時点で退会していない利用者を数える
+  countRegisteredAt(at: Date): Promise<number>;
 }
