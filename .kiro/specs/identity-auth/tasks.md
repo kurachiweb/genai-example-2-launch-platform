@@ -148,7 +148,7 @@
   - _Depends: 4.3_
   - _Requirements: 1.6, 1.7, 5.5, 5.6, 6.3, 8.1, 13.10, 14.1_
 
-- [ ] 5.2 (P) 漏洩パスワードの照合・TOTP・運用者への通知を作る
+- [x] 5.2 (P) 漏洩パスワードの照合・TOTP・運用者への通知を作る
   - 先に、偽の通信で、先頭5文字だけを送ることとパディングの行の無視、一致・不一致・時間切れ・2xx以外・行の形式違反の分類、TOTPの秘密鍵の生成・URI・前後1つの時間窓での照合と時間窓の番号、通知の種類ごとのレベルと個人情報を含まないことを確かめるWorkers統合テストを書く
   - 漏洩照合(パディングの指定・識別用のUser-Agent・3秒の打ち切り)、TOTP(ラベルにハンドルを使い、メールアドレスを含めない)、Sentryへの通知を実装する
   - 完了状態: Workers統合テストが成功し、外部へ通信しない
@@ -469,3 +469,4 @@
 - 4.2: `domain/auth/login-throttle-state.ts`。ロック中の`applyFailure`は記録を変えず、ロックの終了時刻を`alarmAt`として返す(5.3の`DurableLoginThrottle`は、ロック中は保存を省いてよい)。`alarmOutcome`の`reschedule`はロックの終了時刻と最後の失敗+24時間の早い方。`status`→照合→`recordFailure`は原子的でないため、並列の要求はロックの前に`status`を通り得る(5.3でDurable Objectの直列化の範囲を確かめる)
 - 4.3: `apps/api/src/application/auth/`に`AUTH_TYPES`(12個、`Symbol.for('auth.<名前>')`)・`ports.ts`・`CheckingPasswordPolicy`・`HashingSecretIssuer`・`HashingRecoveryCodeIssuer`・`createLoginThrottleKeys`(空文字列のIPも不明扱い)・`SubjectSessionVerifier`・`InvalidSubjectSessionVerifier`。サービスのインターフェースは各サービスのファイルにある。`SubjectSessionVerifier`は差し込んだ検証器が別の種類の主体を返すと無効にするため、admin-foundationの管理者の検証器は`subjectKind: 'admin'`を返す。ハッシュの用途は`docs/GUIDES/tech/security/002-keyed-hashing.md`の形(英小文字とハイフン、`:`を使わない)で6.1で定める。8.1の静的解析で認証部品から禁止する読み込みは、apiの`**/domain/identity/**`・`**/application/identity/**`・`**/infrastructure/identity/**`・`**/presentation/graphql/modules/identity/**`で、`common-lib/identity/`(共有の入力規則。`domain/auth/password-rules.ts`が使う)は含めない
 - 5.1: `apps/api/src/infrastructure/auth/`の`Pbkdf2PasswordHasher`(保存形式`pbkdf2-sha512$100000$<salt>$<derived>`、前処理は`KeyedHasher`の用途`password-prehash`、照合1回は約16ms)・`CryptoSecretGenerator`・`HkdfAesGcmSecretBox`(`@inject(PLATFORM_TYPES.Env)`で`HASH_PEPPER`を読む、HKDFのinfo`totp-secret-v1`、AADは利用者ID、復元の失敗は`SecretBoxOpenError`)。計測値はテストの`annotate`で残り、`--reporter=verbose`で見える。乱数に依るテストは`crypto.getRandomValues`のスタブで入力を固定する(確率で失敗するテストを作らない)
+- 5.2: `HibpPwnedPasswordChecker`は`@injectable`無しで、8.1で`toDynamicValue`により`fetch`と`userAgent: 'genai-example-2-api'`を渡す。`OtpauthTotpAuthenticator`のラベルは呼び出し側が`@<ハンドル>`を渡す(先頭以外の`@`は`RangeError`)。秘密鍵の形式違反は`TotpSecretFormatError`。`SentryAuthIncidentReporter`のログのカテゴリは設計の`['api','identity',…]`ではなく`['api','auth','incident']`(認証部品は主体に依存しないため。`infra/004`に記載済み)、指紋は`['identity', <種類>]`。1.1の導入確認のテストにはbowserの部分だけが残り、6.6で置き換える。新しいログのカテゴリやSentryへの通知を作るタスクは、同じ変更で`infra/004`の表に行を足す
