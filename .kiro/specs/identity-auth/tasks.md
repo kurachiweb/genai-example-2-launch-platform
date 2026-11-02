@@ -216,7 +216,7 @@
   - _Requirements: 2.1, 8.4, 8.5, 14.4, 14.6, 14.7_
 
 - [ ] 7. 利用者のユースケース(偽のポートによる単体テスト)
-- [ ] 7.1 セッションの発行・重要な操作の後の再発行・利用者のセッションの検証・機能制限の判定を作る
+- [x] 7.1 セッションの発行・重要な操作の後の再発行・利用者のセッションの検証・機能制限の判定を作る
   - 先に、発行したトークンの形式とUser-Agentの切り詰め、再発行が同じ利用者の操作した端末にだけ行われること、検証の無効(無い・退会済み・期限切れで削除)・有効(停止中も有効)・更新の間引きと延長の指示、未ログイン・停止中・未確認の判定の結果とエラーコード、同じ要求で利用者を1回だけ読むことを確かめる単体テストを書く
   - 機能制限の判定と、後続のユースケース(再送・アップロードできる利用者の判定)は、セッションを`SessionView`で受け取り、presentation層の型を読み込まない。単体テストの偽のセッションも`SessionView`だけを実装する
   - 完了状態: 単体テストが成功し、APIサーバーの静的解析で層の規則の違反が無い
@@ -477,3 +477,4 @@
 - 6.4: `D1TotpCredentialStore`・`D1RecoveryCodeStore`。`enable`・`replaceAll`は資格情報の状態が合うときだけコードを`INSERT ... SELECT`で入れる(`replaceAll`は有効でなければ古いコードを消すだけ)。`savePending`は既存の保留を上書きし使用済みの時間窓を戻す。`enable`は保存済みの秘密鍵が照合したものと同じかを確かめないため、7.8は設定の開始の競合(照合と有効化の間の`savePending`)を考慮する
 - 6.5: 契約は`infrastructure/identity/user-lifecycle-sync-handler.ts`、確定は`d1-user-lifecycle-committer.ts`の`createD1UserLifecycleCommitter(db, ids, USER_LIFECYCLE_SYNC_HANDLERS, (id) => container.get(id))`(8.1で処理単位のコンテナに`toDynamicValue`で束縛)、登録箇所は`composition/user-lifecycle-sync-handlers.ts`(空)。登録は作成時に名前の形式と重複を検査し、未束縛の波及処理は`commit`の時に初めて分かる。版の不一致と存在しない利用者は`AppError(conflict, account_state_conflict)`で、文言「処理が重なりました。時間をおいて再度お試しください。」は現在このファイルにだけあるため、8.2の`errors.ts`と文言規則(12.2)で集約する。退会はセッション・トークン・待ちを消し、TOTPとリカバリコードは物理削除まで残す
 - 6.6: `EmailIdentityMailer`(`infrastructure/identity/email-identity-mailer.ts`)は`IDENTITY_TYPES.IdentitySettings`の`clientOrigin`でリンクを組み(8.1で`CLIENT_SITE_ORIGIN`から束縛)、送信の失敗はそのまま投げる(ログに留めるかは各ユースケースが決める)。`BowserDeviceDescriber`はブラウザ名・OS名の片方だけが`null`になり得る(10.7の表示で扱う)。1.1の導入確認のテスト`identity-packages.worker.test.ts`は削除済み
+- 7.1: `apps/api/src/application/identity/`の`StoreSessionIssuer`(`session-issuer.ts`、`USER_SESSION_HASH_PURPOSE`もここ)・`UserSessionVerifier`(`user-session-verifier.ts`)・`StoreAccountGuard`(`account-guard.ts`)。8.1の束縛: `StoreAccountGuard`は処理単位のコンテナで単一(`findById`のPromiseを要求の中で使い回すため)、`AUTH_TYPES.UserSessionVerifier`を`UserSessionVerifier`へ。`currentUser`は退会済みを`undefined`にし`requireUser`系は`unauthenticated`。`SESSION_USER_AGENT_MAX_LENGTH`(application)は`USER_AGENT_MAX_LENGTH`(presentation)と同じ512で、8.1で一致を確かめるテストを加える。エラーの文言(`unauthenticated`・`account_unavailable`・`email_not_verified`)は`account-guard.ts`の定数で、8.2の`errors.ts`で集約する
