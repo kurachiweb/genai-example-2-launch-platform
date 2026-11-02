@@ -6,7 +6,7 @@
 
 **Users**: 利用者は`/settings/profile`でプロフィールを編集し、`/@{handle}`で公開し、他の利用者の公開プロフィールでフォロー・フォロー解除し、`/settings/follows`で自分のフォロー中・フォロワーを確かめる。後続spec(product-launch・help-center)の開発者はハンドル基盤を、product-launch・match-engine・content-reportingは公開プロフィールの登録箇所を、directory-discoveryはフォローボタンを、engagement・match-engineは利用者の表示の型と照会を、notificationsはフォロワーの照会を、data-exportはプロフィールとフォローの照会を、public-apiはプロフィールの照会と更新のユースケースを使う。
 
-**Impact**: D1に5テーブル(プロフィール・外部Webサイト・利用者の旧ハンドル・フォローと、旧ハンドルの列の共通の定義)を足す。`apps/backend-lib`にハンドル基盤(`workers/handles`)とプロフィールの共有部品(`workers/profile`)を新設し、apiとeventの両方に同じ束縛(`PROFILE_PLATFORM_MODULE`)を入れる。apiにスキーマモジュール`profile`・プロフィールとフォローのユースケース・退会の同期の波及処理を、eventに物理削除・停止の非同期の波及処理を、clientに公開プロフィールページ・プロフィール編集画面・フォロー一覧の画面・フォローボタンを足す。apiの4:21の定期実行に、保有者の利用者が存在しないファイルを物理削除するジョブ`user-profile-social.orphaned-file-sweep`(`order` 600、仮1)を1つ足す。上流のファイルは、契約で定められた登録箇所への追記と、identity-authの`HANDLE_AVAILABILITY`・inquiry-chatの`INQUIRY_TYPES.InquirerProfiles`の束縛の差し替えだけを変える。上流の契約への追加は、media-pipelineの`MediaFiles.listOwnerIds`(仮1のジョブが保有者のIDを列挙するため)だけを依頼する。新しいシークレット・パッケージは無い。
+**Impact**: D1に5テーブル(プロフィール・外部Webサイト・利用者の旧ハンドル・フォローと、旧ハンドルの列の共通の定義)を足す。`apps/backend-lib`にハンドル基盤(`workers/handles`)と、プロフィールの共有部品(契約と識別子は`core/profile`、D1の実装と束縛は`workers/profile`)を新設し、apiとeventの両方に同じ束縛(`PROFILE_PLATFORM_MODULE`)を入れる。apiにスキーマモジュール`profile`・プロフィールとフォローのユースケース・退会の同期の波及処理を、eventに物理削除・停止の非同期の波及処理を、clientに公開プロフィールページ・プロフィール編集画面・フォロー一覧の画面・フォローボタンを足す。apiの4:21の定期実行に、保有者の利用者が存在しないファイルを物理削除するジョブ`user-profile-social.orphaned-file-sweep`(`order` 600、仮1)を1つ足す。上流のファイルは、契約で定められた登録箇所への追記と、identity-authの`HANDLE_AVAILABILITY`・inquiry-chatの`INQUIRY_TYPES.InquirerProfiles`の束縛の差し替えだけを変える。上流の契約への追加は、media-pipelineの`MediaFiles.listOwnerIds`(仮1のジョブが保有者のIDを列挙するため)だけを依頼する。新しいシークレット・パッケージは無い。
 
 ### Goals
 
@@ -29,7 +29,7 @@
 - ハンドル基盤: `apps/common-lib/handles`(文字種の規則・形式の検査・大文字小文字の同一視・予約語の判定・なりすまし対策の予約語一覧)、`apps/db/schema/handles/previous-handle-columns.ts`(旧ハンドルのテーブルの共通の列)、`apps/backend-lib/workers/handles`(対象の記述`HandleNamespace`・解決・使用中の判定と`CASE`式の条件・旧ハンドルの置き換えと削除の文・他の対象の旧ハンドルを解放する文`previousHandleRelease`)。
 - プロフィールとフォローのデータ: `user_profiles`・`user_profile_websites`・`user_previous_handles`(`apps/db/schema/profile/`)と`user_follows`(`apps/db/schema/follow/`)。`users.nickname`・`users.handle`の変更(列の定義はidentity-auth)。
 - 入力規則(`apps/common-lib/profile/profile-input-rules.ts`)と外部URLの規則(`apps/common-lib/url/external-url.ts`。product-launchも使う)。
-- 共有部品(`apps/backend-lib/workers/profile`): 利用者のハンドルの対象の記述`USER_HANDLE_NAMESPACE`、利用者の表示の照会とハンドルの解決`UserProfileDirectory`、データエクスポートの`ProfileExport`・`FollowExport`、通知の`FollowerDirectory`、両アプリ共通の束縛`PROFILE_PLATFORM_MODULE`。
+- 共有部品: 利用者の表示の照会とハンドルの解決`UserProfileDirectory`、データエクスポートの`ProfileExport`・`FollowExport`、通知の`FollowerDirectory`の契約(`apps/backend-lib/core/profile/ports.ts`)とDIの識別子`PROFILE_PLATFORM_TYPES`(`core/profile/identifiers.ts`)。それらのD1の実装、利用者のハンドルの対象の記述`USER_HANDLE_NAMESPACE`、両アプリ共通の束縛`PROFILE_PLATFORM_MODULE`(`apps/backend-lib/workers/profile`)。
 - apiのプロフィールとフォローのユースケース・D1の実装・スキーマモジュール`profile`(`publicProfile`・`myProfile`・`handleAvailability`・`myFollowing`・`myFollowers`・`updateMyProfile`・`followUser`・`unfollowUser`と共通の型`UserSummary`・`userSummaryLoader`)、identity-authの`HandleAvailability`の実装`UserHandleAvailability`、inquiry-chatの`InquirerProfiles`の実装`ProfileInquirerProfiles`、退会の同期の波及処理`user-profile-social.withdrawal`。
 - eventの非同期の波及処理: `user-profile-social.profile-erasure`(`purge_due`、`order` 600)・`user-profile-social.owned-file-erasure`(`purge_due`、`order` 610)・`user-profile-social.owned-image-quarantine`(`suspended`・`unsuspended`、`order` 600)。
 - apiの4:21のジョブ`user-profile-social.orphaned-file-sweep`(`order` 600、仮1)。
@@ -57,7 +57,7 @@
 - inquiry-chat: `InquirerProfiles`・`InquirerProfile`・`INQUIRY_TYPES.InquirerProfiles`(束縛の差し替えだけ)。
 - frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`useAppForm<TInput, TOutput>(schema, { defaultValues })`・`AppForm`(必須の`onSubmitError`・任意の`serverFieldPrefix`)・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`useTurnstileToken`・`TurnstileWidget`(非表示)・Zodの値の読み込み元(`utilities/validation/zod.ts`の`z`)・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`buildPageHead`・`PublicRuntimeConfig.clientSiteOrigin`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品(タブ・ドロップダウンメニュー・ツールチップ・ボタン)・`runAxe`。
 - npmパッケージ: 新規は無い。
-- 後続specは、`common-lib/handles`・`previousHandleColumns`・`workers/handles`の公開の関数、`workers/profile`の契約(`UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`)、apiの`MyProfileReader`・`ProfileEditor`・GraphQLの`UserSummary`・`userSummaryLoader`、clientの`FollowButton`・`UserAvatar`と3つの登録箇所だけに依存し、本specのテーブルを直接読み書きしない。
+- 後続specは、`common-lib/handles`・`previousHandleColumns`・`workers/handles`の公開の関数(infrastructure層と`workers`だけが使う)、`core/profile`の契約(`UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`)と識別子`PROFILE_PLATFORM_TYPES`、apiの`MyProfileReader`・`ProfileEditor`・GraphQLの`UserSummary`・`userSummaryLoader`、clientの`FollowButton`・`UserAvatar`と3つの登録箇所だけに依存し、本specのテーブルを直接読み書きしない。
 
 ### Revalidation Triggers
 
@@ -67,6 +67,7 @@
 - `PUBLIC_PROFILE_TABS`・`PUBLIC_PROFILE_BADGES`・`PUBLIC_PROFILE_MENU_ITEMS`と`PublicProfileSectionContext`の形(product-launch(タブ`launches`と受賞バッジの区画`product-launch.award-badges`)・match-engine・content-reporting)。
 - `FollowButtonProps`・`UserAvatarProps`・GraphQLの`UserSummary`・`userSummaryLoader`の形(directory-discovery・engagement・match-engine)。
 - `UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`の形と、可視の利用者の扱い(product-launch・notifications・data-export)。データエクスポートの文書の`profile.json`・`follows.json`の項目が変わったら確かめ直す。
+- `core/profile`の契約(`UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`)と`PROFILE_PLATFORM_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(後続specのapplication層が読み込むため)。
 - 波及処理の`order`(`purge_due`の600・610、`suspended`・`unsuspended`の600)と、4:21のジョブ`user-profile-social.orphaned-file-sweep`の`order` 600。本specは600番台を使い、identity-auth(100番台・10000以上)・admin-foundation(200番台)・inquiry-chat(300番台)・payments(400番台)・ultras-subscription(500番台)・media-pipeline(800番台)・email-delivery(900〜949)・content-processing(950〜999・2300番台)・後続spec(1000番台以降)の帯と重ねない。後続specのテーブルが`media_files`へ外部キーを張ると、`purge_due`の610のファイルの物理削除が失敗するため、ファイルのIDは外部キー無しで持つ。
 - identity-authの`users`の列・`visibleUsers`・`AccountGuard`・ライフサイクルの登録口の形・`HandleAvailability`の形、media-pipelineの`MediaFiles`(`listOwnerIds`を含む)・`MediaQuarantine`・`OWNER_OPERATION_BATCH_LIMIT`・`hasMore`の意味、inquiry-chatの`InquirerProfiles`の形、ultras-subscriptionの`UltrasEntitlements`の形を変えたら、本specを確かめ直す。
 
@@ -166,11 +167,11 @@ graph TB
 
 - Selected pattern: クリーンアーキテクチャ(apiの`domain`→`application`→`infrastructure`・`presentation`→`composition`)。ハンドル基盤は「純粋な規則」と「対象の記述を受け取るD1の関数」に分け、プロフィール・フォローのユースケースはポート越しにD1を使う。外部への副作用(画像の削除)は保存の確定の後に呼び、失敗はmedia-pipelineの日次バッチに任せる。
 - Domain/feature boundaries: ハンドルの規則と旧ハンドルは本spec、`users`の定義とライフサイクルはidentity-auth、ファイルはmedia-pipeline、特典はultras-subscription、区画の中身は後続spec。
-- Existing patterns preserved: `backend-lib/workers/<ドメイン>`の共有の束縛、`<spec名>.<名詞句>`の波及処理の名前、登録箇所への追記による区画の追加(`SETTINGS_NAV_ITEMS`・`PRICING_SECTIONS`と同じ形)、`CASE`式のNOT NULL制約の違反による一括の書き込みの取り消し、カーソルの`encodeCursor`。
-- New components rationale: ハンドル基盤は3つの後続specが使うため共有ディレクトリに置く。利用者の表示の照会は、プロフィール画像のIDを持つ本specだけが提供できる。エクスポート・通知の照会はeventで動くため`backend-lib/workers/profile`に置く。
+- Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`のD1の実装と共有の束縛(identity-authの`core/identity`・`workers/identity`と同じ配置)、`<spec名>.<名詞句>`の波及処理の名前、登録箇所への追記による区画の追加(`SETTINGS_NAV_ITEMS`・`PRICING_SECTIONS`と同じ形)、`CASE`式のNOT NULL制約の違反による一括の書き込みの取り消し、カーソルの`encodeCursor`。
+- New components rationale: ハンドル基盤は3つの後続specが使うため共有ディレクトリに置く。利用者の表示の照会は、プロフィール画像のIDを持つ本specだけが提供できる。エクスポート・通知の照会はeventで動き、後続specのapplication層が受け取るため、契約と識別子を`backend-lib/core/profile`、D1の実装を`backend-lib/workers/profile`に置く。
 - Steering compliance: Inversifyの`@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・`onConflictDoNothing`)、テーブルの作成時の`textNoCase`、Infisical(新規なし)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`。
 
-**Dependency direction**: `apps/common-lib/{handles,profile,url}` → `apps/db/schema/{handles,profile,follow}` → `backend-lib/workers/handles` → `backend-lib/workers/profile` → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib`は他のどの層も読み込まない。clientは`common-lib`とGraphQLの操作だけを読み込む。`workers/handles`は`workers/profile`を読み込まない(利用者に閉じない)。
+**Dependency direction**: `apps/common-lib/{handles,profile,url}` → `apps/db/schema/{handles,profile,follow}` → `backend-lib/core/profile`(`core`の他の部品だけ) → `backend-lib/workers/handles` → `backend-lib/workers/profile`(D1) → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが使う契約(`UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`)と識別子`PROFILE_PLATFORM_TYPES`は`core/profile`に置き、`workers/profile`にはD1の実装と束縛と、infrastructure層だけが使う`USER_HANDLE_NAMESPACE`を置く。`workers/handles`の関数はデータベースの接続を受け取るため、infrastructure層と`workers`だけが使い、application層はプロフィールのポート(`ProfileStore.isHandleOccupied`)越しに使う。`core/profile`は`workers`・`apps/db`を読み込まない。`common-lib`は他のどの層も読み込まない。clientは`common-lib`とGraphQLの操作だけを読み込む。`workers/handles`は`workers/profile`を読み込まない(利用者に閉じない)。
 
 ### Technology Stack
 
@@ -202,20 +203,20 @@ apps/
 │   └── follow/
 │       ├── user-follows.ts                             # フォロー(組の一意・自分自身のCHECK)
 │       └── index.ts
+├── backend-lib/core/profile/                           # api・eventと後続specのapplication層が読み込める契約(Bunの単体テスト)
+│   ├── ports.ts                                        # UserSummaryRecord・UserLookupScope・UserHandleResolution・UserProfileDirectory・ProfileExportRecord・ProfileExport・FollowExportEntry・FollowExport・FollowerDirectory(型)
+│   ├── identifiers.ts                                  # PROFILE_PLATFORM_TYPES(api・event共通の識別子)
+│   └── identifiers.unit.test.ts
 ├── backend-lib/workers/
-│   ├── handles/                                        # ハンドル基盤のD1の部品(Workers統合テスト)
+│   ├── handles/                                        # ハンドル基盤のD1の部品(infrastructure層とworkersだけが使う、Workers統合テスト)
 │   │   ├── handle-namespace.ts                         # HandleNamespace・HandleSource・defineHandleNamespace
 │   │   ├── handle-queries.ts                           # resolveHandle・isHandleOccupied・handleOccupiedCondition
 │   │   └── previous-handle-statements.ts               # previousHandleUpsert・previousHandleRelease・previousHandleSoftDelete・previousHandleDelete
-│   └── profile/                                        # api・event共通の部品(Workers統合テスト)
-│       ├── profile-platform-types.ts                   # PROFILE_PLATFORM_TYPES(テストなし)
+│   └── profile/                                        # core/profileの契約のD1の実装と束縛(Workers統合テスト)
 │       ├── user-handle-namespace.ts                    # USER_HANDLE_NAMESPACE
-│       ├── user-profile-directory.ts                   # UserSummaryRecord・UserHandleResolution・UserProfileDirectory(型)
-│       ├── d1-user-profile-directory.ts                # 表示の照会とハンドルの解決
-│       ├── profile-export.ts                           # ProfileExportRecord・ProfileExport(型)
-│       ├── d1-profile-export.ts
-│       ├── follow-directory.ts                         # FollowExport・FollowerDirectory(型)
-│       ├── d1-follow-directory.ts
+│       ├── d1-user-profile-directory.ts                # UserProfileDirectoryのD1実装(表示の照会とハンドルの解決)
+│       ├── d1-profile-export.ts                        # ProfileExportのD1実装
+│       ├── d1-follow-directory.ts                      # FollowExport・FollowerDirectoryのD1実装
 │       └── profile-platform-module.ts                  # PROFILE_PLATFORM_MODULE
 ├── api/src/
 │   ├── domain/profile/                                 # 純粋な規則(Bunの単体テスト)
@@ -480,33 +481,33 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                                                                                                                         | Domain/Layer        | Intent                                                               | Req Coverage                                        | Key Dependencies                                   | Contracts |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------- | --------- |
-| HandleRules                                                                                                                                                       | common-lib          | ハンドルの文字種・同一視・予約語                                     | 1.1, 1.2, 1.5, 3.2, 3.5, 3.6                        | —                                                  | Service   |
-| ProfileInputRules・ExternalUrlRules                                                                                                                               | common-lib          | 上限・URLの検査・用途                                                | 4.3, 4.4, 4.6, 5.1, 5.2                             | content-processing (P0)                            | Service   |
-| PreviousHandleColumns・ProfileSchema・FollowSchema                                                                                                                | db                  | 4テーブルと旧ハンドルの共通の列                                      | 2.1, 3.1, 9.11, 11.1                                | backend-platform (P0)                              | State     |
-| HandleNamespace・HandleQueries・PreviousHandleStatements                                                                                                          | backend-lib/handles | 対象の記述・解決・使用中の判定・旧ハンドルの文                       | 1.3, 1.4, 1.6, 2.1, 3.1, 3.3, 3.4, 3.8              | D1 (P0)                                            | Service   |
-| UserProfileDirectory                                                                                                                                              | backend-lib/profile | 表示の照会とハンドルの解決                                           | 12.1, 12.2, 12.3, 12.8                              | HandleQueries (P0)                                 | Service   |
-| ProfileExport・FollowExport・FollowerDirectory                                                                                                                    | backend-lib/profile | エクスポートと通知の照会                                             | 12.4, 12.5, 12.6, 12.8                              | D1 (P0)                                            | Service   |
-| ProfilePlatformModule                                                                                                                                             | backend-lib/profile | 両アプリ共通の束縛                                                   | 12.8                                                | Inversify (P0)                                     | —         |
-| ProfileEditPlan・WebsiteList                                                                                                                                      | api/domain          | 保存の決定と外部Webサイトの正規化                                    | 2.1, 2.2, 2.3, 4.6, 4.7, 5.3, 5.4                   | HandleRules (P0)                                   | Service   |
-| ProfileEditor・MyProfileReader                                                                                                                                    | api/application     | 保存と自分のプロフィール                                             | 1.3〜1.6, 2.1〜2.3, 4.3, 4.12, 4.14, 5.3〜5.5, 12.7 | MediaFiles (P0)、ProfileStore (P0)                 | Service   |
-| HandleAvailabilityChecker・UserHandleAvailability                                                                                                                 | api/application     | 編集画面と登録の使用可否                                             | 1.7, 1.8, 1.9                                       | HandleQueries (P0)                                 | Service   |
-| PublicProfileReader                                                                                                                                               | api/application     | 公開プロフィールの解決と公開範囲                                     | 2.5, 2.6, 6.2, 6.6, 6.7, 6.8, 7.1〜7.5              | UserProfileDirectory (P0)、UltrasEntitlements (P1) | Service   |
-| FollowService・FollowListReader                                                                                                                                   | api/application     | フォローと一覧                                                       | 9.1〜9.7, 9.11, 10.2, 10.4, 10.7                    | FollowStore (P0)、AccountGuard (P0)                | Service   |
-| D1ProfileStore・D1PublicProfileStore・D1FollowStore                                                                                                               | api/infrastructure  | D1の実装                                                             | 1.6, 2.1, 4.14, 6.6, 9.7, 10.2, 10.4, 11.9          | D1 (P0)                                            | State     |
-| OrphanedFileSweepJob                                                                                                                                              | api/application     | 保有者の居ないファイルの日次の物理削除(仮1)                          | 11.9                                                | MediaFiles (P0)、ProfileStore (P0)                 | Batch     |
-| ProfileInquirerProfiles                                                                                                                                           | api/infrastructure  | 問い合わせの表示の画像付きの実装                                     | 12.1                                                | UserProfileDirectory (P0)                          | Service   |
-| ProfileWithdrawalSyncHandler                                                                                                                                      | api/infrastructure  | 退会の論理削除                                                       | 11.1                                                | identity-auth (P0)                                 | Event     |
-| ProfileSchemaModule(ProfileInputs・ProfileResolvers・FollowResolvers・UserSummaryModule)                                                                          | api/presentation    | GraphQLの型と操作                                                    | 1.1, 1.7, 4.3〜4.11, 6.\*, 9.\*, 10.\*, 12.2        | api-gateway (P0)                                   | API       |
-| ProfileErasureHandler・OwnedFileErasureHandler・OwnedImageQuarantineHandler                                                                                       | event/application   | 物理削除と停止の波及処理                                             | 11.2〜11.8                                          | MediaFiles・MediaQuarantine (P0)                   | Event     |
-| PublicProfileRoute・PublicProfilePage・ProfileCard・ProfileAvatar・FollowerCount・ExternalWebsiteList・ProfileCompletion・SuspendedProfileBanner・ProfileSkeleton | client              | 公開プロフィール                                                     | 2.5, 2.6, 6.\*, 7.\*                                | MediaPicture (P0)、CollapsibleMarkdownContent (P0) | State     |
-| PublicProfileSections・ProfileTabs・ProfileActionsMenu                                                                                                            | client              | 区画の登録と表示                                                     | 8.\*                                                | shadcn/uiのタブ (P0)                               | State     |
-| ProfileEditRoute・ProfileEditForm・AvatarField・HandleField・WebsiteFields・ProfileFormSchema                                                                     | client              | プロフィール編集画面                                                 | 1.7, 2.7, 4.\*, 5.1, 5.2                            | MarkdownEditor (P0)、ImageUploadField (P0)         | State     |
-| FollowButton・FollowListRoute・FollowListPage・FollowList                                                                                                         | client              | フォローボタンと一覧                                                 | 9.1, 9.2, 9.5, 9.8, 9.9, 9.10, 10.\*                | useTurnstileToken (P0)、LoginRequiredDialog (P1)   | State     |
-| UserAvatar                                                                                                                                                        | client              | 利用者の画像とプレースホルダー                                       | 5.6, 10.3                                           | MediaPicture (P0)                                  | State     |
-| ProfileTechDocs                                                                                                                                                   | docs/GUIDES/tech    | `backend/011`・`db/006`・`backend/007`の節                           | 3.7, 13.4                                           | —                                                  | —         |
-| ProfileServiceSpecs                                                                                                                                               | docs/GUIDES/service | ページ配置・文言規則・準拠方針・データエクスポート・日次タイムライン | 13.5                                                | —                                                  | —         |
+| Component                                                                                                                                                         | Domain/Layer                                              | Intent                                                               | Req Coverage                                        | Key Dependencies                                   | Contracts |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------- | --------- |
+| HandleRules                                                                                                                                                       | common-lib                                                | ハンドルの文字種・同一視・予約語                                     | 1.1, 1.2, 1.5, 3.2, 3.5, 3.6                        | —                                                  | Service   |
+| ProfileInputRules・ExternalUrlRules                                                                                                                               | common-lib                                                | 上限・URLの検査・用途                                                | 4.3, 4.4, 4.6, 5.1, 5.2                             | content-processing (P0)                            | Service   |
+| PreviousHandleColumns・ProfileSchema・FollowSchema                                                                                                                | db                                                        | 4テーブルと旧ハンドルの共通の列                                      | 2.1, 3.1, 9.11, 11.1                                | backend-platform (P0)                              | State     |
+| HandleNamespace・HandleQueries・PreviousHandleStatements                                                                                                          | backend-lib/handles                                       | 対象の記述・解決・使用中の判定・旧ハンドルの文                       | 1.3, 1.4, 1.6, 2.1, 3.1, 3.3, 3.4, 3.8              | D1 (P0)                                            | Service   |
+| UserProfileDirectory                                                                                                                                              | backend-lib/core/profile(契約)・workers/profile(D1の実装) | 表示の照会とハンドルの解決                                           | 12.1, 12.2, 12.3, 12.8                              | HandleQueries (P0、D1の実装だけ)                   | Service   |
+| ProfileExport・FollowExport・FollowerDirectory                                                                                                                    | backend-lib/core/profile(契約)・workers/profile(D1の実装) | エクスポートと通知の照会                                             | 12.4, 12.5, 12.6, 12.8                              | D1 (P0、D1の実装だけ)                              | Service   |
+| ProfilePlatformModule                                                                                                                                             | backend-lib/core/profile(識別子)・workers/profile(束縛)   | 両アプリ共通の束縛                                                   | 12.8                                                | Inversify (P0)                                     | —         |
+| ProfileEditPlan・WebsiteList                                                                                                                                      | api/domain                                                | 保存の決定と外部Webサイトの正規化                                    | 2.1, 2.2, 2.3, 4.6, 4.7, 5.3, 5.4                   | HandleRules (P0)                                   | Service   |
+| ProfileEditor・MyProfileReader                                                                                                                                    | api/application                                           | 保存と自分のプロフィール                                             | 1.3〜1.6, 2.1〜2.3, 4.3, 4.12, 4.14, 5.3〜5.5, 12.7 | MediaFiles (P0)、ProfileStore (P0)                 | Service   |
+| HandleAvailabilityChecker・UserHandleAvailability                                                                                                                 | api/application                                           | 編集画面と登録の使用可否                                             | 1.7, 1.8, 1.9                                       | ProfileStore (P0)                                  | Service   |
+| PublicProfileReader                                                                                                                                               | api/application                                           | 公開プロフィールの解決と公開範囲                                     | 2.5, 2.6, 6.2, 6.6, 6.7, 6.8, 7.1〜7.5              | UserProfileDirectory (P0)、UltrasEntitlements (P1) | Service   |
+| FollowService・FollowListReader                                                                                                                                   | api/application                                           | フォローと一覧                                                       | 9.1〜9.7, 9.11, 10.2, 10.4, 10.7                    | FollowStore (P0)、AccountGuard (P0)                | Service   |
+| D1ProfileStore・D1PublicProfileStore・D1FollowStore                                                                                                               | api/infrastructure                                        | D1の実装                                                             | 1.6, 2.1, 4.14, 6.6, 9.7, 10.2, 10.4, 11.9          | D1 (P0)                                            | State     |
+| OrphanedFileSweepJob                                                                                                                                              | api/application                                           | 保有者の居ないファイルの日次の物理削除(仮1)                          | 11.9                                                | MediaFiles (P0)、ProfileStore (P0)                 | Batch     |
+| ProfileInquirerProfiles                                                                                                                                           | api/infrastructure                                        | 問い合わせの表示の画像付きの実装                                     | 12.1                                                | UserProfileDirectory (P0)                          | Service   |
+| ProfileWithdrawalSyncHandler                                                                                                                                      | api/infrastructure                                        | 退会の論理削除                                                       | 11.1                                                | identity-auth (P0)                                 | Event     |
+| ProfileSchemaModule(ProfileInputs・ProfileResolvers・FollowResolvers・UserSummaryModule)                                                                          | api/presentation                                          | GraphQLの型と操作                                                    | 1.1, 1.7, 4.3〜4.11, 6.\*, 9.\*, 10.\*, 12.2        | api-gateway (P0)                                   | API       |
+| ProfileErasureHandler・OwnedFileErasureHandler・OwnedImageQuarantineHandler                                                                                       | event/application                                         | 物理削除と停止の波及処理                                             | 11.2〜11.8                                          | MediaFiles・MediaQuarantine (P0)                   | Event     |
+| PublicProfileRoute・PublicProfilePage・ProfileCard・ProfileAvatar・FollowerCount・ExternalWebsiteList・ProfileCompletion・SuspendedProfileBanner・ProfileSkeleton | client                                                    | 公開プロフィール                                                     | 2.5, 2.6, 6.\*, 7.\*                                | MediaPicture (P0)、CollapsibleMarkdownContent (P0) | State     |
+| PublicProfileSections・ProfileTabs・ProfileActionsMenu                                                                                                            | client                                                    | 区画の登録と表示                                                     | 8.\*                                                | shadcn/uiのタブ (P0)                               | State     |
+| ProfileEditRoute・ProfileEditForm・AvatarField・HandleField・WebsiteFields・ProfileFormSchema                                                                     | client                                                    | プロフィール編集画面                                                 | 1.7, 2.7, 4.\*, 5.1, 5.2                            | MarkdownEditor (P0)、ImageUploadField (P0)         | State     |
+| FollowButton・FollowListRoute・FollowListPage・FollowList                                                                                                         | client                                                    | フォローボタンと一覧                                                 | 9.1, 9.2, 9.5, 9.8, 9.9, 9.10, 10.\*                | useTurnstileToken (P0)、LoginRequiredDialog (P1)   | State     |
+| UserAvatar                                                                                                                                                        | client                                                    | 利用者の画像とプレースホルダー                                       | 5.6, 10.3                                           | MediaPicture (P0)                                  | State     |
+| ProfileTechDocs                                                                                                                                                   | docs/GUIDES/tech                                          | `backend/011`・`db/006`・`backend/007`の節                           | 3.7, 13.4                                           | —                                                  | —         |
+| ProfileServiceSpecs                                                                                                                                               | docs/GUIDES/service                                       | ページ配置・文言規則・準拠方針・データエクスポート・日次タイムライン | 13.5                                                | —                                                  | —         |
 
 ### common-lib
 
@@ -686,7 +687,7 @@ export declare function previousHandleDelete(
 - 比較は列の照合規則(`NOCASE`)で行い、値をSQL側で変換しない(索引を使うため)。
 - 現在のハンドルの対象の取り消しの条件(状態や版)は対象ごとに違うため、`CASE`式の組み立ては各ドメインのストアが行う。
 
-### backend-lib/workers/profile
+### backend-lib/core/profile・workers/profile
 
 #### UserProfileDirectory
 
@@ -698,12 +699,12 @@ export declare function previousHandleDelete(
 **Contracts**: Service [x]
 
 ```typescript
-// user-handle-namespace.ts
+// workers/profile/user-handle-namespace.ts(infrastructure層とworkersだけが使う)
 export declare const USER_HANDLE_NAMESPACE: HandleNamespace;
 // current: users(ownerId users.id、handle users.handle、activeCondition users.deleted_at IS NULL)
 // previous: user_previous_handles(ownerId user_id、handle、deletedAt)
 
-// user-profile-directory.ts
+// core/profile/ports.ts
 export interface UserSummaryRecord {
   readonly userId: string;
   readonly handle: string;
@@ -723,14 +724,16 @@ export interface UserProfileDirectory {
   ): Promise<ReadonlyMap<string, UserSummaryRecord>>; // 重複を除き90件ずつ。退会済みは返さない
   resolveHandle(handle: string): Promise<UserHandleResolution>; // 退会済みの利用者は解決しない。停止中は返す
 }
+// core/profile/identifiers.ts
 export declare const PROFILE_PLATFORM_TYPES: {
   readonly UserProfileDirectory: symbol;
   readonly ProfileExport: symbol;
   readonly FollowExport: symbol;
   readonly FollowerDirectory: symbol;
-}; // Symbol.for('profile.<名前>')
+}; // Symbol.for('profile.<名前>')の凍結したオブジェクト
 ```
 
+- 置き場所: api・eventのapplication層と後続specの`backend-lib/workers/<ドメイン>`の両方から読み込めるよう、4つの照会口の契約は`apps/backend-lib/core/profile/ports.ts`、識別子は`core/profile/identifiers.ts`に置き、D1の実装(`d1-user-profile-directory.ts`・`d1-profile-export.ts`・`d1-follow-directory.ts`)と束縛だけを`apps/backend-lib/workers/profile`に置く(application層は`**/lib/workers/**`を型も含めて読み込めないため)。`core/profile`は`workers`・`apps/db`を読み込まない。
 - `findSummaries`は`users`と`user_profiles`の左外部結合を1回の問い合わせ(IDのバインド変数は90個以内)で読む。`suspended`は`users.status = 'suspended'`。
 - `resolveHandle`は`resolveHandle(db, USER_HANDLE_NAMESPACE, handle)`の結果の保有者を`findSummaries([id], 'not-withdrawn')`で引く。旧ハンドルの保有者が退会済みなら`none`(論理削除済みのため`resolveHandle`の時点で出ない)。
 - 後続specは`users`・`user_profiles`を直接読まず、これを使う。可視かどうかの使い分けは呼び出し元が`scope`で決める。
@@ -740,7 +743,7 @@ export declare const PROFILE_PLATFORM_TYPES: {
 **Contracts**: Service [x]
 
 ```typescript
-// profile-export.ts
+// core/profile/ports.ts(続き)
 export interface ProfileExportRecord {
   readonly handle: string; // profile.json・manifest.jsonのuser.handle・ZIPのファイル名
   readonly nickname: string;
@@ -753,7 +756,7 @@ export interface ProfileExportRecord {
 export interface ProfileExport {
   find(userId: string): Promise<ProfileExportRecord | undefined>; // 退会済み・物理削除済みはundefined。停止中は返す
 }
-// follow-directory.ts
+// core/profile/ports.ts(続き)
 export interface FollowExportEntry {
   readonly handle: string;
   readonly nickname: string;
@@ -775,11 +778,11 @@ export interface FollowerDirectory {
 ```
 
 - `FollowerDirectory`はフォローのIDの昇順で可視のフォロワーを返す。受信設定・メールアドレスの確認の判定は通知の側で行う。
-- 3つともeventのQueueの処理(data-export・notifications)から呼ばれるため、`PROFILE_PLATFORM_MODULE`でapi・eventの両方に束縛する。
+- 3つともeventのQueueの処理(data-export・notifications)から呼ばれるため、`PROFILE_PLATFORM_MODULE`でapi・eventの両方に束縛する。呼び出し元のapplication層は契約の型を`core/profile/ports.ts`から読み込み、`core/profile/identifiers.ts`の`PROFILE_PLATFORM_TYPES`で受け取る。
 
 #### ProfilePlatformModule
 
-- `PROFILE_PLATFORM_MODULE`: `UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`のD1実装を処理単位で束縛する。apiとeventの`composition/modules.ts`の両方へ入れる。
+- `PROFILE_PLATFORM_MODULE`(`workers/profile/profile-platform-module.ts`): `UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`のD1実装(`workers/profile/d1-*.ts`)を`core/profile`の`PROFILE_PLATFORM_TYPES`に処理単位で束縛する。apiとeventの`composition/modules.ts`の両方へ入れる。
 
 ### api
 
@@ -1343,6 +1346,8 @@ export interface UserAvatarProps {
   - `handle-rules`: 形式(`a`・`A1`・`a-b_c`・25文字・26文字・先頭のハイフン・空白・全角・`é`)、`toHandleKey`がASCIIだけを小文字にすること、予約語の14語と`Admin`・`ADMIN`の一致・`admin1`の不一致(1.1・1.2・1.5・3.2・3.5)。
   - `profile-input-rules`・`external-url`: 50・5,000・25書記素の境界、絵文字の書記素、`https://a.example`・`http://`・`javascript:`・`data:`・相対URL・2,048と2,049文字(4.4・4.6)。
   - `profile-edit-plan`・`website-list`: `none`・`case-only`・`changed`、自分の旧ハンドルへの戻し、画像の`keep`・`set`(差し替え・新規)・`remove`、名前の空白の正規化(2.1〜2.3・5.3・5.4)。
+  - `core/profile/identifiers`: `PROFILE_PLATFORM_TYPES`の4つの識別子が`Symbol.for('profile.<名前>')`の値を持ち、オブジェクトが凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形、12.8)。
+  - 層の規則: 静的解析で、api・eventのapplication層に`**/lib/workers/**`の読み込み(型だけの読み込みを含む)が無く、`core/profile`が`workers`・`apps/db`を読み込まないこと。
   - `user-handle-availability`: identity-authの`GENERATED_HANDLE_LENGTH`・`GENERATED_HANDLE_ALPHABET`で作った初期ハンドルの形式が`USER_HANDLE_RULE`で`ok`になること(1.9)。
   - ユースケース(模擬のポート): `ProfileEditor`の判定の順序(競合→予約語→使用中→画像の`claim`→保存→削除)と、`case-only`で予約語・使用中を判定しないこと、他人の旧ハンドルを拒否しないこと、`HandleAvailabilityChecker`の本人の現在・旧と他人の旧ハンドルの扱い、`OrphanedFileSweepJob`の存在しない保有者だけの削除・`hasMore`の繰り返し・1,000件の打ち切り・保有者ごとの失敗で止まらないこと、`PublicProfileReader`の404・302・停止中の本人・Ultrasの失敗の縮退、`FollowService`の本人・停止中・存在しない・冪等、3つの非同期の波及処理の`continue`・`done`(1.3〜1.7・2.5・2.6・4.14・5.5・6.7・7.1〜7.5・9.3〜9.7・11.2〜11.6)。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts`、ローカルD1):
