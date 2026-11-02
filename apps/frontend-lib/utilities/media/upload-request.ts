@@ -8,7 +8,11 @@ import {
   UPLOAD_RELAY_PREFIX,
   type UploadedFile,
 } from '../../../common-lib/media/upload-protocol.ts';
-import { errorMessageOf } from '../graphql/graphql-result.ts';
+import {
+  errorEnvelopeSchema,
+  errorMessageOf,
+  isUnexpectedErrorCode,
+} from '../graphql/graphql-result.ts';
 import { z } from '../validation/zod.ts';
 import type { UploadConstraints } from './upload-constraints.ts';
 import {
@@ -63,7 +67,7 @@ export interface UploadFailure {
   readonly ok: false;
   readonly message: string;
   readonly retryable: boolean;
-  // 想定外の応答の時だけ、エラートラッキングへ送れる例外を添える
+  // エラートラッキングへ送る想定外の失敗の時だけ、送れる例外を添える
   readonly unexpectedError: UnexpectedUploadResponseError | undefined;
 }
 
@@ -100,9 +104,29 @@ const uploadedSchema = z.object({
   }),
 });
 
-const errorEnvelopeSchema = z.object({
-  error: z.object({ code: z.string() }),
-});
+// 状態コードだけで再試行できると分かる失敗は、本文に文言が無くても状態コードの文言で示す
+const RETRYABLE_STATUS_MESSAGES: ReadonlyMap<number, string> = new Map([
+  [SERVICE_UNAVAILABLE, UPLOAD_UNAVAILABLE_MESSAGE],
+  [TOO_MANY_REQUESTS, UPLOAD_RATE_LIMITED_MESSAGE],
+]);
+
+// 画面からは起きない用途の誤りのため、本文の文言を示さず想定外の応答として送る
+const UPLOAD_PURPOSE_NOT_FOUND = 'upload_purpose_not_found';
+
+interface ErrorEnvelope {
+  readonly code: string;
+  // 空や空白だけの文言は画面に示せないため持たない
+  readonly message: string | undefined;
+}
+
+const errorEnvelopeOf = (body: unknown): ErrorEnvelope | undefined => {
+  const parsed = errorEnvelopeSchema.safeParse(body);
+  if (!parsed.success) {
+    return undefined;
+  }
+  const { code, message } = parsed.data.error;
+  return { code, message: message.trim() === '' ? undefined : message };
+};
 
 const decodeJson = (body: string): unknown => {
   try {
@@ -162,21 +186,33 @@ export const parseUploadResponse = (
       ? { ok: true, file: uploaded.data.data }
       : unexpected(status, undefined, context.contactAvailable);
   }
-  if (status === SERVICE_UNAVAILABLE) {
-    return failure(UPLOAD_UNAVAILABLE_MESSAGE, true);
+  const envelope = errorEnvelopeOf(body);
+  const rejection =
+    envelope === undefined
+      ? undefined
+      : rejectionOf(envelope.code, context.constraints);
+  if (rejection !== undefined) {
+    return failure(rejection.message, rejection.retryable);
   }
-  if (status === TOO_MANY_REQUESTS) {
-    return failure(UPLOAD_RATE_LIMITED_MESSAGE, true);
+  const retryableMessage = RETRYABLE_STATUS_MESSAGES.get(status);
+  if (retryableMessage !== undefined) {
+    return failure(envelope?.message ?? retryableMessage, true);
   }
-  const envelope = errorEnvelopeSchema.safeParse(body);
-  if (!envelope.success) {
-    return unexpected(status, undefined, context.contactAvailable);
+  if (
+    envelope?.message === undefined ||
+    envelope.code === UPLOAD_PURPOSE_NOT_FOUND
+  ) {
+    return unexpected(status, envelope?.code, context.contactAvailable);
   }
-  const { code } = envelope.data.error;
-  const rejection = rejectionOf(code, context.constraints);
-  return rejection === undefined
-    ? unexpected(status, code, context.contactAvailable)
-    : failure(rejection.message, rejection.retryable);
+  // 中継とAPIの文言は両側の画面にそのまま出せる契約のため、表に無いコードでも本文の文言を示し、想定外のコードだけをエラートラッキングへ送る
+  return {
+    ok: false,
+    message: envelope.message,
+    retryable: false,
+    unexpectedError: isUnexpectedErrorCode(envelope.code)
+      ? new UnexpectedUploadResponseError(status, envelope.code)
+      : undefined,
+  };
 };
 
 const receive = async (

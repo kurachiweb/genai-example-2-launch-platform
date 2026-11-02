@@ -106,7 +106,11 @@ export function ImageUploadField({
     const current = nextIndex === -1 ? undefined : remaining[nextIndex];
     if (current === undefined) {
       setEditing(undefined);
-      send([...prepared, ...skipped]);
+      const files = [...prepared, ...skipped];
+      // 全ての画像の編集を取り消した選択は何も加えず、前の結果の表示を残す
+      if (files.length > 0) {
+        send(files);
+      }
       return;
     }
     setEditing({
@@ -162,7 +166,10 @@ export function ImageUploadField({
           ]);
         }}
         onCancel={() => {
-          setEditing(undefined);
+          if (editing === undefined) {
+            return;
+          }
+          advance(editing.rest, editing.prepared);
         }}
       />
     </>

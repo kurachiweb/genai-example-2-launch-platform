@@ -212,7 +212,7 @@ describe('useFileUpload', () => {
     [true, UNEXPECTED_WITH_CONTACT],
     [false, UNEXPECTED_WITHOUT_CONTACT],
   ])(
-    '問い合わせの導線が%sなら、想定外の応答をその文言にしてエラートラッキングへ送る',
+    '問い合わせの導線が%sなら、JSONでない本文の応答を想定外の文言にしてエラートラッキングへ送る',
     async (contactAvailable, message) => {
       const fetch = stubUploadFetch();
       const { result, act } = await renderUpload(contactAvailable);
@@ -220,7 +220,7 @@ describe('useFileUpload', () => {
       await act(() => {
         result.current.start([createSvgFile('logo.svg')]);
       });
-      await fetch.reply(errorReply(500, 'internal_error'));
+      await fetch.reply({ status: 502, text: '<html>Bad Gateway</html>' });
 
       await expect
         .poll(() => result.current.state)
@@ -229,9 +229,46 @@ describe('useFileUpload', () => {
       const [reported] =
         vi.mocked(reportUnexpectedErrorInBrowser).mock.calls[0] ?? [];
       expect(reported).toBeInstanceOf(UnexpectedUploadResponseError);
-      expect(reported).toMatchObject({ status: 500, code: 'internal_error' });
+      expect(reported).toMatchObject({ status: 502, code: undefined });
     },
   );
+
+  test('中継の拒否は表に無いコードでも共通のエラー形式の文言をそのまま示し、エラートラッキングへ送らない', async () => {
+    const fetch = stubUploadFetch();
+    const message =
+      'この操作を受け付けられませんでした。ページを再読み込みして再度お試しください。';
+    const { result, act } = await renderUpload(false);
+
+    await act(() => {
+      result.current.start([createSvgFile('logo.svg')]);
+    });
+    await fetch.reply(errorReply(403, 'csrf_rejected', message));
+
+    await expect
+      .poll(() => result.current.state)
+      .toEqual({ status: 'failed', message, retryable: false, completed: 0 });
+    expect(reportUnexpectedErrorInBrowser).not.toHaveBeenCalled();
+  });
+
+  test('サーバー内部の失敗は本文の文言を示し、エラートラッキングへ送る', async () => {
+    const fetch = stubUploadFetch();
+    const message = '問題が発生しました。時間をおいて再度お試しください。';
+    const { result, act } = await renderUpload();
+
+    await act(() => {
+      result.current.start([createSvgFile('logo.svg')]);
+    });
+    await fetch.reply(errorReply(500, 'internal_error', message));
+
+    await expect
+      .poll(() => result.current.state)
+      .toEqual({ status: 'failed', message, retryable: false, completed: 0 });
+    expect(reportUnexpectedErrorInBrowser).toHaveBeenCalledOnce();
+    const [reported] =
+      vi.mocked(reportUnexpectedErrorInBrowser).mock.calls[0] ?? [];
+    expect(reported).toBeInstanceOf(UnexpectedUploadResponseError);
+    expect(reported).toMatchObject({ status: 500, code: 'internal_error' });
+  });
 
   test('取り消すと待ちの状態に戻り、再試行しても送らない', async () => {
     const fetch = stubUploadFetch();

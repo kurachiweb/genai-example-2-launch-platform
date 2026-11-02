@@ -46,6 +46,10 @@ const UNEXPECTED_ERROR_CODES: ReadonlySet<string> = new Set([
   ...FRONTEND_UNEXPECTED_ERROR_CODES,
 ]);
 
+// GraphQL以外の通信(アップロードの中継など)でも、共通のエラー形式のコードを同じ基準で想定内と想定外に分ける
+export const isUnexpectedErrorCode = (code: string): boolean =>
+  UNEXPECTED_ERROR_CODES.has(code);
+
 const INVALID_RESPONSE_MESSAGE =
   '現在ご利用いただけません。時間をおいて再度お試しください。';
 
@@ -66,7 +70,7 @@ export class GraphQLClientError extends Error {
     this.status = init.status;
     this.details = init.details;
     this.retryAfterSeconds = init.retryAfterSeconds;
-    this.expected = !UNEXPECTED_ERROR_CODES.has(init.code);
+    this.expected = !isUnexpectedErrorCode(init.code);
   }
 }
 
@@ -84,7 +88,8 @@ const fieldErrorDetailsSchema = z.array(
   z.object({ field: z.string(), message: z.string(), code: z.string() }),
 );
 
-const errorEnvelopeSchema = z.object({
+// フロントエンドサーバーとAPIサーバーが返す共通のエラー形式
+export const errorEnvelopeSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),

@@ -41,8 +41,14 @@ const CLIENT_CONTEXT = { constraints: LOGO, contactAvailable: true } as const;
 
 const ADMIN_CONTEXT = { constraints: LOGO, contactAvailable: false } as const;
 
-const errorBody = (code: string): string =>
-  JSON.stringify({ error: { code, message: 'サーバーの文言' } });
+const errorBody = (code: string, message = 'サーバーの文言'): string =>
+  JSON.stringify({ error: { code, message } });
+
+const RELAY_REJECTED_MESSAGE =
+  'この操作を受け付けられませんでした。ページを再読み込みして再度お試しください。';
+
+const RELAY_UNAVAILABLE_MESSAGE =
+  '現在ご利用いただけません。時間をおいて再度お試しください。';
 
 const parse = (
   status: number,
@@ -155,31 +161,50 @@ describe('応答の解析', () => {
     },
   );
 
-  test.each([
-    'storage_unavailable',
-    'upstream_unavailable',
-    'upstream_timeout',
-  ])(
-    '503(%s)は一時的に利用できない文言で、同じファイルで再試行できる',
+  test('保存先の503(storage_unavailable)は設計のエラーの表の文言で、同じファイルで再試行できる', () => {
+    expect(parse(503, errorBody('storage_unavailable'))).toEqual({
+      ok: false,
+      message: UPLOAD_UNAVAILABLE_MESSAGE,
+      retryable: true,
+      unexpectedError: undefined,
+    });
+  });
+
+  test.each(['upstream_unavailable', 'upstream_timeout'])(
+    '中継の503(%s)は本文の文言をそのまま示し、同じファイルで再試行できる',
     (code) => {
-      expect(parse(503, errorBody(code))).toEqual({
+      expect(parse(503, errorBody(code, RELAY_UNAVAILABLE_MESSAGE))).toEqual({
         ok: false,
-        message: UPLOAD_UNAVAILABLE_MESSAGE,
+        message: RELAY_UNAVAILABLE_MESSAGE,
         retryable: true,
         unexpectedError: undefined,
       });
     },
   );
 
-  test('本文を解釈できない503も一時的に利用できない扱いにする', () => {
-    expect(parse(503, '<html>')).toMatchObject({
+  test.each([
+    ['解釈できない', '<html>'],
+    ['文言が空の', errorBody('upstream_unavailable', '')],
+  ])('本文を%s503も一時的に利用できない文言で再試行できる', (_, body) => {
+    expect(parse(503, body)).toEqual({
+      ok: false,
       message: UPLOAD_UNAVAILABLE_MESSAGE,
       retryable: true,
+      unexpectedError: undefined,
     });
   });
 
-  test('429は要求の集中の文言で、同じファイルで再試行できる', () => {
+  test('429は本文の文言をそのまま示し、同じファイルで再試行できる', () => {
     expect(parse(429, errorBody('rate_limit_exceeded'))).toEqual({
+      ok: false,
+      message: 'サーバーの文言',
+      retryable: true,
+      unexpectedError: undefined,
+    });
+  });
+
+  test('本文を解釈できない429は要求の集中の文言で再試行できる', () => {
+    expect(parse(429, '<html>')).toEqual({
       ok: false,
       message: UPLOAD_RATE_LIMITED_MESSAGE,
       retryable: true,
@@ -187,11 +212,70 @@ describe('応答の解析', () => {
     });
   });
 
+  describe('設計のエラーの表に無いエラーコード', () => {
+    const RELAYED_CASES: readonly (readonly [number, string, string])[] = [
+      [403, 'csrf_rejected', RELAY_REJECTED_MESSAGE],
+      [405, 'method_not_allowed', RELAY_REJECTED_MESSAGE],
+      [404, 'not_found', 'お探しの内容は見つかりませんでした。'],
+      [
+        500,
+        'internal_error',
+        '問題が発生しました。時間をおいて再度お試しください。',
+      ],
+      [400, 'unknown_rejection', 'サーバーの文言'],
+    ];
+
+    test.each(RELAYED_CASES)(
+      '%dの%sは、共通のエラー形式の文言を両側でそのまま示し、選び直す状態にする',
+      (status, code, message) => {
+        for (const context of [CLIENT_CONTEXT, ADMIN_CONTEXT]) {
+          expect(
+            parse(status, errorBody(code, message), context),
+          ).toMatchObject({ ok: false, message, retryable: false });
+        }
+      },
+    );
+
+    test.each([
+      [403, 'csrf_rejected'],
+      [405, 'method_not_allowed'],
+      [404, 'not_found'],
+      [400, 'unknown_rejection'],
+    ])(
+      '想定内の失敗の%dの%sは、エラートラッキングへ送る例外を添えない',
+      (status, code) => {
+        const result = parse(status, errorBody(code));
+
+        expect(result.ok ? undefined : result.unexpectedError).toBeUndefined();
+      },
+    );
+
+    test('想定外の失敗のinternal_errorは、文言を示しつつエラートラッキングへ送る例外を添える', () => {
+      const result = parse(500, errorBody('internal_error'));
+
+      const error = result.ok ? undefined : result.unexpectedError;
+      expect(error).toBeInstanceOf(UnexpectedUploadResponseError);
+      expect(error?.status).toBe(500);
+      expect(error?.code).toBe('internal_error');
+      expect(error?.message).not.toContain('サーバーの文言');
+    });
+  });
+
   describe('想定外の応答', () => {
     const UNEXPECTED_CASES: readonly (readonly [string, number, string])[] = [
       ['用途が未登録', 404, errorBody('upload_purpose_not_found')],
-      ['エラーの表に無いコード', 403, errorBody('csrf_rejected')],
-      ['エラーの表に無い状態コード', 500, errorBody('internal_error')],
+      ['文言が空の本文', 403, errorBody('csrf_rejected', '')],
+      ['文言が空白だけの本文', 500, errorBody('internal_error', ' \n')],
+      [
+        '文言が文字列でない本文',
+        403,
+        JSON.stringify({ error: { code: 'csrf_rejected', message: 1 } }),
+      ],
+      [
+        'エラーコードの無い本文',
+        403,
+        JSON.stringify({ error: { message: 'サーバーの文言' } }),
+      ],
       ['解釈できない本文', 400, 'not json'],
       ['エラーの形でない本文', 400, JSON.stringify({ message: 'x' })],
       ['201でない成功', 200, JSON.stringify({ data: UPLOADED })],

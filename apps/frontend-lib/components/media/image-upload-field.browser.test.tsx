@@ -441,12 +441,18 @@ describe('ImageUploadField', () => {
     const { container, onUploaded } = await renderField();
 
     await userEvent.upload(fileInputOf(container), [svg]);
-    await fetch.reply(errorReply(503, 'upstream_unavailable'));
+    await fetch.reply(
+      errorReply(
+        503,
+        'upstream_unavailable',
+        '現在ご利用いただけません。時間をおいて再度お試しください。',
+      ),
+    );
 
     await expect
       .element(
         page.getByText(
-          '現在ご利用いただけません。しばらく待ってから再度お試しください。',
+          '現在ご利用いただけません。時間をおいて再度お試しください。',
         ),
       )
       .toBeInTheDocument();
@@ -484,6 +490,53 @@ describe('ImageUploadField', () => {
       expect(reportUnexpectedErrorInBrowser).toHaveBeenCalledOnce();
     },
   );
+
+  test.each([
+    [
+      403,
+      'csrf_rejected',
+      'この操作を受け付けられませんでした。ページを再読み込みして再度お試しください。',
+    ],
+    [
+      500,
+      'internal_error',
+      '問題が発生しました。時間をおいて再度お試しください。',
+    ],
+  ])(
+    '設計の表に無い%dの%sは、共通のエラー形式の文言をそのまま欄に示す',
+    async (status, code, message) => {
+      const fetch = stubUploadFetch();
+      const { container } = await renderField({ contactAvailable: false });
+
+      await userEvent.upload(fileInputOf(container), [
+        createSvgFile('logo.svg'),
+      ]);
+      await fetch.reply(errorReply(status, code, message));
+
+      await expect
+        .element(page.getByText(message, { exact: true }))
+        .toBeInTheDocument();
+      await expect.element(liveRegionOf(container)).toHaveTextContent(message);
+      await expect.element(selectButton()).toHaveAccessibleDescription(message);
+      expect(retryButton().query()).toBeNull();
+    },
+  );
+
+  test.each([
+    ['JSONでない本文', { status: 502, text: '<html>Bad Gateway</html>' }],
+    ['文言が空の本文', errorReply(403, 'csrf_rejected', '')],
+  ] as const)('%sは、想定外の文言を欄に示す', async (_, reply) => {
+    const fetch = stubUploadFetch();
+    const { container } = await renderField();
+
+    await userEvent.upload(fileInputOf(container), [createSvgFile('logo.svg')]);
+    await fetch.reply(reply);
+
+    await expect
+      .element(page.getByText(UNEXPECTED_WITH_CONTACT, { exact: true }))
+      .toBeInTheDocument();
+    expect(reportUnexpectedErrorInBrowser).toHaveBeenCalledOnce();
+  });
 
   test('無効の間は選択できない', async () => {
     await renderField({ disabled: true });

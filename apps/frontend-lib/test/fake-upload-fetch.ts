@@ -5,6 +5,8 @@ import type { UploadedFile } from '../../common-lib/media/upload-protocol.ts';
 
 export type UploadReply =
   | { readonly status: number; readonly body: unknown }
+  // JSONでない本文(HTMLの障害の画面など)をそのまま返す
+  | { readonly status: number; readonly text: string }
   | { readonly networkError: true };
 
 export interface RecordedUpload {
@@ -37,9 +39,13 @@ export const uploadedReply = (
   body: { data: uploadedFileOf(file, fileId, size) },
 });
 
-export const errorReply = (status: number, code: string): UploadReply => ({
+export const errorReply = (
+  status: number,
+  code: string,
+  message: string = code,
+): UploadReply => ({
   status,
-  body: { error: { code, message: code } },
+  body: { error: { code, message } },
 });
 
 const bodyOf = (init: RequestInit): Blob => {
@@ -93,10 +99,15 @@ export function stubUploadFetch(): UploadFetchStub {
         return;
       }
       request.resolve(
-        new Response(JSON.stringify(reply.body), {
-          status: reply.status,
-          headers: { 'content-type': 'application/json' },
-        }),
+        'text' in reply
+          ? new Response(reply.text, {
+              status: reply.status,
+              headers: { 'content-type': 'text/html; charset=utf-8' },
+            })
+          : new Response(JSON.stringify(reply.body), {
+              status: reply.status,
+              headers: { 'content-type': 'application/json' },
+            }),
       );
     },
   };

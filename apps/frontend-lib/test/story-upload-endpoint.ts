@@ -6,12 +6,21 @@ export type StoryUploadOutcome =
 const RESPONSE_DELAY_MS = 800;
 
 const ERROR_BODIES: Readonly<
-  Record<Exclude<StoryUploadOutcome, 'success'>, readonly [number, string]>
+  Record<
+    Exclude<StoryUploadOutcome, 'success' | 'unexpected'>,
+    readonly [number, string]
+  >
 > = {
   unavailable: [503, 'storage_unavailable'],
   rejected: [422, 'image_unreadable'],
-  unexpected: [500, 'internal_error'],
 };
+
+// 共通のエラー形式の本文は表に無いコードでも文言をそのまま示すため、想定外の応答はJSONでない本文で再現する
+const unexpectedResponse = (): Response =>
+  new Response('<html>Bad Gateway</html>', {
+    status: 502,
+    headers: { 'content-type': 'text/html; charset=utf-8' },
+  });
 
 const jsonResponse = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), {
@@ -53,6 +62,9 @@ export function installStoryUploadEndpoint(
       return original(input, init);
     }
     await delay(init?.signal);
+    if (outcome === 'unexpected') {
+      return unexpectedResponse();
+    }
     if (outcome !== 'success') {
       const [status, code] = ERROR_BODIES[outcome];
       return jsonResponse(status, { error: { code, message: code } });

@@ -473,14 +473,15 @@ import { APP_PROFILE } from '../../composition/app-profile.ts';
 | `onUploaded`                                                 | 送信できたファイル(`UploadedFile`)の一覧を受け取る                                                                                      |
 | `ref`・`aria-labelledby`・`aria-describedby`・`aria-invalid` | `FormField`の子の関数が受け取る値をそのまま渡す                                                                                         |
 
-- `ImageUploadField`は、選んだ時点で形式と個数、SVGのサイズと合計を検査し、SVG以外の画像は選んだ時点でサイズを判定しない(`checkSelection`の`editedTypes`に`EDITED_IMAGE_TYPES`を渡す)。SVG以外の画像を選んだ順に1枚ずつ`ImageCropDialog`で編集させ、全部を確定すると、作り直したファイルと編集しないSVGで`editedTypes`なしに検査し直してから送る。作り直したファイルのサイズの超過は、切り取る範囲を狭めるか別の画像を選ぶよう案内する文言にする(`selectionMessagesOf`に作り直したファイルの名前を渡す)。編集を取り消すと、選択は無かったことにして何も送らない。
+- `ImageUploadField`は、選んだ時点で形式と個数、SVGのサイズと合計を検査し、SVG以外の画像は選んだ時点でサイズを判定しない(`checkSelection`の`editedTypes`に`EDITED_IMAGE_TYPES`を渡す)。SVG以外の画像を選んだ順に1枚ずつ`ImageCropDialog`で編集させ、全部を確定すると、作り直したファイルと編集しないSVGで`editedTypes`なしに検査し直してから送る。作り直したファイルのサイズの超過は、切り取る範囲を狭めるか別の画像を選ぶよう案内する文言にする(`selectionMessagesOf`に作り直したファイルの名前を渡す)。複数の画像の編集の途中で取り消すと、その画像だけを選択から外し、編集を済ませた画像と編集しないSVGを残して、残りの画像の編集を続ける。検査し直しは外した後の選択で行う。取り消した画像のダイアログの中身は次の画像に入れ替わり、フォーカスはダイアログの中に留まって、ダイアログの説明が次の画像のファイル名を伝える。最後の画像を取り消すとダイアログを閉じて選択のボタンへフォーカスを戻し、残った画像を送る。全ての画像を取り消すと何も加えず、前の結果の表示を残す。
 - `AttachmentUploadField`は、編集ダイアログを出さず、選んだファイルのサイズで判定してそのまま送る。
 - 送信は`useFileUpload`が1件ずつ順に`fetch`で行い、`sendUpload`と`parseUploadResponse`で結果を文言にする。再試行できる失敗(一時的に利用できない・要求の集中・通信の失敗・送信の不備)では「再試行」のボタンを出し、失敗したファイルから同じファイルで送り直す。押すと、消えるボタンからフォーカスを選択のボタンへ移す。選び直しの拒否では再試行を出さず、別のファイルを選ばせる。
+- 文言は、画面が用途の表示名などから作るエラーコード(`rejectionOf`の対象)ではその文言にし、それ以外のエラーコードでは共通のエラー形式(`errorEnvelopeSchema`)の本文の文言をそのまま示す(中継の`csrf_rejected`・`internal_error`など)。本文がJSONでない・共通のエラー形式でない・文言が空の時と、画面からは起きない用途の誤り(`upload_purpose_not_found`)は、`errorMessageOf`で想定外の文言にする。503・429は、本文に文言が無くても状態コードの文言で再試行できる失敗にする。
 - 送信中に失敗で止まった時は、それまでに送れたファイルを`onUploaded`へ渡し、再試行で送れた残りを改めて渡す。各ファイルは1度だけ渡る。
 - 送信の結果の型(`UploadedFile`)の識別子をフォームの値にするのは呼び出し側である。送信中の部品を外すと送信を中断し、結果を渡さない。
 - 一覧はファイルごとに送信待ち・送信中・アップロード済みを示し、送信済みのファイルの縮小画像をプレビューにする。選択・検査・送信の結果は、最初から置いた`aria-live="polite"`の領域で読み上げる。エラーの文言はこの領域の中に表示し、選択のボタンへ`aria-describedby`で結び付けて`aria-invalid`を付ける。
 - 送信中は選択のボタンを`pending`にし、選び直しを受け付けない。
-- 想定外の応答(`UnexpectedUploadResponseError`)はエラートラッキングへ送る(「[送信の入口](007-frontend-observability.md#送信の入口)」)。
+- 想定外の応答と、本文の文言を示した失敗のうち想定外のエラーコード(`isUnexpectedErrorCode`。GraphQLの失敗と同じ基準)の失敗は、`UnexpectedUploadResponseError`としてエラートラッキングへ送る(「[送信の入口](007-frontend-observability.md#送信の入口)」)。中継の拒否(`csrf_rejected`など)とAPIの`AppError`のコードは想定内として送らない。再試行できる503・429の失敗も送らない(中継の`upstream_*`は中継が送る)。
 - ブラウザテストでは大域の`fetch`を`test/fake-upload-fetch.ts`の`stubUploadFetch`で差し替え、要求を記録して応答を1件ずつ返す。カタログのストーリーは`test/story-upload-endpoint.ts`の`installStoryUploadEndpoint`を`beforeEach`で使い、アップロードの中継の経路への要求だけを偽の応答にする。
 
 ## カタログの書き方

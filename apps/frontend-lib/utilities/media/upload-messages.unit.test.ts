@@ -212,14 +212,20 @@ describe('サーバーの拒否のエラーコードの文言', () => {
     });
   });
 
+  test('保存先の一時的な障害storage_unavailableは、同じファイルで再試行できる拒否にする', () => {
+    expect(rejectionOf('storage_unavailable', LOGO)).toEqual({
+      message: UPLOAD_UNAVAILABLE_MESSAGE,
+      retryable: true,
+    });
+  });
+
   test.each([
     'upload_purpose_not_found',
-    'storage_unavailable',
     'csrf_rejected',
     'internal_error',
     'toString',
     '',
-  ])('エラーの表で選び直しの拒否に当たらないコード%pは対応が無い', (code) => {
+  ])('エラーの表で文言を作るコードに当たらないコード%pは対応が無い', (code) => {
     expect(rejectionOf(code, LOGO)).toBeUndefined();
   });
 });

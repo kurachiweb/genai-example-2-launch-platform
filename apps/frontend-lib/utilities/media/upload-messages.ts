@@ -16,7 +16,7 @@ export interface UploadRejection {
 
 // 中継の415は全用途の許可形式の範囲での拒否で、利用者にとってはAPIの用途ごとの形式の拒否と同じ意味のため同じ文言にする
 type RejectionCode =
-  | Exclude<UploadErrorCode, 'upload_purpose_not_found' | 'storage_unavailable'>
+  | Exclude<UploadErrorCode, 'upload_purpose_not_found'>
   | 'unsupported_media_type';
 
 export const UPLOAD_UNAVAILABLE_MESSAGE =
@@ -138,12 +138,16 @@ const REJECTIONS: Readonly<
     reselect(
       '画像の縦横の大きさが上限を超えています。小さくしてから選択してください。',
     ),
+  storage_unavailable: () => ({
+    message: UPLOAD_UNAVAILABLE_MESSAGE,
+    retryable: true,
+  }),
 });
 
 const isRejectionCode = (code: string): code is RejectionCode =>
   Object.hasOwn(REJECTIONS, code);
 
-// エラーの表で選び直し・送り直しの拒否に当たらないコードは対応を返さず、呼び出し元が想定外の応答として扱う
+// 設計のエラーの表で画面が文言を作るコードだけに対応を返す。他のコードは呼び出し元が本文の文言か想定外の応答として扱う
 export const rejectionOf = (
   code: string,
   constraints: UploadConstraints,
