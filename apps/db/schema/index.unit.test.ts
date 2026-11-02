@@ -16,6 +16,14 @@ describe('スキーマの集約点', () => {
     'email_cleanup_cursors',
     'media_files',
     'media_file_quarantine_reasons',
+    'users',
+    'user_sessions',
+    'user_auth_tokens',
+    'user_login_challenges',
+    'user_totp_credentials',
+    'user_recovery_codes',
+    'user_lifecycle_events',
+    'user_lifecycle_handler_runs',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

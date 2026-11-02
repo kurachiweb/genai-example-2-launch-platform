@@ -9,7 +9,7 @@
   - 完了状態: 導入確認のWorkers統合テストとブラウザテストがworkerdとChromiumで成功し(ブラウザテストの実行中に依存の最適化のやり直しが起きない)、各アプリの型検査が成功し、tech-stack.mdと依存の版の一覧に3つのパッケージと版が載っている
   - _Requirements: 20.7_
 
-- [ ] 1.2 (P) 利用者アカウントの8テーブルと可視・確認済みの絞り込み条件を定義し、マイグレーションを生成する
+- [x] 1.2 (P) 利用者アカウントの8テーブルと可視・確認済みの絞り込み条件を定義し、マイグレーションを生成する
   - 先に、各テーブルの列の型・NOT NULL・既定値・一意制約・CHECK制約・索引(メールアドレスの未退会ユーザーだけの部分一意索引、物理削除の開始のイベントの利用者ごとの部分一意索引を含む)を確かめる単体テストを書く
   - 利用者は、仮名化ID・大文字小文字を区別しないメールアドレスとハンドル・パスワードのハッシュ・ニックネーム・状態・停止日時・確認日時・使い捨て判定の結果と判定日時・規約同意日時・状態の版・論理削除を持ち、IPアドレスは持たない
   - セッション・認証系トークン・第2要素の待ち・TOTP・リカバリコードは利用者を外部キーで参照し、削除時の動作を指定しない。ライフサイクルイベントは利用者を外部キーで参照せず、完了の記録はイベントを参照する
@@ -454,3 +454,4 @@
 ## Implementation Notes
 
 - 1.1: 導入確認のテストは`apps/api/src/infrastructure/auth/identity-packages.worker.test.ts`と`apps/frontend-lib/components/auth/qr-code-package.browser.test.ts`(後のタスクで本来のテストに置き換える)。`uqr`の`encode`は既定で四辺に1セルの余白(`border: 1`)を加える。`bowser`は解釈できないUser-Agentに空文字列のブラウザ名・OS名を返す。`otpauth`の`validate({ window: 1 })`は一致した時間窓の差分(0・-1・1)を返し、範囲外は`null`。TOTPの試験用の秘密鍵はBase32の文字列で書くとBetterleaksに誤検知されるため、`Secret.fromLatin1(...)`で組み立てる
+- 1.2: テーブル定義は`apps/db/schema/identity/`、マイグレーションは`20261102060846_identity_auth`。部分一意索引とCHECKは`.inlineParams()`で値を埋め込んで生成した(カスタムマイグレーション無し)。部分一意索引`users_email_not_deleted_unique`・`user_lifecycle_events_user_id_purge_due_unique`を衝突の対象(`onConflictDoNothing({ target, where })`など)に使うときは同じWHEREの条件を含める。`USER_STATUSES`・`DISPOSABLE_EMAIL_STATUSES`は`users.ts`に定義し`visibility.ts`から再エクスポートする。トークンの用途・イベントの種類と状態の値は各テーブルの非公開の定数のため、backend-libやapiのdomainに同じ値の定数を作るタスク(3.1・6.1)で、両者が一致することを確かめる単体テスト(先例: media-pipelineの`workers/media/media-file-columns.unit.test.ts`)を加える。`apps/db/schema/index.unit.test.ts`は完全一致ではなく`test.each`と`toContain`の形
