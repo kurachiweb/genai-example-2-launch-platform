@@ -232,7 +232,7 @@ apps/
 │       └── raw-queue-handlers.ts                 # RAW_QUEUE_HANDLERS(封筒を持たないQueueの登録箇所)
 └── api/
     ├── src/application/email/email-cleanup-job.ts        # 日次の後始末のジョブとAPI_EMAIL_TYPES(単体テスト併置)
-    ├── src/infrastructure/email/unavailable-user-address-directory.ts  # 未提供として返す既定の照会口
+    ├── src/infrastructure/email/unavailable-user-address-directory.ts  # 未提供として返す既定の照会口(identity-authがD1UserAddressDirectoryへ差し替えた時点で削除)
     ├── src/composition/email-module.ts                   # apiのメールのAppModule(API_EMAIL_MODULE)
     ├── src/composition/email-registrations.ts            # USER_ADDRESS_DIRECTORY(利用者のアドレスの照会口の登録箇所)
     └── test/config/email-wrangler-config.unit.test.ts    # メール関連のWrangler設定の検査
@@ -1420,7 +1420,7 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 
 #### ApiEmailComposition
 
-- `email-module.ts`(`API_EMAIL_MODULE`): `EMAIL_PLATFORM_MODULE`に加え、`SuppressionMaintenance`(「SuppressionMaintenance」の4つの部品を`toDynamicValue`)・`UserAddressDirectory`(`USER_ADDRESS_DIRECTORY`を`.to()`)・`EmailCleanupJob`を束縛する。`USER_ADDRESS_DIRECTORY: Newable<UserAddressDirectory>`の初期値は`UnavailableUserAddressDirectory`(コンストラクタ引数の無い`@injectable()`のクラスで、常に`unavailable`)で、identity-authが利用者のテーブルを引くクラスへ書き換える(9.4)。
+- `email-module.ts`(`API_EMAIL_MODULE`): `EMAIL_PLATFORM_MODULE`に加え、`SuppressionMaintenance`(「SuppressionMaintenance」の4つの部品を`toDynamicValue`)・`UserAddressDirectory`(`USER_ADDRESS_DIRECTORY`を`.to()`)・`EmailCleanupJob`を束縛する。`USER_ADDRESS_DIRECTORY: Newable<UserAddressDirectory>`の初期値は`UnavailableUserAddressDirectory`(コンストラクタ引数の無い`@injectable()`のクラスで、常に`unavailable`)で、identity-authが利用者のテーブルを引くクラスへ書き換える(9.4)。identity-authは`D1UserAddressDirectory`(backend-libの`workers/identity/`)へ書き換え、未使用になった`UnavailableUserAddressDirectory`を削除した。
 - `scheduled-jobs.ts`への登録とapiのルートの`triggers.crons`への`21 12 * * *`(環境へ継承)は、backend-platformのcronの一致の検査(3環境の実効値)で確かめる。
 
 #### EmailConfigChecks

@@ -645,8 +645,10 @@ import type {
   Principal,
   SessionIssue,
 } from '../../application/session/session-verifier.ts';
+import type { SessionView } from '../../application/session/session-view.ts';
 
-export interface SessionAccess {
+// SessionViewはprincipal()だけを持つapplication層の読み取りの型で、application層の契約はSessionAccessの代わりにこれを受け取る
+export interface SessionAccess extends SessionView {
   principal(): Promise<Principal>; // 最初の呼び出しで1回だけ検証する
   requireAuthenticated(): Promise<AuthenticatedPrincipal>; // 未ログインならAppError(unauthenticated)
   issue(session: SessionIssue): void; // 発行・更新の指示(最後の指示が有効)
@@ -733,6 +735,7 @@ export interface GatewayRequestScope {
   readonly container: Container;
   readonly correlationId: string;
   readonly clientIp: string | undefined;
+  readonly userAgent: string | undefined; // 内部経路の要求のuser-agent(512文字まで)
   readonly session: SessionAccess;
   readonly botToken: string | undefined;
   readonly observation: OperationObservation;
@@ -901,6 +904,7 @@ export interface GraphQLContext {
   readonly caller: CallerKind;
   readonly correlationId: string;
   readonly clientIp: string | undefined;
+  readonly userAgent: string | undefined;
   readonly session: SessionAccess;
   readonly loaders: LoaderRegistry;
   resolve<T>(identifier: symbol): T; // 処理単位のコンテナから取得(8.4)

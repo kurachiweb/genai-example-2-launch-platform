@@ -1138,6 +1138,7 @@ export declare const FORWARDED_BROWSER_HEADERS: readonly [
   'content-type',
   'accept',
   'cf-turnstile-response',
+  'user-agent', // identity-authがセッションの端末の表示に使う
 ];
 export declare const RELAY_TRACE_HEADERS: readonly ['sentry-trace', 'baggage'];
 export declare const RELAY_PATH_PREFIX: '/_bff/';
