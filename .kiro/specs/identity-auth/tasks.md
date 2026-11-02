@@ -62,7 +62,7 @@
   - _Boundary: UserLifecycleContract, IdentityMessageContracts_
   - _Requirements: 3.3, 16.1, 16.5, 16.7_
 
-- [ ] 3.2 (P) 使い捨てメールアドレスの判定の部品とDISIFYの呼び出しを作る
+- [x] 3.2 (P) 使い捨てメールアドレスの判定の部品とDISIFYの呼び出しを作る
   - 先に、ローカル部のダミーへの置き換え、状態コード200の判定結果の真偽、形式の不正・401・429・503・HTML・通信の失敗・時間切れが「未判定」になることを確かめる単体テストと、偽の通信でAPIキーの有無による要求の違いと本文にだけメールアドレスが入ることを確かめるWorkers統合テストを書く
   - 置き換えと分類と、application層が受け取る判定の契約`DisposableEmailChecker`を純粋な部品(`apps/backend-lib/core/identity/disposable-email.ts`)に、判定の呼び出し(フォーム形式の本文、任意のAPIキー、3秒の打ち切り、未判定の警告ログ)を共有のWorkers向けの部品(`workers/identity/disify-client.ts`)に作る。application層は`**/lib/workers/**`を読み込めないため、契約を`workers`に置かない。ログにメールアドレスとドメインを出さない
   - 完了状態: 両方のテストが成功し、外部へ通信せずに検証できる
@@ -459,3 +459,4 @@
 - 2.1: `FORWARDED_BROWSER_HEADERS`は`buildRelayHeaders`を使うすべての中継の経路で共有されるため、`/_bff/graphql`だけでなくメディアのアップロードの中継でもUser-AgentがAPIサーバーへ届く(APIサーバーは使わない)。中継の項目を完全一致で確かめるテストは`relay-contract.unit.test.ts`のほかに`relay-route.relay-to-api.unit.test.ts`もある
 - 2.2: `userAgent`は`graphql-module.ts`の`createRequestScope`で読み、`USER_AGENT_MAX_LENGTH`(512)で切る。空のヘッダーも`undefined`。文脈をリテラルで組むテストは設計の5件のほかに`test/graphql/document-validator-runtime.worker.test.ts`もある
 - 3.1: 契約は`apps/backend-lib/core/identity/user-lifecycle.ts`、メッセージは`core/messaging/contracts/identity.ts`(本文は`z.ulid()`)。波及処理の名前の検査はメッセージ種別と同じ文字の規則(`infra/003`)。DBの`type`の値との一致は`workers/identity/user-lifecycle-columns.unit.test.ts`で確かめる。イベントの状態(`pending`・`completed`)の一致の確認は、状態の型を定義する3.4で同じテストに加える。12.2では本プロジェクト固有の値のメッセージ種別の一覧にも`identity.*`の2種を加える
+- 3.2: `createDisifyClient`(`workers/identity/disify-client.ts`)は設計に無い`appName`を受け取る(ログのカテゴリ`[appName, 'identity', 'disposable-email']`)。api・eventで組み立てるタスク(8.1・9.2)で`appName`を渡す。200以外の2xxも未判定。backend-libのWorkers統合テストはapiの`test:worker`だけで走る
