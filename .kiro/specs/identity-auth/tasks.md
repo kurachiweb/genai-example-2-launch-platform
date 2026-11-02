@@ -69,7 +69,7 @@
   - _Boundary: DisposableEmailRules, DisifyClient_
   - _Requirements: 3.1, 3.2, 3.5_
 
-- [ ] 3.3 (P) 認証系の7つのメール種別とテンプレートを、同じ変更で定義して登録する
+- [x] 3.3 (P) 認証系の7つのメール種別とテンプレートを、同じ変更で定義して登録する
   - 先に、7種がトランザクションメールとして集約点に登録でき、入力の検証規則が日時とURLの形式を確かめることを単体テストで書く
   - 同じく先に、7種のテンプレートが種別と1対1で登録でき、件名が文言規則どおりで、宛名・行動ボタンのURL・有効期限または変更日時(UTC表記)・心当たりが無い場合の案内を両パートに含むことを確かめるWorkers統合テストを書く
   - 登録確認・メールアドレス変更の確認・変更完了・パスワードリセット・リセット完了・パスワード変更の確認・変更完了の種別を、設計の名前と入力で定義し、メール種別の集約点に加える
@@ -460,3 +460,4 @@
 - 2.2: `userAgent`は`graphql-module.ts`の`createRequestScope`で読み、`USER_AGENT_MAX_LENGTH`(512)で切る。空のヘッダーも`undefined`。文脈をリテラルで組むテストは設計の5件のほかに`test/graphql/document-validator-runtime.worker.test.ts`もある
 - 3.1: 契約は`apps/backend-lib/core/identity/user-lifecycle.ts`、メッセージは`core/messaging/contracts/identity.ts`(本文は`z.ulid()`)。波及処理の名前の検査はメッセージ種別と同じ文字の規則(`infra/003`)。DBの`type`の値との一致は`workers/identity/user-lifecycle-columns.unit.test.ts`で確かめる。イベントの状態(`pending`・`completed`)の一致の確認は、状態の型を定義する3.4で同じテストに加える。12.2では本プロジェクト固有の値のメッセージ種別の一覧にも`identity.*`の2種を加える
 - 3.2: `createDisifyClient`(`workers/identity/disify-client.ts`)は設計に無い`appName`を受け取る(ログのカテゴリ`[appName, 'identity', 'disposable-email']`)。api・eventで組み立てるタスク(8.1・9.2)で`appName`を渡す。200以外の2xxも未判定。backend-libのWorkers統合テストはapiの`test:worker`だけで走る
+- 3.3: 種別は`core/email/kinds/identity.ts`、テンプレートは`apps/event/src/infrastructure/email/templates/identity/`。URLの入力は`https://`か、ホスト名が`localhost`と一致する`http://`だけを受け付ける(IdentityMailerはこの形のURLを組む)。完了の3種は問い合わせ(`contactUrl`)へのボタン「お問い合わせ」を持つ。本文の文言は文言規則に未記載のため、12.2で要点を追記する

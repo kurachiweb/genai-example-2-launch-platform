@@ -632,7 +632,7 @@ Infisicalの機械の主体とOIDCの縛りは次のとおりである。audienc
 | 項目                         | 値                                                                                            | 定義場所                                                                          |
 | ---------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | 送信元の表示名               | `Launch Stadium`                                                                              | `apps/event/src/composition/email-module.ts`の`fromName`                          |
-| テンプレートの集約点         | `EMAIL_TEMPLATES`(疎通確認のテンプレートだけ)                                                 | `apps/event/src/infrastructure/email/templates/index.ts`                          |
+| テンプレートの集約点         | `EMAIL_TEMPLATES`(疎通確認と認証系の7種のテンプレート)                                        | `apps/event/src/infrastructure/email/templates/index.ts`                          |
 | 送信者情報の提供元           | `UnsetSenderInfoProvider`(未設定として送信者情報の区画を省く)                                 | `apps/event/src/composition/email-registrations.ts`の`EMAIL_SENDER_INFO_PROVIDER` |
 | 利用者のアドレスの照会口     | `UnavailableUserAddressDirectory`(照会できないとして、利用者に紐づかない抑止記録を削除しない) | `apps/api/src/composition/email-registrations.ts`の`USER_ADDRESS_DIRECTORY`       |
 | 配信不能イベントの処理の登録 | 名前`email-delivery-events`、Queueの名前は`EMAIL_EVENTS_QUEUE_NAME`の値                       | `apps/event/src/composition/raw-queue-handlers.ts`の`RAW_QUEUE_HANDLERS`          |
