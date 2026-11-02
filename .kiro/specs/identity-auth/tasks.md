@@ -253,7 +253,7 @@
   - _Depends: 6.1_
   - _Requirements: 7.9, 8.4, 8.5, 8.6, 8.7, 12.1, 12.2, 12.3_
 
-- [ ] 7.6 (P) パスワードリセットの要求と完了を作る
+- [x] 7.6 (P) パスワードリセットの要求と完了を作る
   - 先に、要求がアカウントの有無と状態を問わず同じ結果になること、未登録・退会済み・停止中へは送らないこと、完了でパスワードの方針の違反ならトークンを消費しないこと、消費・更新・確認済み・全セッションの削除・未使用のトークンの失効・完了メール、多要素認証の設定を変えないことを確かめる単体テストを書く
   - 完了状態: 単体テストが成功する
   - _Boundary: PasswordReset_
@@ -482,3 +482,4 @@
 - 7.3: `StoreEmailVerification`(`email-verification.ts`)・`SavingDisposableEmailCheck`(`disposable-email-check.ts`、未判定なら保存→900秒後の判定し直しの依頼→`disposable-email-check-unavailable`の通知)。7.6・7.7は共通部品の`invalidLinkError()`(`invalid-link.ts`)と`prepareAuthToken()`(`auth-token-issuance.ts`)を使う。`IdentityMessagePublisher.publish`は任意の`{ delaySeconds }`を受け取る(design.mdも更新済み)。`D1UserAccountStore.markEmailVerified`は同じ利用者の確認のトークンも消す。8.1の束縛: `IDENTITY_TYPES.EmailVerification`→`StoreEmailVerification`(処理単位)、`DisposableEmailCheck`→`SavingDisposableEmailCheck`、`DisposableEmailChecker`→`createDisifyClient({ appName: 'api', ... })`。文言「このリンクは無効か、有効期限が切れています。」は8.2で集約する
 - 7.4: `StoreLogin`(`login.ts`)。第2要素の照合とリカバリコードのハッシュの用途`user-recovery-code`は共通部品`second-factor-check.ts`(`checkSecondFactor`・`isTotpEnabled`・`USER_RECOVERY_CODE_HASH_PURPOSE`)にあり、7.5・7.8はこれを使う(design.mdのファイル計画には無い)。第2要素のログインは設計と違い、利用者の読み取りを`status`より先にし、退会済み・存在しないなら`login_challenge_expired`、停止中なら`account_unavailable`(待ちを消し、照合も記録もしない)。テストの偽物は`application/identity/testing/login-fakes.ts`。要件7.10(bot判定)・6.7のCookieの失効・ログイン成否のログは8.2のリゾルバで行う。エラーの文言はlogin.tsの定数で8.2で集約する。8.1の束縛: `IDENTITY_TYPES.Login`→`StoreLogin`
 - 7.5: `StoreReAuthenticator`(`re-authenticator.ts`)・`StoreSessionManagement`(`session-management.ts`)。ログイン試行の確認は`login-throttle-check.ts`の`checkUserLoginThrottle`(ログインと本人確認が共有、ファイル計画に無い)。`reauthentication_failed`の詳細の欄は本人確認の入力の相対の経路(`currentPassword`・`secondFactor`・`secondFactor.totpCode`・`secondFactor.recoveryCode`、定数は`re-authenticator.ts`)で、8.3のリゾルバが`input.`・`input.reAuthentication.`を付ける(`password-rejection.ts`の詳細も同じ)。本人確認は停止・退会を見ないため、7.7〜7.9・8.2の呼び出し側は先に`AccountGuard`を通す。利用者でない主体には一覧が空・失効は`not_found`・一括は0。8.1の束縛: `IDENTITY_TYPES.ReAuthenticator`→`StoreReAuthenticator`、`SessionManagement`→`StoreSessionManagement`。文言「現在のパスワードが正しくありません。」「対象が見つかりません。」は8.2・12.2で集約する
+- 7.6: `StorePasswordReset`(`password-reset.ts`)。リンクのメール・完了メールの送信の失敗は`['api','identity','password-reset']`の`error`ログに留める(`infra/004`に記載済み)。`password_rejected`の詳細の欄は`newPassword`(design.mdのError Categoriesは`password`。8.3のリゾルバが`input.newPassword`にし、12.xで表を合わせる)。8.1の束縛: `IDENTITY_TYPES.PasswordReset`→`StorePasswordReset`
