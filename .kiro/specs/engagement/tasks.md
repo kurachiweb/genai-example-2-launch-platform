@@ -2,7 +2,7 @@
 
 - [ ] 1. 基盤: 入力の規則・テーブル・サービス仕様
 - [ ] 1.1 コメントと評価の入力の規則を、4アプリが読み込める共有の定義として作る
-  - 前提: dev-tooling〜notificationsの20specの全タスクが完了していること(directory-discoveryの`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS`と区画の文脈の型・E2Eの`e2e/support/directory-fixtures.ts`、product-launchの`ProductDirectory`・`visibleProducts()`・`wonLaunchExists()`・プロダクトライフサイクルの登録口、identity-authの`AccountGuard`・`visibleUsers()`・`verifiedUsers()`・ユーザーライフサイクルの登録口・`LoginRequiredDialog`・`resendVerificationEmail`、content-processingの`markdownTextSchema`・`MarkdownEditor`・`useMarkdownOptions`、user-profile-socialの`UserSummary`・`userSummaryLoader`・`UserAvatar`、backend-platformの`SCHEDULED_JOBS`と改訂2のE2Eの共有の補助`triggerScheduled`(`e2e/support/scheduled-trigger.ts`)、admin-foundationのE2Eの`executeLocalD1`)。無ければ該当するタスクを保留して開発者へ報告する(`triggerScheduled`が無い場合は9.1の4:21の匿名化の確かめだけを保留する)
+  - 前提: dev-tooling〜notificationsの20specの全タスクが完了していること(directory-discoveryの`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS`と区画の文脈の型・E2Eの`e2e/support/directory-fixtures.ts`、product-launchの`core/product`の`ProductDirectory`・`PRODUCT_PLATFORM_TYPES`・`visibleProducts()`・`wonLaunchExists()`・プロダクトライフサイクルの登録口、identity-authの`AccountGuard`・`visibleUsers()`・`verifiedUsers()`・ユーザーライフサイクルの登録口・`LoginRequiredDialog`・`resendVerificationEmail`、content-processingの`markdownTextSchema`・`MarkdownEditor`・`useMarkdownOptions`、user-profile-socialの`UserSummary`・`userSummaryLoader`・`UserAvatar`、backend-platformの`SCHEDULED_JOBS`と改訂2のE2Eの共有の補助`triggerScheduled`(`e2e/support/scheduled-trigger.ts`)、admin-foundationのE2Eの`executeLocalD1`)。無ければ該当するタスクを保留して開発者へ報告する(`triggerScheduled`が無い場合は9.1の4:21の匿名化の確かめだけを保留する)
   - 先に、単体テストで、本文の2,000書記素の境界(結合文字を含む絵文字)・空白だけ・使用できない文字の文言と順、評価の0・6・小数・文字列の拒否、1ページ10件と3階層の定数、bot対策の操作名3つ、見出しのアンカーの接頭辞がコメントのIDごとに異なり英小文字と数字の32文字以内になることを確かめる
   - 完了状態: 単体テストが成功し、apiとclientの型検査で規則を読み込める
   - _Requirements: 1.2, 1.3, 2.2, 3.1, 7.3, 9.5_
@@ -23,15 +23,18 @@
   - _Requirements: 15.5_
 
 - [ ] 2. 共有部品
-- [ ] 2.1 共有部品のDIの識別子を一括で作り、コメントのストアの照会と投稿・返信の条件付きの書き込みの文を作る
+- [ ] 2.1 共有部品の契約とDIの識別子を一括で作り、コメントのストアの照会と投稿・返信の条件付きの書き込みの文を作る
+  - 先に、単体テストで、識別子`ENGAGEMENT_PLATFORM_TYPES`が`Symbol.for('engagement.<名前>')`の値を持ち凍結されていることを確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
   - 先に、ローカルD1のWorkers統合テストで、投稿の文がプロダクトの非公開化・論理削除・投稿者の停止・未掲載の他者のプロダクト・投稿者の未確認のいずれかで一括の書き込みごと失敗し、投稿者本人なら未掲載のプロダクトでも書き込めること、返信の文が親の第3階層・置き換え表示・別のローンチで失敗し、返信のルートと階層が親から決まること、本文をマークダウンの原文のまま保存すること、識別子からの照会が状態の印と投稿者とプロダクトとローンチを返すことを確かめる
-  - 共有部品(コメントのストア・スレッドの照会・評価のストア・匿名化と物理削除のストア・コメントと評価の出力・管理画面のコメントと評価の一覧の照会)のDIの識別子をここで一括で作る(2.2〜2.7は識別子を作らない)
-  - 完了状態: Workers統合テストが成功し、識別子でコメントのストアを取得する型検査が通る
+  - 共有部品(コメントのストア・スレッドの照会・評価のストア・匿名化と物理削除のストア・コメントと評価の出力・管理画面のコメントと評価の一覧の照会)の契約と入出力の型を`apps/backend-lib/core/engagement/ports.ts`に、コメントと評価の文の部品を加えたDIの識別子を`core/engagement/identifiers.ts`に、ここで一括で作る(2.2〜2.7は識別子を作らない)。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが受け取る契約と識別子は`core`に置き、`workers/engagement`には実装と束縛だけを置く
+  - 投稿・返信の条件付きの書き込みの文はデータベースの型を持つため、文の部品`CommentStatements`(`workers/engagement/comment-statements.ts`、apiのinfrastructure層だけが使う)に作り、識別子からの照会はD1の実装(`workers/engagement/d1-comment-store.ts`)に作る
+  - 完了状態: 単体テストとWorkers統合テストが成功し、識別子でコメントのストアを取得する型検査が通り、`core/engagement`が`workers`・`apps/db`を読み込まない(静的解析が成功する)
   - _Requirements: 1.9, 2.1, 2.3, 2.4, 7.4, 12.5_
 
-- [ ] 2.2 コメントのストアに編集・削除・非公開化の書き込みを加える
+- [ ] 2.2 コメントの文の部品に編集・削除・非公開化の書き込みを加える
   - 先に、Workers統合テストで、編集の文が他者・削除済み・非公開化・匿名化のコメントと閲覧できないプロダクトで一括の書き込みごと失敗し、成功で編集の日時が入ること、削除の文が自分の未削除・未非公開化のコメントだけを変え、変更の件数で対象の有無が分かること、非公開化と復元が変更の有無と不在を返し、渡した文を同じ一括の書き込みに入れることを確かめる
   - 完了状態: Workers統合テストが成功する
+  - _Boundary: CommentStatements_
   - _Requirements: 4.1, 4.3, 12.2, 12.4_
 
 - [ ] 2.3 (P) スレッドのページとローンチごと・プロダクトごとの件数の照会を作る
@@ -41,11 +44,12 @@
   - _Boundary: CommentThreadQuery_
   - _Requirements: 3.1, 3.2, 3.4, 3.6, 3.7, 5.1, 5.2, 5.3, 5.4, 5.5, 14.1, 14.4, 14.6_
 
-- [ ] 2.4 (P) 評価のストア(上書きの文・取消・自分の評価・集計・無効化)を作る
+- [ ] 2.4 (P) 評価のストア(取消・自分の評価・集計)と評価の文の部品(上書きの文・無効化)を作る
   - 先に、Workers統合テストで、同じ利用者の2回目の評価が上書きになり1件のままであること、上書きの文がプロダクトの非公開化・未掲載・評価者の未確認で失敗すること、取消が物理削除で無くても成功すること、無効化を上書きで保ち取消で行ごと消えること(仮3)、自分の評価が無効化されていても返ること、平均値と件数から無効化・退会の論理削除・停止中の評価者を除き停止の解除で戻ること(仮2)、無効化と取消が変更の有無と不在を返し渡した文を同じ一括の書き込みに入れることを確かめる
   - 完了状態: Workers統合テストが成功する
   - _Depends: 2.1_
-  - _Boundary: RatingStore_
+  - 上書きの文と無効化は呼び出し側の文を受け取りデータベースの型を持つため、`workers/engagement/rating-statements.ts`の`RatingStatements`(apiのinfrastructure層だけが使う)に作り、取消・自分の評価・集計は`core/engagement`の`RatingStore`のD1の実装(`d1-rating-store.ts`)に作る
+  - _Boundary: RatingStore、RatingStatements_
   - _Requirements: 9.2, 9.3, 9.10, 11.1, 11.2, 11.11, 12.3, 12.4, 14.4_
 
 - [ ] 2.5 (P) 匿名化と利用者・プロダクト単位の物理削除のストアを作る
@@ -57,7 +61,7 @@
 
 - [ ] 2.6 出力の部品を作り、共有の束縛をapiとeventに組み込む
   - 先に、Workers統合テストで、コメントの出力が本人の未匿名化のコメントだけを作成の古い順に返し(削除済み・非公開化を印付きで含む)、評価の出力が本人の論理削除されていない評価だけを返し、管理者による無効化の有無(`invalidatedByAdmin`)が無効化した評価で真・していない評価で偽になることを確かめる(仮5、data-exportの依頼)
-  - コメントのストア・スレッドの照会・評価のストア・匿名化と物理削除のストア・出力の部品を処理単位で束縛するモジュールを作り、apiとeventの束縛の一覧へ同時に加える
+  - コメントのストア・コメントの文の部品・スレッドの照会・評価のストア・評価の文の部品・匿名化と物理削除のストア・出力の部品のD1の実装を処理単位で束縛するモジュール(`workers/engagement/engagement-platform-module.ts`)を作り、apiとeventの束縛の一覧へ同時に加える
   - 完了状態: Workers統合テストと、3経路(api・eventの`fetch`・eventの`queue`)のDIの解決の検査が成功する
   - _Requirements: 14.3, 14.4_
 
@@ -80,19 +84,22 @@
 
 - [ ] 3.2 投稿先の解決を作り、apiのDIの識別子と束縛のモジュールを作る
   - 先に、単体テスト(模擬の`ProductDirectory`)で、プロダクトの照会とローンチの一覧を並行に1回ずつ読み、閲覧できなければ未解決、ローンチが別のプロダクトのものや取消なら未解決のローンチを返すこと、非公開化・論理削除(投稿者の退会を含む)・投稿者の停止のプロダクトが未解決になり、復元と停止の解除で解決されることを確かめる
-  - apiのDIの識別子(投稿先の解決・コメントと評価のユースケース・スレッドの読み取り・2つの管理の操作口・コメント数の供給元・退会の同期の処理・匿名化のジョブ)をここで一括で作り、apiの束縛のモジュールを作って束縛の一覧へ加える(3.3以降と5.1・5.2は束縛を追記する)
+  - apiのDIの識別子(投稿先の解決・コメントと評価のユースケース・コメントと評価の書き込みの単位・スレッドの読み取り・2つの管理の操作口・コメント数の供給元・退会の同期の処理・匿名化のジョブ)をここで一括で作り、apiの束縛のモジュールを作って束縛の一覧へ加える(3.3以降と5.1・5.2は束縛を追記する)
   - 完了状態: 単体テストと、apiのDIの解決の検査が成功する
   - _Depends: 2.6_
   - _Requirements: 1.4, 3.5, 9.6, 13.2, 13.3, 13.4_
 
 - [ ] 3.3 コメントの投稿と返信のユースケースを作る(評価の同時保存を含む)
-  - 先に、単体テスト(模擬のポート)とWorkers統合テストで、判定の順(投稿先→ローンチの状態→親→評価)と各エラー、投稿者本人のコメントを受け付けること、返信への評価と投稿者本人の評価の拒否、評価を添えた投稿でコメントと評価が1回の一括の書き込みで保存され、評価の違反でコメントも残らないこと、評価を添えない投稿で既存の評価が変わらないこと、判定の後の非公開化・停止・親の削除で書き込まれず読み直しで理由が分類されることを確かめる
-  - 完了状態: テストが成功し、apiの束縛に追記したユースケースを解決できる
+  - 先に、単体テスト(偽の`CommentWriter`・`CommentStore`・`ProductDirectory`などの模擬のポート)で、判定の順(投稿先→ローンチの状態→親→評価)と各エラー、投稿者本人のコメントを受け付けること、返信への評価と投稿者本人の評価の拒否、評価を添えた投稿でコメントと評価が1回の書き込みの単位に渡ること、書き込みの単位が`rejected`を返したら読み直しで理由が分類されることを確かめる
+  - 同じく先に、Workers統合テストで、書き込みの単位の実装`D1CommentWriter`が評価を添えた投稿でコメントと評価を1回の一括の書き込みで保存し、評価の違反でコメントも残らず`rejected`を返すこと、評価を添えない投稿で既存の評価が変わらないこと、判定の後の非公開化・停止・親の削除で書き込まれず`rejected`になること、条件の違反以外のD1の例外を投げることを確かめる
+  - application層に書き込みの単位のポート`CommentWriter`(`apps/api/src/application/engagement/ports.ts`)を定義し、文の部品`CommentStatements`・`RatingStatements`から文を組み立てて`db.batch()`を実行する実装`D1CommentWriter`をinfrastructure層に作る。application層はデータベースの接続・SQLの文・一括の書き込みを扱わない
+  - 完了状態: テストが成功し、apiの束縛に追記したユースケースと書き込みの単位を解決でき、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Requirements: 1.1, 1.5, 1.8, 1.9, 2.1, 2.3, 2.4, 2.5, 7.4, 10.1, 10.2, 10.3, 10.4_
 
 - [ ] 3.4 コメントの編集と削除のユースケースを作る
-  - 先に、単体テストとWorkers統合テストで、自分の表示できるコメントだけを編集・削除でき、他者・置き換え表示・閲覧できないプロダクトのコメントが同じ「見つからない」になること、トップレベルの編集だけ評価を添えられ、評価の違反で本文も更新されないこと、編集の本文の規則、投稿からの経過時間やローンチの状態で制限しないことを確かめる
-  - 完了状態: テストが成功し、apiの束縛に追記したユースケースを解決できる
+  - 先に、単体テスト(模擬のポート)とWorkers統合テスト(`D1CommentWriter`の編集と削除を含む)で、自分の表示できるコメントだけを編集・削除でき、他者・置き換え表示・閲覧できないプロダクトのコメントが同じ「見つからない」になること、トップレベルの編集だけ評価を添えられ、評価の違反で本文も更新されないこと、削除の変更が0行なら書き込みの単位が`not-found`を返すこと、編集の本文の規則、投稿からの経過時間やローンチの状態で制限しないことを確かめる
+  - `CommentWriter`に編集と削除の書き込みの単位を加え、`D1CommentWriter`に実装する
+  - 完了状態: テストが成功し、apiの束縛に追記したユースケースを解決でき、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.7_
 
 - [ ] 3.5 スレッドの読み取りとローンチごとの件数のユースケースを作る
@@ -101,12 +108,14 @@
   - _Requirements: 3.1, 3.5, 3.6_
 
 - [ ] 3.6 評価のユースケースを作る
-  - 先に、単体テストとWorkers統合テストで、閲覧できないプロダクトの評価と取消の拒否、自身のプロダクトの拒否、初回と上書きと取消の後の平均値・件数・自分の評価、評価の無い取消の成功、無効化された自分の評価を返すこと、投稿者本人と未ログインの自分の評価がnullであること、判定の後の非公開化で書き込まれないことを確かめる
-  - 完了状態: テストが成功し、apiの束縛に追記したユースケースを解決できる
+  - 先に、単体テスト(偽の`RatingWriter`・`RatingStore`などの模擬のポート)とWorkers統合テスト(`D1RatingWriter`を含む)で、閲覧できないプロダクトの評価と取消の拒否、自身のプロダクトの拒否、初回と上書きと取消の後の平均値・件数・自分の評価、評価の無い取消の成功、無効化された自分の評価を返すこと、投稿者本人と未ログインの自分の評価がnullであること、判定の後の非公開化で書き込まれず`rejected`になることを確かめる
+  - application層に書き込みの単位のポート`RatingWriter`を定義し、`RatingStatements`の上書きの文を実行する実装`D1RatingWriter`をinfrastructure層に作る
+  - 完了状態: テストが成功し、apiの束縛に追記したユースケースと書き込みの単位を解決でき、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.6, 9.10, 11.9, 11.11_
 
 - [ ] 3.7 管理の操作口とディレクトリのコメント数の供給元を作り、apiの項目の値の登録口へ登録する
   - 先に、Workers統合テストで、コメントの非公開化・復元と評価の無効化・取消が変更の有無と不在のエラーを返し、渡した記録の文が同じ一括の書き込みに入り、非公開化が次の読み取りから置き換え表示になり復元で戻ること、コメント数の供給元がコメントの無いプロダクトを0で補うことを確かめる
+  - 2つの管理の操作口は呼び出し側の記録の文(`BatchItem`)を受け取るため、契約と実装をapiのinfrastructure層(`infrastructure/engagement/comment-moderation-control.ts`・`rating-moderation-control.ts`)に作り、文の部品の非公開化と無効化を呼ぶ。コメント数の供給元はapplication層に作る
   - apiの`DIRECTORY_ITEM_METRIC_SOURCES`に`engagement.comment-count`(`key`は`comments`、`order` 10)を登録する
   - 完了状態: テストが成功し、directory-discoveryの登録口の検証を通る
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 14.1_
@@ -259,7 +268,7 @@
   - _Requirements: 6.1, 15.3_
 
 - [ ] 9.2 全体の検査とカバレッジを確かめ、決定と運用の事項を報告する
-  - 整形の検査・静的解析・型検査と、単体テスト・Workers統合テスト・ブラウザテストを一括で実行し、本specが追加・変更したファイルのカバレッジが80%以上であることを確かめる。ログとSentryへの送信にコメントの本文・利用者のニックネームとハンドルが含まれないことを検索で確かめる
+  - 整形の検査・静的解析・型検査と、単体テスト・Workers統合テスト・ブラウザテストを一括で実行し、本specが追加・変更したファイルのカバレッジが80%以上であることを確かめる。静的解析で、api・eventのapplication層に`**/lib/workers/**`の読み込みが無く、`core/engagement`が`workers`・`apps/db`を読み込まないことを確かめる。ログとSentryへの送信にコメントの本文・利用者のニックネームとハンドルが含まれないことを検索で確かめる
   - roadmapの帯の割り当ての表の本specの「使用中の値」(4:21は1400、波及処理は1400)と、ugc-moderationが本specの管理画面の一覧の照会(`AdminCommentDirectory`・`AdminRatingDirectory`、仮6)を使う旨を作業の報告に記録する(仮1〜仮6は2026-10-24に開発者が確定済み)
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に帯の値と照会の利用者が載っている
   - _Requirements: 14.5, 14.6, 15.1, 15.2_

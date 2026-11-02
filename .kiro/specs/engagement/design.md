@@ -6,7 +6,7 @@
 
 **Users**: サポーター・探索者はプロダクト詳細ページのローンチのブロックでコメントを読み書きし、サイドバーで評価を付ける。投稿者は自分のプロダクトのローンチへコメントする。後続spec(ugc-moderation・content-reporting・data-export・public-api)の開発者は、状態の操作口・照会の部品・出力の部品・メニューの置き場所を使う。
 
-**Impact**: D1に2テーブル(`launch_comments`・`product_ratings`)を足す。`apps/common-lib/engagement`に入力の規則、`apps/backend-lib/workers/engagement`にストア・照会・物理削除と匿名化・出力の部品を新設する。apiにスキーマモジュール`engagement`・ユースケース・管理の操作口・項目の値の供給元・退会の同期の処理・4:21のジョブを、eventにユーザーとプロダクトの`purge_due`の処理を、clientに評価欄・コメント欄・コメント数の部品とメニューの登録口を足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレット・パッケージは無い。
+**Impact**: D1に2テーブル(`launch_comments`・`product_ratings`)を足す。`apps/common-lib/engagement`に入力の規則、`apps/backend-lib/core/engagement`に共有部品(ストア・照会・物理削除と匿名化・出力)の契約とDIの識別子を、`apps/backend-lib/workers/engagement`にそのD1の実装・条件付きの書き込みの文の部品・共通の束縛を新設する。apiにスキーマモジュール`engagement`・ユースケース・書き込みの単位のポートとその実装・管理の操作口・項目の値の供給元・退会の同期の処理・4:21のジョブを、eventにユーザーとプロダクトの`purge_due`の処理を、clientに評価欄・コメント欄・コメント数の部品とメニューの登録口を足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレット・パッケージは無い。
 
 ### Goals
 
@@ -26,8 +26,10 @@
 
 - エンゲージメントのデータ: `launch_comments`・`product_ratings`(`apps/db/schema/engagement/`)と、表示できるコメント・有効な評価の条件`displayableComment()`・`validRating()`。
 - 入力の規則(`apps/common-lib/engagement/`): 本文の上限・階層の上限・1ページの件数・評価の値・bot対策の操作名・本文の検証の規則・見出しのアンカーの接頭辞。
-- 共有部品(`apps/backend-lib/workers/engagement/`): `CommentStore`・`CommentThreadQuery`・`RatingStore`・`EngagementErasureStore`・`CommentExport`・`RatingExport`・管理画面の一覧の照会`AdminCommentDirectory`・`AdminRatingDirectory`(仮6、ugc-moderationが使う)と、api・event共通の束縛`ENGAGEMENT_PLATFORM_MODULE`。
-- apiのユースケース(投稿先の解決・コメント・評価・管理の操作口・コメント数の供給元・匿名化のジョブ)、スキーマモジュール`engagement`、同期の処理`engagement.withdrawal`、4:21のジョブ`engagement.comment-anonymization`。
+- 共有部品の契約と識別子(`apps/backend-lib/core/engagement/`): `CommentStore`(識別子からの照会)・`CommentThreadQuery`・`RatingStore`(取消・自分の評価・集計)・`EngagementErasureStore`・`CommentExport`・`RatingExport`・管理画面の一覧の照会`AdminCommentDirectory`・`AdminRatingDirectory`(仮6、ugc-moderationが使う)の契約と入出力の型(`ports.ts`)と、DIの識別子`ENGAGEMENT_PLATFORM_TYPES`(`identifiers.ts`)。api・eventのapplication層と後続specが読み込む。
+- 共有部品の実装(`apps/backend-lib/workers/engagement/`): 上の契約のD1の実装(`d1-*.ts`)、条件付きの書き込みの文を返す`CommentStatements`・`RatingStatements`(データベースの型を持つため`workers`に置き、infrastructure層だけが使う)と、api・event共通の束縛`ENGAGEMENT_PLATFORM_MODULE`。
+- apiの書き込みの単位: application層のポート`CommentWriter`(投稿・編集・削除)・`RatingWriter`(評価の上書き)と、文を組み立てて一括の書き込みを実行するinfrastructure層の実装`D1CommentWriter`・`D1RatingWriter`。
+- apiのユースケース(投稿先の解決・コメント・評価・コメント数の供給元・匿名化のジョブ)、管理の操作口(`CommentModerationControl`・`RatingModerationControl`。呼び出し側の文を状態の変更と同じ一括の書き込みに入れるため、infrastructure層に置く)、スキーマモジュール`engagement`、同期の処理`engagement.withdrawal`、4:21のジョブ`engagement.comment-anonymization`。
 - eventの処理`engagement.account-erasure`(ユーザーの`purge_due`)・`engagement.product-erasure`(プロダクトの`purge_due`)。
 - clientの評価欄・コメント欄・コメント数の部品と、他者のコメントの操作のメニューの登録口`COMMENT_ACTIONS`。
 - 技術ドキュメント`backend/015-tombstoned-comment-threads.md`・`frontend/015-star-rating-and-threaded-composer.md`の新規作成と、サービス仕様(ページ配置・文言規則・日次タイムライン)とオンボーディングの追記。
@@ -42,21 +44,22 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`)・`AppError`・`getAppLogger`・`ulidPrimaryKey`・`timestamps`・`snakeCase.table`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`)・`ScheduledJobDefinition`・`ScheduledJobHandler`・`SCHEDULED_JOBS`、E2Eの`e2e/support/scheduled-trigger.ts`(`triggerScheduled`、backend-platformの改訂2)。`BatchItem`は`drizzle-orm/batch`の型。形を変えない。
+- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`)・`AppError`・`getAppLogger`・`ulidPrimaryKey`・`timestamps`・`snakeCase.table`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`)・`ScheduledJobDefinition`・`ScheduledJobHandler`・`SCHEDULED_JOBS`、E2Eの`e2e/support/scheduled-trigger.ts`(`triggerScheduled`、backend-platformの改訂2)。`BatchItem`は`drizzle-orm/batch`の型で、`workers/engagement`とapiのinfrastructure層だけが使う。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`caller`・`session`・`loaders`・`assertHuman`)・`withValidatedArgs`・`encodeCursor`・`decodeCursor`・`DateTime`・`PageInfo`。
 - identity-auth: `AccountGuard`(`currentUser`・`requireVerifiedUser`・`requireWritableUser`)・`CurrentUser`・`IDENTITY_TYPES`・`visibleUsers()`・`verifiedUsers()`・`users`(条件の結合と外部キーだけ)・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`、clientの`viewer`の文脈(`ClientViewer`)・`LoginRequiredDialog`・GraphQLの`resendVerificationEmail`、E2Eの`e2e/support/mailpit.ts`。
-- product-launch: `PRODUCT_PLATFORM_TYPES.ProductDirectory`(`findSummaries`・`listLaunches`)・`ProductSummaryRecord`・`LaunchRecord`・`LaunchStatus`、`visibleProducts()`・`wonLaunchExists()`(書き込みの文の条件だけ)、`products`・`product_launches`への外部キー、`ProductLifecycleEvent`・`ProductLifecycleAsyncHandler`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`。
+- product-launch: `core/product`の`PRODUCT_PLATFORM_TYPES.ProductDirectory`(`findSummaries`・`listLaunches`)・`ProductSummaryRecord`・`LaunchRecord`・`LaunchStatus`(契約と識別子は`core/product`、D1の実装と束縛は`workers/product`)、`visibleProducts()`・`wonLaunchExists()`(書き込みの文の条件だけ)、`products`・`product_launches`への外部キー、`ProductLifecycleEvent`・`ProductLifecycleAsyncHandler`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`。
 - directory-discovery: clientの`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`ProductPageContext`・`ProductLaunchSectionContext`・`DIRECTORY_ITEM_METRICS`・`DirectoryItemMetric`、apiの`DIRECTORY_ITEM_METRIC_SOURCES`・`DirectoryItemMetricSource`・`DirectoryItemMetricRegistration`、見出しのID`launches-heading`、E2Eの`e2e/support/directory-fixtures.ts`。
 - content-processing: `countGraphemes`・`markdownTextSchema`・`MarkdownTextRule`、`MarkdownEditor`・`MarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`・`LinkRelToken`。
 - user-profile-social: GraphQLの`UserSummary`・`userSummaryLoader`、clientの`UserAvatar`。
 - frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`requireData`・`GraphQLClientError`・`errorMessageOf`・`useAppForm<TInput, TOutput>(schema, { defaultValues })`・`AppForm`(必須の`onSubmitError`・任意の`serverFieldPrefix`)・`FormField`・`SubmitButton`・`notify`・`PartialErrorState`・`LoadingSkeleton`・`formatElapsed`・`DateTime`・`useTurnstileToken`・`TurnstileWidget`(非表示)・Zodの値の読み込み元(`utilities/validation/zod.ts`の`z`)・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・shadcn/uiの部品(ボタン・ダイアログ・ドロップダウンメニュー・ツールチップ・バッジ・スケルトン)・`runAxe`・デザイントークン。
 - admin-foundation: E2Eの`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - npmパッケージ: 新規なし。
-- 後続specは、`common-lib/engagement`・`workers/engagement`・`db/schema/engagement/engagement-conditions.ts`の公開の契約、apiの`CommentModerationControl`・`RatingModerationControl`、clientの`COMMENT_ACTIONS`と`CommentActionContext`だけに依存し、本specのテーブルへ直接書き込まない。
+- 後続specは、`common-lib/engagement`・`core/engagement`(契約と識別子)・`workers/engagement`(D1の実装と束縛)・`db/schema/engagement/engagement-conditions.ts`の公開の契約、apiのinfrastructure層の`CommentModerationControl`・`RatingModerationControl`、clientの`COMMENT_ACTIONS`と`CommentActionContext`だけに依存し、本specのテーブルへ直接書き込まない。
 
 ### Revalidation Triggers
 
-- `CommentModerationControl`・`RatingModerationControl`の形と、非公開化・無効化の意味(ugc-moderation)。
+- `CommentModerationControl`・`RatingModerationControl`の形と置き場所(apiのinfrastructure層。呼び出し側の文を受け取るため、呼び出し側もinfrastructure層から使う)と、非公開化・無効化の意味(ugc-moderation)。
+- `core/engagement`の契約(`CommentStore`・`CommentThreadQuery`・`RatingStore`・`EngagementErasureStore`・`CommentExport`・`RatingExport`・`AdminCommentDirectory`・`AdminRatingDirectory`)と`ENGAGEMENT_PLATFORM_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(後続specのapplication層が読み込むため)。
 - `COMMENT_ACTIONS`の`CommentActionContext`と描画の位置(content-reporting)。
 - `CommentStore.findByIds`の`CommentRecord`、`CommentExport`・`RatingExport`の記録の形(ugc-moderation・content-reporting・data-export)。
 - `CommentThreadQuery`・`RatingStore.summaries`の入力と返す形、`displayableComment()`・`validRating()`の条件(public-api)。
@@ -98,6 +101,7 @@ graph TB
         Module[engagement graphql module]
         Target[engagement target resolver]
         Services[comment and rating services]
+        Writers[comment and rating writers]
         Moderation[moderation controls]
         MetricSource[comment count metric source]
         Withdrawal[withdrawal sync handler]
@@ -126,6 +130,8 @@ graph TB
     Services --> Target
     Target --> ProductLaunch
     Services --> Stores
+    Services --> Writers
+    Writers --> Stores
     Services --> Query
     Directory --> MetricSource
     MetricSource --> Query
@@ -146,11 +152,11 @@ graph TB
 
 - Selected pattern: クリーンアーキテクチャ。閲覧の可否・投稿できるローンチ・スレッドの組み立ては純粋な関数、ユースケースはポート越しにproduct-launchと本specの部品を使う。表示の状態と有効な評価は読み取りの時点で求め、集計の写しを持たない(research.mdの比較)。
 - Domain/feature boundaries: コメントと評価の行と表示・集計の規則は本spec、プロダクトの可視性と所有者はproduct-launch、利用者の状態はidentity-auth、区画の置き場所はdirectory-discovery、管理の判断と記録はugc-moderation。
-- Existing patterns preserved: `backend-lib/workers/<ドメイン>`の共有の束縛、`<spec名>.<名詞句>`の処理の名前、帯の`order`、登録箇所への追記による拡張、`CASE`式の条件付きの書き込み、product-launchの`ProductVisibilityControl`と同じ形の状態の操作口、identity-authの`AccountExport`と同じ形の出力の部品、match-engineの4:21の掃除のジョブ(500件ずつ・最大10回)。
-- New components rationale: `EngagementTargetResolver`はコメントと評価の全ての操作で同じ閲覧の可否を判定するため。`EngagementErasureStore`は日次のジョブ(api)と`purge_due`の処理(event)が同じ匿名化と物理削除の文を使うため。`COMMENT_ACTIONS`は他者のコメントの通報(content-reporting)を、本specのファイルを変えずに加えるため。
+- Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`の実装と共有の束縛(identity-authの`core/identity`・`workers/identity`と同じ配置)、書き込みの単位をinfrastructure層の一括の書き込みで確定させる形(identity-authの`UserLifecycleCommitter`と同じ)、`<spec名>.<名詞句>`の処理の名前、帯の`order`、登録箇所への追記による拡張、`CASE`式の条件付きの書き込み、product-launchの`ProductVisibilityControl`と同じ形の状態の操作口、identity-authの`AccountExport`と同じ形の出力の部品、match-engineの4:21の掃除のジョブ(500件ずつ・最大10回)。
+- New components rationale: `EngagementTargetResolver`はコメントと評価の全ての操作で同じ閲覧の可否を判定するため。`EngagementErasureStore`は日次のジョブ(api)と`purge_due`の処理(event)が同じ匿名化と物理削除の文を使うため。`COMMENT_ACTIONS`は他者のコメントの通報(content-reporting)を、本specのファイルを変えずに加えるため。`CommentWriter`・`RatingWriter`は、application層がデータベースの接続・SQLの文・一括の書き込みを扱わない規則(`backend/002`)の下で、コメントと評価の同時の保存を1つの書き込みの単位として表すため。
 - Steering compliance: Inversifyの`@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・`db.transaction()`を使わない)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、新しいパッケージなし。
 
-**Dependency direction**: `apps/common-lib/engagement` → `apps/db/schema/engagement` → `backend-lib/workers/engagement` → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib`は`common-lib`の他のディレクトリと`zod`だけを読み込む。clientは`common-lib/engagement`とGraphQLの操作と上流の画面部品だけを読み込み、`src/composition`は`src/routes`を読み込まない(frontend-platformの規則)。登録口の型は`components/engagement/comment-action-types.ts`に置き、`composition/comment-actions.ts`の`COMMENT_ACTIONS`はdirectory-discoveryの区画の登録口と同じ読み込みの形で`CommentMenu`が描く。
+**Dependency direction**: `apps/common-lib/engagement` → `apps/db/schema/engagement` → `backend-lib/core/engagement`(`core`の他の部品・`common-lib`・inversifyの型だけ) → `backend-lib/workers/engagement`(D1) → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが使う契約と識別子`ENGAGEMENT_PLATFORM_TYPES`は`core/engagement`に置き、`workers/engagement`にはD1の実装・文の部品(`CommentStatements`・`RatingStatements`)・束縛だけを置く。application層は書き込みの単位のポート(`CommentWriter`・`RatingWriter`)だけを受け取り、文の部品と`db.batch()`はinfrastructure層の実装だけが使う。`common-lib`は`common-lib`の他のディレクトリと`zod`だけを読み込む。clientは`common-lib/engagement`とGraphQLの操作と上流の画面部品だけを読み込み、`src/composition`は`src/routes`を読み込まない(frontend-platformの規則)。登録口の型は`components/engagement/comment-action-types.ts`に置き、`composition/comment-actions.ts`の`COMMENT_ACTIONS`はdirectory-discoveryの区画の登録口と同じ読み込みの形で`CommentMenu`が描く。
 
 ### Technology Stack
 
@@ -176,32 +182,40 @@ apps/
 │   ├── product-ratings.ts
 │   ├── engagement-conditions.ts                     # displayableComment()・validRating()
 │   └── index.ts
-├── backend-lib/workers/engagement/                  # api・event共通(Workers統合テスト)
-│   ├── engagement-platform-types.ts                 # ENGAGEMENT_PLATFORM_TYPES(テストなし)
-│   ├── comment-store.ts                             # CommentStore(型とD1の実装): 照会・条件付きの書き込みの文
-│   ├── comment-thread-query.ts                      # CommentThreadQuery: スレッドのページ・ローンチごと・プロダクトごとの件数
-│   ├── rating-store.ts                              # RatingStore: 上書きの文・取消・自分の評価・集計
-│   ├── engagement-erasure-store.ts                  # 匿名化・利用者とプロダクト単位の物理削除
-│   ├── engagement-export.ts                         # CommentExport・RatingExport
-│   ├── admin-comment-directory.ts                   # AdminCommentDirectory(型とD1の実装、ugc-moderationが使う、仮6)
-│   ├── admin-rating-directory.ts                    # AdminRatingDirectory(型とD1の実装、ugc-moderationが使う、仮6)
-│   └── engagement-platform-module.ts                # ENGAGEMENT_PLATFORM_MODULE
+├── backend-lib/
+│   ├── core/engagement/                             # api・eventと後続specのapplication層が読み込める契約と識別子(Bunの単体テスト)
+│   │   ├── ports.ts                                 # CommentStore・CommentThreadQuery・RatingStore・EngagementErasureStore・CommentExport・RatingExport・AdminCommentDirectory・AdminRatingDirectoryの契約と入出力の型(型だけ)
+│   │   └── identifiers.ts                           # ENGAGEMENT_PLATFORM_TYPES(api・event共通の識別子、identifiers.unit.test.ts)
+│   └── workers/engagement/                          # D1の実装と束縛(Workers統合テスト、各ファイルに同名の*.worker.test.ts)
+│       ├── comment-statements.ts                    # CommentStatements(型とD1の実装): 投稿・編集・削除の条件付きの文と非公開化(infrastructure層だけが使う)
+│       ├── d1-comment-store.ts                      # CommentStoreのD1実装: 識別子からの照会
+│       ├── d1-comment-thread-query.ts               # CommentThreadQueryのD1実装: スレッドのページ・ローンチごと・プロダクトごとの件数
+│       ├── rating-statements.ts                     # RatingStatements(型とD1の実装): 上書きの文と無効化(infrastructure層だけが使う)
+│       ├── d1-rating-store.ts                       # RatingStoreのD1実装: 取消・自分の評価・集計
+│       ├── d1-engagement-erasure-store.ts           # 匿名化・利用者とプロダクト単位の物理削除
+│       ├── d1-engagement-export.ts                  # CommentExport・RatingExportのD1実装
+│       ├── d1-admin-comment-directory.ts            # AdminCommentDirectoryのD1実装(ugc-moderationが使う、仮6)
+│       ├── d1-admin-rating-directory.ts             # AdminRatingDirectoryのD1実装(ugc-moderationが使う、仮6)
+│       └── engagement-platform-module.ts            # ENGAGEMENT_PLATFORM_MODULE
 ├── api/src/
 │   ├── domain/engagement/                           # 純粋な規則(Bunの単体テスト)
 │   │   ├── engagement-access.ts                     # 閲覧の可否・コメントできるローンチ
 │   │   └── comment-threads.ts                       # 行からスレッドへの組み立て・バッジ
 │   ├── application/engagement/                      # ユースケース(Bunの単体テスト)
 │   │   ├── engagement-types.ts                      # ENGAGEMENT_TYPES
+│   │   ├── ports.ts                                 # CommentWriter・RatingWriter(書き込みの単位)と結果の型
 │   │   ├── engagement-target-resolver.ts            # 投稿先のプロダクトとローンチの解決
 │   │   ├── comment-service.ts                       # 投稿・返信・編集・削除(評価の同時保存)
 │   │   ├── comment-reader.ts                        # スレッドのページ・ローンチごとの件数
 │   │   ├── rating-service.ts                        # 評価・取消・評価欄の値
-│   │   ├── comment-moderation-control.ts            # 非公開化・復元(ugc-moderation向け)
-│   │   ├── rating-moderation-control.ts             # 無効化・取消(ugc-moderation向け)
 │   │   ├── comment-count-metric-source.ts           # engagement.comment-count
 │   │   └── comment-anonymization-job.ts             # engagement.comment-anonymization
-│   ├── infrastructure/engagement/
-│   │   └── engagement-withdrawal-sync-handler.ts    # engagement.withdrawal(Workers統合テスト)
+│   ├── infrastructure/engagement/                   # Workers統合テスト
+│   │   ├── d1-comment-writer.ts                     # CommentWriterの実装(コメントと評価の文の一括の書き込み)
+│   │   ├── d1-rating-writer.ts                      # RatingWriterの実装(評価の上書きの文の書き込み)
+│   │   ├── comment-moderation-control.ts            # 非公開化・復元(ugc-moderationのinfrastructure層向け)
+│   │   ├── rating-moderation-control.ts             # 無効化・取消(ugc-moderationのinfrastructure層向け)
+│   │   └── engagement-withdrawal-sync-handler.ts    # engagement.withdrawal
 │   ├── presentation/graphql/modules/engagement/     # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts
@@ -255,7 +269,7 @@ docs/GUIDES/tech/
 └── frontend/015-star-rating-and-threaded-composer.md
 ```
 
-`admin-comment-directory.ts`・`admin-rating-directory.ts`と、その`ENGAGEMENT_PLATFORM_TYPES`・`ENGAGEMENT_PLATFORM_MODULE`への束縛は、本specのタスクが作成・実装する(仮6)。契約の正は本specの設計(「AdminCommentDirectory・AdminRatingDirectory(仮6)」の節)で、ugc-moderationはそれを使う。
+`AdminCommentDirectory`・`AdminRatingDirectory`の契約(`core/engagement/ports.ts`)とD1の実装(`d1-admin-comment-directory.ts`・`d1-admin-rating-directory.ts`)、その`ENGAGEMENT_PLATFORM_TYPES`の識別子と`ENGAGEMENT_PLATFORM_MODULE`への束縛は、本specのタスクが作成・実装する(仮6)。契約の正は本specの設計(「AdminCommentDirectory・AdminRatingDirectory(仮6)」の節)で、ugc-moderationはそれを使う。
 
 テストは各ファイルの隣に置く(`*.unit.test.ts`・`*.worker.test.ts`・`*.browser.test.tsx`)。技術ドキュメントの番号は、全ての完了済みspecのdesign.mdが使う番号の後の、各ディレクトリで最も小さい空き番号`backend/015`・`frontend/015`に固定する(並行して作成中のtournament-week・sponsorshipは次以降の空き番号を使う。重なればコントローラーの調整に従う)。
 
@@ -284,6 +298,7 @@ sequenceDiagram
     participant S as CommentService
     participant T as EngagementTargetResolver
     participant P as ProductDirectory
+    participant W as CommentWriter
     participant D as D1
     C->>R: postComment with turnstile token
     R->>G: requireVerifiedUser
@@ -292,19 +307,22 @@ sequenceDiagram
     S->>T: resolve product and launch
     T->>P: findSummaries visible and listLaunches
     T-->>S: target or not found or not commentable
-    S->>D: batch guarded insert and optional rating upsert
+    S->>W: post with optional rating
+    W->>D: batch guarded insert and optional rating upsert
     alt guard violated
-        D-->>S: batch failed
-        S->>D: reread and classify
+        D-->>W: batch failed
+        W-->>S: rejected
+        S->>S: reread through ports and classify
         S-->>R: AppError
     else committed
+        W-->>S: committed
         S-->>R: comment and rating
     end
 ```
 
-- 条件付きの書き込み(`CommentStore.insertStatement`)は、`product_id`の値を`CASE WHEN <投稿先が閲覧できる> AND <投稿者が確認済みで可視> [AND <親が表示できる・同じローンチ・第2階層まで>] THEN ? ELSE NULL END`にする。投稿先が閲覧できる条件は、投稿者本人なら`visibleProducts()`、それ以外は`visibleProducts() AND wonLaunchExists()`のプロダクトの存在である(所有者はproduct-launchの照会で先に分かり、変わらない)。投稿者の条件は`verifiedUsers()`の利用者の存在、親の条件は本specのテーブルと`visibleUsers()`の結合である(1.9・2.3・2.4)。
-- 評価を添えた場合(仮1)は`RatingStore.upsertStatement`を同じ`db.batch()`に入れ、同じく`product_id`に条件を入れる。どちらかの違反で一括の書き込みごと取り消される(10.2・10.3)。
-- 失敗の分類: 投稿先を読み直して閲覧できなければ`comment_target_not_found`、利用者の状態は`AccountGuard`の判定、親が表示できなければ`comment_parent_unavailable`。
+- `CommentService`(application層)は書き込みの単位`CommentWriter.post`だけを呼び、文の組み立てと`db.batch()`はinfrastructure層の`D1CommentWriter`が行う。条件付きの書き込みの文(`workers/engagement`の`CommentStatements.insertStatement`)は、`product_id`の値を`CASE WHEN <投稿先が閲覧できる> AND <投稿者が確認済みで可視> [AND <親が表示できる・同じローンチ・第2階層まで>] THEN ? ELSE NULL END`にする。投稿先が閲覧できる条件は、投稿者本人なら`visibleProducts()`、それ以外は`visibleProducts() AND wonLaunchExists()`のプロダクトの存在である(所有者はproduct-launchの照会で先に分かり、変わらない)。投稿者の条件は`verifiedUsers()`の利用者の存在、親の条件は本specのテーブルと`visibleUsers()`の結合である(1.9・2.3・2.4)。
+- 評価を添えた場合(仮1)は、`D1CommentWriter`が`RatingStatements.upsertStatement`を同じ`db.batch()`に入れ、同じく`product_id`に条件を入れる。どちらかの違反で一括の書き込みごと取り消される(10.2・10.3)。
+- 失敗の分類: `CommentWriter`が条件の違反を`rejected`で返し、`CommentService`が投稿先を読み直して閲覧できなければ`comment_target_not_found`、利用者の状態は`AccountGuard`の判定、親が表示できなければ`comment_parent_unavailable`。
 
 ### 表示の状態と有効な評価
 
@@ -361,72 +379,74 @@ sequenceDiagram
 
 ## Requirements Traceability
 
-| Requirement                                                   | Summary                      | Components                                                            | Interfaces                                                | Flows                  |
-| ------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------- |
-| 1.1, 1.2, 1.3                                                 | 投稿と本文の規則             | CommentService、EngagementRules、CommentComposer、CommentFormSchema   | `postComment`・`commentBodySchema`                        | コメントの投稿と返信   |
-| 1.4, 1.5, 1.8                                                 | 投稿先の閲覧の可否とローンチ | EngagementTargetResolver、EngagementAccess                            | `ProductDirectory.findSummaries`・`listLaunches`          | コメントの投稿と返信   |
-| 1.6, 1.7                                                      | 利用者の状態とbot対策        | CommentResolvers                                                      | `AccountGuard`・`assertHuman`                             | コメントの投稿と返信   |
-| 1.9                                                           | 判定の後の変化               | CommentStore                                                          | `insertStatement`の条件                                   | コメントの投稿と返信   |
-| 2.1, 2.2, 2.3, 2.4, 2.5                                       | 返信と階層                   | CommentService、CommentStore、EngagementRules                         | `COMMENT_MAX_DEPTH`・親の条件                             | コメントの投稿と返信   |
-| 3.1, 3.2, 3.3, 3.4, 3.7                                       | 一覧とページ分け             | CommentThreadQuery、CommentReader、CommentThreads、EngagementViews    | `launchComments`・`userSummaryLoader`                     | —                      |
-| 3.5                                                           | 閲覧できない一覧             | CommentReader、EngagementTargetResolver                               | `launchComments`のnull                                    | —                      |
-| 3.6                                                           | ローンチごとの件数           | CommentThreadQuery、CommentReader                                     | `launchCommentCounts`                                     | —                      |
-| 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7                             | 編集と削除                   | CommentService、CommentStore、CommentResolvers                        | `updateComment`・`deleteComment`                          | —                      |
-| 5.1, 5.2, 5.3, 5.4, 5.5                                       | 置き換え表示                 | EngagementConditions、CommentThreadQuery、CommentThreads、CommentItem | `displayableComment()`                                    | 表示の状態と有効な評価 |
-| 6.1, 6.3, 6.4, 6.5, 6.6                                       | 日次の匿名化                 | CommentAnonymizationJob、EngagementErasureStore                       | `SCHEDULED_JOBS`                                          | 匿名化と物理削除       |
-| 6.2                                                           | 利用者の物理削除の匿名化     | AccountErasureHandler、EngagementErasureStore                         | `USER_LIFECYCLE_ASYNC_HANDLERS`                           | 匿名化と物理削除       |
-| 7.1, 7.2, 7.3, 7.4                                            | 本文の描画                   | CommentItem、EngagementRules                                          | `useMarkdownOptions`・`commentIdScope`                    | —                      |
-| 8.1, 8.2                                                      | 欄の置き場所と開閉           | LaunchCommentsSection                                                 | `PRODUCT_LAUNCH_SECTIONS`・`launchCommentCounts`          | —                      |
-| 8.3, 8.4, 8.5                                                 | 投稿欄と案内                 | CommentComposer、CommentGate、EngagementViewer                        | `MarkdownEditor`・`resendVerificationEmail`               | —                      |
-| 8.6, 8.7, 8.8, 8.9                                            | コメントの表示と返信         | CommentItem、CommentTime、CommentComposer                             | `UserAvatar`・`formatElapsed`・`LoginRequiredDialog`      | —                      |
-| 8.10, 8.11                                                    | メニューと削除の確認         | CommentMenu、DeleteCommentDialog                                      | `COMMENT_ACTIONS`                                         | —                      |
-| 8.12, 8.13, 8.14, 8.17                                        | 続き・失敗・0件              | CommentThread、CommentListSkeleton                                    | `useInfiniteQuery`・`PartialErrorState`                   | —                      |
-| 8.15, 8.16                                                    | 操作の結果                   | UseCommentMutations、CommentTree                                      | `notify`                                                  | —                      |
-| 8.18                                                          | 支援技術と演出               | LaunchCommentsSection、CommentItem、CommentMenu、DeleteCommentDialog  | `runAxe`                                                  | —                      |
-| 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9, 9.10             | 評価の受け付けと取消         | RatingService、RatingStore、RatingResolvers、EngagementTargetResolver | `rateProduct`・`cancelProductRating`                      | —                      |
-| 10.1, 10.2, 10.3, 10.4                                        | コメントと同時の評価         | CommentService、RatingStore                                           | `PostCommentInput.rating`・`UpdateCommentInput.rating`    | コメントの投稿と返信   |
-| 10.5                                                          | 投稿欄の評価                 | CommentComposer、StarRatingInput                                      | `productRating`                                           | —                      |
-| 11.1, 11.2                                                    | 有効な評価の集計             | EngagementConditions、RatingStore                                     | `validRating()`                                           | 表示の状態と有効な評価 |
-| 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 11.10, 11.12, 11.13 | 評価欄                       | RatingSection、RatingSummary、StarRatingInput、UseRatingMutations     | `PRODUCT_PAGE_SECTIONS`・`productRating`                  | —                      |
-| 11.11                                                         | 無効化の扱い(仮3)            | RatingStore、RatingService                                            | `upsertStatement`・`viewerScore`                          | —                      |
-| 12.1, 12.2, 12.3, 12.4                                        | 管理の操作口                 | CommentModerationControl、RatingModerationControl                     | `hide`・`unhide`・`invalidate`・`revalidate`              | —                      |
-| 12.5                                                          | コメントの照会               | CommentStore                                                          | `findByIds`                                               | —                      |
-| 12.6                                                          | 管理画面の一覧の照会(仮6)    | AdminCommentDirectory、AdminRatingDirectory                           | `search`・`findByIds`                                     | —                      |
-| 13.1                                                          | 退会の論理削除               | EngagementWithdrawalSyncHandler                                       | `USER_LIFECYCLE_SYNC_HANDLERS`                            | 匿名化と物理削除       |
-| 13.2, 13.3, 13.4                                              | プロダクトの状態の反映       | EngagementTargetResolver、EngagementAccess                            | `ProductSummaryRecord.visible`・`listed`                  | 匿名化と物理削除       |
-| 13.5                                                          | プロダクトの物理削除         | ProductErasureHandler、EngagementErasureStore                         | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS`                        | 匿名化と物理削除       |
-| 13.6                                                          | 利用者の物理削除             | AccountErasureHandler、EngagementErasureStore                         | `USER_LIFECYCLE_ASYNC_HANDLERS`                           | 匿名化と物理削除       |
-| 13.7, 13.8                                                    | 冪等と帯                     | 各処理、CommentAnonymizationJob                                       | `order` 1400                                              | 匿名化と物理削除       |
-| 14.1                                                          | コメント数                   | CommentCountMetricSource、CommentCountMetric、CommentThreadQuery      | `DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS` | —                      |
-| 14.2                                                          | 通報の置き場所               | CommentActionTypes、CommentActions、CommentMenu                       | `COMMENT_ACTIONS`                                         | —                      |
-| 14.3                                                          | エクスポートの部品(仮5)      | EngagementExport                                                      | `CommentExport`・`RatingExport`                           | —                      |
-| 14.4                                                          | 公開APIの部品                | CommentThreadQuery、RatingStore、EngagementConditions                 | `page`・`summaries`                                       | —                      |
-| 14.5                                                          | ログ                         | 全コンポーネント                                                      | `getAppLogger`                                            | —                      |
-| 14.6                                                          | 性能                         | CommentThreadQuery、RatingStore、CommentReader                        | 1回の`db.batch()`・ローダー                               | —                      |
-| 15.1, 15.2, 15.3                                              | テスト                       | Testing Strategy                                                      | —                                                         | —                      |
-| 15.4                                                          | 技術ドキュメント             | EngagementTechDocs                                                    | —                                                         | —                      |
-| 15.5                                                          | サービス仕様                 | EngagementServiceSpecs                                                | —                                                         | —                      |
+| Requirement                                                   | Summary                      | Components                                                                                                            | Interfaces                                                | Flows                  |
+| ------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------- |
+| 1.1, 1.2, 1.3                                                 | 投稿と本文の規則             | CommentService、EngagementRules、CommentComposer、CommentFormSchema                                                   | `postComment`・`commentBodySchema`                        | コメントの投稿と返信   |
+| 1.4, 1.5, 1.8                                                 | 投稿先の閲覧の可否とローンチ | EngagementTargetResolver、EngagementAccess                                                                            | `ProductDirectory.findSummaries`・`listLaunches`          | コメントの投稿と返信   |
+| 1.6, 1.7                                                      | 利用者の状態とbot対策        | CommentResolvers                                                                                                      | `AccountGuard`・`assertHuman`                             | コメントの投稿と返信   |
+| 1.9                                                           | 判定の後の変化               | CommentWriter、D1CommentWriter、CommentStatements                                                                     | `insertStatement`の条件                                   | コメントの投稿と返信   |
+| 2.1, 2.2, 2.3, 2.4, 2.5                                       | 返信と階層                   | CommentService、CommentStore、CommentStatements、EngagementRules                                                      | `COMMENT_MAX_DEPTH`・親の条件                             | コメントの投稿と返信   |
+| 3.1, 3.2, 3.3, 3.4, 3.7                                       | 一覧とページ分け             | CommentThreadQuery、CommentReader、CommentThreads、EngagementViews                                                    | `launchComments`・`userSummaryLoader`                     | —                      |
+| 3.5                                                           | 閲覧できない一覧             | CommentReader、EngagementTargetResolver                                                                               | `launchComments`のnull                                    | —                      |
+| 3.6                                                           | ローンチごとの件数           | CommentThreadQuery、CommentReader                                                                                     | `launchCommentCounts`                                     | —                      |
+| 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7                             | 編集と削除                   | CommentService、CommentWriter、D1CommentWriter、CommentStatements、CommentResolvers                                   | `updateComment`・`deleteComment`                          | —                      |
+| 5.1, 5.2, 5.3, 5.4, 5.5                                       | 置き換え表示                 | EngagementConditions、CommentThreadQuery、CommentThreads、CommentItem                                                 | `displayableComment()`                                    | 表示の状態と有効な評価 |
+| 6.1, 6.3, 6.4, 6.5, 6.6                                       | 日次の匿名化                 | CommentAnonymizationJob、EngagementErasureStore                                                                       | `SCHEDULED_JOBS`                                          | 匿名化と物理削除       |
+| 6.2                                                           | 利用者の物理削除の匿名化     | AccountErasureHandler、EngagementErasureStore                                                                         | `USER_LIFECYCLE_ASYNC_HANDLERS`                           | 匿名化と物理削除       |
+| 7.1, 7.2, 7.3, 7.4                                            | 本文の描画                   | CommentItem、EngagementRules                                                                                          | `useMarkdownOptions`・`commentIdScope`                    | —                      |
+| 8.1, 8.2                                                      | 欄の置き場所と開閉           | LaunchCommentsSection                                                                                                 | `PRODUCT_LAUNCH_SECTIONS`・`launchCommentCounts`          | —                      |
+| 8.3, 8.4, 8.5                                                 | 投稿欄と案内                 | CommentComposer、CommentGate、EngagementViewer                                                                        | `MarkdownEditor`・`resendVerificationEmail`               | —                      |
+| 8.6, 8.7, 8.8, 8.9                                            | コメントの表示と返信         | CommentItem、CommentTime、CommentComposer                                                                             | `UserAvatar`・`formatElapsed`・`LoginRequiredDialog`      | —                      |
+| 8.10, 8.11                                                    | メニューと削除の確認         | CommentMenu、DeleteCommentDialog                                                                                      | `COMMENT_ACTIONS`                                         | —                      |
+| 8.12, 8.13, 8.14, 8.17                                        | 続き・失敗・0件              | CommentThread、CommentListSkeleton                                                                                    | `useInfiniteQuery`・`PartialErrorState`                   | —                      |
+| 8.15, 8.16                                                    | 操作の結果                   | UseCommentMutations、CommentTree                                                                                      | `notify`                                                  | —                      |
+| 8.18                                                          | 支援技術と演出               | LaunchCommentsSection、CommentItem、CommentMenu、DeleteCommentDialog                                                  | `runAxe`                                                  | —                      |
+| 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9, 9.10             | 評価の受け付けと取消         | RatingService、RatingStore、RatingWriter、D1RatingWriter、RatingStatements、RatingResolvers、EngagementTargetResolver | `rateProduct`・`cancelProductRating`                      | —                      |
+| 10.1, 10.2, 10.3, 10.4                                        | コメントと同時の評価         | CommentService、CommentWriter、D1CommentWriter、RatingStatements                                                      | `PostCommentInput.rating`・`UpdateCommentInput.rating`    | コメントの投稿と返信   |
+| 10.5                                                          | 投稿欄の評価                 | CommentComposer、StarRatingInput                                                                                      | `productRating`                                           | —                      |
+| 11.1, 11.2                                                    | 有効な評価の集計             | EngagementConditions、RatingStore                                                                                     | `validRating()`                                           | 表示の状態と有効な評価 |
+| 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 11.10, 11.12, 11.13 | 評価欄                       | RatingSection、RatingSummary、StarRatingInput、UseRatingMutations                                                     | `PRODUCT_PAGE_SECTIONS`・`productRating`                  | —                      |
+| 11.11                                                         | 無効化の扱い(仮3)            | RatingStatements、RatingStore、RatingService                                                                          | `upsertStatement`・`viewerScore`                          | —                      |
+| 12.1, 12.2, 12.3, 12.4                                        | 管理の操作口                 | CommentModerationControl、RatingModerationControl、CommentStatements、RatingStatements                                | `hide`・`unhide`・`invalidate`・`revalidate`              | —                      |
+| 12.5                                                          | コメントの照会               | CommentStore                                                                                                          | `findByIds`                                               | —                      |
+| 12.6                                                          | 管理画面の一覧の照会(仮6)    | AdminCommentDirectory、AdminRatingDirectory                                                                           | `search`・`findByIds`                                     | —                      |
+| 13.1                                                          | 退会の論理削除               | EngagementWithdrawalSyncHandler                                                                                       | `USER_LIFECYCLE_SYNC_HANDLERS`                            | 匿名化と物理削除       |
+| 13.2, 13.3, 13.4                                              | プロダクトの状態の反映       | EngagementTargetResolver、EngagementAccess                                                                            | `ProductSummaryRecord.visible`・`listed`                  | 匿名化と物理削除       |
+| 13.5                                                          | プロダクトの物理削除         | ProductErasureHandler、EngagementErasureStore                                                                         | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS`                        | 匿名化と物理削除       |
+| 13.6                                                          | 利用者の物理削除             | AccountErasureHandler、EngagementErasureStore                                                                         | `USER_LIFECYCLE_ASYNC_HANDLERS`                           | 匿名化と物理削除       |
+| 13.7, 13.8                                                    | 冪等と帯                     | 各処理、CommentAnonymizationJob                                                                                       | `order` 1400                                              | 匿名化と物理削除       |
+| 14.1                                                          | コメント数                   | CommentCountMetricSource、CommentCountMetric、CommentThreadQuery                                                      | `DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS` | —                      |
+| 14.2                                                          | 通報の置き場所               | CommentActionTypes、CommentActions、CommentMenu                                                                       | `COMMENT_ACTIONS`                                         | —                      |
+| 14.3                                                          | エクスポートの部品(仮5)      | EngagementExport                                                                                                      | `CommentExport`・`RatingExport`                           | —                      |
+| 14.4                                                          | 公開APIの部品                | CommentThreadQuery、RatingStore、EngagementConditions                                                                 | `page`・`summaries`                                       | —                      |
+| 14.5                                                          | ログ                         | 全コンポーネント                                                                                                      | `getAppLogger`                                            | —                      |
+| 14.6                                                          | 性能                         | CommentThreadQuery、RatingStore、CommentReader                                                                        | 1回の`db.batch()`・ローダー                               | —                      |
+| 15.1, 15.2, 15.3                                              | テスト                       | Testing Strategy                                                                                                      | —                                                         | —                      |
+| 15.4                                                          | 技術ドキュメント             | EngagementTechDocs                                                                                                    | —                                                         | —                      |
+| 15.5                                                          | サービス仕様                 | EngagementServiceSpecs                                                                                                | —                                                         | —                      |
 
 ## Components and Interfaces
 
-| Component                                                                                                                                                                                                                  | Domain/Layer           | Intent                                     | Req Coverage                                                          | Key Dependencies                               | Contracts |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------ | --------------------------------------------------------------------- | ---------------------------------------------- | --------- |
-| EngagementRules                                                                                                                                                                                                            | common-lib             | 入力の規則と定数                           | 1.2, 1.3, 2.2, 3.1, 7.3, 9.5                                          | content-processing (P0)                        | Service   |
-| EngagementSchema(LaunchComments・ProductRatings)・EngagementConditions                                                                                                                                                     | db                     | 2テーブルと表示・有効の条件                | 2.2, 5.1, 9.2, 11.1, 14.4                                             | identity-auth (P0)、product-launch (P0)        | State     |
-| CommentStore・CommentThreadQuery・RatingStore・EngagementErasureStore・EngagementExport・EngagementPlatformModule                                                                                                          | backend-lib/engagement | 照会・条件付きの書き込み・匿名化・出力     | 1.9, 2.\*, 3.\*, 5.\*, 6.\*, 9.2, 9.3, 11.\*, 12.5, 13.5, 13.6, 14.\* | D1 (P0)                                        | Service   |
-| AdminCommentDirectory・AdminRatingDirectory                                                                                                                                                                                | backend-lib/engagement | 管理画面のコメントと評価の一覧の照会(仮6)  | 12.6                                                                  | D1 (P0)、identity-auth (P0)                    | Service   |
-| EngagementAccess・CommentThreads                                                                                                                                                                                           | api/domain             | 閲覧の可否・コメントできるローンチ・木     | 1.4, 1.5, 3.2, 3.3, 5.2, 13.2〜13.4                                   | —                                              | Service   |
-| EngagementTargetResolver・CommentService・CommentReader・RatingService                                                                                                                                                     | api/application        | 投稿先の解決とコメント・評価のユースケース | 1.\*, 2.\*, 3.\*, 4.\*, 9.\*, 10.\*, 11.11, 13.2〜13.4                | ProductDirectory (P0)、AccountGuard (P0)       | Service   |
-| CommentModerationControl・RatingModerationControl                                                                                                                                                                          | api/application        | 管理の状態の操作口                         | 12.1〜12.4                                                            | CommentStore (P0)、RatingStore (P0)            | Service   |
-| CommentCountMetricSource                                                                                                                                                                                                   | api/application        | ディレクトリのコメント数                   | 14.1                                                                  | DirectoryItemMetricSource (P0)                 | Service   |
-| CommentAnonymizationJob                                                                                                                                                                                                    | api/application        | 4:21の匿名化                               | 6.1, 6.4, 6.5, 6.6, 13.8                                              | EngagementErasureStore (P0)                    | Batch     |
-| EngagementWithdrawalSyncHandler                                                                                                                                                                                            | api/infrastructure     | 退会の論理削除                             | 13.1, 13.7                                                            | identity-auth (P0)                             | Event     |
-| EngagementSchemaModule(EngagementViews・CommentResolvers・RatingResolvers)                                                                                                                                                 | api/presentation       | GraphQLの型と操作                          | 1.6, 1.7, 3.\*, 4.5, 4.6, 9.7, 9.8, 9.9                               | api-gateway (P0)                               | API       |
-| AccountErasureHandler・ProductErasureHandler                                                                                                                                                                               | event                  | 物理削除の時期の匿名化と削除               | 6.2, 13.5, 13.6, 13.7, 13.8                                           | EngagementErasureStore (P0)                    | Event     |
-| RatingSection・RatingSummary・StarRatingInput・UseRatingMutations                                                                                                                                                          | client                 | 評価欄                                     | 10.5, 11.3〜11.10, 11.12, 11.13                                       | productRating (P0)、PRODUCT_PAGE_SECTIONS (P0) | State     |
-| LaunchCommentsSection・CommentThread・CommentItem・CommentComposer・CommentGate・CommentMenu・DeleteCommentDialog・CommentTime・CommentListSkeleton・CommentTree・CommentFormSchema・UseCommentMutations・EngagementViewer | client                 | コメント欄                                 | 1.3, 7.\*, 8.\*, 10.5                                                 | launchComments (P0)、MarkdownEditor (P0)       | State     |
-| CommentCountMetric・CommentActionTypes・CommentActions                                                                                                                                                                     | client                 | コメント数と通報の置き場所                 | 14.1, 14.2                                                            | DIRECTORY_ITEM_METRICS (P0)                    | State     |
-| EngagementTechDocs・EngagementServiceSpecs                                                                                                                                                                                 | docs                   | 技術ドキュメントとサービス仕様             | 15.4, 15.5                                                            | —                                              | —         |
+| Component                                                                                                                                                                                                                  | Domain/Layer                                                    | Intent                                                                           | Req Coverage                                                | Key Dependencies                                                                                                     | Contracts |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------- |
+| EngagementRules                                                                                                                                                                                                            | common-lib                                                      | 入力の規則と定数                                                                 | 1.2, 1.3, 2.2, 3.1, 7.3, 9.5                                | content-processing (P0)                                                                                              | Service   |
+| EngagementSchema(LaunchComments・ProductRatings)・EngagementConditions                                                                                                                                                     | db                                                              | 2テーブルと表示・有効の条件                                                      | 2.2, 5.1, 9.2, 11.1, 14.4                                   | identity-auth (P0)、product-launch (P0)                                                                              | State     |
+| CommentStore・CommentThreadQuery・RatingStore・EngagementErasureStore・EngagementExport                                                                                                                                    | backend-lib/core/engagement(契約)・workers/engagement(D1の実装) | 照会・匿名化・出力                                                               | 2.\*, 3.\*, 5.\*, 6.\*, 9.3, 11.\*, 12.5, 13.5, 13.6, 14.\* | D1 (P0)                                                                                                              | Service   |
+| CommentStatements・RatingStatements・EngagementPlatformModule                                                                                                                                                              | backend-lib/workers/engagement                                  | 条件付きの書き込みの文と非公開化・無効化(infrastructure層だけが使う)、共通の束縛 | 1.9, 2.3, 2.4, 4.1, 4.3, 9.2, 9.10, 11.11, 12.2〜12.4       | D1 (P0)                                                                                                              | Service   |
+| AdminCommentDirectory・AdminRatingDirectory                                                                                                                                                                                | backend-lib/core/engagement(契約)・workers/engagement(D1の実装) | 管理画面のコメントと評価の一覧の照会(仮6)                                        | 12.6                                                        | D1 (P0)、identity-auth (P0)                                                                                          | Service   |
+| EngagementAccess・CommentThreads                                                                                                                                                                                           | api/domain                                                      | 閲覧の可否・コメントできるローンチ・木                                           | 1.4, 1.5, 3.2, 3.3, 5.2, 13.2〜13.4                         | —                                                                                                                    | Service   |
+| EngagementTargetResolver・CommentService・CommentReader・RatingService                                                                                                                                                     | api/application                                                 | 投稿先の解決とコメント・評価のユースケース                                       | 1.\*, 2.\*, 3.\*, 4.\*, 9.\*, 10.\*, 11.11, 13.2〜13.4      | ProductDirectory (P0)、AccountGuard (P0)、CommentWriter (P0)、RatingWriter (P0)、CommentStore (P0)、RatingStore (P0) | Service   |
+| CommentWriter・RatingWriter(ポート)・D1CommentWriter・D1RatingWriter                                                                                                                                                       | api/application(ポート)・api/infrastructure(実装)               | コメントと評価の書き込みの単位と一括の書き込み                                   | 1.9, 2.3, 2.4, 4.1〜4.3, 9.2, 9.10, 10.2, 10.3              | CommentStatements (P0)、RatingStatements (P0)、D1 (P0)                                                               | Service   |
+| CommentModerationControl・RatingModerationControl                                                                                                                                                                          | api/infrastructure                                              | 管理の状態の操作口(呼び出し側の文を同じ一括の書き込みに入れる)                   | 12.1〜12.4                                                  | CommentStatements (P0)、RatingStatements (P0)                                                                        | Service   |
+| CommentCountMetricSource                                                                                                                                                                                                   | api/application                                                 | ディレクトリのコメント数                                                         | 14.1                                                        | DirectoryItemMetricSource (P0)                                                                                       | Service   |
+| CommentAnonymizationJob                                                                                                                                                                                                    | api/application                                                 | 4:21の匿名化                                                                     | 6.1, 6.4, 6.5, 6.6, 13.8                                    | EngagementErasureStore (P0)                                                                                          | Batch     |
+| EngagementWithdrawalSyncHandler                                                                                                                                                                                            | api/infrastructure                                              | 退会の論理削除                                                                   | 13.1, 13.7                                                  | identity-auth (P0)                                                                                                   | Event     |
+| EngagementSchemaModule(EngagementViews・CommentResolvers・RatingResolvers)                                                                                                                                                 | api/presentation                                                | GraphQLの型と操作                                                                | 1.6, 1.7, 3.\*, 4.5, 4.6, 9.7, 9.8, 9.9                     | api-gateway (P0)                                                                                                     | API       |
+| AccountErasureHandler・ProductErasureHandler                                                                                                                                                                               | event                                                           | 物理削除の時期の匿名化と削除                                                     | 6.2, 13.5, 13.6, 13.7, 13.8                                 | EngagementErasureStore (P0)                                                                                          | Event     |
+| RatingSection・RatingSummary・StarRatingInput・UseRatingMutations                                                                                                                                                          | client                                                          | 評価欄                                                                           | 10.5, 11.3〜11.10, 11.12, 11.13                             | productRating (P0)、PRODUCT_PAGE_SECTIONS (P0)                                                                       | State     |
+| LaunchCommentsSection・CommentThread・CommentItem・CommentComposer・CommentGate・CommentMenu・DeleteCommentDialog・CommentTime・CommentListSkeleton・CommentTree・CommentFormSchema・UseCommentMutations・EngagementViewer | client                                                          | コメント欄                                                                       | 1.3, 7.\*, 8.\*, 10.5                                       | launchComments (P0)、MarkdownEditor (P0)                                                                             | State     |
+| CommentCountMetric・CommentActionTypes・CommentActions                                                                                                                                                                     | client                                                          | コメント数と通報の置き場所                                                       | 14.1, 14.2                                                  | DIRECTORY_ITEM_METRICS (P0)                                                                                          | State     |
+| EngagementTechDocs・EngagementServiceSpecs                                                                                                                                                                                 | docs                                                            | 技術ドキュメントとサービス仕様                                                   | 15.4, 15.5                                                  | —                                                                                                                    | —         |
 
 ### common-lib
 
@@ -477,14 +497,16 @@ export declare function validRating(): SQL; // users をuser_idで内部結合�
 - 外部キーは`ON DELETE`を指定しない。`launch_comments.author_user_id`・`product_ratings.user_id`はユーザーの`purge_due`、`product_id`・`launch_id`・`parent_id`はプロダクトの`purge_due`で、上流の行の削除より前に外したり消したりする(13.5・13.6)。
 - `product_id`はローンチからプロダクトを引く上流の照会口が無いため、投稿時に`listLaunches`で確かめた値を持つ。件数・物理削除・閲覧の可否の判定に使う。
 
-### backend-lib/workers/engagement
+### backend-lib/core/engagement・workers/engagement
 
-#### CommentStore・CommentThreadQuery
+- 契約と入出力の型は`core/engagement/ports.ts`、識別子は`core/engagement/identifiers.ts`、D1の実装と束縛は`workers/engagement`に置く。api・eventのapplication層と後続specは`core/engagement`だけを読み込む。条件付きの書き込みの文を返す`CommentStatements`・`RatingStatements`はデータベースの型を持つため`workers/engagement`に置き、apiのinfrastructure層(`D1CommentWriter`・`D1RatingWriter`・管理の操作口)だけが使う。
+
+#### CommentStore・CommentStatements・CommentThreadQuery
 
 **Contracts**: Service [x]
 
 ```typescript
-// comment-store.ts
+// core/engagement/ports.ts
 export interface CommentRecord {
   readonly commentId: string;
   readonly productId: string;
@@ -514,23 +536,31 @@ export interface CommentInsert {
   readonly requireListed: boolean; // 投稿者本人でなければtrue
   readonly at: Date;
 }
+export interface CommentBodyUpdate {
+  readonly commentId: string;
+  readonly authorUserId: string;
+  readonly bodyMarkdown: string;
+  readonly requireListed: boolean;
+  readonly at: Date;
+}
+export interface CommentSoftDelete {
+  readonly commentId: string;
+  readonly authorUserId: string;
+  readonly at: Date;
+}
 export interface CommentStore {
   findByIds(
     commentIds: readonly string[],
   ): Promise<ReadonlyMap<string, CommentRecord>>; // 90件ずつ
+}
+
+// workers/engagement/comment-statements.ts(データベースの型を持つため、apiのinfrastructure層だけが使う)
+import type { BatchItem } from 'drizzle-orm/batch';
+
+export interface CommentStatements {
   insertStatement(input: CommentInsert): BatchItem<'sqlite'>; // product_idのCASE条件(System Flows)
-  updateBodyStatement(input: {
-    readonly commentId: string;
-    readonly authorUserId: string;
-    readonly bodyMarkdown: string;
-    readonly requireListed: boolean;
-    readonly at: Date;
-  }): BatchItem<'sqlite'>;
-  softDeleteStatement(input: {
-    readonly commentId: string;
-    readonly authorUserId: string;
-    readonly at: Date;
-  }): BatchItem<'sqlite'>;
+  updateBodyStatement(input: CommentBodyUpdate): BatchItem<'sqlite'>;
+  softDeleteStatement(input: CommentSoftDelete): BatchItem<'sqlite'>;
   setHidden(input: {
     readonly commentId: string;
     readonly hidden: boolean;
@@ -539,7 +569,7 @@ export interface CommentStore {
   }): Promise<'changed' | 'unchanged' | 'not-found'>;
 }
 
-// comment-thread-query.ts
+// core/engagement/ports.ts(続き)
 export type CommentRow =
   | {
       readonly kind: 'shown';
@@ -579,25 +609,26 @@ export interface CommentThreadQuery {
 
 - `page`はトップレベル(`depth = 1`)を`(created_at, id)`の降順で11件読み、同じ`db.batch()`で11件目を除くルートの`root_id`の返信を`(created_at, id)`の昇順で読む(3.1・3.2・3.4・3.7)。表示の状態は`displayableComment()`を`CASE`で選択の列にし、`removed`の行は本文と投稿者と日時を選ばない(5.2)。置き換え表示のトップレベルも、子の有無によらず返す(5.3)。
 - 件数は`displayableComment()`の行だけを`launch_id`・`product_id`で数える(3.6・5.5・14.1)。
-- 条件付きの書き込みの`CASE`の条件は「System Flows」に示す。`updateBodyStatement`は`body`の値を`CASE WHEN <自分の未削除・未非公開化・未匿名化のコメント> AND <投稿先が閲覧できる> AND <投稿者が確認済みで可視> THEN ? ELSE NULL END`にし、違反で評価の文ごと取り消す(4.1・10.3)。`softDeleteStatement`は`UPDATE ... SET deleted_at = ? WHERE id = ? AND author_user_id = ? AND deleted_at IS NULL AND hidden_at IS NULL AND anonymized_at IS NULL`とし、変更が0行なら呼び出し側が`comment_not_found`にする(4.3・4.4)。`setHidden`は`hidden_at`の有無で`changed`・`unchanged`を返し、渡された文を同じ`db.batch()`に入れる(12.2〜12.4)。
+- 条件付きの書き込みの`CASE`の条件は「System Flows」に示す。`updateBodyStatement`は`body`の値を`CASE WHEN <自分の未削除・未非公開化・未匿名化のコメント> AND <投稿先が閲覧できる> AND <投稿者が確認済みで可視> THEN ? ELSE NULL END`にし、違反で評価の文ごと取り消す(4.1・10.3)。`softDeleteStatement`は`UPDATE ... SET deleted_at = ? WHERE id = ? AND author_user_id = ? AND deleted_at IS NULL AND hidden_at IS NULL AND anonymized_at IS NULL`とし、変更が0行なら`D1CommentWriter`が`not-found`を返し、`CommentService`が`comment_not_found`にする(4.3・4.4)。`setHidden`は`hidden_at`の有無で`changed`・`unchanged`を返し、渡された文を同じ`db.batch()`に入れる(12.2〜12.4)。
 
-#### RatingStore
+#### RatingStore・RatingStatements
 
 **Contracts**: Service [x]
 
 ```typescript
+// core/engagement/ports.ts
 export interface RatingSummary {
   readonly average: number | null;
   readonly count: number;
 }
+export interface RatingUpsert {
+  readonly ratingId: string;
+  readonly productId: string;
+  readonly userId: string;
+  readonly score: RatingScore;
+  readonly at: Date;
+}
 export interface RatingStore {
-  upsertStatement(input: {
-    readonly ratingId: string;
-    readonly productId: string;
-    readonly userId: string;
-    readonly score: RatingScore;
-    readonly at: Date;
-  }): BatchItem<'sqlite'>; // product_idのCASE条件、ON CONFLICT(product_id, user_id) DO UPDATE SET score・updated_at(invalidated_atは変えない、仮3)
   remove(input: {
     readonly productId: string;
     readonly userId: string;
@@ -611,6 +642,11 @@ export interface RatingStore {
   summaries(
     productIds: readonly string[],
   ): Promise<ReadonlyMap<string, RatingSummary>>; // validRating()のAVG・COUNT、90件ずつ
+}
+
+// workers/engagement/rating-statements.ts(データベースの型を持つため、apiのinfrastructure層だけが使う)
+export interface RatingStatements {
+  upsertStatement(input: RatingUpsert): BatchItem<'sqlite'>; // product_idのCASE条件、ON CONFLICT(product_id, user_id) DO UPDATE SET score・updated_at(invalidated_atは変えない、仮3)
   setInvalidated(input: {
     readonly ratingId: string;
     readonly invalidated: boolean;
@@ -620,7 +656,7 @@ export interface RatingStore {
 }
 ```
 
-- `upsertStatement`の`product_id`の条件は「評価者が`verifiedUsers()`の利用者で、プロダクトが`visibleProducts() AND wonLaunchExists()`」(9.10)。自身のプロダクトの拒否は、`products.user_id`を条件に使えないため、ユースケースが`ProductSummaryRecord.ownerUserId`で先に判定する(所有者は変わらない、9.4)。
+- `RatingStatements.upsertStatement`の`product_id`の条件は「評価者が`verifiedUsers()`の利用者で、プロダクトが`visibleProducts() AND wonLaunchExists()`」(9.10)。自身のプロダクトの拒否は、`products.user_id`を条件に使えないため、ユースケースが`ProductSummaryRecord.ownerUserId`で先に判定する(所有者は変わらない、9.4)。
 - 平均値は丸めずに返し、表示の側で小数第1位にする(11.3)。
 
 #### EngagementErasureStore・EngagementExport・EngagementPlatformModule
@@ -628,6 +664,7 @@ export interface RatingStore {
 **Contracts**: Service [x]
 
 ```typescript
+// core/engagement/ports.ts
 export interface EngagementErasureStore {
   anonymizeDeletedBefore(input: {
     readonly threshold: Date;
@@ -669,11 +706,24 @@ export interface RatingExportRecord {
 export interface RatingExport {
   listByUser(userId: string): Promise<readonly RatingExportRecord[]>;
 } // deleted_atの無い自分の評価
-// engagement-platform-module.ts
-export declare const ENGAGEMENT_PLATFORM_MODULE: AppModule; // CommentStore・CommentThreadQuery・RatingStore・EngagementErasureStore・CommentExport・RatingExport・AdminCommentDirectory・AdminRatingDirectoryを処理単位で束縛
+// core/engagement/identifiers.ts
+export declare const ENGAGEMENT_PLATFORM_TYPES: {
+  readonly CommentStore: unique symbol;
+  readonly CommentStatements: unique symbol;
+  readonly CommentThreadQuery: unique symbol;
+  readonly RatingStore: unique symbol;
+  readonly RatingStatements: unique symbol;
+  readonly EngagementErasureStore: unique symbol;
+  readonly CommentExport: unique symbol;
+  readonly RatingExport: unique symbol;
+  readonly AdminCommentDirectory: unique symbol;
+  readonly AdminRatingDirectory: unique symbol;
+}; // Symbol.for('engagement.<名前>')の値を持つ凍結したオブジェクト
+// workers/engagement/engagement-platform-module.ts
+export declare const ENGAGEMENT_PLATFORM_MODULE: AppModule; // 上の10個のD1の実装を処理単位で束縛
 ```
 
-- DIの識別子は`ENGAGEMENT_PLATFORM_TYPES`(`Symbol.for('engagement.<名前>')`)。`ENGAGEMENT_PLATFORM_MODULE`をapiとeventの`composition/modules.ts`の両方へ入れる(data-exportはeventで、public-apiはapiで使う、14.3・14.4)。
+- DIの識別子`ENGAGEMENT_PLATFORM_TYPES`は`core/engagement/identifiers.ts`に置き、`Symbol.for('engagement.<名前>')`の値を持つ凍結したオブジェクトにする(media-pipelineの`core/media/identifiers.ts`と同じ形で、`identifiers.unit.test.ts`で確かめる)。契約の型は`core/engagement/ports.ts`から読み込み、application層の各ファイルは`**/lib/workers/**`を読み込まない。`CommentStatements`・`RatingStatements`の識別子も同じオブジェクトに置くが、その型は`workers/engagement`にあり、apiのinfrastructure層だけが受け取る。`ENGAGEMENT_PLATFORM_MODULE`をapiとeventの`composition/modules.ts`の両方へ入れる(data-exportはeventで、public-apiはapiで使う、14.3・14.4)。
 - 評価の出力は管理者による無効化の有無を`invalidatedByAdmin`で返す(data-exportの依頼による仮5。本人の請求によるデータエクスポートの`ratings.json`に載り、コメントの`hiddenByAdmin`と同じ扱いにする)。画面で本人に無効化を知らせない仮3は変えない(14.3)。D1の例外はそのまま投げる(data-exportの再試行に任せる)。
 
 #### AdminCommentDirectory・AdminRatingDirectory(仮6)
@@ -681,7 +731,7 @@ export declare const ENGAGEMENT_PLATFORM_MODULE: AppModule; // CommentStore・Co
 **Contracts**: Service [x]
 
 ```typescript
-// admin-comment-directory.ts(契約の正は本spec、ugc-moderationが使う)
+// core/engagement/ports.ts(契約の正は本spec、ugc-moderationが使う。D1の実装はworkers/engagement/d1-admin-comment-directory.ts)
 export type AdminCommentState =
   'hidden' | 'deleted' | 'anonymized' | 'author_unavailable' | 'shown';
 export interface AdminCommentRecord {
@@ -710,7 +760,7 @@ export interface AdminCommentDirectory {
     readonly nextCursor: string | null;
   }>; // (created_at, id)の降順
 }
-// admin-rating-directory.ts(契約の正は本spec、ugc-moderationが使う)
+// core/engagement/ports.ts(契約の正は本spec、ugc-moderationが使う。D1の実装はworkers/engagement/d1-admin-rating-directory.ts)
 export type AdminRatingState = 'valid' | 'invalidated';
 export interface AdminRatingRecord {
   readonly ratingId: string;
@@ -795,7 +845,7 @@ export declare function toCommentViews(input: {
 
 ### api/application
 
-#### EngagementTargetResolver・CommentService・CommentReader・RatingService
+#### EngagementTargetResolver・CommentService・CommentReader・RatingService・CommentWriter・RatingWriter
 
 **Contracts**: Service [x]
 
@@ -889,20 +939,82 @@ export interface RatingService {
     readonly now: Date;
   }): Promise<ProductRatingView>;
 }
+
+// application/engagement/ports.ts(書き込みの単位。実装はinfrastructure層のD1CommentWriter・D1RatingWriter)
+export type WriteOutcome = 'committed' | 'rejected'; // rejectedは条件のCASE式の違反で一括の書き込みごと取り消されたこと
+export interface CommentWriter {
+  post(input: {
+    readonly comment: CommentInsert;
+    readonly rating: RatingUpsert | undefined;
+  }): Promise<WriteOutcome>; // コメントの挿入と評価の上書きを1回の一括の書き込みで確定
+  update(input: {
+    readonly body: CommentBodyUpdate;
+    readonly rating: RatingUpsert | undefined;
+  }): Promise<WriteOutcome>; // 本文の更新(edited_atを入れる)と評価の上書きを1回の一括の書き込みで確定
+  remove(input: CommentSoftDelete): Promise<'deleted' | 'not-found'>; // 変更が0行ならnot-found
+}
+export interface RatingWriter {
+  upsert(input: RatingUpsert): Promise<WriteOutcome>;
+}
 ```
 
+- `CommentInsert`・`CommentBodyUpdate`・`CommentSoftDelete`・`RatingUpsert`は`core/engagement/ports.ts`の型を使う。application層は文・データベースの接続・`db.batch()`を扱わず、`CommentWriter`・`RatingWriter`だけを`ENGAGEMENT_TYPES`の識別子で受け取る(`backend/002`の依存方向)。D1の例外のうち、条件の`CASE`式によるNOT NULL制約の違反だけを`rejected`に変換し、それ以外はそのまま投げる。
 - `EngagementTargetResolver.resolve`: `ProductDirectory.findSummaries([productId], 'visible')`と、`launchId`があれば`listLaunches([productId], now)`を並行に読み、`canViewProduct`が偽ならundefined。ローンチは同じプロダクトの取消でないものだけを返す(1.4・3.5・9.6・13.2〜13.4)。
-- `CommentService.post`の手順: (1)`resolve`がundefined、またはローンチが無ければ`comment_target_not_found`。(2)`isCommentableLaunch`が偽なら`launch_not_commentable`(1.5)。(3)返信なら`CommentStore.findByIds`で親を読み、同じローンチ・第2階層まで・表示できる(`deleted_at`・`hidden_at`・`anonymized_at`が無く、投稿者が可視であることは書き込みの条件で確かめる)でなければ`comment_parent_unavailable`(2.3・2.4)。(4)評価は返信なら`validation_error`(`rating`)、投稿者本人なら`rating_own_product`(10.2・仮1)。(5)`insertStatement`と評価の`upsertStatement`を1回の`db.batch()`で書き、違反なら読み直して(1)〜(3)の分類と`AccountGuard`の判定で理由を返す(1.9・10.3)。
-- `update`: `findByIds`で自分の`shown`のコメントでなければ`comment_not_found`。投稿先を`resolve`し、閲覧できなければ`comment_not_found`(4.4)。評価はトップレベルの編集だけ(仮1)。`updateBodyStatement`(`edited_at`を入れる)と評価を1回の`db.batch()`で書く(4.1・4.2)。
-- `remove`: 同じ判定の後に`softDeleteStatement`(4.3)。投稿からの経過時間やローンチの状態では制限しない(4.7)。
-- `RatingService.rate`: `resolve`がundefinedなら`rating_target_not_found`、投稿者本人なら`rating_own_product`、`upsertStatement`の違反は読み直して分類する(9.1・9.2・9.4・9.6・9.10)。`cancel`は`resolve`の後に`RatingStore.remove`(無くても成功、9.3)。どちらも`summaries`と`findScore`で更新後の値を返す(11.9)。
+- `CommentService.post`の手順: (1)`resolve`がundefined、またはローンチが無ければ`comment_target_not_found`。(2)`isCommentableLaunch`が偽なら`launch_not_commentable`(1.5)。(3)返信なら`CommentStore.findByIds`で親を読み、同じローンチ・第2階層まで・表示できる(`deleted_at`・`hidden_at`・`anonymized_at`が無く、投稿者が可視であることは書き込みの条件で確かめる)でなければ`comment_parent_unavailable`(2.3・2.4)。(4)評価は返信なら`validation_error`(`rating`)、投稿者本人なら`rating_own_product`(10.2・仮1)。(5)`CommentWriter.post`にコメントと評価を渡して1回の書き込みの単位で確定し、`rejected`なら読み直して(1)〜(3)の分類と`AccountGuard`の判定で理由を返す(1.9・10.3)。
+- `update`: `findByIds`で自分の`shown`のコメントでなければ`comment_not_found`。投稿先を`resolve`し、閲覧できなければ`comment_not_found`(4.4)。評価はトップレベルの編集だけ(仮1)。`CommentWriter.update`で本文(`edited_at`を入れる)と評価を1回の書き込みの単位で確定する(4.1・4.2)。
+- `remove`: 同じ判定の後に`CommentWriter.remove`(4.3)。投稿からの経過時間やローンチの状態では制限しない(4.7)。
+- `RatingService.rate`: `resolve`がundefinedなら`rating_target_not_found`、投稿者本人なら`rating_own_product`、`RatingWriter.upsert`が`rejected`なら読み直して分類する(9.1・9.2・9.4・9.6・9.10)。`cancel`は`resolve`の後に`RatingStore.remove`(無くても成功、9.3)。どちらも`summaries`と`findScore`で更新後の値を返す(11.9)。
 - `RatingService.read`: `viewerScore`は`findScore`の値(無効化されていても返す、11.11・仮3)。投稿者本人と未ログインはnull。
+
+#### CommentCountMetricSource・CommentAnonymizationJob
+
+**Contracts**: Service [x] / Batch [x]
+
+- `CommentCountMetricSource`はdirectory-discoveryの`DirectoryItemMetricSource`を実装し、`metrics({ productIds, at })`で`CommentThreadQuery.countsByProduct`の値を、コメントの無いプロダクトも0として返す(14.1)。登録: `DIRECTORY_ITEM_METRIC_SOURCES`に`{ key: 'comments', name: 'engagement.comment-count', order: 10, source: ENGAGEMENT_TYPES.CommentCountMetricSource }`。
+- `CommentAnonymizationJob`(`ScheduledJobHandler`、`SCHEDULED_JOBS`に`{ name: 'engagement.comment-anonymization', at: { hour: 4, minute: 21 }, order: 1400 }`):
+  - Trigger: 4:21の直列のジョブ(cron`21 12 * * *`)。
+  - Input: `context.business.date`から`threshold = fromBusinessDateTime(業務日付−12日, 0:00)`。
+  - Output: `anonymizeDeletedBefore`を500件ずつ最大10回、件数が500未満になったら止める。最後に`countOverdue(fromBusinessDateTime(業務日付−13日, 0:00))`が1以上なら`error`のログ(件数だけ、Sentryへ送られる)(6.1・6.5)。
+  - Idempotency & recovery: 未匿名化の行だけを対象にし、再実行で結果が変わらない。失敗はbackend-platformの方針で記録され再試行されず、残りは翌日に処理する(6.5)。
+  - 管理者の非公開化だけのコメントは`deleted_at`を持たないため対象にならない(6.4)。
+
+### api/infrastructure
+
+#### D1CommentWriter・D1RatingWriter
+
+**Contracts**: Service [x]
+
+```typescript
+// infrastructure/engagement/d1-comment-writer.ts
+export declare class D1CommentWriter implements CommentWriter {
+  constructor(
+    db: Database, // @inject(PLATFORM_TYPES.Database)
+    comments: CommentStatements, // @inject(ENGAGEMENT_PLATFORM_TYPES.CommentStatements)
+    ratings: RatingStatements, // @inject(ENGAGEMENT_PLATFORM_TYPES.RatingStatements)
+  );
+}
+// infrastructure/engagement/d1-rating-writer.ts
+export declare class D1RatingWriter implements RatingWriter {
+  constructor(
+    db: Database, // @inject(PLATFORM_TYPES.Database)
+    ratings: RatingStatements, // @inject(ENGAGEMENT_PLATFORM_TYPES.RatingStatements)
+  );
+}
+```
+
+- `post`: [`insertStatement`、評価があれば`upsertStatement`]を1回の`db.batch()`で実行する。`update`: [`updateBodyStatement`、評価があれば`upsertStatement`]を同じく1回で実行する。条件の`CASE`式によるNOT NULL制約の違反は`rejected`、それ以外のD1の例外はそのまま投げる(1.9・4.1・10.2・10.3)。
+- `remove`: `softDeleteStatement`を実行し、変更が0行なら`not-found`(4.3・4.4)。
+- `D1RatingWriter.upsert`: `upsertStatement`を実行し、違反は`rejected`(9.2・9.10)。
+- 束縛: `ENGAGEMENT_TYPES.CommentWriter`・`RatingWriter`を`ENGAGEMENT_MODULE`で処理単位に束縛する。application層のユースケースはポートだけを受け取る。
 
 #### CommentModerationControl・RatingModerationControl
 
 **Contracts**: Service [x]
 
 ```typescript
+// infrastructure/engagement/comment-moderation-control.ts・rating-moderation-control.ts(呼び出し側の文を受け取るため、infrastructure層に置く)
+import type { BatchItem } from 'drizzle-orm/batch';
+
 export type ModerationChangeResult = 'changed' | 'unchanged';
 export interface CommentModerationControl {
   hide(input: {
@@ -930,22 +1042,10 @@ export interface RatingModerationControl {
 }
 ```
 
-- 権限・理由・監査・通知は持たない。呼び出し側(ugc-moderation)は理由と監査の記録の文を`statements`で渡し、状態の変更と同じ一括の書き込みで確定できる(12.1)。product-launchの`ProductVisibilityControl`と同じ形である。
+- 権限・理由・監査・通知は持たない。呼び出し側(ugc-moderation)は理由と監査の記録の文を`statements`で渡し、状態の変更と同じ一括の書き込みで確定できる(12.1)。操作口の意味(呼び出し元の主体を判定しない)はproduct-launchの`ProductVisibilityControl`と同じである。
+- 置き場所: 呼び出し側の文(`BatchItem`)を受け取るため、契約と実装をapiのinfrastructure層に置く。application層は文を扱えないため(`backend/002`)、呼び出し側も自分のinfrastructure層の書き込みの単位(理由と監査の記録の文を組み立てる部品)からこの操作口を呼ぶ。識別子は`ENGAGEMENT_TYPES.CommentModerationControl`・`RatingModerationControl`のままで、`ENGAGEMENT_MODULE`で束縛する。
+- 実装: `CommentStatements.setHidden`・`RatingStatements.setInvalidated`を呼び、`not-found`を`AppError`に変える。
 - 非公開化の対象は論理削除・匿名化の後のコメントも受け付ける(表示は変わらない)。復元しても、削除・退会・停止・匿名化に当たれば置き換え表示のまま(12.3・5.4)。
-
-#### CommentCountMetricSource・CommentAnonymizationJob
-
-**Contracts**: Service [x] / Batch [x]
-
-- `CommentCountMetricSource`はdirectory-discoveryの`DirectoryItemMetricSource`を実装し、`metrics({ productIds, at })`で`CommentThreadQuery.countsByProduct`の値を、コメントの無いプロダクトも0として返す(14.1)。登録: `DIRECTORY_ITEM_METRIC_SOURCES`に`{ key: 'comments', name: 'engagement.comment-count', order: 10, source: ENGAGEMENT_TYPES.CommentCountMetricSource }`。
-- `CommentAnonymizationJob`(`ScheduledJobHandler`、`SCHEDULED_JOBS`に`{ name: 'engagement.comment-anonymization', at: { hour: 4, minute: 21 }, order: 1400 }`):
-  - Trigger: 4:21の直列のジョブ(cron`21 12 * * *`)。
-  - Input: `context.business.date`から`threshold = fromBusinessDateTime(業務日付−12日, 0:00)`。
-  - Output: `anonymizeDeletedBefore`を500件ずつ最大10回、件数が500未満になったら止める。最後に`countOverdue(fromBusinessDateTime(業務日付−13日, 0:00))`が1以上なら`error`のログ(件数だけ、Sentryへ送られる)(6.1・6.5)。
-  - Idempotency & recovery: 未匿名化の行だけを対象にし、再実行で結果が変わらない。失敗はbackend-platformの方針で記録され再試行されず、残りは翌日に処理する(6.5)。
-  - 管理者の非公開化だけのコメントは`deleted_at`を持たないため対象にならない(6.4)。
-
-### api/infrastructure
 
 #### EngagementWithdrawalSyncHandler
 
@@ -1191,12 +1291,15 @@ erDiagram
 - Unit Tests(Bun、`*.unit.test.ts`):
   - `engagement-rules`: 2,000書記素の境界(結合文字を含む絵文字)・空白だけ・使用できない文字・評価の0と6と小数・`commentIdScope`の形(1.2・1.3・7.3・9.5)。
   - `engagement-access`・`comment-threads`: 閲覧の可否(未掲載の他者と本人・非公開・停止・退会)、コメントできるローンチ(予定・組み合わせ済み・当日・終了・取消)、木の組み立てとバッジ、`removed`のバッジと作者の偽(1.4・1.5・3.2・5.2・13.2〜13.4)。
-  - ユースケース(模擬のポート): `CommentService`の分類の順(投稿先・ローンチ・親・評価)、返信への評価の拒否、投稿者本人の評価の拒否、違反の読み直しの分類、`RatingService`の初回と変更と取消の値、`viewerScore`の無効化の扱い(2.3・2.4・4.4・9.4・10.2・11.11)。
+  - `core/engagement/identifiers`: `ENGAGEMENT_PLATFORM_TYPES`が`Symbol.for('engagement.<名前>')`の値を持ち凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形)。
+  - ユースケース(模擬のポート。`CommentWriter`・`RatingWriter`・`CommentStore`・`RatingStore`・`ProductDirectory`の偽物を使い、D1・文を使わない): `CommentService`の分類の順(投稿先・ローンチ・親・評価)、返信への評価の拒否、投稿者本人の評価の拒否、書き込みの単位が`rejected`を返したときの読み直しの分類、評価を添えた投稿と編集でコメントと評価が1回の書き込みの単位に渡ること、`RatingService`の初回と変更と取消の値、`viewerScore`の無効化の扱い(2.3・2.4・4.4・9.4・10.2・11.11)。
   - `CommentAnonymizationJob`: 閾値の計算(業務日付の切り替わり)、500件ずつ最大10回、期限を過ぎた残りの`error`(6.1・6.5)。event: 2つの処理の`continue`と`done`(13.5・13.6)。
   - client: `engagementViewerKind`(未確認の本人)、`commentFormSchema`・`commentWithRatingFormSchema`、`CommentTree`の組み立てとキャッシュの更新(8.15)。
+  - 層の規則: api・eventの静的解析で、application層に`**/lib/workers/**`の読み込み(型だけの読み込みを含む)が無いこと。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts`、ローカルD1):
-  - `CommentStore`・`CommentThreadQuery`: 投稿の条件(プロダクトの非公開化・投稿者の停止・未掲載の他者・投稿者の未確認で書き込まれないこと)、第3階層への返信と置き換え表示の親への返信の拒否、トップレベルの新しい順と返信の古い順、11件目の境界とカーソルの続き(間の投稿で重複・欠落しない)、5つの置き換え表示の事情で本文と投稿者を返さないこと、停止の解除と非公開化の取消で戻ること、件数が置き換え表示を数えないこと(1.9・2.3・2.4・3.1・3.2・3.4・5.1〜5.5・15.2)。
-  - `RatingStore`: 1人1件の上書き、取消の物理削除、無効化を保つ上書き、平均から無効化・退会・停止の評価を除くこと、停止の解除で戻ること(9.2・9.3・11.1・11.2・11.11・15.2)。
+  - `CommentStatements`・`D1CommentStore`・`D1CommentThreadQuery`と`D1CommentWriter`: 投稿の条件(プロダクトの非公開化・投稿者の停止・未掲載の他者・投稿者の未確認で書き込まれないこと)、第3階層への返信と置き換え表示の親への返信の拒否、トップレベルの新しい順と返信の古い順、11件目の境界とカーソルの続き(間の投稿で重複・欠落しない)、5つの置き換え表示の事情で本文と投稿者を返さないこと、停止の解除と非公開化の取消で戻ること、件数が置き換え表示を数えないこと(1.9・2.3・2.4・3.1・3.2・3.4・5.1〜5.5・15.2)。
+  - `D1CommentWriter`・`D1RatingWriter`: 評価を添えた投稿と編集が1回の一括の書き込みで確定し、評価の文の違反でコメントも残らず`rejected`になること、条件の違反以外のD1の例外がそのまま投げられること、削除の変更が0行で`not-found`になること(1.9・4.3・10.2・10.3)。
+  - `RatingStatements`・`D1RatingStore`: 1人1件の上書き、取消の物理削除、無効化を保つ上書き、平均から無効化・退会・停止の評価を除くこと、停止の解除で戻ること(9.2・9.3・11.1・11.2・11.11・15.2)。
   - `EngagementErasureStore`と処理: 削除から13日目の4:21に匿名化され12日目には匿名化されないこと、非公開化だけのコメントを匿名化しないこと、`eraseAccount`で全てのコメントの紐付けが外れ評価が消えidentity-authの物理削除が外部キーで失敗しないこと、`eraseProduct`で返信を含むコメントと評価が消えproduct-launchの物理削除が失敗しないこと、同じイベントで2回動いて結果が同じこと(6.1〜6.4・13.5〜13.7・15.2)。
   - 同期の処理: identity-authの退会の確定でコメントと評価が論理削除され、確定の失敗で取り消されること(13.1)。
   - スキーマモジュール: `postComment`・`updateComment`・`deleteComment`・`rateProduct`・`cancelProductRating`の権限とbot対策の順、評価を添えた投稿の一括の書き込み(評価の違反でコメントも残らない)、`launchComments`のnull(閲覧できない・別のプロダクトのローンチ)、`client`以外の拒否(1.6・1.7・3.5・4.5・4.6・9.7〜9.9・10.1〜10.4)。
