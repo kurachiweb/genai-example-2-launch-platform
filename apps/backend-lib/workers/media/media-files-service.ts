@@ -88,16 +88,37 @@ export class MediaFilesService implements MediaFiles {
 
   async claim(request: ClaimRequest): Promise<ClaimResult> {
     const fileIds = [...new Set(request.fileIds)];
-    const views = await this.files.findViews(fileIds);
-    const failures = fileIds.flatMap((fileId): ClaimFailure[] => {
-      const reason = claimFailureOf(views.get(fileId), request);
-      return reason === undefined ? [] : [{ fileId, reason }];
-    });
+    const failures = await this.claimFailuresOf(fileIds, request);
     if (failures.length > 0) {
       return { ok: false, failures };
     }
-    await this.files.attach(fileIds);
-    return { ok: true };
+    // 確認の後に割り込んだ削除はattachが検出して何も紐付けないため、その時点の状態から理由を求め直す
+    const unattachable = await this.files.attach(fileIds);
+    if (unattachable.length === 0) {
+      return { ok: true };
+    }
+    const latest = await this.claimFailuresOf(unattachable, request);
+    return {
+      ok: false,
+      failures: unattachable.map(
+        (fileId): ClaimFailure =>
+          latest.find((failure) => failure.fileId === fileId) ?? {
+            fileId,
+            reason: 'deleted',
+          },
+      ),
+    };
+  }
+
+  private async claimFailuresOf(
+    fileIds: readonly string[],
+    request: ClaimRequest,
+  ): Promise<ClaimFailure[]> {
+    const views = await this.files.findViews(fileIds);
+    return fileIds.flatMap((fileId): ClaimFailure[] => {
+      const reason = claimFailureOf(views.get(fileId), request);
+      return reason === undefined ? [] : [{ fileId, reason }];
+    });
   }
 
   async markDeleted(fileIds: readonly string[]): Promise<void> {

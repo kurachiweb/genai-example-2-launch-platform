@@ -223,11 +223,18 @@ export function createRecordingStore(): {
   };
 }
 
+export function expectWithinBindLimit(
+  placeholderCounts: readonly number[],
+): void {
+  expect(placeholderCounts.length).toBeGreaterThan(0);
+  for (const count of placeholderCounts) {
+    expect(count).toBeLessThanOrEqual(MAX_BOUND_PARAMETERS);
+  }
+}
+
 export function expectSplitWithinBindLimit(
   placeholderCounts: readonly number[],
 ): void {
   expect(placeholderCounts.length).toBeGreaterThan(1);
-  for (const count of placeholderCounts) {
-    expect(count).toBeLessThanOrEqual(MAX_BOUND_PARAMETERS);
-  }
+  expectWithinBindLimit(placeholderCounts);
 }

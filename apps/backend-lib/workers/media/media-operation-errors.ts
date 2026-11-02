@@ -1,16 +1,15 @@
 import { AppError } from '../../core/errors/app-error.ts';
-
-export const STORAGE_RETRY_AFTER_SECONDS = 5;
-
-export const STORAGE_UNAVAILABLE_MESSAGE =
-  '現在ご利用いただけません。しばらく待ってから再度お試しください。';
+import {
+  MEDIA_RETRY_AFTER_SECONDS,
+  MEDIA_UNAVAILABLE_MESSAGE,
+} from '../../core/media/media-unavailable.ts';
 
 export function storageUnavailable(): AppError {
   return new AppError({
     kind: 'unavailable',
     code: 'storage_unavailable',
-    message: STORAGE_UNAVAILABLE_MESSAGE,
-    retryAfterSeconds: STORAGE_RETRY_AFTER_SECONDS,
+    message: MEDIA_UNAVAILABLE_MESSAGE,
+    retryAfterSeconds: MEDIA_RETRY_AFTER_SECONDS,
   });
 }
 

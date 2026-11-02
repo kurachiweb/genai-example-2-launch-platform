@@ -21,8 +21,11 @@ import type {
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
 
-// 1回の起動で扱う件数の上限。超えた分は翌日の起動が状態から求め直して扱う
+// 1回の照会で扱う件数の上限。820・830は1回の起動で1度だけ照会し、超えた分は翌日の起動が状態から求め直して扱う
 export const MEDIA_DAILY_JOB_LIMIT = 1000;
+// 810の1回の繰り返しは、候補の照会1・記録の読み出し12(90件ずつ)・3バケットの削除3・パージの依頼10(100件ずつ)・記録の削除1の最大27回のサブリクエストを使う。
+// 10回で最大270回となり、同じ起動の他のジョブとWorkers Paidの1起動あたり10,000回を分け合える。D1の照会は1回の繰り返しで14回(一括実行は1回と数える)、10回で140回となり、1起動あたり1,000回の上限にも収まる。処理の大半がI/Oの待ちのため、CPU時間の既定の上限(30秒。limits.cpu_msは未設定)にも届かない
+export const EXPIRED_FILE_ERASURE_MAX_ROUNDS = 10;
 export const SOFT_DELETED_RETENTION_MS = 13 * DAY_MS;
 export const UNATTACHED_RETENTION_MS = DAY_MS;
 export const MODERATION_PENDING_TIMEOUT_MS = HOUR_MS;
@@ -108,20 +111,38 @@ export class ExpiredFileErasureJob implements ScheduledJobHandler {
     const deletedBefore = new Date(
       before(scheduledTime, SOFT_DELETED_RETENTION_MS).getTime() + 1,
     );
-    const { targets, hasMore } = await limitedBatch((limit) =>
-      this.files.findEraseCandidates({
-        deletedBefore,
-        unattachedCreatedBefore: before(scheduledTime, UNATTACHED_RETENTION_MS),
-        limit,
-      }),
-    );
-    const { erased } =
-      targets.length === 0 ? { erased: 0 } : await this.eraser.erase(targets);
+    const query = {
+      deletedBefore,
+      unattachedCreatedBefore: before(scheduledTime, UNATTACHED_RETENTION_MS),
+    };
+    let found = 0;
+    let erased = 0;
+    let rounds = 0;
+    let hasMore = true;
+    while (hasMore && rounds < EXPIRED_FILE_ERASURE_MAX_ROUNDS) {
+      const batch = await limitedBatch((limit) =>
+        this.files.findEraseCandidates({ ...query, limit }),
+      );
+      hasMore = batch.hasMore;
+      if (batch.targets.length === 0) {
+        break;
+      }
+      erased += (await this.eraser.erase(batch.targets)).erased;
+      found += batch.targets.length;
+      rounds += 1;
+    }
     erasureLogger.info('期限を過ぎたファイルを物理削除しました', {
-      found: targets.length,
+      found,
       erased,
+      rounds,
       hasMore,
     });
+    if (hasMore) {
+      erasureLogger.warn(
+        '1回の起動の繰り返しの上限に達したため、残りのファイルの物理削除を翌日に回します',
+        { erased, rounds },
+      );
+    }
   }
 }
 

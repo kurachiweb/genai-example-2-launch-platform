@@ -132,7 +132,8 @@ export class RecordingEraser implements MediaEraser {
     if (this.failure !== undefined) {
       return Promise.reject(this.failure);
     }
-    const existing = fileIds.filter((id) => this.store.ids().includes(id));
+    const known = new Set(this.store.ids());
+    const existing = fileIds.filter((id) => known.has(id));
     this.store.remove(existing);
     return Promise.resolve({ erased: existing.length });
   }

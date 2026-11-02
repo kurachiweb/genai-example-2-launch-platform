@@ -182,7 +182,8 @@ export interface MediaFileStore {
   findViews(
     ids: readonly string[],
   ): Promise<ReadonlyMap<string, MediaFileView>>;
-  attach(ids: readonly string[]): Promise<void>;
+  // 存在しない・論理削除済み・削除待ちの識別子を返す。1件でもあればどの記録も紐付けない。紐付け済みの記録は日時を変えない
+  attach(ids: readonly string[]): Promise<readonly string[]>;
   markDeleted(ids: readonly string[]): Promise<void>;
   markEraseRequested(ids: readonly string[]): Promise<void>;
   remove(ids: readonly string[]): Promise<void>;

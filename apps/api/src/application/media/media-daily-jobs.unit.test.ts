@@ -29,6 +29,7 @@ import {
   mediaFileViewOf,
 } from '../../../test/support/media-file-view.ts';
 import {
+  EXPIRED_FILE_ERASURE_MAX_ROUNDS,
   ExpiredFileErasureJob,
   LocationReconciliationJob,
   MEDIA_DAILY_JOB_LIMIT,
@@ -180,11 +181,12 @@ afterEach(() => {
 });
 
 describe('日次バッチの定数', () => {
-  test('1回の上限は1,000件、論理削除の保持は13日、未紐付けの保持は24時間、判定待ちの期限は1時間である', () => {
+  test('1回の上限は1,000件、物理削除の繰り返しは10回まで、論理削除の保持は13日、未紐付けの保持は24時間、判定待ちの期限は1時間である', () => {
     expect(MEDIA_DAILY_JOB_LIMIT).toBe(1000);
     expect(SOFT_DELETED_RETENTION_MS).toBe(13 * 24 * 3_600_000);
     expect(UNATTACHED_RETENTION_MS).toBe(24 * 3_600_000);
     expect(MODERATION_PENDING_TIMEOUT_MS).toBe(3_600_000);
+    expect(EXPIRED_FILE_ERASURE_MAX_ROUNDS).toBe(10);
   });
 });
 
@@ -259,21 +261,74 @@ describe('ExpiredFileErasureJob', () => {
     expect(store.ids()).toEqual([fileIdOf(2)]);
   });
 
-  test('候補が上限より多ければ先頭の1,000件だけを消し、件数と残りがあることをinfoのログに出す', async () => {
+  test('候補が上限より多ければ1,000件ずつ照会と物理削除を繰り返して全てを消し、件数と回数をinfoのログに出す', async () => {
     const { store, eraser, erasure } = jobsOf(
-      serials(1, 1001).map((serial) =>
+      serials(1, 2001).map((serial) =>
         attachedFile(serial, { eraseRequested: true }),
       ),
     );
 
     await erasure.run(CONTEXT);
 
-    expect(eraser.calls).toHaveLength(1);
-    expect(eraser.calls[0]).toEqual(serials(1, 1000).map(fileIdOf));
-    expect(store.ids()).toEqual([fileIdOf(1001)]);
-    expect(logsOf(ERASURE_CATEGORY, 'info')).toEqual([
-      { found: 1000, erased: 1000, hasMore: true },
+    expect(eraser.calls).toEqual([
+      serials(1, 1000).map(fileIdOf),
+      serials(1001, 1000).map(fileIdOf),
+      [fileIdOf(2001)],
     ]);
+    expect(store.eraseCandidateCalls).toHaveLength(3);
+    expect(store.ids()).toEqual([]);
+    expect(logsOf(ERASURE_CATEGORY, 'info')).toEqual([
+      { found: 2001, erased: 2001, rounds: 3, hasMore: false },
+    ]);
+    expect(logsOf(ERASURE_CATEGORY, 'warning')).toEqual([]);
+  });
+
+  test('繰り返しが上限の10回に達しても候補が残れば止め、残りがあることをinfoとwarningのログに出す', async () => {
+    const { store, eraser, erasure } = jobsOf(
+      serials(1, 10_001).map((serial) =>
+        attachedFile(serial, { eraseRequested: true }),
+      ),
+    );
+
+    await erasure.run(CONTEXT);
+
+    expect(eraser.calls).toHaveLength(EXPIRED_FILE_ERASURE_MAX_ROUNDS);
+    expect(store.eraseCandidateCalls).toHaveLength(
+      EXPIRED_FILE_ERASURE_MAX_ROUNDS,
+    );
+    expect(store.ids()).toEqual([fileIdOf(10_001)]);
+    expect(logsOf(ERASURE_CATEGORY, 'info')).toEqual([
+      { found: 10_000, erased: 10_000, rounds: 10, hasMore: true },
+    ]);
+    expect(logsOf(ERASURE_CATEGORY, 'warning')).toEqual([
+      { erased: 10_000, rounds: 10 },
+    ]);
+  });
+
+  test('繰り返しの途中で物理削除が失敗すれば消し終えた分を残して例外を伝え、次の起動が残りを消す', async () => {
+    const failure = new Error('R2に到達できません');
+    const { store, eraser, erasure } = jobsOf(
+      serials(1, 1001).map((serial) =>
+        attachedFile(serial, { eraseRequested: true }),
+      ),
+    );
+    const erase = eraser.erase.bind(eraser);
+    eraser.erase = async (fileIds) => {
+      const summary = await erase(fileIds);
+      eraser.failure = failure;
+      return summary;
+    };
+
+    const error = await failureOf(erasure.run(CONTEXT));
+
+    expect(error).toBe(failure);
+    expect(store.ids()).toEqual([fileIdOf(1001)]);
+
+    eraser.failure = undefined;
+    eraser.erase = erase;
+    await erasure.run(CONTEXT);
+
+    expect(store.ids()).toEqual([]);
   });
 
   test('候補が上限ちょうどなら全てを消し、残りが無いことをログに出す', async () => {
@@ -287,7 +342,7 @@ describe('ExpiredFileErasureJob', () => {
 
     expect(store.ids()).toEqual([]);
     expect(logsOf(ERASURE_CATEGORY, 'info')).toEqual([
-      { found: 1000, erased: 1000, hasMore: false },
+      { found: 1000, erased: 1000, rounds: 1, hasMore: false },
     ]);
   });
 
@@ -298,7 +353,7 @@ describe('ExpiredFileErasureJob', () => {
 
     expect(eraser.calls).toEqual([]);
     expect(logsOf(ERASURE_CATEGORY, 'info')).toEqual([
-      { found: 0, erased: 0, hasMore: false },
+      { found: 0, erased: 0, rounds: 0, hasMore: false },
     ]);
   });
 
@@ -348,8 +403,8 @@ describe('ExpiredFileErasureJob', () => {
 
     expect(eraser.calls).toEqual([[fileIdOf(1)]]);
     expect(logsOf(ERASURE_CATEGORY, 'info')).toEqual([
-      { found: 1, erased: 1, hasMore: false },
-      { found: 0, erased: 0, hasMore: false },
+      { found: 1, erased: 1, rounds: 1, hasMore: false },
+      { found: 0, erased: 0, rounds: 0, hasMore: false },
     ]);
   });
 });

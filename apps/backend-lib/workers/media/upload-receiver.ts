@@ -26,6 +26,10 @@ import {
   readImageDimensions,
 } from '../../core/media/image-dimensions.ts';
 import { MODERATE_IMAGE_MESSAGE } from '../../core/media/media-messages.ts';
+import {
+  MEDIA_RETRY_AFTER_SECONDS,
+  MEDIA_UNAVAILABLE_MESSAGE,
+} from '../../core/media/media-unavailable.ts';
 import { generateObjectKey } from '../../core/media/object-key.ts';
 import type {
   MediaFileStore,
@@ -52,10 +56,6 @@ import {
   type MessagePublisher,
   MessagePublishError,
 } from '../messaging/queue-publisher.ts';
-import {
-  STORAGE_RETRY_AFTER_SECONDS,
-  STORAGE_UNAVAILABLE_MESSAGE,
-} from './media-operation-errors.ts';
 
 export interface MediaUploadReceiverDependencies {
   readonly files: MediaFileStore;
@@ -91,8 +91,8 @@ const LENGTH_MISMATCH: UploadRejection = Object.freeze({
 const STORAGE_UNAVAILABLE: UploadRejection = Object.freeze({
   kind: 'unavailable',
   code: 'storage_unavailable',
-  message: STORAGE_UNAVAILABLE_MESSAGE,
-  retryAfterSeconds: STORAGE_RETRY_AFTER_SECONDS,
+  message: MEDIA_UNAVAILABLE_MESSAGE,
+  retryAfterSeconds: MEDIA_RETRY_AFTER_SECONDS,
 });
 
 const unprocessable = (

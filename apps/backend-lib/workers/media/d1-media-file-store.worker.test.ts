@@ -8,6 +8,7 @@ import {
   createStore,
   createTestClock,
   expectSplitWithinBindLimit,
+  expectWithinBindLimit,
   FILE_PURPOSE,
   fileIdOf,
   fileIdsOf,
@@ -211,29 +212,74 @@ describe('D1MediaFileStoreの記録の書き込みと取得', () => {
   });
 
   describe('attach', () => {
-    test('未紐付けの記録だけに紐付けの日時を付け、紐付け済みの日時を変えない', async () => {
+    test('未紐付けの記録だけに紐付けの日時を付け、紐付け済みの紐付けと更新の日時を変えずに空の一覧を返す', async () => {
       await insertFile(1);
       await insertFile(2, { attachedAt: T0 });
 
-      await createStore(createTestClock(after(1000))).attach([
+      const unattachable = await createStore(
+        createTestClock(after(1000)),
+      ).attach([fileIdOf(1), fileIdOf(2), fileIdOf(1)]);
+
+      expect(unattachable).toEqual([]);
+      expect(await readFile(1)).toMatchObject({
+        attachedAt: after(1000),
+        updatedAt: after(1000),
+      });
+      expect(await readFile(2)).toMatchObject({
+        attachedAt: T0,
+        updatedAt: T0,
+      });
+    });
+
+    test('存在しない・論理削除済み・削除待ちの識別子を1件ずつ返し、どの記録も紐付けない', async () => {
+      await insertFile(1);
+      await insertFile(2, { deletedAt: T0 });
+      await insertFile(3, { eraseRequestedAt: T0 });
+
+      const unattachable = await createStore(
+        createTestClock(after(1000)),
+      ).attach([
         fileIdOf(1),
         fileIdOf(2),
         fileIdOf(3),
+        fileIdOf(4),
+        fileIdOf(4),
       ]);
 
-      expect(await readFile(1)).toMatchObject({ attachedAt: after(1000) });
-      expect(await readFile(2)).toMatchObject({ attachedAt: T0 });
+      expect(unattachable.toSorted()).toEqual([
+        fileIdOf(2),
+        fileIdOf(3),
+        fileIdOf(4),
+      ]);
+      for (const index of [1, 2, 3]) {
+        expect(await readFile(index)).toMatchObject({
+          attachedAt: null,
+          updatedAt: T0,
+        });
+      }
     });
 
-    test('90件を超える識別子を分けて更新し、全件に紐付けの日時を付ける', async () => {
+    test('90件を超える識別子をバインド変数の上限に収めて全件に紐付けの日時を付ける', async () => {
       await insertFiles(200);
       const { store, placeholderCounts } = createRecordingStore();
 
-      await store.attach(fileIdsOf(200));
+      const unattachable = await store.attach(fileIdsOf(200));
 
       const views = await createStore().findViews(fileIdsOf(200));
+      expect(unattachable).toEqual([]);
       expect([...views.values()].every((view) => view.attached)).toBe(true);
-      expectSplitWithinBindLimit(placeholderCounts);
+      expectWithinBindLimit(placeholderCounts);
+    });
+
+    test('90件を超える識別子の最後の1件が論理削除済みなら、先頭の記録も紐付けない', async () => {
+      await insertFiles(200);
+      await createStore().markDeleted([fileIdOf(200)]);
+
+      const unattachable = await createStore().attach(fileIdsOf(200));
+
+      const views = await createStore().findViews(fileIdsOf(200));
+      expect(unattachable).toEqual([fileIdOf(200)]);
+      expect([...views.values()].some((view) => view.attached)).toBe(false);
     });
   });
 

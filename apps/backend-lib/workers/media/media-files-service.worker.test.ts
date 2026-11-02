@@ -118,6 +118,60 @@ describe('MediaFilesService', () => {
       });
     });
 
+    test.each([
+      ['論理削除', (ids: readonly string[]) => createStore().markDeleted(ids)],
+      [
+        '削除待ちの印',
+        (ids: readonly string[]) => createStore().markEraseRequested(ids),
+      ],
+    ] as const)(
+      '状態の確認と紐付けの間に%sが割り込めば、そのファイルを削除済みとして返し、どのファイルも紐付けない',
+      async (_label, interrupt) => {
+        await insertFile(1);
+        await insertFile(2);
+        const store = createStore();
+        const files = failingFileStore({
+          findViews: async (ids) => {
+            const views = await store.findViews(ids);
+            await interrupt([fileIdOf(2)]);
+            return views;
+          },
+        });
+        const { service } = createOperations({ files });
+
+        const result = await service.claim(claimOf([1, 2]));
+
+        expect(result).toEqual({
+          ok: false,
+          failures: [{ fileId: fileIdOf(2), reason: 'deleted' }],
+        });
+        expect((await readFile(1))?.attachedAt).toBeNull();
+        expect((await readFile(2))?.attachedAt).toBeNull();
+      },
+    );
+
+    test('状態の確認と紐付けの間に物理削除されたファイルは見つからないとして返す', async () => {
+      await insertFile(1);
+      await insertFile(2);
+      const store = createStore();
+      const files = failingFileStore({
+        findViews: async (ids) => {
+          const views = await store.findViews(ids);
+          await store.remove([fileIdOf(2)]);
+          return views;
+        },
+      });
+      const { service } = createOperations({ files });
+
+      const result = await service.claim(claimOf([1, 2]));
+
+      expect(result).toEqual({
+        ok: false,
+        failures: [{ fileId: fileIdOf(2), reason: 'not_found' }],
+      });
+      expect((await readFile(1))?.attachedAt).toBeNull();
+    });
+
     test('管理者の主体は管理者がアップロードしたファイルだけを紐付けられる', async () => {
       await insertFile(1, { ownerKind: 'admin', ownerId: ADMIN_A });
       const { service } = createOperations();

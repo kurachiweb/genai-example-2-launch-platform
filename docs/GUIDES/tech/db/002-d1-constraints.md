@@ -113,6 +113,23 @@ if (first !== undefined) {
 }
 ```
 
+- 分割した文は互いの対象を参照できないため、「1件でも条件を満たさなければどれも更新しない」のように全件を1つの条件で判定する更新は分割できない。この場合は値の一覧をJSONの文字列として1つのバインド変数で渡し、`json_each`で展開して1文で判定する。
+
+```typescript
+const targets = sql`SELECT value AS id FROM json_each(${JSON.stringify(ids)})`;
+const blocked = sql`SELECT 1 FROM (${targets}) AS target LEFT JOIN ${articles} AS article ON article.id = target.id WHERE article.id IS NULL OR article.deleted_at IS NOT NULL`;
+
+await db
+  .update(articles)
+  .set({ status: 'published' })
+  .where(
+    and(
+      sql`${articles.id} IN (SELECT id FROM (${targets}))`,
+      sql`NOT EXISTS (${blocked})`,
+    ),
+  );
+```
+
 - 1文が実際に使うバインド変数の数は、Drizzleのクエリの`toSQL().params.length`で確かめられる。
 - 参照: Cloudflare Docsの「[Limits](https://developers.cloudflare.com/d1/platform/limits/)」
 

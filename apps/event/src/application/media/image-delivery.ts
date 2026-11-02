@@ -16,6 +16,10 @@ import {
   NOT_FOUND_RESPONSE,
   toErrorResponse,
 } from '../../../lib/core/errors/error-envelope.ts';
+import {
+  MEDIA_RETRY_AFTER_SECONDS,
+  MEDIA_UNAVAILABLE_MESSAGE,
+} from '../../../lib/core/media/media-unavailable.ts';
 import type {
   ImageSource,
   ImageTransformer,
@@ -31,8 +35,6 @@ export interface ImageDeliveryDeps {
 }
 
 const IMAGE_TRANSFORM_QUALITY = 80;
-
-const IMAGE_RETRY_AFTER_SECONDS = 5;
 
 const SVG_MEDIA_TYPE = 'image/svg+xml';
 
@@ -55,8 +57,8 @@ const IMAGE_UNAVAILABLE_RESPONSE: ErrorResponseParts = toErrorResponse(
   new AppError({
     kind: 'unavailable',
     code: 'image_unavailable',
-    message: '現在ご利用いただけません。しばらく待ってから再度お試しください。',
-    retryAfterSeconds: IMAGE_RETRY_AFTER_SECONDS,
+    message: MEDIA_UNAVAILABLE_MESSAGE,
+    retryAfterSeconds: MEDIA_RETRY_AFTER_SECONDS,
   }),
 );
 

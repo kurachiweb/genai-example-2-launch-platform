@@ -303,10 +303,31 @@ export class D1MediaFileStore implements MediaFileStore {
     );
   }
 
-  async attach(ids: readonly string[]): Promise<void> {
-    await this.stampUnset(ids, mediaFiles.attachedAt, (now) => ({
-      attachedAt: now,
-    }));
+  // 1件でも紐付けられなければ全件を紐付けない条件は、分割した文の間で互いを参照できないため、識別子の一覧をJSONの1つのバインド変数で渡して件数によらず1文で判定する
+  async attach(ids: readonly string[]): Promise<readonly string[]> {
+    const unique = uniqueOf(ids);
+    if (unique.length === 0) {
+      return [];
+    }
+    const now = this.clock.now();
+    const targets = sql`SELECT key, value AS id FROM json_each(${JSON.stringify(unique)})`;
+    const column = (name: SQLiteColumn): SQL =>
+      sql`file.${sql.identifier(name.name)}`;
+    const unattachable = sql`SELECT target.id AS id FROM (${targets}) AS target LEFT JOIN ${mediaFiles} AS file ON ${column(mediaFiles.id)} = target.id WHERE ${column(mediaFiles.id)} IS NULL OR ${column(mediaFiles.deletedAt)} IS NOT NULL OR ${column(mediaFiles.eraseRequestedAt)} IS NOT NULL ORDER BY target.key`;
+    const [rejected] = await this.db.batch([
+      this.db.all<{ id: string }>(unattachable),
+      this.db
+        .update(mediaFiles)
+        .set({ attachedAt: now, updatedAt: now })
+        .where(
+          and(
+            sql`${mediaFiles.id} IN (SELECT id FROM (${targets}))`,
+            isNull(mediaFiles.attachedAt),
+            sql`NOT EXISTS (${unattachable})`,
+          ),
+        ),
+    ]);
+    return rejected.map((row) => row.id);
   }
 
   async markDeleted(ids: readonly string[]): Promise<void> {
