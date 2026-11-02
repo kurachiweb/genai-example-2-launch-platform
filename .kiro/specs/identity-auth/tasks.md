@@ -347,7 +347,7 @@
   - _Requirements: 3.3, 15.3_
 
 - [ ] 10. 利用者側の画面
-- [ ] 10.1 (P) TOTPのQRコード・リカバリコードの一覧・パスワードの入力欄の共通部品を作る
+- [x] 10.1 (P) TOTPのQRコード・リカバリコードの一覧・パスワードの入力欄の共通部品を作る
   - 先に、URIからQRコードのSVGが描画され代替テキストを持つこと、リカバリコードの一覧のコピーと復旧できない旨の注意、パスワードの表示の切り替えの状態の通知、アクセシビリティの自動検査で違反が0件であることを確かめるブラウザテストを書く
   - 3つの部品とStorybookのストーリーを作る。生のHTMLを挿入しない
   - 同じ変更で、`docs/GUIDES/tech/frontend/005-shared-components.md`の「部品の一覧」の表に、管理者側も使う認証の画面部品の行`components/auth/`と3つの部品を加える
@@ -494,3 +494,4 @@
 - 8.5: `AccountUploaderEligibility`(`application/identity/account-uploader-eligibility.ts`)を処理単位で単一に束縛し、`composition/uploader-eligibility.ts`は`UPLOAD_ACCESS_TYPES.UploaderEligibility`を`toService(IDENTITY_TYPES.AccountUploaderEligibility)`で転送する。`AllowAllUploaderEligibility`はmedia-pipelineの5.1のテストが使うため残す
 - 9.1: eventの`UserLifecycleRunner`(`apps/event/src/application/identity/user-lifecycle-runner.ts`、依存`{ store, registry, resolver, purgeStore, clock }`をまとめて受け取り`@injectable`無し、9.2で`toDynamicValue`で組み立てる)、ポートは`application/identity/ports.ts`(`LifecycleHandlerResolver`・`IdentityPurgeStore`。設計の`DisposableStatusStore`・`LifecycleIncidentReporter`は9.2で加える)、物理削除は`infrastructure/identity/d1-identity-purge-store.ts`(`@injectable`、イベントの行も消すため物理削除の後の再配信は「イベントが無い」で終わる)。ログのカテゴリは`['event','identity','lifecycle']`
 - 9.2: eventの組み立ては`apps/event/src/composition/identity-module.ts`(`createEventIdentityModule({ asyncHandlers })`)、非同期の波及処理の登録箇所は`user-lifecycle-async-handlers.ts`(初版は`identity-auth.email-suppression-cleanup`、`withdrawn`、order 10000)、識別子は`application/identity/event-identity-types.ts`(`Symbol.for('identity.event.<名前>')`)。退会済みの利用者のメールアドレスは新しいポート`UserEmailLookup`(`D1UserEmailLookup`)で読む。判定し直しは判定がnullの確認済みも対象にし、保存は同じメールアドレス・未退会・確認済み・未確定を条件にした更新。設計の`LifecycleIncidentReporter`は作らない(eventに固有の通知の種類が無く、16.6・17.4はapiの`AuthIncidentReporter`、使い切った再試行はbackend-platformのデッドレターの処理がSentryへ送る。design.mdも合わせて改めた)。identityのテストの補助の`userIdOf`(`01JC0USER...`)はULIDでないため、本文を`z.ulid()`で検証するメッセージのテストでは正しいULIDを使う(誤ると黙ってデッドレターになる)
+- 10.1: 部品は`apps/frontend-lib/components/auth/`の`TotpQrCode`(`{ uri, label }`、規格どおり4セルの余白、配色によらない`--qr-code`・`--qr-code-background`)・`RecoveryCodeList`(`{ codes }`、コピーの結果は部品の中の`role="status"`・`role="alert"`)・`PasswordInput`(`autoComplete`が必須、表示の切り替えは`aria-pressed`)、文言は`utilities/messages/auth-messages.ts`(QRの代替テキストは`TOTP_QR_CODE_LABEL`)。1.1の導入確認のテスト`qr-code-package.browser.test.ts`は削除済み

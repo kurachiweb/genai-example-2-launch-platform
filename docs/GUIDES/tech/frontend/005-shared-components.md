@@ -17,11 +17,11 @@
 
 ## 共通化の対象
 
-| 置き場所                   | 置くもの                                                                                                                                                                                                                                                            |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 共通部品の`components/`    | 複数のアプリで同じ見た目と振る舞いを持つ部品。基本部品・フォーム・状態表示・トースト・エラーの表示・日時と数値・bot判定・配色の切替・文書の外枠・疎通確認・マークダウンの表示・検索語の強調・ファイルの選択とアップロードの入力欄・画像の表示とダウンロードのリンク |
-| アプリの`src/components/`  | 1つのアプリだけの部品。レイアウト(ヘッダー・ナビゲーション・フッター)、ルーターやアプリの導線を共通部品へ結び付けるページの部品(404・エラーの画面など)                                                                                                              |
-| アプリの`src/composition/` | アプリ固有の値(導線・レイアウトに差し込む区画など)の登録箇所                                                                                                                                                                                                        |
+| 置き場所                   | 置くもの                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 共通部品の`components/`    | 複数のアプリで同じ見た目と振る舞いを持つ部品。基本部品・フォーム・状態表示・トースト・エラーの表示・日時と数値・bot判定・配色の切替・文書の外枠・疎通確認・マークダウンの表示・検索語の強調・ファイルの選択とアップロードの入力欄・画像の表示とダウンロードのリンク・認証の画面部品(TOTPのQRコード・リカバリコードの一覧・パスワードの入力欄) |
+| アプリの`src/components/`  | 1つのアプリだけの部品。レイアウト(ヘッダー・ナビゲーション・フッター)、ルーターやアプリの導線を共通部品へ結び付けるページの部品(404・エラーの画面など)                                                                                                                                                                                        |
+| アプリの`src/composition/` | アプリ固有の値(導線・レイアウトに差し込む区画など)の登録箇所                                                                                                                                                                                                                                                                                  |
 
 - 共通部品は、アプリ固有の値(リンク先・問い合わせの導線・サービス名など)を持たず、propsで受け取る。共通部品から利用側アプリの`src`への読み込みは、静的解析の`frontend/direction/*`(「[画面を持つアプリの静的解析](../coding/001-javascript-typescript-conventions.md#画面を持つアプリの静的解析)」)が禁止する。
 - 共通部品の`components/`は、`utilities/`・`start/`の値と、`server/`の型だけを読み込める。サーバー専用のファイル(`*.server.ts`)は読み込めない。
@@ -43,6 +43,7 @@
 | `components/markdown/`        | `MarkdownContent`・`CollapsibleMarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | マークダウンの本文の表示と折りたたみ、描画のメモ化・描画の指定                                                                               |
 | `components/markdown-editor/` | `MarkdownEditor`・`MarkdownToolbar`・`MarkdownLinkDialog`・`MarkdownLengthCounter`・`EditorPlaceholder`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | マークダウンの入力欄(編集領域は遅延読み込み)                                                                                                 |
 | `components/media/`           | `FileDropZone`・`FileSelectionList`・`FileThumbnail`・`ImageCropDialog`・`encodeCroppedImage`・`ImageUploadField`・`AttachmentUploadField`・`useFileUpload`・`MediaPicture`・`MediaPlaceholder`・`PrivateFileLink`・`useImagesOrigin`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | アップロードするファイルの選択と、選んだファイルの一覧、画像の切り取りと作り直し、送信と画像・添付の入力欄、画像の表示とダウンロードのリンク |
+| `components/auth/`            | `TotpQrCode`・`RecoveryCodeList`・`PasswordInput`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 多要素認証のQRコードの描画、リカバリコードの一覧とコピー、表示を切り替えられるパスワードの入力欄                                             |
 | `components/search/`          | `HighlightedText`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 検索語の一致箇所の`<mark>`による強調                                                                                                         |
 | `components/system/`          | `SystemStatusView`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 疎通確認の画面の本体                                                                                                                         |
 
@@ -406,6 +407,34 @@ import { PrivateFileLink } from '<共通部品の配置先>/components/media/pri
 - リンクの文言はファイル名とサイズ(`formatFileSize`のkB・MB)である。長いファイル名は枠の中で折り返す。
 - `download`属性と`target`を付けない。保存のファイル名とインライン表示の禁止は、サーバーの`Content-Disposition: attachment`に任せる。
 
+### 認証の画面部品
+
+多要素認証(TOTP)の設定とパスワードの入力に使う部品を`components/auth/`に置く。画面を持つ各アプリの認証の画面が同じ部品を使う。
+
+```tsx
+import { PasswordInput } from '<共通部品の配置先>/components/auth/password-input.tsx';
+import { RecoveryCodeList } from '<共通部品の配置先>/components/auth/recovery-code-list.tsx';
+import { TotpQrCode } from '<共通部品の配置先>/components/auth/totp-qr-code.tsx';
+
+<TotpQrCode uri={setup.otpauthUri} label="認証アプリで読み取るQRコード" />;
+
+<RecoveryCodeList codes={recoveryCodes} />;
+
+<FormField control={form.control} name="password" label="パスワード">
+  {(control) => <PasswordInput {...control} autoComplete="current-password" />}
+</FormField>;
+```
+
+| 部品               | props                                                                                   | 振る舞い                                                                                                                                                                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TotpQrCode`       | `uri`(`otpauth://`のURI)・`label`(代替テキスト)・`className`                            | `uqr`の`encode`で作ったセルの行列を、`role="img"`と`aria-label`を持つSVGの`<rect>`と`<path>`で描く。生のHTMLを挿入しない。四辺に規格どおり4セルの余白を取る。配色によらず白い地に黒いセルで描く(トークン`qr-code`・`qr-code-background`)。既定の大きさは`size-48` |
+| `RecoveryCodeList` | `codes`(表示の形のコード)・`className`                                                  | 名前「リカバリコード」の一覧に等幅の字形で並べ(`translate="no"`)、「すべてコピー」で1行1件の文字列をクリップボードへ書き込む。成功は`role="status"`の文言、失敗(APIが無い・拒否された)は代わりの手段を示す`role="alert"`の文言で伝える。保管の注意を常に表示する  |
+| `PasswordInput`    | `autoComplete`(必須。`current-password`・`new-password`)と`<input>`の属性(`type`を除く) | `type="password"`の入力欄と、表示を切り替えるボタン(名前は固定で、状態は`aria-pressed`、`aria-controls`で入力欄を指す)。`FormField`の子の関数が受け取る値をそのまま展開できる。`disabled`の間は切り替えのボタンも無効にする                                       |
+
+- `autoComplete`は、ログインと本人確認では`current-password`、登録とパスワードの変更・再設定では`new-password`を渡す。パスワード管理ツールが保存と提案を正しく行うためである。
+- TOTPの手入力用の文字列(秘密鍵)は`TotpQrCode`に含まれないため、呼び出す側がQRコードと並べて表示する。
+- `RecoveryCodeList`は、渡すコードが変わると(再発行など)前のコピーの結果の表示を消す。コピーの結果はトーストにせず部品の中に示す。
+
 ## 1ファイル1コンポーネントとshadcn/uiの分割
 
 1つの部品のファイル(`.tsx`)がエクスポートするReactの部品は1つだけにする。同じファイルからは、その部品のpropsの型などの型だけを併せてエクスポートしてよい。
@@ -529,7 +558,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 ```
 
-- `title`は`<分類>/<部品名>`にする。分類は、基本部品・重ねて表示する部品・フォーム・状態表示・フィードバック・エラーの表示・日時と数値・bot判定・文書の外枠・疎通確認・マークダウン・検索・メディアのいずれかにする。
+- `title`は`<分類>/<部品名>`にする。分類は、基本部品・重ねて表示する部品・フォーム・状態表示・フィードバック・エラーの表示・日時と数値・bot判定・文書の外枠・疎通確認・マークダウン・検索・メディア・認証のいずれかにする。
 - 主要な状態(既定・無効・エラー・読み込み中・送信中・開いた状態など)ごとにストーリーを分ける。操作で作る状態(検証エラー・送信中など)は`play`で操作する。押した時の処理などの関数のpropsには`fn()`を渡す。
 - ライト・ダークはツールバーで切り替えるため、配色ごとのストーリーは作らない。ただし、配色そのものを確かめる対象にする部品(本文の文字組みのように、配色で文字色や背景色の組み合わせが大きく変わる部品)は、ダークの配色を確かめるストーリーを作ってよい。そのストーリーはツールバーの値をストーリーの`globals`(`globals: { theme: 'dark' }`)で指定し、配色の切り替えを部品のpropsにしない。
 - 日時の表示は固定の表示設定で描画する。`DisplayPreferencesProvider`はブラウザの値で上書きするため、カタログでは使わず、`preview.tsx`が`DisplayPreferencesContext`へ固定の値を直接渡す。

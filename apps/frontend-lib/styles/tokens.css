@@ -44,6 +44,9 @@
   --legend-b: oklch(0.42 0.02 260);
   --code-block: oklch(0.22 0.02 160);
   --code-block-foreground: oklch(0.95 0.01 150);
+  /* 認証アプリが読み取れるよう、QRコードはダークの配色でも白い地に黒いセルで描く。ダークの配色で上書きしない */
+  --qr-code: oklch(0 0 0);
+  --qr-code-background: oklch(1 0 0);
 
   --pitch-a: oklch(0.58 0.14 148);
   --pitch-b: oklch(0.54 0.14 148);
@@ -214,6 +217,8 @@
   --color-silver: var(--silver);
   --color-code-block: var(--code-block);
   --color-code-block-foreground: var(--code-block-foreground);
+  --color-qr-code: var(--qr-code);
+  --color-qr-code-background: var(--qr-code-background);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
