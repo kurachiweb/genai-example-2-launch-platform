@@ -14,7 +14,7 @@ import type { BotVerifier } from '../lib/workers/bot-protection/turnstile-verifi
 import { createInvocationContainer } from '../lib/workers/di/invocation-container.ts';
 import { SECURITY_HEADERS } from '../lib/workers/http/security-headers.ts';
 import type { RateLimitCounterClient } from '../lib/workers/rate-limit/rate-limit-counter-client.ts';
-import { AnonymousSessionVerifier } from './application/session/anonymous-session-verifier.ts';
+import { SubjectSessionVerifier } from './application/auth/subject-session-verifier.ts';
 import { SESSION_TYPES } from './application/session/session-verifier.ts';
 import {
   DefaultSystemStatusQuery,
@@ -187,11 +187,11 @@ describe('APIサーバーの基盤モジュール', () => {
     await client.reset(rule, key);
   });
 
-  test('セッションの検証に、常に未ログインとする既定の実装を束縛する', () => {
+  test('セッションの検証に、主体の種類で利用者と管理者の検証へ振り分ける実装を束縛する', () => {
     const container = createContainer(env);
 
     expect(container.get(SESSION_TYPES.SessionVerifier)).toBeInstanceOf(
-      AnonymousSessionVerifier,
+      SubjectSessionVerifier,
     );
   });
 

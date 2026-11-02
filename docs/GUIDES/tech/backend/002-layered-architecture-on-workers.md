@@ -110,6 +110,8 @@ graph LR
 - パッケージ名の`hono`は、パスのどの区切りに現れても一致する。`hono/factory`などのサブパスに加えて、`@sentry/hono`のような別のパッケージも禁止される。
 - 動的な`import()`と`require`は検査されない。層をまたぐ読み込みに使わない。
 - `**/infrastructure/**`のような規則は、ディレクトリの中のファイルの指定に一致し、サブパスの無いディレクトリのimport(`'../infrastructure'`)には一致しない。importはディレクトリではなくファイルのパスで書く。
+- パターンはimportに書いた文字列と照合し、解決後のパスとは照合しない。同じ層の隣のディレクトリへの相対import(`'../<ディレクトリ>/<ファイル>'`)は層の名前を含まないため、`**/<層>/<ディレクトリ>/**`に一致しない。同じ層の中の特定のディレクトリを禁止する場合は、`'../<ディレクトリ>/**'`も加える。
+- 同じファイルに当たる後の設定の`no-restricted-imports`は、前の設定のオプションを合わせずに置き換える。層の中の一部のディレクトリへ禁止を足す設定は、その層の4層の規則のパターンを含め直す。層ごとのパターンは`config/eslint/backend-layers.ts`の`BACKEND_LAYER_PATTERNS`(`domain`・`application`・`infrastructureAndPresentation`)として公開しているため、書き写さずに展開する。`@typescript-eslint/no-restricted-imports`は別の規則のため、`no-restricted-imports`のオプションを置き換えない。
 
 ## 処理単位のコンテナ
 

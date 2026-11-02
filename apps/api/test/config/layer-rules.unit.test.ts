@@ -138,6 +138,100 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
   },
 ];
 
+const identityImportsFromAuth = (toSrc: string): readonly ImportCase[] => [
+  forbidden(`import { a } from '${toSrc}domain/identity/handle';`),
+  forbidden(`import type { b } from '${toSrc}application/identity/ports';`),
+  forbidden(
+    `import { c } from '${toSrc}infrastructure/identity/d1-user-account-store';`,
+  ),
+  forbidden(
+    `import { d } from '${toSrc}presentation/graphql/modules/identity/index';`,
+  ),
+  allowed(
+    `import { checkPasswordLength } from '${toSrc}../common-lib/identity/account-input-rules';`,
+  ),
+  allowed(`import type { e } from '${toSrc}../lib/core/identity/ports';`),
+];
+
+const AUTH_LAYER_CASES: readonly PositionCase[] = [
+  {
+    file: 'src/domain/auth/violation.ts',
+    imports: [
+      ...identityImportsFromAuth('../../'),
+      forbidden("import { f } from '../identity/user-account';"),
+      forbidden("import { g } from '../../application/auth/ports';"),
+      forbidden("import { eq } from 'drizzle-orm';"),
+      forbidden("import { h } from '../../../lib/workers/http/hono-env';"),
+      forbidden("import { users } from '../../../db/schema';"),
+      allowed("import { i } from './session-policy';"),
+      allowed("import { z } from 'zod';"),
+    ],
+  },
+  {
+    file: 'src/application/auth/violation.ts',
+    imports: [
+      ...identityImportsFromAuth('../../'),
+      forbidden("import { IDENTITY_TYPES } from '../identity/identity-types';"),
+      forbidden("import { f } from '../../../lib/workers/http/hono-env';"),
+      forbidden(
+        "import type { HttpFetch } from '../../../lib/workers/bot-protection/turnstile-verifier';",
+      ),
+      forbidden("import { Hono } from 'hono';"),
+      forbidden("import { env } from 'cloudflare:workers';"),
+      forbidden("import { g } from '../../infrastructure/auth/pbkdf2';"),
+      forbidden("import { MODULES } from '../../composition/modules';"),
+      forbidden("import { createDatabase } from '../../../db/client';"),
+      allowed("import { h } from '../../domain/auth/session-policy';"),
+      allowed("import { i } from '../session/session-verifier';"),
+      allowed("import { j } from '../../../lib/core/di/identifiers';"),
+    ],
+  },
+  {
+    file: 'src/infrastructure/auth/violation.ts',
+    imports: [
+      ...identityImportsFromAuth('../../'),
+      forbidden("import { f } from '../identity/d1-user-account-store';"),
+      forbidden("import { MODULES } from '../../composition/modules';"),
+      allowed("import { g } from '../../application/auth/ports';"),
+      allowed("import { h } from '../../domain/auth/session-policy';"),
+      allowed("import { i } from '../../../lib/workers/http/hono-env';"),
+      allowed("import { env } from 'cloudflare:workers';"),
+      allowed("import { createDatabase } from '../../../db/client';"),
+    ],
+  },
+  {
+    file: 'src/application/auth/nested/violation.ts',
+    imports: [
+      ...identityImportsFromAuth('../../../'),
+      forbidden(
+        "import { IDENTITY_TYPES } from '../../identity/identity-types';",
+      ),
+      forbidden("import { f } from '../../../../lib/workers/http/hono-env';"),
+      allowed("import { AUTH_TYPES } from '../auth-types';"),
+      allowed("import { g } from '../../../domain/auth/session-policy';"),
+    ],
+  },
+  {
+    file: 'src/application/identity/violation.ts',
+    imports: [
+      forbidden("import { a } from '../../infrastructure/auth/pbkdf2';"),
+      forbidden("import { b } from '../../../lib/workers/http/hono-env';"),
+      allowed("import { AUTH_TYPES } from '../auth/auth-types';"),
+      allowed("import { c } from '../../domain/auth/session-policy';"),
+      allowed("import { d } from '../../domain/identity/handle';"),
+    ],
+  },
+  {
+    file: 'src/infrastructure/identity/violation.ts',
+    imports: [
+      forbidden("import { MODULES } from '../../composition/modules';"),
+      allowed("import { a } from '../auth/pbkdf2';"),
+      allowed("import { b } from '../../application/auth/ports';"),
+      allowed("import { c } from '../../application/identity/ports';"),
+    ],
+  },
+];
+
 const SHARED_CODE_CASES: readonly PositionCase[] = [
   {
     file: 'lib/core/sample/violation.ts',
@@ -569,6 +663,18 @@ describe('apiのGraphQLの生成・検査のスクリプトとsrcの間の依存
     SOURCE_TO_SCRIPT_CASES.map((position) => [position.file, position]),
   )(
     '%sからscriptsへの依存を型だけの読み込みも含めて報告する',
+    async (_file, position) => {
+      expect(await reportedStatementsOf('api', position)).toEqual(
+        expectedStatementsOf(position),
+      );
+    },
+    LINT_TIMEOUT_MS,
+  );
+});
+
+describe('apiの認証部品から利用者のモジュールへの依存方向', () => {
+  test.each(AUTH_LAYER_CASES.map((position) => [position.file, position]))(
+    '%sで利用者のモジュールへの依存と、その層の層の規則の違反だけを報告する',
     async (_file, position) => {
       expect(await reportedStatementsOf('api', position)).toEqual(
         expectedStatementsOf(position),

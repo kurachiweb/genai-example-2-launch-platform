@@ -183,6 +183,28 @@ describe('createDisifyClient(要求)', () => {
     },
   );
 
+  test('User-Agentを渡されたら、User-Agentヘッダーで呼び出し元を名乗る', async () => {
+    const fake = respondWith(judgedBody(false));
+    const client = createDisifyClient(
+      clientOptions(fake, { userAgent: 'genai-example-2-api' }),
+    );
+
+    await client.check(EMAIL);
+
+    expect(fake.calls[0]?.headers.get('User-Agent')).toBe(
+      'genai-example-2-api',
+    );
+  });
+
+  test('User-Agentを渡されなければ、User-Agentヘッダーを設定しない', async () => {
+    const fake = respondWith(judgedBody(false));
+    const client = createDisifyClient(clientOptions(fake));
+
+    await client.check(EMAIL);
+
+    expect(fake.calls[0]?.headers.has('User-Agent')).toBe(false);
+  });
+
   test('既定では3秒で通信を打ち切る', async () => {
     const timeout = vi.spyOn(AbortSignal, 'timeout');
     const fake = respondWith(judgedBody(false));

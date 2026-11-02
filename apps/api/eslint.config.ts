@@ -5,6 +5,7 @@ import tseslint from 'typescript-eslint';
 
 import {
   APP_SOURCE_RESTRICTION,
+  BACKEND_LAYER_PATTERNS,
   createBackendLayerRules,
   REACT_RESTRICTION,
   RUNTIME_MESSAGE,
@@ -168,6 +169,48 @@ const BUN_LOADED_GRAPHQL_RULES: Linter.Config[] = [
   },
 ];
 
+// 管理者の認証が利用者のモジュール無しで認証部品を再利用できるよう、認証部品の各層から利用者のモジュールを型も含めて読み込ませない
+const IDENTITY_FROM_AUTH_RESTRICTION = {
+  group: [
+    '../identity/**',
+    '../../identity/**',
+    '**/domain/identity/**',
+    '**/application/identity/**',
+    '**/infrastructure/identity/**',
+    '**/presentation/graphql/modules/identity/**',
+  ],
+  message:
+    '認証部品(auth)は利用者のモジュール(identity)に依存できません。利用者に固有の処理はidentityの層に置き、認証部品のポートを実装してください。',
+};
+
+// 同じファイルに当たる後の設定のno-restricted-importsは層の規則のオプションを置き換えるため、その層の層の規則のパターンを含め直す
+const AUTH_LAYER_RULES: Linter.Config[] = [
+  {
+    name: 'api/auth/domain',
+    files: ['src/domain/auth/**'],
+    patterns: BACKEND_LAYER_PATTERNS.domain,
+  },
+  {
+    name: 'api/auth/application',
+    files: ['src/application/auth/**'],
+    patterns: BACKEND_LAYER_PATTERNS.application,
+  },
+  {
+    name: 'api/auth/infrastructure',
+    files: ['src/infrastructure/auth/**'],
+    patterns: BACKEND_LAYER_PATTERNS.infrastructureAndPresentation,
+  },
+].map(({ name, files, patterns }) => ({
+  name,
+  files,
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      { patterns: [...patterns, IDENTITY_FROM_AUTH_RESTRICTION] },
+    ],
+  },
+}));
+
 const SCRIPT_READABLE_SOURCE_FILES = [
   'composition/graphql-modules',
   'presentation/graphql/schema-module',
@@ -282,6 +325,7 @@ const config: Linter.Config[] = [
     tsconfigRootDir: import.meta.dirname,
   }),
   ...createBackendLayerRules('api'),
+  ...AUTH_LAYER_RULES,
   ...REACT_FORBIDDEN_RULES,
   ...BUN_LOADED_GRAPHQL_RULES,
   ...GRAPHQL_SCRIPT_RULES,

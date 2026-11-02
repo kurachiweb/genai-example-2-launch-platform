@@ -26,6 +26,7 @@ import allowlist from '../presentation/graphql/generated/allowlist.json';
 import { createGraphQLModule } from '../presentation/graphql/graphql-module.ts';
 import { API_EMAIL_MODULE } from './email-module.ts';
 import { GRAPHQL_SCHEMA_MODULES } from './graphql-modules.ts';
+import { IDENTITY_MODULE } from './identity-module.ts';
 import { INTERNAL_ROUTES } from './internal-routes.ts';
 import { API_MEDIA_MODULE, API_MEDIA_PLATFORM_MODULE } from './media-module.ts';
 import { MEDIA_REVIEW_POLICY_BINDINGS } from './media-review-policy.ts';
@@ -92,6 +93,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   EMAIL_PLATFORM_MODULE,
   API_EMAIL_MODULE,
   IDENTITY_PLATFORM_MODULE,
+  IDENTITY_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,
   API_MEDIA_PLATFORM_MODULE,

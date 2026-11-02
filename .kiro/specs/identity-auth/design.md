@@ -966,6 +966,7 @@ export interface DisposableEmailChecker {
 export interface DisifyClientOptions {
   readonly fetch: HttpFetch;
   readonly apiKey: string | undefined; // DISIFY_API_KEY(仮6)
+  readonly userAgent?: string; // 渡されたときだけUser-Agentヘッダーを付ける。apiは`genai-example-2-api`、eventは`genai-example-2-event`
   readonly timeoutMs?: number; // 既定3000
 }
 export declare function createDisifyClient(

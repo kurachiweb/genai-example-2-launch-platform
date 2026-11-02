@@ -13,6 +13,8 @@ export interface DisifyClientOptions {
   readonly appName: LoggingOptions['appName'];
   readonly fetch: HttpFetch;
   readonly apiKey: string | undefined;
+  // 判定サービスの運営者が呼び出し元を識別できるよう、アプリごとの名前を渡す
+  readonly userAgent?: string;
   readonly timeoutMs?: number;
 }
 
@@ -42,6 +44,9 @@ async function requestDisify(
   const headers = new Headers();
   if (options.apiKey !== undefined && options.apiKey !== '') {
     headers.set('X-Api-Key', options.apiKey);
+  }
+  if (options.userAgent !== undefined) {
+    headers.set('User-Agent', options.userAgent);
   }
   try {
     const response = await fetcher(DISIFY_EMAIL_URL, {
