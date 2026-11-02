@@ -6,7 +6,7 @@
 
 **Users**: 投稿者は`/my/products`で自分のプロダクトの状態を確かめ、`/my/products/new`で登録と最初のローンチの予約を行い、`/my/products/{handle}/edit`で編集・ローンチ日の変更・次回の予約・削除を行う。閲覧者は公開プロフィールの「ローンチ履歴」でプロダクトを知る。モデレーター以上の管理者は`/categories`でプロダクトカテゴリを管理する。後続spec(match-engine・directory-discovery・tournament-week・tournament-year・sponsorship・engagement・ugc-moderation・data-export・public-api)の開発者は、照会口・結果の記録の口・ライフサイクルの登録口・判定の供給元の登録口・画面の登録口を使う。
 
-**Impact**: D1に7テーブル(プロダクトカテゴリ・プロダクト・スクリーンショット・プロダクトの旧ハンドル・ローンチ・ライフサイクルイベント・処理の完了の記録)と可視性の条件を足す。`apps/backend-lib`にプロダクトの契約(`core/product`)と共有部品(`workers/product`、apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`product`・ユースケース・ライフサイクルの確定・2つの同期の波及処理・4:21の2つのジョブを、eventにプロダクトライフサイクルの実行器と3つの非同期の処理を、clientに3つの画面とローンチ履歴のタブを、adminにプロダクトカテゴリの区画を、frontend-libにカレンダーの部品(仮10)を足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレットは無く、新しいパッケージは`react-day-picker`(仮10)だけである。
+**Impact**: D1に7テーブル(プロダクトカテゴリ・プロダクト・スクリーンショット・プロダクトの旧ハンドル・ローンチ・ライフサイクルイベント・処理の完了の記録)と可視性の条件を足す。`apps/backend-lib`にプロダクトの契約とDIの識別子(`core/product`)と、そのD1の実装と束縛(`workers/product`、apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`product`・ユースケース・ライフサイクルの確定・2つの同期の波及処理・4:21の2つのジョブを、eventにプロダクトライフサイクルの実行器と3つの非同期の処理を、clientに3つの画面とローンチ履歴のタブを、adminにプロダクトカテゴリの区画を、frontend-libにカレンダーの部品(仮10)を足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレットは無く、新しいパッケージは`react-day-picker`(仮10)だけである。
 
 ### Goals
 
@@ -28,8 +28,9 @@
 - プロダクトのデータ: `product_categories`・`products`・`product_screenshots`・`product_previous_handles`・`product_launches`・`product_lifecycle_events`・`product_lifecycle_handler_runs`(`apps/db/schema/product/`)と、可視のプロダクトの条件`visibleProducts()`・勝利のローンチの条件`wonLaunchExists()`・カテゴリの条件`productInCategory()`(仮11)。
 - 入力規則と定数(`apps/common-lib/product/`): 名称・タグライン・説明文・ハンドルの上限、画像の用途と上限、スクリーンショットの枚数(仮6)、ローンチ日の上限(仮4)、標準カテゴリの定数。監査の操作種別`apps/common-lib/admin/audit-actions/product-launch.ts`。
 - ライフサイクルとローンチの状態の契約(`apps/backend-lib/core/product/`): イベントの種類・非同期の処理の登録と検証・再試行の方針、`deriveLaunchStatus`、予選の結果からの要約と受賞のまとめの規則`fallbackLaunchSummary`・`groupAwards`、メッセージ種別`product.run-product-lifecycle`。
-- 共有部品(`apps/backend-lib/workers/product/`): ハンドルの対象`PRODUCT_HANDLE_NAMESPACE`・`PRODUCT_CATEGORY_HANDLE_NAMESPACE`、`ProductDirectory`・`ProductCategoryDirectory`・`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductExport`・`LaunchExport`・`ProductLifecycleStore`・管理画面のプロダクトの検索の照会`AdminProductDirectory`(`D1AdminProductDirectory`・`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`、ugc-moderationが使う、仮13)と、両アプリ共通の束縛`PRODUCT_PLATFORM_MODULE`。
-- apiのプロダクトのユースケース・判定・D1の実装・スキーマモジュール`product`、判定の供給元の契約と登録口(`RELAUNCH_CONDITION_SOURCES`・`PRODUCT_LOCK_SOURCES`・`LAUNCH_SUMMARY_SOURCES`)、ライフサイクルの確定`ProductLifecycleCommitter`と同期の処理の登録口`PRODUCT_LIFECYCLE_SYNC_HANDLERS`、保存の登録口`PRODUCT_SAVE_HOOKS`(仮11)、非公開化・復元の操作口`ProductVisibilityControl`、ユーザーライフサイクルの同期の波及処理`product-launch.withdrawal`・`product-launch.launch-cancellation`、4:21のジョブ`product-launch.purge-orchestrator`(1000)・`product-launch.lifecycle-redispatch`(1010)。
+- api・eventと後続specのapplication層が受け取る照会と記録の契約(`apps/backend-lib/core/product/ports.ts`): `ProductDirectory`・`ProductCategoryDirectory`・`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductExport`・`LaunchExport`・`ProductLifecycleStore`・管理画面のプロダクトの検索の照会`AdminProductDirectory`(ugc-moderationが使う、仮13)とその入出力の型、DIの識別子`PRODUCT_PLATFORM_TYPES`(`core/product/identifiers.ts`)。
+- 共有部品(`apps/backend-lib/workers/product/`): ハンドルの対象`PRODUCT_HANDLE_NAMESPACE`・`PRODUCT_CATEGORY_HANDLE_NAMESPACE`、上の契約のD1の実装(`D1ProductDirectory`・`D1AdminProductDirectory`・`createProductLifecycleStore`など)と、両アプリ共通の束縛`PRODUCT_PLATFORM_MODULE`。
+- apiのプロダクトのユースケース・判定・D1の実装・スキーマモジュール`product`、判定の供給元の契約と登録口(`RELAUNCH_CONDITION_SOURCES`・`PRODUCT_LOCK_SOURCES`・`LAUNCH_SUMMARY_SOURCES`)、ライフサイクルの確定`ProductLifecycleCommitter`と同期の処理の登録口`PRODUCT_LIFECYCLE_SYNC_HANDLERS`、保存の登録口`PRODUCT_SAVE_HOOKS`(仮11。契約はinfrastructure層)、application層のメッセージの送信のポート`ProductMessagePublisher`(api・event)、非公開化・復元の操作口`ProductVisibilityControl`、ユーザーライフサイクルの同期の波及処理`product-launch.withdrawal`・`product-launch.launch-cancellation`、4:21のジョブ`product-launch.purge-orchestrator`(1000)・`product-launch.lifecycle-redispatch`(1010)。
 - eventのプロダクトライフサイクルの実行器`ProductLifecycleRunner`と非同期の処理の登録口`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、本specの処理`product-launch.image-quarantine`(`hidden`・`unhidden`、1000)・`product-launch.image-erasure`(`purge_due`、1000)、ユーザーライフサイクルの非同期の波及処理`product-launch.product-erasure`(`purge_due`、1000)。
 - media-pipelineの用途`product-logo`・`product-screenshot`の登録。
 - clientの画面: `/my/products`・`/my/products/new`・`/my/products/$handle/edit`、公開プロフィールのタブ`launches`(10)と受賞バッジの区画`product-launch.award-badges`(`PUBLIC_PROFILE_BADGES`の10、仮14)、登録口`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`(初版は空)。adminのプロダクトカテゴリの区画(`CATEGORY_SECTIONS`の10)。frontend-libのカレンダー`components/ui/calendar.tsx`(仮10)。
@@ -52,10 +53,10 @@
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`MessagePublisher`)・`AppError`・`getAppLogger`・`ulidPrimaryKey`・`timestamps`・`softDelete`・`textNoCase`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`)・`ScheduledJobDefinition`・`defineMessageContract`・`MESSAGE_CONTRACTS`・`MessageHandler`・`MessageHandlingResult`・`RetryPolicy`。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`assertHuman`・`caller`・`session`・`loaders`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`defineLoader`・`DateTime`・`PageInfo`、`SessionView`。
 - identity-auth: `AccountGuard`(`currentUser`・`requireUser`・`requireWritableUser`・`requireVerifiedUser`)・`CurrentUser`・`IDENTITY_TYPES`・`visibleUsers`・`users`(`id`・`status`・`deleted_at`・`email_verified_at`の読み取り)・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`LIFECYCLE_CONTINUE_DELAY_SECONDS`・`_authenticated`のレイアウト・`viewerQueryOptions`・`RootAuthContext`・E2Eの`e2e/support/mailpit.ts`。
-- user-profile-social: `HANDLE_PATTERN`・`checkHandleFormat`・`isSameHandle`・`isReservedHandle`・`IMPERSONATION_RESERVED_HANDLES`・`previousHandleColumns`・`defineHandleNamespace`・`resolveHandle`・`isHandleOccupied`・`handleOccupiedCondition`・`previousHandleUpsert`・`previousHandleSoftDelete`・`previousHandleDelete`・`previousHandleRelease`(user-profile-socialの仮2(B)の改訂で加わる文)・`checkExternalUrl`・`externalUrlHost`・`EXTERNAL_URL_MAX_LENGTH`・`UserProfileDirectory`・`PROFILE_PLATFORM_TYPES`・GraphQLの`HandleAvailability`(列挙)・`PUBLIC_PROFILE_TABS`・`PublicProfileTab`・`PUBLIC_PROFILE_BADGES`・`PublicProfileBadgeSection`(仮14)・`PublicProfileSectionContext`。
-- media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`IMAGE_MEDIA_TYPES`・`MediaFiles`(`claim`・`eraseNow`・`markDeleted`・`findMany`)・`MediaQuarantine`(`addReason`・`removeReason`)・`MEDIA_TYPES`・`toMediaImage`・`mediaFileLoader`・GraphQLの`MediaImage`・`ImageUploadField`・`MediaPicture`。
+- user-profile-social: `HANDLE_PATTERN`・`checkHandleFormat`・`isSameHandle`・`isReservedHandle`・`IMPERSONATION_RESERVED_HANDLES`・`previousHandleColumns`・`defineHandleNamespace`・`resolveHandle`・`isHandleOccupied`・`handleOccupiedCondition`・`previousHandleUpsert`・`previousHandleSoftDelete`・`previousHandleDelete`・`previousHandleRelease`(user-profile-socialの仮2(B)の改訂で加わる文)・`checkExternalUrl`・`externalUrlHost`・`EXTERNAL_URL_MAX_LENGTH`・`UserProfileDirectory`・`PROFILE_PLATFORM_TYPES`(契約と識別子は`core/profile`)・GraphQLの`HandleAvailability`(列挙)・`PUBLIC_PROFILE_TABS`・`PublicProfileTab`・`PUBLIC_PROFILE_BADGES`・`PublicProfileBadgeSection`(仮14)・`PublicProfileSectionContext`。
+- media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`IMAGE_MEDIA_TYPES`・`MediaFiles`(`claim`・`eraseNow`・`markDeleted`・`findMany`)・`MediaQuarantine`(`addReason`・`removeReason`)・`MEDIA_TYPES`(契約と識別子は`core/media`)・`toMediaImage`・`mediaFileLoader`・GraphQLの`MediaImage`・`ImageUploadField`・`MediaPicture`。
 - content-processing: `countGraphemes`・`hasForbiddenCharacters`・`markdownTextSchema`・`MarkdownEditor`・`useMarkdownOptions`。
-- ultras-subscription: `ULTRAS_TYPES.UltrasEntitlements`の`isEntitledAt`、`UltrasPromotionGate`。
+- ultras-subscription: `ULTRAS_TYPES.UltrasEntitlements`の`isEntitledAt`(契約と識別子は`core/ultras`)、`UltrasPromotionGate`。
 - admin-foundation: `requireAdmin`・`CurrentAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`CategoryMasterEditor`・`useAdminRole`・`RoleGate`・E2Eの`e2e/support/admin-bootstrap.ts`。
 - inquiry-chat: `CATEGORY_SECTIONS`・`CategorySection`(登録の追記だけ)。
 - frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`useTurnstileToken`・`TurnstileWidget`・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`DateTime`の表示部品・shadcn/uiの部品(ボタン・カード・バッジ・ダイアログ・アラートダイアログ・ツールチップ・セレクト)・`runAxe`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
@@ -64,7 +65,7 @@
   - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
   - bot対策の`TurnstileWidget`は非表示のウィジェットで場所を取らないため、フォームと削除のダイアログに判定の枠の表示と場所を設けない。
 - npmパッケージ: 新規は`react-day-picker`(9系、仮10。2026-10-24に開発者が承認して確定)だけ。
-- 後続specは、`core/product`・`workers/product`の公開の契約、`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`、apiの判定の供給元の契約と3つの登録口・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`PRODUCT_SAVE_HOOKS`・`ProductVisibilityControl`・`ProductDescriptionEditor`、eventの`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、GraphQLの`productOwnerStatus`・`ProductCategory`、clientの`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`だけに依存し、本specのテーブルへ書き込まない。読み取りの問い合わせで本specのテーブルを結合してよいのは`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`を使う絞り込みと、それらで絞った`products.id`・`products.category_id`による並べ替え・集計(カテゴリごとの件数など)だけとする(仮11)。管理画面のプロダクトの検索(名称・ハンドルの部分一致、最新のローンチの状態・公開の状態による絞り込み)はこの範囲を超えるため、後続specの問い合わせには許さず、本specが所有して実装する`AdminProductDirectory`の中にだけ置く明示の例外とする(ugc-moderationは`AdminProductDirectory`を呼び、本specのテーブルを結合しない。仮13)。
+- 後続specは、`core/product`の公開の契約と識別子`PRODUCT_PLATFORM_TYPES`(実装は`workers/product`の`PRODUCT_PLATFORM_MODULE`が束縛する。後続specのapplication層は`workers/product`を読み込まず、ハンドルの対象`PRODUCT_HANDLE_NAMESPACE`・`PRODUCT_CATEGORY_HANDLE_NAMESPACE`はinfrastructure層だけが読み込む)、`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`、apiの判定の供給元の契約と3つの登録口・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`PRODUCT_SAVE_HOOKS`・`ProductVisibilityControl`・`ProductDescriptionEditor`、eventの`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、GraphQLの`productOwnerStatus`・`ProductCategory`、clientの`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`だけに依存し、本specのテーブルへ書き込まない。読み取りの問い合わせで本specのテーブルを結合してよいのは`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`を使う絞り込みと、それらで絞った`products.id`・`products.category_id`による並べ替え・集計(カテゴリごとの件数など)だけとする(仮11)。管理画面のプロダクトの検索(名称・ハンドルの部分一致、最新のローンチの状態・公開の状態による絞り込み)はこの範囲を超えるため、後続specの問い合わせには許さず、本specが所有して実装する`AdminProductDirectory`の中にだけ置く明示の例外とする(ugc-moderationは`AdminProductDirectory`を呼び、本specのテーブルを結合しない。仮13)。
 
 ### Revalidation Triggers
 
@@ -72,11 +73,12 @@
 - `deriveLaunchStatus`の境界(前日23:45・0:00)と`LaunchStatus`の値(data-exportの`launches.json`の`status`、match-engine)。
 - `ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`の形と、記録を拒否する条件(match-engine)。
 - `RelaunchConditionSource`・`ProductLockSource`・`LaunchSummarySource`の形、失敗時の扱い(判定は拒否、表示は縮退)(tournament-week・tournament-year)。
-- `PRODUCT_SAVE_HOOKS`の`ProductSaveHook`の形、呼ぶ保存の種類(登録・編集・説明文の更新)、文を加える位置(一括の書き込みの末尾)と確定の後の失敗の扱い(directory-discovery。登録口は他の後続specにも開いている)。`productInCategory()`の条件と、結合してよい列(directory-discovery)。`fallbackLaunchSummary`・`groupAwards`の文言と並び(directory-discovery、ローンチ履歴と同じ表示)。仮11が開発者の確認で変われば、directory-discoveryの仮4の登録と索引の更新を確かめ直す。
+- `PRODUCT_SAVE_HOOKS`の`ProductSaveHook`の形と置き場所(apiの`infrastructure/product/product-save-hooks.ts`。文と接続を扱うため、実装する後続specもinfrastructure層に置く)、呼ぶ保存の種類(登録・編集・説明文の更新)、文を加える位置(一括の書き込みの末尾)と、確定の後の処理を`D1ProductStore`が呼ぶことと失敗の扱い(directory-discovery。登録口は他の後続specにも開いている)。`productInCategory()`の条件と、結合してよい列(directory-discovery)。`fallbackLaunchSummary`・`groupAwards`の文言と並び(directory-discovery、ローンチ履歴と同じ表示)。仮11が開発者の確認で変われば、directory-discoveryの仮4の登録と索引の更新を確かめ直す。
 - `visibleProducts()`・`wonLaunchExists()`の条件と、`ProductDirectory`・`ProductCategoryDirectory`・`ProductExport`・`LaunchExport`の形(directory-discovery・match-engine・sponsorship・data-export・public-api)。データエクスポートの文書の`products.json`・`launches.json`の項目が変わったら確かめ直す。
 - `ProductVisibilityControl`の形と結果(ugc-moderation)。`ProductDescriptionEditor`が非公開化中に`product_hidden`(conflict)を投げる規則と`ProductStore.updateDescription`の`'hidden'`(public-api、仮12)。
 - `MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`の形(tournament-week・tournament-year・sponsorship)。
-- `AdminProductDirectory`・`AdminProductRecord`・`AdminProductSearchFilter`・`AdminProductLaunchState`・`AdminProductVisibility`の形、DIの識別子`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`と置き場所(`apps/backend-lib/workers/product/admin-product-directory.ts`)、最新のローンチの状態と公開の状態の導き方、`countRegisteredAt`の数え方(ugc-moderation、仮13)。`products`・`product_launches`の列・`deriveLaunchStatus`の境界・非公開化の扱いを変えたら、この照会とugc-moderationの`/products`・週ごとの統計を確かめ直す。
+- `AdminProductDirectory`・`AdminProductRecord`・`AdminProductSearchFilter`・`AdminProductLaunchState`・`AdminProductVisibility`の形、DIの識別子`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`と置き場所(契約は`apps/backend-lib/core/product/ports.ts`、識別子は`core/product/identifiers.ts`、D1の実装は`workers/product/d1-admin-product-directory.ts`)、最新のローンチの状態と公開の状態の導き方、`countRegisteredAt`の数え方(ugc-moderation、仮13)。`products`・`product_launches`の列・`deriveLaunchStatus`の境界・非公開化の扱いを変えたら、この照会とugc-moderationの`/products`・週ごとの統計を確かめ直す。
+- `core/product`の契約(`ProductDirectory`・`ProductCategoryDirectory`・`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductExport`・`LaunchExport`・`ProductLifecycleStore`・`AdminProductDirectory`)と`PRODUCT_PLATFORM_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(後続specのapplication層が読み込むため)。
 - `PUBLIC_PROFILE_BADGES`への`product-launch.award-badges`(10)の登録と、受賞の集計の範囲(ローンチ履歴の対象と同じ)・`LaunchSummarySource`の`awards`の使い方(user-profile-social・tournament-week・tournament-year、仮14)。
 - 2026-10-24に開発者が確定した仮1〜仮14(仮4はB、仮5の旧ハンドルはuser-profile-socialの仮2のB、他は推奨どおり)を変える場合は、該当する規則(`computeLaunchDateWindow`・`LAUNCH_DATE_HORIZON_DAYS`・`PRODUCT_HANDLE_NAMESPACE`・保存の条件・カテゴリの規則・カレンダー・`PRODUCT_SAVE_HOOKS`・`productInCategory()`・`AdminProductDirectory`・受賞バッジの区画)を確かめ直す。
 - user-profile-socialのハンドル基盤の仮2(B)の改訂(`isHandleOccupied`・`handleOccupiedCondition`が他の対象の旧ハンドルを使用中としないこと、旧ハンドルを他の対象が設定したときに元の保持者の行を消す`previousHandleRelease`の名前と形)。本specの登録・保存の一括の書き込みと使用可否の判定がそれに依存する。
@@ -178,11 +180,11 @@ graph TB
 
 - Selected pattern: クリーンアーキテクチャ。時刻と状態の規則はapiの`domain/product`と`core/product`の純粋な関数、ユースケースはポート越しにD1・media-pipeline・判定の供給元を使う。状態の変化を伝える経路は、identity-authのユーザーライフサイクルと同じ形のプロダクトライフサイクル(確定の一括の書き込み・非同期の実行器・日次の送り直し・最後の物理削除)にする。
 - Domain/feature boundaries: プロダクト・ローンチ・カテゴリ・プロダクトのライフサイクルは本spec、マッチと結果の判定はmatch-engine、トーナメントの条件と要約はトーナメントのspec、ハンドルの規則はuser-profile-social、ファイルはmedia-pipeline。
-- Existing patterns preserved: `backend-lib/workers/<ドメイン>`の共有の束縛、`<spec名>.<名詞句>`の処理とジョブの名前、`<ドメイン>.<動詞句>`のメッセージ種別、帯の`order`、登録箇所への追記による拡張(`SETTINGS_NAV_ITEMS`・`CATEGORY_SECTIONS`と同じ形)、`CASE`式による取り消し、`encodeCursor`のカーソル。
+- Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子、`backend-lib/workers/<ドメイン>`のD1の実装と共有の束縛、application層の自前の送信のポート(media-pipelineの`MediaJobMessagePublisher`・identity-authの`IdentityMessagePublisher`と同じ)、`<spec名>.<名詞句>`の処理とジョブの名前、`<ドメイン>.<動詞句>`のメッセージ種別、帯の`order`、登録箇所への追記による拡張(`SETTINGS_NAV_ITEMS`・`CATEGORY_SECTIONS`と同じ形)、`CASE`式による取り消し、`encodeCursor`のカーソル。
 - New components rationale: ローンチの記録と状態は、次回の予約の禁止・固定・ローンチ履歴・掲載済みの判定を本specのテーブルだけで行うため(research.mdの比較)。プロダクトライフサイクルは物理削除の順序(後続の紐付けの解除が先)を帯の外の値を使わずに保つため。判定の供給元の登録口は、型の拡張を禁じるapi-gatewayの規約のもとで後続specが条件と要約を加えるため。
 - Steering compliance: Inversifyの`@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・部分一意索引)、`textNoCase`の作成時の指定、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、新しいパッケージは`react-day-picker`だけ(仮10、2026-10-24に承認して確定)。
 
-**Dependency direction**: `apps/common-lib/product` → `apps/db/schema/product` → `backend-lib/core/product` → `backend-lib/workers/product` → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib`は他の層を読み込まない。`core/product`はD1を読み込まない(`BusinessTime`と型だけ)。clientとadminは`common-lib`とGraphQLの操作だけを読み込む。違反はレビューで誤りとして扱う。
+**Dependency direction**: `apps/common-lib/product` → `apps/db/schema/product` → `backend-lib/core/product` → `backend-lib/workers/product` → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib`は他の層を読み込まない。`core/product`はD1・`apps/db`・`workers`を読み込まない(`BusinessTime`と型だけ)。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが受け取る照会と記録の契約と識別子`PRODUCT_PLATFORM_TYPES`は`core/product`に置き、`workers/product`にはハンドルの対象の記述・D1の実装・束縛だけを置く(identity-authの`core/identity`・media-pipelineの`core/media`と同じ配置)。application層はデータベースの接続・SQLの文・一括の書き込みを扱わず、文を返す契約(`ProductLifecycleSyncHandler`・`ProductSaveHook`)と接続を受け取る部品はinfrastructure層に置く。メッセージの送信は自前のポート`ProductMessagePublisher`の形で`PLATFORM_TYPES.MessagePublisher`から受け取る。clientとadminは`common-lib`とGraphQLの操作だけを読み込む。違反はレビューで誤りとして扱う。
 
 ### Technology Stack
 
@@ -215,24 +217,21 @@ apps/
 │   ├── visibility.ts                                     # visibleProducts・wonLaunchExists・productInCategory(仮11)
 │   └── index.ts
 ├── backend-lib/
-│   ├── core/product/                                     # 純粋な契約(Bunの単体テスト)
+│   ├── core/product/                                     # api・eventと後続specのapplication層が読み込める純粋な契約と規則(ports.tsを除き同名の*.unit.test.ts)
 │   │   ├── product-lifecycle.ts                          # イベントの型・非同期の登録・createProductLifecycleRegistry・PRODUCT_LIFECYCLE_RETRY_POLICY
 │   │   ├── launch-status.ts                              # LaunchStatus・deriveLaunchStatus・qualifierLockThresholdDate
-│   │   └── launch-summary.ts                             # fallbackLaunchSummary・groupAwards(directory-discoveryも使う)
+│   │   ├── launch-summary.ts                             # fallbackLaunchSummary・groupAwards(directory-discoveryも使う)
+│   │   ├── ports.ts                                      # ProductDirectory・ProductCategoryDirectory・ScheduledLaunchDirectory・LaunchOutcomeRecorder・ProductExport・LaunchExport・ProductLifecycleStore・AdminProductDirectory(仮13)の契約と型(テストなし)
+│   │   └── identifiers.ts                                # PRODUCT_PLATFORM_TYPES(api・event共通の識別子)
 │   ├── core/messaging/contracts/product.ts               # RUN_PRODUCT_LIFECYCLE_MESSAGE
-│   └── workers/product/                                  # api・event共通の部品(Workers統合テスト)
-│       ├── product-platform-types.ts                     # PRODUCT_PLATFORM_TYPES(テストなし)
-│       ├── product-handle-namespaces.ts                  # PRODUCT_HANDLE_NAMESPACE・PRODUCT_CATEGORY_HANDLE_NAMESPACE
-│       ├── product-directory.ts                          # ProductSummaryRecord・ProductDirectory(型)
-│       ├── d1-product-directory.ts
-│       ├── product-category-directory.ts                 # ProductCategoryRecord・ProductCategoryDirectory(型)
-│       ├── d1-product-category-directory.ts
-│       ├── launch-schedule.ts                            # ScheduledLaunchDirectory・LaunchOutcomeRecorder(型)
-│       ├── d1-launch-schedule.ts
-│       ├── product-export.ts                             # ProductExport・LaunchExport(型)
-│       ├── d1-product-export.ts
-│       ├── product-lifecycle-store.ts                    # ProductLifecycleStore(型とD1の実装)
-│       ├── admin-product-directory.ts                    # AdminProductDirectory・D1AdminProductDirectory(ugc-moderationの管理画面の検索、仮13)
+│   └── workers/product/                                  # ハンドルの対象とD1の実装と束縛(Workers統合テスト、各ファイルに同名の*.worker.test.ts)
+│       ├── product-handle-namespaces.ts                  # PRODUCT_HANDLE_NAMESPACE・PRODUCT_CATEGORY_HANDLE_NAMESPACE(infrastructure層だけが読み込む)
+│       ├── d1-product-directory.ts                       # ProductDirectoryのD1実装
+│       ├── d1-product-category-directory.ts              # ProductCategoryDirectoryのD1実装
+│       ├── d1-launch-schedule.ts                         # ScheduledLaunchDirectory・LaunchOutcomeRecorderのD1実装
+│       ├── d1-product-export.ts                          # ProductExport・LaunchExportのD1実装
+│       ├── d1-product-lifecycle-store.ts                 # ProductLifecycleStoreのD1実装(createProductLifecycleStore)
+│       ├── d1-admin-product-directory.ts                 # AdminProductDirectoryのD1実装(ugc-moderationの管理画面の検索、仮13)
 │       └── product-platform-module.ts                    # PRODUCT_PLATFORM_MODULE
 ├── api/src/
 │   ├── domain/product/                                   # 純粋な規則(Bunの単体テスト)
@@ -241,9 +240,8 @@ apps/
 │   │   └── product-edit-plan.ts                          # ハンドル・ロゴ・スクリーンショット・カテゴリ・ローンチの変更の決定
 │   ├── application/product/                              # ユースケース(Bunの単体テスト)
 │   │   ├── product-types.ts                              # PRODUCT_TYPES
-│   │   ├── ports.ts                                      # ProductStore・LaunchHistoryStore・ProductCategoryStoreと各型
+│   │   ├── ports.ts                                      # ProductStore・LaunchHistoryStore・ProductCategoryStore・ProductLifecycleCommitter・ProductMessagePublisherと各型
 │   │   ├── decision-sources.ts                           # 3つの供給元の契約と登録の型
-│   │   ├── product-save-hooks.ts                         # ProductSaveHook・ProductSaveHookRegistration・ProductSaveHooks・createProductSaveHooks(仮11)
 │   │   ├── product-state-evaluator.ts                    # 固定・次回の予約・選べる日の判定
 │   │   ├── product-registration.ts
 │   │   ├── product-editor.ts
@@ -256,7 +254,8 @@ apps/
 │   │   ├── product-visibility-control.ts                 # 非公開化・復元の操作口(ugc-moderationが呼ぶ)
 │   │   └── product-maintenance-jobs.ts                   # purge-orchestrator・lifecycle-redispatch
 │   ├── infrastructure/product/                           # Workers統合テスト
-│   │   ├── d1-product-store.ts                           # 読み取り・登録・保存の一括の書き込み
+│   │   ├── d1-product-store.ts                           # 読み取り・登録・保存の一括の書き込み(保存の登録口の文と確定の後の処理を呼ぶ)
+│   │   ├── product-save-hooks.ts                         # ProductSaveHook・ProductSaveHookRegistration・ProductSaveHooks・createProductSaveHooks(仮11)
 │   │   ├── product-save-guards.ts                        # CASE式の条件(版・状態・ハンドル・固定・非公開化)
 │   │   ├── d1-launch-history-store.ts
 │   │   ├── d1-product-category-store.ts
@@ -281,7 +280,7 @@ apps/
 ├── event/src/
 │   ├── application/product/                              # Bunの単体テスト
 │   │   ├── event-product-types.ts                        # EVENT_PRODUCT_TYPES
-│   │   ├── ports.ts                                      # ProductPurgeStore
+│   │   ├── ports.ts                                      # ProductPurgeStore・ProductMessagePublisher
 │   │   ├── product-lifecycle-runner.ts                   # product.run-product-lifecycle
 │   │   ├── product-image-quarantine-handler.ts           # hidden・unhidden 1000
 │   │   ├── product-image-erasure-handler.ts              # purge_due 1000
@@ -403,7 +402,9 @@ sequenceDiagram
     V-->>E: 固定と次回の予約の計画と選べる日
     E->>E: checkLaunchDate とハンドルと上限の検査
     E->>M: claim 新しい画像と findMany 合計
-    E->>D: save 一括の書き込み
+    E->>D: save
+    D->>D: 保存の文とPRODUCT_SAVE_HOOKSの文の一括の書き込み
+    D->>D: 確定の後にPRODUCT_SAVE_HOOKSのafterCommit
     D-->>E: saved または conflict または locked など
     E->>M: eraseNow 以前のロゴ と markDeleted 取り除いた画像
     E-->>C: MyProduct
@@ -413,7 +414,7 @@ sequenceDiagram
 - 予選の固定の条件(SQL): `NOT EXISTS (SELECT 1 FROM product_launches WHERE product_id = products.id AND outcome IS NULL AND cancelled_at IS NULL AND launch_date <= ?)`。`?`は`qualifierLockThresholdDate(now)`(23:45以降なら明日、それより前なら今日の業務日付)。読み取りから書き込みまでの間に23:45をまたいでも固定が破られない(6.6)。
 - 失敗の分類は読み直しで行う(未削除でない→`product_not_found`、投稿者が可視でない→`account_unavailable`、版が違う→`product_update_conflict`、固定の期間→`product_locked`、非公開化→`product_hidden`、それ以外の条件と一意索引の違反→`handle_unavailable`)。
 - 画像の`claim`は既に紐付け済みなら変えないため、保存の失敗後の再送でも成功する。以前の画像の削除は確定の後だけ行い、失敗はmedia-pipelineの日次バッチが完了させる(`warn`のログにファイルのIDだけ)。
-- 確定の後に、`PRODUCT_SAVE_HOOKS`の各処理の`afterCommit({ productId })`を登録の順に呼ぶ。例外は`warn`のログ(処理の名前とプロダクトのIDだけ)を残して次の処理へ進み、保存の結果を変えない。`statementsFor`の例外は保存の失敗(500)とし、何も書き込まない(仮11)。
+- 一括の書き込みの組み立てと実行、保存の登録口の呼び出しは`D1ProductStore`(infrastructure層)が行い、`ProductEditor`などのユースケースは文・接続・登録口を扱わない。確定の後に、`D1ProductStore`が`PRODUCT_SAVE_HOOKS`の各処理の`afterCommit({ productId })`を登録の順に呼ぶ。例外は`warn`のログ(処理の名前とプロダクトのIDだけ)を残して次の処理へ進み、保存の結果を変えない。`statementsFor`の例外は保存の失敗(500)とし、何も書き込まない(仮11)。
 
 ### プロダクトライフサイクルイベント
 
@@ -449,6 +450,7 @@ sequenceDiagram
 
 - イベントの挿入の`product_id`を`CASE WHEN <状態の条件> THEN ? ELSE NULL END`にし、条件(削除は版の一致・未削除・投稿者が可視・予選の固定でない、非公開化は未削除かつ`hidden_at IS NULL`、復元は未削除かつ`hidden_at IS NOT NULL`)を満たさなければ全体を取り消す。
 - 本specの文: 削除は`products.deleted_at`と`previousHandleSoftDelete`(旧ハンドルの転送を止める。現在のハンドルは物理削除まで使用中のまま、旧ハンドルは他のプロダクトが設定できる、仮5)。非公開化は`hidden_at`と未開始のローンチの取消(`launch_date > 今日`、12.7)。復元は`hidden_at = NULL`だけで、取消を戻さない(12.9)。
+- 操作(application層の`ProductDeletion`・`ProductVisibilityControl`)は`ProductLifecycleCommitter`のポートと`ProductMessagePublisher`だけを使い、同期の処理の文の収集と一括の書き込みはD1の実装`D1ProductLifecycleCommitter`(infrastructure層)が行う。
 - 送信の失敗はイベントを`pending`のまま残し、4:21の`product-launch.lifecycle-redispatch`が送り直す(12.5)。非同期の処理の例外は`PRODUCT_LIFECYCLE_RETRY_POLICY`(5回・300秒から倍・上限3600秒)で再試行され、上限でデッドレターとSentryに通知される。
 
 ### 物理削除
@@ -542,34 +544,34 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                                                                                                                                    | Domain/Layer        | Intent                                                     | Req Coverage                                                                           | Key Dependencies                                          | Contracts      |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------- |
-| ProductInputRules・ProductCategoryConstants・ProductAuditActions                                                                                                             | common-lib          | 上限・用途・標準カテゴリ・監査の操作種別                   | 1.1, 1.2, 2.1, 3.1, 3.2, 4.3, 11.1, 11.8                                               | content-processing (P0)、handles (P0)                     | Service        |
-| ProductSchema・ProductVisibility                                                                                                                                             | db                  | 7テーブルと可視・勝利・カテゴリの条件                      | 2.3, 5.10, 8.7, 11.1, 12.1, 14.1, 14.10                                                | backend-platform (P0)、identity-auth (P0)                 | State          |
-| ProductLifecycleContract・LaunchStatus・LaunchSummaryRules                                                                                                                   | backend-lib/core    | イベントの型と登録の検証・ローンチの状態・要約の規則       | 5.2, 6.1, 10.6, 12.1, 12.4, 12.10, 14.11                                               | identity-auth (P1)、BusinessTime (P0)                     | Event          |
-| ProductHandleNamespaces・ProductDirectory・ProductCategoryDirectory                                                                                                          | backend-lib/product | ハンドルの対象・表示用の照会・カテゴリの照会               | 2.3, 2.8, 2.9, 8.7, 11.12, 14.4                                                        | handles (P0)                                              | Service        |
-| LaunchSchedule(ScheduledLaunchDirectory・LaunchOutcomeRecorder)                                                                                                              | backend-lib/product | 予定のローンチと結果の記録                                 | 14.2, 14.3                                                                             | D1 (P0)                                                   | Service        |
-| ProductExport・ProductLifecycleStore・ProductPlatformModule                                                                                                                  | backend-lib/product | エクスポート・イベントの記録・共通の束縛                   | 12.4, 12.5, 14.6, 14.7, 14.12                                                          | D1 (P0)                                                   | Service        |
-| AdminProductDirectory                                                                                                                                                        | backend-lib/product | ugc-moderationの管理画面のプロダクトの検索と数え上げ(仮13) | 14.12                                                                                  | D1 (P0)、identity-auth (P0)                               | Service        |
-| LaunchDateRules・LaunchPlan・ProductEditPlan                                                                                                                                 | api/domain          | 選べる日・予約の計画・変更の決定                           | 2.7, 3.6, 3.7, 4.1〜4.5, 4.11, 4.12, 5.1, 5.2, 5.7〜5.9                                | BusinessTime (P0)                                         | Service        |
-| DecisionSources・ProductStateEvaluator                                                                                                                                       | api/application     | 供給元の契約と判定                                         | 4.6, 5.3〜5.6, 6.2, 6.5, 10.6                                                          | UltrasEntitlements (P0)、後続specの供給元 (P1)            | Service        |
-| ProductSaveHooks                                                                                                                                                             | api/application     | 保存の一括の書き込みに後続specの文を加える登録口(仮11)     | 14.9                                                                                   | 後続specの処理 (P1)                                       | Event          |
-| ProductRegistration・ProductEditor・ProductDeletion・ProductDescriptionEditor                                                                                                | api/application     | 登録・編集・削除・説明文の更新                             | 1.1〜1.8, 2.3〜2.7, 3.3〜3.7, 4.7, 5.1, 6.4, 7.2, 7.3, 7.8, 7.9, 8.1, 14.9             | MediaFiles (P0)、ProductStore (P0)                        | Service        |
-| MyProductsReader・ProductHandleAvailabilityChecker・LaunchHistoryReader                                                                                                      | api/application     | 一覧・1件・状態・使用可否・ローンチ履歴・受賞の集計        | 2.6, 7.1, 7.4, 7.5, 9.1, 9.2, 10.2, 10.6, 10.11, 14.5                                  | ProductStore (P0)、UserProfileDirectory (P0)              | Service        |
-| ProductCategoryService                                                                                                                                                       | api/application     | カテゴリのマスタ                                           | 11.2〜11.9, 11.11                                                                      | AuditLogRecorder (P0)                                     | Service        |
-| ProductVisibilityControl・ProductMaintenanceJobs                                                                                                                             | api/application     | 非公開化・復元の操作口と4:21のジョブ                       | 8.4, 8.6, 12.5, 12.6, 12.7, 12.9, 13.5                                                 | ProductLifecycleCommitter (P0)                            | Service, Batch |
-| D1ProductStore・ProductSaveGuards・D1LaunchHistoryStore・D1ProductCategoryStore                                                                                              | api/infrastructure  | D1の実装                                                   | 2.5, 5.10, 6.1, 6.6, 7.3, 7.9, 10.2, 11.3〜11.6, 14.9                                  | D1 (P0)                                                   | State          |
-| ProductLifecycleSyncHandlerContract・D1ProductLifecycleCommitter                                                                                                             | api/infrastructure  | 同期の処理の契約とイベントの確定                           | 2.9, 12.2, 12.3, 12.7, 12.9                                                            | D1 (P0)                                                   | Event          |
-| ProductWithdrawalSyncHandler・LaunchCancellationSyncHandler                                                                                                                  | api/infrastructure  | 退会・停止の同期の波及処理                                 | 13.1, 13.2, 13.3                                                                       | identity-auth (P0)                                        | Event          |
-| ProductSchemaModule(ProductInputs・ProductViews・MyProductResolvers・LaunchHistoryResolvers・CategoryResolvers)                                                              | api/presentation    | GraphQLの型と操作                                          | 1.\*, 2.6, 4.7, 5.\*, 6.3, 7.\*, 8.1, 10.\*, 11.\*, 14.5                               | api-gateway (P0)                                          | API            |
-| ProductLifecycleRunner・ProductImageQuarantineHandler・ProductImageErasureHandler・UserProductErasureHandler・D1ProductPurgeStore                                            | event               | 実行器・本specの処理・物理削除                             | 8.4, 8.5, 8.6, 8.8, 12.4, 12.5, 12.8, 13.4, 13.5                                       | MediaFiles・MediaQuarantine (P0)                          | Event, Batch   |
-| Calendar                                                                                                                                                                     | frontend-lib        | shadcn/uiのカレンダー(仮10)                                | 4.8                                                                                    | react-day-picker (P0)                                     | State          |
-| MyProductRoutes・MyProductListPage・MyProductCard・LaunchStatusText・LaunchPlanNotice・MyProductSections                                                                     | client              | 自分のプロダクトの画面                                     | 1.11, 7.4, 7.5, 9.\*                                                                   | MediaPicture (P0)                                         | State          |
-| ProductForm・ProductFormSchema・LogoField・ScreenshotsField・ProductHandleField・CategorySelect・LaunchDateField・ProductEditPage・ProductDeleteDialog・ProductDeleteNotices | client              | 登録・編集・削除の画面                                     | 1.5, 1.7, 1.9, 1.10, 2.6, 2.10, 3.1〜3.3, 3.8, 4.8〜4.10, 6.3, 7.1, 7.6, 7.7, 8.2, 8.3 | MarkdownEditor (P0)、ImageUploadField (P0)、Calendar (P0) | State          |
-| LaunchHistoryCount・LaunchHistoryPanel・LaunchHistoryItem                                                                                                                    | client              | 公開プロフィールのローンチ履歴                             | 10.1, 10.3〜10.10                                                                      | PUBLIC_PROFILE_TABS (P0)                                  | State          |
-| ProfileAwardBadges・AwardBadgeList                                                                                                                                           | client              | 公開プロフィールの受賞バッジの区画(仮14)                   | 10.4, 10.11                                                                            | PUBLIC_PROFILE_BADGES (P0)                                | State          |
-| ProductCategorySection                                                                                                                                                       | admin               | カテゴリのページの区画                                     | 11.7, 11.10                                                                            | CategoryMasterEditor (P0)                                 | State          |
-| ProductTechDocs・ProductServiceSpecs                                                                                                                                         | docs                | 技術ドキュメントとサービス仕様                             | 15.4, 15.5                                                                             | —                                                         | —              |
+| Component                                                                                                                                                                    | Domain/Layer              | Intent                                                     | Req Coverage                                                                           | Key Dependencies                                                 | Contracts      |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------------- |
+| ProductInputRules・ProductCategoryConstants・ProductAuditActions                                                                                                             | common-lib                | 上限・用途・標準カテゴリ・監査の操作種別                   | 1.1, 1.2, 2.1, 3.1, 3.2, 4.3, 11.1, 11.8                                               | content-processing (P0)、handles (P0)                            | Service        |
+| ProductSchema・ProductVisibility                                                                                                                                             | db                        | 7テーブルと可視・勝利・カテゴリの条件                      | 2.3, 5.10, 8.7, 11.1, 12.1, 14.1, 14.10                                                | backend-platform (P0)、identity-auth (P0)                        | State          |
+| ProductLifecycleContract・LaunchStatus・LaunchSummaryRules                                                                                                                   | backend-lib/core          | イベントの型と登録の検証・ローンチの状態・要約の規則       | 5.2, 6.1, 10.6, 12.1, 12.4, 12.10, 14.11                                               | identity-auth (P1)、BusinessTime (P0)                            | Event          |
+| ProductHandleNamespaces・ProductDirectory・ProductCategoryDirectory                                                                                                          | backend-lib/core・workers | ハンドルの対象・表示用の照会・カテゴリの照会               | 2.3, 2.8, 2.9, 8.7, 11.12, 14.4                                                        | handles (P0)                                                     | Service        |
+| LaunchSchedule(ScheduledLaunchDirectory・LaunchOutcomeRecorder)                                                                                                              | backend-lib/core・workers | 予定のローンチと結果の記録                                 | 14.2, 14.3                                                                             | D1 (P0)                                                          | Service        |
+| ProductExport・ProductLifecycleStore・ProductPlatformModule                                                                                                                  | backend-lib/core・workers | エクスポート・イベントの記録・共通の束縛                   | 12.4, 12.5, 14.6, 14.7, 14.12                                                          | D1 (P0)                                                          | Service        |
+| AdminProductDirectory                                                                                                                                                        | backend-lib/core・workers | ugc-moderationの管理画面のプロダクトの検索と数え上げ(仮13) | 14.12                                                                                  | D1 (P0)、identity-auth (P0)                                      | Service        |
+| LaunchDateRules・LaunchPlan・ProductEditPlan                                                                                                                                 | api/domain                | 選べる日・予約の計画・変更の決定                           | 2.7, 3.6, 3.7, 4.1〜4.5, 4.11, 4.12, 5.1, 5.2, 5.7〜5.9                                | BusinessTime (P0)                                                | Service        |
+| DecisionSources・ProductStateEvaluator                                                                                                                                       | api/application           | 供給元の契約と判定                                         | 4.6, 5.3〜5.6, 6.2, 6.5, 10.6                                                          | UltrasEntitlements (P0)、後続specの供給元 (P1)                   | Service        |
+| ProductSaveHooks                                                                                                                                                             | api/infrastructure        | 保存の一括の書き込みに後続specの文を加える登録口(仮11)     | 14.9                                                                                   | 後続specの処理 (P1)                                              | Event          |
+| ProductRegistration・ProductEditor・ProductDeletion・ProductDescriptionEditor                                                                                                | api/application           | 登録・編集・削除・説明文の更新                             | 1.1〜1.8, 2.3〜2.7, 3.3〜3.7, 4.7, 5.1, 6.4, 7.2, 7.3, 7.8, 7.9, 8.1, 14.9             | MediaFiles (P0)、ProductStore (P0)、ProductMessagePublisher (P1) | Service        |
+| MyProductsReader・ProductHandleAvailabilityChecker・LaunchHistoryReader                                                                                                      | api/application           | 一覧・1件・状態・使用可否・ローンチ履歴・受賞の集計        | 2.6, 7.1, 7.4, 7.5, 9.1, 9.2, 10.2, 10.6, 10.11, 14.5                                  | ProductStore (P0)、UserProfileDirectory (P0)                     | Service        |
+| ProductCategoryService                                                                                                                                                       | api/application           | カテゴリのマスタ                                           | 11.2〜11.9, 11.11                                                                      | AuditLogRecorder (P0)                                            | Service        |
+| ProductVisibilityControl・ProductMaintenanceJobs                                                                                                                             | api/application           | 非公開化・復元の操作口と4:21のジョブ                       | 8.4, 8.6, 12.5, 12.6, 12.7, 12.9, 13.5                                                 | ProductLifecycleCommitter (P0)、ProductMessagePublisher (P0)     | Service, Batch |
+| D1ProductStore・ProductSaveGuards・D1LaunchHistoryStore・D1ProductCategoryStore                                                                                              | api/infrastructure        | D1の実装                                                   | 2.5, 5.10, 6.1, 6.6, 7.3, 7.9, 10.2, 11.3〜11.6, 14.9                                  | D1 (P0)、ProductSaveHooks (P0)                                   | State          |
+| ProductLifecycleSyncHandlerContract・D1ProductLifecycleCommitter                                                                                                             | api/infrastructure        | 同期の処理の契約とイベントの確定                           | 2.9, 12.2, 12.3, 12.7, 12.9                                                            | D1 (P0)                                                          | Event          |
+| ProductWithdrawalSyncHandler・LaunchCancellationSyncHandler                                                                                                                  | api/infrastructure        | 退会・停止の同期の波及処理                                 | 13.1, 13.2, 13.3                                                                       | identity-auth (P0)                                               | Event          |
+| ProductSchemaModule(ProductInputs・ProductViews・MyProductResolvers・LaunchHistoryResolvers・CategoryResolvers)                                                              | api/presentation          | GraphQLの型と操作                                          | 1.\*, 2.6, 4.7, 5.\*, 6.3, 7.\*, 8.1, 10.\*, 11.\*, 14.5                               | api-gateway (P0)                                                 | API            |
+| ProductLifecycleRunner・ProductImageQuarantineHandler・ProductImageErasureHandler・UserProductErasureHandler・D1ProductPurgeStore                                            | event                     | 実行器・本specの処理・物理削除                             | 8.4, 8.5, 8.6, 8.8, 12.4, 12.5, 12.8, 13.4, 13.5                                       | MediaFiles・MediaQuarantine (P0)、ProductMessagePublisher (P0)   | Event, Batch   |
+| Calendar                                                                                                                                                                     | frontend-lib              | shadcn/uiのカレンダー(仮10)                                | 4.8                                                                                    | react-day-picker (P0)                                            | State          |
+| MyProductRoutes・MyProductListPage・MyProductCard・LaunchStatusText・LaunchPlanNotice・MyProductSections                                                                     | client                    | 自分のプロダクトの画面                                     | 1.11, 7.4, 7.5, 9.\*                                                                   | MediaPicture (P0)                                                | State          |
+| ProductForm・ProductFormSchema・LogoField・ScreenshotsField・ProductHandleField・CategorySelect・LaunchDateField・ProductEditPage・ProductDeleteDialog・ProductDeleteNotices | client                    | 登録・編集・削除の画面                                     | 1.5, 1.7, 1.9, 1.10, 2.6, 2.10, 3.1〜3.3, 3.8, 4.8〜4.10, 6.3, 7.1, 7.6, 7.7, 8.2, 8.3 | MarkdownEditor (P0)、ImageUploadField (P0)、Calendar (P0)        | State          |
+| LaunchHistoryCount・LaunchHistoryPanel・LaunchHistoryItem                                                                                                                    | client                    | 公開プロフィールのローンチ履歴                             | 10.1, 10.3〜10.10                                                                      | PUBLIC_PROFILE_TABS (P0)                                         | State          |
+| ProfileAwardBadges・AwardBadgeList                                                                                                                                           | client                    | 公開プロフィールの受賞バッジの区画(仮14)                   | 10.4, 10.11                                                                            | PUBLIC_PROFILE_BADGES (P0)                                       | State          |
+| ProductCategorySection                                                                                                                                                       | admin                     | カテゴリのページの区画                                     | 11.7, 11.10                                                                            | CategoryMasterEditor (P0)                                        | State          |
+| ProductTechDocs・ProductServiceSpecs                                                                                                                                         | docs                      | 技術ドキュメントとサービス仕様                             | 15.4, 15.5                                                                             | —                                                                | —              |
 
 ### common-lib
 
@@ -744,7 +746,9 @@ export declare const RUN_PRODUCT_LIFECYCLE_MESSAGE: MessageContract<
 
 - 本文にプロダクトの名前・ハンドルを入れない。
 
-### backend-lib/workers/product
+### backend-lib/core/product(照会と記録の契約)・workers/product(D1の実装と束縛)
+
+- 置き場所: api・eventのapplication層と後続specのapplication層から読み込めるよう、本節の契約(インターフェースとその入出力の型)は`apps/backend-lib/core/product/ports.ts`、識別子`PRODUCT_PLATFORM_TYPES`は`core/product/identifiers.ts`に置き、ハンドルの対象の記述・D1の実装・束縛だけを`apps/backend-lib/workers/product`に置く(application層は`**/lib/workers/**`を型も含めて読み込めないため)。`core/product`は`workers`・`apps/db`を読み込まない。
 
 #### ProductHandleNamespaces・ProductDirectory・ProductCategoryDirectory
 
@@ -756,7 +760,7 @@ export declare const RUN_PRODUCT_LIFECYCLE_MESSAGE: MessageContract<
 **Contracts**: Service [x]
 
 ```typescript
-// product-handle-namespaces.ts
+// workers/product/product-handle-namespaces.ts(ハンドル基盤の部品とともにinfrastructure層だけが使う)
 export declare const PRODUCT_HANDLE_NAMESPACE: HandleNamespace;
 // name 'product'、rule PRODUCT_HANDLE_RULE
 // current: products(ownerId products.id、handle products.handle、activeCondition products.deleted_at IS NULL)
@@ -764,7 +768,7 @@ export declare const PRODUCT_HANDLE_NAMESPACE: HandleNamespace;
 export declare const PRODUCT_CATEGORY_HANDLE_NAMESPACE: HandleNamespace;
 // name 'product-category'、rule PRODUCT_CATEGORY_HANDLE_RULE、current: product_categories、previousなし
 
-// product-directory.ts
+// core/product/ports.ts
 export interface ProductSummaryRecord {
   readonly productId: string;
   readonly ownerUserId: string;
@@ -815,7 +819,7 @@ export interface ProductDirectory {
   ): Promise<ReadonlyMap<string, readonly LaunchRecord[]>>; // ローンチ日の新しい順、取消を含む
 }
 
-// product-category-directory.ts
+// core/product/ports.ts(続き)
 export interface ProductCategoryRecord {
   readonly id: string;
   readonly name: string;
@@ -829,6 +833,7 @@ export interface ProductCategoryDirectory {
 }
 ```
 
+- D1の実装は`workers/product/d1-product-directory.ts`の`D1ProductDirectory`・`d1-product-category-directory.ts`の`D1ProductCategoryDirectory`(`@inject(PLATFORM_TYPES.Database)`)。
 - `findSummaries`は`products`・`users`・`product_categories`の結合を1回の問い合わせ(IDのバインド変数は90個以内)で読み、`visible`・`listed`は`visibleProducts()`・`wonLaunchExists()`の式の値を列として読む。
 - 後続specは`products`などを直接読まずにこれを使う。プロダクト詳細(directory-discovery)は、`resolveHandle`の結果の`visible`・`listed`と閲覧者が投稿者かで公開範囲を決める。
 
@@ -842,6 +847,7 @@ export interface ProductCategoryDirectory {
 **Contracts**: Service [x]
 
 ```typescript
+// core/product/ports.ts(続き。D1の実装はworkers/product/d1-launch-schedule.ts)
 export interface ScheduledLaunch {
   readonly launchId: string;
   readonly productId: string;
@@ -883,7 +889,7 @@ export interface LaunchOutcomeRecorder {
 **Contracts**: Service [x]
 
 ```typescript
-// product-export.ts
+// core/product/ports.ts(続き。D1の実装はworkers/product/d1-product-export.ts)
 export interface ProductExportRecord {
   readonly id: string;
   readonly handle: string;
@@ -912,7 +918,7 @@ export interface LaunchExport {
   listByUser(userId: string, now: Date): Promise<readonly LaunchExportRecord[]>; // ローンチ日の古い順
 }
 
-// product-lifecycle-store.ts
+// core/product/ports.ts(続き)
 export interface StoredProductLifecycleEvent extends ProductLifecycleEvent {
   readonly status: 'pending' | 'completed';
   readonly dispatchCount: number;
@@ -952,6 +958,8 @@ export interface ProductLifecycleStore {
   ): Promise<ReadonlyMap<string, Date>>;
   countOverduePurges(deletedBefore: Date): Promise<number>;
 }
+
+// workers/product/d1-product-lifecycle-store.ts
 export declare function createProductLifecycleStore(
   db: Database,
   ids: IdGenerator,
@@ -959,7 +967,21 @@ export declare function createProductLifecycleStore(
 ```
 
 - `createPurgeDueEvents`は`purge_due`の部分一意索引(プロダクトごとに1件)と`onConflictDoNothing()`で、2回実行しても1件にする。`IN`句と挿入はバインド変数100個以内に分ける。
-- `PRODUCT_PLATFORM_MODULE`: `ProductDirectory`・`ProductCategoryDirectory`・`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductExport`・`LaunchExport`・`ProductLifecycleStore`・`AdminProductDirectory`(仮13)を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる(14.7)。DIの識別子は`PRODUCT_PLATFORM_TYPES`(`Symbol.for('product.<名前>')`)。
+- `PRODUCT_PLATFORM_MODULE`: `ProductDirectory`・`ProductCategoryDirectory`・`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductExport`・`LaunchExport`・`ProductLifecycleStore`・`AdminProductDirectory`(仮13)を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる(14.7)。束縛のモジュールは`workers/product/product-platform-module.ts`、DIの識別子は`core/product/identifiers.ts`の`PRODUCT_PLATFORM_TYPES`である。
+
+```typescript
+// core/product/identifiers.ts
+export declare const PRODUCT_PLATFORM_TYPES: {
+  readonly ProductDirectory: unique symbol;
+  readonly ProductCategoryDirectory: unique symbol;
+  readonly ScheduledLaunchDirectory: unique symbol;
+  readonly LaunchOutcomeRecorder: unique symbol;
+  readonly ProductExport: unique symbol;
+  readonly LaunchExport: unique symbol;
+  readonly ProductLifecycleStore: unique symbol;
+  readonly AdminProductDirectory: unique symbol; // 仮13
+}; // 凍結したオブジェクト。値はSymbol.for('product.<名前>')(core/media/identifiers.tsと同じ形、identifiers.unit.test.tsで確かめる)
+```
 
 #### AdminProductDirectory
 
@@ -970,13 +992,13 @@ export declare function createProductLifecycleStore(
 
 **Responsibilities & Constraints**
 
-- 契約の形は本specの設計を正とし、本specが所有して実装する。ugc-moderationはこの契約を使う側である。名称・ハンドルの部分一致や最新のローンチの状態による絞り込みは、後続specに許す結合の範囲(仮11)を超えるため、本specのディレクトリの中にだけ置く明示の例外である。ugc-moderationは`products`・`product_launches`を直接読まず、`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`を`@inject`で受け取る。
+- 契約の形は本specの設計を正とし、本specが所有して実装する。ugc-moderationはこの契約を使う側である。名称・ハンドルの部分一致や最新のローンチの状態による絞り込みは、後続specに許す結合の範囲(仮11)を超えるため、本specのディレクトリの中にだけ置く明示の例外である。ugc-moderationは`products`・`product_launches`を直接読まず、`core/product`の契約の型と`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`を読み込み、`@inject`で受け取る。
 - 管理画面とGraphQLの操作はugc-moderationが持つ。
 
 **Contracts**: Service [x]
 
 ```typescript
-// admin-product-directory.ts
+// core/product/ports.ts(続き)
 export type AdminProductLaunchState =
   'scheduled' | 'in_progress' | 'won' | 'lost' | 'canceled';
 export type AdminProductVisibility = 'visible' | 'hidden' | 'owner_suspended';
@@ -1015,6 +1037,8 @@ export interface AdminProductDirectory {
   }>; // 論理削除済みを除く、(created_at, id)の降順
   countRegisteredAt(at: Date): Promise<number>; // created_at < atかつ(deleted_at IS NULLまたはdeleted_at >= at)
 }
+
+// workers/product/d1-admin-product-directory.ts
 export declare class D1AdminProductDirectory implements AdminProductDirectory {
   constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
 }
@@ -1274,50 +1298,6 @@ export interface ProductStateEvaluator {
 - 供給元の登録の検証(名前の形式・重複)は`assertLifecycleHandlerName`と同じ規則で`composition`の単体テストが行う。
 - 規約(一覧単位の呼び出し・該当だけを返す・判定は失敗で拒否、表示は縮退)は`backend/013`に記載する。
 
-#### ProductSaveHooks
-
-| Field        | Detail                                                                           |
-| ------------ | -------------------------------------------------------------------------------- |
-| Intent       | プロダクトの保存の一括の書き込みに後続specの文を加え、確定の後に処理を呼ぶ登録口 |
-| Requirements | 14.9                                                                             |
-
-**Contracts**: Event [x]
-
-```typescript
-// application/product/product-save-hooks.ts(drizzleの型だけを読み込む)
-import type { BatchItem } from 'drizzle-orm/batch';
-import type { ServiceIdentifier } from 'inversify';
-
-export interface ProductSaveHook {
-  statementsFor(
-    input: { readonly productId: string; readonly at: Date },
-    db: Database,
-  ): Promise<readonly BatchItem<'sqlite'>[]>; // 読み取りはしてよい。書き込みは返す文だけで、プロダクトIDを条件にする
-  afterCommit(input: { readonly productId: string }): Promise<void>; // 確定の後。失敗は保存を失敗させない
-}
-export interface ProductSaveHookRegistration {
-  readonly name: string; // '<spec名>.<名詞句>'(assertLifecycleHandlerName)
-  readonly hook: ServiceIdentifier<ProductSaveHook>;
-}
-export interface ProductSaveHooks {
-  statementsFor(
-    input: { readonly productId: string; readonly at: Date },
-    db: Database,
-  ): Promise<readonly BatchItem<'sqlite'>[]>; // 登録の順に連結
-  runAfterCommit(input: { readonly productId: string }): Promise<void>; // 登録の順。例外はwarnのログで続ける
-}
-export declare function createProductSaveHooks(
-  registrations: readonly ProductSaveHookRegistration[],
-  resolve: <T>(identifier: ServiceIdentifier<T>) => T,
-): ProductSaveHooks; // 名前の形式違反・重複で例外
-// composition/product-save-hooks.ts(後続specが追記、初版は空)
-export declare const PRODUCT_SAVE_HOOKS: readonly ProductSaveHookRegistration[];
-```
-
-- 呼ぶ保存: 登録(`registerProduct`)・編集(`updateProduct`、次回の予約とローンチ日の変更を含む)・公開APIの説明文の更新(`ProductDescriptionEditor`)。復元・停止の解除・削除・非公開化はライフサイクルの登録口で伝わるため、ここでは呼ばない。
-- 用途の例: directory-discoveryの`directory-discovery.product-index-refresh`(掲載中なら索引を更新待ちにして確定の後に更新を要求する、directory-discoveryの仮4)。engagement・sponsorship・ugc-moderationも、保存と同時に確定したい文や確定の後の通知に使える。
-- 規約(文はプロダクトIDを条件にした更新だけ、確定の後の処理は冪等にする)は`backend/013`に記載する。
-
 #### ProductRegistration・ProductEditor・ProductDeletion・ProductDescriptionEditor
 
 | Field        | Detail                                                                                                                  |
@@ -1390,10 +1370,11 @@ export interface ProductDescriptionEditor {
 
 - `register`(リゾルバが`requireVerifiedUser`の後、1.7・1.8): (1)カテゴリの存在(`category_not_found`、1.4)。(2)ハンドルの予約語(`isReservedHandle(PRODUCT_HANDLE_RULE)`)と`ProductStore.isHandleOccupied`(他のプロダクトの現在のハンドル、論理削除済みを含む。他のプロダクトの旧ハンドルは使用中としない、2.3・2.4・仮5)で`handle_unavailable`。(3)`computeLaunchDateWindow({ basis: null })`と`checkLaunchDate`(`launch_date_unavailable`、詳細に`earliest`・`latest`、4.7)。(4)画像の`claim`(ロゴ`product-logo`・スクリーンショット`product-screenshot`、保有者は本人)と`findMany`のバイト数で`checkScreenshotTotals`(`invalid_upload`・`screenshot_limit_exceeded`、3.3・3.4)。(5)`ProductStore.insert`(製品・最初のローンチ・スクリーンショットの一括の書き込み、`user_id`の`CASE`式で投稿者が確認済みで可視・ハンドルが使用中でないこと、他のプロダクトが同じハンドルを旧ハンドルとして保持していれば`previousHandleRelease`でその行を消すこと、2.5・2.11)。
 - `update`(リゾルバが`requireWritableUser`の後): (1)`ProductStore.findForOwner(userId, productHandle)`(現在のハンドルで本人のもの。無ければ`product_not_found`)と版の照合(`product_update_conflict`、7.3)。(2)`ProductStateEvaluator.evaluate`。(3)`planProductEdit`(`launch-not-allowed`は計画が`blocked`なら`relaunch_blocked`と最初の理由、`unknown`なら`decision_unavailable`)。(4)カテゴリかローンチを変えるとき、固定なら`product_locked`、固定が`unknown`なら`decision_unavailable`(6.1・6.2・6.5)。それ以外の項目は固定の期間でも保存する(6.4)。(5)ローンチの日付を`checkLaunchDate`(`state.window`、4.7)。(6)ハンドルが`changed`で自分の旧ハンドルと`isSameHandle`でなければ予約語と使用中の判定(2.3〜2.5)。(7)新しい画像の`claim`と合計(3.3・3.4)。(8)`ProductStore.save`。(9)確定の後に`replaced`のロゴを`eraseNow`(3.6)、`removed`のスクリーンショットを`markDeleted`(3.7)。失敗は結果を変えず`warn`のログ(ファイルのIDだけ)。
-- `delete`(リゾルバが`requireWritableUser`の後): `findForOwner`→版→`evaluate`の固定(`product_locked`・`decision_unavailable`)→`ProductLifecycleCommitter.commit({ type: 'deleted', productId, expectedVersion, at })`→`MessagePublisher.publish(RUN_PRODUCT_LIFECYCLE_MESSAGE)`。送信の失敗は成功として扱い、日次の送り直しに任せる(8.1)。
-- `ProductDescriptionEditor`: `findForOwner`(無ければ`product_not_found`)→`markdownTextSchema`と同じ規則の検証→`ProductStore.updateDescription`(版を1増やす)→結果が`hidden`なら`AppError({ kind: 'conflict', code: 'product_hidden', message: 'このプロダクトは公開が停止されているため、説明文を更新できません。' })`、`not-found`なら`AppError({ kind: 'not_found', code: 'product_not_found' })`、`account-unavailable`なら`requireWritableUser`と同じ`account_unavailable`(403)を投げ、確定の後の処理を呼ばない→`saved`なら`ProductSaveHooks.runAfterCommit`。bot対策の検証をユースケースに含めない(7.8)。利用者はpublic-apiだけで、非公開化中の拒否は公開APIの経路の規則である(7.9、仮12)。画面の`updateProduct`は仮7のとおり非公開化中も内容の編集を受け付ける。
-- 3つの保存(`register`・`update`・`ProductDescriptionEditor`)は、ストアの一括の書き込みの末尾に`PRODUCT_SAVE_HOOKS`の文を入れ(ストアが`ProductSaveHooks`から受け取る)、確定の後に`ProductSaveHooks.runAfterCommit`を呼ぶ(14.9、仮11)。削除・非公開化・復元はプロダクトライフサイクル、退会・停止・停止解除はユーザーライフサイクルで伝わるため、保存の登録口では呼ばない。
+- `delete`(リゾルバが`requireWritableUser`の後): `findForOwner`→版→`evaluate`の固定(`product_locked`・`decision_unavailable`)→`ProductLifecycleCommitter.commit({ type: 'deleted', productId, expectedVersion, at })`→`ProductMessagePublisher.publish(RUN_PRODUCT_LIFECYCLE_MESSAGE, { eventId })`。送信の失敗は成功として扱い、日次の送り直しに任せる(8.1)。
+- `ProductDescriptionEditor`: `findForOwner`(無ければ`product_not_found`)→`markdownTextSchema`と同じ規則の検証→`ProductStore.updateDescription`(版を1増やす)→結果が`hidden`なら`AppError({ kind: 'conflict', code: 'product_hidden', message: 'このプロダクトは公開が停止されているため、説明文を更新できません。' })`、`not-found`なら`AppError({ kind: 'not_found', code: 'product_not_found' })`、`account-unavailable`なら`requireWritableUser`と同じ`account_unavailable`(403)を投げる(これらの結果ではストアが確定の後の処理を呼んでいない)。bot対策の検証をユースケースに含めない(7.8)。利用者はpublic-apiだけで、非公開化中の拒否は公開APIの経路の規則である(7.9、仮12)。画面の`updateProduct`は仮7のとおり非公開化中も内容の編集を受け付ける。
+- 3つの保存(`register`・`update`・`ProductDescriptionEditor`)の`PRODUCT_SAVE_HOOKS`の文と確定の後の処理は、`ProductStore`のD1の実装(`D1ProductStore`、infrastructure層)が一括の書き込みの末尾に加え、確定の後に呼ぶ(14.9、仮11)。ユースケースは保存の登録口とデータベースの接続を受け取らない。削除・非公開化・復元はプロダクトライフサイクル、退会・停止・停止解除はユーザーライフサイクルで伝わるため、保存の登録口では呼ばない。
 - 未確認の利用者は登録だけを拒否し、編集・削除は拒否しない(research.mdの確認済み事項)。
+- 依存: `MediaFiles`・`UltrasEntitlements`の型は`core/media`・`core/ultras`から読み込み、メッセージの送信は`ProductMessagePublisher`(`@inject(PLATFORM_TYPES.MessagePublisher)`)で受け取る。application層の各ファイルは`**/lib/workers/**`を読み込まない。
 
 #### MyProductsReader・ProductHandleAvailabilityChecker・LaunchHistoryReader
 
@@ -1482,6 +1463,7 @@ export interface LaunchHistoryReader {
 - `check`: 形式違反→`invalid`、編集中の自分のプロダクトの現在・旧ハンドルと`isSameHandle`→`available`、予約語・使用中(他のプロダクトの現在のハンドル)→`unavailable`、他のプロダクトの旧ハンドルは`available`(2.6・2.11)。
 - `LaunchHistoryReader.list`: (1)`UserProfileDirectory.resolveHandle(userHandle)`。`none`、または停止中で閲覧者が本人でなければ`null`。(2)本人なら論理削除していない非公開化でないプロダクト、他人なら`visibleProducts() AND wonLaunchExists()`のプロダクトを対象にする(10.2)。(3)`totalCount`と1ページ。(4)ローンチを一括で読み、取消を除く(第◯回の番号は取消を除いて数える)。(5)`LAUNCH_SUMMARY_SOURCES`を`order`順に呼び、`rank`の大きい要約を採る。供給の無いローンチと供給元の失敗(`warn`のログ)では`fallbackLaunchSummary`で予選の結果から要約を作る(10.6・14.11)。受賞は`groupAwards`で種類ごとに数とラベルにまとめる。
 - `LaunchHistoryReader.awards`(仮14、10.11): (1)(2)は`list`と同じ(表示できない利用者は`null`、対象はローンチ履歴と同じプロダクト)。(3)対象のプロダクトを`LaunchHistoryStore.list`で90件ずつ最後まで読む。(4)各ページのローンチを`list`と同じ方法で一括で読み、取消を除いて`LAUNCH_SUMMARY_SOURCES`を`order`順に呼び、`awards`だけを使う。(5)各受賞の`label`の前にプロダクトの名称を付けた`'<名称> <label>'`をラベルにし、全ページの受賞をまとめて`groupAwards`に渡す(Yearが先頭、ラベルは受け取った順)。供給元の失敗はその供給元の受賞を除き、`warn`のログ(供給元の名前だけ)を残す。予選の結果からは受賞を導けないため縮退の値は無い。受賞が無ければ空の配列を返す。
+- 依存: `UserProfileDirectory`の型と`PROFILE_PLATFORM_TYPES`は`core/profile`から読み込み、`**/lib/workers/**`を読み込まない。
 
 #### ProductCategoryService
 
@@ -1536,8 +1518,17 @@ export interface ProductVisibilityControl {
   hide(productId: string, at: Date): Promise<VisibilityChangeResult>; // 論理削除済み・不在はAppError(not_found)
   unhide(productId: string, at: Date): Promise<VisibilityChangeResult>;
 }
+// application/product/ports.ts
+// application層は共通ライブラリのworkersの送信部品を読み込めないため、PLATFORM_TYPES.MessagePublisherに束縛された部品をこの形で受け取る
+export interface ProductMessagePublisher {
+  publish<TType extends string, TBody>(
+    contract: MessageContract<TType, TBody>,
+    body: TBody,
+  ): Promise<string>;
+}
 ```
 
+- `ProductMessagePublisher`は識別子を持たず、使う側(`ProductDeletion`・`ProductVisibilityControl`・`ProductMaintenanceJobs`)が`@inject(PLATFORM_TYPES.MessagePublisher)`で受け取る(media-pipelineの`MediaJobMessagePublisher`・identity-authの`IdentityMessagePublisher`と同じ)。本節の「送信」は`ProductMessagePublisher.publish(RUN_PRODUCT_LIFECYCLE_MESSAGE, { eventId })`を指す。ジョブの記録の読み書きは`core/product`の`ProductLifecycleStore`の型で`PRODUCT_PLATFORM_TYPES.ProductLifecycleStore`から受け取る。application層の各ファイルは`**/lib/workers/**`を読み込まない。
 - 呼び出し元(ugc-moderation)が管理者の権限・理由・監査ログ・通知を持つ。本操作口は呼び出し元の主体を判定しない(identity-authの`UserSuspension`と同じ形)。`hide`は`ProductLifecycleCommitter.commit({ type: 'hidden' })`(未開始のローンチの取消を含む、12.7)→送信。`unhide`は`unhidden`で、取消を戻さない(12.9)。既に同じ状態なら`unchanged`でイベントを作らない(12.6)。ugc-moderationは、必要なら自分の同期の処理を`PRODUCT_LIFECYCLE_SYNC_HANDLERS`に登録して、理由の記録を同じ一括の書き込みに含められる。
 
 | ジョブの名前                          | 時刻 | `order` | 処理                                                                                                                                                                                             |
@@ -1614,7 +1605,7 @@ export interface ProductStore {
     readonly descriptionMarkdown: string;
     readonly now: Date;
   }): Promise<'saved' | 'not-found' | 'account-unavailable' | 'hidden'>; // 書き込みの時点で非公開化中なら'hidden'(仮12)
-}
+} // insert・save・updateDescriptionは、'saved'の確定の後に保存の登録口の確定の後の処理まで済ませて返す(D1の実装、14.9)
 export interface LaunchHistoryStore {
   count(input: {
     readonly userId: string;
@@ -1662,10 +1653,56 @@ export interface ProductCategoryStore {
 - `ProductSaveGuards`(`product-save-guards.ts`): 保存・登録・削除・ライフサイクルの確定の`CASE`式に使う条件を関数で作る。`ownerWritable(userIdColumn)`(`visibleUsers()`と同じ条件)、`ownerVerified`(加えて`email_verified_at IS NOT NULL`)、`versionMatches(expected)`、`notDeleted`、`notHidden`、`qualifierUnlocked(thresholdDate)`(System Flowsの式)、`handleFree(handle, exceptProductId)`(`handleOccupiedCondition`の否定。他のプロダクトの現在のハンドルだけを見る)。
 - `insert`の一括の書き込み: (1)`products`の挿入(`user_id`は`CASE WHEN ownerVerified AND handleFree THEN ? ELSE NULL END`)。(2)他のプロダクトが同じハンドルを旧ハンドルとして保持していればその行を消す`previousHandleRelease`(2.11・仮5)。(3)`product_launches`の挿入。(4)スクリーンショットの挿入(1文あたりバインド変数100個以内)。`products.latest_launch_date`はローンチ日。
 - `save`: System Flows「次回の予約と保存」の並び。`version`を1増やす。ローンチの挿入・日付の変更があれば、最後の文で`UPDATE products SET latest_launch_date = (SELECT MAX(launch_date) FROM product_launches WHERE product_id = ?) WHERE id = ?`とし、取消を含む全ローンチの最新の日にする(取消のローンチが新しい予約より後の日のこともあるため)。
-- `insert`・`save`・`updateDescription`は、`ProductSaveHooks.statementsFor({ productId, at: now }, db)`の文を一括の書き込みの末尾に加える(14.9、仮11)。条件の`CASE`式で取り消されれば、登録された処理の文も一緒に取り消される。
+- `insert`・`save`・`updateDescription`は、`ProductSaveHooks.statementsFor({ productId, at: now }, db)`の文を一括の書き込みの末尾に加える(14.9、仮11)。条件の`CASE`式で取り消されれば、登録された処理の文も一緒に取り消される。一括の書き込みが確定して結果が`saved`のときだけ、同じメソッドの中で`ProductSaveHooks.runAfterCommit({ productId })`を呼ぶ(例外は`runAfterCommit`が`warn`のログにして続けるため、保存の結果を変えない)。`ProductSaveHooks`は`PRODUCT_TYPES.ProductSaveHooks`で受け取り、ユースケースには渡さない。
 - `updateDescription`の一括の書き込み: (1)`products`の更新(`description_markdown`・`version + 1`・`updated_at`)。`user_id`を`CASE WHEN notDeleted AND ownerWritable AND notHidden THEN user_id ELSE NULL END`にし、満たさなければ全体を取り消す(仮12)。(2)保存の登録口の文。取り消しは読み直しで、優先の順に、論理削除済み・不在を`not-found`、投稿者が書き込めない状態(呼び出し元の`requireWritableUser`の後の同時の停止・退会)を`account-unavailable`(`save`の分類と同じ)、`hidden_at`があれば`hidden`に分ける。事前の判定(public-apiの`MyProductsReader.find`の`hidden`)と書き込みの間に非公開化されても、説明文は書き込まれない(7.9)。
 - `D1LaunchHistoryStore`: `products`と`users`を結合し、`public`は`visibleProducts() AND wonLaunchExists()`、`owner`は`products.deleted_at IS NULL AND products.hidden_at IS NULL`。並びは`(latest_launch_date DESC, id DESC)`で、索引`(user_id, latest_launch_date, id)`を使う。
 - `D1ProductCategoryStore`: 一意索引の違反を列で`name-taken`・`handle-taken`に変換する。監査ログは`buildAuditLogStatements`で同じ一括の書き込みに含める。
+
+#### ProductSaveHooks
+
+| Field        | Detail                                                                           |
+| ------------ | -------------------------------------------------------------------------------- |
+| Intent       | プロダクトの保存の一括の書き込みに後続specの文を加え、確定の後に処理を呼ぶ登録口 |
+| Requirements | 14.9                                                                             |
+
+**Contracts**: Event [x]
+
+```typescript
+// infrastructure/product/product-save-hooks.ts(文と接続を扱うため、application層は読み込まない)
+import type { BatchItem } from 'drizzle-orm/batch';
+import type { ServiceIdentifier } from 'inversify';
+
+export interface ProductSaveHook {
+  statementsFor(
+    input: { readonly productId: string; readonly at: Date },
+    db: Database,
+  ): Promise<readonly BatchItem<'sqlite'>[]>; // 読み取りはしてよい。書き込みは返す文だけで、プロダクトIDを条件にする
+  afterCommit(input: { readonly productId: string }): Promise<void>; // 確定の後。失敗は保存を失敗させない
+}
+export interface ProductSaveHookRegistration {
+  readonly name: string; // '<spec名>.<名詞句>'(assertLifecycleHandlerName)
+  readonly hook: ServiceIdentifier<ProductSaveHook>;
+}
+export interface ProductSaveHooks {
+  statementsFor(
+    input: { readonly productId: string; readonly at: Date },
+    db: Database,
+  ): Promise<readonly BatchItem<'sqlite'>[]>; // 登録の順に連結
+  runAfterCommit(input: { readonly productId: string }): Promise<void>; // 登録の順。例外はwarnのログで続ける
+}
+export declare function createProductSaveHooks(
+  registrations: readonly ProductSaveHookRegistration[],
+  resolve: <T>(identifier: ServiceIdentifier<T>) => T,
+): ProductSaveHooks; // 名前の形式違反・重複で例外
+// composition/product-save-hooks.ts(後続specが追記、初版は空)
+export declare const PRODUCT_SAVE_HOOKS: readonly ProductSaveHookRegistration[];
+```
+
+- 置き場所: application層はデータベースの接続・SQLの文・一括の書き込みを扱わないため、契約と組み立ての部品はinfrastructure層に置く(`ProductLifecycleSyncHandler`・identity-authの`UserLifecycleSyncHandler`と同じ)。`ProductSaveHooks`を受け取って使うのは`D1ProductStore`だけで、`insert`・`save`・`updateDescription`の一括の書き込みの末尾に`statementsFor`の文を加え、一括の書き込みが確定した後に同じメソッドの中で`runAfterCommit`を呼ぶ。取り消された保存(条件の`CASE`式による取り消しと、`statementsFor`の例外)では呼ばない。application層のユースケースは登録口と接続を見ず、`ProductStore`のポートだけを使う。
+- 後続specの処理(`ProductSaveHook`の実装)も文と接続を扱うため、apiの`infrastructure/<ドメイン>`に置く(directory-discoveryは`infrastructure/directory/`)。
+- 呼ぶ保存: 登録(`registerProduct`)・編集(`updateProduct`、次回の予約とローンチ日の変更を含む)・公開APIの説明文の更新(`ProductDescriptionEditor`)。復元・停止の解除・削除・非公開化はライフサイクルの登録口で伝わるため、ここでは呼ばない。
+- 用途の例: directory-discoveryの`directory-discovery.product-index-refresh`(掲載中なら索引を更新待ちにして確定の後に更新を要求する、directory-discoveryの仮4)。engagement・sponsorship・ugc-moderationも、保存と同時に確定したい文や確定の後の通知に使える。
+- 規約(文はプロダクトIDを条件にした更新だけ、確定の後の処理は冪等にする)は`backend/013`に記載する。
 
 #### ProductLifecycleSyncHandlerContract・D1ProductLifecycleCommitter
 
@@ -1692,6 +1729,7 @@ export interface ProductLifecycleSyncRegistration {
 // composition/product-lifecycle-sync-handlers.ts
 export declare const PRODUCT_LIFECYCLE_SYNC_HANDLERS: readonly ProductLifecycleSyncRegistration[]; // 初版は空
 
+// application/product/ports.ts(D1の実装はinfrastructure/product/d1-product-lifecycle-committer.ts)
 export interface ProductLifecycleCommand {
   readonly type: SyncProductLifecycleEventType;
   readonly productId: string;
@@ -1957,6 +1995,13 @@ export interface ProductPurgeStore {
   imageFileIds(productId: string): Promise<readonly string[] | undefined>; // ロゴとスクリーンショット。行が無ければundefined
   purge(productId: string): Promise<void>; // 処理の記録・イベント・ローンチ・スクリーンショット・旧ハンドル・プロダクトを1つの一括の書き込みで物理削除
 }
+// apiのProductMessagePublisherと同じ形。PLATFORM_TYPES.MessagePublisherに束縛された部品をこの形で受け取る
+export interface ProductMessagePublisher {
+  publish<TType extends string, TBody>(
+    contract: MessageContract<TType, TBody>,
+    body: TBody,
+  ): Promise<string>;
+}
 export declare class ProductLifecycleRunner implements MessageHandler<{
   readonly eventId: string;
 }> {
@@ -1976,6 +2021,7 @@ export declare class ProductLifecycleRunner implements MessageHandler<{
 | `product-launch.product-erasure`  | ユーザーの`purge_due`            | 1000    | `listOwnedProductIds(userId, 50)`が空なら`done`。`purge_due`の無いものに`createPurgeDueEvents`→送信。全件の作成から10分以上経って行が残れば例外、それ以外は`continue`(13.4)      |
 
 - 前の2件は`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`(`composition/product-lifecycle-async-handlers.ts`、`createProductLifecycleRegistry`で検証)、3件目は`USER_LIFECYCLE_ASYNC_HANDLERS`へ加える。いずれも冪等(対象を呼び出しのたびにD1から求め直す、8.8)。
+- 依存: 実行器と3つの処理はapplication層に置き、記録の読み書きは`core/product`の`ProductLifecycleStore`、画像は`core/media`の`MediaFiles`・`MediaQuarantine`の型で受け取る。`product-launch.product-erasure`の送信は`ProductMessagePublisher`(`@inject(PLATFORM_TYPES.MessagePublisher)`)で行う。`**/lib/workers/**`を読み込まない。物理削除の一括の書き込みは`ProductPurgeStore`のD1の実装(`infrastructure/product/d1-product-purge-store.ts`)だけが行う。
 - 退会者の画像はuser-profile-socialの610で既に消えていることがあり、`eraseNow`は存在しないIDを数えずに成功する前提で使う(media-pipelineの契約を確かめるテストを置く)。
 
 ### frontend-lib
@@ -2056,7 +2102,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 #### ProductTechDocs・ProductServiceSpecs
 
 - `backend/012-aggregate-lifecycle-events.md`: 集約のライフサイクルイベントの規約(イベントの記録と状態の条件付きの確定、同期の文と非同期の処理、同じ集約の発生順、完了の記録と冪等、`continue`と再試行、滞ったイベントの日次の送り直し、物理削除は全処理の後に最後に行う、親の集約の物理削除から子の集約の物理削除のイベントを作って待つ、処理の`order`の帯)。本プロジェクト固有の値を含めない(15.4)。
-- `backend/013-pluggable-decision-sources.md`: 後続の機能が判定の条件と表示の要約を加える供給元の登録口と、保存の一括の書き込みに文を加え確定の後に処理を呼ぶ登録口(仮11)の規約(一覧単位の呼び出し、該当だけを返す、判定は失敗で拒否し表示は縮退、名前と順の規則、型の拡張を使わない理由)(15.4)。
+- `backend/013-pluggable-decision-sources.md`: 後続の機能が判定の条件と表示の要約を加える供給元の登録口と、保存の一括の書き込みに文を加え確定の後に処理を呼ぶ登録口(仮11)の規約(文と接続を扱う登録口の契約と処理の実装はinfrastructure層に置き、ストアの実装が文を加えて確定の後の処理を呼ぶ、一覧単位の呼び出し、該当だけを返す、判定は失敗で拒否し表示は縮退、名前と順の規則、型の拡張を使わない理由)(15.4)。
 - `frontend/012-business-date-calendar.md`: 固定の時差の業務日付をカレンダーで選ばせる規約(選べる範囲をサーバーから受け取る、選べない日をフォーカスできる無効の日にして理由を示す、利用者のタイムゾーンでの開始の日時と相対表現、境界の時刻の取り直し)。
 - サービス仕様(15.5): ページ配置(「自分のプロダクト(`/my/products`)」の節と「プロダクト登録・編集」への追記: 画面の区画の並び・状態の文言・非公開化中の編集(仮7)・取消のローンチはローンチ履歴に出さない・カテゴリの区画)、文言規則(Error Handlingの表と状態・トーストの文言、スクリーンショットの枚数(仮6))、再ローンチ規則(仮1・仮4・仮7の注記)、日次タイムライン(4:21の表に1000・1010)、準拠方針(注5に仮5)、`docs/onboardings/project-values.md`(処理・ジョブの名前と`order`、用途、bot対策の`action`、メッセージ種別)、tech-stack.mdと`coding/002`(仮10)。
 
@@ -2147,20 +2193,22 @@ erDiagram
 
 - Unit Tests(Bun、`*.unit.test.ts`):
   - `launch-status`: 前日23:44と23:45、0:00の前後、結果・取消の優先、`qualifierLockThresholdDate`の23:44・23:45(6.1・15.2)。
-  - `launch-summary`: 5つの状態と結果ごとの文言と`inMatch`、受賞のまとめ(Yearが先頭・数・ラベルの順)(14.11)。`product-save-hooks`: 登録の名前の検証、文の連結の順、確定の後の例外を続けること(14.9)。
+  - `launch-summary`: 5つの状態と結果ごとの文言と`inMatch`、受賞のまとめ(Yearが先頭・数・ラベルの順)(14.11)。`core/product/identifiers`: `PRODUCT_PLATFORM_TYPES`の各値が`Symbol.for('product.<名前>')`で、オブジェクトが凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形)。
   - `launch-date-rules`: 23:39で翌日・23:40で翌々日、90日後と91日後、敗北(09-07)で未加入09-14・Ultras 09-09、勝利と`null`で間隔なし(仮1)、`checkLaunchDate`の理由(4.1〜4.5・4.12・15.2)。
   - `launch-plan`: 直近のローンチの状態ごとの計画と文言、取消の除外、非公開化、供給元の`unavailable`・該当あり、`reschedule`の基準が前の終了したローンチであること、固定の判定(4.11・5.1〜5.9・6.1・6.2・6.5)。
   - `product-edit-plan`: ハンドルの`none`・`case-only`・`changed`、ロゴの差し替え、スクリーンショットの追加・削除・順序、同じ日付のローンチの変更なし、計画と合わない日付の拒否(2.7・3.5〜3.7)。
   - `product-input-rules`・`product-lifecycle`: 50・100書記素の境界、ハンドル50・51文字と予約語、`checkScreenshotTotals`の20・21枚と10,485,760・10,485,761バイト、登録の名前の形式違反・重複・同じ種類での`order`の重複の例外(1.1・2.1・3.2・12.10)。
-  - ユースケース(模擬のポート): `ProductRegistration`・`ProductEditor`の判定の順序と各エラー、固定の期間に名称だけの変更が通ること、画像の`claim`の失敗で保存しないこと、確定の後のロゴの`eraseNow`とスクリーンショットの`markDeleted`、`ProductStateEvaluator`の供給元の呼び出しが1回ずつであることと例外の扱い、`LaunchHistoryReader`の対象・要約の`rank`と縮退・受賞のまとめ、`LaunchHistoryReader.awards`の対象(本人・他人)と表示できない利用者の`null`・91件以上のプロダクトの全ページの集計・ラベルの`'<名称> <label>'`・供給元の失敗でその供給元の受賞だけを除くこと(10.11)、`ProductCategoryService`の権限以外の分岐、3つの非同期の処理と実行器の`continue`・`defer`・例外(4.6・5.6・6.4・10.6・11.\*・12.4・13.4)。
+  - ユースケース(模擬のポート): `ProductRegistration`・`ProductEditor`の判定の順序と各エラー、固定の期間に名称だけの変更が通ること、画像の`claim`の失敗で保存しないこと、確定の後のロゴの`eraseNow`とスクリーンショットの`markDeleted`、`ProductStateEvaluator`の供給元の呼び出しが1回ずつであることと例外の扱い、`LaunchHistoryReader`の対象・要約の`rank`と縮退・受賞のまとめ、`LaunchHistoryReader.awards`の対象(本人・他人)と表示できない利用者の`null`・91件以上のプロダクトの全ページの集計・ラベルの`'<名称> <label>'`・供給元の失敗でその供給元の受賞だけを除くこと(10.11)、`ProductCategoryService`の権限以外の分岐、3つの非同期の処理と実行器の`continue`・`defer`・例外、削除・非公開化・ジョブ・ユーザーの物理削除の波及処理の送信が偽の`ProductMessagePublisher`に届くこととその失敗の扱い(4.6・5.6・6.4・8.1・10.6・11.\*・12.4・13.4)。ユースケースの単体テストは`core/product`の契約とapplication層のポートの偽物だけを使い、保存の登録口とデータベースの接続を使わない。
+  - 層の規則(apiとeventの静的解析): `application/product`の各ファイルに`**/lib/workers/**`の読み込み(型だけの読み込みを含む)が無いこと。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts`、ローカルD1):
   - スキーマ: 部分一意索引で未確定のローンチを2つ作れない、`purge_due`を2つ作れない、大文字小文字だけが違うハンドル・カテゴリ名を作れない、`position`のCHECK(5.10・2.2)。
   - 保存: 同じハンドルの同時の2つの登録で1つだけ成功、論理削除済みのプロダクトの現在のハンドルの拒否と、他のプロダクトの旧ハンドル(論理削除済みのプロダクトのものを含む)を設定すると同じ一括の書き込みで元の保持者の行が消え解決が新しいプロダクトに移ること、他のプロダクトの同じ旧ハンドルを2つのプロダクトが同時に設定すると一方だけが成功し、元の保持者の行が消え、解決は成功した方へ移ること(仮5)、版の競合、23:45をまたいだ固定の取り消し(時計を進める)、停止中の投稿者の取り消し、非公開化中の予約の取り消し、`latest_launch_date`の更新(2.3〜2.5・2.11・5.8・6.6・7.3)。
   - ライフサイクル: 削除で旧ハンドルの解決が止まり、現在のハンドルは使用中のまま残り、旧ハンドルは他のプロダクトが設定できること、非公開化で未開始のローンチ(明日以降)だけが取消になり今日のローンチが残ること、復元で取消が戻らないこと、登録した同期の処理の文の失敗で全体が取り消されること、実行器の順序・完了の記録・同じプロダクトの古いイベントの待ち、`purge_due`の後に全行が消え`users`の物理削除が外部キーで失敗しないこと(2.9・8.4・8.5・12.3〜12.9)。
   - ユーザーライフサイクル: identity-authの退会の確定でプロダクト・旧ハンドルが論理削除されること、停止で未開始のローンチが取消になること、ユーザーの`purge_due`で2つのプロダクトの`purge_due`が作られ、消えた後に`done`になること(13.1〜13.4)。
   - 説明文の更新: 非公開化中のプロダクトで`hidden`を返し説明文と版が変わらないこと、`findForOwner`で非公開化されていない状態を読んだ後に`hidden_at`を直接書き込んでから`updateDescription`を呼ぶと`hidden`になり登録された処理の文も取り消されること、非公開化と投稿者の停止が重なると`account-unavailable`になること、`ProductDescriptionEditor`が`product_hidden`(conflict、文言「このプロダクトは公開が停止されているため、説明文を更新できません。」)を投げ確定の後の処理を呼ばないこと(7.9・仮12)。
+  - 保存の登録口の部品(`infrastructure/product/product-save-hooks.ts`、偽の処理): 登録の名前の形式違反と重複の例外、文の連結が登録の順であること、確定の後の処理が登録の順に呼ばれ1つの例外が`warn`のログ(処理の名前とプロダクトのIDだけ)を残して次へ進むこと、文を返す処理の例外がそのまま伝わること(14.9)。
   - 保存の登録口: テスト用に登録した処理の文が登録・編集・説明文の更新の一括の書き込みに入り、条件の取り消しで一緒に取り消されること、登録した文が実行時に失敗する(制約の違反)と一括の書き込み全体が取り消されどの行も変わらないこと、`statementsFor`の例外で何も書き込まず呼び出し元へ例外が伝わること、確定の後の処理の例外が保存の結果を変えず、取り消された保存では呼ばれないこと。`productInCategory()`で絞った掲載済みのプロダクトとカテゴリごとの件数(14.9・14.10)。
-  - 共有部品: `ProductDirectory`の可視・掲載済み・論理削除の除外・旧ハンドルの解決、`ScheduledLaunchDirectory`が取消・非公開化・停止中の投稿者を除くこと、`LaunchOutcomeRecorder`の4つの結果、`ProductExport`・`LaunchExport`の項目と論理削除済みの包含、カテゴリの`findByHandle`(8.7・11.12・14.1〜14.4・14.6)。
+  - 共有部品(`workers/product`のD1の実装): `ProductDirectory`の可視・掲載済み・論理削除の除外・旧ハンドルの解決、`ScheduledLaunchDirectory`が取消・非公開化・停止中の投稿者を除くこと、`LaunchOutcomeRecorder`の4つの結果、`ProductExport`・`LaunchExport`の項目と論理削除済みの包含、カテゴリの`findByHandle`(8.7・11.12・14.1〜14.4・14.6)。
   - `D1AdminProductDirectory`(仮13): 論理削除済みを除き`(created_at, id)`の降順に並ぶこと、名称・ハンドルの部分一致と`%`・`_`・`\`の逃がし、投稿者・カテゴリの絞り込み、最新のローンチの状態の5値(取消・勝利・敗北・明日以降の未確定・今日と過去の未確定)とその絞り込みが同じ結果になること、同じ日の複数のローンチでIDの降順の先頭を採ること、ローンチの無いプロダクトの`null`、公開の状態の3値(非公開化を停止中より優先)とその絞り込み、`limit`の境界とカーソルの続き・不正なカーソルの拒否、`countRegisteredAt`が時点以後の登録を数えず時点以後の論理削除を数えること、api・eventのコンテナから`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`を解決できること(14.12)。
   - スキーマモジュール: 各操作の権限・bot対策の順の拒否とエラーコード、`client`・`admin`以外の呼び出し元の拒否、`myProduct`の転送とnull、`launchHistory`の他人・本人・停止中の本人とnull、`profileAwards`のテスト用の供給元の受賞のまとめと表示できない利用者のnull、画像の項目の`objectKey`のnull(1.6〜1.8・7.4・7.5・10.2・10.11)。
   - カテゴリ: 「その他」の変更・削除の拒否、紐付く(論理削除済みを含む)カテゴリの削除の拒否と監査ログが残らないこと、成功時の監査ログの記録(11.5・11.6・11.8)。
