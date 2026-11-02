@@ -36,7 +36,7 @@
 - 管理者のデータ: `admins`・`admin_sessions`・`admin_auth_tokens`・`admin_login_challenges`・`admin_totp_credentials`・`admin_recovery_codes`・`admin_audit_logs`・`admin_audit_log_targets`の8テーブル(`apps/db/schema/admin/`)。
 - 管理者の業務処理(apiの`domain/admin`・`application/admin`・`infrastructure/admin`)と、GraphQLのスキーマモジュール`admin`(管理者側の許可リストにだけ載る)。
 - アクセス制御の部品`AdminAuthorizer`と、リゾルバ向けの補助`requireAdmin`(`presentation/graphql/admin-guard.ts`)。
-- 管理者の照会口`AdminDirectory`(`apps/backend-lib/workers/admin/`。apiとeventの両方で束縛する`ADMIN_PLATFORM_MODULE`を含む)。
+- 管理者の照会口`AdminDirectory`(契約と識別子`ADMIN_PLATFORM_TYPES`は`apps/backend-lib/core/admin/`、D1の実装`D1AdminDirectory`とapi・eventの両方で束縛する`ADMIN_PLATFORM_MODULE`は`apps/backend-lib/workers/admin/`)。
 - 監査ログの記録の部品`AuditLogRecorder`・照会`AuditLogReader`、操作種別の型と登録箇所(`apps/common-lib/admin/audit-actions/`)、ユーザーのメールアドレス検索の操作種別`user.email-search`。
 - ロールの型と順序(`apps/common-lib/admin/admin-roles.ts`)、入力規則(`admin-input-rules.ts`)。
 - メール種別6つ(`core/email/kinds/admin.ts`)とテンプレート(`apps/event/src/infrastructure/email/templates/admin/`)。
@@ -57,7 +57,7 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashPurpose`・`hashRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`RateLimitCounterClient`・`BotVerifier`・`PlatformEnv`。形を変えない。
+- backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashPurpose`・`hashRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`RateLimitCounterClient`・`BotVerifier`・`PlatformEnv`。形を変えない。application層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`RateLimitCounterClient`は、infrastructure層の`CounterAdminMailSendLimits`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。bot判定はリゾルバが`GraphQLContext.assertHuman`で行い、application層は`BotVerifier`を受け取らない。
 - api-gateway: `Principal`・`AuthenticatedPrincipal`・`SessionVerification`・`GraphQLSchemaModule`・`defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`・`SessionAccess`・`SessionView`(identity-authが加えたapplication層の型)。形を変えない。
 - identity-auth: `AUTH_TYPES`と`auth`の全ポート・`PasswordPolicy`・`SecretIssuer`・`RecoveryCodeIssuer`・`createLoginThrottleKeys`・`LoginThrottleScope`(`'admin'`)・`SessionPolicy`と`newSessionTimes`・`evaluateSession`・`cookieMaxAgeSeconds`・`SecondFactorInput`・`normalizeTotpCode`・`SubjectSessionVerifierPort`、`frontend-lib/components/auth`の3部品。`identity`の各層(利用者の業務処理)には依存しない。束縛の差し替えは`AUTH_TYPES.AdminSessionVerifier`の1行だけ。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`・`toMatchingKey`。形を変えない。
@@ -77,7 +77,7 @@
 - `AuditActionDefinition`・`AuditTargetKind`の値・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`の形(操作と同じ一括の書き込みに含める規約)・`AuditLogReader.latestFor`・`latestForMany`の形と、テストの共有の偽物`createFakeAuditLogReader`の既定の振る舞いと差し替えの形(管理操作を持つ全後続spec。`latestFor`・`latestForMany`はcontent-reportingの対応期間の表示、仮7)。
 - `user.email-search`の記録の形(ugc-moderation)。
 - `ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`の形と`order`、管理画面のURL(仮6)(全後続spec。カードはugc-moderation・inquiry-chat・content-reporting)。
-- `AdminDirectory`の形・削除済みの扱い・置き場所(`backend-lib/workers/admin`)とapi・eventでの束縛(help-center、inquiry-chat(返信した管理者の表示とデータエクスポートの`adminNickname`)、legal-pages(版の公開者と下書きの保存者)、ultras-subscription(機能フラグの変更者))。
+- `AdminDirectory`の形・削除済みの扱い・置き場所(契約と識別子は`backend-lib/core/admin`、実装と束縛は`backend-lib/workers/admin`)とapi・eventでの束縛(help-center、inquiry-chat(返信した管理者の表示とデータエクスポートの`adminNickname`)、legal-pages(版の公開者と下書きの保存者)、ultras-subscription(機能フラグの変更者))。
 - 共通部品(`apps/frontend-lib/components/admin/`)のprops(全後続spec、カテゴリマスタはinquiry-chat・help-center・product-launch・content-reporting)。
 - `admin-avatar`の用途の上限(512,000バイト、仮2)と、product-launchのロゴの上限の解釈(product-launch)。この値はプロジェクト全体のバイトの単位の規則(1kB=1,024バイト、文言規則)に従う。
 - E2Eの補助`e2e/support/admin-bootstrap.ts`・`e2e/support/local-d1.ts`の関数の形(管理画面のE2Eを持つ全後続spec(legal-pages・inquiry-chat・ultras-subscriptionなど))。
@@ -155,8 +155,8 @@ graph TB
 
 ### Dependency Direction
 
-- 共有コード: `apps/db/schema/admin` → `apps/common-lib/admin`(`countGraphemes`だけを読み込む) → アプリの`src`。`apps/backend-lib/workers/admin`は`apps/db/schema/admin`の`admins`と`core`の`Database`だけを読み込み、api・eventの`src`から読み込まれる。
-- apiの`src`内: `domain/auth`(identity-auth) ← `domain/admin` ← `application/auth`(identity-auth) ← `application/admin` ← `infrastructure/admin`・`presentation/graphql/modules/admin`・`presentation/graphql/admin-guard.ts` ← `composition`。`admin`の各層は`identity`の各層を読み込まない。後続specのapplication層は`application/admin`の`AdminAuthorizer`・`AuditLogRecorder`と`backend-lib/workers/admin`の`AdminDirectory`を、infrastructure層は`infrastructure/admin/audit-log-statements.ts`を、presentation層は`admin-guard.ts`を読み込む。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
+- 共有コード: `apps/db/schema/admin` → `apps/common-lib/admin`(`countGraphemes`だけを読み込む) → アプリの`src`。`apps/backend-lib/core/admin`(契約と識別子)は`workers`と`apps/db`を読み込まない。`apps/backend-lib/workers/admin`は`core/admin`・`apps/db/schema/admin`の`admins`・`Database`だけを読み込み、api・eventの`infrastructure`・`composition`から読み込まれる。api・eventの`application`は`core/admin`だけを読み込む(core → workers → アプリの`src`)。
+- apiの`src`内: `domain/auth`(identity-auth) ← `domain/admin` ← `application/auth`(identity-auth) ← `application/admin` ← `infrastructure/admin`・`presentation/graphql/modules/admin`・`presentation/graphql/admin-guard.ts` ← `composition`。`admin`の各層は`identity`の各層を読み込まない。後続specのapplication層は`application/admin`の`AdminAuthorizer`・`AuditLogRecorder`と`backend-lib/core/admin`の`AdminDirectory`・`ADMIN_PLATFORM_TYPES`を、infrastructure層は`infrastructure/admin/audit-log-statements.ts`を、presentation層は`admin-guard.ts`を読み込む。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
 - adminの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。`frontend-lib/components/admin`はGraphQLとアプリの型に依存しない。
 
 ### Technology Stack
@@ -191,9 +191,12 @@ apps/
 │       ├── admin-foundation.ts                         # admin-account.invite・delete・role-change、user.email-search
 │       └── index.ts                                    # AUDIT_ACTIONS(後続specが自分のファイルを足して集約する)
 ├── backend-lib/core/email/kinds/admin.ts               # 管理者の6つのメール種別
-├── backend-lib/workers/admin/                          # api・eventが共有する管理者の照会(apiのWorkers統合テスト、同名の*.worker.test.ts)
-│   ├── admin-directory.ts                              # AdminProfileView・AdminDirectory・D1AdminDirectory(後続specも使う)
-│   └── admin-platform-module.ts                        # ADMIN_PLATFORM_TYPES・ADMIN_PLATFORM_MODULE(両アプリ共通の束縛)
+├── backend-lib/core/admin/                             # api・eventと後続specのapplication層が受け取る管理者の照会の契約と識別子
+│   ├── ports.ts                                        # AdminProfileView・AdminDirectory(後続specも使う)
+│   └── identifiers.ts                                  # ADMIN_PLATFORM_TYPES(Symbol.for('admin.<名前>')の凍結したオブジェクト、同名の*.unit.test.ts)
+├── backend-lib/workers/admin/                          # 照会の実装と束縛(apiのWorkers統合テスト、同名の*.worker.test.ts)
+│   ├── d1-admin-directory.ts                           # D1AdminDirectory
+│   └── admin-platform-module.ts                        # ADMIN_PLATFORM_MODULE(両アプリ共通の束縛)
 ├── api/
 │   ├── scripts/admin/
 │   │   ├── issue-super-admin-invitation.ts             # 入口: 引数の解析→照会→SQLの生成→wrangler d1 execute→リンクの表示
@@ -207,13 +210,12 @@ apps/
 │       │   └── audit-entry.ts                          # 記録の入力の検証(操作種別・理由・対象の形式・詳細)
 │       ├── application/admin/                          # ポートとユースケース(Bunの単体テスト)
 │       │   ├── admin-types.ts                          # ADMIN_TYPES
-│       │   ├── ports.ts                                # 各ストア・メール・設定値
+│       │   ├── ports.ts                                # 各ストア・メール・設定値・AdminMailSendLimits
 │       │   ├── admin-session-issuer.ts                 # 発行・操作端末への再発行
 │       │   ├── admin-session-verifier.ts               # SubjectSessionVerifierPortの管理者の実装
 │       │   ├── admin-authorizer.ts                     # AdminAuthorizer(後続specも使う)
 │       │   ├── admin-login.ts                          # パスワードと第2要素のログイン、ログアウト
 │       │   ├── admin-re-authenticator.ts               # 本人確認
-│       │   ├── admin-mail-send-limits.ts               # 送信回数の制限
 │       │   ├── admin-invitation.ts                     # 招待・再送・完了の2段階
 │       │   ├── admin-password-reset.ts · admin-email-change.ts · admin-password-change.ts
 │       │   ├── admin-totp-management.ts                # 再設定の2段階・リカバリコードの再発行
@@ -230,6 +232,7 @@ apps/
 │       │   ├── d1-admin-login-challenge-store.ts · d1-admin-totp-credential-store.ts · d1-admin-recovery-code-store.ts
 │       │   ├── audit-log-statements.ts                 # buildAuditLogStatements(後続specのストアも一括の書き込みに含める)
 │       │   ├── d1-audit-log-store.ts                   # 単独の記録・検索・最新の照会(1件と複数)・保持期間の削除
+│       │   ├── counter-admin-mail-send-limits.ts       # AdminMailSendLimitsの実装(厳密カウンタによる送信回数の制限)
 │       │   └── email-admin-mailer.ts                   # 6種のメールの送信要求とリンクのURL
 │       ├── presentation/graphql/
 │       │   ├── admin-guard.ts                          # requireAdmin(後続specのリゾルバも使う)
@@ -404,33 +407,34 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                                            | Domain/Layer        | Intent                           | Req Coverage                                 | Key Dependencies                       | Contracts |
-| ------------------------------------------------------------------------------------ | ------------------- | -------------------------------- | -------------------------------------------- | -------------------------------------- | --------- |
-| AdminSchema                                                                          | db                  | 8テーブル                        | 1.1〜1.4, 18.1, 19.6                         | drizzle (P0)                           | State     |
-| AdminRoles・AdminInputRules                                                          | common-lib          | ロールの順序・入力の上限         | 1.2, 4.1, 16.1, 18.4, 21.3                   | countGraphemes (P0)                    | State     |
-| AuditActionCatalog                                                                   | common-lib          | 操作種別の型と登録               | 18.3, 18.6, 18.7                             | —                                      | State     |
-| SuperAdminInvitationScript                                                           | api/scripts         | 最初の最上位管理者の招待         | 2.1〜2.7                                     | wrangler (P0)・KeyedHasher (P0)        | Batch     |
-| AdminAccountRules・AdminSessionPolicy・AdminAuthTokenPurpose・AuditEntryRules        | api/domain          | 純粋な規則                       | 1.4, 8.2, 14.2, 15.4〜15.8, 16.4, 18.4, 18.5 | —                                      | State     |
-| AdminPorts                                                                           | api/application     | ストア・メール・設定             | 各ユースケース                               | —                                      | Service   |
-| AdminSessionIssuer・AdminSessionVerifier                                             | api/application     | 発行・再発行・検証               | 6.1, 8.1〜8.4, 10.6, 11.2, 12.5              | identity-authの`auth` (P0)             | Service   |
-| AdminAuthorizer                                                                      | api/application     | 認可(後続specも使う)             | 17.1〜17.4                                   | AdminAccountStore (P0)                 | Service   |
-| AdminDirectory・AdminPlatformModule                                                  | backend-lib/workers | 照会(後続specがapi・eventで使う) | 1.5                                          | Database (P0)                          | Service   |
-| AdminLogin・AdminReAuthenticator・AdminMailSendLimits                                | api/application     | ログイン・本人確認・送信回数     | 6.1〜6.4, 6.6, 7.1〜7.6, 13.1〜13.4, 14.4    | LoginThrottle (P0)・BotVerifier (P0)   | Service   |
-| AdminInvitation                                                                      | api/application     | 招待・再送・完了                 | 3.1〜3.5, 4.2〜4.8                           | AuditLogRecorder (P0)                  | Service   |
-| AdminPasswordReset・AdminEmailChange・AdminPasswordChange・AdminTotpManagement       | api/application     | 本人の手続き                     | 9.1〜12.8                                    | identity-authの`auth` (P0)             | Service   |
-| AdminAccountManagement・AdminProfile                                                 | api/application     | 一覧・削除・ロール・プロフィール | 15.1〜15.10, 16.1〜16.5                      | MediaFiles (P0)・AuditLogRecorder (P0) | Service   |
-| AuditLogRecorder・AuditLogReader                                                     | api/application     | 記録・検索・最新の照会           | 18.1〜18.8, 19.1〜19.5                       | AuditLogStore (P0)                     | Service   |
-| AdminCredentialCleanupJob・AuditLogRetentionJob                                      | api/application     | 日次のジョブ                     | 8.6, 14.6, 19.6                              | CronRegistry (P0)                      | Batch     |
-| D1AdminStores・AuditLogStatements・D1AuditLogStore・EmailAdminMailer                 | api/infrastructure  | D1とメールの実装・監査ログの文   | 18.2, 各ユースケース                         | Database (P0)・EmailSender (P0)        | Service   |
-| AdminSchemaModule・AdminGuard                                                        | api/presentation    | GraphQLの型・リゾルバ・補助      | 6.7, 6.8, 17.3ほか各機能                     | api-gateway (P0)                       | API       |
-| ApiAdminComposition                                                                  | api/composition     | 束縛・登録・環境                 | 8.6, 14.6, 16.2, 19.6                        | 上流の登録箇所 (P0)                    | State     |
-| AdminEmailTemplates                                                                  | event               | 6種のテンプレート                | 14.7                                         | email-delivery (P0)                    | —         |
-| AdminCommonParts                                                                     | frontend-lib        | 共通部品                         | 16.6, 18.9, 21.1〜21.4                       | shadcn/ui (P0)・media-pipeline (P1)    | State     |
-| AdminAuthPages・InvitationPages                                                      | admin               | `/auth/*`の5画面                 | 4.1, 6.5, 9.4, 14.3, 20.1, 20.8              | useTurnstileToken (P0)                 | State     |
-| AuthenticatedLayout・AdminViewerContext・RoleGate・AdminNavigation・AdminAccountMenu | admin               | ログイン必須の領域・区画         | 8.5, 17.5, 20.2, 20.3                        | AdminLayoutSlots (P0)                  | State     |
-| AdminNavigationRegistry・DashboardCardRegistry・DashboardGrid                        | admin               | 登録箇所とダッシュボード         | 20.3〜20.7                                   | —                                      | State     |
-| AdminsPage・AuditLogsPage・AccountPage                                               | admin               | 3つのページ                      | 12.7, 15.1, 15.10, 16.6, 19.1〜19.4          | AdminCommonParts (P0)                  | State     |
-| AdminE2E・AdminDocs                                                                  | e2e・docs           | E2Eと文書                        | 22.1〜22.6                                   | Playwright・Mailpit (P0)               | —         |
+| Component                                                                            | Domain/Layer                                                    | Intent                           | Req Coverage                                 | Key Dependencies                            | Contracts |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------- | -------------------------------- | -------------------------------------------- | ------------------------------------------- | --------- |
+| AdminSchema                                                                          | db                                                              | 8テーブル                        | 1.1〜1.4, 18.1, 19.6                         | drizzle (P0)                                | State     |
+| AdminRoles・AdminInputRules                                                          | common-lib                                                      | ロールの順序・入力の上限         | 1.2, 4.1, 16.1, 18.4, 21.3                   | countGraphemes (P0)                         | State     |
+| AuditActionCatalog                                                                   | common-lib                                                      | 操作種別の型と登録               | 18.3, 18.6, 18.7                             | —                                           | State     |
+| SuperAdminInvitationScript                                                           | api/scripts                                                     | 最初の最上位管理者の招待         | 2.1〜2.7                                     | wrangler (P0)・KeyedHasher (P0)             | Batch     |
+| AdminAccountRules・AdminSessionPolicy・AdminAuthTokenPurpose・AuditEntryRules        | api/domain                                                      | 純粋な規則                       | 1.4, 8.2, 14.2, 15.4〜15.8, 16.4, 18.4, 18.5 | —                                           | State     |
+| AdminPorts                                                                           | api/application                                                 | ストア・メール・設定             | 各ユースケース                               | —                                           | Service   |
+| AdminSessionIssuer・AdminSessionVerifier                                             | api/application                                                 | 発行・再発行・検証               | 6.1, 8.1〜8.4, 10.6, 11.2, 12.5              | identity-authの`auth` (P0)                  | Service   |
+| AdminAuthorizer                                                                      | api/application                                                 | 認可(後続specも使う)             | 17.1〜17.4                                   | AdminAccountStore (P0)                      | Service   |
+| AdminDirectory・AdminPlatformModule                                                  | backend-lib/core(契約と識別子)・backend-lib/workers(実装と束縛) | 照会(後続specがapi・eventで使う) | 1.5                                          | Database(実装だけが使う) (P0)               | Service   |
+| AdminLogin・AdminReAuthenticator                                                     | api/application                                                 | ログイン・本人確認               | 6.1〜6.4, 6.6, 7.1〜7.6, 13.1〜13.4          | LoginThrottle (P0)                          | Service   |
+| AdminMailSendLimits・CounterAdminMailSendLimits                                      | api/application(ポート)・api/infrastructure(実装)               | 送信回数                         | 14.4                                         | RateLimitCounterClient(実装だけが使う) (P0) | Service   |
+| AdminInvitation                                                                      | api/application                                                 | 招待・再送・完了                 | 3.1〜3.5, 4.2〜4.8                           | AuditLogRecorder (P0)                       | Service   |
+| AdminPasswordReset・AdminEmailChange・AdminPasswordChange・AdminTotpManagement       | api/application                                                 | 本人の手続き                     | 9.1〜12.8                                    | identity-authの`auth` (P0)                  | Service   |
+| AdminAccountManagement・AdminProfile                                                 | api/application                                                 | 一覧・削除・ロール・プロフィール | 15.1〜15.10, 16.1〜16.5                      | MediaFiles (P0)・AuditLogRecorder (P0)      | Service   |
+| AuditLogRecorder・AuditLogReader                                                     | api/application                                                 | 記録・検索・最新の照会           | 18.1〜18.8, 19.1〜19.5                       | AuditLogStore (P0)                          | Service   |
+| AdminCredentialCleanupJob・AuditLogRetentionJob                                      | api/application                                                 | 日次のジョブ                     | 8.6, 14.6, 19.6                              | CronRegistry (P0)                           | Batch     |
+| D1AdminStores・AuditLogStatements・D1AuditLogStore・EmailAdminMailer                 | api/infrastructure                                              | D1とメールの実装・監査ログの文   | 18.2, 各ユースケース                         | Database (P0)・EmailSender (P0)             | Service   |
+| AdminSchemaModule・AdminGuard                                                        | api/presentation                                                | GraphQLの型・リゾルバ・補助      | 6.7, 6.8, 17.3ほか各機能                     | api-gateway (P0)                            | API       |
+| ApiAdminComposition                                                                  | api/composition                                                 | 束縛・登録・環境                 | 8.6, 14.6, 16.2, 19.6                        | 上流の登録箇所 (P0)                         | State     |
+| AdminEmailTemplates                                                                  | event                                                           | 6種のテンプレート                | 14.7                                         | email-delivery (P0)                         | —         |
+| AdminCommonParts                                                                     | frontend-lib                                                    | 共通部品                         | 16.6, 18.9, 21.1〜21.4                       | shadcn/ui (P0)・media-pipeline (P1)         | State     |
+| AdminAuthPages・InvitationPages                                                      | admin                                                           | `/auth/*`の5画面                 | 4.1, 6.5, 9.4, 14.3, 20.1, 20.8              | useTurnstileToken (P0)                      | State     |
+| AuthenticatedLayout・AdminViewerContext・RoleGate・AdminNavigation・AdminAccountMenu | admin                                                           | ログイン必須の領域・区画         | 8.5, 17.5, 20.2, 20.3                        | AdminLayoutSlots (P0)                       | State     |
+| AdminNavigationRegistry・DashboardCardRegistry・DashboardGrid                        | admin                                                           | 登録箇所とダッシュボード         | 20.3〜20.7                                   | —                                           | State     |
+| AdminsPage・AuditLogsPage・AccountPage                                               | admin                                                           | 3つのページ                      | 12.7, 15.1, 15.10, 16.6, 19.1〜19.4          | AdminCommonParts (P0)                       | State     |
+| AdminE2E・AdminDocs                                                                  | e2e・docs                                                       | E2Eと文書                        | 22.1〜22.6                                   | Playwright・Mailpit (P0)                    | —         |
 
 ### common-lib
 
@@ -731,6 +735,14 @@ export interface AdminSettings {
   readonly adminOrigin: string; // ADMIN_SITE_ORIGIN
   readonly totpIssuer: string; // 'Launch Stadium Admin'・'Launch Stadium Admin staging'・'Launch Stadium Admin local'
 }
+export type AdminLimitedMailKind = 'password_reset' | 'email_change';
+export interface AdminMailSendLimits {
+  consume(
+    kind: AdminLimitedMailKind,
+    address: string,
+    meta: AdminRequestMeta,
+  ): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded)。実装はinfrastructure/admin/counter-admin-mail-send-limits.ts
+}
 export declare const ADMIN_TYPES: {
   /* 各ポート・ユースケース・ジョブ(Symbol.for('admin.<名前>')) */
 };
@@ -765,7 +777,7 @@ export interface AdminAuthorizer {
     minimum: AdminRole,
   ): Promise<CurrentAdmin>; // 本人なら許可(NFR-SECUR-008)
 }
-// apps/backend-lib/workers/admin/admin-directory.ts
+// apps/backend-lib/core/admin/ports.ts
 export interface AdminProfileView {
   readonly id: string;
   readonly nickname: string;
@@ -777,24 +789,43 @@ export interface AdminDirectory {
     ids: readonly string[],
   ): Promise<ReadonlyMap<string, AdminProfileView>>; // 削除済み・招待中は含めない
 }
+// apps/backend-lib/core/admin/identifiers.ts
+export declare const ADMIN_PLATFORM_TYPES: { readonly AdminDirectory: symbol }; // Symbol.for('admin.AdminDirectory')の凍結したオブジェクト
+// apps/backend-lib/workers/admin/d1-admin-directory.ts
+export declare class D1AdminDirectory implements AdminDirectory {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
 // apps/backend-lib/workers/admin/admin-platform-module.ts
-export declare const ADMIN_PLATFORM_TYPES: { readonly AdminDirectory: symbol }; // Symbol.for('admin.AdminDirectory')
-export declare const ADMIN_PLATFORM_MODULE: AppModule; // apiとeventのcomposition/modules.tsの両方へ入れる
+export declare const ADMIN_PLATFORM_MODULE: AppModule; // AdminDirectory → D1AdminDirectory。apiとeventのcomposition/modules.tsの両方へ入れる
 ```
+
+- 置き場所: api・eventのapplication層(後続specのユースケースとデータエクスポートの部品)が読み込めるよう、契約(`AdminProfileView`・`AdminDirectory`)は`apps/backend-lib/core/admin/ports.ts`、識別子は`core/admin/identifiers.ts`に置き、D1の実装と束縛だけを`apps/backend-lib/workers/admin`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。識別子は`Symbol.for('admin.<名前>')`の凍結したオブジェクトで、`core/admin/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。apiの`ADMIN_TYPES`とは別の識別子にし、同じ`admin.`の接頭辞を使うため、メンバーの名前を重ねない。
 
 - `D1AdminDirectory.findProfiles`: 重複を除いたIDを100件ずつに分け、`admins`から`status = 'active'`の行の`id`・`nickname`・`title`・`avatar_file_id`だけを読む(1.5)。apiの処理単位のコンテナで後続specのユースケースが使い、eventでは後続specのデータエクスポートの部品(inquiry-chatの`InquiryExport`)が使う。`AdminAccountStore`を経由しないのは、eventに管理者のストアの束縛を持ち込まないためである。
 
 - `requireAdmin`: `caller`が`'admin'`でなければ`forbidden`(17.3)→`session.principal()`が認証済みで`subjectKind: 'admin'`でなければ`unauthenticated`→`AdminAccountStore.findById`で保存済みのロールを読み(要求ごとに1回、処理単位のコンテナで保持、17.4)→`hasRole`を満たさなければ`forbidden`(17.1)。`caller`はpresentation層の`CallerKind`を読み込まないため文字列で受ける(identity-authのR3-1と同じ)。
 - 後続specのリゾルバは`requireAdmin(context, 'moderator')`(`admin-guard.ts`、`context.caller`と`context.session`を渡す補助)で使う。ロールの選び方はページ配置の一覧に従う(17.6)。
 
-#### AdminLogin・AdminReAuthenticator・AdminMailSendLimits
+#### AdminLogin・AdminReAuthenticator・AdminMailSendLimits・CounterAdminMailSendLimits
+
+```typescript
+// application/admin/ports.tsのAdminLimitedMailKind・AdminMailSendLimits(「AdminPorts」)を実装する
+// infrastructure/admin/counter-admin-mail-send-limits.ts(@injectable())
+export declare class CounterAdminMailSendLimits implements AdminMailSendLimits {
+  constructor(
+    counters: RateLimitCounterClient, // @inject(PLATFORM_TYPES.RateLimitCounterClient)
+    hasher: KeyedHasher, // @inject(PLATFORM_TYPES.KeyedHasher)
+  );
+}
+```
 
 - `AdminLogin.withPassword`: `assertHuman('admin_login')`(リゾルバ)→`createLoginThrottleKeys`→`LoginThrottle.status('admin', keys)`(ロック中は`login_throttled`)→`findByEmail`→無い・招待中なら`verifyAgainstDummy`して`recordFailure`・`invalid_credentials`、有効なら`verify`(不一致は`recordFailure`・`invalid_credentials`)→待ちの値(`admin-login-challenge`、5分)を返す(6.1・6.2)。有効な管理者は必ずTOTPを持つため、パスワードだけでセッションを発行する経路は無い。
 - `withSecondFactor`: 待ちの値→管理者の現在のメールでキー→`status`→TOTPは`verify`と`advanceStep`、リカバリコードは`consume`→失敗は`recordFailure`・`invalid_second_factor`→成功は待ちを消し、`reset`して`AdminSessionIssuer.issue`(6.3・6.4・7.5)。
 - `logout`: 自分のセッションを削除し、リゾルバが`session.clear()`(6.6)。
 - `AdminReAuthenticator.verify(admin, { currentPassword, secondFactor }, meta)`: 第2要素は必須。ロック中は`login_throttled`(13.4)、誤りは`recordFailure`して`reauthentication_failed`(詳細は現在のパスワードか第2要素)、リカバリコードは消費する(13.1〜13.3・7.6)。
 - `reauthentication_failed`の詳細の経路は、画面の欄の形(GraphQLの引数の形)のとおりにする。リゾルバは`reAuthentication.currentPassword`と、送った第2要素の`reAuthentication.secondFactor.totpCode`か`reAuthentication.secondFactor.recoveryCode`(どちらも送らなかった時は`reAuthentication.secondFactor`)を経路にする(identity-authの`reauthentication_failed`と同じ形)。
-- `AdminMailSendLimits.consume(kind, address, meta)`: 規則`admin-auth-mail:<kind>:address`(3回/3600秒)と`admin-auth-mail:<kind>:ip`(5回/3600秒)で`RateLimitCounterClient.hit`し、超過は`rate_limit_exceeded`(14.4)。有無の判定より前に数える。
+- `CounterAdminMailSendLimits.consume(kind, address, meta)`: 規則`admin-auth-mail:<kind>:address`(3回/3600秒)と`admin-auth-mail:<kind>:ip`(5回/3600秒)で`RateLimitCounterClient.hit`し、超過は`rate_limit_exceeded`(14.4)。有無の判定より前に数える。
+- 置き場所: ポート`AdminMailSendLimits`はapplication層、実装`CounterAdminMailSendLimits`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`の型が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」、identity-authの`CounterMailSendLimits`と同じ形)。`ADMIN_TYPES.AdminMailSendLimits`を`CounterAdminMailSendLimits`へ束縛し、リセットと変更のユースケースはポートだけを受け取る。実装の振る舞いはWorkers統合テスト(偽の厳密カウンタ)、ユースケースの呼び出しの順は偽のポートによる単体テストで確かめる。
 
 #### AdminInvitation
 
@@ -1095,7 +1126,7 @@ type Mutation {
 
 #### ApiAdminComposition
 
-- `admin-module.ts`: 各ストア・`AdminMailer`・`AdminSettings`(`ADMIN_SITE_ORIGIN`、TOTPの発行者名は`APP_ENVIRONMENT`から)・各ユースケース・`AdminAuthorizer`(処理単位で単一)・`AuditLogRecorder`(`AUDIT_ACTIONS`のカタログ)・`AuditLogReader`・2つのジョブ。`AdminDirectory`は`ADMIN_PLATFORM_MODULE`が束縛する。identity-authの`AUTH_TYPES`の束縛はそのまま使う。
+- `admin-module.ts`: 各ストア・`AdminMailer`・`AdminMailSendLimits`(→`CounterAdminMailSendLimits`)・`AdminSettings`(`ADMIN_SITE_ORIGIN`、TOTPの発行者名は`APP_ENVIRONMENT`から)・各ユースケース・`AdminAuthorizer`(処理単位で単一)・`AuditLogRecorder`(`AUDIT_ACTIONS`のカタログ)・`AuditLogReader`・2つのジョブ。`AdminDirectory`は`ADMIN_PLATFORM_MODULE`が束縛する。identity-authの`AUTH_TYPES`の束縛はそのまま使う。
 - `session.ts`: `AUTH_TYPES.AdminSessionVerifier`→`ADMIN_TYPES.AdminSessionVerifier`。`upload-purposes.ts`: `defineUploadPurpose({ name: 'admin-avatar', storage: 'images', uploaderKinds: ['admin'], allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: 512000 })`(16.2・仮2)。
 - `env-schema.ts`: `ADMIN_SITE_ORIGIN`(http・httpsのオリジンで`new URL(v).origin === v`)。Wrangler設定: ローカル`http://localhost:48045`、staging`https://genai-example-2-admin-staging.lab.kurachiweb.com`、prod`https://genai-example-2-admin.lab.kurachiweb.com`。
 
@@ -1357,12 +1388,14 @@ stateDiagram-v2
   - `admin-account`: 削除の可否(自分・viewer・moderatorから最上位管理者・最上位管理者から最上位管理者)、ロール変更とプロフィール編集の可否、招待期限切れの表示(15.2〜15.7・16.3・16.4)。
   - `admin-session-policy`: アイドル1時間・絶対12時間の境界、5分未満は更新しない(8.2・8.3)。
   - 各ユースケース(ポートを偽物にする): 招待の重複の拒否と監査ログの文の同梱(3.1・3.2)、招待の完了の2段階とトークンを`start`では消費しないこと(4.2・4.3)、招待中・未登録のログインが同じ失敗になること(6.2)、本人確認の失敗の記録(7.6・13.2)、パスワードリセットの要求の同一の結果(9.1)、メール変更の重複時の不送信(10.3)、TOTPの再設定で保留が期限切れなら現在の設定が残ること(12.3)、`AdminAuthorizer`の呼び出し元・主体・ロールの拒否(17.1・17.3)と`requireSelfOrRole`の本人の許可(17.2)、`AuditLogReader.latestForMany`のストアへの受け渡し(19.5)。
+  - `core/admin/identifiers`: `ADMIN_PLATFORM_TYPES`が`Symbol.for('admin.<名前>')`の値を持ち、凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形、1.5)。
   - `createFakeAuditLogReader`: 既定の振る舞い(空の検索・`undefined`・空のMap)と、渡したメソッドだけが差し替わること(仮7)。
   - `scripts/admin`: `sqlStringLiteral`の`'`の二重化と制御文字の拒否、招待中の有無で生成されるSQL、環境ごとの引数とオリジン(2.1〜2.5)。
 - **Integration Tests**(Workers統合テスト):
   - D1のストア: メールの大文字小文字を区別しない一意(1.3)、`deleteGuarded`・`changeRoleGuarded`が最後の有効な最上位管理者で全体を取り消し監査ログも残らないこと、2人の最上位管理者が互いを同時に降格しても1人が残ること(15.8・15.9・18.2)、`activate`の一括の書き込み(4.3・4.4)、トークンの2回目の消費の失敗(14.2)、監査ログの検索のカーソルと各条件(19.2・19.3)、最新の照会の1件と複数(対象ごとの最新の日時、記録の無い対象を含めないこと、操作種別と対象の種類で絞ること、90件を超える入力の分割と重複したID、空の入力、19.5・仮7)、保持期間の削除の境界(19.6)。
   - `AdminSessionVerifier`: 期限切れ・招待中・削除済みで`invalid`、`touch`で`renewal`(8.2〜8.4)。identity-authの`SubjectSessionVerifier`経由で管理者側のGraphQLが管理者の主体を得ること。
   - `D1AdminDirectory`: 有効な管理者だけを返し、削除済み・招待中・存在しないIDを含めないこと、101件のIDを2回の照会に分けること、`ADMIN_PLATFORM_MODULE`がapiとeventの両方のコンテナで解決できること(1.5)。
+  - `CounterAdminMailSendLimits`: 偽の厳密カウンタに宛先とIPの2つの規則で数え、どちらかの超過で`rate_limit_exceeded`になり、キーをハッシュ化すること(14.4)。
   - GraphQLの`admin`モジュール(`AdminGateway`から): ログインの2段階とCookieの指示、bot判定の失敗の403(6.7)、利用者側の呼び出し元の拒否(6.8)、閲覧のみの`inviteAdmin`の403(3.5)、モデレーターの最上位管理者の削除の403(15.4)、`auditLogs`の削除済みの操作者(19.4)。
   - 結合: 6種のテンプレートが`createEmailTemplateRegistry`に通る(14.7)。`admin-avatar`の用途で512,001バイトが413になる(16.2)。
 - **E2E/UI Tests**(Playwright、ローカルで起動したapi・event・adminとMailpit):
