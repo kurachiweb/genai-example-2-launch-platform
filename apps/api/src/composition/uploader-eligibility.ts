@@ -1,14 +1,14 @@
 import { ContainerModule } from 'inversify';
 
+import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
 import {
   UPLOAD_ACCESS_TYPES,
   type UploaderEligibility,
 } from '../application/media/uploader-eligibility.ts';
-import { AllowAllUploaderEligibility } from '../infrastructure/media/allow-all-uploader-eligibility.ts';
 
-// 利用者の認証が無い間は全ての利用者のアップロードが401で止まるため、全許可でも停止中の利用者がアップロードできる経路は無い
+// 停止では既存のセッションを消さないため、停止中・退会済みの利用者のアップロードを保存の前に拒否する
 export const UPLOADER_ELIGIBILITY_BINDINGS = new ContainerModule(({ bind }) => {
-  bind<UploaderEligibility>(UPLOAD_ACCESS_TYPES.UploaderEligibility).to(
-    AllowAllUploaderEligibility,
+  bind<UploaderEligibility>(UPLOAD_ACCESS_TYPES.UploaderEligibility).toService(
+    IDENTITY_TYPES.AccountUploaderEligibility,
   );
 });

@@ -42,6 +42,7 @@ import {
   type AccountGuard,
   StoreAccountGuard,
 } from '../application/identity/account-guard.ts';
+import { AccountUploaderEligibility } from '../application/identity/account-uploader-eligibility.ts';
 import {
   type AdministrativeWithdrawal,
   StoreAdministrativeWithdrawal,
@@ -114,6 +115,7 @@ import {
   StoreWithdrawal,
   type Withdrawal,
 } from '../application/identity/withdrawal.ts';
+import type { UploaderEligibility } from '../application/media/uploader-eligibility.ts';
 import { CryptoSecretGenerator } from '../infrastructure/auth/crypto-secret-generator.ts';
 import { createDurableLoginThrottle } from '../infrastructure/auth/durable-login-throttle.ts';
 import { HibpPwnedPasswordChecker } from '../infrastructure/auth/hibp-pwned-password-checker.ts';
@@ -287,6 +289,9 @@ function bindUseCases(bind: Bind): void {
     StoreAdministrativeWithdrawal,
   );
   bind<UserSuspension>(IDENTITY_TYPES.UserSuspension).to(StoreUserSuspension);
+  bind<UploaderEligibility>(IDENTITY_TYPES.AccountUploaderEligibility)
+    .to(AccountUploaderEligibility)
+    .inSingletonScope();
 }
 
 function bindJobs(bind: Bind): void {

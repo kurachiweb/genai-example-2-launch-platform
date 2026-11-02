@@ -27,6 +27,7 @@ import {
   SubjectSessionVerifier,
 } from '../application/auth/subject-session-verifier.ts';
 import { StoreAccountGuard } from '../application/identity/account-guard.ts';
+import { AccountUploaderEligibility } from '../application/identity/account-uploader-eligibility.ts';
 import {
   ADMINISTRATIVE_CALLER,
   StoreAdministrativeWithdrawal,
@@ -192,6 +193,11 @@ const CLASS_BINDINGS: readonly (readonly [
     StoreAdministrativeWithdrawal,
   ],
   ['UserSuspension', IDENTITY_TYPES.UserSuspension, StoreUserSuspension],
+  [
+    'AccountUploaderEligibility',
+    IDENTITY_TYPES.AccountUploaderEligibility,
+    AccountUploaderEligibility,
+  ],
   [
     'PurgeOrchestratorJob',
     IDENTITY_TYPES.PurgeOrchestratorJob,

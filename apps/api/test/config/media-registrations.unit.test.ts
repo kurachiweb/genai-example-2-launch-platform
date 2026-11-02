@@ -10,6 +10,9 @@ import {
   type ScheduledJobDefinition,
 } from '../../lib/core/scheduling/cron-registry.ts';
 import { toUtcCronExpression } from '../../lib/core/time/business-time.ts';
+import type { AccountGuard } from '../../src/application/identity/account-guard.ts';
+import { AccountUploaderEligibility } from '../../src/application/identity/account-uploader-eligibility.ts';
+import { IDENTITY_TYPES } from '../../src/application/identity/identity-types.ts';
 import {
   type AdminMediaReviewPolicy,
   FILE_ACCESS_TYPES,
@@ -24,7 +27,6 @@ import { MEDIA_REVIEW_POLICY_BINDINGS } from '../../src/composition/media-review
 import { SCHEDULED_JOBS } from '../../src/composition/scheduled-jobs.ts';
 import { UPLOAD_PURPOSES } from '../../src/composition/upload-purposes.ts';
 import { UPLOADER_ELIGIBILITY_BINDINGS } from '../../src/composition/uploader-eligibility.ts';
-import { AllowAllUploaderEligibility } from '../../src/infrastructure/media/allow-all-uploader-eligibility.ts';
 import { DenyAllAdminMediaReviewPolicy } from '../../src/infrastructure/media/deny-all-admin-media-review-policy.ts';
 import { imageFileViewOf } from '../support/media-file-view.ts';
 
@@ -82,6 +84,36 @@ const ADMIN_PRINCIPAL = Object.freeze({
   sessionId: '01JC0SESSION0000000000002',
 } as const);
 
+const REGISTERED_AT = new Date('2026-10-01T00:00:00.000Z');
+
+const unusedGuardMethod = (): never => {
+  throw new Error('アップロードの判定では使わない');
+};
+
+const activeUserGuard: AccountGuard = {
+  currentUser: () =>
+    Promise.resolve({
+      principal: USER_PRINCIPAL,
+      user: {
+        id: USER_PRINCIPAL.subjectId,
+        status: 'active',
+        emailVerifiedAt: REGISTERED_AT,
+        deletedAt: null,
+        pseudonymousId: '01JC0PSEUDONYM000000000001',
+        email: 'user@mail.example',
+        passwordHash: 'hashed',
+        nickname: '利用者',
+        handle: 'user_1',
+        disposableEmailStatus: 'regular',
+        termsAgreedAt: REGISTERED_AT,
+        lifecycleVersion: 0,
+      },
+    }),
+  requireUser: unusedGuardMethod,
+  requireWritableUser: unusedGuardMethod,
+  requireVerifiedUser: unusedGuardMethod,
+};
+
 function readTriggerCrons(wranglerEnv: string | undefined): readonly string[] {
   const raw: unknown = unstable_readConfig(
     { config: API_WRANGLER_CONFIG, env: wranglerEnv },
@@ -114,15 +146,25 @@ describe('メディアの登録箇所の既定値', () => {
     ).toBe(false);
   });
 
-  test('アップロードできる利用者かの判定には、常に許可する既定の実装を束縛する', async () => {
+  test('アップロードできる利用者かの判定は、利用者の状態による判定の識別子へ転送する', async () => {
     const container = new Container();
     container.load(UPLOADER_ELIGIBILITY_BINDINGS);
+    container
+      .bind<AccountGuard>(IDENTITY_TYPES.AccountGuard)
+      .toConstantValue(activeUserGuard);
+    container
+      .bind<UploaderEligibility>(IDENTITY_TYPES.AccountUploaderEligibility)
+      .to(AccountUploaderEligibility)
+      .inSingletonScope();
 
     const eligibility = container.get<UploaderEligibility>(
       UPLOAD_ACCESS_TYPES.UploaderEligibility,
     );
 
-    expect(eligibility).toBeInstanceOf(AllowAllUploaderEligibility);
+    expect(eligibility).toBeInstanceOf(AccountUploaderEligibility);
+    expect(eligibility).toBe(
+      container.get(IDENTITY_TYPES.AccountUploaderEligibility),
+    );
     expect(
       await eligibility.check({
         session: { principal: () => Promise.resolve(USER_PRINCIPAL) },
