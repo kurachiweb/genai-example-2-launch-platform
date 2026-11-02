@@ -208,6 +208,25 @@ describe('MediaUploadReceiverの受付', () => {
     },
   );
 
+  test('SVG 1.1の標準の文書型宣言を持つ編集ソフトの書き出しは、宣言を含む本文のまま保存し寸法を記録する', async () => {
+    const text = `<?xml version="1.0" encoding="utf-8"?>\n<!-- Generator: Adobe Illustrator 16.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="120px" height="80px" viewBox="0 0 120 80"><rect width="120" height="80"/></svg>\n`;
+    const bytes = utf8(text);
+
+    const file = acceptedFileOf(
+      await createReceiver().receive(
+        uploadInputOf(bytes, {
+          contentType: 'image/svg+xml',
+          contentLength: String(bytes.length),
+        }),
+      ),
+    );
+
+    expect(file).toMatchObject({ width: 120, height: 80 });
+    expect(
+      await (await readObject('images', file.objectKey ?? ''))?.text(),
+    ).toBe(text);
+  });
+
   test('先頭の検査の範囲を超える本文は、先頭を検査した後に残りと合わせて全て保存する', async () => {
     const bytes = pngBytes(800, 600, DIMENSION_PREFIX_BYTES + 300_000);
     bytes.fill(0x5a, 100);
@@ -384,7 +403,7 @@ describe('MediaUploadReceiverの実体検証による拒否', () => {
       UNREADABLE_MESSAGE,
     ],
     [
-      '文書型宣言を含むSVG',
+      '外部識別子の無い文書型宣言を含むSVG',
       utf8(
         '<!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>',
       ),

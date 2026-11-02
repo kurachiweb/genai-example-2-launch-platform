@@ -11,7 +11,7 @@ const encoder = new TextEncoder();
 
 const byteLengthOf = (text: string): number => encoder.encode(text).length;
 
-const FAMILY_EMOJI = '👨‍👩‍👧‍👦';
+const FAMILY_EMOJI = '👨\u200d👩\u200d👧\u200d👦';
 
 const JAPANESE_FLAG = '🇯🇵';
 
@@ -47,6 +47,55 @@ describe('sanitizeFileName', () => {
     expect(sanitizeFileName(raw, 'text/plain')).toBe('ab.txt');
   });
 
+  test.each([
+    ['ARABIC LETTER MARK', '\u061c'],
+    ['LEFT-TO-RIGHT MARK', '\u200e'],
+    ['RIGHT-TO-LEFT MARK', '\u200f'],
+    ['LEFT-TO-RIGHT EMBEDDING', '\u202a'],
+    ['RIGHT-TO-LEFT EMBEDDING', '\u202b'],
+    ['POP DIRECTIONAL FORMATTING', '\u202c'],
+    ['LEFT-TO-RIGHT OVERRIDE', '\u202d'],
+    ['RIGHT-TO-LEFT OVERRIDE', '\u202e'],
+    ['LEFT-TO-RIGHT ISOLATE', '\u2066'],
+    ['RIGHT-TO-LEFT ISOLATE', '\u2067'],
+    ['FIRST STRONG ISOLATE', '\u2068'],
+    ['POP DIRECTIONAL ISOLATE', '\u2069'],
+  ])('双方向の制御文字を除く(%s)', (_label, character) => {
+    expect(sanitizeFileName(`a${character}b.txt`, 'text/plain')).toBe('ab.txt');
+  });
+
+  test('右から左への上書きで拡張子を偽装した名前は、実際の拡張子の並びに戻る', () => {
+    expect(sanitizeFileName('invoice\u202egpj.exe', 'application/pdf')).toBe(
+      'invoicegpj.exe',
+    );
+  });
+
+  test.each([
+    ['範囲の直前のU+061B', '\u061b'],
+    ['範囲の直後のU+061D', '\u061d'],
+    ['ZERO WIDTH NON-JOINER', '\u200c'],
+    ['ZERO WIDTH JOINER', '\u200d'],
+    ['範囲の直後のU+2010', '\u2010'],
+    ['範囲の直前のU+2029', '\u2029'],
+    ['範囲の直後のU+202F', '\u202f'],
+    ['範囲の直前のU+2065', '\u2065'],
+    ['範囲の直後のU+206A', '\u206a'],
+    ['異体字セレクタ16', '\ufe0f'],
+  ])(
+    '双方向の制御文字に当たらない書式文字などは残す(%s)',
+    (_label, character) => {
+      expect(sanitizeFileName(`a${character}b.txt`, 'text/plain')).toBe(
+        `a${character}b.txt`,
+      );
+    },
+  );
+
+  test('結合子と異体字セレクタを含む絵文字は形を保つ', () => {
+    const raw = `${FAMILY_EMOJI}❤\ufe0f.png`;
+
+    expect(sanitizeFileName(raw, 'image/png')).toBe(raw);
+  });
+
   test('制御文字に当たらない隣の文字は残す', () => {
     expect(sanitizeFileName('a\u0020b\u00a0c\u00a1.txt', 'text/plain')).toBe(
       'a\u0020b\u00a0c\u00a1.txt',
@@ -60,6 +109,7 @@ describe('sanitizeFileName', () => {
     ['空白と交互', '. . .profile', 'profile'],
     ['制御文字を除いた後', '\u0000.secret', 'secret'],
     ['パス区切り文字を除いた後', '/.ssh', 'ssh'],
+    ['双方向の制御文字を除いた後', '\u202e.txt', 'txt'],
   ])('先頭のドットを除く(%s)', (_label, raw, expected) => {
     expect(sanitizeFileName(raw, 'text/plain')).toBe(expected);
   });
@@ -170,6 +220,8 @@ describe('sanitizeFileName', () => {
     ['空白だけ', ' \u3000 '],
     ['パス区切り文字だけ', '/\\/'],
     ['制御文字だけ', '\u0000\r\n'],
+    ['双方向の制御文字だけ', '\u202e\u2066\u200f'],
+    ['双方向の制御文字と空白とドット', '\u202e . \u2069'],
     ['ドットと空白とパス区切り文字', ' ./. '],
   ])('除いた結果が空なら形式の既定名にする(%s)', (_label, raw) => {
     expect(sanitizeFileName(raw, 'application/pdf')).toBe('document.pdf');

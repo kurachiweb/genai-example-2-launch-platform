@@ -503,7 +503,7 @@ describe('POST /internal/media/uploads/:purpose', () => {
       'file_type_mismatch',
     ],
     [
-      'DOCTYPEを含むSVG',
+      '外部識別子の無いDOCTYPEを含むSVG',
       {
         contentType: 'image/svg+xml',
         body: utf8(

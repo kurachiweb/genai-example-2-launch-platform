@@ -16,6 +16,7 @@
 | `readImageDimensions`・`exceedsPixelLimits`・`DEFAULT_PIXEL_LIMITS`・`DIMENSION_PREFIX_BYTES`                  | 共通ライブラリの`core/media/image-dimensions.ts`         | 寸法の読み取りと画素数の上限                                                    |
 | `readSvgRoot`・`intrinsicSizeOfSvg`・`parseSvgViewBox`                                                         | 共通ライブラリの`core/media/svg-root.ts`                 | SVGのルートの開始タグと寸法・`viewBox`の解釈                                    |
 | `checkSvgSyntax`・`SVG_MAX_NESTED_TAGS`                                                                        | 共通ライブラリの`core/media/svg-syntax.ts`               | SVGの構文の検査                                                                 |
+| `scanSvgProlog`・`blankStandardSvgDoctype`・`STANDARD_SVG_EXTERNAL_IDS`                                        | 共通ライブラリの`core/media/svg-prolog.ts`               | SVGのルートの前の読み飛ばしと、標準の文書型宣言の判定                           |
 | `createTextContentCheck`・`TextContentError`                                                                   | 共通ライブラリの`core/media/text-content-check.ts`       | テキストを流しながらの検査                                                      |
 | `sanitizeFileName`・`attachmentDisposition`・`MAX_FILE_NAME_BYTES`                                             | 共通ライブラリの`core/media/file-name.ts`                | ファイル名の整形と`Content-Disposition`の組み立て                               |
 | `generateObjectKey`                                                                                            | 共通ライブラリの`core/media/object-key.ts`               | オブジェクトキーの採番                                                          |
@@ -129,7 +130,7 @@ flowchart TD
 - 幅か高さが12,000pxを超える、または幅×高さが16,000,000画素を超える画像は422(`image_dimensions_exceeded`)にする(`DEFAULT_PIXEL_LIMITS`)。判定用画像の作成でRGBAに展開する画素(1,600万画素で約64MB)をWorkerのメモリ(128MB)に収めるための値である。
 - ファイル用の用途の画像にも、同じ寸法の検査をかける。
 - `image-size`はJPEGの印を探す時に1バイトずつ`slice()`で複製し、壊れた本文で先頭の長さの2乗の時間がかかる。先頭部分を1度だけ複製し、`slice()`が複製しない部分配列を返す派生クラスで渡して線形に抑える。
-- SVGの寸法は`image-size`を使わず、`readSvgRoot`でXML宣言・処理命令・コメントを飛ばしたルートの開始タグを読み、可能な限りブラウザと同じ文法で解釈する。
+- SVGの寸法は`image-size`を使わず、`readSvgRoot`でXML宣言・処理命令・コメントと標準の文書型宣言(「[SVGの文書型宣言](#svgの文書型宣言)」)を飛ばしたルートの開始タグを読み、可能な限りブラウザと同じ文法で解釈する。
   - 属性値はXML 1.0の3.3.3どおり空白の文字を空白にしてから文字参照・定義済み実体を戻す。数値は`[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?`とする。
   - `viewBox`の区切りは空白・カンマ(前後の空白可)・区切りの無い連結(`-0-0 100 100`)で、4つでない・末尾の`.`・余分なカンマなどブラウザが無効とする値と、幅か高さが0以下の値は無効とする。
   - 長さの単位は大文字小文字を区別せず、CSSの換算(`px`・`in`・`cm`・`mm`・`q`・`pt`・`pc`)とし、`em`・`rem`は16pxで換算する。`ex`・`ch`(書体で長さが変わる)と`vw`・`lh`などの換算しない単位、百分率、無効な値、0以下の値は指定が無いものとして扱う。
@@ -140,13 +141,34 @@ flowchart TD
 `checkSvgSyntax`は本文の全体を次の順で検査する。
 
 1. `TextDecoder('utf-8', { fatal: true })`で復号し、先頭のBOMを除く。UTF-8でなければ422(`invalid_svg`)にする。
-2. 大文字小文字を問わず`<!DOCTYPE`・`<!ENTITY`を含めば422(`svg_declaration_not_allowed`)にする。本文の部分一致のため、コメントとCDATAの中の宣言も拒否する。構文の検査器(`fast-xml-validator`)は宣言を受け入れ、実体の件数と大きさにも既定の上限が無いため、検査の前に宣言そのものを拒否する。
-3. `SyntaxValidator.validate`(`allowBooleanAttributes: false`・`multipleRoots: false`)が例外を投げれば422(`invalid_svg`)にする。`multipleRoots`の実際の既定値は`true`のため明示する。
-4. `XMLParser`(`processEntities: false`・`maxNestedTags: 256`)で最上位の要素を求め、1つの`svg`でなければ422(`invalid_svg`)にする。入れ子の上限は、解析器の既定(100段)で整形式の文書を拒否しないよう、許可リストの検査と同じ`SVG_MAX_NESTED_TAGS`を明示する。
+2. ルートの前の1つ目の標準の文書型宣言(「[SVGの文書型宣言](#svgの文書型宣言)」)を、`blankStandardSvgDoctype`で同じ長さの空白に置き換える。3以降はこの置き換えた文書を検査し、保存する本文は置き換えない。
+3. 大文字小文字を問わず`<!DOCTYPE`・`<!ENTITY`を含めば422(`svg_declaration_not_allowed`)にする。本文の部分一致のため、コメントとCDATAの中の宣言も拒否する。構文の検査器(`fast-xml-validator`)は宣言を受け入れ、実体の件数と大きさにも既定の上限が無いため、検査の前に標準の文書型宣言以外の宣言そのものを拒否する。
+4. `SyntaxValidator.validate`(`allowBooleanAttributes: false`・`multipleRoots: false`)が例外を投げれば422(`invalid_svg`)にする。`multipleRoots`の実際の既定値は`true`のため明示する。
+5. `XMLParser`(`processEntities: false`・`maxNestedTags: 256`)で最上位の要素を求め、1つの`svg`でなければ422(`invalid_svg`)にする。入れ子の上限は、解析器の既定(100段)で整形式の文書を拒否しないよう、許可リストの検査と同じ`SVG_MAX_NESTED_TAGS`を明示する。
 
-- SVG 1.1の書き出し(一部の編集ソフトの既定)はDOCTYPEを含み、2で拒否される。利用者には、編集ソフトでSVGとして書き出し直すよう案内する文言を返す。
+- 標準の文書型宣言の他に宣言を含むSVG(内部サブセットで実体を宣言する編集ソフトの書き出しなど)は3で拒否される。利用者には、編集ソフトでSVGとして書き出し直すよう案内する文言を返す。
+- XML宣言の前の文書型宣言は、置き換えた空白の後にXML宣言が来るため4で拒否される(XML宣言は文書の先頭だけに置ける)。
 - `xml-stylesheet`などの処理命令は受付では拒否せず、許可リストの検査で違反にする。
 - 受付を通ったSVGも、要素・属性・参照の安全性は非同期の許可リストの検査で確かめ、違反があれば隔離する(「[SVGの許可リスト](#svgの許可リスト)」)。
+
+### SVGの文書型宣言
+
+SVG 1.0・1.1で書き出す編集ソフトは、W3Cが定める外部識別子を持つ文書型宣言を付ける。外部のDTDを読まず内部サブセットも無い宣言は、要素・属性の既定値も実体も加えないため、次の条件を全て満たす宣言だけを標準の文書型宣言として許す(`svg-prolog.ts`)。
+
+- ルートの前(XML宣言・処理命令・コメント・空白の後)にある、1つ目の文書型宣言である。2つ目以降とルートの中・後の宣言は許さない。
+- XML 1.0の`doctypedecl`の形で、ルート名が`svg`、外部識別子が`PUBLIC`の公開識別子とシステム識別子の組で、内部サブセット(`[`〜`]`)を持たない。`<!DOCTYPE`・`PUBLIC`・`svg`は大文字小文字を区別する。
+- 公開識別子とシステム識別子の組が、次の表のいずれかと完全に一致する。区切りの空白(空白・タブ・改行の並び)と引用符の種類(`"`・`'`)は問わない。
+
+| 版            | 公開識別子                      | システム識別子                                             |
+| ------------- | ------------------------------- | ---------------------------------------------------------- |
+| SVG 1.0       | `-//W3C//DTD SVG 1.0//EN`       | `http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd` |
+| SVG 1.1       | `-//W3C//DTD SVG 1.1//EN`       | `http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd`         |
+| SVG 1.1 Basic | `-//W3C//DTD SVG 1.1 Basic//EN` | `http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-basic.dtd`   |
+| SVG 1.1 Tiny  | `-//W3C//DTD SVG 1.1 Tiny//EN`  | `http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-tiny.dtd`    |
+
+- 受付の構文の検査・ルートの読み取り・許可リストの検査は、許した宣言を同じ長さの空白とみなして、宣言を拒否する検査と解析器へ渡す。位置を変えないため、他の内容の位置と行・列は元の本文と同じである。
+- 外部のDTDはどの段階でも読まない。判定用画像の描画器(resvg)は、宣言を含む本文をそのまま描ける。
+- 外部のDTDを持つ文書では、ブラウザが未宣言の実体参照(`&nbsp;`など)を致命的な誤りにせず、残りを表示し得る。この文書はresvgが読み込めないため、判定用画像を作れず隔離される。
 
 ### テキスト
 
@@ -168,7 +190,7 @@ flowchart TD
   - 表示属性の値: 関数と色の書き方だけ(`transform`などの変形の属性はSVGの文法のため対象外)。
   - 関数を許可の一覧で絞るため、文字列の中の関数のような書き方も保守側に違反になる。
 - ルート以外の要素の`viewBox`で、ブラウザが無効とする値(寸法の読み取りと同じ文法で判定)は、描画器がブラウザより狭い範囲を描くため`invalid-view-box`(対象は要素名)の違反にする。ルートの`viewBox`は描画の前にブラウザの解釈で書き直すため対象外である。
-- `xml-stylesheet`などの処理命令(XML宣言を除く)は`processing-instruction`、DOCTYPEなどの宣言は`declaration`の違反にする。
+- `xml-stylesheet`などの処理命令(XML宣言を除く)は`processing-instruction`、DOCTYPEなどの宣言は`declaration`の違反にする。ルートの前の1つ目の標準の文書型宣言(「[SVGの文書型宣言](#svgの文書型宣言)」)だけは、受付と同じく空白とみなして違反にしない。宣言の違反がある文書は、実体の展開の危険を避けるため解析しない。
 - 違反は要素名・属性名だけを記録し、値を含めない(検出内容はデータベースに残り管理画面に出るため)。記録は先頭50件(`SVG_MAX_RECORDED_VIOLATIONS`)までで、切り詰めの印は無い。名前が`Object`のプロトタイプのメンバーと同じ要素・属性は、解析器の結果の形により`__toString`のような名前で記録されることがある。
 
 | 違反の種類               | 対象                                                                |
@@ -181,7 +203,7 @@ flowchart TD
 | `unsupported-css`        | 判定用画像の描画器が解釈しないCSSの書き方                           |
 | `invalid-view-box`       | ルート以外の要素の、ブラウザが無効とする`viewBox`                   |
 | `processing-instruction` | XML宣言以外の処理命令                                               |
-| `declaration`            | DOCTYPE・ENTITYなどの宣言                                           |
+| `declaration`            | 標準の文書型宣言以外のDOCTYPE・ENTITYなどの宣言                     |
 | `unparseable`            | XMLとして解析できない文書                                           |
 
 ### SVGの許可リスト
@@ -257,7 +279,7 @@ flowchart TD
 元のファイル名は、`UPLOAD_FILE_NAME_HEADER`のヘッダーで百分率符号化して送る(ヘッダーの値に書けるのはASCIIだけのため)。復号できない値は名前が無いものとして扱う。`sanitizeFileName`は次の順で整形した名前を記録する。
 
 1. 孤立したサロゲートを置換文字(U+FFFD)にする(`toWellFormed`)。
-2. パス区切り文字(`/`・`\`)・C0制御文字(U+0000〜U+001F)・DEL(U+007F)・C1制御文字(U+0080〜U+009F)を除く。
+2. パス区切り文字(`/`・`\`)・C0制御文字(U+0000〜U+001F)・DEL(U+007F)・C1制御文字(U+0080〜U+009F)・双方向の制御文字(U+061C・U+200E・U+200F・U+202A〜U+202E・U+2066〜U+2069)を除く。双方向の制御文字は、名前の表示の向きを変えて拡張子を偽装できる(`invoice<U+202E>fdp.exe`が`invoiceexe.pdf`のように見える)ため除く。
 3. 先頭のドットと空白の並びをまとめて除く。空白を除いた後に現れるドットも隠しファイルの名前になるため、「先頭の`.`を除いてから前後の空白を除く」順ではなく、両方の並びを一度に除く(`" .profile"`が`.profile`にならない)。
 4. 前後の空白を除く。
 5. UTF-8で255バイト(`MAX_FILE_NAME_BYTES`)を超える場合は、書記素の境界(`Intl.Segmenter`)で切り詰める。絵文字や結合文字の途中で切らない。
@@ -266,7 +288,7 @@ flowchart TD
 
 - どの入力でも、255バイトを超える名前と改行を含む名前は作られない。
 - 拡張子は内容の形式に合わせて書き換えない。記録する形式は内容から判定した値で、ダウンロードの`Content-Type`もこの形式である。
-- 書式文字(U+202Eの右から左への上書きなどの双方向の制御文字・ゼロ幅の文字)は、利用者が付けた名前を保つため除かない。名前の表示で拡張子を偽装できる(`invoice<U+202E>fdp.exe`が`invoiceexe.pdf`のように見える)ため、ファイル名を画面に表示する箇所では、名前を信頼できる情報として扱わず、形式(MIMEタイプ)とバイト数を並べて示す。ダウンロードは`attachment`と`nosniff`で返し、ブラウザでの実行を防ぐ(「[配信のヘッダー](#配信のヘッダー)」)。保存した端末での扱いはブラウザと端末の判断に委ねられる、残るリスクである。
+- 双方向の制御文字以外の書式文字(U+200DのZWJ・U+FE0Fの異体字セレクタ・U+200Cなどのゼロ幅の文字)は、絵文字の結合と利用者が付けた名前を保つため除かない。似た形の文字や長い名前の省略でも拡張子は紛らわしくなり得るため、ファイル名を画面に表示する箇所では、名前を信頼できる情報として扱わず、形式(MIMEタイプ)とバイト数を並べて示す。ダウンロードは`attachment`と`nosniff`で返し、ブラウザでの実行を防ぐ(「[配信のヘッダー](#配信のヘッダー)」)。保存した端末での扱いはブラウザと端末の判断に委ねられる、残るリスクである。
 
 ### `Content-Disposition`
 

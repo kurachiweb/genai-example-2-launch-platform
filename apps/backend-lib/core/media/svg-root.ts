@@ -1,3 +1,5 @@
+import { scanSvgProlog } from './svg-prolog.ts';
+
 export interface SvgRootAttribute {
   readonly name: string;
   // 文字参照と定義済み実体を戻した値。戻せない参照を含む場合は未設定
@@ -161,29 +163,6 @@ function decodeAttributeValue(raw: string): string | undefined {
   return [...parts, normalized.slice(index)].join('');
 }
 
-// 受付で整形式と確かめた文書が前提で、ルートの前に置けるのはXML宣言・処理命令・コメント・空白だけとする
-function skipProlog(text: string): number | undefined {
-  let index = 0;
-  for (;;) {
-    WHITESPACE_RUN.lastIndex = index;
-    WHITESPACE_RUN.exec(text);
-    index = WHITESPACE_RUN.lastIndex;
-    const closer = text.startsWith('<?', index)
-      ? '?>'
-      : text.startsWith('<!--', index)
-        ? '-->'
-        : undefined;
-    if (closer === undefined) {
-      return index;
-    }
-    const closed = text.indexOf(closer, index);
-    if (closed === -1) {
-      return undefined;
-    }
-    index = closed + closer.length;
-  }
-}
-
 function readAttributes(
   text: string,
   from: number,
@@ -296,7 +275,7 @@ function parseViewBox(
 }
 
 export function readSvgRoot(text: string): SvgRoot | undefined {
-  const start = skipProlog(text);
+  const start = scanSvgProlog(text)?.rootStart;
   if (start === undefined) {
     return undefined;
   }

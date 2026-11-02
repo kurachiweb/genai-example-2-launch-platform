@@ -1,5 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
 
+import { blankStandardSvgDoctype } from '../../../lib/core/media/svg-prolog.ts';
 import { parseSvgViewBox } from '../../../lib/core/media/svg-root.ts';
 import { SVG_MAX_NESTED_TAGS } from '../../../lib/core/media/svg-syntax.ts';
 import { SVG_ALLOWLIST } from './svg-allowlist-table.ts';
@@ -523,8 +524,9 @@ const parse = (text: string): readonly unknown[] | undefined => {
   }
 };
 
-export function inspectSvg(text: string): SvgInspection {
-  // 宣言を含む文書は実体の展開の危険を避けるため解析せず、宣言だけを記録する
+export function inspectSvg(source: string): SvgInspection {
+  const text = blankStandardSvgDoctype(source);
+  // 標準の文書型宣言の他に宣言を含む文書は実体の展開の危険を避けるため解析せず、宣言だけを記録する
   const declarations = collectViolations((report) => {
     for (const match of text.matchAll(DECLARATION_PATTERN)) {
       report('declaration', (match[1] ?? '').toUpperCase());

@@ -64,6 +64,27 @@ describe('readSvgRoot', () => {
     });
   });
 
+  test('XML宣言・コメントの後の標準の文書型宣言を読み飛ばしてルートを読む', () => {
+    const prolog =
+      '<?xml version="1.0" encoding="utf-8"?>\n<!-- Generator: x -->\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n';
+
+    const root = rootOf(`${prolog}<svg ${SVG_NS} width="100" height="50"/>`);
+
+    expect(root.start).toBe(prolog.length);
+    expect(root.width).toStrictEqual(absolute(100));
+    expect(root.height).toStrictEqual(absolute(50));
+  });
+
+  test.each([
+    ['内部サブセットを持つ文書型宣言', '<!DOCTYPE svg [<!ENTITY a "x">]>'],
+    [
+      '他の公開識別子の文書型宣言',
+      '<!DOCTYPE svg PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">',
+    ],
+  ])('%sの後のルートは読まない', (_label, doctype) => {
+    expect(readSvgRoot(`${doctype}<svg ${SVG_NS}/>`)).toBeUndefined();
+  });
+
   test('1,000文字・1MiBを超えるコメントの後のルートと、接頭辞付き・空要素のルートを読む', () => {
     expect(
       rootOf(

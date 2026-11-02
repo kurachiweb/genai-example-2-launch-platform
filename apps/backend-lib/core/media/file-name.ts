@@ -21,10 +21,27 @@ const FIRST_DELETE_OR_C1_CONTROL_CODE = 0x7f;
 
 const LAST_C1_CONTROL_CODE = 0x9f;
 
+// 表示の向きを変えて拡張子を偽装できる双方向の制御文字。絵文字の結合に使うZWJ・異体字セレクタなどの他の書式文字は残す
+const BIDIRECTIONAL_CONTROL_CHARACTERS: ReadonlySet<string> = new Set([
+  '\u061c',
+  '\u200e',
+  '\u200f',
+  '\u202a',
+  '\u202b',
+  '\u202c',
+  '\u202d',
+  '\u202e',
+  '\u2066',
+  '\u2067',
+  '\u2068',
+  '\u2069',
+]);
+
 const isRemovedCharacter = (character: string): boolean => {
   const code = character.charCodeAt(0);
   return (
     PATH_SEPARATORS.has(character) ||
+    BIDIRECTIONAL_CONTROL_CHARACTERS.has(character) ||
     code <= LAST_C0_CONTROL_CODE ||
     (code >= FIRST_DELETE_OR_C1_CONTROL_CODE && code <= LAST_C1_CONTROL_CODE)
   );

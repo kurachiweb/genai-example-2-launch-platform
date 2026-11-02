@@ -247,6 +247,10 @@ describe('readImageDimensions', () => {
       'XML宣言と処理命令の後のルート',
       '<?xml version="1.0"?><?foo bar?><svg xmlns="http://www.w3.org/2000/svg" width="8000" height="8000"/>',
     ],
+    [
+      'SVG 1.1の標準の文書型宣言の後のルート',
+      '<?xml version="1.0"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n<svg xmlns="http://www.w3.org/2000/svg" width="8000" height="8000"/>',
+    ],
   ])('SVGの%sから幅と高さを読み取る', (_label, text) => {
     expect(readImageDimensions(utf8(text), 'image/svg+xml')).toEqual({
       width: 8000,

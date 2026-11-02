@@ -1,6 +1,8 @@
 import { XMLParser } from 'fast-xml-parser';
 import { SyntaxValidator } from 'fast-xml-validator';
 
+import { blankStandardSvgDoctype } from './svg-prolog.ts';
+
 export type SvgSyntaxResult =
   | { readonly ok: true; readonly text: string }
   | {
@@ -18,7 +20,7 @@ const DECLARATION_NOT_ALLOWED: SvgSyntaxResult = Object.freeze({
   code: 'svg_declaration_not_allowed',
 });
 
-// 構文の検査器は宣言を受け入れ、実体の件数と大きさにも上限が無いため、検査の前に宣言そのものを拒否する
+// 構文の検査器は宣言を受け入れ、実体の件数と大きさにも上限が無いため、検査の前に標準の文書型宣言以外の宣言を拒否する
 const DECLARATION_PATTERN = /<!(?:DOCTYPE|ENTITY)/iu;
 
 // 解析器の既定(100段)で整形式の文書を壊れたものとして拒否しないよう、SVGの安全性の検査の解析器と同じ上限を明示する
@@ -85,10 +87,11 @@ export function checkSvgSyntax(bytes: Uint8Array): SvgSyntaxResult {
   if (text === undefined) {
     return INVALID_SVG;
   }
-  if (DECLARATION_PATTERN.test(text)) {
+  const inspected = blankStandardSvgDoctype(text);
+  if (DECLARATION_PATTERN.test(inspected)) {
     return DECLARATION_NOT_ALLOWED;
   }
-  if (!isWellFormed(text) || !hasSvgRoot(text)) {
+  if (!isWellFormed(inspected) || !hasSvgRoot(inspected)) {
     return INVALID_SVG;
   }
   return Object.freeze({ ok: true, text });
