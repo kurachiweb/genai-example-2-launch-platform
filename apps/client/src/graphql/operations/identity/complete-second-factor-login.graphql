@@ -1,0 +1,7 @@
+mutation ClientCompleteSecondFactorLogin(
+  $input: CompleteSecondFactorLoginInput!
+) {
+  completeSecondFactorLogin(input: $input) {
+    id
+  }
+}

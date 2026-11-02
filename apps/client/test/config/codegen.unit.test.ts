@@ -24,6 +24,8 @@ const ADMIN_GENERATED_DIR = join(
   'generated',
 );
 
+const OPERATIONS_DIR = join(SRC_DIR, 'graphql', 'operations');
+
 const PERSISTED_DOCUMENTS_FILE = 'persisted-documents.json';
 
 const DOCUMENT_MODULE_FILE = 'graphql.ts';
@@ -52,6 +54,43 @@ const operationsOf = (body: string): OperationDefinitionNode[] =>
   parse(body).definitions.filter(
     (definition): definition is OperationDefinitionNode =>
       definition.kind === Kind.OPERATION_DEFINITION,
+  );
+
+const IDENTITY_OPERATION_NAMES = [
+  'ClientViewer',
+  'ClientMySessions',
+  'ClientRegisterUser',
+  'ClientLogin',
+  'ClientCompleteSecondFactorLogin',
+  'ClientLogout',
+  'ClientVerifyEmail',
+  'ClientResendVerificationEmail',
+  'ClientRequestPasswordReset',
+  'ClientResetPassword',
+  'ClientRequestEmailChange',
+  'ClientConfirmEmailChange',
+  'ClientRequestPasswordChange',
+  'ClientConfirmPasswordChange',
+  'ClientWithdraw',
+  'ClientRevokeSession',
+  'ClientRevokeOtherSessions',
+  'ClientStartTotpSetup',
+  'ClientEnableTotp',
+  'ClientDisableTotp',
+  'ClientRegenerateRecoveryCodes',
+] as const;
+
+const bodyOfOperation = (
+  documents: Record<string, string>,
+  name: string,
+): string | undefined =>
+  Object.values(documents).find((body) =>
+    operationsOf(body).some((operation) => operation.name?.value === name),
+  );
+
+const operationFiles = async (): Promise<string[]> =>
+  (await readdir(OPERATIONS_DIR, { recursive: true })).filter((path) =>
+    path.endsWith('.graphql'),
   );
 
 const appSourceFiles = async (): Promise<string[]> =>
@@ -84,6 +123,59 @@ describe('利用者側のコード生成の生成物', () => {
         ),
       ),
     );
+  });
+
+  test.each(IDENTITY_OPERATION_NAMES)(
+    '操作の一覧は利用者のアカウントの操作%sを持つ',
+    async (name) => {
+      const documents = await readPersistedDocuments(GENERATED_DIR);
+
+      expect(bodyOfOperation(documents, name)).toBeDefined();
+    },
+  );
+
+  test('ヘッダーが使う利用者の取得ClientViewerは、リカバリコードの残数を要求せず表示と判定に要る項目だけを取得する', async () => {
+    const documents = await readPersistedDocuments(GENERATED_DIR);
+
+    const body = bodyOfOperation(documents, 'ClientViewer');
+
+    expect(print(parse(body ?? ''))).toBe(
+      print(
+        parse(
+          'query ClientViewer { viewer { emailVerified handle id nickname status totpEnabled } }',
+        ),
+      ),
+    );
+  });
+
+  test('セキュリティの設定ページの取得ClientMySessionsは、セッションの一覧と多要素認証の状態とリカバリコードの残数を1つの操作で取得する', async () => {
+    const documents = await readPersistedDocuments(GENERATED_DIR);
+
+    const body = bodyOfOperation(documents, 'ClientMySessions');
+
+    expect(print(parse(body ?? ''))).toBe(
+      print(
+        parse(
+          'query ClientMySessions { mySessions { browserName createdAt current id lastUsedAt osName } viewer { id remainingRecoveryCodes totpEnabled } }',
+        ),
+      ),
+    );
+  });
+
+  test('操作のファイルはすべて1ファイルに1つの操作だけを持つ', async () => {
+    const files = await operationFiles();
+
+    const counts = await Promise.all(
+      files.map(async (file) => ({
+        file,
+        operations: operationsOf(
+          await readFile(join(OPERATIONS_DIR, file), 'utf8'),
+        ).length,
+      })),
+    );
+
+    expect(files.length).toBeGreaterThan(0);
+    expect(counts.filter(({ operations }) => operations !== 1)).toEqual([]);
   });
 
   test('操作の一覧の操作はすべて利用者側の名前を持ち、管理者側の操作を含まない', async () => {

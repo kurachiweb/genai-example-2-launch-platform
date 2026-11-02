@@ -24,6 +24,8 @@ const CLIENT_GENERATED_DIR = join(
   'generated',
 );
 
+const OPERATIONS_DIR = join(SRC_DIR, 'graphql', 'operations');
+
 const PERSISTED_DOCUMENTS_FILE = 'persisted-documents.json';
 
 const DOCUMENT_MODULE_FILE = 'graphql.ts';
@@ -52,6 +54,11 @@ const operationsOf = (body: string): OperationDefinitionNode[] =>
   parse(body).definitions.filter(
     (definition): definition is OperationDefinitionNode =>
       definition.kind === Kind.OPERATION_DEFINITION,
+  );
+
+const operationFiles = async (): Promise<string[]> =>
+  (await readdir(OPERATIONS_DIR, { recursive: true })).filter((path) =>
+    path.endsWith('.graphql'),
   );
 
 const appSourceFiles = async (): Promise<string[]> =>
@@ -84,6 +91,22 @@ describe('管理者側のコード生成の生成物', () => {
         ),
       ),
     );
+  });
+
+  test('操作のファイルはすべて1ファイルに1つの操作だけを持つ', async () => {
+    const files = await operationFiles();
+
+    const counts = await Promise.all(
+      files.map(async (file) => ({
+        file,
+        operations: operationsOf(
+          await readFile(join(OPERATIONS_DIR, file), 'utf8'),
+        ).length,
+      })),
+    );
+
+    expect(files.length).toBeGreaterThan(0);
+    expect(counts.filter(({ operations }) => operations !== 1)).toEqual([]);
   });
 
   test('操作の一覧の操作はすべて管理者側の名前を持ち、利用者側の操作を含まない', async () => {

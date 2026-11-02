@@ -262,7 +262,7 @@ export const ProductDetailDocument = {
 
 ### 操作の置き場所と名前
 
-- 操作は、アプリの`src/graphql/operations/`に、1ファイル1操作の`.graphql`ファイルで書く。共通部品には操作を置かない。
+- 操作は、アプリの`src/graphql/operations/`に、1ファイル1操作の`.graphql`ファイルで書く。共通部品には操作を置かない。各アプリの`test/config/codegen.unit.test.ts`が、`src/graphql/operations/`の下(サブディレクトリを含む)のどの`.graphql`ファイルも操作を1つだけ持つことを確かめる。
 - TypeScriptの中で`graphql()`を呼んで操作を書かない。`graphql()`の引数と、client-presetが出力する`gql.ts`の対応表のキーに操作の本文が残り、ブラウザへ配信するスクリプトに本文が入るためである(本文を除く変換はViteのビルドに組み込まない)。
 - 画面は、操作の文書を`generated/graphql.ts`から読み込み、`gql.ts`・`index.ts`(`generated`のディレクトリそのものの読み込みを含む)を読み込まない。各アプリの`test/config/codegen.unit.test.ts`が、画面のコードに`gql.ts`・`index.ts`の読み込みが無いことと、`graphql.ts`に操作の一覧のどの操作の本文も含まれないことを確かめる。文書が識別子だけを持つ形は、代表として疎通確認の操作の文書1つで確かめる。テストはimportの文を正規表現で調べるため、拡張子`.js`での指定と動的`import()`は検出しない。
 - 操作名は、利用者側は`<利用者側の操作名の接頭辞>`、管理者側は`<管理者側の操作名の接頭辞>`で始める。許可リストは呼び出し元ごとに分かれ、一方の画面にだけある操作を他方の操作の一覧に含めないためである。各アプリの`test/config/codegen.unit.test.ts`が、操作の一覧のすべての操作名の接頭辞を確かめる。

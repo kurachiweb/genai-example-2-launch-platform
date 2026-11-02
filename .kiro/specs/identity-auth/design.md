@@ -2766,7 +2766,6 @@ export type ClientViewer = {
   readonly emailVerified: boolean;
   readonly status: 'ACTIVE' | 'SUSPENDED';
   readonly totpEnabled: boolean;
-  readonly remainingRecoveryCodes: number;
 };
 export type ViewerQueryOptions = ReturnType<
   typeof graphqlQueryOptions<ClientViewerQuery, ClientViewerQueryVariables>

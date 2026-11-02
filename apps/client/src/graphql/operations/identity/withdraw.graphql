@@ -1,0 +1,3 @@
+mutation ClientWithdraw($input: ReAuthenticationInput!) {
+  withdraw(input: $input)
+}
