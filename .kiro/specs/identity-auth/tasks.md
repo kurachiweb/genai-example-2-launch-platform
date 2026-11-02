@@ -139,7 +139,7 @@
   - _Requirements: 5.3, 5.4, 7.1, 7.8, 13.4, 14.1, 19.1, 19.3, 19.4, 19.5_
 
 - [ ] 5. 認証部品の実装(Workers統合テスト)
-- [ ] 5.1 (P) パスワードのハッシュ化・乱数の秘密・TOTPの秘密鍵の暗号化を作る
+- [x] 5.1 (P) パスワードのハッシュ化・乱数の秘密・TOTPの秘密鍵の暗号化を作る
   - 先に、PBKDF2-HMAC-SHA512(10万回・16バイトのソルト・ペッパーによる前処理)の保存形式と照合、形式違反と別のペッパーでの不一致、ダミーの照合が常に偽になること、32バイトのトークンがセッションの形式に合うこと、偏りの無い文字の選択、暗号化した秘密鍵の復元と改ざん・利用者の取り違えの検出を確かめるWorkers統合テストを書く
   - パスワードのハッシュ化、乱数の秘密(トークン・文字列・UUID)、ペッパーから導出した鍵による秘密鍵の暗号化を実装する。平文とハッシュの途中の値をログ・例外に出さない
   - 照合1回のCPU時間をテストで計測し、結果を記録する
@@ -468,3 +468,4 @@
 - 4.1: 規則は`apps/api/src/domain/auth/`の`password-rules.ts`・`session-policy.ts`(`USER_SESSION_POLICY`・`newSessionTimes`・`evaluateSession`・`cookieMaxAgeSeconds`)・`recovery-code-format.ts`・`second-factor.ts`(`normalizeTotpCode`)。期限ちょうど(`>=`)を期限切れとするため、期限切れの削除(6.3・7.10)も同じ境界にする。リカバリコードと認証コードの入力は設計の正規化に加えてNFKCとダッシュ類全般の除去を行う(12.1の文書も同じ正規化を書く)
 - 4.2: `domain/auth/login-throttle-state.ts`。ロック中の`applyFailure`は記録を変えず、ロックの終了時刻を`alarmAt`として返す(5.3の`DurableLoginThrottle`は、ロック中は保存を省いてよい)。`alarmOutcome`の`reschedule`はロックの終了時刻と最後の失敗+24時間の早い方。`status`→照合→`recordFailure`は原子的でないため、並列の要求はロックの前に`status`を通り得る(5.3でDurable Objectの直列化の範囲を確かめる)
 - 4.3: `apps/api/src/application/auth/`に`AUTH_TYPES`(12個、`Symbol.for('auth.<名前>')`)・`ports.ts`・`CheckingPasswordPolicy`・`HashingSecretIssuer`・`HashingRecoveryCodeIssuer`・`createLoginThrottleKeys`(空文字列のIPも不明扱い)・`SubjectSessionVerifier`・`InvalidSubjectSessionVerifier`。サービスのインターフェースは各サービスのファイルにある。`SubjectSessionVerifier`は差し込んだ検証器が別の種類の主体を返すと無効にするため、admin-foundationの管理者の検証器は`subjectKind: 'admin'`を返す。ハッシュの用途は`docs/GUIDES/tech/security/002-keyed-hashing.md`の形(英小文字とハイフン、`:`を使わない)で6.1で定める。8.1の静的解析で認証部品から禁止する読み込みは、apiの`**/domain/identity/**`・`**/application/identity/**`・`**/infrastructure/identity/**`・`**/presentation/graphql/modules/identity/**`で、`common-lib/identity/`(共有の入力規則。`domain/auth/password-rules.ts`が使う)は含めない
+- 5.1: `apps/api/src/infrastructure/auth/`の`Pbkdf2PasswordHasher`(保存形式`pbkdf2-sha512$100000$<salt>$<derived>`、前処理は`KeyedHasher`の用途`password-prehash`、照合1回は約16ms)・`CryptoSecretGenerator`・`HkdfAesGcmSecretBox`(`@inject(PLATFORM_TYPES.Env)`で`HASH_PEPPER`を読む、HKDFのinfo`totp-secret-v1`、AADは利用者ID、復元の失敗は`SecretBoxOpenError`)。計測値はテストの`annotate`で残り、`--reporter=verbose`で見える。乱数に依るテストは`crypto.getRandomValues`のスタブで入力を固定する(確率で失敗するテストを作らない)
