@@ -15,7 +15,6 @@ import { graphqlMutationOptions } from '../../../lib/start/graphql/graphql-query
 import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import { ClientLoginDocument } from '../../graphql/generated/graphql.ts';
-import { PathLink } from '../navigation/path-link.tsx';
 import {
   LOGIN_FORM_SCHEMA,
   type LoginFormInput,
@@ -45,8 +44,6 @@ const DEFAULT_VALUES: LoginFormInput = Object.freeze({
   email: '',
   password: '',
 });
-
-const PASSWORD_RESET_PATH = '/auth/password-reset';
 
 export function LoginForm({ returnTo }: LoginFormProps) {
   const form = useAppForm(LOGIN_FORM_SCHEMA, { defaultValues: DEFAULT_VALUES });
@@ -146,12 +143,9 @@ export function LoginForm({ returnTo }: LoginFormProps) {
         </p>
         <p>
           {FORGOT_PASSWORD_PROMPT}
-          <PathLink
-            href={PASSWORD_RESET_PATH}
-            className={INLINE_LINK_CLASS_NAME}
-          >
+          <Link to="/auth/password-reset" className={INLINE_LINK_CLASS_NAME}>
             {PASSWORD_RESET_LABEL}
-          </PathLink>
+          </Link>
           {PASSWORD_RESET_SUFFIX}
         </p>
       </div>

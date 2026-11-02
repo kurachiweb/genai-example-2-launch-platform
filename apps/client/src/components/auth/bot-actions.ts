@@ -2,4 +2,5 @@
 export const BOT_ACTIONS = Object.freeze({
   register: 'register',
   login: 'login',
+  passwordReset: 'password_reset',
 });

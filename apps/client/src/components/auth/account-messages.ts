@@ -72,3 +72,74 @@ export const RECOVERY_CODE_DESCRIPTION =
 export const USE_RECOVERY_CODE_LABEL = 'リカバリコードを使う';
 
 export const USE_TOTP_CODE_LABEL = '認証コードを使う';
+
+export const NEW_PASSWORD_LABEL = '新しいパスワード';
+
+export const INVALID_LINK_MESSAGE =
+  'このリンクは無効か、有効期限が切れています。';
+
+export const HOME_LINK_LABEL = 'トップページへ';
+
+export const LOGIN_PAGE_LINK_LABEL = 'ログイン画面へ';
+
+export const VERIFY_EMAIL_PAGE_TITLE = 'メールアドレスの確認';
+
+export const VERIFY_EMAIL_DESCRIPTION =
+  'ボタンを押すと、メールアドレスの確認が完了します。';
+
+export const VERIFY_EMAIL_ACTION_LABEL = 'メールアドレスを確認する';
+
+export const EMAIL_VERIFIED_MESSAGE = 'メールアドレスの確認が完了しました。';
+
+export const RESEND_AFTER_LOGIN_PREFIX = '確認メールは、';
+
+export const RESEND_AFTER_LOGIN_SUFFIX = 'した後に再送できます。';
+
+export const RESEND_FROM_BANNER_GUIDE = `確認メールは、画面上部の「${RESEND_VERIFICATION_LABEL}」から再送できます。`;
+
+export const EMAIL_CHANGE_PAGE_TITLE = 'メールアドレスの変更';
+
+export const EMAIL_CHANGE_DESCRIPTION =
+  'ボタンを押すと、メールアドレスの変更が完了します。ほかの端末ではログアウトします。';
+
+export const EMAIL_CHANGE_ACTION_LABEL = 'メールアドレスの変更を確定する';
+
+export const EMAIL_CHANGED_MESSAGE = 'メールアドレスを変更しました。';
+
+export const LOGIN_WITH_NEW_EMAIL_MESSAGE =
+  '新しいメールアドレスでログインしてください。';
+
+export const PASSWORD_CHANGE_PAGE_TITLE = 'パスワードの変更';
+
+export const PASSWORD_CHANGE_DESCRIPTION =
+  'ボタンを押すと、パスワードの変更が完了します。ほかの端末ではログアウトします。';
+
+export const PASSWORD_CHANGE_ACTION_LABEL = 'パスワードの変更を確定する';
+
+export const PASSWORD_CHANGED_MESSAGE = 'パスワードを変更しました。';
+
+export const LOGIN_WITH_NEW_PASSWORD_MESSAGE =
+  '新しいパスワードでログインしてください。';
+
+export const ACCOUNT_SETTINGS_LABEL = 'アカウントの設定';
+
+export const RETRY_FROM_SETTINGS_SUFFIX =
+  'から、もう一度変更を行ってください。';
+
+export const PASSWORD_RESET_PAGE_TITLE = PASSWORD_RESET_LABEL;
+
+export const PASSWORD_RESET_REQUEST_DESCRIPTION =
+  '登録しているメールアドレスを入力してください。パスワードの再設定のリンクを送信します。';
+
+export const PASSWORD_RESET_REQUEST_SUBMIT_LABEL = '再設定のリンクを送信する';
+
+export const PASSWORD_RESET_LINK_SENT_MESSAGE =
+  '入力したメールアドレスが登録されている場合は、パスワードの再設定のリンクを送信しました。リンクの有効期限は30分です。';
+
+export const PASSWORD_RESET_CONFIRM_PAGE_TITLE = '新しいパスワードの設定';
+
+export const PASSWORD_RESET_SUBMIT_LABEL = 'パスワードを再設定する';
+
+export const PASSWORD_RESET_DONE_MESSAGE = `パスワードを再設定しました。${LOGIN_WITH_NEW_PASSWORD_MESSAGE}`;
+
+export const RETRY_PASSWORD_RESET_SUFFIX = 'をもう一度行ってください。';

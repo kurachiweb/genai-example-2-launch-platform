@@ -12,7 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
+import { Route as AuthVerifyEmailRouteImport } from './routes/auth/verify-email'
 import { Route as SystemStatusRouteImport } from './routes/system/status'
+import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
+import { Route as AuthPasswordChangeConfirmRouteImport } from './routes/auth/password-change/confirm'
+import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
+import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/password-reset/confirm'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -29,44 +34,119 @@ const AuthRegisterRoute = AuthRegisterRouteImport.update({
   path: '/auth/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
+  id: '/auth/verify-email',
+  path: '/auth/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SystemStatusRoute = SystemStatusRouteImport.update({
   id: '/system/status',
   path: '/system/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthEmailChangeConfirmRoute = AuthEmailChangeConfirmRouteImport.update({
+  id: '/auth/email-change/confirm',
+  path: '/auth/email-change/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthPasswordChangeConfirmRoute =
+  AuthPasswordChangeConfirmRouteImport.update({
+    id: '/auth/password-change/confirm',
+    path: '/auth/password-change/confirm',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthPasswordResetIndexRoute = AuthPasswordResetIndexRouteImport.update({
+  id: '/auth/password-reset/',
+  path: '/auth/password-reset/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthPasswordResetConfirmRoute =
+  AuthPasswordResetConfirmRouteImport.update({
+    id: '/auth/password-reset/confirm',
+    path: '/auth/password-reset/confirm',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/system/status': typeof SystemStatusRoute
+  '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
+  '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
+  '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/system/status': typeof SystemStatusRoute
+  '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
+  '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
+  '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/auth/password-reset': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/system/status': typeof SystemStatusRoute
+  '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
+  '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
+  '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth/login' | '/auth/register' | '/system/status'
+  fullPaths:
+    | '/'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/verify-email'
+    | '/system/status'
+    | '/auth/email-change/confirm'
+    | '/auth/password-change/confirm'
+    | '/auth/password-reset/confirm'
+    | '/auth/password-reset/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth/login' | '/auth/register' | '/system/status'
-  id: '__root__' | '/' | '/auth/login' | '/auth/register' | '/system/status'
+  to:
+    | '/'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/verify-email'
+    | '/system/status'
+    | '/auth/email-change/confirm'
+    | '/auth/password-change/confirm'
+    | '/auth/password-reset/confirm'
+    | '/auth/password-reset'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/verify-email'
+    | '/system/status'
+    | '/auth/email-change/confirm'
+    | '/auth/password-change/confirm'
+    | '/auth/password-reset/confirm'
+    | '/auth/password-reset/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
+  AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
   SystemStatusRoute: typeof SystemStatusRoute
+  AuthEmailChangeConfirmRoute: typeof AuthEmailChangeConfirmRoute
+  AuthPasswordChangeConfirmRoute: typeof AuthPasswordChangeConfirmRoute
+  AuthPasswordResetConfirmRoute: typeof AuthPasswordResetConfirmRoute
+  AuthPasswordResetIndexRoute: typeof AuthPasswordResetIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,11 +172,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/verify-email': {
+      id: '/auth/verify-email'
+      path: '/auth/verify-email'
+      fullPath: '/auth/verify-email'
+      preLoaderRoute: typeof AuthVerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/system/status': {
       id: '/system/status'
       path: '/system/status'
       fullPath: '/system/status'
       preLoaderRoute: typeof SystemStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/email-change/confirm': {
+      id: '/auth/email-change/confirm'
+      path: '/auth/email-change/confirm'
+      fullPath: '/auth/email-change/confirm'
+      preLoaderRoute: typeof AuthEmailChangeConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/password-change/confirm': {
+      id: '/auth/password-change/confirm'
+      path: '/auth/password-change/confirm'
+      fullPath: '/auth/password-change/confirm'
+      preLoaderRoute: typeof AuthPasswordChangeConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/password-reset/': {
+      id: '/auth/password-reset/'
+      path: '/auth/password-reset'
+      fullPath: '/auth/password-reset/'
+      preLoaderRoute: typeof AuthPasswordResetIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/password-reset/confirm': {
+      id: '/auth/password-reset/confirm'
+      path: '/auth/password-reset/confirm'
+      fullPath: '/auth/password-reset/confirm'
+      preLoaderRoute: typeof AuthPasswordResetConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -106,18 +221,27 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
+  AuthVerifyEmailRoute: AuthVerifyEmailRoute,
   SystemStatusRoute: SystemStatusRoute,
+  AuthEmailChangeConfirmRoute: AuthEmailChangeConfirmRoute,
+  AuthPasswordChangeConfirmRoute: AuthPasswordChangeConfirmRoute,
+  AuthPasswordResetConfirmRoute: AuthPasswordResetConfirmRoute,
+  AuthPasswordResetIndexRoute: AuthPasswordResetIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
+
 import type { startInstance } from './start.ts'
+
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
+
     router: Awaited<ReturnType<typeof getRouter>>
+
     config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

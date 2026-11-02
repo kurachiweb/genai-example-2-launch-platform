@@ -107,6 +107,17 @@ export const LOGIN_FORM_SCHEMA = z.object({
 
 export type LoginFormInput = z.input<typeof LOGIN_FORM_SCHEMA>;
 
+export const PASSWORD_RESET_REQUEST_FORM_SCHEMA = z.object({ email });
+
+export type PasswordResetRequestFormInput = z.input<
+  typeof PASSWORD_RESET_REQUEST_FORM_SCHEMA
+>;
+
+// リンクのトークンは入力欄を描かないため含めず、送信の時に足す
+export const PASSWORD_RESET_FORM_SCHEMA = z.object({ newPassword });
+
+export type PasswordResetFormInput = z.input<typeof PASSWORD_RESET_FORM_SCHEMA>;
+
 // 両方の欄の既定値を持ち、描いている一方だけをスキーマに含める
 export interface SecondFactorFormInput {
   readonly secondFactor: {

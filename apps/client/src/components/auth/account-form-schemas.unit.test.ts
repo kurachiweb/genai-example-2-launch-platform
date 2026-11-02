@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   LOGIN_FORM_SCHEMA,
+  PASSWORD_RESET_FORM_SCHEMA,
+  PASSWORD_RESET_REQUEST_FORM_SCHEMA,
   RECOVERY_CODE_FORM_SCHEMA,
   REGISTER_FORM_SCHEMA,
   TOTP_CODE_FORM_SCHEMA,
@@ -154,5 +156,52 @@ describe('第2要素のスキーマ', () => {
     ],
   ])('未入力と長すぎる値を拒否する(%#)', (schema, secondFactor, message) => {
     expect(messagesOf(schema.safeParse({ secondFactor }))).toEqual([message]);
+  });
+});
+
+describe('PASSWORD_RESET_REQUEST_FORM_SCHEMA', () => {
+  test('メールアドレスの前後の空白を除いた値だけを出力する', () => {
+    expect(
+      PASSWORD_RESET_REQUEST_FORM_SCHEMA.parse({
+        email: ' maker@launch.example\n',
+      }),
+    ).toEqual({ email: 'maker@launch.example' });
+  });
+
+  test.each([
+    ['', 'メールアドレスを入力してください。'],
+    ['maker@', 'メールアドレスの形式が正しくありません。'],
+  ])('メールアドレス「%s」は「%s」で拒否する', (email, message) => {
+    expect(
+      messagesOf(PASSWORD_RESET_REQUEST_FORM_SCHEMA.safeParse({ email })),
+    ).toEqual([message]);
+  });
+});
+
+describe('PASSWORD_RESET_FORM_SCHEMA', () => {
+  test('新しいパスワードだけを出力し、リンクのトークンを入力に含めない', () => {
+    expect(
+      PASSWORD_RESET_FORM_SCHEMA.parse({
+        newPassword: VALID_PASSWORD,
+        token: 'link-token',
+      }),
+    ).toEqual({ newPassword: VALID_PASSWORD });
+  });
+
+  test.each([
+    ['空', ''],
+    ['7文字', 'a'.repeat(7)],
+    ['129文字', 'a'.repeat(129)],
+  ])('%sの新しいパスワードは文字数の文言で拒否する', (_name, newPassword) => {
+    expect(
+      messagesOf(PASSWORD_RESET_FORM_SCHEMA.safeParse({ newPassword })),
+    ).toEqual(['パスワードは8文字以上128文字以内で入力してください。']);
+  });
+
+  test.each([8, 128])('%i文字の新しいパスワードを受け付ける', (length) => {
+    expect(
+      PASSWORD_RESET_FORM_SCHEMA.safeParse({ newPassword: 'a'.repeat(length) })
+        .success,
+    ).toBe(true);
   });
 });
