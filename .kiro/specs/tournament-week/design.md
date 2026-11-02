@@ -6,7 +6,7 @@
 
 **Users**: 予選の勝者の投稿者は、プロダクト詳細ページと自分のプロダクトの画面で参加費を支払い、状態を確かめる。閲覧者はトップページでトーナメントのマッチを見てUpvoteし、ブラケットのページで組み合わせと結果を見て、プロダクト詳細ページでトロフィーを見る。後続spec(tournament-year・ugc-moderation・data-export)の開発者は、ブラケットの部品・Week優勝の照会・トロフィーの供給元の登録口・受賞のエクスポートの部品を使う。
 
-**Impact**: D1に5テーブル(汎用のブラケット・参加者・ブラケットのマッチ、Weekの週のトーナメント・参加の枠)を足す。`apps/common-lib/tournament`・`apps/backend-lib/core/tournament`・`core/week-tournament`・`workers/tournament`・`workers/week-tournament`(apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`week-tournament`・2つのジョブ(23:45の夜の処理・4:21の再処理)・夜の送り出しの前提の登録・判定の供給元3つ・トロフィーの供給元の登録口を、eventにマッチイベント・ライフサイクル・Ultrasの知らせの処理と結果通知の追記とメールのテンプレートを、clientにトップページの2区画・ブラケットのページ・プロダクト詳細の2区画・自分のプロダクトの区画・削除の注意書きを足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレット・パッケージ・メッセージ種別は無い。
+**Impact**: D1に5テーブル(汎用のブラケット・参加者・ブラケットのマッチ、Weekの週のトーナメント・参加の枠)を足す。`apps/common-lib/tournament`・`apps/backend-lib/core/tournament`・`core/week-tournament`(規則と、application層が受け取る契約と識別子)・`workers/tournament`・`workers/week-tournament`(契約の実装と、apiとeventの両方への束縛)を新設する。apiにスキーマモジュール`week-tournament`・2つのジョブ(23:45の夜の処理・4:21の再処理)・夜の送り出しの前提の登録・判定の供給元3つ・トロフィーの供給元の登録口を、eventにマッチイベント・ライフサイクル・Ultrasの知らせの処理と結果通知の追記とメールのテンプレートを、clientにトップページの2区画・ブラケットのページ・プロダクト詳細の2区画・自分のプロダクトの区画・削除の注意書きを足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレット・パッケージ・メッセージ種別は無い。
 
 ### Goals
 
@@ -29,7 +29,8 @@
 - Weekのデータ: `week_tournaments`・`week_tournament_entries`(同じディレクトリ)。参加の枠の状態・参加資格の出どころ・返金の依頼と知らせの状態・受賞の記録。
 - ブラケットの規則(`apps/backend-lib/core/tournament/`): シード数・抽選番号・1回戦・2回戦の枠の配置・固定のブラケット・不戦勝の伝播・終了の判定・ラウンド名と段階・表示の配置・実施日の方針。
 - Weekの規則(`apps/backend-lib/core/week-tournament/`): 週と期限・並びの比較・枠の状態と返金の理由・返金の知らせのメール種別`tournament-week.entry-refund`。
-- 共有部品(`apps/backend-lib/workers/tournament/`): `BracketStore`・`BracketDraw`・`BracketProgression`と`TOURNAMENT_PLATFORM_MODULE`。(`workers/week-tournament/`): `WeekTournamentStore`・`WeekEntryRegistrar`・`WeekEntryOfferPolicy`・`WeekEntryFulfillment`・`WeekDrawService`・`WeekProgressionService`・`WeekEntryFollowUp`・`WeekNotificationPublisher`・`WeekChampionDirectory`・`WeekAwardExport`と`WEEK_TOURNAMENT_PLATFORM_MODULE`。
+- 汎用のブラケットの共有部品: 契約(`BracketStore`・`BracketDraw`・`BracketProgression`とその入出力の型)は`apps/backend-lib/core/tournament/ports.ts`、DIの識別子`TOURNAMENT_PLATFORM_TYPES`は`core/tournament/identifiers.ts`に置き、D1の実装と`TOURNAMENT_PLATFORM_MODULE`は`apps/backend-lib/workers/tournament/`に置く。
+- Weekの共有部品: 契約(`WeekTournamentStore`・`WeekEntryRegistrar`・`WeekDrawService`・`WeekProgressionService`・`WeekEntryFollowUp`・`WeekNotificationPublisher`・`WeekChampionDirectory`・`WeekAwardExport`とその入出力の型)は`apps/backend-lib/core/week-tournament/ports.ts`、DIの識別子`WEEK_TOURNAMENT_TYPES`は`core/week-tournament/identifiers.ts`に置き、それらの実装と、paymentsの購入種別の口の実装`WeekEntryOfferPolicy`・`WeekEntryFulfillment`と`WEEK_TOURNAMENT_PLATFORM_MODULE`は`apps/backend-lib/workers/week-tournament/`に置く。api・eventと後続specのapplication層が契約と識別子を読み込むため、`workers`に置かない。
 - apiのスキーマモジュール`week-tournament`、照会(トップページ・ブラケット・参加費の導線・トロフィー)、参加の決済の開始、判定の供給元3つ、トロフィーの供給元の登録口`TOURNAMENT_TROPHY_SOURCES`、ジョブ`tournament-week.evening-bracket`(23:45、1500。組み合わせ・進行・追いつき・通知の発行の後に夜の送り出しの準備の完了を伝える)・`tournament-week.entry-follow-up`(4:21、1500)、notificationsの送り出しの前提`tournament-week.evening-bracket`の登録。
 - eventの処理: マッチイベント`tournament-week.qualifier-entry`(1500)・`tournament-week.decided-round-progress`(1510)、プロダクトライフサイクル`tournament-week.product-entry-loss`(`deleted`、1500)・`tournament-week.entry-unlink`(`purge_due`、1500)、ユーザーライフサイクル`tournament-week.account-entry-loss`(`withdrawn`、1500)、Ultrasの知らせ`tournament-week.ultras-entry-exemption`(1500)・`tournament-week.open-entry-checkout-expiry`(1510)、結果通知の追記`tournament-week.entry-deadline`(`qualifier`、1500)、返金の知らせのテンプレート。
 - clientの`/tournaments/week/$week`、トップページの区画`tournament-week.matches`(`main` 20)・`tournament-week.final`(`showcase` 20)、プロダクト詳細の`tournament-week.trophies`(`main` 10)・`tournament-week.entry`(投稿者本人向けの操作 10)、自分のプロダクトの`tournament-week.entry`(10)、削除の注意書き`tournament-week.entry-loss`(10)。
@@ -46,24 +47,25 @@
 
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く)・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`・`BusinessTimeOfDay`)・`ScheduledJobDefinition`・`ScheduledJobHandler`。形を変えない。E2Eの`e2e/support/scheduled-trigger.ts`の`triggerScheduled`(backend-platformの改訂2。ローカルの定期実行の起動は独自に作らない)。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`loaders`)・`withValidatedArgs`・`defineLoader`・`DateTime`。
-- identity-auth: `AccountGuard`(`currentUser`・`requireUser`)・`CurrentUser`・`users`(外部キーだけ)・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)。
-- product-launch: `ProductDirectory`(`findSummaries`・`listLaunches`・`resolveHandle`)・`PRODUCT_PLATFORM_TYPES`・`products`・`product_launches`への外部キー・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`・`RelaunchConditionSource`・`ProductLockSource`・`LaunchSummarySource`・`DecisionSourceRegistration`・`RELAUNCH_CONDITION_SOURCES`・`PRODUCT_LOCK_SOURCES`・`LAUNCH_SUMMARY_SOURCES`・`kickoffAt`、clientの`MY_PRODUCT_SECTIONS`・`MyProductSection`・`PRODUCT_DELETE_NOTICES`・`ProductDeleteNotice`。
-- match-engine: `MATCH_PLATFORM_TYPES`の`MatchScheduler`・`MatchDirectory`、`MatchKind`・`MatchStage`・`EntryResult`・`isWinningResult`・`MatchRecord`・`MatchEvent`・`MatchEventHandler`・`MatchEventRegistration`・`MATCH_EVENT_HANDLERS`、apiの`MatchViewReader`・`matchViewLoader`・GraphQLの`Match`・`MatchProduct`・`MatchBye`・`MatchEntry`、clientの`TOP_PAGE_SECTIONS`・`TopPageSection`・`MatchCard`・`ByeList`・`useUpvote`・`useServerCountdown`・`LIVE_REFRESH_QUERY_OPTIONS`。
-- payments: `PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseFulfillment`・`FulfillablePurchase`・`FulfillmentPlan`・`PURCHASE_KIND_REGISTRATIONS`・`PaymentRefunds`・`OpenCheckoutExpirer`・`PriceCatalog`・`PAYMENTS_TYPES`・apiの`CheckoutStarter`・GraphQLの`CheckoutStart`・`Money`・frontend-libの`MoneyText`。
-- ultras-subscription: `ULTRAS_TYPES.UltrasEntitlements`(`wasEntitledDuring`・`entitledUsersDuring`)・`UltrasActivation`・`UltrasActivationHandlerRegistration`・`ULTRAS_ACTIVATION_HANDLERS`・clientの`UltrasPromotionGate`。
-- notifications: `NOTIFICATIONS_PLATFORM_TYPES.NotificationEventPublisher`・`NotificationEvent`・`NotificationPublishError`・`ResultNoticeSupplementProvider`・`ResultNoticeSupplementRegistration`・`RESULT_NOTICE_SUPPLEMENTS`、apiだけの`NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate`(`EveningDispatchGate`・`EveningDispatchReadiness`・`EveningDispatchError`、`core/notifications/evening-dispatch.ts`)・`EVENING_DISPATCH_PARTICIPANTS`(`apps/api/src/composition/evening-dispatch-participants.ts`、登録の追記だけ)(notificationsの仮2)。
+- identity-auth: `AccountGuard`(`currentUser`・`requireUser`)・`CurrentUser`・`users`(外部キーだけ)・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`。契約と識別子は`core/identity`)。
+- product-launch: `ProductDirectory`(`findSummaries`・`listLaunches`・`resolveHandle`)・`PRODUCT_PLATFORM_TYPES`(契約と識別子は`core/product`)・`products`・`product_launches`への外部キー・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`・`RelaunchConditionSource`・`ProductLockSource`・`LaunchSummarySource`・`DecisionSourceRegistration`・`RELAUNCH_CONDITION_SOURCES`・`PRODUCT_LOCK_SOURCES`・`LAUNCH_SUMMARY_SOURCES`・`kickoffAt`、clientの`MY_PRODUCT_SECTIONS`・`MyProductSection`・`PRODUCT_DELETE_NOTICES`・`ProductDeleteNotice`。
+- match-engine: `MATCH_PLATFORM_TYPES`の`MatchScheduler`・`MatchDirectory`(契約と識別子は`core/match`)、`MatchKind`・`MatchStage`・`EntryResult`・`isWinningResult`・`MatchRecord`・`MatchEvent`・`MatchEventHandler`・`MatchEventRegistration`・`MATCH_EVENT_HANDLERS`、apiの`MatchViewReader`・`matchViewLoader`・GraphQLの`Match`・`MatchProduct`・`MatchBye`・`MatchEntry`、clientの`TOP_PAGE_SECTIONS`・`TopPageSection`・`MatchCard`・`ByeList`・`useUpvote`・`useServerCountdown`・`LIVE_REFRESH_QUERY_OPTIONS`。
+- payments: `PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseFulfillment`・`FulfillablePurchase`・`FulfillmentPlan`・`PURCHASE_KIND_REGISTRATIONS`・`PaymentRefunds`・`OpenCheckoutExpirer`・`PriceCatalog`・`PAYMENTS_TYPES`・apiの`CheckoutStarter`・GraphQLの`CheckoutStart`・`Money`・frontend-libの`MoneyText`。`PurchaseOfferPolicy`・`PurchaseOffer`・`PaymentRefunds`・`OpenCheckoutExpirer`は`core/payments`の契約、文を返す`PurchaseFulfillment`・`FulfillmentPlan`は`workers/payments`の契約で、後者は`workers/week-tournament`の`WeekEntryFulfillment`だけが使う。
+- ultras-subscription: `ULTRAS_TYPES.UltrasEntitlements`(`wasEntitledDuring`・`entitledUsersDuring`。契約と識別子は`core/ultras`)・`UltrasActivation`・`UltrasActivationHandlerRegistration`・`ULTRAS_ACTIVATION_HANDLERS`・clientの`UltrasPromotionGate`。
+- notifications: `NOTIFICATIONS_PLATFORM_TYPES.NotificationEventPublisher`(契約と識別子は`core/notifications`)・`NotificationEvent`・`NotificationPublishError`・`ResultNoticeSupplementProvider`・`ResultNoticeSupplementRegistration`・`RESULT_NOTICE_SUPPLEMENTS`、apiだけの`NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate`(`EveningDispatchGate`・`EveningDispatchReadiness`・`EveningDispatchError`、`core/notifications/evening-dispatch.ts`)・`EVENING_DISPATCH_PARTICIPANTS`(`apps/api/src/composition/evening-dispatch-participants.ts`、登録の追記だけ)(notificationsの仮2)。
 - directory-discovery: `PRODUCT_PAGE_SECTIONS`・`ProductPageSection`・`ProductPageContext`・`PRODUCT_OWNER_ACTIONS`・`ProductOwnerAction`。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
 - frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・`DateTime`・`RelativeTime`・shadcn/uiの部品(ボタン・バッジ・タブ・ツールチップ)・`runAxe`・デザイントークン、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`src/graphql/generated/graphql.ts`の生成物)。
 - admin-foundation: E2Eの`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - npmパッケージ: 新規なし。
-- 後続spec(tournament-year)は、`core/tournament`の規則、`workers/tournament`の`BracketDraw`・`BracketProgression`・`BracketStore`の読み取り、`WeekChampionDirectory`、`TOURNAMENT_TROPHY_SOURCES`、apiの`buildBracketRoundsView`とGraphQLの`BracketRound`・`BracketNode`・`BracketSlot`の型、clientの`components/bracket/`の`BracketRoundColumn`・`BracketRoundTabs`・`BracketMatchCard`・`BracketChampion`と`BracketRoundFields`・`BracketMatchProductFields`のフラグメント(仮7)だけに依存し、本specのテーブルへ直接書き込まない。data-exportは`WeekAwardExport`だけを呼ぶ。ugc-moderationは停止・非公開化をidentity-auth・product-launchのライフサイクルで発火すればよく、本specを直接呼ばない。
+- 後続spec(tournament-year)は、`core/tournament`の規則と契約(`BracketDraw`・`BracketProgression`・`BracketStore`の読み取り)と識別子`TOURNAMENT_PLATFORM_TYPES`、`core/week-tournament`の`WeekChampionDirectory`と識別子`WEEK_TOURNAMENT_TYPES`、`TOURNAMENT_TROPHY_SOURCES`、apiの`buildBracketRoundsView`とGraphQLの`BracketRound`・`BracketNode`・`BracketSlot`の型、clientの`components/bracket/`の`BracketRoundColumn`・`BracketRoundTabs`・`BracketMatchCard`・`BracketChampion`と`BracketRoundFields`・`BracketMatchProductFields`のフラグメント(仮7)だけに依存し、本specのテーブルへ直接書き込まない。data-exportは`WeekAwardExport`だけを呼ぶ。ugc-moderationは停止・非公開化をidentity-auth・product-launchのライフサイクルで発火すればよく、本specを直接呼ばない。
 
 ### Revalidation Triggers
 
 - `BracketShape`・`drawBracket`・`decideNext`・`bracketLayout`・`RoundSchedulePolicy`・`BracketDraw.create`・`BracketProgression.advance`・`AdvanceResult`の形と規則(tournament-year)。
 - `tournament_brackets`などの汎用のテーブルの列と`kind`の値(tournament-year・data-export)。
 - `WeekChampionDirectory`・`WeekAwardExport`・`TrophySource`の形(tournament-year・data-export)。
+- `core/tournament`・`core/week-tournament`の契約(`BracketStore`・`BracketDraw`・`BracketProgression`・`WeekTournamentStore`・`WeekChampionDirectory`・`WeekAwardExport`など)と`TOURNAMENT_PLATFORM_TYPES`・`WEEK_TOURNAMENT_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(本specと後続specのapplication層が読み込むため)。
 - ジョブ・処理の名前と`order`(23:45のジョブは1500、処理は1500・1510)、23:45の順序(match-engine・notifications・tournament-year)。
 - notificationsの`EveningDispatchGate.markReady`の形・呼ぶ時点の規約・`EVENING_DISPATCH_PARTICIPANTS`・送り出しの期限(23:55)(notificationsの仮2)。
 - 購入種別`week_tournament_entry`の`PurchaseOffer`の期限の値・`exclusivityKey`・返金の依頼キーと理由の値(payments・ugc-moderation)。
@@ -163,13 +165,13 @@ graph TB
 
 **Architecture Integration**:
 
-- Selected pattern: クリーンアーキテクチャ。ブラケットとWeekの規則は`core`の純粋な関数、記録と進行は`workers`の部品(apiとeventの両方に束縛)、照会と画面の組み立てはapiのアプリケーション層、外部の処理(マッチ・決済・特典・通知)は上流の部品越しに使う。
+- Selected pattern: クリーンアーキテクチャ。ブラケットとWeekの規則は`core`の純粋な関数、記録と進行は`core`の契約を`workers`で実装した部品(apiとeventの両方に束縛)、照会と画面の組み立てはapiのアプリケーション層、外部の処理(マッチ・決済・特典・通知)は上流の部品越しに使う。
 - Domain/feature boundaries: 汎用のブラケット(種類で区別)とWeek固有(週・枠・賞)を別のテーブルと部品に分け、tournament-yearは前者とWeek優勝の照会だけを使う。マッチの状態はmatch-engine、決済の状態はpaymentsが持ち、本specは結果の写しと識別子だけを持つ。
-- Existing patterns preserved: `backend-lib/workers/<ドメイン>`の共有の束縛、`<spec名>.<名詞句>`の名前、帯の`order`、登録箇所への追記、条件付きの書き込みと`onConflictDoNothing()`による冪等性、`CASE`式による取り消し、`LIVE_REFRESH_QUERY_OPTIONS`の再取得。
+- Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`の実装と共有の束縛、`<spec名>.<名詞句>`の名前、帯の`order`、登録箇所への追記、条件付きの書き込みと`onConflictDoNothing()`による冪等性、`CASE`式による取り消し、`LIVE_REFRESH_QUERY_OPTIONS`の再取得。
 - New components rationale: 凍結は組み合わせ決定と同時の変更の競合を1点で断つため。2つの進行の経路は0:00の開始に確実に間に合わせるため。トロフィーの供給元の登録口は1つの区画にYearとWeekを並べるため。ブラケットの表示の組み立て(`buildBracketRoundsView`)とフラグメントで受ける画面の部品は、Yearのブラケットのページが同じ表示を再利用するため(仮7)。
 - Steering compliance: `@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・`transaction()`を使わない)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、新しいパッケージなし。
 
-**Dependency direction**: `apps/common-lib/tournament` → `apps/db/schema/tournament` → `backend-lib/core/tournament` → `backend-lib/core/week-tournament` → `backend-lib/workers/tournament` → `backend-lib/workers/week-tournament` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`core/tournament`はWeekを読み込まない。`workers/tournament`は`workers/week-tournament`を読み込まない。clientは`common-lib`とGraphQLの操作だけを読み込む。違反はレビューで誤りとして扱う。
+**Dependency direction**: `apps/common-lib/tournament` → `apps/db/schema/tournament` → `backend-lib/core/tournament` → `backend-lib/core/week-tournament` → `backend-lib/workers/tournament` → `backend-lib/workers/week-tournament` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`core/tournament`は`core/week-tournament`を読み込まない。`core`は`workers`と`apps/db`を読み込まない。`workers/tournament`は`workers/week-tournament`を読み込まない。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが使う契約と識別子(`TOURNAMENT_PLATFORM_TYPES`・`WEEK_TOURNAMENT_TYPES`)は`core/tournament`・`core/week-tournament`に置き、`workers`にはD1の実装・部品の実装と束縛だけを置く(identity-authの`core/identity`と同じ配置)。application層は`core`だけを読み込む。clientは`common-lib`とGraphQLの操作だけを読み込む。違反はレビューで誤りとして扱う。
 
 ### Technology Stack
 
@@ -203,33 +205,33 @@ apps/
 │   │   ├── bracket-draw-rules.ts                             # drawBracket
 │   │   ├── bracket-progress-rules.ts                         # BracketState・decideNext・nextRoundOccupants
 │   │   ├── bracket-layout.ts                                 # bracketLayout(未来のラウンドの表示の配置)
-│   │   └── round-schedule.ts                                 # RoundSchedulePolicy・TOURNAMENT_MATCH_HOURS・tournamentMatchWindow・dailyRoundPolicy
+│   │   ├── round-schedule.ts                                 # RoundSchedulePolicy・TOURNAMENT_MATCH_HOURS・tournamentMatchWindow・dailyRoundPolicy
+│   │   ├── ports.ts                                          # BracketKind・BracketParticipantInput・BracketRecord・BracketStore・AdvanceResult・BracketDrawCandidate・BracketDraw・BracketProgression(型だけ)
+│   │   └── identifiers.ts                                    # TOURNAMENT_PLATFORM_TYPES(api・event共通の識別子、identifiers.unit.test.ts)
 │   ├── core/week-tournament/                                 # Weekの規則(Bunの単体テスト)
 │   │   ├── week-schedule.ts                                  # entryWindowFor・weekFirstRoundDate・isSundayLaunch・WEEK_ENTRY_PRICE_LOOKUP_KEY
 │   │   ├── week-ordering.ts                                  # weekSeedOrder・weekNonSeedOrder
 │   │   ├── week-entry-rules.ts                               # WeekEntryStatus・WeekEntryCloseReason・refundReasonFor・WEEK_REFUND_REQUEST_KEY
-│   │   └── week-entry-refund-email.ts                        # TOURNAMENT_WEEK_ENTRY_REFUND_EMAIL
+│   │   ├── week-entry-refund-email.ts                        # TOURNAMENT_WEEK_ENTRY_REFUND_EMAIL
+│   │   ├── ports.ts                                          # WeekTournamentRecord・WeekEntryRecord・NewWeekEntry・WeekTournamentStore・WeekEntryRegistrar・WeekDrawService・WeekProgressionService・WeekNotificationPublisher・WeekEntryFollowUp・WeekChampion・WeekChampionDirectory・WeekAwardExport(型だけ)
+│   │   └── identifiers.ts                                    # WEEK_TOURNAMENT_TYPES(api・event共通の識別子、identifiers.unit.test.ts)
 │   └── workers/
-│       ├── tournament/                                       # 汎用のブラケットの部品(Workers統合テスト)
-│       │   ├── tournament-platform-types.ts                  # TOURNAMENT_PLATFORM_TYPES(テストなし)
-│       │   ├── bracket-store.ts                              # BracketStore・BracketRecord(型)
-│       │   ├── d1-bracket-store.ts
-│       │   ├── bracket-draw.ts                               # BracketDraw
-│       │   ├── bracket-progression.ts                        # BracketProgression・AdvanceResult
+│       ├── tournament/                                       # core/tournamentの契約の実装と束縛(Workers統合テスト)
+│       │   ├── d1-bracket-store.ts                           # BracketStoreのD1実装
+│       │   ├── d1-bracket-draw.ts                            # BracketDrawのD1実装
+│       │   ├── d1-bracket-progression.ts                     # BracketProgressionのD1実装(MatchSchedulerで予定を作る)
 │       │   └── tournament-platform-module.ts                 # TOURNAMENT_PLATFORM_MODULE
-│       └── week-tournament/                                  # Weekの部品(Workers統合テスト)
-│           ├── week-tournament-types.ts                      # WEEK_TOURNAMENT_TYPES(テストなし)
-│           ├── week-tournament-store.ts                      # WeekTournamentStore・WeekEntryRecord(型)
-│           ├── d1-week-tournament-store.ts
-│           ├── week-entry-registrar.ts                       # 予選の勝利からの枠の作成と免除
-│           ├── week-entry-offer-policy.ts                    # PurchaseOfferPolicy
-│           ├── week-entry-fulfillment.ts                     # PurchaseFulfillment
-│           ├── week-draw-service.ts                          # 凍結・分類・組み合わせ
-│           ├── week-progression-service.ts                   # 進行・賞・通知の発行
-│           ├── week-entry-follow-up.ts                       # 返金の依頼と知らせ
-│           ├── week-notification-publisher.ts                # 通知イベントの組み立てと発行
-│           ├── week-champion-directory.ts                    # Week優勝の照会(tournament-year)
-│           ├── week-award-export.ts                          # 受賞のエクスポート(data-export)
+│       └── week-tournament/                                  # core/week-tournamentの契約の実装と束縛(Workers統合テスト)
+│           ├── d1-week-tournament-store.ts                   # WeekTournamentStoreのD1実装
+│           ├── week-entry-registrar.ts                       # WeekEntryRegistrarの実装(予選の勝利からの枠の作成と免除)
+│           ├── week-entry-offer-policy.ts                    # paymentsのPurchaseOfferPolicy(core/payments)の実装
+│           ├── week-entry-fulfillment.ts                     # paymentsのPurchaseFulfillment(workers/payments)の実装
+│           ├── week-draw-service.ts                          # WeekDrawServiceの実装(凍結・分類・組み合わせ)
+│           ├── week-progression-service.ts                   # WeekProgressionServiceの実装(進行・賞・通知の発行)
+│           ├── week-entry-follow-up.ts                       # WeekEntryFollowUpの実装(返金の依頼と知らせ)
+│           ├── week-notification-publisher.ts                # WeekNotificationPublisherの実装(通知イベントの組み立てと発行)
+│           ├── d1-week-champion-directory.ts                 # WeekChampionDirectoryのD1実装(tournament-year)
+│           ├── d1-week-award-export.ts                       # WeekAwardExportのD1実装(data-export)
 │           └── week-tournament-platform-module.ts            # WEEK_TOURNAMENT_PLATFORM_MODULE
 ├── api/src/
 │   ├── application/tournament/                               # 種類によらない表示の組み立てとトロフィー(Bunの単体テスト)
@@ -481,31 +483,31 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                                                                                     | Domain/Layer            | Intent                                        | Req Coverage                                                 | Key Dependencies (P0/P1)                                                    | Contracts      |
-| ----------------------------------------------------------------------------------------------------------------------------- | ----------------------- | --------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- | -------------- |
-| WeekPeriod・TournamentRoundName                                                                                               | common-lib              | 週の識別と表記・ラウンド名                    | 1.6, 6.8, 8.2                                                | —                                                                           | Service        |
-| TournamentSchema・WeekTournamentSchema                                                                                        | db                      | 5テーブル                                     | 7.4, 13.3, 14.3                                              | match-engine・product-launchのテーブル(P0)                                  | State          |
-| BracketShape・BracketDrawRules・BracketProgressRules・BracketLayout・RoundSchedule                                            | core/tournament         | 純粋なブラケットの規則                        | 5.3〜5.11, 6.1, 6.5〜6.8, 7.1〜7.3, 9.2, 13.1, 13.2, 13.4    | `BusinessTime`(P0)                                                          | Service        |
-| WeekSchedule・WeekOrdering・WeekEntryRules・WeekEmailKinds                                                                    | core/week-tournament    | Weekの期限・並び・枠の状態・メール種別        | 1.6, 3.6〜3.8, 4.6, 4.8, 5.4, 5.5, 7.6                       | core/tournament(P0)                                                         | Service        |
-| BracketStore・BracketDraw・BracketProgression・TournamentPlatformModule                                                       | workers/tournament      | 汎用の記録・組み合わせ・進行                  | 5.3〜5.10, 6.2〜6.10, 7.1〜7.3, 13.3, 13.5                   | MatchScheduler(P0)、MatchDirectory(P0)                                      | Service, Batch |
-| WeekTournamentStore・WeekEntryRegistrar・WeekDrawService・WeekProgressionService                                              | workers/week-tournament | 週と枠・組み合わせ決定・進行と賞              | 1.1〜1.6, 3.1, 3.5, 4.4, 5.1, 5.2, 7.4, 12.1〜12.4           | BracketDraw(P0)、UltrasEntitlements(P0)、ProductDirectory(P0)               | Service, Batch |
-| WeekEntryOfferPolicy・WeekEntryFulfillment                                                                                    | workers/week-tournament | 購入種別`week_tournament_entry`               | 2.1〜2.9, 3.6, 3.7                                           | payments(P0)                                                                | Service        |
-| WeekEntryFollowUp・WeekNotificationPublisher・WeekChampionDirectory・WeekAwardExport                                          | workers/week-tournament | 返金と知らせ・通知・照会とエクスポート        | 4.2, 4.5, 4.7, 4.8, 7.5, 12.1〜12.5, 12.7, 14.4              | PaymentRefunds(P0)、NotificationEventPublisher(P0)、WeekTournamentStore(P0) | Service        |
-| BracketViewBuilder                                                                                                            | api/application         | 種類によらないブラケットの表示の組み立て(仮7) | 9.2, 9.3, 9.4, 13.3                                          | BracketRecord(P0)、MatchView(P0)                                            | Service        |
-| WeekBoardReader・WeekBracketReader・WeekEntryPanelReader・WeekEntryCheckout                                                   | api/application         | 照会と決済の開始                              | 2.1〜2.4, 2.10, 8.\*, 9.\*, 10.1〜10.6, 14.7                 | MatchViewReader(P0)、CheckoutStarter(P0)                                    | Service        |
-| WeekRelaunchConditionSource・WeekProductLockSource・WeekLaunchSummarySource                                                   | api/application         | product-launchへの条件と要約                  | 10.9, 11.\*                                                  | WeekTournamentStore(P0)                                                     | Service        |
-| TrophySource・ProductTrophyReader・WeekTrophySource                                                                           | api/application         | トロフィーの供給元と照会                      | 10.8, 10.10                                                  | ProductDirectory(P1)                                                        | Service        |
-| WeekTournamentJobs                                                                                                            | api/application         | 2つのジョブ(夜の処理と準備の完了・再処理)     | 1.5, 4.7, 5.1, 6.3, 12.2, 12.3, 12.7, 12.8, 14.1, 14.2, 14.6 | WeekDrawService(P0)、EveningDispatchGate(P0)                                | Batch          |
-| WeekTournamentSchemaModule(BoardResolvers・BracketResolvers・EntryResolvers・TrophyResolvers)                                 | api/presentation        | GraphQL                                       | 2.1〜2.4, 8.\*, 9.\*, 10.\*                                  | 上記の照会(P0)                                                              | API            |
-| QualifierEntryHandler・RoundProgressHandler                                                                                   | event                   | 確定のマッチイベントの処理                    | 1.1, 6.3                                                     | MATCH_EVENT_HANDLERS(P0)                                                    | Event          |
-| ProductEntryLossHandler・AccountEntryLossHandler・EntryUnlinkHandler                                                          | event                   | ライフサイクルの処理                          | 4.1〜4.3, 14.3                                               | ライフサイクルの登録口(P0)                                                  | Event          |
-| WeekUltrasEntryExemptionHandler・WeekOpenEntryCheckoutExpiryHandler                                                           | event                   | Ultrasの知らせの処理                          | 3.2〜3.4                                                     | ULTRAS_ACTIVATION_HANDLERS(P0)、OpenCheckoutExpirer(P0)                     | Event          |
-| WeekEntrySupplementProvider・WeekEntryRefundTemplate                                                                          | event                   | 結果通知の追記・返金の知らせ                  | 4.8, 12.6                                                    | RESULT_NOTICE_SUPPLEMENTS(P0)、EMAIL_TEMPLATES(P0)                          | Service        |
-| WeekTournamentSection・WeekFinalShowcase・WeekSectionHeading・WeekBoardModel                                                  | client                  | トップページの区画                            | 8.\*                                                         | MatchCard(P0)、ByeList(P0)                                                  | State          |
-| WeekBracketPage                                                                                                               | client                  | Weekのブラケットのページの組み立て            | 9.\*                                                         | weekBracket(P0)                                                             | State          |
-| BracketRoundColumn・BracketMatchCard・BracketRoundTabs・BracketChampion・BracketViewProps(共用、仮7)                          | client                  | ブラケットの表示の部品(Week・Year)            | 9.2〜9.5, 13.3                                               | BracketRoundFields(P0)、BracketMatchProductFields(P0)                       | State          |
-| WeekEntryPanel・EntryDeadline・WeekEntryOwnerAction・WeekEntryMyProductSection・WeekEntryDeleteNotice・TrophyShelf・TrophyArt | client                  | プロダクトの画面の区画                        | 10.\*                                                        | myWeekEntry(P0)、UltrasPromotionGate(P1)                                    | State          |
-| TournamentTechDocs・TournamentServiceSpecs・WeekTournamentE2E・WeekTournamentFixtures                                         | docs・e2e               | 文書とE2E                                     | 15.\*                                                        | —                                                                           | —              |
+| Component                                                                                                                     | Domain/Layer                                                            | Intent                                        | Req Coverage                                                 | Key Dependencies (P0/P1)                                                    | Contracts      |
+| ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------- | -------------- |
+| WeekPeriod・TournamentRoundName                                                                                               | common-lib                                                              | 週の識別と表記・ラウンド名                    | 1.6, 6.8, 8.2                                                | —                                                                           | Service        |
+| TournamentSchema・WeekTournamentSchema                                                                                        | db                                                                      | 5テーブル                                     | 7.4, 13.3, 14.3                                              | match-engine・product-launchのテーブル(P0)                                  | State          |
+| BracketShape・BracketDrawRules・BracketProgressRules・BracketLayout・RoundSchedule                                            | core/tournament                                                         | 純粋なブラケットの規則                        | 5.3〜5.11, 6.1, 6.5〜6.8, 7.1〜7.3, 9.2, 13.1, 13.2, 13.4    | `BusinessTime`(P0)                                                          | Service        |
+| WeekSchedule・WeekOrdering・WeekEntryRules・WeekEmailKinds                                                                    | core/week-tournament                                                    | Weekの期限・並び・枠の状態・メール種別        | 1.6, 3.6〜3.8, 4.6, 4.8, 5.4, 5.5, 7.6                       | core/tournament(P0)                                                         | Service        |
+| BracketStore・BracketDraw・BracketProgression・TournamentPlatformModule                                                       | core/tournament(契約・識別子)・workers/tournament(実装・束縛)           | 汎用の記録・組み合わせ・進行                  | 5.3〜5.10, 6.2〜6.10, 7.1〜7.3, 13.3, 13.5                   | MatchScheduler(P0)、MatchDirectory(P0)                                      | Service, Batch |
+| WeekTournamentStore・WeekEntryRegistrar・WeekDrawService・WeekProgressionService                                              | core/week-tournament(契約・識別子)・workers/week-tournament(実装・束縛) | 週と枠・組み合わせ決定・進行と賞              | 1.1〜1.6, 3.1, 3.5, 4.4, 5.1, 5.2, 7.4, 12.1〜12.4           | BracketDraw(P0)、UltrasEntitlements(P0)、ProductDirectory(P0)               | Service, Batch |
+| WeekEntryOfferPolicy・WeekEntryFulfillment                                                                                    | workers/week-tournament(paymentsの契約の実装)                           | 購入種別`week_tournament_entry`               | 2.1〜2.9, 3.6, 3.7                                           | payments(P0)                                                                | Service        |
+| WeekEntryFollowUp・WeekNotificationPublisher・WeekChampionDirectory・WeekAwardExport                                          | core/week-tournament(契約・識別子)・workers/week-tournament(実装・束縛) | 返金と知らせ・通知・照会とエクスポート        | 4.2, 4.5, 4.7, 4.8, 7.5, 12.1〜12.5, 12.7, 14.4              | PaymentRefunds(P0)、NotificationEventPublisher(P0)、WeekTournamentStore(P0) | Service        |
+| BracketViewBuilder                                                                                                            | api/application                                                         | 種類によらないブラケットの表示の組み立て(仮7) | 9.2, 9.3, 9.4, 13.3                                          | BracketRecord(P0)、MatchView(P0)                                            | Service        |
+| WeekBoardReader・WeekBracketReader・WeekEntryPanelReader・WeekEntryCheckout                                                   | api/application                                                         | 照会と決済の開始                              | 2.1〜2.4, 2.10, 8.\*, 9.\*, 10.1〜10.6, 14.7                 | MatchViewReader(P0)、CheckoutStarter(P0)                                    | Service        |
+| WeekRelaunchConditionSource・WeekProductLockSource・WeekLaunchSummarySource                                                   | api/application                                                         | product-launchへの条件と要約                  | 10.9, 11.\*                                                  | WeekTournamentStore(P0)                                                     | Service        |
+| TrophySource・ProductTrophyReader・WeekTrophySource                                                                           | api/application                                                         | トロフィーの供給元と照会                      | 10.8, 10.10                                                  | ProductDirectory(P1)                                                        | Service        |
+| WeekTournamentJobs                                                                                                            | api/application                                                         | 2つのジョブ(夜の処理と準備の完了・再処理)     | 1.5, 4.7, 5.1, 6.3, 12.2, 12.3, 12.7, 12.8, 14.1, 14.2, 14.6 | WeekDrawService(P0)、EveningDispatchGate(P0)                                | Batch          |
+| WeekTournamentSchemaModule(BoardResolvers・BracketResolvers・EntryResolvers・TrophyResolvers)                                 | api/presentation                                                        | GraphQL                                       | 2.1〜2.4, 8.\*, 9.\*, 10.\*                                  | 上記の照会(P0)                                                              | API            |
+| QualifierEntryHandler・RoundProgressHandler                                                                                   | event                                                                   | 確定のマッチイベントの処理                    | 1.1, 6.3                                                     | MATCH_EVENT_HANDLERS(P0)                                                    | Event          |
+| ProductEntryLossHandler・AccountEntryLossHandler・EntryUnlinkHandler                                                          | event                                                                   | ライフサイクルの処理                          | 4.1〜4.3, 14.3                                               | ライフサイクルの登録口(P0)                                                  | Event          |
+| WeekUltrasEntryExemptionHandler・WeekOpenEntryCheckoutExpiryHandler                                                           | event                                                                   | Ultrasの知らせの処理                          | 3.2〜3.4                                                     | ULTRAS_ACTIVATION_HANDLERS(P0)、OpenCheckoutExpirer(P0)                     | Event          |
+| WeekEntrySupplementProvider・WeekEntryRefundTemplate                                                                          | event                                                                   | 結果通知の追記・返金の知らせ                  | 4.8, 12.6                                                    | RESULT_NOTICE_SUPPLEMENTS(P0)、EMAIL_TEMPLATES(P0)                          | Service        |
+| WeekTournamentSection・WeekFinalShowcase・WeekSectionHeading・WeekBoardModel                                                  | client                                                                  | トップページの区画                            | 8.\*                                                         | MatchCard(P0)、ByeList(P0)                                                  | State          |
+| WeekBracketPage                                                                                                               | client                                                                  | Weekのブラケットのページの組み立て            | 9.\*                                                         | weekBracket(P0)                                                             | State          |
+| BracketRoundColumn・BracketMatchCard・BracketRoundTabs・BracketChampion・BracketViewProps(共用、仮7)                          | client                                                                  | ブラケットの表示の部品(Week・Year)            | 9.2〜9.5, 13.3                                               | BracketRoundFields(P0)、BracketMatchProductFields(P0)                       | State          |
+| WeekEntryPanel・EntryDeadline・WeekEntryOwnerAction・WeekEntryMyProductSection・WeekEntryDeleteNotice・TrophyShelf・TrophyArt | client                                                                  | プロダクトの画面の区画                        | 10.\*                                                        | myWeekEntry(P0)、UltrasPromotionGate(P1)                                    | State          |
+| TournamentTechDocs・TournamentServiceSpecs・WeekTournamentE2E・WeekTournamentFixtures                                         | docs・e2e                                                               | 文書とE2E                                     | 15.\*                                                        | —                                                                           | —              |
 
 ### common-lib
 
@@ -731,7 +733,9 @@ export declare const TOURNAMENT_WEEK_ENTRY_REFUND_EMAIL: EmailKind<
 
 - 免除・決済で得た参加資格(`entitled`・`drawn`)は、Ultrasの解約や特典の終了で戻さない(3.8)。決済済みの参加費をUltrasの加入で返金しない(3.6)。参加資格の状態は予選の掲載と受賞に影響しない(7.6)。返金の理由は`forfeited`→`entitlement_lost`、`excluded`→`entitlement_suspended`で、経路によらず同じ依頼キーになる。
 
-### backend-lib/workers/tournament
+### backend-lib/core/tournament・workers/tournament(共有部品)
+
+契約と識別子は`core/tournament`(`ports.ts`・`identifiers.ts`)に、D1の実装と束縛は`workers/tournament`に置く。api・eventのapplication層とtournament-yearは`core/tournament`だけを読み込む。
 
 #### BracketStore・BracketDraw・BracketProgression・TournamentPlatformModule
 
@@ -743,6 +747,7 @@ export declare const TOURNAMENT_WEEK_ENTRY_REFUND_EMAIL: EmailKind<
 **Contracts**: Service [x] / Batch [x]
 
 ```typescript
+// core/tournament/ports.ts(MatchKindはcore/match、DrawCandidate・Comparator・BracketShape・RoundSchedulePolicyはcore/tournamentの規則から読み込む)
 export type BracketKind = Exclude<MatchKind, 'qualifier'>; // 'week' | 'year'
 export interface BracketParticipantInput {
   readonly ref: string;
@@ -845,14 +850,32 @@ export interface BracketProgression {
     now: Date,
   ): Promise<AdvanceResult>; // 何度呼んでも同じ結果
 }
+// core/tournament/identifiers.ts
+export declare const TOURNAMENT_PLATFORM_TYPES: {
+  readonly BracketStore: symbol;
+  readonly BracketDraw: symbol;
+  readonly BracketProgression: symbol;
+}; // Symbol.for('tournament.<名前>')の凍結されたオブジェクト(core/media/identifiers.tsと同じ形)
+// workers/tournament/d1-bracket-store.ts・d1-bracket-draw.ts・d1-bracket-progression.ts
+export declare class D1BracketStore implements BracketStore {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
+export declare class D1BracketDraw implements BracketDraw {
+  constructor(db: Database, progression: BracketProgression); // @inject(PLATFORM_TYPES.Database)・@inject(TOURNAMENT_PLATFORM_TYPES.BracketProgression)
+}
+export declare class D1BracketProgression implements BracketProgression {
+  constructor(db: Database, scheduler: MatchScheduler); // @inject(PLATFORM_TYPES.Database)・@inject(MATCH_PLATFORM_TYPES.MatchScheduler)
+}
 ```
 
 - `BracketDraw.create`: (1)`tournament_brackets`を`(kind, tournament_id)`の一意索引と`onConflictDoNothing()`で挿入して読み直す。(2)`drawBracket`の結果の参加者を90件ずつ`(bracket_id, participant_no)`の`onConflictDoNothing()`で挿入する(再実行で同じ候補なら同じ番号になる)。(3)`BracketProgression.advance`を呼ぶ(5.3〜5.10)。
 - `BracketProgression.advance`: System Flows「ラウンドの進行」の手順。`MatchScheduler.schedule`の入力は`kind`・`round`・`roundStage`・`matchDate`・`tournamentMatchWindow`・側(抽選番号の昇順の参加者のローンチ・プロダクト・投稿者)。紐付けを解除済みの参加者は空の側として扱う。遅れ(`policy`が前ラウンドの翌日より後の日を返した)は`warn`のログと`captureEvent`(タグ`job`・`bracketId`、6.10)。
 - D1の書き込みは参加者・マッチの位置を50件ずつの一括の書き込みにし、IDのバインド変数を90個以内に分ける(13.5)。
-- `TOURNAMENT_PLATFORM_MODULE`は3つの部品を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる。DIの識別子は`TOURNAMENT_PLATFORM_TYPES`(`Symbol.for('tournament.<名前>')`)。
+- `TOURNAMENT_PLATFORM_MODULE`(`workers/tournament/tournament-platform-module.ts`)は3つの部品を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる。DIの識別子は`core/tournament/identifiers.ts`の`TOURNAMENT_PLATFORM_TYPES`(`Symbol.for('tournament.<名前>')`)。
 
-### backend-lib/workers/week-tournament
+### backend-lib/core/week-tournament・workers/week-tournament(共有部品)
+
+契約と識別子は`core/week-tournament`(`ports.ts`・`identifiers.ts`)に、実装と束縛は`workers/week-tournament`に置く。api・eventのapplication層とtournament-year・data-exportは`core/week-tournament`だけを読み込む。`core/week-tournament`は`core/tournament`・`core/match`を読み込んでよいが、`core/tournament`は`core/week-tournament`を読み込まない。
 
 #### WeekTournamentStore・WeekEntryRegistrar
 
@@ -864,6 +887,7 @@ export interface BracketProgression {
 **Contracts**: Service [x]
 
 ```typescript
+// core/week-tournament/ports.ts(AdvanceResultはcore/tournament、MatchRecordはcore/match、WeekEntryWindow・WeekEntryStatusなどはcore/week-tournamentの規則から読み込む)
 export interface WeekTournamentRecord {
   readonly tournamentId: string;
   readonly window: WeekEntryWindow;
@@ -890,6 +914,21 @@ export interface WeekEntryRecord {
   readonly closeReason: WeekEntryCloseReason | null;
   readonly refundStatus: 'none' | 'pending' | 'requested' | 'not_needed';
   readonly refundNoticeStatus: 'none' | 'pending' | 'sent' | 'skipped';
+}
+export interface NewWeekEntry {
+  readonly entryId: string; // 呼び出し元が採番
+  readonly tournamentId: string;
+  readonly launchId: string;
+  readonly productId: string;
+  readonly ownerUserId: string;
+  readonly launchDate: BusinessDate;
+  readonly qualifierUpvoteCount: number; // MatchRecordの確定値
+  readonly qualifierLastUpvoteElapsedMs: number | null;
+  readonly wonAt: Date; // 予選のマッチの確定の日時
+  readonly status: 'awaiting_payment' | 'entitled' | 'expired';
+  readonly entitlementSource: 'ultras' | null; // entitledのときだけ'ultras'
+  readonly closeReason: 'late_entry' | null; // expiredのときだけ'late_entry'
+  readonly at: Date;
 }
 export interface WeekTournamentStore {
   ensureTournament(
@@ -982,6 +1021,10 @@ export interface WeekTournamentStore {
 export interface WeekEntryRegistrar {
   registerFromMatch(match: MatchRecord, at: Date): Promise<readonly string[]>; // 作った枠のID
 }
+// workers/week-tournament/d1-week-tournament-store.ts
+export declare class D1WeekTournamentStore implements WeekTournamentStore {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
 ```
 
 - `registerFromMatch`(1.1〜1.4・3.1): 予選のマッチの側のうち`isWinningResult(result)`で、ローンチ・プロダクト・投稿者の紐付けがあるものについて、`weekStartOf(matchDate)`の`ensureTournament`→凍結済みなら`expired`(`late_entry`)で挿入して`captureEvent`→未凍結なら`UltrasEntitlements.wasEntitledDuring(投稿者, decidedAt, deadlineAt)`が真なら`entitled`(`ultras`)、偽なら`awaiting_payment`で挿入する。Upvote数と`lastUpvoteElapsedMs`は`MatchRecord`の確定値を写す(1.2)。トーナメントのマッチと敗北の側には作らない(1.3)。
@@ -1001,6 +1044,7 @@ export interface WeekEntryRegistrar {
 - `PurchaseOffer`: `priceLookupKey: 'week_tournament_entry'`、`quantity: 1`、`relatedId: <ローンチのID>`、`exclusivityKey: 'launch:<ローンチのID>:week'`、`deadlineAt`(23:35)・`acceptUntil`(23:00)・`fulfillableUntil`(23:45)、`requiresBotVerification: false`、`summary`: `itemName`「Weekトーナメント参加費」、`quantityLabel`「1件(<週の表記>のWeekトーナメント)」、`serviceTiming`「決済の反映後ただちに参加資格を付与し、<決済期限の日付>23:45(UTC-08:00)に組み合わせを決定します」、`additionalNotes`は「組み合わせ決定前にプロダクトを削除・退会すると参加資格を失い、参加費は自動で全額返金されます」「トーナメントの不戦勝・不戦敗・両者敗北による返金はありません」(2.3)。
 - `prepare(purchase, db)`: 枠(`targetId`)・投稿者の一致・`awaiting_payment`・未凍結・`ProductDirectory`で論理削除されていないこと、さらに`paidAt`ではなく反映の時刻が`deadlineAt`より後なら`listLaunches`で枠のローンチより新しい取消でないローンチが無いこと(仮5)を確かめ、満たさなければ`{ kind: 'reject', reason: 'ineligible' }`(2.7・2.8)。満たせば`fulfill`で1文を返す: `UPDATE week_tournament_entries SET status = CASE WHEN status = 'awaiting_payment' AND tournament_id IN (SELECT id FROM week_tournaments WHERE draw_started_at IS NULL) THEN 'entitled' ELSE NULL END, entitlement_source = 'payment', purchase_id = ?, entitled_at = ?, updated_at = ? WHERE id = ?`。同時の変更で条件を満たさなければNOT NULL制約の違反でpaymentsの一括の書き込みが取り消され、paymentsが`prepare`を呼び直して拒否(自動返金)にする(2.5〜2.7・2.9)。`afterCommit`は持たない。
 - 同じ購入の反映の重複はpaymentsの状態の前進で1回になる(2.6)。決済期限の後のUltrasの加入は`grantByUltras`の`activatedAt ≤ deadline_at`で参加資格を与えない(3.7)。
+- 置き場所: `WeekEntryOfferPolicy`はpaymentsの`PurchaseOfferPolicy`(`core/payments`)、`WeekEntryFulfillment`は`PurchaseFulfillment`(`workers/payments`)の実装で、どちらも`workers/week-tournament`に置き、`WEEK_TOURNAMENT_TYPES`の識別子で束縛する。`WeekEntryFulfillment`は接続を受け取って文を返すため、paymentsの`workers`の部品だけが呼び、api・eventのapplication層は使わない。
 
 #### WeekDrawService・WeekProgressionService・WeekNotificationPublisher
 
@@ -1012,6 +1056,7 @@ export interface WeekEntryRegistrar {
 **Contracts**: Service [x] / Batch [x]
 
 ```typescript
+// core/week-tournament/ports.ts
 export interface WeekDrawService {
   drawDue(now: Date): Promise<{
     readonly drawn: readonly string[];
@@ -1058,6 +1103,7 @@ export interface WeekNotificationPublisher {
 **Contracts**: Service [x]
 
 ```typescript
+// core/week-tournament/ports.ts
 export interface WeekEntryFollowUp {
   process(entryIds: readonly string[], now: Date): Promise<void>; // 返金待ち・知らせ待ちの枠
   processTournament(tournamentId: string, now: Date): Promise<void>;
@@ -1087,11 +1133,24 @@ export interface WeekAwardExport {
     >
   >;
 }
+// core/week-tournament/identifiers.ts
+export declare const WEEK_TOURNAMENT_TYPES: {
+  readonly WeekTournamentStore: symbol;
+  readonly WeekEntryRegistrar: symbol;
+  readonly WeekEntryOfferPolicy: symbol;
+  readonly WeekEntryFulfillment: symbol;
+  readonly WeekDrawService: symbol;
+  readonly WeekProgressionService: symbol;
+  readonly WeekEntryFollowUp: symbol;
+  readonly WeekNotificationPublisher: symbol;
+  readonly WeekChampionDirectory: symbol;
+  readonly WeekAwardExport: symbol;
+}; // Symbol.for('week-tournament.<名前>')の凍結されたオブジェクト(core/media/identifiers.tsと同じ形)
 ```
 
 - `process`: `refund_status = 'pending'`の枠は`PaymentRefunds.request({ purchaseId, amount: null, reason: refundReasonFor(status), requestKey: weekRefundRequestKey(...) })`。`accepted`(重複を含む)なら`requested`と`refund_notice_status = 'pending'`、`rejected`(`not_paid`・`purchase_not_found`)なら`not_needed`と`error`のログ。`refund_notice_status = 'pending'`の枠は`UserContactDirectory.findContact(ownerUserId)`が`undefined`なら`skipped`、あれば`EmailSender.send(TOURNAMENT_WEEK_ENTRY_REFUND_EMAIL, ...)`して`sent`(4.2・4.5・4.7・4.8)。一時的な失敗は例外にして呼び出し元の再試行と4:21の再処理に任せる。
 - 返金の実行・決済履歴・反映の期限切れと二重決済の返金はpaymentsが行う(4.9)。
-- `WEEK_TOURNAMENT_PLATFORM_MODULE`は本節の全部品を処理単位で束縛し、apiとeventの両方へ入れる。DIの識別子は`WEEK_TOURNAMENT_TYPES`(`Symbol.for('tournament-week.<名前>')`)。
+- `WEEK_TOURNAMENT_PLATFORM_MODULE`(`workers/week-tournament/week-tournament-platform-module.ts`)は本節の全部品を処理単位で束縛し、apiとeventの両方へ入れる。DIの識別子は`core/week-tournament/identifiers.ts`の`WEEK_TOURNAMENT_TYPES`(`Symbol.for('week-tournament.<名前>')`)。識別子は`workers`の実装にしか無い`WeekEntryOfferPolicy`・`WeekEntryFulfillment`の分も含め、paymentsの購入種別の登録(`workers/payments/purchase-kind-registrations.ts`)がここから読み込む。
 
 ### api/application
 
@@ -1163,7 +1222,7 @@ export interface WeekEntryCheckout {
 **Contracts**: Service [x]
 
 ```typescript
-// apps/api/src/application/tournament/bracket-view-builder.ts(純粋な関数。D1を読み込まない)
+// apps/api/src/application/tournament/bracket-view-builder.ts(純粋な関数。D1を読み込まない。BracketRecordはcore/tournament/ports.tsから読み込む)
 export interface BracketSlotView {
   readonly participantNo: number | null; // 未確定の枠はnull
   readonly seed: number | null; // シードなら抽選番号(1〜S)
@@ -1583,6 +1642,7 @@ erDiagram
   - `bracket-draw-rules`・`week-ordering`: N = 13の例のシード(A・C・D)と1回戦(E×F、G×H、I×B、J×K、L×M)、同順の`tieBreaker`、Upvote数0の末尾(5.4・5.5・5.11)。
   - `bracket-progress-rules`・`bracket-layout`: 2回戦の配置(N = 13の準々決勝)、固定のブラケット、1回戦M4の両者敗北でCが2日続けて不戦勝になる例、全滅で受賞なし、残り1で受賞、N = 0・1・2、決勝の両者敗北、表示の配置と進行の一致(6.5〜6.7・7.1〜7.3)。
   - `week-schedule`・`week-period`: 期限の時刻、ISO週の年の境界(12/29〜1/4)、日曜日の判定、`dailyRoundPolicy`の遅れ(23:45と翌0:10の実行)。
+  - `identifiers`(`core/tournament`・`core/week-tournament`): `TOURNAMENT_PLATFORM_TYPES`・`WEEK_TOURNAMENT_TYPES`の各値が`Symbol.for('tournament.<名前>')`・`Symbol.for('week-tournament.<名前>')`で、オブジェクトが凍結されていること。
   - アプリケーション層: `WeekRelaunchConditionSource`(期限の前後、各状態、勝利の確定から枠の作成までの間)、`WeekLaunchSummarySource`の文言とrank、`ProductTrophyReader`の並びと供給元の失敗、`WeekEntrySupplementProvider`の3つの場合と日曜日の強調。
 - Workers統合テスト(`*.worker.test.ts`):
   - 時刻の境界: 受付期限22:59と23:00の決済の開始、決済期限23:34と23:35(反映の期限内と仮5の新しいローンチ)、組み合わせ決定の23:44と23:45(15.3)。

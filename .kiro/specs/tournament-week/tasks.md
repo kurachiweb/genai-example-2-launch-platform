@@ -62,8 +62,10 @@
 - [ ] 3. 汎用のブラケットの部品
 - [ ] 3.1 ブラケットのストアと、汎用の部品の束縛をapiとeventに組み込む
   - 先に、ローカルD1のWorkers統合テストで、種類と識別子での読み取り、マッチのIDからのブラケットの引き当て(90件を超える入力の分割)、勝ち残りの判定(進行中・未敗退・優勝でない)、参加者の紐付けの解除を確かめる
-  - 汎用の3部品のDIの識別子と束縛のモジュールをここで作り(3.2〜3.4は実装を束縛へ追記する。順に行うため競合しない)、apiとeventの束縛の一覧へ同時に加える
-  - 完了状態: Workers統合テストと、3経路(api・eventの`fetch`・eventの`queue`)のDIの解決の検査が成功する
+  - 同じく先に、識別子`TOURNAMENT_PLATFORM_TYPES`が`Symbol.for('tournament.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
+  - 汎用の3部品の契約と型を純粋な部品(`apps/backend-lib/core/tournament/ports.ts`)に、DIの識別子`TOURNAMENT_PLATFORM_TYPES`を`core/tournament/identifiers.ts`にここで作る。api・eventとtournament-yearのapplication層が契約と識別子を読み込むため、`workers`に置かない
+  - ストアのD1の実装(`apps/backend-lib/workers/tournament/d1-bracket-store.ts`)と束縛のモジュール(`workers/tournament/tournament-platform-module.ts`)をここで作り(3.2〜3.4は実装を束縛へ追記する。順に行うため競合しない)、apiとeventの束縛の一覧へ同時に加える
+  - 完了状態: 単体テスト・Workers統合テストと、3経路(api・eventの`fetch`・eventの`queue`)のDIの解決の検査が成功し、`core/tournament`が`core/week-tournament`・`workers`・`apps/db`を読み込まない
   - _Requirements: 13.3, 13.5, 14.3_
 
 - [ ] 3.2 ラウンドの進行の本体(結果の写し・次ラウンドの予定・冪等性)を作る
@@ -83,9 +85,10 @@
 
 - [ ] 4. Weekの部品
 - [ ] 4.1 週のトーナメントと参加の枠のストアの基本(作成・一覧・引き当て・挿入)と、Weekの部品の識別子を作る
-  - Weekの全部品のDIの識別子をここで作る。束縛と登録は4.14でまとめて行い、4.2〜4.13は束縛と登録のファイルを変えない(テストは部品を直接組み立てる)
+  - Weekの部品の契約と型(`NewWeekEntry`を含む。`WeekEntryOfferPolicy`・`WeekEntryFulfillment`はpaymentsの契約を実装するため除く)を純粋な部品(`apps/backend-lib/core/week-tournament/ports.ts`)に、Weekの全部品のDIの識別子`WEEK_TOURNAMENT_TYPES`を`core/week-tournament/identifiers.ts`にここで作る。api・eventとtournament-year・data-exportのapplication層が契約と識別子を読み込むため、`workers`に置かない。ストアのD1の実装は`apps/backend-lib/workers/week-tournament/d1-week-tournament-store.ts`に作る。束縛と登録は4.14でまとめて行い、4.2〜4.13は束縛と登録のファイルを変えない(テストは部品を直接組み立てる)
   - 先に、ローカルD1のWorkers統合テストで、週の行の作成の重複の無視、期限の到来した週と進行中の週の一覧、ローンチからの枠の引き当て(90件を超える入力の分割)、枠の挿入の重複(ローンチ・週ごとのプロダクト)を確かめる
-  - 完了状態: Workers統合テストが成功する
+  - 同じく先に、識別子`WEEK_TOURNAMENT_TYPES`が`Symbol.for('week-tournament.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
+  - 完了状態: 単体テストとWorkers統合テストが成功し、`core/week-tournament`が`workers`・`apps/db`を読み込まない
   - _Requirements: 1.4, 7.4_
 
 - [ ] 4.2 参加資格を変える書き込み(Ultrasによる付与・喪失・分類)と凍結の条件をストアに加える
@@ -155,6 +158,7 @@
 
 - [ ] 4.13 (P) Week優勝の照会と受賞のエクスポートの部品を作る
   - 先に、Workers統合テストで、受賞の期間の照会(起点なし・起点あり・紐付けを解除した受賞の除外・受賞の昇順)と、ローンチごとの受賞(`product_of_the_week`とISO週)を確かめる
+  - 4.1の`core/week-tournament/ports.ts`の契約を満たすD1の実装を`workers/week-tournament/d1-week-champion-directory.ts`・`d1-week-award-export.ts`に作る
   - 完了状態: Workers統合テストが成功する
   - _Boundary: WeekChampionDirectory、WeekAwardExport_
   - _Requirements: 7.5, 14.4_
@@ -170,7 +174,8 @@
 - [ ] 5.1 eventの識別子と、確定のマッチイベントの2つの処理を作る
   - eventの8つの処理のDIの識別子をここで作る(束縛と登録は5.5)
   - 先に、単体テスト(部品は偽物)で、予選の確定で枠の作成を呼ぶこと、Weekのマッチの確定でそのブラケットのトーナメントを進め結果の反映(賞・通知)を行うこと、種別の違うマッチと本specのブラケットに無いマッチを無視すること、例外を再試行に任せることを確かめる
-  - 完了状態: 単体テストが成功する
+  - Weekとブラケットの部品は`core/week-tournament`・`core/tournament`の契約と識別子で受け取る
+  - 完了状態: 単体テストが成功し、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 4.14_
   - _Requirements: 1.1, 6.3_
 
@@ -204,7 +209,8 @@
   - apiの全部品(ジョブ・供給元・照会・決済の開始)のDIの識別子をここで作る(束縛と登録は6.9)
   - 23:45の`tournament-week.evening-bracket`は毎晩、組み合わせ決定→その日に確定した予選の枠の追いつき→全トーナメントの進行(確定のマッチイベントへの同期の追いつき)→その夜の通知イベントの発行(`publishNight`)の順に行い、最後にnotificationsの`EveningDispatchGate.markReady({ participant: 'tournament-week.evening-bracket', date: context.business.date, at: clock.now() })`を1回呼ぶ。いずれかが例外を投げた、または組み合わせ決定・進行の失敗の一覧が空でなければ、全てを試した後に`captureEvent`して例外を投げ、`markReady`を呼ばない。戻り値はログにだけ使う(notificationsの仮2)
   - 先に、単体テスト(部品と`EveningDispatchGate`は偽物)で、5つの呼び出しの順(`markReady`が最後)、組み合わせも進行も無い夜も`markReady`を呼ぶこと、組み合わせ・追いつき・進行・発行のいずれかの例外と、組み合わせ決定・進行が返す失敗の一覧が空でない場合のそれぞれで`captureEvent`したうえで`markReady`を呼ばずに例外になり他の処理は試されること、`markReady`の3つの戻り値で処理が変わらないこと、`EveningDispatchError`が例外のまま伝わること、4:21の返金と知らせの再処理(10分以上前・100件)を呼ぶことを確かめる
-  - 完了状態: 単体テストが成功する
+  - Weekとブラケットの部品は`core/week-tournament`・`core/tournament`の契約と識別子で受け取る
+  - 完了状態: 単体テストが成功し、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 4.14_
   - _Requirements: 4.7, 5.1, 6.3, 12.2, 12.3, 12.7, 12.8, 14.6_
 
@@ -235,7 +241,7 @@
 - [ ] 6.6 種類によらないブラケットの表示の組み立て(`buildBracketRoundsView`)を作る
   - `apps/api/src/application/tournament/bracket-view-builder.ts`に`buildBracketRoundsView`(記録・マッチの表示・現在時刻から参加数・シード数・ラウンド・優勝の番号)を純粋な関数として作る。tournament-yearも使う(仮7、tournament-yearの依頼)
   - 先に、単体テストで、N = 13の記録(1回戦だけ予定済み)で準々決勝以降の未来の枠が「シード<n>」「1回戦第<k>試合の勝者」になること、予定済みの位置のマッチと側の抽選番号の順・Upvote数・結果、表示できないプロダクトの`null`、両側が空と確定した位置を含めないこと、記録の無いラウンドの実施日が前のラウンドの翌日で遅れの後は現在の業務日付の翌日以降になること、優勝・受賞なし・参加0と1の空のラウンド、`kind`が`year`の記録でも同じ形を返すこと、同じ入力で同じ値になることを確かめる
-  - Weekの部品(`workers/week-tournament`・`application/week-tournament`)を読み込まないことを、静的解析の読み込みの制限(またはそれを確かめる単体テスト)で検査する
+  - 共通ライブラリの`workers`(`**/lib/workers/**`)とWeekの部品(`core/week-tournament`・`application/week-tournament`)を読み込まず、`BracketRecord`を`core/tournament`から読み込むことを、静的解析の読み込みの制限(またはそれを確かめる単体テスト)で検査する
   - 完了状態: 単体テストと読み込みの制限の検査が成功する
   - _Boundary: BracketViewBuilder_
   - _Requirements: 9.2, 9.3, 9.4, 13.3_
