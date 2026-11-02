@@ -11,6 +11,7 @@ export interface GraphQLContextScope {
   readonly container: Container;
   readonly correlationId: string;
   readonly clientIp: string | undefined;
+  readonly userAgent: string | undefined;
   readonly session: SessionAccess;
   readonly botToken: string | undefined;
 }
@@ -19,6 +20,7 @@ export interface GraphQLContext {
   readonly caller: CallerKind;
   readonly correlationId: string;
   readonly clientIp: string | undefined;
+  readonly userAgent: string | undefined;
   readonly session: SessionAccess;
   readonly loaders: LoaderRegistry;
   // 識別子のシンボルは取得する値の型を持たないため、コンテナのgetと同じく呼び出し側が型を指定する
@@ -36,6 +38,7 @@ export function createGraphQLContext(
     caller: scope.access.caller,
     correlationId: scope.correlationId,
     clientIp,
+    userAgent: scope.userAgent,
     session: scope.session,
     loaders: createLoaderRegistry({
       resolve: (identifier) => container.get(identifier),

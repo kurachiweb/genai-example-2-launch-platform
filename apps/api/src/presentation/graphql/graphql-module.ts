@@ -47,6 +47,8 @@ type GraphQLRouteContext<E extends GraphQLModuleEnv> = Context<
 
 export const GRAPHQL_MAX_BODY_BYTES = 1024 * 1024;
 
+export const USER_AGENT_MAX_LENGTH = 512;
+
 // GraphiQLの画面はunpkgから本体・スタイル・エディタのワーカーを読み込み、インラインのスクリプトで起動する
 export const GRAPHIQL_CONTENT_SECURITY_POLICY = [
   "default-src 'none'",
@@ -66,6 +68,8 @@ const GRAPHQL_PATH = '/graphql';
 const GRAPHQL_METHODS = ['GET', 'POST'];
 
 const CONTENT_SECURITY_POLICY_HEADER = 'Content-Security-Policy';
+
+const USER_AGENT_HEADER = 'user-agent';
 
 function createPayloadTooLargeError(): AppError {
   return new AppError({
@@ -100,6 +104,12 @@ function resolveAccess(
     : undefined;
 }
 
+function readUserAgent(value: string | undefined): string | undefined {
+  return value === undefined || value === ''
+    ? undefined
+    : value.slice(0, USER_AGENT_MAX_LENGTH);
+}
+
 function createRequestScope<E extends GraphQLModuleEnv>(
   c: GraphQLRouteContext<E>,
   access: GraphQLAccess,
@@ -110,6 +120,7 @@ function createRequestScope<E extends GraphQLModuleEnv>(
     container,
     correlationId: c.get('correlationId'),
     clientIp: c.get('clientIp'),
+    userAgent: readUserAgent(c.req.header(USER_AGENT_HEADER)),
     session: createSessionAccess({
       container,
       caller: access.caller,

@@ -37,6 +37,7 @@ export interface GatewayRequestScope {
   readonly container: Container;
   readonly correlationId: string;
   readonly clientIp: string | undefined;
+  readonly userAgent: string | undefined;
   readonly session: SessionAccess;
   readonly botToken: string | undefined;
   readonly observation: OperationObservation;

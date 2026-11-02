@@ -31,7 +31,11 @@ import { GATEWAY_HEADERS } from '../gateway/gateway-headers.ts';
 import {
   GRAPHIQL_CONTENT_SECURITY_POLICY,
   GRAPHQL_MAX_BODY_BYTES,
+  USER_AGENT_MAX_LENGTH,
 } from './graphql-module.ts';
+
+const BROWSER_USER_AGENT =
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
 installGraphQLModuleHooks();
 
@@ -150,6 +154,67 @@ describe('createGraphQLModule(内部経路)', () => {
       ]);
     },
   );
+
+  test('引き継いだUser-Agentをリゾルバへ渡す', async () => {
+    const response = await callInternal(
+      'client',
+      relayed(
+        postJson(
+          { documentId: OPERATIONS.userAgent.documentId },
+          { 'user-agent': BROWSER_USER_AGENT },
+        ),
+      ),
+    );
+
+    expect(await bodyOf(response)).toStrictEqual({
+      data: { userAgent: BROWSER_USER_AGENT },
+    });
+  });
+
+  test.each([
+    { label: '上限ちょうど', length: USER_AGENT_MAX_LENGTH },
+    { label: '上限を超える', length: USER_AGENT_MAX_LENGTH + 88 },
+  ])(
+    'User-Agentが$labelの長さなら、先頭から上限の文字数までをリゾルバへ渡す',
+    async ({ length }) => {
+      const userAgent = `${'a'.repeat(USER_AGENT_MAX_LENGTH - 1)}z${'x'.repeat(length - USER_AGENT_MAX_LENGTH)}`;
+
+      const response = await callInternal(
+        'client',
+        relayed(
+          postJson(
+            { documentId: OPERATIONS.userAgent.documentId },
+            { 'user-agent': userAgent },
+          ),
+        ),
+      );
+
+      expect(await bodyOf(response)).toStrictEqual({
+        data: {
+          userAgent: `${'a'.repeat(USER_AGENT_MAX_LENGTH - 1)}z`,
+        },
+      });
+    },
+  );
+
+  test.each<{
+    readonly label: string;
+    readonly headers: Record<string, string>;
+  }>([
+    { label: '無い', headers: {} },
+    { label: '空', headers: { 'user-agent': '' } },
+  ])('User-Agentが$labelなら、未設定として扱う', async ({ headers }) => {
+    const response = await callInternal(
+      'admin',
+      relayed(
+        postJson({ documentId: OPERATIONS.userAgent.documentId }, headers),
+      ),
+    );
+
+    expect(await bodyOf(response)).toStrictEqual({
+      data: { userAgent: null },
+    });
+  });
 });
 
 describe('createGraphQLModule(外部経路)', () => {
@@ -236,6 +301,19 @@ describe('createGraphQLModule(外部経路)', () => {
         data: { clientIp: CONNECTING_IP },
       });
       expect(logsOf(CLIENT_IP_CATEGORY)).toStrictEqual([]);
+    });
+
+    test('User-Agentを上限の文字数までリゾルバへ渡す', async () => {
+      const response = await callPublic(
+        postJson(
+          { query: '{ userAgent }' },
+          { 'user-agent': 'b'.repeat(USER_AGENT_MAX_LENGTH + 1) },
+        ),
+      );
+
+      expect(await bodyOf(response)).toStrictEqual({
+        data: { userAgent: 'b'.repeat(USER_AGENT_MAX_LENGTH) },
+      });
     });
 
     test('手入力のセッション識別子を、指定した呼び出し元の種類で検証する', async () => {

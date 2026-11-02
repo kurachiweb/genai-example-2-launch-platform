@@ -204,6 +204,7 @@ function createScope(
     container,
     correlationId: CORRELATION_ID,
     clientIp: CLIENT_IP,
+    userAgent: undefined,
     session: createSessionAccess({
       container,
       caller: access.caller,

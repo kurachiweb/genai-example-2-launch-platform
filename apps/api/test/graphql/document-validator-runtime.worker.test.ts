@@ -114,6 +114,7 @@ function createScope(): GatewayRequestScope {
     container,
     correlationId: CORRELATION_ID,
     clientIp: undefined,
+    userAgent: undefined,
     session: createSessionAccess({
       container,
       caller: 'client',

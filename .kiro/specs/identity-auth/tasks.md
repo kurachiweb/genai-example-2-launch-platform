@@ -37,7 +37,7 @@
   - _Boundary: UserAgentRelay_
   - _Requirements: 8.4, 8.9_
 
-- [ ] 2.2 (P) APIサーバーのGraphQLの文脈にUser-Agentを加える
+- [x] 2.2 (P) APIサーバーのGraphQLの文脈にUser-Agentを加える
   - 先に、内部経路の要求のUser-Agentが512文字で切られてリゾルバの文脈に届くこと、無ければ未設定になることを確かめるWorkers統合テストを書く
   - api-gatewayの要求ごとの範囲(`GatewayRequestScope`)・文脈の組み立ての入力(`GraphQLContextScope`)・GraphQLの文脈(`GraphQLContext`)に、既存の`clientIp`と同じ必須の`userAgent: string | undefined`を加える。既存のリゾルバと上限・許可リストの振る舞いは変えない
   - 文脈をリテラルで組む既存のWorkers統合テスト5件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`)の組み立てに`userAgent`を足す。期待は変えない
@@ -457,3 +457,4 @@
 - 1.2: テーブル定義は`apps/db/schema/identity/`、マイグレーションは`20261102060846_identity_auth`。部分一意索引とCHECKは`.inlineParams()`で値を埋め込んで生成した(カスタムマイグレーション無し)。部分一意索引`users_email_not_deleted_unique`・`user_lifecycle_events_user_id_purge_due_unique`を衝突の対象(`onConflictDoNothing({ target, where })`など)に使うときは同じWHEREの条件を含める。`USER_STATUSES`・`DISPOSABLE_EMAIL_STATUSES`は`users.ts`に定義し`visibility.ts`から再エクスポートする。トークンの用途・イベントの種類と状態の値は各テーブルの非公開の定数のため、backend-libやapiのdomainに同じ値の定数を作るタスク(3.1・6.1)で、両者が一致することを確かめる単体テスト(先例: media-pipelineの`workers/media/media-file-columns.unit.test.ts`)を加える。`apps/db/schema/index.unit.test.ts`は完全一致ではなく`test.each`と`toContain`の形
 - 1.3: 入力規則は`apps/common-lib/identity/account-input-rules.ts`。ニックネームの前後の空白は共有の`trimWhiteSpace`(`\p{White_Space}`)で除くため、zodの`.trim()`(`String.prototype.trim`)とは集合が異なる。ニックネームを保存・検証する後続(`inputs.ts`・AccountFormSchemas・Registration)も`trimWhiteSpace`を使い、判定と保存値を食い違わせない。開発コンテナでは各アプリの`common-lib/`がコピーで古いことがあり、`shared-dirs:verify`が失敗したら`bun run shared-dirs:place`で配置し直す
 - 2.1: `FORWARDED_BROWSER_HEADERS`は`buildRelayHeaders`を使うすべての中継の経路で共有されるため、`/_bff/graphql`だけでなくメディアのアップロードの中継でもUser-AgentがAPIサーバーへ届く(APIサーバーは使わない)。中継の項目を完全一致で確かめるテストは`relay-contract.unit.test.ts`のほかに`relay-route.relay-to-api.unit.test.ts`もある
+- 2.2: `userAgent`は`graphql-module.ts`の`createRequestScope`で読み、`USER_AGENT_MAX_LENGTH`(512)で切る。空のヘッダーも`undefined`。文脈をリテラルで組むテストは設計の5件のほかに`test/graphql/document-validator-runtime.worker.test.ts`もある

@@ -99,6 +99,10 @@ export const OPERATIONS = Object.freeze({
     body: 'query ClientIp { clientIp }',
   },
   viewer: { documentId: documentIdOf('3'), body: 'query Viewer { viewer }' },
+  userAgent: {
+    documentId: documentIdOf('4'),
+    body: 'query UserAgent { userAgent }',
+  },
 });
 
 export const SHARED_OPERATIONS = Object.fromEntries(
@@ -135,6 +139,7 @@ export const ROUTE_MODULE = defineSchemaModule({
       caller: String
       clientIp: String
       viewer: String
+      userAgent: String
     }
   `,
   resolvers: {
@@ -146,6 +151,14 @@ export const ROUTE_MODULE = defineSchemaModule({
       clientIp: (_parent: unknown, _args: unknown, context: GraphQLContext) => {
         resolverCalls += 1;
         return context.clientIp;
+      },
+      userAgent: (
+        _parent: unknown,
+        _args: unknown,
+        context: GraphQLContext,
+      ) => {
+        resolverCalls += 1;
+        return context.userAgent;
       },
       viewer: async (
         _parent: unknown,

@@ -40,6 +40,7 @@ const GREETING = Symbol.for('test.graphql-context.Greeting');
 
 const BOT_TOKEN = ['turnstile', 'response', 'context', '0003'].join('-');
 const CLIENT_IP = '198.51.100.43';
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) Firefox/131.0';
 const CORRELATION_ID = 'correlation-graphql-context';
 const HOSTNAME = 'client.launch.example';
 
@@ -97,6 +98,7 @@ function createScope(
   options: {
     caller?: CallerKind;
     clientIp?: string | undefined;
+    userAgent?: string | undefined;
     botToken?: string | undefined;
     container?: Container;
   } = {},
@@ -108,6 +110,7 @@ function createScope(
     container,
     correlationId: CORRELATION_ID,
     clientIp: 'clientIp' in options ? options.clientIp : CLIENT_IP,
+    userAgent: options.userAgent,
     session: createSessionAccess({ container, caller, token: undefined }),
     botToken: 'botToken' in options ? options.botToken : BOT_TOKEN,
   };
@@ -168,6 +171,16 @@ describe('createGraphQLContext', () => {
     const context = createGraphQLContext(createScope({ clientIp: undefined }));
 
     expect(context.clientIp).toBeUndefined();
+  });
+
+  test('処理単位のUser-Agentを渡し、無ければ未設定のまま渡す', () => {
+    const withUserAgent = createGraphQLContext(
+      createScope({ userAgent: USER_AGENT }),
+    );
+    const withoutUserAgent = createGraphQLContext(createScope());
+
+    expect(withUserAgent.userAgent).toBe(USER_AGENT);
+    expect(withoutUserAgent.userAgent).toBeUndefined();
   });
 
   test('処理単位のコンテナから依存を取得できる', () => {

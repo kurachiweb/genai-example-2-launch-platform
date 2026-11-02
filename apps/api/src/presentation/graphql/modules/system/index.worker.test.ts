@@ -79,6 +79,7 @@ function createContext(db: D1Database = env.DB): GraphQLContext {
     container,
     correlationId: CORRELATION_ID,
     clientIp: undefined,
+    userAgent: undefined,
     session: createSessionAccess({
       container,
       caller: 'client',
