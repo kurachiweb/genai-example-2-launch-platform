@@ -69,10 +69,11 @@
   - _Requirements: 6.1, 6.3_
 
 - [ ] 4.2 (P) 未ログイン(停止中を含む)の問い合わせの送信のユースケースを作る
-  - 先に、ポートを偽物にして、停止していないログイン中の利用者の拒否、未ログインと停止中の受け付け、存在しないカテゴリの拒否、回数制限の超過で保存しないこと、送信元IPアドレスが不明なら数えずに警告を残すこと、保存に利用者のIDが入らないこと、メールの送信を呼ばないことを確かめる単体テストを書く
-  - 回数制限の規則は`inquiry-guest:ip`(5回/3600秒)、キーは送信元IPアドレスをHMACでハッシュ化した値にする
-  - 完了状態: 単体テストが成功し、受け付けた問い合わせが「未対応」で保存される
-  - _Boundary: GuestInquirySubmission_
+  - 先に、ポートを偽物にして、停止していないログイン中の利用者の拒否、未ログインと停止中の受け付け、存在しないカテゴリの拒否、回数制限のポートの超過で保存しないこと、保存に利用者のIDが入らないこと、メールの送信を呼ばないことを確かめる単体テストを書く
+  - 同じく先に、回数制限の実装`CounterGuestInquiryRateLimit`が偽の厳密カウンタに`inquiry-guest:ip`(5回/3600秒)の規則で数え、超過で429と待ち時間を返し、送信元IPアドレスが不明なら数えずに警告を残し、キーを送信元IPアドレスのHMACにすることを確かめるWorkers統合テストを書く
+  - 回数制限のポート`GuestInquiryRateLimit`はapplication層(3.1のポートの定義の`application/inquiry/ports.ts`に加える)、実装と規則は厳密カウンタのクライアントの型と`assertWithinLimit`が共通ライブラリの`workers`にあるためinfrastructure層(`infrastructure/inquiry/counter-guest-inquiry-rate-limit.ts`)に作る(`backend/003`、identity-authの`CounterMailSendLimits`と同じ形)。application層は`**/lib/workers/**`を型も含めて読み込めない
+  - 完了状態: 単体テストとWorkers統合テストが成功し、受け付けた問い合わせが「未対応」で保存される。APIサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
+  - _Boundary: GuestInquirySubmission, CounterGuestInquiryRateLimit_
   - _Requirements: 3.1, 3.3, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6, 4.7, 4.8_
 
 - [ ] 4.3 (P) ログインの問い合わせの送信のユースケースを作る
@@ -141,7 +142,7 @@
 
 - [ ] 7. GraphQLとAPIサーバーの組み立て
 - [ ] 7.1 APIサーバーの束縛と各登録箇所への追記を行う(上流との統合)
-  - 問い合わせのモジュール(ストア・照会・ユースケース・報告・ジョブの束縛)、保持期間のジョブ、添付の用途(ファイル用・利用者・添付の形式・20,971,520バイト)、閲覧の方針、退会の同期の波及処理を各登録箇所へ加え、層の依存の規則と違反例を静的解析の設定とテストに加える
+  - 問い合わせのモジュール(ストア・照会・回数制限・ユースケース・報告・ジョブの束縛)、保持期間のジョブ、添付の用途(ファイル用・利用者・添付の形式・20,971,520バイト)、閲覧の方針、退会の同期の波及処理を各登録箇所へ加え、層の依存の規則と違反例を静的解析の設定とテストに加える
   - 完了状態: 組み立てのWorkers統合テストで、20,971,521バイトの添付のアップロードが413になり20,971,520バイトが受け付けられ、本人のファイルが200・他人のファイルが404でダウンロードされ、退会の確定で利用者の問い合わせが論理削除され、4:21のジョブの一覧に本specのジョブが順序300で載る
   - _Requirements: 6.1, 6.4, 6.6, 6.7, 13.1, 13.4_
 
@@ -165,11 +166,13 @@
 
 - [ ] 8.2 データエクスポート用の照会口を作り、イベントサーバーに束縛する
   - 先に、Workers統合テストで、本人のログインの問い合わせだけを返し他人の・論理削除済みの問い合わせを含めないこと、21件で次の位置が返り2回目で残りが返ること、各問い合わせが現在のカテゴリ名(削除後は「その他」)・ステータス・作成日時と送信日時の古い順のメッセージを持つこと、管理者の返信のニックネームが管理者の照会口から入り削除済みの管理者は空になること、管理者の返信の添付が空であること、利用者のメッセージの添付が位置の順に元のファイル名・形式・バイト数とファイルのIDを持ち物理削除済みのファイルを除くこと、日時がミリ秒までのUTCのISO 8601であること、不正な位置の指定が検証のエラーになることを確かめる
-  - 本specのテーブルを読む実装をバックエンド共通の`workers/inquiry`に置き、管理者のニックネームはadmin-foundationの照会口、添付のメタデータはmedia-pipelineの`findMany`で引く。返す値にメールアドレス・利用者のID・管理者のIDを含めない。ZIP内のパスの組み立てと実体の同梱はdata-exportに委ねる
+  - 同じく先に、識別子`INQUIRY_EXPORT_TYPES`が`Symbol.for('inquiry.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
+  - data-exportのeventのapplication層が読み込めるよう、設計の契約(`InquiryExportAttachment`・`InquiryExportMessage`・`InquiryExportItem`・`InquiryExportPage`・`InquiryExport`・`INQUIRY_EXPORT_PAGE_SIZE`)を`apps/backend-lib/core/inquiry/ports.ts`に、識別子`INQUIRY_EXPORT_TYPES`を`core/inquiry/identifiers.ts`に作る。application層は`**/lib/workers/**`を型も含めて読み込めないため、契約と識別子を`workers`に置かない
+  - 本specのテーブルを読む実装`D1InquiryExport`をバックエンド共通の`workers/inquiry/d1-inquiry-export.ts`に置き、管理者のニックネームはadmin-foundationの照会口(`core/admin`の`AdminDirectory`)、添付のメタデータはmedia-pipelineの`findMany`(`core/media`の`MediaFiles`)で引く。返す値にメールアドレス・利用者のID・管理者のIDを含めない。ZIP内のパスの組み立てと実体の同梱はdata-exportに委ねる
   - 8.1が束縛を加えたイベントサーバーのモジュールに照会口の束縛を加えるため、8.1の後に行う
-  - 完了状態: Workers統合テストが成功し、イベントサーバーのコンテナから照会口を解決でき、返す項目がデータエクスポートの文書の`inquiries.json`の表の項目(data-exportが組み立てる添付のパスを除く)と対応する
+  - 完了状態: 単体テストとWorkers統合テストが成功し、イベントサーバーのコンテナから照会口を解決でき、返す項目がデータエクスポートの文書の`inquiries.json`の表の項目(data-exportが組み立てる添付のパスを除く)と対応する
   - _Depends: 8.1_
-  - _Boundary: InquiryExport_
+  - _Boundary: InquiryExport, D1InquiryExport_
   - _Requirements: 13.7_
 
 - [ ] 9. 利用者側の画面

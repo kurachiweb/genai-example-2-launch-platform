@@ -30,7 +30,7 @@
 - 問い合わせの業務処理(apiの`domain/inquiry`・`application/inquiry`・`infrastructure/inquiry`)と、GraphQLのスキーマモジュール`inquiry`(利用者側と管理者側の操作を持ち、許可リストは呼び出し元ごとに分かれる)。
 - 共有の定義`apps/common-lib/inquiry/`(入力の上限・添付の上限・ステータス・標準カテゴリのID)と、監査ログの操作種別`apps/common-lib/admin/audit-actions/inquiry-chat.ts`。
 - 利用者の表示用の照会口`InquirerProfiles`(既定は画像なし。user-profile-socialが差し替える)。
-- データエクスポート用の照会口`InquiryExport`(`apps/backend-lib/workers/inquiry/`。data-exportがeventで呼ぶ)。
+- データエクスポート用の照会口`InquiryExport`(契約と識別子`INQUIRY_EXPORT_TYPES`は`apps/backend-lib/core/inquiry/`、D1の実装`D1InquiryExport`は`apps/backend-lib/workers/inquiry/`。data-exportがeventのapplication層で受け取る)。
 - アップロードの用途`inquiry-attachment`と、その閲覧の方針`InquiryAttachmentReadPolicy`。
 - 未ログインの問い合わせの回数制限の規則`inquiry-guest:ip`と、bot判定のaction`inquiry_guest`・`inquiry_member`。
 - メール種別`inquiry.reply-notification`とテンプレート。
@@ -52,10 +52,10 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`RateLimitCounterClient`。形を変えない。
+- backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`RateLimitCounterClient`。形を変えない。application層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`RateLimitCounterClient`は、infrastructure層の`CounterGuestInquiryRateLimit`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。
 - api-gateway: `GraphQLContext`(`caller`・`clientIp`・`session`・`loaders`・`resolve`・`assertHuman`)・`defineSchemaModule`・`withValidatedArgs`・`SessionView`・`LoaderDefinition`。
 - identity-auth: `IDENTITY_TYPES.AccountGuard`(`currentUser`・`requireUser`・`requireWritableUser`)・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`(`findContact`、契約と識別子は`backend-lib/core/identity`)・`UserLifecycleSyncRegistration`・`UserLifecycleSyncHandler`・`UserLifecycleAsyncRegistration`・`UserLifecycleAsyncHandler`・`LifecycleHandlerOutcome`・`USER_LIFECYCLE_SYNC_HANDLERS`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`users`テーブル(読み取りと外部キーだけ)・`Viewer.status`・`viewerQueryOptions`・`_authenticated`のレイアウト。
-- admin-foundation: `requireAdmin`(`admin-guard.ts`)・`CurrentAdmin`・`AdminDirectory`(`backend-lib/workers/admin`、eventでは`ADMIN_PLATFORM_MODULE`の束縛)・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・`useAdminRole`・`RoleGate`・`frontend-lib/components/admin`(`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`・`CategoryMasterEditor`)・E2Eの補助(`e2e/support/admin-bootstrap.ts`の`signInAsNewAdmin`・`signInAdmin`、`e2e/support/local-d1.ts`の`executeLocalD1`・`sqlStringLiteral`)。形を変えない。
+- admin-foundation: `requireAdmin`(`admin-guard.ts`)・`CurrentAdmin`・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`(契約と識別子は`backend-lib/core/admin`、api・eventでは`ADMIN_PLATFORM_MODULE`の束縛)・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・`useAdminRole`・`RoleGate`・`frontend-lib/components/admin`(`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`・`CategoryMasterEditor`)・E2Eの補助(`e2e/support/admin-bootstrap.ts`の`signInAsNewAdmin`・`signInAdmin`、`e2e/support/local-d1.ts`の`executeLocalD1`・`sqlStringLiteral`)。形を変えない。
 - media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`ATTACHMENT_MEDIA_TYPES`・`MediaFiles`(`findMany`・`claim`・`markDeleted`)・`MEDIA_TYPES`・`FileReadPolicy`・`FileReadPolicyRegistration`・`toMediaAttachment`・`mediaFileLoader`・GraphQLの`MediaAttachment`・`MediaImage`・`AttachmentUploadField`・`FileSelectionList`・`PrivateFileLink`・`MediaPicture`・`MediaPlaceholder`・`checkSelection`。形を変えない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
 - frontend-platform: `executeGraphQL`(`turnstileToken`)・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`・`runAxe`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
@@ -80,13 +80,13 @@
 
 ### 上流への影響
 
-| 上流spec           | 変更                                                                                                                                                                                                                                                                                                                                  | 影響と再検証                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| media-pipeline     | `apps/api/src/composition/upload-purposes.ts`へ`inquiry-attachment`を、`file-read-policies.ts`へ`InquiryAttachmentReadPolicy`を加える                                                                                                                                                                                                 | 契約どおり。再検証は不要                                                                                                                        |
-| identity-auth      | `apps/api/src/composition/user-lifecycle-sync-handlers.ts`と`apps/event/src/composition/user-lifecycle-async-handlers.ts`へ1行ずつ加える。返信の通知先は共有の部品`UserContactDirectory`(identity-authがapi・eventで束縛)で引く                                                                                                       | 契約どおり。`UserContactDirectory`はspec横断レビューの決定(2026-10-23)でidentity-authが提供する                                                 |
-| admin-foundation   | `ADMIN_NAV_ITEMS`へ`/inquiries`(80)・`/categories`(110)を、`DASHBOARD_CARDS`へ`inquiry-chat.unhandled-inquiries`(20)を、`audit-actions/index.ts`へ本specのファイルを加える。`AdminDirectory`を`backend-lib/workers/admin`から使い、eventでは`ADMIN_PLATFORM_MODULE`の束縛を使う。E2Eは`admin-bootstrap.ts`・`local-d1.ts`の補助を使う | 契約どおり。`/categories`のページの所有は仮4。`AdminDirectory`の置き場所とE2Eの補助はspec横断レビューの決定(2026-10-23)でadmin-foundationが持つ |
-| email-delivery     | `core/email/kinds/index.ts`・`templates/index.ts`へ1行ずつ加える                                                                                                                                                                                                                                                                      | 契約どおり                                                                                                                                      |
-| content-processing | 日次タイムラインの表に本specの1行を足す(表が無ければ作る)                                                                                                                                                                                                                                                                             | 規約どおり                                                                                                                                      |
+| 上流spec           | 変更                                                                                                                                                                                                                                                                                                                                             | 影響と再検証                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| media-pipeline     | `apps/api/src/composition/upload-purposes.ts`へ`inquiry-attachment`を、`file-read-policies.ts`へ`InquiryAttachmentReadPolicy`を加える                                                                                                                                                                                                            | 契約どおり。再検証は不要                                                                                                                        |
+| identity-auth      | `apps/api/src/composition/user-lifecycle-sync-handlers.ts`と`apps/event/src/composition/user-lifecycle-async-handlers.ts`へ1行ずつ加える。返信の通知先は共有の部品`UserContactDirectory`(identity-authがapi・eventで束縛)で引く                                                                                                                  | 契約どおり。`UserContactDirectory`はspec横断レビューの決定(2026-10-23)でidentity-authが提供する                                                 |
+| admin-foundation   | `ADMIN_NAV_ITEMS`へ`/inquiries`(80)・`/categories`(110)を、`DASHBOARD_CARDS`へ`inquiry-chat.unhandled-inquiries`(20)を、`audit-actions/index.ts`へ本specのファイルを加える。`AdminDirectory`の契約と識別子を`backend-lib/core/admin`から使い、eventでは`ADMIN_PLATFORM_MODULE`の束縛を使う。E2Eは`admin-bootstrap.ts`・`local-d1.ts`の補助を使う | 契約どおり。`/categories`のページの所有は仮4。`AdminDirectory`の置き場所とE2Eの補助はspec横断レビューの決定(2026-10-23)でadmin-foundationが持つ |
+| email-delivery     | `core/email/kinds/index.ts`・`templates/index.ts`へ1行ずつ加える                                                                                                                                                                                                                                                                                 | 契約どおり                                                                                                                                      |
+| content-processing | 日次タイムラインの表に本specの1行を足す(表が無ければ作る)                                                                                                                                                                                                                                                                                        | 規約どおり                                                                                                                                      |
 
 ## Architecture
 
@@ -162,23 +162,23 @@ graph TB
 
 ### Dependency Direction
 
-- 共有コード: `apps/db/schema/inquiry`(`users`の定義を外部キーのためだけに読み込む) → `apps/common-lib/inquiry`(`countGraphemes`だけを読み込む) → `apps/backend-lib/workers/inquiry`(`InquiryExport`。`apps/db/schema/inquiry`・`backend-lib/workers/admin`の`AdminDirectory`・`backend-lib/workers/media`の`MediaFiles`を読み込む) → アプリの`src`。
-- apiの`src`内: `domain/inquiry` ← `application/inquiry`(`application/identity`の`AccountGuard`・`application/admin`の`AuditLogRecorder`・`CurrentAdmin`、`backend-lib/workers/admin`の`AdminDirectory`、`backend-lib/core/identity`の`UserContactDirectory`、`backend-lib/workers/media`の型を読み込む) ← `infrastructure/inquiry`(`infrastructure/admin/audit-log-statements.ts`を読み込む)・`presentation/graphql/modules/inquiry`(`admin-guard.ts`を読み込む) ← `composition`。`inquiry`の各層は`identity`・`admin`の各層のうち上記の公開の部品だけを読み込む。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
-- eventの`src`内: `application/inquiry` ← `infrastructure/inquiry` ← `composition`(`backend-lib/workers/inquiry`の`InquiryExport`を束縛する)。
+- 共有コード: `apps/db/schema/inquiry`(`users`の定義を外部キーのためだけに読み込む) → `apps/common-lib/inquiry`(`countGraphemes`だけを読み込む) → `apps/backend-lib/core/inquiry`(`InquiryExport`の契約と識別子。`workers`と`apps/db`を読み込まない) → `apps/backend-lib/workers/inquiry`(`D1InquiryExport`。`core/inquiry`・`apps/db/schema/inquiry`・`backend-lib/core/admin`の`AdminDirectory`・`backend-lib/core/media`の`MediaFiles`を読み込む) → アプリの`src`(core → workers → アプリの`src`。api・eventの`application`は`core`だけを読み込む)。
+- apiの`src`内: `domain/inquiry` ← `application/inquiry`(`application/identity`の`AccountGuard`・`application/admin`の`AuditLogRecorder`・`CurrentAdmin`、`backend-lib/core/admin`の`AdminDirectory`、`backend-lib/core/identity`の`UserContactDirectory`、`backend-lib/core/media`の`MediaFiles`・`MEDIA_TYPES`を読み込む。`**/lib/workers/**`は読み込まない) ← `infrastructure/inquiry`(`infrastructure/admin/audit-log-statements.ts`を読み込む)・`presentation/graphql/modules/inquiry`(`admin-guard.ts`を読み込む) ← `composition`。`inquiry`の各層は`identity`・`admin`の各層のうち上記の公開の部品だけを読み込む。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
+- eventの`src`内: `application/inquiry` ← `infrastructure/inquiry` ← `composition`(`backend-lib/workers/inquiry`の`D1InquiryExport`を`INQUIRY_EXPORT_TYPES.InquiryExport`へ束縛する)。data-exportのapplication層は`backend-lib/core/inquiry`の契約と識別子だけを読み込む。
 - client・adminの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。`frontend-lib/components/inquiry`はGraphQLとアプリの型に依存しない。
 
 ### Technology Stack
 
-| Layer        | Choice / Version                                                            | Role in Feature                                | Notes                                                                   |
-| ------------ | --------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
-| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                       | カテゴリ・問い合わせ・メッセージ・添付の紐付け | 新しいテーブル5つ                                                       |
-| 回数制限     | Durable Objects`RateLimitCounter`(backend-platform)                         | 未ログインの送信のIP単位の制限                 | 既存の`RATE_LIMIT_COUNTER`                                              |
-| bot判定      | Turnstile(backend-platformの`BotVerifier`、frontend-platformのウィジェット) | フォームの送信の検証                           | 既存                                                                    |
-| 定期・非同期 | Cron Triggers(api)・Queues(eventのライフサイクルの実行器)                   | 未ログインの保持期間・退会者の物理削除         | 上流の基盤                                                              |
-| ファイル     | media-pipelineの用途・`MediaFiles`・`FileReadPolicy`・部品                  | 添付のアップロード・紐付け・ダウンロード       | 既存                                                                    |
-| メール       | email-deliveryの`EmailSender`・React Email                                  | 返信の通知メール                               | 既存                                                                    |
-| 画面         | TanStack Start・TanStack Query・react-hook-form・zod・shadcn/ui             | フォーム・チャット・一覧・定期再取得           | frontend-platformの版。`zod`の値は`utilities/validation/zod.ts`から読む |
-| テスト       | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1・Mailpit       | 単体・Workers統合・ブラウザ・E2E               | 上流の版                                                                |
+| Layer        | Choice / Version                                                                                         | Role in Feature                                | Notes                                                                   |
+| ------------ | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| 状態         | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                                                    | カテゴリ・問い合わせ・メッセージ・添付の紐付け | 新しいテーブル5つ                                                       |
+| 回数制限     | Durable Objects`RateLimitCounter`(backend-platform)                                                      | 未ログインの送信のIP単位の制限                 | 既存の`RATE_LIMIT_COUNTER`                                              |
+| bot判定      | Turnstile(リゾルバの`assertHuman`が使うbackend-platformの`BotVerifier`、frontend-platformのウィジェット) | フォームの送信の検証                           | 既存                                                                    |
+| 定期・非同期 | Cron Triggers(api)・Queues(eventのライフサイクルの実行器)                                                | 未ログインの保持期間・退会者の物理削除         | 上流の基盤                                                              |
+| ファイル     | media-pipelineの用途・`MediaFiles`・`FileReadPolicy`・部品                                               | 添付のアップロード・紐付け・ダウンロード       | 既存                                                                    |
+| メール       | email-deliveryの`EmailSender`・React Email                                                               | 返信の通知メール                               | 既存                                                                    |
+| 画面         | TanStack Start・TanStack Query・react-hook-form・zod・shadcn/ui                                          | フォーム・チャット・一覧・定期再取得           | frontend-platformの版。`zod`の値は`utilities/validation/zod.ts`から読む |
+| テスト       | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1・Mailpit                                    | 単体・Workers統合・ブラウザ・E2E               | 上流の版                                                                |
 
 ## File Structure Plan
 
@@ -198,8 +198,11 @@ apps/
 │   │   └── inquiry-category-constants.ts               # INQUIRY_CATEGORY_OTHER_ID・INQUIRY_CATEGORY_OTHER_NAME
 │   └── admin/audit-actions/inquiry-chat.ts             # inquiry.reply・inquiry.status-change・inquiry-category.create・rename・delete
 ├── backend-lib/core/email/kinds/inquiry.ts             # inquiry.reply-notification
+├── backend-lib/core/inquiry/                           # data-exportのapplication層が受け取るデータエクスポート用の照会の契約と識別子
+│   ├── ports.ts                                        # InquiryExportAttachment・InquiryExportMessage・InquiryExportItem・InquiryExportPage・InquiryExport・INQUIRY_EXPORT_PAGE_SIZE
+│   └── identifiers.ts                                  # INQUIRY_EXPORT_TYPES(Symbol.for('inquiry.<名前>')の凍結したオブジェクト、同名の*.unit.test.ts)
 ├── backend-lib/workers/inquiry/
-│   └── inquiry-export.ts                               # InquiryExport・D1InquiryExport・INQUIRY_EXPORT_TYPES(データエクスポート用、apiのWorkers統合テスト併置)
+│   └── d1-inquiry-export.ts                            # D1InquiryExport(apiのWorkers統合テスト併置)
 ├── api/src/
 │   ├── domain/inquiry/                                 # 純粋な規則(Bunの単体テスト)
 │   │   ├── inquiry-status-rules.ts                     # 利用者の送信による戻し・管理操作の可否(退会済み・種別)
@@ -207,7 +210,7 @@ apps/
 │   │   └── attachment-selection.ts                     # 添付の件数・合計・保有者・用途・保存状態の判定
 │   ├── application/inquiry/                            # ポートとユースケース(Bunの単体テスト)
 │   │   ├── inquiry-types.ts                            # INQUIRY_TYPES
-│   │   ├── ports.ts                                    # 各ストア・照会・メール・設定値
+│   │   ├── ports.ts                                    # 各ストア・照会・メール・設定値・GuestInquiryRateLimit
 │   │   ├── inquiry-category-service.ts                 # 一覧・追加・名前の変更・削除と付け替え
 │   │   ├── guest-inquiry-submission.ts                 # 未ログイン(停止中を含む)の送信と回数制限
 │   │   ├── member-inquiry-submission.ts                # ログインの送信
@@ -222,6 +225,7 @@ apps/
 │   │   ├── d1-inquiry-status-store.ts                  # 2テーブルのステータスの照会と条件付きの変更
 │   │   ├── d1-inquiry-admin-reader.ts                  # 2テーブルの横断の一覧・詳細・未対応の件数
 │   │   ├── sentry-inquiry-incident-reporter.ts         # 通知メールの失敗・添付の解放の失敗の報告
+│   │   ├── counter-guest-inquiry-rate-limit.ts         # GuestInquiryRateLimitの実装(厳密カウンタによる送信元IPの回数制限、GUEST_INQUIRY_RATE_RULE)
 │   │   ├── d1-inquirer-profiles.ts                     # InquirerProfilesの既定の実装(画像はnull)
 │   │   ├── inquiry-attachment-read-policy.ts           # FileReadPolicy(本人・管理者)
 │   │   ├── member-inquiry-withdrawal-handler.ts        # 同期の波及処理(論理削除の文)
@@ -242,7 +246,7 @@ apps/
 │   ├── infrastructure/inquiry/d1-member-inquiry-purge-store.ts
 │   ├── infrastructure/email/templates/inquiry/
 │   │   ├── inquiry-reply-body.tsx · inquiry-reply-template.ts
-│   └── composition/inquiry-module.ts                   # 束縛(AppModule。InquiryExportを含む)
+│   └── composition/inquiry-module.ts                   # 束縛(AppModule。INQUIRY_EXPORT_TYPES.InquiryExport → D1InquiryExportを含む)
 ├── frontend-lib/
 │   ├── utilities/query/live-refresh.ts                 # LIVE_REFRESH_QUERY_OPTIONS(単体テスト併置)
 │   └── components/inquiry/                             # 両アプリの表示部品(*.browser.test.tsx・*.stories.tsxを併置)
@@ -288,7 +292,7 @@ docs/GUIDES/tech/
 └── frontend/010-live-refresh-queries.md
 ```
 
-テストファイルは同名の`*.unit.test.ts`(`domain`・`application`・`common-lib`・`db/schema`・`utilities`)、`*.worker.test.ts`(`infrastructure`・`presentation`・`composition`・`backend-lib/workers/inquiry`)、`*.browser.test.tsx`(画面部品)を対象ファイルの隣に置く。文書の番号は、roadmapの順でadmin-foundation・legal-pages(`db/005`)の後の空き番号(`security/008`・`frontend/010`)に固定する。
+テストファイルは同名の`*.unit.test.ts`(`domain`・`application`・`common-lib`・`db/schema`・`utilities`・`backend-lib/core/inquiry`)、`*.worker.test.ts`(`infrastructure`・`presentation`・`composition`・`backend-lib/workers/inquiry`)、`*.browser.test.tsx`(画面部品)を対象ファイルの隣に置く。文書の番号は、roadmapの順でadmin-foundation・legal-pages(`db/005`)の後の空き番号(`security/008`・`frontend/010`)に固定する。
 
 ### Modified Files
 
@@ -401,34 +405,35 @@ stateDiagram-v2
 
 ## Components and Interfaces
 
-| Component                                                                                                     | Domain/Layer        | Intent                           | Req Coverage                                   | Key Dependencies                                                      | Contracts |
-| ------------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------- | --------- |
-| InquirySchema                                                                                                 | db                  | 5テーブルと初期データ            | 1.1, 3.1, 5.1, 6.1, 12.1, 13.1                 | drizzle (P0)・`users` (P0)                                            | State     |
-| InquiryInputRules・InquiryAttachmentLimits・InquiryStatus・InquiryCategoryConstants                           | common-lib          | 共有の規則と定数                 | 1.2, 3.1, 5.1, 6.1, 8.1, 11.1, 12.1            | countGraphemes (P0)                                                   | State     |
-| InquiryAuditActions                                                                                           | common-lib          | 操作種別                         | 15.1〜15.4                                     | defineAuditAction (P0)                                                | State     |
-| InquiryStatusRules・InquiryCategoryRules・AttachmentSelection                                                 | api/domain          | 純粋な規則                       | 1.4, 1.7, 6.1, 6.3, 8.2, 10.7, 11.7, 12.3      | —                                                                     | State     |
-| InquiryPorts                                                                                                  | api/application     | ストア・照会・メール・設定       | 各ユースケース                                 | —                                                                     | Service   |
-| InquiryCategoryService                                                                                        | api/application     | カテゴリのマスタ                 | 1.2〜1.7, 15.1                                 | AuditLogRecorder (P0)                                                 | Service   |
-| GuestInquirySubmission・MemberInquirySubmission                                                               | api/application     | 送信                             | 3.1〜3.6, 4.1〜4.8, 5.1〜5.5                   | AccountGuard (P0)・RateLimitCounterClient (P0)                        | Service   |
-| InquiryAttachmentBinder                                                                                       | api/application     | 添付の検証と紐付け               | 6.1, 6.3                                       | MediaFiles (P0)                                                       | Service   |
-| InquiryChatService                                                                                            | api/application     | 本人の閲覧・追加メッセージ・一覧 | 7.1, 7.3, 7.8, 8.1〜8.5, 9.1, 13.3             | AccountGuard (P0)                                                     | Service   |
-| InquiryAdminService・InquiryReplyService・InquiryStatusService                                                | api/application     | 管理者の操作                     | 10.1〜10.7, 11.1〜11.8, 12.2〜12.4, 14.1, 14.2 | AuditLogRecorder (P0)・AdminDirectory (P0)・UserContactDirectory (P0) | Service   |
-| GuestInquiryRetentionJob                                                                                      | api/application     | 保持期間の削除                   | 13.4, 13.5                                     | CronRegistry (P0)                                                     | Batch     |
-| D1InquiryStores・D1InquiryAdminReader・D1InquirerProfiles・InquiryCursor・SentryInquiryIncidentReporter       | api/infrastructure  | D1の実装・報告                   | 各ユースケース, 11.4                           | Database (P0)・buildAuditLogStatements (P0)                           | Service   |
-| InquiryAttachmentReadPolicy                                                                                   | api/infrastructure  | 添付の閲覧の判定                 | 6.6, 6.7                                       | FileReadPolicy (P0)                                                   | Service   |
-| MemberInquiryWithdrawalHandler                                                                                | api/infrastructure  | 退会の同期の波及処理             | 13.1                                           | UserLifecycleSyncHandler (P0)                                         | Event     |
-| EmailInquiryMailer・InquiryReplyTemplate                                                                      | api・event          | 返信の通知メール                 | 11.2, 11.3                                     | EmailSender (P0)                                                      | Event     |
-| InquirySchemaModule                                                                                           | api/presentation    | GraphQLの型・リゾルバ            | 2.1, 3〜15の各操作                             | api-gateway (P0)・requireAdmin (P0)                                   | API       |
-| ApiInquiryComposition                                                                                         | api/composition     | 束縛・登録                       | 6.4, 13.1, 13.4                                | 上流の登録箇所 (P0)                                                   | State     |
-| MemberInquiryPurgeHandler                                                                                     | event               | 退会者の物理削除                 | 13.2, 13.6                                     | UserLifecycleAsyncHandler (P0)                                        | Event     |
-| InquiryExport                                                                                                 | backend-lib/workers | データエクスポート用の照会       | 13.7                                           | AdminDirectory (P0)・MediaFiles (P0)                                  | Service   |
-| LiveRefresh・InquiryDisplayParts                                                                              | frontend-lib        | 定期再取得の値・表示部品         | 6.5, 7.4〜7.7, 10.6                            | TanStack Query (P0)・media-pipeline部品 (P0)                          | State     |
-| ContactPage・GuestInquiryForm・MemberInquiryForm・GuestInquiryComplete・SuspendedContactNotice・MyInquiryList | client              | `/contact`                       | 2.1〜2.6, 3.2, 5.2, 6.2, 9.1〜9.4              | useTurnstileToken (P0)・AttachmentUploadField (P0)                    | State     |
-| InquiryChatView・InquiryMessageComposer・SuspendedChatNotice                                                  | client              | `/inquiries/{id}`                | 7.1〜7.8, 8.1, 8.3, 8.6                        | LiveRefresh (P0)                                                      | State     |
-| AdminInquiryPages・InquiryReplyForm・InquiryStatusControl・UnhandledInquiriesCard                             | admin               | 問い合わせの画面とカード         | 10.1〜10.7, 11.4, 12.5, 14.1, 14.3, 14.4       | AdminCommonParts (P0)                                                 | State     |
-| InquiryDetailActionsRegistry・InquiryDetailActionsView                                                        | admin               | 詳細のページの操作の差し込み口   | 10.4, 10.5                                     | AdminInquiryPages (P0)                                                | State     |
-| CategorySectionsRegistry・CategorySectionsView・InquiryCategorySection                                        | admin               | カテゴリのページ                 | 1.6, 1.8                                       | CategoryMasterEditor (P0)                                             | State     |
-| InquiryE2E・InquiryDocs                                                                                       | e2e・docs           | E2Eと文書                        | 16.1〜16.6                                     | Playwright・Mailpit (P0)                                              | —         |
+| Component                                                                                                     | Domain/Layer                                              | Intent                           | Req Coverage                                   | Key Dependencies                                                      | Contracts |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------- | --------- |
+| InquirySchema                                                                                                 | db                                                        | 5テーブルと初期データ            | 1.1, 3.1, 5.1, 6.1, 12.1, 13.1                 | drizzle (P0)・`users` (P0)                                            | State     |
+| InquiryInputRules・InquiryAttachmentLimits・InquiryStatus・InquiryCategoryConstants                           | common-lib                                                | 共有の規則と定数                 | 1.2, 3.1, 5.1, 6.1, 8.1, 11.1, 12.1            | countGraphemes (P0)                                                   | State     |
+| InquiryAuditActions                                                                                           | common-lib                                                | 操作種別                         | 15.1〜15.4                                     | defineAuditAction (P0)                                                | State     |
+| InquiryStatusRules・InquiryCategoryRules・AttachmentSelection                                                 | api/domain                                                | 純粋な規則                       | 1.4, 1.7, 6.1, 6.3, 8.2, 10.7, 11.7, 12.3      | —                                                                     | State     |
+| InquiryPorts                                                                                                  | api/application                                           | ストア・照会・メール・設定       | 各ユースケース                                 | —                                                                     | Service   |
+| InquiryCategoryService                                                                                        | api/application                                           | カテゴリのマスタ                 | 1.2〜1.7, 15.1                                 | AuditLogRecorder (P0)                                                 | Service   |
+| GuestInquirySubmission・MemberInquirySubmission                                                               | api/application                                           | 送信                             | 3.1〜3.6, 4.1〜4.8, 5.1〜5.5                   | AccountGuard (P0)・GuestInquiryRateLimit (P0)                         | Service   |
+| CounterGuestInquiryRateLimit                                                                                  | api/infrastructure                                        | 未ログインの送信の回数制限の実装 | 4.4〜4.7                                       | RateLimitCounterClient (P0)・KeyedHasher (P0)                         | Service   |
+| InquiryAttachmentBinder                                                                                       | api/application                                           | 添付の検証と紐付け               | 6.1, 6.3                                       | MediaFiles (P0)                                                       | Service   |
+| InquiryChatService                                                                                            | api/application                                           | 本人の閲覧・追加メッセージ・一覧 | 7.1, 7.3, 7.8, 8.1〜8.5, 9.1, 13.3             | AccountGuard (P0)                                                     | Service   |
+| InquiryAdminService・InquiryReplyService・InquiryStatusService                                                | api/application                                           | 管理者の操作                     | 10.1〜10.7, 11.1〜11.8, 12.2〜12.4, 14.1, 14.2 | AuditLogRecorder (P0)・AdminDirectory (P0)・UserContactDirectory (P0) | Service   |
+| GuestInquiryRetentionJob                                                                                      | api/application                                           | 保持期間の削除                   | 13.4, 13.5                                     | CronRegistry (P0)                                                     | Batch     |
+| D1InquiryStores・D1InquiryAdminReader・D1InquirerProfiles・InquiryCursor・SentryInquiryIncidentReporter       | api/infrastructure                                        | D1の実装・報告                   | 各ユースケース, 11.4                           | Database (P0)・buildAuditLogStatements (P0)                           | Service   |
+| InquiryAttachmentReadPolicy                                                                                   | api/infrastructure                                        | 添付の閲覧の判定                 | 6.6, 6.7                                       | FileReadPolicy (P0)                                                   | Service   |
+| MemberInquiryWithdrawalHandler                                                                                | api/infrastructure                                        | 退会の同期の波及処理             | 13.1                                           | UserLifecycleSyncHandler (P0)                                         | Event     |
+| EmailInquiryMailer・InquiryReplyTemplate                                                                      | api・event                                                | 返信の通知メール                 | 11.2, 11.3                                     | EmailSender (P0)                                                      | Event     |
+| InquirySchemaModule                                                                                           | api/presentation                                          | GraphQLの型・リゾルバ            | 2.1, 3〜15の各操作                             | api-gateway (P0)・requireAdmin (P0)                                   | API       |
+| ApiInquiryComposition                                                                                         | api/composition                                           | 束縛・登録                       | 6.4, 13.1, 13.4                                | 上流の登録箇所 (P0)                                                   | State     |
+| MemberInquiryPurgeHandler                                                                                     | event                                                     | 退会者の物理削除                 | 13.2, 13.6                                     | UserLifecycleAsyncHandler (P0)                                        | Event     |
+| InquiryExport・D1InquiryExport                                                                                | backend-lib/core(契約と識別子)・backend-lib/workers(実装) | データエクスポート用の照会       | 13.7                                           | AdminDirectory (P0)・MediaFiles (P0)(実装だけが使う)                  | Service   |
+| LiveRefresh・InquiryDisplayParts                                                                              | frontend-lib                                              | 定期再取得の値・表示部品         | 6.5, 7.4〜7.7, 10.6                            | TanStack Query (P0)・media-pipeline部品 (P0)                          | State     |
+| ContactPage・GuestInquiryForm・MemberInquiryForm・GuestInquiryComplete・SuspendedContactNotice・MyInquiryList | client                                                    | `/contact`                       | 2.1〜2.6, 3.2, 5.2, 6.2, 9.1〜9.4              | useTurnstileToken (P0)・AttachmentUploadField (P0)                    | State     |
+| InquiryChatView・InquiryMessageComposer・SuspendedChatNotice                                                  | client                                                    | `/inquiries/{id}`                | 7.1〜7.8, 8.1, 8.3, 8.6                        | LiveRefresh (P0)                                                      | State     |
+| AdminInquiryPages・InquiryReplyForm・InquiryStatusControl・UnhandledInquiriesCard                             | admin                                                     | 問い合わせの画面とカード         | 10.1〜10.7, 11.4, 12.5, 14.1, 14.3, 14.4       | AdminCommonParts (P0)                                                 | State     |
+| InquiryDetailActionsRegistry・InquiryDetailActionsView                                                        | admin                                                     | 詳細のページの操作の差し込み口   | 10.4, 10.5                                     | AdminInquiryPages (P0)                                                | State     |
+| CategorySectionsRegistry・CategorySectionsView・InquiryCategorySection                                        | admin                                                     | カテゴリのページ                 | 1.6, 1.8                                       | CategoryMasterEditor (P0)                                             | State     |
+| InquiryE2E・InquiryDocs                                                                                       | e2e・docs                                                 | E2Eと文書                        | 16.1〜16.6                                     | Playwright・Mailpit (P0)                                              | —         |
 
 ### common-lib
 
@@ -772,15 +777,28 @@ export interface MemberInquirySubmission {
     meta: InquiryRequestMeta,
   ): Promise<{ readonly inquiryId: string }>;
 }
+// application/inquiry/ports.ts
+export interface GuestInquiryRateLimit {
+  consume(clientIp: string | undefined): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded)とRetry-After。IPが不明なら数えずに警告だけを残す
+}
+// infrastructure/inquiry/counter-guest-inquiry-rate-limit.ts(@injectable())
 export declare const GUEST_INQUIRY_RATE_RULE: {
   readonly name: 'inquiry-guest:ip';
   readonly limit: 5;
   readonly windowSeconds: 3600;
 };
+export declare class CounterGuestInquiryRateLimit implements GuestInquiryRateLimit {
+  constructor(
+    counters: RateLimitCounterClient, // @inject(PLATFORM_TYPES.RateLimitCounterClient)
+    hasher: KeyedHasher, // @inject(PLATFORM_TYPES.KeyedHasher)
+  );
+}
 ```
 
-- 前提: リゾルバが`context.assertHuman('inquiry_guest' | 'inquiry_member')`を先に呼ぶ(要件4.1・4.2)。チャットと返信のリゾルバは呼ばない(要件4.3)。
-- `GuestInquirySubmission.submit`: `AccountGuard.currentUser(session)`が停止していない利用者なら`member_inquiry_required`(要件3.4)→カテゴリの存在(要件3.3)→`hashRateLimitKey(hasher, 'inquiry-guest', clientIp)`で`RateLimitCounterClient.hit(GUEST_INQUIRY_RATE_RULE, key)`と`assertWithinLimit`(要件4.4〜4.7)→`insert`(利用者のIDを持たない、要件3.1・3.6)。ログイン中の利用者のユーザー単位の回数制限は設けない(要件4.8)。
+- 前提: リゾルバが`context.assertHuman('inquiry_guest' | 'inquiry_member')`を先に呼ぶ(要件4.1・4.2)。チャットと返信のリゾルバは呼ばない(要件4.3)。application層は`BotVerifier`を受け取らない。
+- `GuestInquirySubmission.submit`: `AccountGuard.currentUser(session)`が停止していない利用者なら`member_inquiry_required`(要件3.4)→カテゴリの存在(要件3.3)→`GuestInquiryRateLimit.consume(clientIp)`(要件4.4〜4.7)→`insert`(利用者のIDを持たない、要件3.1・3.6)。ログイン中の利用者のユーザー単位の回数制限は設けない(要件4.8)。
+- `CounterGuestInquiryRateLimit.consume`: `hashRateLimitKey(hasher, 'inquiry-guest', clientIp)`で`RateLimitCounterClient.hit(GUEST_INQUIRY_RATE_RULE, key)`と`assertWithinLimit`(要件4.4〜4.7)。送信元IPアドレスが不明なら数えずに警告`guest-inquiry-ip-missing`をログに残す。
+- 置き場所: ポート`GuestInquiryRateLimit`はapplication層、実装`CounterGuestInquiryRateLimit`と規則`GUEST_INQUIRY_RATE_RULE`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`と`assertWithinLimit`が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」、identity-authの`CounterMailSendLimits`と同じ形)。`INQUIRY_TYPES.GuestInquiryRateLimit`を`CounterGuestInquiryRateLimit`へ束縛し、ユースケースはポートだけを受け取る。実装の振る舞いはWorkers統合テスト(偽の厳密カウンタ)、ユースケースの呼び出しの順は偽のポートによる単体テストで確かめる。
 - `MemberInquirySubmission.submit`: `requireWritableUser`(停止中は`account_unavailable`、要件5.4。メールアドレスの未確認は拒否しない、要件5.5)→カテゴリの存在→`InquiryAttachmentBinder.bind`→`insert`(問い合わせ・最初のメッセージ・添付の紐付けを1つの一括の書き込み、失敗時は`release`、要件5.1)。
 
 #### InquiryAttachmentBinder
@@ -1057,9 +1075,9 @@ type Mutation {
 
 - `templates/inquiry/`の本文(宛名はニックネーム、返信の日時は`formatUtcDateTime`、行動ボタン「問い合わせを確認する」とリンク、返信の本文は載せない)と定義。件名は「お問い合わせに返信がありました」。
 
-### backend-lib/workers
+### backend-lib/core・backend-lib/workers
 
-#### InquiryExport
+#### InquiryExport・D1InquiryExport
 
 | Field        | Detail                                                                               |
 | ------------ | ------------------------------------------------------------------------------------ |
@@ -1071,6 +1089,7 @@ type Mutation {
 - 本specのテーブル(`member_inquiries`・`inquiry_categories`・`inquiry_messages`・`inquiry_message_attachments`)を読む唯一のエクスポートの口である。data-exportは本specのテーブルを直接読まず、これを呼ぶ(各ドメインがエクスポート部品を所有する方針、2026-10-23)。
 - 管理者のニックネームはadmin-foundationの`AdminDirectory`、添付のメタデータはmedia-pipelineの`MediaFiles.findMany`で引く。ZIP内の`path`の組み立て(ファイル名の変換と衝突の連番)と実体の同梱はdata-exportが行う。
 - data-exportはeventのQueueの処理で動くため、eventの`composition/inquiry-module.ts`で束縛する(apiでは使わない)。メモリとCPU時間に収めるため、1回の呼び出しで20件までの問い合わせを返す。
+- 置き場所: data-exportのeventのapplication層が読み込めるよう、契約(`InquiryExportAttachment`・`InquiryExportMessage`・`InquiryExportItem`・`InquiryExportPage`・`InquiryExport`・`INQUIRY_EXPORT_PAGE_SIZE`)は`apps/backend-lib/core/inquiry/ports.ts`、識別子は`core/inquiry/identifiers.ts`に置き、D1の実装`D1InquiryExport`だけを`apps/backend-lib/workers/inquiry/d1-inquiry-export.ts`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。識別子は`Symbol.for('inquiry.<名前>')`の凍結したオブジェクトで、`core/inquiry/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。apiの`INQUIRY_TYPES`・eventの`EVENT_INQUIRY_TYPES`とメンバーの名前を重ねない。実装は`core/admin`の`AdminDirectory`と`core/media`の`MediaFiles`を受け取る。
 
 **Dependencies**
 
@@ -1080,7 +1099,7 @@ type Mutation {
 **Contracts**: Service [x]
 
 ```typescript
-// apps/backend-lib/workers/inquiry/inquiry-export.ts
+// apps/backend-lib/core/inquiry/ports.ts
 export interface InquiryExportAttachment {
   readonly fileId: string; // data-exportが実体の読み出しとZIP内のpathの組み立てに使い、JSONには書かない
   readonly originalFileName: string; // data-exportがZIP内のファイル名の変換に使い、JSONには書かない
@@ -1113,7 +1132,16 @@ export interface InquiryExport {
   ): Promise<InquiryExportPage>; // 論理削除されていない本人のログインの問い合わせを、IDの昇順(ULIDのため作成の順)に20件ずつ
 }
 export declare const INQUIRY_EXPORT_PAGE_SIZE: 20;
-export declare const INQUIRY_EXPORT_TYPES: { readonly InquiryExport: symbol }; // Symbol.for('inquiry.InquiryExport')
+// apps/backend-lib/core/inquiry/identifiers.ts
+export declare const INQUIRY_EXPORT_TYPES: { readonly InquiryExport: symbol }; // Symbol.for('inquiry.InquiryExport')の凍結したオブジェクト
+// apps/backend-lib/workers/inquiry/d1-inquiry-export.ts
+export declare class D1InquiryExport implements InquiryExport {
+  constructor(
+    db: Database, // @inject(PLATFORM_TYPES.Database)
+    admins: AdminDirectory, // @inject(ADMIN_PLATFORM_TYPES.AdminDirectory)
+    files: MediaFiles, // @inject(MEDIA_TYPES.MediaFiles)
+  );
+}
 ```
 
 - 事前条件: `userId`は利用者のID。`after`は前のページの`nextCursor`(最後に返した問い合わせのID)で、ULIDの形式でなければ`AppError(bad_request, validation_error)`。
@@ -1327,11 +1355,13 @@ erDiagram
   - `inquiry-category-rules`・`attachment-selection`: 標準の保護、並びの末尾、他人・用途違い・未保存・削除済み・重複のIDの扱い(1.4・1.7・6.3)。
   - ユースケース(ポートを偽物にする): 停止していない利用者の未ログインの送信の拒否と停止中の受け付け(3.4・Q1)、回数制限の超過で保存しないこと(4.5)、ログインの送信で添付の書き込みの失敗時に`release`(6.3)、停止中の追加メッセージの拒否と閲覧の許可(7.8・8.4)、返信の通知メールの失敗で`notificationQueued: false`(11.4)、`UserContactDirectory.findContact`がメールアドレス未確認(`emailVerified: false`)の利用者を返しても通知を送ること・`undefined`なら送らずに`notificationQueued: false`になること(11.2)、カテゴリの削除の付け替えの件数(1.5)。
   - `live-refresh`: 値が30秒・背景で止める・復帰時に取得であること(7.7)。
+  - `core/inquiry/identifiers`: `INQUIRY_EXPORT_TYPES`が`Symbol.for('inquiry.<名前>')`の値を持ち、凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形、13.7)。
 - **Integration Tests**(Workers統合テスト):
   - D1のストア: カテゴリ名の大文字小文字を区別しない重複(1.3)、削除で両テーブルが「その他」へ付け替わり監査ログが同じ一括の書き込みに入ること(1.5・15.1)、追加メッセージで対応済が未対応へ戻り`status_changed_at`が更新されること(8.2・12.4)、退会済みへの返信が監査ログごと取り消されること(11.7)、ステータスの同時の変更の`conflict`(12.2)、横断の一覧の並びとカーソルと各条件(10.1〜10.3)、未対応の件数が退会済みを除くこと(14.2)、保持期間の削除の14日の境界と「対応中」への戻しで対象外になること(13.4・13.5)。
   - 波及処理: 同期の文が退会の一括の書き込みで論理削除し、利用者側の一覧と閲覧から消えること(13.1・13.3)。非同期の処理が101件で`continue`、2回目で`done`、再実行で結果が変わらないこと(13.2・13.6)。
+  - `CounterGuestInquiryRateLimit`: 偽の厳密カウンタに`inquiry-guest:ip`の規則で数え、6回目で`rate_limit_exceeded`と待ち時間になり、IPが不明なら数えずに警告を残し、キーをハッシュ化すること(4.4〜4.7)。
   - 閲覧の方針: 本人・他人・管理者・紐付けの無い管理者の要求で`/internal/media/files/:fileId`が200・404になること(6.6・6.7)。
-  - `InquiryExport`: 本人の問い合わせだけを返し他人・論理削除済みを含めないこと、21件で`nextCursor`があり2回目で残りが返ること、メッセージが送信日時の古い順で添付が位置の順に並ぶこと、カテゴリの削除後に「その他」が返ること、削除済みの管理者の返信の`adminNickname`が`null`で管理者の返信の添付が空であること、物理削除済みのファイルの添付を除くこと、不正な`after`の`validation_error`、eventのコンテナから`INQUIRY_EXPORT_TYPES.InquiryExport`を解決できること(13.7)。
+  - `D1InquiryExport`: 本人の問い合わせだけを返し他人・論理削除済みを含めないこと、21件で`nextCursor`があり2回目で残りが返ること、メッセージが送信日時の古い順で添付が位置の順に並ぶこと、カテゴリの削除後に「その他」が返ること、削除済みの管理者の返信の`adminNickname`が`null`で管理者の返信の添付が空であること、物理削除済みのファイルの添付を除くこと、不正な`after`の`validation_error`、eventのコンテナから`INQUIRY_EXPORT_TYPES.InquiryExport`を解決できること(13.7)。
   - GraphQLの`inquiry`モジュール: bot判定の失敗の403(4.2)、6回目の未ログインの送信の429と`Retry-After`(4.4・4.5)、チャットの送信でbot判定を求めないこと(4.3)、管理者側の呼び出し元からの`submitGuestInquiry`の拒否、閲覧のみの`replyToInquiry`の403(11.7)、削除済みの管理者の返信の`deleted: true`(7.5)。
   - 結合: テンプレートが`createEmailTemplateRegistry`に通り、本文にリンクがあり返信の本文が無いこと(11.2・11.3)。`inquiry-attachment`の用途で20,971,521バイトが413になり20,971,520バイトが受け付けられること(6.1)。
 - **E2E/UI Tests**(Playwright、ローカルで起動したapi・event・client・adminとMailpit):
