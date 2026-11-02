@@ -314,3 +314,13 @@
 
 - **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
 - 要件と受け入れ基準は変えていない。
+
+## 層の規則に合わせた契約の置き場所の改訂(2026-11-02、開発者の指示)
+
+- **規則**: [層構成の依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析)により、api・eventの`src/application/**`・`src/domain/**`は`**/lib/workers/**`を型も含めて読み込めない。application層が受け取る契約と識別子は`apps/backend-lib/core/<ドメイン>`に置き、`workers`には実装と束縛だけを置く。`core`はDBディレクトリを読み込まず、D1の文(`BatchItem<'sqlite'>`)を返す契約は`workers`に置き、`workers`と`infrastructure`だけが使う。application層はDBの一括の書き込みを扱わず、書き込みの単位をポートにしてinfrastructure層で実装する。厳密カウンタを使うクラスはinfrastructure層に置く。
+- **coreへ移した・加えた契約**: `workers`の節にあった`ActivationDispatcher`・`UltrasNotifier`の契約を定め、`core/ultras/ports.ts`に置いた(apiの`PendingDispatchSweepJob`が受け取る)。`ULTRAS_TYPES`は`identifiers.unit.test.ts`で値と凍結を確かめる。
+- **ストアの分割**: `core/ultras/ports.ts`の`SubscriptionStore`・`ActivationStore`・`NoticeStore`が文を返す操作を含んでいたため、文を返す操作(`upsertStripeState`・`activate`・`insertIfAbsent`・`deleteByUser`)を`workers/ultras/statement-contracts.ts`の`SubscriptionStatements`・`ActivationStatements`・`NoticeStatements`へ移した。D1の実装は1つのクラスで両方を実装する。
+- **新しいポートとinfrastructure層の実装**: apiのapplication層に`PortalSessionLimits`(実装`CounterPortalSessionLimits`)、eventのapplication層に`UltrasAccountDataEraser`(実装`D1UltrasAccountDataEraser`。3テーブルの利用者の行の削除を1回の一括の書き込みで確定)を置いた。`MessagePublisher`は`workers/ultras`の`ActivationDispatcher`の実装だけが使う。
+- **paymentsの分割に合わせた参照**: paymentsの同日の改訂で、`PurchaseFulfillment`・`FulfillmentPlan`・`PurchaseKindRegistration`・`SubscriptionEventSink`・`SubscriptionEventSinkRegistration`が`workers/payments/fulfillment-contract.ts`(`Database`・`BatchItem`を読み込む)へ移り、`PurchaseOfferPolicy`・`SubscriptionChange`・`StripeGateway`・`CustomerDirectory`・`PriceCatalog`・`StripeUnavailableError`は`core/payments`に置かれた。本specの`UltrasFulfillment`・`PlanStateSink`(`workers/ultras`)は前者を、application層は後者だけを読み込む。
+- **変えた箇所**: design.mdのOverviewのImpact、This Spec Owns、Allowed Dependencies(backend-platform・payments・後続spec)、Revalidation Triggers、Existing Architecture Analysis、Existing patterns preserved、Dependency direction、File Structure Planの木、Requirements Traceability(6.\*・11.1)、Componentsの表、`backend-lib/core・workers`の節(置き場所・ストアと文の契約・`UltrasEntitlements`・`UltrasFulfillment`・`PlanStateSink`・`ActivationDispatcher`・`UltrasNotifier`・paymentsへの追加の前提)、apiの`PortalSessionStarter`とジョブの依存、eventの波及処理、Testing Strategy。tasks.mdの2.1・3.1・4.1・4.3・4.4・5.2・5.4・6.2。
+- 要件と受け入れ基準は変えていない。タスクの番号は変えていない。

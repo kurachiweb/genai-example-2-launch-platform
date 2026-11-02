@@ -32,8 +32,10 @@
 - [ ] 2. 純粋な規則と契約
 - [ ] 2.1 特典の継続期間と加入状態の導出の規則、ポートの型を作る
   - 先に、業務日付の日の終わり(0:00ちょうど・0:00の1ミリ秒後・23:59:59.999の境界)、課金期間の終了時刻から特典の終了時刻を求める規則(終了が業務日付の0:00ちょうどなら前日の終わり)、加入状態の4状態と未有効の導出、時点の判定が左端を含み右端を含まないこと、期間の重なりの両端を、設計の境界の例でテストする
-  - 規則を純粋な関数として作り、DIの識別子と、メールの依頼の種類(支払いの失敗・解約の受付)の型、特典の判定・各ストア・機能フラグの照会・エクスポートの照会のポートの型を作る(メールの宛先と宛名はidentity-authの`UserContactDirectory`を使い、本specはポートを持たない)
-  - 完了状態: 単体テストが成功し、判定がデータベースや時計に依存しない
+  - 先に、`core/ultras/identifiers.unit.test.ts`で、`ULTRAS_TYPES`の各値が`Symbol.for('ultras.<名前>')`であり、オブジェクトが凍結されていることを確かめる
+  - 規則を純粋な関数として作り、`core/ultras`(application層と後続specが読み込む。`Database`・`BatchItem`・`workers`・`apps/db`を読み込まない)にDIの識別子と、メールの依頼の種類(支払いの失敗・解約の受付)の型、特典の判定・各ストアの文を返さない操作・機能フラグの照会・エクスポートの照会・知らせの送り出し(`ActivationDispatcher`)・メールの依頼(`UltrasNotifier`)のポートの型を作る(メールの宛先と宛名はidentity-authの`UserContactDirectory`を使い、本specはポートを持たない)
+  - 各ストアの文を返す操作(加入の更新と有効化・知らせとメールの依頼の行の挿入・利用者の行の削除)の型は`workers/ultras/statement-contracts.ts`に作る
+  - 完了状態: 単体テストが成功し、判定がデータベースや時計に依存せず、`core/ultras`が`Database`・`BatchItem`・`workers`・`apps/db`を読み込まない
   - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.1, 3.2, 3.4_
 
 - [ ] 2.2 定期課金の状態の変化から加入の更新とメールの依頼を決める規則を作る
@@ -60,6 +62,7 @@
 - [ ] 3. D1の実装と特典の判定
 - [ ] 3.1 加入のストアを作る
   - 先に、ローカルD1を使うWorkers統合テストで、Stripe側の値の更新が有効化の列を上書きしないこと、有効化が既存の行のStripe側の値を保ったまま開始時刻・利用者・購入IDだけを書くこと(行が無ければ有効の状態で挿入)、別の加入を除いた時点の重なりの検索、90件を超える利用者の期間の重なりの一括の検索、最新の有効化された加入、終了していない加入の一覧、解約の出どころの記録、物理削除の文を確かめる
+  - D1の実装は1つのクラスで`core/ultras`のストアの契約(文を返さない操作)と`workers/ultras/statement-contracts.ts`の文の契約の両方を実装する
   - 完了状態: Workers統合テストが成功し、部分一意索引の違反が一括の書き込みの失敗として返る
   - _Requirements: 1.7, 1.9, 2.1, 2.10, 3.3, 11.1_
 
@@ -79,6 +82,7 @@
 - [ ] 4.1 知らせの送り出しとメールの依頼を作る
   - 先に、模擬のポートの単体テストで、知らせの送り出しの成功で送り出しの記録が残り失敗は`warn`のログだけになること、identity-authの`UserContactDirectory`の模擬で`findContact`が`undefined`を返す利用者(退会済み・物理削除済み)のメールの依頼が対象外になり、停止中の利用者には依頼されること、宛名に`findContact`の`nickname`が使われること、依頼の成功の後にだけ依頼済みになること、既に依頼済みの依頼を再び送らないこと、メールの入力のプラン管理画面のURLが既存の`CLIENT_SITE_ORIGIN`から作られることを確かめる
   - ログに利用者のメールアドレスとニックネームを含めない
+  - 実装は`workers/ultras`に置き、2.1で`core/ultras/ports.ts`に定めた`ActivationDispatcher`・`UltrasNotifier`の契約を実装する(`MessagePublisher`を使うのは知らせの送り出しの実装だけ)
   - 宛先と宛名は、identity-authがapi・eventの両方に束縛する`IDENTITY_PLATFORM_TYPES.UserContactDirectory`を注入し、`findContact`の`email`・`nickname`で引く。本specは`users`の列を直接読まない
   - 完了状態: 単体テストが成功し、2.3のメッセージと2.4の種別で送る
   - _Depends: 2.3, 2.4, 3.2_
@@ -92,12 +96,14 @@
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6, 10.6_
 
 - [ ] 4.3 Ultrasの加入の有効化を作る
+  - paymentsの`workers/payments/fulfillment-contract.ts`の`PurchaseFulfillment`を実装し、有効化と知らせの行の文は`workers/ultras/statement-contracts.ts`の文の契約から作る
   - 先に、模擬のストアの単体テストで、定期課金のIDが無い購入の拒否、支払いの確定の時刻に別の加入の継続期間が重なる場合の拒否、それ以外で有効化と知らせの行の文を返すこと、確定後の呼び出しで知らせを送り出すことを確かめる
   - 完了状態: 単体テストが成功し、`prepare`が副作用を持たない(ストアの書き込みを呼ばない)
   - _Depends: 4.1_
   - _Requirements: 1.7, 1.8, 4.1, 4.2_
 
 - [ ] 4.4 (P) 定期課金の状態の受け取り口を作る
+  - paymentsの`workers/payments/fulfillment-contract.ts`の`SubscriptionEventSink`を実装する
   - 先に、模擬のストアの単体テストで、利用者に結び付かない変化で文を返さないこと、既存の行と無い行の両方で2.2の規則の結果を更新の文にすること、依頼ごとにメールの依頼の行の文を返すこと、確定後の呼び出しでその定期課金の依頼待ちのメールを送ることを確かめる
   - 完了状態: 単体テストが成功し、受け取り口が古い通知の判定を持たない(paymentsに委ねる)
   - _Boundary: PlanStateSink_
@@ -121,9 +127,10 @@
   - _Requirements: 1.1, 1.2, 1.4, 1.5, 1.6, 3.6, 5.1, 5.2, 5.3, 5.4, 5.5, 9.2, 9.3, 9.7, 10.7, 10.8_
 
 - [ ] 5.2 Customer Portalのセッションの作成と回数制限を作る
-  - 先に、模擬のポートの単体テストで、停止中の拒否、加入したことが無い・Customerが無い場合の`ultras_portal_unavailable`、戻り先が`/settings/plan?portal=returned`であること、Stripeの一時的な障害の`payments_unavailable`を確かめる。Workers統合テストで21回目の`rate_limit_exceeded`と`Retry-After`を確かめる
+  - 回数制限はapplication層のポート`PortalSessionLimits`にし、厳密カウンタを使う実装`CounterPortalSessionLimits`をAPIサーバーのinfrastructure層に置く(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。ユースケースは`core/ultras`・`core/payments`の型と識別子とこのポートだけを受け取る
+  - 先に、模擬のポートの単体テストで、停止中の拒否、加入したことが無い・Customerが無い場合の`ultras_portal_unavailable`、戻り先が`/settings/plan?portal=returned`であること、Stripeの一時的な障害の`payments_unavailable`を確かめる。Workers統合テストで、`CounterPortalSessionLimits`と、スキーマモジュールを通した21回目の`rate_limit_exceeded`と`Retry-After`を確かめる
   - `createUltrasPortalSession`をスキーマモジュールへ加える
-  - 完了状態: 単体テストとWorkers統合テストが成功し、セッションが本人のCustomerにだけ作られる
+  - 完了状態: 単体テストとWorkers統合テストが成功し、セッションが本人のCustomerにだけ作られ、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Requirements: 6.1, 6.2, 6.5, 6.6, 6.7_
 
 - [ ] 5.3 機能フラグの照会と変更を、監査ログとともに作る
@@ -135,6 +142,7 @@
 - [ ] 5.4 4:21の送り出し直しと後始末のジョブを作り、定期実行に登録する
   - 先に、模擬のポートの単体テストで、未送り出しの知らせの送り出し、依頼待ちのメールの依頼、30日以上の行の削除の3つの処理と、各処理の失敗が他の処理を止めないことを確かめる
   - ジョブ`ultras-subscription.pending-dispatch-sweep`(業務時刻4:21、`order` 500)をapiの束縛とジョブの一覧へ同時に加える
+  - ジョブは知らせの送り出し・メールの依頼・各ストアを`core/ultras`の型と識別子で受け取り、`**/lib/workers/**`を読み込まない
   - 完了状態: 単体テストとcron式の一致の検査が成功し、ローカルで4:21のcron式を手動で起動するとジョブが動く
   - _Requirements: 4.5, 8.9, 11.3_
 
@@ -147,9 +155,10 @@
   - _Requirements: 4.1, 4.4_
 
 - [ ] 6.2 退会・停止の解約と物理削除の波及処理を作る
-  - 先に、模擬のポートの単体テストで、退会で終了していない加入ごとに出どころ(退会)を記録してから即時に解約すること、停止で予約の無い加入だけ出どころ(停止)を記録して期間末に解約すること、予約済みの停止で何もしないこと、停止中の退会で即時に解約すること、Stripe上で解約済みを成功として扱うこと、Stripeの一時的な障害で例外を返すことを確かめる。ローカルD1のWorkers統合テストで、物理削除の時期に3テーブルの利用者の行が消えることを確かめる
+  - 先に、模擬のポートの単体テストで、退会で終了していない加入ごとに出どころ(退会)を記録してから即時に解約すること、停止で予約の無い加入だけ出どころ(停止)を記録して期間末に解約すること、予約済みの停止で何もしないこと、停止中の退会で即時に解約すること、Stripe上で解約済みを成功として扱うこと、Stripeの一時的な障害で例外を返すこと、物理削除の時期に削除の書き込みの単位のポートを呼ぶことを確かめる。ローカルD1のWorkers統合テストで、`D1UltrasAccountDataEraser`が物理削除の時期に3テーブルの利用者の行を1回の一括の書き込みで消すことを確かめる
+  - 物理削除の書き込みの単位はイベントサーバーのapplication層のポート`UltrasAccountDataEraser`にし、D1の文を組み立てて一括の書き込みを実行する実装`D1UltrasAccountDataEraser`をinfrastructure層に置く。2つの波及処理は`core/ultras`・`core/payments`の型と識別子とこのポートだけを受け取る
   - `ultras-subscription.subscription-cancellation`(退会・停止、`order` 500)と`ultras-subscription.subscription-erasure`(物理削除、`order` 500、どちらも本specの500番台でpaymentsの400番台の後に動く)をeventの束縛と非同期の波及処理の一覧へ同時に加える。停止の解除には登録しない
-  - 完了状態: 単体テスト・Workers統合テスト・3経路のDIの解決の検査が成功し、波及処理の登録の検証(同じ種類での`order`の重複)が成功する
+  - 完了状態: 単体テスト・Workers統合テスト・3経路のDIの解決の検査が成功し、波及処理の登録の検証(同じ種類での`order`の重複)が成功し、静的解析でイベントサーバーのapplication層に`**/lib/workers/**`の読み込みが無い
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 11.1, 12.3_
 
 - [ ] 7. 利用者側の画面

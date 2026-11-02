@@ -6,7 +6,7 @@
 
 **Users**: 投稿者は料金ページ(`/pricing`)で価格と特典を確かめて加入し、プラン管理画面(`/settings/plan`)で状態を確認し、Customer Portalで支払い方法の更新・解約・解約の取り消しを行う。最上位管理者は管理画面の設定ページ(`/settings`)で有料プランへの導線の機能フラグを切り替える。後続spec(user-profile-social・product-launch・tournament-week・tournament-year)の開発者は特典の判定と加入が有効になった知らせのハンドラを使い、sponsorship・tournament-year・notificationsは料金ページと管理画面の設定ページに区画を登録する。
 
-**Impact**: `apps/backend-lib`にUltrasの共有部品(`core/ultras`・`workers/ultras`)を新設し、apiとeventの両方に同じ束縛(`ULTRAS_PLATFORM_MODULE`)を入れる。paymentsの購入種別の登録箇所に`ultras`を加え、paymentsが仮5により提供する「確定の後の呼び出し」と「解約の予定時刻」を使う(paymentsのU1)。apiにスキーマモジュール・Portalの回数制限・日次の確認のジョブを、eventに加入が有効になった知らせの処理・退会と停止の解約・物理削除の波及処理・メールのテンプレートを、clientに料金ページとプラン管理画面を、adminに設定ページとフラグの区画を足す。D1に4テーブルを足す。新しいシークレットは無い。
+**Impact**: `apps/backend-lib`にUltrasの共有部品(`core/ultras`はapplication層と後続specが受け取る契約・識別子と純粋な規則、`workers/ultras`はD1の実装とpaymentsの口の実装)を新設し、apiとeventの両方に同じ束縛(`ULTRAS_PLATFORM_MODULE`)を入れる。paymentsの購入種別の登録箇所に`ultras`を加え、paymentsが仮5により提供する「確定の後の呼び出し」と「解約の予定時刻」を使う(paymentsのU1)。apiにスキーマモジュール・Portalの回数制限・日次の確認のジョブを、eventに加入が有効になった知らせの処理・退会と停止の解約・物理削除の波及処理・メールのテンプレートを、clientに料金ページとプラン管理画面を、adminに設定ページとフラグの区画を足す。D1に4テーブルを足す。新しいシークレットは無い。
 
 ### Goals
 
@@ -28,8 +28,9 @@
 ### This Spec Owns
 
 - Ultrasのデータ: `ultras_subscriptions`(加入と特典の継続期間)・`ultras_activations`(加入が有効になった知らせ)・`ultras_notices`(メールの依頼)・`ultras_settings`(機能フラグ)の4テーブル(`apps/db/schema/ultras/`)。
-- 加入状態の導出規則と特典の継続期間の規則(`backend-lib/core/ultras`)、特典の判定`UltrasEntitlements`・データエクスポートの照会`UltrasPlanExport`・機能フラグの照会`UltrasPromotionFlagReader`(`backend-lib/workers/ultras`)。
-- paymentsの口の実装: 購入種別`ultras`の`PurchaseOfferPolicy`・`PurchaseFulfillment`と、`SubscriptionEventSink`(`ultras-subscription.plan-state`)。
+- 加入状態の導出規則と特典の継続期間の規則(`backend-lib/core/ultras`)、特典の判定`UltrasEntitlements`・データエクスポートの照会`UltrasPlanExport`・機能フラグの照会`UltrasPromotionFlagReader`・知らせの送り出し`ActivationDispatcher`・メールの依頼`UltrasNotifier`・各ストアの文を返さない操作(契約は`backend-lib/core/ultras/ports.ts`、識別子`ULTRAS_TYPES`は`core/ultras/identifiers.ts`、実装は`backend-lib/workers/ultras`)。各ストアの文を返す操作(`SubscriptionStatements`・`ActivationStatements`・`NoticeStatements`)は`workers/ultras/statement-contracts.ts`に置き、`workers`と各アプリの`infrastructure`だけが使う。
+- paymentsの口の実装(`workers/ultras`): 購入種別`ultras`の`PurchaseOfferPolicy`(`core/payments`の契約)・`PurchaseFulfillment`と、`SubscriptionEventSink`(`ultras-subscription.plan-state`。いずれも`workers/payments/fulfillment-contract.ts`の契約)。
+- application層のポートとinfrastructure層の実装: apiの回数制限`PortalSessionLimits`(実装`CounterPortalSessionLimits`)、eventの物理削除の書き込みの単位`UltrasAccountDataEraser`(実装`D1UltrasAccountDataEraser`)。
 - 加入が有効になった知らせの契約と登録箇所(`UltrasActivationHandlerRegistration`・`ULTRAS_ACTIVATION_HANDLERS`)と、その実行(メッセージ種別`ultras.run-activation-handlers`)。
 - GraphQLのスキーマモジュール`ultras`(利用者側の`ultrasOffer`・`viewerUltras`・`startUltrasCheckout`・`createUltrasPortalSession`、管理者側の`ultrasPromotionSetting`・`updateUltrasPromotionSetting`)。
 - 利用者側の`/pricing`(ページの枠・区画の登録箇所`PRICING_SECTIONS`・Ultrasの区画)と`/settings/plan`、導線の表示の可否の部品`UltrasPromotionGate`。管理者側の`/settings`(ページの枠・区画の登録箇所`ADMIN_SETTINGS_SECTIONS`・フラグの区画)とメニュー項目。
@@ -48,16 +49,16 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`・`MessagePublisher`・`RateLimitCounterClient`)・`ScheduledJobDefinition`・`defineMessageContract`・`MessageHandlerRegistration`・`RetryPolicy`・`hashRateLimitKey`・`AppError`・`getAppLogger`・業務時刻の関数(`toBusinessDateTime`・`fromBusinessDateTime`)・`ulidPrimaryKey`・`timestamps`。形を変えない。
+- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`・`MessagePublisher`・`RateLimitCounterClient`)・`ScheduledJobDefinition`・`defineMessageContract`・`MessageHandlerRegistration`・`RetryPolicy`・`hashRateLimitKey`・`AppError`・`getAppLogger`・業務時刻の関数(`toBusinessDateTime`・`fromBusinessDateTime`)・`ulidPrimaryKey`・`timestamps`。形を変えない。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めず、DBの接続・SQLの文・一括の書き込みを扱わない(`config/eslint/backend-layers.ts`、`docs/GUIDES/tech/backend/002`)。そのため`MessagePublisher`は`workers/ultras`の`ActivationDispatcher`の実装だけが使い、`RateLimitCounterClient`はinfrastructure層の`CounterPortalSessionLimits`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`・`DateTime`のスカラー。形を変えない。
 - identity-auth: `AccountGuard`(`currentUser`・`requireWritableUser`・`requireVerifiedUser`)・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・`_authenticated`のレイアウト・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、契約と識別子は`apps/backend-lib/core/identity`、D1の実装は`apps/backend-lib/workers/identity`、api・eventの両方にidentity-authが束縛する。メールの宛先と宛名の照会に使う)。`users`テーブルは`id`(外部キーの参照先)だけに使い、列を直接読まず、書き込まない。
 - admin-foundation: `requireAdmin`・`AdminDirectory`・`AuditLogRecorder`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`ADMIN_NAV_ITEMS`・`RoleGate`・`useAdminRole`・`AdminPageHeader`・`ConfirmActionDialog`・E2Eの補助`e2e/support/admin-bootstrap.ts`(指定したロールの管理者としてのログイン)と`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`。E2Eでの機能フラグの設定)。
 - dev-tooling: ルートの`playwright.config.ts`と`e2e/support/playwright-config.ts`の`createPlaywrightConfig`(プロジェクトの組み立て)、テスト方針の文書`docs/GUIDES/tech/testing/001-test-strategy.md`。タスク10.1で、共有の行を書き換えるE2Eを直列にする組み立てと記述を加える(上流への影響)。
-- payments: `PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseFulfillment`・`SubscriptionEventSink`・`SubscriptionChange`・`PURCHASE_KIND_REGISTRATIONS`・`SUBSCRIPTION_EVENT_SINKS`・apiのアプリケーション層の`CheckoutStarter`・`StripeGateway`の`cancelSubscription`・`createPortalSession`・`CustomerDirectory`・`PriceCatalog`・GraphQLの`Money`・`CheckoutStart`・`MoneyText`。仮5の追加(`afterCommit`・`cancelAt`)と仮3の追加(購入確認メールの追加事項)は、paymentsの要件・設計・タスクに反映済み(paymentsのU1・U2、2026-10-23に開発者が承認)で、paymentsのタスクが先に実装する。本specはpaymentsのコードを変更しない。
+- payments: `core/payments`の`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseOfferRequest`・`FulfillablePurchase`・`SubscriptionChange`・`StripeGateway`の`cancelSubscription`・`createPortalSession`・`CustomerDirectory`・`PriceCatalog`・`StripeUnavailableError`・`PAYMENTS_TYPES`、`workers/payments/fulfillment-contract.ts`の`PurchaseKindRegistration`・`PurchaseFulfillment`・`FulfillmentPlan`・`SubscriptionEventSink`・`SubscriptionEventSinkRegistration`(`workers/ultras`だけが読み込む)、`workers/payments`の`PURCHASE_KIND_REGISTRATIONS`・`SUBSCRIPTION_EVENT_SINKS`、apiのアプリケーション層の`CheckoutStarter`、GraphQLの`Money`・`CheckoutStart`・`MoneyText`。仮5の追加(`afterCommit`・`cancelAt`)と仮3の追加(購入確認メールの追加事項)は、paymentsの要件・設計・タスクに反映済み(paymentsのU1・U2、2026-10-23に開発者が承認)で、paymentsのタスクが先に実装する。本specはpaymentsのコードを変更しない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
 - frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`、adminの`ADMIN_PROFILE`(`contactAvailable`)、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`Admin`・`src/graphql/generated/graphql.ts`の生成物)。
 - npmパッケージ: 新規は無い。
-- 後続specは本specの`core/ultras`・`workers/ultras`の公開の契約(`UltrasEntitlements`・`UltrasPromotionFlagReader`・`UltrasPlanExport`・`UltrasActivationHandlerRegistration`)と、clientの`UltrasPromotionGate`・管理画面の`ADMIN_SETTINGS_SECTIONS`・料金ページの`PRICING_SECTIONS`だけに依存し、テーブルを直接読み書きしない。data-exportも本specのテーブルを直接読まず、本specが所有するエクスポート部品`UltrasPlanExport`を呼ぶ。
+- 後続specは本specの`core/ultras`の公開の契約と識別子(`UltrasEntitlements`・`UltrasPromotionFlagReader`・`UltrasPlanExport`・`UltrasActivationHandlerRegistration`・`ULTRAS_TYPES`。D1の実装は`workers/ultras`)と、clientの`UltrasPromotionGate`・管理画面の`ADMIN_SETTINGS_SECTIONS`・料金ページの`PRICING_SECTIONS`だけに依存し、テーブルを直接読み書きしない。data-exportも本specのテーブルを直接読まず、本specが所有するエクスポート部品`UltrasPlanExport`を呼ぶ。
 
 ### Revalidation Triggers
 
@@ -66,7 +67,8 @@
 - `UltrasPromotionFlagReader`・`UltrasPromotionGate`の形と、フラグの意味(未加入者への導線と新規加入)(tournament-week・tournament-year・product-launchなど導線を出す全spec)。
 - `PRICING_SECTIONS`・`ADMIN_SETTINGS_SECTIONS`の形と`order`(sponsorship・tournament-year・notifications)。
 - `UltrasPlanExport`の形と`plan.status`の値(data-export。データエクスポートの文書と一致させる)。
-- paymentsの`SubscriptionChange`・`SubscriptionEventSink`・`PurchaseFulfillment`の形、または古い通知を捨てる規則を変えたら、本specを確かめ直す(仮5で本specが足す`afterCommit`・`cancelAt`を含む)。
+- paymentsの`SubscriptionChange`・`SubscriptionEventSink`・`PurchaseFulfillment`の形と置き場所(`core/payments`・`workers/payments/fulfillment-contract.ts`)、または古い通知を捨てる規則を変えたら、本specを確かめ直す(仮5で本specが足す`afterCommit`・`cancelAt`を含む)。
+- `core/ultras`の契約(`UltrasEntitlements`・`UltrasPromotionFlagReader`・`UltrasPlanExport`・`ActivationDispatcher`・`UltrasNotifier`・各ストアの文を返さない操作)と`ULTRAS_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(後続specとapi・eventのapplication層が読み込むため)。
 - identity-authのユーザーライフサイクルの`order`の範囲・`purge_due`の順序・`UserContactDirectory`の形(`findContact`が退会済み・物理削除済みの利用者で`undefined`を返す規則)、admin-foundationの`requireAdmin`・`AuditLogRecorder`の形を変えたら、本specを確かめ直す。
 - 4:21の`order` 500、波及処理の`order` 500(同じ時刻・種類に登録する全spec)。波及処理の`order`は、各specが4:21のジョブの`order`と同じ百の位の帯を使う(spec横断レビュー、2026-10-23)。本specは500番台を使い、identity-auth(100番台と10000以上)・admin-foundation(200番台)・inquiry-chat(300番台)・payments(400番台)・media-pipeline(800番台)・email-delivery(900)・content-processing(2300)の帯と重ねない。帯の割り当てが変わったら、本specを確かめ直す。
 - dev-toolingの`createPlaywrightConfig`の形・プロジェクトの名前の規則(`<対象>`・`<対象>-reachability`)、admin-foundationの`executeLocalD1`・`sqlStringLiteral`の形を変えたら、本specのE2Eとその設定を確かめ直す。
@@ -84,7 +86,8 @@
 ### Existing Architecture Analysis
 
 - 上流の13specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする(roadmapの順でpaymentsまでが先に実装される)。
-- paymentsの反映は、api(`return_url`・突合・日次の確認)とevent(Webhook)の両方で動き、購入種別の口と定期課金の受け取り口の実装を、反映と同じ一括の書き込みに含める。口の実装は`backend-lib/workers/<ドメイン>`に置き、D1の文だけを返す(副作用を持たない)。
+- paymentsの反映は、api(`return_url`・突合・日次の確認)とevent(Webhook)の両方で動き、購入種別の口と定期課金の受け取り口の実装を、反映と同じ一括の書き込みに含める。口の実装は`backend-lib/workers/<ドメイン>`に置き、D1の文だけを返す(副作用を持たない)。D1の文を返す口の契約はpaymentsの`workers/payments/fulfillment-contract.ts`、購入の可否と内容の契約は`core/payments`にある。
+- api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが受け取る契約と識別子は`backend-lib/core/<ドメイン>`に置き、`workers/<ドメイン>`には実装と束縛と、D1の文を返す契約だけを置く(`docs/GUIDES/tech/backend/002`の「依存方向と静的解析」)。
 - paymentsの口には確定の後に呼ばれる場所が無く、口の実装はメールやメッセージを送れない。本specは加入が有効になった知らせとメールを依頼待ちの行として一括の書き込みに含め、paymentsの確定の後の呼び出し(仮5、paymentsのU1)と4:21の日次の確認で送り出す。
 - Cron Triggersはapiだけにあり、ジョブは業務時刻の時・分で毎日動く。厳密カウンタはapiだけに束縛される。Queuesのconsumerはeventにある。
 - API版`2026-09-30.endive`の新しい定期課金は柔軟な請求モードで作られ、課金期間の末日の解約は`cancel_at`の時刻で表される(`cancel_at_period_end`は偽のまま)。paymentsの`SubscriptionChange`に`cancelAt`を足すことを、仮5としてpaymentsへ反映した(paymentsのU1、research.md)。
@@ -152,11 +155,11 @@ graph TB
 
 - Selected pattern: paymentsの口(購入種別・定期課金の受け取り)を実装し、加入状態を「特典の継続期間」という区間で保存する。判定は区間に対する問い合わせだけで行う。外部への副作用(知らせ・メール)は依頼待ちの行を一括の書き込みに含め、確定の後と日次の確認で送り出す(paymentsの返金とメールの依頼と同じ方式)。
 - Domain/feature boundaries: Stripeとの通信と決済の状態はpayments、加入状態と特典の判定は本spec、特典の使い道は後続spec。
-- Existing patterns preserved: `backend-lib/workers/<ドメイン>`の共有の束縛、`<spec名>.<名詞句>`のジョブ・波及処理の名前と`<ドメイン>.<動詞句>`のメッセージ種別・`<ドメイン>.<名詞句>`のメール種別、版の検査付きの一括の書き込み(`db/005`)、登録箇所への追記による区画の追加(`SETTINGS_NAV_ITEMS`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`と同じ形)。
+- Existing patterns preserved: 契約と識別子を`backend-lib/core/<ドメイン>`、実装と共有の束縛を`backend-lib/workers/<ドメイン>`に置く配置(paymentsの`core/payments`・identity-authの`core/identity`と同じ)、`<spec名>.<名詞句>`のジョブ・波及処理の名前と`<ドメイン>.<動詞句>`のメッセージ種別・`<ドメイン>.<名詞句>`のメール種別、版の検査付きの一括の書き込み(`db/005`)、登録箇所への追記による区画の追加(`SETTINGS_NAV_ITEMS`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`と同じ形)。
 - New components rationale: 判定と口の実装が2つのWorkerにまたがるため`backend-lib`に置く。料金ページと管理画面の設定ページは複数のspecが区画を載せるため、枠と登録箇所を先に作る(仮6)。
 - Steering compliance: Inversifyの`@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内)、業務時刻(UTC-08:00)、Infisicalでのシークレット管理(新規は無し)、800行以内のファイル、1ファイル1コンポーネント。
 
-**Dependency direction**: `apps/db/schema/ultras` → `apps/common-lib/ultras` → `backend-lib/core/ultras`(純粋な規則・契約) → `backend-lib/workers/ultras`(D1の実装とpaymentsの口の実装) → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`backend-lib/workers/ultras`は`backend-lib/core/payments`の契約と`backend-lib/workers/payments`の登録箇所(`purchase-kind-registrations.ts`)からだけ参照される。clientとadminは`common-lib/ultras`とGraphQLの操作だけを読み込む。
+**Dependency direction**: `apps/db/schema/ultras` → `apps/common-lib/ultras` → `backend-lib/core/ultras`(純粋な規則・application層と後続specが受け取る契約・識別子。`Database`・`BatchItem`・`workers`・`apps/db`を読み込まない) → `backend-lib/workers/ultras`(D1の実装とpaymentsの口の実装、D1の文を返す契約) → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。api・eventの`application/ultras`は`core/ultras`・`core/payments`・`core/identity`の契約と識別子だけを読み込み、`**/lib/workers/**`を型も含めて読み込まない。`backend-lib/workers/ultras`は`core/payments`の契約と`workers/payments/fulfillment-contract.ts`の契約を読み込み、`backend-lib/workers/payments`の登録箇所(`purchase-kind-registrations.ts`)からだけ参照される。D1の文を返す`workers/ultras/statement-contracts.ts`を使うのは`workers/ultras`とeventの`infrastructure/ultras/d1-ultras-account-data-eraser.ts`だけである。clientとadminは`common-lib/ultras`とGraphQLの操作だけを読み込む。
 
 ### Technology Stack
 
@@ -185,39 +188,40 @@ apps/
 │   └── promotion-flag.ts                               # ULTRAS_PROMOTION_FLAG_KEY・初期値(仮2)
 ├── common-lib/admin/audit-actions/ultras-subscription.ts # ultras-promotion.update
 ├── backend-lib/
-│   ├── core/ultras/                                    # 純粋な契約と規則(Bunの単体テスト)
-│   │   ├── identifiers.ts                              # ULTRAS_TYPES
+│   ├── core/ultras/                                    # api・eventのapplication層と後続specが読み込む契約と純粋な規則(Bunの単体テスト。Database・BatchItemを読み込まない)
+│   │   ├── identifiers.ts                              # ULTRAS_TYPES(Symbol.for('ultras.<名前>')の凍結したオブジェクト、identifiers.unit.test.ts)
 │   │   ├── entitlement-rules.ts                        # 特典の終了時刻・加入状態の導出・区間の判定
 │   │   ├── subscription-transition.ts                  # 定期課金の変化から加入の更新とメールの依頼を決める
 │   │   ├── activation-contract.ts                      # UltrasActivation・登録の型と検証
 │   │   ├── activation-message.ts                       # ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE
-│   │   └── ports.ts                                    # UltrasEntitlements・ストア・フラグの照会・エクスポート
+│   │   └── ports.ts                                    # UltrasEntitlements・各ストアの文を返さない操作・フラグの照会・エクスポート・ActivationDispatcher・UltrasNotifier(型だけ)
 │   ├── core/email/kinds/
 │   │   ├── ultras-payment-failed.ts                    # 支払いの失敗のメールの種別
 │   │   └── ultras-cancellation-accepted.ts             # 解約の受付の確認の種別(仮1)
-│   └── workers/ultras/                                 # 実行環境の部品(Workers統合テスト)
-│       ├── d1-subscription-store.ts                    # 加入の読み書き・区間の問い合わせ・物理削除
-│       ├── d1-activation-store.ts                      # 知らせの行
-│       ├── d1-notice-store.ts                          # メールの依頼の行
+│   └── workers/ultras/                                 # 実行環境の部品とD1の文を返す契約(Workers統合テスト)
+│       ├── statement-contracts.ts                      # SubscriptionStatements・ActivationStatements・NoticeStatements(型だけ)
+│       ├── d1-subscription-store.ts                    # SubscriptionStore・SubscriptionStatementsの実装(加入の読み書き・区間の問い合わせ・物理削除の文)
+│       ├── d1-activation-store.ts                      # ActivationStore・ActivationStatementsの実装(知らせの行)
+│       ├── d1-notice-store.ts                          # NoticeStore・NoticeStatementsの実装(メールの依頼の行)
 │       ├── d1-promotion-flag-reader.ts                 # UltrasPromotionFlagReader
 │       ├── ultras-entitlements.ts                      # UltrasEntitlementsの実装
-│       ├── ultras-offer-policy.ts                      # PurchaseOfferPolicy(ultras)
-│       ├── ultras-fulfillment.ts                       # PurchaseFulfillment(ultras)
-│       ├── plan-state-sink.ts                          # SubscriptionEventSink
-│       ├── activation-dispatcher.ts                    # 知らせの送り出しとdispatched_atの記録
-│       ├── ultras-notifier.ts                          # メールの依頼とrequestedの記録
+│       ├── ultras-offer-policy.ts                      # PurchaseOfferPolicy(ultras、core/paymentsの契約)
+│       ├── ultras-fulfillment.ts                       # PurchaseFulfillment(ultras、workers/payments/fulfillment-contract.tsの契約)
+│       ├── plan-state-sink.ts                          # SubscriptionEventSink(workers/payments/fulfillment-contract.tsの契約)
+│       ├── activation-dispatcher.ts                    # ActivationDispatcherの実装(知らせの送り出しとdispatched_atの記録)
+│       ├── ultras-notifier.ts                          # UltrasNotifierの実装(メールの依頼とrequestedの記録)
 │       ├── ultras-plan-export.ts                       # データエクスポート用のplan
 │       └── ultras-platform-module.ts                   # ULTRAS_PLATFORM_MODULE(両アプリ共通の束縛)
 ├── api/src/
-│   ├── application/ultras/                             # Bunの単体テスト
+│   ├── application/ultras/                             # Bunの単体テスト(core/ultras・core/paymentsの契約の偽物と偽のポートで)
 │   │   ├── api-ultras-types.ts                         # API_ULTRAS_TYPES
 │   │   ├── ultras-plan-reader.ts                       # ultrasOffer・viewerUltras
 │   │   ├── ultras-checkout.ts                          # startUltrasCheckout(CheckoutStarterを呼ぶ)
-│   │   ├── portal-session-starter.ts                   # Portalのセッションの作成
-│   │   ├── portal-session-limits.ts                    # 利用者単位の回数制限(仮4)
+│   │   ├── portal-session-starter.ts                   # Portalのセッションの作成とPortalSessionLimits(回数制限のポート、仮4)
 │   │   ├── promotion-setting-service.ts                # フラグの照会・変更(監査ログ)
 │   │   └── jobs/pending-dispatch-sweep-job.ts          # 4:21の送り出し直しと後始末(order 500)
 │   ├── infrastructure/ultras/d1-promotion-setting-writer.ts # 版の検査付きの変更と監査ログの文
+│   ├── infrastructure/ultras/counter-portal-session-limits.ts # CounterPortalSessionLimits(利用者単位の回数制限、仮4。Workers統合テスト)
 │   ├── presentation/graphql/modules/ultras/            # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts
@@ -230,7 +234,8 @@ apps/
 │   │   ├── event-ultras-types.ts                       # EVENT_ULTRAS_TYPES
 │   │   ├── run-activation-handlers-handler.ts          # ultras.run-activation-handlersの処理
 │   │   ├── subscription-cancellation-handler.ts        # withdrawn・suspendedの波及処理
-│   │   └── subscription-erasure-handler.ts             # purge_dueの波及処理
+│   │   └── subscription-erasure-handler.ts             # purge_dueの波及処理とUltrasAccountDataEraser(削除の書き込みの単位のポート)
+│   ├── infrastructure/ultras/d1-ultras-account-data-eraser.ts # D1UltrasAccountDataEraser(3テーブルの利用者の行の削除を1回の一括の書き込みで確定、Workers統合テスト)
 │   ├── infrastructure/email/templates/ultras/          # 本文の*-body.tsxと定義の*-template.ts(2種)
 │   ├── composition/ultras-activation-handlers.ts       # ULTRAS_ACTIVATION_HANDLERS(後続specが追記、初版は空)
 │   └── composition/ultras-module.ts                    # eventの束縛
@@ -384,7 +389,7 @@ sequenceDiagram
 | 4.1〜4.5                | 加入が有効になった知らせ               | UltrasFulfillment、ActivationDispatcher、RunActivationHandlersHandler、PendingDispatchSweepJob、ActivationContract   | `ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE`                               | 加入から有効化まで   |
 | 4.6                     | 冪等性の規約                           | UltrasTechDocs(`backend/010`)                                                                                        | —                                                                      | —                    |
 | 5.1〜5.9                | プラン管理画面                         | PlanPage、PlanStatusPanel、PortalButton、PortalReturnNotice、UltrasPlanReader、SETTINGS_NAV_ITEMS                    | `viewerUltras`                                                         | —                    |
-| 6.1, 6.2, 6.5, 6.6, 6.7 | Portalのセッション                     | PortalSessionStarter、PortalSessionLimits、PortalButton                                                              | `createUltrasPortalSession`                                            | —                    |
+| 6.1, 6.2, 6.5, 6.6, 6.7 | Portalのセッション                     | PortalSessionStarter、PortalSessionLimits、CounterPortalSessionLimits、PortalButton                                  | `createUltrasPortalSession`                                            | —                    |
 | 6.3, 6.4                | Portalの機能と決済手段                 | UltrasTechDocs(`operations/004`・`external/008`)                                                                     | —                                                                      | —                    |
 | 6.8                     | Portalの結果の反映                     | PlanStateSink                                                                                                        | `SubscriptionEventSink`                                                | 加入状態の遷移       |
 | 7.1〜7.7                | 退会・停止の解約                       | SubscriptionCancellationHandler                                                                                      | `UserLifecycleAsyncHandler`・`StripeGateway.cancelSubscription`        | 退会・停止による解約 |
@@ -395,7 +400,7 @@ sequenceDiagram
 | 9.1〜9.8                | 料金ページ                             | PricingPage、PricingSections、UltrasPricingSection、UltrasBenefitList、UltrasSubscribeButton、UltrasPlanReader       | `ultrasOffer`・`viewerUltras`                                          | —                    |
 | 10.1〜10.4, 10.9        | 管理画面のフラグ                       | AdminSettingsPage、AdminSettingsSections、PromotionSettingSection、PromotionSettingService、D1PromotionSettingWriter | `ultrasPromotionSetting`・`updateUltrasPromotionSetting`               | —                    |
 | 10.5, 10.6, 10.7, 10.8  | フラグの意味と照会                     | UltrasPromotionFlagReader、UltrasOfferPolicy、UltrasPromotionGate、UltrasPlanReader                                  | `UltrasPromotionFlagReader`                                            | —                    |
-| 11.1                    | 物理削除                               | SubscriptionErasureHandler、各ストア                                                                                 | `UserLifecycleAsyncHandler`                                            | —                    |
+| 11.1                    | 物理削除                               | SubscriptionErasureHandler、UltrasAccountDataEraser、D1UltrasAccountDataEraser                                       | `UserLifecycleAsyncHandler`                                            | —                    |
 | 11.2                    | エクスポートの照会口                   | UltrasPlanExport                                                                                                     | `UltrasPlanExport.find`                                                | —                    |
 | 11.3                    | 古い行の後始末                         | PendingDispatchSweepJob                                                                                              | `ScheduledJobDefinition`                                               | —                    |
 | 12.1, 12.2              | 運用手順書                             | UltrasTechDocs(`operations/004`)                                                                                     | —                                                                      | —                    |
@@ -406,35 +411,37 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                                                    | Domain/Layer         | Intent                                               | Req Coverage                            | Key Dependencies                                                   | Contracts |
-| -------------------------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------ | --------- |
-| PlanStatusValues・PromotionFlagValues                                                        | common-lib           | 加入状態の値と表示名・価格の`lookup_key`・フラグの鍵 | 2.2〜2.9, 10.5                          | —                                                                  | State     |
-| UltrasAuditActions                                                                           | common-lib           | 監査ログの操作種別                                   | 10.2                                    | admin-foundation (P0)                                              | State     |
-| EntitlementRules・SubscriptionTransition                                                     | backend-lib/core     | 特典の終了時刻・加入状態の導出・変化の解釈           | 2.1〜2.11, 3.1〜3.4, 8.1〜8.5           | 業務時刻 (P0)                                                      | Service   |
-| ActivationContract・ActivationMessage                                                        | backend-lib/core     | 知らせの契約・登録の検証・メッセージ種別             | 4.1, 4.3, 4.4                           | backend-platform (P0)                                              | Event     |
-| UltrasEmailKinds                                                                             | backend-lib/core     | 2種のメールの種別                                    | 8.1, 8.3, 8.6, 8.7                      | email-delivery (P0)                                                | —         |
-| D1各ストア・UltrasPromotionFlagReader                                                        | backend-lib/workers  | 4テーブルの読み書き・フラグ                          | 1.7〜1.9, 2.\*, 10.5, 11.1              | D1 (P0)                                                            | State     |
-| UltrasEntitlements                                                                           | backend-lib/workers  | 特典の判定と現在の加入状態                           | 3.1〜3.7                                | D1SubscriptionStore (P0)                                           | Service   |
-| UltrasOfferPolicy                                                                            | backend-lib/workers  | 購入の可否と内容                                     | 1.2〜1.6, 10.6                          | PriceCatalog (P0)、UltrasEntitlements (P0)                         | Service   |
-| UltrasFulfillment                                                                            | backend-lib/workers  | 加入の有効化と知らせの行                             | 1.7〜1.9, 4.1, 4.2                      | D1SubscriptionStore (P0)                                           | Service   |
-| PlanStateSink                                                                                | backend-lib/workers  | 定期課金の変化の取り込み                             | 2.1〜2.12, 6.8, 7.8, 8.1〜8.4           | SubscriptionTransition (P0)                                        | Service   |
-| ActivationDispatcher・UltrasNotifier                                                         | backend-lib/workers  | 知らせとメールの送り出し                             | 4.1, 4.5, 8.1, 8.3, 8.8, 8.9            | MessagePublisher (P0)、EmailSender (P0)、UserContactDirectory (P0) | Service   |
-| UltrasPlanExport                                                                             | backend-lib/workers  | データエクスポートの`plan`                           | 11.2                                    | D1SubscriptionStore (P0)                                           | Service   |
-| UltrasPlatformModule                                                                         | backend-lib/workers  | 両アプリ共通の束縛                                   | —                                       | Inversify (P0)                                                     | —         |
-| UltrasPlanReader・UltrasCheckout                                                             | api/application      | 画面の照会と加入の開始                               | 1.1, 1.2, 3.6, 5.1〜5.5, 9.2〜9.7, 10.7 | CheckoutStarter (P0)                                               | Service   |
-| PortalSessionStarter・PortalSessionLimits                                                    | api/application      | Portalのセッションと回数制限                         | 6.1, 6.2, 6.5〜6.7                      | StripeGateway (P0)、RateLimitCounterClient (P0)                    | Service   |
-| PromotionSettingService・D1PromotionSettingWriter                                            | api                  | フラグの照会・変更と監査ログ                         | 10.1〜10.4                              | AuditLogRecorder (P0)                                              | Service   |
-| PendingDispatchSweepJob                                                                      | api/application/jobs | 送り出し直しと後始末                                 | 4.5, 8.9, 11.3                          | ActivationDispatcher (P0)                                          | Batch     |
-| UltrasSchemaModule                                                                           | api/presentation     | GraphQLの型と操作                                    | 1.\*, 5.\*, 6.\*, 9.\*, 10.\*           | api-gateway (P0)                                                   | API       |
-| RunActivationHandlersHandler                                                                 | event/application    | 知らせの実行                                         | 4.1, 4.4                                | ULTRAS_ACTIVATION_HANDLERS (P0)                                    | Event     |
-| SubscriptionCancellationHandler・SubscriptionErasureHandler                                  | event/application    | 退会・停止の解約と物理削除                           | 7.1〜7.7, 11.1                          | identity-auth (P0)、StripeGateway (P0)                             | Event     |
-| UltrasEmailTemplates                                                                         | event/infrastructure | 2種のメール                                          | 8.1, 8.3, 8.7                           | email-delivery (P0)                                                | —         |
-| PricingPage・PricingSections・UltrasPricingSection・UltrasBenefitList・UltrasSubscribeButton | client               | 料金ページ                                           | 1.1, 1.2, 9.1〜9.8                      | MoneyText (P1)                                                     | State     |
-| PlanPage・PlanStatusPanel・PortalButton・PortalReturnNotice                                  | client               | プラン管理画面                                       | 5.1〜5.9, 6.1, 6.2, 6.7                 | SettingsShell (P0)                                                 | State     |
-| UltrasPromotionGate                                                                          | client               | 導線の表示の可否                                     | 10.6, 10.8                              | —                                                                  | State     |
-| AdminSettingsPage・AdminSettingsSections・PromotionSettingSection                            | admin                | 設定ページとフラグの区画                             | 10.1〜10.4, 10.9                        | RoleGate (P0)、ConfirmActionDialog (P0)                            | State     |
-| UltrasTechDocs                                                                               | docs/GUIDES/tech     | `backend/010`・`external/008`・`operations/004`の節  | 4.6, 6.3, 6.4, 8.10, 12.1, 12.2, 13.3   | —                                                                  | —         |
-| UltrasServiceSpecs                                                                           | docs/GUIDES/service  | Ultrasの実装方針と関連するサービス仕様               | 13.4, 13.5                              | —                                                                  | —         |
+| Component                                                                                    | Domain/Layer                                      | Intent                                               | Req Coverage                            | Key Dependencies                                                                       | Contracts |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------- | --------- |
+| PlanStatusValues・PromotionFlagValues                                                        | common-lib                                        | 加入状態の値と表示名・価格の`lookup_key`・フラグの鍵 | 2.2〜2.9, 10.5                          | —                                                                                      | State     |
+| UltrasAuditActions                                                                           | common-lib                                        | 監査ログの操作種別                                   | 10.2                                    | admin-foundation (P0)                                                                  | State     |
+| EntitlementRules・SubscriptionTransition                                                     | backend-lib/core                                  | 特典の終了時刻・加入状態の導出・変化の解釈           | 2.1〜2.11, 3.1〜3.4, 8.1〜8.5           | 業務時刻 (P0)                                                                          | Service   |
+| ActivationContract・ActivationMessage                                                        | backend-lib/core                                  | 知らせの契約・登録の検証・メッセージ種別             | 4.1, 4.3, 4.4                           | backend-platform (P0)                                                                  | Event     |
+| UltrasEmailKinds                                                                             | backend-lib/core                                  | 2種のメールの種別                                    | 8.1, 8.3, 8.6, 8.7                      | email-delivery (P0)                                                                    | —         |
+| D1各ストア・UltrasPromotionFlagReader                                                        | backend-lib/core(契約)・workers(実装)             | 4テーブルの読み書き・フラグ                          | 1.7〜1.9, 2.\*, 10.5, 11.1              | D1 (P0)                                                                                | State     |
+| UltrasEntitlements                                                                           | backend-lib/core(契約)・workers(実装)             | 特典の判定と現在の加入状態                           | 3.1〜3.7                                | D1SubscriptionStore (P0)                                                               | Service   |
+| UltrasOfferPolicy                                                                            | backend-lib/workers(core/paymentsの契約の実装)    | 購入の可否と内容                                     | 1.2〜1.6, 10.6                          | PriceCatalog (P0)、UltrasEntitlements (P0)                                             | Service   |
+| UltrasFulfillment                                                                            | backend-lib/workers(workers/paymentsの契約の実装) | 加入の有効化と知らせの行                             | 1.7〜1.9, 4.1, 4.2                      | D1SubscriptionStore (P0)                                                               | Service   |
+| PlanStateSink                                                                                | backend-lib/workers(workers/paymentsの契約の実装) | 定期課金の変化の取り込み                             | 2.1〜2.12, 6.8, 7.8, 8.1〜8.4           | SubscriptionTransition (P0)                                                            | Service   |
+| ActivationDispatcher・UltrasNotifier                                                         | backend-lib/core(契約)・workers(実装)             | 知らせとメールの送り出し                             | 4.1, 4.5, 8.1, 8.3, 8.8, 8.9            | MessagePublisher (P0)、EmailSender (P0)、UserContactDirectory (P0)                     | Service   |
+| UltrasPlanExport                                                                             | backend-lib/core(契約)・workers(実装)             | データエクスポートの`plan`                           | 11.2                                    | D1SubscriptionStore (P0)                                                               | Service   |
+| UltrasPlatformModule                                                                         | backend-lib/workers                               | 両アプリ共通の束縛                                   | —                                       | Inversify (P0)                                                                         | —         |
+| UltrasPlanReader・UltrasCheckout                                                             | api/application                                   | 画面の照会と加入の開始                               | 1.1, 1.2, 3.6, 5.1〜5.5, 9.2〜9.7, 10.7 | CheckoutStarter (P0)                                                                   | Service   |
+| PortalSessionStarter・PortalSessionLimits                                                    | api/application                                   | Portalのセッションと回数制限                         | 6.1, 6.2, 6.5〜6.7                      | StripeGateway (P0)、PortalSessionLimits (P0)、`core/ultras`のSubscriptionStore (P0)    | Service   |
+| CounterPortalSessionLimits                                                                   | api/infrastructure                                | Portalのセッションの回数制限の実装                   | 6.6                                     | RateLimitCounterClient (P0)                                                            | Service   |
+| PromotionSettingService・D1PromotionSettingWriter                                            | api                                               | フラグの照会・変更と監査ログ                         | 10.1〜10.4                              | AuditLogRecorder (P0)                                                                  | Service   |
+| PendingDispatchSweepJob                                                                      | api/application/jobs                              | 送り出し直しと後始末                                 | 4.5, 8.9, 11.3                          | `core/ultras`のActivationDispatcher・UltrasNotifier・ActivationStore・NoticeStore (P0) | Batch     |
+| UltrasSchemaModule                                                                           | api/presentation                                  | GraphQLの型と操作                                    | 1.\*, 5.\*, 6.\*, 9.\*, 10.\*           | api-gateway (P0)                                                                       | API       |
+| RunActivationHandlersHandler                                                                 | event/application                                 | 知らせの実行                                         | 4.1, 4.4                                | ULTRAS_ACTIVATION_HANDLERS (P0)                                                        | Event     |
+| SubscriptionCancellationHandler・SubscriptionErasureHandler                                  | event/application                                 | 退会・停止の解約と物理削除                           | 7.1〜7.7, 11.1                          | identity-auth (P0)、StripeGateway (P0)、UltrasAccountDataEraser (P0)                   | Event     |
+| D1UltrasAccountDataEraser                                                                    | event/infrastructure                              | 物理削除の書き込みの単位                             | 11.1                                    | SubscriptionStatements・ActivationStatements・NoticeStatements (P0)                    | State     |
+| UltrasEmailTemplates                                                                         | event/infrastructure                              | 2種のメール                                          | 8.1, 8.3, 8.7                           | email-delivery (P0)                                                                    | —         |
+| PricingPage・PricingSections・UltrasPricingSection・UltrasBenefitList・UltrasSubscribeButton | client                                            | 料金ページ                                           | 1.1, 1.2, 9.1〜9.8                      | MoneyText (P1)                                                                         | State     |
+| PlanPage・PlanStatusPanel・PortalButton・PortalReturnNotice                                  | client                                            | プラン管理画面                                       | 5.1〜5.9, 6.1, 6.2, 6.7                 | SettingsShell (P0)                                                                     | State     |
+| UltrasPromotionGate                                                                          | client                                            | 導線の表示の可否                                     | 10.6, 10.8                              | —                                                                                      | State     |
+| AdminSettingsPage・AdminSettingsSections・PromotionSettingSection                            | admin                                             | 設定ページとフラグの区画                             | 10.1〜10.4, 10.9                        | RoleGate (P0)、ConfirmActionDialog (P0)                                                | State     |
+| UltrasTechDocs                                                                               | docs/GUIDES/tech                                  | `backend/010`・`external/008`・`operations/004`の節  | 4.6, 6.3, 6.4, 8.10, 12.1, 12.2, 13.3   | —                                                                                      | —         |
+| UltrasServiceSpecs                                                                           | docs/GUIDES/service                               | Ultrasの実装方針と関連するサービス仕様               | 13.4, 13.5                              | —                                                                                      | —         |
 
 ### common-lib
 
@@ -591,14 +598,16 @@ export declare const ULTRAS_ACTIVATION_RETRY_POLICY: RetryPolicy; // maxAttempts
 
 - `ultras.payment-failed`(トランザクション、入力`{ nickname: string; planUrl: string }`)、`ultras.cancellation-accepted`(トランザクション、入力`{ nickname: string; acceptedAtUtc: string; benefitEndsAtUtc: string; planUrl: string }`)。日時は`formatUtcDateTime`の文字列(8.6・8.7)。種別とテンプレートは同じタスクで`EMAIL_KINDS`・`EMAIL_TEMPLATES`に加える(email-deliveryの1対1の検査)。
 
-### backend-lib/workers
+### backend-lib/core(契約と識別子)・workers(実装とD1の文を返す契約)
+
+- 置き場所: api・eventのapplication層と後続specが受け取る契約(`UltrasEntitlements`・`UltrasPlanExport`・`UltrasPromotionFlagReader`・`ActivationDispatcher`・`UltrasNotifier`・各ストアの文を返さない操作)は`apps/backend-lib/core/ultras/ports.ts`、識別子`ULTRAS_TYPES`は`core/ultras/identifiers.ts`に置き、D1の実装と束縛、D1の文を返す契約(`workers/ultras/statement-contracts.ts`)は`apps/backend-lib/workers/ultras`に置く(application層は`**/lib/workers/**`を型も含めて読み込めず、DBの一括の書き込みを扱わない)。識別子は`Symbol.for('ultras.<名前>')`の凍結したオブジェクトで、`core/ultras/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。`workers`だけが使う文の契約と口の実装(`UltrasOfferPolicy`・`UltrasFulfillment`・`PlanStateSink`)の識別子も同じオブジェクトに置く。apiの`API_ULTRAS_TYPES`・eventの`EVENT_ULTRAS_TYPES`とは別の識別子にし、同じ`ultras.`の接頭辞を使うため、メンバーの名前を重ねない。D1の実装は1つのクラスで文を返さない操作と文の契約の両方を実装し(`D1SubscriptionStore implements SubscriptionStore, SubscriptionStatements`など)、2つの識別子へ同じ実装を束縛する。
 
 #### D1各ストア・UltrasPromotionFlagReader
 
 **Contracts**: State [x]
 
 ```typescript
-// ports.ts(2.1)
+// core/ultras/ports.ts(2.1)
 export type UltrasNoticeKind = 'payment_failed' | 'cancellation_accepted';
 export interface SubscriptionRow extends SubscriptionSnapshot {
   readonly id: string;
@@ -610,16 +619,6 @@ export interface SubscriptionStore {
   findByStripeId(
     stripeSubscriptionId: string,
   ): Promise<SubscriptionRow | undefined>;
-  upsertStripeState(input: {
-    readonly row: SubscriptionRow;
-  }): BatchItem<'sqlite'>; // sinkの列だけを更新(onConflictDoUpdate)
-  activate(input: {
-    readonly stripeSubscriptionId: string;
-    readonly userId: string;
-    readonly purchaseId: string;
-    readonly startedAt: Date;
-    readonly id: string;
-  }): BatchItem<'sqlite'>; // 無ければ挿入(状態active)、あればstarted_at・user_id・purchase_idだけ更新
   findEntitledOverlapping(input: {
     readonly userId: string;
     readonly at: Date;
@@ -638,15 +637,8 @@ export interface SubscriptionStore {
     readonly id: string;
     readonly source: 'suspension' | 'withdrawal';
   }): Promise<void>;
-  deleteByUser(userId: string): BatchItem<'sqlite'>;
 }
 export interface ActivationStore {
-  insertIfAbsent(input: {
-    readonly id: string;
-    readonly userId: string;
-    readonly stripeSubscriptionId: string;
-    readonly activatedAt: Date;
-  }): BatchItem<'sqlite'>; // 定期課金のIDで一意
   findById(id: string): Promise<UltrasActivationRow | undefined>;
   findByStripeId(
     stripeSubscriptionId: string,
@@ -659,17 +651,8 @@ export interface ActivationStore {
     readonly limit: number;
   }): Promise<readonly UltrasActivationRow[]>;
   deleteCompletedBefore(threshold: Date, limit: number): Promise<number>;
-  deleteByUser(userId: string): BatchItem<'sqlite'>;
 }
 export interface NoticeStore {
-  insertIfAbsent(input: {
-    readonly id: string;
-    readonly userId: string;
-    readonly stripeSubscriptionId: string;
-    readonly kind: UltrasNoticeKind;
-    readonly dedupeKey: string;
-    readonly payload: Readonly<Record<string, string>>;
-  }): BatchItem<'sqlite'>;
   findPendingBySubscription(
     stripeSubscriptionId: string,
   ): Promise<readonly UltrasNoticeRow[]>;
@@ -680,14 +663,49 @@ export interface NoticeStore {
   markRequested(id: string, at: Date): Promise<'updated' | 'not_pending'>; // pendingのときだけ
   markSkipped(id: string, at: Date): Promise<void>;
   deleteFinishedBefore(threshold: Date, limit: number): Promise<number>;
-  deleteByUser(userId: string): BatchItem<'sqlite'>;
 }
 export interface UltrasPromotionFlagReader {
   isEnabled(): Promise<boolean>; // 行が無ければULTRAS_PROMOTION_FLAG_DEFAULT
 }
+
+// workers/ultras/statement-contracts.ts(workers/ultrasの口の実装とeventのinfrastructure層だけが受け取る)
+import type { BatchItem } from 'drizzle-orm/batch';
+export interface SubscriptionStatements {
+  upsertStripeState(input: {
+    readonly row: SubscriptionRow;
+  }): BatchItem<'sqlite'>; // sinkの列だけを更新(onConflictDoUpdate)
+  activate(input: {
+    readonly stripeSubscriptionId: string;
+    readonly userId: string;
+    readonly purchaseId: string;
+    readonly startedAt: Date;
+    readonly id: string;
+  }): BatchItem<'sqlite'>; // 無ければ挿入(状態active)、あればstarted_at・user_id・purchase_idだけ更新
+  deleteByUser(userId: string): BatchItem<'sqlite'>;
+}
+export interface ActivationStatements {
+  insertIfAbsent(input: {
+    readonly id: string;
+    readonly userId: string;
+    readonly stripeSubscriptionId: string;
+    readonly activatedAt: Date;
+  }): BatchItem<'sqlite'>; // 定期課金のIDで一意
+  deleteByUser(userId: string): BatchItem<'sqlite'>;
+}
+export interface NoticeStatements {
+  insertIfAbsent(input: {
+    readonly id: string;
+    readonly userId: string;
+    readonly stripeSubscriptionId: string;
+    readonly kind: UltrasNoticeKind;
+    readonly dedupeKey: string;
+    readonly payload: Readonly<Record<string, string>>;
+  }): BatchItem<'sqlite'>;
+  deleteByUser(userId: string): BatchItem<'sqlite'>;
+}
 ```
 
-- 物理削除では`ultras_notices`→`ultras_activations`→`ultras_subscriptions`の順に1つの一括の書き込みで消す(11.1)。
+- 物理削除では`ultras_notices`→`ultras_activations`→`ultras_subscriptions`の順に1つの一括の書き込みで消す(11.1)。文の組み立てと`db.batch()`の実行は、eventのinfrastructure層の`D1UltrasAccountDataEraser`が3つの`deleteByUser`の文で行う(「SubscriptionCancellationHandler・SubscriptionErasureHandler」)。
 - `IN`句はバインド変数100個以内(利用者90件ずつ)に分ける。日次の削除は1回500件までを最大20回繰り返す。
 - メールの宛先と宛名は本specでは読み取らず、identity-authの共有の部品`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、api・eventの両方にidentity-authが束縛する)を`UltrasNotifier`が使う。
 
@@ -701,6 +719,7 @@ export interface UltrasPromotionFlagReader {
 **Contracts**: Service [x]
 
 ```typescript
+// core/ultras/ports.ts(実装はworkers/ultras/ultras-entitlements.ts・ultras-plan-export.ts)
 export interface UltrasPlanView {
   readonly status: UltrasPlanStatus;
   readonly startedAt: Date;
@@ -737,7 +756,7 @@ export interface UltrasPlanExport {
 ```
 
 - 判定は`started_at`と`benefit_ends_at`だけを使い、機能フラグを読まない(3.5)。
-- `UltrasPlanExport`は本specが所有するエクスポート部品で、data-exportはこれを呼んで`plan`を作り、本specのテーブルを直接読まない(11.2)。
+- `UltrasPlanExport`は本specが所有するエクスポート部品で、data-exportはこれを呼んで`plan`を作り、本specのテーブルを直接読まない(11.2)。data-export・後続specのapplication層は`core/ultras`の型と`ULTRAS_TYPES`の識別子で受け取る。
 - 後続specの使い方(`backend/010`と`features/005`に記載): 加入表示と再ローンチの間隔は`isEntitledAt(userId, now)`、参加費の免除は勝利の確定時刻`w`と決済期限`d`に対し`wasEntitledDuring(userId, w, d)`(Q1。組み合わせ決定の時点でも同じ答えになる)。
 
 #### UltrasOfferPolicy
@@ -757,7 +776,7 @@ export interface UltrasPlanExport {
 | Intent       | 支払いの確定での加入の有効化と、知らせの依頼待ちの行 |
 | Requirements | 1.7, 1.8, 1.9, 4.1, 4.2                              |
 
-- `prepare(purchase, db)`: `stripeSubscriptionId`が無ければ`reject`(`ineligible`、`error`のログ)。`findEntitledOverlapping({ userId, at: purchase.paidAt, excludeStripeId })`があれば`reject`(1.8)。無ければ`fulfill`で[`SubscriptionStore.activate`(開始時刻は`paidAt`)、`ActivationStore.insertIfAbsent`]を返す(1.7・4.2)。
+- `prepare(purchase, db)`(`workers/payments/fulfillment-contract.ts`の`PurchaseFulfillment`。`db`の型`Database`は`workers`の中だけで読み込む): `stripeSubscriptionId`が無ければ`reject`(`ineligible`、`error`のログ)。`findEntitledOverlapping({ userId, at: purchase.paidAt, excludeStripeId })`があれば`reject`(1.8)。無ければ`fulfill`で[`SubscriptionStatements.activate`(開始時刻は`paidAt`)、`ActivationStatements.insertIfAbsent`]を返す(1.7・4.2)。
 - 同時の確定(1.9): `ultras_subscriptions`の部分一意索引(`user_id`、`started_at IS NOT NULL AND benefit_ends_at IS NULL`)の違反でpaymentsの一括の書き込みが取り消され、paymentsが`prepare`を呼び直すと先に確定した加入が見つかり`reject`になる。
 - `afterCommit(purchase)`(仮5): `ActivationStore.findByStripeId` → `ActivationDispatcher.dispatch`。
 
@@ -769,12 +788,26 @@ export interface UltrasPlanExport {
 | Requirements | 2.1〜2.12, 6.8, 7.8, 8.1〜8.4                                    |
 
 - 登録: `SUBSCRIPTION_EVENT_SINKS`に`{ name: 'ultras-subscription.plan-state', sink: ULTRAS_TYPES.PlanStateSink }`。
-- `statementsFor(change, db)`: `change.userId`がnullなら空(2.11)。`findByStripeId`(無ければ未有効の空の値)に`applySubscriptionChange`を適用し、[`upsertStripeState`、通知ごとの`NoticeStore.insertIfAbsent`]を返す。未有効の行のStripe側の値も保存し、有効化の時に使う(2.10)。古い通知はpaymentsが捨てるため、本specは届いた変化を最新として扱う。
+- `statementsFor(change, db)`(`workers/payments/fulfillment-contract.ts`の`SubscriptionEventSink`): `change.userId`がnullなら空(2.11)。`findByStripeId`(無ければ未有効の空の値)に`applySubscriptionChange`を適用し、[`SubscriptionStatements.upsertStripeState`、通知ごとの`NoticeStatements.insertIfAbsent`]を返す。未有効の行のStripe側の値も保存し、有効化の時に使う(2.10)。古い通知はpaymentsが捨てるため、本specは届いた変化を最新として扱う。
 - `afterCommit(change)`(仮5): `UltrasNotifier.sendPendingFor(change.subscriptionId)`。
 - 返金・チャージバックは定期課金の変化ではないため、この口には届かない(2.12)。
 
 #### ActivationDispatcher・UltrasNotifier
 
+```typescript
+// core/ultras/ports.ts(apiのPendingDispatchSweepJobと、workers/ultrasの口の実装が受け取る)
+export interface ActivationDispatcher {
+  dispatch(activationId: string): Promise<void>; // 失敗はwarnのログだけ
+}
+export interface UltrasNotifier {
+  sendPendingFor(stripeSubscriptionId: string): Promise<void>;
+  send(
+    notice: UltrasNoticeRow,
+  ): Promise<'requested' | 'skipped' | 'not_pending'>;
+}
+```
+
+- 置き場所: 契約は`core/ultras/ports.ts`、実装は`workers/ultras/activation-dispatcher.ts`・`ultras-notifier.ts`に置き、`ULTRAS_TYPES.ActivationDispatcher`・`ULTRAS_TYPES.UltrasNotifier`へ束縛する。`MessagePublisher`(`workers`の型)を使うのは`ActivationDispatcher`の実装だけで、apiの`PendingDispatchSweepJob`(application層)は`core/ultras`の型だけを受け取る。
 - `ActivationDispatcher.dispatch(activationId)`: `MessagePublisher`で`ultras.run-activation-handlers`を送り、成功したら`markDispatched`。失敗は`warn`のログだけで、4:21に送り直す(4.5)。
 - `UltrasNotifier.sendPendingFor(stripeSubscriptionId)`・`send(notice)`: identity-authの`UserContactDirectory.findContact(userId)`で宛先(`email`)と宛名(`nickname`)を引き、`undefined`(退会済み・物理削除済み・存在しない)なら`markSkipped`(8.8)。あれば`EmailSender.send`(種別ごとの入力、`planUrl = CLIENT_SITE_ORIGIN + '/settings/plan'`)の成功後に`markRequested`。停止中の利用者には宛先が返り、支払いの失敗のメールを送る(8.1)。停止・退会による解約では解約の受付の確認メールの依頼を作らないため(8.4)、宛先の側で停止中を除く判定は要らない。`emailVerified`は判定に使わない(加入は確認済みの利用者に限られる、1.4)。`not_pending`なら何もしない(同じメールを2回依頼しない、8.9)。
 
@@ -787,7 +820,7 @@ export interface UltrasPlanExport {
 paymentsのタスク(2.1・2.4・3.2・5.2〜5.4)が実装する契約で、本specは使うだけである。本specのファイルには現れない。
 
 ```typescript
-// paymentsのbackend-lib/core/payments/purchase-kind-contract.ts(paymentsのU1)
+// paymentsのbackend-lib/workers/payments/fulfillment-contract.ts(paymentsのU1。Database・BatchItemを読み込むためworkersにあり、本specのworkers/ultrasだけが読み込む)
 export interface PurchaseFulfillment {
   prepare(
     purchase: FulfillablePurchase,
@@ -802,6 +835,7 @@ export interface SubscriptionEventSink {
   ): Promise<readonly BatchItem<'sqlite'>[]>;
   afterCommit?(change: SubscriptionChange): Promise<void>;
 }
+// paymentsのbackend-lib/core/payments/purchase-kind-contract.ts
 export interface SubscriptionChange {
   /* 既存の項目 */ readonly cancelAt: Date | null;
 } // Stripeのcancel_at(柔軟な請求モードの期間末の解約)
@@ -821,7 +855,23 @@ export interface SubscriptionChange {
 
 #### PortalSessionStarter・PortalSessionLimits
 
-- `start(session)`: `AccountGuard.requireWritableUser`(停止中は`account_unavailable`、6.5) → `PortalSessionLimits.consume`(規則`ultras-portal:user`、20回/3600秒、`hashRateLimitKey`、超過は`rate_limit_exceeded`、6.6) → `SubscriptionStore.findLatestActivated`と`CustomerDirectory.findCustomerId`のどちらかが無ければ`AppError(unprocessable, ultras_portal_unavailable)`(6.5) → `StripeGateway.createPortalSession({ customerId, returnUrl: CLIENT_SITE_ORIGIN + '/settings/plan?portal=returned' })` → `{ url }`(6.2)。`StripeUnavailableError`は`AppError(unavailable, payments_unavailable)`(6.7)。
+- `start(session)`: `AccountGuard.requireWritableUser`(停止中は`account_unavailable`、6.5) → `PortalSessionLimits.consume`(規則`ultras-portal:user`、20回/3600秒、`hashRateLimitKey`、超過は`rate_limit_exceeded`、6.6) → `SubscriptionStore.findLatestActivated`と`CustomerDirectory.findCustomerId`のどちらかが無ければ`AppError(unprocessable, ultras_portal_unavailable)`(6.5) → `StripeGateway.createPortalSession({ customerId, returnUrl: CLIENT_SITE_ORIGIN + '/settings/plan?portal=returned' })` → `{ url }`(6.2)。`StripeUnavailableError`(`core/payments`)は`AppError(unavailable, payments_unavailable)`(6.7)。
+
+```typescript
+// api/src/application/ultras/portal-session-starter.ts
+export interface PortalSessionLimits {
+  consume(userId: string, now: Date): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)
+}
+// api/src/infrastructure/ultras/counter-portal-session-limits.ts
+export declare class CounterPortalSessionLimits implements PortalSessionLimits {
+  constructor(
+    counter: RateLimitCounterClient, // @inject(PLATFORM_TYPES.RateLimitCounterClient)
+    hasher: KeyedHasher, // @inject(PLATFORM_TYPES.KeyedHasher)
+  ); // 規則ultras-portal:user(20回/3600秒)
+}
+```
+
+- 置き場所: ポート`PortalSessionLimits`はapplication層、実装`CounterPortalSessionLimits`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`の型と`assertWithinLimit`が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。`API_ULTRAS_TYPES.PortalSessionLimits`を`CounterPortalSessionLimits`へ束縛する。`PortalSessionStarter`は`SubscriptionStore`を`core/ultras`、`StripeGateway`・`CustomerDirectory`を`core/payments`の型と識別子で受け取り、`**/lib/workers/**`を読み込まない。
 
 #### PromotionSettingService・D1PromotionSettingWriter
 
@@ -837,6 +887,7 @@ export interface SubscriptionChange {
 
 - Trigger: apiのCron Triggers(`21 12 * * *`、既存)。`order` 500は上流の100〜120・200・210・300・400・410・810〜830・900・2300と重ならない。日次タイムラインの表に載せる。
 - 再送された知らせは、ハンドラの冪等性で結果が変わらない。
+- 依存: ジョブはapplication層に置き、`ActivationDispatcher`・`UltrasNotifier`・`ActivationStore`・`NoticeStore`を`core/ultras`の型と`ULTRAS_TYPES`の識別子で受け取る。`**/lib/workers/**`を読み込まず、D1の文を扱わない(削除は`deleteCompletedBefore`・`deleteFinishedBefore`)。
 
 #### UltrasSchemaModule
 
@@ -917,8 +968,25 @@ type Mutation {
 | 名前                                            | イベント                 | `order` | 処理                                                                                                                                                                                                                                                                                               |
 | ----------------------------------------------- | ------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ultras-subscription.subscription-cancellation` | `withdrawn`・`suspended` | 500     | `findCancellable`の行ごとに、`withdrawn`なら`markPendingCancellation('withdrawal')` → `cancelSubscription(atPeriodEnd: false)`、`suspended`なら予約が無い行だけ`markPendingCancellation('suspension')` → `cancelSubscription(atPeriodEnd: true)`。`already_canceled`は成功扱い(7.1〜7.3・7.5・7.7) |
-| `ultras-subscription.subscription-erasure`      | `purge_due`              | 500     | `ultras_notices`・`ultras_activations`・`ultras_subscriptions`の利用者の行を1つの一括の書き込みで削除(11.1)                                                                                                                                                                                        |
+| `ultras-subscription.subscription-erasure`      | `purge_due`              | 500     | `UltrasAccountDataEraser.erase`で`ultras_notices`・`ultras_activations`・`ultras_subscriptions`の利用者の行を1つの一括の書き込みで削除(11.1)                                                                                                                                                       |
 
+```typescript
+// event/src/application/ultras/subscription-erasure-handler.ts
+export interface UltrasAccountDataEraser {
+  erase(userId: string): Promise<void>; // ultras_notices→ultras_activations→ultras_subscriptionsの順の削除を1回の一括の書き込みで確定する
+}
+// event/src/infrastructure/ultras/d1-ultras-account-data-eraser.ts
+export declare class D1UltrasAccountDataEraser implements UltrasAccountDataEraser {
+  constructor(
+    db: Database, // @inject(PLATFORM_TYPES.Database)
+    notices: NoticeStatements, // @inject(ULTRAS_TYPES.NoticeStatements)
+    activations: ActivationStatements, // @inject(ULTRAS_TYPES.ActivationStatements)
+    subscriptions: SubscriptionStatements, // @inject(ULTRAS_TYPES.SubscriptionStatements)
+  );
+}
+```
+
+- 置き場所: 2つの波及処理はapplication層に置き、`SubscriptionStore`(`findCancellable`・`markPendingCancellation`)を`core/ultras`、`StripeGateway`を`core/payments`の型と識別子で、削除の書き込みの単位をポート`UltrasAccountDataEraser`(`EVENT_ULTRAS_TYPES.UltrasAccountDataEraser`)で受け取る。D1の文の組み立てと`db.batch()`の実行はinfrastructure層の`D1UltrasAccountDataEraser`が行う(application層はDBの一括の書き込みを扱わない)。
 - Stripeの一時的な失敗は例外(identity-authの`USER_LIFECYCLE_RETRY_POLICY`で再試行、上限でSentry、7.6)。停止の解除には登録しない(7.4)。
 - `order` 500は本specの500番台(4:21のジョブと同じ帯)。`withdrawn`・`suspended`ではpaymentsの`payments.open-checkout-expiry`(410)の後に動き、未完了のUltrasの決済セッションの失効を先に済ませる。`purge_due`ではinquiry-chat(300)・paymentsの`payments.customer-erasure`(400)の後に動く。
 
@@ -1058,16 +1126,17 @@ export declare const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[]; /
   - `entitlement-rules`: `endOfBusinessDayContaining`・`benefitEndForScheduledEnd`の境界(業務日付の0:00ちょうど・0:00の1ミリ秒後・23:59:59.999)、`derivePlanStatus`の4状態と未有効、`isEntitledAt`の左端を含み右端を含まないこと、`overlapsPeriod`の両端(2.2〜2.9、3.1・3.2)。
   - `subscription-transition`: 予約→終了の猶予(Q4)、支払いの失敗→終了の即時、即時の解約、予約の取り消し、`cancelAt`だけの予約(柔軟な請求モード)、`benefitEndFixed`の後に届いた変化で値が変わらないこと、有効化の前の変化の保存、`past_due`の通知の1回だけ、解約の受付の通知が`user`のときだけ(2.1〜2.10、3.4、8.1〜8.5)。
   - `activation-contract`: 名前の形式・重複・`order`の重複の拒否と昇順(4.1)。
-  - api・eventのユースケース(模擬のポート): `UltrasOfferPolicy`の拒否の順序(フラグ→加入中→解約済み)と追加事項の4行、`PortalSessionStarter`の拒否と戻り先、`PromotionSettingService`のロールと監査ログの準備、`SubscriptionCancellationHandler`の退会と停止の出し分け・予約済みの停止の無処理・`already_canceled`、`RunActivationHandlersHandler`の順序と完了済みの無処理、ジョブの3つの処理(1.3〜1.6、6.2・6.5・6.6、7.1〜7.7、10.2・10.3、4.1・4.5、11.3)。
+  - `core/ultras/identifiers`: `ULTRAS_TYPES`の各値が`Symbol.for('ultras.<名前>')`であり、オブジェクトが凍結されていること。
+  - api・eventのユースケース(`core/ultras`・`core/payments`の契約の偽物と、偽の`PortalSessionLimits`・`UltrasAccountDataEraser`): `UltrasOfferPolicy`の拒否の順序(フラグ→加入中→解約済み)と追加事項の4行、`PortalSessionStarter`の拒否と戻り先、`PromotionSettingService`のロールと監査ログの準備、`SubscriptionCancellationHandler`の退会と停止の出し分け・予約済みの停止の無処理・`already_canceled`、`RunActivationHandlersHandler`の順序と完了済みの無処理、ジョブの3つの処理(1.3〜1.6、6.2・6.5・6.6、7.1〜7.7、10.2・10.3、4.1・4.5、11.3)。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts`、Stripeは模擬の`StripeGateway`):
   - paymentsの反映を通した加入: `ultras`の決済セッションの完了で加入が有効になり、知らせの行が1つでき、`afterCommit`でメッセージが送られる。Webhookと`return_url`の同時の反映でも知らせは1つ(1.7・4.1・4.2)。
   - 二重の加入: 継続期間内の利用者の2つ目の加入が拒否され、paymentsの返金の依頼ができる。同時の2つの確定で1つだけが有効になる(1.8・1.9)。
   - sinkの順序: `customer.subscription.updated`が有効化の前に届いても、有効化の後の加入状態に反映される。古い通知はpaymentsが捨てる(2.10)。
   - 特典の判定: 過去の時点・期間・90件を超える一括の判定(3.1〜3.4)。
   - フラグの変更: 版の照合の失敗で設定と監査ログのどちらも変わらない。成功で両方が確定する(10.2・10.4)。
-  - ライフサイクル: `purge_due`で3テーブルの行が消える。`withdrawn`・`suspended`で解約が呼ばれる(7.1・7.2・11.1)。
+  - ライフサイクル: `purge_due`で`D1UltrasAccountDataEraser`が3テーブルの行を1回の一括の書き込みで消す。`withdrawn`・`suspended`で解約が呼ばれる(7.1・7.2・11.1)。
   - メール: `past_due`への変化で`ultras.payment-failed`が1回だけ依頼され、テンプレートが日本語の件名と本文・UTCの日時を描画する。退会済みの利用者は`skipped`(8.1・8.2・8.6〜8.8)。
-  - 回数制限: Portalの21回目が`rate_limit_exceeded`(6.6)。
+  - 回数制限: `CounterPortalSessionLimits`でPortalの21回目が`rate_limit_exceeded`(6.6)。
 - E2E/UI Tests:
   - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `UltrasPricingSection`のフラグと加入状態による出し分け・価格が無いとき、`UltrasSubscribeButton`の未ログイン・未確認・押下、`PlanStatusPanel`の4状態と未加入、`PortalReturnNotice`の確かめ直し、`UltrasPromotionGate`、`PromotionSettingSection`のロールによる参照だけと確認のダイアログ・競合(1.1、5.2〜5.7、9.2〜9.7、10.1〜10.4)。
   - E2E(`e2e/client/ultras.e2e.test.ts`): 各テストの直前に、admin-foundationの`e2e/support/local-d1.ts`の`executeLocalD1`で`UPDATE ultras_settings SET enabled = <0か1>, version = version + 1, state_token = <新しい値>, updated_at = <ミリ秒> WHERE setting_key = 'ultras_promotion'`を実行して機能フラグを設定する(文字列の値は`sqlStringLiteral`でリテラルにする。本specはローカルのD1へ書き込む手順を独自に作らない)。未ログインの料金ページで価格と特典が見えること、フラグがオフで未加入者にUltrasの区画が出ないこと、プラン管理画面のナビゲーションの項目(5.8、9.1・9.4・9.6)。Stripeのsandboxと`stripe listen`の転送が揃う環境では、テストカードでの加入→プラン管理画面の`active`の表示→「解約・支払い方法の管理」でPortalのURLへ移ることまでを確かめ、揃わない環境では対象外である旨を表示して終わる(1.1・1.7・5.2・6.2)。
