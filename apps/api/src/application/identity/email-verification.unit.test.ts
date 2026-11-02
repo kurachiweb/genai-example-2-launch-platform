@@ -87,6 +87,7 @@ interface FakeOptions {
   readonly limitError?: Error;
   readonly mailError?: Error;
   readonly disposableStatus?: DisposableEmailStatus;
+  readonly disposableError?: Error;
 }
 
 interface Recorded {
@@ -197,7 +198,9 @@ function createFakes(options: FakeOptions = {}) {
     checkAndSave(checkedUser, at) {
       recorded.calls.push('disposableCheck.checkAndSave');
       recorded.disposableChecks.push({ user: checkedUser, at });
-      return Promise.resolve(options.disposableStatus ?? 'regular');
+      return options.disposableError === undefined
+        ? Promise.resolve(options.disposableStatus ?? 'regular')
+        : Promise.reject(options.disposableError);
     },
   };
 
@@ -330,6 +333,17 @@ describe('StoreEmailVerification.verify', () => {
     await verification.verify(TOKEN, META);
 
     expect(recorded.verified).toHaveLength(1);
+    expect(recorded.disposableChecks).toHaveLength(1);
+  });
+
+  test('使い捨て判定の保存に失敗しても、確認済みにした後のため成功を返す', async () => {
+    const { verification, recorded } = setup({
+      disposableError: new Error('D1の書き込みに失敗しました'),
+    });
+
+    await verification.verify(TOKEN, META);
+
+    expect(recorded.verified).toEqual([{ userId: USER_ID, at: NOW }]);
     expect(recorded.disposableChecks).toHaveLength(1);
   });
 
