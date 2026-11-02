@@ -27,12 +27,16 @@ import type {
 import { createCronRegistry } from '../../lib/core/scheduling/cron-registry.ts';
 import { toUtcCronExpression } from '../../lib/core/time/business-time.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { D1UserAddressDirectory } from '../../lib/workers/identity/d1-user-address-directory.ts';
+import {
+  clearIdentityTables,
+  insertUser,
+} from '../../lib/workers/identity/testing/identity-store-fixtures.ts';
 import {
   API_EMAIL_TYPES,
   EmailCleanupJob,
 } from '../application/email/email-cleanup-job.ts';
 import * as mainModule from '../index.ts';
-import { UnavailableUserAddressDirectory } from '../infrastructure/email/unavailable-user-address-directory.ts';
 import { MODULES } from './modules.ts';
 import { SCHEDULED_JOBS } from './scheduled-jobs.ts';
 
@@ -129,6 +133,7 @@ beforeEach(async () => {
   await db.delete(emailSuppressions);
   await db.delete(emailSendRecords);
   await db.delete(emailCleanupCursors);
+  await clearIdentityTables();
 });
 
 afterEach(() => {
@@ -150,23 +155,32 @@ describe('APIサーバーのメールのモジュール', () => {
       container.get<SuppressionMaintenance>(EMAIL_TYPES.SuppressionMaintenance),
     );
     expect(container.get(EMAIL_TYPES.UserAddressDirectory)).toBeInstanceOf(
-      UnavailableUserAddressDirectory,
+      D1UserAddressDirectory,
     );
     expect(container.get(API_EMAIL_TYPES.EmailCleanupJob)).toBeInstanceOf(
       EmailCleanupJob,
     );
   });
 
-  test('照会口の既定実装は、どのアドレスにも常に「使えない」を返す', async () => {
+  test('照会口は、利用者のテーブルを引いて退会していない利用者のアドレスだけを照合キーで返す', async () => {
+    await insertUser(1, { email: `registered${RECIPIENT_DOMAIN}` });
+    await insertUser(2, {
+      email: `withdrawn${RECIPIENT_DOMAIN}`,
+      deletedAt: daysBeforeScheduled(1),
+    });
     const directory = createContainer().get<UserAddressDirectory>(
       EMAIL_TYPES.UserAddressDirectory,
     );
 
     expect(
-      await directory.findRegistered([`registered${RECIPIENT_DOMAIN}`]),
-    ).toEqual({ kind: 'unavailable' });
-    expect(await directory.findRegistered([])).toEqual({
-      kind: 'unavailable',
+      await directory.findRegistered([
+        `Registered${RECIPIENT_DOMAIN}`,
+        `withdrawn${RECIPIENT_DOMAIN}`,
+        `unknown${RECIPIENT_DOMAIN}`,
+      ]),
+    ).toEqual({
+      kind: 'available',
+      registered: new Set([`registered${RECIPIENT_DOMAIN}`]),
     });
   });
 
@@ -191,7 +205,8 @@ describe('APIサーバーのメールのモジュール', () => {
 });
 
 describe('定期実行からの日次の後始末', () => {
-  test('4:21の起動で、期限切れの抑止と14日を過ぎた送信済みの記録を消し、照会口が使えないため紐づかない記録を残して要約をログに出す', async () => {
+  test('4:21の起動で、期限切れの抑止と14日を過ぎた送信済みの記録と、利用者のテーブルで確かめて紐づかない1年を過ぎた記録を消し、要約をログに出す', async () => {
+    await insertUser(1, { email: `registered${RECIPIENT_DOMAIN}` });
     await insertSuppression(
       `expired${RECIPIENT_DOMAIN}`,
       daysBeforeScheduled(8),
@@ -199,6 +214,11 @@ describe('定期実行からの日次の後始末', () => {
     );
     await insertSuppression(
       `unlinked${RECIPIENT_DOMAIN}`,
+      daysBeforeScheduled(400),
+      null,
+    );
+    await insertSuppression(
+      `registered${RECIPIENT_DOMAIN}`,
       daysBeforeScheduled(400),
       null,
     );
@@ -221,19 +241,19 @@ describe('定期実行からの日次の後始末', () => {
       .select({ id: emailSendRecords.id })
       .from(emailSendRecords);
     expect(remainingAddresses).toEqual([
-      { address: `unlinked${RECIPIENT_DOMAIN}` },
+      { address: `registered${RECIPIENT_DOMAIN}` },
     ]);
     expect(remainingRecords).toEqual([{ id: '01JBD8G7Q3Z6W0K8N5S2X4Y002' }]);
 
     const cleanupLogs = logs.filter(
       ({ category }) => category === CLEANUP_CATEGORY,
     );
-    expect(cleanupLogs.map(({ level }) => level)).toEqual(['warning', 'info']);
-    expect(cleanupLogs[1]).toMatchObject({
+    expect(cleanupLogs.map(({ level }) => level)).toEqual(['info']);
+    expect(cleanupLogs[0]).toMatchObject({
       expiredSuppressionsDeleted: 1,
-      unlinkedSuppressionsDeleted: 0,
+      unlinkedSuppressionsDeleted: 1,
       sendRecordsDeleted: 1,
-      unlinkedCheck: 'skipped-directory-unavailable',
+      unlinkedCheck: 'done',
     });
     const dispatchSummary = logs.find(
       ({ message }) => message === '定期実行を終えました',
@@ -249,7 +269,16 @@ describe('定期実行からの日次の後始末', () => {
       }),
     );
     expect(JSON.stringify(logs)).not.toContain(RECIPIENT_DOMAIN);
-    expect(await db.select().from(emailCleanupCursors)).toEqual([]);
+    expect(
+      await db
+        .select({
+          name: emailCleanupCursors.name,
+          afterKey: emailCleanupCursors.afterKey,
+        })
+        .from(emailCleanupCursors),
+    ).toEqual([
+      { name: 'email-delivery.unlinked-suppressions', afterKey: null },
+    ]);
   });
 
   test('1年を過ぎた記録が無い日は、紐づかない記録の確認を末尾まで終えたとして、続きの位置を先頭のままD1に保存する', async () => {

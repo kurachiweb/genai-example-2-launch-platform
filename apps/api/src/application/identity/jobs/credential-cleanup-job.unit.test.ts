@@ -48,7 +48,7 @@ describe('CredentialCleanupJob', () => {
         now: SCHEDULED_TIME,
         policy: USER_SESSION_POLICY,
       },
-      { target: 'authTokens', now: SCHEDULED_TIME },
+      { target: 'mailLinks', now: SCHEDULED_TIME },
       { target: 'loginChallenges', now: SCHEDULED_TIME },
       { target: 'totpPendings', now: SCHEDULED_TIME },
     ]);
@@ -58,7 +58,7 @@ describe('CredentialCleanupJob', () => {
     const { job } = setup({
       deleted: {
         sessions: 12,
-        authTokens: 3,
+        mailLinks: 3,
         loginChallenges: 5,
         totpPendings: 1,
       },
@@ -70,7 +70,7 @@ describe('CredentialCleanupJob', () => {
     expect(summary?.level).toBe('info');
     expect(summary?.properties).toEqual({
       sessions: 12,
-      authTokens: 3,
+      mailLinks: 3,
       loginChallenges: 5,
       totpPendings: 1,
       failed: 0,
@@ -81,7 +81,7 @@ describe('CredentialCleanupJob', () => {
     const cause = new Error('D1に接続できません');
     const { job, stores } = setup({
       deleted: { sessions: 2, loginChallenges: 4, totpPendings: 0 },
-      errors: { authTokens: cause },
+      errors: { mailLinks: cause },
     });
 
     const failure = await run(job).catch((error: unknown) => error);
@@ -90,7 +90,7 @@ describe('CredentialCleanupJob', () => {
     expect((failure as Error).cause).toBe(cause);
     expect(stores.calls.map(({ target }) => target)).toEqual([
       'sessions',
-      'authTokens',
+      'mailLinks',
       'loginChallenges',
       'totpPendings',
     ]);
@@ -100,7 +100,7 @@ describe('CredentialCleanupJob', () => {
     ).toEqual([
       {
         level: 'error',
-        properties: { error: cause, target: 'authTokens' },
+        properties: { error: cause, target: 'mailLinks' },
       },
       {
         level: 'info',

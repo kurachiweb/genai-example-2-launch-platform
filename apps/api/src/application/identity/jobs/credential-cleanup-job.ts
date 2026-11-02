@@ -16,7 +16,7 @@ import type {
 import { throwIfFailed } from './daily-job-support.ts';
 
 type CleanupTarget =
-  'sessions' | 'authTokens' | 'loginChallenges' | 'totpPendings';
+  'sessions' | 'mailLinks' | 'loginChallenges' | 'totpPendings';
 
 const logger = getAppLogger(['api', 'identity', 'credential-cleanup']);
 
@@ -43,7 +43,7 @@ export class CredentialCleanupJob implements ScheduledJobHandler {
         'sessions',
         () => this.sessions.deleteExpired(scheduledTime, USER_SESSION_POLICY),
       ],
-      ['authTokens', () => this.authTokens.deleteExpired(scheduledTime)],
+      ['mailLinks', () => this.authTokens.deleteExpired(scheduledTime)],
       [
         'loginChallenges',
         () => this.loginChallenges.deleteExpired(scheduledTime),

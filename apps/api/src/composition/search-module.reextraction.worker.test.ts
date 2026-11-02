@@ -202,6 +202,15 @@ describe('検索対象のある日次の再抽出', () => {
       result: 'succeeded',
       jobs: [
         expect.objectContaining({
+          name: 'identity-auth.purge-orchestrator',
+        }),
+        expect.objectContaining({
+          name: 'identity-auth.credential-cleanup',
+        }),
+        expect.objectContaining({
+          name: 'identity-auth.disposable-recheck-sweep',
+        }),
+        expect.objectContaining({
           name: 'media-pipeline.expired-file-erasure',
         }),
         expect.objectContaining({ name: 'media-pipeline.moderation-requeue' }),

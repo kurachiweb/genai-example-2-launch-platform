@@ -2,9 +2,28 @@ import type { ScheduledJobDefinition } from '../../lib/core/scheduling/cron-regi
 import type { ScheduledRunBudget } from '../../lib/core/scheduling/run-budget.ts';
 import { SEARCH_TYPES } from '../../lib/core/search/identifiers.ts';
 import { API_EMAIL_TYPES } from '../application/email/email-cleanup-job.ts';
+import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
 import { MEDIA_JOB_TYPES } from '../application/media/media-daily-jobs.ts';
 
 export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
+  {
+    name: 'identity-auth.purge-orchestrator',
+    at: { hour: 4, minute: 21 },
+    order: 100,
+    handler: IDENTITY_TYPES.PurgeOrchestratorJob,
+  },
+  {
+    name: 'identity-auth.credential-cleanup',
+    at: { hour: 4, minute: 21 },
+    order: 110,
+    handler: IDENTITY_TYPES.CredentialCleanupJob,
+  },
+  {
+    name: 'identity-auth.disposable-recheck-sweep',
+    at: { hour: 4, minute: 21 },
+    order: 120,
+    handler: IDENTITY_TYPES.DisposableRecheckSweepJob,
+  },
   {
     name: 'media-pipeline.expired-file-erasure',
     at: { hour: 4, minute: 21 },
@@ -34,6 +53,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     at: { hour: 4, minute: 21 },
     order: 2300,
     handler: SEARCH_TYPES.ReextractionJob,
+  },
+  // 4:21のメールの後始末と、送り直したイベントの波及処理による抑止記録の削除が同じ起動で重ならないよう、12時間離す
+  {
+    name: 'identity-auth.lifecycle-redispatch',
+    at: { hour: 16, minute: 21 },
+    order: 100,
+    handler: IDENTITY_TYPES.LifecycleRedispatchJob,
   },
 ];
 

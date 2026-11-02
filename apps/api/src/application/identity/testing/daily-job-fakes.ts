@@ -249,7 +249,7 @@ export function createUndeterminedUsersFake(
 }
 
 export type CleanupTarget =
-  'sessions' | 'authTokens' | 'loginChallenges' | 'totpPendings';
+  'sessions' | 'mailLinks' | 'loginChallenges' | 'totpPendings';
 
 export interface CredentialStoresFakeOptions {
   readonly deleted?: Partial<Record<CleanupTarget, number>>;
@@ -280,8 +280,8 @@ export function createCredentialStoresFake(
   });
   const authTokens = partialFake<AuthTokenStore>({
     deleteExpired(now) {
-      calls.push({ target: 'authTokens', now });
-      return resultOf('authTokens');
+      calls.push({ target: 'mailLinks', now });
+      return resultOf('mailLinks');
     },
   });
   const loginChallenges = partialFake<LoginChallengeStore>({

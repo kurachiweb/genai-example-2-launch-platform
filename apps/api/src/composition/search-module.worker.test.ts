@@ -29,7 +29,12 @@ interface LoggedObject {
 const SCHEDULED_TIME = new Date(Date.UTC(2026, 10, 2, 12, 21));
 const DAILY_CRON = '21 12 * * *';
 const REEXTRACTION_JOB_NAME = 'content-processing.keyword-reextraction';
-// 4:21の起動では、各specの削除のジョブの帯(800番台)のメディアのジョブが先に動く
+// 4:21の起動では、利用者のアカウントのジョブ(100番台)と、各specの削除のジョブの帯(800番台)のメディアのジョブが先に動く
+const IDENTITY_JOB_NAMES = [
+  'identity-auth.purge-orchestrator',
+  'identity-auth.credential-cleanup',
+  'identity-auth.disposable-recheck-sweep',
+];
 const MEDIA_JOB_NAMES = [
   'media-pipeline.expired-file-erasure',
   'media-pipeline.moderation-requeue',
@@ -120,6 +125,7 @@ describe('APIサーバーの検索のモジュール', () => {
         .jobsFor(DAILY_CRON)
         .map(({ name }) => name),
     ).toEqual([
+      ...IDENTITY_JOB_NAMES,
       ...MEDIA_JOB_NAMES,
       'email-delivery.cleanup',
       REEXTRACTION_JOB_NAME,
@@ -150,6 +156,15 @@ describe('定期実行からの日次の再抽出', () => {
     ).toMatchObject({
       cron: DAILY_CRON,
       jobs: [
+        expect.objectContaining({
+          name: 'identity-auth.purge-orchestrator',
+        }),
+        expect.objectContaining({
+          name: 'identity-auth.credential-cleanup',
+        }),
+        expect.objectContaining({
+          name: 'identity-auth.disposable-recheck-sweep',
+        }),
         expect.objectContaining({
           name: 'media-pipeline.expired-file-erasure',
         }),
