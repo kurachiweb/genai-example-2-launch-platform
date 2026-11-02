@@ -223,7 +223,7 @@
   - _Depends: 2.3_
   - _Requirements: 4.1, 4.3, 4.4, 6.1, 8.1, 8.2, 8.3, 16.10, 19.4_
 
-- [ ] 7.2 (P) 認証系メールの送信回数の制限と、登録を作る
+- [x] 7.2 (P) 認証系メールの送信回数の制限と、登録を作る
   - 先に、偽の送信回数の制限で、アカウントや重複の有無を判定する前に数えること、登録の手順(回数→重複→ハンドル→パスワードの方針→保存→確認メール)、上限での未作成、重複の拒否、ハンドルの衝突での作り直し(最大5回)、同意の日時の保存を確かめる単体テストを書く
   - 同じく先に、送信回数の制限の実装`CounterMailSendLimits`が偽の厳密カウンタに宛先とIPの2つの規則で数え、どちらかの超過で429と待ち時間を返し、IPが不明ならIPの規則を省き、キーをハッシュ化することを確かめるWorkers統合テストを書く
   - 送信回数の制限のポートはapplication層(6.1)、実装は厳密カウンタのクライアントの型が共通ライブラリの`workers`にあるためinfrastructure層(`infrastructure/identity/counter-mail-send-limits.ts`)に作る(`backend/003`)
@@ -478,3 +478,4 @@
 - 6.5: 契約は`infrastructure/identity/user-lifecycle-sync-handler.ts`、確定は`d1-user-lifecycle-committer.ts`の`createD1UserLifecycleCommitter(db, ids, USER_LIFECYCLE_SYNC_HANDLERS, (id) => container.get(id))`(8.1で処理単位のコンテナに`toDynamicValue`で束縛)、登録箇所は`composition/user-lifecycle-sync-handlers.ts`(空)。登録は作成時に名前の形式と重複を検査し、未束縛の波及処理は`commit`の時に初めて分かる。版の不一致と存在しない利用者は`AppError(conflict, account_state_conflict)`で、文言「処理が重なりました。時間をおいて再度お試しください。」は現在このファイルにだけあるため、8.2の`errors.ts`と文言規則(12.2)で集約する。退会はセッション・トークン・待ちを消し、TOTPとリカバリコードは物理削除まで残す
 - 6.6: `EmailIdentityMailer`(`infrastructure/identity/email-identity-mailer.ts`)は`IDENTITY_TYPES.IdentitySettings`の`clientOrigin`でリンクを組み(8.1で`CLIENT_SITE_ORIGIN`から束縛)、送信の失敗はそのまま投げる(ログに留めるかは各ユースケースが決める)。`BowserDeviceDescriber`はブラウザ名・OS名の片方だけが`null`になり得る(10.7の表示で扱う)。1.1の導入確認のテスト`identity-packages.worker.test.ts`は削除済み
 - 7.1: `apps/api/src/application/identity/`の`StoreSessionIssuer`(`session-issuer.ts`、`USER_SESSION_HASH_PURPOSE`もここ)・`UserSessionVerifier`(`user-session-verifier.ts`)・`StoreAccountGuard`(`account-guard.ts`)。8.1の束縛: `StoreAccountGuard`は処理単位のコンテナで単一(`findById`のPromiseを要求の中で使い回すため)、`AUTH_TYPES.UserSessionVerifier`を`UserSessionVerifier`へ。`currentUser`は退会済みを`undefined`にし`requireUser`系は`unauthenticated`。`SESSION_USER_AGENT_MAX_LENGTH`(application)は`USER_AGENT_MAX_LENGTH`(presentation)と同じ512で、8.1で一致を確かめるテストを加える。エラーの文言(`unauthenticated`・`account_unavailable`・`email_not_verified`)は`account-guard.ts`の定数で、8.2の`errors.ts`で集約する
+- 7.2: `CounterMailSendLimits`(`infrastructure/identity/counter-mail-send-limits.ts`)・`StoreRegistration`(`application/identity/registration.ts`)・`password-rejection.ts`(422 `password_rejected`。7.6・7.7も使う。長さ違反の文言は数値の直書きで、8.2で定数から組み立て、12.2で文言規則へ追記する)。登録はセッションを同じ一括の書き込みに含めるため`session-issuer.ts`の`prepareUserSession`を使う。規則の名前`auth-mail:<種別>:address|ip`は`backend/003`の命名の文(英小文字とハイフン)と合わないため、12.1で`backend/003`を`:`の区切りを認める形に改める。8.1の束縛: `IDENTITY_TYPES.MailSendLimits`→`CounterMailSendLimits`、`IDENTITY_TYPES.Registration`→`StoreRegistration`。6.5の`composition/user-lifecycle-sync-handlers.ts`は8.1で読み込まれるまでWorkers統合テストのカバレッジの閾値(ファイルごと80%)を下回り、CIの検査が失敗するため、8.1で必ず合成ルートから読み込む

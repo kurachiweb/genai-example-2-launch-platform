@@ -12,7 +12,7 @@ import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
 import type { Principal } from '../session/session-verifier.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
-import type { UserSessionStore } from './ports.ts';
+import type { NewSessionRecord, UserSessionStore } from './ports.ts';
 import type { RequestMeta } from './request-meta.ts';
 
 // 保存を始めた用途の名前を変えると保存済みのハッシュ値と一致しなくなるため、名前は変えない
@@ -42,6 +42,37 @@ const storedUserAgent = (userAgent: string | undefined): string | null =>
     ? null
     : userAgent.slice(0, SESSION_USER_AGENT_MAX_LENGTH);
 
+export interface PreparedUserSession {
+  readonly record: NewSessionRecord;
+  readonly issued: IssuedSession;
+}
+
+// 登録は利用者の作成と同じ一括の書き込みでセッションを保存するため、保存と切り離して組み立てる
+export async function prepareUserSession(
+  secrets: SecretIssuer,
+  ids: IdGenerator,
+  userId: string,
+  meta: RequestMeta,
+): Promise<PreparedUserSession> {
+  const secret = await secrets.issue(USER_SESSION_HASH_PURPOSE);
+  const times = newSessionTimes(meta.now, USER_SESSION_POLICY);
+  const sessionId = ids.generate();
+  return {
+    record: {
+      id: sessionId,
+      userId,
+      tokenHash: secret.hash,
+      userAgent: storedUserAgent(meta.userAgent),
+      ...times,
+    },
+    issued: {
+      sessionId,
+      token: secret.plain,
+      maxAgeSeconds: cookieMaxAgeSeconds(times, meta.now, USER_SESSION_POLICY),
+    },
+  };
+}
+
 @injectable()
 export class StoreSessionIssuer implements SessionIssuer {
   constructor(
@@ -54,21 +85,14 @@ export class StoreSessionIssuer implements SessionIssuer {
   ) {}
 
   async issue(userId: string, meta: RequestMeta): Promise<IssuedSession> {
-    const secret = await this.secrets.issue(USER_SESSION_HASH_PURPOSE);
-    const times = newSessionTimes(meta.now, USER_SESSION_POLICY);
-    const sessionId = this.ids.generate();
-    await this.sessions.insert({
-      id: sessionId,
+    const { record, issued } = await prepareUserSession(
+      this.secrets,
+      this.ids,
       userId,
-      tokenHash: secret.hash,
-      userAgent: storedUserAgent(meta.userAgent),
-      ...times,
-    });
-    return {
-      sessionId,
-      token: secret.plain,
-      maxAgeSeconds: cookieMaxAgeSeconds(times, meta.now, USER_SESSION_POLICY),
-    };
+      meta,
+    );
+    await this.sessions.insert(record);
+    return issued;
   }
 
   async reissueForOperator(
