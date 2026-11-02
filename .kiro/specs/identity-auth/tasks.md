@@ -117,7 +117,7 @@
   - _Requirements: 4.10_
 
 - [ ] 4. 認証部品の規則とポート(主体に依存しない)
-- [ ] 4.1 (P) パスワード・セッションの有効期限・リカバリコード・第2要素の入力の規則を作る
+- [x] 4.1 (P) パスワード・セッションの有効期限・リカバリコード・第2要素の入力の規則を作る
   - 先に、パスワードの長さとハンドル・ニックネーム・ローカル部との大文字小文字を区別しない一致、アイドル14日・絶対90日の境界と15分未満の更新の省略とCookieの有効期間(残りの短い方)、リカバリコードの形式と入力の正規化(空白・ハイフン・大文字)、認証コードの正規化を確かめる単体テストを書く
   - 利用者と管理者で値を変えられるセッションの方針の型と、利用者の値を定める
   - 完了状態: 単体テストが成功し、管理者の方針の値を与えても同じ関数で判定できることをテストで確かめられる
@@ -465,3 +465,4 @@
 - 3.5: 識別子は`core/identity/identifiers.ts`の`IDENTITY_PLATFORM_TYPES`(3.6・3.7は単体テストの`EXPECTED_NAMES`も更新する)、束縛は`workers/identity/identity-platform-module.ts`の`IDENTITY_PLATFORM_MODULE`(型は`EMAIL_PLATFORM_MODULE`と同じ`Omit<AppModule, 'routes'>`)。両アプリの解決の確認は`apps/{api,event}/src/composition/identity-platform.worker.test.ts`で、3.6・3.7はここに加える。12.1・12.2の文書では、共通の束縛の置き場所・両アプリでの束縛・後続specは契約を注入して`users`の列を直接読まないことを書く
 - 3.6: `D1AccountExport`は`workers/identity/d1-account-export.ts`。テストの補助`clearIdentityTables`は`user_totp_credentials`も消し、TOTPの行は`insertTotpCredential`で入れる。テストの補助へ別のテーブルを足すときは外部キーの順(子→`users`)で消す
 - 3.7: `D1AdminUserDirectory`は`workers/identity/d1-admin-user-directory.ts`。カーソルは`base64url('<ミリ秒>:<ID>')`で、件数とカーソルの不正は設計どおり`validation_error`(既存のページングは`invalid_cursor`)。空のフィルタ文字列は全件に一致するため、正規化は呼び出し元が行う。eventの`test:worker`は既定の並列数ではメモリ不足でSIGKILLになることがあり、`bunx vitest run --config vitest.worker.config.ts --maxWorkers=3`で回す
+- 4.1: 規則は`apps/api/src/domain/auth/`の`password-rules.ts`・`session-policy.ts`(`USER_SESSION_POLICY`・`newSessionTimes`・`evaluateSession`・`cookieMaxAgeSeconds`)・`recovery-code-format.ts`・`second-factor.ts`(`normalizeTotpCode`)。期限ちょうど(`>=`)を期限切れとするため、期限切れの削除(6.3・7.10)も同じ境界にする。リカバリコードと認証コードの入力は設計の正規化に加えてNFKCとダッシュ類全般の除去を行う(12.1の文書も同じ正規化を書く)
