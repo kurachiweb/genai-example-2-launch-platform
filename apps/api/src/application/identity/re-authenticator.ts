@@ -13,6 +13,10 @@ import type {
   TotpAuthenticator,
 } from '../auth/ports.ts';
 import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
+import {
+  CURRENT_PASSWORD_INCORRECT_MESSAGE,
+  IDENTITY_ERRORS,
+} from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import {
   checkUserLoginThrottle,
@@ -57,10 +61,8 @@ export const SECOND_FACTOR_FIELDS: Readonly<
   recovery: 'secondFactor.recoveryCode',
 });
 
-const CURRENT_PASSWORD_INCORRECT_MESSAGE =
-  '現在のパスワードが正しくありません。';
-
-const SECOND_FACTOR_INCORRECT_MESSAGE = '認証コードが正しくありません。';
+const SECOND_FACTOR_INCORRECT_MESSAGE =
+  IDENTITY_ERRORS.invalid_second_factor.message;
 
 const reAuthenticationFailedError = (
   field: string,

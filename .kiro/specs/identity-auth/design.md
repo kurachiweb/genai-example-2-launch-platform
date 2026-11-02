@@ -283,6 +283,7 @@ apps/
 │   │   ├── identity-types.ts                           # IDENTITY_TYPES
 │   │   ├── ports.ts                                    # 各ストア・メール・端末情報・ハンドルの重複判定・設定値・MailSendLimits・IdentityMessagePublisher
 │   │   ├── request-meta.ts                             # RequestMeta
+│   │   ├── identity-errors.ts                          # ユースケース・ストアが投げるAppErrorのエラーコード・種類・文言の集約
 │   │   ├── session-issuer.ts                           # セッションの発行と、重要な操作の後の再発行
 │   │   ├── user-session-verifier.ts                    # 利用者のセッションの検証
 │   │   ├── account-guard.ts                            # ログイン・状態・確認の判定(他specも使う)
@@ -330,7 +331,7 @@ apps/
 │   ├── presentation/graphql/modules/identity/          # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts                                   # 入力のzodスキーマ(common-libの規則)
-│   │   ├── errors.ts                                   # AppErrorの生成とエラーコード・文言
+│   │   ├── errors.ts                                   # 入力の検証の文言・呼び出し元の拒否・詳細の欄の経路(input.)の付与
 │   │   ├── resolver-support.ts                         # 呼び出し元の確認・RequestMetaの組み立て・セッションの指示
 │   │   ├── account-resolvers.ts                        # 登録・確認・ログイン・リセット・変更・退会・viewer
 │   │   ├── session-resolvers.ts                        # セッションの一覧と失効
@@ -2125,6 +2126,7 @@ export type PasswordLoginResult =
     }
   | {
       readonly kind: 'second-factor-required';
+      readonly userId: string; // ログインの成否のログに使う。応答には含めない
       readonly challenge: string;
       readonly expiresAt: Date;
     };

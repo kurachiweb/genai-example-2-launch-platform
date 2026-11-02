@@ -1,7 +1,6 @@
 import { inject, injectable } from 'inversify';
 
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
-import { AppError } from '../../../lib/core/errors/app-error.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
@@ -14,6 +13,7 @@ import type { PasswordPolicy } from '../auth/password-policy.ts';
 import type { PasswordHasher, SecretGenerator } from '../auth/ports.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
 import { prepareAuthToken } from './auth-token-issuance.ts';
+import { identityError } from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import { passwordRejectedError } from './password-rejection.ts';
 import type {
@@ -59,16 +59,7 @@ interface HandleCandidates {
 // 作成直後の利用者の版はテーブルの既定値と同じ
 const INITIAL_LIFECYCLE_VERSION = 0;
 
-const EMAIL_UNAVAILABLE_MESSAGE = 'このメールアドレスは登録できません。';
-
 const logger = getAppLogger(['api', 'identity', 'registration']);
-
-const emailUnavailableError = (): AppError =>
-  new AppError({
-    kind: 'conflict',
-    code: 'registration_email_unavailable',
-    message: EMAIL_UNAVAILABLE_MESSAGE,
-  });
 
 const createdUserRecord = (user: NewUserRecord): UserRecord => ({
   ...user,
@@ -111,7 +102,7 @@ export class StoreRegistration implements Registration {
     // アカウントの有無やメールアドレスの重複を応答の違いから推測させないよう、判定より前に数える
     await this.mailLimits.consume('email_verification', email, meta);
     if (await this.users.isEmailInUse(email)) {
-      throw emailUnavailableError();
+      throw identityError('registration_email_unavailable');
     }
     const handleCandidates = this.#handleCandidates();
     const handle = await handleCandidates.next();
@@ -167,7 +158,7 @@ export class StoreRegistration implements Registration {
         return createdUserRecord(user);
       }
       if (result === 'email-in-use') {
-        throw emailUnavailableError();
+        throw identityError('registration_email_unavailable');
       }
       user = { ...user, handle: await handleCandidates.next() };
     }

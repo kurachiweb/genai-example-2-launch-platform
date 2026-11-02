@@ -8,7 +8,6 @@ import { userLifecycleEvents } from '../../../db/schema/identity/user-lifecycle-
 import { userLoginChallenges } from '../../../db/schema/identity/user-login-challenges.ts';
 import { userSessions } from '../../../db/schema/identity/user-sessions.ts';
 import { users } from '../../../db/schema/identity/users.ts';
-import { AppError } from '../../../lib/core/errors/app-error.ts';
 import {
   assertLifecycleHandlerName,
   LifecycleRegistrationError,
@@ -16,6 +15,7 @@ import {
   type UserLifecycleEvent,
 } from '../../../lib/core/identity/user-lifecycle.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
+import { identityError } from '../../application/identity/identity-errors.ts';
 import type {
   UserLifecycleCommitter,
   UserStateTransition,
@@ -47,9 +47,6 @@ const STATE_CHANGE_BY_KIND = Object.freeze({
 // 版の検査に失敗したイベントの挿入だけが起こす違反。D1は`D1_ERROR: NOT NULL constraint failed: user_lifecycle_events.user_id: SQLITE_CONSTRAINT (...)`を投げ、causeにSQLiteのエラーを持つ
 const VERSION_CONFLICT_PATTERN =
   /NOT NULL constraint failed: user_lifecycle_events\.user_id(?::|$)/u;
-
-const STATE_CONFLICT_MESSAGE =
-  '処理が重なりました。時間をおいて再度お試しください。';
 
 function isVersionConflict(error: unknown): boolean {
   for (let current = error; current instanceof Error; current = current.cause) {
@@ -156,11 +153,7 @@ export function createD1UserLifecycleCommitter(
         ]);
       } catch (error) {
         if (isVersionConflict(error)) {
-          throw new AppError({
-            kind: 'conflict',
-            code: 'account_state_conflict',
-            message: STATE_CONFLICT_MESSAGE,
-          });
+          throw identityError('account_state_conflict');
         }
         throw error;
       }

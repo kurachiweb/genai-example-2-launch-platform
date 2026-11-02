@@ -109,6 +109,7 @@ describe('StoreLogin.withPassword', () => {
     );
     expect(result).toEqual({
       kind: 'second-factor-required',
+      userId: USER_ID,
       challenge: 'challenge-plain-1',
       expiresAt,
     });

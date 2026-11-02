@@ -5,7 +5,6 @@ import {
   type KeyedHasher,
 } from '../../../lib/core/crypto/keyed-hasher.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
-import { AppError } from '../../../lib/core/errors/app-error.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import type { SecondFactorInput } from '../../domain/auth/second-factor.ts';
@@ -19,6 +18,7 @@ import type {
 import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
 import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
+import { identityError } from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import {
   checkUserLoginThrottle,
@@ -49,6 +49,7 @@ export type PasswordLoginResult =
     }
   | {
       readonly kind: 'second-factor-required';
+      readonly userId: string;
       // 第2要素の段階の要求と組にする平文で、応答にだけ使い保存しない
       readonly challenge: string;
       readonly expiresAt: Date;
@@ -82,45 +83,6 @@ export const USER_LOGIN_CHALLENGE_HASH_PURPOSE = hashPurpose(
 );
 
 const MS_PER_SECOND = 1000;
-
-const INVALID_CREDENTIALS_MESSAGE =
-  'メールアドレスまたはパスワードが正しくありません。';
-
-const ACCOUNT_UNAVAILABLE_MESSAGE =
-  'このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。';
-
-const INVALID_SECOND_FACTOR_MESSAGE = '認証コードが正しくありません。';
-
-const LOGIN_CHALLENGE_EXPIRED_MESSAGE =
-  '認証の有効期限が切れました。もう一度ログインしてください。';
-
-const invalidCredentialsError = (): AppError =>
-  new AppError({
-    kind: 'unauthenticated',
-    code: 'invalid_credentials',
-    message: INVALID_CREDENTIALS_MESSAGE,
-  });
-
-const accountUnavailableError = (): AppError =>
-  new AppError({
-    kind: 'forbidden',
-    code: 'account_unavailable',
-    message: ACCOUNT_UNAVAILABLE_MESSAGE,
-  });
-
-const invalidSecondFactorError = (): AppError =>
-  new AppError({
-    kind: 'unauthenticated',
-    code: 'invalid_second_factor',
-    message: INVALID_SECOND_FACTOR_MESSAGE,
-  });
-
-const loginChallengeExpiredError = (): AppError =>
-  new AppError({
-    kind: 'unauthenticated',
-    code: 'login_challenge_expired',
-    message: LOGIN_CHALLENGE_EXPIRED_MESSAGE,
-  });
 
 const activeUser = (user: UserRecord | undefined): UserRecord | undefined =>
   user === undefined || user.deletedAt !== null ? undefined : user;
@@ -189,11 +151,11 @@ export class StoreLogin implements Login {
         keys,
         meta.now,
       );
-      throw invalidCredentialsError();
+      throw identityError('invalid_credentials');
     }
     // 停止はパスワードを知る本人にだけ伝え、ログインの失敗としては数えない
     if (user.status === 'suspended') {
-      throw accountUnavailableError();
+      throw identityError('account_unavailable');
     }
     if (isTotpEnabled(await this.totpCredentials.find(user.id))) {
       return this.#issueChallenge(user.id, meta);
@@ -216,17 +178,17 @@ export class StoreLogin implements Login {
     );
     const challenge = await this.challenges.findValid(tokenHash, meta.now);
     if (challenge === undefined) {
-      throw loginChallengeExpiredError();
+      throw identityError('login_challenge_expired');
     }
     const user = activeUser(await this.users.findById(challenge.userId));
     if (user === undefined) {
       await this.challenges.delete(challenge.id);
-      throw loginChallengeExpiredError();
+      throw identityError('login_challenge_expired');
     }
     // 待ちの発行後に停止された利用者は、第2要素を照合してもログインできないため、照合も失敗の記録もしない
     if (user.status === 'suspended') {
       await this.challenges.delete(challenge.id);
-      throw accountUnavailableError();
+      throw identityError('account_unavailable');
     }
     // 待ちの発行後にメールアドレスが変わっても、パスワードの段階と同じ利用者の単位で数えるよう現在の値を使う
     const keys = await checkUserLoginThrottle(
@@ -246,7 +208,7 @@ export class StoreLogin implements Login {
         keys,
         meta.now,
       );
-      throw invalidSecondFactorError();
+      throw identityError('invalid_second_factor');
     }
     await this.challenges.delete(challenge.id);
     await this.throttle.reset(USER_LOGIN_THROTTLE_SCOPE, keys);
@@ -277,6 +239,7 @@ export class StoreLogin implements Login {
     });
     return {
       kind: 'second-factor-required',
+      userId,
       challenge: secret.plain,
       expiresAt,
     };

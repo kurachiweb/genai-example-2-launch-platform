@@ -1,12 +1,12 @@
 import { inject, injectable } from 'inversify';
 
-import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { normalizeTotpCode } from '../../domain/auth/second-factor.ts';
 import { checkAccountWritable } from '../../domain/identity/user-account.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretBox, TotpAuthenticator } from '../auth/ports.ts';
 import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
 import type { CurrentUser } from './account-guard.ts';
+import { identityError } from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import type {
   IdentitySettings,
@@ -68,64 +68,13 @@ export const TOTP_SETUP_TTL_SECONDS = 600;
 
 const MS_PER_SECOND = 1000;
 
-const ACCOUNT_UNAVAILABLE_MESSAGE =
-  'このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。';
-
-const EMAIL_NOT_VERIFIED_MESSAGE =
-  'この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。';
-
-const TOTP_ALREADY_ENABLED_MESSAGE = '多要素認証は既に有効です。';
-
-const TOTP_NOT_ENABLED_MESSAGE = '多要素認証は有効になっていません。';
-
-const TOTP_SETUP_EXPIRED_MESSAGE =
-  '設定の有効期限が切れました。最初からやり直してください。';
-
-const INVALID_SECOND_FACTOR_MESSAGE = '認証コードが正しくありません。';
-
-const totpAlreadyEnabledError = (): AppError =>
-  new AppError({
-    kind: 'conflict',
-    code: 'totp_already_enabled',
-    message: TOTP_ALREADY_ENABLED_MESSAGE,
-  });
-
-const totpNotEnabledError = (): AppError =>
-  new AppError({
-    kind: 'conflict',
-    code: 'totp_not_enabled',
-    message: TOTP_NOT_ENABLED_MESSAGE,
-  });
-
-const totpSetupExpiredError = (): AppError =>
-  new AppError({
-    kind: 'unprocessable',
-    code: 'totp_setup_expired',
-    message: TOTP_SETUP_EXPIRED_MESSAGE,
-  });
-
-const invalidSecondFactorError = (): AppError =>
-  new AppError({
-    kind: 'unauthenticated',
-    code: 'invalid_second_factor',
-    message: INVALID_SECOND_FACTOR_MESSAGE,
-  });
-
 function assertWritable(user: UserRecord, requireVerifiedEmail: boolean): void {
   const denial = checkAccountWritable(user, { requireVerifiedEmail });
   if (denial === 'email-not-verified') {
-    throw new AppError({
-      kind: 'forbidden',
-      code: 'email_not_verified',
-      message: EMAIL_NOT_VERIFIED_MESSAGE,
-    });
+    throw identityError('email_not_verified');
   }
   if (denial !== undefined) {
-    throw new AppError({
-      kind: 'forbidden',
-      code: 'account_unavailable',
-      message: ACCOUNT_UNAVAILABLE_MESSAGE,
-    });
+    throw identityError('account_unavailable');
   }
 }
 
@@ -173,7 +122,7 @@ export class StoreTotpManagement implements TotpManagement {
     const { user } = current;
     assertWritable(user, true);
     if (isTotpEnabled(await this.totpCredentials.find(user.id))) {
-      throw totpAlreadyEnabledError();
+      throw identityError('totp_already_enabled');
     }
     await this.reAuthenticator.verify(user, reAuthentication, meta);
     const secret = this.totp.generateSecret();
@@ -187,7 +136,7 @@ export class StoreTotpManagement implements TotpManagement {
       expiresAt,
     );
     if (saved === 'already-enabled') {
-      throw totpAlreadyEnabledError();
+      throw identityError('totp_already_enabled');
     }
     return {
       otpauthUri: this.totp.buildUri(
@@ -209,19 +158,19 @@ export class StoreTotpManagement implements TotpManagement {
     assertWritable(user, true);
     const credential = await this.totpCredentials.find(user.id);
     if (isTotpEnabled(credential)) {
-      throw totpAlreadyEnabledError();
+      throw identityError('totp_already_enabled');
     }
     if (!isValidPending(credential, meta.now)) {
-      throw totpSetupExpiredError();
+      throw identityError('totp_setup_expired');
     }
     const normalized = normalizeTotpCode(code);
     if (normalized === undefined) {
-      throw invalidSecondFactorError();
+      throw identityError('invalid_second_factor');
     }
     const secret = await this.secretBox.open(credential.sealedSecret, user.id);
     const verification = this.totp.verify(secret, normalized, meta.now);
     if (!verification.ok) {
-      throw invalidSecondFactorError();
+      throw identityError('invalid_second_factor');
     }
     const issued = await this.recoveryCodeIssuer.issue(
       USER_RECOVERY_CODE_HASH_PURPOSE,
@@ -235,7 +184,7 @@ export class StoreTotpManagement implements TotpManagement {
       issued.hashes,
     );
     if (enabled === 'not-pending') {
-      throw totpSetupExpiredError();
+      throw identityError('totp_setup_expired');
     }
     return {
       recoveryCodes: issued.plains,
@@ -278,7 +227,7 @@ export class StoreTotpManagement implements TotpManagement {
   ): Promise<void> {
     assertWritable(user, false);
     if (!isTotpEnabled(await this.totpCredentials.find(user.id))) {
-      throw totpNotEnabledError();
+      throw identityError('totp_not_enabled');
     }
     await this.reAuthenticator.verify(user, reAuthentication, meta);
   }

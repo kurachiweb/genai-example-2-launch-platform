@@ -6,7 +6,7 @@ import {
 } from '../../domain/auth/session-policy.ts';
 import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
-import { notFoundError } from './not-found.ts';
+import { identityError } from './identity-errors.ts';
 import type {
   DeviceDescriber,
   StoredSession,
@@ -91,7 +91,7 @@ export class StoreSessionManagement implements SessionManagement {
       !isUser(principal) ||
       !(await this.sessions.deleteOne(principal.subjectId, sessionId))
     ) {
-      throw notFoundError();
+      throw identityError('not_found');
     }
     return { revokedCurrent: sessionId === principal.sessionId };
   }

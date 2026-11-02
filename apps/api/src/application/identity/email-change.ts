@@ -11,7 +11,7 @@ import type { CurrentUser } from './account-guard.ts';
 import { prepareAuthToken } from './auth-token-issuance.ts';
 import type { DisposableEmailCheck } from './disposable-email-check.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
-import { invalidLinkError } from './invalid-link.ts';
+import { identityError } from './identity-errors.ts';
 import type {
   AuthTokenStore,
   IdentityMailer,
@@ -125,12 +125,12 @@ export class StoreEmailChange implements EmailChange {
       meta.now,
     );
     if (consumed === undefined || consumed.newEmail === null) {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     const { newEmail } = consumed;
     const user = await this.users.findById(consumed.userId);
     if (!isConfirmable(user)) {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     const outcome = await this.users.applyEmailChange(
       user.id,
@@ -138,7 +138,7 @@ export class StoreEmailChange implements EmailChange {
       meta.now,
     );
     if (outcome === 'email-in-use') {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     const changed: UserRecord = {
       ...user,

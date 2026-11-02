@@ -10,7 +10,7 @@ import type { PasswordHasher } from '../auth/ports.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
 import { prepareAuthToken } from './auth-token-issuance.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
-import { invalidLinkError } from './invalid-link.ts';
+import { identityError } from './identity-errors.ts';
 import { passwordRejectedError } from './password-rejection.ts';
 import type {
   AuthTokenStore,
@@ -105,11 +105,11 @@ export class StorePasswordReset implements PasswordReset {
       meta.now,
     );
     if (found === undefined) {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     const user = await this.users.findById(found.userId);
     if (!isResettable(user)) {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     const validation = await this.passwordPolicy.validateNewPassword(
       command.newPassword,
@@ -125,7 +125,7 @@ export class StorePasswordReset implements PasswordReset {
       meta.now,
     );
     if (consumed === undefined) {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     await this.users.applyPasswordReset(user.id, passwordHash, meta.now);
     await this.#sendCompleted(user, meta.now);

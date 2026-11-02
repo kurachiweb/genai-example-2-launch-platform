@@ -8,7 +8,7 @@ import type { AccountGuard } from './account-guard.ts';
 import { prepareAuthToken } from './auth-token-issuance.ts';
 import type { DisposableEmailCheck } from './disposable-email-check.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
-import { invalidLinkError } from './invalid-link.ts';
+import { identityError } from './identity-errors.ts';
 import type {
   AuthTokenStore,
   IdentityMailer,
@@ -58,11 +58,11 @@ export class StoreEmailVerification implements EmailVerification {
       meta.now,
     );
     if (consumed === undefined) {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     const user = await this.users.findById(consumed.userId);
     if (user === undefined || user.deletedAt !== null) {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     // トークンの消費と確認済みの更新は別の書き込みのため、更新に失敗した利用者は確認メールの再送で取り戻す
     await this.users.markEmailVerified(user.id, meta.now);

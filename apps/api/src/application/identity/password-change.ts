@@ -11,7 +11,7 @@ import type { Principal } from '../session/session-verifier.ts';
 import type { CurrentUser } from './account-guard.ts';
 import { prepareAuthToken } from './auth-token-issuance.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
-import { invalidLinkError } from './invalid-link.ts';
+import { identityError } from './identity-errors.ts';
 import { passwordRejectedError } from './password-rejection.ts';
 import type {
   AuthTokenStore,
@@ -123,12 +123,12 @@ export class StorePasswordChange implements PasswordChange {
       meta.now,
     );
     if (consumed === undefined || consumed.pendingPasswordHash === null) {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     const { pendingPasswordHash } = consumed;
     const user = await this.users.findById(consumed.userId);
     if (!isConfirmable(user)) {
-      throw invalidLinkError();
+      throw identityError('invalid_link');
     }
     await this.users.applyPasswordChange(user.id, pendingPasswordHash);
     await this.#sendChanged(user, meta.now);

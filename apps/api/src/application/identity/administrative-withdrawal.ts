@@ -1,12 +1,11 @@
 import { inject, injectable } from 'inversify';
 
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
-import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { AuthIncidentReporter } from '../auth/ports.ts';
 import type { Principal } from '../session/session-verifier.ts';
+import { identityError } from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
-import { notFoundError } from './not-found.ts';
 import type {
   IdentityMessagePublisher,
   UserAccountStore,
@@ -31,8 +30,6 @@ export interface AdministrativeWithdrawal {
 }
 
 export const ADMINISTRATIVE_CALLER = 'admin';
-
-const FORBIDDEN_MESSAGE = 'この操作はできません。';
 
 const isAdministrativeRequest = ({
   caller,
@@ -61,15 +58,11 @@ export class StoreAdministrativeWithdrawal implements AdministrativeWithdrawal {
 
   async withdraw(command: AdministrativeWithdrawalCommand): Promise<void> {
     if (!isAdministrativeRequest(command)) {
-      throw new AppError({
-        kind: 'forbidden',
-        code: 'forbidden',
-        message: FORBIDDEN_MESSAGE,
-      });
+      throw identityError('forbidden');
     }
     const user = await this.users.findById(command.userId);
     if (user === undefined || user.deletedAt !== null) {
-      throw notFoundError();
+      throw identityError('not_found');
     }
     await commitWithdrawal(this.#transition, user, command.at);
   }

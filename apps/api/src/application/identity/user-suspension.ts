@@ -5,7 +5,7 @@ import type { AccountStatus } from '../../domain/identity/user-account.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { AuthIncidentReporter } from '../auth/ports.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
-import { notFoundError } from './not-found.ts';
+import { identityError } from './identity-errors.ts';
 import type {
   IdentityMessagePublisher,
   UserAccountStore,
@@ -58,7 +58,7 @@ export class StoreUserSuspension implements UserSuspension {
   ): Promise<SuspensionResult> {
     const user = await this.users.findById(userId);
     if (user === undefined || user.deletedAt !== null) {
-      throw notFoundError();
+      throw identityError('not_found');
     }
     if (user.status === target) {
       return 'unchanged';

@@ -1,9 +1,9 @@
 import { inject, injectable } from 'inversify';
 
-import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { checkAccountWritable } from '../../domain/identity/user-account.ts';
 import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import type { SessionView } from '../session/session-view.ts';
+import { identityError } from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import type { UserAccountStore, UserRecord } from './ports.ts';
 
@@ -20,14 +20,6 @@ export interface AccountGuard {
   requireWritableUser(session: SessionView): Promise<CurrentUser>;
   requireVerifiedUser(session: SessionView): Promise<CurrentUser>;
 }
-
-const UNAUTHENTICATED_MESSAGE = 'ログインが必要です。';
-
-const ACCOUNT_UNAVAILABLE_MESSAGE =
-  'このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。';
-
-const EMAIL_NOT_VERIFIED_MESSAGE =
-  'この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。';
 
 // 処理単位のコンテナで単一に束縛し、同じ要求の中では利用者を1回だけ読む
 @injectable()
@@ -57,11 +49,7 @@ export class StoreAccountGuard implements AccountGuard {
   async requireUser(session: SessionView): Promise<CurrentUser> {
     const current = await this.currentUser(session);
     if (current === undefined) {
-      throw new AppError({
-        kind: 'unauthenticated',
-        code: 'unauthenticated',
-        message: UNAUTHENTICATED_MESSAGE,
-      });
+      throw identityError('unauthenticated');
     }
     return current;
   }
@@ -81,18 +69,10 @@ export class StoreAccountGuard implements AccountGuard {
     const current = await this.requireUser(session);
     const denial = checkAccountWritable(current.user, { requireVerifiedEmail });
     if (denial === 'email-not-verified') {
-      throw new AppError({
-        kind: 'forbidden',
-        code: 'email_not_verified',
-        message: EMAIL_NOT_VERIFIED_MESSAGE,
-      });
+      throw identityError('email_not_verified');
     }
     if (denial !== undefined) {
-      throw new AppError({
-        kind: 'forbidden',
-        code: 'account_unavailable',
-        message: ACCOUNT_UNAVAILABLE_MESSAGE,
-      });
+      throw identityError('account_unavailable');
     }
     return current;
   }
