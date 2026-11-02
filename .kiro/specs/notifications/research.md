@@ -353,3 +353,10 @@
 
 - **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
 - 要件と受け入れ基準は変えていない。
+
+## 層の規則に合わせた契約の置き場所の改訂(2026-11-02、開発者の指示)
+
+- **規則**: [層構成の依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析)により、api・eventの`src/application/**`・`src/domain/**`は`**/lib/workers/**`を型も含めて読み込めない。application層が受け取る契約と識別子は`apps/backend-lib/core/<ドメイン>`に置き、`workers`には実装と束縛だけを置く。識別子は`Symbol.for('<ドメイン>.<名前>')`の凍結したオブジェクトにし、単体テストで値と凍結を確かめる。
+- **確かめた結果**: 本specの共有部品の契約と`NOTIFICATIONS_PLATFORM_TYPES`は既に`core/notifications`にあり、置き場所は規則に合っていた。
+- **変えた箇所**: design.mdのFile Structure Planの`identifiers.ts`(「テストなし」を改め`identifiers.unit.test.ts`を置く)、`backend-lib/workers`の節の冒頭(契約は`core/notifications`、ここは実装と束縛だけである旨)、`NotificationSettingsExport`のコードの置き場所のコメント(`core/notifications/ports.ts`)、`NOTIFICATIONS_PLATFORM_MODULE`の識別子の説明、Testing Strategy(識別子の単体テスト)。tasks.mdの2.2(契約と識別子の置き場所と識別子の単体テスト)。
+- 要件と受け入れ基準は変えていない。タスクの番号は変えていない。

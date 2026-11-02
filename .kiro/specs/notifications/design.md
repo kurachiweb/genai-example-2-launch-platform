@@ -209,7 +209,7 @@ apps/
 │   └── index.ts
 ├── backend-lib/
 │   ├── core/notifications/                                     # 純粋な契約(Bunの単体テスト)
-│   │   ├── identifiers.ts                                      # NOTIFICATIONS_PLATFORM_TYPES(テストなし)
+│   │   ├── identifiers.ts                                      # NOTIFICATIONS_PLATFORM_TYPES(Symbol.for('notifications.<名前>')の凍結したオブジェクト、identifiers.unit.test.ts)
 │   │   ├── ports.ts                                            # 共有部品のポートの型(テストなし)
 │   │   ├── notification-event-contract.ts                      # NotificationEvent・検証・dedupe・NotificationEventPublisher
 │   │   ├── notification-slots.ts                               # 送信枠のキーと時刻・previewSlotFor・resultSlotFor
@@ -1150,6 +1150,8 @@ export declare const NOTIFICATION_CONTINUE_DELAY_SECONDS: 1;
 
 ### backend-lib/workers
 
+- この節の部品の契約(`NotificationSettingsExport`・`NotificationSettingsExportRecord`を含む)は`core/notifications/ports.ts`、識別子は`core/notifications/identifiers.ts`に置き、ここにはD1の実装と束縛だけを置く。api・eventのapplication層と後続spec(data-exportを含む)は`**/lib/workers/**`を型も含めて読み込めないため、`core/notifications`から読み込む(`docs/GUIDES/tech/backend/002`の「依存方向と静的解析」)。
+
 #### D1NotificationPreferenceStore・D1UnsubscribeTokenService・D1SenderInfoStore
 
 | Field        | Detail                                                 |
@@ -1333,6 +1335,7 @@ export interface NotificationEventExpander {
 **Contracts**: Service [x]
 
 ```typescript
+// core/notifications/ports.ts(data-exportのeventのapplication層が受け取る。実装D1NotificationSettingsExportはworkers/notifications)
 export interface NotificationSettingsExportRecord {
   readonly matchPreview: boolean;
   readonly matchResult: boolean;
@@ -1370,7 +1373,7 @@ export interface NotificationIncidentReporter {
 
 - `SentryNotificationIncidentReporter`(`workers/notifications/sentry-notification-incident-reporter.ts`): `@sentry/cloudflare`の`captureEvent`(定型の文言を`logentry.message`に置く。`infra/004`の「同じ文言を繰り返し送る通知」)で、`slot-overdue`・`send-rejected`・`event-stalled`は`error`、`sender-info-missing`・`evening-dispatch-incomplete`は`warning`。タグ`notification_incident`、fingerprint`['notifications', <種類>]`。メールアドレス・名称・トークンを送らない(14.4)。apiの保守(4:21)とeventの送信の両方で使う。
 - `MessageWorkRequester`(`NotificationWorkRequester`の実装)は`MessagePublisher.publish`で2つのメッセージを送る。apiとeventの`application`は`lib/workers`を読み込めないため、メッセージの送信をこのポート越しに行う。
-- `NOTIFICATIONS_PLATFORM_MODULE`は上の部品と`NotificationEventPublisher`・`NotificationEventExpander`・`NotificationWorkRequester`・`NotificationIncidentReporter`を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる(12.1)。DIの識別子は`NOTIFICATIONS_PLATFORM_TYPES`(`Symbol.for('notifications.<名前>')`、`core/notifications/identifiers.ts`)。
+- `NOTIFICATIONS_PLATFORM_MODULE`は上の部品と`NotificationEventPublisher`・`NotificationEventExpander`・`NotificationWorkRequester`・`NotificationIncidentReporter`を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる(12.1)。DIの識別子は`NOTIFICATIONS_PLATFORM_TYPES`(`Symbol.for('notifications.<名前>')`の凍結したオブジェクト、`core/notifications/identifiers.ts`。値と凍結は`identifiers.unit.test.ts`で確かめる)。
 
 ### api
 
@@ -1784,6 +1787,7 @@ erDiagram
 ## Testing Strategy
 
 - Unit Tests(Bun、`*.unit.test.ts`):
+  - `core/notifications/identifiers`: `NOTIFICATIONS_PLATFORM_TYPES`の各値が`Symbol.for('notifications.<名前>')`であり、オブジェクトが凍結されていること。
   - `notification-slots`: 夜の枠の期日(業務日付の23:45=UTCの翌日7:45)と`settle_until`(23:55)、朝の枠(0:00=UTCの8:00)、`previewSlotFor`が前日の夜の枠、`resultSlotFor`が当日、キーの往復と形式違反(3.3・13.1・13.2・15.2)。
   - `notice-plan`: `matchNoticeDrafts`(予告は`scheduled`で側が2つだけ・不戦勝の除外(仮6)・結果は確定だけ・紐付けの無い側の除外)、`noticeDedupeKey`・`groupKeyFor`、`planGroupEmail`(統合・片方だけ受信(4.5)・受信しない種別の`topic_disabled`・送信の対象者でない・31件目以降の`omittedCount`)(3.5・4.4・4.5・5.2・5.6・7.2)。
   - `notice-copy`: 件名の全ての形(勝利・敗北・両者敗北・不戦勝・統合・予告・開催の1件と複数・受賞)、`resultOutcomeOf`の写像(`both_forfeited`はnull)、`matchLabel`・`roundName`、`awardPeriodLabel`(ISO週の年末年始の境界)、`COMBINED_UNSUBSCRIBE_LABELS`の文言(3.4・4.3・5.2・5.3・6.2・9.1)。
