@@ -32,6 +32,7 @@ const PREBUNDLED_DEPENDENCIES = [
   'jotai/vanilla',
   '@marsidev/react-turnstile',
   'react-easy-crop',
+  'uqr',
   'unified',
   'remark-parse',
   'remark-gfm',

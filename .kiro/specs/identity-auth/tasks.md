@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: パッケージ・テーブル・入力規則
-- [ ] 1.1 TOTP・端末情報・QRコードのパッケージを版固定で導入し、実行環境で動くことを確かめる
+- [x] 1.1 TOTP・端末情報・QRコードのパッケージを版固定で導入し、実行環境で動くことを確かめる
   - backend-platform・api-gateway・email-delivery・frontend-platformの全タスクが完了していることを前提とする(層構成・登録箇所・GraphQL基盤・メール送信基盤・画面の骨格がある状態)。content-processingへの依存は1.3の前提に示す。media-pipeline(roadmapの依存)のタスク5.1・5.6は8.5だけの前提で、無くても8.5以外のタスクは進める
   - 先に、APIサーバーのWorkers統合テストでTOTPのURIの生成と照合、User-Agentからのブラウザ名・OS名の取得を、frontend-libのブラウザテストでURIからQRコードのセルの行列を得ることを書き、失敗を確かめてから導入する(後のタスクで本来のテストに置き換える)
   - APIサーバーに`otpauth` 9.5.2と`bowser` 2.14.1、frontend-lib・利用者側・管理者側に`uqr` 0.1.3を、完全に固定した版で導入する。3つのアプリのブラウザテストの事前バンドルの一覧(各`vitest.browser.config.ts`の`PREBUNDLED_DEPENDENCIES`)に`uqr`を加える
@@ -450,3 +450,7 @@
   - prodの`DISIFY_API_KEY`の値はlaunch-readinessがリリース時に登録する。引き継ぎ事項として報告に書く
   - 完了状態: 一括検査と一括テストが成功してカバレッジが閾値を満たし、手作業の一覧が報告に含まれている
   - _Requirements: 20.1, 20.3_
+
+## Implementation Notes
+
+- 1.1: 導入確認のテストは`apps/api/src/infrastructure/auth/identity-packages.worker.test.ts`と`apps/frontend-lib/components/auth/qr-code-package.browser.test.ts`(後のタスクで本来のテストに置き換える)。`uqr`の`encode`は既定で四辺に1セルの余白(`border: 1`)を加える。`bowser`は解釈できないUser-Agentに空文字列のブラウザ名・OS名を返す。`otpauth`の`validate({ window: 1 })`は一致した時間窓の差分(0・-1・1)を返し、範囲外は`null`。TOTPの試験用の秘密鍵はBase32の文字列で書くとBetterleaksに誤検知されるため、`Secret.fromLatin1(...)`で組み立てる

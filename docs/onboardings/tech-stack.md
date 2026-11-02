@@ -41,8 +41,9 @@
 
 ### 認証・認可
 
-- OTPAuth(TOTP多要素認証)
-- uqr ... TOTP登録用のotpauth URIをQRコードのSVGへ変換
+- OTPAuth 9.5.2(TOTP多要素認証の秘密鍵の生成・`otpauth://`のURIの生成・コードの照合、APIサーバーだけで使用)
+- uqr 0.1.3(TOTP登録用の`otpauth://`のURIのQRコードのセルの行列への変換とSVG要素での描画、画面の共通部品・利用者側・管理者側で使用)
+- bowser 2.14.1(セッションの一覧に表示するブラウザ名・OS名のUser-Agentからの取得、APIサーバーだけで使用)
 
 ### ID採番
 
