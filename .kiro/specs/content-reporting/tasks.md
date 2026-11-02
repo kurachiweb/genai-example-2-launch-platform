@@ -2,7 +2,7 @@
 
 - [ ] 1. 基盤: 通報の規則・テーブル・監査ログの操作種別・対応期間・メール・サービス仕様
 - [ ] 1.1 通報と案件の規則と表示名の共有定義を作る
-  - 前提: dev-tooling〜ugc-moderationの26specの全タスクが完了していること(ugc-moderationの`ProductModerationService`・`CommentModerationService`・`UserModerationService`と`ModerationCommand.statements`・`ModerationOutcome.actionId`・`ADMIN_PRODUCT_DETAIL_SECTIONS`・E2Eの`moderation-fixtures.ts`、admin-foundationの`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements`・`AuditLogReader`(仮7の`latestForMany`を含む)とテストの共有の偽物`createFakeAuditLogReader`・`AUDIT_ACTIONS`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・`CategoryMasterEditor`・`ConfirmActionDialog`・E2Eの`admin-bootstrap.ts`・`local-d1.ts`、inquiry-chatの`CATEGORY_SECTIONS`、directory-discoveryの`PRODUCT_PAGE_SECTIONS`とE2Eの`directory-fixtures.ts`、user-profile-socialの`PUBLIC_PROFILE_MENU_ITEMS`・`UserProfileDirectory`、engagementの`COMMENT_ACTIONS`・`CommentStore`、product-launchの`ProductDirectory`とプロダクトライフサイクルの非同期の登録口、identity-authの`AccountGuard`・`UserContactDirectory`・ユーザーライフサイクルの同期と非同期の登録口・E2Eの`mailpit.ts`、backend-platformの`RateLimitCounterClient`・`hashRateLimitKey`・bot判定、api-gatewayの`assertHuman`、email-deliveryのメールの基盤)。無ければ該当するタスクを保留して開発者へ報告する
+  - 前提: dev-tooling〜ugc-moderationの26specの全タスクが完了していること(ugc-moderationの`ProductModerationService`・`CommentModerationService`・`UserModerationService`と`ModerationCommand.participation`・書き込みの参加者の登録口(`ModerationWriteParticipant`・`ModerationWriteContext`・`MODERATION_WRITE_PARTICIPANTS`)・`ModerationOutcome.actionId`・`ADMIN_PRODUCT_DETAIL_SECTIONS`・E2Eの`moderation-fixtures.ts`、admin-foundationの`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements`・`AuditLogReader`(仮7の`latestForMany`を含む)とテストの共有の偽物`createFakeAuditLogReader`・`AUDIT_ACTIONS`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・`CategoryMasterEditor`・`ConfirmActionDialog`・E2Eの`admin-bootstrap.ts`・`local-d1.ts`、inquiry-chatの`CATEGORY_SECTIONS`、directory-discoveryの`PRODUCT_PAGE_SECTIONS`とE2Eの`directory-fixtures.ts`、user-profile-socialの`PUBLIC_PROFILE_MENU_ITEMS`・`UserProfileDirectory`、engagementの`COMMENT_ACTIONS`・`CommentStore`、product-launchの`ProductDirectory`とプロダクトライフサイクルの非同期の登録口、identity-authの`AccountGuard`・`UserContactDirectory`・ユーザーライフサイクルの同期と非同期の登録口・E2Eの`mailpit.ts`、backend-platformの`RateLimitCounterClient`・`hashRateLimitKey`・bot判定、api-gatewayの`assertHuman`、email-deliveryのメールの基盤)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、対象の種類、理由の検証(空白だけ・1,000書記素と1,001書記素・結合文字と絵文字)、連絡先の要否(未ログインと権利侵害の組だけ)、標準カテゴリの固定のIDの判定、カテゴリの並び順(追加の順・権利侵害・その他の順で末尾)、手での状態の変更の可否(4状態の全ての組で、同じ状態への変更だけ不可)と種類(未対応⇄対応中・完了への変更(完了どうしを含む)・完了からの再開)、対象の種類ごとの措置、管理者の理由の要否(措置・措置なしの対応済・却下と手での完了と再開は必須、未対応⇄対応中は任意)と500書記素・501書記素、照会の内容の上限、状態の値と表示名がinquiry-chatの問い合わせの対応ステータスと一致することを確かめる
   - 完了状態: 単体テストが成功し、共有定義が`common-lib`の他のディレクトリと`zod`以外を読み込まない
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.5, 8.1, 8.2, 8.3, 8.4, 9.1, 12.2, 14.4, 14.8, 20.2_
@@ -52,14 +52,16 @@
 
 - [ ] 2. 共有部品
 - [ ] 2.1 通報の削除のストアを作り、両アプリに束縛する
-  - 共有部品の識別子とプラットフォームモジュールを作り、api・eventの登録箇所へ加える
+  - 先に、識別子`REPORTING_PLATFORM_TYPES`が`Symbol.for('reporting.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
+  - apiのジョブとeventの処理のapplication層が読み込めるよう、削除の操作の契約`ReportErasureStore`(文を返さないメソッド)を`apps/backend-lib/core/reporting/ports.ts`に、共有部品の識別子`REPORTING_PLATFORM_TYPES`を`core/reporting/identifiers.ts`に作る。退会の論理削除の文を返す`ReportErasureStatements`は`workers/reporting/report-erasure-statements.ts`に作り、apiのinfrastructure層の同期の処理(3.6)だけが使う。application層は`**/lib/workers/**`を型も含めて読み込めず、文も扱わないため、文の契約を`core`に置かず、削除の操作の契約と識別子を`workers`に置かない
+  - D1の実装`D1ReportErasureStore`(`workers/reporting/d1-report-erasure-store.ts`、2つの契約を満たす)とプラットフォームモジュール`REPORTING_PLATFORM_MODULE`を作り、api・eventの登録箇所へ加える。apiの`REPORTING_TYPES`・eventの`EVENT_REPORTING_TYPES`とメンバーの名前を重ねない
   - 先に、Workers統合テストで、退会の論理削除の文、申出者の通報の物理削除と残りの有無、投稿者の案件とプロダクト(とそのコメント)の案件の対象への参照だけを消して案件・通報・理由・状態を残すこと(上限ずつ、2回目は同じ案件を選ばない)、最後の完了から14日を過ぎた案件の未ログインの通報だけの削除(13日と14日の境界・未完了の案件(完了から戻した案件を含む)の通報を消さない・再び完了した案件は再び完了した日時から数えること・ログイン中の通報を残す)、参照の消去から3年を過ぎた案件の通報ごとの削除(境界の前後・参照を消していない案件を消さない)、通報が無くなった案件の削除、2回実行しても結果が変わらないことを確かめる
-  - 完了状態: Workers統合テストが成功し、api・eventの両方でストアを解決できる
+  - 完了状態: 単体テストとWorkers統合テストが成功し、api・eventの両方でストアと文の契約を解決できる
   - _Depends: 1.2_
   - _Requirements: 17.1, 17.2, 17.4, 17.5, 17.6, 17.9, 17.10_
 
 - [ ] 2.2 データエクスポートの通報の照会を作る
-  - 2.1のプラットフォームモジュールに束縛する
+  - data-exportのeventのapplication層が読み込めるよう、契約(`ReportExportRecord`・`ReportExport`)を`apps/backend-lib/core/reporting/ports.ts`に、識別子を2.1の`REPORTING_PLATFORM_TYPES`に加え、D1の実装`D1ReportExport`を`workers/reporting/d1-report-export.ts`に作って2.1のプラットフォームモジュールに束縛する。上流の`UserProfileDirectory`・`ProductDirectory`の契約と識別子は`core/profile`・`core/product`から読み込む
   - 先に、Workers統合テストで、項目(ID・対象の種類・対象の参照・受付時点のカテゴリ名・理由・受付日時)とIDの昇順と続きの位置、ユーザーとプロダクトの現在のハンドルとコメントのID、退会・物理削除の対象と対象への参照を消した通報の参照のnull、カテゴリの付け替えの後も受付時点の名前であること、論理削除の除外、対応ステータスと連絡先を返さないことを確かめる
   - 完了状態: Workers統合テストが成功し、eventで照会を解決できる
   - _Depends: 2.1_
@@ -67,9 +69,12 @@
 
 - [ ] 3. apiの土台: 識別子・ストア・同期の処理
 - [ ] 3.1 apiの識別子・ポート・入力と結果の型を作る
-  - 設計の全てのユースケース・ストア・文のポート・ジョブ・同期の処理のDIの識別子と、入力と結果の型を先に作る。以後の3・4・5のタスクは本specのapiの識別子のファイルを変えず、本タスクより後のapiの登録箇所の変更は3.6と5.2だけが行う
-  - 完了状態: 型検査が通り、ポートが`infrastructure`を読み込まない
-  - _Requirements: 19.3_
+  - 設計の全てのユースケース・ストア・書き込みの単位のポート`ReportCaseWriter`・回数制限のポート`ReportSubmissionRateLimit`・ジョブ・同期の処理と、infrastructure層の文の組み立て`D1ReportCaseStatements`・措置の書き込みの参加者`ReportCaseClosingParticipant`のDIの識別子と、入力と結果の型を先に作る。application層のポートは文を返さず接続を受け取らない
+  - 措置と一体の完了の参加の値(`application/reporting/report-case-closing-participation.ts`の種類`content-reporting.report-case-closing`・組み立て・読み取り)を作る。値は案件のID・措置・理由・日時・準備した監査ログだけで、文を含めない
+  - 先に、単体テストで、組み立てた参加の種類と値、読み取りが種類の違い・形の誤り(措置なしの完了・却下を含む)で値を返さないことを確かめる以後の3・4・5のタスクは本specのapiの識別子のファイルを変えず、本タスクより後のapiの登録箇所の変更は3.6と5.2だけが行う
+  - 他specと本specの共有部品の契約と識別子は`backend-lib/core`(`core/reporting`・`core/identity`・`core/profile`・`core/product`・`core/media`など)から読み込み、`**/lib/workers/**`を型も含めて読み込まない
+  - 完了状態: 単体テストが成功し、型検査が通り、ポートが`infrastructure`を読み込まない。APIサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無く、検索でapplication層に`BatchItem`の読み込みが無い
+  - _Requirements: 9.2, 19.3_
 
 - [ ] 3.2 通報と集約の書き込みのストアを作る
   - 先に、Workers統合テストで、通報と新しい案件の一体の確定、未完了の案件への集約、完了した案件の対象への新しい案件、同じ対象への同時の2件で案件が1つになること、受付時点のカテゴリ名、権利侵害の起点が最初の権利侵害の通報の日時で後の通報で変わらないこと、最後の受付日時の更新、カテゴリの同時の削除で何も残らずカテゴリの不在を返すこと、送信元IPアドレスの列が無いことを確かめる
@@ -91,20 +96,21 @@
   - _Depends: 1.2, 3.1_
   - _Requirements: 5.4, 5.6, 6.1, 6.3, 7.2, 7.3, 15.1, 15.3_
 
-- [ ] 3.5 (P) 案件の状態の変更・完了・照会の文と通知の状態のストアを作る
-  - 先に、Workers統合テストで、手での状態の変更の3種類(未対応⇄対応中、完了への変更と完了どうしの変更で完了の日時・措置(対応済は措置なし、却下はnull)・理由が入り措置の記録のIDが消え依頼待ちの通知だけが`none`になること、再開で完了の日時・措置・措置の記録のID・理由が消え依頼待ちの通知だけが`none`になり依頼済みの記録が残ること)と監査ログの一体の確定、変更前の状態が違うときの競合、同じ対象に未完了の案件があるときの再開が何も残さず`open-case-exists`になること、参照を消した案件の再開がこの違反にならないこと、完了の文(状態・日時・措置・理由・申出者への通知の状態(連絡先の無い未ログインは`none`)・却下の投稿者への通知の状態(対象への参照を消した案件は`skipped`)・監査ログ)と完了済みの案件での競合で何も残らないこと、再開の後の操作による完了で依頼済み・取りやめた通知が依頼待ちに戻ること(1回の完了につき1回)、照会の文が対応中だけで確定すること、措置の記録のIDの連結が措置による対応済で未設定の案件だけを1回更新し、措置なしの対応済・却下・未完了・設定済みの案件を変えないこと、通知の状態が依頼待ちからだけ1回進むこと、1時間以上前に完了した依頼待ちの案件の一覧を確かめる
+- [ ] 3.5 (P) 案件の状態の変更・完了・照会の文と書き込みの単位・措置の書き込みの参加者・通知の状態のストアを作る
+  - 状態の変更・完了・照会の文の組み立て(`D1ReportCaseStatements`、infrastructure層の内部の部品)と、それを単独の一括の書き込みで確定する書き込みの単位の実装(`D1ReportCaseWriter`)、同じ完了の文に措置の記録のIDを入れて返す措置の書き込みの参加者(`ReportCaseClosingParticipant`、ugc-moderationのinfrastructure層の参加者の契約を実装する)をinfrastructure層に作る
+  - 先に、Workers統合テストで、手での状態の変更の3種類(未対応⇄対応中、完了への変更と完了どうしの変更で完了の日時・措置(対応済は措置なし、却下はnull)・理由が入り措置の記録のIDが消え依頼待ちの通知だけが`none`になること、再開で完了の日時・措置・措置の記録のID・理由が消え依頼待ちの通知だけが`none`になり依頼済みの記録が残ること)と監査ログの一体の確定、変更前の状態が違うときの競合、同じ対象に未完了の案件があるときの再開が何も残さず`open-case-exists`になること、参照を消した案件の再開がこの違反にならないこと、完了の文(状態・日時・措置・理由・申出者への通知の状態(連絡先の無い未ログインは`none`)・却下の投稿者への通知の状態(対象への参照を消した案件は`skipped`)・監査ログ)と完了済みの案件での競合で何も残らないこと、再開の後の操作による完了で依頼済み・取りやめた通知が依頼待ちに戻ること(1回の完了につき1回)、照会の文が対応中だけで確定すること、措置なしの対応済・却下の確定で措置の記録のIDがnullであること、参加者が種類・形の誤りで内部エラーになり、参加の値と`context.actionId`から措置の記録のIDを入れた完了の文を返し(読み取りをしない)、完了済みの案件ではその文の確定が何も残さないこと、通知の状態が依頼待ちからだけ1回進むこと、1時間以上前に完了した依頼待ちの案件の一覧を確かめる
   - 完了状態: Workers統合テストが成功する
-  - _Boundary: D1ReportCaseStatements, D1ReportNoticeStore_
+  - _Boundary: D1ReportCaseStatements, D1ReportCaseWriter, ReportCaseClosingParticipant, D1ReportNoticeStore_
   - _Depends: 1.2, 1.3, 3.1_
-  - _Requirements: 8.3, 8.4, 8.5, 8.6, 8.8, 9.3, 10.2, 11.5, 11.8, 12.3, 16.4_
+  - _Requirements: 8.3, 8.4, 8.5, 8.6, 8.8, 9.2, 9.3, 10.2, 11.5, 11.8, 12.3, 16.4, 16.5_
 
 - [ ] 3.6 退会の同期の処理とapiのモジュールの骨格を作り、ストアと同期の処理を束縛して登録する
-  - 退会の同期の処理(退会のイベントで2.1の論理削除の文を返す)を作る
-  - apiの本specのモジュールを作り、3.2〜3.5のストアと退会の同期の処理を束縛してapiの登録箇所へ加え、ユーザーライフサイクルの同期の処理の登録口へ追記する
+  - 退会の同期の処理(退会のイベントで2.1の`ReportErasureStatements`の論理削除の文を返す。文を扱うためinfrastructure層に置く)を作る
+  - apiの本specのモジュールを作り、3.2〜3.5のストア・書き込みの単位・措置の書き込みの参加者と退会の同期の処理を束縛してapiの登録箇所へ加え、ユーザーライフサイクルの同期の処理の登録口へ追記し、ugc-moderationの書き込みの参加者の登録の一覧(`composition/moderation-write-participants.ts`)へ`content-reporting.report-case-closing`を追記する
   - 先に、Workers統合テストで、本物の退会の確定でその利用者の通報が同じ一括の書き込みで論理削除され、他の利用者の通報が変わらないことを確かめる
-  - 完了状態: Workers統合テストが成功し、登録口の検査を通る
+  - 完了状態: Workers統合テストが成功し、登録口の検査(参加者の登録の一覧の種類の形式と重複を含む)を通る
   - _Depends: 2.1, 3.2, 3.3, 3.4, 3.5_
-  - _Requirements: 17.3_
+  - _Requirements: 17.3, 19.1_
 
 - [ ] 4. ユースケース(本specの識別子のファイルと登録箇所を変えない)
 - [ ] 4.1 (P) 通報の対象の判定と表示名を作る
@@ -115,9 +121,10 @@
   - _Requirements: 3.3, 6.2, 6.7, 7.1, 19.6_
 
 - [ ] 4.2 通報の受け付けと回数制限を作る
-  - 先に、単体テストで、ログイン中・未ログイン・停止中の通報者の種類の判定、理由とカテゴリと連絡先の検証の誤りの欄、連絡先が要らないときに値を捨てること、対象が見つからないときの拒否、自分のコンテンツの拒否(停止中の本人を含む)、利用者の規則を先にIPアドレスの規則を後に数えること、不明なIPアドレスで数えずに警告を残すこと、上限の超過で書き込まないこと、ハッシュ化したキーの用途の文字列、ログに識別子と件数だけを出しメールアドレス・理由・IPアドレスを出さないことを確かめる
-  - 先に、Workers統合テストで、本物の厳密カウンタでIPアドレスと利用者のそれぞれ11回目が拒否され、1時間後に0に戻り、未ログインと停止中は利用者の規則を使わないことを確かめる(ユースケースはテストの中で組み立てる)
-  - 完了状態: 単体テストとWorkers統合テストが成功する
+  - 先に、単体テストで、ログイン中・未ログイン・停止中の通報者の種類の判定、理由とカテゴリと連絡先の検証の誤りの欄、連絡先が要らないときに値を捨てること、対象が見つからないときの拒否、自分のコンテンツの拒否(停止中の本人を含む)、対象の確認の後に回数制限のポート(偽物)を通報者の種類と送信元IPアドレスで呼ぶこと、上限の超過で書き込まないこと、ログに識別子と件数だけを出しメールアドレス・理由・IPアドレスを出さないことを確かめる
+  - 先に、Workers統合テストで、回数制限の実装`CounterReportSubmissionRateLimit`について、利用者の規則を先にIPアドレスの規則を後に数え利用者の規則で拒否されたらIPアドレスの規則を数えないこと、不明なIPアドレスで数えずに警告を残すこと、ハッシュ化したキーの用途の文字列、本物の厳密カウンタでIPアドレスと利用者のそれぞれ11回目が拒否され1時間後に0に戻ること、未ログインと停止中は利用者の規則を使わないことを確かめる(ユースケースと実装はテストの中で組み立てる)
+  - 回数制限のポートはapplication層(3.1)、実装と2つの規則は厳密カウンタのクライアントの型と`assertWithinLimit`が共通ライブラリの`workers`にあるためinfrastructure層(`infrastructure/reporting/counter-report-submission-rate-limit.ts`)に作る(`backend/003`、identity-authの`CounterMailSendLimits`と同じ形)。束縛は5.2で加える
+  - 完了状態: 単体テストとWorkers統合テストが成功し、APIサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 3.2, 4.1_
   - _Requirements: 3.4, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 19.4_
 
@@ -135,22 +142,22 @@
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.10_
 
 - [ ] 4.5 対応ステータスの変更・措置なしの対応済・却下を作る
-  - 先に、単体テストで、操作(措置なしの対応済・却下)の理由の要否と上限・案件の不在と完了済みの拒否、手での状態の変更の4状態の全ての組の可否と種類ごとの理由の要否(未対応⇄対応中は任意、完了への変更と再開は必須)、完了した案件も手で変更できること、変更前の状態の不一致の競合、`open-case-exists`の`report_case_open_exists`への変換、監査ログの準備(未対応⇄対応中と再開は状態の変更の前後、手での完了は対応済・却下の操作種別と手での変更の印と変更前の状態、操作は措置なし・却下と操作の印)、却下で投稿者がいれば投稿者への通知を依頼待ちに、対象への参照を消した案件の却下では送らなかった記録(`skipped`)にし、措置なしの対応済では投稿者への通知を`none`にすること、確定の後の通知の依頼(例外を握る)、手での状態の変更では通知も措置も呼ばないこと、ログに識別子だけを出すことを確かめる
+  - 先に、単体テストで、操作(措置なしの対応済・却下)の理由の要否と上限・案件の不在と完了済みの拒否、手での状態の変更の4状態の全ての組の可否と種類ごとの理由の要否(未対応⇄対応中は任意、完了への変更と再開は必須)、完了した案件も手で変更できること、変更前の状態の不一致の競合、`open-case-exists`の`report_case_open_exists`への変換、監査ログの準備(未対応⇄対応中と再開は状態の変更の前後、手での完了は対応済・却下の操作種別と手での変更の印と変更前の状態、操作は措置なし・却下と操作の印)、却下で投稿者がいれば投稿者への通知を依頼待ちに、対象への参照を消した案件の却下では送らなかった記録(`skipped`)にし、措置なしの対応済では投稿者への通知を`none`にすること、書き込みの単位のポート(偽物)への入力と結果(競合・`open-case-exists`)の変換、確定の後の通知の依頼(例外を握る)、手での状態の変更では通知も措置も呼ばないこと、ログに識別子だけを出すことを確かめる
   - 完了状態: 単体テストが成功する
   - _Depends: 3.4, 3.5, 4.4_
   - _Requirements: 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 9.6, 10.2, 10.3, 11.5, 11.9_
 
 - [ ] 4.6 措置による対応済を作る
-  - 4.5のユースケースに措置の操作を加え、ugc-moderationの措置のユースケースを完了の文とともに呼び、成功の結果の措置の記録のIDを3.5の連結で案件に残す(ugc-moderationの入力と記録の型は変えない)
-  - 先に、単体テストで、対象への参照を消した案件では上流を呼ばずに対象の不在を返すこと、対象の種類ごとの措置のユースケースの選択、完了の文の受け渡し、措置済み(変化なし)の返却と連結をしないこと、上流の対象の不在の変換、上流の確定の失敗で案件を読み直して完了済みなら競合・そうでなければ上流のエラーを返すこと、成功の後の措置の記録のIDの連結と、連結の例外と更新なし(偽)をエラートラッキングへ知らせて結果を成功にすること、成功の後の通知の依頼を確かめる
-  - 先に、Workers統合テストで、本物のプロダクトの非公開化・コメントの非公開化・ユーザーの停止を通して、上流の状態の変更・措置の記録・ugc-moderationと本specの2つの監査ログ・案件の完了・申出者への通知の状態が1回の一括の書き込みで確定し、その後に案件の措置の記録のIDが上流の措置の記録のIDと一致すること、既に措置済み・完了済み・同時の完了で何も残らないことを確かめる(ユースケースはテストの中で組み立て、3.6の束縛を使う)
-  - 上流の確定が呼び出し側の文の違反で全体を取り消さない場合は、作業を止めて開発者へ報告する
-  - 完了状態: 単体テストとWorkers統合テストが成功する
+  - 4.5のユースケースに措置の操作を加え、ugc-moderationの措置のユースケースを3.1の措置と一体の完了の参加の値(種類と値だけ)とともに呼ぶ。案件の完了と措置の記録のIDは3.5の参加者が上流の確定と同じ一括の書き込みに入れるため、ユースケースは文を組み立てず、措置の後に追加の書き込みをしない(ugc-moderationの入力と記録の型は変えない)
+  - 先に、単体テストで、対象への参照を消した案件では上流を呼ばずに対象の不在を返すこと、対象の種類ごとの措置のユースケースの選択、参加の値(種類・案件・措置・理由・日時・監査ログ)の受け渡しと文を渡さないこと、措置済み(変化なし)の返却、上流の対象の不在の変換、上流の確定の失敗で案件を読み直して完了済みなら競合・そうでなければ上流のエラーを返すこと、成功の後に追加の書き込みをせず通知を依頼することを確かめる
+  - 先に、Workers統合テストで、本物のプロダクトの非公開化・コメントの非公開化・ユーザーの停止と3.6で登録した参加者を通して、上流の状態の変更・措置の記録・ugc-moderationと本specの2つの監査ログ・案件の完了(措置の記録のIDを含む)・申出者への通知の状態が1回の一括の書き込みで確定し、案件の措置の記録のIDが結果の措置の記録のIDと上流の措置の記録のIDに一致すること、既に措置済み・完了済み・同時の完了(参加者の文の違反)で上流の状態を含めて何も残らないことを確かめる(ユースケースはテストの中で組み立て、3.6の束縛を使う)
+  - 上流の確定が参加者の文の違反で全体を取り消さない場合、または参加者が受け取る措置の記録のIDが結果の措置の記録のIDと異なる場合は、作業を止めて開発者へ報告する
+  - 完了状態: 単体テストとWorkers統合テストが成功し、APIサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無く、検索でapplication層に`BatchItem`の読み込みが無い
   - _Depends: 3.6, 4.5_
   - _Requirements: 9.2, 9.3, 9.4, 9.5, 9.7, 9.8, 16.5, 19.1, 20.3_
 
 - [ ] 4.7 (P) 権利侵害の照会を作る
-  - 先に、単体テストで、内容の検証(空・1,000書記素超)と任意の理由の上限、権利侵害でない・対応中でない・投稿者がいない・宛先が無いときの拒否、照会のメールの入力(内容・表示名・対象のURL・期限)、送信の後に記録すること、送信の失敗で記録せずに失敗を返すこと、記録の失敗のエラートラッキングへの通知と競合の返却、再送の期限が最後の照会から求まることを確かめる
+  - 先に、単体テストで、内容の検証(空・1,000書記素超)と任意の理由の上限、権利侵害でない・対応中でない・投稿者がいない・宛先が無いときの拒否、照会のメールの入力(内容・表示名・対象のURL・期限)、送信の後に書き込みの単位のポート(偽物)で記録すること、送信の失敗で記録せずに失敗を返すこと、記録の失敗のエラートラッキングへの通知と競合の返却、再送の期限が最後の照会から求まることを確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: InfringementInquiryService_
   - _Depends: 1.3, 1.4, 1.5, 3.1, 4.1_
@@ -167,12 +174,13 @@
 - [ ] 5.1 通知の送り直しと保持期間の削除のジョブを作る
   - 先に、単体テストで、1時間以上前に完了した依頼待ちの案件の送り直しと失敗の件数のエラートラッキングへの通知、未ログインの通報の保持期間の削除・参照を消した案件の3年の削除・空の案件の削除の順序と繰り返しの上限と件数の記録を確かめる
   - 先に、Workers統合テストで、送り直しが宛先ごとに依頼済みへ1回だけ進み2回実行しても重ならないこと、手での完了と再開で取りやめた通知を送らないこと、保持期間の削除を2回実行しても結果が変わらないことを確かめる(ジョブと通知はテストの中で組み立てる)
+  - 保持期間の削除のジョブは、`core/reporting`の`ReportErasureStore`を`REPORTING_PLATFORM_TYPES.ReportErasureStore`で受け取る
   - 完了状態: 単体テストとWorkers統合テストが成功する
   - _Depends: 2.1, 4.4_
   - _Requirements: 8.4, 11.8, 17.1, 17.2, 17.6, 17.9, 17.10, 19.5, 20.3_
 
 - [ ] 5.2 apiの束縛を完成させ、ジョブとスキーマモジュールの型を登録する
-  - 3.6のモジュールに全てのユースケース・照会・通知・ジョブを束縛し、2つのジョブを定期実行の登録箇所へ加える
+  - 3.6のモジュールに全てのユースケース・照会・通知・ジョブと回数制限の実装(`ReportSubmissionRateLimit`→`CounterReportSubmissionRateLimit`)を束縛し、2つのジョブを定期実行の登録箇所へ加える
   - スキーマモジュールの型・入力の検証・エラーコードを作り(リゾルバは5.3〜5.5)、スキーマモジュールの登録箇所へ加える
   - 先に、Workers統合テストで、apiの要求と定期実行の経路で全識別子が解決でき、4:21の`order`(2000・2010)が他と重ならないことを確かめる
   - 先に、単体テストで、入力の検証(件数・対象の参照・理由と管理者の理由と照会の内容とカテゴリ名の上限・連絡先の長さ・期間の順)とエラーコードの形を確かめる
@@ -197,8 +205,9 @@
 
 - [ ] 6. (P) 物理削除の時期の通報の削除と対象への参照の消去を作り、eventの登録口に加える
   - 先に、単体テストで、ユーザーの物理削除の時期に申出者の通報の削除・投稿者の案件の対象への参照の消去・空の案件の削除を上限ずつ行って残りがあれば続きを返すこと、プロダクトの物理削除の時期にそのプロダクトとコメントの案件の対象への参照を消すこと(案件と通報を削除しないこと)を確かめる
+  - 2つの処理は`core/reporting`の`ReportErasureStore`を`REPORTING_PLATFORM_TYPES.ReportErasureStore`で受け取り、`**/lib/workers/**`を読み込まない
   - eventの本specのモジュールと、ユーザー・プロダクトのライフサイクルの非同期の登録口(`purge_due`、2000)へ加える
-  - 完了状態: 単体テストと登録口の検査(同じ種類の`order`の重複なし)が成功する
+  - 完了状態: 単体テストと登録口の検査(同じ種類の`order`の重複なし)が成功し、イベントサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Boundary: ReportErasureHandlers, EventReportingModule_
   - _Depends: 2.1_
   - _Requirements: 17.4, 17.5, 17.6, 19.2_
@@ -282,7 +291,7 @@
 - [ ] 9. 統合・ドキュメント・E2E
 - [ ] 9.1 技術ドキュメントとオンボーディングを書く
   - `backend/022-submission-aggregation-and-case-resolution.md`・`security/011-mixed-identity-submission-limits.md`・`frontend/021-registered-action-dialogs.md`を本プロジェクト固有の値を含めずに書き、各READMEの文書一覧に加える
-  - `docs/onboardings/project-values.md`にジョブ・処理・同期の処理・登録の名前と`order`、回数制限の規則、メール種別、監査ログの操作種別、標準カテゴリの固定のIDを、`CLAUDE.md`の「技術規則の参照先」に`backend/022`の行を加える
+  - `docs/onboardings/project-values.md`にジョブ・処理・同期の処理・措置の書き込みの参加者(`content-reporting.report-case-closing`)・登録の名前と`order`、回数制限の規則、メール種別、監査ログの操作種別、標準カテゴリの固定のIDを、`CLAUDE.md`の「技術規則の参照先」に`backend/022`の行を加える
   - 完了状態: 文書が整形の検査を通り、技術ドキュメントに本プロジェクト名と固有の値が無いことを検索で確かめる
   - _Requirements: 19.4, 20.5_
 
@@ -317,6 +326,6 @@
 
 - [ ] 9.6 全体の検査とカバレッジを確かめ、作業を報告する
   - 整形・静的解析・型検査・4種のテストを全アプリで実行し、本specが変更したファイルのカバレッジが80%以上であることを確かめる
-  - admin-foundationの仮7(`latestForMany`と共有の偽物)の実装を前提にした旨、上流の公開の契約を変えていない旨、仮1〜仮8が2026-10-24に確定した旨(仮3・仮5・仮7は案B)、roadmapの帯の「使用中の値」(4:21は2000・2010、波及処理は2000)を作業の報告に記録する
+  - admin-foundationの仮7(`latestForMany`と共有の偽物)の実装を前提にした旨、上流の公開の契約を変えていない旨(ugc-moderationの書き込みの参加者の登録の一覧へ1件を追記しただけである旨)、application層に`**/lib/workers/**`・`BatchItem`の読み込みが無い旨、仮1〜仮8が2026-10-24に確定した旨(仮3・仮5・仮7は案B)、roadmapの帯の「使用中の値」(4:21は2000・2010、波及処理は2000)を作業の報告に記録する
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
   - _Requirements: 20.1, 20.3_

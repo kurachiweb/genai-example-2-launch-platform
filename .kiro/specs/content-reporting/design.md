@@ -6,7 +6,7 @@
 
 **Users**: 閲覧者(未ログイン・ログイン中・停止中)は`/@{handle}`・`/p/{handle}`・コメントの「…」メニューから通報する。モデレーター以上の管理者は`/reports`・`/reports/$caseId`で案件を扱い、`/categories`の通報カテゴリの区画でカテゴリを管理する。閲覧のみの管理者は各ページを参照する。全ロールの管理者はダッシュボード(`/`)の未対応の通報のカードと、プロダクトの詳細(`/products/$productId`)の通報の件数を見る。申出者と投稿者はメールで知らせを受け取る。後続のdata-exportは本specの`ReportExport`で利用者の通報を読む。
 
-**Impact**: D1に3テーブル(通報カテゴリ・案件・通報)と標準カテゴリの初期データを足す。`apps/common-lib/reporting`・`apps/backend-lib/core/reporting`・`workers/reporting`(apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`reporting`・受け付け・照会・対応のユースケース・通知・同期の処理1つ・ジョブ2つを、eventに物理削除の時期の処理2つ(通報の削除と対象への参照の消去)と3つのメールのテンプレートを、clientに通報のダイアログと3つの登録を、adminに2ページ・ダッシュボードのカード・カテゴリの区画・プロダクト詳細の区画を足す。上流の公開の契約は変えず、admin-foundationが所有・実装する`AuditLogReader.latestForMany`(admin-foundationの仮7)とテストの共有の偽物、ugc-moderationの措置の結果の`ModerationOutcome.actionId`を使う(「上流への影響」)。新しいシークレット・パッケージ・メッセージ種別・Cronの式・Durable Objectのクラスは無い。
+**Impact**: D1に3テーブル(通報カテゴリ・案件・通報)と標準カテゴリの初期データを足す。`apps/common-lib/reporting`・`apps/backend-lib/core/reporting`(規則・契約・識別子)・`workers/reporting`(D1の実装。apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`reporting`・受け付け・照会・対応のユースケース・通知・同期の処理1つ・措置の書き込みの参加者1つ・ジョブ2つを、eventに物理削除の時期の処理2つ(通報の削除と対象への参照の消去)と3つのメールのテンプレートを、clientに通報のダイアログと3つの登録を、adminに2ページ・ダッシュボードのカード・カテゴリの区画・プロダクト詳細の区画を足す。上流の公開の契約は変えず、admin-foundationが所有・実装する`AuditLogReader.latestForMany`(admin-foundationの仮7)とテストの共有の偽物、ugc-moderationの措置のユースケースと書き込みの参加者の登録口`MODERATION_WRITE_PARTICIPANTS`(参加者が受け取る措置の記録のID)を使う(「上流への影響」)。新しいシークレット・パッケージ・メッセージ種別・Cronの式・Durable Objectのクラスは無い。
 
 ### Goals
 
@@ -30,8 +30,8 @@
 - 本specのデータ: `report_categories`(通報カテゴリと標準カテゴリの初期データ)・`report_cases`(案件・対応ステータス・完了と措置の記録のID・照会・投稿者への通知の状態)・`reports`(通報・通報者・連絡先メールアドレス・申出者への通知の状態)(`apps/db/schema/reporting/`)。
 - 通報の規則(`apps/common-lib/reporting/`): 対象の種類・理由の上限・連絡先の要否・標準カテゴリのIDと並び順・対応ステータスと遷移・対象の種類ごとの措置・照会の上限・表示名。監査ログの操作種別`apps/common-lib/admin/audit-actions/content-reporting.ts`(7種)。
 - 対応期間の規則(`apps/backend-lib/core/reporting/`)と、3つのメール種別`content-reporting.report-outcome`・`content-reporting.rejection-to-poster`・`content-reporting.infringement-inquiry`(`core/email/kinds/content-reporting.ts`)。
-- 共有部品(`apps/backend-lib/workers/reporting/`): `ReportErasureStore`・`ReportExport`と`REPORTING_PLATFORM_MODULE`。
-- apiのスキーマモジュール`reporting`、`ReportTargetResolver`・`ReportSubmissionService`・`ReportCaseReader`・`ReportCaseWorkflow`・`InfringementInquiryService`・`ReportNotifier`・`ReportCategoryService`、同期の処理`content-reporting.reporter-withdrawal`、ジョブ`content-reporting.notice-redispatch`(4:21、2000)・`content-reporting.report-retention`(4:21、2010)、回数制限の規則`report:ip`・`report:user`。
+- 共有部品: 契約`ReportErasureStore`・`ReportExportRecord`・`ReportExport`と識別子`REPORTING_PLATFORM_TYPES`(`apps/backend-lib/core/reporting/`)、文を返す`ReportErasureStatements`・D1の実装`D1ReportErasureStore`・`D1ReportExport`と`REPORTING_PLATFORM_MODULE`(`apps/backend-lib/workers/reporting/`)。
+- apiのスキーマモジュール`reporting`、`ReportTargetResolver`・`ReportSubmissionService`・`ReportCaseReader`・`ReportCaseWorkflow`・`InfringementInquiryService`・`ReportNotifier`・`ReportCategoryService`、同期の処理`content-reporting.reporter-withdrawal`、措置の書き込みの参加者`content-reporting.report-case-closing`(`ReportCaseClosingParticipant`)、ジョブ`content-reporting.notice-redispatch`(4:21、2000)・`content-reporting.report-retention`(4:21、2010)、回数制限の規則`report:ip`・`report:user`。
 - eventの処理`content-reporting.user-report-erasure`(ユーザーの`purge_due`、2000)・`content-reporting.product-report-erasure`(プロダクトの`purge_due`、2000)と3つのテンプレート。
 - clientの通報のダイアログと、`PUBLIC_PROFILE_MENU_ITEMS`の`content-reporting.user-report`(10)・`PRODUCT_PAGE_SECTIONS`の`content-reporting.product-report`(`bottom` 10)・`COMMENT_ACTIONS`の`content-reporting.comment-report`(10)。
 - adminの`/reports`・`/reports/$caseId`、`ADMIN_NAV_ITEMS`の`/reports`(70)、`DASHBOARD_CARDS`の`content-reporting.unhandled-reports`(30)、`CATEGORY_SECTIONS`の`content-reporting.report-categories`(40)、`ADMIN_PRODUCT_DETAIL_SECTIONS`の`content-reporting.product-reports`(10)。
@@ -39,7 +39,7 @@
 
 ### Out of Boundary
 
-- 利用者・プロダクト・コメントの状態の遷移とその波及、措置の記録の作成、投稿者への措置の通知(ugc-moderation・identity-auth・product-launch・engagementと各機能)。本specは`MODERATION_TYPES`の`ProductModerationService`・`CommentModerationService`・`UserModerationService`を呼び、上流のテーブルへ書き込まず、措置の入力・記録の型も変えない。措置と案件の結び付きは、結果の`actionId`を本specの`report_cases.resolution_action_id`に残して表す。
+- 利用者・プロダクト・コメントの状態の遷移とその波及、措置の記録の作成、投稿者への措置の通知(ugc-moderation・identity-auth・product-launch・engagementと各機能)。本specは`MODERATION_TYPES`の`ProductModerationService`・`CommentModerationService`・`UserModerationService`を呼び、上流のテーブルへ書き込まず、措置の入力・記録の型も変えない。措置と案件の結び付きは、措置の記録のID(参加者が受け取る`context.actionId`。結果の`ModerationOutcome.actionId`と同じ値)を本specの`report_cases.resolution_action_id`に措置と同じ一括の書き込みで残して表す。
 - 画像の隔離・評価の無効化(ugc-moderationの各管理画面)。本specは導線を示すだけである(仮2)。
 - 監査ログのテーブル・記録の部品・閲覧画面と、`AuditLogReader.latestForMany`とその保存の照会・テストの共有の偽物(admin-foundation、仮7)。本specは`AuditLogRecorder.prepare`・`buildAuditLogStatements`・`AuditLogReader`を使い、監査ログのテーブルを直接読まない。
 - カテゴリのページの枠とエラーの分離(inquiry-chat)、メニュー・ダッシュボードの枠(admin-foundation)、プロダクト詳細の区画の枠(ugc-moderation)、利用者側の各ページと置き場所(user-profile-social・directory-discovery・engagement)。
@@ -48,13 +48,13 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く)・`ulidPrimaryKey`・`timestamps`・`textNoCase`・`ScheduledJobDefinition`・`hashRateLimitKey`・`HashedRateLimitKey`・`CounterRule`・`RateLimitCounterClient`。形を変えない。
+- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く)・`ulidPrimaryKey`・`timestamps`・`textNoCase`・`ScheduledJobDefinition`・`hashRateLimitKey`・`HashedRateLimitKey`・`CounterRule`・`RateLimitCounterClient`。形を変えない。application層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`RateLimitCounterClient`は、infrastructure層の`CounterReportSubmissionRateLimit`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。bot判定はリゾルバの`assertHuman`で行い、application層は`BotVerifier`を受け取らない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`caller`・`clientIp`・`assertHuman`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`DateTime`・`SessionView`・`CallerKind`。
 - admin-foundation: `requireAdmin`・`CurrentAdmin`・`AuditLogRecorder.prepare`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AUDIT_REASON_MAX`・`checkAuditReason`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`AuditLogReader`(`latestFor`とadmin-foundationの仮7の`latestForMany`)とテストの共有の偽物`createFakeAuditLogReader`、adminの`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCard`・`DashboardCardFrame`・`RoleGate`・`useAdminRole`、frontend-libの`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`CategoryMasterEditor`、E2Eの`e2e/support/admin-bootstrap.ts`(`signInAsNewAdmin`)・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
-- ugc-moderation: apiの`MODERATION_TYPES`の`ProductModerationService.hide`・`CommentModerationService.hide`・`UserModerationService.suspend`、`ModerationCommand`(`statements`)・`ModerationOutcome`(`changed`・`actionId`)、adminの`ADMIN_PRODUCT_DETAIL_SECTIONS`・`AdminProductDetailContext`、ugc-moderationの各管理画面のURLと検索パラメータ(導線だけ)。
-- identity-auth: `IDENTITY_TYPES.AccountGuard`(`currentUser`)・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`users`テーブル(外部キーだけ)、clientの`ClientViewer`(`__root`の`viewer`の`status`)、E2Eの`e2e/support/mailpit.ts`。
-- user-profile-social: `PROFILE_PLATFORM_TYPES.UserProfileDirectory`(`findSummaries`・`resolveHandle`)・`HANDLE_PATTERN`、clientの`PUBLIC_PROFILE_MENU_ITEMS`・`PublicProfileMenuItem`・`PublicProfileSectionContext`(登録の追記だけ)。
-- product-launch: `PRODUCT_PLATFORM_TYPES.ProductDirectory`(`findSummaries`)・`ProductSummaryRecord`・`ProductLifecycleAsyncHandler`・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`。
+- ugc-moderation: apiの`MODERATION_TYPES`の`ProductModerationService.hide`・`CommentModerationService.hide`・`UserModerationService.suspend`、`ModerationCommand`(`participation`)・`ModerationWriteParticipation`・`ModerationOutcome`(`changed`・`actionId`)、apiのinfrastructure層の書き込みの参加者の契約`ModerationWriteParticipant`・`ModerationWriteContext`・`ModerationWriteParticipantRegistration`と登録の一覧`MODERATION_WRITE_PARTICIPANTS`(apiの`composition/moderation-write-participants.ts`、追記だけ)、adminの`ADMIN_PRODUCT_DETAIL_SECTIONS`・`AdminProductDetailContext`、ugc-moderationの各管理画面のURLと検索パラメータ(導線だけ)。
+- identity-auth: `IDENTITY_TYPES.AccountGuard`(`currentUser`)・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`(契約と識別子は`backend-lib/core/identity`)・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`users`テーブル(外部キーだけ)、clientの`ClientViewer`(`__root`の`viewer`の`status`)、E2Eの`e2e/support/mailpit.ts`。
+- user-profile-social: `PROFILE_PLATFORM_TYPES.UserProfileDirectory`(`findSummaries`・`resolveHandle`、契約と識別子は`backend-lib/core/profile`)・`HANDLE_PATTERN`、clientの`PUBLIC_PROFILE_MENU_ITEMS`・`PublicProfileMenuItem`・`PublicProfileSectionContext`(登録の追記だけ)。
+- product-launch: `PRODUCT_PLATFORM_TYPES.ProductDirectory`(`findSummaries`)・`ProductSummaryRecord`(契約と識別子は`backend-lib/core/product`)・`ProductLifecycleAsyncHandler`・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`。
 - directory-discovery: clientの`PRODUCT_PAGE_SECTIONS`・`ProductPageSection`・`ProductPageContext`(登録の追記だけ)、E2Eの`directory-fixtures.ts`。
 - engagement: `ENGAGEMENT_PLATFORM_TYPES.CommentStore`(`findByIds`)・`CommentRecord`、clientの`COMMENT_ACTIONS`・`CommentAction`・`CommentActionContext`(登録の追記だけ)。
 - inquiry-chat: adminの`CATEGORY_SECTIONS`・`CategorySection`(登録の追記だけ)。
@@ -66,33 +66,33 @@
   - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
   - bot判定の`TurnstileWidget`は非表示のウィジェットで場所を取らないため、通報のフォームに判定の枠の表示と場所を設けない。
 - npmパッケージ: 新規なし。
-- 後続spec(data-export)は、`REPORTING_PLATFORM_TYPES.ReportExport`だけに依存し、本specのテーブルを直接読まない。
+- 後続spec(data-export)は、`REPORTING_PLATFORM_TYPES.ReportExport`(契約と識別子は`backend-lib/core/reporting`)だけに依存し、本specのテーブルを直接読まない。
 
 ### Revalidation Triggers
 
 - `reports`・`report_cases`・`report_categories`の列と状態の値、標準カテゴリの固定のID(data-export)。
-- `ReportExport`の形と`reports.json`の対象の参照の規則(data-export)。
+- `ReportExport`の形・置き場所(`backend-lib/core/reporting`)と`reports.json`の対象の参照の規則(data-export)。
 - 監査ログの操作種別7種の名前・対象の種類・理由の要否・詳細の鍵(admin-foundationの閲覧画面)。
 - ジョブ・処理の名前と`order`(4:21の2000・2010、`purge_due`の2000)(日次タイムラインの表)。
 - 登録の`id`と`order`(`PUBLIC_PROFILE_MENU_ITEMS` 10・`PRODUCT_PAGE_SECTIONS`の`bottom` 10・`COMMENT_ACTIONS` 10・`ADMIN_NAV_ITEMS` 70・`DASHBOARD_CARDS` 30・`CATEGORY_SECTIONS` 40・`ADMIN_PRODUCT_DETAIL_SECTIONS` 10)。sponsorshipの`bottom` 20は本specの10の後に並ぶ。
 - 仮1〜仮8は2026-10-24に開発者が確定した(仮3・仮5・仮7は推奨と異なる案B)。手での状態の変更の規則(仮3)・対応期間の判定(仮5)・対象への参照の消去と3年の保持(仮7)を変える場合は、監査ログの記録・保持期間の起点・データエクスポートの対象の参照・準拠方針の保持期間を確かめ直す。
-- 上流の`ProductModerationService`・`CommentModerationService`・`UserModerationService`の入力(`statements`)と結果(`changed`・`actionId`の意味)、上流の確定が呼び出し側の文の違反で全体を取り消す規則、`AuditLogReader.latestFor`・`latestForMany`(admin-foundationの仮7)とテストの共有の偽物、`buildAuditLogStatements`、`UserContactDirectory`・`UserProfileDirectory`・`ProductDirectory`・`CommentStore.findByIds`の形と可視の判定、`RateLimitCounterClient`・`assertHuman`、各登録口の形を変えたら、本specを確かめ直す。
+- 上流の`ProductModerationService`・`CommentModerationService`・`UserModerationService`の入力(`participation`)と結果(`changed`・`actionId`の意味)、書き込みの参加者の登録口の形(`ModerationWriteParticipant`・`ModerationWriteContext`の`actionId`・`ModerationWriteParticipantRegistration`・`MODERATION_WRITE_PARTICIPANTS`)と置き場所(apiのinfrastructure層)、上流の確定が参加者の文の違反で全体を取り消す規則、`AuditLogReader.latestFor`・`latestForMany`(admin-foundationの仮7)とテストの共有の偽物、`buildAuditLogStatements`、`UserContactDirectory`・`UserProfileDirectory`・`ProductDirectory`・`CommentStore.findByIds`の形と可視の判定、`RateLimitCounterClient`・`assertHuman`、各登録口の形を変えたら、本specを確かめ直す。
 
 ### 上流への影響
 
-| 上流spec            | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 影響と再検証                                                                                                                                                                                                                  |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| admin-foundation    | (1)変更なし。apiの`AuditLogReader.latestForMany(input: { readonly action: string; readonly targetKind: AuditTargetKind; readonly targetIds: readonly string[] }): Promise<ReadonlyMap<string, Date>>`と監査ログの保存の照会(90件ずつ、対象ごとの最新の日時)と、テストの共有の偽物`createFakeAuditLogReader`は、admin-foundationが仮7で所有・実装し、本specは使うだけである。(2)`audit-actions/content-reporting.ts`と`index.ts`の連結、adminの`composition/admin-navigation.ts`に1件(70)、`composition/dashboard-cards.ts`に1件(30) | (1)admin-foundationの仮7の契約どおり。一覧の対応期間を1回の照会で求める(NFR-PERF-008)。本specの単体テストは共有の偽物を使うため、`AuditLogReader`へのメソッドの追加で壊れない。(2)は契約どおり(仮6のURLと`order`、Q2のカード) |
-| ugc-moderation      | adminの`composition/admin-product-detail-sections.ts`に1件(10)。apiの措置のユースケースを`statements`付きで呼び、結果の`ModerationOutcome.actionId`を本specの`report_cases.resolution_action_id`に残す。ugc-moderationの入力・記録の型・テーブルは変えない                                                                                                                                                                                                                                                                          | 契約どおり(ugc-moderationのData Contractsの「結果の`actionId`で自分の記録と結べる」)。ugc-moderationの再検証は要らない                                                                                                        |
-| inquiry-chat        | adminの`composition/category-sections.ts`に1件(40)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 契約どおり(仮4の`order`)                                                                                                                                                                                                      |
-| directory-discovery | clientの`composition/product-page-sections.ts`に1件(`bottom` 10)                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 契約どおり(予約の値)                                                                                                                                                                                                          |
-| user-profile-social | clientの`composition/public-profile-sections.ts`の`PUBLIC_PROFILE_MENU_ITEMS`に1件(10)                                                                                                                                                                                                                                                                                                                                                                                                                                              | 契約どおり                                                                                                                                                                                                                    |
-| engagement          | clientの`composition/comment-actions.ts`の`COMMENT_ACTIONS`に1件(10)                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 契約どおり                                                                                                                                                                                                                    |
-| identity-auth       | apiの`composition/user-lifecycle-sync-handlers.ts`に`content-reporting.reporter-withdrawal`、eventの`composition/user-lifecycle-async-handlers.ts`に`content-reporting.user-report-erasure`(`purge_due`、2000)                                                                                                                                                                                                                                                                                                                      | 契約どおり                                                                                                                                                                                                                    |
-| product-launch      | eventの`composition/product-lifecycle-async-handlers.ts`に`content-reporting.product-report-erasure`(`purge_due`、2000)                                                                                                                                                                                                                                                                                                                                                                                                             | 契約どおり                                                                                                                                                                                                                    |
-| backend-platform    | apiの`composition/scheduled-jobs.ts`に2件(4:21の式は上流で追加済み)、api・eventの`composition/modules.ts`に`REPORTING_PLATFORM_MODULE`、apiに`REPORTING_MODULE`、eventに`EVENT_REPORTING_MODULE`                                                                                                                                                                                                                                                                                                                                    | 契約どおり                                                                                                                                                                                                                    |
-| api-gateway         | apiの`composition/graphql-modules.ts`に`reportingSchemaModule`、client・adminの許可リストの再生成                                                                                                                                                                                                                                                                                                                                                                                                                                   | 契約どおり                                                                                                                                                                                                                    |
-| email-delivery      | `core/email/kinds/index.ts`に3種別、eventの`infrastructure/email/templates/index.ts`に3テンプレート                                                                                                                                                                                                                                                                                                                                                                                                                                 | 契約どおり                                                                                                                                                                                                                    |
+| 上流spec            | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | 影響と再検証                                                                                                                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| admin-foundation    | (1)変更なし。apiの`AuditLogReader.latestForMany(input: { readonly action: string; readonly targetKind: AuditTargetKind; readonly targetIds: readonly string[] }): Promise<ReadonlyMap<string, Date>>`と監査ログの保存の照会(90件ずつ、対象ごとの最新の日時)と、テストの共有の偽物`createFakeAuditLogReader`は、admin-foundationが仮7で所有・実装し、本specは使うだけである。(2)`audit-actions/content-reporting.ts`と`index.ts`の連結、adminの`composition/admin-navigation.ts`に1件(70)、`composition/dashboard-cards.ts`に1件(30)                    | (1)admin-foundationの仮7の契約どおり。一覧の対応期間を1回の照会で求める(NFR-PERF-008)。本specの単体テストは共有の偽物を使うため、`AuditLogReader`へのメソッドの追加で壊れない。(2)は契約どおり(仮6のURLと`order`、Q2のカード) |
+| ugc-moderation      | adminの`composition/admin-product-detail-sections.ts`に1件(10)、apiの`composition/moderation-write-participants.ts`に`content-reporting.report-case-closing`(`REPORTING_TYPES.ReportCaseClosingParticipant`)を1件。apiの措置のユースケースを値だけの`participation`付きで呼び、本specのinfrastructure層の参加者が案件の完了の文を措置と同じ一括の書き込みに入れ、措置の記録のID(`context.actionId`、結果の`ModerationOutcome.actionId`と同じ値)を本specの`report_cases.resolution_action_id`に残す。ugc-moderationの入力・記録の型・テーブルは変えない | 契約どおり(ugc-moderationの参加者の登録口とData Contractsの「参加者は`context.actionId`で自分の記録と結べる」)。ugc-moderationの再検証は要らない                                                                              |
+| inquiry-chat        | adminの`composition/category-sections.ts`に1件(40)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 契約どおり(仮4の`order`)                                                                                                                                                                                                      |
+| directory-discovery | clientの`composition/product-page-sections.ts`に1件(`bottom` 10)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | 契約どおり(予約の値)                                                                                                                                                                                                          |
+| user-profile-social | clientの`composition/public-profile-sections.ts`の`PUBLIC_PROFILE_MENU_ITEMS`に1件(10)                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 契約どおり                                                                                                                                                                                                                    |
+| engagement          | clientの`composition/comment-actions.ts`の`COMMENT_ACTIONS`に1件(10)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | 契約どおり                                                                                                                                                                                                                    |
+| identity-auth       | apiの`composition/user-lifecycle-sync-handlers.ts`に`content-reporting.reporter-withdrawal`、eventの`composition/user-lifecycle-async-handlers.ts`に`content-reporting.user-report-erasure`(`purge_due`、2000)                                                                                                                                                                                                                                                                                                                                         | 契約どおり                                                                                                                                                                                                                    |
+| product-launch      | eventの`composition/product-lifecycle-async-handlers.ts`に`content-reporting.product-report-erasure`(`purge_due`、2000)                                                                                                                                                                                                                                                                                                                                                                                                                                | 契約どおり                                                                                                                                                                                                                    |
+| backend-platform    | apiの`composition/scheduled-jobs.ts`に2件(4:21の式は上流で追加済み)、api・eventの`composition/modules.ts`に`REPORTING_PLATFORM_MODULE`、apiに`REPORTING_MODULE`、eventに`EVENT_REPORTING_MODULE`                                                                                                                                                                                                                                                                                                                                                       | 契約どおり                                                                                                                                                                                                                    |
+| api-gateway         | apiの`composition/graphql-modules.ts`に`reportingSchemaModule`、client・adminの許可リストの再生成                                                                                                                                                                                                                                                                                                                                                                                                                                                      | 契約どおり                                                                                                                                                                                                                    |
+| email-delivery      | `core/email/kinds/index.ts`に3種別、eventの`infrastructure/email/templates/index.ts`に3テンプレート                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 契約どおり                                                                                                                                                                                                                    |
 
 - roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は2000・2010、波及処理は2000」になる(ユーザー・プロダクトの`purge_due`の2000)。本specはroadmapを編集しないため、コントローラーへ報告する。
 
@@ -102,8 +102,8 @@
 
 - 上流の26specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする。実装済みはdev-toolingだけである。
 - apiはクリーンアーキテクチャ(`domain`→`application`→`infrastructure`・`presentation`→`composition`)と処理単位(HTTPの要求ごと)のDIコンテナ、D1の`db.batch()`による1トランザクションの書き込み、`CASE`式のNOT NULL制約の違反による取り消しを使う。
-- ugc-moderationの`ProductModerationService`・`UserModerationService`は、呼び出し側の`statements`を要求単位の保留中の措置に置き、上流のライフサイクルの確定(イベント→状態→同期の処理)の一括の書き込みに入れる。`CommentModerationService`は`statements`をengagementの`CommentModerationControl`へ渡す。いずれも呼び出し側の文がNOT NULL制約に違反すれば全体が取り消される。認可は行わず、呼び出し側のリゾルバが`requireAdmin`で行う。
-- inquiry-chatの未ログインの送信は、リゾルバの`assertHuman`→入力と状態の検証→ハッシュ化したキーの`RateLimitCounterClient.hit`→書き込みの順で、カテゴリの削除は監査ログ・付け替え・削除を1つの一括の書き込みにする。本specは同じ形を通報に使う。
+- ugc-moderationの`ProductModerationService`・`UserModerationService`は、呼び出し側の値だけの`participation`を要求単位の保留中の措置に置き、上流のライフサイクルの確定(イベント→状態→同期の処理)の中で、ugc-moderationの同期の処理が`MODERATION_WRITE_PARTICIPANTS`に登録された参加者の文を同じ一括の書き込みに入れる。`CommentModerationService`は`participation`を書き込みの単位へ渡し、ugc-moderationのinfrastructure層が参加者の文をengagementの`CommentModerationControl`の`statements`へ渡す。参加者は措置の記録のID(`context.actionId`)を受け取る。いずれも参加者の文がNOT NULL制約に違反すれば全体が取り消され、登録の無い種類は`AppError(internal)`になる。認可は行わず、呼び出し側のリゾルバが`requireAdmin`で行う。
+- inquiry-chatの未ログインの送信は、リゾルバの`assertHuman`→入力と状態の検証→ハッシュ化したキーの`RateLimitCounterClient.hit`(infrastructure層の回数制限の実装、application層はそのポートだけを受け取る)→書き込みの順で、カテゴリの削除は監査ログ・付け替え・削除を1つの一括の書き込みにする。本specは同じ形を通報に使う。
 
 ### Architecture Pattern & Boundary Map
 
@@ -177,13 +177,13 @@ graph TB
 
 **Architecture Integration**:
 
-- Selected pattern: クリーンアーキテクチャ。通報と案件の規則は`common-lib`・`core`の純粋な関数、通報・案件・カテゴリの読み書きはapiのインフラ層のストア、案件の削除とエクスポートは`workers/reporting`(apiとeventの両方に束縛)、受け付け・照会・対応・通知はapiのアプリケーション層、措置は上流のユースケース越しに行う。
-- Domain/feature boundaries: 本specのテーブルは通報・案件・カテゴリだけで、対象の状態は上流が持つ。措置と案件の完了は、上流の措置のユースケースの`statements`に本specの文を載せて一体にする。監査ログは記録の部品と照会だけで使う。
-- Existing patterns preserved: `backend-lib/workers/<ドメイン>`の共有の束縛、`<spec名>.<名詞句>`の名前、帯の`order`、登録箇所への追記、`buildAuditLogStatements`を操作と同じ一括の書き込みに含める規約(admin-foundationの`backend/008`)、未ログインの送信の順序とハッシュ化したキー(inquiry-chatの`security/008`)、依頼待ちの通知と日次の送り直し(ugc-moderation)、カテゴリの削除と付け替えの一括の書き込み(inquiry-chat)。
-- New components rationale: `ReportTargetResolver`は受け付けの可視の判定と管理画面の表示名を1つの部品にまとめ、利用者・プロダクト・コメントの照会を各1回にするため。`ReportCaseWorkflow`は措置・措置なしの対応済・却下・状態の変更が同じ「検証→監査ログの準備→完了の文→確定→通知」の形であるため。`ReportNotifier`は完了の直後と日次の送り直しの両方から同じ宛先のまとめ方で送るため。admin-foundationの`latestForMany`(仮7)を使うのは一覧の対応期間を1回の照会で求めるため、措置の結果の`actionId`を案件に残すのはugc-moderationの形を変えずに措置の記録と案件を結ぶため。
+- Selected pattern: クリーンアーキテクチャ。通報と案件の規則は`common-lib`・`core`の純粋な関数、通報・案件・カテゴリの読み書きはapiのインフラ層のストア、案件の削除とエクスポートは契約を`core/reporting`・D1の実装を`workers/reporting`(apiとeventの両方に束縛)、回数制限の厳密カウンタはapiのインフラ層の実装、受け付け・照会・対応・通知はapiのアプリケーション層、措置は上流のユースケース越しに行う。
+- Domain/feature boundaries: 本specのテーブルは通報・案件・カテゴリだけで、対象の状態は上流が持つ。措置と案件の完了は、上流の措置のユースケースに値だけの`participation`を渡し、本specのinfrastructure層の参加者`ReportCaseClosingParticipant`が完了の文を上流の確定の一括の書き込みに入れて一体にする。監査ログは記録の部品と照会だけで使う。
+- Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`の実装と共有の束縛、`<spec名>.<名詞句>`の名前、帯の`order`、登録箇所への追記、`buildAuditLogStatements`を操作と同じ一括の書き込みに含める規約(admin-foundationの`backend/008`)、未ログインの送信の順序とハッシュ化したキー(inquiry-chatの`security/008`)、依頼待ちの通知と日次の送り直し(ugc-moderation)、カテゴリの削除と付け替えの一括の書き込み(inquiry-chat)、登録の一覧への参加者の追記と処理単位のコンテナからの解決(ugc-moderationの`MODERATION_WRITE_PARTICIPANTS`、identity-authの`USER_LIFECYCLE_SYNC_HANDLERS`と同じ形)。
+- New components rationale: `ReportTargetResolver`は受け付けの可視の判定と管理画面の表示名を1つの部品にまとめ、利用者・プロダクト・コメントの照会を各1回にするため。`ReportCaseWorkflow`は措置・措置なしの対応済・却下・状態の変更が同じ「検証→監査ログの準備→確定(書き込みの単位、または措置の参加)→通知」の形であるため。`ReportCaseWriter`(application層のポート)と`ReportCaseClosingParticipant`(infrastructure層の参加者)は、application層が文と一括の書き込みを扱わないまま、単独の確定と措置と一体の確定で同じ完了の文(`D1ReportCaseStatements`)を使うため。`ReportNotifier`は完了の直後と日次の送り直しの両方から同じ宛先のまとめ方で送るため。admin-foundationの`latestForMany`(仮7)を使うのは一覧の対応期間を1回の照会で求めるため、参加者が受け取る措置の記録のID(`context.actionId`)を案件に残すのはugc-moderationの記録の形を変えずに措置の記録と案件を同じ一括の書き込みで結ぶため。
 - Steering compliance: `@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・`transaction()`を使わない)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、ログに個人情報を含めない。
 
-**Dependency direction**: `apps/common-lib/reporting` → `apps/db/schema/reporting` → `backend-lib/core/reporting` → `backend-lib/workers/reporting` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`common-lib/reporting`は`common-lib/admin`(`AUDIT_REASON_MAX`)と`zod`だけを読み込む。`core/reporting`は`common-lib/reporting`だけを読み込む。`workers/reporting`は本specのテーブルと、上流の共有ディレクトリの公開の照会(`UserProfileDirectory`・`ProductDirectory`)だけを読み込み、上流のテーブル定義を読み込まない。apiの`application/reporting`は`infrastructure`(`buildAuditLogStatements`を含む)を読み込まず、ポート越しに使う。apiの`application/reporting`はugc-moderationの`application/moderation`の公開のユースケースと型、admin-foundationの`application/admin`の`AuditLogRecorder`・`AuditLogReader`・`CurrentAdmin`、identity-authの`application/identity`の`AccountGuard`だけを読み込む。clientとadminはGraphQLの操作と上流の部品だけを読み込む。違反はレビューで誤りとして扱う。
+**Dependency direction**: `apps/common-lib/reporting` → `apps/db/schema/reporting` → `backend-lib/core/reporting` → `backend-lib/workers/reporting` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`common-lib/reporting`は`common-lib/admin`(`AUDIT_REASON_MAX`)と`zod`だけを読み込む。`core/reporting`は`common-lib/reporting`だけを読み込み、`workers`と`apps/db`を読み込まない。`workers/reporting`は`core/reporting`・本specのテーブルと、上流の公開の照会(`core/profile`の`UserProfileDirectory`・`core/product`の`ProductDirectory`)だけを読み込み、上流のテーブル定義を読み込まない。api・eventの`application/reporting`は`core/reporting`の契約と識別子だけを読み込み、`**/lib/workers/**`を型も含めて読み込まない(core → workers → アプリの`src`)。文を返す`ReportErasureStatements`はapiのinfrastructure層だけが使う。apiの`application/reporting`は`infrastructure`(`buildAuditLogStatements`を含む)と`BatchItem`を読み込まず、ポート越しに使う。案件の単独の確定は書き込みの単位のポート`ReportCaseWriter`、措置と一体の完了はugc-moderationの措置のユースケースへの値だけの`participation`で行う。文を組み立てる`D1ReportCaseStatements`はinfrastructure層の内部の部品で、`D1ReportCaseWriter`と参加者`ReportCaseClosingParticipant`だけが使う。`ReportCaseClosingParticipant`はugc-moderationの`infrastructure/moderation`の参加者の契約を読み込む(infrastructure層どうしの読み込み)。apiの`application/reporting`はugc-moderationの`application/moderation`の公開のユースケースと型、admin-foundationの`application/admin`の`AuditLogRecorder`・`AuditLogReader`・`CurrentAdmin`、identity-authの`application/identity`の`AccountGuard`だけを読み込む。clientとadminはGraphQLの操作と上流の部品だけを読み込む。違反はレビューで誤りとして扱う。
 
 ### Technology Stack
 
@@ -212,21 +212,25 @@ apps/
 │   ├── reports.ts
 │   └── index.ts
 ├── backend-lib/
-│   ├── core/reporting/response-time.ts                     # 対応期間・目標の超過・照会の期限(*.unit.test.ts)
+│   ├── core/reporting/                                     # api・eventのapplication層と後続specが受け取る規則・契約・識別子(*.unit.test.ts)
+│   │   ├── response-time.ts                                # 対応期間・目標の超過・照会の期限
+│   │   ├── ports.ts                                        # ReportErasureStore・ReportExportRecord・ReportExport(型だけ)
+│   │   └── identifiers.ts                                  # REPORTING_PLATFORM_TYPES(Symbol.for('reporting.<名前>')の凍結したオブジェクト)
 │   ├── core/email/kinds/content-reporting.ts               # 3つのメール種別(入力のzodスキーマ)
-│   └── workers/reporting/                                  # api・event共通(Workers統合テスト)
-│       ├── reporting-platform-types.ts                     # REPORTING_PLATFORM_TYPES(テストなし)
-│       ├── report-erasure-store.ts                         # ReportErasureStore(型とD1の実装)
-│       ├── report-export.ts                                # ReportExport(型とD1の実装)
+│   └── workers/reporting/                                  # api・event共通の実装と束縛(Workers統合テスト)
+│       ├── report-erasure-statements.ts                    # ReportErasureStatements(文を返す契約。apiのinfrastructure層だけが使う)
+│       ├── d1-report-erasure-store.ts                      # D1ReportErasureStore(ReportErasureStoreとReportErasureStatementsの実装)
+│       ├── d1-report-export.ts                             # D1ReportExport
 │       └── reporting-platform-module.ts                    # REPORTING_PLATFORM_MODULE
 ├── api/src/
 │   ├── application/reporting/                              # ユースケース(Bunの単体テスト)
 │   │   ├── reporting-types.ts                              # REPORTING_TYPES(テストなし)
-│   │   ├── ports.ts                                        # 各ストアと文のポート・入力と結果の型
+│   │   ├── ports.ts                                        # 各ストアと書き込みの単位のポート(ReportCaseWriter)・措置の参加の値・ReportSubmissionRateLimit・入力と結果の型
 │   │   ├── report-target-resolver.ts                       # 受け付けの可視の判定と表示名
-│   │   ├── report-submission-service.ts                    # 受け付け・回数制限の規則
+│   │   ├── report-submission-service.ts                    # 受け付け
 │   │   ├── report-case-reader.ts                           # 一覧・詳細・件数・プロダクトの件数
 │   │   ├── report-case-workflow.ts                         # 状態の変更・措置・措置なしの対応済・却下
+│   │   ├── report-case-closing-participation.ts            # 措置と一体の完了の参加の値の組み立てと読み取り(*.unit.test.ts)
 │   │   ├── infringement-inquiry-service.ts                 # 照会
 │   │   ├── report-notifier.ts                              # 申出者と投稿者への通知の組み立てと依頼
 │   │   ├── report-category-service.ts                      # カテゴリの一覧と操作
@@ -236,9 +240,12 @@ apps/
 │   ├── infrastructure/reporting/                           # Workers統合テスト
 │   │   ├── d1-report-submission-store.ts                   # 通報と集約の一括の書き込み
 │   │   ├── d1-report-case-store.ts                         # 案件の検索・詳細・件数
-│   │   ├── d1-report-case-statements.ts                    # 状態の変更・完了・照会の文と単独の確定
+│   │   ├── d1-report-case-statements.ts                    # 状態の変更・完了・照会の文の組み立て(infrastructure層の内部の部品)
+│   │   ├── d1-report-case-writer.ts                        # ReportCaseWriterの実装(状態の変更・措置なしの完了・照会の記録の単独の一括の書き込み)
+│   │   ├── report-case-closing-participant.ts              # content-reporting.report-case-closing(措置と同じ一括の書き込みに入る完了の文)
 │   │   ├── d1-report-category-store.ts                     # カテゴリの読み書きと付け替え
 │   │   ├── d1-report-notice-store.ts                       # 通知の状態
+│   │   ├── counter-report-submission-rate-limit.ts         # ReportSubmissionRateLimitの実装(厳密カウンタによる回数制限の規則)
 │   │   └── reporter-withdrawal-sync-handler.ts             # content-reporting.reporter-withdrawal
 │   ├── presentation/graphql/modules/reporting/             # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
@@ -304,7 +311,7 @@ docs/
 - `apps/db/schema/index.ts`・`apps/db/migrations/<日時>_content_reporting/migration.sql`・`<日時>_content_reporting_seed`(カスタムマイグレーション) — 3テーブルの再エクスポート、生成したマイグレーション(CHECK・部分一意索引・索引)、標準カテゴリ2件の挿入。mainの最新を取り込んでから生成する。
 - `apps/common-lib/admin/audit-actions/index.ts` — 連結に`content-reporting`を加える。
 - `apps/backend-lib/core/email/kinds/index.ts`・`apps/event/src/infrastructure/email/templates/index.ts` — 3種別と3テンプレート。
-- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`user-lifecycle-sync-handlers.ts` — モジュール・スキーマモジュール・2つのジョブ・同期の処理。
+- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`user-lifecycle-sync-handlers.ts`・`moderation-write-participants.ts` — モジュール・スキーマモジュール・2つのジョブ・同期の処理・措置の書き込みの参加者。
 - `apps/event/src/composition/modules.ts`・`user-lifecycle-async-handlers.ts`・`product-lifecycle-async-handlers.ts` — モジュール・2つの物理削除の処理。
 - `apps/client/src/composition/product-page-sections.ts`・`comment-actions.ts`・`public-profile-sections.ts` — 3つの登録。
 - `apps/admin/src/composition/admin-navigation.ts`・`dashboard-cards.ts`・`category-sections.ts`・`admin-product-detail-sections.ts` — メニュー・カード・カテゴリの区画・プロダクト詳細の区画。
@@ -330,7 +337,7 @@ sequenceDiagram
     participant R as SubmissionResolver
     participant S as ReportSubmissionService
     participant T as ReportTargetResolver
-    participant L as RateLimitCounterClient
+    participant L as ReportSubmissionRateLimit
     participant W as D1ReportSubmissionStore
     D->>R: submitReport with turnstile token
     R->>R: caller is client and assertHuman report
@@ -339,8 +346,8 @@ sequenceDiagram
     S->>T: resolve visible target
     T-->>S: target owner product or none
     S->>S: reject own content
-    S->>L: hit user rule when member
-    S->>L: hit ip rule when ip known
+    S->>L: consume reporter and client ip
+    L->>L: hit user rule when member then ip rule when ip known
     S->>W: batch insert case if absent report and case update
     W-->>S: accepted or category missing
     S-->>R: accepted
@@ -360,25 +367,28 @@ sequenceDiagram
     participant G as AuditLogRecorder
     participant M as UgcModerationService
     participant U as UpstreamCommit
+    participant P as ReportCaseClosingParticipant
     participant N as ReportNotifier
     A->>R: resolveReportCaseWithMeasure id reason
     R->>R: requireAdmin moderator
     R->>F: resolve with measure
     F->>F: load case and check open and reason
     F->>G: prepare report resolve audit
-    F->>F: build closing statements
-    F->>M: hide or suspend with statements
-    M->>U: commit state record ugc audit and closing statements
+    F->>F: build closing participation value
+    F->>M: hide or suspend with participation
+    M->>U: commit state record and ugc audit
+    U->>P: statements for participation with actionId
+    P-->>U: closing statements with actionId and audit
     U-->>M: committed or rolled back
     M-->>F: changed with actionId or unchanged
-    F->>F: link actionId to case when changed
     F->>N: dispatch outcome notices when changed
     F-->>R: resolved
 ```
 
-- 完了の文は、案件の`status`を「現在が未対応・対応中なら対応済、そうでなければNULL」とする`CASE`式の更新(NOT NULL制約の違反で上流の確定ごと取り消す)・`resolution`・`closing_reason`・`closed_at`の設定、通報の申出者への通知の状態の`pending`(宛先の無い未ログインの通報は`none`)、`buildAuditLogStatements`(`report.resolve`、詳細`resolution`)である。上流が`changed: true`を返したら、結果の`actionId`を`ReportCaseStatements.linkResolutionAction(caseId, actionId)`で案件の`resolution_action_id`に残す(9.3)。`actionId`は上流の確定の中で採番されるため、確定の後の単独の条件付きの更新(措置の対応済で`resolution_action_id`が未設定の案件だけ)で書く。この更新の例外または`false`(更新した行が無い)は措置と完了を取り消さず、`captureEvent`(`resolution-action-link-failed`、案件と措置の記録のID)で知らせ、結果は成功とする。
-- 上流が`changed: false`(既に非公開化・停止)を返したら、上流は書き込まないため本specの文も書かれない。`report_measure_already_applied`を返し、画面は措置なしの対応済を案内する(9.5)。上流の`*_not_found`は`report_target_unavailable`に変える(9.7)。上流の確定が失敗したら案件を読み直し、完了済みなら`report_case_state_conflict`、そうでなければ上流のエラーをそのまま返す(9.8)。
-- 措置なしの対応済と却下は、同じ完了の文(`resolution`は`none`・null、却下は投稿者がいれば投稿者への通知の状態も`pending`、対象への参照を消した案件なら`skipped`)を`ReportCaseStatements.commit`の単独の一括の書き込みで確定する。
+- 完了の文は、案件の`status`を「現在が未対応・対応中なら対応済、そうでなければNULL」とする`CASE`式の更新(NOT NULL制約の違反で上流の確定ごと取り消す)・`resolution`・`closing_reason`・`closed_at`の設定、通報の申出者への通知の状態の`pending`(宛先の無い未ログインの通報は`none`)、`buildAuditLogStatements`(`report.resolve`、詳細`resolution`)である。`resolution_action_id`は同じ更新で措置の記録のIDにする(9.3)。
+- application層の`ReportCaseWorkflow`は文を組み立てず、種類`content-reporting.report-case-closing`と完了の値(案件のID・措置・理由・日時・準備した監査ログ)だけの`participation`を上流のユースケースへ渡す。上流のinfrastructure層(同期の処理または`ControlEngagementModerationWriter`)が`MODERATION_WRITE_PARTICIPANTS`から本specの`ReportCaseClosingParticipant`を解決し、参加者が`context.actionId`(上流が操作の前に採番した措置の記録のIDで、結果の`ModerationOutcome.actionId`と同じ値)を使って完了の文を返す。上流はその文を状態の変更・措置の記録・ugc-moderationの監査ログの文の後に並べ、1つの一括の書き込みで確定する。
+- 上流が`changed: false`(既に非公開化・停止)を返したら、上流は書き込まないため本specの文も書かれない。`report_measure_already_applied`を返し、画面は措置なしの対応済を案内する(9.5)。上流の`*_not_found`は`report_target_unavailable`に変える(9.7)。上流の確定が失敗したら(同時の完了で参加者の文がNOT NULL制約に違反して全体が取り消された場合を含む)案件を読み直し、完了済みなら`report_case_state_conflict`、そうでなければ上流のエラーをそのまま返す(9.8)。
+- 措置なしの対応済と却下は、同じ完了の文(`resolution`は`none`・null、却下は投稿者がいれば投稿者への通知の状態も`pending`、対象への参照を消した案件なら`skipped`、`resolution_action_id`はnull)を書き込みの単位のポート`ReportCaseWriter.close`(infrastructure層の`D1ReportCaseWriter`)の単独の一括の書き込みで確定する。
 
 ### 対応ステータス
 
@@ -431,55 +441,57 @@ sequenceDiagram
 
 ## Requirements Traceability
 
-| Requirement                                                 | Summary              | Components                                                                                                                                                   | Interfaces                                                                                                           | Flows            |
-| ----------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| 1.1, 1.2, 1.3, 1.4, 1.5                                     | 通報の導線           | ProductReportLink、CommentReportMenuItem、UserReportMenuItem、ReportDialog、ClientRegistrations                                                              | `PRODUCT_PAGE_SECTIONS`・`COMMENT_ACTIONS`・`PUBLIC_PROFILE_MENU_ITEMS`                                              | —                |
-| 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11     | 通報フォーム         | ReportForm、ReportFormSchema、UseSubmitReport、ReportRules、ReportCategoryService                                                                            | `reportCategories`・`submitReport`・`useTurnstileToken`                                                              | 通報の受け付け   |
-| 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9                 | 通報の受け付け       | ReportingSchemaModule、ReportSubmissionService、ReportTargetResolver、D1ReportSubmissionStore                                                                | `assertHuman`・`CallerKind`・`AccountGuard.currentUser`                                                              | 通報の受け付け   |
-| 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7                           | 回数制限             | ReportSubmissionService                                                                                                                                      | `REPORT_IP_RATE_RULE`・`REPORT_USER_RATE_RULE`・`RateLimitCounterClient`・`hashRateLimitKey`                         | 通報の受け付け   |
-| 5.1, 5.2, 5.3, 5.4, 5.5, 5.6                                | 集約と案件           | D1ReportSubmissionStore、D1ReportCaseStore、ReportingSchema                                                                                                  | 部分一意索引・`ReportCaseStore.search`                                                                               | 通報の受け付け   |
-| 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9                 | 通報一覧             | ReportCaseReader、ReportTargetResolver、ReportsPage(ReportCaseFilters・ReportCaseTable・ReportTargetCell・CategoryBreakdown・ResponseTimeCell)、ReportSearch | `adminReportCases`                                                                                                   | —                |
-| 7.1, 7.2, 7.3, 7.4, 7.5, 7.6                                | 案件の詳細           | ReportCaseReader、ReportCasePage(ReportCaseDetailView・ReportList・ReportInquiryPanel)                                                                       | `adminReportCase`                                                                                                    | —                |
-| 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8                      | 対応ステータス       | ReportCaseRules、ReportCaseWorkflow、D1ReportCaseStatements、ReportCaseStatusControl                                                                         | `changeReportCaseStatus`・部分一意索引                                                                               | 対応ステータス   |
-| 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9                 | 通報からの措置       | ReportCaseWorkflow、D1ReportCaseStatements、ReportCaseActions、ReportCaseActionDialog                                                                        | `resolveReportCaseWithMeasure`・`resolveReportCaseWithoutMeasure`・`ModerationCommand`・`ModerationOutcome.actionId` | 措置による対応済 |
-| 10.1, 10.2, 10.3, 10.4                                      | 却下                 | ReportCaseWorkflow、D1ReportCaseStatements、ReportCaseActions、ReportCaseActionDialog                                                                        | `rejectReportCase`                                                                                                   | 対応ステータス   |
-| 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 11.10 | 当事者への通知       | ReportNotifier、D1ReportNoticeStore、ReportingEmailKinds、ReportingEmailTemplates、ReportNoticeRedispatchJob                                                 | 2つのメール種別・`EmailSender`・`UserContactDirectory`                                                               | 通知と照会       |
-| 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9        | 権利侵害の照会       | InfringementInquiryService、D1ReportCaseStatements、InfringementInquiryDialog、ReportInquiryPanel、ResponseTime                                              | `sendInfringementInquiry`・`content-reporting.infringement-inquiry`                                                  | 通知と照会       |
-| 13.1, 13.2, 13.3, 13.4, 13.5, 13.6                          | 対応期間             | ResponseTime、ReportCaseReader、ResponseTimeCell                                                                                                             | `computeResponseTime`・`latestFor`・`latestForMany`(admin-foundationの仮7)                                           | —                |
-| 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 14.8, 14.9, 14.10 | 通報カテゴリ         | ReportCategoryService、D1ReportCategoryStore、ReportRules、ReportCategorySection、ReportingSchema                                                            | `adminReportCategories`・カテゴリの3操作・`CATEGORY_SECTIONS`                                                        | —                |
-| 15.1, 15.2, 15.3, 15.4, 15.5                                | カードと区画         | UnhandledReportsCard、ProductReportsSection、ReportCaseReader                                                                                                | `adminUnhandledReportSummary`・`adminProductReportSummary`・`DASHBOARD_CARDS`・`ADMIN_PRODUCT_DETAIL_SECTIONS`       | —                |
-| 16.1, 16.2, 16.3, 16.4, 16.5                                | 監査ログ             | ReportingAuditActions、D1ReportCaseStatements、D1ReportCategoryStore、ReportCaseWorkflow                                                                     | `buildAuditLogStatements`                                                                                            | 措置による対応済 |
-| 17.1, 17.2, 17.3, 17.4, 17.5, 17.6, 17.7, 17.8, 17.9, 17.10 | 保持と削除           | ReportErasureStore、ReportRetentionJob、ReporterWithdrawalSyncHandler、ReportErasureHandlers、ReportExport                                                   | `purge_due`・`withdrawn`・`ReportExport.listPage`                                                                    | —                |
-| 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7, 18.8              | 権限と共通の振る舞い | ReportingSchemaModule、AdminRegistrations、ReportCaseActionDialog、UseReportCaseMutation                                                                     | `requireAdmin`・`ADMIN_NAV_ITEMS`                                                                                    | —                |
-| 19.1, 19.2, 19.3, 19.4, 19.5, 19.6                          | 連携と運用           | ReportCaseWorkflow、ReportingModule、ジョブと処理の登録、ReportCaseReader                                                                                    | 各登録口・`ModerationCommand.statements`                                                                             | —                |
-| 20.1, 20.2, 20.3, 20.4, 20.5, 20.6                          | ドキュメントとテスト | 全コンポーネントのテスト、ReportingE2E、ReportingTechDocs、ReportingServiceSpecs                                                                             | —                                                                                                                    | —                |
+| Requirement                                                 | Summary              | Components                                                                                                                                                   | Interfaces                                                                                                                                                               | Flows            |
+| ----------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| 1.1, 1.2, 1.3, 1.4, 1.5                                     | 通報の導線           | ProductReportLink、CommentReportMenuItem、UserReportMenuItem、ReportDialog、ClientRegistrations                                                              | `PRODUCT_PAGE_SECTIONS`・`COMMENT_ACTIONS`・`PUBLIC_PROFILE_MENU_ITEMS`                                                                                                  | —                |
+| 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11     | 通報フォーム         | ReportForm、ReportFormSchema、UseSubmitReport、ReportRules、ReportCategoryService                                                                            | `reportCategories`・`submitReport`・`useTurnstileToken`                                                                                                                  | 通報の受け付け   |
+| 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9                 | 通報の受け付け       | ReportingSchemaModule、ReportSubmissionService、ReportTargetResolver、D1ReportSubmissionStore                                                                | `assertHuman`・`CallerKind`・`AccountGuard.currentUser`                                                                                                                  | 通報の受け付け   |
+| 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7                           | 回数制限             | ReportSubmissionService、CounterReportSubmissionRateLimit                                                                                                    | `ReportSubmissionRateLimit`・`REPORT_IP_RATE_RULE`・`REPORT_USER_RATE_RULE`・`RateLimitCounterClient`・`hashRateLimitKey`                                                | 通報の受け付け   |
+| 5.1, 5.2, 5.3, 5.4, 5.5, 5.6                                | 集約と案件           | D1ReportSubmissionStore、D1ReportCaseStore、ReportingSchema                                                                                                  | 部分一意索引・`ReportCaseStore.search`                                                                                                                                   | 通報の受け付け   |
+| 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9                 | 通報一覧             | ReportCaseReader、ReportTargetResolver、ReportsPage(ReportCaseFilters・ReportCaseTable・ReportTargetCell・CategoryBreakdown・ResponseTimeCell)、ReportSearch | `adminReportCases`                                                                                                                                                       | —                |
+| 7.1, 7.2, 7.3, 7.4, 7.5, 7.6                                | 案件の詳細           | ReportCaseReader、ReportCasePage(ReportCaseDetailView・ReportList・ReportInquiryPanel)                                                                       | `adminReportCase`                                                                                                                                                        | —                |
+| 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8                      | 対応ステータス       | ReportCaseRules、ReportCaseWorkflow、D1ReportCaseWriter、ReportCaseStatusControl                                                                             | `changeReportCaseStatus`・部分一意索引                                                                                                                                   | 対応ステータス   |
+| 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9                 | 通報からの措置       | ReportCaseWorkflow、ReportCaseClosingParticipant、D1ReportCaseWriter、ReportCaseActions、ReportCaseActionDialog                                              | `resolveReportCaseWithMeasure`・`resolveReportCaseWithoutMeasure`・`ModerationCommand.participation`・`MODERATION_WRITE_PARTICIPANTS`・`ModerationWriteContext.actionId` | 措置による対応済 |
+| 10.1, 10.2, 10.3, 10.4                                      | 却下                 | ReportCaseWorkflow、D1ReportCaseWriter、ReportCaseActions、ReportCaseActionDialog                                                                            | `rejectReportCase`                                                                                                                                                       | 対応ステータス   |
+| 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 11.10 | 当事者への通知       | ReportNotifier、D1ReportNoticeStore、ReportingEmailKinds、ReportingEmailTemplates、ReportNoticeRedispatchJob                                                 | 2つのメール種別・`EmailSender`・`UserContactDirectory`                                                                                                                   | 通知と照会       |
+| 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9        | 権利侵害の照会       | InfringementInquiryService、D1ReportCaseWriter、InfringementInquiryDialog、ReportInquiryPanel、ResponseTime                                                  | `sendInfringementInquiry`・`content-reporting.infringement-inquiry`                                                                                                      | 通知と照会       |
+| 13.1, 13.2, 13.3, 13.4, 13.5, 13.6                          | 対応期間             | ResponseTime、ReportCaseReader、ResponseTimeCell                                                                                                             | `computeResponseTime`・`latestFor`・`latestForMany`(admin-foundationの仮7)                                                                                               | —                |
+| 14.1, 14.2, 14.3, 14.4, 14.5, 14.6, 14.7, 14.8, 14.9, 14.10 | 通報カテゴリ         | ReportCategoryService、D1ReportCategoryStore、ReportRules、ReportCategorySection、ReportingSchema                                                            | `adminReportCategories`・カテゴリの3操作・`CATEGORY_SECTIONS`                                                                                                            | —                |
+| 15.1, 15.2, 15.3, 15.4, 15.5                                | カードと区画         | UnhandledReportsCard、ProductReportsSection、ReportCaseReader                                                                                                | `adminUnhandledReportSummary`・`adminProductReportSummary`・`DASHBOARD_CARDS`・`ADMIN_PRODUCT_DETAIL_SECTIONS`                                                           | —                |
+| 16.1, 16.2, 16.3, 16.4, 16.5                                | 監査ログ             | ReportingAuditActions、D1ReportCaseStatements・ReportCaseClosingParticipant、D1ReportCategoryStore、ReportCaseWorkflow                                       | `buildAuditLogStatements`                                                                                                                                                | 措置による対応済 |
+| 17.1, 17.2, 17.3, 17.4, 17.5, 17.6, 17.7, 17.8, 17.9, 17.10 | 保持と削除           | ReportErasureStore、ReportRetentionJob、ReporterWithdrawalSyncHandler、ReportErasureHandlers、ReportExport                                                   | `purge_due`・`withdrawn`・`ReportExport.listPage`                                                                                                                        | —                |
+| 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7, 18.8              | 権限と共通の振る舞い | ReportingSchemaModule、AdminRegistrations、ReportCaseActionDialog、UseReportCaseMutation                                                                     | `requireAdmin`・`ADMIN_NAV_ITEMS`                                                                                                                                        | —                |
+| 19.1, 19.2, 19.3, 19.4, 19.5, 19.6                          | 連携と運用           | ReportCaseWorkflow、ReportingModule、ReportCaseClosingParticipant、ジョブと処理の登録、ReportCaseReader                                                      | 各登録口・`ModerationCommand.participation`・`MODERATION_WRITE_PARTICIPANTS`                                                                                             | —                |
+| 20.1, 20.2, 20.3, 20.4, 20.5, 20.6                          | ドキュメントとテスト | 全コンポーネントのテスト、ReportingE2E、ReportingTechDocs、ReportingServiceSpecs                                                                             | —                                                                                                                                                                        | —                |
 
 ## Components and Interfaces
 
-| Component                                                                                                      | Domain/Layer        | Intent                                   | Req Coverage                                                                                                                         | Key Dependencies (P0/P1)                                  | Contracts      |
-| -------------------------------------------------------------------------------------------------------------- | ------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- | -------------- |
-| ReportRules・ReportCaseRules・ReportLabels                                                                     | common-lib          | 通報と案件の規則・表示名                 | 2.1, 2.2, 2.3, 2.4, 3.5, 8.2, 8.3, 8.4, 9.1, 12.2, 14.4, 14.8                                                                        | AUDIT_REASON_MAX (P0)                                     | State          |
-| ReportingAuditActions                                                                                          | common-lib/admin    | 監査ログの操作種別7種                    | 16.1, 16.2, 8.5, 14.7                                                                                                                | defineAuditAction (P0)                                    | State          |
-| ReportingSchema                                                                                                | db                  | 3テーブルと標準カテゴリ                  | 5.1, 5.2, 8.8, 14.4, 17.1, 17.5, 17.10                                                                                               | Drizzle (P0)                                              | State          |
-| ResponseTime                                                                                                   | backend-lib/core    | 対応期間・目標の超過・照会の期限         | 13.1, 13.2, 13.4, 13.6, 12.6                                                                                                         | なし(純粋な関数)                                          | Service        |
-| ReportingEmailKinds                                                                                            | backend-lib/core    | 3つのメール種別                          | 11.1, 11.2, 11.6, 11.7, 12.2, 12.4                                                                                                   | defineEmailKind (P0)                                      | Event          |
-| ReportErasureStore                                                                                             | backend-lib/workers | 保持期間・退会の削除と対象への参照の消去 | 17.1, 17.2, 17.4, 17.5, 17.6, 17.9, 17.10                                                                                            | D1 (P0)                                                   | Service        |
-| ReportExport                                                                                                   | backend-lib/workers | データエクスポートの通報                 | 17.7, 17.8                                                                                                                           | UserProfileDirectory (P0)・ProductDirectory (P0)          | Service        |
-| ReportTargetResolver                                                                                           | api/application     | 受け付けの可視の判定と表示名             | 3.3, 3.4, 6.2, 6.7, 7.1                                                                                                              | UserProfileDirectory・ProductDirectory・CommentStore (P0) | Service        |
-| ReportSubmissionService                                                                                        | api/application     | 検証・本人・回数制限・書き込み           | 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.1〜4.7                                                                                               | AccountGuard (P0)・RateLimitCounterClient (P0)            | Service        |
-| ReportCaseReader                                                                                               | api/application     | 一覧・詳細・件数・プロダクトの件数       | 5.4, 5.6, 6.1, 6.2, 6.7, 7.1〜7.6, 13.1〜13.6, 15.1, 15.3, 19.6                                                                      | ReportCaseStore (P0)・AuditLogReader (P0)                 | Service        |
-| ReportCaseWorkflow                                                                                             | api/application     | 状態の変更・措置・措置なしの対応済・却下 | 8.2〜8.8, 9.2〜9.8, 10.2, 10.3, 11.9, 16.4, 16.5, 19.1                                                                               | ugc-moderationの措置(P0)・AuditLogRecorder (P0)           | Service        |
-| InfringementInquiryService                                                                                     | api/application     | 照会の送信と記録                         | 12.1〜12.5, 12.7, 12.8                                                                                                               | UserContactDirectory (P0)・EmailSender (P0)               | Service        |
-| ReportNotifier                                                                                                 | api/application     | 申出者と投稿者への通知                   | 11.1〜11.10                                                                                                                          | EmailSender (P0)・UserContactDirectory (P0)               | Service        |
-| ReportCategoryService                                                                                          | api/application     | カテゴリの一覧と操作                     | 2.1, 14.1〜14.10                                                                                                                     | ReportCategoryStore (P0)                                  | Service        |
-| D1ReportSubmissionStore・D1ReportCaseStore・D1ReportCaseStatements・D1ReportCategoryStore・D1ReportNoticeStore | api/infrastructure  | 本specのテーブルの読み書き               | 3.8, 5.1〜5.6, 8.3〜8.6, 8.8, 9.2, 9.3, 10.2, 12.3, 14.3, 14.5, 14.7, 14.9, 16.4, 16.5                                               | buildAuditLogStatements (P0)                              | Service, State |
-| ReporterWithdrawalSyncHandler                                                                                  | api/infrastructure  | 退会の確定と同じ書き込みでの論理削除     | 17.3                                                                                                                                 | USER_LIFECYCLE_SYNC_HANDLERS (P0)                         | Event          |
-| ReportNoticeRedispatchJob・ReportRetentionJob                                                                  | api/application     | 通知の送り直し・保持期間の削除           | 11.8, 17.1, 17.2, 17.6, 17.9, 17.10, 19.2, 19.5                                                                                      | ReportNotifier (P0)・ReportErasureStore (P0)              | Batch          |
-| ReportingSchemaModule                                                                                          | api/presentation    | GraphQLの照会と操作・認可                | 3.1, 3.2, 18.2, 18.3, 18.4                                                                                                           | requireAdmin (P0)・assertHuman (P0)                       | API            |
-| ReportErasureHandlers                                                                                          | event               | 物理削除の時期の削除と参照の消去         | 17.4, 17.5, 17.6                                                                                                                     | ReportErasureStore (P0)                                   | Event          |
-| ReportingEmailTemplates                                                                                        | event               | 3つの本文                                | 11.1, 11.2, 11.6, 11.7, 12.2, 12.4                                                                                                   | defineEmailTemplate (P0)                                  | —              |
-| client画面の部品                                                                                               | client              | 通報の導線とダイアログ                   | 1.1〜1.5, 2.1〜2.11                                                                                                                  | GraphQLの操作(P0)・useTurnstileToken (P0)                 | State          |
-| admin画面の部品                                                                                                | admin               | 2ページ・カード・2区画・操作             | 6.3〜6.9, 7.1〜7.6, 8.2〜8.4, 8.8, 9.1, 9.6, 9.9, 10.1, 10.4, 12.6, 12.9, 13.4, 14.1, 14.6, 14.8, 15.1〜15.5, 16.3, 18.1, 18.5〜18.8 | GraphQLの操作(P0)                                         | State          |
+| Component                                                                                                                          | Domain/Layer                                                        | Intent                                   | Req Coverage                                                                                                                         | Key Dependencies (P0/P1)                                               | Contracts      |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | -------------- |
+| ReportRules・ReportCaseRules・ReportLabels                                                                                         | common-lib                                                          | 通報と案件の規則・表示名                 | 2.1, 2.2, 2.3, 2.4, 3.5, 8.2, 8.3, 8.4, 9.1, 12.2, 14.4, 14.8                                                                        | AUDIT_REASON_MAX (P0)                                                  | State          |
+| ReportingAuditActions                                                                                                              | common-lib/admin                                                    | 監査ログの操作種別7種                    | 16.1, 16.2, 8.5, 14.7                                                                                                                | defineAuditAction (P0)                                                 | State          |
+| ReportingSchema                                                                                                                    | db                                                                  | 3テーブルと標準カテゴリ                  | 5.1, 5.2, 8.8, 14.4, 17.1, 17.5, 17.10                                                                                               | Drizzle (P0)                                                           | State          |
+| ResponseTime                                                                                                                       | backend-lib/core                                                    | 対応期間・目標の超過・照会の期限         | 13.1, 13.2, 13.4, 13.6, 12.6                                                                                                         | なし(純粋な関数)                                                       | Service        |
+| ReportingEmailKinds                                                                                                                | backend-lib/core                                                    | 3つのメール種別                          | 11.1, 11.2, 11.6, 11.7, 12.2, 12.4                                                                                                   | defineEmailKind (P0)                                                   | Event          |
+| ReportErasureStore・ReportErasureStatements・D1ReportErasureStore                                                                  | backend-lib/core(契約と識別子)・backend-lib/workers(文の契約と実装) | 保持期間・退会の削除と対象への参照の消去 | 17.1, 17.2, 17.3, 17.4, 17.5, 17.6, 17.9, 17.10                                                                                      | D1(実装だけが使う) (P0)                                                | Service        |
+| ReportExport・D1ReportExport                                                                                                       | backend-lib/core(契約と識別子)・backend-lib/workers(実装)           | データエクスポートの通報                 | 17.7, 17.8                                                                                                                           | UserProfileDirectory (P0)・ProductDirectory (P0)(実装だけが使う)       | Service        |
+| ReportTargetResolver                                                                                                               | api/application                                                     | 受け付けの可視の判定と表示名             | 3.3, 3.4, 6.2, 6.7, 7.1                                                                                                              | UserProfileDirectory・ProductDirectory・CommentStore (P0)              | Service        |
+| ReportSubmissionService                                                                                                            | api/application                                                     | 検証・本人・回数制限・書き込み           | 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.1〜4.7                                                                                               | AccountGuard (P0)・ReportSubmissionRateLimit (P0)                      | Service        |
+| CounterReportSubmissionRateLimit                                                                                                   | api/infrastructure                                                  | 回数制限の実装                           | 4.1〜4.7                                                                                                                             | RateLimitCounterClient (P0)・KeyedHasher (P0)                          | Service        |
+| ReportCaseReader                                                                                                                   | api/application                                                     | 一覧・詳細・件数・プロダクトの件数       | 5.4, 5.6, 6.1, 6.2, 6.7, 7.1〜7.6, 13.1〜13.6, 15.1, 15.3, 19.6                                                                      | ReportCaseStore (P0)・AuditLogReader (P0)                              | Service        |
+| ReportCaseWorkflow                                                                                                                 | api/application                                                     | 状態の変更・措置・措置なしの対応済・却下 | 8.2〜8.8, 9.2〜9.8, 10.2, 10.3, 11.9, 16.4, 16.5, 19.1                                                                               | ugc-moderationの措置(P0)・ReportCaseWriter (P0)・AuditLogRecorder (P0) | Service        |
+| InfringementInquiryService                                                                                                         | api/application                                                     | 照会の送信と記録                         | 12.1〜12.5, 12.7, 12.8                                                                                                               | UserContactDirectory (P0)・EmailSender (P0)                            | Service        |
+| ReportNotifier                                                                                                                     | api/application                                                     | 申出者と投稿者への通知                   | 11.1〜11.10                                                                                                                          | EmailSender (P0)・UserContactDirectory (P0)                            | Service        |
+| ReportCategoryService                                                                                                              | api/application                                                     | カテゴリの一覧と操作                     | 2.1, 14.1〜14.10                                                                                                                     | ReportCategoryStore (P0)                                               | Service        |
+| D1ReportSubmissionStore・D1ReportCaseStore・D1ReportCaseStatements・D1ReportCaseWriter・D1ReportCategoryStore・D1ReportNoticeStore | api/infrastructure                                                  | 本specのテーブルの読み書き               | 3.8, 5.1〜5.6, 8.3〜8.6, 8.8, 9.2, 9.3, 10.2, 12.3, 14.3, 14.5, 14.7, 14.9, 16.4, 16.5                                               | buildAuditLogStatements (P0)                                           | Service, State |
+| ReportCaseClosingParticipant                                                                                                       | api/infrastructure                                                  | 措置と同じ一括の書き込みでの案件の完了   | 9.2, 9.3, 16.5                                                                                                                       | MODERATION_WRITE_PARTICIPANTS (P0)・D1ReportCaseStatements (P0)        | Service        |
+| ReporterWithdrawalSyncHandler                                                                                                      | api/infrastructure                                                  | 退会の確定と同じ書き込みでの論理削除     | 17.3                                                                                                                                 | USER_LIFECYCLE_SYNC_HANDLERS (P0)・ReportErasureStatements (P0)        | Event          |
+| ReportNoticeRedispatchJob・ReportRetentionJob                                                                                      | api/application                                                     | 通知の送り直し・保持期間の削除           | 11.8, 17.1, 17.2, 17.6, 17.9, 17.10, 19.2, 19.5                                                                                      | ReportNotifier (P0)・ReportErasureStore (P0)                           | Batch          |
+| ReportingSchemaModule                                                                                                              | api/presentation                                                    | GraphQLの照会と操作・認可                | 3.1, 3.2, 18.2, 18.3, 18.4                                                                                                           | requireAdmin (P0)・assertHuman (P0)                                    | API            |
+| ReportErasureHandlers                                                                                                              | event                                                               | 物理削除の時期の削除と参照の消去         | 17.4, 17.5, 17.6                                                                                                                     | ReportErasureStore (P0)                                                | Event          |
+| ReportingEmailTemplates                                                                                                            | event                                                               | 3つの本文                                | 11.1, 11.2, 11.6, 11.7, 12.2, 12.4                                                                                                   | defineEmailTemplate (P0)                                               | —              |
+| client画面の部品                                                                                                                   | client                                                              | 通報の導線とダイアログ                   | 1.1〜1.5, 2.1〜2.11                                                                                                                  | GraphQLの操作(P0)・useTurnstileToken (P0)                              | State          |
+| admin画面の部品                                                                                                                    | admin                                                               | 2ページ・カード・2区画・操作             | 6.3〜6.9, 7.1〜7.6, 8.2〜8.4, 8.8, 9.1, 9.6, 9.9, 10.1, 10.4, 12.6, 12.9, 13.4, 14.1, 14.6, 14.8, 15.1〜15.5, 16.3, 18.1, 18.5〜18.8 | GraphQLの操作(P0)                                                      | State          |
 
 ### common-lib
 
@@ -643,18 +655,15 @@ export declare function isInquiryOverdue(sentAt: Date, now: Date): boolean;
 - 日時はISO 8601(UTC)の文字列で、本文は`formatUtcDateTime`でUTCを明記する。`contactUrl`は`<CLIENT_SITE_ORIGIN>/contact`、`targetUrl`はプロダクト(とコメント)が`<CLIENT_SITE_ORIGIN>/p/<ハンドル>`、ユーザーが`<CLIENT_SITE_ORIGIN>/@<ハンドル>`。`recipientName`がnull(未ログインの申出者)なら宛名を省く(文言規則の本文の構成)。理由・照会の内容は改行を保ったプレーンテキストで差し込み、HTMLとして解釈しない。配信停止のリンクを持たない(トランザクションメール)。
 - 申出者を特定できる情報(ニックネーム・ハンドル・メールアドレス・申出者の理由)は、投稿者向けの2種別の入力に存在しない(11.6・12.4)。
 
-### backend-lib/workers/reporting
+### backend-lib/core/reporting・backend-lib/workers/reporting
 
-#### ReportErasureStore
+#### ReportErasureStore・ReportErasureStatements・D1ReportErasureStore
 
 **Contracts**: Service [x]
 
 ```typescript
+// apps/backend-lib/core/reporting/ports.ts(apiのジョブとeventの処理のapplication層が受け取る契約)
 export interface ReportErasureStore {
-  logicalDeleteByReporterStatement(
-    userId: string,
-    at: Date,
-  ): BatchItem<'sqlite'>; // UPDATE reports SET deleted_at = ? WHERE reporter_user_id = ? AND deleted_at IS NULL
   eraseByReporter(
     userId: string,
     limit: number,
@@ -676,7 +685,28 @@ export interface ReportErasureStore {
   eraseDetachedCasesBefore(threshold: Date, limit: number): Promise<number>; // target_detached_at <= thresholdの案件とその通報(仮7)
   eraseEmptyCases(limit: number): Promise<number>; // 通報が1件も無い案件
 }
+// apps/backend-lib/workers/reporting/report-erasure-statements.ts(文を返すため、apiのinfrastructure層の同期の処理だけが使う)
+export interface ReportErasureStatements {
+  logicalDeleteByReporterStatement(
+    userId: string,
+    at: Date,
+  ): BatchItem<'sqlite'>; // UPDATE reports SET deleted_at = ? WHERE reporter_user_id = ? AND deleted_at IS NULL
+}
+// apps/backend-lib/core/reporting/identifiers.ts
+export declare const REPORTING_PLATFORM_TYPES: {
+  readonly ReportErasureStore: symbol;
+  readonly ReportErasureStatements: symbol;
+  readonly ReportExport: symbol;
+}; // Symbol.for('reporting.<名前>')の凍結したオブジェクト
+// apps/backend-lib/workers/reporting/d1-report-erasure-store.ts
+export declare class D1ReportErasureStore
+  implements ReportErasureStore, ReportErasureStatements
+{
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
 ```
+
+- 置き場所: 削除の操作(文を返さないメソッド)の契約`ReportErasureStore`は、apiの`ReportRetentionJob`とeventの`ReportErasureHandlers`のapplication層が読み込めるよう`apps/backend-lib/core/reporting/ports.ts`に、識別子は`core/reporting/identifiers.ts`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。退会の確定の一括の書き込みに入れる文を返す`ReportErasureStatements`は、application層が文を扱わないため`workers/reporting`に置き、apiのinfrastructure層の`ReporterWithdrawalSyncHandler`だけが受け取る。D1の実装`D1ReportErasureStore`は両方の契約を満たし、`REPORTING_PLATFORM_MODULE`が2つの識別子を同じ実装へ束縛する。識別子は`core/reporting/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。apiの`REPORTING_TYPES`・eventの`EVENT_REPORTING_TYPES`とメンバーの名前を重ねない。
 
 - 参照の消去(17.5、仮7)は`UPDATE report_cases SET target_id = NULL, target_owner_user_id = NULL, product_id = NULL, target_detached_at = ?, updated_at = ? WHERE id IN (SELECT id FROM report_cases WHERE <条件> LIMIT ?)`で、案件・通報・申出者の理由・状態・完了の記録は変えない。件数が上限に達したら`remaining: true`。条件の列がnullになるため、2回目の実行は同じ案件を選ばない。
 - 参照を消した案件と通報の保持: 通常の規則(未ログインの通報は最後の完了から14日、ログイン中の通報は申出者の退会と物理削除まで、通報が無くなった案件の削除)に加えて、`target_detached_at`から3年(監査ログの保持期間と同じ、DR-017)で案件を通報ごと削除する(17.10)。3年は、参照を消した案件に対応した操作の監査ログが残る期間で、判断の記録として案件と通報を突き合わせられる期間に合わせた。起点は対象の物理削除(参照の消去)の日時で、案件の状態によらない。
@@ -684,11 +714,12 @@ export interface ReportErasureStore {
 - 案件の削除は、`id IN (SELECT id FROM report_cases WHERE ... LIMIT ?)`で選んだ案件の通報→案件の順に1つの一括の書き込みで行い、件数が上限に達したら`remaining: true`。どれも処理の時点の行だけを対象にし、何度実行しても結果が変わらない(17.9)。
 - 論理削除の文は同期の処理が返し、利用者の退会の確定と同じ一括の書き込みに入る(17.3)。
 
-#### ReportExport
+#### ReportExport・D1ReportExport
 
 **Contracts**: Service [x]
 
 ```typescript
+// apps/backend-lib/core/reporting/ports.ts(data-exportのeventのapplication層が受け取る契約)
 export interface ReportExportRecord {
   readonly id: string;
   readonly targetType: ReportTargetKind;
@@ -707,15 +738,24 @@ export interface ReportExport {
     readonly nextAfter: string | null;
   }>; // IDの昇順、論理削除済みを除く
 }
+// apps/backend-lib/workers/reporting/d1-report-export.ts
+export declare class D1ReportExport implements ReportExport {
+  constructor(
+    db: Database, // @inject(PLATFORM_TYPES.Database)
+    profiles: UserProfileDirectory, // @inject(PROFILE_PLATFORM_TYPES.UserProfileDirectory)
+    products: ProductDirectory, // @inject(PRODUCT_PLATFORM_TYPES.ProductDirectory)
+  );
+}
 ```
 
 - ハンドルは1ページにつき`UserProfileDirectory.findSummaries(ids, 'not-withdrawn')`と`ProductDirectory.findSummaries(ids, 'not-deleted')`を各1回で引く(17.7・17.8)。対応ステータス・案件・連絡先メールアドレスを返さない。
-- `REPORTING_PLATFORM_MODULE`がapiとeventの`composition/modules.ts`の両方へ入る。DIの識別子は`REPORTING_PLATFORM_TYPES`(`Symbol.for('reporting.<名前>')`)。eventではdata-exportが`ReportExport`を解決する。
+- `REPORTING_PLATFORM_MODULE`(`workers/reporting`)がapiとeventの`composition/modules.ts`の両方へ入り、`ReportErasureStore`・`ReportErasureStatements`→`D1ReportErasureStore`、`ReportExport`→`D1ReportExport`を束縛する。DIの識別子は`core/reporting`の`REPORTING_PLATFORM_TYPES`(`Symbol.for('reporting.<名前>')`)。eventではdata-exportのapplication層が`core/reporting`の契約と識別子で`ReportExport`を受け取る。上流の`UserProfileDirectory`・`ProductDirectory`の契約と識別子は`core/profile`・`core/product`から読み込む。
 
 ### 上流の契約の利用(本specは実装しない)
 
 - `AuditLogReader.latestForMany`(admin-foundationの仮7): `latestForMany(input: { readonly action: string; readonly targetKind: AuditTargetKind; readonly targetIds: readonly string[] }): Promise<ReadonlyMap<string, Date>>`。記録のある対象だけを含み、保存の照会は重複を除いて90件ずつ問い合わせる。契約・実装・テストはadmin-foundationが持つ。本specの`ReportCaseReader`の単体テストは、admin-foundationのテストの共有の偽物`createFakeAuditLogReader`に`latestFor`・`latestForMany`の振る舞いだけを差し替えて渡し、`AuditLogReader`にメソッドが増えても本specの偽物を直さない。
-- `ModerationOutcome`(ugc-moderation): `{ changed: boolean; actionId: string | null }`。`changed: true`のときの`actionId`(措置の記録のID)を、`ReportCaseStatements.linkResolutionAction`で案件の`resolution_action_id`に残す(9.3)。ugc-moderationの`ModerationCommand`・`NewModerationRecord`・`moderation_actions`は変えない。
+- `ModerationOutcome`(ugc-moderation): `{ changed: boolean; actionId: string | null }`。`changed: true`のときの`actionId`(措置の記録のID)は、参加者が受け取る`context.actionId`と同じ値で、参加者が案件の`resolution_action_id`に措置と同じ一括の書き込みで残す(9.3)。ugc-moderationの`ModerationCommand`・`NewModerationRecord`・`moderation_actions`は変えない。
+- 書き込みの参加者の登録口(ugc-moderation): application層の`ModerationCommand.participation?: ModerationWriteParticipation<TPayload>`(`{ kind: string; payload: TPayload }`、値だけ)と、apiの`infrastructure/moderation/moderation-write-participant.ts`の`ModerationWriteParticipant`(`statementsFor(participation, context: ModerationWriteContext): Promise<readonly BatchItem<'sqlite'>[]>`、`ModerationWriteContext`は`actionId`・`action`・`targetId`・`occurredAt`)・`ModerationWriteParticipantRegistration`(`kind`・`participant`の識別子)、apiの`composition/moderation-write-participants.ts`の`MODERATION_WRITE_PARTICIPANTS`。参加者は処理単位のコンテナから解決され、その文は上流の状態の変更・措置の記録・監査ログの文の後に並ぶ。種類の重複は組み立て時の例外、登録の無い種類は`AppError(internal)`。契約・解決・テストはugc-moderationが持ち、本specは参加者の実装と登録の1件だけを加える。
 
 ### api/application
 
@@ -780,6 +820,17 @@ export interface ReportSubmissionService {
     meta: ReportRequestMeta,
   ): Promise<void>;
 }
+// application/reporting/ports.ts
+export type ReportSubmitter =
+  | { readonly kind: 'member'; readonly userId: string }
+  | { readonly kind: 'guest' };
+export interface ReportSubmissionRateLimit {
+  consume(
+    submitter: ReportSubmitter,
+    clientIp: string | undefined,
+  ): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded)とretryAfterSeconds
+}
+// infrastructure/reporting/counter-report-submission-rate-limit.ts(@injectable())
 export declare const REPORT_IP_RATE_RULE: {
   readonly name: 'report:ip';
   readonly limit: 10;
@@ -790,11 +841,18 @@ export declare const REPORT_USER_RATE_RULE: {
   readonly limit: 10;
   readonly windowSeconds: 3600;
 };
+export declare class CounterReportSubmissionRateLimit implements ReportSubmissionRateLimit {
+  constructor(
+    counters: RateLimitCounterClient, // @inject(PLATFORM_TYPES.RateLimitCounterClient)
+    hasher: KeyedHasher, // @inject(PLATFORM_TYPES.KeyedHasher)
+  );
+}
 ```
 
 - 前提: リゾルバが`context.caller === 'client'`を確かめ(違反は`forbidden`、3.2)、`context.assertHuman('report')`を呼ぶ(3.1)。
-- 手順: `AccountGuard.currentUser(session)`で通報者の種類を決める(停止していない利用者は`member`、それ以外は`guest`、仮6)→`checkReportReason`(`validation_error`、詳細`reason`)→カテゴリの存在(`ReportCategoryStore.find`、無ければ`validation_error`の`categoryId`)→`requiresContactEmail`が真なら連絡先(前後の空白を除き1〜254文字の`html5Email`の形式、`validation_error`の`contactEmail`)、偽なら値を捨てる(2.4・3.6)→`ReportTargetResolver.resolveForSubmission`(`report_target_not_found`)→ログインの利用者(停止中を含む)が投稿者なら`report_own_content`(3.4)→回数制限(「通報の受け付け」の流れ)→`ReportSubmissionStore.submit`(`category-missing`なら`validation_error`の`categoryId`)。
-- キー: `hashRateLimitKey(hasher, 'report', clientIp)`・`hashRateLimitKey(hasher, 'report-user', userId)`(4.5)。超過は`assertWithinLimit`の`rate_limited`(429、`retryAfterSeconds`)。
+- 手順: `AccountGuard.currentUser(session)`で通報者の種類を決める(停止していない利用者は`member`、それ以外は`guest`、仮6)→`checkReportReason`(`validation_error`、詳細`reason`)→カテゴリの存在(`ReportCategoryStore.find`、無ければ`validation_error`の`categoryId`)→`requiresContactEmail`が真なら連絡先(前後の空白を除き1〜254文字の`html5Email`の形式、`validation_error`の`contactEmail`)、偽なら値を捨てる(2.4・3.6)→`ReportTargetResolver.resolveForSubmission`(`report_target_not_found`)→ログインの利用者(停止中を含む)が投稿者なら`report_own_content`(3.4)→`ReportSubmissionRateLimit.consume(submitter, clientIp)`(「通報の受け付け」の流れ)→`ReportSubmissionStore.submit`(`category-missing`なら`validation_error`の`categoryId`)。
+- `CounterReportSubmissionRateLimit.consume`: `member`なら利用者の規則、IPアドレスが分かればIPアドレスの規則の順に`RateLimitCounterClient.hit`する(「通報の受け付け」の流れの数え方)。キーは`hashRateLimitKey(hasher, 'report', clientIp)`・`hashRateLimitKey(hasher, 'report-user', userId)`(4.5)。超過は`assertWithinLimit`の`rate_limited`(429、`retryAfterSeconds`)。IPアドレスが不明なら警告`report-ip-missing`を残して数えない(4.7)。
+- 置き場所: ポート`ReportSubmissionRateLimit`はapplication層、実装`CounterReportSubmissionRateLimit`と2つの規則はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`と`assertWithinLimit`が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」、identity-authの`CounterMailSendLimits`と同じ形)。`REPORTING_TYPES.ReportSubmissionRateLimit`を`CounterReportSubmissionRateLimit`へ束縛し、`ReportSubmissionService`はポートだけを受け取る。実装の振る舞いはWorkers統合テスト(偽の厳密カウンタ)、ユースケースの呼び出しの順は偽のポートによる単体テストで確かめる。
 - ログは対象の種類・カテゴリのID・通報者の種類・結果だけ(19.4)。
 
 #### ReportCaseReader
@@ -900,10 +958,10 @@ export interface ReportCaseWorkflow {
 }
 ```
 
-- 操作(措置・措置なしの対応済・却下)の共通の手順: `checkReportAdminReason`(違反は`validation_error`、詳細`reason`)→`ReportCaseStore.find`(無ければ`report_case_not_found`)→完了済みなら`report_case_closed`→`AuditLogRecorder.prepare`(詳細`mode`は`operation`)→文の組み立て→確定→通知。
-- `changeStatus`(仮3): `canChangeStatusManually(from, to)`でなければ`validation_error`(詳細`status`)→`manualStatusChangeKind(from, to)`で種類を決め、`checkReportAdminReason`(`status-progress`は任意、`status-close`・`status-reopen`は必須、詳細`reason`)→`find`(無ければ`report_case_not_found`)→現在が`from`でなければ`report_case_state_conflict`→`prepare`(`progress`・`reopen`は`report.status-change`、詳細`fromStatus`・`toStatus`。`close`は`to`に応じて`report.resolve`(詳細`resolution`は`none`)・`report.reject`、詳細`mode`は`manual`と`fromStatus`)→`forStatusChange`を`commit`する。`conflict`なら`report_case_state_conflict`(8.6)、`open-case-exists`なら`report_case_open_exists`(8.8)。完了済みの案件も変更でき(`report_case_closed`にしない)、措置のユースケースを呼ばず、`ReportNotifier`を呼ばない(8.3・8.4・11.9)。
-- `resolveWithMeasure`: 案件の`targetId`がnull(対象への参照を消した案件、仮7)なら上流を呼ばずに`report_target_unavailable`(9.7)。そうでなければ`measureFor(kind)`のugc-moderationのユースケースを`{ targetId, reason, operator, at, statements: forClosing(...) }`で呼ぶ(「措置による対応済」の流れ)。結果の振り分けは流れの節のとおり。`changed: true`なら`linkResolutionAction(caseId, outcome.actionId)`で案件に措置の記録のIDを残し(例外または`false`は`captureEvent`の`resolution-action-link-failed`で知らせて握る、9.3)、その後に`ReportNotifier.dispatch(caseId)`(例外は`warning`のログで握り、結果は成功)。
-- `resolveWithoutMeasure`・`reject`: `forClosing`を`commit`する。却下は`target_owner_user_id`があれば投稿者への通知を`pending`、対象への参照を消した案件なら`skipped`(送らなかった記録、11.5)にする。成功の後に`dispatch`。
+- 操作(措置・措置なしの対応済・却下)の共通の手順: `checkReportAdminReason`(違反は`validation_error`、詳細`reason`)→`ReportCaseStore.find`(無ければ`report_case_not_found`)→完了済みなら`report_case_closed`→`AuditLogRecorder.prepare`(詳細`mode`は`operation`)→確定(措置なしの対応済・却下は書き込みの単位のポート`ReportCaseWriter`、措置は上流のユースケースへの値だけの`participation`)→通知。application層は文と`BatchItem`を扱わない。
+- `changeStatus`(仮3): `canChangeStatusManually(from, to)`でなければ`validation_error`(詳細`status`)→`manualStatusChangeKind(from, to)`で種類を決め、`checkReportAdminReason`(`status-progress`は任意、`status-close`・`status-reopen`は必須、詳細`reason`)→`find`(無ければ`report_case_not_found`)→現在が`from`でなければ`report_case_state_conflict`→`prepare`(`progress`・`reopen`は`report.status-change`、詳細`fromStatus`・`toStatus`。`close`は`to`に応じて`report.resolve`(詳細`resolution`は`none`)・`report.reject`、詳細`mode`は`manual`と`fromStatus`)→`ReportCaseWriter.changeStatus`で確定する。`conflict`なら`report_case_state_conflict`(8.6)、`open-case-exists`なら`report_case_open_exists`(8.8)。完了済みの案件も変更でき(`report_case_closed`にしない)、措置のユースケースを呼ばず、`ReportNotifier`を呼ばない(8.3・8.4・11.9)。
+- `resolveWithMeasure`: 案件の`targetId`がnull(対象への参照を消した案件、仮7)なら上流を呼ばずに`report_target_unavailable`(9.7)。そうでなければ`measureFor(kind)`のugc-moderationのユースケースを`{ targetId, reason, operator, at, participation: toReportCaseClosingParticipation({ caseId, to: 'resolved', resolution: measureFor(kind), reason, posterNotice: 'none', at, audit }) }`で呼ぶ(「措置による対応済」の流れ)。参加の値は種類と完了の値だけで、文を含めない。結果の振り分けは流れの節のとおり。`changed: true`なら案件の`resolution_action_id`は参加者が同じ一括の書き込みで結果の`actionId`と同じ値にしているため、追加の書き込みをせずに`ReportNotifier.dispatch(caseId)`(例外は`warning`のログで握り、結果は成功)。
+- `resolveWithoutMeasure`・`reject`: `ReportCaseWriter.close`で確定する(`conflict`は`report_case_state_conflict`)。却下は`target_owner_user_id`があれば投稿者への通知を`pending`、対象への参照を消した案件なら`skipped`(送らなかった記録、11.5)にする。成功の後に`dispatch`。
 - 全ユースケースは`requireAdmin`を行わない。認可はリゾルバが行う(18.3)。
 
 #### InfringementInquiryService
@@ -921,7 +979,7 @@ export interface InfringementInquiryService {
 }
 ```
 
-- 手順: 内容の検証(前後の空白を除き1〜1,000書記素、`validation_error`の`message`)と理由(任意・500書記素)→`find`→権利侵害の案件で`in_progress`で`target_owner_user_id`があることを確かめる(無ければ`report_inquiry_not_applicable`)→`UserContactDirectory.findContact(owner)`(`undefined`なら`report_inquiry_not_applicable`)→`ReportTargetResolver.describe`で表示名と利用者側のURL→`prepare`(`report.inquire`)→`EmailSender.send('content-reporting.infringement-inquiry')`(失敗は`report_inquiry_send_failed`)→`forInquiry`を`commit`(`conflict`・例外は`captureEvent`の`inquiry-record-failed`と`report_case_state_conflict`)(「通知と照会」の流れ)。
+- 手順: 内容の検証(前後の空白を除き1〜1,000書記素、`validation_error`の`message`)と理由(任意・500書記素)→`find`→権利侵害の案件で`in_progress`で`target_owner_user_id`があることを確かめる(無ければ`report_inquiry_not_applicable`)→`UserContactDirectory.findContact(owner)`(`undefined`なら`report_inquiry_not_applicable`)→`ReportTargetResolver.describe`で表示名と利用者側のURL→`prepare`(`report.inquire`)→`EmailSender.send('content-reporting.infringement-inquiry')`(失敗は`report_inquiry_send_failed`)→`ReportCaseWriter.recordInquiry`で確定(`conflict`・例外は`captureEvent`の`inquiry-record-failed`と`report_case_state_conflict`)(「通知と照会」の流れ)。
 
 #### ReportNotifier
 
@@ -986,16 +1044,17 @@ export interface ReportCategoryService {
 | `content-reporting.notice-redispatch` | 4:21 | 2000    | `listCasesWithPendingNotices({ closedBefore: 実行時刻 − 1時間, limit: 100 })`の各案件を`dispatch`し、失敗の件数が1以上なら`captureEvent`(`notice-redispatch-failed`)(11.8・19.5)                                                                            |
 | `content-reporting.report-retention`  | 4:21 | 2010    | `eraseGuestReportsClosedBefore(実行時刻 − 14日, 500)`を最大20回、`eraseDetachedCasesBefore(実行時刻 − 3年(UTCの暦の3年), 100)`を最大20回、続けて`eraseEmptyCases(500)`を最大20回。残りは翌日に続ける。件数を`info`で記録する(17.1・17.2・17.6・17.9・17.10) |
 
+- 保持期間の削除は`core/reporting`の`ReportErasureStore`を`REPORTING_PLATFORM_TYPES.ReportErasureStore`で受け取る(application層は`**/lib/workers/**`を読み込めないため)。
 - Trigger: apiのCron Triggers(`21 12 * * *`、上流で追加済み)。どちらも2回実行しても結果が変わらない。送り直しを保持期間の削除より先に動かし、削除の前に最後の送信を試みる。上流の値より前に動く必要は無い。
 
 ### api/infrastructure
 
-#### D1ReportSubmissionStore・D1ReportCaseStore・D1ReportCaseStatements・D1ReportCategoryStore・D1ReportNoticeStore
+#### D1ReportSubmissionStore・D1ReportCaseStore・D1ReportCaseStatements・D1ReportCaseWriter・ReportCaseClosingParticipant・D1ReportCategoryStore・D1ReportNoticeStore
 
 **Contracts**: Service [x] / State [x]
 
 ```typescript
-// application/reporting/ports.ts(各ストアのポート)
+// application/reporting/ports.ts(各ストアと書き込みの単位のポート)
 export interface ReportSubmissionRecord {
   readonly reportId: string;
   readonly newCaseId: string; // 未完了の案件が無いときに使うID
@@ -1084,26 +1143,28 @@ export interface CaseClosing {
   readonly at: Date;
   readonly audit: PreparedAuditEntry;
 }
-export interface ReportCaseStatements {
-  forStatusChange(input: {
-    readonly caseId: string;
-    readonly from: ReportCaseStatus;
-    readonly to: ReportCaseStatus;
-    readonly reason: string | undefined;
-    readonly at: Date;
-    readonly audit: PreparedAuditEntry;
-  }): readonly BatchItem<'sqlite'>[];
-  forClosing(input: CaseClosing): readonly BatchItem<'sqlite'>[];
-  forInquiry(input: {
-    readonly caseId: string;
-    readonly message: string;
-    readonly at: Date;
-    readonly audit: PreparedAuditEntry;
-  }): readonly BatchItem<'sqlite'>[];
-  commit(
-    statements: readonly BatchItem<'sqlite'>[],
+export interface ReportCaseStatusChange {
+  readonly caseId: string;
+  readonly from: ReportCaseStatus;
+  readonly to: ReportCaseStatus;
+  readonly reason: string | undefined;
+  readonly at: Date;
+  readonly audit: PreparedAuditEntry;
+}
+export interface ReportCaseInquiryRecord {
+  readonly caseId: string;
+  readonly message: string;
+  readonly at: Date;
+  readonly audit: PreparedAuditEntry;
+}
+export interface ReportCaseWriter {
+  changeStatus(
+    input: ReportCaseStatusChange,
   ): Promise<'committed' | 'conflict' | 'open-case-exists'>; // NOT NULL制約の違反をconflictに、未完了の案件の部分一意索引の違反をopen-case-existsに
-  linkResolutionAction(caseId: string, actionId: string): Promise<boolean>; // 措置の対応済でresolution_action_idが未設定の案件だけ更新し、更新したら真
+  close(input: CaseClosing): Promise<'committed' | 'conflict'>; // 措置なしの対応済・却下(resolution_action_idはnull)
+  recordInquiry(
+    input: ReportCaseInquiryRecord,
+  ): Promise<'committed' | 'conflict'>;
 }
 export interface ReportCategoryStore {
   list(): Promise<
@@ -1157,6 +1218,44 @@ export interface ReportNoticeStore {
     readonly limit: number;
   }): Promise<readonly string[]>;
 }
+
+// application/reporting/report-case-closing-participation.ts(措置と一体の完了の参加の値。文を含めない)
+// ModerationWriteParticipationはugc-moderationのapplication/moderation/ports.tsから読み込む
+export declare const REPORT_CASE_CLOSING_PARTICIPATION: 'content-reporting.report-case-closing';
+export interface MeasureCaseClosing extends CaseClosing {
+  readonly to: 'resolved';
+  readonly resolution: Exclude<ReportResolution, 'none'>; // product.hide・comment.hide・user.suspend
+  readonly posterNotice: 'none';
+}
+export declare function toReportCaseClosingParticipation(
+  closing: MeasureCaseClosing,
+): ModerationWriteParticipation<MeasureCaseClosing>;
+export declare function readReportCaseClosingPayload(
+  participation: ModerationWriteParticipation,
+): MeasureCaseClosing | undefined; // 種類と形が合わなければundefined
+
+// infrastructure/reporting/d1-report-case-statements.ts(infrastructure層の内部の部品。application層のポートではない)
+export declare class D1ReportCaseStatements {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+  forStatusChange(
+    input: ReportCaseStatusChange,
+  ): readonly BatchItem<'sqlite'>[];
+  forClosing(
+    input: CaseClosing,
+    resolutionActionId: string | null, // 措置による対応済だけが措置の記録のIDを持つ
+  ): readonly BatchItem<'sqlite'>[];
+  forInquiry(input: ReportCaseInquiryRecord): readonly BatchItem<'sqlite'>[];
+}
+// infrastructure/reporting/d1-report-case-writer.ts
+export declare class D1ReportCaseWriter implements ReportCaseWriter {
+  constructor(db: Database, statements: D1ReportCaseStatements); // @inject(PLATFORM_TYPES.Database)・@inject(REPORTING_TYPES.ReportCaseStatements)
+}
+// infrastructure/reporting/report-case-closing-participant.ts(ugc-moderationのinfrastructure/moderationの参加者の契約を実装する)
+export declare class ReportCaseClosingParticipant implements ModerationWriteParticipant {
+  constructor(statements: D1ReportCaseStatements); // @inject(REPORTING_TYPES.ReportCaseStatements)
+}
+// composition/moderation-write-participants.ts(ugc-moderationの登録の一覧への追記)
+// { kind: REPORT_CASE_CLOSING_PARTICIPATION, participant: REPORTING_TYPES.ReportCaseClosingParticipant }
 ```
 
 - `search`: 絞り込みは`status`・`target_kind`の列、カテゴリと受付日時は`EXISTS (SELECT 1 FROM reports WHERE case_id = report_cases.id AND deleted_at IS NULL AND ...)`。件数・最初の受付日時・カテゴリごとの件数は、ページの案件のID(50件)について`reports`の`GROUP BY case_id, category_id`を1回で読み、カテゴリの現在の名前を結合する。カーソルは`base64url('<ミリ秒>:<ID>')`。
@@ -1164,17 +1263,19 @@ export interface ReportNoticeStore {
 - `forStatusChange`(仮3): どの種類も`status = CASE WHEN status = <from> THEN <to> ELSE NULL END`の条件付きの更新と`buildAuditLogStatements`を1つの一括の書き込みにする。
   - `progress`(未対応⇄対応中): `status`・`status_changed_at`・`updated_at`だけを更新する。
   - `close`(完了への変更、完了どうしを含む): あわせて`closed_at = <at>`・`resolution = <対応済なら'none'、却下ならNULL>`・`resolution_action_id = NULL`・`closing_reason = <理由>`にし、`reopen`と同じく依頼待ちの申出者と投稿者への通知を`none`へ戻す(8.3・11.9)。
-  - `reopen`(完了からの再開): あわせて`closed_at`・`resolution`・`resolution_action_id`・`closing_reason`をNULLにし、`poster_notice_status = CASE WHEN poster_notice_status = 'pending' THEN 'none' ELSE poster_notice_status END`、続けて`UPDATE reports SET outcome_notice_status = 'none' WHERE case_id = ? AND outcome_notice_status = 'pending'`(8.4)。同じ対象に未完了の案件があれば、`closed_at IS NULL`の部分一意索引の違反で全体が取り消され、`commit`は`open-case-exists`を返す(8.8)。
-- `forClosing`: `UPDATE report_cases SET status = CASE WHEN status IN ('open', 'in_progress') THEN ? ELSE NULL END, status_changed_at = ?, closed_at = ?, resolution = ?, closing_reason = ?, poster_notice_status = ?, updated_at = ? WHERE id = ?`→`UPDATE reports SET outcome_notice_status = CASE WHEN reporter_user_id IS NOT NULL OR contact_email IS NOT NULL THEN 'pending' ELSE 'none' END WHERE case_id = ? AND deleted_at IS NULL`→`buildAuditLogStatements`。
+  - `reopen`(完了からの再開): あわせて`closed_at`・`resolution`・`resolution_action_id`・`closing_reason`をNULLにし、`poster_notice_status = CASE WHEN poster_notice_status = 'pending' THEN 'none' ELSE poster_notice_status END`、続けて`UPDATE reports SET outcome_notice_status = 'none' WHERE case_id = ? AND outcome_notice_status = 'pending'`(8.4)。同じ対象に未完了の案件があれば、`closed_at IS NULL`の部分一意索引の違反で全体が取り消され、`D1ReportCaseWriter.changeStatus`は`open-case-exists`を返す(8.8)。
+- `forClosing`: `UPDATE report_cases SET status = CASE WHEN status IN ('open', 'in_progress') THEN ? ELSE NULL END, status_changed_at = ?, closed_at = ?, resolution = ?, resolution_action_id = ?, closing_reason = ?, poster_notice_status = ?, updated_at = ? WHERE id = ?`→`UPDATE reports SET outcome_notice_status = CASE WHEN reporter_user_id IS NOT NULL OR contact_email IS NOT NULL THEN 'pending' ELSE 'none' END WHERE case_id = ? AND deleted_at IS NULL`→`buildAuditLogStatements`。
 - `forInquiry`: `UPDATE report_cases SET status = CASE WHEN status = 'in_progress' THEN status ELSE NULL END, last_inquired_at = ?, last_inquiry_message = ?, updated_at = ? WHERE id = ?`と`buildAuditLogStatements`。
-- `linkResolutionAction`: `UPDATE report_cases SET resolution_action_id = ?, updated_at = ? WHERE id = ? AND status = 'resolved' AND resolution IN ('product.hide', 'comment.hide', 'user.suspend') AND resolution_action_id IS NULL`を単独で実行し、変更した行の数で真偽を返す(9.3)。
+- `D1ReportCaseWriter`: `changeStatus`・`close`(`resolutionActionId`はnull)・`recordInquiry`の文を`D1ReportCaseStatements`で組み立て、それぞれ単独の一括の書き込み(`db.batch`)で確定する。NOT NULL制約の違反を`conflict`に、未完了の案件の部分一意索引の違反を`open-case-exists`に変換する。
+- `ReportCaseClosingParticipant.statementsFor(participation, context)`: `readReportCaseClosingPayload(participation)`が`undefined`(種類または形の誤り)なら`AppError({ kind: 'internal' })`。そうでなければ`forClosing(payload, context.actionId)`を返す(措置の記録のIDを案件の`resolution_action_id`に同じ一括の書き込みで残す、9.3)。読み取りをせず、文だけを返す。完了済みの案件では`CASE`式のNOT NULL制約の違反で上流の確定ごと取り消される(9.8)。`REPORTING_MODULE`が処理単位に束縛し、ugc-moderationの`composition/moderation-write-participants.ts`に`{ kind: REPORT_CASE_CLOSING_PARTICIPATION, participant: REPORTING_TYPES.ReportCaseClosingParticipant }`を追記する。
+- 置き場所: application層は文・接続・一括の書き込みを扱わないため(`backend/002`)、`ReportCaseWorkflow`・`InfringementInquiryService`は書き込みの単位のポート`ReportCaseWriter`と値だけの参加(`toReportCaseClosingParticipation`)だけを使い、`BatchItem`を読み込まない。完了の文の組み立ては単独の確定と措置と一体の確定で同じ`D1ReportCaseStatements.forClosing`を使う。
 - `D1ReportCategoryStore.insert`・`rename`は一意索引の違反を`name-taken`に変換する。`rename`・`deleteAndReassign`は`system_default = 0`を条件にし、標準カテゴリの判定はサービスが先に行う。
 
 #### ReporterWithdrawalSyncHandler
 
 **Contracts**: Event [x]
 
-- `statementsFor(event)`: `[ReportErasureStore.logicalDeleteByReporterStatement(event.userId, event.occurredAt)]`。登録は`USER_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'content-reporting.reporter-withdrawal', events: ['withdrawn'], handler: REPORTING_TYPES.ReporterWithdrawalSyncHandler }`(17.3)。
+- `statementsFor(event)`: `[ReportErasureStatements.logicalDeleteByReporterStatement(event.userId, event.occurredAt)]`(`REPORTING_PLATFORM_TYPES.ReportErasureStatements`で受け取る。infrastructure層のため`workers/reporting`の文の契約を読み込める)。登録は`USER_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'content-reporting.reporter-withdrawal', events: ['withdrawn'], handler: REPORTING_TYPES.ReporterWithdrawalSyncHandler }`(17.3)。
 
 ### api/presentation
 
@@ -1374,7 +1475,7 @@ type Mutation {
 | `content-reporting.user-report-erasure`    | ユーザーの`purge_due`   | 2000    | `eraseByReporter(userId, 500)`→`detachCasesByOwner(userId, 実行時刻, 500)`→`eraseEmptyCases(500)`。いずれかに残りがあれば`continue`、無ければ`done`(17.4・17.5・17.6) |
 | `content-reporting.product-report-erasure` | プロダクトの`purge_due` | 2000    | `detachCasesByProduct(productId, 実行時刻, 500)`。残りがあれば`continue`(17.5、仮7)                                                                                   |
 
-- 対象の物理削除では案件と通報を消さず、対象への参照だけを消す(仮7)。参照を消した案件は「ReportErasureStore」の保持の規則で消える。
+- 対象の物理削除では案件と通報を消さず、対象への参照だけを消す(仮7)。参照を消した案件は「ReportErasureStore・ReportErasureStatements・D1ReportErasureStore」の保持の規則で消える。2つの処理は`core/reporting`の`ReportErasureStore`を`REPORTING_PLATFORM_TYPES.ReportErasureStore`で受け取る。
 - 冪等(対象を毎回求め直す)。例外は上流の再試行の方針に任せる。上流の値より前に動く必要は無い(ユーザーの`purge_due`ではidentity-authの最後の`users`の削除(10000)の前に本specの通報の削除が終わり、`reports.reporter_user_id`の外部キーは取り残しの検出に働く)。
 
 #### ReportingEmailTemplates
@@ -1446,7 +1547,7 @@ erDiagram
 
 - GraphQL: 「ReportingSchemaModule」のSDLが契約。`reportCategories`・`submitReport`は利用者側、他は管理者側の許可リストにだけ載る。
 - メール: 「ReportingEmailKinds」の3種(すべてトランザクションメール)。
-- 後続spec: data-exportは`REPORTING_PLATFORM_TYPES.ReportExport`の`listPage`を呼び、`reports.json`の各項目にそのまま書く。
+- 後続spec: data-exportは`core/reporting`の`REPORTING_PLATFORM_TYPES.ReportExport`の`listPage`を呼び、`reports.json`の各項目にそのまま書く。
 
 ## Error Handling
 
@@ -1474,27 +1575,29 @@ erDiagram
 
 ### Monitoring
 
-- ログは`getAppLogger`で、操作の種類・案件と対象と操作者のID・結果・件数だけを記録し、メールアドレス・申出者の理由・照会の内容・ハンドル・ニックネーム・名称・送信元IPアドレスを含めない(19.4)。`captureEvent`(文言は`logentry`、`fingerprint`は理由)のタグは`job`・理由(`notice-redispatch-failed`・`inquiry-record-failed`・`resolution-action-link-failed`)。送信元IPアドレスが不明な通報は`warning`の`report-ip-missing`。
+- ログは`getAppLogger`で、操作の種類・案件と対象と操作者のID・結果・件数だけを記録し、メールアドレス・申出者の理由・照会の内容・ハンドル・ニックネーム・名称・送信元IPアドレスを含めない(19.4)。`captureEvent`(文言は`logentry`、`fingerprint`は理由)のタグは`job`・理由(`notice-redispatch-failed`・`inquiry-record-failed`)。送信元IPアドレスが不明な通報は`warning`の`report-ip-missing`。
 
 ## Testing Strategy
 
 - 単体テスト(`*.unit.test.ts`):
   - `report-rules`: 理由の空白だけ・1,000書記素と1,001書記素(結合文字・絵文字)、連絡先の要否(guestと権利侵害だけ)、カテゴリの並び順(追加の順・権利侵害・その他)、固定のIDの判定(20.2)。
   - `report-case-rules`・`report-labels`: 手での遷移の可否(4×4で同じ状態だけ不可)と種類(`progress`・`close`・`reopen`、完了どうしは`close`)、対象の種類ごとの措置、管理者の理由の要否(手での完了と再開は必須、未対応⇄対応中は任意)と500・501書記素、状態の値と表示名がinquiry-chatの`InquiryStatus`と一致すること(20.2)。
+  - `core/reporting/identifiers`: `REPORTING_PLATFORM_TYPES`が`Symbol.for('reporting.<名前>')`の値を持ち、凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形)。
   - `response-time`: 起点から24時間の前後(土日をまたいでも同じ24時間)、9日の境界の前後(未完了と完了)、完了から戻した案件を未完了として扱うこと、完了の日時が無いときの不明、照会の期限と超過(20.2)。
   - 監査の操作種別: 7種の検証と集約の重複の検査。
-  - アプリケーション層: `ReportSubmissionService`(停止中のguestの扱い・本人の拒否・連絡先を捨てる・回数制限の順序と不明なIP・ログに個人情報を出さない)、`ReportTargetResolver`(可視の判定の各条件・旧ハンドル・describeの照会が各1回)、`ReportCaseWorkflow`(手での状態の変更の種類ごとの監査ログの操作種別と`mode`・理由の要否・完了した案件も変更できること・通知も措置も呼ばないこと・`open-case-exists`の変換、各操作の検証・完了済み・参照を消した案件の措置の拒否・措置の種類・`changed: false`・上流の`*_not_found`・上流の確定の失敗の振り分け・`actionId`の連結と連結の失敗のエラートラッキングへの通知・通知の例外を握る。`ReportCaseReader`とともに`AuditLogReader`の偽物はadmin-foundationの共有の偽物`createFakeAuditLogReader`で作る)、`InfringementInquiryService`(条件外・宛先なし・送信の失敗で記録しない・記録の失敗)、`ReportNotifier`(宛先のまとめ方・宛先なし・却下の投稿者・抜粋の100書記素・送信の失敗で`pending`のまま)、`ReportCategoryService`、2つのジョブ、eventの2つの処理。
+  - `report-case-closing-participation`: 組み立てた参加の種類が`content-reporting.report-case-closing`で値に文が無いこと、読み取りが種類の違い・形の誤り(措置なしの完了・却下を含む)で`undefined`を返すこと。
+  - アプリケーション層: `ReportSubmissionService`(停止中のguestの扱い・本人の拒否・連絡先を捨てる・回数制限のポートを対象の確認の後に呼び超過で書き込まないこと・ログに個人情報を出さない)、`ReportTargetResolver`(可視の判定の各条件・旧ハンドル・describeの照会が各1回)、`ReportCaseWorkflow`(手での状態の変更の種類ごとの監査ログの操作種別と`mode`・理由の要否・完了した案件も変更できること・通知も措置も呼ばないこと・`open-case-exists`の変換、各操作の検証・完了済み・参照を消した案件の措置の拒否・措置の種類・`changed: false`・上流の`*_not_found`・上流の確定の失敗の振り分け・参加の値(種類・案件・措置・理由・日時・監査ログ)を組み立てて上流へ渡し文を扱わないこと・措置の後に追加の書き込みをしないこと・`ReportCaseWriter`の偽物への入力と結果の変換・通知の例外を握る。`ReportCaseReader`とともに`AuditLogReader`の偽物はadmin-foundationの共有の偽物`createFakeAuditLogReader`で作る)、`InfringementInquiryService`(条件外・宛先なし・送信の失敗で記録しない・記録の失敗)、`ReportNotifier`(宛先のまとめ方・宛先なし・却下の投稿者・抜粋の100書記素・送信の失敗で`pending`のまま)、`ReportCategoryService`、2つのジョブ、eventの2つの処理。
   - clientの`report-form-schema`、adminの`report-search`。
 - Workers統合テスト(`*.worker.test.ts`):
   - 受け付け: 通報と案件の一体の確定、未完了の案件への集約、完了後の新しい案件、同じ対象への同時の2件で案件が1つ、カテゴリの同時の削除で何も残らない、受付時点の名前、権利侵害の起点(5.1〜5.5・3.8)。
-  - 回数制限: IPと利用者の11回目の429、1時間後の0、キーがハッシュ化されていること、未ログインと停止中は利用者の規則を使わないこと(4.1〜4.5)。
-  - 案件の操作: 手での状態の変更の3種類(未対応⇄対応中、完了への変更と完了どうしの変更で`closed_at`・`resolution`・`closing_reason`と`report.resolve`・`report.reject`(`mode`は`manual`)が入り依頼待ちの通知だけが`none`になること、再開で完了の記録が消えて依頼待ちの通知だけが`none`になること)と監査ログの一体の確定と競合、同じ対象に未完了の案件があるときの再開の取り消し(`open-case-exists`)、措置(本物のugc-moderationの3つのユースケースを通して、上流の状態・措置の記録・2つの監査ログ・案件の完了が1回の一括の書き込みで確定し、案件の`resolution_action_id`が上流の措置の記録のIDと一致する)、既に措置済み・完了済みで何も残らない、措置なし・却下と通知の状態、再開の後の操作による完了で通知が依頼待ちに戻ること(8.3〜8.6・8.8・9.2・9.3・9.5・9.8・10.2・16.4・16.5)。
+  - 回数制限(`CounterReportSubmissionRateLimit`): IPと利用者の11回目の429、1時間後の0、キーがハッシュ化されていること、未ログインと停止中は利用者の規則を使わないこと、利用者の規則で拒否されたらIPアドレスの規則を数えないこと、IPアドレスが不明なら数えずに警告を残すこと(4.1〜4.7)。
+  - 案件の操作: 手での状態の変更の3種類(未対応⇄対応中、完了への変更と完了どうしの変更で`closed_at`・`resolution`・`closing_reason`と`report.resolve`・`report.reject`(`mode`は`manual`)が入り依頼待ちの通知だけが`none`になること、再開で完了の記録が消えて依頼待ちの通知だけが`none`になること)と監査ログの一体の確定と競合、同じ対象に未完了の案件があるときの再開の取り消し(`open-case-exists`)、措置(本物のugc-moderationの3つのユースケースと`MODERATION_WRITE_PARTICIPANTS`に登録した`ReportCaseClosingParticipant`を通して、上流の状態・措置の記録・2つの監査ログ・案件の完了(`resolution_action_id`を含む)が1回の一括の書き込みで確定し、案件の`resolution_action_id`が結果の`actionId`と上流の措置の記録のIDに一致する)、既に措置済み・完了済み・同時の完了(参加者の文の違反)で上流の状態を含めて何も残らない、措置なし・却下と通知の状態、再開の後の操作による完了で通知が依頼待ちに戻ること(8.3〜8.6・8.8・9.2・9.3・9.5・9.8・10.2・16.4・16.5)。
   - カテゴリ: 名前の大文字小文字を区別しない重複、標準の保護、削除の付け替えと件数と監査ログ、受付時点の名前が変わらないこと(14.3〜14.5・14.7・14.9)。
   - 照会: 送信の後の記録と監査ログ、対応中でない・権利侵害でないときの拒否(12.3・12.7)。
   - 通知の送り直し: 1時間以上前の`pending`だけ、宛先ごとに1回、2回目は送らない、宛先なしの`skipped`(11.4・11.5・11.8)。
   - 保持と削除: 14日の境界(13日・14日)、未完了の案件(完了から戻した案件を含む)の未ログインの通報を消さない、再び完了した日時から14日を数えること、退会の同期の処理が退会の確定と一体で論理削除する、利用者・プロダクトの`purge_due`で案件と通報と理由を残して対象への参照だけを消すことと`continue`、参照の消去から3年の境界で案件と通報を削除すること、通報が無くなった案件の削除(17.1〜17.6・17.9・17.10)。
-  - `linkResolutionAction`: 措置の対応済で未設定の案件だけを1回更新し、措置なしの対応済・却下・未完了・設定済みの案件を変えない(9.3)。`latestForMany`の保存の照会はadmin-foundationのWorkers統合テストが確かめる。
-  - `ReportExport`: 項目と順序・ハンドルの解決とnull・論理削除の除外(17.7・17.8)。
+  - `ReportCaseClosingParticipant`: 種類・形の誤りの`AppError(internal)`、措置の記録のIDを`resolution_action_id`に入れた完了の文を返すこと、`D1ReportCaseWriter.close`の措置なしの対応済・却下で`resolution_action_id`がnullであること(9.3)。`latestForMany`の保存の照会はadmin-foundationのWorkers統合テストが確かめる。
+  - `D1ReportExport`: 項目と順序・ハンドルの解決とnull・論理削除の除外(17.7・17.8)。`REPORTING_PLATFORM_MODULE`がapiとeventの両方のコンテナで3つの識別子を解決できること。
   - GraphQL: ロールごとの許可と拒否、利用者側以外からの`submitReport`の拒否、各エラーコード、接続の形(3.2・18.2〜18.4)。
 - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `ReportDialog`(開閉・入力の破棄・フォーカスの戻り)、`ReportForm`(カテゴリの順・連絡先の出し分け(未ログイン・停止中・ログイン中×権利侵害・その他)・連絡先を描かない間に送信の値へ連絡先を入れないこと・権利侵害で連絡先に誤りを入れてから他のカテゴリへ変えると連絡先を含まないスキーマの結果で送信ボタンが有効になること・描かれていない連絡先の欄へのサーバーの詳細がフォーム全体の失敗になり送信ボタンが無効のまま残らないこと・文字数・欄の誤り・サーバーの誤りで入力を保つ・カテゴリの取得の失敗)、3つの登録の部品(本人には描かない)、`/reports`の絞り込みとURLの保持・表・空の状態・対象を表示できない項目、`ResponseTimeCell`(経過・超過・不明)、`ReportCaseActionDialog`(理由の必須・上限・措置済みの案内)、`ReportCaseStatusControl`(完了した案件を含む3つの選択肢・理由の要否の切り替え・通知しない旨と再開の注記・`report_case_open_exists`の表示)、`ReportTargetCell`(削除された対象)、`InfringementInquiryDialog`、`ReportCaseDetailView`、`UnhandledReportsCard`・`ProductReportsSection`(値・0件・失敗の縮退)、`ReportCategorySection`(閲覧のみで操作なし・削除の件数)。
 - E2E(管理者は`signInAsNewAdmin`のモデレーター。利用者は`mailpit.ts`で登録し、掲載中のプロダクトはdirectory-discoveryの`directory-fixtures.ts`、コメントはugc-moderationの`moderation-fixtures.ts`、案件と通報は`report-fixtures.ts`で作る。未ログインの送信は実行ごとに文書用のIPアドレス範囲の`CF-Connecting-IP`を付ける):
@@ -1526,18 +1629,19 @@ erDiagram
 
 ### 本specが定める固有の値
 
-| 項目          | 値                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| ジョブ        | `content-reporting.notice-redispatch`(4:21、2000)・`content-reporting.report-retention`(4:21、2010)                                                                                                                                                                                                                                                                                                                                                    |
-| 同期の処理    | `content-reporting.reporter-withdrawal`(`withdrawn`)                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 非同期の処理  | `content-reporting.user-report-erasure`(ユーザーの`purge_due`、2000)・`content-reporting.product-report-erasure`(プロダクトの`purge_due`、2000)                                                                                                                                                                                                                                                                                                        |
-| 回数制限      | `report:ip`(10回/3600秒、キー`hashRateLimitKey(hasher, 'report', <IP>)`)・`report:user`(10回/3600秒、キー`hashRateLimitKey(hasher, 'report-user', <利用者のID>)`)                                                                                                                                                                                                                                                                                      |
-| bot判定の操作 | `report`                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| 画面の登録    | `PUBLIC_PROFILE_MENU_ITEMS`の`content-reporting.user-report`(10)、`PRODUCT_PAGE_SECTIONS`の`content-reporting.product-report`(`bottom` 10)、`COMMENT_ACTIONS`の`content-reporting.comment-report`(10)、`ADMIN_NAV_ITEMS`の`/reports`(70)、`DASHBOARD_CARDS`の`content-reporting.unhandled-reports`(30、半幅)、`CATEGORY_SECTIONS`の`content-reporting.report-categories`(40)、`ADMIN_PRODUCT_DETAIL_SECTIONS`の`content-reporting.product-reports`(10) |
-| メール種別    | `content-reporting.report-outcome`・`content-reporting.rejection-to-poster`・`content-reporting.infringement-inquiry`(トランザクション)                                                                                                                                                                                                                                                                                                                |
-| 監査ログ      | `report.status-change`・`report.resolve`・`report.reject`・`report.inquire`(対象`report`)、`report-category.create`・`report-category.rename`・`report-category.delete`(対象`category`)                                                                                                                                                                                                                                                                |
-| 標準カテゴリ  | 「権利侵害」`01JE0000000000000000000001`・「その他」`01JE0000000000000000000002`                                                                                                                                                                                                                                                                                                                                                                       |
-| 件数・期間    | 一覧50件、理由1,000書記素、管理者の理由500書記素、照会の内容1,000書記素、回答の期限7日、目標の超過は土日を含む24時間と9日、通知の抜粋100書記素、一覧の抜粋200文字、送り直し100案件、未ログインの通報の保持期間は最後の完了から14日、対象への参照を消した案件と通報の保持期間は3年                                                                                                                                                                      |
+| 項目             | 値                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ジョブ           | `content-reporting.notice-redispatch`(4:21、2000)・`content-reporting.report-retention`(4:21、2010)                                                                                                                                                                                                                                                                                                                                                    |
+| 同期の処理       | `content-reporting.reporter-withdrawal`(`withdrawn`)                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 書き込みの参加者 | `content-reporting.report-case-closing`(ugc-moderationの`MODERATION_WRITE_PARTICIPANTS`、措置と同じ一括の書き込みでの案件の完了)                                                                                                                                                                                                                                                                                                                       |
+| 非同期の処理     | `content-reporting.user-report-erasure`(ユーザーの`purge_due`、2000)・`content-reporting.product-report-erasure`(プロダクトの`purge_due`、2000)                                                                                                                                                                                                                                                                                                        |
+| 回数制限         | `report:ip`(10回/3600秒、キー`hashRateLimitKey(hasher, 'report', <IP>)`)・`report:user`(10回/3600秒、キー`hashRateLimitKey(hasher, 'report-user', <利用者のID>)`)                                                                                                                                                                                                                                                                                      |
+| bot判定の操作    | `report`                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 画面の登録       | `PUBLIC_PROFILE_MENU_ITEMS`の`content-reporting.user-report`(10)、`PRODUCT_PAGE_SECTIONS`の`content-reporting.product-report`(`bottom` 10)、`COMMENT_ACTIONS`の`content-reporting.comment-report`(10)、`ADMIN_NAV_ITEMS`の`/reports`(70)、`DASHBOARD_CARDS`の`content-reporting.unhandled-reports`(30、半幅)、`CATEGORY_SECTIONS`の`content-reporting.report-categories`(40)、`ADMIN_PRODUCT_DETAIL_SECTIONS`の`content-reporting.product-reports`(10) |
+| メール種別       | `content-reporting.report-outcome`・`content-reporting.rejection-to-poster`・`content-reporting.infringement-inquiry`(トランザクション)                                                                                                                                                                                                                                                                                                                |
+| 監査ログ         | `report.status-change`・`report.resolve`・`report.reject`・`report.inquire`(対象`report`)、`report-category.create`・`report-category.rename`・`report-category.delete`(対象`category`)                                                                                                                                                                                                                                                                |
+| 標準カテゴリ     | 「権利侵害」`01JE0000000000000000000001`・「その他」`01JE0000000000000000000002`                                                                                                                                                                                                                                                                                                                                                                       |
+| 件数・期間       | 一覧50件、理由1,000書記素、管理者の理由500書記素、照会の内容1,000書記素、回答の期限7日、目標の超過は土日を含む24時間と9日、通知の抜粋100書記素、一覧の抜粋200文字、送り直し100案件、未ログインの通報の保持期間は最後の完了から14日、対象への参照を消した案件と通報の保持期間は3年                                                                                                                                                                      |
 
 文言規則に追加する文言:
 
