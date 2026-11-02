@@ -119,6 +119,29 @@ WHERE excluded.source_version >= article_search_documents.source_version;
 - `INSERT … SELECT`に`ON CONFLICT`を続けるときは、`SELECT`に`WHERE`句を必ず付ける。`WHERE`句が無いと、SQLiteが`ON`を結合の条件と解釈して構文の誤りになる(SQLiteの「[UPSERT](https://sqlite.org/lang_upsert.html)」の「Parsing Ambiguity」)。
 - 書き込んだか無視したかは、`db.run()`の戻り値の`meta.changes`(0なら無視)で判定する。トリガーが書き込んだ行の数は`meta.changes`に含まれない。
 
+#### 版の検査で一括の書き込み全体を取り消す
+
+読み取った版を前提に複数の文を`db.batch()`で書き込むとき、版が変わっていれば後の文を含めて何も反映しないようにするには、先頭にNOT NULLの列へ「版が一致すれば値、一致しなければNULL」を入れる挿入を置く。`db.batch()`の中では前の文が更新した件数によって後の文を実行するかどうかを分けられないが、制約の違反は全体をロールバックさせるため、版の不一致を失敗に変えて残りの文を止められる。`UPDATE ... WHERE version = ?`は一致しなくても0行の更新で成功し、後の文が反映されてしまうため、この用途には使えない。
+
+```typescript
+await db.batch([
+  db.insert(articleEvents).values({
+    id: eventId,
+    articleId: sql`CASE WHEN (SELECT ${articles.version} FROM ${articles} WHERE ${articles.id} = ${articleId}) = ${expectedVersion} THEN ${articleId} ELSE NULL END`,
+    occurredAt: at,
+  }),
+  db
+    .update(articles)
+    .set({ status: 'archived', version: sql`${articles.version} + 1` })
+    .where(eq(articles.id, articleId)),
+  db.delete(articleDrafts).where(eq(articleDrafts.articleId, articleId)),
+]);
+```
+
+- 元の行が無い場合も副問い合わせがNULLになり、版の不一致と同じく失敗する。
+- 版の不一致は`D1_ERROR: NOT NULL constraint failed: article_events.article_id: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_NOTNULL)`として投げられ、`cause`にSQLiteのエラーを持つ。文の組み立ての失敗はDrizzleの`DrizzleQueryError`が包むため、「ユニーク制約のあるテーブルへの追加」と同じく`cause`をたどり、検査に使った`<テーブル>.<列>`の違反だけを競合のエラーに変換して、他の失敗はそのまま投げ直す。
+- 検査に使う列は、他の文がNULLを入れ得ない列にする。他の文の違反と区別できなくなるためである。
+
 ### バインド変数の上限
 
 D1では1クエリあたりのバインド変数が100個までである。次の値の数がこの上限に収まるよう、クエリを分割する。

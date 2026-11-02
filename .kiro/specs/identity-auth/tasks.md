@@ -198,7 +198,7 @@
   - _Depends: 1.2, 6.1_
   - _Requirements: 6.5, 12.3, 13.3, 13.5, 13.6_
 
-- [ ] 6.5 (P) 版の検査付きの状態の遷移と、同期の波及処理の契約・登録箇所を作る
+- [x] 6.5 (P) 版の検査付きの状態の遷移と、同期の波及処理の契約・登録箇所を作る
   - 先に、退会・停止・停止解除で利用者の状態と版が変わりイベントが記録されること、停止中の利用者の退会で停止の状態と停止日時が残ったまま論理削除されること、退会で本specのセッション・トークン・待ちが消えること、登録した偽の同期の波及処理の文が同じ一括の書き込みで確定すること、読み取った版が古いと状態・波及処理の文・イベントのすべてが取り消されて競合のエラーになることを確かめるWorkers統合テストを書く
   - 同期の波及処理の契約(文の配列を返す)と、APIサーバーの登録箇所(初版は空)を作る
   - 一括の書き込みの先頭に、版が一致しなければNOT NULL制約に違反するイベントの挿入を置き、状態の更新・本specの行の削除・登録された波及処理の文の順に並べる
@@ -475,3 +475,4 @@
 - 6.2: `apps/api/src/infrastructure/identity/`の`D1UserAccountStore`・`D1HandleAvailability`(`@injectable`、`@inject(PLATFORM_TYPES.Database)`、束縛は8.1)。一意制約の違反は`db.batch()`の失敗の`cause`の連鎖の文言`UNIQUE constraint failed: users.email|users.handle`で判別し、他の違反と障害はそのまま投げる(`docs/GUIDES/tech/db/002-d1-constraints.md`に汎用の節を追加)。パスワードリセットは未確認のときだけ確認日時を入れる。`listUndetermined(checkedBefore)`は境界を`lt`で比べるため、7.10のジョブは「1時間以上経った」を満たすよう`checkedBefore`を決める。テストの補助`clearIdentityTables`はセッションとトークンを消さない(6.2のテストは自前で消す)ため、6.3で補助に加えてよい
 - 6.3: `D1UserSessionStore`・`D1AuthTokenStore`・`D1LoginChallengeStore`(`apps/api/src/infrastructure/identity/`)。`findByTokenHash`は退会済みの利用者のセッションも状態付きで返すため、退会済みの判定と削除は7.1の`UserSessionVerifier`が行う。トークンと待ちの作成日時はスキーマの既定値(実時計)。削除の件数は`meta.changes`。`clearIdentityTables`はセッション・トークン・待ちも消すようになった
 - 6.4: `D1TotpCredentialStore`・`D1RecoveryCodeStore`。`enable`・`replaceAll`は資格情報の状態が合うときだけコードを`INSERT ... SELECT`で入れる(`replaceAll`は有効でなければ古いコードを消すだけ)。`savePending`は既存の保留を上書きし使用済みの時間窓を戻す。`enable`は保存済みの秘密鍵が照合したものと同じかを確かめないため、7.8は設定の開始の競合(照合と有効化の間の`savePending`)を考慮する
+- 6.5: 契約は`infrastructure/identity/user-lifecycle-sync-handler.ts`、確定は`d1-user-lifecycle-committer.ts`の`createD1UserLifecycleCommitter(db, ids, USER_LIFECYCLE_SYNC_HANDLERS, (id) => container.get(id))`(8.1で処理単位のコンテナに`toDynamicValue`で束縛)、登録箇所は`composition/user-lifecycle-sync-handlers.ts`(空)。登録は作成時に名前の形式と重複を検査し、未束縛の波及処理は`commit`の時に初めて分かる。版の不一致と存在しない利用者は`AppError(conflict, account_state_conflict)`で、文言「処理が重なりました。時間をおいて再度お試しください。」は現在このファイルにだけあるため、8.2の`errors.ts`と文言規則(12.2)で集約する。退会はセッション・トークン・待ちを消し、TOTPとリカバリコードは物理削除まで残す
