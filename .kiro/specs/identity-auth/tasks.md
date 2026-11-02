@@ -96,7 +96,7 @@
   - _Boundary: UserContactDirectory, D1UserContactDirectory, IdentityPlatformModule_
   - _Requirements: 4.8_
 
-- [ ] 3.6 データエクスポートのアカウントの部分を返す照会を作り、APIサーバーとイベントサーバーの両方に束縛する
+- [x] 3.6 データエクスポートのアカウントの部分を返す照会を作り、APIサーバーとイベントサーバーの両方に束縛する
   - 先に、通常の利用者で仮名化ID・メールアドレス・確認日時・登録日時(作成日時)が返ること、多要素認証が有効なら有効状態が真で、未設定と設定途中の待ちだけの利用者では偽になること、停止中の利用者も返ること、退会済み(`deleted_at`あり)と存在しない利用者で`undefined`になること、D1の失敗が例外になること、結果にパスワードハッシュ・TOTPの秘密鍵・リカバリコード・セッション・認証系トークンの項目が無いことを確かめるWorkers統合テストを書く
   - 同じく先に、APIサーバーとイベントサーバーの処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.AccountExport`がD1の実装に解決されることを、3.5の両アプリのWorkers統合テストに加えて確かめる
   - 設計の契約(`AccountExportRecord`・`AccountExport`)を`apps/backend-lib/core/identity/ports.ts`に、D1の実装を共有のWorkers向けの部品(`apps/backend-lib/workers/identity/d1-account-export.ts`)に作り、3.5の`IDENTITY_PLATFORM_TYPES`に識別子を、`IDENTITY_PLATFORM_MODULE`に束縛を加える。ニックネーム・ハンドルは返さない(user-profile-socialのプロフィールの出力用の部品が返す)
@@ -463,3 +463,4 @@
 - 3.3: 種別は`core/email/kinds/identity.ts`、テンプレートは`apps/event/src/infrastructure/email/templates/identity/`。URLの入力は`https://`か、ホスト名が`localhost`と一致する`http://`だけを受け付ける(IdentityMailerはこの形のURLを組む)。完了の3種は問い合わせ(`contactUrl`)へのボタン「お問い合わせ」を持つ。本文の文言は文言規則に未記載のため、12.2で要点を追記する
 - 3.4: 契約は`core/identity/ports.ts`(`USER_LIFECYCLE_EVENT_STATUSES`を追加)、実装は`workers/identity/d1-user-lifecycle-store.ts`(`createUserLifecycleStore`)・`d1-user-address-directory.ts`、テストの補助は`workers/identity/testing/identity-store-fixtures.ts`。`countOverduePurges(deletedBefore)`は、設計のジョブの表の「pendingの`purge_due`を数える」ではなく、要件17.4に合わせて`deleted_at`が境界より前で行が残る利用者をイベントの有無によらず数える(7.10のジョブはこの意味で使う)。`markRedispatched`・`markEventCompleted`は`pending`の行だけを更新する
 - 3.5: 識別子は`core/identity/identifiers.ts`の`IDENTITY_PLATFORM_TYPES`(3.6・3.7は単体テストの`EXPECTED_NAMES`も更新する)、束縛は`workers/identity/identity-platform-module.ts`の`IDENTITY_PLATFORM_MODULE`(型は`EMAIL_PLATFORM_MODULE`と同じ`Omit<AppModule, 'routes'>`)。両アプリの解決の確認は`apps/{api,event}/src/composition/identity-platform.worker.test.ts`で、3.6・3.7はここに加える。12.1・12.2の文書では、共通の束縛の置き場所・両アプリでの束縛・後続specは契約を注入して`users`の列を直接読まないことを書く
+- 3.6: `D1AccountExport`は`workers/identity/d1-account-export.ts`。テストの補助`clearIdentityTables`は`user_totp_credentials`も消し、TOTPの行は`insertTotpCredential`で入れる。テストの補助へ別のテーブルを足すときは外部キーの順(子→`users`)で消す

@@ -5,6 +5,7 @@ import { expect } from 'vitest';
 import { createDatabase, type Database } from '../../../../db/client.ts';
 import { userLifecycleEvents } from '../../../../db/schema/identity/user-lifecycle-events.ts';
 import { userLifecycleHandlerRuns } from '../../../../db/schema/identity/user-lifecycle-handler-runs.ts';
+import { userTotpCredentials } from '../../../../db/schema/identity/user-totp-credentials.ts';
 import { users } from '../../../../db/schema/identity/users.ts';
 import type { IdGenerator } from '../../../core/ids/id-generator.ts';
 
@@ -19,6 +20,7 @@ export const db = createDatabase(env.DB);
 
 type UserRow = typeof users.$inferInsert;
 type EventRow = typeof userLifecycleEvents.$inferInsert;
+type TotpCredentialRow = typeof userTotpCredentials.$inferInsert;
 
 export function after(milliseconds: number): Date {
   return new Date(T0.getTime() + milliseconds);
@@ -78,6 +80,19 @@ export async function insertUsers(
   for (let start = 0; start < rows.length; start += ROWS_PER_INSERT) {
     await db.insert(users).values(rows.slice(start, start + ROWS_PER_INSERT));
   }
+}
+
+export async function insertTotpCredential(
+  userIndex: number,
+  columns: Partial<TotpCredentialRow> = {},
+): Promise<void> {
+  await db.insert(userTotpCredentials).values({
+    userId: userIdOf(userIndex),
+    sealedSecret: `sealed-secret-${String(userIndex)}`,
+    createdAt: T0,
+    updatedAt: T0,
+    ...columns,
+  });
 }
 
 function eventRowOf(index: number, columns: Partial<EventRow>): EventRow {
@@ -148,6 +163,7 @@ export async function readHandlerRuns() {
 export async function clearIdentityTables(): Promise<void> {
   await db.delete(userLifecycleHandlerRuns);
   await db.delete(userLifecycleEvents);
+  await db.delete(userTotpCredentials);
   await db.delete(users);
 }
 

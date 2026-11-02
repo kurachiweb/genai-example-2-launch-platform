@@ -57,3 +57,18 @@ export interface UserContactDirectory {
   // 退会済み・物理削除済みの利用者はundefined。停止中の利用者は返す
   findContact(userId: string): Promise<UserContact | undefined>;
 }
+
+export interface AccountExportRecord {
+  readonly userId: string;
+  // ZIPには書かず、決済履歴の照会に渡す
+  readonly pseudonymousId: string;
+  readonly email: string;
+  readonly emailVerifiedAt: Date | null;
+  readonly registeredAt: Date;
+  readonly mfaEnabled: boolean;
+}
+
+export interface AccountExport {
+  // 退会済み・物理削除済みの利用者はundefined。停止中の利用者は返す
+  find(userId: string): Promise<AccountExportRecord | undefined>;
+}

@@ -6,14 +6,21 @@ import { beforeEach, describe, expect, expectTypeOf, test } from 'vitest';
 
 import type { AppModule } from '../../core/di/app-module.ts';
 import { IDENTITY_PLATFORM_TYPES } from '../../core/identity/identifiers.ts';
-import type { UserContactDirectory } from '../../core/identity/ports.ts';
+import type {
+  AccountExport,
+  UserContactDirectory,
+} from '../../core/identity/ports.ts';
 import { createInvocationContainer } from '../di/invocation-container.ts';
 import type { PlatformHonoEnv } from '../http/hono-env.ts';
+import { D1AccountExport } from './d1-account-export.ts';
 import { D1UserContactDirectory } from './d1-user-contact-directory.ts';
 import { IDENTITY_PLATFORM_MODULE } from './identity-platform-module.ts';
 import {
+  after,
   clearIdentityTables,
+  insertTotpCredential,
   insertUser,
+  T0,
   userIdOf,
 } from './testing/identity-store-fixtures.ts';
 
@@ -65,12 +72,36 @@ describe('IDENTITY_PLATFORM_MODULE', () => {
     });
   });
 
-  test('処理単位の中では同じインスタンスを返し、別の処理単位では別のインスタンスを返す', () => {
-    const first = createContainer();
-    const second = createContainer();
-    const identifier = IDENTITY_PLATFORM_TYPES.UserContactDirectory;
+  test('データエクスポートのアカウントの部分の照会をD1の実装に解決し、処理単位のD1からアカウントの部分と仮名化IDを引ける', async () => {
+    await insertUser(1, { emailVerifiedAt: after(1000) });
+    await insertTotpCredential(1, { enabledAt: after(2000) });
 
-    expect(first.get(identifier)).toBe(first.get(identifier));
-    expect(second.get(identifier)).not.toBe(first.get(identifier));
+    const accountExport = createContainer().get<AccountExport>(
+      IDENTITY_PLATFORM_TYPES.AccountExport,
+    );
+
+    expect(accountExport).toBeInstanceOf(D1AccountExport);
+    await expect(accountExport.find(userIdOf(1))).resolves.toEqual({
+      userId: userIdOf(1),
+      pseudonymousId: 'pseudonymous-1',
+      email: 'user1@mail.example',
+      emailVerifiedAt: after(1000),
+      registeredAt: T0,
+      mfaEnabled: true,
+    });
   });
+
+  test.each([
+    ['UserContactDirectory', IDENTITY_PLATFORM_TYPES.UserContactDirectory],
+    ['AccountExport', IDENTITY_PLATFORM_TYPES.AccountExport],
+  ])(
+    '%sは処理単位の中では同じインスタンスを返し、別の処理単位では別のインスタンスを返す',
+    (_name, identifier) => {
+      const first = createContainer();
+      const second = createContainer();
+
+      expect(first.get(identifier)).toBe(first.get(identifier));
+      expect(second.get(identifier)).not.toBe(first.get(identifier));
+    },
+  );
 });
