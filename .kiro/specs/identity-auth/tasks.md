@@ -156,7 +156,7 @@
   - _Depends: 1.1, 4.3_
   - _Requirements: 5.3, 5.4, 13.1, 13.3_
 
-- [ ] 5.3 (P) ログイン試行の記録のDurable Objectと、2つの単位を扱う実装を作る
+- [x] 5.3 (P) ログイン試行の記録のDurable Objectと、2つの単位を扱う実装を作る
   - 先に、失敗の記録とロック、ロック中の確認、アラームによるロックの解除と24時間後の記録の削除、成功での削除、メールアドレス単位は利用者と管理者で別のオブジェクトでIPアドレス単位は共有されること、IPが不明なときにIPの単位を使わず通知することを確かめるWorkers統合テストを書く
   - Durable Objectのクラス(状態の保存とアラーム)と、メールアドレス単位とIPアドレス単位の2つを並列に確かめ、両方に記録・削除する実装を作る。オブジェクトの名前はハッシュ化済みのキーだけで作り、名前空間に管轄を指定しない
   - APIサーバーのWrangler設定の3環境に新しいDurable Objectのバインディングと、`migrations`の既存の最後のタグの次のタグ(Wave 1の他specと衝突する場合は実装時に詰める)を加え、エントリからクラスをエクスポートして実行時の環境の型を生成し直す。マイグレーションの適用は、infra-deliveryの導入後はmainへのマージによるCIのデプロイに任せる
@@ -470,3 +470,4 @@
 - 4.3: `apps/api/src/application/auth/`に`AUTH_TYPES`(12個、`Symbol.for('auth.<名前>')`)・`ports.ts`・`CheckingPasswordPolicy`・`HashingSecretIssuer`・`HashingRecoveryCodeIssuer`・`createLoginThrottleKeys`(空文字列のIPも不明扱い)・`SubjectSessionVerifier`・`InvalidSubjectSessionVerifier`。サービスのインターフェースは各サービスのファイルにある。`SubjectSessionVerifier`は差し込んだ検証器が別の種類の主体を返すと無効にするため、admin-foundationの管理者の検証器は`subjectKind: 'admin'`を返す。ハッシュの用途は`docs/GUIDES/tech/security/002-keyed-hashing.md`の形(英小文字とハイフン、`:`を使わない)で6.1で定める。8.1の静的解析で認証部品から禁止する読み込みは、apiの`**/domain/identity/**`・`**/application/identity/**`・`**/infrastructure/identity/**`・`**/presentation/graphql/modules/identity/**`で、`common-lib/identity/`(共有の入力規則。`domain/auth/password-rules.ts`が使う)は含めない
 - 5.1: `apps/api/src/infrastructure/auth/`の`Pbkdf2PasswordHasher`(保存形式`pbkdf2-sha512$100000$<salt>$<derived>`、前処理は`KeyedHasher`の用途`password-prehash`、照合1回は約16ms)・`CryptoSecretGenerator`・`HkdfAesGcmSecretBox`(`@inject(PLATFORM_TYPES.Env)`で`HASH_PEPPER`を読む、HKDFのinfo`totp-secret-v1`、AADは利用者ID、復元の失敗は`SecretBoxOpenError`)。計測値はテストの`annotate`で残り、`--reporter=verbose`で見える。乱数に依るテストは`crypto.getRandomValues`のスタブで入力を固定する(確率で失敗するテストを作らない)
 - 5.2: `HibpPwnedPasswordChecker`は`@injectable`無しで、8.1で`toDynamicValue`により`fetch`と`userAgent: 'genai-example-2-api'`を渡す。`OtpauthTotpAuthenticator`のラベルは呼び出し側が`@<ハンドル>`を渡す(先頭以外の`@`は`RangeError`)。秘密鍵の形式違反は`TotpSecretFormatError`。`SentryAuthIncidentReporter`のログのカテゴリは設計の`['api','identity',…]`ではなく`['api','auth','incident']`(認証部品は主体に依存しないため。`infra/004`に記載済み)、指紋は`['identity', <種類>]`。1.1の導入確認のテストにはbowserの部分だけが残り、6.6で置き換える。新しいログのカテゴリやSentryへの通知を作るタスクは、同じ変更で`infra/004`の表に行を足す
+- 5.3: Durable Objectは`infrastructure/auth/login-attempt-throttle.ts`の`LoginAttemptThrottle`(バインディング`LOGIN_ATTEMPT_THROTTLE`、`migrations`の`v2`で`new_sqlite_classes`)、2つの単位の実装は`durable-login-throttle.ts`の`createDurableLoginThrottle`(まだ束縛していない。8.1で束縛し、`env-schema.ts`の検証を加える)。IPが不明な場合の`login-throttle-ip-missing`の通知は`status`のときだけ行うため、ログイン・本人確認の各経路(7.4・7.5)は必ず照合の前に`status`を呼ぶ。12.2で本プロジェクト固有の値にバインディングとクラスを加える

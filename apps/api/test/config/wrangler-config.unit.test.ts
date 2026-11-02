@@ -444,12 +444,14 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     }
   });
 
-  test('apiだけが厳密カウンタのDurable Objectを束縛し、SQLiteを使うクラスとして移行する', () => {
+  test('apiだけが厳密カウンタとログイン試行の記録のDurable Objectを束縛し、SQLiteを使うクラスとして移行する', () => {
     expect(api.durable_objects.bindings).toStrictEqual([
       { name: 'RATE_LIMIT_COUNTER', class_name: 'RateLimitCounter' },
+      { name: 'LOGIN_ATTEMPT_THROTTLE', class_name: 'LoginAttemptThrottle' },
     ]);
     expect(api.migrations).toStrictEqual([
       { tag: 'v1', new_sqlite_classes: ['RateLimitCounter'] },
+      { tag: 'v2', new_sqlite_classes: ['LoginAttemptThrottle'] },
     ]);
     expect(event.durable_objects.bindings).toStrictEqual([]);
     expect(event.migrations).toStrictEqual([]);

@@ -82,10 +82,11 @@ afterAll(() => {
 });
 
 describe('APIサーバーのエントリ', () => {
-  test('メインモジュールは既定のエクスポート・名前付きエントリポイント・厳密カウンタのクラスだけをエクスポートする', () => {
+  test('メインモジュールは既定のエクスポート・名前付きエントリポイント・Durable Objectのクラスだけをエクスポートする', () => {
     expect(Object.keys(mainModule).sort()).toEqual([
       'AdminGateway',
       'ClientGateway',
+      'LoginAttemptThrottle',
       'RateLimitCounter',
       'default',
     ]);
