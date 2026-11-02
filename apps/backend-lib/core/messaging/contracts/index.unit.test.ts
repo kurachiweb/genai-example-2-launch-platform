@@ -6,6 +6,10 @@ import {
   PURGE_IMAGE_CACHE_MESSAGE,
   RELOCATE_FILES_MESSAGE,
 } from '../../media/media-messages.ts';
+import {
+  RECHECK_DISPOSABLE_EMAIL_MESSAGE,
+  RUN_USER_LIFECYCLE_MESSAGE,
+} from './identity.ts';
 import { MESSAGE_CONTRACTS } from './index.ts';
 import { SEARCH_INDEX_REFRESH_MESSAGE } from './search-index-refresh.ts';
 
@@ -33,6 +37,19 @@ describe('MESSAGE_CONTRACTS', () => {
     [
       'キャッシュのパージの契約media.purge-image-cache',
       PURGE_IMAGE_CACHE_MESSAGE,
+    ],
+  ])('%sを集約している', (_label, contract) => {
+    expect(MESSAGE_CONTRACTS).toContain(contract);
+  });
+
+  test.each([
+    [
+      'ライフサイクルの実行の契約identity.run-user-lifecycle',
+      RUN_USER_LIFECYCLE_MESSAGE,
+    ],
+    [
+      '使い捨て判定のやり直しの契約identity.recheck-disposable-email',
+      RECHECK_DISPOSABLE_EMAIL_MESSAGE,
     ],
   ])('%sを集約している', (_label, contract) => {
     expect(MESSAGE_CONTRACTS).toContain(contract);

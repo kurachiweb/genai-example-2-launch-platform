@@ -5,6 +5,10 @@ import {
   RELOCATE_FILES_MESSAGE,
 } from '../../media/media-messages.ts';
 import type { MessageContract } from '../message-contract.ts';
+import {
+  RECHECK_DISPOSABLE_EMAIL_MESSAGE,
+  RUN_USER_LIFECYCLE_MESSAGE,
+} from './identity.ts';
 import { SEARCH_INDEX_REFRESH_MESSAGE } from './search-index-refresh.ts';
 
 export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
@@ -14,4 +18,6 @@ export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
     MODERATE_IMAGE_MESSAGE,
     RELOCATE_FILES_MESSAGE,
     PURGE_IMAGE_CACHE_MESSAGE,
+    RUN_USER_LIFECYCLE_MESSAGE,
+    RECHECK_DISPOSABLE_EMAIL_MESSAGE,
   ]);

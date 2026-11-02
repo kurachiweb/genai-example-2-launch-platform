@@ -54,7 +54,7 @@
   - _Requirements: 4.1, 4.3, 4.7_
 
 - [ ] 3. 共有の部品(イベントサーバーとAPIサーバーの両方が使う)
-- [ ] 3.1 (P) ユーザーライフサイクルイベントの契約と、2つのメッセージ種別を作る
+- [x] 3.1 (P) ユーザーライフサイクルイベントの契約と、2つのメッセージ種別を作る
   - 先に、4種類のイベント、非同期の波及処理の登録の名前の形式(`<spec名>.<名詞句>`)・重複・同じ種類での実行順の重複の拒否、実行順の昇順の取り出し、各ドメインの帯の値(9999以下)と本specの値(10000以上)の両方を受け付けて本specの波及処理が同じ種類の各ドメインの波及処理の後に並ぶこと、再試行の方針の値を確かめる単体テストを書く
   - イベントの型、非同期の波及処理の結果(完了・続きがある)と処理の型、登録の型と検証付きの集約、再試行の方針(5回・300秒から倍・上限3600秒)を共有の純粋な部品として作る
   - ライフサイクルの実行(本文はイベントのIDだけ)と使い捨て判定のやり直し(本文は利用者のIDだけ)のメッセージ契約を作り、メッセージ契約の集約点に登録する
@@ -458,3 +458,4 @@
 - 1.3: 入力規則は`apps/common-lib/identity/account-input-rules.ts`。ニックネームの前後の空白は共有の`trimWhiteSpace`(`\p{White_Space}`)で除くため、zodの`.trim()`(`String.prototype.trim`)とは集合が異なる。ニックネームを保存・検証する後続(`inputs.ts`・AccountFormSchemas・Registration)も`trimWhiteSpace`を使い、判定と保存値を食い違わせない。開発コンテナでは各アプリの`common-lib/`がコピーで古いことがあり、`shared-dirs:verify`が失敗したら`bun run shared-dirs:place`で配置し直す
 - 2.1: `FORWARDED_BROWSER_HEADERS`は`buildRelayHeaders`を使うすべての中継の経路で共有されるため、`/_bff/graphql`だけでなくメディアのアップロードの中継でもUser-AgentがAPIサーバーへ届く(APIサーバーは使わない)。中継の項目を完全一致で確かめるテストは`relay-contract.unit.test.ts`のほかに`relay-route.relay-to-api.unit.test.ts`もある
 - 2.2: `userAgent`は`graphql-module.ts`の`createRequestScope`で読み、`USER_AGENT_MAX_LENGTH`(512)で切る。空のヘッダーも`undefined`。文脈をリテラルで組むテストは設計の5件のほかに`test/graphql/document-validator-runtime.worker.test.ts`もある
+- 3.1: 契約は`apps/backend-lib/core/identity/user-lifecycle.ts`、メッセージは`core/messaging/contracts/identity.ts`(本文は`z.ulid()`)。波及処理の名前の検査はメッセージ種別と同じ文字の規則(`infra/003`)。DBの`type`の値との一致は`workers/identity/user-lifecycle-columns.unit.test.ts`で確かめる。イベントの状態(`pending`・`completed`)の一致の確認は、状態の型を定義する3.4で同じテストに加える。12.2では本プロジェクト固有の値のメッセージ種別の一覧にも`identity.*`の2種を加える
