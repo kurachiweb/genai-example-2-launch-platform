@@ -1,0 +1,14 @@
+# シークレット検出(Betterleaks)の設定。既定の規則をすべて使い、構造上の誤検知だけを規則・パス・行の形で絞って除外する
+
+[extend]
+useDefault = true
+
+# GraphQLのスキーマ(生成物を含む)では、パスワードの項目の型の注釈(項目名・コロン・型名だけの行)の型名を、generic-passwordが値として誤検知する。
+# 行番号のFingerprintでは型を足すたびに行がずれるため、.graphqlのファイルのその形の行に限って除外する
+[[allowlists]]
+description = "GraphQLのスキーマのパスワードの項目の型の注釈"
+targetRules = ["generic-password"]
+condition = "AND"
+paths = ['''\.graphql$''']
+regexTarget = "line"
+regexes = ['''^\s*\w*[Pp]assword\s*:\s*\[?\s*\w+\s*!?\s*\]?\s*!?\s*$''']

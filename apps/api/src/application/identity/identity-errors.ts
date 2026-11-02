@@ -79,6 +79,9 @@ export type IdentityErrorCode = keyof typeof IDENTITY_ERRORS;
 export const LOGIN_THROTTLED_MESSAGE =
   'ログイン試行が続いたため、しばらく待ってから再度お試しください。';
 
+// 詳細の欄ごとに文言が異なるため、IDENTITY_ERRORSに含めず本人確認が詳細付きで組み立てる
+export const REAUTHENTICATION_FAILED_CODE = 'reauthentication_failed';
+
 export const CURRENT_PASSWORD_INCORRECT_MESSAGE =
   '現在のパスワードが正しくありません。';
 

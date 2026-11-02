@@ -8,6 +8,7 @@ import {
   PASSWORD_MAX_CODE_POINTS,
 } from '../../../../../common-lib/identity/account-input-rules.ts';
 import { trimWhiteSpace } from '../../../../../common-lib/text/white-space.ts';
+import type { ReAuthenticationInput } from '../../../../application/identity/re-authenticator.ts';
 import type { SecondFactorInput } from '../../../../domain/auth/second-factor.ts';
 import { INPUT_MESSAGES } from './errors.ts';
 
@@ -16,6 +17,9 @@ const TOKEN_INPUT_MAX_LENGTH = 256;
 
 // 認証コードとリカバリコードの正規化の前の上限(ドメインの上限より長い入力は照合されない)
 const SECOND_FACTOR_INPUT_MAX_LENGTH = 64;
+
+// セッションのIDは26文字のULIDで、一致しない値はユースケースが見つからないとして扱う。ここでは処理量だけを抑える
+const SESSION_ID_INPUT_MAX_LENGTH = 64;
 
 // 1つの欄には最初の1つの違反だけを示す
 const ruleOf = (check: (value: string) => string | undefined) =>
@@ -123,4 +127,36 @@ export const REQUEST_PASSWORD_RESET_ARGS = z.object({ email });
 
 export const RESET_PASSWORD_ARGS = z.object({
   input: z.object({ token: linkToken, newPassword }),
+});
+
+// GraphQLで省略可能な第2要素は、省略と明示したnullをどちらも「入力なし」として本人確認へ渡す
+const reAuthentication = z
+  .object({ currentPassword, secondFactor: secondFactor.nullish() })
+  .transform((value): ReAuthenticationInput => ({
+    currentPassword: value.currentPassword,
+    secondFactor: value.secondFactor ?? undefined,
+  }));
+
+export const RE_AUTHENTICATION_ARGS = z.object({ input: reAuthentication });
+
+export const REQUEST_EMAIL_CHANGE_ARGS = z.object({
+  input: z.object({ newEmail: email, reAuthentication }),
+});
+
+export const REQUEST_PASSWORD_CHANGE_ARGS = z.object({
+  input: z.object({ newPassword, reAuthentication }),
+});
+
+export const CONFIRM_CHANGE_ARGS = z.object({ token: linkToken });
+
+export const ENABLE_TOTP_ARGS = z.object({
+  totpCode: z
+    .string()
+    .max(SECOND_FACTOR_INPUT_MAX_LENGTH, INPUT_MESSAGES.secondFactorIncorrect),
+});
+
+export const REVOKE_SESSION_ARGS = z.object({
+  id: z
+    .string()
+    .max(SESSION_ID_INPUT_MAX_LENGTH, INPUT_MESSAGES.sessionNotFound),
 });

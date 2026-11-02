@@ -16,6 +16,7 @@ import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
 import {
   CURRENT_PASSWORD_INCORRECT_MESSAGE,
   IDENTITY_ERRORS,
+  REAUTHENTICATION_FAILED_CODE,
 } from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import {
@@ -71,7 +72,7 @@ const reAuthenticationFailedError = (
 ): AppError =>
   new AppError({
     kind: 'unprocessable',
-    code: 'reauthentication_failed',
+    code: REAUTHENTICATION_FAILED_CODE,
     message,
     details: [{ field, code, message }],
   });

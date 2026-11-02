@@ -1,5 +1,34 @@
+"""利用者の状態"""
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+input CompleteSecondFactorLoginInput {
+  challenge: String!
+  secondFactor: SecondFactorInput!
+}
+
+"""メールのリンクによる確定の結果"""
+type ConfirmationResult {
+  """確定の操作をした端末が同じ利用者としてログイン中なら、入れ替えた後の利用者"""
+  viewer: Viewer
+}
+
 """UTCのRFC 3339形式の日時"""
 scalar DateTime
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+union LoginResult = LoginSucceeded | SecondFactorRequired
+
+"""ログインの完了"""
+type LoginSucceeded {
+  viewer: Viewer!
+}
 
 """ファイル用の用途のファイル"""
 type MediaAttachment {
@@ -32,6 +61,65 @@ enum MediaImageFallbackFormat {
   SVG
 }
 
+type Mutation {
+  """認証コードかリカバリコードによるログインの完了"""
+  completeSecondFactorLogin(input: CompleteSecondFactorLoginInput!): Viewer!
+
+  """メールアドレス変更の確定"""
+  confirmEmailChange(token: String!): ConfirmationResult!
+
+  """パスワード変更の確定"""
+  confirmPasswordChange(token: String!): ConfirmationResult!
+
+  """多要素認証の無効化"""
+  disableTotp(input: ReAuthenticationInput!): Boolean!
+
+  """多要素認証の有効化"""
+  enableTotp(totpCode: String!): RecoveryCodeSet!
+
+  """メールアドレスとパスワードによるログイン"""
+  login(input: LoginInput!): LoginResult!
+
+  """この端末のログアウト"""
+  logout: Boolean!
+
+  """リカバリコードの再発行"""
+  regenerateRecoveryCodes(input: ReAuthenticationInput!): RecoveryCodeSet!
+
+  """利用者の登録"""
+  registerUser(input: RegisterUserInput!): Viewer!
+
+  """メールアドレス変更の要求"""
+  requestEmailChange(input: RequestEmailChangeInput!): Boolean!
+
+  """パスワード変更の要求"""
+  requestPasswordChange(input: RequestPasswordChangeInput!): Boolean!
+
+  """パスワードリセットの要求。アカウントの有無を問わず同じ結果を返す"""
+  requestPasswordReset(email: String!): Boolean!
+
+  """確認メールの再送"""
+  resendVerificationEmail: ResendVerificationResult!
+
+  """パスワードリセットの確定"""
+  resetPassword(input: ResetPasswordInput!): Boolean!
+
+  """操作している端末以外のセッションの一括の失効。失効させた件数を返す"""
+  revokeOtherSessions: Int!
+
+  """セッションの個別の失効"""
+  revokeSession(id: ID!): Boolean!
+
+  """多要素認証の設定の開始"""
+  startTotpSetup(input: ReAuthenticationInput!): TotpSetup!
+
+  """メールアドレスの確認の確定"""
+  verifyEmail(token: String!): Boolean!
+
+  """退会"""
+  withdraw(input: ReAuthenticationInput!): Boolean!
+}
+
 type OffsetPageInfo {
   page: Int!
   perPage: Int!
@@ -45,11 +133,107 @@ type PageInfo {
 }
 
 type Query {
+  """ログイン中の端末の一覧"""
+  mySessions: [UserSessionSummary!]!
+
   """APIサーバーの時刻とデータベースへの到達可否"""
   systemStatus: SystemStatus!
+
+  """ログイン中の利用者。未ログイン・無効なセッションではnull"""
+  viewer: Viewer
+}
+
+"""重要な操作の本人確認"""
+input ReAuthenticationInput {
+  currentPassword: String!
+
+  """多要素認証が有効なときだけ必要"""
+  secondFactor: SecondFactorInput
+}
+
+"""この応答でだけ見せるリカバリコード"""
+type RecoveryCodeSet {
+  codes: [String!]!
+}
+
+input RegisterUserInput {
+  """利用規約とプライバシーポリシー(18歳以上であることの表明を含む)への同意"""
+  agreedToTerms: Boolean!
+  email: String!
+  nickname: String!
+  password: String!
+}
+
+input RequestEmailChangeInput {
+  newEmail: String!
+  reAuthentication: ReAuthenticationInput!
+}
+
+input RequestPasswordChangeInput {
+  newPassword: String!
+  reAuthentication: ReAuthenticationInput!
+}
+
+"""確認メールの再送の結果"""
+enum ResendVerificationResult {
+  ALREADY_VERIFIED
+  SENT
+}
+
+input ResetPasswordInput {
+  newPassword: String!
+  token: String!
+}
+
+"""認証コードかリカバリコードのどちらか一方"""
+input SecondFactorInput {
+  recoveryCode: String
+  totpCode: String
+}
+
+"""第2要素の入力の待ち"""
+type SecondFactorRequired {
+  """第2要素の段階の要求と組にする値"""
+  challenge: String!
+  expiresAt: DateTime!
 }
 
 type SystemStatus {
   databaseReachable: Boolean!
   serverTime: DateTime!
+}
+
+"""認証アプリへ登録する多要素認証の設定"""
+type TotpSetup {
+  expiresAt: DateTime!
+  otpauthUri: String!
+
+  """認証アプリへ手入力するためのbase32"""
+  secret: String!
+}
+
+"""ログイン中の端末"""
+type UserSessionSummary {
+  browserName: String
+  createdAt: DateTime!
+
+  """操作している端末"""
+  current: Boolean!
+  id: ID!
+  lastUsedAt: DateTime!
+  osName: String
+}
+
+"""ログイン中の利用者"""
+type Viewer {
+  email: String!
+  emailVerified: Boolean!
+  handle: String!
+  id: ID!
+  nickname: String!
+
+  """要求されたときだけ数える。多要素認証が無効なら0"""
+  remainingRecoveryCodes: Int!
+  status: AccountStatus!
+  totpEnabled: Boolean!
 }

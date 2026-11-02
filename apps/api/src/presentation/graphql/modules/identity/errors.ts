@@ -10,6 +10,7 @@ import {
   IDENTITY_ERRORS,
   identityError,
   PASSWORD_LENGTH_MESSAGE,
+  REAUTHENTICATION_FAILED_CODE,
 } from '../../../../application/identity/identity-errors.ts';
 
 // 入力の検証の失敗(validation_error)の欄ごとの文言。ユースケースが投げるエラーの文言はapplication層のidentity-errors.tsにある
@@ -27,6 +28,7 @@ export const INPUT_MESSAGES = Object.freeze({
   secondFactorIncorrect: IDENTITY_ERRORS.invalid_second_factor.message,
   invalidLink: IDENTITY_ERRORS.invalid_link.message,
   loginChallengeExpired: IDENTITY_ERRORS.login_challenge_expired.message,
+  sessionNotFound: IDENTITY_ERRORS.not_found.message,
 });
 
 // GraphQLの引数の名前。検証の詳細の欄と同じく、ユースケースが返す詳細の欄もこの下の経路で示す
@@ -50,17 +52,38 @@ function withPrefixedFields(error: AppError, prefix: string): AppError {
   });
 }
 
+// 本人確認の入力を操作の入力の中に持つ操作での、本人確認の入力の経路
+export const NESTED_RE_AUTHENTICATION_PATH = `${INPUT_ARGUMENT}.reAuthentication`;
+
+type PathPrefix = string | ((error: AppError) => string);
+
 // ユースケースは詳細の欄を自身の入力からの相対の経路で返すため、GraphQLの入力の形のとおりの経路に直す
 export async function withInputPath<T>(
-  prefix: string,
+  prefix: PathPrefix,
   run: () => Promise<T>,
 ): Promise<T> {
   try {
     return await run();
   } catch (error: unknown) {
     if (error instanceof AppError && error.details !== undefined) {
-      throw withPrefixedFields(error, prefix);
+      throw withPrefixedFields(
+        error,
+        typeof prefix === 'string' ? prefix : prefix(error),
+      );
     }
     throw error;
   }
+}
+
+// 本人確認の失敗は本人確認の入力からの相対、パスワードの方針の違反などは操作の入力からの相対の経路で返る
+export function withNestedReAuthenticationPath<T>(
+  run: () => Promise<T>,
+): Promise<T> {
+  return withInputPath(
+    (error) =>
+      error.code === REAUTHENTICATION_FAILED_CODE
+        ? NESTED_RE_AUTHENTICATION_PATH
+        : INPUT_ARGUMENT,
+    run,
+  );
 }

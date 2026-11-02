@@ -2,6 +2,7 @@ import type { GraphQLResolveInfo } from 'graphql';
 
 import { PLATFORM_TYPES } from '../../../../../lib/core/di/identifiers.ts';
 import type { Clock } from '../../../../../lib/core/time/clock.ts';
+import type { AccountGuard } from '../../../../application/identity/account-guard.ts';
 import { IDENTITY_TYPES } from '../../../../application/identity/identity-types.ts';
 import type {
   RecoveryCodeStore,
@@ -12,6 +13,7 @@ import type {
 import type { RequestMeta } from '../../../../application/identity/request-meta.ts';
 import { isTotpEnabled } from '../../../../application/identity/second-factor-check.ts';
 import type { IssuedSession } from '../../../../application/identity/session-issuer.ts';
+import type { Principal } from '../../../../application/session/session-verifier.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { callerForbiddenError } from './errors.ts';
 
@@ -131,4 +133,24 @@ export async function countRemainingRecoveryCodes(
   return context
     .resolve<RecoveryCodeStore>(IDENTITY_TYPES.RecoveryCodeStore)
     .count(userId);
+}
+
+export const accountGuard = (context: GraphQLContext): AccountGuard =>
+  context.resolve<AccountGuard>(IDENTITY_TYPES.AccountGuard);
+
+export interface ConfirmationResultSource {
+  readonly viewer: ViewerSource | null;
+}
+
+// ユースケースは確定の操作をした端末が同じ利用者としてログイン中のときだけセッションを発行するため、発行したときだけその利用者を返す
+export async function confirmationResult(
+  context: GraphQLContext,
+  operator: Principal,
+  session: IssuedSession | undefined,
+): Promise<ConfirmationResultSource> {
+  if (session === undefined || operator.kind !== 'authenticated') {
+    return { viewer: null };
+  }
+  issueSession(context, session);
+  return { viewer: await loadViewer(context, operator.subjectId) };
 }
