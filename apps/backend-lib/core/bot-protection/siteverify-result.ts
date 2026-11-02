@@ -38,6 +38,20 @@ export type SiteverifyOutcome =
 
 export const MAX_TOKEN_LENGTH = 2048;
 
+export const TURNSTILE_TEST_SECRET_KEYS = [
+  '1x0000000000000000000000000000000AA',
+  '2x0000000000000000000000000000000AA',
+  '3x0000000000000000000000000000000AA',
+] as const;
+
+const TURNSTILE_TEST_SECRET_KEY_SET: ReadonlySet<string> = new Set(
+  TURNSTILE_TEST_SECRET_KEYS,
+);
+
+export function isTurnstileTestSecretKey(secretKey: string): boolean {
+  return TURNSTILE_TEST_SECRET_KEY_SET.has(secretKey);
+}
+
 type ErrorCodeFailure = Extract<
   BotVerificationFailure,
   'invalid-token' | 'expired-or-duplicate' | 'unavailable' | 'misconfigured'

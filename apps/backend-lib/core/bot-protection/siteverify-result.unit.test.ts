@@ -2,8 +2,10 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   interpretSiteverify,
+  isTurnstileTestSecretKey,
   MAX_TOKEN_LENGTH,
   type SiteverifyOutcome,
+  TURNSTILE_TEST_SECRET_KEYS,
   type VerificationExpectations,
 } from './siteverify-result.ts';
 
@@ -365,5 +367,32 @@ describe('interpretSiteverify: 一時的な障害', () => {
       failure: 'unavailable',
       errorCodes: [],
     });
+  });
+});
+
+describe('isTurnstileTestSecretKey', () => {
+  test('Turnstileが公開している常に成功・常に失敗・常に時間切れのテスト用の秘密鍵だけを一覧に持つ', () => {
+    expect(TURNSTILE_TEST_SECRET_KEYS).toEqual([
+      '1x0000000000000000000000000000000AA',
+      '2x0000000000000000000000000000000AA',
+      '3x0000000000000000000000000000000AA',
+    ]);
+  });
+
+  test.each([...TURNSTILE_TEST_SECRET_KEYS])(
+    '%sはテスト用の秘密鍵である',
+    (secretKey) => {
+      expect(isTurnstileTestSecretKey(secretKey)).toBe(true);
+    },
+  );
+
+  test.each([
+    ['テスト用のサイトキー', '1x00000000000000000000BB'],
+    ['大文字小文字だけが違う値', '1x0000000000000000000000000000000aa'],
+    ['前後に空白のある値', ' 1x0000000000000000000000000000000AA'],
+    ['空文字', ''],
+    ['本番の形の秘密鍵', ['0x4', 'A'.repeat(31)].join('')],
+  ])('%sはテスト用の秘密鍵ではない', (_label, secretKey) => {
+    expect(isTurnstileTestSecretKey(secretKey)).toBe(false);
   });
 });

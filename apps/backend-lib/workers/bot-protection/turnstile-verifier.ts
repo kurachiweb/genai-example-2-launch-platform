@@ -4,6 +4,7 @@ import {
   type BotVerificationFailure,
   type BotVerificationResult,
   interpretSiteverify,
+  isTurnstileTestSecretKey,
   MAX_TOKEN_LENGTH,
   type SiteverifyOutcome,
   type VerificationExpectations,
@@ -105,6 +106,7 @@ function rejectedWithoutRequest(
 async function classify(
   options: TurnstileVerifierOptions,
   expectedHostnames: readonly string[],
+  ignoresExpectedAction: boolean,
   input: BotVerificationInput,
 ): Promise<BotVerificationResult> {
   const { token } = input;
@@ -117,9 +119,10 @@ async function classify(
   const outcome = await requestSiteverify(options, token, input.remoteIp);
   const expectations: VerificationExpectations = {
     hostnames: expectedHostnames,
-    ...(input.expectedAction !== undefined && {
-      action: input.expectedAction,
-    }),
+    ...(input.expectedAction !== undefined &&
+      !ignoresExpectedAction && {
+        action: input.expectedAction,
+      }),
   };
   return interpretSiteverify(outcome, expectations);
 }
@@ -147,11 +150,18 @@ export function createTurnstileVerifier(
   const expectedHostnames = options.expectedHostnames.map((hostname) =>
     hostname.toLowerCase(),
   );
+  // テスト用の秘密鍵の判定結果は、画面のウィジェットに設定した操作名ではなく固定の操作名を返すため、操作名を照合しない
+  const ignoresExpectedAction = isTurnstileTestSecretKey(options.secretKey);
 
   const verify = async (
     input: BotVerificationInput,
   ): Promise<BotVerificationResult> => {
-    const result = await classify(options, expectedHostnames, input);
+    const result = await classify(
+      options,
+      expectedHostnames,
+      ignoresExpectedAction,
+      input,
+    );
     if (!result.ok) {
       logger.warn('bot判定の検証に失敗しました', {
         failure: result.failure,

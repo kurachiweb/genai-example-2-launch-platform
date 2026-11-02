@@ -1256,10 +1256,17 @@ export declare function interpretSiteverify(
   expectations: VerificationExpectations,
 ): BotVerificationResult;
 export declare const MAX_TOKEN_LENGTH: 2048;
+export declare const TURNSTILE_TEST_SECRET_KEYS: readonly [
+  '1x0000000000000000000000000000000AA',
+  '2x0000000000000000000000000000000AA',
+  '3x0000000000000000000000000000000AA',
+];
+export declare function isTurnstileTestSecretKey(secretKey: string): boolean;
 ```
 
 - 分類: `missing-input-response`・`invalid-input-response`→`invalid-token`、`timeout-or-duplicate`→`expired-or-duplicate`、`missing-input-secret`・`invalid-input-secret`・`bad-request`→`misconfigured`、`internal-error`・ネットワーク失敗・時間切れ・2xx以外・JSONでない応答→`unavailable`。
 - 成功応答でも、`expectations.action`と`action`、`expectations.hostnames`と`hostname`が一致しなければ`action-mismatch`・`hostname-mismatch`(14.4)。
+- `TURNSTILE_TEST_SECRET_KEYS`はTurnstileのテスト用の秘密鍵(常に成功・常に失敗・常に`timeout-or-duplicate`)の唯一の一覧で、`isTurnstileTestSecretKey`は完全一致で判定する(14.6、identity-authの実装で見つかった不具合による改訂)。
 
 ### workers
 
@@ -1773,6 +1780,7 @@ export declare function turnstileGuard(
 - ログ(14.7): 失敗時に`warning`で`failure`と`errorCodes`を記録する。トークンは属性に入れない(フィールドの伏せ字の対象にも含める)。
 - apiのモジュールが`PLATFORM_TYPES.BotVerifier`へ`createTurnstileVerifier({ secretKey: env.TURNSTILE_SECRET_KEY, expectedHostnames: TURNSTILE_EXPECTED_HOSTNAMESの分割, fetch: globalThis.fetch })`を束縛する。api-gatewayのリゾルバはコンテナから取得して`assertHuman`を呼ぶ(14.5)。
 - ローカル環境は、Infisicalの`dev`環境の`TURNSTILE_SECRET_KEY`にTurnstileの「常に成功」のテスト用シークレットを置く(14.6)。テストは`fetch`を差し替え、外部へ通信しない。
+- テスト用の秘密鍵の判定結果は画面のウィジェットの操作名ではなく固定の`test`を返すため、`secretKey`が`isTurnstileTestSecretKey`に当たるときだけ、`interpretSiteverify`へ渡す期待値から`action`を除いて操作名を照合しない(14.6、identity-authの実装で見つかった不具合による改訂)。本番・stagingの秘密鍵では照合を弱めない。apiのWorkers統合テストのバインディングの`TURNSTILE_SECRET_KEY`は、通信を全て差し替えるため、テスト用でない任意の値にして操作名の照合を確かめる。
 
 ### apps
 

@@ -11,6 +11,7 @@ import { AppError } from '../../core/errors/app-error.ts';
 import {
   type BotVerificationFailure,
   MAX_TOKEN_LENGTH,
+  TURNSTILE_TEST_SECRET_KEYS,
 } from '../../core/bot-protection/siteverify-result.ts';
 import { ensureLoggingConfigured } from '../logging/configure-logging.ts';
 import {
@@ -328,6 +329,68 @@ describe('createTurnstileVerifier(verify)', () => {
 
     expect(mismatched).toMatchObject({ ok: false, failure: 'action-mismatch' });
     expect(matched.ok).toBe(true);
+  });
+
+  test.each([...TURNSTILE_TEST_SECRET_KEYS])(
+    'テスト用の秘密鍵%sでは、判定結果の操作名が期待と違っても成功する',
+    async (secretKey) => {
+      const fake = respondWith(successBody('test'));
+      const verifier = createTurnstileVerifier(
+        verifierOptions(fake, { secretKey }),
+      );
+
+      const result = await verifier.verify({
+        token: TOKEN,
+        remoteIp: CLIENT_IP,
+        expectedAction: 'login',
+      });
+
+      expect(result).toStrictEqual({
+        ok: true,
+        hostname: HOSTNAME,
+        action: 'test',
+        challengeTs: CHALLENGE_TS,
+      });
+      expect(fake.calls[0]?.body).toMatchObject({ secret: secretKey });
+    },
+  );
+
+  test('テスト用の秘密鍵でも、期待するホスト名と一致しなければhostname-mismatchで失敗する', async () => {
+    const [secretKey] = TURNSTILE_TEST_SECRET_KEYS;
+    const verifier = createTurnstileVerifier(
+      verifierOptions(respondWith(successBody('test')), {
+        secretKey,
+        expectedHostnames: ['admin.launch.example'],
+      }),
+    );
+
+    const result = await verifier.verify({
+      token: TOKEN,
+      remoteIp: CLIENT_IP,
+      expectedAction: 'login',
+    });
+
+    expect(result).toMatchObject({ ok: false, failure: 'hostname-mismatch' });
+  });
+
+  test('テスト用でない秘密鍵では、判定結果の操作名が期待と違えばassertHumanが403のbot_verification_failedを投げる', async () => {
+    const verifier = createTurnstileVerifier(
+      verifierOptions(respondWith(successBody('test'))),
+    );
+
+    const error = await captureRejection(
+      verifier.assertHuman({
+        token: TOKEN,
+        remoteIp: CLIENT_IP,
+        expectedAction: 'login',
+      }),
+    );
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error).toMatchObject({
+      kind: 'forbidden',
+      code: 'bot_verification_failed',
+    });
   });
 
   test('期待するホスト名と一致しなければhostname-mismatchで失敗し、設定値の大文字小文字は区別しない', async () => {

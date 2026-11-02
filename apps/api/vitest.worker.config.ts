@@ -7,9 +7,9 @@ import { workerTestPreset } from '../../config/vitest/worker.ts';
 import { readNestedD1Migrations } from '../../config/vitest/read-nested-d1-migrations.ts';
 import { listUnitTestedSources } from '../../config/vitest/unit-tested-sources.ts';
 
-// Cloudflare Turnstileが公開している、常に成功を返すテスト用のシークレット
-const TURNSTILE_ALWAYS_PASSES_SECRET_KEY =
-  '1x0000000000000000000000000000000AA';
+// 判定サービスへの通信は全て差し替えるため、Turnstileのテスト用の秘密鍵を使わず、本番と同じく操作名を照合させる
+const TURNSTILE_SECRET_KEY_FOR_TESTS =
+  'workers-integration-test-turnstile-secret';
 
 const TEST_HASH_PEPPER = 'test-hash-pepper-for-workers-integration-tests';
 
@@ -20,7 +20,7 @@ export default defineConfig({
       miniflare: {
         bindings: {
           HASH_PEPPER: TEST_HASH_PEPPER,
-          TURNSTILE_SECRET_KEY: TURNSTILE_ALWAYS_PASSES_SECRET_KEY,
+          TURNSTILE_SECRET_KEY: TURNSTILE_SECRET_KEY_FOR_TESTS,
           TEST_MIGRATIONS: await readNestedD1Migrations(
             join(import.meta.dirname, 'db', 'migrations'),
           ),
