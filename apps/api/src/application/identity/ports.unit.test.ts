@@ -4,13 +4,17 @@ import { Container } from 'inversify';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { DisposableEmailStatus } from '../../../lib/core/identity/disposable-email.ts';
 import type { UserLifecycleEvent } from '../../../lib/core/identity/user-lifecycle.ts';
-import { RUN_USER_LIFECYCLE_MESSAGE } from '../../../lib/core/messaging/contracts/identity.ts';
+import {
+  RECHECK_DISPOSABLE_EMAIL_MESSAGE,
+  RUN_USER_LIFECYCLE_MESSAGE,
+} from '../../../lib/core/messaging/contracts/identity.ts';
 import type { MessageContract } from '../../../lib/core/messaging/message-contract.ts';
 import type { SessionTimes } from '../../domain/auth/session-policy.ts';
 import type { AuthTokenPurpose } from '../../domain/identity/auth-token-purpose.ts';
 import type { UserAccountSnapshot } from '../../domain/identity/user-account.ts';
 import type {
   IdentityMessagePublisher,
+  IdentityPublishOptions,
   LimitedMailKind,
   MailSendLimits,
   NewAuthToken,
@@ -25,14 +29,25 @@ import type { RequestMeta } from './request-meta.ts';
 
 const EVENT_ID = '01JC0EVT000000000000000001';
 
+const USER_ID = '01JC0USR000000000000000001';
+
 class RecordingPublisher implements IdentityMessagePublisher {
-  readonly sent: { readonly type: string; readonly body: unknown }[] = [];
+  readonly sent: {
+    readonly type: string;
+    readonly body: unknown;
+    readonly options?: IdentityPublishOptions;
+  }[] = [];
 
   publish<TType extends string, TBody>(
     contract: MessageContract<TType, TBody>,
     body: TBody,
+    options?: IdentityPublishOptions,
   ): Promise<string> {
-    this.sent.push({ type: contract.type, body });
+    this.sent.push(
+      options === undefined
+        ? { type: contract.type, body }
+        : { type: contract.type, body, options },
+    );
     return Promise.resolve(`message-${String(this.sent.length)}`);
   }
 }
@@ -127,6 +142,27 @@ describe('IdentityMessagePublisher', () => {
     expect(id).toBe('message-1');
     expect(publisher.sent).toEqual([
       { type: 'identity.run-user-lifecycle', body: { eventId: EVENT_ID } },
+    ]);
+  });
+
+  test('共通の送信部品と同じ形で、遅延秒数を任意で指定して送れる', async () => {
+    expectTypeOf<IdentityPublishOptions>().toEqualTypeOf<{
+      readonly delaySeconds?: number;
+    }>();
+    const publisher = new RecordingPublisher();
+
+    await publisher.publish(
+      RECHECK_DISPOSABLE_EMAIL_MESSAGE,
+      { userId: USER_ID },
+      { delaySeconds: 900 },
+    );
+
+    expect(publisher.sent).toEqual([
+      {
+        type: 'identity.recheck-disposable-email',
+        body: { userId: USER_ID },
+        options: { delaySeconds: 900 },
+      },
     ]);
   });
 });

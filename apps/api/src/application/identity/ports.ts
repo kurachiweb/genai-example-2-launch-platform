@@ -71,6 +71,7 @@ export interface UserAccountStore {
     token: NewAuthToken,
     session: NewSessionRecord,
   ): Promise<'created' | 'email-in-use' | 'handle-in-use'>;
+  // 確認済みの更新と、同じ利用者の未使用の確認のトークンの削除を1つの一括の書き込みで行う
   markEmailVerified(userId: string, at: Date): Promise<void>;
   saveDisposableStatus(
     userId: string,
@@ -246,11 +247,16 @@ export interface UserLifecycleCommitter {
   commit(transition: UserStateTransition): Promise<UserLifecycleEvent>;
 }
 
+export interface IdentityPublishOptions {
+  readonly delaySeconds?: number;
+}
+
 // application層は共通ライブラリのworkersの送信部品を読み込めないため、PLATFORM_TYPES.MessagePublisherに束縛された部品をこの形で受け取る
 export interface IdentityMessagePublisher {
   publish<TType extends string, TBody>(
     contract: MessageContract<TType, TBody>,
     body: TBody,
+    options?: IdentityPublishOptions,
   ): Promise<string>;
 }
 

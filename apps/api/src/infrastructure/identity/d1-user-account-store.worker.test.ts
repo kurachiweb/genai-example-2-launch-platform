@@ -484,6 +484,21 @@ describe('D1UserAccountStoreの確認と判定の更新', () => {
     expect(await readUser(2)).toMatchObject({ emailVerifiedAt: null });
   });
 
+  test('markEmailVerifiedは同じ利用者の未使用の確認のトークンを削除し、他の用途と他の利用者のトークンを残す', async () => {
+    await insertUser(1);
+    await insertUser(2);
+    await insertTokensOfAllPurposes(1);
+    await insertToken(1, 19, 'email_verification');
+    await insertTokensOfAllPurposes(2);
+
+    await createStore().markEmailVerified(userIdOf(1), after(10));
+
+    expect(await readTokenPurposesOf(1)).toEqual(
+      sortedPurposes(['email_change', 'password_reset', 'password_change']),
+    );
+    expect(await readTokenPurposesOf(2)).toEqual(sortedPurposes(ALL_PURPOSES));
+  });
+
   test('saveDisposableStatusは判定の結果と判定の日時を保存する', async () => {
     await insertUser(1, {
       disposableEmailStatus: 'undetermined',

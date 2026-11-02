@@ -134,10 +134,20 @@ export class D1UserAccountStore implements UserAccountStore {
   }
 
   async markEmailVerified(userId: string, at: Date): Promise<void> {
-    await this.db
-      .update(users)
-      .set({ emailVerifiedAt: at, updatedAt: at })
-      .where(eq(users.id, userId));
+    await this.db.batch([
+      this.db
+        .update(users)
+        .set({ emailVerifiedAt: at, updatedAt: at })
+        .where(eq(users.id, userId)),
+      this.db
+        .delete(userAuthTokens)
+        .where(
+          and(
+            eq(userAuthTokens.userId, userId),
+            eq(userAuthTokens.purpose, 'email_verification'),
+          ),
+        ),
+    ]);
   }
 
   async saveDisposableStatus(

@@ -232,7 +232,7 @@
   - _Depends: 6.1, 7.1_
   - _Requirements: 1.1, 1.3, 1.4, 1.6, 1.7, 1.8, 2.1, 2.5, 2.6, 2.7, 2.8, 2.10_
 
-- [ ] 7.3 (P) メールアドレスの確認と再送、使い捨て判定を作る
+- [x] 7.3 (P) メールアドレスの確認と再送、使い捨て判定を作る
   - 先に、有効なトークンでの確認済みの更新と未使用の失効、無効・退会済みの拒否、再送の確認済み・停止中の扱いと未使用のトークンの失効、判定の保存と「未判定」のときの15分後の判定し直しの依頼を確かめる単体テストを書く
   - 完了状態: 単体テストが成功する
   - _Boundary: EmailVerification, DisposableEmailCheck_
@@ -479,3 +479,4 @@
 - 6.6: `EmailIdentityMailer`(`infrastructure/identity/email-identity-mailer.ts`)は`IDENTITY_TYPES.IdentitySettings`の`clientOrigin`でリンクを組み(8.1で`CLIENT_SITE_ORIGIN`から束縛)、送信の失敗はそのまま投げる(ログに留めるかは各ユースケースが決める)。`BowserDeviceDescriber`はブラウザ名・OS名の片方だけが`null`になり得る(10.7の表示で扱う)。1.1の導入確認のテスト`identity-packages.worker.test.ts`は削除済み
 - 7.1: `apps/api/src/application/identity/`の`StoreSessionIssuer`(`session-issuer.ts`、`USER_SESSION_HASH_PURPOSE`もここ)・`UserSessionVerifier`(`user-session-verifier.ts`)・`StoreAccountGuard`(`account-guard.ts`)。8.1の束縛: `StoreAccountGuard`は処理単位のコンテナで単一(`findById`のPromiseを要求の中で使い回すため)、`AUTH_TYPES.UserSessionVerifier`を`UserSessionVerifier`へ。`currentUser`は退会済みを`undefined`にし`requireUser`系は`unauthenticated`。`SESSION_USER_AGENT_MAX_LENGTH`(application)は`USER_AGENT_MAX_LENGTH`(presentation)と同じ512で、8.1で一致を確かめるテストを加える。エラーの文言(`unauthenticated`・`account_unavailable`・`email_not_verified`)は`account-guard.ts`の定数で、8.2の`errors.ts`で集約する
 - 7.2: `CounterMailSendLimits`(`infrastructure/identity/counter-mail-send-limits.ts`)・`StoreRegistration`(`application/identity/registration.ts`)・`password-rejection.ts`(422 `password_rejected`。7.6・7.7も使う。長さ違反の文言は数値の直書きで、8.2で定数から組み立て、12.2で文言規則へ追記する)。登録はセッションを同じ一括の書き込みに含めるため`session-issuer.ts`の`prepareUserSession`を使う。規則の名前`auth-mail:<種別>:address|ip`は`backend/003`の命名の文(英小文字とハイフン)と合わないため、12.1で`backend/003`を`:`の区切りを認める形に改める。8.1の束縛: `IDENTITY_TYPES.MailSendLimits`→`CounterMailSendLimits`、`IDENTITY_TYPES.Registration`→`StoreRegistration`。6.5の`composition/user-lifecycle-sync-handlers.ts`は8.1で読み込まれるまでWorkers統合テストのカバレッジの閾値(ファイルごと80%)を下回り、CIの検査が失敗するため、8.1で必ず合成ルートから読み込む
+- 7.3: `StoreEmailVerification`(`email-verification.ts`)・`SavingDisposableEmailCheck`(`disposable-email-check.ts`、未判定なら保存→900秒後の判定し直しの依頼→`disposable-email-check-unavailable`の通知)。7.6・7.7は共通部品の`invalidLinkError()`(`invalid-link.ts`)と`prepareAuthToken()`(`auth-token-issuance.ts`)を使う。`IdentityMessagePublisher.publish`は任意の`{ delaySeconds }`を受け取る(design.mdも更新済み)。`D1UserAccountStore.markEmailVerified`は同じ利用者の確認のトークンも消す。8.1の束縛: `IDENTITY_TYPES.EmailVerification`→`StoreEmailVerification`(処理単位)、`DisposableEmailCheck`→`SavingDisposableEmailCheck`、`DisposableEmailChecker`→`createDisifyClient({ appName: 'api', ... })`。文言「このリンクは無効か、有効期限が切れています。」は8.2で集約する

@@ -6,10 +6,6 @@ import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import {
-  AUTH_TOKEN_HASH_PURPOSES,
-  AUTH_TOKEN_TTL_SECONDS,
-} from '../../domain/identity/auth-token-purpose.ts';
-import {
   GENERATED_HANDLE_ALPHABET,
   GENERATED_HANDLE_LENGTH,
 } from '../../domain/identity/handle.ts';
@@ -17,6 +13,7 @@ import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { PasswordPolicy } from '../auth/password-policy.ts';
 import type { PasswordHasher, SecretGenerator } from '../auth/ports.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
+import { prepareAuthToken } from './auth-token-issuance.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import { passwordRejectedError } from './password-rejection.ts';
 import type {
@@ -58,8 +55,6 @@ export const HANDLE_GENERATION_ATTEMPTS = 5;
 interface HandleCandidates {
   next(): Promise<string>;
 }
-
-const MILLISECONDS_PER_SECOND = 1000;
 
 // 作成直後の利用者の版はテーブルの既定値と同じ
 const INITIAL_LIFECYCLE_VERSION = 0;
@@ -130,7 +125,7 @@ export class StoreRegistration implements Registration {
     const passwordHash = await this.passwordHasher.hash(command.password);
     const userId = this.ids.generate();
     const [verification, session] = await Promise.all([
-      this.#prepareVerification(userId, meta.now),
+      prepareAuthToken(this.secrets, userId, 'email_verification', meta.now),
       prepareUserSession(this.secrets, this.ids, userId, meta),
     ]);
     const user = await this.#createUser(
@@ -153,27 +148,6 @@ export class StoreRegistration implements Registration {
       verification.token.expiresAt,
     );
     return { userId, session: session.issued };
-  }
-
-  async #prepareVerification(
-    userId: string,
-    now: Date,
-  ): Promise<{ readonly token: NewAuthToken; readonly plain: string }> {
-    const secret = await this.secrets.issue(
-      AUTH_TOKEN_HASH_PURPOSES.email_verification,
-    );
-    return {
-      plain: secret.plain,
-      token: {
-        userId,
-        purpose: 'email_verification',
-        tokenHash: secret.hash,
-        expiresAt: new Date(
-          now.getTime() +
-            AUTH_TOKEN_TTL_SECONDS.email_verification * MILLISECONDS_PER_SECOND,
-        ),
-      },
-    };
   }
 
   async #createUser(

@@ -1700,7 +1700,7 @@ export interface UserAccountStore {
     token: NewAuthToken,
     session: NewSessionRecord,
   ): Promise<'created' | 'email-in-use' | 'handle-in-use'>; // 1つの一括の書き込み
-  markEmailVerified(userId: string, at: Date): Promise<void>;
+  markEmailVerified(userId: string, at: Date): Promise<void>; // 確認済みの更新と、同じ利用者の未使用の確認のトークンの削除(2.3)
   saveDisposableStatus(
     userId: string,
     status: DisposableEmailStatus,
@@ -1858,10 +1858,14 @@ export interface UserLifecycleCommitter {
   commit(transition: UserStateTransition): Promise<UserLifecycleEvent>; // 版の競合はAppError(conflict, account_state_conflict)
 }
 // application層は共通ライブラリのworkersの送信部品を読み込めないため、PLATFORM_TYPES.MessagePublisherに束縛された部品をこの形で受け取る
+export interface IdentityPublishOptions {
+  readonly delaySeconds?: number; // 確認時の「未判定」の判定し直し(15分後)
+}
 export interface IdentityMessagePublisher {
   publish<TType extends string, TBody>(
     contract: MessageContract<TType, TBody>,
     body: TBody,
+    options?: IdentityPublishOptions,
   ): Promise<string>;
 }
 export type LimitedMailKind =
@@ -2070,6 +2074,7 @@ export interface DisposableEmailCheck {
 
 - `verify`: `consume('email_verification', hash)`→利用者が退会済みなら`invalid_link`→`markEmailVerified`→`DisposableEmailCheck.checkAndSave`。トークンの消費と確認済みの更新は別の書き込みになるため、更新に失敗した場合は再送で回復する(research.md「Design Decisions」)。
 - `resend`: `requireWritableUser`(停止中は拒否)→確認済みなら`already-verified`(2.9)→`MailSendLimits.consume`→`AuthTokenStore.replace`(未使用の確認のトークンを失効、2.4)→送信。
+- `checkAndSave`: `DisposableEmailChecker.check`→`saveDisposableStatus`。`undetermined`なら15分後の判定し直しを依頼し(送信の失敗は`error`ログに留め、日次のジョブが拾う)、`AuthIncidentReporter.report({ kind: 'disposable-email-check-unavailable' })`で運用者へ通知する(`warning`)。確認時とメールアドレス変更時の両方がこれを通る。
 
 #### MailSendLimits
 
