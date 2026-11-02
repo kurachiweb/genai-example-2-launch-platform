@@ -146,3 +146,102 @@ export const RECOVERY_CODE_FORM_SCHEMA: SecondFactorFormSchema = z.object({
     recoveryCode: secondFactorCode(ACCOUNT_FORM_MESSAGES.recoveryCodeRequired),
   }),
 });
+
+// 多要素認証が無効なら現在のパスワードだけ、有効なら認証コードとリカバリコードのうち描いている一方も持つ
+export type ReauthenticationMode = 'password' | 'totp' | 'recovery';
+
+// 全欄の既定値を持ち、描いている欄だけをスキーマに含める
+export interface ReauthenticationFormInput {
+  readonly currentPassword: string;
+  readonly secondFactor?: {
+    readonly totpCode?: string;
+    readonly recoveryCode?: string;
+  };
+}
+
+export type ReauthenticationFormValues =
+  | { readonly currentPassword: string }
+  | {
+      readonly currentPassword: string;
+      readonly secondFactor: { readonly totpCode: string };
+    }
+  | {
+      readonly currentPassword: string;
+      readonly secondFactor: { readonly recoveryCode: string };
+    };
+
+const REAUTHENTICATION_SHAPES = Object.freeze({
+  password: z.object({ currentPassword }),
+  totp: z.object({
+    currentPassword,
+    secondFactor: z.object({
+      totpCode: secondFactorCode(ACCOUNT_FORM_MESSAGES.totpCodeRequired),
+    }),
+  }),
+  recovery: z.object({
+    currentPassword,
+    secondFactor: z.object({
+      recoveryCode: secondFactorCode(
+        ACCOUNT_FORM_MESSAGES.recoveryCodeRequired,
+      ),
+    }),
+  }),
+});
+
+const byMode = <TSchema>(
+  build: (mode: ReauthenticationMode) => TSchema,
+): Readonly<Record<ReauthenticationMode, TSchema>> =>
+  Object.freeze({
+    password: build('password'),
+    totp: build('totp'),
+    recovery: build('recovery'),
+  });
+
+export type WithdrawalFormInput = ReauthenticationFormInput;
+
+export type WithdrawalFormSchema = z.ZodType<
+  ReauthenticationFormValues,
+  WithdrawalFormInput
+>;
+
+export const WITHDRAWAL_FORM_SCHEMAS = byMode<WithdrawalFormSchema>(
+  (mode) => REAUTHENTICATION_SHAPES[mode],
+);
+
+export interface EmailChangeFormInput {
+  readonly newEmail: string;
+  readonly reAuthentication: ReauthenticationFormInput;
+}
+
+export type EmailChangeFormSchema = z.ZodType<
+  {
+    readonly newEmail: string;
+    readonly reAuthentication: ReauthenticationFormValues;
+  },
+  EmailChangeFormInput
+>;
+
+export const EMAIL_CHANGE_FORM_SCHEMAS = byMode<EmailChangeFormSchema>((mode) =>
+  z.object({
+    newEmail: email,
+    reAuthentication: REAUTHENTICATION_SHAPES[mode],
+  }),
+);
+
+export interface PasswordChangeFormInput {
+  readonly newPassword: string;
+  readonly reAuthentication: ReauthenticationFormInput;
+}
+
+export type PasswordChangeFormSchema = z.ZodType<
+  {
+    readonly newPassword: string;
+    readonly reAuthentication: ReauthenticationFormValues;
+  },
+  PasswordChangeFormInput
+>;
+
+export const PASSWORD_CHANGE_FORM_SCHEMAS = byMode<PasswordChangeFormSchema>(
+  (mode) =>
+    z.object({ newPassword, reAuthentication: REAUTHENTICATION_SHAPES[mode] }),
+);

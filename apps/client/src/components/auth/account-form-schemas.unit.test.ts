@@ -1,12 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  EMAIL_CHANGE_FORM_SCHEMAS,
   LOGIN_FORM_SCHEMA,
+  PASSWORD_CHANGE_FORM_SCHEMAS,
   PASSWORD_RESET_FORM_SCHEMA,
   PASSWORD_RESET_REQUEST_FORM_SCHEMA,
   RECOVERY_CODE_FORM_SCHEMA,
   REGISTER_FORM_SCHEMA,
   TOTP_CODE_FORM_SCHEMA,
+  WITHDRAWAL_FORM_SCHEMAS,
 } from './account-form-schemas.ts';
 
 const VALID_PASSWORD = ['pitch', 'notes', 'launch'].join('-');
@@ -203,5 +206,100 @@ describe('PASSWORD_RESET_FORM_SCHEMA', () => {
       PASSWORD_RESET_FORM_SCHEMA.safeParse({ newPassword: 'a'.repeat(length) })
         .success,
     ).toBe(true);
+  });
+});
+
+const REAUTHENTICATION_INPUT = Object.freeze({
+  currentPassword: VALID_PASSWORD,
+  secondFactor: { totpCode: '123456', recoveryCode: 'abcd-efgh' },
+});
+
+describe('本人確認の欄を持つスキーマ', () => {
+  test.each([
+    ['password', { currentPassword: VALID_PASSWORD }],
+    [
+      'totp',
+      { currentPassword: VALID_PASSWORD, secondFactor: { totpCode: '123456' } },
+    ],
+    [
+      'recovery',
+      {
+        currentPassword: VALID_PASSWORD,
+        secondFactor: { recoveryCode: 'abcd-efgh' },
+      },
+    ],
+  ] as const)(
+    '退会のスキーマは、%sの本人確認では描いている欄だけを出力する',
+    (mode, expected) => {
+      expect(
+        WITHDRAWAL_FORM_SCHEMAS[mode].parse(REAUTHENTICATION_INPUT),
+      ).toEqual(expected);
+    },
+  );
+
+  test('メールアドレス変更のスキーマは、新しいメールアドレスの前後の空白を除き、本人確認を入れ子で出力する', () => {
+    expect(
+      EMAIL_CHANGE_FORM_SCHEMAS.totp.parse({
+        newEmail: ' new@launch.example ',
+        reAuthentication: REAUTHENTICATION_INPUT,
+      }),
+    ).toEqual({
+      newEmail: 'new@launch.example',
+      reAuthentication: {
+        currentPassword: VALID_PASSWORD,
+        secondFactor: { totpCode: '123456' },
+      },
+    });
+  });
+
+  test('パスワード変更のスキーマは、多要素認証が無効なら第2要素を出力しない', () => {
+    expect(
+      PASSWORD_CHANGE_FORM_SCHEMAS.password.parse({
+        newPassword: VALID_PASSWORD,
+        reAuthentication: REAUTHENTICATION_INPUT,
+      }),
+    ).toEqual({
+      newPassword: VALID_PASSWORD,
+      reAuthentication: { currentPassword: VALID_PASSWORD },
+    });
+  });
+
+  test.each([
+    [
+      '空の現在のパスワード',
+      { currentPassword: '', secondFactor: { totpCode: '123456' } },
+      'パスワードを入力してください。',
+    ],
+    [
+      '空の認証コード',
+      { currentPassword: VALID_PASSWORD, secondFactor: { totpCode: ' ' } },
+      '認証コードを入力してください。',
+    ],
+  ])('退会のスキーマは%sを拒否する', (_name, input, message) => {
+    expect(messagesOf(WITHDRAWAL_FORM_SCHEMAS.totp.safeParse(input))).toEqual([
+      message,
+    ]);
+  });
+
+  test('メールアドレス変更のスキーマは空の新しいメールアドレスを拒否する', () => {
+    expect(
+      messagesOf(
+        EMAIL_CHANGE_FORM_SCHEMAS.password.safeParse({
+          newEmail: '',
+          reAuthentication: { currentPassword: VALID_PASSWORD },
+        }),
+      ),
+    ).toEqual(['メールアドレスを入力してください。']);
+  });
+
+  test('パスワード変更のスキーマは7文字の新しいパスワードを拒否する', () => {
+    expect(
+      messagesOf(
+        PASSWORD_CHANGE_FORM_SCHEMAS.password.safeParse({
+          newPassword: 'a'.repeat(7),
+          reAuthentication: { currentPassword: VALID_PASSWORD },
+        }),
+      ),
+    ).toEqual(['パスワードは8文字以上128文字以内で入力してください。']);
   });
 });

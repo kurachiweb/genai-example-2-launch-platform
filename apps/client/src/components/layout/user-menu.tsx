@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from '@tanstack/react-router';
+import { Link, useRouter } from '@tanstack/react-router';
 import { LogOutIcon, PackageIcon, SettingsIcon, UserIcon } from 'lucide-react';
 
 import { notify } from '../../../lib/components/feedback/notify.ts';
@@ -100,10 +100,10 @@ export function UserMenu({ viewer }: UserMenuProps) {
           </PathLink>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <PathLink href={SETTINGS_LINK.href}>
+          <Link to="/settings">
             <SettingsIcon aria-hidden="true" />
             {SETTINGS_LINK.label}
-          </PathLink>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={handleLogout}>
