@@ -304,3 +304,13 @@
 
 - **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
 - 要件と受け入れ基準は変えていない。
+
+## 層の規則に合わせた契約の置き場所の改訂(2026-11-02、開発者の指示)
+
+- **規則**: [層構成の依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析)により、api・eventの`src/application/**`・`src/domain/**`は`**/lib/workers/**`を型も含めて読み込めない。application層が受け取る契約と識別子は`apps/backend-lib/core/<ドメイン>`に置き、`workers/<ドメイン>`には実装と束縛だけを置く。application層はデータベースの接続・SQLの文・一括の書き込みを扱わない。`workers`の部品(メッセージの送信・厳密カウンタ)は自前のポートで受け取り、厳密カウンタを使うクラスはinfrastructure層に置く。
+- **移した契約**: `DataExportStore`・`DataExportRecord`・`ClaimResult`・`ExportArchiveStorage`・`MultipartArchiveUpload`・`StoredArchive`・`DataExportNotifier`・`DataExportTerminator`を`core/data-export/ports.ts`へ、`DATA_EXPORT_PLATFORM_TYPES`を`core/data-export/identifiers.ts`(`identifiers.unit.test.ts`で値と凍結を確かめる)へ移した。`workers/data-export`には実装`D1DataExportStore`・`R2ExportArchiveStorage`・`EmailDataExportNotifier`・`StoreDataExportTerminator`と`DATA_EXPORT_PLATFORM_MODULE`だけを置く。
+- **R2の型の除去**: `StoredArchive.httpMetadata: R2HTTPMetadata`をcoreの`StoredArchiveMeta`(`contentType`・`contentDisposition`・`cacheControl`)に置き換えた(media-pipelineの`core/media/ports.ts`の`StoredObjectMeta`と同じ考え方)。ダウンロードの経路は`writeHttpMetadata`を使わず、写しから`Content-Type`・`Content-Disposition`・`Cache-Control`を付ける。
+- **新しいポートと実装**: apiのapplication層に`DataExportMessagePublisher`(`@inject(PLATFORM_TYPES.MessagePublisher)`で受け取る、media-pipelineの`MediaJobMessagePublisher`と同じ形)と`DataExportRequestLimits`を置き、infrastructure層に厳密カウンタを使う`CounterDataExportRequestLimits`と`DATA_EXPORT_REQUEST_RULE`を置いた(identity-authの`CounterMailSendLimits`と同じ形)。
+- **上流の出力用の部品**: 19の部品の契約と識別子は所有する各specの`core/<ドメイン>`から読み込む(engagementの`RatingExportRecord`は`core/engagement`、inquiry-chatの`InquiryExport`は`core/inquiry`。束縛はinquiry-chatだけeventの`inquiry-module.ts`)。各specの移動は並行して行われる。
+- **変えた箇所**: design.mdのOverviewのImpact、This Spec Owns、Allowed Dependencies、Revalidation Triggers、上流への影響(engagement)、Existing Architecture Analysis、Architecture Integration、Dependency direction、File Structure Planの木、要求の受け付けの流れ、Requirements Traceability(2.1)、Componentsの表、`backend-lib/core・workers`の節(識別子・実装の宣言・`StoredArchiveMeta`)、apiの回数制限と送信のポート・ジョブの依存・ダウンロードの経路、eventの依存、Testing Strategy。tasks.mdの4.1・4.3・5.1・5.4・6.1。
+- 要件と受け入れ基準は変えていない。タスクの番号は変えていない。
