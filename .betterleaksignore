@@ -7,6 +7,11 @@
 .kiro/specs/admin-foundation/design.md:generic-password:1018
 .kiro/specs/admin-foundation/design.md:generic-password:1022
 .kiro/specs/admin-foundation/design.md:generic-password:1044
-apps/api/bun.lock:generic-password:378
-apps/client/bun.lock:generic-password:394
-apps/admin/bun.lock:generic-password:394
+.kiro/specs/identity-auth/design.md:generic-password:2533
+.kiro/specs/identity-auth/design.md:generic-password:2539
+.kiro/specs/identity-auth/design.md:generic-password:2544
+.kiro/specs/identity-auth/design.md:generic-password:2552
+.kiro/specs/identity-auth/design.md:generic-password:2559
+apps/api/bun.lock:generic-password:392
+apps/client/bun.lock:generic-password:473
+apps/admin/bun.lock:generic-password:473
