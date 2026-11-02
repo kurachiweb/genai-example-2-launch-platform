@@ -1,6 +1,3 @@
-import { LOGIN_LABEL, REGISTER_LABEL } from '../auth/account-messages.ts';
-import { LOGIN_PATH, REGISTER_PATH } from '../auth/login-href.ts';
-
 export interface SiteLink {
   readonly href: string;
   readonly label: string;
@@ -17,6 +14,10 @@ export const DIRECTORY_HREF = '/p';
 
 export const CONTACT_HREF = '/contact';
 
+export const TERMS_HREF = '/terms';
+
+export const PRIVACY_HREF = '/privacy';
+
 export const MAIN_NAVIGATION_LABEL = 'メイン';
 
 export const MENU_LABEL = 'メニュー';
@@ -29,16 +30,6 @@ export const PRIMARY_NAVIGATION_LINKS: readonly SiteLink[] = Object.freeze([
 export const LAUNCH_LABEL = 'ローンチする';
 
 export const NEW_PRODUCT_HREF = '/my/products/new';
-
-export const LOGIN_LINK: SiteLink = Object.freeze({
-  href: LOGIN_PATH,
-  label: LOGIN_LABEL,
-});
-
-export const REGISTER_LINK: SiteLink = Object.freeze({
-  href: REGISTER_PATH,
-  label: REGISTER_LABEL,
-});
 
 export const PROFILE_LABEL = 'プロフィール';
 
@@ -69,8 +60,8 @@ export const FOOTER_HELP_TOP_LINK: SiteLink = Object.freeze({
 export const FOOTER_POLICY_NAVIGATION_LABEL = '規約・問い合わせ';
 
 export const FOOTER_POLICY_LINKS: readonly SiteLink[] = Object.freeze([
-  { href: '/terms', label: '利用規約' },
-  { href: '/privacy', label: 'プライバシーポリシー' },
+  { href: TERMS_HREF, label: '利用規約' },
+  { href: PRIVACY_HREF, label: 'プライバシーポリシー' },
   { href: '/legal', label: '法的通知' },
   { href: '/pricing', label: '料金' },
   { href: CONTACT_HREF, label: 'お問い合わせ' },

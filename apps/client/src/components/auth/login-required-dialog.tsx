@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { type RefObject, useRef } from 'react';
 
 import { Button } from '../../../lib/components/ui/button/button.tsx';
@@ -7,9 +8,7 @@ import { DialogDescription } from '../../../lib/components/ui/dialog/dialog-desc
 import { DialogFooter } from '../../../lib/components/ui/dialog/dialog-footer.tsx';
 import { DialogHeader } from '../../../lib/components/ui/dialog/dialog-header.tsx';
 import { DialogTitle } from '../../../lib/components/ui/dialog/dialog-title.tsx';
-import { PathLink } from '../navigation/path-link.tsx';
 import { LOGIN_LABEL, REGISTER_LABEL } from './account-messages.ts';
-import { loginHrefFor, REGISTER_PATH } from './login-href.ts';
 
 export interface LoginRequiredDialogProps {
   readonly open: boolean;
@@ -51,10 +50,12 @@ export function LoginRequiredDialog({
         </DialogHeader>
         <DialogFooter>
           <Button asChild variant="outline">
-            <PathLink href={REGISTER_PATH}>{REGISTER_LABEL}</PathLink>
+            <Link to="/auth/register">{REGISTER_LABEL}</Link>
           </Button>
           <Button asChild>
-            <PathLink href={loginHrefFor(returnTo)}>{LOGIN_LABEL}</PathLink>
+            <Link to="/auth/login" search={{ redirect: returnTo }}>
+              {LOGIN_LABEL}
+            </Link>
           </Button>
         </DialogFooter>
       </DialogContent>

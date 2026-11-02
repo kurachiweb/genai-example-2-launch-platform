@@ -1,7 +1,6 @@
 import { redirect } from '@tanstack/react-router';
 
 import type { ClientViewer } from '../../graphql/viewer.ts';
-import { loginHrefFor } from './login-href.ts';
 
 export interface RequireViewerInput {
   readonly context: { readonly viewer: ClientViewer | null };
@@ -19,7 +18,8 @@ export function requireViewer({
 }: RequireViewerInput): AuthenticatedContext {
   if (context.viewer === null) {
     throw redirect({
-      href: loginHrefFor(`${location.pathname}${location.searchStr}`),
+      to: '/auth/login',
+      search: { redirect: `${location.pathname}${location.searchStr}` },
     });
   }
   return { viewer: context.viewer };
