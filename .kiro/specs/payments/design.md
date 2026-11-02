@@ -6,7 +6,7 @@
 
 **Users**: 投稿者は申込の画面から決済画面(`/checkout/{購入ID}`)へ進み、最終確認画面の事項を確かめ同意して支払い、決済後のランディング(`/checkout/return`)で結果を見る。利用者は`/settings/billing`で決済履歴を見る。後続spec(tournament-week・tournament-year・sponsorship・ultras-subscription)の開発者は、購入種別の口と返金の部品・価格の照会・定期課金の状態の受け取り口を実装または利用する。運用者はStripeのダッシュボードで手動の返金・チャージバックに対応し、手順書に沿って環境を設定する。
 
-**Impact**: `apps/backend-lib`に決済の共有部品(`core/payments`・`workers/payments`)を新設し、apiとeventの両方に同じ束縛(`PAYMENTS_PLATFORM_MODULE`)を入れる。apiに決済のスキーマモジュール・回数制限・突合と日次の確認のジョブを、eventにWebhookの経路・返金の実行・ユーザーライフサイクルの波及処理・メールのテンプレートを、clientに決済画面・決済後のランディング・決済履歴の画面を足す。D1に7テーブルを足し、Stripeのシークレットと変数を3つのWorkerへ加える。
+**Impact**: `apps/backend-lib`に決済の共有部品(`core/payments`はapi・eventのapplication層と後続specが受け取る契約・識別子と純粋な規則、`workers/payments`はStripe・D1の実装と、D1の文を返す契約と反映)を新設し、apiとeventの両方に同じ束縛(`PAYMENTS_PLATFORM_MODULE`)を入れる。apiに決済のスキーマモジュール・回数制限(infrastructure層)・突合と日次の確認のジョブを、eventにWebhookの経路・返金の実行・ユーザーライフサイクルの波及処理・メールのテンプレートを、clientに決済画面・決済後のランディング・決済履歴の画面を足す。D1に7テーブルを足し、Stripeのシークレットと変数を3つのWorkerへ加える。
 
 ### Goals
 
@@ -29,10 +29,11 @@
 
 - 決済のデータ: `payment_customers`・`payment_purchases`・`payment_records`(決済履歴)・`payment_refunds`・`payment_stripe_objects`・`payment_price_snapshots`・`payment_batch_guards`の7テーブル(`apps/db/schema/payments/`)。
 - Stripeとの通信のすべて(`StripeGateway`)。Customer・決済セッション・返金・価格・定期課金の解約とCustomer Portalのセッション(後続specが使う操作を含む)・Webhookの署名の検証。API版`2026-09-30.endive`の固定。
-- 購入種別の定義(`apps/common-lib/payments/`)と、購入種別の口(`PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseFulfillment`)、定期課金の状態の受け取り口(`SubscriptionEventSink`)の契約と登録箇所。
+- 購入種別の定義(`apps/common-lib/payments/`)と、購入種別の口の契約と登録箇所。購入の可否と内容の側(`PurchaseOfferRegistration`・`PurchaseOfferPolicy`・`PurchaseKindRegistry`・`SubscriptionChange`)は`apps/backend-lib/core/payments/purchase-kind-contract.ts`、D1の文を返す側(`PurchaseKindRegistration`・`PurchaseFulfillment`・`FulfillmentPlan`・定期課金の状態の受け取り口`SubscriptionEventSink`)は`apps/backend-lib/workers/payments/fulfillment-contract.ts`に置く。
+- api・eventのapplication層と後続specが受け取る契約(`core/payments/ports.ts`)とDIの識別子`PAYMENTS_TYPES`(`core/payments/identifiers.ts`)。D1の文を返す契約(各ストアの文・`GuardedBatch`・`PaymentRefundStatements`、`workers/payments/statement-contracts.ts`)は`workers`に置き、`workers`と各アプリの`infrastructure`だけが使う。
 - 反映の処理(`PaymentReflector`)と、その入口(Webhookの経路・`return_url`の確定・突合・日次の確認)。
 - 返金の共通部品(`PaymentRefunds`)と返金の実行(`payments.refund-payment`の処理)、未完了の決済セッションの失効の口(`OpenCheckoutExpirer`)。
-- 決済の開始(`CheckoutStarter`)・回数制限(`CheckoutStartLimits`)・価格の照会(`PriceCatalog`)・決済履歴の照会(`PaymentHistoryReader`・`PaymentHistoryExport`)・収益の照会(`PaymentRevenueReport`・`RevenuePeriod`。ugc-moderationの週ごとの統計が使う。仮7)。
+- 決済の開始(`CheckoutStarter`、購入の作成と置き換えの書き込みの単位はapplication層のポート`CheckoutPurchaseWriter`とinfrastructure層の実装`D1CheckoutPurchaseWriter`)・回数制限(application層のポート`CheckoutStartLimits`とinfrastructure層の実装`CounterCheckoutStartLimits`)・物理削除の書き込みの単位(eventのapplication層のポート`PaymentAccountDataEraser`とinfrastructure層の実装`D1PaymentAccountDataEraser`)・価格の照会(`PriceCatalog`)・決済履歴の照会(`PaymentHistoryReader`・`PaymentHistoryExport`)・収益の照会(`PaymentRevenueReport`・`RevenuePeriod`。ugc-moderationの週ごとの統計が使う。仮7)。
 - GraphQLのスキーマモジュール`payments`(型`Money`・`CheckoutStart`・`Checkout`・`PaymentRecord`を含む)。
 - 利用者側の`/checkout/{購入ID}`・`/checkout/return`・`/settings/billing`と、通貨の表示部品`MoneyText`(frontend-lib)。同意のチェックボックスの部品`Checkbox`はidentity-authが新設したfrontend-libの部品を使い、本specは作らない。
 - メールの種別`payments.purchase-confirmation`・`payments.automatic-refund`とテンプレート。
@@ -51,20 +52,21 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`・`MessagePublisher`・`RateLimitCounterClient`)・`ScheduledJobDefinition`・`defineMessageContract`・`MessageHandlerRegistration`・`RetryPolicy`・`hashRateLimitKey`・`excludePath`・`AppError`・`validateEnv`・`platformEnvShape`・`getAppLogger`・業務時刻の関数・`ulidPrimaryKey`・`timestamps`。形を変えない。
+- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`・`MessagePublisher`・`RateLimitCounterClient`)・`ScheduledJobDefinition`・`defineMessageContract`・`MessageHandlerRegistration`・`RetryPolicy`・`hashRateLimitKey`・`excludePath`・`AppError`・`validateEnv`・`platformEnvShape`・`getAppLogger`・業務時刻の関数・`ulidPrimaryKey`・`timestamps`。形を変えない。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めず、DBの接続・SQLの文・一括の書き込みを扱わない(`config/eslint/backend-layers.ts`、`docs/GUIDES/tech/backend/002`)。そのため`MessagePublisher`は`workers/payments`の実装だけが使い、`RateLimitCounterClient`はinfrastructure層の`CounterCheckoutStartLimits`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。bot判定は、application層が受け取る`humanCheck`(presentation層が`GraphQLContext.assertHuman`を渡す)で行う。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`assertHuman`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`toConnection`・`DateTime`のスカラー。形を変えない。
-- identity-auth: `AccountGuard`(`requireUser`・`requireVerifiedUser`)・`CurrentUser`・`UserRecord.pseudonymousId`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`AuthenticatedContext`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・frontend-libの`Checkbox`(`apps/frontend-lib/components/ui/checkbox/checkbox.tsx`、identity-authのタスク10.4が新設するshadcn/uiのCheckbox。決済画面の同意に使う)・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、`apps/backend-lib/workers/identity`、api・eventの両方にidentity-authが束縛する。メールの宛先の照会に使う)。`users`テーブルは`id`(外部キーの参照先)だけに使い、列を直接読まず、書き込まない。
+- identity-auth: `AccountGuard`(`requireUser`・`requireVerifiedUser`)・`CurrentUser`・`UserRecord.pseudonymousId`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`AuthenticatedContext`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・frontend-libの`Checkbox`(`apps/frontend-lib/components/ui/checkbox/checkbox.tsx`、identity-authのタスク10.4が新設するshadcn/uiのCheckbox。決済画面の同意に使う)・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`。契約と識別子は`apps/backend-lib/core/identity`、D1の実装は`apps/backend-lib/workers/identity`で、api・eventの両方にidentity-authが束縛する。メールの宛先の照会に使う)。`users`テーブルは`id`(外部キーの参照先)だけに使い、列を直接読まず、書き込まない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
 - frontend-platform: `CLIENT_SECURITY_POLICY`・`SecurityPolicySources`・`PublicRuntimeConfig`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`buildPageHead`・`DateTime`・`RelativeTime`・`NumberText`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`。
 - legal-pages: `LEGAL_DOCUMENT_PATHS`(`apps/common-lib/legal/legal-documents.ts`)。
 - infra-delivery: Wranglerの`secrets.required`・`vars`の3環境への記載、Infisicalのキーの表(`docs/onboardings/project-values.md`)、改訂1のWorkerごとのフォルダ(`/workers/api`・`/workers/event`。同じキーの`/`の値より優先される)と`WORKER_SCOPED_SECRETS`(`STRIPE_API_KEY`を含み、`/`の値を使わない)、ローカルの起動の`run-with-secrets --scope local --worker <api|event>`(仮7)。
 - npmパッケージ: `stripe` 23.0.x(api・event)、`@stripe/stripe-js` 10.0.x・`@stripe/react-stripe-js` 7.0.0(client)。版は実装時に公開から2週間を過ぎた最新のパッチ版に完全固定する(Q6)。
-- 後続specは、本specの`core/payments`・`workers/payments`の公開の契約(`PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseFulfillment`・`SubscriptionEventSink`・`PaymentRefunds`・`OpenCheckoutExpirer`・`PriceCatalog`・`PaymentHistoryExport`・`PaymentRevenueReport`・`StripeGateway`のうち定期課金の操作・`CustomerDirectory`)と、それとは別にapiのアプリケーション層(`apps/api/src/application/payments/`)の`CheckoutStarter`(apiの決済モジュールが束縛し、apiの後続specだけが呼ぶ)だけに依存し、テーブルを直接読み書きしない。data-exportも決済履歴のテーブルを直接読まず、本specが所有するエクスポート部品`PaymentHistoryExport`を呼ぶ。
+- 後続specは、本specの`core/payments`の公開の契約と識別子(`PurchaseOfferRegistration`・`PurchaseOfferPolicy`・`SubscriptionChange`・`PaymentRefunds`・`OpenCheckoutExpirer`・`PriceCatalog`・`PaymentHistoryExport`・`PaymentRevenueReport`・`StripeGateway`のうち定期課金の操作・`CustomerDirectory`・`PAYMENTS_TYPES`)と、`workers/payments`のD1の文を返す公開の契約(`PurchaseKindRegistration`・`PurchaseFulfillment`・`FulfillmentPlan`・`SubscriptionEventSink`・`PaymentRefundStatements`)と、それとは別にapiのアプリケーション層(`apps/api/src/application/payments/`)の`CheckoutStarter`(apiの決済モジュールが束縛し、apiの後続specだけが呼ぶ)だけに依存し、テーブルを直接読み書きしない。後続specのapplication層は`core/payments`だけを読み込み、`workers/payments`の契約は後続specの`workers/<ドメイン>`と各アプリの`infrastructure`だけが読み込む。data-exportも決済履歴のテーブルを直接読まず、本specが所有するエクスポート部品`PaymentHistoryExport`を呼ぶ。
 
 ### Revalidation Triggers
 
 - `PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseFulfillment`・`FulfillmentPlan`・`FulfillablePurchase`の形、権利の付与の文を反映と同じ一括の書き込みで確定する規則、`afterCommit`を確定させた側だけが1回呼ぶ規則(U1)(tournament-week・tournament-year・sponsorship・ultras-subscription)。
 - `SubscriptionEventSink`・`SubscriptionChange`の形(`cancelAt`・`afterCommit`を含む、U1)と、古い通知を捨てる規則(ultras-subscription)。
+- 契約の置き場所: 購入の可否と内容の側・`PaymentRefunds`(`request`・`dispatch`)・`OpenCheckoutExpirer`・`PaymentReflector`・`StripeWebhookVerifier`・`PurchaseNotifier`・各ストアの文を返さない操作・`PAYMENTS_TYPES`は`core/payments`、D1の文を返す側(`PurchaseKindRegistration`・`PurchaseFulfillment`・`FulfillmentPlan`・`SubscriptionEventSink`・`PaymentRefundStatements`・各ストアの文・`GuardedBatch`)は`workers/payments`。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、application層が受け取る契約を`workers`へ戻さない。`core/payments`は`Database`・`BatchItem`を読み込まない。置き場所を変えたら、`workers/payments`の契約を実装する後続spec(tournament-week・tournament-year・sponsorship・ultras-subscription)を確かめ直す。
 - `PaymentRefunds`・`OpenCheckoutExpirer`の形・依頼キーの規則・返金の理由の値(tournament-week・tournament-year・ultras-subscription・ugc-moderation・sponsorship)。
 - `PURCHASE_KINDS`の値と`payment_records`の`kind`・`purpose`・`status`の値(data-export・ugc-moderation・後続spec)。`payments.json`の形はデータエクスポートの文書と一致させる。
 - 本specが所有・実装する収益の照会`PaymentRevenueReport`・`RevenuePeriod`(`core/payments/ports.ts`、実装`workers/payments/d1-payment-revenue-report.ts`、DIの識別子`PAYMENTS_TYPES.PaymentRevenueReport`、`PAYMENTS_PLATFORM_MODULE`での束縛)の形と純収益の定義(ugc-moderationが週ごとの統計の純収益に使う)。`payment_records`の`kind`・`status`・`purpose`の値の意味、`amount`の符号の規則(返金とチャージバックの損失を負の値で記録する)、`occurred_at`の意味、疎通確認の`payments_smoke`の扱い、チャージバックの段階ごとの記録の規則を変えるときは、`PaymentRevenueReport`の集計と、それを使うugc-moderationの統計を確かめ直す(仮7)。
@@ -82,7 +84,7 @@
 ### Existing Architecture Analysis
 
 - 上流の11specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする(roadmapの順でlegal-pagesまでが先に実装される)。
-- apiとeventは`backend-lib`を`lib/`として共有し、層は`domain`・`application`・`infrastructure`・`presentation`・`composition`で、依存の方向は静的解析で強制される。共有の束縛は`backend-lib/workers/<ドメイン>`のモジュールを両アプリの`composition/modules.ts`へ入れる(email-deliveryの`EMAIL_PLATFORM_MODULE`の前例)。
+- apiとeventは`backend-lib`を`lib/`として共有し、層は`domain`・`application`・`infrastructure`・`presentation`・`composition`で、依存の方向は静的解析で強制される。共有の束縛は`backend-lib/workers/<ドメイン>`のモジュールを両アプリの`composition/modules.ts`へ入れる(email-deliveryの`EMAIL_PLATFORM_MODULE`の前例)。application層は`**/lib/workers/**`を型も含めて読み込めないため、application層が受け取る契約と識別子は`backend-lib/core/<ドメイン>`に置く(email-deliveryの`core/email`・media-pipelineの`core/media`・identity-authの`core/identity`の前例)。application層はDBの接続・SQLの文・一括の書き込みを扱わず、書き込みの単位をポートにしてinfrastructure層で実装する(`docs/GUIDES/tech/backend/002`)。
 - Cron Triggersはapiだけにあり、ジョブは業務時刻の時・分で毎日動く。厳密カウンタはapiだけに束縛される。Queuesのconsumerはeventにある。
 - D1は`db.transaction()`を使えない。状態の前進と関連の書き込みは、版の検査付きの一括の書き込み(legal-pages・identity-authの方式、`db/005`)で同時に確定する。
 - 利用者側のCSPはアプリ全体に掛かり、許可先は`https://<ホスト>`の形だけである。
@@ -154,7 +156,7 @@ graph TB
 - New components rationale: 反映の入口が2つのWorkerにまたがるため、反映・ゲートウェイ・ストアを`backend-lib`に置く。購入種別ごとの差は口の登録に閉じ込める。
 - Steering compliance: Inversifyの`@inject`の明示、D1の制約、Infisicalでのシークレット管理、`compatibility_date`、業務時刻(UTC-08:00)、800行以内のファイル。
 
-**Dependency direction**: `apps/db/schema/payments` → `apps/common-lib/payments` → `backend-lib/core/payments`(純粋な規則・契約) → `backend-lib/workers/payments`(Stripe・D1の実装と反映) → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。後続specの口の実装は`backend-lib/workers/<ドメイン>`に置き、`backend-lib/core/payments`の契約だけを読み込む。`backend-lib/workers/payments`は後続specのファイルを読み込まず、登録箇所(`purchase-kind-registrations.ts`)だけが後続specの実装を集める。clientは`common-lib/payments`とGraphQLの操作だけを読み込む。
+**Dependency direction**: `apps/db/schema/payments` → `apps/common-lib/payments` → `backend-lib/core/payments`(純粋な規則・application層が受け取る契約・識別子。`Database`・`BatchItem`・`workers`・`apps/db`を読み込まない) → `backend-lib/workers/payments`(Stripe・D1の実装と反映、D1の文を返す契約。`Database`・`BatchItem`を読み込める) → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。api・eventの`application/payments`は`core/payments`だけを読み込み、`**/lib/workers/**`を型も含めて読み込まない。D1の文を返す契約(`workers/payments/fulfillment-contract.ts`・`statement-contracts.ts`)を使うのは`workers/payments`と各アプリの`infrastructure/payments`(`D1CheckoutPurchaseWriter`・`D1PaymentAccountDataEraser`)だけである。後続specの口の実装は`backend-lib/workers/<ドメイン>`に置き、`backend-lib/core/payments`の契約と`workers/payments/fulfillment-contract.ts`・`statement-contracts.ts`の契約だけを読み込む。`backend-lib/workers/payments`は後続specのファイルを読み込まず、登録箇所(`purchase-kind-registrations.ts`)だけが後続specの実装を集める。clientは`common-lib/payments`とGraphQLの操作だけを読み込む。
 
 ### Technology Stack
 
@@ -191,11 +193,11 @@ apps/
 │   ├── checkout-consent.ts                          # 同意の文言と版CHECKOUT_CONSENT_VERSION
 │   └── money.ts                                     # 最小通貨単位の整数とUSDの表示用の値
 ├── backend-lib/
-│   ├── core/payments/                               # 純粋な契約と規則(Bunの単体テスト)
-│   │   ├── identifiers.ts                           # PAYMENTS_TYPES(PaymentRevenueReportを含む)
-│   │   ├── purchase-kind-contract.ts                # PurchaseKindRegistration・PurchaseOfferPolicy・PurchaseFulfillment・SubscriptionEventSink
-│   │   ├── purchase-kind-registry.ts                # 登録の検証と購入種別からの解決
-│   │   ├── ports.ts                                 # StripeGateway・各ストア・PaymentRefunds・PriceCatalog・CustomerDirectory・PaymentHistoryExport・PaymentRevenueReport・RevenuePeriod
+│   ├── core/payments/                               # api・eventのapplication層と後続specが読み込む契約と純粋な規則(Bunの単体テスト。Database・BatchItemを読み込まない)
+│   │   ├── identifiers.ts                           # PAYMENTS_TYPES(Symbol.for('payments.<名前>')の凍結したオブジェクト、identifiers.unit.test.ts)
+│   │   ├── purchase-kind-contract.ts                # 購入の可否と内容の側: PaymentsEnv・PurchaseOfferPolicy・PurchaseOfferRegistration・FulfillablePurchase・SubscriptionChange・PurchaseKindRegistry(型だけ)
+│   │   ├── purchase-kind-registry.ts                # 登録の検証と購入種別からの解決、定期課金の受け取り口の名前の検証
+│   │   ├── ports.ts                                 # StripeGateway・StripeWebhookVerifier・各ストアの文を返さない操作・PaymentRefunds・OpenCheckoutExpirer・PaymentReflector・PurchaseNotifier・PriceCatalog・CustomerDirectory・PaymentHistoryExport・PaymentRevenueReport・RevenuePeriod(型だけ)
 │   │   ├── purchase-rules.ts                        # 状態の前進・有効期限・受付期限・反映の期限・拒否の理由
 │   │   ├── refund-rules.ts                          # 金額の検証・Stripeの返金理由への対応
 │   │   ├── stripe-event-mapping.ts                  # 通知を反映の指示へ正規化(受け付ける種類の一覧)
@@ -205,34 +207,36 @@ apps/
 │   ├── core/email/kinds/
 │   │   ├── payments-purchase-confirmation.ts        # 購入確認メールの種別
 │   │   └── payments-automatic-refund.ts             # 自動返金の通知の種別
-│   └── workers/payments/                            # 実行環境の部品(Workers統合テスト)
+│   └── workers/payments/                            # 実行環境の部品とD1の文を返す契約(Workers統合テスト)
+│       ├── fulfillment-contract.ts                  # D1の文を返す側の口: PurchaseKindRegistration・PurchaseFulfillment・FulfillmentPlan・SubscriptionEventSink・SubscriptionEventSinkRegistration(型だけ、Database・BatchItemを読み込む)
+│       ├── statement-contracts.ts                   # GuardedBatch・各ストアの文(PurchaseStatements・PaymentRecordStatements・StripeObjectStatements・RefundStatements・CustomerStatements)・PaymentRefundStatements(型だけ)
 │       ├── stripe-client.ts                         # Stripeの生成(fetch・API版・再試行・時間切れ)
 │       ├── stripe-gateway.ts                        # StripeGatewayの実装
 │       ├── stripe-webhook-verifier.ts               # 署名の検証(Web Crypto)
 │       ├── payment-owner-resolver.ts                # 返金・チャージバック・請求の持ち主の特定
-│       ├── d1-customer-store.ts                     # CustomerStore・CustomerDirectory
-│       ├── d1-purchase-store.ts                     # 購入の読み書きと状態の前進の文
-│       ├── d1-payment-record-store.ts               # 決済履歴のupsert・挿入・一覧・削除
-│       ├── d1-refund-store.ts                       # 返金の依頼の行
-│       ├── d1-stripe-object-store.ts                # 最終の発生時刻の検査の文
+│       ├── d1-customer-store.ts                     # CustomerStore・CustomerStatements・CustomerDirectoryの実装
+│       ├── d1-purchase-store.ts                     # PurchaseStore・PurchaseStatementsの実装(購入の読み書きと状態の前進の文)
+│       ├── d1-payment-record-store.ts               # PaymentRecordStore・PaymentRecordStatementsの実装(決済履歴のupsert・挿入・一覧・削除)
+│       ├── d1-refund-store.ts                       # RefundStore・RefundStatementsの実装(返金の依頼の行)
+│       ├── d1-stripe-object-store.ts                # StripeObjectStore・StripeObjectStatementsの実装(最終の発生時刻の検査の文)
 │       ├── d1-price-snapshot-store.ts               # 価格の一時保持
 │       ├── guarded-batch.ts                         # 版の検査の文(NOT NULL制約で取り消す)
 │       ├── payment-reflector.ts                     # 反映の処理(決済セッション・請求・返金・チャージバック・定期課金)
 │       ├── checkout-session-reflection.ts           # 決済セッションの反映(フルフィルメント・拒否・二重決済)
 │       ├── open-checkout-expirer.ts                 # 未完了の決済セッションの失効(波及処理と後続specが使う)
-│       ├── payment-refunds.ts                       # PaymentRefundsの実装(検証・行の追加・送信)
+│       ├── payment-refunds.ts                       # PaymentRefunds・PaymentRefundStatementsの実装(検証・行の追加・送信)
 │       ├── purchase-notifier.ts                     # 購入確認メール・自動返金の通知の依頼と記録
 │       ├── price-catalog.ts                         # PriceCatalogの実装
 │       ├── payment-history-export.ts                # データエクスポート用の全件の読み出し
 │       ├── d1-payment-revenue-report.ts             # PaymentRevenueReportの実装(期間ごとの純収益、ugc-moderationが使う)
 │       ├── smoke-purchase.ts                        # 疎通確認用の購入種別(仮6)
 │       ├── purchase-kind-registrations.ts           # PURCHASE_KIND_REGISTRATIONS・SUBSCRIPTION_EVENT_SINKS(後続specが追記)
-│       └── payments-platform-module.ts              # PAYMENTS_PLATFORM_MODULE(両アプリ共通の束縛。PaymentRevenueReportを含む)
+│       └── payments-platform-module.ts              # PAYMENTS_PLATFORM_MODULE(両アプリ共通の束縛。PurchaseKindRegistry・PaymentRevenueReportを含む)
 ├── api/src/
-│   ├── application/payments/                        # Bunの単体テスト
+│   ├── application/payments/                        # Bunの単体テスト(core/paymentsの契約の偽物と偽のポートで)
 │   │   ├── api-payments-types.ts                    # API_PAYMENTS_TYPES
+│   │   ├── checkout-ports.ts                        # CheckoutStartLimits・CheckoutPurchaseWriter・PurchaseOfferPolicyResolver(型だけ)
 │   │   ├── checkout-starter.ts                      # 決済の開始(後続specと疎通確認が呼ぶ)
-│   │   ├── checkout-start-limits.ts                 # 利用者単位の回数制限(仮2)
 │   │   ├── checkout-reader.ts                       # 決済画面の表示用の情報
 │   │   ├── checkout-consent-recorder.ts             # 同意の記録(Q3)
 │   │   ├── checkout-return-confirmer.ts             # return_urlからの反映(FR-PYMNT-009)
@@ -241,6 +245,9 @@ apps/
 │   │       ├── checkout-reconciliation-job.ts       # 23:40の突合(order 10)
 │   │       ├── pending-checkout-sweep-job.ts        # 4:21の未完了・依頼待ちの確認(order 400)
 │   │       └── payment-history-retention-job.ts     # 4:21の7年の削除(order 410)
+│   ├── infrastructure/payments/                     # Workers統合テスト
+│   │   ├── counter-checkout-start-limits.ts         # CounterCheckoutStartLimits・CHECKOUT_START_RULE(利用者単位の回数制限、仮2)
+│   │   └── d1-checkout-purchase-writer.ts           # D1CheckoutPurchaseWriter(未完了の購入の置き換えと新しい購入の作成を1回の一括の書き込みで確定)
 │   ├── presentation/graphql/modules/payments/       # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts                                # 引数のzodスキーマ
@@ -250,12 +257,14 @@ apps/
 │   └── composition/payments-module.ts               # apiの束縛(AppModule)
 ├── event/src/
 │   ├── presentation/http/stripe-webhook-route.ts    # POST /webhooks/stripe
-│   ├── application/payments/                        # Bunの単体テスト
+│   ├── application/payments/                        # Bunの単体テスト(core/paymentsの契約の偽物と偽のポートで)
 │   │   ├── event-payments-types.ts                  # EVENT_PAYMENTS_TYPES
+│   │   ├── payment-account-data-eraser.ts           # PaymentAccountDataEraser(物理削除の書き込みの単位のポート、型だけ)
 │   │   ├── stripe-webhook-receiver.ts               # 検証→正規化→反映
 │   │   ├── refund-payment-handler.ts                # payments.refund-paymentの処理
 │   │   ├── customer-erasure-handler.ts              # purge_dueの波及処理
 │   │   └── open-checkout-expiry-handler.ts          # 退会・停止の波及処理
+│   ├── infrastructure/payments/d1-payment-account-data-eraser.ts  # D1PaymentAccountDataEraser(返金の依頼→購入→Customerの対応の削除を1回の一括の書き込みで確定、Workers統合テスト)
 │   ├── infrastructure/email/templates/payments/     # 本文の*-body.tsxと定義の*-template.ts(2種)
 │   └── composition/payments-module.ts               # eventの束縛(AppModule・経路)
 ├── frontend-lib/components/
@@ -420,93 +429,95 @@ sequenceDiagram
 
 ## Requirements Traceability
 
-| Requirement                        | Summary                                            | Components                                                                       | Interfaces                                                            | Flows                  |
-| ---------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------- |
-| 1.1, 1.2, 1.3, 1.4                 | Customerの作成・再利用・更新・渡す情報             | CheckoutStarter、StripeGateway、D1CustomerStore                                  | `StripeGateway.ensureCustomer`・`CustomerStore`                       | 決済の開始             |
-| 1.5, 1.6, 1.7                      | 物理削除での削除と履歴の保持                       | CustomerErasureHandler、StripeGateway、D1CustomerStore、D1PurchaseStore          | `UserLifecycleAsyncHandler`                                           | —                      |
-| 2.1, 2.7                           | 購入種別と未登録の拒否                             | PurchaseKinds、PurchaseKindRegistry                                              | `PURCHASE_KINDS`・`PurchaseKindRegistry.resolve`                      | —                      |
-| 2.2, 2.3, 2.4                      | 購入の内容と権利の付与の口・同時の確定             | PurchaseKindContract、CheckoutSessionReflection、GuardedBatch                    | `PurchaseOfferPolicy`・`PurchaseFulfillment`                          | 購入の状態             |
-| 2.5, 2.6                           | 拒否の自動返金・完了の時だけ付与                   | CheckoutSessionReflection、PaymentRefunds                                        | `FulfillmentPlan`                                                     | 購入の状態             |
-| 2.8, 2.9                           | 疎通確認用の購入種別                               | SmokePurchase、PurchaseKindRegistry                                              | `PurchaseKindRegistration.enabled`                                    | —                      |
-| 2.10                               | 未完了の決済セッションの失効の口                   | OpenCheckoutExpirer                                                              | `OpenCheckoutExpirer.expireOpen`                                      | 購入の状態             |
-| 2.11                               | 権利の付与の確定後の呼び出し(U1)                   | PurchaseKindContract、CheckoutSessionReflection                                  | `PurchaseFulfillment.afterCommit`                                     | 決済の開始から反映まで |
-| 3.1, 3.2, 3.3, 3.4                 | 決済セッションの作成・価格・数量・USDと税          | CheckoutStarter、StripeGateway                                                   | `CheckoutStarter.start`・`StripeGateway.createCheckoutSession`        | 決済の開始             |
-| 3.5, 3.6                           | 利用者の状態・受付期限の拒否                       | CheckoutStarter、PurchaseRules                                                   | `assertAcceptable`                                                    | —                      |
-| 3.7, 3.8                           | 有効期限                                           | PurchaseRules                                                                    | `computeSessionExpiry`                                                | —                      |
-| 3.9                                | 以前の未完了のセッションの失効                     | CheckoutStarter、D1PurchaseStore、StripeGateway                                  | `expireCheckoutSession`                                               | 購入の状態             |
-| 3.10                               | 回数制限                                           | CheckoutStartLimits                                                              | `CheckoutStartLimits.consume`                                         | —                      |
-| 3.11                               | Stripeの障害                                       | CheckoutStarter、StripeGateway                                                   | `StripeUnavailableError`                                              | —                      |
-| 3.12                               | 購入IDの返却                                       | PaymentsSchemaModule                                                             | `CheckoutStart`                                                       | —                      |
-| 4.1, 4.2, 4.3, 4.6                 | 最終確認画面の表示事項・期限・返金ポリシー・Ultras | CheckoutReader、CheckoutSummary、CheckoutDeadline                                | `Checkout`の型                                                        | —                      |
-| 4.4, 4.5                           | 同意のチェックボックスと記録                       | CheckoutConsent(identity-authの`Checkbox`)、CheckoutConsentRecorder              | `recordCheckoutConsent`                                               | 決済の開始             |
-| 4.7                                | 決済手段の絞り込み                                 | StripeGateway、CheckoutPaymentForm                                               | `allowed_payment_method_types`                                        | —                      |
-| 4.8                                | USDとロケールの書式                                | MoneyText                                                                        | `MoneyTextProps`                                                      | —                      |
-| 4.9, 4.10, 4.11, 4.13              | 状態ごとの案内・期限切れ・障害・失敗               | CheckoutPage、CheckoutPaymentForm、CheckoutReader                                | `CheckoutStatus`                                                      | —                      |
-| 4.12                               | スクリプトの読み込みの範囲                         | StripeLoader、CLIENT_SECURITY_POLICY                                             | `loadStripeOnce`                                                      | —                      |
-| 5.1, 5.7                           | `return_url`からの反映と冪等                       | CheckoutReturnConfirmer、PaymentReflector                                        | `confirmCheckoutReturn`                                               | 決済の開始             |
-| 5.2, 5.3, 5.4, 5.5, 5.6            | ランディングの状態表示                             | CheckoutReturnStatus                                                             | `CheckoutReturnResult`                                                | —                      |
-| 6.1, 6.2                           | 署名の検証と時刻の許容                             | StripeWebhookVerifier、StripeWebhookRoute                                        | `verify`                                                              | —                      |
-| 6.3, 6.9                           | 受け付ける種類・結び付かない通知                   | StripeEventMapping、PaymentOwnerResolver                                         | `mapStripeEvent`                                                      | —                      |
-| 6.4, 6.5, 6.6, 6.7                 | 冪等性・巻き戻り防止・失敗時の再送・同じ反映       | PaymentReflector、GuardedBatch、D1StripeObjectStore、D1PaymentRecordStore        | `PaymentReflector.reflect`                                            | 購入の状態             |
-| 6.8                                | IP制限の除外                                       | rate-limit-exclusions                                                            | `excludePath`                                                         | —                      |
-| 7.1, 7.2, 7.3, 7.4, 7.5, 7.6       | 決済セッションの反映と拒否                         | CheckoutSessionReflection、PurchaseRules                                         | `reflectCheckoutSession`                                              | 購入の状態             |
-| 7.7                                | 定期課金の請求の記録                               | PaymentReflector、D1PaymentRecordStore                                           | `upsertInvoiceRecord`                                                 | —                      |
-| 7.8, 7.9                           | 定期課金の状態の受け渡しと確定後の呼び出し(U1)     | PaymentReflector、SubscriptionEventSink、StripeGateway                           | `SubscriptionChange`(`cancelAt`)・`SubscriptionEventSink.afterCommit` | —                      |
-| 8.1, 8.2, 8.3, 8.4, 8.5            | 返金の依頼の部品                                   | PaymentRefunds、RefundRules、D1RefundStore                                       | `PaymentRefunds.request`・`prepare`                                   | 返金                   |
-| 8.6, 8.7                           | 返金の実行と失敗の検知                             | RefundPaymentHandler、StripeGateway                                              | `PAYMENTS_REFUND_MESSAGE`                                             | 返金                   |
-| 8.8, 8.9                           | 返金の反映                                         | PaymentReflector、D1PaymentRecordStore                                           | `reflectRefund`                                                       | 返金                   |
-| 8.10                               | 自動返金の通知                                     | PurchaseNotifier、自動返金のテンプレート                                         | `payments.automatic-refund`                                           | —                      |
-| 9.1, 9.2, 9.3, 9.4, 9.5            | チャージバック                                     | PaymentReflector、StripeEventMapping                                             | `reflectDispute`                                                      | —                      |
-| 10.1, 10.2, 10.3, 10.4             | 23:40の突合                                        | CheckoutReconciliationJob                                                        | `ScheduledJobDefinition`                                              | 突合                   |
-| 10.5, 10.6                         | 4:21の日次の確認                                   | PendingCheckoutSweepJob、PurchaseNotifier、PaymentRefunds                        | `ScheduledJobDefinition`                                              | —                      |
-| 11.1, 11.2, 11.3, 11.4, 11.5, 11.6 | 購入確認メール(追加事項はU2)                       | PurchaseNotifier、購入確認のテンプレート                                         | `payments.purchase-confirmation`                                      | —                      |
-| 12.1, 12.2, 12.3, 12.4, 12.9       | 決済履歴の画面                                     | PaymentHistoryReader、PaymentHistoryList、PaymentHistoryItem、SETTINGS_NAV_ITEMS | `paymentHistory`                                                      | —                      |
-| 12.5, 12.6                         | 仮名化IDと保持する項目                             | payment_records                                                                  | —                                                                     | —                      |
-| 12.7                               | 7年の削除                                          | PaymentHistoryRetentionJob                                                       | `ScheduledJobDefinition`                                              | —                      |
-| 12.8                               | データエクスポートの照会口                         | PaymentHistoryExport                                                             | `PaymentHistoryExport.listAll`                                        | —                      |
-| 12.10                              | 期間ごとの純収益の照会                             | PaymentRevenueReport                                                             | `PaymentRevenueReport.netRevenue`                                     | —                      |
-| 13.1, 13.2, 13.3, 13.4             | 価格の照会                                         | PriceCatalog、D1PriceSnapshotStore                                               | `PriceCatalog.getPrices`                                              | —                      |
-| 13.5                               | 通貨の表示部品                                     | MoneyText                                                                        | `MoneyTextProps`                                                      | —                      |
-| 14.1, 14.2, 14.3                   | 退会・停止での失効                                 | OpenCheckoutExpiryHandler、OpenCheckoutExpirer                                   | `UserLifecycleAsyncHandler`                                           | —                      |
-| 15.1, 15.2, 15.3, 15.4, 15.6       | 環境・鍵・API版・設定の検証・現地通貨              | StripeClient、env-schema、StripeGateway                                          | `createStripeClient`・`validateEnv`                                   | —                      |
-| 15.5                               | 決済情報を保存しない                               | Data Models                                                                      | —                                                                     | —                      |
-| 15.7                               | 運用手順書                                         | PaymentsTechDocs(`operations/004`)                                               | —                                                                     | —                      |
-| 15.8                               | 個人データを含めない記録                           | 全コンポーネント(ログの規約)                                                     | `getAppLogger`                                                        | —                      |
-| 16.1, 16.2                         | テスト                                             | Testing Strategy                                                                 | —                                                                     | —                      |
-| 16.3                               | 技術ドキュメント                                   | PaymentsTechDocs                                                                 | —                                                                     | —                      |
-| 16.4, 16.5                         | サービス仕様                                       | PaymentsServiceSpecs                                                             | —                                                                     | —                      |
+| Requirement                        | Summary                                            | Components                                                                                          | Interfaces                                                            | Flows                  |
+| ---------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------- |
+| 1.1, 1.2, 1.3, 1.4                 | Customerの作成・再利用・更新・渡す情報             | CheckoutStarter、StripeGateway、D1CustomerStore                                                     | `StripeGateway.ensureCustomer`・`CustomerStore`                       | 決済の開始             |
+| 1.5, 1.6, 1.7                      | 物理削除での削除と履歴の保持                       | CustomerErasureHandler、StripeGateway、D1PaymentAccountDataEraser、D1CustomerStore、D1PurchaseStore | `UserLifecycleAsyncHandler`・`PaymentAccountDataEraser.erase`         | —                      |
+| 2.1, 2.7                           | 購入種別と未登録の拒否                             | PurchaseKinds、PurchaseKindRegistry                                                                 | `PURCHASE_KINDS`・`PurchaseKindRegistry.resolve`                      | —                      |
+| 2.2, 2.3, 2.4                      | 購入の内容と権利の付与の口・同時の確定             | PurchaseKindContract、CheckoutSessionReflection、GuardedBatch                                       | `PurchaseOfferPolicy`・`PurchaseFulfillment`                          | 購入の状態             |
+| 2.5, 2.6                           | 拒否の自動返金・完了の時だけ付与                   | CheckoutSessionReflection、PaymentRefunds                                                           | `FulfillmentPlan`                                                     | 購入の状態             |
+| 2.8, 2.9                           | 疎通確認用の購入種別                               | SmokePurchase、PurchaseKindRegistry                                                                 | `PurchaseKindRegistration.enabled`                                    | —                      |
+| 2.10                               | 未完了の決済セッションの失効の口                   | OpenCheckoutExpirer                                                                                 | `OpenCheckoutExpirer.expireOpen`                                      | 購入の状態             |
+| 2.11                               | 権利の付与の確定後の呼び出し(U1)                   | PurchaseKindContract、CheckoutSessionReflection                                                     | `PurchaseFulfillment.afterCommit`                                     | 決済の開始から反映まで |
+| 3.1, 3.2, 3.3, 3.4                 | 決済セッションの作成・価格・数量・USDと税          | CheckoutStarter、StripeGateway                                                                      | `CheckoutStarter.start`・`StripeGateway.createCheckoutSession`        | 決済の開始             |
+| 3.5, 3.6                           | 利用者の状態・受付期限の拒否                       | CheckoutStarter、PurchaseRules                                                                      | `assertAcceptable`                                                    | —                      |
+| 3.7, 3.8                           | 有効期限                                           | PurchaseRules                                                                                       | `computeSessionExpiry`                                                | —                      |
+| 3.9                                | 以前の未完了のセッションの失効                     | CheckoutStarter、D1PurchaseStore、StripeGateway                                                     | `expireCheckoutSession`                                               | 購入の状態             |
+| 3.10                               | 回数制限                                           | CheckoutStartLimits、CounterCheckoutStartLimits                                                     | `CheckoutStartLimits.consume`                                         | —                      |
+| 3.11                               | Stripeの障害                                       | CheckoutStarter、StripeGateway                                                                      | `StripeUnavailableError`                                              | —                      |
+| 3.12                               | 購入IDの返却                                       | PaymentsSchemaModule                                                                                | `CheckoutStart`                                                       | —                      |
+| 4.1, 4.2, 4.3, 4.6                 | 最終確認画面の表示事項・期限・返金ポリシー・Ultras | CheckoutReader、CheckoutSummary、CheckoutDeadline                                                   | `Checkout`の型                                                        | —                      |
+| 4.4, 4.5                           | 同意のチェックボックスと記録                       | CheckoutConsent(identity-authの`Checkbox`)、CheckoutConsentRecorder                                 | `recordCheckoutConsent`                                               | 決済の開始             |
+| 4.7                                | 決済手段の絞り込み                                 | StripeGateway、CheckoutPaymentForm                                                                  | `allowed_payment_method_types`                                        | —                      |
+| 4.8                                | USDとロケールの書式                                | MoneyText                                                                                           | `MoneyTextProps`                                                      | —                      |
+| 4.9, 4.10, 4.11, 4.13              | 状態ごとの案内・期限切れ・障害・失敗               | CheckoutPage、CheckoutPaymentForm、CheckoutReader                                                   | `CheckoutStatus`                                                      | —                      |
+| 4.12                               | スクリプトの読み込みの範囲                         | StripeLoader、CLIENT_SECURITY_POLICY                                                                | `loadStripeOnce`                                                      | —                      |
+| 5.1, 5.7                           | `return_url`からの反映と冪等                       | CheckoutReturnConfirmer、PaymentReflector                                                           | `confirmCheckoutReturn`                                               | 決済の開始             |
+| 5.2, 5.3, 5.4, 5.5, 5.6            | ランディングの状態表示                             | CheckoutReturnStatus                                                                                | `CheckoutReturnResult`                                                | —                      |
+| 6.1, 6.2                           | 署名の検証と時刻の許容                             | StripeWebhookVerifier、StripeWebhookRoute                                                           | `verify`                                                              | —                      |
+| 6.3, 6.9                           | 受け付ける種類・結び付かない通知                   | StripeEventMapping、PaymentOwnerResolver                                                            | `mapStripeEvent`                                                      | —                      |
+| 6.4, 6.5, 6.6, 6.7                 | 冪等性・巻き戻り防止・失敗時の再送・同じ反映       | PaymentReflector、GuardedBatch、D1StripeObjectStore、D1PaymentRecordStore                           | `PaymentReflector.reflect`                                            | 購入の状態             |
+| 6.8                                | IP制限の除外                                       | rate-limit-exclusions                                                                               | `excludePath`                                                         | —                      |
+| 7.1, 7.2, 7.3, 7.4, 7.5, 7.6       | 決済セッションの反映と拒否                         | CheckoutSessionReflection、PurchaseRules                                                            | `reflectCheckoutSession`                                              | 購入の状態             |
+| 7.7                                | 定期課金の請求の記録                               | PaymentReflector、D1PaymentRecordStore                                                              | `upsertInvoiceRecord`                                                 | —                      |
+| 7.8, 7.9                           | 定期課金の状態の受け渡しと確定後の呼び出し(U1)     | PaymentReflector、SubscriptionEventSink、StripeGateway                                              | `SubscriptionChange`(`cancelAt`)・`SubscriptionEventSink.afterCommit` | —                      |
+| 8.1, 8.2, 8.3, 8.4, 8.5            | 返金の依頼の部品                                   | PaymentRefunds、RefundRules、D1RefundStore                                                          | `PaymentRefunds.request`・`prepare`                                   | 返金                   |
+| 8.6, 8.7                           | 返金の実行と失敗の検知                             | RefundPaymentHandler、StripeGateway                                                                 | `PAYMENTS_REFUND_MESSAGE`                                             | 返金                   |
+| 8.8, 8.9                           | 返金の反映                                         | PaymentReflector、D1PaymentRecordStore                                                              | `reflectRefund`                                                       | 返金                   |
+| 8.10                               | 自動返金の通知                                     | PurchaseNotifier、自動返金のテンプレート                                                            | `payments.automatic-refund`                                           | —                      |
+| 9.1, 9.2, 9.3, 9.4, 9.5            | チャージバック                                     | PaymentReflector、StripeEventMapping                                                                | `reflectDispute`                                                      | —                      |
+| 10.1, 10.2, 10.3, 10.4             | 23:40の突合                                        | CheckoutReconciliationJob                                                                           | `ScheduledJobDefinition`                                              | 突合                   |
+| 10.5, 10.6                         | 4:21の日次の確認                                   | PendingCheckoutSweepJob、PurchaseNotifier、PaymentRefunds                                           | `ScheduledJobDefinition`                                              | —                      |
+| 11.1, 11.2, 11.3, 11.4, 11.5, 11.6 | 購入確認メール(追加事項はU2)                       | PurchaseNotifier、購入確認のテンプレート                                                            | `payments.purchase-confirmation`                                      | —                      |
+| 12.1, 12.2, 12.3, 12.4, 12.9       | 決済履歴の画面                                     | PaymentHistoryReader、PaymentHistoryList、PaymentHistoryItem、SETTINGS_NAV_ITEMS                    | `paymentHistory`                                                      | —                      |
+| 12.5, 12.6                         | 仮名化IDと保持する項目                             | payment_records                                                                                     | —                                                                     | —                      |
+| 12.7                               | 7年の削除                                          | PaymentHistoryRetentionJob                                                                          | `ScheduledJobDefinition`                                              | —                      |
+| 12.8                               | データエクスポートの照会口                         | PaymentHistoryExport                                                                                | `PaymentHistoryExport.listAll`                                        | —                      |
+| 12.10                              | 期間ごとの純収益の照会                             | PaymentRevenueReport                                                                                | `PaymentRevenueReport.netRevenue`                                     | —                      |
+| 13.1, 13.2, 13.3, 13.4             | 価格の照会                                         | PriceCatalog、D1PriceSnapshotStore                                                                  | `PriceCatalog.getPrices`                                              | —                      |
+| 13.5                               | 通貨の表示部品                                     | MoneyText                                                                                           | `MoneyTextProps`                                                      | —                      |
+| 14.1, 14.2, 14.3                   | 退会・停止での失効                                 | OpenCheckoutExpiryHandler、OpenCheckoutExpirer                                                      | `UserLifecycleAsyncHandler`                                           | —                      |
+| 15.1, 15.2, 15.3, 15.4, 15.6       | 環境・鍵・API版・設定の検証・現地通貨              | StripeClient、env-schema、StripeGateway                                                             | `createStripeClient`・`validateEnv`                                   | —                      |
+| 15.5                               | 決済情報を保存しない                               | Data Models                                                                                         | —                                                                     | —                      |
+| 15.7                               | 運用手順書                                         | PaymentsTechDocs(`operations/004`)                                                                  | —                                                                     | —                      |
+| 15.8                               | 個人データを含めない記録                           | 全コンポーネント(ログの規約)                                                                        | `getAppLogger`                                                        | —                      |
+| 16.1, 16.2                         | テスト                                             | Testing Strategy                                                                                    | —                                                                     | —                      |
+| 16.3                               | 技術ドキュメント                                   | PaymentsTechDocs                                                                                    | —                                                                     | —                      |
+| 16.4, 16.5                         | サービス仕様                                       | PaymentsServiceSpecs                                                                                | —                                                                     | —                      |
 
 ## Components and Interfaces
 
-| Component                                                                                                                                                                              | Domain/Layer              | Intent                                                            | Req Coverage                                                             | Key Dependencies                               | Contracts |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------- | --------- |
-| PurchaseKinds・PaymentRecordValues・CheckoutConsentText・Money                                                                                                                         | common-lib                | 4アプリ共通の値と名前                                             | 2.1, 4.4, 4.8, 12.1                                                      | zod (P2)                                       | State     |
-| PurchaseKindContract・PurchaseKindRegistry                                                                                                                                             | backend-lib/core          | 購入種別の口と登録の検証                                          | 2.1〜2.9, 2.11, 7.8, 7.9                                                 | Inversify (P0)                                 | Service   |
-| PurchaseRules・RefundRules・StripeEventMapping                                                                                                                                         | backend-lib/core          | 純粋な規則と正規化                                                | 3.5〜3.8, 6.3, 7.1〜7.6, 8.3, 9.1〜9.4                                   | —                                              | Service   |
-| StripeClient・StripeGateway・StripeWebhookVerifier                                                                                                                                     | backend-lib/workers       | Stripeとの通信                                                    | 1.1〜1.6, 3.1〜3.4, 3.9, 3.11, 4.7, 6.1, 6.2, 7.8, 8.6, 15.1〜15.4, 15.6 | stripe (P0)                                    | Service   |
-| PaymentOwnerResolver                                                                                                                                                                   | backend-lib/workers       | 返金・チャージバック・請求の持ち主の特定                          | 6.9, 8.8, 9.1                                                            | StripeGateway (P0)                             | Service   |
-| D1各ストア・GuardedBatch                                                                                                                                                               | backend-lib/workers       | 7テーブルの読み書き                                               | 1.1, 6.4, 6.5, 12.5〜12.7                                                | D1 (P0)                                        | State     |
-| PaymentReflector・CheckoutSessionReflection                                                                                                                                            | backend-lib/workers       | 反映の処理                                                        | 2.4〜2.6, 5.1, 5.7, 6.4〜6.7, 2.11, 7.1〜7.9, 8.8, 8.9, 9.1〜9.5         | 各ストア (P0)、登録 (P0)                       | Service   |
-| OpenCheckoutExpirer                                                                                                                                                                    | backend-lib/workers       | 未完了の決済セッションの失効                                      | 2.10, 14.1〜14.3                                                         | StripeGateway (P0)                             | Service   |
-| PaymentRefunds                                                                                                                                                                         | backend-lib/workers       | 返金の依頼                                                        | 8.1〜8.5, 10.6                                                           | D1RefundStore (P0)、MessagePublisher (P0)      | Service   |
-| PurchaseNotifier                                                                                                                                                                       | backend-lib/workers       | メールの依頼と記録                                                | 8.10, 10.6, 11.1〜11.6                                                   | EmailSender (P0)、UserContactDirectory (P0)    | Service   |
-| PriceCatalog                                                                                                                                                                           | backend-lib/workers       | 価格の照会                                                        | 13.1〜13.4                                                               | StripeGateway (P0)                             | Service   |
-| PaymentHistoryExport                                                                                                                                                                   | backend-lib/workers       | 全件の読み出し                                                    | 12.8                                                                     | D1PaymentRecordStore (P0)                      | Service   |
-| PaymentRevenueReport                                                                                                                                                                   | backend-lib/core・workers | 期間ごとの純収益の集計(ugc-moderationが使う)                      | 12.10                                                                    | payment_records (P0)                           | Service   |
-| SmokePurchase                                                                                                                                                                          | backend-lib/workers       | 疎通確認用の購入種別                                              | 2.8, 2.9                                                                 | —                                              | Service   |
-| CheckoutStarter・CheckoutStartLimits                                                                                                                                                   | api/application           | 決済の開始と回数制限                                              | 1.1〜1.4, 3.1〜3.12                                                      | AccountGuard (P0)、RateLimitCounterClient (P0) | Service   |
-| CheckoutReader・CheckoutConsentRecorder・CheckoutReturnConfirmer・PaymentHistoryReader                                                                                                 | api/application           | 画面の照会と変更                                                  | 4.1〜4.11, 5.1〜5.7, 12.1〜12.3, 12.9                                    | 各ストア (P0)                                  | Service   |
-| CheckoutReconciliationJob・PendingCheckoutSweepJob・PaymentHistoryRetentionJob                                                                                                         | api/application/jobs      | 定期実行                                                          | 10.1〜10.6, 12.7                                                         | PaymentReflector (P0)                          | Batch     |
-| PaymentsSchemaModule                                                                                                                                                                   | api/presentation          | GraphQLの型と操作                                                 | 3.12, 4.\*, 5.\*, 12.\*                                                  | api-gateway (P0)                               | API       |
-| StripeWebhookRoute・StripeWebhookReceiver                                                                                                                                              | event                     | Webhookの受け付け                                                 | 6.1〜6.9                                                                 | StripeWebhookVerifier (P0)                     | API       |
-| RefundPaymentHandler                                                                                                                                                                   | event/application         | 返金の実行                                                        | 8.5〜8.7                                                                 | StripeGateway (P0)                             | Event     |
-| CustomerErasureHandler・OpenCheckoutExpiryHandler                                                                                                                                      | event/application         | ライフサイクルの波及処理                                          | 1.5, 1.6, 14.1〜14.3                                                     | identity-auth (P0)                             | Event     |
-| PaymentEmailKinds                                                                                                                                                                      | backend-lib/core          | 2種のメールの種別と入力の検証                                     | 11.2                                                                     | email-delivery (P0)                            | —         |
-| PaymentEmailTemplates                                                                                                                                                                  | event/infrastructure      | 2種のメール                                                       | 8.10, 11.1, 11.5, 11.6                                                   | email-delivery (P0)                            | —         |
-| CheckoutPage・CheckoutSummary・CheckoutConsent・CheckoutPaymentForm・CheckoutDeadline・CheckoutReturnStatus・PaymentHistoryList・PaymentHistoryItem・SmokeCheckoutButton・StripeLoader | client                    | 3つの画面                                                         | 4.\*, 5.2〜5.6, 12.1〜12.4                                               | `@stripe/react-stripe-js` (P0)                 | State     |
-| MoneyText                                                                                                                                                                              | frontend-lib              | 通貨の表示部品                                                    | 4.8, 13.5                                                                | `NumberText` (P1)                              | State     |
-| PaymentsTechDocs                                                                                                                                                                       | docs/GUIDES/tech          | 技術ドキュメント(`external/007`・`backend/009`・`operations/004`) | 15.7, 16.3                                                               | —                                              | —         |
-| PaymentsServiceSpecs                                                                                                                                                                   | docs/GUIDES/service       | 決済実装方針と関連するサービス仕様                                | 16.4, 16.5                                                               | —                                              | —         |
+| Component                                                                                                                                                                              | Domain/Layer                                                                | Intent                                                            | Req Coverage                                                             | Key Dependencies                                                                              | Contracts |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | --------- |
+| PurchaseKinds・PaymentRecordValues・CheckoutConsentText・Money                                                                                                                         | common-lib                                                                  | 4アプリ共通の値と名前                                             | 2.1, 4.4, 4.8, 12.1                                                      | zod (P2)                                                                                      | State     |
+| PurchaseKindContract・PurchaseKindRegistry                                                                                                                                             | backend-lib/core(可否と内容の側)・workers(文を返す側)                       | 購入種別の口と登録の検証                                          | 2.1〜2.9, 2.11, 7.8, 7.9                                                 | Inversify (P0)                                                                                | Service   |
+| PurchaseRules・RefundRules・StripeEventMapping                                                                                                                                         | backend-lib/core                                                            | 純粋な規則と正規化                                                | 3.5〜3.8, 6.3, 7.1〜7.6, 8.3, 9.1〜9.4                                   | —                                                                                             | Service   |
+| StripeClient・StripeGateway・StripeWebhookVerifier                                                                                                                                     | backend-lib/core(契約)・workers(実装)                                       | Stripeとの通信                                                    | 1.1〜1.6, 3.1〜3.4, 3.9, 3.11, 4.7, 6.1, 6.2, 7.8, 8.6, 15.1〜15.4, 15.6 | stripe (P0)                                                                                   | Service   |
+| PaymentOwnerResolver                                                                                                                                                                   | backend-lib/workers                                                         | 返金・チャージバック・請求の持ち主の特定                          | 6.9, 8.8, 9.1                                                            | StripeGateway (P0)                                                                            | Service   |
+| D1各ストア・GuardedBatch                                                                                                                                                               | backend-lib/core(文を返さない操作)・workers(文の契約と実装)                 | 7テーブルの読み書き                                               | 1.1, 6.4, 6.5, 12.5〜12.7                                                | D1 (P0)                                                                                       | State     |
+| PaymentReflector・CheckoutSessionReflection                                                                                                                                            | backend-lib/core(契約)・workers(実装)                                       | 反映の処理                                                        | 2.4〜2.6, 5.1, 5.7, 6.4〜6.7, 2.11, 7.1〜7.9, 8.8, 8.9, 9.1〜9.5         | 各ストア (P0)、登録 (P0)                                                                      | Service   |
+| OpenCheckoutExpirer                                                                                                                                                                    | backend-lib/core(契約)・workers(実装)                                       | 未完了の決済セッションの失効                                      | 2.10, 14.1〜14.3                                                         | StripeGateway (P0)                                                                            | Service   |
+| PaymentRefunds                                                                                                                                                                         | backend-lib/core(request・dispatch)・workers(PaymentRefundStatementsと実装) | 返金の依頼                                                        | 8.1〜8.5, 10.6                                                           | D1RefundStore (P0)、MessagePublisher (P0)                                                     | Service   |
+| PurchaseNotifier                                                                                                                                                                       | backend-lib/core(契約)・workers(実装)                                       | メールの依頼と記録                                                | 8.10, 10.6, 11.1〜11.6                                                   | EmailSender (P0)、UserContactDirectory (P0)                                                   | Service   |
+| PriceCatalog                                                                                                                                                                           | backend-lib/core(契約)・workers(実装)                                       | 価格の照会                                                        | 13.1〜13.4                                                               | StripeGateway (P0)                                                                            | Service   |
+| PaymentHistoryExport                                                                                                                                                                   | backend-lib/core(契約)・workers(実装)                                       | 全件の読み出し                                                    | 12.8                                                                     | D1PaymentRecordStore (P0)                                                                     | Service   |
+| PaymentRevenueReport                                                                                                                                                                   | backend-lib/core・workers                                                   | 期間ごとの純収益の集計(ugc-moderationが使う)                      | 12.10                                                                    | payment_records (P0)                                                                          | Service   |
+| SmokePurchase                                                                                                                                                                          | backend-lib/workers                                                         | 疎通確認用の購入種別                                              | 2.8, 2.9                                                                 | —                                                                                             | Service   |
+| CheckoutStarter・CheckoutStartLimits                                                                                                                                                   | api/application                                                             | 決済の開始と回数制限のポート                                      | 1.1〜1.4, 3.1〜3.12                                                      | AccountGuard (P0)、PurchaseKindRegistry (P0)、CheckoutPurchaseWriter (P0)、StripeGateway (P0) | Service   |
+| CounterCheckoutStartLimits・D1CheckoutPurchaseWriter                                                                                                                                   | api/infrastructure                                                          | 回数制限の実装と、購入の置き換えと作成の書き込みの単位            | 1.1, 3.9, 3.10                                                           | RateLimitCounterClient (P0)、PurchaseStatements (P0)                                          | Service   |
+| CheckoutReader・CheckoutConsentRecorder・CheckoutReturnConfirmer・PaymentHistoryReader                                                                                                 | api/application                                                             | 画面の照会と変更                                                  | 4.1〜4.11, 5.1〜5.7, 12.1〜12.3, 12.9                                    | `core/payments`の各ストア・StripeGateway・PaymentReflector (P0)                               | Service   |
+| CheckoutReconciliationJob・PendingCheckoutSweepJob・PaymentHistoryRetentionJob                                                                                                         | api/application/jobs                                                        | 定期実行                                                          | 10.1〜10.6, 12.7                                                         | `core/payments`のPaymentReflector・各ストア・PaymentRefunds・PurchaseNotifier (P0)            | Batch     |
+| PaymentsSchemaModule                                                                                                                                                                   | api/presentation                                                            | GraphQLの型と操作                                                 | 3.12, 4.\*, 5.\*, 12.\*                                                  | api-gateway (P0)                                                                              | API       |
+| StripeWebhookRoute・StripeWebhookReceiver                                                                                                                                              | event/presentation・application                                             | Webhookの受け付け                                                 | 6.1〜6.9                                                                 | StripeWebhookVerifier (P0)                                                                    | API       |
+| RefundPaymentHandler                                                                                                                                                                   | event/application                                                           | 返金の実行                                                        | 8.5〜8.7                                                                 | StripeGateway (P0)                                                                            | Event     |
+| CustomerErasureHandler・OpenCheckoutExpiryHandler                                                                                                                                      | event/application                                                           | ライフサイクルの波及処理                                          | 1.5, 1.6, 14.1〜14.3                                                     | identity-auth (P0)、PaymentAccountDataEraser (P0)、OpenCheckoutExpirer (P0)                   | Event     |
+| D1PaymentAccountDataEraser                                                                                                                                                             | event/infrastructure                                                        | 物理削除の書き込みの単位                                          | 1.5, 1.7                                                                 | RefundStatements・PurchaseStatements・CustomerStatements (P0)                                 | State     |
+| PaymentEmailKinds                                                                                                                                                                      | backend-lib/core                                                            | 2種のメールの種別と入力の検証                                     | 11.2                                                                     | email-delivery (P0)                                                                           | —         |
+| PaymentEmailTemplates                                                                                                                                                                  | event/infrastructure                                                        | 2種のメール                                                       | 8.10, 11.1, 11.5, 11.6                                                   | email-delivery (P0)                                                                           | —         |
+| CheckoutPage・CheckoutSummary・CheckoutConsent・CheckoutPaymentForm・CheckoutDeadline・CheckoutReturnStatus・PaymentHistoryList・PaymentHistoryItem・SmokeCheckoutButton・StripeLoader | client                                                                      | 3つの画面                                                         | 4.\*, 5.2〜5.6, 12.1〜12.4                                               | `@stripe/react-stripe-js` (P0)                                                                | State     |
+| MoneyText                                                                                                                                                                              | frontend-lib                                                                | 通貨の表示部品                                                    | 4.8, 13.5                                                                | `NumberText` (P1)                                                                             | State     |
+| PaymentsTechDocs                                                                                                                                                                       | docs/GUIDES/tech                                                            | 技術ドキュメント(`external/007`・`backend/009`・`operations/004`) | 15.7, 16.3                                                               | —                                                                                             | —         |
+| PaymentsServiceSpecs                                                                                                                                                                   | docs/GUIDES/service                                                         | 決済実装方針と関連するサービス仕様                                | 16.4, 16.5                                                               | —                                                                                             | —         |
 
 ### common-lib
 
@@ -563,6 +574,42 @@ export declare function isMinorUnitAmount(value: number): boolean; // 整数か�
 
 ### backend-lib/core
 
+- 置き場所: api・eventのapplication層と後続specのapplication層が受け取る契約は`apps/backend-lib/core/payments`(`purchase-kind-contract.ts`・`ports.ts`)、識別子は`core/payments/identifiers.ts`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。`core/payments`は`Database`・`BatchItem`・`workers`・`apps/db`を読み込まない。D1の文を返す契約と接続を引数に取る契約は`workers/payments`(`fulfillment-contract.ts`・`statement-contracts.ts`)に置き、`workers`と各アプリの`infrastructure`だけが使う。1つの契約に文を返す操作と返さない操作が混ざる場合は分け、返さない側を`core`、返す側を`workers`に置く(各ストア・`PaymentRefunds`)。
+- 識別子`PAYMENTS_TYPES`は`Symbol.for('payments.<名前>')`の凍結したオブジェクトで、`core/payments/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。`workers`だけが使う契約(各ストアの文・`GuardedBatch`・`PaymentRefundStatements`・`PaymentOwnerResolver`)の識別子も同じオブジェクトに置く(識別子は型を読み込まないため)。apiの`API_PAYMENTS_TYPES`・eventの`EVENT_PAYMENTS_TYPES`とは別の識別子にし、同じ`payments.`の接頭辞を使うため、メンバーの名前を重ねない。
+
+```typescript
+// core/payments/identifiers.ts
+export declare const PAYMENTS_TYPES: {
+  // application層と後続specが受け取る(契約はcore/payments)
+  readonly StripeGateway: symbol;
+  readonly StripeWebhookVerifier: symbol;
+  readonly PurchaseKindRegistry: symbol;
+  readonly PaymentReflector: symbol;
+  readonly OpenCheckoutExpirer: symbol;
+  readonly PaymentRefunds: symbol;
+  readonly PurchaseNotifier: symbol;
+  readonly PriceCatalog: symbol;
+  readonly CustomerDirectory: symbol;
+  readonly PaymentHistoryExport: symbol;
+  readonly PaymentRevenueReport: symbol;
+  readonly PurchaseStore: symbol;
+  readonly PaymentRecordStore: symbol;
+  readonly RefundStore: symbol;
+  readonly CustomerStore: symbol;
+  readonly StripeObjectStore: symbol;
+  readonly PriceSnapshotStore: symbol;
+  // workersとinfrastructureだけが受け取る(契約はworkers/payments)
+  readonly PurchaseStatements: symbol;
+  readonly PaymentRecordStatements: symbol;
+  readonly RefundStatements: symbol;
+  readonly CustomerStatements: symbol;
+  readonly StripeObjectStatements: symbol;
+  readonly GuardedBatch: symbol;
+  readonly PaymentRefundStatements: symbol;
+  readonly PaymentOwnerResolver: symbol;
+}; // Symbol.for('payments.<名前>')
+```
+
 #### PurchaseKindContract・PurchaseKindRegistry
 
 | Field        | Detail                                                                                 |
@@ -574,10 +621,11 @@ export declare function isMinorUnitAmount(value: number): boolean; // 整数か�
 
 ##### Service Interface
 
+購入の可否と内容の側(`core/payments/purchase-kind-contract.ts`・`purchase-kind-registry.ts`)。api・eventのapplication層と後続specのapplication層が読み込む。
+
 ```typescript
+// core/payments/purchase-kind-contract.ts
 import type { ServiceIdentifier } from 'inversify';
-import type { BatchItem } from 'drizzle-orm/batch';
-import type { Database } from '<backend-platformのDatabaseの型>'; // PLATFORM_TYPES.Databaseで解決する型
 
 export interface PaymentsEnv {
   readonly STRIPE_API_KEY: string;
@@ -631,25 +679,11 @@ export interface FulfillablePurchase {
   readonly paidAt: Date;
   readonly stripeSubscriptionId: string | null;
 }
-export type FulfillmentPlan =
-  | {
-      readonly kind: 'fulfill';
-      readonly statements: readonly BatchItem<'sqlite'>[];
-    }
-  | { readonly kind: 'reject'; readonly reason: 'ineligible' };
 
-export interface PurchaseFulfillment {
-  prepare(
-    purchase: FulfillablePurchase,
-    db: Database,
-  ): Promise<FulfillmentPlan>; // 副作用を持たない
-  afterCommit?(purchase: FulfillablePurchase): Promise<void>; // fulfillの一括の書き込みが確定した後に1回(U1)。例外は呼び出し側がwarnのログにして続ける
-}
-
-export interface PurchaseKindRegistration {
+// 購入種別の登録のうちapplication層が使う部分。workers/paymentsのPurchaseKindRegistrationがfulfillmentを加える
+export interface PurchaseOfferRegistration {
   readonly kind: PurchaseKind;
   readonly offer: ServiceIdentifier<PurchaseOfferPolicy>;
-  readonly fulfillment: ServiceIdentifier<PurchaseFulfillment>;
   readonly enabled?: (env: PaymentsEnv) => boolean; // 既定は常に有効
 }
 
@@ -674,6 +708,56 @@ export interface SubscriptionChange {
   readonly endedAt: Date | null;
   readonly occurredAt: Date;
 }
+
+// application層は既定の型引数(購入の可否と内容の側)で、workers/paymentsの反映はPurchaseKindRegistrationで受け取る。どちらも同じPAYMENTS_TYPES.PurchaseKindRegistryの束縛
+export interface PurchaseKindRegistry<
+  TRegistration extends PurchaseOfferRegistration = PurchaseOfferRegistration,
+> {
+  resolve(kind: PurchaseKind, env: PaymentsEnv): TRegistration | undefined; // 無効・未登録はundefined
+}
+
+// core/payments/purchase-kind-registry.ts
+export declare class PurchaseKindRegistrationError extends Error {}
+export declare function createPurchaseKindRegistry<
+  TRegistration extends PurchaseOfferRegistration,
+>(registrations: readonly TRegistration[]): PurchaseKindRegistry<TRegistration>; // 同じkindの重複で例外
+export declare function assertSubscriptionEventSinkNames(
+  registrations: readonly { readonly name: string }[],
+): void; // '<spec名>.<名詞句>'の形式と重複の検証
+```
+
+D1の文を返す側(`workers/payments/fulfillment-contract.ts`)。`workers/payments`の反映と、後続specの`workers/<ドメイン>`の実装だけが読み込み、application層は読み込まない。
+
+```typescript
+// workers/payments/fulfillment-contract.ts
+import type { ServiceIdentifier } from 'inversify';
+import type { BatchItem } from 'drizzle-orm/batch';
+import type { Database } from '<DBディレクトリのclient>'; // PLATFORM_TYPES.Databaseで解決する型
+import type {
+  FulfillablePurchase,
+  PurchaseOfferRegistration,
+  SubscriptionChange,
+} from '<共通ライブラリのcore>/payments/purchase-kind-contract.ts';
+
+export type FulfillmentPlan =
+  | {
+      readonly kind: 'fulfill';
+      readonly statements: readonly BatchItem<'sqlite'>[];
+    }
+  | { readonly kind: 'reject'; readonly reason: 'ineligible' };
+
+export interface PurchaseFulfillment {
+  prepare(
+    purchase: FulfillablePurchase,
+    db: Database,
+  ): Promise<FulfillmentPlan>; // 副作用を持たない
+  afterCommit?(purchase: FulfillablePurchase): Promise<void>; // fulfillの一括の書き込みが確定した後に1回(U1)。例外は呼び出し側がwarnのログにして続ける
+}
+
+export interface PurchaseKindRegistration extends PurchaseOfferRegistration {
+  readonly fulfillment: ServiceIdentifier<PurchaseFulfillment>;
+}
+
 export interface SubscriptionEventSink {
   statementsFor(
     change: SubscriptionChange,
@@ -686,19 +770,13 @@ export interface SubscriptionEventSinkRegistration {
   readonly sink: ServiceIdentifier<SubscriptionEventSink>;
 }
 
-export interface PurchaseKindRegistry {
-  resolve(
-    kind: PurchaseKind,
-    env: PaymentsEnv,
-  ): PurchaseKindRegistration | undefined; // 無効・未登録はundefined
-}
-export declare class PurchaseKindRegistrationError extends Error {}
-export declare function createPurchaseKindRegistry(
-  registrations: readonly PurchaseKindRegistration[],
-): PurchaseKindRegistry; // 同じkindの重複で例外
+// workers/payments/purchase-kind-registrations.ts(後続specが追記する)
+export declare const PURCHASE_KIND_REGISTRATIONS: readonly PurchaseKindRegistration[];
+export declare const SUBSCRIPTION_EVENT_SINKS: readonly SubscriptionEventSinkRegistration[];
 ```
 
-- Preconditions: 後続specの`PurchaseFulfillment`の実装は`backend-lib/workers/<ドメイン>`に置き、D1の文だけを返す。外部の呼び出しやメッセージの送信を`prepare`で行わない。権利の付与の文は、条件を満たさなければ一意制約などで失敗する形にしてよい(失敗は拒否として扱い直す)。
+- 登録と解決: `PAYMENTS_PLATFORM_MODULE`は`PAYMENTS_TYPES.PurchaseKindRegistry`を`createPurchaseKindRegistry(PURCHASE_KIND_REGISTRATIONS)`の1つの値へ束縛する。apiの`CheckoutStarter`(application層)は`workers/payments`を読み込まず、この識別子を`PurchaseKindRegistry`(既定の型引数)として受け取り、`resolve`の結果の`kind`・`offer`・`enabled`だけを使う(`fulfillment`は型に現れない)。`offer`の識別子は、apiの決済モジュール(composition)が渡す`PurchaseOfferPolicyResolver`で`PurchaseOfferPolicy`へ変える(media-pipelineの`FileReadPolicy`の解決の関数と同じ形)。`workers/payments`の反映は同じ識別子を`PurchaseKindRegistry<PurchaseKindRegistration>`として受け取り、`fulfillment`の識別子から`PurchaseFulfillment`を解決する。`SUBSCRIPTION_EVENT_SINKS`は`workers/payments`の反映だけが読み、名前の検証は`assertSubscriptionEventSinkNames`で行う。
+- Preconditions: 後続specの`PurchaseFulfillment`・`SubscriptionEventSink`の実装は`backend-lib/workers/<ドメイン>`に置き(`workers/payments/fulfillment-contract.ts`の契約を読み込む)、D1の文だけを返す。後続specの`PurchaseOfferPolicy`の実装は`core/payments`の契約だけを読み込む。外部の呼び出しやメッセージの送信を`prepare`で行わない。権利の付与の文は、条件を満たさなければ一意制約などで失敗する形にしてよい(失敗は拒否として扱い直す)。
 - Postconditions: `prepare`は同じ購入で何度呼ばれても同じ判断を返す。`afterCommit`は、その呼び出しで`fulfill`の一括の書き込みを確定させた側だけが1回呼ぶ(拒否・反映済み・版の検査の失敗では呼ばない)。`afterCommit`の失敗は反映の結果を変えず、後続specが自分の依頼待ちの行と日次の確認で拾う(2.11、U1)。
 - Invariants: `deadlineAt`があれば`acceptUntil`も`fulfillableUntil`もある。`acceptUntil ≤ deadlineAt ≤ fulfillableUntil`。`PurchaseOffer.quantity`は都度決済の日数(広告)または1。
 
@@ -793,7 +871,9 @@ export declare function mapStripeEvent(event: {
 - 通知の発生時刻は`event.created`(秒)を使い、反映ではオブジェクトの最新の状態をStripeから取得し直す(通知の本文の古いスナップショットに依存しない)。
 - `ADVANCEABLE_FROM`: `processing`へは`open`・`superseded`から、`fulfilled`・`rejected`へは`open`・`processing`・`superseded`から、`expired`へは`open`・`processing`・`superseded`から進める。完了した購入は戻らない(DR-016)。
 
-### backend-lib/workers
+### backend-lib/core(契約)・workers(実装とD1の文を返す契約)
+
+- 各節のコードの先頭のコメントは置き場所を表す。`// core/payments/ports.ts`の契約はapi・eventのapplication層と後続specが読み込み、`// workers/payments/...`の契約と実装は`workers`と各アプリの`infrastructure`だけが読み込む。実装のクラスはすべて`workers/payments`に置き、`PAYMENTS_PLATFORM_MODULE`でapi・eventの両方に束縛する。
 
 #### StripeClient・StripeGateway・StripeWebhookVerifier
 
@@ -813,6 +893,7 @@ export declare function mapStripeEvent(event: {
 **Contracts**: Service [x]
 
 ```typescript
+// core/payments/ports.ts
 export interface StripeCheckoutSessionInput {
   readonly purchaseId: string;
   readonly mode: PurchaseMode;
@@ -888,6 +969,12 @@ export interface StripeGateway {
     paymentIntentId: string,
   ): Promise<StripePaymentOwnerHint>; // メタデータと請求の定期課金のメタデータ
 }
+export interface VerifiedStripeEvent {
+  readonly id: string;
+  readonly type: string;
+  readonly created: number; // 秒
+  readonly data: { readonly object: { readonly id: string } };
+} // mapStripeEventの入力。Stripeの型を外へ出さない
 export interface StripeWebhookVerifier {
   verify(
     rawBody: string,
@@ -895,7 +982,16 @@ export interface StripeWebhookVerifier {
   ): Promise<VerifiedStripeEvent>; // 失敗はStripeSignatureError
 }
 export declare const STRIPE_SIGNATURE_TOLERANCE_SECONDS: 300;
+// 例外の分類。application層(返金の実行・Webhookの受け付け・決済の開始)が判定に使うためcoreに置く
+export declare class StripeUnavailableError extends Error {}
+export declare class StripeNotFoundError extends Error {}
+export declare class StripeRejectedError extends Error {
+  readonly stripeErrorCode: string;
+}
+export declare class StripeSignatureError extends Error {}
 ```
+
+- 実装は`workers/payments/stripe-gateway.ts`(`StripeGateway`)・`stripe-webhook-verifier.ts`(`StripeWebhookVerifier`)に置き、`PAYMENTS_TYPES.StripeGateway`・`PAYMENTS_TYPES.StripeWebhookVerifier`へ束縛する。eventの`StripeWebhookReceiver`(application層)は`core/payments`の型と識別子で受け取る。
 
 - `StripeSubscriptionSnapshot`は`cancel_at`(秒)を`cancelAt`(Date、無ければnull)として持つ(U1)。`cancelSubscription(atPeriodEnd: true)`は`cancel_at_period_end`のまま送る(非推奨だが同じ動作をする)。
 - `StripeInvoiceSnapshot`・`StripeRefundSnapshot`・`StripeDisputeSnapshot`・`StripeSubscriptionSnapshot`・`StripePaymentOwnerHint`は、反映に要る項目(ID・状態・金額・関係するPaymentIntent・メタデータ・発生時刻)だけを持つ読み取り専用の型とし、Stripeの型を外へ出さない。
@@ -920,21 +1016,11 @@ export declare const STRIPE_SIGNATURE_TOLERANCE_SECONDS: 300;
 
 **Contracts**: State [x]
 
+文を返さない操作(`core/payments/ports.ts`)。api・eventのapplication層が受け取る。`NewPurchase`・`PurchaseRecord`・`PurchasePatch`・`NewPaymentRecord`・`PaymentRecordRow`・`PaymentRecordCursor`などの値の型も`core/payments/ports.ts`に置く。
+
 ```typescript
-export interface GuardedBatch {
-  // 先頭の文で対象を前進させ、guardTokenの行の存在をNOT NULL制約の副問い合わせで確かめ、満たさなければ全体を取り消す
-  run(input: {
-    readonly advance: BatchItem<'sqlite'>;
-    readonly guard: {
-      readonly table: 'payment_purchases' | 'payment_stripe_objects';
-      readonly id: string;
-      readonly token: string;
-    };
-    readonly rest: readonly BatchItem<'sqlite'>[];
-  }): Promise<'committed' | 'guard_failed' | 'constraint_failed'>;
-}
+// core/payments/ports.ts
 export interface PurchaseStore {
-  create(record: NewPurchase): BatchItem<'sqlite'>;
   findById(purchaseId: string): Promise<PurchaseRecord | undefined>;
   findBySessionId(sessionId: string): Promise<PurchaseRecord | undefined>;
   findByPaymentIntentId(
@@ -960,25 +1046,14 @@ export interface PurchaseStore {
     readonly expiredBefore: Date;
     readonly limit: number;
   }): Promise<readonly PurchaseRecord[]>;
-  advance(input: {
-    readonly purchaseId: string;
-    readonly to: PurchaseStatus;
-    readonly from: readonly PurchaseStatus[];
-    readonly token: string;
-    readonly patch: PurchasePatch;
-  }): BatchItem<'sqlite'>;
   recordConsent(input: {
     readonly purchaseId: string;
     readonly userId: string;
     readonly consentedAt: Date;
     readonly version: string;
   }): Promise<'recorded' | 'not_open'>;
-  deleteByUser(userId: string): BatchItem<'sqlite'>;
 }
 export interface PaymentRecordStore {
-  insertCheckoutRecord(record: NewPaymentRecord): BatchItem<'sqlite'>; // 一意キーで重複を無視
-  upsertByReference(record: NewPaymentRecord): BatchItem<'sqlite'>; // 発生時刻が新しくないときだけ更新(請求・返金)
-  insertDisputeStage(record: NewPaymentRecord): BatchItem<'sqlite'>; // (stripe_reference, kind, status)の一意キーで重複を無視
   listByPseudonymousId(input: {
     readonly pseudonymousId: string;
     readonly first: number;
@@ -991,6 +1066,44 @@ export interface PaymentRecordStore {
 }
 export interface StripeObjectStore {
   findLastEventAt(objectId: string): Promise<Date | undefined>;
+}
+```
+
+文を返す操作と版の検査付きの一括の書き込み(`workers/payments/statement-contracts.ts`)。`workers/payments`の反映・返金・失効と、各アプリの`infrastructure/payments`だけが受け取る。D1の実装は1つのクラスで両方の契約を実装し(`D1PurchaseStore implements PurchaseStore, PurchaseStatements`など)、`PAYMENTS_TYPES`の2つの識別子へ同じ実装を束縛する。
+
+```typescript
+// workers/payments/statement-contracts.ts
+import type { BatchItem } from 'drizzle-orm/batch';
+
+export interface GuardedBatch {
+  // 先頭の文で対象を前進させ、guardTokenの行の存在をNOT NULL制約の副問い合わせで確かめ、満たさなければ全体を取り消す
+  run(input: {
+    readonly advance: BatchItem<'sqlite'>;
+    readonly guard: {
+      readonly table: 'payment_purchases' | 'payment_stripe_objects';
+      readonly id: string;
+      readonly token: string;
+    };
+    readonly rest: readonly BatchItem<'sqlite'>[];
+  }): Promise<'committed' | 'guard_failed' | 'constraint_failed'>;
+}
+export interface PurchaseStatements {
+  create(record: NewPurchase): BatchItem<'sqlite'>;
+  advance(input: {
+    readonly purchaseId: string;
+    readonly to: PurchaseStatus;
+    readonly from: readonly PurchaseStatus[];
+    readonly token: string;
+    readonly patch: PurchasePatch;
+  }): BatchItem<'sqlite'>;
+  deleteByUser(userId: string): BatchItem<'sqlite'>;
+}
+export interface PaymentRecordStatements {
+  insertCheckoutRecord(record: NewPaymentRecord): BatchItem<'sqlite'>; // 一意キーで重複を無視
+  upsertByReference(record: NewPaymentRecord): BatchItem<'sqlite'>; // 発生時刻が新しくないときだけ更新(請求・返金)
+  insertDisputeStage(record: NewPaymentRecord): BatchItem<'sqlite'>; // (stripe_reference, kind, status)の一意キーで重複を無視
+}
+export interface StripeObjectStatements {
   advance(input: {
     readonly objectId: string;
     readonly objectType: 'subscription';
@@ -998,9 +1111,16 @@ export interface StripeObjectStore {
     readonly token: string;
   }): BatchItem<'sqlite'>; // 発生時刻が新しいか同じときだけ更新
 }
+export interface RefundStatements {
+  insert(record: NewRefundRequest): BatchItem<'sqlite'>; // request_keyの一意制約
+  deleteByUser(userId: string): BatchItem<'sqlite'>;
+}
+export interface CustomerStatements {
+  deleteByUser(userId: string): BatchItem<'sqlite'>;
+}
 ```
 
-- `CustomerStore`(`find(userId)`・`save(userId, customerId)`・`delete(userId)`)・`CustomerDirectory`(`findCustomerId(userId)`、後続specが使う)・`RefundStore`(依頼の追加・状態の更新・依頼キーでの検索・依頼済みの合計・送信待ちの検索・利用者の行の削除`deleteByUser`)・`PriceSnapshotStore`も同じファイル構成で持つ。物理削除では`payment_refunds`→`payment_purchases`→`payment_customers`の順に消す(外部キー)。
+- `CustomerStore`(`find(userId)`・`save(userId, customerId)`)・`CustomerDirectory`(`findCustomerId(userId)`、後続specが使う)・`RefundStore`(状態の更新・依頼キーでの検索・依頼済みの合計・送信待ちの検索・通知の状態の更新と通知待ちの検索)・`PriceSnapshotStore`も同じく`core/payments/ports.ts`に文を返さない操作だけを持ち、依頼の行の追加の文と利用者の行の削除の文は`RefundStatements`・`CustomerStatements`に置く。物理削除では`payment_refunds`→`payment_purchases`→`payment_customers`の順に消す(外部キー)。この順の3つの削除の文を1回の`db.batch()`で確定するのは、eventのinfrastructure層の`D1PaymentAccountDataEraser`である(「CustomerErasureHandler・OpenCheckoutExpiryHandler」)。
 - `IN`句とまとめての挿入はバインド変数100個以内に分ける。日次のジョブの削除は1回500件までを最大20回繰り返す。
 
 #### PaymentReflector・CheckoutSessionReflection
@@ -1029,6 +1149,7 @@ export interface StripeObjectStore {
 **Contracts**: Service [x]
 
 ```typescript
+// core/payments/ports.ts(apiのCheckoutReturnConfirmer・突合と日次の確認のジョブ、eventのStripeWebhookReceiverが受け取る)
 export type ReflectionOutcome =
   | { readonly kind: 'applied'; readonly purchaseStatus?: PurchaseStatus }
   | {
@@ -1047,6 +1168,8 @@ export interface PaymentReflector {
 }
 ```
 
+- 実装は`workers/payments/payment-reflector.ts`(`CheckoutSessionReflection`を含む)に置き、`PAYMENTS_TYPES.PaymentReflector`へ束縛する。実装は`workers/payments/statement-contracts.ts`の各ストアの文・`GuardedBatch`・`PaymentRefundStatements`と、`fulfillment-contract.ts`の`PurchaseFulfillment`・`SubscriptionEventSink`を使う。
+
 #### OpenCheckoutExpirer
 
 | Field        | Detail                                                                 |
@@ -1057,6 +1180,7 @@ export interface PaymentReflector {
 **Contracts**: Service [x]
 
 ```typescript
+// core/payments/ports.ts(eventのOpenCheckoutExpiryHandlerと後続specのapplication層が受け取る。実装はworkers/payments/open-checkout-expirer.ts)
 export interface OpenCheckoutExpirer {
   expireOpen(input: {
     readonly userId: string;
@@ -1080,6 +1204,7 @@ export interface OpenCheckoutExpirer {
 **Contracts**: Service [x]
 
 ```typescript
+// core/payments/ports.ts(application層と後続specが受け取る)
 export interface RefundRequestInput {
   readonly purchaseId: string;
   readonly amount: MinorUnitAmount | null; // nullは残りの全額
@@ -1103,6 +1228,11 @@ export type RefundRequestResult =
     };
 export interface PaymentRefunds {
   request(input: RefundRequestInput): Promise<RefundRequestResult>; // 記録と送信まで行う
+  dispatch(refundRequestId: string): Promise<void>; // 送信とdispatched_atの記録。送信済みなら何もしない。失敗はログだけ(日次の確認で送り直す)
+}
+
+// workers/payments/statement-contracts.ts(workers/paymentsの反映と、後続specのworkers/<ドメイン>・infrastructureだけが受け取る)
+export interface PaymentRefundStatements {
   prepare(input: RefundRequestInput): Promise<
     | {
         readonly kind: 'accepted';
@@ -1123,9 +1253,13 @@ export interface PaymentRefunds {
     readonly refundRequestId: string;
     readonly statements: readonly BatchItem<'sqlite'>[];
   };
-  dispatch(refundRequestId: string): Promise<void>; // 送信とdispatched_atの記録。送信済みなら何もしない。失敗はログだけ(日次の確認で送り直す)
 }
+// workers/payments/payment-refunds.ts
+export declare class D1PaymentRefunds
+  implements PaymentRefunds, PaymentRefundStatements {}
 ```
+
+- 置き場所: 文を返さない`request`・`dispatch`は`core/payments/ports.ts`の`PaymentRefunds`、文を返す`prepare`・`prepareForReflection`は`workers/payments/statement-contracts.ts`の`PaymentRefundStatements`に置く。1つの実装`D1PaymentRefunds`を`PAYMENTS_TYPES.PaymentRefunds`・`PAYMENTS_TYPES.PaymentRefundStatements`の両方へ束縛する。後続specが自分の一括の書き込みに返金の依頼を含める(`prepare`)場合は、その書き込みの単位を後続specのapplication層のポートにし、infrastructure層または`workers/<ドメイン>`の実装から`prepare`を呼ぶ(application層は文を扱わない)。
 
 - Preconditions(`request`・`prepare`、後続specの経路): 購入が`fulfilled`または`rejected`で、`stripe_payment_intent_id`がある(8.4)。反映の前進の文がこれらの値を保存するため、確定後の購入は常にこの前提を満たす。
 - `prepareForReflection`は読み取りを行わず、同じ一括の書き込みの前進の文が失敗すれば依頼の行も作られない。依頼キーは購入ごとに1つ(`reflection:`で始まる)で、反映のやり直しでも重複しない。
@@ -1141,6 +1275,17 @@ export interface PaymentRefunds {
 | Intent       | 購入確認メールと自動返金の通知メールを、依頼待ちの記録を伴って依頼する |
 | Requirements | 8.10, 10.6, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6                         |
 
+**Contracts**: Service [x]
+
+```typescript
+// core/payments/ports.ts(apiのPendingCheckoutSweepJobが受け取る。実装はworkers/payments/purchase-notifier.ts)
+export type NoticeOutcome = 'requested' | 'skipped' | 'not_pending';
+export interface PurchaseNotifier {
+  notifyPurchase(purchaseId: string): Promise<NoticeOutcome>; // 購入確認メール
+  notifyAutomaticRefund(refundRequestId: string): Promise<NoticeOutcome>; // 自動返金の通知
+}
+```
+
 - 購入の`confirmation_email_status`を`pending`(反映の一括の書き込みで記録)→`requested`(`EmailSender.send`の成功後)に進める。`requested`の購入では依頼しない(11.3)。Ultrasの更新の請求は購入ではないため対象外(11.4)。
 - 自動返金の通知は`payment_refunds.notice_status`で同様に扱う(依頼キーが`reflection:`で始まる依頼だけ。理由の値では判定しない)。
 - メールの入力は、購入種別の名前・分量・金額(USDの文字列)・購入日時(`formatUtcDateTime`)・役務の提供時期・最終確認画面の追加事項(購入の`summary_json`の`additionalNotes`。Ultrasの自動更新・毎月の請求額・解約の方法など、無ければ空、11.6・U2)・同意の日時と文言・返金ポリシーの要旨・決済履歴のURL(`CLIENT_SITE_ORIGIN` + `/settings/billing`)。宛先はidentity-authの`UserContactDirectory.findContact(userId)`の`email`で引く(api・eventの両方にidentity-authが束縛する共有の部品)。`undefined`(退会済み・物理削除済み・存在しない)なら送らずに`skipped`とする。停止中の利用者には宛先が返り、確定した購入の確認メールを送る(11.1)。`emailVerified`・`nickname`は判定に使わない(決済の開始は確認済みの利用者に限られる、3.5)。
@@ -1155,6 +1300,7 @@ export interface PaymentRefunds {
 **Contracts**: Service [x]
 
 ```typescript
+// core/payments/ports.ts(実装はworkers/payments/d1-payment-revenue-report.ts)
 export interface RevenuePeriod {
   readonly from: Date; // 含む
   readonly to: Date; // 含まない
@@ -1173,6 +1319,7 @@ export interface PaymentRevenueReport {
 
 #### PriceCatalog・PaymentHistoryExport・SmokePurchase
 
+- 置き場所: `PriceCatalog`・`PaymentHistoryExport`の契約は`core/payments/ports.ts`、実装と`SmokePurchase`は`workers/payments`に置く。data-exportのeventのapplication層は`core/payments`の型と`PAYMENTS_TYPES.PaymentHistoryExport`で受け取る。
 - `PriceCatalog.getPrices(lookupKeys)`: `payment_price_snapshots`が10分以内なら返し、古ければ`resolvePrices`で取り直して保存する。Stripeに到達できなければ古い値を`stale: true`で返し、値が無ければ`AppError(unavailable, payments_unavailable)`(13.1〜13.4)。決済の開始は`resolvePrices`を直接呼ぶ。
 - `PaymentRevenueReport.netRevenue(periods)`: 後述「PaymentRevenueReport」のとおり(12.10)。
 - `PaymentHistoryExport.listAll(pseudonymousId)`: `payments.json`の項目の配列を発生時刻の昇順で返す(12.8)。本specが所有するエクスポート部品で、data-exportはこれを呼び、決済履歴のテーブルを直接読まない。data-exportは引数の仮名化IDを、identity-authの`AccountExport.find(userId)`の`pseudonymousId`で得る(api・eventの両方にidentity-authが束縛する共有の部品。spec横断レビュー、2026-10-23)。
@@ -1199,19 +1346,48 @@ export interface CheckoutStartInput {
 export interface CheckoutStarter {
   start(input: CheckoutStartInput): Promise<{ readonly purchaseId: string }>;
 }
+// api/src/application/payments/checkout-ports.ts
+export interface CheckoutStartLimits {
+  consume(userId: string, now: Date): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)
+}
+export interface CheckoutPurchaseWriter {
+  // 同じ対象の未完了の購入をsupersededへ前進させ、新しい購入を挿入する。1回の一括の書き込みで確定する
+  replaceOpen(input: {
+    readonly purchase: NewPurchase;
+    readonly supersede: readonly string[]; // 購入ID
+  }): Promise<void>;
+  expire(purchaseId: string): Promise<void>; // Stripeの失敗のときopenの購入をexpiredへ
+}
+export interface PurchaseOfferPolicyResolver {
+  resolve(
+    identifier: ServiceIdentifier<PurchaseOfferPolicy>,
+  ): PurchaseOfferPolicy;
+} // apiの決済モジュール(composition)が処理単位のコンテナから解決する関数を渡す
+// api/src/infrastructure/payments/counter-checkout-start-limits.ts
 export declare const CHECKOUT_START_RULE: {
   readonly name: 'payments-checkout:user';
   readonly limit: 20;
   readonly windowSeconds: 3600;
 }; // 仮2
-export interface CheckoutStartLimits {
-  consume(userId: string, now: Date): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)
+export declare class CounterCheckoutStartLimits implements CheckoutStartLimits {
+  constructor(
+    counter: RateLimitCounterClient, // @inject(PLATFORM_TYPES.RateLimitCounterClient)
+    hasher: KeyedHasher, // @inject(PLATFORM_TYPES.KeyedHasher)
+  );
+}
+// api/src/infrastructure/payments/d1-checkout-purchase-writer.ts
+export declare class D1CheckoutPurchaseWriter implements CheckoutPurchaseWriter {
+  constructor(
+    db: Database, // @inject(PLATFORM_TYPES.Database)
+    purchases: PurchaseStatements, // @inject(PAYMENTS_TYPES.PurchaseStatements)
+  );
 }
 ```
 
-- 手順: `AccountGuard.requireVerifiedUser`(3.5) → `CheckoutStartLimits.consume`(3.10) → 登録の解決(未登録は`AppError(unprocessable, purchase_kind_unavailable)`、2.7) → `PurchaseOfferPolicy.describe`(`unavailable`は`AppError(unprocessable, <code>)`) → `requiresBotVerification`なら`humanCheck` → `assertAcceptable`(3.6) → `resolvePrices` → `ensureCustomer`(1.1〜1.4) → 同じ対象の未完了の購入を`superseded`へ前進し、新しい購入を挿入(1つの一括の書き込み) → `createCheckoutSession`(有効期限は`computeSessionExpiry`、3.7・3.8) → 購入にセッションのIDを保存 → 旧セッションを`expireCheckoutSession`(失敗はログだけ、3.9)。
-- Stripeの失敗は購入を`expired`にして`AppError(unavailable, payments_unavailable)`(3.11)。購入の行は残るが、利用者には見えず、決済画面では失効として扱う。
-- 回数は決済の開始の要求ごとに数える(成否を問わない)。キーは`hashRateLimitKey(hasher, userId)`。
+- 置き場所: `CheckoutStarter`と3つのポート(`CheckoutStartLimits`・`CheckoutPurchaseWriter`・`PurchaseOfferPolicyResolver`)はapplication層、実装`CounterCheckoutStartLimits`・`D1CheckoutPurchaseWriter`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`の型と`assertWithinLimit`、D1の文を返す`PurchaseStatements`が共通ライブラリの`workers`にあり、application層は読み込めず、DBの一括の書き込みも扱わないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」、`backend/002`の「依存方向と静的解析」)。`API_PAYMENTS_TYPES.CheckoutStartLimits`を`CounterCheckoutStartLimits`へ、`API_PAYMENTS_TYPES.CheckoutPurchaseWriter`を`D1CheckoutPurchaseWriter`へ束縛する。`CheckoutStarter`は購入種別の登録を`PAYMENTS_TYPES.PurchaseKindRegistry`(`core/payments`の`PurchaseKindRegistry`の既定の型引数)で、ゲートウェイ・`CustomerStore`・`PurchaseStore`を`core/payments`の型と`PAYMENTS_TYPES`の識別子で受け取り、`**/lib/workers/**`を読み込まない。bot判定は`humanCheck`(presentation層が`GraphQLContext.assertHuman`を渡す)で行う。ユースケースの単体テストは偽のポートで、実装の振る舞いはWorkers統合テスト(偽の厳密カウンタ・ローカルのD1)で確かめる。
+- 手順: `AccountGuard.requireVerifiedUser`(3.5) → `CheckoutStartLimits.consume`(3.10) → 登録の解決(`PurchaseKindRegistry.resolve`。未登録は`AppError(unprocessable, purchase_kind_unavailable)`、2.7) → `PurchaseOfferPolicyResolver.resolve(registration.offer).describe`(`unavailable`は`AppError(unprocessable, <code>)`) → `requiresBotVerification`なら`humanCheck` → `assertAcceptable`(3.6) → `resolvePrices` → `ensureCustomer`(1.1〜1.4) → `CheckoutPurchaseWriter.replaceOpen`(同じ対象の未完了の購入を`superseded`へ前進し、新しい購入を挿入する1つの一括の書き込み) → `createCheckoutSession`(有効期限は`computeSessionExpiry`、3.7・3.8) → `PurchaseStore.attachSession`で購入にセッションのIDを保存 → 旧セッションを`expireCheckoutSession`(失敗はログだけ、3.9)。
+- Stripeの失敗は`CheckoutPurchaseWriter.expire`で購入を`expired`にして`AppError(unavailable, payments_unavailable)`(3.11)。購入の行は残るが、利用者には見えず、決済画面では失効として扱う。
+- 回数は決済の開始の要求ごとに数える(成否を問わない)。`CounterCheckoutStartLimits`がキー`hashRateLimitKey(hasher, userId)`で`CHECKOUT_START_RULE`の`hit`と`assertWithinLimit`を行う。
 
 #### CheckoutReader・CheckoutConsentRecorder・CheckoutReturnConfirmer・PaymentHistoryReader
 
@@ -1242,6 +1418,7 @@ export interface CheckoutStartLimits {
 
 - Trigger: apiのCron Triggers(`40 7 * * *`・`21 12 * * *`)。23:40の`order` 10は、同時刻のマッチの確定(match-engine)より先に動くための値で、match-engineは10より大きい`order`を使う(10.2)。4:21の`order`は上流の100〜120・200・210・300・810〜830・900・2300と重ならない。ジョブの名前と順序は日次タイムラインの表に載せる。
 - Idempotency: すべての処理は2回実行しても結果が変わらない(反映は状態の前進、削除は条件付き)。件数の上限を超えた分は翌日(4:21)に続ける。23:40の対象は200件を超えない想定(週ごとの予選の勝者の数)で、超えた場合は`warn`を記録する。
+- 依存: 3つのジョブと`CheckoutReader`・`CheckoutConsentRecorder`・`CheckoutReturnConfirmer`・`PaymentHistoryReader`はapplication層に置き、`PaymentReflector`・`PaymentRefunds`(`dispatch`)・`PurchaseNotifier`・`StripeGateway`・各ストアの文を返さない操作を`core/payments`の型と`PAYMENTS_TYPES`の識別子で受け取る。`**/lib/workers/**`を読み込まず、D1の文と一括の書き込みを扱わない(7年の削除は`PaymentRecordStore.deleteRecordedBefore`、送信待ちの返金・依頼待ちのメールの検索は`RefundStore`・`PurchaseStore`の文を返さない操作)。
 
 #### PaymentsSchemaModule
 
@@ -1376,6 +1553,7 @@ type Mutation {
 
 - 本文は1MiBまでを文字列のまま読み、`StripeWebhookVerifier.verify`の後に`mapStripeEvent` → `PaymentReflector.reflect`。`applied`・`already_applied`・`stale`・`unresolved`・`ignored`はすべて200(6.3・6.9)。例外は500とし、`error`のログとSentryに通知の種類とIDだけを送る(6.6)。
 - `rate-limit-exclusions.ts`に`excludePath('/webhooks/stripe', 'POST')`を登録する(6.8)。
+- 依存: `StripeWebhookReceiver`(application層)は`StripeWebhookVerifier`・`PaymentReflector`を`core/payments`の型と`PAYMENTS_TYPES`の識別子で、`mapStripeEvent`を`core/payments/stripe-event-mapping.ts`から受け取り、`**/lib/workers/**`を読み込まない。署名の不正は`core/payments`の`StripeSignatureError`で判定する。
 
 #### RefundPaymentHandler
 
@@ -1390,6 +1568,7 @@ type Mutation {
 - 処理: 依頼の行を読み、`submitted`・`succeeded`なら`done`。依頼の`purchase_id`で購入を読み、`stripe_payment_intent_id`(反映の前進の文が保存した値)を取る(どの依頼の経路でも同じ読み方)。購入が定期課金で`rejected`なら先に`cancelSubscription(atPeriodEnd: false)`(既に解約済みは無視)。`createRefund`(PaymentIntentのID・冪等キー`refund:<依頼キー>`)の結果のIDを保存して`submitted`にする。購入やPaymentIntentのIDが無い依頼は`failed`(`missing_payment_intent`)とし、`captureEvent`で通知する。
 - 失敗: `StripeUnavailableError`は例外(再試行、上限でデッドレター→Sentry、8.6)。`StripeRejectedError`は`failed`と拒否のコードを保存し、`captureEvent`(タグ`message_type`・`stripe_error_code`)で通知して`done`(8.7)。
 - Idempotency: 同じメッセージを何度受けても、Stripeの冪等キーと行の状態で返金は1回。
+- 依存: application層に置き、`RefundStore`・`PurchaseStore`(文を返さない操作)・`StripeGateway`と例外の分類を`core/payments`から受け取る。
 
 #### CustomerErasureHandler・OpenCheckoutExpiryHandler
 
@@ -1400,12 +1579,30 @@ type Mutation {
 
 **Contracts**: Event [x]
 
-| 名前                            | イベント                 | `order` | 処理                                                                                                                                                    |
-| ------------------------------- | ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `payments.customer-erasure`     | `purge_due`              | 400     | `deleteCustomer`(`already_deleted`は成功扱い) → `payment_refunds`・`payment_purchases`・`payment_customers`の利用者の行を削除。決済履歴は残す(1.5〜1.7) |
-| `payments.open-checkout-expiry` | `withdrawn`・`suspended` | 410     | `OpenCheckoutExpirer.expireOpen({ kinds: 'all', limit: 50 })`。残りがあれば`continue`(14.1)                                                             |
+| 名前                            | イベント                 | `order` | 処理                                                                                                                                                                                      |
+| ------------------------------- | ------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payments.customer-erasure`     | `purge_due`              | 400     | `deleteCustomer`(`already_deleted`は成功扱い) → `PaymentAccountDataEraser.erase`で`payment_refunds`・`payment_purchases`・`payment_customers`の利用者の行を削除。決済履歴は残す(1.5〜1.7) |
+| `payments.open-checkout-expiry` | `withdrawn`・`suspended` | 410     | `OpenCheckoutExpirer.expireOpen({ kinds: 'all', limit: 50 })`。残りがあれば`continue`(14.1)                                                                                               |
 
 - Stripeの一時的な失敗は例外(identity-authの`USER_LIFECYCLE_RETRY_POLICY`で再試行、1.6・14.2)。失効の前に支払いが確定した購入は通常どおり反映される(14.3)。
+
+```typescript
+// event/src/application/payments/payment-account-data-eraser.ts
+export interface PaymentAccountDataEraser {
+  erase(userId: string): Promise<void>; // 返金の依頼→購入→Customerの対応の順の削除を1回の一括の書き込みで確定する
+}
+// event/src/infrastructure/payments/d1-payment-account-data-eraser.ts
+export declare class D1PaymentAccountDataEraser implements PaymentAccountDataEraser {
+  constructor(
+    db: Database, // @inject(PLATFORM_TYPES.Database)
+    refunds: RefundStatements, // @inject(PAYMENTS_TYPES.RefundStatements)
+    purchases: PurchaseStatements, // @inject(PAYMENTS_TYPES.PurchaseStatements)
+    customers: CustomerStatements, // @inject(PAYMENTS_TYPES.CustomerStatements)
+  );
+}
+```
+
+- 置き場所: 2つの波及処理はapplication層に置き、`StripeGateway`・`OpenCheckoutExpirer`を`core/payments`の型と`PAYMENTS_TYPES`の識別子で、削除の書き込みの単位をポート`PaymentAccountDataEraser`(`EVENT_PAYMENTS_TYPES.PaymentAccountDataEraser`)で受け取る。D1の文の組み立てと`db.batch()`の実行はinfrastructure層の`D1PaymentAccountDataEraser`が行う(application層はDBの一括の書き込みを扱わない)。波及処理の単体テストは偽のポートで、実装の削除の順と外部キーの残りが無いことはWorkers統合テストで確かめる。
 - `order`は本specの400番台(4:21のジョブと同じ帯)。`purge_due`のinquiry-chatの300の後に動き、どのイベントでも後続specの帯(500番台以降。roadmapの帯の割り当ての表)の前に動く。
 
 ### client
@@ -1575,8 +1772,9 @@ export interface MoneyTextProps {
   - `purchase-rules`: 有効期限(期限の無い購入は1時間、期限のある購入は24時間と決済期限の早い方、30分未満にならない)、受付期限の境界(23:00ちょうどは拒否)、`decideCompletion`の反映の期限の境界、`ADVANCEABLE_FROM`の前進だけ(3.6〜3.8、7.3)。
   - `stripe-event-mapping`: 15種の通知の正規化と他の種類の`ignored`、チャージバックの段階の対応(6.3、9.1〜9.4)。
   - `refund-rules`: 残りの全額・一部・超過・0以下・非整数(8.1・8.3)。
-  - `purchase-kind-registry`: 重複の拒否、`enabled`が偽の購入種別の未解決(2.7〜2.9)。
-  - `CheckoutStarter`・`CheckoutReturnConfirmer`・ジョブ・event側の処理(模擬のポート): 開始の手順の順序、Stripeの失敗で購入が失効になる、旧セッションの`superseded`、23:40の失敗の継続(3.1〜3.11、10.1〜10.4)。
+  - `purchase-kind-registry`: 重複の拒否、`enabled`が偽の購入種別の未解決、定期課金の受け取り口の名前の形式と重複(2.7〜2.9)。
+  - `core/payments/identifiers`: `PAYMENTS_TYPES`の各値が`Symbol.for('payments.<名前>')`であり、オブジェクトが凍結されていること。
+  - `CheckoutStarter`・`CheckoutReturnConfirmer`・ジョブ・event側の処理(`core/payments`の契約の偽物と、偽の`CheckoutStartLimits`・`CheckoutPurchaseWriter`・`PurchaseOfferPolicyResolver`・`PaymentAccountDataEraser`): 開始の手順の順序、Stripeの失敗で購入が失効になる、旧セッションの`superseded`、23:40の失敗の継続(3.1〜3.11、10.1〜10.4)。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts`、Stripeは模擬の`StripeGateway`またはfetchの模擬応答):
   - Webhookの経路: Stripe SDKの`generateTestHeaderStringAsync`で作った正しい署名は200、署名の改ざん・5分超の古い時刻は400、IP制限で数えられない(6.1・6.2・6.8)。
   - 反映の冪等性: 同じ決済セッションを`return_url`とWebhookから同時に反映しても、決済履歴1件・権利の付与の文1回・購入確認メールの依頼1回(5.7・6.4・6.7)。
@@ -1587,7 +1785,8 @@ export interface MoneyTextProps {
   - 返金の処理: 一時的な失敗の再試行とデッドレター、恒久的な拒否の`failed`、同じ依頼キーの2回目の重複(8.2・8.6・8.7)。
   - ライフサイクル: `purge_due`でCustomerと購入の行が消え、決済履歴が残る。`withdrawn`で未完了の決済セッションが失効する(1.5〜1.7、14.1)。
   - 日次の確認: `dispatched_at`が空の依頼と`pending`のメールが依頼し直され、`requested`は依頼されない(10.6・11.3)。7年の削除の境界(12.7)。
-  - 回数制限: 21回目が`rate_limit_exceeded`と`Retry-After`(3.10)。
+  - 回数制限: `CounterCheckoutStartLimits`で21回目が`rate_limit_exceeded`と`Retry-After`(3.10)。
+  - 書き込みの単位: `D1CheckoutPurchaseWriter`が同じ対象の未完了の購入の`superseded`への前進と新しい購入の挿入を1回の一括の書き込みで確定すること(3.9)、`D1PaymentAccountDataEraser`が返金の依頼→購入→Customerの対応の順に削除し決済履歴を残すこと(1.5・1.7)。
   - 収益の照会(12.10、仮7): 期間ごとの成功した決済・請求の合計、成功した返金の差し引き、`dispute_lost`の期間に`disputed`の引き落とし額が差し引かれ`dispute_won`で戻ったチャージバックは差し引かれないこと、失敗・処理中の行と`payments_smoke`の除外、期間の境界(`from`を含み`to`を含まない)、入力の順と該当の無い期間の0、60個の期間が1回の`db.batch`で成功すること、`disputed`の行が無い`dispute_lost`が0として数えられ`warn`のログに残ること、0個・61個・`from >= to`の拒否。
 - E2E/UI Tests:
   - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `CheckoutPage`の状態ごとの出し分け、同意が無い間の支払うボタンの無効、同意の記録の失敗で確定しない、`CheckoutSummary`の表示事項とアンカー無しの`/legal`へのリンク、`PaymentHistoryList`の続きの読み込みと0件、`MoneyText`のロケールと符号(4.1〜4.13、12.1〜12.3、13.5)。Stripe.jsは`CheckoutElementsProvider`の模擬で置き換える。
