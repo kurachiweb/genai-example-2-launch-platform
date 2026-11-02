@@ -260,7 +260,7 @@
   - _Depends: 7.2_
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-- [ ] 7.7 メールアドレス変更とパスワード変更を作る
+- [x] 7.7 メールアドレス変更とパスワード変更を作る
   - 先に、変更の要求が重複の有無を問わず同じ結果になり重複時は送らないこと、本人確認・bot判定の呼び出し、確定時の重複での無効、変更前のアドレスへの完了メール、使い捨て判定のやり直し、操作した端末への再発行、パスワード変更の新しいパスワードのハッシュだけの保留と確定・完了メール、退会済み・停止中の確定の無効を確かめる単体テストを書く
   - 完了状態: 単体テストが成功する
   - _Depends: 7.2, 7.3, 7.5_
@@ -483,3 +483,4 @@
 - 7.4: `StoreLogin`(`login.ts`)。第2要素の照合とリカバリコードのハッシュの用途`user-recovery-code`は共通部品`second-factor-check.ts`(`checkSecondFactor`・`isTotpEnabled`・`USER_RECOVERY_CODE_HASH_PURPOSE`)にあり、7.5・7.8はこれを使う(design.mdのファイル計画には無い)。第2要素のログインは設計と違い、利用者の読み取りを`status`より先にし、退会済み・存在しないなら`login_challenge_expired`、停止中なら`account_unavailable`(待ちを消し、照合も記録もしない)。テストの偽物は`application/identity/testing/login-fakes.ts`。要件7.10(bot判定)・6.7のCookieの失効・ログイン成否のログは8.2のリゾルバで行う。エラーの文言はlogin.tsの定数で8.2で集約する。8.1の束縛: `IDENTITY_TYPES.Login`→`StoreLogin`
 - 7.5: `StoreReAuthenticator`(`re-authenticator.ts`)・`StoreSessionManagement`(`session-management.ts`)。ログイン試行の確認は`login-throttle-check.ts`の`checkUserLoginThrottle`(ログインと本人確認が共有、ファイル計画に無い)。`reauthentication_failed`の詳細の欄は本人確認の入力の相対の経路(`currentPassword`・`secondFactor`・`secondFactor.totpCode`・`secondFactor.recoveryCode`、定数は`re-authenticator.ts`)で、8.3のリゾルバが`input.`・`input.reAuthentication.`を付ける(`password-rejection.ts`の詳細も同じ)。本人確認は停止・退会を見ないため、7.7〜7.9・8.2の呼び出し側は先に`AccountGuard`を通す。利用者でない主体には一覧が空・失効は`not_found`・一括は0。8.1の束縛: `IDENTITY_TYPES.ReAuthenticator`→`StoreReAuthenticator`、`SessionManagement`→`StoreSessionManagement`。文言「現在のパスワードが正しくありません。」「対象が見つかりません。」は8.2・12.2で集約する
 - 7.6: `StorePasswordReset`(`password-reset.ts`)。リンクのメール・完了メールの送信の失敗は`['api','identity','password-reset']`の`error`ログに留める(`infra/004`に記載済み)。`password_rejected`の詳細の欄は`newPassword`(design.mdのError Categoriesは`password`。8.3のリゾルバが`input.newPassword`にし、12.xで表を合わせる)。8.1の束縛: `IDENTITY_TYPES.PasswordReset`→`StorePasswordReset`
+- 7.7: `StoreEmailChange`(`email-change.ts`)・`StorePasswordChange`(`password-change.ts`)、テストの偽物は`testing/credential-change-fakes.ts`。bot判定と停止中の拒否はユースケースではなく8.3のリゾルバが`requireWritableUser`→`assertHuman('email_change'|'password_change')`→`request`の順で行う(`requireUser`を使うと停止中の利用者が変更できてしまう)。8.3でこの2つの操作のbot判定の失敗(403・503)と停止中の拒否(`account_unavailable`)のWorkers統合テストを加える。確定後の使い捨て判定の保存の失敗はログに留めるため、その利用者の判定は空のまま残り、7.10の判定し直し(`undetermined`だけが対象)にも入らない(7.3の確認も同じ)。8.1の束縛: `IDENTITY_TYPES.EmailChange`→`StoreEmailChange`、`PasswordChange`→`StorePasswordChange`
