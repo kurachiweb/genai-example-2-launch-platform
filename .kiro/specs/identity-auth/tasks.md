@@ -131,7 +131,7 @@
   - _Boundary: LoginThrottleState_
   - _Requirements: 7.2, 7.3, 7.4, 7.6_
 
-- [ ] 4.3 認証部品のポート・DIの識別子・パスワードの方針・秘密とリカバリコードの発行・ハッシュ化済みキー・主体別のセッションの検証を作る
+- [x] 4.3 認証部品のポート・DIの識別子・パスワードの方針・秘密とリカバリコードの発行・ハッシュ化済みキー・主体別のセッションの検証を作る
   - 先に、偽のポートを使って、規則の違反は漏洩照合を呼ばないこと、漏洩照合が使えないときは受け付けて運用者への通知を1回出すこと、秘密とリカバリコード10個の平文とハッシュの組、メールアドレスを正規化してからキーを作りIPが不明ならIPのキーが無いこと、利用者と管理者のセッションの検証が呼び分けられ管理者の既定が常に無効を返すことを確かめる単体テストを書く
   - パスワードのハッシュ化・漏洩照合・乱数・秘密鍵の暗号化・TOTP・ログイン試行の記録・運用者への通知のポートと、それらを組み合わせるサービスを作る。利用者の業務に依存させない
   - 完了状態: 単体テストが成功し、認証部品のどのファイルも利用者のモジュールを読み込んでいない(静的解析の規則は8.1で加える)
@@ -467,3 +467,4 @@
 - 3.7: `D1AdminUserDirectory`は`workers/identity/d1-admin-user-directory.ts`。カーソルは`base64url('<ミリ秒>:<ID>')`で、件数とカーソルの不正は設計どおり`validation_error`(既存のページングは`invalid_cursor`)。空のフィルタ文字列は全件に一致するため、正規化は呼び出し元が行う。eventの`test:worker`は既定の並列数ではメモリ不足でSIGKILLになることがあり、`bunx vitest run --config vitest.worker.config.ts --maxWorkers=3`で回す
 - 4.1: 規則は`apps/api/src/domain/auth/`の`password-rules.ts`・`session-policy.ts`(`USER_SESSION_POLICY`・`newSessionTimes`・`evaluateSession`・`cookieMaxAgeSeconds`)・`recovery-code-format.ts`・`second-factor.ts`(`normalizeTotpCode`)。期限ちょうど(`>=`)を期限切れとするため、期限切れの削除(6.3・7.10)も同じ境界にする。リカバリコードと認証コードの入力は設計の正規化に加えてNFKCとダッシュ類全般の除去を行う(12.1の文書も同じ正規化を書く)
 - 4.2: `domain/auth/login-throttle-state.ts`。ロック中の`applyFailure`は記録を変えず、ロックの終了時刻を`alarmAt`として返す(5.3の`DurableLoginThrottle`は、ロック中は保存を省いてよい)。`alarmOutcome`の`reschedule`はロックの終了時刻と最後の失敗+24時間の早い方。`status`→照合→`recordFailure`は原子的でないため、並列の要求はロックの前に`status`を通り得る(5.3でDurable Objectの直列化の範囲を確かめる)
+- 4.3: `apps/api/src/application/auth/`に`AUTH_TYPES`(12個、`Symbol.for('auth.<名前>')`)・`ports.ts`・`CheckingPasswordPolicy`・`HashingSecretIssuer`・`HashingRecoveryCodeIssuer`・`createLoginThrottleKeys`(空文字列のIPも不明扱い)・`SubjectSessionVerifier`・`InvalidSubjectSessionVerifier`。サービスのインターフェースは各サービスのファイルにある。`SubjectSessionVerifier`は差し込んだ検証器が別の種類の主体を返すと無効にするため、admin-foundationの管理者の検証器は`subjectKind: 'admin'`を返す。ハッシュの用途は`docs/GUIDES/tech/security/002-keyed-hashing.md`の形(英小文字とハイフン、`:`を使わない)で6.1で定める。8.1の静的解析で認証部品から禁止する読み込みは、apiの`**/domain/identity/**`・`**/application/identity/**`・`**/infrastructure/identity/**`・`**/presentation/graphql/modules/identity/**`で、`common-lib/identity/`(共有の入力規則。`domain/auth/password-rules.ts`が使う)は含めない
