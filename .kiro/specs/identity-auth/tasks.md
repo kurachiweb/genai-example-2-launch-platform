@@ -332,7 +332,7 @@
   - _Requirements: 4.7_
 
 - [ ] 9. イベントサーバー
-- [ ] 9.1 非同期の波及処理の実行器と、利用者の行の物理削除を作る
+- [x] 9.1 非同期の波及処理の実行器と、利用者の行の物理削除を作る
   - 先に、偽のストアと偽の波及処理で、完了済み・存在しないイベントの終了、より前の未完了のイベントがあるときの60秒の遅延、登録順の実行と完了の記録、完了済みの飛ばし、続きがあるときの5秒の遅延、例外の伝播、物理削除の開始の全波及処理の後の利用者の行の削除とイベントの完了を確かめる単体テストを書く
   - 物理削除の一括の書き込み(子の行から利用者の行まで)をD1上に作り、他のテーブルの外部キーが残ると失敗してイベントが未完了のまま残ることをWorkers統合テストで確かめる
   - 完了状態: 単体テストとWorkers統合テストが成功する
@@ -492,3 +492,4 @@
 - 8.3: identityのスキーマモジュールは`composition/graphql-modules.ts`に登録済みで、生成物(`generated/schema.graphql`・`resolvers-types.ts`)は`graphql:check`と一致する。リゾルバは`account-resolvers.ts`・`session-resolvers.ts`・`totp-resolvers.ts`を`index.ts`でまとめ`satisfies Resolvers`。`codegen.config.ts`に`Viewer`のmappers(`ViewerSource`)を加えた。本人確認の入力を含む操作の詳細の経路は`errors.ts`の`withNestedReAuthenticationPath`。生成したスキーマの`password: String!`等の行のBetterleaksの誤検知は、ルートの`.betterleaks.toml`の`[[allowlists]]`(`generic-password`・`.graphql`・型の注釈だけの行)で除外する(行番号のFingerprintは使わない。`security/001`に記載)。10.2はclientの操作を書き、`apps/api`で`bun run graphql:allowlist`を実行する
 - 8.4: ジョブは`composition/scheduled-jobs.ts`に登録済み(4:21の3つと16:21の送り直し)、apiのルートの`triggers.crons`に`21 0 * * *`。照会口は`email-registrations.ts`の`USER_ADDRESS_DIRECTORY = D1UserAddressDirectory`で、未使用になった`UnavailableUserAddressDirectory`は削除した(email-deliveryのdesign.mdには初期の既定として記述が残る)。ログの属性名は`@logtape/redaction`の既定の伏せ字の規則(`/token/i`・`/auth/i`・`/key/i`・`/address/i`・`/email/i`など部分一致)に当たると値が`[REDACTED]`になるため、件数などの属性名にこれらの語を含めない(期限切れの削除の対象名は`mailLinks`)。日次タイムラインの表(`007-daily-timeline.md`)は12.2で更新する
 - 8.5: `AccountUploaderEligibility`(`application/identity/account-uploader-eligibility.ts`)を処理単位で単一に束縛し、`composition/uploader-eligibility.ts`は`UPLOAD_ACCESS_TYPES.UploaderEligibility`を`toService(IDENTITY_TYPES.AccountUploaderEligibility)`で転送する。`AllowAllUploaderEligibility`はmedia-pipelineの5.1のテストが使うため残す
+- 9.1: eventの`UserLifecycleRunner`(`apps/event/src/application/identity/user-lifecycle-runner.ts`、依存`{ store, registry, resolver, purgeStore, clock }`をまとめて受け取り`@injectable`無し、9.2で`toDynamicValue`で組み立てる)、ポートは`application/identity/ports.ts`(`LifecycleHandlerResolver`・`IdentityPurgeStore`。設計の`DisposableStatusStore`・`LifecycleIncidentReporter`は9.2で加える)、物理削除は`infrastructure/identity/d1-identity-purge-store.ts`(`@injectable`、イベントの行も消すため物理削除の後の再配信は「イベントが無い」で終わる)。ログのカテゴリは`['event','identity','lifecycle']`
