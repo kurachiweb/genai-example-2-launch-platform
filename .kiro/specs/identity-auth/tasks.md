@@ -190,7 +190,7 @@
   - _Depends: 1.2, 6.1_
   - _Requirements: 6.2, 8.1, 8.6, 8.7, 8.8, 14.2, 14.5_
 
-- [ ] 6.4 (P) TOTPとリカバリコードのストアをD1上に作る
+- [x] 6.4 (P) TOTPとリカバリコードのストアをD1上に作る
   - 先に、保留の保存と有効化済みの拒否、有効化とリカバリコードの追加の一括の書き込み、使用済みの時間窓より新しいときだけの更新(再使用の拒否)、無効化での秘密鍵とリカバリコードの削除、保留の期限切れの削除、リカバリコードの消費・数え上げ・入れ替えを確かめるWorkers統合テストを書く
   - 2つのストアを実装する
   - 完了状態: Workers統合テストが成功し、同じ時間窓での2回目の更新が偽になることを確かめられる
@@ -474,3 +474,4 @@
 - 6.1: 規則は`apps/api/src/domain/identity/`(`user-account.ts`・`handle.ts`・`auth-token-purpose.ts`)、ポートと識別子は`apps/api/src/application/identity/`(`ports.ts`・`identity-types.ts`の`IDENTITY_TYPES` 34個・`request-meta.ts`)。トークンのハッシュの用途は`user-auth-token-email-verification`・`-email-change`・`-password-reset`・`-password-change`で確定(design.mdも同じ形に改めた)。確定時に失効させる用途の集合`AUTH_TOKEN_PURPOSES_REVOKED_ON_COMPLETION`は、6.2の`D1UserAccountStore`がパスワードリセット・メールアドレス変更・パスワード変更の一括の書き込みで唯一の正として使う。`IdentityMessagePublisher`は識別子を持たず`PLATFORM_TYPES.MessagePublisher`から受け取る。DBの値との一致は`application/identity/identity-columns.unit.test.ts`
 - 6.2: `apps/api/src/infrastructure/identity/`の`D1UserAccountStore`・`D1HandleAvailability`(`@injectable`、`@inject(PLATFORM_TYPES.Database)`、束縛は8.1)。一意制約の違反は`db.batch()`の失敗の`cause`の連鎖の文言`UNIQUE constraint failed: users.email|users.handle`で判別し、他の違反と障害はそのまま投げる(`docs/GUIDES/tech/db/002-d1-constraints.md`に汎用の節を追加)。パスワードリセットは未確認のときだけ確認日時を入れる。`listUndetermined(checkedBefore)`は境界を`lt`で比べるため、7.10のジョブは「1時間以上経った」を満たすよう`checkedBefore`を決める。テストの補助`clearIdentityTables`はセッションとトークンを消さない(6.2のテストは自前で消す)ため、6.3で補助に加えてよい
 - 6.3: `D1UserSessionStore`・`D1AuthTokenStore`・`D1LoginChallengeStore`(`apps/api/src/infrastructure/identity/`)。`findByTokenHash`は退会済みの利用者のセッションも状態付きで返すため、退会済みの判定と削除は7.1の`UserSessionVerifier`が行う。トークンと待ちの作成日時はスキーマの既定値(実時計)。削除の件数は`meta.changes`。`clearIdentityTables`はセッション・トークン・待ちも消すようになった
+- 6.4: `D1TotpCredentialStore`・`D1RecoveryCodeStore`。`enable`・`replaceAll`は資格情報の状態が合うときだけコードを`INSERT ... SELECT`で入れる(`replaceAll`は有効でなければ古いコードを消すだけ)。`savePending`は既存の保留を上書きし使用済みの時間窓を戻す。`enable`は保存済みの秘密鍵が照合したものと同じかを確かめないため、7.8は設定の開始の競合(照合と有効化の間の`savePending`)を考慮する

@@ -7,6 +7,7 @@ import { userAuthTokens } from '../../../../db/schema/identity/user-auth-tokens.
 import { userLifecycleEvents } from '../../../../db/schema/identity/user-lifecycle-events.ts';
 import { userLifecycleHandlerRuns } from '../../../../db/schema/identity/user-lifecycle-handler-runs.ts';
 import { userLoginChallenges } from '../../../../db/schema/identity/user-login-challenges.ts';
+import { userRecoveryCodes } from '../../../../db/schema/identity/user-recovery-codes.ts';
 import { userSessions } from '../../../../db/schema/identity/user-sessions.ts';
 import { userTotpCredentials } from '../../../../db/schema/identity/user-totp-credentials.ts';
 import { users } from '../../../../db/schema/identity/users.ts';
@@ -166,6 +167,7 @@ export async function readHandlerRuns() {
 export async function clearIdentityTables(): Promise<void> {
   await db.delete(userLifecycleHandlerRuns);
   await db.delete(userLifecycleEvents);
+  await db.delete(userRecoveryCodes);
   await db.delete(userTotpCredentials);
   await db.delete(userSessions);
   await db.delete(userAuthTokens);
