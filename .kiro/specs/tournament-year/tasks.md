@@ -59,9 +59,10 @@
 
 - [ ] 3. Yearの部品
 - [ ] 3.1 年のトーナメントのストアと、Yearの部品の識別子を作る
-  - Yearの全部品のDIの識別子をここで作る。束縛と登録は3.16でまとめて行い、3.2〜3.15は束縛と登録のファイルを変えない(テストは部品を直接組み立てる)
+  - Yearの部品の契約と型(`NewYearEntry`を含む。`YearEntryOfferPolicy`・`YearEntryFulfillment`はpaymentsの契約を実装するため除く)を純粋な部品(`apps/backend-lib/core/year-tournament/ports.ts`)に、Yearの全部品のDIの識別子`YEAR_TOURNAMENT_TYPES`を`core/year-tournament/identifiers.ts`にここで作る。api・eventとdata-exportのapplication層が契約と識別子を読み込むため、`workers`に置かない。年のストアのD1の実装は`apps/backend-lib/workers/year-tournament/d1-year-tournament-store.ts`に作る(3.2〜3.4の枠のストアは`d1-year-entry-store.ts`)。束縛と登録は3.16でまとめて行い、3.2〜3.15は束縛と登録のファイルを変えない(テストは部品を直接組み立てる)
   - 先に、ローカルD1のWorkers統合テストで、年の行の用意の重複の無視(既定の日の列)、複数の年の読み取り、組み合わせ決定の時刻が到来した年の一覧、凍結の1回だけの成功、組み合わせの記録、受賞の確定が1回だけ、凍結済みの最新の決済期限日、プロダクトごとの受賞の読み取り(紐付けを解除した受賞の除外)を確かめる
-  - 完了状態: Workers統合テストが成功する
+  - 同じく先に、識別子`YEAR_TOURNAMENT_TYPES`が`Symbol.for('year-tournament.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
+  - 完了状態: 単体テストとWorkers統合テストが成功し、`core/year-tournament`が`core/week-tournament`・`workers`・`apps/db`を読み込まない
   - _Requirements: 7.2, 9.4_
 
 - [ ] 3.2 参加の枠のストアの挿入と引き当てを作る
@@ -140,6 +141,7 @@
 
 - [ ] 3.15 (P) 受賞のエクスポートの部品を作る
   - 先に、Workers統合テストで、ローンチごとの受賞(`product_of_the_year`と対象年)と、紐付けを解除した受賞と受賞の無いローンチの扱いを確かめる
+  - 3.1の`core/year-tournament/ports.ts`の契約を満たすD1の実装を`workers/year-tournament/d1-year-award-export.ts`に作る
   - 完了状態: Workers統合テストが成功する
   - _Boundary: YearAwardExport_
   - _Depends: 3.1_
@@ -156,7 +158,8 @@
 - [ ] 4.1 eventの識別子と、確定のマッチイベントの2つの処理を作る
   - eventの8つの処理のDIの識別子をここで作る(束縛と登録は4.5)
   - 先に、単体テスト(部品は偽物)で、Weekのマッチの確定で直近8日のWeek優勝の取り込みを呼ぶこと、Yearのマッチの確定でその年を進め結果の反映(賞・通知)を行うこと、種別の違うマッチと本specの年に無いブラケットを無視すること、例外を再試行に任せることを確かめる
-  - 完了状態: 単体テストが成功する
+  - Yearとブラケットの部品は`core/year-tournament`・`core/tournament`の契約と識別子で受け取る
+  - 完了状態: 単体テストが成功し、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 3.16_
   - _Requirements: 3.1, 8.2_
 
@@ -192,7 +195,8 @@
   - apiの全部品(ジョブ・供給元・照会・決済の開始・決勝実施日)のDIの識別子をここで作る(束縛と登録は5.10)
   - 23:45の`tournament-year.evening-bracket`(1700)は毎晩、次に開催する年の行の用意とWeek優勝の取り込み→組み合わせ決定→進行(未処理の確定のマッチへの追いつき)→その夜の一括の発行→`EveningDispatchGate.markReady({ participant: 'tournament-year.evening-bracket', date: context.business.date, at: clock.now() })`の順に行う
   - 先に、単体テスト(部品と送り出しの入口は偽物)で、5段の順序、組み合わせも進行も無い夜も`markReady`を最後に1回呼ぶこと、`date`がジョブの予定時刻の業務日付であること、どの段が失敗しても残りの段を続けて`captureEvent`し`markReady`を呼ばずに例外になること、`markReady`の戻り値(`waiting`・`dispatch-requested`・`already-requested`)で処理が変わらないこと、`EveningDispatchError`が例外として伝わること、4:21の返金と知らせの再処理(10分以上前・100件)を呼ぶことを確かめる
-  - 完了状態: 単体テストが成功する
+  - Yearとブラケットの部品は`core/year-tournament`・`core/tournament`の契約と識別子で受け取る
+  - 完了状態: 単体テストが成功し、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 3.16_
   - _Requirements: 3.1, 6.8, 7.1, 8.2, 14.7, 15.3, 15.7_
 

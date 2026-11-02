@@ -6,7 +6,7 @@
 
 **Users**: Week優勝の投稿者は、プロダクト詳細ページと自分のプロダクトの画面で参加費を支払い、状態を確かめる。閲覧者はトップページでYearトーナメントのマッチを見てUpvoteし、ブラケットのページで組み合わせと結果を見て、プロダクト詳細ページでトロフィーを見る。最上位管理者は管理画面の`/settings`で決勝実施日を設定し、他の管理者は参照する。後続spec(ugc-moderation・data-export)の開発者は、除外と返金の扱いと受賞のエクスポートの部品を使う。
 
-**Impact**: D1に2テーブル(年のトーナメント・参加の枠)を足す。`apps/backend-lib/core/year-tournament`・`workers/year-tournament`(apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`year-tournament`・2つのジョブ(23:45の夜の処理と夜の送り出しの準備の完了の通知、4:21の再処理)・判定の供給元3つ・トロフィーの供給元1つ・決勝実施日の照会と保存を、eventにマッチイベント・ライフサイクル・Ultrasの知らせの処理と結果通知の追記とメールのテンプレートを、clientにトップページの2区画・ブラケットのページ・投稿者本人向けの操作・自分のプロダクトの区画・削除の注意書きを、adminに設定ページの決勝実施日の区画を足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレット・パッケージ・メッセージ種別・Cronの式は無い。
+**Impact**: D1に2テーブル(年のトーナメント・参加の枠)を足す。`apps/backend-lib/core/year-tournament`(規則と、application層が受け取る契約と識別子)・`workers/year-tournament`(契約の実装と、apiとeventの両方への束縛)を新設する。apiにスキーマモジュール`year-tournament`・2つのジョブ(23:45の夜の処理と夜の送り出しの準備の完了の通知、4:21の再処理)・判定の供給元3つ・トロフィーの供給元1つ・決勝実施日の照会と保存を、eventにマッチイベント・ライフサイクル・Ultrasの知らせの処理と結果通知の追記とメールのテンプレートを、clientにトップページの2区画・ブラケットのページ・投稿者本人向けの操作・自分のプロダクトの区画・削除の注意書きを、adminに設定ページの決勝実施日の区画を足す。上流のファイルは、契約で定められた登録箇所への追記だけを変える。新しいシークレット・パッケージ・メッセージ種別・Cronの式は無い。
 
 ### Goals
 
@@ -27,7 +27,7 @@
 
 - Yearのデータ: `year_tournaments`(年ごとの決勝実施日・期限・凍結と進行の状態・受賞)・`year_tournament_entries`(Week優勝ごとの参加の枠、参加資格の出どころ・返金の依頼と知らせの状態)(`apps/db/schema/year-tournament/`)。
 - Yearの規則(`apps/backend-lib/core/year-tournament/`): 既定の決勝日と決勝日からの期限・1回戦の日、選べる決勝日と検証、対象年の判定、並びの比較と参加数の上限、枠の状態と返金の理由・依頼キー、返金の知らせのメール種別`tournament-year.entry-refund`。
-- 共有部品(`apps/backend-lib/workers/year-tournament/`): `YearTournamentStore`・`YearEntryStore`・`YearCalendar`・`YearEntryRegistrar`・`YearEntryOfferPolicy`・`YearEntryFulfillment`・`YearDrawService`・`YearProgressionService`・`YearEntryFollowUp`・`YearNotificationPublisher`・`YearAwardExport`と`YEAR_TOURNAMENT_PLATFORM_MODULE`。
+- Yearの共有部品: 契約(`YearTournamentStore`・`YearEntryStore`・`YearCalendar`・`YearEntryRegistrar`・`YearDrawService`・`YearProgressionService`・`YearEntryFollowUp`・`YearNotificationPublisher`・`YearAwardExport`とその入出力の型)は`apps/backend-lib/core/year-tournament/ports.ts`、DIの識別子`YEAR_TOURNAMENT_TYPES`は`core/year-tournament/identifiers.ts`に置き、それらの実装と、paymentsの購入種別の口の実装`YearEntryOfferPolicy`・`YearEntryFulfillment`と`YEAR_TOURNAMENT_PLATFORM_MODULE`は`apps/backend-lib/workers/year-tournament/`に置く。api・eventとdata-exportのapplication層が契約と識別子を読み込むため、`workers`に置かない。
 - apiのスキーマモジュール`year-tournament`、照会(トップページ・ブラケット・参加費の導線・決勝実施日)、参加の決済の開始、決勝実施日の保存と監査ログ、判定の供給元3つ、トロフィーの供給元`tournament-year.year-trophies`、ジョブ`tournament-year.evening-bracket`(23:45、1700)・`tournament-year.entry-follow-up`(4:21、1700)、notificationsの夜の枠の送り出しの前提の登録`tournament-year.evening-bracket`(`EVENING_DISPATCH_PARTICIPANTS`)。
 - eventの処理: マッチイベント`tournament-year.week-champion-entry`(`decided`・`week`、1700)・`tournament-year.decided-round-progress`(`decided`・`year`、1710)、プロダクトライフサイクル`tournament-year.product-entry-loss`(`deleted`、1700)・`tournament-year.entry-unlink`(`purge_due`、1700)、ユーザーライフサイクル`tournament-year.account-entry-loss`(`withdrawn`、1700)、Ultrasの知らせ`tournament-year.ultras-entry-exemption`(1700)・`tournament-year.open-entry-checkout-expiry`(1710)、結果通知の追記`tournament-year.entry-deadline`(`week`、1700)、返金の知らせのテンプレート。
 - clientの`/tournaments/year/$year`、トップページの区画`tournament-year.matches`(`main` 10)・`tournament-year.final`(`showcase` 10)、プロダクト詳細の投稿者本人向けの操作`tournament-year.entry`(20)、自分のプロダクトの`tournament-year.entry`(20)、削除の注意書き`tournament-year.entry-loss`(20)。
@@ -45,24 +45,25 @@
 
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く)・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`・`BusinessTimeOfDay`)・`ScheduledJobDefinition`・`ScheduledJobHandler`。形を変えない。E2Eの`e2e/support/scheduled-trigger.ts`の`triggerScheduled`(backend-platformの改訂2。ローカルの定期実行の起動は独自に作らない)。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`caller`・`loaders`)・`withValidatedArgs`・`DateTime`。
-- identity-auth: `AccountGuard`(`requireUser`)・`CurrentUser`・`users`(外部キーだけ)・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)。
-- admin-foundation: `requireAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AdminDirectory`・`AdminRole`・adminの`RoleGate`・`ConfirmActionDialog`、E2Eの`e2e/support/admin-bootstrap.ts`(`signInAsNewAdmin`)・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
-- tournament-week: `core/tournament`(`bracketShape`・`dailyRoundPolicy`・`RoundSchedulePolicy`・`Comparator`・`DrawCandidate`)、`workers/tournament`の`TOURNAMENT_PLATFORM_TYPES`・`BracketDraw`・`BracketProgression`・`AdvanceResult`・`BracketRecord`・`BracketStore`の読み取り(`findByTournament`・`findById`・`findByMatchIds`・`findAliveRefs`)、`WEEK_TOURNAMENT_TYPES.WeekChampionDirectory`・`WeekChampion`、apiの`TrophySource`・`TrophyRecord`・`TrophySourceRegistration`・`TOURNAMENT_TROPHY_SOURCES`・GraphQLの`BracketRound`・`BracketNode`・`BracketSlot`、`common-lib/tournament`の`tournamentRoundName`・`formatWeekPeriodLabel`・`isoWeekKey`、apiの`buildBracketRoundsView`・`BracketRoundsView`(`apps/api/src/application/tournament/bracket-view-builder.ts`の純粋な関数。DIに束縛しない)、clientの`components/bracket/`(`BracketRoundColumn`・`BracketRoundTabs`・`BracketMatchCard`・`BracketChampion`と引数の`BracketViewProps`)と`src/graphql/operations/week-tournament/`の`.graphql`に置かれたフラグメント`BracketRoundFields`(`BracketRound`)・`BracketMatchProductFields`(`MatchProduct`。型は`src/graphql/generated/graphql.ts`の`BracketRoundFieldsFragment`・`BracketMatchProductFieldsFragment`)。組み立ての関数・フラグメント・`BracketViewProps`で受ける部品はtournament-weekの仮7で提供される。
-- match-engine: `MATCH_PLATFORM_TYPES`の`MatchDirectory`(`findQualifierResults`・`findMatches`・`listForDate`)、`MatchKind`・`MatchStage`・`EntryResult`・`isWinningResult`・`MatchEvent`・`MatchEventHandler`・`MatchEventRegistration`・`MATCH_EVENT_HANDLERS`、apiの`MatchViewReader`・`matchViewLoader`・GraphQLの`Match`・`MatchProduct`・`MatchBye`、clientの`TOP_PAGE_SECTIONS`・`TopPageSection`・`MatchCard`・`ByeList`・`useUpvote`・`LIVE_REFRESH_QUERY_OPTIONS`。
-- payments: `PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseFulfillment`・`FulfillablePurchase`・`FulfillmentPlan`・`PURCHASE_KIND_REGISTRATIONS`・`PaymentRefunds`・`OpenCheckoutExpirer`・`PriceCatalog`・`PAYMENTS_TYPES`・apiの`CheckoutStarter`・GraphQLの`CheckoutStart`・`Money`・frontend-libの`MoneyText`。
-- ultras-subscription: `ULTRAS_TYPES.UltrasEntitlements`(`wasEntitledDuring`・`entitledUsersDuring`)・`UltrasActivation`・`UltrasActivationHandlerRegistration`・`ULTRAS_ACTIVATION_HANDLERS`・adminの`AdminSettingsSection`・`ADMIN_SETTINGS_SECTIONS`。
-- notifications: `NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate`(apiだけ)・`EveningDispatchGate.markReady`・`EveningDispatchReadiness`・`EveningDispatchError`・apiの`EVENING_DISPATCH_PARTICIPANTS`(`apps/api/src/composition/evening-dispatch-participants.ts`)、`NOTIFICATIONS_PLATFORM_TYPES.NotificationEventPublisher`・`NotificationEvent`・`NotificationPublishError`・`ResultNoticeSupplementProvider`・`ResultNoticeSupplementInput`・`ResultNoticeSupplementRegistration`・`RESULT_NOTICE_SUPPLEMENTS`。
-- product-launch: `ProductDirectory`(`findSummaries`・`listLaunches`・`resolveHandle`)・`PRODUCT_PLATFORM_TYPES`・`products`・`product_launches`への外部キー・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`・`RelaunchConditionSource`・`ProductLockSource`・`LaunchSummarySource`・`DecisionSourceRegistration`・3つの登録口、clientの`MY_PRODUCT_SECTIONS`・`MyProductSection`・`PRODUCT_DELETE_NOTICES`・`ProductDeleteNotice`。
+- identity-auth: `AccountGuard`(`requireUser`)・`CurrentUser`・`users`(外部キーだけ)・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`。契約と識別子は`core/identity`)。
+- admin-foundation: `requireAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AdminDirectory`(契約と識別子は`core/admin`)・`AdminRole`・adminの`RoleGate`・`ConfirmActionDialog`、E2Eの`e2e/support/admin-bootstrap.ts`(`signInAsNewAdmin`)・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
+- tournament-week: `core/tournament`の規則(`bracketShape`・`dailyRoundPolicy`・`RoundSchedulePolicy`・`Comparator`・`DrawCandidate`)と契約と識別子(`core/tournament/ports.ts`・`identifiers.ts`の`TOURNAMENT_PLATFORM_TYPES`・`BracketDraw`・`BracketProgression`・`AdvanceResult`・`BracketDrawCandidate`・`BracketRecord`・`BracketStore`の読み取り(`findByTournament`・`findById`・`findByMatchIds`・`findAliveRefs`))、`core/week-tournament`の`WEEK_TOURNAMENT_TYPES.WeekChampionDirectory`・`WeekChampion`(実装は`workers/year-tournament`だけが受け取る)、apiの`TrophySource`・`TrophyRecord`・`TrophySourceRegistration`・`TOURNAMENT_TROPHY_SOURCES`・GraphQLの`BracketRound`・`BracketNode`・`BracketSlot`、`common-lib/tournament`の`tournamentRoundName`・`formatWeekPeriodLabel`・`isoWeekKey`、apiの`buildBracketRoundsView`・`BracketRoundsView`(`apps/api/src/application/tournament/bracket-view-builder.ts`の純粋な関数。DIに束縛しない)、clientの`components/bracket/`(`BracketRoundColumn`・`BracketRoundTabs`・`BracketMatchCard`・`BracketChampion`と引数の`BracketViewProps`)と`src/graphql/operations/week-tournament/`の`.graphql`に置かれたフラグメント`BracketRoundFields`(`BracketRound`)・`BracketMatchProductFields`(`MatchProduct`。型は`src/graphql/generated/graphql.ts`の`BracketRoundFieldsFragment`・`BracketMatchProductFieldsFragment`)。組み立ての関数・フラグメント・`BracketViewProps`で受ける部品はtournament-weekの仮7で提供される。
+- match-engine: `MATCH_PLATFORM_TYPES`の`MatchDirectory`(`findQualifierResults`・`findMatches`・`listForDate`。契約と識別子は`core/match`)、`MatchKind`・`MatchStage`・`EntryResult`・`isWinningResult`・`MatchEvent`・`MatchEventHandler`・`MatchEventRegistration`・`MATCH_EVENT_HANDLERS`、apiの`MatchViewReader`・`matchViewLoader`・GraphQLの`Match`・`MatchProduct`・`MatchBye`、clientの`TOP_PAGE_SECTIONS`・`TopPageSection`・`MatchCard`・`ByeList`・`useUpvote`・`LIVE_REFRESH_QUERY_OPTIONS`。
+- payments: `PurchaseKindRegistration`・`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseFulfillment`・`FulfillablePurchase`・`FulfillmentPlan`・`PURCHASE_KIND_REGISTRATIONS`・`PaymentRefunds`・`OpenCheckoutExpirer`・`PriceCatalog`・`PAYMENTS_TYPES`・apiの`CheckoutStarter`・GraphQLの`CheckoutStart`・`Money`・frontend-libの`MoneyText`。`PurchaseOfferPolicy`・`PurchaseOffer`・`PaymentRefunds`・`OpenCheckoutExpirer`は`core/payments`の契約、文を返す`PurchaseFulfillment`・`FulfillmentPlan`は`workers/payments`の契約で、後者は`workers/year-tournament`の`YearEntryFulfillment`だけが使う。
+- ultras-subscription: `ULTRAS_TYPES.UltrasEntitlements`(`wasEntitledDuring`・`entitledUsersDuring`。契約と識別子は`core/ultras`)・`UltrasActivation`・`UltrasActivationHandlerRegistration`・`ULTRAS_ACTIVATION_HANDLERS`・adminの`AdminSettingsSection`・`ADMIN_SETTINGS_SECTIONS`。
+- notifications: `NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate`(apiだけ)・`EveningDispatchGate.markReady`・`EveningDispatchReadiness`・`EveningDispatchError`・apiの`EVENING_DISPATCH_PARTICIPANTS`(`apps/api/src/composition/evening-dispatch-participants.ts`)、`NOTIFICATIONS_PLATFORM_TYPES.NotificationEventPublisher`(契約と識別子は`core/notifications`)・`NotificationEvent`・`NotificationPublishError`・`ResultNoticeSupplementProvider`・`ResultNoticeSupplementInput`・`ResultNoticeSupplementRegistration`・`RESULT_NOTICE_SUPPLEMENTS`。
+- product-launch: `ProductDirectory`(`findSummaries`・`listLaunches`・`resolveHandle`)・`PRODUCT_PLATFORM_TYPES`(契約と識別子は`core/product`)・`products`・`product_launches`への外部キー・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`・`RelaunchConditionSource`・`ProductLockSource`・`LaunchSummarySource`・`DecisionSourceRegistration`・3つの登録口、clientの`MY_PRODUCT_SECTIONS`・`MyProductSection`・`PRODUCT_DELETE_NOTICES`・`ProductDeleteNotice`。
 - directory-discovery: `PRODUCT_OWNER_ACTIONS`・`ProductOwnerAction`。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
 - frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・`DateTime`・`RelativeTime`・shadcn/uiの部品(ボタン・バッジ・セレクト・テキストエリア)・`runAxe`・デザイントークン、adminの`ADMIN_PROFILE`(`contactAvailable`)、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`Admin`・`src/graphql/generated/graphql.ts`の生成物)。
 - npmパッケージ: 新規なし。
-- 後続spec(data-export)は`YearAwardExport`だけを呼ぶ。ugc-moderationは停止・非公開化をidentity-auth・product-launchのライフサイクルで発火すればよく、本specを直接呼ばない。
+- 後続spec(data-export)は`core/year-tournament`の`YearAwardExport`と識別子`YEAR_TOURNAMENT_TYPES`だけを使う。ugc-moderationは停止・非公開化をidentity-auth・product-launchのライフサイクルで発火すればよく、本specを直接呼ばない。
 
 ### Revalidation Triggers
 
 - `year_tournaments`・`year_tournament_entries`の列・状態の値・`classified_year`の意味(data-export・ugc-moderation)。
 - `YearAwardExport`の形(data-export)。
+- `core/year-tournament`の契約(`YearTournamentStore`・`YearEntryStore`・`YearCalendar`・`YearAwardExport`など)と`YEAR_TOURNAMENT_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(本specとdata-exportのapplication層が読み込むため)。
 - ジョブ・処理の名前と`order`(23:45のジョブは1700、処理は1700・1710)、23:45の順序(tournament-weekの`tournament-week.evening-bracket`(1500)の後)、夜の枠の送り出しの前提の名前`tournament-year.evening-bracket`と`markReady`を呼ぶ時点(notifications・tournament-week)。
 - 購入種別`year_tournament_entry`の`PurchaseOffer`の期限の値・`exclusivityKey`・返金の依頼キーと理由の値(payments・ugc-moderation)。
 - `LaunchSummaryContribution`の`rank`(60〜100)と文言(directory-discovery・product-launch)。
@@ -166,13 +167,13 @@ graph TB
 
 **Architecture Integration**:
 
-- Selected pattern: クリーンアーキテクチャ。Yearの規則は`core`の純粋な関数、記録・組み合わせ決定・進行は`workers`の部品(apiとeventの両方に束縛)、照会と画面の組み立てと決勝実施日の保存はapiのアプリケーション層、ブラケット・マッチ・決済・特典・通知・監査ログは上流の部品越しに使う。
+- Selected pattern: クリーンアーキテクチャ。Yearの規則は`core`の純粋な関数、記録・組み合わせ決定・進行は`core`の契約を`workers`で実装した部品(apiとeventの両方に束縛)、照会と画面の組み立てと決勝実施日の保存はapiのアプリケーション層、ブラケット・マッチ・決済・特典・通知・監査ログは上流の部品越しに使う。
 - Domain/feature boundaries: Year固有のデータ(年と枠)だけを本specのテーブルに持ち、ブラケットはtournament-weekの部品越しに書く。マッチの状態はmatch-engine、決済の状態はpayments、Week優勝はtournament-weekが持ち、本specは識別子と確定値の写しだけを持つ。
-- Existing patterns preserved: `backend-lib/workers/<ドメイン>`の共有の束縛、`<spec名>.<名詞句>`の名前、帯の`order`、登録箇所への追記、条件付きの書き込みと`onConflictDoNothing()`による冪等性、`CASE`式による取り消し、期限を行の列に保存して正とする規則(tournament-week)、設定の版の条件付きの保存と監査ログの一体の確定(notifications・ultras-subscription)。
+- Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`の実装と共有の束縛、`<spec名>.<名詞句>`の名前、帯の`order`、登録箇所への追記、条件付きの書き込みと`onConflictDoNothing()`による冪等性、`CASE`式による取り消し、期限を行の列に保存して正とする規則(tournament-week)、設定の版の条件付きの保存と監査ログの一体の確定(notifications・ultras-subscription)。
 - New components rationale: `YearCalendar`は行の無い年の既定の日と行の列を1つの照会にまとめ、対象年の判定を全ての部品で同じにするため。枠に対象年を保存しないのは、決勝日の変更・初年度・遅れを付け替え無しに扱うため(research.mdの「対象期間の表し方」)。
 - Steering compliance: `@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・`transaction()`を使わない)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、新しいパッケージなし。
 
-**Dependency direction**: `apps/db/schema/year-tournament` → `backend-lib/core/year-tournament` → `backend-lib/workers/year-tournament` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`core/year-tournament`は`core/tournament`と`BusinessTime`だけを読み込み、`core/week-tournament`を読み込まない。`workers/year-tournament`は`workers/tournament`の公開の部品と`WeekChampionDirectory`を読み込み、tournament-weekのテーブル定義を読み込まない。client・adminはGraphQLの操作と上流の部品だけを読み込む。違反はレビューで誤りとして扱う。
+**Dependency direction**: `apps/db/schema/year-tournament` → `backend-lib/core/year-tournament` → `backend-lib/workers/year-tournament` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`core/year-tournament`は`core/tournament`と`BusinessTime`だけを読み込み、`core/week-tournament`・`workers`・`apps/db`を読み込まない。`workers/year-tournament`は`core/tournament`の契約と識別子・`core/week-tournament`の`WeekChampionDirectory`と識別子で上流の部品を受け取り、`workers/tournament`・`workers/week-tournament`の実装とtournament-weekのテーブル定義を読み込まない。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層とdata-exportが使う契約と識別子`YEAR_TOURNAMENT_TYPES`は`core/year-tournament`に置き、`workers/year-tournament`には実装と束縛だけを置く(identity-authの`core/identity`と同じ配置)。application層は`core`だけを読み込む。client・adminはGraphQLの操作と上流の部品だけを読み込む。違反はレビューで誤りとして扱う。
 
 ### Technology Stack
 
@@ -202,22 +203,21 @@ apps/
 │   │   ├── year-target-rules.ts                              # resolveTargetYear
 │   │   ├── year-ordering.ts                                  # yearSeedOrder・yearNonSeedOrder・selectWithinCapacity
 │   │   ├── year-entry-rules.ts                               # YearEntryStatus・YearEntryCloseReason・refundReasonFor・yearRefundRequestKey
-│   │   └── year-entry-refund-email.ts                        # TOURNAMENT_YEAR_ENTRY_REFUND_EMAIL
-│   └── workers/year-tournament/                              # Yearの部品(Workers統合テスト)
-│       ├── year-tournament-types.ts                          # YEAR_TOURNAMENT_TYPES(テストなし)
-│       ├── year-tournament-store.ts                          # YearTournamentStore・YearTournamentRecord(型)
-│       ├── d1-year-tournament-store.ts
-│       ├── year-entry-store.ts                               # YearEntryStore・YearEntryRecord(型)
-│       ├── d1-year-entry-store.ts
-│       ├── year-calendar.ts                                  # 行と既定の日をまとめた年の照会・対象年の判定・行の用意
-│       ├── year-entry-registrar.ts                           # Week優勝からの枠の作成と免除
-│       ├── year-entry-offer-policy.ts                        # PurchaseOfferPolicy
-│       ├── year-entry-fulfillment.ts                         # PurchaseFulfillment
-│       ├── year-draw-service.ts                              # 凍結・分類・上限・組み合わせ
-│       ├── year-progression-service.ts                       # 進行・賞・通知の発行
-│       ├── year-entry-follow-up.ts                           # 返金の依頼と知らせ
-│       ├── year-notification-publisher.ts                    # 通知イベントの組み立てと発行
-│       ├── year-award-export.ts                              # 受賞のエクスポート(data-export)
+│   │   ├── year-entry-refund-email.ts                        # TOURNAMENT_YEAR_ENTRY_REFUND_EMAIL
+│   │   ├── ports.ts                                          # YearTournamentRecord・YearTournamentStore・YearEntryRecord・NewYearEntry・YearEntryStore・YearCalendar・YearEntryRegistrar・YearDrawService・YearProgressionService・YearNotificationPublisher・YearEntryFollowUp・YearAwardExport(型だけ)
+│   │   └── identifiers.ts                                    # YEAR_TOURNAMENT_TYPES(api・event共通の識別子、identifiers.unit.test.ts)
+│   └── workers/year-tournament/                              # core/year-tournamentの契約の実装と束縛(Workers統合テスト)
+│       ├── d1-year-tournament-store.ts                       # YearTournamentStoreのD1実装
+│       ├── d1-year-entry-store.ts                            # YearEntryStoreのD1実装
+│       ├── year-calendar.ts                                  # YearCalendarの実装(行と既定の日をまとめた年の照会・対象年の判定・行の用意)
+│       ├── year-entry-registrar.ts                           # YearEntryRegistrarの実装(Week優勝からの枠の作成と免除)
+│       ├── year-entry-offer-policy.ts                        # paymentsのPurchaseOfferPolicy(core/payments)の実装
+│       ├── year-entry-fulfillment.ts                         # paymentsのPurchaseFulfillment(workers/payments)の実装
+│       ├── year-draw-service.ts                              # YearDrawServiceの実装(凍結・分類・上限・組み合わせ)
+│       ├── year-progression-service.ts                       # YearProgressionServiceの実装(進行・賞・通知の発行)
+│       ├── year-entry-follow-up.ts                           # YearEntryFollowUpの実装(返金の依頼と知らせ)
+│       ├── year-notification-publisher.ts                    # YearNotificationPublisherの実装(通知イベントの組み立てと発行)
+│       ├── d1-year-award-export.ts                           # YearAwardExportのD1実装(data-export)
 │       └── year-tournament-platform-module.ts                # YEAR_TOURNAMENT_PLATFORM_MODULE
 ├── api/src/
 │   ├── application/year-tournament/                          # Bunの単体テスト
@@ -489,31 +489,31 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                                                                   | Domain/Layer            | Intent                                       | Req Coverage                                                              | Key Dependencies (P0/P1)                                                                                          | Contracts      |
-| ----------------------------------------------------------------------------------------------------------- | ----------------------- | -------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------- |
-| YearTournamentSchema                                                                                        | db                      | 2テーブル                                    | 7.11, 9.4, 15.4                                                           | product-launch・identity-authのテーブル(P0)                                                                       | State          |
-| YearAuditActions                                                                                            | common-lib              | 監査ログの操作種別                           | 2.10                                                                      | defineAuditAction(P0)                                                                                             | Service        |
-| YearSchedule・FinalDateChoice・YearTargetRules                                                              | core/year-tournament    | 決勝日・期限・選べる日付・対象年             | 1.1〜1.6, 2.4〜2.6, 2.8, 2.12, 3.4〜3.6, 3.9                              | `BusinessTime`(P0)、`bracketShape`(P0)                                                                            | Service        |
-| YearOrdering・YearEntryRules・YearEmailKinds                                                                | core/year-tournament    | 並び・上限・枠の状態・返金の理由・メール種別 | 5.6〜5.8, 6.5, 6.7, 6.9, 7.4, 7.5, 9.5                                    | `Comparator`(P0)                                                                                                  | Service        |
-| YearTournamentStore・YearEntryStore・YearCalendar                                                           | workers/year-tournament | 年と枠の読み書き、年の照会と対象年           | 1.1〜1.3, 3.3〜3.9, 4.5, 5.2, 6.1, 7.11, 9.4, 15.4                        | Database(P0)                                                                                                      | Service, State |
-| YearEntryRegistrar                                                                                          | workers/year-tournament | Week優勝からの枠の作成                       | 3.1, 3.2, 3.3, 3.7, 5.1                                                   | WeekChampionDirectory(P0)、MatchDirectory(P0)、UltrasEntitlements(P0)                                             | Service, Batch |
-| YearEntryOfferPolicy・YearEntryFulfillment                                                                  | workers/year-tournament | 購入種別`year_tournament_entry`              | 4.1〜4.9, 5.6, 5.7                                                        | payments(P0)                                                                                                      | Service        |
-| YearDrawService・YearProgressionService・YearNotificationPublisher                                          | workers/year-tournament | 組み合わせ決定・進行と賞・通知               | 1.4, 1.5, 5.5, 6.4, 6.5, 7.1〜7.10, 8.1〜8.10, 9.1〜9.4, 14.1〜14.5, 15.1 | BracketDraw(P0)、BracketProgression(P0)、NotificationEventPublisher(P0)                                           | Service, Batch |
-| YearEntryFollowUp・YearAwardExport                                                                          | workers/year-tournament | 返金と知らせ・エクスポート                   | 6.2, 6.6, 6.8, 6.9, 6.10, 15.5                                            | PaymentRefunds(P0)、UserContactDirectory(P0)                                                                      | Service        |
-| YearBoardReader・YearBracketReader・YearEntryPanelReader・YearEntryCheckout                                 | api/application         | 照会と決済の開始                             | 4.1〜4.4, 4.10, 10.1〜10.8, 11.1〜11.6, 12.1〜12.5, 15.8                  | MatchViewReader(P0)、CheckoutStarter(P0)、buildBracketRoundsView(P0)                                              | Service        |
-| YearFinalDateService・D1YearFinalDateWriter                                                                 | api                     | 決勝日の照会と保存                           | 2.1〜2.13                                                                 | AuditLogRecorder(P0)、YearCalendar(P0)                                                                            | Service, State |
-| YearRelaunchConditionSource・YearProductLockSource・YearLaunchSummarySource・YearTrophySource               | api/application         | product-launch・トロフィーへの供給           | 12.7, 12.8, 13.1〜13.6                                                    | YearEntryStore(P0)、BracketStore(P0)、WeekChampionDirectory(P1)                                                   | Service        |
-| YearTournamentJobs                                                                                          | api/application         | 2つのジョブと夜の送り出しの準備の完了        | 3.1, 6.8, 7.1, 8.2, 14.7, 15.2, 15.3, 15.7                                | YearDrawService(P0)、EveningDispatchGate(P0)                                                                      | Batch          |
-| YearTournamentSchemaModule(BoardResolvers・BracketResolvers・EntryResolvers・FinalDateResolvers)            | api/presentation        | GraphQL                                      | 2.1〜2.13, 4.1〜4.4, 10.1〜10.8, 11.1〜11.6, 12.1〜12.8                   | 上記の照会(P0)                                                                                                    | API            |
-| WeekChampionEntryHandler・RoundProgressHandler                                                              | event                   | 確定のマッチイベントの処理                   | 3.1, 8.2                                                                  | MATCH_EVENT_HANDLERS(P0)                                                                                          | Event          |
-| ProductEntryLossHandler・AccountEntryLossHandler・EntryUnlinkHandler                                        | event                   | ライフサイクルの処理                         | 6.1〜6.3, 15.4                                                            | ライフサイクルの登録口(P0)                                                                                        | Event          |
-| YearUltrasEntryExemptionHandler・YearOpenEntryCheckoutExpiryHandler                                         | event                   | Ultrasの知らせの処理                         | 5.2〜5.4, 5.7                                                             | ULTRAS_ACTIVATION_HANDLERS(P0)、OpenCheckoutExpirer(P0)                                                           | Event          |
-| YearEntrySupplementProvider・YearEntryRefundTemplate                                                        | event                   | 結果通知の追記・返金の知らせ                 | 6.9, 14.6                                                                 | RESULT_NOTICE_SUPPLEMENTS(P0)、EMAIL_TEMPLATES(P0)                                                                | Service        |
-| YearTournamentSection・YearFinalShowcase・YearSectionHeading                                                | client                  | トップページの区画                           | 10.1〜10.8                                                                | MatchCard(P0)、ByeList(P0)                                                                                        | State          |
-| YearBracketPage                                                                                             | client                  | ブラケットのページ                           | 11.1〜11.6                                                                | tournament-weekの`components/bracket/`・`BracketViewProps`・`BracketRoundFields`・`BracketMatchProductFields`(P0) | State          |
-| YearEntryPanel・YearEntryStatusCopy・YearEntryOwnerAction・YearEntryMyProductSection・YearEntryDeleteNotice | client                  | プロダクトの画面の区画                       | 12.1〜12.6                                                                | myYearEntry(P0)                                                                                                   | State          |
-| FinalDateSection・FinalDateYearCard・FinalDateForm・FinalDateLabels                                         | admin                   | 設定ページの区画                             | 2.1〜2.3, 2.11〜2.13                                                      | ADMIN_SETTINGS_SECTIONS(P0)、RoleGate(P0)、ConfirmActionDialog(P0)                                                | State          |
-| YearTechDocs・YearServiceSpecs・YearTournamentE2E・YearTournamentFixtures                                   | docs・e2e               | 文書とE2E                                    | 16.1〜16.6                                                                | admin-bootstrap(P0)、local-d1(P0)                                                                                 | —              |
+| Component                                                                                                   | Domain/Layer                                                            | Intent                                       | Req Coverage                                                              | Key Dependencies (P0/P1)                                                                                          | Contracts      |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------- |
+| YearTournamentSchema                                                                                        | db                                                                      | 2テーブル                                    | 7.11, 9.4, 15.4                                                           | product-launch・identity-authのテーブル(P0)                                                                       | State          |
+| YearAuditActions                                                                                            | common-lib                                                              | 監査ログの操作種別                           | 2.10                                                                      | defineAuditAction(P0)                                                                                             | Service        |
+| YearSchedule・FinalDateChoice・YearTargetRules                                                              | core/year-tournament                                                    | 決勝日・期限・選べる日付・対象年             | 1.1〜1.6, 2.4〜2.6, 2.8, 2.12, 3.4〜3.6, 3.9                              | `BusinessTime`(P0)、`bracketShape`(P0)                                                                            | Service        |
+| YearOrdering・YearEntryRules・YearEmailKinds                                                                | core/year-tournament                                                    | 並び・上限・枠の状態・返金の理由・メール種別 | 5.6〜5.8, 6.5, 6.7, 6.9, 7.4, 7.5, 9.5                                    | `Comparator`(P0)                                                                                                  | Service        |
+| YearTournamentStore・YearEntryStore・YearCalendar                                                           | core/year-tournament(契約・識別子)・workers/year-tournament(実装・束縛) | 年と枠の読み書き、年の照会と対象年           | 1.1〜1.3, 3.3〜3.9, 4.5, 5.2, 6.1, 7.11, 9.4, 15.4                        | Database(P0)                                                                                                      | Service, State |
+| YearEntryRegistrar                                                                                          | core/year-tournament(契約・識別子)・workers/year-tournament(実装・束縛) | Week優勝からの枠の作成                       | 3.1, 3.2, 3.3, 3.7, 5.1                                                   | WeekChampionDirectory(P0)、MatchDirectory(P0)、UltrasEntitlements(P0)                                             | Service, Batch |
+| YearEntryOfferPolicy・YearEntryFulfillment                                                                  | workers/year-tournament(paymentsの契約の実装)                           | 購入種別`year_tournament_entry`              | 4.1〜4.9, 5.6, 5.7                                                        | payments(P0)                                                                                                      | Service        |
+| YearDrawService・YearProgressionService・YearNotificationPublisher                                          | core/year-tournament(契約・識別子)・workers/year-tournament(実装・束縛) | 組み合わせ決定・進行と賞・通知               | 1.4, 1.5, 5.5, 6.4, 6.5, 7.1〜7.10, 8.1〜8.10, 9.1〜9.4, 14.1〜14.5, 15.1 | BracketDraw(P0)、BracketProgression(P0)、NotificationEventPublisher(P0)                                           | Service, Batch |
+| YearEntryFollowUp・YearAwardExport                                                                          | core/year-tournament(契約・識別子)・workers/year-tournament(実装・束縛) | 返金と知らせ・エクスポート                   | 6.2, 6.6, 6.8, 6.9, 6.10, 15.5                                            | PaymentRefunds(P0)、UserContactDirectory(P0)                                                                      | Service        |
+| YearBoardReader・YearBracketReader・YearEntryPanelReader・YearEntryCheckout                                 | api/application                                                         | 照会と決済の開始                             | 4.1〜4.4, 4.10, 10.1〜10.8, 11.1〜11.6, 12.1〜12.5, 15.8                  | MatchViewReader(P0)、CheckoutStarter(P0)、buildBracketRoundsView(P0)                                              | Service        |
+| YearFinalDateService・D1YearFinalDateWriter                                                                 | api                                                                     | 決勝日の照会と保存                           | 2.1〜2.13                                                                 | AuditLogRecorder(P0)、YearCalendar(P0)                                                                            | Service, State |
+| YearRelaunchConditionSource・YearProductLockSource・YearLaunchSummarySource・YearTrophySource               | api/application                                                         | product-launch・トロフィーへの供給           | 12.7, 12.8, 13.1〜13.6                                                    | YearEntryStore(P0)、BracketStore(P0)、WeekChampionDirectory(P1)                                                   | Service        |
+| YearTournamentJobs                                                                                          | api/application                                                         | 2つのジョブと夜の送り出しの準備の完了        | 3.1, 6.8, 7.1, 8.2, 14.7, 15.2, 15.3, 15.7                                | YearDrawService(P0)、EveningDispatchGate(P0)                                                                      | Batch          |
+| YearTournamentSchemaModule(BoardResolvers・BracketResolvers・EntryResolvers・FinalDateResolvers)            | api/presentation                                                        | GraphQL                                      | 2.1〜2.13, 4.1〜4.4, 10.1〜10.8, 11.1〜11.6, 12.1〜12.8                   | 上記の照会(P0)                                                                                                    | API            |
+| WeekChampionEntryHandler・RoundProgressHandler                                                              | event                                                                   | 確定のマッチイベントの処理                   | 3.1, 8.2                                                                  | MATCH_EVENT_HANDLERS(P0)                                                                                          | Event          |
+| ProductEntryLossHandler・AccountEntryLossHandler・EntryUnlinkHandler                                        | event                                                                   | ライフサイクルの処理                         | 6.1〜6.3, 15.4                                                            | ライフサイクルの登録口(P0)                                                                                        | Event          |
+| YearUltrasEntryExemptionHandler・YearOpenEntryCheckoutExpiryHandler                                         | event                                                                   | Ultrasの知らせの処理                         | 5.2〜5.4, 5.7                                                             | ULTRAS_ACTIVATION_HANDLERS(P0)、OpenCheckoutExpirer(P0)                                                           | Event          |
+| YearEntrySupplementProvider・YearEntryRefundTemplate                                                        | event                                                                   | 結果通知の追記・返金の知らせ                 | 6.9, 14.6                                                                 | RESULT_NOTICE_SUPPLEMENTS(P0)、EMAIL_TEMPLATES(P0)                                                                | Service        |
+| YearTournamentSection・YearFinalShowcase・YearSectionHeading                                                | client                                                                  | トップページの区画                           | 10.1〜10.8                                                                | MatchCard(P0)、ByeList(P0)                                                                                        | State          |
+| YearBracketPage                                                                                             | client                                                                  | ブラケットのページ                           | 11.1〜11.6                                                                | tournament-weekの`components/bracket/`・`BracketViewProps`・`BracketRoundFields`・`BracketMatchProductFields`(P0) | State          |
+| YearEntryPanel・YearEntryStatusCopy・YearEntryOwnerAction・YearEntryMyProductSection・YearEntryDeleteNotice | client                                                                  | プロダクトの画面の区画                       | 12.1〜12.6                                                                | myYearEntry(P0)                                                                                                   | State          |
+| FinalDateSection・FinalDateYearCard・FinalDateForm・FinalDateLabels                                         | admin                                                                   | 設定ページの区画                             | 2.1〜2.3, 2.11〜2.13                                                      | ADMIN_SETTINGS_SECTIONS(P0)、RoleGate(P0)、ConfirmActionDialog(P0)                                                | State          |
+| YearTechDocs・YearServiceSpecs・YearTournamentE2E・YearTournamentFixtures                                   | docs・e2e                                                               | 文書とE2E                                    | 16.1〜16.6                                                                | admin-bootstrap(P0)、local-d1(P0)                                                                                 | —              |
 
 ### db
 
@@ -703,7 +703,9 @@ export declare const TOURNAMENT_YEAR_ENTRY_REFUND_EMAIL: EmailKind<
 - Yearの並びはYearトーナメント規則がWeekと同じ規則を定めるが、本specは`core/week-tournament`に依存しないため同じ規則の関数を持つ(数行。単体テストでN = 13の例を固定する)。
 - 免除・決済で得た参加資格(`entitled`・`drawn`)は、Ultrasの解約や特典の終了で戻さない(5.8)。決済済みの参加費をUltrasの加入で返金しない(5.6)。参加資格の状態はWeekの賞と掲載に影響しない(9.5)。組み合わせ決定の後の不戦敗では返金しない(6.7)。
 
-### backend-lib/workers/year-tournament
+### backend-lib/core/year-tournament・workers/year-tournament(共有部品)
+
+契約と識別子は`core/year-tournament`(`ports.ts`・`identifiers.ts`)に、実装と束縛は`workers/year-tournament`に置く。api・eventのapplication層とdata-exportは`core/year-tournament`だけを読み込む。
 
 #### YearTournamentStore・YearEntryStore・YearCalendar
 
@@ -715,6 +717,7 @@ export declare const TOURNAMENT_YEAR_ENTRY_REFUND_EMAIL: EmailKind<
 **Contracts**: Service [x] / State [x]
 
 ```typescript
+// core/year-tournament/ports.ts(YearSchedule・YearCalendarYear・TargetYearResolution・YearEntryStatusなどはcore/year-tournamentの規則、AdvanceResultはcore/tournamentから読み込む)
 export interface YearTournamentRecord {
   readonly yearTournamentId: string;
   readonly year: number;
@@ -880,6 +883,13 @@ export interface YearCalendar {
   ensureUpcoming(now: Date): Promise<YearTournamentRecord>; // upcomingの行が無ければ既定の日で作る
   openPeriodStart(now: Date): Promise<Date | null>; // 凍結済みの最新の年の決済期限日の0:00(無ければnull)
 }
+// workers/year-tournament/d1-year-tournament-store.ts・d1-year-entry-store.ts
+export declare class D1YearTournamentStore implements YearTournamentStore {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
+export declare class D1YearEntryStore implements YearEntryStore {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
 ```
 
 - 「凍結の対象外」の条件は、各文に`AND NOT EXISTS (SELECT 1 FROM year_tournaments y WHERE y.draw_started_at IS NOT NULL AND y.deadline_date > year_tournament_entries.awarded_date)`を付けて表す(4.7・5.2・6.1)。
@@ -900,6 +910,7 @@ export interface YearCalendar {
 **Contracts**: Service [x] / Batch [x]
 
 ```typescript
+// core/year-tournament/ports.ts
 export interface YearEntryRegistrar {
   syncChampions(input: {
     readonly awardedFrom: Date | null;
@@ -927,6 +938,7 @@ export interface YearEntryRegistrar {
 - `PurchaseOffer`: `priceLookupKey: 'year_tournament_entry'`、`quantity: 1`、`relatedId: <ローンチのID>`、`exclusivityKey: 'launch:<ローンチのID>:year'`、対象年の日程(`YearCalendar`の行の列、行が無ければ既定の日から求めた日程。`describe`は行を作らない)の`deadlineAt`(23:35)・`acceptUntil`(23:00)・`fulfillableUntil`(=`drawAt`、23:45)、`requiresBotVerification: false`、`summary`: `itemName`「Yearトーナメント参加費」、`quantityLabel`「1件(<年>年のYearトーナメント)」、`serviceTiming`「決済の反映後ただちに参加資格を付与し、<決済期限日>23:45(UTC-08:00)に組み合わせを決定します。決勝は<決勝日>です」、`additionalNotes`は「組み合わせ決定前にプロダクトを削除・退会すると参加資格を失い、参加費は自動で全額返金されます」「トーナメントの不戦勝・不戦敗・両者敗北による返金はありません」「決勝実施日は変更期限(決勝の7日前)まで変わることがあり、変更後の日程で行います」(4.3)。
 - `prepare(purchase, db)`: 枠(`targetId`)・投稿者の一致・`awaiting_payment`・凍結の対象外・`ProductDirectory`で論理削除されていないこと、さらに反映の時刻が対象年の`deadlineAt`より後なら`listLaunches`で枠のローンチより新しい取消でないローンチが無いこと(仮6)を確かめ、満たさなければ`{ kind: 'reject', reason: 'ineligible' }`(4.7・4.8)。満たせば`fulfill`で1文を返す: `UPDATE year_tournament_entries SET status = CASE WHEN status = 'awaiting_payment' AND NOT EXISTS (<凍結の条件>) THEN 'entitled' ELSE NULL END, entitlement_source = 'payment', purchase_id = ?, entitled_at = ?, updated_at = ? WHERE id = ?`。同時の変更で条件を満たさなければNOT NULL制約の違反でpaymentsの一括の書き込みが取り消され、paymentsが`prepare`を呼び直して拒否(自動返金)にする(4.5〜4.7・4.9)。`afterCommit`は持たない。
 - 同じ購入の反映の重複はpaymentsの状態の前進で1回になる(4.6)。決済期限の後のUltrasの加入は`YearUltrasEntryExemptionHandler`の`activatedAt ≤ deadlineAt`の判定で参加資格を与えない(5.7)。
+- 置き場所: `YearEntryOfferPolicy`はpaymentsの`PurchaseOfferPolicy`(`core/payments`)、`YearEntryFulfillment`は`PurchaseFulfillment`(`workers/payments`)の実装で、どちらも`workers/year-tournament`に置き、`YEAR_TOURNAMENT_TYPES`の識別子で束縛する。`YearEntryFulfillment`は接続を受け取って文を返すため、paymentsの`workers`の部品だけが呼び、api・eventのapplication層は使わない。
 
 #### YearDrawService・YearProgressionService・YearNotificationPublisher
 
@@ -938,6 +950,7 @@ export interface YearEntryRegistrar {
 **Contracts**: Service [x] / Batch [x]
 
 ```typescript
+// core/year-tournament/ports.ts
 export interface YearDrawService {
   drawDue(now: Date): Promise<{
     readonly drawn: readonly number[];
@@ -988,6 +1001,7 @@ export interface YearNotificationPublisher {
 **Contracts**: Service [x]
 
 ```typescript
+// core/year-tournament/ports.ts
 export interface YearEntryFollowUp {
   process(entryIds: readonly string[], now: Date): Promise<void>; // 返金待ち・知らせ待ちの枠
   processYear(year: number, now: Date): Promise<void>;
@@ -1003,11 +1017,25 @@ export interface YearAwardExport {
     >
   >; // periodは'2026'
 }
+// core/year-tournament/identifiers.ts
+export declare const YEAR_TOURNAMENT_TYPES: {
+  readonly YearTournamentStore: symbol;
+  readonly YearEntryStore: symbol;
+  readonly YearCalendar: symbol;
+  readonly YearEntryRegistrar: symbol;
+  readonly YearEntryOfferPolicy: symbol;
+  readonly YearEntryFulfillment: symbol;
+  readonly YearDrawService: symbol;
+  readonly YearProgressionService: symbol;
+  readonly YearEntryFollowUp: symbol;
+  readonly YearNotificationPublisher: symbol;
+  readonly YearAwardExport: symbol;
+}; // Symbol.for('year-tournament.<名前>')の凍結されたオブジェクト(core/media/identifiers.tsと同じ形)
 ```
 
 - `process`: `refund_status = 'pending'`の枠は`PaymentRefunds.request({ purchaseId, amount: null, reason: refundReasonFor(status, closeReason), requestKey: yearRefundRequestKey(...) })`。`accepted`(重複を含む)なら`requested`と`refund_notice_status = 'pending'`、`rejected`(`not_paid`・`purchase_not_found`)なら`not_needed`と`error`のログ。`refund_notice_status = 'pending'`の枠は`UserContactDirectory.findContact(ownerUserId)`が`undefined`なら`skipped`、あれば`EmailSender.send(TOURNAMENT_YEAR_ENTRY_REFUND_EMAIL, ...)`して`sent`(6.2・6.6・6.8・6.9)。一時的な失敗は例外にして呼び出し元の再試行と4:21の再処理に任せる。
 - 返金の実行・決済履歴・反映の期限切れと二重決済の返金はpaymentsが行う(6.10)。
-- `YEAR_TOURNAMENT_PLATFORM_MODULE`は本節の全部品を処理単位で束縛し、apiとeventの両方へ入れる。DIの識別子は`YEAR_TOURNAMENT_TYPES`(`Symbol.for('tournament-year.<名前>')`)。
+- `YEAR_TOURNAMENT_PLATFORM_MODULE`(`workers/year-tournament/year-tournament-platform-module.ts`)は本節の全部品を処理単位で束縛し、apiとeventの両方へ入れる。DIの識別子は`core/year-tournament/identifiers.ts`の`YEAR_TOURNAMENT_TYPES`(`Symbol.for('year-tournament.<名前>')`)。識別子は`workers`の実装にしか無い`YearEntryOfferPolicy`・`YearEntryFulfillment`の分も含め、paymentsの購入種別の登録(`workers/payments/purchase-kind-registrations.ts`)がここから読み込む。上流の`BracketDraw`・`BracketProgression`・`BracketStore`・`WeekChampionDirectory`は`core/tournament`・`core/week-tournament`の識別子で受け取る。
 
 ### api/application
 
@@ -1426,6 +1454,7 @@ erDiagram
   - `year-target-rules`: 決済期限日の前日と当日のWeek優勝、開催しなかった前年の枠が今年へ移ること(初年度)、凍結済みの年への遅れ、1月初旬の決勝日(決済期限日が前年の12月)、`isPreviousYearSet`(16.2)。
   - `year-ordering`: Yearトーナメント規則のN = 13の例(シードP2・P7・P11、1回戦P1×P3・P4×P5・P6×P8・P9×P10・P12×P13)、同日のローンチの同順、Upvote数0の末尾、`selectWithinCapacity`の64件と65件・同時刻の`tieBreaker`(16.2)。
   - `year-entry-rules`・監査の操作種別: 返金の理由の写像と依頼キー、操作種別の定義の検証。
+  - `identifiers`(`core/year-tournament`): `YEAR_TOURNAMENT_TYPES`の各値が`Symbol.for('year-tournament.<名前>')`で、オブジェクトが凍結されていること。
   - アプリケーション層: `YearRelaunchConditionSource`(期限の前後、各状態、枠の作成前のWeek優勝、決勝日の変更後の解除の日時)、`YearProductLockSource`、`YearLaunchSummarySource`の文言とrank、`YearTrophySource`、`YearFinalDateService`(ロールの拒否はリゾルバ、検証の理由、監査ログの準備、競合と期限の変換)、`YearEntryPanelReader`、`YearTournamentJobs`(23:45の5段の順序、組み合わせも進行も無い夜も`markReady`を最後に1回呼ぶこと、どの段の失敗でも残りを続けたうえで`markReady`を呼ばずに例外になること、`markReady`の3つの戻り値で処理が変わらないこと、`EveningDispatchError`の伝わり方、`date`がジョブの業務日付であること)、`YearEntrySupplementProvider`の3つの場合、eventの各処理。
 - Workers統合テスト(`*.worker.test.ts`):
   - 時刻の境界: 受付期限22:59と23:00の決済の開始、決済期限23:34と23:35(反映と仮6の新しいローンチ)、組み合わせ決定の23:44と23:45、変更期限の決勝日の8日前の23:59と7日前の0:00の保存(16.3)。
