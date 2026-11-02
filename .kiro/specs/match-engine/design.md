@@ -6,7 +6,7 @@
 
 **Users**: 閲覧者はトップページで当日の予選のマッチを見て、ログインしていればその場でUpvote・付け替え・取り消しを行う。投稿者は自分のマッチの進行と結果を見る。閲覧者は公開プロフィールでUpvote履歴を見る。後続spec(tournament-week・tournament-year・notifications・directory-discovery・sponsorship・ugc-moderation・data-export・public-api)の開発者は、マッチの予定の作成・照会口・マッチイベントの登録口・トップページの区画の登録口・対戦カードの部品を使う。
 
-**Impact**: D1に6テーブル(マッチ・側・Upvote・マッチイベント・処理の完了の記録・予選のペアリングの記録)と、予選の勝利の側を組み込む部品を足す。`apps/backend-lib`にマッチの契約(`core/match`)と共有部品(`workers/match`、apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`match`・Upvote・トップページとUpvote履歴の照会・3つの日次のジョブと4:21の2つのジョブ・2つの同期の処理を、eventにマッチイベントの実行器と5つの非同期の処理を、clientにトップページ・対戦カードの部品群・Upvote履歴のタブを足す。上流のファイルは、契約で定められた登録箇所への追記と仮のトップページの置き換えだけを変える。新しいシークレット・パッケージは無い。
+**Impact**: D1に6テーブル(マッチ・側・Upvote・マッチイベント・処理の完了の記録・予選のペアリングの記録)と、予選の勝利の側を組み込む部品を足す。`apps/backend-lib`にマッチの規則と照会・予定の作成・イベントの記録と送信・エクスポートの契約と識別子(`core/match`)と、その実装と束縛(`workers/match`、apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`match`・Upvote・トップページとUpvote履歴の照会・3つの日次のジョブと4:21の2つのジョブ・2つの同期の処理を、eventにマッチイベントの実行器と5つの非同期の処理を、clientにトップページ・対戦カードの部品群・Upvote履歴のタブを足す。上流のファイルは、契約で定められた登録箇所への追記と仮のトップページの置き換えだけを変える。新しいシークレット・パッケージは無い。
 
 ### Goals
 
@@ -27,7 +27,7 @@
 
 - マッチのデータ: `matches`・`match_entries`・`match_upvotes`・`match_events`・`match_event_handler_runs`・`qualifier_pairings`(`apps/db/schema/match/`)と、予選の勝利の側を組み込む部品`qualifierWins()`。
 - マッチの規則の契約(`apps/backend-lib/core/match/`): 種別・段階・状態の導出、開始時点と終了時の決着、予選のペアリング、マッチイベントの型と登録の検証・再試行の方針、メッセージ種別`match.run-match-event`。
-- 共有部品(`apps/backend-lib/workers/match/`): `MatchDirectory`・`SupporterDirectory`・`MatchScheduler`・`MatchEventStore`・`MatchEventDispatcher`・`MatchExport`・`UpvoteExport`と、両アプリ共通の束縛`MATCH_PLATFORM_MODULE`。
+- 照会・予定の作成・イベントの記録と送信・エクスポートの共有部品: 契約(`MatchDirectory`・`SupporterDirectory`・`MatchScheduler`・`MatchEventStore`・`MatchEventDispatcher`・`MatchExport`・`UpvoteExport`とその入出力の型)は`apps/backend-lib/core/match/ports.ts`、DIの識別子`MATCH_PLATFORM_TYPES`は`core/match/identifiers.ts`に置く。D1の実装・Queueへの送信の実装`QueueMatchEventDispatcher`と両アプリ共通の束縛`MATCH_PLATFORM_MODULE`は`apps/backend-lib/workers/match/`に置く。api・eventと後続specのapplication層が契約と識別子を読み込むため、`workers`に置かない。
 - apiのUpvote・トップページとUpvote履歴の照会・マッチの表示の組み立て(`MatchViewReader`)・確定・ペアリング・開始・マッチイベントの保守、スキーマモジュール`match`、ユーザーライフサイクルの同期の処理`match-engine.account-match-closure`、プロダクトライフサイクルの同期の処理`match-engine.product-match-closure`、日次のジョブ5つ。
 - eventのマッチイベントの実行器`MatchEventRunner`と登録口`MATCH_EVENT_HANDLERS`、本specの処理`match-engine.qualifier-outcome`、非同期の処理`match-engine.account-decision-follow-up`・`match-engine.upvote-erasure`・`match-engine.product-decision-follow-up`・`match-engine.entry-unlink`。
 - clientのトップページ(`/`、仮のトップページを置き換える)、区画の登録口`TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`(本spec以外の登録は初版で空)、対戦カード・不戦勝の一覧・Upvoteの操作・ピッチの部品群(`components/match/`)、公開プロフィールのタブ`upvotes`(20)。
@@ -47,13 +47,13 @@
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`MessagePublisher`)・`AppError`・`getAppLogger`・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`・`BusinessTimeOfDay`)・`ScheduledJobDefinition`・`ScheduledJobHandler`・`defineMessageContract`・`MESSAGE_CONTRACTS`・`MessageHandler`・`MessageHandlingResult`・`RetryPolicy`。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`assertHuman`・`caller`・`session`・`loaders`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`defineLoader`・`DateTime`・`PageInfo`、`SessionView`。
 - identity-auth: `AccountGuard`(`currentUser`・`requireVerifiedUser`)・`CurrentUser`・`IDENTITY_TYPES`・`visibleUsers`・`verifiedUsers`・`users`(外部キーと`visibleUsers`・`verifiedUsers`の条件の読み取り)・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`LIFECYCLE_CONTINUE_DELAY_SECONDS`・`LoginRequiredDialog`・`viewerQueryOptions`・E2Eの`e2e/support/mailpit.ts`。
-- product-launch: `PRODUCT_PLATFORM_TYPES`の`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductDirectory`(`findSummaries`・`listLaunches`)、`visibleProducts()`、`products`・`product_launches`への外部キー、`ProductLifecycleEvent`・`ProductLifecycleSyncHandler`・`ProductLifecycleSyncRegistration`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`ProductLifecycleAsyncHandler`・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、GraphQLの`ProductCategory`・`productCategoryLoader`。
-- user-profile-social: `UserProfileDirectory`(`resolveHandle`・`findSummaries`)・`PROFILE_PLATFORM_TYPES`・GraphQLの`UserSummary`・`userSummaryLoader`・`PUBLIC_PROFILE_TABS`・`PublicProfileTab`・`PublicProfileSectionContext`・`UserAvatar`・`checkHandleFormat`・`USER_HANDLE_RULE`・`checkExternalUrl`。
+- product-launch: `PRODUCT_PLATFORM_TYPES`の`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductDirectory`(`findSummaries`・`listLaunches`。契約と識別子は`core/product`)、`visibleProducts()`、`products`・`product_launches`への外部キー、`ProductLifecycleEvent`・`ProductLifecycleSyncHandler`・`ProductLifecycleSyncRegistration`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`ProductLifecycleAsyncHandler`・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、GraphQLの`ProductCategory`・`productCategoryLoader`。
+- user-profile-social: `UserProfileDirectory`(`resolveHandle`・`findSummaries`)・`PROFILE_PLATFORM_TYPES`(契約と識別子は`core/profile`)・GraphQLの`UserSummary`・`userSummaryLoader`・`PUBLIC_PROFILE_TABS`・`PublicProfileTab`・`PublicProfileSectionContext`・`UserAvatar`・`checkHandleFormat`・`USER_HANDLE_RULE`・`checkExternalUrl`。
 - media-pipeline: `mediaFileLoader`・`toMediaImage`・GraphQLの`MediaImage`・`MediaPicture`。
 - frontend-platform・inquiry-chat: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`useTurnstileToken`・`TurnstileWidget`(非表示)・`notify`・`buildPageHead`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・日時の表示部品・shadcn/uiの部品(ボタン・バッジ・ツールチップ・カード)・`LIVE_REFRESH_QUERY_OPTIONS`・`runAxe`・デザイントークン(`tokens.css`)。
 - admin-foundation: E2Eの`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - npmパッケージ: 新規なし。
-- 後続specは、`core/match`・`workers/match`の公開の契約、`qualifierWins()`、apiの`MatchViewReader`・`matchViewLoader`・GraphQLの`Match`などの型、eventの`MATCH_EVENT_HANDLERS`、clientの`TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`・`MatchCard`・`ByeList`・`useUpvote`だけに依存し、本specのテーブルへ書き込まない。読み取りの問い合わせで本specのテーブルを結合してよいのは`qualifierWins()`を使う並べ替えと絞り込みだけとする。
+- 後続specは、`core/match`の公開の契約と識別子、`qualifierWins()`、apiの`MatchViewReader`・`matchViewLoader`・GraphQLの`Match`などの型、eventの`MATCH_EVENT_HANDLERS`、clientの`TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`・`MatchCard`・`ByeList`・`useUpvote`だけに依存し、本specのテーブルへ書き込まない。読み取りの問い合わせで本specのテーブルを結合してよいのは`qualifierWins()`を使う並べ替えと絞り込みだけとする。
 
 ### Revalidation Triggers
 
@@ -64,6 +64,7 @@
 - GraphQLの`Match`・`MatchEntry`・`MatchProduct`・`MatchBye`の形と`MatchViewReader`(トーナメント・プロダクト詳細の開催中のマッチ)。
 - `TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`の形と置き場所、`MatchCard`・`ByeList`・`useUpvote`の引数(トーナメント・sponsorship・directory-discovery)。
 - 仮1〜仮7(2026-10-24に開発者が確定)の決定を変える場合は、該当する規則(`pairQualifiers`・`decideAtFullTime`・`decideAtKickoff`・部分一意索引・bot対策・不戦勝の一覧の説明文)を確かめ直す。
+- `core/match`の契約(`MatchDirectory`・`SupporterDirectory`・`MatchScheduler`・`MatchEventStore`・`MatchEventDispatcher`・`MatchExport`・`UpvoteExport`)と`MATCH_PLATFORM_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(後続specのapplication層が読み込むため)。
 - 上流の`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductDirectory`・`visibleProducts`、ライフサイクルの登録口、`AccountGuard`・`verifiedUsers`、`PUBLIC_PROFILE_TABS`、`useTurnstileToken`、paymentsの23:40の`order`を変えたら、本specを確かめ直す。
 
 ### 上流への影響
@@ -153,11 +154,11 @@ graph TB
 
 - Selected pattern: クリーンアーキテクチャ。マッチの状態・決着・ペアリングは`core/match`の純粋な関数、ユースケースはポート越しにD1・product-launch・identity-authを使う。Upvoteと即時の終了は、条件を`CASE`式と集合の更新に埋め込んだ1つの一括の書き込みで確定する。マッチイベントはproduct-launchのプロダクトライフサイクルと同じ形(イベントの記録・非同期の実行器・日次の送り直し)にする。
 - Domain/feature boundaries: マッチ・Upvote・ペアリング・マッチイベント・トップページは本spec、ローンチとプロダクトはproduct-launch、ブラケットはトーナメントのspec、通知はnotifications、利用者の表示はuser-profile-social。
-- Existing patterns preserved: `backend-lib/workers/<ドメイン>`の共有の束縛、`<spec名>.<名詞句>`の処理とジョブの名前、`<ドメイン>.<動詞句>`のメッセージ種別、帯の`order`、登録箇所への追記による拡張(`CATEGORY_SECTIONS`・`PUBLIC_PROFILE_TABS`と同じ形)、`CASE`式による取り消し、`encodeCursor`のカーソル、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得。
+- Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`の実装と共有の束縛、`<spec名>.<名詞句>`の処理とジョブの名前、`<ドメイン>.<動詞句>`のメッセージ種別、帯の`order`、登録箇所への追記による拡張(`CATEGORY_SECTIONS`・`PUBLIC_PROFILE_TABS`と同じ形)、`CASE`式による取り消し、`encodeCursor`のカーソル、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得。
 - New components rationale: 側の集計値はトップページの読み取りをマッチの数に比例させるため(research.mdの比較)。同期の処理は退会・停止・非公開化と同時に受け付けを止めるため。マッチイベントは通知・トーナメント・ディレクトリが本specのデータを見張らずに知るため。区画の登録口は型の拡張を禁じるapi-gatewayの規約とトップページの所有の規則のもとで後続specが区画を加えるため。
 - Steering compliance: Inversifyの`@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・部分一意索引)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、新しいパッケージなし。
 
-**Dependency direction**: `apps/common-lib/match` → `apps/db/schema/match` → `backend-lib/core/match` → `backend-lib/workers/match` → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib`は他の層を読み込まない。`core/match`はD1を読み込まない(`BusinessTime`と型だけ)。clientは`common-lib`とGraphQLの操作だけを読み込む。違反はレビューで誤りとして扱う。
+**Dependency direction**: `apps/common-lib/match` → `apps/db/schema/match` → `backend-lib/core/match` → `backend-lib/workers/match` → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib`は他の層を読み込まない。`core/match`はD1と`workers`を読み込まない(`BusinessTime`と型だけ)。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが使う照会・予定の作成・イベントの記録と送信・エクスポートの契約と識別子`MATCH_PLATFORM_TYPES`は`core/match`に置き、`workers/match`にはD1・Queueの実装と束縛だけを置く(identity-authの`core/identity`と同じ配置)。application層は`core/match`だけを読み込む。clientは`common-lib`とGraphQLの操作だけを読み込む。違反はレビューで誤りとして扱う。
 
 ### Technology Stack
 
@@ -190,17 +191,16 @@ apps/
 │   │   ├── match-model.ts                                    # 種別・段階・結果・決着・状態・deriveMatchPhase・QUALIFIER_SCHEDULE・qualifierWindow
 │   │   ├── match-decision.ts                                 # decideAtKickoff・decideAtFullTime
 │   │   ├── qualifier-pairing.ts                              # RandomSource・pairQualifiers
-│   │   └── match-events.ts                                   # イベントの型・登録・createMatchEventRegistry・MATCH_EVENT_RETRY_POLICY
+│   │   ├── match-events.ts                                   # イベントの型・登録・createMatchEventRegistry・MATCH_EVENT_RETRY_POLICY
+│   │   ├── ports.ts                                          # MatchDirectory・SupporterDirectory・MatchScheduler・MatchEventStore・MatchEventDispatcher・MatchExport・UpvoteExportの契約と型(型だけ)
+│   │   └── identifiers.ts                                    # MATCH_PLATFORM_TYPES(api・event共通の識別子、identifiers.unit.test.ts)
 │   ├── core/messaging/contracts/match.ts                     # RUN_MATCH_EVENT_MESSAGE
-│   └── workers/match/                                        # api・event共通の部品(Workers統合テスト)
-│       ├── match-platform-types.ts                           # MATCH_PLATFORM_TYPES(テストなし)
-│       ├── match-directory.ts                                # MatchRecord・MatchDirectory・SupporterDirectory(型)
-│       ├── d1-match-directory.ts
-│       ├── match-scheduler.ts                                # MatchScheduler(型とD1の実装)
-│       ├── match-event-store.ts                              # MatchEventStore(型とD1の実装)
-│       ├── match-event-dispatcher.ts                         # MatchEventDispatcher(送信と失敗のログ)
-│       ├── match-export.ts                                   # MatchExport・UpvoteExport(型)
-│       ├── d1-match-export.ts
+│   └── workers/match/                                        # core/matchの契約の実装と束縛(Workers統合テスト)
+│       ├── d1-match-directory.ts                             # MatchDirectory・SupporterDirectoryのD1実装
+│       ├── d1-match-scheduler.ts                             # MatchSchedulerのD1実装
+│       ├── d1-match-event-store.ts                           # MatchEventStoreのD1実装
+│       ├── queue-match-event-dispatcher.ts                   # MatchEventDispatcherの実装(MessagePublisherでの送信と失敗のログ)
+│       ├── d1-match-export.ts                                # MatchExport・UpvoteExportのD1実装
 │       └── match-platform-module.ts                          # MATCH_PLATFORM_MODULE
 ├── api/src/
 │   ├── domain/match/                                         # 純粋な規則(Bunの単体テスト)
@@ -473,25 +473,25 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                                                                                                                    | Domain/Layer       | Intent                                               | Req Coverage                                             | Key Dependencies                                   | Contracts      |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | ---------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------- | -------------- |
-| MatchActions                                                                                                                                                 | common-lib         | bot対策の`action`                                    | 6.1, 6.4                                                 | —                                                  | Service        |
-| MatchSchema・MatchQueries                                                                                                                                    | db                 | 6テーブルと予選の勝利の部品                          | 1.1, 1.2, 1.6, 6.2, 7.4, 12.7                            | identity-auth (P0)、product-launch (P0)            | State          |
-| MatchModel・MatchDecision・QualifierPairing                                                                                                                  | backend-lib/core   | 状態・決着・ペアリングの純粋な規則                   | 1.3, 1.5, 2.2〜2.6, 3.2〜3.4, 4.2〜4.5                   | BusinessTime (P0)                                  | Service        |
-| MatchEventContract・MatchMessage                                                                                                                             | backend-lib/core   | イベントの型と登録の検証                             | 11.1, 11.2, 11.6                                         | identity-auth (P1)                                 | Event          |
-| MatchDirectory・SupporterDirectory・MatchScheduler・MatchEventStore・MatchEventDispatcher・MatchExport・MatchPlatformModule                                  | backend-lib/match  | 照会・予定の作成・イベントの記録と送信・エクスポート | 1.4, 1.6, 5.5, 11.1, 11.3, 11.5, 12.2〜12.6, 12.8        | D1 (P0)、MessagePublisher (P0)                     | Service        |
-| UpvotePlan・BoardOrder                                                                                                                                       | api/domain         | Upvoteの決定と並び順                                 | 6.2, 6.3, 8.2, 8.11, 8.13                                | —                                                  | Service        |
-| UpvoteService                                                                                                                                                | api/application    | Upvote・付け替え・取り消し                           | 6.1〜6.9                                                 | UpvoteStore (P0)、AccountGuard (P0)                | Service        |
-| MatchViewReader・QualifierBoardReader・UpvoteHistoryReader                                                                                                   | api/application    | 表示の組み立て・トップページ・Upvote履歴             | 6.10, 8.1〜8.5, 8.11〜8.13, 9.5, 10.2〜10.8              | ProductDirectory (P0)、UserProfileDirectory (P0)   | Service        |
-| MatchSettlement・QualifierPairingService・MatchKickoff・EntryEligibility・MatchJobs                                                                          | api/application    | 確定・ペアリング・開始・ジョブ                       | 2.1〜2.8, 3.1〜3.7, 4.1〜4.5, 4.8, 4.9, 11.4, 11.5, 12.9 | ScheduledLaunchDirectory (P0)、MatchScheduler (P0) | Service, Batch |
-| TallyStatements・UpvoteGuards・D1UpvoteStore・D1MatchBoardStore・D1UpvoteHistoryStore・D1SettlementStore・D1KickoffStore・D1PairingStore・CryptoRandomSource | api/infrastructure | D1の実装と乱数                                       | 2.5, 2.7, 4.10, 6.2, 6.5〜6.9, 10.6                      | D1 (P0)                                            | State          |
-| MatchClosureStatements・AccountMatchClosureSyncHandler・ProductMatchClosureSyncHandler                                                                       | api/infrastructure | 即時の終了と該当の記録                               | 5.1〜5.4, 5.6, 7.1〜7.3                                  | identity-auth (P0)、product-launch (P0)            | Event          |
-| MatchSchemaModule(MatchErrors・MatchViews・BoardResolvers・UpvoteResolvers・UpvoteHistoryResolvers)                                                          | api/presentation   | GraphQLの型と操作                                    | 6.\*, 8.\*, 9.5, 10.\*                                   | api-gateway (P0)                                   | API            |
-| MatchEventRunner・QualifierOutcomeHandler・DecisionFollowUpHandlers・UpvoteErasureHandler・EntryUnlinkHandler・D1MatchPurgeStore・MatchEventHandlers         | event              | 実行器・結果の記録・後続・物理削除                   | 4.6, 4.7, 5.5, 7.5, 11.2〜11.4, 12.1, 12.9               | LaunchOutcomeRecorder (P0)                         | Event, Batch   |
-| TopPageRoute・TopPage・TopPageSections・FullTimeCountdown・GuestHero・QualifierSection・SectionHeading・EmptyLineup                                          | client             | トップページと区画の登録口                           | 8.1, 8.2, 8.10〜8.17, 9.1〜9.4, 9.6                      | QualifierBoard (P0)                                | State          |
-| MatchCard・MatchStage・ProductPanel・UpvoteButton・VoteBar・ByeList・ByeCard・StadiumPitch・TeamColors・MatchLabels・UseUpvote・UseServerCountdown           | client             | 対戦カードと操作の部品                               | 8.3〜8.9, 8.13, 8.14, 8.18, 8.19, 9.5, 9.7               | useTurnstileToken (P0)、LoginRequiredDialog (P0)   | State          |
-| UpvoteHistoryCount・UpvoteHistoryPanel・UpvoteHistoryItem                                                                                                    | client             | 公開プロフィールのUpvote履歴                         | 10.\*                                                    | PUBLIC_PROFILE_TABS (P0)                           | State          |
-| MatchTechDocs・MatchServiceSpecs                                                                                                                             | docs               | 技術ドキュメントとサービス仕様                       | 13.4, 13.5                                               | —                                                  | —              |
+| Component                                                                                                                                                    | Domain/Layer                                        | Intent                                               | Req Coverage                                             | Key Dependencies                                   | Contracts      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------- | -------------- |
+| MatchActions                                                                                                                                                 | common-lib                                          | bot対策の`action`                                    | 6.1, 6.4                                                 | —                                                  | Service        |
+| MatchSchema・MatchQueries                                                                                                                                    | db                                                  | 6テーブルと予選の勝利の部品                          | 1.1, 1.2, 1.6, 6.2, 7.4, 12.7                            | identity-auth (P0)、product-launch (P0)            | State          |
+| MatchModel・MatchDecision・QualifierPairing                                                                                                                  | backend-lib/core                                    | 状態・決着・ペアリングの純粋な規則                   | 1.3, 1.5, 2.2〜2.6, 3.2〜3.4, 4.2〜4.5                   | BusinessTime (P0)                                  | Service        |
+| MatchEventContract・MatchMessage                                                                                                                             | backend-lib/core                                    | イベントの型と登録の検証                             | 11.1, 11.2, 11.6                                         | identity-auth (P1)                                 | Event          |
+| MatchDirectory・SupporterDirectory・MatchScheduler・MatchEventStore・MatchEventDispatcher・MatchExport・MatchPlatformModule                                  | backend-lib/core(契約・識別子)・workers(実装・束縛) | 照会・予定の作成・イベントの記録と送信・エクスポート | 1.4, 1.6, 5.5, 11.1, 11.3, 11.5, 12.2〜12.6, 12.8        | D1 (P0)、MessagePublisher (P0)                     | Service        |
+| UpvotePlan・BoardOrder                                                                                                                                       | api/domain                                          | Upvoteの決定と並び順                                 | 6.2, 6.3, 8.2, 8.11, 8.13                                | —                                                  | Service        |
+| UpvoteService                                                                                                                                                | api/application                                     | Upvote・付け替え・取り消し                           | 6.1〜6.9                                                 | UpvoteStore (P0)、AccountGuard (P0)                | Service        |
+| MatchViewReader・QualifierBoardReader・UpvoteHistoryReader                                                                                                   | api/application                                     | 表示の組み立て・トップページ・Upvote履歴             | 6.10, 8.1〜8.5, 8.11〜8.13, 9.5, 10.2〜10.8              | ProductDirectory (P0)、UserProfileDirectory (P0)   | Service        |
+| MatchSettlement・QualifierPairingService・MatchKickoff・EntryEligibility・MatchJobs                                                                          | api/application                                     | 確定・ペアリング・開始・ジョブ                       | 2.1〜2.8, 3.1〜3.7, 4.1〜4.5, 4.8, 4.9, 11.4, 11.5, 12.9 | ScheduledLaunchDirectory (P0)、MatchScheduler (P0) | Service, Batch |
+| TallyStatements・UpvoteGuards・D1UpvoteStore・D1MatchBoardStore・D1UpvoteHistoryStore・D1SettlementStore・D1KickoffStore・D1PairingStore・CryptoRandomSource | api/infrastructure                                  | D1の実装と乱数                                       | 2.5, 2.7, 4.10, 6.2, 6.5〜6.9, 10.6                      | D1 (P0)                                            | State          |
+| MatchClosureStatements・AccountMatchClosureSyncHandler・ProductMatchClosureSyncHandler                                                                       | api/infrastructure                                  | 即時の終了と該当の記録                               | 5.1〜5.4, 5.6, 7.1〜7.3                                  | identity-auth (P0)、product-launch (P0)            | Event          |
+| MatchSchemaModule(MatchErrors・MatchViews・BoardResolvers・UpvoteResolvers・UpvoteHistoryResolvers)                                                          | api/presentation                                    | GraphQLの型と操作                                    | 6.\*, 8.\*, 9.5, 10.\*                                   | api-gateway (P0)                                   | API            |
+| MatchEventRunner・QualifierOutcomeHandler・DecisionFollowUpHandlers・UpvoteErasureHandler・EntryUnlinkHandler・D1MatchPurgeStore・MatchEventHandlers         | event                                               | 実行器・結果の記録・後続・物理削除                   | 4.6, 4.7, 5.5, 7.5, 11.2〜11.4, 12.1, 12.9               | LaunchOutcomeRecorder (P0)                         | Event, Batch   |
+| TopPageRoute・TopPage・TopPageSections・FullTimeCountdown・GuestHero・QualifierSection・SectionHeading・EmptyLineup                                          | client                                              | トップページと区画の登録口                           | 8.1, 8.2, 8.10〜8.17, 9.1〜9.4, 9.6                      | QualifierBoard (P0)                                | State          |
+| MatchCard・MatchStage・ProductPanel・UpvoteButton・VoteBar・ByeList・ByeCard・StadiumPitch・TeamColors・MatchLabels・UseUpvote・UseServerCountdown           | client                                              | 対戦カードと操作の部品                               | 8.3〜8.9, 8.13, 8.14, 8.18, 8.19, 9.5, 9.7               | useTurnstileToken (P0)、LoginRequiredDialog (P0)   | State          |
+| UpvoteHistoryCount・UpvoteHistoryPanel・UpvoteHistoryItem                                                                                                    | client                                              | 公開プロフィールのUpvote履歴                         | 10.\*                                                    | PUBLIC_PROFILE_TABS (P0)                           | State          |
+| MatchTechDocs・MatchServiceSpecs                                                                                                                             | docs                                                | 技術ドキュメントとサービス仕様                       | 13.4, 13.5                                               | —                                                  | —              |
 
 ### common-lib・db
 
@@ -670,7 +670,9 @@ export declare const RUN_MATCH_EVENT_MESSAGE: MessageContract<
 - 種類の意味: `scheduled`は予定の作成(予選は23:45、トーナメントは作る側の時刻)、`started`は0:00の開始(開始時点で決着したマッチには出さない)、`decided`は結果の確定(終了時・開始時点・即時の終了)。本文にはIDだけを入れる(11.6)。
 - 規約はproduct-launchの`backend/012`(集約のライフサイクルイベント)に従い、`backend/014`から参照する。
 
-### backend-lib/workers/match
+### backend-lib/core/match・workers/match
+
+契約と識別子は`core/match`(`ports.ts`・`identifiers.ts`)に、D1・Queueの実装と束縛は`workers/match`に置く。api・eventのapplication層と後続specは`core/match`だけを読み込む。
 
 #### MatchDirectory・SupporterDirectory
 
@@ -682,6 +684,7 @@ export declare const RUN_MATCH_EVENT_MESSAGE: MessageContract<
 **Contracts**: Service [x]
 
 ```typescript
+// core/match/ports.ts
 export interface MatchEntryRecord {
   readonly entryId: string;
   readonly slot: 1 | 2;
@@ -753,6 +756,13 @@ export interface SupporterDirectory {
     readonly limit: number; // 1〜20
   }): Promise<readonly SupporterRecord[]>; // 結果が確定したマッチの側の有効なUpvoteで、利用者がvisibleUsers()を満たすもの、Upvoteの日時の早い順。確定していなければ空(12.3)
 }
+// workers/match/d1-match-directory.ts
+export declare class D1MatchDirectory implements MatchDirectory {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
+export declare class D1SupporterDirectory implements SupporterDirectory {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
 ```
 
 - 読み取りは`matches`と`match_entries`の結合を1回の問い合わせで行い、IDのバインド変数は90個以内に分ける(12.2)。`summarizeDaily`は`match_date`の索引で日ごとに集計する(12.6)。
@@ -767,6 +777,7 @@ export interface SupporterDirectory {
 **Contracts**: Service [x] / Batch [x]
 
 ```typescript
+// core/match/ports.ts
 export interface ScheduledEntryInput {
   readonly launchId: string;
   readonly productId: string;
@@ -824,17 +835,39 @@ export interface MatchEventStore {
 export interface MatchEventDispatcher {
   publish(eventIds: readonly string[]): Promise<void>; // 1件ずつ送り、失敗はwarnのログ(イベントのIDだけ)を残して続ける。pendingのまま残り4:21に送り直される
 }
+// core/match/identifiers.ts
+export declare const MATCH_PLATFORM_TYPES: {
+  readonly MatchDirectory: symbol;
+  readonly SupporterDirectory: symbol;
+  readonly MatchScheduler: symbol;
+  readonly MatchEventStore: symbol;
+  readonly MatchEventDispatcher: symbol;
+  readonly MatchExport: symbol;
+  readonly UpvoteExport: symbol;
+}; // Symbol.for('match.<名前>')の凍結されたオブジェクト(core/media/identifiers.tsと同じ形)
+// workers/match/d1-match-scheduler.ts・d1-match-event-store.ts
+export declare class D1MatchScheduler implements MatchScheduler {
+  constructor(db: Database, dispatcher: MatchEventDispatcher); // @inject(PLATFORM_TYPES.Database)・@inject(MATCH_PLATFORM_TYPES.MatchEventDispatcher)
+}
+export declare class D1MatchEventStore implements MatchEventStore {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
+// workers/match/queue-match-event-dispatcher.ts
+export declare class QueueMatchEventDispatcher implements MatchEventDispatcher {
+  constructor(publisher: MessagePublisher); // @inject(PLATFORM_TYPES.MessagePublisher)
+}
 ```
 
 - `schedule`は、側の`match_kind`・`match_date`を写し、予選の側の`launch_id`の部分一意索引で同じローンチを2つの予選に入れない(1.6)。`created`はイベントを作ったマッチのID。
 - `createMissingDecidedEvents`は`matches.decided_at >= ?`の索引と`NOT EXISTS (decided)`で読み、`(match_id, type)`の一意索引と`onConflictDoNothing()`で2回実行しても1件にする。
-- `MATCH_PLATFORM_MODULE`は`MatchDirectory`・`SupporterDirectory`・`MatchScheduler`・`MatchEventStore`・`MatchEventDispatcher`・`MatchExport`・`UpvoteExport`を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる(12.8)。DIの識別子は`MATCH_PLATFORM_TYPES`(`Symbol.for('match.<名前>')`)。
+- `MATCH_PLATFORM_MODULE`は`MatchDirectory`・`SupporterDirectory`・`MatchScheduler`・`MatchEventStore`・`MatchEventDispatcher`・`MatchExport`・`UpvoteExport`を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる(12.8)。DIの識別子は`core/match/identifiers.ts`の`MATCH_PLATFORM_TYPES`(`Symbol.for('match.<名前>')`)。
 
 #### MatchExport
 
 **Contracts**: Service [x]
 
 ```typescript
+// core/match/ports.ts
 export interface MatchExportRecord {
   readonly matchId: string;
   readonly launchId: string;
@@ -860,6 +893,13 @@ export interface UpvoteExportRecord {
 }
 export interface UpvoteExport {
   listByUser(userId: string): Promise<readonly UpvoteExportRecord[]>; // 有効なUpvote、Upvoteの日時の古い順
+}
+// workers/match/d1-match-export.ts
+export declare class D1MatchExport implements MatchExport {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
+export declare class D1UpvoteExport implements UpvoteExport {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
 }
 ```
 
@@ -1625,6 +1665,7 @@ erDiagram
   - `match-decision`: 予選ルールの判定の例(12対9・7対7で14:02と18:30・0対0・3対0)、最終Upvote時間の一致で記録の順(仮2)、不戦勝・一方の該当・両方の該当(仮4)・側1つの該当(3.2〜3.4・4.2〜4.5・13.2)。
   - `qualifier-pairing`: 予選ルールの9個の例(決まった乱数でカテゴリ内の組・余り・横断の組・最後の不戦勝が手順どおり)、偶数・1個・0個、同じ投稿者の組を避けないこと(仮5)、乱数の値の範囲(2.2〜2.5・13.2)。
   - `match-events`: 登録の名前の形式違反・重複・同じ種類での`order`の重複の例外、種別の絞り込み、再試行の方針の値(11.2)。
+  - `identifiers`: `MATCH_PLATFORM_TYPES`の各値が`Symbol.for('match.<名前>')`で、オブジェクトが凍結されていること(12.8)。
   - `upvote-plan`・`board-order`: 追加・付け替え・変更なし、制限の判定の順、並び(合計最大が先頭・残りは少ない順・同数はID)、不戦勝の分類と実施数(6.2・6.3・8.2・8.11・8.13)。
   - ユースケース(模擬のポート): `UpvoteService`の判定の順と分類、取り消しの`nothing`、`QualifierPairingService`の完了済みの省略と組み済みの除外(2.7)、`MatchKickoff`・`MatchSettlement`のチャンクと遅れの報告、各ジョブの回復の順(2.8・4.9)、`QualifierBoardReader`の`phase`の切り替え(23:39と23:40)、`UpvoteHistoryReader`のnullの条件、`MatchEventRunner`の`defer`・`continue`・例外、`QualifierOutcomeHandler`の`won`・`lost`の写像と結果の扱い(4.6・4.7・11.3・11.4)。
   - client: `team-colors`・`match-labels`・`pitch-model`、`TOP_PAGE_SECTIONS`の`order`の並べ替え。

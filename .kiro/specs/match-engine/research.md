@@ -279,3 +279,12 @@
   - 操作の置き場所と生成物: clientの操作を`src/graphql/operations/match/`の1ファイル1操作の`.graphql`(操作名は`Client`で始める)にし、`graphql()`を呼ばず、部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読むとした(design.mdのAllowed Dependencies・File Structure Plan、tasks.mdの8.1)。
   - 非表示のウィジェット: トップページのウィジェットを不可視で置く前提は`TurnstileWidget`の非表示の描画と合う。用語を「非表示」にそろえ、判定の枠と場所を設けないことを明記した(design.mdのTopPage、tasks.mdの8.10)。
   - 失敗の文言: `useUpvote`の失敗のトーストの文言を`errorMessageOf`で選ぶとした(design.mdのUseUpvote)。
+
+## 層の規則に合わせた契約の置き場所の改訂(2026-11-02、開発者の指示)
+
+- 規則: api・eventの`src/application/**`・`src/domain/**`は`**/lib/workers/**`を型も含めて読み込めない。別の機能や後続specのapplication層が受け取る契約とDIの識別子は`apps/backend-lib/core/<ドメイン>`に置き、`workers/<ドメイン>`には実装と束縛だけを置く。application層はデータベースの接続・SQLの文・一括の書き込みを扱わない([依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析))。identity-authの`core/identity`の配置にそろえた。
+- 移した契約: `MatchDirectory`・`MatchRecord`・`MatchEntryRecord`・`QualifierResultRecord`・`DailyMatchSummary`・`SupporterDirectory`・`SupporterRecord`・`MatchScheduler`・`MatchScheduleInput`・`ScheduledEntryInput`・`MatchEventStore`・`StoredMatchEvent`・`MatchEventDispatcher`・`MatchExport`・`MatchExportRecord`・`UpvoteExport`・`UpvoteExportRecord`を`core/match/ports.ts`へ、`MATCH_PLATFORM_TYPES`を`core/match/identifiers.ts`(単体テスト`identifiers.unit.test.ts`を加えた)へ移した。
+- `workers/match`に残す実装: `d1-match-directory.ts`(`D1MatchDirectory`・`D1SupporterDirectory`)・`d1-match-scheduler.ts`・`d1-match-event-store.ts`・`queue-match-event-dispatcher.ts`(`QueueMatchEventDispatcher`、`PLATFORM_TYPES.MessagePublisher`で送る)・`d1-match-export.ts`・`match-platform-module.ts`。
+- 新しいポート・infrastructure層のクラス: なし。application層の部品はもともとD1の接続・文を受け取らず(集計値の求め直しと即時の終了の文はinfrastructure層)、`MessagePublisher`も直接受け取らない。
+- 他specの契約の参照: product-launchの`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductDirectory`を`core/product`、user-profile-socialの`UserProfileDirectory`を`core/profile`の契約として書いた。
+- 変えた箇所: design.mdのOverviewのImpact、This Spec Owns、Allowed Dependencies(product-launch・user-profile-social)、後続specの依存の範囲、Revalidation Triggers、Existing patterns preserved、Dependency direction、File Structure Plan(`core/match`の`ports.ts`・`identifiers.ts`、`workers/match`の`d1-*`・`queue-match-event-dispatcher.ts`)、コンポーネントの表(Layer)、「backend-lib/core/match・workers/match」の節(コードのファイルの注記・実装のクラス・識別子)、Testing Strategy(`identifiers`の単体テスト)。tasks.mdの2.3(契約・識別子とその単体テスト)・2.4・2.5(実装の置き場所)・3.2(完了状態の静的解析)。
