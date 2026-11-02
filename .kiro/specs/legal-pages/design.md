@@ -49,7 +49,7 @@
 
 - backend-platform: `ulidPrimaryKey`・`timestamps`・`Database`・`AppError`・`Clock`・`IdGenerator`・`getAppLogger`・`PLATFORM_TYPES`。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`・`DateTime`のスカラー。形を変えない。
-- admin-foundation: `requireAdmin`(`presentation/graphql/admin-guard.ts`)・`CurrentAdmin`・`AdminDirectory`(`backend-lib/workers/admin`)・`ADMIN_NAV_ITEMS`への追記・`AdminPageHeader`・`AdminDataTable`・`ConfirmActionDialog`・`RoleGate`・`useAdminRole`・E2Eの補助`signInAsNewAdmin`(`e2e/support/admin-bootstrap.ts`)。監査ログの部品は使わない。
+- admin-foundation: `requireAdmin`(`presentation/graphql/admin-guard.ts`)・`CurrentAdmin`・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`(契約と識別子は`backend-lib/core/admin`、束縛は`ADMIN_PLATFORM_MODULE`)・`ADMIN_NAV_ITEMS`への追記・`AdminPageHeader`・`AdminDataTable`・`ConfirmActionDialog`・`RoleGate`・`useAdminRole`・E2Eの補助`signInAsNewAdmin`(`e2e/support/admin-bootstrap.ts`)。監査ログの部品は使わない。
 - content-processing: `countGraphemes`・`hasForbiddenCharacters`・`markdownTextSchema`・`MarkdownTextRule`・`LinkRelToken`(common-lib)、`MarkdownEditor`・`MarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`(frontend-lib)。
 - frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`・`PublicRuntimeConfig.clientSiteOrigin`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
   - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。管理者側のフォームのファイルが`zod`の値を使う時は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
@@ -62,7 +62,7 @@
 - 利用者側のパス`/terms`・`/privacy`・`/legal`と過去版のURLの形(identity-auth・payments・frontend-platformのフッター)。
 - `LegalDocumentKind`の値と`LEGAL_DOCUMENT_PATHS`(4アプリ)。
 - GraphQLの`legal`モジュールの型・エラーコード(client・admin)。
-- admin-foundationの`requireAdmin`・`AdminDirectory`・`ADMIN_NAV_ITEMS`・共通部品のprops・E2Eの補助`signInAsNewAdmin`の形を変えたら、本specを確かめ直す。
+- admin-foundationの`requireAdmin`・`AdminDirectory`(置き場所`backend-lib/core/admin`を含む)・`ADMIN_NAV_ITEMS`・共通部品のprops・E2Eの補助`signInAsNewAdmin`の形を変えたら、本specを確かめ直す。
 - content-processingの`MarkdownEditorProps`・`MarkdownContentProps`・`markdownTextSchema`の文言を変えたら、本specを確かめ直す。
 - frontend-platformの`TurnstileWidget`が描くウィジェット、またはinfra-deliveryのウィジェットの種類(`invisible`)を変えたら、プライバシーポリシーのTurnstile Privacy Addendumの参照の要否を確かめ直す。
 
@@ -71,7 +71,7 @@
 ### Existing Architecture Analysis
 
 - 上流の8specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする(roadmapの順でadmin-foundationまでが先に実装される)。
-- apiの層は`domain`・`application`・`infrastructure`・`presentation`・`composition`で、依存の方向は静的解析で強制される。後続specのapplication層はadmin-foundationの`backend-lib/workers/admin`の`AdminDirectory`を、presentation層は`admin-guard.ts`を読み込める。
+- apiの層は`domain`・`application`・`infrastructure`・`presentation`・`composition`で、依存の方向は静的解析で強制される。後続specのapplication層はadmin-foundationの`backend-lib/core/admin`の`AdminDirectory`・`ADMIN_PLATFORM_TYPES`を、presentation層は`admin-guard.ts`を読み込める。application層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。
 - frontend-platformはページの応答に`Cache-Control: no-store`を付けるため、公開の直後から新しい版が表示される(4.8)。共通フッターには既に3文書へのリンクがある(6.8)。
 
 ### Architecture Pattern & Boundary Map
@@ -124,7 +124,7 @@ graph TB
 ### Dependency Direction
 
 - 共有コード: `apps/db/schema/legal` → `apps/common-lib/legal`(content-processingの`countGraphemes`・`hasForbiddenCharacters`・`markdownTextSchema`だけを読み込む) → アプリの`src`。
-- apiの`src`内: `domain/legal` ← `application/legal`(`backend-lib/workers/admin`の`AdminDirectory`を読み込む) ← `infrastructure/legal`・`presentation/graphql/modules/legal`(`admin-guard.ts`を読み込む) ← `composition`。`legal`の各層は`identity`の各層を読み込まない。
+- apiの`src`内: `domain/legal` ← `application/legal`(`backend-lib/core/admin`の`AdminDirectory`・`ADMIN_PLATFORM_TYPES`を読み込む。`**/lib/workers/**`は読み込まない) ← `infrastructure/legal`・`presentation/graphql/modules/legal`(`admin-guard.ts`を読み込む) ← `composition`。`legal`の各層は`identity`の各層を読み込まない。
 - client・adminの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。GraphQLの操作はアプリの`src/graphql/operations/legal/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
 
 ### Technology Stack

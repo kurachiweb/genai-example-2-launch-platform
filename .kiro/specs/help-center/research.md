@@ -306,3 +306,10 @@
 - **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
 - **決定**: `HelpArticleForm`のフォームの値を`CreateHelpArticleInput`・`UpdateHelpArticleInput`の形に合わせ、編集する値を`fields`の下(欄の名前は`fields.<名前>`)、変更の理由を`fields`の外の`reason`に置き、`serverFieldPrefix="input"`で`input.`を除いたサーバーの詳細の経路(`fields.categoryId`など)とそろえた(判断27)。編集する記事の`id`と版の値の`expectedRevision`はスキーマの入力に含めず`onSubmit`で足す(判断26の確認)。閲覧のみの管理者の`readOnly`は送信しないため、全欄を`FormField`の`disabled`で無効にすることだけを確かめて書いた。
 - **変えた箇所**: design.mdの`HelpArticleFormValues`・`HelpArticleForm`、tasks.mdの7.5(フォームの値の形・サーバーの詳細の経路・閲覧のみの無効の方法)・7.6(記事のIDと版の送信)。
+
+## 層の規則に合わせた契約の置き場所の改訂(2026-11-02、開発者の指示)
+
+- **規則**: [依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析)のとおり、api・eventの`src/application/**`・`src/domain/**`は`**/lib/workers/**`を型だけのimportでも読み込めない。別の機能のapplication層が受け取る契約とDIの識別子は`backend-lib/core/<ドメイン>`に置き、`workers`には実装と束縛だけを置く。
+- **移したもの**: 本specが所有する契約の移動は無い。`HelpAuthorLookup`(application層)が受け取るadmin-foundationの`AdminDirectory`と識別子`ADMIN_PLATFORM_TYPES`は、admin-foundationの改訂で`backend-lib/core/admin`へ移ったため、読み込み先を明記した。検索対象`HELP_ARTICLE_SEARCH_TARGET`は`workers/search/targets`に置いたまま、集約点を通して束縛の部品だけが使う。
+- **新しいポートと実装**: 無い。
+- **変えた箇所**: design.mdのAllowed Dependencies(admin-foundationの行)・Dependency Direction・HelpModule、brief.mdの作成者の表示の行。tasks.mdは置き場所を書いていないため変えていない。要件と受け入れ基準は変えていない。

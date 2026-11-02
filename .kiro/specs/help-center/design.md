@@ -50,7 +50,7 @@
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`caller`・`session`・`resolve`・`loaders`)・`withValidatedArgs`・`DateTime`。形を変えない。
 - user-profile-social: `HANDLE_PATTERN`・`HandleRule`・`checkHandleFormat`・`isSameHandle`(`apps/common-lib/handles`)、`previousHandleColumns`(`apps/db/schema/handles`)、`defineHandleNamespace`・`HandleNamespace`・`resolveHandle`・`isHandleOccupied`・`handleOccupiedCondition`・`previousHandleUpsert`・`previousHandleDelete`・`previousHandleRelease(db, ns, { handle, exceptOwnerId }): BatchItem<'sqlite'>`(他の対象が保持する同じ文字列の旧ハンドルの行を物理削除する文、user-profile-socialの仮2の確定で加わった部品)(`apps/backend-lib/workers/handles`)。`isReservedHandle`・`IMPERSONATION_RESERVED_HANDLES`は使わない(仮2)。
 - content-processing: `searchDocumentColumns`・`searchTextColumn`・`searchDocumentStatusIndex`・`defineSearchIndex`・`SEARCH_INDEXES`・`print-search-index-sql.ts`・`ftsRankedSources`(`apps/db`)、`defineSearchTarget`・`SEARCH_TARGETS`・`SEARCH_TYPES`・`SearchIndexStatements`・`SearchIndexRefreshRequester`(`apps/backend-lib`)、`normalizeSearchTerms`・`buildFtsMatchExpression`・`countGraphemes`・`hasForbiddenCharacters`・`markdownTextSchema`・`renderMarkdown`・`LinkRelToken`(`apps/common-lib`)、`MarkdownEditor`・`MarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`・`HighlightedText`(`apps/frontend-lib`)。
-- admin-foundation: `requireAdmin`(`admin-guard.ts`)・`CurrentAdmin`・`AdminRole`・`hasRole`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`AUDIT_REASON_MAX`・`ADMIN_PLATFORM_TYPES.AdminDirectory`・`AdminDirectory`・`ADMIN_NAV_ITEMS`・`RoleGate`・`useAdminRole`・`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`・`CategoryMasterEditor`、E2Eの`signInAsNewAdmin`・`executeLocalD1`・`sqlStringLiteral`。
+- admin-foundation: `requireAdmin`(`admin-guard.ts`)・`CurrentAdmin`・`AdminRole`・`hasRole`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`AUDIT_REASON_MAX`・`ADMIN_PLATFORM_TYPES.AdminDirectory`・`AdminDirectory`(契約と識別子は`backend-lib/core/admin`。application層は`**/lib/workers/**`を型も含めて読み込めないため`core/admin`から読み込む)・`ADMIN_NAV_ITEMS`・`RoleGate`・`useAdminRole`・`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`・`CategoryMasterEditor`、E2Eの`signInAsNewAdmin`・`executeLocalD1`・`sqlStringLiteral`。
 - inquiry-chat: `CATEGORY_SECTIONS`・`CategorySection`(登録の追記だけ)。
 - media-pipeline: `mediaFileLoader`・`toMediaImage`・GraphQLの`MediaImage`・`MediaPicture`・`MediaPlaceholder`。
 - frontend-platform: `SITE_LAYOUT_SLOTS`(`footerHelpLinks`への追記)・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`buildPageHead`・`PublicRuntimeConfig.clientSiteOrigin`・`NotFoundView`・`ErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`DateTime`・shadcn/uiの部品(`select`・`checkbox`・`radio-group`・`badge`・`button`)・`runAxe`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
@@ -171,7 +171,7 @@ graph TB
 
 ### Dependency Direction
 
-`apps/common-lib/help` → `apps/db/schema/help`(`apps/db/search`へ定義を登録) → `apps/backend-lib/workers/search/targets/help-articles.ts` → 各アプリの`src`(apiは`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib/help`は他の層を読み込まない(`common-lib/handles`・`common-lib/markdown`の型と関数だけを読む)。client・adminは`common-lib/help`・`frontend-lib`・GraphQLの操作だけを読み込み、互いのコードを読まない。`application/help`はD1・ハンドル基盤・検索の基盤の関数を直接読み込まない(ポート経由。`common-lib`の純粋な判定は使ってよい)。
+`apps/common-lib/help` → `apps/db/schema/help`(`apps/db/search`へ定義を登録) → `apps/backend-lib/workers/search/targets/help-articles.ts` → 各アプリの`src`(apiは`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib/help`は他の層を読み込まない(`common-lib/handles`・`common-lib/markdown`の型と関数だけを読む)。client・adminは`common-lib/help`・`frontend-lib`・GraphQLの操作だけを読み込み、互いのコードを読まない。`application/help`はD1・ハンドル基盤・検索の基盤の関数を直接読み込まない(ポート経由。`common-lib`の純粋な判定は使ってよい)。`application/help`が受け取る他specの契約と識別子は`backend-lib/core`(`core/admin`の`AdminDirectory`・`ADMIN_PLATFORM_TYPES`、`core/search`の`SEARCH_TYPES`)から読み込み、`**/lib/workers/**`を型も含めて読み込まない。`workers/search/targets/help-articles.ts`の`HELP_ARTICLE_SEARCH_TARGET`は検索対象の集約点(`SEARCH_TARGETS`)を通して`createSearchPlatformModule`だけが使い、application層は読み込まない。
 
 ### Technology Stack
 
@@ -1175,7 +1175,7 @@ type Mutation {
 
 #### HelpModule
 
-- `HELP_MODULE`: `HELP_TYPES`の8つを処理単位で束縛する。`HelpAuthorLookup`は`ADMIN_PLATFORM_TYPES.AdminDirectory`を、`HelpArticleEditor`は`AuditLogRecorder`(admin-foundationの識別子)と`SEARCH_TYPES.RefreshRequester`を注入する。`modules.ts`と`graphql-modules.ts`へ加え、3経路のDIの解決の検査を通す。
+- `HELP_MODULE`: `HELP_TYPES`の8つを処理単位で束縛する。`HelpAuthorLookup`は`ADMIN_PLATFORM_TYPES.AdminDirectory`(`backend-lib/core/admin`の識別子、束縛はadmin-foundationの`ADMIN_PLATFORM_MODULE`)を、`HelpArticleEditor`は`AuditLogRecorder`(admin-foundationの識別子)と`SEARCH_TYPES.RefreshRequester`を注入する。`modules.ts`と`graphql-modules.ts`へ加え、3経路のDIの解決の検査を通す。
 
 ### common-lib(テスト)
 

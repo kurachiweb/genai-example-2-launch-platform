@@ -210,3 +210,10 @@ FR-ADMAG-001は改訂しない。Q1により法務文書の操作を監査ログ
 - **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
 - **決定**: frontend-platformの影響の表の水平展開として確かめた。`LegalDraftForm`と`PublishLegalDocumentDialog`のスキーマの入力は描く欄(本文・変更概要)だけで、文書の種類の`kind`と版の値の`expectedStateVersion`は`onSubmit`で足すことを明記した。最上位管理者でない管理者の読み取り専用の表示は、`MarkdownEditor`の`disabled`だけで無効にする設計だったため、本文の欄を`FormField`の`disabled`で無効にする形に改めた(送信しないため、無効にする方法だけを直した)。
 - **変えた箇所**: design.mdの`LegalDraftForm`・最上位管理者でない時の表示・`PublishLegalDocumentDialog`、tasks.mdの6.2(読み取り専用の無効の方法と保存の`kind`・`expectedStateVersion`の送信)・6.4(公開の`kind`・`expectedStateVersion`の送信)のブラウザテスト。
+
+## 層の規則に合わせた契約の置き場所の改訂(2026-11-02、開発者の指示)
+
+- **規則**: [依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析)のとおり、api・eventの`src/application/**`・`src/domain/**`は`**/lib/workers/**`を型だけのimportでも読み込めない。別の機能のapplication層が受け取る契約とDIの識別子は`backend-lib/core/<ドメイン>`に置き、`workers`には実装と束縛だけを置く。
+- **移したもの**: 本specが所有する契約の移動は無い。`LegalDocumentAdminReader`(application層)が受け取るadmin-foundationの`AdminDirectory`と識別子`ADMIN_PLATFORM_TYPES`は、admin-foundationの改訂で`backend-lib/core/admin`へ移ったため、読み込み先を`core/admin`に直した。
+- **新しいポートと実装**: 無い。
+- **変えた箇所**: design.mdのAllowed Dependencies(admin-foundationの行)・Revalidation Triggers・Existing Architecture Analysis・Dependency Direction。tasks.mdは置き場所を書いていないため変えていない。要件と受け入れ基準は変えていない。
