@@ -2,7 +2,7 @@
 
 - [ ] 1. 基盤: 共有の規則・テーブル・文言
 - [ ] 1.1 URLのクエリの規則と期間のプリセットを、4アプリが読み込める共有の定義として作る
-  - 前提: dev-tooling〜match-engineの18specの全タスクが完了していること(product-launchの`ProductDirectory`・`ProductCategoryDirectory`・`visibleProducts()`・`wonLaunchExists()`・ライフサイクルの登録口・`LAUNCH_SUMMARY_SOURCES`・`productOwnerStatus`と、仮11の`productInCategory()`・`PRODUCT_SAVE_HOOKS`と`ProductSaveHook`の契約・`launch-summary.ts`の`fallbackLaunchSummary`・`groupAwards`、match-engineの`MatchDirectory`・`SupporterDirectory`・`qualifierWins()`・`MATCH_EVENT_HANDLERS`・`matchViewLoader`・`MatchCard`・`useUpvote`、content-processingの検索の基盤、identity-authとuser-profile-socialの部品、E2Eの`e2e/support/mailpit.ts`・`e2e/support/local-d1.ts`、backend-platformの改訂2の`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)。無ければ該当するタスクを保留して開発者へ報告する
+  - 前提: dev-tooling〜match-engineの18specの全タスクが完了していること(product-launchの`core/product`の契約と識別子(`ProductDirectory`・`ProductCategoryDirectory`・`PRODUCT_PLATFORM_TYPES`)・`visibleProducts()`・`wonLaunchExists()`・ライフサイクルの登録口・`LAUNCH_SUMMARY_SOURCES`・`productOwnerStatus`と、仮11の`productInCategory()`・`PRODUCT_SAVE_HOOKS`とinfrastructure層の`ProductSaveHook`の契約・`launch-summary.ts`の`fallbackLaunchSummary`・`groupAwards`、match-engineの`MatchDirectory`・`SupporterDirectory`・`qualifierWins()`・`MATCH_EVENT_HANDLERS`・`matchViewLoader`・`MatchCard`・`useUpvote`、content-processingの検索の基盤、identity-authとuser-profile-socialの部品、E2Eの`e2e/support/mailpit.ts`・`e2e/support/local-d1.ts`、backend-platformの改訂2の`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、不正なクエリの既定化(実在しない日付・開始日が終了日より後・検索語が無いときの関連度・既定と同じ並び順・`page`の0・1・小数・文字列)、50書記素への切り詰め(結合文字を含む絵文字)、並び順の値が4つで少ない順が無いこと、条件の変更で`page`が外れること、既定から変えている項目の数、基準時刻の今日からの各プリセットの範囲(月曜日・日曜日・月末・年末)、プリセットと一致しない範囲の判定、未来と逆順の検証、期間の表示の文言(今年は年を省く)を確かめる
   - 他の層を読み込まない(日付は`YYYY-MM-DD`の文字列で扱う)
   - 完了状態: 単体テストが成功し、apiとclientの型検査で規則を読み込める
@@ -29,8 +29,10 @@
 
 - [ ] 2.2 ディレクトリの一覧の照会の本体(掲載の条件・基準勝利・期間・並び順・ページ分け)を作る
   - 先に、ローカルD1のWorkers統合テストで、掲載の条件(退会・停止・非公開化・論理削除・敗北と両者敗北だけ・トーナメントの勝利だけのプロダクトが出ないこと、停止の解除と復元で戻ること)、2回勝利したプロダクトが1項目で直近の勝利が基準勝利になること、期間の開始日・終了日と同じ日の勝利が含まれ期間外の勝利だけのプロダクトが除かれ期間内の古い勝利が基準勝利になること、基準時刻の0時の前後に実施した勝利の実施日と期間の判定、ローンチ日とUpvote数の3つの並び順と同順位の決まった順、20件目と21件目のページの境界と総件数を確かめる
-  - 一覧と件数は1回の一括の読み取りにする。照会と記録の全部品のDIの識別子をここで一括で作る(2.3〜2.5は識別子を作らない)
-  - 完了状態: Workers統合テストが成功し、`DIRECTORY_PLATFORM_TYPES`の識別子で一覧の照会を取得する型検査が通る
+  - 同じく先に、識別子`DIRECTORY_PLATFORM_TYPES`が`Symbol.for('directory.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
+  - application層は`**/lib/workers/**`を型も含めて読み込めないため、一覧の照会と記録のストアの契約と入出力の型は`apps/backend-lib/core/directory/ports.ts`、識別子は`core/directory/identifiers.ts`に置き、D1の実装だけを`workers/directory/d1-directory-listing.ts`に置く。`core/directory`は`workers`と`apps/db`を読み込まない
+  - 一覧と件数は1回の一括の読み取りにする。照会と記録の全部品の契約とDIの識別子をここで一括で作る(2.3〜2.5は識別子を作らない)
+  - 完了状態: Workers統合テストと識別子の単体テストが成功し、`core/directory`の`DIRECTORY_PLATFORM_TYPES`の識別子で一覧の照会を取得する型検査が通る
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.6, 1.7, 1.8, 3.6, 5.4, 5.5, 6.1, 13.5, 14.2_
 
 - [ ] 2.3 一覧の照会に全文検索の結合と関連度の並び順を加える
@@ -47,7 +49,8 @@
 
 - [ ] 2.5 勝利したプロダクトの記録のストアと索引の削除の文を作り、共有の束縛をapiとeventに組み込む
   - 先に、Workers統合テストで、記録の作成の重複の無視、存在の確認、投稿者ごとの一覧の昇順と続き、物理削除で索引文書と記録が1つの一括の書き込みで消えること、投稿者の全ての索引文書を消す文を確かめる
-  - 一覧の照会と記録のストアを処理単位で束縛するモジュールを作り、apiとeventの束縛の一覧へ同時に加える
+  - 記録のストアのD1の実装は`workers/directory/d1-directory-entry-store.ts`に置き、契約は2.2の`core/directory/ports.ts`を使う。投稿者の全ての索引文書を消す文はDBの型を使うため`workers/directory/product-index-removal-statements.ts`に置き、infrastructure層だけが使う
+  - 一覧の照会と記録のストアのD1の実装を処理単位で束縛するモジュールを作り、apiとeventの束縛の一覧へ同時に加える
   - 完了状態: Workers統合テストと、3経路(api・eventの`fetch`・eventの`queue`)のDIの解決の検査が成功する
   - _Requirements: 12.4, 12.5, 12.7, 13.5_
 
@@ -74,13 +77,14 @@
 
 - [ ] 3.4 ディレクトリの一覧とカテゴリの選択肢のユースケースを作る
   - 先に、単体テスト(模擬のポート)で、クエリの正規化とカテゴリのハンドルの解決(存在しないものは外す)、空白だけの検索語を検索なしとすること、範囲外のページで空の一覧と総件数を返すこと、ページのIDでプロダクト・マッチ・ローンチの照会を1回ずつ行うこと、問い合わせの後に可視でなくなった行を除くこと、本人の項目の印、基準勝利の種類、解決したカテゴリで絞り込み`applied`に載せること、カテゴリの選択肢の並び(掲載数の多い順・同数は名称順・「その他」を末尾、掲載の無いカテゴリも含む)を確かめる
-  - 完了状態: 単体テストが成功する
+  - 一覧の照会は`core/directory`、プロダクトとカテゴリの照会は`core/product`、マッチの照会は`core/match`の契約と識別子で受け取る(application層は`**/lib/workers/**`を型も含めて読み込めない)
+  - 完了状態: 単体テストが成功し、APIサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 2.2, 2.4, 3.1, 3.3_
   - _Requirements: 1.3, 2.1, 2.5, 3.1, 3.2, 4.7, 4.8, 6.1, 6.6, 13.4_
 
 - [ ] 3.5 プロダクト詳細ページとサポーターの一覧のユースケースを作る
   - 先に、単体テスト(模擬のポート)で、ハンドルの形式の違反の404、公開範囲の判定の結果ごとの返り値、詳細・ローンチ・マッチ・対戦相手の照会を各1回で行うこと、取消のローンチの除外、キックオフ済みと最も新しいキックオフ済みのローンチの印、開催中(マッチ中・集計中)の最も新しいマッチ、サポーターの一覧の表示できないプロダクト・他のプロダクトの側・確定前のマッチでの`null`とカーソルを確かめる
-  - 完了状態: 単体テストが成功する
+  - 完了状態: 単体テストが成功し、APIサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 3.1, 3.2, 3.3_
   - _Requirements: 8.2, 8.3, 8.5, 8.6, 8.7, 9.4, 9.5, 9.6, 10.1, 10.8, 10.9, 10.10, 13.4_
 
@@ -108,23 +112,25 @@
 
 - [ ] 5.2 (P) eventの束縛を作り、予選の勝利の確定で掲載中のプロダクトを記録し索引を作るマッチイベントの処理を作る
   - eventのDIの識別子と束縛のモジュールを作り、eventの束縛の一覧へ加える(5.3は追記する)
-  - 先に、単体テスト(模擬)で勝った側だけを扱い紐付けの無い側を除くこと、Workers統合テストでmatch-engineの予選の結果の記録の処理(1100)の後に動いて記録と更新待ちができ、索引の更新の要求が送られることを確かめる
+  - application層はデータベースの接続・SQLの文・一括の書き込みを扱わず、`**/lib/workers/**`を型も含めて読み込めないため、更新待ちの書き込みの単位をポート`ProductIndexPendingMarker`(`application/directory/ports.ts`)として定義し、`SearchIndexStatements.markPending`の文を組み立てて1回の一括の書き込みで実行する実装`D1ProductIndexPendingMarker`をinfrastructure層に置く。記録のストアは`core/directory`、マッチの照会は`core/match`、更新の要求は`core/search`の型で受け取る
+  - 先に、単体テスト(偽のポート)で勝った側だけを扱い紐付けの無い側を除くこと、`D1ProductIndexPendingMarker`のWorkers統合テストで索引文書の無いプロダクトに空の更新待ちの行を作り既存の行を更新待ちにし、複数のプロダクトを1回の一括の書き込みで書き、空の配列では書き込まないこと、処理のWorkers統合テストでmatch-engineの予選の結果の記録の処理(1100)の後に動いて記録と更新待ちができ、索引の更新の要求が送られることを確かめる
   - マッチイベントの登録箇所へ`order` 1200・予選の種別で追記する
-  - 完了状態: Workers統合テストで、確定のイベントの処理の後に記録ができ、索引文書が更新待ちになり、更新の要求が送られる
-  - _Boundary: QualifierListingHandler、eventの`composition/directory-module.ts`・`composition/modules.ts`・`composition/match-event-handlers.ts`_
+  - 完了状態: Workers統合テストで、確定のイベントの処理の後に記録ができ、索引文書が更新待ちになり、更新の要求が送られる。イベントサーバーの型検査と静的解析が成功し、application層に`**/lib/workers/**`の読み込みが無い
+  - _Boundary: QualifierListingHandler、ProductIndexPendingMarker、D1ProductIndexPendingMarker、eventの`composition/directory-module.ts`・`composition/modules.ts`・`composition/match-event-handlers.ts`_
   - _Depends: 2.5_
   - _Requirements: 1.5, 12.2, 13.1, 13.2_
 
 - [ ] 5.3 復元・停止の解除で索引を作り直し、物理削除で記録を消す非同期の処理を作る
   - 5.2のeventの束縛のモジュールへ追記するため、5.2の後に行う
-  - 先に、単体テスト(模擬)で、復元で記録のあるプロダクトだけを更新待ちにすること、停止の解除で投稿者の記録を1回の実行で100件ずつ全件処理して完了すること、物理削除で記録と索引文書を消すことを確かめ、Workers統合テストでプロダクトの物理削除がproduct-launchの最後の削除で外部キーにより失敗しないことを確かめる
+  - 先に、単体テスト(偽のポート)で、復元で記録のあるプロダクトだけを更新待ちにすること、停止の解除で投稿者の記録を1回の実行で100件ずつ全件処理して完了すること、物理削除で記録と索引文書を消すことを確かめ、Workers統合テストでプロダクトの物理削除がproduct-launchの最後の削除で外部キーにより失敗しないことを確かめる
+  - 更新待ちの書き込みは5.2の`ProductIndexPendingMarker`、記録の読み取りと物理削除は`core/directory`の`DirectoryEntryStore`の型で受け取り、application層で文と一括の書き込みを扱わない
   - プロダクトとユーザーの非同期の処理の登録箇所へ`order` 1200で追記する
-  - 完了状態: テストと、各登録口の検証(同じ種類での`order`の重複の拒否)が成功する
+  - 完了状態: テストと、各登録口の検証(同じ種類での`order`の重複の拒否)が成功し、application層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 5.2_
   - _Requirements: 12.6, 12.7, 12.8, 13.1_
 
 - [ ] 5.4 編集の確定と同じ書き込みで索引を更新待ちにする保存の登録を作る(仮4)
-  - product-launchの仮11の`ProductSaveHook`を実装する。`statementsFor({ productId, at }, db)`は勝利したプロダクトの記録があるときだけ`markPending('product', productId, at)`の文を返し、`afterCommit({ productId })`は同じ条件で更新を要求する。`PRODUCT_SAVE_HOOKS`(`apps/api/src/composition/product-save-hooks.ts`)へ`{ name: 'directory-discovery.product-index-refresh', hook }`を追記する
+  - product-launchの仮11の`ProductSaveHook`(契約はapiの`infrastructure/product/product-save-hooks.ts`)を、apiの`infrastructure/directory/product-index-refresh-save-hook.ts`に実装する。`statementsFor({ productId, at }, db)`は勝利したプロダクトの記録があるときだけ`markPending('product', productId, at)`の文を返し、`afterCommit({ productId })`は同じ条件で更新を要求する。product-launchの`D1ProductStore`が文を一括の書き込みに加え、確定の後に`afterCommit`を呼ぶ。`PRODUCT_SAVE_HOOKS`(`apps/api/src/composition/product-save-hooks.ts`)へ`{ name: 'directory-discovery.product-index-refresh', hook }`を追記する
   - 先に、Workers統合テストで、掲載中のプロダクトの編集(次回の予約とローンチ日の変更を含む)と公開APIの説明文の更新で同じ書き込みに更新待ちが入り確定の後に更新の要求が送られること、新しい登録と未掲載のプロダクトでは文を返さず要求も送らないこと、保存の条件で取り消されると更新待ちも書かれないこと、要求の送信の失敗で保存が成功のまま索引文書が更新待ちに残ることを確かめる(復元と停止の解除は5.3の処理が扱う)
   - 完了状態: Workers統合テストが成功し、編集した名称で検索にかかる
   - _Depends: 2.5, 4.1_
