@@ -421,7 +421,7 @@
   - _Depends: 11.1_
   - _Requirements: 1.5, 9.1, 9.4, 10.4, 11.3, 13.3, 15.1, 15.5, 20.2_
 
-- [ ] 12. 技術ドキュメントと関連文書
+- [x] 12. 技術ドキュメントと関連文書
 - [x] 12.1 (P) 認証・外部サービス・ライフサイクルイベントの技術ドキュメントを書く
   - `security/006-authentication.md`に認証と認可の設計(パスワード・セッション・トークン・ログイン試行の制限・多要素認証・本人確認とセッションの入れ替え・ペッパーを入れ替えられないこと)を書く
   - `external/004-pwned-passwords.md`・`external/005-disposable-email-check.md`・`external/006-turnstile.md`に漏洩パスワード照合・使い捨てメールアドレス判定・bot判定のサービスの仕様(API・認証・上限・料金・障害時・テストでの差し替え)を書く。bot判定の検証の規約はbackend-platformの文書へリンクし、重複させない
@@ -431,7 +431,7 @@
   - _Boundary: IdentityDocs_
   - _Requirements: 20.4, 20.5_
 
-- [ ] 12.2 (P) サービス仕様・本プロジェクト固有の値・オンボーディング・CLAUDE.mdを更新する
+- [x] 12.2 (P) サービス仕様・本プロジェクト固有の値・オンボーディング・CLAUDE.mdを更新する
   - データ保持期間の一覧に、ログイン試行の記録(ハッシュ化したキーと回数だけの一時的な記録で、最後の失敗から24時間で自動削除)とライフサイクルイベントの記録(物理削除で削除)の行を加え、ログインセッションの削除方法を「アイドル期限または絶対期限の超過後に日次バッチ」に直す。ログイン試行の記録の表現は、infra-deliveryが書くDurable Objectsの保存場所の記述「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」とそろえる。保存場所の記述と、プライバシーポリシー骨子の国外移転の記載事項のCloudflareの項(infra-deliveryが所有)は書き換えない。プライバシーポリシー骨子に、本specが使う委託先のDISIFY・Have I Been Pwnedへは個人を識別できる情報を渡さないため国外移転の対象外である旨が残っていることを確かめ、無ければ両委託先の分だけ同じ旨を書き加える(他の委託先の項は書き換えない)
   - 日次タイムラインの「日次バッチ(4:21)の内容」のジョブの名前と順序の表に、本specの3つのジョブ(`identity-auth.*`、順序100・110・120)の行を加える。表が無ければ、content-processingの設計が示す形で作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、行を加える。想定の順序ではcontent-processingの11.4が先に作るが、表が無いことを理由に止めない
   - ページ配置に`/auth/*`の画面の一覧・設定ページのシェルの配置と登録の順・ヘッダーのアカウント表示・停止中の設定ページ(退会だけを操作でき、セッションが切れた後は問い合わせで退会を依頼できる旨を案内する)を、文言規則に本specで追加するエラー・状態・案内の文言(問い合わせで退会を依頼できる旨を含む停止中の設定ページの案内を含む)と認証系メールの本文の要点を加える。`forbidden`(利用者側でない呼び出し元・運営者による退会の操作口の拒否)の「この操作はできません。」は、先に実装されるmedia-pipelineのタスク9.2が追加するため、既にあることを確かめるだけにし、無い場合だけ追記する
@@ -504,3 +504,4 @@
 - 11.1: Mailpitの補助は`e2e/support/mailpit.ts`(`waitForLatestEmail`・`waitForEmailLink`、`E2E_MAILPIT_URL`で上書き)、接続元のIPの名乗りは`e2e/support/client-ip.ts`(ブラウザの文脈ごとに文書用のIPv6を`CF-Connecting-IP`として対象のオリジンへの要求にだけ付け、ローカルの状態に残るIPごとの送信回数とログイン試行の制限を避ける。開発サーバーとプレビューの両方で効き、本番ではCloudflareが上書きする)、手順は`e2e/client/auth/account-steps.ts`(フォームは`cf-turnstile-response`にトークンが入るまで待ってから操作する)、fixtureは`auth-test.ts`。11.2はこれらを使う。E2Eの実行にはAPI・イベント・利用者側のサーバーとMailpitが要る(`docs/onboardings/README.md`)
 - 11.2: E2Eは`e2e/client/auth/`の`password-reset`・`two-factor`・`account-changes`(各90秒の時間切れ)。認証コードは`e2e/support/totp.ts`(`node:crypto`のHMAC-SHA1、`nextCode()`は未使用の次の時間窓)、件名でメールを選ぶ`waitForEmailWithSubject`は`mailpit.ts`。bot判定のウィジェットを持たない設定のフォームは水和の完了を待つ手掛かりが無く、水和の前に入力した値はフォームの状態に入らず送信ボタンが無効のまま残るため、E2Eは水和済みの画面からルーターの遷移で開く。上流(frontend-platform)への申し送り: (1)`AppForm`の`<form>`に`method`が無く、今は`SubmitButton`がサーバーの描画で無効なため素の送信が起きないだけで、送信できるボタンが加わると入力(パスワードを含む)がGETでURLに載り得る。`method="post"`を既定にする。(2)遅い回線やブラウザの自動入力で水和の前に入った値をフォームの状態へ取り込まないため、送信ボタンが無効のまま残る。ローカルのAPIのworkerdがBus errorで落ちることがあり、その時に動いていたE2Eは失敗する(環境の問題)
 - 12.1: 文書は`security/006-authentication.md`・`external/004-pwned-passwords.md`・`external/005-disposable-email-check.md`・`external/006-turnstile.md`・`backend/007-user-lifecycle-events.md`。既存の文書は`backend/003`(規則の名前に`:`の区切りを認める)・`backend/004`(呼び出し元の確認→入力の検証→ログインと状態の確認→bot判定→ユースケースの順、簡単な読み取りはリゾルバがポートを読んでよい)・`frontend/006`(`ensureQueryData`・`prefetchQuery`を`queryClient.query`へ)・`external/001`(種別は領域ごとに1ファイルでよい)を改めた。新しいプレースホルダー`<ログイン試行の制限のバインディング名>`・`<TOTPの発行者名>`・`<外部サービスへ名乗るUser-Agent>`・`<使い捨て判定のAPIキーのシークレットのキー>`は12.2で`project-values.md`の表記の表へ加える。CLAUDE.mdから張るアンカーは`security/006`の`#認証系トークン`・`#本人確認とセッションの入れ替え`と`backend/007`の`#非同期の波及処理`
+- 12.2: 本プロジェクト固有の値は`project-values.md`の末尾の節「利用者のアカウント」(Durable Object・利用者側のオリジン・TOTPの発行者名・User-Agent・メール種別・波及処理の登録・ログのカテゴリ)と、表記の表・バインディングの表・メッセージ種別の表の行。CLAUDE.mdのライフサイクルの行は同期と非同期の両方を案内するため`backend/007`の`#前提と用語`へリンクした(12.1の申し送りの`#非同期の波及処理`ではない)。データ保持期間のログイン試行の記録は設計の表現「ハッシュ化したキーと回数だけの一時的な値」だが、実際の記録はロックの終了時刻と最後の失敗の時刻も持つ。`DISIFY_API_KEY`はdevに登録しない(infra-delivery所有のキーの一覧の節には書いていない)。後続specが利用者向けの文言を足すときは`003-text-and-copy-rules.md`のアカウントの表に行を加える

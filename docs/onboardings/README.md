@@ -121,6 +121,7 @@
     - `MEDIA_SMOKE_TOKEN`は、画像の動作確認の経路(「[画像の動作確認の経路](#画像の動作確認の経路)」)だけが使う。未登録でもイベントサーバーは警告を出して起動し、動作確認の経路だけが404になる。
     - `dev`にはキーワード抽出の外部APIのキー(`GOOGLE_NL_API_KEY`)を登録しない。ローカル環境ではキーワード抽出が無効(`KEYWORD_EXTRACTOR`が`disabled`)で、イベントサーバーはキーを注入せずに起動する(「[キーワード抽出の外部API](#キーワード抽出の外部api)」)。
     - `dev`には画像判定サービスの資格情報(`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`)を登録しない。ローカル環境は代替の判定(`MODERATION_PROVIDER`が`stub`)で判定サービスを呼ばず、イベントサーバーはキーを注入せずに起動する(「[画像のアップロード・判定・配信](#画像のアップロード判定配信)」)。
+    - `dev`には使い捨てメールアドレスの判定のAPIキー(`DISIFY_API_KEY`)を登録しない。任意のシークレットで、ローカル環境のAPIサーバーとイベントサーバーは判定サービスを匿名で呼ぶ(「[使い捨てメールアドレスの判定のAPIキー](#使い捨てメールアドレスの判定のapiキー)」)。
     - `dev`には、APIサーバーとイベントサーバーのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)もある。同じキー名でWorkerごとに異なる値が要るシークレットを置き、現時点では空である。各環境のフォルダとキーの一覧は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を参照する。
 
 12. コンテナ内: ローカルDBの初期化(マイグレーション適用)
@@ -517,6 +518,22 @@ http://localhost:48043/<オブジェクトキー>/<バリアント名>.<拡張�
 - prodの値はlaunch-readinessがリリース時に登録する。prodのIAMユーザーはstagingと別に作り、prodには`MEDIA_SMOKE_TOKEN`を登録しない。
 - アクセスキーが漏れたときは「[資格情報の漏えい時の手順](../GUIDES/tech/external/003-image-moderation.md#資格情報の漏えい時の手順)」に従う。
 - 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」、変数の各環境の値は「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」を正とする。
+
+## 使い捨てメールアドレスの判定のAPIキー
+
+APIサーバーとイベントサーバーは、メールアドレスの確認とメールアドレスの変更の確定の時に、DISIFYで使い捨てメールアドレスかを判定する(「[使い捨てメールアドレスの判定サービス](../GUIDES/tech/external/005-disposable-email-check.md)」)。判定できなければ未判定として保存し、後で判定し直す。漏洩パスワードの照合(Have I Been Pwned)はAPIキーが要らない。
+
+- ローカル環境ではAPIキーを登録せず、判定サービスを匿名で呼ぶ。匿名の上限は送信元IPアドレスごとに数えられ、上限を超えた判定は未判定になる(「[上限と料金](../GUIDES/tech/external/005-disposable-email-check.md#上限と料金)」)。
+- 単体テストとWorkers統合テストは判定サービスへ通信しない(「[テストでの差し替え](../GUIDES/tech/external/005-disposable-email-check.md#テストでの差し替え)」)。
+
+デプロイ先検証環境(`staging`)のAPIキーは開発者が用意してInfisicalの`staging`環境へ登録し、AIエージェントは登録しない。Infisicalの値を正とする。
+
+1. DISIFYの無料のアカウントを作り、APIキーを発行する(「[APIキーの渡し方](../GUIDES/tech/external/005-disposable-email-check.md#apiキーの渡し方)」)。作ったばかりのアカウントは、最初の24時間の上限が低い。
+2. Infisicalのプロジェクトの`staging`環境のルートフォルダ(`/`)に、Webの管理画面で`DISIFY_API_KEY`を登録する。stagingの値は、そのキーを読む変更(利用者のアカウントの機能)を`main`へマージする前に登録する。任意のシークレットのため、未登録でもデプロイは止まらないが、判定サービスを匿名で呼ぶことになり、他の利用者と共有され得るWorkersの送信元IPアドレスの上限に当たって未判定が増える。
+3. 登録だけで、次のstagingへのデプロイが`apps/api`・`apps/event`のWorkerへ反映する(「[stagingへのデプロイとリリース](#stagingへのデプロイとリリース)」)。Wranglerのシークレットのコマンドで直接設定しない(設定しても次のデプロイでInfisicalの値に戻る)。
+
+- 本番環境(`prod`)の`DISIFY_API_KEY`は、launch-readinessがリリース時に登録する。
+- 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」、本プロジェクトの値は「[利用者のアカウント](project-values.md#利用者のアカウント)」を正とする。
 
 ## DBスキーマを変更したとき
 

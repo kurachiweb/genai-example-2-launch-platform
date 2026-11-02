@@ -95,6 +95,9 @@
 - ログの属性やエラーレポートに利用者の入力・秘密情報が入り得る処理を書く前に: [伏せ字の規則](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#伏せ字の規則)
 - バックエンドで例外を投げる・エラートラッキングへ送る処理を書く前に: [エラートラッキング](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#エラートラッキング)
 - トークンなどの秘密情報やレート制限のキーを保存・照合する前に: [ハッシュ化の対象](docs/GUIDES/tech/security/002-keyed-hashing.md#ハッシュ化の対象)
+- メールのリンクで受け渡す認証系トークンを発行・照合する処理を書く前に: [認証系トークン](docs/GUIDES/tech/security/006-authentication.md#認証系トークン)
+- ログインを要する重要な操作に本人確認を求める処理や、セッションを発行し直す処理を書く前に: [本人確認とセッションの入れ替え](docs/GUIDES/tech/security/006-authentication.md#本人確認とセッションの入れ替え)
+- ユーザーの退会・停止・停止解除・物理削除に合わせて自分のデータを変える波及処理を書く前に: [ユーザーライフサイクルイベントの前提と用語](docs/GUIDES/tech/backend/007-user-lifecycle-events.md#前提と用語)
 - 上記の文書のプレースホルダーを本プロジェクトの値に読み替える前に: [本プロジェクト固有の値](docs/onboardings/project-values.md)
 
 ### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について
