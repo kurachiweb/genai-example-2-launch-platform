@@ -178,8 +178,6 @@ function sortedPurposes(
 }
 
 beforeEach(async () => {
-  await db.delete(userSessions);
-  await db.delete(userAuthTokens);
   await clearIdentityTables();
 });
 

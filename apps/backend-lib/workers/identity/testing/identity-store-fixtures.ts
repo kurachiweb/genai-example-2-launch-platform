@@ -3,8 +3,11 @@ import { asc, eq } from 'drizzle-orm';
 import { expect } from 'vitest';
 
 import { createDatabase, type Database } from '../../../../db/client.ts';
+import { userAuthTokens } from '../../../../db/schema/identity/user-auth-tokens.ts';
 import { userLifecycleEvents } from '../../../../db/schema/identity/user-lifecycle-events.ts';
 import { userLifecycleHandlerRuns } from '../../../../db/schema/identity/user-lifecycle-handler-runs.ts';
+import { userLoginChallenges } from '../../../../db/schema/identity/user-login-challenges.ts';
+import { userSessions } from '../../../../db/schema/identity/user-sessions.ts';
 import { userTotpCredentials } from '../../../../db/schema/identity/user-totp-credentials.ts';
 import { users } from '../../../../db/schema/identity/users.ts';
 import type { IdGenerator } from '../../../core/ids/id-generator.ts';
@@ -164,6 +167,9 @@ export async function clearIdentityTables(): Promise<void> {
   await db.delete(userLifecycleHandlerRuns);
   await db.delete(userLifecycleEvents);
   await db.delete(userTotpCredentials);
+  await db.delete(userSessions);
+  await db.delete(userAuthTokens);
+  await db.delete(userLoginChallenges);
   await db.delete(users);
 }
 

@@ -182,7 +182,7 @@
   - _Depends: 1.2, 6.1_
   - _Requirements: 1.4, 1.5, 1.6, 1.7, 9.4, 10.4, 10.5, 11.3_
 
-- [ ] 6.3 (P) セッション・認証系トークン・第2要素の待ちのストアをD1上に作る
+- [x] 6.3 (P) セッション・認証系トークン・第2要素の待ちのストアをD1上に作る
   - 先に、ハッシュでのセッションの検索(利用者の状態付き)と最終利用の更新、個別・その他すべて・すべての削除、アイドルまたは絶対の期限切れの削除の境界、トークンの置き換え(同じ利用者・用途の未使用の削除)、消費せずの読み取りと1文での消費(2回目の失敗)、期限切れの削除、第2要素の待ちの有効な検索と削除を確かめるWorkers統合テストを書く
   - 3つのストアを実装する
   - 完了状態: Workers統合テストが成功し、同じトークンを2回消費すると2回目が見つからないことを確かめられる
@@ -473,3 +473,4 @@
 - 5.3: Durable Objectは`infrastructure/auth/login-attempt-throttle.ts`の`LoginAttemptThrottle`(バインディング`LOGIN_ATTEMPT_THROTTLE`、`migrations`の`v2`で`new_sqlite_classes`)、2つの単位の実装は`durable-login-throttle.ts`の`createDurableLoginThrottle`(まだ束縛していない。8.1で束縛し、`env-schema.ts`の検証を加える)。IPが不明な場合の`login-throttle-ip-missing`の通知は`status`のときだけ行うため、ログイン・本人確認の各経路(7.4・7.5)は必ず照合の前に`status`を呼ぶ。12.2で本プロジェクト固有の値にバインディングとクラスを加える
 - 6.1: 規則は`apps/api/src/domain/identity/`(`user-account.ts`・`handle.ts`・`auth-token-purpose.ts`)、ポートと識別子は`apps/api/src/application/identity/`(`ports.ts`・`identity-types.ts`の`IDENTITY_TYPES` 34個・`request-meta.ts`)。トークンのハッシュの用途は`user-auth-token-email-verification`・`-email-change`・`-password-reset`・`-password-change`で確定(design.mdも同じ形に改めた)。確定時に失効させる用途の集合`AUTH_TOKEN_PURPOSES_REVOKED_ON_COMPLETION`は、6.2の`D1UserAccountStore`がパスワードリセット・メールアドレス変更・パスワード変更の一括の書き込みで唯一の正として使う。`IdentityMessagePublisher`は識別子を持たず`PLATFORM_TYPES.MessagePublisher`から受け取る。DBの値との一致は`application/identity/identity-columns.unit.test.ts`
 - 6.2: `apps/api/src/infrastructure/identity/`の`D1UserAccountStore`・`D1HandleAvailability`(`@injectable`、`@inject(PLATFORM_TYPES.Database)`、束縛は8.1)。一意制約の違反は`db.batch()`の失敗の`cause`の連鎖の文言`UNIQUE constraint failed: users.email|users.handle`で判別し、他の違反と障害はそのまま投げる(`docs/GUIDES/tech/db/002-d1-constraints.md`に汎用の節を追加)。パスワードリセットは未確認のときだけ確認日時を入れる。`listUndetermined(checkedBefore)`は境界を`lt`で比べるため、7.10のジョブは「1時間以上経った」を満たすよう`checkedBefore`を決める。テストの補助`clearIdentityTables`はセッションとトークンを消さない(6.2のテストは自前で消す)ため、6.3で補助に加えてよい
+- 6.3: `D1UserSessionStore`・`D1AuthTokenStore`・`D1LoginChallengeStore`(`apps/api/src/infrastructure/identity/`)。`findByTokenHash`は退会済みの利用者のセッションも状態付きで返すため、退会済みの判定と削除は7.1の`UserSessionVerifier`が行う。トークンと待ちの作成日時はスキーマの既定値(実時計)。削除の件数は`meta.changes`。`clearIdentityTables`はセッション・トークン・待ちも消すようになった
