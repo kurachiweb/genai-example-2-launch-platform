@@ -10,10 +10,8 @@ import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import type { SecondFactorInput } from '../../domain/auth/second-factor.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
-import { createLoginThrottleKeys } from '../auth/login-throttle-keys.ts';
 import type {
   LoginThrottle,
-  LoginThrottleKeys,
   PasswordHasher,
   SecretBox,
   TotpAuthenticator,
@@ -22,6 +20,11 @@ import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
 import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
+import {
+  checkUserLoginThrottle,
+  type LoginThrottleCheckDependencies,
+  USER_LOGIN_THROTTLE_SCOPE,
+} from './login-throttle-check.ts';
 import type {
   LoginChallengeStore,
   RecoveryCodeStore,
@@ -80,11 +83,6 @@ export const USER_LOGIN_CHALLENGE_HASH_PURPOSE = hashPurpose(
 
 const MS_PER_SECOND = 1000;
 
-const THROTTLE_SCOPE = 'user';
-
-const LOGIN_THROTTLED_MESSAGE =
-  'ログイン試行が続いたため、しばらく待ってから再度お試しください。';
-
 const INVALID_CREDENTIALS_MESSAGE =
   'メールアドレスまたはパスワードが正しくありません。';
 
@@ -95,14 +93,6 @@ const INVALID_SECOND_FACTOR_MESSAGE = '認証コードが正しくありませ�
 
 const LOGIN_CHALLENGE_EXPIRED_MESSAGE =
   '認証の有効期限が切れました。もう一度ログインしてください。';
-
-const loginThrottledError = (retryAfterSeconds: number): AppError =>
-  new AppError({
-    kind: 'rate_limited',
-    code: 'login_throttled',
-    message: LOGIN_THROTTLED_MESSAGE,
-    retryAfterSeconds,
-  });
 
 const invalidCredentialsError = (): AppError =>
   new AppError({
@@ -138,10 +128,11 @@ const activeUser = (user: UserRecord | undefined): UserRecord | undefined =>
 @injectable()
 export class StoreLogin implements Login {
   readonly #secondFactor: SecondFactorCheckDependencies;
+  readonly #throttleCheck: LoginThrottleCheckDependencies;
 
   constructor(
     @inject(PLATFORM_TYPES.KeyedHasher)
-    private readonly keyedHasher: KeyedHasher,
+    keyedHasher: KeyedHasher,
     @inject(AUTH_TYPES.LoginThrottle)
     private readonly throttle: LoginThrottle,
     @inject(IDENTITY_TYPES.UserAccountStore)
@@ -169,6 +160,7 @@ export class StoreLogin implements Login {
     @inject(IDENTITY_TYPES.UserSessionStore)
     private readonly userSessions: UserSessionStore,
   ) {
+    this.#throttleCheck = { keyedHasher, throttle };
     this.#secondFactor = {
       totpCredentials,
       secretBox,
@@ -183,7 +175,7 @@ export class StoreLogin implements Login {
     meta: RequestMeta,
   ): Promise<PasswordLoginResult> {
     const email = trimWhiteSpace(input.email);
-    const keys = await this.#checkThrottle(email, meta);
+    const keys = await checkUserLoginThrottle(this.#throttleCheck, email, meta);
     // 退会済みは未登録と同じ扱いにし、登録の有無と退会の有無を応答から推測させない
     const user = activeUser(await this.users.findNotWithdrawnByEmail(email));
     // 利用者がいないときもダミーの照合で同じ計算量を使い、応答時間から登録の有無を推測させない
@@ -192,7 +184,11 @@ export class StoreLogin implements Login {
         ? await this.passwordHasher.verifyAgainstDummy(input.password)
         : await this.passwordHasher.verify(input.password, user.passwordHash);
     if (user === undefined || !matched) {
-      await this.throttle.recordFailure(THROTTLE_SCOPE, keys, meta.now);
+      await this.throttle.recordFailure(
+        USER_LOGIN_THROTTLE_SCOPE,
+        keys,
+        meta.now,
+      );
       throw invalidCredentialsError();
     }
     // 停止はパスワードを知る本人にだけ伝え、ログインの失敗としては数えない
@@ -202,7 +198,7 @@ export class StoreLogin implements Login {
     if (isTotpEnabled(await this.totpCredentials.find(user.id))) {
       return this.#issueChallenge(user.id, meta);
     }
-    await this.throttle.reset(THROTTLE_SCOPE, keys);
+    await this.throttle.reset(USER_LOGIN_THROTTLE_SCOPE, keys);
     const session = await this.sessionIssuer.issue(user.id, meta);
     return { kind: 'authenticated', userId: user.id, session };
   }
@@ -233,7 +229,11 @@ export class StoreLogin implements Login {
       throw accountUnavailableError();
     }
     // 待ちの発行後にメールアドレスが変わっても、パスワードの段階と同じ利用者の単位で数えるよう現在の値を使う
-    const keys = await this.#checkThrottle(user.email, meta);
+    const keys = await checkUserLoginThrottle(
+      this.#throttleCheck,
+      user.email,
+      meta,
+    );
     const passed = await checkSecondFactor(
       this.#secondFactor,
       user.id,
@@ -241,11 +241,15 @@ export class StoreLogin implements Login {
       meta.now,
     );
     if (!passed) {
-      await this.throttle.recordFailure(THROTTLE_SCOPE, keys, meta.now);
+      await this.throttle.recordFailure(
+        USER_LOGIN_THROTTLE_SCOPE,
+        keys,
+        meta.now,
+      );
       throw invalidSecondFactorError();
     }
     await this.challenges.delete(challenge.id);
-    await this.throttle.reset(THROTTLE_SCOPE, keys);
+    await this.throttle.reset(USER_LOGIN_THROTTLE_SCOPE, keys);
     const session = await this.sessionIssuer.issue(user.id, meta);
     return { userId: user.id, session };
   }
@@ -255,23 +259,6 @@ export class StoreLogin implements Login {
       return;
     }
     await this.userSessions.deleteOne(principal.subjectId, principal.sessionId);
-  }
-
-  // IPアドレスが不明な要求の通知はstatusの時だけ行われるため、照合より前に必ず呼ぶ
-  async #checkThrottle(
-    email: string,
-    meta: RequestMeta,
-  ): Promise<LoginThrottleKeys> {
-    const keys = await createLoginThrottleKeys(
-      this.keyedHasher,
-      email,
-      meta.clientIp,
-    );
-    const status = await this.throttle.status(THROTTLE_SCOPE, keys, meta.now);
-    if (status.locked) {
-      throw loginThrottledError(status.retryAfterSeconds);
-    }
-    return keys;
   }
 
   async #issueChallenge(

@@ -1,6 +1,7 @@
 import {
   createKeyedHasher,
   type HashPurpose,
+  type KeyedHasher,
 } from '../../../../lib/core/crypto/keyed-hasher.ts';
 import {
   AppError,
@@ -31,6 +32,10 @@ import type {
   UserRecord,
   UserSessionStore,
 } from '../ports.ts';
+import {
+  type ReAuthenticator,
+  StoreReAuthenticator,
+} from '../re-authenticator.ts';
 import type { RequestMeta } from '../request-meta.ts';
 import { USER_RECOVERY_CODE_HASH_PURPOSE } from '../second-factor-check.ts';
 import type { SessionIssuer } from '../session-issuer.ts';
@@ -126,7 +131,7 @@ function partialFake<T extends object>(implemented: Partial<T>): T {
         return Reflect.get(target, property, receiver) as unknown;
       }
       return () => {
-        throw new Error(`ログインでは使わない: ${String(property)}`);
+        throw new Error(`この偽物では使わない: ${String(property)}`);
       };
     },
   }) as T;
@@ -328,9 +333,11 @@ function createSecretFakes() {
   return { secrets, ids };
 }
 
-export async function setupLogin(options: LoginFakeOptions = {}) {
-  const keyedHasher = createKeyedHasher(TEST_PEPPER);
-  const state: LoginFakeState = {
+async function createState(
+  keyedHasher: KeyedHasher,
+  options: LoginFakeOptions,
+): Promise<LoginFakeState> {
+  return {
     calls: [],
     dummyChecks: 0,
     throttleCalls: [],
@@ -350,6 +357,16 @@ export async function setupLogin(options: LoginFakeOptions = {}) {
     totpCredential: options.totp,
     throttleStatus: options.throttleStatus ?? UNLOCKED,
   };
+}
+
+const createRecoveryCodeIssuer = (
+  keyedHasher: KeyedHasher,
+): HashingRecoveryCodeIssuer =>
+  new HashingRecoveryCodeIssuer(partialFake<SecretGenerator>({}), keyedHasher);
+
+export async function setupLogin(options: LoginFakeOptions = {}) {
+  const keyedHasher = createKeyedHasher(TEST_PEPPER);
+  const state = await createState(keyedHasher, options);
   const { accounts, passwordHasher } = createAccountFakes(state);
   const secondFactor = createSecondFactorFakes(state);
   const { sessionIssuer, userSessions } = createSessionFakes(state);
@@ -366,10 +383,7 @@ export async function setupLogin(options: LoginFakeOptions = {}) {
     sessionIssuer,
     secondFactor.secretBox,
     secondFactor.totp,
-    new HashingRecoveryCodeIssuer(
-      partialFake<SecretGenerator>({}),
-      keyedHasher,
-    ),
+    createRecoveryCodeIssuer(keyedHasher),
     secondFactor.recoveryCodes,
     userSessions,
   );
@@ -387,6 +401,30 @@ export async function setupLogin(options: LoginFakeOptions = {}) {
 }
 
 export type LoginFakes = Awaited<ReturnType<typeof setupLogin>>;
+
+export async function setupReAuthenticator(options: LoginFakeOptions = {}) {
+  const keyedHasher = createKeyedHasher(TEST_PEPPER);
+  const state = await createState(keyedHasher, options);
+  const { passwordHasher } = createAccountFakes(state);
+  const secondFactor = createSecondFactorFakes(state);
+  const reAuthenticator: ReAuthenticator = new StoreReAuthenticator(
+    keyedHasher,
+    createThrottle(state),
+    passwordHasher,
+    secondFactor.totpCredentials,
+    secondFactor.secretBox,
+    secondFactor.totp,
+    createRecoveryCodeIssuer(keyedHasher),
+    secondFactor.recoveryCodes,
+  );
+
+  return {
+    reAuthenticator,
+    state,
+    keysFor: (email: string): Promise<LoginThrottleKeys> =>
+      createLoginThrottleKeys(keyedHasher, email, LOGIN_META.clientIp),
+  };
+}
 
 export async function caught(action: Promise<unknown>): Promise<AppError> {
   try {
