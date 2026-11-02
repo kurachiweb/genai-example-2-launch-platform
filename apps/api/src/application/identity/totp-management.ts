@@ -1,0 +1,294 @@
+import { inject, injectable } from 'inversify';
+
+import { AppError } from '../../../lib/core/errors/app-error.ts';
+import { normalizeTotpCode } from '../../domain/auth/second-factor.ts';
+import { checkAccountWritable } from '../../domain/identity/user-account.ts';
+import { AUTH_TYPES } from '../auth/auth-types.ts';
+import type { SecretBox, TotpAuthenticator } from '../auth/ports.ts';
+import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
+import type { CurrentUser } from './account-guard.ts';
+import { IDENTITY_TYPES } from './identity-types.ts';
+import type {
+  IdentitySettings,
+  RecoveryCodeStore,
+  TotpCredential,
+  TotpCredentialStore,
+  UserRecord,
+  UserSessionStore,
+} from './ports.ts';
+import type {
+  ReAuthenticationInput,
+  ReAuthenticator,
+} from './re-authenticator.ts';
+import type { RequestMeta } from './request-meta.ts';
+import {
+  isTotpEnabled,
+  USER_RECOVERY_CODE_HASH_PURPOSE,
+} from './second-factor-check.ts';
+import type { IssuedSession, SessionIssuer } from './session-issuer.ts';
+
+export interface TotpSetupView {
+  readonly otpauthUri: string;
+  // 認証アプリへ手入力するためのbase32
+  readonly secret: string;
+  readonly expiresAt: Date;
+}
+
+export interface IssuedRecoveryCodesResult {
+  // 平文はこの応答でだけ見せる
+  readonly recoveryCodes: readonly string[];
+  readonly session: IssuedSession;
+}
+
+// 本人確認は停止・退会を見ないため、各操作が停止中・退会済みを拒否する。開始と有効化は未確認も拒否する
+export interface TotpManagement {
+  start(
+    current: CurrentUser,
+    reAuthentication: ReAuthenticationInput,
+    meta: RequestMeta,
+  ): Promise<TotpSetupView>;
+  enable(
+    current: CurrentUser,
+    code: string,
+    meta: RequestMeta,
+  ): Promise<IssuedRecoveryCodesResult>;
+  disable(
+    current: CurrentUser,
+    reAuthentication: ReAuthenticationInput,
+    meta: RequestMeta,
+  ): Promise<{ readonly session: IssuedSession }>;
+  regenerateRecoveryCodes(
+    current: CurrentUser,
+    reAuthentication: ReAuthenticationInput,
+    meta: RequestMeta,
+  ): Promise<IssuedRecoveryCodesResult>;
+}
+
+export const TOTP_SETUP_TTL_SECONDS = 600;
+
+const MS_PER_SECOND = 1000;
+
+const ACCOUNT_UNAVAILABLE_MESSAGE =
+  'このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。';
+
+const EMAIL_NOT_VERIFIED_MESSAGE =
+  'この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。';
+
+const TOTP_ALREADY_ENABLED_MESSAGE = '多要素認証は既に有効です。';
+
+const TOTP_NOT_ENABLED_MESSAGE = '多要素認証は有効になっていません。';
+
+const TOTP_SETUP_EXPIRED_MESSAGE =
+  '設定の有効期限が切れました。最初からやり直してください。';
+
+const INVALID_SECOND_FACTOR_MESSAGE = '認証コードが正しくありません。';
+
+const totpAlreadyEnabledError = (): AppError =>
+  new AppError({
+    kind: 'conflict',
+    code: 'totp_already_enabled',
+    message: TOTP_ALREADY_ENABLED_MESSAGE,
+  });
+
+const totpNotEnabledError = (): AppError =>
+  new AppError({
+    kind: 'conflict',
+    code: 'totp_not_enabled',
+    message: TOTP_NOT_ENABLED_MESSAGE,
+  });
+
+const totpSetupExpiredError = (): AppError =>
+  new AppError({
+    kind: 'unprocessable',
+    code: 'totp_setup_expired',
+    message: TOTP_SETUP_EXPIRED_MESSAGE,
+  });
+
+const invalidSecondFactorError = (): AppError =>
+  new AppError({
+    kind: 'unauthenticated',
+    code: 'invalid_second_factor',
+    message: INVALID_SECOND_FACTOR_MESSAGE,
+  });
+
+function assertWritable(user: UserRecord, requireVerifiedEmail: boolean): void {
+  const denial = checkAccountWritable(user, { requireVerifiedEmail });
+  if (denial === 'email-not-verified') {
+    throw new AppError({
+      kind: 'forbidden',
+      code: 'email_not_verified',
+      message: EMAIL_NOT_VERIFIED_MESSAGE,
+    });
+  }
+  if (denial !== undefined) {
+    throw new AppError({
+      kind: 'forbidden',
+      code: 'account_unavailable',
+      message: ACCOUNT_UNAVAILABLE_MESSAGE,
+    });
+  }
+}
+
+// 期限ちょうどを期限切れとする
+const isValidPending = (
+  credential: TotpCredential | undefined,
+  now: Date,
+): credential is TotpCredential =>
+  credential !== undefined &&
+  credential.enabledAt === null &&
+  credential.pendingExpiresAt !== null &&
+  credential.pendingExpiresAt.getTime() > now.getTime();
+
+// 認証アプリに表示されるラベルへメールアドレスを出さないよう、ハンドルを使う
+const accountLabelOf = (user: UserRecord): string => `@${user.handle}`;
+
+@injectable()
+export class StoreTotpManagement implements TotpManagement {
+  constructor(
+    @inject(IDENTITY_TYPES.ReAuthenticator)
+    private readonly reAuthenticator: ReAuthenticator,
+    @inject(IDENTITY_TYPES.TotpCredentialStore)
+    private readonly totpCredentials: TotpCredentialStore,
+    @inject(IDENTITY_TYPES.RecoveryCodeStore)
+    private readonly recoveryCodes: RecoveryCodeStore,
+    @inject(IDENTITY_TYPES.UserSessionStore)
+    private readonly sessions: UserSessionStore,
+    @inject(IDENTITY_TYPES.SessionIssuer)
+    private readonly sessionIssuer: SessionIssuer,
+    @inject(IDENTITY_TYPES.IdentitySettings)
+    private readonly settings: IdentitySettings,
+    @inject(AUTH_TYPES.TotpAuthenticator)
+    private readonly totp: TotpAuthenticator,
+    @inject(AUTH_TYPES.SecretBox)
+    private readonly secretBox: SecretBox,
+    @inject(AUTH_TYPES.RecoveryCodeIssuer)
+    private readonly recoveryCodeIssuer: RecoveryCodeIssuer,
+  ) {}
+
+  async start(
+    current: CurrentUser,
+    reAuthentication: ReAuthenticationInput,
+    meta: RequestMeta,
+  ): Promise<TotpSetupView> {
+    const { user } = current;
+    assertWritable(user, true);
+    if (isTotpEnabled(await this.totpCredentials.find(user.id))) {
+      throw totpAlreadyEnabledError();
+    }
+    await this.reAuthenticator.verify(user, reAuthentication, meta);
+    const secret = this.totp.generateSecret();
+    const sealedSecret = await this.secretBox.seal(secret, user.id);
+    const expiresAt = new Date(
+      meta.now.getTime() + TOTP_SETUP_TTL_SECONDS * MS_PER_SECOND,
+    );
+    const saved = await this.totpCredentials.savePending(
+      user.id,
+      sealedSecret,
+      expiresAt,
+    );
+    if (saved === 'already-enabled') {
+      throw totpAlreadyEnabledError();
+    }
+    return {
+      otpauthUri: this.totp.buildUri(
+        secret,
+        this.settings.totpIssuer,
+        accountLabelOf(user),
+      ),
+      secret,
+      expiresAt,
+    };
+  }
+
+  async enable(
+    current: CurrentUser,
+    code: string,
+    meta: RequestMeta,
+  ): Promise<IssuedRecoveryCodesResult> {
+    const { user } = current;
+    assertWritable(user, true);
+    const credential = await this.totpCredentials.find(user.id);
+    if (isTotpEnabled(credential)) {
+      throw totpAlreadyEnabledError();
+    }
+    if (!isValidPending(credential, meta.now)) {
+      throw totpSetupExpiredError();
+    }
+    const normalized = normalizeTotpCode(code);
+    if (normalized === undefined) {
+      throw invalidSecondFactorError();
+    }
+    const secret = await this.secretBox.open(credential.sealedSecret, user.id);
+    const verification = this.totp.verify(secret, normalized, meta.now);
+    if (!verification.ok) {
+      throw invalidSecondFactorError();
+    }
+    const issued = await this.recoveryCodeIssuer.issue(
+      USER_RECOVERY_CODE_HASH_PURPOSE,
+    );
+    // 照合と有効化の間に設定が始め直されても、利用者の認証アプリに無い秘密鍵を有効にしない
+    const enabled = await this.totpCredentials.enable(
+      user.id,
+      credential.sealedSecret,
+      verification.step,
+      meta.now,
+      issued.hashes,
+    );
+    if (enabled === 'not-pending') {
+      throw totpSetupExpiredError();
+    }
+    return {
+      recoveryCodes: issued.plains,
+      session: await this.#replaceSessions(user.id, meta),
+    };
+  }
+
+  async disable(
+    current: CurrentUser,
+    reAuthentication: ReAuthenticationInput,
+    meta: RequestMeta,
+  ): Promise<{ readonly session: IssuedSession }> {
+    const { user } = current;
+    await this.#verifyEnabled(user, reAuthentication, meta);
+    await this.totpCredentials.disable(user.id);
+    return { session: await this.#replaceSessions(user.id, meta) };
+  }
+
+  async regenerateRecoveryCodes(
+    current: CurrentUser,
+    reAuthentication: ReAuthenticationInput,
+    meta: RequestMeta,
+  ): Promise<IssuedRecoveryCodesResult> {
+    const { user } = current;
+    await this.#verifyEnabled(user, reAuthentication, meta);
+    const issued = await this.recoveryCodeIssuer.issue(
+      USER_RECOVERY_CODE_HASH_PURPOSE,
+    );
+    await this.recoveryCodes.replaceAll(user.id, issued.hashes);
+    return {
+      recoveryCodes: issued.plains,
+      session: await this.#replaceSessions(user.id, meta),
+    };
+  }
+
+  async #verifyEnabled(
+    user: UserRecord,
+    reAuthentication: ReAuthenticationInput,
+    meta: RequestMeta,
+  ): Promise<void> {
+    assertWritable(user, false);
+    if (!isTotpEnabled(await this.totpCredentials.find(user.id))) {
+      throw totpNotEnabledError();
+    }
+    await this.reAuthenticator.verify(user, reAuthentication, meta);
+  }
+
+  // 操作した端末は認証済みの同じ利用者のため、再発行の条件を確かめずに発行する
+  async #replaceSessions(
+    userId: string,
+    meta: RequestMeta,
+  ): Promise<IssuedSession> {
+    await this.sessions.deleteAllOfUser(userId);
+    return this.sessionIssuer.issue(userId, meta);
+  }
+}

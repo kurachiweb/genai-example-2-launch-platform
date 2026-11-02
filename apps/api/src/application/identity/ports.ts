@@ -163,9 +163,10 @@ export interface TotpCredentialStore {
     sealedSecret: string,
     expiresAt: Date,
   ): Promise<'saved' | 'already-enabled'>;
-  // 有効化とリカバリコードの追加を1つの一括の書き込みで行う
+  // 有効化とリカバリコードの追加を1つの一括の書き込みで行う。保留の秘密鍵がsealedSecretと異なれば何もしない
   enable(
     userId: string,
+    sealedSecret: string,
     step: number,
     at: Date,
     recoveryHashes: readonly string[],

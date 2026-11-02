@@ -37,6 +37,14 @@ function validPendingAt(at: Date) {
   );
 }
 
+// 照合の後に設定が始め直されると保留の秘密鍵が入れ替わるため、照合に使った秘密鍵の保留だけを有効にする
+function verifiedPendingAt(at: Date, sealedSecret: string) {
+  return and(
+    validPendingAt(at),
+    eq(userTotpCredentials.sealedSecret, sealedSecret),
+  );
+}
+
 @injectable()
 export class D1TotpCredentialStore implements TotpCredentialStore {
   constructor(@inject(PLATFORM_TYPES.Database) private readonly db: Database) {}
@@ -81,27 +89,23 @@ export class D1TotpCredentialStore implements TotpCredentialStore {
   // 保留の判定が有効化の前の状態で行われるよう、リカバリコードの書き込みを資格情報の更新より前に置く
   async enable(
     userId: string,
+    sealedSecret: string,
     step: number,
     at: Date,
     recoveryHashes: readonly string[],
   ): Promise<'enabled' | 'not-pending'> {
+    const pending = verifiedPendingAt(at, sealedSecret);
     const pendingOfUser = this.db
       .select({ one: sql`1` })
       .from(userTotpCredentials)
-      .where(and(eq(userTotpCredentials.userId, userId), validPendingAt(at)));
+      .where(and(eq(userTotpCredentials.userId, userId), pending));
     const results = await this.db.batch([
       this.db
         .delete(userRecoveryCodes)
         .where(
           and(eq(userRecoveryCodes.userId, userId), exists(pendingOfUser)),
         ),
-      ...recoveryCodeInsertsWhen(
-        this.db,
-        userId,
-        recoveryHashes,
-        at,
-        validPendingAt(at),
-      ),
+      ...recoveryCodeInsertsWhen(this.db, userId, recoveryHashes, at, pending),
       this.db
         .update(userTotpCredentials)
         .set({
@@ -110,7 +114,7 @@ export class D1TotpCredentialStore implements TotpCredentialStore {
           lastUsedStep: step,
           updatedAt: at,
         })
-        .where(and(eq(userTotpCredentials.userId, userId), validPendingAt(at))),
+        .where(and(eq(userTotpCredentials.userId, userId), pending)),
     ]);
     return (results.at(-1)?.meta.changes ?? 0) > 0 ? 'enabled' : 'not-pending';
   }

@@ -176,9 +176,15 @@ describe('D1TotpCredentialStoreの有効化', () => {
     const at = after(TEN_MINUTES - 1);
     const hashes = recoveryHashesOf(1, RECOVERY_CODE_COUNT);
 
-    expect(await createStore().enable(userIdOf(1), 100, at, hashes)).toBe(
-      'enabled',
-    );
+    expect(
+      await createStore().enable(
+        userIdOf(1),
+        sealedSecretOf('pending'),
+        100,
+        at,
+        hashes,
+      ),
+    ).toBe('enabled');
 
     expect(await readCredential(1)).toEqual({
       sealedSecret: sealedSecretOf('pending'),
@@ -195,6 +201,7 @@ describe('D1TotpCredentialStoreの有効化', () => {
 
     await new D1TotpCredentialStore(database).enable(
       userIdOf(1),
+      sealedSecretOf('1'),
       100,
       T0,
       recoveryHashesOf(1, RECOVERY_CODE_COUNT),
@@ -210,6 +217,7 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(
       await createStore().enable(
         userIdOf(1),
+        sealedSecretOf('1'),
         100,
         after(TEN_MINUTES),
         recoveryHashesOf(1, RECOVERY_CODE_COUNT),
@@ -227,6 +235,7 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(
       await createStore().enable(
         userIdOf(1),
+        sealedSecretOf('1'),
         100,
         T0,
         recoveryHashesOf(1, RECOVERY_CODE_COUNT),
@@ -245,6 +254,7 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(
       await createStore().enable(
         userIdOf(1),
+        sealedSecretOf('1'),
         100,
         after(1),
         recoveryHashesOf(9, RECOVERY_CODE_COUNT),
@@ -258,14 +268,47 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(await readRecoveryHashes(1)).toEqual(existing);
   });
 
+  test('enableは照合した秘密鍵と異なる秘密鍵の保留を拒否し、有効にせずリカバリコードを保存しない', async () => {
+    await insertTotpCredential(1, {
+      sealedSecret: sealedSecretOf('restarted'),
+      pendingExpiresAt: after(TEN_MINUTES),
+    });
+    const existing = recoveryHashesOf(8, 2);
+    await insertRecoveryHashes(1, existing);
+
+    expect(
+      await createStore().enable(
+        userIdOf(1),
+        sealedSecretOf('verified'),
+        100,
+        T0,
+        recoveryHashesOf(1, RECOVERY_CODE_COUNT),
+      ),
+    ).toBe('not-pending');
+
+    expect(await readCredential(1)).toEqual({
+      sealedSecret: sealedSecretOf('restarted'),
+      enabledAt: null,
+      pendingExpiresAt: after(TEN_MINUTES),
+      lastUsedStep: null,
+    });
+    expect(await readRecoveryHashes(1)).toEqual(existing);
+  });
+
   test('enableは保留の利用者に残っていたリカバリコードを新しいものに置き換える', async () => {
     await insertTotpCredential(1, { pendingExpiresAt: after(TEN_MINUTES) });
     await insertRecoveryHashes(1, recoveryHashesOf(8, 2));
     const hashes = recoveryHashesOf(1, RECOVERY_CODE_COUNT);
 
-    expect(await createStore().enable(userIdOf(1), 100, T0, hashes)).toBe(
-      'enabled',
-    );
+    expect(
+      await createStore().enable(
+        userIdOf(1),
+        sealedSecretOf('1'),
+        100,
+        T0,
+        hashes,
+      ),
+    ).toBe('enabled');
 
     expect(await readRecoveryHashes(1)).toEqual([...hashes].sort());
   });

@@ -1779,6 +1779,7 @@ export interface TotpCredentialStore {
   ): Promise<'saved' | 'already-enabled'>;
   enable(
     userId: string,
+    sealedSecret: string, // 照合に使った秘密鍵。保留の秘密鍵が異なれば'not-pending'
     step: number,
     at: Date,
     recoveryHashes: readonly string[],
@@ -2315,7 +2316,8 @@ export declare const TOTP_SETUP_TTL_SECONDS: 600;
 ```
 
 - `start`: `requireWritableUser`かつ確認済み(未確認は`email_not_verified`、13.2)→有効なら`totp_already_enabled`→`ReAuthenticator.verify`(仮1、第2要素は無し)→秘密鍵を生成して`seal(secret, userId)`し`savePending`。
-- `enable`: 保留が無い・期限切れは`totp_setup_expired`→`open`して`verify`(誤りは`invalid_second_factor`)→`RecoveryCodeIssuer.issue('user-recovery-code')`→`TotpCredentialStore.enable(step, hashes)`→全セッション削除と操作した端末への再発行(13.7)。
+- `enable`: 有効なら`totp_already_enabled`、保留が無い・期限切れは`totp_setup_expired`→`open`して`verify`(誤りは`invalid_second_factor`)→`RecoveryCodeIssuer.issue('user-recovery-code')`→`TotpCredentialStore.enable(sealedSecret, step, hashes)`(照合と有効化の間に設定が始め直されて保留の秘密鍵が入れ替わったら`not-pending`となり`totp_setup_expired`)→全セッション削除と操作した端末への再発行(13.7)。
+- 本人確認は停止・退会を見ないため、4つの操作はそれぞれ停止中・退会済みを`account_unavailable`で拒否する(開始と有効化は未確認も`email_not_verified`)。操作した端末は認証済みの同じ利用者のため、再発行は`SessionIssuer.issue`で行う。
 - `disable`・`regenerateRecoveryCodes`: 有効でなければ`totp_not_enabled`→`ReAuthenticator.verify`→`disable`または`RecoveryCodeStore.replaceAll`→全セッション削除と再発行(13.5〜13.7)。
 
 #### Withdrawal・AdministrativeWithdrawal・UserSuspension
@@ -2953,7 +2955,7 @@ stateDiagram-v2
 | `reauthentication_failed`                                 | unprocessable(422)               | 詳細は入力の形のとおりの経路で、現在のパスワード(`input.reAuthentication.currentPassword`など、現在のパスワードが正しくありません。)・第2要素(`input.reAuthentication.secondFactor.totpCode`など、認証コードが正しくありません。) | 重要な操作(12.2)                                                                                            |
 | `invalid_link`                                            | unprocessable(422)               | このリンクは無効か、有効期限が切れています。                                                                                                                                                                                      | 確定の操作(14.3・10.5・11.5)                                                                                |
 | `email_not_verified`                                      | forbidden(403)                   | この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。                                                                                                                                                          | `requireVerifiedUser`・TOTP(4.1・13.2)                                                                      |
-| `totp_already_enabled`                                    | conflict(409)                    | 多要素認証は既に有効です。                                                                                                                                                                                                        | TOTPの開始                                                                                                  |
+| `totp_already_enabled`                                    | conflict(409)                    | 多要素認証は既に有効です。                                                                                                                                                                                                        | TOTPの開始・有効化                                                                                          |
 | `totp_not_enabled`                                        | conflict(409)                    | 多要素認証は有効になっていません。                                                                                                                                                                                                | 無効化・再発行                                                                                              |
 | `totp_setup_expired`                                      | unprocessable(422)               | 設定の有効期限が切れました。最初からやり直してください。                                                                                                                                                                          | TOTPの有効化(13.3)                                                                                          |
 | `account_state_conflict`                                  | conflict(409)                    | 処理が重なりました。時間をおいて再度お試しください。                                                                                                                                                                              | 状態の遷移の版の競合(16.2)                                                                                  |
