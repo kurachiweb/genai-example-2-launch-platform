@@ -207,7 +207,7 @@
   - _Depends: 1.2, 3.1, 6.1_
   - _Requirements: 4.4, 15.1, 15.2, 16.2, 16.8_
 
-- [ ] 6.6 (P) 認証系メールの送信と端末情報の解析を作る
+- [x] 6.6 (P) 認証系メールの送信と端末情報の解析を作る
   - 先に、7種の送信要求の種別・宛先・入力・送信期限(期限付きの4種だけ)とリンクのURL(フラグメントにトークン)、User-Agentからのブラウザ名とOS名、空・不明な値で名前が無いことを確かめるWorkers統合テストを書く
   - email-deliveryの送信の受付で7種を送る実装と、端末情報の解析の実装を作る。トークンをログに出さない
   - 完了状態: Workers統合テストが成功し、送信要求の本文にトークンの平文がリンクとしてだけ含まれることを確かめられる
@@ -476,3 +476,4 @@
 - 6.3: `D1UserSessionStore`・`D1AuthTokenStore`・`D1LoginChallengeStore`(`apps/api/src/infrastructure/identity/`)。`findByTokenHash`は退会済みの利用者のセッションも状態付きで返すため、退会済みの判定と削除は7.1の`UserSessionVerifier`が行う。トークンと待ちの作成日時はスキーマの既定値(実時計)。削除の件数は`meta.changes`。`clearIdentityTables`はセッション・トークン・待ちも消すようになった
 - 6.4: `D1TotpCredentialStore`・`D1RecoveryCodeStore`。`enable`・`replaceAll`は資格情報の状態が合うときだけコードを`INSERT ... SELECT`で入れる(`replaceAll`は有効でなければ古いコードを消すだけ)。`savePending`は既存の保留を上書きし使用済みの時間窓を戻す。`enable`は保存済みの秘密鍵が照合したものと同じかを確かめないため、7.8は設定の開始の競合(照合と有効化の間の`savePending`)を考慮する
 - 6.5: 契約は`infrastructure/identity/user-lifecycle-sync-handler.ts`、確定は`d1-user-lifecycle-committer.ts`の`createD1UserLifecycleCommitter(db, ids, USER_LIFECYCLE_SYNC_HANDLERS, (id) => container.get(id))`(8.1で処理単位のコンテナに`toDynamicValue`で束縛)、登録箇所は`composition/user-lifecycle-sync-handlers.ts`(空)。登録は作成時に名前の形式と重複を検査し、未束縛の波及処理は`commit`の時に初めて分かる。版の不一致と存在しない利用者は`AppError(conflict, account_state_conflict)`で、文言「処理が重なりました。時間をおいて再度お試しください。」は現在このファイルにだけあるため、8.2の`errors.ts`と文言規則(12.2)で集約する。退会はセッション・トークン・待ちを消し、TOTPとリカバリコードは物理削除まで残す
+- 6.6: `EmailIdentityMailer`(`infrastructure/identity/email-identity-mailer.ts`)は`IDENTITY_TYPES.IdentitySettings`の`clientOrigin`でリンクを組み(8.1で`CLIENT_SITE_ORIGIN`から束縛)、送信の失敗はそのまま投げる(ログに留めるかは各ユースケースが決める)。`BowserDeviceDescriber`はブラウザ名・OS名の片方だけが`null`になり得る(10.7の表示で扱う)。1.1の導入確認のテスト`identity-packages.worker.test.ts`は削除済み
