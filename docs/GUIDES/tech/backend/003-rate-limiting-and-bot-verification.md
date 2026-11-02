@@ -178,7 +178,7 @@ const EMAIL_RESEND_RULE: CounterRule = {
 ```
 
 - ルールは名前(`name`)・上限回数(`limit`)・期間の秒数(`windowSeconds`)を持つ。上限回数と期間の秒数は1以上の整数で、そうでなければ数えるときに`RangeError`になる。
-- ルールの名前は、数える対象と単位を表す小文字とハイフンの名前にする。名前ごとに別のカウンタになる。
+- ルールの名前は、数える対象と単位を表す名前にする。英小文字・数字・ハイフン・アンダースコアで書き、用途・種別・単位のような部分を`:`で区切ってよい(例:`email-resend-by-address`・`auth-mail:password_reset:address`)。名前ごとに別のカウンタになる。ハッシュ化済みのキーは`:`を含まないため、名前に`:`を含めても、別のルールのカウンタの名前と重ならない。
 - キーは`hashRateLimitKey(hasher, ...parts)`でハッシュ化した`HashedRateLimitKey`だけを受け取る。IPアドレスやメールアドレスなどの元の値はカウンタに保存されない。ハッシュ化の方法・部品の連結・正規化は「[レート制限のキー](../security/002-keyed-hashing.md#レート制限のキー)」に従う。
 - カウンタのDurable Objectは、`<ルールの名前>:<ハッシュ化済みのキー>`を名前として`idFromName`で選ばれる。
 

@@ -268,6 +268,7 @@ export const articleResolvers = {
 } satisfies Resolvers;
 ```
 
+- 業務の判断を伴わない読み取り(ユースケースが返したIDの行を応答の型へ写す、件数を数えるなど)に限り、ユースケースの代わりにアプリケーション層の読み取りのポート(リポジトリの契約)を`context.resolve`で取得して読んでよい。状態による拒否などの判断と書き込みはユースケースに置く。
 - リゾルバの表は、生成したリゾルバの型`Resolvers`に`satisfies`で合わせる。引数・戻り値・文脈の型がスキーマと一致することを型検査で確かめるためである。
 - 項目のリゾルバが要求されたときだけ読む項目を、親のリゾルバが返す値に含めない型は、GraphQL Code Generatorの設定(`codegen.config.ts`)の`mappers`で、その型の親の値の型を手書きの型(`<型>: '../modules/<モジュール名>/<ファイル>.ts#<型名>'`、生成物からの相対の経路)に置き換える。置き換えないと、親のリゾルバの戻り値に項目のリゾルバが返す項目まで求められる。
 - 1つのモジュールでリゾルバの表を複数のファイルに分けるときは、`index.ts`でルート型(`Query`・`Mutation`)ごとに展開して1つの表にまとめ、まとめた表も`Resolvers`に`satisfies`で合わせる。
@@ -349,8 +350,18 @@ type ArticleConnection {
 
 ### bot判定
 
-bot判定が必要な操作は、リゾルバの先頭で`await context.assertHuman(<期待する操作名>)`を呼ぶ。
+bot判定が必要な操作は、ユースケースを呼ぶ前に`await context.assertHuman(<期待する操作名>)`を呼ぶ。
 
+```typescript
+register: callerOnly(
+  withValidatedArgs(REGISTER_ARGS, async (_parent, { input }, context) => {
+    await context.assertHuman('register');
+    return context.resolve<Register>(ACCOUNT_TYPES.Register).execute(input);
+  }),
+),
+```
+
+- 呼ぶ順序は、呼び出し元の確認→引数の検証(「[引数の検証](#引数の検証)」)→ログインと利用者の状態の確認(必要な操作だけ)→bot判定→ユースケースとする。bot判定のトークンは1回しか検証できないため、トークンを使わずに拒否できる確認を先に行い、拒否する要求でトークンを消費させない。例の`callerOnly`は、呼び出し元の確認を行うリゾルバの包み(各機能が持つ)を表す。
 - 内部経路で引き継いだbot判定のトークンと、クライアントIPを、処理単位のコンテナから取得した`BotVerifier`の`assertHuman`へ渡す。期待する操作名を省略すると、操作名を照合しない。
 - 失敗すると`AppError`(403の`bot_verification_failed`、または503の`bot_verification_unavailable`と`Retry-After`)を投げる。GraphQLの応答では前者は200、後者は503になる(「[失敗の分類と応答](003-rate-limiting-and-bot-verification.md#失敗の分類と応答)」)。
 

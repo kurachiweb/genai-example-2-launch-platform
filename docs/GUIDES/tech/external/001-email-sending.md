@@ -99,7 +99,7 @@ sequenceDiagram
 
 ### メール種別の定義
 
-メール種別は`defineEmailKind`で定義し、共通ライブラリの`core/email/kinds/<ドメイン>-<名詞句>.ts`に置いて`kinds/index.ts`の`EMAIL_KINDS`へ加える。受付と送信処理の両方が同じ定義を読むため、種別は共通ライブラリに置く。
+メール種別は`defineEmailKind`で定義し、共通ライブラリの`core/email/kinds/<ドメイン>-<名詞句>.ts`(同じドメインの種別が多ければ`kinds/<ドメイン>.ts`にまとめてよい)に置いて`kinds/index.ts`の`EMAIL_KINDS`へ加える。受付と送信処理の両方が同じ定義を読むため、種別は共通ライブラリに置く。
 
 ```typescript
 import { z } from 'zod';

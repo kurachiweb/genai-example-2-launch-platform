@@ -97,9 +97,10 @@ import { ProductDetailDocument } from '../../graphql/generated/graphql.ts';
 
 export const Route = createFileRoute('/products/$productId')({
   loader: async ({ context, params }) => {
-    const data = await context.queryClient.ensureQueryData(
-      graphqlQueryOptions(ProductDetailDocument, { id: params.productId }),
-    );
+    const data = await context.queryClient.query({
+      ...graphqlQueryOptions(ProductDetailDocument, { id: params.productId }),
+      staleTime: 'static',
+    });
     if (data.product === null) {
       throw notFound();
     }
@@ -117,7 +118,7 @@ function ProductRoute() {
 ```
 
 - 例の文書名は、操作名の接頭辞を省いて書いている。
-- `graphqlQueryOptions`の`queryFn`は、失敗の結果を`requireData`で`GraphQLClientError`の例外にする。`loader`で`ensureQueryData`を待った取得が失敗すると、ルートの`errorComponent`が描画され、ページの最初の描画では状態コード500になる。この形は、データが無ければページを表示できない取得にだけ使う。
+- `graphqlQueryOptions`の`queryFn`は、失敗の結果を`requireData`で`GraphQLClientError`の例外にする。`loader`で待った取得が失敗すると、ルートの`errorComponent`が描画され、ページの最初の描画では状態コード500になる。この形は、データが無ければページを表示できない取得にだけ使う。`staleTime: 'static'`を指定した`queryClient.query`は、キャッシュに値があれば取得し直さずに返す(導入済みの版で非推奨になった`ensureQueryData`の後継)。
 - 対象が存在しないことは、`loader`で`throw notFound()`にして404にする。別のページへ移すときは`throw redirect()`を使う。どちらも`Error`ではない値で、静的解析は`Error`以外の値ではこの2つだけを投げることを許す。
 - 1つのルートの`loader`で複数の取得を待つときは、`Promise.all`で同時に始める。1つ目の完了を待ってから2つ目を始めると、待ち時間が足し合わされる。入れ子のルートの`loader`は並行に実行されるが、`beforeLoad`は親から順に実行されるため、`beforeLoad`では取得しない(環境による`notFound()`などの判定だけにする)。例外は「[認証の判定に要る取得](#認証の判定に要る取得)」の1件だけである。
 - 検索パラメータで変わる取得は、`validateSearch`で検索パラメータを検証し、`loaderDeps`で`loader`へ渡して変数に含める。Zodの規則は`utilities/validation/zod.ts`の`z`で書く。
@@ -129,7 +130,7 @@ function ProductRoute() {
 
 1. 取得するのはルート(`__root`)の`beforeLoad`だけとし、結果をルートの文脈に入れる。
 2. `queryClient.query`(非推奨になった`fetchQuery`の後継)でクエリのキャッシュを通す。`staleTime`の間の遷移では取得せず、キャッシュの値を使う。
-3. 失敗を例外にせず、未ログインとして描画を続ける。`ensureQueryData`(および`staleTime: 'static'`の`queryClient.query`)は、失敗するとエラーの画面になるため使わない。
+3. 失敗を例外にせず、未ログインとして描画を続ける。`loader`の取得のように`queryClient.query`の失敗をそのまま投げる形は、エラーの画面になるため使わない。
 4. 子のルート(ログインが必要な経路をまとめる経路の無いレイアウトなど)の`beforeLoad`は、文脈の値で判定するだけで取得しない。未ログインなら、現在のパスとクエリを戻り先にしたログイン画面へ`throw redirect()`で移す。
 
 ```tsx
@@ -333,12 +334,15 @@ import {
 
 export const Route = createFileRoute('/products/$productId')({
   loader: async ({ context, params }) => {
-    void context.queryClient.prefetchQuery(
-      graphqlQueryOptions(ProductReviewsDocument, { id: params.productId }),
-    );
-    await context.queryClient.ensureQueryData(
-      graphqlQueryOptions(ProductDetailDocument, { id: params.productId }),
-    );
+    void context.queryClient
+      .query(
+        graphqlQueryOptions(ProductReviewsDocument, { id: params.productId }),
+      )
+      .catch(() => undefined);
+    await context.queryClient.query({
+      ...graphqlQueryOptions(ProductDetailDocument, { id: params.productId }),
+      staleTime: 'static',
+    });
   },
   component: ProductRoute,
 });
@@ -364,6 +368,7 @@ function ProductReviews() {
 ```
 
 - 待たない取得を先に始めてから、待つ取得を始める。両方が並行に進み、HTMLは待つ取得の完了の後に送り始める。
+- 待たない取得は`queryClient.query`の失敗を`.catch`で捨てる(導入済みの版で非推奨になった`prefetchQuery`の後継の書き方)。`loader`は区画の取得の失敗で止めず、失敗の表示は区画のエラーの境界に任せる。
 - 区画の部品は、`loader`と同じ設定の`useSuspenseQuery`で読む。区画の取得が完了すると、その結果のHTMLと取得のキャッシュが同じ応答の中で後から送られ、ブラウザは取得し直さない。
 - 区画の取得の失敗がページ全体のエラーにならないよう、区画をエラーの境界(`CatchBoundary`など)で包み、`PartialErrorState`で再試行の操作を示す。再試行は`QueryErrorResetBoundary`の`reset`とエラーの境界の解除を合わせて行う。区画の中で表示する失敗の文言は「[エラーの型と画面の分岐](#エラーの型と画面の分岐)」に従う。
 - 区画の取得が受けたセッションの指示は反映されない(「[Cookieの指示が反映される範囲](#cookieの指示が反映される範囲)」)。
