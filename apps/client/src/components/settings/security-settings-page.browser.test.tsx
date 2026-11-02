@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
@@ -14,6 +15,7 @@ import {
   renderSecurityPage,
   UNKNOWN_SESSION,
 } from '../../../test/security-fixtures.tsx';
+import { graphqlFailure } from '../../../test/settings-fixtures.ts';
 import { viewerResult } from '../../../test/viewer-fixtures.ts';
 import {
   ClientMySessionsDocument,
@@ -66,6 +68,7 @@ beforeEach(() => {
 
 afterEach(() => {
   applyColorScheme('light');
+  vi.restoreAllMocks();
 });
 
 describe('SecuritySettingsPage', () => {
@@ -143,6 +146,44 @@ describe('SecuritySettingsPage', () => {
     expect(executeGraphQL).toHaveBeenCalledWith(
       ClientRevokeSessionDocument,
       { id: BROWSER_ONLY_SESSION.id },
+      expect.anything(),
+    );
+  });
+
+  test('個別のログアウトに失敗すると、失敗の理由を通知し、一覧を取り直す', async () => {
+    const reason = '対象のログインが見つかりません。';
+    const showError = vi.spyOn(toast, 'error');
+    respond(
+      new Map<unknown, Handler>([
+        [
+          ClientRevokeSessionDocument,
+          () =>
+            graphqlFailure({ code: 'not_found', message: reason, status: 404 }),
+        ],
+        [
+          ClientMySessionsDocument,
+          () =>
+            Promise.resolve(
+              mySessionsResult({
+                sessions: [CURRENT_SESSION, UNKNOWN_SESSION],
+              }),
+            ),
+        ],
+      ]),
+    );
+    await renderSecurityPage();
+
+    await userEvent.click(
+      sessionItem('Firefox').getByRole('button', { name: 'ログアウトさせる' }),
+    );
+
+    await expect
+      .element(sessionCount())
+      .toHaveTextContent('2台の端末でログインしています。');
+    expect(showError).toHaveBeenCalledWith(reason);
+    expect(executeGraphQL).toHaveBeenCalledWith(
+      ClientMySessionsDocument,
+      expect.anything(),
       expect.anything(),
     );
   });

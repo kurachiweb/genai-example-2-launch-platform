@@ -441,8 +441,8 @@
   - _Boundary: IdentityDocs_
   - _Requirements: 20.6_
 
-- [ ] 13. 最終検証と引き継ぎ
-- [ ] 13.1 一括検査とカバレッジ80%を確かめ、開発者の手作業を引き継ぐ
+- [x] 13. 最終検証と引き継ぎ
+- [x] 13.1 一括検査とカバレッジ80%を確かめ、開発者の手作業を引き継ぐ
   - ルートの一括検査と一括テストを実行し、api・event・client・frontend-libの単体テスト・Workers統合テスト・ブラウザテストで行と関数のカバレッジ80%以上と、外部サービスへの通信が無いことを確かめる
   - infra-deliveryで追記済みの`OPTIONAL_WORKER_SECRETS`のapi・eventと、`project-values.md`のキーの一覧の節に`DISIFY_API_KEY`が載っていること、infra-deliveryの「ホスト名から導かれる変数の値」の表のAPIサーバーの`CLIENT_SITE_ORIGIN`が本specの3環境の値と一致することを確かめ、食い違いがあれば報告する(`scripts/delivery`は編集しない)
   - 8.5を前提の不足で保留した場合は、media-pipelineの差し込み口の完了後に8.5を行う必要があることと、それまで停止中の利用者が既存のセッションでアップロードできることを報告に書く
@@ -505,3 +505,4 @@
 - 11.2: E2Eは`e2e/client/auth/`の`password-reset`・`two-factor`・`account-changes`(各90秒の時間切れ)。認証コードは`e2e/support/totp.ts`(`node:crypto`のHMAC-SHA1、`nextCode()`は未使用の次の時間窓)、件名でメールを選ぶ`waitForEmailWithSubject`は`mailpit.ts`。bot判定のウィジェットを持たない設定のフォームは水和の完了を待つ手掛かりが無く、水和の前に入力した値はフォームの状態に入らず送信ボタンが無効のまま残るため、E2Eは水和済みの画面からルーターの遷移で開く。上流(frontend-platform)への申し送り: (1)`AppForm`の`<form>`に`method`が無く、今は`SubmitButton`がサーバーの描画で無効なため素の送信が起きないだけで、送信できるボタンが加わると入力(パスワードを含む)がGETでURLに載り得る。`method="post"`を既定にする。(2)遅い回線やブラウザの自動入力で水和の前に入った値をフォームの状態へ取り込まないため、送信ボタンが無効のまま残る。ローカルのAPIのworkerdがBus errorで落ちることがあり、その時に動いていたE2Eは失敗する(環境の問題)
 - 12.1: 文書は`security/006-authentication.md`・`external/004-pwned-passwords.md`・`external/005-disposable-email-check.md`・`external/006-turnstile.md`・`backend/007-user-lifecycle-events.md`。既存の文書は`backend/003`(規則の名前に`:`の区切りを認める)・`backend/004`(呼び出し元の確認→入力の検証→ログインと状態の確認→bot判定→ユースケースの順、簡単な読み取りはリゾルバがポートを読んでよい)・`frontend/006`(`ensureQueryData`・`prefetchQuery`を`queryClient.query`へ)・`external/001`(種別は領域ごとに1ファイルでよい)を改めた。新しいプレースホルダー`<ログイン試行の制限のバインディング名>`・`<TOTPの発行者名>`・`<外部サービスへ名乗るUser-Agent>`・`<使い捨て判定のAPIキーのシークレットのキー>`は12.2で`project-values.md`の表記の表へ加える。CLAUDE.mdから張るアンカーは`security/006`の`#認証系トークン`・`#本人確認とセッションの入れ替え`と`backend/007`の`#非同期の波及処理`
 - 12.2: 本プロジェクト固有の値は`project-values.md`の末尾の節「利用者のアカウント」(Durable Object・利用者側のオリジン・TOTPの発行者名・User-Agent・メール種別・波及処理の登録・ログのカテゴリ)と、表記の表・バインディングの表・メッセージ種別の表の行。CLAUDE.mdのライフサイクルの行は同期と非同期の両方を案内するため`backend/007`の`#前提と用語`へリンクした(12.1の申し送りの`#非同期の波及処理`ではない)。データ保持期間のログイン試行の記録は設計の表現「ハッシュ化したキーと回数だけの一時的な値」だが、実際の記録はロックの終了時刻と最後の失敗の時刻も持つ。`DISIFY_API_KEY`はdevに登録しない(infra-delivery所有のキーの一覧の節には書いていない)。後続specが利用者向けの文言を足すときは`003-text-and-copy-rules.md`のアカウントの表に行を加える
+- 13.1: カバレッジの閾値は各アプリのスクリプトに組み込まれておらず`--coverage`を付けたときだけ判定される(ファイルごと行・関数80%)ため、先行タスクで計測していなかったclientの`site-links.ts`・`settings-messages.ts`・`graphql/viewer.ts`・`session-list-item.tsx`が閾値を下回っていた(テストの追加で解消)。画面のファイルを足すタスクは`bun run test:unit --coverage`・`bun run test:browser --coverage`で確かめる。clientのブラウザテストの`coverage.include`は`src/components/**`だけで、`src/routes/**`は分母に入らない(frontend-platformの設定)。eventの`test:all:worker`は一括の既定の並列数でSIGKILL(137)になり、`--maxWorkers=3`で成功する
