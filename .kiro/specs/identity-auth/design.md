@@ -42,14 +42,14 @@
 - `users`の全列の定義。書き込みは本specが行う。ただし`nickname`・`handle`の変更(プロフィール編集)はuser-profile-socialに委ねる(後述「Out of Boundary」)。
 - 認証部品(apiの`domain/auth`・`application/auth`・`infrastructure/auth`): パスワードの規則・ハッシュ化・漏洩照合、秘密の発行とハッシュ化、セッションの有効期限の判定、ログイン試行の記録(Durable Object`LoginAttemptThrottle`)、TOTP、秘密鍵の暗号化、リカバリコード、主体別のセッションの検証の振り分け。
 - 利用者のアカウントの業務処理(apiの`domain/identity`・`application/identity`・`infrastructure/identity`)と、GraphQLのスキーマモジュール`identity`。
-- ユーザーライフサイクルイベントの契約(`core/identity/user-lifecycle.ts`)、同期の波及処理の契約と実行(apiの`UserLifecycleCommitter`)、非同期の波及処理の実行器(eventの`UserLifecycleRunner`)、イベントの記録(`workers/identity/user-lifecycle-store.ts`)、日次の再実行、削除オーケストレータと最後の物理削除。
+- ユーザーライフサイクルイベントの契約(`core/identity/user-lifecycle.ts`)、同期の波及処理の契約と実行(apiの`UserLifecycleCommitter`)、非同期の波及処理の実行器(eventの`UserLifecycleRunner`)、イベントの記録(契約`UserLifecycleStore`は`core/identity/ports.ts`、D1の実装は`workers/identity/d1-user-lifecycle-store.ts`)、日次の再実行、削除オーケストレータと最後の物理削除。
 - 停止・停止解除の状態の遷移と操作口(`UserSuspension`)、運営者による退会の操作口(`AdministrativeWithdrawal`。利用者本人の退会と同じ確定の処理を通す)、機能制限の判定(`AccountGuard`)。
 - media-pipelineの`UploaderEligibility`の本specの実装(`AccountUploaderEligibility`。停止中・退会済みを拒否し、未確認は拒否しない)と、APIサーバーの合成でのその束縛。
 - 使い捨てメールアドレスの判定(`DisifyClient`・判定し直し)、利用者のメールアドレスの照会口の実装(`D1UserAddressDirectory`)。
-- 後続specが通知メールの宛先を引く利用者の連絡先の照会`UserContactDirectory`(契約・DIの識別子`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・D1の実装・api・event共通の束縛`IDENTITY_PLATFORM_MODULE`。`apps/backend-lib/workers/identity`)。後続specは`users`の`email`・`nickname`・`email_verified_at`を直接読まず、これを使う(spec横断レビュー、2026-10-23)。
+- 後続specが通知メールの宛先を引く利用者の連絡先の照会`UserContactDirectory`(契約・DIの識別子`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・D1の実装・api・event共通の束縛`IDENTITY_PLATFORM_MODULE`。契約と識別子は`apps/backend-lib/core/identity`、D1の実装と束縛は`apps/backend-lib/workers/identity`)。後続specは`users`の`email`・`nickname`・`email_verified_at`を直接読まず、これを使う(spec横断レビュー、2026-10-23)。
 - データエクスポートのアカウントの部分の照会`AccountExport`(契約・DIの識別子`IDENTITY_PLATFORM_TYPES.AccountExport`・D1の実装。`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する)。`account.json`の`email`・`emailVerifiedAt`・`registeredAt`・`mfaEnabled`と、決済履歴の照会に使う仮名化IDを返す。data-exportは`users`・`user_totp_credentials`を直接読まず、これを使う(spec横断レビュー、2026-10-23)。
-- 管理画面の利用者の検索・一覧の照会`AdminUserDirectory`(契約・D1の実装`D1AdminUserDirectory`・DIの識別子`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`。`apps/backend-lib/workers/identity/admin-user-directory.ts`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する)。ugc-moderationの`/users`・措置の対象の確かめ・週ごとの統計は`users`を直接読まず、これを使う(仮7、spec横断レビュー、2026-10-24)。
-- shadcn/uiの`Checkbox`(`apps/frontend-lib/components/ui/checkbox.tsx`)。登録の同意で最初に使い、paymentsの決済の同意が再利用する(spec横断レビュー、2026-10-23)。
+- 管理画面の利用者の検索・一覧の照会`AdminUserDirectory`(契約・D1の実装`D1AdminUserDirectory`・DIの識別子`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`。契約は`apps/backend-lib/core/identity/ports.ts`、D1の実装は`apps/backend-lib/workers/identity/d1-admin-user-directory.ts`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する)。ugc-moderationの`/users`・措置の対象の確かめ・週ごとの統計は`users`を直接読まず、これを使う(仮7、spec横断レビュー、2026-10-24)。
+- shadcn/uiの`Checkbox`(`apps/frontend-lib/components/ui/checkbox/checkbox.tsx`。共通部品の配置の規則`components/ui/<部品>/<部分>.tsx`)。登録の同意で最初に使い、paymentsの決済の同意が再利用する(spec横断レビュー、2026-10-23)。
 - メール種別7つ(`core/email/kinds/identity.ts`)とテンプレート(`apps/event/src/infrastructure/email/templates/identity/`)。
 - 定期実行のジョブ4つ(業務時刻4:21の`order` 100・110・120と、業務時刻16:21の`order` 100の送り直し)とメッセージ種別2つ(`identity.run-user-lifecycle`・`identity.recheck-disposable-email`)。
 - 利用者側の画面: `/auth/*`の7画面、ログイン必須の経路の無いレイアウト`_authenticated`、設定ページのシェルと登録箇所`SETTINGS_NAV_ITEMS`、`/settings/account`・`/settings/security`、ヘッダーの`headerAccount`・`headerLaunchAction`・`belowHeader`の区画の部品、ログインの案内のダイアログ部品。
@@ -75,7 +75,7 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashPurpose`・`hashRateLimitKey`・`HashedRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`MessageContract`・`RetryPolicy`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`MessagePublisher`・`RateLimitCounterClient`・`BotVerifier`・`PlatformEnv`・`HttpFetch`。形を変えない。
+- backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashPurpose`・`hashRateLimitKey`・`HashedRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`MessageContract`・`RetryPolicy`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`MessagePublisher`・`RateLimitCounterClient`・`BotVerifier`・`PlatformEnv`・`HttpFetch`。形を変えない。application層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`MessagePublisher`は、application層の自前のポート`IdentityMessagePublisher`の形で`PLATFORM_TYPES.MessagePublisher`から受け取る(media-pipelineの`MediaJobMessagePublisher`と同じ形)。`RateLimitCounterClient`は、infrastructure層の`CounterMailSendLimits`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。
 - api-gateway: `SessionVerifier`・`Principal`・`AuthenticatedPrincipal`・`SessionVerification`・`SessionIssue`・`SESSION_TYPES`・`SESSION_TOKEN_PATTERN`・`AnonymousSessionVerifier`、`GraphQLSchemaModule`・`defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`、`SessionAccess`。`GraphQLContext`・`GatewayRequestScope`への`userAgent`の追加と、application層へのセッションの読み取りの型`SessionView`(`apps/api/src/application/session/session-view.ts`)の追加、`SessionAccess`がそれを拡張する変更だけを行う。本specのapplication層は`SessionView`だけを読み込み、presentation層の`SessionAccess`・`CallerKind`を読み込まない(backend-platformの層の規則、横断レビューR3-1)。
 - email-delivery: `EmailKind`・`defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EmailTemplate`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`・`toMatchingKey`・`isValidEmailAddress`・`UserAddressDirectory`・`SuppressionMaintenance`・`EMAIL_TYPES`。形を変えない。
 - frontend-platform: `SiteLayoutSlots`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`useAppForm`・`AppForm`(`onSubmitError`・`serverFieldPrefix`)・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`(非表示のウィジェット)・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`の表示部品・`runAxe`・`utilities/validation/zod.ts`の`z`、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`src/graphql/generated/graphql.ts`の生成物)。`FORWARDED_BROWSER_HEADERS`への`user-agent`の追加だけを行う。
@@ -93,17 +93,19 @@
 - `users`の列・状態の値・`lifecycle_version`の扱い、`HANDLE_AVAILABILITY`の形(user-profile-social・ugc-moderation・data-export)。
 - 初期ハンドルの形式(`InitialHandleFormat`、英小文字と数字の12文字)と、user-profile-socialが所有するハンドルの規則(文字種・長さ・予約語・大文字小文字の扱い・旧ハンドル)。どちらかを変えたら、初期ハンドルがその規則を満たすことを確かめ直す(user-profile-social)。
 - `UserSuspension`の形(ugc-moderation)。
-- `UserContact`・`UserContactDirectory`の形、DIの識別子`IDENTITY_PLATFORM_TYPES.UserContactDirectory`と置き場所(`apps/backend-lib/workers/identity`)、api・eventの両方に束縛すること、`findContact`が退会済み(`deleted_at`あり)・物理削除済みの利用者で`undefined`を返し、停止中の利用者を返す規則(payments・ultras-subscription・inquiry-chat、以後メールを送る全ドメインspec)。
+- `UserContact`・`UserContactDirectory`の形、DIの識別子`IDENTITY_PLATFORM_TYPES.UserContactDirectory`と置き場所(契約と識別子は`apps/backend-lib/core/identity`、D1の実装は`apps/backend-lib/workers/identity`)、api・eventの両方に束縛すること、`findContact`が退会済み(`deleted_at`あり)・物理削除済みの利用者で`undefined`を返し、停止中の利用者を返す規則(payments・ultras-subscription・inquiry-chat、以後メールを送る全ドメインspec)。
 - `AccountExportRecord`・`AccountExport`の形と項目(`account.json`の本specの持ち分と仮名化ID)、DIの識別子`IDENTITY_PLATFORM_TYPES.AccountExport`、api・eventの両方に束縛すること、`find`が退会済み・物理削除済みの利用者で`undefined`を返し、停止中の利用者を返す規則(data-export)。データエクスポートの文書の`account.json`の項目が変わったら、本specの持ち分を確かめ直す。
-- `AdminUserDirectory`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserStatus`の形、DIの識別子`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`と置き場所(`apps/backend-lib/workers/identity/admin-user-directory.ts`)、`search`・`findByIds`・`findByEmail`が退会済みを除く規則、`countRegisteredAt`の数え方(`created_at < at`かつ`deleted_at IS NULL`または`deleted_at >= at`)、部分一致の逃がし方と並び(ugc-moderation、仮7)。`users`の列・`status`の値・`disposable_email_status`の値を変えたら、この照会とugc-moderationの`/users`・週ごとの統計を確かめ直す。
+- `AdminUserDirectory`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserStatus`の形、DIの識別子`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`と置き場所(契約は`apps/backend-lib/core/identity/ports.ts`、D1の実装は`apps/backend-lib/workers/identity/d1-admin-user-directory.ts`)、`search`・`findByIds`・`findByEmail`が退会済みを除く規則、`countRegisteredAt`の数え方(`created_at < at`かつ`deleted_at IS NULL`または`deleted_at >= at`)、部分一致の逃がし方と並び(ugc-moderation、仮7)。`users`の列・`status`の値・`disposable_email_status`の値を変えたら、この照会とugc-moderationの`/users`・週ごとの統計を確かめ直す。
 - ユーザーライフサイクルの波及処理の`order`の範囲(0〜9999は各ドメイン、10000以上は本spec)と、本specの波及処理の`order`(10000)(波及処理を登録する全ドメインspec、roadmapの帯の割り当ての表)。
-- `apps/frontend-lib/components/ui/checkbox.tsx`の形(paymentsの決済の同意が再利用する)。
+- `apps/frontend-lib/components/ui/checkbox/checkbox.tsx`の形と置き場所(paymentsの決済の同意が再利用する)。
 - `AdministrativeWithdrawal`の形と、呼び出せる経路の条件(呼び出し元が管理者側で、主体が管理者のセッション)、対象が退会済み・存在しないときの`not_found`、利用者本人の退会と同じ確定の処理を通すこと(ugc-moderation・admin-foundation)。停止中の設定ページの案内文(問い合わせで退会を依頼できる旨)を変えたら、ugc-moderationの代理の退会の手順(問い合わせで依頼を受け、ユーザー一覧から行う)も確かめ直す。
 - アップロードできる利用者の判定の規則(停止中・退会済みは拒否、メールアドレスが未確認でも拒否しない)と、`AccountUploaderEligibility`の束縛の位置(media-pipeline、アップロードを使う全ドメインspec)。
 - `auth`モジュールのポート・`SessionPolicy`・`LoginThrottle`のスコープとDurable Objectの名前の規則(admin-foundation)。
 - `AUTH_TYPES.AdminSessionVerifier`の束縛の位置(admin-foundation)。
 - `SETTINGS_NAV_ITEMS`の形と`order`の規約、`_authenticated`のレイアウトの文脈(`viewer`)、`LoginRequiredDialog`の形(設定ページ・ログイン必須の画面を追加する全spec)。
 - `FORWARDED_BROWSER_HEADERS`・`GraphQLContext.userAgent`の追加(frontend-platform・api-gateway)。
+- `006-data-fetching.md`に加える`beforeLoad`での取得の例外の条件(ルートの`beforeLoad`の認証の判定に要る1件だけ・キャッシュを通す・失敗は未ログイン・子の`beforeLoad`は取得しない)。条件を変えたら、`_authenticated`の下に画面を置く全specと、admin-foundationの管理画面の認証の判定を確かめ直す(frontend-platform)。
+- `core/identity`の契約(`UserLifecycleStore`・`DisposableEmailChecker`・`UserContactDirectory`・`AccountExport`・`AdminUserDirectory`)と`IDENTITY_PLATFORM_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(後続specのapplication層が読み込むため)。
 - メール種別の名前と入力(email-delivery、文言規則)。
 - `CLIENT_SITE_ORIGIN`・`DISIFY_API_KEY`・`LOGIN_ATTEMPT_THROTTLE`の名前と値(infra-delivery・launch-readiness)。`CLIENT_SITE_ORIGIN`は、APIサーバーの変数を本specが、利用者側・管理者側の同名の変数をcontent-processingが所有し、名前と3環境の値を同じにする(content-processing、infra-deliveryのSupporting References「ホスト名から導かれる変数の値」の表)。
 - ログイン試行の記録に保存する値の性質(ハッシュ化したキーと回数・時刻だけで、最後の失敗から24時間で消える)。Durable Objectsの管轄を指定しない判断と、準拠方針の「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」の記述、プライバシーポリシー骨子の国外移転の記載事項のCloudflareの項(所在を限定しない処理の扱い)の前提である(infra-delivery)。
@@ -111,23 +113,23 @@
 
 ### 上流への影響
 
-| 上流spec               | 変更                                                                                                                                                                                                                                                                                                                                                                             | 影響と再検証                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| frontend-platform      | `apps/frontend-lib/server/relay/relay-contract.ts`の`FORWARDED_BROWSER_HEADERS`に`user-agent`を加える(Q6)                                                                                                                                                                                                                                                                        | ブラウザからの中継でUser-AgentがAPIサーバーへ届く。中継の項目の一覧はfrontend-platformのRevalidation Triggersに当たるため再検証を求める                                                                                                                                                                                                                                                                                                                                                                                                             |
-| api-gateway            | `GatewayRequestScope`・`GraphQLContext`に`userAgent: string \| undefined`を加え、`GraphqlModule`が内部経路の要求の`user-agent`を512文字までで渡す                                                                                                                                                                                                                                | 既存のリゾルバに影響しない。`GraphQLContext`の形はapi-gatewayのRevalidation Triggersに当たるため再検証を求める                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| api-gateway            | `composition/session.ts`の`SESSION_BINDINGS`を本specの振り分けの実装へ差し替える                                                                                                                                                                                                                                                                                                 | api-gatewayが定めた差し替えの契約どおり                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| api-gateway            | application層に、セッションの読み取りの型`SessionView`(`application/session/session-view.ts`。`principal()`だけを持つ)を加え、`presentation/gateway/session-access.ts`の`SessionAccess`がそれを拡張する(横断レビューR3-1)                                                                                                                                                        | `SessionAccess`の形と`createSessionAccess`の振る舞いは変わらず、既存の呼び出し側に影響しない。application層の契約(本specの`AccountGuard`など、media-pipelineの`UploaderEligibility`)は`SessionView`を受け取り、呼び出し側は`SessionAccess`をそのまま渡せる。`SessionAccess`の形はapi-gatewayのRevalidation Triggersに当たるため再検証を求める。media-pipelineが先に実装されて`SessionView`が既にあれば、形を確かめるだけにする                                                                                                                      |
-| email-delivery         | `USER_ADDRESS_DIRECTORY`を`D1UserAddressDirectory`へ差し替え、eventでも`SuppressionMaintenance`を束縛して退会時に呼ぶ                                                                                                                                                                                                                                                            | 契約どおり。`USER_ADDRESS_DIRECTORY`は`Newable<UserAddressDirectory>`で`.to()`で束縛されるため、`D1UserAddressDirectory`はクラスにする。eventでの束縛はemail-deliveryのファイルを変えずに本specのモジュールで行い、`createSuppressionMaintenance`の4引数(抑止記録・送信済みの記録・照会口・続きの位置のストア)を渡す(「IdentityPurgeStore・EventIdentityComposition」)。email-deliveryの日次の後始末と同じ起動で退会の削除が動く場合の限界は「PurgeOrchestratorJob・CredentialCleanupJob・DisposableRecheckSweepJob・LifecycleRedispatchJob」に記す |
-| backend-platform       | apiの`durable_objects`に`LOGIN_ATTEMPT_THROTTLE`、`migrations`に既存の最後のタグの次(現時点`v2`)で`LoginAttemptThrottle`を加える                                                                                                                                                                                                                                                 | 後続specが資源を追記する規約どおり。Wave 1の他specもタグを追加する場合は実装時に番号を詰める                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| content-processing     | `apps/common-lib`の`countGraphemes`を使い、`apps/common-lib/identity/`に入力規則を置く。APIサーバーの変数にcontent-processingがclient・adminに加える`CLIENT_SITE_ORIGIN`と同じ名前・同じ値を使う。日次タイムラインの表(content-processingの11.4が作る想定)へ行を足し、`backend/007`からジョブ・波及処理の名前の規約(content-processingの11.5が`infra/003`へ追記する)へリンクする | roadmapの依存にcontent-processingがあり、実装の順はcontent-processing→media-pipeline→identity-authである。本specのタスク1.3が、content-processingの最小の区切り(1.1・1.2・2.1・4.1・4.2・6.1、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインの表の作成)に依存する。`countGraphemes`・共有ディレクトリの配置・`CLIENT_SITE_ORIGIN`の変更は、content-processingのRevalidation Triggersで本specへ伝わる                                                                                                                 |
-| media-pipeline(Wave 1) | `apps/api/src/composition/uploader-eligibility.ts`の`UPLOAD_ACCESS_TYPES.UploaderEligibility`の束縛を、既定の`AllowAllUploaderEligibility`から本specの`AccountUploaderEligibility`へ差し替える(横断レビューN-7)                                                                                                                                                                  | media-pipelineが定めた差し替えの契約どおり(media-pipelineのタスク5.1・5.6の後)。差し込み口の形・判定を呼ぶ経路(利用者側だけ)・拒否の応答(403と判定の`code`)はmedia-pipelineが所有する。本specは`account_unavailable`だけを返し、`email_not_verified`は返さない                                                                                                                                                                                                                                                                                      |
-| infra-delivery(Wave 1) | `OPTIONAL_WORKER_SECRETS`のapi・eventとInfisicalの表に`DISIFY_API_KEY`を、「ホスト名から導かれる変数の値」の表にAPIサーバーの`CLIENT_SITE_ORIGIN`の3環境の値(本specの所有)を載せる。`LoginAttemptThrottle`の`migrations`はmainへのマージでCIの`wrangler deploy`がstagingへ適用する                                                                                               | Wave 1の決定(2026-10-18)により、infra-deliveryで追記済み。本specは`scripts/delivery`を編集せず、載っていることを確かめるだけにする。シークレットのキーの一覧の正は`docs/onboardings/project-values.md`で、infra-deliveryが一覧の節を作り、本specは`DISIFY_API_KEY`の行を足す(横断レビューN-5)。Durable Objectsの管轄は指定しないため、管轄の依頼は無い。国外移転の記載事項のCloudflareの項はinfra-deliveryが書く(横断レビューN-1)                                                                                                                   |
+| 上流spec               | 変更                                                                                                                                                                                                                                                                                                                                                                                  | 影響と再検証                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| frontend-platform      | `apps/frontend-lib/server/relay/relay-contract.ts`の`FORWARDED_BROWSER_HEADERS`に`user-agent`を加える(Q6)                                                                                                                                                                                                                                                                             | ブラウザからの中継でUser-AgentがAPIサーバーへ届く。中継の項目の一覧はfrontend-platformのRevalidation Triggersに当たるため再検証を求める                                                                                                                                                                                                                                                                                                                                                                                                             |
+| api-gateway            | `GatewayRequestScope`・`GraphQLContextScope`・`GraphQLContext`に必須の`userAgent: string \| undefined`(既存の`clientIp`と同じ書き方)を加え、`GraphqlModule`が内部経路の要求の`user-agent`を512文字までで渡す。文脈をリテラルで組む既存のWorkers統合テスト5件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`)に`userAgent`を足す | 既存のリゾルバの振る舞いに影響しない。必須の項目にするのは渡し忘れを型検査で検出するためで、既存のテストは文脈の組み立てに`userAgent`を足すだけにし、期待は変えない。`GraphQLContext`の形はapi-gatewayのRevalidation Triggersに当たるため再検証を求める                                                                                                                                                                                                                                                                                             |
+| api-gateway            | `composition/session.ts`の`SESSION_BINDINGS`を本specの振り分けの実装へ差し替える                                                                                                                                                                                                                                                                                                      | api-gatewayが定めた差し替えの契約どおり                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| api-gateway            | application層に、セッションの読み取りの型`SessionView`(`application/session/session-view.ts`。`principal()`だけを持つ)を加え、`presentation/gateway/session-access.ts`の`SessionAccess`がそれを拡張する(横断レビューR3-1)                                                                                                                                                             | `SessionAccess`の形と`createSessionAccess`の振る舞いは変わらず、既存の呼び出し側に影響しない。application層の契約(本specの`AccountGuard`など、media-pipelineの`UploaderEligibility`)は`SessionView`を受け取り、呼び出し側は`SessionAccess`をそのまま渡せる。`SessionAccess`の形はapi-gatewayのRevalidation Triggersに当たるため再検証を求める。media-pipelineが先に実装されて`SessionView`が既にあれば、形を確かめるだけにする                                                                                                                      |
+| email-delivery         | `USER_ADDRESS_DIRECTORY`を`D1UserAddressDirectory`へ差し替え、eventでも`SuppressionMaintenance`を束縛して退会時に呼ぶ                                                                                                                                                                                                                                                                 | 契約どおり。`USER_ADDRESS_DIRECTORY`は`Newable<UserAddressDirectory>`で`.to()`で束縛されるため、`D1UserAddressDirectory`はクラスにする。eventでの束縛はemail-deliveryのファイルを変えずに本specのモジュールで行い、`createSuppressionMaintenance`の4引数(抑止記録・送信済みの記録・照会口・続きの位置のストア)を渡す(「IdentityPurgeStore・EventIdentityComposition」)。email-deliveryの日次の後始末と同じ起動で退会の削除が動く場合の限界は「PurgeOrchestratorJob・CredentialCleanupJob・DisposableRecheckSweepJob・LifecycleRedispatchJob」に記す |
+| backend-platform       | apiの`durable_objects`に`LOGIN_ATTEMPT_THROTTLE`、`migrations`に既存の最後のタグの次(現時点`v2`)で`LoginAttemptThrottle`を加える                                                                                                                                                                                                                                                      | 後続specが資源を追記する規約どおり。Wave 1の他specもタグを追加する場合は実装時に番号を詰める                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| content-processing     | `apps/common-lib`の`countGraphemes`を使い、`apps/common-lib/identity/`に入力規則を置く。APIサーバーの変数にcontent-processingがclient・adminに加える`CLIENT_SITE_ORIGIN`と同じ名前・同じ値を使う。日次タイムラインの表(content-processingの11.4が作る想定)へ行を足し、`backend/007`からジョブ・波及処理の名前の規約(content-processingの11.5が`infra/003`へ追記する)へリンクする      | roadmapの依存にcontent-processingがあり、実装の順はcontent-processing→media-pipeline→identity-authである。本specのタスク1.3が、content-processingの最小の区切り(1.1・1.2・2.1・4.1・4.2・6.1、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインの表の作成)に依存する。`countGraphemes`・共有ディレクトリの配置・`CLIENT_SITE_ORIGIN`の変更は、content-processingのRevalidation Triggersで本specへ伝わる                                                                                                                 |
+| media-pipeline(Wave 1) | `apps/api/src/composition/uploader-eligibility.ts`の`UPLOAD_ACCESS_TYPES.UploaderEligibility`の束縛を、既定の`AllowAllUploaderEligibility`から本specの`AccountUploaderEligibility`へ差し替える(横断レビューN-7)                                                                                                                                                                       | media-pipelineが定めた差し替えの契約どおり(media-pipelineのタスク5.1・5.6の後)。差し込み口の形・判定を呼ぶ経路(利用者側だけ)・拒否の応答(403と判定の`code`)はmedia-pipelineが所有する。本specは`account_unavailable`だけを返し、`email_not_verified`は返さない                                                                                                                                                                                                                                                                                      |
+| infra-delivery(Wave 1) | `OPTIONAL_WORKER_SECRETS`のapi・eventとInfisicalの表に`DISIFY_API_KEY`を、「ホスト名から導かれる変数の値」の表にAPIサーバーの`CLIENT_SITE_ORIGIN`の3環境の値(本specの所有)を載せる。`LoginAttemptThrottle`の`migrations`はmainへのマージでCIの`wrangler deploy`がstagingへ適用する                                                                                                    | Wave 1の決定(2026-10-18)により、infra-deliveryで追記済み。本specは`scripts/delivery`を編集せず、載っていることを確かめるだけにする。シークレットのキーの一覧の正は`docs/onboardings/project-values.md`で、infra-deliveryが一覧の節を作り、本specは`DISIFY_API_KEY`の行を足す(横断レビューN-5)。Durable Objectsの管轄は指定しないため、管轄の依頼は無い。国外移転の記載事項のCloudflareの項はinfra-deliveryが書く(横断レビューN-1)                                                                                                                   |
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- backend-platform・api-gateway・email-delivery・frontend-platformは設計・タスクとも承認済みである。本specのタスクはそれらの実装の完了を前提にする。2026-10-27の時点で、backend-platform・api-gateway・email-deliveryは実装を終え、frontend-platformは未着手である。email-deliveryの実装で決まった、本specが使う契約の形(`USER_ADDRESS_DIRECTORY`の`.to()`の束縛、`createSuppressionMaintenance`の4引数)はemail-deliveryのdesign.md(research.mdの改訂3)に従う。
+- backend-platform・api-gateway・email-delivery・frontend-platformは設計・タスクとも承認済みである。本specのタスクはそれらの実装の完了を前提にする。2026-11-02の時点で、基盤7spec(dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・media-pipeline・content-processing)とinfra-deliveryは実装を終えている(research.mdの「実装前のギャップ分析」)。email-deliveryの実装で決まった、本specが使う契約の形(`USER_ADDRESS_DIRECTORY`の`.to()`の束縛、`createSuppressionMaintenance`の4引数)はemail-deliveryのdesign.md(research.mdの改訂3)に従う。
 - apiの層は`domain`(純粋)・`application`(ポートとユースケース、Bunの単体テスト)・`infrastructure`・`presentation`・`composition`(Workers統合テスト)に分かれ、依存の方向は静的解析で強制される。Cron Triggersはapiだけ、Queuesのconsumerはeventだけに置く。
 - GraphQLはスキーマファーストで、モジュールは`type Query`・`type Mutation`をそのまま書き、ルート型以外の型を複数のモジュールで定義できない。許可リストは呼び出し元別で、利用者側の操作は利用者側の許可リストにだけ載る。
 - フロントエンドの共通レイアウトは`SiteLayoutSlots`(`headerAccount`・`headerLaunchAction`・`belowHeader`ほか)で区画を差し替える。ブラウザからの中継は`/_bff/graphql`、サーバー側の描画は`executeGraphQL`の`*.server.ts`で行い、Cookieの指示を反映する。
@@ -200,7 +202,7 @@ graph TB
 
 ### Dependency Direction
 
-- 共有コード: `apps/db/schema/identity` → `backend-lib/core/identity`(zod・inversifyの型・`core`の他の部品だけ) → `backend-lib/workers/identity`(D1・`fetch`) → アプリの`src`。
+- 共有コード: `apps/db/schema/identity` → `backend-lib/core/identity`(zod・inversifyの型・`core`の他の部品だけ) → `backend-lib/workers/identity`(D1・`fetch`) → アプリの`src`。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが使う契約(`UserLifecycleStore`・`DisposableEmailChecker`・`UserContactDirectory`・`AccountExport`・`AdminUserDirectory`)と識別子`IDENTITY_PLATFORM_TYPES`は`core/identity`に置き、`workers/identity`にはD1・DISIFYの実装と束縛だけを置く(email-deliveryの`core/email/ports.ts`・media-pipelineの`core/media/ports.ts`と同じ配置)。
 - apiの`src`内: `domain/auth` ← `domain/identity` ← `application/auth` ← `application/identity` ← `infrastructure/{auth,identity}`・`presentation/graphql/modules/identity` ← `composition`。`application/identity`がセッションを受け取るときは、api-gatewayの`application/session/session-view.ts`の`SessionView`を読み込み、`presentation/gateway`の型(`SessionAccess`・`CallerKind`)を読み込まない(backend-platformの層の規則)。`auth`の各層は`identity`の各層を読み込まない(admin-foundationが`identity`無しで再利用できるように)。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
 - eventの`src`内: `application/identity` ← `infrastructure/identity` ← `composition`。テンプレートはemail-deliveryの規則どおり`infrastructure/email/templates/`だけがReactを読み込む。
 - clientの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。`components/auth`・`components/settings`は`graphql/generated/graphql.ts`(`<操作名>Document`と生成された型)と`graphql/viewer.ts`を読み込んでよい。`graphql/generated/`の`gql.ts`・`index.ts`は読み込まない(frontend-platformの「操作の追加手順」)。
@@ -243,22 +245,21 @@ apps/
 │   ├── account-input-rules.ts                          # ニックネーム・メール・パスワードの上限の定数と判定(書記素の数え方はcommon-libの部品)
 │   └── account-input-rules.unit.test.ts
 ├── backend-lib/
-│   ├── core/identity/                                  # api・eventが共有する純粋な部品(各ファイルに同名の*.unit.test.ts)
+│   ├── core/identity/                                  # api・eventと後続specのapplication層が読み込める部品(各ファイルに同名の*.unit.test.ts)
 │   │   ├── user-lifecycle.ts                           # イベントの型・非同期の波及処理の契約と登録・名前の検証・再試行の方針
-│   │   └── disposable-email.ts                         # ダミーのローカル部への置き換えと判定結果の分類
+│   │   ├── disposable-email.ts                         # ダミーのローカル部への置き換え・判定結果の分類・DisposableEmailChecker
+│   │   ├── ports.ts                                    # UserLifecycleStore・UserContactDirectory・AccountExport・AdminUserDirectoryの契約と型
+│   │   └── identifiers.ts                              # IDENTITY_PLATFORM_TYPES(api・event共通の識別子)
 │   ├── core/messaging/contracts/identity.ts            # identity.run-user-lifecycle・identity.recheck-disposable-email
 │   ├── core/email/kinds/identity.ts                    # 認証系の7つのメール種別
-│   └── workers/identity/                               # D1と外部サービス(apiのWorkers統合テスト、各ファイルに同名の*.worker.test.ts)
+│   └── workers/identity/                               # D1と外部サービスの実装と束縛(apiのWorkers統合テスト、各ファイルに同名の*.worker.test.ts)
 │       ├── disify-client.ts                            # DisposableEmailCheckerのDISIFY実装
 │       ├── d1-user-address-directory.ts                # UserAddressDirectoryのD1実装(email-deliveryの照会口)
-│       ├── identity-platform-types.ts                  # IDENTITY_PLATFORM_TYPES(api・event共通の識別子、テストなし)
-│       ├── user-contact-directory.ts                   # UserContact・UserContactDirectory(後続specの連絡先の照会、テストなしの型)
+│       ├── d1-user-lifecycle-store.ts                  # UserLifecycleStoreのD1実装(イベントと完了の記録の読み書き)
 │       ├── d1-user-contact-directory.ts                # UserContactDirectoryのD1実装
-│       ├── account-export.ts                           # AccountExportRecord・AccountExport(データエクスポートのアカウントの部分、テストなしの型)
 │       ├── d1-account-export.ts                        # AccountExportのD1実装
-│       ├── admin-user-directory.ts                     # AdminUserDirectory・D1AdminUserDirectory(ugc-moderationの管理画面の利用者の照会、仮7)
-│       ├── identity-platform-module.ts                 # api・event共通の束縛(IDENTITY_PLATFORM_MODULE)
-│       └── user-lifecycle-store.ts                     # イベントと完了の記録の読み書き
+│       ├── d1-admin-user-directory.ts                  # AdminUserDirectoryのD1実装(ugc-moderationの管理画面の利用者の照会、仮7)
+│       └── identity-platform-module.ts                 # api・event共通の束縛(IDENTITY_PLATFORM_MODULE)
 ├── api/src/
 │   ├── domain/auth/                                    # 主体に依存しない純粋な規則(Bunの単体テスト)
 │   │   ├── password-rules.ts                           # 長さ(コードポイント)と識別子との一致
@@ -280,7 +281,7 @@ apps/
 │   │   └── subject-session-verifier.ts                 # SessionVerifierの主体別の振り分け
 │   ├── application/identity/                           # 利用者のユースケース(Bunの単体テスト)
 │   │   ├── identity-types.ts                           # IDENTITY_TYPES
-│   │   ├── ports.ts                                    # 各ストア・メール・端末情報・ハンドルの重複判定・設定値
+│   │   ├── ports.ts                                    # 各ストア・メール・端末情報・ハンドルの重複判定・設定値・MailSendLimits・IdentityMessagePublisher
 │   │   ├── request-meta.ts                             # RequestMeta
 │   │   ├── session-issuer.ts                           # セッションの発行と、重要な操作の後の再発行
 │   │   ├── user-session-verifier.ts                    # 利用者のセッションの検証
@@ -289,7 +290,6 @@ apps/
 │   │   ├── registration.ts                             # 登録
 │   │   ├── email-verification.ts                       # 確認と再送
 │   │   ├── disposable-email-check.ts                   # 確認時の判定と、判定し直しの依頼
-│   │   ├── mail-send-limits.ts                         # FR-RLMIT-001の回数制限
 │   │   ├── login.ts                                    # パスワードと第2要素のログイン、ログアウト
 │   │   ├── re-authenticator.ts                         # 重要な操作の本人確認
 │   │   ├── session-management.ts                       # 一覧と失効
@@ -322,6 +322,7 @@ apps/
 │   │   ├── d1-totp-credential-store.ts
 │   │   ├── d1-recovery-code-store.ts
 │   │   ├── d1-handle-availability.ts                   # 既定のハンドルの重複判定(usersの全行)
+│   │   ├── counter-mail-send-limits.ts                 # MailSendLimitsの実装(厳密カウンタによるFR-RLMIT-001の回数制限)
 │   │   ├── user-lifecycle-sync-handler.ts              # 同期の波及処理の契約(他specが実装)
 │   │   ├── d1-user-lifecycle-committer.ts              # 版の検査・状態の遷移・同期の波及処理・イベントの記録の一括の書き込み
 │   │   ├── email-identity-mailer.ts                    # 7種のメールの送信要求とリンクのURL
@@ -358,7 +359,7 @@ apps/
 │   ├── totp-qr-code.tsx                                # uqrのセルの行列をSVG要素で描画
 │   ├── recovery-code-list.tsx                          # リカバリコードの一覧・コピー・保管の注意
 │   └── password-input.tsx                              # 表示・非表示を切り替えるパスワードの入力欄
-├── frontend-lib/components/ui/checkbox.tsx             # shadcn/uiのCheckbox(登録の同意で使い、paymentsの決済の同意が再利用する。stories・browser testを併置)
+├── frontend-lib/components/ui/checkbox/checkbox.tsx    # shadcn/uiのCheckbox(登録の同意で使い、paymentsの決済の同意が再利用する。stories・browser testを併置)
 └── client/src/
     ├── routes/
     │   ├── auth/register.tsx · login.tsx · verify-email.tsx
@@ -413,25 +414,30 @@ docs/
 
 ### Modified Files
 
-- `apps/db/schema/index.ts` — identityのテーブルを再エクスポートする。`apps/db/migrations/<日時>_identity_auth/migration.sql`を生成する(部分一意索引を含む)。マイグレーションはmainの最新を取り込んでから生成し、並行specのマイグレーションと番号やスナップショットが衝突したら生成し直す。
+- `apps/db/schema/index.ts`・`index.unit.test.ts` — identityのテーブルを再エクスポートし、テーブル名の一覧を完全一致で確かめる単体テストの期待に8テーブルを加える。`apps/db/migrations/<日時>_identity_auth/migration.sql`を生成する(部分一意索引を含む)。マイグレーションはmainの最新を取り込んでから生成し、並行specのマイグレーションと番号やスナップショットが衝突したら生成し直す。
 - `apps/backend-lib/core/messaging/contracts/index.ts` — 2つのメッセージ契約を`MESSAGE_CONTRACTS`へ加える。
-- `apps/backend-lib/core/email/kinds/index.ts` — 7つのメール種別を`EMAIL_KINDS`へ加える。
-- `apps/frontend-lib/server/relay/relay-contract.ts`・`relay-headers.unit.test.ts` — `FORWARDED_BROWSER_HEADERS`に`user-agent`を加え、ブラウザのUser-Agentが中継され、偽の内部ヘッダーは引き続き除かれることを確かめる。
-- `apps/frontend-lib/package.json`・`apps/client/package.json`・`apps/admin/package.json`(各`bun.lock`) — `uqr` 0.1.3を版固定で加える。
-- `apps/api/src/presentation/graphql/gateway-server.ts`・`graphql-context.ts`・`graphql-module.ts`(各テスト) — `userAgent`を要求から文脈へ渡す。
+- `apps/backend-lib/core/email/kinds/index.ts`・`apps/event/src/infrastructure/email/templates/index.ts` — 7つのメール種別を`EMAIL_KINDS`へ、7つのテンプレートを`EMAIL_TEMPLATES`へ同じ変更で加える。eventの`createEmailTemplateRegistry`は、テンプレートの無い種別が`EMAIL_KINDS`にあるとモジュールの読み込みで例外を投げ、apiの送信は`EMAIL_KINDS`の登録を使うため、どちらか一方だけを先に加えない(email-deliveryの`external/001`)。
+- `apps/frontend-lib/server/relay/relay-contract.ts`・`relay-contract.unit.test.ts`・`relay-headers.unit.test.ts` — `FORWARDED_BROWSER_HEADERS`に`user-agent`を加える。一覧を完全一致で確かめる`relay-contract.unit.test.ts`の期待に加え、`user-agent`が除かれることを確かめている`relay-headers.unit.test.ts`の期待を、ブラウザのUser-Agentが中継され偽の内部ヘッダーは引き続き除かれる形に改める。サーバー側の描画の取得(`execute-graphql.server.ts`)はブラウザのヘッダーを中継しないため、User-AgentがAPIサーバーへ届くのはブラウザからの`/_bff/graphql`だけである。セッションを発行する操作(登録・ログイン・確定)はブラウザから送るため、要件(8.4)を満たす。
+- `docs/GUIDES/tech/frontend/003-frontend-server-security.md` — 中継するブラウザのヘッダーの表に`user-agent`を加える。
+- `apps/frontend-lib/package.json`・`apps/client/package.json`・`apps/admin/package.json`(各`bun.lock`)・各`vitest.browser.config.ts` — `uqr` 0.1.3を版固定で加え、3つのアプリのブラウザテストの事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)に`uqr`を加える。
+- `apps/api/src/presentation/graphql/gateway-server.ts`・`graphql-context.ts`・`graphql-module.ts`(各テスト) — `GatewayRequestScope`・`GraphQLContextScope`・`GraphQLContext`に必須の`userAgent: string | undefined`を加え、要求から文脈へ渡す。文脈をリテラルで組む既存のWorkers統合テスト5件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`)の組み立てに`userAgent`を足す。
 - `apps/api/src/application/session/session-view.ts`(新規、api-gatewayの契約への追記)・`apps/api/src/presentation/gateway/session-access.ts` — `SessionView`を定義し、`SessionAccess`が`SessionView`を拡張する形に改める。`SessionAccess`の形は変えない。既に`SessionView`があれば形を確かめるだけにする(横断レビューR3-1)。
 - `apps/api/src/composition/session.ts` — `SESSION_BINDINGS`を`SubjectSessionVerifier`の振り分けへ差し替え、`AUTH_TYPES.UserSessionVerifier`・`AUTH_TYPES.AdminSessionVerifier`(既定は無効)を束縛する。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`email-registrations.ts`・`env-schema.ts` — identityのモジュール、スキーマモジュール、4つのジョブ(4:21の3つと16:21の送り直し)、`USER_ADDRESS_DIRECTORY`の差し替え、`CLIENT_SITE_ORIGIN`・`LOGIN_ATTEMPT_THROTTLE`・任意の`DISIFY_API_KEY`の検証を加える。
-- `apps/api/src/composition/uploader-eligibility.ts`(media-pipelineが作る) — `UPLOAD_ACCESS_TYPES.UploaderEligibility`の束縛を、`AllowAllUploaderEligibility`から`IDENTITY_TYPES.AccountUploaderEligibility`への転送に差し替える。他の束縛は変えない(4.7)。
-- `apps/api/src/index.ts` — `LoginAttemptThrottle`を名前付きでエクスポートする。
+- `apps/api/src/composition/uploader-eligibility.ts`(media-pipelineが作る)・`apps/api/test/config/media-registrations.unit.test.ts` — `UPLOAD_ACCESS_TYPES.UploaderEligibility`の束縛を、`AllowAllUploaderEligibility`から`IDENTITY_TYPES.AccountUploaderEligibility`への転送に差し替える。他の束縛は変えない(4.7)。既定の全許可の束縛を前提にするテストは登録箇所の既定値の単体テストだけで、その期待を差し替え後の束縛に改める。アップロードの経路のWorkers統合テストは判定を自分で束縛するため変えない。
+- `apps/api/src/composition/scheduled-jobs.ts`の4:21の予算(`SCHEDULED_RUN_BUDGETS`) — 値と件数は変えない。本specの4:21の3つのジョブは、上流のジョブと同じ1つの予算(合計300秒で警告)を共有する。16:21には予算を置かない(`test/config/cron-sync.unit.test.ts`の「予算は1件」を保つ)。
+- `apps/api/src/composition/search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts` — 4:21のジョブの名前の一覧を完全一致で確かめる期待に、本specの3つのジョブを加える(media-pipelineのtasks.mdの申し送り)。
+- `apps/api/src/index.ts`・`src/index.worker.test.ts` — `LoginAttemptThrottle`を名前付きでエクスポートし、エクスポートの一覧を完全一致で確かめるWorkers統合テストの期待に加える。
+- `apps/api/test/config/wrangler-config.unit.test.ts` — apiの`vars`・Durable Objectsのバインディング・`migrations`を完全一致で確かめる期待に、`CLIENT_SITE_ORIGIN`・`LOGIN_ATTEMPT_THROTTLE`・`v2`のタグを加える(開発者の決定により、専用のテストファイルへ切り出さず共通のテストの期待を直す)。
 - `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 3環境の`durable_objects.bindings`に`LOGIN_ATTEMPT_THROTTLE`、`migrations`に`LoginAttemptThrottle`のタグ、`vars`に`CLIENT_SITE_ORIGIN`を加え、型を生成し直す。ルートの`triggers.crons`(環境へ継承)に、送り直しの業務時刻16:21のcron式`21 0 * * *`を加える(新しいcron式で、本specの実装時に加える。backend-platformのcronの一致の検査が3環境の実効値で確かめる)。
 - `apps/api/package.json`・`bun.lock` — `otpauth` 9.5.2・`bowser` 2.14.1を版固定で加える。
-- `apps/api/eslint.config.ts`・`test/config/layer-rules.unit.test.ts` — `auth`の各層から`identity`の各層へのimportを禁止する規則と違反例を加える。
+- `apps/api/eslint.config.ts`・`test/config/layer-rules.unit.test.ts` — `auth`の各層から`identity`の各層へのimportを禁止する規則と違反例を加える。同じファイルに当たる後の設定の`no-restricted-imports`は層の規則のオプションを置き換えるため、`auth`の各層の規則には、その層の層の規則のパターン(`createBackendLayerRules`の該当する層の`patterns`)を含め直す(`BUN_LOADED_GRAPHQL_RULES`と同じ扱い)。`@typescript-eslint/no-restricted-imports`の設定が同じファイルに当たる場合も同じく含め直す。違反例には、`auth`から`identity`への読み込みと、含め直した層の規則(例: `application/auth`から`**/lib/workers/**`)の両方を加える。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`env-schema.ts` — identityのモジュール、2つのメッセージの処理、任意の`DISIFY_API_KEY`を加える。
 - `apps/api/src/composition/modules.ts`・`apps/event/src/composition/modules.ts` — 両アプリの`MODULES`に`IDENTITY_PLATFORM_MODULE`(`UserContactDirectory`・`AccountExport`・`AdminUserDirectory`の束縛)を加える(spec横断レビュー、2026-10-23・2026-10-24)。
-- `apps/event/src/infrastructure/email/templates/index.ts` — 7つのテンプレートを`EMAIL_TEMPLATES`へ加える。
 - `apps/client/src/routes/__root.tsx` — `beforeLoad`で`viewer`を取得して文脈に入れる(取得の失敗は未ログインとして扱う)。
-- `apps/client/src/composition/layout-slots.ts` — `headerAccount`・`headerLaunchAction`・`belowHeader`を本specの部品に差し替える。
+- `docs/GUIDES/tech/frontend/006-data-fetching.md` — 「`beforeLoad`では取得しない」の規則に、認証の判定に要る1件の取得だけはルートの`beforeLoad`でクエリのキャッシュを通して行ってよい例外を加える(開発者の決定)。例外の条件は、(1)ルート(`__root`)の`beforeLoad`だけで行う、(2)`queryClient.fetchQuery`でキャッシュを通し、同じ値を待つ2回目以降の遷移では取得しない、(3)失敗を例外にせず未ログインとして扱う(`ensureQueryData`の失敗はエラーの画面になるため使わない)、(4)子のルートの`beforeLoad`は文脈の値で判定するだけで取得しない、の4つとする。プロジェクト名と固有の値は書かない。
+- `apps/frontend-lib/components/ui/checkbox/checkbox.tsx`(新規)・`docs/GUIDES/tech/frontend/005-shared-components.md` — shadcn/uiのCheckboxを`components/ui/<部品>/<部分>.tsx`の配置で加える。「部品の一覧」の表に、管理者側も使う認証の画面部品の行`components/auth/`(TOTPのQRコード・リカバリコードの一覧・パスワードの入力欄)と、`components/ui/`の行にCheckboxを加える。
+- `apps/client/src/composition/layout-slots.ts` — `headerAccount`・`headerLaunchAction`・`belowHeader`を本specの部品に差し替える。区画は引数を取らない`ComponentType`で、768px未満ではヘッダーとメニューの`Sheet`に2回描かれ、エラーと404のページにも描かれる(frontend-platformのタスク6.4の申し送り)。そのため部品は`viewer`をフックで読み、固定の`id`を使わない。既定の部品(素の`<a href>`)と異なり、本specの部品は本specの経路へ`Link`で遷移する。
 - `docs/GUIDES/tech/{security,external,backend}/README.md` — 新しい文書を1行ずつ追記する。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧にログイン試行の記録・ライフサイクルイベントの記録の行を加え、ログインセッションの削除方法を「アイドル期限または絶対期限の超過後」に直す。ログイン試行の記録の行は、infra-deliveryが書くDurable Objectsの保存場所の記述「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」と表現をそろえ、「ハッシュ化したキーと回数だけの一時的な値」とする。保存場所の記述と、プライバシーポリシー骨子の国外移転の記載事項のCloudflareの項(infra-deliveryが所有、横断レビューN-1)は書き換えない。
 - `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 本specが使う委託先のDISIFY・Have I Been Pwnedへは個人を識別できる情報を渡さないため国外移転の対象外である旨が、infra-deliveryの「移転先の国」の行の改訂の後も残っていることを確かめ、無ければ両委託先の分だけ書き加える。Cloudflareの項(Turnstileを含む)と他の委託先の項は書き換えない(横断レビューN-1、roadmapの「国外移転の記載」)。
@@ -671,7 +677,7 @@ sequenceDiagram
 | 1.1, 1.2, 1.3, 1.4, 1.5, 1.8             | 登録と入力の検証・同意・重複                 | Registration、AccountInputRules、IdentityInputs、UserAccountStore、IdentitySchema、RegisterForm                          | `registerUser`、`Registration.execute`                                   | 登録とメールアドレスの確認     |
 | 1.6, 1.7                                 | ハンドルと仮名化ID                           | Registration、InitialHandleFormat、HandleAvailability、SecretGenerator、IdentitySchema                                   | `HandleAvailability.isAvailable`、`SecretGenerator.handle`               | 登録とメールアドレスの確認     |
 | 2.1, 2.2, 2.3, 2.4, 2.9                  | 確認メール・確定・再送                       | EmailVerification、AuthTokenStore、IdentityMailer、LinkConfirmation、VerifyEmailBanner                                   | `verifyEmail`・`resendVerificationEmail`                                 | 登録とメールアドレスの確認     |
-| 2.5, 2.6, 2.7, 2.8, 2.10                 | 送信回数の制限                               | MailSendLimits、RateLimitCounterClient(上流)                                                                             | `MailSendLimits.consume`                                                 | 登録とメールアドレスの確認     |
+| 2.5, 2.6, 2.7, 2.8, 2.10                 | 送信回数の制限                               | MailSendLimits・CounterMailSendLimits、RateLimitCounterClient(上流)                                                      | `MailSendLimits.consume`                                                 | 登録とメールアドレスの確認     |
 | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6             | 使い捨て判定と判定し直し                     | DisposableEmailCheck、DisifyClient、DisposableEmailRecheckHandler、DisposableRecheckSweepJob                             | `DisposableEmailChecker.check`、`identity.recheck-disposable-email`      | 登録とメールアドレスの確認     |
 | 4.1, 4.2, 4.3, 4.4, 4.5, 4.6             | 機能制限と可視ユーザー                       | AccountGuard、UserAccountRules、IdentityVisibility、Withdrawal、SettingsShell、SessionViewContract                       | `AccountGuard`、`visibleUsers`・`verifiedUsers`                          | —                              |
 | 4.7                                      | アップロードできる利用者の判定               | AccountUploaderEligibility、UserAccountRules、ApiIdentityComposition、SessionViewContract                                | media-pipelineの`UploaderEligibility`                                    | アップロードできる利用者の判定 |
@@ -708,70 +714,70 @@ sequenceDiagram
 | 4.8                                      | 後続specへの利用者の連絡先の照会             | UserContactDirectory、D1UserContactDirectory、IdentityPlatformModule                                                     | `UserContactDirectory.findContact`                                       | —                              |
 | 4.9                                      | データエクスポートのアカウントの部分の照会   | AccountExport、D1AccountExport、IdentityPlatformModule                                                                   | `AccountExport.find`                                                     | —                              |
 | 4.10                                     | 管理画面の利用者の検索・一覧の照会(仮7)      | AdminUserDirectory、D1AdminUserDirectory、IdentityPlatformModule                                                         | `AdminUserDirectory`                                                     | —                              |
-| 1.1, 1.2, 1.3(同意の入力)                | 同意のチェックボックスの共通部品             | RegisterForm、Checkbox(frontend-lib)                                                                                     | `components/ui/checkbox.tsx`                                             | —                              |
+| 1.1, 1.2, 1.3(同意の入力)                | 同意のチェックボックスの共通部品             | RegisterForm、Checkbox(frontend-lib)                                                                                     | `components/ui/checkbox/checkbox.tsx`                                    | —                              |
 
 ## Components and Interfaces
 
-| Component                                                                                                         | Domain/Layer                                                  | Intent                                                       | Req Coverage                                                       | Key Dependencies (P0/P1)                                          | Contracts      |
-| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------- | -------------- |
-| IdentitySchema・IdentityVisibility                                                                                | db                                                            | 8テーブルと絞り込み条件                                      | 1.4, 1.6, 1.7, 4.5, 8.9, 16.1                                      | drizzle-orm・共通カラム (P0)                                      | State          |
-| AccountInputRules                                                                                                 | common-lib                                                    | 入力の上限の定数と判定                                       | 1.1, 1.8, 5.1, 18.10                                               | common-libの書記素の数え方 (P0)                                   | Service        |
-| UserLifecycleContract                                                                                             | backend-lib/core                                              | イベントの型・非同期の波及処理の契約と登録の検証             | 16.1, 16.5, 16.7                                                   | zod・inversifyの型 (P0)                                           | Event, Service |
-| DisposableEmailRules・DisifyClient                                                                                | backend-lib                                                   | ダミーへの置き換え・分類・DISIFYの呼び出し                   | 3.1, 3.2, 3.5                                                      | DISIFY (P1)                                                       | Service        |
-| IdentityMessageContracts                                                                                          | backend-lib/core                                              | 2つのメッセージ種別                                          | 3.3, 16.3                                                          | `defineMessageContract` (P0)                                      | Event          |
-| IdentityEmailKinds                                                                                                | backend-lib/core                                              | 7つのメール種別                                              | 14.6                                                               | `defineEmailKind` (P0)                                            | Event          |
-| D1UserAddressDirectory                                                                                            | backend-lib/workers                                           | email-deliveryの照会口の実装                                 | 15.3                                                               | D1 (P0)                                                           | Service        |
-| UserContactDirectory・D1UserContactDirectory・IdentityPlatformModule                                              | backend-lib/workers                                           | 後続specへの利用者の連絡先の照会(api・event共通の束縛)       | 4.8                                                                | D1 (P0)                                                           | Service        |
-| AccountExport・D1AccountExport                                                                                    | backend-lib/workers                                           | データエクスポートのアカウントの部分と仮名化IDの照会         | 4.9                                                                | D1 (P0)                                                           | Service        |
-| AdminUserDirectory・D1AdminUserDirectory                                                                          | backend-lib/workers                                           | ugc-moderationの管理画面の利用者の検索・一覧・数え上げ(仮7)  | 4.10                                                               | D1 (P0)                                                           | Service        |
-| UserLifecycleStore                                                                                                | backend-lib/workers                                           | イベントと完了の記録                                         | 16.3, 16.4, 16.6, 17.1                                             | D1 (P0)                                                           | State          |
-| PasswordRules・SessionPolicy・LoginThrottleState・RecoveryCodeFormat・SecondFactor                                | api/domain/auth                                               | 主体に依存しない純粋な規則                                   | 5.1, 5.2, 7.2, 7.3, 7.4, 7.6, 8.2, 8.3, 13.3, 19.2                 | なし                                                              | State          |
-| UserAccountRules・InitialHandleFormat・AuthTokenPurpose                                                           | api/domain/identity                                           | 利用者の状態・可視・初期ハンドルの形式・トークンの用途       | 1.6, 4.3, 4.4, 4.5, 4.6, 14.2                                      | なし                                                              | State          |
-| AuthPorts・PasswordPolicy・SecretIssuer・RecoveryCodeIssuer・LoginThrottleKeys                                    | api/application/auth                                          | 認証部品のポートとサービス                                   | 5.3, 5.4, 7.8, 13.4, 14.1, 19.1                                    | KeyedHasher (P0)                                                  | Service        |
-| SubjectSessionVerifier                                                                                            | api/application/auth                                          | 主体別のセッションの検証の振り分け                           | 19.4, 19.5                                                         | api-gatewayの`SessionVerifier` (P0)                               | Service        |
-| Pbkdf2PasswordHasher                                                                                              | api/infrastructure/auth                                       | PBKDF2とペッパー                                             | 5.5, 5.6, 6.3                                                      | Web Crypto・KeyedHasher (P0)                                      | Service        |
-| HibpPwnedPasswordChecker                                                                                          | api/infrastructure/auth                                       | 漏洩パスワードの照合                                         | 5.3, 5.4                                                           | HIBP (P1)                                                         | Service        |
-| LoginAttemptThrottle・DurableLoginThrottle                                                                        | api/infrastructure/auth                                       | ログイン試行の記録                                           | 7.1〜7.8                                                           | Durable Objects (P0)                                              | Service, State |
-| OtpauthTotpAuthenticator・HkdfAesGcmSecretBox                                                                     | api/infrastructure/auth                                       | TOTPと秘密鍵の暗号化                                         | 13.1, 13.3, 13.10                                                  | otpauth・Web Crypto (P0)                                          | Service        |
-| CryptoSecretGenerator・SentryAuthIncidentReporter                                                                 | api/infrastructure/auth                                       | 乱数の秘密・運用者への通知                                   | 1.6, 8.1, 13.3, 14.1, 5.4                                          | Web Crypto・Sentry (P0)                                           | Service        |
-| IdentityPorts・RequestMeta                                                                                        | api/application/identity                                      | ストア・メール・設定値のポート                               | 全般                                                               | —                                                                 | Service        |
-| SessionIssuer・UserSessionVerifier                                                                                | api/application/identity                                      | セッションの発行・再発行・検証                               | 6.1, 8.1, 8.2, 8.3, 10.7, 11.4, 13.7                               | UserSessionStore (P0)                                             | Service        |
-| AccountGuard                                                                                                      | api/application/identity                                      | ログイン・状態・確認の判定                                   | 4.1, 4.3, 4.4                                                      | UserAccountStore (P0)                                             | Service        |
-| AccountUploaderEligibility                                                                                        | api/application/identity                                      | media-pipelineの`UploaderEligibility`の実装                  | 4.7                                                                | UserAccountStore (P0)・media-pipelineの`UploaderEligibility` (P0) | Service        |
-| Registration                                                                                                      | api/application/identity                                      | 登録                                                         | 1.1〜1.8, 2.1, 2.7                                                 | PasswordPolicy・MailSendLimits・HandleAvailability (P0)           | Service        |
-| EmailVerification・DisposableEmailCheck                                                                           | api/application/identity                                      | 確認・再送・使い捨て判定                                     | 2.2〜2.4, 2.9, 3.1〜3.4                                            | AuthTokenStore・DisposableEmailChecker (P0)                       | Service        |
-| MailSendLimits                                                                                                    | api/application/identity                                      | FR-RLMIT-001の回数制限                                       | 2.5〜2.8, 2.10                                                     | RateLimitCounterClient (P0)                                       | Service        |
-| Login                                                                                                             | api/application/identity                                      | パスワード・第2要素・ログアウト                              | 6.1〜6.5, 6.7, 7.5, 7.9                                            | LoginThrottle・PasswordHasher・TotpAuthenticator (P0)             | Service        |
-| ReAuthenticator                                                                                                   | api/application/identity                                      | 重要な操作の本人確認                                         | 7.9, 12.1, 12.2, 12.3                                              | LoginThrottle・PasswordHasher (P0)                                | Service        |
-| SessionManagement・BowserDeviceDescriber                                                                          | api                                                           | 一覧と失効・端末情報                                         | 8.4〜8.7                                                           | UserSessionStore・bowser (P0)                                     | Service        |
-| PasswordReset                                                                                                     | api/application/identity                                      | 要求と完了                                                   | 9.1〜9.6                                                           | AuthTokenStore・PasswordPolicy (P0)                               | Service        |
-| EmailChange                                                                                                       | api/application/identity                                      | 要求と確定                                                   | 10.1〜10.7, 3.4                                                    | ReAuthenticator・UserAccountStore (P0)                            | Service        |
-| PasswordChange                                                                                                    | api/application/identity                                      | 要求と確定                                                   | 11.1〜11.5                                                         | ReAuthenticator・AuthTokenStore (P0)                              | Service        |
-| TotpManagement                                                                                                    | api/application/identity                                      | 多要素認証の設定とリカバリコード                             | 13.1〜13.7                                                         | TotpAuthenticator・SecretBox・RecoveryCodeIssuer (P0)             | Service        |
-| Withdrawal                                                                                                        | api/application/identity                                      | 退会                                                         | 4.4, 15.1〜15.3, 15.6                                              | ReAuthenticator・UserLifecycleCommitter (P0)                      | Service        |
-| AdministrativeWithdrawal                                                                                          | api/application/identity                                      | 運営者による退会の操作口                                     | 15.7, 15.8, 15.9                                                   | UserLifecycleCommitter・MessagePublisher (P0)                     | Service        |
-| UserSuspension                                                                                                    | api/application/identity                                      | 停止・停止解除の操作口                                       | 16.8, 16.9, 16.10                                                  | UserLifecycleCommitter (P0)                                       | Service        |
-| PurgeOrchestratorJob・CredentialCleanupJob・DisposableRecheckSweepJob・LifecycleRedispatchJob                     | api/application/identity/jobs                                 | 日次のジョブ                                                 | 8.8, 14.5, 3.3, 16.6, 17.1, 17.4                                   | UserLifecycleStore・各ストア (P0)                                 | Batch          |
-| D1Stores(UserAccount・UserSession・AuthToken・LoginChallenge・TotpCredential・RecoveryCode)・D1HandleAvailability | api/infrastructure/identity                                   | D1の読み書き                                                 | 1.4, 1.6, 2.3, 8.6, 8.7, 9.4, 10.4, 11.3, 13.5, 13.6               | D1 (P0)                                                           | State          |
-| UserLifecycleCommitter                                                                                            | api/infrastructure/identity                                   | 版の検査付きの状態の遷移と同期の波及処理                     | 15.1, 15.2, 15.7, 16.2, 16.8                                       | D1・同期の波及処理 (P0)                                           | Service        |
-| IdentityMailer                                                                                                    | api/infrastructure/identity                                   | 7種のメールとリンクのURL                                     | 2.1, 2.4, 9.2, 9.5, 10.2, 10.6, 11.1, 11.3, 14.4, 14.6             | EmailSender (P0)                                                  | Service        |
-| IdentitySchemaModule(IdentityInputs・IdentityErrors・ResolverSupport・各リゾルバ)                                 | api/presentation                                              | GraphQLの型・入力・エラー・リゾルバ                          | 1.8, 6.8, 12.4〜12.6, 18.10ほか                                    | api-gatewayの`GraphQLContext` (P0)                                | API            |
-| ApiIdentityComposition                                                                                            | api/composition                                               | 束縛・登録箇所・環境・Wrangler設定                           | 4.7, 19.4, 19.5, 8.8, 14.5, 16.6                                   | backend-platform・api-gateway・media-pipelineの登録箇所 (P0)      | State          |
-| UserLifecycleRunner                                                                                               | event/application                                             | 非同期の波及処理の実行器                                     | 16.3, 16.4, 16.5, 16.7, 17.2, 17.3                                 | UserLifecycleStore・登録 (P0)                                     | Batch          |
-| EmailSuppressionCleanupHandler                                                                                    | event/application                                             | 退会時の抑止記録の削除                                       | 15.3                                                               | SuppressionMaintenance (P0)                                       | Event          |
-| DisposableEmailRecheckHandler                                                                                     | event/application                                             | 未判定の判定し直し                                           | 3.3                                                                | DisifyClient (P1)                                                 | Batch          |
-| IdentityPurgeStore・EventIdentityComposition                                                                      | event                                                         | 利用者の行の物理削除・束縛と登録                             | 17.2, 17.3, 17.5, 17.6                                             | D1 (P0)                                                           | State          |
-| IdentityEmailTemplates                                                                                            | event/infrastructure/email                                    | 7種のテンプレート                                            | 14.6                                                               | email-deliveryのレイアウト (P0)                                   | Service        |
-| UserAgentRelay                                                                                                    | 上流の変更(frontend-lib・api)                                 | User-Agentの中継と文脈への受け渡し                           | 8.4, 8.9                                                           | frontend-platform・api-gateway (P0)                               | API            |
-| SessionViewContract                                                                                               | 上流の変更(api/application/session・api/presentation/gateway) | application層が受け取るセッションの読み取りの型`SessionView` | 4.1, 4.3, 4.7                                                      | api-gatewayの`SessionAccess`・`Principal` (P0)                    | Service        |
-| ClientViewer・AuthenticatedLayout・SettingsNavigationRegistry                                                     | client                                                        | ログイン中の利用者・ログイン必須の領域・設定の登録箇所       | 18.2, 18.3, 18.6, 18.7                                             | `executeGraphQL` (P0)                                             | State          |
-| AuthRoutes・各フォーム・LinkConfirmation・LoginRequiredDialog・ReturnPath・FragmentToken・AccountFormSchemas      | client                                                        | 認証画面                                                     | 1.1, 1.2, 2.2, 6.6, 9.1, 9.4, 18.1, 18.4, 18.8, 18.9, 18.10, 18.11 | frontend-platformの部品 (P0)                                      | State          |
-| AccountMenu・LaunchAction・VerifyEmailBanner                                                                      | client                                                        | ヘッダーの区画                                               | 18.2, 18.3, 18.5, 6.7                                              | `SiteLayoutSlots` (P0)                                            | State          |
-| SettingsShell・各設定セクション                                                                                   | client                                                        | 設定ページ                                                   | 4.4, 8.4〜8.7, 10.1, 11.1, 12.1, 13.1〜13.9, 15.1, 15.4, 15.10     | frontend-platformの部品 (P0)                                      | State          |
-| TotpQrCode・RecoveryCodeList・PasswordInput                                                                       | frontend-lib                                                  | 管理者側も使う認証の画面部品                                 | 13.1, 13.3, 13.6, 13.9, 18.11                                      | uqr (P0)                                                          | State          |
-| Checkbox                                                                                                          | frontend-lib/components/ui                                    | shadcn/uiのチェックボックス(登録の同意、paymentsが再利用)    | 1.1, 1.2, 18.11                                                    | radix-ui (P0)                                                     | State          |
-| MailpitSupport・AuthE2E                                                                                           | e2e                                                           | メールの読み取りとE2Eテスト                                  | 20.2                                                               | Playwright・Mailpit (P0)                                          | Batch          |
-| IdentityDocs                                                                                                      | docs                                                          | 技術ドキュメントと関連文書                                   | 20.4, 20.5, 20.6, 20.7                                             | —                                                                 | —              |
+| Component                                                                                                         | Domain/Layer                                                        | Intent                                                       | Req Coverage                                                       | Key Dependencies (P0/P1)                                          | Contracts      |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------- | -------------- |
+| IdentitySchema・IdentityVisibility                                                                                | db                                                                  | 8テーブルと絞り込み条件                                      | 1.4, 1.6, 1.7, 4.5, 8.9, 16.1                                      | drizzle-orm・共通カラム (P0)                                      | State          |
+| AccountInputRules                                                                                                 | common-lib                                                          | 入力の上限の定数と判定                                       | 1.1, 1.8, 5.1, 18.10                                               | common-libの書記素の数え方 (P0)                                   | Service        |
+| UserLifecycleContract                                                                                             | backend-lib/core                                                    | イベントの型・非同期の波及処理の契約と登録の検証             | 16.1, 16.5, 16.7                                                   | zod・inversifyの型 (P0)                                           | Event, Service |
+| DisposableEmailRules・DisifyClient                                                                                | backend-lib                                                         | ダミーへの置き換え・分類・DISIFYの呼び出し                   | 3.1, 3.2, 3.5                                                      | DISIFY (P1)                                                       | Service        |
+| IdentityMessageContracts                                                                                          | backend-lib/core                                                    | 2つのメッセージ種別                                          | 3.3, 16.3                                                          | `defineMessageContract` (P0)                                      | Event          |
+| IdentityEmailKinds                                                                                                | backend-lib/core                                                    | 7つのメール種別                                              | 14.6                                                               | `defineEmailKind` (P0)                                            | Event          |
+| D1UserAddressDirectory                                                                                            | backend-lib/workers                                                 | email-deliveryの照会口の実装                                 | 15.3                                                               | D1 (P0)                                                           | Service        |
+| UserContactDirectory・D1UserContactDirectory・IdentityPlatformModule                                              | backend-lib/core(契約)・workers(D1の実装)                           | 後続specへの利用者の連絡先の照会(api・event共通の束縛)       | 4.8                                                                | D1 (P0)                                                           | Service        |
+| AccountExport・D1AccountExport                                                                                    | backend-lib/core(契約)・workers(D1の実装)                           | データエクスポートのアカウントの部分と仮名化IDの照会         | 4.9                                                                | D1 (P0)                                                           | Service        |
+| AdminUserDirectory・D1AdminUserDirectory                                                                          | backend-lib/core(契約)・workers(D1の実装)                           | ugc-moderationの管理画面の利用者の検索・一覧・数え上げ(仮7)  | 4.10                                                               | D1 (P0)                                                           | Service        |
+| UserLifecycleStore                                                                                                | backend-lib/core(契約)・workers(D1の実装)                           | イベントと完了の記録                                         | 16.3, 16.4, 16.6, 17.1                                             | D1 (P0)                                                           | State          |
+| PasswordRules・SessionPolicy・LoginThrottleState・RecoveryCodeFormat・SecondFactor                                | api/domain/auth                                                     | 主体に依存しない純粋な規則                                   | 5.1, 5.2, 7.2, 7.3, 7.4, 7.6, 8.2, 8.3, 13.3, 19.2                 | なし                                                              | State          |
+| UserAccountRules・InitialHandleFormat・AuthTokenPurpose                                                           | api/domain/identity                                                 | 利用者の状態・可視・初期ハンドルの形式・トークンの用途       | 1.6, 4.3, 4.4, 4.5, 4.6, 14.2                                      | なし                                                              | State          |
+| AuthPorts・PasswordPolicy・SecretIssuer・RecoveryCodeIssuer・LoginThrottleKeys                                    | api/application/auth                                                | 認証部品のポートとサービス                                   | 5.3, 5.4, 7.8, 13.4, 14.1, 19.1                                    | KeyedHasher (P0)                                                  | Service        |
+| SubjectSessionVerifier                                                                                            | api/application/auth                                                | 主体別のセッションの検証の振り分け                           | 19.4, 19.5                                                         | api-gatewayの`SessionVerifier` (P0)                               | Service        |
+| Pbkdf2PasswordHasher                                                                                              | api/infrastructure/auth                                             | PBKDF2とペッパー                                             | 5.5, 5.6, 6.3                                                      | Web Crypto・KeyedHasher (P0)                                      | Service        |
+| HibpPwnedPasswordChecker                                                                                          | api/infrastructure/auth                                             | 漏洩パスワードの照合                                         | 5.3, 5.4                                                           | HIBP (P1)                                                         | Service        |
+| LoginAttemptThrottle・DurableLoginThrottle                                                                        | api/infrastructure/auth                                             | ログイン試行の記録                                           | 7.1〜7.8                                                           | Durable Objects (P0)                                              | Service, State |
+| OtpauthTotpAuthenticator・HkdfAesGcmSecretBox                                                                     | api/infrastructure/auth                                             | TOTPと秘密鍵の暗号化                                         | 13.1, 13.3, 13.10                                                  | otpauth・Web Crypto (P0)                                          | Service        |
+| CryptoSecretGenerator・SentryAuthIncidentReporter                                                                 | api/infrastructure/auth                                             | 乱数の秘密・運用者への通知                                   | 1.6, 8.1, 13.3, 14.1, 5.4                                          | Web Crypto・Sentry (P0)                                           | Service        |
+| IdentityPorts・RequestMeta                                                                                        | api/application/identity                                            | ストア・メール・設定値のポート                               | 全般                                                               | —                                                                 | Service        |
+| SessionIssuer・UserSessionVerifier                                                                                | api/application/identity                                            | セッションの発行・再発行・検証                               | 6.1, 8.1, 8.2, 8.3, 10.7, 11.4, 13.7                               | UserSessionStore (P0)                                             | Service        |
+| AccountGuard                                                                                                      | api/application/identity                                            | ログイン・状態・確認の判定                                   | 4.1, 4.3, 4.4                                                      | UserAccountStore (P0)                                             | Service        |
+| AccountUploaderEligibility                                                                                        | api/application/identity                                            | media-pipelineの`UploaderEligibility`の実装                  | 4.7                                                                | UserAccountStore (P0)・media-pipelineの`UploaderEligibility` (P0) | Service        |
+| Registration                                                                                                      | api/application/identity                                            | 登録                                                         | 1.1〜1.8, 2.1, 2.7                                                 | PasswordPolicy・MailSendLimits・HandleAvailability (P0)           | Service        |
+| EmailVerification・DisposableEmailCheck                                                                           | api/application/identity                                            | 確認・再送・使い捨て判定                                     | 2.2〜2.4, 2.9, 3.1〜3.4                                            | AuthTokenStore・DisposableEmailChecker (P0)                       | Service        |
+| MailSendLimits                                                                                                    | api/application/identity(ポート)・api/infrastructure/identity(実装) | FR-RLMIT-001の回数制限                                       | 2.5〜2.8, 2.10                                                     | RateLimitCounterClient(実装だけが使う) (P0)                       | Service        |
+| Login                                                                                                             | api/application/identity                                            | パスワード・第2要素・ログアウト                              | 6.1〜6.5, 6.7, 7.5, 7.9                                            | LoginThrottle・PasswordHasher・TotpAuthenticator (P0)             | Service        |
+| ReAuthenticator                                                                                                   | api/application/identity                                            | 重要な操作の本人確認                                         | 7.9, 12.1, 12.2, 12.3                                              | LoginThrottle・PasswordHasher (P0)                                | Service        |
+| SessionManagement・BowserDeviceDescriber                                                                          | api                                                                 | 一覧と失効・端末情報                                         | 8.4〜8.7                                                           | UserSessionStore・bowser (P0)                                     | Service        |
+| PasswordReset                                                                                                     | api/application/identity                                            | 要求と完了                                                   | 9.1〜9.6                                                           | AuthTokenStore・PasswordPolicy (P0)                               | Service        |
+| EmailChange                                                                                                       | api/application/identity                                            | 要求と確定                                                   | 10.1〜10.7, 3.4                                                    | ReAuthenticator・UserAccountStore (P0)                            | Service        |
+| PasswordChange                                                                                                    | api/application/identity                                            | 要求と確定                                                   | 11.1〜11.5                                                         | ReAuthenticator・AuthTokenStore (P0)                              | Service        |
+| TotpManagement                                                                                                    | api/application/identity                                            | 多要素認証の設定とリカバリコード                             | 13.1〜13.7                                                         | TotpAuthenticator・SecretBox・RecoveryCodeIssuer (P0)             | Service        |
+| Withdrawal                                                                                                        | api/application/identity                                            | 退会                                                         | 4.4, 15.1〜15.3, 15.6                                              | ReAuthenticator・UserLifecycleCommitter (P0)                      | Service        |
+| AdministrativeWithdrawal                                                                                          | api/application/identity                                            | 運営者による退会の操作口                                     | 15.7, 15.8, 15.9                                                   | UserLifecycleCommitter・IdentityMessagePublisher (P0)             | Service        |
+| UserSuspension                                                                                                    | api/application/identity                                            | 停止・停止解除の操作口                                       | 16.8, 16.9, 16.10                                                  | UserLifecycleCommitter (P0)                                       | Service        |
+| PurgeOrchestratorJob・CredentialCleanupJob・DisposableRecheckSweepJob・LifecycleRedispatchJob                     | api/application/identity/jobs                                       | 日次のジョブ                                                 | 8.8, 14.5, 3.3, 16.6, 17.1, 17.4                                   | UserLifecycleStore・各ストア・IdentityMessagePublisher (P0)       | Batch          |
+| D1Stores(UserAccount・UserSession・AuthToken・LoginChallenge・TotpCredential・RecoveryCode)・D1HandleAvailability | api/infrastructure/identity                                         | D1の読み書き                                                 | 1.4, 1.6, 2.3, 8.6, 8.7, 9.4, 10.4, 11.3, 13.5, 13.6               | D1 (P0)                                                           | State          |
+| UserLifecycleCommitter                                                                                            | api/infrastructure/identity                                         | 版の検査付きの状態の遷移と同期の波及処理                     | 15.1, 15.2, 15.7, 16.2, 16.8                                       | D1・同期の波及処理 (P0)                                           | Service        |
+| IdentityMailer                                                                                                    | api/infrastructure/identity                                         | 7種のメールとリンクのURL                                     | 2.1, 2.4, 9.2, 9.5, 10.2, 10.6, 11.1, 11.3, 14.4, 14.6             | EmailSender (P0)                                                  | Service        |
+| IdentitySchemaModule(IdentityInputs・IdentityErrors・ResolverSupport・各リゾルバ)                                 | api/presentation                                                    | GraphQLの型・入力・エラー・リゾルバ                          | 1.8, 6.8, 12.4〜12.6, 18.10ほか                                    | api-gatewayの`GraphQLContext` (P0)                                | API            |
+| ApiIdentityComposition                                                                                            | api/composition                                                     | 束縛・登録箇所・環境・Wrangler設定                           | 4.7, 19.4, 19.5, 8.8, 14.5, 16.6                                   | backend-platform・api-gateway・media-pipelineの登録箇所 (P0)      | State          |
+| UserLifecycleRunner                                                                                               | event/application                                                   | 非同期の波及処理の実行器                                     | 16.3, 16.4, 16.5, 16.7, 17.2, 17.3                                 | UserLifecycleStore・登録 (P0)                                     | Batch          |
+| EmailSuppressionCleanupHandler                                                                                    | event/application                                                   | 退会時の抑止記録の削除                                       | 15.3                                                               | SuppressionMaintenance (P0)                                       | Event          |
+| DisposableEmailRecheckHandler                                                                                     | event/application                                                   | 未判定の判定し直し                                           | 3.3                                                                | DisifyClient (P1)                                                 | Batch          |
+| IdentityPurgeStore・EventIdentityComposition                                                                      | event                                                               | 利用者の行の物理削除・束縛と登録                             | 17.2, 17.3, 17.5, 17.6                                             | D1 (P0)                                                           | State          |
+| IdentityEmailTemplates                                                                                            | event/infrastructure/email                                          | 7種のテンプレート                                            | 14.6                                                               | email-deliveryのレイアウト (P0)                                   | Service        |
+| UserAgentRelay                                                                                                    | 上流の変更(frontend-lib・api)                                       | User-Agentの中継と文脈への受け渡し                           | 8.4, 8.9                                                           | frontend-platform・api-gateway (P0)                               | API            |
+| SessionViewContract                                                                                               | 上流の変更(api/application/session・api/presentation/gateway)       | application層が受け取るセッションの読み取りの型`SessionView` | 4.1, 4.3, 4.7                                                      | api-gatewayの`SessionAccess`・`Principal` (P0)                    | Service        |
+| ClientViewer・AuthenticatedLayout・SettingsNavigationRegistry                                                     | client                                                              | ログイン中の利用者・ログイン必須の領域・設定の登録箇所       | 18.2, 18.3, 18.6, 18.7                                             | `executeGraphQL` (P0)                                             | State          |
+| AuthRoutes・各フォーム・LinkConfirmation・LoginRequiredDialog・ReturnPath・FragmentToken・AccountFormSchemas      | client                                                              | 認証画面                                                     | 1.1, 1.2, 2.2, 6.6, 9.1, 9.4, 18.1, 18.4, 18.8, 18.9, 18.10, 18.11 | frontend-platformの部品 (P0)                                      | State          |
+| AccountMenu・LaunchAction・VerifyEmailBanner                                                                      | client                                                              | ヘッダーの区画                                               | 18.2, 18.3, 18.5, 6.7                                              | `SiteLayoutSlots` (P0)                                            | State          |
+| SettingsShell・各設定セクション                                                                                   | client                                                              | 設定ページ                                                   | 4.4, 8.4〜8.7, 10.1, 11.1, 12.1, 13.1〜13.9, 15.1, 15.4, 15.10     | frontend-platformの部品 (P0)                                      | State          |
+| TotpQrCode・RecoveryCodeList・PasswordInput                                                                       | frontend-lib                                                        | 管理者側も使う認証の画面部品                                 | 13.1, 13.3, 13.6, 13.9, 18.11                                      | uqr (P0)                                                          | State          |
+| Checkbox                                                                                                          | frontend-lib/components/ui/checkbox                                 | shadcn/uiのチェックボックス(登録の同意、paymentsが再利用)    | 1.1, 1.2, 18.11                                                    | radix-ui (P0)                                                     | State          |
+| MailpitSupport・AuthE2E                                                                                           | e2e                                                                 | メールの読み取りとE2Eテスト                                  | 20.2                                                               | Playwright・Mailpit (P0)                                          | Batch          |
+| IdentityDocs                                                                                                      | docs                                                                | 技術ドキュメントと関連文書                                   | 20.4, 20.5, 20.6, 20.7                                             | —                                                                 | —              |
 
 ### db
 
@@ -951,11 +957,12 @@ export type DisifyOutcome =
 export declare function classifyDisifyOutcome(
   outcome: DisifyOutcome,
 ): DisposableEmailStatus;
-
-// workers/identity/disify-client.ts
+// application層(api・event)が受け取る契約。application層はworkersを読み込めないためcoreに置く
 export interface DisposableEmailChecker {
   check(email: string): Promise<DisposableEmailStatus>; // 例外を投げない
 }
+
+// workers/identity/disify-client.ts
 export interface DisifyClientOptions {
   readonly fetch: HttpFetch;
   readonly apiKey: string | undefined; // DISIFY_API_KEY(仮6)
@@ -989,6 +996,7 @@ export declare function createDisifyClient(
 
 - 入力の日時はISO 8601(UTC)の文字列、URLは`https:`または`http://localhost`で始まる文字列としてzodで検証する。
 - 期限付きのリンクを含む4種は、送信要求の`deadline`にトークンの有効期限を渡す(14.4、email-deliveryのQ4)。
+- 登録の順: 7つの種別の`EMAIL_KINDS`への追加と、eventの7つのテンプレート(「IdentityEmailTemplates」)の`EMAIL_TEMPLATES`への追加を同じ変更で行う。eventの`createEmailTemplateRegistry`はテンプレートの無い種別があるとモジュールの読み込みで例外を投げ、apiの送信(`EMAIL_PLATFORM_MODULE`の種別の登録)は`EMAIL_KINDS`に無い種別を送れないため、どちらか一方を先に加えるとeventの起動かapiの送信が失敗する(開発者の決定で、種別とテンプレートを1つのタスクで作る)。
 
 #### D1UserAddressDirectory
 
@@ -1014,7 +1022,7 @@ export declare class D1UserAddressDirectory implements UserAddressDirectory {
 **Contracts**: Service [x]
 
 ```typescript
-// workers/identity/user-contact-directory.ts
+// core/identity/ports.ts
 export interface UserContact {
   readonly userId: string;
   readonly email: string;
@@ -1025,7 +1033,7 @@ export interface UserContactDirectory {
   // 退会済み・物理削除済みの利用者はundefined。停止中の利用者は返す
   findContact(userId: string): Promise<UserContact | undefined>;
 }
-// workers/identity/identity-platform-types.ts
+// core/identity/identifiers.ts
 export declare const IDENTITY_PLATFORM_TYPES: {
   readonly UserContactDirectory: symbol;
   readonly AccountExport: symbol;
@@ -1040,7 +1048,7 @@ export declare const IDENTITY_PLATFORM_MODULE: AppModule; // UserContactDirector
 ```
 
 - `findContact`: `users`から`id = ? AND deleted_at IS NULL`の1行の`email`・`nickname`・`email_verified_at`を読み、`emailVerified`は`email_verified_at IS NOT NULL`とする。行が無い(物理削除済み)・`deleted_at`がある(退会済み)なら`undefined`。`status`は見ないため、停止中の利用者も返す(停止中の利用者にも決済・解約・問い合わせの返信の通知を届けるため)。D1への問い合わせの失敗は例外のまま投げ、呼び出し元(Queueの処理・反映の後の送信)の再試行に任せる。
-- 置き場所: api・eventの両方と`backend-lib/workers/<ドメイン>`(paymentsの`workers/payments`など)から読み込めるよう、契約・識別子・実装を`apps/backend-lib/workers/identity`に置く。apiの`IDENTITY_TYPES`(api専用)・eventの`EVENT_IDENTITY_TYPES`とは別の識別子にする。
+- 置き場所: api・eventのapplication層と`backend-lib/workers/<ドメイン>`(paymentsの`workers/payments`など)の両方から読み込めるよう、契約(`UserContact`・`UserContactDirectory`)は`apps/backend-lib/core/identity/ports.ts`、識別子は`core/identity/identifiers.ts`に置き、D1の実装と束縛だけを`apps/backend-lib/workers/identity`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。識別子は`Symbol.for('identity.<名前>')`の凍結したオブジェクトで、`core/identity/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。apiの`IDENTITY_TYPES`(api専用)・eventの`EVENT_IDENTITY_TYPES`とは別の識別子にし、3つの識別子の集まりは同じ`identity.`の接頭辞を使うため、メンバーの名前を重ねない。
 - 束縛: `IDENTITY_PLATFORM_MODULE`をapi・eventの`composition/modules.ts`の`MODULES`へ加える(email-deliveryの`EMAIL_PLATFORM_MODULE`と同じ形)。束縛の範囲は`PLATFORM_TYPES.Database`と同じにする。
 - 使い方: 後続specは`users`の`email`・`nickname`・`email_verified_at`を直接読まず、`IDENTITY_PLATFORM_TYPES.UserContactDirectory`を`@inject`で受け取る。宛先が`undefined`ならメールを送らない(各specの規則で「送らない」として記録する)。確認済みかどうかで送るかを変えるかは各specが決める。
 - 既存の`D1UserAddressDirectory`(email-deliveryの照会口。メールアドレスからの逆引き)とは用途が異なるため統合しない。
@@ -1055,7 +1063,7 @@ export declare const IDENTITY_PLATFORM_MODULE: AppModule; // UserContactDirector
 **Contracts**: Service [x]
 
 ```typescript
-// workers/identity/account-export.ts
+// core/identity/ports.ts
 export interface AccountExportRecord {
   readonly userId: string;
   readonly pseudonymousId: string; // ZIPには書かない。paymentsのPaymentHistoryExport.listAllへ渡す
@@ -1079,7 +1087,7 @@ export declare class D1AccountExport implements AccountExport {
 - ニックネームとハンドル: `profile.json`の`nickname`・`handle`、`manifest.json`の`user.handle`、ZIPのファイル名のハンドルは、プロフィール編集でそれらを変更するuser-profile-socialのプロフィールの出力用の部品が返す。本specの`AccountExport`は返さない(`users`の列の定義は本specが持つが、変更と表示の持ち主はuser-profile-socialである)。
 - 仮名化ID: data-exportは最初に`find`を呼び、`pseudonymousId`をpaymentsの`PaymentHistoryExport.listAll`へ渡す。仮名化IDはZIPに書かない(文書のIDの方針と`account.json`の項目に無いため)。
 - メールアドレスの確認: データエクスポートの要求は確認済みの利用者に限る(4.1)ため、通常は`emailVerifiedAt`が入っている。`null`のときの扱い(生成を止めるか)はdata-exportが決める。停止中の利用者に生成を認めるかもdata-exportが決める。
-- 置き場所と束縛: `UserContactDirectory`と同じく`apps/backend-lib/workers/identity`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する(ZIPの生成はeventのQueueの処理で行い、要求の受け付けはapiで行うため)。data-exportは`users`・`user_totp_credentials`を直接読まず、`IDENTITY_PLATFORM_TYPES.AccountExport`を`@inject`で受け取る。
+- 置き場所と束縛: `UserContactDirectory`と同じく、契約は`apps/backend-lib/core/identity/ports.ts`、D1の実装は`apps/backend-lib/workers/identity`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する(ZIPの生成はeventのQueueの処理で行い、要求の受け付けはapiで行うため)。data-exportは`users`・`user_totp_credentials`を直接読まず、`IDENTITY_PLATFORM_TYPES.AccountExport`を`@inject`で受け取る。
 
 #### AdminUserDirectory・D1AdminUserDirectory
 
@@ -1091,7 +1099,7 @@ export declare class D1AccountExport implements AccountExport {
 **Contracts**: Service [x]
 
 ```typescript
-// workers/identity/admin-user-directory.ts
+// core/identity/ports.ts
 export type AdminUserStatus = 'active' | 'suspended';
 export interface AdminUserRecord {
   readonly userId: string;
@@ -1124,6 +1132,7 @@ export interface AdminUserDirectory {
   findByEmail(email: string): Promise<AdminUserRecord | undefined>; // 退会していない利用者の完全一致
   countRegisteredAt(at: Date): Promise<number>; // created_at < atかつ(deleted_at IS NULLまたはdeleted_at >= at)
 }
+// workers/identity/d1-admin-user-directory.ts
 export declare class D1AdminUserDirectory implements AdminUserDirectory {
   constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
 }
@@ -1134,7 +1143,7 @@ export declare class D1AdminUserDirectory implements AdminUserDirectory {
 - `findByIds`: 重複を除き、IDのバインド変数を90個以内に分けて読む。退会済み・存在しないIDは結果に含めない。`findByEmail`: 前後の空白を除いた`email = ?`かつ`deleted_at IS NULL`の1行。
 - `countRegisteredAt`: `created_at < ? AND (deleted_at IS NULL OR deleted_at >= ?)`の件数(物理削除済みは数えない)。
 - 値の対応: `registeredAt`は`created_at`、`emailVerified`は`email_verified_at IS NOT NULL`、`disposableEmailStatus`は`disposable_email_status`。メールアドレス・パスワードハッシュ・セッション・TOTPの項目は返さない(メールアドレスは検索の条件にだけ使う)。
-- 置き場所と束縛: `UserContactDirectory`と同じく`apps/backend-lib/workers/identity`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する(eventでは使わないが、置き場所の規則をそろえる)。ugc-moderationは`users`を直接読まず、`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`を`@inject`で受け取る。管理画面とGraphQLの操作はugc-moderationが持つ。
+- 置き場所と束縛: `UserContactDirectory`と同じく、契約は`apps/backend-lib/core/identity/ports.ts`、D1の実装は`apps/backend-lib/workers/identity/d1-admin-user-directory.ts`に置き、`IDENTITY_PLATFORM_MODULE`でapi・eventの両方に束縛する(eventでは使わないが、置き場所の規則をそろえる)。ugc-moderationは`users`を直接読まず、`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`を`@inject`で受け取る。管理画面とGraphQLの操作はugc-moderationが持つ。
 - D1への問い合わせの失敗は例外のまま投げる。
 
 #### UserLifecycleStore
@@ -1149,6 +1158,7 @@ export declare class D1AdminUserDirectory implements AdminUserDirectory {
 ##### State Management
 
 ```typescript
+// core/identity/ports.ts(apiのジョブとeventの実行器のapplication層が受け取る契約)
 export interface StoredLifecycleEvent extends UserLifecycleEvent {
   readonly status: 'pending' | 'completed';
   readonly dispatchCount: number;
@@ -1179,6 +1189,7 @@ export interface UserLifecycleStore {
   ): Promise<readonly string[]>; // 物理削除を始めていない退会ユーザー
   countOverduePurges(deletedBefore: Date): Promise<number>;
 }
+// workers/identity/d1-user-lifecycle-store.ts
 export declare function createUserLifecycleStore(
   db: Database,
   ids: IdGenerator,
@@ -1846,6 +1857,22 @@ export type UserStateTransition =
 export interface UserLifecycleCommitter {
   commit(transition: UserStateTransition): Promise<UserLifecycleEvent>; // 版の競合はAppError(conflict, account_state_conflict)
 }
+// application層は共通ライブラリのworkersの送信部品を読み込めないため、PLATFORM_TYPES.MessagePublisherに束縛された部品をこの形で受け取る
+export interface IdentityMessagePublisher {
+  publish<TType extends string, TBody>(
+    contract: MessageContract<TType, TBody>,
+    body: TBody,
+  ): Promise<string>;
+}
+export type LimitedMailKind =
+  'email_verification' | 'email_change' | 'password_reset';
+export interface MailSendLimits {
+  consume(
+    kind: LimitedMailKind,
+    address: string,
+    meta: RequestMeta,
+  ): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded)
+}
 export declare const IDENTITY_TYPES: {
   readonly UserAccountStore: unique symbol;
   readonly UserSessionStore: unique symbol;
@@ -1885,6 +1912,7 @@ export declare const IDENTITY_TYPES: {
 ```
 
 - `RequestMeta`はリゾルバが`GraphQLContext`の`clientIp`・`userAgent`と`PLATFORM_TYPES.Clock`から作る。
+- `IdentityMessagePublisher`は識別子を持たず、使う側が`@inject(PLATFORM_TYPES.MessagePublisher)`で受け取る(media-pipelineの`MediaJobMessagePublisher`と同じ)。`UserLifecycleStore`・`DisposableEmailChecker`の型は`core/identity`から読み込み、`IDENTITY_TYPES`の識別子で受け取る。application層の各ファイルは`**/lib/workers/**`を読み込まない。
 
 #### SessionIssuer・UserSessionVerifier
 
@@ -2055,17 +2083,17 @@ export interface DisposableEmailCheck {
 ##### Service Interface
 
 ```typescript
-export type LimitedMailKind =
-  'email_verification' | 'email_change' | 'password_reset';
-export interface MailSendLimits {
-  consume(
-    kind: LimitedMailKind,
-    address: string,
-    meta: RequestMeta,
-  ): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded)
+// application/identity/ports.ts の LimitedMailKind・MailSendLimits(「IdentityPorts・RequestMeta」)を実装する
+// infrastructure/identity/counter-mail-send-limits.ts(@injectable())
+export declare class CounterMailSendLimits implements MailSendLimits {
+  constructor(
+    counters: RateLimitCounterClient, // @inject(PLATFORM_TYPES.RateLimitCounterClient)
+    hasher: KeyedHasher, // @inject(PLATFORM_TYPES.KeyedHasher)
+  );
 }
 ```
 
+- 置き場所: ポート`MailSendLimits`はapplication層、実装`CounterMailSendLimits`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`の型が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。`IDENTITY_TYPES.MailSendLimits`を`CounterMailSendLimits`へ束縛し、登録・再送・リセット・変更のユースケースはポートだけを受け取る。実装の振る舞いはWorkers統合テスト(偽の厳密カウンタ)、ユースケースの呼び出しの順は偽のポートによる単体テストで確かめる。
 - backend-platformの`RateLimitCounterClient.hit`を、規則`{ name: 'auth-mail:<kind>:address', limit: 3, windowSeconds: 3600 }`(キーは`toMatchingKey`で正規化したメールアドレス)と`{ name: 'auth-mail:<kind>:ip', limit: 5, windowSeconds: 3600 }`の2つで呼ぶ。キーは`hashRateLimitKey`で作る(2.10)。IPが不明ならIPの規則を省く。
 - 両方を数えてから、どちらかが拒否なら`assertWithinLimit`で429と`Retry-After`を返す(2.6)。期間の始まりから1時間で記録が消えるのは厳密カウンタのアラームによる(2.8)。
 - アカウントの有無・重複の有無を判定する前に数える(2.5、NFR-SECUR-043)。
@@ -2308,7 +2336,7 @@ export interface Withdrawal {
 export declare function commitWithdrawal(
   deps: {
     readonly committer: UserLifecycleCommitter;
-    readonly publisher: MessagePublisher;
+    readonly publisher: IdentityMessagePublisher; // @inject(PLATFORM_TYPES.MessagePublisher)で受け取る
     readonly reporter: AuthIncidentReporter;
   },
   user: UserRecord,
@@ -2332,7 +2360,7 @@ export interface UserSuspension {
 ```
 
 - `withdraw`: `requireUser`(停止中も受け付ける、4.4・仮5)→`assertHuman('withdraw')`→`ReAuthenticator.verify`→`commitWithdrawal`→リゾルバが`session.clear()`。
-- `commitWithdrawal`: `UserLifecycleCommitter.commit({ kind: 'withdraw', expectedVersion: user.lifecycleVersion })`→`MessagePublisher.publish(RUN_USER_LIFECYCLE_MESSAGE, { eventId })`。送信の失敗は`lifecycle-publish-failed`を報告して成功として扱う(日次の再実行で回復、16.6)。本人の退会と運営者による退会は、この関数だけで退会を確定させる(15.7)。
+- `commitWithdrawal`: `UserLifecycleCommitter.commit({ kind: 'withdraw', expectedVersion: user.lifecycleVersion })`→`IdentityMessagePublisher.publish(RUN_USER_LIFECYCLE_MESSAGE, { eventId })`。送信の失敗は`lifecycle-publish-failed`を報告して成功として扱う(日次の再実行で回復、16.6)。本人の退会と運営者による退会は、この関数だけで退会を確定させる(15.7)。
 - `AdministrativeWithdrawal.withdraw`(15.7〜15.9): 呼び出し元が`admin`で、主体が`subjectKind: 'admin'`の認証済みでなければ`AppError({ kind: 'forbidden', code: 'forbidden' })`(15.8)→`UserAccountStore.findById`が無い・退会済みなら`not_found`(15.9)→`commitWithdrawal`。停止中の利用者も受け付け、本人確認・bot判定・Cookieの指示は行わない。管理者の主体の検証はadmin-foundationの`AdminSessionVerifier`、操作の権限の確認と監査ログの記録は呼び出し側(ugc-moderation)が行う。後続のリゾルバは`context.resolve<AdministrativeWithdrawal>(IDENTITY_TYPES.AdministrativeWithdrawal)`で使い、`command`の`caller`・`operator`は`GraphQLContext`から渡す。本specの`identity`のスキーマモジュールには、この操作のミューテーションを加えない。
 - 停止中の利用者の退会: 状態の`suspended`と`suspended_at`を残したまま論理削除する。同じ利用者の停止のイベントの非同期の波及処理が終わってから、退会の非同期の波及処理が始まる(16.4)。退会後は停止解除を受け付けない(16.9)。
 - `suspend`・`unsuspend`: 利用者を読み、既に同じ状態なら`unchanged`(16.8)→`commit`→送信。停止では既存のセッションを消さない(16.10)。
@@ -2358,6 +2386,8 @@ export interface UserSuspension {
 - Trigger: apiのCron Triggers。4:21の3つは`21 12 * * *`、送り直しは`21 0 * * *`(業務時刻16:21=UTC 0:21。本specで新しく加えるcron式で、ルートの`triggers.crons`への追加は本specの実装時に行う)。4:21の`order`はWave 1と上流の他のジョブ(media-pipelineの810〜830、email-deliveryの900、content-processingの2300)と重ならない。16:21は本specの送り直しだけが使う。ジョブの名前と順序は日次タイムラインの「日次バッチ(4:21)の内容」の表に記載する(表が無ければ作る。横断レビューN-3)。16:21の時刻は日次タイムラインの表に行がある。
 - 名前: `<spec名>.<名詞句>`(「UserLifecycleContract」の名前の規約。email-deliveryの`email-delivery.cleanup`・content-processingの`content-processing.keyword-reextraction`と同じ形)。
 - Idempotency: すべての処理は2回実行しても結果が変わらない(`purge_due`は利用者ごとに1件、削除は条件付き)。件数の上限を超えた分は翌日に続ける。
+- 依存: ジョブはapplication層に置き、メッセージの送信は`IdentityMessagePublisher`(`@inject(PLATFORM_TYPES.MessagePublisher)`)、記録は`core/identity`の`UserLifecycleStore`の型で受け取る。`**/lib/workers/**`を読み込まない。
+- 時間の予算: 4:21の3つのジョブは、上流のジョブ(media-pipelineの810〜830・email-deliveryの900・content-processingの2300)と同じ起動で直列に動き、apiの`composition/scheduled-jobs.ts`の4:21の予算(`SCHEDULED_RUN_BUDGETS`、合計300,000msで警告)を共有する。予算の値と件数は変えない。各ジョブの目安は`infra/003`の30秒で、ディスパッチャの要約のログの`durationMs`で確かめる。`identity-auth.credential-cleanup`の削除は、テーブルごとに条件付きの1文で行い、件数の上限を設けない(開発者の決定)。合計が予算を超えたらディスパッチャの警告で検知し、その時点で`infra/003`の分割(対象の列挙とメッセージの処理への分割)を検討する。16:21の送り直しには予算を置かない(`test/config/cron-sync.unit.test.ts`の「予算は1件」を保つ)。
 - 送り直しを4:21から分ける理由(開発者の決定、2026-10-27。email-deliveryのtasks.mdの4.4の申し送り): 4:21にはemail-deliveryの`email-delivery.cleanup`(`order` 900)が同じ起動で動く。送り直した`withdrawn`のイベントがeventで`EmailSuppressionCleanupHandler`(`deleteByAddress`)を後始末と並行して動かすと、後始末がページを読んでから続きの位置を保存するまでの間に削除が完了した場合、退会したアドレスが次に確認できた日の処理で上書きされるまで、email-deliveryの続きの位置の行(`email_cleanup_cursors`)に残る。送り直しを別の時刻にして、日次の起動による重なりを無くす。物理削除の開始(`purge_due`、FR-USER-022)はDR-002により4:21の日次バッチで行い、`deleteByAddress`を呼ばないため4:21に残す。利用者の操作による退会の直後のイベントは任意の時刻に動くため、後始末と同時に動く場合の限界(サービス仕様の準拠方針の注7の例外の文)は残る。
 - 16:21を選んだ理由: (a)4:21の後始末から前後12時間離れ、送り直したイベントの非同期の波及処理が再試行(5回、300秒から倍、上限3600秒で約75分)を使い切っても後始末と重ならない。(b)同じ業務日付の4:21に作った`purge_due`の送信が失敗した場合、「最後の送信から1時間以上」を満たして同じ日のうちに送り直せる。物理削除の開始から14日の期限までの余地は最短19時間39分(業務日付の0:00に退会した場合、期限は13日後の4:21から19時間39分後の0:00)で、16:21の送り直しの後にも7時間39分の余地が残る。(c)既存の業務時刻の枠は使えない。0:00・0:07は(b)の最短の期限(0:00)に間に合わず、23:40・23:45はマッチの確定とペアリングの連鎖(日次タイムラインの「同時刻に走る処理の順序」)に重なり、期限までの余地も15〜20分で再試行に足りない。(d)分は日次バッチと同じ21分にし、毎時0分の混み合いを避ける。
 
@@ -2653,6 +2683,7 @@ export declare const LIFECYCLE_ORDER_WAIT_SECONDS: 60;
 #### IdentityEmailTemplates
 
 - `templates/identity/`に、種別ごとに本文の部品(`*-body.tsx`、1ファイル1コンポーネント)と定義(`*-template.ts`)を置き、`EMAIL_TEMPLATES`へ加える。宛名はニックネーム、日時は`formatUtcDateTime`(UTC表記)。
+- 種別(「IdentityEmailKinds」)と同じ変更で加える(種別だけ、テンプレートだけを先に加えない)。
 - 本文の要点: 確認・変更・リセットの4種は、行動ボタン(「メールアドレスを確認する」「メールアドレスの変更を確定する」「パスワードを再設定する」「パスワードの変更を確定する」)と有効期限、心当たりが無い場合は何もしなくてよい旨。完了の3種は、変更した日時と、心当たりが無い場合の問い合わせ(`/contact`)とパスワードリセットへの案内。
 
 ### 上流の変更
@@ -2664,8 +2695,9 @@ export declare const LIFECYCLE_ORDER_WAIT_SECONDS: 60;
 | Intent       | ブラウザのUser-AgentをAPIのリゾルバまで届ける |
 | Requirements | 8.4, 8.9                                      |
 
-- frontend-platform: `FORWARDED_BROWSER_HEADERS`を`['content-type', 'accept', 'cf-turnstile-response', 'user-agent']`にする。`relay-headers.unit.test.ts`に、ブラウザのUser-Agentが引き継がれることを加える。
-- api-gateway: `GatewayRequestScope`と`GraphQLContext`に`readonly userAgent: string | undefined`を加える。`GraphqlModule`は内部経路の要求(GraphiQLの経路を含む)の`user-agent`を512文字で切って渡す。既存のテストは変えずに、値が届くことのテストを加える。
+- frontend-platform: `FORWARDED_BROWSER_HEADERS`を`['content-type', 'accept', 'cf-turnstile-response', 'user-agent']`にする。一覧を完全一致で確かめる`relay-contract.unit.test.ts`の期待に`user-agent`を加え、`user-agent`が除かれることを確かめている`relay-headers.unit.test.ts`の期待を、ブラウザのUser-Agentが引き継がれ偽の内部ヘッダーは引き続き除かれる形に改める。中継するヘッダーの表(`frontend/003-frontend-server-security.md`)にも加える。
+- 届く範囲: ブラウザからの`/_bff/graphql`の中継だけがUser-Agentを届ける。サーバー側の描画の取得(`execute-graphql.server.ts`)は中継のヘッダーを組み立て直すためUser-Agentを含まず、その要求の`userAgent`は`undefined`になる。セッションを発行・再発行する操作(登録・ログイン・第2要素・確定)はすべてブラウザからのmutationのため、セッションの端末情報(8.4)は満たされる。
+- api-gateway: `GatewayRequestScope`・`GraphQLContextScope`・`GraphQLContext`に、既存の`clientIp`と同じ必須の`readonly userAgent: string | undefined`を加える(開発者の決定。渡し忘れを型検査で検出する)。`GraphqlModule`は内部経路の要求(GraphiQLの経路を含む)の`user-agent`を512文字で切って渡す。文脈をリテラルで組む既存のWorkers統合テスト5件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`)は、組み立てに`userAgent: undefined`などを足すだけにして期待は変えず、値が届くことのテストを加える。
 
 #### SessionViewContract
 
@@ -2732,12 +2764,13 @@ export type ViewerQueryOptions = ReturnType<
 export declare function viewerQueryOptions(): ViewerQueryOptions; // graphqlQueryOptions(ClientViewerDocument, {})
 
 // routes/__root.tsx の beforeLoad の戻り値
+// beforeLoad: context.queryClient.fetchQuery(viewerQueryOptions())をtry/catchで包み、失敗はnullにする
 export interface RootAuthContext {
   readonly viewer: ClientViewer | null; // 取得の失敗はnull(閲覧を止めない)
 }
 
 // routes/_authenticated/route.tsx
-// beforeLoad: viewerがnullなら redirect({ to: '/auth/login', search: { redirect: <現在のパスとクエリ> } })
+// beforeLoad: 取得せず、文脈のviewerがnullなら redirect({ to: '/auth/login', search: { redirect: <現在のパスとクエリ> } })
 export interface AuthenticatedContext {
   readonly viewer: ClientViewer;
 }
@@ -2751,6 +2784,8 @@ export interface SettingsNavItem {
 export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版はaccount・security
 ```
 
+- `beforeLoad`での取得(`006-data-fetching.md`の例外): `006`は「`beforeLoad`は親から順に実行されるため取得しない」と定める。`viewer`はログイン必須の領域の判定と`redirect`に要り、`loader`では子のルートの`loader`より前に判定できないため、開発者の決定により`006`へ例外を加える。例外は、ルートの`beforeLoad`で行う認証の判定に要る1件の取得に限る。`queryClient.fetchQuery`でクエリのキャッシュを通し、`staleTime`の間の遷移では取得しない。`ensureQueryData`は失敗するとエラーの画面になるため使わず、失敗は`null`(未ログイン)として描画を続ける。子のルート(`_authenticated`)の`beforeLoad`は文脈の値で判定するだけで取得しない。
+- ヘッダーの区画の部品は、文脈の`viewer`ではなく`useQuery(viewerQueryOptions())`(ルートの`beforeLoad`がキャッシュに入れた値)で読む。区画は引数を取らない`ComponentType`で、エラーと404のページの`shellComponent`にも描かれるため、文脈の値に頼らない。
 - ログイン・ログアウト・確定の後は、`viewer`の取得を無効にしてルーターを再評価する。
 - `/settings`は最小の`order`の項目へ移動する。ナビゲーションはPC(1024px以上)で左の縦の一覧、それ未満で上の横並び(折り返し)とし、現在の項目を`aria-current="page"`で示す(18.6)。
 - 他specは`/my/products`などのログイン必須の画面を`_authenticated`の下に置く。
@@ -2782,7 +2817,7 @@ export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版�
 - 本人確認の失敗の詳細(`reauthentication_failed`、12.2): APIは詳細を入力の形のとおりの経路で返す(「ReAuthenticator」の節)ため、`serverFieldPrefix="input"`で`input.`を除いた経路(`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`・`reAuthentication.secondFactor.recoveryCode`、入力が`ReAuthenticationInput`の操作は`currentPassword`・`secondFactor.totpCode`など)が描いている欄の名前と一致し、現在のパスワードの欄と描いている第2要素の欄にエラーを示す。第2要素を送らなかった時の詳細(`secondFactor`そのものの経路)は、スキーマが`secondFactor`をオブジェクトとして持てば欄をまとめた値の経路として、持たなければ描かれていない経路として、`onSubmitError`の`unmatched`に入り、フォーム全体の失敗として示す。いずれも送信ボタンは無効のまま残らない。
 - 停止中に入力と送信を無効にするフォーム(メールアドレス変更・パスワード変更、多要素認証の開始・無効化・リカバリコードの再発行)は送信しないため、各欄を`FormField`の`disabled`で無効にし、送信ボタンは`SubmitButton`の`disabled`で無効にする。
 - bot判定は`useTurnstileToken`と`TurnstileWidget`で行い、ウィジェットは非表示(frontend-platformの`size: 'invisible'`)のため、判定の枠の表示と場所を画面に設けない。送信時に`consume()`したトークンを要求に付け、判定の失敗はフォームの`role="alert"`の文言で示す(12.4・12.5)。
-- 登録の同意の入力は、shadcn/uiの`Checkbox`を`apps/frontend-lib/components/ui/checkbox.tsx`に加えて使う(frontend-libの規約どおり1ファイル1コンポーネント・stories・`runAxe`)。既定は未選択で、ラベルの要素と関連付けてキーボードで切り替えられるようにする(1.2・18.11)。paymentsの決済の同意が同じ部品を再利用するため、既にあれば作らずに使う(spec横断レビュー、2026-10-23)。
+- 登録の同意の入力は、shadcn/uiの`Checkbox`を`apps/frontend-lib/components/ui/checkbox/checkbox.tsx`に加えて使う(frontend-libの規約どおり1ファイル1コンポーネント・stories・`runAxe`)。既定は未選択で、ラベルの要素と関連付けてキーボードで切り替えられるようにする(1.2・18.11)。paymentsの決済の同意が同じ部品を再利用するため、既にあれば作らずに使う(spec横断レビュー、2026-10-23)。
 - ログイン中に`/auth/register`・`/auth/login`を開いたら`/`へ移動する(18.4)。
 
 #### AccountMenu・LaunchAction・VerifyEmailBanner
@@ -2790,6 +2825,7 @@ export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版�
 - `AccountMenu`(`headerAccount`): 未ログインは「ログイン」「登録」。ログイン中はアバターの頭文字のボタンからメニュー(プロフィール`/@<ハンドル>`・自身のプロダクト`/my/products`・設定`/settings`・ログアウト)(18.2・18.3・6.7)。
 - `LaunchAction`(`headerLaunchAction`): ログイン中は`/my/products/new`、未ログインは`/auth/login?redirect=/my/products/new`。
 - `VerifyEmailBanner`(`belowHeader`): ログイン中かつ未確認のときだけ、モックアップの帯と文言、「確認メールを再送」(結果をトーストで示し、429は文言規則の文言)(18.5)。
+- 区画の共通の制約(frontend-platformのタスク6.4の申し送り): 3つの部品は`viewer`をフック(`useQuery(viewerQueryOptions())`)で読む。768px未満ではヘッダーとメニューの`Sheet`に2回描かれるため、固定の`id`を使わず、必要なら`useId`で作る。`AccountMenu`のドロップダウンは`Sheet`の中でも操作できるようにする。エラーと404のページにも描かれるため、取得の失敗は未ログインとして描く。既定の部品(`GuestAccountLinks`・`LaunchLink`)は行き先の経路が無かったため素の`<a href>`だが、本specの部品は本specの経路へ`Link`で遷移する。
 
 #### SettingsShell・設定セクション
 
@@ -2937,7 +2973,7 @@ stateDiagram-v2
   - `password-rules`・`account-input-rules`: 7・8・128・129コードポイント、絵文字を含むニックネームの25・26書記素、ハンドル・ニックネーム・ローカル部との大文字小文字を区別しない一致(1.1・5.1・5.2)。
   - `disposable-email`: ローカル部の置き換え、200の`disposable`の真偽、`format: false`・401・429・503・HTMLで`undetermined`(3.1・3.2)。
   - `user-lifecycle`: 名前の形式、重複・同じ種類での`order`の重複の拒否、`order`昇順、各ドメインの帯の値(9999以下)と本specの値(10000以上)の両方を受け付け、本specの波及処理が同じ種類の各ドメインの波及処理の後に並ぶこと(16.1)。
-  - 層の規則(apiの`test/config/layer-rules.unit.test.ts`): `application/identity`から`presentation/gateway/session-access.ts`を型だけで読み込む例が違反として報告され、`application/session/session-view.ts`の読み込みは報告されない(横断レビューR3-1、4.1・4.3・4.7)。
+  - 層の規則(apiの`test/config/layer-rules.unit.test.ts`): `application/identity`から`presentation/gateway/session-access.ts`を型だけで読み込む例が違反として報告され、`application/session/session-view.ts`の読み込みは報告されない(横断レビューR3-1、4.1・4.3・4.7)。`auth`の各層から`identity`の各層への読み込みが報告され、`auth`の規則で含め直した層の規則(`application/auth`から`**/lib/workers/**`など)も引き続き報告される。`application/identity`から`lib/core/identity/ports.ts`の読み込みは報告されない。
   - 各ユースケース(ポートを偽物にする): 登録の順序と重複・送信回数の上限での未作成(1.4・2.7)、パスワードリセットの要求の同一の結果と停止中への不送信(9.1〜9.3)、メールアドレス変更の重複時の不送信(10.3)、本人確認の失敗の記録(7.9・12.2)、第2要素の再使用の拒否(6.5)、停止中の退会の受け付け(4.4・仮5)、運営者による退会が管理者側の呼び出し元と管理者の主体だけを受け付け、停止中の利用者も本人の退会と同じ遷移とメッセージで退会させ、退会済み・存在しない対象を`not_found`にすること(15.7〜15.9)、アップロードできる利用者の判定が停止中・退会済みを`account_unavailable`で拒否し、未確認を許可すること(4.7)、`UserLifecycleRunner`の順序待ち・完了済みの飛ばし・`continue`・物理削除の最後の段階(16.3・16.4・16.7・17.2)。
 - **Integration Tests**(Workers統合テスト):
   - D1のストア: 部分一意索引による退会後の同じメールの再登録(1.5)、ハンドル・仮名化IDの一意、トークンの2回目の消費の失敗(14.2)、`applyEmailChange`の重複時の`email-in-use`(10.5)、`deleteExpired`の境界(8.8・14.5)。
@@ -2950,7 +2986,8 @@ stateDiagram-v2
   - `D1AccountExport`: 通常の利用者で仮名化ID・メールアドレス・確認日時・登録日時(`created_at`)が返る、多要素認証が有効なら`mfaEnabled`が真で、未設定・設定途中の待ちだけなら偽、停止中の利用者も返る、退会済み・存在しない利用者で`undefined`、D1の失敗が例外になる、結果にパスワードハッシュ・TOTPの秘密鍵などの項目が無い(4.9)。
   - `D1AdminUserDirectory`: 退会済みを除き`(created_at, id)`の降順に並ぶ、ハンドル・ニックネームの大文字小文字を区別しない部分一致と`%`・`_`・`\`の逃がし、メールアドレスの前後の空白を除いた大文字小文字を区別しない完全一致(`findByEmail`も同じ)、状態の絞り込み、`limit`の境界(0と51の拒否)とカーソルの続き・不正なカーソルの拒否、`findByIds`の91件以上の分割と退会済みの除外、`findByEmail`の退会済みの除外、`countRegisteredAt`が指定時刻以後の登録を数えず指定時刻以後の退会を数えること、結果にメールアドレス・パスワードハッシュが無いこと(4.10)。
   - `IDENTITY_PLATFORM_MODULE`の束縛: APIサーバーとイベントサーバーのそれぞれのWorkers統合テストで、処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.UserContactDirectory`が`D1UserContactDirectory`に、`IDENTITY_PLATFORM_TYPES.AccountExport`が`D1AccountExport`に、`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`が`D1AdminUserDirectory`に解決される(4.8・4.9・4.10)。
-  - email-deliveryとの結合: 7種のテンプレートが`createEmailTemplateRegistry`に通り、件名と行動ボタンのURLを含む(14.6)。
+  - email-deliveryとの結合: 7種のテンプレートが`createEmailTemplateRegistry`に通り、件名と行動ボタンのURLを含む(14.6)。種別とテンプレートを同じ変更で加えた状態で、eventのモジュールの読み込み(既存のイベントサーバーのWorkers統合テスト)とapiの送信の受付が成功する。
+  - 送信回数の制限: `CounterMailSendLimits`が偽の厳密カウンタに宛先とIPの2つの規則で数え、どちらかの超過で`rate_limit_exceeded`と待ち時間になり、IPが不明ならIPの規則を省く(2.5〜2.8・2.10)。
   - media-pipelineとの結合: 処理単位のコンテナで`UPLOAD_ACCESS_TYPES.UploaderEligibility`が本specの実装に解決され、停止中の利用者のセッションでの`POST /internal/media/uploads/:purpose`(テスト用の用途を登録する)が403・`account_unavailable`になって記録とオブジェクトが残らず、未確認の利用者のアップロードは受け付けられる(4.7)。
 - **E2E/UI Tests**(Playwright、ローカルで起動したapi・event・clientとMailpit):
   - 登録→未確認の帯→Mailpitのリンク→確認→帯が消える(1.1・2.2・18.5)。

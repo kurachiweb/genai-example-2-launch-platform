@@ -4,9 +4,9 @@
 - [ ] 1.1 TOTP・端末情報・QRコードのパッケージを版固定で導入し、実行環境で動くことを確かめる
   - backend-platform・api-gateway・email-delivery・frontend-platformの全タスクが完了していることを前提とする(層構成・登録箇所・GraphQL基盤・メール送信基盤・画面の骨格がある状態)。content-processingへの依存は1.3の前提に示す。media-pipeline(roadmapの依存)のタスク5.1・5.6は8.5だけの前提で、無くても8.5以外のタスクは進める
   - 先に、APIサーバーのWorkers統合テストでTOTPのURIの生成と照合、User-Agentからのブラウザ名・OS名の取得を、frontend-libのブラウザテストでURIからQRコードのセルの行列を得ることを書き、失敗を確かめてから導入する(後のタスクで本来のテストに置き換える)
-  - APIサーバーに`otpauth` 9.5.2と`bowser` 2.14.1、frontend-lib・利用者側・管理者側に`uqr` 0.1.3を、完全に固定した版で導入する
+  - APIサーバーに`otpauth` 9.5.2と`bowser` 2.14.1、frontend-lib・利用者側・管理者側に`uqr` 0.1.3を、完全に固定した版で導入する。3つのアプリのブラウザテストの事前バンドルの一覧(各`vitest.browser.config.ts`の`PREBUNDLED_DEPENDENCIES`)に`uqr`を加える
   - 同じ変更で、tech-stack.mdの「認証・認可」にOTPAuth・uqrの版と`bowser`の用途を記載し、依存の版の一覧に`uqr`(frontend-lib・client・adminで版をそろえる)と`otpauth`・`bowser`(apiだけ)を加える
-  - 完了状態: 導入確認のWorkers統合テストとブラウザテストがworkerdとChromiumで成功し、各アプリの型検査が成功し、tech-stack.mdと依存の版の一覧に3つのパッケージと版が載っている
+  - 完了状態: 導入確認のWorkers統合テストとブラウザテストがworkerdとChromiumで成功し(ブラウザテストの実行中に依存の最適化のやり直しが起きない)、各アプリの型検査が成功し、tech-stack.mdと依存の版の一覧に3つのパッケージと版が載っている
   - _Requirements: 20.7_
 
 - [ ] 1.2 (P) 利用者アカウントの8テーブルと可視・確認済みの絞り込み条件を定義し、マイグレーションを生成する
@@ -14,8 +14,9 @@
   - 利用者は、仮名化ID・大文字小文字を区別しないメールアドレスとハンドル・パスワードのハッシュ・ニックネーム・状態・停止日時・確認日時・使い捨て判定の結果と判定日時・規約同意日時・状態の版・論理削除を持ち、IPアドレスは持たない
   - セッション・認証系トークン・第2要素の待ち・TOTP・リカバリコードは利用者を外部キーで参照し、削除時の動作を指定しない。ライフサイクルイベントは利用者を外部キーで参照せず、完了の記録はイベントを参照する
   - 可視ユーザー(退会しておらず停止中でもない)と確認済みユーザーの絞り込み条件の部品を用意し、スキーマの集約点に加えてマイグレーションを生成する。部分一意索引やCHECK制約が生成されない場合はカスタムマイグレーションで補う
+  - スキーマの集約点のテーブル名の一覧を完全一致で確かめる単体テスト(`apps/db/schema/index.unit.test.ts`)の期待に8テーブルを加える
   - マイグレーションはmainの最新を取り込んでから生成し、並行specのマイグレーションと番号やスナップショットが衝突したら生成し直す
-  - 完了状態: 列の単体テストが成功し、生成したマイグレーションがマイグレーションの検出確認のコマンドで検出され、ローカルに適用でき、適用後のデータベースで退会済みの利用者と同じメールアドレスの行を追加できる
+  - 完了状態: 列の単体テストとスキーマの集約点の単体テストが成功し、生成したマイグレーションがマイグレーションの検出確認のコマンドで検出され、ローカルに適用でき、適用後のデータベースで退会済みの利用者と同じメールアドレスの行を追加できる
   - _Boundary: IdentitySchema, IdentityVisibility_
   - _Requirements: 1.4, 1.5, 1.6, 1.7, 3.6, 4.2, 4.5, 8.9, 16.1_
 
@@ -29,23 +30,25 @@
 
 - [ ] 2. 上流の契約への追加(User-Agentの受け渡しとセッションの読み取りの型)
 - [ ] 2.1 (P) 利用者側・管理者側フロントエンドサーバーの中継の項目にUser-Agentを加える
-  - 先に、中継の項目の組み立ての単体テストに、ブラウザのUser-Agentが引き継がれること、偽の内部ヘッダー(呼び出し元・元のIP)が引き続き除かれることを加える
-  - frontend-platformの中継で引き継ぐブラウザのヘッダーの一覧に`user-agent`を加える。他の項目と処理の順序は変えない
-  - 完了状態: 追加したテストとfrontend-platformの既存の中継のテストが成功し、ローカルでブラウザから中継した要求のUser-AgentがAPIサーバーに届くことをログで確かめられる
+  - 先に、中継の項目の組み立ての単体テストに、ブラウザのUser-Agentが引き継がれること、偽の内部ヘッダー(呼び出し元・元のIP)が引き続き除かれることを加える。`user-agent`が除かれることを確かめている既存の期待(`relay-headers.unit.test.ts`)は、引き継がれる形に改める。一覧を完全一致で確かめる`relay-contract.unit.test.ts`の期待に`user-agent`を加える
+  - frontend-platformの中継で引き継ぐブラウザのヘッダーの一覧に`user-agent`を加える。他の項目と処理の順序は変えない。サーバー側の描画の取得はブラウザのヘッダーを中継しないため変えない(User-Agentが届くのはブラウザからの中継だけ)
+  - 同じ変更で、`docs/GUIDES/tech/frontend/003-frontend-server-security.md`の中継するブラウザのヘッダーの表に`user-agent`を加える
+  - 完了状態: 追加・改めたテストとfrontend-platformの既存の中継のテストが成功し、ローカルでブラウザから中継した要求のUser-AgentがAPIサーバーに届くことをログで確かめられ、文書の表がコードの一覧と一致する
   - _Boundary: UserAgentRelay_
   - _Requirements: 8.4, 8.9_
 
 - [ ] 2.2 (P) APIサーバーのGraphQLの文脈にUser-Agentを加える
   - 先に、内部経路の要求のUser-Agentが512文字で切られてリゾルバの文脈に届くこと、無ければ未設定になることを確かめるWorkers統合テストを書く
-  - api-gatewayの要求ごとの範囲とGraphQLの文脈に、User-Agentの項目を互換を保って加える。既存のリゾルバと上限・許可リストの振る舞いは変えない
-  - 完了状態: 追加したテストとapi-gatewayの既存のテストが変更なしで成功する
+  - api-gatewayの要求ごとの範囲(`GatewayRequestScope`)・文脈の組み立ての入力(`GraphQLContextScope`)・GraphQLの文脈(`GraphQLContext`)に、既存の`clientIp`と同じ必須の`userAgent: string | undefined`を加える。既存のリゾルバと上限・許可リストの振る舞いは変えない
+  - 文脈をリテラルで組む既存のWorkers統合テスト5件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`)の組み立てに`userAgent`を足す。期待は変えない
+  - 完了状態: 追加したテストとapi-gatewayの既存のテスト(組み立てに`userAgent`を足した5件を含み、期待は変えない)が成功し、APIサーバーの型検査が成功する
   - _Boundary: UserAgentRelay_
   - _Requirements: 8.4, 8.9_
 
 - [ ] 2.3 (P) api-gatewayの契約に、application層が受け取るセッションの読み取りの型`SessionView`を加える
   - 先に、APIサーバーの層の規則の単体テストに、application層から`presentation/gateway/session-access.ts`を型だけで読み込む例が違反として報告されること、`application/session/session-view.ts`の読み込みは報告されないことを加える
   - `apps/api/src/application/session/session-view.ts`に、主体を読む`principal()`だけを持つ`SessionView`を定義し、`presentation/gateway/session-access.ts`の`SessionAccess`がそれを拡張する形に改める。`SessionAccess`のメンバーと`createSessionAccess`の振る舞いは変えない。セッションのIDは主体の`sessionId`で読むため、別のメンバーは設けない
-  - roadmapの順で先に実装されるmedia-pipelineが既に`SessionView`を置いていれば、型の定義は作り直さず、型名・置き場所・形がこの定義と一致することを確かめ、食い違いがあれば開発者へ報告する。その場合も、`SessionAccess`を`SessionView`の拡張に改める作業と層の規則の単体テストは本タスクで行う
+  - roadmapの順で先に実装されるmedia-pipelineが既に`SessionView`を置いていれば、型の定義は作り直さず、型名・置き場所・形がこの定義と一致することを確かめ、食い違いがあれば開発者へ報告する。その場合も、`SessionAccess`を`SessionView`の拡張に改める作業と層の規則の単体テストは本タスクで行う(2026-11-02の時点で、media-pipelineが設計どおりの形で作成済み。`SessionAccess`には`extends`が無い)
   - 完了状態: 層の規則の単体テストとapi-gatewayの既存のテスト(`session-access`のWorkers統合テストを含む)が変更なしで成功し、APIサーバーの型検査が成功する
   - _Boundary: SessionViewContract_
   - _Requirements: 4.1, 4.3, 4.7_
@@ -61,21 +64,23 @@
 
 - [ ] 3.2 (P) 使い捨てメールアドレスの判定の部品とDISIFYの呼び出しを作る
   - 先に、ローカル部のダミーへの置き換え、状態コード200の判定結果の真偽、形式の不正・401・429・503・HTML・通信の失敗・時間切れが「未判定」になることを確かめる単体テストと、偽の通信でAPIキーの有無による要求の違いと本文にだけメールアドレスが入ることを確かめるWorkers統合テストを書く
-  - 置き換えと分類を純粋な部品に、判定の呼び出し(フォーム形式の本文、任意のAPIキー、3秒の打ち切り、未判定の警告ログ)を共有のWorkers向けの部品に作る。ログにメールアドレスとドメインを出さない
+  - 置き換えと分類と、application層が受け取る判定の契約`DisposableEmailChecker`を純粋な部品(`apps/backend-lib/core/identity/disposable-email.ts`)に、判定の呼び出し(フォーム形式の本文、任意のAPIキー、3秒の打ち切り、未判定の警告ログ)を共有のWorkers向けの部品(`workers/identity/disify-client.ts`)に作る。application層は`**/lib/workers/**`を読み込めないため、契約を`workers`に置かない。ログにメールアドレスとドメインを出さない
   - 完了状態: 両方のテストが成功し、外部へ通信せずに検証できる
   - _Boundary: DisposableEmailRules, DisifyClient_
   - _Requirements: 3.1, 3.2, 3.5_
 
-- [ ] 3.3 (P) 認証系の7つのメール種別を定義する
+- [ ] 3.3 (P) 認証系の7つのメール種別とテンプレートを、同じ変更で定義して登録する
   - 先に、7種がトランザクションメールとして集約点に登録でき、入力の検証規則が日時とURLの形式を確かめることを単体テストで書く
+  - 同じく先に、7種のテンプレートが種別と1対1で登録でき、件名が文言規則どおりで、宛名・行動ボタンのURL・有効期限または変更日時(UTC表記)・心当たりが無い場合の案内を両パートに含むことを確かめるWorkers統合テストを書く
   - 登録確認・メールアドレス変更の確認・変更完了・パスワードリセット・リセット完了・パスワード変更の確認・変更完了の種別を、設計の名前と入力で定義し、メール種別の集約点に加える
-  - 完了状態: 単体テストとemail-deliveryの種別の集約の単体テストが成功する
-  - _Boundary: IdentityEmailKinds_
+  - 同じ変更で、イベントサーバーに種別ごとの本文の部品(1ファイル1コンポーネント)と定義を作り、テンプレートの集約点に加える。イベントサーバーはテンプレートの無い種別があるとモジュールの読み込みで失敗し、APIサーバーは集約点に無い種別を送れないため、種別だけ・テンプレートだけを先に加えない
+  - 完了状態: 単体テスト・Workers統合テストと、email-deliveryの種別の集約の単体テスト・テンプレートの集約の検査・イベントサーバーとAPIサーバーの既存のWorkers統合テストが成功する
+  - _Boundary: IdentityEmailKinds, IdentityEmailTemplates_
   - _Requirements: 14.4, 14.6_
 
 - [ ] 3.4 ライフサイクルイベントの記録と、利用者のメールアドレスの照会口をD1上に作る
   - 先に、イベントの読み取り・利用者ごとの最も古い未完了・完了した波及処理の記録の重複の無視・完了の記録・送り直しの対象の取得と回数の加算・物理削除の開始のイベントの作成(同じ利用者は1件)・物理削除の候補と期限超過の数え上げ、照会口が退会済みを除いて照合キーで返すこと・91件以上で分割すること・失敗時に「使えない」を返すことを確かめるWorkers統合テストを書く
-  - イベントの記録のストアと、email-deliveryの照会口の契約を満たすD1の実装を、共有のWorkers向けの部品に作る。`IN`句はバインド変数の上限に合わせて分ける
+  - イベントの記録のストアの契約(`StoredLifecycleEvent`・`UserLifecycleStore`)を純粋な部品(`apps/backend-lib/core/identity/ports.ts`)に作り、そのD1の実装(`workers/identity/d1-user-lifecycle-store.ts`)と、email-deliveryの照会口の契約を満たすD1の実装を、共有のWorkers向けの部品に作る。apiのジョブとeventの実行器のapplication層が契約を読み込むため、契約を`workers`に置かない。`IN`句はバインド変数の上限に合わせて分ける
   - 完了状態: Workers統合テストが成功し、同じ日に2回作成しても物理削除の開始のイベントが1件のままであることを確かめられる
   - _Depends: 1.2, 3.1_
   - _Requirements: 15.3, 16.3, 16.4, 16.6, 17.1_
@@ -83,9 +88,10 @@
 - [ ] 3.5 (P) 後続specが通知メールの宛先を引く利用者の連絡先の照会を作り、APIサーバーとイベントサーバーの両方に束縛する
   - 先に、通常の利用者で`userId`・`email`・`nickname`・`emailVerified`(確認済みは真、未確認は偽)が返ること、停止中の利用者も返ること、退会済み(`deleted_at`あり)と存在しない利用者で`undefined`になること、D1の失敗が例外になることを確かめるWorkers統合テストを書く
   - 同じく先に、APIサーバーとイベントサーバーの処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.UserContactDirectory`がD1の実装に解決されることを、両アプリのWorkers統合テストで確かめる
-  - 設計の契約(`UserContact`・`UserContactDirectory`・`IDENTITY_PLATFORM_TYPES`)とD1の実装、共通の束縛`IDENTITY_PLATFORM_MODULE`を共有のWorkers向けの部品(`apps/backend-lib/workers/identity`)に作り、両アプリの`composition/modules.ts`のモジュールの一覧へ加える。apiの`IDENTITY_TYPES`・eventの`EVENT_IDENTITY_TYPES`には加えない
+  - 同じく先に、識別子`IDENTITY_PLATFORM_TYPES`が`Symbol.for('identity.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
+  - 設計の契約(`UserContact`・`UserContactDirectory`)を`apps/backend-lib/core/identity/ports.ts`に、識別子`IDENTITY_PLATFORM_TYPES`を`core/identity/identifiers.ts`に作る。D1の実装と共通の束縛`IDENTITY_PLATFORM_MODULE`は共有のWorkers向けの部品(`apps/backend-lib/workers/identity`)に作り、両アプリの`composition/modules.ts`のモジュールの一覧へ加える。後続specのapplication層が契約と識別子を読み込むため、`workers`に置かない。apiの`IDENTITY_TYPES`・eventの`EVENT_IDENTITY_TYPES`には加えず、メンバーの名前を重ねない
   - 契約の形はpayments・ultras-subscription・inquiry-chatが前提にしているため、変える必要が出たら実装を止めて開発者へ報告する
-  - 完了状態: Workers統合テストが成功し、両アプリで同じ識別子から連絡先を引ける
+  - 完了状態: 単体テストとWorkers統合テストが成功し、両アプリで同じ識別子から連絡先を引ける
   - _Depends: 1.2_
   - _Boundary: UserContactDirectory, D1UserContactDirectory, IdentityPlatformModule_
   - _Requirements: 4.8_
@@ -93,7 +99,7 @@
 - [ ] 3.6 データエクスポートのアカウントの部分を返す照会を作り、APIサーバーとイベントサーバーの両方に束縛する
   - 先に、通常の利用者で仮名化ID・メールアドレス・確認日時・登録日時(作成日時)が返ること、多要素認証が有効なら有効状態が真で、未設定と設定途中の待ちだけの利用者では偽になること、停止中の利用者も返ること、退会済み(`deleted_at`あり)と存在しない利用者で`undefined`になること、D1の失敗が例外になること、結果にパスワードハッシュ・TOTPの秘密鍵・リカバリコード・セッション・認証系トークンの項目が無いことを確かめるWorkers統合テストを書く
   - 同じく先に、APIサーバーとイベントサーバーの処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.AccountExport`がD1の実装に解決されることを、3.5の両アプリのWorkers統合テストに加えて確かめる
-  - 設計の契約(`AccountExportRecord`・`AccountExport`)とD1の実装を共有のWorkers向けの部品(`apps/backend-lib/workers/identity`)に作り、3.5の`IDENTITY_PLATFORM_TYPES`に識別子を、`IDENTITY_PLATFORM_MODULE`に束縛を加える。ニックネーム・ハンドルは返さない(user-profile-socialのプロフィールの出力用の部品が返す)
+  - 設計の契約(`AccountExportRecord`・`AccountExport`)を`apps/backend-lib/core/identity/ports.ts`に、D1の実装を共有のWorkers向けの部品(`apps/backend-lib/workers/identity/d1-account-export.ts`)に作り、3.5の`IDENTITY_PLATFORM_TYPES`に識別子を、`IDENTITY_PLATFORM_MODULE`に束縛を加える。ニックネーム・ハンドルは返さない(user-profile-socialのプロフィールの出力用の部品が返す)
   - 契約の形はdata-exportが前提にするため、変える必要が出たら実装を止めて開発者へ報告する
   - 完了状態: Workers統合テストが成功し、両アプリで同じ識別子からアカウントの部分と仮名化IDを引ける
   - _Depends: 1.2, 3.5_
@@ -103,7 +109,7 @@
 - [ ] 3.7 管理画面の利用者の検索・一覧の照会を作り、APIサーバーとイベントサーバーの両方に束縛する(仮7)
   - 先に、退会済みを除いて作成日時とIDの降順に並ぶこと、ハンドル・ニックネームの大文字小文字を区別しない部分一致と`%`・`_`・`\`が文字として照合されること、メールアドレスの前後の空白を除いた大文字小文字を区別しない完全一致(メールアドレスでの引き当ても同じ)、状態の絞り込み、件数の上限の境界(0と51の拒否)とカーソルによる続きの取得・不正なカーソルの拒否、IDでの引き当てが91件以上で分割され退会済みを含めないこと、メールアドレスでの引き当てが退会済みを返さないこと、時点の登録者数が時点以後の登録を数えず時点以後の退会を数えること、結果にメールアドレス・パスワードハッシュの項目が無いことを確かめるWorkers統合テストを書く
   - 同じく先に、APIサーバーとイベントサーバーの処理単位のコンテナから`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`がD1の実装に解決されることを、3.5の両アプリのWorkers統合テストに加えて確かめる
-  - 設計の契約(`AdminUserStatus`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserDirectory`)とD1の実装`D1AdminUserDirectory`を共有のWorkers向けの部品(`apps/backend-lib/workers/identity/admin-user-directory.ts`)に作り、3.5の`IDENTITY_PLATFORM_TYPES`に識別子を、`IDENTITY_PLATFORM_MODULE`に束縛を加える
+  - 設計の契約(`AdminUserStatus`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserDirectory`)を`apps/backend-lib/core/identity/ports.ts`に、D1の実装`D1AdminUserDirectory`を共有のWorkers向けの部品(`apps/backend-lib/workers/identity/d1-admin-user-directory.ts`)に作り、3.5の`IDENTITY_PLATFORM_TYPES`に識別子を、`IDENTITY_PLATFORM_MODULE`に束縛を加える
   - 契約の形はugc-moderationが前提にするため、変える必要が出たら実装を止めて開発者へ報告する
   - 完了状態: Workers統合テストが成功し、両アプリで同じ識別子から利用者の検索・引き当て・登録者数の数え上げができる
   - _Depends: 1.2, 3.2, 3.6_
@@ -154,7 +160,8 @@
   - 先に、失敗の記録とロック、ロック中の確認、アラームによるロックの解除と24時間後の記録の削除、成功での削除、メールアドレス単位は利用者と管理者で別のオブジェクトでIPアドレス単位は共有されること、IPが不明なときにIPの単位を使わず通知することを確かめるWorkers統合テストを書く
   - Durable Objectのクラス(状態の保存とアラーム)と、メールアドレス単位とIPアドレス単位の2つを並列に確かめ、両方に記録・削除する実装を作る。オブジェクトの名前はハッシュ化済みのキーだけで作り、名前空間に管轄を指定しない
   - APIサーバーのWrangler設定の3環境に新しいDurable Objectのバインディングと、`migrations`の既存の最後のタグの次のタグ(Wave 1の他specと衝突する場合は実装時に詰める)を加え、エントリからクラスをエクスポートして実行時の環境の型を生成し直す。マイグレーションの適用は、infra-deliveryの導入後はmainへのマージによるCIのデプロイに任せる
-  - 完了状態: Workers統合テストとbackend-platformのWrangler設定の単体テスト、型生成の検査が成功する
+  - apiのWrangler設定を完全一致で確かめる共通の単体テスト(`apps/api/test/config/wrangler-config.unit.test.ts`)の期待に、新しいDurable Objectのバインディングと`migrations`のタグ(現時点の最後は`v1`のため`v2`)を加える(開発者の決定により、専用のテストファイルへ切り出さない)。エクスポートの一覧を完全一致で確かめるWorkers統合テスト(`apps/api/src/index.worker.test.ts`)の期待に新しいクラスを加える
+  - 完了状態: Workers統合テストとbackend-platformのWrangler設定の単体テスト、エントリのエクスポートのWorkers統合テスト、型生成の検査が成功する
   - _Boundary: LoginAttemptThrottle, DurableLoginThrottle_
   - _Depends: 4.2, 4.3_
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 19.3_
@@ -162,8 +169,9 @@
 - [ ] 6. 利用者のドメインとストア
 - [ ] 6.1 利用者の規則と、ユースケースのポート・DIの識別子を作る
   - 先に、可視・本人の例外・書き込みの可否(退会・停止・未確認)、登録時に生成する初期ハンドルの文字種と長さ、トークンの用途ごとの有効期限とハッシュの用途を確かめる単体テストを書く
-  - 利用者の状態の規則、初期ハンドルの形式(ハンドルの規則そのものはuser-profile-socialが所有する)、トークンの用途を純粋な部品として作り、各ストア・メール・端末情報・ハンドルの重複判定・設定値・状態の遷移のポートと、要求の情報(IP・User-Agent・現在時刻)の型、DIの識別子を定義する
-  - 完了状態: 単体テストが成功し、ポートを参照する後続の部品の型検査の土台ができている(APIサーバーの型検査が成功する)
+  - 利用者の状態の規則、初期ハンドルの形式(ハンドルの規則そのものはuser-profile-socialが所有する)、トークンの用途を純粋な部品として作り、各ストア・メール・端末情報・ハンドルの重複判定・設定値・状態の遷移・送信回数の制限(`MailSendLimits`)・メッセージの送信(`IdentityMessagePublisher`)のポートと、要求の情報(IP・User-Agent・現在時刻)の型、DIの識別子を定義する
+  - application層は`**/lib/workers/**`を型も含めて読み込めないため、メッセージの送信は自前のポート`IdentityMessagePublisher`の形で`PLATFORM_TYPES.MessagePublisher`から受け取り(media-pipelineの`MediaJobMessagePublisher`と同じ)、厳密カウンタは送信回数の制限の実装(infrastructure層、7.2)だけが使う。イベントの記録と使い捨て判定の型は`core/identity`から読み込む
+  - 完了状態: 単体テストが成功し、ポートを参照する後続の部品の型検査の土台ができている(APIサーバーの型検査と静的解析が成功し、application層に`**/lib/workers/**`の読み込みが無い)
   - _Requirements: 1.6, 4.3, 4.4, 4.5, 4.6, 14.2_
 
 - [ ] 6.2 (P) 利用者アカウントのストアと既定のハンドルの重複判定をD1上に作る
@@ -216,9 +224,11 @@
   - _Requirements: 4.1, 4.3, 4.4, 6.1, 8.1, 8.2, 8.3, 16.10, 19.4_
 
 - [ ] 7.2 (P) 認証系メールの送信回数の制限と、登録を作る
-  - 先に、宛先とIPの2つの規則で数え、どちらかの超過で429と待ち時間を返すこと、アカウントや重複の有無を判定する前に数えること、登録の手順(回数→重複→ハンドル→パスワードの方針→保存→確認メール)、上限での未作成、重複の拒否、ハンドルの衝突での作り直し(最大5回)、同意の日時の保存を確かめる単体テストを書く
-  - 完了状態: 単体テストが成功する
-  - _Boundary: MailSendLimits, Registration_
+  - 先に、偽の送信回数の制限で、アカウントや重複の有無を判定する前に数えること、登録の手順(回数→重複→ハンドル→パスワードの方針→保存→確認メール)、上限での未作成、重複の拒否、ハンドルの衝突での作り直し(最大5回)、同意の日時の保存を確かめる単体テストを書く
+  - 同じく先に、送信回数の制限の実装`CounterMailSendLimits`が偽の厳密カウンタに宛先とIPの2つの規則で数え、どちらかの超過で429と待ち時間を返し、IPが不明ならIPの規則を省き、キーをハッシュ化することを確かめるWorkers統合テストを書く
+  - 送信回数の制限のポートはapplication層(6.1)、実装は厳密カウンタのクライアントの型が共通ライブラリの`workers`にあるためinfrastructure層(`infrastructure/identity/counter-mail-send-limits.ts`)に作る(`backend/003`)
+  - 完了状態: 単体テストとWorkers統合テストが成功し、APIサーバーの静的解析で層の規則の違反が無い
+  - _Boundary: MailSendLimits, CounterMailSendLimits, Registration_
   - _Depends: 6.1, 7.1_
   - _Requirements: 1.1, 1.3, 1.4, 1.6, 1.7, 1.8, 2.1, 2.5, 2.6, 2.7, 2.8, 2.10_
 
@@ -266,7 +276,7 @@
 - [ ] 7.9 (P) 退会と、運営者による退会・停止・停止解除の操作口を作る
   - 先に、停止中の利用者の退会の受け付け(ログイン中であれば停止中でも進むこと)、bot判定と本人確認、状態の遷移の確定とメッセージの送信、送信の失敗で成功として応答し運用者へ通知すること、停止・解除の既に同じ状態での無変更、退会済み・存在しない利用者の拒否、停止で既存のセッションを消さないことを確かめる単体テストを書く
   - 同じく先に、運営者による退会について、呼び出し元が管理者側でない・主体が管理者のセッションでない要求の拒否(状態を変えない)、停止中を含む未退会の利用者を本人確認とbot判定なしで退会させること、本人の退会と同じ確定の処理(同じ遷移とメッセージ、送信の失敗の扱い)を通ること、退会済み・存在しない対象が「対象が存在しない」になることを確かめる単体テストを書く
-  - 本人の退会と運営者による退会が共通に通す確定の処理を1つにまとめ、運営者による退会の操作口は利用者側のGraphQLの操作として公開しない。操作口の呼び出し元は文字列で受け、presentation層の呼び出し元の型を読み込まない
+  - 本人の退会と運営者による退会が共通に通す確定の処理を1つにまとめ、運営者による退会の操作口は利用者側のGraphQLの操作として公開しない。操作口の呼び出し元は文字列で受け、presentation層の呼び出し元の型を読み込まない。メッセージの送信は`IdentityMessagePublisher`(6.1)で受け取り、共通ライブラリの`workers`の送信部品を読み込まない
   - 完了状態: 単体テストが成功し、ugc-moderationが呼ぶ停止・停止解除と運営者による退会の操作口の型が公開されている
   - _Boundary: Withdrawal, AdministrativeWithdrawal, UserSuspension_
   - _Depends: 6.5, 7.1, 7.5_
@@ -274,7 +284,8 @@
 
 - [ ] 7.10 (P) 日次の4つのジョブを作る
   - 先に、物理削除の候補の業務日付による境界(13日前の業務日付以前)と件数の上限、送り直しの対象と3回目以降の通知、14日を過ぎた未完了の通知、期限切れのセッション・トークン・待ち・保留の削除の件数の記録、未判定の判定し直しの依頼の対象と上限を確かめる単体テストを書く
-  - 完了状態: 単体テストが成功する
+  - メッセージの送信は`IdentityMessagePublisher`、イベントの記録は`core/identity`の`UserLifecycleStore`の型で受け取る。期限切れの削除はテーブルごとに条件付きの1文で行い、件数の上限を設けない(開発者の決定。4:21の起動の予算を上流のジョブと共有し、超過はディスパッチャの警告で検知する)
+  - 完了状態: 単体テストが成功し、APIサーバーの静的解析で層の規則の違反が無い
   - _Boundary: PurgeOrchestratorJob, CredentialCleanupJob, DisposableRecheckSweepJob, LifecycleRedispatchJob_
   - _Depends: 3.4, 6.1_
   - _Requirements: 3.3, 8.8, 14.5, 16.6, 17.1, 17.4_
@@ -283,7 +294,8 @@
 - [ ] 8.1 APIサーバーの束縛・セッションの検証の差し替え・環境・Wrangler設定・層の規則を組み立てる
   - 先に、処理単位のコンテナから認証部品と利用者のユースケースがすべて解決できること、利用者側の呼び出し元のセッションが本specの検証で有効になり管理者側は無効になること、環境の検証が利用者側のオリジン・新しいDurable Object・任意のDISIFYのキーを確かめることのWorkers統合テストを書く
   - 認証部品と利用者のモジュールの束縛(要求ごとに単一の機能制限の判定を含む)、セッションの検証の差し替え(管理者の既定は無効)、ハンドルの重複判定の登録箇所、モジュールの登録を行う
-  - 3環境の変数に利用者側のオリジンを加え、型を生成し直す。変数の名前・値・検証の規則(URLのオリジン)は、content-processingが利用者側・管理者側に置く同名の変数と、infra-deliveryの「ホスト名から導かれる変数の値」の表に合わせる。静的解析に、認証部品の各層から利用者のモジュールへのimportの禁止を加え、層の規則の単体テストに違反例を足す
+  - 3環境の変数に利用者側のオリジンを加え、型を生成し直す。変数の名前・値・検証の規則(URLのオリジン)は、content-processingが利用者側・管理者側に置く同名の変数と、infra-deliveryの「ホスト名から導かれる変数の値」の表に合わせる。静的解析に、認証部品の各層から利用者のモジュールへのimportの禁止を加え、層の規則の単体テストに違反例を足す。同じファイルに当たる後の設定の`no-restricted-imports`は層の規則のオプションを置き換えるため、認証部品の各層の規則には、その層の層の規則のパターンを含め直す(`BUN_LOADED_GRAPHQL_RULES`と同じ扱い。`@typescript-eslint/no-restricted-imports`の設定が当たる場合も同じ)。違反例には、利用者のモジュールへの読み込みと、含め直した層の規則(認証部品のapplication層から`**/lib/workers/**`など)の両方を加える
+  - 変数の追加は、apiのWrangler設定を完全一致で確かめる共通の単体テスト(`apps/api/test/config/wrangler-config.unit.test.ts`)の`vars`の期待に`CLIENT_SITE_ORIGIN`を加える(開発者の決定により、専用のテストファイルへ切り出さない)
   - 任意のDISIFYのキーを環境の検証で読むこの変更と同じ変更で、本プロジェクト固有の値のシークレットのキーの一覧の節(infra-deliveryのタスク8.5が作る、キーの一覧の正)に、`DISIFY_API_KEY`(api・event、任意、identity-auth)の行を足す。行が既にあれば食い違いを確かめるだけにし、節が無ければ開発者へ報告する
   - 完了状態: Workers統合テスト・Wrangler設定の単体テスト・層の規則の単体テスト・型生成の検査が成功し、キーの一覧の節に`DISIFY_API_KEY`の行があるか、節が無いことを報告している
   - _Depends: 2.2, 5.1, 5.2, 5.3, 6.2, 6.3, 6.4, 6.5, 6.6, 7.10_
@@ -304,7 +316,8 @@
 - [ ] 8.4 日次のジョブと、利用者のメールアドレスの照会口を登録する
   - 先に、3つのジョブが`identity-auth.purge-orchestrator`・`identity-auth.credential-cleanup`・`identity-auth.disposable-recheck-sweep`の名前(`<spec名>.<名詞句>`)と業務時刻4:21の順序100・110・120で、未完了の後続処理の送り直しのジョブ`identity-auth.lifecycle-redispatch`が業務時刻16:21の順序100で登録され、定期実行の定義のcron式と一致することを、backend-platformのcronの一致の検査に加える
   - 4つのジョブを定期実行の登録箇所に加え、apiのWrangler設定のルートの`triggers.crons`に16:21に対応する`21 0 * * *`を加え、email-deliveryの照会口の登録箇所を本specのD1の実装(`@injectable()`のクラス)に差し替える
-  - 完了状態: cronの一致の検査が成功し、ローカルで4:21の定期実行を手動で起こすと3つのジョブの要約とメールの後始末の照会口の結果(使えない、ではなく実際の判定)がログに出て、16:21の定期実行を手動で起こすと送り直しのジョブの要約がログに出る
+  - 4:21のジョブの名前の一覧を完全一致で確かめる検索のWorkers統合テスト2件(`composition/search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts`)の期待に、本specの3つのジョブを加える(media-pipelineのtasks.mdの申し送り)。4:21の予算(`SCHEDULED_RUN_BUDGETS`)の値と件数は変えず、16:21には予算を置かない(`cron-sync.unit.test.ts`の「予算は1件」を保つ)
+  - 完了状態: cronの一致の検査と検索のWorkers統合テストが成功し、ローカルで4:21の定期実行を手動で起こすと3つのジョブの要約とメールの後始末の照会口の結果(使えない、ではなく実際の判定)がログに出て、16:21の定期実行を手動で起こすと送り直しのジョブの要約がログに出る
   - _Requirements: 8.8, 14.5, 15.3, 16.6, 17.1_
 
 - [ ] 8.5 アップロードできる利用者の判定を作り、media-pipelineの差し込み口へ束縛する
@@ -312,40 +325,33 @@
   - 先に、偽の`AccountGuard`で、停止中・退会済み・利用者を読めない場合に`account_unavailable`で拒否し、メールアドレスが未確認の利用者と通常の利用者を許可し、`email_not_verified`を返さないことを確かめる単体テストを書く
   - 同じく先に、処理単位のコンテナで差し込み口の識別子が本specの実装に解決されること、テスト用の用途を登録した内部RESTへの停止中の利用者のセッションでのアップロードが403・`account_unavailable`になり記録とオブジェクトが残らないこと、未確認の利用者のアップロードが受け付けられることを確かめるWorkers統合テストを書く
   - 判定の実装を利用者のモジュールに作って処理単位のコンテナに束縛し、media-pipelineの`composition/uploader-eligibility.ts`の既定(全許可)の束縛を本specの実装への転送に差し替える。他の束縛は変えない
-  - media-pipelineのテストのうち、既定の全許可の束縛を前提にするもの(5.1のアップロードの経路のWorkers統合テストと、5.6の登録箇所の既定値の単体テスト)は、テストの中で差し込み口を既定の実装に差し替えるか、利用者の行を用意するか、差し替え後の束縛を確かめる形に直す(判定の振る舞いの期待は変えない)
-  - 完了状態: 単体テストとWorkers統合テスト、media-pipelineのアップロードの経路のWorkers統合テストが成功する(前提が無ければ、そのことを報告している)
+  - media-pipelineのテストのうち、既定の全許可の束縛を前提にするのは5.6の登録箇所の既定値の単体テスト(`apps/api/test/config/media-registrations.unit.test.ts`)だけで、その期待を差し替え後の束縛を確かめる形に直す(判定の振る舞いの期待は変えない)。5.1のアップロードの経路のWorkers統合テストは判定を自分で束縛しているため変えない
+  - 完了状態: 単体テストとWorkers統合テスト、media-pipelineの登録箇所の単体テストとアップロードの経路のWorkers統合テストが成功する(前提が無ければ、そのことを報告している)
   - _Boundary: AccountUploaderEligibility, ApiIdentityComposition_
   - _Depends: 7.1, 8.1_
   - _Requirements: 4.7_
 
 - [ ] 9. イベントサーバー
-- [ ] 9.1 (P) 認証系の7つのメールのテンプレートを作る
-  - 先に、7種のテンプレートが種別と1対1で登録でき、件名が文言規則どおりで、宛名・行動ボタンのURL・有効期限または変更日時(UTC表記)・心当たりが無い場合の案内を両パートに含むことを確かめるWorkers統合テストを書く
-  - 種別ごとに本文の部品(1ファイル1コンポーネント)と定義を作り、テンプレートの集約点に加える
-  - 完了状態: Workers統合テストとemail-deliveryのテンプレートの集約の検査が成功する
-  - _Boundary: IdentityEmailTemplates_
-  - _Depends: 3.3_
-  - _Requirements: 14.6_
-
-- [ ] 9.2 非同期の波及処理の実行器と、利用者の行の物理削除を作る
+- [ ] 9.1 非同期の波及処理の実行器と、利用者の行の物理削除を作る
   - 先に、偽のストアと偽の波及処理で、完了済み・存在しないイベントの終了、より前の未完了のイベントがあるときの60秒の遅延、登録順の実行と完了の記録、完了済みの飛ばし、続きがあるときの5秒の遅延、例外の伝播、物理削除の開始の全波及処理の後の利用者の行の削除とイベントの完了を確かめる単体テストを書く
   - 物理削除の一括の書き込み(子の行から利用者の行まで)をD1上に作り、他のテーブルの外部キーが残ると失敗してイベントが未完了のまま残ることをWorkers統合テストで確かめる
   - 完了状態: 単体テストとWorkers統合テストが成功する
   - _Depends: 3.4_
   - _Requirements: 16.3, 16.4, 16.5, 16.7, 17.2, 17.3, 17.5, 17.6_
 
-- [ ] 9.3 抑止記録の削除・判定し直しの処理と、イベントサーバーの組み立てを作る
+- [ ] 9.2 抑止記録の削除・判定し直しの処理と、イベントサーバーの組み立てを作る
   - 先に、退会のイベントで利用者のメールアドレスの抑止記録の削除が呼ばれること(利用者の行が無ければ完了)、判定し直しが退会済み・未確認・判定済みで何もしないこと、結果の保存と未判定でも例外にしないこと、ライフサイクルの実行のメッセージのバッチで登録した偽の波及処理が順に呼ばれ失敗で再試行されることを確かめるWorkers統合テストを書く
   - 非同期の波及処理の登録箇所(初版は抑止記録の削除だけで、実行順は本spec専用の10000)、2つのメッセージの処理と再試行の方針、照会口と抑止記録の後始末の束縛(email-deliveryの実装)、任意のDISIFYのキーの環境の検証を加える
   - 完了状態: Workers統合テストとbackend-platform・email-deliveryのイベントサーバーのテストが成功する
-  - _Depends: 3.2, 9.2_
+  - _Depends: 3.2, 9.1_
   - _Requirements: 3.3, 15.3_
 
 - [ ] 10. 利用者側の画面
 - [ ] 10.1 (P) TOTPのQRコード・リカバリコードの一覧・パスワードの入力欄の共通部品を作る
   - 先に、URIからQRコードのSVGが描画され代替テキストを持つこと、リカバリコードの一覧のコピーと復旧できない旨の注意、パスワードの表示の切り替えの状態の通知、アクセシビリティの自動検査で違反が0件であることを確かめるブラウザテストを書く
   - 3つの部品とStorybookのストーリーを作る。生のHTMLを挿入しない
-  - 完了状態: ブラウザテストが成功し、Storybookで3つの部品を閲覧できる
+  - 同じ変更で、`docs/GUIDES/tech/frontend/005-shared-components.md`の「部品の一覧」の表に、管理者側も使う認証の画面部品の行`components/auth/`と3つの部品を加える
+  - 完了状態: ブラウザテストが成功し、Storybookで3つの部品を閲覧でき、共通部品の文書の「部品の一覧」に`components/auth/`の行がある
   - _Boundary: TotpQrCode, RecoveryCodeList, PasswordInput_
   - _Depends: 1.1_
   - _Requirements: 13.1, 13.3, 13.6, 13.9, 18.11_
@@ -359,15 +365,18 @@
 
 - [ ] 10.3 ログイン中の利用者の取得、ログイン必須のレイアウト、ヘッダーの区画、ログインの案内のダイアログを作る
   - 先に、未ログインのヘッダーのログイン・登録とローンチ導線のログイン画面への遷移、ログイン中のユーザーメニューとログアウト、未確認の帯と再送(成功と429のトースト)、取得の失敗で未ログインとして描画が続くこと、ログイン必須の領域の戻り先付きのログイン画面への遷移、案内のダイアログが渡された内容と戻り先を示すことを確かめるブラウザテストを書く
-  - ルートの前処理で利用者を取得して文脈に入れ、レイアウトの3つの区画を本specの部品に差し替え、ログイン必須の経路の無いレイアウトを作る
-  - 完了状態: ブラウザテストが成功し、ローカルの画面でログイン前後のヘッダーが切り替わる
+  - 同じく先に、768px未満でヘッダーの区画がメニューの`Sheet`にも描かれたときに`id`が重複せずユーザーメニューを操作できること、エラーと404のページでも区画が描かれることを確かめるブラウザテストを書く
+  - ルートの`beforeLoad`で`queryClient.fetchQuery`により利用者を取得して文脈に入れ(失敗は`try`/`catch`で未ログインにし、`ensureQueryData`は使わない)、ログイン必須の経路の無いレイアウトの`beforeLoad`は取得せずに文脈の値で判定する
+  - 同じ変更で、`docs/GUIDES/tech/frontend/006-data-fetching.md`の「`beforeLoad`では取得しない」の規則に、認証の判定に要る1件の取得だけはルートの`beforeLoad`でクエリのキャッシュを通して行ってよい例外(ルートの`beforeLoad`だけ・キャッシュを通す・失敗は例外にせず未ログイン・子の`beforeLoad`は取得しない)を加える(開発者の決定)。プロジェクト名と固有の値は書かない
+  - レイアウトの3つの区画を本specの部品に差し替える。区画の部品は利用者をフックで読み、固定の`id`を使わず、本specの経路へ`Link`で遷移する(frontend-platformのタスク6.4の申し送り)
+  - 完了状態: ブラウザテストが成功し、ローカルの画面でログイン前後のヘッダーが切り替わり、`006`の規則と実装が食い違わない
   - _Requirements: 6.7, 18.2, 18.3, 18.5, 18.7, 18.9_
 
 - [ ] 10.4 登録とログインの画面を作る
   - 先に、フォーカスを外したときの検証と文言規則のエラー、同意と18歳以上の表明と規約へのリンク、bot判定のトークンの付与(非表示のウィジェットで、判定の枠が画面に出ないこと)、サーバーの欄ごとのエラーの表示(`serverFieldPrefix="input"`で`input.`を外した欄への対応)と欄に対応しない失敗の`onSubmitError`の文言、第2要素への切り替えと認証コード・リカバリコードの入力(描いている一方だけをスキーマに含めて送り、`challenge`を`onSubmit`で足すこと)、戻り先が同じサイト内のパスだけになること、ログイン中の登録・ログイン画面の遷移を確かめる単体テスト(戻り先)とブラウザテストを書く
   - フォームの検証規則を共有の入力規則とZod(値は共通部品の`lib/utilities/validation/zod.ts`の`z`から読む)で作り、`useAppForm(schema, { defaultValues })`(全欄の既定値)と`AppForm`(必須の`onSubmitError`、`input`を取るmutationは`serverFieldPrefix="input"`)で2つの画面とフォームを作る。想定外の失敗の文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`で選ぶ
-  - 登録の同意の入力に使うshadcn/uiのチェックボックスを、frontend-libの共通部品`components/ui/checkbox.tsx`として加える(1ファイル1コンポーネント、storiesとアクセシビリティの検査を含むブラウザテストを併置)。既定が未選択で、ラベルのクリックとキーボードで切り替えられることを先にブラウザテストで確かめる。paymentsの決済の同意が後でこの部品を再利用するため、既にあれば作らずに使う
-  - 完了状態: 単体テストとブラウザテストが成功し、ローカルで登録してログイン状態になれる。`components/ui/checkbox.tsx`があり、登録の画面が使っている
+  - 登録の同意の入力に使うshadcn/uiのチェックボックスを、frontend-libの共通部品`components/ui/checkbox/checkbox.tsx`として加える(共通部品の配置の規則`components/ui/<部品>/<部分>.tsx`、1ファイル1コンポーネント、storiesとアクセシビリティの検査を含むブラウザテストを併置)。既定が未選択で、ラベルのクリックとキーボードで切り替えられることを先にブラウザテストで確かめる。paymentsの決済の同意が後でこの部品を再利用するため、既にあれば作らずに使う。同じ変更で、`005-shared-components.md`の「部品の一覧」の`components/ui/`の行にCheckboxを加える
+  - 完了状態: 単体テストとブラウザテストが成功し、ローカルで登録してログイン状態になれる。`components/ui/checkbox/checkbox.tsx`があり、登録の画面が使っている
   - _Depends: 1.3, 10.1, 10.3_
   - _Requirements: 1.1, 1.2, 1.3, 6.1, 6.2, 6.6, 18.1, 18.4, 18.10, 18.11_
 
@@ -401,7 +410,7 @@
   - 宛先ごとの最新のメールを待って取り出し、本文からリンクを抜き出す補助を、テストではないファイルとして作る
   - 登録→未確認の帯→メールのリンクでの確認→帯が消える流れ、誤ったパスワードの文言、ログアウト、別のブラウザの文脈でのログインとセッションの一覧・個別の失効の流れを書く。メールアドレスは`.example`のドメインを使う
   - 完了状態: ローカルで起動したAPI・イベント・利用者側のサーバーとMailpitに対してE2Eテストが成功する
-  - _Depends: 9.1, 9.3, 10.4, 10.5, 10.7_
+  - _Depends: 3.3, 9.2, 10.4, 10.5, 10.7_
   - _Requirements: 1.1, 2.2, 6.1, 6.3, 6.7, 8.4, 8.6, 20.2_
 
 - [ ] 11.2 パスワードリセット・多要素認証・アカウントの変更と退会のE2Eテストを作る

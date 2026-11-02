@@ -410,3 +410,133 @@ cross-spec reviewの指摘による、承認の後の改訂である。仮7は20
 
 - **Sentryの定型の通知**: content-processingの差分の分析(G-4)で、backend-platformの改訂7と技術ドキュメント`infra/004`の「同じ文言を繰り返し送る通知」が、定型の文言で繰り返し起こり得る出来事を`captureMessage`ではなく`captureEvent`で送り、文言を`logentry`、まとめる単位を`fingerprint`に置くと定めていることを確かめた。`captureMessage`は既定の`dedupeIntegration`により、同じ文言の2件目以降が捨てられる。本specの`captureMessage`をすべて`captureEvent`に改め、規約の参照と通知のタグの記述に`logentry`と`fingerprint`の置き方を加えた。通知の種類・タグ・レベルは変えていない。
 - 要件と受け入れ基準は変えていない。
+
+---
+
+## 実装前のギャップ分析(2026-11-02、`/cc-sdd:kiro-validate-gap`)
+
+### 分析の前提と方法
+
+- **状態**: 要件・設計・タスクは承認済みで、タスクは68件すべて未着手である。上流の基盤7spec(dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・media-pipeline・content-processing)とinfra-deliveryは実装を終えている。本specの設計は上流の実装の前、または実装の途中に書かれた。
+- **方法**: 設計が「既にある」と前提にする上流の型・関数・ファイル・設定値・文書を、backend-platformとapi-gateway、email-deliveryとevent、content-processingと文書、media-pipelineとDB、frontend-platformの領域に分けて実際のコードと突き合わせた。本specが新しく作るものが無いことは前提どおりのため、ギャップとして数えない。
+- **結論の要約**: 上流の契約の名前・置き場所・形は、大半が設計どおりに存在する。食い違いは、(1)プロジェクトの規則と衝突する設計の配置・手順が4点、(2)既存の「値の一覧を完全一致で確かめるテスト」が本specの追加で壊れるのに、Modified Filesに無いものが多数、(3)上流が先に済ませたため確かめるだけになった作業、の3種に分かれる。
+
+### 要件と資産の対応
+
+| 要件                                                    | 使う上流の資産(実在を確認)                                                                                                                                                            | ギャップ                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 登録・4 機能制限と可視ユーザー                        | `apps/db/schema/_shared/columns.ts`の共通カラム、`text-no-case.ts`、マイグレーションの生成手順                                                                                        | Missing: `users`などの利用者のテーブルは1つも無く、本specが最初に作る。Unknown: 部分一意索引(`where`)と`check()`はリポジトリに前例が無く、drizzle-kit 1.0.0-rc.5の出力を初めて確かめる。Constraint: `apps/db/schema/index.unit.test.ts`がテーブル名の一覧を完全一致で確かめる                                  |
+| 2 確認メールの再送・9〜11 リセットと変更・14 通知メール | `EmailKind`・`EMAIL_KINDS`・`EMAIL_TEMPLATES`・`toMatchingKey`・`formatUtcDateTime`・`RateLimitCounterClient`                                                                         | Constraint: eventの`createEmailTemplateRegistry`は、テンプレートの無いメール種別が`EMAIL_KINDS`にあると読み込みの時に例外を投げる。タスク3.3(種別)と9.1(テンプレート)の間はeventが起動せず、Workers統合テストが失敗する                                                                                        |
+| 3 使い捨てメールアドレス                                | `HttpFetch`・`BotVerifier`の外部呼び出しの形、`OPTIONAL_WORKER_SECRETS`の`DISIFY_API_KEY`(追記済み)                                                                                   | 小: `project-values.md`のバインディング・変数・シークレットの表に`DISIFY_API_KEY`の行が無い(キーの一覧の節には有る)                                                                                                                                                                                            |
+| 5 パスワード・13 TOTP・19 認証部品の共通化              | `KeyedHasher`・`hashRateLimitKey`・`PLATFORM_TYPES`、Durable Objectsの`migrations`(最後のタグ`v1`。設計の「次は`v2`」は正しい)                                                        | Constraint: `test/config/wrangler-config.unit.test.ts`がapiの`vars`・Durable Objectsのバインディング・`migrations`を完全一致で確かめる。既存specは`<spec>-wrangler-config.unit.test.ts`と`DELEGATED_KEY_PATTERNS`へ切り出している。`src/index.worker.test.ts`もエクスポートの一覧を完全一致で確かめる          |
+| 6 ログイン・8 セッション(端末情報)                      | `SessionVerifier`・`SESSION_BINDINGS`・`createSessionAccess`、`FORWARDED_BROWSER_HEADERS`、`session-cookie.ts`(`__Host-ls_session`)                                                   | Missing: `GraphQLContext`・`GatewayRequestScope`の`userAgent`。設計に無い3つ目の型`GraphQLContextScope`にも要る。Constraint: 必須の項目にすると既存のWorkers統合テスト5件の型検査が壊れる。`relay-headers.unit.test.ts`は`user-agent`が除かれることを、`relay-contract.unit.test.ts`は一覧を完全一致で確かめる |
+| 7 ログイン試行の制限・2.10 送信回数の制限               | `RateLimitCounterClient`(`hit`・`assertWithinLimit`)                                                                                                                                  | Constraint: application層は`**/lib/workers/**`を読み込めない(`config/eslint/backend-layers.ts`)。設計は`MailSendLimits`をapplication層に置き、上流の`RateLimitCounterClient`へ直接依存する。小: 規則名`auth-mail:<kind>:address`は`backend/003`の「英小文字とハイフン」の命名に合わない                        |
+| 12 本人確認とbot判定                                    | `GraphQLContext.assertHuman`、`useTurnstileToken`・非表示の`TurnstileWidget`                                                                                                          | なし                                                                                                                                                                                                                                                                                                           |
+| 15 退会・16 ライフサイクルイベント・17 物理削除         | `MessagePublisher`・`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`・`createCronRegistry`、`SuppressionMaintenance`(4引数)、media-pipelineの`eraseOwnedBy`(`hasMore`を返す)                   | Constraint: `commitWithdrawal`と各ジョブがapplication層から`MessagePublisher`(workers)へ直接依存する(上と同じ層の規則)。Constraint: 4:21の3ジョブを足すと、検索のWorkers統合テスト2件(ジョブ名の一覧の完全一致)が壊れる。Missing: 4:21の起動の予算(`SCHEDULED_RUN_BUDGETS`、合計300秒)への言及が無い           |
+| 4.7 アップロードできる利用者                            | `UploaderEligibility`(`{ session: SessionView; principal; purpose }`)・`UPLOAD_ACCESS_TYPES`・`AllowAllUploaderEligibility`・`UploaderDenialCode`、`SessionView`(作成済み)            | 小: 既定の束縛を前提にするテストは`test/config/media-registrations.unit.test.ts:121-125`だけで、アップロードの経路のWorkers統合テストは束縛を自分で差し替えるため変わらない。タスク8.5の「5.1の経路のテストを直す」は不要                                                                                      |
+| 18 設定ページのシェルと画面                             | `SiteLayoutSlots`(引数を取らない`ComponentType`)・`useAppForm`・`AppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`DateTime`・`notify`・状態表示の部品・`runAxe`・`z` | Constraint: `006-data-fetching.md`は`beforeLoad`での取得を禁じるが、設計は`__root.tsx`の`beforeLoad`で`viewer`を取得する。Constraint: 768px未満ではヘッダーの区画が2回描かれるため、固定の`id`を使えない(frontend-platformの6.4の申し送り)。区画はエラーと404のページにも描かれる                              |
+| 18 チェックボックス・QRコード                           | `radix-ui` 1.8.1(Checkboxを含む)、CSPの`img-src`(インラインのSVGは許可が要らない)                                                                                                     | Constraint: shadcn/uiの部品は`components/ui/<部品>/<部分>.tsx`に置く規則で、設計の`components/ui/checkbox.tsx`は規則に合わない(paymentsの設計も同じ経路を写している)。Missing: `uqr`をfrontend-lib・client・adminのブラウザテストの`optimizeDeps.include`へ足すことが設計に無い                                |
+| 20 テスト・文書                                         | `docs/GUIDES/tech`の番号(`security/006`・`external/004`〜`006`・`backend/007`は空き)、日次タイムラインの表、Mailpit(ポート48041)                                                      | 小: `e2e/support/*.ts`は全てに単体テストがあり、設計の「`mailpit.ts`はテストファイルではない」と慣習が異なる                                                                                                                                                                                                   |
+
+### 上流が済ませたため確かめるだけになった作業
+
+- `SessionView`(`apps/api/src/application/session/session-view.ts`)はmedia-pipelineが設計どおりの形で作成済みである。タスク2.3に残るのは、`SessionAccess`への`extends SessionView`の追加と、層の規則のテストへの違反例の追加だけである。
+- content-processingの前提の区切り(1.1・1.2・2.1・4.1・4.2・6.1、11.3〜11.5)はすべて完了している。共有ディレクトリ`apps/common-lib`は4アプリに配置済みで、frontend-libの`server/**`からの読み込みの許可も入っている。
+- 日次タイムラインの4:21のジョブの名前と順序の表(810・820・830・900・2300)と16:21の行は作成済みである。本specが足すのは4:21の3行(100・110・120)だけである。
+- `003-text-and-copy-rules.md`の「この操作はできません。」、プライバシーポリシー骨子のDISIFY・Have I Been Pwnedの委託先の行と国外移転の対象外の文、`project-values.md`のシークレットのキーの一覧の`DISIFY_API_KEY`(staging・prod)、`OPTIONAL_WORKER_SECRETS`、infra-deliveryの「ホスト名から導かれる変数の値」の表のAPIサーバーの`CLIENT_SITE_ORIGIN`は記載済みである。
+- `tech-stack.md`にはOTPAuth・uqr・HIBP・DISIFY・Turnstileが記載済みで、`bowser`だけが無い。`tech-stack.md`はnpmの版を持たず、版は`coding/002-dependency-versions.md`に書く慣習である(設計のModified Filesの「版を記載する」は慣習と食い違う)。
+
+### 設計の記述と実装の小さな食い違い
+
+| 箇所                                               | 設計の記述                                                                   | 実装                                                                                                                                                         |
+| -------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Allowed Dependenciesの`BusinessTime`               | `core`の`BusinessTime`                                                       | 同名の型は無く、`core/time/business-time.ts`が`BusinessTimeOfDay`・`BusinessDateTime`・`BusinessDate`・`toBusinessDateTime`・`toUtcCronExpression`を出す     |
+| Allowed Dependenciesの`HttpFetch`                  | `PLATFORM_TYPES`と並べて挙げる                                               | `HttpFetch`は型だけで、`PLATFORM_TYPES`に識別子は無い                                                                                                        |
+| Existing Architecture Analysis                     | frontend-platformは未着手                                                    | 実装済み                                                                                                                                                     |
+| ユーザーライフサイクルイベントの再試行             | backend-platformの再試行(5回、300秒から倍、上限3600秒)                       | 基盤の既定は5回・30秒・3600秒で、300秒は本specの`USER_LIFECYCLE_RETRY_POLICY`で指定する値。`maxAttempts`は6以下                                              |
+| DIの識別子の置き場所                               | `workers/identity/identity-platform-types.ts`                                | 既存の共有の識別子は`core/<領域>/identifiers.ts`に置き、単体テストを持つ(`MEDIA_TYPES`・`EMAIL_TYPES`・`SEARCH_TYPES`)                                       |
+| 準拠方針の保存場所の文言の引用                     | 「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」 | `001-compliance-policy.md:75`は「レート制限カウント(一時的)… 保証しない(所在を限定しない処理。ハッシュ化した一時的な値)」                                    |
+| `LAUNCH_LINK`                                      | 未ログインは`/auth/login?redirect=/my/products/new`へ                        | 現在の`site-links.ts`は`/auth/login`(`redirect`なし)。既定の部品は`<a href>`で、経路ができたら`Link`へ置き換える旨の申し送りがある                           |
+| モックアップの場所                                 | `mockups/src/routes/client`                                                  | `mockups/src/components/client/login-dialog.tsx`・`verify-email-banner.tsx`。ヘッダーの利用者のメニューは頭文字のボタンではなく`UserAvatar`とニックネーム    |
+| ESLintの「`auth`から`identity`を読み込まない」規則 | 規則を足す                                                                   | 同じファイルへの後の`no-restricted-imports`は前の設定を置き換える(`apps/api/eslint.config.ts:139`のコメント)。層の規則のパターンを繰り返して書く必要がある   |
+| サーバー側の描画の中継                             | `FORWARDED_BROWSER_HEADERS`への追加でUser-Agentが届く                        | `execute-graphql.server.ts`はブラウザのヘッダーを中継しないため、届くのはブラウザからの`/_bff/graphql`だけ。ログイン・登録はブラウザから送るため要件は満たす |
+
+### 対応の選択肢
+
+#### Option A: 設計を変えず、各タスクの中で食い違いを吸収する
+
+- 層の規則・メール種別とテンプレートの順・`beforeLoad`・チェックボックスの経路などを、実装者がタスクの実行中に判断して直す。
+- ✅ 文書の改訂の手間が無く、すぐ着手できる。
+- ❌ 承認済みの設計と実装が食い違ったまま進み、`/cc-sdd:kiro-review`のたびに同じ指摘が出る。`SessionView`・`AccountGuard`・チェックボックスの経路はRevalidation Triggersに当たり、下流spec(payments・admin-foundation・ugc-moderation)へ伝わらない。
+
+#### Option B: 実装の前に設計とタスクをすべて改訂する
+
+- 本分析の全項目(小さな食い違いを含む)をdesign.md・tasks.mdへ反映し、必要なら`/cc-sdd:kiro-validate-design`で確かめ直してから実装する。
+- ✅ 設計が実装の正となり、下流specへの影響も先に洗い出せる。
+- ❌ 設計は3,000行あり、小さな項目まで直すと改訂の量が大きい。
+
+#### Option C: 規則と衝突する項目と下流へ波及する項目だけを先に改訂し、他はタスクの注記にする(混成)
+
+- 先に改訂する項目:
+  1. application層から`RateLimitCounterClient`・`MessagePublisher`へ直接依存しない形(application層の自前のポート、または`backend/003`の指示どおりinfrastructure層への配置。前例は`application/media/media-daily-jobs.ts`の`MediaJobMessagePublisher`)
+  2. メール種別とテンプレートを同じタスクで足す順(3.3と9.1の統合か、3.3からの`EMAIL_KINDS`への登録の分離)
+  3. `viewer`の取得の場所(`006-data-fetching.md`への例外の追加か、ルートの`loader`での取得と`_authenticated`での判定)
+  4. チェックボックスの経路(`components/ui/checkbox/checkbox.tsx`)とpaymentsの設計の同じ記述
+  5. `userAgent`を任意の項目にするか、既存のテスト5件の改修を明記するか。`GraphQLContextScope`の追加
+- タスクの注記にする項目: 完全一致のテスト(Wrangler設定・エクスポート・テーブル名・検索のジョブ名・中継の項目)のModified Filesへの追加、4:21の予算、`optimizeDeps.include`、`005-shared-components.md`の分類の追加、ESLintの規則の書き方、小さな食い違いの表の各行。
+- ✅ 規則の違反と下流への波及を実装の前に防ぎ、改訂の量を抑えられる。
+- ❌ 注記と設計の本文の両方を見る必要がある。
+
+### 規模とリスク
+
+- **規模: XL(2週間以上)** — タスク68件で、DB・api・event・client・E2E・文書のすべての層にまたがる。上流の契約は揃っているため、規模を押し上げているのは本spec自身の範囲である。
+- **リスク: Medium** — 認証とセキュリティに直結し、外部API(HIBP・DISIFY)とDurable Objectsを新しく使う。一方で上流の契約は実在し、未知の技術は部分一意索引とCHECKの生成、`uqr`のブラウザテストでの事前バンドルに限られる。規則と衝突する4点は、実装の前に直せば手戻りにならない。
+
+### 設計フェーズへの申し送り
+
+- **推奨**: Option C。規則との衝突4点(層の依存・メール種別とテンプレートの順・`beforeLoad`での取得・チェックボックスの経路)と`userAgent`の扱いは、開発者の判断を得てから設計を改訂する。
+- **Research Needed**:
+  - drizzle-kit 1.0.0-rc.5が部分一意索引の`WHERE`句とCHECK制約を生成するか。生成しなければカスタムマイグレーションで書く。
+  - `identity-auth.credential-cleanup`の削除に件数の上限が要るか(1ジョブあたり30秒の目安と、4:21の合計300秒の予算)。media-pipelineのresearch.mdのG-11が同じ制約を扱っている。
+  - `uqr`をVitestのブラウザモードの事前バンドルに加えたときに動くか。
+  - `bowser`は2.15.0(2026-10-26公開)が出ている。公開から2週間を過ぎた後に上げるかを判断する(現時点は2.14.1のまま)。
+  - 上流の版は`hono` 4.13.14・`zod` 4.6.7で、設計のTechnology Stackの表(4.13.13・4.6.5)より新しい。表を上流に合わせる。
+
+## 実装前のギャップ分析への開発者の回答の反映(2026-11-02)
+
+- **状態**: 上の「実装前のギャップ分析」の「規則と衝突する項目」4点と「その他の漏れ」3点について、開発者へ1件ずつ選択肢を示して決定を得た。決定に従ってdesign.md・tasks.mdを改訂し、下流specとroadmapへ水平展開した。要件と受け入れ基準は変えていない。
+
+### 決定
+
+| 項目                           | 決定                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 推奨との違い                                                                  |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 層の依存                       | application層と後続specが使う契約(`UserLifecycleStore`・`DisposableEmailChecker`・`UserContactDirectory`・`AccountExport`・`AdminUserDirectory`)と`IDENTITY_PLATFORM_TYPES`を`backend-lib/core/identity`(`ports.ts`・`identifiers.ts`・`disposable-email.ts`)へ移し、`workers/identity`にはD1・DISIFYの実装と束縛だけを置く。`MessagePublisher`はapplication層の自前のポート`IdentityMessagePublisher`で`PLATFORM_TYPES.MessagePublisher`から受け取る。`MailSendLimits`はapplication層のポートとinfrastructure層の実装`CounterMailSendLimits`に分ける | 推奨どおり                                                                    |
+| メール種別とテンプレートの順   | タスク3.3と9.1を1つに統合し、種別とテンプレートを同じ変更で登録する。旧9.2・9.3を9.1・9.2に繰り上げた                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 推奨どおり                                                                    |
+| `viewer`の取得の場所           | `006-data-fetching.md`に、ルートの`beforeLoad`で行う認証の判定に要る1件の取得の例外を加え、設計の形(ルートの`beforeLoad`で取得し、`_authenticated`の`beforeLoad`は文脈で判定)を保つ。取得は`queryClient.fetchQuery`とtry/catchで行い、`ensureQueryData`を使わない                                                                                                                                                                                                                                                                                     | 推奨どおり                                                                    |
+| チェックボックスの経路         | identity-authとpaymentsの設計を`components/ui/checkbox/checkbox.tsx`へ直す                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 推奨どおり                                                                    |
+| `userAgent`の型                | 既存の`clientIp`と同じ必須の`string \| undefined`にし、設計に無かった`GraphQLContextScope`を加え、文脈をリテラルで組む既存のWorkers統合テスト5件を直す                                                                                                                                                                                                                                                                                                                                                                                                | 推奨どおり                                                                    |
+| Wrangler設定の完全一致のテスト | 専用のテストファイルへ切り出さず、共通の`wrangler-config.unit.test.ts`の期待を直す                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 推奨(既存specと同じ`<spec>-wrangler-config.unit.test.ts`への切り出し)と異なる |
+| 4:21の予算と削除の件数         | `identity-auth.credential-cleanup`の削除に件数の上限を設けず、4:21の予算(合計300秒)の共有と超過時のディスパッチャの警告を設計に明記する                                                                                                                                                                                                                                                                                                                                                                                                               | 推奨(1回1,000件を最大10回繰り返す形)と異なる                                  |
+
+### 決定に合わせて加えた漏れ
+
+上の「対応の選択肢」のOption Cでタスクの注記にするとした項目のうち、漏れに当たるものを決定と合わせて反映した。
+
+- 完全一致のテストの追加先: `apps/db/schema/index.unit.test.ts`(1.2)、`wrangler-config.unit.test.ts`(5.3・8.1)、`src/index.worker.test.ts`(5.3)、検索のWorkers統合テスト2件(8.4)、`relay-contract.unit.test.ts`と`relay-headers.unit.test.ts`(2.1)、`media-registrations.unit.test.ts`(8.5。アップロードの経路のWorkers統合テストは変えない)。
+- `uqr`の、3つのアプリのブラウザテストの事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)への追加(1.1)。
+- `005-shared-components.md`の「部品の一覧」への`components/auth/`の行とCheckboxの追加(10.1・10.4)、`003-frontend-server-security.md`の中継するヘッダーの表への`user-agent`の追加(2.1)。
+- ESLintの「`auth`から`identity`を読み込まない」規則で層の規則のパターンを含め直すこと(8.1)。
+- ヘッダーの区画の制約(フックでの読み取り・固定の`id`の禁止・768px未満の`Sheet`での2回の描画・エラーと404のページでの描画・`Link`での遷移。frontend-platformのタスク6.4の申し送り、10.3)。
+- サーバー側の描画の取得ではUser-Agentが届かないことと、セッションを発行する操作はブラウザから送るため要件を満たすこと。
+- Existing Architecture Analysisの上流の実装の状況を2026-11-02の時点に改めた。
+
+### 反映しなかった項目
+
+- `e2e/support/mailpit.ts`の単体テスト: `e2e/support`には単体テストの無い補助(`system-status-page.ts`など)もあるため、設計の「テストではないファイルとして置く」を変えない。ギャップ分析の表の該当の行は誤りだった。
+- 「設計の記述と実装の小さな食い違い」の表の項目(`BusinessTime`の名前、`HttpFetch`の識別子、再試行の方針の記述、準拠方針の文言の引用、モックアップの場所、規則名の命名など)は、今回の質問の対象外のため改訂していない。
+
+### 変えた箇所
+
+- design.md: This Spec Owns(イベントの記録・連絡先の照会・管理画面の照会の置き場所、Checkbox)、Allowed Dependencies(backend-platformの`workers`の部品の受け取り方)、Revalidation Triggers(置き場所・Checkbox・`006`の例外の条件・`core/identity`の契約)、上流への影響の表(api-gatewayの`userAgent`)、Existing Architecture Analysis、Dependency Direction、File Structure Plan(`core/identity`の`ports.ts`・`identifiers.ts`、`workers/identity`の`d1-*`、`counter-mail-send-limits.ts`、`checkbox/checkbox.tsx`)、Modified Files(完全一致のテスト・`uqr`の事前バンドル・`003`・`005`・`006`・予算・ESLint・区画の制約)、コンポーネントの表、「DisposableEmailRules・DisifyClient」「IdentityEmailKinds」「UserContactDirectory・D1UserContactDirectory・IdentityPlatformModule」「AccountExport・D1AccountExport」「AdminUserDirectory・D1AdminUserDirectory」「UserLifecycleStore」「IdentityPorts・RequestMeta」(`IdentityMessagePublisher`・`MailSendLimits`)、「MailSendLimits」(`CounterMailSendLimits`)、「Withdrawal・AdministrativeWithdrawal・UserSuspension」、ジョブの節(依存と時間の予算)、「IdentityEmailTemplates」「UserAgentRelay」「ClientViewer・AuthenticatedLayout・SettingsNavigationRegistry」「AccountMenu・LaunchAction・VerifyEmailBanner」、Testing Strategy。
+- tasks.md: 1.1・1.2・2.1・2.2・2.3・3.2・3.3(旧9.1を統合)・3.4〜3.7・5.3・6.1・7.2・7.9・7.10・8.1・8.4・8.5・9.1(旧9.2)・9.2(旧9.3)・10.1・10.3・10.4・11.1(依存)。
+- 水平展開: roadmapの「利用者の連絡先の照会」、inquiry-chat・ultras-subscription・ugc-moderationのdesign.mdの`UserContactDirectory`・`AdminUserDirectory`の置き場所、paymentsのdesign.mdのCheckboxの経路。

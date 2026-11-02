@@ -53,7 +53,7 @@
 
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`・`MessagePublisher`・`RateLimitCounterClient`)・`ScheduledJobDefinition`・`defineMessageContract`・`MessageHandlerRegistration`・`RetryPolicy`・`hashRateLimitKey`・`excludePath`・`AppError`・`validateEnv`・`platformEnvShape`・`getAppLogger`・業務時刻の関数・`ulidPrimaryKey`・`timestamps`。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`assertHuman`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`toConnection`・`DateTime`のスカラー。形を変えない。
-- identity-auth: `AccountGuard`(`requireUser`・`requireVerifiedUser`)・`CurrentUser`・`UserRecord.pseudonymousId`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`AuthenticatedContext`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・frontend-libの`Checkbox`(`apps/frontend-lib/components/ui/checkbox.tsx`、identity-authのタスク10.4が新設するshadcn/uiのCheckbox。決済画面の同意に使う)・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、`apps/backend-lib/workers/identity`、api・eventの両方にidentity-authが束縛する。メールの宛先の照会に使う)。`users`テーブルは`id`(外部キーの参照先)だけに使い、列を直接読まず、書き込まない。
+- identity-auth: `AccountGuard`(`requireUser`・`requireVerifiedUser`)・`CurrentUser`・`UserRecord.pseudonymousId`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`AuthenticatedContext`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・frontend-libの`Checkbox`(`apps/frontend-lib/components/ui/checkbox/checkbox.tsx`、identity-authのタスク10.4が新設するshadcn/uiのCheckbox。決済画面の同意に使う)・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、`apps/backend-lib/workers/identity`、api・eventの両方にidentity-authが束縛する。メールの宛先の照会に使う)。`users`テーブルは`id`(外部キーの参照先)だけに使い、列を直接読まず、書き込まない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
 - frontend-platform: `CLIENT_SECURITY_POLICY`・`SecurityPolicySources`・`PublicRuntimeConfig`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`buildPageHead`・`DateTime`・`RelativeTime`・`NumberText`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`。
 - legal-pages: `LEGAL_DOCUMENT_PATHS`(`apps/common-lib/legal/legal-documents.ts`)。
@@ -259,7 +259,7 @@ apps/
 │   ├── infrastructure/email/templates/payments/     # 本文の*-body.tsxと定義の*-template.ts(2種)
 │   └── composition/payments-module.ts               # eventの束縛(AppModule・経路)
 ├── frontend-lib/components/
-│   └── payments/money-text.tsx                      # 税込USDの表示(stories・browser testを併置)。ui/checkbox.tsxはidentity-authが作る
+│   └── payments/money-text.tsx                      # 税込USDの表示(stories・browser testを併置)。ui/checkbox/checkbox.tsxはidentity-authが作る
 └── client/src/
     ├── routes/_authenticated/checkout/$purchaseId.tsx
     ├── routes/_authenticated/checkout/return.tsx
