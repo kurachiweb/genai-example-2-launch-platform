@@ -14,6 +14,8 @@ const ADMIN_TOKEN = `admin${'B'.repeat(32)}-_8wvu`;
 const BOT_TOKEN = '0.bot-verification-token';
 const SENTRY_TRACE = '771a43a4192642f0b136d5159a501700-b0e6f15b45c36b12-1';
 const BAGGAGE = 'sentry-environment=staging,sentry-public_key=abc';
+const BROWSER_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
 const profileOf = (
   caller: FrontendAppProfile['caller'],
@@ -52,7 +54,7 @@ const browserRequest = (): Request =>
       Authorization: 'Bearer spoofed',
       Origin: 'https://app.example',
       Referer: 'https://app.example/items',
-      'User-Agent': 'Mozilla/5.0',
+      'User-Agent': BROWSER_USER_AGENT,
       'sentry-trace': 'browser-trace',
       baggage: 'browser-baggage',
       'x-session-issue': 'spoofed',
@@ -139,9 +141,37 @@ describe('buildRelayHeaders', () => {
       'cf-turnstile-response': BOT_TOKEN,
       'content-type': 'application/json',
       accept: 'application/graphql-response+json',
+      'user-agent': BROWSER_USER_AGENT,
       'sentry-trace': SENTRY_TRACE,
       baggage: BAGGAGE,
     });
+  });
+
+  test('ブラウザのUser-Agentを値を変えずに引き継ぐ', () => {
+    const headers = buildRelayHeaders(contextOf(), browserRequest().headers);
+
+    expect(headers.get('user-agent')).toBe(BROWSER_USER_AGENT);
+  });
+
+  test('User-Agentを引き継いでも偽の呼び出し元・元のクライアントIPの項目は引き継がない', () => {
+    const headers = buildRelayHeaders(
+      contextOf({ clientIp: undefined }),
+      browserRequest().headers,
+    );
+
+    expect(headers.get('user-agent')).toBe(BROWSER_USER_AGENT);
+    expect(headers.has('x-internal-caller')).toBe(false);
+    expect(headers.has('x-debug-caller')).toBe(false);
+    expect(headers.has('x-original-client-ip')).toBe(false);
+  });
+
+  test('ブラウザの要求にUser-Agentが無ければ付けない', () => {
+    const headers = buildRelayHeaders(
+      contextOf(),
+      new Headers({ 'content-type': 'application/json' }),
+    );
+
+    expect(headers.has('user-agent')).toBe(false);
   });
 
   test('ブラウザが送ったCookie・呼び出し元・元のクライアントIP・セッション識別子を名乗る項目を引き継がない', () => {
@@ -162,7 +192,6 @@ describe('buildRelayHeaders', () => {
       'authorization',
       'origin',
       'referer',
-      'user-agent',
       'x-session-issue',
     ]) {
       expect(headers.has(name)).toBe(false);

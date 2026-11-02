@@ -29,7 +29,7 @@
   - _Requirements: 1.1, 1.8, 5.1, 18.10_
 
 - [ ] 2. 上流の契約への追加(User-Agentの受け渡しとセッションの読み取りの型)
-- [ ] 2.1 (P) 利用者側・管理者側フロントエンドサーバーの中継の項目にUser-Agentを加える
+- [x] 2.1 (P) 利用者側・管理者側フロントエンドサーバーの中継の項目にUser-Agentを加える
   - 先に、中継の項目の組み立ての単体テストに、ブラウザのUser-Agentが引き継がれること、偽の内部ヘッダー(呼び出し元・元のIP)が引き続き除かれることを加える。`user-agent`が除かれることを確かめている既存の期待(`relay-headers.unit.test.ts`)は、引き継がれる形に改める。一覧を完全一致で確かめる`relay-contract.unit.test.ts`の期待に`user-agent`を加える
   - frontend-platformの中継で引き継ぐブラウザのヘッダーの一覧に`user-agent`を加える。他の項目と処理の順序は変えない。サーバー側の描画の取得はブラウザのヘッダーを中継しないため変えない(User-Agentが届くのはブラウザからの中継だけ)
   - 同じ変更で、`docs/GUIDES/tech/frontend/003-frontend-server-security.md`の中継するブラウザのヘッダーの表に`user-agent`を加える
@@ -456,3 +456,4 @@
 - 1.1: 導入確認のテストは`apps/api/src/infrastructure/auth/identity-packages.worker.test.ts`と`apps/frontend-lib/components/auth/qr-code-package.browser.test.ts`(後のタスクで本来のテストに置き換える)。`uqr`の`encode`は既定で四辺に1セルの余白(`border: 1`)を加える。`bowser`は解釈できないUser-Agentに空文字列のブラウザ名・OS名を返す。`otpauth`の`validate({ window: 1 })`は一致した時間窓の差分(0・-1・1)を返し、範囲外は`null`。TOTPの試験用の秘密鍵はBase32の文字列で書くとBetterleaksに誤検知されるため、`Secret.fromLatin1(...)`で組み立てる
 - 1.2: テーブル定義は`apps/db/schema/identity/`、マイグレーションは`20261102060846_identity_auth`。部分一意索引とCHECKは`.inlineParams()`で値を埋め込んで生成した(カスタムマイグレーション無し)。部分一意索引`users_email_not_deleted_unique`・`user_lifecycle_events_user_id_purge_due_unique`を衝突の対象(`onConflictDoNothing({ target, where })`など)に使うときは同じWHEREの条件を含める。`USER_STATUSES`・`DISPOSABLE_EMAIL_STATUSES`は`users.ts`に定義し`visibility.ts`から再エクスポートする。トークンの用途・イベントの種類と状態の値は各テーブルの非公開の定数のため、backend-libやapiのdomainに同じ値の定数を作るタスク(3.1・6.1)で、両者が一致することを確かめる単体テスト(先例: media-pipelineの`workers/media/media-file-columns.unit.test.ts`)を加える。`apps/db/schema/index.unit.test.ts`は完全一致ではなく`test.each`と`toContain`の形
 - 1.3: 入力規則は`apps/common-lib/identity/account-input-rules.ts`。ニックネームの前後の空白は共有の`trimWhiteSpace`(`\p{White_Space}`)で除くため、zodの`.trim()`(`String.prototype.trim`)とは集合が異なる。ニックネームを保存・検証する後続(`inputs.ts`・AccountFormSchemas・Registration)も`trimWhiteSpace`を使い、判定と保存値を食い違わせない。開発コンテナでは各アプリの`common-lib/`がコピーで古いことがあり、`shared-dirs:verify`が失敗したら`bun run shared-dirs:place`で配置し直す
+- 2.1: `FORWARDED_BROWSER_HEADERS`は`buildRelayHeaders`を使うすべての中継の経路で共有されるため、`/_bff/graphql`だけでなくメディアのアップロードの中継でもUser-AgentがAPIサーバーへ届く(APIサーバーは使わない)。中継の項目を完全一致で確かめるテストは`relay-contract.unit.test.ts`のほかに`relay-route.relay-to-api.unit.test.ts`もある

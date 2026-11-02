@@ -9,6 +9,7 @@ export const CLIENT_COOKIE = '__Host-test_session';
 export const CLIENT_TOKEN = `client${'A'.repeat(31)}_-9xyz`;
 export const ISSUED_TOKEN = `issued${'C'.repeat(31)}_-7tsr`;
 export const BOT_TOKEN = '0.bot-verification-token';
+export const BROWSER_USER_AGENT = 'Mozilla/5.0';
 export const SENTRY_TRACE =
   '771a43a4192642f0b136d5159a501700-b0e6f15b45c36b12-1';
 export const BAGGAGE = 'sentry-environment=staging,sentry-public_key=abc';
@@ -137,7 +138,7 @@ export const graphqlRequest = (
       'cf-turnstile-response': BOT_TOKEN,
       'x-original-client-ip': SPOOFED_IP,
       'x-internal-caller': 'admin',
-      'User-Agent': 'Mozilla/5.0',
+      'User-Agent': BROWSER_USER_AGENT,
     },
     body: method === 'GET' || method === 'HEAD' ? undefined : GRAPHQL_BODY,
   });

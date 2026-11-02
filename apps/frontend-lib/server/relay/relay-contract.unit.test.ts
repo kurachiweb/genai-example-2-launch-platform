@@ -42,11 +42,12 @@ describe('中継の契約の値', () => {
     expect(SESSION_CLEAR_VALUE).toBe('1');
   });
 
-  test('ブラウザから引き継ぐ項目は要求の形式とbot判定のトークンだけである', () => {
+  test('ブラウザから引き継ぐ項目は要求の形式・bot判定のトークン・User-Agentだけである', () => {
     expect(FORWARDED_BROWSER_HEADERS).toEqual([
       'content-type',
       'accept',
       'cf-turnstile-response',
+      'user-agent',
     ]);
   });
 

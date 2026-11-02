@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   BAGGAGE,
   BOT_TOKEN,
+  BROWSER_USER_AGENT,
   CLIENT_COOKIE,
   CLIENT_IP,
   CLIENT_TOKEN,
@@ -55,6 +56,7 @@ describe('relayToApi(GraphQL)', () => {
       'cf-turnstile-response': BOT_TOKEN,
       'content-type': 'application/json',
       accept: 'application/graphql-response+json',
+      'user-agent': BROWSER_USER_AGENT,
       'sentry-trace': SENTRY_TRACE,
       baggage: BAGGAGE,
     });

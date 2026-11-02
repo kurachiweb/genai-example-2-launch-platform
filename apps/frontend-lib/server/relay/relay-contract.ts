@@ -29,6 +29,7 @@ export const FORWARDED_BROWSER_HEADERS = Object.freeze([
   'content-type',
   'accept',
   RELAY_REQUEST_HEADERS.botToken,
+  'user-agent',
 ] as const);
 
 export const RELAY_TRACE_HEADERS = Object.freeze([
