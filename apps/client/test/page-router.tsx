@@ -1,3 +1,4 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import {
   type AnyRoute,
   createMemoryHistory,
@@ -23,12 +24,28 @@ import { SiteLayout } from '../src/components/layout/site-layout.tsx';
 import { ErrorPage } from '../src/components/pages/error-page.tsx';
 import { NotFoundPage } from '../src/components/pages/not-found-page.tsx';
 import { SITE_LAYOUT_SLOTS } from '../src/composition/layout-slots.ts';
+import type { ClientViewerQuery } from '../src/graphql/generated/graphql.ts';
+import {
+  loadRootAuthContext,
+  viewerQueryOptions,
+} from '../src/graphql/viewer.ts';
 
 export interface PageRouterOptions {
   readonly path: string;
   readonly createRoutes: (rootRoute: PageRootRoute) => readonly AnyRoute[];
   readonly context?: RouterContext;
+  readonly cachedViewer?: ClientViewerQuery | null;
 }
+
+export interface RouterRenderOptions {
+  readonly path?: string;
+  readonly context?: RouterContext;
+  readonly cachedViewer?: ClientViewerQuery | null;
+}
+
+export const GUEST_VIEWER_QUERY: ClientViewerQuery = Object.freeze({
+  viewer: null,
+});
 
 const PAGE_ROUTER_DISPLAY: DisplayPreferences = Object.freeze({
   timeZone: 'Asia/Tokyo',
@@ -55,6 +72,30 @@ export const PAGE_ROUTER_ROOT_COMPONENTS = Object.freeze({
   errorComponent: ErrorPage,
 });
 
+export const PAGE_ROUTER_ROOT_BEFORE_LOAD = loadRootAuthContext;
+
+// アプリではSSRとクエリの連携がルーターの外側にQueryClientProviderを置くため、テストのルーターも同じ位置に置く
+const createQueryClientWrap =
+  (context: RouterContext) =>
+  ({ children }: { readonly children: ReactNode }) => (
+    <QueryClientProvider client={context.queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+
+// nullならキャッシュを空のままにし、ルートのbeforeLoadに取得させる
+function cacheViewer(
+  context: RouterContext,
+  cachedViewer: ClientViewerQuery | null,
+): void {
+  if (cachedViewer !== null) {
+    context.queryClient.setQueryData(
+      viewerQueryOptions().queryKey,
+      cachedViewer,
+    );
+  }
+}
+
 // アプリの文書の外枠と同じく、ルーターの文脈の表示設定を日時の部品へ渡す
 function PageShell({ children }: { readonly children: ReactNode }) {
   const router = useRouter();
@@ -69,9 +110,10 @@ function PageShell({ children }: { readonly children: ReactNode }) {
   );
 }
 
-// 本物の経路の設定を子に付けられるよう、loaderを含めてアプリのルートと同じ型にする
+// 本物の経路の設定を子に付けられるよう、beforeLoadとloaderを含めてアプリのルートと同じ型にする
 const createPageRootRoute = () =>
   createRootRouteWithContext<RouterContext>()({
+    beforeLoad: PAGE_ROUTER_ROOT_BEFORE_LOAD,
     loader: ({ context }) => context.runtime.get(),
     shellComponent: PageShell,
     ...PAGE_ROUTER_ROOT_COMPONENTS,
@@ -84,17 +126,43 @@ export function createPageRouter({
   path,
   createRoutes,
   context = createPageRouterContext('local'),
+  cachedViewer = GUEST_VIEWER_QUERY,
 }: PageRouterOptions) {
+  cacheViewer(context, cachedViewer);
   const rootRoute = createPageRootRoute();
   return createRouter({
     routeTree: rootRoute.addChildren([...createRoutes(rootRoute)]),
     history: createMemoryHistory({ initialEntries: [path] }),
     context,
+    Wrap: createQueryClientWrap(context),
   });
 }
 
 export async function renderPageRouter(options: PageRouterOptions) {
   const router = createPageRouter(options);
+  await render(<RouterProvider router={router} />);
+  return router;
+}
+
+// 経路への遷移とログイン中の利用者の取得を使う部品を、共通レイアウトを持たないルーターの中で描く
+export async function renderInRouter(
+  element: ReactNode,
+  {
+    path = '/',
+    context = createPageRouterContext('local'),
+    cachedViewer = GUEST_VIEWER_QUERY,
+  }: RouterRenderOptions = {},
+) {
+  cacheViewer(context, cachedViewer);
+  const rootRoute = createRootRouteWithContext<RouterContext>()({
+    component: () => element,
+  });
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: [path] }),
+    context,
+    Wrap: createQueryClientWrap(context),
+  });
   await render(<RouterProvider router={router} />);
   return router;
 }

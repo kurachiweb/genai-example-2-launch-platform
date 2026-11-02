@@ -1,3 +1,6 @@
+import { LOGIN_LABEL, REGISTER_LABEL } from '../auth/account-messages.ts';
+import { LOGIN_PATH, REGISTER_PATH } from '../auth/login-href.ts';
+
 export interface SiteLink {
   readonly href: string;
   readonly label: string;
@@ -23,20 +26,38 @@ export const PRIMARY_NAVIGATION_LINKS: readonly SiteLink[] = Object.freeze([
   { href: '/help', label: 'ヘルプ' },
 ]);
 
-export const LAUNCH_LINK: SiteLink = Object.freeze({
-  href: '/auth/login',
-  label: 'ローンチする',
-});
+export const LAUNCH_LABEL = 'ローンチする';
+
+export const NEW_PRODUCT_HREF = '/my/products/new';
 
 export const LOGIN_LINK: SiteLink = Object.freeze({
-  href: '/auth/login',
-  label: 'ログイン',
+  href: LOGIN_PATH,
+  label: LOGIN_LABEL,
 });
 
 export const REGISTER_LINK: SiteLink = Object.freeze({
-  href: '/auth/register',
-  label: '登録',
+  href: REGISTER_PATH,
+  label: REGISTER_LABEL,
 });
+
+export const PROFILE_LABEL = 'プロフィール';
+
+export const profileHref = (handle: string): string => `/@${handle}`;
+
+export const MY_PRODUCTS_LINK: SiteLink = Object.freeze({
+  href: '/my/products',
+  label: '自身のプロダクト',
+});
+
+export const SETTINGS_LINK: SiteLink = Object.freeze({
+  href: '/settings',
+  label: '設定',
+});
+
+export const LOGOUT_LABEL = 'ログアウト';
+
+export const userMenuLabel = (nickname: string): string =>
+  `${nickname}のユーザーメニュー`;
 
 export const FOOTER_HELP_NAVIGATION_LABEL = 'ヘルプ';
 

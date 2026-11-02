@@ -1,5 +1,5 @@
 import { createRoute } from '@tanstack/react-router';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import '../../styles.css';
@@ -10,8 +10,19 @@ import {
 } from '../../../lib/test/computed-style.ts';
 import {
   focusMainContent,
+  GUEST_VIEWER_QUERY,
   renderPageRouter,
 } from '../../../test/page-router.tsx';
+import {
+  signedInViewerQuery,
+  VIEWER_NICKNAME,
+} from '../../../test/viewer-fixtures.ts';
+import type { ClientViewerQuery } from '../../graphql/generated/graphql.ts';
+
+// ログイン中の利用者の取得の補助が読み込む同型の関数は、Startのビルドを経ないブラウザテストではサーバーの実装が残り読み込めないため差し替える。利用者は取得のキャッシュに先に入れる
+vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
+  executeGraphQL: vi.fn(),
+}));
 
 const ERROR_TITLE = 'ページを表示できませんでした。';
 const ERROR_GUIDANCE =
@@ -34,10 +45,13 @@ function failOnce(): () => void {
   };
 }
 
-const renderLoaderFailure = () => {
+const renderLoaderFailure = (
+  cachedViewer: ClientViewerQuery = GUEST_VIEWER_QUERY,
+) => {
   const load = failOnce();
   return renderPageRouter({
     path: '/broken',
+    cachedViewer,
     createRoutes: (rootRoute) => [
       createRoute({
         getParentRoute: () => rootRoute,
@@ -52,8 +66,13 @@ const renderLoaderFailure = () => {
   });
 };
 
-afterEach(() => {
+// ヘッダーの区画は幅768px以上でだけヘッダーに見えるため、確かめるテストだけ幅を広げ、後のテストのために既定の幅へ戻す
+const WIDE_VIEWPORT = { width: 1280, height: 800 } as const;
+const DEFAULT_VIEWPORT = { width: 414, height: 896 } as const;
+
+afterEach(async () => {
   applyColorScheme('light');
+  await page.viewport(DEFAULT_VIEWPORT.width, DEFAULT_VIEWPORT.height);
 });
 
 describe('想定外のエラーの画面', () => {
@@ -67,6 +86,27 @@ describe('想定外のエラーの画面', () => {
     await expect.element(alert.getByText(ERROR_GUIDANCE)).toBeVisible();
     await expect.element(page.getByRole('banner')).toBeVisible();
     await expect.element(page.getByRole('contentinfo')).toBeVisible();
+  });
+
+  test('ログイン中は、エラーの画面でもヘッダーのユーザーメニュー・プロダクト登録への導線・未確認の帯を描く', async () => {
+    await page.viewport(WIDE_VIEWPORT.width, WIDE_VIEWPORT.height);
+    await renderLoaderFailure(signedInViewerQuery({ emailVerified: false }));
+
+    await expect.element(main().getByRole('alert')).toBeVisible();
+    const banner = page.getByRole('banner');
+    await expect
+      .element(
+        banner.getByRole('button', {
+          name: `${VIEWER_NICKNAME}のユーザーメニュー`,
+        }),
+      )
+      .toBeVisible();
+    await expect
+      .element(banner.getByRole('link', { name: 'ローンチする' }))
+      .toHaveAttribute('href', '/my/products/new');
+    await expect
+      .element(page.getByRole('button', { name: '確認メールを再送' }))
+      .toBeVisible();
   });
 
   test('再試行のボタンと、お問い合わせのページへの導線を表示する', async () => {

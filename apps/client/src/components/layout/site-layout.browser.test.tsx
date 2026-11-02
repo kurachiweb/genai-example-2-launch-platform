@@ -1,7 +1,6 @@
 import type { ComponentType } from 'react';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { type Locator, page, userEvent } from 'vitest/browser';
-import { render } from 'vitest-browser-react';
 
 import '../../styles.css';
 import { MAIN_CONTENT_ID } from '../../../lib/components/app-shell/main-content.ts';
@@ -30,7 +29,24 @@ import {
   SITE_LAYOUT_SLOTS,
   type SiteLayoutSlots,
 } from '../../composition/layout-slots.ts';
+import type { ClientViewerQuery } from '../../graphql/generated/graphql.ts';
+import {
+  GUEST_VIEWER_QUERY,
+  renderInRouter,
+} from '../../../test/page-router.tsx';
+import {
+  signedInViewerQuery,
+  VIEWER_NICKNAME,
+} from '../../../test/viewer-fixtures.ts';
+import { AccountMenu } from './account-menu.tsx';
+import { LaunchAction } from './launch-action.tsx';
 import { SiteLayout } from './site-layout.tsx';
+import { VerifyEmailBanner } from './verify-email-banner.tsx';
+
+// ログイン中の利用者の取得の補助が読み込む同型の関数は、Startのビルドを経ないブラウザテストではサーバーの実装が残り読み込めないため差し替える。利用者は取得のキャッシュに先に入れる
+vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
+  executeGraphQL: vi.fn(),
+}));
 
 const WIDE_VIEWPORT = { width: 1280, height: 800 } as const;
 const MENU_BREAKPOINT_WIDTH = 768;
@@ -43,6 +59,8 @@ const PRIMARY_LINKS = [
   ['ディレクトリ', '/p'],
   ['ヘルプ', '/help'],
 ] as const;
+
+const LAUNCH_LINK_FOR_GUEST = '/auth/login?redirect=%2Fmy%2Fproducts%2Fnew';
 
 const GUEST_LINKS = [
   ['ログイン', '/auth/login'],
@@ -92,8 +110,9 @@ function TranslatedPageBody() {
 function renderLayout(
   slots: SiteLayoutSlots = SITE_LAYOUT_SLOTS,
   Body: ComponentType = PageBody,
+  cachedViewer: ClientViewerQuery = GUEST_VIEWER_QUERY,
 ) {
-  return render(
+  return renderInRouter(
     <TooltipProvider>
       <SkipLink />
       <div data-testid={LAYOUT_ROOT_TEST_ID}>
@@ -102,6 +121,7 @@ function renderLayout(
         </SiteLayout>
       </div>
     </TooltipProvider>,
+    { cachedViewer },
   );
 }
 
@@ -286,12 +306,12 @@ describe('SiteLayout', () => {
       }
     });
 
-    test('初版の区画として、ログインへの「ローンチする」とログイン・登録の導線を表示する', async () => {
+    test('未ログインの区画として、プロダクト登録を戻り先にしたログインへの「ローンチする」とログイン・登録の導線を表示する', async () => {
       await renderLayout();
 
       await expect
         .element(linkIn(header(), 'ローンチする'))
-        .toHaveAttribute('href', '/auth/login');
+        .toHaveAttribute('href', LAUNCH_LINK_FOR_GUEST);
       for (const [name, href] of GUEST_LINKS) {
         await expect
           .element(linkIn(header(), name))
@@ -374,7 +394,7 @@ describe('SiteLayout', () => {
       }
       await expect
         .element(linkIn(menu(), 'ローンチする'))
-        .toHaveAttribute('href', '/auth/login');
+        .toHaveAttribute('href', LAUNCH_LINK_FOR_GUEST);
       for (const [name, href] of GUEST_LINKS) {
         await expect
           .element(linkIn(menu(), name))
@@ -553,11 +573,121 @@ describe('SiteLayout', () => {
       expect(await runAxe(footer().element())).toStrictEqual([]);
     });
 
-    test('初版の登録箇所は、帯・フッターの直前・ヘルプのリンクの区画を空にする', () => {
-      expect(SITE_LAYOUT_SLOTS.belowHeader).toStrictEqual([]);
+    test('登録箇所は、ヘッダーにアカウントの表示とローンチの導線、帯にメールアドレス未確認の帯を置き、フッターの直前・ヘルプのリンクの区画を空にする', () => {
+      expect(SITE_LAYOUT_SLOTS.headerAccount).toBe(AccountMenu);
+      expect(SITE_LAYOUT_SLOTS.headerLaunchAction).toBe(LaunchAction);
+      expect(SITE_LAYOUT_SLOTS.belowHeader).toStrictEqual([VerifyEmailBanner]);
       expect(SITE_LAYOUT_SLOTS.beforeFooter).toStrictEqual([]);
       expect(SITE_LAYOUT_SLOTS.footerHelpLinks).toStrictEqual([]);
       expect(Object.isFrozen(SITE_LAYOUT_SLOTS)).toBe(true);
+      expect(Object.isFrozen(SITE_LAYOUT_SLOTS.belowHeader)).toBe(true);
+    });
+  });
+
+  describe('ログイン中の区画', () => {
+    const UNVERIFIED = signedInViewerQuery({ emailVerified: false });
+    const userMenuButtonIn = (scope: Locator) =>
+      scope.getByRole('button', {
+        name: `${VIEWER_NICKNAME}のユーザーメニュー`,
+      });
+    const userMenu = () => page.getByRole('menu');
+
+    test('広い画面のヘッダーにユーザーメニューとプロダクト登録への「ローンチする」を、ヘッダーの直下に未確認の帯を描く', async () => {
+      await renderLayout(SITE_LAYOUT_SLOTS, PageBody, UNVERIFIED);
+
+      await expect.element(userMenuButtonIn(header())).toBeVisible();
+      await expect
+        .element(linkIn(header(), 'ローンチする'))
+        .toHaveAttribute('href', '/my/products/new');
+      for (const [name] of GUEST_LINKS) {
+        await expect.element(linkIn(header(), name)).not.toBeInTheDocument();
+      }
+      const banner = onlyElement('header');
+      const resend = page
+        .getByRole('button', { name: '確認メールを再送' })
+        .element();
+      expect(isBefore(banner, resend)).toBe(true);
+      expect(isBefore(resend, onlyElement('main'))).toBe(true);
+    });
+
+    describe('幅768px未満', () => {
+      beforeEach(async () => {
+        await page.viewport(MENU_BREAKPOINT_WIDTH - 1, VIEWPORT_HEIGHT);
+      });
+
+      test('メニューのシートにも区画が描かれた時、文書の中のidが重複しない', async () => {
+        await renderLayout(SITE_LAYOUT_SLOTS, PageBody, UNVERIFIED);
+        await openMenuWithKeyboard();
+        await expect.element(userMenuButtonIn(menu())).toBeVisible();
+
+        const ids = Array.from(
+          document.querySelectorAll('[id]'),
+          (element) => element.id,
+        );
+        expect(ids.length).toBeGreaterThan(0);
+        expect(new Set(ids).size).toBe(ids.length);
+      });
+
+      test('シートの中のユーザーメニューをキーボードで開き、項目の間を移って設定へ遷移するとシートも閉じる', async () => {
+        const router = await renderLayout(
+          SITE_LAYOUT_SLOTS,
+          PageBody,
+          signedInViewerQuery(),
+        );
+        await openMenuWithKeyboard();
+
+        userMenuButtonIn(menu()).element().focus();
+        await userEvent.keyboard('{Enter}');
+        await expect.element(userMenu()).toBeVisible();
+        await expect
+          .element(userMenu().getByRole('menuitem', { name: 'プロフィール' }))
+          .toHaveFocus();
+        await userEvent.keyboard('{ArrowDown}');
+        await userEvent.keyboard('{ArrowDown}');
+        await expect
+          .element(userMenu().getByRole('menuitem', { name: '設定' }))
+          .toHaveFocus();
+        await userEvent.keyboard('{Enter}');
+
+        await expect
+          .poll(() => router.state.location.pathname)
+          .toBe('/settings');
+        await expect.element(userMenu()).not.toBeInTheDocument();
+        await expect.element(menu()).not.toBeInTheDocument();
+      });
+
+      test('シートの中のユーザーメニューをEscapeで閉じると、シートを開いたままメニューのボタンへフォーカスを戻す', async () => {
+        await renderLayout(SITE_LAYOUT_SLOTS, PageBody, signedInViewerQuery());
+        await openMenuWithKeyboard();
+        userMenuButtonIn(menu()).element().focus();
+        await userEvent.keyboard('{Enter}');
+        await expect.element(userMenu()).toBeVisible();
+
+        await userEvent.keyboard('{Escape}');
+
+        await expect.element(userMenu()).not.toBeInTheDocument();
+        await expect.element(menu()).toBeVisible();
+        await expect.element(userMenuButtonIn(menu())).toHaveFocus();
+      });
+
+      test.each(COLOR_SCHEMES)(
+        '配色が%sのとき、シートの中で開いたユーザーメニューで、アクセシビリティの検査の違反が0件',
+        async (scheme) => {
+          applyColorScheme(scheme);
+          await renderLayout(
+            SITE_LAYOUT_SLOTS,
+            PageBody,
+            signedInViewerQuery(),
+          );
+          await openMenuWithKeyboard();
+          expect(await runAxe(menu().element())).toStrictEqual([]);
+          userMenuButtonIn(menu()).element().focus();
+          await userEvent.keyboard('{Enter}');
+          await expect.element(userMenu()).toBeVisible();
+
+          expect(await runAxe(userMenu().element())).toStrictEqual([]);
+        },
+      );
     });
   });
 

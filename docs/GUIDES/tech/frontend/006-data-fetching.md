@@ -119,9 +119,55 @@ function ProductRoute() {
 - 例の文書名は、操作名の接頭辞を省いて書いている。
 - `graphqlQueryOptions`の`queryFn`は、失敗の結果を`requireData`で`GraphQLClientError`の例外にする。`loader`で`ensureQueryData`を待った取得が失敗すると、ルートの`errorComponent`が描画され、ページの最初の描画では状態コード500になる。この形は、データが無ければページを表示できない取得にだけ使う。
 - 対象が存在しないことは、`loader`で`throw notFound()`にして404にする。別のページへ移すときは`throw redirect()`を使う。どちらも`Error`ではない値で、静的解析は`Error`以外の値ではこの2つだけを投げることを許す。
-- 1つのルートの`loader`で複数の取得を待つときは、`Promise.all`で同時に始める。1つ目の完了を待ってから2つ目を始めると、待ち時間が足し合わされる。入れ子のルートの`loader`は並行に実行されるが、`beforeLoad`は親から順に実行されるため、`beforeLoad`では取得しない(環境による`notFound()`などの判定だけにする)。
+- 1つのルートの`loader`で複数の取得を待つときは、`Promise.all`で同時に始める。1つ目の完了を待ってから2つ目を始めると、待ち時間が足し合わされる。入れ子のルートの`loader`は並行に実行されるが、`beforeLoad`は親から順に実行されるため、`beforeLoad`では取得しない(環境による`notFound()`などの判定だけにする)。例外は「[認証の判定に要る取得](#認証の判定に要る取得)」の1件だけである。
 - 検索パラメータで変わる取得は、`validateSearch`で検索パラメータを検証し、`loaderDeps`で`loader`へ渡して変数に含める。Zodの規則は`utilities/validation/zod.ts`の`z`で書く。
 - `defaultPreload: 'intent'`のため、リンクにポインタを重ねる・フォーカスするとブラウザで`loader`が先に実行される。先読みの取得も中継の経路を通り、IP制限の回数に数えられる(「[1ページの描画あたりの呼び出し回数の目安](#1ページの描画あたりの呼び出し回数の目安)」)。
+
+### 認証の判定に要る取得
+
+ログイン中の利用者は、ログインが必要な経路の判定と移動に要り、`loader`では子のルートの`loader`より前に判定できない。そのため、この1件の取得に限り、次の4つの条件で`beforeLoad`での取得を認める。
+
+1. 取得するのはルート(`__root`)の`beforeLoad`だけとし、結果をルートの文脈に入れる。
+2. `queryClient.query`(非推奨になった`fetchQuery`の後継)でクエリのキャッシュを通す。`staleTime`の間の遷移では取得せず、キャッシュの値を使う。
+3. 失敗を例外にせず、未ログインとして描画を続ける。`ensureQueryData`(および`staleTime: 'static'`の`queryClient.query`)は、失敗するとエラーの画面になるため使わない。
+4. 子のルート(ログインが必要な経路をまとめる経路の無いレイアウトなど)の`beforeLoad`は、文脈の値で判定するだけで取得しない。未ログインなら、現在のパスとクエリを戻り先にしたログイン画面へ`throw redirect()`で移す。
+
+```tsx
+// routes/__root.tsx
+export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async ({ context }) => {
+    try {
+      return {
+        viewer: await context.queryClient.query({
+          ...graphqlQueryOptions(ViewerDocument, {}),
+          select: toViewer,
+        }),
+      };
+    } catch {
+      return { viewer: null };
+    }
+  },
+});
+
+// routes/_authenticated/route.tsx
+export const Route = createFileRoute('/_authenticated')({
+  beforeLoad: ({ context, location }) => {
+    if (context.viewer === null) {
+      throw redirect({
+        href: `/login?${new URLSearchParams({ redirect: `${location.pathname}${location.searchStr}` }).toString()}`,
+      });
+    }
+    return { viewer: context.viewer };
+  },
+});
+```
+
+- 例の文書名・変換の関数・ログイン画面のパスは、置き換えて読む。
+- 想定外のGraphQLの失敗は`executeGraphQL`がエラートラッキングへ送るため、`catch`で送り直さない。
+- 共通レイアウトの区画(ヘッダーのアカウントの表示など)は、エラーと404の画面(ルートの`shellComponent`の中)にも描かれ、ルートの文脈を読めない場合がある。区画の部品は文脈ではなく、同じ設定の`useQuery`でキャッシュから読み、取得の失敗と取得前は未ログインとして描く。
+- ログイン・ログアウトなど利用者が変わる変更の後は、この取得を`invalidateQueries`で無効にし、`router.invalidate()`でルーターを再評価する。
+- この取得は、ページの最初の描画ごとの呼び出し回数(「[1ページの描画あたりの呼び出し回数の目安](#1ページの描画あたりの呼び出し回数の目安)」)に1回分数える。
+- 経路の無いレイアウトは、子の経路が1つも無いとルートの経路生成が`/`と衝突させて失敗するため、最初の子の経路と同じ変更で作る。
 
 ### 失敗を画面の中で表示する取得
 
