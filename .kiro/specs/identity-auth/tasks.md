@@ -124,7 +124,7 @@
   - _Boundary: PasswordRules, SessionPolicy, RecoveryCodeFormat, SecondFactor_
   - _Requirements: 5.1, 5.2, 8.2, 8.3, 13.3, 19.2_
 
-- [ ] 4.2 (P) ログイン試行の記録の状態遷移を作る
+- [x] 4.2 (P) ログイン試行の記録の状態遷移を作る
   - 先に、5回目まではロックしない、6回目で1秒・7回目で2秒・14回目で256秒・15回目以降は300秒、ロック中の試行は数えない、アラームでロックだけが解けて回数が残る、最後の失敗から24時間で記録が消える、アラームの予約時刻の選び方を確かめる単体テストを書く
   - 失敗の加算・現在の状態・アラームの結果を純粋な関数として作る
   - 完了状態: 状態遷移のすべての分岐を通る単体テストが成功する
@@ -466,3 +466,4 @@
 - 3.6: `D1AccountExport`は`workers/identity/d1-account-export.ts`。テストの補助`clearIdentityTables`は`user_totp_credentials`も消し、TOTPの行は`insertTotpCredential`で入れる。テストの補助へ別のテーブルを足すときは外部キーの順(子→`users`)で消す
 - 3.7: `D1AdminUserDirectory`は`workers/identity/d1-admin-user-directory.ts`。カーソルは`base64url('<ミリ秒>:<ID>')`で、件数とカーソルの不正は設計どおり`validation_error`(既存のページングは`invalid_cursor`)。空のフィルタ文字列は全件に一致するため、正規化は呼び出し元が行う。eventの`test:worker`は既定の並列数ではメモリ不足でSIGKILLになることがあり、`bunx vitest run --config vitest.worker.config.ts --maxWorkers=3`で回す
 - 4.1: 規則は`apps/api/src/domain/auth/`の`password-rules.ts`・`session-policy.ts`(`USER_SESSION_POLICY`・`newSessionTimes`・`evaluateSession`・`cookieMaxAgeSeconds`)・`recovery-code-format.ts`・`second-factor.ts`(`normalizeTotpCode`)。期限ちょうど(`>=`)を期限切れとするため、期限切れの削除(6.3・7.10)も同じ境界にする。リカバリコードと認証コードの入力は設計の正規化に加えてNFKCとダッシュ類全般の除去を行う(12.1の文書も同じ正規化を書く)
+- 4.2: `domain/auth/login-throttle-state.ts`。ロック中の`applyFailure`は記録を変えず、ロックの終了時刻を`alarmAt`として返す(5.3の`DurableLoginThrottle`は、ロック中は保存を省いてよい)。`alarmOutcome`の`reschedule`はロックの終了時刻と最後の失敗+24時間の早い方。`status`→照合→`recordFailure`は原子的でないため、並列の要求はロックの前に`status`を通り得る(5.3でDurable Objectの直列化の範囲を確かめる)
