@@ -1,11 +1,33 @@
 import { describe, expect, test } from 'bun:test';
 
-import { AUDIT_REASON_MAX } from '../../../common-lib/admin/admin-input-rules.ts';
+import {
+  AUDIT_REASON_MAX,
+  CATEGORY_NAME_MAX,
+} from '../../../common-lib/admin/admin-input-rules.ts';
 import {
   ADMIN_FILTER_LABEL,
   ADMIN_PAGINATION_LABEL,
   APPLY_FILTER_LABEL,
   AUDITED_ACTION_NOTICE,
+  CATEGORY_ACTIONS_LABEL,
+  CATEGORY_CREATE_LABEL,
+  CATEGORY_CREATE_SUBMIT_LABEL,
+  CATEGORY_DELETE_DESCRIPTION,
+  CATEGORY_DELETE_LABEL,
+  CATEGORY_EDIT_LABEL,
+  CATEGORY_EMPTY_MESSAGE,
+  CATEGORY_HANDLE_LABEL,
+  CATEGORY_HANDLE_UNSET_LABEL,
+  CATEGORY_NAME_LABEL,
+  CATEGORY_NAME_REQUIRED_MESSAGE,
+  CATEGORY_NAME_TOO_LONG_MESSAGE,
+  CATEGORY_READ_ONLY_NOTICE,
+  CATEGORY_SYSTEM_DEFAULT_LABEL,
+  CATEGORY_SYSTEM_DEFAULT_NOTICE,
+  CATEGORY_UPDATE_SUBMIT_LABEL,
+  categoryDeleteTitle,
+  categoryEditTitle,
+  categoryRowActionTarget,
   CONFIRM_ACTION_CANCEL_LABEL,
   NEXT_PAGE_LABEL,
   OPTIONAL_REASON_LABEL,
@@ -87,5 +109,71 @@ describe('管理画面の共通部品の文言', () => {
     for (const sentence of SENTENCES) {
       expect(sentence).toMatch(/。$/u);
     }
+  });
+
+  describe('カテゴリマスタの編集部品', () => {
+    const categoryLabels = [
+      CATEGORY_NAME_LABEL,
+      CATEGORY_HANDLE_LABEL,
+      CATEGORY_ACTIONS_LABEL,
+      CATEGORY_HANDLE_UNSET_LABEL,
+      CATEGORY_SYSTEM_DEFAULT_LABEL,
+      CATEGORY_CREATE_LABEL,
+      CATEGORY_CREATE_SUBMIT_LABEL,
+      CATEGORY_UPDATE_SUBMIT_LABEL,
+      CATEGORY_EDIT_LABEL,
+      CATEGORY_DELETE_LABEL,
+    ];
+    const categorySentences = [
+      CATEGORY_EMPTY_MESSAGE,
+      CATEGORY_SYSTEM_DEFAULT_NOTICE,
+      CATEGORY_READ_ONLY_NOTICE,
+      CATEGORY_NAME_REQUIRED_MESSAGE,
+      CATEGORY_NAME_TOO_LONG_MESSAGE,
+      CATEGORY_DELETE_DESCRIPTION,
+    ];
+
+    test('名前と操作は句点の無い体言止めにし、文は句点で終える', () => {
+      for (const label of categoryLabels) {
+        expect(label).not.toMatch(/(?:。|です|ます)$/u);
+      }
+      for (const sentence of categorySentences) {
+        expect(sentence).toMatch(/。$/u);
+      }
+    });
+
+    test('同じ行や同じダイアログに並ぶ操作の名前は互いに異なる', () => {
+      expect(CATEGORY_EDIT_LABEL).not.toBe(CATEGORY_DELETE_LABEL);
+      expect(CATEGORY_CREATE_SUBMIT_LABEL).not.toBe(
+        CONFIRM_ACTION_CANCEL_LABEL,
+      );
+      expect(CATEGORY_UPDATE_SUBMIT_LABEL).not.toBe(
+        CONFIRM_ACTION_CANCEL_LABEL,
+      );
+    });
+
+    test('名前の検証の文言は、入力を求める文言と、上限を入力規則の定数から示す文言にする', () => {
+      expect(CATEGORY_NAME_REQUIRED_MESSAGE).toBe(
+        'カテゴリ名を入力してください。',
+      );
+      expect(CATEGORY_NAME_TOO_LONG_MESSAGE).toBe(
+        `カテゴリ名は${String(CATEGORY_NAME_MAX)}文字以内で入力してください。`,
+      );
+      expect(CATEGORY_NAME_TOO_LONG_MESSAGE).toBe(
+        'カテゴリ名は30文字以内で入力してください。',
+      );
+    });
+
+    test('編集と削除の題名と行の操作の対象は、カテゴリ名を鉤括弧で囲む', () => {
+      expect(categoryEditTitle('開発ツール')).toBe(
+        'カテゴリ「開発ツール」を編集',
+      );
+      expect(categoryDeleteTitle('開発ツール')).toBe(
+        'カテゴリ「開発ツール」を削除しますか?',
+      );
+      expect(
+        `${categoryRowActionTarget('開発ツール')}${CATEGORY_EDIT_LABEL}`,
+      ).toBe('「開発ツール」を編集');
+    });
   });
 });

@@ -1296,6 +1296,7 @@ export interface CategoryMasterEditorProps {
     | undefined;
   readonly withHandle: boolean; // プロダクトカテゴリだけ真
   readonly canEdit: boolean; // ロールによる
+  readonly validateHandle?: (handle: string) => string | undefined; // ハンドルの形式の検証。妥当ならundefined、違反なら欄に示す文言
   readonly onCreate: (input: {
     readonly name: string;
     readonly handle?: string;
