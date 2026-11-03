@@ -91,7 +91,7 @@ export const PWNED_PASSWORD_MESSAGE =
   'このパスワードは過去に漏洩したことがあります。別のパスワードを設定してください。';
 
 export const PASSWORD_MATCHES_IDENTITY_MESSAGE =
-  'ハンドル・ニックネーム・メールアドレスと同じパスワードは使えません。';
+  'ハンドル・ニックネーム・メールアドレス(@より前の部分を含む)と同じパスワードは使えません。';
 
 export const identityError = (code: IdentityErrorCode): AppError => {
   const { kind, message } = IDENTITY_ERRORS[code];

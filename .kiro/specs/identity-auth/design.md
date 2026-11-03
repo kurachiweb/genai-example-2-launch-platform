@@ -1224,7 +1224,7 @@ export type PasswordRuleViolation =
 export interface PasswordIdentifiers {
   readonly handle?: string;
   readonly nickname?: string;
-  readonly email?: string; // ローカル部を取り出して比べる
+  readonly email?: string; // 全体と、取り出したローカル部の両方と比べる
 }
 export declare function checkPasswordRules(
   password: string,
@@ -2054,7 +2054,7 @@ export interface Registration {
 }
 ```
 
-- 順序: `MailSendLimits.consume('email_verification', email, meta)`(上限なら`rate_limit_exceeded`、2.7)→`isEmailInUse`(重複なら`registration_email_unavailable`、1.4)→ハンドルの生成(`randomString(12, 英小文字と数字)`、`HandleAvailability`で確かめ、最大5回)→`PasswordPolicy.validateNewPassword`(識別子はハンドル・ニックネーム・メールアドレスのローカル部)→`PasswordHasher.hash`→`createWithVerification`(利用者・確認のトークン・セッション)。`handle-in-use`なら新しいハンドルで作り直し、`email-in-use`なら`registration_email_unavailable`。
+- 順序: `MailSendLimits.consume('email_verification', email, meta)`(上限なら`rate_limit_exceeded`、2.7)→`isEmailInUse`(重複なら`registration_email_unavailable`、1.4)→ハンドルの生成(`randomString(12, 英小文字と数字)`、`HandleAvailability`で確かめ、最大5回)→`PasswordPolicy.validateNewPassword`(識別子はハンドル・ニックネーム・メールアドレス・メールアドレスのローカル部)→`PasswordHasher.hash`→`createWithVerification`(利用者・確認のトークン・セッション)。`handle-in-use`なら新しいハンドルで作り直し、`email-in-use`なら`registration_email_unavailable`。
 - 作成後に`IdentityMailer.sendEmailVerification`。送信要求の失敗は`error`ログに留め、利用者は帯の再送で回復できる。
 
 #### EmailVerification・DisposableEmailCheck
@@ -2270,7 +2270,7 @@ export interface PasswordChange {
 ```
 
 - `PasswordReset.request`: `MailSendLimits.consume('password_reset')`→`findNotWithdrawnByEmail`→停止中でなければトークンを`replace`して送信(9.2・9.3)。無ければ何もしない。応答は常に`true`(9.1)。
-- `PasswordReset.complete`: `findValid('password_reset')`で利用者を特定(無効・退会済み・停止中は`invalid_link`)→`PasswordPolicy`(識別子は利用者のハンドル・ニックネーム・メールアドレスのローカル部。違反は`password_rejected`で、トークンは消費しない)→`hash`→`consume`(同時の確定に負けたら`invalid_link`)→`applyPasswordReset`(確認済み・全セッション削除・未使用のreset・changeの失効、9.4)→完了メール(9.5)。
+- `PasswordReset.complete`: `findValid('password_reset')`で利用者を特定(無効・退会済み・停止中は`invalid_link`)→`PasswordPolicy`(識別子は利用者のハンドル・ニックネーム・メールアドレス・メールアドレスのローカル部。違反は`password_rejected`で、トークンは消費しない)→`hash`→`consume`(同時の確定に負けたら`invalid_link`)→`applyPasswordReset`(確認済み・全セッション削除・未使用のreset・changeの失効、9.4)→完了メール(9.5)。
 - `EmailChange.request`: (リゾルバが`requireWritableUser`→`assertHuman('email_change')`を通した後に)`ReAuthenticator.verify`→`MailSendLimits.consume('email_change', newEmail)`→重複していなければトークン(`newEmail`付き、24時間)を`replace`して新しいアドレスへ送信(10.2・10.3)。応答は常に`true`(10.1)。
 - `EmailChange.confirm`: `consume('email_change')`→退会済み・停止中は`invalid_link`→`applyEmailChange`(`email-in-use`なら`invalid_link`、10.5)→`DisposableEmailCheck.checkAndSave`(仮4)→変更前のアドレスへ完了メール(10.6)→`SessionIssuer.reissueForOperator`(10.7)。
 - `PasswordChange.request`: (リゾルバが`requireWritableUser`→`assertHuman('password_change')`を通した後に)`ReAuthenticator.verify`→`PasswordPolicy`→`hash`→トークン(`pendingPasswordHash`付き、30分)を`replace`して現在のアドレスへ送信(11.1・11.2)。
@@ -2956,7 +2956,7 @@ stateDiagram-v2
 | --------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `validation_error`                                        | bad_request(400)                 | 欄ごとの詳細(文言規則のエラーメッセージ)                                                                                                                                                                                          | 全入力                                                                                                      |
 | `registration_email_unavailable`                          | conflict(409)                    | このメールアドレスは登録できません。                                                                                                                                                                                              | 登録(1.4)                                                                                                   |
-| `password_rejected`                                       | unprocessable(422)               | 詳細`password`(登録)・`newPassword`(リセット・変更)(漏洩・識別子(ハンドル・ニックネーム・メールアドレスのローカル部)と一致の文言)                                                                                                 | 登録・リセット・変更(5.2・5.3)                                                                              |
+| `password_rejected`                                       | unprocessable(422)               | 詳細`password`(登録)・`newPassword`(リセット・変更)(漏洩・識別子(ハンドル・ニックネーム・メールアドレス・メールアドレスのローカル部)と一致の文言)                                                                                 | 登録・リセット・変更(5.2・5.3)                                                                              |
 | `invalid_credentials`                                     | unauthenticated(401)             | メールアドレスまたはパスワードが正しくありません。                                                                                                                                                                                | ログイン(6.3)                                                                                               |
 | `account_unavailable`                                     | forbidden(403)                   | このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。                                                                                                                                                          | 停止中のログイン・書き込み(4.3・6.4)。アップロードの拒否ではmedia-pipelineが同じコードと文言で応答する(4.7) |
 | `login_throttled`                                         | rate_limited(429)                | ログイン試行が続いたため、しばらく待ってから再度お試しください。(`Retry-After`)                                                                                                                                                   | ログイン・第2要素・本人確認(7.3)                                                                            |
@@ -2989,7 +2989,7 @@ stateDiagram-v2
 - **Unit Tests**(Bun):
   - `login-throttle-state`: 5回目まではロックしない、6回目で1秒・7回目で2秒・14回目で256秒・15回目以降は300秒、ロック中の試行は数えない、アラームでロックだけが解け回数が残る、最後の失敗から24時間で消える(7.2〜7.4・7.6)。
   - `session-policy`: アイドル14日・絶対90日のそれぞれの境界、15分未満は更新しない、Cookieの有効期間が残りの短い方になる(8.2・8.3)。
-  - `password-rules`・`account-input-rules`: 7・8・128・129コードポイント、絵文字を含むニックネームの25・26書記素、ハンドル・ニックネーム・ローカル部との大文字小文字を区別しない一致(1.1・5.1・5.2)。
+  - `password-rules`・`account-input-rules`: 7・8・128・129コードポイント、絵文字を含むニックネームの25・26書記素、ハンドル・ニックネーム・メールアドレス・ローカル部との大文字小文字を区別しない一致(1.1・5.1・5.2)。
   - `disposable-email`: ローカル部の置き換え、200の`disposable`の真偽、`format: false`・401・429・503・HTMLで`undetermined`(3.1・3.2)。
   - `user-lifecycle`: 名前の形式、重複・同じ種類での`order`の重複の拒否、`order`昇順、各ドメインの帯の値(9999以下)と本specの値(10000以上)の両方を受け付け、本specの波及処理が同じ種類の各ドメインの波及処理の後に並ぶこと(16.1)。
   - 層の規則(apiの`test/config/layer-rules.unit.test.ts`): `application/identity`から`presentation/gateway/session-access.ts`を型だけで読み込む例が違反として報告され、`application/session/session-view.ts`の読み込みは報告されない(横断レビューR3-1、4.1・4.3・4.7)。`auth`の各層から`identity`の各層への読み込みが報告され、`auth`の規則で含め直した層の規則(`application/auth`から`**/lib/workers/**`など)も引き続き報告される。`application/identity`から`lib/core/identity/ports.ts`の読み込みは報告されない。

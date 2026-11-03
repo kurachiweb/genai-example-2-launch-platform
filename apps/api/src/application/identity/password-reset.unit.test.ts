@@ -596,7 +596,7 @@ describe('StorePasswordReset.complete', () => {
     [
       { ok: false, violation: 'matches-identity' },
       'matches_identity',
-      'ハンドル・ニックネーム・メールアドレスと同じパスワードは使えません。',
+      'ハンドル・ニックネーム・メールアドレス(@より前の部分を含む)と同じパスワードは使えません。',
     ],
     [
       { ok: false, violation: 'too-short' },

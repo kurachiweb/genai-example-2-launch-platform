@@ -24,6 +24,7 @@ const comparableIdentifiers = (
     identifiers.nickname === undefined
       ? undefined
       : trimWhiteSpace(identifiers.nickname),
+    identifiers.email,
     identifiers.email === undefined
       ? undefined
       : localPartOf(identifiers.email),

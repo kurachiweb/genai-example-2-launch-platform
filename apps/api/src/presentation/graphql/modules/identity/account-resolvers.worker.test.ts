@@ -186,7 +186,7 @@ describe('registerUser', () => {
         field: 'input.password',
         code: 'matches_identity',
         message:
-          'ハンドル・ニックネーム・メールアドレスと同じパスワードは使えません。',
+          'ハンドル・ニックネーム・メールアドレス(@より前の部分を含む)と同じパスワードは使えません。',
       },
     ]);
   });

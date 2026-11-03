@@ -61,17 +61,25 @@ describe('checkPasswordRules', () => {
     ).toBe('matches-identity');
   });
 
-  test('メールアドレス全体との一致はローカル部との一致ではないため受け付ける', () => {
+  test('メールアドレス全体と大文字小文字を区別せずに一致すると拒否する', () => {
     expect(
       checkPasswordRules('stadium.user@mail.example', {
-        email: 'stadium.user@mail.example',
+        email: 'Stadium.User@Mail.example',
       }),
-    ).toBeUndefined();
+    ).toBe('matches-identity');
   });
 
-  test('@を含まない値はローカル部を取り出せないため比べない', () => {
+  test('@を含まない値はローカル部を取り出せないため全体とだけ比べる', () => {
+    expect(checkPasswordRules('stadium.user', { email: 'stadium.user' })).toBe(
+      'matches-identity',
+    );
+  });
+
+  test('ドメインだけとの一致は受け付ける', () => {
     expect(
-      checkPasswordRules('stadium.user', { email: 'stadium.user' }),
+      checkPasswordRules('mail.example', {
+        email: 'stadium.user@mail.example',
+      }),
     ).toBeUndefined();
   });
 
