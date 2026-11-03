@@ -44,6 +44,8 @@ const AdminMailSendLimits: unique symbol = Symbol.for(
   'admin.AdminMailSendLimits',
 );
 
+const AdminAuthorizer: unique symbol = Symbol.for('admin.AdminAuthorizer');
+
 export const ADMIN_TYPES = Object.freeze({
   AuditActionCatalog,
   AuditLogStore,
@@ -60,4 +62,5 @@ export const ADMIN_TYPES = Object.freeze({
   AdminMailer,
   AdminSettings,
   AdminMailSendLimits,
+  AdminAuthorizer,
 });

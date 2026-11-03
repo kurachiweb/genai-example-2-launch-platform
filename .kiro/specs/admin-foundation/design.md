@@ -876,7 +876,7 @@ export declare class D1AdminDirectory implements AdminDirectory {
   constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
 }
 // apps/backend-lib/workers/admin/admin-platform-module.ts
-export declare const ADMIN_PLATFORM_MODULE: AppModule; // AdminDirectory → D1AdminDirectory。apiとeventのcomposition/modules.tsの両方へ入れる
+export declare const ADMIN_PLATFORM_MODULE: Omit<AppModule, 'routes'>; // AdminDirectory → D1AdminDirectory。apiとeventのcomposition/modules.tsの両方へ入れる
 ```
 
 - 置き場所: api・eventのapplication層(後続specのユースケースとデータエクスポートの部品)が読み込めるよう、契約(`AdminProfileView`・`AdminDirectory`)は`apps/backend-lib/core/admin/ports.ts`、識別子は`core/admin/identifiers.ts`に置き、D1の実装と束縛だけを`apps/backend-lib/workers/admin`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。識別子は`Symbol.for('admin.<名前>')`の凍結したオブジェクトで、`core/admin/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。apiの`ADMIN_TYPES`とは別の識別子にし、同じ`admin.`の接頭辞を使うため、メンバーの名前を重ねない。

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { ADMIN_PLATFORM_TYPES } from '../../../lib/core/admin/identifiers.ts';
 import { ADMIN_TYPES } from './admin-types.ts';
 
 const EXPECTED_NAMES = [
@@ -18,6 +19,7 @@ const EXPECTED_NAMES = [
   'AdminMailer',
   'AdminSettings',
   'AdminMailSendLimits',
+  'AdminAuthorizer',
 ] as const;
 
 describe('ADMIN_TYPES', () => {
@@ -42,5 +44,22 @@ describe('ADMIN_TYPES', () => {
 
   test('実行時に書き換えられない', () => {
     expect(Object.isFrozen(ADMIN_TYPES)).toBe(true);
+  });
+
+  // 両アプリ共通の照会口の識別子も同じadmin.の接頭辞を使うため、名前が重なると別々の束縛が同じシンボルに入る
+  test('両アプリ共通の照会口の識別子とメンバーの名前もシンボルも重ならない', () => {
+    const platformNames = new Set(Object.keys(ADMIN_PLATFORM_TYPES));
+    const platformSymbols = new Set<symbol>(
+      Object.values(ADMIN_PLATFORM_TYPES),
+    );
+
+    expect(
+      Object.keys(ADMIN_TYPES).filter((name) => platformNames.has(name)),
+    ).toEqual([]);
+    expect(
+      Object.values(ADMIN_TYPES).filter((symbol) =>
+        platformSymbols.has(symbol),
+      ),
+    ).toEqual([]);
   });
 });

@@ -8,6 +8,7 @@ import {
   createAdminTestContainer,
   issueAdminSession,
 } from '../../test/support/admin-graphql-harness.ts';
+import { StoreAdminAuthorizer } from '../application/admin/admin-authorizer.ts';
 import {
   ADMIN_SESSION_USER_AGENT_MAX_LENGTH,
   StoreAdminSessionIssuer,
@@ -78,6 +79,8 @@ describe('APIサーバーの管理者のセッションの束縛', () => {
       ADMIN_TYPES.AdminSessionVerifier,
       AdminSessionVerifier,
     ],
+    ['AdminAccountStore', ADMIN_TYPES.AdminAccountStore, D1AdminAccountStore],
+    ['AdminAuthorizer', ADMIN_TYPES.AdminAuthorizer, StoreAdminAuthorizer],
   ] as const)(
     '処理単位のコンテナから%sを解決する',
     (_name, identifier, implementation) => {
@@ -86,6 +89,17 @@ describe('APIサーバーの管理者のセッションの束縛', () => {
       );
     },
   );
+
+  test('アクセス制御の部品は保存済みのロールの読み取りを要求の中で使い回すため、処理単位の中では同じインスタンスを返し、別の処理単位では別のインスタンスを返す', () => {
+    const container = createAdminTestContainer();
+
+    expect(container.get(ADMIN_TYPES.AdminAuthorizer)).toBe(
+      container.get(ADMIN_TYPES.AdminAuthorizer),
+    );
+    expect(container.get(ADMIN_TYPES.AdminAuthorizer)).not.toBe(
+      createAdminTestContainer().get(ADMIN_TYPES.AdminAuthorizer),
+    );
+  });
 
   test('認証部品の管理者のセッションの検証は、管理者のモジュールの検証へ転送する', () => {
     expect(
