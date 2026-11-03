@@ -37,6 +37,15 @@
   - 完了状態: 移した単体テストと利用者側の認証画面のブラウザテストが変更なしで成功し、利用者側と管理者側の型検査で新しい置き場所から読み込める
   - _Requirements: 6.5, 14.8_
 
+- [ ] 1.6 (P) 利用者と共有する認証のエラーと送信回数の上限を、主体に依存しない層へ移す(identity-authとの統合)
+  - 先に、移した先の単体テストで、共有のエラーコードの種類と文言、パスワードの拒否のエラーが違反ごとのコード・欄・文言を返し識別子との一致の文言だけを主体ごとに受け取ること、管理者のエラーの定義が共有の全コードを同じ定義で含み、管理者のパスワードの識別子との一致の文言が「ニックネーム・メールアドレス(@より前の部分を含む)と同じパスワードは使えません。」であることを確かめる
+  - identity-authの`application/identity`の主体に依存しないエラーの定義・ログイン試行のロックのエラー・本人確認とパスワードの拒否の文言・パスワードの拒否のエラーの組み立てと、`infrastructure/identity`の送信回数の時間窓と上限を、`application/auth`の`auth-errors.ts`・`password-rejection.ts`・`mail-send-policy.ts`へ移す。利用者のエラーの定義は共有の定義を展開して利用者に固有のコードだけを足し、利用者のユースケースの呼び出し側は変えない。エラーコード・文言・上限の値は変えない
+  - 管理者のエラーの定義`application/admin/admin-errors.ts`(共有の定義と管理者に固有のコード、管理者用のパスワードの拒否のエラー)を作る
+  - `docs/GUIDES/tech/security/006-authentication.md`の部品の表と、identity-authのdesign.mdのファイル構成を新しい置き場所に直す
+  - 完了状態: 移した単体テストと利用者側の既存の単体テスト・Workers統合テストが変更なしで成功し、APIサーバーの静的解析で`admin`から`identity`への読み込みが無いまま共有の定義を読み込める
+  - _Boundary: AdminErrors_
+  - _Requirements: 5.2, 5.3, 6.2, 7.3, 13.1, 14.4_
+
 - [ ] 2. ドメインの規則
 - [ ] 2.1 (P) 管理者の状態と操作の可否、セッションの期限、トークンの用途の規則を作る
   - 先に、削除の可否(自分自身・閲覧のみ・モデレーターから最上位管理者・最上位管理者から最上位管理者・モデレーターからモデレーター)、ロールの変更とプロフィール編集と招待の可否、招待期限切れの表示、アイドル1時間・絶対12時間・更新の間引き5分の境界、トークンの用途ごとの有効期限とハッシュ化の用途を確かめる単体テストを書く
@@ -107,7 +116,7 @@
 - [ ] 6.2 (P) 本人確認と認証系メールの送信回数の制限を作る
   - 先に、単体テストで、パスワードと第2要素の両方を必須とすること、誤りのある欄の詳細、誤りを試行の失敗として数えること、ロック中は照合しないこと、リカバリコードの消費を確かめる
   - 同じく先に、送信回数の制限の実装`CounterAdminMailSendLimits`が偽の厳密カウンタにメールの種類ごとの宛先3回・IP5回の2つの規則で数え、どちらかの超過で拒否し、キーをハッシュ化することを確かめるWorkers統合テストを書く。有無の判定より前に数えることは、偽のポートを使うリセットと変更のユースケースの単体テスト(6.4)で確かめる
-  - 送信回数の制限のポート`AdminMailSendLimits`はapplication層(4.1のポートの定義の`application/admin/ports.ts`に加える)、実装は厳密カウンタのクライアントの型が共通ライブラリの`workers`にあるためinfrastructure層(`infrastructure/admin/counter-admin-mail-send-limits.ts`)に作る(`backend/003`、identity-authの`CounterMailSendLimits`と同じ形)
+  - 送信回数の制限のポート`AdminMailSendLimits`はapplication層(4.1のポートの定義の`application/admin/ports.ts`に加える)、実装は厳密カウンタのクライアントの型が共通ライブラリの`workers`にあるためinfrastructure層(`infrastructure/admin/counter-admin-mail-send-limits.ts`)に作る(`backend/003`、identity-authの`CounterMailSendLimits`と同じ形)。回数と時間窓は1.6で移した送信回数の上限の定義から読み、カウンタの規則の名前だけを管理者用にする
   - 完了状態: 単体テストとWorkers統合テストが成功し、本人確認の成功では試行の記録を消さないことを確かめられる。APIサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Boundary: AdminReAuthenticator, AdminMailSendLimits, CounterAdminMailSendLimits_
   - _Requirements: 7.6, 13.1, 13.2, 13.3, 13.4, 14.4_
