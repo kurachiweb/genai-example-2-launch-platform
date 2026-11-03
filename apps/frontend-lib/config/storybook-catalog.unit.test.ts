@@ -59,6 +59,16 @@ const INTERNAL_COMPONENTS: Readonly<Record<string, InternalComponent>> = {
     parent: 'components/ui/dialog/dialog-content.tsx',
     reason: 'ダイアログの本体が文書の末尾へ描画するために使う',
   },
+  'components/ui/select/select-scroll-down-button.tsx': {
+    parent: 'components/ui/select/select-content.tsx',
+    reason:
+      '選択肢の一覧の本体が、一覧が高さを超える時の下への移動の表示として描画する',
+  },
+  'components/ui/select/select-scroll-up-button.tsx': {
+    parent: 'components/ui/select/select-content.tsx',
+    reason:
+      '選択肢の一覧の本体が、一覧が高さを超える時の上への移動の表示として描画する',
+  },
   'components/ui/sheet/sheet-overlay.tsx': {
     parent: 'components/ui/sheet/sheet-content.tsx',
     reason: 'シートの本体が背景の覆いとして描画する',

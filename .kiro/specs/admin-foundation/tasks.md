@@ -25,7 +25,7 @@
   - _Boundary: AuditActionCatalog_
   - _Requirements: 18.3, 18.6, 18.7_
 
-- [ ] 1.4 (P) 共有の画面部品に表と選択の部品を加える
+- [x] 1.4 (P) 共有の画面部品に表と選択の部品を加える
   - frontend-platformの規則(部分ごとのファイル、variantsは別ファイル)に従い、shadcn/uiの`table`と`select`の部品を既存の`radix-ui`の範囲で加える。新しいパッケージは導入しない
   - Storybookに載せ、キーボードで選択でき、`runAxe`の違反が0件であることをブラウザテストで確かめる
   - 完了状態: 部品のブラウザテストとfrontend-libの型検査が成功し、Storybookで表と選択を確認できる
@@ -307,3 +307,4 @@
 - 1.1: テーブルは`apps/db/schema/admin/`、マイグレーションは`20261103162753_admin_foundation`。`admins.email`は全行で一意の`textNoCase`、`status`の既定は`invited`、`role`は既定無し。`admin_totp_credentials`の`sealed_secret`はNULL可で保留の列`pending_sealed_secret`・`pending_expires_at`を持つ。監査ログの`detail`はJSONのtextで既定`{}`、`target_kind`にCHECKは無い。ロール・状態・トークンの用途の値はテーブルのファイルの非公開の定数のため、1.2・2.1でこれらの値を定義するときは列の`enumValues`との一致を単体テストで確かめる
 - 1.2: ロールと入力規則は`apps/common-lib/admin/`(`admin-roles.ts`・`admin-input-rules.ts`)。判定関数は妥当なら`undefined`を返す(設計の契約。identityの`checkNickname`の`'ok'`とは異なる)ため、呼び出し側は`undefined`を確かめてから文言を引く。理由の判定は空を受け付け、必須かどうかは操作種別で決める。`hasRole`は型の外の最低ロールで許可側に倒れるため、実行時の値を扱う5.1では値を検証してから渡す。ロールの値と`admins.role`の`enumValues`の一致は`apps/api/src/application/admin/admin-columns.unit.test.ts`
 - 1.3: 操作種別は`apps/common-lib/admin/audit-action.ts`(`defineAuditAction`・`createAuditActionCatalog`・`AuditActionDefinitionError`)と`audit-actions/`(`admin-foundation.ts`の`ADMIN_ACCOUNT_INVITE_ACTION`・`ADMIN_ACCOUNT_DELETE_ACTION`・`ADMIN_ACCOUNT_ROLE_CHANGE_ACTION`・`USER_EMAIL_SEARCH_ACTION`、`index.ts`の`AUDIT_ACTIONS`)。`find`は未登録の名前で`undefined`を返す。種別を足すspecは`audit-actions/<spec名>.ts`を足して`index.ts`へ連結し、`index.unit.test.ts`の完全一致の期待値も更新する。招待の再送は`admin-account.invite`で記録する(6.3で設計の`resend`の手順との整合を確かめる)
+- 1.4: `apps/frontend-lib/components/ui/table/`・`select/`(部分ごとに1ファイル)。表は親より広い間だけ包む要素が`role="region"`・`tabIndex=0`になり、名前を`TableCaption`の文言から取る(`use-scroll-region.ts`)ため、表には必ず`TableCaption`を付け、`TableHead`に`scope`を付ける(10.1で名前を`aria-labelledby`へ切り替えるかを判断する)。テストでは選択の一覧を開くと開く元の要素が支援技術から隠れるため開く前に取得し、選択肢の名前は部分一致になるため`exact: true`を使う。開いた一覧は`runAxe`を各listboxに当て、Storybookでは検査を`[data-slot="select-content"]`に絞る
