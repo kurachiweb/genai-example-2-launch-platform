@@ -692,7 +692,7 @@ export interface AdminUserRecord {
   readonly suspendedAt: Date | null;
   readonly registeredAt: Date;
   readonly emailVerified: boolean;
-  readonly disposableEmailStatus: DisposableEmailStatus | null; // 確認前はnull
+  readonly disposableEmailStatus: DisposableEmailStatus | null; // 確認前と判定できていない間はundetermined(列がNULLを許すため型はnullを含む)
 }
 export interface AdminUserSearchFilter {
   readonly handle?: string; // 大文字小文字を区別しない部分一致

@@ -116,7 +116,7 @@
 | 上流spec               | 変更                                                                                                                                                                                                                                                                                                                                                                                  | 影響と再検証                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | frontend-platform      | `apps/frontend-lib/server/relay/relay-contract.ts`の`FORWARDED_BROWSER_HEADERS`に`user-agent`を加える(Q6)                                                                                                                                                                                                                                                                             | ブラウザからの中継でUser-AgentがAPIサーバーへ届く。中継の項目の一覧はfrontend-platformのRevalidation Triggersに当たるため再検証を求める                                                                                                                                                                                                                                                                                                                                                                                                             |
-| api-gateway            | `GatewayRequestScope`・`GraphQLContextScope`・`GraphQLContext`に必須の`userAgent: string \| undefined`(既存の`clientIp`と同じ書き方)を加え、`GraphqlModule`が内部経路の要求の`user-agent`を512文字までで渡す。文脈をリテラルで組む既存のWorkers統合テスト5件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`)に`userAgent`を足す | 既存のリゾルバの振る舞いに影響しない。必須の項目にするのは渡し忘れを型検査で検出するためで、既存のテストは文脈の組み立てに`userAgent`を足すだけにし、期待は変えない。`GraphQLContext`の形はapi-gatewayのRevalidation Triggersに当たるため再検証を求める                                                                                                                                                                                                                                                                                             |
+| api-gateway            | `GatewayRequestScope`・`GraphQLContextScope`・`GraphQLContext`に必須の`userAgent: string \| undefined`を加え、`GraphqlModule`が内部経路の要求の`user-agent`を512文字までで渡す。文脈をリテラルで組む既存のWorkers統合テスト6件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`・`document-validator-runtime`)に`userAgent`を足す | 既存のリゾルバの振る舞いに影響しない。必須の項目にするのは渡し忘れを型検査で検出するためで、既存のテストは文脈の組み立てに`userAgent`を足すだけにし、期待は変えない。`GraphQLContext`の形はapi-gatewayのRevalidation Triggersに当たるため再検証を求める                                                                                                                                                                                                                                                                                             |
 | api-gateway            | `composition/session.ts`の`SESSION_BINDINGS`を本specの振り分けの実装へ差し替える                                                                                                                                                                                                                                                                                                      | api-gatewayが定めた差し替えの契約どおり                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | api-gateway            | application層に、セッションの読み取りの型`SessionView`(`application/session/session-view.ts`。`principal()`だけを持つ)を加え、`presentation/gateway/session-access.ts`の`SessionAccess`がそれを拡張する(横断レビューR3-1)                                                                                                                                                             | `SessionAccess`の形と`createSessionAccess`の振る舞いは変わらず、既存の呼び出し側に影響しない。application層の契約(本specの`AccountGuard`など、media-pipelineの`UploaderEligibility`)は`SessionView`を受け取り、呼び出し側は`SessionAccess`をそのまま渡せる。`SessionAccess`の形はapi-gatewayのRevalidation Triggersに当たるため再検証を求める。media-pipelineが先に実装されて`SessionView`が既にあれば、形を確かめるだけにする                                                                                                                      |
 | email-delivery         | `USER_ADDRESS_DIRECTORY`を`D1UserAddressDirectory`へ差し替え、eventでも`SuppressionMaintenance`を束縛して退会時に呼ぶ                                                                                                                                                                                                                                                                 | 契約どおり。`USER_ADDRESS_DIRECTORY`は`Newable<UserAddressDirectory>`で`.to()`で束縛されるため、`D1UserAddressDirectory`はクラスにする。eventでの束縛はemail-deliveryのファイルを変えずに本specのモジュールで行い、`createSuppressionMaintenance`の4引数(抑止記録・送信済みの記録・照会口・続きの位置のストア)を渡す(「IdentityPurgeStore・EventIdentityComposition」)。email-deliveryの日次の後始末と同じ起動で退会の削除が動く場合の限界は「PurgeOrchestratorJob・CredentialCleanupJob・DisposableRecheckSweepJob・LifecycleRedispatchJob」に記す |
@@ -221,8 +221,8 @@ graph TB
 | 非同期・定期 | Cloudflare Queues(本体`JOBS_QUEUE`)・Cron Triggers(api)                              | 非同期の波及処理・判定し直し、日次のジョブ               | backend-platformの基盤。新しいQueueは作らない                 |
 | メール       | email-deliveryの`EmailSender`・React Email                                           | 認証系の7種のトランザクションメール                      | 既存                                                          |
 | 画面         | TanStack Start・React・react-hook-form・zod・shadcn/ui・`@marsidev/react-turnstile`  | 認証画面・設定ページ・ヘッダーの区画                     | frontend-platformの版                                         |
-| サーバー     | hono 4.13.13・inversify 8.2.3・graphql-yoga 5.24.6・zod 4.6.5                        | GraphQLのモジュール・DI・入力の検証                      | 上流の版(Yogaはapi-gatewayの承認後の改訂2で5.24.6)            |
-| テスト       | bun test・vitest 4.1.11(Workers・Browser)・Playwright 1.64.1・Mailpit 1.32.0         | 単体・Workers統合・ブラウザ・E2E                         | 上流の版。E2EはMailpitのAPIでメールを読む                     |
+| サーバー     | hono 4.13.14・inversify 8.2.3・graphql-yoga 5.24.6・zod 4.6.7                        | GraphQLのモジュール・DI・入力の検証                      | 上流の版(Yogaはapi-gatewayの承認後の改訂2で5.24.6)            |
+| テスト       | bun test・vitest 4.1.12(Workers・Browser)・Playwright 1.64.1・Mailpit 1.32.0         | 単体・Workers統合・ブラウザ・E2E                         | 上流の版。E2EはMailpitのAPIでメールを読む                     |
 
 ## File Structure Plan
 
@@ -322,6 +322,7 @@ apps/
 │   │   ├── d1-login-challenge-store.ts
 │   │   ├── d1-totp-credential-store.ts
 │   │   ├── d1-recovery-code-store.ts
+│   │   ├── totp-credential-conditional-writes.ts       # 資格情報の状態を条件にしたリカバリコードとセッションの書き込み(TOTPの2つのストアが共有)
 │   │   ├── d1-handle-availability.ts                   # 既定のハンドルの重複判定(usersの全行)
 │   │   ├── counter-mail-send-limits.ts                 # MailSendLimitsの実装(厳密カウンタによるFR-RLMIT-001の回数制限)
 │   │   ├── user-lifecycle-sync-handler.ts              # 同期の波及処理の契約(他specが実装)
@@ -415,13 +416,15 @@ docs/
 
 ### Modified Files
 
-- `apps/db/schema/index.ts`・`index.unit.test.ts` — identityのテーブルを再エクスポートし、テーブル名の一覧を完全一致で確かめる単体テストの期待に8テーブルを加える。`apps/db/migrations/<日時>_identity_auth/migration.sql`を生成する(部分一意索引を含む)。マイグレーションはmainの最新を取り込んでから生成し、並行specのマイグレーションと番号やスナップショットが衝突したら生成し直す。
+- `apps/db/schema/index.ts`・`index.unit.test.ts` — identityのテーブルを再エクスポートし、再エクスポートするテーブル名を`test.each`と`toContain`で1件ずつ確かめる単体テストの一覧に8テーブルを加える。`apps/db/migrations/<日時>_identity_auth/migration.sql`を生成する(部分一意索引を含む)。マイグレーションはmainの最新を取り込んでから生成し、並行specのマイグレーションと番号やスナップショットが衝突したら生成し直す。
+- `apps/db/migrations/<日時>_identity_disposable_status_undetermined/migration.sql`(カスタムマイグレーション)・`apps/db/identity-disposable-status-backfill.worker.test.ts` — `identity_auth`の適用後に作られた使い捨て判定がNULLの行を`undetermined`に揃える(判定の日時と`updated_at`は変えない)。列をNOT NULLにする表の作り直しは、`users`が他の表から外部キーで参照されるため行わない。Workers統合テストは、テスト用に読み込んだマイグレーションの文をNULLの行へ適用し直して確かめる。
+- `apps/backend-lib/core/errors/invalid-cursor.ts`(新規、`invalid-cursor.unit.test.ts`) — `invalid_cursor`の`AppError`(文言「ページの位置の指定が正しくありません。」)を1か所で作る。共有の部品はapiの`presentation`を読み込めないため`core`に置き、apiの`presentation/graphql/pagination.ts`・media-pipelineの`workers/media/d1-media-file-store.ts`・本specの`workers/identity/d1-admin-user-directory.ts`がこれを使う。
 - `apps/backend-lib/core/messaging/contracts/index.ts` — 2つのメッセージ契約を`MESSAGE_CONTRACTS`へ加える。
 - `apps/backend-lib/core/email/kinds/index.ts`・`apps/event/src/infrastructure/email/templates/index.ts` — 7つのメール種別を`EMAIL_KINDS`へ、7つのテンプレートを`EMAIL_TEMPLATES`へ同じ変更で加える。eventの`createEmailTemplateRegistry`は、テンプレートの無い種別が`EMAIL_KINDS`にあるとモジュールの読み込みで例外を投げ、apiの送信は`EMAIL_KINDS`の登録を使うため、どちらか一方だけを先に加えない(email-deliveryの`external/001`)。
 - `apps/frontend-lib/server/relay/relay-contract.ts`・`relay-contract.unit.test.ts`・`relay-headers.unit.test.ts` — `FORWARDED_BROWSER_HEADERS`に`user-agent`を加える。一覧を完全一致で確かめる`relay-contract.unit.test.ts`の期待に加え、`user-agent`が除かれることを確かめている`relay-headers.unit.test.ts`の期待を、ブラウザのUser-Agentが中継され偽の内部ヘッダーは引き続き除かれる形に改める。サーバー側の描画の取得(`execute-graphql.server.ts`)はブラウザのヘッダーを中継しないため、User-AgentがAPIサーバーへ届くのはブラウザからの`/_bff/graphql`だけである。セッションを発行する操作(登録・ログイン・確定)はブラウザから送るため、要件(8.4)を満たす。
 - `docs/GUIDES/tech/frontend/003-frontend-server-security.md` — 中継するブラウザのヘッダーの表に`user-agent`を加える。
 - `apps/frontend-lib/package.json`・`apps/client/package.json`・`apps/admin/package.json`(各`bun.lock`)・各`vitest.browser.config.ts` — `uqr` 0.1.3を版固定で加え、3つのアプリのブラウザテストの事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)に`uqr`を加える。
-- `apps/api/src/presentation/graphql/gateway-server.ts`・`graphql-context.ts`・`graphql-module.ts`(各テスト) — `GatewayRequestScope`・`GraphQLContextScope`・`GraphQLContext`に必須の`userAgent: string | undefined`を加え、要求から文脈へ渡す。文脈をリテラルで組む既存のWorkers統合テスト5件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`)の組み立てに`userAgent`を足す。
+- `apps/api/src/presentation/graphql/gateway-server.ts`・`graphql-context.ts`・`graphql-module.ts`(各テスト) — `GatewayRequestScope`・`GraphQLContextScope`・`GraphQLContext`に必須の`userAgent: string | undefined`を加え、要求から文脈へ渡す。文脈をリテラルで組む既存のWorkers統合テスト6件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`・`test/graphql/document-validator-runtime`)の組み立てに`userAgent`を足す。
 - `apps/api/src/application/session/session-view.ts`(新規、api-gatewayの契約への追記)・`apps/api/src/presentation/gateway/session-access.ts` — `SessionView`を定義し、`SessionAccess`が`SessionView`を拡張する形に改める。`SessionAccess`の形は変えない。既に`SessionView`があれば形を確かめるだけにする(横断レビューR3-1)。
 - `apps/api/src/composition/session.ts` — `SESSION_BINDINGS`を`SubjectSessionVerifier`の振り分けへ差し替え、`AUTH_TYPES.UserSessionVerifier`・`AUTH_TYPES.AdminSessionVerifier`(既定は無効)を束縛する。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`email-registrations.ts`・`env-schema.ts` — identityのモジュール、スキーマモジュール、4つのジョブ(4:21の3つと16:21の送り直し)、`USER_ADDRESS_DIRECTORY`の差し替え、`CLIENT_SITE_ORIGIN`・`LOGIN_ATTEMPT_THROTTLE`・任意の`DISIFY_API_KEY`の検証を加える。
@@ -436,11 +439,11 @@ docs/
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`env-schema.ts` — identityのモジュール、2つのメッセージの処理、任意の`DISIFY_API_KEY`を加える。
 - `apps/api/src/composition/modules.ts`・`apps/event/src/composition/modules.ts` — 両アプリの`MODULES`に`IDENTITY_PLATFORM_MODULE`(`UserContactDirectory`・`AccountExport`・`AdminUserDirectory`の束縛)を加える(spec横断レビュー、2026-10-23・2026-10-24)。
 - `apps/client/src/routes/__root.tsx` — `beforeLoad`で`viewer`を取得して文脈に入れる(取得の失敗は未ログインとして扱う)。
-- `docs/GUIDES/tech/frontend/006-data-fetching.md` — 「`beforeLoad`では取得しない」の規則に、認証の判定に要る1件の取得だけはルートの`beforeLoad`でクエリのキャッシュを通して行ってよい例外を加える(開発者の決定)。例外の条件は、(1)ルート(`__root`)の`beforeLoad`だけで行う、(2)`queryClient.fetchQuery`でキャッシュを通し、同じ値を待つ2回目以降の遷移では取得しない、(3)失敗を例外にせず未ログインとして扱う(`ensureQueryData`の失敗はエラーの画面になるため使わない)、(4)子のルートの`beforeLoad`は文脈の値で判定するだけで取得しない、の4つとする。プロジェクト名と固有の値は書かない。
+- `docs/GUIDES/tech/frontend/006-data-fetching.md` — 「`beforeLoad`では取得しない」の規則に、認証の判定に要る1件の取得だけはルートの`beforeLoad`でクエリのキャッシュを通して行ってよい例外を加える(開発者の決定)。例外の条件は、(1)ルート(`__root`)の`beforeLoad`だけで行う、(2)`queryClient.query`(非推奨になった`fetchQuery`の後継)でキャッシュを通し、同じ値を待つ2回目以降の遷移では取得しない、(3)失敗を例外にせず未ログインとして扱う(`ensureQueryData`の失敗はエラーの画面になるため使わない)、(4)子のルートの`beforeLoad`は文脈の値で判定するだけで取得しない、の4つとする。プロジェクト名と固有の値は書かない。
 - `apps/frontend-lib/components/ui/checkbox/checkbox.tsx`(新規)・`docs/GUIDES/tech/frontend/005-shared-components.md` — shadcn/uiのCheckboxを`components/ui/<部品>/<部分>.tsx`の配置で加える。「部品の一覧」の表に、管理者側も使う認証の画面部品の行`components/auth/`(TOTPのQRコード・リカバリコードの一覧・パスワードの入力欄)と、`components/ui/`の行にCheckboxを加える。
 - `apps/client/src/composition/layout-slots.ts` — `headerAccount`・`headerLaunchAction`・`belowHeader`を本specの部品に差し替える。区画は引数を取らない`ComponentType`で、768px未満ではヘッダーとメニューの`Sheet`に2回描かれ、エラーと404のページにも描かれる(frontend-platformのタスク6.4の申し送り)。そのため部品は`viewer`をフックで読み、固定の`id`を使わない。既定の部品(素の`<a href>`)と異なり、本specの部品は本specの経路へ`Link`で遷移する。
 - `docs/GUIDES/tech/{security,external,backend}/README.md` — 新しい文書を1行ずつ追記する。
-- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧にログイン試行の記録・ライフサイクルイベントの記録の行を加え、ログインセッションの削除方法を「アイドル期限または絶対期限の超過後」に直す。ログイン試行の記録の行は、infra-deliveryが書くDurable Objectsの保存場所の記述「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」と表現をそろえ、「ハッシュ化したキーと回数だけの一時的な値」とする。保存場所の記述と、プライバシーポリシー骨子の国外移転の記載事項のCloudflareの項(infra-deliveryが所有、横断レビューN-1)は書き換えない。
+- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧にログイン試行の記録・ライフサイクルイベントの記録の行を加え、ログインセッションの削除方法を「アイドル期限または絶対期限の超過後」に直す。ログイン試行の記録の行は、infra-deliveryが書くDurable Objectsの保存場所の記述「保存場所は保証しない(レート制限のカウントなど、ハッシュ化した一時的な値)」と表現をそろえ、ハッシュ化したキーを名前に持ち、失敗の回数・ロックの終了時刻・最後の失敗の時刻だけを保存する一時的な値とする。保存場所の記述と、プライバシーポリシー骨子の国外移転の記載事項のCloudflareの項(infra-deliveryが所有、横断レビューN-1)は書き換えない。
 - `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 本specが使う委託先のDISIFY・Have I Been Pwnedへは個人を識別できる情報を渡さないため国外移転の対象外である旨が、infra-deliveryの「移転先の国」の行の改訂の後も残っていることを確かめ、無ければ両委託先の分だけ書き加える。Cloudflareの項(Turnstileを含む)と他の委託先の項は書き換えない(横断レビューN-1、roadmapの「国外移転の記載」)。
 - `docs/GUIDES/service/overview/007-daily-timeline.md` — 「日次バッチ(4:21)の内容」のジョブの名前と順序の表に、本specの4:21の3つのジョブの名前と順序(100・110・120)の行を加える。日次タイムラインの表の業務時刻16:21(UTC 0:21)の送り直しの行は、2026-10-27の開発者の決定で追加済みである。表が無ければ作り、上流のemail-deliveryの`email-delivery.cleanup`(900)の行も含める(横断レビューN-3。想定の順序ではcontent-processingが先に作るが、表が無いことを理由に止めない)。
 - `docs/GUIDES/service/design/002-page-layouts.md` — `/auth/*`の画面の一覧、設定ページのシェルの配置、ヘッダーのアカウント表示、停止中の設定ページ(退会だけを操作でき、セッションが切れた後は問い合わせで退会を依頼できる旨を案内する)を追記する。
@@ -898,7 +901,7 @@ export interface AsyncLifecycleRegistry {
   ): readonly UserLifecycleAsyncRegistration[]; // order昇順
 }
 export declare class LifecycleRegistrationError extends Error {}
-export declare function assertLifecycleHandlerName(name: string): void; // /^[a-z0-9-]+\.[a-z0-9-]+$/
+export declare function assertLifecycleHandlerName(name: string): void; // /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u(各部分はメッセージの種別と同じ文字の規則、infra/003)
 export declare function createAsyncLifecycleRegistry(
   registrations: readonly UserLifecycleAsyncRegistration[],
 ): AsyncLifecycleRegistry; // 名前の形式違反・重複、同じ種類でのorderの重複で例外
@@ -965,6 +968,7 @@ export interface DisposableEmailChecker {
 
 // workers/identity/disify-client.ts
 export interface DisifyClientOptions {
+  readonly appName: LoggingOptions['appName']; // ログのカテゴリの先頭('api'・'event')
   readonly fetch: HttpFetch;
   readonly apiKey: string | undefined; // DISIFY_API_KEY(仮6)
   readonly userAgent?: string; // 渡されたときだけUser-Agentヘッダーを付ける。apiは`genai-example-2-api`、eventは`genai-example-2-event`
@@ -975,9 +979,9 @@ export declare function createDisifyClient(
 ): DisposableEmailChecker;
 ```
 
-- 分類: 状態コード200かつ`format`が`true`で`disposable`が真偽値なら`disposable`・`regular`。それ以外(2xx以外・JSONでない・`format: false`・項目の欠落・通信の失敗・時間切れ)は`undetermined`(3.2)。
+- 分類: 状態コード200かつ`format`が`true`で`disposable`が真偽値なら`disposable`・`regular`。それ以外(200以外の状態コード(200以外の2xxを含む)・JSONでない・`format: false`・項目の欠落・通信の失敗・時間切れ)は`undetermined`(3.2)。
 - メールアドレスは要求の本文にだけ入れ、URLに含めない。ローカル部は送らない(3.5)。
-- `undetermined`のときは`warning`ログ(カテゴリ`['identity', 'disposable-email']`、属性`reason`・`status`)を出す。メールアドレスとドメインは記録しない。
+- `undetermined`のときは`warning`ログ(カテゴリ`[appName, 'identity', 'disposable-email']`、属性`reason`(`network-error`・`timeout`・`unexpected-status`・`unexpected-body`)・`status`(応答があったときだけ))を出す。メールアドレスとドメインは記録しない。
 
 #### IdentityEmailKinds
 
@@ -1046,7 +1050,7 @@ export declare class D1UserContactDirectory implements UserContactDirectory {
   constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
 }
 // workers/identity/identity-platform-module.ts
-export declare const IDENTITY_PLATFORM_MODULE: AppModule; // UserContactDirectory → D1UserContactDirectory、AccountExport → D1AccountExport、AdminUserDirectory → D1AdminUserDirectory
+export declare const IDENTITY_PLATFORM_MODULE: Omit<AppModule, 'routes'>; // UserContactDirectory → D1UserContactDirectory、AccountExport → D1AccountExport、AdminUserDirectory → D1AdminUserDirectory
 ```
 
 - `findContact`: `users`から`id = ? AND deleted_at IS NULL`の1行の`email`・`nickname`・`email_verified_at`を読み、`emailVerified`は`email_verified_at IS NOT NULL`とする。行が無い(物理削除済み)・`deleted_at`がある(退会済み)なら`undefined`。`status`は見ないため、停止中の利用者も返す(停止中の利用者にも決済・解約・問い合わせの返信の通知を届けるため)。D1への問い合わせの失敗は例外のまま投げ、呼び出し元(Queueの処理・反映の後の送信)の再試行に任せる。
@@ -1112,7 +1116,7 @@ export interface AdminUserRecord {
   readonly suspendedAt: Date | null;
   readonly registeredAt: Date;
   readonly emailVerified: boolean;
-  readonly disposableEmailStatus: DisposableEmailStatus | null; // 確認前はnull
+  readonly disposableEmailStatus: DisposableEmailStatus | null; // 確認前と判定できていない間はundetermined(列がNULLを許すため型はnullを含む)
 }
 export interface AdminUserSearchFilter {
   readonly handle?: string; // 大文字小文字を区別しない部分一致
@@ -1141,7 +1145,7 @@ export declare class D1AdminUserDirectory implements AdminUserDirectory {
 ```
 
 - 契約の正は本specの設計で、本specが所有して実装する。ugc-moderationはこの契約を使う(形を変えるときは本specのRevalidation Triggersでugc-moderationへ伝える)。コメントの「仮3」はugc-moderationの仮3(メールアドレスの完全一致の検索)を指す。`DisposableEmailStatus`は`core/identity/disposable-email.ts`の型である。
-- `search`: `users`の`deleted_at IS NULL`の行を、条件を`AND`でつないで`(created_at, id)`の降順に`limit + 1`件読み、先頭`limit`件と続きの有無を返す。`limit`が1〜50の外なら`AppError(bad_request, validation_error)`。部分一致は`LIKE ? ESCAPE '\'`で、入力の`%`・`_`・`\`を逃がす(SQLiteの`LIKE`はASCIIの大文字小文字を区別しない)。`email`は前後の空白を除いた値と`COLLATE NOCASE`の列の完全一致。カーソルは`base64url('<ミリ秒>:<ID>')`で、形式が違えば`AppError(bad_request, validation_error)`。
+- `search`: `users`の`deleted_at IS NULL`の行を、条件を`AND`でつないで`(created_at, id)`の降順に`limit + 1`件読み、先頭`limit`件と続きの有無を返す。`limit`が1〜50の外なら`AppError(bad_request, validation_error)`。部分一致は`LIKE ? ESCAPE '\'`で、入力の`%`・`_`・`\`を逃がす(SQLiteの`LIKE`はASCIIの大文字小文字を区別しない)。`email`は前後の空白を除いた値と`COLLATE NOCASE`の列の完全一致。カーソルは`base64url('<ミリ秒>:<ID>')`で、形式が違えば既存のページングと同じ`AppError(bad_request, invalid_cursor)`(文言「ページの位置の指定が正しくありません。」、共通の`core/errors/invalid-cursor.ts`の`invalidCursorError`)。件数の不正は引数の検証と同じ`validation_error`のままにする。
 - `findByIds`: 重複を除き、IDのバインド変数を90個以内に分けて読む。退会済み・存在しないIDは結果に含めない。`findByEmail`: 前後の空白を除いた`email = ?`かつ`deleted_at IS NULL`の1行。
 - `countRegisteredAt`: `created_at < ? AND (deleted_at IS NULL OR deleted_at >= ?)`の件数(物理削除済みは数えない)。
 - 値の対応: `registeredAt`は`created_at`、`emailVerified`は`email_verified_at IS NOT NULL`、`disposableEmailStatus`は`disposable_email_status`。メールアドレス・パスワードハッシュ・セッション・TOTPの項目は返さない(メールアドレスは検索の条件にだけ使う)。
@@ -1189,7 +1193,7 @@ export interface UserLifecycleStore {
     deletedBefore: Date,
     limit: number,
   ): Promise<readonly string[]>; // 物理削除を始めていない退会ユーザー
-  countOverduePurges(deletedBefore: Date): Promise<number>;
+  countOverduePurges(deletedBefore: Date): Promise<number>; // 物理削除が終わっていない退会ユーザー(開始の有無によらない)
 }
 // workers/identity/d1-user-lifecycle-store.ts
 export declare function createUserLifecycleStore(
@@ -1701,7 +1705,7 @@ export interface UserAccountStore {
     user: NewUserRecord,
     token: NewAuthToken,
     session: NewSessionRecord,
-  ): Promise<'created' | 'email-in-use' | 'handle-in-use'>; // 1つの一括の書き込み
+  ): Promise<'created' | 'email-in-use' | 'handle-in-use'>; // 1つの一括の書き込み。使い捨て判定はundetermined・判定の日時はNULLで作る
   markEmailVerified(userId: string, at: Date): Promise<void>; // 確認済みの更新と、同じ利用者の未使用の確認のトークンの削除(2.3)
   saveDisposableStatus(
     userId: string,
@@ -1717,12 +1721,12 @@ export interface UserAccountStore {
     userId: string,
     newEmail: string,
     at: Date,
-  ): Promise<'changed' | 'email-in-use'>; // 更新・確認済み・判定の消去・全セッションとverification・changeのトークンの削除
+  ): Promise<'changed' | 'email-in-use'>; // 更新・確認済み・判定のundetermined(判定の日時はNULL)への差し戻し・全セッションとverification・changeのトークンの削除
   applyPasswordChange(userId: string, passwordHash: string): Promise<void>; // 更新・全セッションとchangeのトークンの削除
   listUndetermined(
     checkedBefore: Date,
     limit: number,
-  ): Promise<readonly string[]>;
+  ): Promise<readonly string[]>; // 確認済み・未退会のundeterminedで、判定の日時(NULLなら確認の日時)がcheckedBeforeより前。判定の日時の昇順(NULLが先)
 }
 export interface UserSessionStore {
   insert(session: NewSessionRecord): Promise<void>;
@@ -1735,7 +1739,6 @@ export interface UserSessionStore {
   listByUser(userId: string): Promise<readonly StoredSession[]>;
   deleteOne(userId: string, sessionId: string): Promise<boolean>;
   deleteOthers(userId: string, keepSessionId: string): Promise<number>;
-  deleteAllOfUser(userId: string): Promise<void>;
   deleteExpired(now: Date, policy: SessionPolicy): Promise<number>; // アイドルまたは絶対の期限切れ
 }
 export interface AuthTokenStore {
@@ -1779,21 +1782,24 @@ export interface TotpCredentialStore {
     sealedSecret: string,
     expiresAt: Date,
   ): Promise<'saved' | 'already-enabled'>;
-  enable(
+  enableRevokingSessions(
     userId: string,
     sealedSecret: string, // 照合に使った秘密鍵。保留の秘密鍵が異なれば'not-pending'
     step: number,
     at: Date,
     recoveryHashes: readonly string[],
-  ): Promise<'enabled' | 'not-pending'>; // 有効化とリカバリコードの追加を1つの一括の書き込みで
+  ): Promise<'enabled' | 'not-pending'>; // 有効化・リカバリコードの追加・全セッションの削除を1つの一括の書き込みで。not-pendingなら何も変えない
   advanceStep(userId: string, step: number): Promise<boolean>; // last_used_step < stepのときだけ更新(再使用の拒否)
-  disable(userId: string): Promise<void>; // 秘密鍵とリカバリコードの削除
+  disableRevokingSessions(userId: string): Promise<'disabled' | 'not-enabled'>; // 秘密鍵とリカバリコードの削除・全セッションの削除を1つの一括の書き込みで。有効でなければ何も変えない
   deleteExpiredPending(now: Date): Promise<number>;
 }
 export interface RecoveryCodeStore {
   consume(userId: string, codeHash: string): Promise<boolean>; // 一致すれば削除
   count(userId: string): Promise<number>;
-  replaceAll(userId: string, hashes: readonly string[]): Promise<void>;
+  replaceAllRevokingSessions(
+    userId: string,
+    hashes: readonly string[],
+  ): Promise<'replaced' | 'not-enabled'>; // 未使用のコードの置き換え・全セッションの削除を1つの一括の書き込みで。有効でなければ何も変えない
 }
 export interface HandleAvailability {
   isAvailable(handle: string): Promise<boolean>; // 既定はusersの全行(退会後未削除を含む)と大文字小文字を区別せずに比較
@@ -2048,7 +2054,7 @@ export interface Registration {
 }
 ```
 
-- 順序: `MailSendLimits.consume('email_verification', email, meta)`(上限なら`rate_limit_exceeded`、2.7)→`isEmailInUse`(重複なら`registration_email_unavailable`、1.4)→ハンドルの生成(`randomString(12, 英小文字と数字)`、`HandleAvailability`で確かめ、最大5回)→`PasswordPolicy.validateNewPassword`(識別子はハンドル・ニックネーム・メール)→`PasswordHasher.hash`→`createWithVerification`(利用者・確認のトークン・セッション)。`handle-in-use`なら新しいハンドルで作り直し、`email-in-use`なら`registration_email_unavailable`。
+- 順序: `MailSendLimits.consume('email_verification', email, meta)`(上限なら`rate_limit_exceeded`、2.7)→`isEmailInUse`(重複なら`registration_email_unavailable`、1.4)→ハンドルの生成(`randomString(12, 英小文字と数字)`、`HandleAvailability`で確かめ、最大5回)→`PasswordPolicy.validateNewPassword`(識別子はハンドル・ニックネーム・メールアドレスのローカル部)→`PasswordHasher.hash`→`createWithVerification`(利用者・確認のトークン・セッション)。`handle-in-use`なら新しいハンドルで作り直し、`email-in-use`なら`registration_email_unavailable`。
 - 作成後に`IdentityMailer.sendEmailVerification`。送信要求の失敗は`error`ログに留め、利用者は帯の再送で回復できる。
 
 #### EmailVerification・DisposableEmailCheck
@@ -2264,10 +2270,10 @@ export interface PasswordChange {
 ```
 
 - `PasswordReset.request`: `MailSendLimits.consume('password_reset')`→`findNotWithdrawnByEmail`→停止中でなければトークンを`replace`して送信(9.2・9.3)。無ければ何もしない。応答は常に`true`(9.1)。
-- `PasswordReset.complete`: `findValid('password_reset')`で利用者を特定(無効・退会済み・停止中は`invalid_link`)→`PasswordPolicy`(識別子は利用者のハンドル・ニックネーム・メール。違反は`password_rejected`で、トークンは消費しない)→`hash`→`consume`(同時の確定に負けたら`invalid_link`)→`applyPasswordReset`(確認済み・全セッション削除・未使用のreset・changeの失効、9.4)→完了メール(9.5)。
-- `EmailChange.request`: `requireWritableUser`→`assertHuman('email_change')`→`ReAuthenticator.verify`→`MailSendLimits.consume('email_change', newEmail)`→重複していなければトークン(`newEmail`付き、24時間)を`replace`して新しいアドレスへ送信(10.2・10.3)。応答は常に`true`(10.1)。
+- `PasswordReset.complete`: `findValid('password_reset')`で利用者を特定(無効・退会済み・停止中は`invalid_link`)→`PasswordPolicy`(識別子は利用者のハンドル・ニックネーム・メールアドレスのローカル部。違反は`password_rejected`で、トークンは消費しない)→`hash`→`consume`(同時の確定に負けたら`invalid_link`)→`applyPasswordReset`(確認済み・全セッション削除・未使用のreset・changeの失効、9.4)→完了メール(9.5)。
+- `EmailChange.request`: (リゾルバが`requireWritableUser`→`assertHuman('email_change')`を通した後に)`ReAuthenticator.verify`→`MailSendLimits.consume('email_change', newEmail)`→重複していなければトークン(`newEmail`付き、24時間)を`replace`して新しいアドレスへ送信(10.2・10.3)。応答は常に`true`(10.1)。
 - `EmailChange.confirm`: `consume('email_change')`→退会済み・停止中は`invalid_link`→`applyEmailChange`(`email-in-use`なら`invalid_link`、10.5)→`DisposableEmailCheck.checkAndSave`(仮4)→変更前のアドレスへ完了メール(10.6)→`SessionIssuer.reissueForOperator`(10.7)。
-- `PasswordChange.request`: `requireWritableUser`→`assertHuman('password_change')`→`ReAuthenticator.verify`→`PasswordPolicy`→`hash`→トークン(`pendingPasswordHash`付き、30分)を`replace`して現在のアドレスへ送信(11.1・11.2)。
+- `PasswordChange.request`: (リゾルバが`requireWritableUser`→`assertHuman('password_change')`を通した後に)`ReAuthenticator.verify`→`PasswordPolicy`→`hash`→トークン(`pendingPasswordHash`付き、30分)を`replace`して現在のアドレスへ送信(11.1・11.2)。
 - `PasswordChange.confirm`: `consume('password_change')`→退会済み・停止中は`invalid_link`(11.5)→`applyPasswordChange`→完了メール(11.3)→`reissueForOperator`(11.4)。
 
 #### TotpManagement
@@ -2319,9 +2325,10 @@ export declare const TOTP_SETUP_TTL_SECONDS: 600;
 ```
 
 - `start`: `requireWritableUser`かつ確認済み(未確認は`email_not_verified`、13.2)→有効なら`totp_already_enabled`→`ReAuthenticator.verify`(仮1、第2要素は無し)→秘密鍵を生成して`seal(secret, userId)`し`savePending`。
-- `enable`: 有効なら`totp_already_enabled`、保留が無い・期限切れは`totp_setup_expired`→`open`して`verify`(誤りは`invalid_second_factor`)→`RecoveryCodeIssuer.issue('user-recovery-code')`→`TotpCredentialStore.enable(sealedSecret, step, hashes)`(照合と有効化の間に設定が始め直されて保留の秘密鍵が入れ替わったら`not-pending`となり`totp_setup_expired`)→全セッション削除と操作した端末への再発行(13.7)。
+- `enable`: 有効なら`totp_already_enabled`、保留が無い・期限切れは`totp_setup_expired`→`open`して`verify`(誤りは`invalid_second_factor`)→`RecoveryCodeIssuer.issue('user-recovery-code')`→`TotpCredentialStore.enableRevokingSessions(sealedSecret, step, hashes)`で有効化・リカバリコードの保存・全セッションの削除を1つの一括の書き込みで確定(照合と有効化の間に設定が始め直されて保留の秘密鍵が入れ替わったら`not-pending`となり、セッションも消さずに`totp_setup_expired`)→操作した端末への再発行(13.7)。
 - 本人確認は停止・退会を見ないため、4つの操作はそれぞれ停止中・退会済みを`account_unavailable`で拒否する(開始と有効化は未確認も`email_not_verified`)。操作した端末は認証済みの同じ利用者のため、再発行は`SessionIssuer.issue`で行う。
-- `disable`・`regenerateRecoveryCodes`: 有効でなければ`totp_not_enabled`→`ReAuthenticator.verify`→`disable`または`RecoveryCodeStore.replaceAll`→全セッション削除と再発行(13.5〜13.7)。
+- `disable`・`regenerateRecoveryCodes`: 有効でなければ`totp_not_enabled`→`ReAuthenticator.verify`→`TotpCredentialStore.disableRevokingSessions`または`RecoveryCodeStore.replaceAllRevokingSessions`で設定の変更と全セッションの削除を1つの一括の書き込みで確定→再発行(13.5〜13.7)。本人確認の間に別の要求が無効化を終えていれば、一括の書き込みは何も変えずに`not-enabled`を返し、`totp_not_enabled`で拒否する(再発行では保存していない平文のリカバリコードを返さない)。
+- 一括の書き込みの中では前の文の結果で後の文を分けられないため、セッションとリカバリコードの削除・追加の各文を、同じ一括の書き込みの中の資格情報の状態(有効化では照合した秘密鍵の有効な保留、無効化と再発行では有効化済み)を`EXISTS`で確かめる条件付きにし(`infrastructure/identity/totp-credential-conditional-writes.ts`)、資格情報を書き換える文より前に置く。最後の文(有効化の更新・資格情報の削除・資格情報の更新日時の更新)の変更件数で結果を判定する。新しいセッションの発行は一括の書き込みの後に行い、書き込みが失敗すれば発行しない。
 
 #### Withdrawal・AdministrativeWithdrawal・UserSuspension
 
@@ -2369,7 +2376,7 @@ export interface UserSuspension {
 }
 ```
 
-- `withdraw`: `requireUser`(停止中も受け付ける、4.4・仮5)→`assertHuman('withdraw')`→`ReAuthenticator.verify`→`commitWithdrawal`→リゾルバが`session.clear()`。
+- `withdraw`: (リゾルバが`requireUser`(停止中も受け付ける、4.4・仮5)→`assertHuman('withdraw')`を通した後に)`ReAuthenticator.verify`→`commitWithdrawal`→リゾルバが`session.clear()`。
 - `commitWithdrawal`: `UserLifecycleCommitter.commit({ kind: 'withdraw', expectedVersion: user.lifecycleVersion })`→`IdentityMessagePublisher.publish(RUN_USER_LIFECYCLE_MESSAGE, { eventId })`。送信の失敗は`lifecycle-publish-failed`を報告して成功として扱う(日次の再実行で回復、16.6)。本人の退会と運営者による退会は、この関数だけで退会を確定させる(15.7)。
 - `AdministrativeWithdrawal.withdraw`(15.7〜15.9): 呼び出し元が`admin`で、主体が`subjectKind: 'admin'`の認証済みでなければ`AppError({ kind: 'forbidden', code: 'forbidden' })`(15.8)→`UserAccountStore.findById`が無い・退会済みなら`not_found`(15.9)→`commitWithdrawal`。停止中の利用者も受け付け、本人確認・bot判定・Cookieの指示は行わない。管理者の主体の検証はadmin-foundationの`AdminSessionVerifier`、操作の権限の確認と監査ログの記録は呼び出し側(ugc-moderation)が行う。後続のリゾルバは`context.resolve<AdministrativeWithdrawal>(IDENTITY_TYPES.AdministrativeWithdrawal)`で使い、`command`の`caller`・`operator`は`GraphQLContext`から渡す。本specの`identity`のスキーマモジュールには、この操作のミューテーションを加えない。
 - 停止中の利用者の退会: 状態の`suspended`と`suspended_at`を残したまま論理削除する。同じ利用者の停止のイベントの非同期の波及処理が終わってから、退会の非同期の波及処理が始まる(16.4)。退会後は停止解除を受け付けない(16.9)。
@@ -2388,9 +2395,9 @@ export interface UserSuspension {
 
 | ジョブの名前                             | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                              |
 | ---------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `identity-auth.purge-orchestrator`       | 4:21     | 100     | (1)退会の業務日付が実行日の13日前以前(`deleted_at < 業務日付(実行日 − 12日)の0:00`)で物理削除を始めていない利用者を50件まで選び、`purge_due`を作って送信(17.1)。(2)論理削除から14日を過ぎた`pending`の`purge_due`を数えて0件でなければ`purge-overdue`を報告(17.4) |
+| `identity-auth.purge-orchestrator`       | 4:21     | 100     | (1)退会の業務日付が実行日の13日前以前(`deleted_at < 業務日付(実行日 − 12日)の0:00`)で物理削除を始めていない利用者を50件まで選び、`purge_due`を作って送信(17.1)。(2)`deleted_at`から14日を過ぎても行が残る利用者を数えて、0件でなければ`purge-overdue`を報告(17.4) |
 | `identity-auth.credential-cleanup`       | 4:21     | 110     | 期限切れのセッション(アイドルまたは絶対、8.8)・未使用の認証系トークン(14.5)・第2要素の待ち・TOTPの保留を物理削除し、件数を`info`で記録                                                                                                                            |
-| `identity-auth.disposable-recheck-sweep` | 4:21     | 120     | 判定が`undetermined`で最後の判定から1時間以上経った確認済みの利用者を50件まで選び、`identity.recheck-disposable-email`を送る(3.3)                                                                                                                                 |
+| `identity-auth.disposable-recheck-sweep` | 4:21     | 120     | 判定が`undetermined`で、最後の判定(まだ判定していなければ確認)から1時間以上経った確認済みの利用者を50件まで選び、`identity.recheck-disposable-email`を送る(3.3)                                                                                                   |
 | `identity-auth.lifecycle-redispatch`     | 16:21    | 100     | 最後の送信から1時間以上`pending`のイベントを100件まで送り直し、送り直しの回数を数える。3回目以降の送り直しを含めば`lifecycle-events-redispatched`を報告(16.6)                                                                                                     |
 
 - Trigger: apiのCron Triggers。4:21の3つは`21 12 * * *`、送り直しは`21 0 * * *`(業務時刻16:21=UTC 0:21。本specで新しく加えるcron式で、ルートの`triggers.crons`への追加は本specの実装時に行う)。4:21の`order`はWave 1と上流の他のジョブ(media-pipelineの810〜830、email-deliveryの900、content-processingの2300)と重ならない。16:21は本specの送り直しだけが使う。ジョブの名前と順序は日次タイムラインの「日次バッチ(4:21)の内容」の表に記載する(表が無ければ作る。横断レビューN-3)。16:21の時刻は日次タイムラインの表に行がある。
@@ -2707,7 +2714,7 @@ export declare const LIFECYCLE_ORDER_WAIT_SECONDS: 60;
 
 - frontend-platform: `FORWARDED_BROWSER_HEADERS`を`['content-type', 'accept', 'cf-turnstile-response', 'user-agent']`にする。一覧を完全一致で確かめる`relay-contract.unit.test.ts`の期待に`user-agent`を加え、`user-agent`が除かれることを確かめている`relay-headers.unit.test.ts`の期待を、ブラウザのUser-Agentが引き継がれ偽の内部ヘッダーは引き続き除かれる形に改める。中継するヘッダーの表(`frontend/003-frontend-server-security.md`)にも加える。
 - 届く範囲: ブラウザからの`/_bff/graphql`の中継だけがUser-Agentを届ける。サーバー側の描画の取得(`execute-graphql.server.ts`)は中継のヘッダーを組み立て直すためUser-Agentを含まず、その要求の`userAgent`は`undefined`になる。セッションを発行・再発行する操作(登録・ログイン・第2要素・確定)はすべてブラウザからのmutationのため、セッションの端末情報(8.4)は満たされる。
-- api-gateway: `GatewayRequestScope`・`GraphQLContextScope`・`GraphQLContext`に、既存の`clientIp`と同じ必須の`readonly userAgent: string | undefined`を加える(開発者の決定。渡し忘れを型検査で検出する)。`GraphqlModule`は内部経路の要求(GraphiQLの経路を含む)の`user-agent`を512文字で切って渡す。文脈をリテラルで組む既存のWorkers統合テスト5件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`)は、組み立てに`userAgent: undefined`などを足すだけにして期待は変えず、値が届くことのテストを加える。
+- api-gateway: `GatewayRequestScope`・`GraphQLContextScope`・`GraphQLContext`に、既存の`clientIp`と同じ必須の`readonly userAgent: string | undefined`を加える(開発者の決定。渡し忘れを型検査で検出する)。`GraphqlModule`は内部経路の要求(GraphiQLの経路を含む)の`user-agent`を512文字で切って渡す。文脈をリテラルで組む既存のWorkers統合テスト6件(`validated-args`・`graphql-context`・`gateway-server`・`modules/media/index`・`modules/system/index`・`test/graphql/document-validator-runtime`)は、組み立てに`userAgent: undefined`などを足すだけにして期待は変えず、値が届くことのテストを加える。
 
 #### SessionViewContract
 
@@ -2773,7 +2780,7 @@ export type ViewerQueryOptions = ReturnType<
 export declare function viewerQueryOptions(): ViewerQueryOptions; // graphqlQueryOptions(ClientViewerDocument, {})
 
 // routes/__root.tsx の beforeLoad の戻り値
-// beforeLoad: context.queryClient.fetchQuery(viewerQueryOptions())をtry/catchで包み、失敗はnullにする
+// beforeLoad: context.queryClient.query(viewerQueryOptions())をtry/catchで包み、失敗はnullにする(graphql/viewer.tsのloadRootAuthContext)
 export interface RootAuthContext {
   readonly viewer: ClientViewer | null; // 取得の失敗はnull(閲覧を止めない)
 }
@@ -2793,7 +2800,7 @@ export interface SettingsNavItem {
 export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版はaccount・security
 ```
 
-- `beforeLoad`での取得(`006-data-fetching.md`の例外): `006`は「`beforeLoad`は親から順に実行されるため取得しない」と定める。`viewer`はログイン必須の領域の判定と`redirect`に要り、`loader`では子のルートの`loader`より前に判定できないため、開発者の決定により`006`へ例外を加える。例外は、ルートの`beforeLoad`で行う認証の判定に要る1件の取得に限る。`queryClient.fetchQuery`でクエリのキャッシュを通し、`staleTime`の間の遷移では取得しない。`ensureQueryData`は失敗するとエラーの画面になるため使わず、失敗は`null`(未ログイン)として描画を続ける。子のルート(`_authenticated`)の`beforeLoad`は文脈の値で判定するだけで取得しない。
+- `beforeLoad`での取得(`006-data-fetching.md`の例外): `006`は「`beforeLoad`は親から順に実行されるため取得しない」と定める。`viewer`はログイン必須の領域の判定と`redirect`に要り、`loader`では子のルートの`loader`より前に判定できないため、開発者の決定により`006`へ例外を加える。例外は、ルートの`beforeLoad`で行う認証の判定に要る1件の取得に限る。`queryClient.query`(非推奨になった`fetchQuery`の後継)でクエリのキャッシュを通し、`staleTime`の間の遷移では取得しない。`ensureQueryData`は失敗するとエラーの画面になるため使わず、失敗は`null`(未ログイン)として描画を続ける。子のルート(`_authenticated`)の`beforeLoad`は文脈の値で判定するだけで取得しない。
 - ヘッダーの区画の部品は、文脈の`viewer`ではなく`useQuery(viewerQueryOptions())`(ルートの`beforeLoad`がキャッシュに入れた値)で読む。区画は引数を取らない`ComponentType`で、エラーと404のページの`shellComponent`にも描かれるため、文脈の値に頼らない。
 - ログイン・ログアウト・確定の後は、`viewer`の取得を無効にしてルーターを再評価する。
 - `/settings`は最小の`order`の項目へ移動する。ナビゲーションはPC(1024px以上)で左の縦の一覧、それ未満で上の横並び(折り返し)とし、現在の項目を`aria-current="page"`で示す(18.6)。
@@ -2825,7 +2832,7 @@ export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版�
 - 第2要素の欄(6.2・12.1): 描いている入力だけをスキーマの入力に含め、条件ごとにスキーマを分ける。ログインの第2要素の段階は、認証コードの入力の間は`secondFactor.totpCode`だけ、リカバリコードの入力に切り替えた間は`secondFactor.recoveryCode`だけを持つスキーマを使う。本人確認の欄(`ReauthenticationFields`)を持つフォーム(メールアドレス変更・パスワード変更・退会・多要素認証の開始・無効化・リカバリコードの再発行)は、多要素認証が無効なら現在のパスワードだけ、有効なら現在のパスワードと、認証コードとリカバリコードのうち描いている一方だけを持つスキーマを使う(欄の名前は、`reAuthentication`を持つ操作は`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`など、`input`が`ReAuthenticationInput`の操作は`currentPassword`・`secondFactor.totpCode`など)。スキーマは条件ごとに分けた定数から選んで`useAppForm`へ渡すだけにし(描画ごとに作らない)、切り替えの後の検証のし直しは`useAppForm`に任せる。
 - 本人確認の失敗の詳細(`reauthentication_failed`、12.2): APIは詳細を入力の形のとおりの経路で返す(「ReAuthenticator」の節)ため、`serverFieldPrefix="input"`で`input.`を除いた経路(`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`・`reAuthentication.secondFactor.recoveryCode`、入力が`ReAuthenticationInput`の操作は`currentPassword`・`secondFactor.totpCode`など)が描いている欄の名前と一致し、現在のパスワードの欄と描いている第2要素の欄にエラーを示す。第2要素を送らなかった時の詳細(`secondFactor`そのものの経路)は、スキーマが`secondFactor`をオブジェクトとして持てば欄をまとめた値の経路として、持たなければ描かれていない経路として、`onSubmitError`の`unmatched`に入り、フォーム全体の失敗として示す。いずれも送信ボタンは無効のまま残らない。
 - 停止中に入力と送信を無効にするフォーム(メールアドレス変更・パスワード変更、多要素認証の開始・無効化・リカバリコードの再発行)は送信しないため、各欄を`FormField`の`disabled`で無効にし、送信ボタンは`SubmitButton`の`disabled`で無効にする。
-- bot判定は`useTurnstileToken`と`TurnstileWidget`で行い、ウィジェットは非表示(frontend-platformの`size: 'invisible'`)のため、判定の枠の表示と場所を画面に設けない。送信時に`consume()`したトークンを要求に付け、判定の失敗はフォームの`role="alert"`の文言で示す(12.4・12.5)。
+- bot判定は`useTurnstileToken`と`TurnstileWidget`で行い、ウィジェットは非表示(frontend-platformの`size: 'invisible'`)のため、判定の枠の表示と場所を画面に設けない。送信はfrontend-platformの`sendWithTurnstile`で行い、`consume()`したトークンを要求に付ける。トークンが届く前の送信がbot判定に失敗(`bot_verification_failed`)した時は次のトークンを待って1回だけ送り直し、それでも失敗した時と待っても届かない時は、判定の失敗をフォームの`role="alert"`の文言で示す(12.4・12.5)。
 - 登録の同意の入力は、shadcn/uiの`Checkbox`を`apps/frontend-lib/components/ui/checkbox/checkbox.tsx`に加えて使う(frontend-libの規約どおり1ファイル1コンポーネント・stories・`runAxe`)。既定は未選択で、ラベルの要素と関連付けてキーボードで切り替えられるようにする(1.2・18.11)。paymentsの決済の同意が同じ部品を再利用するため、既にあれば作らずに使う(spec横断レビュー、2026-10-23)。
 - ログイン中に`/auth/register`・`/auth/login`を開いたら`/`へ移動する(18.4)。
 
@@ -2897,7 +2904,9 @@ stateDiagram-v2
 ```
 
 - 確認: `email_verified_at`がNULLでなければ確認済み。メールアドレスの変更の確定とパスワードリセットの完了で現在時刻を入れる。
-- 使い捨て判定: `disposable_email_status`は確認前はNULL、確認後は`disposable`・`regular`・`undetermined`。メールアドレスの変更の確定で判定し直す(仮4)。
+- 使い捨て判定: `disposable_email_status`は要件の3値(`disposable`・`regular`・`undetermined`)だけを取り、判定前の状態を別の値にしない。作成時は`undetermined`・`disposable_email_checked_at`はNULL(まだ判定していない)で作り、確認の完了で判定する。メールアドレスの変更の確定でも`undetermined`・NULLへ戻してから判定し直す(仮4)。判定の保存がD1の障害で失敗しても`undetermined`のまま残るため、日次のジョブ(`listUndetermined`)が判定し直しを依頼する。
+  - `disposable_email_checked_at`はNULLのまま(作成時刻や変更時刻を入れない)とした。列の意味を「判定サービスへ問い合わせた日時」に保ち、「まだ判定していない未判定」と「判定できなかった未判定」を区別できるためである。日次の抽出は、判定の日時がNULLの行を確認の日時(`email_verified_at`、変更の確定でも更新される)で1時間以上前かを比べる。索引`users_disposable_email_status_checked_at_idx`は`status = 'undetermined'`の等号の絞り込みと判定の日時の順(NULLが先)の並びに使えるため、時刻を入れる案と索引の使われ方は変わらない。
+  - 列は`NOT NULL`にしない。SQLiteで既定値と制約を変えるには表の作り直しが要り、`users`は他の表から外部キーで参照されるためである。NULLは書き込まず、`identity_auth`の適用後に作られたNULLの行はカスタムマイグレーション`identity_disposable_status_undetermined`で`undetermined`に揃える。型(`UserRecord`・`AdminUserRecord`)は列に合わせて`null`を含めたままにする。
 - 不変条件: 未退会ユーザーの中でメールアドレスは大文字小文字を区別せずに一意。ハンドルと仮名化IDは全行で一意。トークン・セッション・待ち・リカバリコードの平文を保存しない。
 
 ### Physical Data Model
@@ -2947,7 +2956,7 @@ stateDiagram-v2
 | --------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `validation_error`                                        | bad_request(400)                 | 欄ごとの詳細(文言規則のエラーメッセージ)                                                                                                                                                                                          | 全入力                                                                                                      |
 | `registration_email_unavailable`                          | conflict(409)                    | このメールアドレスは登録できません。                                                                                                                                                                                              | 登録(1.4)                                                                                                   |
-| `password_rejected`                                       | unprocessable(422)               | 詳細`password`(登録)・`newPassword`(リセット・変更)(漏洩・識別子と一致の文言)                                                                                                                                                     | 登録・リセット・変更(5.2・5.3)                                                                              |
+| `password_rejected`                                       | unprocessable(422)               | 詳細`password`(登録)・`newPassword`(リセット・変更)(漏洩・識別子(ハンドル・ニックネーム・メールアドレスのローカル部)と一致の文言)                                                                                                 | 登録・リセット・変更(5.2・5.3)                                                                              |
 | `invalid_credentials`                                     | unauthenticated(401)             | メールアドレスまたはパスワードが正しくありません。                                                                                                                                                                                | ログイン(6.3)                                                                                               |
 | `account_unavailable`                                     | forbidden(403)                   | このアカウントは現在ご利用いただけません。詳しくはお問い合わせください。                                                                                                                                                          | 停止中のログイン・書き込み(4.3・6.4)。アップロードの拒否ではmedia-pipelineが同じコードと文言で応答する(4.7) |
 | `login_throttled`                                         | rate_limited(429)                | ログイン試行が続いたため、しばらく待ってから再度お試しください。(`Retry-After`)                                                                                                                                                   | ログイン・第2要素・本人確認(7.3)                                                                            |
@@ -2971,6 +2980,7 @@ stateDiagram-v2
 ### Monitoring
 
 - ログ(LogTape、カテゴリ`['api', 'identity', <機能>]`・`['event', 'identity', <機能>]`): ログインの成否と理由(`invalid_credentials`・`login_throttled`など)、ロックの発生、外部サービスの未使用、ライフサイクルの処理の結果と所要時間、日次のジョブの件数。メールアドレス・IP・トークン・パスワードは属性に入れない(backend-platformの伏せ字でも除く)。
+- 運用者への通知のログ(LogTape、カテゴリ`['api', 'auth', 'incident']`): `AuthIncidentReporter`の実装(`SentryAuthIncidentReporter`)が、Sentryへ送る通知と同じ出来事(外部サービスの未使用・送信元IPアドレスの欠落・送り直しの継続・物理削除の期限超過・送信の失敗)を、属性`incident`(種類)と理由・件数・イベントのIDだけで記録する。`auth`の部品は`identity`無しで再利用するため、カテゴリに`identity`を含めない。
 - Sentry: `AuthIncidentReporter`の`warning`・`error`(イベントサーバーの再試行を使い切った失敗はbackend-platformのデッドレターの処理が送る)。`AppError`は送らない。
 - 運用者が見る指標: `pwned-password-check-unavailable`・`disposable-email-check-unavailable`の頻度、`lifecycle-events-redispatched`・`purge-overdue`の発生。
 
@@ -3020,7 +3030,7 @@ stateDiagram-v2
   - 停止逃れ: 停止中の利用者は退会でき(4.4)、退会の直後から同じメールアドレスで再登録できる(1.5)。消去の権利を優先し、この回避を防がないことを受け入れる(仮5、2026-10-18の開発者の判断)。再登録したアカウントは新しいハンドル・仮名化IDを持ち、運営者は使い捨て判定の結果と通報で再度停止できる。
   - 運営者による退会の濫用・取り違え: 本人確認を伴わず取り消せないため、操作口は管理者側の呼び出し元と管理者のセッションだけを受け付け(15.8)、利用者側のGraphQLの操作を設けない。操作の権限の確認(最上位管理者だけ)と監査ログは呼び出し側(ugc-moderation・admin-foundation)が行い、依頼者の本人の確かめは運営者がシステムの外で行う。
   - 停止中の利用者のアップロード: 停止では既存のセッションを消さない(16.10)ため、media-pipelineの差し込み口を本specの判定で束縛し、保存の前に拒否する(4.7、FR-USER-026)。
-- データの最小化(DR-001): セッションにIPアドレスを保存しない。ログイン試行の記録はハッシュ化したキーと回数だけで、最後の失敗から24時間で消える。使い捨て判定へはローカル部を送らない。漏洩照合へはSHA-1の先頭5文字だけを送る。
+- データの最小化(DR-001): セッションにIPアドレスを保存しない。ログイン試行の記録はハッシュ化したキーを名前に持ち、失敗の回数・ロックの終了時刻・最後の失敗の時刻だけを保存して、最後の失敗から24時間で消える。使い捨て判定へはローカル部を送らない。漏洩照合へはSHA-1の先頭5文字だけを送る。
 
 ## Performance & Scalability
 
@@ -3066,6 +3076,6 @@ flowchart LR
 | メッセージ種別                         | `identity.run-user-lifecycle`・`identity.recheck-disposable-email`                                                                                                                                                                                                                                                                                                                                                                      |
 | 非同期の波及処理                       | `identity-auth.email-suppression-cleanup`(`withdrawn`・10000)                                                                                                                                                                                                                                                                                                                                                                           |
 | 有効期限                               | セッション アイドル14日・絶対90日・更新の間引き15分、第2要素の待ち5分、TOTPの設定10分、認証系トークン 確認24時間・リセットと変更30分                                                                                                                                                                                                                                                                                                    |
-| 判定し直しの遅延                       | 確認時の未判定から15分、日次のジョブは最後の判定から1時間以上                                                                                                                                                                                                                                                                                                                                                                           |
+| 判定し直しの遅延                       | 確認時の未判定から15分、日次のジョブは最後の判定(まだ判定していなければ確認)から1時間以上                                                                                                                                                                                                                                                                                                                                               |
 | ライフサイクルの送り直し               | 業務時刻16:21に、最後の送信から1時間以上の`pending`、3回目以降の送り直しで通知                                                                                                                                                                                                                                                                                                                                                          |
 | 設定ページの登録順                     | profile 10・account 20・security 30・notifications 40・follows 50・plan 60・billing 70・sponsorships 80・api-keys 90・export 100                                                                                                                                                                                                                                                                                                        |
