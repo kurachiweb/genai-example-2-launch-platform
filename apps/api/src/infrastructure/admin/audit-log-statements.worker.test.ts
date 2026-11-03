@@ -481,7 +481,8 @@ describe('buildAuditLogStatements(ロール変更の条件付きの記録)', () 
         kind: 'role-change',
         operator,
         targetId: adminIdOf(TARGET),
-        role: 'super_admin',
+        fromRole: 'viewer',
+        toRole: 'super_admin',
       },
       changeRole(TARGET, 'super_admin'),
     );
@@ -509,7 +510,8 @@ describe('buildAuditLogStatements(ロール変更の条件付きの記録)', () 
         kind: 'role-change',
         operator: snapshotOf(OPERATOR, 'super_admin'),
         targetId: adminIdOf(OPERATOR),
-        role: 'moderator',
+        fromRole: 'super_admin',
+        toRole: 'moderator',
       },
       changeRole(OPERATOR, 'moderator'),
     );
@@ -534,6 +536,7 @@ describe('buildAuditLogStatements(ロール変更の条件付きの記録)', () 
       },
       operator: snapshotOf(OPERATOR, 'super_admin'),
       target: OPERATOR,
+      fromRole: 'super_admin',
     },
     {
       name: 'モデレーターの操作者',
@@ -543,6 +546,7 @@ describe('buildAuditLogStatements(ロール変更の条件付きの記録)', () 
       },
       operator: snapshotOf(OPERATOR, 'moderator'),
       target: TARGET,
+      fromRole: 'viewer',
     },
     {
       name: '対象が存在しない',
@@ -551,6 +555,7 @@ describe('buildAuditLogStatements(ロール変更の条件付きの記録)', () 
       },
       operator: snapshotOf(OPERATOR, 'super_admin'),
       target: TARGET,
+      fromRole: 'viewer',
     },
     {
       name: '操作者が既に降格されている',
@@ -560,23 +565,41 @@ describe('buildAuditLogStatements(ロール変更の条件付きの記録)', () 
       },
       operator: snapshotOf(OPERATOR, 'super_admin'),
       target: TARGET,
+      fromRole: 'super_admin',
     },
-  ])(
+    {
+      name: '対象のロールが読み取った変更前のロールと異なる',
+      setup: async () => {
+        await insertAdmin(OPERATOR, { role: 'super_admin' });
+        await insertAdmin(TARGET, { role: 'moderator' });
+      },
+      operator: snapshotOf(OPERATOR, 'super_admin'),
+      target: TARGET,
+      fromRole: 'super_admin',
+    },
+  ] satisfies readonly {
+    readonly name: string;
+    readonly setup: () => Promise<void>;
+    readonly operator: AdminSnapshot;
+    readonly target: number;
+    readonly fromRole: AdminRole;
+  }[])(
     '$nameは全体が取り消され、監査ログもロールの変更も残らない',
-    async ({ setup, operator, target }) => {
+    async ({ setup, operator, target, fromRole }) => {
       await setup();
       const before = await readAdmin(target);
 
       const result = await commit(
         prepareRoleChange(OPERATOR, target, {
-          from: 'super_admin',
+          from: fromRole,
           to: 'viewer',
         }),
         {
           kind: 'role-change',
           operator,
           targetId: adminIdOf(target),
-          role: 'viewer',
+          fromRole,
+          toRole: 'viewer',
         },
         changeRole(target, 'viewer'),
       );
@@ -603,7 +626,8 @@ describe('buildAuditLogStatements(ロール変更の条件付きの記録)', () 
           kind: 'role-change',
           operator: snapshotOf(operatorIndex, 'super_admin'),
           targetId: adminIdOf(targetIndex),
-          role: 'viewer',
+          fromRole: 'super_admin',
+          toRole: 'viewer',
         },
         changeRole(targetIndex, 'viewer'),
       );

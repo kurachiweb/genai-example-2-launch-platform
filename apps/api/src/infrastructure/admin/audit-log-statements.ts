@@ -26,7 +26,9 @@ export type AuditGuard =
       readonly kind: 'role-change';
       readonly operator: AdminSnapshot;
       readonly targetId: string;
-      readonly role: AdminRole;
+      // 監査ログの詳細に残す変更前のロールで、対象の現在のロールと一致することを条件にする
+      readonly fromRole: AdminRole;
+      readonly toRole: AdminRole;
     };
 
 export type AuditLogStatements = readonly [
@@ -89,24 +91,25 @@ function deleteCondition(operator: AdminSnapshot, targetId: string): SQL {
 }
 
 function roleChangeCondition(
-  operator: AdminSnapshot,
-  targetId: string,
-  role: AdminRole,
+  guard: Extract<AuditGuard, { kind: 'role-change' }>,
 ): SQL {
+  const { operator, targetId, fromRole, toRole } = guard;
   if (checkRoleChangeable(operator) !== undefined) {
     return NEVER;
   }
-  const targetExists = exists(sql`${admins.id} = ${targetId}`);
-  if (role === 'super_admin') {
-    return sql`(${operatorStillHolds(operator)} AND ${targetExists})`;
+  const targetStillHolds = exists(
+    sql`${admins.id} = ${targetId} AND ${admins.role} = ${fromRole}`,
+  );
+  if (toRole === 'super_admin') {
+    return sql`(${operatorStillHolds(operator)} AND ${targetStillHolds})`;
   }
-  return sql`(${operatorStillHolds(operator)} AND ${targetExists} AND ${keepsActiveSuperAdmin(targetId)})`;
+  return sql`(${operatorStillHolds(operator)} AND ${targetStillHolds} AND ${keepsActiveSuperAdmin(targetId)})`;
 }
 
 function guardCondition(guard: AuditGuard): SQL {
   return guard.kind === 'delete'
     ? deleteCondition(guard.operator, guard.targetId)
-    : roleChangeCondition(guard.operator, guard.targetId, guard.role);
+    : roleChangeCondition(guard);
 }
 
 // 条件を満たさないと操作者のIDがNULLになり、NOT NULL制約の違反で同じ一括の書き込みの全体が取り消される

@@ -387,7 +387,7 @@ sequenceDiagram
 
 ### 削除・ロール変更の保護
 
-- 削除とロールの変更は、先頭に監査ログの挿入を置いた1つの一括の書き込みで行う。挿入の`operator_admin_id`の値を「対象が存在し、操作者の権限で許され、最後の有効な最上位管理者を失わない」ときだけ値になり、それ以外はNULLになる`CASE`式にし、NOT NULL制約の違反で全体を取り消す(identity-authの`UserLifecycleCommitter`と同じ方式)。D1は書き込みを1つずつ処理するため、同時の操作でも有効な最上位管理者は0人にならない(要件15.9)。
+- 削除とロールの変更は、先頭に監査ログの挿入を置いた1つの一括の書き込みで行う。挿入の`operator_admin_id`の値を「対象が存在し、操作者の権限で許され、最後の有効な最上位管理者を失わない(ロールの変更では、加えて対象の現在のロールが読み取った変更前のロールと一致する)」ときだけ値になり、それ以外はNULLになる`CASE`式にし、NOT NULL制約の違反で全体を取り消す(identity-authの`UserLifecycleCommitter`と同じ方式)。D1は書き込みを1つずつ処理するため、同時の操作でも有効な最上位管理者は0人にならない(要件15.9)。
 - 取り消された場合は対象を読み直し、無ければ`not_found`、最後の最上位管理者なら`last_super_admin`、それ以外は`admin_state_conflict`を返す。
 
 ## Requirements Traceability
@@ -715,14 +715,14 @@ export interface AdminAccountStore {
       readonly email: string;
       readonly invitedAt: Date;
     },
-    token: NewAdminAuthToken,
+    token: NewAdminInvitationToken, // { tokenHash, expiresAt }。用途はinvitationに固定し、期限は招待の期限にもなる
     audit: PreparedAuditEntry,
   ): Promise<'created' | 'email-in-use'>;
   reissueInvitation(
     adminId: string,
-    token: NewAdminAuthToken,
+    token: NewAdminInvitationToken,
     audit: PreparedAuditEntry,
-  ): Promise<'reissued' | 'not-invited'>;
+  ): Promise<'reissued' | 'not-invited'>; // 招待中でなければ新しいトークンの挿入の管理者のIDがNULLになり全体を取り消す
   savePendingProfile(
     adminId: string,
     input: { readonly nickname: string; readonly passwordHash: string },
@@ -732,10 +732,11 @@ export interface AdminAccountStore {
     input: {
       readonly at: Date;
       readonly step: number;
+      readonly pendingSealedSecret: string; // 照合に使った保留の秘密鍵(照合の後に設定が始め直されていれば有効化しない)
       readonly recoveryHashes: readonly string[];
       readonly session: NewAdminSessionRecord;
     },
-  ): Promise<'activated' | 'not-invited'>;
+  ): Promise<'activated' | 'not-invited'>; // 仮の保存(パスワードとニックネーム)を済ませた招待中で照合した保留が期限内のまま残っていなければ、先頭のセッションの挿入の管理者のIDがNULLになり全体を取り消す
   deleteGuarded(
     operator: AdminSnapshot,
     targetId: string,
@@ -743,8 +744,11 @@ export interface AdminAccountStore {
   ): Promise<'deleted' | 'rejected'>;
   changeRoleGuarded(
     operator: AdminSnapshot,
-    targetId: string,
-    role: AdminRole,
+    change: {
+      readonly targetId: string;
+      readonly fromRole: AdminRole; // 読み取った対象のロール。監査ログの詳細のfromRoleと一致させるため条件に含める
+      readonly toRole: AdminRole;
+    },
     audit: PreparedAuditEntry,
   ): Promise<'changed' | 'rejected'>;
   updateProfile(
@@ -779,7 +783,12 @@ export interface AdminTotpSetupView {
 }
 // AdminSessionStore・AdminAuthTokenStore・AdminLoginChallengeStore・AdminTotpCredentialStore・AdminRecoveryCodeStoreは
 // identity-authの同名の利用者のストアと同じ操作を、admin_*のテーブルと管理者のIDで持つ
-// (TOTPは再設定のためpending_sealed_secret・pending_expires_atを別の列に持ち、savePending・commitPendingで現在の設定と入れ替える)
+// (TOTPは再設定のためpending_sealed_secret・pending_expires_atを別の列に持ち、savePendingと、照合した保留の秘密鍵を条件に
+//  現在の設定との入れ替え・リカバリコードの置き換え・全セッションの削除を1つの一括の書き込みで行うcommitPendingRevokingSessionsで入れ替える。
+//  リカバリコードの再発行もreplaceAllRevokingSessionsで全セッションの削除と同じ一括の書き込みにする。期限切れの削除はlimit件まで。
+//  リカバリコードは未使用の件数を返すcount(adminId)を持ち、AdminViewer.remainingRecoveryCodesに使う(12.7)。
+//  利用者側にあって管理者側に持たない操作は、セッションの一覧と他の端末の削除(listByUser・deleteOthers、管理者に端末の管理の画面が無い)、
+//  多要素認証の無効化(disableRevokingSessions、12.6)、メールアドレスの使用中の判定(isEmailInUse、findByEmailで足りる)である)
 export interface AdminMailer {
   sendInvitation(to: string, token: string, expiresAt: Date): Promise<void>;
   sendEmailChangeConfirmation(
@@ -938,13 +947,13 @@ export interface AdminInvitation {
 - `AdminPasswordReset.request`: `assertHuman('admin_password_reset')`(リゾルバ)→`consume('password_reset')`→有効な管理者だけにトークン(30分)を置き換えて送信。応答は常に`true`(9.1〜9.3)。`complete`: `findValid`→`PasswordPolicy`→`consume`→`applyPasswordReset`→完了メール(9.4)。TOTPは変えない(9.5)。
 - `AdminEmailChange.request`: `AdminReAuthenticator`→`consume('email_change', newEmail)`→重複しなければトークン(24時間)を置き換えて送信。応答は常に`true`(10.1〜10.3)。`confirm`: `consume`→`applyEmailChange`(重複は`invalid_link`、10.5)→旧アドレスへ完了メール→`reissueForOperator`(10.4・10.6)。
 - `AdminPasswordChange.change`: `AdminReAuthenticator`→`PasswordPolicy`→`applyPasswordChange`→完了メール→操作した端末へ再発行(11.1〜11.3)。
-- `AdminTotpManagement.startReset`: 本人確認→新しい秘密鍵を`savePending`(現在の設定は有効なまま、12.1)。`completeReset(code)`: 保留の期限・誤りは拒否(12.3)→`commitPending`とリカバリコードの`replaceAll`→全セッション削除と再発行(12.2・12.5)。`regenerateRecoveryCodes`: 本人確認→`replaceAll`→再発行(12.4・12.5)。無効化の操作は持たない(12.6)。
+- `AdminTotpManagement.startReset`: 本人確認→新しい秘密鍵を`savePending`(現在の設定は有効なまま、12.1)。`completeReset(code)`: 保留の期限・誤りは拒否(12.3)→`commitPendingRevokingSessions`(保留と現在の設定の入れ替え・リカバリコードの置き換え・全セッションの削除を1つの一括の書き込み)→再発行(12.2・12.5)。`regenerateRecoveryCodes`: 本人確認→`replaceAllRevokingSessions`→再発行(12.4・12.5)。無効化の操作は持たない(12.6)。
 
 #### AdminAccountManagement・AdminProfile
 
 - `list(current)`: `viewer`以上。`displayStatus`を付けて返す(15.1)。
 - `delete(current, { adminId, reason })`: `checkDeletable`(15.4・15.5)→`prepare`(`admin-account.delete`)→`deleteGuarded`(監査ログを先頭に、子の行と管理者の行の削除。15.2・15.3)→`rejected`なら読み直して`not_found`・`last_super_admin`・`forbidden`(15.8)→プロフィール画像があれば`MediaFiles.eraseNow`(失敗はmedia-pipelineの日次バッチが完了させるため記録だけ)。
-- `changeRole(current, { adminId, role, reason })`: `checkRoleChangeable`(15.7)→`prepare`(`admin-account.role-change`・詳細`fromRole`・`toRole`)→`changeRoleGuarded`(15.6・15.8)。
+- `changeRole(current, { adminId, role, reason })`: `checkRoleChangeable`(15.7)→`prepare`(`admin-account.role-change`・詳細`fromRole`・`toRole`)→`changeRoleGuarded`(変更前のロールは読み取った対象のロール。15.6・15.8)→`rejected`なら対象を読み直し、無ければ`not_found`、対象が有効な最上位管理者で最上位管理者以外へ変えようとし、他に有効な最上位管理者がいなければ`last_super_admin`、それ以外(操作者のロール・状態や対象のロールが読み取った後に変わった)は`admin_state_conflict`を返す。
 - `AdminProfile.update(current, { adminId, nickname, title, avatarFileId })`: `checkProfileEditable`(16.3・16.4)→規則(16.7)→新しい画像があれば`MediaFiles.claim({ purpose: 'admin-avatar', owner: { kind: 'admin', id: current.id } })`(失敗は`invalid_upload`)→`updateProfile`→以前の画像を`eraseNow`(16.5)。保有者はアップロードした操作者で、削除は管理者の行の画像のIDで行う(保有者単位の削除を使わない)。
 
 #### AuditLogRecorder・AuditLogReader
@@ -1013,7 +1022,8 @@ export type AuditGuard =
       readonly kind: 'role-change';
       readonly operator: AdminSnapshot;
       readonly targetId: string;
-      readonly role: AdminRole;
+      readonly fromRole: AdminRole;
+      readonly toRole: AdminRole;
     };
 export declare function buildAuditLogStatements(
   db: Database,
@@ -1024,7 +1034,7 @@ export declare function isAuditGuardRejection(error: unknown): boolean; // guard
 ```
 
 - `prepare`: 対象のIDの重複を最初の出現の順で除いてから`validateAuditEntry`で検証し(対象の上限は重複を除いた件数で数える)、IDを採番した値を作る。違反は欄(`action`・`reason`・`targets`・`detail`)と違反の種類をコードにした詳細を持つ`validation_error`になる。application層のユースケースは、管理操作の前に`prepare`を呼び(違反なら操作を行わない、18.4)、その値を自分のストアへ渡す。
-- `buildAuditLogStatements`: ログの挿入(`guard`があれば`operator_admin_id`を`CASE`式にする)→対象の挿入(対象の行の6列から1文あたり16行、バインド変数100個以内。対象の行のIDは記録の順に単調増加で採番し、照会で記録の順に返す)。条件は、削除なら「操作者が読み取った状態(ID・ロール・有効)のまま・自分以外・モデレーター以上・対象が存在し最上位管理者ならモデレーターを拒否・対象が有効な最上位管理者なら他に有効な最上位管理者がいる」、ロールの変更なら「操作者が読み取った状態のままの最上位管理者・対象が存在する・最上位管理者以外へ変えるなら対象の他に有効な最上位管理者がいる(対象が有効な最上位管理者の場合)」。取り消しは`isAuditGuardRejection`で判別し、他の失敗はそのまま投げ直す。ストア(infrastructure層)は自分の文と同じ`db.batch()`に入れる(18.2)。
+- `buildAuditLogStatements`: ログの挿入(`guard`があれば`operator_admin_id`を`CASE`式にする)→対象の挿入(対象の行の6列から1文あたり16行、バインド変数100個以内。対象の行のIDは記録の順に単調増加で採番し、照会で記録の順に返す)。条件は、削除なら「操作者が読み取った状態(ID・ロール・有効)のまま・自分以外・モデレーター以上・対象が存在し最上位管理者ならモデレーターを拒否・対象が有効な最上位管理者なら他に有効な最上位管理者がいる」、ロールの変更なら「操作者が読み取った状態のままの最上位管理者・対象が存在し現在のロールが読み取った変更前のロール(監査ログの詳細の`fromRole`)と一致する・最上位管理者以外へ変えるなら対象の他に有効な最上位管理者がいる(対象が有効な最上位管理者の場合)」。取り消しは`isAuditGuardRejection`で判別し、他の失敗はそのまま投げ直す。ストア(infrastructure層)は自分の文と同じ`db.batch()`に入れる(18.2)。
 - 規約(`backend/008`): 管理操作は、application層で`prepare`し、infrastructure層のストアで操作の文と`buildAuditLogStatements`を同じ一括の書き込みにする。記録だけの操作(閲覧・検索)は`record`を操作の結果を返す前に呼び、失敗したら結果を返さない。
 - `search`: `(occurred_at, id)`の降順のカーソル(`base64url('<ミリ秒>:<ID>')`)。対象の識別子は`admin_audit_log_targets`との`EXISTS`で絞る(19.2・19.3)。
 - `latestForMany`(仮7、19.5): `latestFor`の複数の対象版。`targetIds`の重複を除き、空なら問い合わせずに空のMapを返す。`D1AuditLogStore`は対象のIDを90件ずつ(操作種別と対象の種類を含めてバインド変数100個以内)に分け、`admin_audit_log_targets`の`(target_kind, target_id, log_id)`の索引と`admin_audit_logs`の結合で`target_id`ごとの`MAX(occurred_at)`を1回の問い合わせで求め、結果を1つのMapにまとめる。記録の無い対象は含めない。`search`・`latestFor`の形は変えない。

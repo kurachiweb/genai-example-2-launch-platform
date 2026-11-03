@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { asc, eq } from 'drizzle-orm';
 
 import {
   type AuditActionCatalog,
@@ -20,9 +21,13 @@ import {
   StoreAuditLogRecorder,
 } from '../../../application/admin/audit-log-recorder.ts';
 import type { AuditLogStore } from '../../../application/admin/ports.ts';
+import type { AdminSnapshot } from '../../../domain/admin/admin-account.ts';
+import type { AdminAuthTokenPurpose } from '../../../domain/admin/admin-auth-token-purpose.ts';
 import { D1AuditLogStore } from '../d1-audit-log-store.ts';
 
 export const T0 = new Date('2026-11-01T00:00:00.000Z');
+
+export const HOUR_MS = 60 * 60 * 1000;
 
 export const db = createDatabase(env.DB);
 
@@ -65,6 +70,140 @@ export async function insertAdmin(
     updatedAt: T0,
     ...columns,
   });
+}
+
+export async function insertInvitedAdmin(
+  index: number,
+  columns: Partial<AdminRow> = {},
+): Promise<void> {
+  await insertAdmin(index, {
+    status: 'invited',
+    passwordHash: null,
+    nickname: null,
+    activatedAt: null,
+    invitationExpiresAt: after(24 * HOUR_MS),
+    ...columns,
+  });
+}
+
+export function adminSnapshotOf(
+  index: number,
+  role: AdminSnapshot['role'],
+): AdminSnapshot {
+  return {
+    id: adminIdOf(index),
+    role,
+    status: 'active',
+    invitationExpiresAt: null,
+  };
+}
+
+export async function insertAdminToken(
+  adminIndex: number,
+  purpose: AdminAuthTokenPurpose,
+  tokenHash: string,
+): Promise<void> {
+  await db.insert(adminAuthTokens).values({
+    adminId: adminIdOf(adminIndex),
+    purpose,
+    tokenHash,
+    expiresAt: after(HOUR_MS),
+    createdAt: T0,
+    updatedAt: T0,
+  });
+}
+
+export async function insertAdminSession(
+  adminIndex: number,
+  tokenHash: string,
+): Promise<void> {
+  await db.insert(adminSessions).values({
+    adminId: adminIdOf(adminIndex),
+    tokenHash,
+    lastUsedAt: T0,
+    absoluteExpiresAt: after(12 * HOUR_MS),
+    createdAt: T0,
+    updatedAt: T0,
+  });
+}
+
+// 削除で消えることを確かめるため、管理者を参照する5つのテーブルにそれぞれ1行を置く
+export async function insertAdminChildRows(adminIndex: number): Promise<void> {
+  const prefix = `admin-${String(adminIndex)}`;
+  await insertAdminSession(adminIndex, `${prefix}-session`);
+  await insertAdminToken(adminIndex, 'password_reset', `${prefix}-token`);
+  await db.insert(adminLoginChallenges).values({
+    adminId: adminIdOf(adminIndex),
+    tokenHash: `${prefix}-challenge`,
+    expiresAt: after(5 * 60_000),
+    createdAt: T0,
+    updatedAt: T0,
+  });
+  await db.insert(adminTotpCredentials).values({
+    adminId: adminIdOf(adminIndex),
+    sealedSecret: `${prefix}-secret`,
+    enabledAt: T0,
+    createdAt: T0,
+    updatedAt: T0,
+  });
+  await db.insert(adminRecoveryCodes).values({
+    adminId: adminIdOf(adminIndex),
+    codeHash: `${prefix}-recovery`,
+    createdAt: T0,
+    updatedAt: T0,
+  });
+}
+
+export interface AdminChildRowCounts {
+  readonly sessions: number;
+  readonly tokens: number;
+  readonly challenges: number;
+  readonly totp: number;
+  readonly recovery: number;
+}
+
+export async function countAdminChildRows(
+  adminIndex: number,
+): Promise<AdminChildRowCounts> {
+  const adminId = adminIdOf(adminIndex);
+  const [sessions, tokens, challenges, totp, recovery] = await Promise.all([
+    db.$count(adminSessions, eq(adminSessions.adminId, adminId)),
+    db.$count(adminAuthTokens, eq(adminAuthTokens.adminId, adminId)),
+    db.$count(adminLoginChallenges, eq(adminLoginChallenges.adminId, adminId)),
+    db.$count(adminTotpCredentials, eq(adminTotpCredentials.adminId, adminId)),
+    db.$count(adminRecoveryCodes, eq(adminRecoveryCodes.adminId, adminId)),
+  ]);
+  return { sessions, tokens, challenges, totp, recovery };
+}
+
+export async function readAdminRow(
+  index: number,
+): Promise<typeof admins.$inferSelect | undefined> {
+  const [row] = await db
+    .select()
+    .from(admins)
+    .where(eq(admins.id, adminIdOf(index)));
+  return row;
+}
+
+export async function readAuditLogSummaries() {
+  return db
+    .select({
+      id: adminAuditLogs.id,
+      operatorAdminId: adminAuditLogs.operatorAdminId,
+      action: adminAuditLogs.action,
+      detail: adminAuditLogs.detail,
+    })
+    .from(adminAuditLogs)
+    .orderBy(asc(adminAuditLogs.id));
+}
+
+export async function readAuditLogTargetIds(): Promise<string[]> {
+  const rows = await db
+    .select({ targetId: adminAuditLogTargets.targetId })
+    .from(adminAuditLogTargets)
+    .orderBy(asc(adminAuditLogTargets.id));
+  return rows.map((row) => row.targetId);
 }
 
 export async function clearAdminTables(): Promise<void> {

@@ -7,6 +7,15 @@ const EXPECTED_NAMES = [
   'AuditLogStore',
   'AuditLogRecorder',
   'AuditLogReader',
+  'AdminAccountStore',
+  'AdminSessionStore',
+  'AdminAuthTokenStore',
+  'AdminLoginChallengeStore',
+  'AdminTotpCredentialStore',
+  'AdminRecoveryCodeStore',
+  'AdminMailer',
+  'AdminSettings',
+  'AdminMailSendLimits',
 ] as const;
 
 describe('ADMIN_TYPES', () => {

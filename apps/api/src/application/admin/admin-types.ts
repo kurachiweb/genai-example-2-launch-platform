@@ -8,9 +8,46 @@ const AuditLogRecorder: unique symbol = Symbol.for('admin.AuditLogRecorder');
 
 const AuditLogReader: unique symbol = Symbol.for('admin.AuditLogReader');
 
+const AdminAccountStore: unique symbol = Symbol.for('admin.AdminAccountStore');
+
+const AdminSessionStore: unique symbol = Symbol.for('admin.AdminSessionStore');
+
+const AdminAuthTokenStore: unique symbol = Symbol.for(
+  'admin.AdminAuthTokenStore',
+);
+
+const AdminLoginChallengeStore: unique symbol = Symbol.for(
+  'admin.AdminLoginChallengeStore',
+);
+
+const AdminTotpCredentialStore: unique symbol = Symbol.for(
+  'admin.AdminTotpCredentialStore',
+);
+
+const AdminRecoveryCodeStore: unique symbol = Symbol.for(
+  'admin.AdminRecoveryCodeStore',
+);
+
+const AdminMailer: unique symbol = Symbol.for('admin.AdminMailer');
+
+const AdminSettings: unique symbol = Symbol.for('admin.AdminSettings');
+
+const AdminMailSendLimits: unique symbol = Symbol.for(
+  'admin.AdminMailSendLimits',
+);
+
 export const ADMIN_TYPES = Object.freeze({
   AuditActionCatalog,
   AuditLogStore,
   AuditLogRecorder,
   AuditLogReader,
+  AdminAccountStore,
+  AdminSessionStore,
+  AdminAuthTokenStore,
+  AdminLoginChallengeStore,
+  AdminTotpCredentialStore,
+  AdminRecoveryCodeStore,
+  AdminMailer,
+  AdminSettings,
+  AdminMailSendLimits,
 });
