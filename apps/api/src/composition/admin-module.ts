@@ -4,6 +4,10 @@ import { type Bind, ContainerModule } from 'inversify';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
+  type AdminAccountManagement,
+  StoreAdminAccountManagement,
+} from '../application/admin/admin-account-management.ts';
+import {
   type AdminAuthorizer,
   StoreAdminAuthorizer,
 } from '../application/admin/admin-authorizer.ts';
@@ -27,6 +31,10 @@ import {
   type AdminPasswordReset,
   StoreAdminPasswordReset,
 } from '../application/admin/admin-password-reset.ts';
+import {
+  type AdminProfile,
+  StoreAdminProfile,
+} from '../application/admin/admin-profile.ts';
 import {
   type AdminReAuthenticator,
   StoreAdminReAuthenticator,
@@ -106,6 +114,10 @@ function bindUseCases(bind: Bind): void {
   bind<AdminTotpManagement>(ADMIN_TYPES.AdminTotpManagement).to(
     StoreAdminTotpManagement,
   );
+  bind<AdminAccountManagement>(ADMIN_TYPES.AdminAccountManagement).to(
+    StoreAdminAccountManagement,
+  );
+  bind<AdminProfile>(ADMIN_TYPES.AdminProfile).to(StoreAdminProfile);
 }
 
 // 認証部品の束縛(AUTH_TYPES)は利用者のモジュールのものをそのまま使う

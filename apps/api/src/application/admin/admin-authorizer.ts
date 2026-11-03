@@ -5,6 +5,7 @@ import {
   type AdminRole,
   hasRole,
 } from '../../../common-lib/admin/admin-roles.ts';
+import type { AdminSnapshot } from '../../domain/admin/admin-account.ts';
 import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import type { SessionView } from '../session/session-view.ts';
 import { adminError } from './admin-errors.ts';
@@ -19,6 +20,14 @@ export interface CurrentAdmin {
   readonly nickname: string;
   readonly sessionId: string;
 }
+
+// 認可で有効と確かめた管理者のため、可否の判定と書き込みの条件に使うロール以外は有効の状態として組み立てる
+export const operatorSnapshotOf = (current: CurrentAdmin): AdminSnapshot => ({
+  id: current.id,
+  role: current.role,
+  status: 'active',
+  invitationExpiresAt: null,
+});
 
 // application層はpresentation層のCallerKindを読み込めないため、呼び出し元は文字列で受け取る
 export interface AdminAuthorizer {

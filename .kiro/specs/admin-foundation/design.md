@@ -685,6 +685,7 @@ export declare const ADMIN_ERRORS: Readonly<
     last_super_admin: AuthErrorDefinition;
     self_deletion_forbidden: AuthErrorDefinition;
     admin_state_conflict: AuthErrorDefinition;
+    invalid_upload: AuthErrorDefinition; // unprocessable・プロフィール画像の紐付けの失敗
   } // Error Handlingの表のうち、AUTH_ERRORSに無く本specのユースケースが投げるコード
 >;
 export declare const adminError: (code: keyof typeof ADMIN_ERRORS) => AppError;
@@ -698,6 +699,11 @@ export declare const ADMIN_NICKNAME_MESSAGES: Readonly<
 export declare const adminNicknameRejectedError: (
   violation: 'empty' | 'too-long',
 ) => AppError; // validation_error・欄nickname
+export declare const ADMIN_TITLE_MESSAGES: Readonly<Record<'too-long', string>>; // 「肩書きは50文字以内で入力してください。」
+export declare const adminProfileRejectedError: (violations: {
+  readonly nickname?: 'empty' | 'too-long';
+  readonly title?: 'too-long';
+}) => AppError; // validation_error・欄nickname・titleの順に違反した欄だけ(16.7)
 ```
 
 - 置き場所: apiの層の規則(`eslint.config.ts`)で`admin`は`identity`を読み込めない。管理者と利用者で同じであるべきエラーコード・文言・送信回数の上限(Q7)を両方の機能が読める`auth`(主体に依存しない認証部品の層)へ移し、片方だけを変えて食い違うことを防ぐ。主体で異なるのは、パスワードと識別子の一致の文言(利用者はハンドルを含む)と、主体に固有のエラーコードだけである。
@@ -968,10 +974,10 @@ export interface AdminInvitation {
 
 #### AdminAccountManagement・AdminProfile
 
-- `list(current)`: `viewer`以上。`displayStatus`を付けて返す(15.1)。
-- `delete(current, { adminId, reason })`: `checkDeletable`(15.4・15.5)→`prepare`(`admin-account.delete`)→`deleteGuarded`(監査ログを先頭に、子の行と管理者の行の削除。15.2・15.3)→`rejected`なら読み直して`not_found`・`last_super_admin`・`forbidden`(15.8)→プロフィール画像があれば`MediaFiles.eraseNow`(失敗はmedia-pipelineの日次バッチが完了させるため記録だけ)。
-- `changeRole(current, { adminId, role, reason })`: `checkRoleChangeable`(15.7)→`prepare`(`admin-account.role-change`・詳細`fromRole`・`toRole`)→`changeRoleGuarded`(変更前のロールは読み取った対象のロール。15.6・15.8)→`rejected`なら対象を読み直し、無ければ`not_found`、対象が有効な最上位管理者で最上位管理者以外へ変えようとし、他に有効な最上位管理者がいなければ`last_super_admin`、それ以外(操作者のロール・状態や対象のロールが読み取った後に変わった)は`admin_state_conflict`を返す。
-- `AdminProfile.update(current, { adminId, nickname, title, avatarFileId })`: `checkProfileEditable`(16.3・16.4)→規則(16.7)→新しい画像があれば`MediaFiles.claim({ purpose: 'admin-avatar', owner: { kind: 'admin', id: current.id } })`(失敗は`invalid_upload`)→`updateProfile`→以前の画像を`eraseNow`(16.5)。保有者はアップロードした操作者で、削除は管理者の行の画像のIDで行う(保有者単位の削除を使わない)。
+- `list(current, meta)`: `viewer`以上(認可はリゾルバの`requireAdmin`)。`displayStatus`を付けた`AdminAccountView`(`id`・`email`・`nickname`・`title`・`avatarFileId`・`role`・`status`・`createdAt`)の一覧を返す(15.1)。
+- `delete(current, { adminId, reason }, meta)`: 自分自身なら`self_deletion_forbidden`→対象を読み、無ければ`not_found`→`checkDeletable`(15.4・15.5、ロール不足と最上位管理者の対象は`forbidden`)→`prepare`(`admin-account.delete`)→`deleteGuarded`(監査ログを先頭に、子の行と管理者の行の削除。15.2・15.3)→`rejected`なら「削除・ロール変更の保護」の節と同じく読み直して`not_found`・`last_super_admin`・`admin_state_conflict`(15.8。事前の可否の判定を通った後の取り消しは、読み取った後に操作者か対象の状態が変わった競合のため)→読み取った行が参照するプロフィール画像があれば`MediaFiles.eraseNow`(失敗はmedia-pipelineの日次バッチが完了させるため`warning`のログだけ)。
+- `changeRole(current, { adminId, role, reason }, meta)`: `checkRoleChangeable`(15.7)→`prepare`(`admin-account.role-change`・詳細`fromRole`・`toRole`)→`changeRoleGuarded`(変更前のロールは読み取った対象のロール。15.6・15.8)→`rejected`なら対象を読み直し、無ければ`not_found`、対象が有効な最上位管理者で最上位管理者以外へ変えようとし、他に有効な最上位管理者がいなければ`last_super_admin`、それ以外(操作者のロール・状態や対象のロールが読み取った後に変わった)は`admin_state_conflict`を返す。成功すると変更後の`AdminAccountView`を返す。
+- `AdminProfile.update(current, { adminId, nickname, title, avatarFileId }, meta)`: `checkProfileEditable`(16.3・16.4)→規則(16.7、ニックネームと肩書きの違反を欄ごとの詳細にまとめた`validation_error`。空白だけの肩書きは未設定)→対象を読み、無ければ`not_found`→対象の行と異なる新しい画像があれば`MediaFiles.claim({ purpose: 'admin-avatar', owner: { kind: 'admin', id: current.id } })`(失敗は`invalid_upload`)→`updateProfile`→以前の画像を`eraseNow`(16.5、失敗は`warning`のログだけ)→更新後の`AdminAccountView`を返す。用途の名前は`admin-profile.ts`の`ADMIN_AVATAR_UPLOAD_PURPOSE`。保有者はアップロードした操作者で、削除は管理者の行の画像のIDで行う(保有者単位の削除を使わない)。
 
 #### AuditLogRecorder・AuditLogReader
 
@@ -1477,7 +1483,7 @@ stateDiagram-v2
 ### Monitoring
 
 - ログ(カテゴリ`['api', 'admin', <機能>]`): ログインの成否と理由、ロック、権限の拒否(操作名と必要なロール)、監査ログの検証の違反、日次のジョブの件数。メールアドレス・IP・トークン・パスワード・理由の本文を属性に入れない。
-- Sentry: 漏洩照合の不能はidentity-authの`AuthIncidentReporter`、プロフィール画像の削除の失敗は`warning`。
+- Sentry: 漏洩照合の不能はidentity-authの`AuthIncidentReporter`。プロフィール画像の即時の削除の失敗は`warning`のログ(例外と管理者のID`adminId`だけを添える)に留め、エラートラッキングへ送らない(`MediaFiles.eraseNow`の失敗は`AppError`で、削除待ちの印から日次バッチが完了させるため)。
 
 ## Testing Strategy
 

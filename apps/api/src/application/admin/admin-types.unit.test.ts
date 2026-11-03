@@ -27,6 +27,8 @@ const EXPECTED_NAMES = [
   'AdminEmailChange',
   'AdminPasswordChange',
   'AdminTotpManagement',
+  'AdminAccountManagement',
+  'AdminProfile',
 ] as const;
 
 describe('ADMIN_TYPES', () => {

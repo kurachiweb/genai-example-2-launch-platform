@@ -68,6 +68,12 @@ const AdminTotpManagement: unique symbol = Symbol.for(
   'admin.AdminTotpManagement',
 );
 
+const AdminAccountManagement: unique symbol = Symbol.for(
+  'admin.AdminAccountManagement',
+);
+
+const AdminProfile: unique symbol = Symbol.for('admin.AdminProfile');
+
 export const ADMIN_TYPES = Object.freeze({
   AuditActionCatalog,
   AuditLogStore,
@@ -92,4 +98,6 @@ export const ADMIN_TYPES = Object.freeze({
   AdminEmailChange,
   AdminPasswordChange,
   AdminTotpManagement,
+  AdminAccountManagement,
+  AdminProfile,
 });

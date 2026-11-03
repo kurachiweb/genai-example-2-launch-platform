@@ -12,6 +12,7 @@ import {
   adminInvitationLinkError,
   adminNicknameRejectedError,
   adminPasswordRejectedError,
+  adminProfileRejectedError,
 } from './admin-errors.ts';
 
 const ADMIN_PASSWORD_MATCHES_IDENTITY_MESSAGE =
@@ -40,6 +41,11 @@ describe('adminError', () => {
       '処理が重なりました。時間をおいて再度お試しください。',
     ],
     [
+      'invalid_upload',
+      'unprocessable',
+      '画像を確認できませんでした。もう一度アップロードしてください。',
+    ],
+    [
       'invalid_credentials',
       'unauthenticated',
       'メールアドレスまたはパスワードが正しくありません。',
@@ -61,7 +67,7 @@ describe('adminError', () => {
     }
   });
 
-  test('共有の8種類と管理者に固有の4種類だけを持つ', () => {
+  test('共有の8種類と管理者に固有の5種類だけを持つ', () => {
     expect(Object.keys(ADMIN_ERRORS).toSorted()).toEqual(
       [
         ...Object.keys(AUTH_ERRORS),
@@ -69,6 +75,7 @@ describe('adminError', () => {
         'last_super_admin',
         'self_deletion_forbidden',
         'admin_state_conflict',
+        'invalid_upload',
       ].toSorted(),
     );
     expect(Object.isFrozen(ADMIN_ERRORS)).toBe(true);
@@ -142,4 +149,42 @@ describe('adminNicknameRejectedError', () => {
       ]);
     },
   );
+});
+
+describe('adminProfileRejectedError', () => {
+  test('ニックネームと肩書きの違反を、この順の欄ごとの詳細に持つ入力の検証の失敗になる', () => {
+    const error = adminProfileRejectedError({
+      nickname: 'too-long',
+      title: 'too-long',
+    });
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error).toMatchObject({
+      kind: 'bad_request',
+      code: 'validation_error',
+      message: '入力内容を確認してください。',
+    });
+    expect(error.details).toEqual([
+      {
+        field: 'nickname',
+        code: 'too-long',
+        message: 'ニックネームは25文字以内で入力してください。',
+      },
+      {
+        field: 'title',
+        code: 'too-long',
+        message: '肩書きは50文字以内で入力してください。',
+      },
+    ]);
+  });
+
+  test('肩書きだけの違反は肩書きの欄だけの詳細を持つ', () => {
+    expect(adminProfileRejectedError({ title: 'too-long' }).details).toEqual([
+      {
+        field: 'title',
+        code: 'too-long',
+        message: '肩書きは50文字以内で入力してください。',
+      },
+    ]);
+  });
 });

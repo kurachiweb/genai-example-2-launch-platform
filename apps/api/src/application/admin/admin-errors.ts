@@ -1,4 +1,7 @@
-import { ADMIN_NICKNAME_MAX } from '../../../common-lib/admin/admin-input-rules.ts';
+import {
+  ADMIN_NICKNAME_MAX,
+  ADMIN_TITLE_MAX,
+} from '../../../common-lib/admin/admin-input-rules.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { AUTH_ERRORS, type AuthErrorDefinition } from '../auth/auth-errors.ts';
 import {
@@ -23,6 +26,10 @@ export const ADMIN_ERRORS = Object.freeze({
   admin_state_conflict: {
     kind: 'conflict',
     message: '処理が重なりました。時間をおいて再度お試しください。',
+  },
+  invalid_upload: {
+    kind: 'unprocessable',
+    message: '画像を確認できませんでした。もう一度アップロードしてください。',
   },
 } satisfies Readonly<Record<string, AuthErrorDefinition>>);
 
@@ -73,5 +80,49 @@ export const adminNicknameRejectedError = (
     code: 'validation_error',
     message: VALIDATION_ERROR_MESSAGE,
     details: [{ field: 'nickname', code: violation, message }],
+  });
+};
+
+export type AdminTitleViolation = 'too-long';
+
+export const ADMIN_TITLE_MESSAGES: Readonly<
+  Record<AdminTitleViolation, string>
+> = Object.freeze({
+  'too-long': `肩書きは${String(ADMIN_TITLE_MAX)}文字以内で入力してください。`,
+});
+
+export interface AdminProfileViolations {
+  readonly nickname?: AdminNicknameViolation | undefined;
+  readonly title?: AdminTitleViolation | undefined;
+}
+
+export const adminProfileRejectedError = (
+  violations: AdminProfileViolations,
+): AppError => {
+  const { nickname, title } = violations;
+  return new AppError({
+    kind: 'bad_request',
+    code: 'validation_error',
+    message: VALIDATION_ERROR_MESSAGE,
+    details: [
+      ...(nickname === undefined
+        ? []
+        : [
+            {
+              field: 'nickname',
+              code: nickname,
+              message: ADMIN_NICKNAME_MESSAGES[nickname],
+            },
+          ]),
+      ...(title === undefined
+        ? []
+        : [
+            {
+              field: 'title',
+              code: title,
+              message: ADMIN_TITLE_MESSAGES[title],
+            },
+          ]),
+    ],
   });
 };

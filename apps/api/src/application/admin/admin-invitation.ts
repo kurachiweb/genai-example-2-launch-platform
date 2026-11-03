@@ -5,10 +5,7 @@ import { ADMIN_ACCOUNT_INVITE_ACTION } from '../../../common-lib/admin/audit-act
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
-import {
-  type AdminSnapshot,
-  checkInvitable,
-} from '../../domain/admin/admin-account.ts';
+import { checkInvitable } from '../../domain/admin/admin-account.ts';
 import {
   ADMIN_AUTH_TOKEN_TTL_SECONDS,
   ADMIN_HASH_PURPOSES,
@@ -23,7 +20,7 @@ import type {
 } from '../auth/ports.ts';
 import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
-import type { CurrentAdmin } from './admin-authorizer.ts';
+import { type CurrentAdmin, operatorSnapshotOf } from './admin-authorizer.ts';
 import {
   adminError,
   adminInvitationLinkError,
@@ -107,14 +104,6 @@ interface IssuedInvitationToken {
 interface ValidPendingTotp extends AdminTotpCredential {
   readonly pendingSealedSecret: string;
 }
-
-// 操作者は認可で有効と確かめた管理者のため、可否の判定に使うロール以外は有効の状態として組み立てる
-const operatorSnapshot = (current: CurrentAdmin): AdminSnapshot => ({
-  id: current.id,
-  role: current.role,
-  status: 'active',
-  invitationExpiresAt: null,
-});
 
 // 認証アプリのラベルはメールアドレスを締め出すため@を拒むので、@を含むニックネームはラベルに出さない
 export const adminTotpAccountLabelOf = (nickname: string | null): string =>
@@ -297,7 +286,7 @@ export class StoreAdminInvitation implements AdminInvitation {
   }
 
   #assertInvitable(current: CurrentAdmin): void {
-    if (checkInvitable(operatorSnapshot(current)) !== undefined) {
+    if (checkInvitable(operatorSnapshotOf(current)) !== undefined) {
       throw adminError('forbidden');
     }
   }
