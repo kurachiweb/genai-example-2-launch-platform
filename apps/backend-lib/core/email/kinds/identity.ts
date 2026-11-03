@@ -1,23 +1,9 @@
 import { z } from 'zod';
 
 import { type AnyEmailKind, defineEmailKind } from '../email-kind.ts';
-
-// ローカル環境の利用者側のオリジンだけはHTTPSでないため、http:はホスト名がlocalhostのときに限る
-function isAllowedLinkUrl(value: string): boolean {
-  if (value.startsWith('https://')) {
-    return true;
-  }
-  return (
-    value.startsWith('http://localhost') &&
-    URL.parse(value)?.hostname === 'localhost'
-  );
-}
+import { linkUrlSchema as linkUrl } from './link-url.ts';
 
 const nickname = z.string().min(1);
-
-const linkUrl = z.url().refine(isAllowedLinkUrl, {
-  message: 'リンクのURLはhttps:かhttp://localhostで始めてください',
-});
 
 const utcDateTime = z.iso.datetime();
 
