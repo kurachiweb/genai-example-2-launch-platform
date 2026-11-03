@@ -308,6 +308,7 @@ const resolvers = {
 - 失敗したら`AppError`(`kind: 'bad_request'`・コード`validation_error`・文言「入力内容を確認してください。」)を投げ、`details`に項目ごとの詳細を入れる。`field`は引数のパスを`.`で連結した値、`code`・`message`はZodの問題のコードと文言である。
 - 利用者へ出る規則には、日本語の文言を必ず指定する(`z.string().max(100, '100文字以内で入力してください。')`など)。指定しないとZodの既定の英語の文言が`details`の`message`に出る。
 - GraphQLの省略可能な引数は、明示した`null`でも届く。未指定と同じに扱うなら`.nullish()`で受けて`undefined`へ変換する。
+- 画面のフォームと共有する規則の置き場所、文字数の数え方、前後の空白の扱い、ユースケースの違反の詳細の欄名は「[入力値バリデーション](../coding/005-input-validation.md)」に従う。
 
 ### ページングの型と命名
 

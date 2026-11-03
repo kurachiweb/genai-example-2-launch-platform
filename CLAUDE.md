@@ -52,6 +52,7 @@
 - 画面で外部のスクリプト・画像・接続先・埋め込みを使う前に: [許可先の登録](docs/GUIDES/tech/frontend/003-frontend-server-security.md#許可先の登録)
 - 画面でAPIサーバーのデータを取得・変更する処理を書く前に: [取得の補助とloader](docs/GUIDES/tech/frontend/006-data-fetching.md#取得の補助とloader)
 - フロントエンドのGraphQLの操作を追加・変更する前に: [操作の置き場所と名前](docs/GUIDES/tech/coding/004-graphql-communication.md#操作の置き場所と名前)
+- 利用者の入力の検証規則を画面のフォームやAPIサーバーに書く前に: [規則の置き場所](docs/GUIDES/tech/coding/005-input-validation.md#規則の置き場所)
 - フロントエンドで想定外の失敗をエラートラッキングへ送る処理を書く前に: [送信の入口](docs/GUIDES/tech/frontend/007-frontend-observability.md#送信の入口)
 - シークレット・環境変数を使うコマンドの実行や設定の前に: [シークレットの注入](docs/GUIDES/tech/security/001-secret-management.md#シークレットの注入)
 - Wrangler設定やコマンドでデプロイ先を指定する前に: [デプロイ先の環境種別](docs/GUIDES/tech/infra/002-environments.md#デプロイ先の環境種別)
