@@ -240,6 +240,7 @@ apps/
 │       │   ├── d1-admin-login-challenge-store.ts · d1-admin-totp-credential-store.ts · d1-admin-recovery-code-store.ts
 │       │   ├── audit-log-statements.ts                 # buildAuditLogStatements(後続specのストアも一括の書き込みに含める)
 │       │   ├── d1-audit-log-store.ts                   # 単独の記録・検索・最新の照会(1件と複数)・保持期間の削除
+│       │   ├── testing/admin-store-fixtures.ts         # Workers統合テストの共有の補助(管理者の行の追加・8テーブルの消去・予測できるIDでの準備の値)
 │       │   ├── counter-admin-mail-send-limits.ts       # AdminMailSendLimitsの実装(厳密カウンタによる送信回数の制限)
 │       │   └── email-admin-mailer.ts                   # 6種のメールの送信要求とリンクのURL
 │       ├── presentation/graphql/
@@ -1018,11 +1019,12 @@ export declare function buildAuditLogStatements(
   db: Database,
   entry: PreparedAuditEntry,
   guard?: AuditGuard,
-): readonly BatchItem<'sqlite'>[];
+): readonly [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]; // db.batch()へそのまま渡せる1件以上の文
+export declare function isAuditGuardRejection(error: unknown): boolean; // guardの条件を満たさず取り消された一括の書き込みの失敗か
 ```
 
 - `prepare`: 対象のIDの重複を最初の出現の順で除いてから`validateAuditEntry`で検証し(対象の上限は重複を除いた件数で数える)、IDを採番した値を作る。違反は欄(`action`・`reason`・`targets`・`detail`)と違反の種類をコードにした詳細を持つ`validation_error`になる。application層のユースケースは、管理操作の前に`prepare`を呼び(違反なら操作を行わない、18.4)、その値を自分のストアへ渡す。
-- `buildAuditLogStatements`: ログの挿入(`guard`があれば`operator_admin_id`を`CASE`式にする)→対象の挿入(1文あたり25行、バインド変数100個以内)。ストア(infrastructure層)は自分の文と同じ`db.batch()`に入れる(18.2)。
+- `buildAuditLogStatements`: ログの挿入(`guard`があれば`operator_admin_id`を`CASE`式にする)→対象の挿入(対象の行の6列から1文あたり16行、バインド変数100個以内。対象の行のIDは記録の順に単調増加で採番し、照会で記録の順に返す)。条件は、削除なら「操作者が読み取った状態(ID・ロール・有効)のまま・自分以外・モデレーター以上・対象が存在し最上位管理者ならモデレーターを拒否・対象が有効な最上位管理者なら他に有効な最上位管理者がいる」、ロールの変更なら「操作者が読み取った状態のままの最上位管理者・対象が存在する・最上位管理者以外へ変えるなら対象の他に有効な最上位管理者がいる(対象が有効な最上位管理者の場合)」。取り消しは`isAuditGuardRejection`で判別し、他の失敗はそのまま投げ直す。ストア(infrastructure層)は自分の文と同じ`db.batch()`に入れる(18.2)。
 - 規約(`backend/008`): 管理操作は、application層で`prepare`し、infrastructure層のストアで操作の文と`buildAuditLogStatements`を同じ一括の書き込みにする。記録だけの操作(閲覧・検索)は`record`を操作の結果を返す前に呼び、失敗したら結果を返さない。
 - `search`: `(occurred_at, id)`の降順のカーソル(`base64url('<ミリ秒>:<ID>')`)。対象の識別子は`admin_audit_log_targets`との`EXISTS`で絞る(19.2・19.3)。
 - `latestForMany`(仮7、19.5): `latestFor`の複数の対象版。`targetIds`の重複を除き、空なら問い合わせずに空のMapを返す。`D1AuditLogStore`は対象のIDを90件ずつ(操作種別と対象の種類を含めてバインド変数100個以内)に分け、`admin_audit_log_targets`の`(target_kind, target_id, log_id)`の索引と`admin_audit_logs`の結合で`target_id`ごとの`MAX(occurred_at)`を1回の問い合わせで求め、結果を1つのMapにまとめる。記録の無い対象は含めない。`search`・`latestFor`の形は変えない。
