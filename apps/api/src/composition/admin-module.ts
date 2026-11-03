@@ -8,6 +8,10 @@ import {
   StoreAdminAuthorizer,
 } from '../application/admin/admin-authorizer.ts';
 import {
+  type AdminLogin,
+  StoreAdminLogin,
+} from '../application/admin/admin-login.ts';
+import {
   type AdminSessionIssuer,
   StoreAdminSessionIssuer,
 } from '../application/admin/admin-session-issuer.ts';
@@ -15,11 +19,17 @@ import { AdminSessionVerifier } from '../application/admin/admin-session-verifie
 import { ADMIN_TYPES } from '../application/admin/admin-types.ts';
 import type {
   AdminAccountStore,
+  AdminLoginChallengeStore,
+  AdminRecoveryCodeStore,
   AdminSessionStore,
+  AdminTotpCredentialStore,
 } from '../application/admin/ports.ts';
 import type { SubjectSessionVerifierPort } from '../application/auth/subject-session-verifier.ts';
 import { D1AdminAccountStore } from '../infrastructure/admin/d1-admin-account-store.ts';
+import { D1AdminLoginChallengeStore } from '../infrastructure/admin/d1-admin-login-challenge-store.ts';
+import { D1AdminRecoveryCodeStore } from '../infrastructure/admin/d1-admin-recovery-code-store.ts';
 import { D1AdminSessionStore } from '../infrastructure/admin/d1-admin-session-store.ts';
+import { D1AdminTotpCredentialStore } from '../infrastructure/admin/d1-admin-totp-credential-store.ts';
 
 function bindStores(bind: Bind): void {
   bind<AdminAccountStore>(ADMIN_TYPES.AdminAccountStore).to(
@@ -27,6 +37,15 @@ function bindStores(bind: Bind): void {
   );
   bind<AdminSessionStore>(ADMIN_TYPES.AdminSessionStore).to(
     D1AdminSessionStore,
+  );
+  bind<AdminLoginChallengeStore>(ADMIN_TYPES.AdminLoginChallengeStore).to(
+    D1AdminLoginChallengeStore,
+  );
+  bind<AdminTotpCredentialStore>(ADMIN_TYPES.AdminTotpCredentialStore).to(
+    D1AdminTotpCredentialStore,
+  );
+  bind<AdminRecoveryCodeStore>(ADMIN_TYPES.AdminRecoveryCodeStore).to(
+    D1AdminRecoveryCodeStore,
   );
 }
 
@@ -41,6 +60,7 @@ function bindUseCases(bind: Bind): void {
   bind<AdminAuthorizer>(ADMIN_TYPES.AdminAuthorizer)
     .to(StoreAdminAuthorizer)
     .inSingletonScope();
+  bind<AdminLogin>(ADMIN_TYPES.AdminLogin).to(StoreAdminLogin);
 }
 
 // 認証部品の束縛(AUTH_TYPES)は利用者のモジュールのものをそのまま使う

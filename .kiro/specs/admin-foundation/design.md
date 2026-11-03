@@ -214,7 +214,9 @@ apps/
 │       ├── application/auth/                           # identity-authの既存の層。本specが主体に依存しない部分を移す(上流への影響)
 │       │   ├── auth-errors.ts                          # AUTH_ERRORS・authError・loginThrottledError・本人確認とパスワードの拒否の文言(同名の*.unit.test.ts)
 │       │   ├── password-rejection.ts                   # PasswordRejection・createPasswordRejectedError(同名の*.unit.test.ts)
-│       │   └── mail-send-policy.ts                     # MAIL_SEND_POLICY(時間窓・宛先とIPアドレスの上限)
+│       │   ├── mail-send-policy.ts                     # MAIL_SEND_POLICY(時間窓・宛先とIPアドレスの上限)
+│       │   ├── login-throttle-check.ts                 # checkLoginThrottle(主体のスコープを受け取るログイン試行のロックの確認)
+│       │   └── second-factor-check.ts                  # checkSubjectSecondFactor・isTotpEnabled・SecondFactorScheme(主体ごとのハッシュの用途と秘密鍵の文脈を受け取る第2要素の照合)
 │       ├── application/admin/                          # ポートとユースケース(Bunの単体テスト)
 │       │   ├── admin-types.ts                          # ADMIN_TYPES
 │       │   ├── admin-errors.ts                         # ADMIN_ERRORS(AUTH_ERRORSと管理者に固有のコード)・adminError・adminPasswordRejectedError
@@ -223,6 +225,8 @@ apps/
 │       │   ├── admin-session-verifier.ts               # SubjectSessionVerifierPortの管理者の実装
 │       │   ├── admin-authorizer.ts                     # AdminAuthorizer(後続specも使う)
 │       │   ├── admin-login.ts                          # パスワードと第2要素のログイン、ログアウト
+│       │   ├── admin-login-throttle-check.ts           # ログイン試行のロックの確認(スコープadmin、ログインと本人確認で共有)
+│       │   ├── admin-second-factor-check.ts            # 第2要素の照合(ログインと本人確認で共有)・秘密鍵の文脈admin:<ID>(adminTotpSecretContext)
 │       │   ├── admin-re-authenticator.ts               # 本人確認
 │       │   ├── admin-invitation.ts                     # 招待・再送・完了の2段階
 │       │   ├── admin-password-reset.ts · admin-email-change.ts · admin-password-change.ts
@@ -322,7 +326,7 @@ docs/GUIDES/tech/
 - `apps/api/package.json`・`bun.lock`・`docs/GUIDES/tech/coding/002-dependency-versions.md`・`docs/onboardings/tech-stack.md` — `otpauth`を9.6.0へ上げ、主要パッケージの一覧と技術選定の版を直す(タスク1.7)。
 - `apps/api/eslint.config.ts`・`test/config/layer-rules.unit.test.ts` — `admin`の各層から`identity`の各層への読み込みの禁止と違反例を加える。
 - `apps/client/src/components/auth/*`(identity-auth) — `return-path.ts`・`fragment-token.ts`の読み込み先を`frontend-lib/utilities/auth/`へ直す。
-- `apps/api/src/application/identity/identity-errors.ts`・`password-rejection.ts`・`re-authenticator.ts`・`login-throttle-check.ts`、`infrastructure/identity/counter-mail-send-limits.ts`と各単体テスト(identity-auth) — 主体に依存しない定義を`application/auth`から読み込む形へ直す(AdminErrors)。`docs/GUIDES/tech/security/006-authentication.md`の部品の表と`.kiro/specs/identity-auth/design.md`のファイル構成も直す。
+- `apps/api/src/application/identity/identity-errors.ts`・`password-rejection.ts`・`re-authenticator.ts`・`login-throttle-check.ts`・`second-factor-check.ts`、`infrastructure/identity/counter-mail-send-limits.ts`と各単体テスト(identity-auth) — 主体に依存しない定義を`application/auth`から読み込む形へ直す(AdminErrors)。`docs/GUIDES/tech/security/006-authentication.md`の部品の表と`.kiro/specs/identity-auth/design.md`のファイル構成も直す。
 - `apps/admin/src/routes/index.tsx` — 削除し、`_authenticated/index.tsx`のダッシュボードへ置き換える。`components/pages/placeholder-home.tsx`も削除する。
 - `apps/admin/src/routes/__root.tsx`・`composition/layout-slots.ts` — `adminViewer`の取得と区画の差し替え。
 - `docs/GUIDES/tech/{security,backend,frontend,operations}/README.md` — 新しい文書を1行ずつ追記する。
