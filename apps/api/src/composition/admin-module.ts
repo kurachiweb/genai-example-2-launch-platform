@@ -8,6 +8,10 @@ import {
   StoreAdminAuthorizer,
 } from '../application/admin/admin-authorizer.ts';
 import {
+  type AdminEmailChange,
+  StoreAdminEmailChange,
+} from '../application/admin/admin-email-change.ts';
+import {
   type AdminInvitation,
   StoreAdminInvitation,
 } from '../application/admin/admin-invitation.ts';
@@ -15,6 +19,14 @@ import {
   type AdminLogin,
   StoreAdminLogin,
 } from '../application/admin/admin-login.ts';
+import {
+  type AdminPasswordChange,
+  StoreAdminPasswordChange,
+} from '../application/admin/admin-password-change.ts';
+import {
+  type AdminPasswordReset,
+  StoreAdminPasswordReset,
+} from '../application/admin/admin-password-reset.ts';
 import {
   type AdminReAuthenticator,
   StoreAdminReAuthenticator,
@@ -78,6 +90,15 @@ function bindUseCases(bind: Bind): void {
     StoreAdminReAuthenticator,
   );
   bind<AdminInvitation>(ADMIN_TYPES.AdminInvitation).to(StoreAdminInvitation);
+  bind<AdminPasswordReset>(ADMIN_TYPES.AdminPasswordReset).to(
+    StoreAdminPasswordReset,
+  );
+  bind<AdminEmailChange>(ADMIN_TYPES.AdminEmailChange).to(
+    StoreAdminEmailChange,
+  );
+  bind<AdminPasswordChange>(ADMIN_TYPES.AdminPasswordChange).to(
+    StoreAdminPasswordChange,
+  );
 }
 
 // 認証部品の束縛(AUTH_TYPES)は利用者のモジュールのものをそのまま使う

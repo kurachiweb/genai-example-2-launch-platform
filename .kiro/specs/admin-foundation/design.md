@@ -231,6 +231,8 @@ apps/
 │       │   ├── admin-re-authenticator.ts               # 本人確認
 │       │   ├── admin-invitation.ts                     # 招待・再送・完了の2段階
 │       │   ├── admin-password-reset.ts · admin-email-change.ts · admin-password-change.ts
+│       │   ├── admin-auth-token-issuance.ts            # リセット・メールアドレス変更のトークンの発行(prepareAdminAuthToken、用途ごとの有効期限とハッシュの用途)
+│       │   ├── admin-operator-record.ts                # 本人の手続きの前に操作者の有効な管理者の行を読み直す(requireOperatorRecord、本人確認が要る手続きで共有)
 │       │   ├── admin-totp-management.ts                # 再設定の2段階・リカバリコードの再発行
 │       │   ├── admin-account-management.ts             # 一覧・削除・ロールの変更
 │       │   ├── admin-profile.ts                        # プロフィールの更新

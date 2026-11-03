@@ -54,6 +54,16 @@ const AdminReAuthenticator: unique symbol = Symbol.for(
 
 const AdminInvitation: unique symbol = Symbol.for('admin.AdminInvitation');
 
+const AdminPasswordReset: unique symbol = Symbol.for(
+  'admin.AdminPasswordReset',
+);
+
+const AdminEmailChange: unique symbol = Symbol.for('admin.AdminEmailChange');
+
+const AdminPasswordChange: unique symbol = Symbol.for(
+  'admin.AdminPasswordChange',
+);
+
 export const ADMIN_TYPES = Object.freeze({
   AuditActionCatalog,
   AuditLogStore,
@@ -74,4 +84,7 @@ export const ADMIN_TYPES = Object.freeze({
   AdminLogin,
   AdminReAuthenticator,
   AdminInvitation,
+  AdminPasswordReset,
+  AdminEmailChange,
+  AdminPasswordChange,
 });
