@@ -78,10 +78,19 @@ class TestAdminGateway extends createGatewayEntrypointClass(
   testAllowlistHandler,
 ) {}
 
+// デプロイ先の環境の検証は使い捨て判定のキーを必須にする
+const DEPLOYED_DISIFY_API_KEY = ['disify', 'test', 'key'].join('-');
+
 const ENVIRONMENTS: readonly [string, EnvOverrides][] = [
   ['ローカル環境', {}],
-  ['staging', { APP_ENVIRONMENT: 'staging' }],
-  ['prod', { APP_ENVIRONMENT: 'prod' }],
+  [
+    'staging',
+    { APP_ENVIRONMENT: 'staging', DISIFY_API_KEY: DEPLOYED_DISIFY_API_KEY },
+  ],
+  [
+    'prod',
+    { APP_ENVIRONMENT: 'prod', DISIFY_API_KEY: DEPLOYED_DISIFY_API_KEY },
+  ],
 ];
 
 function operationRequest(documentId: string): Request {

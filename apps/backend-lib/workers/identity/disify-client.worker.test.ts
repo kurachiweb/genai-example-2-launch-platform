@@ -91,7 +91,7 @@ function clientOptions(
   return {
     appName: 'api',
     fetch: fake.fetch,
-    apiKey: undefined,
+    apiKey: API_KEY,
     ...overrides,
   };
 }
@@ -171,15 +171,15 @@ describe('createDisifyClient(要求)', () => {
   });
 
   test.each([undefined, ''])(
-    'APIキーが%sならX-Api-Keyヘッダーを付けずに匿名で呼ぶ',
+    'APIキーが%sなら判定サービスを呼ばずにregularを返す',
     async (apiKey) => {
-      const fake = respondWith(judgedBody(false));
+      const fake = respondWith(judgedBody(true));
       const client = createDisifyClient(clientOptions(fake, { apiKey }));
 
       const status = await client.check(EMAIL);
 
       expect(status).toBe('regular');
-      expect(fake.calls[0]?.headers.has('X-Api-Key')).toBe(false);
+      expect(fake.calls).toHaveLength(0);
     },
   );
 

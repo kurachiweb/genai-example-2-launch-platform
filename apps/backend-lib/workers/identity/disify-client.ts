@@ -36,15 +36,13 @@ function parseJson(raw: string): unknown {
 
 async function requestDisify(
   options: DisifyClientOptions,
+  apiKey: string,
   email: string,
 ): Promise<DisifyOutcome> {
   // workerdのfetchは別のオブジェクトのメソッドとして呼ぶと不正な呼び出しになるため、変数に取り出して呼ぶ
   const fetcher = options.fetch;
   const signal = AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-  const headers = new Headers();
-  if (options.apiKey !== undefined && options.apiKey !== '') {
-    headers.set('X-Api-Key', options.apiKey);
-  }
+  const headers = new Headers({ 'X-Api-Key': apiKey });
   if (options.userAgent !== undefined) {
     headers.set('User-Agent', options.userAgent);
   }
@@ -79,9 +77,15 @@ export function createDisifyClient(
     'disposable-email',
   ]);
 
+  const { apiKey } = options;
+
   return {
     async check(email: string): Promise<DisposableEmailStatus> {
-      const outcome = await requestDisify(options, email);
+      // キーはデプロイ先の環境では環境の検証が必須にするため、無いのはローカル環境とテストだけである。判定サービスへメールアドレスを送らず、未判定の通知や判定し直しも起こさないよう通常として扱う
+      if (apiKey === undefined || apiKey === '') {
+        return 'regular';
+      }
+      const outcome = await requestDisify(options, apiKey, email);
       const status = classifyDisifyOutcome(outcome);
       if (status === 'undetermined') {
         logger.warn('使い捨てメールアドレスを判定できませんでした', {

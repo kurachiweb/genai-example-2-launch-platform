@@ -22,12 +22,11 @@ const PER_WORKER: readonly SecretEntry[] = [
 describe('OPTIONAL_WORKER_SECRETS', () => {
   test('各specが宣言した任意のシークレットをWorkerごとに持つ', () => {
     expect(OPTIONAL_WORKER_SECRETS).toEqual({
-      api: ['DISIFY_API_KEY'],
+      api: [],
       event: [
         'EMAIL_SMOKE_TOKEN',
         'EMAIL_SMOKE_RECIPIENT',
         'MEDIA_SMOKE_TOKEN',
-        'DISIFY_API_KEY',
       ],
       client: [],
       admin: [],

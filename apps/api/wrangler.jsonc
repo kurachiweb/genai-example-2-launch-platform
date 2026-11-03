@@ -121,7 +121,12 @@
         "CLIENT_SITE_ORIGIN": "https://genai-example-2-client-staging.lab.kurachiweb.com",
       },
       "secrets": {
-        "required": ["HASH_PEPPER", "TURNSTILE_SECRET_KEY", "SENTRY_DSN"],
+        "required": [
+          "HASH_PEPPER",
+          "TURNSTILE_SECRET_KEY",
+          "SENTRY_DSN",
+          "DISIFY_API_KEY",
+        ],
       },
     },
     "prod": {
@@ -182,7 +187,12 @@
         "CLIENT_SITE_ORIGIN": "https://genai-example-2-client.lab.kurachiweb.com",
       },
       "secrets": {
-        "required": ["HASH_PEPPER", "TURNSTILE_SECRET_KEY", "SENTRY_DSN"],
+        "required": [
+          "HASH_PEPPER",
+          "TURNSTILE_SECRET_KEY",
+          "SENTRY_DSN",
+          "DISIFY_API_KEY",
+        ],
       },
     },
   },

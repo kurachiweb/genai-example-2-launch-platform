@@ -72,6 +72,7 @@
   "vars": {
     "LOG_LEVEL": "debug",
     "SENTRY_ENVIRONMENT": "local",
+    "APP_ENVIRONMENT": "local",
     "SENTRY_TRACES_SAMPLE_RATE": "0",
     "JOBS_QUEUE_NAME": "genai-example-2-jobs-dev",
     "JOBS_DLQ_NAME": "genai-example-2-jobs-dlq-dev",
@@ -174,6 +175,7 @@
       "vars": {
         "LOG_LEVEL": "info",
         "SENTRY_ENVIRONMENT": "staging",
+        "APP_ENVIRONMENT": "staging",
         "SENTRY_TRACES_SAMPLE_RATE": "1",
         "JOBS_QUEUE_NAME": "genai-example-2-jobs-staging",
         "JOBS_DLQ_NAME": "genai-example-2-jobs-dlq-staging",
@@ -197,6 +199,7 @@
           "GOOGLE_NL_API_KEY",
           "REKOGNITION_ACCESS_KEY_ID",
           "REKOGNITION_SECRET_ACCESS_KEY",
+          "DISIFY_API_KEY",
         ],
       },
     },
@@ -274,6 +277,7 @@
       "vars": {
         "LOG_LEVEL": "info",
         "SENTRY_ENVIRONMENT": "prod",
+        "APP_ENVIRONMENT": "prod",
         "SENTRY_TRACES_SAMPLE_RATE": "0.1",
         "JOBS_QUEUE_NAME": "genai-example-2-jobs-prod",
         "JOBS_DLQ_NAME": "genai-example-2-jobs-dlq-prod",
@@ -296,6 +300,7 @@
           "GOOGLE_NL_API_KEY",
           "REKOGNITION_ACCESS_KEY_ID",
           "REKOGNITION_SECRET_ACCESS_KEY",
+          "DISIFY_API_KEY",
         ],
       },
     },

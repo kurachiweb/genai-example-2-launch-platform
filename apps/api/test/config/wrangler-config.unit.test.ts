@@ -128,6 +128,7 @@ interface ExpectedEnvironment {
   readonly sentryTracesSampleRate: string;
   readonly turnstileExpectedHostnames: string;
   readonly requiresSentryDsn: boolean;
+  readonly requiresDisifyApiKey: boolean;
   readonly appEnvironment: string;
   readonly clientSiteOrigin: string;
 }
@@ -146,6 +147,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     sentryTracesSampleRate: '0',
     turnstileExpectedHostnames: '',
     requiresSentryDsn: false,
+    requiresDisifyApiKey: false,
     appEnvironment: 'local',
     clientSiteOrigin: 'http://localhost:48044',
   },
@@ -163,6 +165,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     turnstileExpectedHostnames:
       'genai-example-2-client-staging.lab.kurachiweb.com,genai-example-2-admin-staging.lab.kurachiweb.com',
     requiresSentryDsn: true,
+    requiresDisifyApiKey: true,
     appEnvironment: 'staging',
     clientSiteOrigin:
       'https://genai-example-2-client-staging.lab.kurachiweb.com',
@@ -181,6 +184,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     turnstileExpectedHostnames:
       'genai-example-2-client.lab.kurachiweb.com,genai-example-2-admin.lab.kurachiweb.com',
     requiresSentryDsn: true,
+    requiresDisifyApiKey: true,
     appEnvironment: 'prod',
     clientSiteOrigin: 'https://genai-example-2-client.lab.kurachiweb.com',
   },
@@ -343,18 +347,20 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     }
   });
 
-  test('apiは必須シークレットとしてペッパーとbot判定のシークレットのキー名だけを宣言する', () => {
+  test('apiは必須シークレットとしてペッパー・bot判定と、デプロイ先では使い捨て判定のキー名だけを宣言する', () => {
     expect(api.secrets?.required).toEqual([
       'HASH_PEPPER',
       'TURNSTILE_SECRET_KEY',
       ...(env.requiresSentryDsn ? ['SENTRY_DSN'] : []),
+      ...(env.requiresDisifyApiKey ? ['DISIFY_API_KEY'] : []),
     ]);
   });
 
-  test('eventはメール・キーワード抽出・メディア以外の必須シークレットとしてペッパーのキー名だけを宣言する', () => {
+  test('eventはメール・キーワード抽出・メディア以外の必須シークレットとしてペッパーと、デプロイ先では使い捨て判定のキー名だけを宣言する', () => {
     expect(withoutDelegatedKeys(event.secrets?.required ?? [])).toEqual([
       'HASH_PEPPER',
       ...(env.requiresSentryDsn ? ['SENTRY_DSN'] : []),
+      ...(env.requiresDisifyApiKey ? ['DISIFY_API_KEY'] : []),
     ]);
   });
 
@@ -374,6 +380,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
       LOG_LEVEL: env.logLevel,
       SENTRY_ENVIRONMENT: env.sentryEnvironment,
       SENTRY_TRACES_SAMPLE_RATE: env.sentryTracesSampleRate,
+      APP_ENVIRONMENT: env.appEnvironment,
       JOBS_QUEUE_NAME: jobsQueue,
       JOBS_DLQ_NAME: jobsDlq,
     });

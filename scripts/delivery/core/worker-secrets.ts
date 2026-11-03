@@ -8,13 +8,8 @@ import {
 export const OPTIONAL_WORKER_SECRETS: Readonly<
   Record<WorkerKey, readonly string[]>
 > = {
-  api: ['DISIFY_API_KEY'],
-  event: [
-    'EMAIL_SMOKE_TOKEN',
-    'EMAIL_SMOKE_RECIPIENT',
-    'MEDIA_SMOKE_TOKEN',
-    'DISIFY_API_KEY',
-  ],
+  api: [],
+  event: ['EMAIL_SMOKE_TOKEN', 'EMAIL_SMOKE_RECIPIENT', 'MEDIA_SMOKE_TOKEN'],
   client: [],
   admin: [],
 };

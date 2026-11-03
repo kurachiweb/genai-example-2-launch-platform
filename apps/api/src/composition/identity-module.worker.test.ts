@@ -364,32 +364,39 @@ describe('APIサーバーの認証部品と利用者のモジュールの束縛'
     expect(requests[0]?.headers.get('user-agent')).toBe('genai-example-2-api');
   });
 
+  test('使い捨てメールアドレスの判定は、環境のキーとAPIサーバーのUser-Agentで判定サービスを呼ぶ', async () => {
+    const apiKey = ['disify', 'test', 'key'].join('-');
+    const requests = recordFetch();
+    const checker = createContainer({
+      DISIFY_API_KEY: apiKey,
+    }).get<DisposableEmailChecker>(IDENTITY_TYPES.DisposableEmailChecker);
+
+    await expect(checker.check('someone@mail.example')).resolves.toBe(
+      'undetermined',
+    );
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.url).toBe('https://disify.com/api/email');
+    expect(requests[0]?.headers.get('x-api-key')).toBe(apiKey);
+    expect(requests[0]?.headers.get('user-agent')).toBe('genai-example-2-api');
+  });
+
   test.each([
-    { label: '設定されていれば', apiKey: ['disify', 'test', 'key'].join('-') },
-    { label: '空文字なら', apiKey: '' },
-    { label: '未設定なら', apiKey: undefined },
+    { label: '空文字', apiKey: '' },
+    { label: '未設定', apiKey: undefined },
   ])(
-    '使い捨てメールアドレスの判定は、任意のキーが$label環境の値に従って送る',
+    '使い捨てメールアドレスの判定は、キーが$labelなら判定サービスを呼ばずに通常とする',
     async ({ apiKey }) => {
       const requests = recordFetch();
       const checker = createContainer({
         DISIFY_API_KEY: apiKey,
-      } as Partial<TestEnv>).get<DisposableEmailChecker>(
-        IDENTITY_TYPES.DisposableEmailChecker,
-      );
+      }).get<DisposableEmailChecker>(IDENTITY_TYPES.DisposableEmailChecker);
 
       await expect(checker.check('someone@mail.example')).resolves.toBe(
-        'undetermined',
+        'regular',
       );
 
-      expect(requests).toHaveLength(1);
-      expect(requests[0]?.url).toBe('https://disify.com/api/email');
-      expect(requests[0]?.headers.get('x-api-key')).toBe(
-        apiKey === '' || apiKey === undefined ? null : apiKey,
-      );
-      expect(requests[0]?.headers.get('user-agent')).toBe(
-        'genai-example-2-api',
-      );
+      expect(requests).toHaveLength(0);
     },
   );
 
@@ -545,13 +552,58 @@ describe('APIサーバーの環境の検証', () => {
     { label: '空文字', value: '' },
     { label: '文字列', value: ['disify', 'test', 'key'].join('-') },
   ])(
-    '使い捨てメールアドレスの判定のキーが$labelなら受け付ける',
+    'ローカル環境では使い捨てメールアドレスの判定のキーが$labelでも受け付ける',
     ({ value }) => {
-      expect(invalidKeysOf({ ...validEnv(), DISIFY_API_KEY: value })).toEqual(
-        [],
-      );
+      expect(
+        invalidKeysOf({
+          ...validEnv(),
+          APP_ENVIRONMENT: 'local',
+          DISIFY_API_KEY: value,
+        }),
+      ).toEqual([]);
     },
   );
+
+  test.each(['staging', 'prod'])(
+    '%sでは使い捨てメールアドレスの判定のキーがあれば受け付ける',
+    (environment) => {
+      expect(
+        invalidKeysOf({
+          ...validEnv(),
+          APP_ENVIRONMENT: environment,
+          DISIFY_API_KEY: ['disify', 'test', 'key'].join('-'),
+        }),
+      ).toEqual([]);
+    },
+  );
+
+  test.each([
+    { environment: 'staging', value: undefined },
+    { environment: 'staging', value: '' },
+    { environment: 'prod', value: undefined },
+    { environment: 'prod', value: '' },
+  ])(
+    '$environmentでは使い捨てメールアドレスの判定のキーが$valueなら拒否する',
+    ({ environment, value }) => {
+      expect(
+        invalidKeysOf({
+          ...validEnv(),
+          APP_ENVIRONMENT: environment,
+          DISIFY_API_KEY: value,
+        }),
+      ).toEqual(['DISIFY_API_KEY']);
+    },
+  );
+
+  test('環境の種別が不正でも、使い捨てメールアドレスの判定のキーは種別の誤りに加えて報告しない', () => {
+    expect(
+      invalidKeysOf({
+        ...validEnv(),
+        APP_ENVIRONMENT: 'production',
+        DISIFY_API_KEY: undefined,
+      }),
+    ).toEqual(['APP_ENVIRONMENT']);
+  });
 
   test('使い捨てメールアドレスの判定のキーが文字列でなければ拒否する', () => {
     expect(invalidKeysOf({ ...validEnv(), DISIFY_API_KEY: 1 })).toEqual([

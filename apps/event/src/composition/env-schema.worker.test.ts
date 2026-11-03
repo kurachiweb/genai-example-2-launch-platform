@@ -354,3 +354,73 @@ describe('eventEnvSchemaの使い捨てメールアドレスの判定の設定',
     expect(error.missingKeys).toEqual([]);
   });
 });
+
+describe('eventEnvSchemaの環境の種別と使い捨て判定の設定', () => {
+  const DISIFY_KEY = ['disify', 'test', 'key'].join('-');
+
+  test('Workers統合テストの環境はローカル環境で、使い捨て判定のキーを持つ', () => {
+    expect(env.APP_ENVIRONMENT).toBe('local');
+    expect(env.DISIFY_API_KEY).toBeTruthy();
+  });
+
+  test('ローカル環境は、使い捨て判定のキーが無くても受け付ける', () => {
+    expect(() =>
+      validateEnv(
+        eventEnvSchema,
+        copyEnv({ APP_ENVIRONMENT: 'local' }, ['DISIFY_API_KEY']),
+      ),
+    ).not.toThrow();
+  });
+
+  test('APP_ENVIRONMENTが欠けると、そのキー名だけを欠けたキーにする', () => {
+    const error = captureValidationError(copyEnv({}, ['APP_ENVIRONMENT']));
+
+    expect(error.missingKeys).toEqual(['APP_ENVIRONMENT']);
+    expect(error.invalidKeys).toEqual([]);
+  });
+
+  test('APP_ENVIRONMENTが種別でなければ、使い捨て判定のキーが無くてもそのキー名だけを不正なキーにする', () => {
+    const error = captureValidationError(
+      copyEnv({ APP_ENVIRONMENT: 'production' }, ['DISIFY_API_KEY']),
+    );
+
+    expect(error.invalidKeys).toEqual(['APP_ENVIRONMENT']);
+    expect(error.missingKeys).toEqual([]);
+  });
+
+  test.each(['staging', 'prod'])(
+    '%sは使い捨て判定のキーがあれば受け付ける',
+    (environment) => {
+      expect(() =>
+        validateEnv(
+          eventEnvSchema,
+          copyEnv({ APP_ENVIRONMENT: environment, DISIFY_API_KEY: DISIFY_KEY }),
+        ),
+      ).not.toThrow();
+    },
+  );
+
+  test.each(['staging', 'prod'])(
+    '%sで使い捨て判定のキーが欠けると、そのキー名だけを欠けたキーにする',
+    (environment) => {
+      const error = captureValidationError(
+        copyEnv({ APP_ENVIRONMENT: environment }, ['DISIFY_API_KEY']),
+      );
+
+      expect(error.missingKeys).toEqual(['DISIFY_API_KEY']);
+      expect(error.invalidKeys).toEqual([]);
+    },
+  );
+
+  test.each(['staging', 'prod'])(
+    '%sで使い捨て判定のキーが空文字なら、そのキー名だけを不正なキーにする',
+    (environment) => {
+      const error = captureValidationError(
+        copyEnv({ APP_ENVIRONMENT: environment, DISIFY_API_KEY: '' }),
+      );
+
+      expect(error.invalidKeys).toEqual(['DISIFY_API_KEY']);
+      expect(error.missingKeys).toEqual([]);
+    },
+  );
+});

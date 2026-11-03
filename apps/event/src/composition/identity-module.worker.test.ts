@@ -275,17 +275,34 @@ describe('イベントサーバーのidentityの束縛', () => {
     ).toHaveProperty('deleteByAddress');
   });
 
+  test('使い捨てメールアドレスの判定は、環境のキーとイベントサーバーのUser-Agentで判定サービスを呼ぶ', async () => {
+    const apiKey = ['disify', 'test', 'key'].join('-');
+    stubDisify(disifyJson({ format: true, disposable: true }));
+    const checker = createContainer({
+      DISIFY_API_KEY: apiKey,
+    }).get<DisposableEmailChecker>(EVENT_IDENTITY_TYPES.DisposableEmailChecker);
+
+    await expect(checker.check('someone@mail.example')).resolves.toBe(
+      'disposable',
+    );
+
+    expect(disifyRequests).toHaveLength(1);
+    expect(disifyRequests[0]?.headers.get('x-api-key')).toBe(apiKey);
+    expect(disifyRequests[0]?.headers.get('user-agent')).toBe(
+      'genai-example-2-event',
+    );
+  });
+
   test.each([
-    { label: '設定されていれば', apiKey: ['disify', 'test', 'key'].join('-') },
-    { label: '空文字なら', apiKey: '' },
-    { label: '未設定なら', apiKey: undefined },
+    { label: '空文字', apiKey: '' },
+    { label: '未設定', apiKey: undefined },
   ])(
-    '使い捨てメールアドレスの判定は、任意のキーが$label環境の値に従い、イベントサーバーのUser-Agentで送る',
+    '使い捨てメールアドレスの判定は、キーが$labelなら判定サービスを呼ばずに通常とする',
     async ({ apiKey }) => {
-      stubDisify(disifyJson({ format: true, disposable: false }));
+      stubDisify(disifyJson({ format: true, disposable: true }));
       const checker = createContainer({
         DISIFY_API_KEY: apiKey,
-      } as Partial<Env>).get<DisposableEmailChecker>(
+      }).get<DisposableEmailChecker>(
         EVENT_IDENTITY_TYPES.DisposableEmailChecker,
       );
 
@@ -293,13 +310,7 @@ describe('イベントサーバーのidentityの束縛', () => {
         'regular',
       );
 
-      expect(disifyRequests).toHaveLength(1);
-      expect(disifyRequests[0]?.headers.get('x-api-key')).toBe(
-        apiKey === '' || apiKey === undefined ? null : apiKey,
-      );
-      expect(disifyRequests[0]?.headers.get('user-agent')).toBe(
-        'genai-example-2-event',
-      );
+      expect(disifyRequests).toHaveLength(0);
     },
   );
 });

@@ -26,6 +26,9 @@ const TEST_IMAGE_DELIVERY_HOSTNAME = 'images.test.example';
 
 const TEST_IMAGE_DELIVERY_DEDICATED_HOST = 'true';
 
+// キーが無いと使い捨てメールアドレスの判定サービスを呼ばないため、デプロイ先と同じくキーを持たせる。外部への通信は各テストがfetchの代わりで止める
+const TEST_DISIFY_API_KEY = 'test-disify-api-key-for-workers-integration-tests';
+
 // 判定サービスへ送らず、判定用画像の寸法で結果を決める代替の判定を使う
 const TEST_MODERATION_PROVIDER = 'stub';
 
@@ -56,6 +59,7 @@ export default defineConfig({
           EMAIL_EVENTS_QUEUE_NAME: TEST_EMAIL_EVENTS_QUEUE_NAME,
           KEYWORD_EXTRACTOR: TEST_KEYWORD_EXTRACTOR,
           GOOGLE_NL_API_KEY: TEST_GOOGLE_NL_API_KEY,
+          DISIFY_API_KEY: TEST_DISIFY_API_KEY,
           IMAGE_DELIVERY_HOSTNAME: TEST_IMAGE_DELIVERY_HOSTNAME,
           IMAGE_DELIVERY_DEDICATED_HOST: TEST_IMAGE_DELIVERY_DEDICATED_HOST,
           MODERATION_PROVIDER: TEST_MODERATION_PROVIDER,

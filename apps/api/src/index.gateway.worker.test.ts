@@ -73,8 +73,14 @@ const CORS_HEADER_NAMES = [
   'Access-Control-Allow-Credentials',
 ];
 
+// デプロイ先の環境の検証は使い捨て判定のキーを必須にする
+const DEPLOYED_DISIFY_API_KEY = ['disify', 'test', 'key'].join('-');
+
 function deployed(environment: AppEnvironment): EnvOverrides {
-  return { APP_ENVIRONMENT: environment };
+  return {
+    APP_ENVIRONMENT: environment,
+    DISIFY_API_KEY: DEPLOYED_DISIFY_API_KEY,
+  };
 }
 
 async function ipRateLimitKeyOf(ip: string): Promise<string> {

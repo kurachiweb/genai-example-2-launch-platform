@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 import { isValidEmailAddress } from '../../lib/core/email/email-address.ts';
+import {
+  APP_ENVIRONMENTS,
+  type AppEnvironment,
+  isDeployedEnvironmentValue,
+} from '../../lib/core/env/app-environment.ts';
 import type { DeadLetterNotice } from '../../lib/core/messaging/envelope.ts';
 import {
   bindingSchema,
@@ -26,7 +31,8 @@ export interface EventPlatformEnv
   readonly IMAGES: ImagesBinding;
   readonly EMAIL_FROM_ADDRESS: string;
   readonly EMAIL_EVENTS_QUEUE_NAME: string;
-  // 空文字は未設定として扱う
+  readonly APP_ENVIRONMENT: AppEnvironment;
+  // ローカル環境だけ省略できる。空文字は未設定として扱う
   readonly DISIFY_API_KEY?: string;
 }
 
@@ -35,9 +41,10 @@ type ConditionalKey =
   | 'EMAIL'
   | 'EMAIL_ALLOWED_RECIPIENTS'
   | 'GOOGLE_NL_API_KEY'
+  | 'DISIFY_API_KEY'
   | MediaConditionalKey;
 
-// 送信プロバイダ・宛先の制限の方針・キーワード抽出の実装・判定サービスの実装ごとに、動作に欠かせない設定のキー
+// 送信プロバイダ・宛先の制限の方針・キーワード抽出の実装・判定サービスの実装・環境の種別ごとに、動作に欠かせない設定のキー
 function requiredConditionalKeys(
   env: Pick<
     EventPlatformEnv,
@@ -45,6 +52,7 @@ function requiredConditionalKeys(
     | 'EMAIL_RECIPIENT_POLICY'
     | 'KEYWORD_EXTRACTOR'
     | 'MODERATION_PROVIDER'
+    | 'APP_ENVIRONMENT'
   >,
 ): readonly ConditionalKey[] {
   return [
@@ -55,6 +63,10 @@ function requiredConditionalKeys(
       : []),
     ...(env.KEYWORD_EXTRACTOR === 'google-natural-language'
       ? (['GOOGLE_NL_API_KEY'] as const)
+      : []),
+    // デプロイ先の環境でキーの登録を忘れると判定せずに通常として扱い続けるため、起動時に止める
+    ...(isDeployedEnvironmentValue(env.APP_ENVIRONMENT)
+      ? (['DISIFY_API_KEY'] as const)
       : []),
     ...requiredMediaConditionalKeys(env),
   ];
@@ -71,6 +83,7 @@ export const eventEnvSchema = z
     EMAIL_FROM_ADDRESS: z.string().refine(isValidEmailAddress),
     EMAIL_RECIPIENT_POLICY: z.enum(['any', 'allowlist']),
     EMAIL_EVENTS_QUEUE_NAME: z.string().min(1),
+    APP_ENVIRONMENT: z.enum(APP_ENVIRONMENTS),
     MAILPIT_API_URL: z.url({ protocol: /^https?$/u }).optional(),
     EMAIL: bindingSchema<SendEmailBindingLike>().optional(),
     EMAIL_ALLOWED_RECIPIENTS: z.string().min(1).optional(),
@@ -84,7 +97,7 @@ export const eventEnvSchema = z
     z.superRefine(
       (env, context) => {
         for (const key of requiredConditionalKeys(env)) {
-          if (env[key] === undefined) {
+          if (env[key] === undefined || env[key] === '') {
             context.addIssue({ code: 'custom', path: [key], input: undefined });
           }
         }

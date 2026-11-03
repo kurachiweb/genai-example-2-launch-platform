@@ -122,14 +122,12 @@ const EXPECTED_SECRETS: Readonly<
     HASH_PEPPER: 'fake-shared-pepper',
     SENTRY_DSN: 'fake-api-sentry-dsn',
     STRIPE_API_KEY: 'fake-api-stripe-key',
-    DISIFY_API_KEY: 'fake-shared-disify-key',
   },
   event: {
     HASH_PEPPER: 'fake-shared-pepper',
     PRIVATE_KEY: 'fake-key-line-1\nfake-key-line-2',
     STRIPE_API_KEY: 'fake-event-stripe-key',
     EMAIL_SMOKE_TOKEN: 'fake-event-smoke-token',
-    DISIFY_API_KEY: 'fake-shared-disify-key',
   },
   client: {
     HASH_PEPPER: 'fake-shared-pepper',
@@ -630,8 +628,8 @@ describe('deploy-worker', () => {
       ['--env', 'staging', '--app', 'event'],
       {
         folders: foldersOf('staging', {
-          [folderKeyOf('staging', '/')]: SHARED_FOLDER.filter(
-            ({ key }) => key !== 'DISIFY_API_KEY',
+          [folderKeyOf('staging', '/workers/event')]: EVENT_FOLDER.filter(
+            ({ key }) => key !== 'EMAIL_SMOKE_TOKEN',
           ),
         }),
       },
@@ -640,7 +638,6 @@ describe('deploy-worker', () => {
     expect(code).toBe(EXIT_SUCCESS);
     const secrets = JSON.parse(calls[0]?.stdin ?? '') as Record<string, string>;
     expect(Object.keys(secrets).toSorted()).toEqual([
-      'EMAIL_SMOKE_TOKEN',
       'HASH_PEPPER',
       'PRIVATE_KEY',
       'STRIPE_API_KEY',
