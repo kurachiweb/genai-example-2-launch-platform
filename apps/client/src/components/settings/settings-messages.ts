@@ -129,8 +129,6 @@ export const TOTP_ENABLED_MESSAGE = '多要素認証を有効にしました。'
 export const RECOVERY_CODES_SHOWN_ONCE_MESSAGE =
   '次のリカバリコードは、この画面でだけ表示されます。認証アプリを使えない時に、認証コードの代わりに入力します。';
 
-export const CLOSE_LABEL = '閉じる';
-
 export const TOTP_DISABLE_FORM_LABEL = '多要素認証の無効化';
 
 export const TOTP_DISABLE_SUBMIT_LABEL = '多要素認証を無効にする';
