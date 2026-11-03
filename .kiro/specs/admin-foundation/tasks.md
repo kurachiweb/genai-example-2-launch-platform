@@ -32,7 +32,7 @@
   - _Boundary: AdminCommonParts_
   - _Requirements: 21.1, 22.6_
 
-- [ ] 1.5 利用者側の戻り先とフラグメントのトークンの部品を共有ディレクトリへ移す(identity-authとの統合)
+- [x] 1.5 利用者側の戻り先とフラグメントのトークンの部品を共有ディレクトリへ移す(identity-authとの統合)
   - identity-authが利用者側に置いた戻り先の検証とURLのフラグメントからのトークンの読み取りの純粋な関数を、単体テストとともにfrontend-libの`utilities/auth/`へ移し、利用者側の読み込み先を直す。関数の形と振る舞いは変えない
   - 完了状態: 移した単体テストと利用者側の認証画面のブラウザテストが変更なしで成功し、利用者側と管理者側の型検査で新しい置き場所から読み込める
   - _Requirements: 6.5, 14.8_
@@ -308,3 +308,4 @@
 - 1.2: ロールと入力規則は`apps/common-lib/admin/`(`admin-roles.ts`・`admin-input-rules.ts`)。判定関数は妥当なら`undefined`を返す(設計の契約。identityの`checkNickname`の`'ok'`とは異なる)ため、呼び出し側は`undefined`を確かめてから文言を引く。理由の判定は空を受け付け、必須かどうかは操作種別で決める。`hasRole`は型の外の最低ロールで許可側に倒れるため、実行時の値を扱う5.1では値を検証してから渡す。ロールの値と`admins.role`の`enumValues`の一致は`apps/api/src/application/admin/admin-columns.unit.test.ts`
 - 1.3: 操作種別は`apps/common-lib/admin/audit-action.ts`(`defineAuditAction`・`createAuditActionCatalog`・`AuditActionDefinitionError`)と`audit-actions/`(`admin-foundation.ts`の`ADMIN_ACCOUNT_INVITE_ACTION`・`ADMIN_ACCOUNT_DELETE_ACTION`・`ADMIN_ACCOUNT_ROLE_CHANGE_ACTION`・`USER_EMAIL_SEARCH_ACTION`、`index.ts`の`AUDIT_ACTIONS`)。`find`は未登録の名前で`undefined`を返す。種別を足すspecは`audit-actions/<spec名>.ts`を足して`index.ts`へ連結し、`index.unit.test.ts`の完全一致の期待値も更新する。招待の再送は`admin-account.invite`で記録する(6.3で設計の`resend`の手順との整合を確かめる)
 - 1.4: `apps/frontend-lib/components/ui/table/`・`select/`(部分ごとに1ファイル)。表は親より広い間だけ包む要素が`role="region"`・`tabIndex=0`になり、名前を`TableCaption`の文言から取る(`use-scroll-region.ts`)ため、表には必ず`TableCaption`を付け、`TableHead`に`scope`を付ける(10.1で名前を`aria-labelledby`へ切り替えるかを判断する)。テストでは選択の一覧を開くと開く元の要素が支援技術から隠れるため開く前に取得し、選択肢の名前は部分一致になるため`exact: true`を使う。開いた一覧は`runAxe`を各listboxに当て、Storybookでは検査を`[data-slot="select-content"]`に絞る
+- 1.5: 戻り先の検証(`toSafeReturnPath`・`toLoginSearch`・`HOME_PATH`・`LoginSearch`)とフラグメントの読み取り`readFragmentToken`は`apps/frontend-lib/utilities/auth/`(`return-path.ts`・`fragment-token.ts`)にあり、管理者側は`../lib/utilities/auth/`から読む。フラグメントを消すフック`useFragmentToken`はTanStack Routerに依存するため利用者側の`components/auth/use-fragment-token.ts`に残した。管理者側で同じフックが要る11.3・11.4では、管理者側に作るか共通部品の`components/`へ移すかを判断する

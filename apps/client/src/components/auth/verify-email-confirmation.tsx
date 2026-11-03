@@ -17,7 +17,7 @@ import {
 import { INLINE_LINK_CLASS_NAME } from './inline-link-class.ts';
 import { LinkConfirmation } from './link-confirmation.tsx';
 import { ResultNotice } from './result-notice.tsx';
-import { HOME_PATH } from './return-path.ts';
+import { HOME_PATH } from '../../../lib/utilities/auth/return-path.ts';
 import { useViewer } from './use-viewer.ts';
 import { useViewerRefresh } from './use-viewer-refresh.ts';
 

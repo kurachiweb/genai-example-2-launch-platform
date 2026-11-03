@@ -7,7 +7,7 @@ import { redirectSignedInViewer } from '../../components/auth/redirect-signed-in
 import {
   toLoginSearch,
   toSafeReturnPath,
-} from '../../components/auth/return-path.ts';
+} from '../../../lib/utilities/auth/return-path.ts';
 import { buildSitePageHead } from '../../head/page-heads.ts';
 
 export const Route = createFileRoute('/auth/login')({

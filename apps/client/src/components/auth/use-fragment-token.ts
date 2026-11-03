@@ -1,7 +1,7 @@
 import { useRouter } from '@tanstack/react-router';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
-import { readFragmentToken } from './fragment-token.ts';
+import { readFragmentToken } from '../../../lib/utilities/auth/fragment-token.ts';
 
 export type FragmentTokenState =
   | { readonly status: 'reading' }
