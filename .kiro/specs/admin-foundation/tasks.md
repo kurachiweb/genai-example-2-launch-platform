@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: テーブル・共有の定義・画面の基本部品
-- [ ] 1.1 管理者の8テーブルを定義し、マイグレーションを生成する
+- [x] 1.1 管理者の8テーブルを定義し、マイグレーションを生成する
   - 前提: backend-platform・api-gateway・email-delivery・frontend-platform・content-processing・media-pipeline・identity-authの全タスクが完了していること(層構成・登録箇所・GraphQL基盤・メール送信基盤・管理者側の画面の骨格・共有ディレクトリ・アップロード基盤・認証部品がある状態)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、各テーブルの列の型・NOT NULL・既定値・一意制約・CHECK制約・索引(メールアドレスの大文字小文字を区別しない一意、ロールと状態のCHECK、監査ログの日時・操作者・操作種別の索引、対象の種類と識別子の索引)を確かめる単体テストを書く
   - 管理者はメールアドレス・パスワードのハッシュ(招待の完了前は空)・ニックネーム・肩書き・プロフィール画像の参照(外部キーなし)・ロール・状態・招待の期限・有効化の日時を持つ。セッション・認証系トークン・第2要素の待ち・TOTP(再設定の保留の列を含む)・リカバリコードは管理者を外部キーで参照し、削除時の動作を指定しない
@@ -301,3 +301,7 @@
   - staging・prodでの招待の発行コマンドの実行、frontend-platformの管理者側のCSPの再検証の結果を、開発者への報告にまとめる
   - 完了状態: 検査とテストがすべて成功し、カバレッジが閾値を満たし、報告に手作業の事項が載っている
   - _Requirements: 22.1, 22.3, 22.6_
+
+## Implementation Notes
+
+- 1.1: テーブルは`apps/db/schema/admin/`、マイグレーションは`20261103162753_admin_foundation`。`admins.email`は全行で一意の`textNoCase`、`status`の既定は`invited`、`role`は既定無し。`admin_totp_credentials`の`sealed_secret`はNULL可で保留の列`pending_sealed_secret`・`pending_expires_at`を持つ。監査ログの`detail`はJSONのtextで既定`{}`、`target_kind`にCHECKは無い。ロール・状態・トークンの用途の値はテーブルのファイルの非公開の定数のため、1.2・2.1でこれらの値を定義するときは列の`enumValues`との一致を単体テストで確かめる

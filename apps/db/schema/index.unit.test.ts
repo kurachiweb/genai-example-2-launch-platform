@@ -24,6 +24,14 @@ describe('スキーマの集約点', () => {
     'user_recovery_codes',
     'user_lifecycle_events',
     'user_lifecycle_handler_runs',
+    'admins',
+    'admin_sessions',
+    'admin_auth_tokens',
+    'admin_login_challenges',
+    'admin_totp_credentials',
+    'admin_recovery_codes',
+    'admin_audit_logs',
+    'admin_audit_log_targets',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
