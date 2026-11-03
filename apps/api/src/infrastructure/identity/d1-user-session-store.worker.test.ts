@@ -212,12 +212,6 @@ describe('D1UserSessionStoreの失効', () => {
 
     expect(await readSessionIds()).toHaveLength(4);
   });
-
-  test('deleteAllOfUserは利用者のすべてのセッションを削除し、他の利用者のセッションを残す', async () => {
-    await createStore().deleteAllOfUser(userIdOf(1));
-
-    expect(await readSessionIds()).toEqual([sessionIdOf(4)]);
-  });
 });
 
 describe('D1UserSessionStoreの期限切れの削除', () => {

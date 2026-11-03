@@ -68,7 +68,7 @@ function setup(options: FakeOptions = {}) {
       return Promise.resolve(userId === USER_ID ? credential : undefined);
     },
     savePending: notUsed,
-    enable: notUsed,
+    enableRevokingSessions: notUsed,
     advanceStep(userId, step) {
       calls.push('totpCredentials.advanceStep');
       if (
@@ -81,7 +81,7 @@ function setup(options: FakeOptions = {}) {
       credential = { ...credential, lastUsedStep: step };
       return Promise.resolve(true);
     },
-    disable: notUsed,
+    disableRevokingSessions: notUsed,
     deleteExpiredPending: notUsed,
   };
 
@@ -126,7 +126,7 @@ function setup(options: FakeOptions = {}) {
       return Promise.resolve(true);
     },
     count: notUsed,
-    replaceAll: notUsed,
+    replaceAllRevokingSessions: notUsed,
   };
 
   const dependencies = {

@@ -64,7 +64,6 @@ function createStore(
       return Promise.resolve(true);
     },
     deleteOthers: unused,
-    deleteAllOfUser: unused,
     deleteExpired: unused,
   };
 }

@@ -7,7 +7,6 @@ import type {
   RecoveryCodeStore,
   TotpCredential,
   TotpCredentialStore,
-  UserSessionStore,
 } from '../ports.ts';
 import type {
   ReAuthenticationInput,
@@ -69,7 +68,9 @@ export interface TotpManagementFakeOptions {
   readonly restartedAfterFindWith?: string;
   // 開始の保存の直前に、別の要求が有効化を終えたことを再現する
   readonly enabledBeforeSave?: boolean;
-  readonly deleteSessionsError?: Error;
+  // 有効と読んだ後、書き込みの前に、別の要求が無効化を終えたことを再現する
+  readonly disabledAfterFind?: boolean;
+  readonly writeError?: Error;
 }
 
 export interface TotpManagementRecorded {
@@ -155,6 +156,10 @@ function createTotpCredentialStore(
           sealedSecret: sealedOf(restarted),
         };
       }
+      if (options.disabledAfterFind === true) {
+        state.credential = undefined;
+        state.recoveryHashes = [];
+      }
       return Promise.resolve(found);
     },
     savePending(userId, sealedSecret, expiresAt) {
@@ -174,9 +179,12 @@ function createTotpCredentialStore(
       };
       return Promise.resolve('saved');
     },
-    enable(userId, sealedSecret, step, at, recoveryHashes) {
-      recorded.calls.push('totpCredentials.enable');
+    enableRevokingSessions(userId, sealedSecret, step, at, recoveryHashes) {
+      recorded.calls.push('totpCredentials.enableRevokingSessions');
       recorded.enables.push({ userId, sealedSecret, step, at, recoveryHashes });
+      if (options.writeError !== undefined) {
+        return Promise.reject(options.writeError);
+      }
       const current = state.credential;
       if (
         !isValidPending(current, at) ||
@@ -191,15 +199,21 @@ function createTotpCredentialStore(
         lastUsedStep: step,
       };
       state.recoveryHashes = [...recoveryHashes];
+      recorded.sessionDeletions.push(userId);
       return Promise.resolve('enabled');
     },
-    disable(userId) {
-      recorded.calls.push('totpCredentials.disable');
-      if (userId === USER_ID) {
-        state.credential = undefined;
-        state.recoveryHashes = [];
+    disableRevokingSessions(userId) {
+      recorded.calls.push('totpCredentials.disableRevokingSessions');
+      if (options.writeError !== undefined) {
+        return Promise.reject(options.writeError);
       }
-      return Promise.resolve();
+      if (userId !== USER_ID || state.credential?.enabledAt == null) {
+        return Promise.resolve('not-enabled');
+      }
+      state.credential = undefined;
+      state.recoveryHashes = [];
+      recorded.sessionDeletions.push(userId);
+      return Promise.resolve('disabled');
     },
   });
 }
@@ -207,14 +221,20 @@ function createTotpCredentialStore(
 function createRecoveryCodeStore(
   recorded: TotpManagementRecorded,
   state: TotpManagementState,
+  options: TotpManagementFakeOptions,
 ): RecoveryCodeStore {
   return partialFake<RecoveryCodeStore>({
-    replaceAll(userId, hashes) {
-      recorded.calls.push('recoveryCodes.replaceAll');
-      if (userId === USER_ID && state.credential?.enabledAt != null) {
-        state.recoveryHashes = [...hashes];
+    replaceAllRevokingSessions(userId, hashes) {
+      recorded.calls.push('recoveryCodes.replaceAllRevokingSessions');
+      if (options.writeError !== undefined) {
+        return Promise.reject(options.writeError);
       }
-      return Promise.resolve();
+      if (userId !== USER_ID || state.credential?.enabledAt == null) {
+        return Promise.resolve('not-enabled');
+      }
+      state.recoveryHashes = [...hashes];
+      recorded.sessionDeletions.push(userId);
+      return Promise.resolve('replaced');
     },
   });
 }
@@ -269,27 +289,16 @@ function createCryptoFakes(recorded: TotpManagementRecorded) {
   return { secretBox, totp, recoveryCodeIssuer };
 }
 
-function createSessionFakes(
+function createSessionIssuerFake(
   recorded: TotpManagementRecorded,
-  options: TotpManagementFakeOptions,
-) {
-  const sessions = partialFake<UserSessionStore>({
-    deleteAllOfUser(userId) {
-      recorded.calls.push('sessions.deleteAllOfUser');
-      recorded.sessionDeletions.push(userId);
-      return options.deleteSessionsError === undefined
-        ? Promise.resolve()
-        : Promise.reject(options.deleteSessionsError);
-    },
-  });
-  const sessionIssuer = partialFake<SessionIssuer>({
+): SessionIssuer {
+  return partialFake<SessionIssuer>({
     issue(userId, meta) {
       recorded.calls.push('sessionIssuer.issue');
       recorded.sessionIssues.push({ userId, meta });
       return Promise.resolve(ISSUED_SESSION);
     },
   });
-  return { sessions, sessionIssuer };
 }
 
 export function createTotpManagementFakes(
@@ -331,9 +340,9 @@ export function createTotpManagementFakes(
     reAuthenticator,
     settings,
     totpCredentials: createTotpCredentialStore(recorded, state, options),
-    recoveryCodes: createRecoveryCodeStore(recorded, state),
+    recoveryCodes: createRecoveryCodeStore(recorded, state, options),
+    sessionIssuer: createSessionIssuerFake(recorded),
     ...createCryptoFakes(recorded),
-    ...createSessionFakes(recorded, options),
   };
 }
 

@@ -8,6 +8,7 @@ import type { Hono } from 'hono';
 import { ContainerModule } from 'inversify';
 import { vi } from 'vitest';
 
+import { userRecoveryCodes } from '../../db/schema/identity/user-recovery-codes.ts';
 import { userTotpCredentials } from '../../db/schema/identity/user-totp-credentials.ts';
 import { users } from '../../db/schema/identity/users.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
@@ -28,10 +29,7 @@ import type {
 } from '../../src/application/auth/ports.ts';
 import type { RecoveryCodeIssuer } from '../../src/application/auth/recovery-code-issuer.ts';
 import { IDENTITY_TYPES } from '../../src/application/identity/identity-types.ts';
-import type {
-  IdentityMailer,
-  RecoveryCodeStore,
-} from '../../src/application/identity/ports.ts';
+import type { IdentityMailer } from '../../src/application/identity/ports.ts';
 import { USER_RECOVERY_CODE_HASH_PURPOSE } from '../../src/application/identity/second-factor-check.ts';
 import { apiEnvSchema } from '../../src/composition/env-schema.ts';
 import { MODULES } from '../../src/composition/modules.ts';
@@ -385,8 +383,13 @@ export async function enableTotpWithRecoveryCodes(
       return hash;
     }),
   );
-  await container
-    .get<RecoveryCodeStore>(IDENTITY_TYPES.RecoveryCodeStore)
-    .replaceAll(userId, hashes);
+  await db.insert(userRecoveryCodes).values(
+    hashes.map((codeHash) => ({
+      userId,
+      codeHash,
+      createdAt: now,
+      updatedAt: now,
+    })),
+  );
   return secret;
 }

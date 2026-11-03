@@ -1,38 +1,16 @@
-import { and, count, eq, isNotNull, sql, type SQL } from 'drizzle-orm';
+import { and, count, eq, isNotNull } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
-import { ulid } from 'ulid';
 
 import type { Database } from '../../../db/client.ts';
 import { userRecoveryCodes } from '../../../db/schema/identity/user-recovery-codes.ts';
 import { userTotpCredentials } from '../../../db/schema/identity/user-totp-credentials.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { RecoveryCodeStore } from '../../application/identity/ports.ts';
-
-// 同じ一括の書き込みの中で資格情報の状態が条件を満たすときだけ追加されるよう、資格情報の行からの選択で挿入する
-export function recoveryCodeInsertsWhen(
-  db: Database,
-  userId: string,
-  hashes: readonly string[],
-  at: Date,
-  credentialCondition: SQL | undefined,
-) {
-  return hashes.map((codeHash) =>
-    db.insert(userRecoveryCodes).select(
-      db
-        .select({
-          id: sql<string>`${ulid()}`.as('id'),
-          userId: userTotpCredentials.userId,
-          codeHash: sql<string>`${codeHash}`.as('code_hash'),
-          createdAt: sql<number>`${at.getTime()}`.as('created_at'),
-          updatedAt: sql<number>`${at.getTime()}`.as('updated_at'),
-        })
-        .from(userTotpCredentials)
-        .where(
-          and(eq(userTotpCredentials.userId, userId), credentialCondition),
-        ),
-    ),
-  );
-}
+import {
+  recoveryCodeDeletionWhen,
+  recoveryCodeInsertsWhen,
+  sessionDeletionWhen,
+} from './totp-credential-conditional-writes.ts';
 
 @injectable()
 export class D1RecoveryCodeStore implements RecoveryCodeStore {
@@ -58,18 +36,22 @@ export class D1RecoveryCodeStore implements RecoveryCodeStore {
     return row?.value ?? 0;
   }
 
-  async replaceAll(userId: string, hashes: readonly string[]): Promise<void> {
-    await this.db.batch([
+  // 最後の資格情報の更新日時の更新が、有効な設定があったかの判定を兼ねる
+  async replaceAllRevokingSessions(
+    userId: string,
+    hashes: readonly string[],
+  ): Promise<'replaced' | 'not-enabled'> {
+    const at = new Date();
+    const enabled = isNotNull(userTotpCredentials.enabledAt);
+    const results = await this.db.batch([
+      recoveryCodeDeletionWhen(this.db, userId, enabled),
+      ...recoveryCodeInsertsWhen(this.db, userId, hashes, at, enabled),
+      sessionDeletionWhen(this.db, userId, enabled),
       this.db
-        .delete(userRecoveryCodes)
-        .where(eq(userRecoveryCodes.userId, userId)),
-      ...recoveryCodeInsertsWhen(
-        this.db,
-        userId,
-        hashes,
-        new Date(),
-        isNotNull(userTotpCredentials.enabledAt),
-      ),
+        .update(userTotpCredentials)
+        .set({ updatedAt: at })
+        .where(and(eq(userTotpCredentials.userId, userId), enabled)),
     ]);
+    return (results.at(-1)?.meta.changes ?? 0) > 0 ? 'replaced' : 'not-enabled';
   }
 }

@@ -62,7 +62,6 @@ function createStore(recorded: Recorded): UserSessionStore {
     listByUser: (): Promise<readonly StoredSession[]> => unused(),
     deleteOne: unused,
     deleteOthers: unused,
-    deleteAllOfUser: unused,
     deleteExpired: unused,
   };
 }

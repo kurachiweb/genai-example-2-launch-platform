@@ -14,7 +14,6 @@ import type {
   TotpCredential,
   TotpCredentialStore,
   UserRecord,
-  UserSessionStore,
 } from './ports.ts';
 import type {
   ReAuthenticationInput,
@@ -100,8 +99,6 @@ export class StoreTotpManagement implements TotpManagement {
     private readonly totpCredentials: TotpCredentialStore,
     @inject(IDENTITY_TYPES.RecoveryCodeStore)
     private readonly recoveryCodes: RecoveryCodeStore,
-    @inject(IDENTITY_TYPES.UserSessionStore)
-    private readonly sessions: UserSessionStore,
     @inject(IDENTITY_TYPES.SessionIssuer)
     private readonly sessionIssuer: SessionIssuer,
     @inject(IDENTITY_TYPES.IdentitySettings)
@@ -176,7 +173,7 @@ export class StoreTotpManagement implements TotpManagement {
       USER_RECOVERY_CODE_HASH_PURPOSE,
     );
     // 照合と有効化の間に設定が始め直されても、利用者の認証アプリに無い秘密鍵を有効にしない
-    const enabled = await this.totpCredentials.enable(
+    const enabled = await this.totpCredentials.enableRevokingSessions(
       user.id,
       credential.sealedSecret,
       verification.step,
@@ -188,7 +185,7 @@ export class StoreTotpManagement implements TotpManagement {
     }
     return {
       recoveryCodes: issued.plains,
-      session: await this.#replaceSessions(user.id, meta),
+      session: await this.#reissueSession(user.id, meta),
     };
   }
 
@@ -199,8 +196,13 @@ export class StoreTotpManagement implements TotpManagement {
   ): Promise<{ readonly session: IssuedSession }> {
     const { user } = current;
     await this.#verifyEnabled(user, reAuthentication, meta);
-    await this.totpCredentials.disable(user.id);
-    return { session: await this.#replaceSessions(user.id, meta) };
+    const disabled = await this.totpCredentials.disableRevokingSessions(
+      user.id,
+    );
+    if (disabled === 'not-enabled') {
+      throw identityError('totp_not_enabled');
+    }
+    return { session: await this.#reissueSession(user.id, meta) };
   }
 
   async regenerateRecoveryCodes(
@@ -213,10 +215,17 @@ export class StoreTotpManagement implements TotpManagement {
     const issued = await this.recoveryCodeIssuer.issue(
       USER_RECOVERY_CODE_HASH_PURPOSE,
     );
-    await this.recoveryCodes.replaceAll(user.id, issued.hashes);
+    const replaced = await this.recoveryCodes.replaceAllRevokingSessions(
+      user.id,
+      issued.hashes,
+    );
+    // 本人確認の間に無効化されると何も保存されないため、使えない平文を返さない
+    if (replaced === 'not-enabled') {
+      throw identityError('totp_not_enabled');
+    }
     return {
       recoveryCodes: issued.plains,
-      session: await this.#replaceSessions(user.id, meta),
+      session: await this.#reissueSession(user.id, meta),
     };
   }
 
@@ -232,12 +241,8 @@ export class StoreTotpManagement implements TotpManagement {
     await this.reAuthenticator.verify(user, reAuthentication, meta);
   }
 
-  // 操作した端末は認証済みの同じ利用者のため、再発行の条件を確かめずに発行する
-  async #replaceSessions(
-    userId: string,
-    meta: RequestMeta,
-  ): Promise<IssuedSession> {
-    await this.sessions.deleteAllOfUser(userId);
+  // 全セッションは設定の書き込みと同じ一括の書き込みで消えている。操作した端末は認証済みの同じ利用者のため、再発行の条件を確かめずに発行する
+  #reissueSession(userId: string, meta: RequestMeta): Promise<IssuedSession> {
     return this.sessionIssuer.issue(userId, meta);
   }
 }

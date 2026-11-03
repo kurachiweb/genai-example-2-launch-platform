@@ -1,6 +1,8 @@
+import { env } from 'cloudflare:workers';
 import { asc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, test } from 'vitest';
 
+import { createDatabase } from '../../../db/client.ts';
 import { userRecoveryCodes } from '../../../db/schema/identity/user-recovery-codes.ts';
 import {
   clearIdentityTables,
@@ -12,6 +14,12 @@ import {
   T0,
   userIdOf,
 } from '../../../lib/workers/identity/testing/identity-store-fixtures.ts';
+import { createBatchRecordingD1 } from '../../../test/support/batch-recording-d1.ts';
+import {
+  insertSessions,
+  readSessionIdsOf,
+  sessionIdsOf,
+} from '../../../test/support/user-session-rows.ts';
 import type { RecoveryCodeStore } from '../../application/identity/ports.ts';
 import { D1RecoveryCodeStore } from './d1-recovery-code-store.ts';
 
@@ -108,24 +116,41 @@ describe('D1RecoveryCodeStoreの消費と数え上げ', () => {
 });
 
 describe('D1RecoveryCodeStoreの入れ替え', () => {
-  test('replaceAllは利用者の未使用のリカバリコードをすべて新しいものに入れ替え、他の利用者のコードを残す', async () => {
+  test('replaceAllRevokingSessionsは利用者の未使用のリカバリコードの入れ替えと全セッションの削除を1つの一括の書き込みで行い、他の利用者のコードとセッションを残す', async () => {
     await insertRecoveryHashes(1, recoveryHashesOf('old', 3));
     await insertRecoveryHashes(2, recoveryHashesOf('other', 2));
+    await insertSessions(1, 2);
+    await insertSessions(2, 1);
     const hashes = recoveryHashesOf('new', RECOVERY_CODE_COUNT);
+    const recording = createBatchRecordingD1(env.DB);
 
-    await createStore().replaceAll(userIdOf(1), hashes);
+    expect(
+      await new D1RecoveryCodeStore(
+        createDatabase(recording.d1),
+      ).replaceAllRevokingSessions(userIdOf(1), hashes),
+    ).toBe('replaced');
 
+    expect(recording.batches).toHaveLength(1);
+    expect(recording.statementsOutsideBatches()).toEqual([]);
+    const [statements = []] = recording.batches;
+    expect(
+      statements.filter((query) =>
+        query.startsWith('delete from "user_sessions"'),
+      ),
+    ).toEqual([expect.stringContaining('exists')]);
     expect(await readRecoveryHashes(1)).toEqual([...hashes].sort());
+    expect(await readSessionIdsOf(1)).toEqual([]);
     expect(await readRecoveryHashes(2)).toEqual(recoveryHashesOf('other', 2));
+    expect(await readSessionIdsOf(2)).toEqual(sessionIdsOf(2, 1));
     expect(
       await createStore().consume(userIdOf(1), recoveryHashOf('old', 1)),
     ).toBe(false);
   });
 
-  test('replaceAllは10個のリカバリコードの書き込みをバインド変数の上限内に収める', async () => {
+  test('replaceAllRevokingSessionsは10個のリカバリコードの書き込みをバインド変数の上限内に収める', async () => {
     const { database, placeholderCounts } = createRecordingDatabase();
 
-    await new D1RecoveryCodeStore(database).replaceAll(
+    await new D1RecoveryCodeStore(database).replaceAllRevokingSessions(
       userIdOf(1),
       recoveryHashesOf('new', RECOVERY_CODE_COUNT),
     );
@@ -134,17 +159,31 @@ describe('D1RecoveryCodeStoreの入れ替え', () => {
     expect(await readRecoveryHashes(1)).toHaveLength(RECOVERY_CODE_COUNT);
   });
 
-  test('replaceAllは多要素認証が有効でない利用者には古いコードを削除するだけで新しいコードを保存しない', async () => {
+  test('replaceAllRevokingSessionsは多要素認証が有効でない利用者を拒否し、コードを保存せず、残っていたコードとセッションを消さない', async () => {
     await insertUser(3);
     await insertUser(4);
     await insertTotpCredential(3, { pendingExpiresAt: T0 });
     await insertRecoveryHashes(3, recoveryHashesOf('stale', 2));
+    await insertSessions(3, 1);
+    await insertSessions(4, 1);
     const store = createStore();
 
-    await store.replaceAll(userIdOf(3), recoveryHashesOf('pending', 2));
-    await store.replaceAll(userIdOf(4), recoveryHashesOf('none', 2));
+    expect(
+      await store.replaceAllRevokingSessions(
+        userIdOf(3),
+        recoveryHashesOf('pending', 2),
+      ),
+    ).toBe('not-enabled');
+    expect(
+      await store.replaceAllRevokingSessions(
+        userIdOf(4),
+        recoveryHashesOf('none', 2),
+      ),
+    ).toBe('not-enabled');
 
-    expect(await readRecoveryHashes(3)).toEqual([]);
+    expect(await readRecoveryHashes(3)).toEqual(recoveryHashesOf('stale', 2));
     expect(await readRecoveryHashes(4)).toEqual([]);
+    expect(await readSessionIdsOf(3)).toEqual(sessionIdsOf(3, 1));
+    expect(await readSessionIdsOf(4)).toEqual(sessionIdsOf(4, 1));
   });
 });

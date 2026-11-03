@@ -109,7 +109,6 @@ export interface UserSessionStore {
   listByUser(userId: string): Promise<readonly StoredSession[]>;
   deleteOne(userId: string, sessionId: string): Promise<boolean>;
   deleteOthers(userId: string, keepSessionId: string): Promise<number>;
-  deleteAllOfUser(userId: string): Promise<void>;
   // アイドルまたは絶対の期限切れを削除する
   deleteExpired(now: Date, policy: SessionPolicy): Promise<number>;
 }
@@ -163,8 +162,8 @@ export interface TotpCredentialStore {
     sealedSecret: string,
     expiresAt: Date,
   ): Promise<'saved' | 'already-enabled'>;
-  // 有効化とリカバリコードの追加を1つの一括の書き込みで行う。保留の秘密鍵がsealedSecretと異なれば何もしない
-  enable(
+  // 有効化・リカバリコードの追加・全セッションの削除を1つの一括の書き込みで行う。保留の秘密鍵がsealedSecretと異なれば何もしない
+  enableRevokingSessions(
     userId: string,
     sealedSecret: string,
     step: number,
@@ -173,8 +172,8 @@ export interface TotpCredentialStore {
   ): Promise<'enabled' | 'not-pending'>;
   // 使用済みの時間窓より新しいときだけ更新し、同じ時間窓の認証コードの再使用を拒否する
   advanceStep(userId: string, step: number): Promise<boolean>;
-  // 秘密鍵とリカバリコードを削除する
-  disable(userId: string): Promise<void>;
+  // 秘密鍵とリカバリコードの削除・全セッションの削除を1つの一括の書き込みで行う。有効でなければ何もしない
+  disableRevokingSessions(userId: string): Promise<'disabled' | 'not-enabled'>;
   deleteExpiredPending(now: Date): Promise<number>;
 }
 
@@ -182,7 +181,11 @@ export interface RecoveryCodeStore {
   // 一致すれば削除する
   consume(userId: string, codeHash: string): Promise<boolean>;
   count(userId: string): Promise<number>;
-  replaceAll(userId: string, hashes: readonly string[]): Promise<void>;
+  // 未使用のコードの置き換え・全セッションの削除を1つの一括の書き込みで行う。多要素認証が有効でなければ何もしない
+  replaceAllRevokingSessions(
+    userId: string,
+    hashes: readonly string[],
+  ): Promise<'replaced' | 'not-enabled'>;
 }
 
 export interface HandleAvailability {

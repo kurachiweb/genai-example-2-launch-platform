@@ -1,26 +1,18 @@
-import {
-  and,
-  eq,
-  exists,
-  gt,
-  isNotNull,
-  isNull,
-  lt,
-  lte,
-  or,
-  sql,
-} from 'drizzle-orm';
+import { and, eq, gt, isNotNull, isNull, lt, lte, or } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
 
 import type { Database } from '../../../db/client.ts';
-import { userRecoveryCodes } from '../../../db/schema/identity/user-recovery-codes.ts';
 import { userTotpCredentials } from '../../../db/schema/identity/user-totp-credentials.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type {
   TotpCredential,
   TotpCredentialStore,
 } from '../../application/identity/ports.ts';
-import { recoveryCodeInsertsWhen } from './d1-recovery-code-store.ts';
+import {
+  recoveryCodeDeletionWhen,
+  recoveryCodeInsertsWhen,
+  sessionDeletionWhen,
+} from './totp-credential-conditional-writes.ts';
 
 const TOTP_CREDENTIAL_COLUMNS = {
   sealedSecret: userTotpCredentials.sealedSecret,
@@ -86,8 +78,8 @@ export class D1TotpCredentialStore implements TotpCredentialStore {
     return rows.length > 0 ? 'saved' : 'already-enabled';
   }
 
-  // 保留の判定が有効化の前の状態で行われるよう、リカバリコードの書き込みを資格情報の更新より前に置く
-  async enable(
+  // 保留の判定が有効化の前の状態で行われるよう、リカバリコードとセッションの書き込みを資格情報の更新より前に置く
+  async enableRevokingSessions(
     userId: string,
     sealedSecret: string,
     step: number,
@@ -95,17 +87,10 @@ export class D1TotpCredentialStore implements TotpCredentialStore {
     recoveryHashes: readonly string[],
   ): Promise<'enabled' | 'not-pending'> {
     const pending = verifiedPendingAt(at, sealedSecret);
-    const pendingOfUser = this.db
-      .select({ one: sql`1` })
-      .from(userTotpCredentials)
-      .where(and(eq(userTotpCredentials.userId, userId), pending));
     const results = await this.db.batch([
-      this.db
-        .delete(userRecoveryCodes)
-        .where(
-          and(eq(userRecoveryCodes.userId, userId), exists(pendingOfUser)),
-        ),
+      recoveryCodeDeletionWhen(this.db, userId, pending),
       ...recoveryCodeInsertsWhen(this.db, userId, recoveryHashes, at, pending),
+      sessionDeletionWhen(this.db, userId, pending),
       this.db
         .update(userTotpCredentials)
         .set({
@@ -136,15 +121,19 @@ export class D1TotpCredentialStore implements TotpCredentialStore {
     return result.meta.changes > 0;
   }
 
-  async disable(userId: string): Promise<void> {
-    await this.db.batch([
-      this.db
-        .delete(userRecoveryCodes)
-        .where(eq(userRecoveryCodes.userId, userId)),
+  // 有効かの判定が削除の前の状態で行われるよう、リカバリコードとセッションの削除を資格情報の削除より前に置く
+  async disableRevokingSessions(
+    userId: string,
+  ): Promise<'disabled' | 'not-enabled'> {
+    const enabled = isNotNull(userTotpCredentials.enabledAt);
+    const results = await this.db.batch([
+      recoveryCodeDeletionWhen(this.db, userId, enabled),
+      sessionDeletionWhen(this.db, userId, enabled),
       this.db
         .delete(userTotpCredentials)
-        .where(eq(userTotpCredentials.userId, userId)),
+        .where(and(eq(userTotpCredentials.userId, userId), enabled)),
     ]);
+    return (results.at(-1)?.meta.changes ?? 0) > 0 ? 'disabled' : 'not-enabled';
   }
 
   async deleteExpiredPending(now: Date): Promise<number> {

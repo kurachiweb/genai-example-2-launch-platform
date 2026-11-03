@@ -43,7 +43,6 @@ function setup(options: TotpManagementFakeOptions = {}) {
     fakes.reAuthenticator,
     fakes.totpCredentials,
     fakes.recoveryCodes,
-    fakes.sessions,
     fakes.sessionIssuer,
     fakes.settings,
     fakes.totp,
@@ -254,7 +253,7 @@ describe('StoreTotpManagement.start', () => {
 });
 
 describe('StoreTotpManagement.enable', () => {
-  test('保留の秘密鍵を利用者IDを文脈に復元して認証コードを照合し、照合した秘密鍵と時間窓で有効化してリカバリコード10個を保存し、全セッションを削除して操作した端末へ再発行する', async () => {
+  test('保留の秘密鍵を利用者IDを文脈に復元して認証コードを照合し、照合した秘密鍵と時間窓での有効化・リカバリコード10個の保存・全セッションの削除を1つの書き込みで行ってから、操作した端末へ再発行する', async () => {
     const { totpManagement, recorded, state } = setup({
       credential: pendingCredential(),
       recoveryHashes: EXISTING_RECOVERY_HASHES,
@@ -267,8 +266,7 @@ describe('StoreTotpManagement.enable', () => {
       'secretBox.open',
       'totp.verify',
       'recoveryCodeIssuer.issue',
-      'totpCredentials.enable',
-      'sessions.deleteAllOfUser',
+      'totpCredentials.enableRevokingSessions',
       'sessionIssuer.issue',
     ]);
     expect(recorded.opened).toEqual([
@@ -421,24 +419,24 @@ describe('StoreTotpManagement.enable', () => {
     },
   );
 
-  test('全セッションの削除に失敗したら例外をそのまま投げ、新しいセッションを発行しない', async () => {
-    const deleteError = new Error('D1の書き込みに失敗しました');
+  test('有効化と全セッションの削除の書き込みに失敗したら例外をそのまま投げ、新しいセッションを発行しない', async () => {
+    const writeError = new Error('D1の書き込みに失敗しました');
     const { totpManagement, recorded } = setup({
       credential: pendingCredential(),
-      deleteSessionsError: deleteError,
+      writeError,
     });
 
     const rejection = await rejectionOf(
       totpManagement.enable(currentOf(), VALID_CODE, META),
     );
 
-    expect(rejection).toBe(deleteError);
+    expect(rejection).toBe(writeError);
     expect(recorded.sessionIssues).toEqual([]);
   });
 });
 
 describe('StoreTotpManagement.disable', () => {
-  test('本人確認の後に秘密鍵と未使用のリカバリコードを削除し、全セッションを削除して操作した端末へ再発行する', async () => {
+  test('本人確認の後に秘密鍵と未使用のリカバリコードの削除と全セッションの削除を1つの書き込みで行ってから、操作した端末へ再発行する', async () => {
     const { totpManagement, recorded, state } = setup({
       credential: ENABLED_CREDENTIAL,
       recoveryHashes: EXISTING_RECOVERY_HASHES,
@@ -453,8 +451,7 @@ describe('StoreTotpManagement.disable', () => {
     expect(recorded.calls).toEqual([
       'totpCredentials.find',
       'reAuthenticator.verify',
-      'totpCredentials.disable',
-      'sessions.deleteAllOfUser',
+      'totpCredentials.disableRevokingSessions',
       'sessionIssuer.issue',
     ]);
     expect(recorded.reAuthentications).toEqual([
@@ -498,6 +495,37 @@ describe('StoreTotpManagement.disable', () => {
     expect(recorded.sessionDeletions).toEqual([]);
   });
 
+  test('本人確認の後に別の要求が無効化を終えていたら、409のtotp_not_enabledで拒否し、新しいセッションを発行しない', async () => {
+    const { totpManagement, recorded } = setup({
+      credential: ENABLED_CREDENTIAL,
+      recoveryHashes: EXISTING_RECOVERY_HASHES,
+      disabledAfterFind: true,
+    });
+
+    const error = await caught(
+      totpManagement.disable(currentOf(), RE_AUTHENTICATION, META),
+    );
+
+    expect(shapeOf(error)).toEqual(TOTP_NOT_ENABLED);
+    expect(recorded.sessionDeletions).toEqual([]);
+    expect(recorded.sessionIssues).toEqual([]);
+  });
+
+  test('無効化と全セッションの削除の書き込みに失敗したら例外をそのまま投げ、新しいセッションを発行しない', async () => {
+    const writeError = new Error('D1の書き込みに失敗しました');
+    const { totpManagement, recorded } = setup({
+      credential: ENABLED_CREDENTIAL,
+      writeError,
+    });
+
+    const rejection = await rejectionOf(
+      totpManagement.disable(currentOf(), RE_AUTHENTICATION, META),
+    );
+
+    expect(rejection).toBe(writeError);
+    expect(recorded.sessionIssues).toEqual([]);
+  });
+
   test('停止中の利用者の無効化は拒否し、設定を読まない', async () => {
     const { totpManagement, recorded } = setup({
       credential: ENABLED_CREDENTIAL,
@@ -517,7 +545,7 @@ describe('StoreTotpManagement.disable', () => {
 });
 
 describe('StoreTotpManagement.regenerateRecoveryCodes', () => {
-  test('本人確認の後に未使用のリカバリコードをすべて新しい10個に置き換え、全セッションを削除して操作した端末へ再発行し、平文を返す', async () => {
+  test('本人確認の後に未使用のリカバリコードの新しい10個への置き換えと全セッションの削除を1つの書き込みで行ってから、操作した端末へ再発行し、平文を返す', async () => {
     const { totpManagement, recorded, state } = setup({
       credential: ENABLED_CREDENTIAL,
       recoveryHashes: EXISTING_RECOVERY_HASHES,
@@ -533,8 +561,7 @@ describe('StoreTotpManagement.regenerateRecoveryCodes', () => {
       'totpCredentials.find',
       'reAuthenticator.verify',
       'recoveryCodeIssuer.issue',
-      'recoveryCodes.replaceAll',
-      'sessions.deleteAllOfUser',
+      'recoveryCodes.replaceAllRevokingSessions',
       'sessionIssuer.issue',
     ]);
     expect(recorded.recoveryIssues).toEqual([USER_RECOVERY_CODE_HASH_PURPOSE]);
@@ -585,6 +612,46 @@ describe('StoreTotpManagement.regenerateRecoveryCodes', () => {
     expect(recorded.recoveryIssues).toEqual([]);
     expect(state.recoveryHashes).toEqual(EXISTING_RECOVERY_HASHES);
     expect(recorded.sessionDeletions).toEqual([]);
+  });
+
+  test('本人確認の後に別の要求が無効化を終えていたら、平文のリカバリコードを返さず409のtotp_not_enabledで拒否し、新しいセッションを発行しない', async () => {
+    const { totpManagement, recorded, state } = setup({
+      credential: ENABLED_CREDENTIAL,
+      recoveryHashes: EXISTING_RECOVERY_HASHES,
+      disabledAfterFind: true,
+    });
+
+    const error = await caught(
+      totpManagement.regenerateRecoveryCodes(
+        currentOf(),
+        RE_AUTHENTICATION,
+        META,
+      ),
+    );
+
+    expect(shapeOf(error)).toEqual(TOTP_NOT_ENABLED);
+    expect(state.recoveryHashes).toEqual([]);
+    expect(recorded.sessionDeletions).toEqual([]);
+    expect(recorded.sessionIssues).toEqual([]);
+  });
+
+  test('置き換えと全セッションの削除の書き込みに失敗したら例外をそのまま投げ、新しいセッションを発行しない', async () => {
+    const writeError = new Error('D1の書き込みに失敗しました');
+    const { totpManagement, recorded } = setup({
+      credential: ENABLED_CREDENTIAL,
+      writeError,
+    });
+
+    const rejection = await rejectionOf(
+      totpManagement.regenerateRecoveryCodes(
+        currentOf(),
+        RE_AUTHENTICATION,
+        META,
+      ),
+    );
+
+    expect(rejection).toBe(writeError);
+    expect(recorded.sessionIssues).toEqual([]);
   });
 
   test('停止中の利用者の再発行は拒否し、設定を読まない', async () => {

@@ -1,5 +1,8 @@
+import { env } from 'cloudflare:workers';
 import { asc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, test } from 'vitest';
+
+import { createDatabase } from '../../../db/client.ts';
 
 import { userRecoveryCodes } from '../../../db/schema/identity/user-recovery-codes.ts';
 import { userTotpCredentials } from '../../../db/schema/identity/user-totp-credentials.ts';
@@ -14,6 +17,12 @@ import {
   T0,
   userIdOf,
 } from '../../../lib/workers/identity/testing/identity-store-fixtures.ts';
+import { createBatchRecordingD1 } from '../../../test/support/batch-recording-d1.ts';
+import {
+  insertSessions,
+  readSessionIdsOf,
+  sessionIdsOf,
+} from '../../../test/support/user-session-rows.ts';
 import type { TotpCredentialStore } from '../../application/identity/ports.ts';
 import { D1TotpCredentialStore } from './d1-totp-credential-store.ts';
 
@@ -168,7 +177,7 @@ describe('D1TotpCredentialStoreの保留の保存', () => {
 });
 
 describe('D1TotpCredentialStoreの有効化', () => {
-  test('enableは期限内の保留を有効にし、使用した時間窓とリカバリコードを同時に保存する', async () => {
+  test('enableRevokingSessionsは期限内の保留を有効にし、使用した時間窓とリカバリコードを同時に保存する', async () => {
     await insertTotpCredential(1, {
       sealedSecret: sealedSecretOf('pending'),
       pendingExpiresAt: after(TEN_MINUTES),
@@ -177,7 +186,7 @@ describe('D1TotpCredentialStoreの有効化', () => {
     const hashes = recoveryHashesOf(1, RECOVERY_CODE_COUNT);
 
     expect(
-      await createStore().enable(
+      await createStore().enableRevokingSessions(
         userIdOf(1),
         sealedSecretOf('pending'),
         100,
@@ -195,11 +204,11 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(await readRecoveryHashes(1)).toEqual([...hashes].sort());
   });
 
-  test('enableは10個のリカバリコードの書き込みをバインド変数の上限内に収める', async () => {
+  test('enableRevokingSessionsは10個のリカバリコードの書き込みをバインド変数の上限内に収める', async () => {
     await insertTotpCredential(1, { pendingExpiresAt: after(TEN_MINUTES) });
     const { database, placeholderCounts } = createRecordingDatabase();
 
-    await new D1TotpCredentialStore(database).enable(
+    await new D1TotpCredentialStore(database).enableRevokingSessions(
       userIdOf(1),
       sealedSecretOf('1'),
       100,
@@ -211,11 +220,11 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(await readRecoveryHashes(1)).toHaveLength(RECOVERY_CODE_COUNT);
   });
 
-  test('enableは期限ちょうどの保留を拒否し、リカバリコードを保存しない', async () => {
+  test('enableRevokingSessionsは期限ちょうどの保留を拒否し、リカバリコードを保存しない', async () => {
     await insertTotpCredential(1, { pendingExpiresAt: after(TEN_MINUTES) });
 
     expect(
-      await createStore().enable(
+      await createStore().enableRevokingSessions(
         userIdOf(1),
         sealedSecretOf('1'),
         100,
@@ -231,9 +240,9 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(await readRecoveryHashes(1)).toEqual([]);
   });
 
-  test('enableは資格情報の無い利用者を拒否し、リカバリコードを保存しない', async () => {
+  test('enableRevokingSessionsは資格情報の無い利用者を拒否し、リカバリコードを保存しない', async () => {
     expect(
-      await createStore().enable(
+      await createStore().enableRevokingSessions(
         userIdOf(1),
         sealedSecretOf('1'),
         100,
@@ -246,13 +255,13 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(await readRecoveryHashes(1)).toEqual([]);
   });
 
-  test('enableは有効化済みの利用者を拒否し、既存のリカバリコードと時間窓を変えない', async () => {
+  test('enableRevokingSessionsは有効化済みの利用者を拒否し、既存のリカバリコードと時間窓を変えない', async () => {
     await insertTotpCredential(1, { enabledAt: T0, lastUsedStep: 42 });
     const existing = recoveryHashesOf(1, 2);
     await insertRecoveryHashes(1, existing);
 
     expect(
-      await createStore().enable(
+      await createStore().enableRevokingSessions(
         userIdOf(1),
         sealedSecretOf('1'),
         100,
@@ -268,7 +277,7 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(await readRecoveryHashes(1)).toEqual(existing);
   });
 
-  test('enableは照合した秘密鍵と異なる秘密鍵の保留を拒否し、有効にせずリカバリコードを保存しない', async () => {
+  test('enableRevokingSessionsは照合した秘密鍵と異なる秘密鍵の保留を拒否し、有効にせずリカバリコードを保存しない', async () => {
     await insertTotpCredential(1, {
       sealedSecret: sealedSecretOf('restarted'),
       pendingExpiresAt: after(TEN_MINUTES),
@@ -277,7 +286,7 @@ describe('D1TotpCredentialStoreの有効化', () => {
     await insertRecoveryHashes(1, existing);
 
     expect(
-      await createStore().enable(
+      await createStore().enableRevokingSessions(
         userIdOf(1),
         sealedSecretOf('verified'),
         100,
@@ -295,13 +304,13 @@ describe('D1TotpCredentialStoreの有効化', () => {
     expect(await readRecoveryHashes(1)).toEqual(existing);
   });
 
-  test('enableは保留の利用者に残っていたリカバリコードを新しいものに置き換える', async () => {
+  test('enableRevokingSessionsは保留の利用者に残っていたリカバリコードを新しいものに置き換える', async () => {
     await insertTotpCredential(1, { pendingExpiresAt: after(TEN_MINUTES) });
     await insertRecoveryHashes(1, recoveryHashesOf(8, 2));
     const hashes = recoveryHashesOf(1, RECOVERY_CODE_COUNT);
 
     expect(
-      await createStore().enable(
+      await createStore().enableRevokingSessions(
         userIdOf(1),
         sealedSecretOf('1'),
         100,
@@ -311,6 +320,83 @@ describe('D1TotpCredentialStoreの有効化', () => {
     ).toBe('enabled');
 
     expect(await readRecoveryHashes(1)).toEqual([...hashes].sort());
+  });
+});
+
+describe('D1TotpCredentialStoreの有効化での全セッションの削除', () => {
+  beforeEach(async () => {
+    await insertSessions(1, 2);
+    await insertSessions(2, 1);
+  });
+
+  test('enableRevokingSessionsは有効化・リカバリコードの追加・利用者の全セッションの削除を1つの一括の書き込みで行い、他の利用者のセッションを残す', async () => {
+    await insertTotpCredential(1, { pendingExpiresAt: after(TEN_MINUTES) });
+    const recording = createBatchRecordingD1(env.DB);
+
+    expect(
+      await new D1TotpCredentialStore(
+        createDatabase(recording.d1),
+      ).enableRevokingSessions(
+        userIdOf(1),
+        sealedSecretOf('1'),
+        100,
+        T0,
+        recoveryHashesOf(1, RECOVERY_CODE_COUNT),
+      ),
+    ).toBe('enabled');
+
+    expect(recording.batches).toHaveLength(1);
+    expect(recording.statementsOutsideBatches()).toEqual([]);
+    const [statements = []] = recording.batches;
+    expect(
+      statements.filter((query) =>
+        query.startsWith('delete from "user_sessions"'),
+      ),
+    ).toEqual([expect.stringContaining('exists')]);
+    expect(statements.at(-1)).toMatch(/^update "user_totp_credentials"/);
+    expect(await readSessionIdsOf(1)).toEqual([]);
+    expect(await readSessionIdsOf(2)).toEqual(sessionIdsOf(2, 1));
+  });
+
+  test.each([
+    ['期限ちょうどの保留', { pendingExpiresAt: T0 }, sealedSecretOf('1')],
+    ['有効化済み', { enabledAt: T0 }, sealedSecretOf('1')],
+    [
+      '照合と異なる秘密鍵の保留',
+      { pendingExpiresAt: after(TEN_MINUTES) },
+      sealedSecretOf('verified'),
+    ],
+  ] as const)(
+    'enableRevokingSessionsは%sの利用者を拒否し、セッションを消さない',
+    async (_label, credential, sealedSecret) => {
+      await insertTotpCredential(1, credential);
+
+      expect(
+        await createStore().enableRevokingSessions(
+          userIdOf(1),
+          sealedSecret,
+          100,
+          T0,
+          recoveryHashesOf(1, RECOVERY_CODE_COUNT),
+        ),
+      ).toBe('not-pending');
+
+      expect(await readSessionIdsOf(1)).toEqual(sessionIdsOf(1, 2));
+    },
+  );
+
+  test('enableRevokingSessionsは資格情報の無い利用者を拒否し、セッションを消さない', async () => {
+    expect(
+      await createStore().enableRevokingSessions(
+        userIdOf(1),
+        sealedSecretOf('1'),
+        100,
+        T0,
+        recoveryHashesOf(1, RECOVERY_CODE_COUNT),
+      ),
+    ).toBe('not-pending');
+
+    expect(await readSessionIdsOf(1)).toEqual(sessionIdsOf(1, 2));
   });
 });
 
@@ -339,18 +425,60 @@ describe('D1TotpCredentialStoreの時間窓の更新', () => {
 });
 
 describe('D1TotpCredentialStoreの無効化と削除', () => {
-  test('disableは利用者の秘密鍵とリカバリコードを削除し、他の利用者の行を残す', async () => {
+  test('disableRevokingSessionsは利用者の秘密鍵・リカバリコード・全セッションを1つの一括の書き込みで削除し、他の利用者の行を残す', async () => {
     await insertTotpCredential(1, { enabledAt: T0 });
     await insertTotpCredential(2, { enabledAt: T0 });
     await insertRecoveryHashes(1, recoveryHashesOf(1, 3));
     await insertRecoveryHashes(2, recoveryHashesOf(2, 3));
+    await insertSessions(1, 2);
+    await insertSessions(2, 1);
+    const recording = createBatchRecordingD1(env.DB);
 
-    await createStore().disable(userIdOf(1));
+    expect(
+      await new D1TotpCredentialStore(
+        createDatabase(recording.d1),
+      ).disableRevokingSessions(userIdOf(1)),
+    ).toBe('disabled');
 
+    expect(recording.batches).toHaveLength(1);
+    expect(recording.statementsOutsideBatches()).toEqual([]);
+    const [statements = []] = recording.batches;
+    expect(
+      statements.filter((query) =>
+        query.startsWith('delete from "user_sessions"'),
+      ),
+    ).toEqual([expect.stringContaining('exists')]);
+    expect(statements.at(-1)).toMatch(/^delete from "user_totp_credentials"/);
     expect(await readCredential(1)).toBeUndefined();
     expect(await readRecoveryHashes(1)).toEqual([]);
+    expect(await readSessionIdsOf(1)).toEqual([]);
     expect(await readCredential(2)).toMatchObject({ enabledAt: T0 });
     expect(await readRecoveryHashes(2)).toEqual(recoveryHashesOf(2, 3));
+    expect(await readSessionIdsOf(2)).toEqual(sessionIdsOf(2, 1));
+  });
+
+  test('disableRevokingSessionsは有効でない利用者を拒否し、設定の途中の保留とセッションを残す', async () => {
+    await insertTotpCredential(1, {
+      sealedSecret: sealedSecretOf('restarted'),
+      pendingExpiresAt: after(TEN_MINUTES),
+    });
+    await insertSessions(1, 2);
+    await insertSessions(2, 1);
+    const store = createStore();
+
+    expect(await store.disableRevokingSessions(userIdOf(1))).toBe(
+      'not-enabled',
+    );
+    expect(await store.disableRevokingSessions(userIdOf(2))).toBe(
+      'not-enabled',
+    );
+
+    expect(await readCredential(1)).toMatchObject({
+      sealedSecret: sealedSecretOf('restarted'),
+      enabledAt: null,
+    });
+    expect(await readSessionIdsOf(1)).toEqual(sessionIdsOf(1, 2));
+    expect(await readSessionIdsOf(2)).toEqual(sessionIdsOf(2, 1));
   });
 
   test('deleteExpiredPendingは期限ちょうどを含めて期限切れの保留だけを削除し、件数を返す', async () => {

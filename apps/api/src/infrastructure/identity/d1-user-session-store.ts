@@ -92,10 +92,6 @@ export class D1UserSessionStore implements UserSessionStore {
     return result.meta.changes;
   }
 
-  async deleteAllOfUser(userId: string): Promise<void> {
-    await this.db.delete(userSessions).where(eq(userSessions.userId, userId));
-  }
-
   // 期限ちょうどを期限切れとするevaluateSessionと同じ境界で削除する
   async deleteExpired(now: Date, policy: SessionPolicy): Promise<number> {
     const idleBoundary = new Date(
