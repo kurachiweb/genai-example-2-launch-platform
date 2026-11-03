@@ -17,7 +17,7 @@
   - _Boundary: AdminRoles, AdminInputRules_
   - _Requirements: 1.2, 4.1, 16.1, 18.4, 21.3_
 
-- [ ] 1.3 (P) 監査ログの操作種別の型と登録箇所を作り、本specの4つの操作種別を登録する
+- [x] 1.3 (P) 監査ログの操作種別の型と登録箇所を作り、本specの4つの操作種別を登録する
   - 先に、名前の形式(`<対象の領域>.<動詞句>`)・重複の拒否・理由の要否・詳細の鍵・対象の上限の検証と、本specの4種別の定義を確かめる単体テストを書く
   - 操作種別の型(名前・表示名・対象の種類・理由の要否・詳細の鍵・対象の上限)・定義の補助・検証付きのカタログを作り、specごとのファイルを連結する集約点を用意する
   - 管理者の招待・削除・ロールの変更(詳細は変更前後のロール)を理由が任意の種別として、ユーザーのメールアドレス検索を理由と詳細を受け付けず対象の上限が100件の種別として登録する
@@ -306,3 +306,4 @@
 
 - 1.1: テーブルは`apps/db/schema/admin/`、マイグレーションは`20261103162753_admin_foundation`。`admins.email`は全行で一意の`textNoCase`、`status`の既定は`invited`、`role`は既定無し。`admin_totp_credentials`の`sealed_secret`はNULL可で保留の列`pending_sealed_secret`・`pending_expires_at`を持つ。監査ログの`detail`はJSONのtextで既定`{}`、`target_kind`にCHECKは無い。ロール・状態・トークンの用途の値はテーブルのファイルの非公開の定数のため、1.2・2.1でこれらの値を定義するときは列の`enumValues`との一致を単体テストで確かめる
 - 1.2: ロールと入力規則は`apps/common-lib/admin/`(`admin-roles.ts`・`admin-input-rules.ts`)。判定関数は妥当なら`undefined`を返す(設計の契約。identityの`checkNickname`の`'ok'`とは異なる)ため、呼び出し側は`undefined`を確かめてから文言を引く。理由の判定は空を受け付け、必須かどうかは操作種別で決める。`hasRole`は型の外の最低ロールで許可側に倒れるため、実行時の値を扱う5.1では値を検証してから渡す。ロールの値と`admins.role`の`enumValues`の一致は`apps/api/src/application/admin/admin-columns.unit.test.ts`
+- 1.3: 操作種別は`apps/common-lib/admin/audit-action.ts`(`defineAuditAction`・`createAuditActionCatalog`・`AuditActionDefinitionError`)と`audit-actions/`(`admin-foundation.ts`の`ADMIN_ACCOUNT_INVITE_ACTION`・`ADMIN_ACCOUNT_DELETE_ACTION`・`ADMIN_ACCOUNT_ROLE_CHANGE_ACTION`・`USER_EMAIL_SEARCH_ACTION`、`index.ts`の`AUDIT_ACTIONS`)。`find`は未登録の名前で`undefined`を返す。種別を足すspecは`audit-actions/<spec名>.ts`を足して`index.ts`へ連結し、`index.unit.test.ts`の完全一致の期待値も更新する。招待の再送は`admin-account.invite`で記録する(6.3で設計の`resend`の手順との整合を確かめる)
