@@ -2621,7 +2621,7 @@ type Mutation {
 | その他                                                 | なし              | 種類による | なし                               |
 
 - `ResolverSupport`: 呼び出し元が`client`でなければ`forbidden`(6.8)。`RequestMeta`の組み立て、`IssuedSession`から`session.issue({ token, maxAgeSeconds })`、`assertHuman(action)`(12.4〜12.6)。
-- 入力の検証(`inputs.ts`、`withValidatedArgs`): ニックネームは`checkNickname`、メールは前後の空白を除いて254文字以内かつ`z.regexes.html5Email`、パスワードは`checkPasswordLength`、`agreedToTerms`は`true`だけ(1.2)。違反は`validation_error`と欄ごとの詳細(1.8)。
+- 入力の検証(`inputs.ts`、`withValidatedArgs`。メールアドレス・パスワード・リンクのトークン・第2要素の規則と文言は管理者側と共有の`presentation/graphql/auth-inputs.ts`にあり、admin-foundationが移した): ニックネームは`checkNickname`、メールは前後の空白を除いて254文字以内かつ`z.regexes.html5Email`、パスワードは`checkPasswordLength`、`agreedToTerms`は`true`だけ(1.2)。違反は`validation_error`と欄ごとの詳細(1.8)。
 - `viewer`: `AccountGuard.currentUser`の利用者から作る。`remainingRecoveryCodes`は項目のリゾルバで、要求されたときだけ数える。TOTPが無効なら0(13.8)。ヘッダーの取得はこの項目を要求しない。
 
 ### api/composition

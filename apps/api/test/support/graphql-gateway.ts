@@ -4,8 +4,10 @@ import {
 } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import type { Hono } from 'hono';
+import { vi } from 'vitest';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
+import { SITEVERIFY_URL } from '../../lib/workers/bot-protection/turnstile-verifier.ts';
 import { createWorkerApp } from '../../lib/workers/http/create-worker-app.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { applySecurityHeaders } from '../../lib/workers/http/security-headers.ts';
@@ -168,4 +170,82 @@ export function createGraphQLGateway(
       };
     },
   };
+}
+
+const SITEVERIFY_HOSTNAME = 'client.launch.example';
+
+const HIBP_RANGE_PREFIX = 'https://api.pwnedpasswords.com/range/';
+
+const DISIFY_URL = 'https://disify.com/api/email';
+
+// 出現回数0のパディングの行だけを返し、どのパスワードも漏洩していない応答にする
+const HIBP_PADDING_LINE = `${'0'.repeat(35)}:0`;
+
+const BOT_TOKEN_PREFIX = 'bot-ok:';
+
+export const BOT_REJECTED_TOKEN = 'bot-rejected';
+
+export const BOT_UNREACHABLE_TOKEN = 'bot-unreachable';
+
+// 判定サービスの偽物は、トークンに埋めた操作名を判定の結果の操作名として返す
+export function botTokenFor(action: string): string {
+  return `${BOT_TOKEN_PREFIX}${action}`;
+}
+
+function siteverifyResponse(token: string | undefined): Promise<Response> {
+  if (token === BOT_UNREACHABLE_TOKEN) {
+    return Promise.reject(new TypeError('判定サービスに接続できません'));
+  }
+  if (token?.startsWith(BOT_TOKEN_PREFIX) !== true) {
+    return Promise.resolve(
+      Response.json({
+        success: false,
+        'error-codes': ['invalid-input-response'],
+      }),
+    );
+  }
+  return Promise.resolve(
+    Response.json({
+      success: true,
+      hostname: SITEVERIFY_HOSTNAME,
+      challenge_ts: new Date().toISOString(),
+      action: token.slice(BOT_TOKEN_PREFIX.length),
+      'error-codes': [],
+    }),
+  );
+}
+
+function readToken(init: RequestInit | undefined): string | undefined {
+  if (typeof init?.body !== 'string') {
+    return undefined;
+  }
+  const { response } = JSON.parse(init.body) as { readonly response?: string };
+  return response;
+}
+
+export interface ExternalCalls {
+  readonly siteverifyTokens: string[];
+}
+
+// bot判定・漏洩パスワードの照合・使い捨てメールアドレスの判定の外部サービスを偽物に差し替え、判定サービスへ送ったトークンを記録する
+export function stubExternalServices(): ExternalCalls {
+  const calls: ExternalCalls = { siteverifyTokens: [] };
+  vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url === SITEVERIFY_URL) {
+      const token = readToken(init);
+      calls.siteverifyTokens.push(token ?? '');
+      return siteverifyResponse(token);
+    }
+    if (url.startsWith(HIBP_RANGE_PREFIX)) {
+      return Promise.resolve(new Response(HIBP_PADDING_LINE));
+    }
+    if (url === DISIFY_URL) {
+      return Promise.resolve(
+        Response.json({ format: true, disposable: false, dns: true }),
+      );
+    }
+    return Promise.reject(new Error(`想定外の外部への要求です: ${url}`));
+  });
+  return calls;
 }

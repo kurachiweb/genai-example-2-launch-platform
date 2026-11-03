@@ -16,6 +16,7 @@ const config: CodegenConfig = {
         // 項目のリゾルバが要求されたときだけ読む項目を持たない形を、親の値の型にする
         mappers: {
           Viewer: '../modules/identity/resolver-support.ts#ViewerSource',
+          AdminViewer: '../modules/admin/resolver-support.ts#AdminViewerSource',
         },
       },
     },

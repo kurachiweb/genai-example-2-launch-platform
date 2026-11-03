@@ -2,34 +2,18 @@ import {
   AppError,
   type FieldErrorDetail,
 } from '../../../../../lib/core/errors/app-error.ts';
-import {
-  EMAIL_MAX_LENGTH,
-  NICKNAME_MAX_GRAPHEMES,
-} from '../../../../../common-lib/identity/account-input-rules.ts';
-import {
-  PASSWORD_LENGTH_MESSAGE,
-  REAUTHENTICATION_FAILED_CODE,
-} from '../../../../application/auth/auth-errors.ts';
+import { NICKNAME_MAX_GRAPHEMES } from '../../../../../common-lib/identity/account-input-rules.ts';
+import { REAUTHENTICATION_FAILED_CODE } from '../../../../application/auth/auth-errors.ts';
 import {
   IDENTITY_ERRORS,
   identityError,
 } from '../../../../application/identity/identity-errors.ts';
 
-// 入力の検証の失敗(validation_error)の欄ごとの文言。ユースケースが投げるエラーの文言はapplication層のidentity-errors.ts・auth-errors.tsにある
+// 入力の検証の失敗(validation_error)の利用者に固有の欄ごとの文言。認証の操作が共有する文言は../../auth-inputs.ts、ユースケースが投げるエラーの文言はapplication層のidentity-errors.ts・auth-errors.tsにある
 export const INPUT_MESSAGES = Object.freeze({
   nicknameRequired: 'ニックネームを入力してください。',
   nicknameTooLong: `ニックネームは${String(NICKNAME_MAX_GRAPHEMES)}文字以内で入力してください。`,
-  emailRequired: 'メールアドレスを入力してください。',
-  emailTooLong: `メールアドレスは${String(EMAIL_MAX_LENGTH)}文字以内で入力してください。`,
-  emailFormat: 'メールアドレスの形式が正しくありません。',
-  passwordRequired: 'パスワードを入力してください。',
-  passwordLength: PASSWORD_LENGTH_MESSAGE,
   termsNotAgreed: '利用規約とプライバシーポリシーに同意してください。',
-  secondFactorChoice:
-    '認証コードかリカバリコードのどちらか一方を入力してください。',
-  secondFactorIncorrect: IDENTITY_ERRORS.invalid_second_factor.message,
-  invalidLink: IDENTITY_ERRORS.invalid_link.message,
-  loginChallengeExpired: IDENTITY_ERRORS.login_challenge_expired.message,
   sessionNotFound: IDENTITY_ERRORS.not_found.message,
 });
 

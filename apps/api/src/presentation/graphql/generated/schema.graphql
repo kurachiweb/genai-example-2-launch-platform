@@ -4,6 +4,60 @@ enum AccountStatus {
   SUSPENDED
 }
 
+"""メールのリンクによる確定の結果"""
+type AdminConfirmationResult {
+  """確定の操作をした端末が同じ管理者としてログイン中なら、入れ替えた後の管理者"""
+  viewer: AdminViewer
+}
+
+"""この応答でだけ見せるリカバリコード"""
+type AdminRecoveryCodeSet {
+  codes: [String!]!
+}
+
+"""管理者のロール"""
+enum AdminRole {
+  MODERATOR
+  SUPER_ADMIN
+  VIEWER
+}
+
+"""認証コードかリカバリコードのどちらか一方"""
+input AdminSecondFactorInput {
+  recoveryCode: String
+  totpCode: String
+}
+
+"""第2要素の入力の待ち"""
+type AdminSecondFactorRequired {
+  """第2要素の段階の要求と組にする値"""
+  challenge: String!
+  expiresAt: DateTime!
+}
+
+"""認証アプリへ登録する多要素認証の設定"""
+type AdminTotpSetup {
+  expiresAt: DateTime!
+  otpauthUri: String!
+
+  """認証アプリへ手入力するためのbase32"""
+  secret: String!
+}
+
+"""ログイン中の管理者"""
+type AdminViewer {
+  """未登録・表示できない画像ではnull"""
+  avatar: MediaImage
+  email: String!
+  id: ID!
+  nickname: String!
+
+  """要求されたときだけ数える"""
+  remainingRecoveryCodes: Int!
+  role: AdminRole!
+  title: String
+}
+
 input CompleteSecondFactorLoginInput {
   challenge: String!
   secondFactor: SecondFactorInput!
@@ -62,8 +116,28 @@ enum MediaImageFallbackFormat {
 }
 
 type Mutation {
+  """メールアドレスとパスワードによるログイン。有効な管理者には必ず第2要素を求める"""
+  adminLogin(
+    email: String!
+
+    """照合するパスワード"""
+    password: String!
+  ): AdminSecondFactorRequired!
+
+  """この端末のログアウト"""
+  adminLogout: Boolean!
+
+  """招待の完了の2段階目。認証コードで有効化し、ログインする"""
+  completeAdminInvitation(token: String!, totpCode: String!): AdminRecoveryCodeSet!
+
+  """認証コードかリカバリコードによるログインの完了"""
+  completeAdminSecondFactorLogin(challenge: String!, secondFactor: AdminSecondFactorInput!): AdminViewer!
+
   """認証コードかリカバリコードによるログインの完了"""
   completeSecondFactorLogin(input: CompleteSecondFactorLoginInput!): Viewer!
+
+  """メールアドレス変更の確定"""
+  confirmAdminEmailChange(token: String!): AdminConfirmationResult!
 
   """メールアドレス変更の確定"""
   confirmEmailChange(token: String!): ConfirmationResult!
@@ -89,6 +163,9 @@ type Mutation {
   """利用者の登録"""
   registerUser(input: RegisterUserInput!): Viewer!
 
+  """パスワードリセットの要求。管理者の有無と状態を問わず同じ結果を返す"""
+  requestAdminPasswordReset(email: String!): Boolean!
+
   """メールアドレス変更の要求"""
   requestEmailChange(input: RequestEmailChangeInput!): Boolean!
 
@@ -102,6 +179,13 @@ type Mutation {
   resendVerificationEmail: ResendVerificationResult!
 
   """パスワードリセットの確定"""
+  resetAdminPassword(
+    """設定する新しいパスワード"""
+    newPassword: String!
+    token: String!
+  ): Boolean!
+
+  """パスワードリセットの確定"""
   resetPassword(input: ResetPasswordInput!): Boolean!
 
   """操作している端末以外のセッションの一括の失効。失効させた件数を返す"""
@@ -109,6 +193,15 @@ type Mutation {
 
   """セッションの個別の失効"""
   revokeSession(id: ID!): Boolean!
+
+  """招待の完了の1段階目。ニックネームとパスワードを仮に保存し、多要素認証の設定を始める"""
+  startAdminInvitation(
+    nickname: String!
+
+    """設定するパスワード"""
+    password: String!
+    token: String!
+  ): AdminTotpSetup!
 
   """多要素認証の設定の開始"""
   startTotpSetup(input: ReAuthenticationInput!): TotpSetup!
@@ -133,6 +226,9 @@ type PageInfo {
 }
 
 type Query {
+  """ログイン中の管理者。未ログイン・無効なセッションではnull"""
+  adminViewer: AdminViewer
+
   """ログイン中の端末の一覧"""
   mySessions: [UserSessionSummary!]!
 

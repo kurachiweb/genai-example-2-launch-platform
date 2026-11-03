@@ -1,34 +1,22 @@
 import { z } from 'zod';
 
-import {
-  checkNickname,
-  checkPasswordLength,
-  countCodePoints,
-  EMAIL_MAX_LENGTH,
-  PASSWORD_MAX_CODE_POINTS,
-} from '../../../../../common-lib/identity/account-input-rules.ts';
+import { checkNickname } from '../../../../../common-lib/identity/account-input-rules.ts';
 import { trimWhiteSpace } from '../../../../../common-lib/text/white-space.ts';
 import type { ReAuthenticationInput } from '../../../../application/identity/re-authenticator.ts';
-import type { SecondFactorInput } from '../../../../domain/auth/second-factor.ts';
+import {
+  currentPassword,
+  email,
+  inputRuleOf,
+  linkToken,
+  loginChallenge,
+  newPassword,
+  secondFactor,
+  totpCode,
+} from '../../auth-inputs.ts';
 import { INPUT_MESSAGES } from './errors.ts';
-
-// メールのリンクと第2要素の待ちの値は43文字のbase64urlで、照合できない値はユースケースが無効として扱う。ここでは処理量だけを抑える
-const TOKEN_INPUT_MAX_LENGTH = 256;
-
-// 認証コードとリカバリコードの正規化の前の上限(ドメインの上限より長い入力は照合されない)
-const SECOND_FACTOR_INPUT_MAX_LENGTH = 64;
 
 // セッションのIDは26文字のULIDで、一致しない値はユースケースが見つからないとして扱う。ここでは処理量だけを抑える
 const SESSION_ID_INPUT_MAX_LENGTH = 64;
-
-// 1つの欄には最初の1つの違反だけを示す
-const ruleOf = (check: (value: string) => string | undefined) =>
-  z.string().superRefine((value, context) => {
-    const message = check(value);
-    if (message !== undefined) {
-      context.addIssue({ code: 'custom', message });
-    }
-  });
 
 const NICKNAME_MESSAGES = Object.freeze({
   ok: undefined,
@@ -37,67 +25,9 @@ const NICKNAME_MESSAGES = Object.freeze({
 });
 
 // 判定と保存値を食い違わせないよう、入力規則と同じ空白の集合で前後を除く
-const nickname = ruleOf(
+const nickname = inputRuleOf(
   (value) => NICKNAME_MESSAGES[checkNickname(value)],
 ).transform(trimWhiteSpace);
-
-const checkEmail = (value: string): string | undefined => {
-  const trimmed = trimWhiteSpace(value);
-  if (trimmed === '') {
-    return INPUT_MESSAGES.emailRequired;
-  }
-  if (trimmed.length > EMAIL_MAX_LENGTH) {
-    return INPUT_MESSAGES.emailTooLong;
-  }
-  return z.regexes.html5Email.test(trimmed)
-    ? undefined
-    : INPUT_MESSAGES.emailFormat;
-};
-
-export const email = ruleOf(checkEmail).transform(trimWhiteSpace);
-
-export const newPassword = ruleOf((value) =>
-  checkPasswordLength(value) === 'ok'
-    ? undefined
-    : INPUT_MESSAGES.passwordLength,
-);
-
-// 登録済みのパスワードの照合では下限を問わず、照合の計算量だけを上限で抑える
-export const currentPassword = ruleOf((value) => {
-  if (value === '') {
-    return INPUT_MESSAGES.passwordRequired;
-  }
-  return countCodePoints(value) > PASSWORD_MAX_CODE_POINTS
-    ? INPUT_MESSAGES.passwordLength
-    : undefined;
-});
-
-export const linkToken = z
-  .string()
-  .max(TOKEN_INPUT_MAX_LENGTH, INPUT_MESSAGES.invalidLink);
-
-const secondFactorCode = z
-  .string()
-  .max(SECOND_FACTOR_INPUT_MAX_LENGTH, INPUT_MESSAGES.secondFactorIncorrect)
-  .nullish()
-  .transform((value) => (value === '' || value === null ? undefined : value));
-
-// GraphQLでは両方を省略可能な入力にし、どちらか一方だけが入力されたことをここで確かめる
-export const secondFactor = z
-  .object({ totpCode: secondFactorCode, recoveryCode: secondFactorCode })
-  .transform((value, context): SecondFactorInput => {
-    if (value.totpCode !== undefined && value.recoveryCode === undefined) {
-      return { kind: 'totp', code: value.totpCode };
-    }
-    if (value.recoveryCode !== undefined && value.totpCode === undefined) {
-      return { kind: 'recovery', code: value.recoveryCode };
-    }
-    context.addIssue({
-      code: 'custom',
-      message: INPUT_MESSAGES.secondFactorChoice,
-    });
-    return z.NEVER;
-  });
 
 export const REGISTER_USER_ARGS = z.object({
   input: z.object({
@@ -113,12 +43,7 @@ export const LOGIN_ARGS = z.object({
 });
 
 export const COMPLETE_SECOND_FACTOR_LOGIN_ARGS = z.object({
-  input: z.object({
-    challenge: z
-      .string()
-      .max(TOKEN_INPUT_MAX_LENGTH, INPUT_MESSAGES.loginChallengeExpired),
-    secondFactor,
-  }),
+  input: z.object({ challenge: loginChallenge, secondFactor }),
 });
 
 export const VERIFY_EMAIL_ARGS = z.object({ token: linkToken });
@@ -149,11 +74,7 @@ export const REQUEST_PASSWORD_CHANGE_ARGS = z.object({
 
 export const CONFIRM_CHANGE_ARGS = z.object({ token: linkToken });
 
-export const ENABLE_TOTP_ARGS = z.object({
-  totpCode: z
-    .string()
-    .max(SECOND_FACTOR_INPUT_MAX_LENGTH, INPUT_MESSAGES.secondFactorIncorrect),
-});
+export const ENABLE_TOTP_ARGS = z.object({ totpCode });
 
 export const REVOKE_SESSION_ARGS = z.object({
   id: z

@@ -198,6 +198,12 @@ const AUTH_LAYER_RULES: Linter.Config[] = [
     files: ['src/infrastructure/auth/**'],
     patterns: BACKEND_LAYER_PATTERNS.infrastructureAndPresentation,
   },
+  {
+    // GraphQLのスキーマモジュールが読み込むため、Bunで読み込む規則も含め直す
+    name: 'api/auth/graphql-inputs',
+    files: ['src/presentation/graphql/auth-inputs.ts'],
+    patterns: BUN_LOADED_PRESENTATION_PATTERNS,
+  },
 ].map(({ name, files, patterns }) => ({
   name,
   files,
