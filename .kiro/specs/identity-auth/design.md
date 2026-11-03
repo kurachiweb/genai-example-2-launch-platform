@@ -278,12 +278,16 @@ apps/
 │   │   ├── secret-issuer.ts                            # 高エントロピーの秘密の発行とハッシュ化
 │   │   ├── recovery-code-issuer.ts                     # リカバリコードの発行と入力のハッシュ化
 │   │   ├── login-throttle-keys.ts                      # メールとIPからハッシュ化済みキーを作る
-│   │   └── subject-session-verifier.ts                 # SessionVerifierの主体別の振り分け
+│   │   ├── subject-session-verifier.ts                 # SessionVerifierの主体別の振り分け
+│   │   ├── auth-errors.ts                              # 主体に依存しないAUTH_ERRORS・authError・loginThrottledError・本人確認とパスワードの拒否の文言(admin-foundationが移した)
+│   │   ├── password-rejection.ts                       # createPasswordRejectedError(識別子との一致の文言だけを主体ごとに受け取る。admin-foundationが移した)
+│   │   └── mail-send-policy.ts                         # MAIL_SEND_POLICY(認証系のメールの送信回数の時間窓と上限。admin-foundationが移した)
 │   ├── application/identity/                           # 利用者のユースケース(Bunの単体テスト)
 │   │   ├── identity-types.ts                           # IDENTITY_TYPES
 │   │   ├── ports.ts                                    # 各ストア・メール・端末情報・ハンドルの重複判定・設定値・MailSendLimits・IdentityMessagePublisher
 │   │   ├── request-meta.ts                             # RequestMeta
-│   │   ├── identity-errors.ts                          # ユースケース・ストアが投げるAppErrorのエラーコード・種類・文言の集約
+│   │   ├── identity-errors.ts                          # ユースケース・ストアが投げるAppErrorのエラーコード・種類・文言の集約(AUTH_ERRORSを展開して利用者に固有のコードを足す)
+│   │   ├── password-rejection.ts                       # passwordRejectedError(createPasswordRejectedErrorに利用者の識別子との一致の文言を渡す)
 │   │   ├── session-issuer.ts                           # セッションの発行と、重要な操作の後の再発行
 │   │   ├── user-session-verifier.ts                    # 利用者のセッションの検証
 │   │   ├── account-guard.ts                            # ログイン・状態・確認の判定(他specも使う)
@@ -324,7 +328,7 @@ apps/
 │   │   ├── d1-recovery-code-store.ts
 │   │   ├── totp-credential-conditional-writes.ts       # 資格情報の状態を条件にしたリカバリコードとセッションの書き込み(TOTPの2つのストアが共有)
 │   │   ├── d1-handle-availability.ts                   # 既定のハンドルの重複判定(usersの全行)
-│   │   ├── counter-mail-send-limits.ts                 # MailSendLimitsの実装(厳密カウンタによるFR-RLMIT-001の回数制限)
+│   │   ├── counter-mail-send-limits.ts                 # MailSendLimitsの実装(厳密カウンタによるFR-RLMIT-001の回数制限。時間窓と上限はMAIL_SEND_POLICYを読む)
 │   │   ├── user-lifecycle-sync-handler.ts              # 同期の波及処理の契約(他specが実装)
 │   │   ├── d1-user-lifecycle-committer.ts              # 版の検査・状態の遷移・同期の波及処理・イベントの記録の一括の書き込み
 │   │   ├── email-identity-mailer.ts                    # 7種のメールの送信要求とリンクのURL

@@ -1,11 +1,11 @@
 import type { KeyedHasher } from '../../../lib/core/crypto/keyed-hasher.ts';
+import { loginThrottledError } from '../auth/auth-errors.ts';
 import { createLoginThrottleKeys } from '../auth/login-throttle-keys.ts';
 import type {
   LoginThrottle,
   LoginThrottleKeys,
   LoginThrottleScope,
 } from '../auth/ports.ts';
-import { loginThrottledError } from './identity-errors.ts';
 import type { RequestMeta } from './request-meta.ts';
 
 export const USER_LOGIN_THROTTLE_SCOPE: LoginThrottleScope = 'user';

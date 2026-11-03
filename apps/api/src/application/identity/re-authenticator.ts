@@ -4,6 +4,11 @@ import type { KeyedHasher } from '../../../lib/core/crypto/keyed-hasher.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import type { SecondFactorInput } from '../../domain/auth/second-factor.ts';
+import {
+  AUTH_ERRORS,
+  CURRENT_PASSWORD_INCORRECT_MESSAGE,
+  REAUTHENTICATION_FAILED_CODE,
+} from '../auth/auth-errors.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type {
   LoginThrottle,
@@ -13,11 +18,6 @@ import type {
   TotpAuthenticator,
 } from '../auth/ports.ts';
 import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
-import {
-  CURRENT_PASSWORD_INCORRECT_MESSAGE,
-  IDENTITY_ERRORS,
-  REAUTHENTICATION_FAILED_CODE,
-} from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import {
   checkUserLoginThrottle,
@@ -63,7 +63,7 @@ export const SECOND_FACTOR_FIELDS: Readonly<
 });
 
 const SECOND_FACTOR_INCORRECT_MESSAGE =
-  IDENTITY_ERRORS.invalid_second_factor.message;
+  AUTH_ERRORS.invalid_second_factor.message;
 
 const reAuthenticationFailedError = (
   field: string,

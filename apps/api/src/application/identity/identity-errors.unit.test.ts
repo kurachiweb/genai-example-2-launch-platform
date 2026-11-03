@@ -1,12 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { AppError } from '../../../lib/core/errors/app-error.ts';
-import {
-  IDENTITY_ERRORS,
-  identityError,
-  loginThrottledError,
-  PASSWORD_LENGTH_MESSAGE,
-} from './identity-errors.ts';
+import { IDENTITY_ERRORS, identityError } from './identity-errors.ts';
 
 describe('identityError', () => {
   test.each([
@@ -73,25 +68,5 @@ describe('identityError', () => {
 
   test('ユースケースが投げる14種類のエラーを持つ', () => {
     expect(Object.keys(IDENTITY_ERRORS)).toHaveLength(14);
-  });
-});
-
-describe('loginThrottledError', () => {
-  test('待ち時間付きの429の種類のAppErrorになる', () => {
-    expect(loginThrottledError(4)).toMatchObject({
-      kind: 'rate_limited',
-      code: 'login_throttled',
-      message:
-        'ログイン試行が続いたため、しばらく待ってから再度お試しください。',
-      retryAfterSeconds: 4,
-    });
-  });
-});
-
-describe('PASSWORD_LENGTH_MESSAGE', () => {
-  test('入力規則の下限と上限のコードポイント数から文言を組み立てる', () => {
-    expect(PASSWORD_LENGTH_MESSAGE).toBe(
-      'パスワードは8文字以上128文字以内で入力してください。',
-    );
   });
 });

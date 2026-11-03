@@ -7,13 +7,15 @@ import {
   NICKNAME_MAX_GRAPHEMES,
 } from '../../../../../common-lib/identity/account-input-rules.ts';
 import {
-  IDENTITY_ERRORS,
-  identityError,
   PASSWORD_LENGTH_MESSAGE,
   REAUTHENTICATION_FAILED_CODE,
+} from '../../../../application/auth/auth-errors.ts';
+import {
+  IDENTITY_ERRORS,
+  identityError,
 } from '../../../../application/identity/identity-errors.ts';
 
-// 入力の検証の失敗(validation_error)の欄ごとの文言。ユースケースが投げるエラーの文言はapplication層のidentity-errors.tsにある
+// 入力の検証の失敗(validation_error)の欄ごとの文言。ユースケースが投げるエラーの文言はapplication層のidentity-errors.ts・auth-errors.tsにある
 export const INPUT_MESSAGES = Object.freeze({
   nicknameRequired: 'ニックネームを入力してください。',
   nicknameTooLong: `ニックネームは${String(NICKNAME_MAX_GRAPHEMES)}文字以内で入力してください。`,

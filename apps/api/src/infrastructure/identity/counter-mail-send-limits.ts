@@ -9,17 +9,12 @@ import type {
 } from '../../../lib/core/rate-limit/fixed-window.ts';
 import { hashRateLimitKey } from '../../../lib/core/rate-limit/rate-limit-key.ts';
 import type { RateLimitCounterClient } from '../../../lib/workers/rate-limit/rate-limit-counter-client.ts';
+import { MAIL_SEND_POLICY } from '../../application/auth/mail-send-policy.ts';
 import type {
   LimitedMailKind,
   MailSendLimits,
 } from '../../application/identity/ports.ts';
 import type { RequestMeta } from '../../application/identity/request-meta.ts';
-
-const MAIL_SEND_WINDOW_SECONDS = 60 * 60;
-
-const MAIL_SEND_LIMIT_PER_ADDRESS = 3;
-
-const MAIL_SEND_LIMIT_PER_IP = 5;
 
 interface MailSendRules {
   readonly address: CounterRule;
@@ -29,13 +24,13 @@ interface MailSendRules {
 const rulesFor = (kind: LimitedMailKind): MailSendRules => ({
   address: {
     name: `auth-mail:${kind}:address`,
-    limit: MAIL_SEND_LIMIT_PER_ADDRESS,
-    windowSeconds: MAIL_SEND_WINDOW_SECONDS,
+    limit: MAIL_SEND_POLICY.limitPerAddress,
+    windowSeconds: MAIL_SEND_POLICY.windowSeconds,
   },
   ip: {
     name: `auth-mail:${kind}:ip`,
-    limit: MAIL_SEND_LIMIT_PER_IP,
-    windowSeconds: MAIL_SEND_WINDOW_SECONDS,
+    limit: MAIL_SEND_POLICY.limitPerIp,
+    windowSeconds: MAIL_SEND_POLICY.windowSeconds,
   },
 });
 

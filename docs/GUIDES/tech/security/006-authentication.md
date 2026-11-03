@@ -8,30 +8,33 @@
 
 認証の部品は、利用者・管理者などの主体の種類に依存しない部品(以下「認証部品」)と、主体ごとの機能(利用者のアカウントの機能など)に分ける。認証部品は主体ごとの機能のファイルを読み込まず、この禁止は静的解析で強制する(「[依存方向と静的解析](../backend/002-layered-architecture-on-workers.md#依存方向と静的解析)」)。部品の置き場所は`<APIサーバーのアプリ>`の`src/`からのパスで示す。
 
-| 部品                                                                                              | 置き場所                                               | 役割                                                                                         |
-| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| `checkPasswordRules`                                                                              | `domain/auth/password-rules.ts`                        | パスワードの長さと識別子との一致の規則                                                       |
-| `USER_SESSION_POLICY`・`evaluateSession`・`cookieMaxAgeSeconds`                                   | `domain/auth/session-policy.ts`                        | セッションの期限と延長の判定                                                                 |
-| `applyFailure`・`currentStatus`・`alarmOutcome`・`cooldownMs`                                     | `domain/auth/login-throttle-state.ts`                  | ログイン試行の記録の状態遷移                                                                 |
-| `formatRecoveryCode`・`normalizeRecoveryCodeInput`                                                | `domain/auth/recovery-code-format.ts`                  | リカバリコードの表示の形と入力の正規化                                                       |
-| `normalizeTotpCode`                                                                               | `domain/auth/second-factor.ts`                         | 認証コードの入力の正規化                                                                     |
-| `CheckingPasswordPolicy`                                                                          | `application/auth/password-policy.ts`                  | 新しいパスワードの規則の確認と漏洩パスワードの照合                                           |
-| `HashingSecretIssuer`                                                                             | `application/auth/secret-issuer.ts`                    | セッション識別子・認証系トークンの発行とハッシュ化                                           |
-| `HashingRecoveryCodeIssuer`                                                                       | `application/auth/recovery-code-issuer.ts`             | リカバリコードの発行と入力のハッシュ化                                                       |
-| `SubjectSessionVerifier`                                                                          | `application/auth/subject-session-verifier.ts`         | 主体の種類ごとのセッションの検証の振り分け                                                   |
-| `Pbkdf2PasswordHasher`                                                                            | `infrastructure/auth/pbkdf2-password-hasher.ts`        | パスワードのハッシュ化と照合                                                                 |
-| `CryptoSecretGenerator`                                                                           | `infrastructure/auth/crypto-secret-generator.ts`       | 暗号論的な乱数によるトークンと文字列の生成                                                   |
-| `HkdfAesGcmSecretBox`                                                                             | `infrastructure/auth/hkdf-aes-gcm-secret-box.ts`       | TOTPの秘密鍵の暗号化と復元                                                                   |
-| `OtpauthTotpAuthenticator`                                                                        | `infrastructure/auth/otpauth-totp-authenticator.ts`    | TOTPの秘密鍵の生成・登録用のURI・認証コードの照合                                            |
-| `HibpPwnedPasswordChecker`                                                                        | `infrastructure/auth/hibp-pwned-password-checker.ts`   | 漏洩パスワードの照合(「[漏洩パスワードの照合サービス](../external/004-pwned-passwords.md)」) |
-| `<ログイン試行の記録のクラス名>`・`createDurableLoginThrottle`                                    | `infrastructure/auth/`                                 | ログイン試行の記録のDurable Objectと、2つの単位の記録の操作                                  |
-| `SentryAuthIncidentReporter`                                                                      | `infrastructure/auth/sentry-auth-incident-reporter.ts` | 運用者への通知                                                                               |
-| `AUTH_TOKEN_TTL_SECONDS`・`AUTH_TOKEN_HASH_PURPOSES`・`AUTH_TOKEN_PURPOSES_REVOKED_ON_COMPLETION` | `domain/identity/auth-token-purpose.ts`                | 認証系トークンの用途ごとの期限・ハッシュの用途・確定時に失効させる用途                       |
-| `StoreSessionIssuer`・`UserSessionVerifier`                                                       | `application/identity/`                                | 利用者のセッションの発行と検証                                                               |
-| `StoreReAuthenticator`                                                                            | `application/identity/re-authenticator.ts`             | 重要な操作の本人確認                                                                         |
-| `checkSecondFactor`                                                                               | `application/identity/second-factor-check.ts`          | 認証コード・リカバリコードの照合(ログインと本人確認で共有)                                   |
-| `StoreAccountGuard`                                                                               | `application/identity/account-guard.ts`                | ログイン中の利用者の取得と、利用者の状態による拒否                                           |
-| `CounterMailSendLimits`                                                                           | `infrastructure/identity/counter-mail-send-limits.ts`  | 認証系のメールの送信回数の制限                                                               |
+| 部品                                                                                              | 置き場所                                               | 役割                                                                                                   |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `checkPasswordRules`                                                                              | `domain/auth/password-rules.ts`                        | パスワードの長さと識別子との一致の規則                                                                 |
+| `USER_SESSION_POLICY`・`evaluateSession`・`cookieMaxAgeSeconds`                                   | `domain/auth/session-policy.ts`                        | セッションの期限と延長の判定                                                                           |
+| `applyFailure`・`currentStatus`・`alarmOutcome`・`cooldownMs`                                     | `domain/auth/login-throttle-state.ts`                  | ログイン試行の記録の状態遷移                                                                           |
+| `formatRecoveryCode`・`normalizeRecoveryCodeInput`                                                | `domain/auth/recovery-code-format.ts`                  | リカバリコードの表示の形と入力の正規化                                                                 |
+| `normalizeTotpCode`                                                                               | `domain/auth/second-factor.ts`                         | 認証コードの入力の正規化                                                                               |
+| `CheckingPasswordPolicy`                                                                          | `application/auth/password-policy.ts`                  | 新しいパスワードの規則の確認と漏洩パスワードの照合                                                     |
+| `HashingSecretIssuer`                                                                             | `application/auth/secret-issuer.ts`                    | セッション識別子・認証系トークンの発行とハッシュ化                                                     |
+| `HashingRecoveryCodeIssuer`                                                                       | `application/auth/recovery-code-issuer.ts`             | リカバリコードの発行と入力のハッシュ化                                                                 |
+| `SubjectSessionVerifier`                                                                          | `application/auth/subject-session-verifier.ts`         | 主体の種類ごとのセッションの検証の振り分け                                                             |
+| `AUTH_ERRORS`・`authError`・`loginThrottledError`・本人確認とパスワードの拒否の文言               | `application/auth/auth-errors.ts`                      | 主体に依存しないエラーコード・種類・文言(主体ごとのエラーの定義はこれを展開して固有のコードだけを足す) |
+| `createPasswordRejectedError`                                                                     | `application/auth/password-rejection.ts`               | 新しいパスワードの拒否のエラーの組み立て(識別子との一致の文言だけを主体ごとに受け取る)                 |
+| `MAIL_SEND_POLICY`                                                                                | `application/auth/mail-send-policy.ts`                 | 認証系のメールの送信回数の時間窓と上限                                                                 |
+| `Pbkdf2PasswordHasher`                                                                            | `infrastructure/auth/pbkdf2-password-hasher.ts`        | パスワードのハッシュ化と照合                                                                           |
+| `CryptoSecretGenerator`                                                                           | `infrastructure/auth/crypto-secret-generator.ts`       | 暗号論的な乱数によるトークンと文字列の生成                                                             |
+| `HkdfAesGcmSecretBox`                                                                             | `infrastructure/auth/hkdf-aes-gcm-secret-box.ts`       | TOTPの秘密鍵の暗号化と復元                                                                             |
+| `OtpauthTotpAuthenticator`                                                                        | `infrastructure/auth/otpauth-totp-authenticator.ts`    | TOTPの秘密鍵の生成・登録用のURI・認証コードの照合                                                      |
+| `HibpPwnedPasswordChecker`                                                                        | `infrastructure/auth/hibp-pwned-password-checker.ts`   | 漏洩パスワードの照合(「[漏洩パスワードの照合サービス](../external/004-pwned-passwords.md)」)           |
+| `<ログイン試行の記録のクラス名>`・`createDurableLoginThrottle`                                    | `infrastructure/auth/`                                 | ログイン試行の記録のDurable Objectと、2つの単位の記録の操作                                            |
+| `SentryAuthIncidentReporter`                                                                      | `infrastructure/auth/sentry-auth-incident-reporter.ts` | 運用者への通知                                                                                         |
+| `AUTH_TOKEN_TTL_SECONDS`・`AUTH_TOKEN_HASH_PURPOSES`・`AUTH_TOKEN_PURPOSES_REVOKED_ON_COMPLETION` | `domain/identity/auth-token-purpose.ts`                | 認証系トークンの用途ごとの期限・ハッシュの用途・確定時に失効させる用途                                 |
+| `StoreSessionIssuer`・`UserSessionVerifier`                                                       | `application/identity/`                                | 利用者のセッションの発行と検証                                                                         |
+| `StoreReAuthenticator`                                                                            | `application/identity/re-authenticator.ts`             | 重要な操作の本人確認                                                                                   |
+| `checkSecondFactor`                                                                               | `application/identity/second-factor-check.ts`          | 認証コード・リカバリコードの照合(ログインと本人確認で共有)                                             |
+| `StoreAccountGuard`                                                                               | `application/identity/account-guard.ts`                | ログイン中の利用者の取得と、利用者の状態による拒否                                                     |
+| `CounterMailSendLimits`                                                                           | `infrastructure/identity/counter-mail-send-limits.ts`  | 利用者の認証系のメールの送信回数の制限(時間窓と上限は`MAIL_SEND_POLICY`を読む)                         |
 
 | 用語                                     | 意味                                                                                                                                                          |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -150,6 +153,7 @@ flowchart LR
 - 片方の単位が上限を超えても両方を数え、どちらの記録も要求の回数と食い違わないようにする。
 - 送信元IPアドレスが不明な要求は、IPアドレスの単位で数えない。1つのキーにまとめると、無関係な利用者の送信までまとめて止まる。
 - アカウントの有無やメールアドレスの重複を調べる前に数える。上限に達するかどうかの違いから登録の有無を推測させない。
+- 時間窓と上限は認証部品の`MAIL_SEND_POLICY`に置く。主体ごとの制限はルールの名前だけを分け、同じ値を読む。
 
 ## ログイン試行の制限
 
