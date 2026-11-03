@@ -25,7 +25,7 @@ import type { Database } from '../../../db/client.ts';
 import { mediaFileQuarantineReasons } from '../../../db/schema/media/media-file-quarantine-reasons.ts';
 import { mediaFiles } from '../../../db/schema/media/media-files.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
-import { AppError } from '../../core/errors/app-error.ts';
+import { invalidCursorError } from '../../core/errors/invalid-cursor.ts';
 import type { IdGenerator } from '../../core/ids/id-generator.ts';
 import {
   type MediaFileView,
@@ -204,14 +204,6 @@ export function toModerationFindings(
   return Array.isArray(detail) ? detail.filter(isModerationFinding) : [];
 }
 
-function invalidCursor(): AppError {
-  return new AppError({
-    kind: 'bad_request',
-    code: 'invalid_cursor',
-    message: 'ページの位置の指定が正しくありません。',
-  });
-}
-
 function encodeCursor(position: QuarantineCursor): string {
   return `${String(position.quarantinedAt)}-${position.reasonId}`;
 }
@@ -220,7 +212,7 @@ function decodeCursor(cursor: string): QuarantineCursor {
   const match = CURSOR_PATTERN.exec(cursor);
   const [, quarantinedAt, reasonId] = match ?? [];
   if (quarantinedAt === undefined || reasonId === undefined) {
-    throw invalidCursor();
+    throw invalidCursorError();
   }
   return { quarantinedAt: Number(quarantinedAt), reasonId };
 }

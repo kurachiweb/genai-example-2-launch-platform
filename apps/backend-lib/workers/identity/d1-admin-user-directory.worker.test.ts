@@ -353,15 +353,19 @@ describe('D1AdminUserDirectory', () => {
       ['IDの長さが違う値', base64urlOf('1730419200000:01JC0USER')],
       ['パディング付きの値', `${base64urlOf(`1:${userIdOf(1)}`)}=`],
       ['base64urlでない文字を含む値', `${base64urlOf(`1:${userIdOf(1)}`)}+`],
-    ])('不正なカーソル(%s)を入力の誤りとして拒否する', async (_name, after) => {
-      const searching = createDirectory().search({}, { limit: 10, after });
+    ])(
+      '不正なカーソル(%s)をページの位置の指定の誤りとして拒否する',
+      async (_name, after) => {
+        const searching = createDirectory().search({}, { limit: 10, after });
 
-      await expect(searching).rejects.toBeInstanceOf(AppError);
-      await expect(searching).rejects.toMatchObject({
-        kind: 'bad_request',
-        code: 'validation_error',
-      });
-    });
+        await expect(searching).rejects.toBeInstanceOf(AppError);
+        await expect(searching).rejects.toMatchObject({
+          kind: 'bad_request',
+          code: 'invalid_cursor',
+          message: 'ページの位置の指定が正しくありません。',
+        });
+      },
+    );
 
     test('D1への問い合わせに失敗したら例外にする', async () => {
       await expect(

@@ -18,6 +18,7 @@ import type { Database } from '../../../db/client.ts';
 import { users } from '../../../db/schema/identity/users.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
 import { AppError } from '../../core/errors/app-error.ts';
+import { invalidCursorError } from '../../core/errors/invalid-cursor.ts';
 import type {
   AdminUserDirectory,
   AdminUserRecord,
@@ -123,7 +124,7 @@ function decodeCursor(cursor: string): SearchCursor {
   const text = decodeCursorText(cursor);
   const [, createdAt, userId] = CURSOR_PATTERN.exec(text ?? '') ?? [];
   if (createdAt === undefined || userId === undefined) {
-    throw validationError('ページの位置の指定が正しくありません。');
+    throw invalidCursorError();
   }
   return { createdAt: Number(createdAt), userId };
 }

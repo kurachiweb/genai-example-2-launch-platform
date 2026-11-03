@@ -333,6 +333,7 @@ type ArticleConnection {
 - 1ページの件数の上限は`MAX_PAGE_SIZE`(100)である。件数の既定値は基盤では持たず、各機能が決める。
 - カーソル型では、`first`より1件多く読み込んで`toConnection`へ渡す。1件多く読み込めたかで`hasNextPage`を決め、最後の要素のカーソルを`endCursor`にする。
 - カーソルは`encodeCursor`で位置(並び順のキーの値)をJSONにしてbase64url(パディング無し)に符号化する。`decodeCursor(<Zodのスキーマ>, <カーソル>)`は、同じ表記に再符号化できない値・JSONでない値・スキーマに合わない値を`AppError`(コード`invalid_cursor`、文言「ページの位置の指定が正しくありません。」)にする。
+- 独自の形式のカーソルを読む共通ライブラリの部品(D1の実装など)も、不正なカーソルを同じコードと文言にする。共通ライブラリはアプリの`presentation`を読み込めないため、この例外は共通ライブラリの`core/errors/invalid-cursor.ts`の`invalidCursorError()`で作り、`decodeCursor`も同じものを使う。件数の範囲外は引数の検証の失敗(`validation_error`)のままにする。
 - オフセット型の`totalPages`は、`totalCount`を`perPage`で割って切り上げた値である。
 
 ### 日時のスカラー

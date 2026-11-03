@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AppError } from '../../../lib/core/errors/app-error.ts';
+import { invalidCursorError } from '../../../lib/core/errors/invalid-cursor.ts';
 
 export const MAX_PAGE_SIZE = 100;
 
@@ -49,14 +49,6 @@ export interface OffsetPage<T> {
   };
 }
 
-function invalidCursor(): AppError {
-  return new AppError({
-    kind: 'bad_request',
-    code: 'invalid_cursor',
-    message: 'ページの位置の指定が正しくありません。',
-  });
-}
-
 export function encodeCursor(
   position: Readonly<Record<string, string | number>>,
 ): string {
@@ -94,11 +86,11 @@ function parseJson(text: string): unknown {
 export function decodeCursor<T>(schema: z.ZodType<T>, cursor: string): T {
   const text = decodeCursorText(cursor);
   if (text === undefined) {
-    throw invalidCursor();
+    throw invalidCursorError();
   }
   const result = schema.safeParse(parseJson(text));
   if (!result.success) {
-    throw invalidCursor();
+    throw invalidCursorError();
   }
   return result.data;
 }
