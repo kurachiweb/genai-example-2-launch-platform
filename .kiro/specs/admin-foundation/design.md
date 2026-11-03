@@ -238,6 +238,7 @@ apps/
 │       ├── infrastructure/admin/                       # Workers統合テスト
 │       │   ├── d1-admin-account-store.ts · d1-admin-session-store.ts · d1-admin-auth-token-store.ts
 │       │   ├── d1-admin-login-challenge-store.ts · d1-admin-totp-credential-store.ts · d1-admin-recovery-code-store.ts
+│       │   ├── admin-totp-conditional-writes.ts        # TOTPの資格情報の状態を条件にしたリカバリコードの置き換えと全セッションの削除の文(TOTPとリカバリコードのストアが共有)
 │       │   ├── audit-log-statements.ts                 # buildAuditLogStatements(後続specのストアも一括の書き込みに含める)
 │       │   ├── d1-audit-log-store.ts                   # 単独の記録・検索・最新の照会(1件と複数)・保持期間の削除
 │       │   ├── testing/admin-store-fixtures.ts         # Workers統合テストの共有の補助(管理者の行の追加・8テーブルの消去・予測できるIDでの準備の値)

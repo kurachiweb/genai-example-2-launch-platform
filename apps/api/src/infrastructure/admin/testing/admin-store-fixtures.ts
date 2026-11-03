@@ -127,6 +127,99 @@ export async function insertAdminSession(
   });
 }
 
+export function adminSessionIdOf(adminIndex: number, index: number): string {
+  return `01JC0SESN${String(adminIndex).padStart(8, '0')}${String(index).padStart(9, '0')}`;
+}
+
+export function adminSessionIdsOf(adminIndex: number, count: number): string[] {
+  return Array.from({ length: count }, (_, offset) =>
+    adminSessionIdOf(adminIndex, offset + 1),
+  );
+}
+
+export async function insertAdminSessions(
+  adminIndex: number,
+  count: number,
+): Promise<void> {
+  await db.insert(adminSessions).values(
+    adminSessionIdsOf(adminIndex, count).map((id) => ({
+      id,
+      adminId: adminIdOf(adminIndex),
+      tokenHash: `${id}-hash`,
+      lastUsedAt: T0,
+      absoluteExpiresAt: after(12 * HOUR_MS),
+      createdAt: T0,
+      updatedAt: T0,
+    })),
+  );
+}
+
+export async function readAdminSessionIdsOf(
+  adminIndex: number,
+): Promise<string[]> {
+  const rows = await db
+    .select({ id: adminSessions.id })
+    .from(adminSessions)
+    .where(eq(adminSessions.adminId, adminIdOf(adminIndex)))
+    .orderBy(asc(adminSessions.id));
+  return rows.map((row) => row.id);
+}
+
+export async function insertAdminTotpCredential(
+  adminIndex: number,
+  columns: Partial<typeof adminTotpCredentials.$inferInsert> = {},
+): Promise<void> {
+  await db.insert(adminTotpCredentials).values({
+    adminId: adminIdOf(adminIndex),
+    createdAt: T0,
+    updatedAt: T0,
+    ...columns,
+  });
+}
+
+export async function readAdminTotpCredential(adminIndex: number) {
+  const [row] = await db
+    .select({
+      sealedSecret: adminTotpCredentials.sealedSecret,
+      enabledAt: adminTotpCredentials.enabledAt,
+      lastUsedStep: adminTotpCredentials.lastUsedStep,
+      pendingSealedSecret: adminTotpCredentials.pendingSealedSecret,
+      pendingExpiresAt: adminTotpCredentials.pendingExpiresAt,
+    })
+    .from(adminTotpCredentials)
+    .where(eq(adminTotpCredentials.adminId, adminIdOf(adminIndex)));
+  return row;
+}
+
+export async function insertAdminRecoveryHashes(
+  adminIndex: number,
+  hashes: readonly string[],
+): Promise<void> {
+  await db.insert(adminRecoveryCodes).values(
+    hashes.map((codeHash) => ({
+      adminId: adminIdOf(adminIndex),
+      codeHash,
+      createdAt: T0,
+      updatedAt: T0,
+    })),
+  );
+}
+
+export async function readAdminRecoveryHashes(
+  adminIndex: number,
+): Promise<string[]> {
+  const rows = await db
+    .select({ codeHash: adminRecoveryCodes.codeHash })
+    .from(adminRecoveryCodes)
+    .where(eq(adminRecoveryCodes.adminId, adminIdOf(adminIndex)))
+    .orderBy(asc(adminRecoveryCodes.codeHash));
+  return rows.map((row) => row.codeHash);
+}
+
+export function placeholderCountOf(query: string): number {
+  return query.match(/\?/gu)?.length ?? 0;
+}
+
 // 削除で消えることを確かめるため、管理者を参照する5つのテーブルにそれぞれ1行を置く
 export async function insertAdminChildRows(adminIndex: number): Promise<void> {
   const prefix = `admin-${String(adminIndex)}`;
