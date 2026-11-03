@@ -35,6 +35,10 @@ import {
   type AdminSessionIssuer,
   StoreAdminSessionIssuer,
 } from '../application/admin/admin-session-issuer.ts';
+import {
+  type AdminTotpManagement,
+  StoreAdminTotpManagement,
+} from '../application/admin/admin-totp-management.ts';
 import { AdminSessionVerifier } from '../application/admin/admin-session-verifier.ts';
 import { ADMIN_TYPES } from '../application/admin/admin-types.ts';
 import type {
@@ -98,6 +102,9 @@ function bindUseCases(bind: Bind): void {
   );
   bind<AdminPasswordChange>(ADMIN_TYPES.AdminPasswordChange).to(
     StoreAdminPasswordChange,
+  );
+  bind<AdminTotpManagement>(ADMIN_TYPES.AdminTotpManagement).to(
+    StoreAdminTotpManagement,
   );
 }
 

@@ -117,8 +117,8 @@ const operatorSnapshot = (current: CurrentAdmin): AdminSnapshot => ({
 });
 
 // 認証アプリのラベルはメールアドレスを締め出すため@を拒むので、@を含むニックネームはラベルに出さない
-const totpAccountLabelOf = (nickname: string): string =>
-  nickname.includes('@')
+export const adminTotpAccountLabelOf = (nickname: string | null): string =>
+  nickname === null || nickname.includes('@')
     ? TOTP_ACCOUNT_LABEL_PREFIX
     : `${TOTP_ACCOUNT_LABEL_PREFIX}:${nickname}`;
 
@@ -247,7 +247,7 @@ export class StoreAdminInvitation implements AdminInvitation {
       otpauthUri: this.totp.buildUri(
         secret,
         this.settings.totpIssuer,
-        totpAccountLabelOf(nickname),
+        adminTotpAccountLabelOf(nickname),
       ),
       secret,
       expiresAt,

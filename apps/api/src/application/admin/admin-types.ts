@@ -64,6 +64,10 @@ const AdminPasswordChange: unique symbol = Symbol.for(
   'admin.AdminPasswordChange',
 );
 
+const AdminTotpManagement: unique symbol = Symbol.for(
+  'admin.AdminTotpManagement',
+);
+
 export const ADMIN_TYPES = Object.freeze({
   AuditActionCatalog,
   AuditLogStore,
@@ -87,4 +91,5 @@ export const ADMIN_TYPES = Object.freeze({
   AdminPasswordReset,
   AdminEmailChange,
   AdminPasswordChange,
+  AdminTotpManagement,
 });
