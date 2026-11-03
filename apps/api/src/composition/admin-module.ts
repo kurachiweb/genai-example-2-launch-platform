@@ -8,6 +8,10 @@ import {
   StoreAdminAuthorizer,
 } from '../application/admin/admin-authorizer.ts';
 import {
+  type AdminInvitation,
+  StoreAdminInvitation,
+} from '../application/admin/admin-invitation.ts';
+import {
   type AdminLogin,
   StoreAdminLogin,
 } from '../application/admin/admin-login.ts';
@@ -73,6 +77,7 @@ function bindUseCases(bind: Bind): void {
   bind<AdminReAuthenticator>(ADMIN_TYPES.AdminReAuthenticator).to(
     StoreAdminReAuthenticator,
   );
+  bind<AdminInvitation>(ADMIN_TYPES.AdminInvitation).to(StoreAdminInvitation);
 }
 
 // 認証部品の束縛(AUTH_TYPES)は利用者のモジュールのものをそのまま使う

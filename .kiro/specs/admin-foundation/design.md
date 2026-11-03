@@ -689,6 +689,13 @@ export declare const adminError: (code: keyof typeof ADMIN_ERRORS) => AppError;
 export declare const adminPasswordRejectedError: ReturnType<
   typeof createPasswordRejectedError
 >; // 「ニックネーム・メールアドレス(@より前の部分を含む)と同じパスワードは使えません。」
+export declare const adminInvitationLinkError: () => AppError; // invalid_link。共有の文言に「招待した管理者に再送を依頼してください。」を添える(4.5)
+export declare const ADMIN_NICKNAME_MESSAGES: Readonly<
+  Record<'empty' | 'too-long', string>
+>; // 8.xのリゾルバの検証と同じ文言にする
+export declare const adminNicknameRejectedError: (
+  violation: 'empty' | 'too-long',
+) => AppError; // validation_error・欄nickname
 ```
 
 - 置き場所: apiの層の規則(`eslint.config.ts`)で`admin`は`identity`を読み込めない。管理者と利用者で同じであるべきエラーコード・文言・送信回数の上限(Q7)を両方の機能が読める`auth`(主体に依存しない認証部品の層)へ移し、片方だけを変えて食い違うことを防ぐ。主体で異なるのは、パスワードと識別子の一致の文言(利用者はハンドルを含む)と、主体に固有のエラーコードだけである。
@@ -945,9 +952,10 @@ export interface AdminInvitation {
 }
 ```
 
-- `invite`: `checkInvitable`→`AuditLogRecorder.prepare`(`admin-account.invite`)→`insertInvited`(監査ログの文を同じ一括の書き込みに含める)(`email-in-use`は`admin_email_in_use`、3.2)→メール(3.1)。`resend`は`reissueInvitation`(有効な管理者なら`not_found`)→メール(3.3)。
-- `start`: `findValid('invitation')`(無効・有効な管理者は`invalid_link`、4.5)→ニックネームの規則→`PasswordPolicy`(識別子はニックネームとメール)→`savePendingProfile`→秘密鍵を生成して`seal(secret, 'admin:<ID>')`し`savePending`(10分)→URI(ラベル`管理者:<ニックネーム>`)を返す(4.2)。
-- `complete`: 保留が無い・期限切れは`totp_setup_expired`(4.6)→`open`と`verify`(誤りは`invalid_second_factor`)→`consume('invitation')`(負けたら`invalid_link`)→`RecoveryCodeIssuer.issue('admin-recovery-code')`→`activate`(有効化・TOTPの確定・リカバリコード・セッションの挿入と、残りの招待トークンの削除を1つの一括の書き込み、4.3・4.4)。
+- `invite`: `checkInvitable`→`AuditLogRecorder.prepare`(`admin-account.invite`)→`insertInvited`(監査ログの文を同じ一括の書き込みに含める)(`email-in-use`は`admin_email_in_use`、3.2)→メール(3.1)。`resend`は`checkInvitable`→`findById`(無い・有効な管理者なら`not_found`)→`AuditLogRecorder.prepare`(`admin-account.invite`、要件18.7・仮5の「招待の操作」として記録する)→`reissueInvitation`(監査ログの文を同じ一括の書き込みに含める。`not-invited`は`not_found`)→メール(3.3)。
+- `start`: `findValid('invitation')`(無効・有効な管理者は`invalid_link`、4.5)→ニックネームの規則→`PasswordPolicy`(識別子はニックネームとメール)→`savePendingProfile`→秘密鍵を生成して`seal(secret, 'admin:<ID>')`し`savePending`(10分)→URI(ラベル`管理者:<ニックネーム>`。ニックネームが`@`を含むときは、メールアドレスをラベルから締め出す`TotpAuthenticator.buildUri`の検査に掛かるため`管理者`だけにする)を返す(4.2)。
+- `complete`: 保留が無い・期限切れは`totp_setup_expired`(4.6)→`open`と`verify`(誤りは`invalid_second_factor`)→`consume('invitation')`(負けたら`invalid_link`)→`RecoveryCodeIssuer.issue('admin-recovery-code')`→`activate`(有効化・TOTPの確定・リカバリコード・セッションの挿入と、残りの招待トークンの削除を1つの一括の書き込み、4.3・4.4。セッションは`prepareAdminSession`で組み立てる。`not-invited`はトークンを消費済みのため`invalid_link`)。
+- 招待のリンクの無効(`start`・`complete`の`invalid_link`)は`adminInvitationLinkError`で、共有の文言に「招待した管理者に再送を依頼してください。」を添える(4.5)。ニックネームの規則の違反は欄`nickname`の`validation_error`(`adminNicknameRejectedError`)。
 
 #### AdminPasswordReset・AdminEmailChange・AdminPasswordChange・AdminTotpManagement
 

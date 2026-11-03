@@ -22,6 +22,7 @@ const EXPECTED_NAMES = [
   'AdminAuthorizer',
   'AdminLogin',
   'AdminReAuthenticator',
+  'AdminInvitation',
 ] as const;
 
 describe('ADMIN_TYPES', () => {

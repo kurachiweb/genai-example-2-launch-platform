@@ -9,6 +9,8 @@ import {
 import {
   ADMIN_ERRORS,
   adminError,
+  adminInvitationLinkError,
+  adminNicknameRejectedError,
   adminPasswordRejectedError,
 } from './admin-errors.ts';
 
@@ -101,6 +103,43 @@ describe('adminPasswordRejectedError', () => {
       expect(
         adminPasswordRejectedError(violation, 'newPassword').details,
       ).toEqual([{ field: 'newPassword', code: detailCode, message }]);
+    },
+  );
+});
+
+describe('adminInvitationLinkError', () => {
+  test('招待のリンクの無効は、共有の無効なリンクのコードと種類に、招待した管理者への再送の依頼を添えた文言になる', () => {
+    const error = adminInvitationLinkError();
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error).toMatchObject({
+      kind: 'unprocessable',
+      code: 'invalid_link',
+      message:
+        'このリンクは無効か、有効期限が切れています。招待した管理者に再送を依頼してください。',
+    });
+    expect(error.details).toBeUndefined();
+  });
+});
+
+describe('adminNicknameRejectedError', () => {
+  test.each([
+    ['empty', 'ニックネームを入力してください。'],
+    ['too-long', 'ニックネームは25文字以内で入力してください。'],
+  ] as const)(
+    '違反%sはニックネームの欄の詳細を持つ入力の検証の失敗になる',
+    (violation, message) => {
+      const error = adminNicknameRejectedError(violation);
+
+      expect(error).toBeInstanceOf(AppError);
+      expect(error).toMatchObject({
+        kind: 'bad_request',
+        code: 'validation_error',
+        message: '入力内容を確認してください。',
+      });
+      expect(error.details).toEqual([
+        { field: 'nickname', code: violation, message },
+      ]);
     },
   );
 });
