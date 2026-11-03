@@ -12,6 +12,14 @@ const AdminAccountStore: unique symbol = Symbol.for('admin.AdminAccountStore');
 
 const AdminSessionStore: unique symbol = Symbol.for('admin.AdminSessionStore');
 
+const AdminSessionIssuer: unique symbol = Symbol.for(
+  'admin.AdminSessionIssuer',
+);
+
+const AdminSessionVerifier: unique symbol = Symbol.for(
+  'admin.AdminSessionVerifier',
+);
+
 const AdminAuthTokenStore: unique symbol = Symbol.for(
   'admin.AdminAuthTokenStore',
 );
@@ -43,6 +51,8 @@ export const ADMIN_TYPES = Object.freeze({
   AuditLogReader,
   AdminAccountStore,
   AdminSessionStore,
+  AdminSessionIssuer,
+  AdminSessionVerifier,
   AdminAuthTokenStore,
   AdminLoginChallengeStore,
   AdminTotpCredentialStore,

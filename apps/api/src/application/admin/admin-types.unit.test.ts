@@ -9,6 +9,8 @@ const EXPECTED_NAMES = [
   'AuditLogReader',
   'AdminAccountStore',
   'AdminSessionStore',
+  'AdminSessionIssuer',
+  'AdminSessionVerifier',
   'AdminAuthTokenStore',
   'AdminLoginChallengeStore',
   'AdminTotpCredentialStore',

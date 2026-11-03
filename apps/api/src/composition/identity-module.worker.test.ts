@@ -22,10 +22,7 @@ import type {
 } from '../application/auth/ports.ts';
 import { HashingRecoveryCodeIssuer } from '../application/auth/recovery-code-issuer.ts';
 import { HashingSecretIssuer } from '../application/auth/secret-issuer.ts';
-import {
-  InvalidSubjectSessionVerifier,
-  SubjectSessionVerifier,
-} from '../application/auth/subject-session-verifier.ts';
+import { SubjectSessionVerifier } from '../application/auth/subject-session-verifier.ts';
 import { StoreAccountGuard } from '../application/identity/account-guard.ts';
 import { AccountUploaderEligibility } from '../application/identity/account-uploader-eligibility.ts';
 import {
@@ -135,11 +132,6 @@ const CLASS_BINDINGS: readonly (readonly [
     SentryAuthIncidentReporter,
   ],
   ['UserSessionVerifier', AUTH_TYPES.UserSessionVerifier, UserSessionVerifier],
-  [
-    'AdminSessionVerifier',
-    AUTH_TYPES.AdminSessionVerifier,
-    InvalidSubjectSessionVerifier,
-  ],
   ['UserAccountStore', IDENTITY_TYPES.UserAccountStore, D1UserAccountStore],
   ['UserSessionStore', IDENTITY_TYPES.UserSessionStore, D1UserSessionStore],
   ['AuthTokenStore', IDENTITY_TYPES.AuthTokenStore, D1AuthTokenStore],
@@ -490,7 +482,7 @@ describe('APIサーバーのセッションの検証', () => {
     });
   });
 
-  test('管理者側の呼び出し元は、利用者のセッションを渡しても既定の検証で無効になる', async () => {
+  test('管理者側の呼び出し元は、利用者のセッションを渡しても管理者のセッションの検証で無効になる', async () => {
     const container = createContainer();
     const token = await issueUserSession(container);
 

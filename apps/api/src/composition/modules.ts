@@ -24,6 +24,7 @@ import { D1DatabaseProbe } from '../infrastructure/system/d1-database-probe.ts';
 import { createInternalRoutesModule } from '../presentation/gateway/internal-only.ts';
 import allowlist from '../presentation/graphql/generated/allowlist.json';
 import { createGraphQLModule } from '../presentation/graphql/graphql-module.ts';
+import { ADMIN_MODULE } from './admin-module.ts';
 import { API_EMAIL_MODULE } from './email-module.ts';
 import { GRAPHQL_SCHEMA_MODULES } from './graphql-modules.ts';
 import { IDENTITY_MODULE } from './identity-module.ts';
@@ -94,6 +95,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_EMAIL_MODULE,
   IDENTITY_PLATFORM_MODULE,
   IDENTITY_MODULE,
+  ADMIN_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,
   API_MEDIA_PLATFORM_MODULE,
