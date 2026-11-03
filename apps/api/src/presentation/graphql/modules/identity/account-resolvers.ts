@@ -14,11 +14,8 @@ import type { Withdrawal } from '../../../../application/identity/withdrawal.ts'
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
-import {
-  INPUT_ARGUMENT,
-  withInputPath,
-  withNestedReAuthenticationPath,
-} from './errors.ts';
+import { withInputPath } from '../../field-paths.ts';
+import { INPUT_ARGUMENT, withNestedReAuthenticationPath } from './errors.ts';
 import {
   COMPLETE_SECOND_FACTOR_LOGIN_ARGS,
   CONFIRM_CHANGE_ARGS,

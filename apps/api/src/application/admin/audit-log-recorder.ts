@@ -41,6 +41,8 @@ export interface AuditLogRecorder {
 
 const VALIDATION_ERROR_MESSAGE = '入力内容を確認してください。';
 
+export const AUDIT_REASON_TOO_LONG_MESSAGE = `理由は${String(AUDIT_REASON_MAX)}文字以内で入力してください。`;
+
 const VIOLATION_DETAILS: Readonly<
   Record<
     AuditEntryViolation,
@@ -56,10 +58,7 @@ const VIOLATION_DETAILS: Readonly<
     field: 'reason',
     message: 'この操作には理由を入力できません。',
   },
-  reason_too_long: {
-    field: 'reason',
-    message: `理由は${String(AUDIT_REASON_MAX)}文字以内で入力してください。`,
-  },
+  reason_too_long: { field: 'reason', message: AUDIT_REASON_TOO_LONG_MESSAGE },
   invalid_target: {
     field: 'targets',
     message: '対象の識別子の形式が正しくありません。',

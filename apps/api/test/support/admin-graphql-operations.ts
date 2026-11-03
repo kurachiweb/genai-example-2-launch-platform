@@ -151,6 +151,198 @@ export const ADMIN_AUTH_OPERATIONS: readonly string[] = [
   CONFIRM_ADMIN_EMAIL_CHANGE,
 ];
 
+export type AdminRoleValue = AdminViewerFields['role'];
+
+export interface AdminAccountFields {
+  readonly id: string;
+  readonly email: string;
+  readonly nickname: string | null;
+  readonly title: string | null;
+  readonly avatar: { readonly id: string } | null;
+  readonly role: AdminRoleValue;
+  readonly status: 'ACTIVE' | 'INVITED' | 'INVITATION_EXPIRED';
+  readonly createdAt: string;
+}
+
+const ADMIN_ACCOUNT_FIELDS = /* GraphQL */ `
+  id
+  email
+  nickname
+  title
+  avatar {
+    id
+  }
+  role
+  status
+  createdAt
+`;
+
+export const ADMIN_ACCOUNTS = /* GraphQL */ `
+  query AdminAccounts {
+    adminAccounts {
+      ${ADMIN_ACCOUNT_FIELDS}
+    }
+  }
+`;
+
+export const INVITE_ADMIN = /* GraphQL */ `
+  mutation AdminInvite($email: String!, $reason: String) {
+    inviteAdmin(email: $email, reason: $reason) {
+      ${ADMIN_ACCOUNT_FIELDS}
+    }
+  }
+`;
+
+export const RESEND_ADMIN_INVITATION = /* GraphQL */ `
+  mutation AdminResendInvitation($id: ID!, $reason: String) {
+    resendAdminInvitation(id: $id, reason: $reason) {
+      ${ADMIN_ACCOUNT_FIELDS}
+    }
+  }
+`;
+
+export const DELETE_ADMIN = /* GraphQL */ `
+  mutation AdminDelete($id: ID!, $reason: String) {
+    deleteAdmin(id: $id, reason: $reason)
+  }
+`;
+
+export const CHANGE_ADMIN_ROLE = /* GraphQL */ `
+  mutation AdminChangeRole($id: ID!, $role: AdminRole!, $reason: String) {
+    changeAdminRole(id: $id, role: $role, reason: $reason) {
+      ${ADMIN_ACCOUNT_FIELDS}
+    }
+  }
+`;
+
+export const UPDATE_ADMIN_PROFILE = /* GraphQL */ `
+  mutation AdminUpdateProfile(
+    $id: ID!
+    $nickname: String!
+    $title: String
+    $avatarFileId: ID
+  ) {
+    updateAdminProfile(
+      id: $id
+      nickname: $nickname
+      title: $title
+      avatarFileId: $avatarFileId
+    ) {
+      ${ADMIN_ACCOUNT_FIELDS}
+    }
+  }
+`;
+
+export const REQUEST_ADMIN_EMAIL_CHANGE = /* GraphQL */ `
+  mutation AdminRequestEmailChange(
+    $newEmail: String!
+    $reAuthentication: AdminReAuthenticationInput!
+  ) {
+    requestAdminEmailChange(
+      newEmail: $newEmail
+      reAuthentication: $reAuthentication
+    )
+  }
+`;
+
+export const CHANGE_ADMIN_PASSWORD = /* GraphQL */ `
+  mutation AdminChangePassword(
+    $newPassword: String!
+    $reAuthentication: AdminReAuthenticationInput!
+  ) {
+    changeAdminPassword(
+      newPassword: $newPassword
+      reAuthentication: $reAuthentication
+    )
+  }
+`;
+
+export const START_ADMIN_TOTP_RESET = /* GraphQL */ `
+  mutation AdminStartTotpReset($reAuthentication: AdminReAuthenticationInput!) {
+    startAdminTotpReset(reAuthentication: $reAuthentication) {
+      otpauthUri
+      secret
+      expiresAt
+    }
+  }
+`;
+
+export const COMPLETE_ADMIN_TOTP_RESET = /* GraphQL */ `
+  mutation AdminCompleteTotpReset($totpCode: String!) {
+    completeAdminTotpReset(totpCode: $totpCode) {
+      codes
+    }
+  }
+`;
+
+export const REGENERATE_ADMIN_RECOVERY_CODES = /* GraphQL */ `
+  mutation AdminRegenerateRecoveryCodes(
+    $reAuthentication: AdminReAuthenticationInput!
+  ) {
+    regenerateAdminRecoveryCodes(reAuthentication: $reAuthentication) {
+      codes
+    }
+  }
+`;
+
+export interface AuditLogEntryFields {
+  readonly id: string;
+  readonly occurredAt: string;
+  readonly operator: { readonly id: string; readonly nickname: string | null };
+  readonly action: string;
+  readonly actionLabel: string;
+  readonly targetKind: string | null;
+  readonly targetIds: readonly string[];
+  readonly reason: string | null;
+  readonly detail: readonly { readonly key: string; readonly value: string }[];
+}
+
+export interface AuditLogPageFields {
+  readonly entries: readonly AuditLogEntryFields[];
+  readonly nextCursor: string | null;
+}
+
+export const AUDIT_LOGS = /* GraphQL */ `
+  query AdminAuditLogs($filter: AuditLogFilterInput, $after: String) {
+    auditLogs(filter: $filter, after: $after) {
+      entries {
+        id
+        occurredAt
+        operator {
+          id
+          nickname
+        }
+        action
+        actionLabel
+        targetKind
+        targetIds
+        reason
+        detail {
+          key
+          value
+        }
+      }
+      nextCursor
+    }
+  }
+`;
+
+export const ADMIN_OPERATIONS: readonly string[] = [
+  ...ADMIN_AUTH_OPERATIONS,
+  ADMIN_ACCOUNTS,
+  INVITE_ADMIN,
+  RESEND_ADMIN_INVITATION,
+  DELETE_ADMIN,
+  CHANGE_ADMIN_ROLE,
+  UPDATE_ADMIN_PROFILE,
+  REQUEST_ADMIN_EMAIL_CHANGE,
+  CHANGE_ADMIN_PASSWORD,
+  START_ADMIN_TOTP_RESET,
+  COMPLETE_ADMIN_TOTP_RESET,
+  REGENERATE_ADMIN_RECOVERY_CODES,
+  AUDIT_LOGS,
+];
+
 export const ADMIN_PASSWORD = ['amber', 'falcon', 'river', 'lantern'].join(' ');
 
 export const NEW_ADMIN_PASSWORD = ['quiet', 'meadow', 'copper', 'kite'].join(
@@ -217,6 +409,23 @@ export async function challengeOf(
   return challenge;
 }
 
+// 本物のログインの2段階で、有効な管理者のセッションを発行させる
+export async function signInAdmin(
+  gateway: GraphQLGateway,
+  admin: { readonly email: string; readonly totpSecret: string },
+  password: string = ADMIN_PASSWORD,
+): Promise<string> {
+  const challenge = await challengeOf(gateway, admin.email, password);
+  const response = await gateway.call(COMPLETE_ADMIN_SECOND_FACTOR_LOGIN, {
+    challenge,
+    secondFactor: { totpCode: currentTotpCode(admin.totpSecret) },
+  });
+  if (response.issuedToken === undefined) {
+    throw new Error('ログインできませんでした');
+  }
+  return response.issuedToken;
+}
+
 export function fetchAdminViewer(
   gateway: GraphQLGateway,
   sessionToken: string | undefined,
@@ -235,7 +444,7 @@ export interface AdminTestContext {
 
 // 各テストの前に管理者のテーブル・送ったメール・ログの記録を空にし、外部サービスの偽物を戻す
 export function installAdminGraphQLTest(
-  operations: readonly string[] = ADMIN_AUTH_OPERATIONS,
+  operations: readonly string[] = ADMIN_OPERATIONS,
 ): AdminTestContext {
   const gateway = createAdminGateway({
     documents: operations,

@@ -7,8 +7,6 @@ import { requireAdmin } from '../../admin-guard.ts';
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
-import { mediaFileLoader } from '../media/loaders.ts';
-import { toMediaImage } from '../media/mappers.ts';
 import {
   ADMIN_LOGIN_ARGS,
   COMPLETE_ADMIN_SECOND_FACTOR_LOGIN_ARGS,
@@ -19,6 +17,7 @@ import {
   adminRequestMetaOf,
   type AdminViewerSource,
   assertHuman,
+  avatarOf,
   currentAdminViewer,
   issueSession,
   loadAdminViewer,
@@ -64,19 +63,11 @@ export const loginResolvers = {
     ),
   },
   AdminViewer: {
-    avatar: async (
+    avatar: (
       parent: AdminViewerSource,
       _args: unknown,
       context: GraphQLContext,
-    ) => {
-      if (parent.avatarFileId === null) {
-        return null;
-      }
-      const file = await context.loaders
-        .get(mediaFileLoader)
-        .load(parent.avatarFileId);
-      return file === null ? null : toMediaImage(file);
-    },
+    ) => avatarOf(parent, context),
     remainingRecoveryCodes: (
       parent: AdminViewerSource,
       _args: unknown,

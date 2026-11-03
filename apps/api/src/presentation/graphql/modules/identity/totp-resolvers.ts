@@ -3,7 +3,8 @@ import type { TotpManagement } from '../../../../application/identity/totp-manag
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
-import { INPUT_ARGUMENT, withInputPath } from './errors.ts';
+import { withInputPath } from '../../field-paths.ts';
+import { INPUT_ARGUMENT } from './errors.ts';
 import { ENABLE_TOTP_ARGS, RE_AUTHENTICATION_ARGS } from './inputs.ts';
 import {
   accountGuard,

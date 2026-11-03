@@ -4,6 +4,7 @@ import type { AdminRole } from '../../../../../common-lib/admin/admin-roles.ts';
 import { PLATFORM_TYPES } from '../../../../../lib/core/di/identifiers.ts';
 import { AppError } from '../../../../../lib/core/errors/app-error.ts';
 import type { Clock } from '../../../../../lib/core/time/clock.ts';
+import type { AdminAccountView } from '../../../../application/admin/admin-account-management.ts';
 import { adminError } from '../../../../application/admin/admin-errors.ts';
 import { ADMIN_TYPES } from '../../../../application/admin/admin-types.ts';
 import type {
@@ -12,9 +13,14 @@ import type {
   AdminRequestMeta,
   IssuedAdminSession,
 } from '../../../../application/admin/ports.ts';
+import { REAUTHENTICATION_FAILED_CODE } from '../../../../application/auth/auth-errors.ts';
 import type { Principal } from '../../../../application/session/session-verifier.ts';
+import type { AdminDisplayStatus } from '../../../../domain/admin/admin-account.ts';
 import { requireAdmin } from '../../admin-guard.ts';
+import { withInputPath } from '../../field-paths.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
+import { mediaFileLoader } from '../media/loaders.ts';
+import { type MediaImageModel, toMediaImage } from '../media/mappers.ts';
 
 // 期待する操作名は、管理者側の画面がbot判定の部品に渡す名前と同じにする。利用者側の操作の判定の結果を流用させないよう、利用者側と別の名前にする
 export const ADMIN_BOT_ACTIONS = Object.freeze({
@@ -149,4 +155,61 @@ export async function adminConfirmationResult(
   }
   issueSession(context, session);
   return { viewer: await loadAdminViewer(context, operator.subjectId) };
+}
+
+export type AdminAccountStatusValue =
+  'ACTIVE' | 'INVITED' | 'INVITATION_EXPIRED';
+
+const ADMIN_ACCOUNT_STATUS_VALUES: Readonly<
+  Record<AdminDisplayStatus, AdminAccountStatusValue>
+> = Object.freeze({
+  active: 'ACTIVE',
+  invited: 'INVITED',
+  invitation_expired: 'INVITATION_EXPIRED',
+});
+
+export interface AdminAccountSource {
+  readonly id: string;
+  readonly email: string;
+  readonly nickname: string | null;
+  readonly title: string | null;
+  readonly avatarFileId: string | null;
+  readonly role: AdminRoleValue;
+  readonly status: AdminAccountStatusValue;
+  readonly createdAt: Date;
+}
+
+export const toAdminAccountSource = (
+  view: AdminAccountView,
+): AdminAccountSource => ({
+  ...view,
+  role: ADMIN_ROLE_VALUES[view.role],
+  status: ADMIN_ACCOUNT_STATUS_VALUES[view.status],
+});
+
+// プロフィール画像は一覧の各行で要求されるため、一括読み込みで1回の照会にまとめる
+export async function avatarOf(
+  parent: { readonly avatarFileId: string | null },
+  context: GraphQLContext,
+): Promise<MediaImageModel | null> {
+  if (parent.avatarFileId === null) {
+    return null;
+  }
+  const file = await context.loaders
+    .get(mediaFileLoader)
+    .load(parent.avatarFileId);
+  return file === null ? null : toMediaImage(file);
+}
+
+const RE_AUTHENTICATION_ARGUMENT = 'reAuthentication';
+
+// 本人確認の失敗は本人確認の入力からの相対の経路で返り、他の欄(newPasswordなど)は引数と同じ名前で返るため、本人確認の失敗にだけ引数の名前を足す
+export function withReAuthenticationPath<T>(run: () => Promise<T>): Promise<T> {
+  return withInputPath(
+    (error) =>
+      error.code === REAUTHENTICATION_FAILED_CODE
+        ? RE_AUTHENTICATION_ARGUMENT
+        : undefined,
+    run,
+  );
 }

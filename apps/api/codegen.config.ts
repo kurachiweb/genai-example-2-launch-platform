@@ -17,6 +17,8 @@ const config: CodegenConfig = {
         mappers: {
           Viewer: '../modules/identity/resolver-support.ts#ViewerSource',
           AdminViewer: '../modules/admin/resolver-support.ts#AdminViewerSource',
+          AdminAccount:
+            '../modules/admin/resolver-support.ts#AdminAccountSource',
         },
       },
     },

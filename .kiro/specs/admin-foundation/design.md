@@ -253,13 +253,15 @@ apps/
 │       │   ├── counter-admin-mail-send-limits.ts       # AdminMailSendLimitsの実装(厳密カウンタによる送信回数の制限)
 │       │   └── email-admin-mailer.ts                   # 6種のメールの送信要求とリンクのURL
 │       ├── presentation/graphql/
-│       │   ├── admin-guard.ts                          # requireAdmin(後続specのリゾルバも使う)
+│       │   ├── admin-guard.ts                          # requireAdmin(後続specのリゾルバも使う)・ロールの不足の拒否のログ
+│       │   ├── field-paths.ts                          # ユースケースの詳細の欄に引数の経路を足すwithInputPath(identityと共有)
 │       │   └── modules/admin/                          # スキーマモジュール(Workers統合テスト)
-│       │       ├── type-defs.ts · inputs.ts · errors.ts · resolver-support.ts
-│       │       ├── auth-resolvers.ts                   # ログイン・第2要素・ログアウト・リセット・招待の完了・メール変更の確定
+│       │       ├── type-defs.ts · inputs.ts · resolver-support.ts
+│       │       ├── login-resolvers.ts                  # adminViewer・ログイン・第2要素・ログアウト
+│       │       ├── credential-resolvers.ts             # リセット・招待の完了・メール変更の確定
 │       │       ├── account-resolvers.ts                # 一覧・招待・再送・削除・ロール・プロフィール
-│       │       ├── self-resolvers.ts                   # adminViewer・メール変更の要求・パスワード変更・TOTP・リカバリコード
-│       │       ├── audit-resolvers.ts                  # 監査ログの検索
+│       │       ├── self-resolvers.ts                   # メール変更の要求・パスワード変更・TOTP・リカバリコード
+│       │       ├── audit-log-resolvers.ts              # 監査ログの検索
 │       │       └── index.ts                            # adminSchemaModule
 │       └── composition/
 │           └── admin-module.ts                         # ADMIN_TYPESの束縛とジョブのハンドラー(AppModule)
@@ -1483,7 +1485,7 @@ stateDiagram-v2
 
 ### Monitoring
 
-- ログ(カテゴリ`['api', 'admin', <機能>]`): ログインの成否と理由、ロック、権限の拒否(操作名と必要なロール)、監査ログの検証の違反、日次のジョブの件数。メールアドレス・IP・トークン・パスワード・理由の本文を属性に入れない。
+- ログ(カテゴリ`['api', 'admin', <機能>]`): ログインの成否と理由、ロック、権限の拒否(カテゴリ`['api', 'admin', 'authorization']`に必要なロール。操作名は同じ相関IDのGraphQLの操作のログが持つ)、監査ログの検証の違反、日次のジョブの件数。メールアドレス・IP・トークン・パスワード・理由の本文を属性に入れない。
 - Sentry: 漏洩照合の不能はidentity-authの`AuthIncidentReporter`。プロフィール画像の即時の削除の失敗は`warning`のログ(例外と管理者のID`adminId`だけを添える)に留め、エラートラッキングへ送らない(`MediaFiles.eraseNow`の失敗は`AppError`で、削除待ちの印から日次バッチが完了させるため)。
 
 ## Testing Strategy

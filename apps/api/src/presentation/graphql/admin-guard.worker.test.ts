@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, test } from 'vitest';
+import { resetSync } from '@logtape/logtape';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+} from 'vitest';
 
 import type { AdminRole } from '../../../common-lib/admin/admin-roles.ts';
 import { ADMIN_ACCOUNT_ROLE_CHANGE_ACTION } from '../../../common-lib/admin/audit-actions/admin-foundation.ts';
@@ -7,6 +15,10 @@ import {
   issueAdminSession,
 } from '../../../test/support/admin-graphql-harness.ts';
 import type { GatewayResponse } from '../../../test/support/graphql-gateway.ts';
+import {
+  configureRecordingLogs,
+  type LoggedObject,
+} from '../../../test/support/observability-recording.ts';
 import { D1AdminAccountStore } from '../../infrastructure/admin/d1-admin-account-store.ts';
 import {
   adminIdOf,
@@ -24,6 +36,8 @@ import { defineSchemaModule } from './schema-module.ts';
 
 const SUPER_ADMIN = 1;
 const ADMIN = 2;
+
+const AUTHORIZATION_CATEGORY = 'api.admin.authorization';
 
 const MODERATOR_ONLY = /* GraphQL */ `
   query ModeratorOnly {
@@ -274,5 +288,64 @@ describe('requireSelfOrRole', () => {
     );
 
     expect(codesOf(response)).toEqual(['forbidden']);
+  });
+});
+
+describe('権限の拒否のログ', () => {
+  let logs: LoggedObject[] = [];
+
+  beforeAll(() => {
+    logs = configureRecordingLogs();
+  });
+
+  beforeEach(() => {
+    logs.splice(0);
+  });
+
+  afterAll(() => {
+    resetSync();
+  });
+
+  function denialLogs() {
+    return logs.filter((log) => log.category === AUTHORIZATION_CATEGORY);
+  }
+
+  test('ロールの不足による拒否は、必要なロールを警告のログに残す', async () => {
+    await insertAdmin(ADMIN, { role: 'viewer' });
+    const issued = await issueAdminSession(adminIdOf(ADMIN));
+
+    await gateway.call(MODERATOR_ONLY, {}, { sessionToken: issued.token });
+    await gateway.call(
+      OWNED_BY,
+      { ownerAdminId: adminIdOf(SUPER_ADMIN) },
+      { sessionToken: issued.token },
+    );
+
+    expect(denialLogs()).toEqual([
+      expect.objectContaining({
+        level: 'warning',
+        requiredRole: 'moderator',
+        correlationId: expect.any(String) as string,
+      }),
+      expect.objectContaining({
+        level: 'warning',
+        requiredRole: 'super_admin',
+      }),
+    ]);
+  });
+
+  test('許可・未認証・管理者側でない呼び出し元の拒否はログに残さない', async () => {
+    await insertAdmin(ADMIN, { role: 'moderator' });
+    const issued = await issueAdminSession(adminIdOf(ADMIN));
+
+    await gateway.call(MODERATOR_ONLY, {}, { sessionToken: issued.token });
+    await gateway.call(MODERATOR_ONLY);
+    await gateway.call(
+      MODERATOR_ONLY,
+      {},
+      { caller: 'client', sessionToken: issued.token },
+    );
+
+    expect(denialLogs()).toEqual([]);
   });
 });

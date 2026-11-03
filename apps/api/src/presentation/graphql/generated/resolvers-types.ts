@@ -1,6 +1,6 @@
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
 import type { ViewerSource } from '../modules/identity/resolver-support.ts';
-import type { AdminViewerSource } from '../modules/admin/resolver-support.ts';
+import type { AdminViewerSource, AdminAccountSource } from '../modules/admin/resolver-support.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -22,11 +22,39 @@ export type AccountStatus =
   | 'ACTIVE'
   | 'SUSPENDED';
 
+/** 管理者のアカウント */
+export type AdminAccount = {
+  __typename?: 'AdminAccount';
+  /** 未登録・表示できない画像ではnull */
+  avatar?: Maybe<MediaImage>;
+  createdAt: Scalars['DateTime']['output'];
+  email: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 招待の完了前はnull */
+  nickname?: Maybe<Scalars['String']['output']>;
+  role: AdminRole;
+  status: AdminAccountStatus;
+  title?: Maybe<Scalars['String']['output']>;
+};
+
+/** 管理者の一覧に示す状態 */
+export type AdminAccountStatus =
+  | 'ACTIVE'
+  | 'INVITATION_EXPIRED'
+  | 'INVITED';
+
 /** メールのリンクによる確定の結果 */
 export type AdminConfirmationResult = {
   __typename?: 'AdminConfirmationResult';
   /** 確定の操作をした端末が同じ管理者としてログイン中なら、入れ替えた後の管理者 */
   viewer?: Maybe<AdminViewer>;
+};
+
+/** 重要な操作の本人確認 */
+export type AdminReAuthenticationInput = {
+  /** 本人確認に使う現在のパスワード */
+  currentPassword: Scalars['String']['input'];
+  secondFactor: AdminSecondFactorInput;
 };
 
 /** この応答でだけ見せるリカバリコード */
@@ -76,6 +104,56 @@ export type AdminViewer = {
   remainingRecoveryCodes: Scalars['Int']['output'];
   role: AdminRole;
   title?: Maybe<Scalars['String']['output']>;
+};
+
+/** 監査ログの詳細の1項目 */
+export type AuditDetail = {
+  __typename?: 'AuditDetail';
+  key: Scalars['String']['output'];
+  value: Scalars['String']['output'];
+};
+
+/** 監査ログの1件 */
+export type AuditLogEntry = {
+  __typename?: 'AuditLogEntry';
+  action: Scalars['String']['output'];
+  /** 操作種別の表示名 */
+  actionLabel: Scalars['String']['output'];
+  detail: Array<AuditDetail>;
+  id: Scalars['ID']['output'];
+  occurredAt: Scalars['DateTime']['output'];
+  operator: AuditOperator;
+  reason?: Maybe<Scalars['String']['output']>;
+  targetIds: Array<Scalars['String']['output']>;
+  /** 対象を取らない操作ではnull */
+  targetKind?: Maybe<Scalars['String']['output']>;
+};
+
+/** 監査ログの絞り込みの条件。指定した条件をすべて満たすものだけを返す */
+export type AuditLogFilterInput = {
+  action?: InputMaybe<Scalars['String']['input']>;
+  /** この日時を含まない */
+  occurredBefore?: InputMaybe<Scalars['DateTime']['input']>;
+  /** この日時を含む */
+  occurredFrom?: InputMaybe<Scalars['DateTime']['input']>;
+  operatorId?: InputMaybe<Scalars['ID']['input']>;
+  targetId?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** 監査ログの1ページ(日時の新しい順に50件まで) */
+export type AuditLogPage = {
+  __typename?: 'AuditLogPage';
+  entries: Array<AuditLogEntry>;
+  /** 続きが無ければnull */
+  nextCursor?: Maybe<Scalars['String']['output']>;
+};
+
+/** 監査ログを記録した操作者 */
+export type AuditOperator = {
+  __typename?: 'AuditOperator';
+  id: Scalars['ID']['output'];
+  /** 削除済みの管理者ではnull */
+  nickname?: Maybe<Scalars['String']['output']>;
 };
 
 export type CompleteSecondFactorLoginInput = {
@@ -137,10 +215,16 @@ export type Mutation = {
   adminLogin: AdminSecondFactorRequired;
   /** この端末のログアウト */
   adminLogout: Scalars['Boolean']['output'];
+  /** パスワードの変更。操作した端末へ新しいセッションを発行する */
+  changeAdminPassword: Scalars['Boolean']['output'];
+  /** ロールの変更 */
+  changeAdminRole: AdminAccount;
   /** 招待の完了の2段階目。認証コードで有効化し、ログインする */
   completeAdminInvitation: AdminRecoveryCodeSet;
   /** 認証コードかリカバリコードによるログインの完了 */
   completeAdminSecondFactorLogin: AdminViewer;
+  /** 多要素認証の再設定の完了。操作した端末へ新しいセッションを発行する */
+  completeAdminTotpReset: AdminRecoveryCodeSet;
   /** 認証コードかリカバリコードによるログインの完了 */
   completeSecondFactorLogin: Viewer;
   /** メールアドレス変更の確定 */
@@ -149,18 +233,26 @@ export type Mutation = {
   confirmEmailChange: ConfirmationResult;
   /** パスワード変更の確定 */
   confirmPasswordChange: ConfirmationResult;
+  /** 管理者の削除 */
+  deleteAdmin: Scalars['Boolean']['output'];
   /** 多要素認証の無効化 */
   disableTotp: Scalars['Boolean']['output'];
   /** 多要素認証の有効化 */
   enableTotp: RecoveryCodeSet;
+  /** 閲覧のみのロールで招待し、招待のメールを送る */
+  inviteAdmin: AdminAccount;
   /** メールアドレスとパスワードによるログイン */
   login: LoginResult;
   /** この端末のログアウト */
   logout: Scalars['Boolean']['output'];
+  /** リカバリコードの再発行。操作した端末へ新しいセッションを発行する */
+  regenerateAdminRecoveryCodes: AdminRecoveryCodeSet;
   /** リカバリコードの再発行 */
   regenerateRecoveryCodes: RecoveryCodeSet;
   /** 利用者の登録 */
   registerUser: Viewer;
+  /** メールアドレス変更の要求。重複の有無を問わず同じ結果を返す */
+  requestAdminEmailChange: Scalars['Boolean']['output'];
   /** パスワードリセットの要求。管理者の有無と状態を問わず同じ結果を返す */
   requestAdminPasswordReset: Scalars['Boolean']['output'];
   /** メールアドレス変更の要求 */
@@ -169,6 +261,8 @@ export type Mutation = {
   requestPasswordChange: Scalars['Boolean']['output'];
   /** パスワードリセットの要求。アカウントの有無を問わず同じ結果を返す */
   requestPasswordReset: Scalars['Boolean']['output'];
+  /** 招待中の管理者へ招待のリンクを送り直す */
+  resendAdminInvitation: AdminAccount;
   /** 確認メールの再送 */
   resendVerificationEmail: ResendVerificationResult;
   /** パスワードリセットの確定 */
@@ -181,8 +275,12 @@ export type Mutation = {
   revokeSession: Scalars['Boolean']['output'];
   /** 招待の完了の1段階目。ニックネームとパスワードを仮に保存し、多要素認証の設定を始める */
   startAdminInvitation: AdminTotpSetup;
+  /** 多要素認証の再設定の開始。完了まで現在の設定が有効なまま残る */
+  startAdminTotpReset: AdminTotpSetup;
   /** 多要素認証の設定の開始 */
   startTotpSetup: TotpSetup;
+  /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
+  updateAdminProfile: AdminAccount;
   /** メールアドレスの確認の確定 */
   verifyEmail: Scalars['Boolean']['output'];
   /** 退会 */
@@ -196,6 +294,19 @@ export type MutationAdminLoginArgs = {
 };
 
 
+export type MutationChangeAdminPasswordArgs = {
+  newPassword: Scalars['String']['input'];
+  reAuthentication: AdminReAuthenticationInput;
+};
+
+
+export type MutationChangeAdminRoleArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+  role: AdminRole;
+};
+
+
 export type MutationCompleteAdminInvitationArgs = {
   token: Scalars['String']['input'];
   totpCode: Scalars['String']['input'];
@@ -205,6 +316,11 @@ export type MutationCompleteAdminInvitationArgs = {
 export type MutationCompleteAdminSecondFactorLoginArgs = {
   challenge: Scalars['String']['input'];
   secondFactor: AdminSecondFactorInput;
+};
+
+
+export type MutationCompleteAdminTotpResetArgs = {
+  totpCode: Scalars['String']['input'];
 };
 
 
@@ -228,6 +344,12 @@ export type MutationConfirmPasswordChangeArgs = {
 };
 
 
+export type MutationDeleteAdminArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDisableTotpArgs = {
   input: ReAuthenticationInput;
 };
@@ -238,8 +360,19 @@ export type MutationEnableTotpArgs = {
 };
 
 
+export type MutationInviteAdminArgs = {
+  email: Scalars['String']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationLoginArgs = {
   input: LoginInput;
+};
+
+
+export type MutationRegenerateAdminRecoveryCodesArgs = {
+  reAuthentication: AdminReAuthenticationInput;
 };
 
 
@@ -250,6 +383,12 @@ export type MutationRegenerateRecoveryCodesArgs = {
 
 export type MutationRegisterUserArgs = {
   input: RegisterUserInput;
+};
+
+
+export type MutationRequestAdminEmailChangeArgs = {
+  newEmail: Scalars['String']['input'];
+  reAuthentication: AdminReAuthenticationInput;
 };
 
 
@@ -270,6 +409,12 @@ export type MutationRequestPasswordChangeArgs = {
 
 export type MutationRequestPasswordResetArgs = {
   email: Scalars['String']['input'];
+};
+
+
+export type MutationResendAdminInvitationArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -296,8 +441,21 @@ export type MutationStartAdminInvitationArgs = {
 };
 
 
+export type MutationStartAdminTotpResetArgs = {
+  reAuthentication: AdminReAuthenticationInput;
+};
+
+
 export type MutationStartTotpSetupArgs = {
   input: ReAuthenticationInput;
+};
+
+
+export type MutationUpdateAdminProfileArgs = {
+  avatarFileId?: InputMaybe<Scalars['ID']['input']>;
+  id: Scalars['ID']['input'];
+  nickname: Scalars['String']['input'];
+  title?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -326,14 +484,24 @@ export type PageInfo = {
 
 export type Query = {
   __typename?: 'Query';
+  /** 招待中を含む全管理者を登録の新しい順に返す */
+  adminAccounts: Array<AdminAccount>;
   /** ログイン中の管理者。未ログイン・無効なセッションではnull */
   adminViewer?: Maybe<AdminViewer>;
+  /** 監査ログの検索。変更・削除の操作は無い */
+  auditLogs: AuditLogPage;
   /** ログイン中の端末の一覧 */
   mySessions: Array<UserSessionSummary>;
   /** APIサーバーの時刻とデータベースへの到達可否 */
   systemStatus: SystemStatus;
   /** ログイン中の利用者。未ログイン・無効なセッションではnull */
   viewer?: Maybe<Viewer>;
+};
+
+
+export type QueryAuditLogsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AuditLogFilterInput>;
 };
 
 /** 重要な操作の本人確認 */
@@ -513,13 +681,21 @@ export type ResolversUnionTypes<_RefType extends Record<string, unknown>> = {
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = {
   AccountStatus: AccountStatus;
+  AdminAccount: ResolverTypeWrapper<AdminAccountSource>;
+  AdminAccountStatus: AdminAccountStatus;
   AdminConfirmationResult: ResolverTypeWrapper<Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['AdminViewer']> }>;
+  AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: ResolverTypeWrapper<AdminRecoveryCodeSet>;
   AdminRole: AdminRole;
   AdminSecondFactorInput: AdminSecondFactorInput;
   AdminSecondFactorRequired: ResolverTypeWrapper<AdminSecondFactorRequired>;
   AdminTotpSetup: ResolverTypeWrapper<AdminTotpSetup>;
   AdminViewer: ResolverTypeWrapper<AdminViewerSource>;
+  AuditDetail: ResolverTypeWrapper<AuditDetail>;
+  AuditLogEntry: ResolverTypeWrapper<AuditLogEntry>;
+  AuditLogFilterInput: AuditLogFilterInput;
+  AuditLogPage: ResolverTypeWrapper<AuditLogPage>;
+  AuditOperator: ResolverTypeWrapper<AuditOperator>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
@@ -554,12 +730,19 @@ export type ResolversTypes = {
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
+  AdminAccount: AdminAccountSource;
   AdminConfirmationResult: Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['AdminViewer']> };
+  AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: AdminRecoveryCodeSet;
   AdminSecondFactorInput: AdminSecondFactorInput;
   AdminSecondFactorRequired: AdminSecondFactorRequired;
   AdminTotpSetup: AdminTotpSetup;
   AdminViewer: AdminViewerSource;
+  AuditDetail: AuditDetail;
+  AuditLogEntry: AuditLogEntry;
+  AuditLogFilterInput: AuditLogFilterInput;
+  AuditLogPage: AuditLogPage;
+  AuditOperator: AuditOperator;
   Boolean: Scalars['Boolean']['output'];
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
@@ -590,6 +773,17 @@ export type ResolversParentTypes = {
   Viewer: ViewerSource;
 };
 
+export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminAccount'] = ResolversParentTypes['AdminAccount']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  email?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  role?: Resolver<ResolversTypes['AdminRole'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['AdminAccountStatus'], ParentType, ContextType>;
+  title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
 export type AdminConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminConfirmationResult'] = ResolversParentTypes['AdminConfirmationResult']> = {
   viewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
 };
@@ -617,6 +811,33 @@ export type AdminViewerResolvers<ContextType = GraphQLContext, ParentType extend
   remainingRecoveryCodes?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   role?: Resolver<ResolversTypes['AdminRole'], ParentType, ContextType>;
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AuditDetailResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AuditDetail'] = ResolversParentTypes['AuditDetail']> = {
+  key?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  value?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AuditLogEntryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AuditLogEntry'] = ResolversParentTypes['AuditLogEntry']> = {
+  action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  actionLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  detail?: Resolver<Array<ResolversTypes['AuditDetail']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  occurredAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  operator?: Resolver<ResolversTypes['AuditOperator'], ParentType, ContextType>;
+  reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  targetIds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  targetKind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AuditLogPageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AuditLogPage'] = ResolversParentTypes['AuditLogPage']> = {
+  entries?: Resolver<Array<ResolversTypes['AuditLogEntry']>, ParentType, ContextType>;
+  nextCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AuditOperatorResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AuditOperator'] = ResolversParentTypes['AuditOperator']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type ConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ConfirmationResult'] = ResolversParentTypes['ConfirmationResult']> = {
@@ -655,29 +876,39 @@ export type MediaImageResolvers<ContextType = GraphQLContext, ParentType extends
 export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   adminLogin?: Resolver<ResolversTypes['AdminSecondFactorRequired'], ParentType, ContextType, RequireFields<MutationAdminLoginArgs, 'email' | 'password'>>;
   adminLogout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  changeAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationChangeAdminPasswordArgs, 'newPassword' | 'reAuthentication'>>;
+  changeAdminRole?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationChangeAdminRoleArgs, 'id' | 'role'>>;
   completeAdminInvitation?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationCompleteAdminInvitationArgs, 'token' | 'totpCode'>>;
   completeAdminSecondFactorLogin?: Resolver<ResolversTypes['AdminViewer'], ParentType, ContextType, RequireFields<MutationCompleteAdminSecondFactorLoginArgs, 'challenge' | 'secondFactor'>>;
+  completeAdminTotpReset?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationCompleteAdminTotpResetArgs, 'totpCode'>>;
   completeSecondFactorLogin?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationCompleteSecondFactorLoginArgs, 'input'>>;
   confirmAdminEmailChange?: Resolver<ResolversTypes['AdminConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmAdminEmailChangeArgs, 'token'>>;
   confirmEmailChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmEmailChangeArgs, 'token'>>;
   confirmPasswordChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmPasswordChangeArgs, 'token'>>;
+  deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
+  inviteAdmin?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationInviteAdminArgs, 'email'>>;
   login?: Resolver<ResolversTypes['LoginResult'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'input'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  regenerateAdminRecoveryCodes?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateAdminRecoveryCodesArgs, 'reAuthentication'>>;
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
+  requestAdminEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminEmailChangeArgs, 'newEmail' | 'reAuthentication'>>;
   requestAdminPasswordReset?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminPasswordResetArgs, 'email'>>;
   requestEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestEmailChangeArgs, 'input'>>;
   requestPasswordChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestPasswordChangeArgs, 'input'>>;
   requestPasswordReset?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestPasswordResetArgs, 'email'>>;
+  resendAdminInvitation?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationResendAdminInvitationArgs, 'id'>>;
   resendVerificationEmail?: Resolver<ResolversTypes['ResendVerificationResult'], ParentType, ContextType>;
   resetAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetAdminPasswordArgs, 'newPassword' | 'token'>>;
   resetPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetPasswordArgs, 'input'>>;
   revokeOtherSessions?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   revokeSession?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokeSessionArgs, 'id'>>;
   startAdminInvitation?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminInvitationArgs, 'nickname' | 'password' | 'token'>>;
+  startAdminTotpReset?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminTotpResetArgs, 'reAuthentication'>>;
   startTotpSetup?: Resolver<ResolversTypes['TotpSetup'], ParentType, ContextType, RequireFields<MutationStartTotpSetupArgs, 'input'>>;
+  updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
 };
@@ -695,7 +926,9 @@ export type PageInfoResolvers<ContextType = GraphQLContext, ParentType extends R
 };
 
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+  adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
+  auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
@@ -743,11 +976,16 @@ export type ViewerResolvers<ContextType = GraphQLContext, ParentType extends Res
 };
 
 export type Resolvers<ContextType = GraphQLContext> = {
+  AdminAccount?: AdminAccountResolvers<ContextType>;
   AdminConfirmationResult?: AdminConfirmationResultResolvers<ContextType>;
   AdminRecoveryCodeSet?: AdminRecoveryCodeSetResolvers<ContextType>;
   AdminSecondFactorRequired?: AdminSecondFactorRequiredResolvers<ContextType>;
   AdminTotpSetup?: AdminTotpSetupResolvers<ContextType>;
   AdminViewer?: AdminViewerResolvers<ContextType>;
+  AuditDetail?: AuditDetailResolvers<ContextType>;
+  AuditLogEntry?: AuditLogEntryResolvers<ContextType>;
+  AuditLogPage?: AuditLogPageResolvers<ContextType>;
+  AuditOperator?: AuditOperatorResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   LoginResult?: LoginResultResolvers<ContextType>;
