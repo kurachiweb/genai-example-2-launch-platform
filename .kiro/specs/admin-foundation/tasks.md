@@ -61,7 +61,7 @@
   - _Boundary: AdminAccountRules, AdminSessionPolicy, AdminAuthTokenPurpose_
   - _Requirements: 1.4, 3.5, 8.2, 8.3, 14.2, 15.4, 15.5, 15.7, 16.4_
 
-- [ ] 2.2 (P) 監査ログの記録の入力を検証する規則を作る
+- [x] 2.2 (P) 監査ログの記録の入力を検証する規則を作る
   - 先に、未登録の操作種別、理由が必須で空・任意で空・不要なのに値あり・501書記素、ユーザーの対象が仮名化IDの形式でない値、対象の上限超、対象を取らない種別への対象、登録外の詳細の鍵と101文字の値を確かめる単体テストを書く
   - 理由は前後の空白を除いて空なら未入力として扱い、検証済みの理由を返す
   - 完了状態: 単体テストが成功し、違反ごとに異なる理由が返る
@@ -312,3 +312,4 @@
 - 1.6: 共有のエラーの定義・文言・`createPasswordRejectedError`・`MAIL_SEND_POLICY`は`apps/api/src/application/auth/`(`auth-errors.ts`・`password-rejection.ts`・`mail-send-policy.ts`)。管理者側は`application/admin/admin-errors.ts`(`ADMIN_ERRORS`・`adminError`・`adminPasswordRejectedError`・`ADMIN_PASSWORD_MATCHES_IDENTITY_MESSAGE`)。`reauthentication_failed`のコード・`CURRENT_PASSWORD_INCORRECT_MESSAGE`・`loginThrottledError`は`auth/auth-errors.ts`から読む。利用者側の`application/identity/password-rejection.ts`は利用者の文言で組み立てた`passwordRejectedError`だけを持つ。6.2の`CounterAdminMailSendLimits`は`MAIL_SEND_POLICY`を読み、規則の名前の接頭辞だけを管理者用にする。`admin`から`identity`への読み込みを禁じる静的解析の規則は8.1で加える
 - 1.7: `otpauth`9.6.0は`validate`の`afterCounter`・文字列の秘密鍵・数字以外の認証コードの拒否・`URI.parse`の厳格化を加えるだけで、`toString`と`validate`の時間窓の差の返し方は変わらない。`bun.lock`の行数は変わらず`.betterleaksignore`の`apps/api/bun.lock:392`の登録はそのまま有効。開発コンテナのInfisicalが未ログインでサーバーを起動できないため、利用者の多要素認証のE2E(`e2e/client/auth/two-factor.e2e.test.ts`)と実際の認証アプリでのQRコードの読み取りと照合は未実施で、開発者の手作業として12.4の報告に載せる
 - 2.1: 規則は`apps/api/src/domain/admin/`(`admin-account.ts`・`admin-session-policy.ts`・`admin-auth-token-purpose.ts`)。可否の判定は許可なら`undefined`を返し、削除は自分自身→ロール不足→最上位管理者が対象の順に判定する。最後の最上位管理者の保護はユースケースが持つ。セッションはidentity-authの`evaluateSession`・`newSessionTimes`・`cookieMaxAgeSeconds`に`ADMIN_SESSION_POLICY`を渡す。トークンのハッシュの用途は`ADMIN_HASH_PURPOSES.authToken(purpose)`で、名前は技術ガイドの「小文字とハイフン」とidentity-authの`user-auth-token-email-change`の形に合わせて`admin-auth-token-invitation`・`admin-auth-token-email-change`・`admin-auth-token-password-reset`にした(design.mdの`admin-auth-token:<用途>`も改めた。9.1の招待の発行コマンドはこの名前を使う)。状態とトークンの用途の値と列の`enumValues`の一致は`application/admin/admin-columns.unit.test.ts`
+- 2.2: `apps/api/src/domain/admin/audit-entry.ts`の`validateAuditEntry`は未登録の種別→理由→対象→詳細の順に判定して最初の違反だけを返し、対象は「対象を取らない種別」→件数の上限→形式の順。ユーザーの対象は`z.uuid()`(仮名化IDは`crypto.randomUUID()`の小文字のUUID。`z.uuid()`は大文字も通すため、照会の値は保存したIDから取る)、詳細の値は100書記素まで、文字列以外は拒否。成功時は整えた理由か`null`を返す。対象のIDの重複は除かない(3.1の`prepare`で判断する)。`apps/backend-lib/workers/identity/testing/identity-store-fixtures.ts`の偽物の仮名化ID(`pseudonymous-<番号>`)はUUIDの形でないため、ユーザーを対象に監査ログを記録するWorkers統合テストではUUIDの仮名化IDを使う
