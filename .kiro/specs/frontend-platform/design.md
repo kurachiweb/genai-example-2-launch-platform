@@ -248,6 +248,8 @@ apps/
 │   │   ├── forms/disabled-field-errors.ts          # 無効の欄の検証エラーを取り除くresolverの包み(withoutDisabledFieldErrors)
 │   │   ├── forms/revalidation-targets.ts           # スキーマの切り替えで検証し直す欄の名前(revalidationTargetsOf、判断37・40。描かれているかはisFieldMounted、触れた欄はisFieldTouchedで受ける)
 │   │   ├── forms/reserved-field-names.ts           # (第4回の判断41)既定値の入れ子のキーのうち欄のエラーの末端と区別できない名前(type・message・types・ref)の経路(reservedFieldNamePathsOf)
+│   │   ├── bot-protection/token-waiters.ts        # 次のbot判定のトークンの待ち(届いた順に1つずつ渡す・上限・解除)
+│   │   ├── bot-protection/send-with-turnstile.ts  # sendWithTurnstile: bot判定の失敗(bot_verification_failed)の時だけ次のトークンで1回送り直す
 │   │   ├── messages/state-messages.ts              # 404・想定外のエラー・利用不可・読み込み中・再試行・お問い合わせの文言(UNEXPECTED_ERROR_MESSAGE・UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT・RETRY_LATER_GUIDANCE・CONTACT_GUIDANCEを含む)
 │   │   ├── messages/app-shell-messages.ts          # 「本文へ移動」・配色の切替ボタンの名前
 │   │   ├── messages/bot-protection-messages.ts     # BOT_CHECK_FAILED_MESSAGE
@@ -1972,7 +1974,10 @@ export interface SubmitErrorContext {
 export interface AppFormProps<
   TFieldValues extends FieldValues,
   TTransformedValues,
-> extends Omit<ComponentProps<'form'>, 'onSubmit' | 'noValidate'> {
+> extends Omit<
+  ComponentProps<'form'>,
+  'onSubmit' | 'noValidate' | 'method' | 'ref'
+> {
   readonly form: UseFormReturn<TFieldValues, unknown, TTransformedValues>;
   readonly onSubmit: (values: TTransformedValues) => Promise<void> | void; // 失敗は例外で知らせる(GraphQLの失敗はrequireDataの例外)
   readonly onSubmitError: (error: unknown, context: SubmitErrorContext) => void; // 必須。欄に対応しない詳細と想定外の失敗を受ける
@@ -2022,7 +2027,9 @@ export declare function applyServerFieldErrors<T extends FieldValues>(
 ```
 
 - `mode: 'onTouched'`で、最初にフォーカスを外した時に検証し、以降は入力のたびに検証する(8.2)。
-- `AppForm`は`FormProvider`と`noValidate`の`<form>`を描き、`onSubmit`の例外の`GraphQLClientError.details`から`serverFieldPrefix`の`<接頭辞>.`を外して`applyServerFieldErrors`へ渡す。詳細が無いか欄に対応しない詳細が残れば`onSubmitError(error, { unmatched })`を呼ぶ。想定外の失敗をSentryへ送るかは利用側の責任である。`onSubmitError`自体の例外は`globalThis.reportError`へ渡す。重ねての送信は`submittingRef`で止める。APIの`field`は引数のパスを`.`でつなぐため、`input`を取るmutationでは`serverFieldPrefix="input"`を渡す。
+- `AppForm`は`FormProvider`と`noValidate`・`method="post"`の`<form>`を描き、`onSubmit`の例外の`GraphQLClientError.details`から`serverFieldPrefix`の`<接頭辞>.`を外して`applyServerFieldErrors`へ渡す。詳細が無いか欄に対応しない詳細が残れば`onSubmitError(error, { unmatched })`を呼ぶ。想定外の失敗をSentryへ送るかは利用側の責任である。`onSubmitError`自体の例外は`globalThis.reportError`へ渡す。重ねての送信は`submittingRef`で止める。APIの`field`は引数のパスを`.`でつなぐため、`input`を取るmutationでは`serverFieldPrefix="input"`を渡す。
+- 送信の方法(「決定事項」): 送信は常にJavaScriptのGraphQL(POST)で行い、`<form>`の素の送信は`preventDefault`で止める。JavaScriptが動かない状況で素の送信が起きても入力(パスワードなど)がGETでURLに載らないよう、`method="post"`を常に付ける。propsの型から`method`と`ref`を除き、`method`は展開の後に置いて上書きさせない。
+- 水和の前の入力(「決定事項」): 遅い回線やブラウザの自動入力で水和の前に入力欄へ入った値は、DOMに残ってもフォームの状態に入らず、`SubmitButton`が無効のまま残る。このため`AppForm`はマウント時の`useEffect`で、`<form>`の中のテキスト系の入力欄(`input`の`text`・`email`・`password`・`search`・`tel`・`url`と`textarea`)のDOMの値を`form.getValues(name)`と比べ、描かれている欄(`mountStateOf(form.control._fields, name) === true`)で現在の値が文字列かつ異なれば`setValue(name, value, { shouldValidate: true, shouldDirty: true })`で取り込んで検証し直す。登録されていない名前(Turnstileの隠し欄`cf-turnstile-response`など)と、水和の前に値が変わらないチェックボックス・ラジオ・ファイルは対象にしない。`FormField`は`useController`の`field.name`を入力欄へ渡すため、DOMの`name`がフォームの欄の経路になる。
 - `onSubmitError(error, { unmatched })`で利用側が出す失敗の文言は`errorMessageOf(error, profile.contactAvailable)`で選ぶ(8.13、GraphqlExecutor・GraphqlResult)。`AppForm`自体は文言を出さない。
 - `SubmitButton`は任意の`disabled?: boolean`を受け(判断35)、`disabled`が真の間か、未入力・検証エラー、またはサーバーの欄のエラーが残る間(`disabled === true || ((!isValid || hasFieldErrors) && !isSubmitting)`)は`disabled`、送信中は`aria-disabled`・`aria-busy`と「送信中」を示す(8.3・8.4)。送信中に`disabled`にするとChromiumがフォーカスを`<body>`へ移して戻さないためである。このため`button-variants.ts`に`aria-disabled:pointer-events-none aria-disabled:opacity-50`を付ける(全Buttonに効く)。
 - サーバーの欄のエラー(8.3、「決定事項」): React Hook Formの`setError`は`isValid`を偽にするが、どれか1欄の再検証で`isValid`はスキーマ全体の検証の結果に戻り、他の欄に`setError`で付けたエラーを数えない。このため`SubmitButton`は`useFormState()`の`errors`も購読し、`root`を除く欄のエラーが1つでも残る間(`hasFieldErrors`)を無効にする。検証エラーは`isValid`も偽にするため、この条件で増えるのはサーバーの欄のエラーと利用側が`setError`で欄に付けたエラーだけである。欄のサーバーのエラーは、送信の後の再検証(`reValidateMode: 'onChange'`)でその欄を入力し直すとその欄の分だけ消える(既存の振る舞い)。`errors.root`は欄の再検証で消えず次の送信まで残るため、数えない。`AppForm`の処理(`applyServerFieldErrors`で欄へ付ける・欄に対応しない詳細を`onSubmitError`へ渡す)は`SubmitButton`の条件に関わらない。
@@ -2070,11 +2077,22 @@ export interface TurnstileTokenState {
   readonly token: string | undefined;
   readonly status: TurnstileStatus;
   consume(): string | undefined; // 1回だけ返してreset()する
+  waitForToken(): Promise<string | undefined>; // 受け取り済みならconsume()と同じ。無ければ次のトークンを待って取り出す。上限(TOKEN_WAIT_TIMEOUT_MS)・期限切れ・判定の失敗・アンマウントではundefined
 }
 export interface TurnstileTokenController extends TurnstileTokenState {
   readonly widgetProps: TurnstileWidgetProps;
 }
 export declare function useTurnstileToken(): TurnstileTokenController;
+
+// utilities/bot-protection/send-with-turnstile.ts
+export interface TurnstileTokenSource {
+  consume(): string | undefined;
+  waitForToken(): Promise<string | undefined>;
+}
+export declare function sendWithTurnstile<TResult>(
+  turnstile: TurnstileTokenSource,
+  send: (token: string | undefined) => Promise<TResult>,
+): Promise<TResult>; // consume()のトークンで送り、bot_verification_failedならwaitForToken()のトークンで1回だけ送り直す。得られなければ元の失敗を投げる
 
 // components/bot-protection/turnstile-script-failure.ts(ページの中で1つの記録。サーバーでは記録しない)
 export declare function recordTurnstileScriptFailure(): void; // スクリプトの要素のerrorで呼ぶ。2回目以降は何もしない
@@ -2085,9 +2103,10 @@ export declare function subscribeTurnstileScriptFailure(
 export declare function resetTurnstileScriptFailure(): void; // テストとカタログが記録を消すためだけに使う
 ```
 
-- 使い方は`const t = useTurnstileToken(); <TurnstileWidget {...t.widgetProps} action="..." />`で、送信時に`t.consume()`を`ExecuteOptions.turnstileToken`(または`GraphQLMutationInput.turnstileToken`)へ渡す。期限切れも`reset()`し、ウィジェット自身の更新は止める(`refreshExpired: 'never'`)。
+- 使い方は`const t = useTurnstileToken(); <TurnstileWidget {...t.widgetProps} action="..." />`で、フォームの送信は`sendWithTurnstile(t, (turnstileToken) => mutation.mutateAsync({ variables, turnstileToken }))`で行う。`ExecuteOptions.turnstileToken`へ直接渡す時は`t.consume()`を使う。期限切れも`reset()`し、ウィジェット自身の更新は止める(`refreshExpired: 'never'`)。
 - `TurnstileWidget`は`@marsidev/react-turnstile`の`Turnstile`に、`appRuntimeOf(router.options.context).publicConfig.turnstileSiteKey`、`scriptOptions`(`nonce`は`router.options.ssr?.nonce`、`defer`・`async`)、`options`(`action`・`refreshExpired: 'never'`・`theme`は`useTheme()`の配色・`size: 'invisible'`)を渡し、スクリプトはライブラリがマウント後に読み込む(14.2)。ルーターの文脈から読むため`RouterProvider`の下に置く。配色が変わるとウィジェットは作り直されるが、受け取り済みのトークンの状態は保つ。
 - 表示(8.8・7.2): `size: 'invisible'`は`@marsidev/react-turnstile`独自の指定で、ウィジェットの入れ物を描かず場所を取らない。Cloudflare側のウィジェットの種類も非表示(Invisible)にし、利用者に判定の枠を見せない。幅320pxでの横スクロールの検査の対象にウィジェットは入らない。サイトキーはアプリごとに1つで、ローカルは常に成功し表示しないテスト用の`1x00000000000000000000BB`、staging・prodはinfra-deliveryが非表示の種類のウィジェットで用意する。ウィジェットを置くspecは、判定の枠の表示と場所を画面に設けない。
+- 最初のトークンを待つ送り直し(「決定事項」): 非表示のウィジェットは画面を開いた後と`consume()`の`reset()`の後にトークンを取り直すため、その間の送信はトークン無しでbot判定に失敗する(GraphQLの`bot_verification_failed`)。`sendWithTurnstile`はこの失敗(`GraphQLClientError`の`code`が`bot_verification_failed`)に限り、`waitForToken()`で次のトークンを待って1回だけ送り直す。CSRF(`csrf_rejected`)など他の失敗と、送り直しの失敗はそのまま投げる。待ちは`utilities/bot-protection/token-waiters.ts`が届いた順に1つのトークンを1つの待ちへ渡し、同じトークンを2回使わない。上限は`TOKEN_WAIT_TIMEOUT_MS`(10秒)で、期限切れ・判定の失敗・スクリプトの読み込みの失敗・アンマウントでは待ちを`undefined`で解く。判定に失敗済み(`status`が`'error'`)なら待たない。
 - 失敗時(8.9)は`FormMessage`の`role="alert"`で`BOT_CHECK_FAILED_MESSAGE`(「認証に失敗しました。ページを再読み込みして再度お試しください。」、backend-libの`turnstile-verifier.ts`の写し)を表示する。
 - スクリプトの読み込みの失敗の共有(8.9、「決定事項」): `@marsidev/react-turnstile`は同じ`id`のスクリプトの要素が文書にあれば読み込みを始めず、`scriptOptions.onError`は要素を加えた最初のインスタンスにしか届かない。失敗した要素は文書に残るため、2つ目のウィジェットや描き直したウィジェットは読み込みを待ったまま`idle`で止まる。このため`TurnstileWidget`は`scriptOptions.onError`で`recordTurnstileScriptFailure()`を呼び、すべてのインスタンスが`useSyncExternalStore(subscribeTurnstileScriptFailure, hasTurnstileScriptFailed, () => false)`で記録を読む。記録がある間は`Turnstile`を描かず、記録を読んだ時(マウント時に既にある場合と、マウント中に記録された場合)に`onError()`を1回呼んで`status`を`'error'`にし、失敗の文言を出す。最初のインスタンスも同じ経路で`onError()`を受けるため、`scriptOptions.onError`から直接は呼ばない。記録はページの再読み込みまで残り、失敗の文言(「ページを再読み込みして」)と合う。サーバーの描画では記録を読まない(`getServerSnapshot`は常に偽)ため、要求の間で記録が共有されることは無い。判定の失敗(`onError`の`error-callback`)はウィジェットごとで、記録しない。
 

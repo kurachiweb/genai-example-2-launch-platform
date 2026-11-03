@@ -213,6 +213,7 @@ function StatusRoute() {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { graphqlMutationOptions } from '<共通部品の配置先>/start/graphql/graphql-query-options.ts';
+import { sendWithTurnstile } from '<共通部品の配置先>/utilities/bot-protection/send-with-turnstile.ts';
 import { documentIdOf } from '<共通部品の配置先>/utilities/graphql/persisted-document.ts';
 
 const queryClient = useQueryClient();
@@ -224,13 +225,12 @@ const updateProduct = useMutation({
     }),
 });
 
-await updateProduct.mutateAsync({
-  variables: { input: values },
-  turnstileToken: turnstile.consume(),
-});
+await sendWithTurnstile(turnstile, (turnstileToken) =>
+  updateProduct.mutateAsync({ variables: { input: values }, turnstileToken }),
+);
 ```
 
-- `mutate`・`mutateAsync`には`{ variables, turnstileToken }`を渡す。bot判定を求める操作は、`useTurnstileToken`の`consume()`で取り出したトークンを`turnstileToken`に入れる(「[bot判定のウィジェット](005-shared-components.md#bot判定のウィジェット)」)。
+- `mutate`・`mutateAsync`には`{ variables, turnstileToken }`を渡す。bot判定を求める操作は、`sendWithTurnstile`が`useTurnstileToken`から取り出したトークンを`turnstileToken`に入れる。最初のトークンが届く前の送信がbot判定に失敗した時は、次のトークンで1回だけ送り直す(「[bot判定のウィジェット](005-shared-components.md#bot判定のウィジェット)」)。
 - 変更の後は、影響する取得を`invalidateQueries`で無効にする。キーの先頭が操作の識別子のため、`[documentIdOf(<文書>)]`でその操作のすべての変数の取得をまとめて無効にできる。
 - 変更の`mutationKey`は`[<操作の識別子>]`である。
 - フォームから変更するときは、`AppForm`の`onSubmit`で`mutateAsync`を待つ。失敗の`GraphQLClientError`の`details`は欄のエラーになり、欄に対応しない詳細と詳細の無い失敗は`onSubmitError`へ渡る(「[フォーム](005-shared-components.md#フォーム)」)。入力の検証の詳細の`field`は引数からのパス(`input.title`など)のため、`serverFieldPrefix`で引数の名前を外す。
