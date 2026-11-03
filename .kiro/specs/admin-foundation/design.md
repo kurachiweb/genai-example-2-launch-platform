@@ -278,6 +278,7 @@ apps/
     ├── components/
     │   ├── auth/login-form.tsx · second-factor-form.tsx · password-reset-request-form.tsx · new-password-form.tsx
     │   ├── auth/invitation-profile-step.tsx · invitation-totp-step.tsx · link-confirmation.tsx · auth-form-schemas.ts
+    │   ├── auth/use-admin-viewer.ts · use-admin-viewer-refresh.ts   # 区画が取得のキャッシュから管理者を読む・取得を無効にして取り直す
     │   ├── layout/admin-navigation.tsx · admin-account-menu.tsx · admin-viewer-context.tsx · role-gate.tsx
     │   ├── dashboard/dashboard-grid.tsx · dashboard-card-frame.tsx
     │   ├── admins/admin-list.tsx · invite-admin-dialog.tsx · change-role-dialog.tsx · admin-profile-dialog.tsx
@@ -289,6 +290,7 @@ apps/
     │   ├── dashboard-cards.ts                          # DASHBOARD_CARDS(後続specが追記、初版は空)
     │   └── layout-slots.ts                             # (変更)navigation・headerAccount
     └── graphql/
+        ├── admin-viewer.ts                             # adminViewerQueryOptions・toAdminViewer・loadRootAuthContext(取得の失敗は未ログイン、単体テスト併置)
         ├── operations/admin/                           # 1ファイル1操作の*.graphql。操作名はAdminで始める(例: viewer.graphqlのAdminViewer)
         │   ├── viewer.graphql
         │   └── auth/*.graphql · account/*.graphql · self/*.graphql · audit/*.graphql
@@ -1302,6 +1304,7 @@ export declare const DASHBOARD_CARDS: readonly DashboardCard[]; // 初版は空
 - `__root.tsx`の`beforeLoad`: `adminViewer`を取得して文脈に入れる(失敗は未ログイン)。`_authenticated/route.tsx`: `viewer`が無ければ`redirect({ to: '/auth/login', search: { redirect } })`(8.5)。`AdminViewerProvider`でロールを配る。ログイン中に`/auth/login`を開いたら`/`へ移動する(20.8)。
 - `RoleGate({ minimum, fallback?, children })`と`useAdminRole()`: `hasRole`で判定する(17.5)。
 - `AdminNavigation`(`navigation`の区画): 自身で名前付きの`nav`を描き、管理者側の画面シェルのナビゲーションのランドマークを満たす(`AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ち、フッターを持たない。frontend-platformの要件10.8)。PCは左の縦の一覧、768px未満は`Sheet`で、開閉ボタンはヘッダーと本文の間(区画の位置)に出る。現在の項目は`aria-current="page"`(20.3)。`AdminAccountMenu`(`headerAccount`): `AdminAvatar`・ニックネーム・ロールの表示名、自分のアカウント・ログアウト(20.2)。
+- 未ログインのときの区画: `AdminLayout`はルートの`shellComponent`にあり、2つの区画の部品は`/auth/*`・404・エラーのページにも描かれる。区画の型は静的な`ComponentType | null`で、ページごとに外せない。また、エラーと404のページではルートの文脈を読めない。そこで2つの部品は、利用者側の`useViewer`と同じく、ルートの`beforeLoad`(`loadRootAuthContext`)が入れた取得のキャッシュを`useAdminViewer()`(`useQuery`に`adminViewerQueryOptions()`と`select: toAdminViewer`を渡す)で読む。取得の前と取得の失敗は未ログインとして扱う。未ログインなら、`AdminNavigation`は`nav`を含めて何も描かず、`AdminAccountMenu`も何も描かない(`null`を返す)。管理者側には新規登録が無く、未ログインで開ける画面は`/auth/*`の認証の画面だけのため、ログインへの導線も置かない。ログアウト・メールのリンクの確定・セッションの入れ替えの後は、`useAdminViewerRefresh()`で取得を無効にし`router.invalidate()`でルートの`beforeLoad`に取り直させ、区画を消すか描き直す(利用者側の`useViewerRefresh`と同じ形)。
 
 #### AdminAuthPages・InvitationPages・AdminsPage・AuditLogsPage・AccountPage
 
@@ -1471,7 +1474,7 @@ stateDiagram-v2
   - プロフィールの編集と画像の登録・既定のアイコン、パスワードリセット、メールアドレス変更、パスワード変更、TOTPの再設定(16.1・9.4・10.4・11.2・12.2)。
   - 監査ログで招待・ロール変更・削除が表示され、操作種別と期間で絞り込める(19.1・19.2)。
   - E2Eの補助の確認: `signInAsNewAdmin`で閲覧のみ・モデレーター・最上位管理者を用意し、それぞれのロールでヘッダーのロールの表示とロールによる操作の出し分けが変わること、`signInAdmin`で再ログインできること(17.5・20.2)。
-- **ブラウザテスト**(Vitest Browser Mode): 共通部品(表の状態、確認のダイアログの理由の必須、カテゴリマスタの編集とシステム標準の削除不可、`ReasonField`の文字数と注意)、`RoleGate`、`DashboardGrid`の空状態と1つのカードの失敗の分離(20.7、問い合わせのボタンと問い合わせを促す文が出ないこと)、`AdminNavigation`の名前付きの`nav`と`aria-current`、各フォームの検証、`runAxe`の違反0件(20.9・21.4)。
+- **ブラウザテスト**(Vitest Browser Mode): 共通部品(表の状態、確認のダイアログの理由の必須、カテゴリマスタの編集とシステム標準の削除不可、`ReasonField`の文字数と注意)、`RoleGate`、`DashboardGrid`の空状態と1つのカードの失敗の分離(20.7、問い合わせのボタンと問い合わせを促す文が出ないこと)、`AdminNavigation`の名前付きの`nav`と`aria-current`、未ログイン(取得の前・失敗)で`AdminNavigation`・`AdminAccountMenu`が何も描かないこと、各フォームの検証、`runAxe`の違反0件(20.9・21.4)。
 
 ## Security Considerations
 
