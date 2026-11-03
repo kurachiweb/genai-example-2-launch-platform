@@ -312,7 +312,7 @@ docs/GUIDES/tech/
 - `apps/api/src/composition/session.ts` — `AUTH_TYPES.AdminSessionVerifier`を`ADMIN_TYPES.AdminSessionVerifier`への転送に差し替える(他の束縛は変えない)。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`upload-purposes.ts`・`env-schema.ts` — `ADMIN_PLATFORM_MODULE`・`ADMIN_MODULE`、`adminSchemaModule`、2つのジョブ、`admin-avatar`、`ADMIN_SITE_ORIGIN`の検証を加える。
 - `apps/event/src/composition/modules.ts` — `ADMIN_PLATFORM_MODULE`を加える(後続specのデータエクスポートの部品が`AdminDirectory`を使うため)。
-- `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 3環境の`vars`に`ADMIN_SITE_ORIGIN`を加え、型を生成し直す。
+- `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 3環境の`vars`に`ADMIN_SITE_ORIGIN`を加え、型を生成し直す。`apps/api/test/config/wrangler-config.unit.test.ts`は`vars`を完全一致で照合するため、期待に3環境の`ADMIN_SITE_ORIGIN`を加える。
 - `apps/api/package.json` — `admin:invite-super-admin`(`bun scripts/admin/issue-super-admin-invitation.ts`)を加える。
 - `apps/api/eslint.config.ts`・`test/config/layer-rules.unit.test.ts` — `admin`の各層から`identity`の各層への読み込みの禁止と違反例を加える。
 - `apps/client/src/components/auth/*`(identity-auth) — `return-path.ts`・`fragment-token.ts`の読み込み先を`frontend-lib/utilities/auth/`へ直す。
