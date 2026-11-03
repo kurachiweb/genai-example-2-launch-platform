@@ -545,7 +545,7 @@ export declare function buildInvitationSql(input: {
 ```
 
 - 実行: `infisical --telemetry=false run --env <dev|staging|prod> -- bun run admin:invite-super-admin -- --target <local|staging|prod> --email <アドレス>`(`apps/api`で)。シークレット`HASH_PEPPER`はInfisicalの注入で受け取る(workerdではなくBunで動くコマンドのため、環境変数から読む)。
-- 処理: 引数の検証(メールは前後の空白を除いて254文字以内・`z.regexes.html5Email`)→`wrangler d1 execute DB <wranglerArgs> --json --command <buildLookupSql>`→有効な管理者なら失敗(2.3)→トークン(32バイトのbase64url)とハッシュ(`KeyedHasher`、用途`admin-auth-token:invitation`)とULID→SQLを一時ファイルに書き`wrangler d1 execute DB <wranglerArgs> --file`→一時ファイルを消し、`<adminOrigin>/auth/invitation#token=<平文>`と有効期限を表示する(2.1・2.2・2.4)。
+- 処理: 引数の検証(メールは前後の空白を除いて254文字以内・`z.regexes.html5Email`)→`wrangler d1 execute DB <wranglerArgs> --json --command <buildLookupSql>`→有効な管理者なら失敗(2.3)→トークン(32バイトのbase64url)とハッシュ(`KeyedHasher`、用途`admin-auth-token-invitation`)とULID→SQLを一時ファイルに書き`wrangler d1 execute DB <wranglerArgs> --file`→一時ファイルを消し、`<adminOrigin>/auth/invitation#token=<平文>`と有効期限を表示する(2.1・2.2・2.4)。
 - `--target staging|prod`はリモートのD1へ書き込むため、開発者だけが実行する(AIエージェントはClaude設定のdenyで実行できない)。E2Eは`--target local`だけを使う(2.7)。
 
 ### api/domain
@@ -598,7 +598,7 @@ export declare const ADMIN_HASH_PURPOSES: {
   readonly session: 'admin-session';
   readonly loginChallenge: 'admin-login-challenge';
   readonly recoveryCode: 'admin-recovery-code';
-  readonly authToken: (purpose: AdminAuthTokenPurpose) => string; // 'admin-auth-token:<用途>'
+  readonly authToken: (purpose: AdminAuthTokenPurpose) => string; // 'admin-auth-token-<用途のハイフン区切り>'(例: `admin-auth-token-email-change`)
 };
 
 // audit-entry.ts
@@ -1512,16 +1512,16 @@ flowchart LR
 
 ### 本specが定める固有の値
 
-| 項目                   | 値                                                                                                                                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| セッション             | アイドル3600秒・絶対43200秒・更新の間引き300秒、Cookie`__Host-ls_admin_session`(frontend-platform)                                                                                    |
-| トークンの有効期限     | 招待86400秒・メールアドレス変更86400秒・パスワードリセット1800秒、第2要素の待ち300秒、TOTPの保留600秒                                                                                 |
-| HMACの用途             | `admin-session`・`admin-auth-token:<用途>`・`admin-login-challenge`・`admin-recovery-code`(`password-prehash`は共用)                                                                  |
-| ログイン試行・送信回数 | `login-email:admin:<キー>`・`login-ip:<キー>`(共有)、`admin-auth-mail:<email_change\|password_reset>:<address\|ip>`                                                                   |
-| bot判定のaction        | `admin_login`・`admin_password_reset`                                                                                                                                                 |
-| TOTP                   | 発行者prod`Launch Stadium Admin`・staging`Launch Stadium Admin staging`・ローカル`Launch Stadium Admin local`、ラベル`管理者:<ニックネーム>`、秘密鍵の文脈`admin:<ID>`                |
-| 変数                   | `ADMIN_SITE_ORIGIN`(api): ローカル`http://localhost:48045`・staging`https://genai-example-2-admin-staging.lab.kurachiweb.com`・prod`https://genai-example-2-admin.lab.kurachiweb.com` |
-| 定期実行のジョブ       | `admin-foundation.credential-cleanup`(4:21・200)・`admin-foundation.audit-log-retention`(4:21・210)                                                                                   |
-| 用途                   | `admin-avatar`(images・管理者・画像5形式・512000バイト)                                                                                                                               |
-| 技術ドキュメントの番号 | `security/007`・`backend/008`・`frontend/009`・`operations/003`                                                                                                                       |
-| コマンド               | `bun run admin:invite-super-admin -- --target <local\|staging\|prod> --email <アドレス>`(`apps/api`、Infisicalの注入付き)                                                             |
+| 項目                   | 値                                                                                                                                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| セッション             | アイドル3600秒・絶対43200秒・更新の間引き300秒、Cookie`__Host-ls_admin_session`(frontend-platform)                                                                                           |
+| トークンの有効期限     | 招待86400秒・メールアドレス変更86400秒・パスワードリセット1800秒、第2要素の待ち300秒、TOTPの保留600秒                                                                                        |
+| HMACの用途             | `admin-session`・`admin-auth-token-invitation`・`admin-auth-token-email-change`・`admin-auth-token-password-reset`・`admin-login-challenge`・`admin-recovery-code`(`password-prehash`は共用) |
+| ログイン試行・送信回数 | `login-email:admin:<キー>`・`login-ip:<キー>`(共有)、`admin-auth-mail:<email_change\|password_reset>:<address\|ip>`                                                                          |
+| bot判定のaction        | `admin_login`・`admin_password_reset`                                                                                                                                                        |
+| TOTP                   | 発行者prod`Launch Stadium Admin`・staging`Launch Stadium Admin staging`・ローカル`Launch Stadium Admin local`、ラベル`管理者:<ニックネーム>`、秘密鍵の文脈`admin:<ID>`                       |
+| 変数                   | `ADMIN_SITE_ORIGIN`(api): ローカル`http://localhost:48045`・staging`https://genai-example-2-admin-staging.lab.kurachiweb.com`・prod`https://genai-example-2-admin.lab.kurachiweb.com`        |
+| 定期実行のジョブ       | `admin-foundation.credential-cleanup`(4:21・200)・`admin-foundation.audit-log-retention`(4:21・210)                                                                                          |
+| 用途                   | `admin-avatar`(images・管理者・画像5形式・512000バイト)                                                                                                                                      |
+| 技術ドキュメントの番号 | `security/007`・`backend/008`・`frontend/009`・`operations/003`                                                                                                                              |
+| コマンド               | `bun run admin:invite-super-admin -- --target <local\|staging\|prod> --email <アドレス>`(`apps/api`、Infisicalの注入付き)                                                                    |

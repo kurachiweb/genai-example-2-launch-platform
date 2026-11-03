@@ -54,7 +54,7 @@
   - _Requirements: 4.2, 6.3, 12.1_
 
 - [ ] 2. ドメインの規則
-- [ ] 2.1 (P) 管理者の状態と操作の可否、セッションの期限、トークンの用途の規則を作る
+- [x] 2.1 (P) 管理者の状態と操作の可否、セッションの期限、トークンの用途の規則を作る
   - 先に、削除の可否(自分自身・閲覧のみ・モデレーターから最上位管理者・最上位管理者から最上位管理者・モデレーターからモデレーター)、ロールの変更とプロフィール編集と招待の可否、招待期限切れの表示、アイドル1時間・絶対12時間・更新の間引き5分の境界、トークンの用途ごとの有効期限とハッシュ化の用途を確かめる単体テストを書く
   - identity-authのセッションの方針の型で管理者の値を定義し、認証の判定はidentity-authの純粋な関数を使う
   - 完了状態: 単体テストが成功し、表示の状態が有効・招待中・招待期限切れの3つに分かれることを確かめられる
@@ -311,3 +311,4 @@
 - 1.5: 戻り先の検証(`toSafeReturnPath`・`toLoginSearch`・`HOME_PATH`・`LoginSearch`)とフラグメントの読み取り`readFragmentToken`は`apps/frontend-lib/utilities/auth/`(`return-path.ts`・`fragment-token.ts`)にあり、管理者側は`../lib/utilities/auth/`から読む。フラグメントを消すフック`useFragmentToken`はTanStack Routerに依存するため利用者側の`components/auth/use-fragment-token.ts`に残した。管理者側で同じフックが要る11.3・11.4では、管理者側に作るか共通部品の`components/`へ移すかを判断する
 - 1.6: 共有のエラーの定義・文言・`createPasswordRejectedError`・`MAIL_SEND_POLICY`は`apps/api/src/application/auth/`(`auth-errors.ts`・`password-rejection.ts`・`mail-send-policy.ts`)。管理者側は`application/admin/admin-errors.ts`(`ADMIN_ERRORS`・`adminError`・`adminPasswordRejectedError`・`ADMIN_PASSWORD_MATCHES_IDENTITY_MESSAGE`)。`reauthentication_failed`のコード・`CURRENT_PASSWORD_INCORRECT_MESSAGE`・`loginThrottledError`は`auth/auth-errors.ts`から読む。利用者側の`application/identity/password-rejection.ts`は利用者の文言で組み立てた`passwordRejectedError`だけを持つ。6.2の`CounterAdminMailSendLimits`は`MAIL_SEND_POLICY`を読み、規則の名前の接頭辞だけを管理者用にする。`admin`から`identity`への読み込みを禁じる静的解析の規則は8.1で加える
 - 1.7: `otpauth`9.6.0は`validate`の`afterCounter`・文字列の秘密鍵・数字以外の認証コードの拒否・`URI.parse`の厳格化を加えるだけで、`toString`と`validate`の時間窓の差の返し方は変わらない。`bun.lock`の行数は変わらず`.betterleaksignore`の`apps/api/bun.lock:392`の登録はそのまま有効。開発コンテナのInfisicalが未ログインでサーバーを起動できないため、利用者の多要素認証のE2E(`e2e/client/auth/two-factor.e2e.test.ts`)と実際の認証アプリでのQRコードの読み取りと照合は未実施で、開発者の手作業として12.4の報告に載せる
+- 2.1: 規則は`apps/api/src/domain/admin/`(`admin-account.ts`・`admin-session-policy.ts`・`admin-auth-token-purpose.ts`)。可否の判定は許可なら`undefined`を返し、削除は自分自身→ロール不足→最上位管理者が対象の順に判定する。最後の最上位管理者の保護はユースケースが持つ。セッションはidentity-authの`evaluateSession`・`newSessionTimes`・`cookieMaxAgeSeconds`に`ADMIN_SESSION_POLICY`を渡す。トークンのハッシュの用途は`ADMIN_HASH_PURPOSES.authToken(purpose)`で、名前は技術ガイドの「小文字とハイフン」とidentity-authの`user-auth-token-email-change`の形に合わせて`admin-auth-token-invitation`・`admin-auth-token-email-change`・`admin-auth-token-password-reset`にした(design.mdの`admin-auth-token:<用途>`も改めた。9.1の招待の発行コマンドはこの名前を使う)。状態とトークンの用途の値と列の`enumValues`の一致は`application/admin/admin-columns.unit.test.ts`
