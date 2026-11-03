@@ -89,6 +89,7 @@ async function renderInRouter(
 }
 
 const consumed: (string | undefined)[] = [];
+const waited: (string | undefined)[] = [];
 
 function TokenHarness({ action }: { readonly action?: string }) {
   const turnstile = useTurnstileToken();
@@ -105,7 +106,34 @@ function TokenHarness({ action }: { readonly action?: string }) {
       >
         送信する
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          void turnstile.waitForToken().then((token) => {
+            waited.push(token);
+          });
+        }}
+      >
+        トークンを待つ
+      </button>
     </div>
+  );
+}
+
+function UnmountHarness() {
+  const [mounted, setMounted] = useState(true);
+  return (
+    <>
+      {mounted ? <TokenHarness /> : null}
+      <button
+        type="button"
+        onClick={() => {
+          setMounted(false);
+        }}
+      >
+        外す
+      </button>
+    </>
   );
 }
 
@@ -216,6 +244,8 @@ const renderedWidgetCount = () =>
   page.getByTestId('fake-turnstile').elements().length;
 const submit = () =>
   userEvent.click(page.getByRole('button', { name: '送信する' }));
+const waitForToken = () =>
+  userEvent.click(page.getByRole('button', { name: 'トークンを待つ' }));
 const statusText = () => page.getByTestId('status');
 const tokenText = () => page.getByTestId('token');
 
@@ -223,6 +253,7 @@ beforeEach(() => {
   resetFakeTurnstile();
   resetTurnstileScriptFailure();
   consumed.length = 0;
+  waited.length = 0;
 });
 
 afterEach(() => {
@@ -626,5 +657,79 @@ describe('useTurnstileToken', () => {
 
     await expect.element(statusText()).toHaveTextContent('ready');
     await expect.element(tokenText()).toHaveTextContent('turnstile-token-2');
+  });
+});
+
+describe('useTurnstileTokenのトークンを待つ口', () => {
+  const renderWidget = async (ui: ReactNode = <TokenHarness />) => {
+    await renderInRouter(ui);
+    await expect
+      .element(page.getByTestId('fake-turnstile'))
+      .toBeInTheDocument();
+  };
+
+  test('トークンが無い間は待ち、届いたトークンを取り出して返し、次のトークンを取り直させる', async () => {
+    await renderWidget();
+
+    await waitForToken();
+    await expect.element(statusText()).toHaveTextContent('idle');
+    expect(waited).toStrictEqual([]);
+
+    await succeed();
+
+    await expect.poll(() => waited).toStrictEqual(['turnstile-token-1']);
+    await expect.element(tokenText()).toHaveTextContent('なし');
+    await expect.element(statusText()).toHaveTextContent('idle');
+    expect(turnstileResetCount()).toBe(1);
+  });
+
+  test('受け取り済みのトークンがあれば待たずに取り出し、同じトークンを2回返さない', async () => {
+    await renderWidget();
+    await succeed();
+    await expect.element(statusText()).toHaveTextContent('ready');
+
+    await waitForToken();
+    await waitForToken();
+
+    await expect.poll(() => waited).toStrictEqual(['turnstile-token-1']);
+    await expect.element(tokenText()).toHaveTextContent('なし');
+
+    await succeed();
+
+    await expect
+      .poll(() => waited)
+      .toStrictEqual(['turnstile-token-1', 'turnstile-token-2']);
+  });
+
+  test.each([
+    ['判定に失敗する', fail],
+    ['トークンの期限が切れる', expire],
+    ['スクリプトの読み込みに失敗する', failScript],
+  ])('待っている間に%sと、undefinedで解く', async (_label, act) => {
+    await renderWidget();
+    await waitForToken();
+
+    await act();
+
+    await expect.poll(() => waited).toStrictEqual([undefined]);
+  });
+
+  test('判定に失敗した後は、待たずにundefinedを返す', async () => {
+    await renderWidget();
+    await fail();
+    await expect.element(statusText()).toHaveTextContent('error');
+
+    await waitForToken();
+
+    await expect.poll(() => waited).toStrictEqual([undefined]);
+  });
+
+  test('待っている間に部品が外れると、undefinedで解く', async () => {
+    await renderWidget(<UnmountHarness />);
+    await waitForToken();
+
+    await userEvent.click(page.getByRole('button', { name: '外す' }));
+
+    await expect.poll(() => waited).toStrictEqual([undefined]);
   });
 });
