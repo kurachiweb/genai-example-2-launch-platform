@@ -85,7 +85,7 @@ export interface AdminUserRecord {
   readonly suspendedAt: Date | null;
   readonly registeredAt: Date;
   readonly emailVerified: boolean;
-  // 確認前はnull
+  // 確認前と、判定サービスで判定できていない間はundetermined。列がNULLを許すため型はnullを含む
   readonly disposableEmailStatus: DisposableEmailStatus | null;
 }
 

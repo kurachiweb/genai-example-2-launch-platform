@@ -66,7 +66,7 @@ const createdUserRecord = (user: NewUserRecord): UserRecord => ({
   status: 'active',
   emailVerifiedAt: null,
   deletedAt: null,
-  disposableEmailStatus: null,
+  disposableEmailStatus: 'undetermined',
   lifecycleVersion: INITIAL_LIFECYCLE_VERSION,
 });
 

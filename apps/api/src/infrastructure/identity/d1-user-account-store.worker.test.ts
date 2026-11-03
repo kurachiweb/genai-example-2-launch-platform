@@ -332,11 +332,34 @@ describe('D1UserAccountStoreの読み取り', () => {
         userIdOf(3),
       ]);
     });
+
+    test('まだ判定していない未判定の利用者は確認の日時が境界より前なら、判定した利用者より先に返す', async () => {
+      const boundary = after(DAY);
+      await insertUser(1, {
+        disposableEmailStatus: 'undetermined',
+        emailVerifiedAt: T0,
+        disposableEmailCheckedAt: after(10),
+      });
+      await insertUser(2, {
+        disposableEmailStatus: 'undetermined',
+        emailVerifiedAt: after(20),
+      });
+      await insertUser(3, {
+        disposableEmailStatus: 'undetermined',
+        emailVerifiedAt: boundary,
+      });
+      await insertUser(4, { disposableEmailStatus: 'undetermined' });
+
+      expect(await createStore().listUndetermined(boundary, 10)).toEqual([
+        userIdOf(2),
+        userIdOf(1),
+      ]);
+    });
   });
 });
 
 describe('D1UserAccountStoreのcreateWithVerification', () => {
-  test('利用者・確認のトークン・セッションを作り、未確認・有効・判定なし・版0の利用者にする', async () => {
+  test('利用者・確認のトークン・セッションを作り、未確認・有効・まだ判定していない未判定・版0の利用者にする', async () => {
     const result = await createStore().createWithVerification(
       newUserOf(NEW_USER_INDEX),
       verificationTokenOf(NEW_USER_INDEX),
@@ -354,7 +377,7 @@ describe('D1UserAccountStoreのcreateWithVerification', () => {
       status: 'active',
       suspendedAt: null,
       emailVerifiedAt: null,
-      disposableEmailStatus: null,
+      disposableEmailStatus: 'undetermined',
       disposableEmailCheckedAt: null,
       termsAgreedAt: T0,
       lifecycleVersion: 0,
@@ -579,7 +602,7 @@ describe('D1UserAccountStoreのパスワードリセット・メールアドレ�
   });
 
   describe('applyEmailChange', () => {
-    test('メールアドレスを更新して確認済みにし、判定を消して、全セッションと確認・変更のトークンを削除する', async () => {
+    test('メールアドレスを更新して確認済みにし、判定をまだ判定していない未判定に戻して、全セッションと確認・変更のトークンを削除する', async () => {
       await db
         .update(users)
         .set({
@@ -598,7 +621,7 @@ describe('D1UserAccountStoreのパスワードリセット・メールアドレ�
       expect(await readUser(1)).toMatchObject({
         email: 'Changed@Mail.example',
         emailVerifiedAt: after(60),
-        disposableEmailStatus: null,
+        disposableEmailStatus: 'undetermined',
         disposableEmailCheckedAt: null,
         updatedAt: after(60),
       });

@@ -70,7 +70,7 @@ function userOf(overrides: Partial<UserRecord> = {}): UserRecord {
     passwordHash: 'pbkdf2-sha512$100000$salt$derived',
     nickname: 'やまだ たろう',
     handle: 'handle000001',
-    disposableEmailStatus: null,
+    disposableEmailStatus: 'undetermined',
     termsAgreedAt: REGISTERED_AT,
     lifecycleVersion: 0,
     ...overrides,

@@ -648,7 +648,7 @@ describe('StoreRegistration.register', () => {
           passwordHash: 'pbkdf2-sha512$100000$salt$derived',
           nickname: COMMAND.nickname,
           handle: 'abcdefghijkl',
-          disposableEmailStatus: null,
+          disposableEmailStatus: 'undetermined',
           termsAgreedAt: NOW,
           lifecycleVersion: 0,
         },

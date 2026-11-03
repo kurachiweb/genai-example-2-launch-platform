@@ -65,7 +65,7 @@ export interface UserAccountStore {
   findNotWithdrawnByEmail(email: string): Promise<UserRecord | undefined>;
   // 未退会の利用者の中で調べる
   isEmailInUse(email: string, exceptUserId?: string): Promise<boolean>;
-  // 1つの一括の書き込みで作る
+  // 1つの一括の書き込みで作る。使い捨て判定は判定の日時を持たない「未判定」にする
   createWithVerification(
     user: NewUserRecord,
     token: NewAuthToken,
@@ -84,7 +84,7 @@ export interface UserAccountStore {
     passwordHash: string,
     at: Date,
   ): Promise<void>;
-  // 更新・確認済み・判定の消去・全セッションと確認・変更のトークンの削除を1つの一括の書き込みで行う
+  // 更新・確認済み・使い捨て判定の「未判定」への差し戻し(判定の日時は消す)・全セッションと確認・変更のトークンの削除を1つの一括の書き込みで行う
   applyEmailChange(
     userId: string,
     newEmail: string,
@@ -92,6 +92,7 @@ export interface UserAccountStore {
   ): Promise<'changed' | 'email-in-use'>;
   // 更新・全セッションと変更のトークンの削除を1つの一括の書き込みで行う
   applyPasswordChange(userId: string, passwordHash: string): Promise<void>;
+  // 確認済みで未退会の「未判定」の利用者のうち、判定の日時(まだ判定していなければ確認の日時)がcheckedBeforeより前の利用者
   listUndetermined(
     checkedBefore: Date,
     limit: number,

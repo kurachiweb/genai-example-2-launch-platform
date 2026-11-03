@@ -51,7 +51,7 @@ const REQUEST = { newEmail: NEW_EMAIL, reAuthentication: RE_AUTHENTICATION };
 const CHANGED_USER = userOf({
   email: NEW_EMAIL,
   emailVerifiedAt: NOW,
-  disposableEmailStatus: null,
+  disposableEmailStatus: 'undetermined',
 });
 
 describe('StoreEmailChange.request', () => {

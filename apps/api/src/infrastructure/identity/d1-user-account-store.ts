@@ -7,6 +7,7 @@ import {
   isNull,
   lt,
   ne,
+  or,
   sql,
 } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
@@ -42,6 +43,16 @@ const USER_RECORD_COLUMNS = {
   disposableEmailStatus: users.disposableEmailStatus,
   termsAgreedAt: users.termsAgreedAt,
   lifecycleVersion: users.lifecycleVersion,
+};
+
+// 作成時とメールアドレスの変更時は判定サービスへ問い合わせる前のため、判定の日時を持たない未判定にする。
+// 問い合わせの前に判定の保存が失敗しても、未判定の利用者として日次の判定し直しの対象に残る
+const NOT_YET_CHECKED = {
+  status: 'undetermined',
+  checkedAt: null,
+} as const satisfies {
+  readonly status: DisposableEmailStatus;
+  readonly checkedAt: null;
 };
 
 const EMAIL_COLUMN = 'users.email';
@@ -107,7 +118,12 @@ export class D1UserAccountStore implements UserAccountStore {
     const at = session.createdAt;
     try {
       await this.db.batch([
-        this.db.insert(users).values({ ...user, createdAt: at, updatedAt: at }),
+        this.db.insert(users).values({
+          ...user,
+          disposableEmailStatus: NOT_YET_CHECKED.status,
+          createdAt: at,
+          updatedAt: at,
+        }),
         this.db.insert(userAuthTokens).values({
           userId: token.userId,
           purpose: token.purpose,
@@ -195,8 +211,8 @@ export class D1UserAccountStore implements UserAccountStore {
           .set({
             email: newEmail,
             emailVerifiedAt: at,
-            disposableEmailStatus: null,
-            disposableEmailCheckedAt: null,
+            disposableEmailStatus: NOT_YET_CHECKED.status,
+            disposableEmailCheckedAt: NOT_YET_CHECKED.checkedAt,
             updatedAt: at,
           })
           .where(eq(users.id, userId)),
@@ -221,6 +237,7 @@ export class D1UserAccountStore implements UserAccountStore {
     ]);
   }
 
+  // まだ判定していない行は判定の日時を持たないため、確認の日時で境界と比べる。SQLiteの昇順はNULLを先に並べるため、まだ判定していない利用者を先に返す
   async listUndetermined(
     checkedBefore: Date,
     limit: number,
@@ -231,7 +248,13 @@ export class D1UserAccountStore implements UserAccountStore {
       .where(
         and(
           eq(users.disposableEmailStatus, 'undetermined'),
-          lt(users.disposableEmailCheckedAt, checkedBefore),
+          or(
+            lt(users.disposableEmailCheckedAt, checkedBefore),
+            and(
+              isNull(users.disposableEmailCheckedAt),
+              lt(users.emailVerifiedAt, checkedBefore),
+            ),
+          ),
           isNotNull(users.emailVerifiedAt),
           isNull(users.deletedAt),
         ),

@@ -144,7 +144,7 @@ export class StoreEmailChange implements EmailChange {
       ...user,
       email: newEmail,
       emailVerifiedAt: meta.now,
-      disposableEmailStatus: null,
+      disposableEmailStatus: 'undetermined',
     };
     await this.#checkDisposable(changed, meta.now);
     await this.#sendChanged(user.email, changed, meta.now);
