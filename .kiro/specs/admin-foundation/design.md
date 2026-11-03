@@ -202,7 +202,8 @@ apps/
 │   └── admin-platform-module.ts                        # ADMIN_PLATFORM_MODULE(両アプリ共通の束縛)
 ├── api/
 │   ├── scripts/admin/
-│   │   ├── issue-super-admin-invitation.ts             # 入口: 引数の解析→照会→SQLの生成→wrangler d1 execute→リンクの表示
+│   │   ├── issue-super-admin-invitation.ts             # 入口: 環境変数と実物の部品を組み立ててsuper-admin-invitation.tsを呼ぶだけ
+│   │   ├── super-admin-invitation.ts                   # 処理: 引数の解析→照会→SQLの生成→一時ファイルでのwrangler d1 execute→リンクの表示(外部を差し替えて単体テスト併置)
 │   │   ├── invitation-sql.ts                           # 純粋: 照会・書き込みのSQLとリテラルのエスケープ(単体テスト併置)
 │   │   └── invitation-targets.ts                       # 純粋: 環境ごとのwranglerの引数と管理者側のオリジン(単体テスト併置)
 │   └── src/

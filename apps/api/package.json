@@ -15,6 +15,7 @@
     "graphql:check": "bun ./scripts/graphql/check.ts",
     "db:migrate:local": "wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state",
     "db:migrations:check": "bun ./scripts/check-migrations.ts",
+    "admin:invite-super-admin": "bun ./scripts/admin/issue-super-admin-invitation.ts",
     "test:smoke": "bun ./scripts/smoke-wrangler-bundle.ts"
   },
   "dependencies": {
