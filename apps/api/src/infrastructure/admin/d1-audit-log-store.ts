@@ -7,6 +7,7 @@ import {
   gte,
   inArray,
   lt,
+  lte,
   max,
   or,
   type SQL,
@@ -226,6 +227,26 @@ export class D1AuditLogStore implements AuditLogStore {
           latest === null ? [] : [[targetId, latest] as const],
         ),
     );
+  }
+
+  // 対象の行が外部キーでログを参照するため、同じ一括の書き込みで対象の行を先に消す。2つの文が同じログを選ぶよう、記録の古い順の索引で並べる
+  async deleteOccurredUntil(cutoff: Date, limit: number): Promise<number> {
+    const expiredLogIds = () =>
+      this.db
+        .select({ id: adminAuditLogs.id })
+        .from(adminAuditLogs)
+        .where(lte(adminAuditLogs.occurredAt, cutoff))
+        .orderBy(asc(adminAuditLogs.occurredAt), asc(adminAuditLogs.id))
+        .limit(limit);
+    const [, logsDeletion] = await this.db.batch([
+      this.db
+        .delete(adminAuditLogTargets)
+        .where(inArray(adminAuditLogTargets.logId, expiredLogIds())),
+      this.db
+        .delete(adminAuditLogs)
+        .where(inArray(adminAuditLogs.id, expiredLogIds())),
+    ]);
+    return logsDeletion.meta.changes;
   }
 
   // 対象の行の種類を記録の種類にそろえ、(target_kind, target_id, log_id)の索引で絞り込む

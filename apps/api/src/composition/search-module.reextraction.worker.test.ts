@@ -211,6 +211,12 @@ describe('検索対象のある日次の再抽出', () => {
           name: 'identity-auth.disposable-recheck-sweep',
         }),
         expect.objectContaining({
+          name: 'admin-foundation.credential-cleanup',
+        }),
+        expect.objectContaining({
+          name: 'admin-foundation.audit-log-retention',
+        }),
+        expect.objectContaining({
           name: 'media-pipeline.expired-file-erasure',
         }),
         expect.objectContaining({ name: 'media-pipeline.moderation-requeue' }),

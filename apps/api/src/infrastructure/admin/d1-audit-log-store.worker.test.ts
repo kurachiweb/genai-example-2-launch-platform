@@ -27,6 +27,8 @@ import {
   createSequentialAuditLogIds,
   db,
   pseudonymousIdOf,
+  readAuditLogSummaries,
+  readAuditLogTargetIds,
 } from './testing/admin-store-fixtures.ts';
 
 const MAX_BOUND_PARAMETERS = 100;
@@ -540,5 +542,57 @@ describe('D1AuditLogStore.latestForMany', () => {
 
     expect(latest).toEqual(new Map());
     expect(recording.statementsOutsideBatches()).toEqual([]);
+  });
+});
+
+describe('D1AuditLogStore.deleteOccurredUntil', () => {
+  const CUTOFF = after(3 * MINUTE);
+
+  async function recordAroundCutoff(): Promise<void> {
+    await recordAll([
+      inviteOf(11, { occurredAt: after(2 * MINUTE) }),
+      emailSearchOf([1, 2], { occurredAt: after(MINUTE) }),
+      inviteOf(13, { occurredAt: CUTOFF }),
+      inviteOf(14, { occurredAt: new Date(CUTOFF.getTime() + 1) }),
+    ]);
+  }
+
+  test('基準の日時以前に記録された監査ログを記録の古い順に上限件数まで、対象の行とともに消し、消したログの件数を返す', async () => {
+    await recordAroundCutoff();
+    const store = createStore();
+
+    expect(await store.deleteOccurredUntil(CUTOFF, 1)).toBe(1);
+    expect((await readAuditLogSummaries()).map(({ id }) => id)).toEqual([
+      auditLogIdOf(1),
+      auditLogIdOf(3),
+      auditLogIdOf(4),
+    ]);
+    expect(await readAuditLogTargetIds()).toEqual([
+      adminIdOf(11),
+      adminIdOf(13),
+      adminIdOf(14),
+    ]);
+
+    expect(await store.deleteOccurredUntil(CUTOFF, 5)).toBe(2);
+    expect(await store.deleteOccurredUntil(CUTOFF, 5)).toBe(0);
+    expect((await readAuditLogSummaries()).map(({ id }) => id)).toEqual([
+      auditLogIdOf(4),
+    ]);
+    expect(await readAuditLogTargetIds()).toEqual([adminIdOf(14)]);
+  });
+
+  test('対象の行の削除とログの削除を、この順で1つの一括の書き込みにする', async () => {
+    await recordAroundCutoff();
+    const recording = createBatchRecordingD1(env.DB);
+    const store = new D1AuditLogStore(createDatabase(recording.d1));
+
+    await store.deleteOccurredUntil(CUTOFF, 500);
+
+    expect(recording.statementsOutsideBatches()).toEqual([]);
+    expect(recording.batches).toHaveLength(1);
+    const [targetsDeletion, logsDeletion] = recording.batches[0] ?? [];
+    expect(recording.batches[0]).toHaveLength(2);
+    expect(targetsDeletion).toMatch(/^delete from "admin_audit_log_targets"/u);
+    expect(logsDeletion).toMatch(/^delete from "admin_audit_logs"/u);
   });
 });

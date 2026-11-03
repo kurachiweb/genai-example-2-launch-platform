@@ -8,6 +8,7 @@ import {
 import { AUDIT_ACTIONS } from '../../common-lib/admin/audit-actions/index.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
   type AdminAccountManagement,
@@ -63,6 +64,8 @@ import {
   type AuditLogRecorder,
   StoreAuditLogRecorder,
 } from '../application/admin/audit-log-recorder.ts';
+import { AdminCredentialCleanupJob } from '../application/admin/jobs/admin-credential-cleanup-job.ts';
+import { AuditLogRetentionJob } from '../application/admin/jobs/audit-log-retention-job.ts';
 import type {
   AdminAccountStore,
   AdminAuthTokenStore,
@@ -185,6 +188,15 @@ function bindUseCases(bind: Bind): void {
   bind<AdminProfile>(ADMIN_TYPES.AdminProfile).to(StoreAdminProfile);
 }
 
+function bindJobs(bind: Bind): void {
+  bind<ScheduledJobHandler>(ADMIN_TYPES.AdminCredentialCleanupJob).to(
+    AdminCredentialCleanupJob,
+  );
+  bind<ScheduledJobHandler>(ADMIN_TYPES.AuditLogRetentionJob).to(
+    AuditLogRetentionJob,
+  );
+}
+
 // 認証部品の束縛(AUTH_TYPES)は利用者のモジュールのものをそのまま使う
 export const ADMIN_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'admin',
@@ -193,5 +205,6 @@ export const ADMIN_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bindServices(bind);
     bindAuditLog(bind);
     bindUseCases(bind);
+    bindJobs(bind);
   }),
 };

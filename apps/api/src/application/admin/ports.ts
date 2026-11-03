@@ -26,6 +26,8 @@ export interface AuditLogStore {
   latestForMany(
     input: AuditLogLatestManyQuery,
   ): Promise<ReadonlyMap<string, Date>>;
+  // cutoff以前(cutoffを含む)に記録されたログを記録の古い順にlimit件まで、対象の行から順に削除し、削除したログの件数を返す
+  deleteOccurredUntil(cutoff: Date, limit: number): Promise<number>;
 }
 
 // identity-authのRequestMetaと同じ形を、identityの層に依存せずに持つ

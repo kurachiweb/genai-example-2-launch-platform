@@ -74,6 +74,14 @@ const AdminAccountManagement: unique symbol = Symbol.for(
 
 const AdminProfile: unique symbol = Symbol.for('admin.AdminProfile');
 
+const AdminCredentialCleanupJob: unique symbol = Symbol.for(
+  'admin.AdminCredentialCleanupJob',
+);
+
+const AuditLogRetentionJob: unique symbol = Symbol.for(
+  'admin.AuditLogRetentionJob',
+);
+
 export const ADMIN_TYPES = Object.freeze({
   AuditActionCatalog,
   AuditLogStore,
@@ -100,4 +108,6 @@ export const ADMIN_TYPES = Object.freeze({
   AdminTotpManagement,
   AdminAccountManagement,
   AdminProfile,
+  AdminCredentialCleanupJob,
+  AuditLogRetentionJob,
 });

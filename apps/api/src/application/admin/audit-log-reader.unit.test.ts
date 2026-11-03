@@ -68,6 +68,8 @@ function setup(options: FakeOptions = {}) {
       recorded.latestManyQueries.push(input);
       return Promise.resolve(options.latestMany ?? new Map());
     },
+    deleteOccurredUntil: () =>
+      Promise.reject(new Error('削除は呼ばれない想定です')),
   };
   const reader = new StoreAuditLogReader(store);
   return { reader, recorded, store };

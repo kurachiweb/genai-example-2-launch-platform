@@ -44,6 +44,8 @@ import { StoreAdminTotpManagement } from '../application/admin/admin-totp-manage
 import { ADMIN_TYPES } from '../application/admin/admin-types.ts';
 import { StoreAuditLogReader } from '../application/admin/audit-log-reader.ts';
 import { StoreAuditLogRecorder } from '../application/admin/audit-log-recorder.ts';
+import { AdminCredentialCleanupJob } from '../application/admin/jobs/admin-credential-cleanup-job.ts';
+import { AuditLogRetentionJob } from '../application/admin/jobs/audit-log-retention-job.ts';
 import type { AdminSettings } from '../application/admin/ports.ts';
 import { AUTH_TYPES } from '../application/auth/auth-types.ts';
 import {
@@ -178,6 +180,16 @@ describe('APIサーバーの管理者のセッションの束縛', () => {
       StoreAdminAccountManagement,
     ],
     ['AdminProfile', ADMIN_TYPES.AdminProfile, StoreAdminProfile],
+    [
+      'AdminCredentialCleanupJob',
+      ADMIN_TYPES.AdminCredentialCleanupJob,
+      AdminCredentialCleanupJob,
+    ],
+    [
+      'AuditLogRetentionJob',
+      ADMIN_TYPES.AuditLogRetentionJob,
+      AuditLogRetentionJob,
+    ],
     ['AdminDirectory', ADMIN_PLATFORM_TYPES.AdminDirectory, D1AdminDirectory],
   ] as const)(
     '処理単位のコンテナから%sを解決する',

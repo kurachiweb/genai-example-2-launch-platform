@@ -35,6 +35,10 @@ const IDENTITY_JOB_NAMES = [
   'identity-auth.credential-cleanup',
   'identity-auth.disposable-recheck-sweep',
 ];
+const ADMIN_JOB_NAMES = [
+  'admin-foundation.credential-cleanup',
+  'admin-foundation.audit-log-retention',
+];
 const MEDIA_JOB_NAMES = [
   'media-pipeline.expired-file-erasure',
   'media-pipeline.moderation-requeue',
@@ -126,6 +130,7 @@ describe('APIサーバーの検索のモジュール', () => {
         .map(({ name }) => name),
     ).toEqual([
       ...IDENTITY_JOB_NAMES,
+      ...ADMIN_JOB_NAMES,
       ...MEDIA_JOB_NAMES,
       'email-delivery.cleanup',
       REEXTRACTION_JOB_NAME,
@@ -164,6 +169,12 @@ describe('定期実行からの日次の再抽出', () => {
         }),
         expect.objectContaining({
           name: 'identity-auth.disposable-recheck-sweep',
+        }),
+        expect.objectContaining({
+          name: 'admin-foundation.credential-cleanup',
+        }),
+        expect.objectContaining({
+          name: 'admin-foundation.audit-log-retention',
         }),
         expect.objectContaining({
           name: 'media-pipeline.expired-file-erasure',

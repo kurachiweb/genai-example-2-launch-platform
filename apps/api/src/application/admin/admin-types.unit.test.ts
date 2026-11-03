@@ -29,10 +29,12 @@ const EXPECTED_NAMES = [
   'AdminTotpManagement',
   'AdminAccountManagement',
   'AdminProfile',
+  'AdminCredentialCleanupJob',
+  'AuditLogRetentionJob',
 ] as const;
 
 describe('ADMIN_TYPES', () => {
-  test('管理者のストア・部品・ユースケースの識別子だけを持つ', () => {
+  test('管理者のストア・部品・ユースケース・ジョブの識別子だけを持つ', () => {
     expect(Object.keys(ADMIN_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

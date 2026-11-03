@@ -98,6 +98,8 @@ function setup(options: FakeOptions = {}) {
     search: () => Promise.reject(new Error('検索は呼ばれない想定です')),
     latestFor: () => Promise.reject(new Error('照会は呼ばれない想定です')),
     latestForMany: () => Promise.reject(new Error('照会は呼ばれない想定です')),
+    deleteOccurredUntil: () =>
+      Promise.reject(new Error('削除は呼ばれない想定です')),
   };
   const recorder = new StoreAuditLogRecorder(CATALOG, ids, store);
   return { recorder, recorded, ids, store };
