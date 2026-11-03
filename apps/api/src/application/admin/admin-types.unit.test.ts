@@ -21,6 +21,7 @@ const EXPECTED_NAMES = [
   'AdminMailSendLimits',
   'AdminAuthorizer',
   'AdminLogin',
+  'AdminReAuthenticator',
 ] as const;
 
 describe('ADMIN_TYPES', () => {

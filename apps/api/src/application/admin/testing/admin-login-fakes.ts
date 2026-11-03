@@ -23,6 +23,10 @@ import type {
 import { HashingRecoveryCodeIssuer } from '../../auth/recovery-code-issuer.ts';
 import type { SecretIssuer } from '../../auth/secret-issuer.ts';
 import { type AdminLogin, StoreAdminLogin } from '../admin-login.ts';
+import {
+  type AdminReAuthenticator,
+  StoreAdminReAuthenticator,
+} from '../admin-re-authenticator.ts';
 import type { AdminSessionIssuer } from '../admin-session-issuer.ts';
 import type {
   AdminAccountStore,
@@ -419,6 +423,35 @@ export async function setupAdminLogin(options: AdminLoginFakeOptions = {}) {
 }
 
 export type AdminLoginFakes = Awaited<ReturnType<typeof setupAdminLogin>>;
+
+export async function setupAdminReAuthenticator(
+  options: AdminLoginFakeOptions = {},
+) {
+  const keyedHasher = createKeyedHasher(TEST_PEPPER);
+  const state = await createState(keyedHasher, options);
+  const { passwordHasher } = createAccountFakes(state);
+  const secondFactor = createSecondFactorFakes(state);
+  const reAuthenticator: AdminReAuthenticator = new StoreAdminReAuthenticator(
+    keyedHasher,
+    createThrottle(state),
+    passwordHasher,
+    secondFactor.totpCredentials,
+    secondFactor.secretBox,
+    secondFactor.totp,
+    new HashingRecoveryCodeIssuer(
+      partialFake<SecretGenerator>({}),
+      keyedHasher,
+    ),
+    secondFactor.recoveryCodes,
+  );
+
+  return {
+    reAuthenticator,
+    state,
+    keysFor: (email: string): Promise<LoginThrottleKeys> =>
+      createLoginThrottleKeys(keyedHasher, email, ADMIN_LOGIN_META.clientIp),
+  };
+}
 
 export async function caught(action: Promise<unknown>): Promise<AppError> {
   try {

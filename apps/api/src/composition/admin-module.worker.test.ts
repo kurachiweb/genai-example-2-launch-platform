@@ -9,6 +9,7 @@ import {
   issueAdminSession,
 } from '../../test/support/admin-graphql-harness.ts';
 import { StoreAdminAuthorizer } from '../application/admin/admin-authorizer.ts';
+import { StoreAdminReAuthenticator } from '../application/admin/admin-re-authenticator.ts';
 import {
   ADMIN_SESSION_USER_AGENT_MAX_LENGTH,
   StoreAdminSessionIssuer,
@@ -21,6 +22,7 @@ import {
   type SessionVerification,
   type SessionVerifier,
 } from '../application/session/session-verifier.ts';
+import { CounterAdminMailSendLimits } from '../infrastructure/admin/counter-admin-mail-send-limits.ts';
 import { D1AdminAccountStore } from '../infrastructure/admin/d1-admin-account-store.ts';
 import { D1AdminSessionStore } from '../infrastructure/admin/d1-admin-session-store.ts';
 import {
@@ -81,6 +83,16 @@ describe('APIサーバーの管理者のセッションの束縛', () => {
     ],
     ['AdminAccountStore', ADMIN_TYPES.AdminAccountStore, D1AdminAccountStore],
     ['AdminAuthorizer', ADMIN_TYPES.AdminAuthorizer, StoreAdminAuthorizer],
+    [
+      'AdminReAuthenticator',
+      ADMIN_TYPES.AdminReAuthenticator,
+      StoreAdminReAuthenticator,
+    ],
+    [
+      'AdminMailSendLimits',
+      ADMIN_TYPES.AdminMailSendLimits,
+      CounterAdminMailSendLimits,
+    ],
   ] as const)(
     '処理単位のコンテナから%sを解決する',
     (_name, identifier, implementation) => {

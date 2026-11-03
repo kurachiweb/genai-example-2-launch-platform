@@ -216,7 +216,8 @@ apps/
 │       │   ├── password-rejection.ts                   # PasswordRejection・createPasswordRejectedError(同名の*.unit.test.ts)
 │       │   ├── mail-send-policy.ts                     # MAIL_SEND_POLICY(時間窓・宛先とIPアドレスの上限)
 │       │   ├── login-throttle-check.ts                 # checkLoginThrottle(主体のスコープを受け取るログイン試行のロックの確認)
-│       │   └── second-factor-check.ts                  # checkSubjectSecondFactor・isTotpEnabled・SecondFactorScheme(主体ごとのハッシュの用途と秘密鍵の文脈を受け取る第2要素の照合)
+│       │   ├── second-factor-check.ts                  # checkSubjectSecondFactor・isTotpEnabled・SecondFactorScheme(主体ごとのハッシュの用途と秘密鍵の文脈を受け取る第2要素の照合)
+│       │   └── re-authentication.ts                    # ReAuthenticationInput・本人確認の誤りのエラーの組み立て(利用者と管理者で共有)
 │       ├── application/admin/                          # ポートとユースケース(Bunの単体テスト)
 │       │   ├── admin-types.ts                          # ADMIN_TYPES
 │       │   ├── admin-errors.ts                         # ADMIN_ERRORS(AUTH_ERRORSと管理者に固有のコード)・adminError・adminPasswordRejectedError
@@ -239,6 +240,7 @@ apps/
 │       │   └── jobs/
 │       │       ├── admin-credential-cleanup-job.ts     # 期限切れのセッション・トークン・待ち・保留(order 200)
 │       │       └── audit-log-retention-job.ts          # 3年を過ぎた監査ログ(order 210)
+│       ├── infrastructure/auth/mail-send-counters.ts   # consumeMailSendCounters(規則の名前の接頭辞を主体ごとに受け取る送信回数の数え方。利用者はauth-mail、管理者はadmin-auth-mail)
 │       ├── infrastructure/admin/                       # Workers統合テスト
 │       │   ├── d1-admin-account-store.ts · d1-admin-session-store.ts · d1-admin-auth-token-store.ts
 │       │   ├── d1-admin-login-challenge-store.ts · d1-admin-totp-credential-store.ts · d1-admin-recovery-code-store.ts

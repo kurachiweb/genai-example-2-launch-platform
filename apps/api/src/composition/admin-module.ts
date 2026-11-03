@@ -12,6 +12,10 @@ import {
   StoreAdminLogin,
 } from '../application/admin/admin-login.ts';
 import {
+  type AdminReAuthenticator,
+  StoreAdminReAuthenticator,
+} from '../application/admin/admin-re-authenticator.ts';
+import {
   type AdminSessionIssuer,
   StoreAdminSessionIssuer,
 } from '../application/admin/admin-session-issuer.ts';
@@ -20,11 +24,13 @@ import { ADMIN_TYPES } from '../application/admin/admin-types.ts';
 import type {
   AdminAccountStore,
   AdminLoginChallengeStore,
+  AdminMailSendLimits,
   AdminRecoveryCodeStore,
   AdminSessionStore,
   AdminTotpCredentialStore,
 } from '../application/admin/ports.ts';
 import type { SubjectSessionVerifierPort } from '../application/auth/subject-session-verifier.ts';
+import { CounterAdminMailSendLimits } from '../infrastructure/admin/counter-admin-mail-send-limits.ts';
 import { D1AdminAccountStore } from '../infrastructure/admin/d1-admin-account-store.ts';
 import { D1AdminLoginChallengeStore } from '../infrastructure/admin/d1-admin-login-challenge-store.ts';
 import { D1AdminRecoveryCodeStore } from '../infrastructure/admin/d1-admin-recovery-code-store.ts';
@@ -47,6 +53,9 @@ function bindStores(bind: Bind): void {
   bind<AdminRecoveryCodeStore>(ADMIN_TYPES.AdminRecoveryCodeStore).to(
     D1AdminRecoveryCodeStore,
   );
+  bind<AdminMailSendLimits>(ADMIN_TYPES.AdminMailSendLimits).to(
+    CounterAdminMailSendLimits,
+  );
 }
 
 function bindUseCases(bind: Bind): void {
@@ -61,6 +70,9 @@ function bindUseCases(bind: Bind): void {
     .to(StoreAdminAuthorizer)
     .inSingletonScope();
   bind<AdminLogin>(ADMIN_TYPES.AdminLogin).to(StoreAdminLogin);
+  bind<AdminReAuthenticator>(ADMIN_TYPES.AdminReAuthenticator).to(
+    StoreAdminReAuthenticator,
+  );
 }
 
 // 認証部品の束縛(AUTH_TYPES)は利用者のモジュールのものをそのまま使う

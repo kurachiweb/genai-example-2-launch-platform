@@ -281,7 +281,10 @@ apps/
 │   │   ├── subject-session-verifier.ts                 # SessionVerifierの主体別の振り分け
 │   │   ├── auth-errors.ts                              # 主体に依存しないAUTH_ERRORS・authError・loginThrottledError・本人確認とパスワードの拒否の文言(admin-foundationが移した)
 │   │   ├── password-rejection.ts                       # createPasswordRejectedError(識別子との一致の文言だけを主体ごとに受け取る。admin-foundationが移した)
-│   │   └── mail-send-policy.ts                         # MAIL_SEND_POLICY(認証系のメールの送信回数の時間窓と上限。admin-foundationが移した)
+│   │   ├── mail-send-policy.ts                         # MAIL_SEND_POLICY(認証系のメールの送信回数の時間窓と上限。admin-foundationが移した)
+│   │   ├── login-throttle-check.ts                     # checkLoginThrottle(主体のスコープを受け取るログイン試行のロックの確認、admin-foundationが移した)
+│   │   ├── second-factor-check.ts                      # checkSubjectSecondFactor・isTotpEnabled・SecondFactorScheme(admin-foundationが移した)
+│   │   └── re-authentication.ts                        # ReAuthenticationInput・本人確認の誤りのエラーの組み立て(admin-foundationが移した)
 │   ├── application/identity/                           # 利用者のユースケース(Bunの単体テスト)
 │   │   ├── identity-types.ts                           # IDENTITY_TYPES
 │   │   ├── ports.ts                                    # 各ストア・メール・端末情報・ハンドルの重複判定・設定値・MailSendLimits・IdentityMessagePublisher
@@ -318,6 +321,7 @@ apps/
 │   │   ├── otpauth-totp-authenticator.ts
 │   │   ├── hkdf-aes-gcm-secret-box.ts
 │   │   ├── crypto-secret-generator.ts
+│   │   ├── mail-send-counters.ts                       # consumeMailSendCounters(送信回数の数え方、規則の名前の接頭辞を主体ごとに受け取る。admin-foundationが移した)
 │   │   └── sentry-auth-incident-reporter.ts
 │   ├── infrastructure/identity/                        # Workers統合テスト
 │   │   ├── d1-user-account-store.ts
