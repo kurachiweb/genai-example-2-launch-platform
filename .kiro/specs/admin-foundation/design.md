@@ -408,7 +408,7 @@ sequenceDiagram
 | ----------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | 1.1〜1.4    | 管理者・ロール・状態・一意   | AdminSchema・AdminRoles・AdminAccountRules                                                                            | `admins`・`hasRole`                               |
 | 1.5         | 管理者の照会口               | AdminDirectory                                                                                                        | `findProfiles`                                    |
-| 2.1〜2.7    | 招待の発行コマンド           | SuperAdminInvitationScript                                                                                            | `buildInvitationSql`・`invitationTargets`         |
+| 2.1〜2.7    | 招待の発行コマンド           | SuperAdminInvitationScript                                                                                            | `buildInvitationSql`・`invitationTarget`          |
 | 3.1〜3.5    | 招待・再送・取り消し         | AdminInvitation・AdminAccountManagement・AuditLogRecorder                                                             | 招待と完了の流れ                                  |
 | 4.1〜4.8    | 招待の完了                   | AdminInvitation・InvitationPages                                                                                      | `startAdminInvitation`・`completeAdminInvitation` |
 | 5.1〜5.5    | パスワード                   | identity-authの`PasswordPolicy`・`PasswordHasher`                                                                     | 識別子はニックネームとメール(全体と@より前の部分) |
