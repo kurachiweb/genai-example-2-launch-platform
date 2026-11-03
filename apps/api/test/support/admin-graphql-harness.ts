@@ -26,10 +26,12 @@ export function createAdminGateway(
   };
 }
 
-export function createAdminTestContainer(): Container {
+export function createAdminTestContainer(
+  envOverrides: Partial<typeof env> = {},
+): Container {
   return createInvocationContainer(
     {
-      env,
+      env: { ...env, ...envOverrides },
       executionCtx: createExecutionContext(),
       info: {
         kind: 'fetch',

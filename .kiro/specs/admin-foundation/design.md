@@ -328,7 +328,7 @@ docs/GUIDES/tech/
 - `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 3環境の`vars`に`ADMIN_SITE_ORIGIN`を加え、型を生成し直す。`apps/api/test/config/wrangler-config.unit.test.ts`は`vars`を完全一致で照合するため、期待に3環境の`ADMIN_SITE_ORIGIN`を加える。
 - `apps/api/package.json` — `admin:invite-super-admin`(`bun scripts/admin/issue-super-admin-invitation.ts`)を加える。
 - `apps/api/package.json`・`bun.lock`・`docs/GUIDES/tech/coding/002-dependency-versions.md`・`docs/onboardings/tech-stack.md` — `otpauth`を9.6.0へ上げ、主要パッケージの一覧と技術選定の版を直す(タスク1.7)。
-- `apps/api/eslint.config.ts`・`test/config/layer-rules.unit.test.ts` — `admin`の各層から`identity`の各層への読み込みの禁止と違反例を加える。
+- `apps/api/eslint.config.ts`・`test/config/admin-layer-rules.unit.test.ts`(新規)・`test/config/layer-rules.unit.test.ts`・`test/support/layer-lint.ts`(新規) — `admin`の各層と`composition/admin-module.ts`から`identity`の読み込みの禁止を加え、違反例は`admin-layer-rules.unit.test.ts`に置く。`layer-rules.unit.test.ts`に加えると800行の上限を超えるため、静的解析の違反例の検査の補助を`test/support/layer-lint.ts`へ移し、両方のテストから読み込む。
 - `apps/client/src/components/auth/*`(identity-auth) — `return-path.ts`・`fragment-token.ts`の読み込み先を`frontend-lib/utilities/auth/`へ直す。
 - `apps/api/src/application/identity/identity-errors.ts`・`password-rejection.ts`・`re-authenticator.ts`・`login-throttle-check.ts`・`second-factor-check.ts`、`infrastructure/identity/counter-mail-send-limits.ts`と各単体テスト(identity-auth) — 主体に依存しない定義を`application/auth`から読み込む形へ直す(AdminErrors)。`docs/GUIDES/tech/security/006-authentication.md`の部品の表と`.kiro/specs/identity-auth/design.md`のファイル構成も直す。
 - `apps/admin/src/routes/index.tsx` — 削除し、`_authenticated/index.tsx`のダッシュボードへ置き換える。`components/pages/placeholder-home.tsx`も削除する。

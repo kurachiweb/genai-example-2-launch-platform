@@ -70,6 +70,7 @@ import { OwnerOnlyFileReadPolicy } from '../infrastructure/media/owner-only-file
 import { GATEWAY_HEADERS } from '../presentation/gateway/gateway-headers.ts';
 import { createApiMediaModule } from './media-module.ts';
 import { MODULES } from './modules.ts';
+import { UPLOAD_PURPOSES } from './upload-purposes.ts';
 
 type TestApp = Hono<PlatformHonoEnv<typeof env>>;
 
@@ -222,14 +223,14 @@ afterAll(() => {
 });
 
 describe('APIサーバーのメディアのモジュール', () => {
-  test('処理単位のコンテナから、共通の操作・空の用途の登録表・既定の方針・判定・3つのジョブを解決する', () => {
+  test('処理単位のコンテナから、共通の操作・登録箇所の用途の登録表・既定の方針・判定・3つのジョブを解決する', () => {
     const container = createContainer();
 
     expect(
       container
         .get<UploadPurposeRegistry>(MEDIA_TYPES.UploadPurposeRegistry)
         .list(),
-    ).toEqual([]);
+    ).toEqual(UPLOAD_PURPOSES);
     expect(container.get(MEDIA_TYPES.MediaFiles)).toBeInstanceOf(
       MediaFilesService,
     );

@@ -131,6 +131,7 @@ interface ExpectedEnvironment {
   readonly requiresDisifyApiKey: boolean;
   readonly appEnvironment: string;
   readonly clientSiteOrigin: string;
+  readonly adminSiteOrigin: string;
 }
 
 const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
@@ -150,6 +151,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     requiresDisifyApiKey: false,
     appEnvironment: 'local',
     clientSiteOrigin: 'http://localhost:48044',
+    adminSiteOrigin: 'http://localhost:48045',
   },
   {
     label: 'staging',
@@ -169,6 +171,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     appEnvironment: 'staging',
     clientSiteOrigin:
       'https://genai-example-2-client-staging.lab.kurachiweb.com',
+    adminSiteOrigin: 'https://genai-example-2-admin-staging.lab.kurachiweb.com',
   },
   {
     label: 'prod',
@@ -187,6 +190,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     requiresDisifyApiKey: true,
     appEnvironment: 'prod',
     clientSiteOrigin: 'https://genai-example-2-client.lab.kurachiweb.com',
+    adminSiteOrigin: 'https://genai-example-2-admin.lab.kurachiweb.com',
   },
 ];
 
@@ -372,6 +376,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
       TURNSTILE_EXPECTED_HOSTNAMES: env.turnstileExpectedHostnames,
       APP_ENVIRONMENT: env.appEnvironment,
       CLIENT_SITE_ORIGIN: env.clientSiteOrigin,
+      ADMIN_SITE_ORIGIN: env.adminSiteOrigin,
     });
   });
 

@@ -21,6 +21,7 @@ export interface ApiEnv extends PlatformEnv {
   readonly TURNSTILE_EXPECTED_HOSTNAMES: string;
   readonly APP_ENVIRONMENT: AppEnvironment;
   readonly CLIENT_SITE_ORIGIN: string;
+  readonly ADMIN_SITE_ORIGIN: string;
   // ローカル環境だけ省略できる。空文字は未設定として扱う
   readonly DISIFY_API_KEY?: string;
 }
@@ -53,6 +54,7 @@ export const apiEnvSchema = z
     TURNSTILE_EXPECTED_HOSTNAMES: z.string(),
     APP_ENVIRONMENT: z.enum(APP_ENVIRONMENTS),
     CLIENT_SITE_ORIGIN: z.string().refine(isOrigin),
+    ADMIN_SITE_ORIGIN: z.string().refine(isOrigin),
     DISIFY_API_KEY: z.string().optional(),
   })
   // デプロイ先の環境でキーの登録を忘れると判定せずに通常として扱い続けるため、起動時に止める。他のキーに不備があっても一緒に報告するよう、環境がオブジェクトなら検査する

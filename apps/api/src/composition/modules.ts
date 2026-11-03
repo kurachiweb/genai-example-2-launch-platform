@@ -3,6 +3,7 @@ import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
+import { ADMIN_PLATFORM_MODULE } from '../../lib/workers/admin/admin-platform-module.ts';
 import {
   type BotVerifier,
   createTurnstileVerifier,
@@ -95,6 +96,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_EMAIL_MODULE,
   IDENTITY_PLATFORM_MODULE,
   IDENTITY_MODULE,
+  ADMIN_PLATFORM_MODULE,
   ADMIN_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,

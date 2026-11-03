@@ -127,6 +127,11 @@ const BUN_LOADED_RESTRICTION = {
 };
 
 // 同じファイルに当たる後の設定のno-restricted-importsは層の規則のオプションを置き換えるため、プレゼンテーション層の合成ルートの禁止を含め直す
+const BUN_LOADED_PRESENTATION_PATTERNS = [
+  BUN_LOADED_RESTRICTION,
+  ...BACKEND_LAYER_PATTERNS.infrastructureAndPresentation,
+];
+
 const BUN_LOADED_GRAPHQL_RULES: Linter.Config[] = [
   {
     name: 'api/graphql/bun-loaded-presentation',
@@ -144,16 +149,7 @@ const BUN_LOADED_GRAPHQL_RULES: Linter.Config[] = [
     rules: {
       'no-restricted-imports': [
         'error',
-        {
-          patterns: [
-            BUN_LOADED_RESTRICTION,
-            {
-              group: ['**/composition/**'],
-              message:
-                'インフラ層とプレゼンテーション層は合成ルートに依存できません。',
-            },
-          ],
-        },
+        { patterns: BUN_LOADED_PRESENTATION_PATTERNS },
       ],
     },
   },
@@ -169,16 +165,18 @@ const BUN_LOADED_GRAPHQL_RULES: Linter.Config[] = [
   },
 ];
 
+// ESLintは解決後のパスではなくimportの文字列で照合するため、相対パスの深さや書き方によらずidentityのディレクトリを全て禁じ、共有ディレクトリとDBスキーマの利用者の部分だけを許し直す
+const IDENTITY_LAYER_GROUP = [
+  '**/identity',
+  '**/identity/**',
+  '!**/lib/**',
+  '!**/common-lib/**',
+  '!**/db/**',
+];
+
 // 管理者の認証が利用者のモジュール無しで認証部品を再利用できるよう、認証部品の各層から利用者のモジュールを型も含めて読み込ませない
 const IDENTITY_FROM_AUTH_RESTRICTION = {
-  group: [
-    '../identity/**',
-    '../../identity/**',
-    '**/domain/identity/**',
-    '**/application/identity/**',
-    '**/infrastructure/identity/**',
-    '**/presentation/graphql/modules/identity/**',
-  ],
+  group: IDENTITY_LAYER_GROUP,
   message:
     '認証部品(auth)は利用者のモジュール(identity)に依存できません。利用者に固有の処理はidentityの層に置き、認証部品のポートを実装してください。',
 };
@@ -207,6 +205,66 @@ const AUTH_LAYER_RULES: Linter.Config[] = [
     'no-restricted-imports': [
       'error',
       { patterns: [...patterns, IDENTITY_FROM_AUTH_RESTRICTION] },
+    ],
+  },
+}));
+
+// 管理者の業務処理が利用者の業務処理の変更に左右されないよう、管理者の各層から利用者のモジュールを型も含めて読み込ませない
+const IDENTITY_FROM_ADMIN_RESTRICTION = {
+  group: IDENTITY_LAYER_GROUP,
+  message:
+    '管理者のモジュール(admin)は利用者のモジュール(identity)に依存できません。主体に依存しない処理は認証部品(auth)に置いてください。',
+};
+
+// 管理者の束縛が利用者のモジュールの束縛と登録箇所の変更に左右されないよう、管理者のモジュールの合成から利用者の合成を読み込ませない
+const IDENTITY_COMPOSITION_RESTRICTION = {
+  group: ['./identity-*', '**/composition/identity-*'],
+  message:
+    '管理者のモジュールの合成(admin-module)は利用者のモジュールの合成(identity-*)に依存できません。共通の束縛は認証部品の識別子(AUTH_TYPES)から得てください。',
+};
+
+// 同じファイルに当たる後の設定のno-restricted-importsは層の規則のオプションを置き換えるため、その層の層の規則のパターンを含め直す。GraphQLのスキーマモジュールはBunで読み込む規則の後に置く
+const ADMIN_LAYER_RULES: Linter.Config[] = [
+  {
+    name: 'api/admin/domain',
+    files: ['src/domain/admin/**'],
+    patterns: BACKEND_LAYER_PATTERNS.domain,
+  },
+  {
+    name: 'api/admin/application',
+    files: ['src/application/admin/**'],
+    patterns: BACKEND_LAYER_PATTERNS.application,
+  },
+  {
+    name: 'api/admin/infrastructure-and-presentation',
+    files: [
+      'src/infrastructure/admin/**',
+      'src/presentation/graphql/admin-guard.ts',
+      'src/presentation/graphql/admin-guard.*.test.ts',
+      'src/presentation/graphql/modules/admin/**/*.worker.test.ts',
+    ],
+    patterns: BACKEND_LAYER_PATTERNS.infrastructureAndPresentation,
+  },
+  {
+    name: 'api/admin/composition',
+    files: [
+      'src/composition/admin-module.ts',
+      'src/composition/admin-module.*.test.ts',
+    ],
+    patterns: [IDENTITY_COMPOSITION_RESTRICTION],
+  },
+  {
+    name: 'api/admin/graphql-modules',
+    files: ['src/presentation/graphql/modules/admin/**'],
+    ignores: ['src/presentation/graphql/modules/admin/**/*.worker.test.ts'],
+    patterns: BUN_LOADED_PRESENTATION_PATTERNS,
+  },
+].map(({ patterns, ...config }) => ({
+  ...config,
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      { patterns: [...patterns, IDENTITY_FROM_ADMIN_RESTRICTION] },
     ],
   },
 }));
@@ -328,6 +386,7 @@ const config: Linter.Config[] = [
   ...AUTH_LAYER_RULES,
   ...REACT_FORBIDDEN_RULES,
   ...BUN_LOADED_GRAPHQL_RULES,
+  ...ADMIN_LAYER_RULES,
   ...GRAPHQL_SCRIPT_RULES,
   ...SHARED_DIRECTORY_RULES,
 ];
