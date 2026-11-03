@@ -92,7 +92,7 @@
   - user-profile-social・match-engine・paymentsなどのドメインspecは、ユーザーライフサイクルイベントの波及処理を登録し、自分のデータの論理削除・物理削除・匿名化・停止時の処理を冪等に実装する。可視ユーザーの判定条件と機能制限の判定部品を使う。
   - user-profile-socialは、ユーザーが保有するファイルの物理削除(物理削除の開始時)と、停止・停止解除に伴う隔離理由の付け外しを、media-pipelineの保有者単位の操作を呼ぶ波及処理として登録する。本specはその登録口だけを提供する。
   - user-profile-socialは、ハンドルの規則を所有し、本specが登録時に設定するハンドルの重複判定に、旧ハンドルと予約語の判定を加える。本specが生成する初期ハンドルは、その規則を満たす必要がある。
-  - infra-deliveryは、任意のシークレット`DISIFY_API_KEY`をAPI・イベントサーバーへ渡すシークレットの一覧とInfisicalの表に載せ、APIサーバーの`CLIENT_SITE_ORIGIN`の3環境の値を一覧に持ち、mainへのマージによるstagingへのデプロイでDurable Objectのマイグレーションを適用する。stagingの`DISIFY_API_KEY`の値は、そのキーを読む本specの変更をmainへマージする前に開発者が登録し、prodの値はlaunch-readinessがリリース時に登録する。シークレットのキーの一覧の正は`docs/onboardings/project-values.md`で、infra-deliveryが一覧の節を作り、本specは`DISIFY_API_KEY`の行を足す。
+  - infra-deliveryは、staging・prodで必須のシークレット`DISIFY_API_KEY`をAPI・イベントサーバーのデプロイ先の環境の必須のシークレットとInfisicalの表に載せ、APIサーバーの`CLIENT_SITE_ORIGIN`の3環境の値を一覧に持ち、mainへのマージによるstagingへのデプロイでDurable Objectのマイグレーションを適用する。staging・prodの`DISIFY_API_KEY`の値は、そのキーを必須にする本specの変更をmainへマージする前に開発者が登録する。ローカル環境ではキーを登録せず、判定サービスを呼ばずに通常のメールアドレスとして扱う。シークレットのキーの一覧の正は`docs/onboardings/project-values.md`で、infra-deliveryが一覧の節を作り、本specは`DISIFY_API_KEY`の行を足す。
   - infra-deliveryは、プライバシーポリシー骨子と準拠方針に、Cloudflareの資源の保存場所と国外移転の記載事項のCloudflareの項(所在を限定しないDurable Objectsの扱いと移転の根拠を含む)を書く。本specのD1のテーブルとログイン試行の記録はその対象に含まれ、本specはその項を書き換えない。
   - admin-foundationは、本specの認証の共通部品とログイン試行の記録を、管理者用のテーブル・セッションの有効期限(アイドル1時間・絶対12時間)・メールアドレス単位の記録の区分で使う。
   - legal-pagesは、本specが保存する同意日時と照合できる改訂履歴の公開日時を持つ。

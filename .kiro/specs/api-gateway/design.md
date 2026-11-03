@@ -181,7 +181,7 @@ apps/
 │   │   ├── infrastructure/system/d1-database-probe.ts  # DatabaseProbeのD1実装(SELECT 1)
 │   │   ├── presentation/
 │   │   │   ├── gateway/
-│   │   │   │   ├── gateway-headers.ts           # CallerKind・ヘッダー名の契約・AppEnvironment
+│   │   │   │   ├── gateway-headers.ts           # CallerKind・ヘッダー名の契約・AppEnvironment(identity-authが共通ライブラリへ移して再エクスポート)
 │   │   │   │   ├── internal-request.ts          # 呼び出し元の付与・除去・読み取り、クライアントIPの解決
 │   │   │   │   ├── internal-only.ts             # internalOnlyミドルウェアと内部RESTのAppModule(/internal)
 │   │   │   │   ├── session-access.ts            # createSessionAccess・Cookieの指示の応答ヘッダーへの反映
@@ -487,6 +487,7 @@ sequenceDiagram
 export type CallerKind = 'client' | 'admin';
 export declare const CALLER_KINDS: readonly CallerKind[];
 
+// AppEnvironment・APP_ENVIRONMENTS・isDeployedEnvironmentは、identity-authがeventと共有するためapps/backend-lib/core/env/app-environment.tsへ移し、ここでは再エクスポートする
 export type AppEnvironment = 'local' | 'staging' | 'prod';
 export declare const APP_ENVIRONMENTS: readonly AppEnvironment[];
 export declare function isDeployedEnvironment(
@@ -1460,7 +1461,7 @@ export declare const SESSION_BINDINGS: ContainerModule; // SESSION_TYPES.Session
 - `modules.ts`の`MODULES`へ、`{ name: 'session', bindings: SESSION_BINDINGS }`、`{ name: 'system', bindings: SYSTEM_BINDINGS }`、`createGraphQLModule({ schemaModules: GRAPHQL_SCHEMA_MODULES, allowlist })`、`createRestModule(REST_ROUTES).module`、`createInternalRoutesModule(INTERNAL_ROUTES)`を加える。
 - `api-worker.ts`: `createRestModule(REST_ROUTES)`(本specの段階では`options`を渡さず既定の情報を使う。public-apiが`{ info }`を加える)→`createWorkerApp({ ..., modules: MODULES, resolveClientIp: resolveGatewayClientIp })`→`createWorkerHandler`で`apiHandler`を作り、`publicEntrypoint = createPublicEntrypoint(apiHandler, { cors: createPublicApiCorsPolicy(rest.routeTable) })`をエクスポートする。いずれもモジュールの読み込み時は組み立てだけで、I/Oと初期化は最初の要求まで遅らせる(backend-platformの規則)。
 - `index.ts`: `export default publicEntrypoint`、`export class ClientGateway extends createGatewayEntrypointClass('client', apiHandler) {}`、`AdminGateway`、backend-platformの`RateLimitCounter`だけをエクスポートする。
-- `env-schema.ts`: `APP_ENVIRONMENT: z.enum(APP_ENVIRONMENTS)`。Wrangler設定の`vars`はルート`local`・`env.staging`は`staging`・`env.prod`は`prod`。
+- `env-schema.ts`: `APP_ENVIRONMENT: z.enum(APP_ENVIRONMENTS)`。Wrangler設定の`vars`はルート`local`・`env.staging`は`staging`・`env.prod`は`prod`。identity-authが、eventにも同じ値の`APP_ENVIRONMENT`を加え、api・eventの環境の検証で`staging`・`prod`のときに`DISIFY_API_KEY`を必須にする。
 - `graphql-modules.ts`と、そこから読み込むファイルは`cloudflare:*`・`@sentry/*`・`infrastructure`を読み込まない(生成コマンドがBunで読み込む)。
 
 ### test
@@ -1664,7 +1665,7 @@ graph LR
 | GraphQLの経路                  | `/graphql`                                                                                               |
 | 内部RESTの接頭辞               | `/internal`                                                                                              |
 | 公開RESTの基準パス・仕様の経路 | `/v1`・`/v1/openapi.json`                                                                                |
-| `APP_ENVIRONMENT`              | ルート`local`、`env.staging`は`staging`、`env.prod`は`prod`                                              |
+| `APP_ENVIRONMENT`              | ルート`local`、`env.staging`は`staging`、`env.prod`は`prod`(identity-authがeventにも同じ値で加える)      |
 | ローカルのGraphiQL             | `http://localhost:48042/graphql`(APIのポートはbackend-platformの`dev`スクリプト)                         |
 | 生成物                         | `apps/api/src/presentation/graphql/generated/{schema.graphql,resolvers-types.ts,allowlist.json}`         |
 | 操作の一覧                     | `apps/{client,admin}/src/graphql/generated/persisted-documents.json`                                     |
