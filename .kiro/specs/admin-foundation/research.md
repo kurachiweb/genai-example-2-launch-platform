@@ -272,3 +272,100 @@ identity-authが報告済みのFR-RLMIT-012・FR-RLMIT-020・NFR-SECUR-026の改
 - **新しいポートと実装**: 送信回数の制限は、ポート`AdminMailSendLimits`(`AdminLimitedMailKind`とともに`application/admin/ports.ts`)と、`RateLimitCounterClient`を使う実装`CounterAdminMailSendLimits`(`infrastructure/admin/counter-admin-mail-send-limits.ts`、Workers統合テスト)に分けた(identity-authの`CounterMailSendLimits`と同じ形)。application層の`admin-mail-send-limits.ts`は置かない。bot判定はリゾルバの`assertHuman`で行うため、ログインのコンポーネントの依存から`BotVerifier`を外した。
 - **変えた箇所**: design.mdのThis Spec Owns・Allowed Dependencies・Revalidation Triggers・Dependency Direction・File Structure Plan(`core/admin/`・`workers/admin/`・`application/admin/ports.ts`・`infrastructure/admin/`)・コンポーネントの表(AdminDirectoryの層、AdminLoginの依存、AdminMailSendLimitsの行)・AdminPorts・AdminAuthorizer・AdminDirectoryの契約と置き場所・AdminLogin・AdminReAuthenticator・AdminMailSendLimits・CounterAdminMailSendLimitsの節・ApiAdminComposition・Testing Strategy(識別子の単体テストと`CounterAdminMailSendLimits`のWorkers統合テスト)、tasks.mdの5.1・6.2・6.4。要件と受け入れ基準は変えていない。
 - **下流への影響**: `AdminDirectory`を受け取るlegal-pages・help-center・inquiry-chat・ugc-moderation・ultras-subscriptionは、契約と識別子を`core/admin`から読み込む。
+
+---
+
+## 実装前のギャップ分析(2026-11-03)
+
+- **状態**: 要件・設計・タスクの承認の後、実装に着手する前に`/cc-sdd:kiro-validate-gap`で行った。設計の時点では上流specの実装が未着手だったため、実装された上流の契約と本specの設計・タスクの前提を照合した。要件・設計・タスクはまだ改訂していない。
+- **前提の確認**:
+  - 上流の実装の状況: backend-platform(57/57)・api-gateway(52/52)・email-delivery(34/34)・frontend-platform(97/97)・content-processing(55/55)・media-pipeline(55/55)・identity-auth(67/67)・dev-tooling(47/47)のタスクは完了している。infra-deliveryは42/44で、残りは本specに関わらない。下流のugc-moderation・launch-readinessは未着手である。
+  - 本specの実装は未着手である(`apps/db/schema/admin`・`apps/common-lib/admin`・`apps/backend-lib/core/admin`・`apps/api/src/*/admin`は無く、`apps/admin`はfrontend-platformの骨格と仮のページだけ)。
+  - steering: `.kiro/steering`はroadmap.mdだけで、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替した。
+
+### 要件と既存資産の対応
+
+分類は、Missing(本specが新設する予定どおりで、既存資産は無い)、Constraint(既存の規則・設定による制約)、Drift(設計・タスクの前提と実装の食い違い。次節で扱う)、Unknown(設計に記述が無い)である。
+
+| 要件         | 実在を確かめた既存資産                                                                                                                                                                                                                                                               | 分類                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| 1            | `apps/db/schema/_shared`の`ulidPrimaryKey`・`timestamps`・`textNoCase`。部分一意索引の`WHERE`句とCHECK制約はdrizzle-kitが生成する(`20261102060846_identity_auth/migration.sql`で確認)                                                                                                | Missing                                                                      |
+| 2            | `apps/api/scripts/`(`graphql/`・`check-migrations.ts`が既存)。`.claude/settings.json`のdenyが`wrangler d1 * --remote`を拒否する                                                                                                                                                      | Missing・Constraint(stagingとprodの実行は開発者の手作業、設計どおり)         |
+| 3・4・12・14 | `application/auth`の`SecretIssuer`(`issue(purpose)`・`hashOf`)・`RecoveryCodeIssuer`、`AUTH_TYPES`の`TotpAuthenticator`(`verify`が`step`を返し再使用を判定できる)・`SecretBox`・`SecretGenerator`。`hashPurpose`は文字列の型で、`admin-`の接頭辞の用途をそのまま作れる               | Missing                                                                      |
+| 5            | `CheckingPasswordPolicy`(規則→漏洩照合→`unavailable`なら`pwned-password-check-unavailable`を報告して受け付ける)、`checkPasswordRules`と`PasswordIdentifiers`(`handle`・`nickname`・`email`)                                                                                          | Drift(G-1・G-4)                                                              |
+| 6・7・13     | `LoginThrottle`(`LoginThrottleScope`は`'user' \| 'admin'`)・`createLoginThrottleKeys`・`PasswordHasher.verifyAgainstDummy`・`normalizeTotpCode`・`SecondFactorInput`・`GraphQLContext.assertHuman`                                                                                   | Constraint(IPアドレス単位の記録は利用者と共有するため、E2Eに影響する。G-10)  |
+| 8・17        | `domain/auth/session-policy.ts`の`SessionPolicy`・`newSessionTimes`・`evaluateSession`・`cookieMaxAgeSeconds`、`composition/session.ts`の`AUTH_TYPES.AdminSessionVerifier`→`InvalidSubjectSessionVerifier`の束縛、`SessionAccess`(`requireAuthenticated`・`issue`・`clear`)          | Missing(差し替えは設計どおり1行)                                             |
+| 9〜11        | 利用者の同じ流れ(`application/identity`の`password-reset.ts`・`email-change.ts`・`password-change.ts`・`re-authenticator.ts`・`second-factor-check.ts`)は実装の手本になるが、`admin`は`identity`を読み込めない(apiの`eslint.config.ts`の層の規則に`auth`→`identity`の禁止が既にある) | Drift(G-4)                                                                   |
+| 14           | `defineEmailKind`・`EMAIL_KINDS`(`core/email/kinds/`)・`defineEmailTemplate`・送信期限`deadline`、利用者のテンプレートの部品(`templates/identity`の`link-expiry-text.tsx`・`unrecognized-change-notice.tsx`・`changed-at-text.tsx`)                                                  | Drift(G-2・G-11)                                                             |
+| 15           | `MediaFiles.eraseNow`・`claim`(保有者の一致を確かめる)、条件付きの`CASE`式で一括の書き込み全体を取り消す前例`D1UserLifecycleCommitter`                                                                                                                                               | Missing                                                                      |
+| 16           | `UploadPurpose`(`name`・`storage`・`uploaderKinds`・`allowedTypes`・`maxBytes`)、`UploaderKind`の`'admin'`、`UPLOAD_PURPOSES`は空、`IMAGE_MEDIA_TYPES`はSVGを含む、管理者側の中継に`UPLOAD_RELAY_ROUTE`が既にある、`ImageUploadField`・`MediaPicture`・`MediaPlaceholder`            | Missing                                                                      |
+| 17           | スキーマモジュールは呼び出し元で分かれず、操作の許可リスト(`allowlist.json`の`client`・`admin`)とリゾルバの判定で分ける。利用者側には`clientOnly`の前例がある                                                                                                                        | Missing(`requireAdmin`は呼び出し元が`admin`であることも確かめる、設計どおり) |
+| 18・19       | 監査ログの資産は無い。`countGraphemes`。ugc-moderationのメールアドレス検索が使う`AdminUserDirectory`は`backend-lib/core/identity`にある                                                                                                                                              | Missing                                                                      |
+| 20           | `ADMIN_LAYOUT_SLOTS`(`navigation`・`headerAccount`はnull)、`AdminLayout`はルートの`shellComponent`で全ページ(エラー・404を含む)を包む。利用者側の前例(`loadRootAuthContext`・`requireViewer`・`useViewer`で未ログインを出し分ける`AccountMenu`)                                      | Unknown(G-3)                                                                 |
+| 21           | `components/ui`に`table`・`select`は無い。`radix-ui`は1.8.1                                                                                                                                                                                                                          | Missing・Drift(G-5)                                                          |
+| 22           | `e2e/support`の`totp.ts`(`createTotpCodeSource`)・`mailpit.ts`・`client-ip.ts`(`assumeDistinctClientIp`)・`scheduled-trigger.ts`。文書の番号`security/007`・`backend/008`・`frontend/009`・`operations/003`は空いている                                                              | Drift(G-7・G-10)                                                             |
+
+設計の時点の調査項目のうち、次は実装で解消した。管理者側のCSPのTurnstileの許可先(`BASE_SECURITY_POLICY_SOURCES`の`scriptSrc`・`frameSrc`)、管理者側の3環境の`TURNSTILE_SITE_KEY`、管理者のアップロードの中継、部分一意索引とCHECK制約の生成、`CASE`式による取り消しの前例、infra-deliveryの`ADMIN_SITE_ORIGIN`の行(ローカルは`http://localhost:48045`)である。
+
+### 設計・タスクと実装の食い違い
+
+| #    | 項目                             | 設計・タスクの記述                                                                                               | 実装                                                                                                                                                                                                                                                                                                                   | 分類                          |
+| ---- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| G-1  | パスワードとメールアドレスの一致 | 要件5.2は「ニックネームまたはメールアドレスのローカル部と一致」を拒否する                                        | コミット`6317912c`で`checkPasswordRules`がメールアドレス全体とも比べるようになり、文言も「メールアドレス(@より前の部分を含む)と同じ」に変わった。管理者も同じ`PasswordPolicy`を使うため、全体の一致も拒否される。identity-authの要件12.2・設計・文言の規則・`security/006`は改訂済みで、本specへの水平展開が漏れている | 要件の改訂(水平展開)          |
+| G-2  | メール種別とテンプレートの順     | タスク7.1(並行可)でメール種別を`EMAIL_KINDS`へ登録し、7.2でテンプレートを作る                                    | `templates/index.worker.test.tsx`が全種別のテンプレートを求め、eventの`email-module.ts`は起動時に`createEmailTemplateRegistry(EMAIL_TEMPLATES, EMAIL_KINDS)`を組む。7.1だけを終えた時点でeventのテストが失敗する。identity-authは同じ理由でタスク3.3と9.1を統合した                                                    | 規則と衝突                    |
+| G-3  | 未ログインのときのシェルの区画   | `AdminNavigation`・`AdminAccountMenu`の振る舞いはログイン中だけを記述する                                        | `AdminLayout`は`shellComponent`にあり、区画の部品は`/auth/*`・404・エラーのページにも描かれる。区画の型は`ComponentType \| null`の静的な値で、ページごとにnullにできない。未ログインで部品が何を描くか(何も描かない・メニューのランドマークの有無)と、ルートの`beforeLoad`で取得に失敗したときの扱いが設計に無い       | 設計の追記                    |
+| G-4  | 利用者の層にある文言・定数       | 「両者の規則(期限・文言・試行の制限)の一致を、同じ定数と同じエラーコードで保つ」とするが、置き場所を定めていない | パスワードの拒否の文言(`PASSWORD_MATCHES_IDENTITY_MESSAGE`・`PWNED_PASSWORD_MESSAGE`・`PASSWORD_LENGTH_MESSAGE`)と`passwordRejectedError`は`application/identity`、送信回数の上限(`MAIL_SEND_LIMIT_PER_ADDRESS`など)は`infrastructure/identity`にあり、`admin`から読み込めない。複製するとG-1のような変更で食い違う    | 上流への波及                  |
+| G-5  | 版                               | Technology Stackと上流への影響の表は`radix-ui` 1.6.7・vitest 4.1.11                                              | `radix-ui` 1.8.1・vitest 4.1.12                                                                                                                                                                                                                                                                                        | 軽微                          |
+| G-6  | 業務時刻の部品の名前             | Allowed Dependenciesに`BusinessTime`とある                                                                       | `core/time/business-time.ts`は`toBusinessDateTime`・`fromBusinessDateTime`・`BusinessDate`などの関数と型だけで、`BusinessTime`という名前は無い。時刻は`Clock`                                                                                                                                                          | 軽微                          |
+| G-7  | `beforeLoad`での取得の例外の文言 | `__root.tsx`の`beforeLoad`で`adminViewer`を取得する                                                              | `frontend/006-data-fetching.md`の例外は「ログイン中の利用者」の1件の取得として書かれている。形は同じだが、管理者側も当てはまる書き方(ログイン中の主体)に直す必要がある                                                                                                                                                 | 軽微(文書)                    |
+| G-8  | 4:21の予算                       | ジョブ2つ(`order` 200・210)の削除の件数と所要時間に触れていない                                                  | `SCHEDULED_RUN_BUDGETS`が4:21の起動の合計を300秒とし、超過を警告する。identity-authは件数の上限を設けず、予算の共有を設計に明記した                                                                                                                                                                                    | 軽微                          |
+| G-9  | Wrangler設定の完全一致のテスト   | Modified Filesに`apps/api/wrangler.jsonc`・`worker-configuration.d.ts`はあるが、テストが無い                     | `apps/api/test/config/wrangler-config.unit.test.ts`が`api.vars`を`toStrictEqual`で照合するため、`ADMIN_SITE_ORIGIN`を足すとこのテストの期待も直す必要がある                                                                                                                                                            | 規則と衝突(タスク8.1に加える) |
+| G-10 | E2Eの補助                        | `admin-bootstrap.ts`が`currentTotpCode`を持つ                                                                    | `e2e/support/totp.ts`の`createTotpCodeSource`が既にあり、再利用できる。ログインの失敗のIPアドレス単位の記録は利用者と共有するため、失敗を含む管理者のE2Eは`client-ip.ts`の`assumeDistinctClientIp`で接続元を分けないと、利用者側のE2Eとロックが干渉する                                                                | 軽微(タスクの注記)            |
+| G-11 | メールの本文の部品               | 6つのテンプレートを`templates/admin/`に作る                                                                      | 有効期限・心当たりが無い場合の案内・変更日時の表示の部品が`templates/identity/`にある。管理者のテンプレートから読み込むか、共通の場所へ移すか、複製するかが定まっていない                                                                                                                                              | 軽微                          |
+
+### 実装の進め方の選択肢
+
+#### Option A: 設計を変えず、各タスクの中で食い違いを吸収する
+
+- G-1〜G-11を、実装者がタスクの実行中に判断して直す。
+- ✅ 文書の改訂の手間が無く、すぐ着手できる。
+- ❌ 要件5.2(G-1)とテストの規則(G-2・G-9)に反したまま進み、`/cc-sdd:kiro-review`のたびに同じ指摘が出る。G-4の置き場所はidentity-authのファイルを動かすかどうかの判断で、実装者が決めるには影響が大きい。
+
+#### Option B: 実装の前に設計とタスクをすべて改訂する
+
+- G-1〜G-11をすべてrequirements.md・design.md・tasks.mdへ反映してから実装する。
+- ✅ 設計が実装の正となり、レビューの基準がそろう。
+- ❌ 設計は1,400行を超え、軽微な項目まで直すと改訂の量が大きい。
+
+#### Option C: 要件・規則・上流に関わる項目だけを先に改訂し、他はタスクの注記にする(混成)
+
+- 先に改訂する項目:
+  1. G-1: 要件5.2をメールアドレス全体とローカル部の両方の一致の拒否に改め、設計の文言をidentity-authに合わせる。
+  2. G-2: タスク7.1と7.2を統合するか、7.1から`EMAIL_KINDS`への登録を外して7.2で種別とテンプレートを同時に登録する。
+  3. G-3: 未ログインのときの`AdminNavigation`・`AdminAccountMenu`の振る舞いと、取得の失敗の扱いを設計に加える。
+  4. G-4: パスワードの拒否の文言と送信回数の上限の置き場所を決める(下の選択肢を参照)。
+  5. G-9: タスク8.1とModified Filesに`wrangler-config.unit.test.ts`の期待の更新を加える。
+- タスクの注記にする項目: G-5・G-6(表の版と名前の修正)、G-7(`frontend/009`の作成時に`006`の文言も直す)、G-8(予算の共有の明記)、G-10(E2Eの補助の再利用と接続元の分離)、G-11(テンプレートの部品の扱い)。
+- ✅ 要件の不整合・規則の違反・上流への波及を実装の前に防ぎ、改訂の量を抑えられる。identity-authの実装前のギャップ分析(2026-11-02)と同じ進め方である。
+- ❌ 注記と設計の本文の両方を見る必要がある。
+
+### G-4の置き場所の選択肢
+
+| 案                                             | 内容                                                                                                                                                                    | 長所                                                            | 短所                                                                                               |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| a. 主体に依存しない部分を`auth`へ移す          | パスワードの拒否の文言・`passwordRejectedError`を`application/auth`へ、送信回数の上限の定数を`application/auth`(または`domain/auth`)へ移し、identity・adminの両方が読む | 1か所の変更で両方がそろう。`auth`の役割(主体に依存しない)に合う | identity-authのファイルを動かすため、上流への影響の表に行を足し、identity-authの再検証の対象にする |
+| b. `admin`に複製し、一致を単体テストで確かめる | 管理者用の定数と文言を`admin`に置き、identityの値との一致を確かめるテストを書く                                                                                         | identity-authのコードを変えない                                 | テストが`admin`から`identity`を読み込むため、層の規則の例外が要る                                  |
+| c. `admin`に複製するだけにする                 | 管理者用に同じ値を持つ                                                                                                                                                  | 変更が最小                                                      | G-1のような変更で食い違いが再発する                                                                |
+
+### 規模とリスク
+
+- **規模: XL(2週間以上)** — タスクは約45件で、DB・api・event・admin・frontend-lib・E2E・文書のすべての層にまたがる。上流の契約は実在するため、規模を押し上げているのは本spec自身の範囲である。
+- **リスク: Medium** — 認証と権限に直結するが、認証部品・セッションの差し込み口・送信回数の制限・一括の書き込みの取り消し・利用者側の画面の流れに、実装済みの前例がある。未知の技術は無く、食い違いは実装の前に直せば手戻りにならない。
+
+### 設計フェーズへの申し送り
+
+- **推奨**: Option C。G-4はa(主体に依存しない部分を`auth`へ移す)を推奨する。管理者と利用者の規則がそろうことを要件が求めており(Q7)、G-1が実際に片側だけ変わった例だからである。先に改訂する5項目は、開発者に1件ずつ選択肢を示して決めてから設計を改訂する。
+- **Research Needed**:
+  - G-3: TanStack Startの`shellComponent`の中の部品がルートの文脈(`beforeLoad`で入れた`adminViewer`)を読めるか、エラーのページでも読めるか。利用者側の`useViewer`の実装が手本になる。
+  - G-11: eventのテンプレートの間の読み込みに層やディレクトリの規則があるか(`templates/admin`から`templates/identity`を読み込めるか)。
+  - 監査ログの期間の絞り込み(`audit-period.ts`)で、`<input type="date">`の日付を業務時刻とUTCのどちらで解釈するかが設計の記述どおりか、`core/time/business-time.ts`の関数で組めるかを、タスク11.6の着手前に確かめる。
