@@ -183,6 +183,7 @@ const schema = z.object({
 | 3    | 書記素の数が上限を超える                                                                  | 「<項目名>は<上限>文字以内で入力してください。」(上限は3桁区切り) |
 
 - 文字列でない値はZodの既定の失敗になる。値は変換せずにそのまま返す。
+- 空白は1行の項目と同じ`\p{White_Space}`の集合で、共用部品の`text/white-space.ts`の`trimWhiteSpace`で除いて空かを判定する(「[前後の空白](../coding/005-input-validation.md#前後の空白)」)。`String.prototype.trim`は使わない。BOM(U+FEFF)だけの値は空白だけとみなさない。NEL(U+0085)は空白だがC1制御文字のため、1の使用できない文字として先に拒む。
 - 見出しレベル1・画像・Raw HTMLは検査しない。表示部品が文字列として表示するため、入力を拒む必要が無い。
 - `maxGraphemes`は1以上の整数で指定する(違えば`RangeError`)。
 - 共通部品の部品(`components/**`)とサーバーの部品(`server/**`)は検証規則を読み込まない(「[画面を持つアプリの静的解析](../coding/001-javascript-typescript-conventions.md#画面を持つアプリの静的解析)」の`frontend/direction/*`)。フォームのスキーマは、そのフォームを持つアプリのルートや画面の部品で作る。

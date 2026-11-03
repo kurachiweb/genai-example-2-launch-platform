@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { trimWhiteSpace } from '../text/white-space.ts';
 import { markdownTextSchema } from './markdown-text-schema.ts';
 
 const issueMessagesOf = (
@@ -83,10 +84,16 @@ describe('markdownTextSchema', () => {
       ['半角空白だけ', '   '],
       ['全角空白だけ', '　　'],
       ['タブと改行だけ', '\t\r\n\n'],
+      ['ノーブレークスペースだけ', '\u00a0\u00a0'],
+      ['行区切りと段落区切りだけ', '\u2028\u2029'],
     ])('%sの場合に必須の文言で失敗させる', (_, text) => {
       expect(issueMessagesOf(commentSchema.safeParse(text))).toEqual([
         'コメントを入力してください。',
       ]);
+    });
+
+    test('U+FEFFは共用部品の空白の定義に合わせて空白とみなさず、必須の項目でも受け付ける', () => {
+      expect(commentSchema.safeParse('\ufeff').success).toBe(true);
     });
 
     test('上限を超える空白だけの文字列も必須の文言だけで失敗させる', () => {
@@ -128,10 +135,12 @@ describe('markdownTextSchema', () => {
       ['VTだけ', '\u000b'],
       ['FFだけ', '\f'],
       ['半角空白とVTだけ', ' \u000b '],
+      ['NELだけ', '\u0085'],
+      ['全角空白とNELだけ', '\u3000\u0085\u3000'],
     ])(
       '空白とみなされる禁止文字の%sの場合は必須の項目でも禁止文字の文言だけで失敗させる',
       (_, text) => {
-        expect(text.trim()).toBe('');
+        expect(trimWhiteSpace(text)).toBe('');
         expect(issueMessagesOf(commentSchema.safeParse(text))).toEqual([
           'コメントに使用できない文字が含まれています。',
         ]);

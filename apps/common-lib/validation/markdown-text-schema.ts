@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { countGraphemes } from '../text/graphemes.ts';
 import { hasForbiddenCharacters } from '../text/text-safety.ts';
+import { trimWhiteSpace } from '../text/white-space.ts';
 
 export interface MarkdownTextRule {
   readonly label: string;
@@ -20,7 +21,7 @@ const requiredMessage = (label: string): string =>
 const tooLongMessage = (label: string, maxGraphemes: number): string =>
   `${label}は${limitFormat.format(maxGraphemes)}文字以内で入力してください。`;
 
-const isBlank = (text: string): boolean => text.trim() === '';
+const isBlank = (text: string): boolean => trimWhiteSpace(text) === '';
 
 const findViolationMessage = (
   { label, maxGraphemes, required }: MarkdownTextRule,
