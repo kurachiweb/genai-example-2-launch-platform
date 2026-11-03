@@ -46,7 +46,7 @@
   - _Boundary: AdminErrors_
   - _Requirements: 5.2, 5.3, 6.2, 7.3, 13.1, 14.4_
 
-- [ ] 1.7 (P) TOTPのパッケージを公開中の最新の版へ上げる(identity-authとの統合)
+- [x] 1.7 (P) TOTPのパッケージを公開中の最新の版へ上げる(identity-authとの統合)
   - APIサーバーの`otpauth`を9.5.2から9.6.0へ、`docs/GUIDES/tech/coding/002-dependency-versions.md`の「版を明示した追加手順」で完全に固定した版のまま上げる。依存の`@noble/hashes`が2.4.0のままであることを`bun.lock`で確かめる
   - 同じ文書の`otpauth`の確認事項に従い、`otpauth://`のURIの項目の並びと照合の時間窓の差分の返し方が変わっていないことを、identity-authのTOTPの単体テスト・Workers統合テストと`e2e/client/auth/two-factor.e2e.test.ts`で確かめ直す。実際の認証アプリでのQRコードの読み取りと照合は開発者の手作業として報告する
   - 同じ文書の主要パッケージの一覧と`docs/onboardings/tech-stack.md`の版を9.6.0に直す
@@ -310,3 +310,4 @@
 - 1.4: `apps/frontend-lib/components/ui/table/`・`select/`(部分ごとに1ファイル)。表は親より広い間だけ包む要素が`role="region"`・`tabIndex=0`になり、名前を`TableCaption`の文言から取る(`use-scroll-region.ts`)ため、表には必ず`TableCaption`を付け、`TableHead`に`scope`を付ける(10.1で名前を`aria-labelledby`へ切り替えるかを判断する)。テストでは選択の一覧を開くと開く元の要素が支援技術から隠れるため開く前に取得し、選択肢の名前は部分一致になるため`exact: true`を使う。開いた一覧は`runAxe`を各listboxに当て、Storybookでは検査を`[data-slot="select-content"]`に絞る
 - 1.5: 戻り先の検証(`toSafeReturnPath`・`toLoginSearch`・`HOME_PATH`・`LoginSearch`)とフラグメントの読み取り`readFragmentToken`は`apps/frontend-lib/utilities/auth/`(`return-path.ts`・`fragment-token.ts`)にあり、管理者側は`../lib/utilities/auth/`から読む。フラグメントを消すフック`useFragmentToken`はTanStack Routerに依存するため利用者側の`components/auth/use-fragment-token.ts`に残した。管理者側で同じフックが要る11.3・11.4では、管理者側に作るか共通部品の`components/`へ移すかを判断する
 - 1.6: 共有のエラーの定義・文言・`createPasswordRejectedError`・`MAIL_SEND_POLICY`は`apps/api/src/application/auth/`(`auth-errors.ts`・`password-rejection.ts`・`mail-send-policy.ts`)。管理者側は`application/admin/admin-errors.ts`(`ADMIN_ERRORS`・`adminError`・`adminPasswordRejectedError`・`ADMIN_PASSWORD_MATCHES_IDENTITY_MESSAGE`)。`reauthentication_failed`のコード・`CURRENT_PASSWORD_INCORRECT_MESSAGE`・`loginThrottledError`は`auth/auth-errors.ts`から読む。利用者側の`application/identity/password-rejection.ts`は利用者の文言で組み立てた`passwordRejectedError`だけを持つ。6.2の`CounterAdminMailSendLimits`は`MAIL_SEND_POLICY`を読み、規則の名前の接頭辞だけを管理者用にする。`admin`から`identity`への読み込みを禁じる静的解析の規則は8.1で加える
+- 1.7: `otpauth`9.6.0は`validate`の`afterCounter`・文字列の秘密鍵・数字以外の認証コードの拒否・`URI.parse`の厳格化を加えるだけで、`toString`と`validate`の時間窓の差の返し方は変わらない。`bun.lock`の行数は変わらず`.betterleaksignore`の`apps/api/bun.lock:392`の登録はそのまま有効。開発コンテナのInfisicalが未ログインでサーバーを起動できないため、利用者の多要素認証のE2E(`e2e/client/auth/two-factor.e2e.test.ts`)と実際の認証アプリでのQRコードの読み取りと照合は未実施で、開発者の手作業として12.4の報告に載せる

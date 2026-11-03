@@ -37,7 +37,7 @@
     "hono": "4.13.14",
     "image-size": "2.0.4",
     "inversify": "8.2.3",
-    "otpauth": "9.5.2",
+    "otpauth": "9.6.0",
     "reflect-metadata": "0.2.2",
     "rehype-sanitize": "6.0.0",
     "rehype-stringify": "10.0.1",
