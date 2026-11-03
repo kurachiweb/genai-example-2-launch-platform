@@ -72,6 +72,23 @@ await db
   });
 ```
 
+- 部分一意索引(`CREATE UNIQUE INDEX ... WHERE`)への衝突を扱う場合は、Drizzleの`onConflictDoNothing({ target, where })`を使わない。drizzle-orm 1.0.0-rc.5は`where`の条件を`DO NOTHING`の後に出力し、SQLiteの構文の誤り(`near "where": syntax error`)になる。代わりに次のどちらかで書く。
+  - 対象を指定しない`onConflictDoNothing()`にする。どの一意制約への衝突も無視されるため、他の一意制約(生成したIDの主キーなど)に衝突し得ないテーブルに限る。
+  - `onConflictDoUpdate({ target, targetWhere, set })`にする。`targetWhere`は索引の`WHERE`と同じ条件を`sql`で値を埋め込んで書く。`eq()`などで値をバインド変数にすると、SQLiteが部分一意索引と照合できず、`ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint`のエラーになる。
+
+```typescript
+await db.insert(userEvents).values(events).onConflictDoNothing();
+
+await db
+  .insert(userEvents)
+  .values(event)
+  .onConflictDoUpdate({
+    target: userEvents.userId,
+    targetWhere: sql`${userEvents.type} = 'closing'`,
+    set: { updatedAt: event.updatedAt },
+  });
+```
+
 - 制約違反を無視せず、どの一意制約に当たったかで結果を変える場合(同じ`db.batch()`で追加した行を参照する子の行も追加する場合や、一意の列を`UPDATE`で書き換える場合)は、`ON CONFLICT`を付けずに`db.batch()`の失敗を捕まえ、エラーの文言の`UNIQUE constraint failed: <テーブル>.<列>`で違反した列を判別する。`db.batch()`は全体がロールバックされるため、どの文も反映されない。
   - `db.batch()`の実行の失敗はD1のエラーがそのまま投げられ、`cause`にSQLiteのエラーを持つ。単文の失敗と、`db.batch()`の中の文の組み立ての失敗は、Drizzleが`DrizzleQueryError`で包み、D1のエラーを`cause`に持つ。どちらも文言は`cause`をたどって調べる。
   - 文言は`UNIQUE constraint failed: users.email: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)`のように列名の後に`: SQLITE_CONSTRAINT ...`が続くため、列名は`:`の手前までを取る。
