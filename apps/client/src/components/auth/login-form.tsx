@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 import { PasswordInput } from '../../../lib/components/auth/password-input.tsx';
+import { sendWithTurnstile } from '../../../lib/utilities/bot-protection/send-with-turnstile.ts';
 import { TurnstileWidget } from '../../../lib/components/bot-protection/turnstile-widget.tsx';
 import { useTurnstileToken } from '../../../lib/components/bot-protection/use-turnstile-token.ts';
 import { AppForm } from '../../../lib/components/form/app-form.tsx';
@@ -84,10 +85,11 @@ export function LoginForm({ returnTo }: LoginFormProps) {
         serverFieldPrefix="input"
         onSubmit={async (input) => {
           setSubmitError(undefined);
-          const { login: result } = await login.mutateAsync({
-            variables: { input },
-            turnstileToken: turnstile.consume(),
-          });
+          const { login: result } = await sendWithTurnstile(
+            turnstile,
+            (turnstileToken) =>
+              login.mutateAsync({ variables: { input }, turnstileToken }),
+          );
           if (result.__typename === 'SecondFactorRequired') {
             setChallenge(result.challenge);
             return;

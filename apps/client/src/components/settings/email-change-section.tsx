@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import { sendWithTurnstile } from '../../../lib/utilities/bot-protection/send-with-turnstile.ts';
 import { TurnstileWidget } from '../../../lib/components/bot-protection/turnstile-widget.tsx';
 import { useTurnstileToken } from '../../../lib/components/bot-protection/use-turnstile-token.ts';
 import { AppForm } from '../../../lib/components/form/app-form.tsx';
@@ -97,10 +98,9 @@ export function EmailChangeSection({
         serverFieldPrefix="input"
         onSubmit={async (input) => {
           clearSubmitError();
-          await requestChange.mutateAsync({
-            variables: { input },
-            turnstileToken: turnstile.consume(),
-          });
+          await sendWithTurnstile(turnstile, (turnstileToken) =>
+            requestChange.mutateAsync({ variables: { input }, turnstileToken }),
+          );
           setSentCount((count) => count + 1);
         }}
         onSubmitError={onSubmitError}

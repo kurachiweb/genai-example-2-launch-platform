@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
+import { sendWithTurnstile } from '../../../lib/utilities/bot-protection/send-with-turnstile.ts';
 import { TurnstileWidget } from '../../../lib/components/bot-protection/turnstile-widget.tsx';
 import { useTurnstileToken } from '../../../lib/components/bot-protection/use-turnstile-token.ts';
 import { notify } from '../../../lib/components/feedback/notify.ts';
@@ -67,10 +68,9 @@ export function WithdrawalForm({ totpEnabled }: WithdrawalFormProps) {
       serverFieldPrefix="input"
       onSubmit={async (input) => {
         clearSubmitError();
-        await withdraw.mutateAsync({
-          variables: { input },
-          turnstileToken: turnstile.consume(),
-        });
+        await sendWithTurnstile(turnstile, (turnstileToken) =>
+          withdraw.mutateAsync({ variables: { input }, turnstileToken }),
+        );
         notify.success(WITHDRAWN_MESSAGE);
         // 退会でセッションが消えたため、利用者の取得を無効にしてからログイン不要のトップページへ移る。退会した画面へ戻れないよう履歴を置き換える
         await leaveSignedOut(HOME_PATH);

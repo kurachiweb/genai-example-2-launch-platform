@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 
+import { sendWithTurnstile } from '../../../lib/utilities/bot-protection/send-with-turnstile.ts';
 import { TurnstileWidget } from '../../../lib/components/bot-protection/turnstile-widget.tsx';
 import { useTurnstileToken } from '../../../lib/components/bot-protection/use-turnstile-token.ts';
 import { AppForm } from '../../../lib/components/form/app-form.tsx';
@@ -63,10 +64,9 @@ export function PasswordResetRequestForm() {
       aria-label={PASSWORD_RESET_PAGE_TITLE}
       onSubmit={async ({ email }) => {
         setSubmitError(undefined);
-        await requestReset.mutateAsync({
-          variables: { email },
-          turnstileToken: turnstile.consume(),
-        });
+        await sendWithTurnstile(turnstile, (turnstileToken) =>
+          requestReset.mutateAsync({ variables: { email }, turnstileToken }),
+        );
         setSent(true);
       }}
       onSubmitError={(error) => {

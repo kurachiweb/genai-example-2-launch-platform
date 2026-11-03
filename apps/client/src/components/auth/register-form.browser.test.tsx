@@ -79,6 +79,16 @@ const registered = () =>
 const rejectWith = (error: GraphQLClientError) =>
   Promise.resolve({ ok: false, error });
 
+const BOT_FAILURE_MESSAGE =
+  '認証に失敗しました。ページを再読み込みして再度お試しください。';
+
+const botVerificationFailed = () =>
+  new GraphQLClientError({
+    code: 'bot_verification_failed',
+    message: BOT_FAILURE_MESSAGE,
+    status: 200,
+  });
+
 beforeEach(() => {
   executeGraphQL.mockReset();
   resetFakeTurnstile();
@@ -217,35 +227,70 @@ describe('RegisterForm', () => {
     expect(alert().elements()).toHaveLength(0);
   });
 
-  test.each([
-    [
-      '欄に対応しない失敗',
-      new GraphQLClientError({
-        code: 'registration_email_unavailable',
-        message: 'このメールアドレスは登録できません。',
-        status: 409,
-      }),
-      'このメールアドレスは登録できません。',
-    ],
-    [
-      'bot判定の失敗',
-      new GraphQLClientError({
-        code: 'bot_verification_failed',
-        message:
-          '認証に失敗しました。ページを再読み込みして再度お試しください。',
-        status: 403,
-      }),
-      '認証に失敗しました。ページを再読み込みして再度お試しください。',
-    ],
-  ])('%sは、フォームの文言で示す', async (_name, error, message) => {
-    executeGraphQL.mockImplementation(() => rejectWith(error));
+  test('欄に対応しない失敗は、フォームの文言で示す', async () => {
+    executeGraphQL.mockImplementation(() =>
+      rejectWith(
+        new GraphQLClientError({
+          code: 'registration_email_unavailable',
+          message: 'このメールアドレスは登録できません。',
+          status: 409,
+        }),
+      ),
+    );
     const { router } = await renderForm();
 
     await fillValidInput();
     await passBotCheck();
     await userEvent.click(submitButton());
 
-    await expect.element(alert()).toHaveTextContent(message);
+    await expect
+      .element(alert())
+      .toHaveTextContent('このメールアドレスは登録できません。');
+    expect(router.state.location.pathname).toBe('/auth/register');
+    expect(executeGraphQL).toHaveBeenCalledOnce();
+  });
+
+  test('bot判定のトークンが届く前の送信がbot判定に失敗すると、届いたトークンで1回だけ送り直して登録する', async () => {
+    executeGraphQL
+      .mockImplementationOnce(() => rejectWith(botVerificationFailed()))
+      .mockImplementationOnce(registered);
+    const { router } = await renderForm();
+
+    await fillValidInput();
+    await userEvent.click(submitButton());
+    await expect.poll(() => executeGraphQL.mock.calls.length).toBe(1);
+    await passBotCheck();
+
+    await expect.poll(() => router.state.location.pathname).toBe('/');
+    expect(executeGraphQL).toHaveBeenCalledTimes(2);
+    expect(executeGraphQL).toHaveBeenNthCalledWith(
+      1,
+      ClientRegisterUserDocument,
+      expect.anything(),
+      { turnstileToken: undefined },
+    );
+    expect(executeGraphQL).toHaveBeenNthCalledWith(
+      2,
+      ClientRegisterUserDocument,
+      expect.anything(),
+      { turnstileToken: 'turnstile-token-1' },
+    );
+  });
+
+  test('送り直しもbot判定に失敗すると、それ以上送らずにフォームの文言で示す', async () => {
+    executeGraphQL.mockImplementation(() =>
+      rejectWith(botVerificationFailed()),
+    );
+    const { router } = await renderForm();
+
+    await fillValidInput();
+    await passBotCheck();
+    await userEvent.click(submitButton());
+    await expect.poll(() => executeGraphQL.mock.calls.length).toBe(1);
+    await passBotCheck();
+
+    await expect.element(alert()).toHaveTextContent(BOT_FAILURE_MESSAGE);
+    expect(executeGraphQL).toHaveBeenCalledTimes(2);
     expect(router.state.location.pathname).toBe('/auth/register');
   });
 
