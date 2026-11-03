@@ -69,7 +69,7 @@
   - _Requirements: 18.4, 18.5, 18.6_
 
 - [ ] 3. 監査ログの記録と照会
-- [ ] 3.1 監査ログの記録の準備・単独の記録・検索・最新の照会(1件と複数の対象)のユースケースと、照会の共有の偽物を作る
+- [x] 3.1 監査ログの記録の準備・単独の記録・検索・最新の照会(1件と複数の対象)のユースケースと、照会の共有の偽物を作る
   - 先に、ポートを偽物にして、違反のある入力で検証のエラー(欄ごとの詳細)になり何も保存されないこと、準備の値にIDと正規化した理由が入ること、検索の条件とカーソルの受け渡し、1つの対象と複数の対象の最新の日時の照会(複数の対象は重複を除いてストアへ渡し、空の入力では問い合わせずに空の結果を返す)を確かめる単体テストを書く
   - 先に、照会の共有の偽物の単体テストで、既定の振る舞い(検索は空・1つの対象は無し・複数の対象は空)と、渡したメソッドだけが差し替わることを確かめる
   - 準備の値はこのユースケースだけが作れる形にし、後続specのユースケースが管理操作の前に呼べるようにする。照会の共有の偽物は後続specの単体テストが読み込める位置に置く(仮7)
@@ -313,3 +313,4 @@
 - 1.7: `otpauth`9.6.0は`validate`の`afterCounter`・文字列の秘密鍵・数字以外の認証コードの拒否・`URI.parse`の厳格化を加えるだけで、`toString`と`validate`の時間窓の差の返し方は変わらない。`bun.lock`の行数は変わらず`.betterleaksignore`の`apps/api/bun.lock:392`の登録はそのまま有効。開発コンテナのInfisicalが未ログインでサーバーを起動できないため、利用者の多要素認証のE2E(`e2e/client/auth/two-factor.e2e.test.ts`)と実際の認証アプリでのQRコードの読み取りと照合は未実施で、開発者の手作業として12.4の報告に載せる
 - 2.1: 規則は`apps/api/src/domain/admin/`(`admin-account.ts`・`admin-session-policy.ts`・`admin-auth-token-purpose.ts`)。可否の判定は許可なら`undefined`を返し、削除は自分自身→ロール不足→最上位管理者が対象の順に判定する。最後の最上位管理者の保護はユースケースが持つ。セッションはidentity-authの`evaluateSession`・`newSessionTimes`・`cookieMaxAgeSeconds`に`ADMIN_SESSION_POLICY`を渡す。トークンのハッシュの用途は`ADMIN_HASH_PURPOSES.authToken(purpose)`で、名前は技術ガイドの「小文字とハイフン」とidentity-authの`user-auth-token-email-change`の形に合わせて`admin-auth-token-invitation`・`admin-auth-token-email-change`・`admin-auth-token-password-reset`にした(design.mdの`admin-auth-token:<用途>`も改めた。9.1の招待の発行コマンドはこの名前を使う)。状態とトークンの用途の値と列の`enumValues`の一致は`application/admin/admin-columns.unit.test.ts`
 - 2.2: `apps/api/src/domain/admin/audit-entry.ts`の`validateAuditEntry`は未登録の種別→理由→対象→詳細の順に判定して最初の違反だけを返し、対象は「対象を取らない種別」→件数の上限→形式の順。ユーザーの対象は`z.uuid()`(仮名化IDは`crypto.randomUUID()`の小文字のUUID。`z.uuid()`は大文字も通すため、照会の値は保存したIDから取る)、詳細の値は100書記素まで、文字列以外は拒否。成功時は整えた理由か`null`を返す。対象のIDの重複は除かない(3.1の`prepare`で判断する)。`apps/backend-lib/workers/identity/testing/identity-store-fixtures.ts`の偽物の仮名化ID(`pseudonymous-<番号>`)はUUIDの形でないため、ユーザーを対象に監査ログを記録するWorkers統合テストではUUIDの仮名化IDを使う
+- 3.1: 記録・照会のユースケースとストアのポートと識別子は`apps/api/src/application/admin/`(`audit-log-recorder.ts`・`audit-log-reader.ts`・`ports.ts`・`admin-types.ts`の`ADMIN_TYPES`)。`prepare`は検証の前に対象のIDの重複を初出順で除き、違反は`validation_error`(詳細の欄`action`・`reason`・`targets`・`detail`)で警告ログには操作種別と違反の種類だけを出す。対象0件のときの対象の種類は`null`。準備の値はファイル非公開のsymbolで印を付けるため、3.2・4.1のテストは本物の記録の部品に偽のID生成を渡して`prepare`で作る。共有の偽物は既存の慣習の`testing/`(`testing/fake-audit-log-reader.ts`)に置き、design.md・research.mdの`test-support/`を改めた。不正なカーソルの拒否は3.2のストアが行う。操作種別のカタログは注入で受け取り、8.1で`ADMIN_TYPES.AuditActionCatalog`に`createAuditActionCatalog(AUDIT_ACTIONS)`を束縛する。古い監査ログの削除のメソッドは8.4でポートに加える

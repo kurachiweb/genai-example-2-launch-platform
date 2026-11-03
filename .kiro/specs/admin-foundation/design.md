@@ -231,7 +231,7 @@ apps/
 │       │   ├── admin-profile.ts                        # プロフィールの更新
 │       │   ├── audit-log-recorder.ts                   # AuditLogRecorder(検証済みの記録の準備と単独の記録。後続specも使う)
 │       │   ├── audit-log-reader.ts                     # AuditLogReader
-│       │   ├── test-support/fake-audit-log-reader.ts   # createFakeAuditLogReader(後続specの単体テストが共有する偽物、仮7。同名の*.unit.test.ts)
+│       │   ├── testing/fake-audit-log-reader.ts        # createFakeAuditLogReader(後続specの単体テストが共有する偽物、仮7。同名の*.unit.test.ts)
 │       │   └── jobs/
 │       │       ├── admin-credential-cleanup-job.ts     # 期限切れのセッション・トークン・待ち・保留(order 200)
 │       │       └── audit-log-retention-job.ts          # 3年を過ぎた監査ログ(order 210)
@@ -952,7 +952,7 @@ export interface AdminInvitation {
 
 ```typescript
 export interface AuditLogRecorder {
-  prepare(entry: AuditEntryInput): PreparedAuditEntry; // 検証の違反はAppError(bad_request, validation_error, 詳細reason・targets)
+  prepare(entry: AuditEntryInput): PreparedAuditEntry; // 検証の違反はAppError(bad_request, validation_error, 詳細action・reason・targets・detail)
   record(entry: AuditEntryInput): Promise<void>; // 単独で書く(読み取りの操作の記録、例: user.email-search)
 }
 export interface AuditLogEntryView {
@@ -992,13 +992,13 @@ export interface AuditLogReader {
   }): Promise<ReadonlyMap<string, Date>>; // 記録のある対象だけを含む(仮7)
 }
 
-// application/admin/test-support/fake-audit-log-reader.ts(後続specの単体テストが共有する偽物、仮7)
+// application/admin/testing/fake-audit-log-reader.ts(後続specの単体テストが共有する偽物、仮7)
 export declare function createFakeAuditLogReader(
   overrides?: Partial<AuditLogReader>,
 ): AuditLogReader; // 既定はsearchが空・latestForがundefined・latestForManyが空のMap
-// PreparedAuditEntryは検証と正規化を済ませた値(ID・操作者・操作種別・対象の種類とID・理由・詳細・日時)。作れるのはprepareだけ
+// PreparedAuditEntryは検証と正規化を済ませた値(ID・操作者・操作種別・対象の種類(対象が0件ならnull)と重複を除いたID・理由・詳細・日時)。作れるのはprepareだけ
 export interface PreparedAuditEntry {
-  readonly brand: 'PreparedAuditEntry'; /* 以下の値は読み取り専用 */
+  readonly [PREPARED]: true; // PREPAREDはaudit-log-recorder.tsの非公開のシンボル。以下の値は読み取り専用
 }
 
 // infrastructure/admin/audit-log-statements.ts(drizzleの型を扱うためinfrastructure層に置く)
@@ -1021,7 +1021,7 @@ export declare function buildAuditLogStatements(
 ): readonly BatchItem<'sqlite'>[];
 ```
 
-- `prepare`: `validateAuditEntry`の結果からIDを採番した値を作る。application層のユースケースは、管理操作の前に`prepare`を呼び(違反なら操作を行わない、18.4)、その値を自分のストアへ渡す。
+- `prepare`: 対象のIDの重複を最初の出現の順で除いてから`validateAuditEntry`で検証し(対象の上限は重複を除いた件数で数える)、IDを採番した値を作る。違反は欄(`action`・`reason`・`targets`・`detail`)と違反の種類をコードにした詳細を持つ`validation_error`になる。application層のユースケースは、管理操作の前に`prepare`を呼び(違反なら操作を行わない、18.4)、その値を自分のストアへ渡す。
 - `buildAuditLogStatements`: ログの挿入(`guard`があれば`operator_admin_id`を`CASE`式にする)→対象の挿入(1文あたり25行、バインド変数100個以内)。ストア(infrastructure層)は自分の文と同じ`db.batch()`に入れる(18.2)。
 - 規約(`backend/008`): 管理操作は、application層で`prepare`し、infrastructure層のストアで操作の文と`buildAuditLogStatements`を同じ一括の書き込みにする。記録だけの操作(閲覧・検索)は`record`を操作の結果を返す前に呼び、失敗したら結果を返さない。
 - `search`: `(occurred_at, id)`の降順のカーソル(`base64url('<ミリ秒>:<ID>')`)。対象の識別子は`admin_audit_log_targets`との`EXISTS`で絞る(19.2・19.3)。
