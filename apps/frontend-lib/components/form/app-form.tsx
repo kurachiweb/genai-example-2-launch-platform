@@ -1,5 +1,12 @@
-import { type ComponentProps, type SubmitEvent, useRef } from 'react';
 import {
+  type ComponentProps,
+  type SubmitEvent,
+  useEffect,
+  useRef,
+} from 'react';
+import {
+  type FieldPath,
+  type FieldPathValue,
   type FieldValues,
   FormProvider,
   type UseFormReturn,
@@ -19,7 +26,10 @@ export interface SubmitErrorContext {
 export interface AppFormProps<
   TFieldValues extends FieldValues,
   TTransformedValues,
-> extends Omit<ComponentProps<'form'>, 'onSubmit' | 'noValidate'> {
+> extends Omit<
+  ComponentProps<'form'>,
+  'onSubmit' | 'noValidate' | 'method' | 'ref'
+> {
   readonly form: UseFormReturn<TFieldValues, unknown, TTransformedValues>;
   readonly onSubmit: (values: TTransformedValues) => Promise<void> | void;
   readonly onSubmitError: (error: unknown, context: SubmitErrorContext) => void;
@@ -38,6 +48,30 @@ const withoutPrefix = (
           : detail,
       );
 
+// 利用者やブラウザの自動入力が文字を入れ得る種類の入力欄。チェックボックス・ラジオ・ファイル・隠し欄などは水和の前に値が変わらないため対象にしない
+const TEXT_ENTRY_INPUT_TYPES: ReadonlySet<string> = new Set([
+  'text',
+  'email',
+  'password',
+  'search',
+  'tel',
+  'url',
+]);
+
+interface EnteredValue {
+  readonly name: string;
+  readonly value: string;
+}
+
+const enteredValuesOf = (form: HTMLFormElement): readonly EnteredValue[] =>
+  Array.from(form.elements).flatMap((element) =>
+    element instanceof HTMLTextAreaElement ||
+    (element instanceof HTMLInputElement &&
+      TEXT_ENTRY_INPUT_TYPES.has(element.type))
+      ? [{ name: element.name, value: element.value }]
+      : [],
+  );
+
 export function AppForm<TFieldValues extends FieldValues, TTransformedValues>({
   form,
   onSubmit,
@@ -47,6 +81,29 @@ export function AppForm<TFieldValues extends FieldValues, TTransformedValues>({
   ...props
 }: AppFormProps<TFieldValues, TTransformedValues>) {
   const submittingRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // 遅い回線や自動入力で水和の前に入力欄へ入った値は、DOMに残ってもフォームの状態に入らず送信ボタンが無効のまま残るため、水和の直後に取り込んで検証し直す
+  useEffect(() => {
+    const element = formRef.current;
+    if (element === null) {
+      return;
+    }
+    for (const { name, value } of enteredValuesOf(element)) {
+      if (mountStateOf(form.control._fields, name) !== true) {
+        continue;
+      }
+      const path = name as FieldPath<TFieldValues>;
+      const current: unknown = form.getValues(path);
+      if (typeof current === 'string' && current !== value) {
+        form.setValue(
+          path,
+          value as FieldPathValue<TFieldValues, typeof path>,
+          { shouldValidate: true, shouldDirty: true },
+        );
+      }
+    }
+  }, [form]);
 
   // 送信はイベントから切り離したPromiseで進むため、失敗の処理の例外は未処理の拒否にせず、ブラウザの未捕捉の例外と同じ経路(エラートラッキングの全体の受け口)へ渡す
   const notifySubmitError = (
@@ -101,11 +158,13 @@ export function AppForm<TFieldValues extends FieldValues, TTransformedValues>({
   return (
     <FormProvider {...form}>
       <form
+        ref={formRef}
         noValidate
         onSubmit={(event) => {
           void submit(event);
         }}
         {...props}
+        method="post"
       >
         {children}
       </form>

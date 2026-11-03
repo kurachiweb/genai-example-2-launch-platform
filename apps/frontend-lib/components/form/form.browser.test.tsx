@@ -159,6 +159,23 @@ function ContactForm() {
 
 const noteSchema = z.object({ note: z.string() });
 
+// 送信の方法を属性で変えようとする誤った利用例
+function GetMethodForm() {
+  const form = useAppForm(noteSchema, { defaultValues: { note: '' } });
+  return (
+    <AppForm
+      form={form}
+      onSubmit={() => undefined}
+      onSubmitError={() => undefined}
+      aria-label="メモ"
+      // @ts-expect-error 送信の方法はpropsで受け取らない
+      method="get"
+    >
+      <SubmitButton>保存する</SubmitButton>
+    </AppForm>
+  );
+}
+
 const contactMethodSchema = z.object({
   contact: z.object({ type: z.string(), address: z.string() }),
 });
@@ -225,6 +242,20 @@ afterEach(() => {
 });
 
 describe('フォーム部品', () => {
+  test('JavaScriptが動かない時の素の送信でも入力をURLに載せないよう、送信の方法をPOSTにする', async () => {
+    await render(<ProductForm />);
+
+    await expect.element(productForm()).toHaveAttribute('method', 'post');
+  });
+
+  test('送信の方法は属性で上書きできない', async () => {
+    await render(<GetMethodForm />);
+
+    await expect
+      .element(page.getByRole('form', { name: 'メモ' }))
+      .toHaveAttribute('method', 'post');
+  });
+
   test('最初にフォーカスを外すまではエラーを表示せず、外した時に欄の近くへ表示する', async () => {
     await render(<ProductForm />);
 
