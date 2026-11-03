@@ -10,7 +10,7 @@
   - 完了状態: 列の単体テストが成功し、生成したマイグレーションをローカルに適用でき、適用後のデータベースで大文字小文字だけが異なるメールアドレスの管理者を追加できない
   - _Requirements: 1.1, 1.3, 1.4, 18.1, 18.8_
 
-- [ ] 1.2 (P) ロールの順序と入力規則を、4アプリが共有するディレクトリに作る
+- [x] 1.2 (P) ロールの順序と入力規則を、4アプリが共有するディレクトリに作る
   - 先に、3つのロールの順序の比較、ニックネームの25・26書記素、肩書きの50・51書記素と空、理由の500・501書記素、カテゴリ名の30・31書記素、前後の空白だけの入力を確かめる単体テストを書く
   - ロールの値と昇順の一覧・比較・表示名(閲覧のみ・モデレーター・最上位管理者)と、ニックネーム・肩書き・理由・カテゴリ名の上限と判定を作る。書記素の数え方は共有の部品を使う
   - 完了状態: 単体テストが成功し、管理者側とAPIサーバーの型検査で配置先から読み込める
@@ -305,3 +305,4 @@
 ## Implementation Notes
 
 - 1.1: テーブルは`apps/db/schema/admin/`、マイグレーションは`20261103162753_admin_foundation`。`admins.email`は全行で一意の`textNoCase`、`status`の既定は`invited`、`role`は既定無し。`admin_totp_credentials`の`sealed_secret`はNULL可で保留の列`pending_sealed_secret`・`pending_expires_at`を持つ。監査ログの`detail`はJSONのtextで既定`{}`、`target_kind`にCHECKは無い。ロール・状態・トークンの用途の値はテーブルのファイルの非公開の定数のため、1.2・2.1でこれらの値を定義するときは列の`enumValues`との一致を単体テストで確かめる
+- 1.2: ロールと入力規則は`apps/common-lib/admin/`(`admin-roles.ts`・`admin-input-rules.ts`)。判定関数は妥当なら`undefined`を返す(設計の契約。identityの`checkNickname`の`'ok'`とは異なる)ため、呼び出し側は`undefined`を確かめてから文言を引く。理由の判定は空を受け付け、必須かどうかは操作種別で決める。`hasRole`は型の外の最低ロールで許可側に倒れるため、実行時の値を扱う5.1では値を検証してから渡す。ロールの値と`admins.role`の`enumValues`の一致は`apps/api/src/application/admin/admin-columns.unit.test.ts`
