@@ -17,11 +17,11 @@
 
 ## 共通化の対象
 
-| 置き場所                   | 置くもの                                                                                                                                                                                                                                                                                                                                      |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 共通部品の`components/`    | 複数のアプリで同じ見た目と振る舞いを持つ部品。基本部品・フォーム・状態表示・トースト・エラーの表示・日時と数値・bot判定・配色の切替・文書の外枠・疎通確認・マークダウンの表示・検索語の強調・ファイルの選択とアップロードの入力欄・画像の表示とダウンロードのリンク・認証の画面部品(TOTPのQRコード・リカバリコードの一覧・パスワードの入力欄) |
-| アプリの`src/components/`  | 1つのアプリだけの部品。レイアウト(ヘッダー・ナビゲーション・フッター)、ルーターやアプリの導線を共通部品へ結び付けるページの部品(404・エラーの画面など)                                                                                                                                                                                        |
-| アプリの`src/composition/` | アプリ固有の値(導線・レイアウトに差し込む区画など)の登録箇所                                                                                                                                                                                                                                                                                  |
+| 置き場所                   | 置くもの                                                                                                                                                                                                                                                                                                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 共通部品の`components/`    | 複数のアプリで同じ見た目と振る舞いを持つ部品。基本部品・フォーム・状態表示・トースト・エラーの表示・日時と数値・bot判定・配色の切替・文書の外枠・疎通確認・マークダウンの表示・検索語の強調・ファイルの選択とアップロードの入力欄・画像の表示とダウンロードのリンク・認証の画面部品(TOTPのQRコード・リカバリコードの一覧・パスワードの入力欄)・管理画面の部品(ページの見出し・一覧の表・絞り込み) |
+| アプリの`src/components/`  | 1つのアプリだけの部品。レイアウト(ヘッダー・ナビゲーション・フッター)、ルーターやアプリの導線を共通部品へ結び付けるページの部品(404・エラーの画面など)                                                                                                                                                                                                                                            |
+| アプリの`src/composition/` | アプリ固有の値(導線・レイアウトに差し込む区画など)の登録箇所                                                                                                                                                                                                                                                                                                                                      |
 
 - 共通部品は、アプリ固有の値(リンク先・問い合わせの導線・サービス名など)を持たず、propsで受け取る。共通部品から利用側アプリの`src`への読み込みは、静的解析の`frontend/direction/*`(「[画面を持つアプリの静的解析](../coding/001-javascript-typescript-conventions.md#画面を持つアプリの静的解析)」)が禁止する。
 - 共通部品の`components/`は、`utilities/`・`start/`の値と、`server/`の型だけを読み込める。サーバー専用のファイル(`*.server.ts`)は読み込めない。
@@ -44,6 +44,7 @@
 | `components/markdown-editor/` | `MarkdownEditor`・`MarkdownToolbar`・`MarkdownLinkDialog`・`MarkdownLengthCounter`・`EditorPlaceholder`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | マークダウンの入力欄(編集領域は遅延読み込み)                                                                                                 |
 | `components/media/`           | `FileDropZone`・`FileSelectionList`・`FileThumbnail`・`ImageCropDialog`・`encodeCroppedImage`・`ImageUploadField`・`AttachmentUploadField`・`useFileUpload`・`MediaPicture`・`MediaPlaceholder`・`PrivateFileLink`・`useImagesOrigin`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | アップロードするファイルの選択と、選んだファイルの一覧、画像の切り取りと作り直し、送信と画像・添付の入力欄、画像の表示とダウンロードのリンク |
 | `components/auth/`            | `TotpQrCode`・`RecoveryCodeList`・`PasswordInput`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 多要素認証のQRコードの描画、リカバリコードの一覧とコピー、表示を切り替えられるパスワードの入力欄                                             |
+| `components/admin/`           | `AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 管理画面のページの見出しと操作、状態とページ送りを持つ一覧の表、絞り込みの入力欄の並び                                                       |
 | `components/search/`          | `HighlightedText`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 検索語の一致箇所の`<mark>`による強調                                                                                                         |
 | `components/system/`          | `SystemStatusView`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 疎通確認の画面の本体                                                                                                                         |
 
@@ -447,6 +448,56 @@ import { TotpQrCode } from '<共通部品の配置先>/components/auth/totp-qr-c
 - TOTPの手入力用の文字列(秘密鍵)は`TotpQrCode`に含まれないため、呼び出す側がQRコードと並べて表示する。
 - `RecoveryCodeList`は、渡すコードが変わると(再発行など)前のコピーの結果の表示を消す。コピーの結果はトーストにせず部品の中に示す。
 
+### 管理画面の部品
+
+管理画面の一覧のページを組み立てる部品を`components/admin/`に置く。GraphQLの型と利用側アプリの型に依存せず、行の型は呼び出す側が型引数で決める。
+
+```tsx
+import { AdminDataTable } from '<共通部品の配置先>/components/admin/admin-data-table.tsx';
+import { AdminFilterBar } from '<共通部品の配置先>/components/admin/admin-filter-bar.tsx';
+import { AdminPageHeader } from '<共通部品の配置先>/components/admin/admin-page-header.tsx';
+
+<AdminPageHeader
+  title="管理者アカウント"
+  actions={<Button type="button">招待する</Button>}
+/>;
+
+<AdminFilterBar onApply={applyFilters} onReset={resetFilters}>
+  {/* 呼び出す側の入力欄(LabelとInput・Selectなど) */}
+</AdminFilterBar>;
+
+<AdminDataTable
+  caption="管理者の一覧"
+  columns={[
+    { key: 'nickname', header: 'ニックネーム', cell: (row) => row.nickname },
+  ]}
+  rows={query.data?.admins}
+  rowKey={(row) => row.id}
+  error={
+    query.error === null
+      ? undefined
+      : {
+          message: errorMessageOf(query.error, APP_PROFILE.contactAvailable),
+          onRetry: () => query.refetch(),
+        }
+  }
+  emptyMessage="管理者はまだいません。"
+  pagination={{ hasPrevious, hasNext, onPrevious, onNext }}
+/>;
+```
+
+| 部品              | props                                                                                                               | 振る舞い                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AdminPageHeader` | `title`・`description`(省略可)・`actions`(省略可)                                                                   | `title`をページの`<h1>`にし、説明と操作の領域を続けて描く。狭い画面では操作を見出しの下へ折り返す                                                                                                                                                                                                                                                                                                                                                                                             |
+| `AdminDataTable`  | `caption`・`columns`(`key`・`header`・`cell`・`className`)・`rows`・`rowKey`・`error`・`emptyMessage`・`pagination` | `rows`が`undefined`の間は`LoadingSkeleton`、`error`があれば`ErrorState`(`contactHref`無し)、0件なら`EmptyState`を表の代わりに描く。行があれば`Table`で描き、`caption`を画面に見えない`TableCaption`にし、列の見出しに`scope="col"`を付ける。表・状態の表示を包む領域に、読み込み中の間だけ`aria-busy`を付ける。`pagination`を渡すと、状態によらず名前「ページ送り」の`<nav>`に「前へ」「次へ」を描き、ページの無い側と、読み込み中・エラーの間の両方を`aria-disabled`にして押しても何もしない |
+| `AdminFilterBar`  | `children`(入力欄)・`onApply`・`onReset`                                                                            | 名前「絞り込み」の`role="search"`の`<form>`に入力欄と「適用」「解除」を並べる。送信(「適用」と入力欄のEnter)は既定の遷移を止めて`onApply`を呼び、「解除」は`onReset`だけを呼ぶ。入力欄の値は呼び出す側が持つ                                                                                                                                                                                                                                                                                  |
+
+- 表の名前は`TableCaption`で付け、`aria-labelledby`へは切り替えない。`caption`は文字列で渡すため見出しの要素の`id`に依存せず、横スクロールの領域の名前もキャプションの文言から取れるためである。ページの見出しと同じ文言を画面に二重に出さないよう、キャプションは画面に見えない文言にする。
+- `error.message`は呼び出す側が`errorMessageOf(error, APP_PROFILE.contactAvailable)`で選ぶ。部品はアプリのプロファイルを読まず、問い合わせの導線を出さない。
+- ページ送りのボタンは`disabled`にせず、読み込み中やエラーの間も消さない。押した直後に最後のページや次のページの読み込み中へ変わっても、フォーカスがボタンに残る(「[操作できない状態](004-accessibility-rules.md#操作できない状態)」)。0件でも前のページがあれば「前へ」で戻れる。
+- `pagination`は複数のページになり得る一覧にだけ渡す。渡さなければページ送りを描かない。
+- 1つのページに表を複数置くときは、呼び出す側が表ごとに見出しを加え、`caption`をそれぞれ異なる文言にする。
+
 ## 1ファイル1コンポーネントとshadcn/uiの分割
 
 1つの部品のファイル(`.tsx`)がエクスポートするReactの部品は1つだけにする。同じファイルからは、その部品のpropsの型などの型だけを併せてエクスポートしてよい。
@@ -570,7 +621,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 ```
 
-- `title`は`<分類>/<部品名>`にする。分類は、基本部品・重ねて表示する部品・フォーム・状態表示・フィードバック・エラーの表示・日時と数値・bot判定・文書の外枠・疎通確認・マークダウン・検索・メディア・認証のいずれかにする。
+- `title`は`<分類>/<部品名>`にする。分類は、基本部品・重ねて表示する部品・フォーム・状態表示・フィードバック・エラーの表示・日時と数値・bot判定・文書の外枠・疎通確認・マークダウン・検索・メディア・認証・管理画面のいずれかにする。
 - 主要な状態(既定・無効・エラー・読み込み中・送信中・開いた状態など)ごとにストーリーを分ける。操作で作る状態(検証エラー・送信中など)は`play`で操作する。押した時の処理などの関数のpropsには`fn()`を渡す。
 - ライト・ダークはツールバーで切り替えるため、配色ごとのストーリーは作らない。ただし、配色そのものを確かめる対象にする部品(本文の文字組みのように、配色で文字色や背景色の組み合わせが大きく変わる部品)は、ダークの配色を確かめるストーリーを作ってよい。そのストーリーはツールバーの値をストーリーの`globals`(`globals: { theme: 'dark' }`)で指定し、配色の切り替えを部品のpropsにしない。
 - 日時の表示は固定の表示設定で描画する。`DisplayPreferencesProvider`はブラウザの値で上書きするため、カタログでは使わず、`preview.tsx`が`DisplayPreferencesContext`へ固定の値を直接渡す。
