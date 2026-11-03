@@ -318,6 +318,7 @@ export default defineConfig({
 ```
 
 - workerdではV8のカバレッジ計測を使えないため、プリセットはIstanbul(`@vitest/coverage-istanbul`)で計測する。
+- テストファイルごとにworkerdが起動するため、テストファイルの多いアプリでは既定の並列数(CPUのコア数に応じる)でメモリが尽き、実行が強制終了(終了コード137)されることがある。その場合はアプリの`vitest.worker.config.ts`の`test`に`maxWorkers`(例: `3`)を固定し、コマンドの引数で毎回指定しない。
 - テストからWorkerを呼び出すには`cloudflare:workers`の`exports`を使う。`cloudflare:test`の`SELF`・`env`は非推奨のため使わない。
 
 ```typescript

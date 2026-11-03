@@ -70,6 +70,8 @@ export default defineConfig({
   ],
   test: {
     ...workerTestPreset,
+    // テストファイルごとにworkerdを起動するため、既定の並列数(CPUのコア数に応じる)では開発コンテナのメモリが尽きて実行環境ごと強制終了される
+    maxWorkers: 3,
     // 共有ディレクトリのWorkers統合テストは検査担当(apiと共用部品自身)が受け持つため、配置先を重ねて実行しない
     exclude: [...configDefaults.exclude, 'db/**', 'lib/**', 'common-lib/**'],
     coverage: {
