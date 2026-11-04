@@ -12,7 +12,6 @@ export type AuditTargetKind =
   | 'sponsorship'
   | 'help-article'
   | 'category'
-  | 'legal-document'
   | 'setting';
 
 export type AuditReasonRequirement = 'required' | 'optional' | 'none';
@@ -52,7 +51,6 @@ const AUDIT_TARGET_KINDS: ReadonlySet<string> = new Set<AuditTargetKind>([
   'sponsorship',
   'help-article',
   'category',
-  'legal-document',
   'setting',
 ]);
 

@@ -114,6 +114,17 @@ describe('defineAuditAction', () => {
     );
   });
 
+  test('法務文書は監査ログに記録しないため、対象の種類legal-documentを登録外として例外にする', () => {
+    const definition = {
+      ...baseDefinition,
+      targetKind: 'legal-document',
+    } as unknown as AuditActionDefinition;
+
+    expect(() => defineAuditAction(definition)).toThrow(
+      '対象の種類が登録されていません: "legal-document"',
+    );
+  });
+
   test('登録外の理由の要否は例外にする', () => {
     const definition = {
       ...baseDefinition,

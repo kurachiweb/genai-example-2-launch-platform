@@ -44,7 +44,6 @@ export const AUDIT_TARGET_KIND_LABELS: Readonly<
   sponsorship: 'スポンサー広告',
   'help-article': 'ヘルプ記事',
   category: 'カテゴリ',
-  'legal-document': '法務文書',
   setting: '設定',
 });
 

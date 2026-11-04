@@ -557,7 +557,6 @@ export type AuditTargetKind =
   | 'sponsorship'
   | 'help-article'
   | 'category'
-  | 'legal-document'
   | 'setting';
 export interface AuditActionDefinition {
   readonly name: string; // '<対象の領域>.<動詞句>'、/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/

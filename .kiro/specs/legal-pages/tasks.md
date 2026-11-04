@@ -139,7 +139,7 @@
   - _Depends: 6.2, 6.3, 6.4, 6.5_
   - _Requirements: 3.1, 3.3, 3.10, 4.1, 4.4, 4.8_
 
-- [ ] 6.7 (P) 監査ログの対象の種類から法務文書を除く
+- [x] 6.7 (P) 監査ログの対象の種類から法務文書を除く
   - 先に、共用部品の単体テストで、対象の種類に`'legal-document'`を持つ操作種別の定義が登録されていない種類として拒否されることを確かめるテストを書く
   - 共用部品の監査ログの対象の種類の型と集合、管理画面の対象の種類の表示名から法務文書を除き、共有ディレクトリの配置で各アプリの配置先へ写す。文言規則の「監査ログの対象の種類」の行から「法務文書」を除き、admin-foundationの設計の対象の種類の値の一覧からも除く。監査ログの対象の種類の列に制約は無く、この値で記録した監査ログも無いため、マイグレーションは作らない
   - 完了状態: 単体テストと型検査が成功し、`apps`と文言規則に`'legal-document'`と監査ログの対象の種類としての「法務文書」が残っていないことを検索で確かめられる
@@ -211,3 +211,4 @@
 - 6.4: `PublishLegalDocumentDialog`は`components/admins/`の`AdminFormDialog`・`AdminFormDialogFooter`・`useAdminFormDialogControls`を再利用(`audited={false}`)。文字数は`MarkdownLengthCounter`に`trimWhiteSpace`した値を渡す(検証と同じ数え方)。1行の入力欄は改行を値に入れないため、改行の違反はサーバーの返す文言を欄に示す形で確かめた。ダイアログ内の競合で「最新の内容を読み込む」は`onReload()`を呼んで閉じる。6.6への申し送り: 公開の成功時に`returnFocusRef`へ`LegalDraftForm`の保存のボタンを入れる必要がある(「公開する」が消えるため。`LegalDraftForm`はまだボタンを外へ渡していない)。競合の案内はダイアログ内だけでページの`notice`には出していない。7.4への申し送り: 「変更概要(必須)」「公開」を文言規則へ足す
 - 6.5: `LegalRevisionTable`は受け取った順(新しい順)で描き、読み込み中・失敗の状態を持たない(編集・版の表示の取得の失敗は`loader`が投げてルートのエラーの画面が示す。design.mdの記述も改めた)。文言は`legal-revision-messages.ts`、読み上げ名「第N版を表示」「第N版を公開ページで見る」は7.4で文言規則へ足す。版の表示のページは`useSuspenseQuery`で版が無ければ`notFound()`。ローカルのD1に確認用の最上位管理者(E2E管理者21bdee)と法的通知の第1版(変更概要「ローカルで版の表示を確かめるための版です。」)が残っている。ローカルでE2Eを実行する時、招待の発行コマンドは`HASH_PEPPER`が要るため`infisical --telemetry=false run --env dev --`を付ける
 - 6.6: 結線は`use-legal-document-editor.ts`(`setQueryData`で置き換え、一覧は常に無効化、公開の後は版の照会も無効化)。フォームは`key`で作り直さず`stateVersion`の変化で`reset`する(破棄のダイアログを失わないため)。処理の後のフォーカスは`use-focus-after-change.ts`が表示中の版の変化を待ち、本文が空なら本文の欄(`MarkdownEditor`のハンドル。RHFの`reset`の後は`setFocus`が効かない)、空でなければ押せるようになった保存のボタンへ移す。破棄・公開の要求はダイアログが閉じてから出す。ダイアログ由来の競合ではページの案内を`announce={false}`(Radixの`hideOthers`は`aria-live`の祖先を隠さず二重に読まれるため)。競合の案内は失敗ごとの連番の`key`で作り直す。想定外の例外はエラートラッキングへ送らない(既存のadminのフォームと同じ)。7.4への申し送り: トーストの文言「下書きを保存しました。」「下書きを破棄しました。」「公開しました。」を文言規則へ足す。ローカルのD1には法的通知の第2版と確認用の最上位管理者がもう1人ある
+- 6.7: `AuditTargetKind`と集合・管理画面の表示名・admin-foundationのdesign.mdの値の一覧・文言規則の行から`legal-document`を除いた(GraphQLの`targetKind`は`String`のためスキーマに波及しない)。admin-foundationのdesign.mdの27行目は12メニューの操作の記録を各後続specとしており法務文書も記録するように読めるため、7.4で「法務文書は記録しない(legal-pagesのQ1)」と注記する
