@@ -32,6 +32,8 @@ describe('スキーマの集約点', () => {
     'admin_recovery_codes',
     'admin_audit_logs',
     'admin_audit_log_targets',
+    'legal_documents',
+    'legal_document_versions',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

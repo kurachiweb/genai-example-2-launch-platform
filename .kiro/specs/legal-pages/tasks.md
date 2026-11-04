@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: テーブル・初期データ・共有の定義
-- [ ] 1.1 法務文書の2テーブルを定義し、マイグレーションと3文書の初期データを作る
+- [x] 1.1 法務文書の2テーブルを定義し、マイグレーションと3文書の初期データを作る
   - 前提: backend-platform・api-gateway・frontend-platform・infra-delivery・content-processing・identity-auth・admin-foundationの全タスクが完了していること(層構成・GraphQL基盤・画面の骨格・共有ディレクトリ`apps/common-lib`・マークダウンの部品・管理者の認可と管理画面のシェル)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、各テーブルの列の型・NOT NULL・既定値・種類のCHECK制約と一意索引・版の`(文書, 版番号)`の一意索引・`(文書, 公開日時)`の索引・管理者のIDの列に外部キーが無いことを確かめる単体テストを書く
   - 文書は種類・状態の版・最新の版番号・下書き(本文・保存日時・保存した管理者のID)を持ち、版は文書への外部キー・版番号・本文・変更概要・公開日時(ミリ秒)・公開した管理者のIDを持つ
@@ -188,3 +188,8 @@
   - _Depends: 5.3, 7.2, dev-toolingの10.1_
   - _Boundary: ClientLegalPages_
   - _Requirements: 6.1, 6.8, 10.2_
+
+## Implementation Notes
+
+- 1.1: テーブルは`apps/db/schema/legal/`、マイグレーションは`20261104123845_legal_pages`(テーブル)と`20261104123848_legal_pages_seed`(初期データ)。種類の値はテーブルのファイルの非公開の定数`LEGAL_DOCUMENT_KIND_VALUES`(`['terms','privacy','legal-notice']`)のため、1.2で`LegalDocumentKind`と列の`enumValues`の一致を単体テストで確かめる。初期データの固定ULIDは`01M6HXNZ000000000000000001`(terms)・`…02`(privacy)・`…03`(legal-notice)で、時刻部と`created_at`・`updated_at`は`1793750400000`(2026-11-04T00:00:00Z)
+- 1.1(7.3の材料): `drizzle-kit generate --custom`でも`snapshot.json`が作られ、`prevIds`は直前のスナップショットのidを指し、内容は直前のスナップショットと`id`・`prevIds`以外が同一(キーの順は異なるため文字列の比較では差分に見える)。直後の`drizzle-kit generate`は「No schema changes」で何も作らない。既存の`20261103133903_identity_disposable_status_undetermined`も同じ。テンプレートのコメント行は削除した
