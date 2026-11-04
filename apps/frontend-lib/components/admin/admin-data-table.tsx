@@ -66,7 +66,7 @@ function bodyOf<Row>({
     return <ErrorState message={error.message} onRetry={error.onRetry} />;
   }
   if (rows === undefined) {
-    return <LoadingSkeleton>{TABLE_SKELETON}</LoadingSkeleton>;
+    return null;
   }
   if (rows.length === 0) {
     return <EmptyState title={emptyMessage} />;
@@ -129,13 +129,17 @@ function PageButton({
   );
 }
 
+// aria-busyの中の変化は読み上げが遅れ得るため、読み込み中のLoadingSkeletonは表の領域のaria-busyの外に置く
 export function AdminDataTable<Row>(props: AdminDataTableProps<Row>) {
   const { rows, error, pagination } = props;
   const loading = error === undefined && rows === undefined;
   const settled = error === undefined && rows !== undefined;
   return (
     <div data-slot="admin-data-table" className="flex flex-col gap-4">
-      <div aria-busy={loading ? true : undefined}>{bodyOf(props)}</div>
+      <div>
+        {loading ? <LoadingSkeleton>{TABLE_SKELETON}</LoadingSkeleton> : null}
+        <div aria-busy={loading ? true : undefined}>{bodyOf(props)}</div>
+      </div>
       {pagination === undefined ? null : (
         <nav
           aria-label={ADMIN_PAGINATION_LABEL}

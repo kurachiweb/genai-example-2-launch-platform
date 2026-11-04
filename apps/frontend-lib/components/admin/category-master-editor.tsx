@@ -243,7 +243,7 @@ export function CategoryMasterEditor({
         emptyMessage={CATEGORY_EMPTY_MESSAGE}
       />
       <CategoryFormDialog
-        key={form.session}
+        key={`form-${String(form.session)}`}
         open={form.open}
         onOpenChange={(open) => {
           setForm((current) => ({ ...current, open }));
@@ -269,7 +269,7 @@ export function CategoryMasterEditor({
         failureMessageOf={failureMessageOf}
       />
       <ConfirmActionDialog
-        key={deletion.session}
+        key={`deletion-${String(deletion.session)}`}
         open={deletion.open}
         onOpenChange={(open) => {
           setDeletion((current) => ({ ...current, open }));

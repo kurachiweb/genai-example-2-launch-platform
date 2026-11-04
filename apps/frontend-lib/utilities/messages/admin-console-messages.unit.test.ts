@@ -1,8 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  ADMIN_NICKNAME_MAX,
+  ADMIN_TITLE_MAX,
   AUDIT_REASON_MAX,
   CATEGORY_NAME_MAX,
+  checkAdminNickname,
+  checkAdminTitle,
+  checkAuditReason,
+  checkCategoryName,
 } from '../../../common-lib/admin/admin-input-rules.ts';
 import {
   ADMIN_FILTER_LABEL,
@@ -175,5 +181,36 @@ describe('管理画面の共通部品の文言', () => {
         `${categoryRowActionTarget('開発ツール')}${CATEGORY_EDIT_LABEL}`,
       ).toBe('「開発ツール」を編集');
     });
+  });
+
+  // 単体テストのカバレッジは読み込んだ共用部品のファイルも分母に数えるため、文言が上限を示す入力規則の判定を全て上限の前後で呼ぶ
+  describe('文言が示す上限と共用部品の入力規則の判定', () => {
+    test.each([
+      { name: 'カテゴリ名', check: checkCategoryName, max: CATEGORY_NAME_MAX },
+      {
+        name: 'ニックネーム',
+        check: checkAdminNickname,
+        max: ADMIN_NICKNAME_MAX,
+      },
+    ])(
+      '必須の$nameは空白だけを拒み、上限の文字数までを受け付ける',
+      ({ check, max }) => {
+        expect(check(' \u3000')).toBe('empty');
+        expect(check('あ'.repeat(max))).toBeUndefined();
+        expect(check('あ'.repeat(max + 1))).toBe('too-long');
+      },
+    );
+
+    test.each([
+      { name: '理由', check: checkAuditReason, max: AUDIT_REASON_MAX },
+      { name: '肩書き', check: checkAdminTitle, max: ADMIN_TITLE_MAX },
+    ])(
+      '任意の$nameは空を受け付け、前後の空白を除いて上限の文字数までを受け付ける',
+      ({ check, max }) => {
+        expect(check('')).toBeUndefined();
+        expect(check(` ${'あ'.repeat(max)} `)).toBeUndefined();
+        expect(check('あ'.repeat(max + 1))).toBe('too-long');
+      },
+    );
   });
 });

@@ -2,16 +2,16 @@
 # 1行に1つ、コミット前検査の検出結果から作ったFingerprintを「<ファイルのパス>:<検出規則>:<行番号>」の形式で書く
 # 行番号が変わるとFingerprintも変わるため、該当行が移動したら登録し直す
 # コメントは行頭の「#」だけが有効で、Fingerprintの行末にはコメントを書けない。誤検知と判断した理由はコミットメッセージに残す
-.kiro/specs/admin-foundation/design.md:generic-password:994
-.kiro/specs/admin-foundation/design.md:generic-password:1011
-.kiro/specs/admin-foundation/design.md:generic-password:1018
-.kiro/specs/admin-foundation/design.md:generic-password:1022
-.kiro/specs/admin-foundation/design.md:generic-password:1044
-.kiro/specs/identity-auth/design.md:generic-password:2540
-.kiro/specs/identity-auth/design.md:generic-password:2546
-.kiro/specs/identity-auth/design.md:generic-password:2551
-.kiro/specs/identity-auth/design.md:generic-password:2559
+.kiro/specs/admin-foundation/design.md:generic-password:1172
+.kiro/specs/admin-foundation/design.md:generic-password:1189
+.kiro/specs/admin-foundation/design.md:generic-password:1196
+.kiro/specs/admin-foundation/design.md:generic-password:1200
+.kiro/specs/admin-foundation/design.md:generic-password:1222
+.kiro/specs/identity-auth/design.md:generic-password:2555
+.kiro/specs/identity-auth/design.md:generic-password:2561
 .kiro/specs/identity-auth/design.md:generic-password:2566
+.kiro/specs/identity-auth/design.md:generic-password:2574
+.kiro/specs/identity-auth/design.md:generic-password:2581
 apps/api/bun.lock:generic-password:392
 apps/client/bun.lock:generic-password:473
 apps/admin/bun.lock:generic-password:473

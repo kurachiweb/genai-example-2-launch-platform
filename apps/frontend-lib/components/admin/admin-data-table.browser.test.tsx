@@ -140,7 +140,7 @@ describe('AdminDataTable', () => {
     expect(hasHorizontalScroll()).toBe(false);
   });
 
-  test('行がまだ無い間は、読み込み中であることを状態の領域の文言と表の領域のaria-busyで伝え、表を描かず、ページ送りを描いたまま押せなくする', async () => {
+  test('行がまだ無い間は、読み込み中であることをaria-busyの外の状態の領域の文言と表の領域のaria-busyで伝え、表を描かず、ページ送りを描いたまま押せなくする', async () => {
     const onPrevious = vi.fn();
     const onNext = vi.fn();
     await render(
@@ -157,7 +157,12 @@ describe('AdminDataTable', () => {
 
     const status = page.getByRole('status');
     await expect.element(status).toHaveTextContent('読み込み中');
-    expect(status.element().closest('[aria-busy="true"]')).not.toBeNull();
+    expect(status.element().closest('[aria-busy]')).toBeNull();
+    expect(
+      document.querySelector(
+        '[data-slot="admin-data-table"] [aria-busy="true"]',
+      ),
+    ).not.toBeNull();
     await expect.element(page.getByRole('table')).not.toBeInTheDocument();
     await expect
       .element(previousButton())
