@@ -104,7 +104,7 @@
   - _Depends: 4.3_
   - _Requirements: 2.1, 2.2, 2.3, 9.3, 9.4_
 
-- [ ] 6.2 (P) 下書きの入力欄と保存・破棄・離脱の確認を作る
+- [x] 6.2 (P) 下書きの入力欄と保存・破棄・離脱の確認を作る
   - 先に、ブラウザテストで、初期値(下書き→最新版の本文→空)、ツール・プレビュー・「現在の数 / 100,000」の表示、保存と破棄の確認、最上位管理者でない場合に本文の欄が読み取り専用(`FormField`の`disabled`で無効)で操作が無いこと、保存で`kind`と`expectedStateVersion`を`onSubmit`で足して送ること、保存していない変更があると「公開する」が無効で案内が出ること、離脱の確認(画面内の遷移と再読み込み)、キーボードでの操作を確かめる
   - 下書きの入力欄と操作の部品と、離脱の確認の状態を作る
   - 完了状態: ブラウザテストが成功し、閲覧のみのロールで保存・破棄・公開のボタンが描かれない
@@ -206,3 +206,4 @@
 - 5.2: `LegalVersionPage({ kind, versionNumber, state })`は5.1と同じ判別共用体で、見出しは版番号から状態によらず出す(design.mdも改めた)。成功の値`LegalVersionView`は`publishedAt`・`changeSummary`・`body`・`isLatest`。見出しの文字列は`legal-messages.ts`の`legalVersionTitle(label, n)`(5.3のheadで再利用)。公開ページへのリンクは`PathLink`の`activeOptions={{ exact: true }}`で`aria-current`を付けない。5.3で取得の方式を決めた後、2つのページの状態の型と読み込み中・失敗の外枠(約30行の重複)を`components/legal/`へまとめるとよい
 - 5.3: 取得の方式: `loader`は`queryClient.query`(`staleTime: 'static'`)を待って失敗を投げ(サーバー側の描画で500)、過去版は版番号の形式違反と存在しない版を`notFound()`にする。ルートには`pendingComponent`・`errorComponent`を足し、5.1・5.2のページの部品へ`pending`・`error`の`state`を渡す(成功は`useSuspenseQuery`)。再試行は`router.invalidate()`と`useLegalPageRetry`(見出しへフォーカス)。正規のURLは`buildPageHead`が同じオリジンのパスしか受けないためパス(design.mdも改めた)。準備中は`noIndex`で正規のURLなし。7.6への申し送り: (1)`site-footer.tsx`の法務文書のリンクは素の`<a>`で全体を読み込み直すため、(c)のフッターからのブラウザ内の遷移が起きない(フッターはfrontend-platformの所有)。(2)サーバー側の描画で失敗するとエラーの文言がハイドレーションの後で変わる(サーバーはAPIの文言、ブラウザは固定の文言)。(3)開発サーバーの起動直後の最初の要求で依存の最適化による「Invalid hook call」が1回出る(応答は200)。2つのページの外枠の共通化と改訂履歴の型付きの`Link`への置き換えは未実施
 - 6.1: 管理の照会3つ・変更3つの操作は`apps/admin/src/graphql/operations/legal/`。`admin-legal-documents.ts`に取得の設定・変換・loaderとビューの型(`toAdminLegalDocument`は変更の結果にも使える。`toGraphQLLegalDocumentKind`は変更の入力用)。一覧のloaderは`.catch(() => undefined)`と`useQuery`(表の中で失敗と再試行)、編集・版の表示のloaderは形式違反と存在しない版を`notFound()`。adminのloaderは`staleTime: 'static'`を使わない。利用者側の公開ページへのリンクは`use-client-site-href.ts`(`clientSiteOrigin`+パス、同じタブ)。編集・版の表示のページの部品(`legal-document-editor-page.tsx`・`legal-document-version-page.tsx`)は見出しだけの仮で、6.5・6.6で中身を差し替える。`renderInRouter`を使う部品のテストは`execute-graphql.ts`のモックと`DisplayPreferencesProvider`が要り、テストのブラウザのロケールは英語。`legalVersionLabel`・`legalVersionTitle`はclientとadminで重複(まとめるなら`apps/common-lib/legal/`)
+- 6.2: `LegalDraftForm`のpropsは`document`・`onSave`・`onSaveError`(`AppForm.onSubmitError`へ)・`onDiscard`・`onPublishRequest`・`notice`(6.3の競合の案内とエラーの差し込み口)。破棄の競合は6.6が`onDiscard`で案内を出して投げ直す(ダイアログにも失敗の文言を出すため)。`publishFormSchema`も`legal-form-schemas.ts`に作成済み(6.4が使う)。新しい文言は`legal-draft-form-messages.ts`。designに無い文言「このページを離れますか?」「破棄した下書きは元に戻せません。公開した版は変わりません。」「本文をマークダウンで入力してください」を7.4で文言規則へ足す。離脱の確認は`ConfirmActionDialog`を再利用。`MarkdownEditor`はblurで値を渡すため、公開の案内の行を常に確保してクリックのずれを防いだ
