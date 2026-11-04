@@ -1410,6 +1410,7 @@ export interface BootstrappedAdmin {
   readonly nickname: string;
   readonly role: AdminRole;
   readonly totpSecret: string; // 招待の完了の画面の手入力用の文字列
+  readonly recoveryCodes: readonly string[]; // 招待の完了の画面でだけ表示されたリカバリコード
 }
 export declare function issueSuperAdminInvitation(
   email: string,
@@ -1422,12 +1423,37 @@ export declare function signInAdmin(
   page: Page,
   admin: BootstrappedAdmin,
 ): Promise<void>;
+export declare function signOutAdmin(
+  page: Page,
+  admin: Pick<BootstrappedAdmin, 'nickname'>,
+): Promise<void>;
+export declare function completeAdminInvitation(
+  page: Page,
+  link: string,
+): Promise<Omit<BootstrappedAdmin, 'adminId' | 'email' | 'role'>>; // 画面で招待した管理者の完了(Mailpitのリンク)にも使う
+export declare function nextTotpCode(
+  admin: Pick<BootstrappedAdmin, 'totpSecret'>,
+): Promise<string>; // 同じ秘密鍵の使用済みの時間窓を避ける
+export declare function withTotpSecret<T extends BootstrappedAdmin>(
+  admin: T,
+  totpSecret: string,
+): T; // 多要素認証の再設定の後の秘密鍵に替える
+export declare function openFromAdminNavigation(
+  page: Page,
+  admin: Pick<BootstrappedAdmin, 'nickname'>,
+  path: string,
+): Promise<void>; // ハイドレーションを待ってから管理メニューのルーターの遷移で開く
+export declare function withSoleActiveSuperAdmin<T>(
+  admin: Pick<BootstrappedAdmin, 'adminId'>,
+  action: () => Promise<T>,
+): Promise<T>; // 他の有効な最上位管理者をこの間だけモデレーターにし、終わったら戻す
 export declare function currentTotpCode(secret: string, at?: Date): string;
 ```
 
 - `issueSuperAdminInvitation`: `bun run admin:invite-super-admin -- --target local --email <アドレス>`を実行し、表示されたリンクと有効期限を返す。
-- `signInAsNewAdmin`: 乱数のアドレスで`issueSuperAdminInvitation`→`page`でリンクを開き、ニックネームとパスワード→手入力用の文字列から`currentTotpCode`で認証コード→リカバリコードの確認→ダッシュボードの表示を待つ→`executeLocalD1`で管理者のIDを読む→`role`が`super_admin`以外なら`UPDATE admins SET role = <role> WHERE id = <ID>`を実行する(ロールは要求ごとに読み直されるため、同じ`page`のまま次の要求から反映される、17.4)。返したときの`page`はそのロールでログインしたダッシュボードにある。
-- `signInAdmin`: `/auth/login`でメールとパスワードとbot判定(ローカルのテスト用のキー)→`currentTotpCode`の認証コードでログインする(再ログイン・ログアウト後の確認に使う)。同じ時間窓の認証コードは再使用できないため、前回の時間窓を過ぎるまで待つ。
+- `signInAsNewAdmin`: 乱数のアドレスで`issueSuperAdminInvitation`→`page`でリンクを開き、ニックネームとパスワード→手入力用の文字列から`nextTotpCode`で認証コード→リカバリコードの確認→ダッシュボードの表示を待つ(管理者のIDは発行の直後に`executeLocalD1`で読む)→`role`が`super_admin`以外なら`UPDATE admins SET role = <role> WHERE id = <ID>`を実行する(ロールは要求ごとに読み直されるため、同じ`page`のまま次の要求から反映される、17.4)。返したときの`page`はそのロールでログインしたダッシュボードにある。
+- `signInAdmin`: `/auth/login`でメールとパスワードとbot判定(ローカルのテスト用のキー)→`nextTotpCode`の認証コードでログインする(再ログイン・ログアウト後の確認に使う)。同じ時間窓の認証コードは再使用できないため、前回の時間窓を過ぎるまで待つ。
+- 最後の最上位管理者の保護は有効な全ての最上位管理者を数えるため、その拒否を確かめるテストは`withSoleActiveSuperAdmin`の中で操作する。他のテストの最上位管理者のロールを一時的に変えるため、Playwrightの管理者側のプロジェクトは並列数を1にする(`e2e/support/playwright-config.ts`の`PROJECT_WORKER_LIMITS`)。
 - `executeLocalD1`は、利用者の停止など画面から作れない状態の用意に後続specも使う。リモートのD1には書き込めない(Claude設定のdeny)。メールはMailpitの補助(identity-auth)で読む。
 - `security/007-admin-authorization.md`: 管理者の主体と利用者の主体の分離、ロールの順序と最低限のロールの宣言、所有権の判定、要求ごとのロールの読み込み、最後の最上位管理者の保護の書き込みの方式、管理者のセッションの期限、本人確認、bot判定の適用範囲。
 - `backend/008-audit-logging.md`: 操作種別の登録、記録の文を操作と同じ一括の書き込みに含める規約、個人情報を含めない規則(利用者は仮名化ID、検索文字列を残さない)、理由の要否、保持期間の削除、最新の日時の照会(1件と複数の対象、複数の対象はバインド変数の上限に合わせた分割)、利用側の単体テストが照会の偽物を自分で書かずに共有の偽物を使う規約(仮7)。

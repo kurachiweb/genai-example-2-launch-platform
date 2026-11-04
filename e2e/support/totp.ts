@@ -8,6 +8,8 @@ export interface TotpClock {
 
 export interface TotpCodeSource {
   readonly nextCode: () => Promise<string>;
+  // 最後に返した認証コードの時間窓。まだ返していなければundefined
+  readonly lastUsedStep: () => number | undefined;
 }
 
 // 認証アプリの既定(RFC 6238のSHA-1・6桁・30秒)と同じ値で、サーバーの設定と一致させる
@@ -61,14 +63,17 @@ export function totpCodeAt(secret: Uint8Array, step: number): string {
 }
 
 // サーバーは前後1つまでの時間窓の認証コードを受け付け、同じ利用者が使った時間窓とそれより前の時間窓は拒否する。
-// 使い終えた時間窓の次を、受け付けられる範囲に入るまで待ってから使い、何度続けて求めても拒否されない認証コードを返す
+// 使い終えた時間窓の次を、受け付けられる範囲に入るまで待ってから使い、何度続けて求めても拒否されない認証コードを返す。
+// usedStepを渡すと、その時間窓より後から使い始める(秘密鍵を設定し直した後の発生源を、前の秘密鍵で使った時間窓より後から始める時に使う)
 export function createTotpCodeSource(
   secretText: string,
   clock: TotpClock = SYSTEM_CLOCK,
+  usedStep?: number,
 ): TotpCodeSource {
   const secret = decodeBase32(secretText);
-  let lastStep: number | undefined;
+  let lastStep = usedStep;
   return {
+    lastUsedStep: () => lastStep,
     nextCode: async () => {
       const currentStep = totpStepAt(clock.now());
       const step =
@@ -82,4 +87,11 @@ export function createTotpCodeSource(
       return totpCodeAt(secret, step);
     },
   };
+}
+
+export function currentTotpCode(
+  secretText: string,
+  at: Date = new Date(),
+): string {
+  return totpCodeAt(decodeBase32(secretText), totpStepAt(at.getTime()));
 }

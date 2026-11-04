@@ -18,15 +18,17 @@ import {
   loginAs,
   loginForm,
   logoutFromUserMenu,
-  REACTION_TIMEOUT_MS,
   registerAccount,
-  RETRY_TIMEOUT_MS,
   SECURITY_SETTINGS_PATH,
   submitLogin,
   userMenuButton,
   waitForBotToken,
 } from './account-steps.ts';
 import { assumeDistinctClientIp } from '../../support/client-ip.ts';
+import {
+  REACTION_TIMEOUT_MS,
+  RETRY_TIMEOUT_MS,
+} from '../../support/hydration-retry.ts';
 import { expect, test } from './auth-test.ts';
 
 const sessionsSection = (page: Page): Locator =>

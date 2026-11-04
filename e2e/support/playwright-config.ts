@@ -2,7 +2,7 @@ import type { PlaywrightTestConfig, Project } from '@playwright/test';
 
 import { TEST_FILE_PATTERNS } from '../../config/test-patterns.ts';
 import type { BrowserLaunchOptions } from '../../config/vitest/browser.ts';
-import type { E2EProjectPlan } from './targets.ts';
+import type { E2EProjectPlan, E2ETargetName } from './targets.ts';
 
 // パスはいずれも、ルートに置くplaywright.config.tsのディレクトリを基準にPlaywrightが解決する
 const OUTPUT_DIR = 'test-results';
@@ -33,25 +33,33 @@ export function resolveE2EWorkers(
   return Number.parseInt(value, 10);
 }
 
+// 管理者側のテストは、有効な最上位管理者が1人だけの状態を前提にする確認のために他の管理者のロールを一時的に変えるため、同じ対象のテストを並行させない
+const PROJECT_WORKER_LIMITS: Readonly<Partial<Record<E2ETargetName, number>>> =
+  Object.freeze({ admin: 1 });
+
 const toProjects = ({
   target,
   testDir,
   setupProjectName,
-}: E2EProjectPlan): Project[] => [
-  {
-    name: setupProjectName,
-    testDir: REACHABILITY_SETUP_DIR,
-    testMatch: REACHABILITY_SETUP_FILE,
-    use: { baseURL: target.baseURL },
-  },
-  {
-    name: target.name,
-    testDir,
-    testMatch: [...TEST_FILE_PATTERNS.e2e],
-    dependencies: [setupProjectName],
-    use: { baseURL: target.baseURL },
-  },
-];
+}: E2EProjectPlan): Project[] => {
+  const workers = PROJECT_WORKER_LIMITS[target.name];
+  return [
+    {
+      name: setupProjectName,
+      testDir: REACHABILITY_SETUP_DIR,
+      testMatch: REACHABILITY_SETUP_FILE,
+      use: { baseURL: target.baseURL },
+    },
+    {
+      name: target.name,
+      testDir,
+      testMatch: [...TEST_FILE_PATTERNS.e2e],
+      dependencies: [setupProjectName],
+      use: { baseURL: target.baseURL },
+      ...(workers === undefined ? {} : { workers }),
+    },
+  ];
+};
 
 export function createPlaywrightConfig(
   plans: readonly E2EProjectPlan[],

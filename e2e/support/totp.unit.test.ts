@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   createTotpCodeSource,
+  currentTotpCode,
   decodeBase32,
   totpCodeAt,
   totpStepAt,
@@ -119,5 +120,54 @@ describe('createTotpCodeSource', () => {
     await clock.sleep(3 * PERIOD_MS);
 
     expect(await source.nextCode()).toBe(totpCodeAt(FOOBAR_BYTES, 13));
+  });
+});
+
+describe('createTotpCodeSource(使用済みの時間窓の引き継ぎ)', () => {
+  test('まだ使っていなければ、使用済みの時間窓はundefinedである', () => {
+    const source = createTotpCodeSource(
+      FOOBAR_BASE32,
+      fakeClockAt(10 * PERIOD_MS),
+    );
+
+    expect(source.lastUsedStep()).toBeUndefined();
+  });
+
+  test('返した認証コードの時間窓を使用済みの時間窓として返す', async () => {
+    const source = createTotpCodeSource(
+      FOOBAR_BASE32,
+      fakeClockAt(10 * PERIOD_MS),
+    );
+    await source.nextCode();
+    await source.nextCode();
+
+    expect(source.lastUsedStep()).toBe(11);
+  });
+
+  test('使用済みの時間窓を渡すと、その時間窓より後の認証コードから返す', async () => {
+    const clock = fakeClockAt(10 * PERIOD_MS + 5_000);
+    const source = createTotpCodeSource(FOOBAR_BASE32, clock, 11);
+
+    expect(await source.nextCode()).toBe(totpCodeAt(FOOBAR_BYTES, 12));
+    expect(clock.sleeps).toEqual([PERIOD_MS - 5_000]);
+  });
+});
+
+describe('currentTotpCode', () => {
+  test('指定した時刻の時間窓の認証コードを返す', () => {
+    expect(currentTotpCode(FOOBAR_BASE32, new Date(10 * PERIOD_MS + 1))).toBe(
+      totpCodeAt(FOOBAR_BYTES, 10),
+    );
+  });
+
+  test('時刻を省くと、現在の時間窓の認証コードを返す', () => {
+    const before = totpStepAt(Date.now());
+    const code = currentTotpCode(FOOBAR_BASE32);
+    const after = totpStepAt(Date.now());
+
+    expect([
+      totpCodeAt(FOOBAR_BYTES, before),
+      totpCodeAt(FOOBAR_BYTES, after),
+    ]).toContain(code);
   });
 });

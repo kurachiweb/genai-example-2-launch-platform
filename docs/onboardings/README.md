@@ -239,9 +239,12 @@
 
 利用者側・管理者側の疎通確認の画面で、応答のセキュリティヘッダーとnonce付きのCSP、APIサーバーの時刻と「到達可能」の表示、再確認、ハイドレーションの後も再確認までは中継へ取得し直さないこと、CSPの違反が起きないこと、存在しないページの404、クロスサイトを名乗る中継の要求の403、スクリプトの読み込み方、静的なファイルがWorkerを通らずに配信されること、管理者側の画面にフッターが無いことを、PlaywrightのE2Eテスト(`e2e/client/system-status.e2e.test.ts`・`e2e/admin/system-status.e2e.test.ts`)で確かめる。クイックスタートの手順13の開発サーバーか、手順14のプレビューで、APIサーバー・利用者側・管理者側を起動してから実行する。両方の起動で続けて確かめるときは、「[開発サーバーとビルド後のプレビューの両方での実行](#開発サーバーとビルド後のプレビューの両方での実行)」のコマンドを使う。
 
+E2Eテストのコマンドは、Infisicalの注入の下で実行する。管理者側のE2Eテストは、Playwrightのプロセスから招待の発行コマンド(`apps/api`の`bun run admin:invite-super-admin -- --target local --email <アドレス>`)を呼び、このコマンドは`HASH_PEPPER`を環境変数から読むためである。注入を付けないと、管理者を用意するE2Eテストがすべて`HASH_PEPPER`が注入されていない旨の案内で失敗する。`HASH_PEPPER`はInfisicalの`dev`の共通のフォルダ(`/`)にあり、注入した値はE2Eテストのプロセスから招待の発行コマンドへそのまま引き継がれる(コマンドの中では注入し直さない)。
+
 ```sh
 cd /workspace
-bun run test:e2e
+infisical --telemetry=false run --env dev -- bun run test:e2e
+infisical --telemetry=false run --env dev -- bun run test:e2e --project admin # 管理者側のE2Eテストだけを実行する場合
 ```
 
 利用者側の登録とログインの流れ(登録→未確認の帯→メールのリンクでの確認→帯が消える、ユーザーメニューからのログアウト、誤ったパスワードの文言、別のブラウザの文脈でのログインとセッションの一覧・個別の失効)、パスワードリセット(未登録のメールアドレスでも同じ案内、リンクからの再設定で既存のセッションが無効になる)、多要素認証(画面の手入力用の文字列から計算した認証コードでの有効化、認証コードとリカバリコードでのログイン、無効化)、メールアドレス変更とパスワード変更のリンクでの確定、退会→ログインできない→同じメールアドレスでの再登録は、`e2e/client/auth/`のE2Eテスト(`registration.e2e.test.ts`・`login-and-sessions.e2e.test.ts`・`password-reset.e2e.test.ts`・`two-factor.e2e.test.ts`・`account-changes.e2e.test.ts`)で確かめる。
@@ -252,9 +255,27 @@ bun run test:e2e
 - メールの送信回数とログイン試行はIPアドレス単位でも制限され、記録はローカルの状態(`/workspace/.wrangler/state`)に残る。テストはブラウザの文脈ごとに文書用のIPv6アドレスを接続元として名乗るため(`e2e/support/client-ip.ts`)、繰り返し実行しても上限に達しない。手作業の確認と合わせて同じ接続元から1時間に6回以上登録すると、画面に「操作が集中しています。」が出る。
 - これらのテストはメールとローカルのIPアドレスの扱いを前提にするため、`@smoke`タグを付けず、デプロイ後のスモークテストでは実行しない。
 
+管理者側の流れ(招待の発行コマンドのリンクからの最初の最上位管理者の招待の完了→空の状態のダッシュボード、誤ったパスワードの文言、ログアウトと認証コード・リカバリコードでのログイン、ログイン必須のページからログイン画面へ移りログインの後に元のページへ戻ること)、管理者アカウントの管理(最上位管理者によるモデレーターの招待とMailpitのリンクからの完了、ロールの変更、最後の最上位管理者の自己降格の拒否、削除、監査ログの操作者・操作種別・期間での絞り込み)、自分のアカウント(プロフィールのニックネーム・肩書き・画像の登録と取り除き・既定のアイコン、パスワードリセット、メールアドレス変更、パスワード変更、多要素認証の再設定)、ロール(閲覧のみ・モデレーター・最上位管理者)によるヘッダーの表示と操作の出し分けと再ログインは、`e2e/admin/`のE2Eテスト(`admin-sign-in.e2e.test.ts`・`admin-accounts.e2e.test.ts`・`my-account.e2e.test.ts`・`admin-roles.e2e.test.ts`)で確かめる。
+
+- 実行の前に、`apps/api`で`bun run db:migrate:local`を実行してローカルのD1へマイグレーションを適用し、APIサーバー(`bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker api -- bun run dev`)・イベントサーバー(`apps/event`で`bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker event -- bun run dev`)・管理者側(`apps/admin`で`infisical --telemetry=false run --env dev -- bun run dev --port 48045 --host 0.0.0.0`)をクイックスタートの手順13のとおり起動しておく。招待・パスワードリセット・メールアドレス変更のメールはイベントサーバーがMailpit(`http://localhost:48041`、コンテナの起動時に起動済み)へ送り、テストは`e2e/support/mailpit.ts`で読む。
+- 管理者は共有の補助`e2e/support/admin-bootstrap.ts`が用意する。招待の発行コマンドを`--target local`で呼んで最上位管理者として招待し、画面で招待を完了(ニックネーム・パスワード・手入力用の文字列から計算した認証コード・リカバリコードの確認)させてから、閲覧のみ・モデレーターが要るときはローカルのD1(`e2e/support/local-d1.ts`、`/workspace/.wrangler/state`)でロールを設定する。メールアドレスは`e2e-<乱数>@test.example`、ニックネームとパスワードも乱数から作るため、前回の実行の管理者やMailpitに残ったメールを消さずに何度でも実行できる。テストで作った管理者はローカルのD1に残る。
+- 最後の最上位管理者の自己降格の拒否は、有効な最上位管理者が1人だけの時にだけ起きる。そのため`admin-accounts.e2e.test.ts`は、確認の間だけ`withSoleActiveSuperAdmin`で、操作する最上位管理者以外の有効な最上位管理者(前のテスト・前回の実行で作った管理者と、開発者が手作業で用意した管理者を含む)をモデレーターにし、確認の後に`finally`で最上位管理者へ戻す。他のテストの管理者のロールを変えるため、管理者側のE2Eテストは並列数の上限を1にして1件ずつ実行する(利用者側のE2Eテストとは並行する)。
+- テストの時間切れ・`Ctrl+C`などの中断で`finally`が実行されないと、モデレーターにした管理者が戻らない。戻す処理自体が失敗したときは、テストが`一時的にモデレーターにした最上位管理者を戻せませんでした: <ID>, <ID>`で失敗し、IDを示す。次のようにローカルのD1で確かめて戻す(`--local --persist-to`を付けてローカルの状態だけを操作する。「[ローカル状態の永続化と共有](../GUIDES/tech/infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)」)。
+
+  ```sh
+  cd /workspace/apps/api
+  # 有効なモデレーターの一覧から、最上位管理者だった管理者(自分で用意した管理者のメールアドレスなど)を探す
+  bunx wrangler d1 execute DB --local --persist-to /workspace/.wrangler/state --command "SELECT id, email, nickname FROM admins WHERE role = 'moderator' AND status = 'active';"
+  # 失敗の表示のIDか、探した管理者のIDを指定して戻す
+  bunx wrangler d1 execute DB --local --persist-to /workspace/.wrangler/state --command "UPDATE admins SET role = 'super_admin' WHERE id = '<ID>';"
+  ```
+
+  - テストが作った管理者(`e2e-<乱数>@test.example`)は戻さなくてよい。テストは毎回新しい管理者を用意し、以前の管理者を使わない。
+  - 開発者が用意した管理者をモデレーターに変えずに管理者側のE2Eテストを実行することはできない。ローカルの最上位管理者を常に使いたいときは、E2Eテストの後に上のSQLで戻すか、招待の発行コマンドで新しい最上位管理者を用意する。
+
 - 対象のURLは`E2E_CLIENT_URL`・`E2E_ADMIN_URL`で上書きでき、既定はローカルの`http://localhost:48044`・`http://localhost:48045`である(「[テスト戦略の前提と用語](../GUIDES/tech/testing/001-test-strategy.md#前提と用語)」)。デプロイ先検証環境に向けるときは、2つの環境変数に`staging`のURL(「[配信URL一覧](../../README.md#配信url一覧)」)を指定する。
 - ローカル環境にはアクセス解析のトークン・エラートラッキングのDSNが無いため(bot判定は常に成功するテスト用の非表示のウィジェットを使う)、それらに関わる確認は対象が無ければ飛ばし、飛ばしたことをテストの結果の注記(「確認の省略」)に残す。エラートラッキングのSDKの静的な取り込み、静的なファイルのセキュリティヘッダー、静的なファイルがWorkerを通らずに配信されること(`/assets/*.js`と`/favicon.ico`の応答に`no-store`も`X-Robots-Tag`も無く、`/assets/*.js`は`immutable`で長期キャッシュされる)の確認は、ビルド後の対象(プレビュー・`staging`)でだけ行い、開発サーバーでは飛ばしたことを注記に残す。
-- 並列数(Playwrightのワーカーの数)の上限は既定で2である。開発サーバーに対して多く並列に実行するとworkerdが機械の負荷で落ちることがあるため、ローカルもCIも`E2E_WORKERS`を設定せずに同じ上限で実行する。一時的に変えたいときだけ`E2E_WORKERS=1 bun run test:e2e`のように1以上の整数を指定する(1以上の整数でなければ設定の読み込みで失敗する)。コマンドの`--workers`の引数は`E2E_WORKERS`より優先される(「[E2Eテストの実行](../GUIDES/tech/testing/001-test-strategy.md#e2eテストの実行)」)。
+- 並列数(Playwrightのワーカーの数)の上限は既定で2である。開発サーバーに対して多く並列に実行するとworkerdが機械の負荷で落ちることがあるため、ローカルもCIも`E2E_WORKERS`を設定せずに同じ上限で実行する。一時的に変えたいときだけ`infisical --telemetry=false run --env dev -- env E2E_WORKERS=1 bun run test:e2e`のように1以上の整数を指定する(1以上の整数でなければ設定の読み込みで失敗する)。コマンドの`--workers`の引数は`E2E_WORKERS`より優先される(「[E2Eテストの実行](../GUIDES/tech/testing/001-test-strategy.md#e2eテストの実行)」)。管理者側のE2Eテストは、この上限にかかわらず1件ずつ実行する(上の`withSoleActiveSuperAdmin`の説明)。
 - 存在しないページを開いたときのブラウザのコンソールの読み込みの失敗は、404の応答によるもので想定どおりである。
 - 開発サーバーに対する実行では、最初の再確認のクリックがハイドレーションの前で取りこぼされることがあるため、テストは再確認の案内が消えるまで押し直して確かめる。案内が消えた後は押さないため、中継への要求は再確認の1件だけになる。
 
@@ -262,7 +283,7 @@ bun run test:e2e
 
 ルートの`bun run test:e2e:dev-and-preview`は、利用者側・管理者側のフロントエンドを開発サーバー(`bun run dev --port 48044 --host 0.0.0.0`・`bun run dev --port 48045 --host 0.0.0.0`)で起動してE2Eテストを実行し、止めてから`bun run build`の後にプレビュー(`bun run preview`に同じ引数)で起動して、同じE2Eテストを実行する。開発サーバーでは飛ばすビルド後の対象だけの確認も、同じ1回の実行のプレビューの段階で確かめる。
 
-1. APIサーバーとイベントサーバーをクイックスタートの手順13のとおり先に起動し、APIサーバーのヘルスチェックが200を返すことを確かめる。このコマンドはどちらのサーバーも起動しない。イベントサーバーを起動していないと、確認のメールが届かず、メールを読むE2Eテスト(`e2e/client/auth/`)が待ちの期限で失敗する。
+1. APIサーバーとイベントサーバーをクイックスタートの手順13のとおり先に起動し、APIサーバーのヘルスチェックが200を返すことを確かめる。このコマンドはどちらのサーバーも起動しない。イベントサーバーを起動していないと、確認のメールが届かず、メールを読むE2Eテスト(`e2e/client/auth/`・`e2e/admin/`)が待ちの期限で失敗する。管理者側のE2Eテストのために、先に`apps/api`で`bun run db:migrate:local`を実行しておく。
 2. 利用者側・管理者側のフロントエンドは起動しないでおく。48044・48045のどちらかが使われていると、何も起動せずにポートと対象を示して失敗する。
 3. コマンド全体をInfisicalの注入の下で実行する。注入したシークレットは、起動する両フロントエンドとE2Eテストへ引き継がれる。
 

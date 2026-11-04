@@ -27,7 +27,15 @@ import {
   SETTINGS_NAVIGATION_LABEL,
 } from '../../../apps/client/src/components/settings/settings-messages.ts';
 import { SETTINGS_NAV_ITEMS } from '../../../apps/client/src/composition/settings-navigation.ts';
+import { waitForBotToken } from '../../support/bot-verification.ts';
+import {
+  REACTION_TIMEOUT_MS,
+  RETRY_TIMEOUT_MS,
+} from '../../support/hydration-retry.ts';
 import { waitForEmailLink } from '../../support/mailpit.ts';
+import { TEST_EMAIL_DOMAIN } from '../../support/test-email.ts';
+
+export { waitForBotToken } from '../../support/bot-verification.ts';
 
 export interface TestAccount {
   readonly nickname: string;
@@ -44,14 +52,6 @@ export const SECURITY_SETTINGS_PATH = '/settings/security';
 // 退会済みの利用者も未登録のメールアドレスと同じ文言で拒否されるため、ログインの拒否はこの1つの文言で確かめる
 export const INVALID_CREDENTIALS_MESSAGE =
   'メールアドレスまたはパスワードが正しくありません。';
-
-const TEST_EMAIL_DOMAIN = 'test.example';
-
-const BOT_TOKEN_FIELD_SELECTOR = 'input[name="cf-turnstile-response"]';
-
-// ハイドレーションの前に押したボタンは何もしないため、操作の効果が現れるまで押し直す。効果が現れるまでの短い待ちは、ハイドレーションの後の操作が同じ描画の中で表示を変えることによる
-export const REACTION_TIMEOUT_MS = 2_000;
-export const RETRY_TIMEOUT_MS = 20_000;
 
 // 1つの流れで複数のメールの到着とログインを待つため、既定の30秒では開発サーバーの負荷で足りなくなることがある
 export const MAIL_FLOW_TIMEOUT_MS = 90_000;
@@ -79,11 +79,6 @@ export const userMenuButton = (page: Page, account: TestAccount): Locator =>
   page
     .getByRole('banner')
     .getByRole('button', { name: userMenuLabel(account.nickname) });
-
-// bot判定のトークンが無い送信は拒否されるため、非表示のウィジェットがフォームの中の入力欄へトークンを書き込むまで待つ。ウィジェットはハイドレーションの後に描かれるため、入力の前に待てばハイドレーションの前の操作の取りこぼしも防げる
-export async function waitForBotToken(form: Locator): Promise<void> {
-  await expect(form.locator(BOT_TOKEN_FIELD_SELECTOR)).not.toHaveValue('');
-}
 
 export async function registerAccount(
   page: Page,

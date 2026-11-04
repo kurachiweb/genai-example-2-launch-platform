@@ -78,6 +78,27 @@ describe('createPlaywrightConfig', () => {
     });
   });
 
+  test('管理者側のテストのプロジェクトは、並列数の上限を1にする', () => {
+    const [, testProject] =
+      createPlaywrightConfig([ADMIN_PLAN], {}, WORKERS).projects ?? [];
+
+    expect(testProject).toStrictEqual({
+      name: 'admin',
+      testDir: 'e2e/admin',
+      testMatch: [...TEST_FILE_PATTERNS.e2e],
+      dependencies: ['admin-reachability'],
+      use: { baseURL: 'https://admin.staging.launch.example' },
+      workers: 1,
+    });
+  });
+
+  test('到達確認のセットアッププロジェクトには、並列数の上限を付けない', () => {
+    const [setupProject] =
+      createPlaywrightConfig([ADMIN_PLAN], {}, WORKERS).projects ?? [];
+
+    expect(setupProject).not.toHaveProperty('workers');
+  });
+
   test('到達確認のセットアッププロジェクトが実行するファイルが、ルートからの相対パスに実在する', () => {
     const [setupProject] =
       createPlaywrightConfig([CLIENT_PLAN], {}, WORKERS).projects ?? [];
