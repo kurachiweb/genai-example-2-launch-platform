@@ -30,6 +30,7 @@ import { API_EMAIL_MODULE } from './email-module.ts';
 import { GRAPHQL_SCHEMA_MODULES } from './graphql-modules.ts';
 import { IDENTITY_MODULE } from './identity-module.ts';
 import { INTERNAL_ROUTES } from './internal-routes.ts';
+import { LEGAL_MODULE } from './legal-module.ts';
 import { API_MEDIA_MODULE, API_MEDIA_PLATFORM_MODULE } from './media-module.ts';
 import { MEDIA_REVIEW_POLICY_BINDINGS } from './media-review-policy.ts';
 import {
@@ -104,4 +105,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_MEDIA_MODULE,
   { name: 'media-review-policy', bindings: MEDIA_REVIEW_POLICY_BINDINGS },
   { name: 'uploader-eligibility', bindings: UPLOADER_ELIGIBILITY_BINDINGS },
+  LEGAL_MODULE,
 ];

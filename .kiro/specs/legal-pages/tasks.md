@@ -54,7 +54,7 @@
   - _Requirements: 3.3, 3.6, 3.10, 4.1, 4.3, 4.4, 4.8_
 
 - [ ] 4. APIの組み込み
-- [ ] 4.1 法務文書の部品をAPIサーバーの依存性注入に束縛する
+- [x] 4.1 法務文書の部品をAPIサーバーの依存性注入に束縛する
   - ストア・3つのユースケース・照会口の束縛をまとめたモジュールを作り、合成ルートのモジュールの一覧へ加える
   - 先に、Workers統合テストで、束縛から公開の照会・管理の照会・保存と公開・同意日時からの版の特定を取り出せることを確かめる
   - 完了状態: Workers統合テストが成功し、後続specが版の特定の照会口を束縛の識別子で受け取れる
@@ -198,4 +198,5 @@
 - 2.2: `LEGAL_TYPES`(`application/legal/legal-types.ts`)に6つの識別子(Store・Reader・AdminReader・DraftEditor・Publisher・VersionLocator)を先に定義した。ポートの入力の型名は`LegalDraftSaveInput`・`LegalDraftDiscardInput`・`LegalPublishInput`・`LegalPublishedVersionLocation`。`discardDraft`の`updated_at`はストア内の`new Date()`。競合に変える一意の違反は`(document_id, version_number)`だけ。Workers統合テストはテストごとに版を消して文書の行を初期データに戻す
 - 3.1: 公開の型(`PublicLegalVersion`・`PublicLegalRevision`・`PublicLegalDocument`)と変換`toPublicLegalVersion`・`toPublicLegalRevision`は`legal-document-reader.ts`からexportする(3.2が継承・再利用する)。`getDocument`は改訂履歴を状態の最新版の版番号以下に絞り、2回の照会の間に公開されても時点を揃える。偽のストアは各テストファイル内に置く
 - 3.2: 管理の照会は`StoreLegalDocumentAdminReader`。下書きと改訂の型を`AdminLegalDraftView`・`AdminLegalRevisionView`と名付けた(4.xのGraphQLの変換で使う)。管理者のIDは`Set`で重複を除き、空なら`findProfiles`を呼ばない。3.3は`LEGAL_TYPES.LegalDocumentAdminReader`を注入して`getDocument`で操作後の状態を返す
-- 3.3: 拒否の`AppError`は`application/legal/legal-document-errors.ts`(`LEGAL_DOCUMENT_ERRORS`・`legalDocumentDenialError`。admin-errors.tsと同じ形、design.mdのファイル構成にも追記)。破棄の下書きなしも`legal_document_draft_missing`(画面は下書きがある時だけ破棄を出すため通常は起きない)。ログは`[\x27api\x27,\x27legal\x27]`のinfoで属性は`action`・`kind`・版番号・`adminId`・`conflict`。7.3で`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`のカテゴリの表に`[\x27api\x27,\x27legal\x27]`を加える。入力の型は`LegalDraftSaveRequest`・`LegalDraftDiscardRequest`・`LegalPublishRequest`
+- 3.3: 拒否の`AppError`は`application/legal/legal-document-errors.ts`(`LEGAL_DOCUMENT_ERRORS`・`legalDocumentDenialError`。admin-errors.tsと同じ形、design.mdのファイル構成にも追記)。破棄の下書きなしも`legal_document_draft_missing`(画面は下書きがある時だけ破棄を出すため通常は起きない)。ログは`['api','legal']`のinfoで属性は`action`・`kind`・版番号・`adminId`・`conflict`。7.3で`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`のカテゴリの表に`['api','legal']`を加える。入力の型は`LegalDraftSaveRequest`・`LegalDraftDiscardRequest`・`LegalPublishRequest`
+- 4.1: `LEGAL_MODULE`(`composition/legal-module.ts`)は6つの識別子を既定のTransientで束縛し`MODULES`の末尾に加えた。`AdminDirectory`は`ADMIN_PLATFORM_MODULE`のものを使う。Workers統合テストの法務文書のテーブルのリセットは2.2と4.1のテストで重複している(まとめるなら`infrastructure/legal/testing/`へ)
