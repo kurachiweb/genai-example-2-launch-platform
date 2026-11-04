@@ -32,7 +32,7 @@
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 3.3, 3.6, 3.10, 4.1, 4.4, 8.1, 8.2, 8.3, 10.3_
 
 - [ ] 3. ユースケース
-- [ ] 3.1 (P) 公開の照会と、同意日時からの版の特定を作る
+- [x] 3.1 (P) 公開の照会と、同意日時からの版の特定を作る
   - 先に、偽のストアを使う単体テストで、最新版と新しい順の改訂履歴、版が無いときの準備中(最新版なし)、指定の版と最新版かどうか、存在しない版、照会の結果に下書きと管理者のIDが含まれないこと、日時以前で最も新しい版の返却と該当なしを確かめる
   - 公開の照会(文書と指定の版)と、種類と日時から版番号と公開日時を返す照会口を作る
   - 完了状態: 単体テストが成功し、公開の照会の型に管理者の情報と下書きの項目が存在しない
@@ -196,3 +196,4 @@
 - 1.2: 共有定義は`apps/common-lib/legal/legal-documents.ts`・`legal-input-rules.ts`。`LEGAL_DOCUMENT_KINDS`と列の`enumValues`の一致テストは`apps/api/src/application/legal/legal-columns.unit.test.ts`(common-libはdbを読み込めない)。変更概要の判定は、禁止文字だけを前後の空白を除く前の入力で調べる(VT・FF・NELは空白かつ禁止文字のため、除いてから調べると黙って消える。005の規則と`markdownTextSchema`に合わせた。design.mdの契約のコメントも直した)。改行はLF・CRだけでU+2028・U+2029は扱わない。`changeSummarySchema()`は成功時に`trimWhiteSpace`で除いた値を返す
 - 2.1: 規則は`apps/api/src/domain/legal/legal-document.ts`。本文の「完全一致」は`===`(正規化・空白の除去なし)。未公開で下書きがあれば公開可。`nextPublishedAt`は常に新しい`Date`を返す
 - 2.2: `LEGAL_TYPES`(`application/legal/legal-types.ts`)に6つの識別子(Store・Reader・AdminReader・DraftEditor・Publisher・VersionLocator)を先に定義した。ポートの入力の型名は`LegalDraftSaveInput`・`LegalDraftDiscardInput`・`LegalPublishInput`・`LegalPublishedVersionLocation`。`discardDraft`の`updated_at`はストア内の`new Date()`。競合に変える一意の違反は`(document_id, version_number)`だけ。Workers統合テストはテストごとに版を消して文書の行を初期データに戻す
+- 3.1: 公開の型(`PublicLegalVersion`・`PublicLegalRevision`・`PublicLegalDocument`)と変換`toPublicLegalVersion`・`toPublicLegalRevision`は`legal-document-reader.ts`からexportする(3.2が継承・再利用する)。`getDocument`は改訂履歴を状態の最新版の版番号以下に絞り、2回の照会の間に公開されても時点を揃える。偽のストアは各テストファイル内に置く
