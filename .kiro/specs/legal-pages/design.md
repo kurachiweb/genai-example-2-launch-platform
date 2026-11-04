@@ -794,6 +794,7 @@ export type LegalEditorErrorState =
   | { readonly kind: 'unexpected'; readonly message: string };
 export declare function toLegalEditorErrorState(
   error: unknown,
+  context?: SubmitErrorContext, // AppFormのonSubmitErrorから渡すと、fieldの詳細を欄に示せなかったもの(unmatched)に絞る
 ): LegalEditorErrorState; // GraphQLClientErrorでない例外とその他のコードはunexpectedで、messageはerrorMessageOf(error, ADMIN_PROFILE.contactAvailable)
 
 // use-unsaved-changes-guard.ts
