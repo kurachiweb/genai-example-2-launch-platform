@@ -37,7 +37,7 @@
 - 定期実行のジョブ`inquiry-chat.guest-inquiry-retention`(業務時刻4:21、`order` 300)。
 - ユーザーライフサイクルの波及処理: 同期`inquiry-chat.member-inquiry-withdrawal`(`withdrawn`)と非同期`inquiry-chat.member-inquiry-purge`(`purge_due`、`order` 300)。
 - 利用者側の`/contact`と`/_authenticated/inquiries/$inquiryId`の画面、管理者側の`/inquiries`・`/inquiries/$inquiryId`・`/categories`の画面、カテゴリのページの区画の登録口`CATEGORY_SECTIONS`、問い合わせの詳細のページの操作の登録口`INQUIRY_DETAIL_ACTIONS`(初版は空)、ダッシュボードのカード`inquiry-chat.unhandled-inquiries`。
-- 両アプリが使う問い合わせの表示部品(`apps/frontend-lib/components/inquiry/`)と、定期再取得の共通の値(`apps/frontend-lib/utilities/query/live-refresh.ts`)。
+- 両アプリが使う問い合わせの表示部品(`apps/frontend-lib/components/inquiry/`)と、定期再取得の共通の値(`apps/frontend-lib/utilities/query/live-refresh.ts`)。カーソルによる前後のページの補助`apps/frontend-lib/utilities/pagination/cursor-trail.ts`は、admin-foundationの`apps/admin/src/components/audit/cursor-trail.ts`から移して両アプリが使う(G4。所有はadmin-foundationのまま)。
 - 技術ドキュメント: `security/008`・`frontend/010`。サービス仕様のページ配置・文言規則・データ保持期間・日次タイムライン・データエクスポートの問い合わせの項目の更新。
 
 ### Out of Boundary
@@ -52,14 +52,15 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`RateLimitCounterClient`。形を変えない。application層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`RateLimitCounterClient`は、infrastructure層の`CounterGuestInquiryRateLimit`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。
-- api-gateway: `GraphQLContext`(`caller`・`clientIp`・`session`・`loaders`・`resolve`・`assertHuman`)・`defineSchemaModule`・`withValidatedArgs`・`SessionView`・`LoaderDefinition`。
-- identity-auth: `IDENTITY_TYPES.AccountGuard`(`currentUser`・`requireUser`・`requireWritableUser`)・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`(`findContact`、契約と識別子は`backend-lib/core/identity`)・`UserLifecycleSyncRegistration`・`UserLifecycleSyncHandler`・`UserLifecycleAsyncRegistration`・`UserLifecycleAsyncHandler`・`LifecycleHandlerOutcome`・`USER_LIFECYCLE_SYNC_HANDLERS`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`users`テーブル(読み取りと外部キーだけ)・`Viewer.status`・`viewerQueryOptions`・`_authenticated`のレイアウト。
-- admin-foundation: `requireAdmin`(`admin-guard.ts`)・`CurrentAdmin`・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`(契約と識別子は`backend-lib/core/admin`、api・eventでは`ADMIN_PLATFORM_MODULE`の束縛)・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・`useAdminRole`・`RoleGate`・`frontend-lib/components/admin`(`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`・`CategoryMasterEditor`)・E2Eの補助(`e2e/support/admin-bootstrap.ts`の`signInAsNewAdmin`・`signInAdmin`、`e2e/support/local-d1.ts`の`executeLocalD1`・`sqlStringLiteral`)。形を変えない。
-- media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`ATTACHMENT_MEDIA_TYPES`・`MediaFiles`(`findMany`・`claim`・`markDeleted`)・`MEDIA_TYPES`・`FileReadPolicy`・`FileReadPolicyRegistration`・`toMediaAttachment`・`mediaFileLoader`・GraphQLの`MediaAttachment`・`MediaImage`・`AttachmentUploadField`・`FileSelectionList`・`PrivateFileLink`・`MediaPicture`・`MediaPlaceholder`・`checkSelection`。形を変えない。
+- backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`softDelete`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTimeOfDay`・`ScheduledJobDefinition`(`name`・`at`・`order`・`handler`)・`ScheduledJobHandler`・`CounterRule`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`RateLimitCounterClient`(`hit`・`assertWithinLimit`)。形を変えない。application層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`RateLimitCounterClient`は、infrastructure層の`CounterGuestInquiryRateLimit`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。
+- api-gateway: `GraphQLContext`(`caller`・`clientIp`・`session`・`loaders`・`resolve`・`assertHuman`)・`defineSchemaModule`・`withValidatedArgs`・`SessionView`・`LoaderDefinition`。`SessionView`・`Principal`・`AuthenticatedPrincipal`・`SessionSubjectKind`は`apps/backend-lib/core/session/session-view.ts`から読み込む(G3で`apps/api/src/application/session`から移す。`SESSION_TYPES`・`SessionVerifier`はapiに残る)。呼び出し元の確認は、identity・adminのモジュールと同じく本specのモジュールの`resolver-support.ts`に`clientOnly`・`adminOnly`を置いて行う。
+- identity-auth: `IDENTITY_PLATFORM_TYPES.AccountGuard`(`currentUser`・`requireUser`・`requireWritableUser`。契約`AccountGuard`・`CurrentUser`・`UserAccountView`と識別子は`backend-lib/core/identity`。G3で`apps/api/src/application/identity`から移し、実装`StoreAccountGuard`はapiに残る)・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`(`findContact`、契約と識別子は`backend-lib/core/identity`)・`UserLifecycleSyncRegistration`・`UserLifecycleSyncHandler`(`apps/api/src/infrastructure/identity/user-lifecycle-sync-handler.ts`)・`UserLifecycleAsyncRegistration`・`UserLifecycleAsyncHandler`・`LifecycleHandlerOutcome`(`backend-lib/core/identity/user-lifecycle.ts`)・`USER_LIFECYCLE_SYNC_HANDLERS`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`users`テーブル(読み取りと外部キーだけ)・`Viewer.status`(`'ACTIVE' | 'SUSPENDED'`)・`viewerQueryOptions`・`_authenticated`のレイアウト(`requireViewer`が`/auth/login?redirect=<戻り先>`へ案内する)。
+- admin-foundation: `requireAdmin`(`apps/api/src/presentation/graphql/admin-guard.ts`)・`AuditLogRecorder`・`PreparedAuditEntry`・`AuditEntryInput`・`CurrentAdmin`(契約と識別子`ADMIN_PLATFORM_TYPES.AuditLogRecorder`は`backend-lib/core/admin`。G3で`apps/api/src/application/admin`・`domain/admin`から移し、実装`StoreAuditLogRecorder`・`StoreAdminAuthorizer`はapiに残る)・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`(api・eventでは`ADMIN_PLATFORM_MODULE`の束縛)・`buildAuditLogStatements`・`AuditGuard`・`isAuditGuardRejection`(`apps/api/src/infrastructure/admin/audit-log-statements.ts`。G1で`AuditGuard`に条件をSQLで渡す種類`condition`を足す)・`defineAuditAction`(`name`・`label`・`targetKind`・`reason`・`detailKeys`・`maxTargets`)・`AUDIT_ACTIONS`・`checkAuditReason`・`checkCategoryName`・`CATEGORY_NAME_MAX`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・`useAdminRole`・`RoleGate`・`_authenticated`の文脈の`viewer`(`AdminViewer`)・`frontend-lib/components/admin`(`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`・`CategoryMasterEditor`。G2で`CategoryMasterEditor`に削除の確認の文と監査ログの旨の任意のpropsを足す)・E2Eの補助(`e2e/support/admin-bootstrap.ts`の`signInAsNewAdmin`・`signInAdmin`・`openFromAdminNavigation`、`e2e/support/local-d1.ts`の`executeLocalD1`・`sqlStringLiteral`、`e2e/support/client-ip.ts`の`assumeDistinctClientIp`)。G1・G2・G3の拡張と移動は後方互換で、他の形は変えない。
+- media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`ATTACHMENT_MEDIA_TYPES`・`MediaFiles`(`findMany`・`claim`・`markDeleted`)・`MEDIA_TYPES`・`FileReadPolicy`・`FileReadPolicyRegistration`(`apps/api/src/application/media/file-access-policies.ts`)・`toMediaAttachment`・`toMediaImage`・`mediaFileLoader`・GraphQLの`MediaAttachment`・`MediaImage`・`AttachmentUploadField`(`constraints: UploadConstraints`・`multiple`・`contactAvailable`・`onUploaded`)・`UploadConstraints`(`purpose`・`allowedTypes`・`maxBytes`・`subjectLabel`・`maxCount`・`maxTotalBytes`)・`FileSelectionList`・`PrivateFileLink`(`fileId`・`fileName`・`byteSize`)・`MediaPicture`・`MediaPlaceholder`・`MediaImageView`・`checkSelection`。形を変えない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
-- frontend-platform: `executeGraphQL`(`turnstileToken`)・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`・`runAxe`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
-  - GraphQLの操作は各アプリの`src/graphql/operations/inquiry/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`graphqlMutationOptions`(`mutationFn`の引数は`{ variables, turnstileToken? }`)・`GraphQLClientError`(`code`・`status`・`details`・`retryAfterSeconds`)・`useAppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・`sendWithTurnstile`・状態表示の部品(`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`)・トースト(`notify`)・shadcn/uiの部品(`select`・`table`・`textarea`・`dialog`・`badge`・`button`)・`DateTime`(書式はすべて`longDateTime`、G5)・`runAxe`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`・`apps/client/src/components/layout/site-links.ts`の`CONTACT_HREF`。
+  - GraphQLの操作は利用者側は`src/graphql/operations/inquiry/`、管理者側は`src/graphql/operations/admin/inquiry/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
+  - 画面のファイルの置き場所は既存の規約に合わせる(legal-pagesのG4と同じ)。ページ全体の部品は`src/components/pages/*-page.tsx`、問い合わせの部品は`src/components/inquiry/`、取得の設定・`loader`・生成した型からの変換は`src/graphql/<内容>.ts`(単体テストを併置)、headは`src/head/page-heads.ts`のラッパー(`buildSitePageHead`・`buildAdminPageHead`)に置く。`loader`は`context.queryClient.query({ ...graphqlQueryOptions(...), staleTime: 'static' })`で取得し、検索パラメータで変わる一覧は`validateSearch`・`loaderDeps`と`.catch(() => undefined)`・`useQuery`の形にする(`frontend/006`)。
   - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。フォームのスキーマの`zod`の値は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
   - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
   - bot判定の`TurnstileWidget`は非表示のウィジェットで場所を取らないため、フォームに判定の枠の表示と場所を設けない。
@@ -77,24 +78,27 @@
 - 定期実行のジョブの名前と`order`(300)(4:21にジョブを登録する全spec、日次タイムラインの表)。
 - `INQUIRY_ATTACHMENT_LIMITS`(仮3、20,971,520バイト)とmedia-pipelineの`MAX_UPLOAD_BYTES`(20,971,520バイト)が等しいこと。どちらかを変えたら他方を確かめ直す。
 - 上流の`AccountGuard`・`UserContactDirectory`・`AdminDirectory`(置き場所とeventでの束縛を含む)・`FileReadPolicy`・`MediaFiles.findMany`・`AuditLogRecorder`・`DASHBOARD_CARDS`・`CategoryMasterEditor`・admin-foundationのE2Eの補助の形を変えたら、本specを確かめ直す。
+- 本specが上流に加える拡張と移動(`AuditGuard`の`condition`、`CategoryMasterEditor`の`deleteDescriptionOf`・`deleteAudited`、`backend-lib/core`へ移した`SessionView`・`AccountGuard`・`AuditLogRecorder`・`CurrentAdmin`、`frontend-lib`へ移した`cursor-trail.ts`)の形を変えたら、本specと後続の管理操作を持つspec(ugc-moderation・content-reporting・product-launch・help-center)を確かめ直す。
 
 ### 上流への影響
 
-| 上流spec           | 変更                                                                                                                                                                                                                                                                                                                                             | 影響と再検証                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| media-pipeline     | `apps/api/src/composition/upload-purposes.ts`へ`inquiry-attachment`を、`file-read-policies.ts`へ`InquiryAttachmentReadPolicy`を加える                                                                                                                                                                                                            | 契約どおり。再検証は不要                                                                                                                        |
-| identity-auth      | `apps/api/src/composition/user-lifecycle-sync-handlers.ts`と`apps/event/src/composition/user-lifecycle-async-handlers.ts`へ1行ずつ加える。返信の通知先は共有の部品`UserContactDirectory`(identity-authがapi・eventで束縛)で引く                                                                                                                  | 契約どおり。`UserContactDirectory`はspec横断レビューの決定(2026-10-23)でidentity-authが提供する                                                 |
-| admin-foundation   | `ADMIN_NAV_ITEMS`へ`/inquiries`(80)・`/categories`(110)を、`DASHBOARD_CARDS`へ`inquiry-chat.unhandled-inquiries`(20)を、`audit-actions/index.ts`へ本specのファイルを加える。`AdminDirectory`の契約と識別子を`backend-lib/core/admin`から使い、eventでは`ADMIN_PLATFORM_MODULE`の束縛を使う。E2Eは`admin-bootstrap.ts`・`local-d1.ts`の補助を使う | 契約どおり。`/categories`のページの所有は仮4。`AdminDirectory`の置き場所とE2Eの補助はspec横断レビューの決定(2026-10-23)でadmin-foundationが持つ |
-| email-delivery     | `core/email/kinds/index.ts`・`templates/index.ts`へ1行ずつ加える                                                                                                                                                                                                                                                                                 | 契約どおり                                                                                                                                      |
-| content-processing | 日次タイムラインの表に本specの1行を足す(表が無ければ作る)                                                                                                                                                                                                                                                                                        | 規約どおり                                                                                                                                      |
+| 上流spec           | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 影響と再検証                                                                                                                                                                                                                                                                                                  |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| media-pipeline     | `apps/api/src/composition/upload-purposes.ts`へ`inquiry-attachment`を、`file-read-policies.ts`へ`InquiryAttachmentReadPolicy`を加える                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | 契約どおり。再検証は不要                                                                                                                                                                                                                                                                                      |
+| api-gateway        | `SessionView`・`Principal`・`AuthenticatedPrincipal`・`SessionSubjectKind`を`apps/api/src/application/session/`から`apps/backend-lib/core/session/session-view.ts`へ移し、api内の読み込み先(`application`・`infrastructure`・`presentation`の各所)を改める(G3)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 型の移動だけで振る舞いは変えない。`SESSION_TYPES`・`SessionVerifier`・`SessionAccess`は動かさない。layer-rulesの単体テストの例が通ることを確かめる                                                                                                                                                            |
+| identity-auth      | `apps/api/src/composition/user-lifecycle-sync-handlers.ts`と`apps/event/src/composition/user-lifecycle-async-handlers.ts`へ1行ずつ加える。返信の通知先は共有の部品`UserContactDirectory`(identity-authがapi・eventで束縛)で引く。`AccountGuard`・`CurrentUser`の契約と識別子を`apps/backend-lib/core/identity/account-guard.ts`・`identifiers.ts`(`IDENTITY_PLATFORM_TYPES.AccountGuard`)へ移し、`CurrentUser.user`の型を`UserAccountView`(`UserAccountSnapshot`にニックネーム・ハンドル・メールアドレス・仮名化IDを加えた読み取りの形)にして`UserRecord`はそれを継承する。`IDENTITY_TYPES`から`AccountGuard`を除く(G3)                                                                                                                                                                                                                         | 契約どおり。`UserContactDirectory`はspec横断レビューの決定(2026-10-23)でidentity-authが提供する。G3の移動では、identity-authの各ユースケースが`CurrentUser.user`から`passwordHash`などの`UserAccountView`に無い項目を読んでいないかを確かめ、読んでいれば`UserAccountStore.findById`で読み直す形に改める      |
+| admin-foundation   | `ADMIN_NAV_ITEMS`へ`/inquiries`(80)・`/categories`(110)を、`DASHBOARD_CARDS`へ`inquiry-chat.unhandled-inquiries`(20)を、`audit-actions/index.ts`へ本specのファイルを加え、`audit-actions/index.unit.test.ts`の登録名の期待値を改める。`AdminDirectory`の契約と識別子を`backend-lib/core/admin`から使い、eventでは`ADMIN_PLATFORM_MODULE`の束縛を使う。E2Eは`admin-bootstrap.ts`・`local-d1.ts`・`client-ip.ts`の補助を使う。G1: `audit-log-statements.ts`の`AuditGuard`に`{ kind: 'condition'; condition: SQL }`を足す。G2: `CategoryMasterEditor`に`deleteDescriptionOf?`・`deleteAudited?`を足す。G3: `AuditLogRecorder`・`PreparedAuditEntry`・`AuditEntryInput`・`CurrentAdmin`の契約と識別子を`backend-lib/core/admin`へ移し、`ADMIN_TYPES`から`AuditLogRecorder`を除く。G4: `cursor-trail.ts`を`frontend-lib/utilities/pagination/`へ移す | いずれも後方互換の拡張と型の移動で、admin-foundationの既存の振る舞いは変えない。`/categories`のページの所有は仮4。`AdminDirectory`の置き場所とE2Eの補助はspec横断レビューの決定(2026-10-23)でadmin-foundationが持つ。拡張に合わせて`backend/008`・`frontend/005`・`frontend/006`・`backend/002`の記述を改める |
+| email-delivery     | `core/email/kinds/index.ts`・`templates/index.ts`へ1行ずつ加える                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 契約どおり                                                                                                                                                                                                                                                                                                    |
+| frontend-platform  | `config/contract-copies.unit.test.ts`にbot判定の操作名(APIの`BOT_ACTIONS`・`ADMIN_BOT_ACTIONS`・本specの`INQUIRY_BOT_ACTIONS`と画面の写し)の一致の検査を加える(G7)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 検査の追加だけで振る舞いは変えない                                                                                                                                                                                                                                                                            |
+| content-processing | 日次タイムラインの表に本specの1行(300)を足す                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 規約どおり                                                                                                                                                                                                                                                                                                    |
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- 上流の8specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする(roadmapの順でadmin-foundationまでが先に実装される)。
-- apiの層は`domain`・`application`・`infrastructure`・`presentation`・`composition`で、依存の方向は静的解析で強制される。application層はセッションを`SessionView`で受け取る。
-- 利用者側の`_authenticated`のレイアウトはログインを確かめて`viewer`を文脈に渡し、`viewer.status`で停止中を判別できる。管理者側の`_authenticated`は`adminViewer`とロールを配る。
+- 上流の8specは実装済みで、2026-11-04のギャップ分析(research.md)で本specの設計が依存する契約をコードと突き合わせた。問い合わせのコードはまだ無い。
+- apiの層は`domain`・`application`・`infrastructure`・`presentation`・`composition`で、依存の方向は静的解析で強制される。application層はセッションを`SessionView`で受け取る。他ドメインのapplication層が受け取る契約は`backend-lib/core`に置く規則(`backend/002`)に従い、本specが受け取る`AccountGuard`・`AuditLogRecorder`・`CurrentAdmin`・`SessionView`はG3で`core`へ移す。
+- 利用者側の`__root`の`beforeLoad`が`viewer`(`ClientViewer | null`)を文脈に渡し、`viewer.status === 'SUSPENDED'`で停止中を判別できる。`_authenticated`の`requireViewer`は未ログインをログインへ案内し戻り先を保つ。管理者側の`_authenticated`は文脈の`viewer`(`AdminViewer`)とロールを配る。
 
 ### Architecture Pattern & Boundary Map
 
@@ -163,7 +167,7 @@ graph TB
 ### Dependency Direction
 
 - 共有コード: `apps/db/schema/inquiry`(`users`の定義を外部キーのためだけに読み込む) → `apps/common-lib/inquiry`(`countGraphemes`だけを読み込む) → `apps/backend-lib/core/inquiry`(`InquiryExport`の契約と識別子。`workers`と`apps/db`を読み込まない) → `apps/backend-lib/workers/inquiry`(`D1InquiryExport`。`core/inquiry`・`apps/db/schema/inquiry`・`backend-lib/core/admin`の`AdminDirectory`・`backend-lib/core/media`の`MediaFiles`を読み込む) → アプリの`src`(core → workers → アプリの`src`。api・eventの`application`は`core`だけを読み込む)。
-- apiの`src`内: `domain/inquiry` ← `application/inquiry`(`application/identity`の`AccountGuard`・`application/admin`の`AuditLogRecorder`・`CurrentAdmin`、`backend-lib/core/admin`の`AdminDirectory`、`backend-lib/core/identity`の`UserContactDirectory`、`backend-lib/core/media`の`MediaFiles`・`MEDIA_TYPES`を読み込む。`**/lib/workers/**`は読み込まない) ← `infrastructure/inquiry`(`infrastructure/admin/audit-log-statements.ts`を読み込む)・`presentation/graphql/modules/inquiry`(`admin-guard.ts`を読み込む) ← `composition`。`inquiry`の各層は`identity`・`admin`の各層のうち上記の公開の部品だけを読み込む。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
+- apiの`src`内: `domain/inquiry` ← `application/inquiry`(`backend-lib/core/session`の`SessionView`、`backend-lib/core/identity`の`AccountGuard`・`CurrentUser`・`UserContactDirectory`・`IDENTITY_PLATFORM_TYPES`、`backend-lib/core/admin`の`AuditLogRecorder`・`PreparedAuditEntry`・`CurrentAdmin`・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`、`backend-lib/core/media`の`MediaFiles`・`MEDIA_TYPES`を読み込む。`application/identity`・`application/admin`・`domain/identity`・`domain/admin`と`**/lib/workers/**`は読み込まない) ← `infrastructure/inquiry`(`identity`・`admin`のファイルのうち`infrastructure/admin/audit-log-statements.ts`と`infrastructure/identity/user-lifecycle-sync-handler.ts`だけを読み込む)・`presentation/graphql/modules/inquiry`(同じく`presentation/graphql/admin-guard.ts`だけを読み込む) ← `composition`。違反は、apiの`eslint.config.ts`に`ADMIN_LAYER_RULES`と同じ形で加える`INQUIRY_LAYER_RULES`(`**/identity`・`**/identity/**`・`**/admin`・`**/admin/**`を禁止し、`!**/lib/**`・`!**/common-lib/**`・`!**/db/**`と上の3ファイルを`!`の否定パターンで許す。層ごとに`no-restricted-imports`が置き換わるため各層のパターンを含め直す)の`no-restricted-imports`で検出し、`test/config/inquiry-layer-rules.unit.test.ts`に許可と違反の例を書く(G3)。
 - eventの`src`内: `application/inquiry` ← `infrastructure/inquiry` ← `composition`(`backend-lib/workers/inquiry`の`D1InquiryExport`を`INQUIRY_EXPORT_TYPES.InquiryExport`へ束縛する)。data-exportのapplication層は`backend-lib/core/inquiry`の契約と識別子だけを読み込む。
 - client・adminの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。`frontend-lib/components/inquiry`はGraphQLとアプリの型に依存しない。
 
@@ -197,6 +201,9 @@ apps/
 │   │   ├── inquiry-status.ts                           # InquiryStatus・INQUIRY_STATUS_LABELS・InquiryKind
 │   │   └── inquiry-category-constants.ts               # INQUIRY_CATEGORY_OTHER_ID・INQUIRY_CATEGORY_OTHER_NAME
 │   └── admin/audit-actions/inquiry-chat.ts             # inquiry.reply・inquiry.status-change・inquiry-category.create・rename・delete
+├── backend-lib/core/session/session-view.ts            # SessionView・Principal・AuthenticatedPrincipal・SessionSubjectKind(G3でapiのapplication/sessionから移す。同名の*.unit.test.ts)
+├── backend-lib/core/identity/account-guard.ts          # AccountGuard・CurrentUser・UserAccountView(G3でapiのapplication/identityから移す。識別子はidentifiers.tsのIDENTITY_PLATFORM_TYPES.AccountGuard)
+├── backend-lib/core/admin/audit-log.ts · current-admin.ts # AuditLogRecorder・PreparedAuditEntry・AuditEntryInput、CurrentAdmin(G3でapiのapplication/admin・domain/adminから移す。識別子はidentifiers.tsのADMIN_PLATFORM_TYPES.AuditLogRecorder)
 ├── backend-lib/core/email/kinds/inquiry.ts             # inquiry.reply-notification
 ├── backend-lib/core/inquiry/                           # data-exportのapplication層が受け取るデータエクスポート用の照会の契約と識別子
 │   ├── ports.ts                                        # InquiryExportAttachment・InquiryExportMessage・InquiryExportItem・InquiryExportPage・InquiryExport・INQUIRY_EXPORT_PAGE_SIZE
@@ -233,6 +240,7 @@ apps/
 │   │   └── email-inquiry-mailer.ts                     # 返信の通知メールの送信要求とリンクのURL
 │   ├── presentation/graphql/modules/inquiry/           # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts · inputs.ts · errors.ts · mappers.ts
+│   │   ├── resolver-support.ts                         # clientOnly・adminOnlyとINQUIRY_BOT_ACTIONS(inquiry_guest・inquiry_member)
 │   │   ├── contact-resolvers.ts                        # カテゴリ・送信者の表示・未ログインとログインの送信
 │   │   ├── chat-resolvers.ts                           # 自分の一覧・チャット・追加メッセージ
 │   │   ├── admin-inquiry-resolvers.ts                  # 一覧・詳細・返信・ステータス・未対応の件数
@@ -249,22 +257,26 @@ apps/
 │   └── composition/inquiry-module.ts                   # 束縛(AppModule。INQUIRY_EXPORT_TYPES.InquiryExport → D1InquiryExportを含む)
 ├── frontend-lib/
 │   ├── utilities/query/live-refresh.ts                 # LIVE_REFRESH_QUERY_OPTIONS(単体テスト併置)
+│   ├── utilities/pagination/cursor-trail.ts            # 前後のページの補助(G4でadminのcomponents/audit/cursor-trail.tsから単体テストごと移す)
 │   └── components/inquiry/                             # 両アプリの表示部品(*.browser.test.tsx・*.stories.tsxを併置)
 │       ├── inquiry-status-badge.tsx                    # 4種のステータスの表示
 │       ├── inquiry-message-card.tsx                    # 送信者・本文・添付・日時の1件
 │       ├── inquiry-attachment-list.tsx                 # PrivateFileLinkによる添付の一覧
 │       └── inquirer-avatar.tsx                         # MediaPictureと既定のアイコン
 ├── client/src/
-│   ├── routes/contact.tsx                              # /contact(ログイン不要)
+│   ├── routes/contact.tsx                              # /contact(ログイン不要。validateSearch・loaderDeps・loader・head)
 │   ├── routes/_authenticated/inquiries/$inquiryId.tsx  # /inquiries/{id}
+│   ├── head/page-heads.ts                              # buildContactHead・buildInquiryChatHeadを追記
+│   ├── graphql/inquiry-contact.ts · inquiry-chat.ts    # 取得の設定・loader・生成した型からの変換(単体テスト併置)
+│   ├── components/pages/contact-page.tsx · inquiry-chat-page.tsx # ページ全体の部品(*.browser.test.tsxを併置)
 │   ├── components/inquiry/                             # *.browser.test.tsxを併置
-│   │   ├── contact-page.tsx                            # 状態に応じたフォームの切り替えと一覧
 │   │   ├── guest-inquiry-form.tsx · member-inquiry-form.tsx · guest-inquiry-complete.tsx
 │   │   ├── suspended-contact-notice.tsx                # 停止中の利用者へのフォームの案内
-│   │   ├── my-inquiry-list.tsx                         # 自分の問い合わせの一覧と続きの読み込み
+│   │   ├── my-inquiry-list.tsx · my-inquiry-search.ts  # 自分の問い合わせの一覧と前後のページ(検索パラメータafter)
 │   │   ├── inquiry-chat-view.tsx                       # チャットの表示と定期再取得
 │   │   ├── inquiry-message-composer.tsx                # 追加メッセージの入力と添付
 │   │   ├── suspended-chat-notice.tsx                   # 停止中の送信欄の代わりの案内
+│   │   ├── bot-actions.ts                              # inquiry_guest・inquiry_memberの写し(APIの値との一致はcontract-copiesで検査)
 │   │   └── inquiry-form-schemas.ts                     # フォームのスキーマ(zodの値はutilities/validation/zod.ts、common-libの規則)
 │   └── graphql/operations/inquiry/                     # 1ファイル1操作の*.graphql(操作名はClientで始める)
 │       ├── contact/*.graphql · chat/*.graphql
@@ -272,8 +284,10 @@ apps/
     ├── routes/_authenticated/
     │   ├── inquiries/index.tsx · inquiries/$inquiryId.tsx
     │   └── categories/index.tsx                        # カテゴリのページ(区画を並べる)
+    ├── graphql/admin-inquiries.ts · admin-inquiry-categories.ts # 取得の設定・loader・生成した型からの変換(単体テスト併置)
+    ├── components/pages/inquiries-page.tsx · inquiry-detail-page.tsx · categories-page.tsx # ページ全体の部品(*.browser.test.tsxを併置)
     ├── components/inquiry/                             # *.browser.test.tsxを併置
-    │   ├── admin-inquiry-filters.tsx · admin-inquiry-list.tsx · inquiry-period.ts
+    │   ├── admin-inquiry-filters.tsx · admin-inquiry-list.tsx · admin-inquiry-search.ts · inquiry-period.ts
     │   ├── member-inquiry-detail.tsx · guest-inquiry-detail.tsx
     │   ├── inquiry-reply-form.tsx · inquiry-status-control.tsx
     │   ├── inquiry-detail-actions-view.tsx             # 詳細のページの操作の並びとエラーの分離
@@ -282,9 +296,9 @@ apps/
     ├── components/categories/category-sections-view.tsx # 区画の並びとエラーの分離
     ├── composition/category-sections.ts                # CATEGORY_SECTIONS(後続specが追記)
     ├── composition/inquiry-detail-actions.ts           # INQUIRY_DETAIL_ACTIONS(初版は空、後続specが追記)
-    └── graphql/operations/inquiry/                     # 1ファイル1操作の*.graphql(操作名はAdminで始める)
+    └── graphql/operations/admin/inquiry/               # 1ファイル1操作の*.graphql(操作名はAdminで始める)
         ├── inquiries/*.graphql · categories/*.graphql
-e2e/                                                    # 管理者の用意とローカルのD1の操作はadmin-foundationの補助(support/admin-bootstrap.ts・support/local-d1.ts)を使う
+e2e/                                                    # 管理者の用意・ローカルのD1の操作・送信元IPはadmin-foundationの補助(support/admin-bootstrap.ts・support/local-d1.ts・support/client-ip.ts)を使う
 ├── client/inquiry/guest-inquiry.e2e.test.ts · member-inquiry-chat.e2e.test.ts · suspended-contact.e2e.test.ts
 └── admin/inquiries.e2e.test.ts · inquiry-categories.e2e.test.ts
 docs/GUIDES/tech/
@@ -296,20 +310,28 @@ docs/GUIDES/tech/
 
 ### Modified Files
 
-- `apps/db/schema/index.ts` — inquiryのテーブルを再エクスポートする。`apps/db/migrations/<日時>_inquiry_chat/migration.sql`を生成し、標準カテゴリ「その他」の挿入をカスタムマイグレーション`<日時>_inquiry_chat_seed`で加える(`db/001`の手順)。mainの最新を取り込んでから生成する。
-- `apps/common-lib/admin/audit-actions/index.ts` — 本specの操作種別を連結に加える。
+- `apps/db/schema/index.ts` — inquiryのテーブルを再エクスポートする。`apps/db/migrations/<日時>_inquiry_chat/migration.sql`を生成し、標準カテゴリ「その他」の挿入をカスタムマイグレーション`<日時>_inquiry_chat_seed`で加える(`db/001`の手順と、`db/003`の「初期データ」の項。legal-pagesのG7が書く。無ければ本specで同じ内容を書く)。mainの最新を取り込んでから生成する。
+- `apps/common-lib/admin/audit-actions/index.ts`・`index.unit.test.ts` — 本specの操作種別を連結に加え、登録名の期待値に5種別を足す。
+- `apps/backend-lib/core/session/session-view.ts`(新設)、`apps/api/src/application/session/session-view.ts`・`session-verifier.ts`とapi内の読み込み先 — `SessionView`・`Principal`・`AuthenticatedPrincipal`・`SessionSubjectKind`を`core`へ移す(G3)。
+- `apps/backend-lib/core/identity/account-guard.ts`(新設)・`identifiers.ts`、`apps/api/src/application/identity/account-guard.ts`・`identity-types.ts`・`ports.ts`と`AccountGuard`の利用箇所 — 契約`AccountGuard`・`CurrentUser`・`UserAccountView`と識別子を`core`へ移し、`UserRecord`は`UserAccountView`を継承する。実装`StoreAccountGuard`はapiに残し、`IDENTITY_PLATFORM_TYPES.AccountGuard`へ束縛する(G3)。
+- `apps/backend-lib/core/admin/audit-log.ts`・`current-admin.ts`(新設)・`identifiers.ts`、`apps/api/src/application/admin/audit-log-recorder.ts`・`admin-authorizer.ts`・`admin-types.ts`、`domain/admin/audit-entry.ts`と利用箇所 — `AuditLogRecorder`・`PreparedAuditEntry`(準備済みの印の宣言を含む)・`AuditEntryInput`・`CurrentAdmin`と識別子を`core`へ移す。実装`StoreAuditLogRecorder`・`validateAuditEntry`・`StoreAdminAuthorizer`・`operatorSnapshotOf`はapiに残し、`ADMIN_PLATFORM_TYPES.AuditLogRecorder`へ束縛する(G3)。
+- `apps/api/src/infrastructure/admin/audit-log-statements.ts` — `AuditGuard`に`{ readonly kind: 'condition'; readonly condition: SQL }`(真のときだけ操作者のIDが入る任意の条件)を足す(G1)。
+- `apps/frontend-lib/components/admin/category-master-editor.tsx` — 任意のprops`deleteDescriptionOf?: (category: CategoryMasterItem) => string`(削除の確認の文。既定は今の文)と`deleteAudited?: boolean`(既定は`false`)を足す(G2)。
+- `apps/frontend-lib/utilities/pagination/cursor-trail.ts`(`apps/admin/src/components/audit/cursor-trail.ts`と単体テストを移す)・`apps/admin/src/components/pages/audit-logs-page.tsx` — 前後のページの補助を両アプリが使える場所へ移す(G4)。
+- `config/contract-copies.unit.test.ts` — bot判定の操作名(APIの`BOT_ACTIONS`・`ADMIN_BOT_ACTIONS`・`INQUIRY_BOT_ACTIONS`と各アプリの写し)の一致を検査する(G7)。
 - `apps/backend-lib/core/email/kinds/index.ts`・`apps/event/src/infrastructure/email/templates/index.ts` — 種別とテンプレートを1行ずつ加える。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`upload-purposes.ts`・`file-read-policies.ts`・`user-lifecycle-sync-handlers.ts` — `INQUIRY_MODULE`、`inquirySchemaModule`、ジョブ、`inquiry-attachment`、閲覧の方針、同期の波及処理を加える。
-- `apps/api/eslint.config.ts`・`test/config/layer-rules.unit.test.ts` — `inquiry`の各層が`identity`・`admin`の各層の公開の部品以外を読み込まない規則と違反例を加える。
+- `apps/api/eslint.config.ts`・`test/config/inquiry-layer-rules.unit.test.ts` — `INQUIRY_LAYER_RULES`(「Dependency Direction」の形)と許可・違反の例を加える。
 - `apps/event/src/composition/modules.ts`・`user-lifecycle-async-handlers.ts` — `EVENT_INQUIRY_MODULE`と非同期の波及処理を加える。
 - `apps/admin/src/composition/admin-navigation.ts`・`dashboard-cards.ts` — 問い合わせ・カテゴリの項目とカードを加える。
 - `docs/GUIDES/tech/{security,frontend}/README.md` — 新しい文書を1行ずつ追記する。
+- `docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`・`backend/008-audit-logging.md`・`frontend/005-shared-components.md`・`frontend/006-data-fetching.md` — `core`へ移した契約の例(`SessionView`・`AccountGuard`・`AuditLogRecorder`・`CurrentAdmin`)、`AuditGuard`の`condition`、`CategoryMasterEditor`の`deleteDescriptionOf`・`deleteAudited`、前後のページの補助の場所を、プロジェクト名を含めずに改める(G1〜G4)。
 - `docs/GUIDES/service/design/002-page-layouts.md` — 「問い合わせ」に`/contact`の構成(状態ごとのフォーム・自分の問い合わせの一覧)・停止中の表示・チャットの定期再取得を、管理者側ページ一覧に問い合わせの一覧と詳細・カテゴリのページの区画の分担を追記する。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 本specのエラー・状態・案内の文言と、返信の通知メールの本文の要点を追記する。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧にログインの問い合わせ(退会まで)と未ログインの問い合わせの回数制限のカウントを加え、未ログインの問い合わせの行に停止中の利用者の送信を含む旨を加える。
-- `docs/GUIDES/service/overview/007-daily-timeline.md` — 日次バッチのジョブの表に本specの1行(300)を加える。表が無ければ作る。
+- `docs/GUIDES/service/overview/007-daily-timeline.md` — 日次バッチのジョブの表(`順序`の列がある)に本specの1行(300)を加える。
 - `docs/GUIDES/service/features/001-user-data-export.md` — `inquiries.json`の「メッセージや添付ファイルは管理者による投稿も含む」を「メッセージは管理者の返信も含む。添付ファイルは利用者のメッセージだけにある」へ、`category`の説明を「現在のカテゴリ名(削除されたカテゴリは「その他」)」へ改め、問い合わせは作成の順・メッセージは送信日時の古い順に並ぶことを加える(Q6・付け替え・13.7)。
-- `docs/onboardings/project-values.md` — ジョブの名前と順序、波及処理の名前、メール種別、回数制限の規則、bot判定のaction、用途を記載する。
+- `docs/onboardings/project-values.md` — 「利用者のアカウント」の節にジョブの名前と順序・波及処理の名前・メール種別を、「画像のアップロード・判定・配信」の節に用途と閲覧の方針を足し、利用者側のbot判定のactionと回数制限の規則の節(現在は無い)を新設して本specの値を記載する。
 - `CLAUDE.md` — 「技術規則の参照先」に、未ログインの投稿を受け付ける前に読む文書(`security/008`)へのリンクを加える。
 
 ## System Flows
@@ -446,7 +468,7 @@ stateDiagram-v2
 export declare const GUEST_NICKNAME_MAX: 25;
 export declare const INQUIRY_BODY_MAX: 5000;
 export declare const CHAT_MESSAGE_MAX: 1000; // 利用者の追加メッセージと管理者の返信
-export declare const CONTACT_EMAIL_MAX: 254;
+// 連絡先メールアドレスの長さはcommon-lib/identity/account-input-rules.tsのEMAIL_MAX_LENGTH(254)を使う
 export declare function checkGuestNickname(
   value: string,
 ): 'empty' | 'too-long' | undefined;
@@ -485,7 +507,7 @@ export declare const INQUIRY_CATEGORY_OTHER_NAME: 'その他';
 
 #### InquiryAuditActions
 
-- `inquiry.reply`(対象`inquiry`・理由`optional`・詳細なし)、`inquiry.status-change`(`inquiry`・`optional`・詳細`kind`・`fromStatus`・`toStatus`)、`inquiry-category.create`・`inquiry-category.rename`・`inquiry-category.delete`(`category`・`optional`・削除は詳細`reassignedCount`)。名前・本文・メールアドレスを詳細に入れない(要件15.2・15.3)。
+- `defineAuditAction({ name, label, targetKind, reason, detailKeys, maxTargets })`の形で、`inquiry.reply`(表示名「問い合わせへの返信」・対象`inquiry`・理由`optional`・`detailKeys: []`・`maxTargets: 1`)、`inquiry.status-change`(「対応ステータスの変更」・`inquiry`・`optional`・`detailKeys: ['kind', 'fromStatus', 'toStatus']`・1)、`inquiry-category.create`・`inquiry-category.rename`・`inquiry-category.delete`(「問い合わせカテゴリの追加」「問い合わせカテゴリの名前の変更」「問い合わせカテゴリの削除」・`category`・`optional`・削除だけ`detailKeys: ['reassignedCount']`・1)を定義し、`INQUIRY_AUDIT_ACTIONS`として`audit-actions/index.ts`の連結と`index.unit.test.ts`の登録名の期待値に加える。対象の種類`inquiry`・`category`と管理画面の表示名は登録済みのため足さない。名前・本文・メールアドレスを詳細に入れない(要件15.2・15.3)。
 
 ### api/domain
 
@@ -523,8 +545,8 @@ export declare function sortCategories<
 export interface AttachmentCandidate {
   readonly id: string;
   readonly purpose: string;
-  readonly ownerKind: 'user' | 'admin';
-  readonly ownerId: string;
+  readonly ownerKind: 'user' | 'admin' | 'system'; // MediaFileView.owner.kindと同じ。userで本人の時だけ有効
+  readonly ownerId: string | null;
   readonly stored: boolean;
   readonly deleted: boolean;
   readonly byteSize: number;
@@ -574,6 +596,7 @@ export interface InquiryCategoryStore {
     readonly reassigned: number;
   }>; // 2テーブルの付け替え・削除・監査ログを1つの一括の書き込み
   countLinked(id: string): Promise<number>;
+  countLinkedByCategory(): Promise<ReadonlyMap<string, number>>; // 2テーブルのGROUP BY category_idの和。管理画面の削除の確認の件数(G2)
 }
 export interface NewGuestInquiry {
   readonly id: string;
@@ -741,7 +764,8 @@ export declare const INQUIRY_TYPES: {
 
 #### InquiryCategoryService
 
-- `list()`: `sortCategories`で並べる(要件1.7)。利用者側・管理者側の両方から呼ばれ、認可は不要。
+- `list()`: `sortCategories`で並べる(要件1.7)。利用者側の`inquiryCategories`と送信時のカテゴリの存在の確認が使い、認可は不要。
+- `listForAdmin()`: `list()`に`countLinkedByCategory()`の件数を`linkedCount`として付けて返す。管理者側の`adminInquiryCategories`(閲覧のみ以上)が使い、区画の削除の確認の文に使う(G2)。
 - `create(current, { name, reason })`・`rename(current, { id, name, reason })`: `requireAdmin(..., 'moderator')`を通ったリゾルバから呼ばれる(要件1.6)。`checkCategoryName`→名前の変更は`checkCategoryEditable`(`protected`は`inquiry_category_protected`、要件1.4)→`AuditLogRecorder.prepare`→ストア(`name-taken`は`inquiry_category_name_taken`、要件1.3)。
 - `delete(current, { id, reason })`: `checkCategoryEditable`→`countLinked`で付け替えの件数を数えて詳細`reassignedCount`を入れた`prepare`→`deleteAndReassign`(要件1.5・15.1)。件数は表示用で、付け替えは条件付きの`UPDATE`で行う。
 
@@ -797,7 +821,7 @@ export declare class CounterGuestInquiryRateLimit implements GuestInquiryRateLim
 
 - 前提: リゾルバが`context.assertHuman('inquiry_guest' | 'inquiry_member')`を先に呼ぶ(要件4.1・4.2)。チャットと返信のリゾルバは呼ばない(要件4.3)。application層は`BotVerifier`を受け取らない。
 - `GuestInquirySubmission.submit`: `AccountGuard.currentUser(session)`が停止していない利用者なら`member_inquiry_required`(要件3.4)→カテゴリの存在(要件3.3)→`GuestInquiryRateLimit.consume(clientIp)`(要件4.4〜4.7)→`insert`(利用者のIDを持たない、要件3.1・3.6)。ログイン中の利用者のユーザー単位の回数制限は設けない(要件4.8)。
-- `CounterGuestInquiryRateLimit.consume`: `hashRateLimitKey(hasher, 'inquiry-guest', clientIp)`で`RateLimitCounterClient.hit(GUEST_INQUIRY_RATE_RULE, key)`と`assertWithinLimit`(要件4.4〜4.7)。送信元IPアドレスが不明なら数えずに警告`guest-inquiry-ip-missing`をログに残す。
+- `CounterGuestInquiryRateLimit.consume`: `hashRateLimitKey(hasher, 'inquiry-guest', clientIp)`で`counters.hit(GUEST_INQUIRY_RATE_RULE, key)`を呼び、`counters.assertWithinLimit(decision, now.getTime())`で超過を`rate_limit_exceeded`と`Retry-After`にする(規則は`CounterRule`の形、要件4.4〜4.7)。送信元IPアドレスが不明なら数えずに警告`guest-inquiry-ip-missing`をログに残す。
 - 置き場所: ポート`GuestInquiryRateLimit`はapplication層、実装`CounterGuestInquiryRateLimit`と規則`GUEST_INQUIRY_RATE_RULE`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`と`assertWithinLimit`が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」、identity-authの`CounterMailSendLimits`と同じ形)。`INQUIRY_TYPES.GuestInquiryRateLimit`を`CounterGuestInquiryRateLimit`へ束縛し、ユースケースはポートだけを受け取る。実装の振る舞いはWorkers統合テスト(偽の厳密カウンタ)、ユースケースの呼び出しの順は偽のポートによる単体テストで確かめる。
 - `MemberInquirySubmission.submit`: `requireWritableUser`(停止中は`account_unavailable`、要件5.4。メールアドレスの未確認は拒否しない、要件5.5)→カテゴリの存在→`InquiryAttachmentBinder.bind`→`insert`(問い合わせ・最初のメッセージ・添付の紐付けを1つの一括の書き込み、失敗時は`release`、要件5.1)。
 
@@ -860,8 +884,8 @@ export interface InquiryChatService {
 #### D1InquiryStores・D1InquiryAdminReader・D1InquirerProfiles・InquiryCursor
 
 - `D1InquiryCategoryStore.deleteAndReassign`: `buildAuditLogStatements`→`UPDATE member_inquiries SET category_id = <その他> WHERE category_id = ?`→`guest_inquiries`の同じ更新→`DELETE FROM inquiry_categories WHERE id = ? AND system_default = 0`を1つの`db.batch`にする(要件1.5)。`insert`・`rename`は一意索引の違反を`name-taken`に変換する。
-- `D1MemberInquiryStore.insert`・`appendUserMessage`: 問い合わせ(または更新)・メッセージ・添付の行(1文あたり25行)を1つの`db.batch`にする。`appendAdminReply`は監査ログの文を先頭に置き、問い合わせの`last_message_at`の更新を`WHERE deleted_at IS NULL`の条件で行い、更新0件なら読み直して`withdrawn`・`not-found`を返す(全体は監査ログの挿入の`CASE`式で取り消す。admin-foundationの方式)。
-- `D1InquiryStatusStore.change`: 監査ログの挿入の`operator_admin_id`を「現在のステータスが一致し、退会済みでない」ときだけ値になる`CASE`式にし、続けて条件付きの`UPDATE`を置く。NOT NULL制約の違反は`conflict`。
+- `D1MemberInquiryStore.insert`・`appendUserMessage`: 問い合わせ(または更新)・メッセージ・添付の行(1文あたり25行)を1つの`db.batch`にする。`appendAdminReply`は`buildAuditLogStatements(db, audit, { kind: 'condition', condition: sql\`EXISTS (SELECT 1 FROM member_inquiries WHERE id = ? AND deleted_at IS NULL)\` })`の文を先頭に置き、メッセージの挿入と`last_message_at`の更新を続ける。条件が偽なら操作者のIDのNOT NULL違反で全体が取り消されるため、`isAuditGuardRejection(error)`が真のときは読み直して`withdrawn`・`not-found`を返す(G1。admin-foundationの方式)。
+- `D1InquiryStatusStore.change`: `buildAuditLogStatements(db, audit, { kind: 'condition', condition })`の条件を「現在のステータスが一致し、退会済みでない」(`EXISTS (SELECT 1 FROM <種別のテーブル> WHERE id = ? AND status = ?` に、ログインの問い合わせは` AND deleted_at IS NULL`を足す`)`)にし、続けて同じ条件の`UPDATE`を置く。`isAuditGuardRejection(error)`が真なら`conflict`(G1)。
 - `D1InquiryAdminReader.list`: `member_inquiries`と`users`の結合(送信者の表示名はニックネーム)と、`guest_inquiries`(表示名は入力のニックネーム)の`UNION ALL`を、`(created_at DESC, id DESC)`で51件読む。条件は両方の副問い合わせに入れる(要件10.1〜10.3)。
 - `InquiryCursor`: `base64url('<ミリ秒>:<ID>')`の符号化と復号。不正な値は`validation_error`。
 - `D1InquirerProfiles`: `users`から`nickname`・`handle`を100件ずつ読み、`avatarFileId`は`null`。返信の通知先は本specで読まず、identity-authの`UserContactDirectory`で引く。
@@ -906,6 +930,13 @@ type InquiryCategory {
   id: ID!
   name: String!
   systemDefault: Boolean!
+}
+"管理画面のカテゴリの区画が削除の確認に使う、紐付く問い合わせの件数(ログイン・未ログインの合計)付きのカテゴリ"
+type AdminInquiryCategory {
+  id: ID!
+  name: String!
+  systemDefault: Boolean!
+  linkedCount: Int!
 }
 type InquiryComposer {
   nickname: String!
@@ -1021,6 +1052,7 @@ type Query {
   ): AdminInquiryPage!
   adminInquiry(id: ID!): AdminInquiry
   adminUnhandledInquiryCount: Int!
+  adminInquiryCategories: [AdminInquiryCategory!]!
 }
 type Mutation {
   submitGuestInquiry(input: GuestInquiryInput!): Boolean!
@@ -1049,16 +1081,16 @@ type Mutation {
 }
 ```
 
-| 操作                                                                    | 呼び出し元 | bot判定のaction  | 認可                           |
-| ----------------------------------------------------------------------- | ---------- | ---------------- | ------------------------------ |
-| `inquiryCategories`                                                     | 両方       | なし             | 不要(管理者側は閲覧のみ以上)   |
-| `inquiryComposer`・`myInquiries`・`memberInquiry`・`postInquiryMessage` | client     | なし             | `AccountGuard`(各ユースケース) |
-| `submitGuestInquiry`                                                    | client     | `inquiry_guest`  | 未ログインまたは停止中         |
-| `submitMemberInquiry`                                                   | client     | `inquiry_member` | 停止していないログイン中       |
-| `adminInquiries`・`adminInquiry`・`adminUnhandledInquiryCount`          | admin      | なし             | 閲覧のみ以上                   |
-| `replyToInquiry`・`changeInquiryStatus`・カテゴリの3操作                | admin      | なし             | モデレーター以上               |
+| 操作                                                                                     | 呼び出し元 | bot判定のaction  | 認可                           |
+| ---------------------------------------------------------------------------------------- | ---------- | ---------------- | ------------------------------ |
+| `inquiryCategories`                                                                      | client     | なし             | 不要                           |
+| `inquiryComposer`・`myInquiries`・`memberInquiry`・`postInquiryMessage`                  | client     | なし             | `AccountGuard`(各ユースケース) |
+| `submitGuestInquiry`                                                                     | client     | `inquiry_guest`  | 未ログインまたは停止中         |
+| `submitMemberInquiry`                                                                    | client     | `inquiry_member` | 停止していないログイン中       |
+| `adminInquiries`・`adminInquiry`・`adminUnhandledInquiryCount`・`adminInquiryCategories` | admin      | なし             | 閲覧のみ以上                   |
+| `replyToInquiry`・`changeInquiryStatus`・カテゴリの3操作                                 | admin      | なし             | モデレーター以上               |
 
-- 呼び出し元が表と異なれば`forbidden`。入力は`withValidatedArgs`で`common-lib/inquiry`の規則とadmin-foundationの理由の規則(500書記素)を検証する。`fileIds`は20件を超えれば`inquiry_attachments_invalid`。
+- 呼び出し元が表と異なれば`forbidden`(本specの`resolver-support.ts`の`clientOnly`・`adminOnly`。管理者側は`adminOnly(withValidatedArgs(ARGS, async (...) => { await requireAdmin(context, '<ロール>'); ... }))`の入れ子)。bot判定の操作名は同じファイルの`INQUIRY_BOT_ACTIONS`(`guest: 'inquiry_guest'`・`member: 'inquiry_member'`)で、利用者側の`components/inquiry/bot-actions.ts`の写しと`config/contract-copies.unit.test.ts`で一致を検査する(G7)。入力は`withValidatedArgs`で`common-lib/inquiry`の規則とadmin-foundationの理由の規則(`checkAuditReason`、500書記素)を検証する。`fileIds`は20件を超えれば`inquiry_attachments_invalid`。
 - `InquiryMessage.attachments`は`mediaFileLoader`で一括に読み、`toMediaAttachment`で返す。`admin`は`AdminDirectory.findProfiles`で引き、見つからなければ`{ nickname: null, avatar: null, deleted: true }`(要件7.4・7.5)。利用者のメッセージでは`null`。
 - `inquiryComposer.avatar`・`AdminInquiryMember.avatar`は`InquirerProfiles`の`avatarFileId`から`toMediaImage`で返す(既定は`null`、要件2.5)。
 
@@ -1170,11 +1202,10 @@ export interface InquiryStatusBadgeProps {
   readonly status: InquiryStatus;
 }
 export interface InquiryAttachmentView {
-  readonly id: string;
+  readonly id: string; // PrivateFileLinkのfileId(ダウンロードのパスは部品が組み立てる)
   readonly originalFileName: string;
   readonly contentType: string;
   readonly byteSize: number;
-  readonly downloadPath: string;
 }
 export interface InquiryMessageCardProps {
   readonly side: 'self' | 'other'; // 閲覧者から見た配置
@@ -1191,30 +1222,30 @@ export interface InquirerAvatarProps {
 }
 ```
 
-- `InquiryMessageCard`は本文をテキストとして描画し(HTMLとして解釈しない)、日時を`DateTime`で`<time datetime>`にする(要件7.6)。`InquiryAttachmentList`は`PrivateFileLink`で元のファイル名・形式・サイズとダウンロードのリンクを示し、インライン表示しない(要件6.5)。
+- `InquiryMessageCard`は本文をテキストとして描画し(HTMLとして解釈しない)、日時を`DateTime`(書式`longDateTime`、G5)で`<time datetime>`にする(要件7.6)。`InquiryAttachmentList`は`PrivateFileLink`(`fileId`・`fileName`・`byteSize`)で元のファイル名・サイズとダウンロードのリンクを示し、形式(`contentType`)をリンクの隣に示す。インライン表示しない(要件6.5)。
 
 ### client
 
 #### ContactPage・GuestInquiryForm・MemberInquiryForm・GuestInquiryComplete・SuspendedContactNotice・MyInquiryList
 
-- `routes/contact.tsx`: `loader`で`inquiryCategories`を`ensureQueryData`し、`viewer`(identity-authの`__root`の文脈)で切り替える。未ログインは`GuestInquiryForm`、停止中は`SuspendedContactNotice`と`GuestInquiryForm`、停止していないログイン中は`MemberInquiryForm`(要件2.2〜2.4)。ログイン中(停止中を含む)はフォームの下に`MyInquiryList`(要件9.1・9.4)。
-- `GuestInquiryForm`: カテゴリ(`<select>`)・ニックネーム・連絡先メールアドレス・メッセージ・`TurnstileWidget`(action`inquiry_guest`、非表示で場所を取らない)。成功で`GuestInquiryComplete`(「お問い合わせを受け付けました。回答は入力したメールアドレスへお送りする場合があります。」)に置き換える(要件3.2)。429は`Retry-After`の秒数から再送できる時刻を示す(要件4.5)。
-- `MemberInquiryForm`: `inquiryComposer`の`InquirerAvatar`とニックネーム、カテゴリ・メッセージ・`AttachmentUploadField`(`UploadConstraints`に用途・`ATTACHMENT_MEDIA_TYPES`・`maxBytes`・`maxCount` 20・`maxTotalBytes`、`contactAvailable`は`CLIENT_PROFILE.contactAvailable`)と`FileSelectionList`・`TurnstileWidget`(action`inquiry_member`、非表示で場所を取らない)。成功で`/inquiries/<ID>`へ遷移する(要件2.3・5.2・6.2・6.8)。
-- `MyInquiryList`: `useInfiniteQuery`で20件ずつ、各行は`InquiryStatusBadge`・カテゴリ・送信日時・最後のメッセージの日時・チャットへのリンク。0件は「送信した問い合わせはまだありません。」(要件9.1〜9.3)。
+- `routes/contact.tsx`: `validateSearch`で自分の一覧のページの位置`after`(`my-inquiry-search.ts`。zodの`.optional().catch(undefined)`)を受け、`loaderDeps`に渡す。`loader`(`graphql/inquiry-contact.ts`の`loadContactPage`)は`inquiryCategories`を`context.queryClient.query({ ...graphqlQueryOptions(...), staleTime: 'static' })`で取得し、ログイン中(`context.viewer`が`null`でない)なら`myInquiries(after)`も同じ設定で取得して失敗を`.catch(() => undefined)`で捨てる(`frontend/006`の一覧の形)。headは`buildContactHead`(`head/page-heads.ts`に追記)。ページ全体の部品は`components/pages/contact-page.tsx`で、`viewer`(identity-authの`__root`の文脈)の`status`で切り替える。未ログインは`GuestInquiryForm`、停止中(`'SUSPENDED'`)は`SuspendedContactNotice`と`GuestInquiryForm`、停止していないログイン中は`MemberInquiryForm`(要件2.2〜2.4)。ログイン中(停止中を含む)はフォームの下に`MyInquiryList`(要件9.1・9.4)。
+- `GuestInquiryForm`: カテゴリ(`<select>`)・ニックネーム・連絡先メールアドレス・メッセージ・`TurnstileWidget`(`useTurnstileToken()`の`widgetProps`に`action={INQUIRY_BOT_ACTIONS.guest}`を足す。非表示で場所を取らない)。送信は`useMutation(graphqlMutationOptions(SubmitGuestInquiryDocument))`を`sendWithTurnstile`で包む。成功で`GuestInquiryComplete`(「お問い合わせを受け付けました。回答は入力したメールアドレスへお送りする場合があります。」)に置き換える(要件3.2)。429は`GraphQLClientError.retryAfterSeconds`から再送できる時刻を示す(要件4.5)。
+- `MemberInquiryForm`: `inquiryComposer`の`InquirerAvatar`とニックネーム、カテゴリ・メッセージ・`AttachmentUploadField`(`constraints`に`purpose`・`allowedTypes: ATTACHMENT_MEDIA_TYPES`・`maxBytes`・`maxCount: 20`・`maxTotalBytes`・`subjectLabel`、`multiple`、`contactAvailable`は`CLIENT_PROFILE.contactAvailable`。`onUploaded`で受けた`UploadedFile`の`fileId`をフォームの値に足す)と`FileSelectionList`・`TurnstileWidget`(`action={INQUIRY_BOT_ACTIONS.member}`、非表示で場所を取らない)。送信は`sendWithTurnstile`で包み、成功で`/inquiries/<ID>`へ遷移する(要件2.3・5.2・6.2・6.8)。
+- `MyInquiryList`: 検索パラメータ`after`で20件ずつの前後のページ。`useQuery`で読み、次のページは`nextCursor`、前のページは`frontend-lib/utilities/pagination/cursor-trail.ts`の`previousPageOf`・`trailAfterNext`で辿った記録から求め、`useNavigate({ search })`で移動する(管理画面の監査ログの一覧と同じ形、G4)。各行は`InquiryStatusBadge`・カテゴリ・送信日時・最後のメッセージの日時(`longDateTime`)・チャットへのリンク。0件は`EmptyState`で「送信した問い合わせはまだありません。」。取得の失敗は`PartialErrorState`で一覧の位置に示す(要件9.1〜9.3)。
 - フォームは`useAppForm(<inquiry-form-schemas.tsのスキーマ>, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)で作る。入力欄はフォーカスを外した時点で`inquiry-form-schemas.ts`(common-libの規則)により検証し、サーバーの欄ごとのエラーは`AppForm`が`applyServerFieldErrors`で反映する(要件2.6・3.3・5.3)。未ログイン(停止中を含む)と停止していないログイン中はフォームを分け、各フォームのスキーマの入力は描く欄だけにする(`GuestInquiryInput`・`MemberInquiryInput`と同じ形)。欄に対応しない失敗は`onSubmitError`で、`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言(429は再送できる時刻)をフォームに示す。
 
 #### InquiryChatView・InquiryMessageComposer・SuspendedChatNotice
 
-- `routes/_authenticated/inquiries/$inquiryId.tsx`: 未ログインはidentity-authの`_authenticated`がログインへ案内し、戻り先を保つ(要件7.2)。`memberInquiry`が`null`なら「問い合わせが見つかりません。」(要件7.3)。
-- `InquiryChatView`: `useQuery({ ...graphqlQueryOptions(memberInquiryDocument, { id }), ...LIVE_REFRESH_QUERY_OPTIONS })`で取得し、カテゴリ・ステータス・送信日時とメッセージを古い順に表示する(要件7.1・7.7)。管理者の返信は`InquirerAvatar`(`square-xs`)とニックネーム、削除済みは「削除済みの管理者」(要件7.4・7.5)。
-- `InquiryMessageComposer`: `canPost`が真のとき表示し、1,000書記素の検証(スキーマの入力は`InquiryMessageInput`と同じ本文と添付だけで、対象の`inquiryId`は`onSubmit`で足す)・`AttachmentUploadField`(`contactAvailable`は`CLIENT_PROFILE.contactAvailable`)・送信中の無効化、成功で`invalidateQueries`(要件8.1・8.3・8.6)。偽なら`SuspendedChatNotice`(「このアカウントは停止中のため、メッセージを送信できません。運営への連絡はお問い合わせフォームから行えます。」と`/contact`へのリンク、要件7.8)。
+- `routes/_authenticated/inquiries/$inquiryId.tsx`: 未ログインはidentity-authの`_authenticated`(`requireViewer`)がログインへ案内し、戻り先を保つ(要件7.2)。`loader`(`graphql/inquiry-chat.ts`)は`memberInquiry`を`staleTime: 'static'`で取得し、headは`buildInquiryChatHead`、ページ全体の部品は`components/pages/inquiry-chat-page.tsx`。`memberInquiry`が`null`なら「問い合わせが見つかりません。」(要件7.3)。
+- `InquiryChatView`: `useQuery({ ...graphqlQueryOptions(ClientMemberInquiryDocument, { id }), ...LIVE_REFRESH_QUERY_OPTIONS })`で取得し、カテゴリ・ステータス・送信日時(`longDateTime`)とメッセージを古い順に表示する(要件7.1・7.7)。管理者の返信は`InquirerAvatar`(`square-xs`)とニックネーム、削除済みは「削除済みの管理者」(要件7.4・7.5)。
+- `InquiryMessageComposer`: `canPost`が真のとき表示し、1,000書記素の検証(スキーマの入力は`InquiryMessageInput`と同じ本文と添付だけで、対象の`inquiryId`は`onSubmit`で足す)・`AttachmentUploadField`(`contactAvailable`は`CLIENT_PROFILE.contactAvailable`、`onUploaded`で`fileId`を値に足す)・送信中の無効化、成功で`invalidateQueries({ queryKey: [documentIdOf(ClientMemberInquiryDocument)] })`(要件8.1・8.3・8.6)。偽なら`SuspendedChatNotice`(「このアカウントは停止中のため、メッセージを送信できません。運営への連絡はお問い合わせフォームから行えます。」と`CONTACT_HREF`へのリンク、要件7.8)。
 
 ### admin
 
 #### AdminInquiryPages・InquiryReplyForm・InquiryStatusControl・UnhandledInquiriesCard
 
-- `/inquiries`: `AdminFilterBar`(ステータス・種別・カテゴリの`select`、受付日の開始と終了の`<input type="date">`。`inquiry-period.ts`で閲覧者の地域の0時をUTCへ変換)と`AdminDataTable`(50件、前後のページ)。検索パラメータ`status`などをURLに保つ。退会済みは「退会済み」の表示(要件10.1〜10.3・10.7)。
-- `/inquiries/$inquiryId`: ログインは`MemberInquiryDetail`(利用者のニックネーム・ハンドル、メッセージ、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得、要件10.4・10.6)、未ログインは`GuestInquiryDetail`(ニックネーム・連絡先メールアドレス・本文、「この問い合わせへの回答は、連絡先メールアドレスへシステム外のメールで行ってください。」、要件10.5)。どちらの詳細も、問い合わせの情報の下に`InquiryDetailActionsView`を置き、後続specが登録した操作を表示する。
+- `/inquiries`: ルートは`validateSearch: toAdminInquirySearch`(`admin-inquiry-search.ts`。zodの`.optional().catch(undefined)`と`definedEntriesOf`、監査ログの一覧と同じ形)・`loaderDeps`・`loader`(`graphql/admin-inquiries.ts`。`.catch(() => undefined)`)・`head: buildAdminPageHead`、ページ全体の部品は`components/pages/inquiries-page.tsx`。`AdminFilterBar`(ステータス・種別・カテゴリの`select`、受付日の開始と終了の`<input type="date">`。`inquiry-period.ts`で閲覧者の地域の0時をUTCへ変換)と`AdminDataTable`(50件、`pagination`の前後のページは`frontend-lib/utilities/pagination/cursor-trail.ts`で辿る)。検索パラメータ`status`などをURLに保つ。受付日時と最後のメッセージの日時は`longDateTime`(G5)。退会済みは「退会済み」の表示(要件10.1〜10.3・10.7)。
+- `/inquiries/$inquiryId`: ページ全体の部品は`components/pages/inquiry-detail-page.tsx`。ログインは`MemberInquiryDetail`(利用者のニックネーム・ハンドル、メッセージ(日時は`longDateTime`)、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得、要件10.4・10.6)、未ログインは`GuestInquiryDetail`(ニックネーム・連絡先メールアドレス・本文・受付日時(`longDateTime`)、「この問い合わせへの回答は、連絡先メールアドレスへシステム外のメールで行ってください。」、要件10.5)。どちらの詳細も、問い合わせの情報の下に`InquiryDetailActionsView`を置き、後続specが登録した操作を表示する。ロールは`useCurrentAdmin()`(文脈の`viewer`)から読む。
 - `InquiryReplyForm`: `RoleGate minimum="moderator"`、退会済み・未ログインでは表示しない。1,000書記素の検証と理由(任意)。対象の`inquiryId`はスキーマの入力に含めず`onSubmit`で足す。`notificationQueued`が偽ならトーストで「返信は保存されましたが、通知メールを送れませんでした。」(要件11.4・11.7)。送信の失敗は`AppForm`の`onSubmitError`で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。
 - `InquiryStatusControl`: 4種の`select`と`ConfirmActionDialog`(理由は任意、監査ログに記録される旨、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`。失敗はダイアログの中にその文言で示す。要件12.5)。退会済みでは表示しない(要件10.7)。
 - `UnhandledInquiriesCard`(`DASHBOARD_CARDS`へ`{ id: 'inquiry-chat.unhandled-inquiries', order: 20, width: 'half' }`): `adminUnhandledInquiryCount`を`DashboardCardFrame`で表示し、`/inquiries?status=OPEN`へのリンク。失敗はカードだけのエラーと再試行(文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、問い合わせの導線を出さない。要件14.1・14.3・14.4)。
@@ -1264,14 +1295,15 @@ export declare const CATEGORY_SECTIONS: readonly CategorySection[]; // 初版は
 ```
 
 - `routes/_authenticated/categories/index.tsx`: `AdminPageHeader`(「カテゴリ」)と`CategorySectionsView`(`order`順に見出し付きで並べ、区画ごとにエラー境界で包む。エラー境界の表示は`ErrorState`を`contactHref`無しで描き、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ)。
-- `InquiryCategorySection`: `CategoryMasterEditor`(`withHandle: false`、`canEdit`は`useAdminRole`がモデレーター以上、`systemDefault`は「その他」)。削除は付け替えの件数を確認のダイアログで示し、拒否・失敗は`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言、要件1.2〜1.6・1.8)。
+- `InquiryCategorySection`: `adminInquiryCategories`(`linkedCount`付き)を`useQuery`で読み、`CategoryMasterEditor`(`title`「問い合わせカテゴリ」、`withHandle: false`、`canEdit`は`useAdminRole`がモデレーター以上、項目の`systemDefault`は「その他」)で表示する。削除の確認は、G2で足す任意のprops`deleteDescriptionOf`で「紐付く<件数>件の問い合わせは標準カテゴリ「その他」へ付け替えられます。」の文を項目の`linkedCount`から作り、`deleteAudited: true`で監査ログに記録される旨を示す(要件1.5・15.1)。追加・名前の変更・削除の成功で`invalidateQueries`し、拒否・失敗は`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言、要件1.2〜1.6・1.8)。
+- `CategoryMasterEditor`に足すprops(G2、admin-foundationの部品の後方互換の拡張): `deleteDescriptionOf?: (category: CategoryMasterItem) => string`(削除の確認の文。未指定なら今の`CATEGORY_DELETE_DESCRIPTION`)と`deleteAudited?: boolean`(未指定なら`false`)。`CategoryMasterItem`には`linkedCount`のような項目を足さず、区画が必要な値を閉包で持つ。既存のブラウザテストと`frontend/005`の記述に、この2つの振る舞いを足す。
 
 ### e2e・docs
 
 #### InquiryE2E・InquiryDocs
 
 - E2Eの補助は本specで作らず、admin-foundationの補助を使う。管理者はモデレーター(返信・ステータス・カテゴリの操作)を`signInAsNewAdmin(page, { role: 'moderator' })`で用意する。停止の状態は`executeLocalD1`で`UPDATE users SET status = 'suspended', suspended_at = <ミリ秒> WHERE id = <利用者のID>`を実行して用意する(値は`sqlStringLiteral`でリテラルにする)。
-- 未ログインの送信のE2Eは、実行ごとに文書用のIPアドレス範囲(`198.51.100.0/24`)から選んだ`CF-Connecting-IP`を付けて回数制限の衝突を避ける。ローカルの実行基盤がヘッダーを上書きして衝突を避けられない場合は、E2Eのタスクでその旨と代わりの方法を報告する(回数制限そのものはWorkers統合テストで確かめる)。
+- 未ログインの送信のE2Eは、利用者側のfixture(`e2e/client/auth/auth-test.ts`の`test`)が組み込むadmin-foundationの補助`assumeDistinctClientIp`(ブラウザの文脈ごとに文書用の範囲`2001:db8::/32`から乱数で選んだ`CF-Connecting-IP`を付ける)で回数制限の衝突を避ける。本specで送信元IPの指定や補助を設けない(G6)。回数制限そのものはWorkers統合テストで確かめる。
 - `security/008-anonymous-submission-protection.md`: 未ログインの投稿の保護(bot判定とIP単位の厳密な回数制限の順序、キーのハッシュ化、不明なIPの扱い、ログイン中の利用者を未ログインの経路から除く判定、保持期間による物理削除と状態の変更日時による判定)。
 - `frontend/010-live-refresh-queries.md`: 表示中の画面の定期再取得(間隔・非表示のタブで止める・画面へ戻った時の取得・送信後の無効化・既定値との関係・テストでの時間の進め方)。
 
@@ -1356,8 +1388,11 @@ erDiagram
   - ユースケース(ポートを偽物にする): 停止していない利用者の未ログインの送信の拒否と停止中の受け付け(3.4・Q1)、回数制限の超過で保存しないこと(4.5)、ログインの送信で添付の書き込みの失敗時に`release`(6.3)、停止中の追加メッセージの拒否と閲覧の許可(7.8・8.4)、返信の通知メールの失敗で`notificationQueued: false`(11.4)、`UserContactDirectory.findContact`がメールアドレス未確認(`emailVerified: false`)の利用者を返しても通知を送ること・`undefined`なら送らずに`notificationQueued: false`になること(11.2)、カテゴリの削除の付け替えの件数(1.5)。
   - `live-refresh`: 値が30秒・背景で止める・復帰時に取得であること(7.7)。
   - `core/inquiry/identifiers`: `INQUIRY_EXPORT_TYPES`が`Symbol.for('inquiry.<名前>')`の値を持ち、凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形、13.7)。
+  - 上流の拡張と移動(G1〜G4・G7): `config/contract-copies.unit.test.ts`でbot判定の操作名のAPIと画面の写しが一致すること(identity・admin・inquiry)。`core`へ移した`SessionView`・`AccountGuard`・`AuditLogRecorder`・`CurrentAdmin`の識別子が`IDENTITY_PLATFORM_TYPES`・`ADMIN_PLATFORM_TYPES`に載り凍結されていること。`cursor-trail`の既存の単体テストが移動後も通ること。`inquiry-layer-rules`で`application/inquiry`から`application/identity`・`application/admin`・`**/lib/workers/**`の読み込みが違反になり、`backend-lib/core/**`・許した3ファイルの読み込みが通ること。
+  - `audit-actions/index`: 登録名の期待値に本specの5種別を足し、重複が無いこと(15.1)。
 - **Integration Tests**(Workers統合テスト):
-  - D1のストア: カテゴリ名の大文字小文字を区別しない重複(1.3)、削除で両テーブルが「その他」へ付け替わり監査ログが同じ一括の書き込みに入ること(1.5・15.1)、追加メッセージで対応済が未対応へ戻り`status_changed_at`が更新されること(8.2・12.4)、退会済みへの返信が監査ログごと取り消されること(11.7)、ステータスの同時の変更の`conflict`(12.2)、横断の一覧の並びとカーソルと各条件(10.1〜10.3)、未対応の件数が退会済みを除くこと(14.2)、保持期間の削除の14日の境界と「対応中」への戻しで対象外になること(13.4・13.5)。
+  - D1のストア: カテゴリ名の大文字小文字を区別しない重複(1.3)、削除で両テーブルが「その他」へ付け替わり監査ログが同じ一括の書き込みに入ること(1.5・15.1)、追加メッセージで対応済が未対応へ戻り`status_changed_at`が更新されること(8.2・12.4)、退会済みへの返信が`AuditGuard`の`condition`で監査ログごと取り消されること(11.7)、ステータスの同時の変更の`conflict`(12.2)、横断の一覧の並びとカーソルと各条件(10.1〜10.3)、未対応の件数が退会済みを除くこと(14.2)、保持期間の削除の14日の境界と「対応中」への戻しで対象外になること(13.4・13.5)。
+  - `audit-log-statements`(admin-foundationの既存のWorkers統合テストに足す): `{ kind: 'condition' }`の条件が偽のとき`isAuditGuardRejection`が真になり、同じ一括の書き込みの操作の文も残らないこと。真のときは既存の`guard`無しと同じ結果になること(G1)。
   - 波及処理: 同期の文が退会の一括の書き込みで論理削除し、利用者側の一覧と閲覧から消えること(13.1・13.3)。非同期の処理が101件で`continue`、2回目で`done`、再実行で結果が変わらないこと(13.2・13.6)。
   - `CounterGuestInquiryRateLimit`: 偽の厳密カウンタに`inquiry-guest:ip`の規則で数え、6回目で`rate_limit_exceeded`と待ち時間になり、IPが不明なら数えずに警告を残し、キーをハッシュ化すること(4.4〜4.7)。
   - 閲覧の方針: 本人・他人・管理者・紐付けの無い管理者の要求で`/internal/media/files/:fileId`が200・404になること(6.6・6.7)。
@@ -1370,7 +1405,7 @@ erDiagram
   - 対応済にした問い合わせへ利用者が追加メッセージ→管理画面で未対応へ戻りダッシュボードの件数が増える(8.2・14.1)。
   - 停止中の利用者の`/contact`がニックネームと連絡先の入力欄を表示し、送信が未ログインとして保存され、既存のチャットに送信欄の代わりの案内が出る(2.4・3.1・7.8)。
   - カテゴリを追加→問い合わせで選択→削除→問い合わせのカテゴリが「その他」になる、「その他」の削除ボタンが無い(1.2・1.4・1.5)。
-- **ブラウザテスト**(Vitest Browser Mode): 状態ごとのフォームの切り替え(2.2〜2.4)、ファイルの件数・合計の超過の表示(6.2)、`InquiryMessageCard`が本文をHTMLとして解釈しないこと、`InquiryChatView`が偽の時計で30秒後に取り直すこと(7.7)、`SuspendedChatNotice`(7.8)、`MyInquiryList`の空状態と続きの読み込み(9.2・9.3)、`CategorySectionsView`で1つの区画の失敗が他を止めないこと(1.8)、`InquiryDetailActionsView`で偽の操作を登録するとログイン・未ログインの詳細に`order`順で文脈の値を受け取って表示され、1つの操作の失敗が詳細を止めず、空の既定では何も描画しないこと、`UnhandledInquiriesCard`のエラー(14.4)、`runAxe`の違反0件。
+- **ブラウザテスト**(Vitest Browser Mode): 状態ごとのフォームの切り替え(2.2〜2.4)、ファイルの件数・合計の超過の表示(6.2)、`InquiryMessageCard`が本文をHTMLとして解釈しないこと、`InquiryChatView`が偽の時計で30秒後に取り直すこと(7.7)、`SuspendedChatNotice`(7.8)、`MyInquiryList`の空状態と前後のページ(9.2・9.3)、`CategorySectionsView`で1つの区画の失敗が他を止めないこと(1.8)、`CategoryMasterEditor`の`deleteDescriptionOf`の文と`deleteAudited`の旨が削除の確認に出ること(admin-foundationの既存のブラウザテストに足す、G2)、`InquiryDetailActionsView`で偽の操作を登録するとログイン・未ログインの詳細に`order`順で文脈の値を受け取って表示され、1つの操作の失敗が詳細を止めず、空の既定では何も描画しないこと、`UnhandledInquiriesCard`のエラー(14.4)、`runAxe`の違反0件。
 
 ## Security Considerations
 
@@ -1399,7 +1434,8 @@ flowchart LR
     Admin --> Docs
 ```
 
-- テーブルは新規のため、Expand/Contractの段階は1つ(追加だけ)。初期データ「その他」はカスタムマイグレーションで固定IDを`INSERT OR IGNORE`し、再適用でも重複しない。
+- テーブルは新規のため、Expand/Contractの段階は1つ(追加だけ)。初期データ「その他」はカスタムマイグレーションで固定IDと固定の作成日時を`INSERT ... ON CONFLICT DO NOTHING`で挿入し、再適用でも重複しない(`db/003`の「初期データ」の項、legal-pagesのG7)。
+- 上流の拡張と移動(G1〜G4)は本specの最初の段階で行い、既存の振る舞いを変えずに全アプリの検査が通ることを確かめてから問い合わせのコードを足す。
 
 ## Supporting References
 
@@ -1418,4 +1454,6 @@ flowchart LR
 | 管理画面               | `/inquiries`(80)・`/categories`(110)、カード`inquiry-chat.unhandled-inquiries`(20)、区画`inquiry-chat.inquiry-categories`(30)            |
 | 標準カテゴリ           | `INQUIRY_CATEGORY_OTHER_ID`(固定ULID)・「その他」                                                                                        |
 | 定期再取得             | 30,000ミリ秒、非表示のタブで停止、画面へ戻った時に取得                                                                                   |
+| 日時の書式             | 利用者側・管理者側とも`longDateTime`(G5)                                                                                                 |
+| 一覧のページ           | 利用者側の自分の一覧は20件、管理画面は50件。いずれも検索パラメータ`after`と`cursor-trail`による前後のページ(G4)                          |
 | 技術ドキュメントの番号 | `security/008`・`frontend/010`                                                                                                           |
