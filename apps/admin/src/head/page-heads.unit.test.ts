@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 
-import { buildAdminPageHead, buildRootHead } from './page-heads.ts';
+import {
+  buildAdminPageHead,
+  buildLegalDocumentEditorHead,
+  buildLegalDocumentVersionHead,
+  buildRootHead,
+} from './page-heads.ts';
 
 const STYLESHEET_HREF = '/assets/styles-abc123.css';
 
@@ -33,6 +38,40 @@ describe('buildAdminPageHead', () => {
         { title: '疎通確認 | Launch Stadium管理' },
         { name: 'robots', content: 'noindex, nofollow' },
       ],
+      links: [],
+    });
+  });
+});
+
+describe('buildLegalDocumentEditorHead', () => {
+  test('文書の名前のタイトルにする', () => {
+    expect(buildLegalDocumentEditorHead({ kind: 'privacy' })).toStrictEqual({
+      meta: [{ title: 'プライバシーポリシー | Launch Stadium管理' }],
+      links: [],
+    });
+  });
+
+  test('loaderのデータが無い(存在しないページ・取得の失敗)ときは法務文書のタイトルにする', () => {
+    expect(buildLegalDocumentEditorHead(undefined)).toStrictEqual({
+      meta: [{ title: '法務文書 | Launch Stadium管理' }],
+      links: [],
+    });
+  });
+});
+
+describe('buildLegalDocumentVersionHead', () => {
+  test('「<文書の名前>(第N版)」のタイトルにする', () => {
+    expect(
+      buildLegalDocumentVersionHead({ kind: 'legal-notice', versionNumber: 3 }),
+    ).toStrictEqual({
+      meta: [{ title: '法的通知(第3版) | Launch Stadium管理' }],
+      links: [],
+    });
+  });
+
+  test('loaderのデータが無い(存在しないページ・取得の失敗)ときは法務文書のタイトルにする', () => {
+    expect(buildLegalDocumentVersionHead(undefined)).toStrictEqual({
+      meta: [{ title: '法務文書 | Launch Stadium管理' }],
       links: [],
     });
   });

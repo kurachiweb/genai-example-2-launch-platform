@@ -1,5 +1,14 @@
+import { LEGAL_DOCUMENT_LABELS } from '../../common-lib/legal/legal-documents.ts';
 import { buildPageHead } from '../../lib/start/page-head.ts';
 import { ADMIN_SITE_NAME } from '../components/layout/admin-site.ts';
+import {
+  LEGAL_DOCUMENTS_TITLE,
+  legalVersionTitle,
+} from '../components/legal/legal-documents-messages.ts';
+import type {
+  LegalDocumentLoaderData,
+  LegalVersionLoaderData,
+} from '../graphql/admin-legal-documents.ts';
 
 export interface RootHeadInput {
   readonly stylesheetHref: string;
@@ -29,3 +38,27 @@ export const buildRootHead = ({ stylesheetHref }: RootHeadInput) => ({
   ],
   links: [{ rel: 'stylesheet', href: stylesheetHref }],
 });
+
+// 存在しないページと取得の失敗ではloaderのデータが無いため、画面の区分の名前をタイトルにする
+export const buildLegalDocumentEditorHead = (
+  loaderData: LegalDocumentLoaderData | undefined,
+) =>
+  buildAdminPageHead({
+    title:
+      loaderData === undefined
+        ? LEGAL_DOCUMENTS_TITLE
+        : LEGAL_DOCUMENT_LABELS[loaderData.kind],
+  });
+
+export const buildLegalDocumentVersionHead = (
+  loaderData: LegalVersionLoaderData | undefined,
+) =>
+  buildAdminPageHead({
+    title:
+      loaderData === undefined
+        ? LEGAL_DOCUMENTS_TITLE
+        : legalVersionTitle(
+            LEGAL_DOCUMENT_LABELS[loaderData.kind],
+            loaderData.versionNumber,
+          ),
+  });

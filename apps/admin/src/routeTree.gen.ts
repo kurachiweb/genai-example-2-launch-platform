@@ -17,9 +17,12 @@ import { Route as SystemStatusRouteImport } from './routes/system/status'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as AuthenticatedAccountsIndexRouteImport } from './routes/_authenticated/accounts/index'
 import { Route as AuthenticatedAuditLogsIndexRouteImport } from './routes/_authenticated/audit-logs/index'
+import { Route as AuthenticatedLegalDocumentsIndexRouteImport } from './routes/_authenticated/legal-documents/index'
 import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
 import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
 import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/password-reset/confirm'
+import { Route as AuthenticatedLegalDocumentsKindIndexRouteImport } from './routes/_authenticated/legal-documents/$kind/index'
+import { Route as AuthenticatedLegalDocumentsKindRevisionsVersionNumberRouteImport } from './routes/_authenticated/legal-documents/$kind/revisions/$versionNumber'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -63,6 +66,12 @@ const AuthenticatedAuditLogsIndexRoute =
     path: '/audit-logs/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedLegalDocumentsIndexRoute =
+  AuthenticatedLegalDocumentsIndexRouteImport.update({
+    id: '/legal-documents/',
+    path: '/legal-documents/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthEmailChangeConfirmRoute = AuthEmailChangeConfirmRouteImport.update({
   id: '/auth/email-change/confirm',
   path: '/auth/email-change/confirm',
@@ -79,6 +88,18 @@ const AuthPasswordResetConfirmRoute =
     path: '/auth/password-reset/confirm',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedLegalDocumentsKindIndexRoute =
+  AuthenticatedLegalDocumentsKindIndexRouteImport.update({
+    id: '/legal-documents/$kind/',
+    path: '/legal-documents/$kind/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute =
+  AuthenticatedLegalDocumentsKindRevisionsVersionNumberRouteImport.update({
+    id: '/legal-documents/$kind/revisions/$versionNumber',
+    path: '/legal-documents/$kind/revisions/$versionNumber',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -90,7 +111,10 @@ export interface FileRoutesByFullPath {
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/audit-logs/': typeof AuthenticatedAuditLogsIndexRoute
+  '/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
+  '/legal-documents/$kind/': typeof AuthenticatedLegalDocumentsKindIndexRoute
+  '/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
 }
 export interface FileRoutesByTo {
   '/auth/invitation': typeof AuthInvitationRoute
@@ -102,7 +126,10 @@ export interface FileRoutesByTo {
   '/account': typeof AuthenticatedAccountIndexRoute
   '/accounts': typeof AuthenticatedAccountsIndexRoute
   '/audit-logs': typeof AuthenticatedAuditLogsIndexRoute
+  '/legal-documents': typeof AuthenticatedLegalDocumentsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
+  '/legal-documents/$kind': typeof AuthenticatedLegalDocumentsKindIndexRoute
+  '/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,7 +143,10 @@ export interface FileRoutesById {
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/_authenticated/audit-logs/': typeof AuthenticatedAuditLogsIndexRoute
+  '/_authenticated/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
+  '/_authenticated/legal-documents/$kind/': typeof AuthenticatedLegalDocumentsKindIndexRoute
+  '/_authenticated/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,7 +160,10 @@ export interface FileRouteTypes {
     | '/account/'
     | '/accounts/'
     | '/audit-logs/'
+    | '/legal-documents/'
     | '/auth/password-reset/'
+    | '/legal-documents/$kind/'
+    | '/legal-documents/$kind/revisions/$versionNumber'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth/invitation'
@@ -142,7 +175,10 @@ export interface FileRouteTypes {
     | '/account'
     | '/accounts'
     | '/audit-logs'
+    | '/legal-documents'
     | '/auth/password-reset'
+    | '/legal-documents/$kind'
+    | '/legal-documents/$kind/revisions/$versionNumber'
   id:
     | '__root__'
     | '/_authenticated'
@@ -155,7 +191,10 @@ export interface FileRouteTypes {
     | '/_authenticated/account/'
     | '/_authenticated/accounts/'
     | '/_authenticated/audit-logs/'
+    | '/_authenticated/legal-documents/'
     | '/auth/password-reset/'
+    | '/_authenticated/legal-documents/$kind/'
+    | '/_authenticated/legal-documents/$kind/revisions/$versionNumber'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -226,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAuditLogsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/legal-documents/': {
+      id: '/_authenticated/legal-documents/'
+      path: '/legal-documents'
+      fullPath: '/legal-documents/'
+      preLoaderRoute: typeof AuthenticatedLegalDocumentsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/auth/email-change/confirm': {
       id: '/auth/email-change/confirm'
       path: '/auth/email-change/confirm'
@@ -247,6 +293,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthPasswordResetConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/legal-documents/$kind/': {
+      id: '/_authenticated/legal-documents/$kind/'
+      path: '/legal-documents/$kind'
+      fullPath: '/legal-documents/$kind/'
+      preLoaderRoute: typeof AuthenticatedLegalDocumentsKindIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/legal-documents/$kind/revisions/$versionNumber': {
+      id: '/_authenticated/legal-documents/$kind/revisions/$versionNumber'
+      path: '/legal-documents/$kind/revisions/$versionNumber'
+      fullPath: '/legal-documents/$kind/revisions/$versionNumber'
+      preLoaderRoute: typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -255,6 +315,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
   AuthenticatedAccountsIndexRoute: typeof AuthenticatedAccountsIndexRoute
   AuthenticatedAuditLogsIndexRoute: typeof AuthenticatedAuditLogsIndexRoute
+  AuthenticatedLegalDocumentsIndexRoute: typeof AuthenticatedLegalDocumentsIndexRoute
+  AuthenticatedLegalDocumentsKindIndexRoute: typeof AuthenticatedLegalDocumentsKindIndexRoute
+  AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute: typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -262,6 +325,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
   AuthenticatedAccountsIndexRoute: AuthenticatedAccountsIndexRoute,
   AuthenticatedAuditLogsIndexRoute: AuthenticatedAuditLogsIndexRoute,
+  AuthenticatedLegalDocumentsIndexRoute: AuthenticatedLegalDocumentsIndexRoute,
+  AuthenticatedLegalDocumentsKindIndexRoute:
+    AuthenticatedLegalDocumentsKindIndexRoute,
+  AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute:
+    AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

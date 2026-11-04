@@ -36,6 +36,7 @@ const NOT_FOUND_TITLE = 'ページが見つかりません。';
 const NAVIGATION_NAME = '管理メニュー';
 const MENU_ITEMS = [
   'ダッシュボード',
+  '法務文書',
   '管理者アカウント',
   '監査ログ',
   '自分のアカウント',
@@ -79,7 +80,7 @@ beforeEach(async () => {
 });
 
 describe('管理画面のシェル', () => {
-  test('ログイン後のダッシュボードに、空状態と4つのメニューとアカウントの表示を出す', async () => {
+  test('ログイン後のダッシュボードに、空状態と登録箇所のメニューとアカウントの表示を出す', async () => {
     await renderPageRouter({
       path: '/',
       createRoutes,

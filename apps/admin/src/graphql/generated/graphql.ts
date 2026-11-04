@@ -40,11 +40,37 @@ export type AuditLogFilterInput = {
   targetId?: string | null | undefined;
 };
 
+/** 下書きの破棄 */
+export type DiscardLegalDocumentDraftInput = {
+  expectedStateVersion: number;
+  kind: LegalDocumentKind;
+};
+
+/** 法務文書の種類 */
+export type LegalDocumentKind =
+  | 'LEGAL_NOTICE'
+  | 'PRIVACY'
+  | 'TERMS';
+
 /** AVIF・WebPに非対応のブラウザ向けの形式。原本がJPEGならJPG、SVGならSVG(SVGはこの形式だけで表示する)、それ以外はPNG */
 export type MediaImageFallbackFormat =
   | 'JPG'
   | 'PNG'
   | 'SVG';
+
+/** 下書きの公開 */
+export type PublishLegalDocumentInput = {
+  changeSummary: string;
+  expectedStateVersion: number;
+  kind: LegalDocumentKind;
+};
+
+/** 下書きの保存 */
+export type SaveLegalDocumentDraftInput = {
+  body: string;
+  expectedStateVersion: number;
+  kind: LegalDocumentKind;
+};
 
 export type AdminAccountsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -204,6 +230,47 @@ export type AdminViewerQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type AdminViewerQuery = { adminViewer: { id: string, nickname: string, title: string | null, email: string, role: AdminRole, remainingRecoveryCodes: number, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
 
+export type AdminDiscardLegalDocumentDraftMutationVariables = Exact<{
+  input: DiscardLegalDocumentDraftInput;
+}>;
+
+
+export type AdminDiscardLegalDocumentDraftMutation = { discardLegalDocumentDraft: { kind: LegalDocumentKind, stateVersion: number, latestBody: string | null, draft: { body: string, savedAt: string, savedBy: { id: string, nickname: string | null } } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string, publishedBy: { id: string, nickname: string | null } }> } };
+
+export type AdminLegalDocumentVersionQueryVariables = Exact<{
+  kind: LegalDocumentKind;
+  versionNumber: number;
+}>;
+
+
+export type AdminLegalDocumentVersionQuery = { adminLegalDocumentVersion: { kind: LegalDocumentKind, versionNumber: number, publishedAt: string, changeSummary: string, body: string, isLatest: boolean, publishedBy: { id: string, nickname: string | null } } | null };
+
+export type AdminLegalDocumentQueryVariables = Exact<{
+  kind: LegalDocumentKind;
+}>;
+
+
+export type AdminLegalDocumentQuery = { adminLegalDocument: { kind: LegalDocumentKind, stateVersion: number, latestBody: string | null, draft: { body: string, savedAt: string, savedBy: { id: string, nickname: string | null } } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string, publishedBy: { id: string, nickname: string | null } }> } };
+
+export type AdminLegalDocumentsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminLegalDocumentsQuery = { adminLegalDocuments: Array<{ kind: LegalDocumentKind, latestVersionNumber: number | null, latestPublishedAt: string | null, hasDraft: boolean }> };
+
+export type AdminPublishLegalDocumentMutationVariables = Exact<{
+  input: PublishLegalDocumentInput;
+}>;
+
+
+export type AdminPublishLegalDocumentMutation = { publishLegalDocument: { kind: LegalDocumentKind, stateVersion: number, latestBody: string | null, draft: { body: string, savedAt: string, savedBy: { id: string, nickname: string | null } } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string, publishedBy: { id: string, nickname: string | null } }> } };
+
+export type AdminSaveLegalDocumentDraftMutationVariables = Exact<{
+  input: SaveLegalDocumentDraftInput;
+}>;
+
+
+export type AdminSaveLegalDocumentDraftMutation = { saveLegalDocumentDraft: { kind: LegalDocumentKind, stateVersion: number, latestBody: string | null, draft: { body: string, savedAt: string, savedBy: { id: string, nickname: string | null } } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string, publishedBy: { id: string, nickname: string | null } }> } };
+
 export type AdminSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -231,4 +298,10 @@ export const AdminRegenerateRecoveryCodesDocument = {"__meta__":{"hash":"sha256:
 export const AdminRequestEmailChangeDocument = {"__meta__":{"hash":"sha256:001d16267154b69081040699d102aa02a3daeb4b080daccf3fb4375ff43da5a7"}} as unknown as DocumentNode<AdminRequestEmailChangeMutation, AdminRequestEmailChangeMutationVariables>;
 export const AdminStartTotpResetDocument = {"__meta__":{"hash":"sha256:1b3ca75cae779b59323f5f62c21ed237e938f4ff28d99a975406ee2d754b21ff"}} as unknown as DocumentNode<AdminStartTotpResetMutation, AdminStartTotpResetMutationVariables>;
 export const AdminViewerDocument = {"__meta__":{"hash":"sha256:1ac496453595a8382b39f19b1b1f5772167f686970c6f4d851c2939d063f20bc"}} as unknown as DocumentNode<AdminViewerQuery, AdminViewerQueryVariables>;
+export const AdminDiscardLegalDocumentDraftDocument = {"__meta__":{"hash":"sha256:f620615f9b881fde219c19329207558d9e0a5c1ee9b956440dad46537119d0b5"}} as unknown as DocumentNode<AdminDiscardLegalDocumentDraftMutation, AdminDiscardLegalDocumentDraftMutationVariables>;
+export const AdminLegalDocumentVersionDocument = {"__meta__":{"hash":"sha256:3395f8b8763a894c9a0a44dea76d6e4e1defe78d667b1304ac8abebe1d02eef3"}} as unknown as DocumentNode<AdminLegalDocumentVersionQuery, AdminLegalDocumentVersionQueryVariables>;
+export const AdminLegalDocumentDocument = {"__meta__":{"hash":"sha256:42121f09a2acd07655238015d1e097883b34ca6d9a603b7fc22271d462f77ee5"}} as unknown as DocumentNode<AdminLegalDocumentQuery, AdminLegalDocumentQueryVariables>;
+export const AdminLegalDocumentsDocument = {"__meta__":{"hash":"sha256:2f5f703c05e4c378679abd43badd1cc30062941d402fc1ca4045ed4646c4b5c2"}} as unknown as DocumentNode<AdminLegalDocumentsQuery, AdminLegalDocumentsQueryVariables>;
+export const AdminPublishLegalDocumentDocument = {"__meta__":{"hash":"sha256:81c947606fe5b15c429d4107739c5f6696c874eebb73d163bce9f866986aa11c"}} as unknown as DocumentNode<AdminPublishLegalDocumentMutation, AdminPublishLegalDocumentMutationVariables>;
+export const AdminSaveLegalDocumentDraftDocument = {"__meta__":{"hash":"sha256:e0ae6b1245545720ebf463ace8663aaaf6b251a968c90992e6b0d4b0ff0b2085"}} as unknown as DocumentNode<AdminSaveLegalDocumentDraftMutation, AdminSaveLegalDocumentDraftMutationVariables>;
 export const AdminSystemStatusDocument = {"__meta__":{"hash":"sha256:cfd1cd38df39a20ba4d85b44cdc75b45715595ad92ef45f03d4bc5fd3146590c"}} as unknown as DocumentNode<AdminSystemStatusQuery, AdminSystemStatusQueryVariables>;

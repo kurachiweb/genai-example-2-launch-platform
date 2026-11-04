@@ -24,9 +24,10 @@ describe('メニューの項目の順序', () => {
     expect(ITEMS[0]?.to).toBe('/audit-logs');
   });
 
-  test('初版の登録はダッシュボード(10)・管理者アカウント(140)・監査ログ(150)・自分のアカウント(160)', () => {
+  test('登録はダッシュボード(10)・法務文書(120)・管理者アカウント(140)・監査ログ(150)・自分のアカウント(160)', () => {
     expect(orderAdminNavItems(ADMIN_NAV_ITEMS)).toStrictEqual([
       { to: '/', label: 'ダッシュボード', order: 10 },
+      { to: '/legal-documents', label: '法務文書', order: 120 },
       { to: '/accounts', label: '管理者アカウント', order: 140 },
       { to: '/audit-logs', label: '監査ログ', order: 150 },
       { to: '/account', label: '自分のアカウント', order: 160 },

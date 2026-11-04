@@ -1,0 +1,24 @@
+query AdminLegalDocument($kind: LegalDocumentKind!) {
+  adminLegalDocument(kind: $kind) {
+    kind
+    stateVersion
+    latestBody
+    draft {
+      body
+      savedAt
+      savedBy {
+        id
+        nickname
+      }
+    }
+    revisions {
+      versionNumber
+      publishedAt
+      changeSummary
+      publishedBy {
+        id
+        nickname
+      }
+    }
+  }
+}

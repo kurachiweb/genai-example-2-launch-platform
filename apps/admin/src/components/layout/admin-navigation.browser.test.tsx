@@ -109,12 +109,13 @@ describe('AdminNavigation', () => {
         .toHaveAttribute('href', '/users');
     });
 
-    test('既定では、本specの4つの項目を並べる', async () => {
+    test('既定では、登録箇所の項目をorderの順に並べる', async () => {
       await renderNavigation();
 
       await expect.element(navigation()).toBeVisible();
       expect(linkLabels(navigation().element())).toStrictEqual([
         'ダッシュボード',
+        '法務文書',
         '管理者アカウント',
         '監査ログ',
         '自分のアカウント',
@@ -127,6 +128,7 @@ describe('AdminNavigation', () => {
       ['/accounts?status=invited', '管理者アカウント'],
       ['/account', '自分のアカウント'],
       ['/audit-logs/detail', '監査ログ'],
+      ['/legal-documents/terms/revisions/1', '法務文書'],
     ])(
       '%sを開いている間は、%sの項目だけを現在のページとして示す',
       async (path, current) => {
@@ -194,6 +196,7 @@ describe('AdminNavigation', () => {
       await expect.element(sheetNavigation).toBeVisible();
       expect(linkLabels(sheetNavigation.element())).toStrictEqual([
         'ダッシュボード',
+        '法務文書',
         '管理者アカウント',
         '監査ログ',
         '自分のアカウント',
