@@ -473,6 +473,9 @@ describe('伏せ字の写し(logging.ts・redaction-patterns.ts)', () => {
     'IPV6_PATTERN',
     'LIBRARY_CREDIT_CARD_NUMBER_REPLACEMENT',
     'libraryCreditCardReplacement',
+    'UUID_PATTERN',
+    'isInsideUuid',
+    'isMatchInsideUuid',
     'CREDIT_CARD_PATTERN',
   ])(
     '値の形式による伏せ字の%sが、uフラグを除いてbackend-libの同名の宣言と一致する',

@@ -11,6 +11,13 @@ const API_KEY = `lsk_${'AbCdEfGhIj'.repeat(4)}K_-`;
 const LUHN_VALID_CARD_NUMBER = '4111111111111111';
 const LUHN_INVALID_CARD_NUMBER = '4111111111111112';
 const API_KEY_WITH_CARD_NUMBER = `lsk_AbCdEfGhIjKl${LUHN_VALID_CARD_NUMBER}MnOpQrStUvWxYzA`;
+const HYPHENATED_CARD_NUMBER = ['4111', '1111', '1111', '1111'].join('-');
+// 区切りの中の数字の並びがLuhnの検査を通るカード番号の形になるUUID
+const UUID_WITH_CARD_SHAPED_GROUPS = '015e5a15-444e-4123-8456-123451c99bf9';
+const UUID_WITH_CARD_SHAPED_FIRST_GROUP =
+  'abcd1234-5678-9012-3452-abcdefabcdef';
+const UPPERCASE_UUID_WITH_CARD_SHAPED_GROUPS =
+  '6F1C2B3A-9E8D-4012-8888-888881ABCDEF';
 
 // シークレット検出が実物のトークンと誤検知しないよう、テスト用の値を部品から組み立てる
 const JWT = [
@@ -114,6 +121,70 @@ describe('redactText', () => {
     expect(
       redactText(`${LUHN_VALID_CARD_NUMBER} と ${LUHN_INVALID_CARD_NUMBER}`),
     ).toBe(`${REDACTED} と ${LUHN_INVALID_CARD_NUMBER}`);
+  });
+
+  test.each([
+    [
+      '区切りの途中から始まる',
+      UUID_WITH_CARD_SHAPED_GROUPS,
+      '4123-8456-123451',
+    ],
+    [
+      '先頭の区切りの途中から始まる',
+      UUID_WITH_CARD_SHAPED_FIRST_GROUP,
+      '1234-5678-9012-3452',
+    ],
+    [
+      '大文字のUUIDの',
+      UPPERCASE_UUID_WITH_CARD_SHAPED_GROUPS,
+      '4012-8888-888881',
+    ],
+  ])(
+    '%sカード番号の形の数字の並びは、UUIDの中では残す',
+    (_name, uuid, cardShapedDigits) => {
+      expect(redactText(`番号 ${cardShapedDigits}`)).toBe(`番号 ${REDACTED}`);
+      expect(redactText(`相関ID ${uuid} の処理`)).toBe(`相関ID ${uuid} の処理`);
+    },
+  );
+
+  test.each([
+    ['文末のUUID', `相関ID ${UUID_WITH_CARD_SHAPED_GROUPS}`],
+    ['前後に16進の文字が続くUUID', `ab${UUID_WITH_CARD_SHAPED_GROUPS}cd`],
+    [
+      '前後に-と16進の文字が続くUUID',
+      `f0-${UUID_WITH_CARD_SHAPED_FIRST_GROUP}-a1`,
+    ],
+    [
+      '並んだ2つのUUID',
+      `${UUID_WITH_CARD_SHAPED_GROUPS},${UPPERCASE_UUID_WITH_CARD_SHAPED_GROUPS}`,
+    ],
+  ])('%sは、カード番号の形を含んでも残す', (_name, text) => {
+    expect(redactText(text)).toBe(text);
+  });
+
+  test.each([
+    [
+      'UUIDの隣の区切り無しのカード番号',
+      `${UUID_WITH_CARD_SHAPED_GROUPS} ${LUHN_VALID_CARD_NUMBER}`,
+      `${UUID_WITH_CARD_SHAPED_GROUPS} ${REDACTED}`,
+    ],
+    [
+      'UUIDの隣の空白区切りのカード番号',
+      `${UUID_WITH_CARD_SHAPED_GROUPS} 4111 1111 1111 1111`,
+      `${UUID_WITH_CARD_SHAPED_GROUPS} ${REDACTED}`,
+    ],
+    [
+      'UUIDの隣のハイフン区切りのカード番号',
+      `${UUID_WITH_CARD_SHAPED_GROUPS} ${HYPHENATED_CARD_NUMBER}`,
+      `${UUID_WITH_CARD_SHAPED_GROUPS} ${REDACTED}`,
+    ],
+    [
+      '16進の文字と-に続くカード番号',
+      `card-${HYPHENATED_CARD_NUMBER}`,
+      `card-${REDACTED}`,
+    ],
+  ])('UUIDの形でない%sは伏せ字にする', (_name, text, expected) => {
+    expect(redactText(text)).toBe(expected);
   });
 
   test('同じ文字列を続けて伏せても結果が変わらない', () => {

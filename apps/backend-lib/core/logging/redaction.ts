@@ -75,14 +75,41 @@ const IPV6_PATTERN: RedactionPattern = {
 const LIBRARY_CREDIT_CARD_NUMBER_REPLACEMENT = 'XXXX-XXXX-XXXX-XXXX';
 const libraryCreditCardReplacement = CREDIT_CARD_NUMBER_PATTERN.replacement;
 
-// 既製のLuhnの検査は保ち、検査を通った部分の既製の置き換えの文字列だけを差し替える
+const UUID_PATTERN = /[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}/g;
+
+const isInsideUuid = (text: string, start: number, end: number): boolean =>
+  [...text.matchAll(UUID_PATTERN)].some(
+    ({ index, 0: uuid }) => index <= start && end <= index + uuid.length,
+  );
+
+// String.prototype.replaceAllの置き換えの関数は、捕捉グループの後に一致の位置(数値)と対象の文字列を受け取る
+const isMatchInsideUuid = (
+  match: string,
+  rest: readonly unknown[],
+): boolean => {
+  const offsetIndex = rest.findIndex((value) => typeof value === 'number');
+  const offset = rest[offsetIndex];
+  const text = rest[offsetIndex + 1];
+  return (
+    typeof offset === 'number' &&
+    typeof text === 'string' &&
+    isInsideUuid(text, offset, offset + match.length)
+  );
+};
+
+// 既製のLuhnの検査は保ち、検査を通った部分の既製の置き換えの文字列だけを差し替える。ランダムなUUIDの区切りの数字の並びが検査を通ってIDが欠けないよう、UUIDの中に収まる一致は残す
 const CREDIT_CARD_PATTERN: RedactionPattern = {
   pattern: CREDIT_CARD_NUMBER_PATTERN.pattern,
-  replacement: (match: string, ...rest: readonly unknown[]) =>
-    (typeof libraryCreditCardReplacement === 'string'
-      ? libraryCreditCardReplacement
-      : libraryCreditCardReplacement(match, ...rest)
-    ).replaceAll(LIBRARY_CREDIT_CARD_NUMBER_REPLACEMENT, REDACTED),
+  replacement: (match: string, ...rest: readonly unknown[]) => {
+    if (isMatchInsideUuid(match, rest)) {
+      return match;
+    }
+    return (
+      typeof libraryCreditCardReplacement === 'string'
+        ? libraryCreditCardReplacement
+        : libraryCreditCardReplacement(match, ...rest)
+    ).replaceAll(LIBRARY_CREDIT_CARD_NUMBER_REPLACEMENT, REDACTED);
+  },
 };
 
 // redactByPatternは配列の順に置き換えるため、キーの一部が他のパターンに先に当たって形が崩れないよう、公開APIのキーを先頭に置く
