@@ -768,5 +768,6 @@ bun run admin:invite-super-admin -- --target <local|staging|prod> --email <メ�
 | `prod`     | `prod`              | 開発者だけが実行する(同上)                                                                                                                  | `--remote --env prod`のデプロイ先のD1                           | `https://genai-example-2-admin.lab.kurachiweb.com/auth/invitation`         |
 
 - 対象の環境とWranglerの引数・招待の完了の画面のオリジンは`apps/api/scripts/admin/invitation-targets.ts`の`INVITATION_TARGETS`・`invitationTarget`が定め、オリジンがWrangler設定の`ADMIN_SITE_ORIGIN`と一致することを同じディレクトリの単体テストが確かめる。
+- `staging`・`prod`を対象にした形は、開発者がClaude設定(`.claude/settings.json`)の`permissions.deny`に、例えば`Bash(*admin:invite-super-admin*staging*)`・`Bash(*admin:invite-super-admin*prod*)`・`Bash(*issue-super-admin-invitation*staging*)`・`Bash(*issue-super-admin-invitation*prod*)`として加える。`package.json`のスクリプト名と、スクリプトのファイルを直接実行する形の両方に一致させる。
 - `HASH_PEPPER`が注入されていないと、何も書き込まずに、上の表の注入付きの実行の形を示して失敗する。
 - 一時ファイルは`/tmp/super-admin-invitation-*/invitation.sql`(権限0600、トークンのハッシュだけを含み、実行の後に削除する)である。

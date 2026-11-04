@@ -53,7 +53,7 @@
 - 12メニューの画面・操作・操作種別・記録の呼び出し・ダッシュボードのカード(各後続spec)。本specは登録口と部品だけを持つ。
 - アップロードの受け付け・画像の保存と配信と自動判定・ファイルの削除(media-pipeline)。本specは用途の登録と紐付け・削除の呼び出しだけを行う。
 - bot判定の検証・厳密なレート制限カウンタ・定期実行の仕組み(backend-platform)、セッションの受け渡しの契約(api-gateway)、Cookieの属性と発行・CSP・bot判定のウィジェット(frontend-platform)、メールの描画と送信(email-delivery)、書記素の数え方(content-processing)。
-- staging・prodでの招待の発行コマンドの実行、シークレットと資源の用意(開発者の手作業・infra-delivery・launch-readiness)。AIエージェントはリモートのD1へ書き込めない(Claude設定のdeny)。
+- staging・prodでの招待の発行コマンドの実行、シークレットと資源の用意(開発者の手作業・infra-delivery・launch-readiness)。AIエージェントは実行しない。コマンドは子のプロセスとしてWranglerを起動し、Claude設定のdenyの`wrangler d1 * --remote`の規則に一致しないため、`--target staging`・`--target prod`の形は開発者がdenyへ加える(`docs/GUIDES/tech/operations/001-deployment.md`の初回の準備)。
 
 ### Allowed Dependencies
 
@@ -614,7 +614,7 @@ export declare function buildInvitationSql(input: {
 
 - 実行: `infisical --telemetry=false run --env <dev|staging|prod> -- bun run admin:invite-super-admin -- --target <local|staging|prod> --email <アドレス>`(`apps/api`で)。シークレット`HASH_PEPPER`はInfisicalの注入で受け取る(workerdではなくBunで動くコマンドのため、環境変数から読む)。
 - 処理: 引数の検証(メールは前後の空白を除いて254文字以内・`z.regexes.html5Email`)→`wrangler d1 execute DB <wranglerArgs> --json --command <buildLookupSql>`→有効な管理者なら失敗(2.3)→トークン(32バイトのbase64url)とハッシュ(`KeyedHasher`、用途`admin-auth-token-invitation`)とULID→SQLを一時ファイルに書き`wrangler d1 execute DB <wranglerArgs> --file`→一時ファイルを消し、`<adminOrigin>/auth/invitation#token=<平文>`と有効期限を表示する(2.1・2.2・2.4)。
-- `--target staging|prod`はリモートのD1へ書き込むため、開発者だけが実行する(AIエージェントはClaude設定のdenyで実行できない)。E2Eは`--target local`だけを使う(2.7)。
+- `--target staging|prod`はリモートのD1へ書き込むため、開発者だけが実行する(AIエージェントは実行しない。技術的な拒否は開発者がClaude設定のdenyへ加える)。E2Eは`--target local`だけを使う(2.7)。
 
 ### api/domain
 
@@ -1490,7 +1490,7 @@ export declare function currentTotpCode(secret: string, at?: Date): string;
 - `signInAsNewAdmin`: 乱数のアドレスで`issueSuperAdminInvitation`→`page`でリンクを開き、ニックネームとパスワード→手入力用の文字列から`nextTotpCode`で認証コード→リカバリコードの確認→ダッシュボードの表示を待つ(管理者のIDは発行の直後に`executeLocalD1`で読む)→`role`が`super_admin`以外なら`UPDATE admins SET role = <role> WHERE id = <ID>`を実行する(ロールは要求ごとに読み直されるため、同じ`page`のまま次の要求から反映される、17.4)。返したときの`page`はそのロールでログインしたダッシュボードにある。
 - `signInAdmin`: `/auth/login`でメールとパスワードとbot判定(ローカルのテスト用のキー)→`nextTotpCode`の認証コードでログインする(再ログイン・ログアウト後の確認に使う)。同じ時間窓の認証コードは再使用できないため、前回の時間窓を過ぎるまで待つ。
 - 最後の最上位管理者の保護は有効な全ての最上位管理者を数えるため、その拒否を確かめるテストは`withSoleActiveSuperAdmin`の中で操作する。他のテストの最上位管理者のロールを一時的に変えるため、Playwrightの管理者側のプロジェクトは並列数を1にする(`e2e/support/playwright-config.ts`の`PROJECT_WORKER_LIMITS`)。
-- `executeLocalD1`は、利用者の停止など画面から作れない状態の用意に後続specも使う。リモートのD1には書き込めない(Claude設定のdeny)。メールはMailpitの補助(identity-auth)で読む。
+- `executeLocalD1`は、利用者の停止など画面から作れない状態の用意に後続specも使う。Wranglerの引数を`--local --persist-to`に固定し、`--remote`を付けないため、リモートのD1には書き込めない。メールはMailpitの補助(identity-auth)で読む。
 - `security/007-admin-authorization.md`: 管理者の主体と利用者の主体の分離、ロールの順序と最低限のロールの宣言、所有権の判定、要求ごとのロールの読み込み、最後の最上位管理者の保護の書き込みの方式、管理者のセッションの期限、本人確認、bot判定の適用範囲。
 - `backend/008-audit-logging.md`: 操作種別の登録、記録の文を操作と同じ一括の書き込みに含める規約、個人情報を含めない規則(利用者は仮名化ID、検索文字列を残さない)、理由の要否、保持期間の削除、最新の日時の照会(1件と複数の対象、複数の対象はバインド変数の上限に合わせた分割)、利用側の単体テストが照会の偽物を自分で書かずに共有の偽物を使う規約(仮7)。
 - `frontend/009-admin-console-shell.md`: メニューとダッシュボードのカードの登録、ナビゲーションのランドマーク(`navigation`の区画の部品が名前付きの`nav`を描き、画面シェルはフッターを持たない)、カードの状態表示とエラーの分離、失敗の文言の選び方(`errorMessageOf`とプロファイルの`contactAvailable`、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない)、ロールによる操作の出し分け、共通部品の使い方。
