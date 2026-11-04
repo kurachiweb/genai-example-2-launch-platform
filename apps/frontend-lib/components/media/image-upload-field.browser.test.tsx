@@ -25,6 +25,7 @@ import type { UploadConstraints } from '../../utilities/media/upload-constraints
 import { z } from '../../utilities/validation/zod.ts';
 import { AppForm } from '../form/app-form.tsx';
 import { FormField } from '../form/form-field.tsx';
+import { SubmitButton } from '../form/submit-button.tsx';
 import { useAppForm } from '../form/use-app-form.ts';
 import {
   ImageUploadField,
@@ -608,6 +609,87 @@ describe('ImageUploadField', () => {
     await userEvent.upload(fileInputOf(container), [svg]);
     await fetch.reply(uploadedReply(svg, 'file-9'));
     await expect.element(page.getByRole('status')).toHaveTextContent('file-9');
+  });
+
+  test('フォームの中で送信中に送信すると、前の値で送らずに欄へ待つ旨を示して選択のボタンへフォーカスを移し、送信が終わると新しい値で送れる', async () => {
+    const fetch = stubUploadFetch();
+    const onSubmit = vi.fn<(values: { readonly logo: string }) => void>();
+    const schema = z.object({ logo: z.string() });
+    function LogoForm() {
+      const form = useAppForm(schema, { defaultValues: { logo: 'file-0' } });
+      return (
+        <AppForm
+          form={form}
+          onSubmit={onSubmit}
+          onSubmitError={() => undefined}
+          aria-label="プロダクト"
+        >
+          <FormField control={form.control} name="logo" label="ロゴ">
+            {(control) => (
+              <ImageUploadField
+                ref={control.ref}
+                label={LABEL}
+                constraints={LOGO}
+                edit={SQUARE}
+                contactAvailable
+                onUploaded={([uploaded]) => {
+                  if (uploaded !== undefined) {
+                    control.onChange(uploaded.fileId);
+                  }
+                }}
+                aria-labelledby={control.labelId}
+                aria-describedby={control['aria-describedby']}
+                aria-invalid={control['aria-invalid']}
+              />
+            )}
+          </FormField>
+          <SubmitButton>保存する</SubmitButton>
+        </AppForm>
+      );
+    }
+    const { container } = await render(
+      <div className="bg-background p-4 text-foreground">
+        <LogoForm />
+      </div>,
+    );
+    const named = page.getByRole('button', {
+      name: `ロゴ ${LABEL}`,
+      exact: true,
+    });
+    const submit = page.getByRole('button', { name: '保存する', exact: true });
+    const message =
+      'ロゴのアップロードが終わってから、もう一度お試しください。';
+    const svg = createSvgFile('logo.svg');
+
+    await userEvent.upload(fileInputOf(container), [svg]);
+    await expect.poll(() => fetch.pendingCount()).toBe(1);
+    await userEvent.click(submit);
+
+    await expect.element(liveRegionOf(container)).toHaveTextContent(message);
+    await expect.element(named).toHaveAccessibleDescription(message);
+    await expect.element(named).toHaveAttribute('aria-invalid', 'true');
+    await expect.element(named).toHaveFocus();
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(await runAxe(container)).toStrictEqual([]);
+
+    await fetch.reply(uploadedReply(svg, 'file-1'));
+    await expect
+      .element(liveRegionOf(container))
+      .toHaveTextContent('logo.svgをアップロードしました。');
+    await expect.element(named).not.toHaveAttribute('aria-invalid');
+    await userEvent.click(submit);
+
+    await expect
+      .poll(() => onSubmit.mock.calls)
+      .toStrictEqual([[{ logo: 'file-1' }]]);
+
+    await userEvent.upload(fileInputOf(container), [
+      createSvgFile('logo-2.svg'),
+    ]);
+    await expect
+      .element(liveRegionOf(container))
+      .toHaveTextContent('logo-2.svgを送信しています。');
+    expect(liveRegionOf(container).textContent).not.toContain(message);
   });
 
   describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {

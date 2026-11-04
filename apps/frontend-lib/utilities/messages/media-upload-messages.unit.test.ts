@@ -7,6 +7,7 @@ import {
   UPLOAD_STATUS_WAITING,
   uploadedAnnouncement,
   uploadingAnnouncement,
+  uploadPendingSubmitMessage,
 } from './media-upload-messages.ts';
 
 describe('アップロードの送信の文言', () => {
@@ -42,5 +43,11 @@ describe('アップロードの送信の文言', () => {
 
   test('アップロードしたファイルが無いときは何も伝えない', () => {
     expect(uploadedAnnouncement([])).toBe('');
+  });
+
+  test('送信中に送信を止めた時は、主語のアップロードが終わってから送り直すよう案内する', () => {
+    expect(uploadPendingSubmitMessage('ロゴ')).toBe(
+      'ロゴのアップロードが終わってから、もう一度お試しください。',
+    );
   });
 });

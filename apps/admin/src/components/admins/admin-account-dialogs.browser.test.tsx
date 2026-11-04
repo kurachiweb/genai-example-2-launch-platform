@@ -424,6 +424,52 @@ describe('プロフィールの編集', () => {
     await expect.element(titleInput()).toHaveAttribute('aria-invalid', 'true');
   });
 
+  test('画像のアップロード中に保存すると、以前の画像のまま保存せずダイアログを開いたまま画像の欄に待つ旨を示し、アップロードの後に新しい画像で保存する', async () => {
+    const uploads = stubUploadFetch();
+    const update = vi.fn(() =>
+      success({ updateAdminProfile: MODERATOR_ACCOUNT }),
+    );
+    await renderProfile(update);
+    const avatarButton = dialog().getByRole('button', {
+      name: 'プロフィール画像(任意) 画像を選択',
+      exact: true,
+    });
+    const svg = createSvgFile('avatar.svg');
+    const input = dialog()
+      .element()
+      .querySelector<HTMLInputElement>('input[type="file"]');
+    if (input === null) {
+      throw new Error('ファイルの入力欄が描画されていません。');
+    }
+
+    await userEvent.upload(input, [svg]);
+    await expect.poll(() => uploads.pendingCount()).toBe(1);
+    await saveButton().click();
+
+    await expect
+      .element(avatarButton)
+      .toHaveAccessibleDescription(
+        /プロフィール画像のアップロードが終わってから、もう一度お試しください。/,
+      );
+    await expect.element(avatarButton).toHaveFocus();
+    await expect.element(dialog()).toBeVisible();
+    expect(update).not.toHaveBeenCalled();
+
+    await uploads.reply(uploadedReply(svg, UPLOADED_FILE_ID));
+    await expect
+      .element(dialog().getByText('アップロード済み').first())
+      .toBeVisible();
+    await saveButton().click();
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    expect(update).toHaveBeenCalledExactlyOnceWith({
+      id: MODERATOR_ACCOUNT.id,
+      nickname: '審査の担当',
+      title: 'モデレーション担当',
+      avatarFileId: UPLOADED_FILE_ID,
+    });
+  });
+
   test('欄に対応しない失敗は、ダイアログの中に問い合わせを促さない文言で示す', async () => {
     await renderProfile(() =>
       failure({

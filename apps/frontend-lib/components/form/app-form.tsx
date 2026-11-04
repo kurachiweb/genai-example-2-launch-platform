@@ -3,6 +3,7 @@ import {
   type SubmitEvent,
   useEffect,
   useRef,
+  useState,
 } from 'react';
 import {
   type FieldPath,
@@ -13,6 +14,7 @@ import {
 } from 'react-hook-form';
 
 import { mountStateOf } from './field-mount.ts';
+import { createSubmitHolds, SubmitHoldsContext } from './submit-hold.ts';
 import { applyServerFieldErrors } from '../../utilities/forms/server-field-errors.ts';
 import {
   type FieldErrorDetail,
@@ -82,6 +84,7 @@ export function AppForm<TFieldValues extends FieldValues, TTransformedValues>({
 }: AppFormProps<TFieldValues, TTransformedValues>) {
   const submittingRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const [submitHolds] = useState(createSubmitHolds);
 
   // 遅い回線や自動入力で水和の前に入力欄へ入った値は、DOMに残ってもフォームの状態に入らず送信ボタンが無効のまま残るため、水和の直後に取り込んで検証し直す
   useEffect(() => {
@@ -147,6 +150,12 @@ export function AppForm<TFieldValues extends FieldValues, TTransformedValues>({
     if (submittingRef.current) {
       return;
     }
+    // アップロード中の欄などの値はまだ前の値のため、そのまま送ると古い値で保存して成功を示してしまう。送らずに、その欄に待つ理由を示させる
+    const held = submitHolds.first();
+    if (held !== undefined) {
+      held.onSubmitHeld();
+      return;
+    }
     submittingRef.current = true;
     try {
       await form.handleSubmit(submitValues)(event);
@@ -166,7 +175,7 @@ export function AppForm<TFieldValues extends FieldValues, TTransformedValues>({
         {...props}
         method="post"
       >
-        {children}
+        <SubmitHoldsContext value={submitHolds}>{children}</SubmitHoldsContext>
       </form>
     </FormProvider>
   );

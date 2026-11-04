@@ -236,6 +236,51 @@ describe('プロフィール', () => {
       .not.toBeInTheDocument();
   });
 
+  test('画像のアップロード中に保存すると、以前の画像のまま保存せず画像の欄に待つ旨を示し、アップロードの後に新しい画像で保存する', async () => {
+    const uploads = stubUploadFetch();
+    const update = vi.fn(() =>
+      success({ updateAdminProfile: selfAccountOf('VIEWER') }),
+    );
+    await renderWith(
+      new Map<unknown, GraphQLHandler>([[AdminUpdateProfileDocument, update]]),
+      WITH_AVATAR,
+    );
+    const avatarButton = profile().getByRole('button', {
+      name: 'プロフィール画像(任意) 画像を選択',
+      exact: true,
+    });
+    const svg = createSvgFile('avatar.svg');
+
+    await userEvent.upload(fileInputOf(profile().element()), [svg]);
+    await expect.poll(() => uploads.pendingCount()).toBe(1);
+    await saveButton().click();
+
+    await expect
+      .element(avatarButton)
+      .toHaveAccessibleDescription(
+        /プロフィール画像のアップロードが終わってから、もう一度お試しください。/,
+      );
+    await expect.element(avatarButton).toHaveFocus();
+    expect(update).not.toHaveBeenCalled();
+    expect(page.getByText('プロフィールを保存しました。').query()).toBeNull();
+
+    await uploads.reply(uploadedReply(svg, UPLOADED_FILE_ID));
+    await expect
+      .element(profile().getByText('アップロード済み').first())
+      .toBeVisible();
+    await saveButton().click();
+
+    await expect
+      .element(page.getByText('プロフィールを保存しました。'))
+      .toBeVisible();
+    expect(update).toHaveBeenCalledExactlyOnceWith({
+      id: SELF_ID,
+      nickname: ADMIN_NICKNAME,
+      title: 'サポート担当',
+      avatarFileId: UPLOADED_FILE_ID,
+    });
+  });
+
   test('アップロードの想定外の失敗は、問い合わせを促す文を含めずに示す', async () => {
     const uploads = stubUploadFetch();
     await renderWith();

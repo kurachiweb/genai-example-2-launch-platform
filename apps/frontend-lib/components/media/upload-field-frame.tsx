@@ -1,4 +1,4 @@
-import { type Ref, type RefObject, useCallback, useId } from 'react';
+import { type Ref, type RefObject, useCallback, useId, useState } from 'react';
 
 import type { MediaType } from '../../../common-lib/media/media-types.ts';
 import { cn } from '../../utilities/class-names.ts';
@@ -9,8 +9,10 @@ import {
   UPLOAD_STATUS_WAITING,
   uploadedAnnouncement,
   uploadingAnnouncement,
+  uploadPendingSubmitMessage,
 } from '../../utilities/messages/media-upload-messages.ts';
 import { FormMessage } from '../form/form-message.tsx';
+import { useSubmitHold } from '../form/submit-hold.ts';
 import { Button } from '../ui/button/button.tsx';
 import { FileDropZone } from './file-drop-zone.tsx';
 import {
@@ -28,6 +30,8 @@ export interface UploadFieldAriaProps {
 
 export interface UploadFieldFrameProps extends UploadFieldAriaProps {
   readonly label: string;
+  // 文言の主語(UploadConstraintsのsubjectLabel)
+  readonly subjectLabel: string;
   readonly accept: readonly MediaType[];
   readonly multiple: boolean;
   readonly disabled: boolean;
@@ -78,7 +82,11 @@ const statusOf = (
 const errorsOf = (
   selectionErrors: readonly string[],
   upload: FileUploadState,
+  heldMessage: string | undefined,
 ): readonly string[] => {
+  if (heldMessage !== undefined) {
+    return [heldMessage];
+  }
   if (selectionErrors.length > 0) {
     return selectionErrors;
   }
@@ -104,6 +112,7 @@ const progressOf = (upload: FileUploadState): string => {
 // 画像と添付の入力欄が共有する、選択の領域・一覧・エラー・再試行・送信の状態の読み上げの並び
 export function UploadFieldFrame({
   label,
+  subjectLabel,
   accept,
   multiple,
   disabled,
@@ -120,7 +129,21 @@ export function UploadFieldFrame({
   className,
 }: UploadFieldFrameProps) {
   const errorId = useId();
-  const errors = errorsOf(selectionErrors, upload);
+  const uploading = upload.status === 'uploading';
+  // 送信を止めた旨は、その送信が終わるまでだけ示す。次の送信で再び出ないよう、送信が終わった描画で戻す
+  const [held, setHeld] = useState(false);
+  if (held && !uploading) {
+    setHeld(false);
+  }
+  useSubmitHold(uploading, () => {
+    setHeld(true);
+    selectButtonRef.current?.focus();
+  });
+  const errors = errorsOf(
+    selectionErrors,
+    upload,
+    held && uploading ? uploadPendingSubmitMessage(subjectLabel) : undefined,
+  );
   const hasErrors = errors.length > 0;
   const retryable =
     selectionErrors.length === 0 &&
@@ -152,7 +175,7 @@ export function UploadFieldFrame({
         accept={accept}
         multiple={multiple}
         disabled={disabled}
-        pending={upload.status === 'uploading'}
+        pending={uploading}
         onSelect={onSelect}
         aria-labelledby={labelledBy}
         aria-describedby={describedByIds === '' ? undefined : describedByIds}

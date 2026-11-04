@@ -22,3 +22,6 @@ export const uploadedAnnouncement = (fileNames: readonly string[]): string => {
   }
   return `${fileNames.join('、')}の${countFormat.format(fileNames.length)}件をアップロードしました。`;
 };
+
+export const uploadPendingSubmitMessage = (subjectLabel: string): string =>
+  `${subjectLabel}のアップロードが終わってから、もう一度お試しください。`;

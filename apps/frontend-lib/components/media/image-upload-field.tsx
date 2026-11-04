@@ -140,6 +140,7 @@ export function ImageUploadField({
       <UploadFieldFrame
         {...aria}
         label={label}
+        subjectLabel={constraints.subjectLabel}
         accept={constraints.allowedTypes}
         multiple={multiple}
         disabled={disabled}

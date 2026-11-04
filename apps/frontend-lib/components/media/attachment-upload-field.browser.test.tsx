@@ -14,6 +14,11 @@ import {
 } from '../../test/fake-upload-fetch.ts';
 import { createDocumentFile, createImageFile } from '../../test/media-files.ts';
 import type { UploadConstraints } from '../../utilities/media/upload-constraints.ts';
+import { z } from '../../utilities/validation/zod.ts';
+import { AppForm } from '../form/app-form.tsx';
+import { FormField } from '../form/form-field.tsx';
+import { SubmitButton } from '../form/submit-button.tsx';
+import { useAppForm } from '../form/use-app-form.ts';
 import {
   AttachmentUploadField,
   type AttachmentUploadFieldProps,
@@ -217,6 +222,72 @@ describe('AttachmentUploadField', () => {
 
     await expect.element(selectButton()).toBeDisabled();
     await expect.element(retryButton()).toBeDisabled();
+  });
+
+  test('フォームの中で複数のファイルの送信が全て終わるまで、送信を止めて欄へ待つ旨を示す', async () => {
+    const fetch = stubUploadFetch();
+    const onSubmit = vi.fn<(values: { readonly files: string[] }) => void>();
+    const schema = z.object({ files: z.array(z.string()) });
+    function InquiryForm() {
+      const form = useAppForm(schema, { defaultValues: { files: [] } });
+      return (
+        <AppForm
+          form={form}
+          onSubmit={onSubmit}
+          onSubmitError={() => undefined}
+          aria-label="問い合わせ"
+        >
+          <FormField control={form.control} name="files" label="添付">
+            {(control) => (
+              <AttachmentUploadField
+                ref={control.ref}
+                label={LABEL}
+                constraints={ATTACHMENTS}
+                multiple
+                contactAvailable
+                onUploaded={(uploaded) => {
+                  control.onChange([
+                    ...control.value,
+                    ...uploaded.map(({ fileId }) => fileId),
+                  ]);
+                }}
+                aria-labelledby={control.labelId}
+                aria-describedby={control['aria-describedby']}
+                aria-invalid={control['aria-invalid']}
+              />
+            )}
+          </FormField>
+          <SubmitButton>送信する</SubmitButton>
+        </AppForm>
+      );
+    }
+    const { container } = await render(<InquiryForm />);
+    const named = page.getByRole('button', {
+      name: `添付 ${LABEL}`,
+      exact: true,
+    });
+    const submit = page.getByRole('button', { name: '送信する', exact: true });
+    const message =
+      '添付ファイルのアップロードが終わってから、もう一度お試しください。';
+    const first = createDocumentFile('a.txt', 'text/plain', 1);
+    const second = createDocumentFile('b.txt', 'text/plain', 1);
+
+    await userEvent.upload(fileInputOf(container), [first, second]);
+    await fetch.reply(uploadedReply(first, 'file-1'));
+    await expect.poll(() => fetch.calls.length).toBe(2);
+    await userEvent.click(submit);
+
+    await expect.element(named).toHaveAccessibleDescription(message);
+    await expect.element(named).toHaveFocus();
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await fetch.reply(uploadedReply(second, 'file-2'));
+    await expect.element(named).not.toHaveAccessibleDescription(message);
+    await userEvent.click(submit);
+
+    await expect
+      .poll(() => onSubmit.mock.calls)
+      .toStrictEqual([[{ files: ['file-1', 'file-2'] }]]);
   });
 
   describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
