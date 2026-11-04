@@ -5,29 +5,18 @@ import {
   toUtcCronExpression,
   type BusinessTimeOfDay,
 } from '../../apps/backend-lib/core/time/business-time.ts';
+import {
+  type LocalWorker,
+  resolveLocalWorkerOrigin,
+} from './local-worker-origins.ts';
 
-export type ScheduledTriggerWorker = 'api' | 'event';
+export type ScheduledTriggerWorker = LocalWorker;
 
 export interface ScheduledTriggerInput {
   readonly worker: ScheduledTriggerWorker;
   readonly businessDate: string;
   readonly businessTime: string;
 }
-
-interface WorkerOriginDefinition {
-  readonly defaultOrigin: string;
-  readonly originEnvKey: string;
-}
-
-const WORKER_ORIGINS: Readonly<
-  Record<ScheduledTriggerWorker, WorkerOriginDefinition>
-> = {
-  api: { defaultOrigin: 'http://localhost:48042', originEnvKey: 'E2E_API_URL' },
-  event: {
-    defaultOrigin: 'http://localhost:48043',
-    originEnvKey: 'E2E_EVENT_URL',
-  },
-};
 
 // Wranglerの版で経路と引数が変わり得るため、ローカルの定期実行の経路はこの1箇所にだけ書く
 const LOCAL_SCHEDULED_PATH = '/cdn-cgi/local/scheduled';
@@ -57,9 +46,10 @@ export function buildScheduledTriggerURL(
   const timeOfDay = parseBusinessTime(input.businessTime);
   const cron = toUtcCronExpression(timeOfDay);
   const scheduledTime = fromBusinessDateTime(businessDate, timeOfDay);
-  const { defaultOrigin, originEnvKey } = WORKER_ORIGINS[input.worker];
-  // 空文字を設定しても空のURLで要求しないよう、未設定と同じく既定のオリジンを使う
-  const url = new URL(LOCAL_SCHEDULED_PATH, env[originEnvKey] || defaultOrigin);
+  const url = new URL(
+    LOCAL_SCHEDULED_PATH,
+    resolveLocalWorkerOrigin(input.worker, env),
+  );
   url.searchParams.set('cron', cron);
   url.searchParams.set('time', String(scheduledTime.getTime()));
   return url;

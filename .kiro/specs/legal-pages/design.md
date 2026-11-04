@@ -206,7 +206,7 @@ apps/
     ├── graphql/admin-legal-documents.ts                # 取得の設定・loader・生成した型からの変換(単体テスト併置)
     └── graphql/operations/legal/                       # 1ファイル1操作の*.graphql(操作名はAdminで始める。照会3つと変更3つ)
 e2e/
-├── client/legal-pages.e2e.test.ts                      # フッターから3つの公開ページへの到達
+├── client/legal-pages.e2e.test.ts                      # フッターから3つの公開ページへの到達と、公開ページの取得の流れ(7.6)
 └── admin/legal-documents.e2e.test.ts                   # 下書きの保存・公開・公開ページ・過去版・続けての公開(管理者はadmin-foundationの`signInAsNewAdmin`で用意する)
 docs/GUIDES/tech/db/005-draft-and-published-versions.md
 ```
@@ -225,6 +225,7 @@ docs/GUIDES/tech/db/005-draft-and-published-versions.md
 - `docs/GUIDES/tech/db/003-schema-conventions.md` — 「マイグレーション」の節に「初期データ」の項を加え、`--custom`のマイグレーションの用途に初期データを足す。書く内容は、固定のULIDと作成日時・更新日時の値をSQLに書くこと、一意の列に対する`INSERT … ON CONFLICT … DO NOTHING`で重複を無視すること、テーブルの作成とは別のカスタムマイグレーションにしてテーブルの作成の直後に適用すること、Workers統合テストのデータベースにもマイグレーションと同じく常に入るためテストはその行がある前提で書くこと、`--custom`のマイグレーションとスナップショットの関係(タスク1.1で確かめた結果)である。プロジェクト名と本サービス特有の用語は含めない(2026-11-04に決定)。
 - `docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md` — 「マイグレーションの生成と適用」の`--custom`の用途の1文に初期データを足し、`db/003`の「初期データ」へリンクする。
 - `apps/client/src/components/layout/site-links.ts`・`apps/client/src/components/auth/account-messages.ts` — 法務文書のパスと名前を`apps/common-lib/legal/legal-documents.ts`から作る(値は変わらない)。
+- `apps/client/src/components/layout/site-footer.tsx` — 共通フッターの法務文書の3つのリンクを、`site-links.ts`の`FOOTER_LEGAL_DOCUMENT_LINKS`から型付きの`Link`で描き、ページを読み込み直さずに遷移させる(行き先の経路が無い料金・問い合わせ・ヘルプは`<a href>`のまま。7.6で決定)。
 - `apps/common-lib/admin/audit-action.ts`・`apps/admin/src/components/audit/audit-logs-messages.ts` — `AuditTargetKind`の型・対象の種類の集合・表示名から`'legal-document'`を除く。監査ログの対象の種類の列にCHECK制約は無く、この値で記録した監査ログも無いため、マイグレーションは要らない。共用部品の変更は各アプリの配置先へ写す。
 - `.kiro/specs/admin-foundation/design.md` — `AuditTargetKind`の値の一覧から`'legal-document'`を除く。
 - `docs/GUIDES/service/design/002-page-layouts.md` — 利用者側のURLの表に過去版の3行、外部リンクの`rel`の表に法務文書(`noopener`)、法務文書の公開ページと過去版の配置の節、管理者側の法務文書の画面の構成とURL(仮4)を加える。

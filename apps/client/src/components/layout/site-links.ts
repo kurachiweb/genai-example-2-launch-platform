@@ -2,6 +2,7 @@ import {
   LEGAL_DOCUMENT_KINDS,
   LEGAL_DOCUMENT_LABELS,
   LEGAL_DOCUMENT_PATHS,
+  type LegalDocumentPath,
 } from '../../../common-lib/legal/legal-documents.ts';
 
 export interface SiteLink {
@@ -65,11 +66,20 @@ export const FOOTER_HELP_TOP_LINK: SiteLink = Object.freeze({
 
 export const FOOTER_POLICY_NAVIGATION_LABEL = '規約・問い合わせ';
 
+export interface LegalDocumentSiteLink {
+  readonly to: LegalDocumentPath;
+  readonly label: string;
+}
+
+export const FOOTER_LEGAL_DOCUMENT_LINKS: readonly LegalDocumentSiteLink[] =
+  Object.freeze(
+    LEGAL_DOCUMENT_KINDS.map((kind) => ({
+      to: LEGAL_DOCUMENT_PATHS[kind],
+      label: LEGAL_DOCUMENT_LABELS[kind],
+    })),
+  );
+
 export const FOOTER_POLICY_LINKS: readonly SiteLink[] = Object.freeze([
-  ...LEGAL_DOCUMENT_KINDS.map((kind) => ({
-    href: LEGAL_DOCUMENT_PATHS[kind],
-    label: LEGAL_DOCUMENT_LABELS[kind],
-  })),
   { href: '/pricing', label: '料金' },
   { href: CONTACT_HREF, label: 'お問い合わせ' },
 ]);

@@ -16,7 +16,7 @@ const randomDocumentationIpv6 = (): string => {
 export async function assumeDistinctClientIp(
   context: BrowserContext,
   baseURL: string | undefined,
-): Promise<void> {
+): Promise<string> {
   if (!baseURL) {
     throw new Error('E2E対象のURLが設定されていません');
   }
@@ -33,4 +33,5 @@ export async function assumeDistinctClientIp(
       });
     },
   );
+  return clientIp;
 }

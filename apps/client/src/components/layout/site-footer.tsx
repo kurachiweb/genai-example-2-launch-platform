@@ -1,8 +1,10 @@
+import { Link } from '@tanstack/react-router';
 import type { ComponentType } from 'react';
 
 import {
   FOOTER_HELP_NAVIGATION_LABEL,
   FOOTER_HELP_TOP_LINK,
+  FOOTER_LEGAL_DOCUMENT_LINKS,
   FOOTER_POLICY_LINKS,
   FOOTER_POLICY_NAVIGATION_LABEL,
   SITE_NAME,
@@ -44,6 +46,13 @@ export function SiteFooter({ helpLinks }: SiteFooterProps) {
         <nav aria-label={FOOTER_POLICY_NAVIGATION_LABEL}>
           <p className="font-semibold">{FOOTER_POLICY_NAVIGATION_LABEL}</p>
           <ul className={LINK_LIST_CLASS_NAME}>
+            {FOOTER_LEGAL_DOCUMENT_LINKS.map(({ to, label }) => (
+              <li key={to}>
+                <Link to={to} className={LINK_CLASS_NAME}>
+                  {label}
+                </Link>
+              </li>
+            ))}
             {FOOTER_POLICY_LINKS.map(({ href, label }) => (
               <li key={href}>
                 <a href={href} className={LINK_CLASS_NAME}>

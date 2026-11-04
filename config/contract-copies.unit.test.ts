@@ -30,6 +30,8 @@ const FRONTEND_RATE_LIMIT_KEY_HASH =
 const BACKEND_RATE_LIMIT_KEY =
   'apps/backend-lib/core/rate-limit/rate-limit-key.ts';
 const BACKEND_KEYED_HASHER = 'apps/backend-lib/core/crypto/keyed-hasher.ts';
+const BACKEND_HEALTH_ROUTE = 'apps/backend-lib/workers/http/health-route.ts';
+const E2E_API_RATE_LIMIT = 'e2e/support/api-rate-limit.ts';
 
 type ExtractedValue =
   | string
@@ -561,5 +563,13 @@ describe('レート制限のキーのハッシュ化の写し(rate-limit-key-has
       expect(backend).toMatch(/^[A-Za-z0-9_-]{86}$/);
       expect(frontend).toBe(backend);
     }
+  });
+});
+
+describe('ヘルスチェックの経路の写し(e2e/support/api-rate-limit.ts)', () => {
+  test('APIサーバーの制限を使い切る要求の経路がbackend-libのHEALTH_CHECK_PATHと一致する', () => {
+    expect(readString(E2E_API_RATE_LIMIT, 'HEALTH_CHECK_PATH')).toBe(
+      readString(BACKEND_HEALTH_ROUTE, 'HEALTH_CHECK_PATH'),
+    );
   });
 });

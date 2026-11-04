@@ -180,7 +180,7 @@
   - 完了状態: 検査とテストがすべて成功し、カバレッジが閾値を満たし、報告に申し送りの事項が載っている
   - _Requirements: 10.1, 10.3, 10.6_
 
-- [ ] 7.6 公開ページの取得の流れをE2Eテストで確かめる(frontend-platformの申し送り)
+- [x] 7.6 公開ページの取得の流れをE2Eテストで確かめる(frontend-platformの申し送り)
   - frontend-platformの第4回の判断44により、ロードマップの順で最初に`loader`でTanStack Queryの取得を始めるページである本specの公開ページで、frontend-platformの要件6.5・14.4・11.6のうち同specで確かめられなかった取得の流れを確かめる。テストは`e2e/client/legal-pages.e2e.test.ts`に置く
   - (a)`/terms`を開く前から中継の経路(`/_bff/graphql`)への`POST`を記録し、ハイドレーションの後に件数が0で、文書の名前の見出しと本文(準備中ならその表示)がサーバー側の描画のままであること。(b)スクリプトを無効にしたコンテキストで`/terms`を開いても見出しと本文(準備中ならその表示)がHTMLにあること。(c)トップページから共通フッターの利用規約のリンクでブラウザ内の画面遷移をする時に、`page.route`で中継の経路への応答を想定外の失敗(状態コード500・エラーコード`internal_error`の共通のエラー形式)にすると、共通レイアウトの中に想定外のエラーの表示(再試行と問い合わせの導線)が出ること
   - サーバー側の描画での取得の失敗の状態コード500と、部品の描画中の例外がサーバー側の描画で状態コード500にならない可能性は、APIサーバーを起動したまま決定的に起こせる手段があれば確かめる。無ければ、飛ばした理由と確かめた範囲を開発者への報告に書き、launch-readinessへの申し送りに含める
@@ -216,3 +216,4 @@
 - 7.2: `e2e/client/legal-pages.e2e.test.ts`の補助`footerPolicyNavigation`・`expectFooterLegalLinks`・`expectLoadedDocument`は7.6でも使う。見出しは読み込み中・失敗でも文書の名前で出るため、`expectLoadedDocument`で準備中の文言か「最終改訂日」の表示とalertが無いことを確かめる(「最終改訂日」は`<dt>`に絞るとより確実で、7.6で直してよい)。実行は`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/client/legal-pages --project=client`(api・clientが要る)
 - 7.3: `docs/GUIDES/tech/db/005-draft-and-published-versions.md`を新規作成し、003に「初期データ」の項を加えた(例の値は実際の初期データと別)。ログのカテゴリは規約の3要素`['api', 'legal', 'draft']`・`['api', 'legal', 'publish']`に直し、固有の値として`docs/onboardings/project-values.md`の「法務文書」の節に置いた。tech/README.md・README.md・CLAUDE.mdのdb行の範囲も更新した(tech/README.mdの手順「本索引は変更しない」とは食い違うが、content-processingの前例に合わせた)
 - 7.4: プライバシーポリシーの大枠の各委託先の項の共通の規則に「委託先が利用の条件として記載を求める事項は3項目の後に加える」を足し、Cloudflareの項に「bot判定」(Turnstile Privacy Addendum)を加えた(既存の3項目は不変)。文言規則には実装の文言81件と組み立てる9件を転記し、`check-legal-copy.ts`(scratchpad)で欠けが0件であることを確かめた。準拠方針に(注9)を新設。admin-foundationのdesign.mdの27・53行目に「法務文書の操作は監査ログに記録しない」を注記
+- 7.6: 共通フッターの法務文書の3リンクを型付きの`Link`へ移した(`FOOTER_LEGAL_DOCUMENT_LINKS`。frontend-platformのdesign.mdの「全経路がそろう段階で`Link`へ移す」に従った。料金・問い合わせ・ヘルプは`<a>`のまま)。サーバー側の描画での取得の失敗の500は、APIサーバーのIPアドレス単位の制限を直接の要求で使い切り(`e2e/support/api-rate-limit.ts`)、同じIPを名乗って開くことで決定的に確かめた(起こすのは想定内の429で、想定外の失敗は起こせない)。確かめられなかった項目: 部品の描画中の例外がサーバー側の描画で500にならない可能性(launch-readinessへの申し送り)。サーバー側の描画で失敗するとハイドレーションの後にエラーの文言が変わる(`GraphQLClientError`が復元されないため。全ページに及ぶためfrontend-platform・launch-readinessへ申し送り、テストはalert・再試行・問い合わせの有無で確かめる)。`e2e/support/reachability.unit.test.ts`の1件はポート48044でclientが動いている間に失敗する既存の環境依存。`test:e2e:dev-and-preview`の1回目はプレビュー段階の退会のテストがローカルD1の`SQLITE_BUSY`で1件失敗し、再実行で成功
