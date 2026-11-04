@@ -356,7 +356,7 @@ export type ChangeSummaryIssue =
   'empty' | 'too-long' | 'line-break' | 'forbidden-character';
 export declare function checkChangeSummary(
   value: string,
-): ChangeSummaryIssue | undefined; // 前後の空白を除いてから判定
+): ChangeSummaryIssue | undefined; // 禁止文字は入力のまま、改行・空・長さは前後の空白を除いてから判定
 export declare const CHANGE_SUMMARY_MESSAGES: Readonly<
   Record<ChangeSummaryIssue, string>
 >;

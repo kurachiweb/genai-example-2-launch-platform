@@ -10,7 +10,7 @@
   - 完了状態: 列の単体テストが成功し、2つのマイグレーションをローカルに適用でき、適用後のデータベースに版と下書きの無い3文書の行があり、同じ種類の行を追加できない。初期データのマイグレーションとスナップショットの関係の確認の結果が記録されている
   - _Requirements: 1.1, 1.3, 1.5, 1.6_
 
-- [ ] 1.2 (P) 種類・名前・利用者側のパス・入力規則を、4アプリが共有するディレクトリに作る
+- [x] 1.2 (P) 種類・名前・利用者側のパス・入力規則を、4アプリが共有するディレクトリに作る
   - 先に、3種類の名前とパス、過去版のパスの組み立て、版番号の解析(`1`と9桁は数値、`0`・先頭の0・符号・小数・文字・10桁は不正)、変更概要の前後の空白の除去と200・201書記素(絵文字・結合文字の境界)・改行・禁止文字・空の判定の順と文言、本文の100,000・100,001書記素と空の文言を確かめる単体テストを書く
   - 種類の値と表示順・名前・利用者側のパス・外部リンクの`rel`(`noopener`)と、本文と変更概要の上限・判定・文言・フロントとAPIで共用する検証規則を作る。書記素の数え方・禁止文字の判定・マークダウンの検証規則はcontent-processingの共有の部品を使う
   - 完了状態: 単体テストが成功し、利用者側・管理者側・APIサーバーの型検査で配置先から読み込める
@@ -193,3 +193,4 @@
 
 - 1.1: テーブルは`apps/db/schema/legal/`、マイグレーションは`20261104123845_legal_pages`(テーブル)と`20261104123848_legal_pages_seed`(初期データ)。種類の値はテーブルのファイルの非公開の定数`LEGAL_DOCUMENT_KIND_VALUES`(`['terms','privacy','legal-notice']`)のため、1.2で`LegalDocumentKind`と列の`enumValues`の一致を単体テストで確かめる。初期データの固定ULIDは`01M6HXNZ000000000000000001`(terms)・`…02`(privacy)・`…03`(legal-notice)で、時刻部と`created_at`・`updated_at`は`1793750400000`(2026-11-04T00:00:00Z)
 - 1.1(7.3の材料): `drizzle-kit generate --custom`でも`snapshot.json`が作られ、`prevIds`は直前のスナップショットのidを指し、内容は直前のスナップショットと`id`・`prevIds`以外が同一(キーの順は異なるため文字列の比較では差分に見える)。直後の`drizzle-kit generate`は「No schema changes」で何も作らない。既存の`20261103133903_identity_disposable_status_undetermined`も同じ。テンプレートのコメント行は削除した
+- 1.2: 共有定義は`apps/common-lib/legal/legal-documents.ts`・`legal-input-rules.ts`。`LEGAL_DOCUMENT_KINDS`と列の`enumValues`の一致テストは`apps/api/src/application/legal/legal-columns.unit.test.ts`(common-libはdbを読み込めない)。変更概要の判定は、禁止文字だけを前後の空白を除く前の入力で調べる(VT・FF・NELは空白かつ禁止文字のため、除いてから調べると黙って消える。005の規則と`markdownTextSchema`に合わせた。design.mdの契約のコメントも直した)。改行はLF・CRだけでU+2028・U+2029は扱わない。`changeSummarySchema()`は成功時に`trimWhiteSpace`で除いた値を返す
