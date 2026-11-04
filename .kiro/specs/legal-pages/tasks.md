@@ -46,7 +46,7 @@
   - _Boundary: LegalDocumentAdminReader_
   - _Requirements: 2.1, 3.1, 3.5, 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 3.3 (P) 下書きの保存・破棄と公開を作る
+- [x] 3.3 (P) 下書きの保存・破棄と公開を作る
   - 先に、偽のストアと固定の時計・ID生成を使う単体テストで、保存・破棄・公開の成功時に操作後の編集用の状態を返すこと、状態の版の不一致とストアの競合が競合のエラーに、下書きなしが下書きなしのエラーに、本文が同じ公開が変更なしのエラーになること、公開日時と版のIDの渡し方を確かめる
   - 下書きの保存・破棄と公開のユースケースを作り、拒否をエラーの表のコードと文言のアプリケーションのエラーにする
   - 完了状態: 単体テストが成功し、各拒否のコード(`legal_document_conflict`・`legal_document_draft_missing`・`legal_document_unchanged`)を確かめられる
@@ -198,3 +198,4 @@
 - 2.2: `LEGAL_TYPES`(`application/legal/legal-types.ts`)に6つの識別子(Store・Reader・AdminReader・DraftEditor・Publisher・VersionLocator)を先に定義した。ポートの入力の型名は`LegalDraftSaveInput`・`LegalDraftDiscardInput`・`LegalPublishInput`・`LegalPublishedVersionLocation`。`discardDraft`の`updated_at`はストア内の`new Date()`。競合に変える一意の違反は`(document_id, version_number)`だけ。Workers統合テストはテストごとに版を消して文書の行を初期データに戻す
 - 3.1: 公開の型(`PublicLegalVersion`・`PublicLegalRevision`・`PublicLegalDocument`)と変換`toPublicLegalVersion`・`toPublicLegalRevision`は`legal-document-reader.ts`からexportする(3.2が継承・再利用する)。`getDocument`は改訂履歴を状態の最新版の版番号以下に絞り、2回の照会の間に公開されても時点を揃える。偽のストアは各テストファイル内に置く
 - 3.2: 管理の照会は`StoreLegalDocumentAdminReader`。下書きと改訂の型を`AdminLegalDraftView`・`AdminLegalRevisionView`と名付けた(4.xのGraphQLの変換で使う)。管理者のIDは`Set`で重複を除き、空なら`findProfiles`を呼ばない。3.3は`LEGAL_TYPES.LegalDocumentAdminReader`を注入して`getDocument`で操作後の状態を返す
+- 3.3: 拒否の`AppError`は`application/legal/legal-document-errors.ts`(`LEGAL_DOCUMENT_ERRORS`・`legalDocumentDenialError`。admin-errors.tsと同じ形、design.mdのファイル構成にも追記)。破棄の下書きなしも`legal_document_draft_missing`(画面は下書きがある時だけ破棄を出すため通常は起きない)。ログは`[\x27api\x27,\x27legal\x27]`のinfoで属性は`action`・`kind`・版番号・`adminId`・`conflict`。7.3で`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`のカテゴリの表に`[\x27api\x27,\x27legal\x27]`を加える。入力の型は`LegalDraftSaveRequest`・`LegalDraftDiscardRequest`・`LegalPublishRequest`

@@ -162,6 +162,7 @@ apps/
 │   │   ├── legal-document-admin-reader.ts              # 管理の照会(下書き・公開者の解決)
 │   │   ├── legal-draft-editor.ts                       # 下書きの保存・破棄
 │   │   ├── legal-document-publisher.ts                 # 公開
+│   │   ├── legal-document-errors.ts                    # 拒否のAppError(Error Handlingの表のコードと文言)
 │   │   └── legal-version-locator.ts                    # LegalVersionLocator(後続specも使う)
 │   ├── infrastructure/legal/d1-legal-document-store.ts # 条件付きの書き込み・照会(Workers統合テスト併置)
 │   ├── presentation/graphql/modules/legal/             # スキーマモジュール(Workers統合テスト)
