@@ -81,7 +81,7 @@
   - _Boundary: ClientLegalPages_
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 9.3, 9.4, 10.3_
 
-- [ ] 5.2 (P) 過去版のページの部品を作る
+- [x] 5.2 (P) 過去版のページの部品を作る
   - 先に、ブラウザテストで、「<文書の名前>(第N版)」の見出し・公開日・変更概要・本文、過去の版で本文より前に過去の版である旨と最新版へのリンク、最新版で最新版である旨と公開ページへのリンク、axeの違反が0件であることを確かめる
   - 過去版のページの部品(`components/pages/`)と、過去の版・最新版である旨の案内の部品(`components/legal/`)を作る。公開日は5.1と同じ曜日を含まない年月日の形式で表示する。5.1と同じく生成物の型に依存しない
   - 完了状態: ブラウザテストが成功し、案内が本文より前に支援技術で読める位置にある
@@ -203,3 +203,4 @@
 - 4.2: `Query`には公開の`legalDocument`・`legalDocumentVersion`だけを載せ、列挙型・公開と管理の型・入力型は宣言だけ先に置いた(リゾルバの無いルートのフィールドを作らないため。4.3で管理のQuery・Mutationと`admin-resolvers.ts`を`index.ts`へ加える)。`versionNumber`が1未満は`withValidatedArgs`で`validation_error`(「版番号は1以上の整数で指定してください。」、`errors.ts`の`INPUT_MESSAGES`)。列挙型の変換は`mappers.ts`の明示の対応表で、管理のビューの変換も用意済み。Workers統合テストの法務文書のテーブルのリセットは`infrastructure/legal/testing/legal-store-fixtures.ts`に共通化した
 - 4.3: 管理のリゾルバは`adminOnly(withValidatedArgs(..., requireAdmin))`で、拒否の順は007の「呼び出し元→引数の検証→ロール」(design.mdのシーケンス図も合わせた)。検証の詳細の欄名は`input.body`・`input.changeSummary`・`input.expectedStateVersion`で、画面は`serverFieldPrefix="input"`で欄へ写す。`expectedStateVersion`の文言は「状態の版は0以上の整数で指定してください。」。テストは800行の制限で`admin-resolvers.worker.test.ts`(呼び出し元・ログイン・ロール・照会)と`admin-resolvers.mutation.worker.test.ts`(保存・破棄・公開)に分け、共通の操作は`apps/api/test/support/legal-graphql-operations.ts`。`test:worker`全体でworkerdの「FixedLengthStream」のuncaught exceptionが1行出る(全件成功。7.5で出所を確かめる)
 - 5.1: `LegalDocumentPage({ kind, state })`の`state`は`pending`・`error`(`error`・`onRetry`)・`success`(`document: LegalDocumentView`)の判別共用体(design.mdも改めた)。表示用の型`LegalDocumentView`・`LegalLatestVersion`・`LegalDocumentPageState`は`legal-document-page.tsx`、`LegalRevisionSummary`は`legal-revision-history.tsx`からexport。文言と`legalVersionLabel(n)`(「第N版」)は`components/legal/legal-messages.ts`。改訂履歴のリンクは型付きのルートが無いため`PathLink`(5.3で型付きの`Link`へ置き換え可)。client・admin・frontend-libの`vitest.browser.config.ts`の事前バンドルに`remark-cjk-friendly-gfm-strikethrough/parseOnly`を足した(無いとViteがテストを読み込み直す)。5.3への申し送り: `useSuspenseQuery`と例外を投げる`loader`の組では`pending`・`error`の分岐を通らないため、要件9.4・E2Eの(a)と両立する取得の方式を決める
+- 5.2: `LegalVersionPage({ kind, versionNumber, state })`は5.1と同じ判別共用体で、見出しは版番号から状態によらず出す(design.mdも改めた)。成功の値`LegalVersionView`は`publishedAt`・`changeSummary`・`body`・`isLatest`。見出しの文字列は`legal-messages.ts`の`legalVersionTitle(label, n)`(5.3のheadで再利用)。公開ページへのリンクは`PathLink`の`activeOptions={{ exact: true }}`で`aria-current`を付けない。5.3で取得の方式を決めた後、2つのページの状態の型と読み込み中・失敗の外枠(約30行の重複)を`components/legal/`へまとめるとよい
