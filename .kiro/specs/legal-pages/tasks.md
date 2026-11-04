@@ -118,7 +118,7 @@
   - _Boundary: AdminLegalPages_
   - _Requirements: 3.5, 3.10, 10.3_
 
-- [ ] 6.4 (P) 公開の確認と変更概要の入力を作る
+- [x] 6.4 (P) 公開の確認と変更概要の入力を作る
   - 先に、ブラウザテストで、確認のタイトルと「直ちに表示され、後から変更・削除できない」旨、変更概要の入力欄のフォーカスを外したときの検証と文言(空・200文字超・改行)、文字数の表示、公開で`kind`と`expectedStateVersion`を`onSubmit`で足して送ること、公開される旨の注記、変更なし・下書きなしのエラーの表示、キーボードでの操作、axeの違反が0件であることを確かめる
   - 公開の確認のダイアログを作る
   - 完了状態: ブラウザテストが成功し、検証に違反する間は公開を送信しない
@@ -208,3 +208,4 @@
 - 6.1: 管理の照会3つ・変更3つの操作は`apps/admin/src/graphql/operations/legal/`。`admin-legal-documents.ts`に取得の設定・変換・loaderとビューの型(`toAdminLegalDocument`は変更の結果にも使える。`toGraphQLLegalDocumentKind`は変更の入力用)。一覧のloaderは`.catch(() => undefined)`と`useQuery`(表の中で失敗と再試行)、編集・版の表示のloaderは形式違反と存在しない版を`notFound()`。adminのloaderは`staleTime: 'static'`を使わない。利用者側の公開ページへのリンクは`use-client-site-href.ts`(`clientSiteOrigin`+パス、同じタブ)。編集・版の表示のページの部品(`legal-document-editor-page.tsx`・`legal-document-version-page.tsx`)は見出しだけの仮で、6.5・6.6で中身を差し替える。`renderInRouter`を使う部品のテストは`execute-graphql.ts`のモックと`DisplayPreferencesProvider`が要り、テストのブラウザのロケールは英語。`legalVersionLabel`・`legalVersionTitle`はclientとadminで重複(まとめるなら`apps/common-lib/legal/`)
 - 6.2: `LegalDraftForm`のpropsは`document`・`onSave`・`onSaveError`(`AppForm.onSubmitError`へ)・`onDiscard`・`onPublishRequest`・`notice`(6.3の競合の案内とエラーの差し込み口)。破棄の競合は6.6が`onDiscard`で案内を出して投げ直す(ダイアログにも失敗の文言を出すため)。`publishFormSchema`も`legal-form-schemas.ts`に作成済み(6.4が使う)。新しい文言は`legal-draft-form-messages.ts`。designに無い文言「このページを離れますか?」「破棄した下書きは元に戻せません。公開した版は変わりません。」「本文をマークダウンで入力してください」を7.4で文言規則へ足す。離脱の確認は`ConfirmActionDialog`を再利用。`MarkdownEditor`はblurで値を渡すため、公開の案内の行を常に確保してクリックのずれを防いだ
 - 6.3: `toLegalEditorErrorState(error, context?)`は`onSubmitError`の`context`を受けると`field`の詳細を`unmatched`に絞る(design.mdの契約も改めた)。詳細の無い`validation_error`は`unexpected`。表示の文言は`legalEditorErrorMessageOf(state)`、文言は`legal-editor-messages.ts`(「削除済みの管理者」を含む。6.4・6.5で再利用)。`LegalConflictNotice`は文言だけ`role="alert"`でボタンは外、押下は`onReload`。6.6への申し送り: (1)想定外の失敗をエラートラッキングへ送るかを決める(既存のadminのフォームは送っていない)。(2)「最新の内容を読み込む」で案内が消えた後のフォーカスの移し先を決める。(3)破棄の競合で`ConfirmActionDialog`と案内の両方に同じ文言が出て二重に読み上げられ得る。(4)案内を出したまま再び競合すると読み上げられないため`key`などで描き直す。7.4への申し送り: designに無い文言「最後に保存した日時」「保存した管理者」を文言規則へ足す
+- 6.4: `PublishLegalDocumentDialog`は`components/admins/`の`AdminFormDialog`・`AdminFormDialogFooter`・`useAdminFormDialogControls`を再利用(`audited={false}`)。文字数は`MarkdownLengthCounter`に`trimWhiteSpace`した値を渡す(検証と同じ数え方)。1行の入力欄は改行を値に入れないため、改行の違反はサーバーの返す文言を欄に示す形で確かめた。ダイアログ内の競合で「最新の内容を読み込む」は`onReload()`を呼んで閉じる。6.6への申し送り: 公開の成功時に`returnFocusRef`へ`LegalDraftForm`の保存のボタンを入れる必要がある(「公開する」が消えるため。`LegalDraftForm`はまだボタンを外へ渡していない)。競合の案内はダイアログ内だけでページの`notice`には出していない。7.4への申し送り: 「変更概要(必須)」「公開」を文言規則へ足す
