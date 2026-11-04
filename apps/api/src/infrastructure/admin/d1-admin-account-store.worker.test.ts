@@ -505,17 +505,45 @@ describe('D1AdminAccountStore.updateProfile', () => {
   test('ニックネーム・肩書き・プロフィール画像を書き換える', async () => {
     await insertAdmin(TARGET, { title: '旧肩書き', avatarFileId: 'old-file' });
 
-    await store.updateProfile(adminIdOf(TARGET), {
+    const result = await store.updateProfile(adminIdOf(TARGET), {
       nickname: '新しい名前',
       title: null,
       avatarFileId: 'new-file',
     });
 
+    expect(result).toBe('updated');
     expect(await readAdminRow(TARGET)).toMatchObject({
       nickname: '新しい名前',
       title: null,
       avatarFileId: 'new-file',
     });
+  });
+
+  test('招待中の管理者は書き換えずにnot-activeを返す', async () => {
+    await insertInvitedAdmin(TARGET);
+
+    const result = await store.updateProfile(adminIdOf(TARGET), {
+      nickname: '新しい名前',
+      title: '肩書き',
+      avatarFileId: 'new-file',
+    });
+
+    expect(result).toBe('not-active');
+    expect(await readAdminRow(TARGET)).toMatchObject({
+      nickname: null,
+      title: null,
+      avatarFileId: null,
+    });
+  });
+
+  test('存在しない管理者はnot-activeを返す', async () => {
+    const result = await store.updateProfile(adminIdOf(TARGET), {
+      nickname: '新しい名前',
+      title: null,
+      avatarFileId: null,
+    });
+
+    expect(result).toBe('not-active');
   });
 });
 

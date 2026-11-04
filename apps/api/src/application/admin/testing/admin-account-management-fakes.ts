@@ -84,6 +84,8 @@ export interface AccountManagementFakeOptions {
   readonly admins?: readonly AdminRecord[];
   // 一括の書き込みの直前に割り込む操作。rejectedを返すと書き込みを取り消したことにする
   readonly beforeGuardedWrite?: (admins: AdminTable) => 'rejected' | undefined;
+  // プロフィールの更新の直前に割り込む操作
+  readonly beforeProfileUpdate?: (admins: AdminTable) => void;
   readonly claimResult?: ClaimResult;
   readonly claimError?: Error;
   readonly eraseError?: Error;
@@ -163,12 +165,14 @@ function createAccountStore(
     },
     updateProfile(adminId, input) {
       recorded.calls.push('admins.updateProfile');
-      recorded.profileUpdates.push({ adminId, input });
+      options.beforeProfileUpdate?.(admins);
       const target = admins.get(adminId);
-      if (target !== undefined) {
-        admins.set(adminId, { ...target, ...input });
+      if (target?.status !== 'active') {
+        return Promise.resolve('not-active');
       }
-      return Promise.resolve();
+      recorded.profileUpdates.push({ adminId, input });
+      admins.set(adminId, { ...target, ...input });
+      return Promise.resolve('updated');
     },
   });
 }

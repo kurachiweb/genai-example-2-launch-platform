@@ -354,15 +354,16 @@ export class D1AdminAccountStore implements AdminAccountStore {
   async updateProfile(
     adminId: string,
     input: AdminProfileUpdate,
-  ): Promise<void> {
-    await this.db
+  ): Promise<'updated' | 'not-active'> {
+    const result = await this.db
       .update(admins)
       .set({
         nickname: input.nickname,
         title: input.title,
         avatarFileId: input.avatarFileId,
       })
-      .where(eq(admins.id, adminId));
+      .where(and(eq(admins.id, adminId), eq(admins.status, 'active')));
+    return result.meta.changes > 0 ? 'updated' : 'not-active';
   }
 
   async applyPasswordReset(

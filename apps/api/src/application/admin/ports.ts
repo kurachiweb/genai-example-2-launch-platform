@@ -153,7 +153,11 @@ export interface AdminAccountStore {
     change: AdminRoleChange,
     audit: PreparedAuditEntry,
   ): Promise<'changed' | 'rejected'>;
-  updateProfile(adminId: string, input: AdminProfileUpdate): Promise<void>;
+  // 有効なときだけ更新する
+  updateProfile(
+    adminId: string,
+    input: AdminProfileUpdate,
+  ): Promise<'updated' | 'not-active'>;
   // 更新・全セッションと未使用のリセットのトークンの削除を1つの一括の書き込みで行う
   applyPasswordReset(adminId: string, passwordHash: string): Promise<void>;
   // 更新・全セッションと未使用の変更のトークンの削除を1つの一括の書き込みで行う

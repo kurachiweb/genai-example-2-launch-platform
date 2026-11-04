@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
 
 import { AppError } from '../../../lib/core/errors/app-error.ts';
-import { ADMIN_AVATAR_UPLOAD_PURPOSE } from './admin-profile.ts';
 import {
   adminRecordOf,
   CURRENT_AVATAR_ID,
@@ -93,10 +92,6 @@ describe('StoreAdminProfile.update', () => {
       avatarFileId: NEW_AVATAR_ID,
       status: 'active',
     });
-  });
-
-  test('用途の名前はプロフィール画像の用途にする', () => {
-    expect(ADMIN_AVATAR_UPLOAD_PURPOSE).toBe('admin-avatar');
   });
 
   test('最上位管理者は他の管理者のプロフィールを更新でき、画像の保有者はアップロードした操作者にする', async () => {
@@ -241,6 +236,92 @@ describe('StoreAdminProfile.update', () => {
 
     expect(await rejectionOf(result)).toMatchObject({ code: 'not_found' });
     expect(recorded.calls).toEqual(['admins.findById']);
+  });
+
+  test.each([
+    ['招待中', null],
+    ['招待期限切れ', new Date('2026-11-02T00:00:00.000Z')],
+  ] as const)(
+    '%sの管理者のプロフィールは最上位管理者でも更新できず、対象なしで拒否し画像を紐付けない',
+    async (_label, invitationExpiresAt) => {
+      const { profile, recorded } = setupAccountManagement({
+        admins: [
+          operatorRecordOf('super_admin'),
+          adminRecordOf({
+            status: 'invited',
+            passwordHash: null,
+            nickname: null,
+            activatedAt: null,
+            invitationExpiresAt:
+              invitationExpiresAt ?? new Date('2026-11-04T00:00:00.000Z'),
+          }),
+        ],
+      });
+
+      const result = profile.update(
+        currentAdmin('super_admin'),
+        { adminId: TARGET_ID, nickname: '対象', avatarFileId: NEW_AVATAR_ID },
+        MANAGEMENT_META,
+      );
+
+      expect(await rejectionOf(result)).toMatchObject({
+        kind: 'not_found',
+        code: 'not_found',
+      });
+      expect(recorded.calls).toEqual(['admins.findById']);
+    },
+  );
+
+  test('読み取った後に対象が削除され更新できなければ、対象なしで拒否し、紐付けた新しい画像を削除して以前の画像は残す', async () => {
+    const { profile, recorded } = setupAccountManagement({
+      admins: [
+        operatorRecordOf('super_admin'),
+        adminRecordOf({ avatarFileId: CURRENT_AVATAR_ID }),
+      ],
+      beforeProfileUpdate: (admins) => {
+        admins.delete(TARGET_ID);
+      },
+    });
+
+    const result = profile.update(
+      currentAdmin('super_admin'),
+      { adminId: TARGET_ID, nickname: '対象', avatarFileId: NEW_AVATAR_ID },
+      MANAGEMENT_META,
+    );
+
+    expect(await rejectionOf(result)).toMatchObject({ code: 'not_found' });
+    expect(recorded.calls).toEqual([
+      'admins.findById',
+      'media.claim',
+      'admins.updateProfile',
+      'media.eraseNow',
+    ]);
+    expect(recorded.erasures).toEqual([[NEW_AVATAR_ID]]);
+  });
+
+  test('読み取った後に対象が削除され更新できなければ、画像を変えない更新では何も削除しない', async () => {
+    const { profile, recorded } = setupAccountManagement({
+      admins: [
+        operatorRecordOf('super_admin'),
+        adminRecordOf({ avatarFileId: CURRENT_AVATAR_ID }),
+      ],
+      beforeProfileUpdate: (admins) => {
+        admins.delete(TARGET_ID);
+      },
+    });
+
+    const result = profile.update(
+      currentAdmin('super_admin'),
+      {
+        adminId: TARGET_ID,
+        nickname: '対象',
+        avatarFileId: CURRENT_AVATAR_ID,
+      },
+      MANAGEMENT_META,
+    );
+
+    expect(await rejectionOf(result)).toMatchObject({ code: 'not_found' });
+    expect(recorded.erasures).toEqual([]);
   });
 
   test('画像を紐付けられなければ、アップロードの確認の失敗で拒否し、更新も以前の画像の削除もしない', async () => {

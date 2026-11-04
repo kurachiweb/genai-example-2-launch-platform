@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
+import {
+  ADMIN_AVATAR_MAX_BYTES,
+  ADMIN_AVATAR_UPLOAD_PURPOSE,
+} from '../../../common-lib/admin/admin-avatar-upload.ts';
 import { IMAGE_MEDIA_TYPES } from '../../../common-lib/media/media-types.ts';
 import { AdminAvatar } from '../../../lib/components/admin/admin-avatar.tsx';
 import { ImageUploadField } from '../../../lib/components/media/image-upload-field.tsx';
@@ -15,11 +19,11 @@ import {
   AVATAR_SUBJECT_LABEL,
 } from './admin-accounts-messages.ts';
 
-// APIサーバーのアップロードの用途admin-avatarと同じ形式と上限
+// APIサーバーのアップロードの用途と同じ形式
 const ADMIN_AVATAR_UPLOAD: UploadConstraints = Object.freeze({
-  purpose: 'admin-avatar',
+  purpose: ADMIN_AVATAR_UPLOAD_PURPOSE,
   allowedTypes: IMAGE_MEDIA_TYPES,
-  maxBytes: 512_000,
+  maxBytes: ADMIN_AVATAR_MAX_BYTES,
   subjectLabel: AVATAR_SUBJECT_LABEL,
 });
 

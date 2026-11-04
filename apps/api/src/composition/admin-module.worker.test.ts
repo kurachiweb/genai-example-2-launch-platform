@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, test } from 'vitest';
 
+import { ADMIN_AVATAR_UPLOAD_PURPOSE } from '../../common-lib/admin/admin-avatar-upload.ts';
 import { ADMIN_ACCOUNT_DELETE_ACTION } from '../../common-lib/admin/audit-actions/admin-foundation.ts';
 import { AUDIT_ACTIONS } from '../../common-lib/admin/audit-actions/index.ts';
 import type { AuditActionCatalog } from '../../common-lib/admin/audit-action.ts';
@@ -30,10 +31,7 @@ import { StoreAdminInvitation } from '../application/admin/admin-invitation.ts';
 import { StoreAdminLogin } from '../application/admin/admin-login.ts';
 import { StoreAdminPasswordChange } from '../application/admin/admin-password-change.ts';
 import { StoreAdminPasswordReset } from '../application/admin/admin-password-reset.ts';
-import {
-  ADMIN_AVATAR_UPLOAD_PURPOSE,
-  StoreAdminProfile,
-} from '../application/admin/admin-profile.ts';
+import { StoreAdminProfile } from '../application/admin/admin-profile.ts';
 import { StoreAdminReAuthenticator } from '../application/admin/admin-re-authenticator.ts';
 import {
   ADMIN_SESSION_USER_AGENT_MAX_LENGTH,

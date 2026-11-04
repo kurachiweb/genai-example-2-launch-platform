@@ -30,6 +30,7 @@ import {
   adminEmailOf,
   adminIdOf,
   insertAdmin,
+  insertInvitedAdmin,
   readAdminRow,
   readAuditLogSummaries,
   readAuditLogTargetIds,
@@ -462,6 +463,27 @@ describe('updateAdminProfile', () => {
       title: 'サポート担当',
     });
   });
+
+  test.each([
+    ['招待中', 60 * 60 * 1000],
+    ['招待期限切れ', -60 * 60 * 1000],
+  ] as const)(
+    '最上位管理者でも%sの管理者のプロフィールは更新できず、対象なしのコードで拒否する',
+    async (_label, expiresInMs) => {
+      const sessionToken = await sessionOf(SUPER_ADMIN, 'super_admin');
+      await insertInvitedAdmin(INVITED, {
+        invitationExpiresAt: new Date(Date.now() + expiresInMs),
+      });
+
+      const response = await updateProfile(sessionToken, {
+        id: adminIdOf(INVITED),
+        nickname: '書き換え',
+      });
+
+      expect(codesOf(response)).toEqual(['not_found']);
+      expect((await readAdminRow(INVITED))?.nickname).toBeNull();
+    },
+  );
 
   test('ニックネームと肩書きの規則の違反は、管理者の文言で欄ごとの詳細にする', async () => {
     const sessionToken = await sessionOf(VIEWER, 'viewer');

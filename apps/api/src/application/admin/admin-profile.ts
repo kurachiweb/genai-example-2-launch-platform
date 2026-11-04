@@ -1,5 +1,6 @@
 import { inject, injectable } from 'inversify';
 
+import { ADMIN_AVATAR_UPLOAD_PURPOSE } from '../../../common-lib/admin/admin-avatar-upload.ts';
 import {
   checkAdminNickname,
   checkAdminTitle,
@@ -23,8 +24,6 @@ import type {
   AdminRecord,
   AdminRequestMeta,
 } from './ports.ts';
-
-export const ADMIN_AVATAR_UPLOAD_PURPOSE = 'admin-avatar';
 
 export interface AdminProfileInput {
   readonly adminId: string;
@@ -81,17 +80,31 @@ export class StoreAdminProfile implements AdminProfile {
     }
     const profile = normalizeProfile(input);
     const target = await this.admins.findById(input.adminId);
-    if (target === undefined) {
+    // 招待の完了前の管理者のニックネームは本人が招待の完了で決めるため、有効な管理者だけを編集の対象にする
+    if (target?.status !== 'active') {
       throw adminError('not_found');
     }
     const previousAvatarId = target.avatarFileId;
-    if (
-      profile.avatarFileId !== null &&
-      profile.avatarFileId !== previousAvatarId
-    ) {
-      await this.#claimAvatar(current, profile.avatarFileId);
+    const claimedAvatarId =
+      profile.avatarFileId !== null && profile.avatarFileId !== previousAvatarId
+        ? profile.avatarFileId
+        : undefined;
+    if (claimedAvatarId !== undefined) {
+      await this.#claimAvatar(current, claimedAvatarId);
     }
-    await this.admins.updateProfile(target.id, profile);
+    const updated = await this.admins.updateProfile(target.id, profile);
+    if (updated === 'not-active') {
+      // 読み取った後に対象が削除されたため、どの行からも参照されない紐付けたばかりの画像を消す
+      if (claimedAvatarId !== undefined) {
+        await eraseAvatarQuietly(
+          this.media,
+          target.id,
+          claimedAvatarId,
+          logger,
+        );
+      }
+      throw adminError('not_found');
+    }
     // 保有者単位で削除すると操作者がアップロードした他の管理者の画像まで消えるため、行が参照していた画像だけを削除する
     if (
       previousAvatarId !== null &&
