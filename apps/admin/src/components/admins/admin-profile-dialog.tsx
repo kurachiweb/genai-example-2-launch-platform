@@ -3,10 +3,8 @@ import { useState } from 'react';
 
 import { notify } from '../../../lib/components/feedback/notify.ts';
 import { AppForm } from '../../../lib/components/form/app-form.tsx';
-import { FormField } from '../../../lib/components/form/form-field.tsx';
 import { FormMessage } from '../../../lib/components/form/form-message.tsx';
 import { useAppForm } from '../../../lib/components/form/use-app-form.ts';
-import { Input } from '../../../lib/components/ui/input/input.tsx';
 import { graphqlMutationOptions } from '../../../lib/start/graphql/graphql-query-options.ts';
 import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
@@ -15,20 +13,14 @@ import { AdminUpdateProfileDocument } from '../../graphql/generated/graphql.ts';
 import { ADMIN_PROFILE_FORM_SCHEMA } from './admin-account-form-schemas.ts';
 import { adminAccountLabelOf } from './admin-account-label.ts';
 import {
-  ADMIN_TITLE_DESCRIPTION,
-  ADMIN_TITLE_LABEL,
-  AVATAR_DESCRIPTION,
-  AVATAR_LABEL,
   editProfileTitle,
-  NICKNAME_DESCRIPTION,
-  NICKNAME_LABEL,
   PROFILE_SAVED_MESSAGE,
   PROFILE_SUBMIT_LABEL,
 } from './admin-accounts-messages.ts';
-import { AdminAvatarField } from './admin-avatar-field.tsx';
 import { AdminFormDialog } from './admin-form-dialog.tsx';
 import { useAdminFormDialogControls } from './admin-form-dialog-controls.ts';
 import { AdminFormDialogFooter } from './admin-form-dialog-footer.tsx';
+import { AdminProfileFields } from './admin-profile-fields.tsx';
 import { useAdminAccountsRefresh } from './use-admin-accounts-refresh.ts';
 
 export interface AdminProfileDialogProps {
@@ -78,41 +70,11 @@ function AdminProfileForm({ account }: AdminProfileFormProps) {
       {failure === undefined ? null : (
         <FormMessage role="alert">{failure}</FormMessage>
       )}
-      <FormField
+      <AdminProfileFields
         control={form.control}
-        name="nickname"
-        label={NICKNAME_LABEL}
-        description={NICKNAME_DESCRIPTION}
-      >
-        {(control) => <Input {...control} autoComplete="off" aria-required />}
-      </FormField>
-      <FormField
-        control={form.control}
-        name="title"
-        label={ADMIN_TITLE_LABEL}
-        description={ADMIN_TITLE_DESCRIPTION}
-      >
-        {(control) => <Input {...control} autoComplete="off" />}
-      </FormField>
-      <FormField
-        control={form.control}
-        name="avatarFileId"
-        label={AVATAR_LABEL}
-        description={AVATAR_DESCRIPTION}
-      >
-        {(control) => (
-          <AdminAvatarField
-            value={control.value}
-            onChange={control.onChange}
-            current={account.avatar}
-            nickname={account.nickname ?? account.email}
-            fieldRef={control.ref}
-            aria-labelledby={control.labelId}
-            aria-describedby={control['aria-describedby']}
-            aria-invalid={control['aria-invalid']}
-          />
-        )}
-      </FormField>
+        currentAvatar={account.avatar}
+        nickname={account.nickname ?? account.email}
+      />
       <AdminFormDialogFooter
         submitLabel={PROFILE_SUBMIT_LABEL}
         pending={pending}

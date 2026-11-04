@@ -54,14 +54,14 @@ const checkEmail = (value: string): string | undefined => {
 // 判定と送る値を食い違わせないよう、入力規則と同じ空白の集合で前後を除く
 export const EMAIL_INPUT_SCHEMA = ruleOf(checkEmail).transform(trimWhiteSpace);
 
-const newPassword = ruleOf((value) =>
+export const NEW_PASSWORD_INPUT_SCHEMA = ruleOf((value) =>
   checkPasswordLength(value) === 'ok'
     ? undefined
     : AUTH_FORM_MESSAGES.passwordLength,
 );
 
 // 登録済みのパスワードの照合では下限を問わない
-const currentPassword = ruleOf((value) => {
+export const CURRENT_PASSWORD_INPUT_SCHEMA = ruleOf((value) => {
   if (value === '') {
     return AUTH_FORM_MESSAGES.passwordRequired;
   }
@@ -80,9 +80,17 @@ const secondFactorCode = (requiredMessage: string) =>
       : undefined;
   });
 
+export const TOTP_CODE_INPUT_SCHEMA = secondFactorCode(
+  AUTH_FORM_MESSAGES.totpCodeRequired,
+);
+
+export const RECOVERY_CODE_INPUT_SCHEMA = secondFactorCode(
+  AUTH_FORM_MESSAGES.recoveryCodeRequired,
+);
+
 export const LOGIN_FORM_SCHEMA = z.object({
   email: EMAIL_INPUT_SCHEMA,
-  password: currentPassword,
+  password: CURRENT_PASSWORD_INPUT_SCHEMA,
 });
 
 export type LoginFormInput = z.input<typeof LOGIN_FORM_SCHEMA>;
@@ -96,7 +104,9 @@ export type PasswordResetRequestFormInput = z.input<
 >;
 
 // リンクのトークンは入力欄を描かないため含めず、送信の時に足す
-export const NEW_PASSWORD_FORM_SCHEMA = z.object({ newPassword });
+export const NEW_PASSWORD_FORM_SCHEMA = z.object({
+  newPassword: NEW_PASSWORD_INPUT_SCHEMA,
+});
 
 export type NewPasswordFormInput = z.input<typeof NEW_PASSWORD_FORM_SCHEMA>;
 
@@ -119,13 +129,13 @@ export type SecondFactorFormSchema = z.ZodType<
 
 export const TOTP_CODE_FORM_SCHEMA: SecondFactorFormSchema = z.object({
   secondFactor: z.object({
-    totpCode: secondFactorCode(AUTH_FORM_MESSAGES.totpCodeRequired),
+    totpCode: TOTP_CODE_INPUT_SCHEMA,
   }),
 });
 
 export const RECOVERY_CODE_FORM_SCHEMA: SecondFactorFormSchema = z.object({
   secondFactor: z.object({
-    recoveryCode: secondFactorCode(AUTH_FORM_MESSAGES.recoveryCodeRequired),
+    recoveryCode: RECOVERY_CODE_INPUT_SCHEMA,
   }),
 });
 
@@ -143,7 +153,7 @@ export const NICKNAME_INPUT_SCHEMA = ruleOf((value) => {
 // リンクのトークンは入力欄を描かないため含めず、送信の時に足す
 export const INVITATION_PROFILE_FORM_SCHEMA = z.object({
   nickname: NICKNAME_INPUT_SCHEMA,
-  password: newPassword,
+  password: NEW_PASSWORD_INPUT_SCHEMA,
 });
 
 export type InvitationProfileFormInput = z.input<
@@ -151,7 +161,7 @@ export type InvitationProfileFormInput = z.input<
 >;
 
 export const INVITATION_TOTP_FORM_SCHEMA = z.object({
-  totpCode: secondFactorCode(AUTH_FORM_MESSAGES.totpCodeRequired),
+  totpCode: TOTP_CODE_INPUT_SCHEMA,
 });
 
 export type InvitationTotpFormInput = z.input<

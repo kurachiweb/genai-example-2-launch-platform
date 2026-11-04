@@ -4,7 +4,6 @@ import { Link } from '@tanstack/react-router';
 import { LinkConfirmation } from '../../../lib/components/auth/link-confirmation.tsx';
 import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
 import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
-import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { graphqlMutationOptions } from '../../../lib/start/graphql/graphql-query-options.ts';
 import { HOME_PATH } from '../../../lib/utilities/auth/return-path.ts';
 import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
@@ -22,9 +21,6 @@ import {
   RETRY_FROM_MY_ACCOUNT_SUFFIX,
 } from './admin-auth-messages.ts';
 import { useAdminViewerRefresh } from './use-admin-viewer-refresh.ts';
-
-// 自分のアカウントのページは同じ機能の後続の作業で経路を作るため、型で指定できないパスとして遷移する
-const MY_ACCOUNT_PATH = '/account';
 
 const failureMessageOf = (error: unknown): string =>
   errorMessageOf(error, ADMIN_PROFILE.contactAvailable);
@@ -67,9 +63,9 @@ export function EmailChangeConfirmation() {
       invalidLinkMessage={INVALID_LINK_MESSAGE}
       invalidLinkGuide={
         <p>
-          <PathLink href={MY_ACCOUNT_PATH} className={INLINE_LINK_CLASS_NAME}>
+          <Link to="/account" className={INLINE_LINK_CLASS_NAME}>
             {MY_ACCOUNT_LABEL}
-          </PathLink>
+          </Link>
           {RETRY_FROM_MY_ACCOUNT_SUFFIX}
         </p>
       }

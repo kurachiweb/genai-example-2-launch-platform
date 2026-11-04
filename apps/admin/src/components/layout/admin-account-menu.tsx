@@ -1,10 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { LogOutIcon, UserIcon } from 'lucide-react';
 
 import { ADMIN_ROLE_LABELS } from '../../../common-lib/admin/admin-roles.ts';
 import { AdminAvatar } from '../../../lib/components/admin/admin-avatar.tsx';
 import { notify } from '../../../lib/components/feedback/notify.ts';
-import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { DropdownMenu } from '../../../lib/components/ui/dropdown-menu/dropdown-menu.tsx';
 import { DropdownMenuContent } from '../../../lib/components/ui/dropdown-menu/dropdown-menu-content.tsx';
 import { DropdownMenuItem } from '../../../lib/components/ui/dropdown-menu/dropdown-menu-item.tsx';
@@ -82,10 +82,10 @@ export function AdminAccountMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <PathLink href={ADMIN_ACCOUNT_LINK.href}>
+          <Link to={ADMIN_ACCOUNT_LINK.to}>
             <UserIcon aria-hidden="true" />
             {ADMIN_ACCOUNT_LINK.label}
-          </PathLink>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={handleLogout}>

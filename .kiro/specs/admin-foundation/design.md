@@ -301,15 +301,17 @@ apps/
     │   ├── auth/use-admin-viewer.ts · use-admin-viewer-refresh.ts   # 区画が取得のキャッシュから管理者を読む・取得を無効にして取り直す
     │   ├── layout/admin-navigation.tsx · admin-account-menu.tsx · admin-viewer-context.tsx · role-gate.tsx
     │   ├── dashboard/dashboard-grid.tsx · dashboard-card-frame.tsx
-    │   ├── admins/admin-list.tsx · invite-admin-dialog.tsx · change-role-dialog.tsx · admin-profile-dialog.tsx · admin-avatar-field.tsx
+    │   ├── admins/admin-list.tsx · invite-admin-dialog.tsx · change-role-dialog.tsx · admin-profile-dialog.tsx · admin-avatar-field.tsx · admin-profile-fields.tsx   # admin-profile-fields.tsxは/accountのプロフィールと共有する入力欄
     │   ├── admins/admin-form-dialog.tsx · admin-form-dialog-controls.ts · admin-form-dialog-footer.tsx   # 入力を持つダイアログの処理中・フォーカス・取り消しの枠と、監査ログの旨・確定の並び
     │   ├── admins/admin-account-permissions.ts · admin-account-form-schemas.ts · admin-accounts-messages.ts · admin-account-label.ts · use-admin-accounts-refresh.ts   # ドメインの規則と同じ操作の可否・入力の規則・文言・一覧の取り直し(単体テスト併置)
     │   ├── pages/admins-page.tsx                       # /accountsのページ(見出し・招待・一覧)
     │   ├── pages/audit-logs-page.tsx                   # /audit-logsのページ(見出し・絞り込み・一覧・カーソルのページ送り)
+    │   ├── pages/account-page.tsx                      # /accountのページ(見出しと5つの区画)
     │   ├── audit/audit-log-filters.tsx · audit-log-list.tsx · audit-period.ts
     │   ├── audit/audit-log-search.ts · audit-log-filter-options.ts · cursor-trail.ts · load-audit-logs-page.ts · audit-logs-messages.ts   # 検索パラメータの検証と検索の引数・選択肢・辿ったページの記録・/audit-logsのloader・文言(単体テスト併置)
-    │   └── account/profile-section.tsx · email-change-section.tsx · password-change-section.tsx
-    │       · totp-section.tsx · totp-reset-dialog.tsx · recovery-codes-dialog.tsx · reauthentication-fields.tsx
+    │   └── account/profile-section.tsx · email-change-section.tsx · password-change-section.tsx · totp-section.tsx · recovery-code-section.tsx · account-section.tsx
+    │       · totp-reset-dialog.tsx · totp-reset-form.tsx · recovery-codes-dialog.tsx · reauthentication-fields.tsx · reauthenticated-action-form.tsx
+    │       · account-form-schemas.ts · account-messages.ts · use-reauthentication-mode.ts · use-reauthenticated-send.ts · use-submit-failure.ts   # 本人確認の入力の規則・文言・第2要素の欄の切り替え・リカバリコードで送った後の残数の取り直し・欄に対応しない失敗(単体テスト併置)
     ├── composition/
     │   ├── admin-navigation.ts                         # ADMIN_NAV_ITEMS(後続specが追記)
     │   ├── dashboard-cards.ts                          # DASHBOARD_CARDS(後続specが追記、初版は空)
