@@ -39,7 +39,7 @@
   - _Boundary: LegalDocumentReader, LegalVersionLocator_
   - _Requirements: 3.9, 6.1, 6.3, 6.5, 6.6, 7.1, 7.4, 8.1, 8.2_
 
-- [ ] 3.2 (P) 管理の照会と、公開者・保存者の解決を作る
+- [x] 3.2 (P) 管理の照会と、公開者・保存者の解決を作る
   - 先に、偽のストアと偽の管理者の照会口を使う単体テストで、3文書の一覧(最新版の版番号と公開日時・下書きの有無)、編集用の状態(状態の版・最新版の本文・下書き・改訂履歴)、版の表示、削除済みの管理者が名前なしになること、管理者のIDをまとめて1回で引くことを確かめる
   - 管理の照会を作り、admin-foundationの管理者の照会口で公開者と下書きの保存者のニックネームを解決する
   - 完了状態: 単体テストが成功し、削除済みの管理者の版でも照会が失敗しない
@@ -197,3 +197,4 @@
 - 2.1: 規則は`apps/api/src/domain/legal/legal-document.ts`。本文の「完全一致」は`===`(正規化・空白の除去なし)。未公開で下書きがあれば公開可。`nextPublishedAt`は常に新しい`Date`を返す
 - 2.2: `LEGAL_TYPES`(`application/legal/legal-types.ts`)に6つの識別子(Store・Reader・AdminReader・DraftEditor・Publisher・VersionLocator)を先に定義した。ポートの入力の型名は`LegalDraftSaveInput`・`LegalDraftDiscardInput`・`LegalPublishInput`・`LegalPublishedVersionLocation`。`discardDraft`の`updated_at`はストア内の`new Date()`。競合に変える一意の違反は`(document_id, version_number)`だけ。Workers統合テストはテストごとに版を消して文書の行を初期データに戻す
 - 3.1: 公開の型(`PublicLegalVersion`・`PublicLegalRevision`・`PublicLegalDocument`)と変換`toPublicLegalVersion`・`toPublicLegalRevision`は`legal-document-reader.ts`からexportする(3.2が継承・再利用する)。`getDocument`は改訂履歴を状態の最新版の版番号以下に絞り、2回の照会の間に公開されても時点を揃える。偽のストアは各テストファイル内に置く
+- 3.2: 管理の照会は`StoreLegalDocumentAdminReader`。下書きと改訂の型を`AdminLegalDraftView`・`AdminLegalRevisionView`と名付けた(4.xのGraphQLの変換で使う)。管理者のIDは`Set`で重複を除き、空なら`findProfiles`を呼ばない。3.3は`LEGAL_TYPES.LegalDocumentAdminReader`を注入して`getDocument`で操作後の状態を返す
