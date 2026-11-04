@@ -152,7 +152,7 @@
   - 完了状態: E2Eテストがローカルで起動したapi・admin・clientに対して成功し、2回続けて実行しても成功する
   - _Requirements: 4.8, 6.3, 7.2, 10.2_
 
-- [ ] 7.2 (P) 共通フッターから3つの公開ページへの到達をE2Eテストで確かめる
+- [x] 7.2 (P) 共通フッターから3つの公開ページへの到達をE2Eテストで確かめる
   - トップページのフッターの利用規約・プライバシーポリシー・法的通知のリンクから各ページへ移動し、見出しが文書の名前であることを確かめる(公開済み・準備中のどちらでもよい)
   - 完了状態: E2Eテストがローカルで起動したapi・clientに対して成功する
   - _Boundary: ClientLegalPages_
@@ -213,3 +213,4 @@
 - 6.6: 結線は`use-legal-document-editor.ts`(`setQueryData`で置き換え、一覧は常に無効化、公開の後は版の照会も無効化)。フォームは`key`で作り直さず`stateVersion`の変化で`reset`する(破棄のダイアログを失わないため)。処理の後のフォーカスは`use-focus-after-change.ts`が表示中の版の変化を待ち、本文が空なら本文の欄(`MarkdownEditor`のハンドル。RHFの`reset`の後は`setFocus`が効かない)、空でなければ押せるようになった保存のボタンへ移す。破棄・公開の要求はダイアログが閉じてから出す。ダイアログ由来の競合ではページの案内を`announce={false}`(Radixの`hideOthers`は`aria-live`の祖先を隠さず二重に読まれるため)。競合の案内は失敗ごとの連番の`key`で作り直す。想定外の例外はエラートラッキングへ送らない(既存のadminのフォームと同じ)。7.4への申し送り: トーストの文言「下書きを保存しました。」「下書きを破棄しました。」「公開しました。」を文言規則へ足す。ローカルのD1には法的通知の第2版と確認用の最上位管理者がもう1人ある
 - 6.7: `AuditTargetKind`と集合・管理画面の表示名・admin-foundationのdesign.mdの値の一覧・文言規則の行から`legal-document`を除いた(GraphQLの`targetKind`は`String`のためスキーマに波及しない)。admin-foundationのdesign.mdの27行目は12メニューの操作の記録を各後続specとしており法務文書も記録するように読めるため、7.4で「法務文書は記録しない(legal-pagesのQ1)」と注記する
 - 7.1: `e2e/admin/legal-documents.e2e.test.ts`は開始時の最新の版番号からの差と乱数で確かめ、実行のたびに利用規約の版が2つ増える(ローカルのD1の`/terms`は公開済みになっている)。利用者側のURLは管理画面の「公開ページを開く」の`href`から取る。実行は`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/admin/legal-documents --project=admin`で、api・admin・clientの開発サーバーが要る(eventは不要)。要件7.2の「本文より前」はブラウザテストで確かめる
+- 7.2: `e2e/client/legal-pages.e2e.test.ts`の補助`footerPolicyNavigation`・`expectFooterLegalLinks`・`expectLoadedDocument`は7.6でも使う。見出しは読み込み中・失敗でも文書の名前で出るため、`expectLoadedDocument`で準備中の文言か「最終改訂日」の表示とalertが無いことを確かめる(「最終改訂日」は`<dt>`に絞るとより確実で、7.6で直してよい)。実行は`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/client/legal-pages --project=client`(api・clientが要る)
