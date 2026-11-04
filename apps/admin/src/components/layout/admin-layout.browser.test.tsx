@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
@@ -29,7 +29,14 @@ import {
   ADMIN_LAYOUT_SLOTS,
   type AdminLayoutSlots,
 } from '../../composition/layout-slots.ts';
+import { AdminAccountMenu } from './admin-account-menu.tsx';
 import { AdminLayout } from './admin-layout.tsx';
+import { AdminNavigation } from './admin-navigation.tsx';
+
+// ログイン中の管理者の取得の補助が読み込む同型の関数は、Startのビルドを経ないブラウザテストではサーバーの実装が残り読み込めないため差し替える
+vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
+  executeGraphQL: vi.fn(),
+}));
 
 const WIDE_VIEWPORT = { width: 1280, height: 800 } as const;
 const NARROWEST_VIEWPORT_WIDTH = 320;
@@ -70,8 +77,14 @@ function TranslatedPageBody() {
   );
 }
 
+// 区画の部品はルーターとログイン中の管理者の取得に依存するため、レイアウトだけを確かめる時は空の区画と差し込んだテストの部品で描く
+const EMPTY_SLOTS: AdminLayoutSlots = Object.freeze({
+  navigation: null,
+  headerAccount: null,
+});
+
 function renderLayout(
-  slots: AdminLayoutSlots = ADMIN_LAYOUT_SLOTS,
+  slots: AdminLayoutSlots = EMPTY_SLOTS,
   Body: ComponentType = PageBody,
 ) {
   return render(
@@ -238,7 +251,7 @@ describe('AdminLayout', () => {
     });
 
     test.each([
-      ['初版の区画', ADMIN_LAYOUT_SLOTS],
+      ['空の区画', EMPTY_SLOTS],
       ['差し込んだ区画', FILLED_SLOTS],
     ])(
       '%sで、ヘッダーと本文のランドマークを持ち、フッターの要素とランドマークを持たない',
@@ -270,10 +283,10 @@ describe('AdminLayout', () => {
   });
 
   describe('区画', () => {
-    test('初版の登録箇所は、メニューとログイン中の表示の区画を空にする', () => {
+    test('登録箇所は、メニューの区画に管理メニューを、ログイン中の表示の区画にアカウントの表示を置く', () => {
       expect(ADMIN_LAYOUT_SLOTS).toStrictEqual({
-        navigation: null,
-        headerAccount: null,
+        navigation: AdminNavigation,
+        headerAccount: AdminAccountMenu,
       });
       expect(Object.isFrozen(ADMIN_LAYOUT_SLOTS)).toBe(true);
     });
@@ -323,7 +336,7 @@ describe('AdminLayout', () => {
     });
 
     test.each([
-      ['初版の区画', ADMIN_LAYOUT_SLOTS],
+      ['空の区画', EMPTY_SLOTS],
       ['差し込んだ区画', FILLED_SLOTS],
     ])('%sで横スクロールが出ない', async (_name, slots) => {
       await renderLayout(slots);
@@ -359,7 +372,7 @@ describe('AdminLayout', () => {
     });
 
     test.each([
-      ['初版の区画', ADMIN_LAYOUT_SLOTS],
+      ['空の区画', EMPTY_SLOTS],
       ['差し込んだ区画', FILLED_SLOTS],
     ])(
       '広い画面の%sで、アクセシビリティの検査の違反が0件',
@@ -371,7 +384,7 @@ describe('AdminLayout', () => {
     );
 
     test.each([
-      ['初版の区画', ADMIN_LAYOUT_SLOTS],
+      ['空の区画', EMPTY_SLOTS],
       ['差し込んだ区画', FILLED_SLOTS],
     ])(
       '幅320pxの%sで、アクセシビリティの検査の違反が0件',

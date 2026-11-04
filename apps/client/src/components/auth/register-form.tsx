@@ -18,7 +18,7 @@ import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts
 import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import { ClientRegisterUserDocument } from '../../graphql/generated/graphql.ts';
 import { PRIVACY_HREF, TERMS_HREF } from '../layout/site-links.ts';
-import { PathLink } from '../navigation/path-link.tsx';
+import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import {
   EMAIL_LABEL,
   HAS_ACCOUNT_PROMPT,

@@ -31,6 +31,12 @@ import {
 import type { AdminViewerQuery } from '../src/graphql/generated/graphql.ts';
 import { GUEST_ADMIN_QUERY } from './admin-viewer-fixtures.ts';
 
+export interface RouterRenderOptions {
+  readonly path?: string;
+  readonly context?: RouterContext;
+  readonly cachedViewer?: AdminViewerQuery | null;
+}
+
 export interface PageRouterOptions {
   readonly path: string;
   readonly createRoutes: (rootRoute: PageRootRoute) => readonly AnyRoute[];
@@ -130,6 +136,29 @@ export function createPageRouter({
 
 export async function renderPageRouter(options: PageRouterOptions) {
   const router = createPageRouter(options);
+  await render(<RouterProvider router={router} />);
+  return router;
+}
+
+// 経路への遷移とログイン中の管理者の取得を使う部品を、基本レイアウトを持たないルーターの中で描く
+export async function renderInRouter(
+  element: ReactNode,
+  {
+    path = '/',
+    context = createPageRouterContext('local'),
+    cachedViewer = GUEST_ADMIN_QUERY,
+  }: RouterRenderOptions = {},
+) {
+  cacheViewer(context, cachedViewer);
+  const rootRoute = createRootRouteWithContext<RouterContext>()({
+    component: () => element,
+  });
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: [path] }),
+    context,
+    Wrap: createQueryClientWrap(context),
+  });
   await render(<RouterProvider router={router} />);
   return router;
 }

@@ -2,7 +2,7 @@ import { TriangleAlertIcon } from 'lucide-react';
 
 import { INLINE_LINK_CLASS_NAME } from '../auth/inline-link-class.ts';
 import { CONTACT_HREF } from '../layout/site-links.ts';
-import { PathLink } from '../navigation/path-link.tsx';
+import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import {
   CONTACT_LINK_LABEL,
   SUSPENDED_NOTICE_LABEL,

@@ -15,7 +15,7 @@ import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import { ClientLogoutDocument } from '../../graphql/generated/graphql.ts';
 import { type ClientViewer, viewerQueryOptions } from '../../graphql/viewer.ts';
 import { LOGGED_OUT_MESSAGE } from '../auth/account-messages.ts';
-import { PathLink } from '../navigation/path-link.tsx';
+import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import {
   LOGOUT_LABEL,
   MY_PRODUCTS_LINK,

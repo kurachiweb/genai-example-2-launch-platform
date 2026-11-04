@@ -1,5 +1,5 @@
 import type { SettingsNavItem } from '../../composition/settings-navigation.ts';
-import { PathLink } from '../navigation/path-link.tsx';
+import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { orderSettingsNavItems } from './settings-nav-order.ts';
 import { SETTINGS_NAVIGATION_LABEL } from './settings-messages.ts';
 
