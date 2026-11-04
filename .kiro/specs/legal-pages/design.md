@@ -735,7 +735,7 @@ export declare const legalDocumentVersionQueryOptions: (
 export declare function loadLegalDocument(
   kind: LegalDocumentKind,
 ): (ctx: {
-  readonly context: Pick<RouterContext, 'queryClient' | 'runtime'>;
+  readonly context: Pick<RouterContext, 'queryClient'>;
 }) => Promise<LegalDocumentLoaderData>;
 export declare function loadLegalDocumentVersion(
   kind: LegalDocumentKind,
@@ -745,7 +745,7 @@ export declare function loadLegalDocumentVersion(
 }) => Promise<LegalVersionLoaderData>; // parseVersionNumberで形式違反、または版が無ければnotFound()
 export interface LegalDocumentLoaderData {
   readonly preparing: boolean;
-  readonly canonicalUrl: string; // clientSiteOriginとLEGAL_DOCUMENT_PATHS
+  readonly canonicalUrl: string; // LEGAL_DOCUMENT_PATHSのパス(buildSitePageHeadは同じオリジンのパスだけを正規のURLにする)
 }
 export interface LegalVersionLoaderData {
   readonly versionNumber: number;
@@ -762,7 +762,7 @@ export declare const buildLegalVersionHead: (
 ) => ReturnType<typeof buildSitePageHead>; // タイトルは「<文書の名前>(第N版)」、常にnoIndex
 ```
 
-- ルートの6ファイルは`createFileRoute`に`loader`(`loadLegalDocument(kind)`・`loadLegalDocumentVersion(kind)`)、`head`(`buildLegalDocumentHead`・`buildLegalVersionHead`)、`component`(`components/pages/`の`LegalDocumentPage`・`LegalVersionPage`)だけを渡す。版番号の解析は`loader`で`common-lib`の`parseVersionNumber`を使い、ルートの`params.parse`は使わない(版番号の形式違反と版が無いことの404の判定を`loader`の1か所にまとめ、6つのルートに同じ解析を書かないため)。生成した型からページの部品の型への変換は`src/graphql/legal-documents.ts`に置き、ページの部品は生成物の型に依存しない。
+- ルートの6ファイルは`createFileRoute`に`loader`(`loadLegalDocument(kind)`・`loadLegalDocumentVersion(kind)`)、`head`(`buildLegalDocumentHead`・`buildLegalVersionHead`)、`pendingComponent`・`errorComponent`・`component`(どれも`components/pages/`の`LegalDocumentPage`・`LegalVersionPage`に読み込み中・失敗・成功の`state`を渡す小さな関数)だけを渡す。`loader`は`queryClient.query`(`staleTime: 'static'`)を待って取得の失敗を投げ(サーバー側の描画では状態コード500)、`component`は同じ設定の`useSuspenseQuery`で読む。`errorComponent`の再試行は`components/legal/use-legal-page-retry.ts`の`useLegalPageRetry`(`router.invalidate()`の後に描き直したページの見出しへフォーカスを移す)で行う。準備中の公開ページは`noIndex`にして正規のURLを付けない。版番号の解析は`loader`で`common-lib`の`parseVersionNumber`を使い、ルートの`params.parse`は使わない(版番号の形式違反と版が無いことの404の判定を`loader`の1か所にまとめ、6つのルートに同じ解析を書かないため)。生成した型からページの部品の型への変換は`src/graphql/legal-documents.ts`に置き、ページの部品は生成物の型に依存しない。
 - `LegalDocumentPage({ kind, state })`: `state`は読み込み中・失敗(再試行)・成功(表示用の値)の判別共用体で、ルートのファイル内の小さな関数が取得の結果を写して渡す。`h1`に文書の名前、その下に「最終改訂日」と`DateTime`(`yearDate`、曜日を含まない年月日、仮5)、`MarkdownContent`(`useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL })`)、本文の後に`LegalRevisionHistory`。`latest`が`null`なら`EmptyState`(「この文書は準備中です。」)だけを表示する(6.6)。
 - `LegalRevisionHistory({ kind, revisions })`: 見出し「改訂履歴」(`h2`)の`<ol>`で新しい順に、「第N版」のリンク(`legalRevisionPath`)・`DateTime`(`yearDate`)・変更概要。管理者の情報は受け取らない(6.5)。
 - `LegalVersionPage({ kind, versionNumber, state })`: `state`は`LegalDocumentPage`と同じく読み込み中・失敗(再試行)・成功(公開日時・変更概要・本文・最新版かどうか)の判別共用体。`h1`「<文書の名前>(第N版)」は`loader`の版番号から状態によらず表示し、成功なら`LegalVersionNotice`、公開日(`DateTime`の`yearDate`)・変更概要、本文。

@@ -14,6 +14,12 @@ export type CompleteSecondFactorLoginInput = {
   secondFactor: SecondFactorInput;
 };
 
+/** 法務文書の種類 */
+export type LegalDocumentKind =
+  | 'LEGAL_NOTICE'
+  | 'PRIVACY'
+  | 'TERMS';
+
 export type LoginInput = {
   email: string;
   password: string;
@@ -200,6 +206,21 @@ export type ClientWithdrawMutationVariables = Exact<{
 
 export type ClientWithdrawMutation = { withdraw: boolean };
 
+export type ClientLegalDocumentVersionQueryVariables = Exact<{
+  kind: LegalDocumentKind;
+  versionNumber: number;
+}>;
+
+
+export type ClientLegalDocumentVersionQuery = { legalDocumentVersion: { publishedAt: string, changeSummary: string, body: string, isLatest: boolean } | null };
+
+export type ClientLegalDocumentQueryVariables = Exact<{
+  kind: LegalDocumentKind;
+}>;
+
+
+export type ClientLegalDocumentQuery = { legalDocument: { latest: { versionNumber: number, publishedAt: string, body: string } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string }> } };
+
 export type ClientSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -227,4 +248,6 @@ export const ClientStartTotpSetupDocument = {"__meta__":{"hash":"sha256:efa3bfe8
 export const ClientVerifyEmailDocument = {"__meta__":{"hash":"sha256:726a6e9c68fb75fa096211612244937e2b095ff026399cefe872db787e44d0f8"}} as unknown as DocumentNode<ClientVerifyEmailMutation, ClientVerifyEmailMutationVariables>;
 export const ClientViewerDocument = {"__meta__":{"hash":"sha256:32c8c75633fc3b433a9cb6cbaac7e135578ea7ab16915864dfa104f8065aa35b"}} as unknown as DocumentNode<ClientViewerQuery, ClientViewerQueryVariables>;
 export const ClientWithdrawDocument = {"__meta__":{"hash":"sha256:f42f0084a9747d5145d30bb11beed3b7f668553b0fa146db06147a3dc2b17c48"}} as unknown as DocumentNode<ClientWithdrawMutation, ClientWithdrawMutationVariables>;
+export const ClientLegalDocumentVersionDocument = {"__meta__":{"hash":"sha256:cf73a2a49fc87037feed659bbc7f29a53ac80fac211fc9fc3db3b49e69a0aab0"}} as unknown as DocumentNode<ClientLegalDocumentVersionQuery, ClientLegalDocumentVersionQueryVariables>;
+export const ClientLegalDocumentDocument = {"__meta__":{"hash":"sha256:14a871d7ed29487fa12d6b46bf699e04496bef6ee024891e2467fedcdbf634c9"}} as unknown as DocumentNode<ClientLegalDocumentQuery, ClientLegalDocumentQueryVariables>;
 export const ClientSystemStatusDocument = {"__meta__":{"hash":"sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e"}} as unknown as DocumentNode<ClientSystemStatusQuery, ClientSystemStatusQueryVariables>;

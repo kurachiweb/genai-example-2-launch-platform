@@ -2,6 +2,7 @@ import {
   PASSWORD_MAX_CODE_POINTS,
   PASSWORD_MIN_CODE_POINTS,
 } from '../../../common-lib/identity/account-input-rules.ts';
+import { LEGAL_DOCUMENT_LABELS } from '../../../common-lib/legal/legal-documents.ts';
 
 export const LOGGED_OUT_MESSAGE = 'ログアウトしました。';
 
@@ -34,9 +35,9 @@ export const REQUIRED_SUFFIX = '(必須)';
 
 export const NEW_PASSWORD_DESCRIPTION = `${String(PASSWORD_MIN_CODE_POINTS)}文字以上${String(PASSWORD_MAX_CODE_POINTS)}文字以内で設定してください。`;
 
-export const TERMS_LINK_LABEL = '利用規約';
+export const TERMS_LINK_LABEL = LEGAL_DOCUMENT_LABELS.terms;
 
-export const PRIVACY_LINK_LABEL = 'プライバシーポリシー';
+export const PRIVACY_LINK_LABEL = LEGAL_DOCUMENT_LABELS.privacy;
 
 export const TERMS_AGREEMENT_CONNECTOR = 'と';
 

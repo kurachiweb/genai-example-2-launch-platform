@@ -15,7 +15,10 @@ import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authen
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthVerifyEmailRouteImport } from './routes/auth/verify-email'
+import { Route as LegalIndexRouteImport } from './routes/legal/index'
+import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as SystemStatusRouteImport } from './routes/system/status'
+import { Route as TermsIndexRouteImport } from './routes/terms/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedSettingsSecurityRouteImport } from './routes/_authenticated/settings/security'
@@ -23,6 +26,9 @@ import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-
 import { Route as AuthPasswordChangeConfirmRouteImport } from './routes/auth/password-change/confirm'
 import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
 import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/password-reset/confirm'
+import { Route as LegalRevisionsVersionNumberRouteImport } from './routes/legal/revisions/$versionNumber'
+import { Route as PrivacyRevisionsVersionNumberRouteImport } from './routes/privacy/revisions/$versionNumber'
+import { Route as TermsRevisionsVersionNumberRouteImport } from './routes/terms/revisions/$versionNumber'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -54,9 +60,24 @@ const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
   path: '/auth/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LegalIndexRoute = LegalIndexRouteImport.update({
+  id: '/legal/',
+  path: '/legal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyIndexRoute = PrivacyIndexRouteImport.update({
+  id: '/privacy/',
+  path: '/privacy/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SystemStatusRoute = SystemStatusRouteImport.update({
   id: '/system/status',
   path: '/system/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsIndexRoute = TermsIndexRouteImport.update({
+  id: '/terms/',
+  path: '/terms/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsIndexRoute =
@@ -99,6 +120,24 @@ const AuthPasswordResetConfirmRoute =
     path: '/auth/password-reset/confirm',
     getParentRoute: () => rootRouteImport,
   } as any)
+const LegalRevisionsVersionNumberRoute =
+  LegalRevisionsVersionNumberRouteImport.update({
+    id: '/legal/revisions/$versionNumber',
+    path: '/legal/revisions/$versionNumber',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const PrivacyRevisionsVersionNumberRoute =
+  PrivacyRevisionsVersionNumberRouteImport.update({
+    id: '/privacy/revisions/$versionNumber',
+    path: '/privacy/revisions/$versionNumber',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TermsRevisionsVersionNumberRoute =
+  TermsRevisionsVersionNumberRouteImport.update({
+    id: '/terms/revisions/$versionNumber',
+    path: '/terms/revisions/$versionNumber',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -107,11 +146,17 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/system/status': typeof SystemStatusRoute
+  '/legal/': typeof LegalIndexRoute
+  '/privacy/': typeof PrivacyIndexRoute
+  '/terms/': typeof TermsIndexRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/legal/revisions/$versionNumber': typeof LegalRevisionsVersionNumberRoute
+  '/privacy/revisions/$versionNumber': typeof PrivacyRevisionsVersionNumberRoute
+  '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
@@ -121,11 +166,17 @@ export interface FileRoutesByTo {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/system/status': typeof SystemStatusRoute
+  '/legal': typeof LegalIndexRoute
+  '/privacy': typeof PrivacyIndexRoute
+  '/terms': typeof TermsIndexRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/legal/revisions/$versionNumber': typeof LegalRevisionsVersionNumberRoute
+  '/privacy/revisions/$versionNumber': typeof PrivacyRevisionsVersionNumberRoute
+  '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
 }
@@ -138,11 +189,17 @@ export interface FileRoutesById {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/system/status': typeof SystemStatusRoute
+  '/legal/': typeof LegalIndexRoute
+  '/privacy/': typeof PrivacyIndexRoute
+  '/terms/': typeof TermsIndexRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/security': typeof AuthenticatedSettingsSecurityRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/legal/revisions/$versionNumber': typeof LegalRevisionsVersionNumberRoute
+  '/privacy/revisions/$versionNumber': typeof PrivacyRevisionsVersionNumberRoute
+  '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
@@ -155,11 +212,17 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/verify-email'
     | '/system/status'
+    | '/legal/'
+    | '/privacy/'
+    | '/terms/'
     | '/settings/account'
     | '/settings/security'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
     | '/auth/password-reset/confirm'
+    | '/legal/revisions/$versionNumber'
+    | '/privacy/revisions/$versionNumber'
+    | '/terms/revisions/$versionNumber'
     | '/settings/'
     | '/auth/password-reset/'
   fileRoutesByTo: FileRoutesByTo
@@ -169,11 +232,17 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/verify-email'
     | '/system/status'
+    | '/legal'
+    | '/privacy'
+    | '/terms'
     | '/settings/account'
     | '/settings/security'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
     | '/auth/password-reset/confirm'
+    | '/legal/revisions/$versionNumber'
+    | '/privacy/revisions/$versionNumber'
+    | '/terms/revisions/$versionNumber'
     | '/settings'
     | '/auth/password-reset'
   id:
@@ -185,11 +254,17 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/verify-email'
     | '/system/status'
+    | '/legal/'
+    | '/privacy/'
+    | '/terms/'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/security'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
     | '/auth/password-reset/confirm'
+    | '/legal/revisions/$versionNumber'
+    | '/privacy/revisions/$versionNumber'
+    | '/terms/revisions/$versionNumber'
     | '/_authenticated/settings/'
     | '/auth/password-reset/'
   fileRoutesById: FileRoutesById
@@ -201,9 +276,15 @@ export interface RootRouteChildren {
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
   SystemStatusRoute: typeof SystemStatusRoute
+  LegalIndexRoute: typeof LegalIndexRoute
+  PrivacyIndexRoute: typeof PrivacyIndexRoute
+  TermsIndexRoute: typeof TermsIndexRoute
   AuthEmailChangeConfirmRoute: typeof AuthEmailChangeConfirmRoute
   AuthPasswordChangeConfirmRoute: typeof AuthPasswordChangeConfirmRoute
   AuthPasswordResetConfirmRoute: typeof AuthPasswordResetConfirmRoute
+  LegalRevisionsVersionNumberRoute: typeof LegalRevisionsVersionNumberRoute
+  PrivacyRevisionsVersionNumberRoute: typeof PrivacyRevisionsVersionNumberRoute
+  TermsRevisionsVersionNumberRoute: typeof TermsRevisionsVersionNumberRoute
   AuthPasswordResetIndexRoute: typeof AuthPasswordResetIndexRoute
 }
 
@@ -251,11 +332,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/': {
+      id: '/legal/'
+      path: '/legal'
+      fullPath: '/legal/'
+      preLoaderRoute: typeof LegalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy/': {
+      id: '/privacy/'
+      path: '/privacy'
+      fullPath: '/privacy/'
+      preLoaderRoute: typeof PrivacyIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/system/status': {
       id: '/system/status'
       path: '/system/status'
       fullPath: '/system/status'
       preLoaderRoute: typeof SystemStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms/': {
+      id: '/terms/'
+      path: '/terms'
+      fullPath: '/terms/'
+      preLoaderRoute: typeof TermsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings/': {
@@ -307,6 +409,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthPasswordResetConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/revisions/$versionNumber': {
+      id: '/legal/revisions/$versionNumber'
+      path: '/legal/revisions/$versionNumber'
+      fullPath: '/legal/revisions/$versionNumber'
+      preLoaderRoute: typeof LegalRevisionsVersionNumberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy/revisions/$versionNumber': {
+      id: '/privacy/revisions/$versionNumber'
+      path: '/privacy/revisions/$versionNumber'
+      fullPath: '/privacy/revisions/$versionNumber'
+      preLoaderRoute: typeof PrivacyRevisionsVersionNumberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms/revisions/$versionNumber': {
+      id: '/terms/revisions/$versionNumber'
+      path: '/terms/revisions/$versionNumber'
+      fullPath: '/terms/revisions/$versionNumber'
+      preLoaderRoute: typeof TermsRevisionsVersionNumberRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -346,9 +469,15 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRegisterRoute: AuthRegisterRoute,
   AuthVerifyEmailRoute: AuthVerifyEmailRoute,
   SystemStatusRoute: SystemStatusRoute,
+  LegalIndexRoute: LegalIndexRoute,
+  PrivacyIndexRoute: PrivacyIndexRoute,
+  TermsIndexRoute: TermsIndexRoute,
   AuthEmailChangeConfirmRoute: AuthEmailChangeConfirmRoute,
   AuthPasswordChangeConfirmRoute: AuthPasswordChangeConfirmRoute,
   AuthPasswordResetConfirmRoute: AuthPasswordResetConfirmRoute,
+  LegalRevisionsVersionNumberRoute: LegalRevisionsVersionNumberRoute,
+  PrivacyRevisionsVersionNumberRoute: PrivacyRevisionsVersionNumberRoute,
+  TermsRevisionsVersionNumberRoute: TermsRevisionsVersionNumberRoute,
   AuthPasswordResetIndexRoute: AuthPasswordResetIndexRoute,
 }
 export const routeTree = rootRouteImport

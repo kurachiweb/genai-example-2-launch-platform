@@ -35,6 +35,8 @@ type Documents = {
     "mutation ClientVerifyEmail($token: String!) {\n  verifyEmail(token: $token)\n}": typeof types.ClientVerifyEmailDocument,
     "query ClientViewer {\n  viewer {\n    id\n    handle\n    nickname\n    emailVerified\n    status\n    totpEnabled\n  }\n}": typeof types.ClientViewerDocument,
     "mutation ClientWithdraw($input: ReAuthenticationInput!) {\n  withdraw(input: $input)\n}": typeof types.ClientWithdrawDocument,
+    "query ClientLegalDocumentVersion($kind: LegalDocumentKind!, $versionNumber: Int!) {\n  legalDocumentVersion(kind: $kind, versionNumber: $versionNumber) {\n    publishedAt\n    changeSummary\n    body\n    isLatest\n  }\n}": typeof types.ClientLegalDocumentVersionDocument,
+    "query ClientLegalDocument($kind: LegalDocumentKind!) {\n  legalDocument(kind: $kind) {\n    latest {\n      versionNumber\n      publishedAt\n      body\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n    }\n  }\n}": typeof types.ClientLegalDocumentDocument,
     "query ClientSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": typeof types.ClientSystemStatusDocument,
 };
 const documents: Documents = {
@@ -59,6 +61,8 @@ const documents: Documents = {
     "mutation ClientVerifyEmail($token: String!) {\n  verifyEmail(token: $token)\n}": types.ClientVerifyEmailDocument,
     "query ClientViewer {\n  viewer {\n    id\n    handle\n    nickname\n    emailVerified\n    status\n    totpEnabled\n  }\n}": types.ClientViewerDocument,
     "mutation ClientWithdraw($input: ReAuthenticationInput!) {\n  withdraw(input: $input)\n}": types.ClientWithdrawDocument,
+    "query ClientLegalDocumentVersion($kind: LegalDocumentKind!, $versionNumber: Int!) {\n  legalDocumentVersion(kind: $kind, versionNumber: $versionNumber) {\n    publishedAt\n    changeSummary\n    body\n    isLatest\n  }\n}": types.ClientLegalDocumentVersionDocument,
+    "query ClientLegalDocument($kind: LegalDocumentKind!) {\n  legalDocument(kind: $kind) {\n    latest {\n      versionNumber\n      publishedAt\n      body\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n    }\n  }\n}": types.ClientLegalDocumentDocument,
     "query ClientSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": types.ClientSystemStatusDocument,
 };
 
@@ -160,6 +164,14 @@ export function graphql(source: "query ClientViewer {\n  viewer {\n    id\n    h
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation ClientWithdraw($input: ReAuthenticationInput!) {\n  withdraw(input: $input)\n}"): (typeof documents)["mutation ClientWithdraw($input: ReAuthenticationInput!) {\n  withdraw(input: $input)\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query ClientLegalDocumentVersion($kind: LegalDocumentKind!, $versionNumber: Int!) {\n  legalDocumentVersion(kind: $kind, versionNumber: $versionNumber) {\n    publishedAt\n    changeSummary\n    body\n    isLatest\n  }\n}"): (typeof documents)["query ClientLegalDocumentVersion($kind: LegalDocumentKind!, $versionNumber: Int!) {\n  legalDocumentVersion(kind: $kind, versionNumber: $versionNumber) {\n    publishedAt\n    changeSummary\n    body\n    isLatest\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query ClientLegalDocument($kind: LegalDocumentKind!) {\n  legalDocument(kind: $kind) {\n    latest {\n      versionNumber\n      publishedAt\n      body\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n    }\n  }\n}"): (typeof documents)["query ClientLegalDocument($kind: LegalDocumentKind!) {\n  legalDocument(kind: $kind) {\n    latest {\n      versionNumber\n      publishedAt\n      body\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n    }\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

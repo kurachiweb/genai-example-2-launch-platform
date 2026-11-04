@@ -20,6 +20,7 @@ import {
   PUBLISHED_AT_LABEL,
 } from '../legal/legal-messages.ts';
 import { LegalVersionNotice } from '../legal/legal-version-notice.tsx';
+import { LEGAL_PAGE_HEADING_ID } from '../legal/use-legal-page-retry.ts';
 
 export interface LegalVersionView {
   readonly publishedAt: string;
@@ -121,6 +122,7 @@ export function LegalVersionPage({
       {/* 再試行で消える再試行のボタンからフォーカスを<body>へ落とさないよう、移り先としてプログラムからだけフォーカスできるようにする */}
       <h1
         ref={headingRef}
+        id={LEGAL_PAGE_HEADING_ID}
         tabIndex={-1}
         className="rounded-sm text-3xl font-extrabold tracking-tight sm:text-4xl"
       >

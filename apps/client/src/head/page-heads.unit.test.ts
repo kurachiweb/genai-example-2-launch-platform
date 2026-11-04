@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 
 import { WEB_ANALYTICS_BEACON_SRC } from '../../lib/start/observability/web-analytics.ts';
-import { buildRootHead, buildSitePageHead } from './page-heads.ts';
+import {
+  buildLegalDocumentHead,
+  buildLegalVersionHead,
+  buildRootHead,
+  buildSitePageHead,
+} from './page-heads.ts';
 
 const STYLESHEET_HREF = '/assets/styles-abc123.css';
 const WEB_ANALYTICS_TOKEN = '0123456789abcdef0123456789abcdef';
@@ -71,6 +76,66 @@ describe('buildSitePageHead', () => {
     ).toStrictEqual({
       meta: [
         { title: '疎通確認 | Launch Stadium' },
+        { name: 'robots', content: 'noindex, nofollow' },
+      ],
+      links: [],
+    });
+  });
+});
+
+describe('buildLegalDocumentHead', () => {
+  test('公開済みの文書は、文書の名前のタイトルと公開ページの正規のURLを付ける', () => {
+    expect(
+      buildLegalDocumentHead('privacy', {
+        preparing: false,
+        canonicalUrl: '/privacy',
+      }),
+    ).toStrictEqual({
+      meta: [{ title: 'プライバシーポリシー | Launch Stadium' }],
+      links: [{ rel: 'canonical', href: '/privacy' }],
+    });
+  });
+
+  test('準備中の文書は、検索の索引の対象外にして正規のURLを付けない', () => {
+    expect(
+      buildLegalDocumentHead('terms', {
+        preparing: true,
+        canonicalUrl: '/terms',
+      }),
+    ).toStrictEqual({
+      meta: [
+        { title: '利用規約 | Launch Stadium' },
+        { name: 'robots', content: 'noindex, nofollow' },
+      ],
+      links: [],
+    });
+  });
+
+  test('取得の失敗でloaderのデータが無ければ、文書の名前のタイトルだけを付ける', () => {
+    expect(buildLegalDocumentHead('legal-notice', undefined)).toStrictEqual({
+      meta: [{ title: '法的通知 | Launch Stadium' }],
+      links: [],
+    });
+  });
+});
+
+describe('buildLegalVersionHead', () => {
+  test('過去版は、文書の名前と版番号のタイトルにして検索の索引の対象外にする', () => {
+    expect(
+      buildLegalVersionHead('legal-notice', { versionNumber: 2 }),
+    ).toStrictEqual({
+      meta: [
+        { title: '法的通知(第2版) | Launch Stadium' },
+        { name: 'robots', content: 'noindex, nofollow' },
+      ],
+      links: [],
+    });
+  });
+
+  test('取得の失敗でloaderのデータが無くても、検索の索引の対象外にする', () => {
+    expect(buildLegalVersionHead('terms', undefined)).toStrictEqual({
+      meta: [
+        { title: '利用規約 | Launch Stadium' },
         { name: 'robots', content: 'noindex, nofollow' },
       ],
       links: [],

@@ -3,7 +3,16 @@ import {
   webAnalyticsHeadScript,
 } from '../../lib/start/observability/web-analytics.ts';
 import { buildPageHead } from '../../lib/start/page-head.ts';
+import {
+  LEGAL_DOCUMENT_LABELS,
+  type LegalDocumentKind,
+} from '../../common-lib/legal/legal-documents.ts';
 import { SITE_NAME } from '../components/layout/site-links.ts';
+import { legalVersionTitle } from '../components/legal/legal-messages.ts';
+import type {
+  LegalDocumentLoaderData,
+  LegalVersionLoaderData,
+} from '../graphql/legal-documents.ts';
 
 export interface RootHeadInput {
   readonly stylesheetHref: string;
@@ -30,6 +39,35 @@ export const buildSitePageHead = ({
   });
   return { meta: [...head.meta], links: [...head.links] };
 };
+
+// 準備中の文書は内容が無いため、検索の索引の対象外にし、索引に載せる正規のURLも付けない
+export const buildLegalDocumentHead = (
+  kind: LegalDocumentKind,
+  loaderData: LegalDocumentLoaderData | undefined,
+) =>
+  buildSitePageHead({
+    title: LEGAL_DOCUMENT_LABELS[kind],
+    ...(loaderData === undefined
+      ? {}
+      : loaderData.preparing
+        ? { noIndex: true }
+        : { canonicalUrl: loaderData.canonicalUrl }),
+  });
+
+export const buildLegalVersionHead = (
+  kind: LegalDocumentKind,
+  loaderData: LegalVersionLoaderData | undefined,
+) =>
+  buildSitePageHead({
+    title:
+      loaderData === undefined
+        ? LEGAL_DOCUMENT_LABELS[kind]
+        : legalVersionTitle(
+            LEGAL_DOCUMENT_LABELS[kind],
+            loaderData.versionNumber,
+          ),
+    noIndex: true,
+  });
 
 // 配色の初回描画前のスクリプトはAppDocumentが置くため、ここには置かない
 export const buildRootHead = ({

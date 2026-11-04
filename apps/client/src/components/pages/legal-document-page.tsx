@@ -23,6 +23,7 @@ import {
   type LegalRevisionSummary,
   LegalRevisionHistory,
 } from '../legal/legal-revision-history.tsx';
+import { LEGAL_PAGE_HEADING_ID } from '../legal/use-legal-page-retry.ts';
 
 export interface LegalLatestVersion {
   readonly versionNumber: number;
@@ -122,6 +123,7 @@ export function LegalDocumentPage({ kind, state }: LegalDocumentPageProps) {
       {/* 再試行で消える再試行のボタンからフォーカスを<body>へ落とさないよう、移り先としてプログラムからだけフォーカスできるようにする */}
       <h1
         ref={headingRef}
+        id={LEGAL_PAGE_HEADING_ID}
         tabIndex={-1}
         className="rounded-sm text-3xl font-extrabold tracking-tight sm:text-4xl"
       >

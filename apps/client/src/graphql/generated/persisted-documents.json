@@ -20,5 +20,7 @@
   "sha256:726a6e9c68fb75fa096211612244937e2b095ff026399cefe872db787e44d0f8": "mutation ClientVerifyEmail($token: String!) { verifyEmail(token: $token) }",
   "sha256:32c8c75633fc3b433a9cb6cbaac7e135578ea7ab16915864dfa104f8065aa35b": "query ClientViewer { viewer { emailVerified handle id nickname status totpEnabled } }",
   "sha256:f42f0084a9747d5145d30bb11beed3b7f668553b0fa146db06147a3dc2b17c48": "mutation ClientWithdraw($input: ReAuthenticationInput!) { withdraw(input: $input) }",
+  "sha256:cf73a2a49fc87037feed659bbc7f29a53ac80fac211fc9fc3db3b49e69a0aab0": "query ClientLegalDocumentVersion($kind: LegalDocumentKind!, $versionNumber: Int!) { legalDocumentVersion(kind: $kind, versionNumber: $versionNumber) { body changeSummary isLatest publishedAt } }",
+  "sha256:14a871d7ed29487fa12d6b46bf699e04496bef6ee024891e2467fedcdbf634c9": "query ClientLegalDocument($kind: LegalDocumentKind!) { legalDocument(kind: $kind) { latest { body publishedAt versionNumber } revisions { changeSummary publishedAt versionNumber } } }",
   "sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e": "query ClientSystemStatus { systemStatus { databaseReachable serverTime } }"
 }
