@@ -24,17 +24,18 @@ IaC定義とGitHub Actionsのデプロイパイプラインで`staging`・`prod`
 
 次の操作は開発者だけが行い、AIエージェントは実行しない。AIエージェントの設定の拒否の一覧(Claude Codeでは`permissions.deny`)にコマンドを載せ、技術的にも拒否する。
 
-| 操作                                                     | 主なコマンド・画面                                                                                                          |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Workerのデプロイ・版の切り替え・ロールバック             | `wrangler deploy`(`--dry-run`を含む)・`wrangler versions deploy`・`wrangler rollback`・`wrangler triggers deploy`           |
-| Workerのシークレットの登録・削除                         | `wrangler secret put`・`wrangler secret delete`・`wrangler secret bulk`                                                     |
-| デプロイ先のD1の操作                                     | `wrangler d1 migrations apply --remote`など`--remote`を付けた`wrangler d1`のコマンド、`wrangler d1 time-travel restore`     |
-| 資源の作成・変更・削除と状態の操作                       | `tofu apply`・`tofu destroy`・`tofu import`・`tofu state rm`・`tofu state push`・`tofu force-unlock`                        |
-| シークレットの値とフォルダの登録・削除                   | `infisical secrets set`・`infisical secrets delete`・`infisical secrets folders create`・`infisical secrets folders delete` |
-| ワークフローの手動の起動(リリースのプルリクエストの作成) | `gh workflow run`、GitHubのActionsの画面                                                                                    |
-| プルリクエストの承認とマージ                             | `gh pr review`・`gh pr merge`・`gh api`、GitHubのプルリクエストの画面                                                       |
-| リポジトリの設定(ルールセット・Environment・Actions)     | GitHubのSettingsの画面、`gh api`                                                                                            |
-| CloudflareのAPIトークン・Infisicalの主体の作成と変更     | 各サービスのダッシュボード                                                                                                  |
+| 操作                                                     | 主なコマンド・画面                                                                                                                             |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workerのデプロイ・版の切り替え・ロールバック             | `wrangler deploy`(`--dry-run`を含む)・`wrangler versions deploy`・`wrangler rollback`・`wrangler triggers deploy`                              |
+| Workerのシークレットの登録・削除                         | `wrangler secret put`・`wrangler secret delete`・`wrangler secret bulk`                                                                        |
+| デプロイ先のD1の操作                                     | `wrangler d1 migrations apply --remote`など`--remote`を付けた`wrangler d1`のコマンド、`wrangler d1 time-travel restore`                        |
+| デプロイ先への最上位管理者の招待の発行                   | `<招待の発行コマンド>`の`--target staging`・`--target prod`(「[最初の最上位管理者の用意](003-first-administrator-bootstrap.md#目的と実行者)」) |
+| 資源の作成・変更・削除と状態の操作                       | `tofu apply`・`tofu destroy`・`tofu import`・`tofu state rm`・`tofu state push`・`tofu force-unlock`                                           |
+| シークレットの値とフォルダの登録・削除                   | `infisical secrets set`・`infisical secrets delete`・`infisical secrets folders create`・`infisical secrets folders delete`                    |
+| ワークフローの手動の起動(リリースのプルリクエストの作成) | `gh workflow run`、GitHubのActionsの画面                                                                                                       |
+| プルリクエストの承認とマージ                             | `gh pr review`・`gh pr merge`・`gh api`、GitHubのプルリクエストの画面                                                                          |
+| リポジトリの設定(ルールセット・Environment・Actions)     | GitHubのSettingsの画面、`gh api`                                                                                                               |
+| CloudflareのAPIトークン・Infisicalの主体の作成と変更     | 各サービスのダッシュボード                                                                                                                     |
 
 - prodへのデプロイは、開発者が承認してマージしたリリースのプルリクエストからだけ起きる。AIエージェントはprodへのデプロイに至る操作を行わない。
 - AIエージェントは、開発者から受け取った値を資源一覧やWrangler設定へ書く変更、識別子の照合の表の値を反映する変更、修正のプルリクエストを作ってよい。マージは開発者が行う。

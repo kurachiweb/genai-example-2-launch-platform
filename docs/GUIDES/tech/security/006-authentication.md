@@ -302,6 +302,7 @@ sequenceDiagram
 
 - 利用者の操作は、利用者側のフロントエンドサーバーからの呼び出しだけで受け付け、入力の検証とbot判定より前に拒否する(「[呼び出し元の判定](../backend/006-internal-gateway.md#呼び出し元の判定)」)。
 - 利用者の操作は、セッションの主体の種類が`user`であることを確かめる。管理者のセッションで利用者の操作を行えない。
+- 管理者の操作の認可(ロール・所有権・最後の最上位管理者の保護)は「[管理者の認可の設計](007-admin-authorization.md)」に従う。
 - bot判定を求める操作の検証の方法は「[bot判定の検証](../backend/003-rate-limiting-and-bot-verification.md#bot判定の検証)」と「[bot判定](../backend/004-graphql-server.md#bot判定)」に従う。
 
 ### 利用者の状態

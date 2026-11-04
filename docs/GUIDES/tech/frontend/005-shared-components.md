@@ -571,7 +571,7 @@ import { LinkConfirmation } from '<共通部品の配置先>/components/auth/lin
 
 ### 管理画面の部品
 
-管理画面の一覧のページを組み立てる部品を`components/admin/`に置く。GraphQLの型と利用側アプリの型に依存せず、行の型は呼び出す側が型引数で決める。
+管理画面の一覧のページを組み立てる部品を`components/admin/`に置く。GraphQLの型と利用側アプリの型に依存せず、行の型は呼び出す側が型引数で決める。画面シェル・メニュー・ロールによる出し分けは「[管理画面のシェルと区画](009-admin-console-shell.md)」に、理由の要否と監査ログの記録は「[監査ログの記録](../backend/008-audit-logging.md)」に従う。
 
 ```tsx
 import { AdminDataTable } from '<共通部品の配置先>/components/admin/admin-data-table.tsx';
