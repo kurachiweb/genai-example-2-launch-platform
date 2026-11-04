@@ -9,7 +9,7 @@
   - frontend-platformはページの応答に`Cache-Control: no-store`を付けるため、公開の直後から公開ページが新しい版を返す。キャッシュの無効化の仕組みは要らない。
   - D1の`db.batch()`は前の文の結果で後の文を変えられない。下書きの保存・破棄は`state_version`を条件にした1文の更新で、公開は先頭の版の挿入の`version_number`を条件付きの副問い合わせにし、条件を満たさなければNOT NULL制約の違反で一括の書き込み全体を取り消す方式で実現できる(admin-foundationの最後の最上位管理者の保護、identity-authの`UserLifecycleCommitter`と同じ方式)。
   - 本文の上限100,000書記素は、api-gatewayのGraphQLの要求の上限(1MiB)とD1の行の上限(2,000,000バイト)の範囲に収まる。1MiBを超える要求はapi-gatewayが413で拒否するため、行の上限に達する前に止まる。
-  - admin-foundationの`AuditTargetKind`は`legal-document`を含むが、Q1により本specは監査ログに記録しない。値が残っても害は無い。
+  - admin-foundationの`AuditTargetKind`は`legal-document`を含むが、Q1により本specは監査ログに記録しない。2026-11-04の決定(G3)により、本specでこの値を取り除く。
 
 ## 要件フェーズ前の確認事項(2026-10-23)
 
@@ -56,14 +56,14 @@
 
 要件と設計の作成中に生じた、開発者の判断を要する論点である。回答と上流specに最も整合する案を仮に採用して設計・タスクを作り、2026-10-23に開発者がすべて採用した案のまま承認した。仮1はQ2の回答で設計に委ねられた論点である。
 
-| #   | 論点                    | 確定した案                                                                                                                                                                                                        | 他の選択肢                                                                                    | 影響する箇所                                                    |
-| --- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| 仮1 | 過去版のURL             | `/terms/revisions/{版番号}`・`/privacy/revisions/{版番号}`・`/legal/revisions/{版番号}`。版番号は文書ごとに初版を1とする連番。過去版のページは`noindex`。正の整数以外(先頭の0・符号・小数)は404(2026-10-23に承認) | 公開日で表す`/terms/2026-10-23`(同じ日に2回公開すると衝突する) / 版のULIDで表す(人が読めない) | 要件7、`LEGAL_DOCUMENT_PATHS`・`parseVersionNumber`、ページ配置 |
-| 仮2 | 本文が同じ版の公開      | 拒否する(`legal_document_unchanged`)。変更の無い版が改訂履歴に載るのを防ぐ(2026-10-23に承認)                                                                                                                      | 許可する(変更概要だけの版ができる)                                                            | 要件4.3、`LegalDocumentRules.checkPublishable`                  |
-| 仮3 | 下書きの同時編集        | 文書ごとの状態の版(`state_version`)で、読み込んだ後に他の保存・破棄・公開があれば後の操作を拒否する(`legal_document_conflict`)。画面は再読み込みを促す(2026-10-23に承認)                                          | 後勝ち(後から保存した側で上書きする)                                                          | 要件3.10・4.4、`D1LegalDocumentStore`                           |
-| 仮4 | 管理画面の文書ごとのURL | 編集の画面`/legal-documents/{terms\|privacy\|legal-notice}`、版の表示`/legal-documents/{種類}/revisions/{版番号}`(2026-10-23に承認)                                                                               | 1画面のタブで3文書を切り替える(URLで文書を指せない)                                           | 要件2・5、管理画面のルート、ページ配置                          |
-| 仮5 | 日時の表示形式          | 公開ページと過去版のページは日付(`longDate`、例「2026年10月23日」)、管理画面は日時(`dateTime`)。どちらも`datetime`属性はミリ秒までのUTCの時刻(2026-10-23に承認)                                                   | 公開ページも日時で表示する                                                                    | 要件5.1・6.1・6.3・6.7・7.1、各表示部品                         |
-| 仮6 | 準備中のページの応答    | 状態コード200で「この文書は準備中です。」を表示し、`noindex`を付ける。登録画面などからのリンクが404にならないようにする(2026-10-23に承認)                                                                         | 404を返す(Q6の選択肢3と同じになる)                                                            | 要件6.6、`LegalDocumentPage`                                    |
+| #   | 論点                    | 確定した案                                                                                                                                                                                                                                                                | 他の選択肢                                                                                    | 影響する箇所                                                    |
+| --- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 仮1 | 過去版のURL             | `/terms/revisions/{版番号}`・`/privacy/revisions/{版番号}`・`/legal/revisions/{版番号}`。版番号は文書ごとに初版を1とする連番。過去版のページは`noindex`。正の整数以外(先頭の0・符号・小数)は404(2026-10-23に承認)                                                         | 公開日で表す`/terms/2026-10-23`(同じ日に2回公開すると衝突する) / 版のULIDで表す(人が読めない) | 要件7、`LEGAL_DOCUMENT_PATHS`・`parseVersionNumber`、ページ配置 |
+| 仮2 | 本文が同じ版の公開      | 拒否する(`legal_document_unchanged`)。変更の無い版が改訂履歴に載るのを防ぐ(2026-10-23に承認)                                                                                                                                                                              | 許可する(変更概要だけの版ができる)                                                            | 要件4.3、`LegalDocumentRules.checkPublishable`                  |
+| 仮3 | 下書きの同時編集        | 文書ごとの状態の版(`state_version`)で、読み込んだ後に他の保存・破棄・公開があれば後の操作を拒否する(`legal_document_conflict`)。画面は再読み込みを促す(2026-10-23に承認)                                                                                                  | 後勝ち(後から保存した側で上書きする)                                                          | 要件3.10・4.4、`D1LegalDocumentStore`                           |
+| 仮4 | 管理画面の文書ごとのURL | 編集の画面`/legal-documents/{terms\|privacy\|legal-notice}`、版の表示`/legal-documents/{種類}/revisions/{版番号}`(2026-10-23に承認)                                                                                                                                       | 1画面のタブで3文書を切り替える(URLで文書を指せない)                                           | 要件2・5、管理画面のルート、ページ配置                          |
+| 仮5 | 日時の表示形式          | 公開ページと過去版のページは曜日を含まない日付(`yearDate`、例「2026年10月23日」。2026-11-04のG1で`longDate`から改めた)、管理画面は日時(`longDateTime`。2026-11-04のG5で年を含まない`dateTime`から改めた)。どちらも`datetime`属性はミリ秒までのUTCの時刻(2026-10-23に承認) | 公開ページも日時で表示する                                                                    | 要件5.1・6.1・6.3・6.7・7.1、各表示部品                         |
+| 仮6 | 準備中のページの応答    | 状態コード200で「この文書は準備中です。」を表示し、`noindex`を付ける。登録画面などからのリンクが404にならないようにする(2026-10-23に承認)                                                                                                                                 | 404を返す(Q6の選択肢3と同じになる)                                                            | 要件6.6、`LegalDocumentPage`                                    |
 
 ### 要件定義書の改訂が必要な箇所
 
@@ -82,7 +82,7 @@ FR-ADMAG-001は改訂しない。Q1により法務文書の操作を監査ログ
 ### 上流・後続specへの影響
 
 - identity-auth(再検証・文言の修正): requirements.mdの決定事項Q4「legal-pagesの改訂履歴の保存日時と突き合わせて特定する」と、Adjacent expectationsの「legal-pagesは、本specが保存する同意日時と照合できる改訂履歴の保存日時を持つ」、research.mdのQ4の「改訂履歴の保存日時」を、それぞれ「改訂履歴の公開日時」に改めた(2026-10-23、開発者の許可を得て本specの作業で反映)。本specは公開日時をミリ秒の精度で持ち、同意日時以前で最も新しい版を返す照会口`LegalVersionLocator`を提供する(要件8)。identity-authの実装・保存する値は変わらない。
-- admin-foundation(再検証は不要): `ADMIN_NAV_ITEMS`へ法務文書(`/legal-documents`、`order` 120)を追記する(契約どおり)。`AuditTargetKind`の`legal-document`はQ1により本specでは使わない。残しても害は無く、削除するかはadmin-foundationの判断に委ねる。
+- admin-foundation(再検証は不要): `ADMIN_NAV_ITEMS`へ法務文書(`/legal-documents`、`order` 120)を追記する(契約どおり)。`AuditTargetKind`の`legal-document`はQ1により本specでは使わないため、2026-11-04の決定(G3)により本specが取り除き、admin-foundationの設計の値の一覧も直す(要件10.7)。
 - frontend-platform(変更なし): 共通フッターのリンク(11.2)のリンク先を本specが作る。
 - content-processing(変更なし): `MarkdownEditor`・`MarkdownContent`・`useMarkdownOptions`・`markdownTextSchema`・`countGraphemes`を契約どおり使う。
 - payments(後続): 決済画面から`/legal`へリンクする。返金ポリシーの見出しへ直接リンクする場合、アンカーは本文の見出しの文字列から作られる(`#user-content-`と見出しのスラッグ)ため、見出しの文言を変える改訂でリンクが切れる。paymentsはアンカー無しの`/legal`へのリンクにするか、見出しの文言の固定を運用で決める。
@@ -217,3 +217,123 @@ FR-ADMAG-001は改訂しない。Q1により法務文書の操作を監査ログ
 - **移したもの**: 本specが所有する契約の移動は無い。`LegalDocumentAdminReader`(application層)が受け取るadmin-foundationの`AdminDirectory`と識別子`ADMIN_PLATFORM_TYPES`は、admin-foundationの改訂で`backend-lib/core/admin`へ移ったため、読み込み先を`core/admin`に直した。
 - **新しいポートと実装**: 無い。
 - **変えた箇所**: design.mdのAllowed Dependencies(admin-foundationの行)・Revalidation Triggers・Existing Architecture Analysis・Dependency Direction。tasks.mdは置き場所を書いていないため変えていない。要件と受け入れ基準は変えていない。
+
+---
+
+## ギャップ分析: 上流の実装後のコードとの突き合わせ(2026-11-04)
+
+- **目的**: 設計(2026-10-23承認)の時点では上流specが未実装だった。admin-foundationまでの実装が`main`系に入った現在のコードと、本specの設計が依存する契約・規約を突き合わせ、実装の着手前に直すべき差を洗い出す。
+- **方法**: design.mdのAllowed Dependencies・File Structure Plan・Modified Filesに載る識別子とファイルを、`apps/`・`e2e/`・`config/`・`docs/`で定義と使い方まで確かめた。外部サービスと新しいパッケージは無いため、外部の調査はしていない。
+- **steering**: `.kiro/steering`は依然としてroadmap.mdだけである。CLAUDE.md・tech-stack.md・上流specで代替した。
+
+### 要約
+
+- 設計が依存する上流の契約は、TanStack Routerの`useBlocker`(パッケージの機能)を除いてすべてコードに存在し、形も設計の想定どおりである。法務文書のコード(テーブル・モジュール・ルート)はまだ無い。
+- 直すべき差は「既存の規約との配置の違い」と「日時の書式の名前の選び方」に集中しており、どれも設計の小さな改訂で済む。新しい契約や上流の変更は要らない。
+- 利用者側のパスの定数(`TERMS_HREF`・`PRIVACY_HREF`・`'/legal'`)が既に`apps/client/src/components/layout/site-links.ts`にあり、本specの`LEGAL_DOCUMENT_PATHS`と重複する。水平展開として一本化するかを決める必要がある。
+- 初期データの`INSERT`を書くマイグレーションは、リポジトリで初めての形である。技術ドキュメント`db/001`は`--custom`の用途を仮想テーブル・トリガーとしているため、記述を足す必要がある。
+- 工数はM(3〜7日)、リスクはLow〜Medium(新しい形は`useBlocker`と初期データのマイグレーションの2つだけ)。
+
+### 要件と既存の資産の対応
+
+凡例: ✅ 既存で足りる / **Missing** 本specで作る / **Constraint** 既存の規約による制約・設計の改訂が要る / **Unknown** 実装時に確かめる
+
+| 要件                     | 既存の資産                                                                                                                                                                                                                                                             | 判定                                                                                                                                                                                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.1〜1.5                 | `apps/db/schema/_shared/columns.ts`の`ulidPrimaryKey`・`timestamps`。条件付きの一括の書き込みの先例は`apps/api/src/infrastructure/admin/audit-log-statements.ts`(`guard`で一括全体を取り消す)と`d1-admin-account-store.ts`の`db.batch`                                 | **Missing**(2テーブル・ストア)。先例に沿って作れる                                                                                                                                                                                                    |
+| 1.6                      | `apps/db/migrations`に`INSERT`でデータを入れるマイグレーションは無い。`config/vitest/read-nested-d1-migrations.ts`がWorkers統合テストへ全マイグレーションを適用する                                                                                                    | **Missing**・**Constraint**: `docs/GUIDES/tech/db/001`・`003`は`--custom`の用途を仮想テーブル・トリガーとしている。初期データの書き方(固定のULID・作成日時の値)を`db/005`または`db/001`に書く。Workers統合テストのDBには3文書の枠が常にある前提になる |
+| 2.1〜2.3                 | `ADMIN_NAV_ITEMS`(`apps/admin/src/composition/admin-navigation.ts`。コメントで法務文書の`order` 120を予約済み)、`AdminDataTable`・`AdminPageHeader`                                                                                                                    | **Missing**(ルート・一覧)。メニューは1行の追記で足りる                                                                                                                                                                                                |
+| 2.4・3.7・4.5            | `requireAdmin(context, minimum)`(`apps/api/src/presentation/graphql/admin-guard.ts`)。呼び出し元が管理者側でなければ拒否し、ロールの不足はログに残す                                                                                                                   | ✅ 設計どおり                                                                                                                                                                                                                                         |
+| 3.1・3.2                 | `MarkdownEditor`(props: `value`・`onValueChange`・`onBlur`・`labelId`・`maxGraphemes`・`placeholder`・`preview`・`disabled`ほか)。ツールバーの操作に画像は無く、見出しの入力規則は`##`〜`######`だけ(`crepe/heading-input-rule.ts`)                                    | ✅ 見出しレベル1と画像の除外は既定の振る舞いで満たされる。ツールバーを指定するpropは無く、要らない                                                                                                                                                    |
+| 3.4・4.2・9.1            | `markdownTextSchema({ label, maxGraphemes, required })`・`countGraphemes`・`hasForbiddenCharacters`(`apps/common-lib`)                                                                                                                                                 | ✅ 本文はそのまま使える。変更概要(改行を含まない1〜200書記素)は本specの`legal-input-rules.ts`で作る(**Missing**)                                                                                                                                      |
+| 3.5・5.1・5.2            | `AdminDirectory.findProfiles(ids)`(`apps/backend-lib/core/admin/ports.ts`)は削除済み・招待中・存在しないIDを結果に含めない                                                                                                                                             | ✅ 見つからないIDを「削除済みの管理者」とする設計どおり                                                                                                                                                                                               |
+| 3.5・5.1(日時)           | `DATE_TIME_FORMATS`の`dateTime`は年を含まない(`month`・`day`・`weekday`・`hour`・`minute`)                                                                                                                                                                             | **Constraint**: 改訂履歴は年をまたぐため、管理画面の日時は`longDateTime`(年を含む)が適する。設計の`dateTime`の指定を改める                                                                                                                            |
+| 3.6・4.7                 | `ConfirmActionDialog`は`reason: 'required' \| 'optional' \| 'none'`と`audited: boolean`を必須のpropとして受ける                                                                                                                                                        | ✅ 下書きの破棄は`reason: 'none'`・`audited: false`で使える。公開の確認は変更概要の入力を持つため、設計どおり専用の`PublishLegalDocumentDialog`を作る                                                                                                 |
+| 3.8                      | `RoleGate({ minimum, fallback })`・`useAdminRole`(`apps/admin/src/components/layout/`)                                                                                                                                                                                 | ✅                                                                                                                                                                                                                                                    |
+| 3.11                     | `useBlocker`をリポジトリのどこも使っていない。`@tanstack/react-router`は`1.170.46`(調査時の型定義は`1.170.41`)                                                                                                                                                         | **Unknown**: 版が上がったため、`shouldBlockFn`・`enableBeforeUnload`・`withResolver`の形が変わっていないかを実装時に型定義で確かめる。リポジトリで最初の使い方になる                                                                                  |
+| 6.1〜6.4・7.1〜7.3(日付) | `DateTime({ value, format })`は`<time dateTime={toISOString()}>`(ミリ秒までのUTC)を出す。`longDate`は曜日を含み、`yearDate`が「2026年10月23日」の形                                                                                                                    | **Constraint**: 仮5の例(「2026年10月23日」)と設計の`longDate`(曜日付き)が食い違う。曜日を出さないなら`yearDate`に改め、`longDate`のままなら仮5の例を直す                                                                                              |
+| 6.2                      | `useMarkdownOptions({ externalLinkRel, sameOriginLinkRel?, idScope? })`は`publicConfig.clientSiteOrigin`を補う。`useRenderedMarkdown`・`MarkdownContent({ rendered, size? })`                                                                                          | ✅                                                                                                                                                                                                                                                    |
+| 6.6・7.4・7.5            | `buildSitePageHead({ title, canonicalUrl?, noIndex? })`(`apps/client/src/head/page-heads.ts`)、ルートの`notFoundComponent: NotFoundPage`                                                                                                                               | **Constraint**: 設計は`buildPageHead`を直接使う書き方だが、既存のルートはアプリごとの`head/page-heads.ts`のラッパーを使う。`noIndex`はラッパーで渡せる                                                                                                |
+| 6.8・LR-001              | 共通フッターの`FOOTER_POLICY_LINKS`(`site-links.ts`)が`/terms`・`/privacy`・`/legal`を指し、`site-layout.browser.test.tsx`が確かめている。登録画面(`register-form.tsx`)は`TERMS_HREF`・`PRIVACY_HREF`を使う                                                            | ✅ リンクは既存。**Constraint**: パスの定数が`site-links.ts`と本specの`LEGAL_DOCUMENT_PATHS`の2か所になる(下の「水平展開の候補」)                                                                                                                     |
+| 8.1〜8.3                 | `users.termsAgreedAt`は`integer({ mode: 'timestamp_ms' })`(`apps/db/schema/identity/users.ts`)                                                                                                                                                                         | ✅ 公開日時をミリ秒で持てばそのまま比較できる                                                                                                                                                                                                         |
+| 9.3                      | `runAxe`(`apps/frontend-lib/test/a11y.ts`)                                                                                                                                                                                                                             | ✅                                                                                                                                                                                                                                                    |
+| 10.2                     | `signInAsNewAdmin`(`e2e/support/admin-bootstrap.ts`)                                                                                                                                                                                                                   | ✅                                                                                                                                                                                                                                                    |
+| 10.4                     | `docs/GUIDES/tech/db/`は001〜004。005は空いている                                                                                                                                                                                                                      | **Missing**(`db/005`)                                                                                                                                                                                                                                 |
+| 10.5                     | ページ配置に`/legal-documents`の行と権限の行はadmin-foundationが記載済み。過去版のURL・`rel`の行は無い。文言規則は変更概要(200文字)だけ。準拠方針の「法務文書の改訂」は旧来の文言。プライバシーポリシーの大枠のCloudflareの項はTurnstileを挙げるがAddendumの参照は無い | **Missing**(各文書の追記)。要件定義書のFR-ADMAG-007・008・010の改訂は適用済み                                                                                                                                                                         |
+
+### 既存の規約との配置の違い(設計の改訂の候補)
+
+| 設計の記述                                                                                  | 既存のコードの規約                                                                                                                                                     | 影響                                                                                     |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| ページの部品を`components/legal/legal-document-page.tsx`などに置く                          | ページの部品は`src/components/pages/*-page.tsx`に置き、ドメインの部品は`src/components/<ドメイン>/`に置く(例: `pages/audit-logs-page.tsx`と`audit/audit-log-list.tsx`) | File Structure Planの配置。ページの部品だけ`components/pages/`へ移す                     |
+| loader・head・`params.parse`の組み立てを`components/legal/legal-route-options.ts`にまとめる | loaderは`components/<ドメイン>/load-*-page.ts`(例: `audit/load-audit-logs-page.ts`)、headは`src/head/page-heads.ts`の`buildSitePageHead`・`buildAdminPageHead`         | `legal-route-options.ts`を`load-legal-*-page.ts`とheadのラッパーの呼び出しに分けるか判断 |
+| 生成した型と画面の型の変換の置き場所の記載が無い                                            | 取得の補助の規約は、生成した結果の型の変換を操作ごとに`src/graphql/<内容>.ts`に置き単体テストを書く(`docs/GUIDES/tech/frontend/006-data-fetching.md`)                  | 変換を書く場合は`src/graphql/legal-*.ts`に置く                                           |
+| 管理画面の日時を`dateTime`、公開ページを`longDate`                                          | 上の表のとおり、`dateTime`は年を含まず、`longDate`は曜日を含む                                                                                                         | 書式の名前の選び直し(`longDateTime`・`yearDate`)                                         |
+
+### 水平展開の候補
+
+- **利用者側のパスの定数**: `site-links.ts`の`TERMS_HREF`・`PRIVACY_HREF`と`FOOTER_POLICY_LINKS`の`'/legal'`・`'利用規約'`などの名前、`components/auth/account-messages.ts`の`TERMS_LINK_LABEL`・`PRIVACY_LINK_LABEL`が、本specの`LEGAL_DOCUMENT_PATHS`・文書の名前と重複する。選択肢は (a) `site-links.ts`・`account-messages.ts`が`apps/common-lib/legal/legal-documents.ts`を参照するように改める(パスの単一の情報源。Revalidation Triggersの「利用者側のパス」が1か所になる) / (b) 重複を残し、パスの一致を単体テストで確かめる。
+- **監査ログの対象の種類**: Q1により法務文書の操作は監査ログに記録しないが、`AuditTargetKind`の`'legal-document'`(`apps/common-lib/admin/audit-action.ts`)・管理画面の表示名(`apps/admin/src/components/audit/audit-logs-messages.ts`)・文言規則の「監査ログの対象の種類」(`docs/GUIDES/service/design/003-text-and-copy-rules.md`の428行目)に「法務文書」が残る。監査ログの絞り込みに選べるが常に0件の選択肢になる。research.mdの既存の判断(「残しても害は無く、削除はadmin-foundationの判断」)を維持するか、本specで外すかを決める。
+
+### 実装の方針の選択肢
+
+#### 選択肢A: 既存の部品を広げる
+
+- 法務文書の照会・変更をadmin-foundationの`admin`モジュール(`application/admin`・`presentation/graphql/modules/admin`)に足し、公開ページは`site-links.ts`の定数をそのまま使う。
+- ✅ ファイル数が最も少ない。❌ `admin`モジュールは既に大きく(管理者アカウント・認証・監査ログ)、利用者側の公開の照会まで持つと責務が混ざる。設計の境界(`legal`モジュール)と食い違い、承認済みの設計を大きく変える。
+
+#### 選択肢B: 設計どおり新しい`legal`モジュールを作る
+
+- design.mdのFile Structure Planをそのまま実装する。
+- ✅ 承認済みの設計と一致し、境界が明確。❌ 上の「配置の違い」のとおり、ページの部品・loader・headの置き場所が既存の規約とずれ、レビューで指摘されやすい。
+
+#### 選択肢C: 新しい`legal`モジュール+既存の規約への合わせ込み(ハイブリッド)
+
+- バックエンド(テーブル・domain・application・infrastructure・スキーマモジュール)は設計どおり新しく作る。
+- 画面は既存の規約に合わせ、ページの部品を`components/pages/`、loaderを`components/legal/load-*-page.ts`、headを`head/page-heads.ts`のラッパー経由にする。日時の書式を`yearDate`(または`longDate`のまま仮5の例を直す)と`longDateTime`に改める。
+- 利用者側のパスの定数を`apps/common-lib/legal`へ一本化するかは、水平展開の候補(a)(b)から選ぶ。
+- ✅ 設計の境界を保ったまま、既存のコードと見た目の一貫性が取れる。❌ 設計とタスクの小さな改訂が先に要る。
+
+### 工数とリスク
+
+- **工数: M(3〜7日)** — テーブル2つ・ユースケース5つ・スキーマモジュール1つ・ルート9つ・画面部品十数個とE2Eだが、すべて既存の先例(admin-foundationの条件付きの一括の書き込み、監査ログの画面)に沿って作れる。
+- **リスク: Low〜Medium** — 新しい形は`useBlocker`(版が上がった後の型の確認)と初期データのマイグレーション(先例が無く文書の追記が要る)の2つだけで、外部サービス・新しいパッケージ・新しい資源は無い。
+
+### 設計フェーズへの申し送り
+
+- **推奨の方向**: 選択肢C。設計の境界と契約は変えず、File Structure Planの画面の配置と日時の書式の指定だけを既存の規約に合わせて改訂する。
+- **開発者の判断が要る事項**(2026-11-04に決定。下の「ギャップ分析の後の決定」):
+  1. 公開ページと過去版のページの日付の書式(`yearDate`で曜日なし / `longDate`で曜日付き。仮5の例はどちらかに合わせて直す)
+  2. 利用者側のパスの定数の一本化(水平展開の候補(a)・(b))
+  3. `AuditTargetKind`の`'legal-document'`と文言規則の「法務文書」を残すか
+- **Research Needed**:
+  - `@tanstack/react-router` 1.170.46の`useBlocker`の型(`shouldBlockFn`・`enableBeforeUnload`・`withResolver`)と、TanStack Startのサーバー側の描画で`beforeunload`の登録が問題にならないこと
+  - 初期データのマイグレーションで固定のULIDと作成日時を使う書き方と、`drizzle-kit generate`のスナップショットとの関係(`--custom`のマイグレーションはスナップショットを変えないこと)
+- **トレーサビリティの補足**: 要件定義書にFR-ADMAG-011(改訂履歴に公開した管理者を表示しない)が新設された。本specの要件6.5は内容が同じため、根拠の表記にFR-ADMAG-011を加える。
+
+### ギャップ分析の後の決定(2026-11-04、開発者の回答)
+
+ギャップ分析の「開発者の判断が要る事項」を1件ずつ確認し、3件とも推奨案が採用された。
+
+| #   | 論点                           | 決定                                                                                                                                                                                                                                | 他の選択肢                                   | 変えた箇所                                                                                                                                                                                               |
+| --- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | 公開ページと過去版の日付の書式 | `yearDate`(曜日を含まない「2026年10月23日」)。仮5の例のままにする                                                                                                                                                                   | `longDate`(曜日付き)にして仮5の例を直す      | requirements.mdの仮5、design.mdのRequirements Traceabilityの6.7・`LegalDocumentPage`・`LegalRevisionHistory`・`LegalVersionPage`、tasks.mdの5.1・5.2、本書の仮5                                          |
+| G2  | 利用者側のパスと名前の定数     | `apps/common-lib/legal/legal-documents.ts`へ一本化し、clientの`site-links.ts`・`account-messages.ts`はそこから作る(値は変えない)                                                                                                    | 重複を残し、パスの一致を単体テストで確かめる | design.mdのRevalidation Triggers・`LegalDocuments`の注記・Modified Files、tasks.mdの5.3(1.2への依存を追加)                                                                                               |
+| G3  | 監査ログの対象の種類の法務文書 | 本specで`AuditTargetKind`の`'legal-document'`・管理画面の表示名・文言規則の「監査ログの対象の種類」の「法務文書」を除き、admin-foundationの設計の値の一覧も直す。列に制約が無く、この値の記録も無いため、マイグレーションは要らない | 残す / admin-foundationの修正として別に扱う  | requirements.mdのQ1・要件10.7(追加)、design.mdのThis Spec Owns・Allowed Dependencies・Modified Files・Requirements Traceabilityの10.1〜10.7、tasks.mdの6.7(追加)、本書のKey Findings・上流と後続への影響 |
+
+- 要件10.7は受け入れ基準の追記で、既存の要件番号は振り直していない。`spec.json`の承認の状態は変えていない。
+- ギャップ分析の推奨のうち、上の3件に含まれない4点は、続けて1件ずつ確認した(下の表)。
+
+### ギャップ分析の後の決定(続き、2026-11-04、開発者の回答)
+
+4件とも推奨案が採用された。
+
+| #   | 論点                                 | 決定                                                                                                                                                                                                                                                                                                                                                                                                                                         | 他の選択肢                                                                | 変えた箇所                                                                                                                                                                                                                                                                                     |
+| --- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G4  | 画面のファイルの置き場所             | 既存の規約に全面的に合わせる。ページ全体の部品は`components/pages/`、ページを組み立てる部品は`components/legal/`、取得の設定・`loader`・生成した型からの変換はclientの`src/graphql/legal-documents.ts`とadminの`src/graphql/admin-legal-documents.ts`、headは`src/head/page-heads.ts`(clientは`buildLegalDocumentHead`・`buildLegalVersionHead`を追記)。`legal-route-options.ts`は廃止し、版番号の解析は`loader`で`parseVersionNumber`を使う | ページの部品とheadだけ合わせ、`legal-route-options.ts`を残す / 設計のまま | design.mdのFile Structure Plan(と置き場所の規約の段落)・Allowed Dependenciesの`buildPageHead`・Requirements Traceabilityの6.6・7.1〜7.5・ClientLegalPagesの契約とルートの説明・AdminLegalPagesの経路の表と`loader`の説明・Testing Strategyの単体テスト、tasks.mdの5.1・5.2・5.3・6.1・6.5・6.6 |
+| G5  | 管理画面の日時の書式                 | 改訂履歴・一覧・版の表示の公開日時と下書きの最終保存日時をすべて`longDateTime`(年・曜日・時刻)にする。履歴を示す監査ログの一覧と揃える                                                                                                                                                                                                                                                                                                       | 改訂履歴だけ`longDateTime` / `dateTime`のまま                             | design.mdの経路の表・`LegalDraftStatus`・`LegalRevisionTable`、tasks.mdの6.1・6.3・6.5、本書の仮5                                                                                                                                                                                              |
+| G6  | FR-ADMAG-011の参照                   | 要件6.5の根拠を「(Q1、FR-ADMAG-011)」にし、Project DescriptionとIntroductionの対象の列挙、設計のGoalsにFR-ADMAG-011を加える。振る舞いは変わらない                                                                                                                                                                                                                                                                                            | 6.5の根拠だけ追記 / 追記しない                                            | requirements.mdのProject Description・Introduction・要件6.5、design.mdのGoals                                                                                                                                                                                                                  |
+| G7  | 初期データのマイグレーションの記載先 | `db/003`の「マイグレーション」の節に「初期データ」の項を加え、`db/001`の`--custom`の用途の1文を揃え、CLAUDE.mdの技術規則の参照先に1行加える。`--custom`のマイグレーションとスナップショットの関係はタスク1.1で確かめてから書く                                                                                                                                                                                                               | 本specの`db/005`に書く / 書かない                                         | requirements.mdの要件10.4、design.mdのModified Files(`db/003`・`db/001`・CLAUDE.md)、tasks.mdの1.1(スナップショットの確認)・7.3(記載と1.1への依存)                                                                                                                                             |
+
+- 要件10.4は受け入れ基準の文言の追記で、要件番号は振り直していない。`spec.json`の承認の状態は変えていない。
+- 技術ドキュメント(`db/001`・`db/003`)とCLAUDE.mdの本体はタスク7.3で書く。今回はspecだけを改めた。

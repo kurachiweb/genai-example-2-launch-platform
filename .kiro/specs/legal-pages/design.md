@@ -10,7 +10,7 @@
 
 ### Goals
 
-- FR-ADMAG-007・008・010とLR-001・LR-008の表示面が、下書きと公開を分けた形(Q3)で動作し、E2Eテストで下書きの保存から公開・過去版の表示までを確かめられる。
+- FR-ADMAG-007・008・010・011とLR-001・LR-008の表示面が、下書きと公開を分けた形(Q3)で動作し、E2Eテストで下書きの保存から公開・過去版の表示までを確かめられる。
 - 公開した全版の本文と公開者が残り、同意日時から版を一意に特定できる。
 - 同時の編集・公開で版番号の重複や後勝ちの上書きが起きない。
 - 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
@@ -33,6 +33,7 @@
 - 利用者側の公開ページ`/terms`・`/privacy`・`/legal`と過去版のページ`/{同}/revisions/{版番号}`。
 - 管理画面の`/legal-documents`・`/legal-documents/{種類}`・`/legal-documents/{種類}/revisions/{版番号}`と、メニューの項目。
 - 技術ドキュメント`db/005`、サービス仕様のページ配置・文言規則・準拠方針・利用規約とプライバシーポリシーの大枠の追記。
+- 監査ログの対象の種類からの法務文書(`'legal-document'`)の削除(Q1。10.7)。admin-foundationが定義した値だが、法務文書の操作を監査ログに記録しないことを決めた本specが取り除く。
 - 非表示のbot判定のウィジェットを使う条件として、プライバシーポリシーの本文がCloudflareのTurnstile Privacy Addendumを参照していることを公開前に確かめること(参照が無ければプライバシーポリシーの大枠のCloudflareの項に加える。10.5)。
 
 ### Out of Boundary
@@ -49,9 +50,9 @@
 
 - backend-platform: `ulidPrimaryKey`・`timestamps`・`Database`・`AppError`・`Clock`・`IdGenerator`・`getAppLogger`・`PLATFORM_TYPES`。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`・`DateTime`のスカラー。形を変えない。
-- admin-foundation: `requireAdmin`(`presentation/graphql/admin-guard.ts`)・`CurrentAdmin`・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`(契約と識別子は`backend-lib/core/admin`、束縛は`ADMIN_PLATFORM_MODULE`)・`ADMIN_NAV_ITEMS`への追記・`AdminPageHeader`・`AdminDataTable`・`ConfirmActionDialog`・`RoleGate`・`useAdminRole`・E2Eの補助`signInAsNewAdmin`(`e2e/support/admin-bootstrap.ts`)。監査ログの部品は使わない。
+- admin-foundation: `requireAdmin`(`presentation/graphql/admin-guard.ts`)・`CurrentAdmin`・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`(契約と識別子は`backend-lib/core/admin`、束縛は`ADMIN_PLATFORM_MODULE`)・`ADMIN_NAV_ITEMS`への追記・`AdminPageHeader`・`AdminDataTable`・`ConfirmActionDialog`・`RoleGate`・`useAdminRole`・E2Eの補助`signInAsNewAdmin`(`e2e/support/admin-bootstrap.ts`)。監査ログの部品は使わず、`AuditTargetKind`(`apps/common-lib/admin/audit-action.ts`)から`'legal-document'`を除く変更だけを行う。
 - content-processing: `countGraphemes`・`hasForbiddenCharacters`・`markdownTextSchema`・`MarkdownTextRule`・`LinkRelToken`(common-lib)、`MarkdownEditor`・`MarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`(frontend-lib)。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`・`PublicRuntimeConfig.clientSiteOrigin`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`FormField`・`SubmitButton`・`buildPageHead`(各アプリの`head/page-heads.ts`の`buildSitePageHead`・`buildAdminPageHead`を通す)・`DateTime`・`EmptyState`・`ErrorState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`・`PublicRuntimeConfig.clientSiteOrigin`・`AppForm`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`。
   - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。管理者側のフォームのファイルが`zod`の値を使う時は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
   - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
 - `@tanstack/react-router`の`useBlocker`(frontend-platformの版)。新しいnpmパッケージは無い。
@@ -60,7 +61,7 @@
 
 - `LegalVersionLocator`の形・比較の規則(指定の日時「以前」で公開日時が最も新しい版)・公開日時の精度(identity-auth・同意した版を使う後続spec)。
 - 利用者側のパス`/terms`・`/privacy`・`/legal`と過去版のURLの形(identity-auth・payments・frontend-platformのフッター)。
-- `LegalDocumentKind`の値と`LEGAL_DOCUMENT_PATHS`(4アプリ)。
+- `LegalDocumentKind`の値と`LEGAL_DOCUMENT_PATHS`・`LEGAL_DOCUMENT_LABELS`(4アプリ。clientの共通フッターと登録画面のリンクもここから作る)。
 - GraphQLの`legal`モジュールの型・エラーコード(client・admin)。
 - admin-foundationの`requireAdmin`・`AdminDirectory`(置き場所`backend-lib/core/admin`を含む)・`ADMIN_NAV_ITEMS`・共通部品のprops・E2Eの補助`signInAsNewAdmin`の形を変えたら、本specを確かめ直す。
 - content-processingの`MarkdownEditorProps`・`MarkdownContentProps`・`markdownTextSchema`の文言を変えたら、本specを確かめ直す。
@@ -172,19 +173,24 @@ apps/
 ├── client/src/
 │   ├── routes/terms/index.tsx · privacy/index.tsx · legal/index.tsx
 │   ├── routes/terms/revisions/$versionNumber.tsx · privacy/revisions/$versionNumber.tsx · legal/revisions/$versionNumber.tsx
-│   ├── components/legal/                               # *.browser.test.tsxを併置
-│   │   ├── legal-route-options.ts                      # 6つのルートが使うloader・head・params.parseの組み立て(単体テスト併置)
+│   ├── components/pages/                               # ページ全体の部品(*.browser.test.tsxを併置)
 │   │   ├── legal-document-page.tsx                     # 名前・最新版の公開日・本文・改訂履歴・準備中
-│   │   ├── legal-version-page.tsx                      # 版の名前・版番号・公開日・変更概要・本文
+│   │   └── legal-version-page.tsx                      # 版の名前・版番号・公開日・変更概要・本文
+│   ├── components/legal/                               # ページを組み立てる部品(*.browser.test.tsxを併置)
 │   │   ├── legal-version-notice.tsx                    # 過去の版・最新版である旨と公開ページへのリンク
 │   │   └── legal-revision-history.tsx                  # 改訂履歴の一覧
-│   └── graphql/operations/legal/                       # 1ファイル1操作の*.graphql(操作名はClientで始める)
-│       └── legal-document.graphql · legal-document-version.graphql
+│   ├── graphql/legal-documents.ts                      # 取得の設定・loader・生成した型からの変換(単体テスト併置)
+│   ├── graphql/operations/legal/                       # 1ファイル1操作の*.graphql(操作名はClientで始める)
+│   │   └── legal-document.graphql · legal-document-version.graphql
+│   └── head/page-heads.ts                              # 公開ページと過去版のheadの組み立てを追記(単体テスト併置)
 └── admin/src/
     ├── routes/_authenticated/legal-documents/index.tsx · $kind/index.tsx · $kind/revisions/$versionNumber.tsx
-    ├── components/legal/                               # *.browser.test.tsxを併置
-    │   ├── legal-document-list.tsx                     # 3文書の一覧(最新版・公開日時・下書きの有無・編集・公開ページ)
+    ├── components/pages/                               # ページ全体の部品(*.browser.test.tsxを併置)
+    │   ├── legal-documents-page.tsx                    # 見出しと3文書の一覧
     │   ├── legal-document-editor-page.tsx              # 見出し・状態・入力欄・改訂履歴の配置と取得
+    │   └── legal-document-version-page.tsx             # 見出しと版の表示
+    ├── components/legal/                               # ページを組み立てる部品(*.browser.test.tsxを併置)
+    │   ├── legal-document-list.tsx                     # 3文書の一覧(最新版・公開日時・下書きの有無・編集・公開ページ)
     │   ├── legal-draft-form.tsx                        # 入力欄と保存・破棄・公開の操作(ロールで読み取り専用)
     │   ├── legal-draft-status.tsx                      # 下書きの有無・最後の保存の日時と保存者
     │   ├── publish-legal-document-dialog.tsx           # 変更概要の入力と公開の確認
@@ -194,12 +200,15 @@ apps/
     │   ├── use-unsaved-changes-guard.ts                # useBlockerによる離脱の確認の状態
     │   ├── legal-editor-errors.ts                      # GraphQLClientErrorのコードと表示の対応(単体テスト併置)
     │   └── legal-form-schemas.ts                       # 下書きと変更概要のフォームの規則
+    ├── graphql/admin-legal-documents.ts                # 取得の設定・loader・生成した型からの変換(単体テスト併置)
     └── graphql/operations/legal/                       # 1ファイル1操作の*.graphql(操作名はAdminで始める。照会3つと変更3つ)
 e2e/
 ├── client/legal-pages.e2e.test.ts                      # フッターから3つの公開ページへの到達
 └── admin/legal-documents.e2e.test.ts                   # 下書きの保存・公開・公開ページ・過去版・続けての公開(管理者はadmin-foundationの`signInAsNewAdmin`で用意する)
 docs/GUIDES/tech/db/005-draft-and-published-versions.md
 ```
+
+画面のファイルの置き場所は既存のアプリの規約に従う(2026-11-04に決定)。ページ全体の部品は`components/pages/*-page.tsx`、ページを組み立てる部品は`components/legal/`、取得の設定・`loader`・生成した型からの変換は`src/graphql/<内容>.ts`(frontend-platformの[取得の補助とloader](../../../docs/GUIDES/tech/frontend/006-data-fetching.md#取得の補助とloader))、headは`src/head/page-heads.ts`の`buildSitePageHead`・`buildAdminPageHead`を通す。ルートのファイルは`createFileRoute`にこれらを渡すだけにする。
 
 テストファイルは同名の`*.unit.test.ts`(`domain`・`application`・`common-lib`・`db/schema`・純粋な補助)、`*.worker.test.ts`(`infrastructure`・`presentation`・`composition`)、`*.browser.test.tsx`(画面部品)を対象ファイルの隣に置く。文書の番号は、roadmapの順でadmin-foundationの後の空き番号`db/005`に固定する(並行して作成中のinquiry-chatはこの後の番号を使う)。
 
@@ -210,12 +219,17 @@ docs/GUIDES/tech/db/005-draft-and-published-versions.md
 - `apps/api/src/presentation/graphql/generated/*`・`allowlist.json`、`apps/{client,admin}/src/graphql/generated/*` — 生成コマンドで作り直す。
 - `apps/admin/src/composition/admin-navigation.ts` — `{ to: '/legal-documents', label: '法務文書', order: 120 }`を加える。
 - `docs/GUIDES/tech/db/README.md` — `005`の行を加える。
+- `docs/GUIDES/tech/db/003-schema-conventions.md` — 「マイグレーション」の節に「初期データ」の項を加え、`--custom`のマイグレーションの用途に初期データを足す。書く内容は、固定のULIDと作成日時・更新日時の値をSQLに書くこと、一意の列に対する`INSERT … ON CONFLICT … DO NOTHING`で重複を無視すること、テーブルの作成とは別のカスタムマイグレーションにしてテーブルの作成の直後に適用すること、Workers統合テストのデータベースにもマイグレーションと同じく常に入るためテストはその行がある前提で書くこと、`--custom`のマイグレーションとスナップショットの関係(タスク1.1で確かめた結果)である。プロジェクト名と本サービス特有の用語は含めない(2026-11-04に決定)。
+- `docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md` — 「マイグレーションの生成と適用」の`--custom`の用途の1文に初期データを足し、`db/003`の「初期データ」へリンクする。
+- `apps/client/src/components/layout/site-links.ts`・`apps/client/src/components/auth/account-messages.ts` — 法務文書のパスと名前を`apps/common-lib/legal/legal-documents.ts`から作る(値は変わらない)。
+- `apps/common-lib/admin/audit-action.ts`・`apps/admin/src/components/audit/audit-logs-messages.ts` — `AuditTargetKind`の型・対象の種類の集合・表示名から`'legal-document'`を除く。監査ログの対象の種類の列にCHECK制約は無く、この値で記録した監査ログも無いため、マイグレーションは要らない。共用部品の変更は各アプリの配置先へ写す。
+- `.kiro/specs/admin-foundation/design.md` — `AuditTargetKind`の値の一覧から`'legal-document'`を除く。
 - `docs/GUIDES/service/design/002-page-layouts.md` — 利用者側のURLの表に過去版の3行、外部リンクの`rel`の表に法務文書(`noopener`)、法務文書の公開ページと過去版の配置の節、管理者側の法務文書の画面の構成とURL(仮4)を加える。
-- `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 入力欄の上限の表に法務文書の本文の行(上限100,000文字・必須・マークダウン・FR-ADMAG-007)を加え、本specの文言(「Error Handling」の表と、各画面部品に記した確認・状態・案内の文言)を追記する。
+- `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 入力欄の上限の表に法務文書の本文の行(上限100,000文字・必須・マークダウン・FR-ADMAG-007)を加え、本specの文言(「Error Handling」の表と、各画面部品に記した確認・状態・案内の文言)を追記する。「監査ログの対象の種類」の行から「法務文書」を除く(10.7)。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「法務文書の版(本文・変更概要・公開日時・公開した管理者のID)は無期限、削除の操作なし」「法務文書の下書きは公開・破棄で削除」の行を加え、「法務文書の改訂」を下書きと公開・過去版の掲示・周知の運用(Q4)・本番公開前の初版の公開(Q6)の内容に改める。
 - `docs/GUIDES/service/legal/002-terms-of-service-outline.md`・`003-privacy-policy-outline.md` — 章18・章13の要点に「改訂履歴と過去の各版の掲示」を加える。
   - `003-privacy-policy-outline.md`のCloudflareの項(infra-deliveryが書く`### Cloudflare(<サービス>)`の項): 非表示のbot判定のウィジェットを使う条件として、CloudflareのTurnstile Privacy Addendumを参照する旨があるかを確かめ、無ければ「bot判定」の項目として加える。「記載上の注意」に、公開するプライバシーポリシーの本文がこの参照を含むことを記す。Cloudflareの項の移転先・移転の根拠・委託先が講じる措置の項目は書き換えない(10.5)。
-- `CLAUDE.md` — 「技術規則の参照先」に、下書きと公開した版を持つデータを設計する前に読む`db/005`へのリンクを加える。
+- `CLAUDE.md` — 「技術規則の参照先」に、下書きと公開した版を持つデータを設計する前に読む`db/005`へのリンクと、初期データをマイグレーションで入れる前に読む`db/003`の「初期データ」へのリンクを加える。
 
 ## System Flows
 
@@ -284,13 +298,13 @@ sequenceDiagram
 | 4.8         | 公開後の表示                       | LegalDocumentReader・ページの`no-store`                          | `legalDocument`                                      | —          |
 | 5.1〜5.5    | 管理画面の改訂履歴と版             | LegalRevisionTable・LegalVersionDetail・LegalDocumentAdminReader | `AdminLegalRevision`・`adminLegalDocumentVersion`    | —          |
 | 6.1〜6.5    | 公開ページの本文と改訂履歴         | LegalDocumentPage・LegalRevisionHistory・LegalDocumentReader     | `legalDocument`                                      | —          |
-| 6.6         | 準備中                             | LegalDocumentPage・LegalRouteOptions                             | `latest: null`・`noIndex`                            | 文書の状態 |
-| 6.7         | 日時の表示                         | LegalDocumentPage・LegalRevisionHistory                          | `DateTime`(`longDate`)                               | —          |
+| 6.6         | 準備中                             | LegalDocumentPage・`loadLegalDocument`・`buildLegalDocumentHead` | `latest: null`・`noIndex`                            | 文書の状態 |
+| 6.7         | 日時の表示                         | LegalDocumentPage・LegalRevisionHistory                          | `DateTime`(`yearDate`)                               | —          |
 | 6.8         | 共通レイアウトの中                 | client routes                                                    | frontend-platformの`SiteLayout`                      | —          |
-| 7.1〜7.5    | 過去版のページ                     | LegalVersionPage・LegalVersionNotice・LegalRouteOptions          | `legalDocumentVersion`・`parseVersionNumber`         | —          |
+| 7.1〜7.5    | 過去版のページ                     | LegalVersionPage・LegalVersionNotice・`loadLegalDocumentVersion` | `legalDocumentVersion`・`parseVersionNumber`         | —          |
 | 8.1〜8.3    | 同意した版の特定                   | LegalVersionLocator・D1LegalDocumentStore                        | `findPublishedAt`                                    | —          |
 | 9.1〜9.4    | アクセシビリティと状態             | PublishLegalDocumentDialog・各画面部品                           | `useAppForm`・`runAxe`                               | —          |
-| 10.1〜10.6  | テスト・文書                       | 各テスト・LegalDocs                                              | —                                                    | —          |
+| 10.1〜10.7  | テスト・文書                       | 各テスト・LegalDocs                                              | —                                                    | —          |
 
 ## Components and Interfaces
 
@@ -350,6 +364,7 @@ export declare function changeSummarySchema(): z.ZodType<string>; // 判定に�
 export declare function legalBodySchema(): z.ZodType<string>; // markdownTextSchema(LEGAL_BODY_RULE)
 ```
 
+- 利用者側のパスと文書の名前の情報源はこのファイルだけにする。clientの共通フッターと登録画面が持っていた同じ値(`apps/client/src/components/layout/site-links.ts`の`TERMS_HREF`・`PRIVACY_HREF`と`FOOTER_POLICY_LINKS`の`'/legal'`・各リンクの名前、`apps/client/src/components/auth/account-messages.ts`の`TERMS_LINK_LABEL`・`PRIVACY_LINK_LABEL`)は、`LEGAL_DOCUMENT_PATHS`・`LEGAL_DOCUMENT_LABELS`から作るように改める(2026-11-04に決定)。
 - 変更概要の判定の順: 禁止文字(`hasForbiddenCharacters`。改行以外)→改行(LF・CR)→空→`countGraphemes`が200を超える。文言は「変更概要に使用できない文字が含まれています。」「変更概要に改行は使用できません。」「変更概要を入力してください。」「変更概要は200文字以内で入力してください。」。
 - 本文の文言はcontent-processingの`markdownTextSchema`のもの(「本文を入力してください。」「本文は100,000文字以内で入力してください。」)。
 
@@ -708,37 +723,48 @@ type Mutation {
 **Contracts**: State [x]
 
 ```typescript
-// legal-route-options.ts
-export declare function legalDocumentLoader(
+// src/graphql/legal-documents.ts
+export declare const legalDocumentQueryOptions: (
+  kind: LegalDocumentKind,
+) => GraphQLQueryOptions; // graphqlQueryOptions(ClientLegalDocumentDocument, { kind })
+export declare const legalDocumentVersionQueryOptions: (
+  kind: LegalDocumentKind,
+  versionNumber: number,
+) => GraphQLQueryOptions;
+export declare function loadLegalDocument(
   kind: LegalDocumentKind,
 ): (ctx: {
-  readonly context: { readonly queryClient: QueryClient };
-}) => Promise<{ readonly preparing: boolean }>;
-export declare function legalDocumentHead(
+  readonly context: Pick<RouterContext, 'queryClient' | 'runtime'>;
+}) => Promise<LegalDocumentLoaderData>;
+export declare function loadLegalDocumentVersion(
   kind: LegalDocumentKind,
 ): (ctx: {
-  readonly loaderData?: { readonly preparing: boolean };
-}) => ReturnType<typeof buildPageHead>; // 準備中はnoIndex
-export declare function parseVersionParams(params: {
-  readonly versionNumber: string;
-}): { readonly versionNumber: number }; // 形式違反はnotFound()を投げる
-export declare function legalVersionLoader(
+  readonly params: { readonly versionNumber: string };
+  readonly context: Pick<RouterContext, 'queryClient'>;
+}) => Promise<LegalVersionLoaderData>; // parseVersionNumberで形式違反、または版が無ければnotFound()
+export interface LegalDocumentLoaderData {
+  readonly preparing: boolean;
+  readonly canonicalUrl: string; // clientSiteOriginとLEGAL_DOCUMENT_PATHS
+}
+export interface LegalVersionLoaderData {
+  readonly versionNumber: number;
+}
+
+// src/head/page-heads.ts(追記)
+export declare const buildLegalDocumentHead: (
   kind: LegalDocumentKind,
-): (ctx: {
-  readonly params: { readonly versionNumber: number };
-  readonly context: { readonly queryClient: QueryClient };
-}) => Promise<void>; // 版が無ければnotFound()
-export declare function legalVersionHead(
+  loaderData: LegalDocumentLoaderData | undefined,
+) => ReturnType<typeof buildSitePageHead>; // タイトルは文書の名前、準備中はnoIndex
+export declare const buildLegalVersionHead: (
   kind: LegalDocumentKind,
-): (ctx: {
-  readonly params: { readonly versionNumber: number };
-}) => ReturnType<typeof buildPageHead>; // 常にnoIndex
+  loaderData: LegalVersionLoaderData | undefined,
+) => ReturnType<typeof buildSitePageHead>; // タイトルは「<文書の名前>(第N版)」、常にnoIndex
 ```
 
-- ルートの6ファイルは`createFileRoute`に上の関数と`component`だけを渡す。公開ページの正規のURLは`clientSiteOrigin`と`LEGAL_DOCUMENT_PATHS`、タイトルは文書の名前、過去版は「<文書の名前>(第N版)」。
-- `LegalDocumentPage({ kind })`: `h1`に文書の名前、その下に「最終改訂日」と`DateTime`(`longDate`、仮5)、`MarkdownContent`(`useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL })`)、本文の後に`LegalRevisionHistory`。`latest`が`null`なら`EmptyState`(「この文書は準備中です。」)だけを表示する(6.6)。
-- `LegalRevisionHistory({ kind, revisions })`: 見出し「改訂履歴」(`h2`)の`<ol>`で新しい順に、「第N版」のリンク(`legalRevisionPath`)・`DateTime`(`longDate`)・変更概要。管理者の情報は受け取らない(6.5)。
-- `LegalVersionPage({ kind, versionNumber })`: `h1`「<文書の名前>(第N版)」、`LegalVersionNotice`、公開日・変更概要、本文。
+- ルートの6ファイルは`createFileRoute`に`loader`(`loadLegalDocument(kind)`・`loadLegalDocumentVersion(kind)`)、`head`(`buildLegalDocumentHead`・`buildLegalVersionHead`)、`component`(`components/pages/`の`LegalDocumentPage`・`LegalVersionPage`)だけを渡す。版番号の解析は`loader`で`common-lib`の`parseVersionNumber`を使い、ルートの`params.parse`は使わない(版番号の形式違反と版が無いことの404の判定を`loader`の1か所にまとめ、6つのルートに同じ解析を書かないため)。生成した型からページの部品の型への変換は`src/graphql/legal-documents.ts`に置き、ページの部品は生成物の型に依存しない。
+- `LegalDocumentPage({ kind })`: `h1`に文書の名前、その下に「最終改訂日」と`DateTime`(`yearDate`、曜日を含まない年月日、仮5)、`MarkdownContent`(`useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL })`)、本文の後に`LegalRevisionHistory`。`latest`が`null`なら`EmptyState`(「この文書は準備中です。」)だけを表示する(6.6)。
+- `LegalRevisionHistory({ kind, revisions })`: 見出し「改訂履歴」(`h2`)の`<ol>`で新しい順に、「第N版」のリンク(`legalRevisionPath`)・`DateTime`(`yearDate`)・変更概要。管理者の情報は受け取らない(6.5)。
+- `LegalVersionPage({ kind, versionNumber })`: `h1`「<文書の名前>(第N版)」、`LegalVersionNotice`、公開日(`DateTime`の`yearDate`)・変更概要、本文。
 - `LegalVersionNotice({ kind, isLatest, versionNumber })`: 本文より前に、過去の版なら「これは第N版です。最新版ではありません。」と「最新版を見る」、最新版なら「これは最新版です。」と「公開ページを見る」のリンクを、`role="note"`で表示する(7.2・7.3)。
 - 取得の失敗は`ErrorState`(再試行あり、文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`)、読み込み中は`LoadingSkeleton`(9.4)。
 
@@ -777,21 +803,21 @@ export declare function useUnsavedChangesGuard(dirty: boolean): {
 }; // useBlocker({ shouldBlockFn: () => dirty, enableBeforeUnload: dirty, withResolver: true })
 ```
 
-| 経路                                         | 画面                                                                                                                                               |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/legal-documents`                           | `LegalDocumentList`: `AdminDataTable`で3文書(名前・最新版「第N版」または「未公開」・公開日時・下書き「あり/なし」・「編集」・「公開ページを開く」) |
-| `/legal-documents/{種類}`                    | `LegalDocumentEditorPage`: `AdminPageHeader`(文書の名前・公開ページへのリンク)、`LegalDraftStatus`、`LegalDraftForm`、`LegalRevisionTable`         |
-| `/legal-documents/{種類}/revisions/{版番号}` | `LegalVersionDetail`: 版番号・公開日時・変更概要・公開者・本文(`MarkdownContent`)、利用者側の過去版のページへのリンク                              |
+| 経路                                         | 画面                                                                                                                                                                                                                                           |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/legal-documents`                           | `LegalDocumentsPage`(`components/pages/`): `AdminPageHeader`(「法務文書」)と`LegalDocumentList`: `AdminDataTable`で3文書(名前・最新版「第N版」または「未公開」・公開日時(`longDateTime`)・下書き「あり/なし」・「編集」・「公開ページを開く」) |
+| `/legal-documents/{種類}`                    | `LegalDocumentEditorPage`(`components/pages/`): `AdminPageHeader`(文書の名前・公開ページへのリンク)、`LegalDraftStatus`、`LegalDraftForm`、`LegalRevisionTable`                                                                                |
+| `/legal-documents/{種類}/revisions/{版番号}` | `LegalDocumentVersionPage`(`components/pages/`): `AdminPageHeader`(「<文書の名前>(第N版)」)と`LegalVersionDetail`: 版番号・公開日時(`longDateTime`)・変更概要・公開者・本文(`MarkdownContent`)、利用者側の過去版のページへのリンク             |
 
-- 種類・版番号の形式違反と存在しない版は`notFound()`(管理者側の404の画面)。
+- 取得の設定・`loader`・生成した型からの変換は`src/graphql/admin-legal-documents.ts`に置く(`adminLegalDocumentsQueryOptions`・`adminLegalDocumentQueryOptions(kind)`・`adminLegalDocumentVersionQueryOptions(kind, versionNumber)`と、それぞれの`loader`)。`loader`は種類を`isLegalDocumentKind`、版番号を`parseVersionNumber`で解析し、形式違反と存在しない版は`notFound()`(管理者側の404の画面)にする。headは`buildAdminPageHead`で、タイトルは「法務文書」・文書の名前・「<文書の名前>(第N版)」。
 - `LegalDraftForm`: `useAppForm(legalDraftFormSchema, { defaultValues: { body } })`と`AppForm`(`serverFieldPrefix="input"`、`onSubmitError`は下の「失敗」の分岐)の`FormField`に`MarkdownEditor`(`maxGraphemes: 100000`・`preview: useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL, idScope: 'preview' })`・ラベル「本文」・`labelId={control.labelId}`)。`labelId`は`FormField`が子へ渡す制御の列挙しないプロパティで`{...control}`の展開では写らないため、ラベルとの関連付けとラベルの押下でのフォーカスのために明示的に渡す。初期値は下書き、無ければ`latestBody`、無ければ空(3.1)。スキーマの入力は本文だけで、文書の種類の`kind`と版の値の`expectedStateVersion`(読み込んだ状態の版)はスキーマの入力に含めず、`onSubmit`で足して`SaveLegalDocumentDraftInput`にする。操作は「下書きを保存」(`SubmitButton`)・「下書きを破棄」(下書きがあるとき、`ConfirmActionDialog`の理由なし・監査ログの表示なし・`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、「<文書の名前>の下書きを破棄しますか?」→「破棄」。失敗はダイアログの中にその文言で示し、`legal_document_conflict`では`LegalConflictNotice`も表示する)・「公開する」(下書きがあるとき)。
 - 保存していない変更があるとき、「公開する」を無効にし「公開する前に下書きを保存してください。」を表示する(4.6)。`useUnsavedChangesGuard(dirty)`で離脱の確認(「保存していない変更があります。このページを離れると変更は失われます。」→「離れる」)を出す(3.11)。
 - `useAdminRole()`が最上位管理者でないとき、本文の欄を`FormField`の`disabled`で無効にして読み取り専用にし(`MarkdownEditor`の`disabled`の属性だけでは無効にしない)、3つの操作を描かない(送信しない、3.8)。
 - `PublishLegalDocumentDialog`: タイトル「<文書の名前>を公開しますか?」、説明「公開すると利用者側のページに直ちに表示されます。公開した版は後から変更・削除できません。」、変更概要の入力欄(1行、`useAppForm(publishFormSchema, { defaultValues: { changeSummary: '' } })`と`AppForm`(`serverFieldPrefix="input"`)。`kind`と`expectedStateVersion`はスキーマの入力に含めず`onSubmit`で足す。フォーカスを外したときに検証、「1 / 200」の文字数)、「公開」(4.7・9.1)。
 - 成功: 応答の`AdminLegalDocument`で取得の結果を置き換え、フォームを新しい初期値で作り直し、トースト(「下書きを保存しました。」「下書きを破棄しました。」「公開しました。」)。
 - 失敗: `AppForm`の`onSubmitError`で`toLegalEditorErrorState`により分岐する。`conflict`は`LegalConflictNotice`(「他の管理者がこの文書を更新しました。最新の内容を読み込んでから、もう一度操作してください。」と「最新の内容を読み込む」)を表示し、入力欄の内容は消さない(3.10・4.4)。`unchanged`・`no-draft`はダイアログ内のエラー、`too-large`は「本文が大きすぎるため保存できません。」、`field`は`AppForm`が`applyServerFieldErrors`で欄に示した残り(`unmatched`)、`unexpected`は`message`(問い合わせを促す文を含まない)をフォームに示す。一覧・版の表示の取得の失敗(`AdminDataTable`の`error`)も`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言にする。
-- `LegalDraftStatus`: 下書きがあれば「下書きがあります」と最終保存の`DateTime`(`dateTime`)・保存者(削除済みは「削除済みの管理者」)、無ければ「下書きはありません」(3.5)。
-- `LegalRevisionTable`: `AdminDataTable`(列: 版・公開日時(`dateTime`)・変更概要・公開した管理者・操作「表示」「公開ページで見る」)、空は「まだ公開した版はありません。」(5.1〜5.5)。
+- `LegalDraftStatus`: 下書きがあれば「下書きがあります」と最終保存の`DateTime`(`longDateTime`)・保存者(削除済みは「削除済みの管理者」)、無ければ「下書きはありません」(3.5)。
+- `LegalRevisionTable`: `AdminDataTable`(列: 版・公開日時(`longDateTime`)・変更概要・公開した管理者・操作「表示」「公開ページで見る」)、空は「まだ公開した版はありません。」(5.1〜5.5)。
 
 ## Data Models
 
@@ -846,7 +872,8 @@ export declare function useUnsavedChangesGuard(dirty: boolean): {
   - `legal-input-rules.unit.test.ts`: 変更概要の前後の空白の除去、200書記素(絵文字・結合文字で境界)、改行・禁止文字・空の文言と判定の順、本文の100,000書記素の境界と文言(3.4・4.2)。
   - `legal-document.unit.test.ts`: `checkPublishable`の順(stale→no_draft→unchanged)、`checkDraftDiscardable`、`nextVersionNumber`、`nextPublishedAt`(時計が戻った場合に+1ミリ秒)(3.10・4.1・4.3・8.1)。
   - ユースケース(偽のストア): 公開で`conflict`が`legal_document_conflict`になること、公開者の解決で削除済みが`nickname: null`になること、公開の照会に管理者のIDが含まれないこと(3.9・5.2・6.5)。
-  - `legal-editor-errors.unit.test.ts`・`legal-route-options.unit.test.ts`: コードと表示の対応、準備中の`noIndex`、版番号の形式違反の`notFound`。
+  - `legal-editor-errors.unit.test.ts`: コードと表示の対応。
+  - clientの`graphql/legal-documents.unit.test.ts`・`head/page-heads.unit.test.ts`とadminの`graphql/admin-legal-documents.unit.test.ts`: 生成した型からの変換、準備中の`noIndex`と正規のURL、過去版のタイトルと`noIndex`、種類・版番号の形式違反と存在しない版の`notFound`。
   - スキーマの列定義(型・NOT NULL・既定値・索引)。
 - **Workers統合(vitest)**:
   - `d1-legal-document-store.worker.test.ts`: 初期データの3行、保存・破棄・公開の`state_version`の増加、古い`state_version`での保存・破棄・公開が`conflict`で何も変えないこと、公開の一括の書き込みで版番号が連番になり下書きが消えること、2つの公開を同じ`state_version`で続けて送ると1つだけ成功すること、`findPublishedAt`の境界(同じミリ秒を含む・最初の版より前は`undefined`)(1.2〜1.4・3.10・4.1・4.4・8.1〜8.3)。
