@@ -18,7 +18,7 @@
   - _Requirements: 3.4, 4.2, 7.1, 7.4, 9.1_
 
 - [ ] 2. ドメインの規則と永続化
-- [ ] 2.1 遷移の可否・次の版番号・公開日時の規則を作る
+- [x] 2.1 遷移の可否・次の版番号・公開日時の規則を作る
   - 先に、保存の可否(状態の版の不一致)、破棄の可否(不一致・下書きなし)、公開の可否の判定の順(不一致→下書きなし→最新版と本文が完全に一致)、未公開のときの次の版番号1、公開日時が現在時刻と最新版の公開日時+1ミリ秒の大きい方になること(時計が戻った場合を含む)を確かめる単体テストを書く
   - 文書の状態(種類・状態の版・最新版の版番号と本文と公開日時・下書き)の型と、上の判定を純粋な関数として作る
   - 完了状態: 単体テストが成功し、判定がデータベースや時計に依存せずに動く
@@ -194,3 +194,4 @@
 - 1.1: テーブルは`apps/db/schema/legal/`、マイグレーションは`20261104123845_legal_pages`(テーブル)と`20261104123848_legal_pages_seed`(初期データ)。種類の値はテーブルのファイルの非公開の定数`LEGAL_DOCUMENT_KIND_VALUES`(`['terms','privacy','legal-notice']`)のため、1.2で`LegalDocumentKind`と列の`enumValues`の一致を単体テストで確かめる。初期データの固定ULIDは`01M6HXNZ000000000000000001`(terms)・`…02`(privacy)・`…03`(legal-notice)で、時刻部と`created_at`・`updated_at`は`1793750400000`(2026-11-04T00:00:00Z)
 - 1.1(7.3の材料): `drizzle-kit generate --custom`でも`snapshot.json`が作られ、`prevIds`は直前のスナップショットのidを指し、内容は直前のスナップショットと`id`・`prevIds`以外が同一(キーの順は異なるため文字列の比較では差分に見える)。直後の`drizzle-kit generate`は「No schema changes」で何も作らない。既存の`20261103133903_identity_disposable_status_undetermined`も同じ。テンプレートのコメント行は削除した
 - 1.2: 共有定義は`apps/common-lib/legal/legal-documents.ts`・`legal-input-rules.ts`。`LEGAL_DOCUMENT_KINDS`と列の`enumValues`の一致テストは`apps/api/src/application/legal/legal-columns.unit.test.ts`(common-libはdbを読み込めない)。変更概要の判定は、禁止文字だけを前後の空白を除く前の入力で調べる(VT・FF・NELは空白かつ禁止文字のため、除いてから調べると黙って消える。005の規則と`markdownTextSchema`に合わせた。design.mdの契約のコメントも直した)。改行はLF・CRだけでU+2028・U+2029は扱わない。`changeSummarySchema()`は成功時に`trimWhiteSpace`で除いた値を返す
+- 2.1: 規則は`apps/api/src/domain/legal/legal-document.ts`。本文の「完全一致」は`===`(正規化・空白の除去なし)。未公開で下書きがあれば公開可。`nextPublishedAt`は常に新しい`Date`を返す
