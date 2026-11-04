@@ -35,7 +35,7 @@ import {
 } from './audit-period.ts';
 
 export interface AuditLogFiltersProps {
-  // URLの条件。変わったら入力欄をその値に戻す
+  // URLの条件。適用・解除の結果でなく外から変わったら、入力欄をその値に戻す
   readonly search: AuditLogSearch;
   readonly operators: readonly AuditLogFilterOption[];
   readonly actions: readonly AuditLogFilterOption[];
@@ -164,18 +164,30 @@ export function AuditLogFilters({
   const fromInputRef = useRef<HTMLInputElement>(null);
   const toInputRef = useRef<HTMLInputElement>(null);
   const scope = auditLogFilterScopeOf(search);
-  const [edited, setEdited] = useState(() => ({
+  const [edited, setEdited] = useState<{
+    readonly scope: string;
+    readonly pendingScope: string | undefined;
+    readonly draft: FilterDraft;
+    readonly periodErrors: AuditPeriodInputErrors;
+  }>(() => ({
     scope,
+    pendingScope: undefined,
     draft: draftOf(search),
     periodErrors: NO_PERIOD_ERRORS,
   }));
-  // 適用・解除・ブラウザの戻る操作でURLの条件が変わったら入力欄を戻す。部品を作り直すと押した「適用」「解除」のボタンが消えてフォーカスを失うため、描画中に状態を差し替える
+  // ブラウザの戻る操作などでURLの条件が外から変わったら入力欄を戻す。部品を作り直すと押した「適用」「解除」のボタンが消えてフォーカスを失うため、描画中に状態を差し替える。
+  // 適用・解除した条件がURLへ届くのは読み込みの後のため、届くまでの間の入力を上書きしないよう、その条件が届いた時は入力欄を戻さない
   if (edited.scope !== scope) {
-    setEdited({
-      scope,
-      draft: draftOf(search),
-      periodErrors: NO_PERIOD_ERRORS,
-    });
+    setEdited(
+      edited.pendingScope === scope
+        ? { ...edited, scope, pendingScope: undefined }
+        : {
+            scope,
+            pendingScope: undefined,
+            draft: draftOf(search),
+            periodErrors: NO_PERIOD_ERRORS,
+          },
+    );
   }
   const { draft, periodErrors } = edited;
   const ids = {
@@ -185,6 +197,10 @@ export function AuditLogFilters({
     targetDescription: `${id}-target-description`,
     from: `${id}-from`,
     to: `${id}-to`,
+  };
+  const pendingScopeOf = (next: AuditLogSearch): string | undefined => {
+    const nextScope = auditLogFilterScopeOf(next);
+    return nextScope === scope ? undefined : nextScope;
   };
   const update = (changes: Partial<FilterDraft>) => {
     setEdited((current) => ({
@@ -206,11 +222,18 @@ export function AuditLogFilters({
           toInputRef.current?.focus();
           return;
         }
-        onApply(searchOf(draft));
+        const applied = searchOf(draft);
+        setEdited((current) => ({
+          ...current,
+          pendingScope: pendingScopeOf(applied),
+          draft: draftOf(applied),
+        }));
+        onApply(applied);
       }}
       onReset={() => {
         setEdited((current) => ({
           ...current,
+          pendingScope: pendingScopeOf({}),
           draft: draftOf({}),
           periodErrors: NO_PERIOD_ERRORS,
         }));
