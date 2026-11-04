@@ -146,7 +146,7 @@
   - _Requirements: 10.7_
 
 - [ ] 7. 検証と文書
-- [ ] 7.1 下書きの保存から公開・過去版までをE2Eテストで確かめる
+- [x] 7.1 下書きの保存から公開・過去版までをE2Eテストで確かめる
   - 最上位管理者は、admin-foundationのタスク12.1が用意したE2Eの補助(指定したロールの管理者を招待・完了・ログインさせる補助)で用意する。本specで同等の補助を作らない
   - 利用規約で、開始時の最新の版番号を読む→本文を入力して下書きを保存→`/terms`に下書きが出ない→乱数を含む変更概要で公開→`/terms`に本文・最終改訂日・改訂履歴の先頭の版→もう一度保存して公開→改訂履歴が新しい順に2版増え、1つ前の版のページに過去の版である旨と最新版へのリンクが出ることを確かめる
   - 完了状態: E2Eテストがローカルで起動したapi・admin・clientに対して成功し、2回続けて実行しても成功する
@@ -212,3 +212,4 @@
 - 6.5: `LegalRevisionTable`は受け取った順(新しい順)で描き、読み込み中・失敗の状態を持たない(編集・版の表示の取得の失敗は`loader`が投げてルートのエラーの画面が示す。design.mdの記述も改めた)。文言は`legal-revision-messages.ts`、読み上げ名「第N版を表示」「第N版を公開ページで見る」は7.4で文言規則へ足す。版の表示のページは`useSuspenseQuery`で版が無ければ`notFound()`。ローカルのD1に確認用の最上位管理者(E2E管理者21bdee)と法的通知の第1版(変更概要「ローカルで版の表示を確かめるための版です。」)が残っている。ローカルでE2Eを実行する時、招待の発行コマンドは`HASH_PEPPER`が要るため`infisical --telemetry=false run --env dev --`を付ける
 - 6.6: 結線は`use-legal-document-editor.ts`(`setQueryData`で置き換え、一覧は常に無効化、公開の後は版の照会も無効化)。フォームは`key`で作り直さず`stateVersion`の変化で`reset`する(破棄のダイアログを失わないため)。処理の後のフォーカスは`use-focus-after-change.ts`が表示中の版の変化を待ち、本文が空なら本文の欄(`MarkdownEditor`のハンドル。RHFの`reset`の後は`setFocus`が効かない)、空でなければ押せるようになった保存のボタンへ移す。破棄・公開の要求はダイアログが閉じてから出す。ダイアログ由来の競合ではページの案内を`announce={false}`(Radixの`hideOthers`は`aria-live`の祖先を隠さず二重に読まれるため)。競合の案内は失敗ごとの連番の`key`で作り直す。想定外の例外はエラートラッキングへ送らない(既存のadminのフォームと同じ)。7.4への申し送り: トーストの文言「下書きを保存しました。」「下書きを破棄しました。」「公開しました。」を文言規則へ足す。ローカルのD1には法的通知の第2版と確認用の最上位管理者がもう1人ある
 - 6.7: `AuditTargetKind`と集合・管理画面の表示名・admin-foundationのdesign.mdの値の一覧・文言規則の行から`legal-document`を除いた(GraphQLの`targetKind`は`String`のためスキーマに波及しない)。admin-foundationのdesign.mdの27行目は12メニューの操作の記録を各後続specとしており法務文書も記録するように読めるため、7.4で「法務文書は記録しない(legal-pagesのQ1)」と注記する
+- 7.1: `e2e/admin/legal-documents.e2e.test.ts`は開始時の最新の版番号からの差と乱数で確かめ、実行のたびに利用規約の版が2つ増える(ローカルのD1の`/terms`は公開済みになっている)。利用者側のURLは管理画面の「公開ページを開く」の`href`から取る。実行は`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/admin/legal-documents --project=admin`で、api・admin・clientの開発サーバーが要る(eventは不要)。要件7.2の「本文より前」はブラウザテストで確かめる
