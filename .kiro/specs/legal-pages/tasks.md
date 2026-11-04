@@ -61,7 +61,7 @@
   - _Depends: 2.2, 3.1, 3.2, 3.3_
   - _Requirements: 8.1_
 
-- [ ] 4.2 GraphQLの法務文書のモジュールに型と公開の照会を作る
+- [x] 4.2 GraphQLの法務文書のモジュールに型と公開の照会を作る
   - 先に、Workers統合テストで、未ログインの利用者側の呼び出しで文書と版を取得できること、準備中の文書で最新版がnullになること、存在しない版がnullになること、公開の型に下書きと管理者の項目が無いことを確かめる
   - 列挙型・公開と管理の型・入力型・エラーの対応・ビューからの変換と、公開の照会のリゾルバを作り、スキーマモジュールの一覧へ加えてスキーマファイルを生成し直す
   - 完了状態: Workers統合テストとスキーマの生成物の検査が成功し、生成したスキーマファイルに設計どおりの型がある
@@ -200,3 +200,4 @@
 - 3.2: 管理の照会は`StoreLegalDocumentAdminReader`。下書きと改訂の型を`AdminLegalDraftView`・`AdminLegalRevisionView`と名付けた(4.xのGraphQLの変換で使う)。管理者のIDは`Set`で重複を除き、空なら`findProfiles`を呼ばない。3.3は`LEGAL_TYPES.LegalDocumentAdminReader`を注入して`getDocument`で操作後の状態を返す
 - 3.3: 拒否の`AppError`は`application/legal/legal-document-errors.ts`(`LEGAL_DOCUMENT_ERRORS`・`legalDocumentDenialError`。admin-errors.tsと同じ形、design.mdのファイル構成にも追記)。破棄の下書きなしも`legal_document_draft_missing`(画面は下書きがある時だけ破棄を出すため通常は起きない)。ログは`['api','legal']`のinfoで属性は`action`・`kind`・版番号・`adminId`・`conflict`。7.3で`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`のカテゴリの表に`['api','legal']`を加える。入力の型は`LegalDraftSaveRequest`・`LegalDraftDiscardRequest`・`LegalPublishRequest`
 - 4.1: `LEGAL_MODULE`(`composition/legal-module.ts`)は6つの識別子を既定のTransientで束縛し`MODULES`の末尾に加えた。`AdminDirectory`は`ADMIN_PLATFORM_MODULE`のものを使う。Workers統合テストの法務文書のテーブルのリセットは2.2と4.1のテストで重複している(まとめるなら`infrastructure/legal/testing/`へ)
+- 4.2: `Query`には公開の`legalDocument`・`legalDocumentVersion`だけを載せ、列挙型・公開と管理の型・入力型は宣言だけ先に置いた(リゾルバの無いルートのフィールドを作らないため。4.3で管理のQuery・Mutationと`admin-resolvers.ts`を`index.ts`へ加える)。`versionNumber`が1未満は`withValidatedArgs`で`validation_error`(「版番号は1以上の整数で指定してください。」、`errors.ts`の`INPUT_MESSAGES`)。列挙型の変換は`mappers.ts`の明示の対応表で、管理のビューの変換も用意済み。Workers統合テストの法務文書のテーブルのリセットは`infrastructure/legal/testing/legal-store-fixtures.ts`に共通化した

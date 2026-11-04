@@ -4,8 +4,6 @@ import { inject, injectable } from 'inversify';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { LEGAL_DOCUMENT_KINDS } from '../../common-lib/legal/legal-documents.ts';
-import { legalDocumentVersions } from '../../db/schema/legal/legal-document-versions.ts';
-import { legalDocuments } from '../../db/schema/legal/legal-documents.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
   type LegalDocumentAdminReader,
@@ -31,19 +29,11 @@ import {
 import {
   adminIdOf,
   clearAdminTables,
-  db,
   insertAdmin,
 } from '../infrastructure/admin/testing/admin-store-fixtures.ts';
 import { D1LegalDocumentStore } from '../infrastructure/legal/d1-legal-document-store.ts';
+import { resetLegalTables } from '../infrastructure/legal/testing/legal-store-fixtures.ts';
 import { MODULES } from './modules.ts';
-
-const SEEDED_AT = new Date(1_793_750_400_000);
-
-const SEEDED_DOCUMENTS = [
-  { id: '01M6HXNZ000000000000000001', kind: 'terms' },
-  { id: '01M6HXNZ000000000000000002', kind: 'privacy' },
-  { id: '01M6HXNZ000000000000000003', kind: 'legal-notice' },
-] as const;
 
 const EDITOR = 1;
 
@@ -60,22 +50,6 @@ function createContainer() {
     },
     MODULES,
   );
-}
-
-// 初期データの3行はマイグレーションで常に入るため、各テストの前に版を消して文書の行を初期データの状態に戻す
-async function resetLegalTables(): Promise<void> {
-  await db.batch([
-    db.delete(legalDocumentVersions),
-    db.delete(legalDocuments),
-    db.insert(legalDocuments).values(
-      SEEDED_DOCUMENTS.map(({ id, kind }) => ({
-        id,
-        kind,
-        createdAt: SEEDED_AT,
-        updatedAt: SEEDED_AT,
-      })),
-    ),
-  ]);
 }
 
 // 後続specの部品と同じく、照会口を識別子で注入するクラス

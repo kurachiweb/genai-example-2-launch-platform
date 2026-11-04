@@ -50,6 +50,60 @@ export type AdminConfirmationResult = {
   viewer?: Maybe<AdminViewer>;
 };
 
+/** 管理画面の編集の対象の法務文書 */
+export type AdminLegalDocument = {
+  __typename?: 'AdminLegalDocument';
+  /** 下書きが無ければnull */
+  draft?: Maybe<AdminLegalDraft>;
+  kind: LegalDocumentKind;
+  /** 未公開ならnull */
+  latestBody?: Maybe<Scalars['String']['output']>;
+  /** 新しい順 */
+  revisions: Array<AdminLegalRevision>;
+  /** 保存・破棄・公開で送り返す状態の版 */
+  stateVersion: Scalars['Int']['output'];
+};
+
+/** 管理画面の法務文書の一覧の1行 */
+export type AdminLegalDocumentSummary = {
+  __typename?: 'AdminLegalDocumentSummary';
+  hasDraft: Scalars['Boolean']['output'];
+  kind: LegalDocumentKind;
+  /** 未公開ならnull */
+  latestPublishedAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 未公開ならnull */
+  latestVersionNumber?: Maybe<Scalars['Int']['output']>;
+};
+
+/** 管理画面で表示する版 */
+export type AdminLegalDocumentVersion = {
+  __typename?: 'AdminLegalDocumentVersion';
+  body: Scalars['String']['output'];
+  changeSummary: Scalars['String']['output'];
+  isLatest: Scalars['Boolean']['output'];
+  kind: LegalDocumentKind;
+  publishedAt: Scalars['DateTime']['output'];
+  publishedBy: LegalDocumentEditor;
+  versionNumber: Scalars['Int']['output'];
+};
+
+/** 保存済みの下書き */
+export type AdminLegalDraft = {
+  __typename?: 'AdminLegalDraft';
+  body: Scalars['String']['output'];
+  savedAt: Scalars['DateTime']['output'];
+  savedBy: LegalDocumentEditor;
+};
+
+/** 管理画面の改訂履歴の1版 */
+export type AdminLegalRevision = {
+  __typename?: 'AdminLegalRevision';
+  changeSummary: Scalars['String']['output'];
+  publishedAt: Scalars['DateTime']['output'];
+  publishedBy: LegalDocumentEditor;
+  versionNumber: Scalars['Int']['output'];
+};
+
 /** 重要な操作の本人確認 */
 export type AdminReAuthenticationInput = {
   /** 本人確認に使う現在のパスワード */
@@ -166,6 +220,55 @@ export type ConfirmationResult = {
   __typename?: 'ConfirmationResult';
   /** 確定の操作をした端末が同じ利用者としてログイン中なら、入れ替えた後の利用者 */
   viewer?: Maybe<Viewer>;
+};
+
+/** 下書きの破棄 */
+export type DiscardLegalDocumentDraftInput = {
+  expectedStateVersion: Scalars['Int']['input'];
+  kind: LegalDocumentKind;
+};
+
+/** 利用者側に公開する法務文書 */
+export type LegalDocument = {
+  __typename?: 'LegalDocument';
+  kind: LegalDocumentKind;
+  /** 準備中ならnull */
+  latest?: Maybe<LegalDocumentVersion>;
+  /** 新しい順 */
+  revisions: Array<LegalRevision>;
+};
+
+/** 版を公開した・下書きを保存した管理者 */
+export type LegalDocumentEditor = {
+  __typename?: 'LegalDocumentEditor';
+  id: Scalars['ID']['output'];
+  /** 削除済みの管理者ではnull */
+  nickname?: Maybe<Scalars['String']['output']>;
+};
+
+/** 法務文書の種類 */
+export type LegalDocumentKind =
+  | 'LEGAL_NOTICE'
+  | 'PRIVACY'
+  | 'TERMS';
+
+/** 公開した版 */
+export type LegalDocumentVersion = {
+  __typename?: 'LegalDocumentVersion';
+  body: Scalars['String']['output'];
+  changeSummary: Scalars['String']['output'];
+  isLatest: Scalars['Boolean']['output'];
+  kind: LegalDocumentKind;
+  publishedAt: Scalars['DateTime']['output'];
+  versionNumber: Scalars['Int']['output'];
+};
+
+/** 改訂履歴の1版 */
+export type LegalRevision = {
+  __typename?: 'LegalRevision';
+  changeSummary: Scalars['String']['output'];
+  publishedAt: Scalars['DateTime']['output'];
+  versionNumber: Scalars['Int']['output'];
 };
 
 export type LoginInput = {
@@ -482,6 +585,13 @@ export type PageInfo = {
   hasNextPage: Scalars['Boolean']['output'];
 };
 
+/** 下書きの公開 */
+export type PublishLegalDocumentInput = {
+  changeSummary: Scalars['String']['input'];
+  expectedStateVersion: Scalars['Int']['input'];
+  kind: LegalDocumentKind;
+};
+
 export type Query = {
   __typename?: 'Query';
   /** 招待中を含む全管理者を登録の新しい順に返す */
@@ -490,6 +600,10 @@ export type Query = {
   adminViewer?: Maybe<AdminViewer>;
   /** 監査ログの検索。変更・削除の操作は無い */
   auditLogs: AuditLogPage;
+  /** 法務文書の最新版と改訂履歴 */
+  legalDocument: LegalDocument;
+  /** 法務文書の指定した版。存在しない版はnull */
+  legalDocumentVersion?: Maybe<LegalDocumentVersion>;
   /** ログイン中の端末の一覧 */
   mySessions: Array<UserSessionSummary>;
   /** APIサーバーの時刻とデータベースへの到達可否 */
@@ -502,6 +616,17 @@ export type Query = {
 export type QueryAuditLogsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<AuditLogFilterInput>;
+};
+
+
+export type QueryLegalDocumentArgs = {
+  kind: LegalDocumentKind;
+};
+
+
+export type QueryLegalDocumentVersionArgs = {
+  kind: LegalDocumentKind;
+  versionNumber: Scalars['Int']['input'];
 };
 
 /** 重要な操作の本人確認 */
@@ -543,6 +668,13 @@ export type ResendVerificationResult =
 export type ResetPasswordInput = {
   newPassword: Scalars['String']['input'];
   token: Scalars['String']['input'];
+};
+
+/** 下書きの保存 */
+export type SaveLegalDocumentDraftInput = {
+  body: Scalars['String']['input'];
+  expectedStateVersion: Scalars['Int']['input'];
+  kind: LegalDocumentKind;
 };
 
 /** 認証コードかリカバリコードのどちらか一方 */
@@ -684,6 +816,11 @@ export type ResolversTypes = {
   AdminAccount: ResolverTypeWrapper<AdminAccountSource>;
   AdminAccountStatus: AdminAccountStatus;
   AdminConfirmationResult: ResolverTypeWrapper<Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['AdminViewer']> }>;
+  AdminLegalDocument: ResolverTypeWrapper<AdminLegalDocument>;
+  AdminLegalDocumentSummary: ResolverTypeWrapper<AdminLegalDocumentSummary>;
+  AdminLegalDocumentVersion: ResolverTypeWrapper<AdminLegalDocumentVersion>;
+  AdminLegalDraft: ResolverTypeWrapper<AdminLegalDraft>;
+  AdminLegalRevision: ResolverTypeWrapper<AdminLegalRevision>;
   AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: ResolverTypeWrapper<AdminRecoveryCodeSet>;
   AdminRole: AdminRole;
@@ -700,8 +837,14 @@ export type ResolversTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
+  DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  LegalDocument: ResolverTypeWrapper<LegalDocument>;
+  LegalDocumentEditor: ResolverTypeWrapper<LegalDocumentEditor>;
+  LegalDocumentKind: LegalDocumentKind;
+  LegalDocumentVersion: ResolverTypeWrapper<LegalDocumentVersion>;
+  LegalRevision: ResolverTypeWrapper<LegalRevision>;
   LoginInput: LoginInput;
   LoginResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['LoginResult']>;
   LoginSucceeded: ResolverTypeWrapper<Omit<LoginSucceeded, 'viewer'> & { viewer: ResolversTypes['Viewer'] }>;
@@ -711,6 +854,7 @@ export type ResolversTypes = {
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   OffsetPageInfo: ResolverTypeWrapper<OffsetPageInfo>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
+  PublishLegalDocumentInput: PublishLegalDocumentInput;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: ResolverTypeWrapper<RecoveryCodeSet>;
@@ -719,6 +863,7 @@ export type ResolversTypes = {
   RequestPasswordChangeInput: RequestPasswordChangeInput;
   ResendVerificationResult: ResendVerificationResult;
   ResetPasswordInput: ResetPasswordInput;
+  SaveLegalDocumentDraftInput: SaveLegalDocumentDraftInput;
   SecondFactorInput: SecondFactorInput;
   SecondFactorRequired: ResolverTypeWrapper<SecondFactorRequired>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
@@ -732,6 +877,11 @@ export type ResolversTypes = {
 export type ResolversParentTypes = {
   AdminAccount: AdminAccountSource;
   AdminConfirmationResult: Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['AdminViewer']> };
+  AdminLegalDocument: AdminLegalDocument;
+  AdminLegalDocumentSummary: AdminLegalDocumentSummary;
+  AdminLegalDocumentVersion: AdminLegalDocumentVersion;
+  AdminLegalDraft: AdminLegalDraft;
+  AdminLegalRevision: AdminLegalRevision;
   AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: AdminRecoveryCodeSet;
   AdminSecondFactorInput: AdminSecondFactorInput;
@@ -747,8 +897,13 @@ export type ResolversParentTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
   DateTime: Scalars['DateTime']['output'];
+  DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
+  LegalDocument: LegalDocument;
+  LegalDocumentEditor: LegalDocumentEditor;
+  LegalDocumentVersion: LegalDocumentVersion;
+  LegalRevision: LegalRevision;
   LoginInput: LoginInput;
   LoginResult: ResolversUnionTypes<ResolversParentTypes>['LoginResult'];
   LoginSucceeded: Omit<LoginSucceeded, 'viewer'> & { viewer: ResolversParentTypes['Viewer'] };
@@ -757,6 +912,7 @@ export type ResolversParentTypes = {
   Mutation: Record<PropertyKey, never>;
   OffsetPageInfo: OffsetPageInfo;
   PageInfo: PageInfo;
+  PublishLegalDocumentInput: PublishLegalDocumentInput;
   Query: Record<PropertyKey, never>;
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: RecoveryCodeSet;
@@ -764,6 +920,7 @@ export type ResolversParentTypes = {
   RequestEmailChangeInput: RequestEmailChangeInput;
   RequestPasswordChangeInput: RequestPasswordChangeInput;
   ResetPasswordInput: ResetPasswordInput;
+  SaveLegalDocumentDraftInput: SaveLegalDocumentDraftInput;
   SecondFactorInput: SecondFactorInput;
   SecondFactorRequired: SecondFactorRequired;
   String: Scalars['String']['output'];
@@ -786,6 +943,44 @@ export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType exten
 
 export type AdminConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminConfirmationResult'] = ResolversParentTypes['AdminConfirmationResult']> = {
   viewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
+};
+
+export type AdminLegalDocumentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLegalDocument'] = ResolversParentTypes['AdminLegalDocument']> = {
+  draft?: Resolver<Maybe<ResolversTypes['AdminLegalDraft']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['LegalDocumentKind'], ParentType, ContextType>;
+  latestBody?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  revisions?: Resolver<Array<ResolversTypes['AdminLegalRevision']>, ParentType, ContextType>;
+  stateVersion?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type AdminLegalDocumentSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLegalDocumentSummary'] = ResolversParentTypes['AdminLegalDocumentSummary']> = {
+  hasDraft?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['LegalDocumentKind'], ParentType, ContextType>;
+  latestPublishedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  latestVersionNumber?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+};
+
+export type AdminLegalDocumentVersionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLegalDocumentVersion'] = ResolversParentTypes['AdminLegalDocumentVersion']> = {
+  body?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  changeSummary?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  isLatest?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['LegalDocumentKind'], ParentType, ContextType>;
+  publishedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  publishedBy?: Resolver<ResolversTypes['LegalDocumentEditor'], ParentType, ContextType>;
+  versionNumber?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type AdminLegalDraftResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLegalDraft'] = ResolversParentTypes['AdminLegalDraft']> = {
+  body?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  savedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  savedBy?: Resolver<ResolversTypes['LegalDocumentEditor'], ParentType, ContextType>;
+};
+
+export type AdminLegalRevisionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLegalRevision'] = ResolversParentTypes['AdminLegalRevision']> = {
+  changeSummary?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  publishedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  publishedBy?: Resolver<ResolversTypes['LegalDocumentEditor'], ParentType, ContextType>;
+  versionNumber?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type AdminRecoveryCodeSetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRecoveryCodeSet'] = ResolversParentTypes['AdminRecoveryCodeSet']> = {
@@ -847,6 +1042,32 @@ export type ConfirmationResultResolvers<ContextType = GraphQLContext, ParentType
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
   name: 'DateTime';
 }
+
+export type LegalDocumentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LegalDocument'] = ResolversParentTypes['LegalDocument']> = {
+  kind?: Resolver<ResolversTypes['LegalDocumentKind'], ParentType, ContextType>;
+  latest?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType>;
+  revisions?: Resolver<Array<ResolversTypes['LegalRevision']>, ParentType, ContextType>;
+};
+
+export type LegalDocumentEditorResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LegalDocumentEditor'] = ResolversParentTypes['LegalDocumentEditor']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type LegalDocumentVersionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LegalDocumentVersion'] = ResolversParentTypes['LegalDocumentVersion']> = {
+  body?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  changeSummary?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  isLatest?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['LegalDocumentKind'], ParentType, ContextType>;
+  publishedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  versionNumber?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type LegalRevisionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LegalRevision'] = ResolversParentTypes['LegalRevision']> = {
+  changeSummary?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  publishedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  versionNumber?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
 
 export type LoginResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LoginResult'] = ResolversParentTypes['LoginResult']> = {
   __resolveType: TypeResolveFn<'LoginSucceeded' | 'SecondFactorRequired', ParentType, ContextType>;
@@ -929,6 +1150,8 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
+  legalDocument?: Resolver<ResolversTypes['LegalDocument'], ParentType, ContextType, RequireFields<QueryLegalDocumentArgs, 'kind'>>;
+  legalDocumentVersion?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
@@ -978,6 +1201,11 @@ export type ViewerResolvers<ContextType = GraphQLContext, ParentType extends Res
 export type Resolvers<ContextType = GraphQLContext> = {
   AdminAccount?: AdminAccountResolvers<ContextType>;
   AdminConfirmationResult?: AdminConfirmationResultResolvers<ContextType>;
+  AdminLegalDocument?: AdminLegalDocumentResolvers<ContextType>;
+  AdminLegalDocumentSummary?: AdminLegalDocumentSummaryResolvers<ContextType>;
+  AdminLegalDocumentVersion?: AdminLegalDocumentVersionResolvers<ContextType>;
+  AdminLegalDraft?: AdminLegalDraftResolvers<ContextType>;
+  AdminLegalRevision?: AdminLegalRevisionResolvers<ContextType>;
   AdminRecoveryCodeSet?: AdminRecoveryCodeSetResolvers<ContextType>;
   AdminSecondFactorRequired?: AdminSecondFactorRequiredResolvers<ContextType>;
   AdminTotpSetup?: AdminTotpSetupResolvers<ContextType>;
@@ -988,6 +1216,10 @@ export type Resolvers<ContextType = GraphQLContext> = {
   AuditOperator?: AuditOperatorResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
+  LegalDocument?: LegalDocumentResolvers<ContextType>;
+  LegalDocumentEditor?: LegalDocumentEditorResolvers<ContextType>;
+  LegalDocumentVersion?: LegalDocumentVersionResolvers<ContextType>;
+  LegalRevision?: LegalRevisionResolvers<ContextType>;
   LoginResult?: LoginResultResolvers<ContextType>;
   LoginSucceeded?: LoginSucceededResolvers<ContextType>;
   MediaAttachment?: MediaAttachmentResolvers<ContextType>;

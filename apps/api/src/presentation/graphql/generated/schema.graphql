@@ -32,6 +32,60 @@ type AdminConfirmationResult {
   viewer: AdminViewer
 }
 
+"""管理画面の編集の対象の法務文書"""
+type AdminLegalDocument {
+  """下書きが無ければnull"""
+  draft: AdminLegalDraft
+  kind: LegalDocumentKind!
+
+  """未公開ならnull"""
+  latestBody: String
+
+  """新しい順"""
+  revisions: [AdminLegalRevision!]!
+
+  """保存・破棄・公開で送り返す状態の版"""
+  stateVersion: Int!
+}
+
+"""管理画面の法務文書の一覧の1行"""
+type AdminLegalDocumentSummary {
+  hasDraft: Boolean!
+  kind: LegalDocumentKind!
+
+  """未公開ならnull"""
+  latestPublishedAt: DateTime
+
+  """未公開ならnull"""
+  latestVersionNumber: Int
+}
+
+"""管理画面で表示する版"""
+type AdminLegalDocumentVersion {
+  body: String!
+  changeSummary: String!
+  isLatest: Boolean!
+  kind: LegalDocumentKind!
+  publishedAt: DateTime!
+  publishedBy: LegalDocumentEditor!
+  versionNumber: Int!
+}
+
+"""保存済みの下書き"""
+type AdminLegalDraft {
+  body: String!
+  savedAt: DateTime!
+  savedBy: LegalDocumentEditor!
+}
+
+"""管理画面の改訂履歴の1版"""
+type AdminLegalRevision {
+  changeSummary: String!
+  publishedAt: DateTime!
+  publishedBy: LegalDocumentEditor!
+  versionNumber: Int!
+}
+
 """重要な操作の本人確認"""
 input AdminReAuthenticationInput {
   """本人確認に使う現在のパスワード"""
@@ -152,6 +206,55 @@ type ConfirmationResult {
 
 """UTCのRFC 3339形式の日時"""
 scalar DateTime
+
+"""下書きの破棄"""
+input DiscardLegalDocumentDraftInput {
+  expectedStateVersion: Int!
+  kind: LegalDocumentKind!
+}
+
+"""利用者側に公開する法務文書"""
+type LegalDocument {
+  kind: LegalDocumentKind!
+
+  """準備中ならnull"""
+  latest: LegalDocumentVersion
+
+  """新しい順"""
+  revisions: [LegalRevision!]!
+}
+
+"""版を公開した・下書きを保存した管理者"""
+type LegalDocumentEditor {
+  id: ID!
+
+  """削除済みの管理者ではnull"""
+  nickname: String
+}
+
+"""法務文書の種類"""
+enum LegalDocumentKind {
+  LEGAL_NOTICE
+  PRIVACY
+  TERMS
+}
+
+"""公開した版"""
+type LegalDocumentVersion {
+  body: String!
+  changeSummary: String!
+  isLatest: Boolean!
+  kind: LegalDocumentKind!
+  publishedAt: DateTime!
+  versionNumber: Int!
+}
+
+"""改訂履歴の1版"""
+type LegalRevision {
+  changeSummary: String!
+  publishedAt: DateTime!
+  versionNumber: Int!
+}
 
 input LoginInput {
   email: String!
@@ -340,6 +443,13 @@ type PageInfo {
   hasNextPage: Boolean!
 }
 
+"""下書きの公開"""
+input PublishLegalDocumentInput {
+  changeSummary: String!
+  expectedStateVersion: Int!
+  kind: LegalDocumentKind!
+}
+
 type Query {
   """招待中を含む全管理者を登録の新しい順に返す"""
   adminAccounts: [AdminAccount!]!
@@ -349,6 +459,12 @@ type Query {
 
   """監査ログの検索。変更・削除の操作は無い"""
   auditLogs(after: String, filter: AuditLogFilterInput): AuditLogPage!
+
+  """法務文書の最新版と改訂履歴"""
+  legalDocument(kind: LegalDocumentKind!): LegalDocument!
+
+  """法務文書の指定した版。存在しない版はnull"""
+  legalDocumentVersion(kind: LegalDocumentKind!, versionNumber: Int!): LegalDocumentVersion
 
   """ログイン中の端末の一覧"""
   mySessions: [UserSessionSummary!]!
@@ -400,6 +516,13 @@ enum ResendVerificationResult {
 input ResetPasswordInput {
   newPassword: String!
   token: String!
+}
+
+"""下書きの保存"""
+input SaveLegalDocumentDraftInput {
+  body: String!
+  expectedStateVersion: Int!
+  kind: LegalDocumentKind!
 }
 
 """認証コードかリカバリコードのどちらか一方"""

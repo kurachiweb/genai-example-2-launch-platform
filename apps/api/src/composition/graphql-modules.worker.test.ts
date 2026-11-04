@@ -40,3 +40,19 @@ describe('GRAPHQL_SCHEMA_MODULES(メディア)', () => {
     );
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(法務文書)', () => {
+  test('公開の照会と、法務文書の種類の列挙型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+
+    expect(String(query?.['legalDocument']?.type)).toBe('LegalDocument!');
+    expect(String(query?.['legalDocumentVersion']?.type)).toBe(
+      'LegalDocumentVersion',
+    );
+    expect(String(schema.getType('LegalDocumentKind'))).toBe(
+      'LegalDocumentKind',
+    );
+  });
+});
