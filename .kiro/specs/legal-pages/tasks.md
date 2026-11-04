@@ -125,7 +125,7 @@
   - _Boundary: AdminLegalPages_
   - _Requirements: 4.2, 4.7, 9.1, 9.2, 9.3_
 
-- [ ] 6.5 (P) 改訂履歴の表と版の表示を作る
+- [x] 6.5 (P) 改訂履歴の表と版の表示を作る
   - 先に、ブラウザテストで、版・年を含む公開日時・変更概要・公開した管理者の新しい順の表、削除済みの管理者の表示、空の状態、版の表示(本文と情報)と利用者側の過去版のページへのリンクを確かめる
   - 改訂履歴の表と版の表示の部品(`components/legal/`)と、版の表示のページの部品(`components/pages/`)を作り、版の表示のルートに組み込む。日時は年を含む形式(`longDateTime`)で表示する
   - 完了状態: ブラウザテストが成功し、ローカルで版の表示の画面を開ける
@@ -209,3 +209,4 @@
 - 6.2: `LegalDraftForm`のpropsは`document`・`onSave`・`onSaveError`(`AppForm.onSubmitError`へ)・`onDiscard`・`onPublishRequest`・`notice`(6.3の競合の案内とエラーの差し込み口)。破棄の競合は6.6が`onDiscard`で案内を出して投げ直す(ダイアログにも失敗の文言を出すため)。`publishFormSchema`も`legal-form-schemas.ts`に作成済み(6.4が使う)。新しい文言は`legal-draft-form-messages.ts`。designに無い文言「このページを離れますか?」「破棄した下書きは元に戻せません。公開した版は変わりません。」「本文をマークダウンで入力してください」を7.4で文言規則へ足す。離脱の確認は`ConfirmActionDialog`を再利用。`MarkdownEditor`はblurで値を渡すため、公開の案内の行を常に確保してクリックのずれを防いだ
 - 6.3: `toLegalEditorErrorState(error, context?)`は`onSubmitError`の`context`を受けると`field`の詳細を`unmatched`に絞る(design.mdの契約も改めた)。詳細の無い`validation_error`は`unexpected`。表示の文言は`legalEditorErrorMessageOf(state)`、文言は`legal-editor-messages.ts`(「削除済みの管理者」を含む。6.4・6.5で再利用)。`LegalConflictNotice`は文言だけ`role="alert"`でボタンは外、押下は`onReload`。6.6への申し送り: (1)想定外の失敗をエラートラッキングへ送るかを決める(既存のadminのフォームは送っていない)。(2)「最新の内容を読み込む」で案内が消えた後のフォーカスの移し先を決める。(3)破棄の競合で`ConfirmActionDialog`と案内の両方に同じ文言が出て二重に読み上げられ得る。(4)案内を出したまま再び競合すると読み上げられないため`key`などで描き直す。7.4への申し送り: designに無い文言「最後に保存した日時」「保存した管理者」を文言規則へ足す
 - 6.4: `PublishLegalDocumentDialog`は`components/admins/`の`AdminFormDialog`・`AdminFormDialogFooter`・`useAdminFormDialogControls`を再利用(`audited={false}`)。文字数は`MarkdownLengthCounter`に`trimWhiteSpace`した値を渡す(検証と同じ数え方)。1行の入力欄は改行を値に入れないため、改行の違反はサーバーの返す文言を欄に示す形で確かめた。ダイアログ内の競合で「最新の内容を読み込む」は`onReload()`を呼んで閉じる。6.6への申し送り: 公開の成功時に`returnFocusRef`へ`LegalDraftForm`の保存のボタンを入れる必要がある(「公開する」が消えるため。`LegalDraftForm`はまだボタンを外へ渡していない)。競合の案内はダイアログ内だけでページの`notice`には出していない。7.4への申し送り: 「変更概要(必須)」「公開」を文言規則へ足す
+- 6.5: `LegalRevisionTable`は受け取った順(新しい順)で描き、読み込み中・失敗の状態を持たない(編集・版の表示の取得の失敗は`loader`が投げてルートのエラーの画面が示す。design.mdの記述も改めた)。文言は`legal-revision-messages.ts`、読み上げ名「第N版を表示」「第N版を公開ページで見る」は7.4で文言規則へ足す。版の表示のページは`useSuspenseQuery`で版が無ければ`notFound()`。ローカルのD1に確認用の最上位管理者(E2E管理者21bdee)と法的通知の第1版(変更概要「ローカルで版の表示を確かめるための版です。」)が残っている。ローカルでE2Eを実行する時、招待の発行コマンドは`HASH_PEPPER`が要るため`infisical --telemetry=false run --env dev --`を付ける

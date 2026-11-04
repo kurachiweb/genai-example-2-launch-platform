@@ -1,8 +1,10 @@
 import { createRoute } from '@tanstack/react-router';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page } from 'vitest/browser';
 
 import '../src/styles.css';
+import { runAxe } from '../lib/test/a11y.ts';
+import { applyColorScheme, COLOR_SCHEMES } from '../lib/test/computed-style.ts';
 import {
   loadAdminLegalDocument,
   loadAdminLegalDocumentVersion,
@@ -69,7 +71,7 @@ const respond = ({
                 versionNumber,
                 publishedAt: '2026-11-02T03:04:05.000Z',
                 changeSummary: '第3条を改めました。',
-                body: '# 第1条',
+                body: '## 第1条(目的)\n\nこの規約は本サービスの利用条件を定めます。',
                 isLatest: true,
                 publishedBy: SUPER_ADMIN,
               }
@@ -117,6 +119,10 @@ beforeEach(() => {
   executeGraphQL.mockReset();
 });
 
+afterEach(() => {
+  applyColorScheme('light');
+});
+
 test('経路の設定は画面のテストが写したものと同じ読み込みの関数を使う', () => {
   expect(LegalDocumentEditorRoute.options.loader).toBe(loadAdminLegalDocument);
   expect(LegalDocumentVersionRoute.options.loader).toBe(
@@ -159,6 +165,40 @@ describe('版の表示の経路', () => {
 
     await expect.element(pageTitle()).toHaveTextContent('利用規約(第2版)');
   });
+
+  test('見出しの下に版の情報・本文と利用者側の過去版のページへのリンクを表示する', async () => {
+    respond();
+    await renderAt('/legal-documents/terms/revisions/2');
+
+    await expect
+      .element(main().getByRole('heading', { level: 2, name: '第1条(目的)' }))
+      .toBeVisible();
+    await expect
+      .element(main().getByText('この規約は本サービスの利用条件を定めます。'))
+      .toBeVisible();
+    await expect.element(main().getByText('第3条を改めました。')).toBeVisible();
+    await expect.element(main().getByText('統括の担当')).toBeVisible();
+    expect(
+      main().element().querySelector('time')?.getAttribute('datetime'),
+    ).toBe('2026-11-02T03:04:05.000Z');
+    await expect
+      .element(main().getByRole('link', { name: '公開ページで見る' }))
+      .toHaveAttribute('href', 'https://client.example/terms/revisions/2');
+  });
+
+  test.each(COLOR_SCHEMES)(
+    '%sの配色で、版の表示の画面がWCAG 2.2 AAの自動検査に違反しない',
+    async (scheme) => {
+      applyColorScheme(scheme);
+      respond();
+      await renderAt('/legal-documents/terms/revisions/2');
+      await expect
+        .element(main().getByRole('link', { name: '公開ページで見る' }))
+        .toBeVisible();
+
+      expect(await runAxe(document.body)).toStrictEqual([]);
+    },
+  );
 
   test.each([
     '/legal-documents/terms/revisions/9',
