@@ -1,7 +1,15 @@
 import { describe, expect, test, vi } from 'vitest';
 
 import { Route } from '../src/routes/__root.tsx';
-import { PAGE_ROUTER_ROOT_COMPONENTS } from './page-router.tsx';
+import {
+  PAGE_ROUTER_ROOT_BEFORE_LOAD,
+  PAGE_ROUTER_ROOT_COMPONENTS,
+} from './page-router.tsx';
+
+// ログイン中の管理者の取得の補助が読み込む同型の関数は、Startのビルドを経ないブラウザテストではサーバーの実装が残り読み込めないため差し替える
+vi.mock('../lib/start/graphql/execute-graphql.ts', () => ({
+  executeGraphQL: vi.fn(),
+}));
 
 // 文書の外枠はサーバーの描画の文脈を読む部品を含み、Startのビルドを経ないブラウザテストでは読み込めないため、空の部品に差し替える
 vi.mock('../lib/components/app-shell/app-document.tsx', () => ({
@@ -16,5 +24,9 @@ describe('画面のテスト用のルーター', () => {
     expect(Route.options.errorComponent).toBe(
       PAGE_ROUTER_ROOT_COMPONENTS.errorComponent,
     );
+  });
+
+  test('ログイン中の管理者の取得に、アプリのルートと同じbeforeLoadを使う', () => {
+    expect(Route.options.beforeLoad).toBe(PAGE_ROUTER_ROOT_BEFORE_LOAD);
   });
 });

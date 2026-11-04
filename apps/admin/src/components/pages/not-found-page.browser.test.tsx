@@ -1,5 +1,5 @@
 import { createRoute, notFound } from '@tanstack/react-router';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import '../../styles.css';
@@ -12,6 +12,11 @@ import {
   focusMainContent,
   renderPageRouter,
 } from '../../../test/page-router.tsx';
+
+// ログイン中の管理者の取得の補助が読み込む同型の関数は、Startのビルドを経ないブラウザテストではサーバーの実装が残り読み込めないため差し替える。管理者は取得のキャッシュに先に入れる
+vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
+  executeGraphQL: vi.fn(),
+}));
 
 const NOT_FOUND_TITLE = 'ページが見つかりません。';
 const NOT_FOUND_DESCRIPTION =

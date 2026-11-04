@@ -7,6 +7,7 @@ import { AdminLayout } from '../components/layout/admin-layout.tsx';
 import { ErrorPage } from '../components/pages/error-page.tsx';
 import { NotFoundPage } from '../components/pages/not-found-page.tsx';
 import { ADMIN_LAYOUT_SLOTS } from '../composition/layout-slots.ts';
+import { loadRootAuthContext } from '../graphql/admin-viewer.ts';
 import { buildRootHead } from '../head/page-heads.ts';
 import stylesheetHref from '../styles.css?url';
 
@@ -24,6 +25,8 @@ function AdminDocument({ children }: AdminDocumentProps) {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  // ログイン必須の領域の判定は子のルートのloaderより前に要るため、例外としてbeforeLoadで取得のキャッシュを通して取得する
+  beforeLoad: loadRootAuthContext,
   head: () => buildRootHead({ stylesheetHref }),
   shellComponent: AdminDocument,
   notFoundComponent: NotFoundPage,

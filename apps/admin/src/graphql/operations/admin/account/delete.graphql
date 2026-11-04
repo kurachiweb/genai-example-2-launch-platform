@@ -1,0 +1,3 @@
+mutation AdminDelete($id: ID!, $reason: String) {
+  deleteAdmin(id: $id, reason: $reason)
+}

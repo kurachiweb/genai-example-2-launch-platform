@@ -1,3 +1,4 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import {
   type AnyRoute,
   createMemoryHistory,
@@ -23,11 +24,18 @@ import { AdminLayout } from '../src/components/layout/admin-layout.tsx';
 import { ErrorPage } from '../src/components/pages/error-page.tsx';
 import { NotFoundPage } from '../src/components/pages/not-found-page.tsx';
 import { ADMIN_LAYOUT_SLOTS } from '../src/composition/layout-slots.ts';
+import {
+  adminViewerQueryOptions,
+  loadRootAuthContext,
+} from '../src/graphql/admin-viewer.ts';
+import type { AdminViewerQuery } from '../src/graphql/generated/graphql.ts';
+import { GUEST_ADMIN_QUERY } from './admin-viewer-fixtures.ts';
 
 export interface PageRouterOptions {
   readonly path: string;
   readonly createRoutes: (rootRoute: PageRootRoute) => readonly AnyRoute[];
   readonly context?: RouterContext;
+  readonly cachedViewer?: AdminViewerQuery | null;
 }
 
 const PAGE_ROUTER_DISPLAY: DisplayPreferences = Object.freeze({
@@ -55,6 +63,30 @@ export const PAGE_ROUTER_ROOT_COMPONENTS = Object.freeze({
   errorComponent: ErrorPage,
 });
 
+export const PAGE_ROUTER_ROOT_BEFORE_LOAD = loadRootAuthContext;
+
+// アプリではSSRとクエリの連携がルーターの外側にQueryClientProviderを置くため、テストのルーターも同じ位置に置く
+const createQueryClientWrap =
+  (context: RouterContext) =>
+  ({ children }: { readonly children: ReactNode }) => (
+    <QueryClientProvider client={context.queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+
+// nullならキャッシュを空のままにし、ルートのbeforeLoadに取得させる
+function cacheViewer(
+  context: RouterContext,
+  cachedViewer: AdminViewerQuery | null,
+): void {
+  if (cachedViewer !== null) {
+    context.queryClient.setQueryData(
+      adminViewerQueryOptions().queryKey,
+      cachedViewer,
+    );
+  }
+}
+
 // アプリの文書の外枠と同じく、ルーターの文脈の表示設定を日時の部品へ渡す
 function PageShell({ children }: { readonly children: ReactNode }) {
   const router = useRouter();
@@ -69,9 +101,10 @@ function PageShell({ children }: { readonly children: ReactNode }) {
   );
 }
 
-// 本物の経路の設定を子に付けられるよう、アプリのルートと同じ型にする
+// 本物の経路の設定を子に付けられるよう、beforeLoadを含めてアプリのルートと同じ型にする
 const createPageRootRoute = () =>
   createRootRouteWithContext<RouterContext>()({
+    beforeLoad: PAGE_ROUTER_ROOT_BEFORE_LOAD,
     shellComponent: PageShell,
     ...PAGE_ROUTER_ROOT_COMPONENTS,
   });
@@ -83,12 +116,15 @@ export function createPageRouter({
   path,
   createRoutes,
   context = createPageRouterContext('local'),
+  cachedViewer = GUEST_ADMIN_QUERY,
 }: PageRouterOptions) {
+  cacheViewer(context, cachedViewer);
   const rootRoute = createPageRootRoute();
   return createRouter({
     routeTree: rootRoute.addChildren([...createRoutes(rootRoute)]),
     history: createMemoryHistory({ initialEntries: [path] }),
     context,
+    Wrap: createQueryClientWrap(context),
   });
 }
 

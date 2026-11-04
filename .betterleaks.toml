@@ -12,3 +12,13 @@ condition = "AND"
 paths = ['''\.graphql$''']
 regexTarget = "line"
 regexes = ['''^\s*\w*[Pp]assword\s*:\s*\[?\s*\w+\s*!?\s*\]?\s*!?\s*$''']
+
+# GraphQLの操作の文書と、それを写した許可リスト・持続化した文書の生成物では、パスワードの変数の宣言(`$password: String!`)の型名を、generic-passwordが値として誤検知する。
+# 値が型名`String!`そのものである一致に限って除外する
+[[allowlists]]
+description = "GraphQLの操作のパスワードの変数の型の宣言"
+targetRules = ["generic-password"]
+condition = "AND"
+paths = ['''\.graphql$''', '''graphql/generated/allowlist\.json$''', '''graphql/generated/persisted-documents\.json$''']
+regexTarget = "match"
+regexes = ['''^\w*[Pp]assword\s*:\s*String!\)?,?$''']
