@@ -18,7 +18,7 @@
 | 10  | 安全管理措置       | パスワードのハッシュ化、TLS、多要素認証、レート制限、アクセス制御、監査ログ、ログの個人情報マスキング、外的環境の把握(移転先の国の制度を把握して措置を講じる)                                                               | NFR-SECUR-\*、DR-012、DR-013                       |
 | 11  | 公開情報の範囲     | 公開プロフィール(ニックネーム・ハンドル・画像・ヘッドライン・自己紹介・外部サイト・フォロワー数・Upvote履歴・Ultras加入中であること)、プロダクト、コメント、Upvoteしたユーザー一覧が誰でも閲覧でき公開APIでも取得されること | FR-VOTE-011、FR-DIR-005、FR-PAPI-003、FR-UPROF-014 |
 | 12  | 未成年者           | 18歳未満は利用できないこと、判明時のアカウント削除                                                                                                                                                                          | —                                                  |
-| 13  | 改訂               | 改訂履歴の掲示、重要な変更の周知                                                                                                                                                                                            | FR-ADMAG-008・010                                  |
+| 13  | 改訂               | 改訂履歴(版番号・公開日・変更概要)と過去の各版の本文の掲示、重要な変更の周知(ピン留めしたヘルプ記事など)。運用は[準拠方針の法務文書の改訂](001-compliance-policy.md#法務文書の改訂)に従う                                   | FR-ADMAG-008・010                                  |
 
 ## 収集する情報の一覧
 
@@ -75,11 +75,14 @@ AWS organizationsのダッシュボードでAIサービスのオプトアウト�
 - 移転の根拠: 共通の「移転の法的根拠」と同じ根拠に、その委託先のDPAを当てて書く
 - 委託先が講じる措置: 共通の「委託先が講じる措置」を参照し、その委託先に固有の措置だけを加える
 
+委託先が利用の条件としてプライバシーポリシーでの記載を求める事項があれば、3項目の後にその用途の名前の項目として加える。
+
 ### Cloudflare(Workers・D1・R2・Queues・Durable Objects・Email Sending・Turnstile・Web Analytics)
 
 - 移転先: D1・R2・Queuesは米国の管轄で保存する(保存場所の値は[本プロジェクト固有の値](../../../onboardings/project-values.md#workerとリソースの名前と識別子)を正とする)。所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics))は、処理する国を特定できない。これらは保存場所を指定する設定(管轄)を持たないか本サービスで指定せず、利用者の接続に近い拠点などCloudflareの各地のデータセンターで行われ得るためである。この範囲は[委託先の一覧](#委託先の一覧)のCloudflareの用途(ホスティング、データベース、ストレージ、メール送信、bot対策、解析)すべてに当たる
 - 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Cloudflareのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る
 - 委託先が講じる措置: 共通の「委託先が講じる措置」(委託契約のデータ処理条項、暗号化通信・保存、アクセス制御)による
+- bot判定: 登録・ログインなどのフォームのbot判定(Turnstile)は、画面に表示しない種類(Invisible)のウィジェットで行う。Cloudflareはこの種類を使う条件として、プライバシーポリシーで[Turnstile Privacy Addendum](https://www.cloudflare.com/turnstile-privacy-policy/)を参照することを求めるため([Cloudflareの説明](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/turnstile/))、bot判定で処理される情報の扱いはTurnstile Privacy Addendumに従う旨を、その参照(URL)とともに書く
 
 ### AWS(Rekognition)
 
@@ -97,4 +100,5 @@ AWS organizationsのダッシュボードでAIサービスのオプトアウト�
 
 - 保存場所・リージョンの値は[本プロジェクト固有の値](../../../onboardings/project-values.md#workerとリソースの名前と識別子)を正とし、ポリシー本文には「変更時に改訂履歴で告知する」旨を含める
 - 公開API経由で第三者がユーザーの公開情報を取得できることを明記し、利用規約の公開API条項と整合させる
+- 公開するプライバシーポリシーの本文は、[Cloudflareの項](#cloudflareworkersd1r2queuesdurable-objectsemail-sendingturnstileweb-analytics)の「bot判定」のとおりCloudflareのTurnstile Privacy Addendumへの参照を含める。画面に表示しないbot判定のウィジェットを使う条件のため、本文の版を公開する前に、この参照が残っていることを確かめる
 - 通知メールの配信停止はいつでも可能であること、[配信停止の対象外](001-compliance-policy.md#通知メールのオプトアウトlr-005)のメールがあることを明記する

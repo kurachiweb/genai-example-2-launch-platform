@@ -166,7 +166,7 @@
   - _Boundary: LegalDocs_
   - _Requirements: 10.4_
 
-- [ ] 7.4 (P) サービス仕様の文書を更新する
+- [x] 7.4 (P) サービス仕様の文書を更新する
   - ページ配置に過去版の3つのURL、外部リンクの`rel`の表の法務文書(`noopener`)、公開ページと過去版のページの配置、管理画面の法務文書の画面の構成とURLを加える。文言規則の入力欄の上限の表に法務文書の本文(100,000文字)を、本specの文言(エラー・確認・状態・案内・変更概要が公開される旨の注記)を加える
   - 準拠方針のデータ保持期間の一覧に版(無期限・削除の操作なし)と下書き(公開・破棄で削除)の行を加え、「法務文書の改訂」を下書きと公開・過去版の掲示・周知の運用(ピン留めヘルプ記事など)・本番公開前の初版の公開の内容に改める。利用規約の大枠の章18とプライバシーポリシーの大枠の章13に改訂履歴と過去の各版の掲示を加える
   - プライバシーポリシーの大枠のCloudflareの項に、非表示のbot判定のウィジェットを使う条件としてCloudflareのTurnstile Privacy Addendumを参照する旨があるかを確かめ、無ければ「bot判定」の項目として加える。「記載上の注意」に、公開するプライバシーポリシーの本文がこの参照を含むことを記す。Cloudflareの項の他の項目(移転先・移転の根拠・委託先が講じる措置)はinfra-deliveryの記述のまま書き換えない
@@ -215,3 +215,4 @@
 - 7.1: `e2e/admin/legal-documents.e2e.test.ts`は開始時の最新の版番号からの差と乱数で確かめ、実行のたびに利用規約の版が2つ増える(ローカルのD1の`/terms`は公開済みになっている)。利用者側のURLは管理画面の「公開ページを開く」の`href`から取る。実行は`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/admin/legal-documents --project=admin`で、api・admin・clientの開発サーバーが要る(eventは不要)。要件7.2の「本文より前」はブラウザテストで確かめる
 - 7.2: `e2e/client/legal-pages.e2e.test.ts`の補助`footerPolicyNavigation`・`expectFooterLegalLinks`・`expectLoadedDocument`は7.6でも使う。見出しは読み込み中・失敗でも文書の名前で出るため、`expectLoadedDocument`で準備中の文言か「最終改訂日」の表示とalertが無いことを確かめる(「最終改訂日」は`<dt>`に絞るとより確実で、7.6で直してよい)。実行は`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/client/legal-pages --project=client`(api・clientが要る)
 - 7.3: `docs/GUIDES/tech/db/005-draft-and-published-versions.md`を新規作成し、003に「初期データ」の項を加えた(例の値は実際の初期データと別)。ログのカテゴリは規約の3要素`['api', 'legal', 'draft']`・`['api', 'legal', 'publish']`に直し、固有の値として`docs/onboardings/project-values.md`の「法務文書」の節に置いた。tech/README.md・README.md・CLAUDE.mdのdb行の範囲も更新した(tech/README.mdの手順「本索引は変更しない」とは食い違うが、content-processingの前例に合わせた)
+- 7.4: プライバシーポリシーの大枠の各委託先の項の共通の規則に「委託先が利用の条件として記載を求める事項は3項目の後に加える」を足し、Cloudflareの項に「bot判定」(Turnstile Privacy Addendum)を加えた(既存の3項目は不変)。文言規則には実装の文言81件と組み立てる9件を転記し、`check-legal-copy.ts`(scratchpad)で欠けが0件であることを確かめた。準拠方針に(注9)を新設。admin-foundationのdesign.mdの27・53行目に「法務文書の操作は監査ログに記録しない」を注記

@@ -24,7 +24,7 @@
 ### Non-Goals
 
 - 統計グラフ(ugc-moderation)、未対応の問い合わせ・通報の件数のカード(inquiry-chat・content-reporting)。
-- 12メニュー(ユーザー・プロダクト・コメント・評価・画像モデレーション・通報・問い合わせ・スポンサー広告・ヘルプ記事・カテゴリ・法務文書・設定)の画面と操作、その操作種別の登録と記録の呼び出し(各後続spec)。
+- 12メニュー(ユーザー・プロダクト・コメント・評価・画像モデレーション・通報・問い合わせ・スポンサー広告・ヘルプ記事・カテゴリ・法務文書・設定)の画面と操作、その操作種別の登録と記録の呼び出し(各後続spec)。法務文書の操作は監査ログに記録しない(legal-pagesのQ1)。
 - 各カテゴリマスタのデータと業務規則(利用するspec)。
 - 管理者のセッションの一覧・個別の失効(要件に無い)、多要素認証の無効化(Q4・要件12.6)。
 - 要件定義書の改訂(roadmapのOut。必要な改訂は[research.md](research.md)に記録した)。
@@ -50,7 +50,7 @@
 
 - 主体に依存しない認証部品(パスワード・秘密・セッションの有効期限の判定・ログイン試行の記録・TOTP・秘密鍵の暗号化・リカバリコード)と、認証の画面部品(`TotpQrCode`・`RecoveryCodeList`・`PasswordInput`)の実装(identity-auth)。本specは管理者用の値で使う。
 - 利用者のアカウント・運営者による退会の操作口(identity-auth)と、その管理画面(ugc-moderation)。
-- 12メニューの画面・操作・操作種別・記録の呼び出し・ダッシュボードのカード(各後続spec)。本specは登録口と部品だけを持つ。
+- 12メニューの画面・操作・操作種別・記録の呼び出し・ダッシュボードのカード(各後続spec)。本specは登録口と部品だけを持つ。法務文書の操作は監査ログに記録しない(legal-pagesのQ1)。
 - アップロードの受け付け・画像の保存と配信と自動判定・ファイルの削除(media-pipeline)。本specは用途の登録と紐付け・削除の呼び出しだけを行う。
 - bot判定の検証・厳密なレート制限カウンタ・定期実行の仕組み(backend-platform)、セッションの受け渡しの契約(api-gateway)、Cookieの属性と発行・CSP・bot判定のウィジェット(frontend-platform)、メールの描画と送信(email-delivery)、書記素の数え方(content-processing)。
 - staging・prodでの招待の発行コマンドの実行、シークレットと資源の用意(開発者の手作業・infra-delivery・launch-readiness)。AIエージェントは実行しない。コマンドは子のプロセスとしてWranglerを起動し、Claude設定のdenyの`wrangler d1 * --remote`の規則に一致しないため、`--target staging`・`--target prod`の形は開発者がdenyへ加える(`docs/GUIDES/tech/operations/001-deployment.md`の初回の準備)。
