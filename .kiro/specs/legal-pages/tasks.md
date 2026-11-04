@@ -24,7 +24,7 @@
   - 完了状態: 単体テストが成功し、判定がデータベースや時計に依存せずに動く
   - _Requirements: 3.10, 4.3, 4.4, 8.1_
 
-- [ ] 2.2 文書の状態の読み取りと条件付きの書き込みを行うストアを作る
+- [x] 2.2 文書の状態の読み取りと条件付きの書き込みを行うストアを作る
   - 先に、Workers統合テストで、初期データの3行の状態、保存・破棄・公開のたびの状態の版の増加、古い状態の版での保存・破棄・公開が競合を返して何も変えないこと、公開で版番号が連番になり本文が下書きから写されて下書きが消えること、同じ状態の版で2回続けて公開すると1回だけ成功すること、改訂履歴が版番号の降順で本文を含まないこと、日時による版の特定の境界(同じミリ秒を含む・最初の版より前は無し)を確かめる
   - ストアのポートと、D1の実装を作る。保存・破棄は状態の版を条件にした1文の更新、公開は条件付きの版の挿入(本文と版番号を文書の行から取る)と文書の行の更新の一括の書き込みとし、版の行を更新・削除する文を持たない
   - 完了状態: Workers統合テストが成功し、古い状態の版の書き込みでデータベースの内容が変わらないことを確かめられる
@@ -195,3 +195,4 @@
 - 1.1(7.3の材料): `drizzle-kit generate --custom`でも`snapshot.json`が作られ、`prevIds`は直前のスナップショットのidを指し、内容は直前のスナップショットと`id`・`prevIds`以外が同一(キーの順は異なるため文字列の比較では差分に見える)。直後の`drizzle-kit generate`は「No schema changes」で何も作らない。既存の`20261103133903_identity_disposable_status_undetermined`も同じ。テンプレートのコメント行は削除した
 - 1.2: 共有定義は`apps/common-lib/legal/legal-documents.ts`・`legal-input-rules.ts`。`LEGAL_DOCUMENT_KINDS`と列の`enumValues`の一致テストは`apps/api/src/application/legal/legal-columns.unit.test.ts`(common-libはdbを読み込めない)。変更概要の判定は、禁止文字だけを前後の空白を除く前の入力で調べる(VT・FF・NELは空白かつ禁止文字のため、除いてから調べると黙って消える。005の規則と`markdownTextSchema`に合わせた。design.mdの契約のコメントも直した)。改行はLF・CRだけでU+2028・U+2029は扱わない。`changeSummarySchema()`は成功時に`trimWhiteSpace`で除いた値を返す
 - 2.1: 規則は`apps/api/src/domain/legal/legal-document.ts`。本文の「完全一致」は`===`(正規化・空白の除去なし)。未公開で下書きがあれば公開可。`nextPublishedAt`は常に新しい`Date`を返す
+- 2.2: `LEGAL_TYPES`(`application/legal/legal-types.ts`)に6つの識別子(Store・Reader・AdminReader・DraftEditor・Publisher・VersionLocator)を先に定義した。ポートの入力の型名は`LegalDraftSaveInput`・`LegalDraftDiscardInput`・`LegalPublishInput`・`LegalPublishedVersionLocation`。`discardDraft`の`updated_at`はストア内の`new Date()`。競合に変える一意の違反は`(document_id, version_number)`だけ。Workers統合テストはテストごとに版を消して文書の行を初期データに戻す
