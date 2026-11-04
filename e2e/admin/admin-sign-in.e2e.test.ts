@@ -2,6 +2,7 @@ import { ADMIN_ACCOUNTS_TITLE } from '../../apps/admin/src/components/admins/adm
 import { remainingRecoveryCodesMessage } from '../../apps/admin/src/components/account/account-messages.ts';
 import {
   LOGIN_SUBMIT_LABEL,
+  REQUIRED_SUFFIX,
   TOTP_CODE_LABEL,
 } from '../../apps/admin/src/components/auth/admin-auth-messages.ts';
 import { DASHBOARD_EMPTY_TITLE } from '../../apps/admin/src/components/dashboard/dashboard-messages.ts';
@@ -102,7 +103,7 @@ test.describe('最初の最上位管理者とログイン', () => {
     await submitAdminCredentials(page, admin.email, admin.password);
     const form = secondFactorForm(page);
     await form
-      .getByLabel(TOTP_CODE_LABEL, { exact: true })
+      .getByLabel(`${TOTP_CODE_LABEL}${REQUIRED_SUFFIX}`, { exact: true })
       .fill(await nextTotpCode(admin));
     await form.getByRole('button', { name: LOGIN_SUBMIT_LABEL }).click();
 

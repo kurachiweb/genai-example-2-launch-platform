@@ -32,6 +32,8 @@ export const CONFIRM_ACTION_CANCEL_LABEL = 'キャンセル';
 
 export const CATEGORY_NAME_LABEL = 'カテゴリ名';
 
+export const REQUIRED_CATEGORY_NAME_LABEL = `${CATEGORY_NAME_LABEL}(必須)`;
+
 export const CATEGORY_HANDLE_LABEL = 'ハンドル';
 
 export const CATEGORY_ACTIONS_LABEL = '操作';

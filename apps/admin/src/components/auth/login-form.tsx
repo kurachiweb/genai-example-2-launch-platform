@@ -25,6 +25,7 @@ import {
   PASSWORD_LABEL,
   PASSWORD_RESET_LABEL,
   PASSWORD_RESET_SUFFIX,
+  REQUIRED_SUFFIX,
 } from './admin-auth-messages.ts';
 import { LOGIN_FORM_SCHEMA, type LoginFormInput } from './auth-form-schemas.ts';
 import { ADMIN_BOT_ACTIONS } from './bot-actions.ts';
@@ -94,7 +95,11 @@ export function LoginForm({ returnTo }: LoginFormProps) {
         {submitError === undefined ? null : (
           <FormMessage role="alert">{submitError}</FormMessage>
         )}
-        <FormField control={form.control} name="email" label={EMAIL_LABEL}>
+        <FormField
+          control={form.control}
+          name="email"
+          label={`${EMAIL_LABEL}${REQUIRED_SUFFIX}`}
+        >
           {(control) => (
             <Input
               {...control}
@@ -107,7 +112,7 @@ export function LoginForm({ returnTo }: LoginFormProps) {
         <FormField
           control={form.control}
           name="password"
-          label={PASSWORD_LABEL}
+          label={`${PASSWORD_LABEL}${REQUIRED_SUFFIX}`}
         >
           {(control) => (
             <PasswordInput

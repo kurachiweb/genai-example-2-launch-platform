@@ -46,11 +46,14 @@ const LOGIN_PATH = '/auth/login';
 const loginForm = () => page.getByRole('form', { name: 'ログイン' });
 const secondFactorForm = () =>
   page.getByRole('form', { name: '認証コードの入力' });
-const emailInput = () => page.getByRole('textbox', { name: 'メールアドレス' });
-const passwordInput = () => page.getByLabelText('パスワード', { exact: true });
-const totpInput = () => page.getByRole('textbox', { name: '認証コード' });
+const emailInput = () =>
+  page.getByRole('textbox', { name: 'メールアドレス(必須)', exact: true });
+const passwordInput = () =>
+  page.getByLabelText('パスワード(必須)', { exact: true });
+const totpInput = () =>
+  page.getByRole('textbox', { name: '認証コード(必須)', exact: true });
 const recoveryInput = () =>
-  page.getByRole('textbox', { name: 'リカバリコード' });
+  page.getByRole('textbox', { name: 'リカバリコード(必須)', exact: true });
 const loginButton = () => page.getByRole('button', { name: 'ログインする' });
 const alertIn = (form: ReturnType<typeof loginForm>) => form.getByRole('alert');
 
@@ -132,6 +135,15 @@ afterEach(() => {
 });
 
 describe('LoginForm', () => {
+  test('必須の欄は、ラベルで必須であることを示し、入力欄にaria-requiredを付ける', async () => {
+    await renderForm();
+
+    await expect.element(emailInput()).toHaveAttribute('aria-required', 'true');
+    await expect
+      .element(passwordInput())
+      .toHaveAttribute('aria-required', 'true');
+  });
+
   test('フォーカスを外した時に、APIと同じ文言のエラーを入力欄に関連付けて示す', async () => {
     await renderForm();
 
@@ -206,6 +218,23 @@ describe('LoginForm', () => {
   });
 
   describe('第2要素', () => {
+    test('認証コードとリカバリコードの欄は、ラベルで必須であることを示し、入力欄にaria-requiredを付ける', async () => {
+      requireSecondFactor();
+      await renderForm();
+
+      await submitPassword();
+      await expect
+        .element(totpInput())
+        .toHaveAttribute('aria-required', 'true');
+      await userEvent.click(
+        page.getByRole('button', { name: 'リカバリコードを使う' }),
+      );
+
+      await expect
+        .element(recoveryInput())
+        .toHaveAttribute('aria-required', 'true');
+    });
+
     test('認証コードだけを、challengeを足して送り、管理者の取得を無効にして戻り先へ移る', async () => {
       requireSecondFactor(signedIn);
       const { router, context } = await renderForm();

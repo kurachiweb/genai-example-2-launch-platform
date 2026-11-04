@@ -108,8 +108,12 @@ export async function submitLogin(
 ): Promise<void> {
   const form = loginForm(page);
   await waitForBotToken(form);
-  await form.getByLabel(EMAIL_LABEL, { exact: true }).fill(email);
-  await form.getByLabel(PASSWORD_LABEL, { exact: true }).fill(password);
+  await form
+    .getByLabel(`${EMAIL_LABEL}${REQUIRED_SUFFIX}`, { exact: true })
+    .fill(email);
+  await form
+    .getByLabel(`${PASSWORD_LABEL}${REQUIRED_SUFFIX}`, { exact: true })
+    .fill(password);
   await form.getByRole('button', { name: LOGIN_SUBMIT_LABEL }).click();
 }
 

@@ -82,7 +82,7 @@ const closeButton = () =>
   dialog().getByRole('button', { name: '閉じる', exact: true });
 
 const nameBox = () =>
-  dialog().getByRole('textbox', { name: 'カテゴリ名', exact: true });
+  dialog().getByRole('textbox', { name: 'カテゴリ名(必須)', exact: true });
 
 const handleBox = () =>
   dialog().getByRole('textbox', { name: 'ハンドル', exact: true });

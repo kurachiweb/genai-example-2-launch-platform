@@ -116,7 +116,7 @@ test.describe('多要素認証', () => {
     await logoutFromUserMenu(page, account);
     const totpForm = await startLoginUntilSecondFactor(page, account);
     await totpForm
-      .getByLabel(TOTP_CODE_LABEL, { exact: true })
+      .getByLabel(`${TOTP_CODE_LABEL}${REQUIRED_SUFFIX}`, { exact: true })
       .fill(await codes.nextCode());
     await totpForm.getByRole('button', { name: LOGIN_SUBMIT_LABEL }).click();
     await expect(userMenuButton(page, account)).toBeVisible();
@@ -127,7 +127,7 @@ test.describe('多要素認証', () => {
       .getByRole('button', { name: USE_RECOVERY_CODE_LABEL })
       .click();
     await recoveryForm
-      .getByLabel(RECOVERY_CODE_LABEL, { exact: true })
+      .getByLabel(`${RECOVERY_CODE_LABEL}${REQUIRED_SUFFIX}`, { exact: true })
       .fill(recoveryCodes[0] ?? '');
     await recoveryForm
       .getByRole('button', { name: LOGIN_SUBMIT_LABEL })

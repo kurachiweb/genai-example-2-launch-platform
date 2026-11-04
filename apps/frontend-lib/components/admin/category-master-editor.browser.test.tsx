@@ -76,7 +76,7 @@ const formDialog = (name: string) => page.getByRole('dialog', { name });
 
 const nameBox = (dialogName: string) =>
   formDialog(dialogName).getByRole('textbox', {
-    name: 'カテゴリ名',
+    name: 'カテゴリ名(必須)',
     exact: true,
   });
 

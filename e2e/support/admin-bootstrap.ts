@@ -322,8 +322,12 @@ export async function submitAdminCredentials(
 ): Promise<void> {
   const form = loginForm(page);
   await waitForBotToken(form);
-  await form.getByLabel(EMAIL_LABEL, { exact: true }).fill(email);
-  await form.getByLabel(PASSWORD_LABEL, { exact: true }).fill(password);
+  await form
+    .getByLabel(`${EMAIL_LABEL}${REQUIRED_SUFFIX}`, { exact: true })
+    .fill(email);
+  await form
+    .getByLabel(`${PASSWORD_LABEL}${REQUIRED_SUFFIX}`, { exact: true })
+    .fill(password);
   await form.getByRole('button', { name: LOGIN_SUBMIT_LABEL }).click();
 }
 
@@ -345,7 +349,7 @@ export async function signInAdmin(
 ): Promise<void> {
   const form = await startAdminLogin(page, admin);
   await form
-    .getByLabel(TOTP_CODE_LABEL, { exact: true })
+    .getByLabel(`${TOTP_CODE_LABEL}${REQUIRED_SUFFIX}`, { exact: true })
     .fill(await nextTotpCode(admin));
   await form.getByRole('button', { name: LOGIN_SUBMIT_LABEL }).click();
   await expectDashboard(page, admin);
@@ -359,7 +363,7 @@ export async function signInAdminWithRecoveryCode(
   const form = await startAdminLogin(page, admin);
   await form.getByRole('button', { name: USE_RECOVERY_CODE_LABEL }).click();
   await form
-    .getByLabel(RECOVERY_CODE_LABEL, { exact: true })
+    .getByLabel(`${RECOVERY_CODE_LABEL}${REQUIRED_SUFFIX}`, { exact: true })
     .fill(recoveryCode);
   await form.getByRole('button', { name: LOGIN_SUBMIT_LABEL }).click();
   await expectDashboard(page, admin);

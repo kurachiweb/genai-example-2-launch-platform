@@ -79,7 +79,7 @@ export const InvalidInput: Story = {
       await screen.findByRole('button', { name: 'カテゴリを追加' }),
     );
     await userEvent.type(
-      await screen.findByRole('textbox', { name: 'カテゴリ名' }),
+      await screen.findByRole('textbox', { name: 'カテゴリ名(必須)' }),
       'あ'.repeat(31),
     );
     await userEvent.type(

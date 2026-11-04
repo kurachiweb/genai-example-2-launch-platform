@@ -40,7 +40,7 @@ export const EditWithHandle: Story = {
 export const NameTooLong: Story = {
   play: async ({ userEvent }) => {
     await userEvent.type(
-      await screen.findByRole('textbox', { name: 'カテゴリ名' }),
+      await screen.findByRole('textbox', { name: 'カテゴリ名(必須)' }),
       'あ'.repeat(31),
     );
     await userEvent.tab();
@@ -53,7 +53,7 @@ export const SubmitRejected: Story = {
   },
   play: async ({ userEvent }) => {
     await userEvent.type(
-      await screen.findByRole('textbox', { name: 'カテゴリ名' }),
+      await screen.findByRole('textbox', { name: 'カテゴリ名(必須)' }),
       '開発ツール',
     );
     await userEvent.click(screen.getByRole('button', { name: '追加' }));
@@ -66,7 +66,7 @@ export const Submitting: Story = {
   },
   play: async ({ userEvent }) => {
     await userEvent.type(
-      await screen.findByRole('textbox', { name: 'カテゴリ名' }),
+      await screen.findByRole('textbox', { name: 'カテゴリ名(必須)' }),
       '開発ツール',
     );
     await userEvent.click(screen.getByRole('button', { name: '追加' }));

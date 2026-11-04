@@ -31,6 +31,7 @@ import {
   PASSWORD_RESET_LABEL,
   PASSWORD_RESET_SUFFIX,
   REGISTER_LABEL,
+  REQUIRED_SUFFIX,
 } from './account-messages.ts';
 import { BOT_ACTIONS } from './bot-actions.ts';
 import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
@@ -106,7 +107,11 @@ export function LoginForm({ returnTo }: LoginFormProps) {
         {submitError === undefined ? null : (
           <FormMessage role="alert">{submitError}</FormMessage>
         )}
-        <FormField control={form.control} name="email" label={EMAIL_LABEL}>
+        <FormField
+          control={form.control}
+          name="email"
+          label={`${EMAIL_LABEL}${REQUIRED_SUFFIX}`}
+        >
           {(control) => (
             <Input
               {...control}
@@ -119,7 +124,7 @@ export function LoginForm({ returnTo }: LoginFormProps) {
         <FormField
           control={form.control}
           name="password"
-          label={PASSWORD_LABEL}
+          label={`${PASSWORD_LABEL}${REQUIRED_SUFFIX}`}
         >
           {(control) => (
             <PasswordInput

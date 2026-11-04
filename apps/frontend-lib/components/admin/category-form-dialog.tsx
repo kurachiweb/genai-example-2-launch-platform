@@ -4,10 +4,10 @@ import { checkCategoryName } from '../../../common-lib/admin/admin-input-rules.t
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import {
   CATEGORY_HANDLE_LABEL,
-  CATEGORY_NAME_LABEL,
   CATEGORY_NAME_REQUIRED_MESSAGE,
   CATEGORY_NAME_TOO_LONG_MESSAGE,
   CONFIRM_ACTION_CANCEL_LABEL,
+  REQUIRED_CATEGORY_NAME_LABEL,
 } from '../../utilities/messages/admin-console-messages.ts';
 import { z } from '../../utilities/validation/zod.ts';
 import { AppForm } from '../form/app-form.tsx';
@@ -150,7 +150,11 @@ function CategoryForm({
       {failure === undefined ? null : (
         <FormMessage role="alert">{failure}</FormMessage>
       )}
-      <FormField control={form.control} name="name" label={CATEGORY_NAME_LABEL}>
+      <FormField
+        control={form.control}
+        name="name"
+        label={REQUIRED_CATEGORY_NAME_LABEL}
+      >
         {(control) => (
           <Input {...control} autoComplete="off" aria-required="true" />
         )}

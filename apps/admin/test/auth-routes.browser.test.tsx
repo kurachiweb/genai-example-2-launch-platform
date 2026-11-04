@@ -133,17 +133,17 @@ function respondWithSession(): void {
 
 async function logIn(): Promise<void> {
   await userEvent.type(
-    page.getByRole('textbox', { name: 'メールアドレス' }),
+    page.getByRole('textbox', { name: 'メールアドレス(必須)', exact: true }),
     EMAIL,
   );
   await userEvent.type(
-    page.getByLabelText('パスワード', { exact: true }),
+    page.getByLabelText('パスワード(必須)', { exact: true }),
     PASSWORD,
   );
   await userEvent.click(page.getByRole('button', { name: '判定を成功させる' }));
   await userEvent.click(page.getByRole('button', { name: 'ログインする' }));
   await userEvent.type(
-    page.getByRole('textbox', { name: '認証コード' }),
+    page.getByRole('textbox', { name: '認証コード(必須)', exact: true }),
     '123456',
   );
   await userEvent.click(page.getByRole('button', { name: 'ログインする' }));

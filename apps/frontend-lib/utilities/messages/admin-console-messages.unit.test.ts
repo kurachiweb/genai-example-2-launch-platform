@@ -41,6 +41,7 @@ import {
   REASON_PERSONAL_INFORMATION_NOTICE,
   REASON_REQUIRED_MESSAGE,
   REASON_TOO_LONG_MESSAGE,
+  REQUIRED_CATEGORY_NAME_LABEL,
   REQUIRED_REASON_LABEL,
   RESET_FILTER_LABEL,
 } from './admin-console-messages.ts';
@@ -120,6 +121,7 @@ describe('管理画面の共通部品の文言', () => {
   describe('カテゴリマスタの編集部品', () => {
     const categoryLabels = [
       CATEGORY_NAME_LABEL,
+      REQUIRED_CATEGORY_NAME_LABEL,
       CATEGORY_HANDLE_LABEL,
       CATEGORY_ACTIONS_LABEL,
       CATEGORY_HANDLE_UNSET_LABEL,
@@ -156,6 +158,11 @@ describe('管理画面の共通部品の文言', () => {
       expect(CATEGORY_UPDATE_SUBMIT_LABEL).not.toBe(
         CONFIRM_ACTION_CANCEL_LABEL,
       );
+    });
+
+    test('名前の入力欄の名前は、列の見出しのカテゴリ名に必須であることを括弧で添える', () => {
+      expect(REQUIRED_CATEGORY_NAME_LABEL).toBe(`${CATEGORY_NAME_LABEL}(必須)`);
+      expect(REQUIRED_CATEGORY_NAME_LABEL).toBe('カテゴリ名(必須)');
     });
 
     test('名前の検証の文言は、入力を求める文言と、上限を入力規則の定数から示す文言にする', () => {

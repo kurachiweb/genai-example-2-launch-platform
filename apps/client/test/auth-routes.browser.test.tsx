@@ -78,11 +78,11 @@ async function logInAs(viewerAfterLogin: ClientViewerQuery): Promise<void> {
     ),
   );
   await userEvent.type(
-    page.getByRole('textbox', { name: 'メールアドレス' }),
+    page.getByRole('textbox', { name: 'メールアドレス(必須)', exact: true }),
     'maker@launch.example',
   );
   await userEvent.type(
-    page.getByLabelText('パスワード', { exact: true }),
+    page.getByLabelText('パスワード(必須)', { exact: true }),
     PASSWORD,
   );
   await userEvent.click(page.getByRole('button', { name: '判定を成功させる' }));

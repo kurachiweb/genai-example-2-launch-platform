@@ -19,6 +19,7 @@ import {
   LOGIN_SUBMIT_LABEL,
   RECOVERY_CODE_DESCRIPTION,
   RECOVERY_CODE_LABEL,
+  REQUIRED_SUFFIX,
   SECOND_FACTOR_FORM_LABEL,
   TOTP_CODE_DESCRIPTION,
   TOTP_CODE_LABEL,
@@ -108,7 +109,7 @@ export function SecondFactorForm({
           key={mode}
           control={form.control}
           name={FIELD_NAMES.totp}
-          label={TOTP_CODE_LABEL}
+          label={`${TOTP_CODE_LABEL}${REQUIRED_SUFFIX}`}
           description={TOTP_CODE_DESCRIPTION}
         >
           {(control) => (
@@ -125,7 +126,7 @@ export function SecondFactorForm({
           key={mode}
           control={form.control}
           name={FIELD_NAMES.recovery}
-          label={RECOVERY_CODE_LABEL}
+          label={`${RECOVERY_CODE_LABEL}${REQUIRED_SUFFIX}`}
           description={RECOVERY_CODE_DESCRIPTION}
         >
           {(control) => (

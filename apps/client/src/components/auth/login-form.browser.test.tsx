@@ -44,11 +44,14 @@ const CHALLENGE = ['challenge', 'of', 'login'].join('-');
 const loginForm = () => page.getByRole('form', { name: 'ログイン' });
 const secondFactorForm = () =>
   page.getByRole('form', { name: '認証コードの入力' });
-const emailInput = () => page.getByRole('textbox', { name: 'メールアドレス' });
-const passwordInput = () => page.getByLabelText('パスワード', { exact: true });
-const totpInput = () => page.getByRole('textbox', { name: '認証コード' });
+const emailInput = () =>
+  page.getByRole('textbox', { name: 'メールアドレス(必須)', exact: true });
+const passwordInput = () =>
+  page.getByLabelText('パスワード(必須)', { exact: true });
+const totpInput = () =>
+  page.getByRole('textbox', { name: '認証コード(必須)', exact: true });
 const recoveryInput = () =>
-  page.getByRole('textbox', { name: 'リカバリコード' });
+  page.getByRole('textbox', { name: 'リカバリコード(必須)', exact: true });
 const loginButton = () => page.getByRole('button', { name: 'ログインする' });
 const alertIn = (form: ReturnType<typeof loginForm>) => form.getByRole('alert');
 
@@ -126,6 +129,15 @@ afterEach(() => {
 });
 
 describe('LoginForm', () => {
+  test('必須の欄は、ラベルで必須であることを示し、入力欄にaria-requiredを付ける', async () => {
+    await renderForm();
+
+    await expect.element(emailInput()).toHaveAttribute('aria-required', 'true');
+    await expect
+      .element(passwordInput())
+      .toHaveAttribute('aria-required', 'true');
+  });
+
   test('フォーカスを外した時に、文言規則のエラーを入力欄に関連付けて示す', async () => {
     await renderForm();
 
@@ -200,6 +212,26 @@ describe('LoginForm', () => {
   });
 
   describe('第2要素', () => {
+    test('認証コードとリカバリコードの欄は、ラベルで必須であることを示し、入力欄にaria-requiredを付ける', async () => {
+      respond({
+        login: () =>
+          Promise.resolve({ ok: true, data: SECOND_FACTOR_REQUIRED }),
+      });
+      await renderForm();
+
+      await submitPassword();
+      await expect
+        .element(totpInput())
+        .toHaveAttribute('aria-required', 'true');
+      await userEvent.click(
+        page.getByRole('button', { name: 'リカバリコードを使う' }),
+      );
+
+      await expect
+        .element(recoveryInput())
+        .toHaveAttribute('aria-required', 'true');
+    });
+
     test('第2要素が必要なら、同じ画面で認証コードの入力へ切り替え、入力欄へフォーカスを移す', async () => {
       respond({
         login: () =>
