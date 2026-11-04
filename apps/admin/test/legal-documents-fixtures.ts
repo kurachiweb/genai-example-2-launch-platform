@@ -1,7 +1,10 @@
 import { createRoute } from '@tanstack/react-router';
 import type { Mock } from 'vitest';
 
-import { loadAdminLegalDocuments } from '../src/graphql/admin-legal-documents.ts';
+import {
+  loadAdminLegalDocument,
+  loadAdminLegalDocuments,
+} from '../src/graphql/admin-legal-documents.ts';
 import {
   type AdminLegalDocumentsQuery,
   AdminLegalDocumentsDocument,
@@ -9,6 +12,7 @@ import {
   AdminViewerDocument,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
+import { Route as LegalDocumentEditorRoute } from '../src/routes/_authenticated/legal-documents/$kind/index.tsx';
 import { Route as LegalDocumentsRoute } from '../src/routes/_authenticated/legal-documents/index.tsx';
 import { success } from './admin-accounts-fixtures.ts';
 import { adminViewerResult, adminWithRole } from './admin-viewer-fixtures.ts';
@@ -100,5 +104,31 @@ export const renderLegalDocumentsPage = (role: AdminRole) =>
   renderPageRouter({
     path: LEGAL_DOCUMENTS_PATH,
     createRoutes,
+    cachedViewer: adminWithRole(role),
+  });
+
+const createEditorRoutes = (rootRoute: PageRootRoute) => {
+  const authenticatedRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_authenticated',
+    beforeLoad: AuthenticatedRoute.options.beforeLoad,
+    component: AuthenticatedRoute.options.component,
+  });
+  return [
+    authenticatedRoute.addChildren([
+      createRoute({
+        getParentRoute: () => authenticatedRoute,
+        path: 'legal-documents/$kind/',
+        loader: loadAdminLegalDocument,
+        component: LegalDocumentEditorRoute.options.component,
+      }),
+    ]),
+  ];
+};
+
+export const renderLegalDocumentEditorPage = (role: AdminRole, path: string) =>
+  renderPageRouter({
+    path,
+    createRoutes: createEditorRoutes,
     cachedViewer: adminWithRole(role),
   });

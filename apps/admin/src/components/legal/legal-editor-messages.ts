@@ -20,3 +20,9 @@ export const LEGAL_DRAFT_MISSING_MESSAGE = '公開する下書きがありませ
 
 export const LEGAL_BODY_TOO_LARGE_MESSAGE =
   '本文が大きすぎるため保存できません。';
+
+export const DRAFT_SAVED_MESSAGE = '下書きを保存しました。';
+
+export const DRAFT_DISCARDED_MESSAGE = '下書きを破棄しました。';
+
+export const LEGAL_DOCUMENT_PUBLISHED_MESSAGE = '公開しました。';

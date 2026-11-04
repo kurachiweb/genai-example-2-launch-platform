@@ -132,7 +132,7 @@
   - _Boundary: AdminLegalPages_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 6.6 編集の画面を組み立て、保存・破棄・公開を照会の結果に反映する
+- [x] 6.6 編集の画面を組み立て、保存・破棄・公開を照会の結果に反映する
   - 編集の画面のページの部品(`components/pages/`)で、見出し(公開ページへのリンク)・下書きの状態・入力欄・改訂履歴を配置して編集のルートに組み込み、変更の成功時に応答の内容で照会の結果を置き換えてフォームを作り直し、トーストを出し、失敗時にエラーの対応に従って表示する
   - 先に、ブラウザテストで、保存の後に下書きの状態が更新され、公開の後に改訂履歴の先頭に新しい版が出て下書きが無くなり、競合の後に「最新の内容を読み込む」で最新の状態に戻ることを確かめる
   - 完了状態: ブラウザテストが成功し、ローカルで最上位管理者が下書きを保存して公開できる
@@ -210,3 +210,4 @@
 - 6.3: `toLegalEditorErrorState(error, context?)`は`onSubmitError`の`context`を受けると`field`の詳細を`unmatched`に絞る(design.mdの契約も改めた)。詳細の無い`validation_error`は`unexpected`。表示の文言は`legalEditorErrorMessageOf(state)`、文言は`legal-editor-messages.ts`(「削除済みの管理者」を含む。6.4・6.5で再利用)。`LegalConflictNotice`は文言だけ`role="alert"`でボタンは外、押下は`onReload`。6.6への申し送り: (1)想定外の失敗をエラートラッキングへ送るかを決める(既存のadminのフォームは送っていない)。(2)「最新の内容を読み込む」で案内が消えた後のフォーカスの移し先を決める。(3)破棄の競合で`ConfirmActionDialog`と案内の両方に同じ文言が出て二重に読み上げられ得る。(4)案内を出したまま再び競合すると読み上げられないため`key`などで描き直す。7.4への申し送り: designに無い文言「最後に保存した日時」「保存した管理者」を文言規則へ足す
 - 6.4: `PublishLegalDocumentDialog`は`components/admins/`の`AdminFormDialog`・`AdminFormDialogFooter`・`useAdminFormDialogControls`を再利用(`audited={false}`)。文字数は`MarkdownLengthCounter`に`trimWhiteSpace`した値を渡す(検証と同じ数え方)。1行の入力欄は改行を値に入れないため、改行の違反はサーバーの返す文言を欄に示す形で確かめた。ダイアログ内の競合で「最新の内容を読み込む」は`onReload()`を呼んで閉じる。6.6への申し送り: 公開の成功時に`returnFocusRef`へ`LegalDraftForm`の保存のボタンを入れる必要がある(「公開する」が消えるため。`LegalDraftForm`はまだボタンを外へ渡していない)。競合の案内はダイアログ内だけでページの`notice`には出していない。7.4への申し送り: 「変更概要(必須)」「公開」を文言規則へ足す
 - 6.5: `LegalRevisionTable`は受け取った順(新しい順)で描き、読み込み中・失敗の状態を持たない(編集・版の表示の取得の失敗は`loader`が投げてルートのエラーの画面が示す。design.mdの記述も改めた)。文言は`legal-revision-messages.ts`、読み上げ名「第N版を表示」「第N版を公開ページで見る」は7.4で文言規則へ足す。版の表示のページは`useSuspenseQuery`で版が無ければ`notFound()`。ローカルのD1に確認用の最上位管理者(E2E管理者21bdee)と法的通知の第1版(変更概要「ローカルで版の表示を確かめるための版です。」)が残っている。ローカルでE2Eを実行する時、招待の発行コマンドは`HASH_PEPPER`が要るため`infisical --telemetry=false run --env dev --`を付ける
+- 6.6: 結線は`use-legal-document-editor.ts`(`setQueryData`で置き換え、一覧は常に無効化、公開の後は版の照会も無効化)。フォームは`key`で作り直さず`stateVersion`の変化で`reset`する(破棄のダイアログを失わないため)。処理の後のフォーカスは`use-focus-after-change.ts`が表示中の版の変化を待ち、本文が空なら本文の欄(`MarkdownEditor`のハンドル。RHFの`reset`の後は`setFocus`が効かない)、空でなければ押せるようになった保存のボタンへ移す。破棄・公開の要求はダイアログが閉じてから出す。ダイアログ由来の競合ではページの案内を`announce={false}`(Radixの`hideOthers`は`aria-live`の祖先を隠さず二重に読まれるため)。競合の案内は失敗ごとの連番の`key`で作り直す。想定外の例外はエラートラッキングへ送らない(既存のadminのフォームと同じ)。7.4への申し送り: トーストの文言「下書きを保存しました。」「下書きを破棄しました。」「公開しました。」を文言規則へ足す。ローカルのD1には法的通知の第2版と確認用の最上位管理者がもう1人ある

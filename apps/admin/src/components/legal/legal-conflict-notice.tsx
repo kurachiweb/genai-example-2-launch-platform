@@ -8,12 +8,20 @@ import {
 
 export interface LegalConflictNoticeProps {
   readonly onReload: () => void;
+  // 同じ文言を確認のダイアログが既に読み上げた時は偽にし、二重に読み上げさせない
+  readonly announce?: boolean;
 }
 
-export function LegalConflictNotice({ onReload }: LegalConflictNoticeProps) {
+export function LegalConflictNotice({
+  onReload,
+  announce = true,
+}: LegalConflictNoticeProps) {
   return (
     <div className="flex flex-col items-start gap-3 rounded-lg border border-destructive bg-card p-4 text-sm">
-      <p role="alert" className="flex items-start gap-1.5 font-semibold">
+      <p
+        role={announce ? 'alert' : undefined}
+        className="flex items-start gap-1.5 font-semibold"
+      >
         <CircleAlertIcon
           aria-hidden="true"
           className="mt-0.5 size-4 shrink-0 text-destructive"

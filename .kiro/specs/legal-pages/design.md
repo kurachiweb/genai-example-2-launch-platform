@@ -199,6 +199,8 @@ apps/
     │   ├── legal-version-detail.tsx                    # 版の本文と情報
     │   ├── legal-conflict-notice.tsx                   # 他の操作で内容が変わった旨と再読み込み
     │   ├── use-unsaved-changes-guard.ts                # useBlockerによる離脱の確認の状態
+    │   ├── use-legal-document-editor.ts                # 編集の画面の取得・変更・結果の反映・失敗の表示の状態
+    │   ├── use-focus-after-change.ts                   # 破棄・公開・読み込み直しの後のフォーカスの移し先(本文が空なら本文の欄)
     │   ├── legal-editor-errors.ts                      # GraphQLClientErrorのコードと表示の対応(単体テスト併置)
     │   └── legal-form-schemas.ts                       # 下書きと変更概要のフォームの規則
     ├── graphql/admin-legal-documents.ts                # 取得の設定・loader・生成した型からの変換(単体テスト併置)
@@ -816,8 +818,8 @@ export declare function useUnsavedChangesGuard(dirty: boolean): {
 - 保存していない変更があるとき、「公開する」を無効にし「公開する前に下書きを保存してください。」を表示する(4.6)。`useUnsavedChangesGuard(dirty)`で離脱の確認(「保存していない変更があります。このページを離れると変更は失われます。」→「離れる」)を出す(3.11)。
 - `useAdminRole()`が最上位管理者でないとき、本文の欄を`FormField`の`disabled`で無効にして読み取り専用にし(`MarkdownEditor`の`disabled`の属性だけでは無効にしない)、3つの操作を描かない(送信しない、3.8)。
 - `PublishLegalDocumentDialog`: タイトル「<文書の名前>を公開しますか?」、説明「公開すると利用者側のページに直ちに表示されます。公開した版は後から変更・削除できません。」、変更概要の入力欄(1行、`useAppForm(publishFormSchema, { defaultValues: { changeSummary: '' } })`と`AppForm`(`serverFieldPrefix="input"`)。`kind`と`expectedStateVersion`はスキーマの入力に含めず`onSubmit`で足す。フォーカスを外したときに検証、「1 / 200」の文字数)、「公開」(4.7・9.1)。
-- 成功: 応答の`AdminLegalDocument`で取得の結果を置き換え、フォームを新しい初期値で作り直し、トースト(「下書きを保存しました。」「下書きを破棄しました。」「公開しました。」)。
-- 失敗: `AppForm`の`onSubmitError`で`toLegalEditorErrorState`により分岐する。`conflict`は`LegalConflictNotice`(「他の管理者がこの文書を更新しました。最新の内容を読み込んでから、もう一度操作してください。」と「最新の内容を読み込む」)を表示し、入力欄の内容は消さない(3.10・4.4)。`unchanged`・`no-draft`はダイアログ内のエラー、`too-large`は「本文が大きすぎるため保存できません。」、`field`は`AppForm`が`applyServerFieldErrors`で欄に示した残り(`unmatched`)、`unexpected`は`message`(問い合わせを促す文を含まない)をフォームに示す。一覧の取得の失敗(`AdminDataTable`の`error`)も`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言にする。編集・版の表示の取得の失敗は`loader`が投げ、ルートのエラーの画面が示す。
+- 成功: 応答の`AdminLegalDocument`で取得の結果を置き換え(`setQueryData`)、フォームを新しい初期値で作り直し、トースト(「下書きを保存しました。」「下書きを破棄しました。」「公開しました。」)。フォームは状態の版が変わった時に`reset`で初期値を入れ替え、入力欄の要素とダイアログとフォーカスを保つ。一覧の取得と、公開では版の表示の取得(最新かどうかが変わる)を無効にする。破棄・公開の後は開いた元のボタンが消えるため、ダイアログを閉じた後に続けて操作する場所へフォーカスを移す。移し先は反映した後の初期値の本文で決め、本文があれば「下書きを保存」(初期値を入れ替えた後の検証で押せるようになってから)、空(空白だけ)なら押せない「下書きを保存」ではなく本文の入力欄にする(未公開の文書の下書きの破棄など)。結果はTanStack Queryの通知で後から描かれるため、操作の前の状態の版から表示が変わるのを待って決める。
+- 失敗: `AppForm`の`onSubmitError`で`toLegalEditorErrorState`により分岐する。`conflict`は`LegalConflictNotice`(「他の管理者がこの文書を更新しました。最新の内容を読み込んでから、もう一度操作してください。」と「最新の内容を読み込む」)を表示し、入力欄の内容は消さない(3.10・4.4)。破棄・公開の競合はダイアログの中の表示に加えて、ダイアログを閉じた後の再読み込みの導線としてページにも案内を出す。ダイアログの間も外側の通知の領域を持つ部分は読み上げから隠れないため、このページの案内は`role="alert"`を付けずに示す(`LegalConflictNotice`の`announce={false}`)。失敗のたびに案内を描き直して読み上げさせる。「最新の内容を読み込む」は、押せるなら先に「下書きを保存」へフォーカスを移してから照会を取得し直し、成功で案内を消して、読み込んだ初期値の本文に合わせて上と同じ決め方でフォーカスを移し直す(本文を空にしてから押した場合や、読み込んだ本文が空の場合を含む)。失敗はトーストで知らせて案内を残す。`unchanged`・`no-draft`はダイアログ内のエラー、`too-large`は「本文が大きすぎるため保存できません。」、`field`は`AppForm`が`applyServerFieldErrors`で欄に示した残り(`unmatched`)、`unexpected`は`message`(問い合わせを促す文を含まない)をフォームに示す。一覧の取得の失敗(`AdminDataTable`の`error`)も`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言にする。編集・版の表示の取得の失敗は`loader`が投げ、ルートのエラーの画面が示す。
 - `LegalDraftStatus`: 下書きがあれば「下書きがあります」と最終保存の`DateTime`(`longDateTime`)・保存者(削除済みは「削除済みの管理者」)、無ければ「下書きはありません」(3.5)。
 - `LegalRevisionTable`: `AdminDataTable`(列: 版・公開日時(`longDateTime`)・変更概要・公開した管理者・操作「表示」「公開ページで見る」)、空は「まだ公開した版はありません。」(5.1〜5.5)。
 

@@ -1,4 +1,11 @@
-import { type ReactNode, useId, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 
 import { hasRole } from '../../../common-lib/admin/admin-roles.ts';
 import {
@@ -14,7 +21,10 @@ import {
 import { FormField } from '../../../lib/components/form/form-field.tsx';
 import { SubmitButton } from '../../../lib/components/form/submit-button.tsx';
 import { useAppForm } from '../../../lib/components/form/use-app-form.ts';
-import { MarkdownEditor } from '../../../lib/components/markdown-editor/markdown-editor.tsx';
+import {
+  MarkdownEditor,
+  type MarkdownEditorFocusTarget,
+} from '../../../lib/components/markdown-editor/markdown-editor.tsx';
 import { useMarkdownOptions } from '../../../lib/components/markdown/use-markdown-options.ts';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
@@ -45,6 +55,10 @@ import {
   UNSAVED_CHANGES_MESSAGE,
 } from './legal-draft-form-messages.ts';
 import { legalDraftFormSchema } from './legal-form-schemas.ts';
+import {
+  type LegalFormFocusRequest,
+  useFocusAfterChange,
+} from './use-focus-after-change.ts';
 import { useUnsavedChangesGuard } from './use-unsaved-changes-guard.ts';
 
 export interface LegalDraftFormProps {
@@ -57,6 +71,10 @@ export interface LegalDraftFormProps {
   readonly onPublishRequest: () => void;
   // 競合の案内や保存の失敗など、入力欄の前に示す内容
   readonly notice?: ReactNode;
+  // 読み込み直しの押下で、取得の前に保存のボタンへフォーカスを移すために使う
+  readonly saveButtonRef?: RefObject<HTMLButtonElement | null>;
+  // 公開・読み込み直しの後に、続けて操作する場所(初期値の本文が空なら本文の欄、そうでなければ保存のボタン)へフォーカスを移す要求
+  readonly focusRequest?: LegalFormFocusRequest | undefined;
 }
 
 const failureMessageOf = (error: unknown): string =>
@@ -72,6 +90,8 @@ export function LegalDraftForm({
   onDiscard,
   onPublishRequest,
   notice,
+  saveButtonRef: externalSaveButtonRef,
+  focusRequest,
 }: LegalDraftFormProps) {
   const form = useAppForm(legalDraftFormSchema, {
     defaultValues: { body: initialBodyOf(document) },
@@ -84,14 +104,47 @@ export function LegalDraftForm({
   const dirty = form.formState.isDirty;
   const guard = useUnsavedChangesGuard(dirty);
   const [discardOpen, setDiscardOpen] = useState(false);
-  const saveButtonRef = useRef<HTMLButtonElement>(null);
-  // 破棄に成功すると開いた元のボタンが消えるため、閉じた後は保存のボタンへフォーカスを移す
+  const ownSaveButtonRef = useRef<HTMLButtonElement>(null);
+  const saveButtonRef = externalSaveButtonRef ?? ownSaveButtonRef;
+  // 破棄に成功すると開いた元のボタンが消えるため、閉じた後に続けて操作する場所へフォーカスを移す
   const discardReturnFocusRef = useRef<HTMLElement | null>(null);
+  // 破棄に成功した時の、操作の前の状態の版
+  const discardedFromRef = useRef<number | undefined>(undefined);
+  const [discardFocusRequest, setDiscardFocusRequest] =
+    useState<LegalFormFocusRequest>();
   const publishHintId = useId();
   const kind = toGraphQLLegalDocumentKind(document.kind);
   const expectedStateVersion = document.stateVersion;
   const documentLabel = LEGAL_DOCUMENT_LABELS[document.kind];
   const hasDraft = document.draft !== null;
+  const initialBody = initialBodyOf(document);
+  const { reset } = form;
+  // 初期値の入れ替えは欄の登録を作り直し、次に描き直すまでsetFocusが効かないため、入力欄へは直接フォーカスを移す
+  const editorRef = useRef<MarkdownEditorFocusTarget | null>(null);
+  const isValid = form.formState.isValid;
+  const loadedStateVersionRef = useRef(expectedStateVersion);
+
+  // 保存・破棄・公開・読み込み直しで状態の版が変わったら、入力欄の要素とフォーカスを保ったまま新しい初期値で入力を始め直す
+  useEffect(() => {
+    if (loadedStateVersionRef.current === expectedStateVersion) {
+      return;
+    }
+    loadedStateVersionRef.current = expectedStateVersion;
+    reset({ body: initialBody });
+  }, [expectedStateVersion, initialBody, reset]);
+
+  useFocusAfterChange({
+    request: focusRequest,
+    ownRequest: discardFocusRequest,
+    stateVersion: expectedStateVersion,
+    initialBody,
+    isValid,
+    saveButtonRef,
+    editorRef,
+    onTarget: (target) => {
+      discardReturnFocusRef.current = target;
+    },
+  });
 
   return (
     <>
@@ -117,7 +170,10 @@ export function LegalDraftForm({
               value={control.value}
               onValueChange={control.onChange}
               onBlur={control.onBlur}
-              ref={control.ref}
+              ref={(handle) => {
+                control.ref(handle);
+                editorRef.current = handle;
+              }}
               labelId={control.labelId}
               describedById={control['aria-describedby']}
               invalid={control['aria-invalid'] === true}
@@ -176,7 +232,15 @@ export function LegalDraftForm({
       {/* 確認のダイアログはフォームを持ち、ポータルの中でも送信のイベントが入力欄のフォームへ伝わるため、入力欄のフォームの外に置く */}
       <ConfirmActionDialog
         open={discardOpen}
-        onOpenChange={setDiscardOpen}
+        onOpenChange={(open) => {
+          setDiscardOpen(open);
+          // 閉じる前に移すとダイアログがフォーカスを中へ戻すため、閉じてから移す
+          const fromStateVersion = discardedFromRef.current;
+          if (!open && fromStateVersion !== undefined) {
+            discardedFromRef.current = undefined;
+            setDiscardFocusRequest({ fromStateVersion });
+          }
+        }}
         title={discardDraftTitle(documentLabel)}
         description={DISCARD_DRAFT_DESCRIPTION}
         confirmLabel={DISCARD_DRAFT_CONFIRM_LABEL}
@@ -184,7 +248,7 @@ export function LegalDraftForm({
         audited={false}
         onConfirm={async () => {
           await onDiscard({ kind, expectedStateVersion });
-          discardReturnFocusRef.current = saveButtonRef.current;
+          discardedFromRef.current = expectedStateVersion;
         }}
         failureMessageOf={failureMessageOf}
         returnFocusRef={discardReturnFocusRef}

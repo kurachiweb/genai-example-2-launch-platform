@@ -39,6 +39,14 @@ describe('競合の案内', () => {
     await expect.element(reloadButton()).toBeVisible();
   });
 
+  test('読み上げない指定では、文言と操作を示し、警告として伝えない', async () => {
+    await render(<LegalConflictNotice onReload={vi.fn()} announce={false} />);
+
+    await expect.element(page.getByText(CONFLICT_MESSAGE)).toBeVisible();
+    await expect.element(reloadButton()).toBeVisible();
+    expect(page.getByRole('alert').query()).toBeNull();
+  });
+
   test('「最新の内容を読み込む」の押下で再読み込みを求め、囲むフォームを送信しない', async () => {
     const onReload = vi.fn();
     const { rendered, onSubmit } = renderInForm(onReload);
