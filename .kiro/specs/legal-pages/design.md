@@ -763,7 +763,7 @@ export declare const buildLegalVersionHead: (
 ```
 
 - ルートの6ファイルは`createFileRoute`に`loader`(`loadLegalDocument(kind)`・`loadLegalDocumentVersion(kind)`)、`head`(`buildLegalDocumentHead`・`buildLegalVersionHead`)、`component`(`components/pages/`の`LegalDocumentPage`・`LegalVersionPage`)だけを渡す。版番号の解析は`loader`で`common-lib`の`parseVersionNumber`を使い、ルートの`params.parse`は使わない(版番号の形式違反と版が無いことの404の判定を`loader`の1か所にまとめ、6つのルートに同じ解析を書かないため)。生成した型からページの部品の型への変換は`src/graphql/legal-documents.ts`に置き、ページの部品は生成物の型に依存しない。
-- `LegalDocumentPage({ kind })`: `h1`に文書の名前、その下に「最終改訂日」と`DateTime`(`yearDate`、曜日を含まない年月日、仮5)、`MarkdownContent`(`useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL })`)、本文の後に`LegalRevisionHistory`。`latest`が`null`なら`EmptyState`(「この文書は準備中です。」)だけを表示する(6.6)。
+- `LegalDocumentPage({ kind, state })`: `state`は読み込み中・失敗(再試行)・成功(表示用の値)の判別共用体で、ルートのファイル内の小さな関数が取得の結果を写して渡す。`h1`に文書の名前、その下に「最終改訂日」と`DateTime`(`yearDate`、曜日を含まない年月日、仮5)、`MarkdownContent`(`useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL })`)、本文の後に`LegalRevisionHistory`。`latest`が`null`なら`EmptyState`(「この文書は準備中です。」)だけを表示する(6.6)。
 - `LegalRevisionHistory({ kind, revisions })`: 見出し「改訂履歴」(`h2`)の`<ol>`で新しい順に、「第N版」のリンク(`legalRevisionPath`)・`DateTime`(`yearDate`)・変更概要。管理者の情報は受け取らない(6.5)。
 - `LegalVersionPage({ kind, versionNumber })`: `h1`「<文書の名前>(第N版)」、`LegalVersionNotice`、公開日(`DateTime`の`yearDate`)・変更概要、本文。
 - `LegalVersionNotice({ kind, isLatest, versionNumber })`: 本文より前に、過去の版なら「これは第N版です。最新版ではありません。」と「最新版を見る」、最新版なら「これは最新版です。」と「公開ページを見る」のリンクを、`role="note"`で表示する(7.2・7.3)。

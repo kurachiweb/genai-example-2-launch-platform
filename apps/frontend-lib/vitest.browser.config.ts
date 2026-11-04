@@ -41,6 +41,7 @@ const PREBUNDLED_DEPENDENCIES = [
   'remark-gfm',
   'remark-cjk-friendly',
   'remark-cjk-friendly-gfm-strikethrough',
+  'remark-cjk-friendly-gfm-strikethrough/parseOnly',
   'remark-rehype',
   'rehype-sanitize',
   'rehype-stringify',

@@ -74,7 +74,7 @@
   - _Requirements: 2.4, 3.4, 3.7, 4.2, 4.5, 10.3_
 
 - [ ] 5. 利用者側の画面
-- [ ] 5.1 (P) 公開ページの本文と改訂履歴の部品を作る
+- [x] 5.1 (P) 公開ページの本文と改訂履歴の部品を作る
   - 先に、ブラウザテストで、文書の名前の見出し・最終改訂日・本文・本文の後の改訂履歴(新しい順・各版へのリンク・変更概要・`<time datetime>`)、最終改訂日と改訂履歴の日付が曜日を含まない年月日であること、準備中の表示、管理者の情報が出ないこと、読み込み中とエラーの表示、axeの違反が0件であることを確かめる
   - 公開ページの部品(ページ全体の部品の置き場所`components/pages/`)と改訂履歴の部品(`components/legal/`)を作る。本文は法務文書の`rel`を指定したマークダウンの表示部品で、日時は曜日を含まない年月日の形式(`yearDate`)で表示する。部品はGraphQLの生成物(5.3で作る)の型に依存せず、表示に要る値だけを受け取る
   - 完了状態: ブラウザテストが成功し、準備中の状態で本文と改訂履歴が描かれない
@@ -202,3 +202,4 @@
 - 4.1: `LEGAL_MODULE`(`composition/legal-module.ts`)は6つの識別子を既定のTransientで束縛し`MODULES`の末尾に加えた。`AdminDirectory`は`ADMIN_PLATFORM_MODULE`のものを使う。Workers統合テストの法務文書のテーブルのリセットは2.2と4.1のテストで重複している(まとめるなら`infrastructure/legal/testing/`へ)
 - 4.2: `Query`には公開の`legalDocument`・`legalDocumentVersion`だけを載せ、列挙型・公開と管理の型・入力型は宣言だけ先に置いた(リゾルバの無いルートのフィールドを作らないため。4.3で管理のQuery・Mutationと`admin-resolvers.ts`を`index.ts`へ加える)。`versionNumber`が1未満は`withValidatedArgs`で`validation_error`(「版番号は1以上の整数で指定してください。」、`errors.ts`の`INPUT_MESSAGES`)。列挙型の変換は`mappers.ts`の明示の対応表で、管理のビューの変換も用意済み。Workers統合テストの法務文書のテーブルのリセットは`infrastructure/legal/testing/legal-store-fixtures.ts`に共通化した
 - 4.3: 管理のリゾルバは`adminOnly(withValidatedArgs(..., requireAdmin))`で、拒否の順は007の「呼び出し元→引数の検証→ロール」(design.mdのシーケンス図も合わせた)。検証の詳細の欄名は`input.body`・`input.changeSummary`・`input.expectedStateVersion`で、画面は`serverFieldPrefix="input"`で欄へ写す。`expectedStateVersion`の文言は「状態の版は0以上の整数で指定してください。」。テストは800行の制限で`admin-resolvers.worker.test.ts`(呼び出し元・ログイン・ロール・照会)と`admin-resolvers.mutation.worker.test.ts`(保存・破棄・公開)に分け、共通の操作は`apps/api/test/support/legal-graphql-operations.ts`。`test:worker`全体でworkerdの「FixedLengthStream」のuncaught exceptionが1行出る(全件成功。7.5で出所を確かめる)
+- 5.1: `LegalDocumentPage({ kind, state })`の`state`は`pending`・`error`(`error`・`onRetry`)・`success`(`document: LegalDocumentView`)の判別共用体(design.mdも改めた)。表示用の型`LegalDocumentView`・`LegalLatestVersion`・`LegalDocumentPageState`は`legal-document-page.tsx`、`LegalRevisionSummary`は`legal-revision-history.tsx`からexport。文言と`legalVersionLabel(n)`(「第N版」)は`components/legal/legal-messages.ts`。改訂履歴のリンクは型付きのルートが無いため`PathLink`(5.3で型付きの`Link`へ置き換え可)。client・admin・frontend-libの`vitest.browser.config.ts`の事前バンドルに`remark-cjk-friendly-gfm-strikethrough/parseOnly`を足した(無いとViteがテストを読み込み直す)。5.3への申し送り: `useSuspenseQuery`と例外を投げる`loader`の組では`pending`・`error`の分岐を通らないため、要件9.4・E2Eの(a)と両立する取得の方式を決める
