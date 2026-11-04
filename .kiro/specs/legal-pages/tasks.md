@@ -67,7 +67,7 @@
   - 完了状態: Workers統合テストとスキーマの生成物の検査が成功し、生成したスキーマファイルに設計どおりの型がある
   - _Requirements: 3.9, 6.5, 7.4_
 
-- [ ] 4.3 GraphQLの管理の照会と変更を作る
+- [x] 4.3 GraphQLの管理の照会と変更を作る
   - 先に、Workers統合テストで、利用者側の呼び出し元と未ログインの管理の照会が拒否されること、閲覧のみ・モデレーターが照会できて変更が拒否されること、最上位管理者の保存・破棄・公開、本文と変更概要の検証の違反が欄ごとの詳細になること、競合・変更なし・下書きなしのコード、公開者の名前の解決を確かめる
   - 照会は閲覧のみ以上、変更は最上位管理者をadmin-foundationの認可の補助で先頭に確かめ、引数を共有の規則で検証するリゾルバを作り、スキーマファイルを生成し直す
   - 完了状態: Workers統合テストが成功し、最上位管理者でない管理者の変更でデータベースが変わらないことを確かめられる
@@ -201,3 +201,4 @@
 - 3.3: 拒否の`AppError`は`application/legal/legal-document-errors.ts`(`LEGAL_DOCUMENT_ERRORS`・`legalDocumentDenialError`。admin-errors.tsと同じ形、design.mdのファイル構成にも追記)。破棄の下書きなしも`legal_document_draft_missing`(画面は下書きがある時だけ破棄を出すため通常は起きない)。ログは`['api','legal']`のinfoで属性は`action`・`kind`・版番号・`adminId`・`conflict`。7.3で`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`のカテゴリの表に`['api','legal']`を加える。入力の型は`LegalDraftSaveRequest`・`LegalDraftDiscardRequest`・`LegalPublishRequest`
 - 4.1: `LEGAL_MODULE`(`composition/legal-module.ts`)は6つの識別子を既定のTransientで束縛し`MODULES`の末尾に加えた。`AdminDirectory`は`ADMIN_PLATFORM_MODULE`のものを使う。Workers統合テストの法務文書のテーブルのリセットは2.2と4.1のテストで重複している(まとめるなら`infrastructure/legal/testing/`へ)
 - 4.2: `Query`には公開の`legalDocument`・`legalDocumentVersion`だけを載せ、列挙型・公開と管理の型・入力型は宣言だけ先に置いた(リゾルバの無いルートのフィールドを作らないため。4.3で管理のQuery・Mutationと`admin-resolvers.ts`を`index.ts`へ加える)。`versionNumber`が1未満は`withValidatedArgs`で`validation_error`(「版番号は1以上の整数で指定してください。」、`errors.ts`の`INPUT_MESSAGES`)。列挙型の変換は`mappers.ts`の明示の対応表で、管理のビューの変換も用意済み。Workers統合テストの法務文書のテーブルのリセットは`infrastructure/legal/testing/legal-store-fixtures.ts`に共通化した
+- 4.3: 管理のリゾルバは`adminOnly(withValidatedArgs(..., requireAdmin))`で、拒否の順は007の「呼び出し元→引数の検証→ロール」(design.mdのシーケンス図も合わせた)。検証の詳細の欄名は`input.body`・`input.changeSummary`・`input.expectedStateVersion`で、画面は`serverFieldPrefix="input"`で欄へ写す。`expectedStateVersion`の文言は「状態の版は0以上の整数で指定してください。」。テストは800行の制限で`admin-resolvers.worker.test.ts`(呼び出し元・ログイン・ロール・照会)と`admin-resolvers.mutation.worker.test.ts`(保存・破棄・公開)に分け、共通の操作は`apps/api/test/support/legal-graphql-operations.ts`。`test:worker`全体でworkerdの「FixedLengthStream」のuncaught exceptionが1行出る(全件成功。7.5で出所を確かめる)

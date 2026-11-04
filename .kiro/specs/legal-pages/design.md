@@ -262,8 +262,8 @@ sequenceDiagram
     participant P as publisher
     participant S as legal store
     UI->>R: publishLegalDocument kind summary expectedStateVersion
-    R->>G: requireAdmin super admin
     R->>R: validate summary
+    R->>G: requireAdmin super admin
     R->>P: publish
     P->>S: findState kind
     P->>P: check stale no draft unchanged

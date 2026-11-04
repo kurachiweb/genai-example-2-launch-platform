@@ -340,6 +340,8 @@ export type Mutation = {
   deleteAdmin: Scalars['Boolean']['output'];
   /** 多要素認証の無効化 */
   disableTotp: Scalars['Boolean']['output'];
+  /** 下書きの破棄。最上位管理者 */
+  discardLegalDocumentDraft: AdminLegalDocument;
   /** 多要素認証の有効化 */
   enableTotp: RecoveryCodeSet;
   /** 閲覧のみのロールで招待し、招待のメールを送る */
@@ -348,6 +350,8 @@ export type Mutation = {
   login: LoginResult;
   /** この端末のログアウト */
   logout: Scalars['Boolean']['output'];
+  /** 下書きの公開。最上位管理者 */
+  publishLegalDocument: AdminLegalDocument;
   /** リカバリコードの再発行。操作した端末へ新しいセッションを発行する */
   regenerateAdminRecoveryCodes: AdminRecoveryCodeSet;
   /** リカバリコードの再発行 */
@@ -376,6 +380,8 @@ export type Mutation = {
   revokeOtherSessions: Scalars['Int']['output'];
   /** セッションの個別の失効 */
   revokeSession: Scalars['Boolean']['output'];
+  /** 下書きの保存。最上位管理者 */
+  saveLegalDocumentDraft: AdminLegalDocument;
   /** 招待の完了の1段階目。ニックネームとパスワードを仮に保存し、多要素認証の設定を始める */
   startAdminInvitation: AdminTotpSetup;
   /** 多要素認証の再設定の開始。完了まで現在の設定が有効なまま残る */
@@ -458,6 +464,11 @@ export type MutationDisableTotpArgs = {
 };
 
 
+export type MutationDiscardLegalDocumentDraftArgs = {
+  input: DiscardLegalDocumentDraftInput;
+};
+
+
 export type MutationEnableTotpArgs = {
   totpCode: Scalars['String']['input'];
 };
@@ -471,6 +482,11 @@ export type MutationInviteAdminArgs = {
 
 export type MutationLoginArgs = {
   input: LoginInput;
+};
+
+
+export type MutationPublishLegalDocumentArgs = {
+  input: PublishLegalDocumentInput;
 };
 
 
@@ -537,6 +553,11 @@ export type MutationRevokeSessionArgs = {
 };
 
 
+export type MutationSaveLegalDocumentDraftArgs = {
+  input: SaveLegalDocumentDraftInput;
+};
+
+
 export type MutationStartAdminInvitationArgs = {
   nickname: Scalars['String']['input'];
   password: Scalars['String']['input'];
@@ -596,6 +617,12 @@ export type Query = {
   __typename?: 'Query';
   /** 招待中を含む全管理者を登録の新しい順に返す */
   adminAccounts: Array<AdminAccount>;
+  /** 管理画面の編集の対象の法務文書。閲覧のみ以上の管理者 */
+  adminLegalDocument: AdminLegalDocument;
+  /** 管理画面で表示する版。存在しない版はnull。閲覧のみ以上の管理者 */
+  adminLegalDocumentVersion?: Maybe<AdminLegalDocumentVersion>;
+  /** 管理画面の法務文書の一覧。閲覧のみ以上の管理者 */
+  adminLegalDocuments: Array<AdminLegalDocumentSummary>;
   /** ログイン中の管理者。未ログイン・無効なセッションではnull */
   adminViewer?: Maybe<AdminViewer>;
   /** 監査ログの検索。変更・削除の操作は無い */
@@ -610,6 +637,17 @@ export type Query = {
   systemStatus: SystemStatus;
   /** ログイン中の利用者。未ログイン・無効なセッションではnull */
   viewer?: Maybe<Viewer>;
+};
+
+
+export type QueryAdminLegalDocumentArgs = {
+  kind: LegalDocumentKind;
+};
+
+
+export type QueryAdminLegalDocumentVersionArgs = {
+  kind: LegalDocumentKind;
+  versionNumber: Scalars['Int']['input'];
 };
 
 
@@ -1108,10 +1146,12 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   confirmPasswordChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmPasswordChangeArgs, 'token'>>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
+  discardLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationDiscardLegalDocumentDraftArgs, 'input'>>;
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
   inviteAdmin?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationInviteAdminArgs, 'email'>>;
   login?: Resolver<ResolversTypes['LoginResult'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'input'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  publishLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationPublishLegalDocumentArgs, 'input'>>;
   regenerateAdminRecoveryCodes?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateAdminRecoveryCodesArgs, 'reAuthentication'>>;
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
@@ -1126,6 +1166,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   resetPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetPasswordArgs, 'input'>>;
   revokeOtherSessions?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   revokeSession?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokeSessionArgs, 'id'>>;
+  saveLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationSaveLegalDocumentDraftArgs, 'input'>>;
   startAdminInvitation?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminInvitationArgs, 'nickname' | 'password' | 'token'>>;
   startAdminTotpReset?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminTotpResetArgs, 'reAuthentication'>>;
   startTotpSetup?: Resolver<ResolversTypes['TotpSetup'], ParentType, ContextType, RequireFields<MutationStartTotpSetupArgs, 'input'>>;
@@ -1148,6 +1189,9 @@ export type PageInfoResolvers<ContextType = GraphQLContext, ParentType extends R
 
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
+  adminLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<QueryAdminLegalDocumentArgs, 'kind'>>;
+  adminLegalDocumentVersion?: Resolver<Maybe<ResolversTypes['AdminLegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryAdminLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
+  adminLegalDocuments?: Resolver<Array<ResolversTypes['AdminLegalDocumentSummary']>, ParentType, ContextType>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
   legalDocument?: Resolver<ResolversTypes['LegalDocument'], ParentType, ContextType, RequireFields<QueryLegalDocumentArgs, 'kind'>>;

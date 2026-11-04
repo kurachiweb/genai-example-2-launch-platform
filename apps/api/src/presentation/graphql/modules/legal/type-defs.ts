@@ -7,6 +7,28 @@ export const LEGAL_TYPE_DEFS = /* GraphQL */ `
       kind: LegalDocumentKind!
       versionNumber: Int!
     ): LegalDocumentVersion
+    "管理画面の法務文書の一覧。閲覧のみ以上の管理者"
+    adminLegalDocuments: [AdminLegalDocumentSummary!]!
+    "管理画面の編集の対象の法務文書。閲覧のみ以上の管理者"
+    adminLegalDocument(kind: LegalDocumentKind!): AdminLegalDocument!
+    "管理画面で表示する版。存在しない版はnull。閲覧のみ以上の管理者"
+    adminLegalDocumentVersion(
+      kind: LegalDocumentKind!
+      versionNumber: Int!
+    ): AdminLegalDocumentVersion
+  }
+
+  type Mutation {
+    "下書きの保存。最上位管理者"
+    saveLegalDocumentDraft(
+      input: SaveLegalDocumentDraftInput!
+    ): AdminLegalDocument!
+    "下書きの破棄。最上位管理者"
+    discardLegalDocumentDraft(
+      input: DiscardLegalDocumentDraftInput!
+    ): AdminLegalDocument!
+    "下書きの公開。最上位管理者"
+    publishLegalDocument(input: PublishLegalDocumentInput!): AdminLegalDocument!
   }
 
   "法務文書の種類"

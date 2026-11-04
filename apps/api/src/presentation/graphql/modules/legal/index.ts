@@ -1,10 +1,12 @@
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import { defineSchemaModule } from '../../schema-module.ts';
+import { adminResolvers } from './admin-resolvers.ts';
 import { publicResolvers } from './public-resolvers.ts';
 import { LEGAL_TYPE_DEFS } from './type-defs.ts';
 
 const legalResolvers = {
-  Query: { ...publicResolvers.Query },
+  Query: { ...publicResolvers.Query, ...adminResolvers.Query },
+  Mutation: { ...adminResolvers.Mutation },
 } satisfies Resolvers;
 
 export const legalSchemaModule = defineSchemaModule({

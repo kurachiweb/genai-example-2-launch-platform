@@ -348,6 +348,9 @@ type Mutation {
   """多要素認証の無効化"""
   disableTotp(input: ReAuthenticationInput!): Boolean!
 
+  """下書きの破棄。最上位管理者"""
+  discardLegalDocumentDraft(input: DiscardLegalDocumentDraftInput!): AdminLegalDocument!
+
   """多要素認証の有効化"""
   enableTotp(totpCode: String!): RecoveryCodeSet!
 
@@ -359,6 +362,9 @@ type Mutation {
 
   """この端末のログアウト"""
   logout: Boolean!
+
+  """下書きの公開。最上位管理者"""
+  publishLegalDocument(input: PublishLegalDocumentInput!): AdminLegalDocument!
 
   """リカバリコードの再発行。操作した端末へ新しいセッションを発行する"""
   regenerateAdminRecoveryCodes(reAuthentication: AdminReAuthenticationInput!): AdminRecoveryCodeSet!
@@ -405,6 +411,9 @@ type Mutation {
 
   """セッションの個別の失効"""
   revokeSession(id: ID!): Boolean!
+
+  """下書きの保存。最上位管理者"""
+  saveLegalDocumentDraft(input: SaveLegalDocumentDraftInput!): AdminLegalDocument!
 
   """招待の完了の1段階目。ニックネームとパスワードを仮に保存し、多要素認証の設定を始める"""
   startAdminInvitation(
@@ -453,6 +462,15 @@ input PublishLegalDocumentInput {
 type Query {
   """招待中を含む全管理者を登録の新しい順に返す"""
   adminAccounts: [AdminAccount!]!
+
+  """管理画面の編集の対象の法務文書。閲覧のみ以上の管理者"""
+  adminLegalDocument(kind: LegalDocumentKind!): AdminLegalDocument!
+
+  """管理画面で表示する版。存在しない版はnull。閲覧のみ以上の管理者"""
+  adminLegalDocumentVersion(kind: LegalDocumentKind!, versionNumber: Int!): AdminLegalDocumentVersion
+
+  """管理画面の法務文書の一覧。閲覧のみ以上の管理者"""
+  adminLegalDocuments: [AdminLegalDocumentSummary!]!
 
   """ログイン中の管理者。未ログイン・無効なセッションではnull"""
   adminViewer: AdminViewer
