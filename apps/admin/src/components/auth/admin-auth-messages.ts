@@ -1,3 +1,4 @@
+import { ADMIN_NICKNAME_MAX } from '../../../common-lib/admin/admin-input-rules.ts';
 import {
   PASSWORD_MAX_CODE_POINTS,
   PASSWORD_MIN_CODE_POINTS,
@@ -62,3 +63,62 @@ export const PASSWORD_RESET_DONE_MESSAGE =
   'パスワードを再設定しました。新しいパスワードでログインしてください。';
 
 export const RETRY_PASSWORD_RESET_SUFFIX = 'をもう一度行ってください。';
+
+export const INVITATION_PAGE_TITLE = '招待の受け入れ';
+
+export const INVITATION_PROFILE_FORM_LABEL = 'ニックネームとパスワードの設定';
+
+export const INVITATION_PROFILE_DESCRIPTION =
+  '管理画面で使うニックネームとパスワードを設定してください。続けて、ログインの時に求める多要素認証を設定します。';
+
+export const NICKNAME_LABEL = 'ニックネーム';
+
+export const NICKNAME_DESCRIPTION = `${String(ADMIN_NICKNAME_MAX)}文字以内で設定してください。`;
+
+export const INVITATION_PROFILE_SUBMIT_LABEL = '多要素認証の設定へ進む';
+
+export const TOTP_SETUP_HEADING = '多要素認証の設定';
+
+export const TOTP_SETUP_DESCRIPTION =
+  '認証アプリでQRコードを読み取り、表示された6桁の認証コードを入力してください。';
+
+export const TOTP_MANUAL_ENTRY_LABEL =
+  'QRコードを読み取れない場合は、次の文字列を認証アプリに入力してください。';
+
+export const TOTP_SETUP_EXPIRES_PREFIX = 'この設定は';
+
+export const TOTP_SETUP_EXPIRES_SUFFIX =
+  'まで有効です。過ぎた場合は、最初からやり直してください。';
+
+export const INVITATION_COMPLETE_SUBMIT_LABEL = '設定を完了する';
+
+export const INVITATION_COMPLETED_MESSAGE =
+  '管理者アカウントの設定が完了しました。';
+
+export const RECOVERY_CODES_SHOWN_ONCE_MESSAGE =
+  '次のリカバリコードは、この画面でだけ表示されます。認証アプリを使えない時に、認証コードの代わりに入力します。';
+
+export const PROCEED_TO_DASHBOARD_LABEL = 'ダッシュボードへ進む';
+
+// APIサーバーの招待のリンクの無効の文言(無効の文言に続けて再送の依頼を添える)と揃える
+export const INVITATION_RESEND_REQUEST_MESSAGE =
+  '招待した管理者に再送を依頼してください。';
+
+export const EMAIL_CHANGE_PAGE_TITLE = 'メールアドレスの変更';
+
+export const EMAIL_CHANGE_DESCRIPTION =
+  'ボタンを押すと、メールアドレスの変更が完了します。ほかの端末ではログアウトします。';
+
+export const EMAIL_CHANGE_ACTION_LABEL = 'メールアドレスの変更を確定する';
+
+export const EMAIL_CHANGED_MESSAGE = 'メールアドレスを変更しました。';
+
+export const LOGIN_WITH_NEW_EMAIL_MESSAGE =
+  '新しいメールアドレスでログインしてください。';
+
+export const DASHBOARD_LINK_LABEL = 'ダッシュボードへ';
+
+export const MY_ACCOUNT_LABEL = '自分のアカウント';
+
+export const RETRY_FROM_MY_ACCOUNT_SUFFIX =
+  'から、もう一度変更を行ってください。';

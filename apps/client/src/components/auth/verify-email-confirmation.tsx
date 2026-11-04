@@ -13,9 +13,12 @@ import {
   RESEND_FROM_BANNER_GUIDE,
   VERIFY_EMAIL_ACTION_LABEL,
   VERIFY_EMAIL_DESCRIPTION,
+  INVALID_LINK_MESSAGE,
 } from './account-messages.ts';
 import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
-import { LinkConfirmation } from './link-confirmation.tsx';
+import { LinkConfirmation } from '../../../lib/components/auth/link-confirmation.tsx';
+import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
+import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
 import { HOME_PATH } from '../../../lib/utilities/auth/return-path.ts';
 import { useViewer } from './use-viewer.ts';
@@ -61,6 +64,10 @@ export function VerifyEmailConfirmation() {
           </Link>
         </ResultNotice>
       )}
+      invalidLinkMessage={INVALID_LINK_MESSAGE}
+      failureMessageOf={(error) =>
+        errorMessageOf(error, CLIENT_PROFILE.contactAvailable)
+      }
       invalidLinkGuide={resendGuide}
     />
   );

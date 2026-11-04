@@ -5,6 +5,10 @@ import {
   PASSWORD_MAX_CODE_POINTS,
   PASSWORD_MIN_CODE_POINTS,
 } from '../../../common-lib/identity/account-input-rules.ts';
+import {
+  ADMIN_NICKNAME_MAX,
+  checkAdminNickname,
+} from '../../../common-lib/admin/admin-input-rules.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import { z } from '../../../lib/utilities/validation/zod.ts';
 
@@ -18,6 +22,8 @@ export const AUTH_FORM_MESSAGES = Object.freeze({
   totpCodeRequired: '認証コードを入力してください。',
   recoveryCodeRequired: 'リカバリコードを入力してください。',
   secondFactorIncorrect: '認証コードが正しくありません。',
+  nicknameRequired: 'ニックネームを入力してください。',
+  nicknameTooLong: `ニックネームは${String(ADMIN_NICKNAME_MAX)}文字以内で入力してください。`,
 });
 
 // APIサーバーが認証コードとリカバリコードの正規化の前に受け付ける上限
@@ -120,3 +126,32 @@ export const RECOVERY_CODE_FORM_SCHEMA: SecondFactorFormSchema = z.object({
     recoveryCode: secondFactorCode(AUTH_FORM_MESSAGES.recoveryCodeRequired),
   }),
 });
+
+// 判定と送る値を食い違わせないよう、入力規則と同じ空白の集合で前後を除く
+const nickname = ruleOf((value) => {
+  const violation = checkAdminNickname(value);
+  if (violation === undefined) {
+    return undefined;
+  }
+  return violation === 'empty'
+    ? AUTH_FORM_MESSAGES.nicknameRequired
+    : AUTH_FORM_MESSAGES.nicknameTooLong;
+}).transform(trimWhiteSpace);
+
+// リンクのトークンは入力欄を描かないため含めず、送信の時に足す
+export const INVITATION_PROFILE_FORM_SCHEMA = z.object({
+  nickname,
+  password: newPassword,
+});
+
+export type InvitationProfileFormInput = z.input<
+  typeof INVITATION_PROFILE_FORM_SCHEMA
+>;
+
+export const INVITATION_TOTP_FORM_SCHEMA = z.object({
+  totpCode: secondFactorCode(AUTH_FORM_MESSAGES.totpCodeRequired),
+});
+
+export type InvitationTotpFormInput = z.input<
+  typeof INVITATION_TOTP_FORM_SCHEMA
+>;

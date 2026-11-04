@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthInvitationRouteImport } from './routes/auth/invitation'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as SystemStatusRouteImport } from './routes/system/status'
+import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
 import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
 import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/password-reset/confirm'
 
@@ -25,6 +27,11 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthInvitationRoute = AuthInvitationRouteImport.update({
+  id: '/auth/invitation',
+  path: '/auth/invitation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
@@ -33,6 +40,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 const SystemStatusRoute = SystemStatusRouteImport.update({
   id: '/system/status',
   path: '/system/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthEmailChangeConfirmRoute = AuthEmailChangeConfirmRouteImport.update({
+  id: '/auth/email-change/confirm',
+  path: '/auth/email-change/confirm',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthPasswordResetIndexRoute = AuthPasswordResetIndexRouteImport.update({
@@ -49,24 +61,30 @@ const AuthPasswordResetConfirmRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/auth/invitation': typeof AuthInvitationRoute
   '/auth/login': typeof AuthLoginRoute
   '/system/status': typeof SystemStatusRoute
+  '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRoutesByTo {
+  '/auth/invitation': typeof AuthInvitationRoute
   '/auth/login': typeof AuthLoginRoute
   '/system/status': typeof SystemStatusRoute
   '/': typeof AuthenticatedIndexRoute
+  '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth/invitation': typeof AuthInvitationRoute
   '/auth/login': typeof AuthLoginRoute
   '/system/status': typeof SystemStatusRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
@@ -74,31 +92,39 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth/invitation'
     | '/auth/login'
     | '/system/status'
+    | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
     | '/auth/password-reset/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/auth/invitation'
     | '/auth/login'
     | '/system/status'
     | '/'
+    | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
     | '/auth/password-reset'
   id:
     | '__root__'
     | '/_authenticated'
+    | '/auth/invitation'
     | '/auth/login'
     | '/system/status'
     | '/_authenticated/'
+    | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
     | '/auth/password-reset/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthInvitationRoute: typeof AuthInvitationRoute
   AuthLoginRoute: typeof AuthLoginRoute
   SystemStatusRoute: typeof SystemStatusRoute
+  AuthEmailChangeConfirmRoute: typeof AuthEmailChangeConfirmRoute
   AuthPasswordResetConfirmRoute: typeof AuthPasswordResetConfirmRoute
   AuthPasswordResetIndexRoute: typeof AuthPasswordResetIndexRoute
 }
@@ -119,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/auth/invitation': {
+      id: '/auth/invitation'
+      path: '/auth/invitation'
+      fullPath: '/auth/invitation'
+      preLoaderRoute: typeof AuthInvitationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/login': {
       id: '/auth/login'
       path: '/auth/login'
@@ -131,6 +164,13 @@ declare module '@tanstack/react-router' {
       path: '/system/status'
       fullPath: '/system/status'
       preLoaderRoute: typeof SystemStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/email-change/confirm': {
+      id: '/auth/email-change/confirm'
+      path: '/auth/email-change/confirm'
+      fullPath: '/auth/email-change/confirm'
+      preLoaderRoute: typeof AuthEmailChangeConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/password-reset/': {
@@ -163,8 +203,10 @@ const AuthenticatedRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthInvitationRoute: AuthInvitationRoute,
   AuthLoginRoute: AuthLoginRoute,
   SystemStatusRoute: SystemStatusRoute,
+  AuthEmailChangeConfirmRoute: AuthEmailChangeConfirmRoute,
   AuthPasswordResetConfirmRoute: AuthPasswordResetConfirmRoute,
   AuthPasswordResetIndexRoute: AuthPasswordResetIndexRoute,
 }

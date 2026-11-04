@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  INVITATION_PROFILE_FORM_SCHEMA,
+  INVITATION_TOTP_FORM_SCHEMA,
   LOGIN_FORM_SCHEMA,
   NEW_PASSWORD_FORM_SCHEMA,
   PASSWORD_RESET_REQUEST_FORM_SCHEMA,
@@ -146,5 +148,69 @@ describe('第2要素のスキーマ', () => {
     expect(messagesOf(schema.safeParse({ secondFactor }))).toStrictEqual([
       message,
     ]);
+  });
+});
+
+describe('INVITATION_PROFILE_FORM_SCHEMA', () => {
+  test('ニックネームの前後の空白を除き、パスワードはそのまま出力する', () => {
+    expect(
+      INVITATION_PROFILE_FORM_SCHEMA.parse({
+        nickname: '　運営の担当 ',
+        password: ` ${VALID_PASSWORD} `,
+      }),
+    ).toEqual({ nickname: '運営の担当', password: ` ${VALID_PASSWORD} ` });
+  });
+
+  test('前後の空白を除いて25書記素のニックネームを受け付ける', () => {
+    expect(
+      INVITATION_PROFILE_FORM_SCHEMA.safeParse({
+        nickname: ` ${'👨‍👩‍👧'.repeat(25)} `,
+        password: VALID_PASSWORD,
+      }).success,
+    ).toBe(true);
+  });
+
+  test.each([
+    [
+      '空白だけのニックネーム',
+      { nickname: '　 ', password: VALID_PASSWORD },
+      'ニックネームを入力してください。',
+    ],
+    [
+      '26書記素のニックネーム',
+      { nickname: 'あ'.repeat(26), password: VALID_PASSWORD },
+      'ニックネームは25文字以内で入力してください。',
+    ],
+    [
+      '7文字のパスワード',
+      { nickname: '運営の担当', password: 'a'.repeat(7) },
+      'パスワードは8文字以上128文字以内で入力してください。',
+    ],
+    [
+      '129文字のパスワード',
+      { nickname: '運営の担当', password: 'a'.repeat(129) },
+      'パスワードは8文字以上128文字以内で入力してください。',
+    ],
+  ])('%sを、APIと同じ文言で拒否する', (_label, input, message) => {
+    expect(
+      messagesOf(INVITATION_PROFILE_FORM_SCHEMA.safeParse(input)),
+    ).toStrictEqual([message]);
+  });
+});
+
+describe('INVITATION_TOTP_FORM_SCHEMA', () => {
+  test('認証コードをそのまま出力する', () => {
+    expect(INVITATION_TOTP_FORM_SCHEMA.parse({ totpCode: '123 456' })).toEqual({
+      totpCode: '123 456',
+    });
+  });
+
+  test.each([
+    ['空白だけの認証コード', ' ', '認証コードを入力してください。'],
+    ['65文字の認証コード', '1'.repeat(65), '認証コードが正しくありません。'],
+  ])('%sを拒否する', (_label, totpCode, message) => {
+    expect(
+      messagesOf(INVITATION_TOTP_FORM_SCHEMA.safeParse({ totpCode })),
+    ).toStrictEqual([message]);
   });
 });

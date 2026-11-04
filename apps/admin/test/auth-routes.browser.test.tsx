@@ -8,12 +8,17 @@ import { runAxe } from '../lib/test/a11y.ts';
 import { resetFakeTurnstile } from '../lib/test/fake-turnstile.tsx';
 import {
   AdminCompleteSecondFactorLoginDocument,
+  AdminCompleteInvitationDocument,
+  AdminConfirmEmailChangeDocument,
   AdminLoginDocument,
+  AdminStartInvitationDocument,
   AdminViewerDocument,
 } from '../src/graphql/generated/graphql.ts';
 import { buildAdminPageHead } from '../src/head/page-heads.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
 import { Route as DashboardRoute } from '../src/routes/_authenticated/index.tsx';
+import { Route as EmailChangeConfirmRoute } from '../src/routes/auth/email-change/confirm.tsx';
+import { Route as InvitationRoute } from '../src/routes/auth/invitation.tsx';
 import { Route as LoginRoute } from '../src/routes/auth/login.tsx';
 import { Route as PasswordResetConfirmRoute } from '../src/routes/auth/password-reset/confirm.tsx';
 import { Route as PasswordResetRoute } from '../src/routes/auth/password-reset/index.tsx';
@@ -67,6 +72,16 @@ const createRoutes = (rootRoute: PageRootRoute) => {
       getParentRoute: () => rootRoute,
       path: '/auth/password-reset/confirm',
       component: PasswordResetConfirmRoute.options.component,
+    }),
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/auth/invitation',
+      component: InvitationRoute.options.component,
+    }),
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/auth/email-change/confirm',
+      component: EmailChangeConfirmRoute.options.component,
     }),
     authenticatedRoute.addChildren([
       createRoute({
@@ -277,6 +292,128 @@ describe('パスワードの再設定の経路', () => {
   test.each([
     [PasswordResetRoute, 'パスワードの再設定'],
     [PasswordResetConfirmRoute, '新しいパスワードの設定'],
+  ])('ページの題名を%#の画面の題名にする', (route, title) => {
+    expect(route.options.head?.({} as never)).toStrictEqual(
+      buildAdminPageHead({ title }),
+    );
+  });
+});
+
+describe('招待の完了の経路', () => {
+  const INVITATION_TOKEN = ['invitation', 'link', 'value'].join('_');
+  const TOTP_SECRET = ['JBSW', 'Y3DP', 'EHPK', '3PXP'].join('');
+
+  // ルートのbeforeLoadの取り直しが招待の完了の後だけログイン中の管理者を返すよう、APIサーバーのセッションを写す
+  function respondWithInvitation(): void {
+    let signedIn = false;
+    executeGraphQL.mockImplementation((document: unknown) => {
+      if (document === AdminViewerDocument) {
+        return Promise.resolve(
+          adminViewerResult(
+            signedIn ? signedInAdminQuery() : GUEST_ADMIN_QUERY,
+          ),
+        );
+      }
+      if (document === AdminStartInvitationDocument) {
+        return Promise.resolve({
+          ok: true,
+          data: {
+            startAdminInvitation: {
+              otpauthUri: `otpauth://totp/Admin:operator?secret=${TOTP_SECRET}&issuer=Admin`,
+              secret: TOTP_SECRET,
+              expiresAt: '2026-11-04T07:10:00.000Z',
+            },
+          },
+        });
+      }
+      if (document === AdminCompleteInvitationDocument) {
+        signedIn = true;
+        return Promise.resolve({
+          ok: true,
+          data: { completeAdminInvitation: { codes: ['abcd-efgh-ijkl'] } },
+        });
+      }
+      throw new Error('想定していない操作が実行されました。');
+    });
+  }
+
+  test('招待のリンクから設定を終えると、ログイン後もリカバリコードを示し続け、導線でダッシュボードへ移る', async () => {
+    respondWithInvitation();
+    const router = await renderPageRouter({
+      path: `/auth/invitation#token=${INVITATION_TOKEN}`,
+      createRoutes,
+    });
+    await expect.element(pageTitle()).toHaveTextContent('招待の受け入れ');
+    expect(page.getByRole('navigation').elements()).toHaveLength(0);
+
+    await userEvent.type(
+      page.getByRole('textbox', { name: 'ニックネーム(必須)' }),
+      '運営の担当',
+    );
+    await userEvent.type(
+      page.getByLabelText('パスワード(必須)', { exact: true }),
+      PASSWORD,
+    );
+    await userEvent.click(
+      page.getByRole('button', { name: '多要素認証の設定へ進む' }),
+    );
+    await userEvent.type(
+      page.getByRole('textbox', { name: '認証コード(必須)' }),
+      '123456',
+    );
+    await userEvent.click(page.getByRole('button', { name: '設定を完了する' }));
+
+    await expect
+      .element(page.getByRole('navigation', { name: '管理メニュー' }))
+      .toBeVisible();
+    await expect
+      .element(page.getByRole('list', { name: 'リカバリコード' }))
+      .toHaveTextContent('abcd-efgh-ijkl');
+    expect(router.state.location.pathname).toBe('/auth/invitation');
+
+    await userEvent.click(
+      page.getByRole('link', { name: 'ダッシュボードへ進む' }),
+    );
+
+    await expect.element(pageTitle()).toHaveTextContent('ダッシュボード');
+    expect(router.state.location.href).toBe('/');
+  });
+
+  test('招待の受け入れの画面で、アクセシビリティの検査の違反が0件', async () => {
+    await renderPageRouter({
+      path: `/auth/invitation#token=${INVITATION_TOKEN}`,
+      createRoutes,
+    });
+    await expect.element(pageTitle()).toHaveTextContent('招待の受け入れ');
+
+    expect(await runAxe(document.body)).toStrictEqual([]);
+  });
+});
+
+describe('メールアドレスの変更の確定の経路', () => {
+  test('リンクを開くと、確定のボタンを出してメニューを出さない', async () => {
+    await renderPageRouter({
+      path: '/auth/email-change/confirm#token=email-change-value',
+      createRoutes,
+    });
+
+    await expect.element(pageTitle()).toHaveTextContent('メールアドレスの変更');
+    await expect
+      .element(
+        page.getByRole('button', { name: 'メールアドレスの変更を確定する' }),
+      )
+      .toBeVisible();
+    expect(page.getByRole('navigation').elements()).toHaveLength(0);
+    expect(executeGraphQL).not.toHaveBeenCalledWith(
+      AdminConfirmEmailChangeDocument,
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test.each([
+    [InvitationRoute, '招待の受け入れ'],
+    [EmailChangeConfirmRoute, 'メールアドレスの変更'],
   ])('ページの題名を%#の画面の題名にする', (route, title) => {
     expect(route.options.head?.({} as never)).toStrictEqual(
       buildAdminPageHead({ title }),

@@ -1,21 +1,20 @@
 import { LoaderCircleIcon } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
-import { FormMessage } from '../../../lib/components/form/form-message.tsx';
-import { Button } from '../../../lib/components/ui/button/button.tsx';
-import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
-import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
-import { INVALID_LINK_MESSAGE } from './account-messages.ts';
-import { isInvalidLinkError } from '../../../lib/utilities/auth/invalid-link.ts';
-import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
-import { useFragmentToken } from '../../../lib/components/auth/use-fragment-token.ts';
+import { isInvalidLinkError } from '../../utilities/auth/invalid-link.ts';
+import { ResultNotice } from '../feedback/result-notice.tsx';
+import { FormMessage } from '../form/form-message.tsx';
+import { Button } from '../ui/button/button.tsx';
+import { useFragmentToken } from './use-fragment-token.ts';
 
 export interface LinkConfirmationProps<TResult> {
   readonly description: string;
   readonly actionLabel: string;
   readonly confirm: (token: string) => Promise<TResult>;
   readonly renderSuccess: (result: TResult) => ReactNode;
+  readonly invalidLinkMessage: string;
   readonly invalidLinkGuide: ReactNode;
+  readonly failureMessageOf: (error: unknown) => string;
 }
 
 type ConfirmationState<TResult> =
@@ -30,7 +29,9 @@ export function LinkConfirmation<TResult>({
   actionLabel,
   confirm,
   renderSuccess,
+  invalidLinkMessage,
   invalidLinkGuide,
+  failureMessageOf,
 }: LinkConfirmationProps<TResult>) {
   const link = useFragmentToken();
   const [state, setState] = useState<ConfirmationState<TResult>>({
@@ -44,7 +45,7 @@ export function LinkConfirmation<TResult>({
 
   if (link.status === 'missing' || state.status === 'invalid') {
     return (
-      <ResultNotice tone="error" message={INVALID_LINK_MESSAGE}>
+      <ResultNotice tone="error" message={invalidLinkMessage}>
         {invalidLinkGuide}
       </ResultNotice>
     );
@@ -71,7 +72,7 @@ export function LinkConfirmation<TResult>({
         setState({ status: 'invalid' });
         return;
       }
-      setFailure(errorMessageOf(error, CLIENT_PROFILE.contactAvailable));
+      setFailure(failureMessageOf(error));
       setState({ status: 'idle' });
     }
   };
