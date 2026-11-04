@@ -866,7 +866,7 @@ export declare function useUnsavedChangesGuard(dirty: boolean): {
 
 ### Monitoring
 
-- ログ(カテゴリ`['api', 'legal']`): 保存・破棄・公開の結果(種類・版番号・操作した管理者のID・`conflict`の有無)。本文と変更概要は属性に入れない。
+- ログ: 下書きの保存・破棄の結果はカテゴリ`['api', 'legal', 'draft']`、公開の結果は`['api', 'legal', 'publish']`に出す(種類・版番号・操作した管理者のID・`conflict`の有無)。本文と変更概要は属性に入れない。
 - 文書の枠の欠落と想定外の例外はbackend-platformのSentryで検知する。
 
 ## Testing Strategy

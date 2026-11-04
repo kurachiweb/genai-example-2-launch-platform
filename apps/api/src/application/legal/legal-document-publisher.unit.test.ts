@@ -165,7 +165,11 @@ beforeEach(() => {
     reset: true,
     sinks: { memory: (record) => logs.push(record) },
     loggers: [
-      { category: ['api', 'legal'], sinks: ['memory'], lowestLevel: 'debug' },
+      {
+        category: ['api', 'legal', 'publish'],
+        sinks: ['memory'],
+        lowestLevel: 'debug',
+      },
       { category: ['logtape', 'meta'], sinks: [], lowestLevel: 'warning' },
     ],
   });
@@ -275,7 +279,7 @@ describe('StoreLegalDocumentPublisher のログ', () => {
 
     expect(logs).toHaveLength(1);
     expect(logs[0]?.level).toBe('info');
-    expect(logs[0]?.category).toEqual(['api', 'legal']);
+    expect(logs[0]?.category).toEqual(['api', 'legal', 'publish']);
     expect(logs[0]?.properties).toStrictEqual({
       action: 'publish',
       kind: 'terms',

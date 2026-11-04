@@ -34,7 +34,7 @@ export interface LegalDocumentPublisher {
   publish(input: LegalPublishRequest): Promise<AdminLegalDocumentView>;
 }
 
-const logger = getAppLogger(['api', 'legal']);
+const logger = getAppLogger(['api', 'legal', 'publish']);
 
 const logPublishResult = (
   adminId: string,

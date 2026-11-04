@@ -38,7 +38,7 @@ export interface LegalDraftEditor {
   discard(input: LegalDraftDiscardRequest): Promise<AdminLegalDocumentView>;
 }
 
-const logger = getAppLogger(['api', 'legal']);
+const logger = getAppLogger(['api', 'legal', 'draft']);
 
 const logDraftResult = (
   action: 'save' | 'discard',
