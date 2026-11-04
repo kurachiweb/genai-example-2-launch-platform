@@ -103,7 +103,7 @@ export const ADMIN_TITLE_TOO_LONG_MESSAGE = `肩書きは${String(ADMIN_TITLE_MA
 export const AVATAR_LABEL = 'プロフィール画像(任意)';
 
 export const AVATAR_DESCRIPTION =
-  'JPEG・PNG・GIF・WebP・SVGの500KB以内の画像を登録できます。';
+  'JPEG・PNG・GIF・WebP・SVGの500kB以内の画像を登録できます。';
 
 export const AVATAR_SELECT_LABEL = '画像を選択';
 
