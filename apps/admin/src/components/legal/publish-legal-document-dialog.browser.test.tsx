@@ -301,6 +301,24 @@ describe('公開の確認', () => {
       new Error('通信の失敗'),
       UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT,
     ],
+    [
+      'サーバーの想定外の失敗',
+      new GraphQLClientError({
+        code: 'internal_error',
+        status: 500,
+        message: 'サーバーの想定外の失敗の文言',
+      }),
+      'サーバーの想定外の失敗の文言',
+    ],
+    [
+      '詳細の無い入力の検証',
+      new GraphQLClientError({
+        code: 'validation_error',
+        status: 400,
+        message: '入力内容を確認してください。',
+      }),
+      '入力内容を確認してください。',
+    ],
   ])(
     '%sで拒否された時は、ダイアログの中に文言を示し、入力を残して開いたままにする',
     async (_, error, message) => {
@@ -316,6 +334,36 @@ describe('公開の確認', () => {
       await expect.element(publishButton()).toBeEnabled();
     },
   );
+
+  test('入力欄の無い項目の検証で拒否された時は、重複を除いた文言をダイアログの中に示す', async () => {
+    const stateVersionMessage = '状態の版は0以上の整数で指定してください。';
+    const stateVersionDetail = {
+      field: 'input.expectedStateVersion',
+      code: 'too_small',
+      message: stateVersionMessage,
+    };
+    await renderDialog({
+      onPublish: rejectWith(
+        new GraphQLClientError({
+          code: 'validation_error',
+          status: 400,
+          message: '入力内容を確認してください。',
+          details: [stateVersionDetail, stateVersionDetail],
+        }),
+      ),
+    });
+
+    await fillValidSummary();
+    await publishButton().click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent(new RegExp(`^${stateVersionMessage}$`, 'u'));
+    await expect
+      .element(summaryBox())
+      .not.toHaveAttribute('aria-invalid', 'true');
+    await expect.element(publishButton()).toBeEnabled();
+  });
 
   test('競合で拒否された時は競合の案内を示し、「最新の内容を読み込む」で再読み込みを求めて閉じる', async () => {
     const onReload = vi.fn<() => void>();

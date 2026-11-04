@@ -174,7 +174,7 @@
   - _Boundary: LegalDocs_
   - _Requirements: 10.5_
 
-- [ ] 7.5 全体の検査とカバレッジを確かめ、上流・後続への申し送りを報告する
+- [x] 7.5 全体の検査とカバレッジを確かめ、上流・後続への申し送りを報告する
   - ルートの一括の検査(整形・静的解析・型検査)と、本specが変更したアプリの単体テスト・Workers統合テスト・ブラウザテストを実行し、行と関数のカバレッジ80%以上を確かめる。新しいパッケージを追加していないことを依存の宣言の差分で確かめる
   - paymentsの返金ポリシーへのアンカーの扱い、launch-readinessでのprodの初版の公開の確認(公開の前にプライバシーポリシーの本文がTurnstile Privacy Addendumを参照していることを確かめることを含む)、要件定義書のFR-ADMAG-007・008・010の改訂を、開発者への報告にまとめる
   - 完了状態: 検査とテストがすべて成功し、カバレッジが閾値を満たし、報告に申し送りの事項が載っている
@@ -217,3 +217,4 @@
 - 7.3: `docs/GUIDES/tech/db/005-draft-and-published-versions.md`を新規作成し、003に「初期データ」の項を加えた(例の値は実際の初期データと別)。ログのカテゴリは規約の3要素`['api', 'legal', 'draft']`・`['api', 'legal', 'publish']`に直し、固有の値として`docs/onboardings/project-values.md`の「法務文書」の節に置いた。tech/README.md・README.md・CLAUDE.mdのdb行の範囲も更新した(tech/README.mdの手順「本索引は変更しない」とは食い違うが、content-processingの前例に合わせた)
 - 7.4: プライバシーポリシーの大枠の各委託先の項の共通の規則に「委託先が利用の条件として記載を求める事項は3項目の後に加える」を足し、Cloudflareの項に「bot判定」(Turnstile Privacy Addendum)を加えた(既存の3項目は不変)。文言規則には実装の文言81件と組み立てる9件を転記し、`check-legal-copy.ts`(scratchpad)で欠けが0件であることを確かめた。準拠方針に(注9)を新設。admin-foundationのdesign.mdの27・53行目に「法務文書の操作は監査ログに記録しない」を注記
 - 7.6: 共通フッターの法務文書の3リンクを型付きの`Link`へ移した(`FOOTER_LEGAL_DOCUMENT_LINKS`。frontend-platformのdesign.mdの「全経路がそろう段階で`Link`へ移す」に従った。料金・問い合わせ・ヘルプは`<a>`のまま)。サーバー側の描画での取得の失敗の500は、APIサーバーのIPアドレス単位の制限を直接の要求で使い切り(`e2e/support/api-rate-limit.ts`)、同じIPを名乗って開くことで決定的に確かめた(起こすのは想定内の429で、想定外の失敗は起こせない)。確かめられなかった項目: 部品の描画中の例外がサーバー側の描画で500にならない可能性(launch-readinessへの申し送り)。サーバー側の描画で失敗するとハイドレーションの後にエラーの文言が変わる(`GraphQLClientError`が復元されないため。全ページに及ぶためfrontend-platform・launch-readinessへ申し送り、テストはalert・再試行・問い合わせの有無で確かめる)。`e2e/support/reachability.unit.test.ts`の1件はポート48044でclientが動いている間に失敗する既存の環境依存。`test:e2e:dev-and-preview`の1回目はプレビュー段階の退会のテストがローカルD1の`SQLITE_BUSY`で1件失敗し、再実行で成功
+- 7.5: ルートの`bun run check`は成功。本specのファイルは行・関数とも80%以上(不足していた3ファイルにテストを足した)。依存の宣言の差分は無し。apiの`test:unit`の1件の失敗は、並行のinquiry-chatが残した空の未追跡のディレクトリ`apps/db/migrations/20261104124132_inquiry_chat/`・`20261104124136_inquiry_chat_seed/`によるもの。4.3の`FixedLengthStream`のuncaught exceptionの出所はmedia-pipelineのアップロードのWorkers統合テストで、本specの外。申し送り(payments・launch-readiness・要件定義書・frontend-platform)は最終の報告にまとめた
