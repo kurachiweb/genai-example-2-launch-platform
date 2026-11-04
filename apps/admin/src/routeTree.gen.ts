@@ -14,6 +14,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthInvitationRouteImport } from './routes/auth/invitation'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as SystemStatusRouteImport } from './routes/system/status'
+import { Route as AuthenticatedAccountsIndexRouteImport } from './routes/_authenticated/accounts/index'
 import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
 import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
 import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/password-reset/confirm'
@@ -42,6 +43,12 @@ const SystemStatusRoute = SystemStatusRouteImport.update({
   path: '/system/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAccountsIndexRoute =
+  AuthenticatedAccountsIndexRouteImport.update({
+    id: '/accounts/',
+    path: '/accounts/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthEmailChangeConfirmRoute = AuthEmailChangeConfirmRouteImport.update({
   id: '/auth/email-change/confirm',
   path: '/auth/email-change/confirm',
@@ -66,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/system/status': typeof SystemStatusRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRoutesByTo {
@@ -75,6 +83,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/accounts': typeof AuthenticatedAccountsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRoutesById {
@@ -86,6 +95,7 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/_authenticated/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRouteTypes {
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/system/status'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
+    | '/accounts/'
     | '/auth/password-reset/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
+    | '/accounts'
     | '/auth/password-reset'
   id:
     | '__root__'
@@ -116,6 +128,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
+    | '/_authenticated/accounts/'
     | '/auth/password-reset/'
   fileRoutesById: FileRoutesById
 }
@@ -166,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SystemStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/accounts/': {
+      id: '/_authenticated/accounts/'
+      path: '/accounts'
+      fullPath: '/accounts/'
+      preLoaderRoute: typeof AuthenticatedAccountsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/auth/email-change/confirm': {
       id: '/auth/email-change/confirm'
       path: '/auth/email-change/confirm'
@@ -192,10 +212,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAccountsIndexRoute: typeof AuthenticatedAccountsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAccountsIndexRoute: AuthenticatedAccountsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

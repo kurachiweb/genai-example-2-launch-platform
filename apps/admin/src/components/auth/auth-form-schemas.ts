@@ -52,7 +52,7 @@ const checkEmail = (value: string): string | undefined => {
 };
 
 // 判定と送る値を食い違わせないよう、入力規則と同じ空白の集合で前後を除く
-const email = ruleOf(checkEmail).transform(trimWhiteSpace);
+export const EMAIL_INPUT_SCHEMA = ruleOf(checkEmail).transform(trimWhiteSpace);
 
 const newPassword = ruleOf((value) =>
   checkPasswordLength(value) === 'ok'
@@ -81,13 +81,15 @@ const secondFactorCode = (requiredMessage: string) =>
   });
 
 export const LOGIN_FORM_SCHEMA = z.object({
-  email,
+  email: EMAIL_INPUT_SCHEMA,
   password: currentPassword,
 });
 
 export type LoginFormInput = z.input<typeof LOGIN_FORM_SCHEMA>;
 
-export const PASSWORD_RESET_REQUEST_FORM_SCHEMA = z.object({ email });
+export const PASSWORD_RESET_REQUEST_FORM_SCHEMA = z.object({
+  email: EMAIL_INPUT_SCHEMA,
+});
 
 export type PasswordResetRequestFormInput = z.input<
   typeof PASSWORD_RESET_REQUEST_FORM_SCHEMA
@@ -128,7 +130,7 @@ export const RECOVERY_CODE_FORM_SCHEMA: SecondFactorFormSchema = z.object({
 });
 
 // 判定と送る値を食い違わせないよう、入力規則と同じ空白の集合で前後を除く
-const nickname = ruleOf((value) => {
+export const NICKNAME_INPUT_SCHEMA = ruleOf((value) => {
   const violation = checkAdminNickname(value);
   if (violation === undefined) {
     return undefined;
@@ -140,7 +142,7 @@ const nickname = ruleOf((value) => {
 
 // リンクのトークンは入力欄を描かないため含めず、送信の時に足す
 export const INVITATION_PROFILE_FORM_SCHEMA = z.object({
-  nickname,
+  nickname: NICKNAME_INPUT_SCHEMA,
   password: newPassword,
 });
 

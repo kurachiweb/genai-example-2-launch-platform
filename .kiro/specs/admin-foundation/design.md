@@ -301,7 +301,10 @@ apps/
     │   ├── auth/use-admin-viewer.ts · use-admin-viewer-refresh.ts   # 区画が取得のキャッシュから管理者を読む・取得を無効にして取り直す
     │   ├── layout/admin-navigation.tsx · admin-account-menu.tsx · admin-viewer-context.tsx · role-gate.tsx
     │   ├── dashboard/dashboard-grid.tsx · dashboard-card-frame.tsx
-    │   ├── admins/admin-list.tsx · invite-admin-dialog.tsx · change-role-dialog.tsx · admin-profile-dialog.tsx
+    │   ├── admins/admin-list.tsx · invite-admin-dialog.tsx · change-role-dialog.tsx · admin-profile-dialog.tsx · admin-avatar-field.tsx
+    │   ├── admins/admin-form-dialog.tsx · admin-form-dialog-controls.ts · admin-form-dialog-footer.tsx   # 入力を持つダイアログの処理中・フォーカス・取り消しの枠と、監査ログの旨・確定の並び
+    │   ├── admins/admin-account-permissions.ts · admin-account-form-schemas.ts · admin-accounts-messages.ts · admin-account-label.ts · use-admin-accounts-refresh.ts   # ドメインの規則と同じ操作の可否・入力の規則・文言・一覧の取り直し(単体テスト併置)
+    │   ├── pages/admins-page.tsx                       # /accountsのページ(見出し・招待・一覧)
     │   ├── audit/audit-log-filters.tsx · audit-log-list.tsx · audit-period.ts
     │   └── account/profile-section.tsx · email-change-section.tsx · password-change-section.tsx
     │       · totp-section.tsx · totp-reset-dialog.tsx · recovery-codes-dialog.tsx · reauthentication-fields.tsx
@@ -311,6 +314,7 @@ apps/
     │   └── layout-slots.ts                             # (変更)navigation・headerAccount
     └── graphql/
         ├── admin-viewer.ts                             # adminViewerQueryOptions・toAdminViewer・loadRootAuthContext(取得の失敗は未ログイン、単体テスト併置)
+        ├── admin-accounts.ts                           # adminAccountsQueryOptions・toAdminAccounts・loadAdminAccounts(/accountsのloader、単体テスト併置)
         ├── operations/admin/                           # 1ファイル1操作の*.graphql。操作名はAdminで始める(例: viewer.graphqlのAdminViewer)
         │   ├── viewer.graphql
         │   └── auth/*.graphql · account/*.graphql · self/*.graphql · audit/*.graphql
@@ -1357,20 +1361,26 @@ export declare const DASHBOARD_CARDS: readonly DashboardCard[]; // 初版は空
 
 #### AdminAuthPages・InvitationPages・AdminsPage・AuditLogsPage・AccountPage
 
-| 経路                               | 画面                                                                                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `/auth/login`                      | メール・パスワード・bot判定→同じ画面で認証コードかリカバリコード。クエリ`redirect`(`toSafeReturnPath`)                               |
-| `/auth/password-reset`・`/confirm` | メールとbot判定(送信後は常に同じ案内)・新しいパスワードの確定                                                                        |
-| `/auth/invitation`                 | ニックネーム・パスワード→QRコードと手入力用の文字列→認証コード→リカバリコードの表示→ダッシュボードへ                                 |
-| `/auth/email-change/confirm`       | 「メールアドレスの変更を確定する」                                                                                                   |
-| `/accounts`                        | 一覧(`AdminDataTable`)、招待(モデレーター以上)、再送・削除(権限による)、ロールの変更(最上位管理者)、プロフィールの編集(最上位管理者) |
-| `/audit-logs`                      | 絞り込み(操作者の選択・操作種別の選択・対象の識別子・開始日と終了日の`<input type="date">`)と一覧                                    |
-| `/account`                         | プロフィール・メールアドレス変更・パスワード変更・TOTPの再設定・リカバリコードの再発行と残数                                         |
+| 経路                               | 画面                                                                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/auth/login`                      | メール・パスワード・bot判定→同じ画面で認証コードかリカバリコード。クエリ`redirect`(`toSafeReturnPath`)                                                       |
+| `/auth/password-reset`・`/confirm` | メールとbot判定(送信後は常に同じ案内)・新しいパスワードの確定                                                                                                |
+| `/auth/invitation`                 | ニックネーム・パスワード→QRコードと手入力用の文字列→認証コード→リカバリコードの表示→ダッシュボードへ                                                         |
+| `/auth/email-change/confirm`       | 「メールアドレスの変更を確定する」                                                                                                                           |
+| `/accounts`                        | 一覧(`AdminDataTable`)、招待(モデレーター以上)、再送・削除(権限による)、ロールの変更(最上位管理者)、プロフィールの編集(最上位管理者、自分以外の有効な管理者) |
+| `/audit-logs`                      | 絞り込み(操作者の選択・操作種別の選択・対象の識別子・開始日と終了日の`<input type="date">`)と一覧                                                            |
+| `/account`                         | プロフィール・メールアドレス変更・パスワード変更・TOTPの再設定・リカバリコードの再発行と残数                                                                 |
 
 - メールのリンクの画面は、フラグメントのトークンを`readFragmentToken`で読み、開いただけでは何もしない。
 - フォームの値: 入力欄を描かない値(ログインの第2要素の`challenge`、パスワードの再設定と招待の`token`、プロフィールの編集の対象の`id`)はスキーマの入力に含めず`onSubmit`で足す。ログインの第2要素は、認証コードの入力の間は`secondFactor.totpCode`だけ、リカバリコードの入力に切り替えた間は`secondFactor.recoveryCode`だけを持つスキーマを使い(条件ごとに分けた定数のスキーマから選んで`useAppForm`へ渡すだけにし、描画ごとに作らない。切り替えの後の検証のし直しは`useAppForm`に任せる)、本人確認の欄(`reauthentication-fields.tsx`)も現在のパスワードと、認証コードとリカバリコードのうち描いている一方だけをスキーマに含める。本人確認の失敗の詳細はAPIが欄の形のとおりの経路(`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`など)で返すため、現在のパスワードの欄と描いている第2要素の欄に示す。第2要素を送らなかった時の詳細(`reAuthentication.secondFactor`)は欄をまとめた値の経路のため、`onSubmitError`の`unmatched`に入ってフォーム全体の失敗として示す。
 - `audit-period.ts`: 入力の日付(閲覧者の地域の暦)を、開始日の0時を`occurredFrom`、終了日の翌日0時を`occurredBefore`とするUTCの時刻に変換する(19.2)。
-- 削除・ロールの変更・招待は`ConfirmActionDialog`(理由は任意、監査ログに記録される旨、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、15.10)。リカバリコードの表示では、両方を失うと復旧できない旨を示す(12.7)。
+- `/accounts`の操作のダイアログ(15.10)。いずれも理由は任意で、失敗の文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、ダイアログの中に示す。
+  - 削除と招待の再送は`ConfirmActionDialog`(監査ログに記録される旨あり)。
+  - 招待(メールアドレス)とロールの変更(現在のロールを選べなくしたラジオボタン)は、入力欄を持つため管理者側の`AdminFormDialog`(`components/admins/`。処理中・フォーカス・取り消しの扱いは`ConfirmActionDialog`と同じ)で作り、理由の欄は`ReasonField`、監査ログに記録される旨を示す。
+  - プロフィールの編集(ニックネーム・肩書き・`ImageUploadField`の画像)も`AdminFormDialog`で、監査ログの操作種別が無いため監査ログの旨を示さない。
+  - 操作の可否はドメインの規則(`admin-account.ts`)と同じ判定(`admin-account-permissions.ts`)で決め、許可されない操作は描かない。自分の行は削除を描かず、プロフィールは`/account`で編集するため描かない。招待の完了前の行のプロフィールも描かない。最後の最上位管理者の保護はAPIの拒否の文言で示す。
+  - 開いた元の操作が成功で消える場合(削除、自分のロールを下げてロールの変更が描かれなくなる場合)は、閉じた後に一覧の見出しへフォーカスを移す。
+- リカバリコードの表示では、両方を失うと復旧できない旨を示す(12.7)。
 
 ### e2e・docs
 
