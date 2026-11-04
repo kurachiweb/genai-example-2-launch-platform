@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router';
 
 import { HOME_LINK_LABEL, LOGIN_PAGE_LINK_LABEL } from './account-messages.ts';
-import { INLINE_LINK_CLASS_NAME } from './inline-link-class.ts';
-import { ResultNotice } from './result-notice.tsx';
+import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
+import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
 import { HOME_PATH } from '../../../lib/utilities/auth/return-path.ts';
 
 export interface CredentialChangeSuccessProps {

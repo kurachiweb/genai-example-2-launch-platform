@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
 import { PASSWORD_CHANGE_PAGE_TITLE } from '../../../components/auth/account-messages.ts';
-import { AuthPageLayout } from '../../../components/auth/auth-page-layout.tsx';
+import { AuthPageLayout } from '../../../../lib/components/auth/auth-page-layout.tsx';
 import { PasswordChangeConfirmation } from '../../../components/auth/password-change-confirmation.tsx';
 import { buildSitePageHead } from '../../../head/page-heads.ts';
 

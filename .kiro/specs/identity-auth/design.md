@@ -368,10 +368,15 @@ apps/
 ├── frontend-lib/components/auth/                       # 管理者側も使う画面部品(*.browser.test.tsx・*.stories.tsxを併置)
 │   ├── totp-qr-code.tsx                                # uqrのセルの行列をSVG要素で描画
 │   ├── recovery-code-list.tsx                          # リカバリコードの一覧・コピー・保管の注意
-│   └── password-input.tsx                              # 表示・非表示を切り替えるパスワードの入力欄
+│   ├── password-input.tsx                              # 表示・非表示を切り替えるパスワードの入力欄
+│   ├── auth-page-layout.tsx                            # 認証の画面の題名と枠(admin-foundationが利用者側から移した)
+│   └── use-fragment-token.ts                           # 読んだトークンを保ち、URLからフラグメントを消す(admin-foundationが利用者側から移した)
+├── frontend-lib/components/feedback/result-notice.tsx  # 確定の結果の文言とフォーカスの移動(admin-foundationが利用者側から移した)
+├── frontend-lib/components/navigation/inline-link-class.ts # 文中のリンクの下線の装飾(admin-foundationが利用者側から移した)
 ├── frontend-lib/utilities/auth/                        # 管理者側も使う純粋な関数(*.unit.test.tsを併置。置き場所はadmin-foundationが定めた)
 │   ├── return-path.ts                                  # 同じサイト内のパスだけを戻り先にする
-│   └── fragment-token.ts                               # URLのフラグメントからトークンを読む
+│   ├── fragment-token.ts                               # URLのフラグメントからトークンを読む
+│   └── invalid-link.ts                                 # 無効なリンクの失敗(invalid_link・トークンの欄の入力の検証)の判定
 ├── frontend-lib/components/ui/checkbox/checkbox.tsx    # shadcn/uiのCheckbox(登録の同意で使い、paymentsの決済の同意が再利用する。stories・browser testを併置)
 └── client/src/
     ├── routes/
@@ -387,8 +392,7 @@ apps/
     │   ├── password-reset-request-form.tsx · new-password-form.tsx
     │   ├── link-confirmation.tsx                       # メールのリンクの画面の確定ボタンと結果
     │   ├── login-required-dialog.tsx                   # ログインが必要な操作の案内(他specが内容を渡す)
-    │   ├── account-form-schemas.ts                     # フォームのZodのスキーマ(common-libの規則。Zodの値はlib/utilities/validation/zod.tsから読む)
-    │   └── use-fragment-token.ts                       # lib/utilities/auth/fragment-token.tsで読んだトークンを保ち、URLからフラグメントを消す
+    │   └── account-form-schemas.ts                     # フォームのZodのスキーマ(common-libの規則。Zodの値はlib/utilities/validation/zod.tsから読む)
     ├── components/layout/
     │   ├── account-menu.tsx                            # headerAccount(未ログインはログイン・登録、ログイン中はユーザーメニュー)
     │   ├── launch-action.tsx                           # headerLaunchAction
@@ -2835,7 +2839,7 @@ export declare const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[]; // 初版�
 | `/auth/password-change/confirm` | 「パスワードの変更を確定する」                                                                                                                                           |
 
 - `ReturnPath`: `toSafeReturnPath(value: string | undefined): string`。`/`で始まり`//`・`/\`で始まらず、URLとして解釈したときに同じオリジンのパスだけを返し、それ以外は`/`(6.6)。
-- `FragmentToken`: `readFragmentToken(hash: string): string | undefined`。`#token=`の値を読む純粋な関数(14.7)。フラグメントを消すのは利用者側のフック`useFragmentToken`(`router.history.replace`)。
+- `FragmentToken`: `readFragmentToken(hash: string): string | undefined`。`#token=`の値を読む純粋な関数(14.7)。フラグメントを消すのは共通部品のフック`useFragmentToken`(`frontend-lib/components/auth/use-fragment-token.ts`、`router.history.replace`。管理者側も使うためadmin-foundationが移した)。
 - `LinkConfirmation`: 開いただけでは何もせず、ボタンでミューテーションを呼ぶ(18.8)。`invalid_link`は「このリンクは無効か、有効期限が切れています。」と再度の手続きへのリンクを示す(14.3)。
 - `LoginRequiredDialog`: `{ open, onOpenChange, title, description, returnTo }`を受け取り、「ログイン」(`/auth/login?redirect=<returnTo>`)・「登録」(`/auth/register`)を示す。内容は呼び出す側が渡す(18.9)。
 - `AccountFormSchemas`: `AccountInputRules`とZod(値は共通部品の`lib/utilities/validation/zod.ts`の`z`から読み、`zod`を直接読まない)でフォームの検証規則を作る。エラーの文言は文言規則に従う(18.10)。

@@ -4,10 +4,9 @@ import { page, userEvent } from 'vitest/browser';
 
 import '../src/styles.css';
 import { runAxe } from '../lib/test/a11y.ts';
-import { toLoginSearch } from '../lib/utilities/auth/return-path.ts';
-import { redirectSignedInAdmin } from '../src/components/auth/redirect-signed-in-admin.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
 import { Route as DashboardRoute } from '../src/routes/_authenticated/index.tsx';
+import { Route as LoginRoute } from '../src/routes/auth/login.tsx';
 import {
   AdminLogoutDocument,
   AdminViewerDocument,
@@ -26,6 +25,11 @@ const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 
 vi.mock('../lib/start/graphql/execute-graphql.ts', () => ({ executeGraphQL }));
 
+vi.mock(
+  '@marsidev/react-turnstile',
+  () => import('../lib/test/fake-turnstile.tsx'),
+);
+
 const LOGIN_PATH = '/auth/login';
 const LOGIN_TITLE = 'ログイン';
 const NOT_FOUND_TITLE = 'ページが見つかりません。';
@@ -43,7 +47,7 @@ const navigation = () =>
   page.getByRole('navigation', { name: NAVIGATION_NAME });
 const accountButton = () => page.getByRole('button', { name: ADMIN_NICKNAME });
 
-// アプリの経路と同じログイン必須のレイアウトとダッシュボードの設定を、画面のテスト用のルーターの同じ位置の経路へ写す。ログイン画面は後続の作業で作るため、同じ判定を持つ仮の画面を置く
+// アプリの経路と同じログイン必須のレイアウトとダッシュボードとログイン画面の設定を、画面のテスト用のルーターの同じ位置の経路へ写す
 const createRoutes = (rootRoute: PageRootRoute) => {
   const authenticatedRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -55,9 +59,9 @@ const createRoutes = (rootRoute: PageRootRoute) => {
     createRoute({
       getParentRoute: () => rootRoute,
       path: LOGIN_PATH,
-      validateSearch: toLoginSearch,
-      beforeLoad: redirectSignedInAdmin,
-      component: () => <h1>{LOGIN_TITLE}</h1>,
+      validateSearch: LoginRoute.options.validateSearch,
+      beforeLoad: LoginRoute.options.beforeLoad,
+      component: LoginRoute.options.component,
     }),
     authenticatedRoute.addChildren([
       createRoute({

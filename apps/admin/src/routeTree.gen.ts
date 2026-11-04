@@ -11,7 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as SystemStatusRouteImport } from './routes/system/status'
+import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
+import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/password-reset/confirm'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -22,37 +25,82 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SystemStatusRoute = SystemStatusRouteImport.update({
   id: '/system/status',
   path: '/system/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthPasswordResetIndexRoute = AuthPasswordResetIndexRouteImport.update({
+  id: '/auth/password-reset/',
+  path: '/auth/password-reset/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthPasswordResetConfirmRoute =
+  AuthPasswordResetConfirmRouteImport.update({
+    id: '/auth/password-reset/confirm',
+    path: '/auth/password-reset/confirm',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/auth/login': typeof AuthLoginRoute
   '/system/status': typeof SystemStatusRoute
+  '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRoutesByTo {
+  '/auth/login': typeof AuthLoginRoute
   '/system/status': typeof SystemStatusRoute
   '/': typeof AuthenticatedIndexRoute
+  '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/auth/password-reset': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth/login': typeof AuthLoginRoute
   '/system/status': typeof SystemStatusRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
+  '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/system/status'
+  fullPaths:
+    | '/'
+    | '/auth/login'
+    | '/system/status'
+    | '/auth/password-reset/confirm'
+    | '/auth/password-reset/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/system/status' | '/'
-  id: '__root__' | '/_authenticated' | '/system/status' | '/_authenticated/'
+  to:
+    | '/auth/login'
+    | '/system/status'
+    | '/'
+    | '/auth/password-reset/confirm'
+    | '/auth/password-reset'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/auth/login'
+    | '/system/status'
+    | '/_authenticated/'
+    | '/auth/password-reset/confirm'
+    | '/auth/password-reset/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthLoginRoute: typeof AuthLoginRoute
   SystemStatusRoute: typeof SystemStatusRoute
+  AuthPasswordResetConfirmRoute: typeof AuthPasswordResetConfirmRoute
+  AuthPasswordResetIndexRoute: typeof AuthPasswordResetIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -71,11 +119,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/system/status': {
       id: '/system/status'
       path: '/system/status'
       fullPath: '/system/status'
       preLoaderRoute: typeof SystemStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/password-reset/': {
+      id: '/auth/password-reset/'
+      path: '/auth/password-reset'
+      fullPath: '/auth/password-reset/'
+      preLoaderRoute: typeof AuthPasswordResetIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/password-reset/confirm': {
+      id: '/auth/password-reset/confirm'
+      path: '/auth/password-reset/confirm'
+      fullPath: '/auth/password-reset/confirm'
+      preLoaderRoute: typeof AuthPasswordResetConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -94,7 +163,10 @@ const AuthenticatedRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthLoginRoute: AuthLoginRoute,
   SystemStatusRoute: SystemStatusRoute,
+  AuthPasswordResetConfirmRoute: AuthPasswordResetConfirmRoute,
+  AuthPasswordResetIndexRoute: AuthPasswordResetIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,6 +1,6 @@
 import { TriangleAlertIcon } from 'lucide-react';
 
-import { INLINE_LINK_CLASS_NAME } from '../auth/inline-link-class.ts';
+import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
 import { CONTACT_HREF } from '../layout/site-links.ts';
 import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import {

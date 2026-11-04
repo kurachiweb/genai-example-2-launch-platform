@@ -29,8 +29,8 @@ import {
   REQUIRED_SUFFIX,
 } from './account-messages.ts';
 import { BOT_ACTIONS } from './bot-actions.ts';
-import { INLINE_LINK_CLASS_NAME } from './inline-link-class.ts';
-import { ResultNotice } from './result-notice.tsx';
+import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
+import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
 
 const DEFAULT_VALUES: PasswordResetRequestFormInput = Object.freeze({
   email: '',

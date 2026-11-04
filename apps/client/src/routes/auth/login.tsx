@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
 import { LOGIN_PAGE_TITLE } from '../../components/auth/account-messages.ts';
-import { AuthPageLayout } from '../../components/auth/auth-page-layout.tsx';
+import { AuthPageLayout } from '../../../lib/components/auth/auth-page-layout.tsx';
 import { LoginForm } from '../../components/auth/login-form.tsx';
 import { redirectSignedInViewer } from '../../components/auth/redirect-signed-in-viewer.ts';
 import {

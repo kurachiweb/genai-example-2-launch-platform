@@ -33,7 +33,7 @@ import {
   REGISTER_LABEL,
 } from './account-messages.ts';
 import { BOT_ACTIONS } from './bot-actions.ts';
-import { INLINE_LINK_CLASS_NAME } from './inline-link-class.ts';
+import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
 import { SecondFactorForm } from './second-factor-form.tsx';
 import { useSignedInNavigation } from './use-signed-in-navigation.ts';
 

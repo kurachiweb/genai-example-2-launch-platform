@@ -14,9 +14,9 @@ import {
   VERIFY_EMAIL_ACTION_LABEL,
   VERIFY_EMAIL_DESCRIPTION,
 } from './account-messages.ts';
-import { INLINE_LINK_CLASS_NAME } from './inline-link-class.ts';
+import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
 import { LinkConfirmation } from './link-confirmation.tsx';
-import { ResultNotice } from './result-notice.tsx';
+import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
 import { HOME_PATH } from '../../../lib/utilities/auth/return-path.ts';
 import { useViewer } from './use-viewer.ts';
 import { useViewerRefresh } from './use-viewer-refresh.ts';

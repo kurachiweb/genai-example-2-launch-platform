@@ -28,10 +28,10 @@ import {
   REQUIRED_SUFFIX,
   RETRY_PASSWORD_RESET_SUFFIX,
 } from './account-messages.ts';
-import { INLINE_LINK_CLASS_NAME } from './inline-link-class.ts';
-import { isInvalidLinkError } from './invalid-link.ts';
-import { ResultNotice } from './result-notice.tsx';
-import { useFragmentToken } from './use-fragment-token.ts';
+import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
+import { isInvalidLinkError } from '../../../lib/utilities/auth/invalid-link.ts';
+import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
+import { useFragmentToken } from '../../../lib/components/auth/use-fragment-token.ts';
 import { useViewerRefresh } from './use-viewer-refresh.ts';
 
 const DEFAULT_VALUES: PasswordResetFormInput = Object.freeze({

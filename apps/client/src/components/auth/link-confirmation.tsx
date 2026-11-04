@@ -6,9 +6,9 @@ import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import { INVALID_LINK_MESSAGE } from './account-messages.ts';
-import { isInvalidLinkError } from './invalid-link.ts';
-import { ResultNotice } from './result-notice.tsx';
-import { useFragmentToken } from './use-fragment-token.ts';
+import { isInvalidLinkError } from '../../../lib/utilities/auth/invalid-link.ts';
+import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
+import { useFragmentToken } from '../../../lib/components/auth/use-fragment-token.ts';
 
 export interface LinkConfirmationProps<TResult> {
   readonly description: string;

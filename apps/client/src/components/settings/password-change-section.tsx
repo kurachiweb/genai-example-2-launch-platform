@@ -23,7 +23,7 @@ import {
   REQUIRED_SUFFIX,
 } from '../auth/account-messages.ts';
 import { BOT_ACTIONS } from '../auth/bot-actions.ts';
-import { ResultNotice } from '../auth/result-notice.tsx';
+import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
 import {
   type ReauthenticationFieldNames,
   ReauthenticationFields,

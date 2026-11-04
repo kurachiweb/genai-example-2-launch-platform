@@ -11,7 +11,7 @@ import { DialogHeader } from '../../../lib/components/ui/dialog/dialog-header.ts
 import { DialogTitle } from '../../../lib/components/ui/dialog/dialog-title.tsx';
 import { TOTP_QR_CODE_LABEL } from '../../../lib/utilities/messages/auth-messages.ts';
 import type { ClientStartTotpSetupMutation } from '../../graphql/generated/graphql.ts';
-import { ResultNotice } from '../auth/result-notice.tsx';
+import { ResultNotice } from '../../../lib/components/feedback/result-notice.tsx';
 import {
   RECOVERY_CODES_SHOWN_ONCE_MESSAGE,
   TOTP_ENABLED_MESSAGE,

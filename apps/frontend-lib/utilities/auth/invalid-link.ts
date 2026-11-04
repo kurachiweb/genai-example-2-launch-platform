@@ -1,4 +1,4 @@
-import { GraphQLClientError } from '../../../lib/utilities/graphql/graphql-result.ts';
+import { GraphQLClientError } from '../graphql/graphql-result.ts';
 
 const INVALID_LINK_CODE = 'invalid_link';
 

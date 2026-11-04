@@ -1,7 +1,12 @@
-import { useRouter } from '@tanstack/react-router';
+import {
+  type AnyRoute,
+  type Router,
+  type TrailingSlashOption,
+  useRouter,
+} from '@tanstack/react-router';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
-import { readFragmentToken } from '../../../lib/utilities/auth/fragment-token.ts';
+import { readFragmentToken } from '../../utilities/auth/fragment-token.ts';
 
 export type FragmentTokenState =
   | { readonly status: 'reading' }
@@ -11,6 +16,9 @@ export type FragmentTokenState =
 const READING: FragmentTokenState = Object.freeze({ status: 'reading' });
 
 const MISSING: FragmentTokenState = Object.freeze({ status: 'missing' });
+
+// 共通部品からはアプリのルーターの型を参照できないため、履歴だけを型付けしたルーターとして読む
+type HistoryRouter = Router<AnyRoute, TrailingSlashOption, boolean>;
 
 const subscribeNothing = () => () => undefined;
 
@@ -24,18 +32,16 @@ const useHydrated = (): boolean =>
 
 // 最初の描画で読んだトークンを保ち、トークンを履歴・画面のURL・共有されるURLに残さないよう、描いた後に同じ履歴の項目を置き換えてフラグメントを消す
 export function useFragmentToken(): FragmentTokenState {
-  const router = useRouter();
+  const { history } = useRouter<HistoryRouter>();
   const hydrated = useHydrated();
-  const [token] = useState(() =>
-    readFragmentToken(router.history.location.hash),
-  );
+  const [token] = useState(() => readFragmentToken(history.location.hash));
 
   useEffect(() => {
-    const { pathname, search, hash, state } = router.history.location;
+    const { pathname, search, hash, state } = history.location;
     if (readFragmentToken(hash) !== undefined) {
-      router.history.replace(`${pathname}${search}`, state);
+      history.replace(`${pathname}${search}`, state);
     }
-  }, [router]);
+  }, [history]);
 
   if (!hydrated) {
     return READING;

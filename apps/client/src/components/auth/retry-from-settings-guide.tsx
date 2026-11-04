@@ -4,7 +4,7 @@ import {
   ACCOUNT_SETTINGS_LABEL,
   RETRY_FROM_SETTINGS_SUFFIX,
 } from './account-messages.ts';
-import { INLINE_LINK_CLASS_NAME } from './inline-link-class.ts';
+import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
 
 export function RetryFromSettingsGuide() {
   return (
