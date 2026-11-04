@@ -205,6 +205,25 @@ function StatusRoute() {
 - `loader`のデータとHTMLへ書き出す値の`Error`は、ブラウザへ渡るときにメッセージだけを持つ別の`Error`になり、`code`などの項目と`GraphQLClientError`の型が失われる。そのため、失敗は画面の分岐に使う項目だけの素のオブジェクトで返し、部品の側で`GraphQLClientError`に戻す。
 - この`loader`もブラウザ内の遷移・先読み・`router.invalidate()`ではブラウザで実行される。サーバーで取得した結果とブラウザで取得した結果を区別して表示する画面は、そのことを前提に文言を決める。
 
+検索パラメータ(絞り込み・ページの位置)で変わる一覧のうち、失敗を一覧の場所に再試行の操作とともに示すものは、`loader`で同じ設定の`queryClient.query(...)`を待ち、失敗だけを`.catch(() => undefined)`で捨ててキャッシュに残す。部品は`useSuspenseQuery`ではなく`useQuery`で読み、`data`が無い間を読み込み中、`error`を一覧の失敗(再試行は`refetch()`)として描く。
+
+```tsx
+export const Route = createFileRoute('/items/')({
+  validateSearch: toItemSearch,
+  loaderDeps: ({ search }) => search,
+  loader: async ({ context, deps }) => {
+    await context.queryClient
+      .query(itemsQueryOptions(itemVariablesOf(deps)))
+      .catch(() => undefined);
+  },
+  component: ItemsRoute,
+});
+```
+
+- 描画中に失敗した取得はメッセージだけの`Error`としてブラウザへ渡り、`useQuery`は表示の後に取得し直す(`retryOnMount`の既定値)。ブラウザ内の遷移で`loader`の取得が失敗したときも、部品が新しいキーへ切り替わる時に取得し直す。取得し直している間(`isFetching`)は前の失敗を示さず読み込み中として描き、エラーコードによらない文言を一瞬出さない。
+- 再試行のボタンは取得し直すと消えるため、押した時にフォーカスを一覧の見出し(`tabIndex={-1}`)などの続きの位置へ移す(「[処理の後のフォーカス](004-accessibility-rules.md#処理の後のフォーカス)」)。
+- 取得の変数を閲覧者の表示設定(地域の暦など)から作る場合は、`loader`も部品と同じ値で変数を作る。サーバーではルーターの文脈の表示設定、ブラウザではブラウザの表示設定(`resolveBrowserDisplayPreferences()`)を使い、`environmentManager.isServer()`で選ぶ。異なる値で作ると、同じ条件を2回取得する。
+
 ### 変更
 
 変更(mutation)は、利用者の操作を受けた部品から`useMutation(graphqlMutationOptions(<文書>))`で行う。`loader`の中で変更しない(`loader`はページの表示と先読みでも実行されるため)。

@@ -189,7 +189,7 @@ apps/
 │   └── index.ts                                        # adminのテーブルの集約(schema/index.tsから再エクスポート)
 ├── common-lib/admin/                                   # 4アプリ共通の純粋な定義(各ファイルに同名の*.unit.test.ts)
 │   ├── admin-roles.ts                                  # AdminRole・ADMIN_ROLES(昇順)・hasRole・ADMIN_ROLE_LABELS
-│   ├── admin-input-rules.ts                            # ニックネーム・肩書き・理由・カテゴリ名の上限と判定
+│   ├── admin-input-rules.ts                            # ニックネーム・肩書き・理由・カテゴリ名・監査ログの検索の条件とカーソルの上限と判定
 │   ├── audit-action.ts                                 # AuditTargetKind・AuditActionDefinition・defineAuditAction・createAuditActionCatalog
 │   └── audit-actions/
 │       ├── admin-foundation.ts                         # admin-account.invite・delete・role-change、user.email-search
@@ -305,7 +305,9 @@ apps/
     │   ├── admins/admin-form-dialog.tsx · admin-form-dialog-controls.ts · admin-form-dialog-footer.tsx   # 入力を持つダイアログの処理中・フォーカス・取り消しの枠と、監査ログの旨・確定の並び
     │   ├── admins/admin-account-permissions.ts · admin-account-form-schemas.ts · admin-accounts-messages.ts · admin-account-label.ts · use-admin-accounts-refresh.ts   # ドメインの規則と同じ操作の可否・入力の規則・文言・一覧の取り直し(単体テスト併置)
     │   ├── pages/admins-page.tsx                       # /accountsのページ(見出し・招待・一覧)
+    │   ├── pages/audit-logs-page.tsx                   # /audit-logsのページ(見出し・絞り込み・一覧・カーソルのページ送り)
     │   ├── audit/audit-log-filters.tsx · audit-log-list.tsx · audit-period.ts
+    │   ├── audit/audit-log-search.ts · audit-log-filter-options.ts · cursor-trail.ts · load-audit-logs-page.ts · audit-logs-messages.ts   # 検索パラメータの検証と検索の引数・選択肢・辿ったページの記録・/audit-logsのloader・文言(単体テスト併置)
     │   └── account/profile-section.tsx · email-change-section.tsx · password-change-section.tsx
     │       · totp-section.tsx · totp-reset-dialog.tsx · recovery-codes-dialog.tsx · reauthentication-fields.tsx
     ├── composition/
@@ -315,6 +317,7 @@ apps/
     └── graphql/
         ├── admin-viewer.ts                             # adminViewerQueryOptions・toAdminViewer・loadRootAuthContext(取得の失敗は未ログイン、単体テスト併置)
         ├── admin-accounts.ts                           # adminAccountsQueryOptions・toAdminAccounts・loadAdminAccounts(/accountsのloader、単体テスト併置)
+        ├── admin-audit-logs.ts                         # auditLogsQueryOptions・toAuditLogPage(単体テスト併置)
         ├── operations/admin/                           # 1ファイル1操作の*.graphql。操作名はAdminで始める(例: viewer.graphqlのAdminViewer)
         │   ├── viewer.graphql
         │   └── auth/*.graphql · account/*.graphql · self/*.graphql · audit/*.graphql
@@ -492,6 +495,8 @@ export declare const ADMIN_NICKNAME_MAX: 25;
 export declare const ADMIN_TITLE_MAX: 50;
 export declare const AUDIT_REASON_MAX: 500;
 export declare const CATEGORY_NAME_MAX: 30;
+export declare const AUDIT_FILTER_TEXT_MAX: 64; // 監査ログの検索の文字列の条件(操作者・操作種別・対象の識別子)の文字数の上限。APIの検証と画面の入力欄が共有する
+export declare const AUDIT_LOG_CURSOR_MAX: 256; // 監査ログの検索のカーソルの文字数の上限
 export declare function checkAdminNickname(
   value: string,
 ): 'empty' | 'too-long' | undefined;
@@ -1373,7 +1378,7 @@ export declare const DASHBOARD_CARDS: readonly DashboardCard[]; // 初版は空
 
 - メールのリンクの画面は、フラグメントのトークンを`readFragmentToken`で読み、開いただけでは何もしない。
 - フォームの値: 入力欄を描かない値(ログインの第2要素の`challenge`、パスワードの再設定と招待の`token`、プロフィールの編集の対象の`id`)はスキーマの入力に含めず`onSubmit`で足す。ログインの第2要素は、認証コードの入力の間は`secondFactor.totpCode`だけ、リカバリコードの入力に切り替えた間は`secondFactor.recoveryCode`だけを持つスキーマを使い(条件ごとに分けた定数のスキーマから選んで`useAppForm`へ渡すだけにし、描画ごとに作らない。切り替えの後の検証のし直しは`useAppForm`に任せる)、本人確認の欄(`reauthentication-fields.tsx`)も現在のパスワードと、認証コードとリカバリコードのうち描いている一方だけをスキーマに含める。本人確認の失敗の詳細はAPIが欄の形のとおりの経路(`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`など)で返すため、現在のパスワードの欄と描いている第2要素の欄に示す。第2要素を送らなかった時の詳細(`reAuthentication.secondFactor`)は欄をまとめた値の経路のため、`onSubmitError`の`unmatched`に入ってフォーム全体の失敗として示す。
-- `audit-period.ts`: 入力の日付(閲覧者の地域の暦)を、開始日の0時を`occurredFrom`、終了日の翌日0時を`occurredBefore`とするUTCの時刻に変換する(19.2)。
+- `audit-period.ts`: 入力の日付(閲覧者の地域の暦)を、開始日の0時を`occurredFrom`、終了日の翌日0時を`occurredBefore`とするUTCの時刻に変換する(19.2)。境界の時刻がAPIの日時(西暦4桁)で表せるよう年は0001〜9998年だけを受け付け、範囲の外はURLでは未指定として捨て、入力欄では欄の誤りにする(20.9)。
 - `/accounts`の操作のダイアログ(15.10)。いずれも理由は任意で、失敗の文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、ダイアログの中に示す。
   - 削除と招待の再送は`ConfirmActionDialog`(監査ログに記録される旨あり)。
   - 招待(メールアドレス)とロールの変更(現在のロールを選べなくしたラジオボタン)は、入力欄を持つため管理者側の`AdminFormDialog`(`components/admins/`。処理中・フォーカス・取り消しの扱いは`ConfirmActionDialog`と同じ)で作り、理由の欄は`ReasonField`、監査ログに記録される旨を示す。

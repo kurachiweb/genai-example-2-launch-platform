@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import {
+  AUDIT_FILTER_TEXT_MAX,
+  AUDIT_LOG_CURSOR_MAX,
   checkAdminNickname,
   checkAdminTitle,
   checkAuditReason,
@@ -140,14 +142,12 @@ export const RE_AUTHENTICATION_ARGS = z.object({ reAuthentication });
 
 export const COMPLETE_ADMIN_TOTP_RESET_ARGS = z.object({ totpCode });
 
-// 条件の値は保存された値との一致だけに使うため、保存され得る長さを超える値を拒み、空の文字列は未指定とする
-const AUDIT_FILTER_TEXT_MAX_LENGTH = 64;
+const AUDIT_FILTER_TOO_LONG_MESSAGE = `検索条件は${String(AUDIT_FILTER_TEXT_MAX)}文字以内で入力してください。`;
 
-const AUDIT_FILTER_TOO_LONG_MESSAGE = `検索条件は${String(AUDIT_FILTER_TEXT_MAX_LENGTH)}文字以内で入力してください。`;
-
+// 空の文字列は未指定とする
 const filterText = z
   .string()
-  .max(AUDIT_FILTER_TEXT_MAX_LENGTH, AUDIT_FILTER_TOO_LONG_MESSAGE)
+  .max(AUDIT_FILTER_TEXT_MAX, AUDIT_FILTER_TOO_LONG_MESSAGE)
   .nullish()
   .transform((value) => (value == null || value === '' ? undefined : value));
 
@@ -155,8 +155,6 @@ const filterDate = z
   .number()
   .nullish()
   .transform((value) => (value == null ? undefined : new Date(value)));
-
-const AUDIT_LOG_CURSOR_MAX_LENGTH = 256;
 
 export const AUDIT_LOGS_ARGS = z.object({
   filter: z
@@ -183,7 +181,7 @@ export const AUDIT_LOGS_ARGS = z.object({
     })),
   after: z
     .string()
-    .max(AUDIT_LOG_CURSOR_MAX_LENGTH, invalidCursorError().message)
+    .max(AUDIT_LOG_CURSOR_MAX, invalidCursorError().message)
     .nullish()
     .transform((value) => value ?? undefined),
 });

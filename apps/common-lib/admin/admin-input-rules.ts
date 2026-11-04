@@ -9,6 +9,11 @@ export const AUDIT_REASON_MAX = 500;
 
 export const CATEGORY_NAME_MAX = 30;
 
+// 監査ログの検索の文字列の条件は保存された値との一致だけに使うため、保存され得る長さを上限にする
+export const AUDIT_FILTER_TEXT_MAX = 64;
+
+export const AUDIT_LOG_CURSOR_MAX = 256;
+
 const countTrimmedGraphemes = (value: string): number =>
   countGraphemes(trimWhiteSpace(value));
 
