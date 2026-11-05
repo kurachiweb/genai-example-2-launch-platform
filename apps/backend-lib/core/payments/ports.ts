@@ -260,6 +260,21 @@ export interface PurchasePatch {
   readonly lastEventAt?: Date;
 }
 
+// 版の検査を伴わずに進めてよい行き先。権利の付与・拒否は他の文と同じ一括の書き込みで版を検査する
+export type AloneAdvanceTarget = Extract<
+  PurchaseStatus,
+  'processing' | 'expired'
+>;
+
+export interface PurchaseAdvance {
+  readonly purchaseId: string;
+  readonly to: PurchaseStatus;
+  readonly from: readonly PurchaseStatus[];
+  // 前進の後のstate_token(新しいULID)
+  readonly nextToken: string;
+  readonly patch: PurchasePatch;
+}
+
 export interface PurchaseStore {
   findById(purchaseId: string): Promise<PurchaseRecord | undefined>;
   findBySessionId(sessionId: string): Promise<PurchaseRecord | undefined>;
@@ -293,6 +308,10 @@ export interface PurchaseStore {
     readonly consentedAt: Date;
     readonly version: string;
   }): Promise<'recorded' | 'not_open'>;
+  // 他の文を伴わない前進(失効・処理中への前進)。前進の元の状態のときだけ進め、進めたかを返す
+  advanceAlone(
+    input: PurchaseAdvance & { readonly to: AloneAdvanceTarget },
+  ): Promise<boolean>;
   // 購入確認メールが依頼待ちのまま、反映から指定の日時より前の購入
   findPendingConfirmations(input: {
     readonly reflectedBefore: Date;

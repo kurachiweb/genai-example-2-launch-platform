@@ -223,6 +223,7 @@ apps/
 │       ├── d1-stripe-object-store.ts                # StripeObjectStore・StripeObjectStatementsの実装(最終の発生時刻の検査の文)
 │       ├── d1-price-snapshot-store.ts               # 価格の一時保持
 │       ├── guarded-batch.ts                         # 版の検査付きの一括の書き込みの実行と、検査の列のNOT NULLの違反による失敗の判別
+│       ├── checkout-record-guard.ts                 # 決済セッションの記録の版の検査付きの挿入(D1PaymentRecordStoreが委ねる)
 │       ├── payment-reflector.ts                     # 反映の処理(決済セッション・請求・返金・チャージバック・定期課金)
 │       ├── checkout-session-reflection.ts           # 決済セッションの反映(フルフィルメント・拒否・二重決済)
 │       ├── open-checkout-expirer.ts                 # 未完了の決済セッションの失効(波及処理と後続specが使う)
@@ -1033,6 +1034,10 @@ export declare class StripeSignatureError extends Error {}
 export interface PurchaseStore {
   findById(purchaseId: string): Promise<PurchaseRecord | undefined>;
   findBySessionId(sessionId: string): Promise<PurchaseRecord | undefined>;
+  // 他の文を伴わない前進(失効・処理中への前進)。前進の元の状態のときだけ進め、meta.changesで進めたかを返す
+  advanceAlone(
+    input: PurchaseAdvance & { readonly to: AloneAdvanceTarget },
+  ): Promise<boolean>; // AloneAdvanceTarget = processing・expired
   findByPaymentIntentId(
     paymentIntentId: string,
   ): Promise<PurchaseRecord | undefined>; // PaymentOwnerResolver
@@ -1100,13 +1105,7 @@ export interface GuardedBatch {
 }
 export interface PurchaseStatements {
   create(record: NewPurchase): BatchItem<'sqlite'>;
-  advance(input: {
-    readonly purchaseId: string;
-    readonly to: PurchaseStatus;
-    readonly from: readonly PurchaseStatus[];
-    readonly nextToken: string; // 前進の後のstate_token(新しいULID)
-    readonly patch: PurchasePatch;
-  }): BatchItem<'sqlite'>;
+  advance(input: PurchaseAdvance): BatchItem<'sqlite'>; // PurchaseAdvance = { purchaseId, to, from, nextToken(前進の後のstate_token), patch }(coreの型)
   deleteByUser(userId: string): BatchItem<'sqlite'>;
 }
 export interface PaymentRecordStatements {

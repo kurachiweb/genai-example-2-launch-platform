@@ -1,15 +1,12 @@
 import type { BatchItem } from 'drizzle-orm/batch';
 
 import type { MinorUnitAmount } from '../../../common-lib/payments/money.ts';
-import type {
-  PurchaseStatus,
-  RejectionReason,
-} from '../../../common-lib/payments/purchase-states.ts';
+import type { RejectionReason } from '../../../common-lib/payments/purchase-states.ts';
 import type {
   NewPaymentRecord,
   NewPurchase,
   NewRefundRequest,
-  PurchasePatch,
+  PurchaseAdvance,
   RefundRequestInput,
   RefundRequestResult,
 } from '../../core/payments/ports.ts';
@@ -31,14 +28,7 @@ export interface GuardedBatch {
 
 export interface PurchaseStatements {
   create(record: NewPurchase): BatchItem<'sqlite'>;
-  advance(input: {
-    readonly purchaseId: string;
-    readonly to: PurchaseStatus;
-    readonly from: readonly PurchaseStatus[];
-    // 前進の後のstate_token(新しいULID)
-    readonly nextToken: string;
-    readonly patch: PurchasePatch;
-  }): BatchItem<'sqlite'>;
+  advance(input: PurchaseAdvance): BatchItem<'sqlite'>;
   deleteByUser(userId: string): BatchItem<'sqlite'>;
 }
 

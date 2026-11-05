@@ -97,7 +97,7 @@
   - _Requirements: 6.1, 6.2_
 
 - [ ] 4. 永続化
-- [ ] 4.1 版の検査付きの一括の書き込みと、購入・Stripeのオブジェクトのストアを作る
+- [x] 4.1 版の検査付きの一括の書き込みと、購入・Stripeのオブジェクトのストアを作る
   - 版の検査は、identity-auth・admin-foundation・inquiry-chatと同じく、一括の書き込みの先頭の業務の行の挿入で、NOT NULLの列に「版が一致すれば値、一致しなければNULL」を入れる型にする(`db/002`の「版の検査で一括の書き込み全体を取り消す」。2026-11-05の開発者の決定)。購入の確定・拒否は`payment_records`の挿入の`pseudonymous_id`を購入の`state_token`で、定期課金は`payment_stripe_objects`への挿入(`object_id`で`DO UPDATE`)の`last_event_at`を「より新しい発生時刻が記録済みか」で検査する。`GuardedBatch`は違反のメッセージの`<テーブル>.<列>`を`cause`をたどって照合し、検査の列の違反だけを`guard_failed`にする
   - 先に、Workers統合テストで、版が一致すれば一括の書き込みが確定すること、他の書き込みが先に購入を前進させていれば(`state_token`が変わっていれば)全体が取り消されて`guard_failed`になること、先頭の決済履歴の挿入が一意キーと衝突しても(初回の請求の行が先にある場合)版の検査が働くこと(SQLiteはNOT NULLを一意性より先に確かめる)、より新しい発生時刻が記録済みの定期課金の通知で後続の文を含めて全体が取り消されること、同じ発生時刻の通知は通ること、`exclusivity_key`の部分一意索引の違反と他の文の制約の違反が`constraint_failed`として検査の失敗と区別されること、他の文の失敗の`<テーブル>.<列>`が検査の列と重ならないこと、購入の作成・購入IDでの検索(5.1・6.2で使用)・決済セッションIDの保存(6.1で使用)・セッションIDでの検索・PaymentIntentのIDでの検索(4.3で使用)・本人の未完了の購入・同じ対象の未完了の購入・突合と日次の確認の対象の検索・同意の記録(未完了の購入だけ)・購入確認メールの依頼の状態の更新と10分以上依頼待ちの購入の検索・利用者の行の削除を確かめる
   - 状態の前進は前進の元の状態を条件にし、新しい`state_token`を書く1文で表す。他の文を伴わない1文の前進(失効・処理中への前進)は版の検査を使わず、`meta.changes`で前進したかを判定する
@@ -358,3 +358,4 @@
 - 3.1: `StripeApiGateway`は`@injectable`を付けず`{ appName, client, clientSiteOrigin }`を受け取る(5.7で`toDynamicValue`で束縛)。ポートは設計どおり`StripeGateway`1つ(3.2で統合)。テストの偽のStripeは`workers/payments/testing/fake-stripe.ts`。ログの属性名に`key`を含めない(伏せ字になる。`priceLookup`)
 - 3.2: Stripeの結果への変換は`workers/payments/stripe-snapshots.ts`。持ち主の手がかりはPaymentIntentの取得と`invoicePayments.list`(API版`2026-10-28.endive`のPaymentIntentは`invoice`を持たない)。定期課金の`currentPeriodEnd`は項目の`current_period_end`の最大値。請求・返金・定期課金の想定外の状態は例外(チャージバックだけは値をそのまま返す)
 - 3.3: 署名の検証は`workers/payments/stripe-webhook-verifier.ts`の`StripeWebhookSignatureVerifier`(`@injectable`無し、`{ appName, webhookSecret }`)。秘密が未設定なら`StripeUnavailableError`(ログ無し、経路が503)、拒否は`StripeSignatureError`(cause無し)。backend-libのWorkers統合テストはapiの`test:worker`で走る(eventは`lib/**`を除外)
+- 4.1: 版の検査付きの一括の書き込みは`workers/payments/guarded-batch.ts`の`D1GuardedBatch`。決済セッションの記録の版の検査付きの挿入は`checkout-record-guard.ts`の`checkoutRecordGuardedInsert(db, record, guard)`で、4.2の`D1PaymentRecordStore.insertCheckoutRecordGuarded`はこれに委ねる。1文の前進は`PurchaseStore.advanceAlone`(行き先は`processing`・`expired`だけ)、前進の元は呼び出し側が`ADVANCEABLE_FROM`から渡す。`findOpenByUser`はopen・processing、`findOpenByTarget`はopenだけ、突合と日次の確認の対象はopen・processing・superseded(決済セッションIDの無い購入を除く)。テストの補助は`testing/payment-store-fixtures.ts`
