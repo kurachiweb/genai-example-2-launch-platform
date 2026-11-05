@@ -11,6 +11,10 @@ const PurchaseOfferPolicyResolver: unique symbol = Symbol.for(
   'payments.PurchaseOfferPolicyResolver',
 );
 
+const PaymentsJobIncidentReporter: unique symbol = Symbol.for(
+  'payments.PaymentsJobIncidentReporter',
+);
+
 const CheckoutStarter: unique symbol = Symbol.for('payments.CheckoutStarter');
 
 const CheckoutReader: unique symbol = Symbol.for('payments.CheckoutReader');
@@ -43,6 +47,7 @@ export const API_PAYMENTS_TYPES = Object.freeze({
   CheckoutStartLimits,
   CheckoutPurchaseWriter,
   PurchaseOfferPolicyResolver,
+  PaymentsJobIncidentReporter,
   CheckoutStarter,
   CheckoutReader,
   CheckoutConsentRecorder,

@@ -7,6 +7,7 @@ const PORT_NAMES = [
   'CheckoutStartLimits',
   'CheckoutPurchaseWriter',
   'PurchaseOfferPolicyResolver',
+  'PaymentsJobIncidentReporter',
 ] as const;
 
 const USE_CASE_NAMES = [

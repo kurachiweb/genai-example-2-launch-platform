@@ -194,7 +194,7 @@
   - _Depends: 6.1_
   - _Requirements: 4.1, 4.2, 4.5, 4.6, 4.9, 4.10, 4.11, 5.1, 5.6, 5.7, 12.1, 12.2, 12.9_
 
-- [ ] 6.3 23:40の突合・4:21の日次の確認・7年の削除のジョブを作る
+- [x] 6.3 23:40の突合・4:21の日次の確認・7年の削除のジョブを作る
   - 先に、偽のポートを使う単体テストで、突合の対象(決済期限が過ぎて24時間以内の未完了・処理中・置き換え済み)と1件の失敗で残りを続けて通知すること、日次の確認の3つの処理(有効期限を1時間過ぎた購入の突合、10分以上送信されていない返金の送信、依頼待ちのメールの依頼)と上限、7年の削除の上限付きの繰り返し、2回実行しても結果が変わらないことを確かめる
   - 突合は23:40の`order` 10、日次の確認と削除は4:21の`order` 400・410で定義する
   - 完了状態: 単体テストが成功し、ジョブの定義の検証(時刻と順序の重複の拒否)を通り、ジョブが`core/payments`の契約だけを受け取る(`**/lib/workers/**`の読み込みとD1の文が無い)
@@ -370,3 +370,4 @@
 - 5.7: 両アプリ共通の束縛は`workers/payments/payments-platform-module.ts`の`createPaymentsPlatformModule(appName)`(関数。識別子はすべて`PAYMENTS_TYPES`)。api・eventのモジュール一覧に加えるときは`EMAIL_PLATFORM_MODULE`と`IDENTITY_PLATFORM_MODULE`も同じ一覧に要る(通知の部品が使う)。Webhookの署名の検証は共通の束縛に含めず、8.4でイベントサーバーが束縛する。疎通確認の最終確認画面の文言(分量「1件」・役務の提供時期「提供する役務はありません」)は仮で、画面のタスクで文言規則に載せるかを確かめる
 - 6.1: APIサーバーの識別子は`apps/api/src/application/payments/payments-types.ts`の`API_PAYMENTS_TYPES`、エラーは`payments-errors.ts`の`PAYMENTS_ERRORS`(`payments_unavailable`の文言は価格の照会と同じ全文)。決済の開始は`checkout-starter.ts`の`StripeCheckoutStarter`、回数制限と購入の書き込みは`apps/api/src/infrastructure/payments/`。application層は`**/lib/workers/**`を型も含めて読み込めない(ESLint)。12.x: `docs/GUIDES/service/design/003-text-and-copy-rules.md`の縮退運転の文言を設計のError Handlingの表に揃える
 - 6.2: 決済画面・同意・決済後のランディング・決済履歴のユースケースは`apps/api/src/application/payments/`(`checkout-reader.ts`・`checkout-consent-recorder.ts`・`checkout-return-confirmer.ts`・`payment-history-reader.ts`)。照会は`requireUser`、同意の記録は`requireWritableUser`(停止中は`account_unavailable`)。入力の規則(`session_id`の形式・件数の範囲・カーソルの上限)は`common-lib/payments/payment-input-rules.ts`。7.1(必須): GraphQLの`after`に`PAYMENT_HISTORY_CURSOR_MAX`(256)を適用し、カーソルの誤り`invalid_cursor`をエラーの表で扱う。新しい文言2つは12.2で文言規則に加える。単体テストの偽のポートは`apps/api/test/support/payments-checkout-fakes.ts`
+- 6.3: ジョブは`apps/api/src/application/payments/jobs/`(定義は`*_JOB_DEFINITION`)。7.1(必須): `API_PAYMENTS_TYPES.PaymentsJobIncidentReporter`を`SentryPaymentsJobIncidentReporter`(`infrastructure/payments/`)へ束縛する(無いと突合と日次の確認のジョブが解決できない)。7.2: 3つの定義を`SCHEDULED_JOBS`へ、23:40の式`40 7 * * *`をCron Triggersへ加える。12.2: 日次タイムラインに2つのジョブを載せる

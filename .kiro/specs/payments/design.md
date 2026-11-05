@@ -248,10 +248,13 @@ apps/
 │   │   └── jobs/
 │   │       ├── checkout-reconciliation-job.ts       # 23:40の突合(order 10)
 │   │       ├── pending-checkout-sweep-job.ts        # 4:21の未完了・依頼待ちの確認(order 400)
-│   │       └── payment-history-retention-job.ts     # 4:21の7年の削除(order 410)
+│   │       ├── payment-history-retention-job.ts     # 4:21の7年の削除(order 410)
+│   │       ├── purchase-reconciliation.ts           # 突合と日次の確認が共有する、購入ごとの取得と反映(失敗は知らせて続ける)
+│   │       └── payments-job-incidents.ts            # PaymentsJobIncidentReporter(ジョブの失敗をエラートラッキングへ知らせるポート、型だけ)
 │   ├── infrastructure/payments/                     # Workers統合テスト
 │   │   ├── counter-checkout-start-limits.ts         # CounterCheckoutStartLimits・CHECKOUT_START_RULE(利用者単位の回数制限、仮2)
-│   │   └── d1-checkout-purchase-writer.ts           # D1CheckoutPurchaseWriter(未完了の購入の置き換えと新しい購入の作成を1回の一括の書き込みで確定)
+│   │   ├── d1-checkout-purchase-writer.ts           # D1CheckoutPurchaseWriter(未完了の購入の置き換えと新しい購入の作成を1回の一括の書き込みで確定)
+│   │   └── sentry-payments-job-incident-reporter.ts # SentryPaymentsJobIncidentReporter(突合と日次の確認の失敗をエラートラッキングへ送る)
 │   ├── presentation/graphql/modules/payments/       # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts                                # 引数のzodスキーマ
@@ -1463,6 +1466,7 @@ export declare class D1CheckoutPurchaseWriter implements CheckoutPurchaseWriter 
 - Trigger: apiのCron Triggers(`40 7 * * *`・`21 12 * * *`)。23:40の`order` 10は、同時刻のマッチの確定(match-engine)より先に動くための値で、match-engineは10より大きい`order`を使う(10.2)。4:21の`order`は上流の100〜120・200・210・300・810〜830・900・2300と重ならない。ジョブの名前と順序は日次タイムラインの表に載せる。
 - Idempotency: すべての処理は2回実行しても結果が変わらない(反映は状態の前進、削除は条件付き)。件数の上限を超えた分は翌日(4:21)に続ける。23:40の対象は200件を超えない想定(週ごとの予選の勝者の数)で、超えた場合は`warn`を記録する。
 - 依存: 3つのジョブと`CheckoutReader`・`CheckoutConsentRecorder`・`CheckoutReturnConfirmer`・`PaymentHistoryReader`はapplication層に置き、`PaymentReflector`・`PaymentRefunds`(`dispatch`)・`PurchaseNotifier`・`StripeGateway`・各ストアの文を返さない操作を`core/payments`の型と`PAYMENTS_TYPES`の識別子で受け取る。`**/lib/workers/**`を読み込まず、D1の文と一括の書き込みを扱わない(7年の削除は`PaymentRecordStore.deleteRecordedBefore`、送信待ちの返金・依頼待ちのメールの検索は`RefundStore`・`PurchaseStore`の文を返さない操作)。
+- 突合と日次の確認の失敗は、application層のポート`PaymentsJobIncidentReporter`(`API_PAYMENTS_TYPES.PaymentsJobIncidentReporter`)を通してエラートラッキングへ知らせる。実装は`infrastructure/payments/sentry-payments-job-incident-reporter.ts`(前例のauth・inquiryの報告と同じ形)。依頼待ちのまま残った通知は1回の起動につき1件の`warning`にまとめる。
 
 #### PaymentsSchemaModule
 
