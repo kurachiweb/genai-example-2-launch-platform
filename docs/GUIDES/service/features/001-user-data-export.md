@@ -473,7 +473,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 
 ## inquiries.json
 
-ログイン状態で送信した問い合わせと、そのチャットメッセージ。添付ファイルは`inquiries/{inquiryId}/{messageId}/`へ同梱する。メッセージや添付ファイルは管理者による投稿も含む。
+ログイン状態で送信した問い合わせと、そのチャットメッセージ。添付ファイルは`inquiries/{inquiryId}/{messageId}/`へ同梱する。メッセージは管理者の返信も含む。添付ファイルは利用者のメッセージだけにあり、管理者の返信には無い。問い合わせは作成の順(問い合わせIDの昇順)、メッセージは送信日時の古い順に並べる。ファイルが物理削除済みの添付は含めない。
 
 ```json
 [
@@ -510,20 +510,20 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 ]
 ```
 
-| 項目                                   | 型          | 説明                                                                        |
-| -------------------------------------- | ----------- | --------------------------------------------------------------------------- |
-| `id`                                   | ULID        | 問い合わせID                                                                |
-| `category`                             | 文字列      | 問い合わせ時点のカテゴリ名                                                  |
-| `status`                               | 文字列      | `open`(未対応)、`in_progress`(対応中)、`resolved`(対応済)、`rejected`(却下) |
-| `createdAt`                            | 日時        | 問い合わせ日時                                                              |
-| `messages[].id`                        | ULID        | メッセージID                                                                |
-| `messages[].sender`                    | 文字列      | `user`(自身)、`admin`(管理者)                                               |
-| `messages[].adminNickname`             | 文字列/null | 管理者返信時のニックネーム。管理者が削除済みなら`null`                      |
-| `messages[].body`                      | 文字列      | メッセージ本文(プレーンテキスト)                                            |
-| `messages[].attachments[].path`        | 文字列      | 添付ファイルのパス                                                          |
-| `messages[].attachments[].contentType` | 文字列      | 添付ファイルのMIMEタイプ                                                    |
-| `messages[].attachments[].size`        | 整数        | 添付ファイルのバイト数                                                      |
-| `messages[].createdAt`                 | 日時        | 送信日時                                                                    |
+| 項目                                   | 型          | 説明                                                                           |
+| -------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
+| `id`                                   | ULID        | 問い合わせID                                                                   |
+| `category`                             | 文字列      | 現在のカテゴリ名(問い合わせの後に削除されたカテゴリは、付け替え先の「その他」) |
+| `status`                               | 文字列      | `open`(未対応)、`in_progress`(対応中)、`resolved`(対応済)、`rejected`(却下)    |
+| `createdAt`                            | 日時        | 問い合わせ日時                                                                 |
+| `messages[].id`                        | ULID        | メッセージID                                                                   |
+| `messages[].sender`                    | 文字列      | `user`(自身)、`admin`(管理者)                                                  |
+| `messages[].adminNickname`             | 文字列/null | 管理者返信時のニックネーム。管理者が削除済みなら`null`                         |
+| `messages[].body`                      | 文字列      | メッセージ本文(プレーンテキスト)                                               |
+| `messages[].attachments[].path`        | 文字列      | 添付ファイルのパス。添付の順に並ぶ。管理者の返信では`attachments`は空配列      |
+| `messages[].attachments[].contentType` | 文字列      | 添付ファイルのMIMEタイプ                                                       |
+| `messages[].attachments[].size`        | 整数        | 添付ファイルのバイト数                                                         |
+| `messages[].createdAt`                 | 日時        | 送信日時                                                                       |
 
 ## sponsorships.json
 

@@ -39,6 +39,7 @@ Cloudflare Workersのサーバーで回数を制限する2つの方式(Rate Limi
 | 厳密カウンタ(`RateLimitCounterClient`)          | キーごとに1つのDurable Objectで正確に数える                                                                | 1秒以上の任意の秒数 | メールの再送・ログインの試行など、回数を正確に守る必要がある操作     |
 
 - 厳密カウンタは1回数えるごとにDurable Objectへの要求が1回発生する。全HTTPリクエストのような大量の要求には、バインディングによる制限を使う。
+- ログインせずに送れる投稿に、bot判定と厳密カウンタを組み合わせて掛ける順序は「[未ログインの投稿の保護](../security/008-anonymous-submission-protection.md)」に従う。
 
 ## Worker単位のIP制限
 

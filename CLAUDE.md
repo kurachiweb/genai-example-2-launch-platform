@@ -51,6 +51,7 @@
 - フロントエンドサーバーに中継の経路を追加する前に: [中継の経路の追加規約](docs/GUIDES/tech/frontend/003-frontend-server-security.md#中継の経路の追加規約)
 - 画面で外部のスクリプト・画像・接続先・埋め込みを使う前に: [許可先の登録](docs/GUIDES/tech/frontend/003-frontend-server-security.md#許可先の登録)
 - 画面でAPIサーバーのデータを取得・変更する処理を書く前に: [取得の補助とloader](docs/GUIDES/tech/frontend/006-data-fetching.md#取得の補助とloader)
+- 表示中の画面のデータを定期的に取り直す処理を書く前に: [表示中の画面の定期再取得の使う場面](docs/GUIDES/tech/frontend/010-live-refresh-queries.md#使う場面)
 - フロントエンドのGraphQLの操作を追加・変更する前に: [操作の置き場所と名前](docs/GUIDES/tech/coding/004-graphql-communication.md#操作の置き場所と名前)
 - 利用者の入力の検証規則を画面のフォームやAPIサーバーに書く前に: [規則の置き場所](docs/GUIDES/tech/coding/005-input-validation.md#規則の置き場所)
 - フロントエンドで想定外の失敗をエラートラッキングへ送る処理を書く前に: [送信の入口](docs/GUIDES/tech/frontend/007-frontend-observability.md#送信の入口)
@@ -77,6 +78,7 @@
 - バックエンドで想定内の失敗を返す処理やエラーコードを書く前に: [共通エラーと共通のエラー形式](docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#共通エラーと共通のエラー形式)
 - 経路にレート制限を掛ける前に: [制限の方式の選び方](docs/GUIDES/tech/backend/003-rate-limiting-and-bot-verification.md#制限の方式の選び方)
 - 経路やフォームの送信にbot判定を掛ける前に: [bot判定の検証](docs/GUIDES/tech/backend/003-rate-limiting-and-bot-verification.md#bot判定の検証)
+- ログインせずに送れる投稿を受け付ける経路を書く前に: [未ログインの投稿の保護の構成](docs/GUIDES/tech/security/008-anonymous-submission-protection.md#保護の構成)
 - テーブル定義のファイルを追加する前に: [テーブル定義の配置](docs/GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)
 - テーブルの主キーを定義する前に: [主キー](docs/GUIDES/tech/db/003-schema-conventions.md#主キー)
 - テーブルに作成日時・更新日時・論理削除のカラムを定義する前に: [共通カラム](docs/GUIDES/tech/db/003-schema-conventions.md#共通カラム)
@@ -208,11 +210,11 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │       │   ├── external/       # 各種外部APIの仕様(自然言語APIによるキーワード抽出・画像判定を含む)、料金、リクエスト制限、認証方式、エラーハンドリング及びリトライ戦略
 │       │   ├── db/             # データベース設計原則、テーブル・カラムの命名規則、マイグレーションの生成と適用の手順、データベース固有の制約と対処、全文検索の索引の設計と同期・照合・再構築、下書きと公開した版の管理
 │       │   ├── backend/        # バックエンドのコーディングルール ... アーキテクチャ設計(依存性注入を含む)、API設計
-│       │   ├── frontend/       # フロントエンドのコーディングルール ... アクセシビリティ規則、マークアップ規約、コンポーネント共通化対象、開発時とデプロイ前の起動方法、マークダウンの入力欄と表示部品
+│       │   ├── frontend/       # フロントエンドのコーディングルール ... アクセシビリティ規則、マークアップ規約、コンポーネント共通化対象、開発時とデプロイ前の起動方法、マークダウンの入力欄と表示部品、表示中の画面の定期再取得
 │       │   ├── coding/         # バックエンド/フロントエンド共通のコーディングルール ... JavaScript・TypeScriptの記法、設定ファイルの記述規約と基底設定の継承、整形検査・静的解析・型検査のコマンド、依存パッケージの版管理、共有ディレクトリの配置方式、GraphQL通信、入力値バリデーション
 │       │   ├── testing/        # テスト方針(テストの種別と命名規約、実行コマンド)、カバレッジ設定、IaC定義のテストとCIでのE2Eテストの実行方法、デプロイ後のスモークテスト、TDDの進め方、E2Eテストツールの版の更新手順
 │       │   ├── operations/     # 運用ガイド ... デプロイ手順(初回の準備・stagingへのデプロイ・prodへのリリース・hotfix)、障害対応、ロールバックと復旧、決済データ操作
-│       │   └── security/       # 包括的なセキュリティガイド、認証認可設計、シークレット管理、CIのシークレットの供給経路とリポジトリ保護、マークダウンのサニタイズ、アップロードの安全対策、システム監視及び対応方針
+│       │   └── security/       # 包括的なセキュリティガイド、認証認可設計、シークレット管理、CIのシークレットの供給経路とリポジトリ保護、マークダウンのサニタイズ、アップロードの安全対策、未ログインの投稿の保護、システム監視及び対応方針
 │       └── service/            # 本プロジェクト特有の資料
 │           ├── overview/       # サービス概要、コンセプト、料金及びプラン体系
 │           ├── features/       # 国際化方針や決済実装方針など特筆すべき機能仕様

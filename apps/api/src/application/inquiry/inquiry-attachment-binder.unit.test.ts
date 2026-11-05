@@ -20,7 +20,7 @@ const OTHER_USER_ID = '01JC0000000000000000000U02';
 const COUNT_MESSAGE = 'ファイルは20個以内で選択してください。';
 const TOTAL_MESSAGE = 'ファイルは合計20MB以内で選択してください。';
 const INVALID_MESSAGE =
-  '添付ファイルを確認できませんでした。もう一度選択してください。';
+  '添付できないファイルがあります。削除してから送信してください。';
 
 const fileOf = (
   id: string,

@@ -112,7 +112,7 @@ describe('inquiryAttachmentsInvalidError', () => {
 
   test('無効なIDの違反は、無効なファイルごとに要求の最初の位置の欄の詳細を持つ', () => {
     const message =
-      '添付ファイルを確認できませんでした。もう一度選択してください。';
+      '添付できないファイルがあります。削除してから送信してください。';
 
     const error = inquiryAttachmentsInvalidError(
       { kind: 'invalid', fileIds: ['file-c', 'file-a'] },

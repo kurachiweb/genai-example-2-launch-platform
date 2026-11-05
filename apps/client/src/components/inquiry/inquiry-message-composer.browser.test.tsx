@@ -221,7 +221,7 @@ describe('InquiryMessageComposer', () => {
   test('サーバーが確認できないとしたファイルを一覧で示し、添付の欄へフォーカスを移す', async () => {
     const upload = stubUploadFetch();
     const message =
-      '添付ファイルを確認できませんでした。もう一度選択してください。';
+      '添付できないファイルがあります。削除してから送信してください。';
     executeGraphQL.mockImplementation(() =>
       rejectWith(
         new GraphQLClientError({

@@ -67,7 +67,7 @@ const removeButton = (fileName: string) =>
   page.getByRole('button', { name: `${fileName}を削除` });
 
 const INVALID_ATTACHMENT_MESSAGE =
-  '添付ファイルを確認できませんでした。もう一度選択してください。';
+  '添付できないファイルがあります。削除してから送信してください。';
 
 const renderForm = () =>
   renderInRouter(
@@ -402,7 +402,7 @@ describe('MemberInquiryForm', () => {
       '確認できないファイル',
       'input.fileIds.0',
       'invalid',
-      '添付ファイルを確認できませんでした。もう一度選択してください。',
+      '添付できないファイルがあります。削除してから送信してください。',
     ],
   ])(
     'サーバーが返した添付の%sを、添付の欄のエラーにして欄へフォーカスを移す',

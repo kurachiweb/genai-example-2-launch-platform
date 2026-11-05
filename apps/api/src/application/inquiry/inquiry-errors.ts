@@ -150,7 +150,7 @@ export const INQUIRY_ATTACHMENTS_INVALID_MESSAGES: Readonly<
 > = Object.freeze({
   'too-many': `ファイルは${String(INQUIRY_ATTACHMENT_LIMITS.maxCount)}個以内で選択してください。`,
   'too-large': `ファイルは合計${String(INQUIRY_ATTACHMENT_LIMITS.maxTotalBytes / BYTES_PER_MEGABYTE)}MB以内で選択してください。`,
-  invalid: '添付ファイルを確認できませんでした。もう一度選択してください。',
+  invalid: '添付できないファイルがあります。削除してから送信してください。',
 });
 
 const attachmentDetailsOf = (

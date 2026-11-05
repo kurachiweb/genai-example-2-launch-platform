@@ -286,14 +286,14 @@
   - 完了状態: 全アプリの一括検査とテストの一括実行が成功し、カバレッジの閾値を満たす
   - _Requirements: 16.1, 16.3, 16.6_
 
-- [ ] 12. 文書
-- [ ] 12.1 (P) 技術ドキュメント2本を書く
+- [x] 12. 文書
+- [x] 12.1 (P) 技術ドキュメント2本を書く
   - `security/008-anonymous-submission-protection.md`に未ログインの投稿の保護(bot判定と厳密な回数制限の順序、キーのハッシュ化、不明なIPの扱い、ログイン中の利用者を未ログインの経路から除く判定、状態の変更日時による保持期間の削除)を、`frontend/010-live-refresh-queries.md`に表示中の画面の定期再取得(間隔・非表示のタブ・画面へ戻った時・送信後の無効化・既定値との関係・テストでの時間の進め方)を、プロジェクト名やサービス固有の値を含めずに書き、各README.mdへ1行ずつ追記する
   - 完了状態: 2文書と索引が追加され、文書の整形と静的解析の検査に通る
   - _Boundary: InquiryDocs_
   - _Requirements: 16.4_
 
-- [ ] 12.2 サービス仕様・オンボーディング・CLAUDE.mdを更新する
+- [x] 12.2 サービス仕様・オンボーディング・CLAUDE.mdを更新する
   - ページ配置(`/contact`の状態ごとのフォームと自分の一覧(前後のページ)・停止中の表示・チャットの定期再取得・管理画面の問い合わせとカテゴリのページの区画の分担)、文言規則(本specの文言と通知メールの要点)、データ保持期間の一覧(ログインの問い合わせ・回数制限のカウント・停止中の利用者の送信)、日次タイムライン(ジョブの表に本specの1行)、データエクスポートの`inquiries.json`(管理者の添付が無いこと・現在のカテゴリ名・問い合わせとメッセージの並び)を更新する
   - `docs/onboardings/project-values.md`の既存の節にジョブ・波及処理・メール種別・用途・閲覧の方針・監査ログの操作種別の値を足し、利用者側のbot判定のactionと回数制限の規則の節を新設して値を記載する。CLAUDE.mdの技術規則の参照先に未ログインの投稿の保護の文書へのリンクを加える
   - 完了状態: 各文書が更新され、文書の整形と静的解析の検査に通り、CLAUDE.mdのリンク先(12.1の文書)が存在する
@@ -341,3 +341,5 @@
 - 11.1: E2Eは`e2e/client/inquiry/inquiry-contact.e2e.test.ts`(3件。既存の`e2e/client/auth/auth-test.ts`の送信元IPの名乗り・`account-steps.ts`・`e2e/support/local-d1.ts`を再利用し、期待の文言はアプリのメッセージの定数から読む)。停止はメールアドレスで`UPDATE users ... RETURNING id`し1行であることを確かめる(design.mdのIDの指定と異なる)。D1を読むため`@smoke`は付けない。実行はapi・event・clientを起動して`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/client/inquiry --project client`(ルートの`test:e2e:dev-and-preview`の両段階でも成功)。説明を`docs/onboardings/README.md`のE2Eの節に足した
 - 11.2: E2Eは`e2e/admin/inquiries.e2e.test.ts`(返信と通知メールと添付のダウンロード、対応済への追加メッセージで未対応へ戻りダッシュボードの件数が増える、未ログインの詳細)と`e2e/admin/inquiry-categories.e2e.test.ts`(追加→選択→削除で「その他」へ付け替え)。管理者は`signInAsNewAdmin(page, { role: 'moderator' })`。利用者側の送信の手順は11.1のテストから`e2e/client/inquiry/inquiry-steps.ts`へ移し、adminのテストは`e2e/admin/client-page-test.ts`の`clientPage`のfixture(別の送信元IP、`E2E_CLIENT_URL`)で利用者側を開く(通知のリンクはAPIの`CLIENT_SITE_ORIGIN`なので同じオリジンに揃える)。ダッシュボードの件数は他のテストのデータも数えるため増えたことだけを確かめる(並行するclientのテストで偽の成功はあり得るが、偽の失敗は無い)。実行はapi・event・client・adminを起動して`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/admin/inquiries.e2e.test.ts e2e/admin/inquiry-categories.e2e.test.ts --project admin`。`e2e/support/reachability.unit.test.ts`はポート48044が使われている間だけ失敗する既存の環境依存。testing/001は複数の対象のテストが使う補助を`e2e/support/`に置くとするが、`e2e/client/inquiry/inquiry-steps.ts`・既存の`e2e/client/auth/account-steps.ts`はadminのテストからも読まれる
 - 11.3: 本specのソースは単体・Workers統合・ブラウザの全種別でファイルごと行・関数80%以上(計測の対象外は型だけのファイル・ルート・adminの登録の一覧・自動生成・テストの補助で既存の設定どおり)。clientの`inquiry-contact.ts`にテストを足し、adminの不安定なブラウザテスト(Radixの選択欄が閉じた後にフォーカスを戻す)を直した。bot判定はapiの`stubExternalServices`とclientの偽のTurnstileで外部へ通信しない。パッケージの差分なし。返信・追加メッセージ・ニックネーム・問い合わせの本文の違反の文言を`common-lib/inquiry/inquiry-input-rules.ts`の`GUEST_NICKNAME_MESSAGES`・`INQUIRY_BODY_MESSAGES`・`CHAT_MESSAGE_MESSAGES`へまとめ、api・client・adminが読む(legal-pagesの`CHANGE_SUMMARY_MESSAGES`の前例)。「カテゴリを選択してください。」の写しはapi・clientに残る。coding/005の「規則の置き場所」の表に「判定と文言を共有しスキーマは各側で包む」形が無い
+- 12.1: `docs/GUIDES/tech/security/008-anonymous-submission-protection.md`と`frontend/010-live-refresh-queries.md`を書き、各README・tech/README.md・ルートのREADME.md・CLAUDE.mdのディレクトリ構成の行を更新した(tech/README.mdの「本索引は変更しない」とは食い違うがlegal-pagesの7.3の前例)。004・005・006・backend/003から新しい文書へリンクし、005の定期再取得の記述を010への1行に縮めた。`useSuspenseQuery`は数値の`staleTime`を最小1秒に切り上げる(010に記載)。12.2への申し送り: (1)`project-values.md`に008・010のプレースホルダーの値を載せる(`<投稿の用途>`=`inquiry-guest`、ルール`inquiry-guest:ip`、`<回数制限のログの名前>`=`guest-rate-limit`、`<不明なIPのログの理由>`=`guest-inquiry-ip-missing`、`<定期再取得の間隔>`=30秒(`LIVE_REFRESH_INTERVAL_MS`))。(2)CLAUDE.mdの技術規則の参照先に008へのリンク(010も足すか判断)。(3)005の「問い合わせの表示」の節(1.5で入った`Inquiry*`の部品・「チャット」)は`docs/GUIDES/tech`の規約に照らしてサービス固有のため汎用の書き方に直す
+- 12.2: ページ配置(002)・文言規則(003。本specの画面・メール・エラーの文言を網羅し、scratchpadの`check-inquiry-copy.ts`で欠け0件)・データ保持期間(legal/001)・日次タイムライン(overview/007)・データエクスポート(features/001、現在のカテゴリ名・管理者の添付なし・並び)・`project-values.md`(「問い合わせ」の節を新設、bot判定のactionと回数制限の節、ジョブ・波及処理・メール種別・用途・閲覧の方針・ログのカテゴリ、008・010のプレースホルダーの値)・CLAUDE.md(008・010へのリンク)を更新し、005の問い合わせの節を汎用の書き方に直した。サーバーの無効な添付の文言を一覧の案内に揃え「添付できないファイルがあります。削除してから送信してください。」にした(api・clientのテストとdesign.mdの表も)。ログのカテゴリはinfra/004ではなく`project-values.md`に置いた
