@@ -42,9 +42,9 @@ const SHARED_DIRECTORY_RULES: Linter.Config[] = [
               message: RUNTIME_MESSAGE,
             },
             {
-              group: ['**/db/**'],
+              group: ['**/db/**', 'drizzle-orm*'],
               message:
-                '共有コードのcoreはDBスキーマに依存できません。DBの型が必要な契約はworkersに置いてください。',
+                '共有コードのcoreはDBスキーマとDrizzle ORMに依存できません。DBの型(接続・一括の書き込みの文など)が必要な契約はworkersに置いてください。',
             },
             APP_SOURCE_RESTRICTION,
           ],

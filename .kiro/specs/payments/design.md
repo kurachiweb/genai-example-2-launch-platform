@@ -196,7 +196,7 @@ apps/
 │   │   ├── identifiers.ts                           # PAYMENTS_TYPES(Symbol.for('payments.<名前>')の凍結したオブジェクト、identifiers.unit.test.ts)
 │   │   ├── purchase-kind-contract.ts                # 購入の可否と内容の側: PaymentsEnv・PurchaseOfferPolicy・PurchaseOfferRegistration・FulfillablePurchase・SubscriptionChange・PurchaseKindRegistry(型だけ)
 │   │   ├── purchase-kind-registry.ts                # 登録の検証と購入種別からの解決、定期課金の受け取り口の名前の検証
-│   │   ├── ports.ts                                 # StripeGateway・StripeWebhookVerifier・各ストアの文を返さない操作・PaymentRefunds・OpenCheckoutExpirer・PaymentReflector・PurchaseNotifier・PriceCatalog・CustomerDirectory・PaymentHistoryExport・PaymentRevenueReport・RevenuePeriod(型だけ)
+│   │   ├── ports.ts                                 # StripeGateway・StripeWebhookVerifier・各ストアの文を返さない操作・PaymentRefunds・OpenCheckoutExpirer・PaymentReflector・PurchaseNotifier・PriceCatalog・CustomerDirectory・PaymentHistoryExport・PaymentRevenueReport・RevenuePeriod・反映の指示と結果(ReflectionInstruction・ReflectionOutcome)・ストアの値の型(型だけ)
 │   │   ├── purchase-rules.ts                        # 状態の前進・有効期限・受付期限・反映の期限・拒否の理由
 │   │   ├── refund-rules.ts                          # 金額の検証・Stripeの返金理由への対応
 │   │   ├── stripe-event-mapping.ts                  # 通知を反映の指示へ正規化(受け付ける種類の一覧)
@@ -636,7 +636,7 @@ export declare const PAYMENTS_TYPES: {
 import type { ServiceIdentifier } from 'inversify';
 
 export interface PaymentsEnv {
-  readonly STRIPE_API_KEY: string | undefined; // staging・prodだけで必須。未設定なら決済の機能だけが縮退する
+  readonly STRIPE_API_KEY?: string | undefined; // staging・prodだけで必須。未設定なら決済の機能だけが縮退する
   readonly PAYMENTS_SMOKE_ENABLED: 'true' | 'false';
   readonly CLIENT_SITE_ORIGIN: string;
 }
@@ -1113,7 +1113,7 @@ export interface PaymentRecordStatements {
     record: NewPaymentRecord,
     guard: { readonly purchaseId: string; readonly expectedToken: string },
   ): GuardedStatement;
-  upsertByReference(record: NewPaymentRecord): BatchItem<'sqlite'>; // 発生時刻が新しくないときだけ更新(請求・返金)
+  upsertByReference(record: NewPaymentRecord): BatchItem<'sqlite'>; // 記録済みの発生時刻が受け取った発生時刻より新しくないときだけ更新(古い通知で巻き戻さない。請求・返金)
   insertDisputeStage(record: NewPaymentRecord): BatchItem<'sqlite'>; // (stripe_reference, kind, status)の一意キーで重複を無視
 }
 export interface StripeObjectStatements {

@@ -77,7 +77,7 @@ graph LR
 
 - 矢印の先は元を読み込めるが、元は先を読み込めない。逆向きのimportは静的解析で禁止する。
 - 元のすべてを読み込めるわけではない。`domain`・`application`は共通ライブラリの`workers`を、`domain`はDBディレクトリを、`application`はDBディレクトリの接続を読み込めない(「[位置ごとの禁止import](#位置ごとの禁止import)」)。
-- 共通ライブラリの`core`はDBディレクトリを読み込まない。データベースの型が必要な契約は`workers`に置く。
+- 共通ライブラリの`core`はDBディレクトリとDrizzle ORM(`drizzle-orm`とそのサブパス)を型だけのimportも含めて読み込まない。データベースの型(接続・一括の書き込みの文の`BatchItem`など)が必要な契約は`workers`に置く。
 - 複数のアプリや別の機能の`application`が受け取る契約(ポートのインターフェースと、その入出力の型)と依存の識別子は、共通ライブラリの`core`に置く。`workers`には、その契約の実装(D1・外部APIなどへのアクセス)と、実装を束縛するモジュールだけを置く。`application`は`workers`を型だけのimportでも読み込めないため、受け取る契約や識別子を`workers`に置くと、受け取る側が読み込めない。
   - 例: 要求のセッションの読み取りだけの形と主体の型(`core/session/`)、ログイン中の利用者を確かめる口とその利用者の読み取りの形(`core/identity/`)、監査ログの記録の口と準備済みの記録・記録の入力の型、認可を通った管理者の形(`core/admin/`)。どれも提供する機能以外のユースケースが引数や注入で受け取る。
   - 契約の実装が提供する機能のポート(ストアなど)を使う場合は、実装をその機能の`application`に残し、合成ルートで`core`の識別子へ束縛する。受け取る側は`core`の契約と識別子だけを読み込み、提供する機能の`application`・`domain`を読み込まない。
@@ -95,12 +95,12 @@ graph LR
 | `src/domain/**`                                                    | `**/application/**`・`**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`drizzle-orm*`・`cloudflare:*`・`**/<共通ライブラリの配置先>/workers/**`・`**/<DBディレクトリの配置先>/**` |
 | `src/application/**`                                               | `**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`cloudflare:*`・`**/<共通ライブラリの配置先>/workers/**`・`**/<DBディレクトリの配置先>/client*`                                 |
 | `src/infrastructure/**`・`src/presentation/**`                     | `**/composition/**`                                                                                                                                                                                        |
-| `<共通ライブラリの配置先>/core/**`(検査担当のみ)                   | `**/workers/**`・`cloudflare:*`・`**/<DBディレクトリの配置先>/**`・`**/src/**`・`hono`(型だけのimportは許す)                                                                                               |
+| `<共通ライブラリの配置先>/core/**`(検査担当のみ)                   | `**/workers/**`・`cloudflare:*`・`**/<DBディレクトリの配置先>/**`・`drizzle-orm*`・`**/src/**`・`hono`(型だけのimportは許す)                                                                               |
 | `<共通ライブラリの配置先>/workers/**`(検査担当のみ)                | `**/src/**`                                                                                                                                                                                                |
 | `<DBディレクトリの配置先>/**`(検査担当のみ)                        | `**/<共通ライブラリの配置先>/**`・`**/src/**`・`hono`・`cloudflare:*`・`drizzle-orm/sqlite-core`の`sqliteTable`・`sqliteTableCreator`                                                                      |
 | `<DBディレクトリの配置先>/**/*.worker.test.{ts,tsx}`(検査担当のみ) | 上の行から`cloudflare:*`を除いたもの                                                                                                                                                                       |
 
-- 共通ライブラリの`core`の`hono`は、`@typescript-eslint/no-restricted-imports`の`allowTypeImports: true`で型だけのimport(`import type { Hono } from 'hono'`)を許す。モジュールの契約がHonoのアプリの型を参照するためである。型だけのimportは実行時に残らないため、`core`がHonoなしで動くことは変わらない。`workers`・`cloudflare:*`・DBディレクトリは型だけのimportも禁止する。
+- 共通ライブラリの`core`の`hono`は、`@typescript-eslint/no-restricted-imports`の`allowTypeImports: true`で型だけのimport(`import type { Hono } from 'hono'`)を許す。モジュールの契約がHonoのアプリの型を参照するためである。型だけのimportは実行時に残らないため、`core`がHonoなしで動くことは変わらない。`workers`・`cloudflare:*`・DBディレクトリ・Drizzle ORMは型だけのimportも禁止する。
 - 共有ディレクトリ(共通ライブラリの`core`・`workers`とDBディレクトリ)は利用側アプリの`src`を読み込まない。共有ディレクトリは複数のアプリへ配置されるため、あるアプリの層や合成ルートに依存すると、他のアプリへ配置したときに解決できない。アプリ固有の型や値は、合成ルートから引数で渡す。
 - DBディレクトリのWorkers統合テストは、D1のバインディングをworkerdの実行環境(`cloudflare:workers`の`env`)から受け取るため、`cloudflare:*`だけを許す。
 - DBディレクトリでテーブルを`sqliteTable`で定義すると列名がスネークケースへ変換されないため、`snakeCase.table`を使う(「[命名規則](../db/001-drizzle-migrations-on-d1.md#命名規則)」)。

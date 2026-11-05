@@ -43,7 +43,7 @@
   - _Requirements: 15.1, 15.2, 15.6, 15.7_
 
 - [ ] 2. 共有の契約と純粋な規則
-- [ ] 2.1 購入種別の口・定期課金の受け取り口・各ポートの契約と、登録の検証を作る
+- [x] 2.1 購入種別の口・定期課金の受け取り口・各ポートの契約と、登録の検証を作る
   - 先に、同じ購入種別の重複登録で例外になること、`enabled`が偽の登録と未登録の購入種別が解決されないこと、`enabled`で`PAYMENTS_SMOKE_ENABLED`を見る仮の登録が`false`の環境で解決されないこと(疎通確認用の購入種別の本物は5.7で作るため、テストは仮の登録で書く)、`fulfillment`を持つ登録を渡しても同じ値が解決されること、定期課金の受け取り口の名前の形式と重複の検証を確かめる単体テストを書く
   - 先に、`core/payments/identifiers.unit.test.ts`で、`PAYMENTS_TYPES`の各値が`Symbol.for('payments.<名前>')`であり、オブジェクトが凍結されていることを確かめる
   - `core/payments`(application層と後続specが読み込む。`Database`・`BatchItem`・`workers`・`apps/db`を読み込まない)に、購入の内容(価格の種類・数量・対象・二重決済の鍵・決済期限・受付期限・反映の期限・最終確認画面の表示事項・bot判定の要否)、購入の可否、購入種別の登録のうち可否と内容の側、定期課金の状態の変化(解約の予定時刻を含む)の型と、登録の解決(登録の型を型引数に取る)を作る
@@ -352,3 +352,4 @@
 - 1.1: 決済の設定の検証の規則は`backend-lib/core/payments/payments-env.ts`、オリジンの形式の判定は`backend-lib/core/env/http-origin.ts`の`isHttpOrigin`にある。Workers統合テストのStripeのテスト用のキーは、シークレットの検出の誤検知を避けるため文字列を連結して作る
 - 1.4: LinkはCSPに`https://link.com`と`https://*.link.com`(frame-src・connect-src・img-src)を要するが、frontend-libの`ORIGIN_PATTERN`はワイルドカードを拒否する(research.mdの「タスク1.4の調査」)。10.1で扱いを決める
 - 1.4: 制限付きキーの権限は`docs/GUIDES/tech/operations/004-payment-data-operations.md`の表が正(Stripeに単独の返金の権限は無く「Charges and Refunds」)。Stripeの呼び出しを加えるタスクは表と突き合わせる
+- 2.1: 反映の指示`ReflectionInstruction`と結果`ReflectionOutcome`は`core/payments/ports.ts`にある(2.3の正規化はここから型を読み込み、二重に定義しない)。`lib/core/**`は`drizzle-orm*`を読み込めない(apiのESLintが共有ディレクトリを検査する)
