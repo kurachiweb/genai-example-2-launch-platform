@@ -7,6 +7,8 @@ import {
   loadAdminInquiryPage,
 } from '../src/graphql/admin-inquiries.ts';
 import {
+  AdminChangeInquiryStatusDocument,
+  type AdminChangeInquiryStatusMutationVariables,
   AdminInquiriesDocument,
   type AdminInquiriesQuery,
   type AdminInquiriesQueryVariables,
@@ -15,6 +17,8 @@ import {
   AdminInquiryDocument,
   type AdminInquiryQuery,
   type AdminInquiryQueryVariables,
+  AdminReplyToInquiryDocument,
+  type AdminReplyToInquiryMutationVariables,
   type AdminRole,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
@@ -220,6 +224,17 @@ export type InquiryHandler = (
   variables: AdminInquiryQueryVariables,
 ) => Promise<unknown>;
 
+export type ReplyHandler = (
+  variables: AdminReplyToInquiryMutationVariables,
+) => Promise<unknown>;
+
+export type ChangeStatusHandler = (
+  variables: AdminChangeInquiryStatusMutationVariables,
+) => Promise<unknown>;
+
+const unexpectedOperation = (): Promise<unknown> =>
+  Promise.reject(new Error('想定していない操作が実行されました。'));
+
 const detailById: InquiryHandler = ({ id }) => {
   if (id === MEMBER_INQUIRY_ID) {
     return success({ adminInquiry: memberDetailOf() });
@@ -230,17 +245,21 @@ const detailById: InquiryHandler = ({ id }) => {
   return success({ adminInquiry: null });
 };
 
-// 一覧・カテゴリの選択肢・詳細・ログイン中の管理者の取得に応答し、一覧と詳細はテストが渡した応答にする
+// 一覧・カテゴリの選択肢・詳細・ログイン中の管理者の取得と、返信・ステータスの変更に応答し、一覧・詳細・変更はテストが渡した応答にする
 export function respondAdminInquiriesGraphQL(
   executeGraphQL: Mock,
   {
     role,
     inquiries = () => success(FIRST_PAGE),
     inquiry = detailById,
+    reply = unexpectedOperation,
+    changeStatus = unexpectedOperation,
   }: {
     readonly role: AdminRole;
     readonly inquiries?: InquiriesHandler;
     readonly inquiry?: InquiryHandler;
+    readonly reply?: ReplyHandler;
+    readonly changeStatus?: ChangeStatusHandler;
   },
 ): void {
   respondAdminGraphQL(executeGraphQL, {
@@ -256,6 +275,16 @@ export function respondAdminInquiriesGraphQL(
         AdminInquiryDocument,
         (variables: unknown) =>
           inquiry(variables as AdminInquiryQueryVariables),
+      ],
+      [
+        AdminReplyToInquiryDocument,
+        (variables: unknown) =>
+          reply(variables as AdminReplyToInquiryMutationVariables),
+      ],
+      [
+        AdminChangeInquiryStatusDocument,
+        (variables: unknown) =>
+          changeStatus(variables as AdminChangeInquiryStatusMutationVariables),
       ],
     ]),
   });

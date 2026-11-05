@@ -14,6 +14,9 @@ import type { AdminInquiryQuery } from '../../graphql/generated/graphql.ts';
 import { INQUIRY_DETAIL_TITLE } from '../inquiry/admin-inquiries-messages.ts';
 import { GuestInquiryDetail } from '../inquiry/guest-inquiry-detail.tsx';
 import { InquiryDetailActionsView } from '../inquiry/inquiry-detail-actions-view.tsx';
+import { InquiryReplyForm } from '../inquiry/inquiry-reply-form.tsx';
+import { InquiryStatusControl } from '../inquiry/inquiry-status-control.tsx';
+import { RoleGate } from '../layout/role-gate.tsx';
 import { MemberInquiryDetail } from '../inquiry/member-inquiry-detail.tsx';
 
 const routeApi = getRouteApi('/_authenticated/inquiries/$inquiryId');
@@ -42,6 +45,7 @@ export function InquiryDetailPage() {
   if (inquiry === undefined) {
     throw notFound();
   }
+  const withdrawn = inquiry.kind === 'member' && inquiry.withdrawn;
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-8">
@@ -54,6 +58,18 @@ export function InquiryDetailPage() {
         />
       ) : (
         <GuestInquiryDetail inquiry={inquiry} />
+      )}
+      {/* 退会済みの問い合わせは利用者のデータの保持のためだけに残り、返信もステータスの変更も受け付けない */}
+      {withdrawn ? null : (
+        <RoleGate minimum="moderator">
+          {inquiry.kind === 'member' ? (
+            <InquiryReplyForm inquiryId={inquiry.id} />
+          ) : null}
+          <InquiryStatusControl
+            inquiryId={inquiry.id}
+            status={inquiry.status}
+          />
+        </RoleGate>
       )}
       <InquiryDetailActionsView
         actions={INQUIRY_DETAIL_ACTIONS}

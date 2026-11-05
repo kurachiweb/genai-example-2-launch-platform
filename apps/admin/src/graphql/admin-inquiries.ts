@@ -13,6 +13,7 @@ import {
 } from '../../lib/start/router-context.ts';
 import { resolveBrowserDisplayPreferences } from '../../lib/utilities/datetime/display-preferences.ts';
 import { GraphQLClientError } from '../../lib/utilities/graphql/graphql-result.ts';
+import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import type { MediaImageView } from '../../lib/utilities/media/picture-sources.ts';
 import {
   type AdminInquirySearch,
@@ -27,6 +28,7 @@ import {
   type AdminInquiryCategoryOptionsQuery,
   AdminInquiryDocument,
   type AdminInquiryQuery,
+  AdminUnhandledInquiryCountDocument,
   type InquiryKind as GraphQLInquiryKind,
   type InquiryStatus as GraphQLInquiryStatus,
 } from './generated/graphql.ts';
@@ -115,6 +117,15 @@ export const INQUIRY_STATUS_OF: Readonly<
   REJECTED: 'rejected',
 });
 
+export const GRAPHQL_INQUIRY_STATUS_OF: Readonly<
+  Record<InquiryStatus, GraphQLInquiryStatus>
+> = Object.freeze({
+  open: 'OPEN',
+  in_progress: 'IN_PROGRESS',
+  resolved: 'RESOLVED',
+  rejected: 'REJECTED',
+});
+
 export const INQUIRY_KIND_OF: Readonly<
   Record<GraphQLInquiryKind, InquiryKind>
 > = Object.freeze({ MEMBER: 'member', GUEST: 'guest' });
@@ -128,6 +139,37 @@ export const adminInquiryCategoryOptionsQueryOptions = () =>
 
 export const adminInquiryQueryOptions = (id: string) =>
   graphqlQueryOptions(AdminInquiryDocument, { id });
+
+export interface ChangedInquiryStatus {
+  readonly status: GraphQLInquiryStatus;
+  readonly statusChangedAt: string;
+}
+
+// 変更の応答のステータスを表示中の詳細へ写し、メッセージなどの他の項目は次の取り直しに任せる
+export const withChangedInquiryStatus = (
+  data: AdminInquiryQuery | undefined,
+  { status, statusChangedAt }: ChangedInquiryStatus,
+): AdminInquiryQuery | undefined =>
+  data?.adminInquiry == null
+    ? data
+    : { adminInquiry: { ...data.adminInquiry, status, statusChangedAt } };
+
+// 一覧(ステータス・最後のメッセージの日時)と未対応の件数は表示していないため、古いものとだけして次に表示した時に取得し直させる
+export async function markInquirySummariesStale(
+  queryClient: QueryClient,
+): Promise<void> {
+  await Promise.all(
+    [
+      documentIdOf(AdminInquiriesDocument),
+      documentIdOf(AdminUnhandledInquiryCountDocument),
+    ].map((documentId) =>
+      queryClient.invalidateQueries({
+        queryKey: [documentId],
+        refetchType: 'none',
+      }),
+    ),
+  );
+}
 
 export const toAdminInquiryListPage = ({
   adminInquiries,
