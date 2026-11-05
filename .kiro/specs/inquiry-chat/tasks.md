@@ -79,7 +79,7 @@
   - _Boundary: InquiryCategoryRules, AttachmentSelection_
   - _Requirements: 1.4, 1.7, 6.1, 6.3_
 
-- [ ] 3. カテゴリのマスタ
+- [x] 3. カテゴリのマスタ
 - [x] 3.1 問い合わせのポートと識別子を定義し、カテゴリの一覧・追加・名前の変更・削除のユースケースを作る
   - 先に、ポートを偽物にして、一覧の並び、管理者向けの一覧に紐付く件数が付くこと、名前の規則の違反と重複の拒否、標準カテゴリの保護、削除で付け替えの件数が監査ログの詳細に入り、監査ログの準備が保存の前に行われることを確かめる単体テストを書く
   - 全ユースケースが使うストア・照会・メール・設定値・報告のポートと識別子をここで定義する。上流の契約は`backend-lib/core`(`session`・`identity`・`admin`・`media`)だけから読み込み、`application/identity`・`application/admin`は読み込まない
@@ -87,7 +87,7 @@
   - _Depends: 1.6_
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.7, 15.1_
 
-- [ ] 3.2 カテゴリのD1のストアを作る
+- [x] 3.2 カテゴリのD1のストアを作る
   - 先に、大文字小文字だけが異なる名前の追加・変更が重複として返ること、削除でログイン・未ログインの両テーブルの問い合わせが「その他」へ付け替わりカテゴリが消え監査ログが同じ一括の書き込みに入ること、標準カテゴリは条件により削除されないこと、カテゴリごとの紐付く件数が両テーブルの和になることを確かめるWorkers統合テストを書く
   - 完了状態: Workers統合テストが成功し、削除の途中の失敗で付け替え・削除・監査ログのいずれも残らない
   - _Depends: 1.7_
@@ -313,3 +313,4 @@
 - 2.1: 規則は`apps/api/src/domain/inquiry/inquiry-status-rules.ts`(`statusAfterUserMessage`・`checkReplyable`・`checkStatusChangeable`と`AdminOperationDenial`)。戻り値は`Extract`で絞り、`checkReplyable`は未ログインを先に、`checkStatusChangeable`は退会済みを先に判定する。`domain/admin/admin-account.ts`にも同名の`AdminOperationDenial`があるため、検索で混同しないこと
 - 2.2: 規則は`apps/api/src/domain/inquiry/inquiry-category-rules.ts`(`checkCategoryEditable`は標準カテゴリを`'protected'`、`sortCategories`は作成日時→IDの昇順で標準カテゴリを末尾)と`attachment-selection.ts`(`checkAttachmentSelection`は重複IDを1件にし、件数超過→無効なID→合計超過の順。無効なIDは重複を除き要求の順)。候補の`ownerKind`は`lib/core`の`MediaOwner['kind']`。4.1への申し送り: (1)候補の`deleted`は`deletedAt !== null || eraseRequested`にする(`MediaFilesService.claimFailureOf`と同じ)。(2)候補も`claim`も紐付け済み(`attached`)を調べず、`D1MediaFileStore.attach`も紐付け済みのファイルを通すため、自分の添付を別のメッセージへ使い回せる。4.1で紐付け済みのファイルを無効として扱うかを決める
 - 3.1: ポートは`apps/api/src/application/inquiry/ports.ts`(設計のInquiryPortsと同じ構造で、インラインの型に`NewInquiryCategory`・`InquiryCategoryDeletion`・`MemberInquiryPage`・`NewAdminReply`・`AdminInquiryPage`・`AdminInquiryDetail`・`InquiryReplyNotification`・`InquiryIncidentKind`の名前を付けた)。識別子は`inquiry-types.ts`の`INQUIRY_TYPES`で、ユースケース・ポート・ジョブの19個(`GuestInquiryRateLimit`を含む)を先に定義した。`InquiryAttachmentReadPolicy`・`MemberInquiryWithdrawalHandler`は無いため、6.4・6.5で足す時は識別子の一覧を完全一致で確かめる`inquiry-types.unit.test.ts`も直す。エラーは`inquiry-errors.ts`の`INQUIRY_ERRORS`(`inquiry_attachments_invalid`は4.1で足す)。設計に無い`inquiry_category_not_found`(404、「カテゴリが見つかりません。」)を足し、design.mdの表にも加えた。名前の重複のエラーは詳細`{ field: 'name', code: 'name-taken' }`を持つ。カテゴリ名の規則はcommon-libの`checkInquiryCategoryName`(禁止文字→空→長すぎる。共有の`checkCategoryName`は変えていないため、管理画面の共有のフォームは禁止文字を調べない)で、文言「カテゴリ名に使用できない文字が含まれています。」は12.2で文言規則へ。ユースケースの単体テストは`application/admin`を読めないため偽の`AuditLogRecorder`を使い、操作種別の詳細の鍵は検証しない。削除は`countLinked`の件数を監査ログに残し、実際に付け替えた件数を返す。3.2への申し送り: `countLinked`・`countLinkedByCategory`と付け替えの`UPDATE`は同じ範囲(論理削除したログインの問い合わせを含めるか)で数える。送信(4.2・4.3)のカテゴリの確認と削除が重なった場合の扱いを確かめる
+- 3.2: ストアは`apps/api/src/infrastructure/inquiry/d1-inquiry-category-store.ts`(`D1InquiryCategoryStore`)。標準カテゴリの保護と不在は`AuditGuard`の`condition`(`EXISTS(... id = ? AND system_default = 0)`)で、偽なら一括の書き込み全体が取り消され`not-found`(名前の変更にも付けた)。件数と付け替えは論理削除した(退会者の)ログインの問い合わせも含める(外部キーで残すと削除できないため。db/003の`notDeleted`の原則の例外で、理由をコメントに書いた)。付け替えで`updated_at`も更新する。消したカテゴリを参照する保存は外部キーの違反で失敗し、Drizzleが包むため4.2・4.3・6.1は`cause`をたどってカテゴリの不在に変える。テストの補助は`infrastructure/inquiry/testing/inquiry-store-fixtures.ts`(「その他」を残して5テーブルと監査ログを消すリセット、行の挿入、型の表明で作る`PreparedAuditEntry`。利用者はidentityの`lib/workers/identity/testing/identity-store-fixtures.ts`で入れる)。途中の失敗は一時的なSQLiteのトリガーで起こす
