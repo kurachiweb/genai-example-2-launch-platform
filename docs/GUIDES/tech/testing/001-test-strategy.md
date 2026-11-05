@@ -370,7 +370,9 @@ test('トップページの見出しを表示する', async ({ page }) => {
 
 - ブラウザは、ブラウザテストと同じく`resolveBrowserLaunchOptions`の起動オプションで共有Chromiumを起動する。
 - E2Eテストのカバレッジは計測しない。
-- 複数の対象のテストが使う補助は`e2e/support/`に置き、テストごとに作らない。定期実行を起こすテストは、`e2e/support/scheduled-trigger.ts`の`triggerScheduled`を使う(「[E2Eからの起動](../infra/003-async-processing.md#e2eからの起動)」)。
+- 複数の対象のテストが使う補助は`e2e/support/`に置き、テストごとに作らない。`e2e/support/`に置くのは、特定の画面に依存しない汎用の補助(URLの解決・メールの読み取り・ローカルのD1への書き込みなど)と、複数の対象が共有する画面の検査(疎通確認の画面の検査など)と、多くのテストの前提を用意する共通の手順(管理者の用意など)である。
+- 特定の機能の画面を操作する手順(その機能の画面の入力と送信、画面からの値の読み取りなど)は、その画面を持つ対象のディレクトリ(`e2e/<対象名>/`)か、その下の機能ごとのディレクトリ(`e2e/<対象名>/<機能名>/`)に、`<手順の名前>-steps.ts`として置く(手順の名前は機能のディレクトリ名と一致しなくてよい)。別の対象のテストが、その画面で用意する状態を前提にする時(利用者の画面で作ったデータを管理者の画面で確かめるなど)は、その手順のファイルを置いた場所から読み込んでよい。特定の機能の画面の手順は、別の対象から読み込むためだけに`e2e/support/`へ移したり、読み込む側の対象のディレクトリに写したりしない。
+- 定期実行を起こすテストは、`e2e/support/scheduled-trigger.ts`の`triggerScheduled`を使う(「[E2Eからの起動](../infra/003-async-processing.md#e2eからの起動)」)。
 - 画面を持つアプリの応答のヘッダーは、`e2e/support/security-assertions.ts`の`findSecurityHeaderProblems`で、ページ(`page`)・ページ以外(`non-page`)・静的なファイル(`static-file`)の種類ごとに検査する。CSPの違反は、ページを開く前に`installCspViolationRecorder`で記録を始め、`readCspViolations`で読む(「[セキュリティヘッダー](../frontend/003-frontend-server-security.md#セキュリティヘッダー)」)。
 - 静的なファイルがWorkerを通らずに配信される(IP制限の数にも入らない)ことは、ビルド後の対象で、ページのHTMLが読み込む`/assets/*.js`(`builtAssetScriptUrlsOf`)の1つと名前の変わらない公開ファイル(`/favicon.ico`)の応答に、Workerが付ける項目(`Cache-Control`の`no-store`・`X-Robots-Tag`)が無いことを`findWorkerHeaderTraces`で確かめる。`/assets/*.js`は`Cache-Control`が`immutable`を含むことも`findImmutableCacheProblems`で確かめる(「[静的なファイルのヘッダー](../frontend/003-frontend-server-security.md#静的なファイルのヘッダー)」)。開発サーバーのHTMLは`/assets/*.js`を読み込まないため、飛ばしたことを`annotateSkippedCheck`で残す。
 - ハイドレーションの完了を示す合図は無く、その前に押したボタンは何もしない。ボタンの操作は、操作の効果(表示の変化)が画面に現れるまで押し直し、現れた後は押さない。応答の到着を合図に押し直すと、応答が遅い時に同じ要求を重ねて送る。初回表示の後に取得し直さないことは、ページを開く前から中継の経路への要求を記録し、効いた操作による要求だけが記録されていることで確かめる。押し直しは、効果が現れるまでの短い待ち(`e2e/support/hydration-retry.ts`の`REACTION_TIMEOUT_MS`)を、全体の期限(`RETRY_TIMEOUT_MS`)まで繰り返す。

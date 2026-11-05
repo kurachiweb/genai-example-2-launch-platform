@@ -161,6 +161,7 @@ async hide(commentId: string, audit: PreparedAuditEntry): Promise<void> {
 - 前後の空白(`\p{White_Space}`)を除いてから判定し、空なら`null`で保存する。
 - 上限は`AUDIT_REASON_MAX`(500書記素)で、APIサーバーと画面が同じ共用部品の`checkAuditReason`で数え、同じ文言で示す。
 - 画面の確認のダイアログと理由の入力欄は、理由の要否を操作種別に合わせる(「[管理画面の部品](../frontend/005-shared-components.md#管理画面の部品)」)。
+- 理由が`optional`の操作種別は、理由の入力欄を持たない確認(`reason="none"`の確認のダイアログや、理由を受け付けない共通部品の確認)から記録してよい。その操作の記録の理由は常に`null`になる。理由が`required`の操作種別は、理由の入力欄を持たない確認から記録できないため、理由を受け付けない共通部品を使う操作の種別は`required`にしない。
 
 ## 検索とカーソル
 
@@ -223,6 +224,7 @@ const reader = createFakeAuditLogReader({
 ### 記録を伴うテスト
 
 - 準備済みの記録は型の表明なしに組み立てられないため、記録を伴うユースケースの単体テストは、本物の`StoreAuditLogRecorder`に固定の操作種別のカタログと連番のID生成を渡し、`prepare`で作る。
+- 監査ログを持つ機能(`admin`)のapplication層を層の規則で読み込めない別の機能のユースケースは、`StoreAuditLogRecorder`を読み込めない。その単体テストは、`<共通ライブラリの配置先>/core/admin/audit-log.ts`の`AuditLogRecorder`の偽物を書き、`prepare`で受けた入力を記録して型の表明で`PreparedAuditEntry`を作って返してよい。この偽物は操作種別を検証しないため、単体テストではユースケースが`prepare`へ渡す入力(操作種別・対象・理由・詳細)と、ストアへ渡す準備済みの記録が`prepare`の返した値であることを確かめる。操作種別の検証(登録・理由の要否・詳細の鍵)は、操作種別の定義の単体テストと、合成ルートを通して本物の`StoreAuditLogRecorder`で記録するWorkers統合テスト(経路のテストなど)に任せる。
 - Workers統合テストは`infrastructure/admin/testing/admin-store-fixtures.ts`の`createAuditLogRecorder`・`readAuditLogSummaries`・`readAuditLogTargetIds`・`clearAdminTables`で、実際のD1に書いた監査ログと対象の行を確かめる。
 - 一括の書き込みの取り消しのテストでは、操作の取り消しと同時に監査ログも残らないことを確かめる。
 - 利用者を対象にする記録のテストでは、UUIDの仮名化IDを使う。UUIDの形でない偽の識別子は記録の検証で拒否される。

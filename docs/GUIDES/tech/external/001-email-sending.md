@@ -105,10 +105,11 @@ sequenceDiagram
 import { z } from 'zod';
 
 import { defineEmailKind } from '../email-kind.ts';
+import { linkUrlSchema } from './link-url.ts';
 
 const passwordResetInput = z.object({
   nickname: z.string().min(1),
-  resetUrl: z.url({ protocol: /^https$/u }),
+  resetUrl: linkUrlSchema,
   expiresAt: z.iso.datetime(),
 });
 
@@ -123,6 +124,7 @@ export const ACCOUNT_PASSWORD_RESET_KIND = defineEmailKind({
 
 - 名前は`<ドメイン>.<名詞句>`の形で、それぞれ小文字の英字で始まり、小文字の英数字の並びをハイフン1つでつなぐ。
 - 分類は`transactional`か`notification`である。配信停止の対象になるメールだけを`notification`にする。
+- メールの本文に載せるリンクのURLは、種別ごとに書かず`kinds/link-url.ts`の`linkUrlSchema`で検証する。`https:`のURLと、ホスト名が`localhost`の`http:`のURLだけを受け付ける。ローカル環境の画面のオリジンはHTTPSでないため、`http:`をローカルに限って許す。
 - `inputSchema`はテンプレートが使う値の検証規則である。メッセージの契約と同じく、検証の結果をもう一度検証しても同じ値になる規則に限り、日時はISO 8601の文字列で渡す(「[契約](../infra/003-async-processing.md#契約)」)。
 - `createEmailKindRegistry`は、名前の形式の誤り・名前の重複・分類の誤り・検証規則の欠落を`EmailKindRegistryError`で拒否する。
 - 疎通確認用の種別`email-delivery.smoke`(トランザクションメール)は共通ライブラリが持つ。
