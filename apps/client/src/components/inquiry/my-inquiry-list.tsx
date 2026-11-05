@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useId, useRef, useState } from 'react';
 
 import { DateTime } from '../../../lib/components/datetime/date-time.tsx';
 import { InquiryStatusBadge } from '../../../lib/components/inquiry/inquiry-status-badge.tsx';
 import { PageNavigation } from '../../../lib/components/navigation/page-navigation.tsx';
-import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { EmptyState } from '../../../lib/components/state/empty-state.tsx';
 import { LoadingSkeleton } from '../../../lib/components/state/loading-skeleton.tsx';
 import { PartialErrorState } from '../../../lib/components/state/partial-error-state.tsx';
@@ -20,7 +20,6 @@ import {
   myInquiriesQueryOptions,
   toMyInquiryPage,
 } from '../../graphql/inquiry-contact.ts';
-import { inquiryChatHref } from './inquiry-chat-href.ts';
 import {
   LAST_MESSAGE_AT_LABEL,
   MY_INQUIRIES_EMPTY_MESSAGE,
@@ -41,12 +40,13 @@ function MyInquiryRow({ item }: { readonly item: MyInquiryItem }) {
     <li className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <InquiryStatusBadge status={item.status} />
-        <PathLink
-          href={inquiryChatHref(item.id)}
+        <Link
+          to="/inquiries/$inquiryId"
+          params={{ inquiryId: item.id }}
           className="font-bold break-all text-primary underline-offset-4 hover:underline"
         >
           {item.categoryName}
-        </PathLink>
+        </Link>
       </div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         <dt className="text-muted-foreground">{SENT_AT_LABEL}</dt>

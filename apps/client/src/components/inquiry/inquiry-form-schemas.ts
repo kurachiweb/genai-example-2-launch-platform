@@ -1,4 +1,6 @@
 import {
+  CHAT_MESSAGE_MAX,
+  checkChatMessage,
   checkGuestNickname,
   checkInquiryBody,
   GUEST_NICKNAME_MAX,
@@ -21,13 +23,18 @@ const NICKNAME_MESSAGES: Readonly<Record<InquiryTextIssue, string>> =
     'too-long': `ニックネームは${limitFormat.format(GUEST_NICKNAME_MAX)}文字以内で入力してください。`,
   });
 
-const BODY_MESSAGES: Readonly<Record<InquiryTextIssue, string>> = Object.freeze(
-  {
+const bodyMessagesOf = (
+  max: number,
+): Readonly<Record<InquiryTextIssue, string>> =>
+  Object.freeze({
     'forbidden-character': 'メッセージに使用できない文字が含まれています。',
     empty: 'メッセージを入力してください。',
-    'too-long': `メッセージは${limitFormat.format(INQUIRY_BODY_MAX)}文字以内で入力してください。`,
-  },
-);
+    'too-long': `メッセージは${limitFormat.format(max)}文字以内で入力してください。`,
+  });
+
+const BODY_MESSAGES = bodyMessagesOf(INQUIRY_BODY_MAX);
+
+const CHAT_MESSAGE_MESSAGES = bodyMessagesOf(CHAT_MESSAGE_MAX);
 
 // 1つの欄には最初の1つの違反だけを示す
 const ruleOf = (check: (value: string) => string | undefined) =>
@@ -54,6 +61,11 @@ const body = ruleOf((value) => {
   return issue === undefined ? undefined : BODY_MESSAGES[issue];
 });
 
+const chatMessageBody = ruleOf((value) => {
+  const issue = checkChatMessage(value);
+  return issue === undefined ? undefined : CHAT_MESSAGE_MESSAGES[issue];
+});
+
 // 件数と合計の上限は、選んだ時点で添付の入力欄が検査する
 const fileIds = z.array(z.string());
 
@@ -73,3 +85,13 @@ export const MEMBER_INQUIRY_FORM_SCHEMA = z.object({
 });
 
 export type MemberInquiryFormInput = z.input<typeof MEMBER_INQUIRY_FORM_SCHEMA>;
+
+// 対象の問い合わせは入力欄を持たないため、スキーマの入力に含めず送信の時に足す
+export const INQUIRY_MESSAGE_FORM_SCHEMA = z.object({
+  body: chatMessageBody,
+  fileIds,
+});
+
+export type InquiryMessageFormInput = z.input<
+  typeof INQUIRY_MESSAGE_FORM_SCHEMA
+>;

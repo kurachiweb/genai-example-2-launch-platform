@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   GUEST_INQUIRY_FORM_SCHEMA,
+  INQUIRY_MESSAGE_FORM_SCHEMA,
   MEMBER_INQUIRY_FORM_SCHEMA,
 } from './inquiry-form-schemas.ts';
 
@@ -124,6 +125,49 @@ describe('MEMBER_INQUIRY_FORM_SCHEMA', () => {
   ])('%sを、APIサーバーと同じ文言で拒否する', (_label, override, message) => {
     const result = MEMBER_INQUIRY_FORM_SCHEMA.safeParse({
       ...VALID_MEMBER,
+      ...override,
+    });
+
+    expect(messagesOf(result)).toEqual([message]);
+  });
+});
+
+describe('INQUIRY_MESSAGE_FORM_SCHEMA', () => {
+  const VALID_MESSAGE = Object.freeze({
+    body: '  追加の情報です。\n',
+    fileIds: ['01JC0FILE0000000000000000A'],
+  });
+
+  test('本文は空白や改行を含めて値を変えずに、添付とともに出力する', () => {
+    expect(INQUIRY_MESSAGE_FORM_SCHEMA.parse(VALID_MESSAGE)).toEqual(
+      VALID_MESSAGE,
+    );
+  });
+
+  test('1,000書記素の本文と0件の添付を受け付ける', () => {
+    const result = INQUIRY_MESSAGE_FORM_SCHEMA.safeParse({
+      body: '👨‍👩‍👧‍👦'.repeat(1000),
+      fileIds: [],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test.each([
+    ['空白だけの本文', { body: '\n　' }, 'メッセージを入力してください。'],
+    [
+      '1,001書記素の本文',
+      { body: 'あ'.repeat(1001) },
+      'メッセージは1,000文字以内で入力してください。',
+    ],
+    [
+      '使用できない文字を含む本文',
+      { body: '本文\u0007' },
+      'メッセージに使用できない文字が含まれています。',
+    ],
+  ])('%sを、APIサーバーと同じ文言で拒否する', (_label, override, message) => {
+    const result = INQUIRY_MESSAGE_FORM_SCHEMA.safeParse({
+      ...VALID_MESSAGE,
       ...override,
     });
 

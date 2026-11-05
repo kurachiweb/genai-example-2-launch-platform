@@ -767,6 +767,8 @@ import { InquiryStatusBadge } from '<共通部品の配置先>/components/inquir
 
 - `InquiryAttachmentList`の`id`は、ダウンロードの中継の経路を組み立てるファイルの識別子である。呼び出す側はダウンロードのパスを渡さない。
 - 表示中のチャットを最新に保つ取得は、`utilities/query/live-refresh.ts`の`LIVE_REFRESH_QUERY_OPTIONS`をクエリの設定に重ねる(間隔30秒・非表示のタブで止める・画面へ戻った時に取り直す・鮮度0)。
+  - 鮮度0のままでは表示した時点でも取り直し、`loader`の取得やサーバー側の描画の直後に同じ取得を重ねるため、ページの`loader`は`staleTime: 0`を付けて毎回取得し、部品は`refetchOnMount: false`を重ねる。表示の直後の重複を避けたまま、別のページから戻った時もloaderが最新を取得する。
+  - 自動更新の`Switch`と`role="log"`の一覧は「[演出の停止手段の義務](004-accessibility-rules.md#演出の停止手段の義務)」に従う。`Switch`を切った間は`refetchInterval`を`false`にし、画面へ戻った時と送信の後の取り直しは止めない。
 
 ## 1ファイル1コンポーネントとshadcn/uiの分割
 

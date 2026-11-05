@@ -20,6 +20,7 @@ import { Route as LegalIndexRouteImport } from './routes/legal/index'
 import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as SystemStatusRouteImport } from './routes/system/status'
 import { Route as TermsIndexRouteImport } from './routes/terms/index'
+import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedSettingsSecurityRouteImport } from './routes/_authenticated/settings/security'
@@ -86,6 +87,12 @@ const TermsIndexRoute = TermsIndexRouteImport.update({
   path: '/terms/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedInquiriesInquiryIdRoute =
+  AuthenticatedInquiriesInquiryIdRouteImport.update({
+    id: '/inquiries/$inquiryId',
+    path: '/inquiries/$inquiryId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/',
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/legal/': typeof LegalIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
+  '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
@@ -177,6 +185,7 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalIndexRoute
   '/privacy': typeof PrivacyIndexRoute
   '/terms': typeof TermsIndexRoute
+  '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
@@ -201,6 +210,7 @@ export interface FileRoutesById {
   '/legal/': typeof LegalIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
+  '/_authenticated/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/security': typeof AuthenticatedSettingsSecurityRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/privacy/'
     | '/terms/'
+    | '/inquiries/$inquiryId'
     | '/settings/account'
     | '/settings/security'
     | '/auth/email-change/confirm'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/privacy'
     | '/terms'
+    | '/inquiries/$inquiryId'
     | '/settings/account'
     | '/settings/security'
     | '/auth/email-change/confirm'
@@ -269,6 +281,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/privacy/'
     | '/terms/'
+    | '/_authenticated/inquiries/$inquiryId'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/security'
     | '/auth/email-change/confirm'
@@ -380,6 +393,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/inquiries/$inquiryId': {
+      id: '/_authenticated/inquiries/$inquiryId'
+      path: '/inquiries/$inquiryId'
+      fullPath: '/inquiries/$inquiryId'
+      preLoaderRoute: typeof AuthenticatedInquiriesInquiryIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
       path: '/'
@@ -473,10 +493,12 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
+  AuthenticatedInquiriesInquiryIdRoute: typeof AuthenticatedInquiriesInquiryIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
+  AuthenticatedInquiriesInquiryIdRoute: AuthenticatedInquiriesInquiryIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

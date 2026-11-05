@@ -1,0 +1,34 @@
+query ClientMemberInquiry($id: ID!) {
+  memberInquiry(id: $id) {
+    id
+    category {
+      id
+      name
+    }
+    status
+    createdAt
+    messages {
+      id
+      sender
+      body
+      attachments {
+        id
+        originalFileName
+        contentType
+        byteSize
+      }
+      admin {
+        nickname
+        avatar {
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+        deleted
+      }
+      createdAt
+    }
+    canPost
+  }
+}

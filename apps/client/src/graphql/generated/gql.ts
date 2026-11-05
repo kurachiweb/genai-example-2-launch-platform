@@ -35,6 +35,8 @@ type Documents = {
     "mutation ClientVerifyEmail($token: String!) {\n  verifyEmail(token: $token)\n}": typeof types.ClientVerifyEmailDocument,
     "query ClientViewer {\n  viewer {\n    id\n    handle\n    nickname\n    emailVerified\n    status\n    totpEnabled\n  }\n}": typeof types.ClientViewerDocument,
     "mutation ClientWithdraw($input: ReAuthenticationInput!) {\n  withdraw(input: $input)\n}": typeof types.ClientWithdrawDocument,
+    "query ClientMemberInquiry($id: ID!) {\n  memberInquiry(id: $id) {\n    id\n    category {\n      id\n      name\n    }\n    status\n    createdAt\n    messages {\n      id\n      sender\n      body\n      attachments {\n        id\n        originalFileName\n        contentType\n        byteSize\n      }\n      admin {\n        nickname\n        avatar {\n          objectKey\n          fallbackFormat\n          width\n          height\n        }\n        deleted\n      }\n      createdAt\n    }\n    canPost\n  }\n}": typeof types.ClientMemberInquiryDocument,
+    "mutation ClientPostInquiryMessage($inquiryId: ID!, $input: InquiryMessageInput!) {\n  postInquiryMessage(inquiryId: $inquiryId, input: $input) {\n    id\n  }\n}": typeof types.ClientPostInquiryMessageDocument,
     "query ClientInquiryContactForm {\n  inquiryCategories {\n    id\n    name\n  }\n  inquiryComposer {\n    nickname\n    avatar {\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n}": typeof types.ClientInquiryContactFormDocument,
     "query ClientMyInquiries($after: String) {\n  myInquiries(after: $after) {\n    items {\n      id\n      category {\n        id\n        name\n      }\n      status\n      createdAt\n      lastMessageAt\n    }\n    nextCursor\n  }\n}": typeof types.ClientMyInquiriesDocument,
     "mutation ClientSubmitGuestInquiry($input: GuestInquiryInput!) {\n  submitGuestInquiry(input: $input)\n}": typeof types.ClientSubmitGuestInquiryDocument,
@@ -65,6 +67,8 @@ const documents: Documents = {
     "mutation ClientVerifyEmail($token: String!) {\n  verifyEmail(token: $token)\n}": types.ClientVerifyEmailDocument,
     "query ClientViewer {\n  viewer {\n    id\n    handle\n    nickname\n    emailVerified\n    status\n    totpEnabled\n  }\n}": types.ClientViewerDocument,
     "mutation ClientWithdraw($input: ReAuthenticationInput!) {\n  withdraw(input: $input)\n}": types.ClientWithdrawDocument,
+    "query ClientMemberInquiry($id: ID!) {\n  memberInquiry(id: $id) {\n    id\n    category {\n      id\n      name\n    }\n    status\n    createdAt\n    messages {\n      id\n      sender\n      body\n      attachments {\n        id\n        originalFileName\n        contentType\n        byteSize\n      }\n      admin {\n        nickname\n        avatar {\n          objectKey\n          fallbackFormat\n          width\n          height\n        }\n        deleted\n      }\n      createdAt\n    }\n    canPost\n  }\n}": types.ClientMemberInquiryDocument,
+    "mutation ClientPostInquiryMessage($inquiryId: ID!, $input: InquiryMessageInput!) {\n  postInquiryMessage(inquiryId: $inquiryId, input: $input) {\n    id\n  }\n}": types.ClientPostInquiryMessageDocument,
     "query ClientInquiryContactForm {\n  inquiryCategories {\n    id\n    name\n  }\n  inquiryComposer {\n    nickname\n    avatar {\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n}": types.ClientInquiryContactFormDocument,
     "query ClientMyInquiries($after: String) {\n  myInquiries(after: $after) {\n    items {\n      id\n      category {\n        id\n        name\n      }\n      status\n      createdAt\n      lastMessageAt\n    }\n    nextCursor\n  }\n}": types.ClientMyInquiriesDocument,
     "mutation ClientSubmitGuestInquiry($input: GuestInquiryInput!) {\n  submitGuestInquiry(input: $input)\n}": types.ClientSubmitGuestInquiryDocument,
@@ -172,6 +176,14 @@ export function graphql(source: "query ClientViewer {\n  viewer {\n    id\n    h
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation ClientWithdraw($input: ReAuthenticationInput!) {\n  withdraw(input: $input)\n}"): (typeof documents)["mutation ClientWithdraw($input: ReAuthenticationInput!) {\n  withdraw(input: $input)\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query ClientMemberInquiry($id: ID!) {\n  memberInquiry(id: $id) {\n    id\n    category {\n      id\n      name\n    }\n    status\n    createdAt\n    messages {\n      id\n      sender\n      body\n      attachments {\n        id\n        originalFileName\n        contentType\n        byteSize\n      }\n      admin {\n        nickname\n        avatar {\n          objectKey\n          fallbackFormat\n          width\n          height\n        }\n        deleted\n      }\n      createdAt\n    }\n    canPost\n  }\n}"): (typeof documents)["query ClientMemberInquiry($id: ID!) {\n  memberInquiry(id: $id) {\n    id\n    category {\n      id\n      name\n    }\n    status\n    createdAt\n    messages {\n      id\n      sender\n      body\n      attachments {\n        id\n        originalFileName\n        contentType\n        byteSize\n      }\n      admin {\n        nickname\n        avatar {\n          objectKey\n          fallbackFormat\n          width\n          height\n        }\n        deleted\n      }\n      createdAt\n    }\n    canPost\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation ClientPostInquiryMessage($inquiryId: ID!, $input: InquiryMessageInput!) {\n  postInquiryMessage(inquiryId: $inquiryId, input: $input) {\n    id\n  }\n}"): (typeof documents)["mutation ClientPostInquiryMessage($inquiryId: ID!, $input: InquiryMessageInput!) {\n  postInquiryMessage(inquiryId: $inquiryId, input: $input) {\n    id\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

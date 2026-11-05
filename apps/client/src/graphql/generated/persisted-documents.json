@@ -20,6 +20,8 @@
   "sha256:726a6e9c68fb75fa096211612244937e2b095ff026399cefe872db787e44d0f8": "mutation ClientVerifyEmail($token: String!) { verifyEmail(token: $token) }",
   "sha256:32c8c75633fc3b433a9cb6cbaac7e135578ea7ab16915864dfa104f8065aa35b": "query ClientViewer { viewer { emailVerified handle id nickname status totpEnabled } }",
   "sha256:f42f0084a9747d5145d30bb11beed3b7f668553b0fa146db06147a3dc2b17c48": "mutation ClientWithdraw($input: ReAuthenticationInput!) { withdraw(input: $input) }",
+  "sha256:1b83ce2c7c2d8074b4c2f42cf113ec2b12156d511ff1aa40670b508eb4d3b247": "query ClientMemberInquiry($id: ID!) { memberInquiry(id: $id) { canPost category { id name } createdAt id messages { admin { avatar { fallbackFormat height objectKey width } deleted nickname } attachments { byteSize contentType id originalFileName } body createdAt id sender } status } }",
+  "sha256:852736a708e58fb1cbbbbf5a4db443546610504685f1035b17cb3914152d1266": "mutation ClientPostInquiryMessage($input: InquiryMessageInput!, $inquiryId: ID!) { postInquiryMessage(inquiryId: $inquiryId, input: $input) { id } }",
   "sha256:d1332020d9d2c52cbafdd7b364120ba4fddc9a30262add6cded937706a20a0b5": "query ClientInquiryContactForm { inquiryCategories { id name } inquiryComposer { avatar { fallbackFormat height objectKey width } nickname } }",
   "sha256:ecb5d90f6b342dd38afc5640c9f219d9236517a7410f7f6e8f97a65fc2ecb00d": "query ClientMyInquiries($after: String) { myInquiries(after: $after) { items { category { id name } createdAt id lastMessageAt status } nextCursor } }",
   "sha256:c27d183b194e166d931c84f745d97578fb4d98e0cb2256f0a8fcc26d234a8097": "mutation ClientSubmitGuestInquiry($input: GuestInquiryInput!) { submitGuestInquiry(input: $input) }",

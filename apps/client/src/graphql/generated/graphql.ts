@@ -22,6 +22,18 @@ export type GuestInquiryInput = {
   nickname: string;
 };
 
+/** 追加メッセージの送信 */
+export type InquiryMessageInput = {
+  body: string;
+  /** アップロード済みの問い合わせの添付のファイルのID */
+  fileIds: Array<string | number>;
+};
+
+/** メッセージの送信者の種類 */
+export type InquirySender =
+  | 'ADMIN'
+  | 'USER';
+
 /** 対応ステータス */
 export type InquiryStatus =
   | 'IN_PROGRESS'
@@ -235,6 +247,21 @@ export type ClientWithdrawMutationVariables = Exact<{
 
 export type ClientWithdrawMutation = { withdraw: boolean };
 
+export type ClientMemberInquiryQueryVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type ClientMemberInquiryQuery = { memberInquiry: { id: string, status: InquiryStatus, createdAt: string, canPost: boolean, category: { id: string, name: string }, messages: Array<{ id: string, sender: InquirySender, body: string, createdAt: string, attachments: Array<{ id: string, originalFileName: string, contentType: string, byteSize: number }>, admin: { nickname: string | null, deleted: boolean, avatar: { objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> } | null };
+
+export type ClientPostInquiryMessageMutationVariables = Exact<{
+  inquiryId: string | number;
+  input: InquiryMessageInput;
+}>;
+
+
+export type ClientPostInquiryMessageMutation = { postInquiryMessage: { id: string } };
+
 export type ClientInquiryContactFormQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -303,6 +330,8 @@ export const ClientStartTotpSetupDocument = {"__meta__":{"hash":"sha256:efa3bfe8
 export const ClientVerifyEmailDocument = {"__meta__":{"hash":"sha256:726a6e9c68fb75fa096211612244937e2b095ff026399cefe872db787e44d0f8"}} as unknown as DocumentNode<ClientVerifyEmailMutation, ClientVerifyEmailMutationVariables>;
 export const ClientViewerDocument = {"__meta__":{"hash":"sha256:32c8c75633fc3b433a9cb6cbaac7e135578ea7ab16915864dfa104f8065aa35b"}} as unknown as DocumentNode<ClientViewerQuery, ClientViewerQueryVariables>;
 export const ClientWithdrawDocument = {"__meta__":{"hash":"sha256:f42f0084a9747d5145d30bb11beed3b7f668553b0fa146db06147a3dc2b17c48"}} as unknown as DocumentNode<ClientWithdrawMutation, ClientWithdrawMutationVariables>;
+export const ClientMemberInquiryDocument = {"__meta__":{"hash":"sha256:1b83ce2c7c2d8074b4c2f42cf113ec2b12156d511ff1aa40670b508eb4d3b247"}} as unknown as DocumentNode<ClientMemberInquiryQuery, ClientMemberInquiryQueryVariables>;
+export const ClientPostInquiryMessageDocument = {"__meta__":{"hash":"sha256:852736a708e58fb1cbbbbf5a4db443546610504685f1035b17cb3914152d1266"}} as unknown as DocumentNode<ClientPostInquiryMessageMutation, ClientPostInquiryMessageMutationVariables>;
 export const ClientInquiryContactFormDocument = {"__meta__":{"hash":"sha256:d1332020d9d2c52cbafdd7b364120ba4fddc9a30262add6cded937706a20a0b5"}} as unknown as DocumentNode<ClientInquiryContactFormQuery, ClientInquiryContactFormQueryVariables>;
 export const ClientMyInquiriesDocument = {"__meta__":{"hash":"sha256:ecb5d90f6b342dd38afc5640c9f219d9236517a7410f7f6e8f97a65fc2ecb00d"}} as unknown as DocumentNode<ClientMyInquiriesQuery, ClientMyInquiriesQueryVariables>;
 export const ClientSubmitGuestInquiryDocument = {"__meta__":{"hash":"sha256:c27d183b194e166d931c84f745d97578fb4d98e0cb2256f0a8fcc26d234a8097"}} as unknown as DocumentNode<ClientSubmitGuestInquiryMutation, ClientSubmitGuestInquiryMutationVariables>;

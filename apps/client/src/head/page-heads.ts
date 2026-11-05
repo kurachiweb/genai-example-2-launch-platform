@@ -8,6 +8,7 @@ import {
   type LegalDocumentKind,
   legalVersionTitle,
 } from '../../common-lib/legal/legal-documents.ts';
+import { INQUIRY_CHAT_PAGE_TITLE } from '../components/inquiry/inquiry-chat-messages.ts';
 import { CONTACT_PAGE_TITLE } from '../components/inquiry/inquiry-contact-messages.ts';
 import { CONTACT_HREF, SITE_NAME } from '../components/layout/site-links.ts';
 import type {
@@ -72,6 +73,10 @@ export const buildLegalVersionHead = (
 
 export const buildContactHead = () =>
   buildSitePageHead({ title: CONTACT_PAGE_TITLE, canonicalUrl: CONTACT_HREF });
+
+// 本人だけが読むページのため、検索の索引の対象外にする
+export const buildInquiryChatHead = () =>
+  buildSitePageHead({ title: INQUIRY_CHAT_PAGE_TITLE, noIndex: true });
 
 // 配色の初回描画前のスクリプトはAppDocumentが置くため、ここには置かない
 export const buildRootHead = ({

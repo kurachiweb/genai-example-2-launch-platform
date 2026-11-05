@@ -27,7 +27,11 @@ import type {
 } from '../../graphql/inquiry-contact.ts';
 import { REQUIRED_SUFFIX } from '../auth/account-messages.ts';
 import { INQUIRY_BOT_ACTIONS } from './bot-actions.ts';
-import { inquiryChatHref } from './inquiry-chat-href.ts';
+import {
+  INQUIRY_FILE_IDS_FIELD,
+  inquiryAttachmentErrorsOf,
+  NO_INVALID_FILE_IDS,
+} from './inquiry-attachment-errors.ts';
 import { InquiryAttachmentInput } from './inquiry-attachment-input.tsx';
 import {
   ATTACHMENTS_DESCRIPTION,
@@ -63,12 +67,6 @@ const DEFAULT_VALUES: MemberInquiryFormInput = Object.freeze({
   fileIds: [],
 });
 
-const FILE_IDS_FIELD = 'fileIds';
-
-const ATTACHMENT_POSITION_PREFIX = `${FILE_IDS_FIELD}.`;
-
-const NO_INVALID_FILE_IDS: ReadonlySet<string> = new Set();
-
 // 停止していないログイン中の利用者のフォーム。送信できたら、続きのやり取りをするチャットへ移る
 export function MemberInquiryForm({
   categories,
@@ -93,37 +91,23 @@ export function MemberInquiryForm({
     useState<ReadonlySet<string>>(NO_INVALID_FILE_IDS);
   const [submitError, setSubmitError] = useState<InquirySubmitErrorView>();
 
-  // 添付の無効なファイルの詳細は位置ごとの経路で届き、位置ごとの入力欄は無いため、送った値のその位置のファイルを一覧で示し、添付の欄のエラーにして取り除かせる
+  // 添付できないファイルを一覧で示し、添付の欄のエラーにして取り除かせる
   const handleSubmitError = (
     error: unknown,
     { unmatched }: SubmitErrorContext,
   ): void => {
-    const attachmentDetails = unmatched.filter(({ field }) =>
-      field.startsWith(ATTACHMENT_POSITION_PREFIX),
+    const attachment = inquiryAttachmentErrorsOf(
+      unmatched,
+      form.getValues(INQUIRY_FILE_IDS_FIELD),
     );
-    const others = unmatched.filter(
-      ({ field }) => !field.startsWith(ATTACHMENT_POSITION_PREFIX),
-    );
-    const [attachmentDetail] = attachmentDetails;
-    if (attachmentDetail !== undefined) {
-      const sentFileIds = form.getValues(FILE_IDS_FIELD);
-      setInvalidFileIds(
-        new Set(
-          attachmentDetails.flatMap(({ field }) => {
-            const fileId =
-              sentFileIds[
-                Number(field.slice(ATTACHMENT_POSITION_PREFIX.length))
-              ];
-            return fileId === undefined ? [] : [fileId];
-          }),
-        ),
-      );
+    if (attachment.message !== undefined) {
+      setInvalidFileIds(attachment.invalidFileIds);
       form.setError(
-        FILE_IDS_FIELD,
-        { type: SERVER_FIELD_ERROR_TYPE, message: attachmentDetail.message },
+        INQUIRY_FILE_IDS_FIELD,
+        { type: SERVER_FIELD_ERROR_TYPE, message: attachment.message },
         { shouldFocus: true },
       );
-      if (others.length === 0) {
+      if (attachment.others.length === 0) {
         return;
       }
     }
@@ -144,8 +128,8 @@ export function MemberInquiryForm({
             submitInquiry.mutateAsync({ variables: { input }, turnstileToken }),
         );
         await navigate({
-          to: '.',
-          href: inquiryChatHref(submitMemberInquiry.id),
+          to: '/inquiries/$inquiryId',
+          params: { inquiryId: submitMemberInquiry.id },
         });
       }}
       onSubmitError={handleSubmitError}

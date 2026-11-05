@@ -47,13 +47,14 @@ export interface MyInquiryPage {
 
 const GUEST_SCOPE = 'guest';
 
-const INQUIRY_STATUS_OF: Readonly<Record<GraphQLInquiryStatus, InquiryStatus>> =
-  Object.freeze({
-    OPEN: 'open',
-    IN_PROGRESS: 'in_progress',
-    RESOLVED: 'resolved',
-    REJECTED: 'rejected',
-  });
+export const INQUIRY_STATUS_OF: Readonly<
+  Record<GraphQLInquiryStatus, InquiryStatus>
+> = Object.freeze({
+  OPEN: 'open',
+  IN_PROGRESS: 'in_progress',
+  RESOLVED: 'resolved',
+  REJECTED: 'rejected',
+});
 
 // 送信者の値はセッションの利用者と停止の状態で変わるため、同じタブでログイン・ログアウト・停止の解除をした後に前の状態の取得結果を使わないよう、共通の取得の補助のキーの後に閲覧者のIDと状態を加える
 export const inquiryContactQueryOptions = (viewer: ClientViewer | null) =>

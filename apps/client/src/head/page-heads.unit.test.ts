@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { WEB_ANALYTICS_BEACON_SRC } from '../../lib/start/observability/web-analytics.ts';
 import {
   buildContactHead,
+  buildInquiryChatHead,
   buildLegalDocumentHead,
   buildLegalVersionHead,
   buildRootHead,
@@ -149,6 +150,18 @@ describe('buildContactHead', () => {
     expect(buildContactHead()).toStrictEqual({
       meta: [{ title: 'お問い合わせ | Launch Stadium' }],
       links: [{ rel: 'canonical', href: '/contact' }],
+    });
+  });
+});
+
+describe('buildInquiryChatHead', () => {
+  test('問い合わせチャットのタイトルを付け、本人だけが読むページのため検索の索引の対象外にする', () => {
+    expect(buildInquiryChatHead()).toStrictEqual({
+      meta: [
+        { title: '問い合わせチャット | Launch Stadium' },
+        { name: 'robots', content: 'noindex, nofollow' },
+      ],
+      links: [],
     });
   });
 });
