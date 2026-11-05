@@ -122,7 +122,9 @@ export interface StripePaymentOwnerHint {
 }
 
 // STRIPE_API_KEYが未設定なら、各操作はStripeを呼ばずにStripeUnavailableErrorを投げる
-export interface StripeGateway {
+
+// Customer・価格・決済セッションの操作
+export interface StripeCheckoutGateway {
   ensureCustomer(input: {
     readonly existingCustomerId: string | null;
     readonly email: string;
@@ -137,6 +139,9 @@ export interface StripeGateway {
     sessionId: string,
   ): Promise<StripeCheckoutSessionSnapshot>;
   expireCheckoutSession(sessionId: string): Promise<'expired' | 'not_open'>;
+}
+
+export interface StripeGateway extends StripeCheckoutGateway {
   retrieveInvoice(invoiceId: string): Promise<StripeInvoiceSnapshot>;
   retrieveRefund(refundId: string): Promise<StripeRefundSnapshot>;
   retrieveDispute(disputeId: string): Promise<StripeDisputeSnapshot>;

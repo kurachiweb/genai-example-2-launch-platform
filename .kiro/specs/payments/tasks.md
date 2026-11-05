@@ -76,7 +76,7 @@
   - _Requirements: 8.10, 11.1, 11.2, 11.5, 11.6_
 
 - [ ] 3. Stripeとの通信
-- [ ] 3.1 Stripeの生成・例外の分類と、Customer・価格・決済セッションの操作を作る
+- [x] 3.1 Stripeの生成・例外の分類と、Customer・価格・決済セッションの操作を作る
   - 先に、fetchの模擬応答を使うWorkers統合テストで、API版`2026-10-28.endive`の固定、決済セッションの作成の項目(`ui_mode: 'elements'`・`allowed_payment_method_types: ['card', 'link']`・`automatic_tax`・`billing_address_collection: 'auto'`・`customer_update.address: 'auto'`・`adaptive_pricing`の無効・`return_url`・`expires_at`・3つのメタデータ・`integration_identifier`・冪等キー、`payment_method_types`を送らないこと)、決済セッションの取得と失効(完了済みは`not_open`)、取得の結果のPaymentIntent・請求・定期課金・Linkの資金源のグループ・メタデータ(`metadata.purchase_id`を含む)、Customerの作成と更新に渡すのがメールアドレスと仮名化IDだけであること、Customerの削除の`already_deleted`、価格の`lookup_key`での解決、例外の分類(接続・429・5xxは一時的、`resource_missing`は存在しない、他の4xxは恒久的)、`STRIPE_API_KEY`が未設定の環境ではStripeを呼ばずに一時的な失敗(`StripeUnavailableError`)になることを確かめる
   - fetchのHTTPクライアントと時間切れ・再試行の回数をアプリごとに設定し、Stripeの型を外へ出さない読み取り専用の結果の型で返す。個人データをログに出さない
   - 完了状態: Workers統合テストが成功し、模擬応答に対する送信の内容が設計の項目と一致する
@@ -355,3 +355,4 @@
 - 2.1: 反映の指示`ReflectionInstruction`と結果`ReflectionOutcome`は`core/payments/ports.ts`にある(2.3の正規化はここから型を読み込み、二重に定義しない)。`lib/core/**`は`drizzle-orm*`を読み込めない(apiのESLintが共有ディレクトリを検査する)
 - 2.3: 8.2・8.4で返金の処理を作るとき、project-values.mdのメッセージの表の`payments.refund-payment`の行に再試行の方針(5回)を書き足す
 - 2.4: メールの入力の金額は最小通貨単位の整数、日時はISO 8601の文字列。返金ポリシーの要旨は`common-lib/payments/refund-policy-summary.ts`の`REFUND_POLICY_SUMMARY`(最終確認画面(10.3)も同じ定数を使う)。購入確認メールの決済履歴のURLは`CLIENT_SITE_ORIGIN`+`/settings/billing`
+- 3.1: `StripeApiGateway`は`@injectable`を付けず`{ appName, client, clientSiteOrigin }`を受け取る(5.7で`toDynamicValue`で束縛)。ポートは`StripeCheckoutGateway`(3.1の6操作)と、それを拡張する`StripeGateway`に分かれる。テストの偽のStripeは`workers/payments/testing/fake-stripe.ts`。ログの属性名に`key`を含めない(伏せ字になる。`priceLookup`)
