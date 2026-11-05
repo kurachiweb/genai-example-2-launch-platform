@@ -32,6 +32,84 @@ type AdminConfirmationResult {
   viewer: AdminViewer
 }
 
+"""管理画面の問い合わせの詳細"""
+type AdminInquiry {
+  category: InquiryCategory!
+  createdAt: DateTime!
+
+  """ログインの問い合わせではnull"""
+  guest: AdminInquiryGuest
+  id: ID!
+  kind: InquiryKind!
+  lastMessageAt: DateTime!
+
+  """未ログインの問い合わせと、送った利用者を読めないログインの問い合わせではnull"""
+  member: AdminInquiryMember
+
+  """送信日時の古い順"""
+  messages: [InquiryMessage!]!
+  status: InquiryStatus!
+  statusChangedAt: DateTime!
+  withdrawn: Boolean!
+}
+
+"""管理画面のカテゴリの区画が削除の確認に使う、紐付く問い合わせの件数(ログイン・未ログインの合計)付きのカテゴリ"""
+type AdminInquiryCategory {
+  id: ID!
+  linkedCount: Int!
+  name: String!
+  systemDefault: Boolean!
+}
+
+"""管理画面の問い合わせの一覧の絞り込み"""
+input AdminInquiryFilterInput {
+  categoryId: ID
+  kind: InquiryKind
+
+  """この日時を含まない以前の受付"""
+  receivedBefore: DateTime
+
+  """この日時を含む以降の受付"""
+  receivedFrom: DateTime
+  status: InquiryStatus
+}
+
+"""未ログインの問い合わせの送信者と本文"""
+type AdminInquiryGuest {
+  body: String!
+  email: String!
+  nickname: String!
+}
+
+"""ログインの問い合わせを送った利用者"""
+type AdminInquiryMember {
+  """未登録・表示できない画像はnull"""
+  avatar: MediaImage
+  handle: String!
+  nickname: String!
+  userId: ID!
+}
+
+"""管理画面の問い合わせの一覧の1ページ(50件まで、受付日時の新しい順)"""
+type AdminInquiryPage {
+  entries: [AdminInquirySummary!]!
+
+  """続きが無ければnull"""
+  nextCursor: String
+}
+
+"""管理画面の問い合わせの一覧の1行"""
+type AdminInquirySummary {
+  category: InquiryCategory!
+  createdAt: DateTime!
+  id: ID!
+  kind: InquiryKind!
+  lastMessageAt: DateTime!
+  senderName: String!
+  status: InquiryStatus!
+  withdrawn: Boolean!
+}
+
 """管理画面の編集の対象の法務文書"""
 type AdminLegalDocument {
   """下書きが無ければnull"""
@@ -213,6 +291,89 @@ input DiscardLegalDocumentDraftInput {
   kind: LegalDocumentKind!
 }
 
+"""未ログインの問い合わせの送信"""
+input GuestInquiryInput {
+  body: String!
+  categoryId: ID!
+  email: String!
+  nickname: String!
+}
+
+"""問い合わせのカテゴリ"""
+type InquiryCategory {
+  id: ID!
+  name: String!
+
+  """削除できない標準カテゴリ「その他」なら真"""
+  systemDefault: Boolean!
+}
+
+"""問い合わせフォームに表示する送信者"""
+type InquiryComposer {
+  """未登録・表示できない画像はnull"""
+  avatar: MediaImage
+  nickname: String!
+}
+
+"""問い合わせの種別"""
+enum InquiryKind {
+  GUEST
+  MEMBER
+}
+
+"""問い合わせのメッセージ"""
+type InquiryMessage {
+  """利用者のメッセージではnull"""
+  admin: InquiryReplyAuthor
+
+  """位置の順。管理者の返信では空"""
+  attachments: [MediaAttachment!]!
+  body: String!
+  createdAt: DateTime!
+  id: ID!
+  sender: InquirySender!
+}
+
+"""追加メッセージの送信"""
+input InquiryMessageInput {
+  body: String!
+
+  """アップロード済みの問い合わせの添付のファイルのID"""
+  fileIds: [ID!]!
+}
+
+"""返信した管理者"""
+type InquiryReplyAuthor {
+  """未登録・表示できない画像と削除済みの管理者ではnull"""
+  avatar: MediaImage
+  deleted: Boolean!
+
+  """削除済みの管理者ではnull"""
+  nickname: String
+}
+
+"""管理者の返信の結果"""
+type InquiryReplyResult {
+  message: InquiryMessage!
+
+  """通知メールの送信要求に失敗したら偽"""
+  notificationQueued: Boolean!
+}
+
+"""メッセージの送信者の種類"""
+enum InquirySender {
+  ADMIN
+  USER
+}
+
+"""対応ステータス"""
+enum InquiryStatus {
+  IN_PROGRESS
+  OPEN
+  REJECTED
+  RESOLVED
+}
+
 """利用者側に公開する法務文書"""
 type LegalDocument {
   kind: LegalDocumentKind!
@@ -299,6 +460,46 @@ enum MediaImageFallbackFormat {
   SVG
 }
 
+"""利用者側のログインの問い合わせ"""
+type MemberInquiry {
+  """停止中の利用者では偽"""
+  canPost: Boolean!
+  category: InquiryCategory!
+  createdAt: DateTime!
+  id: ID!
+  lastMessageAt: DateTime!
+
+  """送信日時の古い順"""
+  messages: [InquiryMessage!]!
+  status: InquiryStatus!
+}
+
+"""ログインの問い合わせの送信"""
+input MemberInquiryInput {
+  body: String!
+  categoryId: ID!
+
+  """アップロード済みの問い合わせの添付のファイルのID"""
+  fileIds: [ID!]!
+}
+
+"""自分の問い合わせの一覧の1ページ"""
+type MemberInquiryPage {
+  items: [MemberInquirySummary!]!
+
+  """続きが無ければnull"""
+  nextCursor: String
+}
+
+"""自分の問い合わせの一覧の1行"""
+type MemberInquirySummary {
+  category: InquiryCategory!
+  createdAt: DateTime!
+  id: ID!
+  lastMessageAt: DateTime!
+  status: InquiryStatus!
+}
+
 type Mutation {
   """メールアドレスとパスワードによるログイン。有効な管理者には必ず第2要素を求める"""
   adminLogin(
@@ -362,6 +563,9 @@ type Mutation {
 
   """この端末のログアウト"""
   logout: Boolean!
+
+  """本人の問い合わせへの追加メッセージ"""
+  postInquiryMessage(input: InquiryMessageInput!, inquiryId: ID!): InquiryMessage!
 
   """下書きの公開。最上位管理者"""
   publishLegalDocument(input: PublishLegalDocumentInput!): AdminLegalDocument!
@@ -430,6 +634,12 @@ type Mutation {
   """多要素認証の設定の開始"""
   startTotpSetup(input: ReAuthenticationInput!): TotpSetup!
 
+  """未ログイン(停止中の利用者を含む)の問い合わせの送信"""
+  submitGuestInquiry(input: GuestInquiryInput!): Boolean!
+
+  """停止していないログイン中の利用者の問い合わせの送信"""
+  submitMemberInquiry(input: MemberInquiryInput!): MemberInquiry!
+
   """プロフィールの更新。avatarFileIdの省略は画像を取り除く"""
   updateAdminProfile(avatarFileId: ID, id: ID!, nickname: String!, title: String): AdminAccount!
 
@@ -478,11 +688,23 @@ type Query {
   """監査ログの検索。変更・削除の操作は無い"""
   auditLogs(after: String, filter: AuditLogFilterInput): AuditLogPage!
 
+  """問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く"""
+  inquiryCategories: [InquiryCategory!]!
+
+  """問い合わせフォームに表示する送信者。停止していないログイン中の利用者だけ値を返す"""
+  inquiryComposer: InquiryComposer
+
   """法務文書の最新版と改訂履歴"""
   legalDocument(kind: LegalDocumentKind!): LegalDocument!
 
   """法務文書の指定した版。存在しない版はnull"""
   legalDocumentVersion(kind: LegalDocumentKind!, versionNumber: Int!): LegalDocumentVersion
+
+  """本人の問い合わせのチャット。本人の問い合わせでなければnull"""
+  memberInquiry(id: ID!): MemberInquiry
+
+  """自分のログインの問い合わせの一覧(20件ずつ、送信日時の新しい順)。停止中の利用者も読める"""
+  myInquiries(after: String): MemberInquiryPage!
 
   """ログイン中の端末の一覧"""
   mySessions: [UserSessionSummary!]!

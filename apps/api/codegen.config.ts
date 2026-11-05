@@ -19,6 +19,18 @@ const config: CodegenConfig = {
           AdminViewer: '../modules/admin/resolver-support.ts#AdminViewerSource',
           AdminAccount:
             '../modules/admin/resolver-support.ts#AdminAccountSource',
+          InquiryMessage: '../modules/inquiry/mappers.ts#InquiryMessageModel',
+          InquiryReplyAuthor:
+            '../modules/inquiry/mappers.ts#InquiryReplyAuthorModel',
+          InquiryComposer: '../modules/inquiry/mappers.ts#InquiryComposerModel',
+          MemberInquiry: '../modules/inquiry/mappers.ts#MemberInquiryModel',
+          MemberInquirySummary:
+            '../modules/inquiry/mappers.ts#MemberInquirySummaryModel',
+          AdminInquirySummary:
+            '../modules/inquiry/mappers.ts#AdminInquirySummaryModel',
+          AdminInquiryMember:
+            '../modules/inquiry/mappers.ts#AdminInquiryMemberModel',
+          AdminInquiry: '../modules/inquiry/mappers.ts#AdminInquiryModel',
         },
       },
     },

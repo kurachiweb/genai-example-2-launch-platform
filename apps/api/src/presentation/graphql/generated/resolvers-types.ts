@@ -1,6 +1,7 @@
 import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } from 'graphql';
 import type { ViewerSource } from '../modules/identity/resolver-support.ts';
 import type { AdminViewerSource, AdminAccountSource } from '../modules/admin/resolver-support.ts';
+import type { InquiryMessageModel, InquiryReplyAuthorModel, InquiryComposerModel, MemberInquiryModel, MemberInquirySummaryModel, AdminInquirySummaryModel, AdminInquiryMemberModel, AdminInquiryModel } from '../modules/inquiry/mappers.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -48,6 +49,84 @@ export type AdminConfirmationResult = {
   __typename?: 'AdminConfirmationResult';
   /** 確定の操作をした端末が同じ管理者としてログイン中なら、入れ替えた後の管理者 */
   viewer?: Maybe<AdminViewer>;
+};
+
+/** 管理画面の問い合わせの詳細 */
+export type AdminInquiry = {
+  __typename?: 'AdminInquiry';
+  category: InquiryCategory;
+  createdAt: Scalars['DateTime']['output'];
+  /** ログインの問い合わせではnull */
+  guest?: Maybe<AdminInquiryGuest>;
+  id: Scalars['ID']['output'];
+  kind: InquiryKind;
+  lastMessageAt: Scalars['DateTime']['output'];
+  /** 未ログインの問い合わせと、送った利用者を読めないログインの問い合わせではnull */
+  member?: Maybe<AdminInquiryMember>;
+  /** 送信日時の古い順 */
+  messages: Array<InquiryMessage>;
+  status: InquiryStatus;
+  statusChangedAt: Scalars['DateTime']['output'];
+  withdrawn: Scalars['Boolean']['output'];
+};
+
+/** 管理画面のカテゴリの区画が削除の確認に使う、紐付く問い合わせの件数(ログイン・未ログインの合計)付きのカテゴリ */
+export type AdminInquiryCategory = {
+  __typename?: 'AdminInquiryCategory';
+  id: Scalars['ID']['output'];
+  linkedCount: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  systemDefault: Scalars['Boolean']['output'];
+};
+
+/** 管理画面の問い合わせの一覧の絞り込み */
+export type AdminInquiryFilterInput = {
+  categoryId?: InputMaybe<Scalars['ID']['input']>;
+  kind?: InputMaybe<InquiryKind>;
+  /** この日時を含まない以前の受付 */
+  receivedBefore?: InputMaybe<Scalars['DateTime']['input']>;
+  /** この日時を含む以降の受付 */
+  receivedFrom?: InputMaybe<Scalars['DateTime']['input']>;
+  status?: InputMaybe<InquiryStatus>;
+};
+
+/** 未ログインの問い合わせの送信者と本文 */
+export type AdminInquiryGuest = {
+  __typename?: 'AdminInquiryGuest';
+  body: Scalars['String']['output'];
+  email: Scalars['String']['output'];
+  nickname: Scalars['String']['output'];
+};
+
+/** ログインの問い合わせを送った利用者 */
+export type AdminInquiryMember = {
+  __typename?: 'AdminInquiryMember';
+  /** 未登録・表示できない画像はnull */
+  avatar?: Maybe<MediaImage>;
+  handle: Scalars['String']['output'];
+  nickname: Scalars['String']['output'];
+  userId: Scalars['ID']['output'];
+};
+
+/** 管理画面の問い合わせの一覧の1ページ(50件まで、受付日時の新しい順) */
+export type AdminInquiryPage = {
+  __typename?: 'AdminInquiryPage';
+  entries: Array<AdminInquirySummary>;
+  /** 続きが無ければnull */
+  nextCursor?: Maybe<Scalars['String']['output']>;
+};
+
+/** 管理画面の問い合わせの一覧の1行 */
+export type AdminInquirySummary = {
+  __typename?: 'AdminInquirySummary';
+  category: InquiryCategory;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  kind: InquiryKind;
+  lastMessageAt: Scalars['DateTime']['output'];
+  senderName: Scalars['String']['output'];
+  status: InquiryStatus;
+  withdrawn: Scalars['Boolean']['output'];
 };
 
 /** 管理画面の編集の対象の法務文書 */
@@ -228,6 +307,86 @@ export type DiscardLegalDocumentDraftInput = {
   kind: LegalDocumentKind;
 };
 
+/** 未ログインの問い合わせの送信 */
+export type GuestInquiryInput = {
+  body: Scalars['String']['input'];
+  categoryId: Scalars['ID']['input'];
+  email: Scalars['String']['input'];
+  nickname: Scalars['String']['input'];
+};
+
+/** 問い合わせのカテゴリ */
+export type InquiryCategory = {
+  __typename?: 'InquiryCategory';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  /** 削除できない標準カテゴリ「その他」なら真 */
+  systemDefault: Scalars['Boolean']['output'];
+};
+
+/** 問い合わせフォームに表示する送信者 */
+export type InquiryComposer = {
+  __typename?: 'InquiryComposer';
+  /** 未登録・表示できない画像はnull */
+  avatar?: Maybe<MediaImage>;
+  nickname: Scalars['String']['output'];
+};
+
+/** 問い合わせの種別 */
+export type InquiryKind =
+  | 'GUEST'
+  | 'MEMBER';
+
+/** 問い合わせのメッセージ */
+export type InquiryMessage = {
+  __typename?: 'InquiryMessage';
+  /** 利用者のメッセージではnull */
+  admin?: Maybe<InquiryReplyAuthor>;
+  /** 位置の順。管理者の返信では空 */
+  attachments: Array<MediaAttachment>;
+  body: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  sender: InquirySender;
+};
+
+/** 追加メッセージの送信 */
+export type InquiryMessageInput = {
+  body: Scalars['String']['input'];
+  /** アップロード済みの問い合わせの添付のファイルのID */
+  fileIds: Array<Scalars['ID']['input']>;
+};
+
+/** 返信した管理者 */
+export type InquiryReplyAuthor = {
+  __typename?: 'InquiryReplyAuthor';
+  /** 未登録・表示できない画像と削除済みの管理者ではnull */
+  avatar?: Maybe<MediaImage>;
+  deleted: Scalars['Boolean']['output'];
+  /** 削除済みの管理者ではnull */
+  nickname?: Maybe<Scalars['String']['output']>;
+};
+
+/** 管理者の返信の結果 */
+export type InquiryReplyResult = {
+  __typename?: 'InquiryReplyResult';
+  message: InquiryMessage;
+  /** 通知メールの送信要求に失敗したら偽 */
+  notificationQueued: Scalars['Boolean']['output'];
+};
+
+/** メッセージの送信者の種類 */
+export type InquirySender =
+  | 'ADMIN'
+  | 'USER';
+
+/** 対応ステータス */
+export type InquiryStatus =
+  | 'IN_PROGRESS'
+  | 'OPEN'
+  | 'REJECTED'
+  | 'RESOLVED';
+
 /** 利用者側に公開する法務文書 */
 export type LegalDocument = {
   __typename?: 'LegalDocument';
@@ -312,6 +471,46 @@ export type MediaImageFallbackFormat =
   | 'PNG'
   | 'SVG';
 
+/** 利用者側のログインの問い合わせ */
+export type MemberInquiry = {
+  __typename?: 'MemberInquiry';
+  /** 停止中の利用者では偽 */
+  canPost: Scalars['Boolean']['output'];
+  category: InquiryCategory;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  lastMessageAt: Scalars['DateTime']['output'];
+  /** 送信日時の古い順 */
+  messages: Array<InquiryMessage>;
+  status: InquiryStatus;
+};
+
+/** ログインの問い合わせの送信 */
+export type MemberInquiryInput = {
+  body: Scalars['String']['input'];
+  categoryId: Scalars['ID']['input'];
+  /** アップロード済みの問い合わせの添付のファイルのID */
+  fileIds: Array<Scalars['ID']['input']>;
+};
+
+/** 自分の問い合わせの一覧の1ページ */
+export type MemberInquiryPage = {
+  __typename?: 'MemberInquiryPage';
+  items: Array<MemberInquirySummary>;
+  /** 続きが無ければnull */
+  nextCursor?: Maybe<Scalars['String']['output']>;
+};
+
+/** 自分の問い合わせの一覧の1行 */
+export type MemberInquirySummary = {
+  __typename?: 'MemberInquirySummary';
+  category: InquiryCategory;
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  lastMessageAt: Scalars['DateTime']['output'];
+  status: InquiryStatus;
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   /** メールアドレスとパスワードによるログイン。有効な管理者には必ず第2要素を求める */
@@ -350,6 +549,8 @@ export type Mutation = {
   login: LoginResult;
   /** この端末のログアウト */
   logout: Scalars['Boolean']['output'];
+  /** 本人の問い合わせへの追加メッセージ */
+  postInquiryMessage: InquiryMessage;
   /** 下書きの公開。最上位管理者 */
   publishLegalDocument: AdminLegalDocument;
   /** リカバリコードの再発行。操作した端末へ新しいセッションを発行する */
@@ -388,6 +589,10 @@ export type Mutation = {
   startAdminTotpReset: AdminTotpSetup;
   /** 多要素認証の設定の開始 */
   startTotpSetup: TotpSetup;
+  /** 未ログイン(停止中の利用者を含む)の問い合わせの送信 */
+  submitGuestInquiry: Scalars['Boolean']['output'];
+  /** 停止していないログイン中の利用者の問い合わせの送信 */
+  submitMemberInquiry: MemberInquiry;
   /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
   updateAdminProfile: AdminAccount;
   /** メールアドレスの確認の確定 */
@@ -485,6 +690,12 @@ export type MutationLoginArgs = {
 };
 
 
+export type MutationPostInquiryMessageArgs = {
+  input: InquiryMessageInput;
+  inquiryId: Scalars['ID']['input'];
+};
+
+
 export type MutationPublishLegalDocumentArgs = {
   input: PublishLegalDocumentInput;
 };
@@ -575,6 +786,16 @@ export type MutationStartTotpSetupArgs = {
 };
 
 
+export type MutationSubmitGuestInquiryArgs = {
+  input: GuestInquiryInput;
+};
+
+
+export type MutationSubmitMemberInquiryArgs = {
+  input: MemberInquiryInput;
+};
+
+
 export type MutationUpdateAdminProfileArgs = {
   avatarFileId?: InputMaybe<Scalars['ID']['input']>;
   id: Scalars['ID']['input'];
@@ -627,10 +848,18 @@ export type Query = {
   adminViewer?: Maybe<AdminViewer>;
   /** 監査ログの検索。変更・削除の操作は無い */
   auditLogs: AuditLogPage;
+  /** 問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く */
+  inquiryCategories: Array<InquiryCategory>;
+  /** 問い合わせフォームに表示する送信者。停止していないログイン中の利用者だけ値を返す */
+  inquiryComposer?: Maybe<InquiryComposer>;
   /** 法務文書の最新版と改訂履歴 */
   legalDocument: LegalDocument;
   /** 法務文書の指定した版。存在しない版はnull */
   legalDocumentVersion?: Maybe<LegalDocumentVersion>;
+  /** 本人の問い合わせのチャット。本人の問い合わせでなければnull */
+  memberInquiry?: Maybe<MemberInquiry>;
+  /** 自分のログインの問い合わせの一覧(20件ずつ、送信日時の新しい順)。停止中の利用者も読める */
+  myInquiries: MemberInquiryPage;
   /** ログイン中の端末の一覧 */
   mySessions: Array<UserSessionSummary>;
   /** APIサーバーの時刻とデータベースへの到達可否 */
@@ -665,6 +894,16 @@ export type QueryLegalDocumentArgs = {
 export type QueryLegalDocumentVersionArgs = {
   kind: LegalDocumentKind;
   versionNumber: Scalars['Int']['input'];
+};
+
+
+export type QueryMemberInquiryArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryMyInquiriesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
 };
 
 /** 重要な操作の本人確認 */
@@ -854,6 +1093,13 @@ export type ResolversTypes = {
   AdminAccount: ResolverTypeWrapper<AdminAccountSource>;
   AdminAccountStatus: AdminAccountStatus;
   AdminConfirmationResult: ResolverTypeWrapper<Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['AdminViewer']> }>;
+  AdminInquiry: ResolverTypeWrapper<AdminInquiryModel>;
+  AdminInquiryCategory: ResolverTypeWrapper<AdminInquiryCategory>;
+  AdminInquiryFilterInput: AdminInquiryFilterInput;
+  AdminInquiryGuest: ResolverTypeWrapper<AdminInquiryGuest>;
+  AdminInquiryMember: ResolverTypeWrapper<AdminInquiryMemberModel>;
+  AdminInquiryPage: ResolverTypeWrapper<Omit<AdminInquiryPage, 'entries'> & { entries: Array<ResolversTypes['AdminInquirySummary']> }>;
+  AdminInquirySummary: ResolverTypeWrapper<AdminInquirySummaryModel>;
   AdminLegalDocument: ResolverTypeWrapper<AdminLegalDocument>;
   AdminLegalDocumentSummary: ResolverTypeWrapper<AdminLegalDocumentSummary>;
   AdminLegalDocumentVersion: ResolverTypeWrapper<AdminLegalDocumentVersion>;
@@ -876,7 +1122,17 @@ export type ResolversTypes = {
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
+  GuestInquiryInput: GuestInquiryInput;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
+  InquiryCategory: ResolverTypeWrapper<InquiryCategory>;
+  InquiryComposer: ResolverTypeWrapper<InquiryComposerModel>;
+  InquiryKind: InquiryKind;
+  InquiryMessage: ResolverTypeWrapper<InquiryMessageModel>;
+  InquiryMessageInput: InquiryMessageInput;
+  InquiryReplyAuthor: ResolverTypeWrapper<InquiryReplyAuthorModel>;
+  InquiryReplyResult: ResolverTypeWrapper<Omit<InquiryReplyResult, 'message'> & { message: ResolversTypes['InquiryMessage'] }>;
+  InquirySender: InquirySender;
+  InquiryStatus: InquiryStatus;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   LegalDocument: ResolverTypeWrapper<LegalDocument>;
   LegalDocumentEditor: ResolverTypeWrapper<LegalDocumentEditor>;
@@ -889,6 +1145,10 @@ export type ResolversTypes = {
   MediaAttachment: ResolverTypeWrapper<MediaAttachment>;
   MediaImage: ResolverTypeWrapper<MediaImage>;
   MediaImageFallbackFormat: MediaImageFallbackFormat;
+  MemberInquiry: ResolverTypeWrapper<MemberInquiryModel>;
+  MemberInquiryInput: MemberInquiryInput;
+  MemberInquiryPage: ResolverTypeWrapper<Omit<MemberInquiryPage, 'items'> & { items: Array<ResolversTypes['MemberInquirySummary']> }>;
+  MemberInquirySummary: ResolverTypeWrapper<MemberInquirySummaryModel>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   OffsetPageInfo: ResolverTypeWrapper<OffsetPageInfo>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
@@ -915,6 +1175,13 @@ export type ResolversTypes = {
 export type ResolversParentTypes = {
   AdminAccount: AdminAccountSource;
   AdminConfirmationResult: Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['AdminViewer']> };
+  AdminInquiry: AdminInquiryModel;
+  AdminInquiryCategory: AdminInquiryCategory;
+  AdminInquiryFilterInput: AdminInquiryFilterInput;
+  AdminInquiryGuest: AdminInquiryGuest;
+  AdminInquiryMember: AdminInquiryMemberModel;
+  AdminInquiryPage: Omit<AdminInquiryPage, 'entries'> & { entries: Array<ResolversParentTypes['AdminInquirySummary']> };
+  AdminInquirySummary: AdminInquirySummaryModel;
   AdminLegalDocument: AdminLegalDocument;
   AdminLegalDocumentSummary: AdminLegalDocumentSummary;
   AdminLegalDocumentVersion: AdminLegalDocumentVersion;
@@ -936,7 +1203,14 @@ export type ResolversParentTypes = {
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
   DateTime: Scalars['DateTime']['output'];
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
+  GuestInquiryInput: GuestInquiryInput;
   ID: Scalars['ID']['output'];
+  InquiryCategory: InquiryCategory;
+  InquiryComposer: InquiryComposerModel;
+  InquiryMessage: InquiryMessageModel;
+  InquiryMessageInput: InquiryMessageInput;
+  InquiryReplyAuthor: InquiryReplyAuthorModel;
+  InquiryReplyResult: Omit<InquiryReplyResult, 'message'> & { message: ResolversParentTypes['InquiryMessage'] };
   Int: Scalars['Int']['output'];
   LegalDocument: LegalDocument;
   LegalDocumentEditor: LegalDocumentEditor;
@@ -947,6 +1221,10 @@ export type ResolversParentTypes = {
   LoginSucceeded: Omit<LoginSucceeded, 'viewer'> & { viewer: ResolversParentTypes['Viewer'] };
   MediaAttachment: MediaAttachment;
   MediaImage: MediaImage;
+  MemberInquiry: MemberInquiryModel;
+  MemberInquiryInput: MemberInquiryInput;
+  MemberInquiryPage: Omit<MemberInquiryPage, 'items'> & { items: Array<ResolversParentTypes['MemberInquirySummary']> };
+  MemberInquirySummary: MemberInquirySummaryModel;
   Mutation: Record<PropertyKey, never>;
   OffsetPageInfo: OffsetPageInfo;
   PageInfo: PageInfo;
@@ -981,6 +1259,56 @@ export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType exten
 
 export type AdminConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminConfirmationResult'] = ResolversParentTypes['AdminConfirmationResult']> = {
   viewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
+};
+
+export type AdminInquiryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminInquiry'] = ResolversParentTypes['AdminInquiry']> = {
+  category?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  guest?: Resolver<Maybe<ResolversTypes['AdminInquiryGuest']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['InquiryKind'], ParentType, ContextType>;
+  lastMessageAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  member?: Resolver<Maybe<ResolversTypes['AdminInquiryMember']>, ParentType, ContextType>;
+  messages?: Resolver<Array<ResolversTypes['InquiryMessage']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['InquiryStatus'], ParentType, ContextType>;
+  statusChangedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  withdrawn?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type AdminInquiryCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminInquiryCategory'] = ResolversParentTypes['AdminInquiryCategory']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  linkedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  systemDefault?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type AdminInquiryGuestResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminInquiryGuest'] = ResolversParentTypes['AdminInquiryGuest']> = {
+  body?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  email?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminInquiryMemberResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminInquiryMember'] = ResolversParentTypes['AdminInquiryMember']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  userId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+};
+
+export type AdminInquiryPageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminInquiryPage'] = ResolversParentTypes['AdminInquiryPage']> = {
+  entries?: Resolver<Array<ResolversTypes['AdminInquirySummary']>, ParentType, ContextType>;
+  nextCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminInquirySummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminInquirySummary'] = ResolversParentTypes['AdminInquirySummary']> = {
+  category?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['InquiryKind'], ParentType, ContextType>;
+  lastMessageAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  senderName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['InquiryStatus'], ParentType, ContextType>;
+  withdrawn?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type AdminLegalDocumentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLegalDocument'] = ResolversParentTypes['AdminLegalDocument']> = {
@@ -1081,6 +1409,37 @@ export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversT
   name: 'DateTime';
 }
 
+export type InquiryCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryCategory'] = ResolversParentTypes['InquiryCategory']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  systemDefault?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type InquiryComposerResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryComposer'] = ResolversParentTypes['InquiryComposer']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type InquiryMessageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryMessage'] = ResolversParentTypes['InquiryMessage']> = {
+  admin?: Resolver<Maybe<ResolversTypes['InquiryReplyAuthor']>, ParentType, ContextType>;
+  attachments?: Resolver<Array<ResolversTypes['MediaAttachment']>, ParentType, ContextType>;
+  body?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  sender?: Resolver<ResolversTypes['InquirySender'], ParentType, ContextType>;
+};
+
+export type InquiryReplyAuthorResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryReplyAuthor'] = ResolversParentTypes['InquiryReplyAuthor']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  deleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type InquiryReplyResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryReplyResult'] = ResolversParentTypes['InquiryReplyResult']> = {
+  message?: Resolver<ResolversTypes['InquiryMessage'], ParentType, ContextType>;
+  notificationQueued?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
 export type LegalDocumentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LegalDocument'] = ResolversParentTypes['LegalDocument']> = {
   kind?: Resolver<ResolversTypes['LegalDocumentKind'], ParentType, ContextType>;
   latest?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType>;
@@ -1132,6 +1491,29 @@ export type MediaImageResolvers<ContextType = GraphQLContext, ParentType extends
   width?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 };
 
+export type MemberInquiryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MemberInquiry'] = ResolversParentTypes['MemberInquiry']> = {
+  canPost?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  category?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  lastMessageAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  messages?: Resolver<Array<ResolversTypes['InquiryMessage']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['InquiryStatus'], ParentType, ContextType>;
+};
+
+export type MemberInquiryPageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MemberInquiryPage'] = ResolversParentTypes['MemberInquiryPage']> = {
+  items?: Resolver<Array<ResolversTypes['MemberInquirySummary']>, ParentType, ContextType>;
+  nextCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type MemberInquirySummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MemberInquirySummary'] = ResolversParentTypes['MemberInquirySummary']> = {
+  category?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  lastMessageAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['InquiryStatus'], ParentType, ContextType>;
+};
+
 export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   adminLogin?: Resolver<ResolversTypes['AdminSecondFactorRequired'], ParentType, ContextType, RequireFields<MutationAdminLoginArgs, 'email' | 'password'>>;
   adminLogout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
@@ -1151,6 +1533,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   inviteAdmin?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationInviteAdminArgs, 'email'>>;
   login?: Resolver<ResolversTypes['LoginResult'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'input'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  postInquiryMessage?: Resolver<ResolversTypes['InquiryMessage'], ParentType, ContextType, RequireFields<MutationPostInquiryMessageArgs, 'input' | 'inquiryId'>>;
   publishLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationPublishLegalDocumentArgs, 'input'>>;
   regenerateAdminRecoveryCodes?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateAdminRecoveryCodesArgs, 'reAuthentication'>>;
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
@@ -1170,6 +1553,8 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   startAdminInvitation?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminInvitationArgs, 'nickname' | 'password' | 'token'>>;
   startAdminTotpReset?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminTotpResetArgs, 'reAuthentication'>>;
   startTotpSetup?: Resolver<ResolversTypes['TotpSetup'], ParentType, ContextType, RequireFields<MutationStartTotpSetupArgs, 'input'>>;
+  submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
+  submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
@@ -1194,8 +1579,12 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminLegalDocuments?: Resolver<Array<ResolversTypes['AdminLegalDocumentSummary']>, ParentType, ContextType>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
+  inquiryCategories?: Resolver<Array<ResolversTypes['InquiryCategory']>, ParentType, ContextType>;
+  inquiryComposer?: Resolver<Maybe<ResolversTypes['InquiryComposer']>, ParentType, ContextType>;
   legalDocument?: Resolver<ResolversTypes['LegalDocument'], ParentType, ContextType, RequireFields<QueryLegalDocumentArgs, 'kind'>>;
   legalDocumentVersion?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
+  memberInquiry?: Resolver<Maybe<ResolversTypes['MemberInquiry']>, ParentType, ContextType, RequireFields<QueryMemberInquiryArgs, 'id'>>;
+  myInquiries?: Resolver<ResolversTypes['MemberInquiryPage'], ParentType, ContextType, Partial<QueryMyInquiriesArgs>>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
@@ -1245,6 +1634,12 @@ export type ViewerResolvers<ContextType = GraphQLContext, ParentType extends Res
 export type Resolvers<ContextType = GraphQLContext> = {
   AdminAccount?: AdminAccountResolvers<ContextType>;
   AdminConfirmationResult?: AdminConfirmationResultResolvers<ContextType>;
+  AdminInquiry?: AdminInquiryResolvers<ContextType>;
+  AdminInquiryCategory?: AdminInquiryCategoryResolvers<ContextType>;
+  AdminInquiryGuest?: AdminInquiryGuestResolvers<ContextType>;
+  AdminInquiryMember?: AdminInquiryMemberResolvers<ContextType>;
+  AdminInquiryPage?: AdminInquiryPageResolvers<ContextType>;
+  AdminInquirySummary?: AdminInquirySummaryResolvers<ContextType>;
   AdminLegalDocument?: AdminLegalDocumentResolvers<ContextType>;
   AdminLegalDocumentSummary?: AdminLegalDocumentSummaryResolvers<ContextType>;
   AdminLegalDocumentVersion?: AdminLegalDocumentVersionResolvers<ContextType>;
@@ -1260,6 +1655,11 @@ export type Resolvers<ContextType = GraphQLContext> = {
   AuditOperator?: AuditOperatorResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
+  InquiryCategory?: InquiryCategoryResolvers<ContextType>;
+  InquiryComposer?: InquiryComposerResolvers<ContextType>;
+  InquiryMessage?: InquiryMessageResolvers<ContextType>;
+  InquiryReplyAuthor?: InquiryReplyAuthorResolvers<ContextType>;
+  InquiryReplyResult?: InquiryReplyResultResolvers<ContextType>;
   LegalDocument?: LegalDocumentResolvers<ContextType>;
   LegalDocumentEditor?: LegalDocumentEditorResolvers<ContextType>;
   LegalDocumentVersion?: LegalDocumentVersionResolvers<ContextType>;
@@ -1268,6 +1668,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   LoginSucceeded?: LoginSucceededResolvers<ContextType>;
   MediaAttachment?: MediaAttachmentResolvers<ContextType>;
   MediaImage?: MediaImageResolvers<ContextType>;
+  MemberInquiry?: MemberInquiryResolvers<ContextType>;
+  MemberInquiryPage?: MemberInquiryPageResolvers<ContextType>;
+  MemberInquirySummary?: MemberInquirySummaryResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   OffsetPageInfo?: OffsetPageInfoResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;

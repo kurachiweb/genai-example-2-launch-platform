@@ -364,17 +364,18 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start[submitGuestInquiry] --> Human{assertHuman inquiry_guest}
-    Human -->|fail| Reject403[bot_verification_failed]
-    Human -->|ok| Who{current user}
+    Start[submitGuestInquiry] --> Who{current user}
     Who -->|active logged in| Reject[member_inquiry_required]
-    Who -->|none or suspended| Category{category exists}
+    Who -->|none or suspended| Human{assertHuman inquiry_guest}
+    Human -->|fail| Reject403[bot_verification_failed]
+    Human -->|ok| Category{category exists}
     Category -->|no| Invalid[validation_error categoryId]
     Category -->|yes| Count{hit inquiry guest ip rule}
     Count -->|over 5 per hour| Limited[429 rate_limited]
     Count -->|ok| Save[insert guest inquiry open]
 ```
 
+- 利用者の判定は、拒否する要求でbot判定のトークンを消費させないようリゾルバがbot判定の前に行い、ユースケースも保存の前に確かめ直す。
 - 回数は入力の検証とbot判定と利用者の判定を通った送信だけを数え、Durable ObjectのAlarmで最初の送信から1時間後に消える(要件4.4〜4.6)。送信元IPアドレスが不明なら数えずに警告`guest-inquiry-ip-missing`をログに残し、bot判定で守る。
 
 ### 対応ステータス
