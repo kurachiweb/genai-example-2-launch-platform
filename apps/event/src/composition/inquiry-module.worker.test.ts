@@ -28,6 +28,8 @@ import {
 } from '../../lib/core/identity/user-lifecycle.ts';
 import { RUN_USER_LIFECYCLE_MESSAGE } from '../../lib/core/messaging/contracts/identity.ts';
 import type { QueueEnvelope } from '../../lib/core/messaging/envelope.ts';
+import { INQUIRY_EXPORT_TYPES } from '../../lib/core/inquiry/identifiers.ts';
+import type { InquiryExport } from '../../lib/core/inquiry/ports.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
   clearIdentityTables,
@@ -40,6 +42,7 @@ import {
   T0,
   userIdOf,
 } from '../../lib/workers/identity/testing/identity-store-fixtures.ts';
+import { D1InquiryExport } from '../../lib/workers/inquiry/d1-inquiry-export.ts';
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
 import type { IdentityPurgeStore } from '../application/identity/ports.ts';
 import { EVENT_INQUIRY_TYPES } from '../application/inquiry/event-inquiry-types.ts';
@@ -227,6 +230,42 @@ describe('イベントサーバーのinquiryの束縛と登録', () => {
         EVENT_INQUIRY_TYPES.MemberInquiryPurgeStore,
       ),
     ).toBeInstanceOf(D1MemberInquiryPurgeStore);
+  });
+
+  test('処理単位のコンテナからデータエクスポート用の照会口を解決し、本人の論理削除されていない問い合わせを返す', async () => {
+    await insertUser(KEPT);
+    await insertMemberInquiries(KEPT, [1001], null);
+    await insertMemberInquiries(KEPT, [1002]);
+    await insertMessageWithAttachments(1001, 1001, [1001]);
+
+    const inquiryExport = createContainer().get<InquiryExport>(
+      INQUIRY_EXPORT_TYPES.InquiryExport,
+    );
+
+    expect(inquiryExport).toBeInstanceOf(D1InquiryExport);
+    await expect(
+      inquiryExport.listPage(userIdOf(KEPT), undefined),
+    ).resolves.toStrictEqual({
+      items: [
+        {
+          id: memberInquiryIdOf(1001),
+          category: 'その他',
+          status: 'open',
+          createdAt: T0.toISOString(),
+          messages: [
+            {
+              id: messageIdOf(1001),
+              sender: 'user',
+              adminNickname: null,
+              body: 'メッセージ1001',
+              attachments: [],
+              createdAt: T0.toISOString(),
+            },
+          ],
+        },
+      ],
+      nextCursor: null,
+    });
   });
 
   test('物理削除の開始のイベントに順序300で登録する', () => {

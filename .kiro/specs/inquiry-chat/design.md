@@ -1180,9 +1180,9 @@ export declare class D1InquiryExport implements InquiryExport {
 }
 ```
 
-- 事前条件: `userId`は利用者のID。`after`は前のページの`nextCursor`(最後に返した問い合わせのID)で、ULIDの形式でなければ`AppError(bad_request, validation_error)`。
-- 処理: `member_inquiries`と`inquiry_categories`を結合し、`user_id = ? AND deleted_at IS NULL AND id > ?`で21件を読む→先頭20件の`inquiry_messages`(`(inquiry_id, created_at, id)`の順)と`inquiry_message_attachments`(`position`の順)を、問い合わせのIDのバインド変数が100個以内に収まる単位で読む→添付の`file_id`を`MediaFiles.findMany`で、管理者のIDを`AdminDirectory.findProfiles`でまとめて引く→21件目があれば20件目のIDを`nextCursor`にする。
-- 事後条件: 返す値に連絡先のメールアドレス・送信者の利用者のID・管理者のIDを含めない。`MediaFiles.findMany`が返さないファイル(物理削除済み)の添付は除き、件数を`warn`でログに残す(ファイルIDだけを属性に入れる)。退会済み(論理削除済み)の問い合わせは返さない(退会した利用者はエクスポートを要求できないため)。
+- 事前条件: `userId`は利用者のID。`after`は前のページの`nextCursor`(最後に返した問い合わせのID)で、ULIDの形式でなければ`invalidCursorError()`(`AppError(bad_request, invalid_cursor)`。`backend/004`の独自の形式のカーソルを読む共通ライブラリの部品と同じコードと文言)。
+- 処理: `member_inquiries`と`inquiry_categories`を結合し、`user_id = ? AND deleted_at IS NULL AND id > ?`で21件を読む→先頭20件の`inquiry_messages`(`(inquiry_id, created_at, id)`の順)と`inquiry_message_attachments`(利用者のメッセージのものだけ、`position`の順)を、1回の`db.batch`で読む(1ページの問い合わせのIDは20個のためバインド変数の上限に収まる)→添付の`file_id`を`MediaFiles.findMany`で、管理者のIDを`AdminDirectory.findProfiles`でまとめて引く→21件目があれば20件目のIDを`nextCursor`にする。
+- 事後条件: 返す値に連絡先のメールアドレス・送信者の利用者のID・管理者のIDを含めない。`MediaFiles.findMany`が返さないファイル(物理削除済み)の添付は除き、件数を`warn`でログに残す(カテゴリ`event.inquiry.export`、属性は件数`missingFileCount`とファイルID`missingFileIds`だけ)。退会済み(論理削除済み)の問い合わせは返さない(退会した利用者はエクスポートを要求できないため)。
 - 不変条件: 状態を変えない。同じ入力に対し、間に書き込みが無ければ同じ結果を返す。
 
 ### frontend-lib
@@ -1401,7 +1401,7 @@ erDiagram
   - 波及処理: 同期の文が退会の一括の書き込みで論理削除し、利用者側の一覧と閲覧から消えること(13.1・13.3)。非同期の処理が101件で`continue`、2回目で`done`、再実行で結果が変わらないこと(13.2・13.6)。
   - `CounterGuestInquiryRateLimit`: 偽の厳密カウンタに`inquiry-guest:ip`の規則で数え、6回目で`rate_limit_exceeded`と待ち時間になり、IPが不明なら数えずに警告を残し、キーをハッシュ化すること(4.4〜4.7)。
   - 閲覧の方針: 本人・他人・管理者・紐付けの無い管理者の要求で`/internal/media/files/:fileId`が200・404になること(6.6・6.7)。
-  - `D1InquiryExport`: 本人の問い合わせだけを返し他人・論理削除済みを含めないこと、21件で`nextCursor`があり2回目で残りが返ること、メッセージが送信日時の古い順で添付が位置の順に並ぶこと、カテゴリの削除後に「その他」が返ること、削除済みの管理者の返信の`adminNickname`が`null`で管理者の返信の添付が空であること、物理削除済みのファイルの添付を除くこと、不正な`after`の`validation_error`、eventのコンテナから`INQUIRY_EXPORT_TYPES.InquiryExport`を解決できること(13.7)。
+  - `D1InquiryExport`: 本人の問い合わせだけを返し他人・論理削除済みを含めないこと、21件で`nextCursor`があり2回目で残りが返ること、メッセージが送信日時の古い順で添付が位置の順に並ぶこと、カテゴリの削除後に「その他」が返ること、削除済みの管理者の返信の`adminNickname`が`null`で管理者の返信の添付が空であること、物理削除済みのファイルの添付を除くこと、不正な`after`の`invalid_cursor`、eventのコンテナから`INQUIRY_EXPORT_TYPES.InquiryExport`を解決できること(13.7)。
   - GraphQLの`inquiry`モジュール: bot判定の失敗の403(4.2)、6回目の未ログインの送信の429と`Retry-After`(4.4・4.5)、チャットの送信でbot判定を求めないこと(4.3)、管理者側の呼び出し元からの`submitGuestInquiry`の拒否、閲覧のみの`replyToInquiry`の403(11.7)、削除済みの管理者の返信の`deleted: true`(7.5)。
   - 結合: テンプレートが`createEmailTemplateRegistry`に通り、本文にリンクがあり返信の本文が無いこと(11.2・11.3)。`inquiry-attachment`の用途で20,971,521バイトが413になり20,971,520バイトが受け付けられること(6.1)。
 - **E2E/UI Tests**(Playwright、ローカルで起動したapi・event・client・adminとMailpit):
