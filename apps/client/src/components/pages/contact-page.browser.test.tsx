@@ -3,12 +3,14 @@ import { page } from 'vitest/browser';
 
 import '../../styles.css';
 import { resetTurnstileScriptFailure } from '../../../lib/components/bot-protection/turnstile-script-failure.ts';
+import { DisplayPreferencesProvider } from '../../../lib/components/datetime/display-preferences-provider.tsx';
 import { runAxe } from '../../../lib/test/a11y.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
 } from '../../../lib/test/computed-style.ts';
 import { resetFakeTurnstile } from '../../../lib/test/fake-turnstile.tsx';
+import type { DisplayPreferences } from '../../../lib/utilities/datetime/display-preferences.ts';
 import { renderInRouter } from '../../../test/page-router.tsx';
 import {
   signedInViewerQuery,
@@ -18,9 +20,14 @@ import type { InquiryContactFormView } from '../../graphql/inquiry-contact.ts';
 import type { ClientViewer } from '../../graphql/viewer.ts';
 import { ContactPage } from './contact-page.tsx';
 
-// 同型の取得の関数はサーバーの分岐でブラウザから読めないサーバー専用のパッケージを読み込むため、描画だけを確かめるこのテストでは偽物にする
+// 同型の取得の関数はサーバーの分岐でブラウザから読めないサーバー専用のパッケージを読み込むため、描画だけを確かめるこのテストでは、自分の問い合わせの一覧を空で返す偽物にする
 vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
-  executeGraphQL: vi.fn(),
+  executeGraphQL: vi.fn(() =>
+    Promise.resolve({
+      ok: true,
+      data: { myInquiries: { items: [], nextCursor: null } },
+    }),
+  ),
 }));
 
 vi.mock(
@@ -33,6 +40,11 @@ const CATEGORIES = Object.freeze([
   { id: '01JC0CATEG0RY0000000000002', name: 'アカウント' },
   { id: '01JC0000000000000000000000', name: 'その他' },
 ]);
+
+const TOKYO_JA: DisplayPreferences = {
+  timeZone: 'Asia/Tokyo',
+  locale: 'ja-JP',
+};
 
 const GUEST_FORM: InquiryContactFormView = {
   categories: CATEGORIES,
@@ -64,7 +76,14 @@ const formOf = (state: ViewerState): InquiryContactFormView =>
 
 const renderPage = (state: ViewerState) =>
   renderInRouter(
-    <ContactPage viewer={viewerOf(state)} form={formOf(state)} />,
+    <DisplayPreferencesProvider initial={TOKYO_JA}>
+      <ContactPage
+        viewer={viewerOf(state)}
+        form={formOf(state)}
+        myInquiriesAfter={undefined}
+        onShowMyInquiriesPage={() => undefined}
+      />
+    </DisplayPreferencesProvider>,
     { path: '/contact' },
   );
 
@@ -158,6 +177,9 @@ describe('ContactPage', () => {
       async (state) => {
         await renderPage(state);
         await expect.element(form()).toBeVisible();
+        await expect
+          .poll(() => document.querySelector('[aria-busy="true"]'))
+          .toBeNull();
 
         expect(await runAxe(document.body)).toStrictEqual([]);
       },

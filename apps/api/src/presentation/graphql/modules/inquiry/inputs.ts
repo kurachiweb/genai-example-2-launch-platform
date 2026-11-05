@@ -4,6 +4,7 @@ import { checkAuditReason } from '../../../../../common-lib/admin/admin-input-ru
 import {
   checkGuestNickname,
   checkInquiryBody,
+  INQUIRY_CURSOR_MAX,
 } from '../../../../../common-lib/inquiry/inquiry-input-rules.ts';
 import { trimWhiteSpace } from '../../../../../common-lib/text/white-space.ts';
 import { invalidCursorError } from '../../../../../lib/core/errors/invalid-cursor.ts';
@@ -22,9 +23,6 @@ import { inquiryKindOf, inquiryStatusOf } from './mappers.ts';
 
 // 問い合わせ・カテゴリ・ファイルのIDは26文字のULIDで、一致しない値はユースケースが見つからない・添付できないとして扱う。ここでは処理量だけを抑える
 const ID_INPUT_MAX_LENGTH = 64;
-
-// カーソルの形式の誤りはストアが位置の指定のエラーにする。ここでは処理量だけを抑える
-const CURSOR_INPUT_MAX_LENGTH = 256;
 
 const inquiryId = z
   .string()
@@ -52,9 +50,10 @@ const inquiryBody = inputRuleOf((value) => {
   return issue === undefined ? undefined : INQUIRY_BODY_MESSAGES[issue];
 });
 
+// カーソルの形式の誤りはストアが位置の指定のエラーにする。ここでは処理量だけを抑える
 const after = z
   .string()
-  .max(CURSOR_INPUT_MAX_LENGTH, invalidCursorError().message)
+  .max(INQUIRY_CURSOR_MAX, invalidCursorError().message)
   .nullish()
   .transform((value) => value ?? undefined);
 

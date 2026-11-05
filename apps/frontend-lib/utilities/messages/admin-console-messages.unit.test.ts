@@ -35,9 +35,7 @@ import {
   categoryEditTitle,
   categoryRowActionTarget,
   CONFIRM_ACTION_CANCEL_LABEL,
-  NEXT_PAGE_LABEL,
   OPTIONAL_REASON_LABEL,
-  PREVIOUS_PAGE_LABEL,
   REASON_PERSONAL_INFORMATION_NOTICE,
   REASON_REQUIRED_MESSAGE,
   REASON_TOO_LONG_MESSAGE,
@@ -48,8 +46,6 @@ import {
 
 const LABELS = [
   ADMIN_PAGINATION_LABEL,
-  PREVIOUS_PAGE_LABEL,
-  NEXT_PAGE_LABEL,
   ADMIN_FILTER_LABEL,
   APPLY_FILTER_LABEL,
   RESET_FILTER_LABEL,
@@ -64,14 +60,7 @@ const SENTENCES = [
 
 describe('管理画面の共通部品の文言', () => {
   test('ページ送りと絞り込みの名前と操作は、この部品で定めた文言のまま変わらない', () => {
-    expect(LABELS).toStrictEqual([
-      'ページ送り',
-      '前へ',
-      '次へ',
-      '絞り込み',
-      '適用',
-      '解除',
-    ]);
+    expect(LABELS).toStrictEqual(['ページ送り', '絞り込み', '適用', '解除']);
   });
 
   test('名前と操作は句点の無い体言止めにする', () => {
@@ -86,7 +75,6 @@ describe('管理画面の共通部品の文言', () => {
   });
 
   test('同じ領域に並ぶ操作の名前は互いに異なる', () => {
-    expect(PREVIOUS_PAGE_LABEL).not.toBe(NEXT_PAGE_LABEL);
     expect(APPLY_FILTER_LABEL).not.toBe(RESET_FILTER_LABEL);
   });
 

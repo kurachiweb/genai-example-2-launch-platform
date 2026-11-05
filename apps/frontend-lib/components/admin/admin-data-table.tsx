@@ -1,15 +1,10 @@
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import {
-  ADMIN_PAGINATION_LABEL,
-  NEXT_PAGE_LABEL,
-  PREVIOUS_PAGE_LABEL,
-} from '../../utilities/messages/admin-console-messages.ts';
+import { ADMIN_PAGINATION_LABEL } from '../../utilities/messages/admin-console-messages.ts';
+import { PageNavigation } from '../navigation/page-navigation.tsx';
 import { EmptyState } from '../state/empty-state.tsx';
 import { ErrorState } from '../state/error-state.tsx';
 import { LoadingSkeleton } from '../state/loading-skeleton.tsx';
-import { Button } from '../ui/button/button.tsx';
 import { Skeleton } from '../ui/skeleton/skeleton.tsx';
 import { Table } from '../ui/table/table.tsx';
 import { TableBody } from '../ui/table/table-body.tsx';
@@ -103,32 +98,6 @@ function bodyOf<Row>({
   );
 }
 
-// 押した直後に最後のページや読み込み中へ変わるボタンをdisabledにしたり描かなくしたりすると、Chromiumがフォーカスを<body>へ移して操作の位置を失うため、ページ送りは描いたままaria-disabledで押せなくする
-function PageButton({
-  enabled,
-  onPress,
-  children,
-}: {
-  readonly enabled: boolean;
-  readonly onPress: () => void;
-  readonly children: ReactNode;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      aria-disabled={enabled ? undefined : true}
-      onClick={() => {
-        if (enabled) {
-          onPress();
-        }
-      }}
-    >
-      {children}
-    </Button>
-  );
-}
-
 // aria-busyの中の変化は読み上げが遅れ得るため、読み込み中のLoadingSkeletonは表の領域のaria-busyの外に置く
 export function AdminDataTable<Row>(props: AdminDataTableProps<Row>) {
   const { rows, error, pagination } = props;
@@ -141,25 +110,11 @@ export function AdminDataTable<Row>(props: AdminDataTableProps<Row>) {
         <div aria-busy={loading ? true : undefined}>{bodyOf(props)}</div>
       </div>
       {pagination === undefined ? null : (
-        <nav
-          aria-label={ADMIN_PAGINATION_LABEL}
-          className="flex flex-wrap justify-end gap-2"
-        >
-          <PageButton
-            enabled={settled && pagination.hasPrevious}
-            onPress={pagination.onPrevious}
-          >
-            <ChevronLeftIcon aria-hidden="true" />
-            {PREVIOUS_PAGE_LABEL}
-          </PageButton>
-          <PageButton
-            enabled={settled && pagination.hasNext}
-            onPress={pagination.onNext}
-          >
-            {NEXT_PAGE_LABEL}
-            <ChevronRightIcon aria-hidden="true" />
-          </PageButton>
-        </nav>
+        <PageNavigation
+          label={ADMIN_PAGINATION_LABEL}
+          settled={settled}
+          {...pagination}
+        />
       )}
     </div>
   );

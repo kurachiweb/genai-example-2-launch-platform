@@ -6,11 +6,15 @@ import {
   CONTACT_PAGE_TITLE,
 } from '../inquiry/inquiry-contact-messages.ts';
 import { MemberInquiryForm } from '../inquiry/member-inquiry-form.tsx';
+import { MyInquiryList } from '../inquiry/my-inquiry-list.tsx';
 import { SuspendedContactNotice } from '../inquiry/suspended-contact-notice.tsx';
 
 export interface ContactPageProps {
   readonly viewer: ClientViewer | null;
   readonly form: InquiryContactFormView;
+  // 自分の問い合わせの一覧のページの位置のカーソル。undefinedは1ページ目
+  readonly myInquiriesAfter: string | undefined;
+  readonly onShowMyInquiriesPage: (after: string | undefined) => void;
 }
 
 interface ContactFormProps {
@@ -39,7 +43,12 @@ function ContactForm({ viewer, form }: ContactFormProps) {
   );
 }
 
-export function ContactPage({ viewer, form }: ContactPageProps) {
+export function ContactPage({
+  viewer,
+  form,
+  myInquiriesAfter,
+  onShowMyInquiriesPage,
+}: ContactPageProps) {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10">
       <div className="flex flex-col gap-2">
@@ -49,6 +58,13 @@ export function ContactPage({ viewer, form }: ContactPageProps) {
         <p className="text-sm text-muted-foreground">{CONTACT_PAGE_LEAD}</p>
       </div>
       <ContactForm viewer={viewer} form={form} />
+      {viewer === null ? null : (
+        <MyInquiryList
+          viewerId={viewer.id}
+          after={myInquiriesAfter}
+          onShowPage={onShowMyInquiriesPage}
+        />
+      )}
     </div>
   );
 }

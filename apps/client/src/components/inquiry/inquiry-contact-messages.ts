@@ -44,3 +44,14 @@ export const SUSPENDED_CONTACT_NOTICE =
   'このアカウントは停止中のため、ログインしていない場合と同じフォームでお問い合わせを受け付けます。この問い合わせへの回答はサービス上では行わず、入力した連絡先メールアドレスへお送りします。';
 
 export const RETRY_AT_SUFFIX = '以降に再度送信できます。';
+
+export const MY_INQUIRIES_TITLE = '送信した問い合わせ';
+
+export const MY_INQUIRIES_EMPTY_MESSAGE =
+  '送信した問い合わせはまだありません。';
+
+export const MY_INQUIRIES_PAGINATION_LABEL = `${MY_INQUIRIES_TITLE}のページ送り`;
+
+export const SENT_AT_LABEL = '送信日時';
+
+export const LAST_MESSAGE_AT_LABEL = '最後のメッセージ';

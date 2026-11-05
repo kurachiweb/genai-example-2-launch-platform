@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 
@@ -16,13 +16,18 @@ import { Textarea } from '../../../lib/components/ui/textarea/textarea.tsx';
 import { graphqlMutationOptions } from '../../../lib/start/graphql/graphql-query-options.ts';
 import { sendWithTurnstile } from '../../../lib/utilities/bot-protection/send-with-turnstile.ts';
 import { SERVER_FIELD_ERROR_TYPE } from '../../../lib/utilities/forms/server-field-errors.ts';
-import { ClientSubmitMemberInquiryDocument } from '../../graphql/generated/graphql.ts';
+import { documentIdOf } from '../../../lib/utilities/graphql/persisted-document.ts';
+import {
+  ClientMyInquiriesDocument,
+  ClientSubmitMemberInquiryDocument,
+} from '../../graphql/generated/graphql.ts';
 import type {
   InquiryCategoryOption,
   InquiryComposerView,
 } from '../../graphql/inquiry-contact.ts';
 import { REQUIRED_SUFFIX } from '../auth/account-messages.ts';
 import { INQUIRY_BOT_ACTIONS } from './bot-actions.ts';
+import { inquiryChatHref } from './inquiry-chat-href.ts';
 import { InquiryAttachmentInput } from './inquiry-attachment-input.tsx';
 import {
   ATTACHMENTS_DESCRIPTION,
@@ -64,9 +69,6 @@ const ATTACHMENT_POSITION_PREFIX = `${FILE_IDS_FIELD}.`;
 
 const NO_INVALID_FILE_IDS: ReadonlySet<string> = new Set();
 
-const inquiryChatHref = (inquiryId: string): string =>
-  `/inquiries/${encodeURIComponent(inquiryId)}`;
-
 // 停止していないログイン中の利用者のフォーム。送信できたら、続きのやり取りをするチャットへ移る
 export function MemberInquiryForm({
   categories,
@@ -76,9 +78,16 @@ export function MemberInquiryForm({
     defaultValues: DEFAULT_VALUES,
   });
   const turnstile = useTurnstileToken();
-  const submitInquiry = useMutation(
-    graphqlMutationOptions(ClientSubmitMemberInquiryDocument),
-  );
+  const queryClient = useQueryClient();
+  // 送信の後はチャットへ移り一覧は表示しなくなるため、表示中の一覧を取得し直さずに古いものとだけして、戻った時に取得し直させる
+  const submitInquiry = useMutation({
+    ...graphqlMutationOptions(ClientSubmitMemberInquiryDocument),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: [documentIdOf(ClientMyInquiriesDocument)],
+        refetchType: 'none',
+      }),
+  });
   const navigate = useNavigate();
   const [invalidFileIds, setInvalidFileIds] =
     useState<ReadonlySet<string>>(NO_INVALID_FILE_IDS);

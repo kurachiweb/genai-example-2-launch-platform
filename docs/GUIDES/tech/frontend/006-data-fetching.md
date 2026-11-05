@@ -213,7 +213,7 @@ export const Route = createFileRoute('/items/')({
 - 描画中に失敗した取得の失敗はブラウザへ渡り(「[サーバーからブラウザへの例外の受け渡し](#サーバーからブラウザへの例外の受け渡し)」)、`useQuery`は表示の後に取得し直す(`retryOnMount`の既定値)。ブラウザ内の遷移で`loader`の取得が失敗したときも、部品が新しいキーへ切り替わる時に取得し直す。取得し直している間(`isFetching`)は前の失敗を示さず読み込み中として描き、エラーコードによらない文言を一瞬出さない。
 - 再試行のボタンは取得し直すと消えるため、押した時にフォーカスを一覧の見出し(`tabIndex={-1}`)などの続きの位置へ移す(「[処理の後のフォーカス](004-accessibility-rules.md#処理の後のフォーカス)」)。
 - 取得の変数を閲覧者の表示設定(地域の暦など)から作る場合は、`loader`も部品と同じ値で変数を作る。サーバーではルーターの文脈の表示設定、ブラウザではブラウザの表示設定(`resolveBrowserDisplayPreferences()`)を使い、`environmentManager.isServer()`で選ぶ。異なる値で作ると、同じ条件を2回取得する。
-- 検索パラメータ`after`のカーソルで区切る一覧の前後のページは、`utilities/pagination/cursor-trail.ts`で求める。カーソルは次のページの位置しか示さないため、部品は同じ絞り込みの条件で辿ったカーソルの記録を`useState(EMPTY_CURSOR_TRAIL)`で持ち、前のページを`previousPageOf(記録, 条件, after)`、次へ進む時の記録を`trailAfterNext(記録, 条件, after, 次のカーソル)`で求めて`useNavigate`で検索パラメータを変える。条件には絞り込みの検索パラメータから`after`を除いた値を直列化した文字列を渡し、条件が変われば前の条件の記録を使わない。記録の無い途中のページ(再読み込みや共有したURL)の前のページは1ページ目になる。
+- 検索パラメータ`after`のカーソルで区切る一覧の前後のページは、`utilities/pagination/cursor-trail.ts`で求める。カーソルは次のページの位置しか示さないため、部品は同じ絞り込みの条件で辿ったカーソルの記録を`useState(EMPTY_CURSOR_TRAIL)`で持ち、前のページを`previousPageOf(記録, 条件, after)`、次へ進む時の記録を`trailAfterNext(記録, 条件, after, 次のカーソル)`で求めて`useNavigate`で検索パラメータを変える。条件には絞り込みの検索パラメータから`after`を除いた値を直列化した文字列を渡し、条件が変われば前の条件の記録を使わない。記録の無い途中のページ(再読み込みや共有したURL)の前のページは1ページ目になる。ボタンは共通部品の`PageNavigation`(「[ページ送り](005-shared-components.md#ページ送り)」)で描く。
 
 ### 変更
 

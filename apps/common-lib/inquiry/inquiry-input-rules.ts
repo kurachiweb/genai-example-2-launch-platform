@@ -9,6 +9,8 @@ export const INQUIRY_BODY_MAX = 5_000;
 
 export const CHAT_MESSAGE_MAX = 1_000;
 
+export const INQUIRY_CURSOR_MAX = 256;
+
 export type InquiryTextIssue = 'forbidden-character' | 'empty' | 'too-long';
 
 const checkRequiredText = (

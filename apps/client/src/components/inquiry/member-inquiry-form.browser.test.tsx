@@ -18,9 +18,13 @@ import {
 } from '../../../lib/test/fake-upload-fetch.ts';
 import { createDocumentFile } from '../../../lib/test/media-files.ts';
 import { GraphQLClientError } from '../../../lib/utilities/graphql/graphql-result.ts';
-import { renderInRouter } from '../../../test/page-router.tsx';
+import {
+  createPageRouterContext,
+  renderInRouter,
+} from '../../../test/page-router.tsx';
 import { VIEWER_NICKNAME } from '../../../test/viewer-fixtures.ts';
 import { ClientSubmitMemberInquiryDocument } from '../../graphql/generated/graphql.ts';
+import { myInquiriesQueryOptions } from '../../graphql/inquiry-contact.ts';
 import { MemberInquiryForm } from './member-inquiry-form.tsx';
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
@@ -186,6 +190,35 @@ describe('MemberInquiryForm', () => {
         },
       },
       { turnstileToken: 'turnstile-token-1' },
+    );
+  });
+
+  test('送信できたら、自分の問い合わせの一覧の取得を古いものとし、戻った時に新しい問い合わせを含めて取得し直させる', async () => {
+    executeGraphQL.mockImplementation(submitted);
+    const context = createPageRouterContext('local');
+    const listKey = myInquiriesQueryOptions(
+      '01JC0VIEWER0000000000000000',
+      undefined,
+    ).queryKey;
+    context.queryClient.setQueryData(listKey, {
+      myInquiries: { items: [], nextCursor: null },
+    });
+    const router = await renderInRouter(
+      <MemberInquiryForm
+        categories={CATEGORIES}
+        composer={{ nickname: VIEWER_NICKNAME, avatar: null }}
+      />,
+      { path: '/contact', context },
+    );
+
+    await fillValidInput();
+    await passBotCheckAndSubmit();
+
+    await expect
+      .poll(() => router.state.location.pathname)
+      .toBe(`/inquiries/${INQUIRY_ID}`);
+    expect(context.queryClient.getQueryState(listKey)?.isInvalidated).toBe(
+      true,
     );
   });
 

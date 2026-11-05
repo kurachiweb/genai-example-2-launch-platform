@@ -12,6 +12,7 @@ import {
   checkInquiryCategoryName,
   GUEST_NICKNAME_MAX,
   INQUIRY_BODY_MAX,
+  INQUIRY_CURSOR_MAX,
   type InquiryTextIssue,
 } from './inquiry-input-rules.ts';
 
@@ -41,6 +42,10 @@ describe('入力の上限の定数', () => {
       INQUIRY_BODY_MAX: 5_000,
       CHAT_MESSAGE_MAX: 1_000,
     });
+  });
+
+  test('一覧のページの位置のカーソルの上限は256文字', () => {
+    expect(INQUIRY_CURSOR_MAX).toBe(256);
   });
 });
 
