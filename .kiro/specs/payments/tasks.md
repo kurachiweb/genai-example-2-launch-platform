@@ -106,7 +106,7 @@
   - _Depends: 1.3, 2.1_
   - _Requirements: 2.4, 4.5, 6.4, 6.5, 6.6_
 
-- [ ] 4.2 (P) 決済履歴・返金の依頼・Customer・価格のストアを作る
+- [x] 4.2 (P) 決済履歴・返金の依頼・Customer・価格のストアを作る
   - 先に、Workers統合テストで、決済セッションの記録の重複の無視、請求・返金の発生時刻が新しいときだけの更新(古い通知で状態が戻らない)、チャージバックの段階ごとの挿入と重複の無視、仮名化IDでの降順のカーソルの一覧と全件の昇順の読み出し、7年より前の記録の上限付きの削除、返金の依頼キーの一意と依頼済みの合計と送信待ちの検索と自動返金の通知の状態の更新と10分以上通知待ちの検索と利用者の行の削除、Customerの保存と削除と後続spec用の照会、価格の保存と取得時刻を確かめる
   - `IN`句とまとめての挿入をバインド変数100個以内に分ける
   - 返金の依頼の行の追加と利用者の行の削除、Customerの対応の削除は文を返す操作(`workers/payments/statement-contracts.ts`)にし、それ以外は`core/payments`のストアの契約で実装する
@@ -359,3 +359,4 @@
 - 3.2: Stripeの結果への変換は`workers/payments/stripe-snapshots.ts`。持ち主の手がかりはPaymentIntentの取得と`invoicePayments.list`(API版`2026-10-28.endive`のPaymentIntentは`invoice`を持たない)。定期課金の`currentPeriodEnd`は項目の`current_period_end`の最大値。請求・返金・定期課金の想定外の状態は例外(チャージバックだけは値をそのまま返す)
 - 3.3: 署名の検証は`workers/payments/stripe-webhook-verifier.ts`の`StripeWebhookSignatureVerifier`(`@injectable`無し、`{ appName, webhookSecret }`)。秘密が未設定なら`StripeUnavailableError`(ログ無し、経路が503)、拒否は`StripeSignatureError`(cause無し)。backend-libのWorkers統合テストはapiの`test:worker`で走る(eventは`lib/**`を除外)
 - 4.1: 版の検査付きの一括の書き込みは`workers/payments/guarded-batch.ts`の`D1GuardedBatch`。決済セッションの記録の版の検査付きの挿入は`checkout-record-guard.ts`の`checkoutRecordGuardedInsert(db, record, guard)`で、4.2の`D1PaymentRecordStore.insertCheckoutRecordGuarded`はこれに委ねる。1文の前進は`PurchaseStore.advanceAlone`(行き先は`processing`・`expired`だけ)、前進の元は呼び出し側が`ADVANCEABLE_FROM`から渡す。`findOpenByUser`はopen・processing、`findOpenByTarget`はopenだけ、突合と日次の確認の対象はopen・processing・superseded(決済セッションIDの無い購入を除く)。テストの補助は`testing/payment-store-fixtures.ts`
+- 4.2: `upsertByReference`は`記録済みのlast_event_at <= 受け取ったlast_event_at`のときだけ更新し、同意の日時と版・購入ID・関連ID・Linkの資金源のグループはcoalesceで既存の値を残す。5.4(必須): 初回の請求の`invoice.paid`が決済セッションの反映より先に届くと、決済セッションの記録の挿入が一意キーの衝突で無視され、同意の日時と版(12.6)とLinkの資金源のグループが記録されない。請求の反映で持ち主の購入を特定できたら、購入の同意の日時・版・購入IDを`NewPaymentRecord`に写し、「請求が決済セッションより先に届いても同意が残る」をテストで確かめる。反映は通知の本文ではなくStripeから取り直した状態を書く

@@ -1,5 +1,9 @@
+import { env } from 'cloudflare:workers';
 import { asc, eq } from 'drizzle-orm';
 
+import { createDatabase, type Database } from '../../../../db/client.ts';
+import { paymentCustomers } from '../../../../db/schema/payments/payment-customers.ts';
+import { paymentPriceSnapshots } from '../../../../db/schema/payments/payment-price-snapshots.ts';
 import { paymentPurchases } from '../../../../db/schema/payments/payment-purchases.ts';
 import { paymentRecords } from '../../../../db/schema/payments/payment-records.ts';
 import { paymentRefunds } from '../../../../db/schema/payments/payment-refunds.ts';
@@ -7,6 +11,7 @@ import { paymentStripeObjects } from '../../../../db/schema/payments/payment-str
 import type {
   NewPaymentRecord,
   NewPurchase,
+  NewRefundRequest,
 } from '../../../core/payments/ports.ts';
 import {
   clearIdentityTables,
@@ -33,6 +38,10 @@ export function tokenOf(index: number): string {
 
 export function recordIdOf(index: number): string {
   return `01JC0RECORD${String(index).padStart(15, '0')}`;
+}
+
+export function refundIdOf(index: number): string {
+  return `01JC0REFUND${String(index).padStart(15, '0')}`;
 }
 
 export function newPurchase(
@@ -92,11 +101,28 @@ export function newPaymentRecord(
   };
 }
 
+export function newRefundRequest(
+  index: number,
+  columns: Partial<NewRefundRequest> = {},
+): NewRefundRequest {
+  return {
+    id: refundIdOf(index),
+    purchaseId: purchaseIdOf(1),
+    requestKey: `request-key-${String(index)}`,
+    amount: 100,
+    reason: 'entitlement_lost',
+    noticeStatus: 'none',
+    ...columns,
+  };
+}
+
 export async function clearPaymentTables(): Promise<void> {
   await db.delete(paymentRefunds);
   await db.delete(paymentRecords);
   await db.delete(paymentStripeObjects);
+  await db.delete(paymentPriceSnapshots);
   await db.delete(paymentPurchases);
+  await db.delete(paymentCustomers);
   await clearIdentityTables();
 }
 
@@ -123,4 +149,26 @@ export async function readStripeObjects(): Promise<
     .select()
     .from(paymentStripeObjects)
     .orderBy(asc(paymentStripeObjects.objectId));
+}
+
+// 各文のバインド変数の数を記録し、実行はテスト用のD1へそのまま渡す
+export function createRecordingDatabase(): {
+  readonly database: Database;
+  readonly placeholderCounts: readonly number[];
+} {
+  const placeholderCounts: number[] = [];
+  const d1 = env.DB;
+  const recording: D1Database = {
+    prepare: (query) => {
+      placeholderCounts.push(query.match(/\?/g)?.length ?? 0);
+      return d1.prepare(query);
+    },
+    batch: d1.batch.bind(d1),
+    exec: d1.exec.bind(d1),
+    withSession: d1.withSession.bind(d1),
+    // D1Databaseの型が非推奨のdumpも必須にするため、偽物でも実装する
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    dump: () => Promise.reject(new Error('テストでは使わない')),
+  };
+  return { database: createDatabase(recording), placeholderCounts };
 }
