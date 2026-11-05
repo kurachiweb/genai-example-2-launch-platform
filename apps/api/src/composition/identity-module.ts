@@ -9,7 +9,9 @@ import {
 import type { Database } from '../../db/client.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
+import type { AccountGuard } from '../../lib/core/identity/account-guard.ts';
 import type { DisposableEmailChecker } from '../../lib/core/identity/disposable-email.ts';
+import { IDENTITY_PLATFORM_TYPES } from '../../lib/core/identity/identifiers.ts';
 import type { UserLifecycleStore } from '../../lib/core/identity/ports.ts';
 import type { IdGenerator } from '../../lib/core/ids/id-generator.ts';
 import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
@@ -38,10 +40,7 @@ import {
   HashingSecretIssuer,
   type SecretIssuer,
 } from '../application/auth/secret-issuer.ts';
-import {
-  type AccountGuard,
-  StoreAccountGuard,
-} from '../application/identity/account-guard.ts';
+import { StoreAccountGuard } from '../application/identity/account-guard.ts';
 import { AccountUploaderEligibility } from '../application/identity/account-uploader-eligibility.ts';
 import {
   type AdministrativeWithdrawal,
@@ -263,7 +262,7 @@ function bindServices(bind: Bind): void {
 function bindUseCases(bind: Bind): void {
   bind<SessionIssuer>(IDENTITY_TYPES.SessionIssuer).to(StoreSessionIssuer);
   // 利用者の読み取りを要求の中で使い回すため、処理単位で1つにする
-  bind<AccountGuard>(IDENTITY_TYPES.AccountGuard)
+  bind<AccountGuard>(IDENTITY_PLATFORM_TYPES.AccountGuard)
     .to(StoreAccountGuard)
     .inSingletonScope();
   bind<Registration>(IDENTITY_TYPES.Registration).to(StoreRegistration);

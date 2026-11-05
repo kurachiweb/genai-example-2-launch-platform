@@ -1,12 +1,14 @@
 import { inject, injectable } from 'inversify';
 
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
+import type { CurrentUser } from '../../../lib/core/identity/account-guard.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { AuthIncidentReporter } from '../auth/ports.ts';
-import type { CurrentUser } from './account-guard.ts';
+import { loadCurrentUserRecord } from './current-user-record.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import type {
   IdentityMessagePublisher,
+  UserAccountStore,
   UserLifecycleCommitter,
   UserRecord,
 } from './ports.ts';
@@ -50,6 +52,8 @@ export class StoreWithdrawal implements Withdrawal {
   constructor(
     @inject(IDENTITY_TYPES.ReAuthenticator)
     private readonly reAuthenticator: ReAuthenticator,
+    @inject(IDENTITY_TYPES.UserAccountStore)
+    private readonly users: UserAccountStore,
     @inject(IDENTITY_TYPES.UserLifecycleCommitter)
     committer: UserLifecycleCommitter,
     @inject(PLATFORM_TYPES.MessagePublisher)
@@ -65,7 +69,7 @@ export class StoreWithdrawal implements Withdrawal {
     reAuthentication: ReAuthenticationInput,
     meta: RequestMeta,
   ): Promise<void> {
-    const { user } = current;
+    const user = await loadCurrentUserRecord(this.users, current);
     await this.reAuthenticator.verify(user, reAuthentication, meta);
     await commitWithdrawal(this.#transition, user, meta.now);
   }

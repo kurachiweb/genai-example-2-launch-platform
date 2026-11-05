@@ -1,43 +1,22 @@
 import { inject, injectable } from 'inversify';
 
 import { AUDIT_REASON_MAX } from '../../../common-lib/admin/admin-input-rules.ts';
+import type { AuditActionCatalog } from '../../../common-lib/admin/audit-action.ts';
 import type {
-  AuditActionCatalog,
-  AuditTargetKind,
-} from '../../../common-lib/admin/audit-action.ts';
+  AuditEntryInput,
+  AuditLogRecorder,
+  PreparedAuditEntry,
+} from '../../../lib/core/admin/audit-log.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import {
-  type AuditEntryInput,
   type AuditEntryViolation,
   validateAuditEntry,
 } from '../../domain/admin/audit-entry.ts';
 import { ADMIN_TYPES } from './admin-types.ts';
 import type { AuditLogStore } from './ports.ts';
-
-// 検証を経ずに組み立てた値をストアへ渡せないよう、このモジュールだけが持つシンボルで準備済みの値を区別する
-const PREPARED: unique symbol = Symbol('PreparedAuditEntry');
-
-export interface PreparedAuditEntry {
-  readonly [PREPARED]: true;
-  readonly id: string;
-  readonly operatorAdminId: string;
-  readonly action: string;
-  readonly targetKind: AuditTargetKind | null;
-  readonly targetIds: readonly string[];
-  readonly reason: string | null;
-  readonly detail: Readonly<Record<string, string>>;
-  readonly occurredAt: Date;
-}
-
-export interface AuditLogRecorder {
-  // 管理操作の前に呼び、違反があれば操作を行わせない。結果は操作と同じ一括の書き込みでストアへ渡す
-  prepare(entry: AuditEntryInput): PreparedAuditEntry;
-  // 閲覧・検索のような記録だけの操作で、結果を返す前に単独で書く
-  record(entry: AuditEntryInput): Promise<void>;
-}
 
 const VALIDATION_ERROR_MESSAGE = '入力内容を確認してください。';
 
@@ -117,8 +96,8 @@ export class StoreAuditLogRecorder implements AuditLogRecorder {
       throw auditEntryValidationError(validation.violation);
     }
     const action = this.catalog.find(entry.action);
-    const prepared: PreparedAuditEntry = {
-      [PREPARED]: true,
+    // 準備済みの印は型だけのため、検証を経たこの値にだけ型の表明で付ける
+    return Object.freeze({
       id: this.ids.generate(),
       operatorAdminId: entry.operatorAdminId,
       action: entry.action,
@@ -127,8 +106,7 @@ export class StoreAuditLogRecorder implements AuditLogRecorder {
       reason: validation.reason,
       detail: Object.freeze({ ...entry.detail }),
       occurredAt: entry.occurredAt,
-    };
-    return Object.freeze(prepared);
+    }) as PreparedAuditEntry;
   }
 
   async record(entry: AuditEntryInput): Promise<void> {

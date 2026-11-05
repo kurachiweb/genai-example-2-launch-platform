@@ -10,16 +10,17 @@ import {
   defineAuditAction,
 } from '../../../common-lib/admin/audit-action.ts';
 import { AUDIT_ACTIONS } from '../../../common-lib/admin/audit-actions/index.ts';
+import type {
+  AuditEntryInput,
+  AuditLogRecorder,
+  PreparedAuditEntry,
+} from '../../../lib/core/admin/audit-log.ts';
+import { ADMIN_PLATFORM_TYPES } from '../../../lib/core/admin/identifiers.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
-import type { AuditEntryInput } from '../../domain/admin/audit-entry.ts';
 import { ADMIN_TYPES } from './admin-types.ts';
-import {
-  type AuditLogRecorder,
-  type PreparedAuditEntry,
-  StoreAuditLogRecorder,
-} from './audit-log-recorder.ts';
+import { StoreAuditLogRecorder } from './audit-log-recorder.ts';
 import type { AuditLogStore } from './ports.ts';
 
 const OPERATOR_ADMIN_ID = '01JBX8Y4Z5ABCDEFGHJKMNPQRS';
@@ -421,11 +422,11 @@ describe('StoreAuditLogRecorder', () => {
       .bind<AuditLogStore>(ADMIN_TYPES.AuditLogStore)
       .toConstantValue(store);
     container
-      .bind<AuditLogRecorder>(ADMIN_TYPES.AuditLogRecorder)
+      .bind<AuditLogRecorder>(ADMIN_PLATFORM_TYPES.AuditLogRecorder)
       .to(StoreAuditLogRecorder);
 
     const recorder = container.get<AuditLogRecorder>(
-      ADMIN_TYPES.AuditLogRecorder,
+      ADMIN_PLATFORM_TYPES.AuditLogRecorder,
     );
 
     expect(recorder.prepare(inviteEntry()).action).toBe('admin-account.invite');

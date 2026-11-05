@@ -6,14 +6,16 @@ import { afterAll, describe, expect, test } from 'vitest';
 
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
+import type {
+  AuthenticatedPrincipal,
+  SessionSubjectKind,
+} from '../../../lib/core/session/session-view.ts';
 import { ensureLoggingConfigured } from '../../../lib/workers/logging/configure-logging.ts';
 import { createInvocationContainer } from '../../../lib/workers/di/invocation-container.ts';
 import {
-  type AuthenticatedPrincipal,
   MAX_SESSION_MAX_AGE_SECONDS,
   SESSION_TYPES,
   type SessionIssue,
-  type SessionSubjectKind,
   type SessionVerification,
   type SessionVerifier,
 } from '../../application/session/session-verifier.ts';

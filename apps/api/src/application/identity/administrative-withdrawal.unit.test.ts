@@ -4,7 +4,7 @@ import { RUN_USER_LIFECYCLE_MESSAGE } from '../../../lib/core/messaging/contract
 import type {
   AuthenticatedPrincipal,
   Principal,
-} from '../session/session-verifier.ts';
+} from '../../../lib/core/session/session-view.ts';
 import {
   type AdministrativeWithdrawal,
   type AdministrativeWithdrawalCommand,

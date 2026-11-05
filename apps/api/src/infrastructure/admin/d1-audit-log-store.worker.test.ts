@@ -8,6 +8,10 @@ import {
   USER_EMAIL_SEARCH_ACTION,
 } from '../../../common-lib/admin/audit-actions/admin-foundation.ts';
 import { createDatabase } from '../../../db/client.ts';
+import type {
+  AuditEntryInput,
+  AuditLogRecorder,
+} from '../../../lib/core/admin/audit-log.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { createBatchRecordingD1 } from '../../../test/support/batch-recording-d1.ts';
 import {
@@ -15,8 +19,6 @@ import {
   type AuditLogFilter,
   type AuditLogSearchResult,
 } from '../../application/admin/audit-log-reader.ts';
-import type { AuditLogRecorder } from '../../application/admin/audit-log-recorder.ts';
-import type { AuditEntryInput } from '../../domain/admin/audit-entry.ts';
 import { D1AuditLogStore } from './d1-audit-log-store.ts';
 import {
   adminIdOf,

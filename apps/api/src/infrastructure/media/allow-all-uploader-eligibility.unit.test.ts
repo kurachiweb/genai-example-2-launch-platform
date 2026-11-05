@@ -10,12 +10,14 @@ import {
   defineUploadPurpose,
   type UploadPurpose,
 } from '../../../lib/core/media/upload-purpose.ts';
+import type {
+  AuthenticatedPrincipal,
+  SessionView,
+} from '../../../lib/core/session/session-view.ts';
 import {
   UPLOAD_ACCESS_TYPES,
   type UploaderEligibility,
 } from '../../application/media/uploader-eligibility.ts';
-import type { AuthenticatedPrincipal } from '../../application/session/session-verifier.ts';
-import type { SessionView } from '../../application/session/session-view.ts';
 import { AllowAllUploaderEligibility } from './allow-all-uploader-eligibility.ts';
 
 const IMAGE_PURPOSE: UploadPurpose = defineUploadPurpose({

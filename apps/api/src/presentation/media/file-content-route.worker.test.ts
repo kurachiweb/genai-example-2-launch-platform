@@ -26,6 +26,7 @@ import type {
   MediaFileView,
   MediaLocation,
 } from '../../../lib/core/media/media-file.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import { platformEnvShape } from '../../../lib/workers/env/platform-env.ts';
 import { createWorkerApp } from '../../../lib/workers/http/create-worker-app.ts';
 import type { PlatformHonoEnv } from '../../../lib/workers/http/hono-env.ts';
@@ -61,7 +62,6 @@ import {
   type FileReadPolicy,
 } from '../../application/media/file-access-policies.ts';
 import {
-  type AuthenticatedPrincipal,
   SESSION_TYPES,
   type SessionVerification,
   type SessionVerifier,

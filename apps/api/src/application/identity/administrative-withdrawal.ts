@@ -1,9 +1,9 @@
 import { inject, injectable } from 'inversify';
 
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
+import type { Principal } from '../../../lib/core/session/session-view.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { AuthIncidentReporter } from '../auth/ports.ts';
-import type { Principal } from '../session/session-verifier.ts';
 import { identityError } from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import type {

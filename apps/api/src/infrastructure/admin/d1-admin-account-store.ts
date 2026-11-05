@@ -22,8 +22,8 @@ import { adminRecoveryCodes } from '../../../db/schema/admin/admin-recovery-code
 import { adminSessions } from '../../../db/schema/admin/admin-sessions.ts';
 import { adminTotpCredentials } from '../../../db/schema/admin/admin-totp-credentials.ts';
 import { admins } from '../../../db/schema/admin/admins.ts';
+import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
-import type { PreparedAuditEntry } from '../../application/admin/audit-log-recorder.ts';
 import type {
   AdminAccountStore,
   AdminActivation,

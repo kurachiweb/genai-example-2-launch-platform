@@ -1,6 +1,8 @@
 import type { AdminRole } from '../../../../common-lib/admin/admin-roles.ts';
 import { createAuditActionCatalog } from '../../../../common-lib/admin/audit-action.ts';
 import { AUDIT_ACTIONS } from '../../../../common-lib/admin/audit-actions/index.ts';
+import type { PreparedAuditEntry } from '../../../../lib/core/admin/audit-log.ts';
+import type { CurrentAdmin } from '../../../../lib/core/admin/current-admin.ts';
 import type { IdGenerator } from '../../../../lib/core/ids/id-generator.ts';
 import type {
   ClaimRequest,
@@ -13,12 +15,8 @@ import {
   type AdminAccountManagement,
   StoreAdminAccountManagement,
 } from '../admin-account-management.ts';
-import type { CurrentAdmin } from '../admin-authorizer.ts';
 import { type AdminProfile, StoreAdminProfile } from '../admin-profile.ts';
-import {
-  type PreparedAuditEntry,
-  StoreAuditLogRecorder,
-} from '../audit-log-recorder.ts';
+import { StoreAuditLogRecorder } from '../audit-log-recorder.ts';
 import type {
   AdminAccountStore,
   AdminProfileUpdate,

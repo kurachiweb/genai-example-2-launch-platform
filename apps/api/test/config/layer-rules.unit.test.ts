@@ -57,7 +57,9 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
       forbidden("import { env } from 'cloudflare:workers';"),
       forbidden("import { d } from '../../../lib/workers/http/hono-env';"),
       forbidden("import { createDatabase } from '../../../db/client';"),
-      allowed("import type { SessionView } from '../session/session-view.ts';"),
+      allowed(
+        "import type { SessionView } from '../../../lib/core/session/session-view.ts';",
+      ),
       allowed("import { Entity } from '../../domain/sample/entity';"),
       allowed("import { AppError } from '../../../lib/core/errors/app-error';"),
       allowed("import { users } from '../../../db/schema';"),

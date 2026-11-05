@@ -9,11 +9,11 @@ import {
   createUploadPurposeRegistry,
   defineUploadPurpose,
 } from '../../../lib/core/media/upload-purpose.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import {
   imageFileViewOf,
   mediaFileViewOf,
 } from '../../../test/support/media-file-view.ts';
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import {
   assertFileReadPolicyRegistrations,
   type FileAccessAuthorizer,

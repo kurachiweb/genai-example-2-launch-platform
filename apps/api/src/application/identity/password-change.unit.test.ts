@@ -58,6 +58,7 @@ describe('StorePasswordChange.request', () => {
     await passwordChange.request(currentOf(), REQUEST, META);
 
     expect(recorded.calls).toEqual([
+      'users.findById',
       'reAuthenticator.verify',
       'policy.validateNewPassword',
       'password.hash',
@@ -138,7 +139,10 @@ describe('StorePasswordChange.request', () => {
     );
 
     expect(error).toBe(REAUTHENTICATION_FAILED);
-    expect(recorded.calls).toEqual(['reAuthenticator.verify']);
+    expect(recorded.calls).toEqual([
+      'users.findById',
+      'reAuthenticator.verify',
+    ]);
     expect(stored).toEqual([PASSWORD_CHANGE_TOKEN]);
   });
 

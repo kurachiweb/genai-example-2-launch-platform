@@ -6,6 +6,8 @@ import {
   createAuditActionCatalog,
 } from '../../common-lib/admin/audit-action.ts';
 import { AUDIT_ACTIONS } from '../../common-lib/admin/audit-actions/index.ts';
+import type { AuditLogRecorder } from '../../lib/core/admin/audit-log.ts';
+import { ADMIN_PLATFORM_TYPES } from '../../lib/core/admin/identifiers.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
 import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
@@ -60,10 +62,7 @@ import {
   type AuditLogReader,
   StoreAuditLogReader,
 } from '../application/admin/audit-log-reader.ts';
-import {
-  type AuditLogRecorder,
-  StoreAuditLogRecorder,
-} from '../application/admin/audit-log-recorder.ts';
+import { StoreAuditLogRecorder } from '../application/admin/audit-log-recorder.ts';
 import { AdminCredentialCleanupJob } from '../application/admin/jobs/admin-credential-cleanup-job.ts';
 import { AuditLogRetentionJob } from '../application/admin/jobs/audit-log-retention-job.ts';
 import type {
@@ -148,7 +147,7 @@ function bindServices(bind: Bind): void {
 }
 
 function bindAuditLog(bind: Bind): void {
-  bind<AuditLogRecorder>(ADMIN_TYPES.AuditLogRecorder).to(
+  bind<AuditLogRecorder>(ADMIN_PLATFORM_TYPES.AuditLogRecorder).to(
     StoreAuditLogRecorder,
   );
   bind<AuditLogReader>(ADMIN_TYPES.AuditLogReader).to(StoreAuditLogReader);

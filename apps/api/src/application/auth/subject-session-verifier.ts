@@ -1,7 +1,7 @@
 import { inject, injectable } from 'inversify';
 
+import type { SessionSubjectKind } from '../../../lib/core/session/session-view.ts';
 import type {
-  SessionSubjectKind,
   SessionVerification,
   SessionVerifier,
 } from '../session/session-verifier.ts';

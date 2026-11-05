@@ -1,3 +1,4 @@
+import type { UserAccountView } from '../../../lib/core/identity/account-guard.ts';
 import type { DisposableEmailStatus } from '../../../lib/core/identity/disposable-email.ts';
 import type { UserLifecycleEvent } from '../../../lib/core/identity/user-lifecycle.ts';
 import type { MessageContract } from '../../../lib/core/messaging/message-contract.ts';
@@ -9,12 +10,8 @@ import type { AuthTokenPurpose } from '../../domain/identity/auth-token-purpose.
 import type { UserAccountSnapshot } from '../../domain/identity/user-account.ts';
 import type { RequestMeta } from './request-meta.ts';
 
-export interface UserRecord extends UserAccountSnapshot {
-  readonly pseudonymousId: string;
-  readonly email: string;
+export interface UserRecord extends UserAccountView {
   readonly passwordHash: string;
-  readonly nickname: string;
-  readonly handle: string;
   readonly disposableEmailStatus: DisposableEmailStatus | null;
   readonly termsAgreedAt: Date;
   readonly lifecycleVersion: number;
@@ -205,7 +202,7 @@ export interface DeviceDescriber {
 
 export interface IdentityMailer {
   sendEmailVerification(
-    to: UserRecord,
+    to: UserAccountView,
     token: string,
     expiresAt: Date,
   ): Promise<void>;

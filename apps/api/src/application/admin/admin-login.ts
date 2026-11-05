@@ -4,6 +4,7 @@ import type { KeyedHasher } from '../../../lib/core/crypto/keyed-hasher.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import { ADMIN_HASH_PURPOSES } from '../../domain/admin/admin-auth-token-purpose.ts';
 import type { SecondFactorInput } from '../../domain/auth/second-factor.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
@@ -16,7 +17,6 @@ import type {
 } from '../auth/ports.ts';
 import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import { adminError } from './admin-errors.ts';
 import {
   ADMIN_LOGIN_THROTTLE_SCOPE,

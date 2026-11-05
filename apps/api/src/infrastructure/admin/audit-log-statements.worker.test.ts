@@ -14,8 +14,8 @@ import { createDatabase } from '../../../db/client.ts';
 import { adminAuditLogTargets } from '../../../db/schema/admin/admin-audit-log-targets.ts';
 import { adminAuditLogs } from '../../../db/schema/admin/admin-audit-logs.ts';
 import { admins } from '../../../db/schema/admin/admins.ts';
+import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import { createBatchRecordingD1 } from '../../../test/support/batch-recording-d1.ts';
-import type { PreparedAuditEntry } from '../../application/admin/audit-log-recorder.ts';
 import type { AdminSnapshot } from '../../domain/admin/admin-account.ts';
 import {
   type AuditGuard,

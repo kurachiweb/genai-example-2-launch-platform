@@ -7,11 +7,8 @@ import {
   defineAuditAction,
 } from '../../../common-lib/admin/audit-action.ts';
 import { AUDIT_ACTIONS } from '../../../common-lib/admin/audit-actions/index.ts';
-import {
-  type AuditEntryInput,
-  type AuditEntryViolation,
-  validateAuditEntry,
-} from './audit-entry.ts';
+import type { AuditEntryInput } from '../../../lib/core/admin/audit-log.ts';
+import { type AuditEntryViolation, validateAuditEntry } from './audit-entry.ts';
 
 const FAMILY_EMOJI = '👨‍👩‍👧‍👦';
 

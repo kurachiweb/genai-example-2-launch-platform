@@ -1,10 +1,10 @@
 import { inject, injectable } from 'inversify';
 
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import {
   evaluateSession,
   USER_SESSION_POLICY,
 } from '../../domain/auth/session-policy.ts';
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import { identityError } from './identity-errors.ts';
 import type {

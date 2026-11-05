@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, test } from 'bun:test';
 import { Container } from 'inversify';
 
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
+import type { UserAccountView } from '../../../lib/core/identity/account-guard.ts';
 import type { DisposableEmailStatus } from '../../../lib/core/identity/disposable-email.ts';
 import type { UserLifecycleEvent } from '../../../lib/core/identity/user-lifecycle.ts';
 import {
@@ -55,10 +56,16 @@ class RecordingPublisher implements IdentityMessagePublisher {
 describe('UserRecord', () => {
   test('利用者の規則で判定できる形に、保存する項目と使い捨て判定・版を加えた形である', () => {
     expectTypeOf<UserRecord>().toExtend<UserAccountSnapshot>();
+    expectTypeOf<UserRecord['passwordHash']>().toEqualTypeOf<string>();
     expectTypeOf<
       UserRecord['disposableEmailStatus']
     >().toEqualTypeOf<DisposableEmailStatus | null>();
     expectTypeOf<UserRecord['lifecycleVersion']>().toEqualTypeOf<number>();
+  });
+
+  test('別の機能へ渡す利用者の読み取りの形を継承し、その形は利用者の規則で判定できる', () => {
+    expectTypeOf<UserRecord>().toExtend<UserAccountView>();
+    expectTypeOf<UserAccountView>().toExtend<UserAccountSnapshot>();
   });
 });
 

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { Container } from 'inversify';
 
 import type { MediaOwner } from '../../../lib/core/media/media-file.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import {
   imageFileViewOf,
   mediaFileViewOf,
@@ -10,7 +11,6 @@ import {
   FILE_ACCESS_TYPES,
   type FileReadPolicy,
 } from '../../application/media/file-access-policies.ts';
-import type { AuthenticatedPrincipal } from '../../application/session/session-verifier.ts';
 import { OwnerOnlyFileReadPolicy } from './owner-only-file-read-policy.ts';
 
 const USER_ID = '01JC0USER00000000000000001';

@@ -6,7 +6,6 @@ import { ADMIN_TYPES } from './admin-types.ts';
 const EXPECTED_NAMES = [
   'AuditActionCatalog',
   'AuditLogStore',
-  'AuditLogRecorder',
   'AuditLogReader',
   'AdminAccountStore',
   'AdminSessionStore',

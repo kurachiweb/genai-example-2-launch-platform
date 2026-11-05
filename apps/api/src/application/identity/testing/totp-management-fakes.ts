@@ -7,6 +7,8 @@ import type {
   RecoveryCodeStore,
   TotpCredential,
   TotpCredentialStore,
+  UserAccountStore,
+  UserRecord,
 } from '../ports.ts';
 import type {
   ReAuthenticationInput,
@@ -14,7 +16,7 @@ import type {
 } from '../re-authenticator.ts';
 import type { RequestMeta } from '../request-meta.ts';
 import type { IssuedSession, SessionIssuer } from '../session-issuer.ts';
-import { NOW, USER_ID } from './credential-change-fakes.ts';
+import { NOW, USER_ID, userOf } from './credential-change-fakes.ts';
 
 export const TOTP_ISSUER = 'Launch Stadium local';
 
@@ -71,6 +73,8 @@ export interface TotpManagementFakeOptions {
   // 有効と読んだ後、書き込みの前に、別の要求が無効化を終えたことを再現する
   readonly disabledAfterFind?: boolean;
   readonly writeError?: Error;
+  // 本人確認の前に読み直す保存済みの利用者
+  readonly storedUser?: UserRecord;
 }
 
 export interface TotpManagementRecorded {
@@ -334,10 +338,18 @@ export function createTotpManagementFakes(
     clientOrigin: 'http://localhost:48044',
     totpIssuer: TOTP_ISSUER,
   };
+  const storedUser = options.storedUser ?? userOf();
+  const users = partialFake<UserAccountStore>({
+    findById(userId) {
+      recorded.calls.push('users.findById');
+      return Promise.resolve(storedUser.id === userId ? storedUser : undefined);
+    },
+  });
   return {
     recorded,
     state,
     reAuthenticator,
+    users,
     settings,
     totpCredentials: createTotpCredentialStore(recorded, state, options),
     recoveryCodes: createRecoveryCodeStore(recorded, state, options),

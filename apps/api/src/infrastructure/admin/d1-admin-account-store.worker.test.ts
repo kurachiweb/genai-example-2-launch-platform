@@ -7,7 +7,7 @@ import { adminRecoveryCodes } from '../../../db/schema/admin/admin-recovery-code
 import { adminSessions } from '../../../db/schema/admin/admin-sessions.ts';
 import { adminTotpCredentials } from '../../../db/schema/admin/admin-totp-credentials.ts';
 import { admins } from '../../../db/schema/admin/admins.ts';
-import type { PreparedAuditEntry } from '../../application/admin/audit-log-recorder.ts';
+import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import type { NewAdminSessionRecord } from '../../application/admin/ports.ts';
 import { D1AdminAccountStore } from './d1-admin-account-store.ts';
 import {

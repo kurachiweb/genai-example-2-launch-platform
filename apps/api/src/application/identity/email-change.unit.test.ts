@@ -61,6 +61,7 @@ describe('StoreEmailChange.request', () => {
     await emailChange.request(currentOf(), REQUEST, META);
 
     expect(recorded.calls).toEqual([
+      'users.findById',
       'reAuthenticator.verify',
       'limits.consume',
       'users.isEmailInUse',
@@ -147,6 +148,7 @@ describe('StoreEmailChange.request', () => {
     await emailChange.request(currentOf(), REQUEST, META);
 
     expect(recorded.calls).toEqual([
+      'users.findById',
       'reAuthenticator.verify',
       'limits.consume',
       'users.isEmailInUse',
@@ -184,7 +186,10 @@ describe('StoreEmailChange.request', () => {
     const error = await caught(emailChange.request(currentOf(), REQUEST, META));
 
     expect(error).toBe(REAUTHENTICATION_FAILED);
-    expect(recorded.calls).toEqual(['reAuthenticator.verify']);
+    expect(recorded.calls).toEqual([
+      'users.findById',
+      'reAuthenticator.verify',
+    ]);
     expect(stored).toEqual([EMAIL_CHANGE_TOKEN]);
   });
 
@@ -205,6 +210,7 @@ describe('StoreEmailChange.request', () => {
 
       expect(error).toBe(RATE_LIMITED);
       expect(recorded.calls).toEqual([
+        'users.findById',
         'reAuthenticator.verify',
         'limits.consume',
       ]);

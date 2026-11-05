@@ -7,15 +7,7 @@ import type {
 } from '../../../common-lib/admin/audit-action.ts';
 import { countGraphemes } from '../../../common-lib/text/graphemes.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
-
-export interface AuditEntryInput {
-  readonly operatorAdminId: string;
-  readonly action: string;
-  readonly targetIds: readonly string[];
-  readonly reason?: string;
-  readonly detail?: Readonly<Record<string, string>>;
-  readonly occurredAt: Date;
-}
+import type { AuditEntryInput } from '../../../lib/core/admin/audit-log.ts';
 
 export type AuditEntryViolation =
   | 'unknown_action'

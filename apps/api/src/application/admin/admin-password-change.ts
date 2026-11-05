@@ -1,10 +1,10 @@
 import { inject, injectable } from 'inversify';
 
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { PasswordPolicy } from '../auth/password-policy.ts';
 import type { PasswordHasher } from '../auth/ports.ts';
-import type { CurrentAdmin } from './admin-authorizer.ts';
 import { adminPasswordRejectedError } from './admin-errors.ts';
 import { requireOperatorRecord } from './admin-operator-record.ts';
 import type {

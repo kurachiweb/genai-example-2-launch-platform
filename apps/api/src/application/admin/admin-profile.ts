@@ -6,6 +6,7 @@ import {
   checkAdminTitle,
 } from '../../../common-lib/admin/admin-input-rules.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { MEDIA_TYPES } from '../../../lib/core/media/identifiers.ts';
 import type { MediaFiles } from '../../../lib/core/media/ports.ts';
@@ -15,7 +16,7 @@ import {
   eraseAvatarQuietly,
   toAdminAccountView,
 } from './admin-account-management.ts';
-import { type CurrentAdmin, operatorSnapshotOf } from './admin-authorizer.ts';
+import { operatorSnapshotOf } from './admin-authorizer.ts';
 import { adminError, adminProfileRejectedError } from './admin-errors.ts';
 import { ADMIN_TYPES } from './admin-types.ts';
 import type {

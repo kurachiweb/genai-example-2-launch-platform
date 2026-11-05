@@ -15,11 +15,9 @@ import { adminRecoveryCodes } from '../../../../db/schema/admin/admin-recovery-c
 import { adminSessions } from '../../../../db/schema/admin/admin-sessions.ts';
 import { adminTotpCredentials } from '../../../../db/schema/admin/admin-totp-credentials.ts';
 import { admins } from '../../../../db/schema/admin/admins.ts';
+import type { AuditLogRecorder } from '../../../../lib/core/admin/audit-log.ts';
 import type { IdGenerator } from '../../../../lib/core/ids/id-generator.ts';
-import {
-  type AuditLogRecorder,
-  StoreAuditLogRecorder,
-} from '../../../application/admin/audit-log-recorder.ts';
+import { StoreAuditLogRecorder } from '../../../application/admin/audit-log-recorder.ts';
 import type { AuditLogStore } from '../../../application/admin/ports.ts';
 import type { AdminSnapshot } from '../../../domain/admin/admin-account.ts';
 import type { AdminAuthTokenPurpose } from '../../../domain/admin/admin-auth-token-purpose.ts';

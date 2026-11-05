@@ -3,6 +3,12 @@ import { inject, injectable } from 'inversify';
 import { checkAdminNickname } from '../../../common-lib/admin/admin-input-rules.ts';
 import { ADMIN_ACCOUNT_INVITE_ACTION } from '../../../common-lib/admin/audit-actions/admin-foundation.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
+import type {
+  AuditLogRecorder,
+  PreparedAuditEntry,
+} from '../../../lib/core/admin/audit-log.ts';
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
+import { ADMIN_PLATFORM_TYPES } from '../../../lib/core/admin/identifiers.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import { checkInvitable } from '../../domain/admin/admin-account.ts';
@@ -20,7 +26,7 @@ import type {
 } from '../auth/ports.ts';
 import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
-import { type CurrentAdmin, operatorSnapshotOf } from './admin-authorizer.ts';
+import { operatorSnapshotOf } from './admin-authorizer.ts';
 import {
   adminError,
   adminInvitationLinkError,
@@ -30,10 +36,6 @@ import {
 import { adminTotpSecretContext } from './admin-second-factor-check.ts';
 import { prepareAdminSession } from './admin-session-issuer.ts';
 import { ADMIN_TYPES } from './admin-types.ts';
-import type {
-  AuditLogRecorder,
-  PreparedAuditEntry,
-} from './audit-log-recorder.ts';
 import type {
   AdminAccountStore,
   AdminAuthTokenStore,
@@ -130,7 +132,7 @@ export class StoreAdminInvitation implements AdminInvitation {
     private readonly tokens: AdminAuthTokenStore,
     @inject(ADMIN_TYPES.AdminTotpCredentialStore)
     private readonly totpCredentials: AdminTotpCredentialStore,
-    @inject(ADMIN_TYPES.AuditLogRecorder)
+    @inject(ADMIN_PLATFORM_TYPES.AuditLogRecorder)
     private readonly auditLog: AuditLogRecorder,
     @inject(ADMIN_TYPES.AdminMailer)
     private readonly mailer: AdminMailer,

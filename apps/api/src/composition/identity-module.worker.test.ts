@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { createKeyedHasher } from '../../lib/core/crypto/keyed-hasher.ts';
 import type { DisposableEmailChecker } from '../../lib/core/identity/disposable-email.ts';
+import { IDENTITY_PLATFORM_TYPES } from '../../lib/core/identity/identifiers.ts';
 import type { UserLifecycleStore } from '../../lib/core/identity/ports.ts';
 import { hashRateLimitKey } from '../../lib/core/rate-limit/rate-limit-key.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
@@ -154,7 +155,7 @@ const CLASS_BINDINGS: readonly (readonly [
   ['DeviceDescriber', IDENTITY_TYPES.DeviceDescriber, BowserDeviceDescriber],
   ['IdentityMailer', IDENTITY_TYPES.IdentityMailer, EmailIdentityMailer],
   ['SessionIssuer', IDENTITY_TYPES.SessionIssuer, StoreSessionIssuer],
-  ['AccountGuard', IDENTITY_TYPES.AccountGuard, StoreAccountGuard],
+  ['AccountGuard', IDENTITY_PLATFORM_TYPES.AccountGuard, StoreAccountGuard],
   ['MailSendLimits', IDENTITY_TYPES.MailSendLimits, CounterMailSendLimits],
   ['Registration', IDENTITY_TYPES.Registration, StoreRegistration],
   [
@@ -289,11 +290,11 @@ describe('APIサーバーの認証部品と利用者のモジュールの束縛'
   test('機能制限の判定は処理単位の中で1つを使い回し、別の処理単位では別のインスタンスになる', () => {
     const container = createContainer();
 
-    expect(container.get(IDENTITY_TYPES.AccountGuard)).toBe(
-      container.get(IDENTITY_TYPES.AccountGuard),
+    expect(container.get(IDENTITY_PLATFORM_TYPES.AccountGuard)).toBe(
+      container.get(IDENTITY_PLATFORM_TYPES.AccountGuard),
     );
-    expect(container.get(IDENTITY_TYPES.AccountGuard)).not.toBe(
-      createContainer().get(IDENTITY_TYPES.AccountGuard),
+    expect(container.get(IDENTITY_PLATFORM_TYPES.AccountGuard)).not.toBe(
+      createContainer().get(IDENTITY_PLATFORM_TYPES.AccountGuard),
     );
   });
 

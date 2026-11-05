@@ -3,6 +3,7 @@ import { inject, injectable } from 'inversify';
 import { hashPurpose } from '../../../lib/core/crypto/keyed-hasher.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
+import type { Principal } from '../../../lib/core/session/session-view.ts';
 import {
   cookieMaxAgeSeconds,
   newSessionTimes,
@@ -10,7 +11,6 @@ import {
 } from '../../domain/auth/session-policy.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
-import type { Principal } from '../session/session-verifier.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import type { NewSessionRecord, UserSessionStore } from './ports.ts';
 import type { RequestMeta } from './request-meta.ts';

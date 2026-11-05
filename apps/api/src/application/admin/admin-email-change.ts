@@ -1,13 +1,13 @@
 import { inject, injectable } from 'inversify';
 
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
+import type { Principal } from '../../../lib/core/session/session-view.ts';
 import { ADMIN_HASH_PURPOSES } from '../../domain/admin/admin-auth-token-purpose.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
-import type { Principal } from '../session/session-verifier.ts';
 import { prepareAdminAuthToken } from './admin-auth-token-issuance.ts';
-import type { CurrentAdmin } from './admin-authorizer.ts';
 import { adminError } from './admin-errors.ts';
 import { requireOperatorRecord } from './admin-operator-record.ts';
 import type {

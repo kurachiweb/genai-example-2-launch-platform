@@ -151,7 +151,11 @@ describe('APIサーバーの管理者のセッションの束縛', () => {
       D1AdminRecoveryCodeStore,
     ],
     ['AuditLogStore', ADMIN_TYPES.AuditLogStore, D1AuditLogStore],
-    ['AuditLogRecorder', ADMIN_TYPES.AuditLogRecorder, StoreAuditLogRecorder],
+    [
+      'AuditLogRecorder',
+      ADMIN_PLATFORM_TYPES.AuditLogRecorder,
+      StoreAuditLogRecorder,
+    ],
     ['AuditLogReader', ADMIN_TYPES.AuditLogReader, StoreAuditLogReader],
     ['AdminMailer', ADMIN_TYPES.AdminMailer, EmailAdminMailer],
     ['AdminLogin', ADMIN_TYPES.AdminLogin, StoreAdminLogin],

@@ -2,12 +2,12 @@ import { describe, expect, test } from 'bun:test';
 import { Container } from 'inversify';
 
 import type { MediaFileView } from '../../../lib/core/media/media-file.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import { imageFileViewOf } from '../../../test/support/media-file-view.ts';
 import {
   type AdminMediaReviewPolicy,
   FILE_ACCESS_TYPES,
 } from '../../application/media/file-access-policies.ts';
-import type { AuthenticatedPrincipal } from '../../application/session/session-verifier.ts';
 import { DenyAllAdminMediaReviewPolicy } from './deny-all-admin-media-review-policy.ts';
 
 const ADMIN_ID = '01JC0ADMIN0000000000000001';

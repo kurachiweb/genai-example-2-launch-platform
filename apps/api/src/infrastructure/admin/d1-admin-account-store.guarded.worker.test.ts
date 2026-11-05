@@ -7,7 +7,7 @@ import {
   ADMIN_ACCOUNT_ROLE_CHANGE_ACTION,
 } from '../../../common-lib/admin/audit-actions/admin-foundation.ts';
 import { admins } from '../../../db/schema/admin/admins.ts';
-import type { PreparedAuditEntry } from '../../application/admin/audit-log-recorder.ts';
+import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import { D1AdminAccountStore } from './d1-admin-account-store.ts';
 import {
   adminIdOf,

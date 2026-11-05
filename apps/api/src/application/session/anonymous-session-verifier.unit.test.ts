@@ -1,12 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { Container } from 'inversify';
 
+import type { SessionSubjectKind } from '../../../lib/core/session/session-view.ts';
 import { AnonymousSessionVerifier } from './anonymous-session-verifier.ts';
-import {
-  SESSION_TYPES,
-  type SessionSubjectKind,
-  type SessionVerifier,
-} from './session-verifier.ts';
+import { SESSION_TYPES, type SessionVerifier } from './session-verifier.ts';
 
 const WELL_FORMED_TOKEN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq';
 

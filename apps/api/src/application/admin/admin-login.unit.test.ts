@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import { ADMIN_LOGIN_CHALLENGE_TTL_SECONDS } from './admin-login.ts';
 import {
   ADMIN_EMAIL,

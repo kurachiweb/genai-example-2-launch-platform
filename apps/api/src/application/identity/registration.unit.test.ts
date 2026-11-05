@@ -5,6 +5,7 @@ import { Container } from 'inversify';
 import type { HashPurpose } from '../../../lib/core/crypto/keyed-hasher.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
+import type { UserAccountView } from '../../../lib/core/identity/account-guard.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import type { PasswordIdentifiers } from '../../domain/auth/password-rules.ts';
 import { USER_SESSION_POLICY } from '../../domain/auth/session-policy.ts';
@@ -71,7 +72,7 @@ interface CreateCall {
 }
 
 interface MailCall {
-  readonly to: UserRecord;
+  readonly to: UserAccountView;
   readonly token: string;
   readonly expiresAt: Date;
 }
@@ -636,22 +637,23 @@ describe('StoreRegistration.register', () => {
       recorded,
       'user-auth-token-email-verification',
     );
+    const recipient: UserRecord = {
+      id: result.userId,
+      status: 'active',
+      emailVerifiedAt: null,
+      deletedAt: null,
+      pseudonymousId: PSEUDONYMOUS_ID,
+      email: COMMAND.email,
+      passwordHash: 'pbkdf2-sha512$100000$salt$derived',
+      nickname: COMMAND.nickname,
+      handle: 'abcdefghijkl',
+      disposableEmailStatus: 'undetermined',
+      termsAgreedAt: NOW,
+      lifecycleVersion: 0,
+    };
     expect(recorded.mails).toEqual([
       {
-        to: {
-          id: result.userId,
-          status: 'active',
-          emailVerifiedAt: null,
-          deletedAt: null,
-          pseudonymousId: PSEUDONYMOUS_ID,
-          email: COMMAND.email,
-          passwordHash: 'pbkdf2-sha512$100000$salt$derived',
-          nickname: COMMAND.nickname,
-          handle: 'abcdefghijkl',
-          disposableEmailStatus: 'undetermined',
-          termsAgreedAt: NOW,
-          lifecycleVersion: 0,
-        },
+        to: recipient,
         token: verificationPlain,
         expiresAt: new Date(NOW.getTime() + 24 * HOUR_MS),
       },

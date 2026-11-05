@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { Container } from 'inversify';
 
 import type { MediaFileView } from '../../../lib/core/media/media-file.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import {
   imageFileViewOf,
   mediaFileViewOf,
@@ -16,7 +17,6 @@ import {
   type FileReadPolicy,
   type FileReadPolicyRegistration,
 } from '../../application/media/file-access-policies.ts';
-import type { AuthenticatedPrincipal } from '../../application/session/session-verifier.ts';
 import { DenyAllAdminMediaReviewPolicy } from './deny-all-admin-media-review-policy.ts';
 import { OwnerOnlyFileReadPolicy } from './owner-only-file-read-policy.ts';
 

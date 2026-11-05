@@ -6,12 +6,13 @@ import { unstable_readConfig } from 'wrangler';
 import { z } from 'zod';
 
 import { IMAGE_MEDIA_TYPES } from '../../common-lib/media/media-types.ts';
+import type { AccountGuard } from '../../lib/core/identity/account-guard.ts';
+import { IDENTITY_PLATFORM_TYPES } from '../../lib/core/identity/identifiers.ts';
 import {
   createCronRegistry,
   type ScheduledJobDefinition,
 } from '../../lib/core/scheduling/cron-registry.ts';
 import { toUtcCronExpression } from '../../lib/core/time/business-time.ts';
-import type { AccountGuard } from '../../src/application/identity/account-guard.ts';
 import { AccountUploaderEligibility } from '../../src/application/identity/account-uploader-eligibility.ts';
 import { IDENTITY_TYPES } from '../../src/application/identity/identity-types.ts';
 import {
@@ -159,7 +160,7 @@ describe('メディアの登録箇所の既定値', () => {
     const container = new Container();
     container.load(UPLOADER_ELIGIBILITY_BINDINGS);
     container
-      .bind<AccountGuard>(IDENTITY_TYPES.AccountGuard)
+      .bind<AccountGuard>(IDENTITY_PLATFORM_TYPES.AccountGuard)
       .toConstantValue(activeUserGuard);
     container
       .bind<UploaderEligibility>(IDENTITY_TYPES.AccountUploaderEligibility)

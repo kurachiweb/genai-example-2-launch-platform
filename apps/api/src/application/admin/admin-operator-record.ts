@@ -1,4 +1,4 @@
-import type { CurrentAdmin } from './admin-authorizer.ts';
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
 import { adminError } from './admin-errors.ts';
 import type { AdminAccountStore, AdminRecord } from './ports.ts';
 

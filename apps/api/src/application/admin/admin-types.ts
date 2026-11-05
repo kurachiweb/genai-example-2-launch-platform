@@ -4,8 +4,6 @@ const AuditActionCatalog: unique symbol = Symbol.for(
 
 const AuditLogStore: unique symbol = Symbol.for('admin.AuditLogStore');
 
-const AuditLogRecorder: unique symbol = Symbol.for('admin.AuditLogRecorder');
-
 const AuditLogReader: unique symbol = Symbol.for('admin.AuditLogReader');
 
 const AdminAccountStore: unique symbol = Symbol.for('admin.AdminAccountStore');
@@ -85,7 +83,6 @@ const AuditLogRetentionJob: unique symbol = Symbol.for(
 export const ADMIN_TYPES = Object.freeze({
   AuditActionCatalog,
   AuditLogStore,
-  AuditLogRecorder,
   AuditLogReader,
   AdminAccountStore,
   AdminSessionStore,

@@ -1,7 +1,7 @@
 import type { ServiceIdentifier } from 'inversify';
 
 import type { MediaFileView } from '../../../lib/core/media/media-file.ts';
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 
 export interface FileReadPolicyInput {
   readonly principal: AuthenticatedPrincipal;

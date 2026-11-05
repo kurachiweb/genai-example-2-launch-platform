@@ -1,7 +1,9 @@
 import type { UploaderDenialCode } from '../../../common-lib/media/media-error-codes.ts';
 import type { UploadPurpose } from '../../../lib/core/media/upload-purpose.ts';
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
-import type { SessionView } from '../session/session-view.ts';
+import type {
+  AuthenticatedPrincipal,
+  SessionView,
+} from '../../../lib/core/session/session-view.ts';
 
 export type UploaderEligibilityDecision =
   | { readonly allowed: true }

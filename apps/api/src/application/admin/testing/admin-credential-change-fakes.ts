@@ -1,5 +1,10 @@
+import type { CurrentAdmin } from '../../../../lib/core/admin/current-admin.ts';
 import { AppError } from '../../../../lib/core/errors/app-error.ts';
 import type { HashPurpose } from '../../../../lib/core/crypto/keyed-hasher.ts';
+import type {
+  AuthenticatedPrincipal,
+  Principal,
+} from '../../../../lib/core/session/session-view.ts';
 import { ADMIN_HASH_PURPOSES } from '../../../domain/admin/admin-auth-token-purpose.ts';
 import type { PasswordIdentifiers } from '../../../domain/auth/password-rules.ts';
 import type {
@@ -9,11 +14,6 @@ import type {
 import type { PasswordHasher } from '../../auth/ports.ts';
 import { currentPasswordIncorrectError } from '../../auth/re-authentication.ts';
 import type { SecretIssuer } from '../../auth/secret-issuer.ts';
-import type {
-  AuthenticatedPrincipal,
-  Principal,
-} from '../../session/session-verifier.ts';
-import type { CurrentAdmin } from '../admin-authorizer.ts';
 import {
   type AdminEmailChange,
   StoreAdminEmailChange,

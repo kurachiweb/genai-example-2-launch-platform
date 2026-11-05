@@ -2,17 +2,19 @@ import type { Context } from 'hono';
 import type { Container } from 'inversify';
 
 import { AppError } from '../../../lib/core/errors/app-error.ts';
+import type {
+  AuthenticatedPrincipal,
+  Principal,
+  SessionSubjectKind,
+  SessionView,
+} from '../../../lib/core/session/session-view.ts';
 import {
-  type AuthenticatedPrincipal,
   MAX_SESSION_MAX_AGE_SECONDS,
-  type Principal,
   SESSION_TOKEN_PATTERN,
   SESSION_TYPES,
   type SessionIssue,
-  type SessionSubjectKind,
   type SessionVerifier,
 } from '../../application/session/session-verifier.ts';
-import type { SessionView } from '../../application/session/session-view.ts';
 import {
   type CallerKind,
   SESSION_RESPONSE_HEADERS,

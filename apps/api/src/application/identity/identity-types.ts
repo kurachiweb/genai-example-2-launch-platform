@@ -40,8 +40,6 @@ const IdentitySettings: unique symbol = Symbol.for('identity.IdentitySettings');
 
 const SessionIssuer: unique symbol = Symbol.for('identity.SessionIssuer');
 
-const AccountGuard: unique symbol = Symbol.for('identity.AccountGuard');
-
 const MailSendLimits: unique symbol = Symbol.for('identity.MailSendLimits');
 
 const Registration: unique symbol = Symbol.for('identity.Registration');
@@ -113,7 +111,6 @@ export const IDENTITY_TYPES = Object.freeze({
   IdentityMailer,
   IdentitySettings,
   SessionIssuer,
-  AccountGuard,
   MailSendLimits,
   Registration,
   EmailVerification,

@@ -28,6 +28,7 @@ import {
   defineUploadPurpose,
   type UploadPurposeRegistry,
 } from '../../lib/core/media/upload-purpose.ts';
+import type { AuthenticatedPrincipal } from '../../lib/core/session/session-view.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { D1MediaFileStore } from '../../lib/workers/media/d1-media-file-store.ts';
@@ -64,7 +65,6 @@ import {
   UPLOAD_ACCESS_TYPES,
   type UploaderEligibility,
 } from '../application/media/uploader-eligibility.ts';
-import type { AuthenticatedPrincipal } from '../application/session/session-verifier.ts';
 import * as mainModule from '../index.ts';
 import { OwnerOnlyFileReadPolicy } from '../infrastructure/media/owner-only-file-read-policy.ts';
 import { GATEWAY_HEADERS } from '../presentation/gateway/gateway-headers.ts';

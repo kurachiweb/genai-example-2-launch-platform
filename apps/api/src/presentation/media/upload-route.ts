@@ -12,12 +12,12 @@ import type {
   UploadPurpose,
   UploadPurposeRegistry,
 } from '../../../lib/core/media/upload-purpose.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import type { PlatformEnv } from '../../../lib/workers/env/platform-env.ts';
 import {
   UPLOAD_ACCESS_TYPES,
   type UploaderEligibility,
 } from '../../application/media/uploader-eligibility.ts';
-import type { AuthenticatedPrincipal } from '../../application/session/session-verifier.ts';
 import type { InternalHonoEnv } from '../gateway/internal-only.ts';
 import { readInternalCaller } from '../gateway/internal-request.ts';
 

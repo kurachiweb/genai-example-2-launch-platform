@@ -1,10 +1,8 @@
 import type { AdminRole } from '../../../common-lib/admin/admin-roles.ts';
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
-import type {
-  AdminAuthorizer,
-  CurrentAdmin,
-} from '../../application/admin/admin-authorizer.ts';
+import type { AdminAuthorizer } from '../../application/admin/admin-authorizer.ts';
 import { ADMIN_TYPES } from '../../application/admin/admin-types.ts';
 import type { GraphQLContext } from './graphql-context.ts';
 

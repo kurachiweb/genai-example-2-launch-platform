@@ -1,16 +1,21 @@
 import { describe, expect, test } from 'bun:test';
 
+import type {
+  AccountGuard,
+  CurrentUser,
+} from '../../../lib/core/identity/account-guard.ts';
 import {
   defineUploadPurpose,
   type UploadPurpose,
 } from '../../../lib/core/media/upload-purpose.ts';
 import type {
+  AuthenticatedPrincipal,
+  SessionView,
+} from '../../../lib/core/session/session-view.ts';
+import type {
   UploaderEligibility,
   UploaderEligibilityDecision,
 } from '../media/uploader-eligibility.ts';
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
-import type { SessionView } from '../session/session-view.ts';
-import type { AccountGuard, CurrentUser } from './account-guard.ts';
 import { AccountUploaderEligibility } from './account-uploader-eligibility.ts';
 import type { UserRecord } from './ports.ts';
 

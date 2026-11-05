@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
 
 import { AppError } from '../../../lib/core/errors/app-error.ts';
+import type { CurrentUser } from '../../../lib/core/identity/account-guard.ts';
 import { RUN_USER_LIFECYCLE_MESSAGE } from '../../../lib/core/messaging/contracts/identity.ts';
 import {
   currentOf,
@@ -28,6 +29,7 @@ function setup(options: UserLifecycleFakeOptions = {}) {
   const fakes = createUserLifecycleFakes(options);
   const withdrawal: Withdrawal = new StoreWithdrawal(
     fakes.reAuthenticator,
+    fakes.users,
     fakes.committer,
     fakes.publisher,
     fakes.reporter,
@@ -116,13 +118,14 @@ describe('commitWithdrawal', () => {
 });
 
 describe('StoreWithdrawal.withdraw', () => {
-  test('本人確認の後に、現在の利用者の版で退会を確定して非同期の波及処理の実行を送る', async () => {
-    const { withdrawal, recorded } = setup();
+  test('保存済みの利用者を読み直して本人確認を行い、読み直した版で退会を確定して非同期の波及処理の実行を送る', async () => {
     const user = userOf({ lifecycleVersion: 3 });
+    const { withdrawal, recorded } = setup({ user });
 
     await withdrawal.withdraw(currentOf(user), RE_AUTHENTICATION, META);
 
     expect(recorded.calls).toEqual([
+      'users.findById',
       'reAuthenticator.verify',
       'committer.commit',
       'publisher.publish',
@@ -143,17 +146,61 @@ describe('StoreWithdrawal.withdraw', () => {
   });
 
   test('停止中の利用者でも、ログイン中であれば退会を受け付ける', async () => {
-    const { withdrawal, recorded } = setup();
     const suspended = userOf({
       status: 'suspended',
       lifecycleVersion: 2,
     });
+    const { withdrawal, recorded } = setup({ user: suspended });
 
     await withdrawal.withdraw(currentOf(suspended), RE_AUTHENTICATION, META);
 
     expect(recorded.transitions).toEqual([
       { kind: 'withdraw', userId: USER_ID, expectedVersion: 2, at: NOW },
     ]);
+  });
+
+  test('ログイン中の利用者が読み取りの形だけでも、読み直した保存済みの利用者で本人確認と退会の確定を行う', async () => {
+    const stored = userOf({ lifecycleVersion: 5 });
+    const { withdrawal, recorded } = setup({ user: stored });
+    const current: CurrentUser = {
+      principal: currentOf(stored).principal,
+      user: {
+        id: stored.id,
+        pseudonymousId: stored.pseudonymousId,
+        status: stored.status,
+        emailVerifiedAt: stored.emailVerifiedAt,
+        deletedAt: stored.deletedAt,
+        email: stored.email,
+        nickname: stored.nickname,
+        handle: stored.handle,
+      },
+    };
+
+    await withdrawal.withdraw(current, RE_AUTHENTICATION, META);
+
+    expect(recorded.lookups).toEqual([USER_ID]);
+    expect(recorded.reAuthentications).toEqual([
+      { user: stored, input: RE_AUTHENTICATION, meta: META },
+    ]);
+    expect(recorded.transitions).toEqual([
+      { kind: 'withdraw', userId: USER_ID, expectedVersion: 5, at: NOW },
+    ]);
+  });
+
+  test('読み直す間に退会済みになっていたら未ログインとして拒み、本人確認も確定もしない', async () => {
+    const { withdrawal, recorded } = setup({
+      user: userOf({ deletedAt: NOW }),
+    });
+
+    const rejection = await rejectionOf(
+      withdrawal.withdraw(currentOf(), RE_AUTHENTICATION, META),
+    );
+
+    expect(rejection).toMatchObject({
+      kind: 'unauthenticated',
+      code: 'unauthenticated',
+    });
+    expect(recorded.calls).toEqual(['users.findById']);
   });
 
   test('メールアドレスが確認済みでない利用者も退会できる', async () => {
@@ -178,7 +225,10 @@ describe('StoreWithdrawal.withdraw', () => {
     );
 
     expect(rejection).toBe(REAUTHENTICATION_FAILED);
-    expect(recorded.calls).toEqual(['reAuthenticator.verify']);
+    expect(recorded.calls).toEqual([
+      'users.findById',
+      'reAuthenticator.verify',
+    ]);
   });
 
   test('送信に失敗しても退会は成功として返し、運用者へ通知する', async () => {

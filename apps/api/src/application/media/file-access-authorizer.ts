@@ -2,7 +2,7 @@ import type { ServiceIdentifier } from 'inversify';
 
 import type { MediaFileView } from '../../../lib/core/media/media-file.ts';
 import type { UploadPurposeRegistry } from '../../../lib/core/media/upload-purpose.ts';
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
+import type { AuthenticatedPrincipal } from '../../../lib/core/session/session-view.ts';
 import type {
   AdminMediaReviewPolicy,
   FileReadPolicy,

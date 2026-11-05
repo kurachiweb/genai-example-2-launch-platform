@@ -16,6 +16,10 @@ import {
   type LoggedObject,
 } from './observability-recording.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
+import type {
+  AuthenticatedPrincipal,
+  SessionSubjectKind,
+} from '../../lib/core/session/session-view.ts';
 import { platformEnvShape } from '../../lib/workers/env/platform-env.ts';
 import { createWorkerApp } from '../../lib/workers/http/create-worker-app.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
@@ -25,9 +29,7 @@ import {
   readSentryRuntimeOptions,
 } from '../../lib/workers/observability/sentry.ts';
 import {
-  type AuthenticatedPrincipal,
   SESSION_TYPES,
-  type SessionSubjectKind,
   type SessionVerifier,
 } from '../../src/application/session/session-verifier.ts';
 import {

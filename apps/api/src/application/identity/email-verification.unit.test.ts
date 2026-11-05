@@ -3,13 +3,20 @@ import { Container } from 'inversify';
 
 import type { HashPurpose } from '../../../lib/core/crypto/keyed-hasher.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
+import type {
+  AccountGuard,
+  UserAccountView,
+} from '../../../lib/core/identity/account-guard.ts';
 import type { DisposableEmailStatus } from '../../../lib/core/identity/disposable-email.ts';
+import { IDENTITY_PLATFORM_TYPES } from '../../../lib/core/identity/identifiers.ts';
+import type {
+  Principal,
+  SessionView,
+} from '../../../lib/core/session/session-view.ts';
 import { AUTH_TOKEN_HASH_PURPOSES } from '../../domain/identity/auth-token-purpose.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
-import type { Principal } from '../session/session-verifier.ts';
-import type { SessionView } from '../session/session-view.ts';
-import { type AccountGuard, StoreAccountGuard } from './account-guard.ts';
+import { StoreAccountGuard } from './account-guard.ts';
 import type { DisposableEmailCheck } from './disposable-email-check.ts';
 import {
   type EmailVerification,
@@ -77,6 +84,20 @@ function userOf(overrides: Partial<UserRecord> = {}): UserRecord {
   };
 }
 
+// ログイン中の利用者の確認は保存済みの記録から読み取りの形の項目だけを渡す
+function viewOf(user: UserRecord): UserAccountView {
+  return {
+    id: user.id,
+    pseudonymousId: user.pseudonymousId,
+    status: user.status,
+    emailVerifiedAt: user.emailVerifiedAt,
+    deletedAt: user.deletedAt,
+    email: user.email,
+    nickname: user.nickname,
+    handle: user.handle,
+  };
+}
+
 function sessionOf(principal: Principal): SessionView {
   return { principal: () => Promise.resolve(principal) };
 }
@@ -112,7 +133,7 @@ interface Recorded {
   readonly issued: { readonly purpose: HashPurpose; readonly plain: string }[];
   readonly replaced: NewAuthToken[];
   readonly mails: {
-    readonly to: UserRecord;
+    readonly to: UserAccountView;
     readonly token: string;
     readonly expiresAt: Date;
   }[];
@@ -413,7 +434,9 @@ describe('StoreEmailVerification.resend', () => {
         expiresAt,
       },
     ]);
-    expect(recorded.mails).toEqual([{ to: userOf(), token: plain, expiresAt }]);
+    expect(recorded.mails).toEqual([
+      { to: viewOf(userOf()), token: plain, expiresAt },
+    ]);
   });
 
   test('確認済みの利用者には、回数を数えずトークンも変えずにメールを送らず「already-verified」を返す', async () => {
@@ -508,7 +531,7 @@ describe('StoreEmailVerification', () => {
       .bind<DisposableEmailCheck>(IDENTITY_TYPES.DisposableEmailCheck)
       .toConstantValue(fakes.disposableCheck);
     container
-      .bind<AccountGuard>(IDENTITY_TYPES.AccountGuard)
+      .bind<AccountGuard>(IDENTITY_PLATFORM_TYPES.AccountGuard)
       .toConstantValue(fakes.guard);
     container
       .bind<MailSendLimits>(IDENTITY_TYPES.MailSendLimits)

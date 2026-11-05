@@ -1,12 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { AdminRole } from '../../../common-lib/admin/admin-roles.ts';
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
-import type { Principal } from '../session/session-verifier.ts';
-import type { SessionView } from '../session/session-view.ts';
+import type {
+  Principal,
+  SessionView,
+} from '../../../lib/core/session/session-view.ts';
 import {
   type AdminAuthorizer,
-  type CurrentAdmin,
   StoreAdminAuthorizer,
 } from './admin-authorizer.ts';
 import type { AdminAccountStore, AdminRecord } from './ports.ts';

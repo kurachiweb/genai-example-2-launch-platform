@@ -1,11 +1,15 @@
 import { inject, injectable } from 'inversify';
 
+import type {
+  CurrentUser,
+  UserAccountView,
+} from '../../../lib/core/identity/account-guard.ts';
 import { normalizeTotpCode } from '../../domain/auth/second-factor.ts';
 import { checkAccountWritable } from '../../domain/identity/user-account.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretBox, TotpAuthenticator } from '../auth/ports.ts';
 import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
-import type { CurrentUser } from './account-guard.ts';
+import { loadCurrentUserRecord } from './current-user-record.ts';
 import { identityError } from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import type {
@@ -13,7 +17,7 @@ import type {
   RecoveryCodeStore,
   TotpCredential,
   TotpCredentialStore,
-  UserRecord,
+  UserAccountStore,
 } from './ports.ts';
 import type {
   ReAuthenticationInput,
@@ -67,7 +71,10 @@ export const TOTP_SETUP_TTL_SECONDS = 600;
 
 const MS_PER_SECOND = 1000;
 
-function assertWritable(user: UserRecord, requireVerifiedEmail: boolean): void {
+function assertWritable(
+  user: UserAccountView,
+  requireVerifiedEmail: boolean,
+): void {
   const denial = checkAccountWritable(user, { requireVerifiedEmail });
   if (denial === 'email-not-verified') {
     throw identityError('email_not_verified');
@@ -88,13 +95,15 @@ const isValidPending = (
   credential.pendingExpiresAt.getTime() > now.getTime();
 
 // 認証アプリに表示されるラベルへメールアドレスを出さないよう、ハンドルを使う
-const accountLabelOf = (user: UserRecord): string => `@${user.handle}`;
+const accountLabelOf = (user: UserAccountView): string => `@${user.handle}`;
 
 @injectable()
 export class StoreTotpManagement implements TotpManagement {
   constructor(
     @inject(IDENTITY_TYPES.ReAuthenticator)
     private readonly reAuthenticator: ReAuthenticator,
+    @inject(IDENTITY_TYPES.UserAccountStore)
+    private readonly users: UserAccountStore,
     @inject(IDENTITY_TYPES.TotpCredentialStore)
     private readonly totpCredentials: TotpCredentialStore,
     @inject(IDENTITY_TYPES.RecoveryCodeStore)
@@ -121,7 +130,11 @@ export class StoreTotpManagement implements TotpManagement {
     if (isTotpEnabled(await this.totpCredentials.find(user.id))) {
       throw identityError('totp_already_enabled');
     }
-    await this.reAuthenticator.verify(user, reAuthentication, meta);
+    await this.reAuthenticator.verify(
+      await loadCurrentUserRecord(this.users, current),
+      reAuthentication,
+      meta,
+    );
     const secret = this.totp.generateSecret();
     const sealedSecret = await this.secretBox.seal(secret, user.id);
     const expiresAt = new Date(
@@ -195,7 +208,7 @@ export class StoreTotpManagement implements TotpManagement {
     meta: RequestMeta,
   ): Promise<{ readonly session: IssuedSession }> {
     const { user } = current;
-    await this.#verifyEnabled(user, reAuthentication, meta);
+    await this.#verifyEnabled(current, reAuthentication, meta);
     const disabled = await this.totpCredentials.disableRevokingSessions(
       user.id,
     );
@@ -211,7 +224,7 @@ export class StoreTotpManagement implements TotpManagement {
     meta: RequestMeta,
   ): Promise<IssuedRecoveryCodesResult> {
     const { user } = current;
-    await this.#verifyEnabled(user, reAuthentication, meta);
+    await this.#verifyEnabled(current, reAuthentication, meta);
     const issued = await this.recoveryCodeIssuer.issue(
       USER_RECOVERY_CODE_HASH_PURPOSE,
     );
@@ -230,15 +243,19 @@ export class StoreTotpManagement implements TotpManagement {
   }
 
   async #verifyEnabled(
-    user: UserRecord,
+    current: CurrentUser,
     reAuthentication: ReAuthenticationInput,
     meta: RequestMeta,
   ): Promise<void> {
-    assertWritable(user, false);
-    if (!isTotpEnabled(await this.totpCredentials.find(user.id))) {
+    assertWritable(current.user, false);
+    if (!isTotpEnabled(await this.totpCredentials.find(current.user.id))) {
       throw identityError('totp_not_enabled');
     }
-    await this.reAuthenticator.verify(user, reAuthentication, meta);
+    await this.reAuthenticator.verify(
+      await loadCurrentUserRecord(this.users, current),
+      reAuthentication,
+      meta,
+    );
   }
 
   // 全セッションは設定の書き込みと同じ一括の書き込みで消えている。操作した端末は認証済みの同じ利用者のため、再発行の条件を確かめずに発行する

@@ -1,6 +1,11 @@
 import type { AdminRole } from '../../../../common-lib/admin/admin-roles.ts';
 import { createAuditActionCatalog } from '../../../../common-lib/admin/audit-action.ts';
 import { AUDIT_ACTIONS } from '../../../../common-lib/admin/audit-actions/index.ts';
+import type {
+  AuditLogRecorder,
+  PreparedAuditEntry,
+} from '../../../../lib/core/admin/audit-log.ts';
+import type { CurrentAdmin } from '../../../../lib/core/admin/current-admin.ts';
 import {
   createKeyedHasher,
   type HashPurpose,
@@ -19,16 +24,11 @@ import type {
 } from '../../auth/ports.ts';
 import { HashingRecoveryCodeIssuer } from '../../auth/recovery-code-issuer.ts';
 import type { SecretIssuer } from '../../auth/secret-issuer.ts';
-import type { CurrentAdmin } from '../admin-authorizer.ts';
 import {
   type AdminInvitation,
   StoreAdminInvitation,
 } from '../admin-invitation.ts';
-import {
-  type AuditLogRecorder,
-  type PreparedAuditEntry,
-  StoreAuditLogRecorder,
-} from '../audit-log-recorder.ts';
+import { StoreAuditLogRecorder } from '../audit-log-recorder.ts';
 import type {
   AdminAccountStore,
   AdminActivation,

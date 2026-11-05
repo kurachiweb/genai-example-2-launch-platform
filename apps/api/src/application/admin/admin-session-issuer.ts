@@ -2,6 +2,7 @@ import { inject, injectable } from 'inversify';
 
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
+import type { Principal } from '../../../lib/core/session/session-view.ts';
 import { ADMIN_HASH_PURPOSES } from '../../domain/admin/admin-auth-token-purpose.ts';
 import { ADMIN_SESSION_POLICY } from '../../domain/admin/admin-session-policy.ts';
 import {
@@ -10,7 +11,6 @@ import {
 } from '../../domain/auth/session-policy.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
-import type { Principal } from '../session/session-verifier.ts';
 import { ADMIN_TYPES } from './admin-types.ts';
 import type {
   AdminRequestMeta,

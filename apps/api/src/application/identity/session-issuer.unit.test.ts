@@ -7,6 +7,7 @@ import type {
 } from '../../../lib/core/crypto/keyed-hasher.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
+import type { Principal } from '../../../lib/core/session/session-view.ts';
 import { USER_SESSION_POLICY } from '../../domain/auth/session-policy.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretGenerator } from '../auth/ports.ts';
@@ -16,7 +17,6 @@ import {
 } from '../auth/secret-issuer.ts';
 import {
   MAX_SESSION_MAX_AGE_SECONDS,
-  type Principal,
   SESSION_TOKEN_PATTERN,
 } from '../session/session-verifier.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';

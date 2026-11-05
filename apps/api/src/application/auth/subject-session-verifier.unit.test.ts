@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { Container } from 'inversify';
 
+import type { SessionSubjectKind } from '../../../lib/core/session/session-view.ts';
 import {
   SESSION_TYPES,
-  type SessionSubjectKind,
   type SessionVerification,
   type SessionVerifier,
 } from '../session/session-verifier.ts';

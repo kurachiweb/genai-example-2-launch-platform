@@ -1,4 +1,5 @@
 import type { AdminRole } from '../../../common-lib/admin/admin-roles.ts';
+import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import type {
   SessionPolicy,
   SessionTimes,
@@ -12,7 +13,6 @@ import type {
   AuditLogPageRequest,
   AuditLogSearchResult,
 } from './audit-log-reader.ts';
-import type { PreparedAuditEntry } from './audit-log-recorder.ts';
 
 export interface AuditLogStore {
   insert(entry: PreparedAuditEntry): Promise<void>;

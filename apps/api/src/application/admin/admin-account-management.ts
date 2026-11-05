@@ -5,6 +5,9 @@ import {
   ADMIN_ACCOUNT_DELETE_ACTION,
   ADMIN_ACCOUNT_ROLE_CHANGE_ACTION,
 } from '../../../common-lib/admin/audit-actions/admin-foundation.ts';
+import type { AuditLogRecorder } from '../../../lib/core/admin/audit-log.ts';
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
+import { ADMIN_PLATFORM_TYPES } from '../../../lib/core/admin/identifiers.ts';
 import type { AppError } from '../../../lib/core/errors/app-error.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { MEDIA_TYPES } from '../../../lib/core/media/identifiers.ts';
@@ -15,10 +18,9 @@ import {
   checkRoleChangeable,
   displayStatus,
 } from '../../domain/admin/admin-account.ts';
-import { type CurrentAdmin, operatorSnapshotOf } from './admin-authorizer.ts';
+import { operatorSnapshotOf } from './admin-authorizer.ts';
 import { adminError } from './admin-errors.ts';
 import { ADMIN_TYPES } from './admin-types.ts';
-import type { AuditLogRecorder } from './audit-log-recorder.ts';
 import type {
   AdminAccountStore,
   AdminRecord,
@@ -106,7 +108,7 @@ export class StoreAdminAccountManagement implements AdminAccountManagement {
   constructor(
     @inject(ADMIN_TYPES.AdminAccountStore)
     private readonly admins: AdminAccountStore,
-    @inject(ADMIN_TYPES.AuditLogRecorder)
+    @inject(ADMIN_PLATFORM_TYPES.AuditLogRecorder)
     private readonly auditLog: AuditLogRecorder,
     @inject(MEDIA_TYPES.MediaFiles)
     private readonly media: MediaFiles,

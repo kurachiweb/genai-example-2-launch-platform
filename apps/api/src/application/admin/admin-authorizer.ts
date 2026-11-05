@@ -5,21 +5,17 @@ import {
   type AdminRole,
   hasRole,
 } from '../../../common-lib/admin/admin-roles.ts';
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
+import type {
+  AuthenticatedPrincipal,
+  SessionView,
+} from '../../../lib/core/session/session-view.ts';
 import type { AdminSnapshot } from '../../domain/admin/admin-account.ts';
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
-import type { SessionView } from '../session/session-view.ts';
 import { adminError } from './admin-errors.ts';
 import { ADMIN_TYPES } from './admin-types.ts';
 import type { AdminAccountStore, AdminRecord } from './ports.ts';
 
 const ADMIN_CALLER = 'admin';
-
-export interface CurrentAdmin {
-  readonly id: string;
-  readonly role: AdminRole;
-  readonly nickname: string;
-  readonly sessionId: string;
-}
 
 // 認可で有効と確かめた管理者のため、可否の判定と書き込みの条件に使うロール以外は有効の状態として組み立てる
 export const operatorSnapshotOf = (current: CurrentAdmin): AdminSnapshot => ({

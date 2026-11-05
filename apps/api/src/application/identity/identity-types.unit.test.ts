@@ -18,7 +18,6 @@ const EXPECTED_NAMES = [
   'IdentityMailer',
   'IdentitySettings',
   'SessionIssuer',
-  'AccountGuard',
   'MailSendLimits',
   'Registration',
   'EmailVerification',

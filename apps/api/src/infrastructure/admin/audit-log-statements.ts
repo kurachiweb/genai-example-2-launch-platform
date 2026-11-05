@@ -10,7 +10,7 @@ import type { Database } from '../../../db/client.ts';
 import { adminAuditLogTargets } from '../../../db/schema/admin/admin-audit-log-targets.ts';
 import { adminAuditLogs } from '../../../db/schema/admin/admin-audit-logs.ts';
 import { admins } from '../../../db/schema/admin/admins.ts';
-import type { PreparedAuditEntry } from '../../application/admin/audit-log-recorder.ts';
+import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import {
   type AdminSnapshot,
   checkRoleChangeable,

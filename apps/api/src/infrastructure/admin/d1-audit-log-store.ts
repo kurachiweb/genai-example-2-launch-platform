@@ -18,6 +18,7 @@ import type { AuditTargetKind } from '../../../common-lib/admin/audit-action.ts'
 import type { Database } from '../../../db/client.ts';
 import { adminAuditLogTargets } from '../../../db/schema/admin/admin-audit-log-targets.ts';
 import { adminAuditLogs } from '../../../db/schema/admin/admin-audit-logs.ts';
+import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import { invalidCursorError } from '../../../lib/core/errors/invalid-cursor.ts';
 import type {
@@ -28,7 +29,6 @@ import type {
   AuditLogPageRequest,
   AuditLogSearchResult,
 } from '../../application/admin/audit-log-reader.ts';
-import type { PreparedAuditEntry } from '../../application/admin/audit-log-recorder.ts';
 import type { AuditLogStore } from '../../application/admin/ports.ts';
 import { buildAuditLogStatements } from './audit-log-statements.ts';
 

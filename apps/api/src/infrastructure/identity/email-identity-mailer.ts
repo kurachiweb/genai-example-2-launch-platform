@@ -11,6 +11,7 @@ import {
   IDENTITY_PASSWORD_RESET_KIND,
 } from '../../../lib/core/email/kinds/identity.ts';
 import type { EmailSender } from '../../../lib/core/email/ports.ts';
+import type { UserAccountView } from '../../../lib/core/identity/account-guard.ts';
 import { IDENTITY_TYPES } from '../../application/identity/identity-types.ts';
 import type {
   IdentityMailer,
@@ -37,7 +38,7 @@ export class EmailIdentityMailer implements IdentityMailer {
   ) {}
 
   async sendEmailVerification(
-    to: UserRecord,
+    to: UserAccountView,
     token: string,
     expiresAt: Date,
   ): Promise<void> {

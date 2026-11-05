@@ -1,14 +1,15 @@
 import { inject, injectable } from 'inversify';
 
+import type { CurrentUser } from '../../../lib/core/identity/account-guard.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
+import type { Principal } from '../../../lib/core/session/session-view.ts';
 import { AUTH_TOKEN_HASH_PURPOSES } from '../../domain/identity/auth-token-purpose.ts';
 import { checkAccountWritable } from '../../domain/identity/user-account.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
-import type { Principal } from '../session/session-verifier.ts';
-import type { CurrentUser } from './account-guard.ts';
 import { prepareAuthToken } from './auth-token-issuance.ts';
+import { loadCurrentUserRecord } from './current-user-record.ts';
 import type { DisposableEmailCheck } from './disposable-email-check.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import { identityError } from './identity-errors.ts';
@@ -79,7 +80,7 @@ export class StoreEmailChange implements EmailChange {
     command: RequestEmailChangeCommand,
     meta: RequestMeta,
   ): Promise<void> {
-    const { user } = current;
+    const user = await loadCurrentUserRecord(this.users, current);
     await this.reAuthenticator.verify(user, command.reAuthentication, meta);
     const newEmail = trimWhiteSpace(command.newEmail);
     // 重複の有無を上限の到達の違いから推測させないよう、重複を調べる前に数える

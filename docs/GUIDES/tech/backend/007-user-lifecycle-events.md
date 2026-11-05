@@ -221,14 +221,16 @@ flowchart TD
 
 利用者のテーブルの列は、アカウントの機能の外から直接読まない。他の機能は次の契約を`@inject`で受け取る。契約と識別子は共通ライブラリの`core/identity/`に、D1の実装と束縛は`workers/identity/`に置く。
 
-| 識別子(`IDENTITY_PLATFORM_TYPES`) | 契約                      | 用途                                                                                          |
-| --------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| `UserContactDirectory`            | `findContact(userId)`     | 通知のメールの宛先・宛名・確認済みかどうか。退会済み・物理削除済みは`undefined`、停止中は返す |
-| `AccountExport`                   | `find(userId)`            | 利用者のデータのエクスポートに含めるアカウントの項目                                          |
-| `AdminUserDirectory`              | `search`・`findByIds`など | 管理者の画面の利用者の検索と一覧                                                              |
+| 識別子(`IDENTITY_PLATFORM_TYPES`) | 契約                                                                       | 用途                                                                                                                             |
+| --------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `UserContactDirectory`            | `findContact(userId)`                                                      | 通知のメールの宛先・宛名・確認済みかどうか。退会済み・物理削除済みは`undefined`、停止中は返す                                    |
+| `AccountExport`                   | `find(userId)`                                                             | 利用者のデータのエクスポートに含めるアカウントの項目                                                                             |
+| `AdminUserDirectory`              | `search`・`findByIds`など                                                  | 管理者の画面の利用者の検索と一覧                                                                                                 |
+| `AccountGuard`                    | `currentUser`・`requireUser`・`requireWritableUser`・`requireVerifiedUser` | 要求のセッションのログイン中の利用者の確認と、状態による拒否(「[利用者の状態](../security/006-authentication.md#利用者の状態)」) |
 
 - 共通の束縛`IDENTITY_PLATFORM_MODULE`を、APIサーバーとメッセージを受信するアプリの両方のモジュールの一覧へ加える(「[モジュール](002-layered-architecture-on-workers.md#モジュール)」)。どちらのアプリでも同じ識別子で解決できる。
 - 契約はアプリケーション層からも読める`core`に置く。アプリケーション層は`workers`を読み込めないため、D1の実装は合成ルートの束縛だけが読む。
+- `AccountGuard`はセッションを受け取るAPIサーバーだけが使うため、実装はAPIサーバーのアカウントの機能のapplication層に置き、そのモジュールが束縛する。共通の束縛`IDENTITY_PLATFORM_MODULE`には含めない。
 - 公開する一覧などで退会済み・停止中の利用者のデータを除くときは、テーブルの定義と並べて置いた絞り込みの条件(`visibleUsers()`・`verifiedUsers()`)を使い、状態の列の判定を各機能で書き直さない。
 - 契約に無い項目が要るときは、各機能で列を読まず、アカウントの機能の契約に項目を足す。
 

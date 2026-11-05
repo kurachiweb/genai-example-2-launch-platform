@@ -1,6 +1,11 @@
 import type { HashPurpose } from '../../../../lib/core/crypto/keyed-hasher.ts';
+import type { CurrentUser } from '../../../../lib/core/identity/account-guard.ts';
 import type { DisposableEmailStatus } from '../../../../lib/core/identity/disposable-email.ts';
 import { AppError } from '../../../../lib/core/errors/app-error.ts';
+import type {
+  AuthenticatedPrincipal,
+  Principal,
+} from '../../../../lib/core/session/session-view.ts';
 import type { PasswordIdentifiers } from '../../../domain/auth/password-rules.ts';
 import { AUTH_TOKEN_HASH_PURPOSES } from '../../../domain/identity/auth-token-purpose.ts';
 import type {
@@ -9,11 +14,6 @@ import type {
 } from '../../auth/password-policy.ts';
 import type { PasswordHasher } from '../../auth/ports.ts';
 import type { SecretIssuer } from '../../auth/secret-issuer.ts';
-import type {
-  AuthenticatedPrincipal,
-  Principal,
-} from '../../session/session-verifier.ts';
-import type { CurrentUser } from '../account-guard.ts';
 import type { DisposableEmailCheck } from '../disposable-email-check.ts';
 import type {
   AuthTokenStore,

@@ -6,6 +6,7 @@ const EXPECTED_NAMES = [
   'UserContactDirectory',
   'AccountExport',
   'AdminUserDirectory',
+  'AccountGuard',
 ] as const;
 
 describe('IDENTITY_PLATFORM_TYPES', () => {

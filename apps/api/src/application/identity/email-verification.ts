@@ -1,11 +1,12 @@
 import { inject, injectable } from 'inversify';
 
+import type { AccountGuard } from '../../../lib/core/identity/account-guard.ts';
+import { IDENTITY_PLATFORM_TYPES } from '../../../lib/core/identity/identifiers.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
+import type { SessionView } from '../../../lib/core/session/session-view.ts';
 import { AUTH_TOKEN_HASH_PURPOSES } from '../../domain/identity/auth-token-purpose.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretIssuer } from '../auth/secret-issuer.ts';
-import type { SessionView } from '../session/session-view.ts';
-import type { AccountGuard } from './account-guard.ts';
 import { prepareAuthToken } from './auth-token-issuance.ts';
 import type { DisposableEmailCheck } from './disposable-email-check.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
@@ -42,7 +43,7 @@ export class StoreEmailVerification implements EmailVerification {
     private readonly users: UserAccountStore,
     @inject(IDENTITY_TYPES.DisposableEmailCheck)
     private readonly disposableCheck: DisposableEmailCheck,
-    @inject(IDENTITY_TYPES.AccountGuard)
+    @inject(IDENTITY_PLATFORM_TYPES.AccountGuard)
     private readonly guard: AccountGuard,
     @inject(IDENTITY_TYPES.MailSendLimits)
     private readonly mailLimits: MailSendLimits,

@@ -1,11 +1,11 @@
 import { inject, injectable } from 'inversify';
 
+import type { CurrentAdmin } from '../../../lib/core/admin/current-admin.ts';
 import { ADMIN_HASH_PURPOSES } from '../../domain/admin/admin-auth-token-purpose.ts';
 import { normalizeTotpCode } from '../../domain/auth/second-factor.ts';
 import { AUTH_TYPES } from '../auth/auth-types.ts';
 import type { SecretBox, TotpAuthenticator } from '../auth/ports.ts';
 import type { RecoveryCodeIssuer } from '../auth/recovery-code-issuer.ts';
-import type { CurrentAdmin } from './admin-authorizer.ts';
 import { adminError } from './admin-errors.ts';
 import {
   ADMIN_TOTP_SETUP_TTL_SECONDS,

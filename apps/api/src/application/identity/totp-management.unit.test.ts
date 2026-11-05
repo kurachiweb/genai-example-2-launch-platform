@@ -41,6 +41,7 @@ function setup(options: TotpManagementFakeOptions = {}) {
   const fakes = createTotpManagementFakes(options);
   const totpManagement: TotpManagement = new StoreTotpManagement(
     fakes.reAuthenticator,
+    fakes.users,
     fakes.totpCredentials,
     fakes.recoveryCodes,
     fakes.sessionIssuer,
@@ -130,6 +131,7 @@ describe('StoreTotpManagement.start', () => {
 
     expect(recorded.calls).toEqual([
       'totpCredentials.find',
+      'users.findById',
       'reAuthenticator.verify',
       'totp.generateSecret',
       'secretBox.seal',
@@ -232,6 +234,7 @@ describe('StoreTotpManagement.start', () => {
     expect(error).toBe(REAUTHENTICATION_FAILED);
     expect(recorded.calls).toEqual([
       'totpCredentials.find',
+      'users.findById',
       'reAuthenticator.verify',
     ]);
     expect(state.credential).toBeUndefined();
@@ -450,6 +453,7 @@ describe('StoreTotpManagement.disable', () => {
 
     expect(recorded.calls).toEqual([
       'totpCredentials.find',
+      'users.findById',
       'reAuthenticator.verify',
       'totpCredentials.disableRevokingSessions',
       'sessionIssuer.issue',
@@ -559,6 +563,7 @@ describe('StoreTotpManagement.regenerateRecoveryCodes', () => {
 
     expect(recorded.calls).toEqual([
       'totpCredentials.find',
+      'users.findById',
       'reAuthenticator.verify',
       'recoveryCodeIssuer.issue',
       'recoveryCodes.replaceAllRevokingSessions',

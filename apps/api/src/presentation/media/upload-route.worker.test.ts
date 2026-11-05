@@ -31,6 +31,10 @@ import {
   type UploadPurposeRegistry,
 } from '../../../lib/core/media/upload-purpose.ts';
 import type { QueueEnvelope } from '../../../lib/core/messaging/envelope.ts';
+import type {
+  AuthenticatedPrincipal,
+  Principal,
+} from '../../../lib/core/session/session-view.ts';
 import { platformEnvShape } from '../../../lib/workers/env/platform-env.ts';
 import { createWorkerApp } from '../../../lib/workers/http/create-worker-app.ts';
 import type { PlatformHonoEnv } from '../../../lib/workers/http/hono-env.ts';
@@ -62,8 +66,6 @@ import {
   type UploaderEligibilityDecision,
 } from '../../application/media/uploader-eligibility.ts';
 import {
-  type AuthenticatedPrincipal,
-  type Principal,
   SESSION_TYPES,
   type SessionVerification,
   type SessionVerifier,

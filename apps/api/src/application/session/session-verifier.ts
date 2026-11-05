@@ -1,14 +1,7 @@
-export type SessionSubjectKind = 'user' | 'admin';
-
-export interface AuthenticatedPrincipal {
-  readonly kind: 'authenticated';
-  readonly subjectKind: SessionSubjectKind;
-  readonly subjectId: string;
-  // 保存済みセッションのレコードのIDで、セッション識別子そのものではない
-  readonly sessionId: string;
-}
-
-export type Principal = { readonly kind: 'anonymous' } | AuthenticatedPrincipal;
+import type {
+  AuthenticatedPrincipal,
+  SessionSubjectKind,
+} from '../../../lib/core/session/session-view.ts';
 
 export interface SessionIssue {
   readonly token: string;

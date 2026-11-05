@@ -2,13 +2,17 @@ import { describe, expect, test } from 'bun:test';
 import { Container } from 'inversify';
 
 import { AppError } from '../../../lib/core/errors/app-error.ts';
-import type { Principal } from '../session/session-verifier.ts';
-import type { SessionView } from '../session/session-view.ts';
-import {
-  type AccountGuard,
-  type CurrentUser,
-  StoreAccountGuard,
-} from './account-guard.ts';
+import type {
+  AccountGuard,
+  CurrentUser,
+  UserAccountView,
+} from '../../../lib/core/identity/account-guard.ts';
+import { IDENTITY_PLATFORM_TYPES } from '../../../lib/core/identity/identifiers.ts';
+import type {
+  Principal,
+  SessionView,
+} from '../../../lib/core/session/session-view.ts';
+import { StoreAccountGuard } from './account-guard.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import type { UserAccountStore, UserRecord } from './ports.ts';
 
@@ -44,6 +48,28 @@ function userOf(overrides: Partial<UserRecord> = {}): UserRecord {
     ...overrides,
   };
 }
+
+const VIEW_KEYS = [
+  'id',
+  'pseudonymousId',
+  'status',
+  'emailVerifiedAt',
+  'deletedAt',
+  'email',
+  'nickname',
+  'handle',
+] as const;
+
+const viewOf = (user: UserRecord): UserAccountView => ({
+  id: user.id,
+  pseudonymousId: user.pseudonymousId,
+  status: user.status,
+  emailVerifiedAt: user.emailVerifiedAt,
+  deletedAt: user.deletedAt,
+  email: user.email,
+  nickname: user.nickname,
+  handle: user.handle,
+});
 
 function createStore(
   user: UserRecord | undefined,
@@ -131,7 +157,10 @@ describe('StoreAccountGuard.currentUser', () => {
 
     const current = await guard.currentUser(sessionOf(USER_PRINCIPAL));
 
-    expect(current).toEqual<CurrentUser>({ principal: USER_PRINCIPAL, user });
+    expect(current).toEqual<CurrentUser>({
+      principal: USER_PRINCIPAL,
+      user: viewOf(user),
+    });
     expect(reads).toEqual([USER_ID]);
   });
 
@@ -165,7 +194,7 @@ describe('StoreAccountGuard.currentUser', () => {
 
     expect(await guard.currentUser(sessionOf(USER_PRINCIPAL))).toEqual({
       principal: USER_PRINCIPAL,
-      user,
+      user: viewOf(user),
     });
   });
 });
@@ -204,7 +233,7 @@ describe('StoreAccountGuard.requireUser', () => {
 
     expect(await guard.requireUser(sessionOf(USER_PRINCIPAL))).toEqual({
       principal: USER_PRINCIPAL,
-      user,
+      user: viewOf(user),
     });
   });
 });
@@ -238,7 +267,7 @@ describe('StoreAccountGuard.requireWritableUser', () => {
 
     expect(await guard.requireWritableUser(sessionOf(USER_PRINCIPAL))).toEqual({
       principal: USER_PRINCIPAL,
-      user,
+      user: viewOf(user),
     });
   });
 });
@@ -282,9 +311,33 @@ describe('StoreAccountGuard.requireVerifiedUser', () => {
 
     expect(await guard.requireVerifiedUser(sessionOf(USER_PRINCIPAL))).toEqual({
       principal: USER_PRINCIPAL,
-      user,
+      user: viewOf(user),
     });
   });
+});
+
+describe('StoreAccountGuard の返す利用者', () => {
+  test.each([
+    ['currentUser'],
+    ['requireUser'],
+    ['requireWritableUser'],
+    ['requireVerifiedUser'],
+  ] as const)(
+    '%sが返す利用者は読み取りの形の項目だけを持ち、パスワードのハッシュ・版などを持たない',
+    async (method) => {
+      const { guard } = setup(userOf({ lifecycleVersion: 4 }));
+
+      const current = await guard[method](sessionOf(USER_PRINCIPAL));
+
+      expect(Object.keys(current?.user ?? {}).toSorted()).toEqual(
+        [...VIEW_KEYS].toSorted(),
+      );
+      expect(current?.user).not.toHaveProperty('passwordHash');
+      expect(current?.user).not.toHaveProperty('lifecycleVersion');
+      expect(current?.user).not.toHaveProperty('disposableEmailStatus');
+      expect(current?.user).not.toHaveProperty('termsAgreedAt');
+    },
+  );
 });
 
 describe('StoreAccountGuard の読み取りの回数', () => {
@@ -329,16 +382,16 @@ describe('StoreAccountGuard の読み取りの回数', () => {
       .bind<UserAccountStore>(IDENTITY_TYPES.UserAccountStore)
       .toConstantValue(createStore(userOf(), reads));
     container
-      .bind<AccountGuard>(IDENTITY_TYPES.AccountGuard)
+      .bind<AccountGuard>(IDENTITY_PLATFORM_TYPES.AccountGuard)
       .to(StoreAccountGuard)
       .inSingletonScope();
     const session = sessionOf(USER_PRINCIPAL);
 
     await container
-      .get<AccountGuard>(IDENTITY_TYPES.AccountGuard)
+      .get<AccountGuard>(IDENTITY_PLATFORM_TYPES.AccountGuard)
       .requireUser(session);
     await container
-      .get<AccountGuard>(IDENTITY_TYPES.AccountGuard)
+      .get<AccountGuard>(IDENTITY_PLATFORM_TYPES.AccountGuard)
       .requireWritableUser(session);
 
     expect(reads).toEqual([USER_ID]);

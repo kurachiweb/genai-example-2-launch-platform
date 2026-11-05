@@ -12,6 +12,10 @@ import { z } from 'zod';
 import type { AppModule } from '../../../lib/core/di/app-module.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { NOT_FOUND_RESPONSE } from '../../../lib/core/errors/error-envelope.ts';
+import type {
+  AuthenticatedPrincipal,
+  SessionSubjectKind,
+} from '../../../lib/core/session/session-view.ts';
 import { platformEnvShape } from '../../../lib/workers/env/platform-env.ts';
 import { createWorkerApp } from '../../../lib/workers/http/create-worker-app.ts';
 import type { PlatformHonoEnv } from '../../../lib/workers/http/hono-env.ts';
@@ -21,10 +25,8 @@ import {
   readSentryRuntimeOptions,
 } from '../../../lib/workers/observability/sentry.ts';
 import {
-  type AuthenticatedPrincipal,
   SESSION_TYPES,
   type SessionIssue,
-  type SessionSubjectKind,
   type SessionVerification,
   type SessionVerifier,
 } from '../../application/session/session-verifier.ts';

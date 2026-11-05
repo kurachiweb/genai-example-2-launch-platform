@@ -1,19 +1,22 @@
 import type { GraphQLResolveInfo } from 'graphql';
 
 import { PLATFORM_TYPES } from '../../../../../lib/core/di/identifiers.ts';
+import type {
+  AccountGuard,
+  UserAccountView,
+} from '../../../../../lib/core/identity/account-guard.ts';
+import { IDENTITY_PLATFORM_TYPES } from '../../../../../lib/core/identity/identifiers.ts';
+import type { Principal } from '../../../../../lib/core/session/session-view.ts';
 import type { Clock } from '../../../../../lib/core/time/clock.ts';
-import type { AccountGuard } from '../../../../application/identity/account-guard.ts';
 import { IDENTITY_TYPES } from '../../../../application/identity/identity-types.ts';
 import type {
   RecoveryCodeStore,
   TotpCredentialStore,
   UserAccountStore,
-  UserRecord,
 } from '../../../../application/identity/ports.ts';
 import type { RequestMeta } from '../../../../application/identity/request-meta.ts';
 import { isTotpEnabled } from '../../../../application/identity/second-factor-check.ts';
 import type { IssuedSession } from '../../../../application/identity/session-issuer.ts';
-import type { Principal } from '../../../../application/session/session-verifier.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { callerForbiddenError } from './errors.ts';
 
@@ -48,7 +51,7 @@ type Resolver<TParent, TArgs, TResult> = (
 ) => TResult;
 
 const ACCOUNT_STATUS_VALUES: Readonly<
-  Record<UserRecord['status'], AccountStatusValue>
+  Record<UserAccountView['status'], AccountStatusValue>
 > = Object.freeze({ active: 'ACTIVE', suspended: 'SUSPENDED' });
 
 // 利用者の操作は利用者側のフロントエンドサーバーからの要求だけで受け付ける。入力の検証とbot判定より前に拒否する
@@ -88,7 +91,7 @@ export function issueSession(
   });
 }
 
-export function toViewer(user: UserRecord): ViewerSource {
+export function toViewer(user: UserAccountView): ViewerSource {
   return {
     id: user.id,
     handle: user.handle,
@@ -136,7 +139,7 @@ export async function countRemainingRecoveryCodes(
 }
 
 export const accountGuard = (context: GraphQLContext): AccountGuard =>
-  context.resolve<AccountGuard>(IDENTITY_TYPES.AccountGuard);
+  context.resolve<AccountGuard>(IDENTITY_PLATFORM_TYPES.AccountGuard);
 
 export interface ConfirmationResultSource {
   readonly viewer: ViewerSource | null;

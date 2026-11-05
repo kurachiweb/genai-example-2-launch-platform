@@ -3,6 +3,7 @@ import type { GraphQLResolveInfo } from 'graphql';
 import type { AdminRole } from '../../../../../common-lib/admin/admin-roles.ts';
 import { PLATFORM_TYPES } from '../../../../../lib/core/di/identifiers.ts';
 import { AppError } from '../../../../../lib/core/errors/app-error.ts';
+import type { Principal } from '../../../../../lib/core/session/session-view.ts';
 import type { Clock } from '../../../../../lib/core/time/clock.ts';
 import type { AdminAccountView } from '../../../../application/admin/admin-account-management.ts';
 import { adminError } from '../../../../application/admin/admin-errors.ts';
@@ -14,7 +15,6 @@ import type {
   IssuedAdminSession,
 } from '../../../../application/admin/ports.ts';
 import { REAUTHENTICATION_FAILED_CODE } from '../../../../application/auth/auth-errors.ts';
-import type { Principal } from '../../../../application/session/session-verifier.ts';
 import type { AdminDisplayStatus } from '../../../../domain/admin/admin-account.ts';
 import { requireAdmin } from '../../admin-guard.ts';
 import { withInputPath } from '../../field-paths.ts';

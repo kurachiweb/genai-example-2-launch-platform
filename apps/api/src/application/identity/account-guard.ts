@@ -1,25 +1,27 @@
 import { inject, injectable } from 'inversify';
 
+import type {
+  AccountGuard,
+  CurrentUser,
+  UserAccountView,
+} from '../../../lib/core/identity/account-guard.ts';
+import type { SessionView } from '../../../lib/core/session/session-view.ts';
 import { checkAccountWritable } from '../../domain/identity/user-account.ts';
-import type { AuthenticatedPrincipal } from '../session/session-verifier.ts';
-import type { SessionView } from '../session/session-view.ts';
 import { identityError } from './identity-errors.ts';
 import { IDENTITY_TYPES } from './identity-types.ts';
 import type { UserAccountStore, UserRecord } from './ports.ts';
 
-export interface CurrentUser {
-  readonly principal: AuthenticatedPrincipal;
-  readonly user: UserRecord;
-}
-
-export interface AccountGuard {
-  // 未ログイン・利用者以外の主体・退会済みならundefined
-  currentUser(session: SessionView): Promise<CurrentUser | undefined>;
-  // 停止中でも通す(閲覧・ログアウト・セッションの失効・退会のため)
-  requireUser(session: SessionView): Promise<CurrentUser>;
-  requireWritableUser(session: SessionView): Promise<CurrentUser>;
-  requireVerifiedUser(session: SessionView): Promise<CurrentUser>;
-}
+// 別の機能へも渡すため、保存済みの記録からパスワードのハッシュや版を除いた読み取りの形だけを詰め直す。戻り値の型の注記により、項目の漏れと余分な項目は型検査で検出される
+const toUserAccountView = (user: UserRecord): UserAccountView => ({
+  id: user.id,
+  pseudonymousId: user.pseudonymousId,
+  status: user.status,
+  emailVerifiedAt: user.emailVerifiedAt,
+  deletedAt: user.deletedAt,
+  email: user.email,
+  nickname: user.nickname,
+  handle: user.handle,
+});
 
 // 処理単位のコンテナで単一に束縛し、同じ要求の中では利用者を1回だけ読む
 @injectable()
@@ -43,7 +45,7 @@ export class StoreAccountGuard implements AccountGuard {
     if (user === undefined || user.deletedAt !== null) {
       return undefined;
     }
-    return { principal, user };
+    return { principal, user: toUserAccountView(user) };
   }
 
   async requireUser(session: SessionView): Promise<CurrentUser> {

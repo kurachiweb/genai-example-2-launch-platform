@@ -1,13 +1,13 @@
 import { inject, injectable } from 'inversify';
 
+import type { AccountGuard } from '../../../lib/core/identity/account-guard.ts';
+import { IDENTITY_PLATFORM_TYPES } from '../../../lib/core/identity/identifiers.ts';
 import { checkAccountWritable } from '../../domain/identity/user-account.ts';
 import type {
   UploaderEligibility,
   UploaderEligibilityDecision,
   UploaderEligibilityInput,
 } from '../media/uploader-eligibility.ts';
-import type { AccountGuard } from './account-guard.ts';
-import { IDENTITY_TYPES } from './identity-types.ts';
 
 const ALLOWED: UploaderEligibilityDecision = Object.freeze({ allowed: true });
 
@@ -20,7 +20,7 @@ const ACCOUNT_UNAVAILABLE: UploaderEligibilityDecision = Object.freeze({
 @injectable()
 export class AccountUploaderEligibility implements UploaderEligibility {
   constructor(
-    @inject(IDENTITY_TYPES.AccountGuard)
+    @inject(IDENTITY_PLATFORM_TYPES.AccountGuard)
     private readonly guard: AccountGuard,
   ) {}
 
