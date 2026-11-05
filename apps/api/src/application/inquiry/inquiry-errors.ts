@@ -1,4 +1,7 @@
-import { CATEGORY_NAME_MAX } from '../../../common-lib/admin/admin-input-rules.ts';
+import {
+  CATEGORY_NAME_MESSAGES,
+  type CategoryNameIssue,
+} from '../../../common-lib/admin/admin-input-rules.ts';
 import { INQUIRY_ATTACHMENT_LIMITS } from '../../../common-lib/inquiry/inquiry-attachment-limits.ts';
 import { INQUIRY_CATEGORY_OTHER_NAME } from '../../../common-lib/inquiry/inquiry-category-constants.ts';
 import {
@@ -64,15 +67,8 @@ const VALIDATION_ERROR_MESSAGE = '入力内容を確認してください。';
 
 const CATEGORY_NAME_FIELD = 'name';
 
-const CATEGORY_NAME_MESSAGES: Readonly<Record<InquiryTextIssue, string>> =
-  Object.freeze({
-    'forbidden-character': 'カテゴリ名に使用できない文字が含まれています。',
-    empty: 'カテゴリ名を入力してください。',
-    'too-long': `カテゴリ名は${String(CATEGORY_NAME_MAX)}文字以内で入力してください。`,
-  });
-
 export const inquiryCategoryNameRejectedError = (
-  issue: InquiryTextIssue,
+  issue: CategoryNameIssue,
 ): AppError =>
   new AppError({
     kind: 'bad_request',

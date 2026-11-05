@@ -267,6 +267,36 @@ describe('CategoryMasterEditor', () => {
     expect(onCreate).toHaveBeenCalledExactlyOnceWith({ name: '開発支援' });
   });
 
+  test('追加で使用できない文字を含む名前を入力すると、欄のエラーを示して保存できず、アクセシビリティの検査の違反が0件', async () => {
+    const { onCreate } = await renderEditor();
+
+    await addButton().click();
+    const dialogName = 'カテゴリを追加';
+    await nameBox(dialogName).fill('開発\u0001支援');
+    await userEvent.tab();
+
+    await expect
+      .element(
+        formDialog(dialogName).getByText(
+          'カテゴリ名に使用できない文字が含まれています。',
+        ),
+      )
+      .toBeVisible();
+    await expect
+      .element(nameBox(dialogName))
+      .toHaveAttribute('aria-invalid', 'true');
+    await expect
+      .element(
+        formDialog(dialogName).getByRole('button', {
+          name: '追加',
+          exact: true,
+        }),
+      )
+      .toHaveAttribute('disabled');
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(await runAxe(document.body)).toStrictEqual([]);
+  });
+
   test('名前の編集では、今の値を入力済みで開き、カテゴリのIDと保存した値を渡す', async () => {
     const { onUpdate } = await renderEditor();
 
@@ -297,6 +327,11 @@ describe('CategoryMasterEditor', () => {
   test.each([
     ['空', '', 'カテゴリ名を入力してください。'],
     ['31文字', 'あ'.repeat(31), 'カテゴリ名は30文字以内で入力してください。'],
+    [
+      '使用できない文字を含む名前',
+      'デザ\u0001イン',
+      'カテゴリ名に使用できない文字が含まれています。',
+    ],
   ])(
     '名前の編集で%sにすると、フォーカスを外した時点でエラーを示し、保存できない',
     async (_, value, message) => {

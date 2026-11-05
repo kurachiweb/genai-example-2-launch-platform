@@ -1,16 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
-  CATEGORY_NAME_MAX,
-  checkCategoryName,
-} from '../admin/admin-input-rules.ts';
-import {
   CHAT_MESSAGE_MAX,
   CHAT_MESSAGE_MESSAGES,
   checkChatMessage,
   checkGuestNickname,
   checkInquiryBody,
-  checkInquiryCategoryName,
   GUEST_NICKNAME_MAX,
   GUEST_NICKNAME_MESSAGES,
   INQUIRY_BODY_MAX,
@@ -35,7 +30,6 @@ const RULES: readonly (readonly [
   ['ニックネーム', checkGuestNickname, 25],
   ['本文', checkInquiryBody, 5_000],
   ['チャットのメッセージ', checkChatMessage, 1_000],
-  ['カテゴリ名', checkInquiryCategoryName, 30],
 ];
 
 describe('入力の上限の定数', () => {
@@ -130,31 +124,8 @@ describe('要件の境界の値', () => {
     ['本文の5,001書記素', checkInquiryBody, 'あ'.repeat(5_001), 'too-long'],
     ['チャットの1,000書記素', checkChatMessage, 'あ'.repeat(1_000), undefined],
     ['チャットの1,001書記素', checkChatMessage, 'あ'.repeat(1_001), 'too-long'],
-    [
-      'カテゴリ名の30書記素',
-      checkInquiryCategoryName,
-      'あ'.repeat(30),
-      undefined,
-    ],
-    [
-      'カテゴリ名の31書記素',
-      checkInquiryCategoryName,
-      'あ'.repeat(31),
-      'too-long',
-    ],
   ] as const)('%sを判定する', (_, check, value, expected) => {
     expect(check(value)).toBe(expected);
-  });
-});
-
-describe('カテゴリ名の判定と管理画面のカテゴリマスタの規則', () => {
-  test.each([
-    ['上限ちょうど', 'a'.repeat(CATEGORY_NAME_MAX)],
-    ['上限+1', 'a'.repeat(CATEGORY_NAME_MAX + 1)],
-    ['空白だけ', ' 　 '],
-    ['前後の空白付き', ' 不具合の報告 '],
-  ])('使用できない文字の無い%sの入力を同じに判定する', (_, value) => {
-    expect(checkInquiryCategoryName(value)).toBe(checkCategoryName(value));
   });
 });
 

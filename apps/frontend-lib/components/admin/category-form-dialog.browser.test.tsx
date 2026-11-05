@@ -27,6 +27,9 @@ const NAME_REQUIRED_MESSAGE = 'カテゴリ名を入力してください。';
 
 const NAME_TOO_LONG_MESSAGE = 'カテゴリ名は30文字以内で入力してください。';
 
+const NAME_FORBIDDEN_CHARACTER_MESSAGE =
+  'カテゴリ名に使用できない文字が含まれています。';
+
 type OnSubmit = CategoryFormDialogProps['onSubmit'];
 
 interface HarnessProps {
@@ -148,6 +151,11 @@ describe('CategoryFormDialog', () => {
   test.each([
     ['空白だけ', ' 　', NAME_REQUIRED_MESSAGE],
     ['31文字', 'あ'.repeat(31), NAME_TOO_LONG_MESSAGE],
+    [
+      '使用できない文字を含む',
+      '開発\u007f支援',
+      NAME_FORBIDDEN_CHARACTER_MESSAGE,
+    ],
   ])(
     '名前が%sのとき、フォーカスを外した時点でエラーを示し、保存できない',
     async (_, value, message) => {

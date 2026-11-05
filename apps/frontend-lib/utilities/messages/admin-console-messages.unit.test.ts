@@ -25,8 +25,6 @@ import {
   CATEGORY_HANDLE_LABEL,
   CATEGORY_HANDLE_UNSET_LABEL,
   CATEGORY_NAME_LABEL,
-  CATEGORY_NAME_REQUIRED_MESSAGE,
-  CATEGORY_NAME_TOO_LONG_MESSAGE,
   CATEGORY_READ_ONLY_NOTICE,
   CATEGORY_SYSTEM_DEFAULT_LABEL,
   CATEGORY_SYSTEM_DEFAULT_NOTICE,
@@ -124,8 +122,6 @@ describe('管理画面の共通部品の文言', () => {
       CATEGORY_EMPTY_MESSAGE,
       CATEGORY_SYSTEM_DEFAULT_NOTICE,
       CATEGORY_READ_ONLY_NOTICE,
-      CATEGORY_NAME_REQUIRED_MESSAGE,
-      CATEGORY_NAME_TOO_LONG_MESSAGE,
       CATEGORY_DELETE_DESCRIPTION,
     ];
 
@@ -151,18 +147,6 @@ describe('管理画面の共通部品の文言', () => {
     test('名前の入力欄の名前は、列の見出しのカテゴリ名に必須であることを括弧で添える', () => {
       expect(REQUIRED_CATEGORY_NAME_LABEL).toBe(`${CATEGORY_NAME_LABEL}(必須)`);
       expect(REQUIRED_CATEGORY_NAME_LABEL).toBe('カテゴリ名(必須)');
-    });
-
-    test('名前の検証の文言は、入力を求める文言と、上限を入力規則の定数から示す文言にする', () => {
-      expect(CATEGORY_NAME_REQUIRED_MESSAGE).toBe(
-        'カテゴリ名を入力してください。',
-      );
-      expect(CATEGORY_NAME_TOO_LONG_MESSAGE).toBe(
-        `カテゴリ名は${String(CATEGORY_NAME_MAX)}文字以内で入力してください。`,
-      );
-      expect(CATEGORY_NAME_TOO_LONG_MESSAGE).toBe(
-        'カテゴリ名は30文字以内で入力してください。',
-      );
     });
 
     test('編集と削除の題名と行の操作の対象は、カテゴリ名を鉤括弧で囲む', () => {
@@ -195,6 +179,11 @@ describe('管理画面の共通部品の文言', () => {
         expect(check('あ'.repeat(max + 1))).toBe('too-long');
       },
     );
+
+    test('カテゴリ名は使用できない文字を含む入力を拒む', () => {
+      expect(checkCategoryName('開発\u0001支援')).toBe('forbidden-character');
+      expect(checkCategoryName('開発\ud800支援')).toBe('forbidden-character');
+    });
 
     test.each([
       { name: '理由', check: checkAuditReason, max: AUDIT_REASON_MAX },

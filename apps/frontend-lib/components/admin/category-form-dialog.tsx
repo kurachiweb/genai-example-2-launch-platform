@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from 'react';
 
-import { checkCategoryName } from '../../../common-lib/admin/admin-input-rules.ts';
+import {
+  CATEGORY_NAME_MESSAGES,
+  checkCategoryName,
+} from '../../../common-lib/admin/admin-input-rules.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import {
   CATEGORY_HANDLE_LABEL,
-  CATEGORY_NAME_REQUIRED_MESSAGE,
-  CATEGORY_NAME_TOO_LONG_MESSAGE,
   CONFIRM_ACTION_CANCEL_LABEL,
   REQUIRED_CATEGORY_NAME_LABEL,
 } from '../../utilities/messages/admin-console-messages.ts';
@@ -55,18 +56,16 @@ interface CategoryFormOutput {
   readonly handle?: string | undefined;
 }
 
-const NAME_MESSAGES = Object.freeze({
-  empty: CATEGORY_NAME_REQUIRED_MESSAGE,
-  'too-long': CATEGORY_NAME_TOO_LONG_MESSAGE,
-});
-
 const categoryNameSchema = (): z.ZodType<string, string> =>
   z
     .string()
     .superRefine((value, context) => {
       const check = checkCategoryName(value);
       if (check !== undefined) {
-        context.addIssue({ code: 'custom', message: NAME_MESSAGES[check] });
+        context.addIssue({
+          code: 'custom',
+          message: CATEGORY_NAME_MESSAGES[check],
+        });
       }
     })
     .transform(trimWhiteSpace);

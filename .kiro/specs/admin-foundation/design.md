@@ -540,9 +540,13 @@ export declare function checkAdminNickname(
 ): 'empty' | 'too-long' | undefined;
 export declare function checkAdminTitle(value: string): 'too-long' | undefined; // 空を許す
 export declare function checkAuditReason(value: string): 'too-long' | undefined;
+export type CategoryNameIssue = 'forbidden-character' | 'empty' | 'too-long';
 export declare function checkCategoryName(
   value: string,
-): 'empty' | 'too-long' | undefined;
+): CategoryNameIssue | undefined; // 禁止文字(前後の空白を除く前に調べる)→空→長すぎるの順に判定する
+export declare const CATEGORY_NAME_MESSAGES: Readonly<
+  Record<CategoryNameIssue, string>
+>; // 違反ごとの文言。APIサーバーと画面が共有する
 
 // audit-action.ts
 export type AuditTargetKind =

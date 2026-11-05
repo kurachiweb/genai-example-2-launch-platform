@@ -5,7 +5,7 @@ import {
   INQUIRY_CATEGORY_DELETE_ACTION,
   INQUIRY_CATEGORY_RENAME_ACTION,
 } from '../../../common-lib/admin/audit-actions/inquiry-chat.ts';
-import { checkInquiryCategoryName } from '../../../common-lib/inquiry/inquiry-input-rules.ts';
+import { checkCategoryName } from '../../../common-lib/admin/admin-input-rules.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import type {
   AuditLogRecorder,
@@ -72,7 +72,7 @@ export interface InquiryCategoryService {
 }
 
 const validNameOf = (name: string): string => {
-  const issue = checkInquiryCategoryName(name);
+  const issue = checkCategoryName(name);
   if (issue !== undefined) {
     throw inquiryCategoryNameRejectedError(issue);
   }

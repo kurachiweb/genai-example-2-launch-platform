@@ -1,4 +1,5 @@
 import { countGraphemes } from '../text/graphemes.ts';
+import { hasForbiddenCharacters } from '../text/text-safety.ts';
 import { trimWhiteSpace } from '../text/white-space.ts';
 
 export const ADMIN_NICKNAME_MAX = 25;
@@ -41,6 +42,20 @@ export const checkAdminTitle = (value: string): 'too-long' | undefined =>
 export const checkAuditReason = (value: string): 'too-long' | undefined =>
   checkOptional(value, AUDIT_REASON_MAX);
 
+export type CategoryNameIssue = 'forbidden-character' | 'empty' | 'too-long';
+
+// カテゴリ名は利用者側の画面にも表示されるため、使用できない文字を拒む。VT・FF・NELは空白でもあるため、前後の空白を除く前に調べて、端にあっても黙って除かずに拒む
 export const checkCategoryName = (
   value: string,
-): 'empty' | 'too-long' | undefined => checkRequired(value, CATEGORY_NAME_MAX);
+): CategoryNameIssue | undefined =>
+  hasForbiddenCharacters(value)
+    ? 'forbidden-character'
+    : checkRequired(value, CATEGORY_NAME_MAX);
+
+export const CATEGORY_NAME_MESSAGES: Readonly<
+  Record<CategoryNameIssue, string>
+> = Object.freeze({
+  'forbidden-character': 'カテゴリ名に使用できない文字が含まれています。',
+  empty: 'カテゴリ名を入力してください。',
+  'too-long': `カテゴリ名は${String(CATEGORY_NAME_MAX)}文字以内で入力してください。`,
+});

@@ -1,7 +1,4 @@
-import {
-  AUDIT_REASON_MAX,
-  CATEGORY_NAME_MAX,
-} from '../../../common-lib/admin/admin-input-rules.ts';
+import { AUDIT_REASON_MAX } from '../../../common-lib/admin/admin-input-rules.ts';
 
 export const ADMIN_PAGINATION_LABEL = 'ページ送り';
 
@@ -55,10 +52,6 @@ export const CATEGORY_SYSTEM_DEFAULT_NOTICE =
 
 export const CATEGORY_READ_ONLY_NOTICE =
   'カテゴリを追加・編集・削除する権限がありません。';
-
-export const CATEGORY_NAME_REQUIRED_MESSAGE = 'カテゴリ名を入力してください。';
-
-export const CATEGORY_NAME_TOO_LONG_MESSAGE = `カテゴリ名は${String(CATEGORY_NAME_MAX)}文字以内で入力してください。`;
 
 export const CATEGORY_DELETE_DESCRIPTION = '削除したカテゴリは元に戻せません。';
 

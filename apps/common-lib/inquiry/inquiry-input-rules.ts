@@ -1,4 +1,3 @@
-import { CATEGORY_NAME_MAX } from '../admin/admin-input-rules.ts';
 import { countGraphemes } from '../text/graphemes.ts';
 import { hasForbiddenCharacters } from '../text/text-safety.ts';
 import { trimWhiteSpace } from '../text/white-space.ts';
@@ -37,11 +36,6 @@ export const checkInquiryBody = (value: string): InquiryTextIssue | undefined =>
 
 export const checkChatMessage = (value: string): InquiryTextIssue | undefined =>
   checkRequiredText(value, CHAT_MESSAGE_MAX);
-
-// カテゴリマスタの共通の上限に、利用者の目に触れる名前として使用できない文字の判定を加える
-export const checkInquiryCategoryName = (
-  value: string,
-): InquiryTextIssue | undefined => checkRequiredText(value, CATEGORY_NAME_MAX);
 
 const limitFormat = new Intl.NumberFormat('ja-JP');
 
