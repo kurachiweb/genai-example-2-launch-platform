@@ -4,6 +4,7 @@ import {
   sentryGlobalRequestMiddleware,
 } from '@sentry/tanstackstart-react';
 
+import { graphqlClientErrorAdapter } from './graphql-client-error-adapter.ts';
 import { responseCommitMiddleware } from './response-commit.ts';
 import { createFrontendStartOptions } from './start-options.ts';
 
@@ -131,5 +132,13 @@ describe('CSRFのミドルウェア', () => {
     const response = await runCsrfMiddleware(requestOf('/posts', 'DELETE'));
 
     expect(response.status).toBe(403);
+  });
+});
+
+describe('createFrontendStartOptions の受け渡しの変換', () => {
+  test('サーバー側の描画からブラウザへGraphQLClientErrorを復元する変換を登録する', () => {
+    expect(startOptionsOf().serializationAdapters).toEqual([
+      graphqlClientErrorAdapter,
+    ]);
   });
 });

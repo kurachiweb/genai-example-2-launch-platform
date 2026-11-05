@@ -168,6 +168,7 @@
 - `git grep -noE '\["@tanstack/(react-router|router-core|react-query)@[^"]+"' -- '*bun.lock' ':!<対象外のディレクトリ>/'`で、各`bun.lock`にそれぞれが1つの版だけ載っている。
 - サーバー関数の呼び出しの判定(`isServerFunctionCall`)が、TanStack Startの経路の正規化と一致する(「[CSRFの検証](../frontend/003-frontend-server-security.md#csrfの検証)」)。
 - 描画中の取得のセッションの指示が、応答を送り始める前ならページの応答に反映され、送り始めた後なら警告を出して捨てられる(「[Cookieの指示が反映される範囲](../frontend/006-data-fetching.md#cookieの指示が反映される範囲)」)。共通部品の単体テストは、宣言していない`seroval`・`@tanstack/router-core/ssr/client`・`@tanstack/start-storage-context`を直接読み込むため、それらの公開の形が変わっていないことも確かめる。
+- サーバー側の描画で取得に失敗した時のエラーの文言が、ハイドレーションの後も変わらない(「[サーバーからブラウザへの例外の受け渡し](../frontend/006-data-fetching.md#サーバーからブラウザへの例外の受け渡し)」)。受け渡しの変換は既定の`Error`の受け渡しより先に効く必要があり、その順序は単体テストでは確かめられないため、E2Eテストの結果で確かめる。
 - 画面を持つアプリの`vite build`の出力で、ブラウザ向けの出力にサーバー専用のファイルの内容と`node:`のモジュールが含まれない(「[サーバー専用のファイルと同型の関数](../frontend/002-tanstack-start-on-workers.md#サーバー専用のファイルと同型の関数)」)。
 - スモークテスト(E2E)が、両アプリの開発サーバーとビルドの後のプレビューで成功する。
 

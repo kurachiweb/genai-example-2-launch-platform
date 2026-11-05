@@ -18,6 +18,7 @@ import { SWITCH_TO_DARK_LABEL } from '../../apps/frontend-lib/utilities/messages
 import {
   CONTACT_LABEL,
   RETRY_LABEL,
+  UNEXPECTED_ERROR_MESSAGE,
 } from '../../apps/frontend-lib/utilities/messages/state-messages.ts';
 import { exhaustApiIpRateLimit } from '../support/api-rate-limit.ts';
 import { assumeDistinctClientIp } from '../support/client-ip.ts';
@@ -247,7 +248,7 @@ test.describe('公開ページの取得の流れ', () => {
     await expect(documentHeading(page, TERMS_LABEL)).toBeFocused();
   });
 
-  test('サーバー側の描画でAPIサーバーからの取得に失敗すると、状態コード500で、共通レイアウトの中に再試行と問い合わせの導線を持つエラーの表示を出す', async ({
+  test('サーバー側の描画でAPIサーバーからの取得に失敗すると、状態コード500で、共通レイアウトの中に再試行と問い合わせの導線を持つエラーの表示を出し、その文言はハイドレーションの後もAPIサーバーの想定内の文言のまま変わらない', async ({
     page,
     context,
     baseURL,
@@ -255,12 +256,30 @@ test.describe('公開ページの取得の流れ', () => {
     const clientIp = await assumeDistinctClientIp(context, baseURL);
 
     // APIサーバーの制限の期間の境目をまたぐと回数が戻って取得が成功するため、500になるまで使い切りからやり直す
+    let serverHtml = '';
     await expect(async () => {
       await exhaustApiIpRateLimit(clientIp);
       const response = await page.goto(TERMS_PATH);
       expect(response?.status()).toBe(500);
+      serverHtml = (await response?.text()) ?? '';
     }).toPass({ timeout: RETRY_TIMEOUT_MS });
 
     await expectUnexpectedErrorInLayout(page, TERMS_LABEL);
+    const serverAlertText = await page.evaluate(
+      (source) =>
+        new DOMParser()
+          .parseFromString(source, 'text/html')
+          .querySelector('main [role="alert"]')
+          ?.textContent.trim() ?? null,
+      serverHtml,
+    );
+    expect(serverAlertText).not.toBeNull();
+    expect(serverAlertText).not.toBe(UNEXPECTED_ERROR_MESSAGE);
+
+    await waitForHydration(page);
+
+    await expect(page.getByRole('main').getByRole('alert')).toHaveText(
+      serverAlertText ?? '',
+    );
   });
 });

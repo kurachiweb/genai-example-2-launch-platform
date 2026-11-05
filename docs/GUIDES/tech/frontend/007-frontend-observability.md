@@ -198,7 +198,7 @@ installRouteErrorReporting(Object.values(router.routesById), (error) => {
 
 - `defaultOnCatch`はブロック本体の関数で書く。式の本体にすると`router`の型の推論が循環する。
 - TanStack Routerにはルーター全体の`loader`の失敗のフックが無く、ルートの`onError`は子のルートへ継承されない。`installRouteErrorReporting`は、`loader`か`beforeLoad`を持つすべてのルートの`onError`を、失敗を送ってからルート自身の`onError`を呼ぶ関数に置き換える。ルートが`onError`で失敗を`notFound()`などへ変えても元の例外は送られ、検索パラメータの検証の失敗(`SearchParamError`)も送られる。ルートの定義は要求ごとのルーターで共有するため、同じ定義を2回包まない。
-- `reportRenderError`は、`router.state.matches`のどれかの`error`と同じ例外を送らない。TanStack Routerは`loader`の失敗を描画の境界で投げ直すが、ブラウザ内の遷移ではルートの`onError`が、ハイドレーションではサーバーが既に送っている。ハイドレーションで復元した`loader`の失敗はメッセージだけの別の`Error`になり、想定内かどうかも判定できないため、描画の失敗として送らない。
+- `reportRenderError`は、`router.state.matches`のどれかの`error`と同じ例外を送らない。TanStack Routerは`loader`の失敗を描画の境界で投げ直すが、ブラウザ内の遷移ではルートの`onError`が、ハイドレーションではサーバーが既に送っている。ハイドレーションで復元した`loader`の失敗はサーバーで送った例外とは別のオブジェクトで、`GraphQLClientError`以外はメッセージだけの`Error`になり想定内かどうかも判定できないため、描画の失敗として送らない。
 - `executeGraphQL`は想定外の失敗の結果を送ってから返す。取得の補助(`requireData`)が同じ失敗を投げ直して`loader`の失敗として届いても、同じオブジェクトのため2回目として除かれる。画面のコードでGraphQLの失敗を送り直さない。
 - フォームの送信の処理(`AppForm`の`onSubmitError`)に届いた、GraphQL以外の想定外の例外を送るかは利用側で決める(「[共通化する部品](005-shared-components.md)」)。
 - 共通部品の部品(`components/**`)は、ブラウザだけで動く処理(マウントの後の効果・イベントの処理・描画の境界の`onCatch`)から送り、`browser-error-reporting.ts`の`reportUnexpectedErrorInBrowser`と`browserErrorQueue`を読み込む。同型の関数のファイル(`report-error.ts`)を読み込まない(型だけの読み込みも含め、静的解析の`frontend/direction/components`と遅延読み込みのモジュールの`frontend/editor-isolation/editor-module`が禁止する)。同型の関数はTanStack Startのコンパイラが無い環境(Vitestのブラウザテスト)で`.server`の実装が残り、サーバー専用の依存(`node:async_hooks`)を読み込んで失敗するため、部品のテストごとに差し替えが要るようになる。サーバーの描画でも動く処理(ルーター・`loader`・GraphQLの実行)は、同型の関数の`reportUnexpectedError`を使う。

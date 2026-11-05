@@ -56,7 +56,7 @@ export function AuditLogsPage() {
   const scope = auditLogFilterScopeOf(search);
   const previous = previousPageOf(trail, scope, search.after);
   const nextCursor = auditLogs.data?.nextCursor ?? null;
-  // 取得し直している間は前の失敗を示さず読み込み中にする。描画中の失敗はメッセージだけの例外としてブラウザへ渡り、表示の後に取得し直した結果で文言を選び直すためでもある
+  // 取得し直している間は前の失敗を示さず読み込み中にする。描画中の取得のうちHTMLを送り始めた時点で終わっていなかったものの失敗は固定の文言の例外としてブラウザへ渡り、表示の後に取得し直した結果で文言を選び直すためでもある
   const failure = auditLogs.isFetching ? null : auditLogs.error;
   const show = (next: AuditLogSearch) => {
     void navigate({ search: next });

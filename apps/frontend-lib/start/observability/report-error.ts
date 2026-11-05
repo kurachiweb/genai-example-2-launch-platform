@@ -28,7 +28,7 @@ export interface RenderErrorRouter {
   };
 }
 
-// ルーターのdefaultOnCatchから呼ぶ。TanStack Routerはmatchのloaderの失敗をそのまま投げ直して描画の境界で捕まえさせる。loaderの失敗は、ブラウザの遷移ではルートのonErrorが、ハイドレーションではサーバーが既に送っている。ハイドレーションで復元した失敗はメッセージだけの別のErrorで想定内かどうかも判定できないため、matchの失敗と同じ例外は描画の例外として送らない
+// ルーターのdefaultOnCatchから呼ぶ。TanStack Routerはmatchのloaderの失敗をそのまま投げ直して描画の境界で捕まえさせる。loaderの失敗は、ブラウザの遷移ではルートのonErrorが、ハイドレーションではサーバーが既に送っている。ハイドレーションで復元した失敗はサーバーで送った例外とは別のオブジェクトで、GraphQLClientError以外はメッセージだけのErrorになり想定内かどうかも判定できないため、matchの失敗と同じ例外は描画の例外として送らない
 export function reportRenderError(
   router: RenderErrorRouter,
   error: unknown,

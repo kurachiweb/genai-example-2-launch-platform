@@ -4,6 +4,7 @@ import {
 } from '@tanstack/react-start';
 
 import { requiresCsrfCheck } from '../server/http/csrf.ts';
+import { graphqlClientErrorAdapter } from './graphql-client-error-adapter.ts';
 import { responseCommitMiddleware } from './response-commit.ts';
 import {
   sentryGlobalFunctionMiddleware,
@@ -36,6 +37,7 @@ export function createFrontendStartOptions() {
         responseCommitMiddleware,
       ] as const,
       functionMiddleware: [...sentry.fn] as const,
+      serializationAdapters: [graphqlClientErrorAdapter],
     };
   };
 }

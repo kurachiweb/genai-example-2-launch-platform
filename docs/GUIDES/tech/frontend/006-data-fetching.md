@@ -14,6 +14,7 @@ Cloudflare Workersで動かすTanStack Startの画面が、APIサーバーのGra
 | `createRouterContext`・`dehydrateAppRuntime`・`hydrateAppRuntime`・`appRuntimeOf`                                 | `start/router-context.ts`                 | 要求ごとのルーターの文脈(QueryClient・Jotaiのストア・実行時の値) |
 | `readInitialRuntime`・`readRequestNonce`                                                                          | `start/request-context.ts`                | 描画の文脈から実行時の値とnonceを読む同型の関数                  |
 | `responseCommitMiddleware`                                                                                        | `start/response-commit.ts`                | ページの応答を送り始めた時点の記録                               |
+| `graphqlClientErrorAdapter`                                                                                       | `start/graphql-client-error-adapter.ts`   | サーバーからブラウザへ`GraphQLClientError`を受け渡す変換         |
 | `GraphQLClientError`・`GraphQLResult`・`requireData`・`createNetworkError`・`isExpectedFailure`・`errorMessageOf` | `utilities/graphql/graphql-result.ts`     | 応答の解釈とエラーの型、画面に出す失敗の文言の選択               |
 | `documentIdOf`・`graphqlQueryKey`                                                                                 | `utilities/graphql/persisted-document.ts` | 操作の識別子と取得のキー                                         |
 | `UNEXPECTED_ERROR_MESSAGE`・`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`                                            | `utilities/messages/state-messages.ts`    | 想定外のエラーの固定の文言(問い合わせの導線がある側・無い側)     |
@@ -178,31 +179,19 @@ export const Route = createFileRoute('/_authenticated')({
 import { createFileRoute } from '@tanstack/react-router';
 
 import { executeGraphQL } from '<共通部品の配置先>/start/graphql/execute-graphql.ts';
-import { GraphQLClientError } from '<共通部品の配置先>/utilities/graphql/graphql-result.ts';
 import { StatusDocument } from '../../graphql/generated/graphql.ts';
 
 export const Route = createFileRoute('/status')({
-  loader: async () => {
-    const result = await executeGraphQL(StatusDocument, {});
-    if (result.ok) {
-      return result;
-    }
-    const { code, message, status } = result.error;
-    return { ok: false, error: { code, message, status } } as const;
-  },
+  loader: () => executeGraphQL(StatusDocument, {}),
   component: StatusRoute,
 });
 
 function StatusRoute() {
-  const data = Route.useLoaderData();
-  const result = data.ok
-    ? data
-    : { ok: false, error: new GraphQLClientError(data.error) };
-  return <StatusView result={result} />;
+  return <StatusView result={Route.useLoaderData()} />;
 }
 ```
 
-- `loader`のデータとHTMLへ書き出す値の`Error`は、ブラウザへ渡るときにメッセージだけを持つ別の`Error`になり、`code`などの項目と`GraphQLClientError`の型が失われる。そのため、失敗は画面の分岐に使う項目だけの素のオブジェクトで返し、部品の側で`GraphQLClientError`に戻す。
+- `loader`のデータに入れた`GraphQLClientError`は、受け渡しの変換(「[サーバーからブラウザへの例外の受け渡し](#サーバーからブラウザへの例外の受け渡し)」)で、ブラウザでも同じ項目を持つ`GraphQLClientError`に戻る。失敗を素のオブジェクトに直して返す必要は無い。
 - この`loader`もブラウザ内の遷移・先読み・`router.invalidate()`ではブラウザで実行される。サーバーで取得した結果とブラウザで取得した結果を区別して表示する画面は、そのことを前提に文言を決める。
 
 検索パラメータ(絞り込み・ページの位置)で変わる一覧のうち、失敗を一覧の場所に再試行の操作とともに示すものは、`loader`で同じ設定の`queryClient.query(...)`を待ち、失敗だけを`.catch(() => undefined)`で捨ててキャッシュに残す。部品は`useSuspenseQuery`ではなく`useQuery`で読み、`data`が無い間を読み込み中、`error`を一覧の失敗(再試行は`refetch()`)として描く。
@@ -220,7 +209,7 @@ export const Route = createFileRoute('/items/')({
 });
 ```
 
-- 描画中に失敗した取得はメッセージだけの`Error`としてブラウザへ渡り、`useQuery`は表示の後に取得し直す(`retryOnMount`の既定値)。ブラウザ内の遷移で`loader`の取得が失敗したときも、部品が新しいキーへ切り替わる時に取得し直す。取得し直している間(`isFetching`)は前の失敗を示さず読み込み中として描き、エラーコードによらない文言を一瞬出さない。
+- 描画中に失敗した取得の失敗はブラウザへ渡り(「[サーバーからブラウザへの例外の受け渡し](#サーバーからブラウザへの例外の受け渡し)」)、`useQuery`は表示の後に取得し直す(`retryOnMount`の既定値)。ブラウザ内の遷移で`loader`の取得が失敗したときも、部品が新しいキーへ切り替わる時に取得し直す。取得し直している間(`isFetching`)は前の失敗を示さず読み込み中として描き、エラーコードによらない文言を一瞬出さない。
 - 再試行のボタンは取得し直すと消えるため、押した時にフォーカスを一覧の見出し(`tabIndex={-1}`)などの続きの位置へ移す(「[処理の後のフォーカス](004-accessibility-rules.md#処理の後のフォーカス)」)。
 - 取得の変数を閲覧者の表示設定(地域の暦など)から作る場合は、`loader`も部品と同じ値で変数を作る。サーバーではルーターの文脈の表示設定、ブラウザではブラウザの表示設定(`resolveBrowserDisplayPreferences()`)を使い、`environmentManager.isServer()`で選ぶ。異なる値で作ると、同じ条件を2回取得する。
 
@@ -303,9 +292,14 @@ GraphQLの`DateTime`の値は、コード生成で`string`になり、APIサー�
 
 - 画面に出す失敗の文言は、`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で出す文言、トースト(`notify.error`・`notify.warning`)のどれでも`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。`<プロファイル>`はアプリの`src/composition/app-profile.ts`の値で、ルートと画面の部品が渡す(共通部品はアプリの値を持たない)。
   - `GraphQLClientError`には、その`message`を返す。APIサーバーの`internal_error`・中継の共通のエラー形式・`network_error`・`invalid_response`の文言は、問い合わせを促す文を含まない。
-  - `GraphQLClientError`でない例外(プログラムの誤り、ブラウザへ渡る時にメッセージだけになった失敗)には、例外の文言を出さず、`contactAvailable`が真なら`UNEXPECTED_ERROR_MESSAGE`(問い合わせを案内する文言)、偽なら`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`(時間をおいた再試行の案内で終え、問い合わせを促さない文言)を返す。問い合わせの画面を持たないアプリは`contactAvailable`を偽にする。
-- 描画中の取得の失敗がブラウザへ渡ると、取得のキャッシュの失敗もメッセージだけの`Error`になる。HTMLを送り始めた時点で完了していなかった取得の失敗は、TanStack Queryがさらに固定の文言(`redacted`)の`Error`に置き換える。エラーコードで分岐したい区画は、ブラウザで取得し直した結果で分岐する。
+  - `GraphQLClientError`でない例外(プログラムの誤り、受け渡しの変換の無い例外がブラウザへ渡る時にメッセージだけになった失敗)には、例外の文言を出さず、`contactAvailable`が真なら`UNEXPECTED_ERROR_MESSAGE`(問い合わせを案内する文言)、偽なら`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`(時間をおいた再試行の案内で終え、問い合わせを促さない文言)を返す。問い合わせの画面を持たないアプリは`contactAvailable`を偽にする。
 - GraphQLの想定外の失敗は`executeGraphQL`がエラートラッキングへ送るため、画面で送り直さない。APIサーバーへ届かなかった失敗(`upstream_*`)は中継の処理が送る。`AppForm`の`onSubmitError`では、GraphQL以外の想定外の例外を送るかを利用側で決める。
+
+### サーバーからブラウザへの例外の受け渡し
+
+- サーバー側の描画の`loader`の失敗・`loader`のデータ・取得のキャッシュは、TanStack Routerの受け渡しでブラウザへ渡る。既定の受け渡しは`Error`をメッセージだけの別の`Error`にするため、`createFrontendStartOptions`は`serializationAdapters`に`graphqlClientErrorAdapter`(`start/graphql-client-error-adapter.ts`)を登録し、`GraphQLClientError`を同じクラスに戻す。これにより、`errorMessageOf`の文言と`expected`の判定がサーバー側の描画とハイドレーションの後で変わらない。
+- 受け渡すのは`code`・`message`・`status`・`details`・`retryAfterSeconds`だけである。原因の例外(`cause`)とスタックはサーバーの内部の情報を含み得るため渡さない。`expected`は`code`から作り直す。
+- `GraphQLClientError`でない例外は、ブラウザではメッセージだけの`Error`になる。HTMLを送り始めた時点で完了していなかった取得の失敗は、TanStack Queryが固定の文言(`redacted`)の`Error`に置き換える。これらの失敗でエラーコードで分岐したい区画は、ブラウザで取得し直した結果で分岐する。
 
 ## Cookieの指示が反映される範囲
 
