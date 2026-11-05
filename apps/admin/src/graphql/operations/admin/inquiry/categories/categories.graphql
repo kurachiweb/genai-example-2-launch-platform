@@ -1,0 +1,8 @@
+query AdminInquiryCategories {
+  adminInquiryCategories {
+    id
+    name
+    systemDefault
+    linkedCount
+  }
+}

@@ -17,6 +17,7 @@ import { Route as SystemStatusRouteImport } from './routes/system/status'
 import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authenticated/account/index'
 import { Route as AuthenticatedAccountsIndexRouteImport } from './routes/_authenticated/accounts/index'
 import { Route as AuthenticatedAuditLogsIndexRouteImport } from './routes/_authenticated/audit-logs/index'
+import { Route as AuthenticatedCategoriesIndexRouteImport } from './routes/_authenticated/categories/index'
 import { Route as AuthenticatedInquiriesIndexRouteImport } from './routes/_authenticated/inquiries/index'
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedLegalDocumentsIndexRouteImport } from './routes/_authenticated/legal-documents/index'
@@ -66,6 +67,12 @@ const AuthenticatedAuditLogsIndexRoute =
   AuthenticatedAuditLogsIndexRouteImport.update({
     id: '/audit-logs/',
     path: '/audit-logs/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCategoriesIndexRoute =
+  AuthenticatedCategoriesIndexRouteImport.update({
+    id: '/categories/',
+    path: '/categories/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedInquiriesIndexRoute =
@@ -126,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/audit-logs/': typeof AuthenticatedAuditLogsIndexRoute
+  '/categories/': typeof AuthenticatedCategoriesIndexRoute
   '/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
@@ -143,6 +151,7 @@ export interface FileRoutesByTo {
   '/account': typeof AuthenticatedAccountIndexRoute
   '/accounts': typeof AuthenticatedAccountsIndexRoute
   '/audit-logs': typeof AuthenticatedAuditLogsIndexRoute
+  '/categories': typeof AuthenticatedCategoriesIndexRoute
   '/inquiries': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents': typeof AuthenticatedLegalDocumentsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
@@ -162,6 +171,7 @@ export interface FileRoutesById {
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/_authenticated/audit-logs/': typeof AuthenticatedAuditLogsIndexRoute
+  '/_authenticated/categories/': typeof AuthenticatedCategoriesIndexRoute
   '/_authenticated/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/_authenticated/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/account/'
     | '/accounts/'
     | '/audit-logs/'
+    | '/categories/'
     | '/inquiries/'
     | '/legal-documents/'
     | '/auth/password-reset/'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/accounts'
     | '/audit-logs'
+    | '/categories'
     | '/inquiries'
     | '/legal-documents'
     | '/auth/password-reset'
@@ -216,6 +228,7 @@ export interface FileRouteTypes {
     | '/_authenticated/account/'
     | '/_authenticated/accounts/'
     | '/_authenticated/audit-logs/'
+    | '/_authenticated/categories/'
     | '/_authenticated/inquiries/'
     | '/_authenticated/legal-documents/'
     | '/auth/password-reset/'
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAuditLogsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/categories/': {
+      id: '/_authenticated/categories/'
+      path: '/categories'
+      fullPath: '/categories/'
+      preLoaderRoute: typeof AuthenticatedCategoriesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inquiries/': {
       id: '/_authenticated/inquiries/'
       path: '/inquiries'
@@ -356,6 +376,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
   AuthenticatedAccountsIndexRoute: typeof AuthenticatedAccountsIndexRoute
   AuthenticatedAuditLogsIndexRoute: typeof AuthenticatedAuditLogsIndexRoute
+  AuthenticatedCategoriesIndexRoute: typeof AuthenticatedCategoriesIndexRoute
   AuthenticatedInquiriesIndexRoute: typeof AuthenticatedInquiriesIndexRoute
   AuthenticatedLegalDocumentsIndexRoute: typeof AuthenticatedLegalDocumentsIndexRoute
   AuthenticatedLegalDocumentsKindIndexRoute: typeof AuthenticatedLegalDocumentsKindIndexRoute
@@ -368,6 +389,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
   AuthenticatedAccountsIndexRoute: AuthenticatedAccountsIndexRoute,
   AuthenticatedAuditLogsIndexRoute: AuthenticatedAuditLogsIndexRoute,
+  AuthenticatedCategoriesIndexRoute: AuthenticatedCategoriesIndexRoute,
   AuthenticatedInquiriesIndexRoute: AuthenticatedInquiriesIndexRoute,
   AuthenticatedLegalDocumentsIndexRoute: AuthenticatedLegalDocumentsIndexRoute,
   AuthenticatedLegalDocumentsKindIndexRoute:

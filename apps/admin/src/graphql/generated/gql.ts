@@ -29,6 +29,10 @@ type Documents = {
     "mutation AdminRequestPasswordReset($email: String!) {\n  requestAdminPasswordReset(email: $email)\n}": typeof types.AdminRequestPasswordResetDocument,
     "mutation AdminResetPassword($token: String!, $newPassword: String!) {\n  resetAdminPassword(token: $token, newPassword: $newPassword)\n}": typeof types.AdminResetPasswordDocument,
     "mutation AdminStartInvitation($token: String!, $nickname: String!, $password: String!) {\n  startAdminInvitation(token: $token, nickname: $nickname, password: $password) {\n    otpauthUri\n    secret\n    expiresAt\n  }\n}": typeof types.AdminStartInvitationDocument,
+    "query AdminInquiryCategories {\n  adminInquiryCategories {\n    id\n    name\n    systemDefault\n    linkedCount\n  }\n}": typeof types.AdminInquiryCategoriesDocument,
+    "mutation AdminCreateInquiryCategory($name: String!) {\n  createInquiryCategory(name: $name) {\n    id\n  }\n}": typeof types.AdminCreateInquiryCategoryDocument,
+    "mutation AdminDeleteInquiryCategory($id: ID!) {\n  deleteInquiryCategory(id: $id)\n}": typeof types.AdminDeleteInquiryCategoryDocument,
+    "mutation AdminRenameInquiryCategory($id: ID!, $name: String!) {\n  renameInquiryCategory(id: $id, name: $name) {\n    id\n  }\n}": typeof types.AdminRenameInquiryCategoryDocument,
     "query AdminInquiryCategoryOptions {\n  adminInquiryCategories {\n    id\n    name\n  }\n}": typeof types.AdminInquiryCategoryOptionsDocument,
     "mutation AdminChangeInquiryStatus($inquiryId: ID!, $status: InquiryStatus!, $reason: String) {\n  changeInquiryStatus(inquiryId: $inquiryId, status: $status, reason: $reason) {\n    id\n    status\n    statusChangedAt\n  }\n}": typeof types.AdminChangeInquiryStatusDocument,
     "query AdminInquiries($filter: AdminInquiryFilterInput, $after: String) {\n  adminInquiries(filter: $filter, after: $after) {\n    entries {\n      id\n      kind\n      category {\n        id\n        name\n      }\n      status\n      senderName\n      withdrawn\n      createdAt\n      lastMessageAt\n    }\n    nextCursor\n  }\n}": typeof types.AdminInquiriesDocument,
@@ -65,6 +69,10 @@ const documents: Documents = {
     "mutation AdminRequestPasswordReset($email: String!) {\n  requestAdminPasswordReset(email: $email)\n}": types.AdminRequestPasswordResetDocument,
     "mutation AdminResetPassword($token: String!, $newPassword: String!) {\n  resetAdminPassword(token: $token, newPassword: $newPassword)\n}": types.AdminResetPasswordDocument,
     "mutation AdminStartInvitation($token: String!, $nickname: String!, $password: String!) {\n  startAdminInvitation(token: $token, nickname: $nickname, password: $password) {\n    otpauthUri\n    secret\n    expiresAt\n  }\n}": types.AdminStartInvitationDocument,
+    "query AdminInquiryCategories {\n  adminInquiryCategories {\n    id\n    name\n    systemDefault\n    linkedCount\n  }\n}": types.AdminInquiryCategoriesDocument,
+    "mutation AdminCreateInquiryCategory($name: String!) {\n  createInquiryCategory(name: $name) {\n    id\n  }\n}": types.AdminCreateInquiryCategoryDocument,
+    "mutation AdminDeleteInquiryCategory($id: ID!) {\n  deleteInquiryCategory(id: $id)\n}": types.AdminDeleteInquiryCategoryDocument,
+    "mutation AdminRenameInquiryCategory($id: ID!, $name: String!) {\n  renameInquiryCategory(id: $id, name: $name) {\n    id\n  }\n}": types.AdminRenameInquiryCategoryDocument,
     "query AdminInquiryCategoryOptions {\n  adminInquiryCategories {\n    id\n    name\n  }\n}": types.AdminInquiryCategoryOptionsDocument,
     "mutation AdminChangeInquiryStatus($inquiryId: ID!, $status: InquiryStatus!, $reason: String) {\n  changeInquiryStatus(inquiryId: $inquiryId, status: $status, reason: $reason) {\n    id\n    status\n    statusChangedAt\n  }\n}": types.AdminChangeInquiryStatusDocument,
     "query AdminInquiries($filter: AdminInquiryFilterInput, $after: String) {\n  adminInquiries(filter: $filter, after: $after) {\n    entries {\n      id\n      kind\n      category {\n        id\n        name\n      }\n      status\n      senderName\n      withdrawn\n      createdAt\n      lastMessageAt\n    }\n    nextCursor\n  }\n}": types.AdminInquiriesDocument,
@@ -160,6 +168,22 @@ export function graphql(source: "mutation AdminResetPassword($token: String!, $n
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation AdminStartInvitation($token: String!, $nickname: String!, $password: String!) {\n  startAdminInvitation(token: $token, nickname: $nickname, password: $password) {\n    otpauthUri\n    secret\n    expiresAt\n  }\n}"): (typeof documents)["mutation AdminStartInvitation($token: String!, $nickname: String!, $password: String!) {\n  startAdminInvitation(token: $token, nickname: $nickname, password: $password) {\n    otpauthUri\n    secret\n    expiresAt\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminInquiryCategories {\n  adminInquiryCategories {\n    id\n    name\n    systemDefault\n    linkedCount\n  }\n}"): (typeof documents)["query AdminInquiryCategories {\n  adminInquiryCategories {\n    id\n    name\n    systemDefault\n    linkedCount\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminCreateInquiryCategory($name: String!) {\n  createInquiryCategory(name: $name) {\n    id\n  }\n}"): (typeof documents)["mutation AdminCreateInquiryCategory($name: String!) {\n  createInquiryCategory(name: $name) {\n    id\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminDeleteInquiryCategory($id: ID!) {\n  deleteInquiryCategory(id: $id)\n}"): (typeof documents)["mutation AdminDeleteInquiryCategory($id: ID!) {\n  deleteInquiryCategory(id: $id)\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminRenameInquiryCategory($id: ID!, $name: String!) {\n  renameInquiryCategory(id: $id, name: $name) {\n    id\n  }\n}"): (typeof documents)["mutation AdminRenameInquiryCategory($id: ID!, $name: String!) {\n  renameInquiryCategory(id: $id, name: $name) {\n    id\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

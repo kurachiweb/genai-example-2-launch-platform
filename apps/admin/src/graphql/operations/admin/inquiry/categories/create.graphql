@@ -1,0 +1,5 @@
+mutation AdminCreateInquiryCategory($name: String!) {
+  createInquiryCategory(name: $name) {
+    id
+  }
+}

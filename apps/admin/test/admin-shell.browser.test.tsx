@@ -36,6 +36,7 @@ const NOT_FOUND_TITLE = 'ページが見つかりません。';
 const NAVIGATION_NAME = '管理メニュー';
 const MENU_ITEMS = [
   'ダッシュボード',
+  'カテゴリ',
   '法務文書',
   '管理者アカウント',
   '監査ログ',
