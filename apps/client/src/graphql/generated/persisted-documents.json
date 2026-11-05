@@ -20,6 +20,10 @@
   "sha256:726a6e9c68fb75fa096211612244937e2b095ff026399cefe872db787e44d0f8": "mutation ClientVerifyEmail($token: String!) { verifyEmail(token: $token) }",
   "sha256:32c8c75633fc3b433a9cb6cbaac7e135578ea7ab16915864dfa104f8065aa35b": "query ClientViewer { viewer { emailVerified handle id nickname status totpEnabled } }",
   "sha256:f42f0084a9747d5145d30bb11beed3b7f668553b0fa146db06147a3dc2b17c48": "mutation ClientWithdraw($input: ReAuthenticationInput!) { withdraw(input: $input) }",
+  "sha256:d1332020d9d2c52cbafdd7b364120ba4fddc9a30262add6cded937706a20a0b5": "query ClientInquiryContactForm { inquiryCategories { id name } inquiryComposer { avatar { fallbackFormat height objectKey width } nickname } }",
+  "sha256:ecb5d90f6b342dd38afc5640c9f219d9236517a7410f7f6e8f97a65fc2ecb00d": "query ClientMyInquiries($after: String) { myInquiries(after: $after) { items { category { id name } createdAt id lastMessageAt status } nextCursor } }",
+  "sha256:c27d183b194e166d931c84f745d97578fb4d98e0cb2256f0a8fcc26d234a8097": "mutation ClientSubmitGuestInquiry($input: GuestInquiryInput!) { submitGuestInquiry(input: $input) }",
+  "sha256:7ebab58e872b46e2a761386272da3c3445de825ebadc2a5801dd3347924a4f76": "mutation ClientSubmitMemberInquiry($input: MemberInquiryInput!) { submitMemberInquiry(input: $input) { id } }",
   "sha256:cf73a2a49fc87037feed659bbc7f29a53ac80fac211fc9fc3db3b49e69a0aab0": "query ClientLegalDocumentVersion($kind: LegalDocumentKind!, $versionNumber: Int!) { legalDocumentVersion(kind: $kind, versionNumber: $versionNumber) { body changeSummary isLatest publishedAt } }",
   "sha256:14a871d7ed29487fa12d6b46bf699e04496bef6ee024891e2467fedcdbf634c9": "query ClientLegalDocument($kind: LegalDocumentKind!) { legalDocument(kind: $kind) { latest { body publishedAt versionNumber } revisions { changeSummary publishedAt versionNumber } } }",
   "sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e": "query ClientSystemStatus { systemStatus { databaseReachable serverTime } }"

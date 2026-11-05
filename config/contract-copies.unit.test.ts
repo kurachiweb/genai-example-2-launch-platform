@@ -39,6 +39,10 @@ const ADMIN_RESOLVER_SUPPORT =
 const CLIENT_AUTH_BOT_ACTIONS =
   'apps/client/src/components/auth/bot-actions.ts';
 const ADMIN_AUTH_BOT_ACTIONS = 'apps/admin/src/components/auth/bot-actions.ts';
+const INQUIRY_RESOLVER_SUPPORT =
+  'apps/api/src/presentation/graphql/modules/inquiry/resolver-support.ts';
+const CLIENT_INQUIRY_BOT_ACTIONS =
+  'apps/client/src/components/inquiry/bot-actions.ts';
 
 type ExtractedValue =
   | string
@@ -594,6 +598,10 @@ const BOT_ACTION_COPIES: readonly BotActionCopy[] = [
   {
     api: { path: ADMIN_RESOLVER_SUPPORT, name: 'ADMIN_BOT_ACTIONS' },
     copy: { path: ADMIN_AUTH_BOT_ACTIONS, name: 'ADMIN_BOT_ACTIONS' },
+  },
+  {
+    api: { path: INQUIRY_RESOLVER_SUPPORT, name: 'INQUIRY_BOT_ACTIONS' },
+    copy: { path: CLIENT_INQUIRY_BOT_ACTIONS, name: 'INQUIRY_BOT_ACTIONS' },
   },
 ];
 

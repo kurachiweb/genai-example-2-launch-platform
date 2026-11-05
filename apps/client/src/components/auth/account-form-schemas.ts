@@ -61,7 +61,7 @@ const checkEmail = (value: string): string | undefined => {
     : ACCOUNT_FORM_MESSAGES.emailFormat;
 };
 
-const email = ruleOf(checkEmail).transform(trimWhiteSpace);
+export const email = ruleOf(checkEmail).transform(trimWhiteSpace);
 
 const newPassword = ruleOf((value) =>
   checkPasswordLength(value) === 'ok'

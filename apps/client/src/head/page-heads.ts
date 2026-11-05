@@ -8,7 +8,8 @@ import {
   type LegalDocumentKind,
   legalVersionTitle,
 } from '../../common-lib/legal/legal-documents.ts';
-import { SITE_NAME } from '../components/layout/site-links.ts';
+import { CONTACT_PAGE_TITLE } from '../components/inquiry/inquiry-contact-messages.ts';
+import { CONTACT_HREF, SITE_NAME } from '../components/layout/site-links.ts';
 import type {
   LegalDocumentLoaderData,
   LegalVersionLoaderData,
@@ -68,6 +69,9 @@ export const buildLegalVersionHead = (
           ),
     noIndex: true,
   });
+
+export const buildContactHead = () =>
+  buildSitePageHead({ title: CONTACT_PAGE_TITLE, canonicalUrl: CONTACT_HREF });
 
 // 配色の初回描画前のスクリプトはAppDocumentが置くため、ここには置かない
 export const buildRootHead = ({

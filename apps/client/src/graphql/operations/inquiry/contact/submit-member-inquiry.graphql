@@ -1,0 +1,5 @@
+mutation ClientSubmitMemberInquiry($input: MemberInquiryInput!) {
+  submitMemberInquiry(input: $input) {
+    id
+  }
+}

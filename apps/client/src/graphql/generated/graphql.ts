@@ -14,6 +14,21 @@ export type CompleteSecondFactorLoginInput = {
   secondFactor: SecondFactorInput;
 };
 
+/** 未ログインの問い合わせの送信 */
+export type GuestInquiryInput = {
+  body: string;
+  categoryId: string | number;
+  email: string;
+  nickname: string;
+};
+
+/** 対応ステータス */
+export type InquiryStatus =
+  | 'IN_PROGRESS'
+  | 'OPEN'
+  | 'REJECTED'
+  | 'RESOLVED';
+
 /** 法務文書の種類 */
 export type LegalDocumentKind =
   | 'LEGAL_NOTICE'
@@ -23,6 +38,20 @@ export type LegalDocumentKind =
 export type LoginInput = {
   email: string;
   password: string;
+};
+
+/** AVIF・WebPに非対応のブラウザ向けの形式。原本がJPEGならJPG、SVGならSVG(SVGはこの形式だけで表示する)、それ以外はPNG */
+export type MediaImageFallbackFormat =
+  | 'JPG'
+  | 'PNG'
+  | 'SVG';
+
+/** ログインの問い合わせの送信 */
+export type MemberInquiryInput = {
+  body: string;
+  categoryId: string | number;
+  /** アップロード済みの問い合わせの添付のファイルのID */
+  fileIds: Array<string | number>;
 };
 
 /** 重要な操作の本人確認 */
@@ -206,6 +235,32 @@ export type ClientWithdrawMutationVariables = Exact<{
 
 export type ClientWithdrawMutation = { withdraw: boolean };
 
+export type ClientInquiryContactFormQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientInquiryContactFormQuery = { inquiryCategories: Array<{ id: string, name: string }>, inquiryComposer: { nickname: string, avatar: { objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
+
+export type ClientMyInquiriesQueryVariables = Exact<{
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientMyInquiriesQuery = { myInquiries: { nextCursor: string | null, items: Array<{ id: string, status: InquiryStatus, createdAt: string, lastMessageAt: string, category: { id: string, name: string } }> } };
+
+export type ClientSubmitGuestInquiryMutationVariables = Exact<{
+  input: GuestInquiryInput;
+}>;
+
+
+export type ClientSubmitGuestInquiryMutation = { submitGuestInquiry: boolean };
+
+export type ClientSubmitMemberInquiryMutationVariables = Exact<{
+  input: MemberInquiryInput;
+}>;
+
+
+export type ClientSubmitMemberInquiryMutation = { submitMemberInquiry: { id: string } };
+
 export type ClientLegalDocumentVersionQueryVariables = Exact<{
   kind: LegalDocumentKind;
   versionNumber: number;
@@ -248,6 +303,10 @@ export const ClientStartTotpSetupDocument = {"__meta__":{"hash":"sha256:efa3bfe8
 export const ClientVerifyEmailDocument = {"__meta__":{"hash":"sha256:726a6e9c68fb75fa096211612244937e2b095ff026399cefe872db787e44d0f8"}} as unknown as DocumentNode<ClientVerifyEmailMutation, ClientVerifyEmailMutationVariables>;
 export const ClientViewerDocument = {"__meta__":{"hash":"sha256:32c8c75633fc3b433a9cb6cbaac7e135578ea7ab16915864dfa104f8065aa35b"}} as unknown as DocumentNode<ClientViewerQuery, ClientViewerQueryVariables>;
 export const ClientWithdrawDocument = {"__meta__":{"hash":"sha256:f42f0084a9747d5145d30bb11beed3b7f668553b0fa146db06147a3dc2b17c48"}} as unknown as DocumentNode<ClientWithdrawMutation, ClientWithdrawMutationVariables>;
+export const ClientInquiryContactFormDocument = {"__meta__":{"hash":"sha256:d1332020d9d2c52cbafdd7b364120ba4fddc9a30262add6cded937706a20a0b5"}} as unknown as DocumentNode<ClientInquiryContactFormQuery, ClientInquiryContactFormQueryVariables>;
+export const ClientMyInquiriesDocument = {"__meta__":{"hash":"sha256:ecb5d90f6b342dd38afc5640c9f219d9236517a7410f7f6e8f97a65fc2ecb00d"}} as unknown as DocumentNode<ClientMyInquiriesQuery, ClientMyInquiriesQueryVariables>;
+export const ClientSubmitGuestInquiryDocument = {"__meta__":{"hash":"sha256:c27d183b194e166d931c84f745d97578fb4d98e0cb2256f0a8fcc26d234a8097"}} as unknown as DocumentNode<ClientSubmitGuestInquiryMutation, ClientSubmitGuestInquiryMutationVariables>;
+export const ClientSubmitMemberInquiryDocument = {"__meta__":{"hash":"sha256:7ebab58e872b46e2a761386272da3c3445de825ebadc2a5801dd3347924a4f76"}} as unknown as DocumentNode<ClientSubmitMemberInquiryMutation, ClientSubmitMemberInquiryMutationVariables>;
 export const ClientLegalDocumentVersionDocument = {"__meta__":{"hash":"sha256:cf73a2a49fc87037feed659bbc7f29a53ac80fac211fc9fc3db3b49e69a0aab0"}} as unknown as DocumentNode<ClientLegalDocumentVersionQuery, ClientLegalDocumentVersionQueryVariables>;
 export const ClientLegalDocumentDocument = {"__meta__":{"hash":"sha256:14a871d7ed29487fa12d6b46bf699e04496bef6ee024891e2467fedcdbf634c9"}} as unknown as DocumentNode<ClientLegalDocumentQuery, ClientLegalDocumentQueryVariables>;
 export const ClientSystemStatusDocument = {"__meta__":{"hash":"sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e"}} as unknown as DocumentNode<ClientSystemStatusQuery, ClientSystemStatusQueryVariables>;

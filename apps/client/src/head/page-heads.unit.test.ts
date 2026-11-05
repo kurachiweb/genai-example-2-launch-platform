@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { WEB_ANALYTICS_BEACON_SRC } from '../../lib/start/observability/web-analytics.ts';
 import {
+  buildContactHead,
   buildLegalDocumentHead,
   buildLegalVersionHead,
   buildRootHead,
@@ -139,6 +140,15 @@ describe('buildLegalVersionHead', () => {
         { name: 'robots', content: 'noindex, nofollow' },
       ],
       links: [],
+    });
+  });
+});
+
+describe('buildContactHead', () => {
+  test('問い合わせのタイトルと、問い合わせのページの正規のURLを付ける', () => {
+    expect(buildContactHead()).toStrictEqual({
+      meta: [{ title: 'お問い合わせ | Launch Stadium' }],
+      links: [{ rel: 'canonical', href: '/contact' }],
     });
   });
 });
