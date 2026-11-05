@@ -904,7 +904,7 @@ export interface InquiryChatService {
 
 #### EmailInquiryMailer
 
-- `EmailSender.send({ kind: INQUIRY_REPLY_NOTIFICATION, to, input: { nickname, inquiryUrl: '<CLIENT_SITE_ORIGIN>/inquiries/<ID>', repliedAt } })`。返信の本文を入れない(要件11.3)。
+- `EmailSender.send({ kind: INQUIRY_REPLY_NOTIFICATION_KIND, to, input: { nickname, inquiryUrl: '<CLIENT_SITE_ORIGIN>/inquiries/<ID>', repliedAt } })`。返信の本文を入れない(要件11.3)。
 
 ### api/presentation
 

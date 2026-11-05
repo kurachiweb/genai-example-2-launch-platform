@@ -5,6 +5,7 @@ import { ADMIN_EMAIL_KINDS } from './admin.ts';
 import { EMAIL_DELIVERY_SMOKE_KIND } from './email-delivery-smoke.ts';
 import { IDENTITY_EMAIL_KINDS } from './identity.ts';
 import { EMAIL_KINDS } from './index.ts';
+import { INQUIRY_REPLY_NOTIFICATION_KIND } from './inquiry.ts';
 
 describe('EMAIL_KINDS', () => {
   test('集約した全種別を例外なく登録できる', () => {
@@ -38,6 +39,17 @@ describe('EMAIL_KINDS', () => {
       expect(registry.get(name)?.category).toBe('transactional');
     },
   );
+
+  test('問い合わせの返信の通知の種別をトランザクションメールとして名前で引ける', () => {
+    const registry = createEmailKindRegistry(EMAIL_KINDS);
+
+    expect(registry.get('inquiry.reply-notification')).toBe(
+      INQUIRY_REPLY_NOTIFICATION_KIND,
+    );
+    expect(registry.get('inquiry.reply-notification')?.category).toBe(
+      'transactional',
+    );
+  });
 
   test('集約点は凍結されていて実行時に種別を追加できない', () => {
     expect(Object.isFrozen(EMAIL_KINDS)).toBe(true);
