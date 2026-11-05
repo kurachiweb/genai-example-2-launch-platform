@@ -34,6 +34,11 @@ describe('スキーマの集約点', () => {
     'admin_audit_log_targets',
     'legal_documents',
     'legal_document_versions',
+    'inquiry_categories',
+    'member_inquiries',
+    'guest_inquiries',
+    'inquiry_messages',
+    'inquiry_message_attachments',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

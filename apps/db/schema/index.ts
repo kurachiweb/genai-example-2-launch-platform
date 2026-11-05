@@ -4,6 +4,7 @@ export * from './email/email-cleanup-cursors.ts';
 export * from './email/email-send-records.ts';
 export * from './email/email-suppressions.ts';
 export * from './identity/index.ts';
+export * from './inquiry/index.ts';
 export * from './legal/index.ts';
 export * from './media/media-file-quarantine-reasons.ts';
 export * from './media/media-files.ts';

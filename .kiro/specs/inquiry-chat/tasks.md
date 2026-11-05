@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: テーブル・共有の定義・メール・表示部品
-- [ ] 1.1 問い合わせの5テーブルと標準カテゴリの初期データを定義し、マイグレーションを生成する
+- [x] 1.1 問い合わせの5テーブルと標準カテゴリの初期データを定義し、マイグレーションを生成する
   - 前提: backend-platform・api-gateway・email-delivery・frontend-platform・content-processing・media-pipeline・identity-auth・admin-foundationの全タスクが完了していること(層構成・登録箇所・GraphQL基盤・メール送信基盤・両アプリの骨格・共有ディレクトリ・アップロード基盤・利用者の判定と連絡先の共有の照会口とライフサイクルの登録口・管理者の認可と監査ログと区画とapi・event共通の管理者の照会口とE2Eの補助がある状態)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、各テーブルの列の型・NOT NULL・既定値・一意制約・CHECK制約・索引(カテゴリ名の大文字小文字を区別しない一意、ステータスと送信者の種類のCHECK、送信者が管理者のときだけ管理者のIDを持つCHECK、受付日時・ステータス・ステータスの変更日時・利用者・問い合わせごとのメッセージの索引、添付の複合主キーとファイルの索引)を確かめる単体テストを書く
   - ログインの問い合わせは利用者とカテゴリを外部キーで参照し、論理削除の列を持つ。未ログインの問い合わせは利用者を参照しない。メッセージは問い合わせを参照し、管理者のIDとファイルのIDは外部キーを持たない。削除時の動作は指定しない
@@ -298,3 +298,7 @@
   - `docs/onboardings/project-values.md`の既存の節にジョブ・波及処理・メール種別・用途・閲覧の方針・監査ログの操作種別の値を足し、利用者側のbot判定のactionと回数制限の規則の節を新設して値を記載する。CLAUDE.mdの技術規則の参照先に未ログインの投稿の保護の文書へのリンクを加える
   - 完了状態: 各文書が更新され、文書の整形と静的解析の検査に通り、CLAUDE.mdのリンク先(12.1の文書)が存在する
   - _Requirements: 16.5_
+
+## Implementation Notes
+
+- 1.1: テーブルは`apps/db/schema/inquiry/`、マイグレーションは`20261105014859_inquiry_chat`(テーブル)と`20261105014904_inquiry_chat_seed`(初期データ、名前の衝突で何もしない)。「その他」の固定ID`01JC0000000000000000000000`のULIDの時刻部に合わせ`created_at`・`updated_at`は`1730871820288`。ステータスの値はスキーマの`INQUIRY_STATUS_VALUES`(`member-inquiries.ts`がexportし`guest-inquiries.ts`が再利用。スキーマはcommon-libを読み込めない)のため、1.2でcommon-libの`INQUIRY_STATUSES`との一致を単体テストで確かめる(legal-pagesの`legal-columns.unit.test.ts`と同じ形)。`status`の既定値は`open`、`system_default`の既定値は偽。添付の表は複合主キーで共通カラムなし、メッセージは`created_at`のみ(design.mdに従う。db/003の原則と異なる点は最終の報告に挙げる)。ローカルD1に以前の試行の残骸(`20261104124132_inquiry_chat`・`20261104124136_inquiry_chat_seed`の記録と5テーブル)があったため、ローカルの状態だけで消して適用し直した
