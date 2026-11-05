@@ -3,17 +3,36 @@ import Stripe from 'stripe';
 
 import { isMinorUnitAmount } from '../../../common-lib/payments/money.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
+import type { MinorUnitAmount } from '../../../common-lib/payments/money.ts';
 import {
-  type StripeCheckoutGateway,
   type StripeCheckoutSessionInput,
   type StripeCheckoutSessionSnapshot,
+  type StripeDisputeSnapshot,
+  type StripeGateway,
+  type StripeInvoiceSnapshot,
   StripeNotFoundError,
+  type StripePaymentOwnerHint,
   type StripePrice,
+  type StripeRefundSnapshot,
   StripeRejectedError,
+  type StripeSubscriptionSnapshot,
   StripeUnavailableError,
 } from '../../core/payments/ports.ts';
+import type { StripeRefundReason } from '../../core/payments/refund-rules.ts';
 import { CHECKOUT_INTEGRATION_IDENTIFIER } from '../../core/payments/stripe-api-version.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
+import {
+  idOf,
+  includes,
+  invoicePaymentIntentOf,
+  isEndedSubscription,
+  subscriptionMetadataOf,
+  toDisputeSnapshot,
+  toInvoiceSnapshot,
+  toRefundSnapshot,
+  toSubscriptionSnapshot,
+  unexpectedValue,
+} from './stripe-snapshots.ts';
 
 export interface StripeApiGatewayOptions {
   readonly appName: LoggingOptions['appName'];
@@ -22,7 +41,7 @@ export interface StripeApiGatewayOptions {
   readonly clientSiteOrigin: string;
 }
 
-type StripeOperation = keyof StripeCheckoutGateway;
+type StripeOperation = keyof StripeGateway;
 
 type FailureOutcome = 'unavailable' | 'not_found' | 'rejected';
 
@@ -46,17 +65,6 @@ const CHECKOUT_SESSION_EXPAND = [
 const SESSION_STATUSES = ['open', 'complete', 'expired'] as const;
 
 const PAYMENT_STATUSES = ['paid', 'unpaid', 'no_payment_required'] as const;
-
-function includes<T extends string>(
-  values: readonly T[],
-  value: string | null,
-): value is T {
-  return (values as readonly (string | null)[]).includes(value);
-}
-
-function idOf(value: string | { readonly id: string } | null): string | null {
-  return typeof value === 'string' || value === null ? value : value.id;
-}
 
 function chunk<T>(values: readonly T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(values.length / size) }, (_, index) =>
@@ -83,6 +91,13 @@ function isRejection(error: unknown): boolean {
   return (
     error instanceof Stripe.errors.StripeError &&
     outcomeOf(error) === 'rejected'
+  );
+}
+
+function isNotFound(error: unknown): boolean {
+  return (
+    error instanceof Stripe.errors.StripeError &&
+    outcomeOf(error) === 'not_found'
   );
 }
 
@@ -131,26 +146,7 @@ function linkFundingSourceGroupOf(
   );
 }
 
-// 定期課金の決済セッションはPaymentIntentを直接持たないため、初回の請求の既定の支払いから辿る
-function invoicePaymentIntentOf(
-  invoice: string | Stripe.Invoice | null,
-): string | Stripe.PaymentIntent | null {
-  if (invoice === null || typeof invoice === 'string') {
-    return null;
-  }
-  const payments = invoice.payments?.data ?? [];
-  const payment =
-    payments.find((candidate) => candidate.is_default) ?? payments[0];
-  return payment?.payment.payment_intent ?? null;
-}
-
-function unexpectedValue(field: string, value: string | null): Error {
-  return new Error(
-    `Stripeの決済セッションの${field}が想定外の値です: ${String(value)}`,
-  );
-}
-
-export class StripeApiGateway implements StripeCheckoutGateway {
+export class StripeApiGateway implements StripeGateway {
   private readonly client: Stripe | undefined;
   private readonly clientSiteOrigin: string;
   private readonly logger: Logger;
@@ -294,6 +290,136 @@ export class StripeApiGateway implements StripeCheckoutGateway {
     }
   }
 
+  async retrieveInvoice(invoiceId: string): Promise<StripeInvoiceSnapshot> {
+    const client = this.requireClient();
+    const invoice = await this.call('retrieveInvoice', () =>
+      client.invoices.retrieve(invoiceId, { expand: ['payments'] }),
+    );
+    return toInvoiceSnapshot(invoice);
+  }
+
+  async retrieveRefund(refundId: string): Promise<StripeRefundSnapshot> {
+    const client = this.requireClient();
+    const refund = await this.call('retrieveRefund', () =>
+      client.refunds.retrieve(refundId),
+    );
+    return toRefundSnapshot(refund);
+  }
+
+  async retrieveDispute(disputeId: string): Promise<StripeDisputeSnapshot> {
+    const client = this.requireClient();
+    const dispute = await this.call('retrieveDispute', () =>
+      client.disputes.retrieve(disputeId),
+    );
+    return toDisputeSnapshot(dispute);
+  }
+
+  async retrieveSubscription(
+    subscriptionId: string,
+  ): Promise<StripeSubscriptionSnapshot> {
+    const client = this.requireClient();
+    const subscription = await this.call('retrieveSubscription', () =>
+      client.subscriptions.retrieve(subscriptionId),
+    );
+    return toSubscriptionSnapshot(subscription);
+  }
+
+  // 金額がnullなら送らず、Stripeが返金できる残りの全額を返金する
+  async createRefund(input: {
+    readonly paymentIntentId: string;
+    readonly amount: MinorUnitAmount | null;
+    readonly reason: StripeRefundReason;
+    readonly refundRequestId: string;
+    readonly purchaseId: string;
+    readonly idempotencyKey: string;
+  }): Promise<StripeRefundSnapshot> {
+    const client = this.requireClient();
+    const params: Stripe.RefundCreateParams = {
+      payment_intent: input.paymentIntentId,
+      ...(input.amount === null ? {} : { amount: input.amount }),
+      reason: input.reason,
+      metadata: {
+        refund_request_id: input.refundRequestId,
+        purchase_id: input.purchaseId,
+      },
+    };
+    const refund = await this.call('createRefund', () =>
+      client.refunds.create(params, { idempotencyKey: input.idempotencyKey }),
+    );
+    return toRefundSnapshot(refund);
+  }
+
+  async cancelSubscription(
+    subscriptionId: string,
+    options: { readonly atPeriodEnd: boolean },
+  ): Promise<'canceled' | 'already_canceled'> {
+    const client = this.requireClient();
+    try {
+      await (options.atPeriodEnd
+        ? client.subscriptions.update(subscriptionId, {
+            cancel_at_period_end: true,
+          })
+        : client.subscriptions.cancel(subscriptionId));
+      return 'canceled';
+    } catch (error) {
+      // 終了した定期課金の解約・更新の拒否の形はStripeが定めていないため、状態を確かめて区別する
+      if (!isRejection(error) && !isNotFound(error)) {
+        throw this.failure('cancelSubscription', error);
+      }
+      const subscription = await this.call('cancelSubscription', () =>
+        client.subscriptions.retrieve(subscriptionId),
+      );
+      if (isEndedSubscription(subscription)) {
+        return 'already_canceled';
+      }
+      throw this.failure('cancelSubscription', error);
+    }
+  }
+
+  async createPortalSession(input: {
+    readonly customerId: string;
+    readonly returnUrl: string;
+  }): Promise<{ readonly url: string }> {
+    const client = this.requireClient();
+    const session = await this.call('createPortalSession', () =>
+      client.billingPortal.sessions.create({
+        customer: input.customerId,
+        return_url: input.returnUrl,
+      }),
+    );
+    return { url: session.url };
+  }
+
+  // 定期課金の請求のPaymentIntentはメタデータを持たないため、支払った請求の定期課金のメタデータも添える
+  async retrievePaymentIntentOwner(
+    paymentIntentId: string,
+  ): Promise<StripePaymentOwnerHint> {
+    const client = this.requireClient();
+    const [paymentIntent, invoicePayments] = await Promise.all([
+      this.call('retrievePaymentIntentOwner', () =>
+        client.paymentIntents.retrieve(paymentIntentId),
+      ),
+      this.call('retrievePaymentIntentOwner', () =>
+        client.invoicePayments.list({
+          payment: { type: 'payment_intent', payment_intent: paymentIntentId },
+          expand: ['data.invoice'],
+          limit: 1,
+        }),
+      ),
+    ]);
+    const invoice = invoicePayments.data[0]?.invoice;
+    return {
+      paymentIntentId: paymentIntent.id,
+      metadata: { ...paymentIntent.metadata },
+      subscriptionMetadata:
+        invoice === undefined ||
+        typeof invoice === 'string' ||
+        'deleted' in invoice
+          ? null
+          : subscriptionMetadataOf(invoice),
+    };
+  }
+
   private requireClient(): Stripe {
     if (this.client === undefined) {
       throw new StripeUnavailableError(
@@ -369,12 +495,13 @@ export class StripeApiGateway implements StripeCheckoutGateway {
   ): Promise<StripeCheckoutSessionSnapshot> {
     const { status } = session;
     if (!includes(SESSION_STATUSES, status)) {
-      throw unexpectedValue('status', status);
+      throw unexpectedValue('決済セッション', 'status', status);
     }
     const paymentStatus = session.payment_status;
     if (!includes(PAYMENT_STATUSES, paymentStatus)) {
-      throw unexpectedValue('payment_status', paymentStatus);
+      throw unexpectedValue('決済セッション', 'payment_status', paymentStatus);
     }
+    // 定期課金の決済セッションはPaymentIntentを直接持たないため、初回の請求の既定の支払いから辿る
     const paymentIntent =
       session.payment_intent ?? invoicePaymentIntentOf(session.invoice);
     return {

@@ -66,6 +66,42 @@ describe('StripeApiGateway(共通)', () => {
       'expireCheckoutSession',
       (gateway) => gateway.expireCheckoutSession('cs_test_1'),
     ],
+    ['retrieveInvoice', (gateway) => gateway.retrieveInvoice('in_test_1')],
+    ['retrieveRefund', (gateway) => gateway.retrieveRefund('re_test_1')],
+    ['retrieveDispute', (gateway) => gateway.retrieveDispute('dp_test_1')],
+    [
+      'retrieveSubscription',
+      (gateway) => gateway.retrieveSubscription('sub_test_1'),
+    ],
+    [
+      'createRefund',
+      (gateway) =>
+        gateway.createRefund({
+          paymentIntentId: 'pi_test_1',
+          amount: null,
+          reason: 'requested_by_customer',
+          refundRequestId: 'refund_request_1',
+          purchaseId: 'purchase_1',
+          idempotencyKey: 'refund:request_1',
+        }),
+    ],
+    [
+      'cancelSubscription',
+      (gateway) =>
+        gateway.cancelSubscription('sub_test_1', { atPeriodEnd: false }),
+    ],
+    [
+      'createPortalSession',
+      (gateway) =>
+        gateway.createPortalSession({
+          customerId: 'cus_test_1',
+          returnUrl: FAKE_CLIENT_SITE_ORIGIN,
+        }),
+    ],
+    [
+      'retrievePaymentIntentOwner',
+      (gateway) => gateway.retrievePaymentIntentOwner('pi_test_1'),
+    ],
   ])(
     'キーが未設定なら%sはStripeを呼ばずにStripeUnavailableErrorを投げる',
     async (_, operate) => {

@@ -82,7 +82,7 @@
   - 完了状態: Workers統合テストが成功し、模擬応答に対する送信の内容が設計の項目と一致する
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.6, 3.1, 3.2, 3.3, 3.4, 3.11, 4.7, 15.3, 15.6, 15.8_
 
-- [ ] 3.2 請求・返金・チャージバック・定期課金の取得と、返金・解約・Customer Portalの操作を作る
+- [x] 3.2 請求・返金・チャージバック・定期課金の取得と、返金・解約・Customer Portalの操作を作る
   - 先に、fetchの模擬応答を使うWorkers統合テストで、請求・返金・チャージバック・定期課金の読み取り専用の結果、PaymentIntentのメタデータと請求の定期課金のメタデータからの持ち主の手がかり、返金の作成の冪等キーと理由と金額の省略、定期課金の読み取り専用の結果に`cancel_at`(秒)から作った解約の予定時刻が入ること(無ければ空、U1)、定期課金の即時・期間末の解約と解約済みの扱い、Customer Portalのセッション、チャージバックの状態が不服申し立ての値(`appeal_needs_response`・`appeal_under_review`)や未知の値でも読み取り専用の結果が作れることを確かめる
   - 完了状態: Workers統合テストが成功し、返金の作成の失敗が一時的・恒久的に分類される
   - _Depends: 3.1_
@@ -355,4 +355,5 @@
 - 2.1: 反映の指示`ReflectionInstruction`と結果`ReflectionOutcome`は`core/payments/ports.ts`にある(2.3の正規化はここから型を読み込み、二重に定義しない)。`lib/core/**`は`drizzle-orm*`を読み込めない(apiのESLintが共有ディレクトリを検査する)
 - 2.3: 8.2・8.4で返金の処理を作るとき、project-values.mdのメッセージの表の`payments.refund-payment`の行に再試行の方針(5回)を書き足す
 - 2.4: メールの入力の金額は最小通貨単位の整数、日時はISO 8601の文字列。返金ポリシーの要旨は`common-lib/payments/refund-policy-summary.ts`の`REFUND_POLICY_SUMMARY`(最終確認画面(10.3)も同じ定数を使う)。購入確認メールの決済履歴のURLは`CLIENT_SITE_ORIGIN`+`/settings/billing`
-- 3.1: `StripeApiGateway`は`@injectable`を付けず`{ appName, client, clientSiteOrigin }`を受け取る(5.7で`toDynamicValue`で束縛)。ポートは`StripeCheckoutGateway`(3.1の6操作)と、それを拡張する`StripeGateway`に分かれる。テストの偽のStripeは`workers/payments/testing/fake-stripe.ts`。ログの属性名に`key`を含めない(伏せ字になる。`priceLookup`)
+- 3.1: `StripeApiGateway`は`@injectable`を付けず`{ appName, client, clientSiteOrigin }`を受け取る(5.7で`toDynamicValue`で束縛)。ポートは設計どおり`StripeGateway`1つ(3.2で統合)。テストの偽のStripeは`workers/payments/testing/fake-stripe.ts`。ログの属性名に`key`を含めない(伏せ字になる。`priceLookup`)
+- 3.2: Stripeの結果への変換は`workers/payments/stripe-snapshots.ts`。持ち主の手がかりはPaymentIntentの取得と`invoicePayments.list`(API版`2026-10-28.endive`のPaymentIntentは`invoice`を持たない)。定期課金の`currentPeriodEnd`は項目の`current_period_end`の最大値。請求・返金・定期課金の想定外の状態は例外(チャージバックだけは値をそのまま返す)

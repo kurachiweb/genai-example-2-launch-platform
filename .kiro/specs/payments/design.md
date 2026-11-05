@@ -213,6 +213,7 @@ apps/
 │       ├── statement-contracts.ts                   # GuardedBatch・各ストアの文(PurchaseStatements・PaymentRecordStatements・StripeObjectStatements・RefundStatements・CustomerStatements)・PaymentRefundStatements(型だけ)
 │       ├── stripe-client.ts                         # Stripeの生成(fetch・API版・再試行・時間切れ)
 │       ├── stripe-gateway.ts                        # StripeGatewayの実装
+│       ├── stripe-snapshots.ts                      # 請求・返金・チャージバック・定期課金のStripeの型から読み取り専用の結果への変換
 │       ├── stripe-webhook-verifier.ts               # 署名の検証(Web Crypto)
 │       ├── payment-owner-resolver.ts                # 返金・チャージバック・請求の持ち主の特定
 │       ├── d1-customer-store.ts                     # CustomerStore・CustomerStatements・CustomerDirectoryの実装
