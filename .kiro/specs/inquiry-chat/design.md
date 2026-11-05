@@ -229,7 +229,7 @@ apps/
 │   │   └── jobs/guest-inquiry-retention-job.ts         # 未ログインの保持期間の物理削除(order 300)
 │   ├── infrastructure/inquiry/                         # Workers統合テスト
 │   │   ├── d1-inquiry-category-store.ts · d1-member-inquiry-store.ts · d1-guest-inquiry-store.ts
-│   │   ├── d1-inquiry-status-store.ts                  # 2テーブルのステータスの照会と条件付きの変更
+│   │   ├── d1-inquiry-status-store.ts                  # 2テーブルのステータスの条件付きの変更
 │   │   ├── d1-inquiry-admin-reader.ts                  # 2テーブルの横断の一覧・詳細・未対応の件数
 │   │   ├── sentry-inquiry-incident-reporter.ts         # 通知メールの失敗・添付の解放の失敗の報告
 │   │   ├── counter-guest-inquiry-rate-limit.ts         # GuestInquiryRateLimitの実装(厳密カウンタによる送信元IPの回数制限、GUEST_INQUIRY_RATE_RULE)
@@ -237,6 +237,7 @@ apps/
 │   │   ├── inquiry-attachment-read-policy.ts           # FileReadPolicy(本人・管理者)
 │   │   ├── member-inquiry-withdrawal-handler.ts        # 同期の波及処理(論理削除の文)
 │   │   ├── inquiry-cursor.ts                           # カーソルの符号化と復号(単体テスト併置)
+│   │   ├── inquiry-page.ts                             # カーソルの位置の条件と、1件多く読んだ行からのページの組み立て
 │   │   └── email-inquiry-mailer.ts                     # 返信の通知メールの送信要求とリンクのURL
 │   ├── presentation/graphql/modules/inquiry/           # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts · inputs.ts · errors.ts · mappers.ts
@@ -888,7 +889,7 @@ export interface InquiryChatService {
 - `D1InquiryCategoryStore.deleteAndReassign`: `buildAuditLogStatements`→`UPDATE member_inquiries SET category_id = <その他> WHERE category_id = ?`→`guest_inquiries`の同じ更新→`DELETE FROM inquiry_categories WHERE id = ? AND system_default = 0`を1つの`db.batch`にする(要件1.5)。`insert`・`rename`は一意索引の違反を`name-taken`に変換する。
 - `D1MemberInquiryStore.insert`・`appendUserMessage`: 問い合わせ(または更新)・メッセージ(`sender_kind = 'user'`)・添付の行(バインド変数の上限と列の数から求めた1文あたりの行数で分ける)を1つの`db.batch`にする。`insert`のステータスは列の既定値(未対応)に任せ、外部キーの違反(カテゴリの削除との競合)は`inquiryCategoryUnavailableError()`にする(未ログインの`insert`も同じ)。`appendUserMessage`のステータスは`statusAfterUserMessage`から組み立てたSQLの`CASE`で書き込みの時点の値から求め、変わるときだけ`status_changed_at`を更新する(読み取った後の管理者の変更を上書きしない)。メッセージの挿入の`inquiry_id`を「論理削除していない問い合わせがあればID、無ければNULL」にし、NOT NULLの違反で一括の書き込み全体を取り消して`not-found`を返す。`appendAdminReply`は`buildAuditLogStatements(db, audit, { kind: 'condition', condition: sql\`EXISTS (SELECT 1 FROM member_inquiries WHERE id = ? AND deleted_at IS NULL)\` })`の文を先頭に置き、メッセージの挿入と`last_message_at`の更新を続ける。条件が偽なら操作者のIDのNOT NULL違反で全体が取り消されるため、`isAuditGuardRejection(error)`が真のときは読み直して`withdrawn`・`not-found`を返す(G1。admin-foundationの方式)。
 - `D1InquiryStatusStore.change`: `buildAuditLogStatements(db, audit, { kind: 'condition', condition })`の条件を「現在のステータスが一致し、退会済みでない」(`EXISTS (SELECT 1 FROM <種別のテーブル> WHERE id = ? AND status = ?` に、ログインの問い合わせは` AND deleted_at IS NULL`を足す`)`)にし、続けて同じ条件の`UPDATE`を置く。`isAuditGuardRejection(error)`が真なら`conflict`(G1)。
-- `D1InquiryAdminReader.list`: `member_inquiries`と`users`の結合(送信者の表示名はニックネーム)と、`guest_inquiries`(表示名は入力のニックネーム)の`UNION ALL`を、`(created_at DESC, id DESC)`で51件読む。条件は両方の副問い合わせに入れる(要件10.1〜10.3)。
+- `D1InquiryAdminReader.list`: `member_inquiries`と`users`の結合(送信者の表示名はニックネーム)と、`guest_inquiries`(表示名は入力のニックネーム)の`UNION ALL`を、`(created_at DESC, id DESC)`で51件読む。条件とカーソルは両方の副問い合わせに入れ、各副問い合わせも同じ並びで51件に絞る(種別の条件は他方の副問い合わせを偽の条件にする)。受付日時の期間は`receivedFrom`を含み`receivedBefore`を含まない(`backend/008`の監査ログの期間と同じ)。未ログインの最後のメッセージの日時は受付日時。論理削除した(退会済みの)ログインの問い合わせも`withdrawn: true`で含める(要件10.1〜10.3・10.7)。`findDetail`も論理削除したログインの問い合わせを返し、`countUnhandled`は論理削除を除く(要件14.2)。
 - `InquiryCursor`: `base64url('<ミリ秒>:<ID>')`の符号化と復号。不正な値は`invalidCursorError()`(`invalid_cursor`。`backend/004`の共通ライブラリの部品と同じコードと文言)。
 - `D1InquirerProfiles`: `users`から`nickname`・`handle`を100件ずつ読み、`avatarFileId`は`null`。返信の通知先は本specで読まず、identity-authの`UserContactDirectory`で引く。
 

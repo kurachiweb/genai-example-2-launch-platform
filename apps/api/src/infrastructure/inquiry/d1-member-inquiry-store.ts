@@ -5,8 +5,6 @@ import {
   eq,
   getColumns,
   inArray,
-  lt,
-  or,
   type SQL,
   sql,
 } from 'drizzle-orm';
@@ -36,7 +34,7 @@ import {
   isAuditGuardRejection,
 } from '../admin/audit-log-statements.ts';
 import { categoryReferenceFailureOf } from './category-reference-failure.ts';
-import { decodeInquiryCursor, encodeInquiryCursor } from './inquiry-cursor.ts';
+import { afterInquiryCursor, inquiryPageOf } from './inquiry-page.ts';
 
 type Statements = [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]];
 
@@ -51,7 +49,7 @@ const ATTACHMENT_ROWS_PER_STATEMENT = Math.floor(
 const INACTIVE_INQUIRY_PATTERN =
   /NOT NULL constraint failed: inquiry_messages\.inquiry_id(?::|$)/u;
 
-const RECORD_COLUMNS = {
+export const MEMBER_INQUIRY_RECORD_COLUMNS = {
   id: memberInquiries.id,
   userId: memberInquiries.userId,
   categoryId: memberInquiries.categoryId,
@@ -104,20 +102,6 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   );
 }
 
-function afterCursor(cursor: string | undefined): SQL | undefined {
-  if (cursor === undefined) {
-    return undefined;
-  }
-  const position = decodeInquiryCursor(cursor);
-  return or(
-    lt(memberInquiries.createdAt, position.at),
-    and(
-      eq(memberInquiries.createdAt, position.at),
-      lt(memberInquiries.id, position.id),
-    ),
-  );
-}
-
 @injectable()
 export class D1MemberInquiryStore implements MemberInquiryStore {
   constructor(@inject(PLATFORM_TYPES.Database) private readonly db: Database) {}
@@ -146,7 +130,7 @@ export class D1MemberInquiryStore implements MemberInquiryStore {
   // 退会済みの扱いは呼び出し側が決めるため、論理削除した問い合わせも削除日時とともに返す
   async findById(id: string): Promise<MemberInquiryRecord | undefined> {
     const [row] = await this.db
-      .select(RECORD_COLUMNS)
+      .select(MEMBER_INQUIRY_RECORD_COLUMNS)
       .from(memberInquiries)
       .where(eq(memberInquiries.id, id));
     return row;
@@ -189,26 +173,18 @@ export class D1MemberInquiryStore implements MemberInquiryStore {
     page: { readonly after?: string; readonly limit: 20 },
   ): Promise<MemberInquiryPage> {
     const rows = await this.db
-      .select(RECORD_COLUMNS)
+      .select(MEMBER_INQUIRY_RECORD_COLUMNS)
       .from(memberInquiries)
       .where(
         and(
           eq(memberInquiries.userId, userId),
           notDeleted(memberInquiries.deletedAt),
-          afterCursor(page.after),
+          afterInquiryCursor(memberInquiries, page.after),
         ),
       )
       .orderBy(desc(memberInquiries.createdAt), desc(memberInquiries.id))
       .limit(page.limit + 1);
-    const items = rows.slice(0, page.limit);
-    const last = items.at(-1);
-    return {
-      items,
-      nextCursor:
-        rows.length > page.limit && last !== undefined
-          ? encodeInquiryCursor({ at: last.createdAt, id: last.id })
-          : null,
-    };
+    return inquiryPageOf(rows, page.limit);
   }
 
   async appendUserMessage(
