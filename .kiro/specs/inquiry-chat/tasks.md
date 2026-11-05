@@ -53,7 +53,7 @@
   - 完了状態: Workers統合テストが成功し、admin-foundationの既存のテストが通る
   - _Requirements: 11.7, 12.2, 12.3, 15.1_
 
-- [ ] 1.8 (P) カテゴリマスタの編集部品に、削除の確認の文と監査ログの旨の任意のpropsを足す(上流の改訂、G2)
+- [x] 1.8 (P) カテゴリマスタの編集部品に、削除の確認の文と監査ログの旨の任意のpropsを足す(上流の改訂、G2)
   - 先に、admin-foundationの`CategoryMasterEditor`のブラウザテストに、`deleteDescriptionOf`で項目から作った文が削除の確認に出ること、`deleteAudited: true`で監査ログに記録される旨が出ること、未指定なら今の文と旨なしのままであることを足す
   - `deleteDescriptionOf?: (category: CategoryMasterItem) => string`と`deleteAudited?: boolean`を足し、削除の`ConfirmActionDialog`の`description`と`audited`に渡す。`CategoryMasterItem`は変えない
   - `docs/GUIDES/tech/frontend/005-shared-components.md`の部品の説明に2つのpropsを加える
@@ -308,3 +308,4 @@
 - 1.5: 定期再取得の値は`apps/frontend-lib/utilities/query/live-refresh.ts`の`LIVE_REFRESH_QUERY_OPTIONS`(30秒・非表示のタブで止める・画面へ戻った時に取得・`staleTime: 0`)。単体テストは静的解析で`utilities`から`start`を読めないため、アプリの既定値(`QUERY_STALE_TIME_MS`の30秒など)を写したQueryClientで確かめる(既定値を変えたら写しも直す)。部品は`apps/frontend-lib/components/inquiry/`の`InquiryStatusBadge`・`InquiryMessageCard`(本文はテキストで`whitespace-pre-wrap`、`className`も受ける)・`InquiryAttachmentList`(`PrivateFileLink`の隣に形式、不明は「不明な形式」)・`InquirerAvatar`(`xs`=32px・`sm`=64px、`alt`空の飾り)。「削除済みの管理者」は部品に持たせず呼び出す側が送信者名として渡す(9.3)。文言は`utilities/messages/inquiry-display-messages.ts`(「添付ファイル」)。12.1で`frontend/010-live-refresh-queries.md`を書いたら、005の定期再取得の行からリンクする
 - 1.6: 契約は`apps/backend-lib/core/session/session-view.ts`・`core/identity/account-guard.ts`(`AccountGuard`・`CurrentUser`・`UserAccountView`)・`core/admin/audit-log.ts`・`core/admin/current-admin.ts`、識別子は`IDENTITY_PLATFORM_TYPES.AccountGuard`(apiのidentityのモジュールだけが束縛し、eventでは解決できない)・`ADMIN_PLATFORM_TYPES.AuditLogRecorder`。`CurrentUser.user`は実行時も`UserAccountView`の8項目だけ(`StoreAccountGuard`の`toUserAccountView`)で、`passwordHash`・`lifecycleVersion`が要るidentityのユースケースは`application/identity/current-user-record.ts`の`loadCurrentUserRecord`で読み直す。`UserAccountView.status`は`'active' | 'suspended'`のリテラル。`PreparedAuditEntry`の準備済みの印は型だけ(`declare const PREPARED: unique symbol`)で、`StoreAuditLogRecorder.prepare`だけが付ける。backend/002・006・007・008とsecurity/006・007を更新済み
 - 1.7: `AuditGuard`はapiの`infrastructure/admin/audit-log-statements.ts`にあり、`{ kind: 'condition', condition: SQL }`を足した(`guardCondition`は`default`なしの網羅の`switch`)。`condition`は操作者の状態の確認を自動では付けない。テストの条件は`admins`表で作ったため、問い合わせの表の条件での取り消しは6.1・6.2のWorkers統合テストで確かめる
+- 1.8: `CategoryMasterEditor`の`deleteDescriptionOf`・`deleteAudited`(既定は偽)を足した。説明は閉じる途中も残る削除の対象から作る。部品の削除の確認は理由の入力欄を持たない(`reason="none"`)ため、`inquiry-category.delete`の理由は`optional`でも画面では入力できない(008の「確認のダイアログは理由の要否を操作種別に合わせる」とのずれは最終の報告に挙げる)

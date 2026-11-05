@@ -52,6 +52,9 @@ export interface CategoryMasterEditorProps {
   // 拒否・失敗は例外で知らせ、部品はfailureMessageOfの文言を表示する
   readonly onDelete: (id: string) => Promise<void>;
   readonly failureMessageOf: (error: unknown) => string;
+  readonly deleteDescriptionOf?:
+    ((category: CategoryMasterItem) => string) | undefined;
+  readonly deleteAudited?: boolean | undefined;
 }
 
 interface DialogState {
@@ -109,6 +112,8 @@ export function CategoryMasterEditor({
   onUpdate,
   onDelete,
   failureMessageOf,
+  deleteDescriptionOf,
+  deleteAudited = false,
 }: CategoryMasterEditorProps) {
   const headingId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -275,10 +280,14 @@ export function CategoryMasterEditor({
           setDeletion((current) => ({ ...current, open }));
         }}
         title={categoryDeleteTitle(deleting?.name ?? '')}
-        description={CATEGORY_DELETE_DESCRIPTION}
+        description={
+          deleting === undefined || deleteDescriptionOf === undefined
+            ? CATEGORY_DELETE_DESCRIPTION
+            : deleteDescriptionOf(deleting)
+        }
         confirmLabel={CATEGORY_DELETE_LABEL}
         reason="none"
-        audited={false}
+        audited={deleteAudited}
         onConfirm={confirmDeletion}
         failureMessageOf={failureMessageOf}
         returnFocusRef={deletedReturnFocusRef}

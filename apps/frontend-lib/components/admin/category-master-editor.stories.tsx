@@ -119,6 +119,26 @@ export const ConfirmDeletion: Story = {
   },
 };
 
+export const ConfirmAuditedDeletionWithDescription: Story = {
+  args: {
+    title: '問い合わせカテゴリ',
+    withHandle: false,
+    categories: [
+      { id: 'c1', name: 'アカウント', systemDefault: false },
+      { id: 'c2', name: '決済', systemDefault: false },
+      { id: 'c3', name: 'その他', systemDefault: true },
+    ],
+    deleteDescriptionOf: (category) =>
+      `「${category.name}」に紐付く3件の問い合わせは標準カテゴリ「その他」へ付け替えられます。`,
+    deleteAudited: true,
+  },
+  play: async ({ userEvent }) => {
+    await userEvent.click(
+      await screen.findByRole('button', { name: '「アカウント」を削除' }),
+    );
+  },
+};
+
 export const DeletionRejected: Story = {
   args: {
     onDelete: fn(() => Promise.reject(new Error('in use'))),

@@ -9,9 +9,12 @@ import { GraphQLClientError } from '../../utilities/graphql/graphql-result.ts';
 import {
   CategoryMasterEditor,
   type CategoryMasterEditorProps,
+  type CategoryMasterItem,
 } from './category-master-editor.tsx';
 
 const TITLE = 'プロダクトカテゴリ';
+
+const AUDITED_NOTICE = 'この操作は監査ログに記録されます。';
 
 const FAILURE_MESSAGE = 'このカテゴリは使われているため削除できません。';
 
@@ -366,6 +369,48 @@ describe('CategoryMasterEditor', () => {
     await expect.element(heading()).toHaveFocus();
   });
 
+  test('削除の確認の文を指定すると、削除する項目から作った文を確認のダイアログの説明に示す', async () => {
+    const deleteDescriptionOf = vi.fn(
+      (category: CategoryMasterItem) =>
+        `「${category.name}」に紐付く2件は「その他」へ付け替えられます。`,
+    );
+    await renderEditor({ deleteDescriptionOf });
+
+    await rowButton('デザイン', '削除').click();
+
+    await expect
+      .element(deleteDialog('デザイン'))
+      .toHaveAccessibleDescription(
+        '「デザイン」に紐付く2件は「その他」へ付け替えられます。',
+      );
+    expect(deleteDescriptionOf).toHaveBeenCalledWith(CATEGORIES[1]);
+  });
+
+  test('削除を監査ログに記録すると指定すると、確認のダイアログに記録される旨を示す', async () => {
+    await renderEditor({ deleteAudited: true });
+
+    await rowButton('開発ツール', '削除').click();
+
+    await expect
+      .element(
+        deleteDialog('開発ツール').getByText(AUDITED_NOTICE, { exact: true }),
+      )
+      .toBeVisible();
+  });
+
+  test('削除の確認の文と監査ログの旨を指定しなければ、既定の文で記録される旨を示さない', async () => {
+    await renderEditor();
+
+    await rowButton('開発ツール', '削除').click();
+
+    await expect
+      .element(deleteDialog('開発ツール'))
+      .toHaveAccessibleDescription('削除したカテゴリは元に戻せません。');
+    expect(
+      deleteDialog('開発ツール').getByText(AUDITED_NOTICE).elements(),
+    ).toHaveLength(0);
+  });
+
   test('削除の確認を取り消すと、削除せずに閉じる', async () => {
     const { onDelete } = await renderEditor();
 
@@ -513,6 +558,25 @@ describe('CategoryMasterEditor', () => {
         .click();
       await expect
         .element(deleteDialog('開発ツール').getByRole('alert'))
+        .toBeVisible();
+
+      expect(await runAxe(document.body)).toStrictEqual([]);
+    });
+
+    test('削除の確認の文と監査ログの旨を示した確認のダイアログで、アクセシビリティの検査の違反が0件', async () => {
+      applyColorScheme(scheme);
+      await renderEditor({
+        deleteDescriptionOf: (category) =>
+          `「${category.name}」に紐付く2件は「その他」へ付け替えられます。`,
+        deleteAudited: true,
+      });
+      await rowButton('開発ツール', '削除').click();
+      await expect
+        .element(
+          deleteDialog('開発ツール').getByText(AUDITED_NOTICE, {
+            exact: true,
+          }),
+        )
         .toBeVisible();
 
       expect(await runAxe(document.body)).toStrictEqual([]);
