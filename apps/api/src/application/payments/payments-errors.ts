@@ -1,4 +1,10 @@
 import {
+  CHECKOUT_SESSION_ID_MESSAGES,
+  type CheckoutSessionIdIssue,
+  PAYMENT_HISTORY_PAGE_SIZE_MESSAGES,
+  type PaymentHistoryPageSizeIssue,
+} from '../../../common-lib/payments/payment-input-rules.ts';
+import {
   AppError,
   type AppErrorKind,
 } from '../../../lib/core/errors/app-error.ts';
@@ -49,4 +55,38 @@ export const purchaseOfferUnavailableError = (
     kind: 'unprocessable',
     code: decision.code,
     message: decision.message,
+  });
+
+const VALIDATION_ERROR_MESSAGE = '入力内容を確認してください。';
+
+export const checkoutSessionIdRejectedError = (
+  issue: CheckoutSessionIdIssue,
+): AppError =>
+  new AppError({
+    kind: 'bad_request',
+    code: 'validation_error',
+    message: VALIDATION_ERROR_MESSAGE,
+    details: [
+      {
+        field: 'sessionId',
+        code: issue,
+        message: CHECKOUT_SESSION_ID_MESSAGES[issue],
+      },
+    ],
+  });
+
+export const paymentHistoryPageSizeRejectedError = (
+  issue: PaymentHistoryPageSizeIssue,
+): AppError =>
+  new AppError({
+    kind: 'bad_request',
+    code: 'validation_error',
+    message: VALIDATION_ERROR_MESSAGE,
+    details: [
+      {
+        field: 'first',
+        code: issue,
+        message: PAYMENT_HISTORY_PAGE_SIZE_MESSAGES[issue],
+      },
+    ],
   });

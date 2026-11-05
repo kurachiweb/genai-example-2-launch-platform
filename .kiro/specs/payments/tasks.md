@@ -187,7 +187,7 @@
   - _Depends: 5.7_
   - _Requirements: 1.1, 1.2, 1.3, 3.1, 3.5, 3.6, 3.9, 3.10, 3.11, 3.12_
 
-- [ ] 6.2 決済画面・同意・決済後のランディング・決済履歴の照会と変更を作る
+- [x] 6.2 決済画面・同意・決済後のランディング・決済履歴の照会と変更を作る
   - 先に、偽のポートを使う単体テストで、本人の未完了の購入の表示事項と`clientSecret`、他人・存在しない購入の見つからない旨、完了・処理中・失効・返金中・利用できない状態、やり直しの可否(受付期限の前)、同意の記録(未完了だけ、最新の日時で上書き)、`return_url`の`session_id`の形式の検証と本人の確認と反映の呼び出しとStripeに到達できないときの処理中、決済履歴の件数の範囲(1〜50、既定20)とカーソルを確かめる
   - 完了状態: 単体テストが成功し、他人の購入では状態を明かさないエラーだけが返り、ユースケースが`core/payments`の契約だけを受け取る(`**/lib/workers/**`の読み込みが無い)
   - _Boundary: CheckoutReader, CheckoutConsentRecorder, CheckoutReturnConfirmer, PaymentHistoryReader_
@@ -369,3 +369,4 @@
 - 5.6: 失効は`workers/payments/open-checkout-expirer.ts`の`StripeOpenCheckoutExpirer`(`{ appName, gateway, purchases, reflection, ids, clock }`、`@injectable`無し)。`remaining`は上限の外に`open`の購入が残っているか(`processing`は数えない)。上限は1〜50の整数(範囲外は`RangeError`)
 - 5.7: 両アプリ共通の束縛は`workers/payments/payments-platform-module.ts`の`createPaymentsPlatformModule(appName)`(関数。識別子はすべて`PAYMENTS_TYPES`)。api・eventのモジュール一覧に加えるときは`EMAIL_PLATFORM_MODULE`と`IDENTITY_PLATFORM_MODULE`も同じ一覧に要る(通知の部品が使う)。Webhookの署名の検証は共通の束縛に含めず、8.4でイベントサーバーが束縛する。疎通確認の最終確認画面の文言(分量「1件」・役務の提供時期「提供する役務はありません」)は仮で、画面のタスクで文言規則に載せるかを確かめる
 - 6.1: APIサーバーの識別子は`apps/api/src/application/payments/payments-types.ts`の`API_PAYMENTS_TYPES`、エラーは`payments-errors.ts`の`PAYMENTS_ERRORS`(`payments_unavailable`の文言は価格の照会と同じ全文)。決済の開始は`checkout-starter.ts`の`StripeCheckoutStarter`、回数制限と購入の書き込みは`apps/api/src/infrastructure/payments/`。application層は`**/lib/workers/**`を型も含めて読み込めない(ESLint)。12.x: `docs/GUIDES/service/design/003-text-and-copy-rules.md`の縮退運転の文言を設計のError Handlingの表に揃える
+- 6.2: 決済画面・同意・決済後のランディング・決済履歴のユースケースは`apps/api/src/application/payments/`(`checkout-reader.ts`・`checkout-consent-recorder.ts`・`checkout-return-confirmer.ts`・`payment-history-reader.ts`)。照会は`requireUser`、同意の記録は`requireWritableUser`(停止中は`account_unavailable`)。入力の規則(`session_id`の形式・件数の範囲・カーソルの上限)は`common-lib/payments/payment-input-rules.ts`。7.1(必須): GraphQLの`after`に`PAYMENT_HISTORY_CURSOR_MAX`(256)を適用し、カーソルの誤り`invalid_cursor`をエラーの表で扱う。新しい文言2つは12.2で文言規則に加える。単体テストの偽のポートは`apps/api/test/support/payments-checkout-fakes.ts`

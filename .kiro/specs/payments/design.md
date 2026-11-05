@@ -1441,7 +1441,7 @@ export declare class D1CheckoutPurchaseWriter implements CheckoutPurchaseWriter 
 | Requirements | 4.1, 4.2, 4.3, 4.5, 4.6, 4.9, 4.10, 4.11, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 12.1, 12.2, 12.3, 12.9 |
 
 - `CheckoutReader.read(session, purchaseId)`: `requireUser`のうえで本人の購入だけを返し、他人・存在しないは`AppError(not_found, checkout_not_found)`(4.9)。`open`かつ有効期限内なら`retrieveCheckoutSession`で`clientSecret`を取り、到達できなければ`status: 'unavailable'`(4.11)。表示事項は購入作成時に保存した`summary`・金額・単価・数量・受付期限。
-- `CheckoutConsentRecorder.record(session, purchaseId)`: 本人の`open`の購入にだけ同意の日時と`CHECKOUT_CONSENT_VERSION`を記録し、それ以外は`AppError(conflict, checkout_not_open)`(4.5)。同じ購入の再記録は最新の日時で上書きする。
+- `CheckoutConsentRecorder.record(session, purchaseId)`: `requireWritableUser`のうえで(停止中は`AppError(forbidden, account_unavailable)`。停止の波及処理による未完了の決済セッションの失効は非同期のため、その間に停止中の利用者が同意して支払いを確定できないようにする。要件14の目的。決済の開始(3.5)と同じ)、本人の`open`の購入にだけ同意の日時と`CHECKOUT_CONSENT_VERSION`を記録し、それ以外は`AppError(conflict, checkout_not_open)`(4.5)。同じ購入の再記録は最新の日時で上書きする。
 - `CheckoutReturnConfirmer.confirm(session, sessionId)`: `cs_`で始まる255文字以内のIDだけを受け付け、`findBySessionId`で本人の購入か確かめ(他人・無しは`checkout_not_found`、5.6)、`retrieveCheckoutSession` → `reflectCheckoutSnapshot`を呼び、購入の状態と表示用の情報を返す(5.1・5.7)。Stripeに到達できなければ`status: 'processing'`を返し、画面が確かめ直す(5.3)。
 - `PaymentHistoryReader.list(session, first, after)`: `requireUser`のうえで`pseudonymousId`の記録を`occurred_at`の降順・IDの降順のカーソルで返す(12.1・12.2・12.9)。`first`は1〜50、既定20。
 
@@ -1572,7 +1572,7 @@ type Mutation {
 | ----------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | `checkout`              | client                                     | `unauthenticated`、`checkout_not_found`                                                                                 |
 | `paymentHistory`        | client                                     | `unauthenticated`、`validation_error`                                                                                   |
-| `recordCheckoutConsent` | client                                     | `unauthenticated`、`checkout_not_found`、`checkout_not_open`                                                            |
+| `recordCheckoutConsent` | client                                     | `unauthenticated`、`account_unavailable`、`checkout_not_found`、`checkout_not_open`                                     |
 | `confirmCheckoutReturn` | client                                     | `unauthenticated`、`checkout_not_found`、`validation_error`                                                             |
 | `startSmokeCheckout`    | client(`PAYMENTS_SMOKE_ENABLED`が真の環境) | `purchase_kind_unavailable`、`email_not_verified`、`account_unavailable`、`rate_limit_exceeded`、`payments_unavailable` |
 
@@ -1803,7 +1803,7 @@ export interface MoneyTextProps {
 | `rate_limit_exceeded`                                          | 429           | 回数制限(3.10)                   | 既存の「操作が集中しています。しばらく待ってから再度お試しください。」         |
 | `checkout_not_found`                                           | 404           | 他人・存在しない購入(4.9・5.6)   | 「お探しの決済は見つかりませんでした。」                                       |
 | `checkout_not_open`                                            | 409           | 完了・失効後の同意の記録         | 「この決済は既に完了しているか、受付が終了しています。」                       |
-| `email_not_verified`・`account_unavailable`・`unauthenticated` | 403・403・401 | 利用者の状態(3.5)                | identity-authの既存の文言                                                      |
+| `email_not_verified`・`account_unavailable`・`unauthenticated` | 403・403・401 | 利用者の状態(3.5・同意の記録)    | identity-authの既存の文言                                                      |
 | `stripe_signature_invalid`                                     | 400           | Webhookの署名の不正(6.1)         | 画面に出さない                                                                 |
 
 ### Monitoring

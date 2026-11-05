@@ -5,7 +5,9 @@ import { toErrorResponse } from '../../../lib/core/errors/error-envelope.ts';
 import type { PurchaseOffer } from '../../../lib/core/payments/purchase-kind-contract.ts';
 import { assertAcceptable } from '../../../lib/core/payments/purchase-rules.ts';
 import {
+  checkoutSessionIdRejectedError,
   PAYMENTS_ERRORS,
+  paymentHistoryPageSizeRejectedError,
   paymentsError,
   purchaseOfferUnavailableError,
 } from './payments-errors.ts';
@@ -104,6 +106,58 @@ describe('purchaseOfferUnavailableError', () => {
       kind: 'unprocessable',
       code: 'entry_already_paid',
       message: 'この参加費は既に支払い済みです。',
+    });
+  });
+});
+
+describe('checkoutSessionIdRejectedError', () => {
+  test('決済セッションのIDの欄の詳細を持つ入力の検証のエラーにする', () => {
+    const error = checkoutSessionIdRejectedError('invalid');
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(toErrorResponse(error).status).toBe(400);
+    expect({
+      kind: error.kind,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    }).toEqual({
+      kind: 'bad_request',
+      code: 'validation_error',
+      message: '入力内容を確認してください。',
+      details: [
+        {
+          field: 'sessionId',
+          code: 'invalid',
+          message: '決済の確認に必要な情報が正しくありません。',
+        },
+      ],
+    });
+  });
+});
+
+describe('paymentHistoryPageSizeRejectedError', () => {
+  test('件数の欄の詳細を持つ入力の検証のエラーにする', () => {
+    const error = paymentHistoryPageSizeRejectedError('out-of-range');
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(toErrorResponse(error).status).toBe(400);
+    expect({
+      kind: error.kind,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    }).toEqual({
+      kind: 'bad_request',
+      code: 'validation_error',
+      message: '入力内容を確認してください。',
+      details: [
+        {
+          field: 'first',
+          code: 'out-of-range',
+          message: '表示する件数は1〜50件の整数で指定してください。',
+        },
+      ],
     });
   });
 });
