@@ -29,11 +29,11 @@
   - _Requirements: 13.4, 8.9_
 
 - [ ] 1.5 (P) clientの環境に公開APIのオリジンを加え、CSPの接続先に入れる
-  - content-processingの`CLIENT_SITE_ORIGIN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順で、clientの環境の検証に`PUBLIC_API_ORIGIN`(clientだけ必須。CSPの許可先の形`https://<小文字のホスト>`(ポート無し)・`http://localhost:<ポート>`まで検証する)を加え、公開設定の`publicApiOrigin`(adminは未定義)へ渡し、実行時の許可先の`connect-src`に値があれば加える。エントリの許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない
-  - clientのWrangler設定の3環境に値を書く(ローカル`http://localhost:48042`、staging・prodはapiのホスト名。infra-deliveryの改訂1の表のclientの行に合わせる)
-  - 先に、単体テストで、不正なオリジンと許可先の形に合わない値(ポート付きの`https`・大文字のホスト)が環境の検証の失敗としてキー名`PUBLIC_API_ORIGIN`で報告されること・adminで値が無くても検証が通ること・ページのCSPの`connect-src`に値が入りadminには入らないことを確かめる
+  - frontend-platformの`WEB_ANALYTICS_TOKEN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順で、clientの環境の検証に`PUBLIC_API_ORIGIN`を加える。共有の環境のスキーマでは任意(値があればCSPの許可先の形`https://<小文字のホスト>`(ポート無し)・`http://localhost:<ポート>`まで検証する)にし、`FrontendAppProfile`に公開APIの仕様書の有無の欄`publicApiDocs`(clientは真、adminは偽)を加え、公開設定の`publicApiOrigin`(adminは未定義)へ渡し、欄が真で値があるときだけ実行時の許可先の`connect-src`に加える。共有のスキーマで必須にすると`worker-env-contract.ts`の型の検査と管理者側の起動の検証が失敗するため、任意にする(2026-11-05の開発者の決定)。`frontend-env.unit.test.ts`の完全一致の期待と、`PublicRuntimeConfig`を直に書いた各ファイルを直す。エントリの許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない
+  - clientのWrangler設定の3環境に値を書き、clientの設定の単体テスト(varsの完全一致)で3環境に値があることを確かめる。adminのWranglerには置かない(ローカル`http://localhost:48042`、staging・prodはapiのホスト名。infra-deliveryの改訂1の表のclientの行に合わせる)
+  - 先に、単体テストで、不正なオリジンと許可先の形に合わない値(ポート付きの`https`・大文字のホスト)が環境の検証の失敗としてキー名`PUBLIC_API_ORIGIN`で報告されること・adminで値が無くても検証が通ること・clientで値が無くても検証が通り公開設定が`undefined`になること・ページのCSPの`connect-src`に値が入りadminには入らないことを確かめる
   - 完了状態: frontend-libとclientの単体テストと設定の検査のテストが成功し、ローカルのclientのページのCSPに公開APIのオリジンが載る
-  - _Boundary: `apps/frontend-lib/server/env/frontend-env.ts`・`apps/frontend-lib/server/http/security-policy.ts`・`apps/client/wrangler.jsonc`・`apps/client/test/config/wrangler-config.unit.test.ts`_
+  - _Boundary: `apps/frontend-lib/server/env/frontend-env.ts`・`apps/frontend-lib/server/entry/app-profile.ts`・`apps/frontend-lib/server/http/security-policy.ts`・`apps/client/wrangler.jsonc`・`apps/client/test/config/wrangler-config.unit.test.ts`_
   - _Requirements: 15.2, 15.7_
 
 - [ ] 2. ドメインの規則と共有部品

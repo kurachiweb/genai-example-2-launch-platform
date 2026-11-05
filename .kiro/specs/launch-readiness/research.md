@@ -70,7 +70,7 @@
   - identity-auth: prodの`DISIFY_API_KEY`(任意)。
   - admin-foundation: 最初の最上位管理者の招待を`--target prod`で発行。
   - legal-pages: prodで3文書の初版を本番公開の前に公開したことの確認。
-  - payments: prodの`STRIPE_API_KEY`(api・event)・`STRIPE_WEBHOOK_SECRET`(event)、`STRIPE_PUBLISHABLE_KEY`(`pk_live_`の仮の値)のライブモードの公開キーへの置き換え、ライブモードのWebhook endpoint(API版`2026-09-30.endive`・15種の購読)・価格・Customer Portal・税の登録・決済手段、`PAYMENTS_SMOKE_ENABLED`がprodで`false`。
+  - payments: prodの`STRIPE_API_KEY`(api・event)・`STRIPE_WEBHOOK_SECRET`(event)、`STRIPE_PUBLISHABLE_KEY`(`pk_live_`の仮の値)のライブモードの公開キーへの置き換え、ライブモードのWebhook endpoint(API版`2026-10-28.endive`・15種の購読)・価格・Customer Portal・税の登録・決済手段、`PAYMENTS_SMOKE_ENABLED`がprodで`false`。
   - ultras-subscription: prodの価格`ultras_monthly`・Portal・再試行・顧客向けメールの停止・制限付きキーの権限を確かめた後に機能フラグをオン。
   - tournament-week・tournament-year・sponsorship: prodの価格`week_tournament_entry`・`year_tournament_entry`・`sponsorship_legend_daily`・`sponsorship_gold_daily`・`sponsorship_silver_daily`。
   - notifications: prodの送信者情報の設定(未設定なら通知メールを送らない、仮3)、prodの`EVENT_SITE_ORIGIN`、受信したメールの`List-Unsubscribe`・`List-Unsubscribe-Post`とDKIMの署名の対象(`h=`)の確認。

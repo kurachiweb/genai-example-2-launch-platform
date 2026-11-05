@@ -77,7 +77,7 @@
 - **Context**: Customer Portalでの解約(FR-PPLAN-011)と課金期間の末日の判定(Q4)。
 - **Sources Consulted**: [Integrate the customer portal](https://docs.stripe.com/customer-management/integrate-customer-portal)、[Cancel subscriptions](https://docs.stripe.com/billing/subscriptions/cancel)、[Billing mode changelog](https://docs.stripe.com/changelog/basil/2025-06-30/billing-mode)、[cancel_at enums](https://docs.stripe.com/changelog/basil/2025-07-30/cancel-at-enums)。
 - **Findings**:
-  - API版`2025-09-30.clover`以降、新しい定期課金は柔軟な請求モード(`billing_mode: flexible`)が既定になる。paymentsが固定するAPI版`2026-09-30.endive`もこれに当たる。
+  - API版`2025-09-30.clover`以降、新しい定期課金は柔軟な請求モード(`billing_mode: flexible`)が既定になる。paymentsが固定するAPI版`2026-10-28.endive`もこれに当たる。
   - 柔軟な請求モードでは、期間末の解約の予約は`cancel_at`の時刻で表され、`cancel_at_period_end`は偽のままになる(Portalの文書は「柔軟な請求モードでは`cancel_at`がnullでなければ期間末に解約される。従来のモードでは`cancel_at_period_end`を確認する」と書く)。`cancel_at_period_end`は非推奨だが同じ動作をする。
   - 課金期間の終了時刻は`items.data[].current_period_end`にある(paymentsの`SubscriptionChange.currentPeriodEnd`が抽象化する)。
   - 期間末に予約された解約は、期間の終了までPortalまたはAPIで取り消せる(`customer.subscription.updated`が届く)。終了すると`customer.subscription.deleted`が届き、再開はできない(新しい定期課金が要る)。

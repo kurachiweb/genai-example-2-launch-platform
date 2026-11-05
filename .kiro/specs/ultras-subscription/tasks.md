@@ -226,7 +226,7 @@
   - _Requirements: 1.1, 1.7, 5.2, 5.8, 6.2, 9.1, 9.4, 9.6, 10.2_
 
 - [ ] 10.2 sandboxで定期課金の遷移を手動で検証し、結果を記録する
-  - 1.4の手順に沿って、2人の検証用の利用者を用意し、それぞれにtest clock付きのCustomerをdev用のsandboxで作り、ローカルの`payment_customers`の行で結び付けてから加入する(同じ利用者で2つ目の加入を始めると`ultras_resume_in_portal`や加入の有効化の重なりの検査で拒否されるため)
+  - 1.4の手順に沿って、2人の検証用の利用者を用意し、それぞれにtest clock付きのCustomerをdev用のsandboxで作り、ローカルの`payment_customers`の行(paymentsの決定で主キーは`id`のULIDになり、`user_id`・`stripe_customer_id`は一意、`created_at`・`updated_at`が要る)で結び付けてから加入する(同じ利用者で2つ目の加入を始めると`ultras_resume_in_portal`や加入の有効化の重なりの検査で拒否されるため)
   - 1人目: 成功するテストカードで加入→Customer Portalで支払い方法を請求に失敗するテストカード(`4000 0000 0000 0341`)に差し替える→test clockを次の更新日の後へ進めて支払いの失敗→再試行の後の終了。2人目: 加入→Portalでの解約の予約(解約の予定時刻が設定されること)→取り消し→再度の予約→課金期間の末日の終了。各時点のプラン管理画面の状態・支払いの失敗と解約の受付のメールのMailpitへの到着を確かめる(本サービス固有の期待値は本タスクと`features/005`が持つ)
   - test clockではStripeから届く`ended_at`・課金期間の終了が実時刻より未来のため、再試行が尽きた後の終了と末日の終了は、どちらもプラン管理画面では`canceled`に見えるのが正しい。終了はローカルD1の値で確かめる: 1人目は`benefit_ends_at`が`ended_at`の値、2人目は`benefit_ends_at`が末日の終わり、どちらも`stripe_status`が`canceled`・`benefit_end_fixed`が1
   - 開発者の準備(1.4)が終わっていなければ保留して報告する

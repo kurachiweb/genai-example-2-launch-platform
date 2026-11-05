@@ -90,7 +90,7 @@
 - api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが受け取る契約と識別子は`backend-lib/core/<ドメイン>`に置き、`workers/<ドメイン>`には実装と束縛と、D1の文を返す契約だけを置く(`docs/GUIDES/tech/backend/002`の「依存方向と静的解析」)。
 - paymentsの口には確定の後に呼ばれる場所が無く、口の実装はメールやメッセージを送れない。本specは加入が有効になった知らせとメールを依頼待ちの行として一括の書き込みに含め、paymentsの確定の後の呼び出し(仮5、paymentsのU1)と4:21の日次の確認で送り出す。
 - Cron Triggersはapiだけにあり、ジョブは業務時刻の時・分で毎日動く。厳密カウンタはapiだけに束縛される。Queuesのconsumerはeventにある。
-- API版`2026-09-30.endive`の新しい定期課金は柔軟な請求モードで作られ、課金期間の末日の解約は`cancel_at`の時刻で表される(`cancel_at_period_end`は偽のまま)。paymentsの`SubscriptionChange`に`cancelAt`を足すことを、仮5としてpaymentsへ反映した(paymentsのU1、research.md)。
+- API版`2026-10-28.endive`の新しい定期課金は柔軟な請求モードで作られ、課金期間の末日の解約は`cancel_at`の時刻で表される(`cancel_at_period_end`は偽のまま)。paymentsの`SubscriptionChange`に`cancelAt`を足すことを、仮5としてpaymentsへ反映した(paymentsのU1、research.md)。
 
 ### Architecture Pattern & Boundary Map
 

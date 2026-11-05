@@ -280,7 +280,7 @@ docs/GUIDES/tech/
 - `apps/api/src/composition/env-schema.ts`・`apps/api/wrangler.jsonc`・型の宣言 — `PUBLIC_API_RATE_LIMITER`(`ratelimits`、3環境の`namespace_id`)と`IMAGES_ORIGIN`(`vars`)を加える。
 - `apps/api/src/composition/api-worker.ts` — `createRestModule`へ`{ info: PUBLIC_API_DOCUMENT_INFO }`を渡す(api-gatewayの改訂1、tasks.mdの7.2)。
 - `apps/event/src/composition/modules.ts` — `PUBLIC_API_PLATFORM_MODULE`を追記する(data-exportが使う)。
-- `apps/frontend-lib/server/env/frontend-env.ts`・`apps/frontend-lib/server/http/security-policy.ts`と各単体テスト — clientの`PUBLIC_API_ORIGIN`(clientだけ必須)を許可先の形まで検証し、`PublicRuntimeConfig.publicApiOrigin`(adminは`undefined`)へ渡し、`runtimeSecurityPolicySources`の`connectSrc`に値があれば加える(content-processingの`CLIENT_SITE_ORIGIN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順)。エントリ(`create-frontend-server-entry.ts`)の許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない(ClientEnvExtension)。
+- `apps/frontend-lib/server/env/frontend-env.ts`・`apps/frontend-lib/server/http/security-policy.ts`と各単体テスト — clientの`PUBLIC_API_ORIGIN`(共有のスキーマで任意。値があれば許可先の形まで検証する)と`server/entry/app-profile.ts`の`FrontendAppProfile`の欄`publicApiDocs`を加え、`PublicRuntimeConfig.publicApiOrigin`(`string | undefined`。adminは`undefined`)へ渡し、欄が真で値があれば`runtimeSecurityPolicySources`の`connectSrc`に加える(frontend-platformの`WEB_ANALYTICS_TOKEN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順)。`frontend-env.unit.test.ts`の返り値とキーの一覧の完全一致の期待と、`PublicRuntimeConfig`を直に書いた各ファイル(client・adminの`test/page-router.tsx`・`.storybook/preview.tsx`・`test/start-request-fixtures.ts`・ブラウザテストなど)を直す。エントリ(`create-frontend-server-entry.ts`)の許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない(ClientEnvExtension)。
 - `apps/client/wrangler.jsonc`・`apps/client/test/config/wrangler-config.unit.test.ts` — `PUBLIC_API_ORIGIN`の3環境の値。
 - `apps/api/test/config/wrangler-config.unit.test.ts` — `PUBLIC_API_RATE_LIMITER`の3環境の`namespace_id`・`limit`・`period`(`PUBLIC_API_IP_RATE_LIMIT`と一致)と`IMAGES_ORIGIN`の検査(1.4・4.3)。
 - `apps/client/src/composition/settings-navigation.ts` — `{ to: '/settings/api-keys', label: 'APIキー', order: 90 }`を追記する。
@@ -1181,7 +1181,7 @@ export interface MediaLookup {
 
 **Contracts**: State [x]
 
-- `ValidatedFrontendEnv`のclientの拡張に`PUBLIC_API_ORIGIN: string`(clientだけ必須)を加え、`toPublicRuntimeConfig`で`publicApiOrigin`(adminは`undefined`)へ渡す。`runtimeSecurityPolicySources(env)`は値があれば`connectSrc`に加える(15.2・15.7)。
+- client専用の任意の変数の前例(frontend-platformの`WEB_ANALYTICS_TOKEN`・paymentsの`STRIPE_PUBLISHABLE_KEY`)と同じ形にする。共有の環境のスキーマ(`ValidatedFrontendEnv`)に`PUBLIC_API_ORIGIN: string | undefined`を任意として加え、`FrontendAppProfile`に公開APIの仕様書の有無の欄`publicApiDocs`(clientは真、adminは偽)を加え、`toPublicRuntimeConfig`で`publicApiOrigin`(`profile.publicApiDocs ? env.PUBLIC_API_ORIGIN : undefined`)へ渡す。`runtimeSecurityPolicySources(env)`は欄が真で値があるときだけ`connectSrc`に加える(15.2・15.7)。共有のスキーマで必須にすると、`apps/{client,admin}/test/config/worker-env-contract.ts`の型の検査と管理者側の起動の検証が失敗するため、任意にする(2026-11-05の開発者の決定)。clientのWranglerには3環境とも値を置き、値があることはclientの設定の単体テストで保証する。adminのWranglerには置かない。
 - 環境のキーの対応: エントリは`runtimeSecurityPolicySources`の欄を許可先の形の規則で確かめ、1つの欄に1つの環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)で不正な値のキー名をログへ出す。`PUBLIC_API_ORIGIN`はこの対応に加えず、`validateFrontendEnv`で`mergeSecurityPolicySources`と同じ許可先の形(`https://<小文字のホスト>`(ポート無し)・`http://localhost:<ポート>`)まで検証する。形に合わない値は環境の検証の失敗となり、`invalidEnvNames`に`PUBLIC_API_ORIGIN`が載る。このため`connectSrc`の検査で不正になる値は`SENTRY_DSN`に由来するものに限られ、対応は1欄1キーのまま正しいキー名を指す。
 - 値: ローカル`http://localhost:48042`、staging`https://genai-example-2-api-staging.lab.kurachiweb.com`、prod`https://genai-example-2-api.lab.kurachiweb.com`(`project-values.md`)。
 
@@ -1227,7 +1227,7 @@ export declare function withAbsoluteServers(
 
 - `ApiDocsRoute`(`routes/api-docs.tsx`): ログイン不要。`buildPageHead`でタイトル「APIドキュメント」と正規のURL(15.1)。
 - `ApiDocsPage`: `h1`「APIドキュメント」、APIキーの発行場所(`/settings/api-keys`へのリンク)・認証(`Authorization: Bearer <APIキー>`)・回数の制限の概要の説明、その下に`SwaggerUiViewer`(15.6)。
-- `SwaggerUiViewer`: ブラウザでだけ動く。(1)`fetch(openApiDocumentUrl(publicApiOrigin))`。読み込み中は`LoadingSkeleton`(15.4)、失敗は`ErrorState`(文言は要件15.5、再試行・問い合わせ)。(2)`import('swagger-ui-dist/swagger-ui-bundle.js')`と`import('swagger-ui-dist/swagger-ui.css')`を動的に読み込み、`SwaggerUIBundle({ domNode, spec: withAbsoluteServers(document, origin), presets: [SwaggerUIBundle.presets.apis], validatorUrl: null, persistAuthorization: false, deepLinking: false })`(15.2・15.3)。(3)外側の要素を明るい配色に固定する(Swagger UIはダークモードを持たない)。
+- `SwaggerUiViewer`: ブラウザでだけ動く。`PublicRuntimeConfig.publicApiOrigin`が`undefined`(値を置いていない環境)なら、仕様書を取得せず`ErrorState`(要件15.5の文言)を表示する。(1)`fetch(openApiDocumentUrl(publicApiOrigin))`。読み込み中は`LoadingSkeleton`(15.4)、失敗は`ErrorState`(文言は要件15.5、再試行・問い合わせ)。(2)`import('swagger-ui-dist/swagger-ui-bundle.js')`と`import('swagger-ui-dist/swagger-ui.css')`を動的に読み込み、`SwaggerUIBundle({ domNode, spec: withAbsoluteServers(document, origin), presets: [SwaggerUIBundle.presets.apis], validatorUrl: null, persistAuthorization: false, deepLinking: false })`(15.2・15.3)。(3)外側の要素を明るい配色に固定する(Swagger UIはダークモードを持たない)。
 - 動的な読み込みのチャンクは同一オリジンから配信され、CSPの`script-src 'self'`・`style-src 'self' 'unsafe-inline'`・`img-src data:`で動く。追加する許可先は`connect-src`の公開APIのオリジンだけ(15.7)。
 
 ### docs

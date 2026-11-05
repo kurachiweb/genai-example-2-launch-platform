@@ -353,3 +353,192 @@ ultras-subscriptionの要件と設計の作成中に、本specの口に足りな
 - **変えた箇所**: design.mdのOverviewのImpact、This Spec Owns、Allowed Dependencies(backend-platform・identity-auth・後続spec)、Revalidation Triggers(置き場所の行を追加)、Existing Architecture Analysis、Dependency direction、File Structure Planの木、Requirements Traceability(1.5〜1.7・3.10)、Componentsの表、`backend-lib/core`の節(識別子・購入種別の口の分割・登録と解決)、`backend-lib/core・workers`の節(Stripe・ストア・反映・失効・返金・通知・収益・価格とエクスポート)、apiの`CheckoutStarter`の節とジョブの依存、eventのWebhook・返金・波及処理の節、Testing Strategy。tasks.mdの2.1・4.1・4.2・5.1・5.7・6.1・6.2・6.3・7.1・8.1・8.3・8.4。
 - **後続specへの影響(各specが参照を直す必要がある)**: `PurchaseFulfillment`・`SubscriptionEventSink`・`FulfillmentPlan`・`PurchaseKindRegistration`を実装・登録するtournament-week・tournament-year・sponsorship・ultras-subscriptionは、これらを`workers/payments/fulfillment-contract.ts`から読み込み、`PurchaseOfferPolicy`・`PurchaseOfferRequest`・`PurchaseOffer`・`SubscriptionChange`は`core/payments/purchase-kind-contract.ts`から読み込む。`PaymentRefunds.prepare`を自分の一括の書き込みに含める後続spec(tournament-week・tournament-year・sponsorship・ugc-moderationなど)は、`PaymentRefundStatements`(`PAYMENTS_TYPES.PaymentRefundStatements`)をinfrastructure層または`workers/<ドメイン>`から呼び、application層には書き込みの単位のポートを置く。`OpenCheckoutExpirer`・`PaymentRefunds.request`・`StripeGateway`・`CustomerDirectory`・`PriceCatalog`・`PaymentHistoryExport`・`PaymentRevenueReport`を受け取るapplication層(ultras-subscription・tournament-week・tournament-year・ugc-moderation・data-export・sponsorship)は`core/payments`から読み込む。ultras-subscriptionは本改訂と同時に直した。他のspecは並行して直す。
 - 要件と受け入れ基準は変えていない。タスクの番号は変えていない。
+
+---
+
+## 実装前のギャップ分析(2026-11-05、`/cc-sdd:kiro-validate-gap`)
+
+### 分析の前提と方法
+
+- **状態**: 要件・設計・タスクは承認済みで、タスクは52件すべて未着手である。タスク1.1の前提の上流(dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-delivery・content-processing・media-pipeline・identity-auth・admin-foundation・legal-pages)はすべて実装を終えている。本specの設計は、上流の大半の実装より前に書かれた。
+- **方法**: 設計が「既にある」と前提にする上流の型・関数・ファイル・設定値・文書を、backend-platformとapi-gateway、identity-authとemail-deliveryとlegal-pages、frontend-platformとclient、DBとWranglerとシークレットと文書の4つの領域に分けて、実際のコードと突き合わせた。npmの版は、公開日をレジストリから取得して確かめた。本specが新しく作るものが無いことは前提どおりのため、ギャップとして数えない。
+- **結論の要約**: 上流の契約の名前・置き場所・形は、大半が設計どおりに存在する。Stripeに関する実装はリポジトリにまだ無い。食い違いは次の3種に分かれる。(1)プロジェクトの規則・前例と衝突する設計が6点。(2)既存の「値の一覧を完全一致で確かめるテスト」とテスト用の束縛が本specの追加で壊れるのに、Modified Filesに無いものが多数。(3)上流が先に済ませたため確かめるだけになった作業。
+
+### 要件と資産の対応
+
+| 要件                                        | 使う上流の資産(実在を確認)                                                                                                                                                                                                                                                                                                                                          | ギャップ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 Customerの管理・14 ライフサイクルへの追随 | `UserContactDirectory.findContact`(api・eventの両方に束縛、退会済み・物理削除済みで`undefined`)、`UserLifecycleAsyncRegistration`(`{ name, events, order, handler }`)、`USER_LIFECYCLE_ASYNC_HANDLERS`(event)。イベント名`withdrawn`・`suspended`・`purge_due`、`order` 400・410は空き。`users`の行は全波及処理の後に消えるため、外部キー(`onDelete`無し)と整合する | 小: Allowed Dependenciesの`UserRecord.pseudonymousId`の`UserRecord`はapi専用の型で、共有の契約は`CurrentUser.user.pseudonymousId`(`UserAccountView`、`core/identity/account-guard.ts:9`)。`AccountGuard`の束縛はapiだけ(設計もapiでだけ使う)                                                                                                                                                                                                                                                                                 |
+| 2 購入種別の口・6〜7 Webhookと反映          | `defineMessageContract`・`MessageHandlerRegistration`・`RetryPolicy`(上限6回)・`excludePath`(既存テストが`/webhooks/stripe`を例に使う)、`AppModule.routes`による経路の登録(`registerEmailSmokeRoute`の前例)                                                                                                                                                         | Constraint: 版の検査の専用テーブル`payment_batch_guards`は前例の無い型である(下の「規則・前例と衝突する設計」の5)。小: eventのHTTPの経路は`presentation/<ドメイン>/`に置く前例で、`presentation/http/`は前例が無い                                                                                                                                                                                                                                                                                                           |
+| 3 決済の開始(回数制限・bot判定)             | `RateLimitCounterClient`・`hashRateLimitKey`、前例`CounterMailSendLimits`(infrastructure層)と`MailSendLimits`(application層のポート)、`GraphQLContext.assertHuman`。規則名`payments-checkout:user`は`backend/003`の命名に合う                                                                                                                                       | Missing: application層のエラーコードの置き場所。前例は`application/<ドメイン>/<ドメイン>-errors.ts`(例: `inquiry-errors.ts`)で、presentationの`errors.ts`は入力の検証の文言だけを持つ。設計は`presentation/.../payments/errors.ts`だけを置く                                                                                                                                                                                                                                                                                 |
+| 4 決済画面・13 価格の表示                   | `CLIENT_SECURITY_POLICY`と`SecurityPolicySources`(`frameSrc`・`permissions.payment`を持ち、設計の値の表記`['self', '"https://js.stripe.com"']`は型のコメントの例と一致)、`Checkbox`(作成済み)、`NumberText`(`Intl.NumberFormatOptions`を受けるため`MoneyText`は薄い包みで作れる)、`LEGAL_DOCUMENT_PATHS['legal-notice'] = '/legal'`                                 | Constraint: `STRIPE_PUBLISHABLE_KEY`の追加手順の前例の指定が誤り(下の2)。Constraint: CSPの許可先は`https://<ホスト>`だけで、ワイルドカードは全要求の500になる。Unknown: Stripeの現行の案内が求める許可先。Missing: 4.12の「決済の画面だけで読み込む」の検証の手段(clientにチャンクの検査は無い)、Stripe.jsの読み込みの失敗と`confirm()`の想定外の失敗をエラートラッキングへ送るか                                                                                                                                            |
+| 5 決済後のランディング                      | `graphqlMutationOptions`、`PathLink`(未作成の経路へのリンク)                                                                                                                                                                                                                                                                                                        | Constraint: ページを開いた時に変更`confirmCheckoutReturn`を自動で呼び、3秒ごとに最大20回繰り返す設計は、`006-data-fetching.md:220`の「変更は利用者の操作を受けた部品から行う」と食い違う(下の1)。Missing: 導線の`/my/products`・`/settings/plan`・`/settings/sponsorships`は未作成の経路で、型付きの`Link`では型エラーになる。Allowed Dependenciesに`PathLink`が無い                                                                                                                                                         |
+| 8 返金・9 チャージバック・10 突合           | `ScheduledJobDefinition`(`{ name, at, order, handler }`)、`toUtcCronExpression`(23:40は`40 7 * * *`で正しい)、`SCHEDULED_RUN_BUDGETS`(4:21に合計300秒)                                                                                                                                                                                                              | Missing: 4:21の2ジョブが合計300秒の予算を共有することが設計に無い。Constraint: `apps/api/src/composition/inquiry-module.worker.test.ts:467`が、`order` 300の次のジョブを`media-pipeline.expired-file-erasure`と確かめており、400・410を足すと壊れる。23:40に予算を足すなら`cron-sync.unit.test.ts:163-167`(予算は4:21の1件だけ)も壊れる                                                                                                                                                                                      |
+| 11 購入確認メール                           | `defineEmailKind`・`EMAIL_KINDS`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`EmailSender`・`formatUtcDateTime`・`linkUrlSchema`。テンプレートの無い種別があるとeventの読み込みで例外になるため、種別とテンプレートは同じタスクで足す(タスク2.4は正しい)                                                                                                             | 小: `defineEmailKind`は`category`(`'transactional' \| 'notification'`)が必須で、設計に記載が無い(タスク2.4にだけ「トランザクションメール」とある)。前例は種別を`kinds/<ドメイン>.ts`の1ファイルにまとめる。`kinds/index.unit.test.ts`へ2種の確認を加える                                                                                                                                                                                                                                                                     |
+| 12 決済履歴                                 | `SETTINGS_NAV_ITEMS`(`order` 70はコメントで予約済み)、`settings/route.tsx`が`SettingsShell`で包むレイアウト、`CURSOR_PAGE_ARGS`・`toConnection`、`PageNavigation`とカーソルの記録(`006`・inquiry-chatの`/contact`の前例)                                                                                                                                            | Constraint: `settings-nav-order.unit.test.ts:38-43`が一覧を完全一致で確かめる。小: 設計1645行の「`SettingsShell`の中に置く」はレイアウトで満たされ、ページで包むと二重になる。小: 「さらに表示」の続きの読み込みは、前後のページ送り(`PageNavigation`)の前例と異なる新しい型である(要件12.2はどちらでも満たす)                                                                                                                                                                                                               |
+| 12.7 保持・12.10 純収益                     | `AppError`                                                                                                                                                                                                                                                                                                                                                          | 小: 設計1316行の`AppError(invalid_argument)`は存在しない種類で、`bad_request`になる                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 15 決済環境の設定と運用                     | `WORKER_SCOPED_SECRETS = ['STRIPE_API_KEY']`(`scripts/delivery/core/secret-scope.ts:30`)、`/workers/api`・`/workers/event`のフォルダ、`run-with-secrets --scope local --worker`、Stripe CLI 1.55.1(Dockerfile)と`stripe login`の手順、eventのポート48043                                                                                                            | Constraint: Wrangler設定の完全一致のテスト(下の3)。Constraint: 必須のシークレット(下の4)。小: 疎通確認の前例(メール・メディア)は秘密のトークンの経路で、`PAYMENTS_SMOKE_ENABLED`の変数による切り替えは新しい型である。認証付きのGraphQLの変更操作のため理由はあるが、設計に理由が無い                                                                                                                                                                                                                                        |
+| 16 ドキュメントとテスト                     | 文書の番号`external/007`・`backend/009`・`operations/004`・`features/004`は空き。drizzle-kitは部分一意索引の`.where()`と`check()`を生成する(identity-authの前例)                                                                                                                                                                                                    | Constraint: `apps/api/src/composition/graphql-modules.worker.test.ts:19`がコミットした`generated/schema.graphql`と一致を確かめる。タスクにapiの`bun run graphql:generate`が無い。Constraint: E2Eの「対象0件の表示」は実行するテストファイルが0件の時の規約で、環境によって個々のテストを飛ばす仕組みではない。`e2e/`に`test.skip`の前例も無い。小: `db/002:75-77`により、部分一意索引への`onConflictDoNothing({ where })`はrc.5で不正なSQLになるため、`payment_records`のupsertは`onConflictDoUpdate({ targetWhere })`で書く |
+
+### 規則・前例と衝突する設計
+
+1. **決済後のランディングの変更操作**: `006-data-fetching.md:220`は変更を利用者の操作を受けた部品から行い、`loader`で行わないと定める。設計の`/checkout/return`は、ページを開いた時に`confirmCheckoutReturn`を呼び、`PROCESSING`の間は繰り返す。呼ぶ場所(`loader`か部品か)と、変更の`retry: false`(`006:263`)の下での繰り返しの方法も定めていない。
+2. **公開キーの追加手順**: 設計(Modified Files)は「content-processingの`CLIENT_SITE_ORIGIN`の追加と同じ手順」とするが、`CLIENT_SITE_ORIGIN`は両アプリで必須の変数である。client専用の前例は`WEB_ANALYTICS_TOKEN`で、共有のスキーマで任意(`optionalText`)にし、`FrontendAppProfile`の欄で管理者側に`undefined`を渡す(`frontend-env.ts:104・146`)。`apps/{client,admin}/test/config/worker-env-contract.ts`が、スキーマの必須のキーがすべてEnvにあることを型で確かめるため、必須にすると管理者側の型検査と起動の検証が失敗する。`FrontendAppProfile`に決済の有無の欄は無い。`PublicRuntimeConfig`に欄を足すと、オブジェクトを直に書いた約19ファイル(`test/page-router.tsx`・`.storybook/preview.tsx`・各ブラウザテストなど)の修正が要る。
+3. **Wrangler設定の完全一致のテスト**: `apps/api/test/config/wrangler-config.unit.test.ts`は、apiのsecrets(:354-361)とvars(:371-381)を除外なしで、eventのsecretsとvars(:363-369・:383-392)を`DELEGATED_KEY_PATTERNS`で除いて完全一致で比べる。`STRIPE_*`・`PAYMENTS_*`はどの除外にも当たらない。メール・検索・メディアは`apps/api/test/support/wrangler-config.ts`の`*_CONFIG_KEY_PATTERN`と専用のテスト(`<ドメイン>-wrangler-config.unit.test.ts`)へ切り出している。identity-authは共通のテストの期待を直した(2026-11-02の開発者の決定)。clientは`apps/client/test/config/wrangler-config.unit.test.ts:268・285`が完全一致で比べる。
+4. **必須のシークレットとテスト用の束縛**: `STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`をローカルでも必須にすると、Infisicalの`dev`に登録するまで、各開発者のローカルとCIのE2E(`checks.yml`→`e2e-stack-plan.ts`、`--worker`で注入)で、api・eventの`/health`以外の全経路が500になる。疎通確認のトークンは未登録でも起動する作りで、identity-authの`DISIFY_API_KEY`はstaging・prodだけで必須にした。また`apps/api/vitest.worker.config.ts:21`・`apps/event/vitest.worker.config.ts:55`の`bindings`へテスト用の値を足さないと、Workers統合テスト全体の環境の検証が失敗する。`STRIPE_WEBHOOK_SECRET`は各開発者の`stripe listen`のログインに結び付くため、`dev`の`/`に1つの値を共有する方式には限界がある。
+5. **版の検査の専用テーブル**: 設計1734行は`payment_batch_guards`(一括の書き込みの中で挿入して消す行)を「legal-pages・identity-authと同じ方式、`db/005`」とするが、どちらとも異なる。identity-auth・admin-foundation・inquiry-chatは、業務のテーブルへ`CASE WHEN … THEN id ELSE NULL END`で挿入し、NOT NULLの違反で取り消す(`d1-user-lifecycle-committer.ts:47-49`など)。legal-pagesは`meta.changes`で判定する。手順の本体は`db/002-d1-constraints.md:139-160`にあり、`db/005`は`meta.changes`の方式だけを扱う。共有の補助関数は無い。専用のテーブルは`db/002:160`の条件(他の文がNULLを入れ得ない列)を満たすが、新しい型である。
+6. **主キーと共通カラム**: 設計1672行は「IDはULID、`timestamps()`を持つ」とするが、`payment_customers`(`user_id`)・`payment_stripe_objects`(`object_id`)・`payment_price_snapshots`(`lookup_key`)・`payment_batch_guards`(`token`)は自然キーを主キーにする。`db/003-schema-conventions.md:104・109・176`は全テーブルに`ulidPrimaryKey()`と`timestamps()`を求める。例外の前例(`inquiry-message-attachments.ts:22`の複合主キー)はあるが、設計に例外の理由が無い。
+
+### Modified Filesに無い既存の完全一致のテストと設定
+
+| ファイル                                                                                                                                                                   | 壊れる理由                                                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `apps/api/test/config/wrangler-config.unit.test.ts:354-392`・`apps/api/test/support/wrangler-config.ts`                                                                    | api・eventのsecretsとvarsの完全一致(上の3)                                            |
+| `apps/api/vitest.worker.config.ts:21`・`apps/event/vitest.worker.config.ts:55`                                                                                             | 必須のシークレットのテスト用の値(上の4)                                               |
+| `apps/api/src/composition/inquiry-module.worker.test.ts:467`                                                                                                               | 4:21の`order` 300の次のジョブの名前                                                   |
+| `apps/api/src/presentation/graphql/generated/schema.graphql`(`graphql-modules.worker.test.ts:19`)                                                                          | apiの`bun run graphql:generate`による再生成                                           |
+| `apps/client/test/config/composition.unit.test.ts:47-52`                                                                                                                   | `CLIENT_SECURITY_POLICY`の完全一致                                                    |
+| `apps/client/src/components/settings/settings-nav-order.unit.test.ts:38-43`                                                                                                | `SETTINGS_NAV_ITEMS`の完全一致                                                        |
+| `apps/frontend-lib/server/env/frontend-env.unit.test.ts:411-449`・`apps/client/test/config/wrangler-config.unit.test.ts:268・285`・`worker-env-contract.ts`(client・admin) | 公開設定とclientのvarsの完全一致(上の2)                                               |
+| `apps/backend-lib/core/email/kinds/index.unit.test.ts`                                                                                                                     | 壊れないが、種別ごとの名前と`category`の確認を加える前例                              |
+| `docs/GUIDES/tech/frontend/005-shared-components.md:35-51`                                                                                                                 | 部品の一覧に`components/payments/`の分類が無い(`MoneyText`を共通部品に置く根拠も要る) |
+
+壊れないことを確かめたもの: `apps/db/schema/index.unit.test.ts`(包含の確認)、`core/messaging/contracts/index.unit.test.ts`(重複と包含)、`templates/index.worker.test.tsx`(整合)、`apps/api/src/index.worker.test.ts`(本specはエクスポートを足さない)、`cron-sync.unit.test.ts`(3環境に`40 7 * * *`を足せば通る)、`apps/client/test/config/static-headers.unit.test.ts`(`_headers`は`CLIENT_SECURITY_POLICY`を参照しない)、`e2e/support/security-assertions.ts`(完全一致の検査が無い)。
+
+### 上流が済ませたため確かめるだけになった作業
+
+- frontend-libの`Checkbox`(`components/ui/checkbox/checkbox.tsx`)は作成済みである。props はRadixの`Checkbox.Root`のpropsで、前例`register-form.tsx:148-153`は`checked === true`で真偽値にしている。
+- `WORKER_SCOPED_SECRETS`には`STRIPE_API_KEY`が既に入っており、`/workers/api`・`/workers/event`のフォルダと`run-with-secrets --scope local --worker`も実装済みである。`project-values.md:456`は、paymentsが`/workers/*`の行を加えると予告している。
+- Stripe CLI(1.55.1)は開発コンテナに入っており、`docs/onboardings/README.md:44-49`に`stripe login`の手順がある。
+- `tech-stack.md:153-161`には「決済サービス」の節が既にあり、本specは追記だけを行う。
+- `003-privacy-policy-outline.md`は、委託先の一覧にStripeの行(:51。渡す情報は「メールアドレス、決済内容」だけ)と、国外移転の共通の記載(:66・:69)を持つ。足すのは`### Stripe(決済)`の項(委託先の一覧の順でCloudflareとAWSの間)と、渡す情報の仮名化IDと請求先住所である。`001-compliance-policy.md`はStripeのCookie(:89-97)とStripe側の保持(:64)を持ち、足すのは「データの保存場所」の箇条(:78〜)だけである。「国外移転の記載事項」の節は003にしか無い。
+- `002-page-layouts.md`には`/checkout/return`(:20)・`/settings/billing`(:362)・「決済前の最終確認画面」の節(:413-422)が既にある。足すのは`/checkout/{購入ID}`・アンカー無しの`/legal`・請求先住所・ランディングの状態表示である。
+- `003-text-and-copy-rules.md:263`に決済サービスの縮退の文言がある。件名の表と、受付終了・カードの拒否・処理中・自動返金の文言は無い。
+- `excludePath`、CSPの`permissions.payment`の型と表記、4:21の`order` 400・410、23:40のcron式、文書の番号は、いずれも設計どおりに使える。OpenTofuはホスト名単位の経路で、経路ごとの規則が無いため、インフラの変更は要らない。
+
+### 設計の記述と実装の小さな食い違い
+
+| 箇所                           | 設計の記述                                                                                      | 実装                                                                                                                                                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Allowed Dependenciesの仮名化ID | `UserRecord.pseudonymousId`                                                                     | `UserRecord`はapi専用。共有の契約は`CurrentUser.user.pseudonymousId`(`UserAccountView`)                                                                                                                     |
+| メールの種別                   | `kinds/payments-purchase-confirmation.ts`・`payments-automatic-refund.ts`、`category`の記載なし | 前例は`kinds/<ドメイン>.ts`の1ファイル。`category`は必須                                                                                                                                                    |
+| `/settings/billing`            | `SettingsShell`の中に置く                                                                       | `settings/route.tsx`のレイアウトが既に包む                                                                                                                                                                  |
+| 法務文書の追記先               | 001と003に「国外移転の記載事項」の項                                                            | 項は003だけ。001は保存場所の箇条だけ                                                                                                                                                                        |
+| 版の検査の根拠                 | `db/005`、legal-pages・identity-authと同じ方式                                                  | `db/002:139-160`。専用テーブルは前例が無い                                                                                                                                                                  |
+| apiの識別子のファイル          | `application/payments/api-payments-types.ts`                                                    | 前例は接頭辞無しの`<ドメイン>-types.ts`(`identity-types.ts`・`inquiry-types.ts`)。eventの`event-payments-types.ts`は前例どおり                                                                              |
+| Webhookの経路の置き場所        | `presentation/http/stripe-webhook-route.ts`                                                     | 前例は`presentation/<ドメイン>/`(`email/`・`media/`・`smoke/`)                                                                                                                                              |
+| `@stripe/stripe-js`の版        | design.mdは10.0.x、research.md:85は2026-11-05以降なら10.1.0                                     | 公開から2週間を過ぎた最新は10.1.0(10-13)で、10.0.xと矛盾する。tasks.md:6は「10系」。`stripe`は23.0.1(10-22)、`@stripe/react-stripe-js`は7.0.0(10-01)で設計どおり。7.0.0のpeerは`@stripe/stripe-js >=10 <11` |
+| ページのhead                   | `buildPageHead`                                                                                 | clientは包みの`buildSitePageHead`(`client/src/head/page-heads.ts`)を使う                                                                                                                                    |
+| Existing Architecture Analysis | 上流の実装の完了を前提にする                                                                    | 実装済み。`Checkbox`は「identity-authのタスク10.4が新設する」ではなく作成済み                                                                                                                               |
+| 純収益の入力の検証             | `AppError(invalid_argument)`                                                                    | `AppErrorKind`に無く、`bad_request`                                                                                                                                                                         |
+| `stripe-loader.ts`の置き場所   | `components/payments/`、単体テストだけ                                                          | clientのブラウザテストのカバレッジは`src/components/**`が対象で、分母に入る                                                                                                                                 |
+| 日次タイムライン               | (本specの外)                                                                                    | inquiry-chatの4:21のジョブ(`order` 300)が`007-daily-timeline.md`の表から漏れている                                                                                                                          |
+
+### 対応の選択肢
+
+#### Option A: 設計を変えず、各タスクの中で食い違いを吸収する
+
+- 規則と衝突する6点と、完全一致のテストの更新を、実装者がタスクの実行中に判断して直す。
+- ✅ 文書の改訂の手間が無く、すぐ着手できる。
+- ❌ ランディングの変更操作・公開キー・必須のシークレットは、選び方で他のアプリ(admin)とCIに影響し、実装者の判断に任せられない。承認済みの設計と実装が食い違ったまま進み、`/cc-sdd:kiro-review`のたびに同じ指摘が出る。版の検査の型は後続spec(tournament-week・sponsorshipなど)が`PaymentRefundStatements`を通して同じ一括の書き込みに乗るため、後から変えると波及する。
+
+#### Option B: 実装の前に設計とタスクをすべて改訂する
+
+- 本分析の全項目(小さな食い違いを含む)をdesign.md・tasks.mdへ反映し、必要なら`/cc-sdd:kiro-validate-design`で確かめ直してから実装する。
+- ✅ 設計が実装の正となり、後続specへの影響も先に洗い出せる。
+- ❌ 設計は1,800行あり、小さな項目まで直すと改訂の量が大きい。
+
+#### Option C: 規則と衝突する項目と下流へ波及する項目だけを先に改訂し、他はタスクの注記にする(混成)
+
+- 先に改訂する項目:
+  1. 決済後のランディングの変更操作(部品のマウント後の効果から`useMutation`で呼び`006`に例外を加えるか、反映を別の形にするか)と、繰り返しの方法
+  2. `STRIPE_PUBLISHABLE_KEY`の扱い(`WEB_ANALYTICS_TOKEN`と同じく共有のスキーマで任意にし、`FrontendAppProfile`の欄で管理者側に渡さない形)と、未設定の時の決済画面の表示
+  3. Wrangler設定の完全一致のテスト(専用の`payments-wrangler-config.unit.test.ts`と`PAYMENTS_CONFIG_KEY_PATTERN`への切り出しか、共通のテストの期待の修正か)
+  4. Stripeのシークレットを必須にする環境(ローカルでも必須にしてInfisicalの`dev`への登録をタスク1.1の前提にするか、staging・prodだけで必須にしてローカルは未設定でも起動するか)と、`STRIPE_WEBHOOK_SECRET`の開発者ごとの値の扱い
+  5. 版の検査の型(専用テーブル`payment_batch_guards`を残して`db/002`に新しい型として加えるか、既存と同じく業務のテーブルへの`CASE`の挿入にするか)と、自然キーの主キー・共通カラムの例外の明記
+  6. application層のエラーコードの置き場所(`application/payments/payments-errors.ts`)
+- タスクの注記にする項目: 上の「Modified Filesに無い既存の完全一致のテストと設定」の表の各行、4:21の予算の共有、`PathLink`、E2Eを飛ばす条件と表示、`graphql:generate`、Stripe.jsの失敗のエラートラッキング、4.12の検証の手段、`005`の部品の一覧への追記、「さらに表示」と`PageNavigation`、小さな食い違いの表の各行。
+- ✅ 規則の違反・adminとCIへの影響・後続specへの波及を実装の前に防ぎ、改訂の量を抑えられる。
+- ❌ 注記と設計の本文の両方を見る必要がある。
+
+### 規模とリスク
+
+- **規模: XL(2週間以上)** — タスク52件で、DB(7テーブル)・backend-lib・api・event・client・E2E・文書のすべての層にまたがり、外部サービスとの通信を新しく作る。上流の契約は揃っているため、規模を押し上げているのは本spec自身の範囲である。
+- **リスク: High** — 金銭を扱い、Stripeとの通信が4つの入口(Webhook・`return_url`・突合・日次の確認)と非同期の返金にまたがる。SDK v23とAPI版`2026-09-30.endive`、workerdでのWebhookの署名の検証、Payment Elementの`ui_mode: 'elements'`はリポジトリで初めて使う。上流の契約は実在し、規則と衝突する6点は実装の前に直せば手戻りにならないが、CSPの許可先とE2Eの実行環境は確かめるまで分からない。
+
+### 設計フェーズへの申し送り
+
+- **推奨**: Option C。規則と衝突する6点は、開発者の判断を得てから設計を改訂する。
+- **Research Needed**:
+  - Stripeの現行のCSPの案内(Payment Element・Link・住所の入力欄)が求める許可先。ワイルドカード(`https://*.js.stripe.com`など)や`https://maps.googleapis.com`などの別のホストが要る場合、`SecurityPolicySources`の許可先の形の規則と衝突する(タスク10.1の「保留して報告」に当たる)。
+  - CIのE2E(GitHubのランナー。`stripe listen`は無い)で、`return_url`からの反映だけで決済の完了まで辿れるか。辿れなければE2Eを飛ばす条件と表示を設計で定める。
+  - `@stripe/stripe-js` 10.1.0と`@stripe/react-stripe-js` 7.0.0の組み合わせで`CheckoutElementsProvider`・`useCheckout`が設計どおりに使えるか。
+  - 開発者ごとに異なる`stripe listen`の署名の秘密を、Infisicalの`dev`でどう扱うか(個人の上書きか、ローカルの検証の手順での一時的な注入か)。
+
+## Stripeのパッケージを最新版へ改訂(2026-11-05、開発者の指示)
+
+- **決定**: 開発者の指示で、公開から2週間の待ちを置かず、Stripeの3パッケージを2026-11-05時点の最新版に完全固定する。上の「実装前のギャップ分析」の「設計の記述と実装の小さな食い違い」の表の`@stripe/stripe-js`の版の行は、これで解消した。
+
+| パッケージ                | 改訂前 | 改訂後(公開日)     |
+| ------------------------- | ------ | ------------------ |
+| `stripe`                  | 23.0.x | 23.1.0(2026-10-29) |
+| `@stripe/stripe-js`       | 10.0.x | 10.2.1(2026-11-02) |
+| `@stripe/react-stripe-js` | 7.0.0  | 7.0.1(2026-10-26)  |
+
+- **API版の連動**: `stripe` 23.1.0は固定のAPI版を`2026-10-28.endive`に変えた(CHANGELOG)。`stripe`の型は`StripeConfig.apiVersion`を`LatestApiVersion`(固定のAPI版のリテラル)に限るため、`2026-09-30.endive`を渡すと型検査が失敗する。そのため、API版も`2026-10-28.endive`に改めた。同じ`endive`の月次の版で、CHANGELOGの範囲では、本specが使う決済セッション・Linkの資金源・定期課金の`cancel_at`・返金・Webhookの署名の検証の挙動を変える記載は無い。
+- **`useCheckout`の非推奨**: `@stripe/react-stripe-js`は7.0.0・7.0.1とも`useCheckout()`に`@deprecated`を付け、`CheckoutElementsProvider`の中では`useCheckoutElements()`を使うよう案内する。基底の静的解析の設定は`@typescript-eslint/no-deprecated`を`error`にするため、設計の`useCheckout`を`useCheckoutElements`に改めた。戻り値の形(`loading`・`success`・`error`)は同じである。7.0.1のpeerは`@stripe/stripe-js >=10.0.0 <11.0.0`で、10.2.1と組み合わせられる。
+- **変えた箇所**: payments(requirements.mdのQ6・API版の記述、design.mdのBoundary・Allowed Dependencies・Technology Stack・Migration Strategy、tasks.mdの1.1・3.1)、ultras-subscription(requirements.mdの仮5、design.md、research.mdのAPI版の記述)、launch-readiness(design.mdのC-06、research.mdのAPI版の記述)。paymentsのbrief.mdと、research.mdの過去の調査の記録(Q6の選択肢・「Stripe API版`2026-09-30.endive`とSDK v23」の節)は、当時の記録として残す。
+- **Research Needed**: `stripe` 23.1.0のCHANGELOGは、`Dispute.status`に`appeal_needs_response`・`appeal_under_review`(チャージバックの敗北の後の不服申し立て)を加えた。設計の反映は`charge.dispute.funds_withdrawn`・`funds_reinstated`・`closed`の段階ごとに記録し、`closed`かつ`lost`で`dispute_lost`を挿入する。不服申し立てで敗北の後に勝った場合、`dispute_lost`の行と`funds_reinstated`の`dispute_won`の行が両方残り、`PaymentRevenueReport`の純収益が敗北の額を差し引いたままになる。`closed`の通知が2回届くかどうかも含め、Stripeの文書で不服申し立ての通知の順序を確かめ、要件9・12.10の記録と集計の規則を見直す必要がある。
+
+## 実装前のギャップ分析への開発者の回答の反映(2026-11-05)
+
+- **状態**: 上の「実装前のギャップ分析」の「規則・前例と衝突する設計」6点について、開発者へ1件ずつ選択肢を示して決定を得た。決定に従ってdesign.md・tasks.mdを改訂した。要件と受け入れ基準は変えていない。
+
+### 決定
+
+| 項目                                 | 決定                                                                                                                                                                                                                                                                                                                                                             | 推奨との違い                                               |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| 決済後のランディングの変更操作       | `confirmCheckoutReturn`を`loader`では呼ばず、`CheckoutReturnStatus`のマウント後の効果から`useMutation`で1回呼ぶ。`PROCESSING`の間は部品の中のタイマーで3秒ごとに最大20回呼び直す(変更の`retry: false`は変えない)。`006-data-fetching.md`の「変更」の節に、冪等で画面への到達そのものが利用者の操作に当たる確定は、マウント後に呼んでよいという例外を加える       | 推奨どおり                                                 |
+| 公開キー`STRIPE_PUBLISHABLE_KEY`     | `WEB_ANALYTICS_TOKEN`と同じく、共有の環境のスキーマで任意(`optionalText`)にし、`FrontendAppProfile`に決済の有無の欄(`payments`)を加えて、管理者側には`undefined`を渡す。clientのWranglerには3環境とも置く。`PublicRuntimeConfig.stripePublishableKey`は`string \| undefined`で、無ければ決済画面は「決済を利用できない」の表示にする                             | 推奨どおり                                                 |
+| Wrangler設定の完全一致のテスト       | メール・検索・メディアの前例と同じく、`apps/api/test/support/wrangler-config.ts`に`PAYMENTS_CONFIG_KEY_PATTERN`(`/^(?:STRIPE_\|PAYMENTS_)/`)を加えて共通のテストから除き、`payments-wrangler-config.unit.test.ts`で確かめる。eventの`CLIENT_SITE_ORIGIN`は汎用の変数のため、共通のテストの期待に加える                                                           | 推奨どおり                                                 |
+| Stripeのシークレットを必須にする環境 | identity-authの`DISIFY_API_KEY`と同じく、`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`はstaging・prodだけで`secrets.required`に置き、環境の検証も任意にする。未設定のローカルとCIでは、`StripeGateway`・`StripeWebhookVerifier`が`StripeUnavailableError`を投げ、決済の機能だけが縮退(`payments_unavailable`、Webhookは503)になる。決済のE2Eは、キーが無ければ飛ばす | 推奨どおり                                                 |
+| 版の検査付きの一括の書き込み         | 専用テーブル`payment_batch_guards`をやめ、identity-auth・admin-foundation・inquiry-chatと同じく、一括の書き込みの先頭の業務の行の挿入で、NOT NULLの列に「版が一致すれば値、一致しなければNULL」を入れる(`db/002`の「版の検査で一括の書き込み全体を取り消す」)                                                                                                    | 推奨(専用テーブルを残し、`db/002`に型として加える)と異なる |
+| 主キーと共通カラム                   | `db/003`どおり、全テーブルを`id`(`ulidPrimaryKey()`)の主キーと`timestamps()`にし、自然キー(`payment_customers.user_id`・`payment_stripe_objects.object_id`・`payment_price_snapshots.lookup_key`)は一意索引にする                                                                                                                                                | 推奨(自然キーを残し、例外の理由を明記する)と異なる         |
+
+### 版の検査の当てはめ
+
+- **購入の確定と拒否**(決済セッションの反映): どちらの一括の書き込みも決済履歴の行を必ず挿入するため、先頭を`payment_records`の挿入にし、`pseudonymous_id`を`CASE WHEN (SELECT state_token FROM payment_purchases WHERE id = ?) = <読み取った版> THEN <仮名化ID> ELSE NULL END`にする。続けて購入を前進させ(新しい`state_token`)、残りの文(権利の付与・返金の依頼・購入確認メールの依頼待ち)を置く。初回の請求の行が先に記録されていて一意キーと衝突しても、SQLiteはNOT NULLの制約を一意性より先に確かめるため、版の検査は働く(衝突は`DO NOTHING`)。これをWorkers統合テストで確かめる。
+- **定期課金の状態**: 先頭を`payment_stripe_objects`への挿入(`object_id`の一意索引で`DO UPDATE`)にし、`last_event_at`を`CASE WHEN EXISTS (SELECT 1 FROM payment_stripe_objects WHERE object_id = ? AND last_event_at > ?) THEN NULL ELSE ? END`にする。同じか新しい発生時刻だけが通り、古い通知は後続specの`SubscriptionEventSink`の文を含めて全体が取り消される。`payment_stripe_objects`の`state_token`は要らなくなる。
+- **1文だけの前進**(失効・処理中への前進): 他の文を伴わないため、`UPDATE … WHERE status IN (…)`の`meta.changes`で判定し、版の検査を使わない。
+- **失敗の判別**: `GuardedBatch.run`は、`NOT NULL constraint failed: payment_records.pseudonymous_id`・`payment_stripe_objects.last_event_at`の違反を`cause`をたどって`guard_failed`に変え、他の制約の違反(`exclusivity_key`の部分一意索引・後続specの文)を`constraint_failed`にする。検査に使う2つの列は、他の文がNULLを入れない列である。
+- 版の検査に使う列と文の組み立ては`statement-contracts.ts`の契約(`PaymentRecordStatements.insertCheckoutRecordGuarded`・`StripeObjectStatements.advanceGuarded`)に閉じ込め、後続specの契約(`PurchaseFulfillment`・`SubscriptionEventSink`)の形は変えない。
+
+### 決定に合わせて加えた漏れ
+
+上の「実装前のギャップ分析」でタスクの注記にするとした項目のうち、漏れに当たるものを決定と合わせて反映した。
+
+- 完全一致のテストと設定の更新先: `apps/api/vitest.worker.config.ts`・`apps/event/vitest.worker.config.ts`のテスト用の束縛(任意にしたため必須ではないが、Workers統合テストで決済を通すために置く)、`inquiry-module.worker.test.ts:467`の4:21の順序、apiの`bun run graphql:generate`による`schema.graphql`の再生成、`composition.unit.test.ts`の`CLIENT_SECURITY_POLICY`、`settings-nav-order.unit.test.ts`の`SETTINGS_NAV_ITEMS`、`frontend-env.unit.test.ts`とclientの`wrangler-config.unit.test.ts`の公開設定とvars、`PublicRuntimeConfig`を直に書いた各ファイル。
+- application層のエラーコードと文言を、前例どおり`application/payments/payments-errors.ts`に置く。presentationの`errors.ts`は入力の検証の文言だけを持つ。純収益の照会の入力の誤りは`AppError(bad_request)`にする。
+- 4:21の2ジョブが合計300秒の予算(`SCHEDULED_RUN_BUDGETS`)を共有すること。
+- 決済後のランディングの導線のうち未作成の経路(`/my/products`・`/settings/plan`・`/settings/sponsorships`)は`PathLink`で描く。
+- `005-shared-components.md`の部品の一覧に`components/payments/`の分類(`MoneyText`。後続specの申込の画面も使う)を加える。
+- Stripe.jsの読み込みの失敗と`confirm()`の想定外の失敗は`reportUnexpectedErrorInBrowser`で送る。
+- 小さな食い違いの表のうち、仮名化IDの型(`CurrentUser.user.pseudonymousId`)、メールの種別の`category: 'transactional'`と`kinds/payments.ts`の1ファイル、`/settings/billing`を`SettingsShell`で包まないこと、法務文書の追記先(003に`### Stripe(決済)`の項、001に保存場所の箇条)、apiの識別子のファイル名(`payments-types.ts`)、Webhookの経路の置き場所(`presentation/payments/`)、`buildSitePageHead`、上流の実装の状況、`Checkbox`が作成済みであること。
+
+### 反映しなかった項目
+
+- 決済履歴の「さらに表示」の続きの読み込み: 要件12.2を満たし、今回の質問の対象外のため変えない。前後のページ送り(`PageNavigation`)の前例と異なる型であることは、タスク10.5の注記に残す。
+- CSPの許可先とCIのE2Eの到達性: Research Neededのまま、タスク1.4で確かめて記録し、10.1・11.1が結果に従う。4.12の「決済の画面だけで読み込む」の検証の手段は、今回の質問の対象外のため変えない。
+- 不服申し立てのチャージバックの記録(上の「Stripeのパッケージを最新版へ改訂」のResearch Needed): Stripeの文書の確認を待つ。
+
+## 不服申し立てのチャージバックとAPI版の確定(2026-11-05、開発者の決定)
+
+- **API版**: 開発者が、StripeのAPI版を`2026-10-28.endive`とすることを確定した(上の「Stripeのパッケージを最新版へ改訂」で反映済み)。
+- **調べたこと**: 上の「Stripeのパッケージを最新版へ改訂」のResearch Needed(不服申し立てで`dispute_lost`と`dispute_won`の行が両方残るおそれ)を、`stripe docs`でStripeの文書(「事前仲裁および仲裁を通じて不審請求の申し立てを管理する」・changelog「不審請求の申し立ての判定に対する異議申し立て用の反証資料提出に対応」)を読んで確かめた。
+  - 不服申し立ての状態は`2026-09-30.preview`で加わり、SDKでは`2026-10-28.endive`以降を対象とする版から使える。
+  - 不服申し立ての対象になると、状態は審査中(`under_review`)から`appeal_needs_response`へ、反証資料を提出すると`appeal_under_review`へ移る。敗北(`lost`)の後に始まるのではない。
+  - 状態の変化は`charge.dispute.updated`で届き、最終の`won`・`lost`に達すると`charge.dispute.closed`が届く。
+  - 不服申し立ては、利用資格のある事業者がダッシュボードの不審請求の申し立ての設定で有効化した場合だけ使える。返金不可の申し立て手数料と、仲裁のネットワーク手数料(1件600USDを超え得る)がかかる。
+  - したがって、不服申し立てを経ても記録は`disputed`の後に`dispute_won`か`dispute_lost`の一方だけになり、懸念は起きない。
+- **決定**: 記録の規則を変えず、不服申し立ての段階を照会・審査中と同じく記録しない段階として扱う(推奨どおり)。購読の15種は変えず、`charge.dispute.updated`は購読しない。`StripeDisputeSnapshot`の状態は文字列で受け、未知の値でも取得と反映が失敗しないようにする。不服申し立ては既定の無効のままにし、有効化する場合の利用資格・手数料・ダッシュボードでの対応を`operations/004`に書く。要件9.4(資金の移動を伴わない段階は記録しない)の範囲のため、要件は変えない。
+- **変えた箇所**: design.mdの「StripeClient・StripeGateway・StripeWebhookVerifier」(取得の結果の型)、「PaymentReflector・CheckoutSessionReflection」(チャージバック)、Modified Filesの`operations/004`。tasks.mdの1.4・3.2・5.4。

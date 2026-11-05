@@ -283,3 +283,9 @@
 - **上流の部品の読み込み元**: `PublicSupporterReader`などが受け取る`ProductDirectory`は`core/product`、`MatchDirectory`・`SupporterDirectory`は`core/match`、`UserProfileDirectory`は`core/profile`、`MediaFiles`は`core/media`から読み込む(各specの移動は並行して行われる)。
 - **変えた箇所**: design.mdのThis Spec Owns、Allowed Dependencies(backend-platform・上流の部品の読み込み元)、Revalidation Triggers、Existing patterns preserved、Dependency Direction(`core/public-api`を`workers/public-api`の前に置き、application層の読み込みの範囲を加えた)、File Structure Planの木、Requirements Traceability(4.\*・13.\*)、Componentsの表、`backend-lib/core・workers`の節、`PublicApiRateLimits・CounterPublicApiRateLimits`の節(新設)、`ApiKeyManagement`・`ApiKeyAuthorizer`の手順、上流の部品の依存、`PUBLIC_API_MODULE`、Testing Strategy。tasks.mdの2.2・2.3・3.1・3.2・4.1・5.3。
 - 要件と受け入れ基準は変えていない。タスクの番号は変えていない。
+
+## 公開APIのオリジンを任意の変数にする改訂(2026-11-05、開発者の決定)
+
+- **きっかけ**: paymentsの実装前のギャップ分析(2026-11-05)で、frontend-platformの環境のスキーマはclientとadminで共有し、`apps/{client,admin}/test/config/worker-env-contract.ts`が「スキーマの必須のキーがすべてEnvにあること」を型で確かめると分かった。本specの`PUBLIC_API_ORIGIN`(clientだけ必須)を共有のスキーマで必須にすると、管理者側の型検査と起動の検証が失敗する。本specが前例に挙げたcontent-processingの`CLIENT_SITE_ORIGIN`は両アプリで必須の変数で、paymentsの`STRIPE_PUBLISHABLE_KEY`は同じ理由で任意の変数に改めた。
+- **決定**: 開発者が、client専用の任意の変数の前例(frontend-platformの`WEB_ANALYTICS_TOKEN`・paymentsの`STRIPE_PUBLISHABLE_KEY`)と同じ形を選んだ(推奨どおり)。共有のスキーマで`PUBLIC_API_ORIGIN`を任意にし(値があれば許可先の形まで検証する)、`FrontendAppProfile`(`apps/frontend-lib/server/entry/app-profile.ts`)に公開APIの仕様書の有無の欄`publicApiDocs`(clientは真、adminは偽)を加え、`PublicRuntimeConfig.publicApiOrigin`へ`profile.publicApiDocs ? env.PUBLIC_API_ORIGIN : undefined`を渡す。CSPの`connect-src`には欄が真で値があるときだけ加える。clientのWranglerには3環境とも値を置き、値があることはclientの設定の単体テストで保証する。adminのWranglerには置かない。値が無い環境では、`/api-docs`の`SwaggerUiViewer`は仕様書を取得せず`ErrorState`(要件15.5の文言)を表示する。要件は変えていない。
+- **変えた箇所**: design.mdのModified Files(frontend-libの環境と公開設定の行)・ClientEnvExtension・`SwaggerUiViewer`、tasks.mdの1.5。
