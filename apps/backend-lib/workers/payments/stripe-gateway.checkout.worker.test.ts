@@ -28,6 +28,7 @@ function paidSessionWithCharge(
     payment_intent: {
       id: 'pi_test_1',
       object: 'payment_intent',
+      status: 'succeeded',
       latest_charge: {
         id: 'ch_test_1',
         object: 'charge',
@@ -138,6 +139,7 @@ describe('StripeApiGateway(決済セッションの作成)', () => {
       currency: 'usd',
       expiresAt: new Date(FAKE_EXPIRES_AT_SECONDS * 1000),
       paymentIntentId: null,
+      paymentIntentStatus: null,
       invoiceId: null,
       subscriptionId: null,
       linkFundingSourceGroup: null,
@@ -151,7 +153,7 @@ describe('StripeApiGateway(決済セッションの作成)', () => {
 });
 
 describe('StripeApiGateway(決済セッションの取得)', () => {
-  test('都度決済は支払いと最新の請求を展開し、PaymentIntent・Linkの資金源のグループ・メタデータを返す', async () => {
+  test('都度決済は支払いと最新の請求を展開し、PaymentIntentとその状態・Linkの資金源のグループ・メタデータを返す', async () => {
     const fake = createFakeStripe(() =>
       stripeJson(
         paidSessionWithCharge({
@@ -176,6 +178,7 @@ describe('StripeApiGateway(決済セッションの取得)', () => {
       paymentStatus: 'paid',
       clientSecret: null,
       paymentIntentId: 'pi_test_1',
+      paymentIntentStatus: 'succeeded',
       invoiceId: null,
       subscriptionId: null,
       linkFundingSourceGroup: 'lfsg_003',
@@ -218,11 +221,12 @@ describe('StripeApiGateway(決済セッションの取得)', () => {
     expect(snapshot.linkFundingSourceGroup).toBeNull();
   });
 
-  test('定期課金は初回の請求の既定の支払いからPaymentIntentを解決し、その最新の請求からLinkの資金源のグループを返す', async () => {
+  test('定期課金は初回の請求の既定の支払いからPaymentIntentを解決し、取り直したPaymentIntentの状態と最新の請求からLinkの資金源のグループを返す', async () => {
     const fake = createFakeStripe((call) =>
       call.path === '/v1/payment_intents/pi_sub_1'
         ? stripeJson({
             id: 'pi_sub_1',
+            status: 'requires_payment_method',
             object: 'payment_intent',
             latest_charge: {
               id: 'ch_sub_1',
@@ -265,6 +269,7 @@ describe('StripeApiGateway(決済セッションの取得)', () => {
     expect(fake.calls[1]?.query.get('expand[0]')).toBe('latest_charge');
     expect(snapshot).toMatchObject({
       paymentIntentId: 'pi_sub_1',
+      paymentIntentStatus: 'requires_payment_method',
       invoiceId: 'in_test_1',
       subscriptionId: 'sub_test_1',
       linkFundingSourceGroup: 'lfsg_000',
@@ -295,6 +300,7 @@ describe('StripeApiGateway(決済セッションの取得)', () => {
     expect(snapshot).toMatchObject({
       paymentStatus: 'no_payment_required',
       paymentIntentId: null,
+      paymentIntentStatus: null,
       invoiceId: 'in_test_1',
       subscriptionId: 'sub_test_1',
       linkFundingSourceGroup: null,

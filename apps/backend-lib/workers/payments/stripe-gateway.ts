@@ -488,7 +488,7 @@ export class StripeApiGateway implements StripeGateway {
     return [];
   }
 
-  // clientを渡すと、定期課金の初回の請求の支払いからLinkの資金源のグループを取得し直す
+  // clientを渡すと、定期課金の初回の請求の支払いからPaymentIntentの状態とLinkの資金源のグループを取得し直す
   private async toSnapshot(
     session: Stripe.Checkout.Session,
     client: Stripe | null,
@@ -502,8 +502,11 @@ export class StripeApiGateway implements StripeGateway {
       throw unexpectedValue('決済セッション', 'payment_status', paymentStatus);
     }
     // 定期課金の決済セッションはPaymentIntentを直接持たないため、初回の請求の既定の支払いから辿る
-    const paymentIntent =
-      session.payment_intent ?? invoicePaymentIntentOf(session.invoice);
+    const paymentIntent = await this.resolvePaymentIntent(
+      session.payment_intent ?? invoicePaymentIntentOf(session.invoice),
+      client,
+    );
+    const expanded = typeof paymentIntent === 'string' ? null : paymentIntent;
     return {
       id: session.id,
       status,
@@ -513,34 +516,29 @@ export class StripeApiGateway implements StripeGateway {
       currency: session.currency,
       expiresAt: new Date(session.expires_at * 1000),
       paymentIntentId: idOf(paymentIntent),
+      paymentIntentStatus: expanded?.status ?? null,
       invoiceId: idOf(session.invoice),
       subscriptionId: idOf(session.subscription),
-      linkFundingSourceGroup: await this.linkFundingSourceGroup(
-        paymentIntent,
-        client,
-      ),
+      linkFundingSourceGroup:
+        expanded === null
+          ? null
+          : linkFundingSourceGroupOf(expanded.latest_charge),
       metadata: { ...session.metadata },
     };
   }
 
-  private async linkFundingSourceGroup(
+  // 展開されていないPaymentIntent(定期課金の初回の請求の支払い)は、clientがあれば最新の請求を展開して取り直す
+  private async resolvePaymentIntent(
     paymentIntent: string | Stripe.PaymentIntent | null,
     client: Stripe | null,
-  ): Promise<string | null> {
-    if (paymentIntent === null) {
-      return null;
+  ): Promise<string | Stripe.PaymentIntent | null> {
+    if (typeof paymentIntent !== 'string' || client === null) {
+      return paymentIntent;
     }
-    if (typeof paymentIntent !== 'string') {
-      return linkFundingSourceGroupOf(paymentIntent.latest_charge);
-    }
-    if (client === null) {
-      return null;
-    }
-    const retrieved = await this.call('retrieveCheckoutSession', () =>
+    return this.call('retrieveCheckoutSession', () =>
       client.paymentIntents.retrieve(paymentIntent, {
         expand: ['latest_charge'],
       }),
     );
-    return linkFundingSourceGroupOf(retrieved.latest_charge);
   }
 }

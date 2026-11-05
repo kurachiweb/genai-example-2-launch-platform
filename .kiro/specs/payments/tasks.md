@@ -138,7 +138,7 @@
   - _Depends: 2.4, 4.1, 4.2_
   - _Requirements: 8.10, 10.6, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6_
 
-- [ ] 5.3 決済セッションの反映を作る
+- [x] 5.3 決済セッションの反映を作る
   - 先に、偽のゲートウェイと偽の購入種別の口を使うWorkers統合テストで、支払いが確定した決済の権利の付与・決済履歴の記録(同意の日時と版、Linkの資金源のグループを含む)・購入確認メールの依頼待ちが同時に確定し確定後に依頼されること、未払いの完了は処理中にして権利を付与しないこと、反映の期限の後の支払い・口の拒否・二重決済(部分一意索引の違反)が拒否と全額返金の依頼に理由付きでなり確定後に送信されること、期限切れで失効になり決済履歴に記録しないこと、`return_url`とWebhookから同時に反映しても記録・付与・依頼が1回だけであること、権利の付与の文の失敗で口を1回だけ呼び直すこと、処理中・完了・拒否への前進の文が購入へPaymentIntent・請求・定期課金のID・支払額・`paid_at`・`reflected_at`を保存すること(4.3・5.1・返金の実行が使う)、決済セッションIDの保存より前に届いた通知を`metadata.purchase_id`で購入を探せること、権利の付与を確定させた側だけが購入種別の口の確定後の処理を1回呼び、拒否・反映済み・版の検査の失敗では呼ばず、確定後の処理の例外で反映の結果が変わらず`warn`のログだけが残ること(U1)を確かめる
   - 返金・チャージバック・期限切れでは権利の付与・剥奪の口を呼ばない
   - 完了状態: Workers統合テストが成功し、同じ決済セッションの反映の2回目が「反映済み」と現在の状態を返す
@@ -363,3 +363,4 @@
 - 4.3: 持ち主の特定は`workers/payments/payment-owner-resolver.ts`(契約も同じファイル、`@injectable`無しで`{ appName, gateway, purchases }`)。偽のゲートウェイは`testing/fake-stripe-gateway.ts`の`createFakeStripeGateway`。5.4(必須): 結果の`purchase`は定期課金の2回目以降の請求でも元の購入になるため、同意を写すのは初回の請求(`purchase.stripeInvoiceId`が未保存か同じ請求のID)だけにし、「2回目の請求の記録に同意が入らない」をテストで確かめる
 - 5.1: 返金の依頼は`workers/payments/payment-refunds.ts`の`D1PaymentRefunds`(`@injectable`無し、依存の束を受け取る。5.7で`PAYMENTS_TYPES.PaymentRefunds`と`PaymentRefundStatements`の両方へ同じインスタンスを`toDynamicValue`で束縛)。`reflection:`の依頼キーの規則は`core/payments/refund-rules.ts`の`reflectionRequestKeyOf`・`isReflectionRequestKey`(5.2〜5.4で使う)。支払い済みは`fulfilled`・`rejected`かつPaymentIntentのIDあり。送信の失敗は`warn`のログだけで日次の確認が送り直す。テストの補助`refundIdOf`は有効なULID
 - 5.2: 通知は`workers/payments/purchase-notifier.ts`の`EmailPurchaseNotifier`(`@injectable`無し、`{ appName, purchases, refunds, contacts, emails, clientSiteOrigin }`)。送信の失敗と入力を組み立てられない行は`failed`を返す(例外にしない)。呼び出し側は`failed`を例外として扱わない。5.4(必須): 自動返金の通知の返金日時は返金の依頼の行の`updated_at`のため、`succeeded`の後に同じ状態の通知が届いても`updated_at`が変わらないようにし(状態が変わるときだけ更新)、テストで確かめる。Ultrasの2回目以降の請求の反映で通知の部品が呼ばれないこと(要件11.4)もテストに加える。6.3: 入力を組み立てられない依頼待ちの行は毎日`failed`になり、古い順の100件の枠を塞ぎ得るため、知らせ方か読み飛ばしを検討する
+- 5.3: 決済セッションの反映は`workers/payments/checkout-session-reflection.ts`の`StripeCheckoutSessionReflection`(`reflectSession`・`reflectSnapshot`。5.4の`PaymentReflector`は`checkout_session`の指示をここへ渡す)。PaymentIntentの状態`requires_payment_method`・`canceled`の未払いの完了は失効。テストの補助は`testing/checkout-reflection-harness.ts`。5.4(必須): 定期課金で請求の通知が先に届くと決済セッションの記録の挿入が無視され、`FulfillablePurchase.paymentRecordId`が実在しない行を指す。同意を写す修正と合わせて、既存の行のIDを解決して渡すか、契約のコメントに明記する

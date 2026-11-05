@@ -125,6 +125,26 @@ describe('D1PurchaseStoreの作成と検索', () => {
     });
   });
 
+  test('二重決済の判定の鍵が同じ権利の付与済みの購入だけを引く', async () => {
+    const key = 'launch:1:week';
+    await createPurchases(
+      newPurchase(1, { exclusivityKey: key }),
+      newPurchase(2, { exclusivityKey: key }),
+      newPurchase(3, { exclusivityKey: 'launch:2:week' }),
+    );
+    await advanceTo(2, 'rejected', { rejectionReason: 'duplicate' });
+    await advanceTo(3, 'fulfilled');
+
+    expect(await store.findFulfilledByExclusivityKey(key)).toBeUndefined();
+
+    await advanceTo(1, 'fulfilled');
+
+    expect(await store.findFulfilledByExclusivityKey(key)).toMatchObject({
+      id: purchaseIdOf(1),
+      status: 'fulfilled',
+    });
+  });
+
   test('作成の文は利用者が無ければ外部キーの違反で失敗する', async () => {
     await expect(
       createPurchases(newPurchase(1, { userId: userIdOf(9) })),

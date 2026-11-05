@@ -927,6 +927,7 @@ export interface StripeCheckoutSessionSnapshot {
   readonly currency: string | null;
   readonly expiresAt: Date;
   readonly paymentIntentId: string | null; // 定期課金は初回の請求の支払いから解決
+  readonly paymentIntentStatus: string | null; // PaymentIntentのstatus(都度決済は展開済み、定期課金は取り直したPaymentIntentから)。未払いの完了の処理中と失敗を見分ける
   readonly invoiceId: string | null;
   readonly subscriptionId: string | null;
   readonly linkFundingSourceGroup: string | null; // Linkの資金源のグループ(仮1の調査用)
@@ -1043,6 +1044,9 @@ export interface PurchaseStore {
   findByPaymentIntentId(
     paymentIntentId: string,
   ): Promise<PurchaseRecord | undefined>; // PaymentOwnerResolver
+  findFulfilledByExclusivityKey(
+    exclusivityKey: string,
+  ): Promise<PurchaseRecord | undefined>; // CheckoutSessionReflectionの二重決済の判定(constraint_failedの後)
   attachSession(input: {
     readonly purchaseId: string;
     readonly sessionId: string;
@@ -1151,7 +1155,7 @@ export interface CustomerStatements {
 - `reflect(instruction)`は`ReflectionInstruction`の種類ごとに、Stripeから対象の最新の状態を取得して反映する。Webhookは通知の発生時刻を、`return_url`・突合・日次の確認は取得した時刻を`occurredAt`に使う。
 - 決済セッション(`CheckoutSessionReflection`):
   1. `findBySessionId`で購入を引く。無ければ`StripeCheckoutSessionSnapshot.metadata.purchase_id`(作成時に付けた購入ID)で`findById`を引く(決済セッションのIDの保存の前に通知が届いた場合)。どちらでも無ければ`unresolved`(ダッシュボードで作成した決済など、6.9)。
-  2. `status = 'expired'`なら`expired`へ前進(7.6)。`complete`かつ`unpaid`なら`processing`へ前進し、`async_payment_failed`なら`expired`へ(7.2)。これらは他の文を伴わない1文の前進のため、版の検査を使わず、`UPDATE … WHERE status IN (…)`の`meta.changes`で前進したかを判定する。
+  2. `status = 'expired'`なら`expired`へ前進(7.6)。`complete`かつ`unpaid`なら`processing`へ前進し、PaymentIntentの状態が`requires_payment_method`・`canceled`なら支払いの失敗(`async_payment_failed`)として`expired`へ(7.2)。これらは他の文を伴わない1文の前進のため、版の検査を使わず、`UPDATE … WHERE status IN (…)`の`meta.changes`で前進したかを判定する。
   3. `complete`かつ`paid`なら、`decideCompletion`で反映の期限を確かめ(7.3)、期限内なら登録の`PurchaseFulfillment.prepare`を呼ぶ。`fulfill`なら[購入を`fulfilled`へ前進・決済履歴の記録・権利の付与の文・購入確認メールの依頼待ち]を、`reject`・期限切れなら[購入を`rejected`へ前進(理由)・決済履歴の記録・全額返金の依頼(`PaymentRefunds.prepareForReflection`)]を`GuardedBatch`で確定する。どちらも先頭の文は決済履歴の記録(`PaymentRecordStatements.insertCheckoutRecordGuarded`。`prepare`の前に読み取った購入の`state_token`で検査する)で、続けて購入を前進させて`state_token`を新しくする。`processing`・`fulfilled`・`rejected`への前進の文は、決済セッションの結果の`stripe_payment_intent_id`・`stripe_invoice_id`・`stripe_subscription_id`・`amount_total`と、支払いが確定していれば`paid_at`(反映の時刻)・`reflected_at`を同じ文で購入に保存する(持ち主の特定・返金の依頼・返金の実行・購入確認メールがこの値に頼る)。
   4. `guard_failed`(他の入口が先に前進した)なら購入を読み直して現在の状態を返す。`constraint_failed`(`exclusivity_key`の部分一意索引、または後続specの文の制約)なら`prepare`を1回だけ呼び直し、二重決済なら理由`duplicate`、それ以外は`ineligible`として拒否の一括の書き込みを行う(7.4)。
   5. 確定の後、`PurchaseNotifier`で購入確認メールを依頼し、拒否なら`PaymentRefunds.dispatch`で返金を送る。`fulfill`を確定させた場合は、登録の`PurchaseFulfillment.afterCommit`があれば呼び、例外は`warn`のログにして結果を変えない(2.11、U1)。

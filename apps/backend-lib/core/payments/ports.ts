@@ -45,6 +45,8 @@ export interface StripeCheckoutSessionSnapshot {
   readonly expiresAt: Date;
   // 定期課金は初回の請求の支払いから解決する
   readonly paymentIntentId: string | null;
+  // StripeのPaymentIntentのstatus。未払いの完了の支払いが処理中か失敗したかを見分ける。PaymentIntentが無ければnull
+  readonly paymentIntentStatus: string | null;
   readonly invoiceId: string | null;
   readonly subscriptionId: string | null;
   readonly linkFundingSourceGroup: string | null;
@@ -280,6 +282,10 @@ export interface PurchaseStore {
   findBySessionId(sessionId: string): Promise<PurchaseRecord | undefined>;
   findByPaymentIntentId(
     paymentIntentId: string,
+  ): Promise<PurchaseRecord | undefined>;
+  // 二重決済の判定に使う。部分一意索引により高々1件
+  findFulfilledByExclusivityKey(
+    exclusivityKey: string,
   ): Promise<PurchaseRecord | undefined>;
   attachSession(input: {
     readonly purchaseId: string;

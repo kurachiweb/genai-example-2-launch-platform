@@ -8,6 +8,7 @@ import {
   isNull,
   lt,
   lte,
+  type SQL,
 } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import { inject, injectable } from 'inversify';
@@ -124,6 +125,17 @@ export class D1PurchaseStore implements PurchaseStore, PurchaseStatements {
     paymentIntentId: string,
   ): Promise<PurchaseRecord | undefined> {
     return this.findOne(eq(purchases.stripePaymentIntentId, paymentIntentId));
+  }
+
+  async findFulfilledByExclusivityKey(
+    exclusivityKey: string,
+  ): Promise<PurchaseRecord | undefined> {
+    return this.findOne(
+      and(
+        eq(purchases.exclusivityKey, exclusivityKey),
+        eq(purchases.status, 'fulfilled'),
+      ),
+    );
   }
 
   async attachSession(input: {
@@ -305,7 +317,7 @@ export class D1PurchaseStore implements PurchaseStore, PurchaseStatements {
   }
 
   private async findOne(
-    condition: ReturnType<typeof eq>,
+    condition: SQL | undefined,
   ): Promise<PurchaseRecord | undefined> {
     const [row] = await this.db
       .select()
