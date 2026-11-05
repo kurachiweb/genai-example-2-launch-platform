@@ -27,10 +27,16 @@ const USE_CASE_NAMES = [
   'GuestInquiryRetentionJob',
 ] as const;
 
-const EXPECTED_NAMES = [...PORT_NAMES, ...USE_CASE_NAMES] as const;
+const MEDIA_POLICY_NAMES = ['InquiryAttachmentReadPolicy'] as const;
+
+const EXPECTED_NAMES = [
+  ...PORT_NAMES,
+  ...USE_CASE_NAMES,
+  ...MEDIA_POLICY_NAMES,
+] as const;
 
 describe('INQUIRY_TYPES', () => {
-  test('問い合わせのポート・ユースケース・ジョブの識別子だけを持つ', () => {
+  test('問い合わせのポート・ユースケース・ジョブ・閲覧の方針の識別子だけを持つ', () => {
     expect(Object.keys(INQUIRY_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

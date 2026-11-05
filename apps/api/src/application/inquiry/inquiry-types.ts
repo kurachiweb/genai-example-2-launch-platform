@@ -69,6 +69,10 @@ const GuestInquiryRetentionJob: unique symbol = Symbol.for(
   'inquiry.GuestInquiryRetentionJob',
 );
 
+const InquiryAttachmentReadPolicy: unique symbol = Symbol.for(
+  'inquiry.InquiryAttachmentReadPolicy',
+);
+
 export const INQUIRY_TYPES = Object.freeze({
   InquiryCategoryStore,
   GuestInquiryStore,
@@ -89,4 +93,5 @@ export const INQUIRY_TYPES = Object.freeze({
   InquiryReplyService,
   InquiryStatusService,
   GuestInquiryRetentionJob,
+  InquiryAttachmentReadPolicy,
 });
