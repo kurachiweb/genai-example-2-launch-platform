@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { Container } from 'inversify';
 
-import type { InquiryStatus } from '../../../common-lib/inquiry/inquiry-status.ts';
 import type {
   AuditLogRecorder,
   PreparedAuditEntry,
@@ -141,7 +140,6 @@ function partialFake<T extends object>(implemented: Partial<T>): T {
 interface AppendedMessage {
   readonly inquiryId: string;
   readonly message: NewInquiryMessage;
-  readonly nextStatus: InquiryStatus;
 }
 
 interface FakeOptions {
@@ -194,9 +192,9 @@ function setup(options: FakeOptions = {}) {
       listed.push({ userId, page });
       return Promise.resolve(PAGE);
     },
-    appendUserMessage: (inquiryId, message, nextStatus) => {
+    appendUserMessage: (inquiryId, message) => {
       calls.push('appendUserMessage');
-      appended.push({ inquiryId, message, nextStatus });
+      appended.push({ inquiryId, message });
       return options.appendError === undefined
         ? Promise.resolve(options.appendResult ?? 'appended')
         : Promise.reject(options.appendError);
@@ -365,27 +363,21 @@ describe('StoreInquiryChatService.post', () => {
           fileIds: [FILE_A, FILE_B],
           at: NOW,
         },
-        nextStatus: 'open',
       },
     ]);
     expect(released).toEqual([]);
   });
 
-  test.each([
-    ['open', 'open'],
-    ['in_progress', 'in_progress'],
-    ['resolved', 'open'],
-    ['rejected', 'open'],
-  ] as const)(
-    'ステータスが%sの問い合わせへの送信は、%sを保存後のステータスとして渡し、監査ログの準備を呼ばない',
-    async (status, nextStatus) => {
+  test.each(['open', 'in_progress', 'resolved', 'rejected'] as const)(
+    'ステータスが%sの問い合わせへの送信も、ステータスの戻しを保存に任せて同じ形で保存し、監査ログの準備を呼ばない',
+    async (status) => {
       const { service, appended, auditCalls } = setup({
         inquiry: inquiryOf({ status }),
       });
 
       await service.post(SESSION, INQUIRY_ID, INPUT, NOW);
 
-      expect(appended.map((entry) => entry.nextStatus)).toEqual([nextStatus]);
+      expect(appended.map((entry) => entry.inquiryId)).toEqual([INQUIRY_ID]);
       expect(auditCalls).toEqual([]);
     },
   );

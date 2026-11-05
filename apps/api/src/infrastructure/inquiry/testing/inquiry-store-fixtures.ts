@@ -23,6 +23,8 @@ type MemberInquiryRow = typeof memberInquiries.$inferInsert;
 
 type GuestInquiryRow = typeof guestInquiries.$inferInsert;
 
+type InquiryMessageRow = typeof inquiryMessages.$inferInsert;
+
 export function after(milliseconds: number): Date {
   return new Date(T0.getTime() + milliseconds);
 }
@@ -37,6 +39,14 @@ export function memberInquiryIdOf(index: number): string {
 
 export function guestInquiryIdOf(index: number): string {
   return `01JC0GINQ${String(index).padStart(17, '0')}`;
+}
+
+export function messageIdOf(index: number): string {
+  return `01JC0IMSG${String(index).padStart(17, '0')}`;
+}
+
+export function fileIdOf(index: number): string {
+  return `01JC0FILE${String(index).padStart(17, '0')}`;
 }
 
 export function auditLogIdOf(index: number): string {
@@ -102,6 +112,33 @@ export async function insertGuestInquiry(
     updatedAt: T0,
     ...columns,
   });
+}
+
+export async function insertInquiryMessage(
+  index: number,
+  columns: Partial<InquiryMessageRow> & { readonly inquiryId: string },
+): Promise<void> {
+  await db.insert(inquiryMessages).values({
+    id: messageIdOf(index),
+    senderKind: 'user',
+    body: `メッセージ${String(index)}`,
+    createdAt: T0,
+    ...columns,
+  });
+}
+
+export async function insertAttachments(
+  messageId: string,
+  fileIds: readonly string[],
+): Promise<void> {
+  if (fileIds.length === 0) {
+    return;
+  }
+  await db
+    .insert(inquiryMessageAttachments)
+    .values(
+      fileIds.map((fileId, position) => ({ messageId, fileId, position })),
+    );
 }
 
 export interface PreparedAuditEntryOptions {
@@ -177,4 +214,26 @@ export async function readAuditLogs() {
       .filter((target) => target.logId === log.id)
       .map((target) => target.targetId),
   }));
+}
+
+export async function readMemberInquiryRows() {
+  return db.select().from(memberInquiries).orderBy(asc(memberInquiries.id));
+}
+
+export async function readGuestInquiryRows() {
+  return db.select().from(guestInquiries).orderBy(asc(guestInquiries.id));
+}
+
+export async function readMessageRows() {
+  return db.select().from(inquiryMessages).orderBy(asc(inquiryMessages.id));
+}
+
+export async function readAttachmentRows() {
+  return db
+    .select()
+    .from(inquiryMessageAttachments)
+    .orderBy(
+      asc(inquiryMessageAttachments.messageId),
+      asc(inquiryMessageAttachments.position),
+    );
 }

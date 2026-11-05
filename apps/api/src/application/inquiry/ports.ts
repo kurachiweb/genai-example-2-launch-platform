@@ -125,11 +125,10 @@ export interface MemberInquiryStore {
     userId: string,
     page: { readonly after?: string; readonly limit: 20 },
   ): Promise<MemberInquiryPage>;
-  // last_message_at・status・status_changed_at(ステータスが変わるときだけ)をメッセージと同時に更新する
+  // last_message_atと、書き込みの時点のステータスから利用者の送信の規則で求めたstatus・status_changed_at(ステータスが変わるときだけ)をメッセージと同時に更新する。問い合わせが無いか論理削除済みなら何も書かずにnot-foundを返す
   appendUserMessage(
     inquiryId: string,
     message: NewInquiryMessage,
-    nextStatus: InquiryStatus,
   ): Promise<'appended' | 'not-found'>;
   appendAdminReply(
     inquiryId: string,

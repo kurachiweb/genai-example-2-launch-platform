@@ -658,8 +658,7 @@ export interface MemberInquiryStore {
   appendUserMessage(
     inquiryId: string,
     message: NewInquiryMessage,
-    nextStatus: InquiryStatus,
-  ): Promise<'appended' | 'not-found'>; // last_message_at・status・status_changed_at(変わるときだけ)を同時に更新
+  ): Promise<'appended' | 'not-found'>; // last_message_atと、書き込みの時点のステータスから求めたstatus・status_changed_at(変わるときだけ)を同時に更新
   appendAdminReply(
     inquiryId: string,
     reply: {
@@ -869,7 +868,7 @@ export interface InquiryChatService {
 ```
 
 - `view`: `requireUser`(停止中も通す、要件7.1・7.8)→本人の問い合わせで`deletedAt`が無いときだけ返す(要件7.3・13.3)。`canPost`は利用者が停止中でないとき真。
-- `post`: `requireWritableUser`(要件8.4)→`view`と同じ本人の確認(不在・他人は`inquiry_not_found`、要件8.5)→`checkChatMessage`(要件8.3)→`bind`→`appendUserMessage(..., statusAfterUserMessage(status))`(要件8.1・8.2)。失敗時は`release`。
+- `post`: `requireWritableUser`(要件8.4)→`view`と同じ本人の確認(不在・他人は`inquiry_not_found`、要件8.5)→`checkChatMessage`(要件8.3)→`bind`→`appendUserMessage(inquiryId, message)`(要件8.1・8.2。ステータスの戻しは読み取った値ではなく書き込みの時点の値からストアが求める)。失敗時と`not-found`では`release`。
 - `listMine`: `requireUser`→`listByUser`(20件、要件9.1・9.2)。
 
 #### InquiryAdminService・InquiryReplyService・InquiryStatusService
@@ -887,10 +886,10 @@ export interface InquiryChatService {
 #### D1InquiryStores・D1InquiryAdminReader・D1InquirerProfiles・InquiryCursor
 
 - `D1InquiryCategoryStore.deleteAndReassign`: `buildAuditLogStatements`→`UPDATE member_inquiries SET category_id = <その他> WHERE category_id = ?`→`guest_inquiries`の同じ更新→`DELETE FROM inquiry_categories WHERE id = ? AND system_default = 0`を1つの`db.batch`にする(要件1.5)。`insert`・`rename`は一意索引の違反を`name-taken`に変換する。
-- `D1MemberInquiryStore.insert`・`appendUserMessage`: 問い合わせ(または更新)・メッセージ・添付の行(1文あたり25行)を1つの`db.batch`にする。`appendAdminReply`は`buildAuditLogStatements(db, audit, { kind: 'condition', condition: sql\`EXISTS (SELECT 1 FROM member_inquiries WHERE id = ? AND deleted_at IS NULL)\` })`の文を先頭に置き、メッセージの挿入と`last_message_at`の更新を続ける。条件が偽なら操作者のIDのNOT NULL違反で全体が取り消されるため、`isAuditGuardRejection(error)`が真のときは読み直して`withdrawn`・`not-found`を返す(G1。admin-foundationの方式)。
+- `D1MemberInquiryStore.insert`・`appendUserMessage`: 問い合わせ(または更新)・メッセージ(`sender_kind = 'user'`)・添付の行(バインド変数の上限と列の数から求めた1文あたりの行数で分ける)を1つの`db.batch`にする。`insert`のステータスは列の既定値(未対応)に任せ、外部キーの違反(カテゴリの削除との競合)は`inquiryCategoryUnavailableError()`にする(未ログインの`insert`も同じ)。`appendUserMessage`のステータスは`statusAfterUserMessage`から組み立てたSQLの`CASE`で書き込みの時点の値から求め、変わるときだけ`status_changed_at`を更新する(読み取った後の管理者の変更を上書きしない)。メッセージの挿入の`inquiry_id`を「論理削除していない問い合わせがあればID、無ければNULL」にし、NOT NULLの違反で一括の書き込み全体を取り消して`not-found`を返す。`appendAdminReply`は`buildAuditLogStatements(db, audit, { kind: 'condition', condition: sql\`EXISTS (SELECT 1 FROM member_inquiries WHERE id = ? AND deleted_at IS NULL)\` })`の文を先頭に置き、メッセージの挿入と`last_message_at`の更新を続ける。条件が偽なら操作者のIDのNOT NULL違反で全体が取り消されるため、`isAuditGuardRejection(error)`が真のときは読み直して`withdrawn`・`not-found`を返す(G1。admin-foundationの方式)。
 - `D1InquiryStatusStore.change`: `buildAuditLogStatements(db, audit, { kind: 'condition', condition })`の条件を「現在のステータスが一致し、退会済みでない」(`EXISTS (SELECT 1 FROM <種別のテーブル> WHERE id = ? AND status = ?` に、ログインの問い合わせは` AND deleted_at IS NULL`を足す`)`)にし、続けて同じ条件の`UPDATE`を置く。`isAuditGuardRejection(error)`が真なら`conflict`(G1)。
 - `D1InquiryAdminReader.list`: `member_inquiries`と`users`の結合(送信者の表示名はニックネーム)と、`guest_inquiries`(表示名は入力のニックネーム)の`UNION ALL`を、`(created_at DESC, id DESC)`で51件読む。条件は両方の副問い合わせに入れる(要件10.1〜10.3)。
-- `InquiryCursor`: `base64url('<ミリ秒>:<ID>')`の符号化と復号。不正な値は`validation_error`。
+- `InquiryCursor`: `base64url('<ミリ秒>:<ID>')`の符号化と復号。不正な値は`invalidCursorError()`(`invalid_cursor`。`backend/004`の共通ライブラリの部品と同じコードと文言)。
 - `D1InquirerProfiles`: `users`から`nickname`・`handle`を100件ずつ読み、`avatarFileId`は`null`。返信の通知先は本specで読まず、identity-authの`UserContactDirectory`で引く。
 
 #### InquiryAttachmentReadPolicy

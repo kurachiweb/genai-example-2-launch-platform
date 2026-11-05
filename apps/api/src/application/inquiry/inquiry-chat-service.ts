@@ -1,6 +1,5 @@
 import { inject, injectable } from 'inversify';
 
-import type { InquiryStatus } from '../../../common-lib/inquiry/inquiry-status.ts';
 import { checkChatMessage } from '../../../common-lib/inquiry/inquiry-input-rules.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type {
@@ -10,7 +9,6 @@ import type {
 import { IDENTITY_PLATFORM_TYPES } from '../../../lib/core/identity/identifiers.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import type { SessionView } from '../../../lib/core/session/session-view.ts';
-import { statusAfterUserMessage } from '../../domain/inquiry/inquiry-status-rules.ts';
 import type { InquiryAttachmentBinder } from './inquiry-attachment-binder.ts';
 import {
   inquiryChatMessageRejectedError,
@@ -112,11 +110,7 @@ export class StoreInquiryChatService implements InquiryChatService {
     const body = validBodyOf(input.body);
     const fileIds = await this.attachments.bind(user.id, input.fileIds);
     const message = { id: this.ids.generate(), body, fileIds, at: now };
-    const result = await this.appendOrRelease(
-      inquiry,
-      message,
-      statusAfterUserMessage(inquiry.status),
-    );
+    const result = await this.appendOrRelease(inquiry, message);
     if (result === 'not-found') {
       await this.attachments.release(fileIds);
       throw inquiryError('inquiry_not_found');
@@ -148,14 +142,9 @@ export class StoreInquiryChatService implements InquiryChatService {
   private async appendOrRelease(
     inquiry: MemberInquiryRecord,
     message: NewInquiryMessage,
-    nextStatus: InquiryStatus,
   ): Promise<'appended' | 'not-found'> {
     try {
-      return await this.store.appendUserMessage(
-        inquiry.id,
-        message,
-        nextStatus,
-      );
+      return await this.store.appendUserMessage(inquiry.id, message);
     } catch (error: unknown) {
       await this.attachments.release(message.fileIds);
       throw error;
