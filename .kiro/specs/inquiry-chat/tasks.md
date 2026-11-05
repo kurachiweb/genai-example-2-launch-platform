@@ -267,7 +267,7 @@
   - _Depends: 10.1, 10.3_
   - _Requirements: 14.1, 14.3, 14.4_
 
-- [ ] 11. 検証
+- [x] 11. 検証
 - [x] 11.1 利用者側の流れのE2Eテストを作る
   - 停止の状態は、admin-foundationのタスク12.1が用意したローカルのD1へSQLを実行する補助で用意する。本specで同等の補助を作らない
   - 未ログインの送信→送信完了、利用者の添付付きの送信→チャットへの遷移、停止中の利用者のフォーム(ニックネーム・連絡先の入力)の送信と既存のチャットの送信欄の代わりの案内を確かめる。未ログインの送信の回数制限の衝突は、利用者側のfixtureが組み込む既存の補助(ブラウザの文脈ごとに文書用の範囲から乱数の送信元IPを名乗る)で避け、本specで送信元IPの指定や補助を設けない(G6)
@@ -281,7 +281,7 @@
   - _Depends: 11.1_
   - _Requirements: 1.2, 1.4, 1.5, 6.5, 7.4, 8.2, 10.5, 11.2, 14.1, 16.2_
 
-- [ ] 11.3 カバレッジと品質ゲートを確かめる
+- [x] 11.3 カバレッジと品質ゲートを確かめる
   - 本specが追加・変更したアプリのコードについて、単体テスト・Workers統合テスト・ブラウザテストの行と関数のカバレッジが80%以上であること、bot判定が外部へ通信せずに検証されていること、新しいパッケージが加わっていないこと(各`package.json`の差分)を確かめ、足りなければテストを補う
   - 完了状態: 全アプリの一括検査とテストの一括実行が成功し、カバレッジの閾値を満たす
   - _Requirements: 16.1, 16.3, 16.6_
@@ -340,3 +340,4 @@
 - 10.4: カードは`components/inquiry/unhandled-inquiries-card.tsx`(`inquiry-chat.unhandled-inquiries`・order 20・half、題名のリンクで`/inquiries?status=OPEN`、状態は`useQuery`の`data`・`error`・`isFetching`から組み立て取り直しの失敗では件数を残す)、メニュー`/inquiries`(80)。ダッシュボードが空である前提のE2E(`e2e/admin/admin-sign-in.e2e.test.ts`)をカードの表示の確認に直した。3つの境界(ダッシュボードのカード・カテゴリの区画・詳細の操作)の重複を`components/layout/recoverable-slot.tsx`の`RecoverableSlot`へまとめ、再試行の後のフォーカスは描き直しの確定の時点で中の最初の見出し→名前付きの領域→新しい再試行のボタン→枠の順に移し、利用者が枠の外へ移したフォーカスは奪い返さない(006・009を更新)。カードの枠`DashboardCardFrame`の再試行は押した時点で題名のh2へ移す。12.2への申し送り: 文言「未対応の問い合わせ」「件」、`002-page-layouts.md`の「5項目は実装済み」の文
 - 11.1: E2Eは`e2e/client/inquiry/inquiry-contact.e2e.test.ts`(3件。既存の`e2e/client/auth/auth-test.ts`の送信元IPの名乗り・`account-steps.ts`・`e2e/support/local-d1.ts`を再利用し、期待の文言はアプリのメッセージの定数から読む)。停止はメールアドレスで`UPDATE users ... RETURNING id`し1行であることを確かめる(design.mdのIDの指定と異なる)。D1を読むため`@smoke`は付けない。実行はapi・event・clientを起動して`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/client/inquiry --project client`(ルートの`test:e2e:dev-and-preview`の両段階でも成功)。説明を`docs/onboardings/README.md`のE2Eの節に足した
 - 11.2: E2Eは`e2e/admin/inquiries.e2e.test.ts`(返信と通知メールと添付のダウンロード、対応済への追加メッセージで未対応へ戻りダッシュボードの件数が増える、未ログインの詳細)と`e2e/admin/inquiry-categories.e2e.test.ts`(追加→選択→削除で「その他」へ付け替え)。管理者は`signInAsNewAdmin(page, { role: 'moderator' })`。利用者側の送信の手順は11.1のテストから`e2e/client/inquiry/inquiry-steps.ts`へ移し、adminのテストは`e2e/admin/client-page-test.ts`の`clientPage`のfixture(別の送信元IP、`E2E_CLIENT_URL`)で利用者側を開く(通知のリンクはAPIの`CLIENT_SITE_ORIGIN`なので同じオリジンに揃える)。ダッシュボードの件数は他のテストのデータも数えるため増えたことだけを確かめる(並行するclientのテストで偽の成功はあり得るが、偽の失敗は無い)。実行はapi・event・client・adminを起動して`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/admin/inquiries.e2e.test.ts e2e/admin/inquiry-categories.e2e.test.ts --project admin`。`e2e/support/reachability.unit.test.ts`はポート48044が使われている間だけ失敗する既存の環境依存。testing/001は複数の対象のテストが使う補助を`e2e/support/`に置くとするが、`e2e/client/inquiry/inquiry-steps.ts`・既存の`e2e/client/auth/account-steps.ts`はadminのテストからも読まれる
+- 11.3: 本specのソースは単体・Workers統合・ブラウザの全種別でファイルごと行・関数80%以上(計測の対象外は型だけのファイル・ルート・adminの登録の一覧・自動生成・テストの補助で既存の設定どおり)。clientの`inquiry-contact.ts`にテストを足し、adminの不安定なブラウザテスト(Radixの選択欄が閉じた後にフォーカスを戻す)を直した。bot判定はapiの`stubExternalServices`とclientの偽のTurnstileで外部へ通信しない。パッケージの差分なし。返信・追加メッセージ・ニックネーム・問い合わせの本文の違反の文言を`common-lib/inquiry/inquiry-input-rules.ts`の`GUEST_NICKNAME_MESSAGES`・`INQUIRY_BODY_MESSAGES`・`CHAT_MESSAGE_MESSAGES`へまとめ、api・client・adminが読む(legal-pagesの`CHANGE_SUMMARY_MESSAGES`の前例)。「カテゴリを選択してください。」の写しはapi・clientに残る。coding/005の「規則の置き場所」の表に「判定と文言を共有しスキーマは各側で包む」形が無い

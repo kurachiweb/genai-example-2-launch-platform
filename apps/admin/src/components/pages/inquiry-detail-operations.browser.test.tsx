@@ -597,7 +597,10 @@ describe('対応ステータスの変更', () => {
     await renderDetail({ inquiry: () => detailResult(current) });
     await chooseStatus('対応済');
     await expect.element(changeStatusButton()).toBeEnabled();
-    changeStatusButton().element().focus();
+    // 選択肢の一覧は閉じる動きの後に選択欄へフォーカスを戻すため、戻り終えてからボタンへ移す
+    await expect.poll(() => page.getByRole('listbox').query()).toBeNull();
+    await expect.element(statusSelect()).toHaveFocus();
+    await userEvent.tab();
     await expect.element(changeStatusButton()).toHaveFocus();
     current = memberDetailOf({ status: 'RESOLVED' });
 

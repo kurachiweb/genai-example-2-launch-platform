@@ -42,3 +42,24 @@ export const checkChatMessage = (value: string): InquiryTextIssue | undefined =>
 export const checkInquiryCategoryName = (
   value: string,
 ): InquiryTextIssue | undefined => checkRequiredText(value, CATEGORY_NAME_MAX);
+
+const limitFormat = new Intl.NumberFormat('ja-JP');
+
+const messagesOf = (
+  subject: string,
+  max: number,
+): Readonly<Record<InquiryTextIssue, string>> =>
+  Object.freeze({
+    'forbidden-character': `${subject}に使用できない文字が含まれています。`,
+    empty: `${subject}を入力してください。`,
+    'too-long': `${subject}は${limitFormat.format(max)}文字以内で入力してください。`,
+  });
+
+export const GUEST_NICKNAME_MESSAGES = messagesOf(
+  'ニックネーム',
+  GUEST_NICKNAME_MAX,
+);
+
+export const INQUIRY_BODY_MESSAGES = messagesOf('メッセージ', INQUIRY_BODY_MAX);
+
+export const CHAT_MESSAGE_MESSAGES = messagesOf('メッセージ', CHAT_MESSAGE_MAX);

@@ -6,12 +6,15 @@ import {
 } from '../admin/admin-input-rules.ts';
 import {
   CHAT_MESSAGE_MAX,
+  CHAT_MESSAGE_MESSAGES,
   checkChatMessage,
   checkGuestNickname,
   checkInquiryBody,
   checkInquiryCategoryName,
   GUEST_NICKNAME_MAX,
+  GUEST_NICKNAME_MESSAGES,
   INQUIRY_BODY_MAX,
+  INQUIRY_BODY_MESSAGES,
   INQUIRY_CURSOR_MAX,
   type InquiryTextIssue,
 } from './inquiry-input-rules.ts';
@@ -153,4 +156,43 @@ describe('カテゴリ名の判定と管理画面のカテゴリマスタの規�
   ])('使用できない文字の無い%sの入力を同じに判定する', (_, value) => {
     expect(checkInquiryCategoryName(value)).toBe(checkCategoryName(value));
   });
+});
+
+describe('違反の文言', () => {
+  test.each([
+    [
+      'ニックネーム',
+      GUEST_NICKNAME_MESSAGES,
+      {
+        'forbidden-character':
+          'ニックネームに使用できない文字が含まれています。',
+        empty: 'ニックネームを入力してください。',
+        'too-long': 'ニックネームは25文字以内で入力してください。',
+      },
+    ],
+    [
+      '本文',
+      INQUIRY_BODY_MESSAGES,
+      {
+        'forbidden-character': 'メッセージに使用できない文字が含まれています。',
+        empty: 'メッセージを入力してください。',
+        'too-long': 'メッセージは5,000文字以内で入力してください。',
+      },
+    ],
+    [
+      'チャットのメッセージ',
+      CHAT_MESSAGE_MESSAGES,
+      {
+        'forbidden-character': 'メッセージに使用できない文字が含まれています。',
+        empty: 'メッセージを入力してください。',
+        'too-long': 'メッセージは1,000文字以内で入力してください。',
+      },
+    ],
+  ] as const)(
+    '%sの違反の種類ごとに文言を持ち、凍結されている',
+    (_, messages, expected) => {
+      expect(messages).toEqual(expected);
+      expect(Object.isFrozen(messages)).toBe(true);
+    },
+  );
 });

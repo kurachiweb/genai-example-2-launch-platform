@@ -2,7 +2,7 @@ import { CATEGORY_NAME_MAX } from '../../../common-lib/admin/admin-input-rules.t
 import { INQUIRY_ATTACHMENT_LIMITS } from '../../../common-lib/inquiry/inquiry-attachment-limits.ts';
 import { INQUIRY_CATEGORY_OTHER_NAME } from '../../../common-lib/inquiry/inquiry-category-constants.ts';
 import {
-  CHAT_MESSAGE_MAX,
+  CHAT_MESSAGE_MESSAGES,
   type InquiryTextIssue,
 } from '../../../common-lib/inquiry/inquiry-input-rules.ts';
 import {
@@ -88,15 +88,6 @@ export const inquiryCategoryNameRejectedError = (
   });
 
 const CHAT_MESSAGE_FIELD = 'body';
-
-const limitFormat = new Intl.NumberFormat('ja-JP');
-
-const CHAT_MESSAGE_MESSAGES: Readonly<Record<InquiryTextIssue, string>> =
-  Object.freeze({
-    'forbidden-character': 'メッセージに使用できない文字が含まれています。',
-    empty: 'メッセージを入力してください。',
-    'too-long': `メッセージは${limitFormat.format(CHAT_MESSAGE_MAX)}文字以内で入力してください。`,
-  });
 
 export const inquiryChatMessageRejectedError = (
   issue: InquiryTextIssue,

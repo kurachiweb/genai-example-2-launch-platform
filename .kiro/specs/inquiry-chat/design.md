@@ -196,7 +196,7 @@ apps/
 │   └── index.ts                                        # inquiryのテーブルの集約(schema/index.tsから再エクスポート)
 ├── common-lib/
 │   ├── inquiry/                                        # 4アプリ共通の純粋な定義(各ファイルに同名の*.unit.test.ts)
-│   │   ├── inquiry-input-rules.ts                      # ニックネーム・メッセージ・チャットの上限と判定、メールアドレスの長さ
+│   │   ├── inquiry-input-rules.ts                      # ニックネーム・メッセージ・チャットの上限と判定と違反の文言、メールアドレスの長さ
 │   │   ├── inquiry-attachment-limits.ts                # INQUIRY_ATTACHMENT_PURPOSE・INQUIRY_ATTACHMENT_LIMITS・checkAttachmentTotals
 │   │   ├── inquiry-status.ts                           # InquiryStatus・INQUIRY_STATUS_LABELS・InquiryKind
 │   │   └── inquiry-category-constants.ts               # INQUIRY_CATEGORY_OTHER_ID・INQUIRY_CATEGORY_OTHER_NAME
@@ -482,6 +482,16 @@ export declare function checkInquiryBody(
 export declare function checkChatMessage(
   value: string,
 ): InquiryTextIssue | undefined;
+// 違反の文言。APIサーバー(入力の検証・チャットのユースケース)と利用者側・管理画面のフォームが同じ値を読み込む
+export declare const GUEST_NICKNAME_MESSAGES: Readonly<
+  Record<InquiryTextIssue, string>
+>;
+export declare const INQUIRY_BODY_MESSAGES: Readonly<
+  Record<InquiryTextIssue, string>
+>;
+export declare const CHAT_MESSAGE_MESSAGES: Readonly<
+  Record<InquiryTextIssue, string>
+>;
 
 // inquiry-attachment-limits.ts
 export declare const INQUIRY_ATTACHMENT_PURPOSE: 'inquiry-attachment';

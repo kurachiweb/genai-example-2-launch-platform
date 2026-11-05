@@ -4,6 +4,8 @@ import { checkAuditReason } from '../../../../../common-lib/admin/admin-input-ru
 import {
   checkGuestNickname,
   checkInquiryBody,
+  GUEST_NICKNAME_MESSAGES,
+  INQUIRY_BODY_MESSAGES,
   INQUIRY_CURSOR_MAX,
 } from '../../../../../common-lib/inquiry/inquiry-input-rules.ts';
 import { trimWhiteSpace } from '../../../../../common-lib/text/white-space.ts';
@@ -14,11 +16,7 @@ import {
 } from '../../../../application/inquiry/inquiry-errors.ts';
 import type { AdminInquiryFilter } from '../../../../application/inquiry/ports.ts';
 import { email, inputRuleOf } from '../../auth-inputs.ts';
-import {
-  AUDIT_REASON_TOO_LONG_MESSAGE,
-  GUEST_NICKNAME_MESSAGES,
-  INQUIRY_BODY_MESSAGES,
-} from './errors.ts';
+import { AUDIT_REASON_TOO_LONG_MESSAGE } from './errors.ts';
 import { inquiryKindOf, inquiryStatusOf } from './mappers.ts';
 
 // 問い合わせ・カテゴリ・ファイルのIDは26文字のULIDで、一致しない値はユースケースが見つからない・添付できないとして扱う。ここでは処理量だけを抑える
