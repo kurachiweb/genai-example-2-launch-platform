@@ -17,6 +17,7 @@ import type {
   CheckoutSummaryText,
   StripeSubscriptionStatus,
 } from './purchase-kind-contract.ts';
+import type { StripeRefundReason } from './refund-rules.ts';
 
 // Stripeとの通信の結果は反映に要る項目だけの読み取り専用の形にし、Stripeの型を外へ出さない
 
@@ -145,7 +146,7 @@ export interface StripeGateway {
   createRefund(input: {
     readonly paymentIntentId: string;
     readonly amount: MinorUnitAmount | null;
-    readonly reason: 'duplicate' | 'requested_by_customer';
+    readonly reason: StripeRefundReason;
     readonly refundRequestId: string;
     readonly purchaseId: string;
     readonly idempotencyKey: string;

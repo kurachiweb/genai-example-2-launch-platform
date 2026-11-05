@@ -1,0 +1,103 @@
+import { describe, expect, test } from 'bun:test';
+
+import { toStripeRefundReason, validateRefundAmount } from './refund-rules.ts';
+
+describe('validateRefundAmount', () => {
+  test('金額を省略すると残りの全額にする', () => {
+    expect(
+      validateRefundAmount({
+        requested: null,
+        paid: 4900,
+        alreadyRequested: 0,
+      }),
+    ).toEqual({ kind: 'ok', amount: 4900 });
+  });
+
+  test('金額を省略すると返金の依頼済みの額を除いた残りにする', () => {
+    expect(
+      validateRefundAmount({
+        requested: null,
+        paid: 4900,
+        alreadyRequested: 1900,
+      }),
+    ).toEqual({ kind: 'ok', amount: 3000 });
+  });
+
+  test('金額を省略しても残りが無ければamount_exceeds_refundableで拒否する', () => {
+    expect(
+      validateRefundAmount({
+        requested: null,
+        paid: 4900,
+        alreadyRequested: 4900,
+      }),
+    ).toEqual({ kind: 'invalid', code: 'amount_exceeds_refundable' });
+  });
+
+  test('残りより少ない一部の金額を受け付ける', () => {
+    expect(
+      validateRefundAmount({
+        requested: 1000,
+        paid: 4900,
+        alreadyRequested: 1900,
+      }),
+    ).toEqual({ kind: 'ok', amount: 1000 });
+  });
+
+  test('残りと同じ金額を受け付ける', () => {
+    expect(
+      validateRefundAmount({
+        requested: 3000,
+        paid: 4900,
+        alreadyRequested: 1900,
+      }),
+    ).toEqual({ kind: 'ok', amount: 3000 });
+  });
+
+  test('残りを超える金額はamount_exceeds_refundableで拒否する', () => {
+    expect(
+      validateRefundAmount({
+        requested: 3001,
+        paid: 4900,
+        alreadyRequested: 1900,
+      }),
+    ).toEqual({ kind: 'invalid', code: 'amount_exceeds_refundable' });
+  });
+
+  test.each([0, -1, -4900])('%iはinvalid_amountで拒否する', (requested) => {
+    expect(
+      validateRefundAmount({ requested, paid: 4900, alreadyRequested: 0 }),
+    ).toEqual({ kind: 'invalid', code: 'invalid_amount' });
+  });
+
+  test.each([0.5, 100.25, Number.NaN, Number.POSITIVE_INFINITY])(
+    '整数でない%pはinvalid_amountで拒否する',
+    (requested) => {
+      expect(
+        validateRefundAmount({ requested, paid: 4900, alreadyRequested: 0 }),
+      ).toEqual({ kind: 'invalid', code: 'invalid_amount' });
+    },
+  );
+
+  test('最小通貨単位の上限を超える金額はinvalid_amountで拒否する', () => {
+    expect(
+      validateRefundAmount({
+        requested: 10_000_001,
+        paid: 4900,
+        alreadyRequested: 0,
+      }),
+    ).toEqual({ kind: 'invalid', code: 'invalid_amount' });
+  });
+});
+
+describe('toStripeRefundReason', () => {
+  test('二重決済の理由はStripeのduplicateにする', () => {
+    expect(toStripeRefundReason('duplicate')).toBe('duplicate');
+  });
+
+  test.each(['late', 'ineligible', 'participation_lost', 'suspension'])(
+    '%sはStripeのrequested_by_customerにする',
+    (reason) => {
+      expect(toStripeRefundReason(reason)).toBe('requested_by_customer');
+    },
+  );
+});
