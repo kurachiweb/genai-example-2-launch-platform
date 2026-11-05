@@ -274,6 +274,10 @@ export interface ReflectionHarness {
   readonly queue: RecordingQueue;
   readonly emails: RecordingSender;
   readonly notifierCalls: NotifierCall[];
+  // 自動返金の通知を依頼した返金の依頼のID
+  readonly refundNoticeCalls: string[];
+  readonly notifier: PurchaseNotifier;
+  readonly paymentRefunds: D1PaymentRefunds;
 }
 
 const FULFILLMENT_ID = Symbol.for('payments.test.FakeFulfillment');
@@ -307,6 +311,7 @@ export function harnessWith(
     clientSiteOrigin: PAYMENTS_ENV.CLIENT_SITE_ORIGIN,
   });
   const notifierCalls: NotifierCall[] = [];
+  const refundNoticeCalls: string[] = [];
   const recordingNotifier: PurchaseNotifier = {
     notifyPurchase: async (purchaseId) => {
       notifierCalls.push({
@@ -315,8 +320,10 @@ export function harnessWith(
       });
       return notifier.notifyPurchase(purchaseId);
     },
-    notifyAutomaticRefund: (refundRequestId) =>
-      notifier.notifyAutomaticRefund(refundRequestId),
+    notifyAutomaticRefund: (refundRequestId) => {
+      refundNoticeCalls.push(refundRequestId);
+      return notifier.notifyAutomaticRefund(refundRequestId);
+    },
   };
   const paymentRefunds = new D1PaymentRefunds({
     appName: 'event',
@@ -340,6 +347,7 @@ export function harnessWith(
     gateway: options.gateway ?? createFakeStripeGateway(),
     purchases,
     purchaseStatements: purchases,
+    records,
     recordStatements: records,
     guardedBatch,
     registry: createPurchaseKindRegistry(registrations),
@@ -355,7 +363,15 @@ export function harnessWith(
     ids,
     clock,
   });
-  return { reflection, queue, emails, notifierCalls };
+  return {
+    reflection,
+    queue,
+    emails,
+    notifierCalls,
+    refundNoticeCalls,
+    notifier: recordingNotifier,
+    paymentRefunds,
+  };
 }
 
 export async function insertPurchase(

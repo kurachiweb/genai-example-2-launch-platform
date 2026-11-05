@@ -1,7 +1,10 @@
 import type { BatchItem } from 'drizzle-orm/batch';
 
 import type { MinorUnitAmount } from '../../../common-lib/payments/money.ts';
-import type { RejectionReason } from '../../../common-lib/payments/purchase-states.ts';
+import type {
+  RefundRequestStatus,
+  RejectionReason,
+} from '../../../common-lib/payments/purchase-states.ts';
 import type {
   NewPaymentRecord,
   NewPurchase,
@@ -42,6 +45,11 @@ export interface PaymentRecordStatements {
   upsertByReference(record: NewPaymentRecord): BatchItem<'sqlite'>;
   // (stripe_reference, kind, status)の一意キーで重複を無視する
   insertDisputeStage(record: NewPaymentRecord): BatchItem<'sqlite'>;
+  // 記録済みの行のLinkの資金源のグループが空のときだけ埋める(定期課金の初回の請求の通知が決済セッションの反映より先に記録した行)
+  fillLinkFundingSourceGroup(input: {
+    readonly recordId: string;
+    readonly linkFundingSourceGroup: string;
+  }): BatchItem<'sqlite'>;
 }
 
 export interface StripeObjectStatements {
@@ -56,6 +64,15 @@ export interface StripeObjectStatements {
 export interface RefundStatements {
   // request_keyの一意制約で、まだ確定していない同じ依頼キーの2つ目の一括の書き込みは失敗する
   insert(record: NewRefundRequest): BatchItem<'sqlite'>;
+  // 依頼の状態がfromにあり、状態か返金のIDが変わるときだけ更新する。更新日時は自動返金の通知の返金の日時になるため、同じ状態の通知では変えない
+  reflectStripeStatus(input: {
+    readonly refundRequestId: string;
+    readonly status: RefundRequestStatus;
+    readonly from: readonly RefundRequestStatus[];
+    readonly stripeRefundId: string;
+    // 省くと変えない
+    readonly failureCode?: string | null;
+  }): BatchItem<'sqlite'>;
   deleteByUser(userId: string): BatchItem<'sqlite'>;
 }
 

@@ -13,6 +13,7 @@ import type { IdGenerator } from '../../core/ids/id-generator.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import {
   type NewPaymentRecord,
+  type PaymentRecordStore,
   type PaymentRefunds,
   type PurchaseNotifier,
   type PurchasePatch,
@@ -69,6 +70,7 @@ export interface StripeCheckoutSessionReflectionDependencies {
   readonly gateway: StripeGateway;
   readonly purchases: PurchaseStore;
   readonly purchaseStatements: PurchaseStatements;
+  readonly records: PaymentRecordStore;
   readonly recordStatements: PaymentRecordStatements;
   readonly guardedBatch: GuardedBatch;
   readonly registry: PurchaseKindRegistry<PurchaseKindRegistration>;
@@ -118,6 +120,8 @@ interface PaidReflection {
   readonly paidAt: Date;
   readonly amountPaid: MinorUnitAmount;
   readonly record: NewPaymentRecord;
+  // 定期課金の初回の請求の通知が先に記録した行があり、記録の挿入が重ならない
+  readonly recordedBefore: boolean;
 }
 
 function applied(purchaseStatus: PurchaseStatus): ReflectionOutcome {
@@ -142,6 +146,7 @@ export class StripeCheckoutSessionReflection implements CheckoutSessionReflectio
   private readonly gateway: StripeGateway;
   private readonly purchases: PurchaseStore;
   private readonly purchaseStatements: PurchaseStatements;
+  private readonly records: PaymentRecordStore;
   private readonly recordStatements: PaymentRecordStatements;
   private readonly guardedBatch: GuardedBatch;
   private readonly registry: PurchaseKindRegistry<PurchaseKindRegistration>;
@@ -159,6 +164,7 @@ export class StripeCheckoutSessionReflection implements CheckoutSessionReflectio
     this.gateway = dependencies.gateway;
     this.purchases = dependencies.purchases;
     this.purchaseStatements = dependencies.purchaseStatements;
+    this.records = dependencies.records;
     this.recordStatements = dependencies.recordStatements;
     this.guardedBatch = dependencies.guardedBatch;
     this.registry = dependencies.registry;
@@ -229,7 +235,7 @@ export class StripeCheckoutSessionReflection implements CheckoutSessionReflectio
       });
     }
     return this.reflectPaid(
-      this.paidReflectionOf(purchase, snapshot, occurredAt),
+      await this.paidReflectionOf(purchase, snapshot, occurredAt),
     );
   }
 
@@ -282,11 +288,11 @@ export class StripeCheckoutSessionReflection implements CheckoutSessionReflectio
     return advanced ? applied(to) : this.current(purchase.id);
   }
 
-  private paidReflectionOf(
+  private async paidReflectionOf(
     purchase: PurchaseRecord,
     snapshot: StripeCheckoutSessionSnapshot,
     occurredAt: Date,
-  ): PaidReflection {
+  ): Promise<PaidReflection> {
     const paidAt = this.clock.now();
     const amountPaid = snapshot.amountTotal ?? purchase.amountTotal;
     const pseudonymousId = snapshot.metadata.pseudonymous_id;
@@ -302,14 +308,18 @@ export class StripeCheckoutSessionReflection implements CheckoutSessionReflectio
         `定期課金の決済セッション${snapshot.id}に初回の請求がありません`,
       );
     }
+    const recordedId = await this.recordedInvoiceRecordId(
+      isSubscription ? snapshot.invoiceId : null,
+    );
     return {
       purchase,
       snapshot,
       occurredAt,
       paidAt,
       amountPaid,
+      recordedBefore: recordedId !== undefined,
       record: {
-        id: this.ids.generate(),
+        id: recordedId ?? this.ids.generate(),
         pseudonymousId,
         kind: isSubscription ? 'subscription' : 'one_time',
         purpose: purchase.kind,
@@ -329,6 +339,33 @@ export class StripeCheckoutSessionReflection implements CheckoutSessionReflectio
         recordedAt: paidAt,
       },
     };
+  }
+
+  // 定期課金の初回の請求の通知が先に記録した行には決済セッションの記録の挿入が重ならないため、その行のIDを権利の付与へ渡す
+  private async recordedInvoiceRecordId(
+    invoiceId: string | null,
+  ): Promise<string | undefined> {
+    return invoiceId === null
+      ? undefined
+      : this.records.findIdByReference({
+          stripeReference: invoiceId,
+          kind: 'subscription',
+        });
+  }
+
+  // 請求の通知はLinkの資金源のグループを知らないため、先に記録された行へ決済セッションの値を補う
+  private fillStatementsOf(
+    reflection: PaidReflection,
+  ): readonly BatchItem<'sqlite'>[] {
+    const { record } = reflection;
+    return reflection.recordedBefore && record.linkFundingSourceGroup !== null
+      ? [
+          this.recordStatements.fillLinkFundingSourceGroup({
+            recordId: record.id,
+            linkFundingSourceGroup: record.linkFundingSourceGroup,
+          }),
+        ]
+      : [];
   }
 
   private async reflectPaid(
@@ -464,7 +501,11 @@ export class StripeCheckoutSessionReflection implements CheckoutSessionReflectio
     });
     return this.guardedBatch.run({
       guarded,
-      rest: [advance, ...extra.statements],
+      rest: [
+        advance,
+        ...this.fillStatementsOf(reflection),
+        ...extra.statements,
+      ],
     });
   }
 

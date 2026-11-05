@@ -199,7 +199,7 @@ apps/
 │   │   ├── purchase-kind-registry.ts                # 登録の検証と購入種別からの解決、定期課金の受け取り口の名前の検証
 │   │   ├── ports.ts                                 # StripeGateway・StripeWebhookVerifier・各ストアの文を返さない操作・PaymentRefunds・OpenCheckoutExpirer・PaymentReflector・PurchaseNotifier・PriceCatalog・CustomerDirectory・PaymentHistoryExport・PaymentRevenueReport・RevenuePeriod・反映の指示と結果(ReflectionInstruction・ReflectionOutcome)・ストアの値の型(型だけ)
 │   │   ├── purchase-rules.ts                        # 状態の前進・有効期限・受付期限・反映の期限・拒否の理由
-│   │   ├── refund-rules.ts                          # 金額の検証・Stripeの返金理由への対応
+│   │   ├── refund-rules.ts                          # 金額の検証・Stripeの返金理由への対応・Stripeの返金の状態から決済履歴と返金の依頼の状態への対応(refundRecordStatusOf・refundRequestReflectionOf)
 │   │   ├── stripe-event-mapping.ts                  # 通知を反映の指示へ正規化(受け付ける種類の一覧)
 │   │   ├── refund-message.ts                        # PAYMENTS_REFUND_MESSAGE(payments.refund-payment)
 │   │   ├── stripe-api-version.ts                    # STRIPE_API_VERSION・CHECKOUT_INTEGRATION_IDENTIFIER
@@ -769,6 +769,7 @@ export interface PurchaseKindRegistration extends PurchaseOfferRegistration {
   readonly fulfillment: ServiceIdentifier<PurchaseFulfillment>;
 }
 
+// 記録済みと同じ発生時刻の通知は再び確定し得るため、statementsForの文とafterCommitは冪等にする
 export interface SubscriptionEventSink {
   statementsFor(
     change: SubscriptionChange,
@@ -788,7 +789,7 @@ export declare const SUBSCRIPTION_EVENT_SINKS: readonly SubscriptionEventSinkReg
 
 - 登録と解決: `PAYMENTS_PLATFORM_MODULE`は`PAYMENTS_TYPES.PurchaseKindRegistry`を`createPurchaseKindRegistry(PURCHASE_KIND_REGISTRATIONS)`の1つの値へ束縛する。apiの`CheckoutStarter`(application層)は`workers/payments`を読み込まず、この識別子を`PurchaseKindRegistry`(既定の型引数)として受け取り、`resolve`の結果の`kind`・`offer`・`enabled`だけを使う(`fulfillment`は型に現れない)。`offer`の識別子は、apiの決済モジュール(composition)が渡す`PurchaseOfferPolicyResolver`で`PurchaseOfferPolicy`へ変える(media-pipelineの`FileReadPolicy`の解決の関数と同じ形)。`workers/payments`の反映は同じ識別子を`PurchaseKindRegistry<PurchaseKindRegistration>`として受け取り、`fulfillment`の識別子から`PurchaseFulfillment`を解決する。`SUBSCRIPTION_EVENT_SINKS`は`workers/payments`の反映だけが読み、名前の検証は`assertSubscriptionEventSinkNames`で行う。
 - Preconditions: 後続specの`PurchaseFulfillment`・`SubscriptionEventSink`の実装は`backend-lib/workers/<ドメイン>`に置き(`workers/payments/fulfillment-contract.ts`の契約を読み込む)、D1の文だけを返す。後続specの`PurchaseOfferPolicy`の実装は`core/payments`の契約だけを読み込む。外部の呼び出しやメッセージの送信を`prepare`で行わない。権利の付与の文は、条件を満たさなければ一意制約などで失敗する形にしてよい(失敗は拒否として扱い直す)。
-- Postconditions: `prepare`は同じ購入で何度呼ばれても同じ判断を返す。`afterCommit`は、その呼び出しで`fulfill`の一括の書き込みを確定させた側だけが1回呼ぶ(拒否・反映済み・版の検査の失敗では呼ばない)。`afterCommit`の失敗は反映の結果を変えず、後続specが自分の依頼待ちの行と日次の確認で拾う(2.11、U1)。
+- Postconditions: `prepare`は同じ購入で何度呼ばれても同じ判断を返す。`afterCommit`は、その呼び出しで`fulfill`の一括の書き込みを確定させた側だけが1回呼ぶ(拒否・反映済み・版の検査の失敗では呼ばない)。`afterCommit`の失敗は反映の結果を変えず、後続specが自分の依頼待ちの行と日次の確認で拾う(2.11、U1)。`SubscriptionEventSink`は、記録済みと同じ発生時刻の通知が再び確定し得る(同じ秒に発生した別の通知を捨てないため、同じ発生時刻は通す)ため、`statementsFor`の文と`afterCommit`を冪等にする。
 - Invariants: `deadlineAt`があれば`acceptUntil`も`fulfillableUntil`もある。`acceptUntil ≤ deadlineAt ≤ fulfillableUntil`。`PurchaseOffer.quantity`は都度決済の日数(広告)または1。
 
 #### PurchaseRules・RefundRules・StripeEventMapping
@@ -1084,6 +1085,11 @@ export interface PaymentRecordStore {
     pseudonymousId: string,
   ): Promise<readonly PaymentRecordRow[]>;
   deleteRecordedBefore(threshold: Date, limit: number): Promise<number>;
+  // 決済・請求・返金の記録のID(CheckoutSessionReflectionが、定期課金の初回の請求の通知が先に記録した行のIDを引く)
+  findIdByReference(input: {
+    readonly stripeReference: string;
+    readonly kind: Exclude<PaymentRecordKind, 'dispute'>;
+  }): Promise<string | undefined>;
 }
 export interface StripeObjectStore {
   findLastEventAt(objectId: string): Promise<Date | undefined>;
@@ -1122,6 +1128,11 @@ export interface PaymentRecordStatements {
   ): GuardedStatement;
   upsertByReference(record: NewPaymentRecord): BatchItem<'sqlite'>; // 記録済みの発生時刻が受け取った発生時刻より新しくないときだけ更新(古い通知で巻き戻さない。請求・返金)
   insertDisputeStage(record: NewPaymentRecord): BatchItem<'sqlite'>; // (stripe_reference, kind, status)の一意キーで重複を無視
+  // 記録済みの行のLinkの資金源のグループが空のときだけ埋める(定期課金の初回の請求の通知が先に記録した行)
+  fillLinkFundingSourceGroup(input: {
+    readonly recordId: string;
+    readonly linkFundingSourceGroup: string;
+  }): BatchItem<'sqlite'>;
 }
 export interface StripeObjectStatements {
   // object_idの一意索引でupsertし、より新しい発生時刻が記録済みならlast_event_atにNULLを入れる(同じか新しい通知だけが通る)
@@ -1133,6 +1144,14 @@ export interface StripeObjectStatements {
 }
 export interface RefundStatements {
   insert(record: NewRefundRequest): BatchItem<'sqlite'>; // request_keyの一意制約
+  // 依頼の状態がfromにあり、状態か返金のIDが変わるときだけ更新する。updated_atは自動返金の通知の返金の日時のため、同じ状態の通知では変えない
+  reflectStripeStatus(input: {
+    readonly refundRequestId: string;
+    readonly status: RefundRequestStatus;
+    readonly from: readonly RefundRequestStatus[];
+    readonly stripeRefundId: string;
+    readonly failureCode?: string | null; // 省くと変えない
+  }): BatchItem<'sqlite'>;
   deleteByUser(userId: string): BatchItem<'sqlite'>;
 }
 export interface CustomerStatements {
@@ -1156,12 +1175,12 @@ export interface CustomerStatements {
 - 決済セッション(`CheckoutSessionReflection`):
   1. `findBySessionId`で購入を引く。無ければ`StripeCheckoutSessionSnapshot.metadata.purchase_id`(作成時に付けた購入ID)で`findById`を引く(決済セッションのIDの保存の前に通知が届いた場合)。どちらでも無ければ`unresolved`(ダッシュボードで作成した決済など、6.9)。
   2. `status = 'expired'`なら`expired`へ前進(7.6)。`complete`かつ`unpaid`なら`processing`へ前進し、PaymentIntentの状態が`requires_payment_method`・`canceled`なら支払いの失敗(`async_payment_failed`)として`expired`へ(7.2)。これらは他の文を伴わない1文の前進のため、版の検査を使わず、`UPDATE … WHERE status IN (…)`の`meta.changes`で前進したかを判定する。
-  3. `complete`かつ`paid`なら、`decideCompletion`で反映の期限を確かめ(7.3)、期限内なら登録の`PurchaseFulfillment.prepare`を呼ぶ。`fulfill`なら[購入を`fulfilled`へ前進・決済履歴の記録・権利の付与の文・購入確認メールの依頼待ち]を、`reject`・期限切れなら[購入を`rejected`へ前進(理由)・決済履歴の記録・全額返金の依頼(`PaymentRefunds.prepareForReflection`)]を`GuardedBatch`で確定する。どちらも先頭の文は決済履歴の記録(`PaymentRecordStatements.insertCheckoutRecordGuarded`。`prepare`の前に読み取った購入の`state_token`で検査する)で、続けて購入を前進させて`state_token`を新しくする。`processing`・`fulfilled`・`rejected`への前進の文は、決済セッションの結果の`stripe_payment_intent_id`・`stripe_invoice_id`・`stripe_subscription_id`・`amount_total`と、支払いが確定していれば`paid_at`(反映の時刻)・`reflected_at`を同じ文で購入に保存する(持ち主の特定・返金の依頼・返金の実行・購入確認メールがこの値に頼る)。
+  3. `complete`かつ`paid`なら、`decideCompletion`で反映の期限を確かめ(7.3)、期限内なら登録の`PurchaseFulfillment.prepare`を呼ぶ。`fulfill`なら[購入を`fulfilled`へ前進・決済履歴の記録・権利の付与の文・購入確認メールの依頼待ち]を、`reject`・期限切れなら[購入を`rejected`へ前進(理由)・決済履歴の記録・全額返金の依頼(`PaymentRefunds.prepareForReflection`)]を`GuardedBatch`で確定する。どちらも先頭の文は決済履歴の記録(`PaymentRecordStatements.insertCheckoutRecordGuarded`。`prepare`の前に読み取った購入の`state_token`で検査する)で、続けて購入を前進させて`state_token`を新しくする。定期課金で初回の請求の通知が先に記録した行があれば(`PaymentRecordStore.findIdByReference`)、記録の挿入は一意キーで無視されるため、その行のIDを`FulfillablePurchase.paymentRecordId`に渡し、同じ一括の書き込みに`fillLinkFundingSourceGroup`を加えてLinkの資金源のグループを補う。読み取りから確定までの間に請求の通知が確定した場合は、どの行も指さないIDになり得る(契約のコメントに明記)。`processing`・`fulfilled`・`rejected`への前進の文は、決済セッションの結果の`stripe_payment_intent_id`・`stripe_invoice_id`・`stripe_subscription_id`・`amount_total`と、支払いが確定していれば`paid_at`(反映の時刻)・`reflected_at`を同じ文で購入に保存する(持ち主の特定・返金の依頼・返金の実行・購入確認メールがこの値に頼る)。
   4. `guard_failed`(他の入口が先に前進した)なら購入を読み直して現在の状態を返す。`constraint_failed`(`exclusivity_key`の部分一意索引、または後続specの文の制約)なら`prepare`を1回だけ呼び直し、二重決済なら理由`duplicate`、それ以外は`ineligible`として拒否の一括の書き込みを行う(7.4)。
   5. 確定の後、`PurchaseNotifier`で購入確認メールを依頼し、拒否なら`PaymentRefunds.dispatch`で返金を送る。`fulfill`を確定させた場合は、登録の`PurchaseFulfillment.afterCommit`があれば呼び、例外は`warn`のログにして結果を変えない(2.11、U1)。
 - 決済履歴の記録: 都度決済は`kind = 'one_time'`・`stripe_reference = 決済セッションのID`、定期課金は`kind = 'subscription'`・`stripe_reference = 請求のID`。購入の同意の日時と版を記録に写す(12.6)。
-- 請求(7.7): `invoice.paid`・`invoice.payment_failed`を、請求のIDの`upsertByReference`(`succeeded`・`failed`)で記録する。初回の請求は決済セッションの反映と同じ行になる(一意キー`(stripe_reference, kind)`)。持ち主は`PaymentOwnerResolver`で特定する。
-- 返金(8.8): 返金のIDの`upsertByReference`で`kind = 'refund'`・負の金額・`pending`・`succeeded`・`failed`を記録し、本specの依頼(`metadata.refund_request_id`)なら`payment_refunds`の状態も更新する。成功した自動返金(依頼キーが`reflection:`で始まる依頼)は`PurchaseNotifier`で通知を依頼する(8.10)。権利の剥奪は依頼しない(8.9)。
+- 請求(7.7): `invoice.paid`・`invoice.payment_failed`を、請求のIDの`upsertByReference`(`paid`は`succeeded`と支払額、`open`・`uncollectible`は`failed`と請求額。`draft`・`void`は`ignored`、定期課金の無い請求は`unresolved`)で記録する。初回の請求は決済セッションの反映と同じ行になる(一意キー`(stripe_reference, kind)`)。持ち主は`PaymentOwnerResolver`で特定する。初回の請求(購入の`stripe_invoice_id`が未保存か同じ請求のID)だけ、購入の同意の日時・版・購入IDを記録に写し(決済セッションの反映より先に届いても同意が残る、12.6)、2回目以降の請求には写さず購入確認メールも依頼しない(11.4)。`upsertByReference`が行を変えなければ(記録済みの発生時刻が新しい)`stale`を返す。
+- 返金(8.8): 返金のIDの`upsertByReference`で`kind = 'refund'`・負の金額・`pending`・`succeeded`・`failed`を記録し、本specの依頼(`metadata.refund_request_id`、無ければStripeの返金のID)なら`payment_refunds`の状態も同じ一括の書き込みで`RefundStatements.reflectStripeStatus`により更新する。状態の対応は`refund-rules.ts`の`refundRecordStatusOf`・`refundRequestReflectionOf`で、Stripeの`pending`・`requires_action`は決済履歴が`pending`・依頼が`submitted`、`succeeded`はどちらも`succeeded`、`failed`はどちらも`failed`(依頼に`failure_reason`を記録)、`canceled`は決済履歴が`failed`・依頼が`canceled`とする。依頼は完了した状態から処理中へ戻さず、成功の後の失敗は受け入れる。成功した自動返金(依頼キーが`reflection:`で始まる依頼)は`PurchaseNotifier`で通知を依頼する(8.10)。権利の剥奪は依頼しない(8.9)。
 - チャージバック(9.1〜9.4): `funds_withdrawn`は`disputed`・引き落とし額の負数、`funds_reinstated`は`dispute_won`・戻った額の正数、`closed`かつ`status = 'lost'`は`dispute_lost`・0を、段階ごとに挿入する。`closed`かつ`won`は`funds_reinstated`で記録済みのため挿入しない。照会の段階(`warning_*`)・審査中(`under_review`)・不服申し立ての段階(`appeal_needs_response`・`appeal_under_review`)と、資金の移動が無いまま終わったものは記録しない(9.4)。Stripeの文書(仲裁と不服申し立て)では、不服申し立ては審査中から始まり敗北の後には起こらず、`charge.dispute.closed`は最終の`won`・`lost`で1回だけ届くため、不服申し立てを経ても記録は`disputed`の後に`dispute_won`か`dispute_lost`の一方だけになり、純収益の照会(12.10)の規則は変わらない。不服申し立ての状態の変化は`charge.dispute.updated`で届くが、購読しない(15種のまま)。権利は変えない(9.5)。
 - 定期課金(7.8・7.9): `StripeObjectStore.findLastEventAt`より古い通知は捨てる。新しければ[`payment_stripe_objects`の前進(`StripeObjectStatements.advanceGuarded`。先頭の文で、より新しい発生時刻が記録済みなら全体を取り消す)・登録された`SubscriptionEventSink`の文]を`GuardedBatch`で確定する。`guard_failed`は古い通知として`stale`を返す。`SubscriptionChange`には`StripeSubscriptionSnapshot`の`cancelAt`を写す。`committed`のときだけ各sinkの`afterCommit`を呼び、例外は`warn`のログにして結果を変えない(U1)。
 - 反映の一時的な失敗(Stripeの`StripeUnavailableError`・D1の失敗)は例外として呼び出し元へ返し、部分的な書き込みを残さない(6.6)。
@@ -1188,7 +1207,7 @@ export interface PaymentReflector {
 }
 ```
 
-- 実装は`workers/payments/payment-reflector.ts`(`CheckoutSessionReflection`を含む)に置き、`PAYMENTS_TYPES.PaymentReflector`へ束縛する。実装は`workers/payments/statement-contracts.ts`の各ストアの文・`GuardedBatch`・`PaymentRefundStatements`と、`fulfillment-contract.ts`の`PurchaseFulfillment`・`SubscriptionEventSink`を使う。
+- `CheckoutSessionReflection`の実装`StripeCheckoutSessionReflection`は`workers/payments/checkout-session-reflection.ts`に置き、依存に決済履歴のストア`records`(`PaymentRecordStore`。初回の請求の行のIDの照会)を含む。`PaymentReflector`の実装`StripePaymentReflector`は`workers/payments/payment-reflector.ts`に置き、`PAYMENTS_TYPES.PaymentReflector`へ束縛する。実装は`workers/payments/statement-contracts.ts`の各ストアの文・`GuardedBatch`・`PaymentRefundStatements`と、`fulfillment-contract.ts`の`PurchaseFulfillment`・`SubscriptionEventSink`を使う。
 
 #### OpenCheckoutExpirer
 

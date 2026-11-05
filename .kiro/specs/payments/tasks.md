@@ -145,7 +145,7 @@
   - _Depends: 3.1, 4.1, 5.1, 5.2_
   - _Requirements: 2.4, 2.5, 2.6, 2.11, 5.7, 6.4, 6.7, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 12.6_
 
-- [ ] 5.4 請求・返金・チャージバック・定期課金の反映をまとめる反映の処理を作る
+- [x] 5.4 請求・返金・チャージバック・定期課金の反映をまとめる反映の処理を作る
   - 先に、Workers統合テストで、請求の成功と失敗の記録(初回の請求は決済セッションの記録と同じ行)、返金の負の金額の記録と状態の変化と本specの依頼の状態の更新、成功した自動返金(依頼キーが`reflection:`で始まる依頼だけ)の通知の依頼待ちと依頼、チャージバックの引き落とし・勝訴・敗訴の記録と照会・審査中・不服申し立ての段階の無視、不服申し立てを経て敗訴した(`under_review`→`appeal_needs_response`→`appeal_under_review`→`lost`)チャージバックの記録が`disputed`と`dispute_lost`の2行だけになり、不服申し立てで勝訴した場合は`disputed`と`dispute_won`の2行だけになること、定期課金の変化(解約の予定時刻を含む)が登録した受け取り口の文と同時に確定し古い通知が捨てられること、確定したときだけ受け取り口の確定後の処理が1回呼ばれその例外で結果が変わらないこと(U1)、結び付かない通知が反映されないこと、一時的な失敗が例外として返り部分的な書き込みが残らないことを確かめる
   - 返金とチャージバックで権利の剥奪を依頼しない
   - 完了状態: Workers統合テストが成功し、通知の指示の種類ごとに反映の結果(反映・反映済み・古い・結び付かない・無視)が返る
@@ -364,3 +364,4 @@
 - 5.1: 返金の依頼は`workers/payments/payment-refunds.ts`の`D1PaymentRefunds`(`@injectable`無し、依存の束を受け取る。5.7で`PAYMENTS_TYPES.PaymentRefunds`と`PaymentRefundStatements`の両方へ同じインスタンスを`toDynamicValue`で束縛)。`reflection:`の依頼キーの規則は`core/payments/refund-rules.ts`の`reflectionRequestKeyOf`・`isReflectionRequestKey`(5.2〜5.4で使う)。支払い済みは`fulfilled`・`rejected`かつPaymentIntentのIDあり。送信の失敗は`warn`のログだけで日次の確認が送り直す。テストの補助`refundIdOf`は有効なULID
 - 5.2: 通知は`workers/payments/purchase-notifier.ts`の`EmailPurchaseNotifier`(`@injectable`無し、`{ appName, purchases, refunds, contacts, emails, clientSiteOrigin }`)。送信の失敗と入力を組み立てられない行は`failed`を返す(例外にしない)。呼び出し側は`failed`を例外として扱わない。5.4(必須): 自動返金の通知の返金日時は返金の依頼の行の`updated_at`のため、`succeeded`の後に同じ状態の通知が届いても`updated_at`が変わらないようにし(状態が変わるときだけ更新)、テストで確かめる。Ultrasの2回目以降の請求の反映で通知の部品が呼ばれないこと(要件11.4)もテストに加える。6.3: 入力を組み立てられない依頼待ちの行は毎日`failed`になり、古い順の100件の枠を塞ぎ得るため、知らせ方か読み飛ばしを検討する
 - 5.3: 決済セッションの反映は`workers/payments/checkout-session-reflection.ts`の`StripeCheckoutSessionReflection`(`reflectSession`・`reflectSnapshot`。5.4の`PaymentReflector`は`checkout_session`の指示をここへ渡す)。PaymentIntentの状態`requires_payment_method`・`canceled`の未払いの完了は失効。テストの補助は`testing/checkout-reflection-harness.ts`。5.4(必須): 定期課金で請求の通知が先に届くと決済セッションの記録の挿入が無視され、`FulfillablePurchase.paymentRecordId`が実在しない行を指す。同意を写す修正と合わせて、既存の行のIDを解決して渡すか、契約のコメントに明記する
+- 5.4: 反映の処理は`workers/payments/payment-reflector.ts`の`StripePaymentReflector`(`@injectable`無しで依存の束、受け取り口の名前の検証はコンストラクタ)。テストの補助は`testing/payment-reflector-harness.ts`。定期課金の受け取り口の文と`afterCommit`は冪等であること(同じ発生時刻の通知は再び確定し得る)。請求・返金の同じ通知の再適用は「反映」を返す(「反映済み」はチャージバックの同じ段階だけ)

@@ -382,6 +382,11 @@ export interface PaymentRecordStore {
   ): Promise<readonly PaymentRecordRow[]>;
   // 消した件数を返す
   deleteRecordedBefore(threshold: Date, limit: number): Promise<number>;
+  // 決済・請求・返金の記録のID。チャージバックは段階ごとに行があるため対象にしない
+  findIdByReference(input: {
+    readonly stripeReference: string;
+    readonly kind: Exclude<PaymentRecordKind, 'dispute'>;
+  }): Promise<string | undefined>;
 }
 
 export interface StripeObjectStore {

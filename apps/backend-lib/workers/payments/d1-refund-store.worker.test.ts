@@ -217,6 +217,70 @@ describe('D1RefundStoreの送信と状態の更新', () => {
   });
 });
 
+describe('D1RefundStoreのStripeの返金の状態の反映', () => {
+  test('前進の元の状態のときだけ、状態・返金のID・失敗の理由を更新する', async () => {
+    await insertRefunds(newRefundRequest(1));
+
+    await db.batch([
+      store.reflectStripeStatus({
+        refundRequestId: refundIdOf(1),
+        status: 'submitted',
+        from: ['requested', 'submitted'],
+        stripeRefundId: 're_1',
+      }),
+    ]);
+    expect(await store.findById(refundIdOf(1))).toMatchObject({
+      status: 'submitted',
+      stripeRefundId: 're_1',
+      failureCode: null,
+    });
+
+    await db.batch([
+      store.reflectStripeStatus({
+        refundRequestId: refundIdOf(1),
+        status: 'failed',
+        from: ['requested', 'submitted', 'succeeded', 'failed'],
+        stripeRefundId: 're_1',
+        failureCode: 'expired_or_canceled_card',
+      }),
+    ]);
+    await db.batch([
+      store.reflectStripeStatus({
+        refundRequestId: refundIdOf(1),
+        status: 'submitted',
+        from: ['requested', 'submitted'],
+        stripeRefundId: 're_1',
+      }),
+    ]);
+
+    expect(await store.findById(refundIdOf(1))).toMatchObject({
+      status: 'failed',
+      stripeRefundId: 're_1',
+      failureCode: 'expired_or_canceled_card',
+    });
+  });
+
+  test('状態も返金のIDも変わらなければ更新せず、更新日時を変えない', async () => {
+    await insertRefunds(newRefundRequest(1));
+    const reflectSucceeded = store.reflectStripeStatus.bind(store, {
+      refundRequestId: refundIdOf(1),
+      status: 'succeeded',
+      from: ['requested', 'submitted', 'succeeded'],
+      stripeRefundId: 're_1',
+    });
+    await db.batch([reflectSucceeded()]);
+    await setTimes(1, { updatedAt: after(5 * MINUTE) });
+
+    const results: readonly unknown[] = await db.batch([reflectSucceeded()]);
+
+    expect(results[0]).toMatchObject({ meta: { changes: 0 } });
+    expect(await store.findById(refundIdOf(1))).toMatchObject({
+      status: 'succeeded',
+      updatedAt: after(5 * MINUTE),
+    });
+  });
+});
+
 describe('D1RefundStoreの自動返金の通知の状態', () => {
   test('通知は依頼待ちのときだけ進め、進めたかを返す', async () => {
     await insertRefunds(

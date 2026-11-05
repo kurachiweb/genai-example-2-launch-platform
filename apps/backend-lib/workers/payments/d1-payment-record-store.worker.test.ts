@@ -287,6 +287,68 @@ describe('D1PaymentRecordStoreの請求・返金の記録', () => {
       store.insertDisputeStage(newPaymentRecord(1, { kind: 'refund' })),
     ).toThrow(TypeError);
   });
+
+  test('StripeのIDと種類から記録済みの行のIDを返し、無ければundefinedを返す', async () => {
+    await upsert(
+      newPaymentRecord(1, { kind: 'subscription', stripeReference: 'in_1' }),
+    );
+    await upsert(
+      newPaymentRecord(2, { kind: 'refund', stripeReference: 'in_1' }),
+    );
+
+    expect(
+      await store.findIdByReference({
+        stripeReference: 'in_1',
+        kind: 'subscription',
+      }),
+    ).toBe(recordIdOf(1));
+    expect(
+      await store.findIdByReference({
+        stripeReference: 'in_1',
+        kind: 'refund',
+      }),
+    ).toBe(recordIdOf(2));
+    expect(
+      await store.findIdByReference({
+        stripeReference: 'in_2',
+        kind: 'subscription',
+      }),
+    ).toBeUndefined();
+  });
+
+  test('Linkの資金源のグループは記録済みの行で空のときだけ埋める', async () => {
+    await upsert(
+      newPaymentRecord(1, { kind: 'subscription', stripeReference: 'in_1' }),
+    );
+    await upsert(
+      newPaymentRecord(2, {
+        kind: 'subscription',
+        stripeReference: 'in_2',
+        linkFundingSourceGroup: 'card',
+      }),
+    );
+
+    await db.batch([
+      store.fillLinkFundingSourceGroup({
+        recordId: recordIdOf(1),
+        linkFundingSourceGroup: 'bank_account',
+      }),
+      store.fillLinkFundingSourceGroup({
+        recordId: recordIdOf(2),
+        linkFundingSourceGroup: 'bank_account',
+      }),
+    ]);
+
+    expect(
+      (await readRecords()).map(({ id, linkFundingSourceGroup }) => ({
+        id,
+        linkFundingSourceGroup,
+      })),
+    ).toEqual([
+      { id: recordIdOf(1), linkFundingSourceGroup: 'bank_account' },
+      { id: recordIdOf(2), linkFundingSourceGroup: 'card' },
+    ]);
+  });
 });
 
 describe('D1PaymentRecordStoreのチャージバックの記録', () => {

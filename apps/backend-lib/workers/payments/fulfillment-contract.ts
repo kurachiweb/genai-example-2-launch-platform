@@ -30,6 +30,7 @@ export interface PurchaseKindRegistration extends PurchaseOfferRegistration {
   readonly fulfillment: ServiceIdentifier<PurchaseFulfillment>;
 }
 
+// 記録済みと同じ発生時刻の通知は再び確定し得るため、statementsForの文とafterCommitは冪等にする
 export interface SubscriptionEventSink {
   statementsFor(
     change: SubscriptionChange,

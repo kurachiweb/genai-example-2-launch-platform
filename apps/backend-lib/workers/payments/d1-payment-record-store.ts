@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, lt, or, sql } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import { inject, injectable } from 'inversify';
 
+import type { PaymentRecordKind } from '../../../common-lib/payments/payment-record-values.ts';
 import type { Database } from '../../../db/client.ts';
 import { paymentRecords } from '../../../db/schema/payments/payment-records.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
@@ -95,6 +96,23 @@ export class D1PaymentRecordStore
     return result.meta.changes;
   }
 
+  async findIdByReference(input: {
+    readonly stripeReference: string;
+    readonly kind: Exclude<PaymentRecordKind, 'dispute'>;
+  }): Promise<string | undefined> {
+    const [row] = await this.db
+      .select({ id: records.id })
+      .from(records)
+      .where(
+        and(
+          eq(records.stripeReference, input.stripeReference),
+          eq(records.kind, input.kind),
+        ),
+      )
+      .limit(1);
+    return row?.id;
+  }
+
   insertCheckoutRecordGuarded(
     record: NewPaymentRecord,
     guard: { readonly purchaseId: string; readonly expectedToken: string },
@@ -138,5 +156,17 @@ export class D1PaymentRecordStore
       );
     }
     return this.db.insert(records).values(record).onConflictDoNothing();
+  }
+
+  fillLinkFundingSourceGroup(input: {
+    readonly recordId: string;
+    readonly linkFundingSourceGroup: string;
+  }): BatchItem<'sqlite'> {
+    return this.db
+      .update(records)
+      .set({
+        linkFundingSourceGroup: sql`coalesce(${records.linkFundingSourceGroup}, ${input.linkFundingSourceGroup})`,
+      })
+      .where(eq(records.id, input.recordId));
   }
 }

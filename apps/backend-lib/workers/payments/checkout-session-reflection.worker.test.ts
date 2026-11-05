@@ -28,15 +28,18 @@ import {
   setStatus,
   snapshotOf,
 } from './testing/checkout-reflection-harness.ts';
+import { D1PaymentRecordStore } from './d1-payment-record-store.ts';
 import { createFakeStripeGateway } from './testing/fake-stripe-gateway.ts';
 import { recordLogs } from './testing/fake-stripe.ts';
 import {
   clearPaymentTables,
   db,
   insertUser,
+  newPaymentRecord,
   purchaseIdOf,
   readPurchaseRow,
   readRecords,
+  recordIdOf,
   userIdOf,
 } from './testing/payment-store-fixtures.ts';
 
@@ -154,6 +157,70 @@ describe('決済セッションの反映の支払いの確定と権利の付与'
     });
     expect(fulfillment.committed).toMatchObject([
       { stripeSubscriptionId: 'sub_test_reflection_1' },
+    ]);
+  });
+
+  test('初回の請求の行が先に記録されていれば、その行のIDを決済履歴の記録のIDとして権利の付与へ渡す', async () => {
+    await insertPurchase(1, { kind: 'ultras' });
+    await db.batch([
+      new D1PaymentRecordStore(db).upsertByReference(
+        newPaymentRecord(9, {
+          kind: 'subscription',
+          purpose: 'ultras',
+          stripeReference: 'in_test_reflection_1',
+          purchaseId: purchaseIdOf(1),
+        }),
+      ),
+    ]);
+    const fulfillment = createFakeFulfillment();
+    const { reflection } = harnessWith({ fulfillment });
+
+    await reflection.reflectSnapshot(
+      snapshotOf(1, {
+        invoiceId: 'in_test_reflection_1',
+        subscriptionId: 'sub_test_reflection_1',
+      }),
+      OCCURRED_AT,
+    );
+
+    expect(await readRecords()).toMatchObject([{ id: recordIdOf(9) }]);
+    expect(fulfillment.prepared).toMatchObject([
+      { paymentRecordId: recordIdOf(9) },
+    ]);
+    expect(fulfillment.committed).toMatchObject([
+      { paymentRecordId: recordIdOf(9) },
+    ]);
+  });
+
+  test('請求が先に記録された定期課金でも、決済セッションの反映でLinkの資金源のグループが記録される', async () => {
+    await insertPurchase(1, { kind: 'ultras' });
+    await db.batch([
+      new D1PaymentRecordStore(db).upsertByReference(
+        newPaymentRecord(9, {
+          kind: 'subscription',
+          purpose: 'ultras',
+          stripeReference: 'in_test_reflection_1',
+          purchaseId: purchaseIdOf(1),
+          linkFundingSourceGroup: null,
+        }),
+      ),
+    ]);
+    const { reflection } = harnessWith();
+
+    const outcome = await reflection.reflectSnapshot(
+      snapshotOf(1, {
+        invoiceId: 'in_test_reflection_1',
+        subscriptionId: 'sub_test_reflection_1',
+      }),
+      OCCURRED_AT,
+    );
+
+    expect(outcome).toEqual({ kind: 'applied', purchaseStatus: 'fulfilled' });
+    expect(await readRecords()).toMatchObject([
+      {
+        id: recordIdOf(9),
+        linkFundingSourceGroup: LINK_FUNDING_SOURCE_GROUP,
+      },
     ]);
   });
 

@@ -5,6 +5,8 @@ import {
   isRefundReason,
   isReflectionRequestKey,
   reflectionRequestKeyOf,
+  refundRecordStatusOf,
+  refundRequestReflectionOf,
   toStripeRefundReason,
   validateRefundAmount,
 } from './refund-rules.ts';
@@ -139,5 +141,43 @@ describe('isRefundReason', () => {
     ['ハイフン', 'entitlement-lost', false],
   ])('理由が%sなら%pを返す', (_, reason, expected) => {
     expect(isRefundReason(reason)).toBe(expected);
+  });
+});
+
+describe('refundRecordStatusOf', () => {
+  test.each([
+    ['pending', 'pending'],
+    ['requires_action', 'pending'],
+    ['succeeded', 'succeeded'],
+    ['failed', 'failed'],
+    ['canceled', 'failed'],
+  ] as const)('Stripeの返金の%sは決済履歴の%sにする', (status, expected) => {
+    expect(refundRecordStatusOf(status)).toBe(expected);
+  });
+});
+
+describe('refundRequestReflectionOf', () => {
+  test.each([
+    ['pending', 'submitted', ['requested', 'submitted']],
+    ['requires_action', 'submitted', ['requested', 'submitted']],
+    ['succeeded', 'succeeded', ['requested', 'submitted', 'succeeded']],
+    ['failed', 'failed', ['requested', 'submitted', 'succeeded', 'failed']],
+    ['canceled', 'canceled', ['requested', 'submitted', 'canceled']],
+  ] as const)(
+    'Stripeの返金の%sは依頼の%sにし、前進の元を限る',
+    (status, expected, from) => {
+      expect(refundRequestReflectionOf(status)).toEqual({
+        status: expected,
+        from,
+      });
+    },
+  );
+
+  test('完了した依頼を処理中へ戻さない', () => {
+    const { from } = refundRequestReflectionOf('pending');
+
+    expect(from).not.toContain('succeeded');
+    expect(from).not.toContain('failed');
+    expect(from).not.toContain('canceled');
   });
 });

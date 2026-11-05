@@ -5,7 +5,9 @@ import {
   inArray,
   isNull,
   lt,
+  ne,
   notInArray,
+  or,
   sum,
 } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
@@ -163,6 +165,33 @@ export class D1RefundStore implements RefundStore, RefundStatements {
 
   insert(record: NewRefundRequest): BatchItem<'sqlite'> {
     return this.db.insert(refunds).values(record);
+  }
+
+  reflectStripeStatus(input: {
+    readonly refundRequestId: string;
+    readonly status: RefundRequestStatus;
+    readonly from: readonly RefundRequestStatus[];
+    readonly stripeRefundId: string;
+    readonly failureCode?: string | null;
+  }): BatchItem<'sqlite'> {
+    return this.db
+      .update(refunds)
+      .set({
+        status: input.status,
+        stripeRefundId: input.stripeRefundId,
+        failureCode: input.failureCode,
+      })
+      .where(
+        and(
+          eq(refunds.id, input.refundRequestId),
+          inArray(refunds.status, [...input.from]),
+          or(
+            ne(refunds.status, input.status),
+            isNull(refunds.stripeRefundId),
+            ne(refunds.stripeRefundId, input.stripeRefundId),
+          ),
+        ),
+      );
   }
 
   deleteByUser(userId: string): BatchItem<'sqlite'> {

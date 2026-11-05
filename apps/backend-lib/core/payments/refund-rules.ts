@@ -2,6 +2,9 @@ import {
   isMinorUnitAmount,
   type MinorUnitAmount,
 } from '../../../common-lib/payments/money.ts';
+import type { PaymentRecordStatus } from '../../../common-lib/payments/payment-record-values.ts';
+import type { RefundRequestStatus } from '../../../common-lib/payments/purchase-states.ts';
+import type { StripeRefundStatus } from './ports.ts';
 
 export type RefundAmountValidation =
   | { readonly kind: 'ok'; readonly amount: MinorUnitAmount }
@@ -63,4 +66,52 @@ export function isAcceptableRequestKey(requestKey: string): boolean {
 
 export function isRefundReason(reason: string): boolean {
   return REFUND_REASON_PATTERN.test(reason);
+}
+
+// Stripeの返金の状態を決済履歴の状態にする。取り消しは返金されないため失敗として残す
+export function refundRecordStatusOf(
+  status: StripeRefundStatus,
+): Extract<PaymentRecordStatus, 'pending' | 'succeeded' | 'failed'> {
+  switch (status) {
+    case 'pending':
+    case 'requires_action':
+      return 'pending';
+    case 'succeeded':
+      return 'succeeded';
+    case 'failed':
+    case 'canceled':
+      return 'failed';
+  }
+}
+
+export interface RefundRequestReflection {
+  readonly status: RefundRequestStatus;
+  // 反映の前の依頼の状態がこの中にあるときだけ進める。完了した依頼を処理中へ戻さない
+  readonly from: readonly RefundRequestStatus[];
+}
+
+// 成功の後の失敗(Stripeの返金は成功の後に失敗し得る)は受け入れる
+const REFUND_REQUEST_REFLECTIONS: Readonly<
+  Record<StripeRefundStatus, RefundRequestReflection>
+> = {
+  pending: { status: 'submitted', from: ['requested', 'submitted'] },
+  requires_action: { status: 'submitted', from: ['requested', 'submitted'] },
+  succeeded: {
+    status: 'succeeded',
+    from: ['requested', 'submitted', 'succeeded'],
+  },
+  failed: {
+    status: 'failed',
+    from: ['requested', 'submitted', 'succeeded', 'failed'],
+  },
+  canceled: {
+    status: 'canceled',
+    from: ['requested', 'submitted', 'canceled'],
+  },
+};
+
+export function refundRequestReflectionOf(
+  status: StripeRefundStatus,
+): RefundRequestReflection {
+  return REFUND_REQUEST_REFLECTIONS[status];
 }

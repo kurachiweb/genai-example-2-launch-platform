@@ -64,7 +64,7 @@ export interface FulfillablePurchase {
   readonly relatedId: string | null;
   readonly quantity: number;
   readonly amountTotal: MinorUnitAmount;
-  // 決済履歴の記録のID。購入種別を受け持つ機能が保存してよい
+  // 決済履歴の記録のID。購入種別を受け持つ機能が保存してよい。定期課金の初回の請求の通知が先に記録した行はそのID。ただし請求の通知の記録と決済セッションの反映が同時に進むと、どの行も指さないIDになり得るため、行の存在を前提にしない
   readonly paymentRecordId: string;
   readonly paidAt: Date;
   readonly stripeSubscriptionId: string | null;
