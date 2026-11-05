@@ -1230,7 +1230,8 @@ export interface OpenCheckoutExpirer {
 }
 ```
 
-- 対象の`open`・`processing`の購入ごとに`expireCheckoutSession`を呼び、`expired`へ前進させる。Stripe上で既に完了していた(`not_open`)購入は`retrieveCheckoutSession` → `reflectCheckoutSnapshot`で反映する(14.3)。
+- 対象の`open`・`processing`の購入ごとに`expireCheckoutSession`を呼び、`expired`へ前進させる。Stripe上で既に完了していた(`not_open`)購入は`CheckoutSessionReflection.reflectSession`(取得して反映)で反映する(14.3)。
+- 決済セッションのIDが無い購入は対象外。`open`を`processing`より先に扱い、`remaining`は上限の外に`open`の購入が残っているか(失効できない`processing`を数えると続きの呼び出しが終わらないため)。Stripeに決済セッションが無い(`StripeNotFoundError`)購入は支払われ得ないため、`warn`のログを残して`expired`へ前進させる。
 - 退会・停止の波及処理(`OpenCheckoutExpiryHandler`)と、後続specのFR-PPLAN-008(Ultrasの加入の確定)・FR-TOURW-027・FR-TOURY-030(参加資格の喪失)の処理が使う。Stripeを呼ぶため、後続specはeventの非同期の処理から呼ぶ。
 
 #### PaymentRefunds

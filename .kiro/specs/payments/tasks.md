@@ -159,7 +159,7 @@
   - _Depends: 3.1, 4.2_
   - _Requirements: 12.8, 12.10, 13.1, 13.2, 13.3, 13.4_
 
-- [ ] 5.6 未完了の決済セッションの失効を作る
+- [x] 5.6 未完了の決済セッションの失効を作る
   - 先に、Workers統合テストで、利用者と購入種別(と対象)を指定した失効、Stripe上で既に完了していた購入の反映、件数の上限と残りの有無、Stripeの一時的な失敗の例外を確かめる
   - 完了状態: Workers統合テストが成功し、失効した購入が`expired`になり、完了済みだった購入は反映される
   - _Boundary: OpenCheckoutExpirer_
@@ -366,3 +366,4 @@
 - 5.3: 決済セッションの反映は`workers/payments/checkout-session-reflection.ts`の`StripeCheckoutSessionReflection`(`reflectSession`・`reflectSnapshot`。5.4の`PaymentReflector`は`checkout_session`の指示をここへ渡す)。PaymentIntentの状態`requires_payment_method`・`canceled`の未払いの完了は失効。テストの補助は`testing/checkout-reflection-harness.ts`。5.4(必須): 定期課金で請求の通知が先に届くと決済セッションの記録の挿入が無視され、`FulfillablePurchase.paymentRecordId`が実在しない行を指す。同意を写す修正と合わせて、既存の行のIDを解決して渡すか、契約のコメントに明記する
 - 5.4: 反映の処理は`workers/payments/payment-reflector.ts`の`StripePaymentReflector`(`@injectable`無しで依存の束、受け取り口の名前の検証はコンストラクタ)。テストの補助は`testing/payment-reflector-harness.ts`。定期課金の受け取り口の文と`afterCommit`は冪等であること(同じ発生時刻の通知は再び確定し得る)。請求・返金の同じ通知の再適用は「反映」を返す(「反映済み」はチャージバックの同じ段階だけ)
 - 5.5: 純収益の照会は`workers/payments/d1-payment-revenue-report.ts`の`D1PaymentRevenueReport`(`{ appName, db }`)、価格の照会は`price-catalog.ts`の`StripePriceCatalog`(`{ appName, gateway, snapshots, clock }`)、エクスポートは`payment-history-export.ts`の`StoredPaymentHistoryExport`(`{ records }`)。いずれも`@injectable`無し(5.7で束縛)。期間の誤りは`AppError(bad_request, validation_error)`。価格は`StripeUnavailableError`のときだけ保持の値(`stale: true`)を返す
+- 5.6: 失効は`workers/payments/open-checkout-expirer.ts`の`StripeOpenCheckoutExpirer`(`{ appName, gateway, purchases, reflection, ids, clock }`、`@injectable`無し)。`remaining`は上限の外に`open`の購入が残っているか(`processing`は数えない)。上限は1〜50の整数(範囲外は`RangeError`)
