@@ -32,6 +32,13 @@ const BACKEND_RATE_LIMIT_KEY =
 const BACKEND_KEYED_HASHER = 'apps/backend-lib/core/crypto/keyed-hasher.ts';
 const BACKEND_HEALTH_ROUTE = 'apps/backend-lib/workers/http/health-route.ts';
 const E2E_API_RATE_LIMIT = 'e2e/support/api-rate-limit.ts';
+const IDENTITY_RESOLVER_SUPPORT =
+  'apps/api/src/presentation/graphql/modules/identity/resolver-support.ts';
+const ADMIN_RESOLVER_SUPPORT =
+  'apps/api/src/presentation/graphql/modules/admin/resolver-support.ts';
+const CLIENT_AUTH_BOT_ACTIONS =
+  'apps/client/src/components/auth/bot-actions.ts';
+const ADMIN_AUTH_BOT_ACTIONS = 'apps/admin/src/components/auth/bot-actions.ts';
 
 type ExtractedValue =
   | string
@@ -571,5 +578,35 @@ describe('ヘルスチェックの経路の写し(e2e/support/api-rate-limit.ts)
     expect(readString(E2E_API_RATE_LIMIT, 'HEALTH_CHECK_PATH')).toBe(
       readString(BACKEND_HEALTH_ROUTE, 'HEALTH_CHECK_PATH'),
     );
+  });
+});
+
+interface BotActionCopy {
+  readonly api: DeclarationRef;
+  readonly copy: DeclarationRef;
+}
+
+const BOT_ACTION_COPIES: readonly BotActionCopy[] = [
+  {
+    api: { path: IDENTITY_RESOLVER_SUPPORT, name: 'BOT_ACTIONS' },
+    copy: { path: CLIENT_AUTH_BOT_ACTIONS, name: 'BOT_ACTIONS' },
+  },
+  {
+    api: { path: ADMIN_RESOLVER_SUPPORT, name: 'ADMIN_BOT_ACTIONS' },
+    copy: { path: ADMIN_AUTH_BOT_ACTIONS, name: 'ADMIN_BOT_ACTIONS' },
+  },
+];
+
+describe('bot判定の操作名の写し(components/*/bot-actions.ts)', () => {
+  test.each(
+    BOT_ACTION_COPIES.map(
+      ({ api, copy }) =>
+        [describeRef(copy), describeRef(api), api, copy] as const,
+    ),
+  )('%sが%sと項目の名前と値で一致する', (_copyLabel, _apiLabel, api, copy) => {
+    const apiActions = readStringRecord(api.path, api.name);
+
+    expect(Object.keys(apiActions)).not.toBeEmpty();
+    expect(readStringRecord(copy.path, copy.name)).toEqual(apiActions);
   });
 });

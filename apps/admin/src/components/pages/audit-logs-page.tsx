@@ -35,7 +35,7 @@ import {
   EMPTY_CURSOR_TRAIL,
   previousPageOf,
   trailAfterNext,
-} from '../audit/cursor-trail.ts';
+} from '../../../lib/utilities/pagination/cursor-trail.ts';
 
 const routeApi = getRouteApi('/_authenticated/audit-logs/');
 

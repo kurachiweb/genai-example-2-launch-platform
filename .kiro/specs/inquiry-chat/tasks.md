@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: テーブル・共有の定義・メール・表示部品
+- [x] 1. 基盤: テーブル・共有の定義・メール・表示部品
 - [x] 1.1 問い合わせの5テーブルと標準カテゴリの初期データを定義し、マイグレーションを生成する
   - 前提: backend-platform・api-gateway・email-delivery・frontend-platform・content-processing・media-pipeline・identity-auth・admin-foundationの全タスクが完了していること(層構成・登録箇所・GraphQL基盤・メール送信基盤・両アプリの骨格・共有ディレクトリ・アップロード基盤・利用者の判定と連絡先の共有の照会口とライフサイクルの登録口・管理者の認可と監査ログと区画とapi・event共通の管理者の照会口とE2Eの補助がある状態)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、各テーブルの列の型・NOT NULL・既定値・一意制約・CHECK制約・索引(カテゴリ名の大文字小文字を区別しない一意、ステータスと送信者の種類のCHECK、送信者が管理者のときだけ管理者のIDを持つCHECK、受付日時・ステータス・ステータスの変更日時・利用者・問い合わせごとのメッセージの索引、添付の複合主キーとファイルの索引)を確かめる単体テストを書く
@@ -60,7 +60,7 @@
   - 完了状態: ブラウザテストが成功し、`runAxe`の違反が0件で、Storybookに削除の確認の文を指定した例が載る
   - _Requirements: 1.5, 15.1_
 
-- [ ] 1.9 (P) 前後のページの補助をフロントエンド共通へ移し、bot判定の操作名の写しの一致の検査を足す(上流の改訂、G4・G7)
+- [x] 1.9 (P) 前後のページの補助をフロントエンド共通へ移し、bot判定の操作名の写しの一致の検査を足す(上流の改訂、G4・G7)
   - 先に、`config/contract-copies.unit.test.ts`に、APIの`BOT_ACTIONS`(identity)・`ADMIN_BOT_ACTIONS`(admin)と各アプリの`components/auth/bot-actions.ts`の値が一致することを確かめる検査を足す(本specの`INQUIRY_BOT_ACTIONS`と`components/inquiry/bot-actions.ts`はタスク7.2・9.1で同じ検査に足す)
   - `apps/admin/src/components/audit/cursor-trail.ts`と単体テストを`apps/frontend-lib/utilities/pagination/cursor-trail.ts`へ移し、監査ログのページの読み込み先を改める。`docs/GUIDES/tech/frontend/006-data-fetching.md`の一覧の節に、前後のページの補助の場所を加える
   - 完了状態: 単体テストが成功し、管理画面の監査ログのブラウザテストとE2Eが通る
@@ -309,3 +309,4 @@
 - 1.6: 契約は`apps/backend-lib/core/session/session-view.ts`・`core/identity/account-guard.ts`(`AccountGuard`・`CurrentUser`・`UserAccountView`)・`core/admin/audit-log.ts`・`core/admin/current-admin.ts`、識別子は`IDENTITY_PLATFORM_TYPES.AccountGuard`(apiのidentityのモジュールだけが束縛し、eventでは解決できない)・`ADMIN_PLATFORM_TYPES.AuditLogRecorder`。`CurrentUser.user`は実行時も`UserAccountView`の8項目だけ(`StoreAccountGuard`の`toUserAccountView`)で、`passwordHash`・`lifecycleVersion`が要るidentityのユースケースは`application/identity/current-user-record.ts`の`loadCurrentUserRecord`で読み直す。`UserAccountView.status`は`'active' | 'suspended'`のリテラル。`PreparedAuditEntry`の準備済みの印は型だけ(`declare const PREPARED: unique symbol`)で、`StoreAuditLogRecorder.prepare`だけが付ける。backend/002・006・007・008とsecurity/006・007を更新済み
 - 1.7: `AuditGuard`はapiの`infrastructure/admin/audit-log-statements.ts`にあり、`{ kind: 'condition', condition: SQL }`を足した(`guardCondition`は`default`なしの網羅の`switch`)。`condition`は操作者の状態の確認を自動では付けない。テストの条件は`admins`表で作ったため、問い合わせの表の条件での取り消しは6.1・6.2のWorkers統合テストで確かめる
 - 1.8: `CategoryMasterEditor`の`deleteDescriptionOf`・`deleteAudited`(既定は偽)を足した。説明は閉じる途中も残る削除の対象から作る。部品の削除の確認は理由の入力欄を持たない(`reason="none"`)ため、`inquiry-category.delete`の理由は`optional`でも画面では入力できない(008の「確認のダイアログは理由の要否を操作種別に合わせる」とのずれは最終の報告に挙げる)
+- 1.9: 前後のページの補助は`apps/frontend-lib/utilities/pagination/cursor-trail.ts`(`EMPTY_CURSOR_TRAIL`・`previousPageOf`・`trailAfterNext`)。bot判定の操作名の写しの検査は`config/contract-copies.unit.test.ts`の`BOT_ACTION_COPIES`の配列で、7.2・9.1は本specの`INQUIRY_BOT_ACTIONS`と`components/inquiry/bot-actions.ts`の組をこの配列に足す(写しの先頭のコメントは「…の写し。一致はルートのconfig/contract-copies.unit.test.tsが確かめる」の形)。Bunの`test.each`は`$label`の直後の日本語を変数名に含めるため位置の`%s`を使う。監査ログのE2Eは`e2e/admin/admin-accounts.e2e.test.ts`にある(前後のページは確かめていない)
