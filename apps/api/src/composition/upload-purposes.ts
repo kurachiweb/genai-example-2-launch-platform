@@ -2,7 +2,14 @@ import {
   ADMIN_AVATAR_MAX_BYTES,
   ADMIN_AVATAR_UPLOAD_PURPOSE,
 } from '../../common-lib/admin/admin-avatar-upload.ts';
-import { IMAGE_MEDIA_TYPES } from '../../common-lib/media/media-types.ts';
+import {
+  INQUIRY_ATTACHMENT_LIMITS,
+  INQUIRY_ATTACHMENT_PURPOSE,
+} from '../../common-lib/inquiry/inquiry-attachment-limits.ts';
+import {
+  ATTACHMENT_MEDIA_TYPES,
+  IMAGE_MEDIA_TYPES,
+} from '../../common-lib/media/media-types.ts';
 import {
   defineUploadPurpose,
   type UploadPurpose,
@@ -15,5 +22,12 @@ export const UPLOAD_PURPOSES: readonly UploadPurpose[] = [
     uploaderKinds: ['admin'],
     allowedTypes: IMAGE_MEDIA_TYPES,
     maxBytes: ADMIN_AVATAR_MAX_BYTES,
+  }),
+  defineUploadPurpose({
+    name: INQUIRY_ATTACHMENT_PURPOSE,
+    storage: 'files',
+    uploaderKinds: ['user'],
+    allowedTypes: ATTACHMENT_MEDIA_TYPES,
+    maxBytes: INQUIRY_ATTACHMENT_LIMITS.maxFileBytes,
   }),
 ];

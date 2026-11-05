@@ -217,6 +217,9 @@ describe('検索対象のある日次の再抽出', () => {
           name: 'admin-foundation.audit-log-retention',
         }),
         expect.objectContaining({
+          name: 'inquiry-chat.guest-inquiry-retention',
+        }),
+        expect.objectContaining({
           name: 'media-pipeline.expired-file-erasure',
         }),
         expect.objectContaining({ name: 'media-pipeline.moderation-requeue' }),

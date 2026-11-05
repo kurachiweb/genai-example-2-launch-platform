@@ -5,7 +5,10 @@ import { Container } from 'inversify';
 import { unstable_readConfig } from 'wrangler';
 import { z } from 'zod';
 
-import { IMAGE_MEDIA_TYPES } from '../../common-lib/media/media-types.ts';
+import {
+  ATTACHMENT_MEDIA_TYPES,
+  IMAGE_MEDIA_TYPES,
+} from '../../common-lib/media/media-types.ts';
 import type { AccountGuard } from '../../lib/core/identity/account-guard.ts';
 import { IDENTITY_PLATFORM_TYPES } from '../../lib/core/identity/identifiers.ts';
 import {
@@ -15,6 +18,7 @@ import {
 import { toUtcCronExpression } from '../../lib/core/time/business-time.ts';
 import { AccountUploaderEligibility } from '../../src/application/identity/account-uploader-eligibility.ts';
 import { IDENTITY_TYPES } from '../../src/application/identity/identity-types.ts';
+import { INQUIRY_TYPES } from '../../src/application/inquiry/inquiry-types.ts';
 import {
   type AdminMediaReviewPolicy,
   FILE_ACCESS_TYPES,
@@ -126,7 +130,7 @@ function readTriggerCrons(wranglerEnv: string | undefined): readonly string[] {
 
 // 利用者のアカウントの判定・管理者の権限の判定を持つ機能が束縛を差し替えるときは、この期待値を差し替え後の束縛に合わせて直す
 describe('メディアの登録箇所の既定値', () => {
-  test('アップロードの用途は管理者のプロフィール画像だけを登録し、用途ごとの閲覧の可否の方針は1つも登録しない', () => {
+  test('アップロードの用途は管理者のプロフィール画像と問い合わせの添付を登録し、用途ごとの閲覧の可否の方針は問い合わせの添付だけに登録する', () => {
     expect(UPLOAD_PURPOSES).toEqual([
       {
         name: 'admin-avatar',
@@ -135,8 +139,20 @@ describe('メディアの登録箇所の既定値', () => {
         allowedTypes: IMAGE_MEDIA_TYPES,
         maxBytes: 512_000,
       },
+      {
+        name: 'inquiry-attachment',
+        storage: 'files',
+        uploaderKinds: ['user'],
+        allowedTypes: ATTACHMENT_MEDIA_TYPES,
+        maxBytes: 20_971_520,
+      },
     ]);
-    expect(FILE_READ_POLICIES).toEqual([]);
+    expect(FILE_READ_POLICIES).toEqual([
+      {
+        purpose: 'inquiry-attachment',
+        policy: INQUIRY_TYPES.InquiryAttachmentReadPolicy,
+      },
+    ]);
   });
 
   test('管理者の画像確認には、管理者側の管理者にも常に拒否する既定の実装を束縛する', async () => {

@@ -275,6 +275,66 @@ const ADMIN_LAYER_RULES: Linter.Config[] = [
   },
 }));
 
+const escapeRegExp = (text: string): string =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// 問い合わせのインフラ層が利用者・管理者の一括の書き込みに文を渡す口だけを許す。importの文字列で照合するため、同じ層の隣のディレクトリへの相対パスと、層の名前から書いたパスの両方を表す
+const INQUIRY_ALLOWED_FOREIGN_FILES = [
+  'admin/audit-log-statements',
+  'identity/user-lifecycle-sync-handler',
+];
+
+// gitignore形式の否定は除外した親ディレクトリの下のファイルを含め直せないため、共有ディレクトリ・DBスキーマと許すファイルを除いたidentity・adminのディレクトリを正規表現で表す
+const INQUIRY_FOREIGN_MODULE_REGEX = [
+  '^',
+  '(?!.*(?:^|/)(?:lib|common-lib|db)/)',
+  `(?!(?:\\.\\./)+(?:infrastructure/)?(?:${INQUIRY_ALLOWED_FOREIGN_FILES.map(escapeRegExp).join('|')})(?:\\.ts)?$)`,
+  '(?:.*/)?(?:identity|admin)(?:/|$)',
+].join('');
+
+// 問い合わせの業務処理が利用者・管理者の業務処理の変更に左右されないよう、問い合わせの各層から両者のモジュールを型も含めて読み込ませない
+const IDENTITY_AND_ADMIN_FROM_INQUIRY_RESTRICTION = {
+  regex: INQUIRY_FOREIGN_MODULE_REGEX,
+  message:
+    '問い合わせのモジュール(inquiry)は利用者(identity)・管理者(admin)のモジュールに依存できません。共通ライブラリのcoreの契約と識別子を使い、一括の書き込みの文はaudit-log-statements.ts・user-lifecycle-sync-handler.tsだけから得てください。',
+};
+
+// 同じファイルに当たる後の設定のno-restricted-importsは層の規則のオプションを置き換えるため、その層の層の規則のパターンを含め直す。GraphQLのスキーマモジュールはBunで読み込む規則の後に置く
+const INQUIRY_LAYER_RULES: Linter.Config[] = [
+  {
+    name: 'api/inquiry/domain',
+    files: ['src/domain/inquiry/**'],
+    patterns: BACKEND_LAYER_PATTERNS.domain,
+  },
+  {
+    name: 'api/inquiry/application',
+    files: ['src/application/inquiry/**'],
+    patterns: BACKEND_LAYER_PATTERNS.application,
+  },
+  {
+    name: 'api/inquiry/infrastructure-and-presentation',
+    files: [
+      'src/infrastructure/inquiry/**',
+      'src/presentation/graphql/modules/inquiry/**/*.worker.test.ts',
+    ],
+    patterns: BACKEND_LAYER_PATTERNS.infrastructureAndPresentation,
+  },
+  {
+    name: 'api/inquiry/graphql-modules',
+    files: ['src/presentation/graphql/modules/inquiry/**'],
+    ignores: ['src/presentation/graphql/modules/inquiry/**/*.worker.test.ts'],
+    patterns: BUN_LOADED_PRESENTATION_PATTERNS,
+  },
+].map(({ patterns, ...config }) => ({
+  ...config,
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      { patterns: [...patterns, IDENTITY_AND_ADMIN_FROM_INQUIRY_RESTRICTION] },
+    ],
+  },
+}));
+
 const SCRIPT_READABLE_SOURCE_FILES = [
   'composition/graphql-modules',
   'presentation/graphql/schema-module',
@@ -289,9 +349,6 @@ const SCRIPT_READABLE_SOURCE_FILES = [
 const SCRIPT_READABLE_SOURCE_DIRS = ['presentation/graphql/modules'];
 
 const OPERATION_ALLOWLIST_SOURCE = 'presentation/graphql/operation-allowlist';
-
-const escapeRegExp = (text: string): string =>
-  text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // gitignore形式の否定では除外した親ディレクトリの下のファイルを含め直せないため、指定のファイル・ディレクトリ以外のsrcを正規表現で表す
 const UNREADABLE_SOURCE_REGEX = `/src/(?!(?:${[
@@ -393,6 +450,7 @@ const config: Linter.Config[] = [
   ...REACT_FORBIDDEN_RULES,
   ...BUN_LOADED_GRAPHQL_RULES,
   ...ADMIN_LAYER_RULES,
+  ...INQUIRY_LAYER_RULES,
   ...GRAPHQL_SCRIPT_RULES,
   ...SHARED_DIRECTORY_RULES,
 ];

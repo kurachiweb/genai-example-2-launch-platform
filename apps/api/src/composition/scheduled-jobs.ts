@@ -4,6 +4,7 @@ import { SEARCH_TYPES } from '../../lib/core/search/identifiers.ts';
 import { ADMIN_TYPES } from '../application/admin/admin-types.ts';
 import { API_EMAIL_TYPES } from '../application/email/email-cleanup-job.ts';
 import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
+import { GUEST_INQUIRY_RETENTION_JOB_DEFINITION } from '../application/inquiry/jobs/guest-inquiry-retention-job.ts';
 import { MEDIA_JOB_TYPES } from '../application/media/media-daily-jobs.ts';
 
 export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
@@ -37,6 +38,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     order: 210,
     handler: ADMIN_TYPES.AuditLogRetentionJob,
   },
+  GUEST_INQUIRY_RETENTION_JOB_DEFINITION,
   {
     name: 'media-pipeline.expired-file-erasure',
     at: { hour: 4, minute: 21 },
