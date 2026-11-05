@@ -9,6 +9,7 @@ import { createImageGatewayModule } from '../presentation/media/image-gateway-mo
 import { EVENT_EMAIL_MODULE } from './email-module.ts';
 import type { EventEnv } from './env-schema.ts';
 import { EVENT_IDENTITY_MODULE } from './identity-module.ts';
+import { EVENT_INQUIRY_MODULE } from './inquiry-module.ts';
 import { MEDIA_SMOKE_MODULE } from './media-smoke-module.ts';
 import {
   EVENT_MEDIA_MODULE,
@@ -32,4 +33,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     ADMIN_PLATFORM_MODULE,
     EVENT_SEARCH_PLATFORM_MODULE,
     EVENT_SEARCH_MODULE,
+    EVENT_INQUIRY_MODULE,
   ]);
