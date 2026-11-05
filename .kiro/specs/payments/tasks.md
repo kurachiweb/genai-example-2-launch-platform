@@ -88,7 +88,7 @@
   - _Depends: 3.1_
   - _Requirements: 7.8, 8.6, 8.7_
 
-- [ ] 3.3 (P) Webhookの署名の検証を作る
+- [x] 3.3 (P) Webhookの署名の検証を作る
   - 先に、Stripe SDKのテスト用の署名の生成を使うWorkers統合テストで、正しい署名の受け入れ、本文の改ざん・署名の欠落・別の秘密・5分を超えた時刻の拒否、`STRIPE_WEBHOOK_SECRET`が未設定の環境で検証せずに一時的な失敗(`StripeUnavailableError`)になることを確かめる
   - Web Cryptoのプロバイダで生の本文を検証する部品を作る
   - 完了状態: Workers統合テストが成功し、拒否が署名の不正のエラーとして区別できる
@@ -357,3 +357,4 @@
 - 2.4: メールの入力の金額は最小通貨単位の整数、日時はISO 8601の文字列。返金ポリシーの要旨は`common-lib/payments/refund-policy-summary.ts`の`REFUND_POLICY_SUMMARY`(最終確認画面(10.3)も同じ定数を使う)。購入確認メールの決済履歴のURLは`CLIENT_SITE_ORIGIN`+`/settings/billing`
 - 3.1: `StripeApiGateway`は`@injectable`を付けず`{ appName, client, clientSiteOrigin }`を受け取る(5.7で`toDynamicValue`で束縛)。ポートは設計どおり`StripeGateway`1つ(3.2で統合)。テストの偽のStripeは`workers/payments/testing/fake-stripe.ts`。ログの属性名に`key`を含めない(伏せ字になる。`priceLookup`)
 - 3.2: Stripeの結果への変換は`workers/payments/stripe-snapshots.ts`。持ち主の手がかりはPaymentIntentの取得と`invoicePayments.list`(API版`2026-10-28.endive`のPaymentIntentは`invoice`を持たない)。定期課金の`currentPeriodEnd`は項目の`current_period_end`の最大値。請求・返金・定期課金の想定外の状態は例外(チャージバックだけは値をそのまま返す)
+- 3.3: 署名の検証は`workers/payments/stripe-webhook-verifier.ts`の`StripeWebhookSignatureVerifier`(`@injectable`無し、`{ appName, webhookSecret }`)。秘密が未設定なら`StripeUnavailableError`(ログ無し、経路が503)、拒否は`StripeSignatureError`(cause無し)。backend-libのWorkers統合テストはapiの`test:worker`で走る(eventは`lib/**`を除外)
