@@ -7,6 +7,7 @@ import {
   inquiryCategoryNameRejectedError,
   inquiryCategoryNameTakenError,
   inquiryCategoryUnavailableError,
+  inquiryChatMessageRejectedError,
   inquiryError,
 } from './inquiry-errors.ts';
 
@@ -180,4 +181,29 @@ describe('inquiryCategoryUnavailableError', () => {
       ],
     });
   });
+});
+
+describe('inquiryChatMessageRejectedError', () => {
+  test.each([
+    ['forbidden-character', 'メッセージに使用できない文字が含まれています。'],
+    ['empty', 'メッセージを入力してください。'],
+    ['too-long', 'メッセージは1,000文字以内で入力してください。'],
+  ] as const)(
+    '%sの違反を本文の欄の詳細を持つ検証のエラーにする',
+    (issue, message) => {
+      const error = inquiryChatMessageRejectedError(issue);
+
+      expect({
+        kind: error.kind,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      }).toEqual({
+        kind: 'bad_request',
+        code: 'validation_error',
+        message: '入力内容を確認してください。',
+        details: [{ field: 'body', code: issue, message }],
+      });
+    },
+  );
 });
