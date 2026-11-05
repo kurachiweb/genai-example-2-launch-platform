@@ -61,6 +61,11 @@ export interface GuestInquiryStore {
   deleteClosedBefore(threshold: Date, limit: number): Promise<number>;
 }
 
+export interface GuestInquiryRateLimit {
+  // 上限を超えたらAppError(rate_limited, rate_limit_exceeded)とRetry-Afterの秒数を投げる。送信元IPアドレスが不明なら数えずに警告だけを残す
+  consume(clientIp: string | undefined, now: Date): Promise<void>;
+}
+
 export interface NewInquiryMessage {
   readonly id: string;
   readonly body: string;

@@ -805,7 +805,7 @@ export interface MemberInquirySubmission {
 }
 // application/inquiry/ports.ts
 export interface GuestInquiryRateLimit {
-  consume(clientIp: string | undefined): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded)とRetry-After。IPが不明なら数えずに警告だけを残す
+  consume(clientIp: string | undefined, now: Date): Promise<void>; // 待ち時間をnowから求める。超過はAppError(rate_limited, rate_limit_exceeded)とRetry-After。IPが不明なら数えずに警告だけを残す
 }
 // infrastructure/inquiry/counter-guest-inquiry-rate-limit.ts(@injectable())
 export declare const GUEST_INQUIRY_RATE_RULE: {
@@ -822,7 +822,7 @@ export declare class CounterGuestInquiryRateLimit implements GuestInquiryRateLim
 ```
 
 - 前提: リゾルバが`context.assertHuman('inquiry_guest' | 'inquiry_member')`を先に呼ぶ(要件4.1・4.2)。チャットと返信のリゾルバは呼ばない(要件4.3)。application層は`BotVerifier`を受け取らない。
-- `GuestInquirySubmission.submit`: `AccountGuard.currentUser(session)`が停止していない利用者なら`member_inquiry_required`(要件3.4)→カテゴリの存在(要件3.3)→`GuestInquiryRateLimit.consume(clientIp)`(要件4.4〜4.7)→`insert`(利用者のIDを持たない、要件3.1・3.6)。ログイン中の利用者のユーザー単位の回数制限は設けない(要件4.8)。
+- `GuestInquirySubmission.submit`: `AccountGuard.currentUser(session)`が停止していない利用者なら`member_inquiry_required`(要件3.4)→カテゴリの存在(要件3.3)→`GuestInquiryRateLimit.consume(clientIp, now)`(要件4.4〜4.7)→`insert`(利用者のIDを持たない、要件3.1・3.6)。ログイン中の利用者のユーザー単位の回数制限は設けない(要件4.8)。
 - `CounterGuestInquiryRateLimit.consume`: `hashRateLimitKey(hasher, 'inquiry-guest', clientIp)`で`counters.hit(GUEST_INQUIRY_RATE_RULE, key)`を呼び、`counters.assertWithinLimit(decision, now.getTime())`で超過を`rate_limit_exceeded`と`Retry-After`にする(規則は`CounterRule`の形、要件4.4〜4.7)。送信元IPアドレスが不明なら数えずに警告`guest-inquiry-ip-missing`をログに残す。
 - 置き場所: ポート`GuestInquiryRateLimit`はapplication層、実装`CounterGuestInquiryRateLimit`と規則`GUEST_INQUIRY_RATE_RULE`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`と`assertWithinLimit`が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」、identity-authの`CounterMailSendLimits`と同じ形)。`INQUIRY_TYPES.GuestInquiryRateLimit`を`CounterGuestInquiryRateLimit`へ束縛し、ユースケースはポートだけを受け取る。実装の振る舞いはWorkers統合テスト(偽の厳密カウンタ)、ユースケースの呼び出しの順は偽のポートによる単体テストで確かめる。
 - `MemberInquirySubmission.submit`: `requireWritableUser`(停止中は`account_unavailable`、要件5.4。メールアドレスの未確認は拒否しない、要件5.5)→カテゴリの存在→`InquiryAttachmentBinder.bind`→`insert`(問い合わせ・最初のメッセージ・添付の紐付けを1つの一括の書き込み、失敗時は`release`、要件5.1)。
@@ -1375,7 +1375,7 @@ erDiagram
 | `inquiry_category_name_taken`                             | conflict(409)     | 同じ名前のカテゴリが既にあります。                                                                                                                                                 | カテゴリ(1.3、仮1)           |
 | `inquiry_category_protected`                              | conflict(409)     | 標準カテゴリ「その他」は変更・削除できません。                                                                                                                                     | カテゴリ(1.4、仮2)           |
 | `inquiry_category_not_found`                              | not_found(404)    | カテゴリが見つかりません。                                                                                                                                                         | カテゴリの名前の変更・削除   |
-| `rate_limited`                                            | rate_limited(429) | 送信回数の上限に達しました。しばらく時間をおいて再度お試しください。(`Retry-After`)                                                                                                | 未ログインの送信(4.5)        |
+| `rate_limit_exceeded`                                     | rate_limited(429) | 操作が集中しています。しばらく待ってから再度お試しください。(共通の文言。`Retry-After`)                                                                                            | 未ログインの送信(4.5)        |
 | `bot_verification_failed`・`bot_verification_unavailable` | 403・503          | backend-platformの定型                                                                                                                                                             | フォームの送信(4.2)          |
 | `unauthenticated`・`forbidden`                            | 401・403          | ログインが必要です。・この操作はできません。                                                                                                                                       | 認可(1.6・11.7・12.3)        |
 

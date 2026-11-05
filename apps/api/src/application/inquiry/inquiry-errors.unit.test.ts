@@ -6,6 +6,7 @@ import {
   inquiryAttachmentsInvalidError,
   inquiryCategoryNameRejectedError,
   inquiryCategoryNameTakenError,
+  inquiryCategoryUnavailableError,
   inquiryError,
 } from './inquiry-errors.ts';
 
@@ -151,6 +152,30 @@ describe('inquiryCategoryNameTakenError', () => {
           field: 'name',
           code: 'name-taken',
           message: '同じ名前のカテゴリが既にあります。',
+        },
+      ],
+    });
+  });
+});
+
+describe('inquiryCategoryUnavailableError', () => {
+  test('存在しないカテゴリをカテゴリの欄の詳細を持つ検証のエラーにする', () => {
+    const error = inquiryCategoryUnavailableError();
+
+    expect({
+      kind: error.kind,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    }).toEqual({
+      kind: 'bad_request',
+      code: 'validation_error',
+      message: '入力内容を確認してください。',
+      details: [
+        {
+          field: 'categoryId',
+          code: 'not-found',
+          message: 'カテゴリを選択してください。',
         },
       ],
     });

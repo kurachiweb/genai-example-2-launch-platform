@@ -84,6 +84,23 @@ export const inquiryCategoryNameRejectedError = (
     ],
   });
 
+const CATEGORY_FIELD = 'categoryId';
+
+// 選択肢を表示した後にカテゴリが削除された送信も、画面が選び直しを促せるようカテゴリの欄の検証のエラーにする
+export const inquiryCategoryUnavailableError = (): AppError =>
+  new AppError({
+    kind: 'bad_request',
+    code: 'validation_error',
+    message: VALIDATION_ERROR_MESSAGE,
+    details: [
+      {
+        field: CATEGORY_FIELD,
+        code: 'not-found',
+        message: 'カテゴリを選択してください。',
+      },
+    ],
+  });
+
 const ATTACHMENTS_INVALID_CODE = 'inquiry_attachments_invalid';
 
 const ATTACHMENTS_FIELD = 'fileIds';
