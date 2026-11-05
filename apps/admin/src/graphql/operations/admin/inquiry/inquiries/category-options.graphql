@@ -1,0 +1,6 @@
+query AdminInquiryCategoryOptions {
+  adminInquiryCategories {
+    id
+    name
+  }
+}

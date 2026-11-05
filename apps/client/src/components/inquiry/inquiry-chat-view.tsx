@@ -4,10 +4,9 @@ import { useId, useState } from 'react';
 
 import { DateTime } from '../../../lib/components/datetime/date-time.tsx';
 import { InquirerAvatar } from '../../../lib/components/inquiry/inquirer-avatar.tsx';
+import { InquiryAutoRefreshSwitch } from '../../../lib/components/inquiry/inquiry-auto-refresh-switch.tsx';
 import { InquiryMessageCard } from '../../../lib/components/inquiry/inquiry-message-card.tsx';
 import { InquiryStatusBadge } from '../../../lib/components/inquiry/inquiry-status-badge.tsx';
-import { Label } from '../../../lib/components/ui/label/label.tsx';
-import { Switch } from '../../../lib/components/ui/switch/switch.tsx';
 import { LIVE_REFRESH_QUERY_OPTIONS } from '../../../lib/utilities/query/live-refresh.ts';
 import {
   type InquiryChatMessage,
@@ -16,8 +15,6 @@ import {
 } from '../../graphql/inquiry-chat.ts';
 import type { ClientViewer } from '../../graphql/viewer.ts';
 import {
-  AUTO_REFRESH_DESCRIPTION,
-  AUTO_REFRESH_LABEL,
   DELETED_ADMIN_LABEL,
   INQUIRY_MESSAGES_TITLE,
   INQUIRY_STATUS_LABEL,
@@ -65,35 +62,6 @@ function ChatMessageItem({ message, viewerNickname }: ChatMessageItemProps) {
   );
 }
 
-interface AutoRefreshSwitchProps {
-  readonly checked: boolean;
-  readonly onCheckedChange: (checked: boolean) => void;
-}
-
-function AutoRefreshSwitch({
-  checked,
-  onCheckedChange,
-}: AutoRefreshSwitchProps) {
-  const switchId = useId();
-  const descriptionId = useId();
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-2">
-        <Switch
-          id={switchId}
-          checked={checked}
-          onCheckedChange={onCheckedChange}
-          aria-describedby={descriptionId}
-        />
-        <Label htmlFor={switchId}>{AUTO_REFRESH_LABEL}</Label>
-      </div>
-      <p id={descriptionId} className="text-xs text-muted-foreground">
-        {AUTO_REFRESH_DESCRIPTION}
-      </p>
-    </div>
-  );
-}
-
 // 開いている間は30秒ごとに取り直す。自動で更新される情報には止める手段が要るため、自動更新を切り替えられるようにする
 export function InquiryChatView({ viewer, inquiryId }: InquiryChatViewProps) {
   const headingId = useId();
@@ -131,7 +99,7 @@ export function InquiryChatView({ viewer, inquiryId }: InquiryChatViewProps) {
           <h2 id={headingId} className="text-xl font-extrabold">
             {INQUIRY_MESSAGES_TITLE}
           </h2>
-          <AutoRefreshSwitch
+          <InquiryAutoRefreshSwitch
             checked={autoRefresh}
             onCheckedChange={setAutoRefresh}
           />

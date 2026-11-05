@@ -263,7 +263,8 @@ apps/
 │       ├── inquiry-status-badge.tsx                    # 4種のステータスの表示
 │       ├── inquiry-message-card.tsx                    # 送信者・本文・添付・日時の1件
 │       ├── inquiry-attachment-list.tsx                 # PrivateFileLinkによる添付の一覧
-│       └── inquirer-avatar.tsx                         # MediaPictureと既定のアイコン
+│       ├── inquirer-avatar.tsx                         # MediaPictureと既定のアイコン
+│       └── inquiry-auto-refresh-switch.tsx             # 定期再取得を止める「自動更新」のスイッチ(利用者側のチャットと管理画面の詳細)
 ├── client/src/
 │   ├── routes/contact.tsx                              # /contact(ログイン不要。validateSearch・loaderDeps・loader・head)
 │   ├── routes/_authenticated/inquiries/$inquiryId.tsx  # /inquiries/{id}
@@ -1248,8 +1249,8 @@ export interface InquirerAvatarProps {
 
 #### AdminInquiryPages・InquiryReplyForm・InquiryStatusControl・UnhandledInquiriesCard
 
-- `/inquiries`: ルートは`validateSearch: toAdminInquirySearch`(`admin-inquiry-search.ts`。zodの`.optional().catch(undefined)`と`definedEntriesOf`、監査ログの一覧と同じ形)・`loaderDeps`・`loader`(`graphql/admin-inquiries.ts`。`.catch(() => undefined)`)・`head: buildAdminPageHead`、ページ全体の部品は`components/pages/inquiries-page.tsx`。`AdminFilterBar`(ステータス・種別・カテゴリの`select`、受付日の開始と終了の`<input type="date">`。`inquiry-period.ts`で閲覧者の地域の0時をUTCへ変換)と`AdminDataTable`(50件、`pagination`の前後のページは`frontend-lib/utilities/pagination/cursor-trail.ts`で辿る)。検索パラメータ`status`などをURLに保つ。受付日時と最後のメッセージの日時は`longDateTime`(G5)。退会済みは「退会済み」の表示(要件10.1〜10.3・10.7)。
-- `/inquiries/$inquiryId`: ページ全体の部品は`components/pages/inquiry-detail-page.tsx`。ログインは`MemberInquiryDetail`(利用者のニックネーム・ハンドル、メッセージ(日時は`longDateTime`)、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得、要件10.4・10.6)、未ログインは`GuestInquiryDetail`(ニックネーム・連絡先メールアドレス・本文・受付日時(`longDateTime`)、「この問い合わせへの回答は、連絡先メールアドレスへシステム外のメールで行ってください。」、要件10.5)。どちらの詳細も、問い合わせの情報の下に`InquiryDetailActionsView`を置き、後続specが登録した操作を表示する。ロールは`useCurrentAdmin()`(文脈の`viewer`)から読む。
+- `/inquiries`: ルートは`validateSearch: toAdminInquirySearch`(`admin-inquiry-search.ts`。zodの`.optional().catch(undefined)`と`definedEntriesOf`、監査ログの一覧と同じ形)・`loaderDeps`・`loader`(`graphql/admin-inquiries.ts`。`.catch(() => undefined)`)・`head: buildAdminPageHead`、ページ全体の部品は`components/pages/inquiries-page.tsx`。`AdminFilterBar`(ステータス・種別・カテゴリの`select`、受付日の開始と終了の`<input type="date">`。`inquiry-period.ts`で閲覧者の地域の0時をUTCへ変換。カテゴリの選択肢は`AdminInquiryCategoryOptions`(`adminInquiryCategories`の`id`・`name`だけ)を`loader`で待ち、失敗はルートのエラーの画面。ステータスと種別の検索パラメータはAPIの列挙の値`OPEN`・`MEMBER`など)と`AdminDataTable`(50件、`pagination`の前後のページは`frontend-lib/utilities/pagination/cursor-trail.ts`で辿る)。検索パラメータ`status`などをURLに保つ。受付日時と最後のメッセージの日時は`longDateTime`(G5)。退会済みは「退会済み」の表示(要件10.1〜10.3・10.7)。
+- `/inquiries/$inquiryId`: ページ全体の部品は`components/pages/inquiry-detail-page.tsx`。ログインは`MemberInquiryDetail`(利用者のニックネーム・ハンドル、メッセージ(日時は`longDateTime`)、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得とfrontend-libの`InquiryAutoRefreshSwitch`(利用者側のチャットと共通の「自動更新」、`role="log"`)、要件10.4・10.6。loaderは`staleTime: 0`、部品は`refetchOnMount: false`。定期再取得と画面へ戻った時の取得はログインの問い合わせだけ)、未ログインは`GuestInquiryDetail`(ニックネーム・連絡先メールアドレス・本文・受付日時(`longDateTime`)、「この問い合わせへの回答は、連絡先メールアドレスへシステム外のメールで行ってください。」、要件10.5)。どちらの詳細も、問い合わせの情報の下に`InquiryDetailActionsView`を置き、後続specが登録した操作を表示する。ロールは`useCurrentAdmin()`(文脈の`viewer`)から読む。
 - `InquiryReplyForm`: `RoleGate minimum="moderator"`、退会済み・未ログインでは表示しない。1,000書記素の検証と理由(任意)。対象の`inquiryId`はスキーマの入力に含めず`onSubmit`で足す。`notificationQueued`が偽ならトーストで「返信は保存されましたが、通知メールを送れませんでした。」(要件11.4・11.7)。送信の失敗は`AppForm`の`onSubmitError`で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言を示す。
 - `InquiryStatusControl`: 4種の`select`と`ConfirmActionDialog`(理由は任意、監査ログに記録される旨、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`。失敗はダイアログの中にその文言で示す。要件12.5)。退会済みでは表示しない(要件10.7)。
 - `UnhandledInquiriesCard`(`DASHBOARD_CARDS`へ`{ id: 'inquiry-chat.unhandled-inquiries', order: 20, width: 'half' }`): `adminUnhandledInquiryCount`を`DashboardCardFrame`で表示し、`/inquiries?status=OPEN`へのリンク。失敗はカードだけのエラーと再試行(文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、問い合わせの導線を出さない。要件14.1・14.3・14.4)。
@@ -1279,7 +1280,7 @@ export interface InquiryDetailAction {
 export declare const INQUIRY_DETAIL_ACTIONS: readonly InquiryDetailAction[]; // 初版は空
 ```
 
-- `InquiryDetailActionsView({ inquiry })`: `INQUIRY_DETAIL_ACTIONS`を`order`順に並べ、各操作を個別のエラー境界で包み、1つの操作の失敗が詳細の表示と他の操作を止めないようにする。エラー境界の表示は`ErrorState`を`contactHref`無しで描き、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ。登録が空なら何も描画しない(見出しや空状態も出さない)。
+- `InquiryDetailActionsView({ actions, inquiry })`: 詳細のページが渡す`INQUIRY_DETAIL_ACTIONS`を`order`順に並べ、各操作を個別のエラー境界で包み、1つの操作の失敗が詳細の表示と他の操作を止めないようにする。エラー境界の表示は`ErrorState`を`contactHref`無しで描き、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ。登録が空なら何も描画しない(見出しや空状態も出さない)。
 - 全ロールが全メニューを参照できる方針(admin-foundationのQ3)に合わせ、登録箇所にロールの条件を持たせない。操作の部品が`RoleGate`・`useAdminRole`で必要なロールを判定し、サーバー側の認可は操作を足すspecの`requireAdmin`が持つ。
 - 本specは文脈の値を詳細の取得結果から渡すだけで、操作の中身(手順・本人の確かめ・監査ログ)は持たない。
 

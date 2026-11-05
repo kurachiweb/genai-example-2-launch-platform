@@ -1,0 +1,8 @@
+mutation AdminReplyToInquiry($inquiryId: ID!, $body: String!, $reason: String) {
+  replyToInquiry(inquiryId: $inquiryId, body: $body, reason: $reason) {
+    message {
+      id
+    }
+    notificationQueued
+  }
+}

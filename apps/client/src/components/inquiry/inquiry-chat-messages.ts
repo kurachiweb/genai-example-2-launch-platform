@@ -1,19 +1,12 @@
 import { CHAT_MESSAGE_MAX } from '../../../common-lib/inquiry/inquiry-input-rules.ts';
-import { LIVE_REFRESH_INTERVAL_MS } from '../../../lib/utilities/query/live-refresh.ts';
 
 const countFormat = new Intl.NumberFormat('ja-JP');
-
-const MILLISECONDS_PER_SECOND = 1000;
 
 export const INQUIRY_CHAT_PAGE_TITLE = '問い合わせチャット';
 
 export const INQUIRY_STATUS_LABEL = '対応ステータス';
 
 export const INQUIRY_MESSAGES_TITLE = 'メッセージ';
-
-export const AUTO_REFRESH_LABEL = '自動更新';
-
-export const AUTO_REFRESH_DESCRIPTION = `オンの間は${countFormat.format(LIVE_REFRESH_INTERVAL_MS / MILLISECONDS_PER_SECOND)}秒ごとに新しいメッセージと対応ステータスを表示します。`;
 
 export const DELETED_ADMIN_LABEL = '削除済みの管理者';
 

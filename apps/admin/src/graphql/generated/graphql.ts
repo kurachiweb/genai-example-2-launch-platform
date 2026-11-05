@@ -10,6 +10,17 @@ export type AdminAccountStatus =
   | 'INVITATION_EXPIRED'
   | 'INVITED';
 
+/** 管理画面の問い合わせの一覧の絞り込み */
+export type AdminInquiryFilterInput = {
+  categoryId?: string | number | null | undefined;
+  kind?: InquiryKind | null | undefined;
+  /** この日時を含まない以前の受付 */
+  receivedBefore?: string | null | undefined;
+  /** この日時を含む以降の受付 */
+  receivedFrom?: string | null | undefined;
+  status?: InquiryStatus | null | undefined;
+};
+
 /** 重要な操作の本人確認 */
 export type AdminReAuthenticationInput = {
   /** 本人確認に使う現在のパスワード */
@@ -45,6 +56,23 @@ export type DiscardLegalDocumentDraftInput = {
   expectedStateVersion: number;
   kind: LegalDocumentKind;
 };
+
+/** 問い合わせの種別 */
+export type InquiryKind =
+  | 'GUEST'
+  | 'MEMBER';
+
+/** メッセージの送信者の種類 */
+export type InquirySender =
+  | 'ADMIN'
+  | 'USER';
+
+/** 対応ステータス */
+export type InquiryStatus =
+  | 'IN_PROGRESS'
+  | 'OPEN'
+  | 'REJECTED'
+  | 'RESOLVED';
 
 /** 法務文書の種類 */
 export type LegalDocumentKind =
@@ -188,6 +216,49 @@ export type AdminStartInvitationMutationVariables = Exact<{
 
 export type AdminStartInvitationMutation = { startAdminInvitation: { otpauthUri: string, secret: string, expiresAt: string } };
 
+export type AdminInquiryCategoryOptionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminInquiryCategoryOptionsQuery = { adminInquiryCategories: Array<{ id: string, name: string }> };
+
+export type AdminChangeInquiryStatusMutationVariables = Exact<{
+  inquiryId: string | number;
+  status: InquiryStatus;
+  reason?: string | null | undefined;
+}>;
+
+
+export type AdminChangeInquiryStatusMutation = { changeInquiryStatus: { id: string, status: InquiryStatus, statusChangedAt: string } };
+
+export type AdminInquiriesQueryVariables = Exact<{
+  filter?: AdminInquiryFilterInput | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminInquiriesQuery = { adminInquiries: { nextCursor: string | null, entries: Array<{ id: string, kind: InquiryKind, status: InquiryStatus, senderName: string, withdrawn: boolean, createdAt: string, lastMessageAt: string, category: { id: string, name: string } }> } };
+
+export type AdminInquiryQueryVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type AdminInquiryQuery = { adminInquiry: { id: string, kind: InquiryKind, status: InquiryStatus, statusChangedAt: string, withdrawn: boolean, createdAt: string, lastMessageAt: string, category: { id: string, name: string }, member: { userId: string, nickname: string, handle: string, avatar: { objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null, guest: { nickname: string, email: string, body: string } | null, messages: Array<{ id: string, sender: InquirySender, body: string, createdAt: string, attachments: Array<{ id: string, originalFileName: string, contentType: string, byteSize: number }>, admin: { nickname: string | null, deleted: boolean, avatar: { objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> } | null };
+
+export type AdminReplyToInquiryMutationVariables = Exact<{
+  inquiryId: string | number;
+  body: string;
+  reason?: string | null | undefined;
+}>;
+
+
+export type AdminReplyToInquiryMutation = { replyToInquiry: { notificationQueued: boolean, message: { id: string } } };
+
+export type AdminUnhandledInquiryCountQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminUnhandledInquiryCountQuery = { adminUnhandledInquiryCount: number };
+
 export type AdminChangePasswordMutationVariables = Exact<{
   newPassword: string;
   reAuthentication: AdminReAuthenticationInput;
@@ -292,6 +363,12 @@ export const AdminLogoutDocument = {"__meta__":{"hash":"sha256:a5c867644440dfae9
 export const AdminRequestPasswordResetDocument = {"__meta__":{"hash":"sha256:d48da8ed350eab28a04a32ad2e03d56182ea6236f37ec0c7c41de8410902b93a"}} as unknown as DocumentNode<AdminRequestPasswordResetMutation, AdminRequestPasswordResetMutationVariables>;
 export const AdminResetPasswordDocument = {"__meta__":{"hash":"sha256:94a7f69084274f48fee34f654308b27d9de7d19b619f518a3c6169c092a487d9"}} as unknown as DocumentNode<AdminResetPasswordMutation, AdminResetPasswordMutationVariables>;
 export const AdminStartInvitationDocument = {"__meta__":{"hash":"sha256:3b39d0738def23c218abff35936b48becafa4622b7b5fbfdce5362c2f67209b8"}} as unknown as DocumentNode<AdminStartInvitationMutation, AdminStartInvitationMutationVariables>;
+export const AdminInquiryCategoryOptionsDocument = {"__meta__":{"hash":"sha256:286888e8999338219195044b284dbcbdfeff601cdc07844787cee9b0b5b201b0"}} as unknown as DocumentNode<AdminInquiryCategoryOptionsQuery, AdminInquiryCategoryOptionsQueryVariables>;
+export const AdminChangeInquiryStatusDocument = {"__meta__":{"hash":"sha256:77acdb3a5d8f2c2f239e034b9b81b451496c52a489ef30c3102e80a61a42784d"}} as unknown as DocumentNode<AdminChangeInquiryStatusMutation, AdminChangeInquiryStatusMutationVariables>;
+export const AdminInquiriesDocument = {"__meta__":{"hash":"sha256:1180cc781646ce77b6d765a061ca2f387daecefac756f9cb61356ff83b9d8c48"}} as unknown as DocumentNode<AdminInquiriesQuery, AdminInquiriesQueryVariables>;
+export const AdminInquiryDocument = {"__meta__":{"hash":"sha256:6fdbef74d44962f7508001c8dc27b20234f686682d880ef0ed7f3a6eb38487be"}} as unknown as DocumentNode<AdminInquiryQuery, AdminInquiryQueryVariables>;
+export const AdminReplyToInquiryDocument = {"__meta__":{"hash":"sha256:5870c5fb94dcec2d93b9affe5857370a5644e573d61c55c3adcb588cb193bec6"}} as unknown as DocumentNode<AdminReplyToInquiryMutation, AdminReplyToInquiryMutationVariables>;
+export const AdminUnhandledInquiryCountDocument = {"__meta__":{"hash":"sha256:108661b168cf905473967bf90e4d747d5153aa793bd63edf89090941ba382a49"}} as unknown as DocumentNode<AdminUnhandledInquiryCountQuery, AdminUnhandledInquiryCountQueryVariables>;
 export const AdminChangePasswordDocument = {"__meta__":{"hash":"sha256:8cff11b0bf017aef90706d2c18d28aa70380c5274662c90e82d1b510e292d966"}} as unknown as DocumentNode<AdminChangePasswordMutation, AdminChangePasswordMutationVariables>;
 export const AdminCompleteTotpResetDocument = {"__meta__":{"hash":"sha256:2b90b8513d1ac71cfb0dc044f17589283d69ea157ef05ed2c506b12888550711"}} as unknown as DocumentNode<AdminCompleteTotpResetMutation, AdminCompleteTotpResetMutationVariables>;
 export const AdminRegenerateRecoveryCodesDocument = {"__meta__":{"hash":"sha256:70c6ef86ce4fff5d6a81767859ab1e2d31d7cfd6be13e9a3183b7e1ac51bd7a9"}} as unknown as DocumentNode<AdminRegenerateRecoveryCodesMutation, AdminRegenerateRecoveryCodesMutationVariables>;
