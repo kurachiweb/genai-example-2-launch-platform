@@ -45,6 +45,7 @@ const RUNTIME: AppRuntime = {
     imagesOrigin: 'https://images.example',
     sentry: { dsn: undefined, environment: 'staging', tracesSampleRate: 0.1 },
     webAnalyticsToken: undefined,
+    stripePublishableKey: undefined,
   },
   display: { timeZone: 'Asia/Tokyo', locale: 'ja-JP' },
 };

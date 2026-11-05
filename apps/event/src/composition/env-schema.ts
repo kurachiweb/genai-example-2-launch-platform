@@ -6,7 +6,9 @@ import {
   type AppEnvironment,
   isDeployedEnvironmentValue,
 } from '../../lib/core/env/app-environment.ts';
+import { isHttpOrigin } from '../../lib/core/env/http-origin.ts';
 import type { DeadLetterNotice } from '../../lib/core/messaging/envelope.ts';
+import { paymentsEventEnvShape } from '../../lib/core/payments/payments-env.ts';
 import {
   bindingSchema,
   platformEnvShape,
@@ -34,6 +36,11 @@ export interface EventPlatformEnv
   readonly APP_ENVIRONMENT: AppEnvironment;
   // ローカル環境だけ省略できる。空文字は未設定として扱う
   readonly DISIFY_API_KEY?: string;
+  readonly CLIENT_SITE_ORIGIN: string;
+  // staging・prodだけで必須。未設定なら決済の機能だけが縮退する
+  readonly STRIPE_API_KEY?: string;
+  readonly STRIPE_WEBHOOK_SECRET?: string;
+  readonly PAYMENTS_SMOKE_ENABLED: 'true' | 'false';
 }
 
 type ConditionalKey =
@@ -90,7 +97,9 @@ export const eventEnvSchema = z
     KEYWORD_EXTRACTOR: z.enum(['google-natural-language', 'disabled']),
     GOOGLE_NL_API_KEY: z.string().min(1).optional(),
     DISIFY_API_KEY: z.string().optional(),
+    CLIENT_SITE_ORIGIN: z.string().refine(isHttpOrigin),
     ...mediaEnvShape,
+    ...paymentsEventEnvShape,
   })
   // 他のキーに不備があっても条件付きの必須キーの欠落を一緒に報告するよう、環境がオブジェクトなら検査する。問題の経路にキーを入れ、欠けたキーとして分類させる
   .check(

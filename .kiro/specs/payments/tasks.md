@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: パッケージ・設定・共有の定義・テーブル・開発用の決済環境
-- [ ] 1.1 Stripeの3パッケージを導入し、各Workerのシークレットと変数を宣言する
+- [x] 1.1 Stripeの3パッケージを導入し、各Workerのシークレットと変数を宣言する
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-delivery・content-processing・media-pipeline・identity-auth・admin-foundation・legal-pagesの全タスクが完了していること(層構成・GraphQL基盤・メール送信・画面の骨格・共有ディレクトリ・ユーザーライフサイクル・利用者の連絡先の照会(`UserContactDirectory`)・設定ページのシェル・`/legal`)。無ければ該当するタスクを保留して開発者へ報告する
   - `stripe` 23.1.0(api・event)・`@stripe/stripe-js` 10.2.1・`@stripe/react-stripe-js` 7.0.1(client)を完全固定で加える(2026-11-05に開発者が決定した版。公開から2週間の待ちを置かない)。より新しい版が出ていても、この版から変える場合は開発者へ確かめる
   - clientの`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)に`@stripe/stripe-js`・`@stripe/react-stripe-js`を加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)
@@ -344,3 +344,8 @@
   - _Boundary: PaymentsServiceSpecs_
   - _Depends: 11.2_
   - _Requirements: 16.4, 16.5_
+
+## Implementation Notes
+
+- 1.1: StripeのキーはローカルのルートのWranglerの`secrets.required`に無いため、Infisicalの`dev`に登録してもローカルのapi・eventへ渡らない(`wrangler dev`は`secrets.required`のキーだけを`env`へ渡す)。ローカルで決済を試す1.4・8.4・11.1の完了状態には、ルートの`secrets.required`への追加が要る(開発者の判断待ち)
+- 1.1: 決済の設定の検証の規則は`backend-lib/core/payments/payments-env.ts`、オリジンの形式の判定は`backend-lib/core/env/http-origin.ts`の`isHttpOrigin`にある。Workers統合テストのStripeのテスト用のキーは、シークレットの検出の誤検知を避けるため文字列を連結して作る

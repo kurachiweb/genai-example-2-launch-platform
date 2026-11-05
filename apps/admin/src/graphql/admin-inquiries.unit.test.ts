@@ -37,6 +37,7 @@ const runtimeIn = (timeZone: string) =>
       imagesOrigin: 'https://images.example',
       sentry: { dsn: undefined, environment: 'local', tracesSampleRate: 0 },
       webAnalyticsToken: undefined,
+      stripePublishableKey: undefined,
     },
     display: { timeZone, locale: 'ja-JP' },
   });

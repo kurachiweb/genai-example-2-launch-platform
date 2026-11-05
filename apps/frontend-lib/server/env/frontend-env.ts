@@ -28,6 +28,7 @@ export interface ValidatedFrontendEnv {
   readonly IMAGES_ORIGIN: string;
   readonly CLIENT_SITE_ORIGIN: string;
   readonly WEB_ANALYTICS_TOKEN: string | undefined;
+  readonly STRIPE_PUBLISHABLE_KEY: string | undefined;
   readonly HASH_PEPPER: string;
 }
 
@@ -46,6 +47,7 @@ export interface PublicRuntimeConfig {
     readonly tracesSampleRate: number;
   };
   readonly webAnalyticsToken: string | undefined;
+  readonly stripePublishableKey: string | undefined;
 }
 
 const APP_ENVIRONMENT_VALUES = {
@@ -82,6 +84,9 @@ const isOrigin = (value: string): boolean => {
   }
 };
 
+// 秘密鍵を誤って公開しないよう、公開キーの形だけを受け付ける
+const STRIPE_PUBLISHABLE_KEY_PATTERN = /^pk_(?:test|live)_[A-Za-z0-9]+$/;
+
 const optionalText = z
   .string()
   .optional()
@@ -102,6 +107,12 @@ const frontendEnvSchema = z.object({
   IMAGES_ORIGIN: z.string().refine(isOrigin),
   CLIENT_SITE_ORIGIN: z.string().refine(isOrigin),
   WEB_ANALYTICS_TOKEN: optionalText,
+  // 変換を挟み、検証後の環境の型でキーを省略可能にせずundefinedを取り得る値にする
+  STRIPE_PUBLISHABLE_KEY: z
+    .string()
+    .regex(STRIPE_PUBLISHABLE_KEY_PATTERN)
+    .optional()
+    .transform((value) => value),
   HASH_PEPPER: z.string().min(1),
 });
 
@@ -144,4 +155,7 @@ export const toPublicRuntimeConfig = (
     tracesSampleRate: env.SENTRY_TRACES_SAMPLE_RATE,
   },
   webAnalyticsToken: profile.webAnalytics ? env.WEB_ANALYTICS_TOKEN : undefined,
+  stripePublishableKey: profile.payments
+    ? env.STRIPE_PUBLISHABLE_KEY
+    : undefined,
 });

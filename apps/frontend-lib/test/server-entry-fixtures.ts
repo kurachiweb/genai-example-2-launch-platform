@@ -37,6 +37,7 @@ export const CLIENT_TEST_PROFILE: FrontendAppProfile =
     indexable: (environment) => environment === 'prod',
     webAnalytics: true,
     contactAvailable: true,
+    payments: true,
   });
 
 export const ADMIN_TEST_PROFILE: FrontendAppProfile =
@@ -46,6 +47,7 @@ export const ADMIN_TEST_PROFILE: FrontendAppProfile =
     indexable: () => false,
     webAnalytics: false,
     contactAvailable: false,
+    payments: false,
   });
 
 export const APP_SECURITY_POLICY = Object.freeze({

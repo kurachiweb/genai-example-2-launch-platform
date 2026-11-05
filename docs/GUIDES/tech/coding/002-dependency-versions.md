@@ -45,6 +45,8 @@
 | `@graphql-codegen/typescript`・`@graphql-codegen/typescript-resolvers`                                                                                                               | 6.1.2・6.1.1                                                      | GraphQLのサーバーを持つアプリ                                | 生成するリゾルバの型が版によって変わる。`@graphql-codegen/cli`と同時に更新し、生成し直す                                                                                                                                                                  |
 | `react`・`react-dom`・`@types/react`・`@types/react-dom`                                                                                                                             | 19.3.1・19.3.1・19.3.0・19.3.0                                    | Reactを使うアプリ                                            | `react-dom`は同じ版の`react`を相手依存に持つ。フロントエンドとメールの描画で同じ版にそろえる。型定義はパッチの版ごとには公開されないため、実行時の版と同じminorの最新の版に合わせる                                                                       |
 | `@react-email/components`・`@react-email/render`                                                                                                                                     | 1.0.12・2.2.0                                                     | メールを描画するアプリ                                       | Workers向けの出力(`workerd`条件)の有無が版で変わる。部品側が別の版の`@react-email/render`を内部に持つため、直接宣言した版で描画する                                                                                                                       |
+| `stripe`                                                                                                                                                                             | 23.1.0                                                            | 決済サービスと通信するバックエンドのアプリ                   | SDKの版ごとに既定のAPI版が決まり、型定義はそのAPI版の応答の形に合わせてある。コードで固定するAPI版・Webhook endpointのAPI版とSDKの版を組で扱うため、範囲指定で版が動くと型と実際の応答が食い違う                                                          |
+| `@stripe/stripe-js`・`@stripe/react-stripe-js`                                                                                                                                       | 10.2.1・7.0.1                                                     | 決済画面を持つアプリ                                         | `@stripe/react-stripe-js`は`@stripe/stripe-js`の1つのメジャー版の範囲を相手依存に持つ(7.0.1は`>=10.0.0 <11.0.0`)。2つの組を固定して、決済画面の部品とStripe.jsの読み込みの型をそろえる                                                                    |
 
 - Vitest系はテストの種別に応じて導入する。ブラウザテストを持つアプリは`vitest`・`@vitest/browser-playwright`・`@vitest/coverage-v8`・`playwright`を、Workers統合テストを持つアプリは`vitest`・`@vitest/coverage-istanbul`・`@cloudflare/vitest-pool-workers`・`wrangler`を導入する。
 - ルートは`@playwright/test`だけを直接宣言する。`@playwright/test`は`playwright`を、`playwright`は`playwright-core`を、それぞれ完全固定の`dependencies`で持つため、`playwright`・`playwright-core`は推移的に同じ版に決まる。ブラウザテストを持つアプリは、`@vitest/browser-playwright`が使う`playwright`を直接宣言し、同じ版にする。
@@ -185,6 +187,11 @@
 - 共用部品の単体テスト(攻撃パターン集と描画の性能の計測を含む)と、画面の共通部品のブラウザテストが成功する(「[攻撃パターン集の追加の手順](../security/004-markdown-sanitization.md#攻撃パターン集の追加の手順)」)。
 - エディタを更新したら、編集領域がページの最初の読み込みとサーバー側の描画に含まれないことを、画面の共通部品の遅延読み込みの分離の検査で確かめる(「[遅延読み込み](../frontend/008-markdown-editor-and-content.md#遅延読み込み)」)。
 
+### stripe・@stripe/stripe-js・@stripe/react-stripe-js
+
+- `stripe`の版を変えるときは、新しい版が既定とするAPI版を変更履歴で確かめ、コードで固定したAPI版・Webhook endpointのAPI版と照らし合わせる。API版も上げる場合は、API版の変更点を確かめてから、SDKの版・コードのAPI版・Webhook endpointのAPI版を同時に変える。
+- `@stripe/react-stripe-js`を更新するときは、相手依存の`@stripe/stripe-js`の範囲を`bun pm view @stripe/react-stripe-js@<版> peerDependencies`で確かめ、2つを同時に更新する。
+
 ### @playwright/test・playwright
 
 - 開発コンテナのOS依存パッケージの版、ルートの`@playwright/test`の版、2つのブラウザ操作MCPサーバーの版の4箇所を整合させる。手順は「[E2Eテストツールの版の更新手順](../testing/002-browser-tool-versions.md)」に従う。
@@ -216,7 +223,7 @@
    git grep -n '"<パッケージ>":' -- '*package.json' ':!<対象外のディレクトリ>/'
    ```
 
-3. 見つかった各ディレクトリで、「[版を明示した追加手順](#版を明示した追加手順)」のコマンドを新しい版で実行する。一緒に動かすパッケージ(Vitest系の4つ、`@cloudflare/vite-plugin`と`wrangler`と`@cloudflare/vitest-pool-workers`、`drizzle-orm`と`drizzle-kit`、`@playwright/test`と`playwright`、`inversify`と`reflect-metadata`、`@logtape/logtape`と`@logtape/redaction`、`@sentry/cloudflare`と`@sentry/hono`と`@sentry/tanstackstart-react`、`graphql-yoga`と2つのプラグイン、`@graphql-codegen/cli`と`@graphql-codegen/typescript`・`@graphql-codegen/typescript-resolvers`・`@graphql-codegen/client-preset`、`@tanstack/react-start`と`@tanstack/react-router`、`react`・`react-dom`・`@types/react`・`@types/react-dom`、`@milkdown/crepe`・`@milkdown/kit`・`@milkdown/react`)は同時に更新する。画面の共通部品のパッケージは、共通部品と画面を持つすべてのアプリで同時に更新する(「[画面の共通部品と利用側アプリでそろえるパッケージ](#画面の共通部品と利用側アプリでそろえるパッケージ)」)。共用部品のパッケージは、共用部品と配置先のすべてのアプリで同時に更新する(「[共用部品と利用側アプリでそろえるパッケージ](#共用部品と利用側アプリでそろえるパッケージ)」)。
+3. 見つかった各ディレクトリで、「[版を明示した追加手順](#版を明示した追加手順)」のコマンドを新しい版で実行する。一緒に動かすパッケージ(Vitest系の4つ、`@cloudflare/vite-plugin`と`wrangler`と`@cloudflare/vitest-pool-workers`、`drizzle-orm`と`drizzle-kit`、`@playwright/test`と`playwright`、`inversify`と`reflect-metadata`、`@logtape/logtape`と`@logtape/redaction`、`@sentry/cloudflare`と`@sentry/hono`と`@sentry/tanstackstart-react`、`graphql-yoga`と2つのプラグイン、`@graphql-codegen/cli`と`@graphql-codegen/typescript`・`@graphql-codegen/typescript-resolvers`・`@graphql-codegen/client-preset`、`@tanstack/react-start`と`@tanstack/react-router`、`react`・`react-dom`・`@types/react`・`@types/react-dom`、`@milkdown/crepe`・`@milkdown/kit`・`@milkdown/react`、`@stripe/stripe-js`と`@stripe/react-stripe-js`)は同時に更新する。画面の共通部品のパッケージは、共通部品と画面を持つすべてのアプリで同時に更新する(「[画面の共通部品と利用側アプリでそろえるパッケージ](#画面の共通部品と利用側アプリでそろえるパッケージ)」)。共用部品のパッケージは、共用部品と配置先のすべてのアプリで同時に更新する(「[共用部品と利用側アプリでそろえるパッケージ](#共用部品と利用側アプリでそろえるパッケージ)」)。
 4. すべての`package.json`と`bun.lock`が同じ版になったことを確かめる。
 
    ```sh

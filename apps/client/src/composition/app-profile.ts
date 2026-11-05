@@ -9,4 +9,5 @@ export const CLIENT_PROFILE: FrontendAppProfile = Object.freeze({
   indexable: (environment: AppEnvironment) => environment === 'prod',
   webAnalytics: true,
   contactAvailable: true,
+  payments: true,
 });

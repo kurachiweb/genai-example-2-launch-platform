@@ -14,6 +14,7 @@ const INVALID_VALUE = 'invalid-value-must-not-leak';
 const HASH_PEPPER = 'test-pepper-must-not-reach-browser';
 const CLIENT_SITE_ORIGIN = 'https://client.example';
 const IMAGES_ORIGIN = 'https://images.example';
+const STRIPE_PUBLISHABLE_KEY = `pk_test_${'Ab1'.repeat(8)}`;
 
 const fakeApi = {
   fetch: (): Promise<Response> => Promise.resolve(new Response(null)),
@@ -35,6 +36,7 @@ const validRawEnv = (): Record<string, unknown> => ({
   IMAGES_ORIGIN,
   CLIENT_SITE_ORIGIN,
   WEB_ANALYTICS_TOKEN: 'analytics-token',
+  STRIPE_PUBLISHABLE_KEY,
   HASH_PEPPER,
 });
 
@@ -44,6 +46,7 @@ const CLIENT_LIKE_PROFILE: FrontendAppProfile = {
   indexable: (environment) => environment === 'prod',
   webAnalytics: true,
   contactAvailable: true,
+  payments: true,
 };
 
 const ADMIN_LIKE_PROFILE: FrontendAppProfile = {
@@ -52,6 +55,7 @@ const ADMIN_LIKE_PROFILE: FrontendAppProfile = {
   indexable: () => false,
   webAnalytics: false,
   contactAvailable: false,
+  payments: false,
 };
 
 const envOf = (validation: EnvValidation): ValidatedFrontendEnv => {
@@ -95,6 +99,7 @@ describe('validateFrontendEnv', () => {
         IMAGES_ORIGIN: 'https://images.example',
         CLIENT_SITE_ORIGIN,
         WEB_ANALYTICS_TOKEN: 'analytics-token',
+        STRIPE_PUBLISHABLE_KEY,
         HASH_PEPPER,
       });
     });
@@ -207,6 +212,40 @@ describe('validateFrontendEnv', () => {
       const env = envOf(validate({ WEB_ANALYTICS_TOKEN: '' }));
 
       expect(env.WEB_ANALYTICS_TOKEN).toBeUndefined();
+    });
+  });
+
+  describe('決済の公開キー', () => {
+    test('公開キーが無ければ未設定として扱い、検証は失敗しない', () => {
+      const raw = rawEnvWithout('STRIPE_PUBLISHABLE_KEY');
+
+      const env = envOf(validateFrontendEnv(raw));
+
+      expect(env.STRIPE_PUBLISHABLE_KEY).toBeUndefined();
+    });
+
+    test.each([`pk_test_${'0'.repeat(32)}`, `pk_live_${'0'.repeat(32)}`])(
+      'テストモードとライブモードの公開キー%sを受け付ける',
+      (key) => {
+        const env = envOf(validate({ STRIPE_PUBLISHABLE_KEY: key }));
+
+        expect(env.STRIPE_PUBLISHABLE_KEY).toBe(key);
+      },
+    );
+
+    test.each([
+      '',
+      'pk_test_',
+      'pk_prod_abc',
+      'sk_test_abc',
+      'rk_live_abc',
+      'pk_test_abc def',
+      ` pk_test_abc`,
+      42,
+    ])('公開キーの形式でない%pを不正なキーとして返す', (key) => {
+      expect(invalidKeysOf(validate({ STRIPE_PUBLISHABLE_KEY: key }))).toEqual([
+        'STRIPE_PUBLISHABLE_KEY',
+      ]);
     });
   });
 
@@ -419,6 +458,7 @@ describe('toPublicRuntimeConfig', () => {
         tracesSampleRate: 1,
       },
       webAnalyticsToken: 'analytics-token',
+      stripePublishableKey: STRIPE_PUBLISHABLE_KEY,
     });
   });
 
@@ -444,6 +484,7 @@ describe('toPublicRuntimeConfig', () => {
       'environment',
       'imagesOrigin',
       'sentry',
+      'stripePublishableKey',
       'turnstileSiteKey',
       'webAnalyticsToken',
     ]);
@@ -497,6 +538,25 @@ describe('toPublicRuntimeConfig', () => {
 
     expect(
       toPublicRuntimeConfig(env, CLIENT_LIKE_PROFILE).webAnalyticsToken,
+    ).toBeUndefined();
+  });
+
+  test('決済を持たないプロファイルでは決済の公開キーを渡さない', () => {
+    const env = envOf(validateFrontendEnv(validRawEnv()));
+
+    const config = toPublicRuntimeConfig(env, ADMIN_LIKE_PROFILE);
+
+    expect(config.stripePublishableKey).toBeUndefined();
+    expect(JSON.stringify(config)).not.toContain(STRIPE_PUBLISHABLE_KEY);
+  });
+
+  test('決済を持つプロファイルでも、公開キーが未設定なら渡さない', () => {
+    const env = envOf(
+      validateFrontendEnv(rawEnvWithout('STRIPE_PUBLISHABLE_KEY')),
+    );
+
+    expect(
+      toPublicRuntimeConfig(env, CLIENT_LIKE_PROFILE).stripePublishableKey,
     ).toBeUndefined();
   });
 

@@ -17,6 +17,9 @@ export const SEARCH_CONFIG_KEY_PATTERN: RegExp =
 export const MEDIA_CONFIG_KEY_PATTERN: RegExp =
   /^(?:IMAGE_DELIVERY_|MODERATION_|REKOGNITION_|MEDIA_)/;
 
+// 決済の設定は決済の設定の検査が受け持ち、他の設定の検査はこのキーを除いて比べる
+export const PAYMENTS_CONFIG_KEY_PATTERN: RegExp = /^(?:STRIPE_|PAYMENTS_)/;
+
 export function appPath(app: WranglerAppName, ...segments: string[]): string {
   return join(APPS_DIR, app, ...segments);
 }

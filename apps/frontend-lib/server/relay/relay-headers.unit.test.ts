@@ -26,6 +26,7 @@ const profileOf = (
   indexable: () => false,
   webAnalytics: false,
   contactAvailable: false,
+  payments: false,
 });
 
 const CLIENT_PROFILE = profileOf('client', '__Host-test_session');

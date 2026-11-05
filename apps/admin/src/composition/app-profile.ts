@@ -6,4 +6,5 @@ export const ADMIN_PROFILE: FrontendAppProfile = Object.freeze({
   indexable: () => false,
   webAnalytics: false,
   contactAvailable: false,
+  payments: false,
 });

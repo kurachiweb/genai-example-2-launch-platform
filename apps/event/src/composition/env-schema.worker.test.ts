@@ -424,3 +424,132 @@ describe('eventEnvSchemaの環境の種別と使い捨て判定の設定', () =>
     },
   );
 });
+
+describe('eventEnvSchemaの決済の設定', () => {
+  const restrictedKeyOf = (mode: string): string =>
+    ['rk', mode, 'Ab1'.repeat(8)].join('_');
+  const webhookSecret = ['whsec', 'Ab1'.repeat(8)].join('_');
+
+  test('Workers統合テストの環境はテストモードの制限付きキーと署名の秘密を持ち、疎通確認を有効にし、利用者側のオリジンを持つ', () => {
+    expect(String(env.STRIPE_API_KEY).startsWith('rk_test_')).toBe(true);
+    expect(String(env.STRIPE_WEBHOOK_SECRET).startsWith('whsec_')).toBe(true);
+    expect(env.PAYMENTS_SMOKE_ENABLED).toBe('true');
+    expect(env.CLIENT_SITE_ORIGIN).toBe('http://localhost:48044');
+  });
+
+  test.each(['local', 'staging', 'prod'])(
+    '%sではStripeのキーと署名の秘密が無くても受け付ける',
+    (environment) => {
+      expect(() =>
+        validateEnv(
+          eventEnvSchema,
+          copyEnv({ APP_ENVIRONMENT: environment }, [
+            'STRIPE_API_KEY',
+            'STRIPE_WEBHOOK_SECRET',
+          ]),
+        ),
+      ).not.toThrow();
+    },
+  );
+
+  test.each(['test', 'live'])(
+    '%sモードの制限付きキーと署名の秘密を受け付ける',
+    (mode) => {
+      expect(() =>
+        validateEnv(
+          eventEnvSchema,
+          copyEnv({
+            STRIPE_API_KEY: restrictedKeyOf(mode),
+            STRIPE_WEBHOOK_SECRET: webhookSecret,
+          }),
+        ),
+      ).not.toThrow();
+    },
+  );
+
+  test.each([
+    '',
+    ['sk', 'live', 'Ab1'.repeat(8)].join('_'),
+    ['pk', 'test', 'Ab1'.repeat(8)].join('_'),
+    ['rk', 'prod', 'Ab1'.repeat(8)].join('_'),
+    'rk_test_',
+    'restricted-key-value-must-not-leak',
+  ])(
+    '制限付きキーの形式でないStripeのキー%pは、値を含めずにキー名だけを不正なキーにする',
+    (value) => {
+      const error = captureValidationError(copyEnv({ STRIPE_API_KEY: value }));
+
+      expect(error.invalidKeys).toEqual(['STRIPE_API_KEY']);
+      expect(error.missingKeys).toEqual([]);
+      if (value !== '') {
+        expect(error.message).not.toContain(value);
+      }
+    },
+  );
+
+  test.each(['', 'whsec_', 'webhook-secret-value-must-not-leak'])(
+    '署名の秘密の形式でない%pは、値を含めずにキー名だけを不正なキーにする',
+    (value) => {
+      const error = captureValidationError(
+        copyEnv({ STRIPE_WEBHOOK_SECRET: value }),
+      );
+
+      expect(error.invalidKeys).toEqual(['STRIPE_WEBHOOK_SECRET']);
+      expect(error.missingKeys).toEqual([]);
+      if (value !== '') {
+        expect(error.message).not.toContain(value);
+      }
+    },
+  );
+
+  test.each(['PAYMENTS_SMOKE_ENABLED', 'CLIENT_SITE_ORIGIN'])(
+    '常に必須の%sが欠けると、そのキー名だけを欠けたキーにする',
+    (key) => {
+      const error = captureValidationError(copyEnv({}, [key]));
+
+      expect(error.missingKeys).toEqual([key]);
+      expect(error.invalidKeys).toEqual([]);
+    },
+  );
+
+  test.each(['yes', 'TRUE', '1', ''])(
+    '疎通確認の有無の変数が真偽の文字列でない%pなら、そのキー名だけを不正なキーにする',
+    (value) => {
+      const error = captureValidationError(
+        copyEnv({ PAYMENTS_SMOKE_ENABLED: value }),
+      );
+
+      expect(error.invalidKeys).toEqual(['PAYMENTS_SMOKE_ENABLED']);
+    },
+  );
+
+  test.each([
+    '',
+    'client.example',
+    'https://client.example/',
+    'https://client.example/checkout',
+    'https://client.example?x=1',
+    'ftp://client.example',
+  ])('利用者側のオリジンの形式でない%pを不正なキーにする', (value) => {
+    const error = captureValidationError(
+      copyEnv({ CLIENT_SITE_ORIGIN: value }),
+    );
+
+    expect(error.invalidKeys).toEqual(['CLIENT_SITE_ORIGIN']);
+  });
+
+  test('決済の設定の誤りは他の設定の誤りと一緒に報告する', () => {
+    const error = captureValidationError(
+      copyEnv({ STRIPE_API_KEY: 'restricted-key-value-must-not-leak' }, [
+        'EMAIL_PROVIDER',
+        'PAYMENTS_SMOKE_ENABLED',
+      ]),
+    );
+
+    expect(error.missingKeys).toEqual([
+      'EMAIL_PROVIDER',
+      'PAYMENTS_SMOKE_ENABLED',
+    ]);
+    expect(error.invalidKeys).toEqual(['STRIPE_API_KEY']);
+  });
+});

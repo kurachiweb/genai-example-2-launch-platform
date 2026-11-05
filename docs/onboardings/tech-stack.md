@@ -153,10 +153,11 @@
 ## 決済サービス
 
 - Stripe(決済処理基盤、[ドキュメント](https://docs.stripe.com))
-  - Stripe Node.js SDK(APIサーバー及びイベントサーバーで使用、`createFetchHttpClient()`によるfetchベースの通信)
+  - Stripe Node.js SDK(`stripe`。APIサーバー及びイベントサーバーで使用、`createFetchHttpClient()`によるfetchベースの通信と`createSubtleCryptoProvider()`によるWebhookの署名の検証)
   - Stripe Checkout Sessions API(決済セッションの管理)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
-  - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
+  - Stripe.js(`@stripe/stripe-js`)・React Stripe.js SDK(`@stripe/react-stripe-js`)及びPayment Element(利用者側の決済ページの埋め込み。決済ページと決済後のランディングだけで動的に読み込む)
+  - 3つのパッケージはStripeのAPI版と結び付くため版を完全に固定する。版は[依存パッケージの版管理](../GUIDES/tech/coding/002-dependency-versions.md#主要パッケージの一覧)を正とする
   - Stripe Refunds API(自動返金)
   - Stripe Customer Portal(Ultrasの支払い方法の更新)
 

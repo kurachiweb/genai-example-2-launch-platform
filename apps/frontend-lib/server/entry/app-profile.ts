@@ -12,4 +12,6 @@ export interface FrontendAppProfile {
   readonly webAnalytics: boolean;
   // 問い合わせの画面への導線の有無の唯一の定義。静的な500の画面と、画面がerrorMessageOfで選ぶ失敗の文言が読む
   readonly contactAvailable: boolean;
+  // 決済の画面を持つかどうか。持たないアプリには決済の公開キーを渡さない
+  readonly payments: boolean;
 }

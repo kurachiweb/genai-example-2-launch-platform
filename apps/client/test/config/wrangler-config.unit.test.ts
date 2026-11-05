@@ -22,6 +22,10 @@ const PLACEHOLDER_TURNSTILE_SITE_KEY = '0x0000000000000000000000';
 
 const PLACEHOLDER_WEB_ANALYTICS_TOKEN = '00000000000000000000000000000000';
 
+const PLACEHOLDER_TEST_STRIPE_PUBLISHABLE_KEY = `pk_test_${'0'.repeat(32)}`;
+
+const PLACEHOLDER_LIVE_STRIPE_PUBLISHABLE_KEY = `pk_live_${'0'.repeat(32)}`;
+
 const RATE_LIMITED_APPS = ['client', 'admin', 'api', 'event'] as const;
 
 const effectiveConfigSchema = z.object({
@@ -106,6 +110,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       IMAGES_ORIGIN: 'http://localhost:48043',
       CLIENT_SITE_ORIGIN: 'http://localhost:48044',
       WEB_ANALYTICS_TOKEN: '',
+      STRIPE_PUBLISHABLE_KEY: PLACEHOLDER_TEST_STRIPE_PUBLISHABLE_KEY,
     },
     validatedWebAnalyticsToken: undefined,
     requiredSecrets: ['HASH_PEPPER'],
@@ -126,6 +131,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       CLIENT_SITE_ORIGIN:
         'https://genai-example-2-client-staging.lab.kurachiweb.com',
       WEB_ANALYTICS_TOKEN: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
+      STRIPE_PUBLISHABLE_KEY: PLACEHOLDER_TEST_STRIPE_PUBLISHABLE_KEY,
     },
     validatedWebAnalyticsToken: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
     requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
@@ -144,6 +150,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       IMAGES_ORIGIN: 'https://genai-example-2-images.lab.kurachiweb.com',
       CLIENT_SITE_ORIGIN: 'https://genai-example-2-client.lab.kurachiweb.com',
       WEB_ANALYTICS_TOKEN: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
+      STRIPE_PUBLISHABLE_KEY: PLACEHOLDER_LIVE_STRIPE_PUBLISHABLE_KEY,
     },
     validatedWebAnalyticsToken: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
     requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
@@ -279,6 +286,9 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     expect(validation.ok && validation.env.WEB_ANALYTICS_TOKEN).toBe(
       env.validatedWebAnalyticsToken,
     );
+    expect(validation.ok && validation.env.STRIPE_PUBLISHABLE_KEY).toBe(
+      env.vars['STRIPE_PUBLISHABLE_KEY'],
+    );
   });
 
   test('必須のシークレットは、全環境のペッパーとstaging・prodのSentryのDSNである', () => {
@@ -315,6 +325,17 @@ describe('Wrangler設定の環境をまたぐ整合', () => {
       expect(adminOrigin?.CLIENT_SITE_ORIGIN).toBe(
         clientOrigin?.CLIENT_SITE_ORIGIN,
       );
+    },
+  );
+
+  test.each(EXPECTED_ENVIRONMENTS)(
+    '決済の公開キーは利用者側だけが持ち、管理者側は持たない($label)',
+    ({ wranglerEnv }) => {
+      const adminVars = varsSchema.parse(
+        readRawConfig('admin', wranglerEnv),
+      ).vars;
+
+      expect(Object.keys(adminVars)).not.toContain('STRIPE_PUBLISHABLE_KEY');
     },
   );
 

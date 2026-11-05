@@ -76,6 +76,7 @@
     "SENTRY_TRACES_SAMPLE_RATE": "0",
     "JOBS_QUEUE_NAME": "genai-example-2-jobs-dev",
     "JOBS_DLQ_NAME": "genai-example-2-jobs-dlq-dev",
+    "CLIENT_SITE_ORIGIN": "http://localhost:48044",
     "EMAIL_PROVIDER": "mailpit",
     "EMAIL_FROM_ADDRESS": "noreply@local.example",
     "EMAIL_RECIPIENT_POLICY": "any",
@@ -88,6 +89,7 @@
     "MODERATION_REGION": "us-east-1",
     "MODERATION_MIN_CONFIDENCE": "60",
     "MODERATION_BLOCKED_CATEGORIES": "Explicit,Non-Explicit Nudity of Intimate parts and Kissing,Swimwear or Underwear,Violence,Visually Disturbing,Drugs & Tobacco,Alcohol,Rude Gestures,Gambling,Hate Symbols",
+    "PAYMENTS_SMOKE_ENABLED": "true",
   },
   "secrets": {
     "required": [
@@ -179,6 +181,7 @@
         "SENTRY_TRACES_SAMPLE_RATE": "1",
         "JOBS_QUEUE_NAME": "genai-example-2-jobs-staging",
         "JOBS_DLQ_NAME": "genai-example-2-jobs-dlq-staging",
+        "CLIENT_SITE_ORIGIN": "https://genai-example-2-client-staging.lab.kurachiweb.com",
         "EMAIL_PROVIDER": "cloudflare",
         "EMAIL_FROM_ADDRESS": "noreply@genai-example-2-mail-staging.lab.kurachiweb.com",
         "EMAIL_RECIPIENT_POLICY": "allowlist",
@@ -190,6 +193,7 @@
         "MODERATION_REGION": "us-east-1",
         "MODERATION_MIN_CONFIDENCE": "60",
         "MODERATION_BLOCKED_CATEGORIES": "Explicit,Non-Explicit Nudity of Intimate parts and Kissing,Swimwear or Underwear,Violence,Visually Disturbing,Drugs & Tobacco,Alcohol,Rude Gestures,Gambling,Hate Symbols",
+        "PAYMENTS_SMOKE_ENABLED": "true",
       },
       "secrets": {
         "required": [
@@ -200,6 +204,8 @@
           "REKOGNITION_ACCESS_KEY_ID",
           "REKOGNITION_SECRET_ACCESS_KEY",
           "DISIFY_API_KEY",
+          "STRIPE_API_KEY",
+          "STRIPE_WEBHOOK_SECRET",
         ],
       },
     },
@@ -281,6 +287,7 @@
         "SENTRY_TRACES_SAMPLE_RATE": "0.1",
         "JOBS_QUEUE_NAME": "genai-example-2-jobs-prod",
         "JOBS_DLQ_NAME": "genai-example-2-jobs-dlq-prod",
+        "CLIENT_SITE_ORIGIN": "https://genai-example-2-client.lab.kurachiweb.com",
         "EMAIL_PROVIDER": "cloudflare",
         "EMAIL_FROM_ADDRESS": "noreply@genai-example-2-mail.lab.kurachiweb.com",
         "EMAIL_RECIPIENT_POLICY": "any",
@@ -292,6 +299,7 @@
         "MODERATION_REGION": "us-east-1",
         "MODERATION_MIN_CONFIDENCE": "60",
         "MODERATION_BLOCKED_CATEGORIES": "Explicit,Non-Explicit Nudity of Intimate parts and Kissing,Swimwear or Underwear,Violence,Visually Disturbing,Drugs & Tobacco,Alcohol,Rude Gestures,Gambling,Hate Symbols",
+        "PAYMENTS_SMOKE_ENABLED": "false",
       },
       "secrets": {
         "required": [
@@ -301,6 +309,8 @@
           "REKOGNITION_ACCESS_KEY_ID",
           "REKOGNITION_SECRET_ACCESS_KEY",
           "DISIFY_API_KEY",
+          "STRIPE_API_KEY",
+          "STRIPE_WEBHOOK_SECRET",
         ],
       },
     },

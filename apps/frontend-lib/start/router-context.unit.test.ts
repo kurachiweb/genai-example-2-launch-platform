@@ -29,6 +29,7 @@ const APP_RUNTIME: AppRuntime = {
       tracesSampleRate: 0.1,
     },
     webAnalyticsToken: 'analytics-token',
+    stripePublishableKey: undefined,
   },
   display: { timeZone: 'Asia/Tokyo', locale: 'ja-JP' },
 };

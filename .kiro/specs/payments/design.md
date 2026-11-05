@@ -201,7 +201,9 @@ apps/
 │   │   ├── refund-rules.ts                          # 金額の検証・Stripeの返金理由への対応
 │   │   ├── stripe-event-mapping.ts                  # 通知を反映の指示へ正規化(受け付ける種類の一覧)
 │   │   ├── refund-message.ts                        # PAYMENTS_REFUND_MESSAGE(payments.refund-payment)
-│   │   └── stripe-api-version.ts                    # STRIPE_API_VERSION・CHECKOUT_INTEGRATION_IDENTIFIER
+│   │   ├── stripe-api-version.ts                    # STRIPE_API_VERSION・CHECKOUT_INTEGRATION_IDENTIFIER
+│   │   └── payments-env.ts                          # api・eventの環境の検証に加える決済の設定の規則(制限付きキー・署名の秘密・疎通確認の有無の形式)
+│   ├── core/env/http-origin.ts                      # オリジンの形式の判定(api・eventの環境の検証が共有)
 │   ├── core/messaging/contracts/index.ts            # 既存。PAYMENTS_REFUND_MESSAGEを加える
 │   ├── core/email/kinds/
 │   │   └── payments.ts                              # 購入確認メール・自動返金の通知の2種(category: transactional。前例どおりドメインごとに1ファイル)

@@ -109,6 +109,7 @@ export const renderContextOf = (
     imagesOrigin: 'https://images.example',
     sentry: { dsn: undefined, environment: 'staging', tracesSampleRate: 0.1 },
     webAnalyticsToken: undefined,
+    stripePublishableKey: undefined,
   },
   relay: {
     clientIp: CLIENT_IP,

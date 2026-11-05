@@ -61,6 +61,7 @@
     "APP_ENVIRONMENT": "local",
     "CLIENT_SITE_ORIGIN": "http://localhost:48044",
     "ADMIN_SITE_ORIGIN": "http://localhost:48045",
+    "PAYMENTS_SMOKE_ENABLED": "true",
   },
   "secrets": { "required": ["HASH_PEPPER", "TURNSTILE_SECRET_KEY"] },
   "env": {
@@ -121,6 +122,7 @@
         "APP_ENVIRONMENT": "staging",
         "CLIENT_SITE_ORIGIN": "https://genai-example-2-client-staging.lab.kurachiweb.com",
         "ADMIN_SITE_ORIGIN": "https://genai-example-2-admin-staging.lab.kurachiweb.com",
+        "PAYMENTS_SMOKE_ENABLED": "true",
       },
       "secrets": {
         "required": [
@@ -128,6 +130,7 @@
           "TURNSTILE_SECRET_KEY",
           "SENTRY_DSN",
           "DISIFY_API_KEY",
+          "STRIPE_API_KEY",
         ],
       },
     },
@@ -188,6 +191,7 @@
         "APP_ENVIRONMENT": "prod",
         "CLIENT_SITE_ORIGIN": "https://genai-example-2-client.lab.kurachiweb.com",
         "ADMIN_SITE_ORIGIN": "https://genai-example-2-admin.lab.kurachiweb.com",
+        "PAYMENTS_SMOKE_ENABLED": "false",
       },
       "secrets": {
         "required": [
@@ -195,6 +199,7 @@
           "TURNSTILE_SECRET_KEY",
           "SENTRY_DSN",
           "DISIFY_API_KEY",
+          "STRIPE_API_KEY",
         ],
       },
     },

@@ -13,6 +13,9 @@ const TURNSTILE_SECRET_KEY_FOR_TESTS =
 
 const TEST_HASH_PEPPER = 'test-hash-pepper-for-workers-integration-tests';
 
+// デプロイ先と同じくキーを持たせて決済の処理を通す。Stripeへの通信は各テストがfetchの代わりで止める。シークレットの検出に実在の鍵と誤認させないよう、連結で組み立てる
+const TEST_STRIPE_API_KEY = ['rk', 'test', 'WorkersIntegrationTests'].join('_');
+
 export default defineConfig({
   plugins: [
     cloudflareTest(async () => ({
@@ -21,6 +24,7 @@ export default defineConfig({
         bindings: {
           HASH_PEPPER: TEST_HASH_PEPPER,
           TURNSTILE_SECRET_KEY: TURNSTILE_SECRET_KEY_FOR_TESTS,
+          STRIPE_API_KEY: TEST_STRIPE_API_KEY,
           TEST_MIGRATIONS: await readNestedD1Migrations(
             join(import.meta.dirname, 'db', 'migrations'),
           ),

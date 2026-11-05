@@ -63,6 +63,7 @@ export const createPageRouterContext = (
       imagesOrigin: 'https://images.example',
       sentry: { dsn: undefined, environment, tracesSampleRate: 0 },
       webAnalyticsToken: undefined,
+      stripePublishableKey: undefined,
     },
     display: PAGE_ROUTER_DISPLAY,
   });

@@ -9,6 +9,7 @@ import {
   appPath,
   EMAIL_CONFIG_KEY_PATTERN,
   MEDIA_CONFIG_KEY_PATTERN,
+  PAYMENTS_CONFIG_KEY_PATTERN,
   readWranglerConfig,
   SEARCH_CONFIG_KEY_PATTERN,
   type WranglerAppName,
@@ -205,6 +206,7 @@ const DELEGATED_KEY_PATTERNS = [
   EMAIL_CONFIG_KEY_PATTERN,
   SEARCH_CONFIG_KEY_PATTERN,
   MEDIA_CONFIG_KEY_PATTERN,
+  PAYMENTS_CONFIG_KEY_PATTERN,
 ] as const;
 
 function isDelegatedKey(key: string): boolean {
@@ -351,8 +353,8 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     }
   });
 
-  test('apiは必須シークレットとしてペッパー・bot判定と、デプロイ先では使い捨て判定のキー名だけを宣言する', () => {
-    expect(api.secrets?.required).toEqual([
+  test('apiは決済以外の必須シークレットとしてペッパー・bot判定と、デプロイ先では使い捨て判定のキー名だけを宣言する', () => {
+    expect(withoutDelegatedKeys(api.secrets?.required ?? [])).toEqual([
       'HASH_PEPPER',
       'TURNSTILE_SECRET_KEY',
       ...(env.requiresSentryDsn ? ['SENTRY_DSN'] : []),
@@ -360,7 +362,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     ]);
   });
 
-  test('eventはメール・キーワード抽出・メディア以外の必須シークレットとしてペッパーと、デプロイ先では使い捨て判定のキー名だけを宣言する', () => {
+  test('eventはメール・キーワード抽出・メディア・決済以外の必須シークレットとしてペッパーと、デプロイ先では使い捨て判定のキー名だけを宣言する', () => {
     expect(withoutDelegatedKeys(event.secrets?.required ?? [])).toEqual([
       'HASH_PEPPER',
       ...(env.requiresSentryDsn ? ['SENTRY_DSN'] : []),
@@ -368,8 +370,8 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     ]);
   });
 
-  test('apiの変数はシークレットを含まず、環境ごとの値を持つ', () => {
-    expect(api.vars).toStrictEqual({
+  test('apiの決済以外の変数はシークレットを含まず、環境ごとの値を持つ', () => {
+    expect(withoutDelegatedEntries(api.vars)).toStrictEqual({
       LOG_LEVEL: env.logLevel,
       SENTRY_ENVIRONMENT: env.sentryEnvironment,
       SENTRY_TRACES_SAMPLE_RATE: env.sentryTracesSampleRate,
@@ -380,7 +382,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     });
   });
 
-  test('eventのメール・キーワード抽出・メディア以外の変数はシークレットを含まず、環境ごとの値とQueue名を持つ', () => {
+  test('eventのメール・キーワード抽出・メディア・決済以外の変数はシークレットを含まず、環境ごとの値とQueue名と利用者側のオリジンを持つ', () => {
     expect(withoutDelegatedEntries(event.vars)).toStrictEqual({
       LOG_LEVEL: env.logLevel,
       SENTRY_ENVIRONMENT: env.sentryEnvironment,
@@ -388,6 +390,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
       APP_ENVIRONMENT: env.appEnvironment,
       JOBS_QUEUE_NAME: jobsQueue,
       JOBS_DLQ_NAME: jobsDlq,
+      CLIENT_SITE_ORIGIN: env.clientSiteOrigin,
     });
   });
 

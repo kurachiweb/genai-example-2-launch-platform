@@ -28,6 +28,7 @@ const CATALOG_RUNTIME: AppRuntime = {
     imagesOrigin: 'http://localhost:48043',
     sentry: { dsn: undefined, environment: 'local', tracesSampleRate: 0 },
     webAnalyticsToken: undefined,
+    stripePublishableKey: undefined,
   },
   display: CATALOG_DISPLAY,
 };
