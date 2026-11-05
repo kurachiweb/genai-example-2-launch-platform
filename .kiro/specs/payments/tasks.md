@@ -37,6 +37,7 @@
   - Stripeの現行の文書で、Payment Element・Link・請求先住所の入力欄がCSPに求める許可先を確かめ、設計の許可先(`js.stripe.com`・`hooks.stripe.com`・`api.stripe.com`)との差と、ワイルドカードや別のホストが要るかを`research.md`に記録する。要るなら10.1の前に開発者へ報告する
   - CIのE2E(GitHubのランナー。`stripe listen`の転送が無い)で、`return_url`からの反映だけで決済の完了まで辿れるかを、ローカルで`stripe listen`を止めた状態の疎通確認の決済で確かめ、`research.md`に記録する
   - 完了状態: 手順書の節が整形の検査を通り、ローカルの公開キーと`project-values.md`の行が書き込まれ、開発者の準備の完了(または未完了で保留した旨)とCSPの許可先・転送の無い環境の確認の結果が作業の報告に記録され、オンボーディングにWorkerごとのフォルダへの登録の手順がある。開発者の準備が終わっていれば、Workerの指定付きで起動したapiとeventで疎通確認の決済を始められ、Workerの指定を付けずに起動すると`startSmokeCheckout`が`payments_unavailable`を返す(共通のフォルダの値が使われないことの確認)
+  - _Blocked: 開発者のdev用sandboxの準備待ち(devの公開キーでのローカルの`STRIPE_PUBLISHABLE_KEY`の置き換え、`stripe listen`を止めた状態の疎通確認の決済、Workerの指定付きの起動での疎通確認)。加えて、Stripeのキーがローカルのルートの`secrets.required`に無いため、登録してもローカルのWorkerへ渡らない(開発者の判断待ち)。手順書・オンボーディング・CSPの調査はresearch.mdとoperations/004に記録済み_
   - _Boundary: PaymentsTechDocs, オンボーディング(Workerごとのフォルダへの登録の手順だけ), clientのWrangler設定(ローカルの`STRIPE_PUBLISHABLE_KEY`の値だけ)_
   - _Depends: 1.1_
   - _Requirements: 15.1, 15.2, 15.6, 15.7_
@@ -349,3 +350,5 @@
 
 - 1.1: StripeのキーはローカルのルートのWranglerの`secrets.required`に無いため、Infisicalの`dev`に登録してもローカルのapi・eventへ渡らない(`wrangler dev`は`secrets.required`のキーだけを`env`へ渡す)。ローカルで決済を試す1.4・8.4・11.1の完了状態には、ルートの`secrets.required`への追加が要る(開発者の判断待ち)
 - 1.1: 決済の設定の検証の規則は`backend-lib/core/payments/payments-env.ts`、オリジンの形式の判定は`backend-lib/core/env/http-origin.ts`の`isHttpOrigin`にある。Workers統合テストのStripeのテスト用のキーは、シークレットの検出の誤検知を避けるため文字列を連結して作る
+- 1.4: LinkはCSPに`https://link.com`と`https://*.link.com`(frame-src・connect-src・img-src)を要するが、frontend-libの`ORIGIN_PATTERN`はワイルドカードを拒否する(research.mdの「タスク1.4の調査」)。10.1で扱いを決める
+- 1.4: 制限付きキーの権限は`docs/GUIDES/tech/operations/004-payment-data-operations.md`の表が正(Stripeに単独の返金の権限は無く「Charges and Refunds」)。Stripeの呼び出しを加えるタスクは表と突き合わせる

@@ -122,7 +122,7 @@
     - `dev`にはキーワード抽出の外部APIのキー(`GOOGLE_NL_API_KEY`)を登録しない。ローカル環境ではキーワード抽出が無効(`KEYWORD_EXTRACTOR`が`disabled`)で、イベントサーバーはキーを注入せずに起動する(「[キーワード抽出の外部API](#キーワード抽出の外部api)」)。
     - `dev`には画像判定サービスの資格情報(`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`)を登録しない。ローカル環境は代替の判定(`MODERATION_PROVIDER`が`stub`)で判定サービスを呼ばず、イベントサーバーはキーを注入せずに起動する(「[画像のアップロード・判定・配信](#画像のアップロード判定配信)」)。
     - `dev`には使い捨てメールアドレスの判定のAPIキー(`DISIFY_API_KEY`)を登録しない。ローカル環境の`secrets.required`に無く、APIサーバーとイベントサーバーはキーを注入せずに起動し、判定サービスを呼ばずに全てのメールアドレスを通常として扱う(「[使い捨てメールアドレスの判定のAPIキー](#使い捨てメールアドレスの判定のapiキー)」)。
-    - `dev`には、APIサーバーとイベントサーバーのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)もある。同じキー名でWorkerごとに異なる値が要るシークレットを置き、現時点では空である。各環境のフォルダとキーの一覧は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を参照する。
+    - `dev`には、APIサーバーとイベントサーバーのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)もある。同じキー名でWorkerごとに異なる値が要るシークレットを置き、現時点では空である。決済を試す場合だけ、Stripeの制限付きキーを「[決済(Stripe)のキー](#決済stripeのキー)」の手順で登録する。各環境のフォルダとキーの一覧は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を参照する。
 
 12. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
@@ -594,6 +594,30 @@ APIサーバーとイベントサーバーは、メールアドレスの確認�
 
 - 本番環境(`prod`)の`DISIFY_API_KEY`も、開発者がInfisicalの`prod`環境のルートフォルダ(`/`)へ登録済みである。
 - 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」、本プロジェクトの値は「[利用者のアカウント](project-values.md#利用者のアカウント)」を正とする。
+
+## 決済(Stripe)のキー
+
+ローカル環境では、Stripeのキー(`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`)を登録しなくても`apps/api`・`apps/event`は起動する。決済の機能(決済の開始・決済画面・価格の照会)だけが「決済を利用できない」(`payments_unavailable`)になり、他の機能は影響を受けない。
+
+- `apps/api`・`apps/event`のWrangler設定の`env.staging`・`env.prod`の`secrets.required`には2つのキーがあるが、ルート(ローカル環境)の`secrets.required`には無い。Wranglerはルートの`secrets.required`に挙げたキーだけをWorkerへ渡す(「[Workersのコードから参照するシークレット](../GUIDES/tech/security/001-secret-management.md#workersのコードから参照するシークレット)」)。
+- そのため現状では、次の手順でInfisicalの`dev`へ登録しても、ローカル環境の`apps/api`・`apps/event`へは渡らず、決済は「決済を利用できない」のままである。ローカルで決済を試すには、`apps/api`・`apps/event`のWrangler設定のルートの`secrets.required`へ2つのキーを加える変更が要る。加えるかどうかは開発者の判断待ちで、加えるまでは次の手順は登録の準備にとどまる。
+
+決済を試す開発者は、次の手順でdevのキーを用意して登録する。AIエージェントは登録しない。手順の詳細と権限は「[決済の環境とデータの運用](../GUIDES/tech/operations/004-payment-data-operations.md)」に従う。
+
+1. Stripeのダッシュボードで、ローカル環境用のsandbox(デプロイ先検証環境のsandboxとは別)を作り、「[環境ごとのStripeの設定](../GUIDES/tech/operations/004-payment-data-operations.md#環境ごとのstripeの設定)」の価格(疎通確認用の`payments_smoke`を含む)・税・Adaptive Pricingの無効化・決済手段を設定する。
+2. 同じsandboxで、`apps/api`用と`apps/event`用の2つの制限付きキーを、「[制限付きキーの権限](../GUIDES/tech/operations/004-payment-data-operations.md#制限付きキーの権限)」の表の権限で別々に作る。
+3. Infisicalのプロジェクトの`dev`環境で、`apps/api`用の鍵をWorkerごとのフォルダ`/workers/api`へ、`apps/event`用の鍵を`/workers/event`へ、どちらも`STRIPE_API_KEY`の名前でWebの管理画面から登録する。共通のフォルダ(`/`)には置かない(`WORKER_SCOPED_SECRETS`のキーのため、`/`の値は使われない)。
+4. `stripe listen --print-secret`で表示される転送の署名の秘密を、`dev`の共通のフォルダ(`/`)へ`STRIPE_WEBHOOK_SECRET`の名前で登録する(「[ローカルの転送](../GUIDES/tech/operations/004-payment-data-operations.md#ローカルの転送)」)。
+5. 値を表示せずに、Workerの指定付きの注入でWorkerごとの値が重なることを確かめる。
+
+   ```sh
+   bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker api -- sh -c 'test -n "$STRIPE_API_KEY" && echo "apps/api用の鍵は登録済み"'
+   bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local --worker event -- sh -c 'test -n "$STRIPE_API_KEY" && test -n "$STRIPE_WEBHOOK_SECRET" && echo "apps/event用の鍵と署名の秘密は登録済み"'
+   bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local -- sh -c 'test -z "$STRIPE_API_KEY" && echo "Workerの指定が無ければ鍵は渡らない"'
+   ```
+
+- 公開キーは`apps/client`のWrangler設定の`vars`の`STRIPE_PUBLISHABLE_KEY`に書く。ローカル環境の値は、開発者がローカル環境用のsandboxの公開キーを用意するまで仮の値のままである(「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」)。
+- 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を正とする。
 
 ## DBスキーマを変更したとき
 

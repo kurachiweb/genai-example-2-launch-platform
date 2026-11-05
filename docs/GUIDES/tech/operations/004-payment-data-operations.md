@@ -1,0 +1,223 @@
+# 決済の環境とデータの運用
+
+Stripeで決済を受け付けるアプリの、環境ごとのStripeの設定(制限付きキー・価格・税・現地通貨・決済手段・Customer Portal・不審請求の申し立て・Webhook endpoint・ローカルの転送)と、決済手段の設定を確かめる検証の手順を定める。
+
+## 前提と用語
+
+決済の受け付けにStripeのCheckout Sessions(`ui_mode: 'elements'`の決済画面)とWebhookを使い、シークレットをInfisicalのWorkerごとのフォルダで管理する構成を前提とする。シークレットの注入は「[シークレットの管理](../security/001-secret-management.md)」に、フォルダごとの登録の規則は「[シークレットの登録の規則](001-deployment.md#シークレットの登録の規則)」に、環境種別は「[環境種別](../infra/002-environments.md)」に従う。
+
+| 用語                                        | 意味                                                                                                                      |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| sandbox                                     | Stripeのアカウントの中の、ライブモードから切り離されたテスト用の環境。設定・価格・税の登録・鍵はsandboxごとに分かれる     |
+| 制限付きキー                                | `rk_test_`・`rk_live_`で始まる、資源ごとに読み取り・書き込み・なしの権限を割り当てたサーバー用の鍵                        |
+| APIサーバー                                 | 決済の開始・決済画面の表示・決済後の戻りの反映・突合・価格の照会を行うWorker                                              |
+| イベントサーバー                            | Webhookの受信と反映・返金の実行・Customerの削除・未完了の決済セッションの失効を行うWorker                                 |
+| `<Stripeのキーのシークレットのキー>`        | 制限付きキーを渡すシークレットの名前。APIサーバーとイベントサーバーで同じ名前を使い、値はWorkerごとに別にする             |
+| `<Webhookの署名の秘密のシークレットのキー>` | イベントサーバーがWebhookの署名を検証する秘密(`whsec_`で始まる)を渡すシークレットの名前                                   |
+| `<公開キーの変数>`                          | 決済画面がStripe.jsへ渡す公開キー(`pk_test_`・`pk_live_`で始まる)の変数の名前。公開の値のため、Wrangler設定の`vars`に書く |
+| `<固定したAPI版>`                           | サーバーのSDKに固定したStripeのAPI版。Webhook endpointのAPI版も同じ値にする                                               |
+| `<Webhookの経路>`                           | イベントサーバーがWebhookを受ける経路                                                                                     |
+| `<イベントサーバーのローカルのオリジン>`    | ローカル環境で起動したイベントサーバーのオリジン                                                                          |
+| `<イベントサーバーのホスト名>`              | デプロイ先のイベントサーバーのホスト名                                                                                    |
+| `<利用者側のホスト名>`                      | 決済画面を表示するフロントエンドのデプロイ先のホスト名                                                                    |
+| `<疎通確認用の価格のlookup_key>`            | デプロイ先検証環境までで決済の疎通を確かめるための1USDの価格の`lookup_key`                                                |
+| `<配布のスクリプト>`・`<Worker>`            | 「[デプロイ手順の前提と用語](001-deployment.md#前提と用語)」と同じ                                                        |
+
+- 上のプレースホルダーの本プロジェクトの値は、技術ドキュメントに写さず、プロジェクト固有の値の文書(「[本プロジェクト固有の値](../../../onboardings/project-values.md)」)に置く。
+- この文書のダッシュボードの操作は開発者が行う。AIエージェントは鍵の作成・Infisicalへの登録・ダッシュボードの設定の変更を行わない(「[AIエージェントが実行しない操作](001-deployment.md#aiエージェントが実行しない操作)」)。
+
+## 環境ごとのStripeの設定
+
+### 環境の分離
+
+| 環境               | Infisicalの環境種別 | Stripeの環境                          | Webhookの届け方                |
+| ------------------ | ------------------- | ------------------------------------- | ------------------------------ |
+| ローカル環境       | `dev`               | 開発用のsandbox                       | `stripe listen`の転送          |
+| デプロイ先検証環境 | `staging`           | 開発用と別のデプロイ先検証用のsandbox | sandboxのWebhook endpoint      |
+| 本番環境           | `prod`              | ライブモード                          | ライブモードのWebhook endpoint |
+
+- 環境ごとに別のsandboxを使い、テストの決済のデータを環境の間で混ぜない。sandboxの設定・価格・税の登録はライブモードへ引き継がれないため、以降の設定は環境ごとに行う。
+- 本番環境の設定は、本番環境の準備でライブモードに同じ形で行う。`<疎通確認用の価格のlookup_key>`の価格は本番環境に作らない。
+
+### 制限付きキーの権限
+
+APIサーバーとイベントサーバーに、それぞれ必要な権限だけを持つ別々の制限付きキーを作る。秘密鍵(`sk_`で始まる、全ての権限を持つ鍵)は使わない。権限はダッシュボードの資源の名前で、次の表のとおりにする。表に無い資源は「なし」にする。
+
+| 資源(ダッシュボードの分類) | APIサーバー | イベントサーバー | 使う操作                                                                                                    |
+| -------------------------- | ----------- | ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| Checkout Sessions          | 書き込み    | 書き込み         | APIサーバーは決済セッションの作成・取得・失効、イベントサーバーは取得と、利用者の退会などに伴う未完了の失効 |
+| Customers(Core)            | 書き込み    | 書き込み         | APIサーバーはCustomerの作成・更新、イベントサーバーは物理削除に伴うCustomerの削除                           |
+| Prices(Billing)            | 読み取り    | なし             | `lookup_key`による価格の照会                                                                                |
+| Payment Intents(Core)      | 読み取り    | 読み取り         | 決済セッションの支払いの特定と、返金・チャージバックの持ち主の特定                                          |
+| Invoices(Billing)          | 読み取り    | 読み取り         | 定期課金の初回の請求の支払いの特定と、請求の反映                                                            |
+| Charges and Refunds(Core)  | 読み取り    | 書き込み         | APIサーバーは決済の支払いの明細(Linkの資金源のグループ)の取得、イベントサーバーは返金の作成・取得           |
+| Subscriptions(Billing)     | なし        | 書き込み         | 定期課金の取得と解約                                                                                        |
+| Payment Disputes(Core)     | なし        | 読み取り         | チャージバックの取得                                                                                        |
+
+- 書き込みの権限は同じ資源の読み取りを含む。
+- 権限が足りない要求は、Stripeが権限の不足を示すエラーで拒否する。sandboxで決済・返金・Webhookの反映を一通り試し、ダッシュボードのAPIキーの一覧から鍵の要求の記録(View request logs)を開いて、失敗した要求が無いこと、使っていない権限が無いことを確かめる。過不足があれば表と鍵を合わせて直す。
+- 機能を加えてStripeの操作が増えるときは、その変更と同じ変更でこの表を更新し、全ての環境の鍵の権限を直す。
+
+### 制限付きキーの作成と登録
+
+1. その環境のsandbox(本番環境はライブモード)のダッシュボードで、APIキーの一覧の「Create secret key」を押し、カスタムの権限を選ぶ。全ての権限(フルアクセス)は選ばない。
+2. 鍵の名前をWorkerと環境が分かる名前にし、上の表の権限を割り当てて作る。作成時に表示される値は後から取り出せないため、そのままInfisicalへ登録する。
+3. Infisicalのその環境のWorkerごとのフォルダ(`/workers/<Worker>`)に、`<Stripeのキーのシークレットのキー>`の名前で、APIサーバー用の鍵とイベントサーバー用の鍵を別々に登録する。
+4. 共通のフォルダ(`/`)には置かない。このキーは`<配布のスクリプト>/core/secret-scope.ts`の`WORKER_SCOPED_SECRETS`に挙げるキーで、共通のフォルダに置いても使われず、Workerごとのフォルダに無ければ欠落として扱われる(「[シークレットの登録の規則](001-deployment.md#シークレットの登録の規則)」)。
+5. 値をファイル・プルリクエスト・チャットに残さない。
+
+- デプロイ先の値は、その環境の次のデプロイでWorkerへ反映される(「[シークレットの追加と削除](001-deployment.md#シークレットの追加と削除)」)。
+- ローカル環境の起動は、`<配布のスクリプト>`の`run-with-secrets --scope local --worker <Worker>`で`dev`の共通のフォルダにWorkerごとのフォルダを重ねて注入する。ただしWranglerは、Wrangler設定のルートの`secrets.required`に挙げたキーだけをWorkerへ渡す(「[Workersのコードから参照するシークレット](../security/001-secret-management.md#workersのコードから参照するシークレット)」)。ルートの`secrets.required`に`<Stripeのキーのシークレットのキー>`が無い構成では、`dev`へ登録してもローカル環境のWorkerへは渡らない。
+- `<公開キーの変数>`は秘密でないため、その環境のsandbox(本番環境はライブモード)の公開キーをWrangler設定の`vars`に書く。制限付きキーと同じsandboxの公開キーにする。
+
+### 価格
+
+- 販売する価格は、ダッシュボードの商品(Product)に付けて作り、通貨をUSDにし、コードから参照する`lookup_key`を付ける。コードは価格のIDでなく`lookup_key`で価格を解決するため、環境ごとに同じ`lookup_key`の価格を作る。
+- 税の扱い(tax behavior)は「Inclusive」(税込)にする。USDの価格は、税の扱いを指定しないと既定(Automatic)で税抜として扱われるためである。
+- 定期課金の価格は、月ごとの繰り返しにする。
+- 価格の金額は後から変えられないため、金額を変えるときは新しい価格を作り、同じ`lookup_key`を新しい価格へ移す(APIの`transfer_lookup_key`)。
+- ローカル環境とデプロイ先検証環境には、決済の疎通を確かめるための1USDの1回限りの価格を`<疎通確認用の価格のlookup_key>`で作る。
+
+### 税
+
+1. ダッシュボードのTaxの設定でStripe Taxを有効にし、本社の所在地(head office)を確かめる。
+2. 既定の商品の税コード(preset product tax code)を、販売する役務に合うものにする。商品ごとに異なる役務であれば、商品ごとに税コードを選ぶ。
+3. 既定の税の扱いを「Inclusive」にする。
+4. Taxの「Locations」で、税を徴収する地域の登録(registration)を加える。登録の無い地域の購入者には税額が0で計算される。
+
+- どの地域を登録し、どの税コードを選ぶかは、事業者の税務の判断で決める。技術ドキュメントでは定めない。
+- 税の登録はsandboxごとに分かれ、ライブモードへ引き継がれない。決済画面の税額の検証のため、sandboxにも本番環境と同じ地域を登録する。
+- 決済セッションの自動の税計算(`automatic_tax`)は、購入者の請求先住所を使う。決済画面に請求先住所の入力欄を置く。
+
+### 現地通貨での支払いの無効化
+
+決済の通貨を自動で換算する機能(Adaptive Pricing)を使わず、USDだけで請求する。
+
+1. ダッシュボードの設定の「Adaptive Pricing」(Payments settings)を開き、無効にする。
+2. 決済セッションの作成でも`adaptive_pricing.enabled: false`を送り、ダッシュボードの設定が変わっても換算されないようにする。
+
+- 無効にしても、無効にする前に換算された決済セッションと、現地通貨で支払い中の定期課金には影響しない。sandboxを作った直後に、決済を作る前に無効にする。
+
+### 決済手段の設定
+
+決済手段は、カード・Apple Pay・Google Pay・Linkだけにする。
+
+1. ダッシュボードの設定の「Payment methods」を開き、決済セッションが使う決済手段の設定(Payment method configuration。指定しなければ既定の設定)を選ぶ。
+2. Cards・Apple Pay・Google Pay・Linkを有効にし、Klarna・Affirm・Cash App Pay・Amazon Pay・銀行の口座振替など他の手段を全て無効にする。
+3. ダッシュボードの設定の「Payment method domains」に、決済画面を表示するドメイン(`<利用者側のホスト名>`)を登録する。Apple Payは登録の無いドメインでは表示されない。Google Pay・Linkも登録の対象である。ドメインの登録はsandboxごとに行う(ライブモードで登録したドメインはsandboxにも登録される)。
+
+- 決済セッションの作成でも、決済手段の種類を`allowed_payment_method_types: ['card', 'link']`で絞る。Apple Pay・Google Payは決済手段の種類としてはカード(ウォレット)であり、この指定で残る。ダッシュボードの設定は、この指定の中からさらに表示する手段を選ぶ2段目の制限になる。
+- Linkを有効にすると、Linkの資金源(カードに加え、即時に確定する銀行決済・ステーブルコインなど)も有効になり、Linkを有効にしたまま個別には切れない。完了の通知で支払いが未完了の決済は権利を付与せず、確定の通知で反映する。
+- ローカル環境(`localhost`)はドメインを登録できず、ウォレットが表示されないことがある。Apple Pay・Google Payの表示はデプロイ先検証環境で確かめる。
+
+### Customer Portal
+
+定期課金の利用者に、Stripeのホストする画面(Customer Portal)で支払方法の更新・解約・解約の取り消しをさせる場合の前提を定める。
+
+その環境のsandbox(本番環境はライブモード)のダッシュボードの設定の「Customer portal」(Billing)を開き、次の設定にして保存する。
+
+| 設定                                                                                           | 値                                                       |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Payment methods(支払方法の更新)                                                                | 有効                                                     |
+| Cancel subscription(解約)                                                                      | 有効。解約の時期は請求期間の末(at end of billing period) |
+| Switch plan・Update quantities・Pause subscription(プランと数量の変更・一時停止)               | 無効                                                     |
+| Promotion codes・Retention coupons(割引の入力と解約の引き留めの割引)                           | 無効                                                     |
+| 顧客の情報の更新(Name・Email address・Billing address・Phone number・Shipping address・Tax ID) | 無効                                                     |
+| Invoice history(請求の履歴)                                                                    | 無効                                                     |
+
+- ポータルのセッションは、構成を指定しなければ、その環境の既定の構成(default configuration)を使う。既定の構成はダッシュボードで設定を保存して作られるため、sandboxとライブモードのそれぞれで保存するまでは、ポータルのセッションの作成が失敗する。
+- 支払方法の更新で表示する決済手段は、ポータルの構成で決済手段の設定を指定しなければ、既定の決済手段の設定に従う。決済画面と同じく、カード・Apple Pay・Google Pay・Linkだけになるよう「[決済手段の設定](#決済手段の設定)」を整えておく。
+- 解約を請求期間の末にすると、利用者は期間の末までは解約を取り消せる。解約と取り消しは`customer.subscription.updated`で届き、期間の末の終了は`customer.subscription.deleted`で届く。
+- 上の表で無効にするのは、提供すると定めていない機能である。プランの変更などを提供するときは、要件と受信の処理を先に変えてから有効にする。
+- ポータルのセッションを作るWorkerの制限付きキーには、Customer Portal(Billing)の書き込みの権限が要る。ポータルのセッションの作成を加える機能の実装と同じ変更で「[制限付きキーの権限](#制限付きキーの権限)」の表へ加え、全ての環境の鍵の権限を直す。
+- ポータルのセッションのURLは短い時間で失効するため、利用者が開くたびに作り直す。ポータルは埋め込みの枠の中には表示できず、画面の遷移で開く。
+
+### 不審請求の申し立ての不服申し立て
+
+不審請求の申し立て(チャージバック)の判定に対する不服申し立て(appeal)は、既定の無効のままにする。ダッシュボードの設定の「Disputes」の「Appealing dispute decisions」の「Appeal responses」を有効にしない。
+
+有効にする場合は、次を確かめて事業者が判断する。
+
+- 利用資格: 不服申し立ては、利用資格のある事業者だけが有効にできる。
+- 手数料: 不服申し立てを送るたびに、結果に関わらず返金されない申し立ての手数料がかかる。仲裁ではカードネットワークの手数料(申し立てと裁定の手数料は1件600USDを超え得る。手続きの違反の手数料は1件250USDを超え得る)が、裁定の約1か月後に請求される。
+- 対応の方法: 不服申し立ての反証資料の提出と期限の管理は、管理者がダッシュボードで行う。アプリは不服申し立ての状態(`appeal_needs_response`・`appeal_under_review`)を知らせる通知(`charge.dispute.updated`)を購読せず、最終の勝敗だけを`charge.dispute.closed`などで反映する。チャージバックの取得の処理は、未知の状態の値でも失敗しない作りにする。
+- 記録: 申し立ての手数料と仲裁の手数料は、決済の記録と純収益の集計に含めない。
+
+### Webhook endpoint
+
+デプロイ先の環境(デプロイ先検証環境・本番環境)ごとに、そのsandbox(本番環境はライブモード)にWebhook endpointを1つ作る。
+
+1. ダッシュボードのWorkbenchの「Webhooks」で「Create an event destination」を押し、「Your account」を選ぶ。
+2. 通知の形式(payload format)は「Snapshot」を選び、API版を`<固定したAPI版>`にする。受信の処理は、通知の本文の種類(`type`)・発生時刻(`created`)・対象のID(`data.object.id`)を使い、対象の最新の状態を固定したAPI版で取得し直す。
+3. 購読する通知の種類を、次の15種だけにする。
+
+| 対象           | 通知の種類                                                                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 決済セッション | `checkout.session.completed`・`checkout.session.async_payment_succeeded`・`checkout.session.async_payment_failed`・`checkout.session.expired` |
+| 請求           | `invoice.paid`・`invoice.payment_failed`                                                                                                      |
+| 定期課金       | `customer.subscription.created`・`customer.subscription.updated`・`customer.subscription.deleted`                                             |
+| 返金           | `refund.created`・`refund.updated`・`refund.failed`                                                                                           |
+| チャージバック | `charge.dispute.funds_withdrawn`・`charge.dispute.funds_reinstated`・`charge.dispute.closed`                                                  |
+
+4. 送り先を「Webhook endpoint」にし、URLを`https://<イベントサーバーのホスト名><Webhookの経路>`にする。
+5. 作成後の設定の画面に表示される署名の秘密(`whsec_`で始まる)を、Infisicalのその環境の共通のフォルダ(`/`)に`<Webhookの署名の秘密のシークレットのキー>`の名前で登録する。
+
+- 購読の一覧は、受信の処理が扱う通知の種類の一覧と一致させる。種類を足す・減らすときは、コードの一覧とこの表と全てのWebhook endpointを同じ変更で合わせる。
+- サーバーのSDKとAPI版を上げるときは、Webhook endpointのAPI版も同じ版に変える。
+- Webhookの経路は、IPアドレス単位の回数制限の対象から外し、署名の検証で送り手を確かめる。2xx以外の応答に対して、Stripeはライブモードでは最長3日間、sandboxでは数時間のうちに3回送り直す。
+
+### ローカルの転送
+
+ローカル環境はWebhook endpointを作らず、Stripe CLIの`stripe listen`で開発用のsandboxの通知をローカルのイベントサーバーへ転送する。
+
+```sh
+stripe login # 開発用のsandboxのアカウントに対して認可する
+stripe listen --print-secret # 転送の署名の秘密を表示する
+stripe listen \
+  --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,invoice.paid,invoice.payment_failed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,refund.created,refund.updated,refund.failed,charge.dispute.funds_withdrawn,charge.dispute.funds_reinstated,charge.dispute.closed \
+  --forward-to <イベントサーバーのローカルのオリジン><Webhookの経路>
+```
+
+- `--print-secret`が表示する署名の秘密を、Infisicalの`dev`の共通のフォルダ(`/`)に`<Webhookの署名の秘密のシークレットのキー>`の名前で登録する。値が変わった場合は登録し直す。
+- `stripe listen`の通知は、アカウントの既定のAPI版の形で届く(`--latest`を付けると最新のAPI版)。受信の処理が本文の種類・発生時刻・対象のIDだけを使い、対象を固定したAPI版で取得し直す作りであれば、版の違いは反映に影響しない。
+- 署名の秘密も、Wrangler設定のルートの`secrets.required`に無い構成では、`dev`へ登録してもローカル環境のWorkerへ渡らない(「[制限付きキーの作成と登録](#制限付きキーの作成と登録)」)。
+- 転送を止めた状態では通知が届かない。決済後の戻りの画面の反映と定期の突合だけで決済の完了まで辿れるかは、転送を止めて確かめる。
+
+### 環境ごとの確認の一覧
+
+| 項目                                          | ローカル環境(`dev`)        | デプロイ先検証環境(`staging`) | 本番環境(`prod`)       |
+| --------------------------------------------- | -------------------------- | ----------------------------- | ---------------------- |
+| Stripeの環境                                  | 開発用のsandbox            | デプロイ先検証用のsandbox     | ライブモード           |
+| 制限付きキー(`/workers/<Worker>`に2つ)        | 決済を試す開発者だけが登録 | 必須                          | 必須                   |
+| 署名の秘密(`/`)                               | `stripe listen`の秘密      | Webhook endpointの秘密        | Webhook endpointの秘密 |
+| `<公開キーの変数>`                            | 開発用のsandboxの公開キー  | 検証用のsandboxの公開キー     | ライブモードの公開キー |
+| 販売する価格(`lookup_key`・USD・税込)         | 作る                       | 作る                          | 作る                   |
+| `<疎通確認用の価格のlookup_key>`(1USD)        | 作る                       | 作る                          | 作らない               |
+| Stripe Taxの有効化と税の登録                  | 行う                       | 行う                          | 行う                   |
+| Adaptive Pricingの無効化                      | 行う                       | 行う                          | 行う                   |
+| 決済手段(カード・Apple Pay・Google Pay・Link) | 行う                       | 行う                          | 行う                   |
+| 決済手段のドメインの登録                      | 登録できない               | 行う                          | 行う                   |
+| Customer Portalの設定                         | 保存する                   | 保存する                      | 保存する               |
+| 不服申し立てを無効のままにする                | 確かめる                   | 確かめる                      | 確かめる               |
+| Webhook endpoint(API版・15種)                 | 作らない(転送)             | 作る                          | 作る                   |
+
+## 決済手段の検証の手順
+
+決済手段の設定がカード・Apple Pay・Google Pay・Linkだけになっていることを、環境ごとの設定を終えた後と、決済手段の設定を変えた後に確かめる。
+
+前提: その環境の制限付きキーと署名の秘密がWorkerへ渡り、Webhookが届く(ローカル環境は`stripe listen`の転送を起動している)こと。
+
+1. 疎通確認用の価格の購入などで決済セッションを作り、決済画面を開く。
+2. 決済セッションの決済手段の種類を確かめる。ダッシュボードの決済セッションの詳細か、次のコマンドで、`payment_method_types`が`card`と`link`だけであることを確かめる。
+
+   ```sh
+   stripe get /v1/checkout/sessions/<決済セッションのID>
+   ```
+
+3. 決済画面に表示される手段が、カード・Apple Pay・Google Pay・Linkだけであることを確かめる。Klarnaなど他の手段が出れば、決済手段の設定を直す。Apple PayはApple Payを設定した対応の端末のSafari、Google PayはGoogle Payを設定したChromeで、登録したドメインの決済画面を開いて確かめる(デプロイ先検証環境)。
+4. テストカード`4242 4242 4242 4242`(有効期限は未来の任意の日付、CVCは任意の3桁)で支払い、決済後の戻りの画面で完了が表示され、`checkout.session.completed`の通知の決済セッションが`payment_status = 'paid'`であり、決済の記録が残ることを確かめる。
+5. 3Dセキュアの認証を常に求めるテストカード`4000 0027 6000 3184`で支払い、認証の画面が表示されて完了でき、ブラウザの開発者ツールにCSPの違反が出ないことを確かめる。
+6. Linkで、テスト用の銀行(Success)を使う即時の銀行決済で支払い、完了の通知の決済セッションが`payment_status = 'paid'`で届き、権利の付与まで反映されることと、決済の記録にLinkの資金源のグループが残ることを確かめる。
+7. 結果(確かめた日・環境・決済セッションのID・表示された手段・資金源のグループ)を作業の記録に残す。想定外の手段や資金源が見つかれば、決済手段の設定と決済の受け付けの規則を見直す。
+
+- 検証の決済は全てsandboxで行う。本番環境では、ライブモードの設定の画面で決済手段の設定と不服申し立ての設定を確かめるだけにし、テストの決済を行わない。

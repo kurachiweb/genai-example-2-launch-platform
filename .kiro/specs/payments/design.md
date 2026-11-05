@@ -1811,7 +1811,7 @@ export interface MoneyTextProps {
 
 ## Security Considerations
 
-- 鍵: api・eventで別々の制限付きキー(apiはCheckout Sessions・Customers・Prices・PaymentIntents・Invoicesの読み書きのうち必要なもの、eventはそれに加えRefunds・Subscriptionsの書き込みとDisputes・Chargesの読み取り)。権限の表は`operations/004`に置き、後続specが操作を足すときに更新する(15.2)。2つのキーは同じ名前`STRIPE_API_KEY`で、infra-deliveryのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)に別々に登録し、各Workerには自分のキーだけが渡る。共通のフォルダ`/`に置いた値は`WORKER_SCOPED_SECRETS`により使われず、Workerごとのフォルダに無ければデプロイが必須の欠落で止まる(仮7)。
+- 鍵: api・eventで別々の制限付きキー。権限は各Workerが呼ぶ操作だけに限り、一覧は`operations/004`の「制限付きキーの権限」の表に従う(apiはCheckout Sessions・Customersの書き込みとPrices・Payment Intents・Invoices・Charges and Refundsの読み取り、eventはCheckout Sessions・Customers・Charges and Refunds・Subscriptionsの書き込みとPayment Intents・Invoices・Payment Disputesの読み取り。Stripeの返金の権限はCharges and Refundsの1つの資源である。apiのCharges and Refundsの読み取りは、決済セッションの反映でLinkの資金源のグループを取得するため)。表は後続specが操作を足すときに更新する(15.2)。2つのキーは同じ名前`STRIPE_API_KEY`で、infra-deliveryのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)に別々に登録し、各Workerには自分のキーだけが渡る。共通のフォルダ`/`に置いた値は`WORKER_SCOPED_SECRETS`により使われず、Workerごとのフォルダに無ければデプロイが必須の欠落で止まる(仮7)。
 - Webhook: 署名の検証と5分の時刻の許容。生の本文で検証し、検証の前に本文を解釈しない。経路はIP制限の対象外(backend-platformのQ1)。
 - 認可: 決済画面・同意・`return_url`の確定・決済履歴は本人の購入・記録だけを返し、他人の購入は存在しないものとして扱う(状態を明かさない)。`return_url`の`session_id`は推測されても本人の購入でなければ反映の結果を返さない(反映そのものは冪等で害が無い)。
 - CSRF: 変更操作はfrontend-platformのBFFのCSRFの検査の下にある。決済の確定はStripe.jsからStripeへ直接送られ、本サービスの経路を通らない。

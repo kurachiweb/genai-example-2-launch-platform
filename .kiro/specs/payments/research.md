@@ -542,3 +542,39 @@ ultras-subscriptionの要件と設計の作成中に、本specの口に足りな
   - したがって、不服申し立てを経ても記録は`disputed`の後に`dispute_won`か`dispute_lost`の一方だけになり、懸念は起きない。
 - **決定**: 記録の規則を変えず、不服申し立ての段階を照会・審査中と同じく記録しない段階として扱う(推奨どおり)。購読の15種は変えず、`charge.dispute.updated`は購読しない。`StripeDisputeSnapshot`の状態は文字列で受け、未知の値でも取得と反映が失敗しないようにする。不服申し立ては既定の無効のままにし、有効化する場合の利用資格・手数料・ダッシュボードでの対応を`operations/004`に書く。要件9.4(資金の移動を伴わない段階は記録しない)の範囲のため、要件は変えない。
 - **変えた箇所**: design.mdの「StripeClient・StripeGateway・StripeWebhookVerifier」(取得の結果の型)、「PaymentReflector・CheckoutSessionReflection」(チャージバック)、Modified Filesの`operations/004`。tasks.mdの1.4・3.2・5.4。
+
+## タスク1.4の調査: CSPの許可先と転送の無い環境での完了(2026-11-05)
+
+### Stripe.js・Payment Element・Link・請求先住所の入力欄がCSPに求める許可先
+
+- **Sources Consulted**: `stripe docs /security/guide`(Integration security guideの「Content Security Policy」の節、<https://docs.stripe.com/security/guide>)、`stripe docs /elements/address-element`(「Autocomplete」の節、<https://docs.stripe.com/elements/address-element>)、`stripe docs /payments/payment-methods/pmd-registration`(<https://docs.stripe.com/payments/payment-methods/pmd-registration>)。いずれも2026-11-05に参照した。
+- **Findings**:
+
+| 対象                                      | 指令                        | 許可先                                                                               | 設計の許可先との差                   |
+| ----------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------ |
+| Stripe.js(Payment Elementを含む)          | `script-src`                | `https://js.stripe.com`(任意で`https://*.js.stripe.com`)                             | 一致(任意のワイルドカードは加えない) |
+| Stripe.js                                 | `frame-src`                 | `https://js.stripe.com`・`https://hooks.stripe.com`(任意で`https://*.js.stripe.com`) | 一致                                 |
+| Stripe.js                                 | `connect-src`               | `https://api.stripe.com`                                                             | 一致                                 |
+| Link                                      | `frame-src`                 | `https://link.com`・`https://*.link.com`                                             | 不足(別のホストとワイルドカード)     |
+| Link                                      | `connect-src`               | `https://link.com`・`https://*.link.com`                                             | 不足(別のホストとワイルドカード)     |
+| Link                                      | `img-src`                   | `https://*.link.com`                                                                 | 不足(ワイルドカード)                 |
+| 請求先住所の入力欄(自社のGoogle Mapsの鍵) | `connect-src`・`script-src` | `https://maps.googleapis.com`                                                        | 不要(自社の鍵を使わない)             |
+
+- Linkの節は「Stripe.jsの許可先に加えて」許可するよう求め、「Linkの認証の画面と静的な資源はStripeが所有する`link.com`のサブドメイン(例: `checkout.link.com`・`statics.link.com`)から配信し、`*.link.com`のワイルドカードで現在と将来のサブドメインを網羅する」と説明する。2026-10-23の調査(「CSP・公開キー・決済画面の部品」)の時点の記録には無かった許可先である。
+- `https://*.js.stripe.com`は性能向上のための任意の許可先で、無くても動く(従来どおり)。
+- 請求先住所の入力欄は、Payment Elementと併用するとStripeが用意したGoogle Mapsの鍵で住所の補完を行い、`https://maps.googleapis.com`は自社の鍵を使う場合だけ許可が要る。補完はStripeの埋め込み枠の中で動くため、親のページの許可先は増えない見込み(10.1のブラウザテスト・E2EのCSPの違反の検査で確かめる)。
+- 3Dセキュアなどリダイレクトを伴う決済手段には`frame-src https://hooks.stripe.com`が要る(設計に含まれる)。
+- Apple Pay・Google Pay・Linkは、決済画面を表示するドメインをStripeの「Payment method domains」へsandboxごとに登録する必要がある(Apple Payは必須)。`localhost`は登録できない。CSPとは別の前提として`operations/004`に記載した。
+- 現行の文書のCSPの節には`Permissions-Policy`の記載は無い。設計の`payment`の許可(`self`と`https://js.stripe.com`)は変えない。
+- **Implications**: frontend-platformの許可先の形(`ORIGIN_PATTERN`は`'self'`・`https://<ホスト>`・`http://localhost:<ポート>`だけを許し、ワイルドカードを例外にする)では、`https://link.com`は加えられるが`https://*.link.com`(`frame-src`・`connect-src`・`img-src`)は加えられない。具体的なサブドメインを列挙する代替はStripeが将来のサブドメインを保証しないため壊れやすい。10.1(CSPの許可先の追加)の前に、ワイルドカードの許可(frontend-platformの許可先の規則の変更)か、Linkを決済手段から外すかを開発者が決める必要がある(Revalidation Triggersの「違反が出た場合はfrontend-platformにサブドメインのワイルドカードの許可を依頼する」に当たる)。
+
+### `stripe listen`の転送が無い環境で、`return_url`からの反映だけで完了まで辿れるか
+
+- **状態**: 未確認(開発者のsandboxの準備待ち)。dev用のsandbox・制限付きキー・公開キーが無く、またルートの`secrets.required`にStripeのキーが無いためローカルのWorkerへキーが渡らず、疎通確認の決済をローカルで作れない。
+- **Sources Consulted**: design.mdの「PaymentReflector・CheckoutSessionReflection」・`CheckoutReturnConfirmer.confirm`・Decisionsの決済後のランディング(マウント後の`confirmCheckoutReturn`と3秒ごとに最大20回の確かめ直し)、`stripe docs /checkout/fulfillment?ui=checkout-form`(「Trigger fulfillment on your landing page」、<https://docs.stripe.com/checkout/fulfillment?ui=checkout-form>、2026-11-05に参照)。
+- **設計上の見込み**: 辿れる見込みである。
+  - `CheckoutReturnConfirmer.confirm`は、Webhookの通知を待たず、`retrieveCheckoutSession`でStripeから決済セッションの最新の状態を取得して`reflectCheckoutSnapshot`で反映する。完了(`complete`かつ`paid`)なら購入を確定し、決済履歴を記録し、購入確認メールを依頼するまでを同じ反映で行うため、転送が無くても完了まで進む。
+  - Stripeの文書も、Webhookに加えて決済後のランディングから決済セッションを取得して反映することを推奨しており(Webhookの遅れを補うため)、カードのような即時の決済手段では、ランディングへの到達の時点で決済セッションが完了している前提で書かれている。
+  - 決済セッションがまだ`complete`でない場合も、画面が3秒ごとに最大20回確かめ直すため、その間に完了すれば反映される。
+  - 転送が無い環境では、定期課金の状態(`customer.subscription.*`)・請求(`invoice.*`)・返金(`refund.*`)・チャージバックは反映されない。疎通確認の決済(1回限りの1USD)の完了の確認には影響しない。
+- **残る確認**: 開発者の準備の後、ローカルで`stripe listen`を止めた状態で疎通確認の決済を行い、決済後のランディングが完了を表示し、決済履歴に記録され、購入確認メールがMailpitに届くことを確かめ、この節を更新する。11.1の疎通確認の決済のE2E(CIのランナーに転送が無い)は、その結果に従う。
