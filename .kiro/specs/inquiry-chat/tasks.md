@@ -16,7 +16,7 @@
   - _Boundary: InquiryInputRules, InquiryAttachmentLimits, InquiryStatus, InquiryCategoryConstants_
   - _Requirements: 3.1, 5.1, 6.1, 8.1, 11.1, 12.1_
 
-- [ ] 1.3 (P) 監査ログに本specの5つの操作種別を登録する
+- [x] 1.3 (P) 監査ログに本specの5つの操作種別を登録する
   - 先に、返信・ステータスの変更(詳細は種別と変更前後のステータス)・カテゴリの追加・名前の変更・削除(詳細は付け替えの件数)の定義が、表示名を持ち、理由を任意とし、対象の上限が1件で、名前・本文・メールアドレスを入れる詳細の鍵を持たないことを確かめる単体テストを書く
   - 操作種別は`defineAuditAction`の形(`name`・`label`・`targetKind`・`reason`・`detailKeys`・`maxTargets`)で書く。admin-foundationの操作種別の集約点に本specのファイルを加え、集約点の単体テストの登録名の期待値に5種別を足す。対象の種類`inquiry`・`category`と管理画面の表示名は登録済みのため足さない
   - 完了状態: 単体テストが成功し、集約点のカタログに5種別が載り、名前の重複の検査と集約点の単体テストに通る
@@ -303,3 +303,4 @@
 
 - 1.1: テーブルは`apps/db/schema/inquiry/`、マイグレーションは`20261105014859_inquiry_chat`(テーブル)と`20261105014904_inquiry_chat_seed`(初期データ、名前の衝突で何もしない)。「その他」の固定ID`01JC0000000000000000000000`のULIDの時刻部に合わせ`created_at`・`updated_at`は`1730871820288`。ステータスの値はスキーマの`INQUIRY_STATUS_VALUES`(`member-inquiries.ts`がexportし`guest-inquiries.ts`が再利用。スキーマはcommon-libを読み込めない)のため、1.2でcommon-libの`INQUIRY_STATUSES`との一致を単体テストで確かめる(legal-pagesの`legal-columns.unit.test.ts`と同じ形)。`status`の既定値は`open`、`system_default`の既定値は偽。添付の表は複合主キーで共通カラムなし、メッセージは`created_at`のみ(design.mdに従う。db/003の原則と異なる点は最終の報告に挙げる)。ローカルD1に以前の試行の残骸(`20261104124132_inquiry_chat`・`20261104124136_inquiry_chat_seed`の記録と5テーブル)があったため、ローカルの状態だけで消して適用し直した
 - 1.2: 共有の定義は`apps/common-lib/inquiry/`の4ファイル(`inquiry-input-rules.ts`・`inquiry-attachment-limits.ts`・`inquiry-status.ts`・`inquiry-category-constants.ts`)。3つの入力の検証(`checkGuestNickname`・`checkInquiryBody`・`checkChatMessage`)はcoding/005に従い`'forbidden-character'`も返す(禁止文字→空→長すぎるの順、禁止文字は前後の空白を除く前に調べる。design.mdの契約も改めた)。この違反の文言は設計と文言規則に無いため、GraphQLの入力の検証(7.2)と画面(9.x・10.2)で決め、12.2で文言規則へ足す。ニックネームの改行は許可(identityの`checkNickname`と同じ)。メールアドレスの長さはidentityの`EMAIL_MAX_LENGTH`を使う。添付の上限はリテラルで書き`MAX_UPLOAD_BYTES`との一致を単体テストで確かめる。`checkAttachmentTotals`は件数→合計の順で、1ファイルの上限は`maxFileBytes`として出し用途側で守る。スキーマのステータスとの一致は`apps/api/src/application/inquiry/inquiry-columns.unit.test.ts`。`INQUIRY_CATEGORY_OTHER_ID`と初期データのIDの一致は3.2のWorkers統合テストで確かめるとよい
+- 1.3: 5種別は`apps/common-lib/admin/audit-actions/inquiry-chat.ts`の`INQUIRY_AUDIT_ACTIONS`(`inquiry.reply`・`inquiry.status-change`(詳細`kind`・`fromStatus`・`toStatus`)・`inquiry-category.create`・`inquiry-category.rename`・`inquiry-category.delete`(詳細`reassignedCount`))で、集約点の末尾に連結した。集約点の全件を完全一致で確かめるテストは`index.unit.test.ts`と`apps/admin/src/components/pages/audit-logs-page.browser.test.tsx`(操作種別の選択肢)の2つで、後続のspecが種別を足す時は両方を直す
