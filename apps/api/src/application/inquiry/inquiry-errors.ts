@@ -114,6 +114,23 @@ export const inquiryChatMessageRejectedError = (
     ],
   });
 
+const STATUS_FIELD = 'status';
+
+// 変更の無い操作を監査ログに残さないよう、現在と同じ値への変更はステータスの欄の検証のエラーにする
+export const inquiryStatusUnchangedError = (): AppError =>
+  new AppError({
+    kind: 'bad_request',
+    code: 'validation_error',
+    message: VALIDATION_ERROR_MESSAGE,
+    details: [
+      {
+        field: STATUS_FIELD,
+        code: 'unchanged',
+        message: '現在と異なるステータスを選択してください。',
+      },
+    ],
+  });
+
 const CATEGORY_FIELD = 'categoryId';
 
 // 選択肢を表示した後にカテゴリが削除された送信も、画面が選び直しを促せるようカテゴリの欄の検証のエラーにする

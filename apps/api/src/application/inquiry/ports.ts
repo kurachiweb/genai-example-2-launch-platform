@@ -146,8 +146,6 @@ export interface InquiryStatusTarget {
 }
 
 export interface InquiryStatusStore {
-  // ログイン・未ログインの両方のテーブルから引く
-  find(id: string): Promise<InquiryStatusTarget | undefined>;
   // 読み取った時点のステータスと退会の状態を条件に、監査ログと同じ一括の書き込みで変更する
   change(
     target: InquiryStatusTarget,

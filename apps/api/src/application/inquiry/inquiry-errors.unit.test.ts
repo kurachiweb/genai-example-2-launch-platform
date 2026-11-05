@@ -9,6 +9,7 @@ import {
   inquiryCategoryUnavailableError,
   inquiryChatMessageRejectedError,
   inquiryError,
+  inquiryStatusUnchangedError,
 } from './inquiry-errors.ts';
 
 describe('INQUIRY_ERRORS', () => {
@@ -206,4 +207,28 @@ describe('inquiryChatMessageRejectedError', () => {
       });
     },
   );
+});
+
+describe('inquiryStatusUnchangedError', () => {
+  test('現在と同じステータスへの変更をステータスの欄の詳細を持つ検証のエラーにする', () => {
+    const error = inquiryStatusUnchangedError();
+
+    expect({
+      kind: error.kind,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    }).toEqual({
+      kind: 'bad_request',
+      code: 'validation_error',
+      message: '入力内容を確認してください。',
+      details: [
+        {
+          field: 'status',
+          code: 'unchanged',
+          message: '現在と異なるステータスを選択してください。',
+        },
+      ],
+    });
+  });
 });
