@@ -39,6 +39,12 @@ describe('スキーマの集約点', () => {
     'guest_inquiries',
     'inquiry_messages',
     'inquiry_message_attachments',
+    'payment_customers',
+    'payment_purchases',
+    'payment_records',
+    'payment_refunds',
+    'payment_stripe_objects',
+    'payment_price_snapshots',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

@@ -21,7 +21,7 @@
   - 完了状態: 単体テストが成功し、client・api・eventの型検査で配置先から読み込める
   - _Requirements: 2.1, 4.4, 12.1_
 
-- [ ] 1.3 決済の6テーブルを定義し、マイグレーションを作る
+- [x] 1.3 決済の6テーブルを定義し、マイグレーションを作る
   - 先に、6テーブルとも主キーが`id`(`ulidPrimaryKey()`)で`timestamps()`を持つこと(`db/003`。2026-11-05の開発者の決定)、自然キー(`payment_customers.user_id`・`payment_stripe_objects.object_id`・`payment_price_snapshots.lookup_key`)の一意索引、版の検査に使う`payment_records.pseudonymous_id`・`payment_stripe_objects.last_event_at`がNOT NULLであること、各テーブルの列の型・NOT NULL・既定値、状態と種類の値の制約(1.2の共有定義の値と一致すること)、`payment_purchases`の`exclusivity_key`の`status = 'fulfilled'`に限る部分一意索引と検索用の索引、`payment_records`の`(stripe_reference, kind)`(チャージバック以外)と`(stripe_reference, kind, status)`(チャージバック)の一意索引と、収益の照会のための`occurred_at`の索引、`pseudonymous_id`に外部キーが無いこと、`payment_customers`・`payment_purchases`の`users`への外部キーと`payment_refunds`の購入への外部キー、カード番号などの決済情報の列が無いことを確かめる単体テストを書く
   - Stripe Customerの対応・購入・決済履歴・返金の依頼・Stripeのオブジェクトの最終の発生時刻・価格の一時保持の6テーブルを定義し、スキーマの集約点へ加える。版の検査のための専用テーブルは作らない(業務の行の挿入で検査する。4.1)
   - mainの最新を取り込んでからマイグレーションを生成し、衝突したら生成し直す
