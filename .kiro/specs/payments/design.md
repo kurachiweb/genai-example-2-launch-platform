@@ -1017,6 +1017,8 @@ export declare class StripeSignatureError extends Error {}
 
 - 順に試す: (1)PaymentIntentのIDで`payment_purchases`を引く。(2)PaymentIntentのメタデータの`pseudonymous_id`・`purchase_id`・`purchase_kind`。(3)請求の支払いから定期課金のメタデータ。どれでも特定できなければ`unresolved`を返し、反映しない(6.9、`warn`のログに対象のIDだけを残す)。
 - 物理削除の後(購入の行が無い)でも、メタデータから仮名化IDと購入種別を特定できる。
+- 購入の行に仮名化IDの列は無いため、仮名化IDは常にStripeのメタデータから取る(PaymentIntent→請求の支払いの定期課金→請求の定期課金の順)。PaymentIntentのIDで購入の行が見つからなければ、メタデータの`purchase_id`で購入を引く(決済セッションの反映より先に届いた初回の請求)。
+- 結果は`{ kind: 'resolved', pseudonymousId, purchaseKind, purchaseId, purchase(残っていれば購入の行) } | { kind: 'unresolved' }`。定期課金の2回目以降の請求でも`purchase`は元の購入になるため、初回の請求かは`purchase.stripeInvoiceId`(未保存か同じ請求のID)で判断する。契約は`workers/payments/payment-owner-resolver.ts`に置く(workersだけが受け取る)。
 
 #### D1各ストア・GuardedBatch
 
@@ -1778,7 +1780,7 @@ export interface MoneyTextProps {
 
 ### Monitoring
 
-- `getAppLogger(['api'|'event', 'application', 'payments'])`で、購入ID・StripeのオブジェクトのID・通知の種類・Stripeの`request-id`だけを記録する(15.8)。
+- `getAppLogger([appName, 'payments', <stripe・webhook・owner など部品ごとの名前>])`で、購入ID・StripeのオブジェクトのID・通知の種類・Stripeの`request-id`だけを記録する(15.8)。
 - Sentry: 反映の例外(`captureException`、タグ`stripe_event_type`)、返金の恒久的な拒否(`captureEvent`、タグ`stripe_error_code`)、突合の失敗(`captureEvent`、タグ`job`)、結び付かない通知は`warn`のログだけ。定型の通知の`captureEvent`は、文言を`logentry`、種類(拒否のコード・ジョブ)を`fingerprint`に置く(`infra/004`の「同じ文言を繰り返し送る通知」)。
 - 設定の不足(`EnvValidationError`)は起動時に`configuration_error`として検知される(15.4)。
 

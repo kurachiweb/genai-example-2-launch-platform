@@ -115,7 +115,7 @@
   - _Depends: 1.3, 2.1_
   - _Requirements: 1.5, 1.7, 6.5, 7.7, 8.2, 9.4, 12.5, 12.6, 12.7_
 
-- [ ] 4.3 返金・チャージバック・請求の持ち主の特定を作る
+- [x] 4.3 返金・チャージバック・請求の持ち主の特定を作る
   - 先に、偽のゲートウェイと購入のストアを使うWorkers統合テストで、PaymentIntentのIDが購入に結び付く場合、購入の行が無くPaymentIntentのメタデータから特定する場合(物理削除の後)、請求の定期課金のメタデータから特定する場合、どれでも特定できない場合を確かめる
   - 完了状態: Workers統合テストが成功し、特定できない場合は対象のIDだけを記録して「結び付かない」を返す
   - _Depends: 3.2, 4.1_
@@ -360,3 +360,4 @@
 - 3.3: 署名の検証は`workers/payments/stripe-webhook-verifier.ts`の`StripeWebhookSignatureVerifier`(`@injectable`無し、`{ appName, webhookSecret }`)。秘密が未設定なら`StripeUnavailableError`(ログ無し、経路が503)、拒否は`StripeSignatureError`(cause無し)。backend-libのWorkers統合テストはapiの`test:worker`で走る(eventは`lib/**`を除外)
 - 4.1: 版の検査付きの一括の書き込みは`workers/payments/guarded-batch.ts`の`D1GuardedBatch`。決済セッションの記録の版の検査付きの挿入は`checkout-record-guard.ts`の`checkoutRecordGuardedInsert(db, record, guard)`で、4.2の`D1PaymentRecordStore.insertCheckoutRecordGuarded`はこれに委ねる。1文の前進は`PurchaseStore.advanceAlone`(行き先は`processing`・`expired`だけ)、前進の元は呼び出し側が`ADVANCEABLE_FROM`から渡す。`findOpenByUser`はopen・processing、`findOpenByTarget`はopenだけ、突合と日次の確認の対象はopen・processing・superseded(決済セッションIDの無い購入を除く)。テストの補助は`testing/payment-store-fixtures.ts`
 - 4.2: `upsertByReference`は`記録済みのlast_event_at <= 受け取ったlast_event_at`のときだけ更新し、同意の日時と版・購入ID・関連ID・Linkの資金源のグループはcoalesceで既存の値を残す。5.4(必須): 初回の請求の`invoice.paid`が決済セッションの反映より先に届くと、決済セッションの記録の挿入が一意キーの衝突で無視され、同意の日時と版(12.6)とLinkの資金源のグループが記録されない。請求の反映で持ち主の購入を特定できたら、購入の同意の日時・版・購入IDを`NewPaymentRecord`に写し、「請求が決済セッションより先に届いても同意が残る」をテストで確かめる。反映は通知の本文ではなくStripeから取り直した状態を書く
+- 4.3: 持ち主の特定は`workers/payments/payment-owner-resolver.ts`(契約も同じファイル、`@injectable`無しで`{ appName, gateway, purchases }`)。偽のゲートウェイは`testing/fake-stripe-gateway.ts`の`createFakeStripeGateway`。5.4(必須): 結果の`purchase`は定期課金の2回目以降の請求でも元の購入になるため、同意を写すのは初回の請求(`purchase.stripeInvoiceId`が未保存か同じ請求のID)だけにし、「2回目の請求の記録に同意が入らない」をテストで確かめる
