@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import { beforeEach, describe, expect, test } from 'vitest';
 
@@ -644,5 +644,66 @@ describe('buildAuditLogStatements(ロール変更の条件付きの記録)', () 
       .where(eq(admins.role, 'super_admin'));
     expect(superAdmins).toHaveLength(1);
     expect(await readLogs()).toHaveLength(1);
+  });
+});
+
+describe('buildAuditLogStatements(SQLで渡す条件付きの記録)', () => {
+  const targetRoleIs = (role: AdminRole): AuditGuard => ({
+    kind: 'condition',
+    condition: sql`EXISTS (SELECT 1 FROM ${admins} WHERE ${admins.id} = ${adminIdOf(TARGET)} AND ${admins.role} = ${role})`,
+  });
+
+  async function promoteTarget(guard: AuditGuard | undefined) {
+    await clearAdminTables();
+    await insertAdmin(OPERATOR, { role: 'super_admin' });
+    await insertAdmin(TARGET, { role: 'viewer' });
+    const result = await commit(
+      prepareRoleChange(OPERATOR, TARGET, { from: 'viewer', to: 'moderator' }),
+      guard,
+      changeRole(TARGET, 'moderator'),
+    );
+    return {
+      result,
+      logs: await readLogs(),
+      targets: await readTargets(),
+      target: await readAdmin(TARGET),
+    };
+  }
+
+  test('条件が真なら、条件なしと同じ監査ログ・対象・他の文の結果がそろって確定する', async () => {
+    const withoutGuard = await promoteTarget(undefined);
+
+    const withCondition = await promoteTarget(targetRoleIs('viewer'));
+
+    expect(withCondition.result).toBe('committed');
+    expect(withCondition.target).toEqual({
+      role: 'moderator',
+      status: 'active',
+    });
+    expect(withCondition).toEqual(withoutGuard);
+  });
+
+  test('条件が偽なら取り消しとして見分けられ、監査ログも対象も同じ一括の書き込みの他の文の結果も残らない', async () => {
+    await insertAdmin(OPERATOR, { role: 'super_admin' });
+    await insertAdmin(TARGET, { role: 'moderator' });
+    const entry = prepareRoleChange(OPERATOR, TARGET, {
+      from: 'viewer',
+      to: 'super_admin',
+    });
+
+    const error: unknown = await db
+      .batch([
+        ...buildAuditLogStatements(db, entry, targetRoleIs('viewer')),
+        changeRole(TARGET, 'super_admin'),
+      ])
+      .catch((caught: unknown) => caught);
+
+    expect(isAuditGuardRejection(error)).toBe(true);
+    expect(await readAdmin(TARGET)).toEqual({
+      role: 'moderator',
+      status: 'active',
+    });
+    expect(await readLogs()).toEqual([]);
+    expect(await readTargets()).toEqual([]);
   });
 });

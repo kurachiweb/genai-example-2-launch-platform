@@ -29,6 +29,11 @@ export type AuditGuard =
       // 監査ログの詳細に残す変更前のロールで、対象の現在のロールと一致することを条件にする
       readonly fromRole: AdminRole;
       readonly toRole: AdminRole;
+    }
+  | {
+      readonly kind: 'condition';
+      // 書き込みの時点で真のときだけ記録する条件で、対象の状態が読み取った値のままであることなどを呼び出し側が組み立てる
+      readonly condition: SQL;
     };
 
 export type AuditLogStatements = readonly [
@@ -107,9 +112,17 @@ function roleChangeCondition(
 }
 
 function guardCondition(guard: AuditGuard): SQL {
-  return guard.kind === 'delete'
-    ? deleteCondition(guard.operator, guard.targetId)
-    : roleChangeCondition(guard);
+  switch (guard.kind) {
+    case 'delete': {
+      return deleteCondition(guard.operator, guard.targetId);
+    }
+    case 'role-change': {
+      return roleChangeCondition(guard);
+    }
+    case 'condition': {
+      return guard.condition;
+    }
+  }
 }
 
 // 条件を満たさないと操作者のIDがNULLになり、NOT NULL制約の違反で同じ一括の書き込みの全体が取り消される

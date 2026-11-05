@@ -100,7 +100,34 @@ async hide(commentId: string, audit: PreparedAuditEntry): Promise<void> {
 ```
 
 - `buildAuditLogStatements`は空でないタプルを返すため、そのまま`db.batch()`に展開できる。対象の行の挿入は、D1のバインド変数の上限(1文100個)と対象の行の列の数から1文16行ずつに分ける(「[バインド変数の上限](../db/002-d1-constraints.md#バインド変数の上限)」)。対象の行のIDは同じ日時から単調に増えるULIDで採番し、記録の順に並べられるようにする。
-- 第3引数`guard`(`AuditGuard`)を渡すと、条件を満たさないときに監査ログの操作者のIDをNULLにしてNOT NULLの違反で一括の書き込み全体を取り消す(「[最後の最上位管理者の保護](../security/007-admin-authorization.md#最後の最上位管理者の保護)」)。ストアは`isAuditGuardRejection(error)`で取り消しを見分け、他の失敗はそのまま投げる。`AuditGuard`は管理者の削除とロール変更の条件だけを持つ。他の操作で読み取りを前提にした取り消しが要るときは、同じ方式で`AuditGuard`に種類を足す。
+- 第3引数`guard`(`AuditGuard`)を渡すと、条件を満たさないときに監査ログの操作者のIDをNULLにしてNOT NULLの違反で一括の書き込み全体を取り消す(「[最後の最上位管理者の保護](../security/007-admin-authorization.md#最後の最上位管理者の保護)」)。ストアは`isAuditGuardRejection(error)`で取り消しを見分け、他の失敗はそのまま投げる。`AuditGuard`は、管理者の削除(`delete`)とロール変更(`role-change`)の条件と、条件をSQLで渡す`condition`の3種類を持つ。
+- 対象の状態を読み取ったことを前提にする他の管理操作(対象の状態が読み取った値のままであること、論理削除されていないことなど)は、`{ kind: 'condition', condition }`に対象のテーブルを見る`EXISTS`の条件を渡し、続く操作の文にも同じ条件を付ける。条件は書き込みの時点で評価され、偽なら操作の文も含めて取り消される。取り消しの原因(対象が存在しない・状態が変わったなど)を分けるときは、取り消しの後に対象を読み直して決める。条件に入れる値は`sql`のテンプレートに差し込んでバインド変数で渡し、`sql.raw()`や文字列の連結で組み立てない(「[接続](../db/003-schema-conventions.md#接続)」)。
+
+  ```typescript
+  async hide(
+    commentId: string,
+    expected: CommentStatus,
+    audit: PreparedAuditEntry,
+  ): Promise<'hidden' | 'conflict'> {
+    const unchanged = sql`${comments.id} = ${commentId} AND ${comments.status} = ${expected}`;
+    try {
+      await this.db.batch([
+        ...buildAuditLogStatements(this.db, audit, {
+          kind: 'condition',
+          condition: sql`EXISTS (SELECT 1 FROM ${comments} WHERE ${unchanged})`,
+        }),
+        this.db.update(comments).set({ status: 'hidden' }).where(unchanged),
+      ]);
+      return 'hidden';
+    } catch (error) {
+      if (isAuditGuardRejection(error)) {
+        return 'conflict';
+      }
+      throw error;
+    }
+  }
+  ```
+
 - 閲覧・検索のように状態を変えない操作の記録は、`AuditLogRecorder.record`で結果を返す前に単独で書く。記録に失敗したら結果を返さない。
 
 ### 準備の検証
