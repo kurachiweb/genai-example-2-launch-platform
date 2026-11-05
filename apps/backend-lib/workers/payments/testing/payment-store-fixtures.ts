@@ -151,24 +151,33 @@ export async function readStripeObjects(): Promise<
     .orderBy(asc(paymentStripeObjects.objectId));
 }
 
-// 各文のバインド変数の数を記録し、実行はテスト用のD1へそのまま渡す
+// 各文のバインド変数の数と一括の実行ごとの文の数を記録し、実行はテスト用のD1へそのまま渡す
 export function createRecordingDatabase(): {
   readonly database: Database;
   readonly placeholderCounts: readonly number[];
+  readonly batchSizes: readonly number[];
 } {
   const placeholderCounts: number[] = [];
+  const batchSizes: number[] = [];
   const d1 = env.DB;
   const recording: D1Database = {
     prepare: (query) => {
       placeholderCounts.push(query.match(/\?/g)?.length ?? 0);
       return d1.prepare(query);
     },
-    batch: d1.batch.bind(d1),
+    batch: (statements) => {
+      batchSizes.push(statements.length);
+      return d1.batch(statements);
+    },
     exec: d1.exec.bind(d1),
     withSession: d1.withSession.bind(d1),
     // D1Databaseの型が非推奨のdumpも必須にするため、偽物でも実装する
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     dump: () => Promise.reject(new Error('テストでは使わない')),
   };
-  return { database: createDatabase(recording), placeholderCounts };
+  return {
+    database: createDatabase(recording),
+    placeholderCounts,
+    batchSizes,
+  };
 }

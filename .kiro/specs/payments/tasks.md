@@ -152,7 +152,7 @@
   - _Depends: 4.3, 5.3_
   - _Requirements: 6.4, 6.5, 6.6, 6.7, 6.9, 7.7, 7.8, 7.9, 8.8, 8.9, 8.10, 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 5.5 (P) 価格の照会・データエクスポート用の読み出し・期間ごとの純収益の照会を作る
+- [x] 5.5 (P) 価格の照会・データエクスポート用の読み出し・期間ごとの純収益の照会を作る
   - 先に、Workers統合テストで、期間ごとの純収益(成功した都度決済と請求の合計から、成功した返金と、敗北が確定したチャージバックの引き落とし額を差し引く。敗北の額は同じStripeのIDの引き落としの行から取り、敗北が確定した時刻の期間に数える。勝ったチャージバック・失敗と処理中の行・疎通確認用の購入種別を含めない。期間の境界・入力の順・該当の無い期間の0・最大の60個の期間が1回の一括の実行で成功すること(D1のバインド変数の上限を超えないよう期間を組に分ける)・引き落としの行が無い敗北の記録の扱い・期間の数と前後の誤りの拒否)と、10分以内の価格の再利用、古い価格の取り直し、Stripeに到達できないときの古い価格の返却と値が無いときの利用できない旨、決済履歴の全件を`payments.json`の項目だけで返すこと(同意の日時・資金源のグループ・購入IDを含めない)を確かめる
   - 完了状態: Workers統合テストが成功し、エクスポートの項目がデータエクスポートの文書の表と一致し、純収益の照会が1回の一括の実行で、入力の順に期間ごとの値を返す(仮7)
   - _Boundary: PriceCatalog, PaymentHistoryExport, PaymentRevenueReport_
@@ -365,3 +365,4 @@
 - 5.2: 通知は`workers/payments/purchase-notifier.ts`の`EmailPurchaseNotifier`(`@injectable`無し、`{ appName, purchases, refunds, contacts, emails, clientSiteOrigin }`)。送信の失敗と入力を組み立てられない行は`failed`を返す(例外にしない)。呼び出し側は`failed`を例外として扱わない。5.4(必須): 自動返金の通知の返金日時は返金の依頼の行の`updated_at`のため、`succeeded`の後に同じ状態の通知が届いても`updated_at`が変わらないようにし(状態が変わるときだけ更新)、テストで確かめる。Ultrasの2回目以降の請求の反映で通知の部品が呼ばれないこと(要件11.4)もテストに加える。6.3: 入力を組み立てられない依頼待ちの行は毎日`failed`になり、古い順の100件の枠を塞ぎ得るため、知らせ方か読み飛ばしを検討する
 - 5.3: 決済セッションの反映は`workers/payments/checkout-session-reflection.ts`の`StripeCheckoutSessionReflection`(`reflectSession`・`reflectSnapshot`。5.4の`PaymentReflector`は`checkout_session`の指示をここへ渡す)。PaymentIntentの状態`requires_payment_method`・`canceled`の未払いの完了は失効。テストの補助は`testing/checkout-reflection-harness.ts`。5.4(必須): 定期課金で請求の通知が先に届くと決済セッションの記録の挿入が無視され、`FulfillablePurchase.paymentRecordId`が実在しない行を指す。同意を写す修正と合わせて、既存の行のIDを解決して渡すか、契約のコメントに明記する
 - 5.4: 反映の処理は`workers/payments/payment-reflector.ts`の`StripePaymentReflector`(`@injectable`無しで依存の束、受け取り口の名前の検証はコンストラクタ)。テストの補助は`testing/payment-reflector-harness.ts`。定期課金の受け取り口の文と`afterCommit`は冪等であること(同じ発生時刻の通知は再び確定し得る)。請求・返金の同じ通知の再適用は「反映」を返す(「反映済み」はチャージバックの同じ段階だけ)
+- 5.5: 純収益の照会は`workers/payments/d1-payment-revenue-report.ts`の`D1PaymentRevenueReport`(`{ appName, db }`)、価格の照会は`price-catalog.ts`の`StripePriceCatalog`(`{ appName, gateway, snapshots, clock }`)、エクスポートは`payment-history-export.ts`の`StoredPaymentHistoryExport`(`{ records }`)。いずれも`@injectable`無し(5.7で束縛)。期間の誤りは`AppError(bad_request, validation_error)`。価格は`StripeUnavailableError`のときだけ保持の値(`stale: true`)を返す
