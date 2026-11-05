@@ -4,7 +4,6 @@ import type { Locator, Page } from '@playwright/test';
 
 import {
   editLegalDocumentName,
-  legalVersionLabel,
   OPEN_PUBLIC_PAGE_LABEL,
 } from '../../apps/admin/src/components/legal/legal-documents-messages.ts';
 import {
@@ -41,6 +40,7 @@ import {
   LEGAL_DOCUMENT_LABELS,
   LEGAL_DOCUMENT_PATHS,
   legalRevisionPath,
+  legalVersionLabel,
 } from '../../apps/common-lib/legal/legal-documents.ts';
 import {
   ADMIN_FLOW_TIMEOUT_MS,

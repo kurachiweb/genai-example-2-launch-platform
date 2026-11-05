@@ -29,7 +29,7 @@
 - 法務文書のデータ: `legal_documents`(文書ごとの状態の版・最新の版番号・下書き)と`legal_document_versions`(版)の2テーブル(`apps/db/schema/legal/`)と、3文書の枠を入れる初期データのマイグレーション。
 - 法務文書の業務処理(apiの`domain/legal`・`application/legal`・`infrastructure/legal`)と、GraphQLのスキーマモジュール`legal`(公開の照会は利用者側、管理の照会と変更は管理者側の許可リストに載る)。
 - 同意日時から版を特定する照会口`LegalVersionLocator`。
-- 種類・名前・利用者側のパス・入力規則の共有定義(`apps/common-lib/legal/`)。
+- 種類・名前・版の呼び名・利用者側のパス・入力規則の共有定義(`apps/common-lib/legal/`)。
 - 利用者側の公開ページ`/terms`・`/privacy`・`/legal`と過去版のページ`/{同}/revisions/{版番号}`。
 - 管理画面の`/legal-documents`・`/legal-documents/{種類}`・`/legal-documents/{種類}/revisions/{版番号}`と、メニューの項目。
 - 技術ドキュメント`db/005`、サービス仕様のページ配置・文言規則・準拠方針・利用規約とプライバシーポリシーの大枠の追記。
@@ -151,7 +151,7 @@ apps/
 │   │   └── index.ts                                    # legalのテーブルの集約(schema/index.tsから再エクスポート)
 │   └── migrations/<日時>_legal_pages/migration.sql · <日時>_legal_pages_seed/migration.sql
 ├── common-lib/legal/                                   # 4アプリ共通の純粋な定義(各ファイルに同名の*.unit.test.ts)
-│   ├── legal-documents.ts                              # LegalDocumentKind・名前・利用者側のパス・過去版のパス・版番号の解析・リンクのrel
+│   ├── legal-documents.ts                              # LegalDocumentKind・名前・利用者側のパス・過去版のパス・版番号の解析・版の呼び名と題名・リンクのrel
 │   └── legal-input-rules.ts                            # 本文と変更概要の上限・判定・文言・Zodの規則
 ├── api/src/
 │   ├── domain/legal/legal-document.ts                  # 状態の型と、保存・破棄・公開の可否・次の版番号・公開日時(単体テスト併置)
@@ -178,6 +178,9 @@ apps/
 │   │   ├── legal-document-page.tsx                     # 名前・最新版の公開日・本文・改訂履歴・準備中
 │   │   └── legal-version-page.tsx                      # 版の名前・版番号・公開日・変更概要・本文
 │   ├── components/legal/                               # ページを組み立てる部品(*.browser.test.tsxを併置)
+│   │   ├── legal-page-frame.tsx                        # 2つのページの外枠・見出し・読み込み中と失敗の表示
+│   │   ├── legal-document-route-components.tsx         # 最新版のルートの部品の生成関数(成功・読み込み中・失敗)
+│   │   ├── legal-version-route-components.tsx          # 過去版のルートの部品の生成関数(成功・読み込み中・失敗)
 │   │   ├── legal-version-notice.tsx                    # 過去の版・最新版である旨と公開ページへのリンク
 │   │   └── legal-revision-history.tsx                  # 改訂履歴の一覧
 │   ├── graphql/legal-documents.ts                      # 取得の設定・loader・生成した型からの変換(単体テスト併置)
@@ -765,9 +768,10 @@ export declare const buildLegalVersionHead: (
 ) => ReturnType<typeof buildSitePageHead>; // タイトルは「<文書の名前>(第N版)」、常にnoIndex
 ```
 
-- ルートの6ファイルは`createFileRoute`に`loader`(`loadLegalDocument(kind)`・`loadLegalDocumentVersion(kind)`)、`head`(`buildLegalDocumentHead`・`buildLegalVersionHead`)、`pendingComponent`・`errorComponent`・`component`(どれも`components/pages/`の`LegalDocumentPage`・`LegalVersionPage`に読み込み中・失敗・成功の`state`を渡す小さな関数)だけを渡す。`loader`は`queryClient.query`(`staleTime: 'static'`)を待って取得の失敗を投げ(サーバー側の描画では状態コード500)、`component`は同じ設定の`useSuspenseQuery`で読む。`errorComponent`の再試行は`components/legal/use-legal-page-retry.ts`の`useLegalPageRetry`(`router.invalidate()`の後に描き直したページの見出しへフォーカスを移す)で行う。準備中の公開ページは`noIndex`にして正規のURLを付けない。版番号の解析は`loader`で`common-lib`の`parseVersionNumber`を使い、ルートの`params.parse`は使わない(版番号の形式違反と版が無いことの404の判定を`loader`の1か所にまとめ、6つのルートに同じ解析を書かないため)。生成した型からページの部品の型への変換は`src/graphql/legal-documents.ts`に置き、ページの部品は生成物の型に依存しない。
-- `LegalDocumentPage({ kind, state })`: `state`は読み込み中・失敗(再試行)・成功(表示用の値)の判別共用体で、ルートのファイル内の小さな関数が取得の結果を写して渡す。`h1`に文書の名前、その下に「最終改訂日」と`DateTime`(`yearDate`、曜日を含まない年月日、仮5)、`MarkdownContent`(`useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL })`)、本文の後に`LegalRevisionHistory`。`latest`が`null`なら`EmptyState`(「この文書は準備中です。」)だけを表示する(6.6)。
+- ルートの6ファイルは`createFileRoute`に`loader`(`loadLegalDocument(kind)`・`loadLegalDocumentVersion(kind)`)、`head`(`buildLegalDocumentHead`・`buildLegalVersionHead`)、`pendingComponent`・`errorComponent`・`component`だけを渡す。3つの部品は`components/legal/legal-document-route-components.tsx`・`legal-version-route-components.tsx`の、文書の種類を受け取る生成関数(`legalDocumentRouteComponent(kind)`・`legalDocumentPendingComponent(kind)`・`legalDocumentErrorComponent(kind)`と、過去版の同じ3つ)の呼び出しで作り、`components/pages/`の`LegalDocumentPage`・`LegalVersionPage`に読み込み中・失敗・成功の`state`を渡す。ルートの分割の読み込みは関数の呼び出しの値も分割し、`component`・`errorComponent`は別のチャンクになる。`pendingComponent`は既定の分割の対象外のため、読み込み中の表示とそれが使うページの部品は主バンドルに含まれる。過去版の生成関数は、種類からルートのIDを引いて`getRouteApi`で`loader`のデータと経路のパラメータを読む。`loader`は`queryClient.query`(`staleTime: 'static'`)を待って取得の失敗を投げ(サーバー側の描画では状態コード500)、`component`は同じ設定の`useSuspenseQuery`で読む。`errorComponent`の再試行は`components/legal/use-legal-page-retry.ts`の`useLegalPageRetry`(`router.invalidate()`の後に描き直したページの見出しへフォーカスを移す)で行う。準備中の公開ページは`noIndex`にして正規のURLを付けない。版番号の解析は`loader`で`common-lib`の`parseVersionNumber`を使い、ルートの`params.parse`は使わない(版番号の形式違反と版が無いことの404の判定を`loader`の1か所にまとめ、6つのルートに同じ解析を書かないため)。生成した型からページの部品の型への変換は`src/graphql/legal-documents.ts`に置き、ページの部品は生成物の型に依存しない。
+- `LegalDocumentPage({ kind, state })`: `state`は読み込み中・失敗(再試行)・成功(表示用の値)の判別共用体(`LegalPageState`)で、ルートの部品の生成関数が取得の結果を写して渡す。外枠・見出し・読み込み中と失敗の表示は`LegalPageFrame`に任せ、成功の中身だけを描く。`h1`に文書の名前、その下に「最終改訂日」と`DateTime`(`yearDate`、曜日を含まない年月日、仮5)、`MarkdownContent`(`useMarkdownOptions({ externalLinkRel: LEGAL_DOCUMENT_EXTERNAL_LINK_REL })`)、本文の後に`LegalRevisionHistory`。`latest`が`null`なら`EmptyState`(「この文書は準備中です。」)だけを表示する(6.6)。
 - `LegalRevisionHistory({ kind, revisions })`: 見出し「改訂履歴」(`h2`)の`<ol>`で新しい順に、「第N版」のリンク(`legalRevisionPath`)・`DateTime`(`yearDate`)・変更概要。管理者の情報は受け取らない(6.5)。
+- `LegalPageFrame({ title, state, children })`(`components/legal/legal-page-frame.tsx`): 2つのページの共通の外枠。中央寄せの枠と、再試行の時にフォーカスを受ける`h1`(`tabIndex={-1}`、`LEGAL_PAGE_HEADING_ID`)を状態によらず描き、読み込み中は`LoadingSkeleton`、失敗は`ErrorState`(`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`、再試行で見出しへフォーカス)、成功は`children`を描く。
 - `LegalVersionPage({ kind, versionNumber, state })`: `state`は`LegalDocumentPage`と同じく読み込み中・失敗(再試行)・成功(公開日時・変更概要・本文・最新版かどうか)の判別共用体。`h1`「<文書の名前>(第N版)」は`loader`の版番号から状態によらず表示し、成功なら`LegalVersionNotice`、公開日(`DateTime`の`yearDate`)・変更概要、本文。
 - `LegalVersionNotice({ kind, isLatest, versionNumber })`: 本文より前に、過去の版なら「これは第N版です。最新版ではありません。」と「最新版を見る」、最新版なら「これは最新版です。」と「公開ページを見る」のリンクを、`role="note"`で表示する(7.2・7.3)。
 - 取得の失敗は`ErrorState`(再試行あり、文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`)、読み込み中は`LoadingSkeleton`(9.4)。

@@ -27,11 +27,3 @@ export const editLegalDocumentName = (documentLabel: string): string =>
 
 export const openPublicPageName = (documentLabel: string): string =>
   `${documentLabel}の${OPEN_PUBLIC_PAGE_LABEL}`;
-
-export const legalVersionLabel = (versionNumber: number): string =>
-  `第${String(versionNumber)}版`;
-
-export const legalVersionTitle = (
-  documentLabel: string,
-  versionNumber: number,
-): string => `${documentLabel}(${legalVersionLabel(versionNumber)})`;

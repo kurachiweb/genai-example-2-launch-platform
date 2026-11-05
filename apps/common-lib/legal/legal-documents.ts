@@ -42,3 +42,11 @@ export const parseVersionNumber = (raw: string): number | undefined =>
 
 export const LEGAL_DOCUMENT_EXTERNAL_LINK_REL: readonly LinkRelToken[] =
   Object.freeze(['noopener']);
+
+export const legalVersionLabel = (versionNumber: number): string =>
+  `第${String(versionNumber)}版`;
+
+export const legalVersionTitle = (
+  documentLabel: string,
+  versionNumber: number,
+): string => `${documentLabel}(${legalVersionLabel(versionNumber)})`;

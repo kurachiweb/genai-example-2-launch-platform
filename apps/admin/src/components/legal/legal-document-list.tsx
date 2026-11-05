@@ -4,6 +4,7 @@ import { useId, useRef } from 'react';
 import {
   LEGAL_DOCUMENT_LABELS,
   LEGAL_DOCUMENT_PATHS,
+  legalVersionLabel,
 } from '../../../common-lib/legal/legal-documents.ts';
 import {
   AdminDataTable,
@@ -19,7 +20,6 @@ import {
   LEGAL_DOCUMENT_LIST_COLUMNS,
   LEGAL_DOCUMENT_LIST_EMPTY_MESSAGE,
   LEGAL_DOCUMENT_LIST_HEADING,
-  legalVersionLabel,
   NONE_LABEL,
   OPEN_PUBLIC_PAGE_LABEL,
   openPublicPageName,

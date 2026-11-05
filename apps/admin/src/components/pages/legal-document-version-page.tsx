@@ -1,13 +1,15 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, notFound } from '@tanstack/react-router';
 
-import { LEGAL_DOCUMENT_LABELS } from '../../../common-lib/legal/legal-documents.ts';
+import {
+  LEGAL_DOCUMENT_LABELS,
+  legalVersionTitle,
+} from '../../../common-lib/legal/legal-documents.ts';
 import { AdminPageHeader } from '../../../lib/components/admin/admin-page-header.tsx';
 import {
   adminLegalDocumentVersionQueryOptions,
   toAdminLegalVersion,
 } from '../../graphql/admin-legal-documents.ts';
-import { legalVersionTitle } from '../legal/legal-documents-messages.ts';
 import { LegalVersionDetail } from '../legal/legal-version-detail.tsx';
 
 const routeApi = getRouteApi(

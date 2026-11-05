@@ -6,9 +6,9 @@ import { buildPageHead } from '../../lib/start/page-head.ts';
 import {
   LEGAL_DOCUMENT_LABELS,
   type LegalDocumentKind,
+  legalVersionTitle,
 } from '../../common-lib/legal/legal-documents.ts';
 import { SITE_NAME } from '../components/layout/site-links.ts';
-import { legalVersionTitle } from '../components/legal/legal-messages.ts';
 import type {
   LegalDocumentLoaderData,
   LegalVersionLoaderData,

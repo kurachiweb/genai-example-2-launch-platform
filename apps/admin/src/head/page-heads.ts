@@ -1,10 +1,10 @@
-import { LEGAL_DOCUMENT_LABELS } from '../../common-lib/legal/legal-documents.ts';
+import {
+  LEGAL_DOCUMENT_LABELS,
+  legalVersionTitle,
+} from '../../common-lib/legal/legal-documents.ts';
 import { buildPageHead } from '../../lib/start/page-head.ts';
 import { ADMIN_SITE_NAME } from '../components/layout/admin-site.ts';
-import {
-  LEGAL_DOCUMENTS_TITLE,
-  legalVersionTitle,
-} from '../components/legal/legal-documents-messages.ts';
+import { LEGAL_DOCUMENTS_TITLE } from '../components/legal/legal-documents-messages.ts';
 import type {
   LegalDocumentLoaderData,
   LegalVersionLoaderData,

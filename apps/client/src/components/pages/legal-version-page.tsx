@@ -1,26 +1,22 @@
-import { useRef } from 'react';
-
 import { DateTime } from '../../../lib/components/datetime/date-time.tsx';
 import { MarkdownContent } from '../../../lib/components/markdown/markdown-content.tsx';
 import { useMarkdownOptions } from '../../../lib/components/markdown/use-markdown-options.ts';
 import { useRenderedMarkdown } from '../../../lib/components/markdown/use-rendered-markdown.ts';
-import { ErrorState } from '../../../lib/components/state/error-state.tsx';
-import { LoadingSkeleton } from '../../../lib/components/state/loading-skeleton.tsx';
-import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
 import {
   LEGAL_DOCUMENT_EXTERNAL_LINK_REL,
   LEGAL_DOCUMENT_LABELS,
   type LegalDocumentKind,
+  legalVersionTitle,
 } from '../../../common-lib/legal/legal-documents.ts';
-import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
-import { CONTACT_HREF } from '../layout/site-links.ts';
 import {
   CHANGE_SUMMARY_LABEL,
-  legalVersionTitle,
   PUBLISHED_AT_LABEL,
 } from '../legal/legal-messages.ts';
+import {
+  LegalPageFrame,
+  type LegalPageState,
+} from '../legal/legal-page-frame.tsx';
 import { LegalVersionNotice } from '../legal/legal-version-notice.tsx';
-import { LEGAL_PAGE_HEADING_ID } from '../legal/use-legal-page-retry.ts';
 
 export interface LegalVersionView {
   readonly publishedAt: string;
@@ -29,14 +25,9 @@ export interface LegalVersionView {
   readonly isLatest: boolean;
 }
 
-export type LegalVersionPageState =
-  | { readonly status: 'pending' }
-  | {
-      readonly status: 'error';
-      readonly error: unknown;
-      readonly onRetry: () => void;
-    }
-  | { readonly status: 'success'; readonly version: LegalVersionView };
+export type LegalVersionPageState = LegalPageState<{
+  readonly version: LegalVersionView;
+}>;
 
 export interface LegalVersionPageProps {
   readonly kind: LegalDocumentKind;
@@ -85,50 +76,18 @@ export function LegalVersionPage({
   versionNumber,
   state,
 }: LegalVersionPageProps) {
-  const headingRef = useRef<HTMLHeadingElement>(null);
-
-  const content = (() => {
-    switch (state.status) {
-      case 'pending':
-        return <LoadingSkeleton className="mt-8" />;
-      case 'error':
-        return (
-          <ErrorState
-            className="mt-8"
-            message={errorMessageOf(
-              state.error,
-              CLIENT_PROFILE.contactAvailable,
-            )}
-            onRetry={() => {
-              headingRef.current?.focus();
-              state.onRetry();
-            }}
-            contactHref={CONTACT_HREF}
-          />
-        );
-      case 'success':
-        return (
-          <PublishedLegalVersion
-            kind={kind}
-            versionNumber={versionNumber}
-            version={state.version}
-          />
-        );
-    }
-  })();
-
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10">
-      {/* 再試行で消える再試行のボタンからフォーカスを<body>へ落とさないよう、移り先としてプログラムからだけフォーカスできるようにする */}
-      <h1
-        ref={headingRef}
-        id={LEGAL_PAGE_HEADING_ID}
-        tabIndex={-1}
-        className="rounded-sm text-3xl font-extrabold tracking-tight sm:text-4xl"
-      >
-        {legalVersionTitle(LEGAL_DOCUMENT_LABELS[kind], versionNumber)}
-      </h1>
-      {content}
-    </div>
+    <LegalPageFrame
+      title={legalVersionTitle(LEGAL_DOCUMENT_LABELS[kind], versionNumber)}
+      state={state}
+    >
+      {state.status === 'success' && (
+        <PublishedLegalVersion
+          kind={kind}
+          versionNumber={versionNumber}
+          version={state.version}
+        />
+      )}
+    </LegalPageFrame>
   );
 }

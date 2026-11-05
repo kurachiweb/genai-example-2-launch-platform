@@ -7,6 +7,8 @@ import {
   LEGAL_DOCUMENT_LABELS,
   LEGAL_DOCUMENT_PATHS,
   legalRevisionPath,
+  legalVersionLabel,
+  legalVersionTitle,
   parseVersionNumber,
 } from './legal-documents.ts';
 
@@ -106,5 +108,16 @@ describe('法務文書の本文の外部リンクのrel', () => {
   test('noopenerだけを付ける', () => {
     expect(LEGAL_DOCUMENT_EXTERNAL_LINK_REL).toEqual(['noopener']);
     expect(Object.isFrozen(LEGAL_DOCUMENT_EXTERNAL_LINK_REL)).toBe(true);
+  });
+});
+
+describe('版番号を含む法務文書の呼び名', () => {
+  test('版の呼び名は版番号を「第N版」と示す', () => {
+    expect(legalVersionLabel(1)).toBe('第1版');
+    expect(legalVersionLabel(12)).toBe('第12版');
+  });
+
+  test('版の題名は文書の名前の後に版の呼び名を括弧で添える', () => {
+    expect(legalVersionTitle('利用規約', 3)).toBe('利用規約(第3版)');
   });
 });

@@ -6,8 +6,9 @@ import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import {
   type LegalDocumentKind,
   legalRevisionPath,
+  legalVersionLabel,
 } from '../../../common-lib/legal/legal-documents.ts';
-import { legalVersionLabel, REVISION_HISTORY_TITLE } from './legal-messages.ts';
+import { REVISION_HISTORY_TITLE } from './legal-messages.ts';
 
 export interface LegalRevisionSummary {
   readonly versionNumber: number;

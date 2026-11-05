@@ -4,6 +4,7 @@ import { useId } from 'react';
 import {
   type LegalDocumentKind,
   legalRevisionPath,
+  legalVersionLabel,
 } from '../../../common-lib/legal/legal-documents.ts';
 import {
   AdminDataTable,
@@ -12,7 +13,6 @@ import {
 import { DateTime } from '../../../lib/components/datetime/date-time.tsx';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import type { AdminLegalRevisionView } from '../../graphql/admin-legal-documents.ts';
-import { legalVersionLabel } from './legal-documents-messages.ts';
 import { DELETED_ADMIN_LABEL } from './legal-editor-messages.ts';
 import {
   LEGAL_REVISION_COLUMNS,

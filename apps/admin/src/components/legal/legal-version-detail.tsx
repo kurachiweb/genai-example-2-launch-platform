@@ -1,6 +1,7 @@
 import {
   LEGAL_DOCUMENT_EXTERNAL_LINK_REL,
   legalRevisionPath,
+  legalVersionLabel,
 } from '../../../common-lib/legal/legal-documents.ts';
 import { DateTime } from '../../../lib/components/datetime/date-time.tsx';
 import { MarkdownContent } from '../../../lib/components/markdown/markdown-content.tsx';
@@ -8,7 +9,6 @@ import { useMarkdownOptions } from '../../../lib/components/markdown/use-markdow
 import { useRenderedMarkdown } from '../../../lib/components/markdown/use-rendered-markdown.ts';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import type { AdminLegalVersionView } from '../../graphql/admin-legal-documents.ts';
-import { legalVersionLabel } from './legal-documents-messages.ts';
 import { DELETED_ADMIN_LABEL } from './legal-editor-messages.ts';
 import {
   LEGAL_REVISION_COLUMNS,
