@@ -114,7 +114,7 @@
   - _Depends: 4.1_
   - _Requirements: 5.1, 5.3, 5.4, 5.5_
 
-- [ ] 5. チャットと管理者の操作のユースケース
+- [x] 5. チャットと管理者の操作のユースケース
 - [x] 5.1 本人の閲覧・追加メッセージ・自分の一覧のユースケースを作る
   - 先に、ポートを偽物にして、本人以外・不在・論理削除の問い合わせが見つからない扱いになること、停止中の本人は閲覧でき送信の可否が偽になること、停止中の送信の拒否、本文の規則の違反の拒否、「対応済」への送信で「未対応」へ戻る値が渡り監査ログの準備を呼ばないこと、自分の一覧が20件ずつであることを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、追加メッセージの保存に失敗したとき添付が解放される
@@ -134,7 +134,7 @@
   - _Boundary: InquiryStatusService_
   - _Requirements: 12.2, 12.3, 15.1, 15.3_
 
-- [ ] 5.4 (P) 未ログインの問い合わせの保持期間のジョブを作る
+- [x] 5.4 (P) 未ログインの問い合わせの保持期間のジョブを作る
   - 先に、ポートを偽物にして、閾値が実行時刻の14日前になること、500件ずつ最大20回で止まり残りを翌日に回すことを確かめる単体テストを書く
   - 業務時刻4:21・`order` 300で登録する定義を用意する
   - 完了状態: 単体テストが成功し、削除件数がログに残る
@@ -320,3 +320,4 @@
 - 5.1: `StoreInquiryChatService`(`application/inquiry/inquiry-chat-service.ts`)。本文は`checkChatMessage`で検証し値を変えずに保存する(coding/005。4.3の最初のメッセージと同じ。管理者の返信も同じにする)。違反は`inquiryChatMessageRejectedError`(欄`body`、「メッセージに使用できない文字が含まれています。」「メッセージを入力してください。」「メッセージは1,000文字以内で入力してください。」。設計に無く、5.2の返信が再利用し、12.2で文言規則へ写す)。保存が`not-found`(確認の後に論理削除)なら解放して`inquiry_not_found`。6.1への申し送り(ステータスの競合): ユースケースは読んだ時点のステータスから`nextStatus`を渡すため、ストアが条件なしで書くと先に確定した管理者の変更を上書きする。6.1で(a)SQLの`CASE`でDBの現在の値から原子的に戻す(4つのステータスで`statusAfterUserMessage`との一致をWorkers統合テストで確かめる。`nextStatus`の引数が不要になれば5.1の呼び出しとdesign.mdのポートも直す)か、(b)読んだ時点のステータスを条件にして`conflict`を返すかを決める。`status_changed_at`の「変わるときだけ」もDBの現在の値で判定し、メッセージの`INSERT`にも`deleted_at IS NULL`の条件を付ける
 - 5.2: `StoreInquiryAdminService`(`inquiry-admin-service.ts`、結果の型`AdminInquiryView`はログイン・未ログインの判別共用体)と`StoreInquiryReplyService`(`inquiry-reply-service.ts`、`InquiryReplyInput`・`InquiryReplyResult`)。返信は`checkChatMessage`→`InquiryAdminReader.findDetail`(設計の`findById`から変え、design.mdも改めた)→`checkReplyable`→`prepare`→`appendAdminReply`(`not-found`・`withdrawn`はエラー)→`UserContactDirectory.findContact`→`sendReplyNotification`。保存の後の連絡先の照会と送信の失敗は`reply-notification-failed`(属性は`inquiryId`だけ)で報告して`notificationQueued: false`(管理者の再送による二重の返信を防ぐ)。退会済みは`deletedAt !== null`で判定する。6.xへの申し送り: (1)`D1InquiryAdminReader.findDetail`と`listMessages`は論理削除した(退会済みの)ログインの問い合わせも返す(絞ると退会済みが`inquiry_not_found`になり要件10.7の表示も壊れる)。(2)`appendAdminReply`は同じ一括の書き込みで退会を確かめ直し`withdrawn`を返す。(3)要件14.2(未対応の件数に退会済みを数えない)は`countUnhandled`が担うため6.2のWorkers統合テストで確かめる。7.3への申し送り: 管理者の返信の送信者は`adminId`だけを返し、ニックネームと削除済みはリゾルバで`AdminDirectory.findProfiles`が解決する。`member`が無ければGraphQLで`null`、未ログインの`messages`はリゾルバが組み立てる
 - 5.3: `StoreInquiryStatusService`(`inquiry-status-service.ts`)は`findDetail`→`checkStatusChangeable`→`prepare`→`change`。5.2に合わせて`InquiryAdminReader.findDetail`で読むため、ポートの`InquiryStatusStore.find`を消した(design.mdも改めた。6.2の`D1InquiryStatusStore`は`change`だけ)。ストアへ渡す`InquiryStatusTarget`は`kind`・`id`・読んだ時点の`status`・`withdrawn`で、6.2は「`id`と`status`が一致し、ログインなら`deleted_at IS NULL`」を条件にし、退会の確定との競合も`conflict`になる。同じ値への変更は`inquiryStatusUnchangedError()`(欄`status`・コード`unchanged`・「現在と異なるステータスを選択してください。」。設計に無く12.2で文言規則へ)。変更後の`AdminInquiryDetail`(ステータスと`statusChangedAt`だけ差し替え)を返すため、メッセージや利用者の表示が要る時は7.3のリゾルバが読み直す
+- 5.4: ジョブは`application/inquiry/jobs/guest-inquiry-retention-job.ts`(閾値は予定時刻−14×24時間、500件ずつ最大20回、ログは`info`で`deleted`・`batches`・`limitReached`、例外は捕まえない)。定義`GUEST_INQUIRY_RETENTION_JOB_DEFINITION`(`inquiry-chat.guest-inquiry-retention`・4:21・`order` 300)をexportしたため、7.1は`composition/scheduled-jobs.ts`の`SCHEDULED_JOBS`の`order` 210と810の間にこの定数をそのまま入れ、同じ値をインラインで書き直さない(既存のジョブはインラインで書く)。対象を「対応済」「却下」と14日の境界に絞る正しさは6.1のWorkers統合テストで確かめる。12.xへの申し送り: ログのカテゴリ`['api', 'inquiry', 'guest-rate-limit']`(4.2)・`['api', 'inquiry', 'guest-inquiry-retention']`を`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`のカテゴリの表(admin-foundationが自分のカテゴリを加えた表)か`project-values.md`へ足すかを決める
