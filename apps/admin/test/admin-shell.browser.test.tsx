@@ -9,6 +9,7 @@ import { Route as DashboardRoute } from '../src/routes/_authenticated/index.tsx'
 import { Route as LoginRoute } from '../src/routes/auth/login.tsx';
 import {
   AdminLogoutDocument,
+  AdminUnhandledInquiryCountDocument,
   AdminViewerDocument,
 } from '../src/graphql/generated/graphql.ts';
 import { buildAdminPageHead } from '../src/head/page-heads.ts';
@@ -36,6 +37,7 @@ const NOT_FOUND_TITLE = 'ページが見つかりません。';
 const NAVIGATION_NAME = '管理メニュー';
 const MENU_ITEMS = [
   'ダッシュボード',
+  '問い合わせ',
   'カテゴリ',
   '法務文書',
   '管理者アカウント',
@@ -75,13 +77,24 @@ const createRoutes = (rootRoute: PageRootRoute) => {
   ];
 };
 
+const UNHANDLED_INQUIRY_COUNT_RESULT = Object.freeze({
+  ok: true,
+  data: { adminUnhandledInquiryCount: 2 },
+});
+
 beforeEach(async () => {
   executeGraphQL.mockReset();
+  executeGraphQL.mockImplementation((document: unknown) => {
+    if (document === AdminUnhandledInquiryCountDocument) {
+      return Promise.resolve(UNHANDLED_INQUIRY_COUNT_RESULT);
+    }
+    throw new Error('想定していない操作が実行されました。');
+  });
   await page.viewport(1280, 800);
 });
 
 describe('管理画面のシェル', () => {
-  test('ログイン後のダッシュボードに、空状態と登録箇所のメニューとアカウントの表示を出す', async () => {
+  test('ログイン後のダッシュボードに、登録箇所のカードとメニューとアカウントの表示を出す', async () => {
     await renderPageRouter({
       path: '/',
       createRoutes,
@@ -90,8 +103,8 @@ describe('管理画面のシェル', () => {
 
     await expect.element(pageTitle()).toHaveTextContent('ダッシュボード');
     await expect
-      .element(main().getByText('表示できる項目はまだありません。'))
-      .toBeVisible();
+      .element(main().getByRole('region', { name: '未対応の問い合わせ' }))
+      .toHaveTextContent('2件');
     await expect.element(navigation()).toBeVisible();
     expect(
       Array.from(
@@ -123,6 +136,9 @@ describe('管理画面のシェル', () => {
       if (document === AdminLogoutDocument) {
         signedIn = false;
         return Promise.resolve({ ok: true, data: { adminLogout: true } });
+      }
+      if (document === AdminUnhandledInquiryCountDocument) {
+        return Promise.resolve(UNHANDLED_INQUIRY_COUNT_RESULT);
       }
       throw new Error('想定していない操作が実行されました。');
     });

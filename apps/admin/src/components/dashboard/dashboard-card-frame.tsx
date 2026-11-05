@@ -1,4 +1,4 @@
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useId, useRef } from 'react';
 
 import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { ErrorState } from '../../../lib/components/state/error-state.tsx';
@@ -32,13 +32,20 @@ export function DashboardCardFrame({
   children,
 }: DashboardCardFrameProps) {
   const headingId = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   return (
     <section
       aria-labelledby={headingId}
       className="flex h-full flex-col gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm"
     >
-      <h2 id={headingId} className="text-lg font-bold wrap-anywhere">
+      {/* 再試行で消える再試行のボタンからフォーカスを<body>へ落とさないよう、移り先としてプログラムからだけフォーカスできるようにする */}
+      <h2
+        id={headingId}
+        ref={headingRef}
+        tabIndex={-1}
+        className="rounded-sm text-lg font-bold wrap-anywhere"
+      >
         {href === undefined ? (
           title
         ) : (
@@ -54,7 +61,10 @@ export function DashboardCardFrame({
       {state.status === 'error' ? (
         <ErrorState
           message={errorMessageOf(state.error, ADMIN_PROFILE.contactAvailable)}
-          onRetry={state.retry}
+          onRetry={() => {
+            headingRef.current?.focus();
+            state.retry();
+          }}
         />
       ) : null}
       {state.status === 'success' ? children : null}

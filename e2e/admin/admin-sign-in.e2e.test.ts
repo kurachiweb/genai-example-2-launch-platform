@@ -5,7 +5,7 @@ import {
   REQUIRED_SUFFIX,
   TOTP_CODE_LABEL,
 } from '../../apps/admin/src/components/auth/admin-auth-messages.ts';
-import { DASHBOARD_EMPTY_TITLE } from '../../apps/admin/src/components/dashboard/dashboard-messages.ts';
+import { UNHANDLED_INQUIRIES_TITLE } from '../../apps/admin/src/components/inquiry/admin-inquiries-messages.ts';
 import {
   accountMenuButton,
   ADMIN_FLOW_TIMEOUT_MS,
@@ -44,7 +44,7 @@ const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
 const EXPIRY_TOLERANCE_MS = 10 * 60 * 1000;
 
 test.describe('最初の最上位管理者とログイン', () => {
-  test('招待の発行コマンドのリンクから招待を完了するとダッシュボードが空の状態で表示され、ログアウトの後は認証コードとリカバリコードでログインできる', async ({
+  test('招待の発行コマンドのリンクから招待を完了すると登録したカードを並べたダッシュボードが表示され、ログアウトの後は認証コードとリカバリコードでログインできる', async ({
     page,
   }) => {
     const email = createAdminEmail();
@@ -61,7 +61,9 @@ test.describe('最初の最上位管理者とログイン', () => {
       email,
       role: 'super_admin',
     };
-    await expect(page.getByText(DASHBOARD_EMPTY_TITLE)).toBeVisible();
+    await expect(
+      page.getByRole('region', { name: UNHANDLED_INQUIRIES_TITLE }),
+    ).toBeVisible();
     await expectAdminRole(page, admin);
 
     await signOutAdmin(page, admin);

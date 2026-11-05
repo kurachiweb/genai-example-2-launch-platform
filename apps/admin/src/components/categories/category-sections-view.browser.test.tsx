@@ -175,6 +175,45 @@ describe('CategorySectionsView', () => {
     ]);
   });
 
+  test('再試行で、消えた再試行のボタンから描き直した区画の題の見出しへフォーカスを移す', async () => {
+    sectionFailing = true;
+    await renderSections([
+      sectionOf('a.product', 10, PRODUCT_TITLE, ProductSection),
+      sectionOf('b.broken', 20, BROKEN_TITLE, ThrowingSection),
+    ]);
+    await expect.element(page.getByRole('alert')).toBeVisible();
+    sectionFailing = false;
+
+    await userEvent.click(page.getByRole('button', { name: '再試行' }));
+
+    await expect
+      .element(page.getByRole('table', { name: BROKEN_TITLE }))
+      .toBeVisible();
+    await expect
+      .element(
+        page
+          .getByRole('region', { name: BROKEN_TITLE })
+          .getByRole('heading', { level: 2, name: BROKEN_TITLE }),
+      )
+      .toHaveFocus();
+  });
+
+  test('再試行でも描画に失敗したときは、その区画の題の見出しへフォーカスを移す', async () => {
+    sectionFailing = true;
+    await renderSections([
+      sectionOf('a.product', 10, PRODUCT_TITLE, ProductSection),
+      sectionOf('b.broken', 20, BROKEN_TITLE, ThrowingSection),
+    ]);
+    await expect.element(page.getByRole('alert')).toBeVisible();
+
+    await userEvent.click(page.getByRole('button', { name: '再試行' }));
+
+    await expect.element(page.getByRole('alert')).toBeVisible();
+    await expect
+      .element(page.getByRole('heading', { level: 2, name: BROKEN_TITLE }))
+      .toHaveFocus();
+  });
+
   test('GraphQLの失敗はAPIの文言で示し、取得の補助が送るためエラートラッキングへ送り直さない', async () => {
     await renderSections([
       sectionOf('a.graphql', 10, BROKEN_TITLE, ThrowingGraphQLSection),

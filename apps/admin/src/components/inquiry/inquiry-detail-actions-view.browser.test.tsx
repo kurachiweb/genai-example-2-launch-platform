@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
@@ -70,6 +71,19 @@ function ThrowingAction() {
     throw new Error('操作の描画の失敗');
   }
   return <section aria-label="回復した操作">回復した操作</section>;
+}
+
+function ThrowingHeadingAction() {
+  const headingId = useId();
+  if (actionFailing) {
+    throw new Error('操作の描画の失敗');
+  }
+  return (
+    <section aria-labelledby={headingId}>
+      <h3 id={headingId}>アカウントの停止</h3>
+      <p>利用者のアカウントを停止します。</p>
+    </section>
+  );
 }
 
 function ThrowingGraphQLAction(): never {
@@ -166,6 +180,40 @@ describe('InquiryDetailActionsView', () => {
     await userEvent.click(page.getByRole('button', { name: '再試行' }));
 
     await expect.element(page.getByText('回復した操作')).toBeVisible();
+  });
+
+  test('再試行で、消えた再試行のボタンから描き直した操作の見出しへフォーカスを移す', async () => {
+    actionFailing = true;
+    await renderActions([
+      actionOf('a.throwing', 10, ThrowingHeadingAction),
+      actionOf('b.help', 20, HelpAction),
+    ]);
+    await expect.element(page.getByRole('alert')).toBeVisible();
+    actionFailing = false;
+
+    await userEvent.click(page.getByRole('button', { name: '再試行' }));
+
+    await expect
+      .element(
+        page.getByRole('heading', { level: 3, name: 'アカウントの停止' }),
+      )
+      .toHaveFocus();
+  });
+
+  test('見出しの無い操作は、再試行で描き直した操作の名前付きの領域へフォーカスを移す', async () => {
+    actionFailing = true;
+    await renderActions([
+      actionOf('a.throwing', 10, ThrowingAction),
+      actionOf('b.help', 20, HelpAction),
+    ]);
+    await expect.element(page.getByRole('alert')).toBeVisible();
+    actionFailing = false;
+
+    await userEvent.click(page.getByRole('button', { name: '再試行' }));
+
+    await expect
+      .element(page.getByRole('region', { name: '回復した操作' }))
+      .toHaveFocus();
   });
 
   test('GraphQLの失敗はAPIの文言で示し、取得の補助が送るためエラートラッキングへ送り直さない', async () => {

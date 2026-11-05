@@ -16,6 +16,7 @@ TanStack Start・TanStack Router・TanStack Queryを使う構成を前提とす�
 | `DASHBOARD_CARDS`・`DashboardCard`                              | `composition/dashboard-cards.ts`                                                         | ダッシュボードのカードの登録箇所                                                |
 | `DashboardGrid`                                                 | `components/dashboard/dashboard-grid.tsx`                                                | カードの並びと、カードごとのエラーの境界                                        |
 | `DashboardCardFrame`・`DashboardCardState`                      | `components/dashboard/dashboard-card-frame.tsx`                                          | カードの枠・題名・状態の表示                                                    |
+| `RecoverableSlot`                                               | `components/layout/recoverable-slot.tsx`                                                 | 登録した部品ごとのエラーの境界・失敗の送信・再試行の後のフォーカス              |
 | `loadRootAuthContext`・`adminViewerQueryOptions`・`AdminViewer` | `graphql/admin-viewer.ts`                                                                | ルートの`beforeLoad`でのログイン中の管理者の取得                                |
 | `requireAdminViewer`・`redirectSignedInAdmin`                   | `components/auth/require-admin-viewer.ts`・`redirect-signed-in-admin.ts`                 | ログイン必須の領域の判定と、ログイン中のログイン画面からの移動                  |
 | `AuthenticatedLayout`・`AdminViewerProvider`                    | `components/auth/authenticated-layout.tsx`・`components/layout/admin-viewer-context.tsx` | ログイン必須の領域の文脈の配布                                                  |
@@ -124,9 +125,9 @@ export function PendingItemsCard() {
 }
 ```
 
-- `DashboardCardFrame`は、題名を`<h2>`にして`<section>`の名前にし、`href`を渡すと題名を詳しい一覧へのリンクにする。`state`は取得の状態で、TanStack Queryの`status`と同じ名前(`pending`・`error`・`success`)にする。`pending`では`LoadingSkeleton`、`error`では`ErrorState`と再試行、`success`では`children`を描く。
-- `DashboardGrid`は、カードごとにエラーの境界(`CatchBoundary`と`QueryErrorResetBoundary`)と`Suspense`で包む。1つのカードの描画や取得の失敗は、そのカードの位置に`ErrorState`を出して留め、他のカードの表示を続ける。再試行は、取得の失敗の記録とエラーの境界の両方を解除して描き直す。
-- 境界が捕まえた失敗はルーターの`defaultOnCatch`へ届かないため、`DashboardGrid`がエラートラッキングへ送る。GraphQLの失敗(`GraphQLClientError`)は`executeGraphQL`が送っているため送り直さない(「[送信の入口](007-frontend-observability.md#送信の入口)」)。
+- `DashboardCardFrame`は、題名を`<h2>`にして`<section>`の名前にし、`href`を渡すと題名を詳しい一覧へのリンクにする。`state`は取得の状態で、TanStack Queryの`status`と同じ名前(`pending`・`error`・`success`)にする。`pending`では`LoadingSkeleton`、`error`では`ErrorState`と再試行、`success`では`children`を描く。再試行のボタンは取得し直すと消えるため、押した時にフォーカスを題名の`<h2>`(`tabIndex={-1}`)へ移す(「[処理の後のフォーカス](004-accessibility-rules.md#処理の後のフォーカス)」)。
+- `DashboardGrid`は、カードごとに`RecoverableSlot`でエラーの境界(`CatchBoundary`と`QueryErrorResetBoundary`)と`Suspense`に包む。1つのカードの描画や取得の失敗は、そのカードの位置に`ErrorState`を出して留め、他のカードの表示を続ける。再試行は、取得の失敗の記録とエラーの境界の両方を解除して描き直す。再試行の後のフォーカスは、描き直したカードの題名の`<h2>`へ移し、再び失敗した時は新しい再試行のボタンへ移す(「[取得の遅い区画のストリーミング](006-data-fetching.md#取得の遅い区画のストリーミング)」と同じ規則)。`RecoverableSlot`は、登録した部品を並べる他の表示も共通で使う。
+- 境界が捕まえた失敗はルーターの`defaultOnCatch`へ届かないため、`RecoverableSlot`がエラートラッキングへ送る。GraphQLの失敗(`GraphQLClientError`)は`executeGraphQL`が送っているため送り直さない(「[送信の入口](007-frontend-observability.md#送信の入口)」)。
 - カードが1件も無ければ、表示できる項目が無い旨の`EmptyState`を描く。カードを足す機能は、空の状態を確かめるテストを更新する。
 - カードはページの最初の描画の呼び出し回数に数える(「[1ページの描画あたりの呼び出し回数の目安](006-data-fetching.md#1ページの描画あたりの呼び出し回数の目安)」)。取得の遅いカードは、ページの`loader`で待たずにカード自身が取得する。
 

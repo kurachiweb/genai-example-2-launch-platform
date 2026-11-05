@@ -140,6 +140,9 @@ export const adminInquiryCategoryOptionsQueryOptions = () =>
 export const adminInquiryQueryOptions = (id: string) =>
   graphqlQueryOptions(AdminInquiryDocument, { id });
 
+export const adminUnhandledInquiryCountQueryOptions = () =>
+  graphqlQueryOptions(AdminUnhandledInquiryCountDocument, {});
+
 export interface ChangedInquiryStatus {
   readonly status: GraphQLInquiryStatus;
   readonly statusChangedAt: string;

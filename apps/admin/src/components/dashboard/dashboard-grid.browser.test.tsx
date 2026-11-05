@@ -12,10 +12,7 @@ import {
 import { hasHorizontalScroll } from '../../../lib/test/overflow.ts';
 import { GraphQLClientError } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { renderInRouter } from '../../../test/page-router.tsx';
-import {
-  DASHBOARD_CARDS,
-  type DashboardCard,
-} from '../../composition/dashboard-cards.ts';
+import type { DashboardCard } from '../../composition/dashboard-cards.ts';
 import {
   DashboardCardFrame,
   type DashboardCardState,
@@ -99,6 +96,22 @@ function ThrowingGraphQLCard(): never {
   throw UNAVAILABLE;
 }
 
+let finishRecovery: () => void = () => undefined;
+let recovery: Promise<void> = Promise.resolve();
+
+// 失敗を止めた後は、テストが取得の完了を知らせるまで中断する
+function SlowlyRecoveringCard() {
+  if (cardFailing) {
+    throw new Error('カードの描画の失敗');
+  }
+  use(recovery);
+  return (
+    <DashboardCardFrame title="回復したカード" state={{ status: 'success' }}>
+      <p>回復した本文</p>
+    </DashboardCardFrame>
+  );
+}
+
 const pending = new Promise<never>(() => undefined);
 
 function SuspendingCard() {
@@ -177,11 +190,6 @@ afterEach(() => {
 });
 
 describe('DashboardGrid', () => {
-  test('初版の登録箇所は空', () => {
-    expect(DASHBOARD_CARDS).toStrictEqual([]);
-    expect(Object.isFrozen(DASHBOARD_CARDS)).toBe(true);
-  });
-
   test('カードが1つも無いとき、空状態を表示する', async () => {
     await renderGrid([]);
 
@@ -252,9 +260,12 @@ describe('DashboardGrid', () => {
     expect(page.getByText(CONTACT_GUIDANCE).elements()).toHaveLength(0);
   });
 
-  test('描画の失敗の再試行で、カードを描き直す', async () => {
+  test('描画の失敗の再試行で、カードを描き直し、消えた再試行のボタンから描き直したカードの見出しへフォーカスを移す', async () => {
     cardFailing = true;
-    await renderGrid([cardOf('b.broken', 20, ThrowingCard)]);
+    await renderGrid([
+      cardOf('a.statistics', 10, StatisticsCard),
+      cardOf('b.broken', 20, ThrowingCard),
+    ]);
     await expect.element(page.getByRole('alert')).toBeVisible();
     cardFailing = false;
 
@@ -262,6 +273,81 @@ describe('DashboardGrid', () => {
 
     await expect.element(page.getByText('回復した本文')).toBeVisible();
     expect(page.getByRole('alert').elements()).toHaveLength(0);
+    await expect
+      .element(
+        regionOf('回復したカード').getByRole('heading', {
+          level: 2,
+          name: '回復したカード',
+        }),
+      )
+      .toHaveFocus();
+  });
+
+  test('再試行の後の取得を待つ間に利用者がカードの外へフォーカスを移したときは、描き終えてもフォーカスを奪い返さない', async () => {
+    cardFailing = true;
+    recovery = new Promise<void>((resolve) => {
+      finishRecovery = resolve;
+    });
+    await renderInRouter(
+      <main className="p-4">
+        <button type="button">外のボタン</button>
+        <DashboardGrid cards={[cardOf('b.slow', 20, SlowlyRecoveringCard)]} />
+      </main>,
+    );
+    await expect.element(page.getByRole('alert')).toBeVisible();
+    cardFailing = false;
+
+    await userEvent.click(page.getByRole('button', { name: RETRY_LABEL }));
+    await expect
+      .element(page.getByRole('status'))
+      .toHaveTextContent('読み込み中');
+    const outsideButton = page.getByRole('button', { name: '外のボタン' });
+    await userEvent.click(outsideButton);
+    finishRecovery();
+
+    await expect.element(page.getByText('回復した本文')).toBeVisible();
+    await expect.element(outsideButton).toHaveFocus();
+  });
+
+  test('再試行の後の取得を待つ間にフォーカスがカードの位置に残っていれば、描き終えたカードの見出しへ移す', async () => {
+    cardFailing = true;
+    recovery = new Promise<void>((resolve) => {
+      finishRecovery = resolve;
+    });
+    await renderGrid([cardOf('b.slow', 20, SlowlyRecoveringCard)]);
+    await expect.element(page.getByRole('alert')).toBeVisible();
+    cardFailing = false;
+
+    await userEvent.click(page.getByRole('button', { name: RETRY_LABEL }));
+    await expect
+      .element(page.getByRole('status'))
+      .toHaveTextContent('読み込み中');
+    finishRecovery();
+
+    await expect
+      .element(
+        regionOf('回復したカード').getByRole('heading', {
+          level: 2,
+          name: '回復したカード',
+        }),
+      )
+      .toHaveFocus();
+  });
+
+  test('再試行でも描画に失敗したときは、フォーカスを新しい再試行のボタンへ移す', async () => {
+    cardFailing = true;
+    await renderGrid([
+      cardOf('a.statistics', 10, StatisticsCard),
+      cardOf('b.broken', 20, ThrowingCard),
+    ]);
+    const retryButton = page.getByRole('button', { name: RETRY_LABEL });
+    await expect.element(retryButton).toBeVisible();
+
+    await userEvent.click(retryButton);
+
+    await expect.element(page.getByRole('alert')).toBeVisible();
+    await expect.element(retryButton).toHaveFocus();
+    expect(retryButton.element().getAttribute('tabindex')).toBeNull();
   });
 
   test('GraphQLの失敗が描画から投げられたときは、その文言を示し、エラートラッキングへ送り直さない', async () => {
@@ -317,7 +403,7 @@ describe('DashboardCardFrame', () => {
     expect(page.getByText('まだ表示されない本文').elements()).toHaveLength(0);
   });
 
-  test('取得の失敗は、カードの中に文言と再試行を示し、問い合わせの導線を出さず、再試行で取得し直す', async () => {
+  test('取得の失敗は、カードの中に文言と再試行を示し、問い合わせの導線を出さず、再試行で取得し直してカードの見出しへフォーカスを移す', async () => {
     await renderGrid([cardOf('a.failed', 10, FailedQueryCard)]);
 
     const region = regionOf('失敗したカード');
@@ -332,6 +418,9 @@ describe('DashboardCardFrame', () => {
 
     expect(retry).toHaveBeenCalledOnce();
     await expect.element(region.getByText('取得し直した本文')).toBeVisible();
+    await expect
+      .element(region.getByRole('heading', { level: 2 }))
+      .toHaveFocus();
   });
 
   test('GraphQL以外の取得の失敗は、問い合わせを促す文を含めない想定外の文言を示す', async () => {

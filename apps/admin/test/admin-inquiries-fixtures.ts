@@ -20,6 +20,7 @@ import {
   AdminReplyToInquiryDocument,
   type AdminReplyToInquiryMutationVariables,
   type AdminRole,
+  AdminUnhandledInquiryCountDocument,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
 import { Route as InquiryDetailRoute } from '../src/routes/_authenticated/inquiries/$inquiryId.tsx';
@@ -232,6 +233,8 @@ export type ChangeStatusHandler = (
   variables: AdminChangeInquiryStatusMutationVariables,
 ) => Promise<unknown>;
 
+export type UnhandledCountHandler = () => Promise<unknown>;
+
 const unexpectedOperation = (): Promise<unknown> =>
   Promise.reject(new Error('想定していない操作が実行されました。'));
 
@@ -245,7 +248,7 @@ const detailById: InquiryHandler = ({ id }) => {
   return success({ adminInquiry: null });
 };
 
-// 一覧・カテゴリの選択肢・詳細・ログイン中の管理者の取得と、返信・ステータスの変更に応答し、一覧・詳細・変更はテストが渡した応答にする
+// 一覧・カテゴリの選択肢・詳細・未対応の件数・ログイン中の管理者の取得と、返信・ステータスの変更に応答し、一覧・詳細・未対応の件数・変更はテストが渡した応答にする
 export function respondAdminInquiriesGraphQL(
   executeGraphQL: Mock,
   {
@@ -254,12 +257,14 @@ export function respondAdminInquiriesGraphQL(
     inquiry = detailById,
     reply = unexpectedOperation,
     changeStatus = unexpectedOperation,
+    unhandledCount = () => success({ adminUnhandledInquiryCount: 0 }),
   }: {
     readonly role: AdminRole;
     readonly inquiries?: InquiriesHandler;
     readonly inquiry?: InquiryHandler;
     readonly reply?: ReplyHandler;
     readonly changeStatus?: ChangeStatusHandler;
+    readonly unhandledCount?: UnhandledCountHandler;
   },
 ): void {
   respondAdminGraphQL(executeGraphQL, {
@@ -286,6 +291,7 @@ export function respondAdminInquiriesGraphQL(
         (variables: unknown) =>
           changeStatus(variables as AdminChangeInquiryStatusMutationVariables),
       ],
+      [AdminUnhandledInquiryCountDocument, () => unhandledCount()],
     ]),
   });
 }

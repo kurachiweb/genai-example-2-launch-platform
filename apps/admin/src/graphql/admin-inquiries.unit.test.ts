@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { environmentManager, type QueryClient } from '@tanstack/react-query';
+import { environmentManager, QueryClient } from '@tanstack/react-query';
 import { isNotFound } from '@tanstack/react-router';
 
 import { createAppRuntimeHolder } from '../../lib/start/router-context.ts';
@@ -10,9 +10,11 @@ import {
   adminInquiriesQueryOptions,
   adminInquiryCategoryOptionsQueryOptions,
   adminInquiryQueryOptions,
+  adminUnhandledInquiryCountQueryOptions,
   inquiryDetailActionContextOf,
   loadAdminInquiriesPage,
   loadAdminInquiryPage,
+  markInquirySummariesStale,
   toAdminInquiryDetail,
   toAdminInquiryListPage,
   toInquiryCategoryOptions,
@@ -483,5 +485,20 @@ describe('loadAdminInquiryPage', () => {
       params: { inquiryId: MEMBER_ID },
     }).catch((caught: unknown) => caught);
     expect(error).toBe(failure);
+  });
+});
+
+describe('adminUnhandledInquiryCountQueryOptions', () => {
+  test('返信・ステータスの変更の後に、ダッシュボードの未対応の件数を表示中でなくても古いものとし、取得し直させない', async () => {
+    const queryClient = new QueryClient();
+    const { queryKey } = adminUnhandledInquiryCountQueryOptions();
+    queryClient.setQueryData(queryKey, { adminUnhandledInquiryCount: 3 });
+
+    await markInquirySummariesStale(queryClient);
+
+    const state = queryClient.getQueryState(queryKey);
+    expect(state?.isInvalidated).toBe(true);
+    expect(state?.fetchStatus).toBe('idle');
+    expect(state?.data).toStrictEqual({ adminUnhandledInquiryCount: 3 });
   });
 });

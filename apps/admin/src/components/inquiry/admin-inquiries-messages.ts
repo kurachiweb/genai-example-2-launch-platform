@@ -71,3 +71,7 @@ export const GUEST_REPLY_NOTICE =
   'この問い合わせへの回答は、連絡先メールアドレスへシステム外のメールで行ってください。';
 
 export const handleLabel = (handle: string): string => `@${handle}`;
+
+export const UNHANDLED_INQUIRIES_TITLE = '未対応の問い合わせ';
+
+export const INQUIRY_COUNT_UNIT = '件';

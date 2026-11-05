@@ -115,6 +115,7 @@ describe('AdminNavigation', () => {
       await expect.element(navigation()).toBeVisible();
       expect(linkLabels(navigation().element())).toStrictEqual([
         'ダッシュボード',
+        '問い合わせ',
         'カテゴリ',
         '法務文書',
         '管理者アカウント',
@@ -197,6 +198,7 @@ describe('AdminNavigation', () => {
       await expect.element(sheetNavigation).toBeVisible();
       expect(linkLabels(sheetNavigation.element())).toStrictEqual([
         'ダッシュボード',
+        '問い合わせ',
         'カテゴリ',
         '法務文書',
         '管理者アカウント',
