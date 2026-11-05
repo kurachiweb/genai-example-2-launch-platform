@@ -9,7 +9,7 @@
   - 完了状態: 列の単体テストが成功し、マイグレーションをローカルに適用でき、初期データのSQLを2回実行しても「その他」が1件だけで、大文字小文字だけが異なるカテゴリ名を追加できない
   - _Requirements: 1.1, 1.3, 3.1, 5.1, 6.1, 12.1, 13.1_
 
-- [ ] 1.2 (P) 入力の上限・添付の上限・ステータス・標準カテゴリの定数を、4アプリが共有するディレクトリに作る
+- [x] 1.2 (P) 入力の上限・添付の上限・ステータス・標準カテゴリの定数を、4アプリが共有するディレクトリに作る
   - 先に、ニックネームの25・26書記素、本文の5,000・5,001書記素、チャットの1,000・1,001書記素、前後の空白だけの入力、添付の20・21件と合計20,971,520・20,971,521バイト(1ファイルの上限も20,971,520バイト)、4種のステータスの表示名を確かめる単体テストを書く
   - 書記素の数え方は共有の部品を使う。添付の用途名と上限は仮3の値(合計・1ファイルとも20,971,520バイト。media-pipelineのアップロードの上限の最大値と同じ)にする
   - 完了状態: 単体テストが成功し、利用者側・管理者側・APIサーバーの型検査で配置先から読み込める
@@ -302,3 +302,4 @@
 ## Implementation Notes
 
 - 1.1: テーブルは`apps/db/schema/inquiry/`、マイグレーションは`20261105014859_inquiry_chat`(テーブル)と`20261105014904_inquiry_chat_seed`(初期データ、名前の衝突で何もしない)。「その他」の固定ID`01JC0000000000000000000000`のULIDの時刻部に合わせ`created_at`・`updated_at`は`1730871820288`。ステータスの値はスキーマの`INQUIRY_STATUS_VALUES`(`member-inquiries.ts`がexportし`guest-inquiries.ts`が再利用。スキーマはcommon-libを読み込めない)のため、1.2でcommon-libの`INQUIRY_STATUSES`との一致を単体テストで確かめる(legal-pagesの`legal-columns.unit.test.ts`と同じ形)。`status`の既定値は`open`、`system_default`の既定値は偽。添付の表は複合主キーで共通カラムなし、メッセージは`created_at`のみ(design.mdに従う。db/003の原則と異なる点は最終の報告に挙げる)。ローカルD1に以前の試行の残骸(`20261104124132_inquiry_chat`・`20261104124136_inquiry_chat_seed`の記録と5テーブル)があったため、ローカルの状態だけで消して適用し直した
+- 1.2: 共有の定義は`apps/common-lib/inquiry/`の4ファイル(`inquiry-input-rules.ts`・`inquiry-attachment-limits.ts`・`inquiry-status.ts`・`inquiry-category-constants.ts`)。3つの入力の検証(`checkGuestNickname`・`checkInquiryBody`・`checkChatMessage`)はcoding/005に従い`'forbidden-character'`も返す(禁止文字→空→長すぎるの順、禁止文字は前後の空白を除く前に調べる。design.mdの契約も改めた)。この違反の文言は設計と文言規則に無いため、GraphQLの入力の検証(7.2)と画面(9.x・10.2)で決め、12.2で文言規則へ足す。ニックネームの改行は許可(identityの`checkNickname`と同じ)。メールアドレスの長さはidentityの`EMAIL_MAX_LENGTH`を使う。添付の上限はリテラルで書き`MAX_UPLOAD_BYTES`との一致を単体テストで確かめる。`checkAttachmentTotals`は件数→合計の順で、1ファイルの上限は`maxFileBytes`として出し用途側で守る。スキーマのステータスとの一致は`apps/api/src/application/inquiry/inquiry-columns.unit.test.ts`。`INQUIRY_CATEGORY_OTHER_ID`と初期データのIDの一致は3.2のWorkers統合テストで確かめるとよい

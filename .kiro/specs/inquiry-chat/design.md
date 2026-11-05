@@ -464,20 +464,21 @@ stateDiagram-v2
 **Contracts**: State [x]
 
 ```typescript
-// inquiry-input-rules.ts(書記素はcountGraphemes、前後の空白を除いてから数える)
+// inquiry-input-rules.ts(使用できない文字は前後の空白を除く前の入力で調べ、書記素はcountGraphemesで前後の空白を除いてから数える。判定の順は使用できない文字→空→上限)
 export declare const GUEST_NICKNAME_MAX: 25;
 export declare const INQUIRY_BODY_MAX: 5000;
 export declare const CHAT_MESSAGE_MAX: 1000; // 利用者の追加メッセージと管理者の返信
 // 連絡先メールアドレスの長さはcommon-lib/identity/account-input-rules.tsのEMAIL_MAX_LENGTH(254)を使う
+export type InquiryTextIssue = 'forbidden-character' | 'empty' | 'too-long';
 export declare function checkGuestNickname(
   value: string,
-): 'empty' | 'too-long' | undefined;
+): InquiryTextIssue | undefined;
 export declare function checkInquiryBody(
   value: string,
-): 'empty' | 'too-long' | undefined;
+): InquiryTextIssue | undefined;
 export declare function checkChatMessage(
   value: string,
-): 'empty' | 'too-long' | undefined;
+): InquiryTextIssue | undefined;
 
 // inquiry-attachment-limits.ts
 export declare const INQUIRY_ATTACHMENT_PURPOSE: 'inquiry-attachment';
