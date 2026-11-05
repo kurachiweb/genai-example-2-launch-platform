@@ -100,7 +100,8 @@ export class StripePriceCatalog implements PriceCatalog {
       throw new AppError({
         kind: 'unavailable',
         code: 'payments_unavailable',
-        message: '現在、決済をご利用いただけません。',
+        message:
+          '現在、決済をご利用いただけません。閲覧やその他の操作はご利用いただけます。',
       });
     }
     this.logger.warn(

@@ -175,7 +175,7 @@
   - _Requirements: 2.8, 2.9, 12.10_
 
 - [ ] 6. APIサーバーのユースケース
-- [ ] 6.1 APIサーバーの決済の識別子と、決済の開始・利用者単位の回数制限を作る
+- [x] 6.1 APIサーバーの決済の識別子と、決済の開始・利用者単位の回数制限を作る
   - APIサーバーの決済の全ユースケースとジョブのDIの識別子を1つのファイル(前例の`identity-types.ts`・`inquiry-types.ts`と同じく`application/payments/payments-types.ts`)に先に定義する(6.2・6.3はこれを使う)
   - 決済のエラーコードと文言と`AppError`の生成を、前例の`inquiry-errors.ts`と同じくapplication層の`application/payments/payments-errors.ts`に単体テスト付きで置く(presentationの`errors.ts`は入力の検証の文言だけを持つ)。6.2・6.3・7.1はこれを使う
   - application層に、回数制限(`CheckoutStartLimits`)・購入の置き換えと作成の書き込みの単位(`CheckoutPurchaseWriter`)・購入の可否の口の解決(`PurchaseOfferPolicyResolver`)のポートを置く。決済の開始は購入種別の登録を`PAYMENTS_TYPES.PurchaseKindRegistry`で、その他の共有部品を`core/payments`の型と識別子で受け取り、`**/lib/workers/**`を型も含めて読み込まない
@@ -368,3 +368,4 @@
 - 5.5: 純収益の照会は`workers/payments/d1-payment-revenue-report.ts`の`D1PaymentRevenueReport`(`{ appName, db }`)、価格の照会は`price-catalog.ts`の`StripePriceCatalog`(`{ appName, gateway, snapshots, clock }`)、エクスポートは`payment-history-export.ts`の`StoredPaymentHistoryExport`(`{ records }`)。いずれも`@injectable`無し(5.7で束縛)。期間の誤りは`AppError(bad_request, validation_error)`。価格は`StripeUnavailableError`のときだけ保持の値(`stale: true`)を返す
 - 5.6: 失効は`workers/payments/open-checkout-expirer.ts`の`StripeOpenCheckoutExpirer`(`{ appName, gateway, purchases, reflection, ids, clock }`、`@injectable`無し)。`remaining`は上限の外に`open`の購入が残っているか(`processing`は数えない)。上限は1〜50の整数(範囲外は`RangeError`)
 - 5.7: 両アプリ共通の束縛は`workers/payments/payments-platform-module.ts`の`createPaymentsPlatformModule(appName)`(関数。識別子はすべて`PAYMENTS_TYPES`)。api・eventのモジュール一覧に加えるときは`EMAIL_PLATFORM_MODULE`と`IDENTITY_PLATFORM_MODULE`も同じ一覧に要る(通知の部品が使う)。Webhookの署名の検証は共通の束縛に含めず、8.4でイベントサーバーが束縛する。疎通確認の最終確認画面の文言(分量「1件」・役務の提供時期「提供する役務はありません」)は仮で、画面のタスクで文言規則に載せるかを確かめる
+- 6.1: APIサーバーの識別子は`apps/api/src/application/payments/payments-types.ts`の`API_PAYMENTS_TYPES`、エラーは`payments-errors.ts`の`PAYMENTS_ERRORS`(`payments_unavailable`の文言は価格の照会と同じ全文)。決済の開始は`checkout-starter.ts`の`StripeCheckoutStarter`、回数制限と購入の書き込みは`apps/api/src/infrastructure/payments/`。application層は`**/lib/workers/**`を型も含めて読み込めない(ESLint)。12.x: `docs/GUIDES/service/design/003-text-and-copy-rules.md`の縮退運転の文言を設計のError Handlingの表に揃える
