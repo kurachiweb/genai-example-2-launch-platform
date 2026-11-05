@@ -739,7 +739,7 @@ export interface InquirerProfiles {
   findMany(
     userIds: readonly string[],
   ): Promise<ReadonlyMap<string, InquirerProfile>>;
-} // 既定のD1実装はavatarFileIdを常にnull
+} // 既定のD1実装はavatarFileIdを常にnull。退会済み(論理削除)・停止中の利用者も返す(差し替える実装も守る。停止中を空にするのはリゾルバ)
 export interface InquiryMailer {
   sendReplyNotification(input: {
     readonly to: string;
