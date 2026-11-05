@@ -66,14 +66,14 @@
   - 完了状態: 単体テストが成功し、管理画面の監査ログのブラウザテストとE2Eが通る
   - _Requirements: 4.1, 9.2, 10.3_
 
-- [ ] 2. ドメインの規則
+- [x] 2. ドメインの規則
 - [x] 2.1 (P) 対応ステータスの遷移と管理操作の可否の規則を作る
   - 先に、利用者の送信で「対応済」「却下」だけが「未対応」へ戻り「未対応」「対応中」は変わらないこと、退会済みと未ログインの問い合わせへの返信の拒否、退会済みのステータスの変更の拒否、同じ値への変更の拒否を確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、拒否の理由が退会済み・返信できない種別・変更なしで区別される
   - _Boundary: InquiryStatusRules_
   - _Requirements: 8.2, 10.7, 11.5, 11.7, 12.3_
 
-- [ ] 2.2 (P) カテゴリの保護・並び順と、添付の選択の判定の規則を作る
+- [x] 2.2 (P) カテゴリの保護・並び順と、添付の選択の判定の規則を作る
   - 先に、標準カテゴリの名前の変更と削除の拒否、追加の順に並び標準カテゴリが末尾になること、添付の件数・合計の超過、存在しない・他人の・用途違いの・保存未完了の・削除済みのファイル、重複したIDを1件として扱うことを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、添付の違反が件数超過・合計超過・無効なIDの一覧で区別される
   - _Boundary: InquiryCategoryRules, AttachmentSelection_
@@ -311,3 +311,4 @@
 - 1.8: `CategoryMasterEditor`の`deleteDescriptionOf`・`deleteAudited`(既定は偽)を足した。説明は閉じる途中も残る削除の対象から作る。部品の削除の確認は理由の入力欄を持たない(`reason="none"`)ため、`inquiry-category.delete`の理由は`optional`でも画面では入力できない(008の「確認のダイアログは理由の要否を操作種別に合わせる」とのずれは最終の報告に挙げる)
 - 1.9: 前後のページの補助は`apps/frontend-lib/utilities/pagination/cursor-trail.ts`(`EMPTY_CURSOR_TRAIL`・`previousPageOf`・`trailAfterNext`)。bot判定の操作名の写しの検査は`config/contract-copies.unit.test.ts`の`BOT_ACTION_COPIES`の配列で、7.2・9.1は本specの`INQUIRY_BOT_ACTIONS`と`components/inquiry/bot-actions.ts`の組をこの配列に足す(写しの先頭のコメントは「…の写し。一致はルートのconfig/contract-copies.unit.test.tsが確かめる」の形)。Bunの`test.each`は`$label`の直後の日本語を変数名に含めるため位置の`%s`を使う。監査ログのE2Eは`e2e/admin/admin-accounts.e2e.test.ts`にある(前後のページは確かめていない)
 - 2.1: 規則は`apps/api/src/domain/inquiry/inquiry-status-rules.ts`(`statusAfterUserMessage`・`checkReplyable`・`checkStatusChangeable`と`AdminOperationDenial`)。戻り値は`Extract`で絞り、`checkReplyable`は未ログインを先に、`checkStatusChangeable`は退会済みを先に判定する。`domain/admin/admin-account.ts`にも同名の`AdminOperationDenial`があるため、検索で混同しないこと
+- 2.2: 規則は`apps/api/src/domain/inquiry/inquiry-category-rules.ts`(`checkCategoryEditable`は標準カテゴリを`'protected'`、`sortCategories`は作成日時→IDの昇順で標準カテゴリを末尾)と`attachment-selection.ts`(`checkAttachmentSelection`は重複IDを1件にし、件数超過→無効なID→合計超過の順。無効なIDは重複を除き要求の順)。候補の`ownerKind`は`lib/core`の`MediaOwner['kind']`。4.1への申し送り: (1)候補の`deleted`は`deletedAt !== null || eraseRequested`にする(`MediaFilesService.claimFailureOf`と同じ)。(2)候補も`claim`も紐付け済み(`attached`)を調べず、`D1MediaFileStore.attach`も紐付け済みのファイルを通すため、自分の添付を別のメッセージへ使い回せる。4.1で紐付け済みのファイルを無効として扱うかを決める
