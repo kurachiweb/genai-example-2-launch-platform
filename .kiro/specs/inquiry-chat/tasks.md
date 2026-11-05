@@ -67,7 +67,7 @@
   - _Requirements: 4.1, 9.2, 10.3_
 
 - [ ] 2. ドメインの規則
-- [ ] 2.1 (P) 対応ステータスの遷移と管理操作の可否の規則を作る
+- [x] 2.1 (P) 対応ステータスの遷移と管理操作の可否の規則を作る
   - 先に、利用者の送信で「対応済」「却下」だけが「未対応」へ戻り「未対応」「対応中」は変わらないこと、退会済みと未ログインの問い合わせへの返信の拒否、退会済みのステータスの変更の拒否、同じ値への変更の拒否を確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、拒否の理由が退会済み・返信できない種別・変更なしで区別される
   - _Boundary: InquiryStatusRules_
@@ -310,3 +310,4 @@
 - 1.7: `AuditGuard`はapiの`infrastructure/admin/audit-log-statements.ts`にあり、`{ kind: 'condition', condition: SQL }`を足した(`guardCondition`は`default`なしの網羅の`switch`)。`condition`は操作者の状態の確認を自動では付けない。テストの条件は`admins`表で作ったため、問い合わせの表の条件での取り消しは6.1・6.2のWorkers統合テストで確かめる
 - 1.8: `CategoryMasterEditor`の`deleteDescriptionOf`・`deleteAudited`(既定は偽)を足した。説明は閉じる途中も残る削除の対象から作る。部品の削除の確認は理由の入力欄を持たない(`reason="none"`)ため、`inquiry-category.delete`の理由は`optional`でも画面では入力できない(008の「確認のダイアログは理由の要否を操作種別に合わせる」とのずれは最終の報告に挙げる)
 - 1.9: 前後のページの補助は`apps/frontend-lib/utilities/pagination/cursor-trail.ts`(`EMPTY_CURSOR_TRAIL`・`previousPageOf`・`trailAfterNext`)。bot判定の操作名の写しの検査は`config/contract-copies.unit.test.ts`の`BOT_ACTION_COPIES`の配列で、7.2・9.1は本specの`INQUIRY_BOT_ACTIONS`と`components/inquiry/bot-actions.ts`の組をこの配列に足す(写しの先頭のコメントは「…の写し。一致はルートのconfig/contract-copies.unit.test.tsが確かめる」の形)。Bunの`test.each`は`$label`の直後の日本語を変数名に含めるため位置の`%s`を使う。監査ログのE2Eは`e2e/admin/admin-accounts.e2e.test.ts`にある(前後のページは確かめていない)
+- 2.1: 規則は`apps/api/src/domain/inquiry/inquiry-status-rules.ts`(`statusAfterUserMessage`・`checkReplyable`・`checkStatusChangeable`と`AdminOperationDenial`)。戻り値は`Extract`で絞り、`checkReplyable`は未ログインを先に、`checkStatusChangeable`は退会済みを先に判定する。`domain/admin/admin-account.ts`にも同名の`AdminOperationDenial`があるため、検索で混同しないこと
