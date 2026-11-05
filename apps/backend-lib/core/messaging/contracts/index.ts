@@ -4,6 +4,7 @@ import {
   PURGE_IMAGE_CACHE_MESSAGE,
   RELOCATE_FILES_MESSAGE,
 } from '../../media/media-messages.ts';
+import { PAYMENTS_REFUND_MESSAGE } from '../../payments/refund-message.ts';
 import type { MessageContract } from '../message-contract.ts';
 import {
   RECHECK_DISPOSABLE_EMAIL_MESSAGE,
@@ -20,4 +21,5 @@ export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
     PURGE_IMAGE_CACHE_MESSAGE,
     RUN_USER_LIFECYCLE_MESSAGE,
     RECHECK_DISPOSABLE_EMAIL_MESSAGE,
+    PAYMENTS_REFUND_MESSAGE,
   ]);

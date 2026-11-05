@@ -59,7 +59,7 @@
   - 完了状態: 単体テストが成功し、判定がデータベースや時計に依存しない
   - _Requirements: 3.6, 3.7, 3.8, 7.3, 8.1, 8.3_
 
-- [ ] 2.3 (P) Stripeの通知の正規化と、返金のメッセージの契約を作る
+- [x] 2.3 (P) Stripeの通知の正規化と、返金のメッセージの契約を作る
   - 先に、受け付ける15種の通知がそれぞれ決済セッション・請求・返金・チャージバックの段階・定期課金の指示になり、他の種類が無視の指示になること、発生時刻が通知の時刻から作られること、返金のメッセージの本文の検証を確かめる単体テストを書く
   - 通知の正規化と`payments.refund-payment`のメッセージの契約を作り、メッセージの集約点へ加える
   - 完了状態: 単体テストが成功し、メッセージの契約の一覧の検査(既存の設定の単体テスト)が新しい契約を含めて成功する
@@ -353,3 +353,4 @@
 - 1.4: LinkはCSPに`https://link.com`と`https://*.link.com`(frame-src・connect-src・img-src)を要するが、frontend-libの`ORIGIN_PATTERN`はワイルドカードを拒否する(research.mdの「タスク1.4の調査」)。10.1で扱いを決める
 - 1.4: 制限付きキーの権限は`docs/GUIDES/tech/operations/004-payment-data-operations.md`の表が正(Stripeに単独の返金の権限は無く「Charges and Refunds」)。Stripeの呼び出しを加えるタスクは表と突き合わせる
 - 2.1: 反映の指示`ReflectionInstruction`と結果`ReflectionOutcome`は`core/payments/ports.ts`にある(2.3の正規化はここから型を読み込み、二重に定義しない)。`lib/core/**`は`drizzle-orm*`を読み込めない(apiのESLintが共有ディレクトリを検査する)
+- 2.3: 8.2・8.4で返金の処理を作るとき、project-values.mdのメッセージの表の`payments.refund-payment`の行に再試行の方針(5回)を書き足す

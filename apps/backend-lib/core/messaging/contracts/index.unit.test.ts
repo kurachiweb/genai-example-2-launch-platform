@@ -6,6 +6,7 @@ import {
   PURGE_IMAGE_CACHE_MESSAGE,
   RELOCATE_FILES_MESSAGE,
 } from '../../media/media-messages.ts';
+import { PAYMENTS_REFUND_MESSAGE } from '../../payments/refund-message.ts';
 import {
   RECHECK_DISPOSABLE_EMAIL_MESSAGE,
   RUN_USER_LIFECYCLE_MESSAGE,
@@ -53,6 +54,10 @@ describe('MESSAGE_CONTRACTS', () => {
     ],
   ])('%sを集約している', (_label, contract) => {
     expect(MESSAGE_CONTRACTS).toContain(contract);
+  });
+
+  test('返金の実行の契約payments.refund-paymentを集約している', () => {
+    expect(MESSAGE_CONTRACTS).toContain(PAYMENTS_REFUND_MESSAGE);
   });
 
   test('集約点は凍結されていて実行時に契約を追加できない', () => {
