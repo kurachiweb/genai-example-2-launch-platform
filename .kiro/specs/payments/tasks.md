@@ -122,7 +122,7 @@
   - _Requirements: 6.9, 8.8, 9.1_
 
 - [ ] 5. 反映・返金・通知の共有部品
-- [ ] 5.1 返金の依頼の部品を作る
+- [x] 5.1 返金の依頼の部品を作る
   - 先に、Workers統合テストで、全額と一部の依頼の受け付けと記録と送信、同じ依頼キーの2回目の重複の返却(`request`と`prepare`の両方。依頼キーの形式の検査が照会より先で、既に存在する`reflection:`の依頼キーでも`invalid_request_key`で拒否する。`prepare`の2回目は既存の依頼の識別と重複の印と空の文を返し、新しい行を作らない。金額や理由が異なっても、残りの額を超える金額でも拒否しない。確定前の2つの依頼の文が同じ依頼キーで重なると、後から確定する一括の書き込みが一意制約で失敗する)、支払額を超える依頼・未確定・存在しない購入の拒否、依頼元の一括の書き込みに含める文の返却と確定後の送信、反映からの経路(購入の状態とPaymentIntentのIDを検査せず、引数の支払額から全額の返金の依頼の行を`reflection:<購入ID>`の依頼キーで作り、前進の文と同じ一括の書き込みでだけ確定する)、後続specの経路(`request`・`prepare`)が`reflection:`で始まる依頼キーを拒否すること、送信の失敗で送信待ちが残ることを確かめる
   - 1つの実装で、`core/payments`の返金の依頼(`request`・`dispatch`)と`workers/payments/statement-contracts.ts`の返金の依頼の文(`prepare`・`prepareForReflection`)の両方を実装する
   - 完了状態: Workers統合テストが成功し、依頼の受け付けがStripeの呼び出しを待たずに返る
@@ -361,3 +361,4 @@
 - 4.1: 版の検査付きの一括の書き込みは`workers/payments/guarded-batch.ts`の`D1GuardedBatch`。決済セッションの記録の版の検査付きの挿入は`checkout-record-guard.ts`の`checkoutRecordGuardedInsert(db, record, guard)`で、4.2の`D1PaymentRecordStore.insertCheckoutRecordGuarded`はこれに委ねる。1文の前進は`PurchaseStore.advanceAlone`(行き先は`processing`・`expired`だけ)、前進の元は呼び出し側が`ADVANCEABLE_FROM`から渡す。`findOpenByUser`はopen・processing、`findOpenByTarget`はopenだけ、突合と日次の確認の対象はopen・processing・superseded(決済セッションIDの無い購入を除く)。テストの補助は`testing/payment-store-fixtures.ts`
 - 4.2: `upsertByReference`は`記録済みのlast_event_at <= 受け取ったlast_event_at`のときだけ更新し、同意の日時と版・購入ID・関連ID・Linkの資金源のグループはcoalesceで既存の値を残す。5.4(必須): 初回の請求の`invoice.paid`が決済セッションの反映より先に届くと、決済セッションの記録の挿入が一意キーの衝突で無視され、同意の日時と版(12.6)とLinkの資金源のグループが記録されない。請求の反映で持ち主の購入を特定できたら、購入の同意の日時・版・購入IDを`NewPaymentRecord`に写し、「請求が決済セッションより先に届いても同意が残る」をテストで確かめる。反映は通知の本文ではなくStripeから取り直した状態を書く
 - 4.3: 持ち主の特定は`workers/payments/payment-owner-resolver.ts`(契約も同じファイル、`@injectable`無しで`{ appName, gateway, purchases }`)。偽のゲートウェイは`testing/fake-stripe-gateway.ts`の`createFakeStripeGateway`。5.4(必須): 結果の`purchase`は定期課金の2回目以降の請求でも元の購入になるため、同意を写すのは初回の請求(`purchase.stripeInvoiceId`が未保存か同じ請求のID)だけにし、「2回目の請求の記録に同意が入らない」をテストで確かめる
+- 5.1: 返金の依頼は`workers/payments/payment-refunds.ts`の`D1PaymentRefunds`(`@injectable`無し、依存の束を受け取る。5.7で`PAYMENTS_TYPES.PaymentRefunds`と`PaymentRefundStatements`の両方へ同じインスタンスを`toDynamicValue`で束縛)。`reflection:`の依頼キーの規則は`core/payments/refund-rules.ts`の`reflectionRequestKeyOf`・`isReflectionRequestKey`(5.2〜5.4で使う)。支払い済みは`fulfilled`・`rejected`かつPaymentIntentのIDあり。送信の失敗は`warn`のログだけで日次の確認が送り直す。テストの補助`refundIdOf`は有効なULID

@@ -36,3 +36,31 @@ export type StripeRefundReason = 'duplicate' | 'requested_by_customer';
 export function toStripeRefundReason(reason: string): StripeRefundReason {
   return reason === 'duplicate' ? 'duplicate' : 'requested_by_customer';
 }
+
+// 自動返金(反映の期限切れ・付与できない・二重決済)だけが使う依頼キーの接頭辞。後続specの依頼を自動返金と区別する
+export const REFLECTION_REQUEST_KEY_PREFIX = 'reflection:';
+
+export const MAX_REQUEST_KEY_LENGTH = 128;
+
+const REFUND_REASON_PATTERN = /^[a-z0-9_]{1,64}$/u;
+
+export function reflectionRequestKeyOf(purchaseId: string): string {
+  return `${REFLECTION_REQUEST_KEY_PREFIX}${purchaseId}`;
+}
+
+export function isReflectionRequestKey(requestKey: string): boolean {
+  return requestKey.startsWith(REFLECTION_REQUEST_KEY_PREFIX);
+}
+
+// 依頼元(後続spec)の経路が受け付ける依頼キー
+export function isAcceptableRequestKey(requestKey: string): boolean {
+  return (
+    requestKey.length >= 1 &&
+    requestKey.length <= MAX_REQUEST_KEY_LENGTH &&
+    !isReflectionRequestKey(requestKey)
+  );
+}
+
+export function isRefundReason(reason: string): boolean {
+  return REFUND_REASON_PATTERN.test(reason);
+}

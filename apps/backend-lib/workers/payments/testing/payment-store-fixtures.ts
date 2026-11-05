@@ -41,7 +41,7 @@ export function recordIdOf(index: number): string {
 }
 
 export function refundIdOf(index: number): string {
-  return `01JC0REFUND${String(index).padStart(15, '0')}`;
+  return `01JC0RF${String(index).padStart(19, '0')}`;
 }
 
 export function newPurchase(

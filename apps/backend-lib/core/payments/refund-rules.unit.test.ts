@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 
-import { toStripeRefundReason, validateRefundAmount } from './refund-rules.ts';
+import {
+  isAcceptableRequestKey,
+  isRefundReason,
+  isReflectionRequestKey,
+  reflectionRequestKeyOf,
+  toStripeRefundReason,
+  validateRefundAmount,
+} from './refund-rules.ts';
 
 describe('validateRefundAmount', () => {
   test('金額を省略すると残りの全額にする', () => {
@@ -100,4 +107,37 @@ describe('toStripeRefundReason', () => {
       expect(toStripeRefundReason(reason)).toBe('requested_by_customer');
     },
   );
+});
+
+describe('依頼キー', () => {
+  test('反映の依頼キーはreflection:に購入IDを続けたもので、reflection:で始まるかを判定できる', () => {
+    const key = reflectionRequestKeyOf('01JC0PURCHASE0000000000001');
+
+    expect(key).toBe('reflection:01JC0PURCHASE0000000000001');
+    expect(isReflectionRequestKey(key)).toBe(true);
+    expect(isReflectionRequestKey('tournament-week:reflection:1')).toBe(false);
+  });
+
+  test.each([
+    ['1文字', 'k', true],
+    ['128文字', 'k'.repeat(128), true],
+    ['空', '', false],
+    ['129文字', 'k'.repeat(129), false],
+    ['reflection:で始まる', 'reflection:01JC0PURCHASE0000000000001', false],
+  ])('依頼元の依頼キーが%sなら%pを返す', (_, key, expected) => {
+    expect(isAcceptableRequestKey(key)).toBe(expected);
+  });
+});
+
+describe('isRefundReason', () => {
+  test.each([
+    ['小文字・数字・_', 'entitlement_lost_2', true],
+    ['64文字', 'a'.repeat(64), true],
+    ['空', '', false],
+    ['65文字', 'a'.repeat(65), false],
+    ['大文字', 'Late', false],
+    ['ハイフン', 'entitlement-lost', false],
+  ])('理由が%sなら%pを返す', (_, reason, expected) => {
+    expect(isRefundReason(reason)).toBe(expected);
+  });
 });
