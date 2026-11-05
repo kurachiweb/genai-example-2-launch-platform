@@ -73,6 +73,10 @@ const InquiryAttachmentReadPolicy: unique symbol = Symbol.for(
   'inquiry.InquiryAttachmentReadPolicy',
 );
 
+const MemberInquiryWithdrawalHandler: unique symbol = Symbol.for(
+  'inquiry.MemberInquiryWithdrawalHandler',
+);
+
 export const INQUIRY_TYPES = Object.freeze({
   InquiryCategoryStore,
   GuestInquiryStore,
@@ -94,4 +98,5 @@ export const INQUIRY_TYPES = Object.freeze({
   InquiryStatusService,
   GuestInquiryRetentionJob,
   InquiryAttachmentReadPolicy,
+  MemberInquiryWithdrawalHandler,
 });

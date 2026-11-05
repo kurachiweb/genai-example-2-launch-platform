@@ -141,7 +141,7 @@
   - _Boundary: GuestInquiryRetentionJob_
   - _Requirements: 13.4, 13.5, 13.6_
 
-- [ ] 6. D1とメールの実装
+- [x] 6. D1とメールの実装
 - [x] 6.1 ログイン・未ログインの問い合わせのD1のストアを作る
   - 先に、作成で問い合わせ・最初のメッセージ・添付の紐付けが1つの一括の書き込みで入ること、追加メッセージで最後のメッセージの日時とステータス(戻すときだけ変更日時も)が更新されること、退会済みへの返信が監査ログごと取り消されること、自分の一覧が論理削除を除き20件ずつのカーソルで読めること、保持期間の削除が「対応済」「却下」の14日の境界だけを消し「対応中」へ戻したものを残すことを確かめるWorkers統合テストを書く
   - 返信の取り消しは`buildAuditLogStatements`の`AuditGuard`の`condition`(退会済みでないこと)で行い、`isAuditGuardRejection`で見分ける(G1)
@@ -169,7 +169,7 @@
   - _Boundary: InquiryAttachmentReadPolicy_
   - _Requirements: 6.6, 6.7_
 
-- [ ] 6.5 (P) 退会の同期の波及処理を作る
+- [x] 6.5 (P) 退会の同期の波及処理を作る
   - 先に、退会のイベントで利用者の未削除の問い合わせだけに論理削除の日時を入れる1文を返し、他のイベントでは文を返さないことを確かめるWorkers統合テストを書く
   - 完了状態: Workers統合テストが成功し、identity-authの退会の確定の一括の書き込みに含められる
   - _Boundary: MemberInquiryWithdrawalHandler_
@@ -325,3 +325,4 @@
 - 6.2: `D1InquiryStatusStore`(条件`EXISTS(... id = ? AND status = ? [AND deleted_at IS NULL])`を監査ログの`AuditGuard`と`UPDATE`に共有し、取り消しは`conflict`)と`D1InquiryAdminReader`(両テーブルを各々並べて51件に切り`UNION ALL`→並べ直して51件。期間は`receivedFrom`を含み`receivedBefore`を含まない。退会済みのログインの問い合わせは一覧に`withdrawn: true`で含め、`countUnhandled`だけが除く。未ログインの最後のメッセージの日時は受付日時)。カーソルの条件とページの組み立ては`infrastructure/inquiry/inquiry-page.ts`(`afterInquiryCursor`・`inquiryPageOf`)へまとめ、`MEMBER_INQUIRY_RECORD_COLUMNS`をexportした。カテゴリの絞り込みは`category_id`の索引だけを使い並べ替えに一時のB木が要る(件数が増えたら`(category_id, created_at)`の複合索引を検討)
 - 6.3: `D1InquirerProfiles`(100件ずつ、画像は常に`null`、退会済み・停止中の利用者も返す。差し替える実装も守る契約としてdesign.mdに注記した)・`EmailInquiryMailer`(リンクは`new URL('/inquiries/' + encodeURIComponent(id), clientOrigin)`、期限なし)・`SentryInquiryIncidentReporter`(`captureException`で通知メールの失敗は`error`・添付の解放の失敗は`warning`、ログのカテゴリ`['api', 'inquiry', 'incident']`、`inquiryId`はULIDの形でなければ`unknown`)。7.2への申し送り: 要件2.3(停止中・未ログインの送信者の表示を空にする)は照会口ではなくリゾルバ(`inquiryComposer`)が担う。7.1への申し送り: `InquirySettings`はidentityと同じく`env.CLIENT_SITE_ORIGIN`から束縛する。テストのIDはULIDの形にし(既存の補助の`01JC0MINQ…`は`I`を含みULIDでない)、0が16個続くIDはログでカード番号として伏せられるため避ける
 - 6.4: `InquiryAttachmentReadPolicy`(`infrastructure/inquiry/inquiry-attachment-read-policy.ts`)。管理者は添付の行があれば真(ロール・論理削除を問わない)、利用者は保有者が本人で、紐付けが無いか、紐付く問い合わせがすべて本人のもので論理削除されていない時だけ真。用途ごとの振り分けは`PolicyFileAccessAuthorizer`が担う。識別子`INQUIRY_TYPES.InquiryAttachmentReadPolicy`を足した(単体テストの完全一致の一覧も)。7.1は`file-read-policies.ts`へ`inquiry-attachment`の用途の方針として登録し束縛する
+- 6.5: `MemberInquiryWithdrawalHandler`(`infrastructure/inquiry/member-inquiry-withdrawal-handler.ts`、識別子`INQUIRY_TYPES.MemberInquiryWithdrawalHandler`)は退会で`deleted_at`と`updated_at`を`occurredAt`にする1文(未削除だけ)、他のイベントは`[]`。テストはinquiryの層の規則に合わせidentityの層(`application/identity`・`d1-user-lifecycle-committer.ts`)を読まないため、7.1の組み立てのWorkers統合テストで、退会の確定で問い合わせが論理削除されることと版の競合で取り消されることを確かめる。7.1への申し送り: 静的解析はimportの文字列を照合し、gitignore形式の否定は除外した親のディレクトリの下を含め直せない。`'../identity/user-lifecycle-sync-handler.ts'`・`'../admin/audit-log-statements.ts'`の許可が実際に効く書き方を`inquiry-layer-rules.unit.test.ts`で確かめる
