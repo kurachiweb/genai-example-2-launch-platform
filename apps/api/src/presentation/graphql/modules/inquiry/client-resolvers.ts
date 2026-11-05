@@ -19,7 +19,7 @@ import {
   SUBMIT_GUEST_INQUIRY_ARGS,
   SUBMIT_MEMBER_INQUIRY_ARGS,
 } from './inputs.ts';
-import { inquiryCategoryLoader, inquiryReplyAdminLoader } from './loaders.ts';
+import { inquiryReplyAdminLoader } from './loaders.ts';
 import {
   type InquiryComposerModel,
   toInquiryCategory,
@@ -34,6 +34,7 @@ import {
   assertAttachmentCount,
   assertHuman,
   avatarOf,
+  categoryOf,
   clientOnly,
   INQUIRY_BOT_ACTIONS,
   inquiryRequestMetaOf,
@@ -200,19 +201,9 @@ export const clientResolvers = {
     avatar: (composer, _args, context) => avatarOf(composer, context),
   },
   MemberInquiry: {
-    category: async (inquiry, _args, context) =>
-      toInquiryCategory(
-        await context.loaders
-          .get(inquiryCategoryLoader)
-          .load(inquiry.categoryId),
-      ),
+    category: (inquiry, _args, context) => categoryOf(inquiry, context),
   },
   MemberInquirySummary: {
-    category: async (inquiry, _args, context) =>
-      toInquiryCategory(
-        await context.loaders
-          .get(inquiryCategoryLoader)
-          .load(inquiry.categoryId),
-      ),
+    category: (inquiry, _args, context) => categoryOf(inquiry, context),
   },
 } satisfies Resolvers;

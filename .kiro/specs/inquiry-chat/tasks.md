@@ -175,7 +175,7 @@
   - _Boundary: MemberInquiryWithdrawalHandler_
   - _Requirements: 13.1_
 
-- [ ] 7. GraphQLとAPIサーバーの組み立て
+- [x] 7. GraphQLとAPIサーバーの組み立て
 - [x] 7.1 APIサーバーの束縛と各登録箇所への追記を行う(上流との統合)
   - 問い合わせのモジュール(ストア・照会・回数制限・ユースケース・報告・ジョブの束縛)、保持期間のジョブ、添付の用途(ファイル用・利用者・添付の形式・20,971,520バイト)、閲覧の方針、退会の同期の波及処理を各登録箇所へ加える
   - 静的解析に`INQUIRY_LAYER_RULES`(`ADMIN_LAYER_RULES`と同じ形。`inquiry`の各層から`identity`・`admin`の各層を禁止し、`lib`・`common-lib`・`db`と`infrastructure/admin/audit-log-statements.ts`・`infrastructure/identity/user-lifecycle-sync-handler.ts`・`presentation/graphql/admin-guard.ts`だけを`!`で許す)を加え、許可と違反の例の単体テストを`test/config/inquiry-layer-rules.unit.test.ts`に書く(G3)
@@ -188,7 +188,7 @@
   - 完了状態: Workers統合テストが成功し、生成物の食い違いの検査に通る
   - _Requirements: 2.1, 2.3, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.5, 5.1, 5.2, 5.3, 6.3, 7.1, 7.3, 7.4, 7.5, 8.1, 8.3, 8.5, 9.1_
 
-- [ ] 7.3 管理者側のリゾルバを作る
+- [x] 7.3 管理者側のリゾルバを作る
   - 先に、閲覧のみの一覧・詳細・件数・紐付く件数付きのカテゴリの許可と、返信・ステータスの変更・カテゴリの3操作の403、利用者側の呼び出し元からの拒否、返信の結果に通知の可否が入ること、未ログインの詳細に連絡先が入ることを確かめるWorkers統合テスト(テスト用の操作の一覧を使う)を書く
   - 完了状態: Workers統合テストが成功し、生成物の食い違いの検査に通る
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6, 10.1, 10.2, 10.4, 10.5, 11.1, 11.4, 11.7, 12.2, 12.3, 14.1_
@@ -328,3 +328,4 @@
 - 6.5: `MemberInquiryWithdrawalHandler`(`infrastructure/inquiry/member-inquiry-withdrawal-handler.ts`、識別子`INQUIRY_TYPES.MemberInquiryWithdrawalHandler`)は退会で`deleted_at`と`updated_at`を`occurredAt`にする1文(未削除だけ)、他のイベントは`[]`。テストはinquiryの層の規則に合わせidentityの層(`application/identity`・`d1-user-lifecycle-committer.ts`)を読まないため、7.1の組み立てのWorkers統合テストで、退会の確定で問い合わせが論理削除されることと版の競合で取り消されることを確かめる。7.1への申し送り: 静的解析はimportの文字列を照合し、gitignore形式の否定は除外した親のディレクトリの下を含め直せない。`'../identity/user-lifecycle-sync-handler.ts'`・`'../admin/audit-log-statements.ts'`の許可が実際に効く書き方を`inquiry-layer-rules.unit.test.ts`で確かめる
 - 7.1: `composition/inquiry-module.ts`の`INQUIRY_MODULE`(`InquirySettings`は`env.CLIENT_SITE_ORIGIN`からのSingleton、他は既定のTransient)を`MODULES`へ加え、ジョブ・用途`inquiry-attachment`・閲覧の方針・退会の波及処理`inquiry-chat.member-inquiry-withdrawal`を各登録箇所へ加えた。層の規則`INQUIRY_LAYER_RULES`は`!`の否定が除外した親のディレクトリの下を含め直せないため、否定先読みの正規表現`INQUIRY_FOREIGN_MODULE_REGEX`で`lib`・`common-lib`・`db`と2ファイルだけを許す(design.mdも直し、backend/002に汎用の注記を足した)。presentationのテストのファイルからは`infrastructure/admin/audit-log-statements.ts`も読める(本体は拒否される)。inquiryのcompositionのファイルは制限しない。4:21のジョブを完全一致で確かめる`search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts`と`media-registrations.unit.test.ts`を直した。組み立てのWorkers統合テストは`composition/inquiry-module.worker.test.ts`(413/201・200/404・管理者の紐付けの有無・退会の論理削除と版の競合での取り消し・4:21の順序300)。スキーマモジュールの登録(`graphql-modules.ts`)は7.2
 - 7.2: スキーマモジュールは`presentation/graphql/modules/inquiry/`(`type-defs.ts`・`inputs.ts`・`errors.ts`・`mappers.ts`・`loaders.ts`・`resolver-support.ts`の`INQUIRY_BOT_ACTIONS`(`inquiry_guest`・`inquiry_member`)と`clientOnly`・`client-resolvers.ts`)。ルートには利用者側のQuery・Mutationだけを載せ、管理者側の型・列挙・入力と変換(`toAdminInquiry`。未ログインの本文はIDが問い合わせのIDの利用者のメッセージ1件として返す。7.3で確かめる)は宣言済み。確認の順序は、未ログインの送信が利用者の判定→bot判定→ユースケース(design.mdの流れ図も直した)、ログインの送信が添付の件数→`requireWritableUser`→bot判定。追加メッセージの本文はユースケースの検証の欄を`input.body`へ付け替える。管理者の呼び出し元からは`authError('forbidden')`。テストの操作の一覧は`test/support/inquiry-graphql-operations.ts`(返信した管理者は`insertReplyingAdmin`・`replyingAdminIdOf`)。物理削除済みのファイルは添付から除く。新しい文言(12.2で文言規則へ): 「ニックネームに使用できない文字が含まれています。」「ニックネームを入力してください。」「ニックネームは25文字以内で入力してください。」「メッセージに使用できない文字が含まれています。」「メッセージを入力してください。」「メッセージは5,000文字以内で入力してください。」、64文字を超えるカテゴリID・ファイルID・問い合わせIDはそれぞれ「カテゴリを選択してください。」・添付の無効の文言・「問い合わせが見つかりません。」。9.1への申し送り: clientの写し`components/inquiry/bot-actions.ts`と`BOT_ACTION_COPIES`への組の追加、`graphql:allowlist`の生成し直し
+- 7.3: `modules/inquiry/admin-resolvers.ts`(照会4つはviewer以上、変更5つはmoderator以上。`adminOnly(withValidatedArgs(..., requireAdmin))`)。`changeInquiryStatus`は変更後に`detail`で読み直す。返信の本文とカテゴリ名はユースケースで検証するため、閲覧のみの管理者がその違反を送ると`forbidden`が先に返る。理由の上限の文言はinquiryの`errors.ts`に組み立て直した(apiの`audit-log-recorder.ts`・frontend-libと3か所目の重複。common-libへ寄せる余地あり)。`categoryOf`は`resolver-support.ts`。テストは`admin-resolvers.worker.test.ts`(照会)と`admin-resolvers.mutation.worker.test.ts`(変更)、操作する管理者の番号は11〜13、通知メールは`replyNotificationOutbox`の偽物(`failing`で失敗)。`test/support/inquiry-graphql-operations.ts`は741行で800行に近いため、操作を足す時は分割する

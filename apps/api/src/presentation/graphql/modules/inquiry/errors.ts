@@ -1,3 +1,4 @@
+import { AUDIT_REASON_MAX } from '../../../../../common-lib/admin/admin-input-rules.ts';
 import { AppError } from '../../../../../lib/core/errors/app-error.ts';
 import {
   GUEST_NICKNAME_MAX,
@@ -23,6 +24,9 @@ export const INQUIRY_BODY_MESSAGES: Readonly<Record<InquiryTextIssue, string>> =
     empty: 'メッセージを入力してください。',
     'too-long': `メッセージは${limitFormat.format(INQUIRY_BODY_MAX)}文字以内で入力してください。`,
   });
+
+// 問い合わせのモジュールは管理者のモジュールを読み込めないため、監査ログの記録の準備と同じ文言をここでも組み立てる
+export const AUDIT_REASON_TOO_LONG_MESSAGE = `理由は${String(AUDIT_REASON_MAX)}文字以内で入力してください。`;
 
 // GraphQLの引数の名前。検証の詳細の欄と同じく、ユースケースが返す詳細の欄もこの下の経路で示す
 export const INPUT_ARGUMENT = 'input';

@@ -11,6 +11,8 @@ import type { GraphQLContext } from '../../graphql-context.ts';
 import { mediaFileLoader } from '../media/loaders.ts';
 import { type MediaImageModel, toMediaImage } from '../media/mappers.ts';
 import { callerForbiddenError } from './errors.ts';
+import { inquiryCategoryLoader } from './loaders.ts';
+import { type InquiryCategoryModel, toInquiryCategory } from './mappers.ts';
 
 // 期待する操作名は、利用者側の画面がbot判定の部品に渡す名前と同じにする。未ログインとログインの送信で判定の結果を流用させないよう、別の名前にする
 export const INQUIRY_BOT_ACTIONS = Object.freeze({
@@ -38,6 +40,27 @@ export function clientOnly<TParent, TArgs, TResult>(
     }
     return resolve(parent, args, context, info);
   };
+}
+
+// 管理者側の操作は管理者側のフロントエンドサーバーからの要求だけで受け付ける。入力の検証とロールの確認より前に拒否する
+export function adminOnly<TParent, TArgs, TResult>(
+  resolve: Resolver<TParent, TArgs, Promise<TResult>>,
+): Resolver<TParent, TArgs, Promise<TResult>> {
+  return async (parent, args, context, info) => {
+    if (context.caller !== 'admin') {
+      throw callerForbiddenError();
+    }
+    return resolve(parent, args, context, info);
+  };
+}
+
+export async function categoryOf(
+  parent: { readonly categoryId: string },
+  context: GraphQLContext,
+): Promise<InquiryCategoryModel> {
+  return toInquiryCategory(
+    await context.loaders.get(inquiryCategoryLoader).load(parent.categoryId),
+  );
 }
 
 export function assertHuman(

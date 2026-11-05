@@ -521,6 +521,8 @@ export type Mutation = {
   changeAdminPassword: Scalars['Boolean']['output'];
   /** ロールの変更 */
   changeAdminRole: AdminAccount;
+  /** 対応ステータスの変更。変更後の詳細を返す。モデレーター以上 */
+  changeInquiryStatus: AdminInquiry;
   /** 招待の完了の2段階目。認証コードで有効化し、ログインする */
   completeAdminInvitation: AdminRecoveryCodeSet;
   /** 認証コードかリカバリコードによるログインの完了 */
@@ -535,8 +537,12 @@ export type Mutation = {
   confirmEmailChange: ConfirmationResult;
   /** パスワード変更の確定 */
   confirmPasswordChange: ConfirmationResult;
+  /** カテゴリの追加。モデレーター以上 */
+  createInquiryCategory: InquiryCategory;
   /** 管理者の削除 */
   deleteAdmin: Scalars['Boolean']['output'];
+  /** カテゴリの削除。紐付く問い合わせを標準カテゴリへ付け替える。モデレーター以上 */
+  deleteInquiryCategory: Scalars['Boolean']['output'];
   /** 多要素認証の無効化 */
   disableTotp: Scalars['Boolean']['output'];
   /** 下書きの破棄。最上位管理者 */
@@ -559,6 +565,10 @@ export type Mutation = {
   regenerateRecoveryCodes: RecoveryCodeSet;
   /** 利用者の登録 */
   registerUser: Viewer;
+  /** カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上 */
+  renameInquiryCategory: InquiryCategory;
+  /** ログインの問い合わせへの管理者の返信。対応ステータスを変えない。モデレーター以上 */
+  replyToInquiry: InquiryReplyResult;
   /** メールアドレス変更の要求。重複の有無を問わず同じ結果を返す */
   requestAdminEmailChange: Scalars['Boolean']['output'];
   /** パスワードリセットの要求。管理者の有無と状態を問わず同じ結果を返す */
@@ -621,6 +631,13 @@ export type MutationChangeAdminRoleArgs = {
 };
 
 
+export type MutationChangeInquiryStatusArgs = {
+  inquiryId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+  status: InquiryStatus;
+};
+
+
 export type MutationCompleteAdminInvitationArgs = {
   token: Scalars['String']['input'];
   totpCode: Scalars['String']['input'];
@@ -658,7 +675,19 @@ export type MutationConfirmPasswordChangeArgs = {
 };
 
 
+export type MutationCreateInquiryCategoryArgs = {
+  name: Scalars['String']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDeleteAdminArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeleteInquiryCategoryArgs = {
   id: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
 };
@@ -713,6 +742,20 @@ export type MutationRegenerateRecoveryCodesArgs = {
 
 export type MutationRegisterUserArgs = {
   input: RegisterUserInput;
+};
+
+
+export type MutationRenameInquiryCategoryArgs = {
+  id: Scalars['ID']['input'];
+  name: Scalars['String']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationReplyToInquiryArgs = {
+  body: Scalars['String']['input'];
+  inquiryId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -838,12 +881,20 @@ export type Query = {
   __typename?: 'Query';
   /** 招待中を含む全管理者を登録の新しい順に返す */
   adminAccounts: Array<AdminAccount>;
+  /** 管理画面のログインと未ログインの問い合わせの一覧(50件ずつ、受付日時の新しい順)。閲覧のみ以上 */
+  adminInquiries: AdminInquiryPage;
+  /** 管理画面の問い合わせの詳細。退会済みも返し、見つからなければnull。閲覧のみ以上 */
+  adminInquiry?: Maybe<AdminInquiry>;
+  /** 紐付く問い合わせの件数付きのカテゴリ。追加の順で、標準カテゴリを末尾に置く。閲覧のみ以上 */
+  adminInquiryCategories: Array<AdminInquiryCategory>;
   /** 管理画面の編集の対象の法務文書。閲覧のみ以上の管理者 */
   adminLegalDocument: AdminLegalDocument;
   /** 管理画面で表示する版。存在しない版はnull。閲覧のみ以上の管理者 */
   adminLegalDocumentVersion?: Maybe<AdminLegalDocumentVersion>;
   /** 管理画面の法務文書の一覧。閲覧のみ以上の管理者 */
   adminLegalDocuments: Array<AdminLegalDocumentSummary>;
+  /** 退会済みを除く「未対応」のログインと未ログインの問い合わせの合計件数。閲覧のみ以上 */
+  adminUnhandledInquiryCount: Scalars['Int']['output'];
   /** ログイン中の管理者。未ログイン・無効なセッションではnull */
   adminViewer?: Maybe<AdminViewer>;
   /** 監査ログの検索。変更・削除の操作は無い */
@@ -866,6 +917,17 @@ export type Query = {
   systemStatus: SystemStatus;
   /** ログイン中の利用者。未ログイン・無効なセッションではnull */
   viewer?: Maybe<Viewer>;
+};
+
+
+export type QueryAdminInquiriesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminInquiryFilterInput>;
+};
+
+
+export type QueryAdminInquiryArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -1519,6 +1581,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   adminLogout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   changeAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationChangeAdminPasswordArgs, 'newPassword' | 'reAuthentication'>>;
   changeAdminRole?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationChangeAdminRoleArgs, 'id' | 'role'>>;
+  changeInquiryStatus?: Resolver<ResolversTypes['AdminInquiry'], ParentType, ContextType, RequireFields<MutationChangeInquiryStatusArgs, 'inquiryId' | 'status'>>;
   completeAdminInvitation?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationCompleteAdminInvitationArgs, 'token' | 'totpCode'>>;
   completeAdminSecondFactorLogin?: Resolver<ResolversTypes['AdminViewer'], ParentType, ContextType, RequireFields<MutationCompleteAdminSecondFactorLoginArgs, 'challenge' | 'secondFactor'>>;
   completeAdminTotpReset?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationCompleteAdminTotpResetArgs, 'totpCode'>>;
@@ -1526,7 +1589,9 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   confirmAdminEmailChange?: Resolver<ResolversTypes['AdminConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmAdminEmailChangeArgs, 'token'>>;
   confirmEmailChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmEmailChangeArgs, 'token'>>;
   confirmPasswordChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmPasswordChangeArgs, 'token'>>;
+  createInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationCreateInquiryCategoryArgs, 'name'>>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
+  deleteInquiryCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteInquiryCategoryArgs, 'id'>>;
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
   discardLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationDiscardLegalDocumentDraftArgs, 'input'>>;
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
@@ -1538,6 +1603,8 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   regenerateAdminRecoveryCodes?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateAdminRecoveryCodesArgs, 'reAuthentication'>>;
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
+  renameInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationRenameInquiryCategoryArgs, 'id' | 'name'>>;
+  replyToInquiry?: Resolver<ResolversTypes['InquiryReplyResult'], ParentType, ContextType, RequireFields<MutationReplyToInquiryArgs, 'body' | 'inquiryId'>>;
   requestAdminEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminEmailChangeArgs, 'newEmail' | 'reAuthentication'>>;
   requestAdminPasswordReset?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminPasswordResetArgs, 'email'>>;
   requestEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestEmailChangeArgs, 'input'>>;
@@ -1574,9 +1641,13 @@ export type PageInfoResolvers<ContextType = GraphQLContext, ParentType extends R
 
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
+  adminInquiries?: Resolver<ResolversTypes['AdminInquiryPage'], ParentType, ContextType, Partial<QueryAdminInquiriesArgs>>;
+  adminInquiry?: Resolver<Maybe<ResolversTypes['AdminInquiry']>, ParentType, ContextType, RequireFields<QueryAdminInquiryArgs, 'id'>>;
+  adminInquiryCategories?: Resolver<Array<ResolversTypes['AdminInquiryCategory']>, ParentType, ContextType>;
   adminLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<QueryAdminLegalDocumentArgs, 'kind'>>;
   adminLegalDocumentVersion?: Resolver<Maybe<ResolversTypes['AdminLegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryAdminLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   adminLegalDocuments?: Resolver<Array<ResolversTypes['AdminLegalDocumentSummary']>, ParentType, ContextType>;
+  adminUnhandledInquiryCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
   inquiryCategories?: Resolver<Array<ResolversTypes['InquiryCategory']>, ParentType, ContextType>;
