@@ -1,10 +1,13 @@
 import { CATEGORY_NAME_MAX } from '../../../common-lib/admin/admin-input-rules.ts';
+import { INQUIRY_ATTACHMENT_LIMITS } from '../../../common-lib/inquiry/inquiry-attachment-limits.ts';
 import { INQUIRY_CATEGORY_OTHER_NAME } from '../../../common-lib/inquiry/inquiry-category-constants.ts';
 import type { InquiryTextIssue } from '../../../common-lib/inquiry/inquiry-input-rules.ts';
 import {
   AppError,
   type AppErrorKind,
+  type FieldErrorDetail,
 } from '../../../lib/core/errors/app-error.ts';
+import type { AttachmentSelectionError } from '../../domain/inquiry/attachment-selection.ts';
 
 interface InquiryErrorDefinition {
   readonly kind: AppErrorKind;
@@ -80,6 +83,49 @@ export const inquiryCategoryNameRejectedError = (
       },
     ],
   });
+
+const ATTACHMENTS_INVALID_CODE = 'inquiry_attachments_invalid';
+
+const ATTACHMENTS_FIELD = 'fileIds';
+
+const BYTES_PER_MEGABYTE = 1024 * 1024;
+
+export const INQUIRY_ATTACHMENTS_INVALID_MESSAGES: Readonly<
+  Record<AttachmentSelectionError['kind'], string>
+> = Object.freeze({
+  'too-many': `ファイルは${String(INQUIRY_ATTACHMENT_LIMITS.maxCount)}個以内で選択してください。`,
+  'too-large': `ファイルは合計${String(INQUIRY_ATTACHMENT_LIMITS.maxTotalBytes / BYTES_PER_MEGABYTE)}MB以内で選択してください。`,
+  invalid: '添付ファイルを確認できませんでした。もう一度選択してください。',
+});
+
+const attachmentDetailsOf = (
+  violation: AttachmentSelectionError,
+  requestedIds: readonly string[],
+  message: string,
+): readonly FieldErrorDetail[] => {
+  if (violation.kind !== 'invalid') {
+    return [{ field: ATTACHMENTS_FIELD, code: violation.kind, message }];
+  }
+  return violation.fileIds.map((fileId) => ({
+    field: `${ATTACHMENTS_FIELD}.${String(requestedIds.indexOf(fileId))}`,
+    code: violation.kind,
+    message,
+  }));
+};
+
+// 画面が選択の一覧のどのファイルを選び直させるかを示せるよう、無効なファイルは要求の配列での最初の位置を欄にする
+export const inquiryAttachmentsInvalidError = (
+  violation: AttachmentSelectionError,
+  requestedIds: readonly string[],
+): AppError => {
+  const message = INQUIRY_ATTACHMENTS_INVALID_MESSAGES[violation.kind];
+  return new AppError({
+    kind: 'bad_request',
+    code: ATTACHMENTS_INVALID_CODE,
+    message,
+    details: attachmentDetailsOf(violation, requestedIds, message),
+  });
+};
 
 // 重複は保存の時点で分かるが、画面が入力欄に理由を示せるよう名前の欄の詳細も付ける
 export const inquiryCategoryNameTakenError = (): AppError => {

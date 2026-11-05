@@ -549,13 +549,14 @@ export interface AttachmentCandidate {
   readonly ownerKind: 'user' | 'admin' | 'system'; // MediaFileView.owner.kindと同じ。userで本人の時だけ有効
   readonly ownerId: string | null;
   readonly stored: boolean;
-  readonly deleted: boolean;
+  readonly deleted: boolean; // MediaFileViewのdeletedAt !== null || eraseRequested
+  readonly attached: boolean; // 紐付け済み。1つのファイルは1つのメッセージにだけ紐付ける(解放が先のメッセージの添付を論理削除しないため)
   readonly byteSize: number;
 }
 export type AttachmentSelectionError =
   | { readonly kind: 'too-many' }
   | { readonly kind: 'too-large' }
-  | { readonly kind: 'invalid'; readonly fileIds: readonly string[] }; // 不在・他人・用途違い・未保存・削除済み
+  | { readonly kind: 'invalid'; readonly fileIds: readonly string[] }; // 不在・他人・用途違い・未保存・削除済み・紐付け済み
 export declare function checkAttachmentSelection(
   requestedIds: readonly string[],
   found: ReadonlyMap<string, AttachmentCandidate>,
@@ -830,12 +831,14 @@ export declare class CounterGuestInquiryRateLimit implements GuestInquiryRateLim
 
 ```typescript
 export interface InquiryAttachmentBinder {
-  bind(userId: string, fileIds: readonly string[]): Promise<readonly string[]>; // 重複を除いた順序付きのID。違反はAppError(bad_request, inquiry_attachments_invalid, 詳細kind・fileIds)
-  release(fileIds: readonly string[]): Promise<void>; // 書き込みの失敗時にmarkDeletedを呼ぶ。失敗はログだけ
+  bind(userId: string, fileIds: readonly string[]): Promise<readonly string[]>; // 重複を除いた順序付きのID。違反はAppError(bad_request, inquiry_attachments_invalid, 欄ごとの詳細)
+  release(fileIds: readonly string[]): Promise<void>; // 書き込みの失敗時にmarkDeletedを呼ぶ。失敗は報告だけ
 }
 ```
 
-- `bind`: 0件なら何もしない→`MediaFiles.findMany`→`checkAttachmentSelection`(要件6.1・6.3)→`MediaFiles.claim({ fileIds, purpose: 'inquiry-attachment', owner: { kind: 'user', id: userId } })`(失敗は`inquiry_attachments_invalid`)。
+- `bind`: 0件なら何もしない→重複を除いて20件を超えれば照会せずに件数の違反→`MediaFiles.findMany`→`checkAttachmentSelection`(要件6.1・6.3。紐付け済みのファイルも無効なIDにする)→`MediaFiles.claim({ fileIds, purpose: 'inquiry-attachment', owner: { kind: 'user', id: userId } })`(失敗は`inquiry_attachments_invalid`の無効なID。一時的な障害の例外は変えずに伝える)。
+- 実装は`MediaInquiryAttachmentBinder`(`MEDIA_TYPES.MediaFiles`・`INQUIRY_TYPES.InquiryIncidentReporter`を受け取る)。エラーは`inquiry-errors.ts`の`inquiryAttachmentsInvalidError(violation, requestedIds)`で、文言は「Error Handling」の3つ。詳細は件数・合計なら`{ field: 'fileIds', code: 'too-many' | 'too-large' }`の1件、無効なIDなら無効なファイルごとに`{ field: 'fileIds.<要求の配列での最初の位置>', code: 'invalid' }`。リゾルバの20件の超過(7.2)も同じ関数で作る。
+- `release`: 重複を除いて`MediaFiles.markDeleted`を呼び(0件なら呼ばない)、失敗は`InquiryIncidentReporter.report('attachment-release-failed', error, {})`(Sentryへ`warning`)だけにして投げない。
 
 #### InquiryChatService
 

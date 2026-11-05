@@ -11,6 +11,7 @@ export interface AttachmentCandidate {
   readonly ownerId: string | null;
   readonly stored: boolean;
   readonly deleted: boolean;
+  readonly attached: boolean;
   readonly byteSize: number;
 }
 
@@ -19,6 +20,7 @@ export type AttachmentSelectionError =
   | { readonly kind: 'too-large' }
   | { readonly kind: 'invalid'; readonly fileIds: readonly string[] };
 
+// 紐付け済みのファイルを通すと、保存の失敗時の解放が先のメッセージの添付まで論理削除するため、1つのファイルは1つのメッセージにだけ紐付ける
 const isSelectable = (
   file: AttachmentCandidate | undefined,
   userId: string,
@@ -26,6 +28,7 @@ const isSelectable = (
   file !== undefined &&
   file.stored &&
   !file.deleted &&
+  !file.attached &&
   file.purpose === INQUIRY_ATTACHMENT_PURPOSE &&
   file.ownerKind === 'user' &&
   file.ownerId === userId;

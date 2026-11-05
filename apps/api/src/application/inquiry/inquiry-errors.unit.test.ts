@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import {
   INQUIRY_ERRORS,
+  inquiryAttachmentsInvalidError,
   inquiryCategoryNameRejectedError,
   inquiryCategoryNameTakenError,
   inquiryError,
@@ -81,6 +82,55 @@ describe('inquiryCategoryNameRejectedError', () => {
       });
     },
   );
+});
+
+describe('inquiryAttachmentsInvalidError', () => {
+  test.each([
+    ['too-many', 'ファイルは20個以内で選択してください。'],
+    ['too-large', 'ファイルは合計20MB以内で選択してください。'],
+  ] as const)(
+    '%sの違反を添付の欄の詳細を持つ設計の文言の検証のエラーにする',
+    (kind, message) => {
+      const error = inquiryAttachmentsInvalidError({ kind }, ['file-a']);
+
+      expect({
+        kind: error.kind,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      }).toEqual({
+        kind: 'bad_request',
+        code: 'inquiry_attachments_invalid',
+        message,
+        details: [{ field: 'fileIds', code: kind, message }],
+      });
+    },
+  );
+
+  test('無効なIDの違反は、無効なファイルごとに要求の最初の位置の欄の詳細を持つ', () => {
+    const message =
+      '添付ファイルを確認できませんでした。もう一度選択してください。';
+
+    const error = inquiryAttachmentsInvalidError(
+      { kind: 'invalid', fileIds: ['file-c', 'file-a'] },
+      ['file-a', 'file-b', 'file-a', 'file-c'],
+    );
+
+    expect({
+      kind: error.kind,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    }).toEqual({
+      kind: 'bad_request',
+      code: 'inquiry_attachments_invalid',
+      message,
+      details: [
+        { field: 'fileIds.3', code: 'invalid', message },
+        { field: 'fileIds.0', code: 'invalid', message },
+      ],
+    });
+  });
 });
 
 describe('inquiryCategoryNameTakenError', () => {

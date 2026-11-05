@@ -22,6 +22,7 @@ const candidate = (
   ownerId: USER_ID,
   stored: true,
   deleted: false,
+  attached: false,
   byteSize: 1024,
   ...overrides,
 });
@@ -114,6 +115,10 @@ describe('checkAttachmentSelection', () => {
     {
       label: '削除済みの',
       found: [candidate('file-x', { deleted: true })],
+    },
+    {
+      label: '既に別のメッセージへ紐付けた',
+      found: [candidate('file-x', { attached: true })],
     },
   ])('$label ファイルはinvalidのIDに含める', ({ found }) => {
     expect(
