@@ -67,7 +67,7 @@
   - _Depends: 1.2_
   - _Requirements: 6.3, 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 2.4 (P) 購入確認と自動返金のメールの種別とテンプレートを同時に作る
+- [x] 2.4 (P) 購入確認と自動返金のメールの種別とテンプレートを同時に作る
   - 先に、2種の入力の検証の単体テストと、描画のWorkers統合テストで、2種の件名・本文・プレビュー・宛名、日時のUTCの表記、金額のUSDの表記、同意の旨と返金ポリシーの要旨と決済履歴へのリンク、自動返金の理由ごとの文言、配信停止のリンクが無いこと、購入確認メールに最終確認画面の追加事項が「購入の内容」の下に箇条書きで載り、追加事項が空なら見出しも出ないこと(U2)を確かめる
   - `payments.purchase-confirmation`・`payments.automatic-refund`の種別(`category: 'transactional'`。前例どおりドメインごとに1ファイルの`core/email/kinds/payments.ts`に置き、`kinds/index.unit.test.ts`に名前と`category`の確認を加える)と、1ファイル1コンポーネントの本文・テンプレートを同じ変更で作り、種別とテンプレートの集約点へ同時に加える(email-deliveryの種別とテンプレートの1対1の検査が途中で失敗しないようにする)
   - 完了状態: 単体テストと描画のテストが成功し、種別とテンプレートの1対1の検査が成功し、Mailpitの送信の実装を使うローカルのWorkers統合テスト(またはメールの送信のメッセージを手動で流すローカルの確認)から送った2種のメールがMailpitに届く
@@ -130,7 +130,7 @@
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
 - [ ] 5.2 (P) 購入確認メールと自動返金の通知の依頼を作る
-  - 先に、偽のメール送信とidentity-authの`UserContactDirectory`の偽の実装を使うWorkers統合テストで、購入確認メールの入力(購入種別・分量・金額・購入日時(UTC)・役務の提供時期・購入の保存済みの最終確認画面の表示事項から読んだ追加事項(U2)・同意の日時と文言・返金ポリシーの要旨・決済履歴のURL)、依頼済みの購入で再び依頼しないこと、送信の失敗で依頼待ちが残ること、`findContact`が`undefined`を返す利用者(退会済み・物理削除済み)で送らずに対象外になること、停止中の利用者には送ること、自動返金の通知を依頼キーが`reflection:`で始まる依頼だけに送り、後続specの依頼(理由が`late`・`duplicate`でも)には送らないこと、10分以上依頼待ちの購入確認メールと自動返金の通知を最大100件ずつ依頼し直すことを確かめる
+  - 先に、偽のメール送信とidentity-authの`UserContactDirectory`の偽の実装を使うWorkers統合テストで、購入確認メールの入力(購入種別・分量・金額・購入日時(UTC)・役務の提供時期・購入の保存済みの最終確認画面の表示事項から読んだ追加事項(U2)・同意の日時と記録した版の文言・決済履歴のURL。返金ポリシーの要旨はテンプレートが共用部品の定数を使うため入力に含めない)、依頼済みの購入で再び依頼しないこと、送信の失敗で依頼待ちが残ること、`findContact`が`undefined`を返す利用者(退会済み・物理削除済み)で送らずに対象外になること、停止中の利用者には送ること、自動返金の通知を依頼キーが`reflection:`で始まる依頼だけに送り、後続specの依頼(理由が`late`・`duplicate`でも)には送らないこと、10分以上依頼待ちの購入確認メールと自動返金の通知を最大100件ずつ依頼し直すことを確かめる
   - 依頼の状態の更新と依頼待ちの検索は、4.1・4.2のストアの操作を使う
   - 宛先は、identity-authがapi・eventの両方に束縛する`IDENTITY_PLATFORM_TYPES.UserContactDirectory`を注入し、`findContact`の`email`で引く。本specは`users`の列を直接読まない
   - 完了状態: Workers統合テストが成功し、同じ購入の依頼は記録の後に2回目が行われない
@@ -354,3 +354,4 @@
 - 1.4: 制限付きキーの権限は`docs/GUIDES/tech/operations/004-payment-data-operations.md`の表が正(Stripeに単独の返金の権限は無く「Charges and Refunds」)。Stripeの呼び出しを加えるタスクは表と突き合わせる
 - 2.1: 反映の指示`ReflectionInstruction`と結果`ReflectionOutcome`は`core/payments/ports.ts`にある(2.3の正規化はここから型を読み込み、二重に定義しない)。`lib/core/**`は`drizzle-orm*`を読み込めない(apiのESLintが共有ディレクトリを検査する)
 - 2.3: 8.2・8.4で返金の処理を作るとき、project-values.mdのメッセージの表の`payments.refund-payment`の行に再試行の方針(5回)を書き足す
+- 2.4: メールの入力の金額は最小通貨単位の整数、日時はISO 8601の文字列。返金ポリシーの要旨は`common-lib/payments/refund-policy-summary.ts`の`REFUND_POLICY_SUMMARY`(最終確認画面(10.3)も同じ定数を使う)。購入確認メールの決済履歴のURLは`CLIENT_SITE_ORIGIN`+`/settings/billing`

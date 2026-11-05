@@ -190,7 +190,8 @@ apps/
 │   ├── payment-record-values.ts                     # 決済履歴のkind・status・名前
 │   ├── purchase-states.ts                           # 購入・返金・メールの依頼の状態と拒否の理由の値(テーブルの制約と規則が共有)
 │   ├── checkout-consent.ts                          # 同意の文言と版CHECKOUT_CONSENT_VERSION
-│   └── money.ts                                     # 最小通貨単位の整数とUSDの表示用の値
+│   ├── money.ts                                     # 最小通貨単位の整数とUSDの表示用の値
+│   └── refund-policy-summary.ts                     # 返金ポリシーの要旨REFUND_POLICY_SUMMARY(最終確認画面と購入確認メールが共有)
 ├── backend-lib/
 │   ├── core/payments/                               # api・eventのapplication層と後続specが読み込む契約と純粋な規則(Bunの単体テスト。Database・BatchItemを読み込まない)
 │   │   ├── identifiers.ts                           # PAYMENTS_TYPES(Symbol.for('payments.<名前>')の凍結したオブジェクト、identifiers.unit.test.ts)
@@ -1301,7 +1302,7 @@ export interface PurchaseNotifier {
 
 - 購入の`confirmation_email_status`を`pending`(反映の一括の書き込みで記録)→`requested`(`EmailSender.send`の成功後)に進める。`requested`の購入では依頼しない(11.3)。Ultrasの更新の請求は購入ではないため対象外(11.4)。
 - 自動返金の通知は`payment_refunds.notice_status`で同様に扱う(依頼キーが`reflection:`で始まる依頼だけ。理由の値では判定しない)。
-- メールの入力は、購入種別の名前・分量・金額(USDの文字列)・購入日時(`formatUtcDateTime`)・役務の提供時期・最終確認画面の追加事項(購入の`summary_json`の`additionalNotes`。Ultrasの自動更新・毎月の請求額・解約の方法など、無ければ空、11.6・U2)・同意の日時と文言・返金ポリシーの要旨・決済履歴のURL(`CLIENT_SITE_ORIGIN` + `/settings/billing`)。宛先はidentity-authの`UserContactDirectory.findContact(userId)`の`email`で引く(api・eventの両方にidentity-authが束縛する共有の部品)。`undefined`(退会済み・物理削除済み・存在しない)なら送らずに`skipped`とする。停止中の利用者には宛先が返り、確定した購入の確認メールを送る(11.1)。`emailVerified`・`nickname`は判定に使わない(決済の開始は確認済みの利用者に限られる、3.5)。
+- メールの入力は、購入種別の名前・分量・金額(最小通貨単位の整数。テンプレートでUSDの表記に整える)・購入日時(ISO 8601の文字列。テンプレートでUTCの表記に整える)・役務の提供時期・最終確認画面の追加事項(購入の`summary_json`の`additionalNotes`。Ultrasの自動更新・毎月の請求額・解約の方法など、無ければ空、11.6・U2)・同意の日時と記録した版の文言・決済履歴のURL(`CLIENT_SITE_ORIGIN` + `/settings/billing`)。返金ポリシーの要旨は入力にせず、テンプレートが共用部品の`REFUND_POLICY_SUMMARY`(`common-lib/payments/refund-policy-summary.ts`)を使う。宛先はidentity-authの`UserContactDirectory.findContact(userId)`の`email`で引く(api・eventの両方にidentity-authが束縛する共有の部品)。`undefined`(退会済み・物理削除済み・存在しない)なら送らずに`skipped`とする。停止中の利用者には宛先が返り、確定した購入の確認メールを送る(11.1)。`emailVerified`・`nickname`は判定に使わない(決済の開始は確認済みの利用者に限られる、3.5)。
 
 #### PaymentRevenueReport
 
@@ -1644,7 +1645,7 @@ export declare function loadStripeOnce(
 ```
 
 - ルート`/_authenticated/checkout/$purchaseId`のloaderで`checkout`を取得し、`status`で出し分ける: `OPEN`は表示事項・同意・入力欄、`COMPLETED`は完了の案内と決済履歴への導線、`EXPIRED`は`canRestart`に応じたやり直しの案内、`UNAVAILABLE`は`UnavailableNotice`(4.9〜4.11)。`checkout_not_found`は`notFound()`。ページは`noIndex`。
-- 配置(上から): `CheckoutSummary`(分量・税込の販売価格`MoneyText`・支払方法「クレジットカード・デビットカード、Apple Pay、Google Pay、Link」・支払時期・役務の提供時期・Ultrasの追加事項)、`CheckoutDeadline`(受付期限の`DateTime`と`RelativeTime`)、返金ポリシーの要旨と`LEGAL_DOCUMENT_PATHS['legal-notice']`へのリンク(`/legal`、アンカー無し、4.3)、`CheckoutConsent`(`Checkbox`と`CHECKOUT_CONSENT_TEXT`、4.4)、`CheckoutPaymentForm`(`CheckoutElementsProvider`の中に`PaymentElement`と`BillingAddressElement`、支払うボタン)。
+- 配置(上から): `CheckoutSummary`(分量・税込の販売価格`MoneyText`・支払方法「クレジットカード・デビットカード、Apple Pay、Google Pay、Link」・支払時期・役務の提供時期・Ultrasの追加事項)、`CheckoutDeadline`(受付期限の`DateTime`と`RelativeTime`)、返金ポリシーの要旨(購入確認メールと同じ文の`REFUND_POLICY_SUMMARY`)と`LEGAL_DOCUMENT_PATHS['legal-notice']`へのリンク(`/legal`、アンカー無し、4.3)、`CheckoutConsent`(`Checkbox`と`CHECKOUT_CONSENT_TEXT`、4.4)、`CheckoutPaymentForm`(`CheckoutElementsProvider`の中に`PaymentElement`と`BillingAddressElement`、支払うボタン)。
 - 支払うボタンは同意が無い、または`checkout.canConfirm`が偽の間は無効。押下で`onBeforeConfirm`(同意の記録)が成功したときだけ`actions.confirm()`を呼ぶ(4.5)。確定の失敗はStripeのメッセージを入力欄の近くに`role="alert"`で示す(4.13)。
 - `PublicRuntimeConfig.stripePublishableKey`が`undefined`(公開キーを置いていない環境)のときは、`OPEN`でもStripe.jsを読み込まず`UnavailableNotice`を表示する(4.11と同じ縮退)。
 - `StripeLoader`は決済画面と決済後のランディングのコンポーネントからだけ動的に読み込まれ、他のページのバンドルに含めない(4.12)。`loadStripe`の拒否・`null`と、`actions.confirm()`の想定外の失敗(Stripeが返す利用者向けの拒否を除く)は、`reportUnexpectedErrorInBrowser`でエラートラッキングへ送り、決済画面には縮退の案内を出す。`CheckoutElementsProvider`には`elementsOptions.appearance`(デザインのトークン)と`adaptivePricing: { allowed: false }`を渡す(15.6)。

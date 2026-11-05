@@ -6,6 +6,7 @@ import { EMAIL_DELIVERY_SMOKE_KIND } from './email-delivery-smoke.ts';
 import { IDENTITY_EMAIL_KINDS } from './identity.ts';
 import { EMAIL_KINDS } from './index.ts';
 import { INQUIRY_REPLY_NOTIFICATION_KIND } from './inquiry.ts';
+import { PAYMENTS_EMAIL_KINDS } from './payments.ts';
 
 describe('EMAIL_KINDS', () => {
   test('集約した全種別を例外なく登録できる', () => {
@@ -49,6 +50,23 @@ describe('EMAIL_KINDS', () => {
     expect(registry.get('inquiry.reply-notification')?.category).toBe(
       'transactional',
     );
+  });
+
+  test.each(PAYMENTS_EMAIL_KINDS.map((kind) => [kind.name, kind] as const))(
+    '決済の種別%sをトランザクションメールとして名前で引ける',
+    (name, kind) => {
+      const registry = createEmailKindRegistry(EMAIL_KINDS);
+
+      expect(registry.get(name)).toBe(kind);
+      expect(registry.get(name)?.category).toBe('transactional');
+    },
+  );
+
+  test('決済の種別は購入確認と自動返金の2種である', () => {
+    expect(PAYMENTS_EMAIL_KINDS.map((kind) => kind.name)).toEqual([
+      'payments.purchase-confirmation',
+      'payments.automatic-refund',
+    ]);
   });
 
   test('集約点は凍結されていて実行時に種別を追加できない', () => {
