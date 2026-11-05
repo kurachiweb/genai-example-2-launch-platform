@@ -93,7 +93,7 @@
   - _Depends: 1.7_
   - _Requirements: 1.3, 1.5, 15.1_
 
-- [ ] 4. 送信のユースケース
+- [x] 4. 送信のユースケース
 - [x] 4.1 添付の検証と紐付けのユースケースを作る
   - 先に、ポートを偽物にして、0件では何も呼ばないこと、件数・合計・無効なIDの違反で紐付けを呼ばずに添付のエラーを返すこと、紐付けの失敗も添付のエラーになること、解放で論理削除を呼び失敗は報告だけにすることを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、検証→紐付けの順に呼ばれ、書き込みの失敗時の解放の手段がある
@@ -107,7 +107,7 @@
   - _Boundary: GuestInquirySubmission, CounterGuestInquiryRateLimit_
   - _Requirements: 3.1, 3.3, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6, 4.7, 4.8_
 
-- [ ] 4.3 (P) ログインの問い合わせの送信のユースケースを作る
+- [x] 4.3 (P) ログインの問い合わせの送信のユースケースを作る
   - 先に、ポートを偽物にして、停止中の利用者の拒否、メールアドレスが未確認の利用者の受け付け、存在しないカテゴリの拒否、添付の紐付けの後に問い合わせと最初のメッセージを保存すること、保存の失敗で添付を解放することを確かめる単体テストを書く
   - 完了状態: 単体テストが成功し、保存した問い合わせのIDが返る
   - _Boundary: MemberInquirySubmission_
@@ -316,3 +316,4 @@
 - 3.2: ストアは`apps/api/src/infrastructure/inquiry/d1-inquiry-category-store.ts`(`D1InquiryCategoryStore`)。標準カテゴリの保護と不在は`AuditGuard`の`condition`(`EXISTS(... id = ? AND system_default = 0)`)で、偽なら一括の書き込み全体が取り消され`not-found`(名前の変更にも付けた)。件数と付け替えは論理削除した(退会者の)ログインの問い合わせも含める(外部キーで残すと削除できないため。db/003の`notDeleted`の原則の例外で、理由をコメントに書いた)。付け替えで`updated_at`も更新する。消したカテゴリを参照する保存は外部キーの違反で失敗し、Drizzleが包むため4.2・4.3・6.1は`cause`をたどってカテゴリの不在に変える。テストの補助は`infrastructure/inquiry/testing/inquiry-store-fixtures.ts`(「その他」を残して5テーブルと監査ログを消すリセット、行の挿入、型の表明で作る`PreparedAuditEntry`。利用者はidentityの`lib/workers/identity/testing/identity-store-fixtures.ts`で入れる)。途中の失敗は一時的なSQLiteのトリガーで起こす
 - 4.1: `MediaInquiryAttachmentBinder`(`application/inquiry/inquiry-attachment-binder.ts`)。紐付け済み(`attached`)のファイルも無効なIDにする(使い回すと保存の失敗の`release`が先のメッセージの添付まで論理削除するため。2.2の規則とdesign.mdも改めた)。ただし検証と紐付けは原子的でなく、同じ利用者の同時の送信で同じファイルが2つのメッセージへ紐付き得る(添付の表の`file_id`は一意でない。影響は本人のデータだけ)。エラーは`inquiryAttachmentsInvalidError(violation, requestedIds)`(`INQUIRY_ERRORS`の表には入れない)で、詳細は件数・合計なら`{ field: 'fileIds', code: 'too-many' | 'too-large' }`、無効なIDならファイルごとに`{ field: 'fileIds.<位置>', code: 'invalid' }`(`withInputPath`で`input.`が付く)。要求に無いIDを渡すと位置が`-1`になるため、7.2で使う時は要求のIDだけを渡す。`release`は所有を確かめないため、`bind`が返したIDだけを渡す。`claim`の一時的な障害はそのまま伝わる
 - 4.2: `StoreGuestInquirySubmission`(`application/inquiry/guest-inquiry-submission.ts`)は利用者の判定→カテゴリの存在→回数制限→保存の順で、文字の検証とbot判定はリゾルバ(7.2)が先に行う。要求の情報は`application/inquiry/inquiry-request-meta.ts`の`InquiryRequestMeta`、カテゴリの不在は`inquiry-errors.ts`の`inquiryCategoryUnavailableError()`(詳細`{ field: 'categoryId', code: 'not-found' }`)で、4.3・5.1も再利用する。回数制限のポートは`consume(clientIp, now)`(design.mdも改めた)、実装は`infrastructure/inquiry/counter-guest-inquiry-rate-limit.ts`(`GUEST_INQUIRY_RATE_RULE`、キーは`hashRateLimitKey(hasher, 'inquiry-guest', clientIp)`、ログのカテゴリは`['api', 'inquiry', 'guest-rate-limit']`)。429は共通の`rate_limit_exceeded`と共通の文言(design.mdのエラーの表も揃えた)。「未対応」での保存は列の既定値に任せるため、6.1のWorkers統合テストで確かめる
+- 4.3: `StoreMemberInquirySubmission`(`application/inquiry/member-inquiry-submission.ts`)は`requireWritableUser`→カテゴリの存在→`bind`→`insert`で、保存の失敗では`bind`が返したIDだけを`release`して同じ例外を投げ直す。6.1への申し送り: (1)`NewInquiryMessage`は送信者の種類を持たないため、`D1MemberInquiryStore.insert`・`appendUserMessage`が`sender_kind = 'user'`を書く。(2)カテゴリの削除と送信が重なった外部キーの違反は、ポートの`insert`が`void`を返すためユースケースでは見分けられない。ストア(ログイン・未ログインの両方の`insert`)が`cause`をたどって`inquiryCategoryUnavailableError()`に変える(ユースケースは添付を解放してそのまま伝える)
