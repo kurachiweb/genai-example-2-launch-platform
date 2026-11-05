@@ -53,6 +53,15 @@ const PaymentRefundStatements: unique symbol = Symbol.for(
 const PaymentOwnerResolver: unique symbol = Symbol.for(
   'payments.PaymentOwnerResolver',
 );
+const CheckoutSessionReflection: unique symbol = Symbol.for(
+  'payments.CheckoutSessionReflection',
+);
+const SmokePurchaseOffer: unique symbol = Symbol.for(
+  'payments.SmokePurchaseOffer',
+);
+const SmokePurchaseFulfillment: unique symbol = Symbol.for(
+  'payments.SmokePurchaseFulfillment',
+);
 
 // 識別子は型を読み込まないため、workersとinfrastructureだけが受け取る契約(文を返す操作など)の識別子も同じオブジェクトに置く
 export const PAYMENTS_TYPES = Object.freeze({
@@ -81,4 +90,7 @@ export const PAYMENTS_TYPES = Object.freeze({
   GuardedBatch,
   PaymentRefundStatements,
   PaymentOwnerResolver,
+  CheckoutSessionReflection,
+  SmokePurchaseOffer,
+  SmokePurchaseFulfillment,
 });

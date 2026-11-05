@@ -166,7 +166,7 @@
   - _Depends: 5.3_
   - _Requirements: 2.10, 14.1, 14.2, 14.3_
 
-- [ ] 5.7 疎通確認用の購入種別・登録箇所・両アプリ共通の束縛を組み込む
+- [x] 5.7 疎通確認用の購入種別・登録箇所・両アプリ共通の束縛を組み込む
   - 後続specが追記する購入種別と定期課金の受け取り口の登録箇所を作り、初版は疎通確認用(1ドル・数量1・期限無し・何もしない権利の付与)だけを登録する
   - 反映・返金・失効・価格・エクスポート・純収益の照会・Customerの照会・通知・購入種別の登録の解決(登録箇所の値から作った1つの値)の束縛を、両アプリ共通のモジュールにまとめる。文を返さない操作と文を返す操作の識別子(ストア・返金の依頼)には同じ実装を束縛する
   - 先に、Workers統合テストで、共通の束縛から各部品(純収益の照会・購入種別の登録の解決を含む)を取り出せること、疎通確認用の購入の内容、`PAYMENTS_SMOKE_ENABLED`が`false`の環境で疎通確認用が解決されないことを確かめる
@@ -367,3 +367,4 @@
 - 5.4: 反映の処理は`workers/payments/payment-reflector.ts`の`StripePaymentReflector`(`@injectable`無しで依存の束、受け取り口の名前の検証はコンストラクタ)。テストの補助は`testing/payment-reflector-harness.ts`。定期課金の受け取り口の文と`afterCommit`は冪等であること(同じ発生時刻の通知は再び確定し得る)。請求・返金の同じ通知の再適用は「反映」を返す(「反映済み」はチャージバックの同じ段階だけ)
 - 5.5: 純収益の照会は`workers/payments/d1-payment-revenue-report.ts`の`D1PaymentRevenueReport`(`{ appName, db }`)、価格の照会は`price-catalog.ts`の`StripePriceCatalog`(`{ appName, gateway, snapshots, clock }`)、エクスポートは`payment-history-export.ts`の`StoredPaymentHistoryExport`(`{ records }`)。いずれも`@injectable`無し(5.7で束縛)。期間の誤りは`AppError(bad_request, validation_error)`。価格は`StripeUnavailableError`のときだけ保持の値(`stale: true`)を返す
 - 5.6: 失効は`workers/payments/open-checkout-expirer.ts`の`StripeOpenCheckoutExpirer`(`{ appName, gateway, purchases, reflection, ids, clock }`、`@injectable`無し)。`remaining`は上限の外に`open`の購入が残っているか(`processing`は数えない)。上限は1〜50の整数(範囲外は`RangeError`)
+- 5.7: 両アプリ共通の束縛は`workers/payments/payments-platform-module.ts`の`createPaymentsPlatformModule(appName)`(関数。識別子はすべて`PAYMENTS_TYPES`)。api・eventのモジュール一覧に加えるときは`EMAIL_PLATFORM_MODULE`と`IDENTITY_PLATFORM_MODULE`も同じ一覧に要る(通知の部品が使う)。Webhookの署名の検証は共通の束縛に含めず、8.4でイベントサーバーが束縛する。疎通確認の最終確認画面の文言(分量「1件」・役務の提供時期「提供する役務はありません」)は仮で、画面のタスクで文言規則に載せるかを確かめる

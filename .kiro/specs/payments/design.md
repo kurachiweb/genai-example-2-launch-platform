@@ -6,7 +6,7 @@
 
 **Users**: 投稿者は申込の画面から決済画面(`/checkout/{購入ID}`)へ進み、最終確認画面の事項を確かめ同意して支払い、決済後のランディング(`/checkout/return`)で結果を見る。利用者は`/settings/billing`で決済履歴を見る。後続spec(tournament-week・tournament-year・sponsorship・ultras-subscription)の開発者は、購入種別の口と返金の部品・価格の照会・定期課金の状態の受け取り口を実装または利用する。運用者はStripeのダッシュボードで手動の返金・チャージバックに対応し、手順書に沿って環境を設定する。
 
-**Impact**: `apps/backend-lib`に決済の共有部品(`core/payments`はapi・eventのapplication層と後続specが受け取る契約・識別子と純粋な規則、`workers/payments`はStripe・D1の実装と、D1の文を返す契約と反映)を新設し、apiとeventの両方に同じ束縛(`PAYMENTS_PLATFORM_MODULE`)を入れる。apiに決済のスキーマモジュール・回数制限(infrastructure層)・突合と日次の確認のジョブを、eventにWebhookの経路・返金の実行・ユーザーライフサイクルの波及処理・メールのテンプレートを、clientに決済画面・決済後のランディング・決済履歴の画面を足す。D1に6テーブルを足し、Stripeのシークレットと変数を3つのWorkerへ加える。
+**Impact**: `apps/backend-lib`に決済の共有部品(`core/payments`はapi・eventのapplication層と後続specが受け取る契約・識別子と純粋な規則、`workers/payments`はStripe・D1の実装と、D1の文を返す契約と反映)を新設し、apiとeventの両方に同じ束縛(`createPaymentsPlatformModule(<アプリ名>)`、モジュール名`payments-platform`)を入れる。apiに決済のスキーマモジュール・回数制限(infrastructure層)・突合と日次の確認のジョブを、eventにWebhookの経路・返金の実行・ユーザーライフサイクルの波及処理・メールのテンプレートを、clientに決済画面・決済後のランディング・決済履歴の画面を足す。D1に6テーブルを足し、Stripeのシークレットと変数を3つのWorkerへ加える。
 
 ### Goals
 
@@ -69,7 +69,7 @@
 - 契約の置き場所: 購入の可否と内容の側・`PaymentRefunds`(`request`・`dispatch`)・`OpenCheckoutExpirer`・`PaymentReflector`・`StripeWebhookVerifier`・`PurchaseNotifier`・各ストアの文を返さない操作・`PAYMENTS_TYPES`は`core/payments`、D1の文を返す側(`PurchaseKindRegistration`・`PurchaseFulfillment`・`FulfillmentPlan`・`SubscriptionEventSink`・`PaymentRefundStatements`・各ストアの文・`GuardedBatch`)は`workers/payments`。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、application層が受け取る契約を`workers`へ戻さない。`core/payments`は`Database`・`BatchItem`を読み込まない。置き場所を変えたら、`workers/payments`の契約を実装する後続spec(tournament-week・tournament-year・sponsorship・ultras-subscription)を確かめ直す。
 - `PaymentRefunds`・`OpenCheckoutExpirer`の形・依頼キーの規則・返金の理由の値(tournament-week・tournament-year・ultras-subscription・ugc-moderation・sponsorship)。
 - `PURCHASE_KINDS`の値と`payment_records`の`kind`・`purpose`・`status`の値(data-export・ugc-moderation・後続spec)。`payments.json`の形はデータエクスポートの文書と一致させる。
-- 本specが所有・実装する収益の照会`PaymentRevenueReport`・`RevenuePeriod`(`core/payments/ports.ts`、実装`workers/payments/d1-payment-revenue-report.ts`、DIの識別子`PAYMENTS_TYPES.PaymentRevenueReport`、`PAYMENTS_PLATFORM_MODULE`での束縛)の形と純収益の定義(ugc-moderationが週ごとの統計の純収益に使う)。`payment_records`の`kind`・`status`・`purpose`の値の意味、`amount`の符号の規則(返金とチャージバックの損失を負の値で記録する)、`occurred_at`の意味、疎通確認の`payments_smoke`の扱い、チャージバックの段階ごとの記録の規則を変えるときは、`PaymentRevenueReport`の集計と、それを使うugc-moderationの統計を確かめ直す(仮7)。
+- 本specが所有・実装する収益の照会`PaymentRevenueReport`・`RevenuePeriod`(`core/payments/ports.ts`、実装`workers/payments/d1-payment-revenue-report.ts`、DIの識別子`PAYMENTS_TYPES.PaymentRevenueReport`、`createPaymentsPlatformModule(<アプリ名>)`(モジュール名`payments-platform`)での束縛)の形と純収益の定義(ugc-moderationが週ごとの統計の純収益に使う)。`payment_records`の`kind`・`status`・`purpose`の値の意味、`amount`の符号の規則(返金とチャージバックの損失を負の値で記録する)、`occurred_at`の意味、疎通確認の`payments_smoke`の扱い、チャージバックの段階ごとの記録の規則を変えるときは、`PaymentRevenueReport`の集計と、それを使うugc-moderationの統計を確かめ直す(仮7)。
 - 23:40の突合の`order` 10(match-engineの23:40のジョブは`order`を10より大きくする)。
 - GraphQLの`payments`モジュールの型・エラーコード(client・後続specの申込の画面)。
 - `CLIENT_SECURITY_POLICY`へ加えたStripeの許可先と、`PublicRuntimeConfig.stripePublishableKey`(任意の値と、`FrontendAppProfile`の`payments`の欄。frontend-platform)。frontend-platformが`SecurityPolicySources`の形や許可先の形の規則を変えたら、本specを確かめ直す。
@@ -234,7 +234,7 @@ apps/
 │       ├── d1-payment-revenue-report.ts             # PaymentRevenueReportの実装(期間ごとの純収益、ugc-moderationが使う)
 │       ├── smoke-purchase.ts                        # 疎通確認用の購入種別(仮6)
 │       ├── purchase-kind-registrations.ts           # PURCHASE_KIND_REGISTRATIONS・SUBSCRIPTION_EVENT_SINKS(後続specが追記)
-│       └── payments-platform-module.ts              # PAYMENTS_PLATFORM_MODULE(両アプリ共通の束縛。PurchaseKindRegistry・PaymentRevenueReportを含む)
+│       └── payments-platform-module.ts              # createPaymentsPlatformModule(<アプリ名>)(モジュール名payments-platform。両アプリ共通の束縛。PurchaseKindRegistry・PaymentRevenueReportを含む)
 ├── api/src/
 │   ├── application/payments/                        # Bunの単体テスト(core/paymentsの契約の偽物と偽のポートで)
 │   │   ├── payments-types.ts                        # API_PAYMENTS_TYPES(前例の`identity-types.ts`・`inquiry-types.ts`と同じ名前の形)
@@ -304,7 +304,7 @@ apps/
 
 - `apps/db/schema/index.ts`・`apps/db/migrations/<日時>_payments/migration.sql` — 6テーブルの再エクスポートと生成したマイグレーション(mainの最新を取り込んでから生成する)。
 - `apps/backend-lib/core/messaging/contracts/index.ts`・`core/email/kinds/index.ts` — `PAYMENTS_REFUND_MESSAGE`と2つのメールの種別を加える。
-- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`env-schema.ts` — `PAYMENTS_PLATFORM_MODULE`・apiの決済モジュール・スキーマモジュール・3つのジョブ・`STRIPE_API_KEY`(任意)・`PAYMENTS_SMOKE_ENABLED`の検証。4:21の2つのジョブは、4:21の起動の合計の予算(`SCHEDULED_RUN_BUDGETS`の300秒)を他のドメインのジョブと共有する。23:40には予算を置かない(`cron-sync.unit.test.ts`の「予算は4:21の1件だけ」を保つ)。
+- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`env-schema.ts` — `createPaymentsPlatformModule(<アプリ名>)`(モジュール名`payments-platform`)・apiの決済モジュール・スキーマモジュール・3つのジョブ・`STRIPE_API_KEY`(任意)・`PAYMENTS_SMOKE_ENABLED`の検証。4:21の2つのジョブは、4:21の起動の合計の予算(`SCHEDULED_RUN_BUDGETS`の300秒)を他のドメインのジョブと共有する。23:40には予算を置かない(`cron-sync.unit.test.ts`の「予算は4:21の1件だけ」を保つ)。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`user-lifecycle-async-handlers.ts`・`rate-limit-exclusions.ts`・`env-schema.ts` — 束縛と経路、`payments.refund-payment`の処理、2つの波及処理、`excludePath('/webhooks/stripe', 'POST')`、`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`(どちらも任意)・`CLIENT_SITE_ORIGIN`・`PAYMENTS_SMOKE_ENABLED`の検証。
 - `apps/event/src/infrastructure/email/templates/index.ts`(`EMAIL_TEMPLATES`) — 2つのテンプレートを加える。
 - `apps/api/wrangler.jsonc`・`apps/event/wrangler.jsonc`・`apps/client/wrangler.jsonc`と各`worker-configuration.d.ts` — `vars`を3環境に加え、`STRIPE_API_KEY`(api・event)・`STRIPE_WEBHOOK_SECRET`(event)はstaging・prodの`secrets.required`にだけ置く(identity-authの`DISIFY_API_KEY`と同じ。ローカルは未設定でも起動し、決済の機能だけが縮退する)。apiの`triggers.crons`に`40 7 * * *`を加える(4:21は既存)。
@@ -586,7 +586,7 @@ export declare function isMinorUnitAmount(value: number): boolean; // 整数か�
 ### backend-lib/core
 
 - 置き場所: api・eventのapplication層と後続specのapplication層が受け取る契約は`apps/backend-lib/core/payments`(`purchase-kind-contract.ts`・`ports.ts`)、識別子は`core/payments/identifiers.ts`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。`core/payments`は`Database`・`BatchItem`・`workers`・`apps/db`を読み込まない。D1の文を返す契約と接続を引数に取る契約は`workers/payments`(`fulfillment-contract.ts`・`statement-contracts.ts`)に置き、`workers`と各アプリの`infrastructure`だけが使う。1つの契約に文を返す操作と返さない操作が混ざる場合は分け、返さない側を`core`、返す側を`workers`に置く(各ストア・`PaymentRefunds`)。
-- 識別子`PAYMENTS_TYPES`は`Symbol.for('payments.<名前>')`の凍結したオブジェクトで、`core/payments/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。`workers`だけが使う契約(各ストアの文・`GuardedBatch`・`PaymentRefundStatements`・`PaymentOwnerResolver`)の識別子も同じオブジェクトに置く(識別子は型を読み込まないため)。apiの`API_PAYMENTS_TYPES`・eventの`EVENT_PAYMENTS_TYPES`とは別の識別子にし、同じ`payments.`の接頭辞を使うため、メンバーの名前を重ねない。
+- 識別子`PAYMENTS_TYPES`は`Symbol.for('payments.<名前>')`の凍結したオブジェクトで、`core/payments/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。`workers`だけが使う契約(各ストアの文・`GuardedBatch`・`PaymentRefundStatements`・`PaymentOwnerResolver`・決済セッションの反映`CheckoutSessionReflection`・疎通確認用の購入種別の口`SmokePurchaseOffer`・`SmokePurchaseFulfillment`)の識別子も同じオブジェクトに置く(識別子は型を読み込まないため)。apiの`API_PAYMENTS_TYPES`・eventの`EVENT_PAYMENTS_TYPES`とは別の識別子にし、同じ`payments.`の接頭辞を使うため、メンバーの名前を重ねない。
 
 ```typescript
 // core/payments/identifiers.ts
@@ -618,6 +618,9 @@ export declare const PAYMENTS_TYPES: {
   readonly GuardedBatch: symbol;
   readonly PaymentRefundStatements: symbol;
   readonly PaymentOwnerResolver: symbol;
+  readonly CheckoutSessionReflection: symbol; // 反映の処理と未完了の決済セッションの失効が共有する決済セッションの反映
+  readonly SmokePurchaseOffer: symbol; // 疎通確認用の購入種別の購入の可否と内容の口
+  readonly SmokePurchaseFulfillment: symbol; // 疎通確認用の購入種別の権利の付与の口
 }; // Symbol.for('payments.<名前>')
 ```
 
@@ -787,7 +790,7 @@ export declare const PURCHASE_KIND_REGISTRATIONS: readonly PurchaseKindRegistrat
 export declare const SUBSCRIPTION_EVENT_SINKS: readonly SubscriptionEventSinkRegistration[];
 ```
 
-- 登録と解決: `PAYMENTS_PLATFORM_MODULE`は`PAYMENTS_TYPES.PurchaseKindRegistry`を`createPurchaseKindRegistry(PURCHASE_KIND_REGISTRATIONS)`の1つの値へ束縛する。apiの`CheckoutStarter`(application層)は`workers/payments`を読み込まず、この識別子を`PurchaseKindRegistry`(既定の型引数)として受け取り、`resolve`の結果の`kind`・`offer`・`enabled`だけを使う(`fulfillment`は型に現れない)。`offer`の識別子は、apiの決済モジュール(composition)が渡す`PurchaseOfferPolicyResolver`で`PurchaseOfferPolicy`へ変える(media-pipelineの`FileReadPolicy`の解決の関数と同じ形)。`workers/payments`の反映は同じ識別子を`PurchaseKindRegistry<PurchaseKindRegistration>`として受け取り、`fulfillment`の識別子から`PurchaseFulfillment`を解決する。`SUBSCRIPTION_EVENT_SINKS`は`workers/payments`の反映だけが読み、名前の検証は`assertSubscriptionEventSinkNames`で行う。
+- 登録と解決: `createPaymentsPlatformModule(<アプリ名>)`(モジュール名`payments-platform`)は`PAYMENTS_TYPES.PurchaseKindRegistry`を`createPurchaseKindRegistry(PURCHASE_KIND_REGISTRATIONS)`の1つの値へ束縛する。apiの`CheckoutStarter`(application層)は`workers/payments`を読み込まず、この識別子を`PurchaseKindRegistry`(既定の型引数)として受け取り、`resolve`の結果の`kind`・`offer`・`enabled`だけを使う(`fulfillment`は型に現れない)。`offer`の識別子は、apiの決済モジュール(composition)が渡す`PurchaseOfferPolicyResolver`で`PurchaseOfferPolicy`へ変える(media-pipelineの`FileReadPolicy`の解決の関数と同じ形)。`workers/payments`の反映は同じ識別子を`PurchaseKindRegistry<PurchaseKindRegistration>`として受け取り、`fulfillment`の識別子から`PurchaseFulfillment`を解決する。`SUBSCRIPTION_EVENT_SINKS`は`workers/payments`の反映だけが読み、名前の検証は`assertSubscriptionEventSinkNames`で行う。
 - Preconditions: 後続specの`PurchaseFulfillment`・`SubscriptionEventSink`の実装は`backend-lib/workers/<ドメイン>`に置き(`workers/payments/fulfillment-contract.ts`の契約を読み込む)、D1の文だけを返す。後続specの`PurchaseOfferPolicy`の実装は`core/payments`の契約だけを読み込む。外部の呼び出しやメッセージの送信を`prepare`で行わない。権利の付与の文は、条件を満たさなければ一意制約などで失敗する形にしてよい(失敗は拒否として扱い直す)。
 - Postconditions: `prepare`は同じ購入で何度呼ばれても同じ判断を返す。`afterCommit`は、その呼び出しで`fulfill`の一括の書き込みを確定させた側だけが1回呼ぶ(拒否・反映済み・版の検査の失敗では呼ばない)。`afterCommit`の失敗は反映の結果を変えず、後続specが自分の依頼待ちの行と日次の確認で拾う(2.11、U1)。`SubscriptionEventSink`は、記録済みと同じ発生時刻の通知が再び確定し得る(同じ秒に発生した別の通知を捨てないため、同じ発生時刻は通す)ため、`statementsFor`の文と`afterCommit`を冪等にする。
 - Invariants: `deadlineAt`があれば`acceptUntil`も`fulfillableUntil`もある。`acceptUntil ≤ deadlineAt ≤ fulfillableUntil`。`PurchaseOffer.quantity`は都度決済の日数(広告)または1。
@@ -885,7 +888,7 @@ export declare function mapStripeEvent(event: {
 
 ### backend-lib/core(契約)・workers(実装とD1の文を返す契約)
 
-- 各節のコードの先頭のコメントは置き場所を表す。`// core/payments/ports.ts`の契約はapi・eventのapplication層と後続specが読み込み、`// workers/payments/...`の契約と実装は`workers`と各アプリの`infrastructure`だけが読み込む。実装のクラスはすべて`workers/payments`に置き、`PAYMENTS_PLATFORM_MODULE`でapi・eventの両方に束縛する。
+- 各節のコードの先頭のコメントは置き場所を表す。`// core/payments/ports.ts`の契約はapi・eventのapplication層と後続specが読み込み、`// workers/payments/...`の契約と実装は`workers`と各アプリの`infrastructure`だけが読み込む。実装のクラスはすべて`workers/payments`に置き、`createPaymentsPlatformModule(<アプリ名>)`(モジュール名`payments-platform`)でapi・eventの両方に束縛する。
 
 #### StripeClient・StripeGateway・StripeWebhookVerifier
 
@@ -1356,7 +1359,7 @@ export interface PaymentRevenueReport {
 - 純収益: `payment_records`のうち`purpose <> 'payments_smoke'`の行で、(`kind IN ('one_time', 'subscription') AND status = 'succeeded'`)と(`kind = 'refund' AND status = 'succeeded'`)の`amount`を`occurred_at`の期間に、敗北が確定したチャージバック(`kind = 'dispute' AND status = 'dispute_lost'`の行)は、同じ`stripe_reference`の`status = 'disputed'`の行の`amount`(引き落とし額の負数)を、`dispute_lost`の行の`occurred_at`の期間に合計する。返金とチャージバックの引き落としは負の値で記録されているため、合計がそのまま純収益になる。`dispute_lost`の行の`amount`は0で記録されるため(チャージバックの記録の規則)、敗北の額は`disputed`の行から引く。`disputed`の行が無い`dispute_lost`は0として数える。
 - 期間を最大40個ずつの組に分け、組ごとに1つの問い合わせ(期間ごとの`CASE`で集計。バインド変数は期間あたり2つで、D1の上限100に収まる)を作り、すべての組と、`disputed`の行が無い`dispute_lost`の行の`stripe_reference`を期間全体から最大10件読む問い合わせを、1回の`db.batch`で実行する。後者で見つかった`stripe_reference`は`warn`のログに残す(個人データは含めない)。期間は最大60個とする。各期間の合計は1件ごとの金額の範囲(`isMinorUnitAmount`)では検証しない。固定の値(`payments_smoke`・状態の値など)のバインドも上限に数えるため、チャージバックの行を先に(時刻・金額)の1つの導出表へまとめてから期間ごとの`CASE`を掛け、1組のバインド変数の数が100以下であることをテストで確かめる。期間が0個または61個以上、`from >= to`の期間は`AppError(bad_request)`(`AppErrorKind`に`invalid_argument`は無い)。結果は入力の順で、該当が無い期間は0。
 - 範囲の検索のため、`payment_records`に索引`(occurred_at)`を置く。
-- 束縛: `PAYMENTS_TYPES.PaymentRevenueReport`を`PAYMENTS_PLATFORM_MODULE`に加える(api・eventの両方)。
+- 束縛: `PAYMENTS_TYPES.PaymentRevenueReport`を`createPaymentsPlatformModule(<アプリ名>)`(モジュール名`payments-platform`)に加える(api・eventの両方)。
 
 #### PriceCatalog・PaymentHistoryExport・SmokePurchase
 

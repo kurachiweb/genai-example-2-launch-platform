@@ -28,10 +28,13 @@ const EXPECTED_NAMES = [
   'GuardedBatch',
   'PaymentRefundStatements',
   'PaymentOwnerResolver',
+  'CheckoutSessionReflection',
+  'SmokePurchaseOffer',
+  'SmokePurchaseFulfillment',
 ] as const;
 
 describe('PAYMENTS_TYPES', () => {
-  test('application層と後続specが受け取る17種と、workersとinfrastructureだけが受け取る8種の識別子だけを持つ', () => {
+  test('application層と後続specが受け取る17種と、workersとinfrastructureだけが受け取る11種の識別子だけを持つ', () => {
     expect(Object.keys(PAYMENTS_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );
