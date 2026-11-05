@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, test } from 'bun:test';
 
 import {
+  type NoticeOutcome,
   type ReflectionOutcome,
   type RefundRequestResult,
   STRIPE_SIGNATURE_TOLERANCE_SECONDS,
@@ -76,6 +77,14 @@ describe('ReflectionOutcome', () => {
   test('反映の結果は5種である', () => {
     expectTypeOf<ReflectionOutcome['kind']>().toEqualTypeOf<
       'applied' | 'already_applied' | 'stale' | 'unresolved' | 'ignored'
+    >();
+  });
+});
+
+describe('NoticeOutcome', () => {
+  test('メールの依頼の結果は、依頼の記録・対象外・依頼待ちでない・依頼できなかったの4種である', () => {
+    expectTypeOf<NoticeOutcome>().toEqualTypeOf<
+      'requested' | 'skipped' | 'not_pending' | 'failed'
     >();
   });
 });

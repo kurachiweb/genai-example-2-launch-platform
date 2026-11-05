@@ -398,6 +398,8 @@ export interface RefundRequestRecord extends NewRefundRequest {
   readonly failureCode: string | null;
   readonly dispatchedAt: Date | null;
   readonly createdAt: Date;
+  // 返金の成功を記録した後、通知の依頼を記録するまでは返金の日時として使う
+  readonly updatedAt: Date;
 }
 
 export interface RefundStore {
@@ -581,8 +583,10 @@ export interface PaymentRefunds {
   dispatch(refundRequestId: string): Promise<void>;
 }
 
-export type NoticeOutcome = 'requested' | 'skipped' | 'not_pending';
+// requestedは依頼を記録した、skippedは宛先が無く対象外として記録した、not_pendingは依頼待ちでない、failedは依頼できず依頼待ちのまま残した(日次の確認が依頼し直す)
+export type NoticeOutcome = 'requested' | 'skipped' | 'not_pending' | 'failed';
 
+// 送信の失敗は例外にせずfailedとwarningのログにする。反映の確定の後に呼ばれ、反映の結果を変えないため
 export interface PurchaseNotifier {
   notifyPurchase(purchaseId: string): Promise<NoticeOutcome>;
   notifyAutomaticRefund(refundRequestId: string): Promise<NoticeOutcome>;

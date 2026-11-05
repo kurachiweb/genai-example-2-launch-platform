@@ -1295,7 +1295,7 @@ export declare class D1PaymentRefunds
 
 ```typescript
 // core/payments/ports.ts(apiのPendingCheckoutSweepJobが受け取る。実装はworkers/payments/purchase-notifier.ts)
-export type NoticeOutcome = 'requested' | 'skipped' | 'not_pending';
+export type NoticeOutcome = 'requested' | 'skipped' | 'not_pending' | 'failed'; // failedは送信の失敗か入力を組み立てられない行(例外にしない)
 export interface PurchaseNotifier {
   notifyPurchase(purchaseId: string): Promise<NoticeOutcome>; // 購入確認メール
   notifyAutomaticRefund(refundRequestId: string): Promise<NoticeOutcome>; // 自動返金の通知
@@ -1305,6 +1305,7 @@ export interface PurchaseNotifier {
 - 購入の`confirmation_email_status`を`pending`(反映の一括の書き込みで記録)→`requested`(`EmailSender.send`の成功後)に進める。`requested`の購入では依頼しない(11.3)。Ultrasの更新の請求は購入ではないため対象外(11.4)。
 - 自動返金の通知は`payment_refunds.notice_status`で同様に扱う(依頼キーが`reflection:`で始まる依頼だけ。理由の値では判定しない)。
 - メールの入力は、購入種別の名前・分量・金額(最小通貨単位の整数。テンプレートでUSDの表記に整える)・購入日時(ISO 8601の文字列。テンプレートでUTCの表記に整える)・役務の提供時期・最終確認画面の追加事項(購入の`summary_json`の`additionalNotes`。Ultrasの自動更新・毎月の請求額・解約の方法など、無ければ空、11.6・U2)・同意の日時と記録した版の文言・決済履歴のURL(`CLIENT_SITE_ORIGIN` + `/settings/billing`)。返金ポリシーの要旨は入力にせず、テンプレートが共用部品の`REFUND_POLICY_SUMMARY`(`common-lib/payments/refund-policy-summary.ts`)を使う。宛先はidentity-authの`UserContactDirectory.findContact(userId)`の`email`で引く(api・eventの両方にidentity-authが束縛する共有の部品)。`undefined`(退会済み・物理削除済み・存在しない)なら送らずに`skipped`とする。停止中の利用者には宛先が返り、確定した購入の確認メールを送る(11.1)。`emailVerified`・`nickname`は判定に使わない(決済の開始は確認済みの利用者に限られる、3.5)。
+- 送信の失敗と入力を組み立てられない行(同意・版・`paid_at`の欠け)は例外にせず`warn`のログと`failed`を返し、依頼待ちのまま残す(日次の確認が依頼し直す)。呼び出し側(反映・日次の確認)は`failed`を例外として扱わない。同意の文言は記録した版から`checkoutConsentTextOf`で引く。自動返金の通知の返金日時は返金の依頼の行の`updated_at`(成功を記録した時刻)。
 
 #### PaymentRevenueReport
 

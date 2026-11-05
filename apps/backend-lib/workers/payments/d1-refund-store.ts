@@ -44,6 +44,7 @@ function toRecord(row: RefundRow): RefundRequestRecord {
     failureCode: row.failureCode,
     dispatchedAt: row.dispatchedAt,
     createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 

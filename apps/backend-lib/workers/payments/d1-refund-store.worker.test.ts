@@ -81,6 +81,7 @@ describe('D1RefundStoreの依頼の行の追加と検索', () => {
       failureCode: null,
       dispatchedAt: null,
       createdAt: expect.any(Date) as Date,
+      updatedAt: expect.any(Date) as Date,
     });
     expect(await store.findByRequestKey('reflection:purchase-1')).toEqual(
       found,

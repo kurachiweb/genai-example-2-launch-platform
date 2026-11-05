@@ -129,7 +129,7 @@
   - _Depends: 2.2, 4.2_
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 5.2 (P) 購入確認メールと自動返金の通知の依頼を作る
+- [x] 5.2 (P) 購入確認メールと自動返金の通知の依頼を作る
   - 先に、偽のメール送信とidentity-authの`UserContactDirectory`の偽の実装を使うWorkers統合テストで、購入確認メールの入力(購入種別・分量・金額・購入日時(UTC)・役務の提供時期・購入の保存済みの最終確認画面の表示事項から読んだ追加事項(U2)・同意の日時と記録した版の文言・決済履歴のURL。返金ポリシーの要旨はテンプレートが共用部品の定数を使うため入力に含めない)、依頼済みの購入で再び依頼しないこと、送信の失敗で依頼待ちが残ること、`findContact`が`undefined`を返す利用者(退会済み・物理削除済み)で送らずに対象外になること、停止中の利用者には送ること、自動返金の通知を依頼キーが`reflection:`で始まる依頼だけに送り、後続specの依頼(理由が`late`・`duplicate`でも)には送らないこと、10分以上依頼待ちの購入確認メールと自動返金の通知を最大100件ずつ依頼し直すことを確かめる
   - 依頼の状態の更新と依頼待ちの検索は、4.1・4.2のストアの操作を使う
   - 宛先は、identity-authがapi・eventの両方に束縛する`IDENTITY_PLATFORM_TYPES.UserContactDirectory`を注入し、`findContact`の`email`で引く。本specは`users`の列を直接読まない
@@ -362,3 +362,4 @@
 - 4.2: `upsertByReference`は`記録済みのlast_event_at <= 受け取ったlast_event_at`のときだけ更新し、同意の日時と版・購入ID・関連ID・Linkの資金源のグループはcoalesceで既存の値を残す。5.4(必須): 初回の請求の`invoice.paid`が決済セッションの反映より先に届くと、決済セッションの記録の挿入が一意キーの衝突で無視され、同意の日時と版(12.6)とLinkの資金源のグループが記録されない。請求の反映で持ち主の購入を特定できたら、購入の同意の日時・版・購入IDを`NewPaymentRecord`に写し、「請求が決済セッションより先に届いても同意が残る」をテストで確かめる。反映は通知の本文ではなくStripeから取り直した状態を書く
 - 4.3: 持ち主の特定は`workers/payments/payment-owner-resolver.ts`(契約も同じファイル、`@injectable`無しで`{ appName, gateway, purchases }`)。偽のゲートウェイは`testing/fake-stripe-gateway.ts`の`createFakeStripeGateway`。5.4(必須): 結果の`purchase`は定期課金の2回目以降の請求でも元の購入になるため、同意を写すのは初回の請求(`purchase.stripeInvoiceId`が未保存か同じ請求のID)だけにし、「2回目の請求の記録に同意が入らない」をテストで確かめる
 - 5.1: 返金の依頼は`workers/payments/payment-refunds.ts`の`D1PaymentRefunds`(`@injectable`無し、依存の束を受け取る。5.7で`PAYMENTS_TYPES.PaymentRefunds`と`PaymentRefundStatements`の両方へ同じインスタンスを`toDynamicValue`で束縛)。`reflection:`の依頼キーの規則は`core/payments/refund-rules.ts`の`reflectionRequestKeyOf`・`isReflectionRequestKey`(5.2〜5.4で使う)。支払い済みは`fulfilled`・`rejected`かつPaymentIntentのIDあり。送信の失敗は`warn`のログだけで日次の確認が送り直す。テストの補助`refundIdOf`は有効なULID
+- 5.2: 通知は`workers/payments/purchase-notifier.ts`の`EmailPurchaseNotifier`(`@injectable`無し、`{ appName, purchases, refunds, contacts, emails, clientSiteOrigin }`)。送信の失敗と入力を組み立てられない行は`failed`を返す(例外にしない)。呼び出し側は`failed`を例外として扱わない。5.4(必須): 自動返金の通知の返金日時は返金の依頼の行の`updated_at`のため、`succeeded`の後に同じ状態の通知が届いても`updated_at`が変わらないようにし(状態が変わるときだけ更新)、テストで確かめる。Ultrasの2回目以降の請求の反映で通知の部品が呼ばれないこと(要件11.4)もテストに加える。6.3: 入力を組み立てられない依頼待ちの行は毎日`failed`になり、古い順の100件の枠を塞ぎ得るため、知らせ方か読み飛ばしを検討する
