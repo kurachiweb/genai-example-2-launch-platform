@@ -12,7 +12,7 @@ export type PaymentsJobIncident =
       readonly error: unknown;
     }
   | {
-      // 依頼待ちのまま残った購入確認メールと自動返金の通知。入力を組み立てられない行は毎日ここに現れる
+      // 送信の失敗で依頼待ちのまま残った購入確認メールと自動返金の通知。入力を組み立てられない行は対象外になり、ここに現れない
       readonly kind: 'notice-request-failed';
       readonly job: string;
       readonly purchaseIds: readonly string[];

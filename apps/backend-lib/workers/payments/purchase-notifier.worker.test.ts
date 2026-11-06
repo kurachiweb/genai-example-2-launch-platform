@@ -382,23 +382,28 @@ describe('EmailPurchaseNotifierの購入確認メール', () => {
   });
 
   test.each([
-    ['同意の記録が無い', null],
-    ['同意の版の文言が無い', '2000-01-01'],
+    ['同意の記録が無い', null, 'missing_consent'],
+    ['同意の版の文言が無い', '2000-01-01', 'unknown_consent_version'],
   ] as const)(
-    '%s購入には送らず、依頼待ちのまま残してwarningのログになる',
-    async (_label, consentVersion) => {
+    '%s購入には送らず、対象外として記録して理由をwarningのログに残す',
+    async (_label, consentVersion, reason) => {
       await insertConfirmablePurchase(1, { consentVersion });
       const logs = recordLogs();
       const { sender, sent } = createRecordingSender();
+      const notifier = notifierWith(sender);
 
-      const outcome = await notifierWith(sender).notifyPurchase(
-        purchaseIdOf(1),
-      );
+      const outcome = await notifier.notifyPurchase(purchaseIdOf(1));
 
-      expect(outcome).toBe('failed');
+      expect(outcome).toBe('skipped');
       expect(sent).toHaveLength(0);
-      expect(await confirmationStatusOf(1)).toBe('pending');
-      expect(logs.filter(({ method }) => method === 'warn')).toHaveLength(1);
+      expect(await confirmationStatusOf(1)).toBe('skipped');
+      const warnings = logs.filter(({ method }) => method === 'warn');
+      expect(warnings.map(({ args }) => args[0])).toMatchObject([
+        { purchaseId: purchaseIdOf(1), reason },
+      ]);
+      expect(await notifier.notifyPurchase(purchaseIdOf(1))).toBe(
+        'not_pending',
+      );
     },
   );
 });
@@ -514,6 +519,25 @@ describe('EmailPurchaseNotifierの自動返金の通知', () => {
     expect(sent).toHaveLength(0);
     expect(await noticeStatusOf(1)).toBe('skipped');
   });
+
+  test('知らせる理由の文言が無い依頼には送らず、対象外として記録して理由をwarningのログに残す', async () => {
+    await insertRejectedPurchase(1);
+    await insertRefund(1, { purchaseIndex: 1, reason: 'unknown_reason' });
+    const logs = recordLogs();
+    const { sender, sent } = createRecordingSender();
+
+    const outcome = await notifierWith(sender).notifyAutomaticRefund(
+      refundIdOf(1),
+    );
+
+    expect(outcome).toBe('skipped');
+    expect(sent).toHaveLength(0);
+    expect(await noticeStatusOf(1)).toBe('skipped');
+    const warnings = logs.filter(({ method }) => method === 'warn');
+    expect(warnings.map(({ args }) => args[0])).toMatchObject([
+      { refundRequestId: refundIdOf(1), reason: 'unknown_refund_reason' },
+    ]);
+  });
 });
 
 describe('EmailPurchaseNotifierの依頼待ちの依頼し直し', () => {
@@ -584,5 +608,67 @@ describe('EmailPurchaseNotifierの依頼待ちの依頼し直し', () => {
     expect(sent).toHaveLength(LIMIT + 1);
     expect(await resend()).toBe(0);
     expect(await noticeStatusOf(RECENT_INDEX)).toBe('pending');
+  });
+
+  const pendingConfirmationIds = async (): Promise<string[]> =>
+    (
+      await purchases.findPendingConfirmations({
+        reflectedBefore: STALE_BEFORE,
+        limit: LIMIT,
+      })
+    ).map(({ id }) => id);
+
+  const pendingNoticeIds = async (): Promise<string[]> =>
+    (
+      await refunds.findPendingNotices({
+        updatedBefore: STALE_BEFORE,
+        limit: LIMIT,
+      })
+    ).map(({ id }) => id);
+
+  test('入力を組み立てられない行は対象外になり、次の依頼し直しの対象にならず後ろの行の枠を塞がない', async () => {
+    await insertConfirmablePurchases([1, 2], {
+      reflectedAt: T0,
+      consentVersion: null,
+    });
+    await insertConfirmablePurchase(3, { reflectedAt: after(MINUTE) });
+    await insertRejectedPurchase(4);
+    await insertRefund(4, {
+      purchaseIndex: 4,
+      reason: 'unknown_reason',
+      updatedAt: T0,
+    });
+    const { sender, sent } = createRecordingSender();
+    const notifier = notifierWith(sender);
+
+    for (const id of await pendingConfirmationIds()) {
+      await notifier.notifyPurchase(id);
+    }
+    for (const id of await pendingNoticeIds()) {
+      await notifier.notifyAutomaticRefund(id);
+    }
+
+    expect(sent).toHaveLength(1);
+    expect(await pendingConfirmationIds()).toEqual([]);
+    expect(await pendingNoticeIds()).toEqual([]);
+    expect(await confirmationStatusOf(1)).toBe('skipped');
+    expect(await confirmationStatusOf(2)).toBe('skipped');
+    expect(await confirmationStatusOf(3)).toBe('requested');
+    expect(await noticeStatusOf(4)).toBe('skipped');
+  });
+
+  test('送信の失敗は依頼待ちのまま残り、次の依頼し直しの対象になる', async () => {
+    await insertConfirmablePurchase(1, { reflectedAt: T0 });
+    await insertRejectedPurchase(2);
+    await insertRefund(2, { purchaseIndex: 2, updatedAt: T0 });
+    const failing = notifierWith(
+      createRecordingSender(new Error('queue unavailable')).sender,
+    );
+
+    expect(await failing.notifyPurchase(purchaseIdOf(1))).toBe('failed');
+    expect(await failing.notifyAutomaticRefund(refundIdOf(2))).toBe('failed');
+
+    expect(await pendingConfirmationIds()).toEqual([purchaseIdOf(1)]);
+    expect(await pendingNoticeIds()).toEqual([refundIdOf(2)]);
   });
 });

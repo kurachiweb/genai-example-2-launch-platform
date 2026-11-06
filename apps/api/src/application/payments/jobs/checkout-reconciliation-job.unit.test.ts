@@ -6,8 +6,10 @@ import { PAYMENTS_TYPES } from '../../../../lib/core/payments/identifiers.ts';
 import {
   type PurchaseRecord,
   type StripeCheckoutSessionSnapshot,
+  StripeNotFoundError,
   StripeUnavailableError,
 } from '../../../../lib/core/payments/ports.ts';
+import { ADVANCEABLE_FROM } from '../../../../lib/core/payments/purchase-rules.ts';
 import { createCronRegistry } from '../../../../lib/core/scheduling/cron-registry.ts';
 import {
   HOUR_MS,
@@ -15,6 +17,7 @@ import {
 } from '../../../../test/support/payments-checkout-fakes.ts';
 import {
   createIncidentRecorder,
+  createJobIds,
   createJobLogCapture,
   createJobReflector,
   createJobSessionGateway,
@@ -98,6 +101,7 @@ function setup(
     ),
     createJobReflector(store, reflections, options.reflectionFailures),
     RUN_CLOCK,
+    createJobIds(),
     recorder.reporter,
   );
   return {
@@ -286,6 +290,108 @@ describe('CheckoutReconciliationJob', () => {
     });
   });
 
+  test('Stripeに決済セッションが無い購入は失効へ前進させてwarnを残し、失敗として知らせず、翌日の突合の対象にしない', async () => {
+    const missing = reconcilableOf(1, { status: 'processing' });
+    const fine = reconcilableOf(2);
+    const { job, store, gatewayCalls, incidents } = setup([missing, fine], {
+      sessions: new Map<string, SessionBehavior>([
+        [
+          sessionIdOf(1),
+          {
+            kind: 'error',
+            error: new StripeNotFoundError('No such checkout session'),
+          },
+        ],
+      ]),
+    });
+
+    await run(job);
+
+    expect(store.advances).toEqual([
+      {
+        purchaseId: missing.id,
+        to: 'expired',
+        from: ADVANCEABLE_FROM.expired,
+        nextToken: createJobIds().generate(),
+        patch: { lastEventAt: RUN_CLOCK_TIME },
+      },
+    ]);
+    expect(store.statuses()).toEqual({
+      [missing.id]: 'expired',
+      [fine.id]: 'expired',
+    });
+    expect(incidents).toEqual([]);
+    expect(logs.of('checkout-expiry')).toEqual([
+      {
+        level: 'warning',
+        properties: { purchaseId: missing.id, sessionId: sessionIdOf(1) },
+      },
+    ]);
+    expect(logs.of('checkout-reconciliation').at(-1)).toEqual({
+      level: 'info',
+      properties: {
+        targets: 2,
+        applied: 2,
+        unchanged: 0,
+        failed: 0,
+        limitReached: false,
+      },
+    });
+
+    await run(job);
+
+    expect(gatewayCalls).toEqual([
+      `retrieve:${sessionIdOf(1)}`,
+      `retrieve:${sessionIdOf(2)}`,
+    ]);
+  });
+
+  test('Stripeに決済セッションが無い購入が既に前進の元の状態でなければ、変えずに未変更として数える', async () => {
+    const missing = reconcilableOf(1);
+    const store = new InMemoryJobPurchases([missing]);
+    const recorder = createIncidentRecorder();
+    const purchases = store.store();
+    const job = new CheckoutReconciliationJob(
+      {
+        ...purchases,
+        // 取得から前進までの間に、Webhookの反映が先に確定させた場合
+        advanceAlone: (input) => {
+          store.update(missing.id, { status: 'fulfilled' });
+          return purchases.advanceAlone(input);
+        },
+      },
+      createJobSessionGateway(
+        [],
+        new Map<string, SessionBehavior>([
+          [
+            sessionIdOf(1),
+            {
+              kind: 'error',
+              error: new StripeNotFoundError('No such checkout session'),
+            },
+          ],
+        ]),
+        expiredSnapshot,
+      ),
+      createJobReflector(store, []),
+      RUN_CLOCK,
+      createJobIds(),
+      recorder.reporter,
+    );
+
+    await run(job);
+
+    expect(store.statuses()).toEqual({ [missing.id]: 'fulfilled' });
+    expect(recorder.incidents).toEqual([]);
+    expect(logs.of('checkout-reconciliation').at(-1)?.properties).toEqual({
+      targets: 1,
+      applied: 0,
+      unchanged: 1,
+      failed: 0,
+      limitReached: false,
+    });
+  });
+
   test('対象が200件を超えたら古い決済期限の順に200件だけ突合し、残りがある旨をwarnで記録する', async () => {
     const purchases = Array.from({ length: 201 }, (_, index) =>
       reconcilableOf(index + 1, {
@@ -324,6 +430,7 @@ describe('CheckoutReconciliationJob', () => {
       createJobSessionGateway([], new Map(), expiredSnapshot),
       createJobReflector(store, []),
       RUN_CLOCK,
+      createJobIds(),
       recorder.reporter,
     );
 
@@ -366,6 +473,7 @@ describe('CheckoutReconciliationJob', () => {
       .bind(PAYMENTS_TYPES.PaymentReflector)
       .toConstantValue(createJobReflector(store, []));
     container.bind(PLATFORM_TYPES.Clock).toConstantValue(RUN_CLOCK);
+    container.bind(PLATFORM_TYPES.IdGenerator).toConstantValue(createJobIds());
     container
       .bind<PaymentsJobIncidentReporter>(
         API_PAYMENTS_TYPES.PaymentsJobIncidentReporter,

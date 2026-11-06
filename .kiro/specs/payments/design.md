@@ -192,6 +192,8 @@ apps/
 │   ├── checkout-consent.ts                          # 同意の文言と版CHECKOUT_CONSENT_VERSION
 │   ├── money.ts                                     # 最小通貨単位の整数とUSDの表示用の値
 │   ├── refund-policy-summary.ts                     # 返金ポリシーの要旨REFUND_POLICY_SUMMARY(最終確認画面と購入確認メールが共有)
+│   ├── refund-reason-texts.ts                       # 全額返金の理由の文REFUND_REASON_TEXTS(自動返金の通知メール・決済画面・決済後のランディングが共有)
+│   ├── payment-input-rules.ts                       # 入力の規則(session_idの形式・決済履歴の件数の範囲・カーソルの上限)
 │   └── payments-unavailable-texts.ts                # 縮退の理由の文PAYMENTS_UNAVAILABLE_REASON(画面)とAPIのpayments_unavailableの文言PAYMENTS_UNAVAILABLE_MESSAGE
 ├── backend-lib/
 │   ├── core/payments/                               # api・eventのapplication層と後続specが読み込む契約と純粋な規則(Bunの単体テスト。Database・BatchItemを読み込まない)
@@ -246,6 +248,8 @@ apps/
 │   │   ├── checkout-consent-recorder.ts             # 同意の記録(Q3)
 │   │   ├── checkout-return-confirmer.ts             # return_urlからの反映(FR-PYMNT-009)
 │   │   ├── payment-history-reader.ts                # 決済履歴の一覧
+│   │   ├── checkout-view.ts                         # 購入から決済画面の表示用の値への変換と、支払える状態・持ち主の判定(照会・同意・ランディングが共有)
+│   │   ├── payment-history-cursor.ts                # 決済履歴のカーソルの符号化と解読
 │   │   └── jobs/
 │   │       ├── checkout-reconciliation-job.ts       # 23:40の突合(order 10)
 │   │       ├── pending-checkout-sweep-job.ts        # 4:21の未完了・依頼待ちの確認(order 400)
@@ -271,9 +275,11 @@ apps/
 │   │   ├── payment-account-data-eraser.ts           # PaymentAccountDataEraser(物理削除の書き込みの単位のポート、型だけ)
 │   │   ├── stripe-webhook-receiver.ts               # 検証→正規化→反映
 │   │   ├── refund-payment-handler.ts                # payments.refund-paymentの処理
+│   │   ├── refund-incidents.ts                      # RefundIncidentReporter(返金の恒久的な失敗をエラートラッキングへ知らせるポート、型だけ)
 │   │   ├── customer-erasure-handler.ts              # purge_dueの波及処理
 │   │   └── open-checkout-expiry-handler.ts          # 退会・停止の波及処理
 │   ├── infrastructure/payments/d1-payment-account-data-eraser.ts  # D1PaymentAccountDataEraser(返金の依頼→購入→Customerの対応の削除を1回の一括の書き込みで確定、Workers統合テスト)
+│   ├── infrastructure/payments/sentry-refund-incident-reporter.ts # SentryRefundIncidentReporter(返金の恒久的な失敗をエラートラッキングへ送る、Workers統合テスト)
 │   ├── infrastructure/email/templates/payments/     # 本文の*-body.tsxと定義の*-template.ts(2種)
 │   └── composition/payments-module.ts               # eventの束縛(AppModule・経路)
 ├── frontend-lib/components/
@@ -423,7 +429,7 @@ sequenceDiagram
     S->>H: refund.updated Webhook経由
 ```
 
-- 一時的な失敗は例外で再試行し(`maxAttempts` 5)、上限でデッドレターからSentryへ通知される(8.6)。恒久的な拒否は`failed`を記録し`captureEvent`で通知する(8.7)。
+- 一時的な失敗は例外で再試行し(`maxAttempts` 5)、上限でデッドレターからSentryへ通知される(8.6)。恒久的な拒否は`failed`を記録し`RefundIncidentReporter`で知らせる(8.7)。
 - 送信の失敗や中断で`dispatched_at`が空のままの行は、4:21の日次の確認で送り直す(10.6)。
 
 ### 23:40の突合
@@ -910,6 +916,7 @@ export declare function mapStripeEvent(event: {
 - `STRIPE_API_KEY`が未設定(ローカルとCIで登録していない場合)なら、`StripeGateway`の各操作はStripeを呼ばずに`StripeUnavailableError`を投げ、決済の開始・決済画面・価格の照会は既存の縮退(`payments_unavailable`、3.11・4.11・13.4)になる。`createStripeClient({ appName, apiKey, fetch? })`(アプリごとに再試行の回数を変えるためアプリ名を受け取る。`fetch`はテストの差し替え用)は`new Stripe(apiKey, { apiVersion: STRIPE_API_VERSION, httpClient: Stripe.createFetchHttpClient(), maxNetworkRetries, timeout: 10_000 })`を返す(apiは`maxNetworkRetries: 1`、eventは2)。キーは`rk_test_`・`rk_live_`で始まる制限付きキーだけを受け付ける(15.2)。
 - 決済セッションは次の項目で作る: `ui_mode: 'elements'`、`mode`(購入種別による)、`customer`、`customer_update: { address: 'auto' }`、`line_items: [{ price: <lookup_keyから解決した価格ID>, quantity }]`、`automatic_tax: { enabled: true }`、`billing_address_collection: 'auto'`、`adaptive_pricing: { enabled: false }`、`allowed_payment_method_types: ['card', 'link']`、`return_url: <CLIENT_SITE_ORIGIN>/checkout/return?session_id={CHECKOUT_SESSION_ID}`、`expires_at`、`client_reference_id: <購入ID>`、`metadata`と`payment_intent_data.metadata`(都度決済)または`subscription_data.metadata`(定期課金)に`purchase_id`・`purchase_kind`・`pseudonymous_id`、`integration_identifier: CHECKOUT_INTEGRATION_IDENTIFIER`、冪等キー`checkout:<購入ID>`。`payment_method_types`は渡さない。
 - 返金は`refunds.create({ payment_intent, amount?, reason, metadata: { refund_request_id, purchase_id } }, { idempotencyKey: 'refund:<依頼キー>' })`。
+- 価格は`prices.list`を`lookup_keys`・`active: true`で照会し、USDでない・単価が最小通貨単位の整数でない・月ごとでない繰り返し・税の扱い(`tax_behavior`)が`inclusive`でない価格は決済に使えない価格として結果から除き、`warn`のログ(`priceLookup`・価格のID・理由)を残す(3.4)。
 - Stripeの例外を分類する: `StripeConnectionError`・`StripeRateLimitError`・`StripeAPIError`・5xxは`StripeUnavailableError`(一時的)、`StripeInvalidRequestError`のうち`resource_missing`は`StripeNotFoundError`、他の4xxは`StripeRejectedError`(恒久的、Stripeのエラーコードを持つ)。
 - 個人データ(メールアドレス・住所・カード)をログに出さない。Stripeのリクエストの`request-id`だけを記録する(15.8)。
 
@@ -1330,7 +1337,7 @@ export declare class D1PaymentRefunds
 
 ```typescript
 // core/payments/ports.ts(apiのPendingCheckoutSweepJobが受け取る。実装はworkers/payments/purchase-notifier.ts)
-export type NoticeOutcome = 'requested' | 'skipped' | 'not_pending' | 'failed'; // failedは送信の失敗か入力を組み立てられない行(例外にしない)
+export type NoticeOutcome = 'requested' | 'skipped' | 'not_pending' | 'failed'; // failedは送信の失敗(例外にしない)、skippedは宛先が無いか入力を組み立てられない行
 export interface PurchaseNotifier {
   notifyPurchase(purchaseId: string): Promise<NoticeOutcome>; // 購入確認メール
   notifyAutomaticRefund(refundRequestId: string): Promise<NoticeOutcome>; // 自動返金の通知
@@ -1340,7 +1347,7 @@ export interface PurchaseNotifier {
 - 購入の`confirmation_email_status`を`pending`(反映の一括の書き込みで記録)→`requested`(`EmailSender.send`の成功後)に進める。`requested`の購入では依頼しない(11.3)。Ultrasの更新の請求は購入ではないため対象外(11.4)。
 - 自動返金の通知は`payment_refunds.notice_status`で同様に扱う(依頼キーが`reflection:`で始まる依頼だけ。理由の値では判定しない)。
 - メールの入力は、購入種別の名前・分量・金額(最小通貨単位の整数。テンプレートでUSDの表記に整える)・購入日時(ISO 8601の文字列。テンプレートでUTCの表記に整える)・役務の提供時期・最終確認画面の追加事項(購入の`summary_json`の`additionalNotes`。Ultrasの自動更新・毎月の請求額・解約の方法など、無ければ空、11.6・U2)・同意の日時と記録した版の文言・決済履歴のURL(`CLIENT_SITE_ORIGIN` + `/settings/billing`)。返金ポリシーの要旨は入力にせず、テンプレートが共用部品の`REFUND_POLICY_SUMMARY`(`common-lib/payments/refund-policy-summary.ts`)を使う。宛先はidentity-authの`UserContactDirectory.findContact(userId)`の`email`で引く(api・eventの両方にidentity-authが束縛する共有の部品)。`undefined`(退会済み・物理削除済み・存在しない)なら送らずに`skipped`とする。停止中の利用者には宛先が返り、確定した購入の確認メールを送る(11.1)。`emailVerified`・`nickname`は判定に使わない(決済の開始は確認済みの利用者に限られる、3.5)。
-- 送信の失敗と入力を組み立てられない行(同意・版・`paid_at`の欠け)は例外にせず`warn`のログと`failed`を返し、依頼待ちのまま残す(日次の確認が依頼し直す)。呼び出し側(反映・日次の確認)は`failed`を例外として扱わない。同意の文言は記録した版から`checkoutConsentTextOf`で引く。自動返金の通知の返金日時は返金の依頼の行の`updated_at`(成功を記録した時刻)。
+- 送信の失敗(一時的)は例外にせず`warn`のログと`failed`を返し、依頼待ちのまま残す(日次の確認が依頼し直す)。入力を組み立てられない行(同意・版・`paid_at`の欠け、記録した版の文言・返金の理由の文言が無い)は依頼し直しても直らず、依頼待ちに残すと古い順の100件の枠を塞ぐため、`warn`のログ(理由`reason`)を残して`skipped`へ進め、`skipped`を返す(購入確認メールと自動返金の通知の両方、10.6)。呼び出し側(反映・日次の確認)は`failed`を例外として扱わない。同意の文言は記録した版から`checkoutConsentTextOf`で引く。自動返金の通知の返金日時は返金の依頼の行の`updated_at`(成功を記録した時刻)。
 
 #### PaymentRevenueReport
 
@@ -1462,16 +1469,17 @@ export declare class D1CheckoutPurchaseWriter implements CheckoutPurchaseWriter 
 
 **Contracts**: Batch [x]
 
-| ジョブの名前                       | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                  |
-| ---------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `payments.checkout-reconciliation` | 23:40    | 10      | `deadline_at`が実行時刻以前かつ24時間以内で`open`・`processing`・`superseded`の購入を最大200件、`retrieveCheckoutSession` → `reflectCheckoutSnapshot`。失敗した購入は`captureEvent`(タグ`job`・購入ID)で通知して続ける(10.1〜10.4)                    |
-| `payments.pending-checkout-sweep`  | 4:21     | 400     | (1)有効期限を1時間以上過ぎた`open`・`processing`・`superseded`の購入を最大200件突合(10.5)。(2)`dispatched_at`が空で10分以上経った返金の依頼を最大100件`dispatch`。(3)`pending`のまま10分以上経った購入確認メール・自動返金の通知を最大100件依頼(10.6) |
-| `payments.history-retention`       | 4:21     | 410     | `recorded_at`が実行時刻の7年前より前の決済履歴を1回500件、最大20回物理削除(12.7)                                                                                                                                                                      |
+| ジョブの名前                       | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payments.checkout-reconciliation` | 23:40    | 10      | `deadline_at`が実行時刻以前かつ24時間以内で`open`・`processing`・`superseded`の購入を最大200件、`retrieveCheckoutSession` → `reflectCheckoutSnapshot`。Stripeに決済セッションが無い(`StripeNotFoundError`)購入は`warn`を残して`expired`へ前進させる(`advanceAlone`・`ADVANCEABLE_FROM.expired`)。他の失敗は`PaymentsJobIncidentReporter`(`reconciliation-failed`)で知らせて続ける(10.1〜10.4) |
+| `payments.pending-checkout-sweep`  | 4:21     | 400     | (1)有効期限を1時間以上過ぎた`open`・`processing`・`superseded`の購入を最大200件突合(10.5)。(2)`dispatched_at`が空で10分以上経った返金の依頼を最大100件`dispatch`。(3)`pending`のまま10分以上経った購入確認メール・自動返金の通知を最大100件依頼(10.6)                                                                                                                                         |
+| `payments.history-retention`       | 4:21     | 410     | `recorded_at`が実行時刻の7年前より前の決済履歴を1回500件、最大20回物理削除(12.7)                                                                                                                                                                                                                                                                                                              |
 
 - Trigger: apiのCron Triggers(`40 7 * * *`・`21 12 * * *`)。23:40の`order` 10は、同時刻のマッチの確定(match-engine)より先に動くための値で、match-engineは10より大きい`order`を使う(10.2)。4:21の`order`は上流の100〜120・200・210・300・810〜830・900・2300と重ならない。ジョブの名前と順序は日次タイムラインの表に載せる。
 - Idempotency: すべての処理は2回実行しても結果が変わらない(反映は状態の前進、削除は条件付き)。件数の上限を超えた分は翌日(4:21)に続ける。23:40の対象は200件を超えない想定(週ごとの予選の勝者の数)で、超えた場合は`warn`を記録する。
 - 依存: 3つのジョブと`CheckoutReader`・`CheckoutConsentRecorder`・`CheckoutReturnConfirmer`・`PaymentHistoryReader`はapplication層に置き、`PaymentReflector`・`PaymentRefunds`(`dispatch`)・`PurchaseNotifier`・`StripeGateway`・各ストアの文を返さない操作を`core/payments`の型と`PAYMENTS_TYPES`の識別子で受け取る。`**/lib/workers/**`を読み込まず、D1の文と一括の書き込みを扱わない(7年の削除は`PaymentRecordStore.deleteRecordedBefore`、送信待ちの返金・依頼待ちのメールの検索は`RefundStore`・`PurchaseStore`の文を返さない操作)。
-- 突合と日次の確認の失敗は、application層のポート`PaymentsJobIncidentReporter`(`API_PAYMENTS_TYPES.PaymentsJobIncidentReporter`)を通してエラートラッキングへ知らせる。実装は`infrastructure/payments/sentry-payments-job-incident-reporter.ts`(前例のauth・inquiryの報告と同じ形)。依頼待ちのまま残った通知は1回の起動につき1件の`warning`にまとめる。
+- 突合と日次の確認が共有する`reconcilePurchases`は、Stripeに決済セッションが無い購入を失敗にせず失効にする(失敗として残すと毎日知らせ続け、上限の枠を使い続けるため。10.3・10.5)。前進は`PurchaseStore.advanceAlone`と`ADVANCEABLE_FROM.expired`を使い、ログは`OpenCheckoutExpirer`と同じカテゴリ`['api', 'payments', 'checkout-expiry']`に出す。
+- 突合と日次の確認の失敗は、application層のポート`PaymentsJobIncidentReporter`(`API_PAYMENTS_TYPES.PaymentsJobIncidentReporter`)を通してエラートラッキングへ知らせる。実装は`infrastructure/payments/sentry-payments-job-incident-reporter.ts`(前例のauth・inquiryの報告と同じ形)。送信の失敗で依頼待ちのまま残った通知は1回の起動につき1件の`warning`にまとめる(入力を組み立てられない行は`PurchaseNotifier`が`skipped`にするため、ここに現れない)。
 
 #### PaymentsSchemaModule
 
@@ -1614,8 +1622,9 @@ type Mutation {
 **Contracts**: Event [x]
 
 - Subscribed: `payments.refund-payment`(`{ refundRequestId: string }`、ULID)。`retry`: `{ maxAttempts: 5, baseDelaySeconds: 60, maxDelaySeconds: 3600 }`。
-- 処理: 依頼の行を読み、`submitted`・`succeeded`なら`done`。依頼の`purchase_id`で購入を読み、`stripe_payment_intent_id`(反映の前進の文が保存した値)を取る(どの依頼の経路でも同じ読み方)。購入が定期課金で`rejected`なら先に`cancelSubscription(atPeriodEnd: false)`(既に解約済みは無視)。`createRefund`(PaymentIntentのID・冪等キー`refund:<依頼キー>`)の結果のIDを保存して`submitted`にする。購入やPaymentIntentのIDが無い依頼は`failed`(`missing_payment_intent`)とし、`captureEvent`で通知する。
-- 失敗: `StripeUnavailableError`は例外(再試行、上限でデッドレター→Sentry、8.6)。`StripeRejectedError`は`failed`と拒否のコードを保存し、`captureEvent`(タグ`message_type`・`stripe_error_code`)で通知して`done`(8.7)。
+- 処理: 依頼の行を読み、`submitted`・`succeeded`なら`done`。依頼の`purchase_id`で購入を読み、`stripe_payment_intent_id`(反映の前進の文が保存した値)を取る(どの依頼の経路でも同じ読み方)。購入が定期課金で`rejected`なら先に`cancelSubscription(atPeriodEnd: false)`(既に解約済みは無視)。`createRefund`(PaymentIntentのID・冪等キー`refund:<依頼キー>`)の結果のIDを保存して`submitted`にする。購入やPaymentIntentのIDが無い依頼は`failed`(`missing_payment_intent`)とし、`RefundIncidentReporter`(種類`missing-payment-intent`)で知らせる。
+- 失敗: `StripeUnavailableError`は例外(再試行、上限でデッドレター→Sentry、8.6)。`StripeRejectedError`は`failed`と拒否のコードを保存し、`RefundIncidentReporter`(種類`stripe-rejected`・操作・Stripeのエラーコード)で知らせて`done`(8.7)。
+- 知らせ方: application層のポート`RefundIncidentReporter`(`EVENT_PAYMENTS_TYPES.RefundIncidentReporter`、`application/payments/refund-incidents.ts`)を通す。実装は`infrastructure/payments/sentry-refund-incident-reporter.ts`の`SentryRefundIncidentReporter`で、`captureEvent`にタグ`message_type`・`payments_incident`・`refund_request_id`(・`stripe_operation`・`stripe_error_code`)と指紋を付けて送る。
 - Idempotency: 同じメッセージを何度受けても、Stripeの冪等キーと行の状態で返金は1回。
 - 依存: application層に置き、`RefundStore`・`PurchaseStore`(文を返さない操作)・`StripeGateway`と例外の分類を`core/payments`から受け取る。
 
@@ -1681,7 +1690,7 @@ export declare function loadStripeOnce(
 
 - ルート`/_authenticated/checkout/$purchaseId`のloaderで`checkout`を取得し、`status`で出し分ける: `OPEN`は表示事項・同意・入力欄、`COMPLETED`は完了の案内と決済履歴への導線、`EXPIRED`は`canRestart`に応じたやり直しの案内、`UNAVAILABLE`は`UnavailableNotice`(4.9〜4.11)。`checkout_not_found`は`notFound()`。ページは`noIndex`。
 - 配置(上から): `CheckoutSummary`(分量・税込の販売価格`MoneyText`・支払方法「クレジットカード・デビットカード、Apple Pay、Google Pay、Link」・支払時期・役務の提供時期・Ultrasの追加事項)、`CheckoutDeadline`(受付期限の`DateTime`と`RelativeTime`)、返金ポリシーの要旨(購入確認メールと同じ文の`REFUND_POLICY_SUMMARY`)と`LEGAL_DOCUMENT_PATHS['legal-notice']`へのリンク(`/legal`、アンカー無し、4.3)、`CheckoutConsent`(`Checkbox`と`CHECKOUT_CONSENT_TEXT`、4.4)、`CheckoutPaymentForm`(`CheckoutElementsProvider`の中に`PaymentElement`と`BillingAddressElement`、支払うボタン)。
-- 支払うボタンは同意が無い、または`checkout.canConfirm`が偽の間は無効。押下で`onBeforeConfirm`(同意の記録)が成功したときだけ`actions.confirm()`を呼ぶ(4.5)。確定の失敗はStripeのメッセージを入力欄の近くに`role="alert"`で示す(4.13)。
+- 支払うボタンは同意が無い、または`checkout.canConfirm`が偽の間は無効。押下で`onBeforeConfirm`(同意の記録)が成功したときだけ`actions.confirm()`を呼ぶ(4.5)。同意の記録が`checkout_not_open`で失敗したときは、理由を示したうえで`checkout`の照会を取り直し(`invalidateQueries`)、最新の状態の案内へ切り替える。確定の失敗はStripeのメッセージを入力欄の近くに`role="alert"`で示す(4.13)。
 - `PublicRuntimeConfig.stripePublishableKey`が`undefined`(公開キーを置いていない環境)のときは、`OPEN`でもStripe.jsを読み込まず`UnavailableNotice`を表示する(4.11と同じ縮退)。
 - `StripeLoader`は決済画面と決済後のランディングのコンポーネントからだけ動的に読み込まれ、他のページのバンドルに含めない(4.12)。`loadStripe`の拒否・`null`と、`actions.confirm()`の想定外の失敗(Stripeが返す利用者向けの拒否を除く)は、`reportUnexpectedErrorInBrowser`でエラートラッキングへ送り、決済画面には縮退の案内を出す。`CheckoutElementsProvider`には`elementsOptions.appearance`(デザインのトークン)と`adaptivePricing: { allowed: false }`を渡す(15.6)。
 - 決済手段は決済セッション側で絞られ、画面では選ばせない(4.7)。

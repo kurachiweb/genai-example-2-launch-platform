@@ -121,16 +121,14 @@ export class EmailPurchaseNotifier implements PurchaseNotifier {
       return (await notice.mark('skipped')) ? 'skipped' : 'not_pending';
     }
     const built = notice.build(contact);
+    // 記録の欠けは依頼し直しても直らず、依頼待ちに残すと古い順の依頼し直しの枠を塞ぎ続けるため、対象外にする
     if (built.kind === 'incomplete') {
-      this.logger.warn(
-        'メールの入力を組み立てられず、依頼待ちのまま残しました',
-        {
-          ...notice.target,
-          emailKind: notice.kind.name,
-          reason: built.reason,
-        },
-      );
-      return 'failed';
+      this.logger.warn('メールの入力を組み立てられず、対象外にしました', {
+        ...notice.target,
+        emailKind: notice.kind.name,
+        reason: built.reason,
+      });
+      return (await notice.mark('skipped')) ? 'skipped' : 'not_pending';
     }
     try {
       await this.emails.send({

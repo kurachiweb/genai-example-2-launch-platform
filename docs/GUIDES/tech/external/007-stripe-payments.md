@@ -116,6 +116,7 @@ Stripeの決済セッション(Checkout Sessions)と決済画面の部品(Paymen
 
 - コードは価格のIDでなく`lookup_key`で価格を解決する。価格の金額を変えるときにダッシュボードで新しい価格へ`lookup_key`を移すだけで済み、設定の変更が要らない。
 - `StripeGateway.resolvePrices`は、`prices.list`を`lookup_keys`(1回の要求で10件まで)・`active: true`で呼ぶ。通貨がUSDでない価格、金額が最小通貨単位の整数でない価格、月ごと(`interval: 'month'`・`interval_count: 1`)でない繰り返しの価格は、決済に使えない形として除き、`warning`のログに価格の`lookup_key`(属性名`priceLookup`)・価格のID・理由を残す。属性名に`key`を含めると伏せ字になるため、`lookup_key`は別の名前で添える(「[属性名による伏せ字](../infra/004-logging-and-error-tracking.md#属性名による伏せ字)」)。
+- 税の扱い(`tax_behavior`)が税込(`inclusive`)でない価格(税抜の`exclusive`・未指定の`unspecified`)も、決済に使えない形として同じく除く(理由`tax_behavior`)。税込でない価格では、表示した価格に決済の時点で税額が上乗せされるためである。
 - `StripePriceCatalog`は、取得した価格をデータベースに保持し、取得から10分以内の価格はStripeに問い合わせずに返す。Stripeに到達できない(`StripeUnavailableError`)ときは保持している価格を古い値として返し、保持も無ければ「決済を利用できない」にする。表示用の照会だけに使い、決済の開始では常にStripeから価格を解決し直す。
 
 ## 冪等キー

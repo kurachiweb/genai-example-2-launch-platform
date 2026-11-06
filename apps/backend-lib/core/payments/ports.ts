@@ -596,7 +596,7 @@ export interface PaymentRefunds {
   dispatch(refundRequestId: string): Promise<void>;
 }
 
-// requestedは依頼を記録した、skippedは宛先が無く対象外として記録した、not_pendingは依頼待ちでない、failedは依頼できず依頼待ちのまま残した(日次の確認が依頼し直す)
+// requestedは依頼を記録した、skippedは宛先が無い、または入力を組み立てられず対象外として記録した、not_pendingは依頼待ちでない、failedは送信に失敗し依頼待ちのまま残した(日次の確認が依頼し直す)
 export type NoticeOutcome = 'requested' | 'skipped' | 'not_pending' | 'failed';
 
 // 送信の失敗は例外にせずfailedとwarningのログにする。反映の確定の後に呼ばれ、反映の結果を変えないため

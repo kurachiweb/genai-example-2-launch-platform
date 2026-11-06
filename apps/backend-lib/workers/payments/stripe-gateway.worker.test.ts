@@ -361,6 +361,7 @@ function priceObject(
     recurring: null,
     type: 'one_time',
     unit_amount: 100,
+    tax_behavior: 'inclusive',
     ...overrides,
   };
 }
@@ -484,6 +485,34 @@ describe('StripeApiGateway(価格)', () => {
       { priceLookup: 'custom', reason: 'unit_amount' },
       { priceLookup: 'yearly', reason: 'interval' },
       { priceLookup: 'bimonthly', reason: 'interval' },
+    ]);
+  });
+
+  test('税の扱いが税込でない価格(税抜・未指定)は除き、lookup_keyと理由だけを警告ログに残す', async () => {
+    const logs = recordLogs();
+    const fake = createFakeStripe(() =>
+      priceList([
+        priceObject({ lookup_key: 'exclusive', tax_behavior: 'exclusive' }),
+        priceObject({ lookup_key: 'unspecified', tax_behavior: 'unspecified' }),
+        priceObject({ lookup_key: 'missing', tax_behavior: null }),
+        priceObject({ lookup_key: 'inclusive' }),
+      ]),
+    );
+
+    const prices = await gatewayWith(fake).resolvePrices([
+      'exclusive',
+      'unspecified',
+      'missing',
+      'inclusive',
+    ]);
+
+    expect(prices.map(({ lookupKey }) => lookupKey)).toStrictEqual([
+      'inclusive',
+    ]);
+    expect(logs.map((log) => log.args[0])).toMatchObject([
+      { priceLookup: 'exclusive', reason: 'tax_behavior' },
+      { priceLookup: 'unspecified', reason: 'tax_behavior' },
+      { priceLookup: 'missing', reason: 'tax_behavior' },
     ]);
   });
 });

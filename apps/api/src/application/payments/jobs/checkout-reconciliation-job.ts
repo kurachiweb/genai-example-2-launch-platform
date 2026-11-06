@@ -1,6 +1,7 @@
 import { inject, injectable } from 'inversify';
 
 import { PLATFORM_TYPES } from '../../../../lib/core/di/identifiers.ts';
+import type { IdGenerator } from '../../../../lib/core/ids/id-generator.ts';
 import { getAppLogger } from '../../../../lib/core/logging/app-logger.ts';
 import { PAYMENTS_TYPES } from '../../../../lib/core/payments/identifiers.ts';
 import type {
@@ -44,6 +45,7 @@ export class CheckoutReconciliationJob implements ScheduledJobHandler {
     @inject(PAYMENTS_TYPES.PaymentReflector)
     private readonly reflector: PaymentReflector,
     @inject(PLATFORM_TYPES.Clock) private readonly clock: Clock,
+    @inject(PLATFORM_TYPES.IdGenerator) private readonly ids: IdGenerator,
     @inject(API_PAYMENTS_TYPES.PaymentsJobIncidentReporter)
     private readonly incidents: PaymentsJobIncidentReporter,
   ) {}
@@ -69,6 +71,8 @@ export class CheckoutReconciliationJob implements ScheduledJobHandler {
         job: CHECKOUT_RECONCILIATION_JOB_DEFINITION.name,
         gateway: this.gateway,
         reflector: this.reflector,
+        purchases: this.purchases,
+        ids: this.ids,
         clock: this.clock,
         incidents: this.incidents,
       },

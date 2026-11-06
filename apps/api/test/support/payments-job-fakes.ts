@@ -5,6 +5,7 @@ import type {
   PaymentRecordStore,
   PaymentReflector,
   PaymentRefunds,
+  PurchaseAdvance,
   PurchaseNotifier,
   PurchaseRecord,
   PurchaseStore,
@@ -13,6 +14,7 @@ import type {
   StripeCheckoutSessionSnapshot,
   StripeGateway,
 } from '../../lib/core/payments/ports.ts';
+import type { IdGenerator } from '../../lib/core/ids/id-generator.ts';
 import type { ScheduledJobContext } from '../../lib/core/scheduling/cron-registry.ts';
 import { toBusinessDateTime } from '../../lib/core/time/business-time.ts';
 import type { Clock } from '../../lib/core/time/clock.ts';
@@ -45,6 +47,17 @@ export function jobContextAt(
 }
 
 export const RUN_CLOCK: Clock = Object.freeze({ now: () => RUN_CLOCK_TIME });
+
+// 前進の後の版に使う連番のULID
+export function createJobIds(): IdGenerator {
+  let serial = 0;
+  return {
+    generate: () => {
+      serial += 1;
+      return jobUlidOf('01JDTKN', serial);
+    },
+  };
+}
 
 // 使わないメソッドを呼んだら失敗させ、ジョブが想定外のポートに触れたことを検出する。DIコンテナが束縛した値をPromiseか判定するthenは持たないものとして返す
 function partialFake<T extends object>(implemented: Partial<T>): T {
@@ -111,6 +124,7 @@ export class InMemoryJobPurchases {
     staleOpen: [],
     pendingConfirmations: [],
   };
+  readonly advances: PurchaseAdvance[] = [];
   private readonly purchases = new Map<string, PurchaseRecord>();
 
   constructor(purchases: readonly PurchaseRecord[] = []) {
@@ -193,6 +207,19 @@ export class InMemoryJobPurchases {
             .toSorted(byTimeThenId((purchase) => purchase.reflectedAt))
             .slice(0, input.limit),
         );
+      },
+      advanceAlone: (input) => {
+        this.advances.push(input);
+        const purchase = this.purchases.get(input.purchaseId);
+        if (purchase === undefined || !input.from.includes(purchase.status)) {
+          return Promise.resolve(false);
+        }
+        this.update(input.purchaseId, {
+          ...input.patch,
+          status: input.to,
+          stateToken: input.nextToken,
+        });
+        return Promise.resolve(true);
       },
     });
   }
@@ -376,14 +403,15 @@ export function createJobPaymentRefunds(
   });
 }
 
-export type NoticeBehavior = 'failed' | Error;
+// 送信の失敗はfailed、入力を組み立てられない行はskipped
+export type NoticeBehavior = 'failed' | 'skipped' | Error;
 
 export interface NoticeCalls {
   readonly purchases: string[];
   readonly refunds: string[];
 }
 
-// EmailPurchaseNotifierと同じく、依頼待ちの行だけを依頼済みに進め、依頼できなければ依頼待ちのまま残す
+// EmailPurchaseNotifierと同じく、依頼待ちの行だけを依頼済みか対象外に進め、送信に失敗すれば依頼待ちのまま残す
 export function createJobNotifier(
   purchases: InMemoryJobPurchases,
   refunds: InMemoryJobRefunds,
@@ -393,7 +421,7 @@ export function createJobNotifier(
   const outcomeOf = (
     id: string,
     pending: boolean,
-    mark: () => void,
+    mark: (to: 'requested' | 'skipped') => void,
   ): Promise<NoticeOutcome> => {
     const behavior = behaviors.get(id);
     if (behavior instanceof Error) {
@@ -405,8 +433,9 @@ export function createJobNotifier(
     if (behavior === 'failed') {
       return Promise.resolve('failed');
     }
-    mark();
-    return Promise.resolve('requested');
+    const to = behavior ?? 'requested';
+    mark(to);
+    return Promise.resolve(to);
   };
   return partialFake<PurchaseNotifier>({
     notifyPurchase: (purchaseId) => {
@@ -414,10 +443,8 @@ export function createJobNotifier(
       return outcomeOf(
         purchaseId,
         purchases.get(purchaseId)?.confirmationEmailStatus === 'pending',
-        () => {
-          purchases.update(purchaseId, {
-            confirmationEmailStatus: 'requested',
-          });
+        (to) => {
+          purchases.update(purchaseId, { confirmationEmailStatus: to });
         },
       );
     },
@@ -426,8 +453,8 @@ export function createJobNotifier(
       return outcomeOf(
         refundRequestId,
         refunds.get(refundRequestId)?.noticeStatus === 'pending',
-        () => {
-          refunds.update(refundRequestId, { noticeStatus: 'requested' });
+        (to) => {
+          refunds.update(refundRequestId, { noticeStatus: to });
         },
       );
     },

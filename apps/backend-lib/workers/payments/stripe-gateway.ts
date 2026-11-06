@@ -45,7 +45,7 @@ type StripeOperation = keyof StripeGateway;
 
 type FailureOutcome = 'unavailable' | 'not_found' | 'rejected';
 
-type PriceRejection = 'currency' | 'unit_amount' | 'interval';
+type PriceRejection = 'currency' | 'tax_behavior' | 'unit_amount' | 'interval';
 
 type ResolvedPrice =
   | { readonly kind: 'usable'; readonly price: StripePrice }
@@ -108,6 +108,10 @@ function stripeErrorCodeOf(error: Stripe.errors.StripeError): string {
 function resolvePrice(price: Stripe.Price, lookupKey: string): ResolvedPrice {
   if (price.currency !== 'usd') {
     return { kind: 'unusable', reason: 'currency' };
+  }
+  // 税抜・未指定の価格は表示した税込の価格に税額が上乗せされるため、価格を税込とする要件に合わない
+  if (price.tax_behavior !== 'inclusive') {
+    return { kind: 'unusable', reason: 'tax_behavior' };
   }
   const unitAmount = price.unit_amount;
   if (unitAmount === null || !isMinorUnitAmount(unitAmount)) {

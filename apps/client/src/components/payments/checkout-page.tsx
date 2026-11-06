@@ -1,4 +1,8 @@
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query';
 import { type ReactNode, useId, useState } from 'react';
 
 import {
@@ -11,7 +15,10 @@ import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { UnavailableNotice } from '../../../lib/components/state/unavailable-notice.tsx';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { graphqlMutationOptions } from '../../../lib/start/graphql/graphql-query-options.ts';
-import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
+import {
+  errorMessageOf,
+  GraphQLClientError,
+} from '../../../lib/utilities/graphql/graphql-result.ts';
 import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import { checkoutQueryOptions } from '../../graphql/checkout.ts';
 import {
@@ -46,6 +53,11 @@ export interface CheckoutPageProps {
 }
 
 type Checkout = ClientCheckoutQuery['checkout'];
+
+const CHECKOUT_NOT_OPEN = 'checkout_not_open';
+
+const isCheckoutNotOpen = (error: unknown): boolean =>
+  error instanceof GraphQLClientError && error.code === CHECKOUT_NOT_OPEN;
 
 function StatusNotice({
   messages,
@@ -85,17 +97,20 @@ function RefundPolicy() {
 }
 
 interface OpenCheckoutProps {
+  readonly viewer: ClientViewer;
   readonly checkout: Checkout;
   readonly clientSecret: string;
   readonly publishableKey: string | undefined;
 }
 
 function OpenCheckout({
+  viewer,
   checkout,
   clientSecret,
   publishableKey,
 }: OpenCheckoutProps) {
   const paymentHeadingId = useId();
+  const queryClient = useQueryClient();
   const [consentGiven, setConsentGiven] = useState(false);
   const [consentFailure, setConsentFailure] = useState<string>();
   const recordConsent = useMutation(
@@ -111,6 +126,12 @@ function OpenCheckout({
       return true;
     } catch (error: unknown) {
       setConsentFailure(errorMessageOf(error, CLIENT_PROFILE.contactAvailable));
+      // 別のタブでの支払いや失効で状態が変わっているため、画面を最新の状態の案内へ切り替える
+      if (isCheckoutNotOpen(error)) {
+        void queryClient.invalidateQueries({
+          queryKey: checkoutQueryOptions(viewer, checkout.purchaseId).queryKey,
+        });
+      }
       return false;
     }
   };
@@ -187,6 +208,7 @@ function CheckoutContent({
         <UnavailableNotice reason={PAYMENTS_UNAVAILABLE_REASON} />
       ) : (
         <OpenCheckout
+          viewer={viewer}
           checkout={checkout}
           clientSecret={checkout.clientSecret}
           publishableKey={publishableKey}

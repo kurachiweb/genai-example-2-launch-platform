@@ -16,6 +16,7 @@ import {
 } from '../../../../test/support/payments-checkout-fakes.ts';
 import {
   createIncidentRecorder,
+  createJobIds,
   createJobLogCapture,
   createJobNotifier,
   createJobPaymentRefunds,
@@ -131,6 +132,7 @@ function setup(options: SweepSetup = {}) {
     createJobPaymentRefunds(refunds, dispatched, options.dispatchFailures),
     createJobNotifier(purchases, refunds, noticeCalls, options.notices),
     RUN_CLOCK,
+    createJobIds(),
     recorder.reporter,
   );
   return {
@@ -340,15 +342,15 @@ describe('PendingCheckoutSweepJob', () => {
   });
 
   test('依頼できず依頼待ちのまま残ったメールを、購入IDと返金の依頼のIDをまとめて1回で通知し、残りの依頼を続ける', async () => {
-    const unbuildable = confirmationPendingOf(1);
+    const sendFailed = confirmationPendingOf(1);
     const throwing = confirmationPendingOf(2);
     const fine = confirmationPendingOf(3);
     const failedNotice = noticePendingOf(1);
     const { job, purchases, incidents } = setup({
-      purchases: [unbuildable, throwing, fine],
+      purchases: [sendFailed, throwing, fine],
       refunds: [failedNotice],
       notices: new Map<string, NoticeBehavior>([
-        [unbuildable.id, 'failed'],
+        [sendFailed.id, 'failed'],
         [throwing.id, new Error('D1に接続できません')],
         [failedNotice.id, 'failed'],
       ]),
@@ -361,7 +363,7 @@ describe('PendingCheckoutSweepJob', () => {
       {
         kind: 'notice-request-failed',
         job: 'payments.pending-checkout-sweep',
-        purchaseIds: [unbuildable.id, throwing.id],
+        purchaseIds: [sendFailed.id, throwing.id],
         refundRequestIds: [failedNotice.id],
       },
     ]);
@@ -369,6 +371,35 @@ describe('PendingCheckoutSweepJob', () => {
       ...EMPTY_SUMMARY,
       notices: { targets: 4, requested: 1, failed: 3 },
     });
+  });
+
+  test('入力を組み立てられず対象外になったメールは、依頼できなかったメールとして知らせず、翌日の依頼し直しの対象にならない', async () => {
+    const unbuildable = confirmationPendingOf(1);
+    const unbuildableNotice = noticePendingOf(1);
+    const { job, purchases, refunds, noticeCalls, incidents } = setup({
+      purchases: [unbuildable],
+      refunds: [unbuildableNotice],
+      notices: new Map<string, NoticeBehavior>([
+        [unbuildable.id, 'skipped'],
+        [unbuildableNotice.id, 'skipped'],
+      ]),
+    });
+
+    await run(job);
+    await run(job);
+
+    expect(purchases.get(unbuildable.id)?.confirmationEmailStatus).toBe(
+      'skipped',
+    );
+    expect(refunds.get(unbuildableNotice.id)?.noticeStatus).toBe('skipped');
+    expect(noticeCalls).toEqual({
+      purchases: [unbuildable.id],
+      refunds: [unbuildableNotice.id],
+    });
+    expect(incidents).toEqual([]);
+    expect(logs.of('pending-checkout-sweep').at(-1)?.properties).toEqual(
+      EMPTY_SUMMARY,
+    );
   });
 
   test('上限の件数だけを処理し、残りを翌日の起動に任せる', async () => {
@@ -441,6 +472,7 @@ describe('PendingCheckoutSweepJob', () => {
       createJobPaymentRefunds(refunds, []),
       createJobNotifier(purchases, refunds, { purchases: [], refunds: [] }),
       RUN_CLOCK,
+      createJobIds(),
       recorder.reporter,
     );
 
@@ -471,6 +503,7 @@ describe('PendingCheckoutSweepJob', () => {
         createJobNotifier(purchases, refunds, { purchases: [], refunds: [] }),
       );
     container.bind(PLATFORM_TYPES.Clock).toConstantValue(RUN_CLOCK);
+    container.bind(PLATFORM_TYPES.IdGenerator).toConstantValue(createJobIds());
     container
       .bind<PaymentsJobIncidentReporter>(
         API_PAYMENTS_TYPES.PaymentsJobIncidentReporter,

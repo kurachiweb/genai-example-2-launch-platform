@@ -320,6 +320,62 @@ describe('決済画面の経路', () => {
     await expect.element(payButton()).toBeEnabled();
   });
 
+  test('同意の記録が支払える状態でないことで失敗したときは、決済画面を取得し直して最新の状態を示す', async () => {
+    const checkoutCalls = () =>
+      executeGraphQL.mock.calls.filter(
+        ([document]) => document === ClientCheckoutDocument,
+      );
+    let current = openCheckout();
+    executeGraphQL.mockImplementation((document: unknown) => {
+      if (document !== ClientRecordCheckoutConsentDocument) {
+        return Promise.resolve({ ok: true, data: checkoutData(current) });
+      }
+      current = settledCheckout({ status: 'COMPLETED' });
+      return Promise.resolve({ ok: false, error: NOT_OPEN });
+    });
+    await renderCheckoutRoute();
+    await expect.element(payButton()).toBeInTheDocument();
+    const fetchedBefore = checkoutCalls().length;
+
+    await userEvent.click(consentCheckbox());
+    await userEvent.click(payButton());
+
+    await expect
+      .element(main())
+      .toHaveTextContent('この購入のお支払いは完了しています。');
+    expect(checkoutCalls().length).toBe(fetchedBefore + 1);
+    expect(payButton().query()).toBeNull();
+    expect(fakeConfirm).not.toHaveBeenCalled();
+  });
+
+  test('同意の記録が他の理由で失敗したときは、決済画面を取得し直さない', async () => {
+    respondWith(openCheckout(), () => ({
+      ok: false,
+      error: new GraphQLClientError({
+        code: 'account_unavailable',
+        message: 'このアカウントでは操作できません。',
+        status: 403,
+      }),
+    }));
+    await renderCheckoutRoute();
+    await expect.element(payButton()).toBeInTheDocument();
+    const fetchedBefore = executeGraphQL.mock.calls.filter(
+      ([document]) => document === ClientCheckoutDocument,
+    ).length;
+
+    await userEvent.click(consentCheckbox());
+    await userEvent.click(payButton());
+
+    await expect
+      .element(main().getByRole('alert'))
+      .toHaveTextContent('このアカウントでは操作できません。');
+    expect(
+      executeGraphQL.mock.calls.filter(
+        ([document]) => document === ClientCheckoutDocument,
+      ),
+    ).toHaveLength(fetchedBefore);
+  });
+
   test('公開キーを置いていない環境では、Stripe.jsを読み込まずに決済を利用できない旨を示し、エラートラッキングへ送らない', async () => {
     respondWith(openCheckout());
 
