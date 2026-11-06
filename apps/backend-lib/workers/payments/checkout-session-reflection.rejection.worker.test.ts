@@ -194,6 +194,52 @@ describe('決済セッションの反映の拒否と全額返金', () => {
     expect(queue.sent).toHaveLength(1);
   });
 
+  test('同じ二重決済の判定の鍵の2つの購入を同時に反映すると、部分一意索引で1つだけが権利を付与し、もう1つは二重決済として拒否し全額返金を依頼する', async () => {
+    await insertPurchase(1, {
+      kind: 'sponsorship',
+      exclusivityKey: EXCLUSIVITY_KEY,
+    });
+    await insertPurchase(2, {
+      kind: 'sponsorship',
+      exclusivityKey: EXCLUSIVITY_KEY,
+    });
+    const fulfillment = createFakeFulfillment({ barrier: 2 });
+    const first = harnessWith({ fulfillment });
+    const second = harnessWith({ fulfillment });
+
+    const outcomes = await Promise.all([
+      first.reflection.reflectSnapshot(snapshotOf(1), OCCURRED_AT),
+      second.reflection.reflectSnapshot(snapshotOf(2), OCCURRED_AT),
+    ]);
+
+    expect(outcomes).toContainEqual({
+      kind: 'applied',
+      purchaseStatus: 'fulfilled',
+    });
+    expect(outcomes).toContainEqual({
+      kind: 'applied',
+      purchaseStatus: 'rejected',
+    });
+    expect(fulfillment.prepared).toHaveLength(2);
+    expect(fulfillment.committed).toHaveLength(1);
+    const [fulfilledId] = fulfillment.committed.map(
+      ({ purchaseId }) => purchaseId,
+    );
+    const rejectedId = [purchaseIdOf(1), purchaseIdOf(2)].find(
+      (id) => id !== fulfilledId,
+    );
+    expect(await readPurchaseRow(rejectedId ?? '')).toMatchObject({
+      status: 'rejected',
+      rejectionReason: 'duplicate',
+    });
+    expect(await readRefundRows()).toMatchObject([
+      { purchaseId: rejectedId, reason: 'duplicate' },
+    ]);
+    expect(await readGrants()).toHaveLength(1);
+    expect(await readRecords()).toHaveLength(2);
+    expect([...first.queue.sent, ...second.queue.sent]).toHaveLength(1);
+  });
+
   test('拒否した購入の2回目の反映は反映済みを返し、返金を重ねて依頼しない', async () => {
     await insertPurchase(1, LATE_DEADLINES);
     const { reflection, queue } = harnessWith();

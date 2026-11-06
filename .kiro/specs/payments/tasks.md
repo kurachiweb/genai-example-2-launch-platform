@@ -322,10 +322,11 @@
   - 1.4で書いた手順に沿って、dev用のsandboxで、作成した決済セッションの決済手段の種類がカードとLinkだけであること、決済画面にカード・Apple Pay・Google Pay・Linkだけが出ること(Klarnaなどが出ないこと)、Linkのカードと即時銀行決済のテストで完了の通知の支払いの状態が「支払い済み」になること、決済履歴に資金源のグループが記録されることを確かめる
   - Stripeの模擬応答のテストに、検証で得た実際の応答の形との差があれば直す
   - 完了状態: 検証の結果(日付・確かめた項目・資金源のグループ)が`research.md`に記録され、想定と異なれば開発者へ報告されている
+  - _Blocked: 開発者のdev用sandboxの準備待ち(1.4と同じ)。検証の手順は`docs/GUIDES/tech/operations/004-payment-data-operations.md`の決済手段の検証の手順にある。決済手段の表示の確認はlocalhostを決済手段のドメインに登録できないためstagingで行う(1.4の調査)_
   - _Depends: 11.1_
   - _Requirements: 4.7, 7.2, 15.7, 16.2_
 
-- [ ] 11.3 重複・順序・署名・期限切れ・二重決済・返金の失敗の網羅を確かめ、カバレッジを満たす
+- [x] 11.3 重複・順序・署名・期限切れ・二重決済・返金の失敗の網羅を確かめ、カバレッジを満たす
   - 反映・返金・Webhookのテストに、Webhookの重複と順序の入れ替わり、署名の不正、反映の期限切れ、二重決済、返金の再試行と恒久的な失敗が含まれていることを確かめ、不足を足す
   - 4種のテストを実行し、本specが追加・変更したファイルのカバレッジが80%以上であることを確かめる
   - 完了状態: 全テストが成功し、カバレッジの閾値の検査を通る
@@ -387,3 +388,4 @@
 - 10.4: 決済後のランディングは`apps/client/src/routes/_authenticated/checkout/return.tsx`と`components/payments/checkout-return-status.tsx`(確かめ直しの間隔と上限は`checkout-return-rules.ts`)。TanStack Routerは`validateSearch`の結果を生の検索パラメータに重ねるため、不正な値は省かず`undefined`で返す(006に記載)。12.2: ランディングの文言と状態を文言規則003とページ配置002に載せる
 - 10.5: 決済履歴は`apps/client/src/routes/_authenticated/settings/billing.tsx`(一覧だけを返す)と`components/payments/payment-history-list.tsx`(`useInfiniteQuery`、「さらに表示」)。疎通確認の開始のボタンは`publicConfig.environment !== 'prod'`のときだけ出る。続きの読み込みの手順を`006`の「続きを後ろに加える一覧」と`004`に追記した(開発者のレビュー待ち)。12.2(必須): 決済履歴のページの構成(一覧・「さらに表示」・末尾の疎通確認の区画)と新しい文言をページ配置002と文言規則003に載せる
 - 11.1: E2Eは`e2e/client/billing.e2e.test.ts`・`checkout.e2e.test.ts`(手順は`billing-steps.ts`・`checkout-steps.ts`)。疎通確認の決済は`startSmokeCheckout`が`payments_unavailable`のときだけ`test.skip`する。ローカルのD1とMailpitを使うためstagingでは実行できない(design.mdのTesting Strategyは「ローカル・stagingの検証で実行」と書く。12.1で揃える)。CSPの違反の記録は確定のクリックから移動までの間を取りこぼす
+- 11.3: 6つの場面(重複・順序・署名・期限切れ・二重決済(同時を含む)・返金の再試行と恒久的な失敗)のテストを確かめた。`test:all:unit`・`test:all:worker`・`test:all:browser`の`--coverage`が全て閾値を通る(本specのファイルで最も低いのは`purchase-reconciliation.ts`の行86.67%)

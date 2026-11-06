@@ -8,6 +8,8 @@ import {
   CHECKOUT_PURCHASE_ID,
   checkoutData,
   openCheckout,
+  settledCheckout,
+  ultrasCheckout,
 } from '../../test/checkout-fixtures.ts';
 import { checkoutQueryOptions, loadCheckoutPage } from './checkout.ts';
 import {
@@ -85,13 +87,20 @@ const validationError = (field: string) =>
   });
 
 describe('loadCheckoutPage', () => {
-  test('本人の購入を取得できれば、ページを表示する', async () => {
-    expect(
-      await loadWhileFetching(CHECKOUT_PURCHASE_ID, () =>
-        Promise.resolve(checkoutData(openCheckout())),
-      ),
-    ).toBe('loaded');
-  });
+  test.each([
+    ['未完了の都度決済', openCheckout],
+    ['未完了の定期課金', ultrasCheckout],
+    ['完了した購入', () => settledCheckout({ status: 'COMPLETED' })],
+  ] as const)(
+    '本人の購入(%s)を取得できれば、ページを表示する',
+    async (_, checkout) => {
+      expect(
+        await loadWhileFetching(CHECKOUT_PURCHASE_ID, () =>
+          Promise.resolve(checkoutData(checkout())),
+        ),
+      ).toBe('loaded');
+    },
+  );
 
   test('他人・存在しない購入は、状態を明かさずに存在しないページにする', async () => {
     const result = await loadWhileFetching(CHECKOUT_PURCHASE_ID, () =>
