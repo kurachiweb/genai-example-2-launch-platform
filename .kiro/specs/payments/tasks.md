@@ -42,7 +42,7 @@
   - _Depends: 1.1_
   - _Requirements: 15.1, 15.2, 15.6, 15.7_
 
-- [ ] 2. 共有の契約と純粋な規則
+- [x] 2. 共有の契約と純粋な規則
 - [x] 2.1 購入種別の口・定期課金の受け取り口・各ポートの契約と、登録の検証を作る
   - 先に、同じ購入種別の重複登録で例外になること、`enabled`が偽の登録と未登録の購入種別が解決されないこと、`enabled`で`PAYMENTS_SMOKE_ENABLED`を見る仮の登録が`false`の環境で解決されないこと(疎通確認用の購入種別の本物は5.7で作るため、テストは仮の登録で書く)、`fulfillment`を持つ登録を渡しても同じ値が解決されること、定期課金の受け取り口の名前の形式と重複の検証を確かめる単体テストを書く
   - 先に、`core/payments/identifiers.unit.test.ts`で、`PAYMENTS_TYPES`の各値が`Symbol.for('payments.<名前>')`であり、オブジェクトが凍結されていることを確かめる
@@ -75,7 +75,7 @@
   - _Depends: 1.2_
   - _Requirements: 8.10, 11.1, 11.2, 11.5, 11.6_
 
-- [ ] 3. Stripeとの通信
+- [x] 3. Stripeとの通信
 - [x] 3.1 Stripeの生成・例外の分類と、Customer・価格・決済セッションの操作を作る
   - 先に、fetchの模擬応答を使うWorkers統合テストで、API版`2026-10-28.endive`の固定、決済セッションの作成の項目(`ui_mode: 'elements'`・`allowed_payment_method_types: ['card', 'link']`・`automatic_tax`・`billing_address_collection: 'auto'`・`customer_update.address: 'auto'`・`adaptive_pricing`の無効・`return_url`・`expires_at`・3つのメタデータ・`integration_identifier`・冪等キー、`payment_method_types`を送らないこと)、決済セッションの取得と失効(完了済みは`not_open`)、取得の結果のPaymentIntent・請求・定期課金・Linkの資金源のグループ・メタデータ(`metadata.purchase_id`を含む)、Customerの作成と更新に渡すのがメールアドレスと仮名化IDだけであること、Customerの削除の`already_deleted`、価格の`lookup_key`での解決、例外の分類(接続・429・5xxは一時的、`resource_missing`は存在しない、他の4xxは恒久的)、`STRIPE_API_KEY`が未設定の環境ではStripeを呼ばずに一時的な失敗(`StripeUnavailableError`)になることを確かめる
   - fetchのHTTPクライアントと時間切れ・再試行の回数をアプリごとに設定し、Stripeの型を外へ出さない読み取り専用の結果の型で返す。個人データをログに出さない
@@ -96,7 +96,7 @@
   - _Depends: 1.1_
   - _Requirements: 6.1, 6.2_
 
-- [ ] 4. 永続化
+- [x] 4. 永続化
 - [x] 4.1 版の検査付きの一括の書き込みと、購入・Stripeのオブジェクトのストアを作る
   - 版の検査は、identity-auth・admin-foundation・inquiry-chatと同じく、一括の書き込みの先頭の業務の行の挿入で、NOT NULLの列に「版が一致すれば値、一致しなければNULL」を入れる型にする(`db/002`の「版の検査で一括の書き込み全体を取り消す」。2026-11-05の開発者の決定)。購入の確定・拒否は`payment_records`の挿入の`pseudonymous_id`を購入の`state_token`で、定期課金は`payment_stripe_objects`への挿入(`object_id`で`DO UPDATE`)の`last_event_at`を「より新しい発生時刻が記録済みか」で検査する。`GuardedBatch`は違反のメッセージの`<テーブル>.<列>`を`cause`をたどって照合し、検査の列の違反だけを`guard_failed`にする
   - 先に、Workers統合テストで、版が一致すれば一括の書き込みが確定すること、他の書き込みが先に購入を前進させていれば(`state_token`が変わっていれば)全体が取り消されて`guard_failed`になること、先頭の決済履歴の挿入が一意キーと衝突しても(初回の請求の行が先にある場合)版の検査が働くこと(SQLiteはNOT NULLを一意性より先に確かめる)、より新しい発生時刻が記録済みの定期課金の通知で後続の文を含めて全体が取り消されること、同じ発生時刻の通知は通ること、`exclusivity_key`の部分一意索引の違反と他の文の制約の違反が`constraint_failed`として検査の失敗と区別されること、他の文の失敗の`<テーブル>.<列>`が検査の列と重ならないこと、購入の作成・購入IDでの検索(5.1・6.2で使用)・決済セッションIDの保存(6.1で使用)・セッションIDでの検索・PaymentIntentのIDでの検索(4.3で使用)・本人の未完了の購入・同じ対象の未完了の購入・突合と日次の確認の対象の検索・同意の記録(未完了の購入だけ)・購入確認メールの依頼の状態の更新と10分以上依頼待ちの購入の検索・利用者の行の削除を確かめる
@@ -121,7 +121,7 @@
   - _Depends: 3.2, 4.1_
   - _Requirements: 6.9, 8.8, 9.1_
 
-- [ ] 5. 反映・返金・通知の共有部品
+- [x] 5. 反映・返金・通知の共有部品
 - [x] 5.1 返金の依頼の部品を作る
   - 先に、Workers統合テストで、全額と一部の依頼の受け付けと記録と送信、同じ依頼キーの2回目の重複の返却(`request`と`prepare`の両方。依頼キーの形式の検査が照会より先で、既に存在する`reflection:`の依頼キーでも`invalid_request_key`で拒否する。`prepare`の2回目は既存の依頼の識別と重複の印と空の文を返し、新しい行を作らない。金額や理由が異なっても、残りの額を超える金額でも拒否しない。確定前の2つの依頼の文が同じ依頼キーで重なると、後から確定する一括の書き込みが一意制約で失敗する)、支払額を超える依頼・未確定・存在しない購入の拒否、依頼元の一括の書き込みに含める文の返却と確定後の送信、反映からの経路(購入の状態とPaymentIntentのIDを検査せず、引数の支払額から全額の返金の依頼の行を`reflection:<購入ID>`の依頼キーで作り、前進の文と同じ一括の書き込みでだけ確定する)、後続specの経路(`request`・`prepare`)が`reflection:`で始まる依頼キーを拒否すること、送信の失敗で送信待ちが残ることを確かめる
   - 1つの実装で、`core/payments`の返金の依頼(`request`・`dispatch`)と`workers/payments/statement-contracts.ts`の返金の依頼の文(`prepare`・`prepareForReflection`)の両方を実装する
@@ -174,7 +174,7 @@
   - _Depends: 5.4, 5.5, 5.6_
   - _Requirements: 2.8, 2.9, 12.10_
 
-- [ ] 6. APIサーバーのユースケース
+- [x] 6. APIサーバーのユースケース
 - [x] 6.1 APIサーバーの決済の識別子と、決済の開始・利用者単位の回数制限を作る
   - APIサーバーの決済の全ユースケースとジョブのDIの識別子を1つのファイル(前例の`identity-types.ts`・`inquiry-types.ts`と同じく`application/payments/payments-types.ts`)に先に定義する(6.2・6.3はこれを使う)
   - 決済のエラーコードと文言と`AppError`の生成を、前例の`inquiry-errors.ts`と同じくapplication層の`application/payments/payments-errors.ts`に単体テスト付きで置く(presentationの`errors.ts`は入力の検証の文言だけを持つ)。6.2・6.3・7.1はこれを使う
@@ -202,7 +202,7 @@
   - _Depends: 6.1_
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 12.7_
 
-- [ ] 7. APIサーバーの組み込み
+- [x] 7. APIサーバーの組み込み
 - [x] 7.1 決済のGraphQLのスキーマモジュールとAPIサーバーの決済の束縛を作る
   - APIサーバーの決済の束縛(ユースケース・ジョブ・回数制限の実装・購入の書き込みの単位の実装・処理単位のコンテナから購入の可否の口を解決する関数)をモジュールとして作る
   - 先に、そのモジュールと共通の束縛を使うWorkers統合テストで、`checkout`・`paymentHistory`・`recordCheckoutConsent`・`confirmCheckoutReturn`・`startSmokeCheckout`の成功、エラーのコードと文言の表(`checkout_closed`・`purchase_kind_unavailable`・`payments_unavailable`・`rate_limit_exceeded`・`checkout_not_found`・`checkout_not_open`・`validation_error`)、ログインしていない要求の拒否、疎通確認が無効な環境での`purchase_kind_unavailable`、後続specが返す`CheckoutStart`の型を確かめる
@@ -252,7 +252,7 @@
   - _Depends: 1.4, 8.2, 8.3_
   - _Requirements: 8.5, 14.1_
 
-- [ ] 9. (P) 通貨の表示部品を共通部品に加える
+- [x] 9. (P) 通貨の表示部品を共通部品に加える
   - 先に、ブラウザテストで、最小通貨単位の整数をロケールに応じたUSDで表示すること(負の金額・符号の表示を含む)と、アクセシビリティの違反が0件であることを確かめる
   - Storybookのストーリーを置く。チェックボックスの部品はidentity-authが作成済みのため、本タスクでは作らない
   - `NumberText`に`Intl.NumberFormatOptions`(`style: 'currency'`・`currency: 'USD'`)を渡し、最小通貨単位からドルへの変換だけを`MoneyText`が受け持つ
@@ -378,3 +378,4 @@
 - 8.2: 返金の実行は`apps/event/src/application/payments/refund-payment-handler.ts`の`RefundPaymentHandler`(再試行は`REFUND_PAYMENT_RETRY_POLICY`)。冪等キーは`refund:<依頼キー>`。処理するのは`requested`の依頼だけで、状態の更新は`updateStatus`の`from`で`requested`のときだけ。恒久的な失敗はポート`RefundIncidentReporter`でSentryへ知らせる。8.4(必須): `EVENT_PAYMENTS_TYPES.RefundIncidentReporter`を`SentryRefundIncidentReporter`(`infrastructure/payments/`)へ束縛し、`MESSAGE_HANDLERS`に`{ contract: PAYMENTS_REFUND_MESSAGE, handler: EVENT_PAYMENTS_TYPES.RefundPaymentHandler, retry: REFUND_PAYMENT_RETRY_POLICY }`を加える
 - 8.3: 波及処理は`apps/event/src/application/payments/customer-erasure-handler.ts`・`open-checkout-expiry-handler.ts`、削除の書き込みはポート`payment-account-data-eraser.ts`と`infrastructure/payments/d1-payment-account-data-eraser.ts`。8.4(必須): `EVENT_PAYMENTS_TYPES.PaymentAccountDataEraser`→`D1PaymentAccountDataEraser`、2つの波及処理を`.to(...)`で束縛し、`payments.customer-erasure`(`purge_due`、400)と`payments.open-checkout-expiry`(`withdrawn`・`suspended`、410)をライフサイクルの登録箇所へ加え、`payments-lifecycle-handlers.worker.test.ts`の`REGISTRATIONS`を`USER_LIFECYCLE_ASYNC_HANDLERS`に置き換え、project-values.mdの「非同期の波及処理の登録」の行に2件を追記する
 - 8.4: イベントサーバーの決済のモジュールは`apps/event/src/composition/payments-module.ts`(`EVENT_PAYMENTS_PLATFORM_MODULE`・`EVENT_PAYMENTS_MODULE`、Webhookの経路の登録を含む)。返金のメッセージ・2つの波及処理は本物の一覧に登録済みで、8.2・8.3のWorkers統合テストも本物の一覧を使う
+- 9: 通貨の表示部品は`apps/frontend-lib/components/payments/money-text.tsx`の`MoneyText`(`amount`は最小通貨単位の整数、`signDisplay`は`auto`か`exceptZero`)。「(税込)」は画面の文言で示す
