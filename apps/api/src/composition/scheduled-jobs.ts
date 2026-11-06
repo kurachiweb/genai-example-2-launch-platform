@@ -6,6 +6,9 @@ import { API_EMAIL_TYPES } from '../application/email/email-cleanup-job.ts';
 import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
 import { GUEST_INQUIRY_RETENTION_JOB_DEFINITION } from '../application/inquiry/jobs/guest-inquiry-retention-job.ts';
 import { MEDIA_JOB_TYPES } from '../application/media/media-daily-jobs.ts';
+import { CHECKOUT_RECONCILIATION_JOB_DEFINITION } from '../application/payments/jobs/checkout-reconciliation-job.ts';
+import { PAYMENT_HISTORY_RETENTION_JOB_DEFINITION } from '../application/payments/jobs/payment-history-retention-job.ts';
+import { PENDING_CHECKOUT_SWEEP_JOB_DEFINITION } from '../application/payments/jobs/pending-checkout-sweep-job.ts';
 
 export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   {
@@ -39,6 +42,8 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     handler: ADMIN_TYPES.AuditLogRetentionJob,
   },
   GUEST_INQUIRY_RETENTION_JOB_DEFINITION,
+  PENDING_CHECKOUT_SWEEP_JOB_DEFINITION,
+  PAYMENT_HISTORY_RETENTION_JOB_DEFINITION,
   {
     name: 'media-pipeline.expired-file-erasure',
     at: { hour: 4, minute: 21 },
@@ -69,6 +74,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     order: 2300,
     handler: SEARCH_TYPES.ReextractionJob,
   },
+  CHECKOUT_RECONCILIATION_JOB_DEFINITION,
   // 4:21のメールの後始末と、送り直したイベントの波及処理による抑止記録の削除が同じ起動で重ならないよう、12時間離す
   {
     name: 'identity-auth.lifecycle-redispatch',

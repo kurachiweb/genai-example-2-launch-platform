@@ -344,6 +344,9 @@ curl "http://localhost:48042/cdn-cgi/local/scheduled?cron=21+12+*+*+*&time=17936
 
 # 業務日付2026-11-02の業務時刻16:21(UTCの2026-11-03 0:21)の定期実行を起こす
 curl "http://localhost:48042/cdn-cgi/local/scheduled?cron=21+0+*+*+*&time=1793665260000"
+
+# 業務日付2026-11-02の業務時刻23:40(UTCの2026-11-03 7:40)の定期実行を起こす
+curl "http://localhost:48042/cdn-cgi/local/scheduled?cron=40+7+*+*+*&time=1793691600000"
 ```
 
 - `cron`はUTCのcron式で、空白を`+`にする。業務時刻はUTC-08:00のため、業務時刻に8時間を足した時刻がUTCの時刻になる(「[業務時刻](project-values.md#業務時刻)」)。

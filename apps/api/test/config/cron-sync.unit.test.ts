@@ -36,6 +36,7 @@ const triggersSchema = z.object({
 const DAILY_RUN_AT = { hour: 4, minute: 21 } as const;
 const DAILY_RUN_BUDGET_MS = 300_000;
 const REDISPATCH_RUN_AT = { hour: 16, minute: 21 } as const;
+const RECONCILIATION_RUN_AT = { hour: 23, minute: 40 } as const;
 
 const IDENTITY_DAILY_JOBS = [
   {
@@ -131,6 +132,16 @@ describe('利用者のアカウントの日次のジョブの登録', () => {
   );
 });
 
+describe('決済の突合の起動時刻の登録', () => {
+  test.each(WRANGLER_ENVIRONMENTS)(
+    '定期実行の定義($label)に、23:40の式40 7 * * *がある',
+    ({ wranglerEnv }) => {
+      expect(toUtcCronExpression(RECONCILIATION_RUN_AT)).toBe('40 7 * * *');
+      expect(readTriggerCrons(wranglerEnv)).toContain('40 7 * * *');
+    },
+  );
+});
+
 describe('起動時刻ごとの時間の予算の登録', () => {
   test('4:21の1回の起動の予算が、式21 12 * * *で300,000msとして引ける', () => {
     const cron = toUtcCronExpression(DAILY_RUN_AT);
@@ -156,6 +167,14 @@ describe('起動時刻ごとの時間の予算の登録', () => {
     expect(
       createRunBudgetTable(SCHEDULED_RUN_BUDGETS).budgetFor(
         toUtcCronExpression(REDISPATCH_RUN_AT),
+      ),
+    ).toBeUndefined();
+  });
+
+  test('23:40の起動には予算を置かない', () => {
+    expect(
+      createRunBudgetTable(SCHEDULED_RUN_BUDGETS).budgetFor(
+        toUtcCronExpression(RECONCILIATION_RUN_AT),
       ),
     ).toBeUndefined();
   });

@@ -5,6 +5,7 @@ import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PurchaseOfferPolicy } from '../../lib/core/payments/purchase-kind-contract.ts';
 import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
+import { createPaymentsPlatformModule } from '../../lib/workers/payments/payments-platform-module.ts';
 import {
   type CheckoutConsentRecorder,
   StoreCheckoutConsentRecorder,
@@ -87,7 +88,11 @@ function bindJobs(bind: Bind): void {
   );
 }
 
-// 共通の束縛(createPaymentsPlatformModule)・利用者の確認(IDENTITY_PLATFORM_TYPES)・厳密カウンタとキー付きハッシュ(PLATFORM_TYPES)は他のモジュールの束縛を使う
+export const API_PAYMENTS_PLATFORM_MODULE: AppModule<
+  Hono<PlatformHonoEnv<Env>>
+> = createPaymentsPlatformModule('api');
+
+// 共通の束縛(API_PAYMENTS_PLATFORM_MODULE)・利用者の確認(IDENTITY_PLATFORM_TYPES)・厳密カウンタとキー付きハッシュ(PLATFORM_TYPES)は他のモジュールの束縛を使う
 export const API_PAYMENTS_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'payments',
   bindings: new ContainerModule(({ bind }) => {

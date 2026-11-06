@@ -25,7 +25,6 @@ import {
   type InvocationScope,
 } from '../../lib/workers/di/invocation-container.ts';
 import { D1PurchaseStore } from '../../lib/workers/payments/d1-purchase-store.ts';
-import { createPaymentsPlatformModule } from '../../lib/workers/payments/payments-platform-module.ts';
 import {
   SMOKE_PURCHASE_LOOKUP_KEY,
   SmokePurchaseOfferPolicy,
@@ -47,7 +46,6 @@ import {
 import { IDENTITY_TYPES } from '../../src/application/identity/identity-types.ts';
 import type { SessionIssuer } from '../../src/application/identity/session-issuer.ts';
 import { MODULES } from '../../src/composition/modules.ts';
-import { API_PAYMENTS_MODULE } from '../../src/composition/payments-module.ts';
 import { paymentsSchemaModule } from '../../src/presentation/graphql/modules/payments/index.ts';
 import {
   createGraphQLGateway,
@@ -222,11 +220,7 @@ export const paymentsGateway = createGraphQLGateway({
     START_SMOKE_CHECKOUT,
   ],
   schemaModules: [paymentsSchemaModule],
-  overrides: [
-    createPaymentsPlatformModule('api'),
-    API_PAYMENTS_MODULE,
-    overridesModule,
-  ],
+  overrides: [overridesModule],
 });
 
 export function useStripe(handlers: Partial<StripeGateway>): FakeStripeGateway {

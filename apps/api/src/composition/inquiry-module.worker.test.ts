@@ -453,7 +453,7 @@ describe('退会の同期の波及処理の登録', () => {
 });
 
 describe('未ログインの問い合わせの保持期間のジョブの登録', () => {
-  test('4:21のジョブの一覧に、管理者のジョブの後・メディアのジョブの前の順序300で載る', () => {
+  test('4:21のジョブの一覧に、管理者のジョブの後・決済のジョブの前の順序300で載る', () => {
     const jobs = createCronRegistry(SCHEDULED_JOBS).jobsFor(DAILY_CRON);
     const names = jobs.map(({ name }) => name);
     const index = names.indexOf(RETENTION_JOB_NAME);
@@ -464,7 +464,7 @@ describe('未ログインの問い合わせの保持期間のジョブの登録'
       handler: INQUIRY_TYPES.GuestInquiryRetentionJob,
     });
     expect(names[index - 1]).toBe('admin-foundation.audit-log-retention');
-    expect(names[index + 1]).toBe('media-pipeline.expired-file-erasure');
+    expect(names[index + 1]).toBe('payments.pending-checkout-sweep');
   });
 
   test('4:21の起動で、保持期間のジョブが束縛から解決されて成功する', async () => {

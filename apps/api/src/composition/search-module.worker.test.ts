@@ -40,6 +40,10 @@ const ADMIN_JOB_NAMES = [
   'admin-foundation.audit-log-retention',
 ];
 const INQUIRY_JOB_NAMES = ['inquiry-chat.guest-inquiry-retention'];
+const PAYMENTS_JOB_NAMES = [
+  'payments.pending-checkout-sweep',
+  'payments.history-retention',
+];
 const MEDIA_JOB_NAMES = [
   'media-pipeline.expired-file-erasure',
   'media-pipeline.moderation-requeue',
@@ -133,6 +137,7 @@ describe('APIサーバーの検索のモジュール', () => {
       ...IDENTITY_JOB_NAMES,
       ...ADMIN_JOB_NAMES,
       ...INQUIRY_JOB_NAMES,
+      ...PAYMENTS_JOB_NAMES,
       ...MEDIA_JOB_NAMES,
       'email-delivery.cleanup',
       REEXTRACTION_JOB_NAME,
@@ -181,6 +186,10 @@ describe('定期実行からの日次の再抽出', () => {
         expect.objectContaining({
           name: 'inquiry-chat.guest-inquiry-retention',
         }),
+        expect.objectContaining({
+          name: 'payments.pending-checkout-sweep',
+        }),
+        expect.objectContaining({ name: 'payments.history-retention' }),
         expect.objectContaining({
           name: 'media-pipeline.expired-file-erasure',
         }),

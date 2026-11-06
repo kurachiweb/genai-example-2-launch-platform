@@ -10,7 +10,7 @@
     "enabled": true,
     "logs": { "invocation_logs": false },
   },
-  "triggers": { "crons": ["21 0 * * *", "21 12 * * *"] },
+  "triggers": { "crons": ["21 0 * * *", "21 12 * * *", "40 7 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

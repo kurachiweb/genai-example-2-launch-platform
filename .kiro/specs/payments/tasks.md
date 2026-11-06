@@ -211,7 +211,7 @@
   - _Depends: 6.2, 6.3_
   - _Requirements: 2.8, 3.10, 3.12, 4.9, 5.6, 12.9_
 
-- [ ] 7.2 APIサーバーのモジュール・スキーマ・ジョブ・Cron Triggersに決済を登録する
+- [x] 7.2 APIサーバーのモジュール・スキーマ・ジョブ・Cron Triggersに決済を登録する
   - 共通の束縛とAPIサーバーの決済のモジュールをモジュールの一覧へ、スキーマモジュールを集約点へ、3つのジョブを定期実行の一覧へ加え、Cron Triggersの3環境に23:40の式を加える
   - 先に、Workers統合テストで、DIから決済の開始・照会・ジョブを取り出せること、定期実行の式とWrangler設定の一致の検査が成功することを確かめる。4:21の2つのジョブは、4:21の起動の合計の予算(`SCHEDULED_RUN_BUDGETS`の300秒)を他のドメインのジョブと共有し、23:40には予算を置かない(`cron-sync.unit.test.ts`の「予算は4:21の1件だけ」を保つ)
   - `apps/api/src/composition/inquiry-module.worker.test.ts`の、4:21の`order` 300の次のジョブの名前の期待を`payments.pending-checkout-sweep`に改める
@@ -372,3 +372,4 @@
 - 6.2: 決済画面・同意・決済後のランディング・決済履歴のユースケースは`apps/api/src/application/payments/`(`checkout-reader.ts`・`checkout-consent-recorder.ts`・`checkout-return-confirmer.ts`・`payment-history-reader.ts`)。照会は`requireUser`、同意の記録は`requireWritableUser`(停止中は`account_unavailable`)。入力の規則(`session_id`の形式・件数の範囲・カーソルの上限)は`common-lib/payments/payment-input-rules.ts`。7.1(必須): GraphQLの`after`に`PAYMENT_HISTORY_CURSOR_MAX`(256)を適用し、カーソルの誤り`invalid_cursor`をエラーの表で扱う。新しい文言2つは12.2で文言規則に加える。単体テストの偽のポートは`apps/api/test/support/payments-checkout-fakes.ts`
 - 6.3: ジョブは`apps/api/src/application/payments/jobs/`(定義は`*_JOB_DEFINITION`)。7.1(必須): `API_PAYMENTS_TYPES.PaymentsJobIncidentReporter`を`SentryPaymentsJobIncidentReporter`(`infrastructure/payments/`)へ束縛する(無いと突合と日次の確認のジョブが解決できない)。7.2: 3つの定義を`SCHEDULED_JOBS`へ、23:40の式`40 7 * * *`をCron Triggersへ加える。12.2: 日次タイムラインに2つのジョブを載せる
 - 7.1: APIサーバーの決済の束縛は`apps/api/src/composition/payments-module.ts`の`API_PAYMENTS_MODULE`、スキーマモジュールは`presentation/graphql/modules/payments/`。決済履歴は`PaymentRecordConnection { nodes, pageInfo }`。スキーマの集約点(`graphql-modules.ts`)への登録は7.1で済んだ。7.2(必須): `createPaymentsPlatformModule('api')`と`API_PAYMENTS_MODULE`を`MODULES`に加えたら、`test/support/payments-graphql-operations.ts`のオーバーライドと`payments-module.worker.test.ts`のモジュールの一覧から外す(二重の束縛を避ける)。bot判定の操作名は`payments_smoke_checkout`
+- 7.2: APIサーバーの`MODULES`に`API_PAYMENTS_PLATFORM_MODULE`(`createPaymentsPlatformModule('api')`、`payments-module.ts`)と`API_PAYMENTS_MODULE`を登録した。23:40の式はルートの`triggers.crons`だけ(staging・prodは継承)。23:40に後続specのジョブ(match-engine)が加わるときは、project-values.mdの記述と23:40の予算の扱いを見直す
