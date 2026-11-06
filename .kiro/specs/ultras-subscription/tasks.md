@@ -55,7 +55,7 @@
   - _Boundary: ActivationContract, ActivationMessage_
   - _Requirements: 4.1, 4.3, 4.4_
 
-- [ ] 2.4 (P) 支払いの失敗と解約の受付のメールの種別とテンプレートを同時に作る
+- [x] 2.4 (P) 支払いの失敗と解約の受付のメールの種別とテンプレートを同時に作る
   - 先に、2種の入力の検証の単体テストと、描画のWorkers統合テストで、件名(文言規則の2種)・本文・宛名、日時のUTCの表記、プラン管理画面へのリンク、支払いの失敗で特典が再試行の間は続き再試行がすべて失敗すると終了する旨、解約の受付で受け付けた日時と特典の終了日時と取り消しの方法、配信停止のリンクが無いことを確かめる
   - `ultras.payment-failed`・`ultras.cancellation-accepted`の種別を`core/email/kinds/ultras.ts`の1ファイルに`category: 'transactional'`で作り(前例`kinds/payments.ts`。`kinds/index.unit.test.ts`に2種の名前と`category`の確認を加える)、1ファイル1コンポーネントの本文(`*-email-body.tsx`)・テンプレート(`*-template.ts`)を`templates/ultras/`に同じ変更で作り、種別とテンプレートの集約点へ同時に加える(email-deliveryの1対1の検査が途中で失敗しないようにする)
   - 完了状態: 単体テストと描画のテストが成功し、種別とテンプレートの1対1の検査が成功し、ローカルのWorkers統合テスト(またはメールの送信のメッセージを手動で流す確認)から送った2種のメールがMailpitに届く
@@ -268,3 +268,4 @@
 - 2.1: `core/ultras`の文字列ユニオン(`UltrasNoticeKind`・`UltrasNoticeStatus`・`CancellationSource`)は`apps/db/schema/ultras`の`*_VALUES`と手で同期している(coreはdbを読めない)。3.x のWorkers統合テストで同値の検査を1本足す。ルート`CLAUDE.md`のディレクトリ構成に`ultras`の記述を加える作業はどのタスクの境界にも無いため、9.1で扱う。
 - 2.2: `applySubscriptionChange`は設計の`next`・`notices`に加えて`anomalies`(`unexpected_status`(`unpaid`・`paused`)・`scheduled_end_missing`)を返す。4.4のsinkはこれを`warn`ログとSentryの`captureEvent`(設計のMonitoring節)の両方に写す。未有効の空の値は`EMPTY_SUBSCRIPTION_SNAPSHOT`、終了の状態の判定は`isEndedStripeStatus`(3.1の`findCancellable`はSQLで同じ集合を使う)。有効化の前に見た予約・`past_due`は`canceledAt`・`pastDueSince`と依頼を持たないまま有効化される(9.xの文書に明記)。終了の変化で初めて予約を見た場合は解約の操作を記録するが確認メールは送らない。
 - 2.3: `ULTRAS_ACTIVATION_RETRY_POLICY`は`core/ultras/activation-message.ts`にある(6.1はここから読み込む)。`project-values.md`のメッセージ種別の表に`ultras.run-activation-handlers`の行を9.1で加える。
+- 2.4: メールの種別の入力は設計の`acceptedAtUtc`・`benefitEndsAtUtc`ではなく、paymentsの前例に合わせてISO 8601の瞬時`acceptedAt`・`benefitEndsAt`(`z.iso.datetime()`、`benefitEndsAt`は必須)にし、テンプレートが`formatUtcDateTime`で表記する。4.1の`UltrasNotifier`はこの名前と形で渡し、依頼の`benefitEndsAt`がnull(`scheduled_end_missing`)なら`skipped`にしてwarnを残す。`project-values.md`の「メール種別」の行にUltrasの2種を9.1で加える。
