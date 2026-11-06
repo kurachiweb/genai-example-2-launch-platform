@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { WEB_ANALYTICS_BEACON_SRC } from '../../lib/start/observability/web-analytics.ts';
 import {
+  buildCheckoutHead,
   buildContactHead,
   buildInquiryChatHead,
   buildLegalDocumentHead,
@@ -159,6 +160,18 @@ describe('buildInquiryChatHead', () => {
     expect(buildInquiryChatHead()).toStrictEqual({
       meta: [
         { title: '問い合わせチャット | Launch Stadium' },
+        { name: 'robots', content: 'noindex, nofollow' },
+      ],
+      links: [],
+    });
+  });
+});
+
+describe('buildCheckoutHead', () => {
+  test('お支払いのタイトルを付け、本人だけが開く決済画面のため検索の索引の対象外にする', () => {
+    expect(buildCheckoutHead()).toStrictEqual({
+      meta: [
+        { title: 'お支払い | Launch Stadium' },
         { name: 'robots', content: 'noindex, nofollow' },
       ],
       links: [],

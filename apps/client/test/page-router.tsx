@@ -18,6 +18,7 @@ import {
   createRouterContext,
   type RouterContext,
 } from '../lib/start/router-context.ts';
+import type { PublicRuntimeConfig } from '../lib/server/env/frontend-env.ts';
 import type { DisplayPreferences } from '../lib/utilities/datetime/display-preferences.ts';
 import type { AppEnvironment } from '../lib/utilities/system/system-status-availability.ts';
 import { SiteLayout } from '../src/components/layout/site-layout.tsx';
@@ -54,6 +55,7 @@ const PAGE_ROUTER_DISPLAY: DisplayPreferences = Object.freeze({
 
 export const createPageRouterContext = (
   environment: AppEnvironment,
+  publicConfig: Partial<PublicRuntimeConfig> = {},
 ): RouterContext =>
   createRouterContext({
     publicConfig: {
@@ -64,6 +66,7 @@ export const createPageRouterContext = (
       sentry: { dsn: undefined, environment, tracesSampleRate: 0 },
       webAnalyticsToken: undefined,
       stripePublishableKey: undefined,
+      ...publicConfig,
     },
     display: PAGE_ROUTER_DISPLAY,
   });

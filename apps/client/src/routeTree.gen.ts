@@ -20,6 +20,7 @@ import { Route as LegalIndexRouteImport } from './routes/legal/index'
 import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as SystemStatusRouteImport } from './routes/system/status'
 import { Route as TermsIndexRouteImport } from './routes/terms/index'
+import { Route as AuthenticatedCheckoutPurchaseIdRouteImport } from './routes/_authenticated/checkout/$purchaseId'
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
@@ -87,6 +88,12 @@ const TermsIndexRoute = TermsIndexRouteImport.update({
   path: '/terms/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedCheckoutPurchaseIdRoute =
+  AuthenticatedCheckoutPurchaseIdRouteImport.update({
+    id: '/checkout/$purchaseId',
+    path: '/checkout/$purchaseId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedInquiriesInquiryIdRoute =
   AuthenticatedInquiriesInquiryIdRouteImport.update({
     id: '/inquiries/$inquiryId',
@@ -163,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/legal/': typeof LegalIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
+  '/checkout/$purchaseId': typeof AuthenticatedCheckoutPurchaseIdRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -185,6 +193,7 @@ export interface FileRoutesByTo {
   '/legal': typeof LegalIndexRoute
   '/privacy': typeof PrivacyIndexRoute
   '/terms': typeof TermsIndexRoute
+  '/checkout/$purchaseId': typeof AuthenticatedCheckoutPurchaseIdRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -210,6 +219,7 @@ export interface FileRoutesById {
   '/legal/': typeof LegalIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
+  '/_authenticated/checkout/$purchaseId': typeof AuthenticatedCheckoutPurchaseIdRoute
   '/_authenticated/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -235,6 +245,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/privacy/'
     | '/terms/'
+    | '/checkout/$purchaseId'
     | '/inquiries/$inquiryId'
     | '/settings/account'
     | '/settings/security'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/legal'
     | '/privacy'
     | '/terms'
+    | '/checkout/$purchaseId'
     | '/inquiries/$inquiryId'
     | '/settings/account'
     | '/settings/security'
@@ -281,6 +293,7 @@ export interface FileRouteTypes {
     | '/legal/'
     | '/privacy/'
     | '/terms/'
+    | '/_authenticated/checkout/$purchaseId'
     | '/_authenticated/inquiries/$inquiryId'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/security'
@@ -393,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/checkout/$purchaseId': {
+      id: '/_authenticated/checkout/$purchaseId'
+      path: '/checkout/$purchaseId'
+      fullPath: '/checkout/$purchaseId'
+      preLoaderRoute: typeof AuthenticatedCheckoutPurchaseIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inquiries/$inquiryId': {
       id: '/_authenticated/inquiries/$inquiryId'
       path: '/inquiries/$inquiryId'
@@ -493,11 +513,13 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
+  AuthenticatedCheckoutPurchaseIdRoute: typeof AuthenticatedCheckoutPurchaseIdRoute
   AuthenticatedInquiriesInquiryIdRoute: typeof AuthenticatedInquiriesInquiryIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
+  AuthenticatedCheckoutPurchaseIdRoute: AuthenticatedCheckoutPurchaseIdRoute,
   AuthenticatedInquiriesInquiryIdRoute: AuthenticatedInquiriesInquiryIdRoute,
 }
 

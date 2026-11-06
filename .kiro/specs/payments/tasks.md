@@ -277,13 +277,14 @@
   - _Depends: 7.2, 10.1_
   - _Requirements: 4.12_
 
-- [ ] 10.3 決済画面(最終確認画面の事項・同意・入力欄・支払いの確定)を作る
+- [x] 10.3 決済画面(最終確認画面の事項・同意・入力欄・支払いの確定)を作る
   - 先に、Stripe.jsの部品を模擬したブラウザテストで、表示事項(分量・税込の価格・支払方法の4つ・支払時期・役務の提供時期)の順、受付期限の日時と残り時間、Ultrasの追加事項、返金ポリシーの要旨とアンカー無しの`/legal`へのリンク、同意のチェックボックスが外れている間の支払うボタンの無効、同意の記録が失敗したときに確定を呼ばないこと、確定の失敗の理由の表示、完了・処理中・返金中・失効(やり直しの導線の有無)・利用できない・見つからない状態の出し分け、アクセシビリティの違反が0件であることを確かめる
   - 10.3〜10.5を並行に進めてTanStack Routerのルートの生成ファイルが衝突した場合は、取り込んだ後に生成し直して解消する
   - 同意のチェックボックスには、identity-authが作成済みのfrontend-libの`Checkbox`を使う(`onCheckedChange`の値は前例の`register-form.tsx`と同じく`checked === true`で真偽値にする)
   - ルートを作り、ページを検索エンジンの索引の対象外にする(clientの`buildSitePageHead`)。Payment Elementと請求先住所の入力欄を置き、現地通貨の表示を許可しない。`CheckoutElementsProvider`の中の状態は`useCheckoutElements()`で読む(`useCheckout()`は`@stripe/react-stripe-js` 7.0.1で非推奨で、静的解析の`no-deprecated`に反する)
   - 先のブラウザテストに、公開キーが無い環境(`PublicRuntimeConfig.stripePublishableKey`が`undefined`)でStripe.jsを読み込まず「決済を利用できない」を表示すること、Stripe.jsの読み込みの失敗と確定の想定外の失敗が`reportUnexpectedErrorInBrowser`へ送られ縮退の案内が出ることを加える
   - 完了状態: ブラウザテストが成功し、ローカル(1.4の準備の後)で、`startSmokeCheckout`(7.2で組み込み済み)を直接呼んで作った購入の決済画面が表示される
+  - 未実施: ローカル(1.4の準備の後)で、`startSmokeCheckout`で作った購入の決済画面が表示されることの確認は、1.4の保留のため行っていない。ブラウザテストでStripe.jsの部品を模擬して各状態を確かめた
   - _Boundary: CheckoutPage, CheckoutSummary, CheckoutConsent, CheckoutPaymentForm, CheckoutDeadline_
   - _Depends: 1.4, 9, 10.2_
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.13, 15.6_
@@ -381,3 +382,4 @@
 - 9: 通貨の表示部品は`apps/frontend-lib/components/payments/money-text.tsx`の`MoneyText`(`amount`は最小通貨単位の整数、`signDisplay`は`auto`か`exceptZero`)。「(税込)」は画面の文言で示す
 - 10.1: clientの`CLIENT_SECURITY_POLICY`にStripeの許可先と`https://link.com`、`payment`の許可を登録した(`*.link.com`は未登録で開発者の判断待ち)。設定のナビゲーションに「決済履歴」(`/settings/billing`、order 70)を加えたので、10.5で同じパスのルートを必ず作る
 - 10.2: 5つの操作は`apps/client/src/graphql/operations/payments/`。Stripe.jsの読み込みは`apps/client/src/components/payments/stripe-loader.ts`の`loadStripeOnce`(`@stripe/stripe-js/pure`、公開キーが無ければ`null`、失敗は次で読み込み直す)。10.3(必須): 先に`stripePublishableKey === undefined`を見て利用できない旨を出し(エラートラッキングへ送らない)、支払うボタンは同意と`useCheckoutElements()`の`canConfirm`で無効を決める。clientのブラウザテストのカバレッジは`src/components/**`をファイル単位で数えるため、部品の`.ts`はブラウザテストで読み込む(単体テストだけだと0%になりCIが落ちる)。各タスクで`bun run --cwd /workspace/apps/client test:browser --coverage`を回す
+- 10.3: 決済画面は`apps/client/src/routes/_authenticated/checkout/$purchaseId.tsx`と`src/components/payments/`。読み込み中・エラー・見つからない表示は軽い`CheckoutStatusPage`(`pendingComponent`は主のバンドルに入るためStripe.jsを読み込む部品を置かない)。返金の理由の文は`common-lib/payments/refund-reason-texts.ts`の`REFUND_REASON_TEXTS`(clientは`refundReasonTextOf`)。やり直しの導線は`CHECKOUT_RESTART_HREFS`、決済履歴への導線は`BillingHistoryLink`(10.4で使う)。12.2(必須): 縮退の文言が、画面(文言規則003の縮退運転の文、`PAYMENT_UNAVAILABLE_REASON`)とAPIの`payments_unavailable`の文言で2通りある。どちらか1つの文に決め、APIの文言・clientの定数・文言規則・設計を一緒に直す(`UnavailableNotice`の固定の題名との重なりに注意)。決済画面の文言と疎通確認の仮の文言を文言規則とページ配置に載せる
