@@ -21,6 +21,7 @@ import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as SystemStatusRouteImport } from './routes/system/status'
 import { Route as TermsIndexRouteImport } from './routes/terms/index'
 import { Route as AuthenticatedCheckoutPurchaseIdRouteImport } from './routes/_authenticated/checkout/$purchaseId'
+import { Route as AuthenticatedCheckoutReturnRouteImport } from './routes/_authenticated/checkout/return'
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
@@ -92,6 +93,12 @@ const AuthenticatedCheckoutPurchaseIdRoute =
   AuthenticatedCheckoutPurchaseIdRouteImport.update({
     id: '/checkout/$purchaseId',
     path: '/checkout/$purchaseId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCheckoutReturnRoute =
+  AuthenticatedCheckoutReturnRouteImport.update({
+    id: '/checkout/return',
+    path: '/checkout/return',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedInquiriesInquiryIdRoute =
@@ -171,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/checkout/$purchaseId': typeof AuthenticatedCheckoutPurchaseIdRoute
+  '/checkout/return': typeof AuthenticatedCheckoutReturnRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -194,6 +202,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyIndexRoute
   '/terms': typeof TermsIndexRoute
   '/checkout/$purchaseId': typeof AuthenticatedCheckoutPurchaseIdRoute
+  '/checkout/return': typeof AuthenticatedCheckoutReturnRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -220,6 +229,7 @@ export interface FileRoutesById {
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/_authenticated/checkout/$purchaseId': typeof AuthenticatedCheckoutPurchaseIdRoute
+  '/_authenticated/checkout/return': typeof AuthenticatedCheckoutReturnRoute
   '/_authenticated/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/privacy/'
     | '/terms/'
     | '/checkout/$purchaseId'
+    | '/checkout/return'
     | '/inquiries/$inquiryId'
     | '/settings/account'
     | '/settings/security'
@@ -269,6 +280,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/checkout/$purchaseId'
+    | '/checkout/return'
     | '/inquiries/$inquiryId'
     | '/settings/account'
     | '/settings/security'
@@ -294,6 +306,7 @@ export interface FileRouteTypes {
     | '/privacy/'
     | '/terms/'
     | '/_authenticated/checkout/$purchaseId'
+    | '/_authenticated/checkout/return'
     | '/_authenticated/inquiries/$inquiryId'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/security'
@@ -413,6 +426,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCheckoutPurchaseIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/checkout/return': {
+      id: '/_authenticated/checkout/return'
+      path: '/checkout/return'
+      fullPath: '/checkout/return'
+      preLoaderRoute: typeof AuthenticatedCheckoutReturnRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inquiries/$inquiryId': {
       id: '/_authenticated/inquiries/$inquiryId'
       path: '/inquiries/$inquiryId'
@@ -514,12 +534,14 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedCheckoutPurchaseIdRoute: typeof AuthenticatedCheckoutPurchaseIdRoute
+  AuthenticatedCheckoutReturnRoute: typeof AuthenticatedCheckoutReturnRoute
   AuthenticatedInquiriesInquiryIdRoute: typeof AuthenticatedInquiriesInquiryIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedCheckoutPurchaseIdRoute: AuthenticatedCheckoutPurchaseIdRoute,
+  AuthenticatedCheckoutReturnRoute: AuthenticatedCheckoutReturnRoute,
   AuthenticatedInquiriesInquiryIdRoute: AuthenticatedInquiriesInquiryIdRoute,
 }
 

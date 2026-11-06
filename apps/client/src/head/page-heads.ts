@@ -10,7 +10,10 @@ import {
 } from '../../common-lib/legal/legal-documents.ts';
 import { INQUIRY_CHAT_PAGE_TITLE } from '../components/inquiry/inquiry-chat-messages.ts';
 import { CONTACT_PAGE_TITLE } from '../components/inquiry/inquiry-contact-messages.ts';
-import { CHECKOUT_PAGE_TITLE } from '../components/payments/checkout-messages.ts';
+import {
+  CHECKOUT_PAGE_TITLE,
+  CHECKOUT_RETURN_PAGE_TITLE,
+} from '../components/payments/checkout-messages.ts';
 import { CONTACT_HREF, SITE_NAME } from '../components/layout/site-links.ts';
 import type {
   LegalDocumentLoaderData,
@@ -82,6 +85,10 @@ export const buildInquiryChatHead = () =>
 // 本人だけが開く購入ごとのページのため、検索の索引の対象外にする
 export const buildCheckoutHead = () =>
   buildSitePageHead({ title: CHECKOUT_PAGE_TITLE, noIndex: true });
+
+// 決済セッションのIDを含むURLで本人だけが開くページのため、検索の索引の対象外にする
+export const buildCheckoutReturnHead = () =>
+  buildSitePageHead({ title: CHECKOUT_RETURN_PAGE_TITLE, noIndex: true });
 
 // 配色の初回描画前のスクリプトはAppDocumentが置くため、ここには置かない
 export const buildRootHead = ({

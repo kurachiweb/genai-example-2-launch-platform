@@ -289,7 +289,7 @@
   - _Depends: 1.4, 9, 10.2_
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.13, 15.6_
 
-- [ ] 10.4 (P) 決済後のランディングを作る
+- [x] 10.4 (P) 決済後のランディングを作る
   - 先に、ブラウザテストで、完了の内容と購入種別ごとの導線と決済履歴への導線、処理中の確かめ直し(3秒ごと最大20回)とその後の案内、返金中の理由と全額返金の旨、未完了とやり直しの導線、見つからない旨、`session_id`の欠落・不正、アンマウントでタイマーが止まること、アクセシビリティの違反が0件であることを確かめる
   - `confirmCheckoutReturn`は`loader`では呼ばず、`CheckoutReturnStatus`のマウント後の効果から`useMutation(graphqlMutationOptions(ClientConfirmCheckoutReturnDocument))`で1回呼び、処理中の間は部品の中のタイマー(`setTimeout`)で呼び直す(変更の`retry: false`は変えない)。`docs/GUIDES/tech/frontend/006-data-fetching.md`の「変更」の節に、冪等で、画面への到達そのものが利用者の操作に当たる確定はマウント後に呼んでよいという例外と、呼び直しの方法を、本プロジェクト固有の値を含めずに加える(2026-11-05の開発者の決定)
   - 購入種別ごとの導線(`/my/products`・`/settings/sponsorships`・`/settings/plan`)は本specの時点で未作成の経路のため、型付きの`Link`ではなく`PathLink`で描く
@@ -383,3 +383,4 @@
 - 10.1: clientの`CLIENT_SECURITY_POLICY`にStripeの許可先と`https://link.com`、`payment`の許可を登録した(`*.link.com`は未登録で開発者の判断待ち)。設定のナビゲーションに「決済履歴」(`/settings/billing`、order 70)を加えたので、10.5で同じパスのルートを必ず作る
 - 10.2: 5つの操作は`apps/client/src/graphql/operations/payments/`。Stripe.jsの読み込みは`apps/client/src/components/payments/stripe-loader.ts`の`loadStripeOnce`(`@stripe/stripe-js/pure`、公開キーが無ければ`null`、失敗は次で読み込み直す)。10.3(必須): 先に`stripePublishableKey === undefined`を見て利用できない旨を出し(エラートラッキングへ送らない)、支払うボタンは同意と`useCheckoutElements()`の`canConfirm`で無効を決める。clientのブラウザテストのカバレッジは`src/components/**`をファイル単位で数えるため、部品の`.ts`はブラウザテストで読み込む(単体テストだけだと0%になりCIが落ちる)。各タスクで`bun run --cwd /workspace/apps/client test:browser --coverage`を回す
 - 10.3: 決済画面は`apps/client/src/routes/_authenticated/checkout/$purchaseId.tsx`と`src/components/payments/`。読み込み中・エラー・見つからない表示は軽い`CheckoutStatusPage`(`pendingComponent`は主のバンドルに入るためStripe.jsを読み込む部品を置かない)。返金の理由の文は`common-lib/payments/refund-reason-texts.ts`の`REFUND_REASON_TEXTS`(clientは`refundReasonTextOf`)。やり直しの導線は`CHECKOUT_RESTART_HREFS`、決済履歴への導線は`BillingHistoryLink`(10.4で使う)。12.2(必須): 縮退の文言が、画面(文言規則003の縮退運転の文、`PAYMENT_UNAVAILABLE_REASON`)とAPIの`payments_unavailable`の文言で2通りある。どちらか1つの文に決め、APIの文言・clientの定数・文言規則・設計を一緒に直す(`UnavailableNotice`の固定の題名との重なりに注意)。決済画面の文言と疎通確認の仮の文言を文言規則とページ配置に載せる
+- 10.4: 決済後のランディングは`apps/client/src/routes/_authenticated/checkout/return.tsx`と`components/payments/checkout-return-status.tsx`(確かめ直しの間隔と上限は`checkout-return-rules.ts`)。TanStack Routerは`validateSearch`の結果を生の検索パラメータに重ねるため、不正な値は省かず`undefined`で返す(006に記載)。12.2: ランディングの文言と状態を文言規則003とページ配置002に載せる

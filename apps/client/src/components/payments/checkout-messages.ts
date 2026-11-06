@@ -91,6 +91,49 @@ export const BILLING_HISTORY_HREF = '/settings/billing';
 
 export const BILLING_HISTORY_LINK_LABEL = '決済履歴を見る';
 
+export const CHECKOUT_RETURN_PAGE_TITLE = 'お支払いの結果';
+
+export const CHECKOUT_RETURN_CONFIRMING_MESSAGE =
+  'お支払いの結果を確認しています。';
+
+export const CHECKOUT_RETURN_COMPLETED_MESSAGE =
+  'お支払いを確認し、購入が確定しました。';
+
+export const CHECKOUT_RETURN_PROCESSING_NOTE =
+  '確認が済むと、この画面の表示が切り替わります。';
+
+export const CHECKOUT_RETURN_DELAYED_MESSAGE =
+  'お支払いの確認に時間がかかっています。しばらくしてから、決済履歴でお支払いの記録をご確認ください。';
+
+export const CHECKOUT_RETURN_INCOMPLETE_MESSAGE =
+  'お支払いが完了していないため、購入は完了していません。';
+
+export const CHECKOUT_PAID_AMOUNT_LABEL = 'お支払い金額(税込)';
+
+export interface PurchasedDestination {
+  readonly href: string;
+  readonly label: string;
+}
+
+const PRODUCTS_DESTINATION: PurchasedDestination = Object.freeze({
+  href: '/my/products',
+  label: 'プロダクト管理を見る',
+});
+
+// 購入の完了の後に、購入した対象を確かめられる画面。疎通確認の購入は対象の画面を持たない
+export const PURCHASED_DESTINATIONS: Readonly<
+  Record<PurchaseKind, PurchasedDestination | undefined>
+> = Object.freeze({
+  WEEK_TOURNAMENT_ENTRY: PRODUCTS_DESTINATION,
+  YEAR_TOURNAMENT_ENTRY: PRODUCTS_DESTINATION,
+  SPONSORSHIP: Object.freeze({
+    href: '/settings/sponsorships',
+    label: 'スポンサー広告を見る',
+  }),
+  ULTRAS: Object.freeze({ href: '/settings/plan', label: 'プランを見る' }),
+  PAYMENTS_SMOKE: undefined,
+});
+
 // やり直しは購入種別ごとの申込みの画面から行う。トーナメントの参加費はプロダクト管理、広告とUltrasは料金ページ、疎通確認は決済履歴の開始のボタンから始める
 export const CHECKOUT_RESTART_HREFS: Readonly<Record<PurchaseKind, string>> =
   Object.freeze({

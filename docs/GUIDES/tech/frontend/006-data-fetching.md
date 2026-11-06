@@ -266,6 +266,63 @@ await sendWithTurnstile(turnstile, (turnstileToken) =>
 - フォームから変更するときは、`AppForm`の`onSubmit`で`mutateAsync`を待つ。失敗の`GraphQLClientError`の`details`は欄のエラーになり、欄に対応しない詳細と詳細の無い失敗は`onSubmitError`へ渡る(「[フォーム](005-shared-components.md#フォーム)」)。入力の検証の詳細の`field`は引数からのパス(`input.title`など)のため、`serverFieldPrefix`で引数の名前を外す。
 - 送信のボタンは、サーバーの詳細が付いた欄のエラーが1つでも残る間は無効のままである。詳細は利用者がその欄を入力し直すと消えるため、入力欄を描かない値をスキーマの入力に含めない(「[フォーム](005-shared-components.md#フォーム)」)。
 
+#### マウントの後に呼ぶ確定
+
+冪等で、画面への到達そのものが利用者の操作に当たる確定(外部のサービスでの手続きを終えて戻った先のページで、その結果を確かめて反映する操作など)は、例外として、その画面の部品のマウントの後の効果(`useEffect`)から`useMutation(graphqlMutationOptions(<文書>))`で1回呼んでよい。
+
+- `loader`では呼ばない。`loader`は先読みでも実行され、利用者が開いていない画面の確定が起きる。
+- APIサーバーが、同じ値で何度呼ばれても結果が変わらないことを保証する操作に限る。開発時のStrictModeは効果を2回実行し、確定が2回送られるためである。
+- 確定の結果が「処理中」のように時間をおけば変わり得る間は、部品の中の`setTimeout`で`<呼び直しの間隔>`をおいて呼び直す。呼び直しの回数に`<呼び直しの上限>`を設け、上限に達したら呼び直しをやめ、別の確認の方法(履歴の画面など)を案内する。`<呼び直しの間隔>`と`<呼び直しの上限>`は、確定の操作ごとに決める。
+- タイマーは効果の後始末で解除し、アンマウントの後に呼び直さない。呼び直しは結果を受け取ってから次のタイマーを掛け、前の呼び出しの結果を待つ間に重ねて送らない。
+- 変更の`retry: false`(「[既定値と再試行](#既定値と再試行)」)は上書きしない。自動の再試行は失敗の後にだけ働き、処理中の結果を呼び直さないためである。失敗は`ErrorState`で`message`と再試行の操作を示す。
+- 定期再取得(「[表示中の画面の定期再取得](010-live-refresh-queries.md)」)は取得の設定のため、この呼び直しには使わない。
+- 呼び直しの間に変わる結果は、最初の表示から置いた`role="status"`の領域の文を入れ替えて支援技術へ伝える(「[状態とエラーの伝え方](004-accessibility-rules.md#状態とエラーの伝え方)」)。
+
+```tsx
+import { useMutation } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+
+import { graphqlMutationOptions } from '<共通部品の配置先>/start/graphql/graphql-query-options.ts';
+
+const { mutate } = useMutation(graphqlMutationOptions(ConfirmReturnDocument));
+const [request, setRequest] = useState({ id: 0, recheck: 0 });
+const [result, setResult] = useState<{ status: string; requestId: number }>();
+
+useEffect(() => {
+  mutate(
+    { variables: { returnId } },
+    {
+      onSuccess: (data) => {
+        setResult({ status: data.confirmReturn.status, requestId: request.id });
+      },
+    },
+  );
+}, [mutate, returnId, request]);
+
+const awaitingRecheck =
+  result?.requestId === request.id &&
+  result.status === 'PROCESSING' &&
+  request.recheck < RECHECK_LIMIT;
+
+useEffect(() => {
+  if (!awaitingRecheck) {
+    return undefined;
+  }
+  const timer = setTimeout(() => {
+    setRequest((current) => ({
+      id: current.id + 1,
+      recheck: current.recheck + 1,
+    }));
+  }, RECHECK_INTERVAL_MS);
+  return () => {
+    clearTimeout(timer);
+  };
+}, [awaitingRecheck]);
+```
+
+- 例の文書・変数・状態の値・`RECHECK_INTERVAL_MS`(`<呼び直しの間隔>`)・`RECHECK_LIMIT`(`<呼び直しの上限>`)は、置き換えて読む。`mutate`の呼び出しごとの`onSuccess`は、部品がアンマウントした後の結果では呼ばれない。
+- 呼び直しをブラウザテストで確かめる時は、`vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })`で`setTimeout`だけを偽にし、TanStack Queryの結果の通知を`notifyManager.setScheduler(queueMicrotask)`でタイマーを使わずに届ける(既定の通知は`setTimeout(…, 0)`のため、偽にすると時間を進めるまで画面が更新されない)。テストの後は`vi.useRealTimers()`と、`setTimeout(callback, 0)`で届ける既定の通知に戻す。間隔の1ミリ秒前まで進めて呼び出しが無いこと、間隔ちょうどで1回呼ぶこと、上限の後とアンマウントの後に呼ばないことを確かめる。
+
 ### 日時の値
 
 GraphQLの`DateTime`の値は、コード生成で`string`になり、APIサーバーはUTCのISO形式の文字列(末尾が`Z`)で返す。変換せずに`DateTime`・`RelativeTime`の部品へ渡す(「[日時と数値](005-shared-components.md#日時と数値)」)。時差の無い文字列は描画中に`RangeError`になるため、日時を自前で組み立てて渡すときは時差を含める。
@@ -348,6 +405,7 @@ APIサーバーがセッションの発行・削除を指示したとき、そ�
 | フォームの入力                                            | React Hook Form(`useAppForm`)                       | 送信の前の値をTanStack Query・Jotaiへ写さない                                                                   |
 | 公開してよい設定・表示設定                                | ルーターの文脈の実行時の値(`context.runtime.get()`) | 要求ごとに1回だけ設定される。部品から書き換えない                                                               |
 
+- ルーターは`validateSearch`の結果を、URLの元の検索パラメータに重ねて`useSearch`へ渡す。検証で不正とした値を結果から省くと、元の値がそのまま残る。不正な値を捨てる時は、項目を`undefined`にして返し、元の値を上書きする。
 - 同じ値を2つの置き場所に持たない。サーバーのデータをJotaiに写すと、取得し直した結果と食い違う。
 - Jotaiの原子の初期値に、利用者ごとの値を入れない。原子の定義は全要求で共有され、値だけが要求ごとのストアに入る。
 

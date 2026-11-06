@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { WEB_ANALYTICS_BEACON_SRC } from '../../lib/start/observability/web-analytics.ts';
 import {
   buildCheckoutHead,
+  buildCheckoutReturnHead,
   buildContactHead,
   buildInquiryChatHead,
   buildLegalDocumentHead,
@@ -172,6 +173,18 @@ describe('buildCheckoutHead', () => {
     expect(buildCheckoutHead()).toStrictEqual({
       meta: [
         { title: 'お支払い | Launch Stadium' },
+        { name: 'robots', content: 'noindex, nofollow' },
+      ],
+      links: [],
+    });
+  });
+});
+
+describe('buildCheckoutReturnHead', () => {
+  test('お支払いの結果のタイトルを付け、本人だけが開く決済後のランディングのため検索の索引の対象外にする', () => {
+    expect(buildCheckoutReturnHead()).toStrictEqual({
+      meta: [
+        { title: 'お支払いの結果 | Launch Stadium' },
         { name: 'robots', content: 'noindex, nofollow' },
       ],
       links: [],
