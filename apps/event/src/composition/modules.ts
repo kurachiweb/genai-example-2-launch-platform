@@ -16,6 +16,10 @@ import {
   EVENT_MEDIA_PLATFORM_MODULE,
 } from './media-module.ts';
 import {
+  EVENT_PAYMENTS_MODULE,
+  EVENT_PAYMENTS_PLATFORM_MODULE,
+} from './payments-module.ts';
+import {
   EVENT_SEARCH_MODULE,
   EVENT_SEARCH_PLATFORM_MODULE,
 } from './search-module.ts';
@@ -34,4 +38,6 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_SEARCH_PLATFORM_MODULE,
     EVENT_SEARCH_MODULE,
     EVENT_INQUIRY_MODULE,
+    EVENT_PAYMENTS_PLATFORM_MODULE,
+    EVENT_PAYMENTS_MODULE,
   ]);

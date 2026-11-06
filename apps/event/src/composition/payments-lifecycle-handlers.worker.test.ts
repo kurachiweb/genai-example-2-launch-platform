@@ -25,33 +25,25 @@ import { users } from '../../db/schema/identity/users.ts';
 import { paymentCustomers } from '../../db/schema/payments/payment-customers.ts';
 import { paymentPurchases } from '../../db/schema/payments/payment-purchases.ts';
 import { paymentRefunds } from '../../db/schema/payments/payment-refunds.ts';
-import { createUlidGenerator } from '../../lib/core/ids/id-generator.ts';
+import type { AppModule } from '../../lib/core/di/app-module.ts';
 import {
   LIFECYCLE_CONTINUE_DELAY_SECONDS,
   USER_LIFECYCLE_RETRY_POLICY,
-  type UserLifecycleAsyncHandler,
-  type UserLifecycleAsyncRegistration,
   type UserLifecycleEventType,
 } from '../../lib/core/identity/user-lifecycle.ts';
 import { RUN_USER_LIFECYCLE_MESSAGE } from '../../lib/core/messaging/contracts/identity.ts';
 import type { QueueEnvelope } from '../../lib/core/messaging/envelope.ts';
 import { PAYMENTS_TYPES } from '../../lib/core/payments/identifiers.ts';
 import {
-  type CustomerStore,
-  type OpenCheckoutExpirer,
   type StripeGateway,
   StripeUnavailableError,
 } from '../../lib/core/payments/ports.ts';
 import { createQueueDispatcher } from '../../lib/workers/messaging/queue-consumer.ts';
 import { D1CustomerStore } from '../../lib/workers/payments/d1-customer-store.ts';
 import { D1PaymentRecordStore } from '../../lib/workers/payments/d1-payment-record-store.ts';
-import { D1PurchaseStore } from '../../lib/workers/payments/d1-purchase-store.ts';
 import { D1RefundStore } from '../../lib/workers/payments/d1-refund-store.ts';
-import { StripeOpenCheckoutExpirer } from '../../lib/workers/payments/open-checkout-expirer.ts';
 import {
-  harnessWith as reflectionHarnessWith,
   insertPurchase,
-  NOW,
   sessionIdOf,
 } from '../../lib/workers/payments/testing/checkout-reflection-harness.ts';
 import {
@@ -77,13 +69,8 @@ import {
   readEvent,
   readHandlerRuns,
 } from '../../lib/workers/identity/testing/identity-store-fixtures.ts';
-import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
-import { CustomerErasureHandler } from '../application/payments/customer-erasure-handler.ts';
-import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
-import { OpenCheckoutExpiryHandler } from '../application/payments/open-checkout-expiry-handler.ts';
-import type { PaymentAccountDataEraser } from '../application/payments/payment-account-data-eraser.ts';
-import { D1PaymentAccountDataEraser } from '../infrastructure/payments/d1-payment-account-data-eraser.ts';
-import { createEventIdentityModule } from './identity-module.ts';
+import { MESSAGE_HANDLERS } from './message-handlers.ts';
+import { MODULES } from './modules.ts';
 
 declare global {
   // @cloudflare/vitest-pool-workers 0.23.0の型定義はgetQueueResultの戻り値にこの型を使うが、宣言を含まない
@@ -112,25 +99,11 @@ interface UserPaymentRows {
 // TEST_MIGRATIONSはvitest.worker.config.tsだけが渡すテスト用のバインディングで、実行時の環境の型には含めない
 const testEnv = env as Env & { readonly TEST_MIGRATIONS: D1Migration[] };
 
-const CUSTOMER_ERASURE = 'payments.customer-erasure';
+const PURGE_INQUIRIES = 'inquiry-chat.member-inquiry-purge';
 
 const OPEN_CHECKOUT_EXPIRY = 'payments.open-checkout-expiry';
 
-// ライフサイクルの登録箇所への登録は決済のモジュールと同じ変更で行うため、ここでは設計の名前・順序の登録で実行器から呼ぶ
-const REGISTRATIONS: readonly UserLifecycleAsyncRegistration[] = [
-  {
-    name: CUSTOMER_ERASURE,
-    events: ['purge_due'],
-    order: 400,
-    handler: EVENT_PAYMENTS_TYPES.CustomerErasureHandler,
-  },
-  {
-    name: OPEN_CHECKOUT_EXPIRY,
-    events: ['withdrawn', 'suspended'],
-    order: 410,
-    handler: EVENT_PAYMENTS_TYPES.OpenCheckoutExpiryHandler,
-  },
-];
+const EMAIL_SUPPRESSION_CLEANUP = 'identity-auth.email-suppression-cleanup';
 
 const TARGET = 1;
 
@@ -144,7 +117,6 @@ const KEPT_CUSTOMER_ID = 'cus_test_lifecycle_2';
 
 const KEPT_PURCHASE = 900;
 
-const purchases = new D1PurchaseStore(db);
 const refunds = new D1RefundStore(db);
 const customers = new D1CustomerStore(db);
 const records = new D1PaymentRecordStore(db);
@@ -163,58 +135,27 @@ function envelopeOf(eventIndex: number): QueueEnvelope {
   };
 }
 
-function paymentsBindings(gateway: StripeGateway): ContainerModule {
-  const clock = { now: () => NOW };
-  const expirer = new StripeOpenCheckoutExpirer({
-    appName: 'event',
-    gateway,
-    purchases,
-    reflection: reflectionHarnessWith({
-      gateway: createFakeStripeGateway(),
-    }).reflection,
-    ids: createUlidGenerator(clock),
-    clock,
-  });
-  return new ContainerModule(({ bind }) => {
-    bind(PAYMENTS_TYPES.PurchaseStatements).to(D1PurchaseStore);
-    bind(PAYMENTS_TYPES.RefundStatements).to(D1RefundStore);
-    bind(PAYMENTS_TYPES.CustomerStatements).to(D1CustomerStore);
-    bind<CustomerStore>(PAYMENTS_TYPES.CustomerStore).to(D1CustomerStore);
-    bind<StripeGateway>(PAYMENTS_TYPES.StripeGateway).toConstantValue(gateway);
-    bind<OpenCheckoutExpirer>(
-      PAYMENTS_TYPES.OpenCheckoutExpirer,
-    ).toConstantValue(expirer);
-    bind<PaymentAccountDataEraser>(
-      EVENT_PAYMENTS_TYPES.PaymentAccountDataEraser,
-    ).to(D1PaymentAccountDataEraser);
-    bind<UserLifecycleAsyncHandler>(
-      EVENT_PAYMENTS_TYPES.CustomerErasureHandler,
-    ).to(CustomerErasureHandler);
-    bind<UserLifecycleAsyncHandler>(
-      EVENT_PAYMENTS_TYPES.OpenCheckoutExpiryHandler,
-    ).to(OpenCheckoutExpiryHandler);
-  });
+// Stripeへ通信しないよう、モジュールの一覧のゲートウェイだけを偽物へ差し替える
+function stripeOverride(gateway: StripeGateway): Pick<AppModule, 'bindings'> {
+  return {
+    bindings: new ContainerModule(({ rebind }) => {
+      rebind<StripeGateway>(PAYMENTS_TYPES.StripeGateway).toConstantValue(
+        gateway,
+      );
+    }),
+  };
 }
 
-// 本番と同じQueueのconsumerとライフサイクルの実行器から波及処理を呼び、Stripeだけを偽物にする
+// 本番と同じメッセージの処理の一覧・モジュールの一覧・波及処理の登録箇所から波及処理を呼び、Stripeだけを偽物にする
 async function deliver(
   gateway: StripeGateway,
   envelope: QueueEnvelope,
   attempts = 1,
 ): Promise<MessageOutcome> {
-  const dispatcher = createQueueDispatcher(
-    [
-      {
-        contract: RUN_USER_LIFECYCLE_MESSAGE,
-        handler: EVENT_IDENTITY_TYPES.UserLifecycleRunner,
-        retry: USER_LIFECYCLE_RETRY_POLICY,
-      },
-    ],
-    [
-      createEventIdentityModule({ asyncHandlers: REGISTRATIONS }),
-      { bindings: paymentsBindings(gateway) },
-    ],
-  );
+  const dispatcher = createQueueDispatcher(MESSAGE_HANDLERS, [
+    ...MODULES,
+    stripeOverride(gateway),
+  ]);
   const batch = createMessageBatch(env.JOBS_QUEUE_NAME, [
     { id: envelope.id, timestamp: T0, attempts, body: envelope },
   ]);
@@ -295,6 +236,13 @@ async function statusesOf(
     .from(paymentPurchases)
     .where(eq(paymentPurchases.userId, userIdOf(userIndex)));
   return Object.fromEntries(rows.map(({ id, status }) => [id, status]));
+}
+
+// 実行器の完了の記録は波及処理の名前の順に並ぶ
+async function completedHandlerNames(): Promise<readonly string[]> {
+  return (await readHandlerRuns())
+    .filter(({ eventId }) => eventId === eventIdOf(LIFECYCLE_EVENT))
+    .map(({ handlerName }) => handlerName);
 }
 
 async function readRecordIds(): Promise<readonly string[]> {
@@ -482,7 +430,9 @@ describe('物理削除の開始でのCustomerの削除', () => {
       TARGET_PAYMENT_ROWS,
     );
     await expect(userRowExists(TARGET)).resolves.toBe(true);
-    await expect(readHandlerRuns()).resolves.toEqual([]);
+    await expect(completedHandlerNames()).resolves.toStrictEqual([
+      PURGE_INQUIRIES,
+    ]);
     await expect(readEvent(LIFECYCLE_EVENT)).resolves.toMatchObject({
       status: 'pending',
     });
@@ -571,11 +521,9 @@ describe('退会・停止での未完了の決済セッションの失効', () =
     await expect(statusesOf(TARGET)).resolves.toStrictEqual(
       statusesFor(indexesFrom(1, 51), 'expired'),
     );
-    await expect(readHandlerRuns()).resolves.toMatchObject([
-      {
-        eventId: eventIdOf(LIFECYCLE_EVENT),
-        handlerName: OPEN_CHECKOUT_EXPIRY,
-      },
+    await expect(completedHandlerNames()).resolves.toStrictEqual([
+      EMAIL_SUPPRESSION_CLEANUP,
+      OPEN_CHECKOUT_EXPIRY,
     ]);
     await expect(readEvent(LIFECYCLE_EVENT)).resolves.toMatchObject({
       status: 'completed',

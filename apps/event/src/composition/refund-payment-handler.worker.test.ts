@@ -21,7 +21,6 @@ import {
   type PurchaseRecord,
   type PurchaseStore,
   type RefundRequestRecord,
-  type RefundStore,
   type StripeGateway,
   type StripeRefundSnapshot,
   StripeRejectedError,
@@ -55,10 +54,8 @@ import type {
   RefundIncident,
   RefundIncidentReporter,
 } from '../application/payments/refund-incidents.ts';
-import {
-  REFUND_PAYMENT_RETRY_POLICY,
-  RefundPaymentHandler,
-} from '../application/payments/refund-payment-handler.ts';
+import { MESSAGE_HANDLERS } from './message-handlers.ts';
+import { MODULES } from './modules.ts';
 
 declare global {
   // @cloudflare/vitest-pool-workers 0.23.0の型定義はgetQueueResultの戻り値にこの型を使うが、宣言を含まない
@@ -186,7 +183,7 @@ async function runBatch(
   };
 }
 
-// 返金の処理を本番と同じQueueのconsumerから呼び、依頼と購入はテスト用のD1から読ませる
+// 返金の処理を本番と同じQueueのconsumer・メッセージの処理の一覧・モジュールの一覧から呼び、Stripeと失敗の通知だけを偽物にする
 function harnessWith(
   gateway: StripeGateway,
   purchaseStore?: PurchaseStore,
@@ -198,33 +195,23 @@ function harnessWith(
     },
   };
   const deadLetterQueue = createRecordingQueue<DeadLetterNotice>();
-  const bindings = new ContainerModule(({ bind }) => {
-    bind<RefundStore>(PAYMENTS_TYPES.RefundStore).to(D1RefundStore);
-    if (purchaseStore === undefined) {
-      bind<PurchaseStore>(PAYMENTS_TYPES.PurchaseStore).to(D1PurchaseStore);
-    } else {
-      bind<PurchaseStore>(PAYMENTS_TYPES.PurchaseStore).toConstantValue(
+  const overrides = new ContainerModule(({ rebind }) => {
+    if (purchaseStore !== undefined) {
+      rebind<PurchaseStore>(PAYMENTS_TYPES.PurchaseStore).toConstantValue(
         purchaseStore,
       );
     }
-    bind<StripeGateway>(PAYMENTS_TYPES.StripeGateway).toConstantValue(gateway);
-    bind<RefundIncidentReporter>(
+    rebind<StripeGateway>(PAYMENTS_TYPES.StripeGateway).toConstantValue(
+      gateway,
+    );
+    rebind<RefundIncidentReporter>(
       EVENT_PAYMENTS_TYPES.RefundIncidentReporter,
     ).toConstantValue(reporter);
-    bind<RefundPaymentHandler>(EVENT_PAYMENTS_TYPES.RefundPaymentHandler).to(
-      RefundPaymentHandler,
-    );
   });
-  const dispatcher = createQueueDispatcher(
-    [
-      {
-        contract: PAYMENTS_REFUND_MESSAGE,
-        handler: EVENT_PAYMENTS_TYPES.RefundPaymentHandler,
-        retry: REFUND_PAYMENT_RETRY_POLICY,
-      },
-    ],
-    [{ bindings }],
-  );
+  const dispatcher = createQueueDispatcher(MESSAGE_HANDLERS, [
+    ...MODULES,
+    { bindings: overrides },
+  ]);
   const runtimeEnv = { ...env, JOBS_DLQ: deadLetterQueue.queue };
   return {
     incidents,

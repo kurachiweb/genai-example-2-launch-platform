@@ -218,7 +218,7 @@
   - 完了状態: DIの統合テストとcronの一致の検査が成功し、ローカルで23:40と4:21のジョブを手動で起動できる
   - _Requirements: 10.1, 10.2, 10.5_
 
-- [ ] 8. イベントサーバー
+- [x] 8. イベントサーバー
 - [x] 8.1 イベントサーバーの決済の識別子と、Webhookの経路・受け付け・IP制限の除外を作る
   - イベントサーバーの決済の受け付け・返金の処理・波及処理のDIの識別子を1つのファイルに先に定義する(8.2・8.3はこれを使う)
   - Webhookの経路(前例の`presentation/email/`・`presentation/media/`と同じく`presentation/payments/stripe-webhook-route.ts`)と、IP制限の除外の登録をこのタスクで行う
@@ -243,11 +243,12 @@
   - _Depends: 8.1_
   - _Requirements: 1.5, 1.6, 1.7, 14.1, 14.2, 14.3_
 
-- [ ] 8.4 イベントサーバーの決済のモジュールを作り、モジュール・メッセージ・ライフサイクルに登録する
+- [x] 8.4 イベントサーバーの決済のモジュールを作り、モジュール・メッセージ・ライフサイクルに登録する
   - Webhookの署名の検証(3.3の部品)・受け付け・返金の処理・2つの波及処理・削除の書き込みの単位の実装の束縛とWebhookの経路をまとめたイベントサーバーの決済のモジュールを作る
   - 共通の束縛とそのモジュールをモジュールの一覧へ、返金の処理をメッセージの処理の一覧へ(再試行は最大5回)、2つの波及処理をユーザーライフサイクルの登録箇所へ(`order` 400・410、本specの400番台)加える
   - 先に、Workers統合テストで、DIから署名の検証・受け付け・返金の処理・波及処理を取り出せること、メッセージの処理と波及処理の登録の検証(名前・順序の重複)が成功することを確かめる
   - 完了状態: DIの統合テストと登録の検証が成功し、Workers統合テストで`PaymentRefunds.request`から送った`payments.refund-payment`が返金の処理で受信されること(Stripeは模擬)と、ローカル(1.4の準備の後)で`stripe listen`の転送からの通知が反映されることを確かめる
+  - 未実施: ローカルで`stripe listen`の転送からの通知が反映されることの確認は、1.4(開発者のsandboxの準備と、ローカルのルートの`secrets.required`へのStripeのキーの追加の判断)の保留のため行っていない。Workers統合テストで、本物のWorkerのエントリへの署名付きの通知の反映と、返金のメッセージの受信は確かめた
   - _Depends: 1.4, 8.2, 8.3_
   - _Requirements: 8.5, 14.1_
 
@@ -376,3 +377,4 @@
 - 8.1: イベントサーバーの識別子は`apps/event/src/application/payments/event-payments-types.ts`の`EVENT_PAYMENTS_TYPES`(5つ)。受け付けは`stripe-webhook-receiver.ts`の`SignedStripeWebhookReceiver`、経路は`presentation/payments/stripe-webhook-route.ts`の`registerStripeWebhookRoute`(`POST /webhooks/stripe`)。署名の不正は`stripe_signature_invalid`(400)、秘密の未設定は`payments_unavailable`(503)、反映の失敗は経路がSentryへ送り500。テストの補助は`presentation/payments/testing/stripe-webhook-harness.ts`。8.4: 経路のアプリへの組み込みと署名の検証の束縛
 - 8.2: 返金の実行は`apps/event/src/application/payments/refund-payment-handler.ts`の`RefundPaymentHandler`(再試行は`REFUND_PAYMENT_RETRY_POLICY`)。冪等キーは`refund:<依頼キー>`。処理するのは`requested`の依頼だけで、状態の更新は`updateStatus`の`from`で`requested`のときだけ。恒久的な失敗はポート`RefundIncidentReporter`でSentryへ知らせる。8.4(必須): `EVENT_PAYMENTS_TYPES.RefundIncidentReporter`を`SentryRefundIncidentReporter`(`infrastructure/payments/`)へ束縛し、`MESSAGE_HANDLERS`に`{ contract: PAYMENTS_REFUND_MESSAGE, handler: EVENT_PAYMENTS_TYPES.RefundPaymentHandler, retry: REFUND_PAYMENT_RETRY_POLICY }`を加える
 - 8.3: 波及処理は`apps/event/src/application/payments/customer-erasure-handler.ts`・`open-checkout-expiry-handler.ts`、削除の書き込みはポート`payment-account-data-eraser.ts`と`infrastructure/payments/d1-payment-account-data-eraser.ts`。8.4(必須): `EVENT_PAYMENTS_TYPES.PaymentAccountDataEraser`→`D1PaymentAccountDataEraser`、2つの波及処理を`.to(...)`で束縛し、`payments.customer-erasure`(`purge_due`、400)と`payments.open-checkout-expiry`(`withdrawn`・`suspended`、410)をライフサイクルの登録箇所へ加え、`payments-lifecycle-handlers.worker.test.ts`の`REGISTRATIONS`を`USER_LIFECYCLE_ASYNC_HANDLERS`に置き換え、project-values.mdの「非同期の波及処理の登録」の行に2件を追記する
+- 8.4: イベントサーバーの決済のモジュールは`apps/event/src/composition/payments-module.ts`(`EVENT_PAYMENTS_PLATFORM_MODULE`・`EVENT_PAYMENTS_MODULE`、Webhookの経路の登録を含む)。返金のメッセージ・2つの波及処理は本物の一覧に登録済みで、8.2・8.3のWorkers統合テストも本物の一覧を使う
