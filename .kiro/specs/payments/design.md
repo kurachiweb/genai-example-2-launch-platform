@@ -1688,7 +1688,7 @@ export declare function loadStripeOnce(
 - `SmokeCheckoutButton`は`PublicRuntimeConfig.environment`が`prod`以外のときだけ決済履歴の画面の末尾に表示し、`startSmokeCheckout`の結果の購入IDで`/checkout/{購入ID}`へ移動する。疎通確認の購入の`canRestart`の導線もこのボタンへ向ける(仮6)。
 
 - `/_authenticated/checkout/return`は`validateSearch`で`session_id`の検索パラメーターを検証する。`loader`では変更を行わず(`006-data-fetching.md`の「変更」)、`CheckoutReturnStatus`のマウント後の効果から`useMutation(graphqlMutationOptions(ClientConfirmCheckoutReturnDocument))`で`confirmCheckoutReturn`を1回呼ぶ。反映は冪等で、決済後のランディングへの到達そのものが利用者の操作に当たるため、`006`の「変更」の節に加える例外(冪等で、画面への到達が利用者の操作に当たる確定はマウント後に呼んでよい)に当たる。開発時のStrictModeの二重の効果でも結果は変わらない。`PROCESSING`の間は部品の中のタイマー(`setTimeout`、アンマウントで解除)で3秒ごと最大20回呼び直し(変更の`retry: false`は変えない)、その後は決済履歴での確認を案内する(5.3)。`COMPLETED`は購入の内容と、購入種別ごとの導線(Weekトーナメント・Yearトーナメントは`/my/products`、広告は`/settings/sponsorships`、Ultrasは`/settings/plan`、疎通確認は無し。いずれも本specの実装の時点で未作成の経路のため、型付きの`Link`ではなく`PathLink`で描く)と決済履歴への導線(5.2)。`REFUNDING`は理由と全額返金の旨(5.4)。`EXPIRED`は未完了の旨と`canRestart`の導線(5.5)。`checkout_not_found`は見つからない旨(5.6)。
-- `/_authenticated/settings/billing`は`PaymentHistoryList`だけを返す(`settings/route.tsx`のレイアウトが既に`SettingsShell`で包むため、ページで包み直さない)。20件ずつ`paymentHistory`を読み、「さらに表示」で続きを読む(12.2)。0件は`EmptyState`(12.3)。`PaymentHistoryItem`は`DateTime`(`dateTime`)・`PURCHASE_KIND_LABELS`・`PAYMENT_RECORD_KIND_LABELS`・数量・`MoneyText`(符号付き)・`PAYMENT_RECORD_STATUS_LABELS`を表示する(12.1)。
+- `/_authenticated/settings/billing`は`PaymentHistoryList`だけを返す(`settings/route.tsx`のレイアウトが既に`SettingsShell`で包むため、ページで包み直さない)。20件ずつ`paymentHistory`を読み、「さらに表示」で続きを読む(12.2)。0件は`EmptyState`(12.3)。`PaymentHistoryItem`は`DateTime`(`longDateTime`。記録を7年保存するため年を出す)・`PURCHASE_KIND_LABELS`・`PAYMENT_RECORD_KIND_LABELS`・数量・`MoneyText`(符号付き)・`PAYMENT_RECORD_STATUS_LABELS`を表示する(12.1)。
 
 ### frontend-lib
 

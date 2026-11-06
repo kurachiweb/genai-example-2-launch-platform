@@ -262,7 +262,7 @@
   - _Depends: 1.2_
   - _Requirements: 4.8, 13.5_
 
-- [ ] 10. 利用者側の画面
+- [x] 10. 利用者側の画面
 - [x] 10.1 利用者側に公開キー・CSPの許可先・設定のナビゲーションを組み込む
   - 先に、構成の単体テストで、公開キーの検証(未設定か、`pk_test_`・`pk_live_`で始まる文字列)と公開設定への受け渡し(`FrontendAppProfile`の`payments`が偽の管理者側には渡らない。1.1で加えた形)、CSPの`script-src`・`frame-src`・`connect-src`へのStripeの必須の許可先と`payment`の許可、設定のナビゲーションの「決済履歴」(`order` 70)を確かめる。`apps/client/test/config/composition.unit.test.ts`(`CLIENT_SECURITY_POLICY`の完全一致)と`apps/client/src/components/settings/settings-nav-order.unit.test.ts`(`SETTINGS_NAV_ITEMS`の完全一致)の期待を直す
   - frontend-platformの許可先の形の規則のまま加え、1.4で確かめたStripeの許可先がワイルドカードや規則に合わない形を要する場合は保留して報告する
@@ -299,7 +299,7 @@
   - _Depends: 9, 10.2_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 10.5 (P) 決済履歴の画面と疎通確認の決済の開始ボタンを作る
+- [x] 10.5 (P) 決済履歴の画面と疎通確認の決済の開始ボタンを作る
   - 先に、ブラウザテストで、日時・購入種別・種類・数量・符号付きの金額・状態の表示、20件ずつの続きの読み込み、0件の表示、読み込みの失敗の表示、疎通確認の開始のボタンがprod以外でだけ表示され押下で決済画面へ移動すること、アクセシビリティの違反が0件であることを確かめる
   - ルートは決済履歴の一覧だけを返す(`settings/route.tsx`のレイアウトが既に設定ページのシェルで包むため、ページで包み直さない)
   - 続きの読み込み(「さらに表示」)は、前後のページ送り(`PageNavigation`とカーソルの記録。`006-data-fetching.md`・inquiry-chatの`/contact`)の前例と異なる型である。設計どおり「さらに表示」で作るが、実装の前に`006`に続きの読み込みの手順が無いことを確かめ、手順を足す必要があれば開発者へ報告する
@@ -384,3 +384,4 @@
 - 10.2: 5つの操作は`apps/client/src/graphql/operations/payments/`。Stripe.jsの読み込みは`apps/client/src/components/payments/stripe-loader.ts`の`loadStripeOnce`(`@stripe/stripe-js/pure`、公開キーが無ければ`null`、失敗は次で読み込み直す)。10.3(必須): 先に`stripePublishableKey === undefined`を見て利用できない旨を出し(エラートラッキングへ送らない)、支払うボタンは同意と`useCheckoutElements()`の`canConfirm`で無効を決める。clientのブラウザテストのカバレッジは`src/components/**`をファイル単位で数えるため、部品の`.ts`はブラウザテストで読み込む(単体テストだけだと0%になりCIが落ちる)。各タスクで`bun run --cwd /workspace/apps/client test:browser --coverage`を回す
 - 10.3: 決済画面は`apps/client/src/routes/_authenticated/checkout/$purchaseId.tsx`と`src/components/payments/`。読み込み中・エラー・見つからない表示は軽い`CheckoutStatusPage`(`pendingComponent`は主のバンドルに入るためStripe.jsを読み込む部品を置かない)。返金の理由の文は`common-lib/payments/refund-reason-texts.ts`の`REFUND_REASON_TEXTS`(clientは`refundReasonTextOf`)。やり直しの導線は`CHECKOUT_RESTART_HREFS`、決済履歴への導線は`BillingHistoryLink`(10.4で使う)。12.2(必須): 縮退の文言が、画面(文言規則003の縮退運転の文、`PAYMENT_UNAVAILABLE_REASON`)とAPIの`payments_unavailable`の文言で2通りある。どちらか1つの文に決め、APIの文言・clientの定数・文言規則・設計を一緒に直す(`UnavailableNotice`の固定の題名との重なりに注意)。決済画面の文言と疎通確認の仮の文言を文言規則とページ配置に載せる
 - 10.4: 決済後のランディングは`apps/client/src/routes/_authenticated/checkout/return.tsx`と`components/payments/checkout-return-status.tsx`(確かめ直しの間隔と上限は`checkout-return-rules.ts`)。TanStack Routerは`validateSearch`の結果を生の検索パラメータに重ねるため、不正な値は省かず`undefined`で返す(006に記載)。12.2: ランディングの文言と状態を文言規則003とページ配置002に載せる
+- 10.5: 決済履歴は`apps/client/src/routes/_authenticated/settings/billing.tsx`(一覧だけを返す)と`components/payments/payment-history-list.tsx`(`useInfiniteQuery`、「さらに表示」)。疎通確認の開始のボタンは`publicConfig.environment !== 'prod'`のときだけ出る。続きの読み込みの手順を`006`の「続きを後ろに加える一覧」と`004`に追記した(開発者のレビュー待ち)。12.2(必須): 決済履歴のページの構成(一覧・「さらに表示」・末尾の疎通確認の区画)と新しい文言をページ配置002と文言規則003に載せる

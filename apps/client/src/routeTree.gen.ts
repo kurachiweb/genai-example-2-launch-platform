@@ -25,6 +25,7 @@ import { Route as AuthenticatedCheckoutReturnRouteImport } from './routes/_authe
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
+import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_authenticated/settings/billing'
 import { Route as AuthenticatedSettingsSecurityRouteImport } from './routes/_authenticated/settings/security'
 import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
 import { Route as AuthPasswordChangeConfirmRouteImport } from './routes/auth/password-change/confirm'
@@ -119,6 +120,12 @@ const AuthenticatedSettingsAccountRoute =
     path: '/account',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedSettingsBillingRoute =
+  AuthenticatedSettingsBillingRouteImport.update({
+    id: '/billing',
+    path: '/billing',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
 const AuthenticatedSettingsSecurityRoute =
   AuthenticatedSettingsSecurityRouteImport.update({
     id: '/security',
@@ -181,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/checkout/return': typeof AuthenticatedCheckoutReturnRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
@@ -205,6 +213,7 @@ export interface FileRoutesByTo {
   '/checkout/return': typeof AuthenticatedCheckoutReturnRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
@@ -232,6 +241,7 @@ export interface FileRoutesById {
   '/_authenticated/checkout/return': typeof AuthenticatedCheckoutReturnRoute
   '/_authenticated/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/_authenticated/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/_authenticated/settings/security': typeof AuthenticatedSettingsSecurityRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/checkout/return'
     | '/inquiries/$inquiryId'
     | '/settings/account'
+    | '/settings/billing'
     | '/settings/security'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/checkout/return'
     | '/inquiries/$inquiryId'
     | '/settings/account'
+    | '/settings/billing'
     | '/settings/security'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
@@ -309,6 +321,7 @@ export interface FileRouteTypes {
     | '/_authenticated/checkout/return'
     | '/_authenticated/inquiries/$inquiryId'
     | '/_authenticated/settings/account'
+    | '/_authenticated/settings/billing'
     | '/_authenticated/settings/security'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
@@ -454,6 +467,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/settings/billing': {
+      id: '/_authenticated/settings/billing'
+      path: '/billing'
+      fullPath: '/settings/billing'
+      preLoaderRoute: typeof AuthenticatedSettingsBillingRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
     '/_authenticated/settings/security': {
       id: '/_authenticated/settings/security'
       path: '/security'
@@ -515,6 +535,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedSettingsRouteRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
+  AuthenticatedSettingsBillingRoute: typeof AuthenticatedSettingsBillingRoute
   AuthenticatedSettingsSecurityRoute: typeof AuthenticatedSettingsSecurityRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
@@ -522,6 +543,7 @@ interface AuthenticatedSettingsRouteRouteChildren {
 const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteChildren =
   {
     AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
+    AuthenticatedSettingsBillingRoute: AuthenticatedSettingsBillingRoute,
     AuthenticatedSettingsSecurityRoute: AuthenticatedSettingsSecurityRoute,
     AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   }

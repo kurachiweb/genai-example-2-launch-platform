@@ -235,6 +235,46 @@ export const Route = createFileRoute('/items/')({
 - 取得の変数を閲覧者の表示設定(地域の暦など)から作る場合は、`loader`も部品と同じ値で変数を作る。サーバーではルーターの文脈の表示設定、ブラウザではブラウザの表示設定(`resolveBrowserDisplayPreferences()`)を使い、`environmentManager.isServer()`で選ぶ。異なる値で作ると、同じ条件を2回取得する。
 - 検索パラメータ`after`のカーソルで区切る一覧の前後のページは、`utilities/pagination/cursor-trail.ts`で求める。カーソルは次のページの位置しか示さないため、部品は同じ絞り込みの条件で辿ったカーソルの記録を`useState(EMPTY_CURSOR_TRAIL)`で持ち、前のページを`previousPageOf(記録, 条件, after)`、次へ進む時の記録を`trailAfterNext(記録, 条件, after, 次のカーソル)`で求めて`useNavigate`で検索パラメータを変える。条件には絞り込みの検索パラメータから`after`を除いた値を直列化した文字列を渡し、条件が変われば前の条件の記録を使わない。記録の無い途中のページ(再読み込みや共有したURL)の前のページは1ページ目になる。ボタンは共通部品の`PageNavigation`(「[ページ送り](005-shared-components.md#ページ送り)」)で描く。
 
+### 続きを後ろに加える一覧
+
+ページの位置をURLに持たず、読み込んだ記録の後ろに古い記録を加えていく一覧(「さらに表示」のボタンで続きを読む一覧)は、TanStack Queryの無限の取得で書く。前後のページを行き来する一覧は、前の節の検索パラメータ`after`とページ送りで書き、この形にしない。
+
+```tsx
+export const recordsQueryOptions = (viewerId: string) =>
+  infiniteQueryOptions({
+    queryKey: [...graphqlQueryKey(RecordsDocument, { first: 20 }), viewerId],
+    queryFn: async ({ pageParam, signal }) =>
+      requireData(
+        await executeGraphQL(
+          RecordsDocument,
+          pageParam === null ? { first: 20 } : { first: 20, after: pageParam },
+          { signal },
+        ),
+      ),
+    initialPageParam: null as string | null,
+    getNextPageParam: ({ records: { pageInfo } }: RecordsQuery) =>
+      pageInfo.hasNextPage && pageInfo.endCursor !== null
+        ? pageInfo.endCursor
+        : undefined,
+  });
+
+export const Route = createFileRoute('/records')({
+  loader: async ({ context }) => {
+    await context.queryClient
+      .infiniteQuery(recordsQueryOptions(context.viewer.id))
+      .catch(() => undefined);
+  },
+  component: RecordsRoute,
+});
+```
+
+- 取得の補助は`graphqlQueryOptions`ではなく`infiniteQueryOptions`で書き、キーは`graphqlQueryKey`に1ページの件数の変数を渡した形で始める。`queryFn`は受け取ったカーソル(`pageParam`)を`after`の変数にして`executeGraphQL`を呼び、`requireData`で失敗を例外にする。`getNextPageParam`は続きが無ければ`undefined`を返す。
+- `loader`は`queryClient.infiniteQuery(...)`(非推奨になった`fetchInfiniteQuery`・`ensureInfiniteQueryData`の後継)で読む。キャッシュが無いときは最初のページだけを読み、キャッシュがあれば、`staleTime`の間は取得せずにキャッシュを使い、過ぎていれば読み込んであったページ数ぶんを最初から読み直す(`queryClient.infiniteQuery`の既定の振る舞い)。続きのページを`loader`で新しく読み足すことはせず、利用者の操作で読む。失敗を一覧の場所に示す一覧は、前の節と同じく失敗を`.catch(() => undefined)`で捨ててキャッシュに残す。
+- 部品は`useInfiniteQuery`で読み、全ページの記録を`select`で1つの並びにする。最初の取得の失敗(`data`が無く、`isFetching`が偽で`error`がある)は一覧の位置の`PartialErrorState`と再試行(`refetch()`)にする。取り直しの失敗では、表示中の記録を残す。
+- 「さらに表示」は`hasNextPage`が真の間だけ描き、押すと`fetchNextPage()`を呼ぶ。読み込み中(`isFetchingNextPage`)は「[操作できない状態](004-accessibility-rules.md#操作できない状態)」のとおり`aria-disabled`・`aria-busy`と文言の変更で示し、押しても何もしない。続きの読み込みの失敗(`isFetchNextPageError`)は、読み込んだ記録とボタンを残したまま、ボタンの近くに`role="alert"`の文言で示し、同じボタンで読み込み直させる。
+- 続きを読み込んだ後のフォーカスは、加えた最初の記録へ移す(「[処理の後のフォーカス](004-accessibility-rules.md#処理の後のフォーカス)」)。最後のページを読むとボタンが消えるため、記録の要素に`tabIndex={-1}`を付け、押した時の件数を`useRef`に残し、読み込みの完了で描き直した後(`useLayoutEffect`)にその位置の記録へ移す。失敗した時は、ボタンが残るためフォーカスを動かさない。読み込みを待つ間に利用者がフォーカスを一覧やボタンの外へ移した時は、読み込みの後も奪い返さない。移す前に`document.activeElement`を確かめ、`null`・`document.body`(最後のページでボタンが消えた時)・`ref`で持つ「さらに表示」のボタンのどれかの時だけ移す。
+- 取り直し(`staleTime`を過ぎた後の取得や`invalidateQueries`)は、読み込んだページをすべて最初から読み直す。続きのページは、読み直した前のページの`getNextPageParam`の値で読む。
+
 ### 変更
 
 変更(mutation)は、利用者の操作を受けた部品から`useMutation(graphqlMutationOptions(<文書>))`で行う。`loader`の中で変更しない(`loader`はページの表示と先読みでも実行されるため)。
