@@ -54,9 +54,9 @@
 - identity-auth: `AccountGuard`(`currentUser`・`requireWritableUser`・`requireVerifiedUser`)・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・`_authenticated`のレイアウト・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、契約と識別子は`apps/backend-lib/core/identity`、D1の実装は`apps/backend-lib/workers/identity`、api・eventの両方にidentity-authが束縛する。メールの宛先と宛名の照会に使う)。`users`テーブルは`id`(外部キーの参照先)だけに使い、列を直接読まず、書き込まない。
 - admin-foundation: `requireAdmin`(presentation層。解決関数だけが呼ぶ)・`AdminDirectory`・`AuditLogRecorder`・`buildAuditLogStatements`と`isAuditGuardRejection`(apiのinfrastructure層の`infrastructure/admin/audit-log-statements.ts`。`guard: { kind: 'condition' }`で版の照合に使う)・`defineAuditAction`・`AUDIT_ACTIONS`・`ADMIN_NAV_ITEMS`・`RoleGate`・`useAdminRole`・`AdminPageHeader`・`ConfirmActionDialog`・E2Eの補助`e2e/support/admin-bootstrap.ts`(指定したロールの管理者としてのログイン)と`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`。E2Eでの機能フラグの設定)。
 - dev-tooling: ルートの`playwright.config.ts`と`e2e/support/playwright-config.ts`の`createPlaywrightConfig`(プロジェクトの組み立て)、テスト方針の文書`docs/GUIDES/tech/testing/001-test-strategy.md`。タスク10.1で、`createPlaywrightConfig`に直列の組を受け取る汎用の引数と記述を加え、Ultrasの2ファイルの組はルートの`playwright.config.ts`から渡す(上流への影響)。E2Eの確認済みの利用者の作成は`e2e/client/auth/account-steps.ts`(`createTestAccount`・`registerAccount`・`verifyEmailFromMail`)、決済の画面の操作はpaymentsの`e2e/client/checkout-steps.ts`の手順を使う。
-- payments: `core/payments`の`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseOfferRequest`・`FulfillablePurchase`・`SubscriptionChange`・`StripeGateway`の`cancelSubscription`・`createPortalSession`・`CustomerDirectory`・`PriceCatalog`・`StripeUnavailableError`・`PAYMENTS_TYPES`、`workers/payments/fulfillment-contract.ts`の`PurchaseKindRegistration`・`PurchaseFulfillment`・`FulfillmentPlan`・`SubscriptionEventSink`・`SubscriptionEventSinkRegistration`(`workers/ultras`だけが読み込む)、`workers/payments`の`PURCHASE_KIND_REGISTRATIONS`・`SUBSCRIPTION_EVENT_SINKS`、apiのアプリケーション層の`CheckoutStarter`、GraphQLの`Money`・`CheckoutStart`・`MoneyText`。仮5の追加(`afterCommit`・`cancelAt`)と仮3の追加(購入確認メールの追加事項)は、paymentsの要件・設計・タスクに反映済み(paymentsのU1・U2、2026-10-23に開発者が承認)で、paymentsのタスクが先に実装する。本specはpaymentsのコードを変更しない。
+- payments: `core/payments`の`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseOfferRequest`・`FulfillablePurchase`・`SubscriptionChange`・`StripeGateway`の`cancelSubscription`・`createPortalSession`・`CustomerDirectory`・`PriceCatalog`・`StripeUnavailableError`・`PAYMENTS_TYPES`、`workers/payments/fulfillment-contract.ts`の`PurchaseKindRegistration`・`PurchaseFulfillment`・`FulfillmentPlan`・`SubscriptionEventSink`・`SubscriptionEventSinkRegistration`(`workers/ultras`だけが読み込む)、`workers/payments`の`PURCHASE_KIND_REGISTRATIONS`・`SUBSCRIPTION_EVENT_SINKS`、apiのアプリケーション層の`CheckoutStarter`(`API_PAYMENTS_TYPES.CheckoutStarter`、入力`CheckoutStartInput`。回数制限の消費は`describe`の前のため、`ultras_already_subscribed`などの拒否でも1回分を数える)、GraphQLの`Money`・`CheckoutStart`、frontend-libの`MoneyText`(`components/payments/money-text.tsx`。最小通貨単位の`amount`だけを受け、通貨はUSD固定)、E2Eの決済の手順`e2e/client/checkout-steps.ts`。仮5の追加(`afterCommit`・`cancelAt`)と仮3の追加(購入確認メールの追加事項)は、paymentsの要件・設計・タスクに反映済み(paymentsのU1・U2、2026-10-23に開発者が承認)で、paymentsが実装を終えている。本specはpaymentsのコードを変更しない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`、adminの`ADMIN_PROFILE`(`contactAvailable`)・clientの`CLIENT_PROFILE`、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`Admin`・`src/graphql/generated/graphql.ts`の生成物)。本specは`PageHeadInput`に`description`を加え、inquiry-chatの`RecoverableSlot`をfrontend-libへ移す(上流への影響)。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`buildPageHead`(clientは包みの`buildSitePageHead`、adminは`buildAdminPageHead`を使う)・`DateTime`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`、adminの`ADMIN_PROFILE`(`contactAvailable`)・clientの`CLIENT_PROFILE`、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`Admin`・`src/graphql/generated/graphql.ts`の生成物)。本specは`PageHeadInput`に`description`を加え、inquiry-chatの`RecoverableSlot`をfrontend-libへ移す(上流への影響)。
 - npmパッケージ: 新規は無い。
 - 後続specは本specの`core/ultras`の公開の契約と識別子(`UltrasEntitlements`・`UltrasPromotionFlagReader`・`UltrasPlanExport`・`UltrasActivationHandlerRegistration`・`ULTRAS_TYPES`。D1の実装は`workers/ultras`)と、clientの`UltrasPromotionGate`・管理画面の`ADMIN_SETTINGS_SECTIONS`・料金ページの`PRICING_SECTIONS`だけに依存し、テーブルを直接読み書きしない。data-exportも本specのテーブルを直接読まず、本specが所有するエクスポート部品`UltrasPlanExport`を呼ぶ。
 
@@ -87,7 +87,7 @@
 
 ### Existing Architecture Analysis
 
-- 上流の13specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする(roadmapの順でpaymentsまでが先に実装される)。
+- 上流の13specは実装を終えている(2026-11-06時点。paymentsはsandboxでの手動の検証の2件、infra-deliveryはstagingの識別子の反映の1件が残る)。本specが前提にする上流の契約が実在することは、research.mdの「実装前のギャップ分析」で確かめた。
 - paymentsの反映は、api(`return_url`・突合・日次の確認)とevent(Webhook)の両方で動き、購入種別の口と定期課金の受け取り口の実装を、反映と同じ一括の書き込みに含める。口の実装は`backend-lib/workers/<ドメイン>`に置き、D1の文だけを返す(副作用を持たない)。D1の文を返す口の契約はpaymentsの`workers/payments/fulfillment-contract.ts`、購入の可否と内容の契約は`core/payments`にある。
 - api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが受け取る契約と識別子は`backend-lib/core/<ドメイン>`に置き、`workers/<ドメイン>`には実装と束縛と、D1の文を返す契約だけを置く(`docs/GUIDES/tech/backend/002`の「依存方向と静的解析」)。
 - paymentsの口には確定の後に呼ばれる場所が無く、口の実装はメールやメッセージを送れない。本specは加入が有効になった知らせとメールを依頼待ちの行として一括の書き込みに含め、paymentsの確定の後の呼び出し(仮5、paymentsのU1)と4:21の日次の確認で送り出す。
@@ -198,8 +198,7 @@ apps/
 │   │   ├── activation-message.ts                       # ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE
 │   │   └── ports.ts                                    # UltrasEntitlements・各ストアの文を返さない操作・フラグの照会・エクスポート・ActivationDispatcher・UltrasNotifier(型だけ)
 │   ├── core/email/kinds/
-│   │   ├── ultras-payment-failed.ts                    # 支払いの失敗のメールの種別
-│   │   └── ultras-cancellation-accepted.ts             # 解約の受付の確認の種別(仮1)
+│   │   └── ultras.ts                                   # 支払いの失敗と解約の受付の確認(仮1)の2種(前例kinds/payments.ts)
 │   └── workers/ultras/                                 # 実行環境の部品とD1の文を返す契約(Workers統合テスト)
 │       ├── statement-contracts.ts                      # SubscriptionStatements・ActivationStatements・NoticeStatements(型だけ)
 │       ├── d1-subscription-store.ts                    # SubscriptionStore・SubscriptionStatementsの実装(加入の読み書き・区間の問い合わせ・物理削除の文)
@@ -216,10 +215,12 @@ apps/
 │       └── ultras-platform-module.ts                   # createUltrasPlatformModule(appName)(両アプリ共通の束縛)
 ├── api/src/
 │   ├── application/ultras/                             # Bunの単体テスト(core/ultras・core/paymentsの契約の偽物と偽のポートで)
-│   │   ├── api-ultras-types.ts                         # API_ULTRAS_TYPES
+│   │   ├── ultras-types.ts                             # API_ULTRAS_TYPES(前例payments-types.ts)
+│   │   ├── ultras-errors.ts                            # application層のエラーコードと文言(前例payments-errors.ts)
 │   │   ├── ultras-plan-reader.ts                       # ultrasOffer・viewerUltras
 │   │   ├── ultras-checkout.ts                          # startUltrasCheckout(CheckoutStarterを呼ぶ)
-│   │   ├── portal-session-starter.ts                   # Portalのセッションの作成とPortalSessionLimits(回数制限のポート、仮4)
+│   │   ├── portal-ports.ts                             # PortalSessionLimits(回数制限のポート、仮4。前例checkout-ports.ts)
+│   │   ├── portal-session-starter.ts                   # Portalのセッションの作成
 │   │   ├── promotion-setting-service.ts                # フラグの照会・変更(監査ログ)
 │   │   └── jobs/pending-dispatch-sweep-job.ts          # 4:21の送り出し直しと後始末(order 500)
 │   ├── infrastructure/ultras/d1-promotion-setting-writer.ts # 版の検査付きの変更と監査ログの文
@@ -236,9 +237,10 @@ apps/
 │   │   ├── event-ultras-types.ts                       # EVENT_ULTRAS_TYPES
 │   │   ├── run-activation-handlers-handler.ts          # ultras.run-activation-handlersの処理
 │   │   ├── subscription-cancellation-handler.ts        # withdrawn・suspendedの波及処理
-│   │   └── subscription-erasure-handler.ts             # purge_dueの波及処理とUltrasAccountDataEraser(削除の書き込みの単位のポート)
+│   │   ├── ultras-account-data-eraser.ts               # UltrasAccountDataEraser(削除の書き込みの単位のポート。前例payment-account-data-eraser.ts)
+│   │   └── subscription-erasure-handler.ts             # purge_dueの波及処理
 │   ├── infrastructure/ultras/d1-ultras-account-data-eraser.ts # D1UltrasAccountDataEraser(3テーブルの利用者の行の削除を1回の一括の書き込みで確定、Workers統合テスト)
-│   ├── infrastructure/email/templates/ultras/          # 本文の*-body.tsxと定義の*-template.ts(2種)
+│   ├── infrastructure/email/templates/ultras/          # index.ts・本文の*-email-body.tsxと定義の*-template.ts(2種)
 │   ├── composition/ultras-activation-handlers.ts       # ULTRAS_ACTIVATION_HANDLERS(後続specが追記、初版は空)
 │   └── composition/ultras-module.ts                    # eventの束縛
 ├── client/src/
@@ -288,8 +290,9 @@ apps/
 - `apps/admin/src/composition/admin-navigation.ts` — `{ to: '/settings', label: '設定', order: 130 }`。
 - `docs/onboardings/tech-stack.md` — Stripe Customer Portalの用途を「Ultrasの支払い方法の更新・解約・解約の取り消し」に改める(Q6)。
 - `docs/GUIDES/tech/backend/README.md`・`external/README.md` — 文書一覧の表に行を加える。
-- `docs/GUIDES/tech/operations/004-payment-data-operations.md` — 「定期課金とCustomer Portal」の節(価格`ultras_monthly`の作成、Portalの機能、再試行の後の解約、顧客向けメールの停止、api・eventの制限付きキーへのSubscriptions・Customer Portalの権限、test clockによる検証)を加える。
-- `docs/GUIDES/service/legal/004-legal-notice-outline.md` — 返金ポリシーの「ユーザー停止に伴う定期課金(Ultras)」の行を「定期課金を課金期間の末日に終わるよう解約する(FR-PPLAN-012)。返金しない」に直し(Q3)、「退会に伴う定期課金の解約: 即時に解約し、返金しない」(Q7)・「トーナメント参加費の決済後のUltras加入: 返金しない」(Q2)の行を加える。章8に解約はCustomer Portalで行う旨と解約の受付の確認メール(仮1)を加える。他の行は変えない。
+- `docs/GUIDES/tech/operations/004-payment-data-operations.md` — paymentsが書いた「価格」(定期課金の価格の`lookup_key`のプレースホルダー)・「Customer Portal」(設定の表と前提)・「制限付きキーの権限」(Subscriptions・Customer Portalの行)の節は確かめて足りない点だけを追記し、「定期課金」の節(再試行の後の解約、顧客向けメールの停止、test clockによる検証、退会・停止の波及処理の解約が再試行の上限で失敗したときのダッシュボードでの解約)を加える。
+- `docs/onboardings/project-values.md` — 本specのプレースホルダーの値(定期課金の価格の`lookup_key`は`ultras_monthly`)と、登録の一覧(「定期実行と非同期メッセージ」のジョブ・メッセージ種別・波及処理、「メール送信」の種別、「利用者側のbot判定と回数制限」の規則`ultras-portal:user`、「管理者のアカウント」の操作種別とメニュー、「決済」の購入種別)に本specの行を加える。
+- `docs/GUIDES/service/legal/004-legal-notice-outline.md` — 返金ポリシーの「ユーザー停止に伴う定期課金(Ultras)」の行は「返金しない」に直っている(コミットfccb79cb)ため、FR-PPLAN-012の課金期間の末日の解約と一致することを確かめるだけにし(Q3)、「退会に伴う定期課金の解約: 即時に解約し、返金しない」(Q7)・「トーナメント参加費の決済後のUltras加入: 返金しない」(Q2)の行を加える。章8に解約はCustomer Portalで行う旨と解約の受付の確認メール(仮1)を加える。他の行は変えない。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — LR-007の行に、退会時の即時の解約・解約の受付の確認(仮1)・購入確認メールの自動更新の条件(仮3)を加える。
 - `docs/GUIDES/service/overview/002-pricing-and-plans.md` — 免除の判定時点の確定(Q1)、決済後に加入した場合の返金なし(Q2)、特典の終了時刻(Q4)、機能フラグの範囲と初期値(Q5・仮2)、停止・退会の扱い(Q3・Q7)、支払いの失敗と解約の受付のメール(Q8・仮1)。
 - `docs/GUIDES/service/design/002-page-layouts.md` — `/pricing`の「フラグがオフなら404」を「Ultrasの区画を未加入者に表示しない」に直し(Q5)、`/settings/plan`をPortalに一本化した配置(Q6)・状態ごとの表示・Portalから戻った直後の表示、管理者側の「設定」ページの区画の並び(仮6)を記載する。
@@ -604,6 +607,7 @@ export declare const ULTRAS_ACTIVATION_RETRY_POLICY: RetryPolicy; // maxAttempts
 
 #### UltrasEmailKinds
 
+- 置き場所: 2種を`core/email/kinds/ultras.ts`の1ファイルに`defineEmailKind`で定め(前例`kinds/payments.ts`)、`category`はどちらも`'transactional'`(必須)。テンプレートは`apps/event/src/infrastructure/email/templates/ultras/`に`index.ts`・`*-template.ts`・`*-email-body.tsx`の形で置く。`kinds/index.unit.test.ts`に2種の名前と`category`の確認を加える(前例)。
 - `ultras.payment-failed`(トランザクション、入力`{ nickname: string; planUrl: string }`)、`ultras.cancellation-accepted`(トランザクション、入力`{ nickname: string; acceptedAtUtc: string; benefitEndsAtUtc: string; planUrl: string }`)。日時は`formatUtcDateTime`の文字列(8.6・8.7)。種別とテンプレートは同じタスクで`EMAIL_KINDS`・`EMAIL_TEMPLATES`に加える(email-deliveryの1対1の検査)。
 
 ### backend-lib/core(契約と識別子)・workers(実装とD1の文を返す契約)
@@ -825,7 +829,7 @@ export interface UltrasNotifier {
 
 #### paymentsへの追加の前提(仮5・仮3、paymentsのU1・U2)
 
-paymentsのタスク(2.1・2.4・3.2・5.2〜5.4)が実装する契約で、本specは使うだけである。本specのファイルには現れない。
+paymentsが実装を終えた契約で(2026-11-06に確認。購入の`afterCommit`は`checkout-session-reflection.ts`、定期課金のsinkの`afterCommit`は`payment-reflector.ts`、`cancelAt`は`stripe-snapshots.ts`、購入確認メールの追加事項は`purchase-notifier.ts`)、本specは使うだけである。本specのファイルには現れない。
 
 ```typescript
 // paymentsのbackend-lib/workers/payments/fulfillment-contract.ts(paymentsのU1。Database・BatchItemを読み込むためworkersにあり、本specのworkers/ultrasだけが読み込む)
@@ -866,7 +870,7 @@ export interface SubscriptionChange {
 - `start(session)`: `AccountGuard.requireWritableUser`(停止中は`account_unavailable`、6.5) → `PortalSessionLimits.consume`(規則`ultras-portal:user`、20回/3600秒、`hashRateLimitKey`、超過は`rate_limit_exceeded`、6.6) → `SubscriptionStore.findLatestActivated`と`CustomerDirectory.findCustomerId`のどちらかが無ければ`AppError(unprocessable, ultras_portal_unavailable)`(6.5) → `StripeGateway.createPortalSession({ customerId, returnUrl: CLIENT_SITE_ORIGIN + '/settings/plan?portal=returned' })` → `{ url }`(6.2)。`StripeUnavailableError`(`core/payments`)は`AppError(unavailable, payments_unavailable)`(6.7)。
 
 ```typescript
-// api/src/application/ultras/portal-session-starter.ts
+// api/src/application/ultras/portal-ports.ts
 export interface PortalSessionLimits {
   consume(userId: string, now: Date): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)
 }
@@ -980,7 +984,7 @@ type Mutation {
 | `ultras-subscription.subscription-erasure`      | `purge_due`              | 500     | `UltrasAccountDataEraser.erase`で`ultras_notices`・`ultras_activations`・`ultras_subscriptions`の利用者の行を1つの一括の書き込みで削除(11.1)                                                                                                                                                       |
 
 ```typescript
-// event/src/application/ultras/subscription-erasure-handler.ts
+// event/src/application/ultras/ultras-account-data-eraser.ts
 export interface UltrasAccountDataEraser {
   erase(userId: string): Promise<void>; // ultras_notices→ultras_activations→ultras_subscriptionsの順の削除を1回の一括の書き込みで確定する
 }
@@ -1029,7 +1033,8 @@ export declare const PRICING_SECTIONS: readonly PricingSection[]; // 初版は u
 
 - `/_authenticated/settings/plan`(ログイン必須、未ログインは`_authenticated`のレイアウトがログインへ誘導、5.9): `SettingsShell`の中に`PlanPage`。`SETTINGS_NAV_ITEMS`に「プラン」(order 60、5.8)。
 - `PlanStatusPanel`: 状態ごとの表示(5.2〜5.5)。日時は`DateTime`(`<time datetime>`、閲覧者のタイムゾーン、5.6)。未加入・`ended`で`promotionEnabled`が真なら加入の導線(`UltrasSubscribeButton`)、偽なら「現在、新規の加入を受け付けていません」。
-- `PortalButton`(`canOpenPortal`のときだけ、6.1): ラベル「解約・支払い方法の管理」。押下で`createUltrasPortalSession` → `window.location.assign(url)`(6.2)。`payments_unavailable`は`UnavailableNotice`(6.7)、`rate_limit_exceeded`は文言規則の文言。
+- `PortalButton`(`canOpenPortal`のときだけ、6.1): ラベル「解約・支払い方法の管理」。押下で`createUltrasPortalSession` → `window.location.assign(url)`(6.2)。`payments_unavailable`は`UnavailableNotice`(6.7。必須の`reason`には文言規則の「Customer Portalを現在利用できない」理由を渡す。前例paymentsの`PAYMENTS_UNAVAILABLE_REASON`)、`rate_limit_exceeded`は文言規則の文言。
+- `/settings/plan`のheadは`buildSitePageHead`で`noIndex: true`にする(前例`/settings/billing`)。
 - `PortalReturnNotice`: 検索パラメーター`portal=returned`のとき、`role="status"`で「変更を反映しています」を表示し、`viewerUltras`の照会を5秒ごとに最大12回取得し直す(TanStack Queryの`refetchInterval`を関数にし、取り直した回数が12回に達したら`false`を返す)(5.7)。反映が済んだかどうかは判定しない(Portalで何も変えずに戻った場合と区別できないため)。12回を終えたら、同じ`role="status"`の表示を「反映に時間がかかっています。しばらくしてからこのページを開き直してください。」に切り替える。取り直しは`viewerUltras`の照会だけに重ね、ページの他の取得に広げない。「自動更新」の`Switch`は置かない(戻った直後の一時的な取り直しで、利用者が見続ける画面ではないため)。この使い方は`010-live-refresh-queries.md`の「使う場面」に「外部サービスでの操作から戻った直後に、遅れて反映される閲覧者自身のデータ」の行として加える。反映は6.8どおりWebhookだけで行い、画面から確定の変更を呼ばない。
 
 #### UltrasPromotionGate
@@ -1059,7 +1064,7 @@ export declare const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[]; /
 
 - 登録口の形は、adminの`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例に合わせる(`id`の形・`title`)。
 - `/_authenticated/settings/index.tsx`: `components/pages/admin-settings-page.tsx`(前例`components/pages/*-page.tsx`)が`AdminPageHeader`「設定」と`ADMIN_SETTINGS_SECTIONS`を`order`順に並べる(10.9)。各区画をfrontend-libの`RecoverableSlot`(`contactAvailable`は`ADMIN_PROFILE.contactAvailable`)で包み、読み込み中と失敗の間は区画の`title`の見出しを`frame`で補う(前例`CategorySectionsView`)。`ADMIN_NAV_ITEMS`に`{ to: '/settings', label: '設定', order: 130 }`。
-- `PromotionSettingSection`: 現在の値・最後に変更した日時(`DateTime`)と管理者のニックネームを表示する(10.1)。`RoleGate({ minimum: 'super_admin' })`のときだけスイッチを有効にし、それ以外は参照だけで「最上位管理者だけが変更できます」と示す(10.3)。切り替えは`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`)で確定する(10.2)。切り替えの失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す。`failureMessageOf`は`version_conflict`なら最新を読み直す案内(10.4)を、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返す。説明文に「オフにすると未加入者への導線と新規加入を止めます。加入中の利用者には影響しません」(10.7)。
+- `PromotionSettingSection`: 現在の値・最後に変更した日時(`DateTime`)と管理者のニックネームを表示する(10.1)。`hasRole(useAdminRole(), 'super_admin')`(`common-lib/admin/admin-roles.ts`)のときだけスイッチを有効にし(`RoleGate`は表示するかしないかの出し分けの部品のため、有効・無効には使わない)、それ以外は参照だけで「最上位管理者だけが変更できます」と示す(10.3)。切り替えは`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`)で確定する(10.2)。切り替えの失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す。`failureMessageOf`は`version_conflict`なら最新を読み直す案内(10.4)を、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返す。説明文に「オフにすると未加入者への導線と新規加入を止めます。加入中の利用者には影響しません」(10.7)。
 - 失敗の表示(管理者側は問い合わせの画面を持たない): `PromotionSettingSection`の取得の失敗は、区画を包む`RecoverableSlot`が区画の位置に見出しと`ErrorState`(再試行)で示して縮退し、`contactHref`を渡さない。`GraphQLClientError`でない例外に代えて出す文言(`ErrorState`・`ConfirmActionDialog`の`failureMessageOf`・トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、問い合わせを促す文を出さない。
 
 ## Data Models
@@ -1097,7 +1102,7 @@ export declare const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[]; /
 
 索引: `(user_id, started_at)`、部分一意`(user_id) WHERE started_at IS NOT NULL AND benefit_ends_at IS NULL`、`(stripe_status)`。
 
-**`ultras_activations`**: `id`(主キー)・`user_id`(外部キー)・`stripe_subscription_id`(一意)・`activated_at`・`dispatched_at`(NULL可)・`completed_at`(NULL可)。索引`(completed_at, dispatched_at)`。
+**`ultras_activations`**: `id`(主キー)・`user_id`(外部キー)・`stripe_subscription_id`(一意)・`activated_at`・`dispatched_at`(NULL可)・`completed_at`(NULL可)。索引`(completed_at, dispatched_at, created_at)`(`findUndispatched`が作成からの経過も条件にするため)。
 
 **`ultras_notices`**: `id`(主キー)・`user_id`(外部キー)・`stripe_subscription_id`(索引)・`kind`(`payment_failed`・`cancellation_accepted`)・`dedupe_key`(一意)・`payload_json`・`status`(`pending`・`requested`・`skipped`)・`finished_at`(NULL可)。索引`(status, created_at)`。
 
