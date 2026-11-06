@@ -9,3 +9,4 @@ export * from './legal/index.ts';
 export * from './media/media-file-quarantine-reasons.ts';
 export * from './media/media-files.ts';
 export * from './payments/index.ts';
+export * from './ultras/index.ts';

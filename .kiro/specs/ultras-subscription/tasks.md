@@ -9,7 +9,7 @@
   - 完了状態: 単体テストが成功し、監査ログの操作種別のカタログの作成(重複の検査)が新しい種別を含めて成功し、client・admin・api・eventの型検査で配置先から読み込める
   - _Requirements: 2.2, 2.3, 2.4, 2.9, 10.2, 10.5_
 
-- [ ] 1.2 Ultrasの4テーブルを定義し、マイグレーションと機能フラグの初期行の`_seed`を作る
+- [x] 1.2 Ultrasの4テーブルを定義し、マイグレーションと機能フラグの初期行の`_seed`を作る
   - 先に、加入・知らせ・メールの依頼・設定の4テーブルの列の型・NOT NULL・既定値、定期課金のIDの一意、利用者ごとに「開始済みかつ特典の終了時刻が空」の行を1つに限る部分一意索引、`(user_id, started_at)`の索引、知らせの定期課金のIDの一意とメールの依頼の重複防止の鍵の一意、`users`への外部キー、paymentsの購入IDと管理者IDに外部キーが無いこと、設定の鍵の一意、設定に`state_token`の列が無く`version`で照合することを確かめる単体テストを書く
   - スキーマの集約点へ加え、mainの最新を取り込んでから`<日時>_ultras_subscription`のマイグレーションを生成する。続けて`db/003`の「初期データ」に沿って`<日時>_ultras_subscription_seed`のカスタムマイグレーションを作り、機能フラグの初期行(鍵`ultras_promotion`・オフ・版0、IDは固定のULID、`created_at`・`updated_at`はそのULIDの時刻部と同じエポックミリ秒、最後に変更した管理者は空)を`ON CONFLICT (setting_key) DO NOTHING`で挿入する
   - `apps/db/schema/index.unit.test.ts`(包含の確認)に4つのテーブル名を加える(前例)

@@ -45,6 +45,10 @@ describe('スキーマの集約点', () => {
     'payment_refunds',
     'payment_stripe_objects',
     'payment_price_snapshots',
+    'ultras_subscriptions',
+    'ultras_activations',
+    'ultras_notices',
+    'ultras_settings',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
