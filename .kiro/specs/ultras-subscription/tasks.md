@@ -23,7 +23,7 @@
   - _Boundary: `docs/GUIDES/service/design/002-page-layouts.md`・`003-text-and-copy-rules.md`_
   - _Requirements: 13.4_
 
-- [ ] 1.4 (P) 運用手順書に定期課金の節を書き、開発用sandboxの準備を依頼する
+- [x] 1.4 (P) 運用手順書に定期課金の節を書き、開発用sandboxの準備を依頼する
   - `operations/004`の、paymentsが書いた「価格」(定期課金の価格の`lookup_key`は`<定期課金の価格のlookup_key>`のプレースホルダーで書く)・「Customer Portal」(設定の表と前提)・「制限付きキーの権限」(Subscriptions・Customer Portalの行)の節を確かめて足りない点だけを追記し、「定期課金」の節を本プロジェクト固有の値を含めずに加える: 環境ごとの価格(`lookup_key`、税込)の作成、Portalの機能(支払い方法の更新・期間末の解約・取り消しを有効、プランの変更・請求書の履歴を無効、決済手段は決済機能と同じ。既存の「Customer Portal」の節を参照する)、再試行の後に定期課金を解約する設定、顧客向けメール(支払いの失敗など)を送らない設定、api・eventの制限付きキーへのSubscriptions・Customer Portalの権限の追加(権限の表の更新)、test clockによる検証の手順(test clock付きのCustomerをsandboxで作り、ローカルDBの利用者とCustomerの対応表に結び付けてから決済する。同じ利用者で2つ目の加入を始めると拒否されるため、シナリオごとに利用者を分け、利用者ごとにtest clock付きのCustomerを作る。支払いの失敗は、成功するテストカードで加入した後、Customer Portalで支払い方法を請求に失敗するテストカード(`4000 0000 0000 0341`)に差し替えてから、test clockを次の更新日の後へ進めて再現する。test clockの時刻はアプリの実時刻より先に進むため、Stripeから届く終了の時刻や課金期間の終了は実時刻より未来になり、画面は実時刻で状態を導くので終了の後も終了前の状態に見える。終了は画面ではなく、DBに保存した特典の終了時刻・外部の状態・確定済みの印で確かめる)、Stripeのダッシュボードと画面の加入状態の突き合わせの手順、退会・停止の波及処理の解約が再試行の上限で失敗した通知を受けたときにダッシュボードで解約する手順。テーブル名・列名・画面の名前・期待値など本サービス固有の値は書かず、それらは10.2と`features/005`(9.2)に置く
   - プレースホルダーの本プロジェクトの値(`ultras_monthly`)は、9.1で`docs/onboardings/project-values.md`に載せる
   - `tech-stack.md`のCustomer Portalの用途を「Ultrasの支払い方法の更新・解約・解約の取り消し」に改める
@@ -263,3 +263,5 @@
 ## Implementation Notes
 
 - 1.2: 機能フラグの初期行の固定IDは`01M6Q2FD000000000000000001`(`created_at`・`updated_at`は`1793923200000`)。Workers統合テストで初期行を入れ直すときはこの値を使う。`stripe_status`・`cancellation_source`・`pending_cancellation_source`・`kind`・`status`の列はpaymentsの前例に合わせて`{ enum }`+CHECK制約を持つ(Stripeの8状態の閉じた集合)。
+- 1.3: 画面の文言の正は`docs/GUIDES/service/design/003-text-and-copy-rules.md`の「Ultrasの画面の文言」「Ultrasの最終確認画面の表示事項」「定期課金のメールの本文」の節。機能フラグの区画の説明文は「。」付きの文(ブラウザテストの期待値もこの文)。003の「設定のナビゲーション」「管理画面のメニュー」の登録済みの項目は7.4・8.2で「プラン」「設定」を加える。Customer Portalの縮退の理由の文は7.xで`common-lib/ultras`の定数にする。
+- 1.4: 開発者が行うStripeの準備(dev用sandboxの価格`ultras_monthly`の作成、Customer Portalの設定、再試行の後の解約、顧客向けメールの停止、制限付きキーの権限。stagingはmainへのマージ前)は未完了で保留。10.1の加入の経路は`payments_unavailable`なら対象外、10.2は保留になり得る。
