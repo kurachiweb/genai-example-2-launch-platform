@@ -4,13 +4,14 @@ import { createAuditActionCatalog } from '../audit-action.ts';
 import { ADMIN_FOUNDATION_AUDIT_ACTIONS } from './admin-foundation.ts';
 import { AUDIT_ACTIONS } from './index.ts';
 import { INQUIRY_AUDIT_ACTIONS } from './inquiry-chat.ts';
+import { ULTRAS_AUDIT_ACTIONS } from './ultras-subscription.ts';
 
 describe('AUDIT_ACTIONS', () => {
   test('集約した全種別を例外なくカタログに登録できる', () => {
     expect(() => createAuditActionCatalog(AUDIT_ACTIONS)).not.toThrow();
   });
 
-  test('admin-foundationの4種別とinquiry-chatの5種別だけが載る', () => {
+  test('admin-foundationの4種別・inquiry-chatの5種別・ultras-subscriptionの1種別だけが載る', () => {
     expect(AUDIT_ACTIONS.map((action) => action.name)).toEqual([
       'admin-account.invite',
       'admin-account.delete',
@@ -21,13 +22,16 @@ describe('AUDIT_ACTIONS', () => {
       'inquiry-category.create',
       'inquiry-category.rename',
       'inquiry-category.delete',
+      'ultras-promotion.update',
     ]);
   });
 
   test.each(
-    [...ADMIN_FOUNDATION_AUDIT_ACTIONS, ...INQUIRY_AUDIT_ACTIONS].map(
-      (action) => [action.name, action],
-    ),
+    [
+      ...ADMIN_FOUNDATION_AUDIT_ACTIONS,
+      ...INQUIRY_AUDIT_ACTIONS,
+      ...ULTRAS_AUDIT_ACTIONS,
+    ].map((action) => [action.name, action]),
   )('登録した種別%sを名前で引ける', (name, action) => {
     expect(createAuditActionCatalog(AUDIT_ACTIONS).find(name)).toBe(action);
   });

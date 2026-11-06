@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共有の定義・テーブル・文言・開発用sandboxの準備
-- [ ] 1.1 加入状態・価格・機能フラグの共有定義と、監査ログの操作種別を作る
+- [x] 1.1 加入状態・価格・機能フラグの共有定義と、監査ログの操作種別を作る
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-delivery・content-processing・media-pipeline・identity-auth・admin-foundation・legal-pages・inquiry-chat・paymentsの全タスクが完了していること(購入種別の口・定期課金の受け取り口とその確定後の呼び出し・定期課金の状態の変化の解約の予定時刻・購入確認メールの追加事項(paymentsのU1・U2、ultras-subscriptionの仮3・仮5)・`StripeGateway`・`CheckoutStarter`・`PriceCatalog`・`MoneyText`・設定ページのシェル・利用者の連絡先の照会(`UserContactDirectory`)・管理画面のシェルと監査ログ・E2Eの管理者のログインの補助(`e2e/support/admin-bootstrap.ts`))。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、加入状態の4値と表示名、特典を受けられる状態(有効・支払いの再試行中・解約済み)、価格の`lookup_key`(`ultras_monthly`)、機能フラグの鍵と初期値(オフ)、操作種別`ultras-promotion.update`(監査ログの画面の表示名は「Ultras導線の機能フラグの変更」、対象は設定、理由は任意、詳細は`enabled`だけ、対象は1件)の単体テストを書く。加入状態の値はデータエクスポートの`plan.status`と一致させる
   - 4アプリが読み込める共有ディレクトリに定義を置き、操作種別を監査ログの操作種別の集約点へ連結する
