@@ -85,16 +85,19 @@ describe('toSafeReturnPathの正規化の後の形', () => {
 
 describe('toLoginSearch', () => {
   test('文字列の戻り先だけを検索パラメータに残す', () => {
-    expect(toLoginSearch({ redirect: '/my/products/new', page: 2 })).toEqual({
-      redirect: '/my/products/new',
-    });
+    expect(
+      toLoginSearch({ redirect: '/my/products/new', page: 2 }),
+    ).toStrictEqual({ redirect: '/my/products/new' });
   });
 
   test.each([
     ['無い', {}],
     ['数値', { redirect: 123 }],
     ['配列', { redirect: ['/a', '/b'] }],
-  ])('戻り先が%s時は戻り先を持たない', (_name, search) => {
-    expect(toLoginSearch(search)).toEqual({});
-  });
+  ])(
+    '戻り先が%s時は、ルーターがURLの元の値を残さないよう戻り先をundefinedにする',
+    (_name, search) => {
+      expect(toLoginSearch(search)).toStrictEqual({ redirect: undefined });
+    },
+  );
 });

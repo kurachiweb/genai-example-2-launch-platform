@@ -286,6 +286,29 @@ describe('絞り込み', () => {
     await expect.element(fromInput()).toHaveValue('');
   });
 
+  test('URLの不正な条件とページの位置は、元の値をloaderにも画面にも渡さず、未指定として1ページ目を求める', async () => {
+    await renderWith(
+      undefined,
+      `${INQUIRIES_PATH}?status=open&kind=USER&category=${'c'.repeat(65)}&from=2026-02-30&to=&after=${'c'.repeat(257)}`,
+    );
+
+    await expect.element(table()).toBeVisible();
+    await expect
+      .element(statusSelect())
+      .toHaveTextContent('すべてのステータス');
+    await expect.element(kindSelect()).toHaveTextContent('すべての種別');
+    await expect
+      .element(categorySelect())
+      .toHaveTextContent('すべてのカテゴリ');
+    await expect.element(fromInput()).toHaveValue('');
+    await expect
+      .element(previousButton())
+      .toHaveAttribute('aria-disabled', 'true');
+    expect(inquiriesVariablesOf(executeGraphQL)).toStrictEqual([
+      { filter: {} },
+    ]);
+  });
+
   test('ステータスの選択肢は4種を表示名で並べ、カテゴリの選択肢はAPIの順に並べる', async () => {
     await renderWith();
 

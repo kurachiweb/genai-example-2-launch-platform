@@ -10,17 +10,20 @@ describe('toMyInquirySearch', () => {
     ).toStrictEqual({ after: 'cursor-2' });
   });
 
-  test('カーソルが無ければ空にする', () => {
-    expect(toMyInquirySearch({})).toStrictEqual({});
+  test('カーソルが無ければ、ページの位置の項目をundefinedにする', () => {
+    expect(toMyInquirySearch({})).toStrictEqual({ after: undefined });
   });
 
   test.each([
     ['空の文字列', ''],
     ['文字列でない値', 12],
     ['上限を超える長さ', 'a'.repeat(INQUIRY_CURSOR_MAX + 1)],
-  ])('%sのカーソルは1ページ目として扱う', (_label, after) => {
-    expect(toMyInquirySearch({ after })).toStrictEqual({});
-  });
+  ])(
+    '%sのカーソルは、ルーターがURLの元の値を残さないよう項目をundefinedにして1ページ目として扱う',
+    (_label, after) => {
+      expect(toMyInquirySearch({ after })).toStrictEqual({ after: undefined });
+    },
+  );
 
   test('上限ちょうどの長さのカーソルは受け取る', () => {
     const after = 'a'.repeat(INQUIRY_CURSOR_MAX);

@@ -11,12 +11,12 @@ import { toInquiryPeriod } from './inquiry-period.ts';
 
 // 絞り込みの条件(ステータスと種別はAPIの列挙の値、期間は閲覧者の地域の暦の年月日)と、ページの位置のカーソル
 export interface AdminInquirySearch {
-  readonly status?: InquiryStatus;
-  readonly kind?: InquiryKind;
-  readonly category?: string;
-  readonly from?: string;
-  readonly to?: string;
-  readonly after?: string;
+  readonly status?: InquiryStatus | undefined;
+  readonly kind?: InquiryKind | undefined;
+  readonly category?: string | undefined;
+  readonly from?: string | undefined;
+  readonly to?: string | undefined;
+  readonly after?: string | undefined;
 }
 
 export const ADMIN_INQUIRY_STATUSES = [
@@ -73,10 +73,14 @@ const definedEntriesOf = (
     }),
   );
 
+// ルーターは検証の結果をURLの元の値に重ねるため、元の値を残さないよう常に全ての項目を返す
 export const toAdminInquirySearch = (
   search: Record<string, unknown>,
-): AdminInquirySearch =>
-  definedEntriesOf(SEARCH_SCHEMA.parse(search), SEARCH_KEYS);
+): AdminInquirySearch => {
+  const { status, kind, category, from, to, after } =
+    SEARCH_SCHEMA.parse(search);
+  return { status, kind, category, from, to, after };
+};
 
 export function adminInquiryVariablesOf(
   { status, kind, category, from, to, after }: AdminInquirySearch,

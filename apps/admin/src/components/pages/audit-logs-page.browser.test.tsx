@@ -301,6 +301,26 @@ describe('絞り込み', () => {
     });
   });
 
+  test('URLの不正な条件とページの位置は、元の値をloaderにも画面にも渡さず、未指定として1ページ目を検索する', async () => {
+    await renderWith(
+      undefined,
+      `${AUDIT_LOGS_PATH}?operator=&action=${'a'.repeat(65)}&target=123&from=2026-02-30&to=20261104&after=${'c'.repeat(257)}`,
+    );
+
+    await expect.element(table()).toBeVisible();
+    await expect.element(operatorSelect()).toHaveTextContent('すべての管理者');
+    await expect.element(actionSelect()).toHaveTextContent('すべての操作種別');
+    await expect.element(targetInput()).toHaveValue('');
+    await expect.element(fromInput()).toHaveValue('');
+    await expect.element(toInput()).toHaveValue('');
+    await expect
+      .element(previousButton())
+      .toHaveAttribute('aria-disabled', 'true');
+    expect(auditLogsVariablesOf(executeGraphQL)).toStrictEqual([
+      { filter: {} },
+    ]);
+  });
+
   test('終了日が開始日より前なら、終了日の欄に誤りを関連付けてフォーカスを移し、検索しない', async () => {
     await renderWith();
     await expect.element(table()).toBeVisible();

@@ -196,6 +196,8 @@ describe('ログイン画面の経路', () => {
     ['プロトコル相対のURL', '//evil.example/accounts'],
     ['バックスラッシュで別のサイトを指すパス', '/\\evil.example/accounts'],
     ['パスでない値', 'accounts'],
+    ['検索パラメータで数値になる値', '123'],
+    ['検索パラメータで配列になる値', '["/accounts"]'],
   ])(
     '戻り先が%sなら、ログインの後にダッシュボードへ移る',
     async (_label, redirect) => {

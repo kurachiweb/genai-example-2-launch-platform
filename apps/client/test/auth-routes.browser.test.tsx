@@ -133,6 +133,22 @@ describe('登録とログインの経路', () => {
     expect(router.state.location.pathname).toBe('/');
   });
 
+  test.each([
+    ['数値', '/auth/login?redirect=123'],
+    ['配列', '/auth/login?redirect=%5B%22%2Fsettings%2Faccount%22%5D'],
+  ])(
+    '検索パラメータが文字列でない%sの戻り先でもログイン画面を表示し、ログインの後はトップページへ移る',
+    async (_label, path) => {
+      const router = await renderAt(path);
+
+      await expect.element(pageTitle()).toHaveTextContent('ログイン');
+      await logInAs(signedInViewerQuery());
+
+      await expect.element(pageTitle()).toHaveTextContent('トップページ');
+      expect(router.state.location.pathname).toBe('/');
+    },
+  );
+
   test('ログインに成功すると、検索パラメータの同じサイト内の戻り先へ移り、ヘッダーをログイン中に切り替える', async () => {
     const router = await renderAt('/auth/login?redirect=%2Fsettings%2Faccount');
 

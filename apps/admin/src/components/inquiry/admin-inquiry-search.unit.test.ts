@@ -10,6 +10,15 @@ import { toInquiryPeriod } from './inquiry-period.ts';
 
 const CATEGORY_ID = '01JC0CATEGORY0000000000001';
 
+const UNSPECIFIED_SEARCH = {
+  status: undefined,
+  kind: undefined,
+  category: undefined,
+  from: undefined,
+  to: undefined,
+  after: undefined,
+};
+
 describe('toAdminInquirySearch', () => {
   test('ステータス・種別・カテゴリ・受付日の期間とページの位置を検索パラメータから取り出す', () => {
     expect(
@@ -31,7 +40,7 @@ describe('toAdminInquirySearch', () => {
     });
   });
 
-  test('知らないステータス・種別、空・上限を超える値、暦に無い日付と知らない項目を落とす', () => {
+  test('知らないステータス・種別、空・上限を超える値、暦に無い日付は、ルーターがURLの元の値を残さないよう項目をundefinedにし、知らない項目を落とす', () => {
     expect(
       toAdminInquirySearch({
         status: 'open',
@@ -42,8 +51,10 @@ describe('toAdminInquirySearch', () => {
         after: 'c'.repeat(257),
         page: 2,
       }),
-    ).toStrictEqual({});
-    expect(toAdminInquirySearch({ category: '', after: '' })).toStrictEqual({});
+    ).toStrictEqual(UNSPECIFIED_SEARCH);
+    expect(toAdminInquirySearch({ category: '', after: '' })).toStrictEqual(
+      UNSPECIFIED_SEARCH,
+    );
   });
 
   test('上限ちょうどのカテゴリのIDとカーソルは受け付ける', () => {
@@ -51,6 +62,7 @@ describe('toAdminInquirySearch', () => {
     const after = 'a'.repeat(256);
 
     expect(toAdminInquirySearch({ category, after })).toStrictEqual({
+      ...UNSPECIFIED_SEARCH,
       category,
       after,
     });

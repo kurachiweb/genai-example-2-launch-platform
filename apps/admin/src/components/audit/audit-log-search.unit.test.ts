@@ -12,6 +12,15 @@ const ADMIN_ID = '01JC0ADMIN000000000000000001';
 const ULID = '01JC0B3K7Q9X2ZR4TVWYHNM5PD';
 const USER_ID = '0f8fad5b-d9cb-469f-a165-70867728950e';
 
+const UNSPECIFIED_SEARCH = {
+  operator: undefined,
+  action: undefined,
+  target: undefined,
+  from: undefined,
+  to: undefined,
+  after: undefined,
+};
+
 describe('toAuditLogSearch', () => {
   test('絞り込みの条件とページの位置を検索パラメータから取り出す', () => {
     expect(
@@ -33,7 +42,7 @@ describe('toAuditLogSearch', () => {
     });
   });
 
-  test('空・上限を超える・暦に無い・文字列でない値と知らない項目を落とす', () => {
+  test('空・上限を超える・暦に無い・文字列でない値は、ルーターがURLの元の値を残さないよう項目をundefinedにし、知らない項目を落とす', () => {
     expect(
       toAuditLogSearch({
         operator: '',
@@ -44,19 +53,20 @@ describe('toAuditLogSearch', () => {
         after: 'c'.repeat(257),
         page: 2,
       }),
-    ).toStrictEqual({});
+    ).toStrictEqual(UNSPECIFIED_SEARCH);
   });
 
   test('期間の境界の時刻がAPIの日時の外になり得る年の日付は、未指定として落とす', () => {
     expect(
       toAuditLogSearch({ from: '0000-01-01', to: '9999-12-31' }),
-    ).toStrictEqual({});
+    ).toStrictEqual(UNSPECIFIED_SEARCH);
   });
 
   test('上限ちょうどの条件とカーソルは受け付ける', () => {
     const action = 'a'.repeat(64);
     const after = 'c'.repeat(256);
     expect(toAuditLogSearch({ action, after })).toStrictEqual({
+      ...UNSPECIFIED_SEARCH,
       action,
       after,
     });

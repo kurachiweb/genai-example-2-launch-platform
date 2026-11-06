@@ -1,7 +1,7 @@
 export const HOME_PATH = '/';
 
 export interface LoginSearch {
-  readonly redirect?: string;
+  readonly redirect?: string | undefined;
 }
 
 // 戻り先を解釈する時だけに使う架空のオリジン。解釈の後もこのオリジンのままなら、値は同じサイト内のパスである
@@ -43,5 +43,9 @@ export function toSafeReturnPath(value: string | undefined): string {
   return path;
 }
 
-export const toLoginSearch = (search: Record<string, unknown>): LoginSearch =>
-  typeof search.redirect === 'string' ? { redirect: search.redirect } : {};
+// ルーターは検証の結果をURLの元の値に重ねるため、文字列でない値を残さないよう常に項目を返す
+export const toLoginSearch = (
+  search: Record<string, unknown>,
+): LoginSearch => ({
+  redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+});

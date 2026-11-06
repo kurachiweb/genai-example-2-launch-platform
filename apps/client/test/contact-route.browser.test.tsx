@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { page } from 'vitest/browser';
 
 import '../src/styles.css';
+import { INQUIRY_CURSOR_MAX } from '../common-lib/inquiry/inquiry-input-rules.ts';
 import { resetTurnstileScriptFailure } from '../lib/components/bot-protection/turnstile-script-failure.ts';
 import { resetFakeTurnstile } from '../lib/test/fake-turnstile.tsx';
 import { GraphQLClientError } from '../lib/utilities/graphql/graphql-result.ts';
@@ -232,6 +233,28 @@ describe('問い合わせの経路', () => {
     await expect.poll(() => myInquiryItems().elements().length).toBe(20);
     expect(myInquiriesCalls()).toStrictEqual([{ after: 'cursor-2' }, {}]);
   });
+
+  test.each([
+    [
+      '上限を超える長さ',
+      `/contact?after=${'a'.repeat(INQUIRY_CURSOR_MAX + 1)}`,
+    ],
+    ['空', '/contact?after='],
+    ['数値', '/contact?after=12'],
+  ])(
+    '%sのカーソルのURLを開いた時は、元の値をloaderにも画面にも渡さず1ページ目を表示する',
+    async (_label, path) => {
+      respond({ composer: { nickname: VIEWER_NICKNAME, avatar: null } });
+
+      await renderContact(signedInViewerQuery(), path);
+
+      await expect.poll(() => myInquiryItems().elements().length).toBe(20);
+      await expect
+        .element(pageButton('前へ'))
+        .toHaveAttribute('aria-disabled', 'true');
+      expect(myInquiriesCalls()).toStrictEqual([{}]);
+    },
+  );
 
   test('自分の問い合わせの一覧の取得の失敗は、フォームを表示したまま一覧の位置に示す', async () => {
     respond({

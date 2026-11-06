@@ -12,12 +12,12 @@ import { isCalendarDate, toAuditPeriod } from './audit-period.ts';
 
 // 絞り込みの条件(期間は閲覧者の地域の暦の年月日)と、ページの位置のカーソル
 export interface AuditLogSearch {
-  readonly operator?: string;
-  readonly action?: string;
-  readonly target?: string;
-  readonly from?: string;
-  readonly to?: string;
-  readonly after?: string;
+  readonly operator?: string | undefined;
+  readonly action?: string | undefined;
+  readonly target?: string | undefined;
+  readonly from?: string | undefined;
+  readonly to?: string | undefined;
+  readonly after?: string | undefined;
 }
 
 const SEARCH_KEYS = [
@@ -62,9 +62,14 @@ const definedEntriesOf = (
     }),
   );
 
+// ルーターは検証の結果をURLの元の値に重ねるため、元の値を残さないよう常に全ての項目を返す
 export const toAuditLogSearch = (
   search: Record<string, unknown>,
-): AuditLogSearch => definedEntriesOf(SEARCH_SCHEMA.parse(search), SEARCH_KEYS);
+): AuditLogSearch => {
+  const { operator, action, target, from, to, after } =
+    SEARCH_SCHEMA.parse(search);
+  return { operator, action, target, from, to, after };
+};
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
