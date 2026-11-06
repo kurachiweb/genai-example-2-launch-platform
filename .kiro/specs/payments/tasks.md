@@ -219,7 +219,7 @@
   - _Requirements: 10.1, 10.2, 10.5_
 
 - [ ] 8. イベントサーバー
-- [ ] 8.1 イベントサーバーの決済の識別子と、Webhookの経路・受け付け・IP制限の除外を作る
+- [x] 8.1 イベントサーバーの決済の識別子と、Webhookの経路・受け付け・IP制限の除外を作る
   - イベントサーバーの決済の受け付け・返金の処理・波及処理のDIの識別子を1つのファイルに先に定義する(8.2・8.3はこれを使う)
   - Webhookの経路(前例の`presentation/email/`・`presentation/media/`と同じく`presentation/payments/stripe-webhook-route.ts`)と、IP制限の除外の登録をこのタスクで行う
   - 先に、Workers統合テストで、正しい署名の通知の反映と200、署名の不正・欠落の400、1MiBを超える本文の413、反映の一時的な失敗の500(部分的な書き込みが無い)、`STRIPE_WEBHOOK_SECRET`が未設定の環境の503、無視・結び付かない・古い通知の200、101回目の要求でもIP制限で429にならないことを確かめる
@@ -373,3 +373,4 @@
 - 6.3: ジョブは`apps/api/src/application/payments/jobs/`(定義は`*_JOB_DEFINITION`)。7.1(必須): `API_PAYMENTS_TYPES.PaymentsJobIncidentReporter`を`SentryPaymentsJobIncidentReporter`(`infrastructure/payments/`)へ束縛する(無いと突合と日次の確認のジョブが解決できない)。7.2: 3つの定義を`SCHEDULED_JOBS`へ、23:40の式`40 7 * * *`をCron Triggersへ加える。12.2: 日次タイムラインに2つのジョブを載せる
 - 7.1: APIサーバーの決済の束縛は`apps/api/src/composition/payments-module.ts`の`API_PAYMENTS_MODULE`、スキーマモジュールは`presentation/graphql/modules/payments/`。決済履歴は`PaymentRecordConnection { nodes, pageInfo }`。スキーマの集約点(`graphql-modules.ts`)への登録は7.1で済んだ。7.2(必須): `createPaymentsPlatformModule('api')`と`API_PAYMENTS_MODULE`を`MODULES`に加えたら、`test/support/payments-graphql-operations.ts`のオーバーライドと`payments-module.worker.test.ts`のモジュールの一覧から外す(二重の束縛を避ける)。bot判定の操作名は`payments_smoke_checkout`
 - 7.2: APIサーバーの`MODULES`に`API_PAYMENTS_PLATFORM_MODULE`(`createPaymentsPlatformModule('api')`、`payments-module.ts`)と`API_PAYMENTS_MODULE`を登録した。23:40の式はルートの`triggers.crons`だけ(staging・prodは継承)。23:40に後続specのジョブ(match-engine)が加わるときは、project-values.mdの記述と23:40の予算の扱いを見直す
+- 8.1: イベントサーバーの識別子は`apps/event/src/application/payments/event-payments-types.ts`の`EVENT_PAYMENTS_TYPES`(5つ)。受け付けは`stripe-webhook-receiver.ts`の`SignedStripeWebhookReceiver`、経路は`presentation/payments/stripe-webhook-route.ts`の`registerStripeWebhookRoute`(`POST /webhooks/stripe`)。署名の不正は`stripe_signature_invalid`(400)、秘密の未設定は`payments_unavailable`(503)、反映の失敗は経路がSentryへ送り500。テストの補助は`presentation/payments/testing/stripe-webhook-harness.ts`。8.4: 経路のアプリへの組み込みと署名の検証の束縛
