@@ -333,7 +333,7 @@
   - _Depends: 11.1_
   - _Requirements: 16.1, 16.2_
 
-- [ ] 12. ドキュメント
+- [x] 12. ドキュメント
 - [x] 12.1 (P) 技術ドキュメントを仕上げる
   - `external/007`(Stripeとの連携の規約)・`backend/009`(外部の通知の冪等な反映の規約)を作り、`operations/004`の残り(手動の返金、チャージバック、突合と返金の失敗の対処、鍵の更新、Webhook endpointのAPI版の更新、11.2の検証で分かった差)を書き足す。本プロジェクト固有の値を含めず、各ディレクトリの文書一覧へ行を加える
   - 主要パッケージの一覧にStripeの3パッケージを、tech-stack.mdの決済サービスの節に用途を、オンボーディングにローカルのWebhookの転送の手順を加える
@@ -343,7 +343,7 @@
   - _Depends: 11.2_
   - _Requirements: 15.7, 16.3_
 
-- [ ] 12.2 (P) サービス仕様を作成・更新する
+- [x] 12.2 (P) サービス仕様を作成・更新する
   - 決済実装方針(`features/004-payments.md`)を新しく作り、`features`のREADMEに行を加え、購入種別とフルフィルメント・反映の流れ・返金の分担(返金ポリシーとの食い違いの申し送りを含む)・決済履歴の記録の規則・Linkの資金源の扱いを記載する
   - 法的通知の大枠の章5(4つの決済手段とLinkの注記)、ページ配置(`/checkout/{購入ID}`・アンカー無しの`/legal`・請求先住所・ランディングの状態)、文言規則(決済のエラーと状態、メールの件名2種)、料金とプラン(決済手段・有効期限・二重決済の返金)、日次タイムライン(23:40と4:21のジョブ)を更新する。プライバシーポリシー骨子(`003`)には「国外移転の記載事項」の`### Stripe(決済)`の項(infra-deliveryの型、委託先の一覧の順でCloudflareとAWSの間)と、委託先の一覧のStripeの「渡す情報」への仮名化IDと請求先住所を、準拠方針(`001`)には「データの保存場所」のStripeの箇条だけを加える(「国外移転の記載事項」の節は003にだけある)
   - 完了状態: 文書の整形の検査が成功し、各文書の決済手段・URL・ジョブの名前が設計と一致する
@@ -390,3 +390,4 @@
 - 10.5: 決済履歴は`apps/client/src/routes/_authenticated/settings/billing.tsx`(一覧だけを返す)と`components/payments/payment-history-list.tsx`(`useInfiniteQuery`、「さらに表示」)。疎通確認の開始のボタンは`publicConfig.environment !== 'prod'`のときだけ出る。続きの読み込みの手順を`006`の「続きを後ろに加える一覧」と`004`に追記した(開発者のレビュー待ち)。12.2(必須): 決済履歴のページの構成(一覧・「さらに表示」・末尾の疎通確認の区画)と新しい文言をページ配置002と文言規則003に載せる
 - 11.1: E2Eは`e2e/client/billing.e2e.test.ts`・`checkout.e2e.test.ts`(手順は`billing-steps.ts`・`checkout-steps.ts`)。疎通確認の決済は`startSmokeCheckout`が`payments_unavailable`のときだけ`test.skip`する。ローカルのD1とMailpitを使うためstagingでは実行できない(design.mdのTesting Strategyは「ローカル・stagingの検証で実行」と書く。12.1で揃える)。CSPの違反の記録は確定のクリックから移動までの間を取りこぼす
 - 11.3: 6つの場面(重複・順序・署名・期限切れ・二重決済(同時を含む)・返金の再試行と恒久的な失敗)のテストを確かめた。`test:all:unit`・`test:all:worker`・`test:all:browser`の`--coverage`が全て閾値を通る(本specのファイルで最も低いのは`purchase-reconciliation.ts`の行86.67%)
+- 12.2: 縮退の文言は`common-lib/payments/payments-unavailable-texts.ts`の`PAYMENTS_UNAVAILABLE_REASON`(画面の理由)と`PAYMENTS_UNAVAILABLE_MESSAGE`(APIの文言)。決済実装方針は`docs/GUIDES/service/features/004-payments.md`(返金ポリシーとの食い違いの申し送りを含む)
