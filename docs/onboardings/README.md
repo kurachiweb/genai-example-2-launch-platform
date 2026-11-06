@@ -286,6 +286,13 @@ infisical --telemetry=false run --env dev -- bun run test:e2e --project admin # 
 - 未ログインの送信は送信元IPアドレスごとに1時間5回までに制限されるが、利用者側のE2Eテストはブラウザの文脈ごとに文書用のIPv6アドレスを接続元として名乗るため(`e2e/support/client-ip.ts`)、繰り返し実行しても上限に達しない。利用者・問い合わせ・添付のファイルは実行ごとに乱数から作り、ローカルの状態(`/workspace/.wrangler/state`)に残る。
 - 送信の手順(フォームを開く・未ログインとログインの送信・送信完了の確認)は、管理画面とまたぐE2Eテストと共有する補助`e2e/client/inquiry/inquiry-steps.ts`にある。
 
+利用者側の決済履歴(ログイン後に設定のナビゲーションの「決済履歴」から`/settings/billing`を開くと、その項目が現在の項目として示され、記録が無い表示が出て、Stripe.jsが読み込まれない)は`e2e/client/billing.e2e.test.ts`で、疎通確認の決済(決済履歴の「疎通確認の決済を始める」→決済画面の購入の内容が「お支払い情報」より上に出る→同意の無い間は「支払いを確定する」が押せない→テストカード`4242 4242 4242 4242`と請求先住所の入力と同意→決済後のランディングの完了の表示→同意の日時と版が購入の記録に保存される→決済履歴に「都度決済」「成功」の記録→Mailpitの件名「購入が完了しました」の購入確認メールに決済履歴へのリンクがある、決済画面と決済後のランディングでCSPの違反が出ない)は`e2e/client/checkout.e2e.test.ts`で確かめる。
+
+- 実行の前に、`apps/api`で`bun run db:migrate:local`を実行し、APIサーバー・イベントサーバー・利用者側をクイックスタートの手順13のとおり起動しておく。疎通確認の決済のE2Eはメールアドレスの確認を済ませるため、イベントサーバーが要る。
+- 疎通確認の決済のE2Eは、APIサーバーの`startSmokeCheckout`が`payments_unavailable`を返す環境(Stripeのsandboxのキーが無い環境)では、`test.skip`で「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」を示して飛ばす。現在のローカルとCIはStripeのキーをWorkerへ渡さないため、このE2Eは飛ばされる。決済まで実行するには、dev用のsandboxのキーと公開キーをローカルのWorkerと利用者側へ渡す準備(paymentsのspecのタスク1.4)が要る。
+- 決済画面の入力欄はStripeの埋め込み枠の中にあるため、手順(`e2e/client/checkout-steps.ts`)は入力欄の名前(`number`・`expiry`・`cvc`・`addressLine1`など)を持つStripeの枠を探して入力する。請求先住所は米国の住所で入力する。
+- 決済履歴と決済画面の手順は`e2e/client/billing-steps.ts`・`e2e/client/checkout-steps.ts`にある。同意の記録はローカルのD1(`e2e/support/local-d1.ts`)で、購入確認メールはMailpitで確かめるため、`@smoke`タグを付けない。
+
 管理画面とメールをまたぐ問い合わせの流れ(モデレーターがログインの問い合わせへ返信→Mailpitの件名「お問い合わせに返信がありました」の通知メールに返信の本文が無く、そのリンクで開いたチャットに返信と管理者のニックネームが出て、最初のメッセージの添付ファイルを元のファイル名と内容でダウンロードできる、対応済にした問い合わせへ利用者が追加メッセージを送ると利用者側と管理画面の対応ステータスが「未対応」へ戻りダッシュボードの未対応の件数が増える、未ログインの問い合わせが一覧に「未ログイン」として出て詳細にニックネーム・連絡先メールアドレス・メッセージとシステム外のメールで回答する旨が出て返信のフォームが出ない、カテゴリのページで追加したカテゴリを利用者が問い合わせで選べ、削除の確認に紐付く件数と監査ログの旨が出て、削除すると問い合わせのカテゴリが「その他」に付け替わり「その他」に削除の操作が無い)は、`e2e/admin/inquiries.e2e.test.ts`・`e2e/admin/inquiry-categories.e2e.test.ts`で確かめる。
 
 - 実行の前に、`apps/api`で`bun run db:migrate:local`を実行し、APIサーバー・イベントサーバー・利用者側・管理者側をクイックスタートの手順13のとおり起動しておく。返信の通知メールはイベントサーバー(Queueの受信側)が送るため、イベントサーバーを起動していないと通知メールの待ちの期限(20秒)で失敗する。管理者側のプロジェクトのテストのため、`--project admin`で実行する(`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/admin/inquiries.e2e.test.ts e2e/admin/inquiry-categories.e2e.test.ts --project admin`)。
