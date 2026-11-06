@@ -33,7 +33,7 @@
   - _Requirements: 6.3, 6.4, 8.10, 12.1, 12.2_
 
 - [ ] 2. 純粋な規則と契約
-- [ ] 2.1 特典の継続期間と加入状態の導出の規則、ポートの型を作る
+- [x] 2.1 特典の継続期間と加入状態の導出の規則、ポートの型を作る
   - 先に、業務日付の日の終わり(0:00ちょうど・0:00の1ミリ秒後・23:59:59.999の境界)、課金期間の終了時刻から特典の終了時刻を求める規則(終了が業務日付の0:00ちょうどなら前日の終わり)、加入状態の4状態と未有効の導出、時点の判定が左端を含み右端を含まないこと、期間の重なりの両端を、設計の境界の例でテストする
   - 先に、`core/ultras/identifiers.unit.test.ts`で、`ULTRAS_TYPES`の各値が`Symbol.for('ultras.<名前>')`であり、オブジェクトが凍結されていることを確かめる
   - 規則を純粋な関数として作り、`core/ultras`(application層と後続specが読み込む。`Database`・`BatchItem`・`workers`・`apps/db`を読み込まない)にDIの識別子と、メールの依頼の種類(支払いの失敗・解約の受付)の型、特典の判定・各ストアの文を返さない操作・機能フラグの照会・エクスポートの照会・知らせの送り出し(`ActivationDispatcher`)・メールの依頼(`UltrasNotifier`)のポートの型を作る(メールの宛先と宛名はidentity-authの`UserContactDirectory`を使い、本specはポートを持たない)
@@ -265,3 +265,4 @@
 - 1.2: 機能フラグの初期行の固定IDは`01M6Q2FD000000000000000001`(`created_at`・`updated_at`は`1793923200000`)。Workers統合テストで初期行を入れ直すときはこの値を使う。`stripe_status`・`cancellation_source`・`pending_cancellation_source`・`kind`・`status`の列はpaymentsの前例に合わせて`{ enum }`+CHECK制約を持つ(Stripeの8状態の閉じた集合)。
 - 1.3: 画面の文言の正は`docs/GUIDES/service/design/003-text-and-copy-rules.md`の「Ultrasの画面の文言」「Ultrasの最終確認画面の表示事項」「定期課金のメールの本文」の節。機能フラグの区画の説明文は「。」付きの文(ブラウザテストの期待値もこの文)。003の「設定のナビゲーション」「管理画面のメニュー」の登録済みの項目は7.4・8.2で「プラン」「設定」を加える。Customer Portalの縮退の理由の文は7.xで`common-lib/ultras`の定数にする。
 - 1.4: 開発者が行うStripeの準備(dev用sandboxの価格`ultras_monthly`の作成、Customer Portalの設定、再試行の後の解約、顧客向けメールの停止、制限付きキーの権限。stagingはmainへのマージ前)は未完了で保留。10.1の加入の経路は`payments_unavailable`なら対象外、10.2は保留になり得る。
+- 2.1: `core/ultras`の文字列ユニオン(`UltrasNoticeKind`・`UltrasNoticeStatus`・`CancellationSource`)は`apps/db/schema/ultras`の`*_VALUES`と手で同期している(coreはdbを読めない)。3.x のWorkers統合テストで同値の検査を1本足す。ルート`CLAUDE.md`のディレクトリ構成に`ultras`の記述を加える作業はどのタスクの境界にも無いため、9.1で扱う。
