@@ -235,7 +235,7 @@
   - _Depends: 8.1_
   - _Requirements: 8.5, 8.6, 8.7_
 
-- [ ] 8.3 物理削除と退会・停止の波及処理を作る
+- [x] 8.3 物理削除と退会・停止の波及処理を作る
   - 削除の書き込みの単位はイベントサーバーのapplication層のポート(`PaymentAccountDataEraser`)にし、D1の文を組み立てて1回の一括の書き込みで確定する実装`D1PaymentAccountDataEraser`をinfrastructure層に置く。2つの波及処理は`core/payments`の型と識別子とこのポートだけを受け取る
   - 先に、偽のポートを使う単体テストで波及処理の呼び出しの順を、Workers統合テストで、`purge_due`でCustomerの削除(既に無ければ成功扱い)と、返金の依頼→購入→Customerの対応の順の利用者の行の削除が行われ決済履歴が残ること、Stripeの一時的な失敗で例外になり再試行されること、`withdrawn`・`suspended`で未完了の決済セッションが失効し残りがあれば続きを返すことを確かめる
   - 完了状態: 単体テストとWorkers統合テストが成功し、物理削除の後に利用者の外部キーの残りが無く、静的解析でイベントサーバーのapplication層に`**/lib/workers/**`の読み込みが無い
@@ -375,3 +375,4 @@
 - 7.2: APIサーバーの`MODULES`に`API_PAYMENTS_PLATFORM_MODULE`(`createPaymentsPlatformModule('api')`、`payments-module.ts`)と`API_PAYMENTS_MODULE`を登録した。23:40の式はルートの`triggers.crons`だけ(staging・prodは継承)。23:40に後続specのジョブ(match-engine)が加わるときは、project-values.mdの記述と23:40の予算の扱いを見直す
 - 8.1: イベントサーバーの識別子は`apps/event/src/application/payments/event-payments-types.ts`の`EVENT_PAYMENTS_TYPES`(5つ)。受け付けは`stripe-webhook-receiver.ts`の`SignedStripeWebhookReceiver`、経路は`presentation/payments/stripe-webhook-route.ts`の`registerStripeWebhookRoute`(`POST /webhooks/stripe`)。署名の不正は`stripe_signature_invalid`(400)、秘密の未設定は`payments_unavailable`(503)、反映の失敗は経路がSentryへ送り500。テストの補助は`presentation/payments/testing/stripe-webhook-harness.ts`。8.4: 経路のアプリへの組み込みと署名の検証の束縛
 - 8.2: 返金の実行は`apps/event/src/application/payments/refund-payment-handler.ts`の`RefundPaymentHandler`(再試行は`REFUND_PAYMENT_RETRY_POLICY`)。冪等キーは`refund:<依頼キー>`。処理するのは`requested`の依頼だけで、状態の更新は`updateStatus`の`from`で`requested`のときだけ。恒久的な失敗はポート`RefundIncidentReporter`でSentryへ知らせる。8.4(必須): `EVENT_PAYMENTS_TYPES.RefundIncidentReporter`を`SentryRefundIncidentReporter`(`infrastructure/payments/`)へ束縛し、`MESSAGE_HANDLERS`に`{ contract: PAYMENTS_REFUND_MESSAGE, handler: EVENT_PAYMENTS_TYPES.RefundPaymentHandler, retry: REFUND_PAYMENT_RETRY_POLICY }`を加える
+- 8.3: 波及処理は`apps/event/src/application/payments/customer-erasure-handler.ts`・`open-checkout-expiry-handler.ts`、削除の書き込みはポート`payment-account-data-eraser.ts`と`infrastructure/payments/d1-payment-account-data-eraser.ts`。8.4(必須): `EVENT_PAYMENTS_TYPES.PaymentAccountDataEraser`→`D1PaymentAccountDataEraser`、2つの波及処理を`.to(...)`で束縛し、`payments.customer-erasure`(`purge_due`、400)と`payments.open-checkout-expiry`(`withdrawn`・`suspended`、410)をライフサイクルの登録箇所へ加え、`payments-lifecycle-handlers.worker.test.ts`の`REGISTRATIONS`を`USER_LIFECYCLE_ASYNC_HANDLERS`に置き換え、project-values.mdの「非同期の波及処理の登録」の行に2件を追記する
