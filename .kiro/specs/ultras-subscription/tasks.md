@@ -77,7 +77,7 @@
   - _Depends: 1.2, 2.1_
   - _Requirements: 4.2, 8.8, 8.9, 10.5, 11.1, 11.3_
 
-- [ ] 3.3 特典の判定と現在の加入状態・エクスポートの照会を作る
+- [x] 3.3 特典の判定と現在の加入状態・エクスポートの照会を作る
   - 先に、Workers統合テストで、指定時点・指定期間・複数の利用者の一括の判定、過去の時点の判定が後の解約の取り消しで変わらないこと、機能フラグがオフでも判定が変わらないこと、現在の加入状態が最新の有効化された加入から導かれること、エクスポートの`plan`の項目と加入したことが無い利用者の空を確かめる
   - 完了状態: Workers統合テストが成功し、判定が特典の継続期間の列だけを使う
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 11.2_
@@ -271,3 +271,4 @@
 - 2.4: メールの種別の入力は設計の`acceptedAtUtc`・`benefitEndsAtUtc`ではなく、paymentsの前例に合わせてISO 8601の瞬時`acceptedAt`・`benefitEndsAt`(`z.iso.datetime()`、`benefitEndsAt`は必須)にし、テンプレートが`formatUtcDateTime`で表記する。4.1の`UltrasNotifier`はこの名前と形で渡し、依頼の`benefitEndsAt`がnull(`scheduled_end_missing`)なら`skipped`にしてwarnを残す。`project-values.md`の「メール種別」の行にUltrasの2種を9.1で加える。
 - 3.1: ultrasのWorkers統合テストのフィクスチャは`workers/ultras/testing/ultras-store-fixtures.ts`(`clearUltrasTables`・`subscriptionIdOf`・`stripeSubscriptionIdOf`・`newSubscriptionRow`・`activatedSubscriptionRow`・`insertSubscriptionRow(s)`・`readSubscriptionRow`と、identity/paymentsの`db`・`insertUser(s)`・`userIdOf`・`T0`・`after`・`purchaseIdOf`の再公開)。共有のWorkers統合テストはapiからだけ実行する(eventの設定は`lib/**`を除外)。終了の状態の集合は`core/ultras/subscription-transition.ts`の`ENDED_STRIPE_STATUSES`。
 - 3.2: `markCompleted`は`completed_at IS NULL`のときだけ書き(最初の完了時刻を保つ)、`markSkipped`・`markRequested`は`pending`のときだけ進める。上限付きの削除は`DELETE ... WHERE id IN (SELECT id ... LIMIT ?)`の1文で消した件数を返す(件数==limitなら残りがあり得る、5.4のジョブが最大20回繰り返す)。閾値は`<=`。フィクスチャに`ULTRAS_PROMOTION_SEED_ROW`・`restoreUltrasSettingsSeed`・`newActivationRow`・`newNoticeRow`・`insertActivationRow(s)`・`insertNoticeRow(s)`・`readActivationRow/Ids`・`readNoticeRow/Ids`・`activationIdOf`・`noticeIdOf`がある。
+- 3.3: 判定の実装は`StoredUltrasEntitlements`・`StoredUltrasPlanExport`(`workers/ultras`、`ULTRAS_TYPES.SubscriptionStore`だけを注入)。`entitledUsersDuring`・`wasEntitledDuring`は`from > to`で`RangeError`。エクスポートの日時は`Date`(paymentsの前例のISO文字列とは異なる。data-exportが直列化する)。
