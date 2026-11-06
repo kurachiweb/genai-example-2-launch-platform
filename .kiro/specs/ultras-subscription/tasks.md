@@ -70,7 +70,7 @@
   - 完了状態: Workers統合テストが成功し、部分一意索引の違反が一括の書き込みの失敗として返る
   - _Requirements: 1.7, 1.9, 2.1, 2.10, 3.3, 11.1_
 
-- [ ] 3.2 (P) 知らせとメールの依頼のストアと、機能フラグの読み取りを作る
+- [x] 3.2 (P) 知らせとメールの依頼のストアと、機能フラグの読み取りを作る
   - 先に、ローカルD1を使うWorkers統合テストで、知らせの定期課金のIDでの重複の無視、送り出しの記録と完了の記録、送り出し直しの対象(未送り出しで10分以上・送り出しから24時間以上で未完了)、完了から30日以上の削除、メールの依頼の重複防止の鍵での無視・定期課金ごとの依頼待ちの検索・10分以上の依頼待ちの検索(上限件数)・依頼待ちのときだけの依頼済みの記録・対象外の記録・30日以上の削除、機能フラグの初期行の読み取りと行が無いときのオフを確かめる
   - 完了状態: Workers統合テストが成功し、各削除が1回500件で止まり残りの有無を返す
   - _Boundary: D1ActivationStore, D1NoticeStore, UltrasPromotionFlagReader_
@@ -270,3 +270,4 @@
 - 2.3: `ULTRAS_ACTIVATION_RETRY_POLICY`は`core/ultras/activation-message.ts`にある(6.1はここから読み込む)。`project-values.md`のメッセージ種別の表に`ultras.run-activation-handlers`の行を9.1で加える。
 - 2.4: メールの種別の入力は設計の`acceptedAtUtc`・`benefitEndsAtUtc`ではなく、paymentsの前例に合わせてISO 8601の瞬時`acceptedAt`・`benefitEndsAt`(`z.iso.datetime()`、`benefitEndsAt`は必須)にし、テンプレートが`formatUtcDateTime`で表記する。4.1の`UltrasNotifier`はこの名前と形で渡し、依頼の`benefitEndsAt`がnull(`scheduled_end_missing`)なら`skipped`にしてwarnを残す。`project-values.md`の「メール種別」の行にUltrasの2種を9.1で加える。
 - 3.1: ultrasのWorkers統合テストのフィクスチャは`workers/ultras/testing/ultras-store-fixtures.ts`(`clearUltrasTables`・`subscriptionIdOf`・`stripeSubscriptionIdOf`・`newSubscriptionRow`・`activatedSubscriptionRow`・`insertSubscriptionRow(s)`・`readSubscriptionRow`と、identity/paymentsの`db`・`insertUser(s)`・`userIdOf`・`T0`・`after`・`purchaseIdOf`の再公開)。共有のWorkers統合テストはapiからだけ実行する(eventの設定は`lib/**`を除外)。終了の状態の集合は`core/ultras/subscription-transition.ts`の`ENDED_STRIPE_STATUSES`。
+- 3.2: `markCompleted`は`completed_at IS NULL`のときだけ書き(最初の完了時刻を保つ)、`markSkipped`・`markRequested`は`pending`のときだけ進める。上限付きの削除は`DELETE ... WHERE id IN (SELECT id ... LIMIT ?)`の1文で消した件数を返す(件数==limitなら残りがあり得る、5.4のジョブが最大20回繰り返す)。閾値は`<=`。フィクスチャに`ULTRAS_PROMOTION_SEED_ROW`・`restoreUltrasSettingsSeed`・`newActivationRow`・`newNoticeRow`・`insertActivationRow(s)`・`insertNoticeRow(s)`・`readActivationRow/Ids`・`readNoticeRow/Ids`・`activationIdOf`・`noticeIdOf`がある。
