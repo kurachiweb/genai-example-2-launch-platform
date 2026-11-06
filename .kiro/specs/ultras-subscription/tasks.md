@@ -48,7 +48,7 @@
   - 完了状態: 単体テストが成功し、すべての遷移の結果(加入の値と依頼の一覧)が設計の規則と一致する
   - _Requirements: 2.1, 2.4, 2.5, 2.6, 2.7, 2.8, 2.10, 3.4, 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 2.3 (P) 加入が有効になった知らせの契約・登録の検証・メッセージの契約を作る
+- [x] 2.3 (P) 加入が有効になった知らせの契約・登録の検証・メッセージの契約を作る
   - 先に、ハンドラの登録の名前の形式・重複・実行順の重複の拒否と昇順の並び、メッセージの本文の検証(ULIDの知らせのID)、再試行の方針を確かめる単体テストを書く
   - 知らせの型とハンドラの登録の型を作り、メッセージの契約を集約点へ加える
   - 完了状態: 単体テストが成功し、メッセージの契約の一覧の重複の検査が新しい契約を含めて成功する
@@ -267,3 +267,4 @@
 - 1.4: 開発者が行うStripeの準備(dev用sandboxの価格`ultras_monthly`の作成、Customer Portalの設定、再試行の後の解約、顧客向けメールの停止、制限付きキーの権限。stagingはmainへのマージ前)は未完了で保留。10.1の加入の経路は`payments_unavailable`なら対象外、10.2は保留になり得る。
 - 2.1: `core/ultras`の文字列ユニオン(`UltrasNoticeKind`・`UltrasNoticeStatus`・`CancellationSource`)は`apps/db/schema/ultras`の`*_VALUES`と手で同期している(coreはdbを読めない)。3.x のWorkers統合テストで同値の検査を1本足す。ルート`CLAUDE.md`のディレクトリ構成に`ultras`の記述を加える作業はどのタスクの境界にも無いため、9.1で扱う。
 - 2.2: `applySubscriptionChange`は設計の`next`・`notices`に加えて`anomalies`(`unexpected_status`(`unpaid`・`paused`)・`scheduled_end_missing`)を返す。4.4のsinkはこれを`warn`ログとSentryの`captureEvent`(設計のMonitoring節)の両方に写す。未有効の空の値は`EMPTY_SUBSCRIPTION_SNAPSHOT`、終了の状態の判定は`isEndedStripeStatus`(3.1の`findCancellable`はSQLで同じ集合を使う)。有効化の前に見た予約・`past_due`は`canceledAt`・`pastDueSince`と依頼を持たないまま有効化される(9.xの文書に明記)。終了の変化で初めて予約を見た場合は解約の操作を記録するが確認メールは送らない。
+- 2.3: `ULTRAS_ACTIVATION_RETRY_POLICY`は`core/ultras/activation-message.ts`にある(6.1はここから読み込む)。`project-values.md`のメッセージ種別の表に`ultras.run-activation-handlers`の行を9.1で加える。

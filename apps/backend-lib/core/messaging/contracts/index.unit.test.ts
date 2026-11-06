@@ -7,6 +7,7 @@ import {
   RELOCATE_FILES_MESSAGE,
 } from '../../media/media-messages.ts';
 import { PAYMENTS_REFUND_MESSAGE } from '../../payments/refund-message.ts';
+import { ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE } from '../../ultras/activation-message.ts';
 import {
   RECHECK_DISPOSABLE_EMAIL_MESSAGE,
   RUN_USER_LIFECYCLE_MESSAGE,
@@ -58,6 +59,10 @@ describe('MESSAGE_CONTRACTS', () => {
 
   test('返金の実行の契約payments.refund-paymentを集約している', () => {
     expect(MESSAGE_CONTRACTS).toContain(PAYMENTS_REFUND_MESSAGE);
+  });
+
+  test('加入が有効になった知らせの処理の契約ultras.run-activation-handlersを集約している', () => {
+    expect(MESSAGE_CONTRACTS).toContain(ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE);
   });
 
   test('集約点は凍結されていて実行時に契約を追加できない', () => {

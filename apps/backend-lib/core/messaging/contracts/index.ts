@@ -5,6 +5,7 @@ import {
   RELOCATE_FILES_MESSAGE,
 } from '../../media/media-messages.ts';
 import { PAYMENTS_REFUND_MESSAGE } from '../../payments/refund-message.ts';
+import { ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE } from '../../ultras/activation-message.ts';
 import type { MessageContract } from '../message-contract.ts';
 import {
   RECHECK_DISPOSABLE_EMAIL_MESSAGE,
@@ -22,4 +23,5 @@ export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
     RUN_USER_LIFECYCLE_MESSAGE,
     RECHECK_DISPOSABLE_EMAIL_MESSAGE,
     PAYMENTS_REFUND_MESSAGE,
+    ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE,
   ]);
