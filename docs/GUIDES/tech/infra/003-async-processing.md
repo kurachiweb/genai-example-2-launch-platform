@@ -246,12 +246,12 @@ test('翌日の締めの定期実行の後に当日の日報が締め済みに�
 
 ### 契約
 
-メッセージの種別と本文の検証規則の組を、契約として`defineMessageContract`で定義する。契約は送信側と受信側の両方が読むため、共通ライブラリの`core/messaging/contracts/`に置き、`contracts/index.ts`の`MESSAGE_CONTRACTS`へ集約する。
+メッセージの種別と本文の検証規則の組を、契約として`defineMessageContract`で定義する。契約は送信側と受信側の両方が読むため、共通ライブラリの`core`に置く。契約は、その種別を受け持つ機能のディレクトリ(`core/<機能>/`)か`core/messaging/contracts/`のファイルに定義し、集約点`core/messaging/contracts/index.ts`の`MESSAGE_CONTRACTS`へ加える。次の例は、機能のディレクトリのファイル(`core/<機能>/<契約のファイル>.ts`)に定義する場合である。
 
 ```typescript
 import { z } from 'zod';
 
-import { defineMessageContract } from '../message-contract.ts';
+import { defineMessageContract } from '../messaging/message-contract.ts';
 
 export const purgeImageCache = defineMessageContract(
   'media.purge-image-cache',
@@ -260,8 +260,8 @@ export const purgeImageCache = defineMessageContract(
 ```
 
 ```typescript
+import { purgeImageCache } from '../../<機能>/<契約のファイル>.ts';
 import type { MessageContract } from '../message-contract.ts';
-import { purgeImageCache } from './media.ts';
 
 export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
   Object.freeze([purgeImageCache]);
@@ -280,7 +280,7 @@ export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
 import { inject, injectable } from 'inversify';
 
 import { PLATFORM_TYPES } from '<共通ライブラリの配置先>/core/di/identifiers.ts';
-import { purgeImageCache } from '<共通ライブラリの配置先>/core/messaging/contracts/media.ts';
+import { purgeImageCache } from '<共通ライブラリの配置先>/core/<機能>/<契約のファイル>.ts';
 import type { MessagePublisher } from '<共通ライブラリの配置先>/workers/messaging/queue-publisher.ts';
 
 @injectable()
@@ -349,7 +349,7 @@ export class PurgeImageCacheHandler implements MessageHandler<{
 
 ```typescript
 import type { MessageHandlerRegistration } from '<共通ライブラリの配置先>/core/messaging/message-contract.ts';
-import { purgeImageCache } from '<共通ライブラリの配置先>/core/messaging/contracts/media.ts';
+import { purgeImageCache } from '<共通ライブラリの配置先>/core/<機能>/<契約のファイル>.ts';
 
 import { MEDIA_TYPES } from '../media/types.ts';
 
