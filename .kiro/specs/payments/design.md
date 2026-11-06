@@ -1839,7 +1839,7 @@ export interface MoneyTextProps {
 - E2E/UI Tests:
   - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `CheckoutPage`の状態ごとの出し分け、同意が無い間の支払うボタンの無効、同意の記録の失敗で確定しない、`CheckoutSummary`の表示事項とアンカー無しの`/legal`へのリンク、`PaymentHistoryList`の続きの読み込みと0件、`MoneyText`のロケールと符号(4.1〜4.13、12.1〜12.3、13.5)。Stripe.jsは`CheckoutElementsProvider`の模擬で置き換える。
   - E2E(`e2e/client/billing.e2e.test.ts`): 決済履歴の画面の表示と、ナビゲーションの「決済履歴」の項目(12.1・12.4)。
-  - E2E(`e2e/client/checkout.e2e.test.ts`): 疎通確認用の購入種別で、決済画面の表示事項→同意→テストカード(`4242 4242 4242 4242`)での支払い→決済後のランディングの完了→決済履歴への記録、CSPの違反が出ないこと(2.8、4.\*、5.2、12.1)。Stripeのsandboxのキーと`stripe listen`の転送が要るため、それらが揃うローカル・stagingの検証で実行し、無い環境では飛ばす。「対象0件の表示」の規約は実行するテストファイルが0件の時のもので、個々のテストを環境で飛ばす仕組みではないため、テストの中で、APIサーバーのGraphQLで`startSmokeCheckout`が`payments_unavailable`を返す(キーが無い)ときは`test.skip`で理由(「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」)を示して終える。CIのE2E(`stripe listen`が無い)で`return_url`からの反映だけで完了まで辿れるかはタスク1.4の検証で確かめる。
+  - E2E(`e2e/client/checkout.e2e.test.ts`): 疎通確認用の購入種別で、決済画面の表示事項→同意→テストカード(`4242 4242 4242 4242`)での支払い→決済後のランディングの完了→決済履歴への記録、CSPの違反が出ないこと(2.8、4.\*、5.2、12.1)。Stripeのsandboxのキーと`stripe listen`の転送が要り、ローカルのD1(同意の記録)とMailpit(購入確認メール)を読むため、それらが揃うローカルの検証で実行し(stagingでは実行できない)、無い環境では飛ばす。「対象0件の表示」の規約は実行するテストファイルが0件の時のもので、個々のテストを環境で飛ばす仕組みではないため、テストの中で、APIサーバーのGraphQLで`startSmokeCheckout`が`payments_unavailable`を返す(キーが無い)ときは`test.skip`で理由(「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」)を示して終える。CIのE2E(`stripe listen`が無い)で`return_url`からの反映だけで完了まで辿れるかはタスク1.4の検証で確かめる。
 - 手動の検証(`operations/004`、タスクで記録): sandboxで作成した決済セッションの`payment_method_types`がカードとLinkだけであること、決済画面にカード・Apple Pay・Google Pay・Linkだけが出ること、Linkの即時銀行決済のテストで`payment_status = 'paid'`の完了通知が届くこと、決済履歴の`link_funding_source_group`の記録(Q2・仮1)。
 
 ## Security Considerations

@@ -158,8 +158,12 @@
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
   - Stripe.js(`@stripe/stripe-js`)・React Stripe.js SDK(`@stripe/react-stripe-js`)及びPayment Element(利用者側の決済ページの埋め込み。決済ページと決済後のランディングだけで動的に読み込む。Stripe.jsは読み込んだ時点でスクリプトを挿入しない`@stripe/stripe-js/pure`の入口から、公開キーごとに1回だけ読み込む)
   - 3つのパッケージはStripeのAPI版と結び付くため版を完全に固定する。版は[依存パッケージの版管理](../GUIDES/tech/coding/002-dependency-versions.md#主要パッケージの一覧)を正とする
-  - Stripe Refunds API(自動返金)
+  - Stripe Refunds API(自動返金。ダッシュボードの手動の返金も同じ通知で決済履歴へ反映)
   - Stripe Customer Portal(Ultrasの支払い方法の更新)
+  - Stripe Tax(決済セッションの`automatic_tax`による請求先住所からの税込価格の税の計算)
+  - Link(カード・Apple Pay・Google Payと並ぶ決済手段。決済セッションの決済手段の種類は`card`・`link`に絞る)
+  - Stripe CLI(`@stripe/cli`。開発コンテナに導入し、`stripe listen`によるローカルのイベントサーバーへのWebhookの転送、sandboxの対象の確認(`stripe get`)、Stripeの文書の参照(`stripe docs`)に使用。アプリの依存には加えない)
+  - Stripeとの通信の規約は[決済サービス(Stripe)](../GUIDES/tech/external/007-stripe-payments.md)、通知の冪等な反映は[外部の通知の冪等な反映](../GUIDES/tech/backend/009-idempotent-event-reflection.md)、環境ごとの設定と運用は[決済の環境とデータの運用](../GUIDES/tech/operations/004-payment-data-operations.md)を参照
 
 ## CI/CD
 

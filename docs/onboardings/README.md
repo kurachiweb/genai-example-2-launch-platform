@@ -629,6 +629,21 @@ APIサーバーとイベントサーバーは、メールアドレスの確認�
 - 公開キーは`apps/client`のWrangler設定の`vars`の`STRIPE_PUBLISHABLE_KEY`に書く。ローカル環境の値は、開発者がローカル環境用のsandboxの公開キーを用意するまで仮の値のままである(「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」)。
 - 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を正とする。
 
+### ローカルのWebhookの転送
+
+ローカル環境にはStripeのWebhook endpointを作らず、Stripe CLIで開発用のsandboxの通知をローカルのイベントサーバーへ転送する。上の手順でキーと署名の秘密を登録し、クイックスタートの手順7で`stripe login`を済ませ、手順13でAPIサーバーとイベントサーバーを起動してから、別のターミナルで転送を起動する。
+
+```sh
+stripe listen \
+  --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,invoice.paid,invoice.payment_failed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,refund.created,refund.updated,refund.failed,charge.dispute.funds_withdrawn,charge.dispute.funds_reinstated,charge.dispute.closed \
+  --forward-to http://localhost:48043/webhooks/stripe
+```
+
+- 購読する15種は、イベントサーバーが受け付ける通知の種類(`apps/backend-lib/core/payments/stripe-event-mapping.ts`の`HANDLED_STRIPE_EVENT_TYPES`)と同じである。種類の意味と、署名の秘密・API版の扱いは「[ローカルの転送](../GUIDES/tech/operations/004-payment-data-operations.md#ローカルの転送)」に従う。
+- 転送の署名の秘密(`stripe listen --print-secret`)は、`stripe listen`を起動し直しても変わらない。`stripe login`をし直したときなどに`--print-secret`の値が登録した値と変わったら、`dev`の`STRIPE_WEBHOOK_SECRET`を登録し直し、イベントサーバーを起動し直す。
+- 転送の画面に、通知ごとにイベントサーバーの応答の状態コードが出る。200以外なら、イベントサーバーのログのカテゴリ`['event', 'payments', 'webhook']`で理由を確かめる。署名の不正(400)は署名の秘密の登録の誤り、503は署名の秘密がイベントサーバーへ渡っていないことを示す(上の「Wrangler設定のルートの`secrets.required`」の変更が入るまでは、登録しても503になる)。
+- 転送を止めている間は、定期課金・請求・返金・チャージバックの通知が反映されない。決済後のランディングは通知を待たずに決済セッションを取得して反映するため、即時の決済手段なら転送が無くても完了まで進む設計だが、転送を止めた状態の疎通確認の決済ではまだ確かめていない。
+
 ## DBスキーマを変更したとき
 
 テーブル定義を`apps/db/schema/`に書き(「[テーブル定義の配置](../GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)」)、次の順でマイグレーションを生成して適用する。各手順の詳細は「[スキーマ規約のマイグレーション](../GUIDES/tech/db/003-schema-conventions.md#マイグレーション)」に従う。

@@ -51,7 +51,7 @@
 - Vitest系はテストの種別に応じて導入する。ブラウザテストを持つアプリは`vitest`・`@vitest/browser-playwright`・`@vitest/coverage-v8`・`playwright`を、Workers統合テストを持つアプリは`vitest`・`@vitest/coverage-istanbul`・`@cloudflare/vitest-pool-workers`・`wrangler`を導入する。
 - ルートは`@playwright/test`だけを直接宣言する。`@playwright/test`は`playwright`を、`playwright`は`playwright-core`を、それぞれ完全固定の`dependencies`で持つため、`playwright`・`playwright-core`は推移的に同じ版に決まる。ブラウザテストを持つアプリは、`@vitest/browser-playwright`が使う`playwright`を直接宣言し、同じ版にする。
 - 一覧に無いパッケージでも、共有ディレクトリのコードが実行時に使うものは、利用側アプリが共有ディレクトリ側と同じ版で宣言する。
-- バックエンドの共通ライブラリは`package.json`を持たず、使うパッケージ(`hono`・`inversify`・`reflect-metadata`・`zod`・`@logtape/logtape`・`@logtape/redaction`・`@sentry/cloudflare`・`@sentry/hono`・`ulid`・`drizzle-orm`・`image-size`・`fast-xml-parser`・`fast-xml-validator`)を、配置先の全アプリが同じ版で`dependencies`に宣言する。`@sentry/core`の型だけを使う場合も、`@sentry/core`は宣言せず`@sentry/cloudflare`・`@sentry/hono`が固定する版に任せる。
+- バックエンドの共通ライブラリは`package.json`を持たず、使うパッケージ(`hono`・`inversify`・`reflect-metadata`・`zod`・`@logtape/logtape`・`@logtape/redaction`・`@sentry/cloudflare`・`@sentry/hono`・`ulid`・`drizzle-orm`・`image-size`・`fast-xml-parser`・`fast-xml-validator`・`stripe`)を、配置先の全アプリが同じ版で`dependencies`に宣言する。`@sentry/core`の型だけを使う場合も、`@sentry/core`は宣言せず`@sentry/cloudflare`・`@sentry/hono`が固定する版に任せる。
 - GraphQLのクライアントを持つアプリ(画面を持つアプリ)は、`graphql`・`@graphql-codegen/cli`を、GraphQLのサーバーを持つアプリと同じ版で`devDependencies`に宣言する。クライアントの操作を、サーバーのスキーマの検証と同じ版の`graphql`で検証するためである。
 - 画面の共通部品は、型の出どころとして`graphql`を`devDependencies`に宣言する。宣言しないと、Bunが他のパッケージの相手依存として別の系列の`graphql`を入れる。
 
