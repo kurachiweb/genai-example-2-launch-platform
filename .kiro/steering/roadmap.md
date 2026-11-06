@@ -76,7 +76,7 @@
   - 可視性フィルタ(退会・停止・非公開・論理削除の除外): ユーザー側の条件はidentity-auth、プロダクト側の条件はproduct-launchが共通部品として所有する
   - ハンドル基盤(大文字小文字を区別しない一意性・旧ハンドルの302リダイレクト・予約語): user-profile-socialが所有し、product-launch・help-center・プロダクトカテゴリが再利用する
   - マッチとブラケット: match-engineが汎用マッチモデルと投票を、tournament-weekがブラケットエンジンを所有し、tournament-yearが再利用する
-  - プラン判定(Ultras加入状態): ultras-subscriptionが照会サービスを所有し、user-profile-social・product-launch・tournament-week・tournament-yearが消費する。UltrasのE2Eは機能フラグの行を書き換え、client・adminの2ファイルをPlaywrightのプロジェクトの依存で直列にする(ultras-subscriptionのタスク10.1)。フラグの値で表示が変わる画面を確かめる後続specのE2Eは、Ultrasのプロジェクトの依存に加えるか、フラグの値で結果が変わる部分を確かめない
+  - プラン判定(Ultras加入状態): ultras-subscriptionが照会サービスを所有し、user-profile-social・product-launch・tournament-week・tournament-yearが消費する。UltrasのE2Eは機能フラグの行を書き換え、client・adminの2ファイルを、ルートの`playwright.config.ts`が`createPlaywrightConfig`の`serialGroups`へ渡す直列の組で、Playwrightのプロジェクトの依存により直列にする(ultras-subscriptionのタスク10.1)。フラグの値で表示が変わる画面を確かめる後続specのE2Eは、Ultrasの直列の組に手順として加えるか、フラグの値で結果が変わる部分を確かめない
   - 再ローンチ可否ポリシー: product-launchが所有し、tournament-week・tournament-yearが「トーナメント結果確定待ち」の条件を供給する
   - 決済フルフィルメント: paymentsが購入種別とフルフィルメントのポートを所有し、ultras-subscription・tournament-week・tournament-year・sponsorshipが実装する。返金の共通部品(`PaymentRefunds`)・未完了の決済セッションの失効(`OpenCheckoutExpirer`)・23:40の決済の突合のジョブ(`payments.checkout-reconciliation`、`order` 10)もpaymentsが所有し、後続specは突合の結果をフルフィルメントで受け取る(同じ時刻に突合のジョブを重ねて作らない)。23:40に他のジョブを登録するspec(match-engineなど)は`order`を10より大きくする
   - 通知イベント契約: notificationsが所有し、tournament-week・tournament-yearが発行する(予選のマッチはnotificationsがmatch-engineの`MatchDirectory.listForDate`で自ら集める)
