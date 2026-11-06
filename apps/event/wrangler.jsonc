@@ -97,6 +97,8 @@
       "EMAIL_SMOKE_TOKEN",
       "EMAIL_SMOKE_RECIPIENT",
       "MEDIA_SMOKE_TOKEN",
+      "STRIPE_API_KEY",
+      "STRIPE_WEBHOOK_SECRET",
     ],
   },
   "env": {

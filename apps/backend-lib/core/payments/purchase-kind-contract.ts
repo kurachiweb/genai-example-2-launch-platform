@@ -4,7 +4,7 @@ import type { MinorUnitAmount } from '../../../common-lib/payments/money.ts';
 import type { PurchaseKind } from '../../../common-lib/payments/purchase-kinds.ts';
 
 export interface PaymentsEnv {
-  // staging・prodだけで必須。未設定なら決済の機能だけが縮退する。環境の型と検証の結果は省略可能なプロパティのため、省略可能にする
+  // 未登録のローカルとCIでは渡らず、決済の機能だけが縮退する。環境の型と検証の結果は省略可能なプロパティのため、省略可能にする
   readonly STRIPE_API_KEY?: string | undefined;
   readonly PAYMENTS_SMOKE_ENABLED: 'true' | 'false';
   readonly CLIENT_SITE_ORIGIN: string;

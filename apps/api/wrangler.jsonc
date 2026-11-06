@@ -63,7 +63,9 @@
     "ADMIN_SITE_ORIGIN": "http://localhost:48045",
     "PAYMENTS_SMOKE_ENABLED": "true",
   },
-  "secrets": { "required": ["HASH_PEPPER", "TURNSTILE_SECRET_KEY"] },
+  "secrets": {
+    "required": ["HASH_PEPPER", "TURNSTILE_SECRET_KEY", "STRIPE_API_KEY"],
+  },
   "env": {
     "staging": {
       "d1_databases": [

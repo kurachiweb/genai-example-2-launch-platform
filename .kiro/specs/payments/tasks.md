@@ -37,7 +37,7 @@
   - Stripeの現行の文書で、Payment Element・Link・請求先住所の入力欄がCSPに求める許可先を確かめ、設計の許可先(`js.stripe.com`・`hooks.stripe.com`・`api.stripe.com`)との差と、ワイルドカードや別のホストが要るかを`research.md`に記録する。要るなら10.1の前に開発者へ報告する
   - CIのE2E(GitHubのランナー。`stripe listen`の転送が無い)で、`return_url`からの反映だけで決済の完了まで辿れるかを、ローカルで`stripe listen`を止めた状態の疎通確認の決済で確かめ、`research.md`に記録する
   - 完了状態: 手順書の節が整形の検査を通り、ローカルの公開キーと`project-values.md`の行が書き込まれ、開発者の準備の完了(または未完了で保留した旨)とCSPの許可先・転送の無い環境の確認の結果が作業の報告に記録され、オンボーディングにWorkerごとのフォルダへの登録の手順がある。開発者の準備が終わっていれば、Workerの指定付きで起動したapiとeventで疎通確認の決済を始められ、Workerの指定を付けずに起動すると`startSmokeCheckout`が`payments_unavailable`を返す(共通のフォルダの値が使われないことの確認)
-  - _Blocked: 開発者のdev用sandboxの準備待ち(devの公開キーでのローカルの`STRIPE_PUBLISHABLE_KEY`の置き換え、`stripe listen`を止めた状態の疎通確認の決済、Workerの指定付きの起動での疎通確認)。加えて、Stripeのキーがローカルのルートの`secrets.required`に無いため、登録してもローカルのWorkerへ渡らない(開発者の判断待ち)。手順書・オンボーディング・CSPの調査はresearch.mdとoperations/004に記録済み_
+  - _Blocked: 開発者のdev用sandboxの準備待ち(devの公開キーでのローカルの`STRIPE_PUBLISHABLE_KEY`の置き換え、`stripe listen`を止めた状態の疎通確認の決済、Workerの指定付きの起動での疎通確認)。ローカルのルートの`secrets.required`へのStripeのキーの追加は2026-11-06に済んだ。手順書・オンボーディング・CSPの調査はresearch.mdとoperations/004に記録済み_
   - _Boundary: PaymentsTechDocs, オンボーディング(Workerごとのフォルダへの登録の手順だけ), clientのWrangler設定(ローカルの`STRIPE_PUBLISHABLE_KEY`の値だけ)_
   - _Depends: 1.1_
   - _Requirements: 15.1, 15.2, 15.6, 15.7_
@@ -248,7 +248,7 @@
   - 共通の束縛とそのモジュールをモジュールの一覧へ、返金の処理をメッセージの処理の一覧へ(再試行は最大5回)、2つの波及処理をユーザーライフサイクルの登録箇所へ(`order` 400・410、本specの400番台)加える
   - 先に、Workers統合テストで、DIから署名の検証・受け付け・返金の処理・波及処理を取り出せること、メッセージの処理と波及処理の登録の検証(名前・順序の重複)が成功することを確かめる
   - 完了状態: DIの統合テストと登録の検証が成功し、Workers統合テストで`PaymentRefunds.request`から送った`payments.refund-payment`が返金の処理で受信されること(Stripeは模擬)と、ローカル(1.4の準備の後)で`stripe listen`の転送からの通知が反映されることを確かめる
-  - 未実施: ローカルで`stripe listen`の転送からの通知が反映されることの確認は、1.4(開発者のsandboxの準備と、ローカルのルートの`secrets.required`へのStripeのキーの追加の判断)の保留のため行っていない。Workers統合テストで、本物のWorkerのエントリへの署名付きの通知の反映と、返金のメッセージの受信は確かめた
+  - 未実施: ローカルで`stripe listen`の転送からの通知が反映されることの確認は、1.4(開発者のsandboxの準備)の保留のため行っていない(ローカルのルートの`secrets.required`へのStripeのキーの追加は2026-11-06に済んだ)。Workers統合テストで、本物のWorkerのエントリへの署名付きの通知の反映と、返金のメッセージの受信は確かめた
   - _Depends: 1.4, 8.2, 8.3_
   - _Requirements: 8.5, 14.1_
 
@@ -353,7 +353,7 @@
 
 ## Implementation Notes
 
-- 1.1: StripeのキーはローカルのルートのWranglerの`secrets.required`に無いため、Infisicalの`dev`に登録してもローカルのapi・eventへ渡らない(`wrangler dev`は`secrets.required`のキーだけを`env`へ渡す)。ローカルで決済を試す1.4・8.4・11.1の完了状態には、ルートの`secrets.required`への追加が要る(開発者の判断待ち)
+- 1.1: 2026-11-06の開発者の判断で、StripeのキーをWranglerのルートの`secrets.required`にも加えた(apiは`STRIPE_API_KEY`、eventは`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`。`wrangler dev`は`secrets.required`のキーだけを`env`へ渡す)。Infisicalの`dev`へ登録すればローカルのapi・eventへ渡り、未登録ならWranglerの警告だけで起動し、環境の検証は任意のまま決済の機能だけが縮退する。`wrangler types`がキーを必須の型にするため、eventの`EventEnv`はStripeのキーを任意の型に戻している。`dev`の値は検査のE2E(CI)のWorkerにも渡るため、登録はclientのローカルの`STRIPE_PUBLISHABLE_KEY`の置き換えと合わせる
 - 1.1: 決済の設定の検証の規則は`backend-lib/core/payments/payments-env.ts`、オリジンの形式の判定は`backend-lib/core/env/http-origin.ts`の`isHttpOrigin`にある。Workers統合テストのStripeのテスト用のキーは、シークレットの検出の誤検知を避けるため文字列を連結して作る
 - 1.4: LinkはCSPに`https://link.com`と`https://*.link.com`(frame-src・connect-src・img-src)を要するが、frontend-libの`ORIGIN_PATTERN`はワイルドカードを拒否する(research.mdの「タスク1.4の調査」)。10.1で扱いを決める
 - 1.4: 制限付きキーの権限は`docs/GUIDES/tech/operations/004-payment-data-operations.md`の表が正(Stripeに単独の返金の権限は無く「Charges and Refunds」)。Stripeの呼び出しを加えるタスクは表と突き合わせる
@@ -383,7 +383,7 @@
 - 8.3: 波及処理は`apps/event/src/application/payments/customer-erasure-handler.ts`・`open-checkout-expiry-handler.ts`、削除の書き込みはポート`payment-account-data-eraser.ts`と`infrastructure/payments/d1-payment-account-data-eraser.ts`。8.4(必須): `EVENT_PAYMENTS_TYPES.PaymentAccountDataEraser`→`D1PaymentAccountDataEraser`、2つの波及処理を`.to(...)`で束縛し、`payments.customer-erasure`(`purge_due`、400)と`payments.open-checkout-expiry`(`withdrawn`・`suspended`、410)をライフサイクルの登録箇所へ加え、`payments-lifecycle-handlers.worker.test.ts`の`REGISTRATIONS`を`USER_LIFECYCLE_ASYNC_HANDLERS`に置き換え、project-values.mdの「非同期の波及処理の登録」の行に2件を追記する
 - 8.4: イベントサーバーの決済のモジュールは`apps/event/src/composition/payments-module.ts`(`EVENT_PAYMENTS_PLATFORM_MODULE`・`EVENT_PAYMENTS_MODULE`、Webhookの経路の登録を含む)。返金のメッセージ・2つの波及処理は本物の一覧に登録済みで、8.2・8.3のWorkers統合テストも本物の一覧を使う
 - 9: 通貨の表示部品は`apps/frontend-lib/components/payments/money-text.tsx`の`MoneyText`(`amount`は最小通貨単位の整数、`signDisplay`は`auto`か`exceptZero`)。「(税込)」は画面の文言で示す
-- 10.1: clientの`CLIENT_SECURITY_POLICY`にStripeの許可先と`https://link.com`、`payment`の許可を登録した(`*.link.com`は未登録で開発者の判断待ち)。設定のナビゲーションに「決済履歴」(`/settings/billing`、order 70)を加えたので、10.5で同じパスのルートを必ず作る
+- 10.1: clientの`CLIENT_SECURITY_POLICY`にStripeの許可先と`https://link.com`、`payment`の許可を登録した。2026-11-06の開発者の判断で、`*.link.com`は許可先の規則を変えずに個別のサブドメイン(`frame-src`の`https://checkout.link.com`・`connect-src`の`https://checkout-cookies.link.com`・`img-src`の`https://statics.link.com`)を登録した(根拠はresearch.mdのタスク1.4の調査)。Stripeがサブドメインを増やすと壊れ得るため、11.1・11.2のCSPの違反で気付いたら足す。設定のナビゲーションに「決済履歴」(`/settings/billing`、order 70)を加えたので、10.5で同じパスのルートを必ず作る
 - 10.2: 5つの操作は`apps/client/src/graphql/operations/payments/`。Stripe.jsの読み込みは`apps/client/src/components/payments/stripe-loader.ts`の`loadStripeOnce`(`@stripe/stripe-js/pure`、公開キーが無ければ`null`、失敗は次で読み込み直す)。10.3(必須): 先に`stripePublishableKey === undefined`を見て利用できない旨を出し(エラートラッキングへ送らない)、支払うボタンは同意と`useCheckoutElements()`の`canConfirm`で無効を決める。clientのブラウザテストのカバレッジは`src/components/**`をファイル単位で数えるため、部品の`.ts`はブラウザテストで読み込む(単体テストだけだと0%になりCIが落ちる)。各タスクで`bun run --cwd /workspace/apps/client test:browser --coverage`を回す
 - 10.3: 決済画面は`apps/client/src/routes/_authenticated/checkout/$purchaseId.tsx`と`src/components/payments/`。読み込み中・エラー・見つからない表示は軽い`CheckoutStatusPage`(`pendingComponent`は主のバンドルに入るためStripe.jsを読み込む部品を置かない)。返金の理由の文は`common-lib/payments/refund-reason-texts.ts`の`REFUND_REASON_TEXTS`(clientは`refundReasonTextOf`)。やり直しの導線は`CHECKOUT_RESTART_HREFS`、決済履歴への導線は`BillingHistoryLink`(10.4で使う)。12.2(必須): 縮退の文言が、画面(文言規則003の縮退運転の文、`PAYMENT_UNAVAILABLE_REASON`)とAPIの`payments_unavailable`の文言で2通りある。どちらか1つの文に決め、APIの文言・clientの定数・文言規則・設計を一緒に直す(`UnavailableNotice`の固定の題名との重なりに注意)。決済画面の文言と疎通確認の仮の文言を文言規則とページ配置に載せる
 - 10.4: 決済後のランディングは`apps/client/src/routes/_authenticated/checkout/return.tsx`と`components/payments/checkout-return-status.tsx`(確かめ直しの間隔と上限は`checkout-return-rules.ts`)。TanStack Routerは`validateSearch`の結果を生の検索パラメータに重ねるため、不正な値は省かず`undefined`で返す(006に記載)。12.2: ランディングの文言と状態を文言規則003とページ配置002に載せる

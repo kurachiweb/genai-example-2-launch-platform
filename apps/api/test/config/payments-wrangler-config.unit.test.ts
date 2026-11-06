@@ -30,9 +30,9 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedPaymentsEnvironment[] = [
     label: 'ローカル(ルート)',
     wranglerEnv: undefined,
     smokeEnabled: 'true',
-    // ローカルはStripeのキーを注入せずに起動し、決済の機能だけを縮退させる
-    requiredApiSecrets: [],
-    requiredEventSecrets: [],
+    // wrangler devはsecrets.requiredのキーだけをenvへ渡すため、ローカルにも挙げる。未登録なら警告だけで起動し、決済の機能だけが縮退する
+    requiredApiSecrets: ['STRIPE_API_KEY'],
+    requiredEventSecrets: ['STRIPE_API_KEY', 'STRIPE_WEBHOOK_SECRET'],
   },
   {
     label: 'staging',
@@ -83,13 +83,13 @@ describe.each(EXPECTED_ENVIRONMENTS)('決済のWrangler設定($label)', (env) =>
     }
   });
 
-  test('APIサーバーの決済の必須シークレットは、デプロイ先でだけ制限付きキーである', () => {
+  test('APIサーバーの決済の必須シークレットは、制限付きキーである', () => {
     expect(paymentsKeysOf(api.secrets?.required ?? [])).toEqual([
       ...env.requiredApiSecrets,
     ]);
   });
 
-  test('イベントサーバーの決済の必須シークレットは、デプロイ先でだけ制限付きキーとWebhookの署名の秘密である', () => {
+  test('イベントサーバーの決済の必須シークレットは、制限付きキーとWebhookの署名の秘密である', () => {
     expect(paymentsKeysOf(event.secrets?.required ?? [])).toEqual([
       ...env.requiredEventSecrets,
     ]);

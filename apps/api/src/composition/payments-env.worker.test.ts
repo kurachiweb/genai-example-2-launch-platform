@@ -37,7 +37,7 @@ function captureValidationError(candidate: unknown): EnvValidationError {
 
 describe('apiEnvSchemaの決済の設定', () => {
   test('Workers統合テストの環境はテストモードの制限付きキーを持ち、疎通確認を有効にする', () => {
-    expect(String(env.STRIPE_API_KEY).startsWith('rk_test_')).toBe(true);
+    expect(env.STRIPE_API_KEY.startsWith('rk_test_')).toBe(true);
     expect(env.PAYMENTS_SMOKE_ENABLED).toBe('true');
   });
 

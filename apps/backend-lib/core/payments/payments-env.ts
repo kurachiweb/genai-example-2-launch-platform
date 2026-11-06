@@ -5,7 +5,7 @@ const STRIPE_RESTRICTED_KEY_PATTERN = /^rk_(?:test|live)_[A-Za-z0-9]+$/;
 
 const STRIPE_WEBHOOK_SECRET_PATTERN = /^whsec_[A-Za-z0-9]+$/;
 
-// ローカルとCIはキーを登録せずに起動し、決済の機能だけを縮退させるため、キーと署名の秘密は任意にする
+// 未登録のローカルとCIでも起動し、決済の機能だけを縮退させるため、キーと署名の秘密は任意にする
 export const paymentsApiEnvShape = {
   STRIPE_API_KEY: z.string().regex(STRIPE_RESTRICTED_KEY_PATTERN).optional(),
   PAYMENTS_SMOKE_ENABLED: z.enum(['true', 'false']),

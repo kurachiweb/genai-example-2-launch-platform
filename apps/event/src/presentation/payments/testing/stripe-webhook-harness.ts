@@ -39,7 +39,10 @@ import {
   STRIPE_WEBHOOK_PATH,
 } from '../stripe-webhook-route.ts';
 
-export type WebhookTestEnv = typeof env;
+// wrangler typesは署名の秘密を常にある型にするが、未登録の環境では渡らないため、未設定の経路を試せるよう任意の型に戻す
+export type WebhookTestEnv = Omit<typeof env, 'STRIPE_WEBHOOK_SECRET'> & {
+  readonly STRIPE_WEBHOOK_SECRET?: string | undefined;
+};
 export type WebhookTestApp = Hono<PlatformHonoEnv<WebhookTestEnv>>;
 
 export interface SentItem {
@@ -108,7 +111,7 @@ export function sign(
 ): Promise<string> {
   return Stripe.webhooks.generateTestHeaderStringAsync({
     payload,
-    secret: options.secret ?? env.STRIPE_WEBHOOK_SECRET ?? '',
+    secret: options.secret ?? env.STRIPE_WEBHOOK_SECRET,
     timestamp: options.timestamp ?? nowSeconds(),
     cryptoProvider,
   });

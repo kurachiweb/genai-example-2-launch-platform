@@ -103,7 +103,7 @@ Stripeの決済セッション(Checkout Sessions)と決済画面の部品(Paymen
 - `payment_method_types`は送らない。Stripeは決済手段を固定で列挙するこの項目を推奨せず、動的に決まる候補を絞る`allowed_payment_method_types`を案内している。
 - Linkを有効にすると、Linkの資金源(カードのほか、即時に確定する銀行決済など)も有効になり、資金源ごとには切れない。決済セッションの`payment_method_options.link`にも資金源を絞る項目は無い。完了の通知で支払いが未完了(`payment_status`が`unpaid`)の決済は権利を付与せず、支払いの確定(`checkout.session.async_payment_succeeded`)で反映する。
 - 資金源は、請求(Charge)の`payment_method_details.link.funding_source_group`か、カードのウォレットとしての`payment_method_details.card.wallet.link.funding_source_group`で確かめられる。決済の記録の内部の列に残し、想定外の資金源を後から調べられるようにする。
-- 決済画面のCSPの許可先(Stripe.jsの`script-src`・`frame-src`・`connect-src`と、Linkの許可先)は「[許可先の登録](../frontend/003-frontend-server-security.md#許可先の登録)」の規則で登録する。Linkはサブドメインのワイルドカード(`https://*.link.com`)の許可を求めるため、ワイルドカードを許さない規則では一部を登録できない。登録できない許可先は、決済画面の検証でCSPの違反が出ないことを確かめて扱いを決める。
+- 決済画面のCSPの許可先(Stripe.jsの`script-src`・`frame-src`・`connect-src`と、Linkの許可先)は「[許可先の登録](../frontend/003-frontend-server-security.md#許可先の登録)」の規則で登録する。Linkはサブドメインのワイルドカード(`https://*.link.com`)の許可を求めるため、ワイルドカードを許さない規則では、Stripeの文書と読み込むStripe.jsで確かめたサブドメインを、求められるディレクティブへ個別に登録する。確かめられないサブドメインは推測で登録しない。Stripeがサブドメインを増やすとLinkの画面がCSPに阻まれ得るため、決済画面の検証でCSPの違反が出ないことを確かめ、違反が出たら許可先を足す。
 
 ## 税と現地通貨
 

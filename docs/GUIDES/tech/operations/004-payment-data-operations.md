@@ -68,7 +68,7 @@ APIサーバーとイベントサーバーに、それぞれ必要な権限だ�
 5. 値をファイル・プルリクエスト・チャットに残さない。
 
 - デプロイ先の値は、その環境の次のデプロイでWorkerへ反映される(「[シークレットの追加と削除](001-deployment.md#シークレットの追加と削除)」)。
-- ローカル環境の起動は、`<配布のスクリプト>`の`run-with-secrets --scope local --worker <Worker>`で`dev`の共通のフォルダにWorkerごとのフォルダを重ねて注入する。ただしWranglerは、Wrangler設定のルートの`secrets.required`に挙げたキーだけをWorkerへ渡す(「[Workersのコードから参照するシークレット](../security/001-secret-management.md#workersのコードから参照するシークレット)」)。ルートの`secrets.required`に`<Stripeのキーのシークレットのキー>`が無い構成では、`dev`へ登録してもローカル環境のWorkerへは渡らない。
+- ローカル環境の起動は、`<配布のスクリプト>`の`run-with-secrets --scope local --worker <Worker>`で`dev`の共通のフォルダにWorkerごとのフォルダを重ねて注入する。ただしWranglerは、Wrangler設定のルートの`secrets.required`に挙げたキーだけをWorkerへ渡す(「[Workersのコードから参照するシークレット](../security/001-secret-management.md#workersのコードから参照するシークレット)」)。ローカル環境のWorkerへ渡すため、ルートの`secrets.required`にも`<Stripeのキーのシークレットのキー>`を挙げる。未登録の開発者の起動はWranglerが足りないキーの名前を警告するだけで止まらず、環境の検証がキーを任意として扱うため、決済の機能だけが「決済を利用できない」に縮退する。
 - `<公開キーの変数>`は秘密でないため、その環境のsandbox(本番環境はライブモード)の公開キーをWrangler設定の`vars`に書く。制限付きキーと同じsandboxの公開キーにする。
 
 ### 価格
@@ -181,7 +181,7 @@ stripe listen \
 
 - `--print-secret`が表示する署名の秘密を、Infisicalの`dev`の共通のフォルダ(`/`)に`<Webhookの署名の秘密のシークレットのキー>`の名前で登録する。値が変わった場合は登録し直す。
 - `stripe listen`の通知は、アカウントの既定のAPI版の形で届く(`--latest`を付けると最新のAPI版)。受信の処理が本文の種類・発生時刻・対象のIDだけを使い、対象を固定したAPI版で取得し直す作りであれば、版の違いは反映に影響しない。
-- 署名の秘密も、Wrangler設定のルートの`secrets.required`に無い構成では、`dev`へ登録してもローカル環境のWorkerへ渡らない(「[制限付きキーの作成と登録](#制限付きキーの作成と登録)」)。
+- 署名の秘密も、Wrangler設定のルートの`secrets.required`に挙げておき、`dev`へ登録した値をローカル環境のWorkerへ渡す。未登録なら警告だけで起動し、Webhookの経路が「決済を利用できない」を返す(「[制限付きキーの作成と登録](#制限付きキーの作成と登録)」)。
 - 転送を止めた状態では通知が届かない。決済後の戻りの画面の反映と定期の突合だけで決済の完了まで辿れるかは、転送を止めて確かめる。
 
 ### 環境ごとの確認の一覧

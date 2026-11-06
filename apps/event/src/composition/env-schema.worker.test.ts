@@ -431,8 +431,8 @@ describe('eventEnvSchemaの決済の設定', () => {
   const webhookSecret = ['whsec', 'Ab1'.repeat(8)].join('_');
 
   test('Workers統合テストの環境はテストモードの制限付きキーと署名の秘密を持ち、疎通確認を有効にし、利用者側のオリジンを持つ', () => {
-    expect(String(env.STRIPE_API_KEY).startsWith('rk_test_')).toBe(true);
-    expect(String(env.STRIPE_WEBHOOK_SECRET).startsWith('whsec_')).toBe(true);
+    expect(env.STRIPE_API_KEY.startsWith('rk_test_')).toBe(true);
+    expect(env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_')).toBe(true);
     expect(env.PAYMENTS_SMOKE_ENABLED).toBe('true');
     expect(env.CLIENT_SITE_ORIGIN).toBe('http://localhost:48044');
   });

@@ -34,6 +34,12 @@ const STRIPE_API_ORIGIN = 'https://api.stripe.com';
 
 const LINK_ORIGIN = 'https://link.com';
 
+const LINK_CHECKOUT_ORIGIN = 'https://checkout.link.com';
+
+const LINK_CHECKOUT_API_ORIGIN = 'https://checkout-cookies.link.com';
+
+const LINK_STATICS_ORIGIN = 'https://statics.link.com';
+
 const STRIPE_PUBLISHABLE_KEY = `pk_test_${'0'.repeat(32)}`;
 
 afterEach(() => {
@@ -105,8 +111,19 @@ describe('CLIENT_SECURITY_POLICY', () => {
   test('Web Analyticsの計測と、Stripe.js・Linkの許可先と、支払いの機能の許可だけを加える', () => {
     expect(CLIENT_SECURITY_POLICY).toEqual({
       scriptSrc: [WEB_ANALYTICS_SCRIPT_ORIGIN, STRIPE_JS_ORIGIN],
-      connectSrc: [WEB_ANALYTICS_REPORT_ORIGIN, STRIPE_API_ORIGIN, LINK_ORIGIN],
-      frameSrc: [STRIPE_JS_ORIGIN, STRIPE_HOOKS_ORIGIN, LINK_ORIGIN],
+      imgSrc: [LINK_STATICS_ORIGIN],
+      connectSrc: [
+        WEB_ANALYTICS_REPORT_ORIGIN,
+        STRIPE_API_ORIGIN,
+        LINK_ORIGIN,
+        LINK_CHECKOUT_API_ORIGIN,
+      ],
+      frameSrc: [
+        STRIPE_JS_ORIGIN,
+        STRIPE_HOOKS_ORIGIN,
+        LINK_ORIGIN,
+        LINK_CHECKOUT_ORIGIN,
+      ],
       permissions: { payment: ['self', `"${STRIPE_JS_ORIGIN}"`] },
     });
   });
@@ -143,13 +160,25 @@ describe('CLIENT_SECURITY_POLICY', () => {
       STRIPE_JS_ORIGIN,
     );
     const frameSources = directiveSourcesOf(policy, 'frame-src');
-    for (const origin of [STRIPE_JS_ORIGIN, STRIPE_HOOKS_ORIGIN, LINK_ORIGIN]) {
+    for (const origin of [
+      STRIPE_JS_ORIGIN,
+      STRIPE_HOOKS_ORIGIN,
+      LINK_ORIGIN,
+      LINK_CHECKOUT_ORIGIN,
+    ]) {
       expect(frameSources).toContain(origin);
     }
     const connectSources = directiveSourcesOf(policy, 'connect-src');
-    for (const origin of [STRIPE_API_ORIGIN, LINK_ORIGIN]) {
+    for (const origin of [
+      STRIPE_API_ORIGIN,
+      LINK_ORIGIN,
+      LINK_CHECKOUT_API_ORIGIN,
+    ]) {
       expect(connectSources).toContain(origin);
     }
+    expect(directiveSourcesOf(policy, 'img-src')).toContain(
+      LINK_STATICS_ORIGIN,
+    );
     expect(response.headers.get('Permissions-Policy')).toContain(
       `payment=(self "${STRIPE_JS_ORIGIN}")`,
     );
@@ -160,6 +189,7 @@ describe('CLIENT_SECURITY_POLICY', () => {
     expect(Object.isFrozen(CLIENT_SECURITY_POLICY.scriptSrc)).toBe(true);
     expect(Object.isFrozen(CLIENT_SECURITY_POLICY.connectSrc)).toBe(true);
     expect(Object.isFrozen(CLIENT_SECURITY_POLICY.frameSrc)).toBe(true);
+    expect(Object.isFrozen(CLIENT_SECURITY_POLICY.imgSrc)).toBe(true);
     expect(Object.isFrozen(CLIENT_SECURITY_POLICY.permissions)).toBe(true);
     expect(Object.isFrozen(CLIENT_SECURITY_POLICY.permissions?.payment)).toBe(
       true,

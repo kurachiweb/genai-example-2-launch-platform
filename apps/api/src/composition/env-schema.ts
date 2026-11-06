@@ -26,7 +26,7 @@ export interface ApiEnv extends PlatformEnv {
   readonly ADMIN_SITE_ORIGIN: string;
   // ローカル環境だけ省略できる。空文字は未設定として扱う
   readonly DISIFY_API_KEY?: string;
-  // staging・prodだけで必須。未設定なら決済の機能だけが縮退する
+  // 未登録のローカルとCIでも起動できるよう任意にする。未設定なら決済の機能だけが縮退する
   readonly STRIPE_API_KEY?: string;
   readonly PAYMENTS_SMOKE_ENABLED: 'true' | 'false';
 }

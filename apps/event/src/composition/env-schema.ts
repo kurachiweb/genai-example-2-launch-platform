@@ -37,7 +37,7 @@ export interface EventPlatformEnv
   // ローカル環境だけ省略できる。空文字は未設定として扱う
   readonly DISIFY_API_KEY?: string;
   readonly CLIENT_SITE_ORIGIN: string;
-  // staging・prodだけで必須。未設定なら決済の機能だけが縮退する
+  // 未登録のローカルとCIでも起動できるよう任意にする。未設定なら決済の機能だけが縮退する
   readonly STRIPE_API_KEY?: string;
   readonly STRIPE_WEBHOOK_SECRET?: string;
   readonly PAYMENTS_SMOKE_ENABLED: 'true' | 'false';
@@ -120,4 +120,9 @@ export const eventEnvSchema = z
 // wrangler typesが生成した環境の型が、両サーバー共通の型とeventのバインディング・変数の型を満たさなければ型検査で失敗させる
 type SatisfiesEventPlatformEnv<T extends EventPlatformEnv> = T;
 
-export type EventEnv = SatisfiesEventPlatformEnv<Env>;
+type PaymentsSecretKey = 'STRIPE_API_KEY' | 'STRIPE_WEBHOOK_SECRET';
+
+// wrangler typesはsecrets.requiredのキーを常にある型にするが、Stripeのキーは未登録のローカルとCIでは渡らないため任意の型に戻す
+export type EventEnv = SatisfiesEventPlatformEnv<
+  Omit<Env, PaymentsSecretKey> & Pick<EventPlatformEnv, PaymentsSecretKey>
+>;

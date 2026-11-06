@@ -289,7 +289,7 @@ infisical --telemetry=false run --env dev -- bun run test:e2e --project admin # 
 利用者側の決済履歴(ログイン後に設定のナビゲーションの「決済履歴」から`/settings/billing`を開くと、その項目が現在の項目として示され、記録が無い表示が出て、Stripe.jsが読み込まれない)は`e2e/client/billing.e2e.test.ts`で、疎通確認の決済(決済履歴の「疎通確認の決済を始める」→決済画面の購入の内容が「お支払い情報」より上に出る→同意の無い間は「支払いを確定する」が押せない→テストカード`4242 4242 4242 4242`と請求先住所の入力と同意→決済後のランディングの完了の表示→同意の日時と版が購入の記録に保存される→決済履歴に「都度決済」「成功」の記録→Mailpitの件名「購入が完了しました」の購入確認メールに決済履歴へのリンクがある、決済画面と決済後のランディングでCSPの違反が出ない)は`e2e/client/checkout.e2e.test.ts`で確かめる。
 
 - 実行の前に、`apps/api`で`bun run db:migrate:local`を実行し、APIサーバー・イベントサーバー・利用者側をクイックスタートの手順13のとおり起動しておく。疎通確認の決済のE2Eはメールアドレスの確認を済ませるため、イベントサーバーが要る。
-- 疎通確認の決済のE2Eは、APIサーバーの`startSmokeCheckout`が`payments_unavailable`を返す環境(Stripeのsandboxのキーが無い環境)では、`test.skip`で「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」を示して飛ばす。現在のローカルとCIはStripeのキーをWorkerへ渡さないため、このE2Eは飛ばされる。決済まで実行するには、dev用のsandboxのキーと公開キーをローカルのWorkerと利用者側へ渡す準備(paymentsのspecのタスク1.4)が要る。
+- 疎通確認の決済のE2Eは、APIサーバーの`startSmokeCheckout`が`payments_unavailable`を返す環境(Stripeのsandboxのキーが無い環境)では、`test.skip`で「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」を示して飛ばす。Infisicalの`dev`にStripeのキーが無い間は、ローカルとCIでこのE2Eは飛ばされる。決済まで実行するには、dev用のsandboxのキーの登録と、利用者側の公開キーの置き換え(「[決済(Stripe)のキー](#決済stripeのキー)」、paymentsのspecのタスク1.4)が要る。
 - 決済画面の入力欄はStripeの埋め込み枠の中にあるため、手順(`e2e/client/checkout-steps.ts`)は入力欄の名前(`number`・`expiry`・`cvc`・`addressLine1`など)を持つStripeの枠を探して入力する。請求先住所は米国の住所で入力する。
 - 決済履歴と決済画面の手順は`e2e/client/billing-steps.ts`・`e2e/client/checkout-steps.ts`にある。同意の記録はローカルのD1(`e2e/support/local-d1.ts`)で、購入確認メールはMailpitで確かめるため、`@smoke`タグを付けない。
 
@@ -609,8 +609,9 @@ APIサーバーとイベントサーバーは、メールアドレスの確認�
 
 ローカル環境では、Stripeのキー(`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`)を登録しなくても`apps/api`・`apps/event`は起動する。決済の機能(決済の開始・決済画面・価格の照会)だけが「決済を利用できない」(`payments_unavailable`)になり、他の機能は影響を受けない。
 
-- `apps/api`・`apps/event`のWrangler設定の`env.staging`・`env.prod`の`secrets.required`には2つのキーがあるが、ルート(ローカル環境)の`secrets.required`には無い。Wranglerはルートの`secrets.required`に挙げたキーだけをWorkerへ渡す(「[Workersのコードから参照するシークレット](../GUIDES/tech/security/001-secret-management.md#workersのコードから参照するシークレット)」)。
-- そのため現状では、次の手順でInfisicalの`dev`へ登録しても、ローカル環境の`apps/api`・`apps/event`へは渡らず、決済は「決済を利用できない」のままである。ローカルで決済を試すには、`apps/api`・`apps/event`のWrangler設定のルートの`secrets.required`へ2つのキーを加える変更が要る。加えるかどうかは開発者の判断待ちで、加えるまでは次の手順は登録の準備にとどまる。
+- `apps/api`の`STRIPE_API_KEY`と、`apps/event`の`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`は、Wrangler設定のルート(ローカル環境)と`env.staging`・`env.prod`の`secrets.required`にある。Wranglerは`secrets.required`に挙げたキーだけをWorkerへ渡す(「[Workersのコードから参照するシークレット](../GUIDES/tech/security/001-secret-management.md#workersのコードから参照するシークレット)」)ため、次の手順でInfisicalの`dev`へ登録すれば、Workerの指定付きで起動したローカル環境の`apps/api`・`apps/event`へ渡り、決済を試せる。
+- 未登録の間は、起動時にWranglerが足りないキーの名前を警告するが、環境の検証はStripeのキーを任意として扱うため起動は止まらない。警告は決済を試さない限り無視してよい。
+- Infisicalの`dev`は全ての開発者のローカル環境と、検査のE2E(CI。`e2e-stack`が`dev`の値をWorkerの指定付きで注入する)で共有する。登録すると、それらの疎通確認の決済のE2Eが飛ばされずに実行されるため、`apps/client`のローカルの`STRIPE_PUBLISHABLE_KEY`を同じsandboxの公開キーへ置き換える変更と合わせて登録する(仮の値のままでは決済画面のStripe.jsが公開キーを拒み、E2Eが失敗する)。
 
 決済を試す開発者は、次の手順でdevのキーを用意して登録する。AIエージェントは登録しない。手順の詳細と権限は「[決済の環境とデータの運用](../GUIDES/tech/operations/004-payment-data-operations.md)」に従う。
 
