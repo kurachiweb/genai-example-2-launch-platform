@@ -1,5 +1,6 @@
 import type { Logger } from '@logtape/logtape';
 
+import { PAYMENTS_UNAVAILABLE_MESSAGE } from '../../../common-lib/payments/payments-unavailable-texts.ts';
 import { AppError } from '../../core/errors/app-error.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import {
@@ -100,8 +101,7 @@ export class StripePriceCatalog implements PriceCatalog {
       throw new AppError({
         kind: 'unavailable',
         code: 'payments_unavailable',
-        message:
-          '現在、決済をご利用いただけません。閲覧やその他の操作はご利用いただけます。',
+        message: PAYMENTS_UNAVAILABLE_MESSAGE,
       });
     }
     this.logger.warn(

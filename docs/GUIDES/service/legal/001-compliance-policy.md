@@ -78,6 +78,7 @@
 委託先ごとの保存場所は次のとおりとする。1つの箇条に1つの委託先を`- **<委託先>(<サービス>)**: <保存または一時送信の場所>。<委託先側での保存の有無>。移転の根拠はプライバシーポリシー骨子の<委託先>の項を正とする。`の形で書き、[委託先の一覧](003-privacy-policy-outline.md#委託先の一覧)の順に並べる。上の表はCloudflareの資源ごとの一覧とし、他の委託先は表へ行を足さず箇条だけを足す。
 
 - **Cloudflare(Workers・D1・R2・Queues・Durable Objects・Email Sending・Turnstile・Web Analytics)**: D1・R2・Queuesは米国の管轄で保存する(値は[本プロジェクト固有の値](../../../onboardings/project-values.md#workerとリソースの名前と識別子)を正とする)。所在を限定しない処理(Durable Objects・Workerの実行・画像配信のエッジのキャッシュ・Workers Logs・メール送信(Email Sending)・bot判定(Turnstile)・アクセス解析(Web Analytics))は保存場所を保証せず、Cloudflareの各地のデータセンターで行われ得る。サービス上の全データをCloudflare側で保存する。移転の根拠はプライバシーポリシー骨子の[Cloudflareの項](003-privacy-policy-outline.md#cloudflareworkersd1r2queuesdurable-objectsemail-sendingturnstileweb-analytics)を正とする。
+- **Stripe(決済)**: 米国。メールアドレス・仮名化ID・購入の内容を送り、氏名・請求先住所・カード情報などは購入者がStripeへ直接渡す。決済の記録をStripe側で保存し、退会ユーザーの物理削除の後も税務上の保持期間中は残る([データ主体の権利への対応](#データ主体の権利への対応lr-006))。移転の根拠はプライバシーポリシー骨子の[Stripeの項](003-privacy-policy-outline.md#stripe決済)を正とする。
 - **AWS(Rekognition)**: 米国東部(us-east-1)。判定用画像を一時送信し、判定サービス側では保存しない。移転の根拠はプライバシーポリシー骨子の[AWSの項](003-privacy-policy-outline.md#awsrekognition)を正とする。
 - **Google Cloud(Natural Language API)**: 検索のキーワード抽出の対象のテキストを、処理のリージョンを指定せずに一時送信するため、処理する場所は保証しない。Google側では保存しない。移転の根拠はプライバシーポリシー骨子の[Google Cloudの項](003-privacy-policy-outline.md#google-cloudnatural-language-api)を正とする。
 

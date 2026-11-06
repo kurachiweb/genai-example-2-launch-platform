@@ -47,9 +47,6 @@ export const PAY_LABEL = '支払いを確定する';
 
 export const PAY_PENDING_LABEL = '送信中';
 
-export const PAYMENT_UNAVAILABLE_REASON =
-  '決済サービスで障害が発生しています。閲覧やその他の操作は引き続きご利用いただけます。';
-
 export const CHECKOUT_COMPLETED_MESSAGE =
   'この購入のお支払いは完了しています。';
 

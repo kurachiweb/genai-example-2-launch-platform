@@ -4,6 +4,7 @@ import {
   PAYMENT_HISTORY_PAGE_SIZE_MESSAGES,
   type PaymentHistoryPageSizeIssue,
 } from '../../../common-lib/payments/payment-input-rules.ts';
+import { PAYMENTS_UNAVAILABLE_MESSAGE } from '../../../common-lib/payments/payments-unavailable-texts.ts';
 import {
   AppError,
   type AppErrorKind,
@@ -27,8 +28,7 @@ export const PAYMENTS_ERRORS = Object.freeze({
   },
   payments_unavailable: {
     kind: 'unavailable',
-    message:
-      '現在、決済をご利用いただけません。閲覧やその他の操作はご利用いただけます。',
+    message: PAYMENTS_UNAVAILABLE_MESSAGE,
   },
   checkout_not_found: {
     kind: 'not_found',

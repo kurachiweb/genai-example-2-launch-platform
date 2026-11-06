@@ -1,5 +1,6 @@
 import { inject, injectable } from 'inversify';
 
+import { PAYMENTS_UNAVAILABLE_MESSAGE } from '../../../common-lib/payments/payments-unavailable-texts.ts';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { PAYMENTS_TYPES } from '../../../lib/core/payments/identifiers.ts';
@@ -57,8 +58,7 @@ function paymentsUnavailableError(): AppError {
   return new AppError({
     kind: 'unavailable',
     code: 'payments_unavailable',
-    message:
-      '現在、決済をご利用いただけません。閲覧やその他の操作はご利用いただけます。',
+    message: PAYMENTS_UNAVAILABLE_MESSAGE,
   });
 }
 

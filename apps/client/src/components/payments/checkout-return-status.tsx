@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { CHECKOUT_SESSION_ID_MESSAGES } from '../../../common-lib/payments/payment-input-rules.ts';
+import { PAYMENTS_UNAVAILABLE_REASON } from '../../../common-lib/payments/payments-unavailable-texts.ts';
 import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { MoneyText } from '../../../lib/components/payments/money-text.tsx';
 import { ErrorState } from '../../../lib/components/state/error-state.tsx';
@@ -39,7 +40,6 @@ import {
   CHECKOUT_RETURN_PROCESSING_NOTE,
   CHECKOUT_SERVICE_TIMING_LABEL,
   CHECKOUT_SUMMARY_TITLE,
-  PAYMENT_UNAVAILABLE_REASON,
   PURCHASED_DESTINATIONS,
   refundReasonTextOf,
   RESTART_CHECKOUT_LABEL,
@@ -220,7 +220,7 @@ function checkoutViewOf(
       return {
         messages: [],
         actions: <BillingHistoryLink />,
-        content: <UnavailableNotice reason={PAYMENT_UNAVAILABLE_REASON} />,
+        content: <UnavailableNotice reason={PAYMENTS_UNAVAILABLE_REASON} />,
       };
   }
 }

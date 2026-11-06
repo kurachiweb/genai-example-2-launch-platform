@@ -5,6 +5,7 @@ import {
   LEGAL_DOCUMENT_LABELS,
   LEGAL_DOCUMENT_PATHS,
 } from '../../../common-lib/legal/legal-documents.ts';
+import { PAYMENTS_UNAVAILABLE_REASON } from '../../../common-lib/payments/payments-unavailable-texts.ts';
 import { REFUND_POLICY_SUMMARY } from '../../../common-lib/payments/refund-policy-summary.ts';
 import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { UnavailableNotice } from '../../../lib/components/state/unavailable-notice.tsx';
@@ -29,7 +30,6 @@ import {
   CHECKOUT_PROCESSING_MESSAGE,
   CHECKOUT_REFUNDING_MESSAGE,
   CHECKOUT_RESTART_HREFS,
-  PAYMENT_UNAVAILABLE_REASON,
   REFUND_POLICY_TITLE,
   refundReasonTextOf,
   RESTART_CHECKOUT_LABEL,
@@ -131,7 +131,7 @@ function OpenCheckout({
         </h2>
         {/* 公開キーの無い環境は設定の結果で想定内のため、エラートラッキングへ送らない */}
         {publishableKey === undefined ? (
-          <UnavailableNotice reason={PAYMENT_UNAVAILABLE_REASON} />
+          <UnavailableNotice reason={PAYMENTS_UNAVAILABLE_REASON} />
         ) : (
           <>
             <CheckoutConsent
@@ -184,7 +184,7 @@ function CheckoutContent({
     case 'OPEN':
       // 支払える状態でもclientSecretが無ければ入力欄を出せないため、Stripeに到達できないときと同じ案内にする
       return checkout.clientSecret === null ? (
-        <UnavailableNotice reason={PAYMENT_UNAVAILABLE_REASON} />
+        <UnavailableNotice reason={PAYMENTS_UNAVAILABLE_REASON} />
       ) : (
         <OpenCheckout
           checkout={checkout}
@@ -221,7 +221,7 @@ function CheckoutContent({
     case 'EXPIRED':
       return <ExpiredNotice checkout={checkout} />;
     case 'UNAVAILABLE':
-      return <UnavailableNotice reason={PAYMENT_UNAVAILABLE_REASON} />;
+      return <UnavailableNotice reason={PAYMENTS_UNAVAILABLE_REASON} />;
   }
 }
 

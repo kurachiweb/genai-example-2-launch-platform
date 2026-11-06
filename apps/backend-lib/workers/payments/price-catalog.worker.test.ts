@@ -183,7 +183,7 @@ describe('StripePriceCatalog', () => {
       kind: 'unavailable',
       code: 'payments_unavailable',
       message:
-        '現在、決済をご利用いただけません。閲覧やその他の操作はご利用いただけます。',
+        '現在、決済をご利用いただけません。決済サービスで障害が発生しています。閲覧やその他の操作は引き続きご利用いただけます。',
     });
   });
 

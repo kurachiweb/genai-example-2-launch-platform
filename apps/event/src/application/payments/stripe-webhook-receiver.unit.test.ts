@@ -167,6 +167,8 @@ describe('SignedStripeWebhookReceiver', () => {
     expect(error).toMatchObject({
       kind: 'unavailable',
       code: 'payments_unavailable',
+      message:
+        '現在、決済をご利用いただけません。決済サービスで障害が発生しています。閲覧やその他の操作は引き続きご利用いただけます。',
     });
     expect(calls).toEqual(['verify']);
   });

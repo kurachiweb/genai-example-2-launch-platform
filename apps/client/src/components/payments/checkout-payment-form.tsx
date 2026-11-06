@@ -9,6 +9,7 @@ import type { Stripe } from '@stripe/stripe-js';
 import { LoaderCircleIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { PAYMENTS_UNAVAILABLE_REASON } from '../../../common-lib/payments/payments-unavailable-texts.ts';
 import { FormMessage } from '../../../lib/components/form/form-message.tsx';
 import { useTheme } from '../../../lib/components/theme/use-theme.ts';
 import { LoadingSkeleton } from '../../../lib/components/state/loading-skeleton.tsx';
@@ -16,11 +17,7 @@ import { UnavailableNotice } from '../../../lib/components/state/unavailable-not
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { reportUnexpectedErrorInBrowser } from '../../../lib/start/observability/browser-error-reporting.ts';
 import { checkoutAppearanceOf } from './checkout-appearance.ts';
-import {
-  PAY_LABEL,
-  PAY_PENDING_LABEL,
-  PAYMENT_UNAVAILABLE_REASON,
-} from './checkout-messages.ts';
+import { PAY_LABEL, PAY_PENDING_LABEL } from './checkout-messages.ts';
 import { loadStripeOnce } from './stripe-loader.ts';
 
 export interface CheckoutPaymentFormProps {
@@ -43,7 +40,7 @@ const reportPaymentFailure = (error: unknown): void => {
 };
 
 function PaymentUnavailable() {
-  return <UnavailableNotice reason={PAYMENT_UNAVAILABLE_REASON} />;
+  return <UnavailableNotice reason={PAYMENTS_UNAVAILABLE_REASON} />;
 }
 
 interface ConfirmSectionProps {

@@ -191,7 +191,8 @@ apps/
 │   ├── purchase-states.ts                           # 購入・返金・メールの依頼の状態と拒否の理由の値(テーブルの制約と規則が共有)
 │   ├── checkout-consent.ts                          # 同意の文言と版CHECKOUT_CONSENT_VERSION
 │   ├── money.ts                                     # 最小通貨単位の整数とUSDの表示用の値
-│   └── refund-policy-summary.ts                     # 返金ポリシーの要旨REFUND_POLICY_SUMMARY(最終確認画面と購入確認メールが共有)
+│   ├── refund-policy-summary.ts                     # 返金ポリシーの要旨REFUND_POLICY_SUMMARY(最終確認画面と購入確認メールが共有)
+│   └── payments-unavailable-texts.ts                # 縮退の理由の文PAYMENTS_UNAVAILABLE_REASON(画面)とAPIのpayments_unavailableの文言PAYMENTS_UNAVAILABLE_MESSAGE
 ├── backend-lib/
 │   ├── core/payments/                               # api・eventのapplication層と後続specが読み込む契約と純粋な規則(Bunの単体テスト。Database・BatchItemを読み込まない)
 │   │   ├── identifiers.ts                           # PAYMENTS_TYPES(Symbol.for('payments.<名前>')の凍結したオブジェクト、identifiers.unit.test.ts)
@@ -389,10 +390,13 @@ stateDiagram-v2
     processing --> expired: 支払い失敗
     open --> expired: 期限切れ
     open --> superseded: 同じ対象の新しい購入
+    superseded --> processing: 失効の前に完了 未払い
+    superseded --> fulfilled: 失効の前に支払い確定 付与
+    superseded --> rejected: 失効の前に支払い確定 拒否
+    superseded --> expired: 旧い決済セッションの失効
     fulfilled --> [*]
     rejected --> [*]
     expired --> [*]
-    superseded --> [*]
 ```
 
 - `rejected`は理由(`late`・`ineligible`・`duplicate`)を持ち、同じ一括の書き込みで全額返金の依頼(`payment_refunds`の`requested`)を記録する。
@@ -1796,17 +1800,17 @@ export interface MoneyTextProps {
 
 ### Error Categories and Responses
 
-| コード                                                         | 種類          | 場面                                 | 文言(文言規則に追加)                                                           |
-| -------------------------------------------------------------- | ------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
-| `checkout_closed`                                              | 422           | 受付期限の後の開始(3.6)              | 「決済の受付は終了しました。」                                                 |
-| `purchase_kind_unavailable`                                    | 422           | 未登録・無効の購入種別(2.7・2.9)     | 「この決済は現在ご利用いただけません。」                                       |
-| `payments_unavailable`                                         | 503           | Stripeの障害(3.11・4.11・13.4)       | 「現在、決済をご利用いただけません。閲覧やその他の操作はご利用いただけます。」 |
-| `rate_limit_exceeded`                                          | 429           | 回数制限(3.10)                       | 既存の「操作が集中しています。しばらく待ってから再度お試しください。」         |
-| `invalid_cursor`                                               | 400           | 決済履歴のカーソルの形式の誤り(12.9) | 既存の「ページの位置の指定が正しくありません。」                               |
-| `checkout_not_found`                                           | 404           | 他人・存在しない購入(4.9・5.6)       | 「お探しの決済は見つかりませんでした。」                                       |
-| `checkout_not_open`                                            | 409           | 完了・失効後の同意の記録             | 「この決済は既に完了しているか、受付が終了しています。」                       |
-| `email_not_verified`・`account_unavailable`・`unauthenticated` | 403・403・401 | 利用者の状態(3.5・同意の記録)        | identity-authの既存の文言                                                      |
-| `stripe_signature_invalid`                                     | 400           | Webhookの署名の不正(6.1)             | 画面に出さない                                                                 |
+| コード                                                         | 種類          | 場面                                 | 文言(文言規則に追加)                                                                                                                                                                                                                            |
+| -------------------------------------------------------------- | ------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkout_closed`                                              | 422           | 受付期限の後の開始(3.6)              | 「決済の受付は終了しました。」                                                                                                                                                                                                                  |
+| `purchase_kind_unavailable`                                    | 422           | 未登録・無効の購入種別(2.7・2.9)     | 「この決済は現在ご利用いただけません。」                                                                                                                                                                                                        |
+| `payments_unavailable`                                         | 503           | Stripeの障害(3.11・4.11・13.4)       | 「現在、決済をご利用いただけません。決済サービスで障害が発生しています。閲覧やその他の操作は引き続きご利用いただけます。」(画面は文言規則の縮退運転の題名と理由の文。理由の文は`common-lib/payments/payments-unavailable-texts.ts`の共通の定数) |
+| `rate_limit_exceeded`                                          | 429           | 回数制限(3.10)                       | 既存の「操作が集中しています。しばらく待ってから再度お試しください。」                                                                                                                                                                          |
+| `invalid_cursor`                                               | 400           | 決済履歴のカーソルの形式の誤り(12.9) | 既存の「ページの位置の指定が正しくありません。」                                                                                                                                                                                                |
+| `checkout_not_found`                                           | 404           | 他人・存在しない購入(4.9・5.6)       | 「お探しの決済は見つかりませんでした。」                                                                                                                                                                                                        |
+| `checkout_not_open`                                            | 409           | 完了・失効後の同意の記録             | 「この決済は既に完了しているか、受付が終了しています。」                                                                                                                                                                                        |
+| `email_not_verified`・`account_unavailable`・`unauthenticated` | 403・403・401 | 利用者の状態(3.5・同意の記録)        | identity-authの既存の文言                                                                                                                                                                                                                       |
+| `stripe_signature_invalid`                                     | 400           | Webhookの署名の不正(6.1)             | 画面に出さない                                                                                                                                                                                                                                  |
 
 ### Monitoring
 

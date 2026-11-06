@@ -45,15 +45,15 @@
 
 ## 委託先の一覧
 
-| 委託先                             | 目的                                                              | 渡す情報                                                                           |
-| ---------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Cloudflare                         | ホスティング、データベース、ストレージ、メール送信、bot対策、解析 | サービス上の全データ(暗号化通信・保存)                                             |
-| Stripe                             | 決済処理                                                          | メールアドレス、決済内容(このほかStripeが直接取得する情報は収集一覧を参照、DR-008) |
-| Amazon Web Services(Rekognition)   | 画像の自動判定                                                    | 判定用画像だけ(縮小・変換した画像、米国東部(us-east-1)へ一時送信)                  |
-| Google Cloud(Natural Language API) | 検索キーワード抽出                                                | プロダクト名・タグライン・説明文、ヘルプ記事(一時送信)                             |
-| Sentry                             | エラートラッキング・性能計測                                      | エラー情報・リクエストメタデータ(IPアドレス除去)                                   |
-| DISIFY                             | 使い捨てメールアドレス判定                                        | メールアドレスのドメイン部(ローカル部はダミー)                                     |
-| Have I Been Pwned                  | 漏洩パスワード照合                                                | パスワードハッシュの先頭5文字のみ                                                  |
+| 委託先                             | 目的                                                              | 渡す情報                                                                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Cloudflare                         | ホスティング、データベース、ストレージ、メール送信、bot対策、解析 | サービス上の全データ(暗号化通信・保存)                                                                                     |
+| Stripe                             | 決済処理                                                          | メールアドレス、仮名化ID、決済内容、請求先住所(Stripeが直接取得)(このほかStripeが直接取得する情報は収集一覧を参照、DR-008) |
+| Amazon Web Services(Rekognition)   | 画像の自動判定                                                    | 判定用画像だけ(縮小・変換した画像、米国東部(us-east-1)へ一時送信)                                                          |
+| Google Cloud(Natural Language API) | 検索キーワード抽出                                                | プロダクト名・タグライン・説明文、ヘルプ記事(一時送信)                                                                     |
+| Sentry                             | エラートラッキング・性能計測                                      | エラー情報・リクエストメタデータ(IPアドレス除去)                                                                           |
+| DISIFY                             | 使い捨てメールアドレス判定                                        | メールアドレスのドメイン部(ローカル部はダミー)                                                                             |
+| Have I Been Pwned                  | 漏洩パスワード照合                                                | パスワードハッシュの先頭5文字のみ                                                                                          |
 
 AWS organizationsのダッシュボードでAIサービスのオプトアウトポリシーを有効にしている前提とする。
 
@@ -63,7 +63,7 @@ AWS organizationsのダッシュボードでAIサービスのオプトアウト�
 
 個人情報保護法28条に基づき、第6章に次を記載する。
 
-- 移転先の国: 米国(Stripe・Sentryの所在国)。Cloudflareは[Cloudflareの項](#cloudflareworkersd1r2queuesdurable-objectsemail-sendingturnstileweb-analytics)を、AWSは[AWSの項](#awsrekognition)を、Google Cloudは[Google Cloudの項](#google-cloudnatural-language-api)を参照。DISIFYとHave I Been Pwnedには個人を識別できる情報を渡さないため対象外
+- 移転先の国: 米国(Sentryの所在国)。Cloudflareは[Cloudflareの項](#cloudflareworkersd1r2queuesdurable-objectsemail-sendingturnstileweb-analytics)を、Stripeは[Stripeの項](#stripe決済)を、AWSは[AWSの項](#awsrekognition)を、Google Cloudは[Google Cloudの項](#google-cloudnatural-language-api)を参照。DISIFYとHave I Been Pwnedには個人を識別できる情報を渡さないため対象外
 - 当該国の制度: 個人情報保護委員会が公表する米国の制度調査に基づき概要を記載する
 - 委託先が講じる措置: 委託契約のデータ処理条項、暗号化通信・保存、アクセス制御
 - 移転の法的根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は委託先のデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る。委託先の項がある委託先は、その項を正とする
@@ -83,6 +83,12 @@ AWS organizationsのダッシュボードでAIサービスのオプトアウト�
 - 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Cloudflareのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る
 - 委託先が講じる措置: 共通の「委託先が講じる措置」(委託契約のデータ処理条項、暗号化通信・保存、アクセス制御)による
 - bot判定: 登録・ログインなどのフォームのbot判定(Turnstile)は、画面に表示しない種類(Invisible)のウィジェットで行う。Cloudflareはこの種類を使う条件として、プライバシーポリシーで[Turnstile Privacy Addendum](https://www.cloudflare.com/turnstile-privacy-policy/)を参照することを求めるため([Cloudflareの説明](https://developers.cloudflare.com/cloudflare-challenges/challenge-types/turnstile/))、bot判定で処理される情報の扱いはTurnstile Privacy Addendumに従う旨を、その参照(URL)とともに書く
+
+### Stripe(決済)
+
+- 移転先: 米国。決済の処理のため、利用者のメールアドレスと仮名化ID、購入の内容(購入ID・購入種別・金額・数量)をStripeへ送る。利用者の主キー・ハンドル・ニックネームは送らない。氏名・請求先住所・国・カード情報・IPアドレス・端末情報は、決済画面に埋め込んだStripeの入力欄から購入者がStripeへ直接渡し、本サービスを経由せず、本サービスには保存しない(DR-008)。請求先住所は購入者の居住地に応じた税額の算出(Stripe Tax)に、カード情報と端末情報は不正検知(Stripe Radar)に使われる。Stripe側で保存した決済の記録は、退会ユーザーの物理削除の後も税務上の保持期間中Stripe側に残る([データ主体の権利への対応](001-compliance-policy.md#データ主体の権利への対応lr-006))
+- 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Stripeのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る
+- 委託先が講じる措置: 共通の「委託先が講じる措置」(委託契約のデータ処理条項、暗号化通信・保存、アクセス制御)による。加えて、本サービスは、APIサーバーとイベントサーバーで別々の、各サーバーが呼ぶ操作だけを許可した制限付きのキーで送る
 
 ### AWS(Rekognition)
 
