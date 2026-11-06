@@ -60,12 +60,17 @@ export const EMPTY_SUBSCRIPTION_SNAPSHOT: SubscriptionSnapshot = Object.freeze({
   pastDueSince: null,
 });
 
-const ENDED_STATUSES: ReadonlySet<StripeSubscriptionStatus> = new Set([
+// Stripe側で終了した状態。D1のストアは終了していない加入の検索でこの集合を除く
+export const ENDED_STRIPE_STATUSES = Object.freeze([
   'canceled',
   'unpaid',
   'incomplete_expired',
   'paused',
-]);
+] as const satisfies readonly StripeSubscriptionStatus[]);
+
+const ENDED_STATUSES: ReadonlySet<StripeSubscriptionStatus> = new Set(
+  ENDED_STRIPE_STATUSES,
+);
 
 // 再試行の後は解約する設定と一時停止を使わない設定のため、届いたら設定の誤りとみなす
 const UNEXPECTED_STATUSES: ReadonlySet<StripeSubscriptionStatus> = new Set([

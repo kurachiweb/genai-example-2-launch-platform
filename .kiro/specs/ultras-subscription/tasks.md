@@ -64,7 +64,7 @@
   - _Requirements: 8.1, 8.3, 8.6, 8.7_
 
 - [ ] 3. D1の実装と特典の判定
-- [ ] 3.1 加入のストアを作る
+- [x] 3.1 加入のストアを作る
   - 先に、ローカルD1を使うWorkers統合テストで、Stripe側の値の更新が有効化の列を上書きしないこと、有効化が既存の行のStripe側の値を保ったまま開始時刻・利用者・購入IDだけを書くこと(行が無ければ有効の状態で挿入)、別の加入を除いた時点の重なりの検索、90件を超える利用者の期間の重なりの一括の検索、最新の有効化された加入、終了していない加入の一覧、解約の出どころの記録、物理削除の文を確かめる
   - D1の実装は1つのクラスで`core/ultras`のストアの契約(文を返さない操作)と`workers/ultras/statement-contracts.ts`の文の契約の両方を実装する
   - 完了状態: Workers統合テストが成功し、部分一意索引の違反が一括の書き込みの失敗として返る
@@ -269,3 +269,4 @@
 - 2.2: `applySubscriptionChange`は設計の`next`・`notices`に加えて`anomalies`(`unexpected_status`(`unpaid`・`paused`)・`scheduled_end_missing`)を返す。4.4のsinkはこれを`warn`ログとSentryの`captureEvent`(設計のMonitoring節)の両方に写す。未有効の空の値は`EMPTY_SUBSCRIPTION_SNAPSHOT`、終了の状態の判定は`isEndedStripeStatus`(3.1の`findCancellable`はSQLで同じ集合を使う)。有効化の前に見た予約・`past_due`は`canceledAt`・`pastDueSince`と依頼を持たないまま有効化される(9.xの文書に明記)。終了の変化で初めて予約を見た場合は解約の操作を記録するが確認メールは送らない。
 - 2.3: `ULTRAS_ACTIVATION_RETRY_POLICY`は`core/ultras/activation-message.ts`にある(6.1はここから読み込む)。`project-values.md`のメッセージ種別の表に`ultras.run-activation-handlers`の行を9.1で加える。
 - 2.4: メールの種別の入力は設計の`acceptedAtUtc`・`benefitEndsAtUtc`ではなく、paymentsの前例に合わせてISO 8601の瞬時`acceptedAt`・`benefitEndsAt`(`z.iso.datetime()`、`benefitEndsAt`は必須)にし、テンプレートが`formatUtcDateTime`で表記する。4.1の`UltrasNotifier`はこの名前と形で渡し、依頼の`benefitEndsAt`がnull(`scheduled_end_missing`)なら`skipped`にしてwarnを残す。`project-values.md`の「メール種別」の行にUltrasの2種を9.1で加える。
+- 3.1: ultrasのWorkers統合テストのフィクスチャは`workers/ultras/testing/ultras-store-fixtures.ts`(`clearUltrasTables`・`subscriptionIdOf`・`stripeSubscriptionIdOf`・`newSubscriptionRow`・`activatedSubscriptionRow`・`insertSubscriptionRow(s)`・`readSubscriptionRow`と、identity/paymentsの`db`・`insertUser(s)`・`userIdOf`・`T0`・`after`・`purchaseIdOf`の再公開)。共有のWorkers統合テストはapiからだけ実行する(eventの設定は`lib/**`を除外)。終了の状態の集合は`core/ultras/subscription-transition.ts`の`ENDED_STRIPE_STATUSES`。

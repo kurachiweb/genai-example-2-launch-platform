@@ -8,6 +8,7 @@ import {
 import {
   applySubscriptionChange,
   EMPTY_SUBSCRIPTION_SNAPSHOT,
+  ENDED_STRIPE_STATUSES,
   isEndedStripeStatus,
   type SubscriptionChangeInput,
 } from './subscription-transition.ts';
@@ -731,5 +732,34 @@ describe('isEndedStripeStatus', () => {
     ['paused', true],
   ])('%sの終了の判定は%pである', (status, expected) => {
     expect(isEndedStripeStatus(status)).toBe(expected);
+  });
+});
+
+describe('ENDED_STRIPE_STATUSES', () => {
+  test('終了の状態は解約・未払い・期限切れ・一時停止の4つで、凍結されている', () => {
+    expect(ENDED_STRIPE_STATUSES).toEqual([
+      'canceled',
+      'unpaid',
+      'incomplete_expired',
+      'paused',
+    ]);
+    expect(Object.isFrozen(ENDED_STRIPE_STATUSES)).toBe(true);
+  });
+
+  test('isEndedStripeStatusと同じ集合である', () => {
+    const ended = new Set<StripeSubscriptionStatus>(ENDED_STRIPE_STATUSES);
+    const statuses: readonly StripeSubscriptionStatus[] = [
+      'incomplete',
+      'incomplete_expired',
+      'trialing',
+      'active',
+      'past_due',
+      'canceled',
+      'unpaid',
+      'paused',
+    ];
+    for (const status of statuses) {
+      expect(isEndedStripeStatus(status)).toBe(ended.has(status));
+    }
   });
 });
