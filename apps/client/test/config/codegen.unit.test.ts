@@ -80,6 +80,14 @@ const IDENTITY_OPERATION_NAMES = [
   'ClientRegenerateRecoveryCodes',
 ] as const;
 
+const PAYMENTS_OPERATION_NAMES = [
+  'ClientCheckout',
+  'ClientRecordCheckoutConsent',
+  'ClientStartSmokeCheckout',
+  'ClientConfirmCheckoutReturn',
+  'ClientPaymentHistory',
+] as const;
+
 const bodyOfOperation = (
   documents: Record<string, string>,
   name: string,
@@ -127,6 +135,15 @@ describe('利用者側のコード生成の生成物', () => {
 
   test.each(IDENTITY_OPERATION_NAMES)(
     '操作の一覧は利用者のアカウントの操作%sを持つ',
+    async (name) => {
+      const documents = await readPersistedDocuments(GENERATED_DIR);
+
+      expect(bodyOfOperation(documents, name)).toBeDefined();
+    },
+  );
+
+  test.each(PAYMENTS_OPERATION_NAMES)(
+    '操作の一覧は決済の操作%sを持つ',
     async (name) => {
       const documents = await readPersistedDocuments(GENERATED_DIR);
 

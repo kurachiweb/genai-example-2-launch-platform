@@ -270,7 +270,7 @@
   - _Depends: 1.1_
   - _Requirements: 4.12, 12.4_
 
-- [ ] 10.2 決済のGraphQLの操作と、Stripe.jsを1回だけ読み込む部品を作る
+- [x] 10.2 決済のGraphQLの操作と、Stripe.jsを1回だけ読み込む部品を作る
   - 5つの操作を、clientの`src/graphql/operations/payments/`に1ファイル1操作の`.graphql`(操作名は`ClientCheckout`・`ClientRecordCheckoutConsent`・`ClientStartSmokeCheckout`・`ClientConfirmCheckoutReturn`・`ClientPaymentHistory`)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して`src/graphql/generated/`を更新し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する。部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
   - 先に、単体テストで、Stripe.jsの読み込みが公開キーごとに1回だけ行われ、公開キーが無いときは読み込まないことを確かめる
   - 完了状態: 生成物の検査(`graphql:check`)とclientの`codegen.unit.test.ts`(操作名の接頭辞)が成功し、許可リストに決済の操作が載る
@@ -380,3 +380,4 @@
 - 8.4: イベントサーバーの決済のモジュールは`apps/event/src/composition/payments-module.ts`(`EVENT_PAYMENTS_PLATFORM_MODULE`・`EVENT_PAYMENTS_MODULE`、Webhookの経路の登録を含む)。返金のメッセージ・2つの波及処理は本物の一覧に登録済みで、8.2・8.3のWorkers統合テストも本物の一覧を使う
 - 9: 通貨の表示部品は`apps/frontend-lib/components/payments/money-text.tsx`の`MoneyText`(`amount`は最小通貨単位の整数、`signDisplay`は`auto`か`exceptZero`)。「(税込)」は画面の文言で示す
 - 10.1: clientの`CLIENT_SECURITY_POLICY`にStripeの許可先と`https://link.com`、`payment`の許可を登録した(`*.link.com`は未登録で開発者の判断待ち)。設定のナビゲーションに「決済履歴」(`/settings/billing`、order 70)を加えたので、10.5で同じパスのルートを必ず作る
+- 10.2: 5つの操作は`apps/client/src/graphql/operations/payments/`。Stripe.jsの読み込みは`apps/client/src/components/payments/stripe-loader.ts`の`loadStripeOnce`(`@stripe/stripe-js/pure`、公開キーが無ければ`null`、失敗は次で読み込み直す)。10.3(必須): 先に`stripePublishableKey === undefined`を見て利用できない旨を出し(エラートラッキングへ送らない)、支払うボタンは同意と`useCheckoutElements()`の`canConfirm`で無効を決める。clientのブラウザテストのカバレッジは`src/components/**`をファイル単位で数えるため、部品の`.ts`はブラウザテストで読み込む(単体テストだけだと0%になりCIが落ちる)。各タスクで`bun run --cwd /workspace/apps/client test:browser --coverage`を回す

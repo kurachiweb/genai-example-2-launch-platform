@@ -1,0 +1,29 @@
+mutation ClientConfirmCheckoutReturn($sessionId: String!) {
+  confirmCheckoutReturn(sessionId: $sessionId) {
+    checkout {
+      purchaseId
+      kind
+      status
+      rejectionReason
+      unitPrice {
+        amount
+        currency
+      }
+      quantity
+      total {
+        amount
+        currency
+      }
+      summary {
+        itemName
+        quantityLabel
+        serviceTiming
+        additionalNotes
+        isSubscription
+      }
+      acceptUntil
+      expiresAt
+      canRestart
+    }
+  }
+}

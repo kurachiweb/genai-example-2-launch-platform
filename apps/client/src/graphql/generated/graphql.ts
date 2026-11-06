@@ -9,6 +9,30 @@ export type AccountStatus =
   | 'ACTIVE'
   | 'SUSPENDED';
 
+/** 権利を付与できなかった理由 */
+export type CheckoutRejectionReason =
+  /** 同じ対象の二重の支払い */
+  | 'DUPLICATE'
+  /** 購入の条件を満たさない */
+  | 'INELIGIBLE'
+  /** 受付期限の後の支払い */
+  | 'LATE';
+
+/** 決済画面に示す購入の状態 */
+export type CheckoutStatus =
+  /** 完了 */
+  | 'COMPLETED'
+  /** 失効 */
+  | 'EXPIRED'
+  /** 支払える */
+  | 'OPEN'
+  /** 支払いの確認中 */
+  | 'PROCESSING'
+  /** 権利を付与できず全額返金を依頼した */
+  | 'REFUNDING'
+  /** Stripeに到達できず支払いの準備ができない */
+  | 'UNAVAILABLE';
+
 export type CompleteSecondFactorLoginInput = {
   challenge: string;
   secondFactor: SecondFactorInput;
@@ -65,6 +89,30 @@ export type MemberInquiryInput = {
   /** アップロード済みの問い合わせの添付のファイルのID */
   fileIds: Array<string | number>;
 };
+
+/** 決済履歴の種類 */
+export type PaymentRecordKind =
+  | 'DISPUTE'
+  | 'ONE_TIME'
+  | 'REFUND'
+  | 'SUBSCRIPTION';
+
+/** 決済履歴の状態 */
+export type PaymentRecordStatus =
+  | 'DISPUTED'
+  | 'DISPUTE_LOST'
+  | 'DISPUTE_WON'
+  | 'FAILED'
+  | 'PENDING'
+  | 'SUCCEEDED';
+
+/** 購入種別 */
+export type PurchaseKind =
+  | 'PAYMENTS_SMOKE'
+  | 'SPONSORSHIP'
+  | 'ULTRAS'
+  | 'WEEK_TOURNAMENT_ENTRY'
+  | 'YEAR_TOURNAMENT_ENTRY';
 
 /** 重要な操作の本人確認 */
 export type ReAuthenticationInput = {
@@ -303,6 +351,40 @@ export type ClientLegalDocumentQueryVariables = Exact<{
 
 export type ClientLegalDocumentQuery = { legalDocument: { latest: { versionNumber: number, publishedAt: string, body: string } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string }> } };
 
+export type ClientCheckoutQueryVariables = Exact<{
+  purchaseId: string | number;
+}>;
+
+
+export type ClientCheckoutQuery = { checkout: { purchaseId: string, kind: PurchaseKind, status: CheckoutStatus, rejectionReason: CheckoutRejectionReason | null, clientSecret: string | null, quantity: number, acceptUntil: string | null, expiresAt: string, consentVersion: string, canRestart: boolean, unitPrice: { amount: number, currency: string }, total: { amount: number, currency: string }, summary: { itemName: string, quantityLabel: string, serviceTiming: string, additionalNotes: Array<string>, isSubscription: boolean } } };
+
+export type ClientConfirmCheckoutReturnMutationVariables = Exact<{
+  sessionId: string;
+}>;
+
+
+export type ClientConfirmCheckoutReturnMutation = { confirmCheckoutReturn: { checkout: { purchaseId: string, kind: PurchaseKind, status: CheckoutStatus, rejectionReason: CheckoutRejectionReason | null, quantity: number, acceptUntil: string | null, expiresAt: string, canRestart: boolean, unitPrice: { amount: number, currency: string }, total: { amount: number, currency: string }, summary: { itemName: string, quantityLabel: string, serviceTiming: string, additionalNotes: Array<string>, isSubscription: boolean } } } };
+
+export type ClientPaymentHistoryQueryVariables = Exact<{
+  first?: number | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientPaymentHistoryQuery = { paymentHistory: { nodes: Array<{ id: string, kind: PaymentRecordKind, purpose: PurchaseKind, quantity: number | null, status: PaymentRecordStatus, occurredAt: string, amount: { amount: number, currency: string } }>, pageInfo: { endCursor: string | null, hasNextPage: boolean } } };
+
+export type ClientRecordCheckoutConsentMutationVariables = Exact<{
+  purchaseId: string | number;
+}>;
+
+
+export type ClientRecordCheckoutConsentMutation = { recordCheckoutConsent: { purchaseId: string, kind: PurchaseKind, status: CheckoutStatus, rejectionReason: CheckoutRejectionReason | null, clientSecret: string | null, quantity: number, acceptUntil: string | null, expiresAt: string, consentVersion: string, canRestart: boolean, unitPrice: { amount: number, currency: string }, total: { amount: number, currency: string }, summary: { itemName: string, quantityLabel: string, serviceTiming: string, additionalNotes: Array<string>, isSubscription: boolean } } };
+
+export type ClientStartSmokeCheckoutMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientStartSmokeCheckoutMutation = { startSmokeCheckout: { purchaseId: string } };
+
 export type ClientSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -338,4 +420,9 @@ export const ClientSubmitGuestInquiryDocument = {"__meta__":{"hash":"sha256:c27d
 export const ClientSubmitMemberInquiryDocument = {"__meta__":{"hash":"sha256:7ebab58e872b46e2a761386272da3c3445de825ebadc2a5801dd3347924a4f76"}} as unknown as DocumentNode<ClientSubmitMemberInquiryMutation, ClientSubmitMemberInquiryMutationVariables>;
 export const ClientLegalDocumentVersionDocument = {"__meta__":{"hash":"sha256:cf73a2a49fc87037feed659bbc7f29a53ac80fac211fc9fc3db3b49e69a0aab0"}} as unknown as DocumentNode<ClientLegalDocumentVersionQuery, ClientLegalDocumentVersionQueryVariables>;
 export const ClientLegalDocumentDocument = {"__meta__":{"hash":"sha256:14a871d7ed29487fa12d6b46bf699e04496bef6ee024891e2467fedcdbf634c9"}} as unknown as DocumentNode<ClientLegalDocumentQuery, ClientLegalDocumentQueryVariables>;
+export const ClientCheckoutDocument = {"__meta__":{"hash":"sha256:0f679bb5c2a93b4ed3e1f29d8979625648aac67e378081ec195e3a671b265736"}} as unknown as DocumentNode<ClientCheckoutQuery, ClientCheckoutQueryVariables>;
+export const ClientConfirmCheckoutReturnDocument = {"__meta__":{"hash":"sha256:20ff36981f1f184bf48fea1f093f64a915395179e0a5e7bf171a6786ca473b30"}} as unknown as DocumentNode<ClientConfirmCheckoutReturnMutation, ClientConfirmCheckoutReturnMutationVariables>;
+export const ClientPaymentHistoryDocument = {"__meta__":{"hash":"sha256:723fccc8cbea4146117d0a1b8aee0a88b01acc1488cf7fb836a129079e19b1c5"}} as unknown as DocumentNode<ClientPaymentHistoryQuery, ClientPaymentHistoryQueryVariables>;
+export const ClientRecordCheckoutConsentDocument = {"__meta__":{"hash":"sha256:5beeb2e6d0d838279f1012328c32c5bae9446e4fb8d7c1370d5b895445c97e05"}} as unknown as DocumentNode<ClientRecordCheckoutConsentMutation, ClientRecordCheckoutConsentMutationVariables>;
+export const ClientStartSmokeCheckoutDocument = {"__meta__":{"hash":"sha256:453e7f92f82cd9485779ddbee4a1b98898e55fb933896727e1efcb3dcd8a2eaf"}} as unknown as DocumentNode<ClientStartSmokeCheckoutMutation, ClientStartSmokeCheckoutMutationVariables>;
 export const ClientSystemStatusDocument = {"__meta__":{"hash":"sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e"}} as unknown as DocumentNode<ClientSystemStatusQuery, ClientSystemStatusQueryVariables>;

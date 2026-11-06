@@ -44,6 +44,7 @@ const PREBUNDLED_DEPENDENCIES = [
   'rehype-stringify',
   'hast-util-to-text',
   '@stripe/stripe-js',
+  '@stripe/stripe-js/pure',
   '@stripe/react-stripe-js',
   ...EDITOR_PREBUNDLED_DEPENDENCIES,
 ];

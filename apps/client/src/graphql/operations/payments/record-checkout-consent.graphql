@@ -1,0 +1,29 @@
+mutation ClientRecordCheckoutConsent($purchaseId: ID!) {
+  recordCheckoutConsent(purchaseId: $purchaseId) {
+    purchaseId
+    kind
+    status
+    rejectionReason
+    clientSecret
+    unitPrice {
+      amount
+      currency
+    }
+    quantity
+    total {
+      amount
+      currency
+    }
+    summary {
+      itemName
+      quantityLabel
+      serviceTiming
+      additionalNotes
+      isSubscription
+    }
+    acceptUntil
+    expiresAt
+    consentVersion
+    canRestart
+  }
+}
