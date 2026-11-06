@@ -567,6 +567,7 @@ ultras-subscriptionの要件と設計の作成中に、本specの口に足りな
 - Apple Pay・Google Pay・Linkは、決済画面を表示するドメインをStripeの「Payment method domains」へsandboxごとに登録する必要がある(Apple Payは必須)。`localhost`は登録できない。CSPとは別の前提として`operations/004`に記載した。
 - 現行の文書のCSPの節には`Permissions-Policy`の記載は無い。設計の`payment`の許可(`self`と`https://js.stripe.com`)は変えない。
 - **Implications**: frontend-platformの許可先の形(`ORIGIN_PATTERN`は`'self'`・`https://<ホスト>`・`http://localhost:<ポート>`だけを許し、ワイルドカードを例外にする)では、`https://link.com`は加えられるが`https://*.link.com`(`frame-src`・`connect-src`・`img-src`)は加えられない。具体的なサブドメインを列挙する代替はStripeが将来のサブドメインを保証しないため壊れやすい。10.1(CSPの許可先の追加)の前に、ワイルドカードの許可(frontend-platformの許可先の規則の変更)か、Linkを決済手段から外すかを開発者が決める必要がある(Revalidation Triggersの「違反が出た場合はfrontend-platformにサブドメインのワイルドカードの許可を依頼する」に当たる)。
+- **10.1での扱い(2026-11-06)**: 許可先の規則は変えず、設計の必須の許可先と規則に合う`https://link.com`(`frame-src`・`connect-src`)だけを`CLIENT_SECURITY_POLICY`に加え、`https://*.link.com`は未登録のまま開発者へ報告した(ワイルドカードを許すか、個別のサブドメインを登録するかの判断待ち)。
 
 ### `stripe listen`の転送が無い環境で、`return_url`からの反映だけで完了まで辿れるか
 

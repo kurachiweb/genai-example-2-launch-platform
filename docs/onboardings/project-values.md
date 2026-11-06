@@ -582,15 +582,21 @@ Infisicalの機械の主体とOIDCの縛りは次のとおりである。audienc
 
 ページのCSPには、次の許可先を合成して加える(「[許可先の登録](../GUIDES/tech/frontend/003-frontend-server-security.md#許可先の登録)」)。
 
-| 加える箇所                                                                                   | ディレクティブ            | 許可先                                                                 | 対象          |
-| -------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------- | ------------- |
-| 共通部品の`BASE_SECURITY_POLICY_SOURCES`(`apps/frontend-lib/server/http/security-policy.ts`) | `script-src`・`frame-src` | `https://challenges.cloudflare.com`(Turnstile)                         | 両アプリ      |
-| 実行時の値(`runtimeSecurityPolicySources`)                                                   | `img-src`                 | `IMAGES_ORIGIN`の値(ローカル環境は`http://localhost:48043`)            | 両アプリ      |
-| 実行時の値(`runtimeSecurityPolicySources`)                                                   | `connect-src`             | `SENTRY_DSN`のオリジン(設定した環境だけ)                               | 両アプリ      |
-| `apps/client/src/composition/security-policy.ts`の`CLIENT_SECURITY_POLICY`                   | `script-src`              | `https://static.cloudflareinsights.com`(Web Analyticsの計測スクリプト) | `apps/client` |
-| 同上                                                                                         | `connect-src`             | `https://cloudflareinsights.com`(Web Analyticsの計測値の送信先)        | `apps/client` |
+| 加える箇所                                                                                   | ディレクティブ                | 許可先                                                                 | 対象          |
+| -------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------- | ------------- |
+| 共通部品の`BASE_SECURITY_POLICY_SOURCES`(`apps/frontend-lib/server/http/security-policy.ts`) | `script-src`・`frame-src`     | `https://challenges.cloudflare.com`(Turnstile)                         | 両アプリ      |
+| 実行時の値(`runtimeSecurityPolicySources`)                                                   | `img-src`                     | `IMAGES_ORIGIN`の値(ローカル環境は`http://localhost:48043`)            | 両アプリ      |
+| 実行時の値(`runtimeSecurityPolicySources`)                                                   | `connect-src`                 | `SENTRY_DSN`のオリジン(設定した環境だけ)                               | 両アプリ      |
+| `apps/client/src/composition/security-policy.ts`の`CLIENT_SECURITY_POLICY`                   | `script-src`                  | `https://static.cloudflareinsights.com`(Web Analyticsの計測スクリプト) | `apps/client` |
+| 同上                                                                                         | `connect-src`                 | `https://cloudflareinsights.com`(Web Analyticsの計測値の送信先)        | `apps/client` |
+| 同上                                                                                         | `script-src`・`frame-src`     | `https://js.stripe.com`(Stripe.jsと決済の入力欄)                       | `apps/client` |
+| 同上                                                                                         | `frame-src`                   | `https://hooks.stripe.com`(3Dセキュアなどのリダイレクトを伴う決済)     | `apps/client` |
+| 同上                                                                                         | `connect-src`                 | `https://api.stripe.com`(Stripe.jsの通信先)                            | `apps/client` |
+| 同上                                                                                         | `frame-src`・`connect-src`    | `https://link.com`(Link)                                               | `apps/client` |
+| 同上                                                                                         | Permissions-Policyの`payment` | `self`・`"https://js.stripe.com"`(Apple Pay・Google Pay)               | `apps/client` |
 
 - `apps/admin`の`ADMIN_SECURITY_POLICY`は空で、共通部品と実行時の値だけを使う。
+- Stripeの文書はLinkに`https://*.link.com`(`frame-src`・`connect-src`・`img-src`)も求めるが、許可先の形の規則がワイルドカードを受け付けないため登録していない。
 
 ### ブラウザに保存する値
 

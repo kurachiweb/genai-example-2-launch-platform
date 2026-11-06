@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+
+import { resetSync } from '@logtape/logtape';
 
 import { CLIENT_PROFILE } from '../../../client/src/composition/app-profile.ts';
 import {
@@ -11,9 +13,19 @@ import {
   UPLOAD_RELAY_ROUTE,
 } from '../../lib/server/media/media-relay-routes.ts';
 import { GRAPHQL_RELAY_ROUTE } from '../../lib/server/relay/relay-route.ts';
+import {
+  createHarness,
+  pageRequest,
+} from '../../lib/test/server-entry-fixtures.ts';
 import { ADMIN_PROFILE } from '../../src/composition/app-profile.ts';
 import { RELAY_ROUTES } from '../../src/composition/relay-routes.ts';
 import { ADMIN_SECURITY_POLICY } from '../../src/composition/security-policy.ts';
+
+const STRIPE_PUBLISHABLE_KEY = `pk_test_${'0'.repeat(32)}`;
+
+afterEach(() => {
+  resetSync();
+});
 
 describe('ADMIN_PROFILE', () => {
   test('管理者側として、管理者のセッションのCookieの名前とアクセス解析なしを持つ', () => {
@@ -42,6 +54,27 @@ describe('ADMIN_PROFILE', () => {
   test('prodで検索エンジンへの登録を許す利用者側と異なり、prodでも登録を許さない', () => {
     expect(CLIENT_PROFILE.indexable('prod')).toBe(true);
     expect(ADMIN_PROFILE.indexable('prod')).toBe(false);
+  });
+
+  test('決済を持たず、決済の公開キーが設定されていても描画とブラウザへの公開設定に渡さない', async () => {
+    expect(ADMIN_PROFILE.payments).toBe(false);
+    expect(CLIENT_PROFILE.payments).toBe(true);
+    const harness = createHarness({
+      profile: ADMIN_PROFILE,
+      env: { STRIPE_PUBLISHABLE_KEY },
+      entryOptions: {
+        relayRoutes: RELAY_ROUTES,
+        securityPolicy: ADMIN_SECURITY_POLICY,
+      },
+    });
+
+    const response = await harness.fetch(pageRequest());
+
+    expect(response.status).toBe(200);
+    expect(harness.startCalls).toHaveLength(1);
+    const publicConfig = harness.startCalls[0]?.context.publicConfig;
+    expect(publicConfig?.stripePublishableKey).toBeUndefined();
+    expect(JSON.stringify(publicConfig)).not.toContain(STRIPE_PUBLISHABLE_KEY);
   });
 
   test('凍結されていて書き換えられない', () => {

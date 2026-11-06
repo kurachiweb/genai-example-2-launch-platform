@@ -263,7 +263,7 @@
   - _Requirements: 4.8, 13.5_
 
 - [ ] 10. 利用者側の画面
-- [ ] 10.1 利用者側に公開キー・CSPの許可先・設定のナビゲーションを組み込む
+- [x] 10.1 利用者側に公開キー・CSPの許可先・設定のナビゲーションを組み込む
   - 先に、構成の単体テストで、公開キーの検証(未設定か、`pk_test_`・`pk_live_`で始まる文字列)と公開設定への受け渡し(`FrontendAppProfile`の`payments`が偽の管理者側には渡らない。1.1で加えた形)、CSPの`script-src`・`frame-src`・`connect-src`へのStripeの必須の許可先と`payment`の許可、設定のナビゲーションの「決済履歴」(`order` 70)を確かめる。`apps/client/test/config/composition.unit.test.ts`(`CLIENT_SECURITY_POLICY`の完全一致)と`apps/client/src/components/settings/settings-nav-order.unit.test.ts`(`SETTINGS_NAV_ITEMS`の完全一致)の期待を直す
   - frontend-platformの許可先の形の規則のまま加え、1.4で確かめたStripeの許可先がワイルドカードや規則に合わない形を要する場合は保留して報告する
   - 完了状態: 構成の単体テストが成功し、ページの応答のCSPにStripeの許可先が含まれる
@@ -379,3 +379,4 @@
 - 8.3: 波及処理は`apps/event/src/application/payments/customer-erasure-handler.ts`・`open-checkout-expiry-handler.ts`、削除の書き込みはポート`payment-account-data-eraser.ts`と`infrastructure/payments/d1-payment-account-data-eraser.ts`。8.4(必須): `EVENT_PAYMENTS_TYPES.PaymentAccountDataEraser`→`D1PaymentAccountDataEraser`、2つの波及処理を`.to(...)`で束縛し、`payments.customer-erasure`(`purge_due`、400)と`payments.open-checkout-expiry`(`withdrawn`・`suspended`、410)をライフサイクルの登録箇所へ加え、`payments-lifecycle-handlers.worker.test.ts`の`REGISTRATIONS`を`USER_LIFECYCLE_ASYNC_HANDLERS`に置き換え、project-values.mdの「非同期の波及処理の登録」の行に2件を追記する
 - 8.4: イベントサーバーの決済のモジュールは`apps/event/src/composition/payments-module.ts`(`EVENT_PAYMENTS_PLATFORM_MODULE`・`EVENT_PAYMENTS_MODULE`、Webhookの経路の登録を含む)。返金のメッセージ・2つの波及処理は本物の一覧に登録済みで、8.2・8.3のWorkers統合テストも本物の一覧を使う
 - 9: 通貨の表示部品は`apps/frontend-lib/components/payments/money-text.tsx`の`MoneyText`(`amount`は最小通貨単位の整数、`signDisplay`は`auto`か`exceptZero`)。「(税込)」は画面の文言で示す
+- 10.1: clientの`CLIENT_SECURITY_POLICY`にStripeの許可先と`https://link.com`、`payment`の許可を登録した(`*.link.com`は未登録で開発者の判断待ち)。設定のナビゲーションに「決済履歴」(`/settings/billing`、order 70)を加えたので、10.5で同じパスのルートを必ず作る

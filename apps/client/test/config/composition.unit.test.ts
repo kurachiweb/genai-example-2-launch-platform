@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+
+import { resetSync } from '@logtape/logtape';
 
 import {
   BASE_SECURITY_POLICY_SOURCES,
@@ -11,6 +13,11 @@ import {
 } from '../../lib/server/media/media-relay-routes.ts';
 import { GRAPHQL_RELAY_ROUTE } from '../../lib/server/relay/relay-route.ts';
 import { WEB_ANALYTICS_BEACON_SRC } from '../../lib/start/observability/web-analytics.ts';
+import {
+  createHarness,
+  type Harness,
+  pageRequest,
+} from '../../lib/test/server-entry-fixtures.ts';
 import { CLIENT_PROFILE } from '../../src/composition/app-profile.ts';
 import { RELAY_ROUTES } from '../../src/composition/relay-routes.ts';
 import { CLIENT_SECURITY_POLICY } from '../../src/composition/security-policy.ts';
@@ -18,6 +25,48 @@ import { CLIENT_SECURITY_POLICY } from '../../src/composition/security-policy.ts
 const WEB_ANALYTICS_SCRIPT_ORIGIN = 'https://static.cloudflareinsights.com';
 
 const WEB_ANALYTICS_REPORT_ORIGIN = 'https://cloudflareinsights.com';
+
+const STRIPE_JS_ORIGIN = 'https://js.stripe.com';
+
+const STRIPE_HOOKS_ORIGIN = 'https://hooks.stripe.com';
+
+const STRIPE_API_ORIGIN = 'https://api.stripe.com';
+
+const LINK_ORIGIN = 'https://link.com';
+
+const STRIPE_PUBLISHABLE_KEY = `pk_test_${'0'.repeat(32)}`;
+
+afterEach(() => {
+  resetSync();
+});
+
+const directiveSourcesOf = (
+  policy: string | null,
+  name: string,
+): readonly string[] => {
+  const directive = (policy ?? '')
+    .split('; ')
+    .find((entry) => entry.startsWith(`${name} `));
+  return directive?.split(' ').slice(1) ?? [];
+};
+
+const clientHarness = (): Harness =>
+  createHarness({
+    profile: CLIENT_PROFILE,
+    env: { STRIPE_PUBLISHABLE_KEY },
+    entryOptions: {
+      relayRoutes: RELAY_ROUTES,
+      securityPolicy: CLIENT_SECURITY_POLICY,
+    },
+  });
+
+const onlyRenderContextOf = (harness: Harness) => {
+  const [call] = harness.startCalls;
+  if (harness.startCalls.length !== 1 || call === undefined) {
+    throw new Error('描画は1回だけ呼ばれることを期待した');
+  }
+  return call.context;
+};
 
 describe('CLIENT_PROFILE', () => {
   test('利用者側として、利用者のセッションのCookieの名前とアクセス解析ありを持つ', () => {
@@ -36,16 +85,29 @@ describe('CLIENT_PROFILE', () => {
     expect(CLIENT_PROFILE.indexable('local')).toBe(false);
   });
 
+  test('決済を持ち、決済の公開キーを描画とブラウザへの公開設定に渡す', async () => {
+    expect(CLIENT_PROFILE.payments).toBe(true);
+    const harness = clientHarness();
+
+    await harness.fetch(pageRequest());
+
+    expect(onlyRenderContextOf(harness).publicConfig.stripePublishableKey).toBe(
+      STRIPE_PUBLISHABLE_KEY,
+    );
+  });
+
   test('凍結されていて書き換えられない', () => {
     expect(Object.isFrozen(CLIENT_PROFILE)).toBe(true);
   });
 });
 
 describe('CLIENT_SECURITY_POLICY', () => {
-  test('Web Analyticsの計測スクリプトの読み込み先と送信先だけを許可先に加える', () => {
+  test('Web Analyticsの計測と、Stripe.js・Linkの許可先と、支払いの機能の許可だけを加える', () => {
     expect(CLIENT_SECURITY_POLICY).toEqual({
-      scriptSrc: [WEB_ANALYTICS_SCRIPT_ORIGIN],
-      connectSrc: [WEB_ANALYTICS_REPORT_ORIGIN],
+      scriptSrc: [WEB_ANALYTICS_SCRIPT_ORIGIN, STRIPE_JS_ORIGIN],
+      connectSrc: [WEB_ANALYTICS_REPORT_ORIGIN, STRIPE_API_ORIGIN, LINK_ORIGIN],
+      frameSrc: [STRIPE_JS_ORIGIN, STRIPE_HOOKS_ORIGIN, LINK_ORIGIN],
+      permissions: { payment: ['self', `"${STRIPE_JS_ORIGIN}"`] },
     });
   });
 
@@ -62,13 +124,46 @@ describe('CLIENT_SECURITY_POLICY', () => {
     );
 
     expect(merged.scriptSrc).toContain(WEB_ANALYTICS_SCRIPT_ORIGIN);
+    expect(merged.scriptSrc).toContain(STRIPE_JS_ORIGIN);
     expect(merged.connectSrc).toContain(WEB_ANALYTICS_REPORT_ORIGIN);
+    expect(merged.connectSrc).toContain(STRIPE_API_ORIGIN);
+    expect(merged.frameSrc).toContain(STRIPE_HOOKS_ORIGIN);
+    expect(merged.permissions?.payment).toEqual([
+      'self',
+      `"${STRIPE_JS_ORIGIN}"`,
+    ]);
+  });
+
+  test('ページの応答のCSPとPermissions-Policyに、Stripeの許可先と支払いの機能の許可が含まれる', async () => {
+    const response = await clientHarness().fetch(pageRequest());
+
+    expect(response.status).toBe(200);
+    const policy = response.headers.get('Content-Security-Policy');
+    expect(directiveSourcesOf(policy, 'script-src')).toContain(
+      STRIPE_JS_ORIGIN,
+    );
+    const frameSources = directiveSourcesOf(policy, 'frame-src');
+    for (const origin of [STRIPE_JS_ORIGIN, STRIPE_HOOKS_ORIGIN, LINK_ORIGIN]) {
+      expect(frameSources).toContain(origin);
+    }
+    const connectSources = directiveSourcesOf(policy, 'connect-src');
+    for (const origin of [STRIPE_API_ORIGIN, LINK_ORIGIN]) {
+      expect(connectSources).toContain(origin);
+    }
+    expect(response.headers.get('Permissions-Policy')).toContain(
+      `payment=(self "${STRIPE_JS_ORIGIN}")`,
+    );
   });
 
   test('凍結されていて書き換えられない', () => {
     expect(Object.isFrozen(CLIENT_SECURITY_POLICY)).toBe(true);
     expect(Object.isFrozen(CLIENT_SECURITY_POLICY.scriptSrc)).toBe(true);
     expect(Object.isFrozen(CLIENT_SECURITY_POLICY.connectSrc)).toBe(true);
+    expect(Object.isFrozen(CLIENT_SECURITY_POLICY.frameSrc)).toBe(true);
+    expect(Object.isFrozen(CLIENT_SECURITY_POLICY.permissions)).toBe(true);
+    expect(Object.isFrozen(CLIENT_SECURITY_POLICY.permissions?.payment)).toBe(
+      true,
+    );
   });
 });
 
