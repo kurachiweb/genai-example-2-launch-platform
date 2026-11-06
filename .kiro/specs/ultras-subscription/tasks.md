@@ -42,7 +42,7 @@
   - 完了状態: 単体テストが成功し、判定がデータベースや時計に依存せず、`core/ultras`が`Database`・`BatchItem`・`workers`・`apps/db`を読み込まない
   - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.1, 3.2, 3.4_
 
-- [ ] 2.2 定期課金の状態の変化から加入の更新とメールの依頼を決める規則を作る
+- [x] 2.2 定期課金の状態の変化から加入の更新とメールの依頼を決める規則を作る
   - 先に、解約の予約(`cancel_at_period_end`だけ・解約の予定時刻だけの両方)→課金期間の末日の終了で末日の終わりまで特典が続くこと、支払いの失敗→再試行の後の終了でその時点で終わること、予約の無い即時の解約、予約の取り消しで特典の終了時刻が空に戻ること、終了の状態で決めた終了時刻が後から届いた変化で変わらないこと、有効化の前の変化の値が保存されること、`past_due`への変化で支払いの失敗の依頼が1回だけ作られること、解約の予約で出どころが停止・退会なら依頼を作らず利用者なら解約の受付の依頼を作ること、終了のメールの依頼を作らないことをテストする
   - 2.1の規則を使い、`unpaid`・`paused`を終了として扱う
   - 完了状態: 単体テストが成功し、すべての遷移の結果(加入の値と依頼の一覧)が設計の規則と一致する
@@ -266,3 +266,4 @@
 - 1.3: 画面の文言の正は`docs/GUIDES/service/design/003-text-and-copy-rules.md`の「Ultrasの画面の文言」「Ultrasの最終確認画面の表示事項」「定期課金のメールの本文」の節。機能フラグの区画の説明文は「。」付きの文(ブラウザテストの期待値もこの文)。003の「設定のナビゲーション」「管理画面のメニュー」の登録済みの項目は7.4・8.2で「プラン」「設定」を加える。Customer Portalの縮退の理由の文は7.xで`common-lib/ultras`の定数にする。
 - 1.4: 開発者が行うStripeの準備(dev用sandboxの価格`ultras_monthly`の作成、Customer Portalの設定、再試行の後の解約、顧客向けメールの停止、制限付きキーの権限。stagingはmainへのマージ前)は未完了で保留。10.1の加入の経路は`payments_unavailable`なら対象外、10.2は保留になり得る。
 - 2.1: `core/ultras`の文字列ユニオン(`UltrasNoticeKind`・`UltrasNoticeStatus`・`CancellationSource`)は`apps/db/schema/ultras`の`*_VALUES`と手で同期している(coreはdbを読めない)。3.x のWorkers統合テストで同値の検査を1本足す。ルート`CLAUDE.md`のディレクトリ構成に`ultras`の記述を加える作業はどのタスクの境界にも無いため、9.1で扱う。
+- 2.2: `applySubscriptionChange`は設計の`next`・`notices`に加えて`anomalies`(`unexpected_status`(`unpaid`・`paused`)・`scheduled_end_missing`)を返す。4.4のsinkはこれを`warn`ログとSentryの`captureEvent`(設計のMonitoring節)の両方に写す。未有効の空の値は`EMPTY_SUBSCRIPTION_SNAPSHOT`、終了の状態の判定は`isEndedStripeStatus`(3.1の`findCancellable`はSQLで同じ集合を使う)。有効化の前に見た予約・`past_due`は`canceledAt`・`pastDueSince`と依頼を持たないまま有効化される(9.xの文書に明記)。終了の変化で初めて予約を見た場合は解約の操作を記録するが確認メールは送らない。
