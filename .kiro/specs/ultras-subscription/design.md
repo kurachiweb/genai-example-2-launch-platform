@@ -1024,7 +1024,7 @@ export interface PricingSection {
 export declare const PRICING_SECTIONS: readonly PricingSection[]; // 初版は ultras-subscription.ultras-pricing(10、「Ultras」)。sponsorshipが sponsorship.sponsorship-pricing(20、「スポンサー広告」)を追記
 ```
 
-- 登録口の形は、adminの`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例に合わせる(`id`の形・`title`)。
+- 登録口の形は、adminの前例に合わせる(`id`の形は`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`、`title`と読み込み中・失敗の間の見出しの補いは`CATEGORY_SECTIONS`)。
 - `/pricing`(ログイン不要、`buildSitePageHead`でタイトル「料金」と説明`description`、9.8。説明を出すため、frontend-libの`PageHeadInput`に省略可能な`description`を加える、上流への影響): `PricingPage`が`PRICING_SECTIONS`を`order`順に並べ、各区画をfrontend-libの`RecoverableSlot`(`contactAvailable`は`CLIENT_PROFILE.contactAvailable`)で包み、1つの区画の描画や取得の失敗をその区画の位置に留めて他の区画の表示を続ける。読み込み中と失敗の間は、区画の`title`の見出しを`frame`で補う(前例`CategorySectionsView`)。末尾に法的通知(`/legal`)へのリンクを置く(9.1)。区画が1つも表示されないときもリンクは出す。
 - `UltrasPricingSection`: `ultrasOffer`と`viewerUltras`を取得し、`promotionEnabled`が偽かつ`entitled`が偽なら何も描画しない(9.6)。描画するときは価格(`MoneyText`、取得できなければ「現在表示できません」、9.7)・`UltrasBenefitList`・`entitled`なら現在の加入状態とプラン管理画面への導線、そうでなければ`UltrasSubscribeButton`(9.2・9.3)。
 - `UltrasSubscribeButton`: 未ログインはログインへの導線(戻り先`/pricing`、9.4)、未確認は無効と理由(9.5)、価格が無いときは無効(9.7)、押下で`startUltrasCheckout` → `/checkout/{購入ID}`へ遷移(1.1)。エラーは`GraphQLClientError`のコードで文言規則の文言を出す。
@@ -1062,7 +1062,7 @@ export interface AdminSettingsSection {
 export declare const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[]; // 初版は ultras-subscription.promotion-flag(20、「Ultras導線の機能フラグ」)。tournament-yearが tournament-year.final-date(10、「Yearトーナメントの決勝実施日」)、notificationsが notifications.sender-info(30、「通知メールの送信者情報」)を追記
 ```
 
-- 登録口の形は、adminの`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例に合わせる(`id`の形・`title`)。
+- 登録口の形は、adminの前例に合わせる(`id`の形は`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`、`title`と読み込み中・失敗の間の見出しの補いは`CATEGORY_SECTIONS`)。
 - `/_authenticated/settings/index.tsx`: `components/pages/admin-settings-page.tsx`(前例`components/pages/*-page.tsx`)が`AdminPageHeader`「設定」と`ADMIN_SETTINGS_SECTIONS`を`order`順に並べる(10.9)。各区画をfrontend-libの`RecoverableSlot`(`contactAvailable`は`ADMIN_PROFILE.contactAvailable`)で包み、読み込み中と失敗の間は区画の`title`の見出しを`frame`で補う(前例`CategorySectionsView`)。`ADMIN_NAV_ITEMS`に`{ to: '/settings', label: '設定', order: 130 }`。
 - `PromotionSettingSection`: 現在の値・最後に変更した日時(`DateTime`)と管理者のニックネームを表示する(10.1)。`hasRole(useAdminRole(), 'super_admin')`(`common-lib/admin/admin-roles.ts`)のときだけスイッチを有効にし(`RoleGate`は表示するかしないかの出し分けの部品のため、有効・無効には使わない)、それ以外は参照だけで「最上位管理者だけが変更できます」と示す(10.3)。切り替えは`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`)で確定する(10.2)。切り替えの失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す。`failureMessageOf`は`version_conflict`なら最新を読み直す案内(10.4)を、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返す。説明文に「オフにすると未加入者への導線と新規加入を止めます。加入中の利用者には影響しません」(10.7)。
 - 失敗の表示(管理者側は問い合わせの画面を持たない): `PromotionSettingSection`の取得の失敗は、区画を包む`RecoverableSlot`が区画の位置に見出しと`ErrorState`(再試行)で示して縮退し、`contactHref`を渡さない。`GraphQLClientError`でない例外に代えて出す文言(`ErrorState`・`ConfirmActionDialog`の`failureMessageOf`・トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、問い合わせを促す文を出さない。

@@ -304,5 +304,5 @@
 
 ## 上流のultras-subscriptionの区画の登録口の改訂の反映(2026-11-06)
 
-- ultras-subscriptionの実装前のギャップ分析への開発者の決定で、管理画面の設定ページの区画の登録口`ADMIN_SETTINGS_SECTIONS`の形が、adminの`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例に合わせて`id`(`'<spec名>.<名詞句>'`)・`order`・`title`(区画の見出し)・`component`になった。ページは区画ごとにfrontend-libへ移した`RecoverableSlot`で包み、1つの区画の描画や取得の失敗をその区画の位置に留め、読み込み中と失敗の間は`title`の見出しを補う。
+- ultras-subscriptionの実装前のギャップ分析への開発者の決定で、管理画面の設定ページの区画の登録口`ADMIN_SETTINGS_SECTIONS`の形が、adminの前例に合わせて`id`(`'<spec名>.<名詞句>'`。`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例)・`order`・`title`(区画の見出し。`CATEGORY_SECTIONS`の前例)・`component`になった。ページは区画ごとにfrontend-libへ移した`RecoverableSlot`で包み、1つの区画の描画や取得の失敗をその区画の位置に留め、読み込み中と失敗の間は`title`の見出しを補う。
 - 本specの登録に、部品が描く見出しと同じ文言の`title`を加えた(design.mdの登録の行、tasks.mdの登録のタスク)。要件と受け入れ基準は変えていない。タスクの番号は変えていない。
