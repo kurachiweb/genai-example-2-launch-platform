@@ -183,6 +183,38 @@ describe('D1RefundStoreの送信と状態の更新', () => {
     });
   });
 
+  test('前の状態を指定した更新は、依頼がその状態のときだけ変え、変えたかを返す', async () => {
+    await insertRefunds(newRefundRequest(1), newRefundRequest(2));
+    await store.updateStatus({
+      refundRequestId: refundIdOf(2),
+      status: 'succeeded',
+      stripeRefundId: 're_2',
+    });
+
+    const changed = await store.updateStatus({
+      refundRequestId: refundIdOf(1),
+      status: 'submitted',
+      stripeRefundId: 're_1',
+      from: ['requested'],
+    });
+    const unchanged = await store.updateStatus({
+      refundRequestId: refundIdOf(2),
+      status: 'submitted',
+      stripeRefundId: 're_2',
+      from: ['requested'],
+    });
+
+    expect([changed, unchanged]).toEqual([true, false]);
+    expect(await store.findById(refundIdOf(1))).toMatchObject({
+      status: 'submitted',
+      stripeRefundId: 're_1',
+    });
+    expect(await store.findById(refundIdOf(2))).toMatchObject({
+      status: 'succeeded',
+      stripeRefundId: 're_2',
+    });
+  });
+
   test('作成から指定の日時より前で未送信の依頼を、古い順に上限の件数まで返す', async () => {
     await insertRefunds(
       newRefundRequest(1),

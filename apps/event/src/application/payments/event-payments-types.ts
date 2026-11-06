@@ -7,6 +7,10 @@ const RefundPaymentHandler: unique symbol = Symbol.for(
   'payments.RefundPaymentHandler',
 );
 
+const RefundIncidentReporter: unique symbol = Symbol.for(
+  'payments.RefundIncidentReporter',
+);
+
 const CustomerErasureHandler: unique symbol = Symbol.for(
   'payments.CustomerErasureHandler',
 );
@@ -22,6 +26,7 @@ const PaymentAccountDataEraser: unique symbol = Symbol.for(
 export const EVENT_PAYMENTS_TYPES = Object.freeze({
   StripeWebhookReceiver,
   RefundPaymentHandler,
+  RefundIncidentReporter,
   CustomerErasureHandler,
   OpenCheckoutExpiryHandler,
   PaymentAccountDataEraser,

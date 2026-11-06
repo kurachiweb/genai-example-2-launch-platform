@@ -425,12 +425,14 @@ export interface RefundStore {
   sumRequested(purchaseId: string): Promise<MinorUnitAmount>;
   // 未送信のときだけ送信の日時を記録する
   markDispatched(refundRequestId: string, at: Date): Promise<void>;
+  // 前の状態を指定すると、依頼がその状態のときだけ変える。変えたかを返す
   updateStatus(input: {
     readonly refundRequestId: string;
     readonly status: RefundRequestStatus;
     readonly stripeRefundId?: string;
     readonly failureCode?: string | null;
-  }): Promise<void>;
+    readonly from?: readonly RefundRequestStatus[];
+  }): Promise<boolean>;
   // 作成から指定の日時より前で、まだ送っていない依頼
   findUndispatched(input: {
     readonly createdBefore: Date;

@@ -228,7 +228,7 @@
   - _Depends: 3.3, 5.7_
   - _Requirements: 6.1, 6.2, 6.3, 6.6, 6.7, 6.8, 6.9_
 
-- [ ] 8.2 返金の実行の処理を作る
+- [x] 8.2 返金の実行の処理を作る
   - 先に、Workers統合テストで、依頼の行の購入から`stripe_payment_intent_id`を読んで渡す返金の作成と返金IDの保存(反映からの依頼と後続specの依頼の両方)、購入やPaymentIntentのIDが無い依頼の失敗の記録と通知、提出済み・成功済みの依頼の無処理、拒否された定期課金の購入で先に定期課金を解約すること、一時的な失敗の例外と再試行の上限でのデッドレター、恒久的な拒否の失敗の記録と通知を確かめる
   - 完了状態: Workers統合テストが成功し、同じメッセージを2回処理しても返金の作成の呼び出しが同じ冪等キーで行われる
   - _Boundary: RefundPaymentHandler_
@@ -374,3 +374,4 @@
 - 7.1: APIサーバーの決済の束縛は`apps/api/src/composition/payments-module.ts`の`API_PAYMENTS_MODULE`、スキーマモジュールは`presentation/graphql/modules/payments/`。決済履歴は`PaymentRecordConnection { nodes, pageInfo }`。スキーマの集約点(`graphql-modules.ts`)への登録は7.1で済んだ。7.2(必須): `createPaymentsPlatformModule('api')`と`API_PAYMENTS_MODULE`を`MODULES`に加えたら、`test/support/payments-graphql-operations.ts`のオーバーライドと`payments-module.worker.test.ts`のモジュールの一覧から外す(二重の束縛を避ける)。bot判定の操作名は`payments_smoke_checkout`
 - 7.2: APIサーバーの`MODULES`に`API_PAYMENTS_PLATFORM_MODULE`(`createPaymentsPlatformModule('api')`、`payments-module.ts`)と`API_PAYMENTS_MODULE`を登録した。23:40の式はルートの`triggers.crons`だけ(staging・prodは継承)。23:40に後続specのジョブ(match-engine)が加わるときは、project-values.mdの記述と23:40の予算の扱いを見直す
 - 8.1: イベントサーバーの識別子は`apps/event/src/application/payments/event-payments-types.ts`の`EVENT_PAYMENTS_TYPES`(5つ)。受け付けは`stripe-webhook-receiver.ts`の`SignedStripeWebhookReceiver`、経路は`presentation/payments/stripe-webhook-route.ts`の`registerStripeWebhookRoute`(`POST /webhooks/stripe`)。署名の不正は`stripe_signature_invalid`(400)、秘密の未設定は`payments_unavailable`(503)、反映の失敗は経路がSentryへ送り500。テストの補助は`presentation/payments/testing/stripe-webhook-harness.ts`。8.4: 経路のアプリへの組み込みと署名の検証の束縛
+- 8.2: 返金の実行は`apps/event/src/application/payments/refund-payment-handler.ts`の`RefundPaymentHandler`(再試行は`REFUND_PAYMENT_RETRY_POLICY`)。冪等キーは`refund:<依頼キー>`。処理するのは`requested`の依頼だけで、状態の更新は`updateStatus`の`from`で`requested`のときだけ。恒久的な失敗はポート`RefundIncidentReporter`でSentryへ知らせる。8.4(必須): `EVENT_PAYMENTS_TYPES.RefundIncidentReporter`を`SentryRefundIncidentReporter`(`infrastructure/payments/`)へ束縛し、`MESSAGE_HANDLERS`に`{ contract: PAYMENTS_REFUND_MESSAGE, handler: EVENT_PAYMENTS_TYPES.RefundPaymentHandler, retry: REFUND_PAYMENT_RETRY_POLICY }`を加える

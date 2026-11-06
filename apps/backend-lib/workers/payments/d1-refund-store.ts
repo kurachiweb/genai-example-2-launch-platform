@@ -99,15 +99,24 @@ export class D1RefundStore implements RefundStore, RefundStatements {
     readonly status: RefundRequestStatus;
     readonly stripeRefundId?: string;
     readonly failureCode?: string | null;
-  }): Promise<void> {
-    await this.db
+    readonly from?: readonly RefundRequestStatus[];
+  }): Promise<boolean> {
+    const result = await this.db
       .update(refunds)
       .set({
         status: input.status,
         stripeRefundId: input.stripeRefundId,
         failureCode: input.failureCode,
       })
-      .where(eq(refunds.id, input.refundRequestId));
+      .where(
+        and(
+          eq(refunds.id, input.refundRequestId),
+          input.from === undefined
+            ? undefined
+            : inArray(refunds.status, [...input.from]),
+        ),
+      );
+    return result.meta.changes > 0;
   }
 
   async findUndispatched(input: {

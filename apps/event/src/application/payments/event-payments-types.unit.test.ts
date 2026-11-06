@@ -6,13 +6,14 @@ import { EVENT_PAYMENTS_TYPES } from './event-payments-types.ts';
 const EXPECTED_NAMES = [
   'StripeWebhookReceiver',
   'RefundPaymentHandler',
+  'RefundIncidentReporter',
   'CustomerErasureHandler',
   'OpenCheckoutExpiryHandler',
   'PaymentAccountDataEraser',
 ] as const;
 
 describe('EVENT_PAYMENTS_TYPES', () => {
-  test('Webhookの受け付け・返金の処理・波及処理・削除の書き込みの単位の識別子だけを持つ', () => {
+  test('Webhookの受け付け・返金の処理と失敗の通知・波及処理・削除の書き込みの単位の識別子だけを持つ', () => {
     expect(Object.keys(EVENT_PAYMENTS_TYPES)).toEqual([...EXPECTED_NAMES]);
   });
 
