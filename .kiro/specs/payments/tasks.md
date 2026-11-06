@@ -203,7 +203,7 @@
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 12.7_
 
 - [ ] 7. APIサーバーの組み込み
-- [ ] 7.1 決済のGraphQLのスキーマモジュールとAPIサーバーの決済の束縛を作る
+- [x] 7.1 決済のGraphQLのスキーマモジュールとAPIサーバーの決済の束縛を作る
   - APIサーバーの決済の束縛(ユースケース・ジョブ・回数制限の実装・購入の書き込みの単位の実装・処理単位のコンテナから購入の可否の口を解決する関数)をモジュールとして作る
   - 先に、そのモジュールと共通の束縛を使うWorkers統合テストで、`checkout`・`paymentHistory`・`recordCheckoutConsent`・`confirmCheckoutReturn`・`startSmokeCheckout`の成功、エラーのコードと文言の表(`checkout_closed`・`purchase_kind_unavailable`・`payments_unavailable`・`rate_limit_exceeded`・`checkout_not_found`・`checkout_not_open`・`validation_error`)、ログインしていない要求の拒否、疎通確認が無効な環境での`purchase_kind_unavailable`、後続specが返す`CheckoutStart`の型を確かめる
   - apiで`bun run graphql:generate`を実行してコミット済みの`src/presentation/graphql/generated/schema.graphql`を生成し直し、`graphql-modules.worker.test.ts`(合成したスキーマとコミットしたスキーマの一致)を通す
@@ -371,3 +371,4 @@
 - 6.1: APIサーバーの識別子は`apps/api/src/application/payments/payments-types.ts`の`API_PAYMENTS_TYPES`、エラーは`payments-errors.ts`の`PAYMENTS_ERRORS`(`payments_unavailable`の文言は価格の照会と同じ全文)。決済の開始は`checkout-starter.ts`の`StripeCheckoutStarter`、回数制限と購入の書き込みは`apps/api/src/infrastructure/payments/`。application層は`**/lib/workers/**`を型も含めて読み込めない(ESLint)。12.x: `docs/GUIDES/service/design/003-text-and-copy-rules.md`の縮退運転の文言を設計のError Handlingの表に揃える
 - 6.2: 決済画面・同意・決済後のランディング・決済履歴のユースケースは`apps/api/src/application/payments/`(`checkout-reader.ts`・`checkout-consent-recorder.ts`・`checkout-return-confirmer.ts`・`payment-history-reader.ts`)。照会は`requireUser`、同意の記録は`requireWritableUser`(停止中は`account_unavailable`)。入力の規則(`session_id`の形式・件数の範囲・カーソルの上限)は`common-lib/payments/payment-input-rules.ts`。7.1(必須): GraphQLの`after`に`PAYMENT_HISTORY_CURSOR_MAX`(256)を適用し、カーソルの誤り`invalid_cursor`をエラーの表で扱う。新しい文言2つは12.2で文言規則に加える。単体テストの偽のポートは`apps/api/test/support/payments-checkout-fakes.ts`
 - 6.3: ジョブは`apps/api/src/application/payments/jobs/`(定義は`*_JOB_DEFINITION`)。7.1(必須): `API_PAYMENTS_TYPES.PaymentsJobIncidentReporter`を`SentryPaymentsJobIncidentReporter`(`infrastructure/payments/`)へ束縛する(無いと突合と日次の確認のジョブが解決できない)。7.2: 3つの定義を`SCHEDULED_JOBS`へ、23:40の式`40 7 * * *`をCron Triggersへ加える。12.2: 日次タイムラインに2つのジョブを載せる
+- 7.1: APIサーバーの決済の束縛は`apps/api/src/composition/payments-module.ts`の`API_PAYMENTS_MODULE`、スキーマモジュールは`presentation/graphql/modules/payments/`。決済履歴は`PaymentRecordConnection { nodes, pageInfo }`。スキーマの集約点(`graphql-modules.ts`)への登録は7.1で済んだ。7.2(必須): `createPaymentsPlatformModule('api')`と`API_PAYMENTS_MODULE`を`MODULES`に加えたら、`test/support/payments-graphql-operations.ts`のオーバーライドと`payments-module.worker.test.ts`のモジュールの一覧から外す(二重の束縛を避ける)。bot判定の操作名は`payments_smoke_checkout`

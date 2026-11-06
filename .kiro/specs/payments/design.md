@@ -53,7 +53,7 @@
 ### Allowed Dependencies
 
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`・`MessagePublisher`・`RateLimitCounterClient`)・`ScheduledJobDefinition`・`defineMessageContract`・`MessageHandlerRegistration`・`RetryPolicy`・`hashRateLimitKey`・`excludePath`・`AppError`・`validateEnv`・`platformEnvShape`・`getAppLogger`・業務時刻の関数・`ulidPrimaryKey`・`timestamps`。形を変えない。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めず、DBの接続・SQLの文・一括の書き込みを扱わない(`config/eslint/backend-layers.ts`、`docs/GUIDES/tech/backend/002`)。そのため`MessagePublisher`は`workers/payments`の実装だけが使い、`RateLimitCounterClient`はinfrastructure層の`CounterCheckoutStartLimits`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。bot判定は、application層が受け取る`humanCheck`(presentation層が`GraphQLContext.assertHuman`を渡す)で行う。
-- api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`assertHuman`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`toConnection`・`DateTime`のスカラー。形を変えない。
+- api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`assertHuman`)・`withValidatedArgs`・`PageInfo`・`DateTime`のスカラー(決済履歴は`first`の既定と範囲が違うため`CURSOR_PAGE_ARGS`・`toConnection`を使わず、結果の型の形だけを規約に揃える)。形を変えない。
 - identity-auth: `AccountGuard`(`requireUser`・`requireVerifiedUser`)・`CurrentUser`(`CurrentUser.user.pseudonymousId`。`UserAccountView`の仮名化ID。`UserRecord`はapi専用の型で使わない)・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`AuthenticatedContext`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・frontend-libの`Checkbox`(`apps/frontend-lib/components/ui/checkbox/checkbox.tsx`、identity-authが作成済みのshadcn/uiのCheckbox。決済画面の同意に使う)・`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`。契約と識別子は`apps/backend-lib/core/identity`、D1の実装は`apps/backend-lib/workers/identity`で、api・eventの両方にidentity-authが束縛する。メールの宛先の照会に使う)。`users`テーブルは`id`(外部キーの参照先)だけに使い、列を直接読まず、書き込まない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
 - frontend-platform: `CLIENT_SECURITY_POLICY`・`SecurityPolicySources`・`PublicRuntimeConfig`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`buildPageHead`(clientでは包みの`buildSitePageHead`(`apps/client/src/head/page-heads.ts`)を使う)・`PathLink`(未作成の経路へのリンク)・`reportUnexpectedErrorInBrowser`・`DateTime`・`RelativeTime`・`NumberText`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`。
@@ -259,7 +259,8 @@ apps/
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts                                # 引数のzodスキーマ
 │   │   ├── errors.ts                                # 入力の検証の文言だけ(エラーコードはapplication層のpayments-errors.ts)
-│   │   ├── resolvers.ts
+│   │   ├── mappers.ts                               # ユースケースの結果から応答の型への写像(列挙型の値の変換)
+│   │   ├── resolvers.ts                             # 全ての操作は利用者側の呼び出し元だけで受け付ける(Workers統合テストを併置)
 │   │   └── index.ts                                 # paymentsSchemaModule
 │   └── composition/payments-module.ts               # apiの束縛(AppModule)
 ├── event/src/
@@ -1554,12 +1555,8 @@ type PaymentRecord {
   occurredAt: DateTime!
 }
 type PaymentRecordConnection {
-  edges: [PaymentRecordEdge!]!
+  nodes: [PaymentRecord!]!
   pageInfo: PageInfo!
-}
-type PaymentRecordEdge {
-  cursor: String!
-  node: PaymentRecord!
 }
 type Query {
   checkout(purchaseId: ID!): Checkout!
@@ -1572,13 +1569,13 @@ type Mutation {
 }
 ```
 
-| 操作                    | 呼び出し元                                 | エラー                                                                                                                  |
-| ----------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `checkout`              | client                                     | `unauthenticated`、`checkout_not_found`                                                                                 |
-| `paymentHistory`        | client                                     | `unauthenticated`、`validation_error`                                                                                   |
-| `recordCheckoutConsent` | client                                     | `unauthenticated`、`account_unavailable`、`checkout_not_found`、`checkout_not_open`                                     |
-| `confirmCheckoutReturn` | client                                     | `unauthenticated`、`checkout_not_found`、`validation_error`                                                             |
-| `startSmokeCheckout`    | client(`PAYMENTS_SMOKE_ENABLED`が真の環境) | `purchase_kind_unavailable`、`email_not_verified`、`account_unavailable`、`rate_limit_exceeded`、`payments_unavailable` |
+| 操作                    | 呼び出し元                                 | エラー                                                                                                                          |
+| ----------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `checkout`              | client                                     | `unauthenticated`、`checkout_not_found`、`validation_error`(64文字を超える購入のID)                                             |
+| `paymentHistory`        | client                                     | `unauthenticated`、`validation_error`(件数の範囲外・256文字を超えるカーソル)、`invalid_cursor`(カーソルの形式の誤り)            |
+| `recordCheckoutConsent` | client                                     | `unauthenticated`、`account_unavailable`、`checkout_not_found`、`checkout_not_open`、`validation_error`(64文字を超える購入のID) |
+| `confirmCheckoutReturn` | client                                     | `unauthenticated`、`checkout_not_found`、`validation_error`                                                                     |
+| `startSmokeCheckout`    | client(`PAYMENTS_SMOKE_ENABLED`が真の環境) | `purchase_kind_unavailable`、`email_not_verified`、`account_unavailable`、`rate_limit_exceeded`、`payments_unavailable`         |
 
 - `canRestart`は、購入が`expired`・`superseded`で受付期限の前(期限が無ければ常に)のとき真(4.10・5.5)。やり直しは後続specの申込の画面(疎通確認は`startSmokeCheckout`)から行う。
 - `REFUNDING`は`rejected`の購入(返金の依頼済み)。`UNAVAILABLE`はStripeに到達できず`clientSecret`を取れない状態(4.11)。
@@ -1799,16 +1796,17 @@ export interface MoneyTextProps {
 
 ### Error Categories and Responses
 
-| コード                                                         | 種類          | 場面                             | 文言(文言規則に追加)                                                           |
-| -------------------------------------------------------------- | ------------- | -------------------------------- | ------------------------------------------------------------------------------ |
-| `checkout_closed`                                              | 422           | 受付期限の後の開始(3.6)          | 「決済の受付は終了しました。」                                                 |
-| `purchase_kind_unavailable`                                    | 422           | 未登録・無効の購入種別(2.7・2.9) | 「この決済は現在ご利用いただけません。」                                       |
-| `payments_unavailable`                                         | 503           | Stripeの障害(3.11・4.11・13.4)   | 「現在、決済をご利用いただけません。閲覧やその他の操作はご利用いただけます。」 |
-| `rate_limit_exceeded`                                          | 429           | 回数制限(3.10)                   | 既存の「操作が集中しています。しばらく待ってから再度お試しください。」         |
-| `checkout_not_found`                                           | 404           | 他人・存在しない購入(4.9・5.6)   | 「お探しの決済は見つかりませんでした。」                                       |
-| `checkout_not_open`                                            | 409           | 完了・失効後の同意の記録         | 「この決済は既に完了しているか、受付が終了しています。」                       |
-| `email_not_verified`・`account_unavailable`・`unauthenticated` | 403・403・401 | 利用者の状態(3.5・同意の記録)    | identity-authの既存の文言                                                      |
-| `stripe_signature_invalid`                                     | 400           | Webhookの署名の不正(6.1)         | 画面に出さない                                                                 |
+| コード                                                         | 種類          | 場面                                 | 文言(文言規則に追加)                                                           |
+| -------------------------------------------------------------- | ------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
+| `checkout_closed`                                              | 422           | 受付期限の後の開始(3.6)              | 「決済の受付は終了しました。」                                                 |
+| `purchase_kind_unavailable`                                    | 422           | 未登録・無効の購入種別(2.7・2.9)     | 「この決済は現在ご利用いただけません。」                                       |
+| `payments_unavailable`                                         | 503           | Stripeの障害(3.11・4.11・13.4)       | 「現在、決済をご利用いただけません。閲覧やその他の操作はご利用いただけます。」 |
+| `rate_limit_exceeded`                                          | 429           | 回数制限(3.10)                       | 既存の「操作が集中しています。しばらく待ってから再度お試しください。」         |
+| `invalid_cursor`                                               | 400           | 決済履歴のカーソルの形式の誤り(12.9) | 既存の「ページの位置の指定が正しくありません。」                               |
+| `checkout_not_found`                                           | 404           | 他人・存在しない購入(4.9・5.6)       | 「お探しの決済は見つかりませんでした。」                                       |
+| `checkout_not_open`                                            | 409           | 完了・失効後の同意の記録             | 「この決済は既に完了しているか、受付が終了しています。」                       |
+| `email_not_verified`・`account_unavailable`・`unauthenticated` | 403・403・401 | 利用者の状態(3.5・同意の記録)        | identity-authの既存の文言                                                      |
+| `stripe_signature_invalid`                                     | 400           | Webhookの署名の不正(6.1)             | 画面に出さない                                                                 |
 
 ### Monitoring
 

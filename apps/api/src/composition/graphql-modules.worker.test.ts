@@ -56,3 +56,24 @@ describe('GRAPHQL_SCHEMA_MODULES(法務文書)', () => {
     );
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(決済)', () => {
+  test('決済の照会・変更の操作と、後続specの決済を始める変更操作が返すCheckoutStartがスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['checkout']?.type)).toBe('Checkout!');
+    expect(String(query?.['paymentHistory']?.type)).toBe(
+      'PaymentRecordConnection!',
+    );
+    expect(String(mutation?.['recordCheckoutConsent']?.type)).toBe('Checkout!');
+    expect(String(mutation?.['confirmCheckoutReturn']?.type)).toBe(
+      'CheckoutReturnResult!',
+    );
+    expect(String(mutation?.['startSmokeCheckout']?.type)).toBe(
+      'CheckoutStart!',
+    );
+  });
+});

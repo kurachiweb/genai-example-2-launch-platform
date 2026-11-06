@@ -271,6 +271,87 @@ type AuditOperator {
   nickname: String
 }
 
+"""決済画面と決済後のランディングが表示する購入"""
+type Checkout {
+  """受付期限。期限の無い購入はnull"""
+  acceptUntil: DateTime
+
+  """失効した購入を受付期限の前にやり直せるなら真"""
+  canRestart: Boolean!
+
+  """状態がOPENのときだけ値がある"""
+  clientSecret: String
+
+  """決済画面が表示する同意の文言の版"""
+  consentVersion: String!
+
+  """決済セッションの有効期限"""
+  expiresAt: DateTime!
+  kind: PurchaseKind!
+  purchaseId: ID!
+  quantity: Int!
+
+  """状態がREFUNDINGのときだけ値がある"""
+  rejectionReason: CheckoutRejectionReason
+  status: CheckoutStatus!
+  summary: CheckoutSummary!
+  total: Money!
+  unitPrice: Money!
+}
+
+"""権利を付与できなかった理由"""
+enum CheckoutRejectionReason {
+  """同じ対象の二重の支払い"""
+  DUPLICATE
+
+  """購入の条件を満たさない"""
+  INELIGIBLE
+
+  """受付期限の後の支払い"""
+  LATE
+}
+
+"""決済後のランディングの確認の結果"""
+type CheckoutReturnResult {
+  checkout: Checkout!
+}
+
+"""決済の開始の結果。決済を始める変更操作が返す"""
+type CheckoutStart {
+  """決済画面の経路に使う購入のID"""
+  purchaseId: ID!
+}
+
+"""決済画面に示す購入の状態"""
+enum CheckoutStatus {
+  """完了"""
+  COMPLETED
+
+  """失効"""
+  EXPIRED
+
+  """支払える"""
+  OPEN
+
+  """支払いの確認中"""
+  PROCESSING
+
+  """権利を付与できず全額返金を依頼した"""
+  REFUNDING
+
+  """Stripeに到達できず支払いの準備ができない"""
+  UNAVAILABLE
+}
+
+"""最終確認画面の表示事項"""
+type CheckoutSummary {
+  additionalNotes: [String!]!
+  isSubscription: Boolean!
+  itemName: String!
+  quantityLabel: String!
+  serviceTiming: String!
+}
+
 input CompleteSecondFactorLoginInput {
   challenge: String!
   secondFactor: SecondFactorInput!
@@ -500,6 +581,15 @@ type MemberInquirySummary {
   status: InquiryStatus!
 }
 
+"""金額"""
+type Money {
+  """最小通貨単位の整数"""
+  amount: Int!
+
+  """ISO 4217の小文字の通貨コード"""
+  currency: String!
+}
+
 type Mutation {
   """メールアドレスとパスワードによるログイン。有効な管理者には必ず第2要素を求める"""
   adminLogin(
@@ -540,6 +630,9 @@ type Mutation {
   """メールアドレス変更の確定"""
   confirmAdminEmailChange(token: String!): AdminConfirmationResult!
 
+  """決済後のランディングでの決済セッションの確認と反映。Stripeに到達できなければ未完了の購入を処理中として返す"""
+  confirmCheckoutReturn(sessionId: String!): CheckoutReturnResult!
+
   """メールアドレス変更の確定"""
   confirmEmailChange(token: String!): ConfirmationResult!
 
@@ -578,6 +671,9 @@ type Mutation {
 
   """下書きの公開。最上位管理者"""
   publishLegalDocument(input: PublishLegalDocumentInput!): AdminLegalDocument!
+
+  """支払いの確定の前の同意の記録。支払える状態の本人の購入だけに記録し、同じ購入の再記録は最新の日時で上書きする"""
+  recordCheckoutConsent(purchaseId: ID!): Checkout!
 
   """リカバリコードの再発行。操作した端末へ新しいセッションを発行する"""
   regenerateAdminRecoveryCodes(reAuthentication: AdminReAuthenticationInput!): AdminRecoveryCodeSet!
@@ -646,6 +742,9 @@ type Mutation {
   """多要素認証の再設定の開始。完了まで現在の設定が有効なまま残る"""
   startAdminTotpReset(reAuthentication: AdminReAuthenticationInput!): AdminTotpSetup!
 
+  """疎通確認用の決済の開始。疎通確認を有効にした環境だけで受け付ける"""
+  startSmokeCheckout: CheckoutStart!
+
   """多要素認証の設定の開始"""
   startTotpSetup(input: ReAuthenticationInput!): TotpSetup!
 
@@ -677,11 +776,58 @@ type PageInfo {
   hasNextPage: Boolean!
 }
 
+"""決済履歴の1件"""
+type PaymentRecord {
+  """返金・チャージバックの引き落としは負"""
+  amount: Money!
+  id: ID!
+  kind: PaymentRecordKind!
+  occurredAt: DateTime!
+  purpose: PurchaseKind!
+
+  """数量の無い記録はnull"""
+  quantity: Int
+  status: PaymentRecordStatus!
+}
+
+"""決済履歴の一覧"""
+type PaymentRecordConnection {
+  nodes: [PaymentRecord!]!
+  pageInfo: PageInfo!
+}
+
+"""決済履歴の種類"""
+enum PaymentRecordKind {
+  DISPUTE
+  ONE_TIME
+  REFUND
+  SUBSCRIPTION
+}
+
+"""決済履歴の状態"""
+enum PaymentRecordStatus {
+  DISPUTED
+  DISPUTE_LOST
+  DISPUTE_WON
+  FAILED
+  PENDING
+  SUCCEEDED
+}
+
 """下書きの公開"""
 input PublishLegalDocumentInput {
   changeSummary: String!
   expectedStateVersion: Int!
   kind: LegalDocumentKind!
+}
+
+"""購入種別"""
+enum PurchaseKind {
+  PAYMENTS_SMOKE
+  SPONSORSHIP
+  ULTRAS
+  WEEK_TOURNAMENT_ENTRY
+  YEAR_TOURNAMENT_ENTRY
 }
 
 type Query {
@@ -715,6 +861,9 @@ type Query {
   """監査ログの検索。変更・削除の操作は無い"""
   auditLogs(after: String, filter: AuditLogFilterInput): AuditLogPage!
 
+  """本人の購入の決済画面の表示事項。他人・存在しない購入はcheckout_not_found"""
+  checkout(purchaseId: ID!): Checkout!
+
   """問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く"""
   inquiryCategories: [InquiryCategory!]!
 
@@ -735,6 +884,9 @@ type Query {
 
   """ログイン中の端末の一覧"""
   mySessions: [UserSessionSummary!]!
+
+  """ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順)"""
+  paymentHistory(after: String, first: Int): PaymentRecordConnection!
 
   """APIサーバーの時刻とデータベースへの到達可否"""
   systemStatus: SystemStatus!

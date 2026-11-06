@@ -289,6 +289,77 @@ export type AuditOperator = {
   nickname?: Maybe<Scalars['String']['output']>;
 };
 
+/** 決済画面と決済後のランディングが表示する購入 */
+export type Checkout = {
+  __typename?: 'Checkout';
+  /** 受付期限。期限の無い購入はnull */
+  acceptUntil?: Maybe<Scalars['DateTime']['output']>;
+  /** 失効した購入を受付期限の前にやり直せるなら真 */
+  canRestart: Scalars['Boolean']['output'];
+  /** 状態がOPENのときだけ値がある */
+  clientSecret?: Maybe<Scalars['String']['output']>;
+  /** 決済画面が表示する同意の文言の版 */
+  consentVersion: Scalars['String']['output'];
+  /** 決済セッションの有効期限 */
+  expiresAt: Scalars['DateTime']['output'];
+  kind: PurchaseKind;
+  purchaseId: Scalars['ID']['output'];
+  quantity: Scalars['Int']['output'];
+  /** 状態がREFUNDINGのときだけ値がある */
+  rejectionReason?: Maybe<CheckoutRejectionReason>;
+  status: CheckoutStatus;
+  summary: CheckoutSummary;
+  total: Money;
+  unitPrice: Money;
+};
+
+/** 権利を付与できなかった理由 */
+export type CheckoutRejectionReason =
+  /** 同じ対象の二重の支払い */
+  | 'DUPLICATE'
+  /** 購入の条件を満たさない */
+  | 'INELIGIBLE'
+  /** 受付期限の後の支払い */
+  | 'LATE';
+
+/** 決済後のランディングの確認の結果 */
+export type CheckoutReturnResult = {
+  __typename?: 'CheckoutReturnResult';
+  checkout: Checkout;
+};
+
+/** 決済の開始の結果。決済を始める変更操作が返す */
+export type CheckoutStart = {
+  __typename?: 'CheckoutStart';
+  /** 決済画面の経路に使う購入のID */
+  purchaseId: Scalars['ID']['output'];
+};
+
+/** 決済画面に示す購入の状態 */
+export type CheckoutStatus =
+  /** 完了 */
+  | 'COMPLETED'
+  /** 失効 */
+  | 'EXPIRED'
+  /** 支払える */
+  | 'OPEN'
+  /** 支払いの確認中 */
+  | 'PROCESSING'
+  /** 権利を付与できず全額返金を依頼した */
+  | 'REFUNDING'
+  /** Stripeに到達できず支払いの準備ができない */
+  | 'UNAVAILABLE';
+
+/** 最終確認画面の表示事項 */
+export type CheckoutSummary = {
+  __typename?: 'CheckoutSummary';
+  additionalNotes: Array<Scalars['String']['output']>;
+  isSubscription: Scalars['Boolean']['output'];
+  itemName: Scalars['String']['output'];
+  quantityLabel: Scalars['String']['output'];
+  serviceTiming: Scalars['String']['output'];
+};
+
 export type CompleteSecondFactorLoginInput = {
   challenge: Scalars['String']['input'];
   secondFactor: SecondFactorInput;
@@ -511,6 +582,15 @@ export type MemberInquirySummary = {
   status: InquiryStatus;
 };
 
+/** 金額 */
+export type Money = {
+  __typename?: 'Money';
+  /** 最小通貨単位の整数 */
+  amount: Scalars['Int']['output'];
+  /** ISO 4217の小文字の通貨コード */
+  currency: Scalars['String']['output'];
+};
+
 export type Mutation = {
   __typename?: 'Mutation';
   /** メールアドレスとパスワードによるログイン。有効な管理者には必ず第2要素を求める */
@@ -533,6 +613,8 @@ export type Mutation = {
   completeSecondFactorLogin: Viewer;
   /** メールアドレス変更の確定 */
   confirmAdminEmailChange: AdminConfirmationResult;
+  /** 決済後のランディングでの決済セッションの確認と反映。Stripeに到達できなければ未完了の購入を処理中として返す */
+  confirmCheckoutReturn: CheckoutReturnResult;
   /** メールアドレス変更の確定 */
   confirmEmailChange: ConfirmationResult;
   /** パスワード変更の確定 */
@@ -559,6 +641,8 @@ export type Mutation = {
   postInquiryMessage: InquiryMessage;
   /** 下書きの公開。最上位管理者 */
   publishLegalDocument: AdminLegalDocument;
+  /** 支払いの確定の前の同意の記録。支払える状態の本人の購入だけに記録し、同じ購入の再記録は最新の日時で上書きする */
+  recordCheckoutConsent: Checkout;
   /** リカバリコードの再発行。操作した端末へ新しいセッションを発行する */
   regenerateAdminRecoveryCodes: AdminRecoveryCodeSet;
   /** リカバリコードの再発行 */
@@ -597,6 +681,8 @@ export type Mutation = {
   startAdminInvitation: AdminTotpSetup;
   /** 多要素認証の再設定の開始。完了まで現在の設定が有効なまま残る */
   startAdminTotpReset: AdminTotpSetup;
+  /** 疎通確認用の決済の開始。疎通確認を有効にした環境だけで受け付ける */
+  startSmokeCheckout: CheckoutStart;
   /** 多要素認証の設定の開始 */
   startTotpSetup: TotpSetup;
   /** 未ログイン(停止中の利用者を含む)の問い合わせの送信 */
@@ -665,6 +751,11 @@ export type MutationConfirmAdminEmailChangeArgs = {
 };
 
 
+export type MutationConfirmCheckoutReturnArgs = {
+  sessionId: Scalars['String']['input'];
+};
+
+
 export type MutationConfirmEmailChangeArgs = {
   token: Scalars['String']['input'];
 };
@@ -727,6 +818,11 @@ export type MutationPostInquiryMessageArgs = {
 
 export type MutationPublishLegalDocumentArgs = {
   input: PublishLegalDocumentInput;
+};
+
+
+export type MutationRecordCheckoutConsentArgs = {
+  purchaseId: Scalars['ID']['input'];
 };
 
 
@@ -870,12 +966,57 @@ export type PageInfo = {
   hasNextPage: Scalars['Boolean']['output'];
 };
 
+/** 決済履歴の1件 */
+export type PaymentRecord = {
+  __typename?: 'PaymentRecord';
+  /** 返金・チャージバックの引き落としは負 */
+  amount: Money;
+  id: Scalars['ID']['output'];
+  kind: PaymentRecordKind;
+  occurredAt: Scalars['DateTime']['output'];
+  purpose: PurchaseKind;
+  /** 数量の無い記録はnull */
+  quantity?: Maybe<Scalars['Int']['output']>;
+  status: PaymentRecordStatus;
+};
+
+/** 決済履歴の一覧 */
+export type PaymentRecordConnection = {
+  __typename?: 'PaymentRecordConnection';
+  nodes: Array<PaymentRecord>;
+  pageInfo: PageInfo;
+};
+
+/** 決済履歴の種類 */
+export type PaymentRecordKind =
+  | 'DISPUTE'
+  | 'ONE_TIME'
+  | 'REFUND'
+  | 'SUBSCRIPTION';
+
+/** 決済履歴の状態 */
+export type PaymentRecordStatus =
+  | 'DISPUTED'
+  | 'DISPUTE_LOST'
+  | 'DISPUTE_WON'
+  | 'FAILED'
+  | 'PENDING'
+  | 'SUCCEEDED';
+
 /** 下書きの公開 */
 export type PublishLegalDocumentInput = {
   changeSummary: Scalars['String']['input'];
   expectedStateVersion: Scalars['Int']['input'];
   kind: LegalDocumentKind;
 };
+
+/** 購入種別 */
+export type PurchaseKind =
+  | 'PAYMENTS_SMOKE'
+  | 'SPONSORSHIP'
+  | 'ULTRAS'
+  | 'WEEK_TOURNAMENT_ENTRY'
+  | 'YEAR_TOURNAMENT_ENTRY';
 
 export type Query = {
   __typename?: 'Query';
@@ -899,6 +1040,8 @@ export type Query = {
   adminViewer?: Maybe<AdminViewer>;
   /** 監査ログの検索。変更・削除の操作は無い */
   auditLogs: AuditLogPage;
+  /** 本人の購入の決済画面の表示事項。他人・存在しない購入はcheckout_not_found */
+  checkout: Checkout;
   /** 問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く */
   inquiryCategories: Array<InquiryCategory>;
   /** 問い合わせフォームに表示する送信者。停止していないログイン中の利用者だけ値を返す */
@@ -913,6 +1056,8 @@ export type Query = {
   myInquiries: MemberInquiryPage;
   /** ログイン中の端末の一覧 */
   mySessions: Array<UserSessionSummary>;
+  /** ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順) */
+  paymentHistory: PaymentRecordConnection;
   /** APIサーバーの時刻とデータベースへの到達可否 */
   systemStatus: SystemStatus;
   /** ログイン中の利用者。未ログイン・無効なセッションではnull */
@@ -948,6 +1093,11 @@ export type QueryAuditLogsArgs = {
 };
 
 
+export type QueryCheckoutArgs = {
+  purchaseId: Scalars['ID']['input'];
+};
+
+
 export type QueryLegalDocumentArgs = {
   kind: LegalDocumentKind;
 };
@@ -966,6 +1116,12 @@ export type QueryMemberInquiryArgs = {
 
 export type QueryMyInquiriesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryPaymentHistoryArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 /** 重要な操作の本人確認 */
@@ -1180,6 +1336,12 @@ export type ResolversTypes = {
   AuditLogPage: ResolverTypeWrapper<AuditLogPage>;
   AuditOperator: ResolverTypeWrapper<AuditOperator>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
+  Checkout: ResolverTypeWrapper<Checkout>;
+  CheckoutRejectionReason: CheckoutRejectionReason;
+  CheckoutReturnResult: ResolverTypeWrapper<CheckoutReturnResult>;
+  CheckoutStart: ResolverTypeWrapper<CheckoutStart>;
+  CheckoutStatus: CheckoutStatus;
+  CheckoutSummary: ResolverTypeWrapper<CheckoutSummary>;
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
@@ -1211,10 +1373,16 @@ export type ResolversTypes = {
   MemberInquiryInput: MemberInquiryInput;
   MemberInquiryPage: ResolverTypeWrapper<Omit<MemberInquiryPage, 'items'> & { items: Array<ResolversTypes['MemberInquirySummary']> }>;
   MemberInquirySummary: ResolverTypeWrapper<MemberInquirySummaryModel>;
+  Money: ResolverTypeWrapper<Money>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   OffsetPageInfo: ResolverTypeWrapper<OffsetPageInfo>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
+  PaymentRecord: ResolverTypeWrapper<PaymentRecord>;
+  PaymentRecordConnection: ResolverTypeWrapper<PaymentRecordConnection>;
+  PaymentRecordKind: PaymentRecordKind;
+  PaymentRecordStatus: PaymentRecordStatus;
   PublishLegalDocumentInput: PublishLegalDocumentInput;
+  PurchaseKind: PurchaseKind;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: ResolverTypeWrapper<RecoveryCodeSet>;
@@ -1261,6 +1429,10 @@ export type ResolversParentTypes = {
   AuditLogPage: AuditLogPage;
   AuditOperator: AuditOperator;
   Boolean: Scalars['Boolean']['output'];
+  Checkout: Checkout;
+  CheckoutReturnResult: CheckoutReturnResult;
+  CheckoutStart: CheckoutStart;
+  CheckoutSummary: CheckoutSummary;
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
   DateTime: Scalars['DateTime']['output'];
@@ -1287,9 +1459,12 @@ export type ResolversParentTypes = {
   MemberInquiryInput: MemberInquiryInput;
   MemberInquiryPage: Omit<MemberInquiryPage, 'items'> & { items: Array<ResolversParentTypes['MemberInquirySummary']> };
   MemberInquirySummary: MemberInquirySummaryModel;
+  Money: Money;
   Mutation: Record<PropertyKey, never>;
   OffsetPageInfo: OffsetPageInfo;
   PageInfo: PageInfo;
+  PaymentRecord: PaymentRecord;
+  PaymentRecordConnection: PaymentRecordConnection;
   PublishLegalDocumentInput: PublishLegalDocumentInput;
   Query: Record<PropertyKey, never>;
   ReAuthenticationInput: ReAuthenticationInput;
@@ -1463,6 +1638,38 @@ export type AuditOperatorResolvers<ContextType = GraphQLContext, ParentType exte
   nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
+export type CheckoutResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Checkout'] = ResolversParentTypes['Checkout']> = {
+  acceptUntil?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  canRestart?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  clientSecret?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  consentVersion?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['PurchaseKind'], ParentType, ContextType>;
+  purchaseId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  quantity?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  rejectionReason?: Resolver<Maybe<ResolversTypes['CheckoutRejectionReason']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['CheckoutStatus'], ParentType, ContextType>;
+  summary?: Resolver<ResolversTypes['CheckoutSummary'], ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  unitPrice?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+};
+
+export type CheckoutReturnResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['CheckoutReturnResult'] = ResolversParentTypes['CheckoutReturnResult']> = {
+  checkout?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType>;
+};
+
+export type CheckoutStartResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['CheckoutStart'] = ResolversParentTypes['CheckoutStart']> = {
+  purchaseId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+};
+
+export type CheckoutSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['CheckoutSummary'] = ResolversParentTypes['CheckoutSummary']> = {
+  additionalNotes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  isSubscription?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  itemName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  quantityLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  serviceTiming?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type ConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ConfirmationResult'] = ResolversParentTypes['ConfirmationResult']> = {
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
 };
@@ -1576,6 +1783,11 @@ export type MemberInquirySummaryResolvers<ContextType = GraphQLContext, ParentTy
   status?: Resolver<ResolversTypes['InquiryStatus'], ParentType, ContextType>;
 };
 
+export type MoneyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Money'] = ResolversParentTypes['Money']> = {
+  amount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  currency?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   adminLogin?: Resolver<ResolversTypes['AdminSecondFactorRequired'], ParentType, ContextType, RequireFields<MutationAdminLoginArgs, 'email' | 'password'>>;
   adminLogout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
@@ -1587,6 +1799,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   completeAdminTotpReset?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationCompleteAdminTotpResetArgs, 'totpCode'>>;
   completeSecondFactorLogin?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationCompleteSecondFactorLoginArgs, 'input'>>;
   confirmAdminEmailChange?: Resolver<ResolversTypes['AdminConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmAdminEmailChangeArgs, 'token'>>;
+  confirmCheckoutReturn?: Resolver<ResolversTypes['CheckoutReturnResult'], ParentType, ContextType, RequireFields<MutationConfirmCheckoutReturnArgs, 'sessionId'>>;
   confirmEmailChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmEmailChangeArgs, 'token'>>;
   confirmPasswordChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmPasswordChangeArgs, 'token'>>;
   createInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationCreateInquiryCategoryArgs, 'name'>>;
@@ -1600,6 +1813,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   postInquiryMessage?: Resolver<ResolversTypes['InquiryMessage'], ParentType, ContextType, RequireFields<MutationPostInquiryMessageArgs, 'input' | 'inquiryId'>>;
   publishLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationPublishLegalDocumentArgs, 'input'>>;
+  recordCheckoutConsent?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<MutationRecordCheckoutConsentArgs, 'purchaseId'>>;
   regenerateAdminRecoveryCodes?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateAdminRecoveryCodesArgs, 'reAuthentication'>>;
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
@@ -1619,6 +1833,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   saveLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationSaveLegalDocumentDraftArgs, 'input'>>;
   startAdminInvitation?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminInvitationArgs, 'nickname' | 'password' | 'token'>>;
   startAdminTotpReset?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminTotpResetArgs, 'reAuthentication'>>;
+  startSmokeCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
   startTotpSetup?: Resolver<ResolversTypes['TotpSetup'], ParentType, ContextType, RequireFields<MutationStartTotpSetupArgs, 'input'>>;
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
@@ -1639,6 +1854,21 @@ export type PageInfoResolvers<ContextType = GraphQLContext, ParentType extends R
   hasNextPage?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
+export type PaymentRecordResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['PaymentRecord'] = ResolversParentTypes['PaymentRecord']> = {
+  amount?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['PaymentRecordKind'], ParentType, ContextType>;
+  occurredAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  purpose?: Resolver<ResolversTypes['PurchaseKind'], ParentType, ContextType>;
+  quantity?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['PaymentRecordStatus'], ParentType, ContextType>;
+};
+
+export type PaymentRecordConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['PaymentRecordConnection'] = ResolversParentTypes['PaymentRecordConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['PaymentRecord']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
   adminInquiries?: Resolver<ResolversTypes['AdminInquiryPage'], ParentType, ContextType, Partial<QueryAdminInquiriesArgs>>;
@@ -1650,6 +1880,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminUnhandledInquiryCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
+  checkout?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<QueryCheckoutArgs, 'purchaseId'>>;
   inquiryCategories?: Resolver<Array<ResolversTypes['InquiryCategory']>, ParentType, ContextType>;
   inquiryComposer?: Resolver<Maybe<ResolversTypes['InquiryComposer']>, ParentType, ContextType>;
   legalDocument?: Resolver<ResolversTypes['LegalDocument'], ParentType, ContextType, RequireFields<QueryLegalDocumentArgs, 'kind'>>;
@@ -1657,6 +1888,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   memberInquiry?: Resolver<Maybe<ResolversTypes['MemberInquiry']>, ParentType, ContextType, RequireFields<QueryMemberInquiryArgs, 'id'>>;
   myInquiries?: Resolver<ResolversTypes['MemberInquiryPage'], ParentType, ContextType, Partial<QueryMyInquiriesArgs>>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
+  paymentHistory?: Resolver<ResolversTypes['PaymentRecordConnection'], ParentType, ContextType, Partial<QueryPaymentHistoryArgs>>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
 };
@@ -1724,6 +1956,10 @@ export type Resolvers<ContextType = GraphQLContext> = {
   AuditLogEntry?: AuditLogEntryResolvers<ContextType>;
   AuditLogPage?: AuditLogPageResolvers<ContextType>;
   AuditOperator?: AuditOperatorResolvers<ContextType>;
+  Checkout?: CheckoutResolvers<ContextType>;
+  CheckoutReturnResult?: CheckoutReturnResultResolvers<ContextType>;
+  CheckoutStart?: CheckoutStartResolvers<ContextType>;
+  CheckoutSummary?: CheckoutSummaryResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   InquiryCategory?: InquiryCategoryResolvers<ContextType>;
@@ -1742,9 +1978,12 @@ export type Resolvers<ContextType = GraphQLContext> = {
   MemberInquiry?: MemberInquiryResolvers<ContextType>;
   MemberInquiryPage?: MemberInquiryPageResolvers<ContextType>;
   MemberInquirySummary?: MemberInquirySummaryResolvers<ContextType>;
+  Money?: MoneyResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   OffsetPageInfo?: OffsetPageInfoResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;
+  PaymentRecord?: PaymentRecordResolvers<ContextType>;
+  PaymentRecordConnection?: PaymentRecordConnectionResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   RecoveryCodeSet?: RecoveryCodeSetResolvers<ContextType>;
   SecondFactorRequired?: SecondFactorRequiredResolvers<ContextType>;
