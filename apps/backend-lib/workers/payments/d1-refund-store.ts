@@ -3,6 +3,7 @@ import {
   asc,
   eq,
   inArray,
+  isNotNull,
   isNull,
   lt,
   ne,
@@ -135,6 +136,39 @@ export class D1RefundStore implements RefundStore, RefundStatements {
       .orderBy(asc(refunds.createdAt), asc(refunds.id))
       .limit(input.limit);
     return rows.map(toRecord);
+  }
+
+  async findStalledDispatched(input: {
+    readonly dispatchedBefore: Date;
+    readonly limit: number;
+  }): Promise<readonly RefundRequestRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(refunds)
+      .where(
+        and(
+          eq(refunds.status, 'requested'),
+          isNotNull(refunds.dispatchedAt),
+          lt(refunds.dispatchedAt, input.dispatchedBefore),
+        ),
+      )
+      .orderBy(asc(refunds.dispatchedAt), asc(refunds.id))
+      .limit(input.limit);
+    return rows.map(toRecord);
+  }
+
+  async markRedispatched(refundRequestId: string, at: Date): Promise<boolean> {
+    const result = await this.db
+      .update(refunds)
+      .set({ dispatchedAt: at })
+      .where(
+        and(
+          eq(refunds.id, refundRequestId),
+          eq(refunds.status, 'requested'),
+          isNotNull(refunds.dispatchedAt),
+        ),
+      );
+    return result.meta.changes > 0;
   }
 
   async markNotice(input: {

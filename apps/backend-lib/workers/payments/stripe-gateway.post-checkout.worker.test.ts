@@ -499,6 +499,112 @@ describe('StripeApiGateway(持ち主の手がかり)', () => {
   });
 });
 
+describe('StripeApiGateway(返金の依頼に結び付いた返金の照会)', () => {
+  const OTHER_REQUEST_ID = '01JBQ6Z8Y3V4W5X6Y7Z8A9B0C4';
+
+  test('PaymentIntentの返金を100件ずつページ送りで読み、メタデータの依頼のIDが一致する返金を返す', async () => {
+    const fake = createFakeStripe((call) =>
+      call.query.get('starting_after') === null
+        ? stripeJson({
+            object: 'list',
+            has_more: true,
+            data: [
+              refundObject({
+                id: 're_other',
+                metadata: { refund_request_id: OTHER_REQUEST_ID },
+              }),
+              refundObject({ id: 're_manual', metadata: {} }),
+            ],
+          })
+        : stripeJson(
+            list([refundObject({ id: 're_match', status: 'pending' })]),
+          ),
+    );
+
+    const snapshot = await gatewayWith(fake, 'event').findRefundByRequestId({
+      paymentIntentId: 'pi_test_1',
+      refundRequestId: REFUND_REQUEST_ID,
+    });
+
+    expect(snapshot).toMatchObject({ id: 're_match', status: 'pending' });
+    expect(
+      fake.calls.map(({ method, path, query }) => ({
+        method,
+        path,
+        paymentIntent: query.get('payment_intent'),
+        limit: query.get('limit'),
+        startingAfter: query.get('starting_after'),
+      })),
+    ).toStrictEqual([
+      {
+        method: 'GET',
+        path: '/v1/refunds',
+        paymentIntent: 'pi_test_1',
+        limit: '100',
+        startingAfter: null,
+      },
+      {
+        method: 'GET',
+        path: '/v1/refunds',
+        paymentIntent: 'pi_test_1',
+        limit: '100',
+        startingAfter: 're_manual',
+      },
+    ]);
+  });
+
+  test('一致する返金が見つかれば、残りのページを読まない', async () => {
+    const fake = createFakeStripe(() =>
+      stripeJson({
+        object: 'list',
+        has_more: true,
+        data: [refundObject({ id: 're_match' })],
+      }),
+    );
+
+    const snapshot = await gatewayWith(fake).findRefundByRequestId({
+      paymentIntentId: 'pi_test_1',
+      refundRequestId: REFUND_REQUEST_ID,
+    });
+
+    expect(snapshot?.id).toBe('re_match');
+    expect(fake.calls).toHaveLength(1);
+  });
+
+  test('一致する返金が無ければundefinedを返す', async () => {
+    const fake = createFakeStripe(() =>
+      stripeJson(
+        list([
+          refundObject({
+            id: 're_other',
+            metadata: { refund_request_id: OTHER_REQUEST_ID },
+          }),
+        ]),
+      ),
+    );
+
+    await expect(
+      gatewayWith(fake).findRefundByRequestId({
+        paymentIntentId: 'pi_test_1',
+        refundRequestId: REFUND_REQUEST_ID,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  test('照会の500は一時的な失敗(StripeUnavailableError)になる', async () => {
+    const fake = createFakeStripe(() =>
+      stripeError(500, { type: 'api_error' }),
+    );
+
+    await expect(
+      gatewayWith(fake).findRefundByRequestId({
+        paymentIntentId: 'pi_test_1',
+        refundRequestId: REFUND_REQUEST_ID,
+      }),
+    ).rejects.toBeInstanceOf(StripeUnavailableError);
+  });
+});
+
 describe('StripeApiGateway(返金の作成)', () => {
   test('PaymentIntent・金額・理由・依頼と購入のIDを、渡された冪等キーで送る', async () => {
     const fake = createFakeStripe(() =>

@@ -164,7 +164,7 @@ describe('未完了の決済セッションの失効の対象', () => {
     await insertPurchase(1);
     await setStatus(1, 'fulfilled');
     await insertPurchase(2);
-    await setStatus(2, 'superseded');
+    await setStatus(2, 'expired');
     const { expirer, gateway } = expirerWith();
 
     const result = await expirer.expireOpen({
@@ -175,6 +175,83 @@ describe('未完了の決済セッションの失効の対象', () => {
 
     expect(result).toEqual({ expired: 0, remaining: false });
     expect(gateway.calls).toEqual([]);
+  });
+});
+
+describe('置き換え済みの購入', () => {
+  test('旧セッションの失効が届いていない置き換え済みの購入も、決済セッションを失効させて購入を失効にし、失効の数に含める', async () => {
+    await insertPurchase(1);
+    await setStatus(1, 'superseded');
+    await insertPurchase(2);
+    const { expirer, gateway } = expirerWith();
+
+    const result = await expirer.expireOpen({
+      userId: userIdOf(1),
+      kinds: 'all',
+      limit: 50,
+    });
+
+    expect(result).toEqual({ expired: 2, remaining: false });
+    expect(expiredSessionIds(gateway)).toEqual([
+      sessionIdOf(1),
+      sessionIdOf(2),
+    ]);
+    expect(await readPurchaseRow(purchaseIdOf(1))).toMatchObject({
+      status: 'expired',
+      lastEventAt: NOW,
+    });
+    expect(await statusOf(2)).toBe('expired');
+  });
+
+  test('Stripe上で既に支払いが完了していた置き換え済みの購入は反映して確定させ、失効の数に含めない', async () => {
+    await insertPurchase(1);
+    await setStatus(1, 'superseded');
+    const { expirer, gateway } = expirerWith({
+      expireCheckoutSession: () => Promise.resolve('not_open'),
+      retrieveCheckoutSession: () => Promise.resolve(snapshotOf(1)),
+    });
+
+    const result = await expirer.expireOpen({
+      userId: userIdOf(1),
+      kinds: 'all',
+      limit: 50,
+    });
+
+    expect(result).toEqual({ expired: 0, remaining: false });
+    expect(
+      gateway.callsOf('retrieveCheckoutSession').map(({ args }) => args[0]),
+    ).toEqual([sessionIdOf(1)]);
+    expect(await statusOf(1)).toBe('fulfilled');
+    expect(await readRecords()).toHaveLength(1);
+  });
+
+  test('上限の外に置き換え済みの購入が残れば残りがあることを返し、続きの呼び出しで失効させて終わる', async () => {
+    await insertPurchase(1);
+    await setStatus(1, 'processing');
+    await insertPurchase(2);
+    await insertPurchase(3);
+    await setStatus(3, 'superseded');
+    const { expirer, gateway } = expirerWith();
+
+    const first = await expirer.expireOpen({
+      userId: userIdOf(1),
+      kinds: 'all',
+      limit: 1,
+    });
+    const second = await expirer.expireOpen({
+      userId: userIdOf(1),
+      kinds: 'all',
+      limit: 1,
+    });
+
+    expect(first).toEqual({ expired: 1, remaining: true });
+    expect(second).toEqual({ expired: 1, remaining: false });
+    expect(expiredSessionIds(gateway)).toEqual([
+      sessionIdOf(2),
+      sessionIdOf(3),
+    ]);
+    expect(await statusOf(1)).toBe('processing');
+    expect(await statusOf(3)).toBe('expired');
   });
 });
 

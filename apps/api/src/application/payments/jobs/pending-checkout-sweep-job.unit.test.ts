@@ -15,6 +15,7 @@ import {
   sessionSnapshotOf,
 } from '../../../../test/support/payments-checkout-fakes.ts';
 import {
+  clockByCalls,
   createIncidentRecorder,
   createJobIds,
   createJobLogCapture,
@@ -44,6 +45,8 @@ import {
   PENDING_NOTICE_LIMIT,
   PendingCheckoutSweepJob,
   STALE_CHECKOUT_LIMIT,
+  STALE_CHECKOUT_TIME_LIMIT_MS,
+  STALLED_REFUND_LIMIT,
   UNDISPATCHED_REFUND_LIMIT,
 } from './pending-checkout-sweep-job.ts';
 
@@ -52,6 +55,8 @@ const CRON = '21 12 * * *';
 const ONE_HOUR_BEFORE = new Date(SWEEP_TIME.getTime() - HOUR_MS);
 
 const TEN_MINUTES_BEFORE = new Date(SWEEP_TIME.getTime() - 10 * MINUTE_MS);
+
+const ONE_DAY_BEFORE = new Date(SWEEP_TIME.getTime() - 24 * HOUR_MS);
 
 const logs = createJobLogCapture();
 
@@ -110,6 +115,7 @@ interface SweepSetup {
   readonly sessions?: ReadonlyMap<string, SessionBehavior>;
   readonly dispatchFailures?: ReadonlyMap<string, Error>;
   readonly notices?: ReadonlyMap<string, NoticeBehavior>;
+  readonly timeOf?: (callCount: number) => Date;
 }
 
 function setup(options: SweepSetup = {}) {
@@ -118,8 +124,13 @@ function setup(options: SweepSetup = {}) {
   const gatewayCalls: string[] = [];
   const reflections: JobReflection[] = [];
   const dispatched: string[] = [];
+  const redispatched: string[] = [];
   const noticeCalls: NoticeCalls = { purchases: [], refunds: [] };
   const recorder = createIncidentRecorder();
+  const clock =
+    options.timeOf === undefined
+      ? RUN_CLOCK
+      : clockByCalls(gatewayCalls, options.timeOf);
   const job = new PendingCheckoutSweepJob(
     purchases.store(),
     refunds.store(),
@@ -129,9 +140,14 @@ function setup(options: SweepSetup = {}) {
       expiredSnapshot,
     ),
     createJobReflector(purchases, reflections),
-    createJobPaymentRefunds(refunds, dispatched, options.dispatchFailures),
+    createJobPaymentRefunds(
+      refunds,
+      dispatched,
+      options.dispatchFailures,
+      redispatched,
+    ),
     createJobNotifier(purchases, refunds, noticeCalls, options.notices),
-    RUN_CLOCK,
+    clock,
     createJobIds(),
     recorder.reporter,
   );
@@ -142,6 +158,7 @@ function setup(options: SweepSetup = {}) {
     gatewayCalls,
     reflections,
     dispatched,
+    redispatched,
     noticeCalls,
     incidents: recorder.incidents,
   };
@@ -151,8 +168,15 @@ const run = (job: PendingCheckoutSweepJob) =>
   job.run(jobContextAt(SWEEP_TIME, CRON));
 
 const EMPTY_SUMMARY = {
-  reconciliation: { targets: 0, applied: 0, unchanged: 0, failed: 0 },
+  reconciliation: {
+    targets: 0,
+    applied: 0,
+    unchanged: 0,
+    failed: 0,
+    stopped: 0,
+  },
   refunds: { targets: 0, failed: 0 },
+  stalledRefunds: { targets: 0, redispatched: 0, failed: 0 },
   notices: { targets: 0, requested: 0, failed: 0 },
 };
 
@@ -176,7 +200,7 @@ describe('PENDING_CHECKOUT_SWEEP_JOB_DEFINITION', () => {
 });
 
 describe('PendingCheckoutSweepJob', () => {
-  test('有効期限を1時間過ぎた購入を最大200件、作成から10分経った未送信の返金を最大100件、反映・返金の成功から10分経った依頼待ちのメールを最大100件ずつ探す', async () => {
+  test('有効期限を1時間過ぎた購入を最大200件、作成から10分経った未送信の返金を最大100件、送信から24時間経った依頼中の返金を最大100件、反映・返金の成功から10分経った依頼待ちのメールを最大100件ずつ探す', async () => {
     const { job, purchases, refunds } = setup();
 
     await run(job);
@@ -184,8 +208,12 @@ describe('PendingCheckoutSweepJob', () => {
     expect([
       STALE_CHECKOUT_LIMIT,
       UNDISPATCHED_REFUND_LIMIT,
+      STALLED_REFUND_LIMIT,
       PENDING_NOTICE_LIMIT,
-    ]).toEqual([200, 100, 100]);
+    ]).toEqual([200, 100, 100, 100]);
+    expect(refunds.queries.stalled).toEqual([
+      { dispatchedBefore: ONE_DAY_BEFORE, limit: 100 },
+    ]);
     expect(purchases.queries.staleOpen).toEqual([
       { expiredBefore: ONE_HOUR_BEFORE, limit: 200 },
     ]);
@@ -304,6 +332,103 @@ describe('PendingCheckoutSweepJob', () => {
       ...EMPTY_SUMMARY,
       refunds: { targets: 2, failed: 1 },
     });
+  });
+
+  test('送信から24時間以上経っても依頼中のままの返金の依頼を送り直し、送り直した依頼のIDをまとめて知らせ、送り直せなかった依頼を通知する', async () => {
+    const redispatchError = new Error('Queueに送れません');
+    const stalled = jobRefundOf(1, {
+      dispatchedAt: new Date(ONE_DAY_BEFORE.getTime() - 1),
+    });
+    const failing = jobRefundOf(2, {
+      dispatchedAt: new Date(ONE_DAY_BEFORE.getTime() - HOUR_MS),
+    });
+    const recent = jobRefundOf(3, { dispatchedAt: ONE_DAY_BEFORE });
+    const submitted = jobRefundOf(4, {
+      status: 'submitted',
+      dispatchedAt: new Date(ONE_DAY_BEFORE.getTime() - HOUR_MS),
+    });
+    const { job, refunds, dispatched, redispatched, incidents } = setup({
+      refunds: [stalled, failing, recent, submitted],
+      dispatchFailures: new Map([[failing.id, redispatchError]]),
+    });
+
+    await run(job);
+
+    expect(redispatched).toEqual([failing.id, stalled.id]);
+    expect(dispatched).toEqual([]);
+    expect(refunds.get(stalled.id)?.dispatchedAt).toEqual(RUN_CLOCK_TIME);
+    expect(refunds.get(recent.id)?.dispatchedAt).toEqual(ONE_DAY_BEFORE);
+    expect(incidents).toEqual([
+      {
+        kind: 'refund-dispatch-failed',
+        job: 'payments.pending-checkout-sweep',
+        refundRequestId: failing.id,
+        error: redispatchError,
+      },
+      {
+        kind: 'refund-redispatched',
+        job: 'payments.pending-checkout-sweep',
+        refundRequestIds: [stalled.id],
+      },
+    ]);
+    expect(logs.of('pending-checkout-sweep').at(-1)?.properties).toEqual({
+      ...EMPTY_SUMMARY,
+      stalledRefunds: { targets: 2, redispatched: 1, failed: 1 },
+    });
+  });
+
+  test('送り直した返金の依頼が無ければ、送り直しの知らせを送らない', async () => {
+    const { job, incidents } = setup({
+      refunds: [jobRefundOf(1, { dispatchedAt: ONE_DAY_BEFORE })],
+    });
+
+    await run(job);
+
+    expect(incidents).toEqual([]);
+  });
+
+  test('突合はジョブの開始から30秒ちょうどまで続け、過ぎたら残りの購入を止めて残った件数を知らせ、返金とメールの確認を続ける', async () => {
+    const stale = [1, 2, 3, 4].map((serial) =>
+      staleOf(serial, {
+        expiresAt: new Date(
+          ONE_HOUR_BEFORE.getTime() - (5 - serial) * MINUTE_MS,
+        ),
+      }),
+    );
+    const refund = jobRefundOf(1);
+    const notice = noticePendingOf(2);
+    const { job, purchases, gatewayCalls, dispatched, noticeCalls, incidents } =
+      setup({
+        purchases: stale,
+        refunds: [refund, notice],
+        // 開始と1件目の前は開始の時刻、2件目の前は15秒後、3件目の前は上限ちょうど、4件目の前は上限の1ms後
+        timeOf: (callCount) =>
+          new Date(
+            RUN_CLOCK_TIME.getTime() +
+              Math.min(callCount, 2) * (STALE_CHECKOUT_TIME_LIMIT_MS / 2) +
+              (callCount >= 3 ? 1 : 0),
+          ),
+      });
+
+    await run(job);
+
+    expect(STALE_CHECKOUT_TIME_LIMIT_MS).toBe(30_000);
+    expect(gatewayCalls).toEqual(
+      [1, 2, 3].map((serial) => `retrieve:${sessionIdOf(serial)}`),
+    );
+    expect(purchases.get(stale[3]?.id ?? '')?.status).toBe('open');
+    expect(incidents).toEqual([
+      {
+        kind: 'reconciliation-time-limit-reached',
+        job: 'payments.pending-checkout-sweep',
+        remaining: 1,
+      },
+    ]);
+    expect(dispatched).toEqual([refund.id]);
+    expect(noticeCalls.refunds).toEqual([notice.id]);
+    expect(
+      logs.of('pending-checkout-sweep').at(-1)?.properties.reconciliation,
+    ).toEqual({ targets: 4, applied: 3, unchanged: 0, failed: 0, stopped: 1 });
   });
 
   test('依頼待ちのまま10分以上経った購入確認メールと自動返金の通知を依頼し、依頼済みのメールを依頼しない', async () => {

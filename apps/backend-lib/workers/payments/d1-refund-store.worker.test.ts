@@ -249,6 +249,74 @@ describe('D1RefundStoreの送信と状態の更新', () => {
   });
 });
 
+describe('D1RefundStoreの送信の後に依頼中のまま残った依頼', () => {
+  test('送信の日時が指定の日時より前で依頼中の依頼を、送信の古い順に上限の件数まで返し、未送信と依頼中でない依頼を返さない', async () => {
+    await insertRefunds(
+      newRefundRequest(1),
+      newRefundRequest(2),
+      newRefundRequest(3),
+      newRefundRequest(4),
+      newRefundRequest(5),
+    );
+    await store.markDispatched(refundIdOf(1), after(3 * MINUTE));
+    await store.markDispatched(refundIdOf(2), after(1 * MINUTE));
+    await store.markDispatched(refundIdOf(3), after(10 * MINUTE));
+    await store.markDispatched(refundIdOf(4), after(0));
+    await store.updateStatus({
+      refundRequestId: refundIdOf(4),
+      status: 'submitted',
+      stripeRefundId: 're_4',
+    });
+
+    expect(
+      idsOf(
+        await store.findStalledDispatched({
+          dispatchedBefore: after(10 * MINUTE),
+          limit: 1,
+        }),
+      ),
+    ).toEqual([refundIdOf(2)]);
+    expect(
+      idsOf(
+        await store.findStalledDispatched({
+          dispatchedBefore: after(10 * MINUTE),
+          limit: 100,
+        }),
+      ),
+    ).toEqual([refundIdOf(2), refundIdOf(1)]);
+  });
+
+  test('送り直しの日時は送信済みで依頼中のときだけ改め、改めたかを返す', async () => {
+    await insertRefunds(
+      newRefundRequest(1),
+      newRefundRequest(2),
+      newRefundRequest(3),
+    );
+    await store.markDispatched(refundIdOf(1), after(1));
+    await store.markDispatched(refundIdOf(3), after(1));
+    await store.updateStatus({
+      refundRequestId: refundIdOf(3),
+      status: 'failed',
+      failureCode: 'charge_already_refunded',
+    });
+
+    const results = [
+      await store.markRedispatched(refundIdOf(1), after(2)),
+      await store.markRedispatched(refundIdOf(2), after(2)),
+      await store.markRedispatched(refundIdOf(3), after(2)),
+    ];
+
+    expect(results).toEqual([true, false, false]);
+    expect((await store.findById(refundIdOf(1)))?.dispatchedAt).toEqual(
+      after(2),
+    );
+    expect((await store.findById(refundIdOf(2)))?.dispatchedAt).toBeNull();
+    expect((await store.findById(refundIdOf(3)))?.dispatchedAt).toEqual(
+      after(1),
+    );
+  });
+});
+
 describe('D1RefundStoreのStripeの返金の状態の反映', () => {
   test('前進の元の状態のときだけ、状態・返金のID・失敗の理由を更新する', async () => {
     await insertRefunds(newRefundRequest(1));

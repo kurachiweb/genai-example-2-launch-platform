@@ -128,6 +128,25 @@ export class D1PaymentRefunds
     }
   }
 
+  // 依頼中の依頼だけを処理する返金のメッセージが、再試行の上限でデッドレターになった後に送り直す
+  async redispatch(refundRequestId: string): Promise<boolean> {
+    const refund = await this.refunds.findById(refundRequestId);
+    if (refund?.status !== 'requested' || refund.dispatchedAt === null) {
+      return false;
+    }
+    await this.publisher.publish(PAYMENTS_REFUND_MESSAGE, { refundRequestId });
+    const marked = await this.refunds.markRedispatched(
+      refundRequestId,
+      this.clock.now(),
+    );
+    this.logger.info('依頼中のまま残った返金の依頼を送り直しました', {
+      refundRequestId,
+      previousDispatchedAt: refund.dispatchedAt,
+      marked,
+    });
+    return true;
+  }
+
   async prepare(input: RefundRequestInput): Promise<PreparedRefund> {
     // 既存のreflection:の依頼を重複として返さないよう、形式の検査を依頼キーの照会より先に行う
     if (!isAcceptableRequestKey(input.requestKey)) {

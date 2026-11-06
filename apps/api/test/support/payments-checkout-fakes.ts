@@ -259,6 +259,7 @@ export function createSessionGateway(
     retrieveRefund: unexpected,
     retrieveDispute: unexpected,
     retrieveSubscription: unexpected,
+    findRefundByRequestId: unexpected,
     createRefund: unexpected,
     cancelSubscription: unexpected,
     createPortalSession: unexpected,

@@ -32,8 +32,12 @@ type PurchaseRow = typeof paymentPurchases.$inferSelect;
 
 const purchases = paymentPurchases;
 
-// 利用者の決済セッションの失効の対象。処理中はStripe上で失効できないが、失効の操作で反映に回す
-const OPEN_FOR_USER: readonly PurchaseStatus[] = ['open', 'processing'];
+// 利用者の決済セッションの失効の対象。処理中はStripe上で失効できないが、失効の操作で反映に回す。置き換え済みは旧セッションの失効が失敗していればStripe上で支払えるまま残る
+const OPEN_FOR_USER: readonly PurchaseStatus[] = [
+  'open',
+  'processing',
+  'superseded',
+];
 
 // 置き換え済みの購入も、旧セッションの失効の前に支払いが確定し得るため突合する
 const RECONCILABLE: readonly PurchaseStatus[] = [

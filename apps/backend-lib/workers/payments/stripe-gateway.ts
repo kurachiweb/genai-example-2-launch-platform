@@ -56,6 +56,8 @@ const LOOKUP_KEYS_PER_REQUEST = 10;
 
 const PRICE_LIST_LIMIT = 100;
 
+const REFUND_LIST_LIMIT = 100;
+
 // 支払いのPaymentIntentと、Linkの資金源のグループを持つ最新の請求、定期課金の初回の請求の支払いを1回で取得する
 const CHECKOUT_SESSION_EXPAND = [
   'payment_intent.latest_charge',
@@ -326,6 +328,26 @@ export class StripeApiGateway implements StripeGateway {
       client.subscriptions.retrieve(subscriptionId),
     );
     return toSubscriptionSnapshot(subscription);
+  }
+
+  // 返金は検索APIの対象外のため、PaymentIntentの返金の一覧をページ送りで読み、一致した時点で止める
+  async findRefundByRequestId(input: {
+    readonly paymentIntentId: string;
+    readonly refundRequestId: string;
+  }): Promise<StripeRefundSnapshot | undefined> {
+    const client = this.requireClient();
+    const refund = await this.call('findRefundByRequestId', async () => {
+      for await (const candidate of client.refunds.list({
+        payment_intent: input.paymentIntentId,
+        limit: REFUND_LIST_LIMIT,
+      })) {
+        if (candidate.metadata?.refund_request_id === input.refundRequestId) {
+          return candidate;
+        }
+      }
+      return undefined;
+    });
+    return refund === undefined ? undefined : toRefundSnapshot(refund);
   }
 
   // 金額がnullなら送らず、Stripeが返金できる残りの全額を返金する

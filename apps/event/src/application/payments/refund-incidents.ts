@@ -3,12 +3,20 @@ export type RefundIncident =
   | {
       readonly kind: 'stripe-rejected';
       readonly refundRequestId: string;
-      readonly operation: 'create_refund' | 'cancel_subscription';
+      readonly operation:
+        'find_refund' | 'create_refund' | 'cancel_subscription';
       readonly stripeErrorCode: string;
     }
   | {
       readonly kind: 'missing-payment-intent';
       readonly refundRequestId: string;
+    }
+  | {
+      // 送り直しの前に作られていた返金が、Stripe上で既に失敗していた
+      readonly kind: 'stripe-refund-failed';
+      readonly refundRequestId: string;
+      readonly stripeRefundId: string;
+      readonly failureCode: string | null;
     };
 
 export type RefundIncidentKind = RefundIncident['kind'];

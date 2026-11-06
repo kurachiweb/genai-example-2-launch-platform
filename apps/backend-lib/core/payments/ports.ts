@@ -145,6 +145,11 @@ export interface StripeGateway {
   retrieveSubscription(
     subscriptionId: string,
   ): Promise<StripeSubscriptionSnapshot>;
+  // 返金の依頼のIDをメタデータに持つ返金。冪等キーの有効期間を過ぎた送り直しで、同じ依頼の返金を2回作らないために照会する
+  findRefundByRequestId(input: {
+    readonly paymentIntentId: string;
+    readonly refundRequestId: string;
+  }): Promise<StripeRefundSnapshot | undefined>;
   createRefund(input: {
     readonly paymentIntentId: string;
     readonly amount: MinorUnitAmount | null;
@@ -438,6 +443,13 @@ export interface RefundStore {
     readonly createdBefore: Date;
     readonly limit: number;
   }): Promise<readonly RefundRequestRecord[]>;
+  // 送信の日時が指定の日時より前で、依頼中のまま残った依頼
+  findStalledDispatched(input: {
+    readonly dispatchedBefore: Date;
+    readonly limit: number;
+  }): Promise<readonly RefundRequestRecord[]>;
+  // 送信済みで依頼中のときだけ送信の日時を改め、改めたかを返す
+  markRedispatched(refundRequestId: string, at: Date): Promise<boolean>;
   // 依頼待ちのときだけ進め、進めたかを返す
   markNotice(input: {
     readonly refundRequestId: string;
@@ -594,6 +606,8 @@ export interface PaymentRefunds {
   request(input: RefundRequestInput): Promise<RefundRequestResult>;
   // 送信済みなら何もしない。送信の失敗はログだけにし、日次の確認で送り直す
   dispatch(refundRequestId: string): Promise<void>;
+  // 送信済みで依頼中の依頼だけを送り直して送信の日時を改め、送り直したかを返す。送信の失敗は例外
+  redispatch(refundRequestId: string): Promise<boolean>;
 }
 
 // requestedは依頼を記録した、skippedは宛先が無い、または入力を組み立てられず対象外として記録した、not_pendingは依頼待ちでない、failedは送信に失敗し依頼待ちのまま残した(日次の確認が依頼し直す)

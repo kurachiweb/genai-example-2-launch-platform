@@ -17,6 +17,8 @@ export interface ReconciliationTally {
   readonly applied: number;
   readonly unchanged: number;
   readonly failed: number;
+  // 時間の上限に達して突合しなかった件数
+  readonly stopped: number;
 }
 
 export interface PurchaseReconciliation {
@@ -74,15 +76,25 @@ async function reconcileOne(
   return outcome.kind === 'applied' ? 'applied' : 'unchanged';
 }
 
-// 反映は状態の前進だけを行うため、同じ購入を何度突合しても結果は変わらない。1件の失敗で残りを止めず、失敗した購入はエラートラッキングへ知らせる
+// 反映は状態の前進だけを行うため、同じ購入を何度突合しても結果は変わらない。1件の失敗で残りを止めず、失敗した購入はエラートラッキングへ知らせる。stopAfterを過ぎたら残りを次の起動に任せて止め、残った件数を知らせる
 export async function reconcilePurchases(
   reconciliation: PurchaseReconciliation,
   purchases: readonly PurchaseRecord[],
+  stopAfter: Date,
 ): Promise<ReconciliationTally> {
   let applied = 0;
   let unchanged = 0;
   let failed = 0;
-  for (const purchase of purchases) {
+  for (const [index, purchase] of purchases.entries()) {
+    if (reconciliation.clock.now().getTime() > stopAfter.getTime()) {
+      const stopped = purchases.length - index;
+      reconciliation.incidents.report({
+        kind: 'reconciliation-time-limit-reached',
+        job: reconciliation.job,
+        remaining: stopped,
+      });
+      return { targets: purchases.length, applied, unchanged, failed, stopped };
+    }
     const sessionId = purchase.stripeCheckoutSessionId;
     if (sessionId === null) {
       unchanged += 1;
@@ -106,5 +118,11 @@ export async function reconcilePurchases(
       });
     }
   }
-  return { targets: purchases.length, applied, unchanged, failed };
+  return {
+    targets: purchases.length,
+    applied,
+    unchanged,
+    failed,
+    stopped: 0,
+  };
 }

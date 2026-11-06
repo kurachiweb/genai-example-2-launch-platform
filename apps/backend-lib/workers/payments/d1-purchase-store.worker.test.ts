@@ -153,21 +153,24 @@ describe('D1PurchaseStoreの作成と検索', () => {
 });
 
 describe('D1PurchaseStoreの未完了の購入の検索', () => {
-  test('本人の未完了・処理中の購入を作成順に返し、他の状態と他人の購入を含めない', async () => {
+  test('本人の未完了・処理中・置き換え済みの購入を作成順に返し、他の状態と他人の購入を含めない', async () => {
     await createPurchases(
       newPurchase(1),
       newPurchase(2),
       newPurchase(3),
       newPurchase(4),
       newPurchase(5, { userId: userIdOf(2) }),
+      newPurchase(6),
     );
     await advanceTo(2, 'processing');
     await advanceTo(3, 'fulfilled');
     await advanceTo(4, 'expired');
+    await advanceTo(6, 'superseded');
 
     expect(idsOf(await store.findOpenByUser(userIdOf(1)))).toEqual([
       purchaseIdOf(1),
       purchaseIdOf(2),
+      purchaseIdOf(6),
     ]);
   });
 

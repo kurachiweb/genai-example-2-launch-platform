@@ -24,6 +24,7 @@ const METHODS: Readonly<Record<StripeGatewayMethod, true>> = {
   retrieveRefund: true,
   retrieveDispute: true,
   retrieveSubscription: true,
+  findRefundByRequestId: true,
   createRefund: true,
   cancelSubscription: true,
   createPortalSession: true,

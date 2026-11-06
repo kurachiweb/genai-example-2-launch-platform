@@ -14,10 +14,14 @@ import {
   type RefundStore,
   type StripeGateway,
   StripeNotFoundError,
+  type StripeRefundSnapshot,
   StripeRejectedError,
 } from '../../../lib/core/payments/ports.ts';
 import type { RefundPaymentBody } from '../../../lib/core/payments/refund-message.ts';
-import { toStripeRefundReason } from '../../../lib/core/payments/refund-rules.ts';
+import {
+  refundRequestReflectionOf,
+  toStripeRefundReason,
+} from '../../../lib/core/payments/refund-rules.ts';
 import { EVENT_PAYMENTS_TYPES } from './event-payments-types.ts';
 import type {
   RefundIncident,
@@ -155,10 +159,21 @@ export class RefundPaymentHandler implements MessageHandler<RefundPaymentBody> {
     });
   }
 
+  // 冪等キーの有効期間(24時間)を過ぎた送り直しでは、同じ冪等キーでも新しい返金になる。作成の後に記録できずに残った依頼で返金を2回作らないよう、先に依頼のIDを持つ返金を探す
   private async createRefund(
     request: RefundRequestRecord,
     paymentIntentId: string,
   ): Promise<void> {
+    const existing = await classifyStripe('find_refund', () =>
+      this.gateway.findRefundByRequestId({
+        paymentIntentId,
+        refundRequestId: request.id,
+      }),
+    );
+    if (existing !== undefined) {
+      await this.adoptExisting(request, existing);
+      return;
+    }
     const refund = await classifyStripe('create_refund', () =>
       this.gateway.createRefund({
         paymentIntentId,
@@ -182,6 +197,36 @@ export class RefundPaymentHandler implements MessageHandler<RefundPaymentBody> {
       stripeRefundId: refund.id,
       recorded: submitted,
     });
+  }
+
+  // Stripe上の状態をそのまま写す。返金の通知の反映が先に依頼を進めていれば変えない
+  private async adoptExisting(
+    request: RefundRequestRecord,
+    refund: StripeRefundSnapshot,
+  ): Promise<void> {
+    const failed = refund.status === 'failed';
+    const recorded = await this.refunds.updateStatus({
+      refundRequestId: request.id,
+      status: refundRequestReflectionOf(refund.status).status,
+      stripeRefundId: refund.id,
+      ...(failed ? { failureCode: refund.failureReason } : {}),
+      from: ['requested'],
+    });
+    logger.info('依頼の返金がStripeに既にあったため、作らずに記録しました', {
+      refundRequestId: request.id,
+      purchaseId: request.purchaseId,
+      stripeRefundId: refund.id,
+      status: refund.status,
+      recorded,
+    });
+    if (failed && recorded) {
+      this.incidents.report({
+        kind: 'stripe-refund-failed',
+        refundRequestId: request.id,
+        stripeRefundId: refund.id,
+        failureCode: refund.failureReason,
+      });
+    }
   }
 
   private async fail(

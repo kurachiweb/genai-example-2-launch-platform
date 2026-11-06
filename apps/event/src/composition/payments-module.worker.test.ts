@@ -332,6 +332,7 @@ describe('返金の依頼から返金の処理までの受信', () => {
       JOBS_QUEUE: jobsQueue.queue,
     }).get<PaymentRefunds>(PAYMENTS_TYPES.PaymentRefunds);
     const gateway = createFakeStripeGateway({
+      findRefundByRequestId: () => Promise.resolve(undefined),
       createRefund: (input) =>
         Promise.resolve({
           id: STRIPE_REFUND_ID,

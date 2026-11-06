@@ -16,6 +16,7 @@ import {
   sessionSnapshotOf,
 } from '../../../../test/support/payments-checkout-fakes.ts';
 import {
+  clockByCalls,
   createIncidentRecorder,
   createJobIds,
   createJobLogCapture,
@@ -27,8 +28,8 @@ import {
   jobPurchaseOf,
   MINUTE_MS,
   RECONCILIATION_TIME,
-  RUN_CLOCK,
-  RUN_CLOCK_TIME,
+  RECONCILIATION_CLOCK,
+  RECONCILIATION_CLOCK_TIME,
   type SessionBehavior,
   sessionIdOf,
 } from '../../../../test/support/payments-job-fakes.ts';
@@ -36,6 +37,7 @@ import { API_PAYMENTS_TYPES } from '../payments-types.ts';
 import {
   CHECKOUT_RECONCILIATION_JOB_DEFINITION,
   CHECKOUT_RECONCILIATION_LIMIT,
+  CHECKOUT_RECONCILIATION_TIME_LIMIT_MS,
   CheckoutReconciliationJob,
 } from './checkout-reconciliation-job.ts';
 import type { PaymentsJobIncidentReporter } from './payments-job-incidents.ts';
@@ -86,10 +88,15 @@ function setup(
   options: {
     readonly sessions?: ReadonlyMap<string, SessionBehavior>;
     readonly reflectionFailures?: ReadonlyMap<string, Error>;
+    readonly timeOf?: (callCount: number) => Date;
   } = {},
 ) {
   const store = new InMemoryJobPurchases(purchases);
   const gatewayCalls: string[] = [];
+  const clock =
+    options.timeOf === undefined
+      ? RECONCILIATION_CLOCK
+      : clockByCalls(gatewayCalls, options.timeOf);
   const reflections: JobReflection[] = [];
   const recorder = createIncidentRecorder();
   const job = new CheckoutReconciliationJob(
@@ -100,7 +107,7 @@ function setup(
       expiredSnapshot,
     ),
     createJobReflector(store, reflections, options.reflectionFailures),
-    RUN_CLOCK,
+    clock,
     createJobIds(),
     recorder.reporter,
   );
@@ -219,7 +226,7 @@ describe('CheckoutReconciliationJob', () => {
     expect(reflections).toEqual(
       [1, 2, 3].map((serial) => ({
         sessionId: sessionIdOf(serial),
-        occurredAt: RUN_CLOCK_TIME,
+        occurredAt: RECONCILIATION_CLOCK_TIME,
       })),
     );
     expect(store.statuses()).toEqual({
@@ -236,6 +243,7 @@ describe('CheckoutReconciliationJob', () => {
           applied: 3,
           unchanged: 0,
           failed: 0,
+          stopped: 0,
           limitReached: false,
         },
       },
@@ -285,6 +293,7 @@ describe('CheckoutReconciliationJob', () => {
         applied: 2,
         unchanged: 0,
         failed: 2,
+        stopped: 0,
         limitReached: false,
       },
     });
@@ -313,7 +322,7 @@ describe('CheckoutReconciliationJob', () => {
         to: 'expired',
         from: ADVANCEABLE_FROM.expired,
         nextToken: createJobIds().generate(),
-        patch: { lastEventAt: RUN_CLOCK_TIME },
+        patch: { lastEventAt: RECONCILIATION_CLOCK_TIME },
       },
     ]);
     expect(store.statuses()).toEqual({
@@ -334,6 +343,7 @@ describe('CheckoutReconciliationJob', () => {
         applied: 2,
         unchanged: 0,
         failed: 0,
+        stopped: 0,
         limitReached: false,
       },
     });
@@ -374,7 +384,7 @@ describe('CheckoutReconciliationJob', () => {
         expiredSnapshot,
       ),
       createJobReflector(store, []),
-      RUN_CLOCK,
+      RECONCILIATION_CLOCK,
       createJobIds(),
       recorder.reporter,
     );
@@ -388,6 +398,7 @@ describe('CheckoutReconciliationJob', () => {
       applied: 0,
       unchanged: 1,
       failed: 0,
+      stopped: 0,
       limitReached: false,
     });
   });
@@ -414,10 +425,71 @@ describe('CheckoutReconciliationJob', () => {
           applied: 200,
           unchanged: 0,
           failed: 0,
+          stopped: 0,
           limitReached: true,
         },
       },
     ]);
+  });
+
+  test('起動の予定時刻から4分ちょうどまでは突合を続け、時間の上限の知らせを送らない', async () => {
+    const purchases = [1, 2].map((serial) => reconcilableOf(serial));
+    const { job, gatewayCalls, incidents } = setup(purchases, {
+      timeOf: () =>
+        new Date(
+          RECONCILIATION_TIME.getTime() + CHECKOUT_RECONCILIATION_TIME_LIMIT_MS,
+        ),
+    });
+
+    await run(job);
+
+    expect(CHECKOUT_RECONCILIATION_TIME_LIMIT_MS).toBe(4 * MINUTE_MS);
+    expect(gatewayCalls).toHaveLength(2);
+    expect(incidents).toEqual([]);
+  });
+
+  test('起動の予定時刻から4分を過ぎたら残りの購入を処理せずに止め、残った件数をジョブの名前で知らせる', async () => {
+    const purchases = [1, 2, 3, 4].map((serial) => reconcilableOf(serial));
+    const { job, store, gatewayCalls, incidents } = setup(purchases, {
+      // 1件目の前は上限の1ms前、2件目の前は上限ちょうど、3件目の前は上限の1ms後
+      timeOf: (callCount) =>
+        new Date(
+          RECONCILIATION_TIME.getTime() +
+            CHECKOUT_RECONCILIATION_TIME_LIMIT_MS -
+            1 +
+            callCount,
+        ),
+    });
+
+    await run(job);
+
+    expect(gatewayCalls).toEqual(
+      [1, 2].map((serial) => `retrieve:${sessionIdOf(serial)}`),
+    );
+    expect(store.statuses()).toEqual({
+      [purchases[0]?.id ?? '']: 'expired',
+      [purchases[1]?.id ?? '']: 'expired',
+      [purchases[2]?.id ?? '']: 'open',
+      [purchases[3]?.id ?? '']: 'open',
+    });
+    expect(incidents).toEqual([
+      {
+        kind: 'reconciliation-time-limit-reached',
+        job: 'payments.checkout-reconciliation',
+        remaining: 2,
+      },
+    ]);
+    expect(logs.of('checkout-reconciliation').at(-1)).toEqual({
+      level: 'info',
+      properties: {
+        targets: 4,
+        applied: 2,
+        unchanged: 0,
+        failed: 0,
+        stopped: 2,
+        limitReached: false,
+      },
+    });
   });
 
   test('対象の検索に失敗したら例外をそのまま定期実行の記録へ投げる', async () => {
@@ -429,7 +501,7 @@ describe('CheckoutReconciliationJob', () => {
       { ...purchases, findReconcilable: () => Promise.reject(failure) },
       createJobSessionGateway([], new Map(), expiredSnapshot),
       createJobReflector(store, []),
-      RUN_CLOCK,
+      RECONCILIATION_CLOCK,
       createJobIds(),
       recorder.reporter,
     );
@@ -472,7 +544,7 @@ describe('CheckoutReconciliationJob', () => {
     container
       .bind(PAYMENTS_TYPES.PaymentReflector)
       .toConstantValue(createJobReflector(store, []));
-    container.bind(PLATFORM_TYPES.Clock).toConstantValue(RUN_CLOCK);
+    container.bind(PLATFORM_TYPES.Clock).toConstantValue(RECONCILIATION_CLOCK);
     container.bind(PLATFORM_TYPES.IdGenerator).toConstantValue(createJobIds());
     container
       .bind<PaymentsJobIncidentReporter>(

@@ -139,6 +139,7 @@ function refundingGateway(
   handlers: Partial<StripeGateway> = {},
 ): FakeStripeGateway {
   return createFakeStripeGateway({
+    findRefundByRequestId: () => Promise.resolve(undefined),
     createRefund: (input) =>
       Promise.resolve(refundSnapshotOf({ amount: input.amount ?? PAID })),
     ...handlers,
@@ -386,6 +387,10 @@ describe('返金の処理の返金の作成', () => {
     expect(outcome).toEqual(ACKED);
     expect(gateway.calls).toEqual([
       {
+        method: 'findRefundByRequestId',
+        args: [{ paymentIntentId: PAYMENT_INTENT_ID, refundRequestId }],
+      },
+      {
         method: 'createRefund',
         args: [
           {
@@ -417,7 +422,10 @@ describe('返金の処理の返金の作成', () => {
     const outcome = await harness.deliver(envelope);
 
     expect(outcome).toEqual(ACKED);
-    expect(gateway.calls.map(({ method }) => method)).toEqual(['createRefund']);
+    expect(gateway.calls.map(({ method }) => method)).toEqual([
+      'findRefundByRequestId',
+      'createRefund',
+    ]);
     expect(gateway.callsOf('createRefund')[0]?.args[0]).toEqual({
       paymentIntentId: PAYMENT_INTENT_ID,
       amount: PAID,
@@ -447,6 +455,7 @@ describe('返金の処理の返金の作成', () => {
     expect(outcome).toEqual(ACKED);
     expect(gateway.calls.map(({ method }) => method)).toEqual([
       'cancelSubscription',
+      'findRefundByRequestId',
       'createRefund',
     ]);
     expect(gateway.callsOf('cancelSubscription')[0]?.args).toEqual([
@@ -473,6 +482,7 @@ describe('返金の処理の返金の作成', () => {
 
     expect(gateway.calls.map(({ method }) => method)).toEqual([
       'cancelSubscription',
+      'findRefundByRequestId',
       'createRefund',
     ]);
     expect((await requestRow(refundRequestId))?.status).toBe('submitted');
@@ -486,11 +496,44 @@ describe('返金の処理の返金の作成', () => {
 
     await harness.deliver(envelope);
 
-    expect(gateway.calls.map(({ method }) => method)).toEqual(['createRefund']);
+    expect(gateway.calls.map(({ method }) => method)).toEqual([
+      'findRefundByRequestId',
+      'createRefund',
+    ]);
   });
 });
 
 describe('返金の処理の冪等性', () => {
+  test('冪等キーの有効期間を過ぎた送り直しでも、依頼のIDを持つ返金がStripeに既にあれば作らずに、その返金IDと状態を写す', async () => {
+    await insertPurchase(1);
+    const { refundRequestId, envelope } = await requestRefund();
+    const gateway = refundingGateway({
+      findRefundByRequestId: (input) =>
+        Promise.resolve(
+          refundSnapshotOf(
+            { amount: 300 },
+            {
+              status: 'succeeded',
+              metadata: { refund_request_id: input.refundRequestId },
+            },
+          ),
+        ),
+    });
+    const harness = harnessWith(gateway);
+
+    const outcome = await harness.deliver(envelope);
+
+    expect(outcome).toEqual(ACKED);
+    expect(gateway.calls.map(({ method }) => method)).toEqual([
+      'findRefundByRequestId',
+    ]);
+    expect(await requestRow(refundRequestId)).toMatchObject({
+      status: 'succeeded',
+      stripeRefundId: STRIPE_REFUND_ID,
+    });
+    expect(harness.incidents).toEqual([]);
+  });
+
   test('一時的な失敗の後に同じメッセージを処理し直すと、同じ冪等キーで返金の作成を呼ぶ', async () => {
     await insertPurchase(1);
     const { refundRequestId, envelope } = await requestRefund();

@@ -162,6 +162,58 @@ describe('SentryPaymentsJobIncidentReporter', () => {
     });
   });
 
+  test('時間の上限に達して突合しなかった購入を、errorで残った件数をコンテキストに入れ、ジョブごとの指紋で送る', async () => {
+    const [event] = await reportWithSentry([
+      { kind: 'reconciliation-time-limit-reached', job: JOB, remaining: 12 },
+    ]);
+
+    expect(event?.level).toBe('error');
+    expect(event?.logentry?.message).toBe(
+      '時間の上限に達し、突合しなかった購入があります',
+    );
+    expect(event?.fingerprint).toEqual([
+      'payments',
+      'reconciliation-time-limit-reached',
+      JOB,
+    ]);
+    expect(event?.tags).toStrictEqual({
+      job: JOB,
+      payments_incident: 'reconciliation-time-limit-reached',
+    });
+    expect(event?.contexts?.payments_incident).toStrictEqual({
+      remaining: 12,
+    });
+  });
+
+  test('送り直した返金の依頼を、warningで件数と返金の依頼のIDをコンテキストに入れて送り、識別子の形でないIDはunknownにする', async () => {
+    const [event] = await reportWithSentry([
+      {
+        kind: 'refund-redispatched',
+        job: SWEEP_JOB,
+        refundRequestIds: [REFUND_REQUEST_ID, EMAIL],
+      },
+    ]);
+
+    expect(event?.level).toBe('warning');
+    expect(event?.logentry?.message).toBe(
+      '依頼中のまま残った返金の依頼を送り直しました',
+    );
+    expect(event?.fingerprint).toEqual([
+      'payments',
+      'refund-redispatched',
+      SWEEP_JOB,
+    ]);
+    expect(event?.tags).toStrictEqual({
+      job: SWEEP_JOB,
+      payments_incident: 'refund-redispatched',
+    });
+    expect(event?.contexts?.payments_incident).toStrictEqual({
+      count: 2,
+      refund_request_ids: [REFUND_REQUEST_ID, 'unknown'],
+    });
+    expect(JSON.stringify(event)).not.toContain(EMAIL);
+  });
+
   test('識別子の形でない購入IDと返金の依頼のIDは、unknownに置き換えて送らない', async () => {
     const events = await reportWithSentry([
       {

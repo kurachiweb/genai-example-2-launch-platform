@@ -58,13 +58,17 @@ function expirableOf(
   return kindMatches && targetMatches ? [{ purchase, sessionId }] : [];
 }
 
-// 処理中の購入はStripe上で決済セッションが完了済みで失効できず、支払いの確定を待って残り続ける。上限の枠を処理中の購入が塞いで未払いの購入へ届かなくならないよう、未払いの購入を先に扱う
-function openFirst(
+// 処理中の購入はStripe上で決済セッションが完了済みで失効できず、支払いの確定を待って残り続ける
+const isProcessing = ({ purchase }: ExpirableCheckout): boolean =>
+  purchase.status === 'processing';
+
+// 上限の枠を処理中の購入が塞いで未払い・置き換え済みの購入へ届かなくならないよう、処理中でない購入を先に扱う
+function expirableFirst(
   checkouts: readonly ExpirableCheckout[],
 ): readonly ExpirableCheckout[] {
   return [
-    ...checkouts.filter(({ purchase }) => purchase.status === 'open'),
-    ...checkouts.filter(({ purchase }) => purchase.status !== 'open'),
+    ...checkouts.filter((checkout) => !isProcessing(checkout)),
+    ...checkouts.filter(isProcessing),
   ];
 }
 
@@ -92,7 +96,7 @@ export class StripeOpenCheckoutExpirer implements OpenCheckoutExpirer {
   async expireOpen(input: ExpireOpenInput): Promise<ExpireOpenResult> {
     assertLimit(input.limit);
     const purchases = await this.purchases.findOpenByUser(input.userId);
-    const checkouts = openFirst(
+    const checkouts = expirableFirst(
       purchases.flatMap((purchase) => expirableOf(purchase, input)),
     );
     let expired = 0;
@@ -104,7 +108,7 @@ export class StripeOpenCheckoutExpirer implements OpenCheckoutExpirer {
     // 失効できない処理中の購入を残りに数えると、続きの呼び出しが同じ購入を扱い続けて終わらない
     const remaining = checkouts
       .slice(input.limit)
-      .some(({ purchase }) => purchase.status === 'open');
+      .some((checkout) => !isProcessing(checkout));
     return { expired, remaining };
   }
 

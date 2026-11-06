@@ -45,6 +45,7 @@ import { D1RefundStore } from '../../lib/workers/payments/d1-refund-store.ts';
 import {
   insertPurchase,
   sessionIdOf,
+  setStatus,
 } from '../../lib/workers/payments/testing/checkout-reflection-harness.ts';
 import {
   createFakeStripeGateway,
@@ -492,6 +493,30 @@ describe('退会・停止での未完了の決済セッションの失効', () =
       });
     },
   );
+
+  test('旧セッションの失効が届いていない置き換え済みの購入も、未完了の購入と同じく決済セッションを失効させて波及処理を終える', async () => {
+    await arrangeOpenPurchases('withdrawn', 2);
+    await setStatus(1, 'superseded');
+    const gateway = expiringGateway();
+
+    await expect(
+      deliver(gateway, envelopeOf(LIFECYCLE_EVENT)),
+    ).resolves.toStrictEqual({ acked: true, retried: false });
+
+    expect(expiredSessionIds(gateway)).toStrictEqual([
+      sessionIdOf(1),
+      sessionIdOf(2),
+    ]);
+    await expect(statusesOf(TARGET)).resolves.toStrictEqual(
+      statusesFor([1, 2], 'expired'),
+    );
+    await expect(completedHandlerNames()).resolves.toContain(
+      OPEN_CHECKOUT_EXPIRY,
+    );
+    await expect(readEvent(LIFECYCLE_EVENT)).resolves.toMatchObject({
+      status: 'completed',
+    });
+  });
 
   test('上限の50件を超える未完了の決済セッションは、続きを返して次のメッセージで残りを失効させる', async () => {
     await arrangeOpenPurchases('withdrawn', 51);

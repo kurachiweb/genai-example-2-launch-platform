@@ -1,5 +1,5 @@
 import { resetSync } from '@logtape/logtape';
-import { asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, test } from 'vitest';
 
 import type { PurchaseStatus } from '../../../common-lib/payments/purchase-states.ts';
@@ -685,5 +685,72 @@ describe('D1PaymentRefunds.dispatch', () => {
 
     expect(sent).toEqual([]);
     expect((await readRefundRows())[0]?.dispatchedAt).toEqual(T0);
+  });
+});
+
+describe('D1PaymentRefunds.redispatch', () => {
+  async function requestDispatched(): Promise<string> {
+    await insertPurchase(1);
+    const result = await refundsWith(createRecordingQueue().queue).request(
+      inputOf(),
+    );
+    if (result.kind !== 'accepted') {
+      throw new Error('受け付けられませんでした');
+    }
+    await db
+      .update(paymentRefunds)
+      .set({ dispatchedAt: T0 })
+      .where(eq(paymentRefunds.id, result.refundRequestId));
+    return result.refundRequestId;
+  }
+
+  test('送信済みで依頼中の依頼を同じ本文で送り直し、送信の日時を改めて、送り直したことを返す', async () => {
+    const refundRequestId = await requestDispatched();
+    const { queue, sent } = createRecordingQueue();
+
+    const redispatched = await refundsWith(queue).redispatch(refundRequestId);
+
+    expect(redispatched).toBe(true);
+    expect(sent.map(({ type, body }) => ({ type, body }))).toEqual([
+      { type: PAYMENTS_REFUND_MESSAGE.type, body: { refundRequestId } },
+    ]);
+    expect((await refunds.findById(refundRequestId))?.dispatchedAt).toEqual(
+      clock.now(),
+    );
+  });
+
+  test('未送信・依頼中でない・存在しない依頼は送らず、送り直さなかったことを返す', async () => {
+    const refundRequestId = await requestDispatched();
+    await refunds.updateStatus({
+      refundRequestId,
+      status: 'submitted',
+      stripeRefundId: 're_test_redispatch',
+    });
+    await db.batch([
+      refunds.insert(newRefundRequest(2, { purchaseId: purchaseIdOf(1) })),
+    ]);
+    const { queue, sent } = createRecordingQueue();
+    const component = refundsWith(queue);
+
+    const results = [
+      await component.redispatch(refundRequestId),
+      await component.redispatch(newRefundRequest(2).id),
+      await component.redispatch(DISPATCH_ID),
+    ];
+
+    expect(results).toEqual([false, false, false]);
+    expect(sent).toEqual([]);
+    expect((await refunds.findById(refundRequestId))?.dispatchedAt).toEqual(T0);
+  });
+
+  test('送信に失敗したら送信の日時を変えずに例外を投げる', async () => {
+    const refundRequestId = await requestDispatched();
+    const failure = new Error('Queueへの送信に失敗');
+    const { queue } = createRecordingQueue(failure);
+
+    await expect(refundsWith(queue).redispatch(refundRequestId)).rejects.toBe(
+      failure,
+    );
+    expect((await refunds.findById(refundRequestId))?.dispatchedAt).toEqual(T0);
   });
 });

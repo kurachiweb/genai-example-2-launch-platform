@@ -16,13 +16,18 @@ interface IncidentDetails {
 
 const LEVELS: Readonly<Record<PaymentsJobIncidentKind, SeverityLevel>> = {
   'reconciliation-failed': 'error',
+  'reconciliation-time-limit-reached': 'error',
   'refund-dispatch-failed': 'error',
+  'refund-redispatched': 'warning',
   'notice-request-failed': 'warning',
 };
 
 const MESSAGES: Readonly<Record<PaymentsJobIncidentKind, string>> = {
   'reconciliation-failed': '決済セッションとの突合に失敗した購入があります',
+  'reconciliation-time-limit-reached':
+    '時間の上限に達し、突合しなかった購入があります',
   'refund-dispatch-failed': '返金の依頼を送り直せませんでした',
+  'refund-redispatched': '依頼中のまま残った返金の依頼を送り直しました',
   'notice-request-failed':
     '依頼待ちのまま依頼できなかった決済のメールがあります',
 };
@@ -61,6 +66,12 @@ function detailsOf(incident: PaymentsJobIncident): IncidentDetails {
         logProperties: { purchaseId, error: incident.error },
       };
     }
+    case 'reconciliation-time-limit-reached':
+      return {
+        tags: base,
+        context: { remaining: incident.remaining },
+        logProperties: { remaining: incident.remaining },
+      };
     case 'refund-dispatch-failed': {
       const refundRequestId = toId(incident.refundRequestId);
       return {
@@ -70,6 +81,17 @@ function detailsOf(incident: PaymentsJobIncident): IncidentDetails {
           error_name: toErrorName(incident.error),
         },
         logProperties: { refundRequestId, error: incident.error },
+      };
+    }
+    case 'refund-redispatched': {
+      const refundRequestIds = incident.refundRequestIds.map(toId);
+      return {
+        tags: base,
+        context: {
+          count: refundRequestIds.length,
+          refund_request_ids: refundRequestIds,
+        },
+        logProperties: { refundRequestIds },
       };
     }
     case 'notice-request-failed': {

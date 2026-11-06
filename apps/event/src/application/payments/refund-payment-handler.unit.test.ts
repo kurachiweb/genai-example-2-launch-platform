@@ -8,6 +8,7 @@ import {
   type RefundStore,
   type StripeGateway,
   StripeNotFoundError,
+  type StripeRefundSnapshot,
   StripeRejectedError,
   StripeUnavailableError,
 } from '../../../lib/core/payments/ports.ts';
@@ -138,6 +139,13 @@ function handlerWith(options: {
         (() => Promise.resolve('canceled' as const))
       )(...args);
     },
+    findRefundByRequestId: (input) => {
+      calls.push('findRefundByRequestId');
+      return (
+        options.gateway?.findRefundByRequestId ??
+        (() => Promise.resolve(undefined))
+      )(input);
+    },
     createRefund: (input) => {
       calls.push('createRefund');
       return (
@@ -229,7 +237,11 @@ describe('RefundPaymentHandlerの返金の作成', () => {
 
     expect(await handler.handle(BODY)).toEqual({ kind: 'done' });
 
-    expect(calls).toEqual(['createRefund', 'updateStatus:submitted']);
+    expect(calls).toEqual([
+      'findRefundByRequestId',
+      'createRefund',
+      'updateStatus:submitted',
+    ]);
     expect(updates).toEqual([
       {
         refundRequestId: REFUND_REQUEST_ID,
@@ -257,6 +269,7 @@ describe('RefundPaymentHandlerの返金の作成', () => {
 
     expect(calls).toEqual([
       'cancelSubscription',
+      'findRefundByRequestId',
       'createRefund',
       'updateStatus:submitted',
     ]);
@@ -273,7 +286,11 @@ describe('RefundPaymentHandlerの返金の作成', () => {
 
     await handler.handle(BODY);
 
-    expect(calls).toEqual(['createRefund', 'updateStatus:submitted']);
+    expect(calls).toEqual([
+      'findRefundByRequestId',
+      'createRefund',
+      'updateStatus:submitted',
+    ]);
   });
 
   test('反映が先に依頼を進めていて提出済みにできなくても、成功として終える', async () => {
@@ -281,6 +298,151 @@ describe('RefundPaymentHandlerの返金の作成', () => {
 
     expect(await handler.handle(BODY)).toEqual({ kind: 'done' });
     expect(incidents).toEqual([]);
+  });
+});
+
+describe('RefundPaymentHandlerの既存の返金の照会', () => {
+  function stripeRefundOf(
+    overrides: Partial<StripeRefundSnapshot> = {},
+  ): StripeRefundSnapshot {
+    return {
+      id: 're_test_existing',
+      status: 'succeeded',
+      amount: 1_000,
+      currency: 'usd',
+      paymentIntentId: PAYMENT_INTENT_ID,
+      failureReason: null,
+      metadata: { refund_request_id: REFUND_REQUEST_ID },
+      ...overrides,
+    };
+  }
+
+  test('作成の前に購入のPaymentIntentと依頼のIDで既存の返金を照会する', async () => {
+    let looked:
+      Parameters<StripeGateway['findRefundByRequestId']>[0] | undefined;
+    const { handler } = handlerWith({
+      gateway: {
+        findRefundByRequestId: (input) => {
+          looked = input;
+          return Promise.resolve(undefined);
+        },
+      },
+    });
+
+    await handler.handle(BODY);
+
+    expect(looked).toEqual({
+      paymentIntentId: PAYMENT_INTENT_ID,
+      refundRequestId: REFUND_REQUEST_ID,
+    });
+  });
+
+  test.each([
+    ['pending', 'submitted'],
+    ['requires_action', 'submitted'],
+    ['succeeded', 'succeeded'],
+    ['canceled', 'canceled'],
+  ] as const)(
+    '依頼のIDを持つ返金(%s)が既にあれば新しく作らず、その返金IDと状態(%s)を依頼中のときだけ写す',
+    async (stripeStatus, requestStatus) => {
+      const { handler, calls, updates, incidents } = handlerWith({
+        gateway: {
+          findRefundByRequestId: () =>
+            Promise.resolve(stripeRefundOf({ status: stripeStatus })),
+        },
+      });
+
+      expect(await handler.handle(BODY)).toEqual({ kind: 'done' });
+
+      expect(calls).toEqual([
+        'findRefundByRequestId',
+        `updateStatus:${requestStatus}`,
+      ]);
+      expect(updates).toEqual([
+        {
+          refundRequestId: REFUND_REQUEST_ID,
+          status: requestStatus,
+          stripeRefundId: 're_test_existing',
+          from: ['requested'],
+        },
+      ]);
+      expect(incidents).toEqual([]);
+    },
+  );
+
+  test('既にある返金が失敗していれば、失敗の理由を写して返金の失敗を知らせる', async () => {
+    const { handler, calls, updates, incidents } = handlerWith({
+      gateway: {
+        findRefundByRequestId: () =>
+          Promise.resolve(
+            stripeRefundOf({
+              status: 'failed',
+              failureReason: 'expired_or_canceled_card',
+            }),
+          ),
+      },
+    });
+
+    await handler.handle(BODY);
+
+    expect(calls).toEqual([
+      'findRefundByRequestId',
+      'updateStatus:failed',
+      'report:stripe-refund-failed',
+    ]);
+    expect(updates).toEqual([
+      {
+        refundRequestId: REFUND_REQUEST_ID,
+        status: 'failed',
+        stripeRefundId: 're_test_existing',
+        failureCode: 'expired_or_canceled_card',
+        from: ['requested'],
+      },
+    ]);
+    expect(incidents).toEqual([
+      {
+        kind: 'stripe-refund-failed',
+        refundRequestId: REFUND_REQUEST_ID,
+        stripeRefundId: 're_test_existing',
+        failureCode: 'expired_or_canceled_card',
+      },
+    ]);
+  });
+
+  test('照会の一時的な失敗は例外のまま投げ、返金を作らず依頼の状態を変えない', async () => {
+    const error = new StripeUnavailableError('一時的な失敗');
+    const { handler, calls, updates } = handlerWith({
+      gateway: { findRefundByRequestId: () => Promise.reject(error) },
+    });
+
+    expect(await rejectionOf(handler.handle(BODY))).toBe(error);
+    expect(calls).toEqual(['findRefundByRequestId']);
+    expect(updates).toEqual([]);
+  });
+
+  test('照会の恒久的な拒否は、照会の操作と拒否のコードで失敗を記録して知らせる', async () => {
+    const { handler, calls, incidents } = handlerWith({
+      gateway: {
+        findRefundByRequestId: () =>
+          Promise.reject(new StripeNotFoundError('Stripeに対象がありません')),
+      },
+    });
+
+    await handler.handle(BODY);
+
+    expect(calls).toEqual([
+      'findRefundByRequestId',
+      'updateStatus:failed',
+      'report:stripe-rejected',
+    ]);
+    expect(incidents).toEqual([
+      {
+        kind: 'stripe-rejected',
+        refundRequestId: REFUND_REQUEST_ID,
+        operation: 'find_refund',
+        stripeErrorCode: 'resource_missing',
+      },
+    ]);
   });
 });
 

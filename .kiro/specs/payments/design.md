@@ -315,7 +315,7 @@ apps/
 
 - `apps/db/schema/index.ts`・`apps/db/migrations/<日時>_payments/migration.sql` — 6テーブルの再エクスポートと生成したマイグレーション(mainの最新を取り込んでから生成する)。
 - `apps/backend-lib/core/messaging/contracts/index.ts`・`core/email/kinds/index.ts` — `PAYMENTS_REFUND_MESSAGE`と2つのメールの種別を加える。
-- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`env-schema.ts` — `createPaymentsPlatformModule(<アプリ名>)`(モジュール名`payments-platform`)・apiの決済モジュール・スキーマモジュール・3つのジョブ・`STRIPE_API_KEY`(任意)・`PAYMENTS_SMOKE_ENABLED`の検証。4:21の2つのジョブは、4:21の起動の合計の予算(`SCHEDULED_RUN_BUDGETS`の300秒)を他のドメインのジョブと共有する。23:40には予算を置かない(`cron-sync.unit.test.ts`の「予算は4:21の1件だけ」を保つ)。
+- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`env-schema.ts` — `createPaymentsPlatformModule(<アプリ名>)`(モジュール名`payments-platform`)・apiの決済モジュール・スキーマモジュール・3つのジョブ・`STRIPE_API_KEY`(任意)・`PAYMENTS_SMOKE_ENABLED`の検証。4:21の2つのジョブは、4:21の起動の合計の予算(`SCHEDULED_RUN_BUDGETS`の300秒)を他のドメインのジョブと共有する。23:40には予算を置かない(`cron-sync.unit.test.ts`の「予算は4:21の1件だけ」を保つ)。予算は超過の警告だけで処理を止めないため、23:40の突合は予算に頼らず、ジョブ自身が起動の予定時刻から4分(`CHECKOUT_RECONCILIATION_TIME_LIMIT_MS`)で残りを止める。4:21の日次の確認の突合も、予算と別にジョブの開始から30秒(`STALE_CHECKOUT_TIME_LIMIT_MS`)で止める。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`user-lifecycle-async-handlers.ts`・`rate-limit-exclusions.ts`・`env-schema.ts` — 束縛と経路、`payments.refund-payment`の処理、2つの波及処理、`excludePath('/webhooks/stripe', 'POST')`、`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`(どちらも任意)・`CLIENT_SITE_ORIGIN`・`PAYMENTS_SMOKE_ENABLED`の検証。
 - `apps/event/src/infrastructure/email/templates/index.ts`(`EMAIL_TEMPLATES`) — 2つのテンプレートを加える。
 - `apps/api/wrangler.jsonc`・`apps/event/wrangler.jsonc`・`apps/client/wrangler.jsonc`と各`worker-configuration.d.ts` — `vars`を3環境に加え、`STRIPE_API_KEY`(api・event)・`STRIPE_WEBHOOK_SECRET`(event)を3環境の`secrets.required`に置く(`wrangler dev`は`secrets.required`のキーだけを`env`へ渡すため、ローカルにも置き、`dev`へ登録すればローカルで決済を試せる。未登録のローカルはWranglerの警告だけで起動し、環境の検証は任意のため決済の機能だけが縮退する。メール・メディアの疎通確認のトークンと同じ形)。apiの`triggers.crons`に`40 7 * * *`を加える(4:21は既存)。
@@ -431,6 +431,8 @@ sequenceDiagram
 
 - 一時的な失敗は例外で再試行し(`maxAttempts` 5)、上限でデッドレターからSentryへ通知される(8.6)。恒久的な拒否は`failed`を記録し`RefundIncidentReporter`で知らせる(8.7)。
 - 送信の失敗や中断で`dispatched_at`が空のままの行は、4:21の日次の確認で送り直す(10.6)。
+- 送信済みでも再試行の上限でデッドレターになった依頼は`requested`のまま残る。4:21の日次の確認が、送信から24時間以上経っても`requested`の依頼を`PaymentRefunds.redispatch`で送り直す。Stripeの冪等キーの有効期間は24時間で、送り直しはその外になるため、冪等キー`refund:<依頼キー>`だけでは二重の返金を防げない。返金の実行が作成の前に依頼のIDを持つ返金を照会し(`StripeGateway.findRefundByRequestId`)、あればその返金を記録して作らないことで防ぐ。送り直した依頼のIDはエラートラッキングへ`warning`で知らせる。
+- Stripe上で後から失敗した返金(`refund.updated`・`refund.failed`で状態が`failed`に変わった本specの依頼)は、反映が依頼のIDとStripeの返金IDを添えてエラートラッキングへ`error`で知らせる。依頼の行の状態が変わったときだけ知らせ、同じ失敗の通知の再送では重ねない。
 
 ### 23:40の突合
 
@@ -451,6 +453,7 @@ sequenceDiagram
 
 - 対象は`deadline_at`が実行時刻以前かつ24時間以内で、状態が`open`・`processing`・`superseded`の購入である。決済セッションの有効期限は決済期限以前なので、取得した状態は確定している(完了または失効)。
 - 1件ずつ取得し、失敗した購入は記録して次へ進む(10.4)。
+- 23:45の組み合わせ決定より前に終える(10.2)ため、同じ起動で後に動くマッチの確定に1分を残し、起動の予定時刻から4分(`CHECKOUT_RECONCILIATION_TIME_LIMIT_MS`)を過ぎたら残りの購入を処理せずに止める。時刻は`Clock`で購入ごとの取得の前に判定し、上限ちょうどまでは続ける。残った件数は`PaymentsJobIncidentReporter`(`reconciliation-time-limit-reached`、`error`)で知らせ、残りは4:21の日次の確認と翌日の突合が拾う。
 
 ## Requirements Traceability
 
@@ -1071,7 +1074,7 @@ export interface PurchaseStore {
     readonly sessionId: string;
     readonly expiresAt: Date;
   }): Promise<void>; // CheckoutStarter
-  findOpenByUser(userId: string): Promise<readonly PurchaseRecord[]>;
+  findOpenByUser(userId: string): Promise<readonly PurchaseRecord[]>; // OpenCheckoutExpirer。open・processing・superseded
   findOpenByTarget(input: {
     readonly userId: string;
     readonly kind: PurchaseKind;
@@ -1177,7 +1180,7 @@ export interface CustomerStatements {
 }
 ```
 
-- `CustomerStore`(`find(userId)`・`save(userId, customerId)`)・`CustomerDirectory`(`findCustomerId(userId)`、後続specが使う)・`RefundStore`(状態の更新・依頼キーでの検索・依頼済みの合計・送信待ちの検索・通知の状態の更新と通知待ちの検索)・`PriceSnapshotStore`も同じく`core/payments/ports.ts`に文を返さない操作だけを持ち、依頼の行の追加の文と利用者の行の削除の文は`RefundStatements`・`CustomerStatements`に置く。物理削除では`payment_refunds`→`payment_purchases`→`payment_customers`の順に消す(外部キー)。この順の3つの削除の文を1回の`db.batch()`で確定するのは、eventのinfrastructure層の`D1PaymentAccountDataEraser`である(「CustomerErasureHandler・OpenCheckoutExpiryHandler」)。
+- `CustomerStore`(`find(userId)`・`save(userId, customerId)`)・`CustomerDirectory`(`findCustomerId(userId)`、後続specが使う)・`RefundStore`(状態の更新・依頼キーでの検索・依頼済みの合計・送信待ちの検索・送信の後に依頼中のまま残った依頼の検索(`findStalledDispatched`)と送信の日時の改め(`markRedispatched`)・通知の状態の更新と通知待ちの検索)・`PriceSnapshotStore`も同じく`core/payments/ports.ts`に文を返さない操作だけを持ち、依頼の行の追加の文と利用者の行の削除の文は`RefundStatements`・`CustomerStatements`に置く。物理削除では`payment_refunds`→`payment_purchases`→`payment_customers`の順に消す(外部キー)。この順の3つの削除の文を1回の`db.batch()`で確定するのは、eventのinfrastructure層の`D1PaymentAccountDataEraser`である(「CustomerErasureHandler・OpenCheckoutExpiryHandler」)。
 - `IN`句とまとめての挿入はバインド変数100個以内に分ける。日次のジョブの削除は1回500件までを最大20回繰り返す。
 
 #### PaymentReflector・CheckoutSessionReflection
@@ -1198,7 +1201,7 @@ export interface CustomerStatements {
   5. 確定の後、`PurchaseNotifier`で購入確認メールを依頼し、拒否なら`PaymentRefunds.dispatch`で返金を送る。`fulfill`を確定させた場合は、登録の`PurchaseFulfillment.afterCommit`があれば呼び、例外は`warn`のログにして結果を変えない(2.11、U1)。
 - 決済履歴の記録: 都度決済は`kind = 'one_time'`・`stripe_reference = 決済セッションのID`、定期課金は`kind = 'subscription'`・`stripe_reference = 請求のID`。購入の同意の日時と版を記録に写す(12.6)。
 - 請求(7.7): `invoice.paid`・`invoice.payment_failed`を、請求のIDの`upsertByReference`(`paid`は`succeeded`と支払額、`open`・`uncollectible`は`failed`と請求額。`draft`・`void`は`ignored`、定期課金の無い請求は`unresolved`)で記録する。初回の請求は決済セッションの反映と同じ行になる(一意キー`(stripe_reference, kind)`)。持ち主は`PaymentOwnerResolver`で特定する。初回の請求(購入の`stripe_invoice_id`が未保存か同じ請求のID)だけ、購入の同意の日時・版・購入IDを記録に写し(決済セッションの反映より先に届いても同意が残る、12.6)、2回目以降の請求には写さず購入確認メールも依頼しない(11.4)。`upsertByReference`が行を変えなければ(記録済みの発生時刻が新しい)`stale`を返す。
-- 返金(8.8): 返金のIDの`upsertByReference`で`kind = 'refund'`・負の金額・`pending`・`succeeded`・`failed`を記録し、本specの依頼(`metadata.refund_request_id`、無ければStripeの返金のID)なら`payment_refunds`の状態も同じ一括の書き込みで`RefundStatements.reflectStripeStatus`により更新する。状態の対応は`refund-rules.ts`の`refundRecordStatusOf`・`refundRequestReflectionOf`で、Stripeの`pending`・`requires_action`は決済履歴が`pending`・依頼が`submitted`、`succeeded`はどちらも`succeeded`、`failed`はどちらも`failed`(依頼に`failure_reason`を記録)、`canceled`は決済履歴が`failed`・依頼が`canceled`とする。依頼は完了した状態から処理中へ戻さず、成功の後の失敗は受け入れる。成功した自動返金(依頼キーが`reflection:`で始まる依頼)は`PurchaseNotifier`で通知を依頼する(8.10)。権利の剥奪は依頼しない(8.9)。
+- 返金(8.8): 返金のIDの`upsertByReference`で`kind = 'refund'`・負の金額・`pending`・`succeeded`・`failed`を記録し、本specの依頼(`metadata.refund_request_id`、無ければStripeの返金のID)なら`payment_refunds`の状態も同じ一括の書き込みで`RefundStatements.reflectStripeStatus`により更新する。状態の対応は`refund-rules.ts`の`refundRecordStatusOf`・`refundRequestReflectionOf`で、Stripeの`pending`・`requires_action`は決済履歴が`pending`・依頼が`submitted`、`succeeded`はどちらも`succeeded`、`failed`はどちらも`failed`(依頼に`failure_reason`を記録)、`canceled`は決済履歴が`failed`・依頼が`canceled`とする。依頼は完了した状態から処理中へ戻さず、成功の後の失敗は受け入れる。成功した自動返金(依頼キーが`reflection:`で始まる依頼)は`PurchaseNotifier`で通知を依頼する(8.10)。本specの依頼が`failed`以外から`failed`へ変わった(依頼の行の文が行を変えた)ときは、`refund-failure-reporting.ts`の`reportRefundFailure`で、依頼のID・Stripeの返金ID・失敗のコードをタグに入れてエラートラッキングへ`error`で知らせる(`captureEvent`、指紋`['payments', 'refund-failed']`)。同じ失敗の通知の再送は行を変えないため知らせない。依頼の無い手動の返金の失敗はダッシュボードで扱うため知らせない。権利の剥奪は依頼しない(8.9)。
 - チャージバック(9.1〜9.4): `funds_withdrawn`は`disputed`・引き落とし額の負数、`funds_reinstated`は`dispute_won`・戻った額の正数、`closed`かつ`status = 'lost'`は`dispute_lost`・0を、段階ごとに挿入する。`closed`かつ`won`は`funds_reinstated`で記録済みのため挿入しない。照会の段階(`warning_*`)・審査中(`under_review`)・不服申し立ての段階(`appeal_needs_response`・`appeal_under_review`)と、資金の移動が無いまま終わったものは記録しない(9.4)。Stripeの文書(仲裁と不服申し立て)では、不服申し立ては審査中から始まり敗北の後には起こらず、`charge.dispute.closed`は最終の`won`・`lost`で1回だけ届くため、不服申し立てを経ても記録は`disputed`の後に`dispute_won`か`dispute_lost`の一方だけになり、純収益の照会(12.10)の規則は変わらない。不服申し立ての状態の変化は`charge.dispute.updated`で届くが、購読しない(15種のまま)。権利は変えない(9.5)。
 - 定期課金(7.8・7.9): `StripeObjectStore.findLastEventAt`より古い通知は捨てる。新しければ[`payment_stripe_objects`の前進(`StripeObjectStatements.advanceGuarded`。先頭の文で、より新しい発生時刻が記録済みなら全体を取り消す)・登録された`SubscriptionEventSink`の文]を`GuardedBatch`で確定する。`guard_failed`は古い通知として`stale`を返す。`SubscriptionChange`には`StripeSubscriptionSnapshot`の`cancelAt`を写す。`committed`のときだけ各sinkの`afterCommit`を呼び、例外は`warn`のログにして結果を変えない(U1)。
 - 反映の一時的な失敗(Stripeの`StripeUnavailableError`・D1の失敗)は例外として呼び出し元へ返し、部分的な書き込みを残さない(6.6)。
@@ -1248,8 +1251,8 @@ export interface OpenCheckoutExpirer {
 }
 ```
 
-- 対象の`open`・`processing`の購入ごとに`expireCheckoutSession`を呼び、`expired`へ前進させる。Stripe上で既に完了していた(`not_open`)購入は`CheckoutSessionReflection.reflectSession`(取得して反映)で反映する(14.3)。
-- 決済セッションのIDが無い購入は対象外。`open`を`processing`より先に扱い、`remaining`は上限の外に`open`の購入が残っているか(失効できない`processing`を数えると続きの呼び出しが終わらないため)。Stripeに決済セッションが無い(`StripeNotFoundError`)購入は支払われ得ないため、`warn`のログを残して`expired`へ前進させる。
+- 対象の`open`・`processing`・`superseded`の購入(`PurchaseStore.findOpenByUser`)ごとに`expireCheckoutSession`を呼び、`expired`へ前進させる(`ADVANCEABLE_FROM.expired`は`superseded`を含む)。`superseded`を含めるのは、置き換えの際の旧セッションの失効が失敗していると、Stripe上で支払えるまま残るためである。Stripe上で既に完了していた(`not_open`)購入は`CheckoutSessionReflection.reflectSession`(取得して反映)で反映する(14.3)。
+- 決済セッションのIDが無い購入は対象外。`open`・`superseded`を`processing`より先に扱い、`remaining`は上限の外に`open`・`superseded`の購入が残っているか(失効できない`processing`を数えると続きの呼び出しが終わらないため。`open`・`superseded`は扱うと`expired`・確定・処理中のいずれかへ進むため、続きの呼び出しは終わる)。Stripeに決済セッションが無い(`StripeNotFoundError`)購入は支払われ得ないため、`warn`のログを残して`expired`へ前進させる。
 - 退会・停止の波及処理(`OpenCheckoutExpiryHandler`)と、後続specのFR-PPLAN-008(Ultrasの加入の確定)・FR-TOURW-027・FR-TOURY-030(参加資格の喪失)の処理が使う。Stripeを呼ぶため、後続specはeventの非同期の処理から呼ぶ。
 
 #### PaymentRefunds
@@ -1287,6 +1290,7 @@ export type RefundRequestResult =
 export interface PaymentRefunds {
   request(input: RefundRequestInput): Promise<RefundRequestResult>; // 記録と送信まで行う
   dispatch(refundRequestId: string): Promise<void>; // 送信とdispatched_atの記録。送信済みなら何もしない。失敗はログだけ(日次の確認で送り直す)
+  redispatch(refundRequestId: string): Promise<boolean>; // 送信済みでrequestedの依頼だけを送り直し、dispatched_atを改める。送り直したかを返す。送信の失敗は例外(日次の確認が知らせる)
 }
 
 // workers/payments/statement-contracts.ts(workers/paymentsの反映と、後続specのworkers/<ドメイン>・infrastructureだけが受け取る)
@@ -1317,7 +1321,7 @@ export declare class D1PaymentRefunds
   implements PaymentRefunds, PaymentRefundStatements {}
 ```
 
-- 置き場所: 文を返さない`request`・`dispatch`は`core/payments/ports.ts`の`PaymentRefunds`、文を返す`prepare`・`prepareForReflection`は`workers/payments/statement-contracts.ts`の`PaymentRefundStatements`に置く。1つの実装`D1PaymentRefunds`を`PAYMENTS_TYPES.PaymentRefunds`・`PAYMENTS_TYPES.PaymentRefundStatements`の両方へ束縛する。後続specが自分の一括の書き込みに返金の依頼を含める(`prepare`)場合は、その書き込みの単位を後続specのapplication層のポートにし、infrastructure層または`workers/<ドメイン>`の実装から`prepare`を呼ぶ(application層は文を扱わない)。
+- 置き場所: 文を返さない`request`・`dispatch`・`redispatch`は`core/payments/ports.ts`の`PaymentRefunds`、文を返す`prepare`・`prepareForReflection`は`workers/payments/statement-contracts.ts`の`PaymentRefundStatements`に置く。1つの実装`D1PaymentRefunds`を`PAYMENTS_TYPES.PaymentRefunds`・`PAYMENTS_TYPES.PaymentRefundStatements`の両方へ束縛する。後続specが自分の一括の書き込みに返金の依頼を含める(`prepare`)場合は、その書き込みの単位を後続specのapplication層のポートにし、infrastructure層または`workers/<ドメイン>`の実装から`prepare`を呼ぶ(application層は文を扱わない)。
 
 - Preconditions(`request`・`prepare`、後続specの経路): 購入が`fulfilled`または`rejected`で、`stripe_payment_intent_id`がある(8.4)。反映の前進の文がこれらの値を保存するため、確定後の購入は常にこの前提を満たす。
 - `prepareForReflection`は読み取りを行わず、同じ一括の書き込みの前進の文が失敗すれば依頼の行も作られない。依頼キーは購入ごとに1つ(`reflection:`で始まる)で、反映のやり直しでも重複しない。
@@ -1469,15 +1473,16 @@ export declare class D1CheckoutPurchaseWriter implements CheckoutPurchaseWriter 
 
 **Contracts**: Batch [x]
 
-| ジョブの名前                       | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                                                                                                                                                          |
-| ---------------------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `payments.checkout-reconciliation` | 23:40    | 10      | `deadline_at`が実行時刻以前かつ24時間以内で`open`・`processing`・`superseded`の購入を最大200件、`retrieveCheckoutSession` → `reflectCheckoutSnapshot`。Stripeに決済セッションが無い(`StripeNotFoundError`)購入は`warn`を残して`expired`へ前進させる(`advanceAlone`・`ADVANCEABLE_FROM.expired`)。他の失敗は`PaymentsJobIncidentReporter`(`reconciliation-failed`)で知らせて続ける(10.1〜10.4) |
-| `payments.pending-checkout-sweep`  | 4:21     | 400     | (1)有効期限を1時間以上過ぎた`open`・`processing`・`superseded`の購入を最大200件突合(10.5)。(2)`dispatched_at`が空で10分以上経った返金の依頼を最大100件`dispatch`。(3)`pending`のまま10分以上経った購入確認メール・自動返金の通知を最大100件依頼(10.6)                                                                                                                                         |
-| `payments.history-retention`       | 4:21     | 410     | `recorded_at`が実行時刻の7年前より前の決済履歴を1回500件、最大20回物理削除(12.7)                                                                                                                                                                                                                                                                                                              |
+| ジョブの名前                       | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payments.checkout-reconciliation` | 23:40    | 10      | `deadline_at`が実行時刻以前かつ24時間以内で`open`・`processing`・`superseded`の購入を最大200件、`retrieveCheckoutSession` → `reflectCheckoutSnapshot`。Stripeに決済セッションが無い(`StripeNotFoundError`)購入は`warn`を残して`expired`へ前進させる(`advanceAlone`・`ADVANCEABLE_FROM.expired`)。他の失敗は`PaymentsJobIncidentReporter`(`reconciliation-failed`)で知らせて続ける。起動の予定時刻から4分を過ぎたら残りを止め、残った件数を`reconciliation-time-limit-reached`で知らせる(10.1〜10.4)                     |
+| `payments.pending-checkout-sweep`  | 4:21     | 400     | (1)有効期限を1時間以上過ぎた`open`・`processing`・`superseded`の購入を最大200件突合(10.5)。(1)の突合はジョブの開始から30秒を過ぎたら残りを止め、残った件数を`reconciliation-time-limit-reached`で知らせる。(2)`dispatched_at`が空で10分以上経った返金の依頼を最大100件`dispatch`し、`dispatched_at`から24時間以上経っても`requested`の依頼を最大100件`redispatch`する(送り直した依頼のIDを`refund-redispatched`でまとめて知らせる)。(3)`pending`のまま10分以上経った購入確認メール・自動返金の通知を最大100件依頼(10.6) |
+| `payments.history-retention`       | 4:21     | 410     | `recorded_at`が実行時刻の7年前より前の決済履歴を1回500件、最大20回物理削除(12.7)                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 - Trigger: apiのCron Triggers(`40 7 * * *`・`21 12 * * *`)。23:40の`order` 10は、同時刻のマッチの確定(match-engine)より先に動くための値で、match-engineは10より大きい`order`を使う(10.2)。4:21の`order`は上流の100〜120・200・210・300・810〜830・900・2300と重ならない。ジョブの名前と順序は日次タイムラインの表に載せる。
-- Idempotency: すべての処理は2回実行しても結果が変わらない(反映は状態の前進、削除は条件付き)。件数の上限を超えた分は翌日(4:21)に続ける。23:40の対象は200件を超えない想定(週ごとの予選の勝者の数)で、超えた場合は`warn`を記録する。
-- 依存: 3つのジョブと`CheckoutReader`・`CheckoutConsentRecorder`・`CheckoutReturnConfirmer`・`PaymentHistoryReader`はapplication層に置き、`PaymentReflector`・`PaymentRefunds`(`dispatch`)・`PurchaseNotifier`・`StripeGateway`・各ストアの文を返さない操作を`core/payments`の型と`PAYMENTS_TYPES`の識別子で受け取る。`**/lib/workers/**`を読み込まず、D1の文と一括の書き込みを扱わない(7年の削除は`PaymentRecordStore.deleteRecordedBefore`、送信待ちの返金・依頼待ちのメールの検索は`RefundStore`・`PurchaseStore`の文を返さない操作)。
+- Idempotency: すべての処理は2回実行しても結果が変わらない(反映は状態の前進、削除は条件付き、送り直しは`dispatched_at`を改めるため同じ日に重ねない)。件数の上限と時間の上限を超えた分は翌日(4:21)に続ける。23:40の対象は200件を超えない想定(週ごとの予選の勝者の数)で、超えた場合は`warn`を記録する。
+- 時間の上限: 23:40の突合は、23:45の組み合わせ決定より前に終えるため起動の予定時刻から4分(`CHECKOUT_RECONCILIATION_TIME_LIMIT_MS`)で止める。4:21の起動は時間の予算(`SCHEDULED_RUN_BUDGETS`の300秒)を他のドメインのジョブと共有するが、予算は超過の警告だけで打ち切らない。Stripeが遅い日(1件あたり最大で時間切れ10秒×再試行)に200件を直列に取得すると、Cron Triggersの実時間の上限(15分)に達して後のジョブが動かなくなるため、日次の確認の突合も1つのジョブの目安(30秒、`STALE_CHECKOUT_TIME_LIMIT_MS`)をジョブの開始から数えて止める。4:21には期限が無いため、予定時刻ではなく開始から数える。
+- 依存: 3つのジョブと`CheckoutReader`・`CheckoutConsentRecorder`・`CheckoutReturnConfirmer`・`PaymentHistoryReader`はapplication層に置き、`PaymentReflector`・`PaymentRefunds`(`dispatch`・`redispatch`)・`PurchaseNotifier`・`StripeGateway`・各ストアの文を返さない操作を`core/payments`の型と`PAYMENTS_TYPES`の識別子で受け取る。`**/lib/workers/**`を読み込まず、D1の文と一括の書き込みを扱わない(7年の削除は`PaymentRecordStore.deleteRecordedBefore`、送信待ちの返金・依頼待ちのメールの検索は`RefundStore`・`PurchaseStore`の文を返さない操作)。
 - 突合と日次の確認が共有する`reconcilePurchases`は、Stripeに決済セッションが無い購入を失敗にせず失効にする(失敗として残すと毎日知らせ続け、上限の枠を使い続けるため。10.3・10.5)。前進は`PurchaseStore.advanceAlone`と`ADVANCEABLE_FROM.expired`を使い、ログは`OpenCheckoutExpirer`と同じカテゴリ`['api', 'payments', 'checkout-expiry']`に出す。
 - 突合と日次の確認の失敗は、application層のポート`PaymentsJobIncidentReporter`(`API_PAYMENTS_TYPES.PaymentsJobIncidentReporter`)を通してエラートラッキングへ知らせる。実装は`infrastructure/payments/sentry-payments-job-incident-reporter.ts`(前例のauth・inquiryの報告と同じ形)。送信の失敗で依頼待ちのまま残った通知は1回の起動につき1件の`warning`にまとめる(入力を組み立てられない行は`PurchaseNotifier`が`skipped`にするため、ここに現れない)。
 
@@ -1622,10 +1627,10 @@ type Mutation {
 **Contracts**: Event [x]
 
 - Subscribed: `payments.refund-payment`(`{ refundRequestId: string }`、ULID)。`retry`: `{ maxAttempts: 5, baseDelaySeconds: 60, maxDelaySeconds: 3600 }`。
-- 処理: 依頼の行を読み、`submitted`・`succeeded`なら`done`。依頼の`purchase_id`で購入を読み、`stripe_payment_intent_id`(反映の前進の文が保存した値)を取る(どの依頼の経路でも同じ読み方)。購入が定期課金で`rejected`なら先に`cancelSubscription(atPeriodEnd: false)`(既に解約済みは無視)。`createRefund`(PaymentIntentのID・冪等キー`refund:<依頼キー>`)の結果のIDを保存して`submitted`にする。購入やPaymentIntentのIDが無い依頼は`failed`(`missing_payment_intent`)とし、`RefundIncidentReporter`(種類`missing-payment-intent`)で知らせる。
-- 失敗: `StripeUnavailableError`は例外(再試行、上限でデッドレター→Sentry、8.6)。`StripeRejectedError`は`failed`と拒否のコードを保存し、`RefundIncidentReporter`(種類`stripe-rejected`・操作・Stripeのエラーコード)で知らせて`done`(8.7)。
+- 処理: 依頼の行を読み、`submitted`・`succeeded`なら`done`。依頼の`purchase_id`で購入を読み、`stripe_payment_intent_id`(反映の前進の文が保存した値)を取る(どの依頼の経路でも同じ読み方)。購入が定期課金で`rejected`なら先に`cancelSubscription(atPeriodEnd: false)`(既に解約済みは無視)。作成の前に、`findRefundByRequestId`(PaymentIntentの返金の一覧を100件ずつページ送りで読み、メタデータの`refund_request_id`が依頼のIDと一致する返金を探す。返金は検索APIの対象外)で既存の返金を照会する。見つかれば作らず、その返金IDと状態(`refundRequestReflectionOf`。失敗なら理由も)を`requested`のときだけ写し、Stripe上で失敗していれば`RefundIncidentReporter`(種類`stripe-refund-failed`)で知らせる。照会は常に行う(作成の後に記録できずに残った依頼と、冪等キーの有効期間(24時間)を過ぎた送り直しを区別しない)。見つからなければ`createRefund`(PaymentIntentのID・冪等キー`refund:<依頼キー>`)の結果のIDを保存して`submitted`にする。購入やPaymentIntentのIDが無い依頼は`failed`(`missing_payment_intent`)とし、`RefundIncidentReporter`(種類`missing-payment-intent`)で知らせる。
+- 失敗: `StripeUnavailableError`は例外(照会も作成も再試行、上限でデッドレター→Sentry、8.6)。`StripeRejectedError`(照会の対象が無い`StripeNotFoundError`を含む。操作`find_refund`・`create_refund`・`cancel_subscription`)は`failed`と拒否のコードを保存し、`RefundIncidentReporter`(種類`stripe-rejected`・操作・Stripeのエラーコード)で知らせて`done`(8.7)。
 - 知らせ方: application層のポート`RefundIncidentReporter`(`EVENT_PAYMENTS_TYPES.RefundIncidentReporter`、`application/payments/refund-incidents.ts`)を通す。実装は`infrastructure/payments/sentry-refund-incident-reporter.ts`の`SentryRefundIncidentReporter`で、`captureEvent`にタグ`message_type`・`payments_incident`・`refund_request_id`(・`stripe_operation`・`stripe_error_code`)と指紋を付けて送る。
-- Idempotency: 同じメッセージを何度受けても、Stripeの冪等キーと行の状態で返金は1回。
+- Idempotency: 同じメッセージを何度受けても、行の状態(`requested`だけを処理する)・作成の前の既存の返金の照会・Stripeの冪等キーで返金は1回。冪等キーは24時間で削除され得るため、それより後の送り直しでは照会が二重の返金を防ぐ。手動の返金は依頼のIDを持たず照会で見つからないため、手動で返金する前に依頼を`canceled`にする(`operations/004`)。
 - 依存: application層に置き、`RefundStore`・`PurchaseStore`(文を返さない操作)・`StripeGateway`と例外の分類を`core/payments`から受け取る。
 
 #### CustomerErasureHandler・OpenCheckoutExpiryHandler
@@ -1824,7 +1829,7 @@ export interface MoneyTextProps {
 ### Monitoring
 
 - `getAppLogger([appName, 'payments', <stripe・webhook・owner など部品ごとの名前>])`で、購入ID・StripeのオブジェクトのID・通知の種類・Stripeの`request-id`だけを記録する(15.8)。
-- Sentry: 反映の例外(`captureException`、タグ`stripe_event_type`)、返金の恒久的な拒否(`captureEvent`、タグ`stripe_error_code`)、突合の失敗(`captureEvent`、タグ`job`)、結び付かない通知は`warn`のログだけ。定型の通知の`captureEvent`は、文言を`logentry`、種類(拒否のコード・ジョブ)を`fingerprint`に置く(`infra/004`の「同じ文言を繰り返し送る通知」)。
+- Sentry: 反映の例外(`captureException`、タグ`stripe_event_type`)、返金の恒久的な拒否(`captureEvent`、タグ`stripe_error_code`)、突合の失敗と時間の上限での打ち切り・依頼中のまま残った返金の依頼の送り直し(`captureEvent`、タグ`job`)、Stripe上で後から失敗した返金(`captureEvent`、タグ`refund_request_id`・`stripe_refund_id`)、結び付かない通知は`warn`のログだけ。定型の通知の`captureEvent`は、文言を`logentry`、種類(拒否のコード・ジョブ)を`fingerprint`に置く(`infra/004`の「同じ文言を繰り返し送る通知」)。
 - 設定の不足(`EnvValidationError`)は起動時に`configuration_error`として検知される(15.4)。
 
 ## Testing Strategy
@@ -1845,7 +1850,7 @@ export interface MoneyTextProps {
   - 購入確認メールの追加事項(U2): `summary_json`の`additionalNotes`が本文の「購入の内容」の下に箇条書きで載り、追加事項の無い購入では見出しも出ない(11.6)。
   - 返金の処理: 一時的な失敗の再試行とデッドレター、恒久的な拒否の`failed`、同じ依頼キーの2回目の重複(8.2・8.6・8.7)。
   - ライフサイクル: `purge_due`でCustomerと購入の行が消え、決済履歴が残る。`withdrawn`で未完了の決済セッションが失効する(1.5〜1.7、14.1)。
-  - 日次の確認: `dispatched_at`が空の依頼と`pending`のメールが依頼し直され、`requested`は依頼されない(10.6・11.3)。7年の削除の境界(12.7)。
+  - 日次の確認: `dispatched_at`が空の依頼と`pending`のメールが依頼し直され、`requested`は依頼されない(10.6・11.3)。送信から24時間以上経って`requested`のままの依頼が送り直され、24時間ちょうどの依頼は送り直されない。突合の時間の上限(23:40は予定時刻から4分、4:21は開始から30秒)の直前まで続け、直後に止めて残った件数を知らせる。7年の削除の境界(12.7)。
   - 回数制限: `CounterCheckoutStartLimits`で21回目が`rate_limit_exceeded`と`Retry-After`(3.10)。
   - 書き込みの単位: `D1CheckoutPurchaseWriter`が同じ対象の未完了の購入の`superseded`への前進と新しい購入の挿入を1回の一括の書き込みで確定すること(3.9)、`D1PaymentAccountDataEraser`が返金の依頼→購入→Customerの対応の順に削除し決済履歴を残すこと(1.5・1.7)。
   - 収益の照会(12.10、仮7): 期間ごとの成功した決済・請求の合計、成功した返金の差し引き、`dispute_lost`の期間に`disputed`の引き落とし額が差し引かれ`dispute_won`で戻ったチャージバックは差し引かれないこと、失敗・処理中の行と`payments_smoke`の除外、期間の境界(`from`を含み`to`を含まない)、入力の順と該当の無い期間の0、60個の期間が1回の`db.batch`で成功すること、`disputed`の行が無い`dispute_lost`が0として数えられ`warn`のログに残ること、0個・61個・`from >= to`の拒否。
@@ -1867,7 +1872,7 @@ export interface MoneyTextProps {
 
 - 決済の開始はStripeへ最大4回の呼び出し(価格・Customer・セッション・旧セッションの失効)で、各10秒の時間切れ。旧セッションの失効の失敗は待たない。
 - 価格の照会はD1の一時保持で、申込の画面の表示ごとのStripeの呼び出しを避ける(13.2)。
-- 23:40の突合は最大200件を直列に取得する(各1秒未満の想定で、Cronの実行時間の範囲に収まる)。
+- 23:40の突合は最大200件を直列に取得する(各1秒未満の想定で、Cronの実行時間の範囲に収まる)。Stripeが遅い日は起動の予定時刻から4分で止める。
 
 ## Migration Strategy
 

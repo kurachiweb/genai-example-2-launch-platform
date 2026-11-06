@@ -161,6 +161,41 @@ describe('SentryRefundIncidentReporter(支払いのIDが無い依頼)', () => {
   });
 });
 
+describe('SentryRefundIncidentReporter(Stripe上で既に失敗していた返金)', () => {
+  test('errorで、定型の文言と種類の指紋と、依頼のID・Stripeの返金ID・失敗のコードのタグを付けて送り、形でない値は置き換える', async () => {
+    const event = await reportOne({
+      kind: 'stripe-refund-failed',
+      refundRequestId: REFUND_REQUEST_ID,
+      stripeRefundId: 're_test_existing',
+      failureCode: 'expired_or_canceled_card',
+    });
+    const unsafe = await reportOne({
+      kind: 'stripe-refund-failed',
+      refundRequestId: REFUND_REQUEST_ID,
+      stripeRefundId: EMAIL,
+      failureCode: null,
+    });
+
+    expect(event).toMatchObject({
+      level: 'error',
+      logentry: { message: '作成済みの返金がStripe上で失敗していました' },
+      fingerprint: ['payments', 'stripe-refund-failed'],
+    });
+    expect(event.tags).toStrictEqual({
+      message_type: 'payments.refund-payment',
+      payments_incident: 'stripe-refund-failed',
+      refund_request_id: REFUND_REQUEST_ID,
+      stripe_refund_id: 're_test_existing',
+      failure_code: 'expired_or_canceled_card',
+    });
+    expect(unsafe.tags).toMatchObject({
+      stripe_refund_id: 'unknown',
+      failure_code: 'unknown',
+    });
+    expect(JSON.stringify(unsafe)).not.toContain(EMAIL);
+  });
+});
+
 describe('SentryRefundIncidentReporter(送る値)', () => {
   test('識別子と拒否のコードの形でない値はタグと指紋に入れず置き換える', async () => {
     const event = await reportOne({

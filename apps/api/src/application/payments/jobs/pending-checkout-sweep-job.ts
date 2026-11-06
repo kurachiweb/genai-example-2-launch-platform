@@ -34,10 +34,18 @@ const STALE_AFTER_MS = 60 * MINUTE_MS;
 // 依頼の直後の送信・メールの依頼は呼び出し元が続けて行うため、10分待ってから送り直す
 const PENDING_AFTER_MS = 10 * MINUTE_MS;
 
+// 返金のメッセージの再試行は1時間以内に終わるため、送信から24時間経っても依頼中のままの依頼はデッドレターになったか失われたとみなす
+const STALLED_AFTER_MS = 24 * 60 * MINUTE_MS;
+
+// 4:21の起動は他のドメインのジョブと1回の起動の実時間の上限を共有するため、Stripeが遅い日に後のジョブを打ち切らせないよう、1つのジョブの目安の時間で突合を止める
+export const STALE_CHECKOUT_TIME_LIMIT_MS = 30_000;
+
 // Workersの実時間に収めるため1回の起動で扱う件数を区切り、残りは翌日の起動に任せる
 export const STALE_CHECKOUT_LIMIT = 200;
 
 export const UNDISPATCHED_REFUND_LIMIT = 100;
+
+export const STALLED_REFUND_LIMIT = 100;
 
 // 購入確認メールと自動返金の通知のそれぞれの上限
 export const PENDING_NOTICE_LIMIT = 100;
@@ -87,6 +95,12 @@ interface RefundTally {
   readonly failed: number;
 }
 
+interface StalledRefundTally {
+  readonly targets: number;
+  readonly redispatched: number;
+  readonly failed: number;
+}
+
 interface NoticeTally {
   readonly targets: number;
   readonly requested: number;
@@ -118,10 +132,14 @@ export class PendingCheckoutSweepJob implements ScheduledJobHandler {
     const pendingBefore = new Date(scheduledTime.getTime() - PENDING_AFTER_MS);
     const reconciliation = await this.reconcileStale(scheduledTime);
     const refunds = await this.redispatchRefunds(pendingBefore);
+    const stalledRefunds = await this.redispatchStalledRefunds(
+      new Date(scheduledTime.getTime() - STALLED_AFTER_MS),
+    );
     const notices = await this.requestNotices(pendingBefore);
     logger.info('未完了の購入と依頼待ちの返金・メールを確認しました', {
       reconciliation,
       refunds,
+      stalledRefunds,
       notices,
     });
   }
@@ -129,6 +147,7 @@ export class PendingCheckoutSweepJob implements ScheduledJobHandler {
   private async reconcileStale(
     scheduledTime: Date,
   ): Promise<ReconciliationTally> {
+    const startedAt = this.clock.now();
     const stale = await this.purchases.findStaleOpen({
       expiredBefore: new Date(scheduledTime.getTime() - STALE_AFTER_MS),
       limit: STALE_CHECKOUT_LIMIT,
@@ -144,6 +163,7 @@ export class PendingCheckoutSweepJob implements ScheduledJobHandler {
         incidents: this.incidents,
       },
       stale,
+      new Date(startedAt.getTime() + STALE_CHECKOUT_TIME_LIMIT_MS),
     );
   }
 
@@ -168,6 +188,45 @@ export class PendingCheckoutSweepJob implements ScheduledJobHandler {
       }
     }
     return { targets: undispatched.length, failed };
+  }
+
+  // 送り直しはStripeの冪等キーの有効期間(24時間)の外になるが、返金の処理が依頼のIDを持つ返金を照会してから作るため、二重の返金にならない。送り直しで送信の日時を改め、同じ日に重ねて送らない
+  private async redispatchStalledRefunds(
+    dispatchedBefore: Date,
+  ): Promise<StalledRefundTally> {
+    const stalled = await this.refundStore.findStalledDispatched({
+      dispatchedBefore,
+      limit: STALLED_REFUND_LIMIT,
+    });
+    const redispatched: string[] = [];
+    let failed = 0;
+    for (const { id } of stalled) {
+      try {
+        if (await this.refunds.redispatch(id)) {
+          redispatched.push(id);
+        }
+      } catch (error: unknown) {
+        failed += 1;
+        this.incidents.report({
+          kind: 'refund-dispatch-failed',
+          job: JOB,
+          refundRequestId: id,
+          error,
+        });
+      }
+    }
+    if (redispatched.length > 0) {
+      this.incidents.report({
+        kind: 'refund-redispatched',
+        job: JOB,
+        refundRequestIds: redispatched,
+      });
+    }
+    return {
+      targets: stalled.length,
+      redispatched: redispatched.length,
+      failed,
+    };
   }
 
   // 依頼待ちの行だけを依頼するため、依頼を記録したメールを再び依頼しない

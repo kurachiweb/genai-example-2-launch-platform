@@ -48,6 +48,21 @@ export function jobContextAt(
 
 export const RUN_CLOCK: Clock = Object.freeze({ now: () => RUN_CLOCK_TIME });
 
+// 23:40の突合が実際に動いた時刻。突合の時間の上限は起動の予定時刻から数える
+export const RECONCILIATION_CLOCK_TIME = new Date('2027-04-06T07:40:07.000Z');
+
+export const RECONCILIATION_CLOCK: Clock = Object.freeze({
+  now: () => RECONCILIATION_CLOCK_TIME,
+});
+
+// 決済セッションを取得した回数に応じて進む時計。取得の待ちで時間が過ぎる様子を再現する
+export function clockByCalls(
+  calls: readonly string[],
+  timeOf: (callCount: number) => Date,
+): Clock {
+  return { now: () => timeOf(calls.length) };
+}
+
 // 前進の後の版に使う連番のULID
 export function createJobIds(): IdGenerator {
   let serial = 0;
@@ -317,15 +332,23 @@ export interface RefundQueries {
     readonly createdBefore: Date;
     readonly limit: number;
   }[];
+  readonly stalled: {
+    readonly dispatchedBefore: Date;
+    readonly limit: number;
+  }[];
   readonly pendingNotices: {
     readonly updatedBefore: Date;
     readonly limit: number;
   }[];
 }
 
-// D1RefundStoreと同じ条件と順で、未送信の返金の依頼と依頼待ちの自動返金の通知を探す
+// D1RefundStoreと同じ条件と順で、未送信の返金の依頼・送信の後に依頼中のまま残った返金の依頼・依頼待ちの自動返金の通知を探す
 export class InMemoryJobRefunds {
-  readonly queries: RefundQueries = { undispatched: [], pendingNotices: [] };
+  readonly queries: RefundQueries = {
+    undispatched: [],
+    stalled: [],
+    pendingNotices: [],
+  };
   private readonly refunds = new Map<string, RefundRequestRecord>();
 
   constructor(refunds: readonly RefundRequestRecord[] = []) {
@@ -365,6 +388,20 @@ export class InMemoryJobRefunds {
             .slice(0, input.limit),
         );
       },
+      findStalledDispatched: (input) => {
+        this.queries.stalled.push(input);
+        return Promise.resolve(
+          ordered((refund) => refund.dispatchedAt ?? refund.createdAt)
+            .filter(
+              (refund) =>
+                refund.status === 'requested' &&
+                refund.dispatchedAt !== null &&
+                refund.dispatchedAt.getTime() <
+                  input.dispatchedBefore.getTime(),
+            )
+            .slice(0, input.limit),
+        );
+      },
       findPendingNotices: (input) => {
         this.queries.pendingNotices.push(input);
         return Promise.resolve(
@@ -382,13 +419,27 @@ export class InMemoryJobRefunds {
   }
 }
 
-// D1PaymentRefundsと同じく、送信済みなら何もしない
+// D1PaymentRefundsと同じく、dispatchは送信済みなら何もせず、redispatchは送信済みで依頼中の依頼だけを送り直して送信の日時を改める
 export function createJobPaymentRefunds(
   refunds: InMemoryJobRefunds,
   dispatched: string[],
   failures: ReadonlyMap<string, Error> = new Map(),
+  redispatched: string[] = [],
 ): PaymentRefunds {
   return partialFake<PaymentRefunds>({
+    redispatch: (refundRequestId) => {
+      redispatched.push(refundRequestId);
+      const failure = failures.get(refundRequestId);
+      if (failure !== undefined) {
+        return Promise.reject(failure);
+      }
+      const refund = refunds.get(refundRequestId);
+      if (refund?.status !== 'requested' || refund.dispatchedAt === null) {
+        return Promise.resolve(false);
+      }
+      refunds.update(refundRequestId, { dispatchedAt: RUN_CLOCK_TIME });
+      return Promise.resolve(true);
+    },
     dispatch: (refundRequestId) => {
       dispatched.push(refundRequestId);
       const failure = failures.get(refundRequestId);

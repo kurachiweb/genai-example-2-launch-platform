@@ -45,6 +45,7 @@ import type {
   PaymentOwnerResolution,
   PaymentOwnerResolver,
 } from './payment-owner-resolver.ts';
+import { reportRefundFailure } from './refund-failure-reporting.ts';
 import type {
   GuardedBatch,
   PaymentRecordStatements,
@@ -337,7 +338,7 @@ export class StripePaymentReflector implements PaymentReflector {
       return UNRESOLVED;
     }
     const request = await this.refundRequestOf(refund);
-    const outcome = await this.upsertRecord(
+    const { outcome, restChanges } = await this.batchRecord(
       {
         ...this.recordBaseOf(owner, occurredAt),
         kind: 'refund',
@@ -351,6 +352,19 @@ export class StripePaymentReflector implements PaymentReflector {
         ? []
         : [this.refundRequestStatement(refund, request)],
     );
+    // 依頼の行の文は状態か返金のIDが変わるときだけ行を変えるため、同じ失敗の通知の再送では知らせない
+    if (
+      request !== undefined &&
+      request.status !== 'failed' &&
+      refund.status === 'failed' &&
+      (restChanges[0] ?? 0) > 0
+    ) {
+      reportRefundFailure(this.logger, {
+        refundRequestId: request.id,
+        stripeRefundId: refund.id,
+        failureCode: refund.failureReason,
+      });
+    }
     if (
       request !== undefined &&
       isReflectionRequestKey(request.requestKey) &&
@@ -550,13 +564,26 @@ export class StripePaymentReflector implements PaymentReflector {
   // 記録済みより古い発生時刻の通知では記録を更新しない。同じ一括の書き込みの文はStripeから取り直した最新の状態を書くため、古い通知でも確定させる
   private async upsertRecord(
     record: NewPaymentRecord,
-    rest: readonly BatchItem<'sqlite'>[] = [],
   ): Promise<ReflectionOutcome> {
+    return (await this.batchRecord(record, [])).outcome;
+  }
+
+  // 同じ一括の書き込みの文ごとに、変えた行の数を返す
+  private async batchRecord(
+    record: NewPaymentRecord,
+    rest: readonly BatchItem<'sqlite'>[],
+  ): Promise<{
+    readonly outcome: ReflectionOutcome;
+    readonly restChanges: readonly number[];
+  }> {
     const results: readonly unknown[] = await this.db.batch([
       this.recordStatements.upsertByReference(record),
       ...rest,
     ]);
-    return changesOf(results[0]) > 0 ? APPLIED : STALE;
+    return {
+      outcome: changesOf(results[0]) > 0 ? APPLIED : STALE,
+      restChanges: results.slice(1).map(changesOf),
+    };
   }
 
   private async retrieve<T>(
