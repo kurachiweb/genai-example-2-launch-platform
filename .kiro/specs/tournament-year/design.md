@@ -1374,7 +1374,7 @@ type Mutation {
 
 ### admin
 
-- 登録: `ADMIN_SETTINGS_SECTIONS`に`{ id: 'tournament-year.final-date', order: 10, component: FinalDateSection }`。
+- 登録: `ADMIN_SETTINGS_SECTIONS`に`{ id: 'tournament-year.final-date', order: 10, title: 'Yearトーナメントの決勝実施日', component: FinalDateSection }`。設定ページが区画ごとに`RecoverableSlot`で包み、読み込み中と失敗の間は`title`の見出しを補うため、`title`は部品が描く見出しと同じ文言にする。
 - `FinalDateSection`: 見出し「Yearトーナメントの決勝実施日」と説明(「欧州サッカーのリーグ最終節に合わせて、各年の決勝実施日(日曜日)を設定します。未設定の年は5月の最終日曜日に行います。」)、`yearFinalDateSettings`の2年分を`FinalDateYearCard`で並べる(2.1)。取得の失敗は区画の中の`ErrorState`(再試行)で縮退し、`contactHref`を渡さない(管理者側は問い合わせの画面を持たない)。文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ。
 - `FinalDateYearCard`: 対象年、決勝実施日(業務日付の`<time datetime="YYYY-MM-DD">`と「2027年5月30日(日)」の表記)と「設定済み」「既定(5月の最終日曜日)」のバッジ、受付期限・組み合わせ決定・変更期限の`DateTime`、最後に変更した日時と管理者のニックネーム、翌年の注意(2.12)。`RoleGate({ minimum: 'super_admin' })`かつ`changeable`のときだけ`FinalDateForm`、それ以外は参照だけで「最上位管理者だけが変更できます」または「変更期限(決勝の7日前)を過ぎたため変更できません」(2.2・2.3)。
 - `FinalDateForm`: 候補(`choices`)の`<select>`(ラベル付き、既定の選択は現在の日、候補が無ければ選べる日が無い旨)と任意の理由(500書記素以内、個人情報を含めない旨の注記)、保存は`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`)で、確認の文に変更後の受付期限・組み合わせ決定と対象期間が変わる旨を出す(2.13)。成功で「決勝実施日を保存しました。」。保存の失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す。`failureMessageOf`は、`validation_error`なら理由の文言、`final_date_locked`なら期限の文言、`version_conflict`なら最新を読み直す案内(2.11、`FinalDateLabels`)を返し、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返して問い合わせを促す文を出さない。

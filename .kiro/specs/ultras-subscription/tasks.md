@@ -16,7 +16,7 @@
 
 - [ ] 1.3 (P) ページ配置と文言規則に、料金ページ・プラン管理画面・管理画面の設定ページの配置と文言を先に書く
   - ページ配置: `/pricing`の「機能フラグがオフなら404」を「未加入者にUltrasの区画を表示しない(ページは他の区画のために表示を続ける)」に直し、区画の並び(Ultras・スポンサー広告・法的通知へのリンク)、`/settings/plan`をCustomer Portalに一本化した配置(状態ごとの表示・「解約・支払い方法の管理」のボタン・Portalから戻った直後の反映待ち)、管理者側の「設定」ページの区画の並び(決勝日・機能フラグ・送信者情報)を記載する
-  - 文言規則: 加入状態の表示名、料金ページ・プラン管理画面の状態ごとの文言、最終確認画面の追加事項の4行(自動更新と毎月の請求額・解約の方法と末日までの継続・日割りの返金なし・支払い済みの参加費は返金しない)、エラーの文言(設計の表)、通知メールの件名2種、機能フラグの区画の説明文を加える
+  - 文言規則: 加入状態の表示名、料金ページ・プラン管理画面の状態ごとの文言、最終確認画面の追加事項の4行(自動更新と毎月の請求額・解約の方法と末日までの継続・日割りの返金なし・支払い済みの参加費は返金しない)、エラーの文言(設計の表)、通知メールの件名2種、機能フラグの区画の説明文、Portalから戻った直後の反映待ちの文言と確かめ直しを終えた後の開き直しの案内、料金ページの説明(`<meta name="description">`)の文を加える
   - 完了状態: 2つの文書が整形の検査を通り、2.4・4.2・5・7・8のタスクが参照する文言がすべて文言規則にある
   - _Boundary: `docs/GUIDES/service/design/002-page-layouts.md`・`003-text-and-copy-rules.md`_
   - _Requirements: 13.4_
@@ -178,13 +178,16 @@
   - _Requirements: 1.1, 9.2, 9.4, 9.5, 9.7_
 
 - [ ] 7.3 料金ページの枠とUltrasの区画を作る
-  - 先に、ブラウザテスト(axeの違反0件)で、区画の登録箇所の順の表示と末尾の法的通知へのリンク、フラグがオフで未加入ならUltrasの区画が出ないこと、フラグがオフでも加入中なら区画と現在の状態とプラン管理画面への導線が出ること、価格(`MoneyText`)と価格が無いときの案内を確かめる
-  - 区画の登録箇所(初版はUltrasだけ)と`/pricing`(ログイン不要、ページのタイトルと説明)を作る
-  - 完了状態: ブラウザテストが成功し、ローカルで機能フラグをローカルD1への書き込み(絶対パスの`--persist-to`)でオンにしてから未ログインで`/pricing`を開くと、特典と、価格(1.4の開発者の準備が済んでいれば)または価格を表示できない旨の案内が表示される
+  - 先に、区画ごとのエラーの境界を共通部品へ移す: inquiry-chatが作った`apps/admin/src/components/layout/recoverable-slot.tsx`の`RecoverableSlot`を、問い合わせの扱い(`contactAvailable`と`contactHref`)をpropsで受け取る形にして`apps/frontend-lib/components/state/recoverable-slot.tsx`へ移し、Storybookのストーリーとブラウザテスト(propsによる文言の出し分け・再試行・見出しの補い)を足す。adminの3つの利用箇所(`dashboard-grid.tsx`・`category-sections-view.tsx`・`inquiry-detail-actions-view.tsx`)は`ADMIN_PROFILE.contactAvailable`を渡す形に改め、`docs/GUIDES/tech/frontend/005-shared-components.md`の部品の一覧と使い方、`009-admin-console-shell.md`の部品の一覧を移した先に合わせる
+  - 先に、frontend-libの`page-head.unit.test.ts`に、`PageHeadInput`の省略可能な`description`を渡したときだけ`<meta name="description">`が出ることのテストを足し、`page-head.ts`と、clientの`buildSitePageHead`(`src/head/page-heads.ts`)が`description`を渡せるようにする。frontend-platformの`design.md`のページのheadの契約を新しい形に合わせて直す
+  - 先に、ブラウザテスト(axeの違反0件)で、区画の登録箇所の順の表示と末尾の法的通知へのリンク、1つの区画の取得が失敗してもその区画の位置に見出しと再試行が出て他の区画とリンクが表示され続けること、フラグがオフで未加入ならUltrasの区画が出ないこと、フラグがオフでも加入中なら区画と現在の状態とプラン管理画面への導線が出ること、価格(`MoneyText`)と価格が無いときの案内を確かめる
+  - 区画の登録箇所(`PricingSection`は`'<spec名>.<名詞句>'`の`id`・`order`・見出しの`title`・`component`。初版は`ultras-subscription.ultras-pricing`(10、「Ultras」)だけ)と`/pricing`(ログイン不要、`buildSitePageHead`でページのタイトルと説明)を作り、各区画を`RecoverableSlot`(`CLIENT_PROFILE.contactAvailable`)で包む
+  - 完了状態: ブラウザテストと`page-head.unit.test.ts`が成功し、adminの既存のブラウザテスト(ダッシュボード・カテゴリマスタ・問い合わせの詳細)が移した後も成功し、ローカルで機能フラグをローカルD1への書き込み(絶対パスの`--persist-to`)でオンにしてから未ログインで`/pricing`を開くと、特典と、価格(1.4の開発者の準備が済んでいれば)または価格を表示できない旨の案内が表示され、ページの`<head>`に説明が出る
   - _Requirements: 1.2, 9.1, 9.2, 9.3, 9.6, 9.7, 9.8_
 
 - [ ] 7.4 プラン管理画面を作り、設定ページのナビゲーションに加える
-  - 先に、ブラウザテスト(axeの違反0件)で、4状態と未加入の表示(日時は`<time datetime>`で閲覧者のタイムゾーン)、`past_due`の支払い方法の更新の促し、`canceled`の終了日時と取り消しの案内、未加入でフラグがオンなら加入の導線・オフなら受付停止の文言、Portalのボタンの表示条件と押下での移動、Portalの障害と回数制限の文言、Portalから戻った直後の反映待ちの表示と確かめ直し(5秒ごと最大12回)を確かめる
+  - 先に、ブラウザテスト(axeの違反0件)で、4状態と未加入の表示(日時は`<time datetime>`で閲覧者のタイムゾーン)、`past_due`の支払い方法の更新の促し、`canceled`の終了日時と取り消しの案内、未加入でフラグがオンなら加入の導線・オフなら受付停止の文言、Portalのボタンの表示条件と押下での移動、Portalの障害と回数制限の文言、Portalから戻った直後の反映待ちの表示(`role="status"`)と確かめ直し(5秒ごと最大12回、偽のタイマーで進める。完了の判定はせず、12回で止まって開き直しの案内に切り替わり、照会以外の取得を取り直さない)を確かめる
+  - 確かめ直しは`viewerUltras`の照会の`refetchInterval`を関数にして回数で止め、「自動更新」の`Switch`を置かない。画面から確定の変更を呼ばない(反映はWebhookだけ、6.8)。先に`docs/GUIDES/tech/frontend/010-live-refresh-queries.md`の「使う場面」の表に「外部サービスでの操作から戻った直後に、遅れて反映される閲覧者自身のデータ」の行(回数を限った一時的な再取得、`Switch`を置かない、上限で開き直しの案内)を、プロジェクト名と固有の値を含めずに加える
   - `/settings/plan`を設定ページのシェルの中に作り、設定ページのナビゲーションに「プラン」(order 60)を加える。加入の導線は7.2のボタンを使う
   - 完了状態: ブラウザテストが成功し、ローカルでログインして`/settings/plan`を開くとナビゲーションの「プラン」が現在の項目になる
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.1, 6.2, 6.7_
@@ -198,9 +201,10 @@
   - _Requirements: 10.1, 10.2, 10.3, 10.4_
 
 - [ ] 8.2 管理画面の設定ページの枠と区画の登録箇所を作り、メニューに加える
-  - 先に、ブラウザテスト(axeの違反0件)で、区画の登録箇所の`order`順の表示とページの見出しを確かめる
-  - `/settings`のページと区画の登録箇所(初版は8.1の機能フラグの区画、`order` 20)を作り、管理画面のメニューに「設定」(order 130)を加える
+  - 先に、ブラウザテスト(axeの違反0件)で、区画の登録箇所の`order`順の表示とページの見出し、1つの区画の取得が失敗してもその区画の位置に`title`の見出しと再試行が出て他の区画が表示され続けることを確かめる
+  - `/settings`のページ(`components/pages/admin-settings-page.tsx`)と区画の登録箇所(`AdminSettingsSection`は`'<spec名>.<名詞句>'`の`id`・`order`・見出しの`title`・`component`。初版は8.1の機能フラグの区画`ultras-subscription.promotion-flag`(20、「Ultras導線の機能フラグ」))を作り、各区画を7.3で移した`RecoverableSlot`(`ADMIN_PROFILE.contactAvailable`)で包み、管理画面のメニューに「設定」(order 130)を加える
   - 完了状態: ブラウザテストが成功し、ローカルで最上位管理者がフラグを切り替えると監査ログの画面に記録が出る
+  - _Depends: 7.3, 8.1_
   - _Requirements: 10.1, 10.9_
 
 - [ ] 9. 文書

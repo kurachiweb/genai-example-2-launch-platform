@@ -56,7 +56,7 @@
 - dev-tooling: ルートの`playwright.config.ts`と`e2e/support/playwright-config.ts`の`createPlaywrightConfig`(プロジェクトの組み立て)、テスト方針の文書`docs/GUIDES/tech/testing/001-test-strategy.md`。タスク10.1で、共有の行を書き換えるE2Eを直列にする組み立てと記述を加える(上流への影響)。
 - payments: `core/payments`の`PurchaseOfferPolicy`・`PurchaseOffer`・`PurchaseOfferRequest`・`FulfillablePurchase`・`SubscriptionChange`・`StripeGateway`の`cancelSubscription`・`createPortalSession`・`CustomerDirectory`・`PriceCatalog`・`StripeUnavailableError`・`PAYMENTS_TYPES`、`workers/payments/fulfillment-contract.ts`の`PurchaseKindRegistration`・`PurchaseFulfillment`・`FulfillmentPlan`・`SubscriptionEventSink`・`SubscriptionEventSinkRegistration`(`workers/ultras`だけが読み込む)、`workers/payments`の`PURCHASE_KIND_REGISTRATIONS`・`SUBSCRIPTION_EVENT_SINKS`、apiのアプリケーション層の`CheckoutStarter`、GraphQLの`Money`・`CheckoutStart`・`MoneyText`。仮5の追加(`afterCommit`・`cancelAt`)と仮3の追加(購入確認メールの追加事項)は、paymentsの要件・設計・タスクに反映済み(paymentsのU1・U2、2026-10-23に開発者が承認)で、paymentsのタスクが先に実装する。本specはpaymentsのコードを変更しない。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`、adminの`ADMIN_PROFILE`(`contactAvailable`)、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`Admin`・`src/graphql/generated/graphql.ts`の生成物)。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`buildPageHead`・`DateTime`・`EmptyState`・`ErrorState`・`UnavailableNotice`・`LoadingSkeleton`・`notify`・shadcn/uiの部品・`runAxe`、adminの`ADMIN_PROFILE`(`contactAvailable`)・clientの`CLIENT_PROFILE`、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`Admin`・`src/graphql/generated/graphql.ts`の生成物)。本specは`PageHeadInput`に`description`を加え、inquiry-chatの`RecoverableSlot`をfrontend-libへ移す(上流への影響)。
 - npmパッケージ: 新規は無い。
 - 後続specは本specの`core/ultras`の公開の契約と識別子(`UltrasEntitlements`・`UltrasPromotionFlagReader`・`UltrasPlanExport`・`UltrasActivationHandlerRegistration`・`ULTRAS_TYPES`。D1の実装は`workers/ultras`)と、clientの`UltrasPromotionGate`・管理画面の`ADMIN_SETTINGS_SECTIONS`・料金ページの`PRICING_SECTIONS`だけに依存し、テーブルを直接読み書きしない。data-exportも本specのテーブルを直接読まず、本specが所有するエクスポート部品`UltrasPlanExport`を呼ぶ。
 
@@ -65,7 +65,7 @@
 - `UltrasEntitlements`の形と判定の規則(特典の継続期間の両端の含め方、特典の終了時刻の日の境界)(user-profile-social・product-launch・tournament-week・tournament-year)。
 - `UltrasActivation`・`UltrasActivationHandlerRegistration`の形・配送保証(少なくとも1回)・`order`の範囲(tournament-week・tournament-year)。
 - `UltrasPromotionFlagReader`・`UltrasPromotionGate`の形と、フラグの意味(未加入者への導線と新規加入)(tournament-week・tournament-year・product-launchなど導線を出す全spec)。
-- `PRICING_SECTIONS`・`ADMIN_SETTINGS_SECTIONS`の形と`order`(sponsorship・tournament-year・notifications)。
+- `PRICING_SECTIONS`・`ADMIN_SETTINGS_SECTIONS`の形(`id`の形・`title`・`component`)と`order`、区画ごとの`RecoverableSlot`による失敗の閉じ込め(sponsorship・tournament-year・notifications)。
 - `UltrasPlanExport`の形と`plan.status`の値(data-export。データエクスポートの文書と一致させる)。
 - paymentsの`SubscriptionChange`・`SubscriptionEventSink`・`PurchaseFulfillment`の形と置き場所(`core/payments`・`workers/payments/fulfillment-contract.ts`)、または古い通知を捨てる規則を変えたら、本specを確かめ直す(仮5で本specが足す`afterCommit`・`cancelAt`を含む)。
 - `core/ultras`の契約(`UltrasEntitlements`・`UltrasPromotionFlagReader`・`UltrasPlanExport`・`ActivationDispatcher`・`UltrasNotifier`・各ストアの文を返さない操作)と`ULTRAS_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(後続specとapi・eventのapplication層が読み込むため)。
@@ -75,9 +75,11 @@
 
 ### 上流への影響
 
-| 上流spec    | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                | 影響と再検証                                                                                                                                                                                                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| dev-tooling | `e2e/support/playwright-config.ts`の`createPlaywrightConfig`(と`playwright-config.unit.test.ts`)・ルートの`playwright.config.ts`に、指定したE2Eのファイルを対象ごとのプロジェクトから外し(`testIgnore`)、別のプロジェクトに分けて`dependencies`で直列にする組み立てを加え、Ultrasの2ファイルに使う。`docs/GUIDES/tech/testing/001-test-strategy.md`のE2Eの節に「共有の行を書き換えるE2Eはプロジェクトの依存で直列にする」旨を加える | ワーカーの数・既存の対象ごとのプロジェクトと到達確認のプロジェクトの名前と依存は変えず、他のspecのE2Eの並行実行に影響させない。`playwright-config.unit.test.ts`の既存のテストが通ることと、Playwrightの一覧の表示で確かめる。文書はプロジェクト名と固有の値を含めずに書く。dev-toolingのファイルの変更のため再検証を求める |
+| 上流spec                       | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 影響と再検証                                                                                                                                                                                                                                                                                                               |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| dev-tooling                    | `e2e/support/playwright-config.ts`の`createPlaywrightConfig`(と`playwright-config.unit.test.ts`)・ルートの`playwright.config.ts`に、指定したE2Eのファイルを対象ごとのプロジェクトから外し(`testIgnore`)、別のプロジェクトに分けて`dependencies`で直列にする組み立てを加え、Ultrasの2ファイルに使う。`docs/GUIDES/tech/testing/001-test-strategy.md`のE2Eの節に「共有の行を書き換えるE2Eはプロジェクトの依存で直列にする」旨を加える                                                                                                                                                                                              | ワーカーの数・既存の対象ごとのプロジェクトと到達確認のプロジェクトの名前と依存は変えず、他のspecのE2Eの並行実行に影響させない。`playwright-config.unit.test.ts`の既存のテストが通ることと、Playwrightの一覧の表示で確かめる。文書はプロジェクト名と固有の値を含めずに書く。dev-toolingのファイルの変更のため再検証を求める |
+| frontend-platform              | `apps/frontend-lib/start/page-head.ts`の`PageHeadInput`に省略可能な`description`を加え、指定したときだけ`<meta name="description">`を出す(と`page-head.unit.test.ts`)。clientの包み`buildSitePageHead`(`apps/client/src/head/page-heads.ts`)が`description`を渡す                                                                                                                                                                                                                                                                                                                                                                | 既存のページは`description`を渡さないため出力が変わらない。`page-head.unit.test.ts`の既存のテストが通ることと、`description`を渡したときと渡さないときのテストで確かめる。frontend-platformの`design.md`のページのheadの契約を新しい形に合わせて直す(タスク7.3)                                                            |
+| inquiry-chat・admin-foundation | inquiry-chatが`apps/admin/src/components/layout/recoverable-slot.tsx`に作った区画ごとのエラーの境界`RecoverableSlot`を、`apps/frontend-lib/components/state/recoverable-slot.tsx`へ移す。adminの`ADMIN_PROFILE`を読まず、問い合わせを促す文を出すかを`contactAvailable`(と`contactHref`)のpropsで受け取る形にし、adminの3つの利用箇所(`dashboard-grid.tsx`・`category-sections-view.tsx`・`inquiry-detail-actions-view.tsx`)は`ADMIN_PROFILE.contactAvailable`を渡す。`docs/GUIDES/tech/frontend/009-admin-console-shell.md`(管理画面の枠の部品の一覧)と`005-shared-components.md`(部品の一覧と使い方)の記載を移した先に合わせる | adminのダッシュボード・カテゴリマスタ・問い合わせの詳細の表示と振る舞いは変えない。既存のブラウザテスト(`dashboard`・`categories`・`inquiry`)が通ることで確かめる。frontend-libの部品の規約どおり、Storybookのストーリーとブラウザテストを足す(タスク7.3)                                                                  |
 
 - 後続specへの申し送り: UltrasのE2Eは機能フラグの行を書き換えるため、フラグの値で表示が変わる画面を確かめる後続specのE2Eは、Ultrasのプロジェクトの依存に加えるか、フラグの値で結果が変わる部分を確かめない(roadmapのShared seams「プラン判定」、product-launch・tournament-week・tournament-yearのbrief)。
 
@@ -244,7 +246,7 @@ apps/
 │   ├── routes/_authenticated/settings/plan.tsx         # /settings/plan
 │   ├── composition/pricing-sections.ts                 # PRICING_SECTIONS(sponsorshipが追記)
 │   ├── components/ultras/                              # 1ファイル1コンポーネント(browser testを併置)
-│   │   ├── pricing-page.tsx                            # 区画の並びと法的通知へのリンク
+│   │   ├── pricing-page.tsx                            # 区画の並び(区画ごとにRecoverableSlotで包む)と法的通知へのリンク
 │   │   ├── ultras-pricing-section.tsx                  # 料金ページのUltrasの区画
 │   │   ├── ultras-benefit-list.tsx                     # 特典と条件の一覧
 │   │   ├── ultras-subscribe-button.tsx                 # 加入ボタン(未ログイン・未確認・不可の出し分け)
@@ -261,7 +263,7 @@ apps/
 └── admin/src/
     ├── routes/_authenticated/settings/index.tsx        # /settings
     ├── composition/admin-settings-sections.ts          # ADMIN_SETTINGS_SECTIONS(tournament-year・notificationsが追記)
-    ├── components/settings/admin-settings-page.tsx     # 区画の並び
+    ├── components/pages/admin-settings-page.tsx        # 区画の並び(区画ごとにRecoverableSlotで包む)
     ├── components/ultras/promotion-setting-section.tsx # フラグの区画
     └── graphql/operations/ultras/                      # 1ファイル1操作の.graphql(操作名はAdminで始める)
         ├── ultras-promotion-setting.graphql            # AdminUltrasPromotionSetting(ultrasPromotionSetting)
@@ -279,6 +281,10 @@ apps/
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts` — `createUltrasPlatformModule('api')`・apiのUltrasモジュール・スキーマモジュール・ジョブ。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`user-lifecycle-async-handlers.ts`・`infrastructure/email/templates/index.ts` — 束縛(`createUltrasPlatformModule('event')`とeventのUltrasモジュール)、`ultras.run-activation-handlers`の処理、2つの波及処理、2つのテンプレート。
 - `apps/client/src/composition/settings-navigation.ts` — `{ to: '/settings/plan', label: 'プラン', order: 60 }`。
+- `apps/frontend-lib/start/page-head.ts`・`page-head.unit.test.ts`(frontend-platformの所有)・`apps/client/src/head/page-heads.ts` — `PageHeadInput`に省略可能な`description`を加え、`buildSitePageHead`から渡せるようにする(上流への影響)。
+- `apps/admin/src/components/layout/recoverable-slot.tsx`→`apps/frontend-lib/components/state/recoverable-slot.tsx`(inquiry-chatが作成)と、adminの`dashboard-grid.tsx`・`category-sections-view.tsx`・`inquiry-detail-actions-view.tsx` — 区画ごとのエラーの境界を、問い合わせの扱いをpropsで受け取る形にしてfrontend-libへ移し、adminの利用箇所は`ADMIN_PROFILE.contactAvailable`を渡す。Storybookのストーリーとブラウザテストを足す(上流への影響)。
+- `docs/GUIDES/tech/frontend/005-shared-components.md`・`009-admin-console-shell.md` — `RecoverableSlot`をfrontend-libの部品の一覧と使い方へ移し、管理画面の枠の部品の一覧から参照する。
+- `docs/GUIDES/tech/frontend/010-live-refresh-queries.md` — 「使う場面」の表に「外部サービスでの操作から戻った直後に、遅れて反映される閲覧者自身のデータ」の行(回数を限った一時的な再取得、「自動更新」の`Switch`を置かない、上限で開き直しの案内)を、プロジェクト名と固有の値を含めずに加える。
 - `apps/admin/src/composition/admin-navigation.ts` — `{ to: '/settings', label: '設定', order: 130 }`。
 - `docs/onboardings/tech-stack.md` — Stripe Customer Portalの用途を「Ultrasの支払い方法の更新・解約・解約の取り消し」に改める(Q6)。
 - `docs/GUIDES/tech/backend/README.md`・`external/README.md` — 文書一覧の表に行を加える。
@@ -1004,14 +1010,16 @@ export declare class D1UltrasAccountDataEraser implements UltrasAccountDataErase
 
 ```typescript
 export interface PricingSection {
-  readonly id: string;
+  readonly id: string; // '<spec名>.<名詞句>'
   readonly order: number;
-  readonly component: ComponentType;
+  readonly title: string; // 区画の見出し。部品が描く見出しと同じ文言にする
+  readonly component: ComponentType; // 自分でデータを取得し、自分の見出しを描く
 }
-export declare const PRICING_SECTIONS: readonly PricingSection[]; // 初版は ultras(10)。sponsorshipが sponsorship(20)を追記
+export declare const PRICING_SECTIONS: readonly PricingSection[]; // 初版は ultras-subscription.ultras-pricing(10、「Ultras」)。sponsorshipが sponsorship.sponsorship-pricing(20、「スポンサー広告」)を追記
 ```
 
-- `/pricing`(ログイン不要、`buildPageHead`でタイトル「料金」と説明、9.8): `PRICING_SECTIONS`を`order`順に並べ、末尾に法的通知(`/legal`)へのリンクを置く(9.1)。区画が1つも表示されないときもリンクは出す。
+- 登録口の形は、adminの`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例に合わせる(`id`の形・`title`)。
+- `/pricing`(ログイン不要、`buildSitePageHead`でタイトル「料金」と説明`description`、9.8。説明を出すため、frontend-libの`PageHeadInput`に省略可能な`description`を加える、上流への影響): `PricingPage`が`PRICING_SECTIONS`を`order`順に並べ、各区画をfrontend-libの`RecoverableSlot`(`contactAvailable`は`CLIENT_PROFILE.contactAvailable`)で包み、1つの区画の描画や取得の失敗をその区画の位置に留めて他の区画の表示を続ける。読み込み中と失敗の間は、区画の`title`の見出しを`frame`で補う(前例`CategorySectionsView`)。末尾に法的通知(`/legal`)へのリンクを置く(9.1)。区画が1つも表示されないときもリンクは出す。
 - `UltrasPricingSection`: `ultrasOffer`と`viewerUltras`を取得し、`promotionEnabled`が偽かつ`entitled`が偽なら何も描画しない(9.6)。描画するときは価格(`MoneyText`、取得できなければ「現在表示できません」、9.7)・`UltrasBenefitList`・`entitled`なら現在の加入状態とプラン管理画面への導線、そうでなければ`UltrasSubscribeButton`(9.2・9.3)。
 - `UltrasSubscribeButton`: 未ログインはログインへの導線(戻り先`/pricing`、9.4)、未確認は無効と理由(9.5)、価格が無いときは無効(9.7)、押下で`startUltrasCheckout` → `/checkout/{購入ID}`へ遷移(1.1)。エラーは`GraphQLClientError`のコードで文言規則の文言を出す。
 
@@ -1020,7 +1028,7 @@ export declare const PRICING_SECTIONS: readonly PricingSection[]; // 初版は u
 - `/_authenticated/settings/plan`(ログイン必須、未ログインは`_authenticated`のレイアウトがログインへ誘導、5.9): `SettingsShell`の中に`PlanPage`。`SETTINGS_NAV_ITEMS`に「プラン」(order 60、5.8)。
 - `PlanStatusPanel`: 状態ごとの表示(5.2〜5.5)。日時は`DateTime`(`<time datetime>`、閲覧者のタイムゾーン、5.6)。未加入・`ended`で`promotionEnabled`が真なら加入の導線(`UltrasSubscribeButton`)、偽なら「現在、新規の加入を受け付けていません」。
 - `PortalButton`(`canOpenPortal`のときだけ、6.1): ラベル「解約・支払い方法の管理」。押下で`createUltrasPortalSession` → `window.location.assign(url)`(6.2)。`payments_unavailable`は`UnavailableNotice`(6.7)、`rate_limit_exceeded`は文言規則の文言。
-- `PortalReturnNotice`: 検索パラメーター`portal=returned`のとき、「変更を反映しています」を表示し、`viewerUltras`を5秒ごとに最大12回取得し直す(5.7)。
+- `PortalReturnNotice`: 検索パラメーター`portal=returned`のとき、`role="status"`で「変更を反映しています」を表示し、`viewerUltras`の照会を5秒ごとに最大12回取得し直す(TanStack Queryの`refetchInterval`を関数にし、取り直した回数が12回に達したら`false`を返す)(5.7)。反映が済んだかどうかは判定しない(Portalで何も変えずに戻った場合と区別できないため)。12回を終えたら、同じ`role="status"`の表示を「反映に時間がかかっています。しばらくしてからこのページを開き直してください。」に切り替える。取り直しは`viewerUltras`の照会だけに重ね、ページの他の取得に広げない。「自動更新」の`Switch`は置かない(戻った直後の一時的な取り直しで、利用者が見続ける画面ではないため)。この使い方は`010-live-refresh-queries.md`の「使う場面」に「外部サービスでの操作から戻った直後に、遅れて反映される閲覧者自身のデータ」の行として加える。反映は6.8どおりWebhookだけで行い、画面から確定の変更を呼ばない。
 
 #### UltrasPromotionGate
 
@@ -1039,16 +1047,18 @@ export interface UltrasPromotionGateProps {
 
 ```typescript
 export interface AdminSettingsSection {
-  readonly id: string;
+  readonly id: string; // '<spec名>.<名詞句>'
   readonly order: number;
-  readonly component: ComponentType;
+  readonly title: string; // 区画の見出し。部品が描く見出しと同じ文言にする
+  readonly component: ComponentType; // 自分でデータを取得し、自分の見出しを描く
 }
-export declare const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[]; // 初版は ultras-promotion(20)。tournament-yearが決勝日(10)、notificationsが送信者情報(30)を追記
+export declare const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[]; // 初版は ultras-subscription.promotion-flag(20、「Ultras導線の機能フラグ」)。tournament-yearが tournament-year.final-date(10、「Yearトーナメントの決勝実施日」)、notificationsが notifications.sender-info(30、「通知メールの送信者情報」)を追記
 ```
 
-- `/_authenticated/settings/index.tsx`: `AdminPageHeader`「設定」と`ADMIN_SETTINGS_SECTIONS`を`order`順に並べる(10.9)。`ADMIN_NAV_ITEMS`に`{ to: '/settings', label: '設定', order: 130 }`。
+- 登録口の形は、adminの`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例に合わせる(`id`の形・`title`)。
+- `/_authenticated/settings/index.tsx`: `components/pages/admin-settings-page.tsx`(前例`components/pages/*-page.tsx`)が`AdminPageHeader`「設定」と`ADMIN_SETTINGS_SECTIONS`を`order`順に並べる(10.9)。各区画をfrontend-libの`RecoverableSlot`(`contactAvailable`は`ADMIN_PROFILE.contactAvailable`)で包み、読み込み中と失敗の間は区画の`title`の見出しを`frame`で補う(前例`CategorySectionsView`)。`ADMIN_NAV_ITEMS`に`{ to: '/settings', label: '設定', order: 130 }`。
 - `PromotionSettingSection`: 現在の値・最後に変更した日時(`DateTime`)と管理者のニックネームを表示する(10.1)。`RoleGate({ minimum: 'super_admin' })`のときだけスイッチを有効にし、それ以外は参照だけで「最上位管理者だけが変更できます」と示す(10.3)。切り替えは`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`)で確定する(10.2)。切り替えの失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す。`failureMessageOf`は`version_conflict`なら最新を読み直す案内(10.4)を、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返す。説明文に「オフにすると未加入者への導線と新規加入を止めます。加入中の利用者には影響しません」(10.7)。
-- 失敗の表示(管理者側は問い合わせの画面を持たない): `PromotionSettingSection`の取得の失敗は区画の中の`ErrorState`(再試行)で縮退し、`contactHref`を渡さない。`GraphQLClientError`でない例外に代えて出す文言(`ErrorState`・`ConfirmActionDialog`の`failureMessageOf`・トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、問い合わせを促す文を出さない。
+- 失敗の表示(管理者側は問い合わせの画面を持たない): `PromotionSettingSection`の取得の失敗は、区画を包む`RecoverableSlot`が区画の位置に見出しと`ErrorState`(再試行)で示して縮退し、`contactHref`を渡さない。`GraphQLClientError`でない例外に代えて出す文言(`ErrorState`・`ConfirmActionDialog`の`failureMessageOf`・トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、問い合わせを促す文を出さない。
 
 ## Data Models
 
@@ -1139,7 +1149,7 @@ export declare const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[]; /
   - メール: `past_due`への変化で`ultras.payment-failed`が1回だけ依頼され、テンプレートが日本語の件名と本文・UTCの日時を描画する。退会済みの利用者は`skipped`(8.1・8.2・8.6〜8.8)。
   - 回数制限: `CounterPortalSessionLimits`でPortalの21回目が`rate_limit_exceeded`(6.6)。
 - E2E/UI Tests:
-  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `UltrasPricingSection`のフラグと加入状態による出し分け・価格が無いとき、`UltrasSubscribeButton`の未ログイン・未確認・押下、`PlanStatusPanel`の4状態と未加入、`PortalReturnNotice`の確かめ直し、`UltrasPromotionGate`、`PromotionSettingSection`のロールによる参照だけと確認のダイアログ・競合(1.1、5.2〜5.7、9.2〜9.7、10.1〜10.4)。
+  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `UltrasPricingSection`のフラグと加入状態による出し分け・価格が無いとき、`UltrasSubscribeButton`の未ログイン・未確認・押下、`PlanStatusPanel`の4状態と未加入、`PortalReturnNotice`の確かめ直し(5秒ごとに12回で止まり、開き直しの案内に切り替わる。偽のタイマーで進める)、`PricingPage`・`AdminSettingsPage`で1つの区画の取得が失敗しても、その区画の位置に見出しと再試行が出て他の区画と法的通知へのリンクが表示され続けること、`RecoverableSlot`の`contactAvailable`による文言の出し分け、`UltrasPromotionGate`、`PromotionSettingSection`のロールによる参照だけと確認のダイアログ・競合(1.1、5.2〜5.7、9.2〜9.7、10.1〜10.4)。
   - E2E(`e2e/client/ultras.e2e.test.ts`): 各テストの直前に、admin-foundationの`e2e/support/local-d1.ts`の`executeLocalD1`で`UPDATE ultras_settings SET enabled = <0か1>, version = version + 1, updated_at = <ミリ秒> WHERE setting_key = 'ultras_promotion'`を実行して機能フラグを設定する(文字列の値は`sqlStringLiteral`でリテラルにする。本specはローカルのD1へ書き込む手順を独自に作らない)。未ログインの料金ページで価格と特典が見えること、フラグがオフで未加入者にUltrasの区画が出ないこと、プラン管理画面のナビゲーションの項目(5.8、9.1・9.4・9.6)。Stripeのsandboxと`stripe listen`の転送が揃う環境では、テストカードでの加入→プラン管理画面の`active`の表示→「解約・支払い方法の管理」でPortalのURLへ移ることまでを確かめ、揃わない環境では対象外である旨を表示して終わる(1.1・1.7・5.2・6.2)。
   - E2E(`e2e/admin/ultras-promotion.e2e.test.ts`): 最上位管理者がフラグを切り替え、監査ログに記録が出ること(10.2)。管理者のログインは、admin-foundationが`e2e/support/admin-bootstrap.ts`に用意する補助(招待の発行・完了・指定したロールでのログイン)を使い、本specは独自に作らない。
 - 手動の検証(手順の一般的な形は`operations/004`、本サービス固有のテーブル名・列名・期待値はタスク10.2と`features/005`が持つ): test clock付きのCustomerをsandboxで作り、ローカルの利用者とCustomerの対応に結び付けてから決済する。同じ利用者で2つ目の加入は拒否されるため、シナリオ(支払いの失敗→再試行の後の終了、Portalでの解約の予約→取り消し→再度の予約→末日の終了)ごとに利用者を分ける。支払いの失敗は、成功するカードで加入した後にPortalで支払い方法を`4000 0000 0000 0341`に差し替え、test clockを次の更新日の後へ進めて再現する。test clockの時刻はアプリの実時刻より先に進むため、終了の後も画面は`canceled`に見えるのが正しく、終了はD1に保存した特典の終了時刻・Stripe側の状態・確定済みの印で確かめる(12.2)。

@@ -360,3 +360,8 @@
 - **確かめた結果**: 本specの共有部品の契約と`NOTIFICATIONS_PLATFORM_TYPES`は既に`core/notifications`にあり、置き場所は規則に合っていた。
 - **変えた箇所**: design.mdのFile Structure Planの`identifiers.ts`(「テストなし」を改め`identifiers.unit.test.ts`を置く)、`backend-lib/workers`の節の冒頭(契約は`core/notifications`、ここは実装と束縛だけである旨)、`NotificationSettingsExport`のコードの置き場所のコメント(`core/notifications/ports.ts`)、`NOTIFICATIONS_PLATFORM_MODULE`の識別子の説明、Testing Strategy(識別子の単体テスト)。tasks.mdの2.2(契約と識別子の置き場所と識別子の単体テスト)。
 - 要件と受け入れ基準は変えていない。タスクの番号は変えていない。
+
+## 上流のultras-subscriptionの区画の登録口の改訂の反映(2026-11-06)
+
+- ultras-subscriptionの実装前のギャップ分析への開発者の決定で、管理画面の設定ページの区画の登録口`ADMIN_SETTINGS_SECTIONS`の形が、adminの`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例に合わせて`id`(`'<spec名>.<名詞句>'`)・`order`・`title`(区画の見出し)・`component`になった。ページは区画ごとにfrontend-libへ移した`RecoverableSlot`で包み、1つの区画の描画や取得の失敗をその区画の位置に留め、読み込み中と失敗の間は`title`の見出しを補う。
+- 本specの登録に、部品が描く見出しと同じ文言の`title`を加えた(design.mdの登録の行、tasks.mdの登録のタスク)。要件と受け入れ基準は変えていない。タスクの番号は変えていない。

@@ -340,3 +340,8 @@
 - **上流の参照先**: product-launchの`ProductDirectory`・`ProductSummaryRecord`・`LaunchExport`・`ProductExport`・`PRODUCT_PLATFORM_TYPES`は`core/product`、identity-authの`UserContactDirectory`・`IDENTITY_PLATFORM_TYPES`は`core/identity`、user-profile-socialの`UserProfileDirectory`・`PROFILE_PLATFORM_TYPES`は`core/profile`。paymentsは、`PurchaseOfferPolicy`などの購入の可否の側と`PriceCatalog`が`core/payments`、`FulfillablePurchase`・`PaymentRefunds`(`dispatch`)・`RefundRequestInput`も`core/payments`、文を扱う`PurchaseFulfillment`・`FulfillmentPlan`・`PurchaseKindRegistration`・`PaymentRefundStatements`(`prepare`)が`workers/payments`(paymentsの分割に合わせた。`SponsorshipOfferPolicy`・`SponsorshipFulfillment`・`SPONSORSHIP_PURCHASE_REGISTRATION`の実装は`workers/sponsorship`のまま)。
 - **変えた箇所**: design.mdのImpact・This Spec Owns・Allowed Dependencies・Revalidation Triggers・Existing Architecture Analysis・Architecture Integration・Dependency direction・File Structure Plan・「開始・終了・強制終了の通知」の説明・「表示停止の日割りの返金」と「強制終了」のシーケンス図・追跡表・コンポーネントの表・`backend-lib/core・backend-lib/workers`の各契約(識別子のコードを追加)・`SponsorshipTermination`・ジョブの依存・api/infrastructureの`D1TerminationWriter`・eventの処理の表とポートの型・Testing Strategy。tasks.mdの2.1〜2.10、3.1・3.4〜3.6・3.8、5.1〜5.3。
 - 要件と受け入れ基準は変えていない。
+
+## 上流のultras-subscriptionの区画の登録口の改訂の反映(2026-11-06)
+
+- ultras-subscriptionの実装前のギャップ分析への開発者の決定で、料金ページの区画の登録口`PRICING_SECTIONS`の形が、adminの`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例に合わせて`id`(`'<spec名>.<名詞句>'`)・`order`・`title`(区画の見出し)・`component`になった。ページは区画ごとにfrontend-libへ移した`RecoverableSlot`で包み、1つの区画の描画や取得の失敗をその区画の位置に留め、読み込み中と失敗の間は`title`の見出しを補う。
+- 本specの登録に、部品が描く見出しと同じ文言の`title`を加えた(design.mdの登録の行、tasks.mdの登録のタスク)。要件と受け入れ基準は変えていない。タスクの番号は変えていない。

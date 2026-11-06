@@ -1648,7 +1648,7 @@ export declare const goldInsertTracker: GoldInsertTracker;
 
 #### SponsorshipPricingSection・TierPriceList・SponsorshipApplicationForm
 
-- `SponsorshipPricingSection`(`PRICING_SECTIONS`の`{ id: 'sponsorship.sponsorship-pricing', order: 20 }`): 見出し「スポンサー広告」(`id="sponsorship"`)・`TierPriceList`・`SponsorshipApplicationForm`。`sponsorshipOffer`と`viewerQueryOptions`を読む(2.1)。
+- `SponsorshipPricingSection`(`PRICING_SECTIONS`の`{ id: 'sponsorship.sponsorship-pricing', order: 20, title: 'スポンサー広告', component: SponsorshipPricingSection }`。料金ページが区画ごとに`RecoverableSlot`で包み、読み込み中と失敗の間は`title`の見出しを補うため、`title`は部品が描く見出しと同じ文言にする): 見出し「スポンサー広告」(`id="sponsorship"`)・`TierPriceList`・`SponsorshipApplicationForm`。`sponsorshipOffer`と`viewerQueryOptions`を読む(2.1)。
 - `TierPriceList`: ティアごとに`SponsorLabel`・`MoneyText`の「/日」の単価(`null`は「現在表示できません」、2.3)・表示位置(Legend「各ページの上部に大きく表示」、Gold「メインコンテンツの横と一覧の間に表示」、Silver「ページの下部に表示」)・表示内容(ロゴ・名称・タグライン/ロゴ・名称)(2.1)。
 - `SponsorshipApplicationForm`: 未ログインは「ログインして申し込む」(`/auth/login?redirect=/pricing`、2.4)。停止中は無効と停止中の文言(2.8)、未確認は無効とメール未確認の文言(2.5)。それ以外は、プロダクトのセレクト(`eligibleProducts`、0件は案内と`/my/products`への導線、1.2)、ティアのラジオグループ、開始日・終了日の日付入力(`type="date"`、`min`・`max`は`businessToday`と上限から)、`validatePeriod`によるフォーカスアウト時の文言(1.6・1.7)、日数と合計(`MoneyText`、単価×日数、2.2)、返金の扱いの注記(2.10の追加事項と同じ文言)、「申し込む」。bot判定の`TurnstileWidget`(`action` `sponsorship_apply`)は非表示で場所を取らず、判定の失敗の文言だけを出す。送信で`applySponsorship`(トークンは`consume()`)→`/checkout/{購入ID}`へ遷移(2.6)。`GraphQLClientError`のコードで文言規則の文言を出し、重なりと対象外はフォームの上部に示す(1.8・1.9・2.7・2.9)。`GraphQLClientError`でない例外は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言を示す。
 
