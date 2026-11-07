@@ -125,7 +125,7 @@
   - _Requirements: 1.7, 1.8, 1.9, 2.1, 2.10, 4.1, 4.2, 8.1_
 
 - [ ] 5. APIサーバー
-- [ ] 5.1 料金とプランの照会、加入の開始のGraphQLを作る
+- [x] 5.1 料金とプランの照会、加入の開始のGraphQLを作る
   - 先に、模擬のポートの単体テストで、料金の照会がフラグ・価格・価格の古さを返しログイン不要であること、価格の照会が`payments_unavailable`を投げたときだけ価格を空(古さは偽)にし、それ以外の例外は投げ直すこと、利用者の照会が未ログインで空・ログイン中は現在の加入状態・特典の有無・Portalを開けるかを返すこと、加入の開始が`SessionView`を受け取り購入種別`ultras`で決済の開始を呼ぶことを確かめる
   - ユースケースは`GraphQLContext`を受け取らず、解決関数が`session`を取り出して渡す(application層からpresentation層を読み込めないため)
   - apiのUltrasのモジュールとスキーマモジュールを作り、`ultrasOffer`・`viewerUltras`・`startUltrasCheckout`を加え、束縛とスキーマモジュールの一覧へ加える
@@ -277,3 +277,4 @@
 - 4.3: `UltrasFulfillment`も依存オブジェクト方式(`{ appName, subscriptions, subscriptionStatements, activations, activationStatements, dispatcher, ids }`。4.5では同じ`D1SubscriptionStore`/`D1ActivationStore`のインスタンスをストアと文の契約の両方に渡す)。`afterCommit`は完了済みの知らせを送り出さない。Sentryの`captureEvent`(指紋`["ultras", "fulfillment-missing-subscription"]`、タグ`ultras_incident`・`purchase_id`)を`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の`captureEvent`の一覧に9.1で加える(4.4の`unexpected_status`の通知も同様)。
 - 4.4: `PlanStateSink`(`workers/ultras/plan-state-sink.ts`、依存オブジェクト`{ appName, subscriptions, subscriptionStatements, noticeStatements, notifier, ids }`)。登録名は`ULTRAS_PLAN_STATE_SINK_NAME`。異常はwarnとSentryの`captureEvent`(指紋`["ultras", "unexpected-subscription-status"]`・`["ultras", "scheduled-end-missing"]`、タグ`ultras_incident`・`stripe_subscription_id`・`stripe_status`)。
 - 4.5: 共有の束縛は`workers/ultras/ultras-platform-module.ts`の`createUltrasPlatformModule(appName)`(モジュール名`ultras-platform`)。api・eventの`composition/ultras-module.ts`は今は`API_ULTRAS_PLATFORM_MODULE`・`EVENT_ULTRAS_PLATFORM_MODULE`だけを公開し、5.x・6.xが同じファイルにアプリ側のモジュール(`API_ULTRAS_MODULE`・`EVENT_ULTRAS_MODULE`)を足して`modules.ts`へ加える。ultrasとpaymentsの両方の表を使うWorkers統合テストでは、`clearUltrasTables`と`clearPaymentTables`がどちらも利用者を消すため、ultrasの3表を直接消してから`clearPaymentTables`を呼ぶ(前例`ultras-platform-module.worker.test.ts`)。`project-values.md`の「購入種別の登録」の行を9.1で更新する。
+- 5.1: apiのUltrasは`application/ultras/`(`API_ULTRAS_TYPES`は`ultras-types.ts`、`ULTRAS_ERRORS`・`ultrasError()`は`ultras-errors.ts`、`DefaultUltrasPlanReader`・`DefaultUltrasCheckout`)、スキーマモジュールは`presentation/graphql/modules/ultras/`、束縛は`composition/ultras-module.ts`の`API_ULTRAS_MODULE`(名前`ultras`)。GraphQLのテストの補助は`test/support/ultras-graphql-operations.ts`(`installUltrasGraphQLTest`)。`UltrasPlanReader.offer()`は価格の照会の結果に`ultras_monthly`が無いときもwarnして`price: null`を返す(9.1の文書に明記)。停止中の利用者が`viewerUltras`で自分の加入状態を見られるWorkers統合テストを5.2で加える。

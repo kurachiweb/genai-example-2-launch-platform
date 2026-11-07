@@ -748,6 +748,9 @@ type Mutation {
   """多要素認証の設定の開始"""
   startTotpSetup(input: ReAuthenticationInput!): TotpSetup!
 
+  """Ultrasの加入の開始。加入できるかを確かめて購入を作り、決済画面の経路に使う購入のIDを返す"""
+  startUltrasCheckout: CheckoutStart!
+
   """未ログイン(停止中の利用者を含む)の問い合わせの送信"""
   submitGuestInquiry(input: GuestInquiryInput!): Boolean!
 
@@ -891,8 +894,14 @@ type Query {
   """APIサーバーの時刻とデータベースへの到達可否"""
   systemStatus: SystemStatus!
 
+  """Ultrasの月額の価格と新規の加入の受付の状態。ログイン不要"""
+  ultrasOffer: UltrasOffer!
+
   """ログイン中の利用者。未ログイン・無効なセッションではnull"""
   viewer: Viewer
+
+  """ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull"""
+  viewerUltras: ViewerUltras
 }
 
 """重要な操作の本人確認"""
@@ -971,6 +980,49 @@ type TotpSetup {
   secret: String!
 }
 
+"""料金ページが表示するUltrasの料金と受付の状態"""
+type UltrasOffer {
+  """月額の価格(税込のUSD)。照会できなければnull"""
+  price: Money
+
+  """Stripeに到達できず、以前に照会した価格を返したときに真"""
+  priceStale: Boolean!
+
+  """新規の加入を受け付けているか(有料プラン導線の機能フラグ)"""
+  promotionEnabled: Boolean!
+}
+
+"""利用者の最新の有効化された加入"""
+type UltrasPlan {
+  """特典の終了日時。右に開いていればnull"""
+  benefitEndsAt: DateTime
+
+  """解約の操作の日時"""
+  canceledAt: DateTime
+
+  """次回の更新日時(課金期間の終了日時)"""
+  currentPeriodEndsAt: DateTime
+
+  """加入の開始日時"""
+  startedAt: DateTime!
+  status: UltrasPlanStatus!
+}
+
+"""Ultrasの加入状態"""
+enum UltrasPlanStatus {
+  """有効"""
+  ACTIVE
+
+  """解約済み(特典の終了日時まで特典が続く)"""
+  CANCELED
+
+  """終了"""
+  ENDED
+
+  """支払いの再試行中"""
+  PAST_DUE
+}
+
 """ログイン中の端末"""
 type UserSessionSummary {
   browserName: String
@@ -995,4 +1047,16 @@ type Viewer {
   remainingRecoveryCodes: Int!
   status: AccountStatus!
   totpEnabled: Boolean!
+}
+
+"""ログイン中の利用者のUltrasの加入状態"""
+type ViewerUltras {
+  """Customer Portalを開けるか(加入したことがあれば真)"""
+  canOpenPortal: Boolean!
+
+  """現在、特典を受けられるか"""
+  entitled: Boolean!
+
+  """加入したことが無ければnull"""
+  plan: UltrasPlan
 }

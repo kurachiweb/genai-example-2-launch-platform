@@ -77,3 +77,19 @@ describe('GRAPHQL_SCHEMA_MODULES(決済)', () => {
     );
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(Ultras)', () => {
+  test('料金とプランの照会・加入の開始の操作と、加入状態の列挙型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['ultrasOffer']?.type)).toBe('UltrasOffer!');
+    expect(String(query?.['viewerUltras']?.type)).toBe('ViewerUltras');
+    expect(String(mutation?.['startUltrasCheckout']?.type)).toBe(
+      'CheckoutStart!',
+    );
+    expect(String(schema.getType('UltrasPlanStatus'))).toBe('UltrasPlanStatus');
+  });
+});

@@ -5,6 +5,7 @@ import { legalSchemaModule } from '../presentation/graphql/modules/legal/index.t
 import { mediaSchemaModule } from '../presentation/graphql/modules/media/index.ts';
 import { paymentsSchemaModule } from '../presentation/graphql/modules/payments/index.ts';
 import { systemSchemaModule } from '../presentation/graphql/modules/system/index.ts';
+import { ultrasSchemaModule } from '../presentation/graphql/modules/ultras/index.ts';
 import type { GraphQLSchemaModule } from '../presentation/graphql/schema-module.ts';
 
 export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
@@ -15,4 +16,5 @@ export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
   legalSchemaModule,
   inquirySchemaModule,
   paymentsSchemaModule,
+  ultrasSchemaModule,
 ];

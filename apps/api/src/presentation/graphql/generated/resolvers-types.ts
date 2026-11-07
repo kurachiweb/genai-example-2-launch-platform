@@ -685,6 +685,8 @@ export type Mutation = {
   startSmokeCheckout: CheckoutStart;
   /** 多要素認証の設定の開始 */
   startTotpSetup: TotpSetup;
+  /** Ultrasの加入の開始。加入できるかを確かめて購入を作り、決済画面の経路に使う購入のIDを返す */
+  startUltrasCheckout: CheckoutStart;
   /** 未ログイン(停止中の利用者を含む)の問い合わせの送信 */
   submitGuestInquiry: Scalars['Boolean']['output'];
   /** 停止していないログイン中の利用者の問い合わせの送信 */
@@ -1060,8 +1062,12 @@ export type Query = {
   paymentHistory: PaymentRecordConnection;
   /** APIサーバーの時刻とデータベースへの到達可否 */
   systemStatus: SystemStatus;
+  /** Ultrasの月額の価格と新規の加入の受付の状態。ログイン不要 */
+  ultrasOffer: UltrasOffer;
   /** ログイン中の利用者。未ログイン・無効なセッションではnull */
   viewer?: Maybe<Viewer>;
+  /** ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull */
+  viewerUltras?: Maybe<ViewerUltras>;
 };
 
 
@@ -1201,6 +1207,42 @@ export type TotpSetup = {
   secret: Scalars['String']['output'];
 };
 
+/** 料金ページが表示するUltrasの料金と受付の状態 */
+export type UltrasOffer = {
+  __typename?: 'UltrasOffer';
+  /** 月額の価格(税込のUSD)。照会できなければnull */
+  price?: Maybe<Money>;
+  /** Stripeに到達できず、以前に照会した価格を返したときに真 */
+  priceStale: Scalars['Boolean']['output'];
+  /** 新規の加入を受け付けているか(有料プラン導線の機能フラグ) */
+  promotionEnabled: Scalars['Boolean']['output'];
+};
+
+/** 利用者の最新の有効化された加入 */
+export type UltrasPlan = {
+  __typename?: 'UltrasPlan';
+  /** 特典の終了日時。右に開いていればnull */
+  benefitEndsAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 解約の操作の日時 */
+  canceledAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 次回の更新日時(課金期間の終了日時) */
+  currentPeriodEndsAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 加入の開始日時 */
+  startedAt: Scalars['DateTime']['output'];
+  status: UltrasPlanStatus;
+};
+
+/** Ultrasの加入状態 */
+export type UltrasPlanStatus =
+  /** 有効 */
+  | 'ACTIVE'
+  /** 解約済み(特典の終了日時まで特典が続く) */
+  | 'CANCELED'
+  /** 終了 */
+  | 'ENDED'
+  /** 支払いの再試行中 */
+  | 'PAST_DUE';
+
 /** ログイン中の端末 */
 export type UserSessionSummary = {
   __typename?: 'UserSessionSummary';
@@ -1225,6 +1267,17 @@ export type Viewer = {
   remainingRecoveryCodes: Scalars['Int']['output'];
   status: AccountStatus;
   totpEnabled: Scalars['Boolean']['output'];
+};
+
+/** ログイン中の利用者のUltrasの加入状態 */
+export type ViewerUltras = {
+  __typename?: 'ViewerUltras';
+  /** Customer Portalを開けるか(加入したことがあれば真) */
+  canOpenPortal: Scalars['Boolean']['output'];
+  /** 現在、特典を受けられるか */
+  entitled: Scalars['Boolean']['output'];
+  /** 加入したことが無ければnull */
+  plan?: Maybe<UltrasPlan>;
 };
 
 
@@ -1397,8 +1450,12 @@ export type ResolversTypes = {
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   SystemStatus: ResolverTypeWrapper<SystemStatus>;
   TotpSetup: ResolverTypeWrapper<TotpSetup>;
+  UltrasOffer: ResolverTypeWrapper<UltrasOffer>;
+  UltrasPlan: ResolverTypeWrapper<UltrasPlan>;
+  UltrasPlanStatus: UltrasPlanStatus;
   UserSessionSummary: ResolverTypeWrapper<UserSessionSummary>;
   Viewer: ResolverTypeWrapper<ViewerSource>;
+  ViewerUltras: ResolverTypeWrapper<ViewerUltras>;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -1479,8 +1536,11 @@ export type ResolversParentTypes = {
   String: Scalars['String']['output'];
   SystemStatus: SystemStatus;
   TotpSetup: TotpSetup;
+  UltrasOffer: UltrasOffer;
+  UltrasPlan: UltrasPlan;
   UserSessionSummary: UserSessionSummary;
   Viewer: ViewerSource;
+  ViewerUltras: ViewerUltras;
 };
 
 export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminAccount'] = ResolversParentTypes['AdminAccount']> = {
@@ -1835,6 +1895,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   startAdminTotpReset?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminTotpResetArgs, 'reAuthentication'>>;
   startSmokeCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
   startTotpSetup?: Resolver<ResolversTypes['TotpSetup'], ParentType, ContextType, RequireFields<MutationStartTotpSetupArgs, 'input'>>;
+  startUltrasCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
@@ -1890,7 +1951,9 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
   paymentHistory?: Resolver<ResolversTypes['PaymentRecordConnection'], ParentType, ContextType, Partial<QueryPaymentHistoryArgs>>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
+  ultrasOffer?: Resolver<ResolversTypes['UltrasOffer'], ParentType, ContextType>;
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
+  viewerUltras?: Resolver<Maybe<ResolversTypes['ViewerUltras']>, ParentType, ContextType>;
 };
 
 export type RecoveryCodeSetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['RecoveryCodeSet'] = ResolversParentTypes['RecoveryCodeSet']> = {
@@ -1914,6 +1977,20 @@ export type TotpSetupResolvers<ContextType = GraphQLContext, ParentType extends 
   secret?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
+export type UltrasOfferResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UltrasOffer'] = ResolversParentTypes['UltrasOffer']> = {
+  price?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  priceStale?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  promotionEnabled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type UltrasPlanResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UltrasPlan'] = ResolversParentTypes['UltrasPlan']> = {
+  benefitEndsAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  canceledAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  currentPeriodEndsAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  startedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['UltrasPlanStatus'], ParentType, ContextType>;
+};
+
 export type UserSessionSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UserSessionSummary'] = ResolversParentTypes['UserSessionSummary']> = {
   browserName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
@@ -1932,6 +2009,12 @@ export type ViewerResolvers<ContextType = GraphQLContext, ParentType extends Res
   remainingRecoveryCodes?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   status?: Resolver<ResolversTypes['AccountStatus'], ParentType, ContextType>;
   totpEnabled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type ViewerUltrasResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ViewerUltras'] = ResolversParentTypes['ViewerUltras']> = {
+  canOpenPortal?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  entitled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  plan?: Resolver<Maybe<ResolversTypes['UltrasPlan']>, ParentType, ContextType>;
 };
 
 export type Resolvers<ContextType = GraphQLContext> = {
@@ -1989,7 +2072,10 @@ export type Resolvers<ContextType = GraphQLContext> = {
   SecondFactorRequired?: SecondFactorRequiredResolvers<ContextType>;
   SystemStatus?: SystemStatusResolvers<ContextType>;
   TotpSetup?: TotpSetupResolvers<ContextType>;
+  UltrasOffer?: UltrasOfferResolvers<ContextType>;
+  UltrasPlan?: UltrasPlanResolvers<ContextType>;
   UserSessionSummary?: UserSessionSummaryResolvers<ContextType>;
   Viewer?: ViewerResolvers<ContextType>;
+  ViewerUltras?: ViewerUltrasResolvers<ContextType>;
 };
 
