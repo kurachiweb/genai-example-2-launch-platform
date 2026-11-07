@@ -11,6 +11,7 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = Object.freeze([
   { to: '/inquiries', label: '問い合わせ', order: 80 },
   { to: '/categories', label: 'カテゴリ', order: 110 },
   { to: '/legal-documents', label: '法務文書', order: 120 },
+  { to: '/settings', label: '設定', order: 130 },
   { to: '/accounts', label: '管理者アカウント', order: 140 },
   { to: '/audit-logs', label: '監査ログ', order: 150 },
   { to: '/account', label: '自分のアカウント', order: 160 },

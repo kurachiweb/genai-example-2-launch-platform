@@ -21,6 +21,7 @@ import { Route as AuthenticatedCategoriesIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedInquiriesIndexRouteImport } from './routes/_authenticated/inquiries/index'
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedLegalDocumentsIndexRouteImport } from './routes/_authenticated/legal-documents/index'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
 import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
 import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/password-reset/confirm'
@@ -93,6 +94,12 @@ const AuthenticatedLegalDocumentsIndexRoute =
     path: '/legal-documents/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthEmailChangeConfirmRoute = AuthEmailChangeConfirmRouteImport.update({
   id: '/auth/email-change/confirm',
   path: '/auth/email-change/confirm',
@@ -136,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/categories/': typeof AuthenticatedCategoriesIndexRoute
   '/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
+  '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/legal-documents/$kind/': typeof AuthenticatedLegalDocumentsKindIndexRoute
   '/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
@@ -154,6 +162,7 @@ export interface FileRoutesByTo {
   '/categories': typeof AuthenticatedCategoriesIndexRoute
   '/inquiries': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents': typeof AuthenticatedLegalDocumentsIndexRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
   '/legal-documents/$kind': typeof AuthenticatedLegalDocumentsKindIndexRoute
   '/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
@@ -174,6 +183,7 @@ export interface FileRoutesById {
   '/_authenticated/categories/': typeof AuthenticatedCategoriesIndexRoute
   '/_authenticated/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/_authenticated/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
+  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/_authenticated/legal-documents/$kind/': typeof AuthenticatedLegalDocumentsKindIndexRoute
   '/_authenticated/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/categories/'
     | '/inquiries/'
     | '/legal-documents/'
+    | '/settings/'
     | '/auth/password-reset/'
     | '/legal-documents/$kind/'
     | '/legal-documents/$kind/revisions/$versionNumber'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '/categories'
     | '/inquiries'
     | '/legal-documents'
+    | '/settings'
     | '/auth/password-reset'
     | '/legal-documents/$kind'
     | '/legal-documents/$kind/revisions/$versionNumber'
@@ -231,6 +243,7 @@ export interface FileRouteTypes {
     | '/_authenticated/categories/'
     | '/_authenticated/inquiries/'
     | '/_authenticated/legal-documents/'
+    | '/_authenticated/settings/'
     | '/auth/password-reset/'
     | '/_authenticated/legal-documents/$kind/'
     | '/_authenticated/legal-documents/$kind/revisions/$versionNumber'
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLegalDocumentsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/auth/email-change/confirm': {
       id: '/auth/email-change/confirm'
       path: '/auth/email-change/confirm'
@@ -379,6 +399,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCategoriesIndexRoute: typeof AuthenticatedCategoriesIndexRoute
   AuthenticatedInquiriesIndexRoute: typeof AuthenticatedInquiriesIndexRoute
   AuthenticatedLegalDocumentsIndexRoute: typeof AuthenticatedLegalDocumentsIndexRoute
+  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
   AuthenticatedLegalDocumentsKindIndexRoute: typeof AuthenticatedLegalDocumentsKindIndexRoute
   AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute: typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
 }
@@ -392,6 +413,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCategoriesIndexRoute: AuthenticatedCategoriesIndexRoute,
   AuthenticatedInquiriesIndexRoute: AuthenticatedInquiriesIndexRoute,
   AuthenticatedLegalDocumentsIndexRoute: AuthenticatedLegalDocumentsIndexRoute,
+  AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   AuthenticatedLegalDocumentsKindIndexRoute:
     AuthenticatedLegalDocumentsKindIndexRoute,
   AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute:
