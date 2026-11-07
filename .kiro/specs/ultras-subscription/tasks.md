@@ -160,7 +160,7 @@
   - _Requirements: 4.5, 8.9, 11.3_
 
 - [ ] 6. イベントサーバー
-- [ ] 6.1 加入が有効になった知らせの処理を作り、ハンドラの登録箇所を用意する
+- [x] 6.1 加入が有効になった知らせの処理を作り、ハンドラの登録箇所を用意する
   - 先に、模擬のポートの単体テストで、行が無い・完了済みの知らせで何もしないこと、登録の順にハンドラを呼びすべて成功したら完了を記録すること、1つが例外を投げたら完了を記録せず例外を返すことを確かめる
   - eventのUltrasのモジュール、空のハンドラの登録箇所(後続specが追記する)、メッセージの処理を作り、束縛とメッセージの処理の一覧へ同時に加える
   - 完了状態: 単体テストと3経路のDIの解決の検査が成功し、ローカルで知らせのメッセージを流すと完了が記録される
@@ -281,3 +281,4 @@
 - 5.2: Portalのセッションは`application/ultras/portal-session-starter.ts`の`DefaultPortalSessionStarter`、回数制限のポートは`portal-ports.ts`、実装は`infrastructure/ultras/counter-portal-session-limits.ts`(規則`ultras-portal:user`・20回/3600秒。`project-values.md`の回数制限の表に9.1で加える)。`graphql-modules.worker.test.ts`のUltrasの区画に`createUltrasPortalSession`と5.3の管理者側の操作の検査を5.3で追記する。
 - 5.3: 機能フラグは`application/ultras/promotion-setting-service.ts`(`DefaultPromotionSettingService`、ポートは`promotion-setting-ports.ts`)と`infrastructure/ultras/d1-promotion-setting-writer.ts`(読み書き両方のポートを実装)。`read()`の`updatedAt`は保存値のまま(初期行は固定の初期化日時で`updatedByNickname`はnull)なので、8.1の区画は`version === 0`または`updatedByNickname === null`で「なし」を出し分ける。管理者側のGraphQLテストの補助は`ultras-graphql-operations.ts`の`installUltrasAdminFixtures`・`asUltrasAdmin`・`searchUltrasAuditLogs`。`resolvers.worker.test.ts`が約1000行のため、後続で管理者側の区画を分けてもよい。
 - 5.4: ジョブは`application/ultras/jobs/pending-dispatch-sweep-job.ts`(`PENDING_DISPATCH_SWEEP_JOB_DEFINITION`)。4つの処理(送り出し直し・メールの依頼・知らせの削除・依頼の削除)を分離して続け、失敗があれば要約のinfoログの後に`AppError`以外の`Error`(処理名の列挙、`cause`は最初の失敗)を投げてディスパッチャーがSentryへ送る。削除は表ごとに500件×最大20回。閾値は`scheduledTime`から導き`Clock`は注入しない。フィクスチャの`activationIdOf`・`noticeIdOf`は`z.ulid()`を通らない(IとOを含む)ため、メッセージ本文に使うテストでは有効なULIDを直書きする(後続でフィクスチャを直してよい)。`007-daily-timeline.md`の4:21の表に`order` 500の行を9.2で加える。
+- 6.1: eventのUltrasは`application/ultras/event-ultras-types.ts`(`EVENT_ULTRAS_TYPES`)と`run-activation-handlers-handler.ts`(identityの`UserLifecycleRunner`と同じプレーンなクラス+合成ルートの`toDynamicValue`)、束縛は`composition/ultras-module.ts`の`createEventUltrasModule({ activationHandlers })`・`EVENT_ULTRAS_MODULE`(名前`event-ultras`)。ハンドラの登録箇所は`composition/ultras-activation-handlers.ts`の`ULTRAS_ACTIVATION_HANDLERS`(空、後続specが`order` 100以上で追記)。consumer経路のテストは`createQueueDispatcher(MESSAGE_HANDLERS, MODULES)`+`createMessageBatch`(前例`identity-module.worker.test.ts`)。

@@ -23,7 +23,10 @@ import {
   EVENT_SEARCH_MODULE,
   EVENT_SEARCH_PLATFORM_MODULE,
 } from './search-module.ts';
-import { EVENT_ULTRAS_PLATFORM_MODULE } from './ultras-module.ts';
+import {
+  EVENT_ULTRAS_MODULE,
+  EVENT_ULTRAS_PLATFORM_MODULE,
+} from './ultras-module.ts';
 
 export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
   Object.freeze([
@@ -42,4 +45,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_PAYMENTS_PLATFORM_MODULE,
     EVENT_PAYMENTS_MODULE,
     EVENT_ULTRAS_PLATFORM_MODULE,
+    EVENT_ULTRAS_MODULE,
   ]);

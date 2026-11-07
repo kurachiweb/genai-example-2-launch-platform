@@ -17,6 +17,10 @@ import {
 import type { MessageHandlerRegistration } from '../../lib/core/messaging/message-contract.ts';
 import { PAYMENTS_REFUND_MESSAGE } from '../../lib/core/payments/refund-message.ts';
 import { SEARCH_TYPES } from '../../lib/core/search/identifiers.ts';
+import {
+  ULTRAS_ACTIVATION_RETRY_POLICY,
+  ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE,
+} from '../../lib/core/ultras/activation-message.ts';
 import { EVENT_EMAIL_TYPES } from '../application/email/email-types.ts';
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
 import { EVENT_MEDIA_HANDLER_TYPES } from '../application/media/media-handler-types.ts';
@@ -24,6 +28,7 @@ import { MODERATION_RETRY_POLICY } from '../application/media/moderate-image-han
 import { PURGE_IMAGE_CACHE_RETRY_POLICY } from '../application/media/purge-image-cache-handler.ts';
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
 import { REFUND_PAYMENT_RETRY_POLICY } from '../application/payments/refund-payment-handler.ts';
+import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 
 export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
   Object.freeze([
@@ -64,5 +69,10 @@ export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
       contract: PAYMENTS_REFUND_MESSAGE,
       handler: EVENT_PAYMENTS_TYPES.RefundPaymentHandler,
       retry: REFUND_PAYMENT_RETRY_POLICY,
+    },
+    {
+      contract: ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE,
+      handler: EVENT_ULTRAS_TYPES.RunActivationHandlersHandler,
+      retry: ULTRAS_ACTIVATION_RETRY_POLICY,
     },
   ]);
