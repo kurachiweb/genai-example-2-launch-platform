@@ -88,6 +88,13 @@ const PAYMENTS_OPERATION_NAMES = [
   'ClientPaymentHistory',
 ] as const;
 
+const ULTRAS_OPERATION_NAMES = [
+  'ClientUltrasOffer',
+  'ClientViewerUltras',
+  'ClientStartUltrasCheckout',
+  'ClientCreateUltrasPortalSession',
+] as const;
+
 const bodyOfOperation = (
   documents: Record<string, string>,
   name: string,
@@ -144,6 +151,15 @@ describe('利用者側のコード生成の生成物', () => {
 
   test.each(PAYMENTS_OPERATION_NAMES)(
     '操作の一覧は決済の操作%sを持つ',
+    async (name) => {
+      const documents = await readPersistedDocuments(GENERATED_DIR);
+
+      expect(bodyOfOperation(documents, name)).toBeDefined();
+    },
+  );
+
+  test.each(ULTRAS_OPERATION_NAMES)(
+    '操作の一覧はUltrasの操作%sを持つ',
     async (name) => {
       const documents = await readPersistedDocuments(GENERATED_DIR);
 

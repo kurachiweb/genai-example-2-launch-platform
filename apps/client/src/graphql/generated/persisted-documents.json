@@ -33,5 +33,9 @@
   "sha256:723fccc8cbea4146117d0a1b8aee0a88b01acc1488cf7fb836a129079e19b1c5": "query ClientPaymentHistory($after: String, $first: Int) { paymentHistory(first: $first, after: $after) { nodes { amount { amount currency } id kind occurredAt purpose quantity status } pageInfo { endCursor hasNextPage } } }",
   "sha256:5beeb2e6d0d838279f1012328c32c5bae9446e4fb8d7c1370d5b895445c97e05": "mutation ClientRecordCheckoutConsent($purchaseId: ID!) { recordCheckoutConsent(purchaseId: $purchaseId) { acceptUntil canRestart clientSecret consentVersion expiresAt kind purchaseId quantity rejectionReason status summary { additionalNotes isSubscription itemName quantityLabel serviceTiming } total { amount currency } unitPrice { amount currency } } }",
   "sha256:453e7f92f82cd9485779ddbee4a1b98898e55fb933896727e1efcb3dcd8a2eaf": "mutation ClientStartSmokeCheckout { startSmokeCheckout { purchaseId } }",
-  "sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e": "query ClientSystemStatus { systemStatus { databaseReachable serverTime } }"
+  "sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e": "query ClientSystemStatus { systemStatus { databaseReachable serverTime } }",
+  "sha256:44f95f5ac6a34b577e87ec3fb6dbb20363fe8011c4c59f2b36028724f89262ab": "mutation ClientCreateUltrasPortalSession { createUltrasPortalSession { url } }",
+  "sha256:0a375f8e36296fbd5183b733275bf56caf25b57a4c1e8cc70d7a20c1332c810b": "mutation ClientStartUltrasCheckout { startUltrasCheckout { purchaseId } }",
+  "sha256:ec8b30862af3edab7eb2b918ef55d266e4c8aae6e5838c65307b900746226507": "query ClientUltrasOffer { ultrasOffer { price { amount currency } priceStale promotionEnabled } }",
+  "sha256:ec4d291e8aa98f0a09302d916b16f1734bf43689c87af4d47a2ad6674c7d76f1": "query ClientViewerUltras { viewerUltras { canOpenPortal entitled plan { benefitEndsAt canceledAt currentPeriodEndsAt startedAt status } } }"
 }

@@ -155,6 +155,17 @@ export type SecondFactorInput = {
   totpCode?: string | null | undefined;
 };
 
+/** Ultrasの加入状態 */
+export type UltrasPlanStatus =
+  /** 有効 */
+  | 'ACTIVE'
+  /** 解約済み(特典の終了日時まで特典が続く) */
+  | 'CANCELED'
+  /** 終了 */
+  | 'ENDED'
+  /** 支払いの再試行中 */
+  | 'PAST_DUE';
+
 export type ClientCompleteSecondFactorLoginMutationVariables = Exact<{
   input: CompleteSecondFactorLoginInput;
 }>;
@@ -390,6 +401,26 @@ export type ClientSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type ClientSystemStatusQuery = { systemStatus: { serverTime: string, databaseReachable: boolean } };
 
+export type ClientCreateUltrasPortalSessionMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientCreateUltrasPortalSessionMutation = { createUltrasPortalSession: { url: string } };
+
+export type ClientStartUltrasCheckoutMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientStartUltrasCheckoutMutation = { startUltrasCheckout: { purchaseId: string } };
+
+export type ClientUltrasOfferQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientUltrasOfferQuery = { ultrasOffer: { priceStale: boolean, promotionEnabled: boolean, price: { amount: number, currency: string } | null } };
+
+export type ClientViewerUltrasQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientViewerUltrasQuery = { viewerUltras: { entitled: boolean, canOpenPortal: boolean, plan: { status: UltrasPlanStatus, startedAt: string, currentPeriodEndsAt: string | null, canceledAt: string | null, benefitEndsAt: string | null } | null } | null };
+
 
 export const ClientCompleteSecondFactorLoginDocument = {"__meta__":{"hash":"sha256:2a5e67f3c1b64838df2c0c323fab25ed80f89e0c56f58fd2bcc6ae3e76583218"}} as unknown as DocumentNode<ClientCompleteSecondFactorLoginMutation, ClientCompleteSecondFactorLoginMutationVariables>;
 export const ClientConfirmEmailChangeDocument = {"__meta__":{"hash":"sha256:c512d6387b1888f3b40034cad109c27d09c805940a226412e3082c1939225461"}} as unknown as DocumentNode<ClientConfirmEmailChangeMutation, ClientConfirmEmailChangeMutationVariables>;
@@ -426,3 +457,7 @@ export const ClientPaymentHistoryDocument = {"__meta__":{"hash":"sha256:723fccc8
 export const ClientRecordCheckoutConsentDocument = {"__meta__":{"hash":"sha256:5beeb2e6d0d838279f1012328c32c5bae9446e4fb8d7c1370d5b895445c97e05"}} as unknown as DocumentNode<ClientRecordCheckoutConsentMutation, ClientRecordCheckoutConsentMutationVariables>;
 export const ClientStartSmokeCheckoutDocument = {"__meta__":{"hash":"sha256:453e7f92f82cd9485779ddbee4a1b98898e55fb933896727e1efcb3dcd8a2eaf"}} as unknown as DocumentNode<ClientStartSmokeCheckoutMutation, ClientStartSmokeCheckoutMutationVariables>;
 export const ClientSystemStatusDocument = {"__meta__":{"hash":"sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e"}} as unknown as DocumentNode<ClientSystemStatusQuery, ClientSystemStatusQueryVariables>;
+export const ClientCreateUltrasPortalSessionDocument = {"__meta__":{"hash":"sha256:44f95f5ac6a34b577e87ec3fb6dbb20363fe8011c4c59f2b36028724f89262ab"}} as unknown as DocumentNode<ClientCreateUltrasPortalSessionMutation, ClientCreateUltrasPortalSessionMutationVariables>;
+export const ClientStartUltrasCheckoutDocument = {"__meta__":{"hash":"sha256:0a375f8e36296fbd5183b733275bf56caf25b57a4c1e8cc70d7a20c1332c810b"}} as unknown as DocumentNode<ClientStartUltrasCheckoutMutation, ClientStartUltrasCheckoutMutationVariables>;
+export const ClientUltrasOfferDocument = {"__meta__":{"hash":"sha256:ec8b30862af3edab7eb2b918ef55d266e4c8aae6e5838c65307b900746226507"}} as unknown as DocumentNode<ClientUltrasOfferQuery, ClientUltrasOfferQueryVariables>;
+export const ClientViewerUltrasDocument = {"__meta__":{"hash":"sha256:ec4d291e8aa98f0a09302d916b16f1734bf43689c87af4d47a2ad6674c7d76f1"}} as unknown as DocumentNode<ClientViewerUltrasQuery, ClientViewerUltrasQueryVariables>;

@@ -49,6 +49,10 @@ type Documents = {
     "mutation ClientRecordCheckoutConsent($purchaseId: ID!) {\n  recordCheckoutConsent(purchaseId: $purchaseId) {\n    purchaseId\n    kind\n    status\n    rejectionReason\n    clientSecret\n    unitPrice {\n      amount\n      currency\n    }\n    quantity\n    total {\n      amount\n      currency\n    }\n    summary {\n      itemName\n      quantityLabel\n      serviceTiming\n      additionalNotes\n      isSubscription\n    }\n    acceptUntil\n    expiresAt\n    consentVersion\n    canRestart\n  }\n}": typeof types.ClientRecordCheckoutConsentDocument,
     "mutation ClientStartSmokeCheckout {\n  startSmokeCheckout {\n    purchaseId\n  }\n}": typeof types.ClientStartSmokeCheckoutDocument,
     "query ClientSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": typeof types.ClientSystemStatusDocument,
+    "mutation ClientCreateUltrasPortalSession {\n  createUltrasPortalSession {\n    url\n  }\n}": typeof types.ClientCreateUltrasPortalSessionDocument,
+    "mutation ClientStartUltrasCheckout {\n  startUltrasCheckout {\n    purchaseId\n  }\n}": typeof types.ClientStartUltrasCheckoutDocument,
+    "query ClientUltrasOffer {\n  ultrasOffer {\n    price {\n      amount\n      currency\n    }\n    priceStale\n    promotionEnabled\n  }\n}": typeof types.ClientUltrasOfferDocument,
+    "query ClientViewerUltras {\n  viewerUltras {\n    entitled\n    canOpenPortal\n    plan {\n      status\n      startedAt\n      currentPeriodEndsAt\n      canceledAt\n      benefitEndsAt\n    }\n  }\n}": typeof types.ClientViewerUltrasDocument,
 };
 const documents: Documents = {
     "mutation ClientCompleteSecondFactorLogin($input: CompleteSecondFactorLoginInput!) {\n  completeSecondFactorLogin(input: $input) {\n    id\n  }\n}": types.ClientCompleteSecondFactorLoginDocument,
@@ -86,6 +90,10 @@ const documents: Documents = {
     "mutation ClientRecordCheckoutConsent($purchaseId: ID!) {\n  recordCheckoutConsent(purchaseId: $purchaseId) {\n    purchaseId\n    kind\n    status\n    rejectionReason\n    clientSecret\n    unitPrice {\n      amount\n      currency\n    }\n    quantity\n    total {\n      amount\n      currency\n    }\n    summary {\n      itemName\n      quantityLabel\n      serviceTiming\n      additionalNotes\n      isSubscription\n    }\n    acceptUntil\n    expiresAt\n    consentVersion\n    canRestart\n  }\n}": types.ClientRecordCheckoutConsentDocument,
     "mutation ClientStartSmokeCheckout {\n  startSmokeCheckout {\n    purchaseId\n  }\n}": types.ClientStartSmokeCheckoutDocument,
     "query ClientSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": types.ClientSystemStatusDocument,
+    "mutation ClientCreateUltrasPortalSession {\n  createUltrasPortalSession {\n    url\n  }\n}": types.ClientCreateUltrasPortalSessionDocument,
+    "mutation ClientStartUltrasCheckout {\n  startUltrasCheckout {\n    purchaseId\n  }\n}": types.ClientStartUltrasCheckoutDocument,
+    "query ClientUltrasOffer {\n  ultrasOffer {\n    price {\n      amount\n      currency\n    }\n    priceStale\n    promotionEnabled\n  }\n}": types.ClientUltrasOfferDocument,
+    "query ClientViewerUltras {\n  viewerUltras {\n    entitled\n    canOpenPortal\n    plan {\n      status\n      startedAt\n      currentPeriodEndsAt\n      canceledAt\n      benefitEndsAt\n    }\n  }\n}": types.ClientViewerUltrasDocument,
 };
 
 /**
@@ -242,6 +250,22 @@ export function graphql(source: "mutation ClientStartSmokeCheckout {\n  startSmo
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "query ClientSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}"): (typeof documents)["query ClientSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation ClientCreateUltrasPortalSession {\n  createUltrasPortalSession {\n    url\n  }\n}"): (typeof documents)["mutation ClientCreateUltrasPortalSession {\n  createUltrasPortalSession {\n    url\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation ClientStartUltrasCheckout {\n  startUltrasCheckout {\n    purchaseId\n  }\n}"): (typeof documents)["mutation ClientStartUltrasCheckout {\n  startUltrasCheckout {\n    purchaseId\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query ClientUltrasOffer {\n  ultrasOffer {\n    price {\n      amount\n      currency\n    }\n    priceStale\n    promotionEnabled\n  }\n}"): (typeof documents)["query ClientUltrasOffer {\n  ultrasOffer {\n    price {\n      amount\n      currency\n    }\n    priceStale\n    promotionEnabled\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query ClientViewerUltras {\n  viewerUltras {\n    entitled\n    canOpenPortal\n    plan {\n      status\n      startedAt\n      currentPeriodEndsAt\n      canceledAt\n      benefitEndsAt\n    }\n  }\n}"): (typeof documents)["query ClientViewerUltras {\n  viewerUltras {\n    entitled\n    canOpenPortal\n    plan {\n      status\n      startedAt\n      currentPeriodEndsAt\n      canceledAt\n      benefitEndsAt\n    }\n  }\n}"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};
