@@ -9,6 +9,7 @@ import { MEDIA_JOB_TYPES } from '../application/media/media-daily-jobs.ts';
 import { CHECKOUT_RECONCILIATION_JOB_DEFINITION } from '../application/payments/jobs/checkout-reconciliation-job.ts';
 import { PAYMENT_HISTORY_RETENTION_JOB_DEFINITION } from '../application/payments/jobs/payment-history-retention-job.ts';
 import { PENDING_CHECKOUT_SWEEP_JOB_DEFINITION } from '../application/payments/jobs/pending-checkout-sweep-job.ts';
+import { PENDING_DISPATCH_SWEEP_JOB_DEFINITION } from '../application/ultras/jobs/pending-dispatch-sweep-job.ts';
 
 export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   {
@@ -44,6 +45,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   GUEST_INQUIRY_RETENTION_JOB_DEFINITION,
   PENDING_CHECKOUT_SWEEP_JOB_DEFINITION,
   PAYMENT_HISTORY_RETENTION_JOB_DEFINITION,
+  PENDING_DISPATCH_SWEEP_JOB_DEFINITION,
   {
     name: 'media-pipeline.expired-file-erasure',
     at: { hour: 4, minute: 21 },

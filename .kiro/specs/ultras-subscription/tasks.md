@@ -151,7 +151,7 @@
   - 完了状態: 単体テストとWorkers統合テストが成功し、監査ログの検索で変更の記録が見つかる
   - _Requirements: 10.1, 10.2, 10.3, 10.4_
 
-- [ ] 5.4 4:21の送り出し直しと後始末のジョブを作り、定期実行に登録する
+- [x] 5.4 4:21の送り出し直しと後始末のジョブを作り、定期実行に登録する
   - 先に、模擬のポートの単体テストで、未送り出しの知らせの送り出し、依頼待ちのメールの依頼、30日以上の行の削除の3つの処理と、各処理の失敗が他の処理を止めないことを確かめる
   - ジョブ`ultras-subscription.pending-dispatch-sweep`(業務時刻4:21、`order` 500)をapiの束縛とジョブの一覧へ同時に加える
   - 4:21の全ジョブは合計300秒の予算(`SCHEDULED_RUN_BUDGETS`)を共有する。4:21のジョブの一覧を確かめる既存のテスト(`apps/api/test/config/payments-scheduled-jobs.unit.test.ts`の`order` 410の次のジョブ、`apps/api/src/composition/search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts`のジョブの名前の一覧と配列への`toMatchObject`)の期待に本specのジョブ(500)を加える
@@ -280,3 +280,4 @@
 - 5.1: apiのUltrasは`application/ultras/`(`API_ULTRAS_TYPES`は`ultras-types.ts`、`ULTRAS_ERRORS`・`ultrasError()`は`ultras-errors.ts`、`DefaultUltrasPlanReader`・`DefaultUltrasCheckout`)、スキーマモジュールは`presentation/graphql/modules/ultras/`、束縛は`composition/ultras-module.ts`の`API_ULTRAS_MODULE`(名前`ultras`)。GraphQLのテストの補助は`test/support/ultras-graphql-operations.ts`(`installUltrasGraphQLTest`)。`UltrasPlanReader.offer()`は価格の照会の結果に`ultras_monthly`が無いときもwarnして`price: null`を返す(9.1の文書に明記)。停止中の利用者が`viewerUltras`で自分の加入状態を見られるWorkers統合テストを5.2で加える。
 - 5.2: Portalのセッションは`application/ultras/portal-session-starter.ts`の`DefaultPortalSessionStarter`、回数制限のポートは`portal-ports.ts`、実装は`infrastructure/ultras/counter-portal-session-limits.ts`(規則`ultras-portal:user`・20回/3600秒。`project-values.md`の回数制限の表に9.1で加える)。`graphql-modules.worker.test.ts`のUltrasの区画に`createUltrasPortalSession`と5.3の管理者側の操作の検査を5.3で追記する。
 - 5.3: 機能フラグは`application/ultras/promotion-setting-service.ts`(`DefaultPromotionSettingService`、ポートは`promotion-setting-ports.ts`)と`infrastructure/ultras/d1-promotion-setting-writer.ts`(読み書き両方のポートを実装)。`read()`の`updatedAt`は保存値のまま(初期行は固定の初期化日時で`updatedByNickname`はnull)なので、8.1の区画は`version === 0`または`updatedByNickname === null`で「なし」を出し分ける。管理者側のGraphQLテストの補助は`ultras-graphql-operations.ts`の`installUltrasAdminFixtures`・`asUltrasAdmin`・`searchUltrasAuditLogs`。`resolvers.worker.test.ts`が約1000行のため、後続で管理者側の区画を分けてもよい。
+- 5.4: ジョブは`application/ultras/jobs/pending-dispatch-sweep-job.ts`(`PENDING_DISPATCH_SWEEP_JOB_DEFINITION`)。4つの処理(送り出し直し・メールの依頼・知らせの削除・依頼の削除)を分離して続け、失敗があれば要約のinfoログの後に`AppError`以外の`Error`(処理名の列挙、`cause`は最初の失敗)を投げてディスパッチャーがSentryへ送る。削除は表ごとに500件×最大20回。閾値は`scheduledTime`から導き`Clock`は注入しない。フィクスチャの`activationIdOf`・`noticeIdOf`は`z.ulid()`を通らない(IとOを含む)ため、メッセージ本文に使うテストでは有効なULIDを直書きする(後続でフィクスチャを直してよい)。`007-daily-timeline.md`の4:21の表に`order` 500の行を9.2で加える。

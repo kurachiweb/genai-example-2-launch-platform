@@ -2,8 +2,10 @@ import type { Hono } from 'hono';
 import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { createUltrasPlatformModule } from '../../lib/workers/ultras/ultras-platform-module.ts';
+import { PendingDispatchSweepJob } from '../application/ultras/jobs/pending-dispatch-sweep-job.ts';
 import type { PortalSessionLimits } from '../application/ultras/portal-ports.ts';
 import {
   DefaultPortalSessionStarter,
@@ -59,6 +61,9 @@ export const API_ULTRAS_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     ).toService(API_ULTRAS_TYPES.PromotionSettingReader);
     bind<PromotionSettingService>(API_ULTRAS_TYPES.PromotionSettingService).to(
       DefaultPromotionSettingService,
+    );
+    bind<ScheduledJobHandler>(API_ULTRAS_TYPES.PendingDispatchSweepJob).to(
+      PendingDispatchSweepJob,
     );
   }),
 };

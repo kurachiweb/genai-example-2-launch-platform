@@ -23,6 +23,10 @@ const PromotionSettingService: unique symbol = Symbol.for(
   'ultras.PromotionSettingService',
 );
 
+const PendingDispatchSweepJob: unique symbol = Symbol.for(
+  'ultras.PendingDispatchSweepJob',
+);
+
 export const API_ULTRAS_TYPES = Object.freeze({
   UltrasPlanReader,
   UltrasCheckout,
@@ -31,4 +35,5 @@ export const API_ULTRAS_TYPES = Object.freeze({
   PromotionSettingReader,
   PromotionSettingWriter,
   PromotionSettingService,
+  PendingDispatchSweepJob,
 });

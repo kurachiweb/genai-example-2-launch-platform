@@ -224,6 +224,9 @@ describe('検索対象のある日次の再抽出', () => {
         }),
         expect.objectContaining({ name: 'payments.history-retention' }),
         expect.objectContaining({
+          name: 'ultras-subscription.pending-dispatch-sweep',
+        }),
+        expect.objectContaining({
           name: 'media-pipeline.expired-file-erasure',
         }),
         expect.objectContaining({ name: 'media-pipeline.moderation-requeue' }),
