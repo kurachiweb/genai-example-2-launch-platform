@@ -1,6 +1,6 @@
 # 管理画面のシェルと区画
 
-管理者側のフロントエンドの画面シェル(ヘッダー・ナビゲーション・本文)の構成と、後から機能を足すための登録箇所を定める。区画の差し替え、メニューとダッシュボードのカードの登録、ナビゲーションのランドマーク、カードの状態表示とエラーの分離、ログイン必須の領域とログイン中の管理者の参照、管理者の取り直し、ロールによる操作の出し分け、失敗の文言の選び方、及び共通部品の使い方を扱う。
+管理者側のフロントエンドの画面シェル(ヘッダー・ナビゲーション・本文)の構成と、後から機能を足すための登録箇所を定める。区画の差し替え、メニュー・ダッシュボードのカード・設定のページの区画の登録、ナビゲーションのランドマーク、カードの状態表示とエラーの分離、ログイン必須の領域とログイン中の管理者の参照、管理者の取り直し、ロールによる操作の出し分け、失敗の文言の選び方、及び共通部品の使い方を扱う。
 
 ## 前提と用語
 
@@ -16,6 +16,9 @@ TanStack Start・TanStack Router・TanStack Queryを使う構成を前提とす�
 | `DASHBOARD_CARDS`・`DashboardCard`                              | `composition/dashboard-cards.ts`                                                         | ダッシュボードのカードの登録箇所                                                                                               |
 | `DashboardGrid`                                                 | `components/dashboard/dashboard-grid.tsx`                                                | カードの並びと、カードごとのエラーの境界                                                                                       |
 | `DashboardCardFrame`・`DashboardCardState`                      | `components/dashboard/dashboard-card-frame.tsx`                                          | カードの枠・題名・状態の表示                                                                                                   |
+| `ADMIN_SETTINGS_SECTIONS`・`AdminSettingsSection`               | `composition/admin-settings-sections.ts`                                                 | 設定のページの区画の登録箇所                                                                                                   |
+| `AdminSettingsSectionsView`                                     | `components/settings/admin-settings-sections-view.tsx`                                   | 設定のページの区画の並びと、区画ごとのエラーの境界                                                                             |
+| `SectionFallback`                                               | `components/layout/section-fallback.tsx`                                                 | 読み込み中と失敗の間に区画の見出しを補う枠(カテゴリのページの区画と設定のページの区画が共用)                                   |
 | `RecoverableSlot`                                               | `<共通部品の配置先>`の`components/state/recoverable-slot.tsx`                            | 登録した部品ごとのエラーの境界・失敗の送信・再試行の後のフォーカス(共通部品。問い合わせの導線の有無は`contactAvailable`で渡す) |
 | `loadRootAuthContext`・`adminViewerQueryOptions`・`AdminViewer` | `graphql/admin-viewer.ts`                                                                | ルートの`beforeLoad`でのログイン中の管理者の取得                                                                               |
 | `requireAdminViewer`・`redirectSignedInAdmin`                   | `components/auth/require-admin-viewer.ts`・`redirect-signed-in-admin.ts`                 | ログイン必須の領域の判定と、ログイン中のログイン画面からの移動                                                                 |
@@ -27,12 +30,12 @@ TanStack Start・TanStack Router・TanStack Queryを使う構成を前提とす�
 | `ADMIN_PROFILE`                                                 | `composition/app-profile.ts`                                                             | アプリのプロファイル(問い合わせの導線を持たない`contactAvailable: false`を含む)                                                |
 | `hasRole`・`ADMIN_ROLE_LABELS`                                  | `<共用部品の配置先>`の`admin/admin-roles.ts`                                             | ロールの比較と表示名(APIサーバーと共有)                                                                                        |
 
-| 用語               | 意味                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------ |
-| 画面シェル         | 全てのページ(認証の画面・404・エラーのページを含む)を包む、ヘッダー・ナビゲーション・本文の枠                |
-| 区画               | 画面シェルの中の、部品を差し替えられる場所(`navigation`・`headerAccount`)                                    |
-| 登録箇所           | 各機能が自分の項目を追記する`composition/`の定数。画面シェルの部品は変えずに、登録箇所の追記だけで機能を足す |
-| ログイン必須の領域 | 経路の無いレイアウト`/_authenticated`の下のページ。未ログインならログイン画面へ移す                          |
+| 用語               | 意味                                                                                                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 画面シェル         | 全てのページ(認証の画面・404・エラーのページを含む)を包む、ヘッダー・ナビゲーション・本文の枠                                                                            |
+| 区画               | 画面シェルの中の、部品を差し替えられる場所(`navigation`・`headerAccount`)                                                                                                |
+| 登録箇所           | 各機能が自分の項目(メニューの項目・ダッシュボードのカード・設定のページの区画)を追記する`composition/`の定数。画面シェルの部品は変えずに、登録箇所の追記だけで機能を足す |
+| ログイン必須の領域 | 経路の無いレイアウト`/_authenticated`の下のページ。未ログインならログイン画面へ移す                                                                                      |
 
 ## 画面シェルの構成
 
@@ -89,7 +92,7 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = Object.freeze([
 - 項目は他の機能が登録する経路を指し、型付きの`Link`では指定できないため、パスで遷移させる共通部品(`PathLink`)で描く(「[パスへの遷移](005-shared-components.md#パスへの遷移)」)。
 - 現在のページは、リンクが`aria-current="page"`を付けて示す。トップページの項目は全てのパスの先頭に一致するため同じパスのときだけ、他の項目はその下のページでも現在のページとし、クエリは見ない。
 - 全てのロールが全てのメニューを参照できるため、項目をロールで隠さない(「[ロール](../security/007-admin-authorization.md#ロール)」)。
-- 項目を足す機能は、並び順の単体テスト(`src/`の`components/layout/admin-nav-order.unit.test.ts`)と、アプリの直下の`test/`の画面シェルのブラウザテスト(`test/admin-shell.browser.test.tsx`)の期待値を更新する。
+- 項目を足す機能は、並び順の単体テスト(`src/`の`components/layout/admin-nav-order.unit.test.ts`)、ナビゲーションの区画のブラウザテスト(`src/`の`components/layout/admin-navigation.browser.test.tsx`)、アプリの直下の`test/`の画面シェルのブラウザテスト(`test/admin-shell.browser.test.tsx`)の期待値を更新する。3つとも項目の一覧を完全一致で確かめる。
 
 ## ダッシュボードのカードの登録
 
@@ -130,6 +133,22 @@ export function PendingItemsCard() {
 - 境界が捕まえた失敗はルーターの`defaultOnCatch`へ届かないため、`RecoverableSlot`がエラートラッキングへ送る。GraphQLの失敗(`GraphQLClientError`)は`executeGraphQL`が送っているため送り直さない(「[送信の入口](007-frontend-observability.md#送信の入口)」)。
 - カードが1件も無ければ、表示できる項目が無い旨の`EmptyState`を描く。カードを足す機能は、空の状態を確かめるテストを更新する。
 - カードはページの最初の描画の呼び出し回数に数える(「[1ページの描画あたりの呼び出し回数の目安](006-data-fetching.md#1ページの描画あたりの呼び出し回数の目安)」)。取得の遅いカードは、ページの`loader`で待たずにカード自身が取得する。
+
+## 設定のページの区画の登録
+
+管理画面の設定のページに区画を足す機能は、`ADMIN_SETTINGS_SECTIONS`に区画を1件追記する。ページ(`components/pages/admin-settings-page.tsx`)と並びの部品(`AdminSettingsSectionsView`)は変えない。
+
+| 項目        | 規則                                                                                                           |
+| ----------- | -------------------------------------------------------------------------------------------------------------- |
+| `id`        | `<spec名>.<名詞句>`。Reactの`key`に使うため重複させない                                                        |
+| `order`     | 並び順。10刻みで割り当て、登録箇所のコメントに機能ごとの値を書く。配列の順ではなく`order`の昇順に並べる        |
+| `title`     | 区画の見出し。部品が描く見出しと同じ文言にする。部品が描けない読み込み中と失敗の間は、ページがこの見出しを補う |
+| `component` | propsを受け取らない部品。自分でデータを取得し、`title`と同じ文言の見出し(`<h2>`)を名前にした`<section>`を描く  |
+
+- `AdminSettingsSectionsView`は、区画ごとに`RecoverableSlot`(「[状態表示](005-shared-components.md#状態表示)」)で包み、`frame`に`SectionFallback`(`components/layout/section-fallback.tsx`)を渡す。1つの区画の取得や描画の失敗は、その区画の位置に`title`の見出しと再試行を出して留め、他の区画の表示を続ける。読み込み中も同じ枠で見出しとスケルトンを描くため、表示が後になっても配置がずれない。
+- `SectionFallback`は、カテゴリのページの区画の並びと設定のページの区画の並びが共用する。見出しの階層と文言は、部品が描く見出しに合わせる。
+- 区画の部品の取得は「[登録口に登録された区画の取得](006-data-fetching.md#登録口に登録された区画の取得)」に従う。ロールで操作を出し分ける区画は「[ロールによる操作の出し分け](#ロールによる操作の出し分け)」に従い、権限の無い操作は本当の`disabled`にして理由を`aria-describedby`で結び付ける。
+- 区画を足す機能は、区画の`order`順の表示と、1つの区画の失敗が他の区画に及ばないことを確かめるブラウザテストの期待値を更新する。
 
 ## ログイン必須の領域
 
