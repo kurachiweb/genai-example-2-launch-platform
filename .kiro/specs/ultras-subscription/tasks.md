@@ -115,7 +115,7 @@
   - _Depends: 2.2, 4.1_
   - _Requirements: 2.1, 2.10, 2.11, 2.12, 6.8, 7.8, 8.1, 8.3, 8.4_
 
-- [ ] 4.5 Ultrasの共有の束縛を作り、paymentsの登録箇所とapi・eventに組み込む
+- [x] 4.5 Ultrasの共有の束縛を作り、paymentsの登録箇所とapi・eventに組み込む
   - 両アプリ共通の束縛を、アプリ名を引数で受け取る`createUltrasPlatformModule(appName)`(前例`createPaymentsPlatformModule(appName)`。アプリ名をログのカテゴリの先頭に使う)として作り、apiとeventの束縛の一覧へそれぞれのアプリ名で同時に加え、paymentsの購入種別の登録箇所に`ultras`を、定期課金の受け取り口の登録箇所に`ultras-subscription.plan-state`を加える(登録と束縛を同じ変更にして、DIの解決の検査が途中で失敗しないようにする)
   - 先に、模擬の`StripeGateway`と模擬のメッセージの送信を使うWorkers統合テストで、paymentsの反映を通して次を確かめる: `ultras`の決済セッションの完了で加入が有効になり知らせの行が1つでき送り出しが依頼されること、Webhookと`return_url`から同時に反映しても知らせが1つであること、継続期間内の利用者の2つ目の加入が拒否されpaymentsの返金の依頼ができること、同時の2つの確定で1つだけが有効になること、定期課金の更新の通知が有効化の前に届いても有効化の後の加入状態に反映されること、支払いの失敗で依頼待ちのメールが送られること
   - paymentsの`apps/backend-lib/workers/payments/payments-platform-module.worker.test.ts`が2つの登録の一覧を完全一致で確かめ、`resolve('ultras')`が無いことを期待しているため、本specの登録を含む期待に直す
@@ -276,3 +276,4 @@
 - 4.2: 最終確認画面の追加事項の4文と毎月の請求額の表記(`$9.99(税込)`、`en-US`固定)は`common-lib/ultras/checkout-notes.ts`(`ultrasCheckoutNotesOf(amount)`など)。7.xの料金ページも同じ関数を使う。拒否の3文言は`workers/ultras/ultras-offer-policy.ts`の`ULTRAS_OFFER_REJECTION_MESSAGES`。`UltrasOfferPolicy`も依存オブジェクト方式(`{ appName, flags, entitlements, prices }`)。ログの属性名に`key`を含めると伏せ字になるため`priceLookup`を使う。
 - 4.3: `UltrasFulfillment`も依存オブジェクト方式(`{ appName, subscriptions, subscriptionStatements, activations, activationStatements, dispatcher, ids }`。4.5では同じ`D1SubscriptionStore`/`D1ActivationStore`のインスタンスをストアと文の契約の両方に渡す)。`afterCommit`は完了済みの知らせを送り出さない。Sentryの`captureEvent`(指紋`["ultras", "fulfillment-missing-subscription"]`、タグ`ultras_incident`・`purchase_id`)を`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の`captureEvent`の一覧に9.1で加える(4.4の`unexpected_status`の通知も同様)。
 - 4.4: `PlanStateSink`(`workers/ultras/plan-state-sink.ts`、依存オブジェクト`{ appName, subscriptions, subscriptionStatements, noticeStatements, notifier, ids }`)。登録名は`ULTRAS_PLAN_STATE_SINK_NAME`。異常はwarnとSentryの`captureEvent`(指紋`["ultras", "unexpected-subscription-status"]`・`["ultras", "scheduled-end-missing"]`、タグ`ultras_incident`・`stripe_subscription_id`・`stripe_status`)。
+- 4.5: 共有の束縛は`workers/ultras/ultras-platform-module.ts`の`createUltrasPlatformModule(appName)`(モジュール名`ultras-platform`)。api・eventの`composition/ultras-module.ts`は今は`API_ULTRAS_PLATFORM_MODULE`・`EVENT_ULTRAS_PLATFORM_MODULE`だけを公開し、5.x・6.xが同じファイルにアプリ側のモジュール(`API_ULTRAS_MODULE`・`EVENT_ULTRAS_MODULE`)を足して`modules.ts`へ加える。ultrasとpaymentsの両方の表を使うWorkers統合テストでは、`clearUltrasTables`と`clearPaymentTables`がどちらも利用者を消すため、ultrasの3表を直接消してから`clearPaymentTables`を呼ぶ(前例`ultras-platform-module.worker.test.ts`)。`project-values.md`の「購入種別の登録」の行を9.1で更新する。

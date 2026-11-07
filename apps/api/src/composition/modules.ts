@@ -43,6 +43,7 @@ import {
   API_SEARCH_PLATFORM_MODULE,
 } from './search-module.ts';
 import { SESSION_BINDINGS } from './session.ts';
+import { API_ULTRAS_PLATFORM_MODULE } from './ultras-module.ts';
 import { UPLOADER_ELIGIBILITY_BINDINGS } from './uploader-eligibility.ts';
 
 function parseExpectedHostnames(value: string): readonly string[] {
@@ -114,4 +115,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   INQUIRY_MODULE,
   API_PAYMENTS_PLATFORM_MODULE,
   API_PAYMENTS_MODULE,
+  API_ULTRAS_PLATFORM_MODULE,
 ];
