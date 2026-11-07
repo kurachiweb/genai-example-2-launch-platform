@@ -100,7 +100,7 @@
   - _Depends: 3.2, 3.3_
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6, 10.6_
 
-- [ ] 4.3 Ultrasの加入の有効化を作る
+- [x] 4.3 Ultrasの加入の有効化を作る
   - paymentsの`workers/payments/fulfillment-contract.ts`の`PurchaseFulfillment`を実装し、有効化と知らせの行の文は`workers/ultras/statement-contracts.ts`の文の契約から作る
   - 先に、模擬のストアの単体テストで、定期課金のIDが無い購入の拒否、支払いの確定の時刻に別の加入の継続期間が重なる場合の拒否、それ以外で有効化と知らせの行の文を返すこと、確定後の呼び出しで知らせを送り出すことを確かめる
   - 完了状態: 単体テストが成功し、`prepare`が副作用を持たない(ストアの書き込みを呼ばない)
@@ -274,3 +274,4 @@
 - 3.3: 判定の実装は`StoredUltrasEntitlements`・`StoredUltrasPlanExport`(`workers/ultras`、`ULTRAS_TYPES.SubscriptionStore`だけを注入)。`entitledUsersDuring`・`wasEntitledDuring`は`from > to`で`RangeError`。エクスポートの日時は`Date`(paymentsの前例のISO文字列とは異なる。data-exportが直列化する)。
 - 4.1: 実装は`QueueActivationDispatcher`・`EmailUltrasNotifier`(`workers/ultras`、paymentsの`EmailPurchaseNotifier`と同じ依存オブジェクト方式のプレーンなクラス。4.5で`toDynamicValue`により束縛し、`MessagePublisher`は`PLATFORM_TYPES.MessagePublisher`、連絡先は`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、`CLIENT_SITE_ORIGIN`は`PLATFORM_TYPES.Env`から解決)。4.4は`payload`を`ultras-notifier.ts`の`noticePayloadOf({ acceptedAt, benefitEndsAt })`(ISO 8601の瞬時)で作る。`UltrasNotifier.send`は送信失敗で例外を投げるため5.4は1件ずつcatchする。`ActivationDispatcher.dispatch`は失敗をwarnに留めて投げないためガード不要。
 - 4.2: 最終確認画面の追加事項の4文と毎月の請求額の表記(`$9.99(税込)`、`en-US`固定)は`common-lib/ultras/checkout-notes.ts`(`ultrasCheckoutNotesOf(amount)`など)。7.xの料金ページも同じ関数を使う。拒否の3文言は`workers/ultras/ultras-offer-policy.ts`の`ULTRAS_OFFER_REJECTION_MESSAGES`。`UltrasOfferPolicy`も依存オブジェクト方式(`{ appName, flags, entitlements, prices }`)。ログの属性名に`key`を含めると伏せ字になるため`priceLookup`を使う。
+- 4.3: `UltrasFulfillment`も依存オブジェクト方式(`{ appName, subscriptions, subscriptionStatements, activations, activationStatements, dispatcher, ids }`。4.5では同じ`D1SubscriptionStore`/`D1ActivationStore`のインスタンスをストアと文の契約の両方に渡す)。`afterCommit`は完了済みの知らせを送り出さない。Sentryの`captureEvent`(指紋`["ultras", "fulfillment-missing-subscription"]`、タグ`ultras_incident`・`purchase_id`)を`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の`captureEvent`の一覧に9.1で加える(4.4の`unexpected_status`の通知も同様)。
