@@ -83,7 +83,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 11.2_
 
 - [ ] 4. paymentsの口の実装と送り出し
-- [ ] 4.1 知らせの送り出しとメールの依頼を作る
+- [x] 4.1 知らせの送り出しとメールの依頼を作る
   - 先に、模擬のポートの単体テストで、知らせの送り出しの成功で送り出しの記録が残り失敗は`warn`のログだけになること、identity-authの`UserContactDirectory`の模擬で`findContact`が`undefined`を返す利用者(退会済み・物理削除済み)のメールの依頼が対象外になり、停止中の利用者には依頼されること、宛名に`findContact`の`nickname`が使われること、依頼の成功の後にだけ依頼済みになること、既に依頼済みの依頼を再び送らないこと、メールの入力のプラン管理画面のURLが既存の`CLIENT_SITE_ORIGIN`から作られることを確かめる
   - ログに利用者のメールアドレスとニックネームを含めない
   - 実装は`workers/ultras`に置き、2.1で`core/ultras/ports.ts`に定めた`ActivationDispatcher`・`UltrasNotifier`の契約を実装する(`MessagePublisher`を使うのは知らせの送り出しの実装だけ)
@@ -272,3 +272,4 @@
 - 3.1: ultrasのWorkers統合テストのフィクスチャは`workers/ultras/testing/ultras-store-fixtures.ts`(`clearUltrasTables`・`subscriptionIdOf`・`stripeSubscriptionIdOf`・`newSubscriptionRow`・`activatedSubscriptionRow`・`insertSubscriptionRow(s)`・`readSubscriptionRow`と、identity/paymentsの`db`・`insertUser(s)`・`userIdOf`・`T0`・`after`・`purchaseIdOf`の再公開)。共有のWorkers統合テストはapiからだけ実行する(eventの設定は`lib/**`を除外)。終了の状態の集合は`core/ultras/subscription-transition.ts`の`ENDED_STRIPE_STATUSES`。
 - 3.2: `markCompleted`は`completed_at IS NULL`のときだけ書き(最初の完了時刻を保つ)、`markSkipped`・`markRequested`は`pending`のときだけ進める。上限付きの削除は`DELETE ... WHERE id IN (SELECT id ... LIMIT ?)`の1文で消した件数を返す(件数==limitなら残りがあり得る、5.4のジョブが最大20回繰り返す)。閾値は`<=`。フィクスチャに`ULTRAS_PROMOTION_SEED_ROW`・`restoreUltrasSettingsSeed`・`newActivationRow`・`newNoticeRow`・`insertActivationRow(s)`・`insertNoticeRow(s)`・`readActivationRow/Ids`・`readNoticeRow/Ids`・`activationIdOf`・`noticeIdOf`がある。
 - 3.3: 判定の実装は`StoredUltrasEntitlements`・`StoredUltrasPlanExport`(`workers/ultras`、`ULTRAS_TYPES.SubscriptionStore`だけを注入)。`entitledUsersDuring`・`wasEntitledDuring`は`from > to`で`RangeError`。エクスポートの日時は`Date`(paymentsの前例のISO文字列とは異なる。data-exportが直列化する)。
+- 4.1: 実装は`QueueActivationDispatcher`・`EmailUltrasNotifier`(`workers/ultras`、paymentsの`EmailPurchaseNotifier`と同じ依存オブジェクト方式のプレーンなクラス。4.5で`toDynamicValue`により束縛し、`MessagePublisher`は`PLATFORM_TYPES.MessagePublisher`、連絡先は`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、`CLIENT_SITE_ORIGIN`は`PLATFORM_TYPES.Env`から解決)。4.4は`payload`を`ultras-notifier.ts`の`noticePayloadOf({ acceptedAt, benefitEndsAt })`(ISO 8601の瞬時)で作る。`UltrasNotifier.send`は送信失敗で例外を投げるため5.4は1件ずつcatchする。`ActivationDispatcher.dispatch`は失敗をwarnに留めて投げないためガード不要。
