@@ -301,13 +301,16 @@ describe('メッセージの処理と波及処理の登録', () => {
     expect(namesFor('purge_due')).toStrictEqual([
       'inquiry-chat.member-inquiry-purge',
       'payments.customer-erasure',
+      'ultras-subscription.subscription-erasure',
     ]);
     expect(namesFor('withdrawn')).toStrictEqual([
       'payments.open-checkout-expiry',
+      'ultras-subscription.subscription-cancellation',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(namesFor('suspended')).toStrictEqual([
       'payments.open-checkout-expiry',
+      'ultras-subscription.subscription-cancellation',
     ]);
   });
 

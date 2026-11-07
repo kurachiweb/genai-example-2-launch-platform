@@ -3,10 +3,15 @@ import { describe, expect, test } from 'bun:test';
 import { ULTRAS_TYPES } from '../../../lib/core/ultras/identifiers.ts';
 import { EVENT_ULTRAS_TYPES } from './event-ultras-types.ts';
 
-const EXPECTED_NAMES = ['RunActivationHandlersHandler'] as const;
+const EXPECTED_NAMES = [
+  'RunActivationHandlersHandler',
+  'SubscriptionCancellationHandler',
+  'SubscriptionErasureHandler',
+  'UltrasAccountDataEraser',
+] as const;
 
 describe('EVENT_ULTRAS_TYPES', () => {
-  test('加入が有効になった知らせの処理の識別子だけを持つ', () => {
+  test('加入が有効になった知らせの処理・退会と停止の解約と物理削除の波及処理・削除の書き込みの単位の識別子だけを持つ', () => {
     expect(Object.keys(EVENT_ULTRAS_TYPES)).toEqual([...EXPECTED_NAMES]);
   });
 

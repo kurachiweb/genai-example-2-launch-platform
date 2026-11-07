@@ -3,6 +3,7 @@ import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
+import type { UserLifecycleAsyncHandler } from '../../lib/core/identity/user-lifecycle.ts';
 import type { MessageHandler } from '../../lib/core/messaging/message-contract.ts';
 import type { Clock } from '../../lib/core/time/clock.ts';
 import {
@@ -17,6 +18,10 @@ import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { createUltrasPlatformModule } from '../../lib/workers/ultras/ultras-platform-module.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 import { RunActivationHandlersHandler } from '../application/ultras/run-activation-handlers-handler.ts';
+import { SubscriptionCancellationHandler } from '../application/ultras/subscription-cancellation-handler.ts';
+import { SubscriptionErasureHandler } from '../application/ultras/subscription-erasure-handler.ts';
+import type { UltrasAccountDataEraser } from '../application/ultras/ultras-account-data-eraser.ts';
+import { D1UltrasAccountDataEraser } from '../infrastructure/ultras/d1-ultras-account-data-eraser.ts';
 import type { EventEnv } from './env-schema.ts';
 import { ULTRAS_ACTIVATION_HANDLERS } from './ultras-activation-handlers.ts';
 
@@ -30,7 +35,7 @@ export interface EventUltrasModuleOptions {
 export const EVENT_ULTRAS_PLATFORM_MODULE: EventAppModule =
   createUltrasPlatformModule('event');
 
-// 共通の束縛(EVENT_ULTRAS_PLATFORM_MODULE)が登録されている前提で、加入が有効になった知らせの処理を束縛する
+// 共通の束縛(EVENT_ULTRAS_PLATFORM_MODULE)が登録されている前提で、加入が有効になった知らせの処理と、退会・停止の解約と物理削除の波及処理を束縛する
 export function createEventUltrasModule(
   options: EventUltrasModuleOptions,
 ): EventAppModule {
@@ -56,6 +61,15 @@ export function createEventUltrasModule(
             clock: context.get<Clock>(PLATFORM_TYPES.Clock),
           }),
       );
+      bind<UltrasAccountDataEraser>(
+        EVENT_ULTRAS_TYPES.UltrasAccountDataEraser,
+      ).to(D1UltrasAccountDataEraser);
+      bind<UserLifecycleAsyncHandler>(
+        EVENT_ULTRAS_TYPES.SubscriptionCancellationHandler,
+      ).to(SubscriptionCancellationHandler);
+      bind<UserLifecycleAsyncHandler>(
+        EVENT_ULTRAS_TYPES.SubscriptionErasureHandler,
+      ).to(SubscriptionErasureHandler);
     }),
   };
 }

@@ -338,6 +338,10 @@ describe('退会の抑止記録の削除', () => {
     expect(await readHandlerRuns()).toMatchObject([
       { eventId: eventIdOf(10), handlerName: CLEANUP_HANDLER_NAME },
       { eventId: eventIdOf(10), handlerName: 'payments.open-checkout-expiry' },
+      {
+        eventId: eventIdOf(10),
+        handlerName: 'ultras-subscription.subscription-cancellation',
+      },
     ]);
     expect(await readEvent(10)).toMatchObject({ status: 'completed' });
   });

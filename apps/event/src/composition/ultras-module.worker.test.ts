@@ -19,6 +19,7 @@ import {
   vi,
 } from 'vitest';
 
+import { createAsyncLifecycleRegistry } from '../../lib/core/identity/user-lifecycle.ts';
 import type { QueueEnvelope } from '../../lib/core/messaging/envelope.ts';
 import { decideOnFailure } from '../../lib/core/messaging/retry-policy.ts';
 import {
@@ -60,6 +61,9 @@ import { UltrasOfferPolicy } from '../../lib/workers/ultras/ultras-offer-policy.
 import { StoredUltrasPlanExport } from '../../lib/workers/ultras/ultras-plan-export.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 import { RunActivationHandlersHandler } from '../application/ultras/run-activation-handlers-handler.ts';
+import { SubscriptionCancellationHandler } from '../application/ultras/subscription-cancellation-handler.ts';
+import { SubscriptionErasureHandler } from '../application/ultras/subscription-erasure-handler.ts';
+import { D1UltrasAccountDataEraser } from '../infrastructure/ultras/d1-ultras-account-data-eraser.ts';
 import { MESSAGE_HANDLERS } from './message-handlers.ts';
 import { MODULES } from './modules.ts';
 import { ULTRAS_ACTIVATION_HANDLERS } from './ultras-activation-handlers.ts';
@@ -68,6 +72,7 @@ import {
   EVENT_ULTRAS_MODULE,
   EVENT_ULTRAS_PLATFORM_MODULE,
 } from './ultras-module.ts';
+import { USER_LIFECYCLE_ASYNC_HANDLERS } from './user-lifecycle-async-handlers.ts';
 
 declare global {
   // @cloudflare/vitest-pool-workers 0.23.0の型定義はgetQueueResultの戻り値にこの型を使うが、宣言を含まない
@@ -329,6 +334,71 @@ describe('イベントサーバーのモジュールの一覧へのUltrasの登�
     expect(
       createContainer().get(EVENT_ULTRAS_TYPES.RunActivationHandlersHandler),
     ).toBeInstanceOf(RunActivationHandlersHandler);
+  });
+
+  test.each([
+    ['SubscriptionCancellationHandler', SubscriptionCancellationHandler],
+    ['SubscriptionErasureHandler', SubscriptionErasureHandler],
+    ['UltrasAccountDataEraser', D1UltrasAccountDataEraser],
+  ] as const)(
+    'モジュールの一覧の処理単位のコンテナから%sを解決する',
+    (name, implementation) => {
+      expect(createContainer().get(EVENT_ULTRAS_TYPES[name])).toBeInstanceOf(
+        implementation,
+      );
+    },
+  );
+});
+
+describe('退会・停止の解約と物理削除の波及処理の登録', () => {
+  test('退会・停止に順序500の解約を、物理削除の開始に順序500の削除を登録し、停止の解除には登録しない', () => {
+    expect(
+      USER_LIFECYCLE_ASYNC_HANDLERS.filter(({ name }) =>
+        name.startsWith('ultras-subscription.'),
+      ),
+    ).toStrictEqual([
+      {
+        name: 'ultras-subscription.subscription-cancellation',
+        events: ['withdrawn', 'suspended'],
+        order: 500,
+        handler: EVENT_ULTRAS_TYPES.SubscriptionCancellationHandler,
+      },
+      {
+        name: 'ultras-subscription.subscription-erasure',
+        events: ['purge_due'],
+        order: 500,
+        handler: EVENT_ULTRAS_TYPES.SubscriptionErasureHandler,
+      },
+    ]);
+  });
+
+  test('登録の検証を通り、paymentsの波及処理の後・アカウント機能の波及処理の前に並ぶ', () => {
+    const registry = createAsyncLifecycleRegistry(
+      USER_LIFECYCLE_ASYNC_HANDLERS,
+    );
+    const namesFor = (
+      type: 'purge_due' | 'withdrawn' | 'suspended' | 'unsuspended',
+    ) => registry.handlersFor(type).map(({ name }) => name);
+
+    expect(namesFor('withdrawn')).toStrictEqual([
+      'payments.open-checkout-expiry',
+      'ultras-subscription.subscription-cancellation',
+      'identity-auth.email-suppression-cleanup',
+    ]);
+    expect(namesFor('suspended')).toStrictEqual([
+      'payments.open-checkout-expiry',
+      'ultras-subscription.subscription-cancellation',
+    ]);
+    expect(namesFor('purge_due')).toStrictEqual([
+      'inquiry-chat.member-inquiry-purge',
+      'payments.customer-erasure',
+      'ultras-subscription.subscription-erasure',
+    ]);
+    expect(
+      namesFor('unsuspended').filter((name) =>
+        name.startsWith('ultras-subscription.'),
+      ),
+    ).toStrictEqual([]);
   });
 });
 

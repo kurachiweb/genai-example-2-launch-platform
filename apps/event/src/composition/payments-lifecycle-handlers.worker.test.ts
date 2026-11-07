@@ -106,6 +106,9 @@ const OPEN_CHECKOUT_EXPIRY = 'payments.open-checkout-expiry';
 
 const EMAIL_SUPPRESSION_CLEANUP = 'identity-auth.email-suppression-cleanup';
 
+const SUBSCRIPTION_CANCELLATION =
+  'ultras-subscription.subscription-cancellation';
+
 const TARGET = 1;
 
 const KEPT = 2;
@@ -549,6 +552,7 @@ describe('退会・停止での未完了の決済セッションの失効', () =
     await expect(completedHandlerNames()).resolves.toStrictEqual([
       EMAIL_SUPPRESSION_CLEANUP,
       OPEN_CHECKOUT_EXPIRY,
+      SUBSCRIPTION_CANCELLATION,
     ]);
     await expect(readEvent(LIFECYCLE_EVENT)).resolves.toMatchObject({
       status: 'completed',
