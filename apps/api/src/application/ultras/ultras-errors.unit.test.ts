@@ -30,6 +30,12 @@ describe('ULTRAS_ERRORS', () => {
       422,
       'Ultrasに加入したことが無いため、管理画面を開けません。',
     ],
+    [
+      'version_conflict',
+      'conflict',
+      409,
+      '他の管理者が設定を変更しました。最新の内容を読み込んでから操作してください。',
+    ],
   ] as const)(
     '%sは%sの種類(%d)と文言規則の文言を持つ',
     (code, kind, status, message) => {
@@ -45,12 +51,13 @@ describe('ULTRAS_ERRORS', () => {
     },
   );
 
-  test('定義は加入の拒否の3つとCustomer Portalを開けない1つのコードだけで、実行時に書き換えられない', () => {
+  test('定義は加入の拒否の3つ、Customer Portalを開けない1つ、機能フラグの変更の競合の1つのコードだけで、実行時に書き換えられない', () => {
     expect(Object.keys(ULTRAS_ERRORS).toSorted()).toEqual([
       'ultras_already_subscribed',
       'ultras_portal_unavailable',
       'ultras_resume_in_portal',
       'ultras_unavailable',
+      'version_conflict',
     ]);
     expect(Object.isFrozen(ULTRAS_ERRORS)).toBe(true);
   });

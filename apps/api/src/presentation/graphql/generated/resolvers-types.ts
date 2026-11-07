@@ -695,6 +695,8 @@ export type Mutation = {
   submitMemberInquiry: MemberInquiry;
   /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
   updateAdminProfile: AdminAccount;
+  /** 機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者 */
+  updateUltrasPromotionSetting: UltrasPromotionSetting;
   /** メールアドレスの確認の確定 */
   verifyEmail: Scalars['Boolean']['output'];
   /** 退会 */
@@ -947,6 +949,11 @@ export type MutationUpdateAdminProfileArgs = {
 };
 
 
+export type MutationUpdateUltrasPromotionSettingArgs = {
+  input: UpdateUltrasPromotionSettingInput;
+};
+
+
 export type MutationVerifyEmailArgs = {
   token: Scalars['String']['input'];
 };
@@ -1066,6 +1073,8 @@ export type Query = {
   systemStatus: SystemStatus;
   /** Ultrasの月額の価格と新規の加入の受付の状態。ログイン不要 */
   ultrasOffer: UltrasOffer;
+  /** 有料プラン導線の機能フラグの現在の値と最後の変更。閲覧のみ以上の管理者 */
+  ultrasPromotionSetting: UltrasPromotionSetting;
   /** ログイン中の利用者。未ログイン・無効なセッションではnull */
   viewer?: Maybe<Viewer>;
   /** ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull */
@@ -1250,6 +1259,28 @@ export type UltrasPortalSession = {
   __typename?: 'UltrasPortalSession';
   /** Customer PortalのURL。作成の直後に移動に使う */
   url: Scalars['String']['output'];
+};
+
+/** 有料プラン導線の機能フラグ */
+export type UltrasPromotionSetting = {
+  __typename?: 'UltrasPromotionSetting';
+  /** 未加入者に導線を表示し、新規の加入を受け付けるか */
+  enabled: Scalars['Boolean']['output'];
+  /** 最後に変更した日時 */
+  updatedAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 最後に変更した管理者のニックネーム。管理者の変更が無い・削除済みはnull */
+  updatedByNickname?: Maybe<Scalars['String']['output']>;
+  /** 変更のたびに1つ進む版。変更の入力にそのまま渡す */
+  version: Scalars['Int']['output'];
+};
+
+/** 機能フラグの変更の入力 */
+export type UpdateUltrasPromotionSettingInput = {
+  enabled: Scalars['Boolean']['input'];
+  /** 照会で読み取った版。最新と一致しなければversion_conflict */
+  expectedVersion: Scalars['Int']['input'];
+  /** 監査ログに残す理由(任意) */
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 /** ログイン中の端末 */
@@ -1463,6 +1494,8 @@ export type ResolversTypes = {
   UltrasPlan: ResolverTypeWrapper<UltrasPlan>;
   UltrasPlanStatus: UltrasPlanStatus;
   UltrasPortalSession: ResolverTypeWrapper<UltrasPortalSession>;
+  UltrasPromotionSetting: ResolverTypeWrapper<UltrasPromotionSetting>;
+  UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UserSessionSummary: ResolverTypeWrapper<UserSessionSummary>;
   Viewer: ResolverTypeWrapper<ViewerSource>;
   ViewerUltras: ResolverTypeWrapper<ViewerUltras>;
@@ -1549,6 +1582,8 @@ export type ResolversParentTypes = {
   UltrasOffer: UltrasOffer;
   UltrasPlan: UltrasPlan;
   UltrasPortalSession: UltrasPortalSession;
+  UltrasPromotionSetting: UltrasPromotionSetting;
+  UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UserSessionSummary: UserSessionSummary;
   Viewer: ViewerSource;
   ViewerUltras: ViewerUltras;
@@ -1911,6 +1946,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
+  updateUltrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType, RequireFields<MutationUpdateUltrasPromotionSettingArgs, 'input'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
 };
@@ -1964,6 +2000,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   paymentHistory?: Resolver<ResolversTypes['PaymentRecordConnection'], ParentType, ContextType, Partial<QueryPaymentHistoryArgs>>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   ultrasOffer?: Resolver<ResolversTypes['UltrasOffer'], ParentType, ContextType>;
+  ultrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType>;
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
   viewerUltras?: Resolver<Maybe<ResolversTypes['ViewerUltras']>, ParentType, ContextType>;
 };
@@ -2005,6 +2042,13 @@ export type UltrasPlanResolvers<ContextType = GraphQLContext, ParentType extends
 
 export type UltrasPortalSessionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UltrasPortalSession'] = ResolversParentTypes['UltrasPortalSession']> = {
   url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type UltrasPromotionSettingResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UltrasPromotionSetting'] = ResolversParentTypes['UltrasPromotionSetting']> = {
+  enabled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  updatedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  updatedByNickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type UserSessionSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UserSessionSummary'] = ResolversParentTypes['UserSessionSummary']> = {
@@ -2091,6 +2135,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   UltrasOffer?: UltrasOfferResolvers<ContextType>;
   UltrasPlan?: UltrasPlanResolvers<ContextType>;
   UltrasPortalSession?: UltrasPortalSessionResolvers<ContextType>;
+  UltrasPromotionSetting?: UltrasPromotionSettingResolvers<ContextType>;
   UserSessionSummary?: UserSessionSummaryResolvers<ContextType>;
   Viewer?: ViewerResolvers<ContextType>;
   ViewerUltras?: ViewerUltrasResolvers<ContextType>;

@@ -79,7 +79,7 @@ describe('GRAPHQL_SCHEMA_MODULES(決済)', () => {
 });
 
 describe('GRAPHQL_SCHEMA_MODULES(Ultras)', () => {
-  test('料金とプランの照会・加入の開始の操作と、加入状態の列挙型がスキーマに含まれる', () => {
+  test('料金とプランの照会・加入の開始・Portalのセッションの作成・機能フラグの照会と変更の操作と、加入状態の列挙型がスキーマに含まれる', () => {
     const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
 
     const query = schema.getQueryType()?.getFields();
@@ -89,6 +89,15 @@ describe('GRAPHQL_SCHEMA_MODULES(Ultras)', () => {
     expect(String(query?.['viewerUltras']?.type)).toBe('ViewerUltras');
     expect(String(mutation?.['startUltrasCheckout']?.type)).toBe(
       'CheckoutStart!',
+    );
+    expect(String(mutation?.['createUltrasPortalSession']?.type)).toBe(
+      'UltrasPortalSession!',
+    );
+    expect(String(query?.['ultrasPromotionSetting']?.type)).toBe(
+      'UltrasPromotionSetting!',
+    );
+    expect(String(mutation?.['updateUltrasPromotionSetting']?.type)).toBe(
+      'UltrasPromotionSetting!',
     );
     expect(String(schema.getType('UltrasPlanStatus'))).toBe('UltrasPlanStatus');
   });

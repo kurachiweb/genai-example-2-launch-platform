@@ -8,10 +8,13 @@ const EXPECTED_NAMES = [
   'UltrasCheckout',
   'PortalSessionStarter',
   'PortalSessionLimits',
+  'PromotionSettingReader',
+  'PromotionSettingWriter',
+  'PromotionSettingService',
 ] as const;
 
 describe('API_ULTRAS_TYPES', () => {
-  test('料金とプランの照会、加入の開始、Customer Portalのセッションの作成とその回数制限の識別子だけを持つ', () => {
+  test('料金とプランの照会、加入の開始、Customer Portalのセッションの作成とその回数制限、機能フラグの照会・変更の識別子だけを持つ', () => {
     expect(Object.keys(API_ULTRAS_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

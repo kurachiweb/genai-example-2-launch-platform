@@ -4,6 +4,8 @@ export const ULTRAS_TYPE_DEFS = /* GraphQL */ `
     ultrasOffer: UltrasOffer!
     "ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull"
     viewerUltras: ViewerUltras
+    "有料プラン導線の機能フラグの現在の値と最後の変更。閲覧のみ以上の管理者"
+    ultrasPromotionSetting: UltrasPromotionSetting!
   }
 
   type Mutation {
@@ -11,6 +13,10 @@ export const ULTRAS_TYPE_DEFS = /* GraphQL */ `
     startUltrasCheckout: CheckoutStart!
     "Customer Portalのセッションの作成。加入したことがある本人のStripe Customerにセッションを作り、移動先のURLを返す。戻り先はプラン管理画面"
     createUltrasPortalSession: UltrasPortalSession!
+    "機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者"
+    updateUltrasPromotionSetting(
+      input: UpdateUltrasPromotionSettingInput!
+    ): UltrasPromotionSetting!
   }
 
   "Ultrasの加入状態"
@@ -62,5 +68,26 @@ export const ULTRAS_TYPE_DEFS = /* GraphQL */ `
   type UltrasPortalSession {
     "Customer PortalのURL。作成の直後に移動に使う"
     url: String!
+  }
+
+  "有料プラン導線の機能フラグ"
+  type UltrasPromotionSetting {
+    "未加入者に導線を表示し、新規の加入を受け付けるか"
+    enabled: Boolean!
+    "変更のたびに1つ進む版。変更の入力にそのまま渡す"
+    version: Int!
+    "最後に変更した日時"
+    updatedAt: DateTime
+    "最後に変更した管理者のニックネーム。管理者の変更が無い・削除済みはnull"
+    updatedByNickname: String
+  }
+
+  "機能フラグの変更の入力"
+  input UpdateUltrasPromotionSettingInput {
+    enabled: Boolean!
+    "照会で読み取った版。最新と一致しなければversion_conflict"
+    expectedVersion: Int!
+    "監査ログに残す理由(任意)"
+    reason: String
   }
 `;

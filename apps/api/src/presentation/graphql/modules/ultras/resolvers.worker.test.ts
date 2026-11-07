@@ -1,38 +1,63 @@
 import { env } from 'cloudflare:workers';
-import { isEnumType, isObjectType } from 'graphql';
+import {
+  type GraphQLType,
+  isEnumType,
+  isInputObjectType,
+  isObjectType,
+} from 'graphql';
 import { describe, expect, test } from 'vitest';
 
+import { AUDIT_REASON_MAX } from '../../../../../common-lib/admin/admin-input-rules.ts';
+import { ULTRAS_PROMOTION_UPDATE_ACTION } from '../../../../../common-lib/admin/audit-actions/ultras-subscription.ts';
 import { ULTRAS_PRICE_LOOKUP_KEY } from '../../../../../common-lib/ultras/plan-status.ts';
 import { StripeUnavailableError } from '../../../../../lib/core/payments/ports.ts';
 import {
   activatedSubscriptionRow,
   insertSubscriptionRow,
   T0,
+  ULTRAS_PROMOTION_SEED_ROW,
 } from '../../../../../lib/workers/ultras/testing/ultras-store-fixtures.ts';
 import { ULTRAS_OFFER_REJECTION_MESSAGES } from '../../../../../lib/workers/ultras/ultras-offer-policy.ts';
+import type {
+  GatewayCallOptions,
+  GatewayResponse,
+} from '../../../../../test/support/graphql-gateway.ts';
 import {
+  asUltrasAdmin,
   codesOf,
   createUltrasPortalSession,
   customerIdOf,
+  detailsOf,
   enableUltrasPromotion,
   fetchUltrasOffer,
+  fetchUltrasPromotionSetting,
   fetchViewerUltras,
   insertUser,
   insertVerifiedUser,
+  installUltrasAdminFixtures,
   installUltrasGraphQLTest,
   issueUserSession,
+  markUltrasPromotionUpdatedBy,
   readPurchase,
+  readUltrasPromotionSettingRow,
   saveCustomer,
   savePriceSnapshot,
+  searchUltrasAuditLogs,
   type StartedSessions,
   startUltrasCheckout,
   suspendUser,
+  ULTRAS_ADMINS,
   ULTRAS_PRICE,
   ultrasStartHandlers,
+  updateUltrasPromotionSetting,
   userIdOf,
   useStripe,
 } from '../../../../../test/support/ultras-graphql-operations.ts';
 import { ULTRAS_ERRORS } from '../../../../application/ultras/ultras-errors.ts';
+import {
+  adminIdOf,
+  readAuditLogSummaries,
+} from '../../../../infrastructure/admin/testing/admin-store-fixtures.ts';
 import { paymentsSchemaModule } from '../payments/index.ts';
 import { composeGatewaySchema } from '../../schema-composer.ts';
 import { ultrasSchemaModule } from './index.ts';
@@ -49,6 +74,10 @@ const PAYMENTS_UNAVAILABLE_MESSAGE =
 const PORTAL_URL = 'https://billing.stripe.example/p/session/test_portal';
 
 const PORTAL_RETURN_URL = `${env.CLIENT_SITE_ORIGIN}/settings/plan?portal=returned`;
+
+const RFC3339_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+const AUDIT_REASON_TOO_LONG_MESSAGE = `理由は${String(AUDIT_REASON_MAX)}文字以内で入力してください。`;
 
 installUltrasGraphQLTest();
 
@@ -82,18 +111,18 @@ function fieldTypesOf(
   typeName: string,
 ) {
   const type = schema.getType(typeName);
-  return isObjectType(type)
-    ? Object.fromEntries(
-        Object.entries(type.getFields()).map(([name, field]) => [
-          name,
-          String(field.type),
-        ]),
-      )
-    : undefined;
+  if (!isObjectType(type) && !isInputObjectType(type)) {
+    return undefined;
+  }
+  const fields: Record<string, { readonly type: GraphQLType }> =
+    type.getFields();
+  return Object.fromEntries(
+    Object.entries(fields).map(([name, field]) => [name, String(field.type)]),
+  );
 }
 
 describe('スキーマ', () => {
-  test('料金の照会はログイン不要の必須、利用者の照会は未ログインでnull、加入の開始はpaymentsのCheckoutStart、Portalのセッションの作成はURLを返す', () => {
+  test('料金の照会はログイン不要の必須、利用者の照会は未ログインでnull、加入の開始はpaymentsのCheckoutStart、Portalのセッションの作成はURL、機能フラグの照会と変更は設定を返す', () => {
     const schema = composeGatewaySchema([
       paymentsSchemaModule,
       ultrasSchemaModule,
@@ -129,6 +158,23 @@ describe('スキーマ', () => {
       currentPeriodEndsAt: 'DateTime',
       benefitEndsAt: 'DateTime',
       canceledAt: 'DateTime',
+    });
+    expect(String(query?.['ultrasPromotionSetting']?.type)).toBe(
+      'UltrasPromotionSetting!',
+    );
+    expect(String(mutation?.['updateUltrasPromotionSetting']?.type)).toBe(
+      'UltrasPromotionSetting!',
+    );
+    expect(fieldTypesOf(schema, 'UltrasPromotionSetting')).toEqual({
+      enabled: 'Boolean!',
+      version: 'Int!',
+      updatedAt: 'DateTime',
+      updatedByNickname: 'String',
+    });
+    expect(fieldTypesOf(schema, 'UpdateUltrasPromotionSettingInput')).toEqual({
+      enabled: 'Boolean!',
+      expectedVersion: 'Int!',
+      reason: 'String',
     });
   });
 
@@ -691,5 +737,264 @@ describe('createUltrasPortalSession', () => {
     );
     expect(Number(response.headers.get('retry-after'))).toBeGreaterThan(0);
     expect(stripe.callsOf('createPortalSession')).toHaveLength(20);
+  });
+});
+
+describe('管理者側の操作', () => {
+  installUltrasAdminFixtures();
+
+  const { superAdmin, moderator, viewer, deleted } = ULTRAS_ADMINS;
+
+  const SEED_UPDATED_AT = ULTRAS_PROMOTION_SEED_ROW.updatedAt.toISOString();
+
+  const ADMIN_OPERATIONS: readonly {
+    readonly name: string;
+    readonly call: (options: GatewayCallOptions) => Promise<GatewayResponse>;
+  }[] = [
+    {
+      name: 'ultrasPromotionSetting',
+      call: (options) => fetchUltrasPromotionSetting(options),
+    },
+    {
+      name: 'updateUltrasPromotionSetting',
+      call: (options) =>
+        updateUltrasPromotionSetting(
+          { enabled: true, expectedVersion: 0 },
+          options,
+        ),
+    },
+  ];
+
+  describe('呼び出し元とログイン', () => {
+    test.each(ADMIN_OPERATIONS)(
+      '$nameは、最上位管理者のセッションでも利用者側の呼び出し元からならforbiddenで拒否し、設定を変えない',
+      async ({ name, call }) => {
+        const response = await call({
+          ...asUltrasAdmin(superAdmin),
+          caller: 'client',
+        });
+
+        expect(codesOf(response)).toEqual(['forbidden']);
+        expect(response.data?.[name] ?? null).toBeNull();
+        await expect(readUltrasPromotionSettingRow()).resolves.toEqual(
+          ULTRAS_PROMOTION_SEED_ROW,
+        );
+      },
+    );
+
+    test.each(ADMIN_OPERATIONS)(
+      '$nameは、管理者側の呼び出し元でも未ログインならunauthenticatedで拒否し、設定を変えない',
+      async ({ name, call }) => {
+        const response = await call({ caller: 'admin' });
+
+        expect(codesOf(response)).toEqual(['unauthenticated']);
+        expect(response.data?.[name] ?? null).toBeNull();
+        await expect(readUltrasPromotionSettingRow()).resolves.toEqual(
+          ULTRAS_PROMOTION_SEED_ROW,
+        );
+      },
+    );
+  });
+
+  describe('ultrasPromotionSetting', () => {
+    test.each([
+      ['閲覧のみ', viewer],
+      ['モデレーター', moderator],
+      ['最上位管理者', superAdmin],
+    ])(
+      '%sの管理者に、初期行のオフ・版0・初期行の日時を返し、最後に変更した管理者は無い',
+      async (_, adminIndex) => {
+        const response = await fetchUltrasPromotionSetting(
+          asUltrasAdmin(adminIndex),
+        );
+
+        expect(response.errors).toBeUndefined();
+        expect(response.data?.ultrasPromotionSetting).toEqual({
+          enabled: false,
+          version: 0,
+          updatedAt: SEED_UPDATED_AT,
+          updatedByNickname: null,
+        });
+      },
+    );
+
+    test('最上位管理者が変更した後は、新しい値・進んだ版・変更の日時と変更した管理者のニックネームを返す', async () => {
+      const updated = await updateUltrasPromotionSetting(
+        { enabled: true, expectedVersion: 0 },
+        asUltrasAdmin(superAdmin),
+      );
+      expect(updated.errors).toBeUndefined();
+
+      const response = await fetchUltrasPromotionSetting(asUltrasAdmin(viewer));
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data?.ultrasPromotionSetting).toEqual({
+        enabled: true,
+        version: 1,
+        updatedAt: expect.stringMatching(RFC3339_UTC_PATTERN) as string,
+        updatedByNickname: `管理者${String(superAdmin)}`,
+      });
+      expect(response.data?.ultrasPromotionSetting?.updatedAt).not.toBe(
+        SEED_UPDATED_AT,
+      );
+    });
+
+    test('最後に変更した管理者が削除済みならニックネームをnullにする', async () => {
+      await markUltrasPromotionUpdatedBy(adminIdOf(deleted), new Date());
+
+      const response = await fetchUltrasPromotionSetting(asUltrasAdmin(viewer));
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data?.ultrasPromotionSetting).toEqual({
+        enabled: true,
+        version: 1,
+        updatedAt: expect.stringMatching(RFC3339_UTC_PATTERN) as string,
+        updatedByNickname: null,
+      });
+    });
+  });
+
+  describe('updateUltrasPromotionSetting', () => {
+    test.each([
+      ['閲覧のみ', viewer],
+      ['モデレーター', moderator],
+    ])(
+      '%sの管理者はforbiddenで拒否し、設定も監査ログも変えない',
+      async (_, adminIndex) => {
+        const response = await updateUltrasPromotionSetting(
+          { enabled: true, expectedVersion: 0, reason: '権限の無い変更' },
+          asUltrasAdmin(adminIndex),
+        );
+
+        expect(codesOf(response)).toEqual(['forbidden']);
+        await expect(readUltrasPromotionSettingRow()).resolves.toEqual(
+          ULTRAS_PROMOTION_SEED_ROW,
+        );
+        await expect(readAuditLogSummaries()).resolves.toEqual([]);
+      },
+    );
+
+    test('理由が501書記素ならvalidation_errorで拒否し、設定も監査ログも変えない', async () => {
+      const response = await updateUltrasPromotionSetting(
+        {
+          enabled: true,
+          expectedVersion: 0,
+          reason: 'あ'.repeat(AUDIT_REASON_MAX + 1),
+        },
+        asUltrasAdmin(superAdmin),
+      );
+
+      expect(codesOf(response)).toEqual(['validation_error']);
+      expect(detailsOf(response)).toEqual([
+        {
+          field: 'input.reason',
+          code: 'custom',
+          message: AUDIT_REASON_TOO_LONG_MESSAGE,
+        },
+      ]);
+      await expect(readUltrasPromotionSettingRow()).resolves.toEqual(
+        ULTRAS_PROMOTION_SEED_ROW,
+      );
+      await expect(readAuditLogSummaries()).resolves.toEqual([]);
+    });
+
+    test('500書記素の理由は受け付け、監査ログにそのまま残す', async () => {
+      const reason = 'あ'.repeat(AUDIT_REASON_MAX);
+
+      const response = await updateUltrasPromotionSetting(
+        { enabled: true, expectedVersion: 0, reason },
+        asUltrasAdmin(superAdmin),
+      );
+
+      expect(response.errors).toBeUndefined();
+      const logs = await searchUltrasAuditLogs(asUltrasAdmin(viewer));
+      expect(logs.data?.auditLogs?.entries).toEqual([
+        expect.objectContaining({ reason }),
+      ]);
+    });
+
+    test('読み取った版が最新でなければversion_conflictで拒否し、設定も監査ログも変えない', async () => {
+      const first = await updateUltrasPromotionSetting(
+        { enabled: true, expectedVersion: 0 },
+        asUltrasAdmin(superAdmin),
+      );
+      expect(first.errors).toBeUndefined();
+      const before = await readUltrasPromotionSettingRow();
+
+      const response = await updateUltrasPromotionSetting(
+        { enabled: false, expectedVersion: 0, reason: '表示した後の変更' },
+        asUltrasAdmin(superAdmin),
+      );
+
+      expect(response.status).toBe(200);
+      expect(codesOf(response)).toEqual(['version_conflict']);
+      expect(response.errors?.[0]?.message).toBe(
+        ULTRAS_ERRORS.version_conflict.message,
+      );
+      expect(response.data?.updateUltrasPromotionSetting ?? null).toBeNull();
+      await expect(readUltrasPromotionSettingRow()).resolves.toEqual(before);
+      await expect(readAuditLogSummaries()).resolves.toHaveLength(1);
+    });
+
+    test('最上位管理者は読み取った版と一致すれば保存し、新しい値・進んだ版・自分のニックネームを返し、監査ログの検索で変更の記録が見つかる', async () => {
+      const response = await updateUltrasPromotionSetting(
+        { enabled: true, expectedVersion: 0, reason: 'Stripeの準備が整った' },
+        asUltrasAdmin(superAdmin),
+      );
+
+      expect(response.errors).toBeUndefined();
+      const setting = response.data?.updateUltrasPromotionSetting;
+      expect(setting).toEqual({
+        enabled: true,
+        version: 1,
+        updatedAt: expect.stringMatching(RFC3339_UTC_PATTERN) as string,
+        updatedByNickname: `管理者${String(superAdmin)}`,
+      });
+      const row = await readUltrasPromotionSettingRow();
+      expect(row).toEqual({
+        ...ULTRAS_PROMOTION_SEED_ROW,
+        enabled: true,
+        version: 1,
+        updatedByAdminId: adminIdOf(superAdmin),
+        updatedAt: expect.any(Date) as Date,
+      });
+      expect(row?.updatedAt.toISOString()).toBe(setting?.updatedAt);
+      const logs = await searchUltrasAuditLogs(asUltrasAdmin(viewer), {
+        action: ULTRAS_PROMOTION_UPDATE_ACTION.name,
+      });
+      expect(logs.errors).toBeUndefined();
+      expect(logs.data?.auditLogs?.entries).toEqual([
+        {
+          id: expect.any(String) as string,
+          occurredAt: setting?.updatedAt,
+          operator: {
+            id: adminIdOf(superAdmin),
+            nickname: `管理者${String(superAdmin)}`,
+          },
+          action: ULTRAS_PROMOTION_UPDATE_ACTION.name,
+          actionLabel: ULTRAS_PROMOTION_UPDATE_ACTION.label,
+          targetKind: 'setting',
+          targetIds: [ULTRAS_PROMOTION_SEED_ROW.id],
+          reason: 'Stripeの準備が整った',
+          detail: [{ key: 'enabled', value: 'true' }],
+        },
+      ]);
+    });
+
+    test('理由を省いても保存でき、監査ログの理由は空になる', async () => {
+      const response = await updateUltrasPromotionSetting(
+        { enabled: true, expectedVersion: 0 },
+        asUltrasAdmin(superAdmin),
+      );
+
+      expect(response.errors).toBeUndefined();
+      const logs = await searchUltrasAuditLogs(asUltrasAdmin(superAdmin));
+      expect(logs.data?.auditLogs?.entries).toEqual([
+        expect.objectContaining({
+          reason: null,
+          detail: [{ key: 'enabled', value: 'true' }],
+        }),
+      ]);
+    });
   });
 });

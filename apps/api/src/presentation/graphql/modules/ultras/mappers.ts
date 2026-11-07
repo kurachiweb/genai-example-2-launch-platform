@@ -1,5 +1,6 @@
 import type { UltrasPlanStatus } from '../../../../../common-lib/ultras/plan-status.ts';
 import type { UltrasPlanView } from '../../../../../lib/core/ultras/ports.ts';
+import type { PromotionSettingView } from '../../../../application/ultras/promotion-setting-service.ts';
 import type {
   UltrasOfferView,
   ViewerUltrasView,
@@ -8,6 +9,7 @@ import type {
   UltrasOffer,
   UltrasPlan,
   UltrasPlanStatus as UltrasPlanStatusValue,
+  UltrasPromotionSetting,
   ViewerUltras,
 } from '../../generated/resolvers-types.ts';
 
@@ -43,5 +45,16 @@ export function toViewerUltras(view: ViewerUltrasView): ViewerUltras {
     plan: view.plan === null ? null : toUltrasPlan(view.plan),
     entitled: view.entitled,
     canOpenPortal: view.canOpenPortal,
+  };
+}
+
+export function toUltrasPromotionSetting(
+  view: PromotionSettingView,
+): UltrasPromotionSetting {
+  return {
+    enabled: view.enabled,
+    version: view.version,
+    updatedAt: view.updatedAt,
+    updatedByNickname: view.updatedByNickname,
   };
 }
