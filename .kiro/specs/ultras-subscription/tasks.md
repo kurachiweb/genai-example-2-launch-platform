@@ -107,7 +107,7 @@
   - _Depends: 4.1_
   - _Requirements: 1.7, 1.8, 4.1, 4.2_
 
-- [ ] 4.4 (P) 定期課金の状態の受け取り口を作る
+- [x] 4.4 (P) 定期課金の状態の受け取り口を作る
   - paymentsの`workers/payments/fulfillment-contract.ts`の`SubscriptionEventSink`を実装する
   - 先に、模擬のストアの単体テストで、利用者に結び付かない変化で文を返さないこと、既存の行と無い行の両方で2.2の規則の結果を更新の文にすること、依頼ごとにメールの依頼の行の文を返すこと、確定後の呼び出しでその定期課金の依頼待ちのメールを送ることを確かめる
   - 完了状態: 単体テストが成功し、受け取り口が古い通知の判定を持たない(paymentsに委ねる)
@@ -275,3 +275,4 @@
 - 4.1: 実装は`QueueActivationDispatcher`・`EmailUltrasNotifier`(`workers/ultras`、paymentsの`EmailPurchaseNotifier`と同じ依存オブジェクト方式のプレーンなクラス。4.5で`toDynamicValue`により束縛し、`MessagePublisher`は`PLATFORM_TYPES.MessagePublisher`、連絡先は`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、`CLIENT_SITE_ORIGIN`は`PLATFORM_TYPES.Env`から解決)。4.4は`payload`を`ultras-notifier.ts`の`noticePayloadOf({ acceptedAt, benefitEndsAt })`(ISO 8601の瞬時)で作る。`UltrasNotifier.send`は送信失敗で例外を投げるため5.4は1件ずつcatchする。`ActivationDispatcher.dispatch`は失敗をwarnに留めて投げないためガード不要。
 - 4.2: 最終確認画面の追加事項の4文と毎月の請求額の表記(`$9.99(税込)`、`en-US`固定)は`common-lib/ultras/checkout-notes.ts`(`ultrasCheckoutNotesOf(amount)`など)。7.xの料金ページも同じ関数を使う。拒否の3文言は`workers/ultras/ultras-offer-policy.ts`の`ULTRAS_OFFER_REJECTION_MESSAGES`。`UltrasOfferPolicy`も依存オブジェクト方式(`{ appName, flags, entitlements, prices }`)。ログの属性名に`key`を含めると伏せ字になるため`priceLookup`を使う。
 - 4.3: `UltrasFulfillment`も依存オブジェクト方式(`{ appName, subscriptions, subscriptionStatements, activations, activationStatements, dispatcher, ids }`。4.5では同じ`D1SubscriptionStore`/`D1ActivationStore`のインスタンスをストアと文の契約の両方に渡す)。`afterCommit`は完了済みの知らせを送り出さない。Sentryの`captureEvent`(指紋`["ultras", "fulfillment-missing-subscription"]`、タグ`ultras_incident`・`purchase_id`)を`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の`captureEvent`の一覧に9.1で加える(4.4の`unexpected_status`の通知も同様)。
+- 4.4: `PlanStateSink`(`workers/ultras/plan-state-sink.ts`、依存オブジェクト`{ appName, subscriptions, subscriptionStatements, noticeStatements, notifier, ids }`)。登録名は`ULTRAS_PLAN_STATE_SINK_NAME`。異常はwarnとSentryの`captureEvent`(指紋`["ultras", "unexpected-subscription-status"]`・`["ultras", "scheduled-end-missing"]`、タグ`ultras_incident`・`stripe_subscription_id`・`stripe_status`)。
