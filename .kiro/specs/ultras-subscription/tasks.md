@@ -92,7 +92,7 @@
   - _Depends: 2.3, 2.4, 3.2_
   - _Requirements: 4.1, 4.5, 8.1, 8.3, 8.8, 8.9, 12.3_
 
-- [ ] 4.2 (P) Ultrasの購入の可否と内容を作る
+- [x] 4.2 (P) Ultrasの購入の可否と内容を作る
   - 先に、模擬のポートの単体テストで、拒否の順序(機能フラグがオフ→加入中→解約済みで継続期間内)とそれぞれのコード、価格の`lookup_key`・数量1・期限なし・二重決済の鍵なし・bot判定なし、最終確認画面の追加事項の4行(毎月の請求額を価格から作る)を確かめる
   - 最終確認画面は追加事項の各行を文言そのものを鍵にして描くため(paymentsの`checkout-summary.tsx`)、4行の文言を互いに異なるものにする
   - 完了状態: 単体テストが成功し、追加事項の文言が文言規則と一致する
@@ -273,3 +273,4 @@
 - 3.2: `markCompleted`は`completed_at IS NULL`のときだけ書き(最初の完了時刻を保つ)、`markSkipped`・`markRequested`は`pending`のときだけ進める。上限付きの削除は`DELETE ... WHERE id IN (SELECT id ... LIMIT ?)`の1文で消した件数を返す(件数==limitなら残りがあり得る、5.4のジョブが最大20回繰り返す)。閾値は`<=`。フィクスチャに`ULTRAS_PROMOTION_SEED_ROW`・`restoreUltrasSettingsSeed`・`newActivationRow`・`newNoticeRow`・`insertActivationRow(s)`・`insertNoticeRow(s)`・`readActivationRow/Ids`・`readNoticeRow/Ids`・`activationIdOf`・`noticeIdOf`がある。
 - 3.3: 判定の実装は`StoredUltrasEntitlements`・`StoredUltrasPlanExport`(`workers/ultras`、`ULTRAS_TYPES.SubscriptionStore`だけを注入)。`entitledUsersDuring`・`wasEntitledDuring`は`from > to`で`RangeError`。エクスポートの日時は`Date`(paymentsの前例のISO文字列とは異なる。data-exportが直列化する)。
 - 4.1: 実装は`QueueActivationDispatcher`・`EmailUltrasNotifier`(`workers/ultras`、paymentsの`EmailPurchaseNotifier`と同じ依存オブジェクト方式のプレーンなクラス。4.5で`toDynamicValue`により束縛し、`MessagePublisher`は`PLATFORM_TYPES.MessagePublisher`、連絡先は`IDENTITY_PLATFORM_TYPES.UserContactDirectory`、`CLIENT_SITE_ORIGIN`は`PLATFORM_TYPES.Env`から解決)。4.4は`payload`を`ultras-notifier.ts`の`noticePayloadOf({ acceptedAt, benefitEndsAt })`(ISO 8601の瞬時)で作る。`UltrasNotifier.send`は送信失敗で例外を投げるため5.4は1件ずつcatchする。`ActivationDispatcher.dispatch`は失敗をwarnに留めて投げないためガード不要。
+- 4.2: 最終確認画面の追加事項の4文と毎月の請求額の表記(`$9.99(税込)`、`en-US`固定)は`common-lib/ultras/checkout-notes.ts`(`ultrasCheckoutNotesOf(amount)`など)。7.xの料金ページも同じ関数を使う。拒否の3文言は`workers/ultras/ultras-offer-policy.ts`の`ULTRAS_OFFER_REJECTION_MESSAGES`。`UltrasOfferPolicy`も依存オブジェクト方式(`{ appName, flags, entitlements, prices }`)。ログの属性名に`key`を含めると伏せ字になるため`priceLookup`を使う。
