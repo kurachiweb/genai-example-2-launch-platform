@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query';
+import { type QueryClient, queryOptions } from '@tanstack/react-query';
 
 import { executeGraphQL } from '../../lib/start/graphql/execute-graphql.ts';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
@@ -43,3 +43,24 @@ export const viewerUltrasQueryOptions = (viewer: ClientViewer | null) =>
         await executeGraphQL(ClientViewerUltrasDocument, {}, { signal }),
       ),
   });
+
+// 取得の失敗は設定のナビゲーションを残したままページの中で再試行できるよう、例外にせずキャッシュに残す。キャッシュにあれば取得し直さない
+export async function loadPlanPage({
+  context,
+}: {
+  readonly context: {
+    readonly queryClient: QueryClient;
+    readonly viewer: ClientViewer;
+  };
+}): Promise<void> {
+  await Promise.all([
+    context.queryClient.query({
+      ...ultrasOfferQueryOptions(),
+      staleTime: 'static',
+    }),
+    context.queryClient.query({
+      ...viewerUltrasQueryOptions(context.viewer),
+      staleTime: 'static',
+    }),
+  ]).catch(() => undefined);
+}

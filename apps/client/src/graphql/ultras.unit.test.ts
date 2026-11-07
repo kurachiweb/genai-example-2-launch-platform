@@ -1,11 +1,22 @@
 import { describe, expect, test } from 'bun:test';
+import { QueryClient } from '@tanstack/react-query';
 
+import {
+  graphqlResponse,
+  htmlResponse,
+  recordingApi,
+  renderContextOf,
+  runInStartRequest,
+} from '../../lib/test/start-request-fixtures.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import {
   ClientUltrasOfferDocument,
+  type ClientUltrasOfferQuery,
   ClientViewerUltrasDocument,
+  type ClientViewerUltrasQuery,
 } from './generated/graphql.ts';
 import {
+  loadPlanPage,
   toUltrasPlanStatus,
   ultrasOfferQueryOptions,
   viewerUltrasQueryOptions,
@@ -67,4 +78,91 @@ describe('toUltrasPlanStatus', () => {
       expect(toUltrasPlanStatus(graphqlStatus)).toBe(status);
     },
   );
+});
+
+const OFFER: ClientUltrasOfferQuery = {
+  ultrasOffer: {
+    price: { amount: 999, currency: 'usd' },
+    priceStale: false,
+    promotionEnabled: true,
+  },
+};
+
+const ULTRAS: ClientViewerUltrasQuery = {
+  viewerUltras: { entitled: false, canOpenPortal: false, plan: null },
+};
+
+// 外部へ通信しないよう、描画の文脈のAPIを偽物にしてサーバーの分岐で取得し、APIへ送った識別子を読み取る
+const runThroughApi = async (
+  run: (queryClient: QueryClient) => Promise<unknown>,
+  respond: (request: Request) => Promise<Response>,
+) => {
+  const api = recordingApi(respond);
+  const queryClient = new QueryClient();
+  let result: unknown;
+  await runInStartRequest({
+    context: renderContextOf({ api, reported: [] }),
+    render: async () => {
+      result = await run(queryClient);
+      return htmlResponse();
+    },
+  });
+  const sent = await Promise.all(
+    api.requests.map(
+      (request) => request.json() as Promise<{ documentId: string }>,
+    ),
+  );
+  return { result, sent, queryClient };
+};
+
+const respondByDocument = async (request: Request): Promise<Response> => {
+  const { documentId } = (await request.clone().json()) as {
+    documentId: string;
+  };
+  return graphqlResponse({
+    data:
+      documentId === documentIdOf(ClientUltrasOfferDocument) ? OFFER : ULTRAS,
+  });
+};
+
+describe('loadPlanPage', () => {
+  test('価格と閲覧者の加入状態の2つを同時に取得し、キャッシュに入れる', async () => {
+    const { sent, queryClient } = await runThroughApi(
+      (client) =>
+        loadPlanPage({ context: { queryClient: client, viewer: VIEWER } }),
+      respondByDocument,
+    );
+
+    expect(sent.map(({ documentId }) => documentId).toSorted()).toStrictEqual(
+      [
+        documentIdOf(ClientUltrasOfferDocument),
+        documentIdOf(ClientViewerUltrasDocument),
+      ].toSorted(),
+    );
+    expect(
+      queryClient.getQueryData(ultrasOfferQueryOptions().queryKey),
+    ).toStrictEqual(OFFER);
+    expect(
+      queryClient.getQueryData(viewerUltrasQueryOptions(VIEWER).queryKey),
+    ).toStrictEqual(ULTRAS);
+  });
+
+  test('取得に失敗しても、ページの中で再試行できるよう例外にせず失敗をキャッシュに残す', async () => {
+    const { result, queryClient } = await runThroughApi(
+      (client) =>
+        loadPlanPage({
+          context: { queryClient: client, viewer: VIEWER },
+        }).then(() => 'loaded'),
+      () => Promise.resolve(new Response('', { status: 503 })),
+    );
+
+    expect(result).toBe('loaded');
+    expect(
+      queryClient.getQueryState(ultrasOfferQueryOptions().queryKey)?.status,
+    ).toBe('error');
+    expect(
+      queryClient.getQueryState(viewerUltrasQueryOptions(VIEWER).queryKey)
+        ?.status,
+    ).toBe('error');
+  });
 });
