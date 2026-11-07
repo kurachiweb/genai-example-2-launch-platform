@@ -4,6 +4,7 @@
     "admin": {
       "sha256:001d16267154b69081040699d102aa02a3daeb4b080daccf3fb4375ff43da5a7": "mutation AdminRequestEmailChange($newEmail: String!, $reAuthentication: AdminReAuthenticationInput!) { requestAdminEmailChange( newEmail: $newEmail reAuthentication: $reAuthentication ) }",
       "sha256:00f33554081a88503d14f773be600ba93677eb9075e14f59cc2ed39a06cbc377": "query AdminAccounts { adminAccounts { avatar { fallbackFormat height id objectKey width } createdAt email id nickname role status title } }",
+      "sha256:0414939a189f0129ea30b0206151b9cc04ec191ecc0c8cafd7ec3e0ee57b270f": "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) { updateUltrasPromotionSetting(input: $input) { enabled updatedAt updatedByNickname version } }",
       "sha256:0d12649c1a9fd47a14dd6085af559ca7cd3b0b32a1efe9c96f2520c57b93f805": "mutation AdminResendInvitation($id: ID!, $reason: String) { resendAdminInvitation(id: $id, reason: $reason) { avatar { fallbackFormat height id objectKey width } createdAt email id nickname role status title } }",
       "sha256:108661b168cf905473967bf90e4d747d5153aa793bd63edf89090941ba382a49": "query AdminUnhandledInquiryCount { adminUnhandledInquiryCount }",
       "sha256:1180cc781646ce77b6d765a061ca2f387daecefac756f9cb61356ff83b9d8c48": "query AdminInquiries($after: String, $filter: AdminInquiryFilterInput) { adminInquiries(filter: $filter, after: $after) { entries { category { id name } createdAt id kind lastMessageAt senderName status withdrawn } nextCursor } }",
@@ -13,6 +14,7 @@
       "sha256:29852b285441f9a321526e46f4d625ef1052e2f0b438cacdd40f7d4ca70daaaa": "mutation AdminDelete($id: ID!, $reason: String) { deleteAdmin(id: $id, reason: $reason) }",
       "sha256:2b3db74ff8d9cf57c3fd301c72c6ac49f26bb115769cfa3e4664be219a5795e4": "mutation AdminLogin($email: String!, $password: String!) { adminLogin(email: $email, password: $password) { challenge expiresAt } }",
       "sha256:2b90b8513d1ac71cfb0dc044f17589283d69ea157ef05ed2c506b12888550711": "mutation AdminCompleteTotpReset($totpCode: String!) { completeAdminTotpReset(totpCode: $totpCode) { codes } }",
+      "sha256:2edd177a6140620bf171c97fd69c0c289130634ffcd31adf626abf21935f6c24": "query AdminUltrasPromotionSetting { ultrasPromotionSetting { enabled updatedAt updatedByNickname version } }",
       "sha256:2f5f703c05e4c378679abd43badd1cc30062941d402fc1ca4045ed4646c4b5c2": "query AdminLegalDocuments { adminLegalDocuments { hasDraft kind latestPublishedAt latestVersionNumber } }",
       "sha256:3395f8b8763a894c9a0a44dea76d6e4e1defe78d667b1304ac8abebe1d02eef3": "query AdminLegalDocumentVersion($kind: LegalDocumentKind!, $versionNumber: Int!) { adminLegalDocumentVersion(kind: $kind, versionNumber: $versionNumber) { body changeSummary isLatest kind publishedAt publishedBy { id nickname } versionNumber } }",
       "sha256:3add519bc3a435cbf2285b5c2ff24bf0f2cd5ee6ab87a119737b02c45dfe8424": "mutation AdminInvite($email: String!, $reason: String) { inviteAdmin(email: $email, reason: $reason) { avatar { fallbackFormat height id objectKey width } createdAt email id nickname role status title } }",

@@ -100,6 +100,15 @@ export type SaveLegalDocumentDraftInput = {
   kind: LegalDocumentKind;
 };
 
+/** 機能フラグの変更の入力 */
+export type UpdateUltrasPromotionSettingInput = {
+  enabled: boolean;
+  /** 照会で読み取った版。最新と一致しなければversion_conflict */
+  expectedVersion: number;
+  /** 監査ログに残す理由(任意) */
+  reason?: string | null | undefined;
+};
+
 export type AdminAccountsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -374,6 +383,18 @@ export type AdminSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type AdminSystemStatusQuery = { systemStatus: { serverTime: string, databaseReachable: boolean } };
 
+export type AdminUltrasPromotionSettingQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminUltrasPromotionSettingQuery = { ultrasPromotionSetting: { enabled: boolean, updatedAt: string | null, updatedByNickname: string | null, version: number } };
+
+export type AdminUpdateUltrasPromotionSettingMutationVariables = Exact<{
+  input: UpdateUltrasPromotionSettingInput;
+}>;
+
+
+export type AdminUpdateUltrasPromotionSettingMutation = { updateUltrasPromotionSetting: { enabled: boolean, updatedAt: string | null, updatedByNickname: string | null, version: number } };
+
 
 export const AdminAccountsDocument = {"__meta__":{"hash":"sha256:00f33554081a88503d14f773be600ba93677eb9075e14f59cc2ed39a06cbc377"}} as unknown as DocumentNode<AdminAccountsQuery, AdminAccountsQueryVariables>;
 export const AdminChangeRoleDocument = {"__meta__":{"hash":"sha256:f1f88bf3b8b20cf0bc4c9098f0f1c85d00b64194ca28a5b18014c203a7517871"}} as unknown as DocumentNode<AdminChangeRoleMutation, AdminChangeRoleMutationVariables>;
@@ -413,3 +434,5 @@ export const AdminLegalDocumentsDocument = {"__meta__":{"hash":"sha256:2f5f703c0
 export const AdminPublishLegalDocumentDocument = {"__meta__":{"hash":"sha256:81c947606fe5b15c429d4107739c5f6696c874eebb73d163bce9f866986aa11c"}} as unknown as DocumentNode<AdminPublishLegalDocumentMutation, AdminPublishLegalDocumentMutationVariables>;
 export const AdminSaveLegalDocumentDraftDocument = {"__meta__":{"hash":"sha256:e0ae6b1245545720ebf463ace8663aaaf6b251a968c90992e6b0d4b0ff0b2085"}} as unknown as DocumentNode<AdminSaveLegalDocumentDraftMutation, AdminSaveLegalDocumentDraftMutationVariables>;
 export const AdminSystemStatusDocument = {"__meta__":{"hash":"sha256:cfd1cd38df39a20ba4d85b44cdc75b45715595ad92ef45f03d4bc5fd3146590c"}} as unknown as DocumentNode<AdminSystemStatusQuery, AdminSystemStatusQueryVariables>;
+export const AdminUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:2edd177a6140620bf171c97fd69c0c289130634ffcd31adf626abf21935f6c24"}} as unknown as DocumentNode<AdminUltrasPromotionSettingQuery, AdminUltrasPromotionSettingQueryVariables>;
+export const AdminUpdateUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:0414939a189f0129ea30b0206151b9cc04ec191ecc0c8cafd7ec3e0ee57b270f"}} as unknown as DocumentNode<AdminUpdateUltrasPromotionSettingMutation, AdminUpdateUltrasPromotionSettingMutationVariables>;

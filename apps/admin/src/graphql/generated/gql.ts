@@ -52,6 +52,8 @@ type Documents = {
     "mutation AdminPublishLegalDocument($input: PublishLegalDocumentInput!) {\n  publishLegalDocument(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminPublishLegalDocumentDocument,
     "mutation AdminSaveLegalDocumentDraft($input: SaveLegalDocumentDraftInput!) {\n  saveLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminSaveLegalDocumentDraftDocument,
     "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": typeof types.AdminSystemStatusDocument,
+    "query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": typeof types.AdminUltrasPromotionSettingDocument,
+    "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": typeof types.AdminUpdateUltrasPromotionSettingDocument,
 };
 const documents: Documents = {
     "query AdminAccounts {\n  adminAccounts {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": types.AdminAccountsDocument,
@@ -92,6 +94,8 @@ const documents: Documents = {
     "mutation AdminPublishLegalDocument($input: PublishLegalDocumentInput!) {\n  publishLegalDocument(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": types.AdminPublishLegalDocumentDocument,
     "mutation AdminSaveLegalDocumentDraft($input: SaveLegalDocumentDraftInput!) {\n  saveLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": types.AdminSaveLegalDocumentDraftDocument,
     "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": types.AdminSystemStatusDocument,
+    "query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": types.AdminUltrasPromotionSettingDocument,
+    "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": types.AdminUpdateUltrasPromotionSettingDocument,
 };
 
 /**
@@ -260,6 +264,14 @@ export function graphql(source: "mutation AdminSaveLegalDocumentDraft($input: Sa
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}"): (typeof documents)["query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}"): (typeof documents)["query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}"): (typeof documents)["mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

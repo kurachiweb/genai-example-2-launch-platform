@@ -36,5 +36,7 @@
   "sha256:2f5f703c05e4c378679abd43badd1cc30062941d402fc1ca4045ed4646c4b5c2": "query AdminLegalDocuments { adminLegalDocuments { hasDraft kind latestPublishedAt latestVersionNumber } }",
   "sha256:81c947606fe5b15c429d4107739c5f6696c874eebb73d163bce9f866986aa11c": "mutation AdminPublishLegalDocument($input: PublishLegalDocumentInput!) { publishLegalDocument(input: $input) { draft { body savedAt savedBy { id nickname } } kind latestBody revisions { changeSummary publishedAt publishedBy { id nickname } versionNumber } stateVersion } }",
   "sha256:e0ae6b1245545720ebf463ace8663aaaf6b251a968c90992e6b0d4b0ff0b2085": "mutation AdminSaveLegalDocumentDraft($input: SaveLegalDocumentDraftInput!) { saveLegalDocumentDraft(input: $input) { draft { body savedAt savedBy { id nickname } } kind latestBody revisions { changeSummary publishedAt publishedBy { id nickname } versionNumber } stateVersion } }",
-  "sha256:cfd1cd38df39a20ba4d85b44cdc75b45715595ad92ef45f03d4bc5fd3146590c": "query AdminSystemStatus { systemStatus { databaseReachable serverTime } }"
+  "sha256:cfd1cd38df39a20ba4d85b44cdc75b45715595ad92ef45f03d4bc5fd3146590c": "query AdminSystemStatus { systemStatus { databaseReachable serverTime } }",
+  "sha256:2edd177a6140620bf171c97fd69c0c289130634ffcd31adf626abf21935f6c24": "query AdminUltrasPromotionSetting { ultrasPromotionSetting { enabled updatedAt updatedByNickname version } }",
+  "sha256:0414939a189f0129ea30b0206151b9cc04ec191ecc0c8cafd7ec3e0ee57b270f": "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) { updateUltrasPromotionSetting(input: $input) { enabled updatedAt updatedByNickname version } }"
 }
