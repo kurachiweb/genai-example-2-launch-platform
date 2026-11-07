@@ -40,3 +40,21 @@ export function ultrasCheckoutNotesOf(
     ULTRAS_ENTRY_FEE_NOT_REFUNDED_NOTE,
   ] as const);
 }
+
+export const ULTRAS_AUTO_RENEWAL_NOTE_WITHOUT_AMOUNT =
+  'Ultrasプランは毎月自動で更新され、毎月の更新日に月額料金を自動でお支払いいただきます。';
+
+// 料金ページは価格を照会できない間も自動更新と解約の条件を示すため、金額を差し込まない自動更新の文で補う
+export function ultrasBenefitNotesOf(
+  amount: MinorUnitAmount | null,
+): UltrasCheckoutNotes {
+  if (amount !== null) {
+    return ultrasCheckoutNotesOf(amount);
+  }
+  return Object.freeze([
+    ULTRAS_AUTO_RENEWAL_NOTE_WITHOUT_AMOUNT,
+    ULTRAS_CANCELLATION_NOTE,
+    ULTRAS_NO_PRORATED_REFUND_NOTE,
+    ULTRAS_ENTRY_FEE_NOT_REFUNDED_NOTE,
+  ] as const);
+}

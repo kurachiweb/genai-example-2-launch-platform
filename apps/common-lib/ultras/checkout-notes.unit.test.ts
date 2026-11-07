@@ -2,10 +2,12 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   formatUltrasMonthlyAmount,
+  ULTRAS_AUTO_RENEWAL_NOTE_WITHOUT_AMOUNT,
   ULTRAS_CANCELLATION_NOTE,
   ULTRAS_ENTRY_FEE_NOT_REFUNDED_NOTE,
   ULTRAS_NO_PRORATED_REFUND_NOTE,
   ultrasAutoRenewalNoteOf,
+  ultrasBenefitNotesOf,
   ultrasCheckoutNotesOf,
 } from './checkout-notes.ts';
 
@@ -69,5 +71,38 @@ describe('ultrasCheckoutNotesOf', () => {
 
   test('返す一覧は変更できない', () => {
     expect(Object.isFrozen(ultrasCheckoutNotesOf(999))).toBe(true);
+  });
+});
+
+describe('ULTRAS_AUTO_RENEWAL_NOTE_WITHOUT_AMOUNT', () => {
+  test('金額を差し込まない自動更新の文は、月額料金を支払う旨を示す', () => {
+    expect(ULTRAS_AUTO_RENEWAL_NOTE_WITHOUT_AMOUNT).toBe(
+      'Ultrasプランは毎月自動で更新され、毎月の更新日に月額料金を自動でお支払いいただきます。',
+    );
+  });
+});
+
+describe('ultrasBenefitNotesOf', () => {
+  test('価格があれば、最終確認画面の表示事項と同じ4つの文を返す', () => {
+    expect(ultrasBenefitNotesOf(999)).toEqual(ultrasCheckoutNotesOf(999));
+  });
+
+  test('価格を照会できなければ、金額を差し込まない自動更新の文に代えた4つの文を返す', () => {
+    expect(ultrasBenefitNotesOf(null)).toEqual([
+      'Ultrasプランは毎月自動で更新され、毎月の更新日に月額料金を自動でお支払いいただきます。',
+      '解約はプラン管理画面からいつでも行え、解約した後も課金期間の末日まで特典が続きます。',
+      '課金期間の途中で解約しても、日割りの返金はありません。',
+      '支払い済みのトーナメント参加費は返金されません。',
+    ]);
+  });
+
+  test('料金ページが文言を鍵にして描けるよう、価格が無いときの4つの文も互いに異なる', () => {
+    const notes = ultrasBenefitNotesOf(null);
+
+    expect(new Set(notes).size).toBe(notes.length);
+  });
+
+  test('価格が無いときに返す一覧は変更できない', () => {
+    expect(Object.isFrozen(ultrasBenefitNotesOf(null))).toBe(true);
   });
 });
