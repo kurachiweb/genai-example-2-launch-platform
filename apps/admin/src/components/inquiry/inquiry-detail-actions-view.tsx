@@ -1,8 +1,9 @@
+import { RecoverableSlot } from '../../../lib/components/state/recoverable-slot.tsx';
+import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
 import type {
   InquiryDetailAction,
   InquiryDetailActionContext,
 } from '../../composition/inquiry-detail-actions.ts';
-import { RecoverableSlot } from '../layout/recoverable-slot.tsx';
 
 export interface InquiryDetailActionsViewProps {
   readonly actions: readonly InquiryDetailAction[];
@@ -22,7 +23,11 @@ export function InquiryDetailActionsView({
       {actions
         .toSorted((a, b) => a.order - b.order)
         .map(({ id, component: Action }) => (
-          <RecoverableSlot key={id} className="rounded-sm">
+          <RecoverableSlot
+            key={id}
+            className="rounded-sm"
+            contactAvailable={ADMIN_PROFILE.contactAvailable}
+          >
             <Action inquiry={inquiry} />
           </RecoverableSlot>
         ))}

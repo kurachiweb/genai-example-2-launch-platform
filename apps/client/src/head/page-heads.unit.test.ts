@@ -8,6 +8,7 @@ import {
   buildInquiryChatHead,
   buildLegalDocumentHead,
   buildLegalVersionHead,
+  buildPricingHead,
   buildRootHead,
   buildSitePageHead,
 } from './page-heads.ts';
@@ -83,6 +84,38 @@ describe('buildSitePageHead', () => {
         { name: 'robots', content: 'noindex, nofollow' },
       ],
       links: [],
+    });
+  });
+
+  test('説明を渡すと、検索エンジン向けのdescriptionのmetaを付ける', () => {
+    expect(
+      buildSitePageHead({
+        title: '料金',
+        description: '料金の説明です。',
+        canonicalUrl: '/pricing',
+      }),
+    ).toStrictEqual({
+      meta: [
+        { title: '料金 | Launch Stadium' },
+        { name: 'description', content: '料金の説明です。' },
+      ],
+      links: [{ rel: 'canonical', href: '/pricing' }],
+    });
+  });
+});
+
+describe('buildPricingHead', () => {
+  test('料金のタイトルと検索エンジン向けの説明、料金ページの正規のURLを付ける', () => {
+    expect(buildPricingHead()).toStrictEqual({
+      meta: [
+        { title: '料金 | Launch Stadium' },
+        {
+          name: 'description',
+          content:
+            'Ultrasプランの月額料金と特典、スポンサー広告の掲載料金をご案内します。',
+        },
+      ],
+      links: [{ rel: 'canonical', href: '/pricing' }],
     });
   });
 });

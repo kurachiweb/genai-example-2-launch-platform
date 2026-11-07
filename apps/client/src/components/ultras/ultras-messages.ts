@@ -1,5 +1,18 @@
 export const PRICING_PAGE_HREF = '/pricing';
 
+export const PLAN_PAGE_HREF = '/settings/plan';
+
+export const ULTRAS_PRICING_SECTION_TITLE = 'Ultras';
+
+// 「月額<金額>(税込)」の金額の前後の文言
+export const ULTRAS_MONTHLY_PRICE_PREFIX = '月額';
+
+export const ULTRAS_MONTHLY_PRICE_SUFFIX = '(税込)';
+
+export const ULTRAS_PLAN_STATUS_LABEL = '加入状態';
+
+export const ULTRAS_VIEW_PLAN_LABEL = 'プランを見る';
+
 export const ULTRAS_BENEFITS_TITLE = '特典';
 
 export const ULTRAS_BENEFITS: readonly string[] = Object.freeze([

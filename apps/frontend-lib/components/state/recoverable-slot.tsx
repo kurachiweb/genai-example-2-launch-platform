@@ -11,19 +11,21 @@ import {
   useRef,
 } from 'react';
 
-import { ErrorState } from '../../../lib/components/state/error-state.tsx';
-import { LoadingSkeleton } from '../../../lib/components/state/loading-skeleton.tsx';
-import { reportUnexpectedErrorInBrowser } from '../../../lib/start/observability/browser-error-reporting.ts';
+import { reportUnexpectedErrorInBrowser } from '../../start/observability/browser-error-reporting.ts';
 import {
   errorMessageOf,
   GraphQLClientError,
-} from '../../../lib/utilities/graphql/graphql-result.ts';
-import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
+} from '../../utilities/graphql/graphql-result.ts';
+import { ErrorState } from './error-state.tsx';
+import { LoadingSkeleton } from './loading-skeleton.tsx';
 
 export interface RecoverableSlotProps {
   // 読み込み中と失敗の表示を包む。部品が自分で描く見出しを、部品が描けない間だけ補うために使う
   readonly frame?: (content: ReactNode) => ReactNode;
   readonly className?: string;
+  // 問い合わせの導線を持つアプリだけが真にし、contactHrefを渡す
+  readonly contactAvailable: boolean;
+  readonly contactHref?: string;
   readonly children: ReactNode;
 }
 
@@ -49,9 +51,14 @@ const focusProgrammatically = (element: HTMLElement): void => {
 // 再試行の後に描いた表示。読み込み中の後には部品か失敗の表示が続く
 type RetryOutcome = 'loading' | 'failed' | 'rendered';
 
-interface RetryFocusProps {
+// 枠の要素と、再試行の後のフォーカスの移動が済んでいないことの記録
+interface SlotFocus {
   readonly slotRef: RefObject<HTMLDivElement | null>;
   readonly pendingRef: RefObject<boolean>;
+}
+
+interface RetryFocusProps {
+  readonly focus: SlotFocus;
   readonly outcome: RetryOutcome;
 }
 
@@ -77,7 +84,10 @@ const retryFocusTargetOf = (
 };
 
 // 再試行で消えたボタンの代わりに、描き直した表示の見出しへフォーカスを移す。描画の確定と同じ時点で移し、消えた再試行のボタンや古い失敗の表示を読み上げさせない
-function RetryFocus({ slotRef, pendingRef, outcome }: RetryFocusProps) {
+function RetryFocus({
+  focus: { slotRef, pendingRef },
+  outcome,
+}: RetryFocusProps) {
   useLayoutEffect(() => {
     const slot = slotRef.current;
     if (!pendingRef.current || slot === null) {
@@ -95,14 +105,68 @@ function RetryFocus({ slotRef, pendingRef, outcome }: RetryFocusProps) {
   return null;
 }
 
-// 1つの部品の描画や取得の失敗をその位置に留め、他の部品の表示を続ける。再試行は取得の失敗の記録とエラーの境界の両方を解除して描き直す
+interface SlotLoadingProps {
+  readonly frame: (content: ReactNode) => ReactNode;
+  readonly focus: SlotFocus;
+}
+
+function SlotLoading({ frame, focus }: SlotLoadingProps) {
+  return (
+    <>
+      {frame(<LoadingSkeleton />)}
+      <RetryFocus focus={focus} outcome="loading" />
+    </>
+  );
+}
+
+interface SlotFailureProps extends ErrorComponentProps {
+  readonly frame: (content: ReactNode) => ReactNode;
+  readonly focus: SlotFocus;
+  readonly contactAvailable: boolean;
+  readonly contactHref: string | undefined;
+  readonly resetQueries: () => void;
+}
+
+// 失敗の表示。再試行は取得の失敗の記録とエラーの境界の両方を解除して描き直す
+function SlotFailure({
+  error,
+  reset,
+  frame,
+  focus,
+  contactAvailable,
+  contactHref,
+  resetQueries,
+}: SlotFailureProps) {
+  const { pendingRef } = focus;
+  return (
+    <>
+      {frame(
+        <ErrorState
+          message={errorMessageOf(error, contactAvailable)}
+          contactHref={contactHref}
+          onRetry={() => {
+            pendingRef.current = true;
+            resetQueries();
+            reset();
+          }}
+        />,
+      )}
+      <RetryFocus focus={focus} outcome="failed" />
+    </>
+  );
+}
+
+// 1つの部品の描画や取得の失敗をその位置に留め、他の部品の表示を続ける
 export function RecoverableSlot({
   frame = withoutFrame,
   className,
+  contactAvailable,
+  contactHref,
   children,
 }: RecoverableSlotProps) {
   const slotRef = useRef<HTMLDivElement>(null);
   const pendingRef = useRef(false);
+  const focus: SlotFocus = { slotRef, pendingRef };
   return (
     // 見出しも部品も描けない読み込み中の間のフォーカスの移り先にするため、プログラムからだけフォーカスできるようにする
     <div ref={slotRef} tabIndex={-1} className={className}>
@@ -111,47 +175,20 @@ export function RecoverableSlot({
           <CatchBoundary
             getResetKey={() => 0}
             onCatch={reportSlotFailure}
-            errorComponent={({ error, reset }: ErrorComponentProps) => (
-              <>
-                {frame(
-                  <ErrorState
-                    message={errorMessageOf(
-                      error,
-                      ADMIN_PROFILE.contactAvailable,
-                    )}
-                    onRetry={() => {
-                      pendingRef.current = true;
-                      resetQueries();
-                      reset();
-                    }}
-                  />,
-                )}
-                <RetryFocus
-                  slotRef={slotRef}
-                  pendingRef={pendingRef}
-                  outcome="failed"
-                />
-              </>
+            errorComponent={(props: ErrorComponentProps) => (
+              <SlotFailure
+                {...props}
+                frame={frame}
+                focus={focus}
+                contactAvailable={contactAvailable}
+                contactHref={contactHref}
+                resetQueries={resetQueries}
+              />
             )}
           >
-            <Suspense
-              fallback={
-                <>
-                  {frame(<LoadingSkeleton />)}
-                  <RetryFocus
-                    slotRef={slotRef}
-                    pendingRef={pendingRef}
-                    outcome="loading"
-                  />
-                </>
-              }
-            >
+            <Suspense fallback={<SlotLoading frame={frame} focus={focus} />}>
               {children}
-              <RetryFocus
-                slotRef={slotRef}
-                pendingRef={pendingRef}
-                outcome="rendered"
-              />
+              <RetryFocus focus={focus} outcome="rendered" />
             </Suspense>
           </CatchBoundary>
         )}

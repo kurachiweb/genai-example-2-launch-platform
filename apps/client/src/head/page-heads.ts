@@ -15,6 +15,11 @@ import {
   CHECKOUT_RETURN_PAGE_TITLE,
 } from '../components/payments/checkout-messages.ts';
 import { CONTACT_HREF, SITE_NAME } from '../components/layout/site-links.ts';
+import {
+  PRICING_PAGE_DESCRIPTION,
+  PRICING_PAGE_TITLE,
+} from '../components/ultras/pricing-messages.ts';
+import { PRICING_PAGE_HREF } from '../components/ultras/ultras-messages.ts';
 import type {
   LegalDocumentLoaderData,
   LegalVersionLoaderData,
@@ -27,6 +32,7 @@ export interface RootHeadInput {
 
 export interface SitePageHeadInput {
   readonly title: string;
+  readonly description?: string;
   readonly canonicalUrl?: string;
   readonly noIndex?: boolean;
 }
@@ -34,12 +40,14 @@ export interface SitePageHeadInput {
 // TanStack Routerのheadは書き換え可能な配列を求めるため、凍結された配列を広げて新しい配列で返す
 export const buildSitePageHead = ({
   title,
+  description,
   canonicalUrl,
   noIndex,
 }: SitePageHeadInput) => {
   const head = buildPageHead({
     title,
     siteName: SITE_NAME,
+    ...(description === undefined ? {} : { description }),
     ...(canonicalUrl === undefined ? {} : { canonicalUrl }),
     ...(noIndex === undefined ? {} : { noIndex }),
   });
@@ -77,6 +85,14 @@ export const buildLegalVersionHead = (
 
 export const buildContactHead = () =>
   buildSitePageHead({ title: CONTACT_PAGE_TITLE, canonicalUrl: CONTACT_HREF });
+
+// 未ログインでも閲覧できる公開のページのため、検索エンジン向けの説明と正規のURLを付ける
+export const buildPricingHead = () =>
+  buildSitePageHead({
+    title: PRICING_PAGE_TITLE,
+    description: PRICING_PAGE_DESCRIPTION,
+    canonicalUrl: PRICING_PAGE_HREF,
+  });
 
 // 本人だけが読むページのため、検索の索引の対象外にする
 export const buildInquiryChatHead = () =>

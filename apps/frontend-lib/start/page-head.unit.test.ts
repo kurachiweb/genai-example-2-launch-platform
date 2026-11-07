@@ -50,6 +50,60 @@ describe('buildPageHead', () => {
     expect(head.meta).toEqual([{ title: 'トップ | サイト名' }]);
   });
 
+  test('説明を渡すと、タイトルの後にdescriptionのmetaを付ける', () => {
+    const head = buildPageHead({
+      title: '料金',
+      siteName: SITE_NAME,
+      description: 'プランの料金をご案内します。',
+    });
+
+    expect(head.meta).toEqual([
+      { title: '料金 | サイト名' },
+      { name: 'description', content: 'プランの料金をご案内します。' },
+    ]);
+  });
+
+  test('説明の前後の空白を除く', () => {
+    const head = buildPageHead({
+      title: '料金',
+      siteName: SITE_NAME,
+      description: '  プランの料金をご案内します。 ',
+    });
+
+    expect(head.meta).toEqual([
+      { title: '料金 | サイト名' },
+      { name: 'description', content: 'プランの料金をご案内します。' },
+    ]);
+  });
+
+  test.each([
+    ['空文字', ''],
+    ['空白だけ', '  '],
+  ])('説明が%sならdescriptionのmetaを付けない', (_label, description) => {
+    const head = buildPageHead({
+      title: '料金',
+      siteName: SITE_NAME,
+      description,
+    });
+
+    expect(head.meta).toEqual([{ title: '料金 | サイト名' }]);
+  });
+
+  test('説明と検索除外を同時に渡すと、タイトル・説明・robotsの順に返す', () => {
+    const head = buildPageHead({
+      title: '料金',
+      siteName: SITE_NAME,
+      description: 'プランの料金をご案内します。',
+      noIndex: true,
+    });
+
+    expect(head.meta).toEqual([
+      { title: '料金 | サイト名' },
+      { name: 'description', content: 'プランの料金をご案内します。' },
+      { name: 'robots', content: 'noindex, nofollow' },
+    ]);
+  });
+
   test('正規のURLのパスからcanonicalのlinkを作る', () => {
     const head = buildPageHead({
       title: 'プロダクト',

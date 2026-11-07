@@ -1,7 +1,8 @@
 import { type ReactNode, useId } from 'react';
 
+import { RecoverableSlot } from '../../../lib/components/state/recoverable-slot.tsx';
+import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
 import type { CategorySection } from '../../composition/category-sections.ts';
-import { RecoverableSlot } from '../layout/recoverable-slot.tsx';
 
 export interface CategorySectionsViewProps {
   readonly sections: readonly CategorySection[];
@@ -41,6 +42,7 @@ export function CategorySectionsView({ sections }: CategorySectionsViewProps) {
           <RecoverableSlot
             key={id}
             className="rounded-sm"
+            contactAvailable={ADMIN_PROFILE.contactAvailable}
             frame={(content) => (
               <SectionFallback title={title}>{content}</SectionFallback>
             )}

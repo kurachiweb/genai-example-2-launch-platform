@@ -4,13 +4,28 @@ import { executeGraphQL } from '../../lib/start/graphql/execute-graphql.ts';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
 import { requireData } from '../../lib/utilities/graphql/graphql-result.ts';
 import { graphqlQueryKey } from '../../lib/utilities/graphql/persisted-document.ts';
+import type { UltrasPlanStatus } from '../../common-lib/ultras/plan-status.ts';
 import {
   ClientUltrasOfferDocument,
   ClientViewerUltrasDocument,
+  type UltrasPlanStatus as UltrasPlanStatusValue,
 } from './generated/graphql.ts';
 import type { ClientViewer } from './viewer.ts';
 
 const GUEST_SCOPE = 'guest';
+
+const PLAN_STATUSES: Readonly<Record<UltrasPlanStatusValue, UltrasPlanStatus>> =
+  Object.freeze({
+    ACTIVE: 'active',
+    PAST_DUE: 'past_due',
+    CANCELED: 'canceled',
+    ENDED: 'ended',
+  });
+
+// GraphQLの列挙は大文字のため、表示名を引く共用部品の加入状態へ写す
+export const toUltrasPlanStatus = (
+  status: UltrasPlanStatusValue,
+): UltrasPlanStatus => PLAN_STATUSES[status];
 
 // 価格と機能フラグは閲覧者によらないため、共通の取得の補助をそのまま使い、導線を出す複数の部品の取得を1つにまとめる
 export const ultrasOfferQueryOptions = () =>

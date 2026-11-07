@@ -1,6 +1,7 @@
 import { EmptyState } from '../../../lib/components/state/empty-state.tsx';
+import { RecoverableSlot } from '../../../lib/components/state/recoverable-slot.tsx';
+import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
 import type { DashboardCard } from '../../composition/dashboard-cards.ts';
-import { RecoverableSlot } from '../layout/recoverable-slot.tsx';
 import { DASHBOARD_EMPTY_TITLE } from './dashboard-messages.ts';
 
 export interface DashboardGridProps {
@@ -25,7 +26,10 @@ export function DashboardGrid({ cards }: DashboardGridProps) {
         .toSorted((a, b) => a.order - b.order)
         .map(({ id, width, component: Card }) => (
           <div key={id} className={WIDTH_CLASS_NAMES[width]}>
-            <RecoverableSlot className="h-full rounded-xl">
+            <RecoverableSlot
+              className="h-full rounded-xl"
+              contactAvailable={ADMIN_PROFILE.contactAvailable}
+            >
               <Card />
             </RecoverableSlot>
           </div>

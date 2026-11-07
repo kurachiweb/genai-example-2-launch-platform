@@ -5,7 +5,11 @@ import {
   ClientUltrasOfferDocument,
   ClientViewerUltrasDocument,
 } from './generated/graphql.ts';
-import { ultrasOfferQueryOptions, viewerUltrasQueryOptions } from './ultras.ts';
+import {
+  toUltrasPlanStatus,
+  ultrasOfferQueryOptions,
+  viewerUltrasQueryOptions,
+} from './ultras.ts';
 import type { ClientViewer } from './viewer.ts';
 
 const VIEWER: ClientViewer = {
@@ -49,4 +53,18 @@ describe('viewerUltrasQueryOptions', () => {
       viewerUltrasQueryOptions({ ...VIEWER, status: 'SUSPENDED' }).queryKey,
     );
   });
+});
+
+describe('toUltrasPlanStatus', () => {
+  test.each([
+    ['ACTIVE', 'active'],
+    ['PAST_DUE', 'past_due'],
+    ['CANCELED', 'canceled'],
+    ['ENDED', 'ended'],
+  ] as const)(
+    'GraphQLの加入状態%sを共用部品の加入状態%sに写す',
+    (graphqlStatus, status) => {
+      expect(toUltrasPlanStatus(graphqlStatus)).toBe(status);
+    },
+  );
 });

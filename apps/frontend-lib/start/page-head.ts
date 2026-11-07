@@ -8,6 +8,7 @@ const CANONICAL_RESOLUTION_BASE = 'https://canonical.invalid';
 export interface PageHeadInput {
   readonly title: string;
   readonly siteName: string;
+  readonly description?: string;
   readonly canonicalUrl?: string;
   readonly noIndex?: boolean;
 }
@@ -38,14 +39,26 @@ const toCanonicalHref = (canonicalUrl: string): string | undefined => {
   }
 };
 
+// 空白だけの説明は検索エンジンに空のmetaを見せないため出さない
+const toDescriptionMeta = (
+  description: string | undefined,
+): readonly Readonly<Record<string, string>>[] => {
+  const content = description?.trim() ?? '';
+  return content === ''
+    ? []
+    : [Object.freeze({ name: 'description', content })];
+};
+
 export const buildPageHead = ({
   title,
   siteName,
+  description,
   canonicalUrl,
   noIndex = false,
 }: PageHeadInput): PageHead => {
   const meta = [
     Object.freeze({ title: buildTitle(title, siteName) }),
+    ...toDescriptionMeta(description),
     ...(noIndex
       ? [Object.freeze({ name: 'robots', content: NO_INDEX_ROBOTS_CONTENT })]
       : []),

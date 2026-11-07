@@ -1794,6 +1794,7 @@ export declare const NO_INDEX_ROBOTS_CONTENT: 'noindex, nofollow';
 export interface PageHeadInput {
   readonly title: string;
   readonly siteName: string;
+  readonly description?: string; // 検索エンジン向けの説明。ultras-subscriptionが料金ページのために拡張(9.8)
   readonly canonicalUrl?: string; // /で始まる同じオリジンのパスだけ
   readonly noIndex?: boolean;
 }
@@ -1811,7 +1812,7 @@ export declare function buildPageHead(input: PageHeadInput): PageHead;
 - `initBrowserObservability`(13.2・13.4・14.2): `AppDocument`のマウント後に`loadBrowserSentryModules`でSDKと`sentry-scrub.ts`を一緒に動的に読み込み(伏せ字のパターンは約20.9KB(gzip約5.8KB)で主バンドルに入れない)、`dsn`・`environment`・`tracesSampleRate`・`tanstackRouterBrowserTracingIntegration(router)`・`tracePropagationTargets: RELAY_TRACE_PROPAGATION_TARGETS`・`dataCollection: SENTRY_DATA_COLLECTION`・`beforeSend`・`beforeSendSpan`で初期化し、列を`captureException`で流す。`loadBrowserSentryModules`は`createClientOnlyFn`で包み、サーバーのビルドでは動的importごと落ちる(Workersの条件ではSDKが`@sentry/node`を含むサーバー版に解決されるため)。読み込みや初期化の失敗は再試行せず`console`へも出さず、画面へ影響させない(13.10)。
 - `webAnalyticsHeadScript`(13.6): トークンがあれば`WEB_ANALYTICS_BEACON_SRC`を`defer`で読み込む`head`のスクリプト(nonceはルーターが付ける)。
 - `installPreloadRecovery`(1.7): `vite:preloadError`で、`sessionStorage`の印(`PRELOAD_RECOVERY_STORAGE_KEY`)が無ければ印を付けて再読み込みし、印があるか印を読み書きできなければ何もしない(再読み込みの繰り返しを防ぐ)。判定は通知を受けた時でなく`queueMicrotask`で後回しにし、通知の全ての聞き手が終わってから`event.defaultPrevented`を見る。他の聞き手が`preventDefault`した通知では再読み込みせず印も付けない(遅延読み込みの失敗を自分で扱う読み込み、例えばcontent-processingのマークダウンの入力欄の編集領域の読み込みが、同じページの未保存の値を再読み込みで失わせないため。windowの聞き手は加えた順に呼ばれ、先に呼ばれるとは限らない)。自身は`preventDefault`しないため、エラー画面と`reportRenderError`にも読み込みの失敗が届き得る。印はタブを開いている間残る。`AppDocument`は`window.sessionStorage`の参照自体を`try`で包み、例外なら`storage: undefined`を渡す。
-- `buildPageHead`(11.9・4.7・12.5): `title`のmetaに`<ページ名> | <サイト名>`(ページ名が空ならサイト名だけ)、`canonicalUrl`が`/`で始まる同じオリジンのパスならクエリとフラグメントを除いた正規のURLの`link`(絶対URLや外部を指し得る値では付けない)、`noIndex`なら`robots`の`NO_INDEX_ROBOTS_CONTENT`。戻り値は凍結した`readonly`の配列のため、アプリの`src/head/page-heads.ts`(`buildRootHead`・`buildSitePageHead`・`buildAdminPageHead`)が`{ meta: [...head.meta], links: [...head.links] }`に広げてTanStack Routerの`head`へ渡す。
+- `buildPageHead`(11.9・4.7・12.5): `title`のmetaに`<ページ名> | <サイト名>`(ページ名が空ならサイト名だけ)、`canonicalUrl`が`/`で始まる同じオリジンのパスならクエリとフラグメントを除いた正規のURLの`link`(絶対URLや外部を指し得る値では付けない)、`description`を渡したとき(前後の空白を除いて空でないとき)だけ`title`の後に`<meta name="description">`(ultras-subscriptionが上流の契約を拡張)、`noIndex`なら`robots`の`NO_INDEX_ROBOTS_CONTENT`。戻り値は凍結した`readonly`の配列のため、アプリの`src/head/page-heads.ts`(`buildRootHead`・`buildSitePageHead`・`buildAdminPageHead`)が`{ meta: [...head.meta], links: [...head.links] }`に広げてTanStack Routerの`head`へ渡す。
 - 管理者側の正規のURL(11.9、「決定事項」): 管理者側はすべての応答に`X-Robots-Tag`の検索除外を付け(4.7)、検索の対象外のため正規のURLを出さない。`buildAdminPageHead`の入力(`AdminPageHeadInput`)は`title`と`noIndex`だけで`canonicalUrl`を持たず、`buildPageHead`へ`canonicalUrl`を渡さない。利用者側の`buildSitePageHead`だけが`canonicalUrl`を受ける。
 
 ### utilities・components
