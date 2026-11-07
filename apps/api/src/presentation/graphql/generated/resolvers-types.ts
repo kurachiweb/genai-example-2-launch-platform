@@ -621,6 +621,8 @@ export type Mutation = {
   confirmPasswordChange: ConfirmationResult;
   /** カテゴリの追加。モデレーター以上 */
   createInquiryCategory: InquiryCategory;
+  /** Customer Portalのセッションの作成。加入したことがある本人のStripe Customerにセッションを作り、移動先のURLを返す。戻り先はプラン管理画面 */
+  createUltrasPortalSession: UltrasPortalSession;
   /** 管理者の削除 */
   deleteAdmin: Scalars['Boolean']['output'];
   /** カテゴリの削除。紐付く問い合わせを標準カテゴリへ付け替える。モデレーター以上 */
@@ -1243,6 +1245,13 @@ export type UltrasPlanStatus =
   /** 支払いの再試行中 */
   | 'PAST_DUE';
 
+/** Customer Portalへ移動するためのセッション */
+export type UltrasPortalSession = {
+  __typename?: 'UltrasPortalSession';
+  /** Customer PortalのURL。作成の直後に移動に使う */
+  url: Scalars['String']['output'];
+};
+
 /** ログイン中の端末 */
 export type UserSessionSummary = {
   __typename?: 'UserSessionSummary';
@@ -1453,6 +1462,7 @@ export type ResolversTypes = {
   UltrasOffer: ResolverTypeWrapper<UltrasOffer>;
   UltrasPlan: ResolverTypeWrapper<UltrasPlan>;
   UltrasPlanStatus: UltrasPlanStatus;
+  UltrasPortalSession: ResolverTypeWrapper<UltrasPortalSession>;
   UserSessionSummary: ResolverTypeWrapper<UserSessionSummary>;
   Viewer: ResolverTypeWrapper<ViewerSource>;
   ViewerUltras: ResolverTypeWrapper<ViewerUltras>;
@@ -1538,6 +1548,7 @@ export type ResolversParentTypes = {
   TotpSetup: TotpSetup;
   UltrasOffer: UltrasOffer;
   UltrasPlan: UltrasPlan;
+  UltrasPortalSession: UltrasPortalSession;
   UserSessionSummary: UserSessionSummary;
   Viewer: ViewerSource;
   ViewerUltras: ViewerUltras;
@@ -1863,6 +1874,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   confirmEmailChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmEmailChangeArgs, 'token'>>;
   confirmPasswordChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmPasswordChangeArgs, 'token'>>;
   createInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationCreateInquiryCategoryArgs, 'name'>>;
+  createUltrasPortalSession?: Resolver<ResolversTypes['UltrasPortalSession'], ParentType, ContextType>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
   deleteInquiryCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteInquiryCategoryArgs, 'id'>>;
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
@@ -1991,6 +2003,10 @@ export type UltrasPlanResolvers<ContextType = GraphQLContext, ParentType extends
   status?: Resolver<ResolversTypes['UltrasPlanStatus'], ParentType, ContextType>;
 };
 
+export type UltrasPortalSessionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UltrasPortalSession'] = ResolversParentTypes['UltrasPortalSession']> = {
+  url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type UserSessionSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UserSessionSummary'] = ResolversParentTypes['UserSessionSummary']> = {
   browserName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
@@ -2074,6 +2090,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   TotpSetup?: TotpSetupResolvers<ContextType>;
   UltrasOffer?: UltrasOfferResolvers<ContextType>;
   UltrasPlan?: UltrasPlanResolvers<ContextType>;
+  UltrasPortalSession?: UltrasPortalSessionResolvers<ContextType>;
   UserSessionSummary?: UserSessionSummaryResolvers<ContextType>;
   Viewer?: ViewerResolvers<ContextType>;
   ViewerUltras?: ViewerUltrasResolvers<ContextType>;

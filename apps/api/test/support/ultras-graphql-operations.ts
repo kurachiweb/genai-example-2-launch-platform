@@ -15,6 +15,7 @@ import type {
   StripeGateway,
   StripePrice,
 } from '../../lib/core/payments/ports.ts';
+import { D1CustomerStore } from '../../lib/workers/payments/d1-customer-store.ts';
 import { D1PriceSnapshotStore } from '../../lib/workers/payments/d1-price-snapshot-store.ts';
 import {
   createFakeStripeGateway,
@@ -24,6 +25,7 @@ import { clearPaymentTables } from '../../lib/workers/payments/testing/payment-s
 import {
   db,
   restoreUltrasSettingsSeed,
+  userIdOf,
 } from '../../lib/workers/ultras/testing/ultras-store-fixtures.ts';
 import { paymentsSchemaModule } from '../../src/presentation/graphql/modules/payments/index.ts';
 import { ultrasSchemaModule } from '../../src/presentation/graphql/modules/ultras/index.ts';
@@ -37,12 +39,14 @@ import {
   type LoggedObject,
 } from './observability-recording.ts';
 import {
+  customerIdOf,
   type StartedSessions,
   startHandlers,
 } from './payments-graphql-operations.ts';
 
 export {
   codesOf,
+  customerIdOf,
   insertUser,
   insertVerifiedUser,
   issueUserSession,
@@ -114,6 +118,14 @@ export const START_ULTRAS_CHECKOUT = /* GraphQL */ `
   }
 `;
 
+export const CREATE_ULTRAS_PORTAL_SESSION = /* GraphQL */ `
+  mutation ClientCreateUltrasPortalSession {
+    createUltrasPortalSession {
+      url
+    }
+  }
+`;
+
 export const ULTRAS_PRICE: StripePrice = Object.freeze({
   lookupKey: ULTRAS_PRICE_LOOKUP_KEY,
   priceId: 'price_ultras_monthly',
@@ -136,7 +148,12 @@ const overridesModule: AppModule<GatewayApp> = {
 
 // Ultrasの型定義はpaymentsのMoneyとCheckoutStartを参照するため、paymentsのスキーマモジュールと合わせて載せる
 export const ultrasGateway = createGraphQLGateway({
-  documents: [ULTRAS_OFFER, VIEWER_ULTRAS, START_ULTRAS_CHECKOUT],
+  documents: [
+    ULTRAS_OFFER,
+    VIEWER_ULTRAS,
+    START_ULTRAS_CHECKOUT,
+    CREATE_ULTRAS_PORTAL_SESSION,
+  ],
   schemaModules: [paymentsSchemaModule, ultrasSchemaModule],
   overrides: [overridesModule],
 });
@@ -207,6 +224,14 @@ export async function savePriceSnapshot(
   await new D1PriceSnapshotStore(db).saveMany([price], fetchedAt);
 }
 
+// 決済の開始で作られたStripeのCustomerとの結び付きを再現する
+export async function saveCustomer(
+  userIndex: number,
+  customerId: string = customerIdOf(userIndex),
+): Promise<void> {
+  await new D1CustomerStore(db).save(userIdOf(userIndex), customerId);
+}
+
 export function fetchUltrasOffer(options?: GatewayCallOptions) {
   return ultrasGateway.call<{ ultrasOffer: UltrasOfferFields | null }>(
     ULTRAS_OFFER,
@@ -227,4 +252,10 @@ export function startUltrasCheckout(options?: GatewayCallOptions) {
   return ultrasGateway.call<{
     startUltrasCheckout: { purchaseId: string } | null;
   }>(START_ULTRAS_CHECKOUT, {}, options);
+}
+
+export function createUltrasPortalSession(options?: GatewayCallOptions) {
+  return ultrasGateway.call<{
+    createUltrasPortalSession: { url: string } | null;
+  }>(CREATE_ULTRAS_PORTAL_SESSION, {}, options);
 }

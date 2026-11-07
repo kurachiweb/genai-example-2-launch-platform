@@ -1,5 +1,6 @@
 import type { GraphQLResolveInfo } from 'graphql';
 
+import type { PortalSessionStarter } from '../../../../application/ultras/portal-session-starter.ts';
 import type { UltrasCheckout } from '../../../../application/ultras/ultras-checkout.ts';
 import type { UltrasPlanReader } from '../../../../application/ultras/ultras-plan-reader.ts';
 import { API_ULTRAS_TYPES } from '../../../../application/ultras/ultras-types.ts';
@@ -33,6 +34,9 @@ const planReaderOf = (context: GraphQLContext): UltrasPlanReader =>
 const checkoutOf = (context: GraphQLContext): UltrasCheckout =>
   context.resolve<UltrasCheckout>(API_ULTRAS_TYPES.UltrasCheckout);
 
+const portalOf = (context: GraphQLContext): PortalSessionStarter =>
+  context.resolve<PortalSessionStarter>(API_ULTRAS_TYPES.PortalSessionStarter);
+
 // ユースケースはGraphQLContextを受け取らないため、解決関数がセッションを取り出して渡す
 export const ultrasResolvers = {
   Query: {
@@ -52,6 +56,12 @@ export const ultrasResolvers = {
       async (_parent: unknown, _args: unknown, context: GraphQLContext) => {
         const { purchaseId } = await checkoutOf(context).start(context.session);
         return { purchaseId };
+      },
+    ),
+    createUltrasPortalSession: clientOnly(
+      async (_parent: unknown, _args: unknown, context: GraphQLContext) => {
+        const { url } = await portalOf(context).start(context.session);
+        return { url };
       },
     ),
   },

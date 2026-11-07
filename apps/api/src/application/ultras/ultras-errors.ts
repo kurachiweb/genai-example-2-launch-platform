@@ -24,6 +24,10 @@ export const ULTRAS_ERRORS = Object.freeze({
     message:
       '解約済みのUltrasは課金期間の末日まで有効です。継続するには「解約・支払い方法の管理」から解約を取り消してください。',
   },
+  ultras_portal_unavailable: {
+    kind: 'unprocessable',
+    message: 'Ultrasに加入したことが無いため、管理画面を開けません。',
+  },
 } satisfies Readonly<Record<string, UltrasErrorDefinition>>);
 
 export type UltrasErrorCode = keyof typeof ULTRAS_ERRORS;

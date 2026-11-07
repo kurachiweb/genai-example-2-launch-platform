@@ -24,6 +24,12 @@ describe('ULTRAS_ERRORS', () => {
       422,
       '解約済みのUltrasは課金期間の末日まで有効です。継続するには「解約・支払い方法の管理」から解約を取り消してください。',
     ],
+    [
+      'ultras_portal_unavailable',
+      'unprocessable',
+      422,
+      'Ultrasに加入したことが無いため、管理画面を開けません。',
+    ],
   ] as const)(
     '%sは%sの種類(%d)と文言規則の文言を持つ',
     (code, kind, status, message) => {
@@ -39,9 +45,10 @@ describe('ULTRAS_ERRORS', () => {
     },
   );
 
-  test('定義は加入の拒否の3つのコードだけで、実行時に書き換えられない', () => {
+  test('定義は加入の拒否の3つとCustomer Portalを開けない1つのコードだけで、実行時に書き換えられない', () => {
     expect(Object.keys(ULTRAS_ERRORS).toSorted()).toEqual([
       'ultras_already_subscribed',
+      'ultras_portal_unavailable',
       'ultras_resume_in_portal',
       'ultras_unavailable',
     ]);

@@ -3,10 +3,15 @@ import { describe, expect, test } from 'bun:test';
 import { ULTRAS_TYPES } from '../../../lib/core/ultras/identifiers.ts';
 import { API_ULTRAS_TYPES } from './ultras-types.ts';
 
-const EXPECTED_NAMES = ['UltrasPlanReader', 'UltrasCheckout'] as const;
+const EXPECTED_NAMES = [
+  'UltrasPlanReader',
+  'UltrasCheckout',
+  'PortalSessionStarter',
+  'PortalSessionLimits',
+] as const;
 
 describe('API_ULTRAS_TYPES', () => {
-  test('料金とプランの照会、加入の開始のユースケースの識別子だけを持つ', () => {
+  test('料金とプランの照会、加入の開始、Customer Portalのセッションの作成とその回数制限の識別子だけを持つ', () => {
     expect(Object.keys(API_ULTRAS_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

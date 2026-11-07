@@ -642,6 +642,11 @@ type Mutation {
   """カテゴリの追加。モデレーター以上"""
   createInquiryCategory(name: String!, reason: String): InquiryCategory!
 
+  """
+  Customer Portalのセッションの作成。加入したことがある本人のStripe Customerにセッションを作り、移動先のURLを返す。戻り先はプラン管理画面
+  """
+  createUltrasPortalSession: UltrasPortalSession!
+
   """管理者の削除"""
   deleteAdmin(id: ID!, reason: String): Boolean!
 
@@ -1021,6 +1026,12 @@ enum UltrasPlanStatus {
 
   """支払いの再試行中"""
   PAST_DUE
+}
+
+"""Customer Portalへ移動するためのセッション"""
+type UltrasPortalSession {
+  """Customer PortalのURL。作成の直後に移動に使う"""
+  url: String!
 }
 
 """ログイン中の端末"""

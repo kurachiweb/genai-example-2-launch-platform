@@ -9,6 +9,8 @@ export const ULTRAS_TYPE_DEFS = /* GraphQL */ `
   type Mutation {
     "Ultrasの加入の開始。加入できるかを確かめて購入を作り、決済画面の経路に使う購入のIDを返す"
     startUltrasCheckout: CheckoutStart!
+    "Customer Portalのセッションの作成。加入したことがある本人のStripe Customerにセッションを作り、移動先のURLを返す。戻り先はプラン管理画面"
+    createUltrasPortalSession: UltrasPortalSession!
   }
 
   "Ultrasの加入状態"
@@ -54,5 +56,11 @@ export const ULTRAS_TYPE_DEFS = /* GraphQL */ `
     entitled: Boolean!
     "Customer Portalを開けるか(加入したことがあれば真)"
     canOpenPortal: Boolean!
+  }
+
+  "Customer Portalへ移動するためのセッション"
+  type UltrasPortalSession {
+    "Customer PortalのURL。作成の直後に移動に使う"
+    url: String!
   }
 `;

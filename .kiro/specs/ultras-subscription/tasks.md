@@ -136,7 +136,7 @@
   - _Depends: 4.5_
   - _Requirements: 1.1, 1.2, 1.4, 1.5, 1.6, 3.6, 5.1, 5.2, 5.3, 5.4, 5.5, 9.2, 9.3, 9.7, 10.7, 10.8_
 
-- [ ] 5.2 Customer Portalのセッションの作成と回数制限を作る
+- [x] 5.2 Customer Portalのセッションの作成と回数制限を作る
   - 回数制限はapplication層のポート`PortalSessionLimits`(`application/ultras/portal-ports.ts`、前例`checkout-ports.ts`)にし、厳密カウンタを使う実装`CounterPortalSessionLimits`をAPIサーバーのinfrastructure層に置く(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。ユースケースは`core/ultras`・`core/payments`の型と識別子とこのポートだけを受け取る
   - 先に、模擬のポートの単体テストで、停止中の拒否、加入したことが無い・Customerが無い場合の`ultras_portal_unavailable`、戻り先が`/settings/plan?portal=returned`であること、Stripeの一時的な障害の`payments_unavailable`を確かめる。Workers統合テストで、`CounterPortalSessionLimits`と、スキーマモジュールを通した21回目の`rate_limit_exceeded`と`Retry-After`を確かめる
   - `createUltrasPortalSession`をスキーマモジュールへ加える
@@ -278,3 +278,4 @@
 - 4.4: `PlanStateSink`(`workers/ultras/plan-state-sink.ts`、依存オブジェクト`{ appName, subscriptions, subscriptionStatements, noticeStatements, notifier, ids }`)。登録名は`ULTRAS_PLAN_STATE_SINK_NAME`。異常はwarnとSentryの`captureEvent`(指紋`["ultras", "unexpected-subscription-status"]`・`["ultras", "scheduled-end-missing"]`、タグ`ultras_incident`・`stripe_subscription_id`・`stripe_status`)。
 - 4.5: 共有の束縛は`workers/ultras/ultras-platform-module.ts`の`createUltrasPlatformModule(appName)`(モジュール名`ultras-platform`)。api・eventの`composition/ultras-module.ts`は今は`API_ULTRAS_PLATFORM_MODULE`・`EVENT_ULTRAS_PLATFORM_MODULE`だけを公開し、5.x・6.xが同じファイルにアプリ側のモジュール(`API_ULTRAS_MODULE`・`EVENT_ULTRAS_MODULE`)を足して`modules.ts`へ加える。ultrasとpaymentsの両方の表を使うWorkers統合テストでは、`clearUltrasTables`と`clearPaymentTables`がどちらも利用者を消すため、ultrasの3表を直接消してから`clearPaymentTables`を呼ぶ(前例`ultras-platform-module.worker.test.ts`)。`project-values.md`の「購入種別の登録」の行を9.1で更新する。
 - 5.1: apiのUltrasは`application/ultras/`(`API_ULTRAS_TYPES`は`ultras-types.ts`、`ULTRAS_ERRORS`・`ultrasError()`は`ultras-errors.ts`、`DefaultUltrasPlanReader`・`DefaultUltrasCheckout`)、スキーマモジュールは`presentation/graphql/modules/ultras/`、束縛は`composition/ultras-module.ts`の`API_ULTRAS_MODULE`(名前`ultras`)。GraphQLのテストの補助は`test/support/ultras-graphql-operations.ts`(`installUltrasGraphQLTest`)。`UltrasPlanReader.offer()`は価格の照会の結果に`ultras_monthly`が無いときもwarnして`price: null`を返す(9.1の文書に明記)。停止中の利用者が`viewerUltras`で自分の加入状態を見られるWorkers統合テストを5.2で加える。
+- 5.2: Portalのセッションは`application/ultras/portal-session-starter.ts`の`DefaultPortalSessionStarter`、回数制限のポートは`portal-ports.ts`、実装は`infrastructure/ultras/counter-portal-session-limits.ts`(規則`ultras-portal:user`・20回/3600秒。`project-values.md`の回数制限の表に9.1で加える)。`graphql-modules.worker.test.ts`のUltrasの区画に`createUltrasPortalSession`と5.3の管理者側の操作の検査を5.3で追記する。
