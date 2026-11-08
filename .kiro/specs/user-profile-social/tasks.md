@@ -238,7 +238,7 @@
   - _Depends: 7.5, 8.2_
   - _Requirements: 1.4, 1.5, 2.5, 6.1, 6.5, 13.3_
 
-- [ ] 10.2 E2Eテストでフォローの流れを確かめる
+- [x] 10.2 E2Eテストでフォローの流れを確かめる
   - `e2e/client/follow.e2e.test.ts`: 2人の確認済みの利用者で、AがBの公開プロフィールでフォロー→フォロワー数が1→Aの`/settings/follows`にB、Bのフォロワーの一覧にA→解除でフォロワー数が0、Aの自分の公開プロフィールにフォローボタンが無く「プロフィールを編集」があることを確かめる
   - 完了状態: ローカルでE2Eテストが成功する
   - _Depends: 7.5, 8.3_
@@ -284,3 +284,4 @@
 - 9.1: 技術文書は`docs/GUIDES/tech/backend/011-handle-namespaces.md`(CLAUDE.mdの参照先は`#新しい対象を足す手順`)・`db/006-user-relationship-lists.md`・`backend/007`の「保有者単位で上限件数ずつ処理する操作の対応付け」。011・006は`<予約語の一覧>`・旧ハンドルの保持の期限・関係のテーブル名と呼び名の値の置き場所を`project-values.md`としているので、9.2でそれらの値も加える。`docs/GUIDES/tech/README.md`・`/workspace/README.md`の範囲の写し、`004-logging-and-error-tracking.md`のprofileのロガーの行、002の自己紹介の見出しの記述は9.1・9.2の境界外で、親が別に揃える。
 - 9.2: `project-values.md`の末尾に「公開プロフィールとフォロー」の節(ハンドルの規則・旧ハンドルの保持の期限・関係の呼び名とテーブル名・可視の条件・画面の登録箇所・設定のナビゲーション・共有の束縛)を足し、非同期の波及処理・定期実行・bot判定の行を拡張した。準拠方針の旧ハンドルの行と注5の論理削除・物理削除の区別の曖昧さ、データ保持期間の一覧に4:21の安全網の行が無いことは既存の記述で、本タスクでは変えていない。
 - 10.1: E2Eは`e2e/client/profile.e2e.test.ts`(編集と公開・予約語・仮2の3テスト)、手順は`e2e/client/profile-steps.ts`(`registerVerifiedAccount`・`openProfileEditor`・`readCurrentHandle`・`fillHandle`・`saveProfile`・`fillProfile`・`openPublicProfile`・`profilePath`)、`account-steps.ts`に`openProfileSettings`・`PROFILE_SETTINGS_PATH`を分けた。2人目の利用者は`browser.newContext({ baseURL })`と`assumeDistinctClientIp`。アバターはプレースホルダーも`role="img"`なので実際の`<img>`の`naturalWidth`とプレースホルダー0件で確かめる。自己紹介のリンクは浮くツールバーの表示を待ってから書式のツールバーの「リンク」を`dispatchEvent('click')`する。作業中に、ポータルの中のフォームの送信が外側の`AppForm`へ伝わる共通部品の不具合を見つけ、`6ca5da82`(content-processing)で直した。
+- 10.2: E2Eは`e2e/client/follow.e2e.test.ts`、手順は`e2e/client/follow-steps.ts`(`followFromProfile`・`unfollowFromProfile`・`expectFollowing`・`expectNotFollowing`・`expectFollowerCount`・`openFollowList(page, account, direction)`・`expectOwnProfileWithoutFollowButton`)。フォローのボタンはラベルが楽観的に反転するので、押し直しは元のラベルのボタンが見えている時だけ上限付きの`click`で行う(上限の無いクリックは反転後に固まる)。
