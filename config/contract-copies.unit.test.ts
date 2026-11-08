@@ -47,6 +47,11 @@ const PROFILE_RESOLVER_SUPPORT =
   'apps/api/src/presentation/graphql/modules/profile/resolver-support.ts';
 const CLIENT_PROFILE_BOT_ACTIONS =
   'apps/client/src/components/profile/bot-actions.ts';
+const API_PROFILE_INPUT_MESSAGES =
+  'apps/api/src/presentation/graphql/modules/profile/errors.ts';
+const API_PROFILE_ERRORS = 'apps/api/src/application/profile/profile-errors.ts';
+const CLIENT_PROFILE_FORM_MESSAGES =
+  'apps/client/src/components/profile/profile-form-messages.ts';
 
 type ExtractedValue =
   | string
@@ -624,5 +629,82 @@ describe('bot判定の操作名の写し(components/*/bot-actions.ts)', () => {
 
     expect(Object.keys(apiActions)).not.toBeEmpty();
     expect(readStringRecord(copy.path, copy.name)).toEqual(apiActions);
+  });
+});
+
+const PROFILE_MESSAGES_INPUT_VARIABLE =
+  'CONTRACT_COPIES_PROFILE_MESSAGES_INPUT';
+
+// 文言は上限の定数から組み立てるため、ソースの構文解析ではなく子プロセスのbunで評価した値を比べる。ルートの型検査の対象に入らない文字列にしている
+const PROFILE_MESSAGES_SCRIPT = `
+const { modules } = JSON.parse(process.env.${PROFILE_MESSAGES_INPUT_VARIABLE});
+const [input, errors, form] = await Promise.all([
+  import(modules.input),
+  import(modules.errors),
+  import(modules.form),
+]);
+console.log(JSON.stringify({
+  inputMessages: input.INPUT_MESSAGES,
+  handleUnavailable: errors.PROFILE_ERRORS.handle_unavailable.message,
+  formMessages: form.PROFILE_FORM_MESSAGES,
+}));
+`;
+
+interface ProfileMessagesComparison {
+  readonly inputMessages: Readonly<Record<string, string | undefined>>;
+  readonly handleUnavailable: string;
+  readonly formMessages: Readonly<Record<string, string | undefined>>;
+}
+
+const runProfileMessagesComparison = (): ProfileMessagesComparison => {
+  const result = Bun.spawnSync(
+    [process.execPath, '--eval', PROFILE_MESSAGES_SCRIPT],
+    {
+      cwd: REPO_ROOT,
+      env: {
+        ...process.env,
+        [PROFILE_MESSAGES_INPUT_VARIABLE]: JSON.stringify({
+          modules: {
+            input: join(REPO_ROOT, API_PROFILE_INPUT_MESSAGES),
+            errors: join(REPO_ROOT, API_PROFILE_ERRORS),
+            form: join(REPO_ROOT, CLIENT_PROFILE_FORM_MESSAGES),
+          },
+        }),
+      },
+    },
+  );
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `プロフィールの文言の比較が終了コード${String(result.exitCode)}で失敗しました: ${result.stderr.toString()}`,
+    );
+  }
+  return JSON.parse(result.stdout.toString()) as ProfileMessagesComparison;
+};
+
+describe('プロフィールの入力の違反の文言の写し(components/profile/profile-form-messages.ts)', () => {
+  test('画面のPROFILE_FORM_MESSAGESがAPIサーバーのINPUT_MESSAGESとPROFILE_ERRORSの使用中の文言と項目ごとに一致する', () => {
+    const { inputMessages, handleUnavailable, formMessages } =
+      runProfileMessagesComparison();
+    const { handleUnavailable: formHandleUnavailable, ...formInputMessages } =
+      formMessages;
+
+    expect(Object.keys(formInputMessages)).not.toBeEmpty();
+    expect(formInputMessages).toEqual(
+      Object.fromEntries(
+        Object.keys(formInputMessages).map((key) => [key, inputMessages[key]]),
+      ),
+    );
+    expect(formHandleUnavailable).toBe(handleUnavailable);
+  });
+
+  test('APIサーバーが画面で扱う違反の文言は、画面が全て持つ', () => {
+    const { inputMessages, formMessages } = runProfileMessagesComparison();
+    const screenless = new Set(['avatarInvalid']);
+
+    const missing = Object.keys(inputMessages).filter(
+      (key) => !screenless.has(key) && !(key in formMessages),
+    );
+
+    expect(missing).toEqual([]);
   });
 });
