@@ -52,10 +52,10 @@ import type {
   MemberInquiryStore,
 } from '../application/inquiry/ports.ts';
 import type { FileReadPolicy } from '../application/media/file-access-policies.ts';
+import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { CounterGuestInquiryRateLimit } from '../infrastructure/inquiry/counter-guest-inquiry-rate-limit.ts';
 import { D1GuestInquiryStore } from '../infrastructure/inquiry/d1-guest-inquiry-store.ts';
-import { D1InquirerProfiles } from '../infrastructure/inquiry/d1-inquirer-profiles.ts';
 import { D1InquiryAdminReader } from '../infrastructure/inquiry/d1-inquiry-admin-reader.ts';
 import { D1InquiryCategoryStore } from '../infrastructure/inquiry/d1-inquiry-category-store.ts';
 import { D1InquiryStatusStore } from '../infrastructure/inquiry/d1-inquiry-status-store.ts';
@@ -82,7 +82,9 @@ function bindStores(bind: Bind): void {
   bind<InquiryAdminReader>(INQUIRY_TYPES.InquiryAdminReader).to(
     D1InquiryAdminReader,
   );
-  bind<InquirerProfiles>(INQUIRY_TYPES.InquirerProfiles).to(D1InquirerProfiles);
+  bind<InquirerProfiles>(INQUIRY_TYPES.InquirerProfiles).toService(
+    PROFILE_TYPES.ProfileInquirerProfiles,
+  );
 }
 
 function bindServices(bind: Bind): void {
@@ -142,7 +144,7 @@ function bindRegistrations(bind: Bind): void {
   ).to(MemberInquiryWithdrawalHandler);
 }
 
-// 利用者の確認(IDENTITY_PLATFORM_TYPES)・監査ログ(ADMIN_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・メール(EMAIL_TYPES)は各機能のモジュールの束縛を使う
+// 利用者の確認(IDENTITY_PLATFORM_TYPES)・監査ログ(ADMIN_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・メール(EMAIL_TYPES)は各機能のモジュールの束縛を使い、利用者の表示(InquirerProfiles)はプロフィールのモジュールの束縛へ転送する
 export const INQUIRY_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'inquiry',
   bindings: new ContainerModule(({ bind }) => {

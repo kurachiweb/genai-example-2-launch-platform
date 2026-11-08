@@ -15,6 +15,7 @@ import {
   vi,
 } from 'vitest';
 
+import { userProfiles } from '../../db/schema/profile/user-profiles.ts';
 import { INQUIRY_ATTACHMENT_PURPOSE } from '../../common-lib/inquiry/inquiry-attachment-limits.ts';
 import { INQUIRY_CATEGORY_OTHER_ID } from '../../common-lib/inquiry/inquiry-category-constants.ts';
 import { ATTACHMENT_MEDIA_TYPES } from '../../common-lib/media/media-types.ts';
@@ -29,6 +30,7 @@ import { createCronRegistry } from '../../lib/core/scheduling/cron-registry.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
   clearIdentityTables,
+  db,
   insertUser,
   T0,
   userIdOf,
@@ -52,7 +54,10 @@ import { StoreInquiryStatusService } from '../application/inquiry/inquiry-status
 import { INQUIRY_TYPES } from '../application/inquiry/inquiry-types.ts';
 import { GuestInquiryRetentionJob } from '../application/inquiry/jobs/guest-inquiry-retention-job.ts';
 import { StoreMemberInquirySubmission } from '../application/inquiry/member-inquiry-submission.ts';
-import type { InquirySettings } from '../application/inquiry/ports.ts';
+import type {
+  InquirerProfiles,
+  InquirySettings,
+} from '../application/inquiry/ports.ts';
 import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
 import type { UserLifecycleCommitter } from '../application/identity/ports.ts';
 import type { SessionIssuer } from '../application/identity/session-issuer.ts';
@@ -63,7 +68,7 @@ import {
 } from '../infrastructure/admin/testing/admin-store-fixtures.ts';
 import { CounterGuestInquiryRateLimit } from '../infrastructure/inquiry/counter-guest-inquiry-rate-limit.ts';
 import { D1GuestInquiryStore } from '../infrastructure/inquiry/d1-guest-inquiry-store.ts';
-import { D1InquirerProfiles } from '../infrastructure/inquiry/d1-inquirer-profiles.ts';
+import { ProfileInquirerProfiles } from '../infrastructure/profile/profile-inquirer-profiles.ts';
 import { D1InquiryAdminReader } from '../infrastructure/inquiry/d1-inquiry-admin-reader.ts';
 import { D1InquiryCategoryStore } from '../infrastructure/inquiry/d1-inquiry-category-store.ts';
 import { D1InquiryStatusStore } from '../infrastructure/inquiry/d1-inquiry-status-store.ts';
@@ -95,6 +100,8 @@ interface LoggedObject {
 const BASE_URL = 'https://api.launch.example';
 const RELAYED_IP = '203.0.113.7';
 const MAX_ATTACHMENT_BYTES = 20_971_520;
+const AVATAR_FILE_ID = '01JC0FILE00000000000000001';
+const OTHER_AVATAR_FILE_ID = '01JC0FILE00000000000000002';
 
 const OWNER = 1;
 const OTHER = 2;
@@ -191,6 +198,7 @@ beforeEach(async () => {
   await resetInquiryTables();
   await clearMediaState();
   await clearAdminTables();
+  await db.delete(userProfiles);
   await clearIdentityTables();
 });
 
@@ -225,7 +233,11 @@ describe('APIサーバーの問い合わせの束縛', () => {
       INQUIRY_TYPES.InquiryAdminReader,
       D1InquiryAdminReader,
     ],
-    ['InquirerProfiles', INQUIRY_TYPES.InquirerProfiles, D1InquirerProfiles],
+    [
+      'InquirerProfiles',
+      INQUIRY_TYPES.InquirerProfiles,
+      ProfileInquirerProfiles,
+    ],
     ['InquiryMailer', INQUIRY_TYPES.InquiryMailer, EmailInquiryMailer],
     [
       'InquiryIncidentReporter',
@@ -298,6 +310,47 @@ describe('APIサーバーの問い合わせの束縛', () => {
       expect(createContainer().get(identifier)).toBeInstanceOf(implementation);
     },
   );
+
+  test('InquirerProfilesは、画像のある利用者で画像のIDを返し、退会済み(物理削除前)と停止中の利用者も返す', async () => {
+    await insertUser(OWNER, {
+      nickname: '画像のある人',
+      handle: 'with-avatar',
+    });
+    await insertUser(OTHER, {
+      deletedAt: new Date('2026-11-05T01:00:00.000Z'),
+    });
+    await insertUser(3, {
+      status: 'suspended',
+      suspendedAt: new Date('2026-11-05T02:00:00.000Z'),
+    });
+    await db.insert(userProfiles).values({
+      id: '01JC0PROF000000000000000001',
+      userId: userIdOf(OWNER),
+      avatarFileId: AVATAR_FILE_ID,
+      createdAt: T0,
+      updatedAt: T0,
+    });
+    await db.insert(userProfiles).values({
+      id: '01JC0PROF000000000000000002',
+      userId: userIdOf(OTHER),
+      avatarFileId: OTHER_AVATAR_FILE_ID,
+      createdAt: T0,
+      updatedAt: T0,
+    });
+
+    const found = await createContainer()
+      .get<InquirerProfiles>(INQUIRY_TYPES.InquirerProfiles)
+      .findMany([userIdOf(OWNER), userIdOf(OTHER), userIdOf(3)]);
+
+    expect(found.get(userIdOf(OWNER))).toEqual({
+      userId: userIdOf(OWNER),
+      nickname: '画像のある人',
+      handle: 'with-avatar',
+      avatarFileId: AVATAR_FILE_ID,
+    });
+    expect(found.get(userIdOf(OTHER))?.avatarFileId).toBe(OTHER_AVATAR_FILE_ID);
+    expect(found.get(userIdOf(3))?.avatarFileId).toBeNull();
+  });
 
   test('設定値は利用者側のオリジンから作り、処理単位の中で同じインスタンスを返す', () => {
     const container = createContainer();

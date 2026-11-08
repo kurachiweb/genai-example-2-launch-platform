@@ -4,6 +4,7 @@ import { ContainerModule } from 'inversify';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import type { HandleAvailability } from '../application/identity/ports.ts';
+import type { InquirerProfiles } from '../application/inquiry/ports.ts';
 import {
   type HandleAvailabilityChecker,
   StoreHandleAvailabilityChecker,
@@ -37,6 +38,7 @@ import {
 import { UserHandleAvailability } from '../application/profile/user-handle-availability.ts';
 import { D1FollowStore } from '../infrastructure/profile/d1-follow-store.ts';
 import { D1ProfileStore } from '../infrastructure/profile/d1-profile-store.ts';
+import { ProfileInquirerProfiles } from '../infrastructure/profile/profile-inquirer-profiles.ts';
 import { D1PublicProfileStore } from '../infrastructure/profile/d1-public-profile-store.ts';
 
 // ファイル(MEDIA_TYPES)・時計とID生成(PLATFORM_TYPES)・閲覧者の確認(IDENTITY_PLATFORM_TYPES)・ハンドルの解決(PROFILE_PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)は各機能の共通の束縛を使う
@@ -59,6 +61,9 @@ export const PROFILE_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<PublicProfileReader>(PROFILE_TYPES.PublicProfileReader).to(
       DefaultPublicProfileReader,
+    );
+    bind<InquirerProfiles>(PROFILE_TYPES.ProfileInquirerProfiles).to(
+      ProfileInquirerProfiles,
     );
     bind<FollowStore>(PROFILE_TYPES.FollowStore).to(D1FollowStore);
     bind<FollowService>(PROFILE_TYPES.FollowService).to(StoreFollowService);

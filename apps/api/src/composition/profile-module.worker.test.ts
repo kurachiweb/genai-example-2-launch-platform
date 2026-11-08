@@ -38,6 +38,7 @@ import { clearProfilePlatformTables } from '../../lib/workers/profile/testing/pr
 import { callInternal } from '../../test/support/gateway-test-harness.ts';
 import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
 import type { HandleAvailability } from '../application/identity/ports.ts';
+import type { InquirerProfiles } from '../application/inquiry/ports.ts';
 import type { SessionIssuer } from '../application/identity/session-issuer.ts';
 import {
   type HandleAvailabilityChecker,
@@ -68,6 +69,7 @@ import {
 import { UserHandleAvailability } from '../application/profile/user-handle-availability.ts';
 import { D1FollowStore } from '../infrastructure/profile/d1-follow-store.ts';
 import { D1ProfileStore } from '../infrastructure/profile/d1-profile-store.ts';
+import { ProfileInquirerProfiles } from '../infrastructure/profile/profile-inquirer-profiles.ts';
 import { D1PublicProfileStore } from '../infrastructure/profile/d1-public-profile-store.ts';
 import { GATEWAY_HEADERS } from '../presentation/gateway/gateway-headers.ts';
 import { HANDLE_AVAILABILITY } from './identity-registrations.ts';
@@ -176,6 +178,14 @@ describe('APIサーバーのプロフィールのモジュールの束縛', () =
     expect(
       container.get<FollowListReader>(PROFILE_TYPES.FollowListReader),
     ).toBeInstanceOf(StoreFollowListReader);
+  });
+
+  test('問い合わせの利用者の表示の照会は、画像付きの実装に解決する', () => {
+    expect(
+      createContainer().get<InquirerProfiles>(
+        PROFILE_TYPES.ProfileInquirerProfiles,
+      ),
+    ).toBeInstanceOf(ProfileInquirerProfiles);
   });
 
   test('初期ハンドルの判定は、プロフィールの識別子と登録箇所の識別子とidentity-authの識別子の3経路でUserHandleAvailabilityに解決する', () => {

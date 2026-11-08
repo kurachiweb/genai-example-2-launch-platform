@@ -26,6 +26,10 @@ const FollowService: unique symbol = Symbol.for('profile.FollowService');
 
 const FollowListReader: unique symbol = Symbol.for('profile.FollowListReader');
 
+const ProfileInquirerProfiles: unique symbol = Symbol.for(
+  'profile.ProfileInquirerProfiles',
+);
+
 export const PROFILE_TYPES = Object.freeze({
   ProfileStore,
   ProfileEditor,
@@ -37,4 +41,5 @@ export const PROFILE_TYPES = Object.freeze({
   FollowStore,
   FollowService,
   FollowListReader,
+  ProfileInquirerProfiles,
 });

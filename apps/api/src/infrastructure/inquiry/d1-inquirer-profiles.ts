@@ -17,7 +17,7 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   );
 }
 
-// 利用者のプロフィール画像は後続の機能が持つため、画像はnullで返し、画像付きの実装は束縛の差し替えで与える
+// 画像を持たない既定の実装で、画像付きのProfileInquirerProfilesが束縛されるため実行時には使われない
 // 退会済みの問い合わせの詳細にも送った利用者を表示するため、論理削除した利用者も返す
 @injectable()
 export class D1InquirerProfiles implements InquirerProfiles {

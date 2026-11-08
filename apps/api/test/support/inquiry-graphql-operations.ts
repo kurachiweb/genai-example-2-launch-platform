@@ -4,11 +4,13 @@ import { env } from 'cloudflare:workers';
 import { ContainerModule } from 'inversify';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
+import { userProfiles } from '../../db/schema/profile/user-profiles.ts';
 import type { AdminRole } from '../../common-lib/admin/admin-roles.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
   clearIdentityTables,
+  db,
   userIdOf,
 } from '../../lib/workers/identity/testing/identity-store-fixtures.ts';
 import { clearMediaTables } from '../../lib/workers/media/testing/media-file-store-fixtures.ts';
@@ -236,6 +238,7 @@ export function installInquiryGraphQLTest(): InquiryTestContext {
     await resetInquiryTables();
     await clearMediaTables();
     await clearAdminTables();
+    await db.delete(userProfiles);
     await clearIdentityTables();
     logs.splice(0);
   });

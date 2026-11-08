@@ -1,10 +1,16 @@
 import { describe, expect, test } from 'vitest';
 
 import { INQUIRY_CATEGORY_OTHER_ID } from '../../../../../common-lib/inquiry/inquiry-category-constants.ts';
+import { userProfiles } from '../../../../../db/schema/profile/user-profiles.ts';
 import {
+  db,
   insertUser,
   userIdOf,
 } from '../../../../../lib/workers/identity/testing/identity-store-fixtures.ts';
+import {
+  fileIdOf,
+  insertFile,
+} from '../../../../../lib/workers/media/testing/media-file-store-fixtures.ts';
 import {
   ADMIN_INQUIRIES,
   ADMIN_INQUIRY,
@@ -406,6 +412,56 @@ describe('adminInquiry', () => {
 
     expect(response.errors).toBeUndefined();
     expect(response.data?.adminInquiry?.withdrawn).toBe(true);
+  });
+
+  test('退会済み(物理削除前)の利用者が送った問い合わせの詳細でも、送った利用者のニックネームとハンドルを返す', async () => {
+    await insertUser(INQUIRER, {
+      nickname: '退会した人',
+      handle: 'withdrawn-asker',
+      deletedAt: after(MINUTE),
+    });
+    await insertMemberInquiry(1, {
+      categoryId: INQUIRY_CATEGORY_OTHER_ID,
+      deletedAt: after(MINUTE),
+    });
+
+    const response = await fetchAdminInquiry(viewer, memberInquiryIdOf(1));
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data?.adminInquiry?.withdrawn).toBe(true);
+    expect(response.data?.adminInquiry?.member).toEqual({
+      userId: userIdOf(INQUIRER),
+      nickname: '退会した人',
+      handle: 'withdrawn-asker',
+      avatar: null,
+    });
+  });
+
+  test('プロフィール画像のある利用者の詳細では、送った利用者の画像を返す', async () => {
+    await insertUser(INQUIRER, { nickname: '画像のある人', handle: 'asker' });
+    await insertFile(1, {
+      purpose: 'user-avatar',
+      ownerId: userIdOf(INQUIRER),
+      moderationStatus: 'passed',
+    });
+    await db.insert(userProfiles).values({
+      id: '01JC0PROF000000000000000001',
+      userId: userIdOf(INQUIRER),
+      avatarFileId: fileIdOf(1),
+      createdAt: T0,
+      updatedAt: T0,
+    });
+    await insertMemberInquiry(1, { categoryId: INQUIRY_CATEGORY_OTHER_ID });
+
+    const response = await fetchAdminInquiry(viewer, memberInquiryIdOf(1));
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data?.adminInquiry?.member).toEqual({
+      userId: userIdOf(INQUIRER),
+      nickname: '画像のある人',
+      handle: 'asker',
+      avatar: { id: fileIdOf(1) },
+    });
   });
 
   test('存在しない問い合わせには空を返す', async () => {
