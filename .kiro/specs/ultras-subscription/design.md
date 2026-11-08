@@ -1007,7 +1007,7 @@ type Mutation {
 ```typescript
 // event/src/application/ultras/ultras-account-data-eraser.ts
 export interface UltrasAccountDataEraser {
-  erase(userId: string): Promise<void>; // ultras_notices→ultras_activations→ultras_subscriptionsの順の削除を1回の一括の書き込みで確定する
+  erase(userId: string): Promise<void>; // ultras_notices→ultras_activations→ultras_subscriptionsの順に並べた削除を1回の一括の書き込みで確定する。3表は互いを参照せずusersだけを参照するため順序は正しさに効かず、利用者の行の物理削除が外部キー違反で失敗しないことが目的
 }
 // event/src/infrastructure/ultras/d1-ultras-account-data-eraser.ts
 export declare class D1UltrasAccountDataEraser implements UltrasAccountDataEraser {
