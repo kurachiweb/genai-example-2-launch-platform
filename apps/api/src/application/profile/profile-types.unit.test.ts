@@ -11,6 +11,9 @@ const EXPECTED_NAMES = [
   'UserHandleAvailability',
   'PublicProfileStore',
   'PublicProfileReader',
+  'FollowStore',
+  'FollowService',
+  'FollowListReader',
 ] as const;
 
 describe('PROFILE_TYPES', () => {

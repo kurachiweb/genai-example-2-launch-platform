@@ -83,7 +83,7 @@
   - _Depends: 2.2, 3.4_
   - _Requirements: 2.5, 2.6, 6.6, 6.7, 6.8, 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 4. APIサーバーのフォロー
+- [x] 4. APIサーバーのフォロー
 - [x] 4.1 フォローのポートとD1の実装を作る
   - 先に、ローカルD1のWorkers統合テストで、相手が可視のときだけの記録と重複の無視、記録・既存・相手の不在の区別、物理削除、可視のフォロワーの数、フォロー中・フォロワーの一覧が新しい順に可視の相手だけを返し、件数+1件までの行を返すこと、位置(作成日時のミリ秒とフォローのID)の後から続きを読むこと、同じ作成日時の行がIDで並ぶことを確かめる
   - フォローのポート(3.2のポートの定義に加える)と、一覧の項目に2.2の利用者の表示の型を使うD1の実装を作る
@@ -91,7 +91,7 @@
   - _Depends: 2.2, 3.2_
   - _Requirements: 6.6, 9.7, 9.11, 10.2, 10.4_
 
-- [ ] 4.2 フォロー・フォロー解除と自分の一覧のユースケースを作る
+- [x] 4.2 フォロー・フォロー解除と自分の一覧のユースケースを作る
   - 先に、模擬のポートの単体テストで、現在・旧ハンドルでの相手の解決、自分自身・停止中・存在しない相手の拒否のコード、既にフォロー中・フォローしていない場合の成功、同時の停止で記録できなかった場合の拒否、解除の相手の解決が停止中を含むこと、結果に相手の現在のハンドルと可視のフォロワー数を返すこと、一覧が位置`FollowListPosition`を受け取り件数+1件までの行を返すこと(カーソルの文字列を扱わない、G3)を確かめる
   - フォローのストアとユースケースの束縛をapiのプロフィールのモジュールへ加える
   - 完了状態: 単体テストが成功し、一覧の対象の利用者を引数で受け取らない。apiのapplication層にapi-gatewayのカーソルの部品(`**/presentation/**`)の読み込みが無い
@@ -264,3 +264,4 @@
 - 3.4: `PROFILE_MODULE`(名前`profile`、`apps/api/src/composition/profile-module.ts`、`modules.ts`の末尾)に`PROFILE_TYPES`の5識別子(`ProfileStore`・`ProfileEditor`・`MyProfileReader`・`HandleAvailabilityChecker`・`UserHandleAvailability`)を既定のスコープで束縛した。後続のストア・ユースケースの束縛もここへ足す。`HANDLE_AVAILABILITY`は`PROFILE_TYPES.UserHandleAvailability`に差し替え(`isHandleOccupied(includePrevious: true)`と予約語。identity-authの`D1HandleAvailability`は既定の実装として残る)。`user-avatar`の用途は`upload-purposes.ts`。`media-module.worker.test.ts`の未登録の用途の例は`product-image`に変えた。
 - 3.5: `DefaultPublicProfileReader`(`application/profile/public-profile-reader.ts`、`find(session, handle)`が`profile`・`redirect`・`not-found`)と`D1PublicProfileStore`(1つの`db.batch`、`load`は退会・不在で`undefined`)を`PROFILE_TYPES.PublicProfileReader`・`PublicProfileStore`に束縛した。ストアの型はポート側の`PublicProfileRecord`。`PublicProfileView.avatarFileId`はIDのままで、画像のURL変換は5.1のプレゼンテーション層。Ultrasの判定の失敗は`false`にして`warning`(`userId`・`error`)。Ultrasの加入行を使うテストは`clearUltrasTables`の前に`user_follows`を消す。
 - 4.1: ポートは`application/profile/ports.ts`の`FollowStore`(`insertIfAbsent`・`delete`・`isFollowing`・`countVisibleFollowers`・`list`)と`FollowEntryView`・`FollowListPosition`・`FollowListQuery`。`list`は`{ userId, direction, first, after }`で`first`+1件まで返す(design.mdのD1FollowStoreの節の`limit`・`before`の記述は古い)。実装は`infrastructure/profile/d1-follow-store.ts`の`D1FollowStore`(`PLATFORM_TYPES.Database`だけ)。記録は`INSERT ... SELECT ... WHERE EXISTS(可視) ON CONFLICT DO NOTHING`の1文で、論理削除済みの行がある組は復活させず`target-unavailable`(退会に取り消しが無いため)。自分自身の拒否は4.2のユースケースで行い、ストアに届けばCHECK制約で例外になる。識別子と束縛は4.2。
+- 4.2: `StoreFollowService`(`follow`・`unfollow`、`(user: CurrentUser, handle)`、結果は`FollowState`(`handle`・`following`・`followerCount`))と`StoreFollowListReader`(`list(user, { direction, first, after })`、対象は`user.user.id`だけ)を`PROFILE_TYPES.FollowService`・`FollowListReader`に、`D1FollowStore`を`PROFILE_TYPES.FollowStore`に束縛した。未確認・停止中の利用者の拒否はリゾルバ(5.3)が持つ(`followUser`は`requireVerifiedUser`、`unfollowUser`は`requireWritableUser`の後に`assertHuman('follow')`)。エラーは`cannot_follow_self`・`follow_target_unavailable`(どちらも422)。リゾルバは`first`を1〜20で検証し、`after`を`decodeCursor`で位置に戻し、`toConnection`に`first`を渡す。模擬は`testing/profile-fakes.ts`の`createFakeFollowStore`・`summaryOf`。

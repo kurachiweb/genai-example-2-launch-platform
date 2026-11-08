@@ -15,6 +15,7 @@ import { users } from '../../db/schema/identity/users.ts';
 import { userPreviousHandles } from '../../db/schema/profile/user-previous-handles.ts';
 import { MEDIA_TYPES } from '../../lib/core/media/identifiers.ts';
 import type { UploadPurposeRegistry } from '../../lib/core/media/upload-purpose.ts';
+import type { CurrentUser } from '../../lib/core/identity/account-guard.ts';
 import type { SessionView } from '../../lib/core/session/session-view.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
@@ -46,7 +47,10 @@ import {
   type MyProfileReader,
   StoreMyProfileReader,
 } from '../application/profile/my-profile-reader.ts';
+import type { FollowListReader } from '../application/profile/follow-list-reader.ts';
+import type { FollowService } from '../application/profile/follow-service.ts';
 import type {
+  FollowStore,
   ProfileStore,
   PublicProfileStore,
 } from '../application/profile/ports.ts';
@@ -54,12 +58,15 @@ import {
   type ProfileEditor,
   StoreProfileEditor,
 } from '../application/profile/profile-editor.ts';
+import { StoreFollowListReader } from '../application/profile/follow-list-reader.ts';
+import { StoreFollowService } from '../application/profile/follow-service.ts';
 import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
 import {
   DefaultPublicProfileReader,
   type PublicProfileReader,
 } from '../application/profile/public-profile-reader.ts';
 import { UserHandleAvailability } from '../application/profile/user-handle-availability.ts';
+import { D1FollowStore } from '../infrastructure/profile/d1-follow-store.ts';
 import { D1ProfileStore } from '../infrastructure/profile/d1-profile-store.ts';
 import { D1PublicProfileStore } from '../infrastructure/profile/d1-public-profile-store.ts';
 import { GATEWAY_HEADERS } from '../presentation/gateway/gateway-headers.ts';
@@ -155,6 +162,20 @@ describe('APIサーバーのプロフィールのモジュールの束縛', () =
     expect(
       container.get<PublicProfileReader>(PROFILE_TYPES.PublicProfileReader),
     ).toBeInstanceOf(DefaultPublicProfileReader);
+  });
+
+  test('フォローのストアとユースケースをそれぞれの実装に解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<FollowStore>(PROFILE_TYPES.FollowStore),
+    ).toBeInstanceOf(D1FollowStore);
+    expect(
+      container.get<FollowService>(PROFILE_TYPES.FollowService),
+    ).toBeInstanceOf(StoreFollowService);
+    expect(
+      container.get<FollowListReader>(PROFILE_TYPES.FollowListReader),
+    ).toBeInstanceOf(StoreFollowListReader);
   });
 
   test('初期ハンドルの判定は、プロフィールの識別子と登録箇所の識別子とidentity-authの識別子の3経路でUserHandleAvailabilityに解決する', () => {
@@ -397,5 +418,80 @@ describe('公開プロフィールの照会(実物の束縛)', () => {
     expect(await reader().find(guestSession, 'bad handle')).toEqual({
       kind: 'not-found',
     });
+  });
+});
+
+describe('フォローと自分の一覧(実物の束縛)', () => {
+  const TARGET = 3;
+
+  beforeEach(async () => {
+    await insertUser(OWNER, { handle: 'Owner0Handle1', nickname: 'オーナー' });
+    await insertUser(TARGET, { handle: 'Target', nickname: 'ターゲット' });
+  });
+
+  const currentUserOfIndex = (userIndex: number): CurrentUser =>
+    ({
+      principal: {
+        kind: 'authenticated',
+        subjectKind: 'user',
+        subjectId: userIdOf(userIndex),
+        sessionId: '01JC0SESSION000000000000001',
+      },
+      user: { id: userIdOf(userIndex) },
+    }) as CurrentUser;
+
+  test('旧ハンドルでフォローして一覧に現れ、解除すると一覧から消える', async () => {
+    await insertPreviousHandle(TARGET, 'target-old');
+    const container = createContainer();
+    const service = container.get<FollowService>(PROFILE_TYPES.FollowService);
+    const reader = container.get<FollowListReader>(
+      PROFILE_TYPES.FollowListReader,
+    );
+    const owner = currentUserOfIndex(OWNER);
+
+    const followed = await service.follow(owner, 'TARGET-OLD');
+    const listed = await reader.list(owner, {
+      direction: 'following',
+      first: 20,
+      after: undefined,
+    });
+    const unfollowed = await service.unfollow(owner, 'target');
+    const afterUnfollow = await reader.list(owner, {
+      direction: 'following',
+      first: 20,
+      after: undefined,
+    });
+
+    expect(followed).toEqual({
+      handle: 'Target',
+      following: true,
+      followerCount: 1,
+    });
+    expect(listed.map(({ user }) => user.handle)).toEqual(['Target']);
+    expect(unfollowed).toEqual({
+      handle: 'Target',
+      following: false,
+      followerCount: 0,
+    });
+    expect(afterUnfollow).toEqual([]);
+  });
+
+  test('停止中の相手はフォローできず、すでにフォロー中なら解除はできる', async () => {
+    const service = createContainer().get<FollowService>(
+      PROFILE_TYPES.FollowService,
+    );
+    const owner = currentUserOfIndex(OWNER);
+    await service.follow(owner, 'target');
+    await db
+      .update(users)
+      .set({ status: 'suspended', suspendedAt: T0 })
+      .where(eq(users.id, userIdOf(TARGET)));
+
+    await expect(service.follow(owner, 'target')).rejects.toMatchObject({
+      code: 'follow_target_unavailable',
+    });
+    const state = await service.unfollow(owner, 'target');
+
+    expect(state.following).toBe(false);
   });
 });

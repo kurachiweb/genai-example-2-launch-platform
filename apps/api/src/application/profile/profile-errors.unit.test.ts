@@ -9,6 +9,8 @@ describe('profileError', () => {
     ['handle_unavailable', 'conflict', 409],
     ['profile_update_conflict', 'conflict', 409],
     ['invalid_upload', 'unprocessable', 422],
+    ['cannot_follow_self', 'unprocessable', 422],
+    ['follow_target_unavailable', 'unprocessable', 422],
     ['account_unavailable', 'forbidden', 403],
   ] as const)('%sは%s(%i)のAppErrorになる', (code, kind, status) => {
     const error = profileError(code);
@@ -17,6 +19,15 @@ describe('profileError', () => {
     expect(error.kind).toBe(kind);
     expect(STATUS_BY_KIND[error.kind]).toBe(status);
     expect(error.message).toBe(PROFILE_ERRORS[code].message);
+  });
+
+  test('フォローの拒否の文言は文言規則と一字一句同じである', () => {
+    expect(PROFILE_ERRORS.cannot_follow_self.message).toBe(
+      '自分自身はフォローできません。',
+    );
+    expect(PROFILE_ERRORS.follow_target_unavailable.message).toBe(
+      'このユーザーはフォローできません。',
+    );
   });
 
   test('handle_unavailableだけがハンドル欄の詳細を持つ', () => {

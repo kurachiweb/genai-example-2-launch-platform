@@ -24,6 +24,14 @@ export const PROFILE_ERRORS = Object.freeze({
     kind: 'unprocessable',
     message: 'プロフィール画像をもう一度選択してください。',
   },
+  cannot_follow_self: {
+    kind: 'unprocessable',
+    message: '自分自身はフォローできません。',
+  },
+  follow_target_unavailable: {
+    kind: 'unprocessable',
+    message: 'このユーザーはフォローできません。',
+  },
   account_unavailable: IDENTITY_ERRORS.account_unavailable,
 } satisfies Readonly<Record<string, ProfileErrorDefinition>>);
 

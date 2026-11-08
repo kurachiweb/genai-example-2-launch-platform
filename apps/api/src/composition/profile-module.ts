@@ -12,7 +12,16 @@ import {
   type MyProfileReader,
   StoreMyProfileReader,
 } from '../application/profile/my-profile-reader.ts';
+import {
+  type FollowListReader,
+  StoreFollowListReader,
+} from '../application/profile/follow-list-reader.ts';
+import {
+  type FollowService,
+  StoreFollowService,
+} from '../application/profile/follow-service.ts';
 import type {
+  FollowStore,
   ProfileStore,
   PublicProfileStore,
 } from '../application/profile/ports.ts';
@@ -26,10 +35,11 @@ import {
   type PublicProfileReader,
 } from '../application/profile/public-profile-reader.ts';
 import { UserHandleAvailability } from '../application/profile/user-handle-availability.ts';
+import { D1FollowStore } from '../infrastructure/profile/d1-follow-store.ts';
 import { D1ProfileStore } from '../infrastructure/profile/d1-profile-store.ts';
 import { D1PublicProfileStore } from '../infrastructure/profile/d1-public-profile-store.ts';
 
-// ファイル(MEDIA_TYPES)・時計(PLATFORM_TYPES)・閲覧者の確認(IDENTITY_PLATFORM_TYPES)・ハンドルの解決(PROFILE_PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)は各機能の共通の束縛を使う
+// ファイル(MEDIA_TYPES)・時計とID生成(PLATFORM_TYPES)・閲覧者の確認(IDENTITY_PLATFORM_TYPES)・ハンドルの解決(PROFILE_PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)は各機能の共通の束縛を使う
 export const PROFILE_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'profile',
   bindings: new ContainerModule(({ bind }) => {
@@ -49,6 +59,11 @@ export const PROFILE_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<PublicProfileReader>(PROFILE_TYPES.PublicProfileReader).to(
       DefaultPublicProfileReader,
+    );
+    bind<FollowStore>(PROFILE_TYPES.FollowStore).to(D1FollowStore);
+    bind<FollowService>(PROFILE_TYPES.FollowService).to(StoreFollowService);
+    bind<FollowListReader>(PROFILE_TYPES.FollowListReader).to(
+      StoreFollowListReader,
     );
   }),
 };

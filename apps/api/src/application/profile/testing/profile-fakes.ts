@@ -12,11 +12,16 @@ import type {
 import type {
   UserHandleResolution,
   UserProfileDirectory,
+  UserSummaryRecord,
 } from '../../../../lib/core/profile/ports.ts';
 import type { SessionView } from '../../../../lib/core/session/session-view.ts';
 import type { Clock } from '../../../../lib/core/time/clock.ts';
 import type { UltrasEntitlements } from '../../../../lib/core/ultras/ports.ts';
 import type {
+  FollowEntryView,
+  FollowInsertInput,
+  FollowListQuery,
+  FollowStore,
   ProfileHandleOccupiedOptions,
   PublicProfileRecord,
   PublicProfileStore,
@@ -312,4 +317,70 @@ export function createFakeUltrasEntitlements(
     },
   }) as UltrasEntitlements;
   return { entitlements, queries };
+}
+
+export const TARGET_USER_ID = '01JC0USER00000000000000003';
+export const TARGET_FOLLOW_ID = '01JC0FOLLOW0000000000000001';
+
+export const summaryOf = (
+  overrides: Partial<UserSummaryRecord> = {},
+): UserSummaryRecord => ({
+  userId: TARGET_USER_ID,
+  handle: 'bob',
+  nickname: 'ボブ',
+  avatarFileId: null,
+  suspended: false,
+  ...overrides,
+});
+
+export interface FakeFollowStoreOptions {
+  readonly insertResult?: 'inserted' | 'exists' | 'target-unavailable';
+  readonly followerCount?: number;
+  readonly entries?: readonly FollowEntryView[];
+}
+
+export interface FakeFollowStore extends FollowStore {
+  readonly inserts: FollowInsertInput[];
+  readonly deletes: { followerId: string; followeeId: string }[];
+  readonly countQueries: string[];
+  readonly listQueries: FollowListQuery[];
+}
+
+export function createFakeFollowStore(
+  calls: string[],
+  options: FakeFollowStoreOptions = {},
+): FakeFollowStore {
+  const inserts: FollowInsertInput[] = [];
+  const deletes: { followerId: string; followeeId: string }[] = [];
+  const countQueries: string[] = [];
+  const listQueries: FollowListQuery[] = [];
+  return {
+    inserts,
+    deletes,
+    countQueries,
+    listQueries,
+    insertIfAbsent(input) {
+      calls.push('follows.insertIfAbsent');
+      inserts.push(input);
+      return Promise.resolve(options.insertResult ?? 'inserted');
+    },
+    delete(followerId, followeeId) {
+      calls.push('follows.delete');
+      deletes.push({ followerId, followeeId });
+      return Promise.resolve();
+    },
+    isFollowing() {
+      throw new Error('この偽物では使わない: isFollowing');
+    },
+    countVisibleFollowers(followeeId) {
+      calls.push('follows.countVisibleFollowers');
+      countQueries.push(followeeId);
+      return Promise.resolve(options.followerCount ?? 0);
+    },
+    list(query) {
+      calls.push('follows.list');
+      listQueries.push(query);
+      return Promise.resolve(options.entries ?? []);
+    },
+  };
 }
