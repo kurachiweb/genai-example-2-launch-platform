@@ -60,7 +60,7 @@
   - 完了状態: Workers統合テストが成功し、失敗した保存でどの行も変わらない
   - _Requirements: 1.4, 1.6, 2.1, 2.3, 2.4, 4.10, 4.14, 11.9_
 
-- [ ] 3.3 プロフィールの保存と照会、編集画面の使用可否のユースケースを作る
+- [x] 3.3 プロフィールの保存と照会、編集画面の使用可否のユースケースを作る
   - 先に、模擬のポートの単体テストで、判定の順序(読み込んだ時点のハンドルの照合→予約語→使用中→画像の紐付け→保存→以前の画像の削除)、大文字小文字だけの変更と現在の値の維持で予約語・使用中を判定しないこと、自分の旧ハンドルへの戻しを受け付けること、他人の旧ハンドルを拒否せず保存へ進むこと(仮2)、画像の紐付けの失敗で保存しないこと、差し替えで以前の画像を直ちに物理削除させ削除で14日後の削除を依頼すること(削除の失敗は結果を変えずログにファイルのIDだけを残す)、未確認の利用者の保存を拒否しないこと、使用可否が本人の現在・旧と他人の旧ハンドルを使えるとし形式違反・予約語・他人の現在のハンドルを区別することを確かめる
   - 公開APIの経路からも呼べるよう、bot対策の検証をユースケースに含めない
   - ハンドルの使用中の判定は3.2のプロフィールのポート越しに使い、ハンドル基盤(`workers/handles`)の関数を読み込まない
@@ -260,3 +260,4 @@
 - 2.4: `PROFILE_PLATFORM_MODULE`(名前`profile-platform`、`workers/profile/profile-platform-module.ts`)をapi・eventの`src/composition/modules.ts`の`ADMIN_PLATFORM_MODULE`の直後に置いた。束縛は`inSingletonScope()`(呼び出しのコンテナ単位)。テストの種データは`workers/profile/testing/profile-platform-fixtures.ts`。9.1・9.2で共有の束縛の一覧の文書に`profile-platform`を加える。
 - 3.1: 規則は`apps/api/src/domain/profile/profile-edit-plan.ts`(`planProfileEdit`。完全一致は`none`、`isSameHandle`は`case-only`、それ以外は`changed`で`previous`は現在のハンドル。自分の旧ハンドルへの戻しも`changed`)と`website-list.ts`(`normalizeWebsites`。URLが空の行は落とさず`''`で返すので、空のURLの拒否は5.2のスキーマで行う)。`AvatarChange`の`replaced`(差し替え前)は`eraseNow`、`removed`は`markDeleted`へ渡す。
 - 3.2: ポートは`apps/api/src/application/profile/ports.ts`の`ProfileStore`(`findSnapshot`・`isHandleOccupied`(`exceptUserId`)・`findExistingUserIds`・`save`)と`MyProfileView`・`ProfileSnapshot`。`save`の結果は`'saved' | 'handle-unavailable' | 'conflict' | 'account-unavailable'`で、`websites`には`normalizeWebsites`の結果を渡す。D1実装は`infrastructure/profile/d1-profile-store.ts`(先頭の`user_profiles`のupsertの`user_id`を`CASE WHEN EXISTS(...)`にしたNOT NULL違反のガード、`expectedHandle`は`COLLATE BINARY`で比べる。制約の違反の文言で分類し、他の障害は再送出)。`D1ProfileStore`は`PLATFORM_TYPES.Database`だけを受け取る。識別子と束縛は3.4で作る(`PROFILE_PLATFORM_TYPES`と名前を重ねない)。
+- 3.3: ユースケースは`apps/api/src/application/profile/`の`StoreProfileEditor`(`MEDIA_TYPES.MediaFiles`・`PLATFORM_TYPES.Clock`を注入)・`StoreMyProfileReader`・`StoreHandleAvailabilityChecker`。識別子は`profile-types.ts`の`PROFILE_TYPES`(`Symbol.for('profile.<名前>')`、`PROFILE_PLATFORM_TYPES`と重ならないことをテストで確認)、エラーは`profile-errors.ts`の`profileError(code)`(`handle_unavailable`・`profile_update_conflict`・`invalid_upload`)。利用者の行が無ければ`account_unavailable`。入力の形式の検証はしない(5.2・公開APIの境界の責務)。画像の削除の失敗は`warning`に例外と`fileId`だけを添える(9.xで`004-logging-and-error-tracking.md`に「例外とファイルのIDだけ」と書く)。模擬のポートは`application/profile/testing/profile-fakes.ts`。
