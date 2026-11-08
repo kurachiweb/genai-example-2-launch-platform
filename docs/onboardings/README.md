@@ -641,7 +641,7 @@ APIサーバーとイベントサーバーは、メールアドレスの確認�
    bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local -- sh -c 'test -z "$STRIPE_API_KEY" && echo "Workerの指定が無ければ鍵は渡らない"'
    ```
 
-- 公開キーは`apps/client`のWrangler設定の`vars`の`STRIPE_PUBLISHABLE_KEY`に書く。ローカル環境の値は、開発者がローカル環境用のsandboxの公開キーを用意するまで仮の値のままである(「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」)。
+- 公開キーは`apps/client`のWrangler設定の`vars`の`STRIPE_PUBLISHABLE_KEY`に書く。ローカル環境の値は、`dev`に登録した制限付きキーと同じローカル環境用のsandboxの公開キーである。sandboxを作り直したときは、同じsandboxの公開キーへ置き換える(「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」)。
 - 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を正とする。
 
 ### ローカルのWebhookの転送

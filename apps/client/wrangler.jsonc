@@ -34,8 +34,8 @@
     "IMAGES_ORIGIN": "http://localhost:48043",
     "CLIENT_SITE_ORIGIN": "http://localhost:48044",
     "WEB_ANALYTICS_TOKEN": "",
-    // 仮の値。dev用のsandboxの公開キーに置き換える
-    "STRIPE_PUBLISHABLE_KEY": "pk_test_00000000000000000000000000000000",
+    // dev用のsandboxの公開キー
+    "STRIPE_PUBLISHABLE_KEY": "pk_test_51UOHzqKXCISXXudNX8UpBAkp1XmfEcVCyVPPdevbTwOXxmUXJRNmVMxV5g8zcWHzJfCYeqb47zzMLi446kABE39700y7SxUFn5",
   },
   "secrets": { "required": ["HASH_PEPPER"] },
   "env": {
