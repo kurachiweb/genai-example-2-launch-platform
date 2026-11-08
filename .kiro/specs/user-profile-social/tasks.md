@@ -84,7 +84,7 @@
   - _Requirements: 2.5, 2.6, 6.6, 6.7, 6.8, 7.1, 7.2, 7.3, 7.4, 7.5_
 
 - [ ] 4. APIサーバーのフォロー
-- [ ] 4.1 フォローのポートとD1の実装を作る
+- [x] 4.1 フォローのポートとD1の実装を作る
   - 先に、ローカルD1のWorkers統合テストで、相手が可視のときだけの記録と重複の無視、記録・既存・相手の不在の区別、物理削除、可視のフォロワーの数、フォロー中・フォロワーの一覧が新しい順に可視の相手だけを返し、件数+1件までの行を返すこと、位置(作成日時のミリ秒とフォローのID)の後から続きを読むこと、同じ作成日時の行がIDで並ぶことを確かめる
   - フォローのポート(3.2のポートの定義に加える)と、一覧の項目に2.2の利用者の表示の型を使うD1の実装を作る
   - 完了状態: Workers統合テストが成功し、停止中の相手の行が残ったまま一覧と数から除かれる
@@ -263,3 +263,4 @@
 - 3.3: ユースケースは`apps/api/src/application/profile/`の`StoreProfileEditor`(`MEDIA_TYPES.MediaFiles`・`PLATFORM_TYPES.Clock`を注入)・`StoreMyProfileReader`・`StoreHandleAvailabilityChecker`。識別子は`profile-types.ts`の`PROFILE_TYPES`(`Symbol.for('profile.<名前>')`、`PROFILE_PLATFORM_TYPES`と重ならないことをテストで確認)、エラーは`profile-errors.ts`の`profileError(code)`(`handle_unavailable`・`profile_update_conflict`・`invalid_upload`)。利用者の行が無ければ`account_unavailable`。入力の形式の検証はしない(5.2・公開APIの境界の責務)。画像の削除の失敗は`warning`に例外と`fileId`だけを添える(9.xで`004-logging-and-error-tracking.md`に「例外とファイルのIDだけ」と書く)。模擬のポートは`application/profile/testing/profile-fakes.ts`。
 - 3.4: `PROFILE_MODULE`(名前`profile`、`apps/api/src/composition/profile-module.ts`、`modules.ts`の末尾)に`PROFILE_TYPES`の5識別子(`ProfileStore`・`ProfileEditor`・`MyProfileReader`・`HandleAvailabilityChecker`・`UserHandleAvailability`)を既定のスコープで束縛した。後続のストア・ユースケースの束縛もここへ足す。`HANDLE_AVAILABILITY`は`PROFILE_TYPES.UserHandleAvailability`に差し替え(`isHandleOccupied(includePrevious: true)`と予約語。identity-authの`D1HandleAvailability`は既定の実装として残る)。`user-avatar`の用途は`upload-purposes.ts`。`media-module.worker.test.ts`の未登録の用途の例は`product-image`に変えた。
 - 3.5: `DefaultPublicProfileReader`(`application/profile/public-profile-reader.ts`、`find(session, handle)`が`profile`・`redirect`・`not-found`)と`D1PublicProfileStore`(1つの`db.batch`、`load`は退会・不在で`undefined`)を`PROFILE_TYPES.PublicProfileReader`・`PublicProfileStore`に束縛した。ストアの型はポート側の`PublicProfileRecord`。`PublicProfileView.avatarFileId`はIDのままで、画像のURL変換は5.1のプレゼンテーション層。Ultrasの判定の失敗は`false`にして`warning`(`userId`・`error`)。Ultrasの加入行を使うテストは`clearUltrasTables`の前に`user_follows`を消す。
+- 4.1: ポートは`application/profile/ports.ts`の`FollowStore`(`insertIfAbsent`・`delete`・`isFollowing`・`countVisibleFollowers`・`list`)と`FollowEntryView`・`FollowListPosition`・`FollowListQuery`。`list`は`{ userId, direction, first, after }`で`first`+1件まで返す(design.mdのD1FollowStoreの節の`limit`・`before`の記述は古い)。実装は`infrastructure/profile/d1-follow-store.ts`の`D1FollowStore`(`PLATFORM_TYPES.Database`だけ)。記録は`INSERT ... SELECT ... WHERE EXISTS(可視) ON CONFLICT DO NOTHING`の1文で、論理削除済みの行がある組は復活させず`target-unavailable`(退会に取り消しが無いため)。自分自身の拒否は4.2のユースケースで行い、ストアに届けばCHECK制約で例外になる。識別子と束縛は4.2。
