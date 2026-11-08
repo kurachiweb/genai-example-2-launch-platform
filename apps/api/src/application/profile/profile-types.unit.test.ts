@@ -16,6 +16,7 @@ const EXPECTED_NAMES = [
   'FollowListReader',
   'ProfileInquirerProfiles',
   'ProfileWithdrawalSyncHandler',
+  'OrphanedFileSweepJob',
 ] as const;
 
 describe('PROFILE_TYPES', () => {

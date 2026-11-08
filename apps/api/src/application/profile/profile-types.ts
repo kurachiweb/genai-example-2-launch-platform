@@ -34,6 +34,10 @@ const ProfileWithdrawalSyncHandler: unique symbol = Symbol.for(
   'profile.ProfileWithdrawalSyncHandler',
 );
 
+const OrphanedFileSweepJob: unique symbol = Symbol.for(
+  'profile.OrphanedFileSweepJob',
+);
+
 export const PROFILE_TYPES = Object.freeze({
   ProfileStore,
   ProfileEditor,
@@ -47,4 +51,5 @@ export const PROFILE_TYPES = Object.freeze({
   FollowListReader,
   ProfileInquirerProfiles,
   ProfileWithdrawalSyncHandler,
+  OrphanedFileSweepJob,
 });

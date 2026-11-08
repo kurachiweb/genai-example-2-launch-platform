@@ -31,7 +31,7 @@ describe('決済のジョブの定期実行の一覧への登録', () => {
     expect(first).toBe(CHECKOUT_RECONCILIATION_JOB_DEFINITION);
   });
 
-  test('4:21の起動では日次の確認・7年の削除が問い合わせのジョブ(300)の後、Ultrasの送り出し直しと後始末(500)とメディアのジョブ(810)の前に順に動く', () => {
+  test('4:21の起動では日次の確認・7年の削除が問い合わせのジョブ(300)の後、Ultrasの送り出し直しと後始末(500)・保有者の居ないファイルの削除(600)とメディアのジョブ(810)の前に順に動く', () => {
     const orders = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(toUtcCronExpression({ hour: 4, minute: 21 }))
       .map(({ name, order }) => ({ name, order }));
@@ -39,11 +39,12 @@ describe('決済のジョブの定期実行の一覧への登録', () => {
       ({ name }) => name === 'payments.pending-checkout-sweep',
     );
 
-    expect(orders.slice(sweepIndex - 1, sweepIndex + 4)).toEqual([
+    expect(orders.slice(sweepIndex - 1, sweepIndex + 5)).toEqual([
       { name: 'inquiry-chat.guest-inquiry-retention', order: 300 },
       { name: 'payments.pending-checkout-sweep', order: 400 },
       { name: 'payments.history-retention', order: 410 },
       { name: 'ultras-subscription.pending-dispatch-sweep', order: 500 },
+      { name: 'user-profile-social.orphaned-file-sweep', order: 600 },
       { name: 'media-pipeline.expired-file-erasure', order: 810 },
     ]);
   });

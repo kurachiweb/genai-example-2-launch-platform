@@ -45,6 +45,7 @@ const PAYMENTS_JOB_NAMES = [
   'payments.history-retention',
 ];
 const ULTRAS_JOB_NAMES = ['ultras-subscription.pending-dispatch-sweep'];
+const PROFILE_JOB_NAMES = ['user-profile-social.orphaned-file-sweep'];
 const MEDIA_JOB_NAMES = [
   'media-pipeline.expired-file-erasure',
   'media-pipeline.moderation-requeue',
@@ -140,6 +141,7 @@ describe('APIサーバーの検索のモジュール', () => {
       ...INQUIRY_JOB_NAMES,
       ...PAYMENTS_JOB_NAMES,
       ...ULTRAS_JOB_NAMES,
+      ...PROFILE_JOB_NAMES,
       ...MEDIA_JOB_NAMES,
       'email-delivery.cleanup',
       REEXTRACTION_JOB_NAME,
@@ -194,6 +196,9 @@ describe('定期実行からの日次の再抽出', () => {
         expect.objectContaining({ name: 'payments.history-retention' }),
         expect.objectContaining({
           name: 'ultras-subscription.pending-dispatch-sweep',
+        }),
+        expect.objectContaining({
+          name: 'user-profile-social.orphaned-file-sweep',
         }),
         expect.objectContaining({
           name: 'media-pipeline.expired-file-erasure',

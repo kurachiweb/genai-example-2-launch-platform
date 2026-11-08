@@ -1,8 +1,13 @@
-import { createExecutionContext } from 'cloudflare:test';
+import { resetSync } from '@logtape/logtape';
+import {
+  createExecutionContext,
+  createScheduledController,
+  waitOnExecutionContext,
+} from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import type { Container } from 'inversify';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { IMAGE_MEDIA_TYPES } from '../../common-lib/media/media-types.ts';
 import { UPLOAD_FILE_NAME_HEADER } from '../../common-lib/media/upload-protocol.ts';
@@ -16,6 +21,12 @@ import { userPreviousHandles } from '../../db/schema/profile/user-previous-handl
 import { userProfiles } from '../../db/schema/profile/user-profiles.ts';
 import { MEDIA_TYPES } from '../../lib/core/media/identifiers.ts';
 import { resolveHandle } from '../../lib/workers/handles/handle-queries.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
+import {
+  fileIdOf,
+  insertFile,
+  readFileIds,
+} from '../../lib/workers/media/testing/media-file-store-fixtures.ts';
 import { USER_HANDLE_NAMESPACE } from '../../lib/workers/profile/user-handle-namespace.ts';
 import type { UploadPurposeRegistry } from '../../lib/core/media/upload-purpose.ts';
 import type { CurrentUser } from '../../lib/core/identity/account-guard.ts';
@@ -73,6 +84,7 @@ import {
   DefaultPublicProfileReader,
   type PublicProfileReader,
 } from '../application/profile/public-profile-reader.ts';
+import { OrphanedFileSweepJob } from '../application/profile/jobs/orphaned-file-sweep-job.ts';
 import { UserHandleAvailability } from '../application/profile/user-handle-availability.ts';
 import { D1FollowStore } from '../infrastructure/profile/d1-follow-store.ts';
 import { D1ProfileStore } from '../infrastructure/profile/d1-profile-store.ts';
@@ -82,6 +94,7 @@ import { ProfileWithdrawalSyncHandler } from '../infrastructure/profile/profile-
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { GATEWAY_HEADERS } from '../presentation/gateway/gateway-headers.ts';
 import { HANDLE_AVAILABILITY } from './identity-registrations.ts';
+import * as mainModule from '../index.ts';
 import { MODULES } from './modules.ts';
 
 const BASE_URL = 'https://api.launch.example';
@@ -204,6 +217,14 @@ describe('APIサーバーのプロフィールのモジュールの束縛', () =
         PROFILE_TYPES.ProfileWithdrawalSyncHandler,
       ),
     ).toBeInstanceOf(ProfileWithdrawalSyncHandler);
+  });
+
+  test('保有者の居ないファイルの削除のジョブは、処理単位のコンテナでOrphanedFileSweepJobに解決する', () => {
+    expect(
+      createContainer().get<ScheduledJobHandler>(
+        PROFILE_TYPES.OrphanedFileSweepJob,
+      ),
+    ).toBeInstanceOf(OrphanedFileSweepJob);
   });
 
   test('初期ハンドルの判定は、プロフィールの識別子と登録箇所の識別子とidentity-authの識別子の3経路でUserHandleAvailabilityに解決する', () => {
@@ -659,5 +680,87 @@ describe('退会の同期の波及処理の登録', () => {
       { id: FOLLOW_IDS[1], deletedAt: null },
       { id: FOLLOW_IDS[2], deletedAt: null },
     ]);
+  });
+});
+
+describe('保有者の居ないファイルの削除の定期実行', () => {
+  const DAILY_CRON = '21 12 * * *';
+  const DAILY_TIME = new Date(Date.UTC(2026, 10, 3, 12, 21));
+  const JOB_NAME = 'user-profile-social.orphaned-file-sweep';
+  const GHOST = 99;
+
+  interface LoggedObject {
+    readonly message: string;
+    readonly [property: string]: unknown;
+  }
+
+  function recordLogs(): LoggedObject[] {
+    const logs: LoggedObject[] = [];
+    for (const method of ['debug', 'info', 'warn', 'error'] as const) {
+      vi.spyOn(console, method).mockImplementation((...args: unknown[]) => {
+        logs.push(args[0] as LoggedObject);
+      });
+    }
+    return logs;
+  }
+
+  async function runDaily(): Promise<readonly LoggedObject[]> {
+    const logs = recordLogs();
+    const scheduled = mainModule.default.scheduled;
+    if (scheduled === undefined) {
+      throw new Error('定期実行のハンドラーがエクスポートされていません');
+    }
+    const ctx = createExecutionContext();
+    await scheduled(
+      createScheduledController({
+        cron: DAILY_CRON,
+        scheduledTime: DAILY_TIME.getTime(),
+      }),
+      env,
+      ctx,
+    );
+    await waitOnExecutionContext(ctx);
+    return logs;
+  }
+
+  beforeEach(async () => {
+    await clearMediaState();
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    resetSync();
+    await clearMediaState();
+  });
+
+  test('4:21の起動(21 12 * * *)で、束縛から解決されたジョブが成功し、利用者の存在しない保有者のファイルだけを物理削除して件数をログに出す', async () => {
+    await insertUser(OWNER, { handle: 'Owner0Handle1', nickname: 'オーナー' });
+    await insertFile(1, { ownerId: userIdOf(OWNER), attachedAt: T0 });
+    await insertFile(2, { ownerId: userIdOf(GHOST), attachedAt: T0 });
+    await insertFile(3, { ownerId: userIdOf(GHOST), attachedAt: T0 });
+
+    const logs = await runDaily();
+
+    expect(await readFileIds()).toEqual([fileIdOf(1)]);
+    const summary = logs.find(
+      ({ message }) => message === '定期実行を終えました',
+    );
+    expect(summary?.['jobs']).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: JOB_NAME, result: 'succeeded' }),
+      ]),
+    );
+    expect(
+      logs.find(
+        ({ message }) => message === '保有者の居ないファイルを物理削除しました',
+      ),
+    ).toMatchObject({
+      level: 'info',
+      ownersScanned: 2,
+      orphanOwners: 1,
+      failedOwners: 0,
+      filesErased: 2,
+      truncated: false,
+    });
   });
 });

@@ -135,7 +135,7 @@
   - _Depends: 2.1, 3.4, 5.4_
   - _Requirements: 11.1_
 
-- [ ] 6. 波及処理と日次のジョブ
+- [x] 6. 波及処理と日次のジョブ
 - [x] 6.1 物理削除の波及処理を作る
   - 先に、模擬のポートの単体テストで、フォローの削除が上限件数ちょうどなら続きを、未満ならプロフィール・外部Webサイト・旧ハンドルを消して完了を返すこと、ファイルの物理削除の残りの有無を続きに対応付けること、例外をそのまま投げることを確かめる。ローカルD1のWorkers統合テストで、1,001件のフォロー(フォロワー・相手の両方向)が2回の呼び出しで消え、プロフィールの行が消えた後にidentity-authの利用者の物理削除が外部キーで失敗しないことを確かめる
   - `user-profile-social.profile-erasure`(物理削除、`order` 600)と`user-profile-social.owned-file-erasure`(物理削除、`order` 610)をeventの束縛と非同期の波及処理の一覧へ同時に加える
@@ -152,7 +152,7 @@
   - _Depends: 6.1_
   - _Requirements: 11.4, 11.5, 11.6, 11.8_
 
-- [ ] 6.3 保有者の居ないファイルを物理削除する4:21のジョブを作る
+- [x] 6.3 保有者の居ないファイルを物理削除する4:21のジョブを作る
   - 使う上流の契約: media-pipelineの`MediaFiles.listOwnerIds`(保有者の種類ごとに保有者のIDを重複を除いて昇順に上限件数ずつ返し、続きを示す。media-pipelineの改訂1で実装済み)
   - 先に、模擬のポートの単体テストで、保有者のIDを90件ずつ読み`users`に行の無い保有者だけの物理削除を残りが無くなるまで繰り返すこと、退会済みで物理削除前の利用者を対象にしないこと、消した件数が合計1,000件に達したら次の`eraseOwnedBy`を呼ばずに打ち切ること(達する前の呼び出しで1,000件を超えた分も消えること、G7)、保有者ごとの失敗をログ(保有者のIDだけ)に残して次の保有者へ進むこと、件数の結果を確かめる。ローカルD1と模擬の`MediaFiles`のWorkers統合テストで、存在しない利用者のファイルだけが削除されることを確かめる
   - ジョブ`user-profile-social.orphaned-file-sweep`(業務時刻4:21、`order` 600)の定義をジョブのファイルから公開し、apiの束縛とジョブの一覧へ同時に加える。4:21のジョブの並びを確かめる既存のテスト(`apps/api/test/config/payments-scheduled-jobs.unit.test.ts`の500の直後のジョブ、`apps/api/src/composition/search-module.worker.test.ts`の全ジョブ名)の期待値に600を足す
@@ -272,3 +272,4 @@
 - 5.5: `ProfileWithdrawalSyncHandler`(`apps/api/src/infrastructure/profile/profile-withdrawal-sync-handler.ts`、`withdrawn`だけで`previousHandleSoftDelete`と`user_follows`の両方向の論理削除の2文)を`PROFILE_TYPES.ProfileWithdrawalSyncHandler`に束縛し、`user-lifecycle-sync-handlers.ts`の`user-profile-social.withdrawal`に登録した(inquiryの後)。退会の統合テストは`profile-module.worker.test.ts`。`user_profiles`の行を作るテストでは後始末で`user_profiles`を先に消す。
 - 6.1: eventの物理削除の波及処理は`apps/event/src/application/profile/`の`ProfileErasureHandler`(`FOLLOW_ERASURE_BATCH_SIZE` 1000、件数が上限以上なら`continue`)と`OwnedFileErasureHandler`(`MEDIA_TYPES.MediaFiles`の`hasMore`)、ポート`ports.ts`の`ProfilePurgeStore`、`infrastructure/profile/d1-profile-purge-store.ts`。識別子は`EVENT_PROFILE_TYPES`(`profile.event.*`)、モジュールは`composition/profile-module.ts`の`EVENT_PROFILE_MODULE`(名前`event-profile`、`PROFILE_PLATFORM_MODULE`の直後)。6.2は同じモジュールに`OwnedImageQuarantineHandler`を束縛し、`profile-module.worker.test.ts`の3経路の解決の検査に識別子を足し、ultras・paymentsの`suspended`(・`unsuspended`)の完全一致の期待に`user-profile-social.owned-image-quarantine`を足す。`clearProfilePlatformTables`は`user_previous_handles`を消さない。
 - 6.2: `OwnedImageQuarantineHandler`(`apps/event/src/application/profile/owned-image-quarantine-handler.ts`、`MEDIA_TYPES.MediaQuarantine`の`addReasonForOwner`・`removeReasonForOwner`を`user_suspended`で呼び`hasMore`なら`continue`)を`EVENT_PROFILE_MODULE`に束縛し、`user-profile-social.owned-image-quarantine`(`suspended`・`unsuspended`、600)を登録した。eventの統合テストの`dispatch`補助は、画像の移動の依頼も同じキューへ送られるため`RUN_USER_LIFECYCLE_MESSAGE`の封筒だけを再送として数える。9.2で`project-values.md`の非同期の波及処理の登録に`profile-erasure`・`owned-file-erasure`・`owned-image-quarantine`を加える。
+- 6.3: ジョブは`apps/api/src/application/profile/jobs/orphaned-file-sweep-job.ts`の`OrphanedFileSweepJob`(`sweep()`が結果(`failedOwners`を含む)を返し、`run()`がinfoの`保有者の居ないファイルを物理削除しました`を出す。`ORPHANED_FILE_SWEEP_LIMIT` 1000・`ORPHANED_FILE_SWEEP_PAGE` 90、1回で最大1,999件消え得る)。`ORPHANED_FILE_SWEEP_JOB_DEFINITION`を`scheduled-jobs.ts`の500の直後に並べ、`PROFILE_TYPES.OrphanedFileSweepJob`に束縛した。ローカルの手動起動は`curl "http://127.0.0.1:48042/cdn-cgi/local/scheduled?cron=21+12+*+*+*"`(`/__scheduled`は古い)。種データの`media_files`は`object_key`を32桁の16進にし、`attached_at`を入れる(無いとメディアの期限切れジョブが先に消す)。9.2で日次タイムラインの4:21の表の500と810の間に加える。

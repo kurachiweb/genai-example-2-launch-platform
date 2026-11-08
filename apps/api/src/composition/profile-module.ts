@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import type { HandleAvailability } from '../application/identity/ports.ts';
 import type { InquirerProfiles } from '../application/inquiry/ports.ts';
@@ -35,6 +36,7 @@ import {
   DefaultPublicProfileReader,
   type PublicProfileReader,
 } from '../application/profile/public-profile-reader.ts';
+import { OrphanedFileSweepJob } from '../application/profile/jobs/orphaned-file-sweep-job.ts';
 import { UserHandleAvailability } from '../application/profile/user-handle-availability.ts';
 import { D1FollowStore } from '../infrastructure/profile/d1-follow-store.ts';
 import { D1ProfileStore } from '../infrastructure/profile/d1-profile-store.ts';
@@ -75,5 +77,8 @@ export const PROFILE_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<UserLifecycleSyncHandler>(
       PROFILE_TYPES.ProfileWithdrawalSyncHandler,
     ).to(ProfileWithdrawalSyncHandler);
+    bind<ScheduledJobHandler>(PROFILE_TYPES.OrphanedFileSweepJob).to(
+      OrphanedFileSweepJob,
+    );
   }),
 };
