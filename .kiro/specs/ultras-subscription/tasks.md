@@ -234,7 +234,7 @@
   - _Boundary: `docs/GUIDES/service/overview/002-pricing-and-plans.md`・`007-daily-timeline.md`・`legal/004-legal-notice-outline.md`・`legal/001-compliance-policy.md`・`features/005-ultras-subscription.md`・`features/README.md`_
   - _Requirements: 13.4, 13.5_
 
-- [ ] 10. 検証
+- [x] 10. 検証
 - [x] 10.1 E2Eテストで料金ページ・プラン管理画面・管理画面のフラグを確かめる
   - `e2e/client/ultras.e2e.test.ts`: 各テストの直前に、admin-foundationが`e2e/support/local-d1.ts`に用意する補助(`executeLocalD1`。文字列の値は`sqlStringLiteral`でリテラルにする)で機能フラグの行を更新して値を設定し(本specはローカルのD1へ書き込む手順を独自に作らない)、未ログインの料金ページの特典(価格は開発者の準備が済んでいれば価格、無ければ表示できない旨の案内)、フラグがオフで未加入者にUltrasの区画が出ないこと、ログイン後のプラン管理画面とナビゲーションの項目を確かめる。加入の経路はpaymentsのE2E(`e2e/client/checkout.e2e.test.ts`)と同じ条件で動かし、`stripe listen`の転送を前提にしない。加入の開始が`payments_unavailable`(Stripeのキーが無い環境)を返したとき、または価格を照会できず加入のボタンが無効のとき(`price_unavailable`)に`test.skip`で対象外の理由を示して飛ばし、それ以外はテストカードでの加入→決済後のランディング(paymentsの`return_url`の反映で加入が有効になる)→プラン管理画面の`active`→「解約・支払い方法の管理」でPortalのURLへ移るまでを確かめる。決済の画面の操作はpaymentsの`e2e/client/checkout-steps.ts`の手順を使う。加入の経路はローカルD1に`active`な加入を残す(2回目の実行で`ultras_already_subscribed`になる)ため、実行ごとに`e2e/client/auth/account-steps.ts`の`createTestAccount`・`registerAccount`・`verifyEmailFromMail`で新しい確認済みの利用者(メールアドレスのドメインは`.example`)を登録して使う。sandbox上にも定期課金が残る(実行のたびに増える。不要になったらダッシュボードで解約する)旨をテストの説明に書き添える
   - `e2e/admin/ultras-promotion.e2e.test.ts`: admin-foundationが`e2e/support/admin-bootstrap.ts`に用意する補助(招待の発行・招待の完了・指定したロールの管理者としてのログインをまとめたもの)で最上位管理者としてログインし(本specは管理者のログインの手順を独自に作らない)、その管理者がフラグを切り替え、監査ログの画面に記録が出ることを確かめ、終了時に元の値へ戻す
@@ -246,7 +246,7 @@
   - _Depends: 1.4, 7.4, 8.2_
   - _Requirements: 1.1, 1.7, 5.2, 5.8, 6.2, 9.1, 9.4, 9.6, 10.2_
 
-- [ ] 10.2 sandboxで定期課金の遷移を手動で検証し、結果を記録する
+- [x] 10.2 sandboxで定期課金の遷移を手動で検証し、結果を記録する
   - 1.4の手順に沿って、2人の検証用の利用者を用意し、それぞれにtest clock付きのCustomerをdev用のsandboxで作り、ローカルの`payment_customers`の行(paymentsの決定で主キーは`id`のULIDになり、`user_id`・`stripe_customer_id`は一意、`created_at`・`updated_at`が要る)で結び付けてから加入する(同じ利用者で2つ目の加入を始めると`ultras_resume_in_portal`や加入の有効化の重なりの検査で拒否されるため)
   - 1人目: 成功するテストカードで加入→Customer Portalで支払い方法を請求に失敗するテストカード(`4000 0000 0000 0341`)に差し替える→test clockを次の更新日の後へ進めて支払いの失敗→再試行の後の終了。2人目: 加入→Portalでの解約の予約(解約の予定時刻が設定されること)→取り消し→再度の予約→課金期間の末日の終了。各時点のプラン管理画面の状態・支払いの失敗と解約の受付のメールのMailpitへの到着を確かめる(本サービス固有の期待値は本タスクと`features/005`が持つ)
   - test clockではStripeから届く`ended_at`・課金期間の終了が実時刻より未来のため、再試行が尽きた後の終了と末日の終了は、どちらもプラン管理画面では`canceled`に見えるのが正しい。終了はローカルD1の値で確かめる: 1人目は`benefit_ends_at`が`ended_at`の値、2人目は`benefit_ends_at`が末日の終わり、どちらも`stripe_status`が`canceled`・`benefit_end_fixed`が1
@@ -254,7 +254,6 @@
   - 完了状態: 検証の結果(日時・状態・メールの有無)が作業の報告に記録され、食い違いがあれば不具合として報告されている
   - _Depends: 1.4, 10.1_
   - _Requirements: 2.4, 2.5, 2.6, 2.8, 6.3, 8.1, 8.3, 12.2_
-  - _Blocked: 開発者側のStripeの準備(1.4)が未完了。dev用sandboxに価格`ultras_monthly`が無いことを10.1のローカルのE2E(2026-11-08)で確認した(Stripeへの照会は成功し、価格が照会の結果に無い)。test clock付きのCustomerの作成・Customer Portalの設定・再試行の後の解約の設定も開発者の操作のため、準備が済んだ後に`features/005-ultras-subscription.md`の期待値の表に沿って実施する_
 
 - [x] 10.3 全体の検査とカバレッジを確かめる
   - 整形の検査・静的解析・型検査と、単体テスト・Workers統合テスト・ブラウザテストを一括で実行し、本specが追加・変更したファイルのカバレッジが80%以上であることを確かめる。ログとSentryへの送信に利用者のメールアドレス・ニックネームが含まれないことを検索で確かめる
@@ -296,3 +295,4 @@
 - 10.3: 一括検査(`bun run check`)とカバレッジ付きの3種の一括テストはすべて成功。`apps/api`の単体カバレッジで`lib/workers/logging/configure-logging.ts`は本specの`workers/ultras/*.unit.test.ts`5本(`recordLogs`が`ensureLoggingConfigured`を読む)だけが分母に入れるため、`ultras-notifier.unit.test.ts`の「Ultrasのロガーの伏せ字」で属性名による伏せ字の`action`を呼んで関数100%にした。同ファイルに関数を加えたらこのテストで呼ぶ(または読み込みを避ける)。本specのファイルのカバレッジは単体・Workers統合・ブラウザとも最小で関数90%(`portal-button.tsx`)・行94.12%、他は100%。ログ・Sentryの送信に利用者のメールアドレス・ニックネームを渡す箇所は無い(`captureException`・`captureMessage`の使用なし)。
 - 最終検証: 設計のFile Structure Planに無い実装ファイルとして、9.1の一覧に加えて`apps/backend-lib/workers/ultras/ultras-registrations.ts`(paymentsの登録箇所が読む登録の定義)・`apps/api/src/presentation/graphql/modules/ultras/mappers.ts`・`apps/common-lib/ultras/checkout-notes.ts`・`apps/api/src/application/ultras/promotion-setting-ports.ts`・`apps/backend-lib/workers/ultras/testing/ultras-store-fixtures.ts`・`apps/api/test/support/ultras-graphql-operations.ts`がある。`StripeSubscriptionStatus`は`core/payments`からの再エクスポート(設計は自前定義)。`.kiro/specs/inquiry-chat/design.md`は`RecoverableSlot`の旧パスを参照したまま。`e2e/client/ultras-steps.ts`はpaymentsの画面の定数(`checkout-messages.ts`・`checkout-return-rules.ts`)にも依存し、`ultras-plan-reader.ts`は`application/payments/checkout-view.ts`の`CheckoutMoney`型を読む(設計のAllowed Dependenciesに未記載)。いずれも設計の変更が境界外のため最終報告に挙げる。
 - 相違点の修正(2026-11-08): フィクスチャの`subscriptionIdOf`・`activationIdOf`・`noticeIdOf`をCrockfordのBase32の26文字(`01JC0SBSCRPTN…`・`01JC0ACTVTN…`・`01JC0NTC…`)に改め、`z.ulid()`を通るようにした(5.4の注記の対応)。単体テスト内の同形の生成も同じ形にそろえた。
+- 10.2: 開発者がdev用sandboxでStripeの準備(1.4の未完了分: 価格`ultras_monthly`、制限付きキーへのSubscriptions・Customer Portalの権限、Customer Portalの設定、再試行の後の解約、顧客向けメールの停止、ローカルの転送の署名の秘密)を終え、`features/005-ultras-subscription.md`の期待値の表に沿ったtest clockの手動検証と、加入の経路を含むUltrasのE2E(`--project 'ultras-*'`)を実施して完了を報告した(2026-11-08)。各時点の値・メールの到着・test clockと定期課金のIDの記録は開発者の作業の記録にある。ローカル環境の`STRIPE_PUBLISHABLE_KEY`は同じsandboxの公開キーに置き換えた。staging用sandboxの同じ準備は`main`へのマージ前、ライブモードは`prod`へのリリース前に行う。
