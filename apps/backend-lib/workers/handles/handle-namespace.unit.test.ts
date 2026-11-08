@@ -4,7 +4,10 @@ import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 import { users } from '../../../db/schema/identity/users.ts';
 import { userPreviousHandles } from '../../../db/schema/profile/user-previous-handles.ts';
-import { defineHandleNamespace } from './handle-namespace.ts';
+import {
+  defineHandleNamespace,
+  requirePreviousSource,
+} from './handle-namespace.ts';
 
 const VALID = {
   name: 'user',
@@ -127,5 +130,29 @@ describe('defineHandleNamespace', () => {
         },
       }),
     ).toThrow();
+  });
+});
+
+describe('requirePreviousSource', () => {
+  test('旧ハンドルを持たない対象にはundefinedを返す', () => {
+    const currentOnly = defineHandleNamespace({
+      name: VALID.name,
+      rule: VALID.rule,
+      current: VALID.current,
+    });
+
+    expect(requirePreviousSource(currentOnly)).toBeUndefined();
+  });
+
+  test('旧ハンドルの列に主キーと日時の列を足して返す', () => {
+    const source = requirePreviousSource(defineHandleNamespace(VALID));
+
+    expect(source?.table).toBe(userPreviousHandles);
+    expect(source?.ownerId).toBe(userPreviousHandles.ownerId);
+    expect(source?.handle).toBe(userPreviousHandles.handle);
+    expect(source?.deletedAt).toBe(userPreviousHandles.deletedAt);
+    expect(source?.id).toBe(userPreviousHandles.id);
+    expect(source?.createdAt).toBe(userPreviousHandles.createdAt);
+    expect(source?.updatedAt).toBe(userPreviousHandles.updatedAt);
   });
 });

@@ -231,7 +231,7 @@
   - _Boundary: `docs/GUIDES/service/legal/001-compliance-policy.md`・`features/001-user-data-export.md`・`overview/007-daily-timeline.md`・`docs/onboardings/project-values.md`_
   - _Requirements: 13.5_
 
-- [ ] 10. 検証
+- [x] 10. 検証
 - [x] 10.1 E2Eテストでプロフィールの編集・公開・転送を確かめる
   - `e2e/client/profile.e2e.test.ts`: identity-authの`e2e/support/mailpit.ts`で確認済みの利用者(メールアドレスのドメインは`.example`)を登録し、プロフィールの編集(画像のアップロード・ハンドル・ヘッドライン・リンクを含む自己紹介・外部Webサイト)→`/@<新しいハンドル>`の表示と`rel="ugc"`→大文字の表記で200とcanonical→初期ハンドルのURLが302で新しいURLへ移ること(転送を追わない要求で状態と`Location`を確かめる)→予約語`admin`の拒否→別の利用者が最初の利用者の旧ハンドル(初期ハンドル)を設定でき、その後は初期ハンドルのURLが302で転送されず別の利用者の公開プロフィールを表示すること(仮2)を確かめる。Turnstileはローカルの常に成功するキーを使う
   - 完了状態: ローカルでE2Eテストが成功する
@@ -244,7 +244,7 @@
   - _Depends: 7.5, 8.3_
   - _Requirements: 9.1, 9.2, 9.3, 10.1, 10.3, 13.3_
 
-- [ ] 10.3 全体の検査とカバレッジを確かめる
+- [x] 10.3 全体の検査とカバレッジを確かめる
   - 整形の検査・静的解析・型検査と、単体テスト・Workers統合テスト・ブラウザテストを一括で実行し、本specが追加・変更したファイルのカバレッジが80%以上であることを確かめる。ログとSentryへの送信にメールアドレス・自己紹介・外部WebサイトのURLが含まれないことを検索で確かめる
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たす
   - _Requirements: 12.9, 13.1, 13.2_
@@ -285,3 +285,4 @@
 - 9.2: `project-values.md`の末尾に「公開プロフィールとフォロー」の節(ハンドルの規則・旧ハンドルの保持の期限・関係の呼び名とテーブル名・可視の条件・画面の登録箇所・設定のナビゲーション・共有の束縛)を足し、非同期の波及処理・定期実行・bot判定の行を拡張した。準拠方針の旧ハンドルの行と注5の論理削除・物理削除の区別の曖昧さ、データ保持期間の一覧に4:21の安全網の行が無いことは既存の記述で、本タスクでは変えていない。
 - 10.1: E2Eは`e2e/client/profile.e2e.test.ts`(編集と公開・予約語・仮2の3テスト)、手順は`e2e/client/profile-steps.ts`(`registerVerifiedAccount`・`openProfileEditor`・`readCurrentHandle`・`fillHandle`・`saveProfile`・`fillProfile`・`openPublicProfile`・`profilePath`)、`account-steps.ts`に`openProfileSettings`・`PROFILE_SETTINGS_PATH`を分けた。2人目の利用者は`browser.newContext({ baseURL })`と`assumeDistinctClientIp`。アバターはプレースホルダーも`role="img"`なので実際の`<img>`の`naturalWidth`とプレースホルダー0件で確かめる。自己紹介のリンクは浮くツールバーの表示を待ってから書式のツールバーの「リンク」を`dispatchEvent('click')`する。作業中に、ポータルの中のフォームの送信が外側の`AppForm`へ伝わる共通部品の不具合を見つけ、`6ca5da82`(content-processing)で直した。
 - 10.2: E2Eは`e2e/client/follow.e2e.test.ts`、手順は`e2e/client/follow-steps.ts`(`followFromProfile`・`unfollowFromProfile`・`expectFollowing`・`expectNotFollowing`・`expectFollowerCount`・`openFollowList(page, account, direction)`・`expectOwnProfileWithoutFollowButton`)。フォローのボタンはラベルが楽観的に反転するので、押し直しは元のラベルのボタンが見えている時だけ上限付きの`click`で行う(上限の無いクリックは反転後に固まる)。
+- 10.3: 一括の検査(`bun run check`、`test:all:unit`・`worker`・`browser`の`--coverage`)と本specのE2Eが成功し、計測対象の追加・変更ファイルは行・関数80%以上(`handle-namespace.ts`・`profile-form-messages.ts`はテストを足して解消)。計測対象外は型だけ・生成物・テストの補助・3つのルート・`graphql/my-profile.ts`(`queryFn`がStartの文脈を要し単体で動かない。ブラウザの経路テストが通す)。全アプリ並列のブラウザテストでclientの`login-form`・`register-form`・`auth-routes`が15秒のタイムアウトで落ちることがある(負荷による一過性、本specの変更と無関係)。

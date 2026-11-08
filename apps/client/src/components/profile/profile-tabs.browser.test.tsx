@@ -1,5 +1,6 @@
 import { use, useId } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { render } from 'vitest-browser-react';
 import { page, userEvent } from 'vitest/browser';
 
 import '../../styles.css';
@@ -19,6 +20,7 @@ import {
   renderPublicProfilePage,
   tabOf,
 } from './public-profile-page-testing.tsx';
+import { ProfileTabs } from './profile-tabs.tsx';
 
 vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
   executeGraphQL: vi.fn(),
@@ -112,6 +114,25 @@ describe('ProfileTabs', () => {
     await expect
       .element(tabNamed('ローンチ履歴'))
       .toHaveTextContent(/^ローンチ履歴$/);
+  });
+
+  test('登録されたタブが0件なら何も描かない', async () => {
+    const { container } = await render(
+      <ProfileTabs
+        tabs={[]}
+        context={{
+          handle: 'maker_ai',
+          nickname: 'AIの作り手',
+          isOwner: false,
+          suspended: false,
+        }}
+        tab={undefined}
+        onTabChange={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
+    expect(container.textContent).toBe('');
   });
 
   test('選択中のタブのパネルだけを描く', async () => {
@@ -237,6 +258,21 @@ describe('ProfileTabs', () => {
       await expect
         .element(page.getByText('Upvote履歴の長い一覧'))
         .toBeVisible();
+    });
+
+    test('視差効果を減らす設定が無ければ、滑らかにタブの位置まで表示を戻す', async () => {
+      await emulateReducedMotion('no-preference');
+      await renderPublicProfilePage(publicProfileOf(), { tabs: TABS });
+      await expect.element(tabList()).toBeVisible();
+      const restingTop = tabList().element().getBoundingClientRect().top;
+      window.scrollTo(0, 1000);
+      await expect.poll(() => window.scrollY).toBe(1000);
+
+      await userEvent.click(tabNamed(/Upvote履歴/));
+
+      await expect
+        .poll(() => window.scrollY)
+        .toBeCloseTo(restingTop - SITE_HEADER_PX, 0);
     });
 
     test('追従していない状態で切り替えてもスクロールしない', async () => {
