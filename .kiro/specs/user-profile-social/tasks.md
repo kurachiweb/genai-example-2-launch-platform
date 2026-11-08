@@ -98,7 +98,7 @@
   - _Depends: 2.2, 3.4, 4.1_
   - _Requirements: 9.3, 9.4, 9.6, 9.7, 10.2, 10.4, 10.7_
 
-- [ ] 5. APIサーバーのGraphQLと上流への組み込み
+- [x] 5. APIサーバーのGraphQLと上流への組み込み
 - [x] 5.1 利用者の表示の共通の型と一括の読み込みを作る
   - 先に、Workers統合テストで、利用者の表示の型(ハンドル・ニックネーム・画像)を、可視の利用者だけを一括で引く読み込みで返し、可視でない利用者でnull、画像が隔離中・未設定で`objectKey`がnullになることを、テスト用の項目から確かめる
   - スキーマモジュール`profile`の土台(型の定義・エラーの定義・空のリゾルバの表)を作ってスキーマモジュールの一覧へ加え、利用者の表示の型・一括の読み込み・画像の項目のリゾルバを、後続specが自分の型の項目から返せる形で公開する
@@ -127,7 +127,7 @@
   - _Depends: 3.4_
   - _Requirements: 12.1_
 
-- [ ] 5.5 退会の同期の波及処理を作る
+- [x] 5.5 退会の同期の波及処理を作る
   - 先に、Workers統合テストで、identity-authの退会の確定と同じ一括の書き込みで、利用者の旧ハンドルとその利用者に関するフォロー(両方向)が論理削除され、旧ハンドルでの転送が止まり、その旧ハンドルを他の利用者が設定すると行が物理削除されることを確かめる(仮2)
   - 波及処理の識別子と束縛をapiのプロフィールの識別子の一覧とモジュールへ加え、`user-profile-social.withdrawal`を同期の波及処理の登録箇所へ加える。利用者IDを条件にした集合の更新の文だけを返す
   - 完了状態: Workers統合テストが成功し、退会の確定の競合で波及処理の文も取り消される
@@ -269,3 +269,4 @@
 - 5.2: `publicProfile`・`myProfile`・`handleAvailability`・`updateMyProfile`は`modules/profile/profile-resolvers.ts`、入力は`inputs.ts`(zod、共有の定数と`check*`から組み立て)、違反の文言は`errors.ts`の`INPUT_MESSAGES`(ニックネームは`modules/identity/errors.ts`の文言を再利用)、`clientOnly`・`assertHuman`・`PROFILE_BOT_ACTIONS`(`profile_update`)は`resolver-support.ts`。順序は呼び出し元→引数→`requireWritableUser`→`assertHuman`→ユースケース。`PublicProfile`・`PublicProfileRedirect`・`MyProfile`は`codegen.config.ts`の`mappers`に登録。テストの補助は`test/support/profile-graphql-operations.ts`の`installProfileGraphQLTest`。8.1のフォームは`INPUT_MESSAGES`と同じ文言を共有の上限から組み立て、apiの文言と一致することを確かめる単体テストを置く(文言は005の第3の方式で各アプリが持つ)。5.3は`follow`の`assertHuman`を`resolver-support.ts`に足し、`follow-resolvers.ts`を`index.ts`でマージする。
 - 5.3: `followUser`・`unfollowUser`・`myFollowing`・`myFollowers`は`modules/profile/follow-resolvers.ts`、引数は`follow-inputs.ts`(`FOLLOW_LIST_MAX_PAGE_SIZE`(20)、`followListPositionOf`、`after`は256文字を超えると`after`の欄の`validation_error`、256文字以内の不正は`invalid_cursor`)。`first`の範囲外の文言は「表示する件数は1〜20件の整数で指定してください。」。`FollowEntry.followedAt`は`DateTime`(ISO 8601)。テストで25件以上のフォローを入れるときはD1の束縛の上限のため10件ずつ`insert`する。
 - 5.4: `ProfileInquirerProfiles`(`apps/api/src/infrastructure/profile/profile-inquirer-profiles.ts`、`findSummaries(ids, 'including-withdrawn')`の詰め替え)を`PROFILE_TYPES.ProfileInquirerProfiles`に束縛し、`inquiry-module.ts`の`INQUIRY_TYPES.InquirerProfiles`は`toService`で転送する。`inquiry-module.ts`は`PROFILE_MODULE`と`PROFILE_PLATFORM_MODULE`が`MODULES`に載る前提で、inquiryだけの小さなコンテナのテストには両方を足す。inquiryのGraphQLの統合テストのハーネスは後片付けで`user_profiles`を先に消す。
+- 5.5: `ProfileWithdrawalSyncHandler`(`apps/api/src/infrastructure/profile/profile-withdrawal-sync-handler.ts`、`withdrawn`だけで`previousHandleSoftDelete`と`user_follows`の両方向の論理削除の2文)を`PROFILE_TYPES.ProfileWithdrawalSyncHandler`に束縛し、`user-lifecycle-sync-handlers.ts`の`user-profile-social.withdrawal`に登録した(inquiryの後)。退会の統合テストは`profile-module.worker.test.ts`。`user_profiles`の行を作るテストでは後始末で`user_profiles`を先に消す。

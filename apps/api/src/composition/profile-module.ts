@@ -40,6 +40,8 @@ import { D1FollowStore } from '../infrastructure/profile/d1-follow-store.ts';
 import { D1ProfileStore } from '../infrastructure/profile/d1-profile-store.ts';
 import { ProfileInquirerProfiles } from '../infrastructure/profile/profile-inquirer-profiles.ts';
 import { D1PublicProfileStore } from '../infrastructure/profile/d1-public-profile-store.ts';
+import { ProfileWithdrawalSyncHandler } from '../infrastructure/profile/profile-withdrawal-sync-handler.ts';
+import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 
 // ファイル(MEDIA_TYPES)・時計とID生成(PLATFORM_TYPES)・閲覧者の確認(IDENTITY_PLATFORM_TYPES)・ハンドルの解決(PROFILE_PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)は各機能の共通の束縛を使う
 export const PROFILE_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
@@ -70,5 +72,8 @@ export const PROFILE_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<FollowListReader>(PROFILE_TYPES.FollowListReader).to(
       StoreFollowListReader,
     );
+    bind<UserLifecycleSyncHandler>(
+      PROFILE_TYPES.ProfileWithdrawalSyncHandler,
+    ).to(ProfileWithdrawalSyncHandler);
   }),
 };

@@ -30,6 +30,10 @@ const ProfileInquirerProfiles: unique symbol = Symbol.for(
   'profile.ProfileInquirerProfiles',
 );
 
+const ProfileWithdrawalSyncHandler: unique symbol = Symbol.for(
+  'profile.ProfileWithdrawalSyncHandler',
+);
+
 export const PROFILE_TYPES = Object.freeze({
   ProfileStore,
   ProfileEditor,
@@ -42,4 +46,5 @@ export const PROFILE_TYPES = Object.freeze({
   FollowService,
   FollowListReader,
   ProfileInquirerProfiles,
+  ProfileWithdrawalSyncHandler,
 });

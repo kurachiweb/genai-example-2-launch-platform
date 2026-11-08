@@ -13,7 +13,10 @@ import {
 import { userFollows } from '../../db/schema/follow/user-follows.ts';
 import { users } from '../../db/schema/identity/users.ts';
 import { userPreviousHandles } from '../../db/schema/profile/user-previous-handles.ts';
+import { userProfiles } from '../../db/schema/profile/user-profiles.ts';
 import { MEDIA_TYPES } from '../../lib/core/media/identifiers.ts';
+import { resolveHandle } from '../../lib/workers/handles/handle-queries.ts';
+import { USER_HANDLE_NAMESPACE } from '../../lib/workers/profile/user-handle-namespace.ts';
 import type { UploadPurposeRegistry } from '../../lib/core/media/upload-purpose.ts';
 import type { CurrentUser } from '../../lib/core/identity/account-guard.ts';
 import type { SessionView } from '../../lib/core/session/session-view.ts';
@@ -37,7 +40,11 @@ import {
 import { clearProfilePlatformTables } from '../../lib/workers/profile/testing/profile-platform-fixtures.ts';
 import { callInternal } from '../../test/support/gateway-test-harness.ts';
 import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
-import type { HandleAvailability } from '../application/identity/ports.ts';
+import type {
+  HandleAvailability,
+  UserLifecycleCommitter,
+} from '../application/identity/ports.ts';
+import { planProfileEdit } from '../domain/profile/profile-edit-plan.ts';
 import type { InquirerProfiles } from '../application/inquiry/ports.ts';
 import type { SessionIssuer } from '../application/identity/session-issuer.ts';
 import {
@@ -71,6 +78,8 @@ import { D1FollowStore } from '../infrastructure/profile/d1-follow-store.ts';
 import { D1ProfileStore } from '../infrastructure/profile/d1-profile-store.ts';
 import { ProfileInquirerProfiles } from '../infrastructure/profile/profile-inquirer-profiles.ts';
 import { D1PublicProfileStore } from '../infrastructure/profile/d1-public-profile-store.ts';
+import { ProfileWithdrawalSyncHandler } from '../infrastructure/profile/profile-withdrawal-sync-handler.ts';
+import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { GATEWAY_HEADERS } from '../presentation/gateway/gateway-headers.ts';
 import { HANDLE_AVAILABILITY } from './identity-registrations.ts';
 import { MODULES } from './modules.ts';
@@ -131,6 +140,7 @@ async function issueUserSession(userIndex: number): Promise<string> {
 beforeEach(async () => {
   await db.delete(userPreviousHandles);
   await db.delete(userFollows);
+  await db.delete(userProfiles);
   await clearUltrasTables();
   await clearProfilePlatformTables();
 });
@@ -186,6 +196,14 @@ describe('APIサーバーのプロフィールのモジュールの束縛', () =
         PROFILE_TYPES.ProfileInquirerProfiles,
       ),
     ).toBeInstanceOf(ProfileInquirerProfiles);
+  });
+
+  test('退会の同期の波及処理は、処理単位のコンテナでProfileWithdrawalSyncHandlerに解決する', () => {
+    expect(
+      createContainer().get<UserLifecycleSyncHandler>(
+        PROFILE_TYPES.ProfileWithdrawalSyncHandler,
+      ),
+    ).toBeInstanceOf(ProfileWithdrawalSyncHandler);
   });
 
   test('初期ハンドルの判定は、プロフィールの識別子と登録箇所の識別子とidentity-authの識別子の3経路でUserHandleAvailabilityに解決する', () => {
@@ -503,5 +521,143 @@ describe('フォローと自分の一覧(実物の束縛)', () => {
     const state = await service.unfollow(owner, 'target');
 
     expect(state.following).toBe(false);
+  });
+});
+
+describe('退会の同期の波及処理の登録', () => {
+  const TARGET = 3;
+  const WITHDRAWN_AT = new Date('2026-11-05T01:00:00.000Z');
+  const FOLLOW_IDS = [
+    '01JC0FLW000000000000000001',
+    '01JC0FLW000000000000000002',
+    '01JC0FLW000000000000000003',
+  ] as const;
+
+  beforeEach(async () => {
+    await insertUser(OWNER, { handle: 'Owner0Handle1', nickname: 'オーナー' });
+    await insertUser(OTHER, { handle: 'other0handle', nickname: '他人' });
+    await insertUser(TARGET, { handle: 'Target', nickname: 'ターゲット' });
+    await insertPreviousHandle(TARGET, 'target-old');
+    await db.insert(userFollows).values([
+      {
+        id: FOLLOW_IDS[0],
+        followerId: userIdOf(TARGET),
+        followeeId: userIdOf(OWNER),
+        createdAt: T0,
+        updatedAt: T0,
+      },
+      {
+        id: FOLLOW_IDS[1],
+        followerId: userIdOf(OTHER),
+        followeeId: userIdOf(TARGET),
+        createdAt: T0,
+        updatedAt: T0,
+      },
+      {
+        id: FOLLOW_IDS[2],
+        followerId: userIdOf(OWNER),
+        followeeId: userIdOf(OTHER),
+        createdAt: T0,
+        updatedAt: T0,
+      },
+    ]);
+  });
+
+  const withdraw = (expectedVersion: number) =>
+    createContainer()
+      .get<UserLifecycleCommitter>(IDENTITY_TYPES.UserLifecycleCommitter)
+      .commit({
+        kind: 'withdraw',
+        userId: userIdOf(TARGET),
+        expectedVersion,
+        at: WITHDRAWN_AT,
+      });
+
+  const readFollowDeletion = async () => {
+    const rows = await db
+      .select({ id: userFollows.id, deletedAt: userFollows.deletedAt })
+      .from(userFollows);
+    return rows.toSorted((a, b) => a.id.localeCompare(b.id));
+  };
+
+  const readPreviousDeletion = async () =>
+    db
+      .select({
+        handle: userPreviousHandles.handle,
+        deletedAt: userPreviousHandles.deletedAt,
+      })
+      .from(userPreviousHandles);
+
+  test('退会の確定で、旧ハンドルと両方向のフォローが同じ一括の書き込みで論理削除される', async () => {
+    await withdraw(0);
+
+    expect(await readPreviousDeletion()).toEqual([
+      { handle: 'target-old', deletedAt: WITHDRAWN_AT },
+    ]);
+    expect(await readFollowDeletion()).toEqual([
+      { id: FOLLOW_IDS[0], deletedAt: WITHDRAWN_AT },
+      { id: FOLLOW_IDS[1], deletedAt: WITHDRAWN_AT },
+      { id: FOLLOW_IDS[2], deletedAt: null },
+    ]);
+  });
+
+  test('退会した利用者の旧ハンドルでの転送は止まる', async () => {
+    expect(
+      await resolveHandle(db, USER_HANDLE_NAMESPACE, 'target-old'),
+    ).toEqual({ kind: 'previous', ownerId: userIdOf(TARGET) });
+
+    await withdraw(0);
+
+    expect(
+      await resolveHandle(db, USER_HANDLE_NAMESPACE, 'target-old'),
+    ).toEqual({ kind: 'none' });
+  });
+
+  test('退会した利用者の旧ハンドルを他の利用者が設定すると、その行は物理削除される', async () => {
+    await withdraw(0);
+
+    const result = await createContainer()
+      .get<ProfileStore>(PROFILE_TYPES.ProfileStore)
+      .save({
+        userId: userIdOf(OWNER),
+        expectedHandle: 'Owner0Handle1',
+        nickname: 'オーナー',
+        plan: planProfileEdit(
+          { handle: 'Owner0Handle1', avatarFileId: null },
+          { handle: 'target-old', avatarFileId: null },
+        ),
+        handle: 'target-old',
+        headline: null,
+        bioMarkdown: null,
+        avatarFileId: null,
+        websites: [],
+        now: new Date('2026-11-06T00:00:00.000Z'),
+      });
+
+    expect(result).toBe('saved');
+    const previous = await db
+      .select({
+        ownerId: userPreviousHandles.ownerId,
+        handle: userPreviousHandles.handle,
+      })
+      .from(userPreviousHandles);
+    expect(previous).toEqual([
+      { ownerId: userIdOf(OWNER), handle: 'Owner0Handle1' },
+    ]);
+  });
+
+  test('読み取った版が古い退会は確定せず、旧ハンドルとフォローの論理削除も取り消される', async () => {
+    await expect(withdraw(1)).rejects.toMatchObject({
+      code: 'account_state_conflict',
+    });
+
+    expect(await readPreviousDeletion()).toEqual([
+      { handle: 'target-old', deletedAt: null },
+    ]);
+    expect(await readFollowDeletion()).toEqual([
+      { id: FOLLOW_IDS[0], deletedAt: null },
+      { id: FOLLOW_IDS[1], deletedAt: null },
+      { id: FOLLOW_IDS[2], deletedAt: null },
+    ]);
   });
 });
