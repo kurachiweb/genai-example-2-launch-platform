@@ -187,7 +187,9 @@ apps/
 │   └── index.ts
 ├── common-lib/ultras/                                  # 4アプリ共通の定義(各ファイルに同名の*.unit.test.ts)
 │   ├── plan-status.ts                                  # ULTRAS_PLAN_STATUSES・表示名・ULTRAS_PRICE_LOOKUP_KEY
-│   └── promotion-flag.ts                               # ULTRAS_PROMOTION_FLAG_KEY・初期値(仮2)
+│   ├── promotion-flag.ts                               # ULTRAS_PROMOTION_FLAG_KEY・初期値(仮2)
+│   ├── checkout-notes.ts                               # 最終確認画面の追加事項の4文・毎月の請求額の表記(en-US固定)・価格が無いときの自動更新の文(ultrasCheckoutNotesOf・ultrasBenefitNotesOf)
+│   └── portal-texts.ts                                 # Customer Portalの縮退の理由の文(ULTRAS_PORTAL_UNAVAILABLE_REASON)
 ├── common-lib/admin/audit-actions/ultras-subscription.ts # ultras-promotion.update
 ├── backend-lib/
 │   ├── core/ultras/                                    # api・eventのapplication層と後続specが読み込む契約と純粋な規則(Bunの単体テスト。Database・BatchItemを読み込まない)
@@ -212,7 +214,9 @@ apps/
 │       ├── activation-dispatcher.ts                    # ActivationDispatcherの実装(知らせの送り出しとdispatched_atの記録)
 │       ├── ultras-notifier.ts                          # UltrasNotifierの実装(メールの依頼とrequestedの記録)
 │       ├── ultras-plan-export.ts                       # データエクスポート用のplan
-│       └── ultras-platform-module.ts                   # createUltrasPlatformModule(appName)(両アプリ共通の束縛)
+│       ├── ultras-registrations.ts                     # paymentsの登録箇所(purchase-kind-registrations.ts)が読む購入種別ultrasと受け取り口ultras-subscription.plan-stateの登録の定義
+│       ├── ultras-platform-module.ts                   # createUltrasPlatformModule(appName)(両アプリ共通の束縛)
+│       └── testing/ultras-store-fixtures.ts            # Workers統合テストのフィクスチャ(表の初期化・行の組み立て・IDの生成。identity/paymentsの補助の再公開)
 ├── api/src/
 │   ├── application/ultras/                             # Bunの単体テスト(core/ultras・core/paymentsの契約の偽物と偽のポートで)
 │   │   ├── ultras-types.ts                             # API_ULTRAS_TYPES(前例payments-types.ts)
@@ -221,6 +225,7 @@ apps/
 │   │   ├── ultras-checkout.ts                          # startUltrasCheckout(CheckoutStarterを呼ぶ)
 │   │   ├── portal-ports.ts                             # PortalSessionLimits(回数制限のポート、仮4。前例checkout-ports.ts)
 │   │   ├── portal-session-starter.ts                   # Portalのセッションの作成
+│   │   ├── promotion-setting-ports.ts                  # PromotionSettingReader・PromotionSettingWriter(フラグの読み書きのポート)
 │   │   ├── promotion-setting-service.ts                # フラグの照会・変更(監査ログ)
 │   │   └── jobs/pending-dispatch-sweep-job.ts          # 4:21の送り出し直しと後始末(order 500)
 │   ├── infrastructure/ultras/d1-promotion-setting-writer.ts # 版の検査付きの変更と監査ログの文
@@ -229,9 +234,11 @@ apps/
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts
 │   │   ├── errors.ts
+│   │   ├── mappers.ts                                  # application層のビューからGraphQLの型への写像(加入状態の小文字→enumの大文字など)
 │   │   ├── resolvers.ts
 │   │   └── index.ts                                    # ultrasSchemaModule
-│   └── composition/ultras-module.ts                    # apiの束縛
+│   ├── composition/ultras-module.ts                    # apiの束縛
+│   └── test/support/ultras-graphql-operations.ts       # GraphQLのWorkers統合テストの補助(利用者・管理者の用意と操作の送信)
 ├── event/src/
 │   ├── application/ultras/                             # Bunの単体テスト
 │   │   ├── event-ultras-types.ts                       # EVENT_ULTRAS_TYPES
@@ -247,9 +254,16 @@ apps/
 │   ├── routes/pricing.tsx                              # /pricing(ログイン不要)
 │   ├── routes/_authenticated/settings/plan.tsx         # /settings/plan
 │   ├── composition/pricing-sections.ts                 # PRICING_SECTIONS(sponsorshipが追記)
+│   ├── graphql/ultras.ts                               # 取得の補助(ultrasOfferQueryOptions・viewerUltrasQueryOptions・loadPlanPage)と加入状態のenumの小文字への写像(toUltrasPlanStatus)
 │   ├── components/ultras/                              # 1ファイル1コンポーネント(browser testを併置)
+│   │   ├── ultras-messages.ts                          # Ultrasの区画・加入ボタンの文言(前例payments/checkout-messages.ts)
+│   │   ├── pricing-messages.ts                         # 料金ページの題名・説明・法的通知の文
+│   │   ├── plan-messages.ts                            # プラン管理画面・Portalのボタン・反映待ちの文言
+│   │   ├── plan-search.ts                              # /settings/planの検索パラメータportal=returnedの検証
+│   │   ├── portal-return-rules.ts                      # 反映待ちの確かめ直しの間隔・上限・回数の判定
 │   │   ├── pricing-page.tsx                            # 区画の並び(区画ごとにRecoverableSlotで包む)と法的通知へのリンク
 │   │   ├── ultras-pricing-section.tsx                  # 料金ページのUltrasの区画
+│   │   ├── ultras-price-line.tsx                       # 月額の価格の行(照会できなければ「現在表示できません」。料金ページとプラン管理画面で共用)
 │   │   ├── ultras-benefit-list.tsx                     # 特典と条件の一覧
 │   │   ├── ultras-subscribe-button.tsx                 # 加入ボタン(未ログイン・未確認・不可の出し分け)
 │   │   ├── plan-status-panel.tsx                       # 加入状態ごとの表示
@@ -257,22 +271,28 @@ apps/
 │   │   ├── portal-return-notice.tsx                    # Portalから戻った直後の反映待ち
 │   │   ├── plan-page.tsx                               # プラン管理画面の全体
 │   │   └── ultras-promotion-gate.tsx                   # 導線の表示の可否(後続specも使う)
-│   └── graphql/operations/ultras/                      # 1ファイル1操作の.graphql(操作名はClientで始める)
-│       ├── ultras-offer.graphql                        # ClientUltrasOffer(ultrasOffer)
-│       ├── viewer-ultras.graphql                       # ClientViewerUltras(viewerUltras)
-│       ├── start-ultras-checkout.graphql               # ClientStartUltrasCheckout(startUltrasCheckout)
-│       └── create-ultras-portal-session.graphql        # ClientCreateUltrasPortalSession(createUltrasPortalSession)
+│   ├── graphql/operations/ultras/                      # 1ファイル1操作の.graphql(操作名はClientで始める)
+│   │   ├── ultras-offer.graphql                        # ClientUltrasOffer(ultrasOffer)
+│   │   ├── viewer-ultras.graphql                       # ClientViewerUltras(viewerUltras)
+│   │   ├── start-ultras-checkout.graphql               # ClientStartUltrasCheckout(startUltrasCheckout)
+│   │   └── create-ultras-portal-session.graphql        # ClientCreateUltrasPortalSession(createUltrasPortalSession)
+│   └── test/plan-route.browser.test.tsx                # /settings/planの経路の配線(検索パラメータ・head・ナビゲーション・未ログインの誘導)のブラウザテスト(前例billing-route.browser.test.tsx)
 └── admin/src/
     ├── routes/_authenticated/settings/index.tsx        # /settings
     ├── composition/admin-settings-sections.ts          # ADMIN_SETTINGS_SECTIONS(tournament-year・notificationsが追記)
+    ├── graphql/admin-ultras-promotion.ts               # 取得の補助(adminUltrasPromotionSettingQueryOptions)と最後の変更の表示の写像(toPromotionLastChange)
     ├── components/pages/admin-settings-page.tsx        # 区画の並び(区画ごとにRecoverableSlotで包む)
+    ├── components/settings/settings-messages.ts        # 設定のページの題名と説明
+    ├── components/settings/admin-settings-sections-view.tsx # 区画をorder順に並べ、RecoverableSlotとSectionFallbackで包む
+    ├── components/layout/section-fallback.tsx          # 読み込み中と失敗の間に区画の見出しを補う枠(カテゴリの区画と共用)
+    ├── components/ultras/promotion-setting-messages.ts # フラグの区画の文言
     ├── components/ultras/promotion-setting-section.tsx # フラグの区画
     └── graphql/operations/ultras/                      # 1ファイル1操作の.graphql(操作名はAdminで始める)
         ├── ultras-promotion-setting.graphql            # AdminUltrasPromotionSetting(ultrasPromotionSetting)
         └── update-ultras-promotion-setting.graphql     # AdminUpdateUltrasPromotionSetting(updateUltrasPromotionSetting)
 ```
 
-テストは各ファイルの隣に置く(`*.unit.test.ts`・`*.worker.test.ts`・`*.browser.test.tsx`)。E2Eは`e2e/client/ultras.e2e.test.ts`・`e2e/admin/ultras-promotion.e2e.test.ts`。
+テストは各ファイルの隣に置く(`*.unit.test.ts`・`*.worker.test.ts`・`*.browser.test.tsx`)。E2Eは`e2e/client/ultras.e2e.test.ts`・`e2e/admin/ultras-promotion.e2e.test.ts`で、利用者側の手順は`e2e/client/ultras-steps.ts`に置く(管理者側のE2Eも機能フラグの書き換えにこの手順を使う)。
 
 ### Modified Files
 
