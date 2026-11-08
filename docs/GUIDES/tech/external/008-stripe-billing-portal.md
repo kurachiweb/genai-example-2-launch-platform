@@ -177,15 +177,15 @@ SDKの例外の分類は「[失敗の分類](007-stripe-payments.md#失敗の分
 
 test clockで時刻を進め、加入・支払いの失敗・再試行の後の終了・解約の予約と取り消し・課金期間の末の終了・退会と停止に伴う解約を確かめる。手順(test clockとCustomerの作成、対応の書き込み、時刻の進め方、後始末)は「[test clockによる検証の手順](../operations/004-payment-data-operations.md#test-clockによる検証の手順)」に従い、確かめる値は次のとおりである。
 
-| シナリオ                    | 届く通知                                                                      | 記録の期待                                                                                                                                  |
-| --------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| 加入                        | `checkout.session.completed`・`customer.subscription.created`・`invoice.paid` | 開始時刻が支払いの確定の時刻、外部の状態`active`、特典の終了時刻なし、加入が有効になった知らせの行が1つ(送り出し済み)                       |
-| 支払いの失敗                | `invoice.payment_failed`・`customer.subscription.updated`(`past_due`)         | 外部の状態`past_due`、支払いの失敗の時刻、支払いの失敗のメールの依頼が1件(再試行の間に増えない)                                             |
-| 再試行の後の終了            | `customer.subscription.deleted`(`canceled`、`ended_at`)                       | 特典の終了時刻が`ended_at`と同じ値、確定済み、予約なし                                                                                      |
-| 解約の予約(Customer Portal) | `customer.subscription.updated`(`cancel_at`)                                  | 予約あり、特典の終了時刻が`cancel_at`の1ミリ秒前を含む業務日付の日の終わり、解約の操作の時刻と出どころ`user`、解約の受付のメールの依頼が1件 |
-| 取り消し(Customer Portal)   | `customer.subscription.updated`(`cancel_at`が`null`)                          | 予約なし、特典の終了時刻なし、解約の操作の記録なし                                                                                          |
-| 課金期間の末の終了          | `customer.subscription.deleted`(`ended_at`が`cancel_at`以後)                  | 特典の終了時刻は予約の時に決めた値のまま、確定済み                                                                                          |
-| 退会・停止に伴う解約        | `customer.subscription.updated`・`deleted`                                    | 解約の操作の出どころ`withdrawal`・`suspension`、解約の受付のメールの依頼なし                                                                |
+| シナリオ                    | 届く通知                                                                      | 記録の期待                                                                                                                                                                           |
+| --------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 加入                        | `checkout.session.completed`・`customer.subscription.created`・`invoice.paid` | 開始時刻が支払いの確定の時刻、外部の状態`active`、特典の終了時刻なし、加入が有効になった知らせの行が1つ(送り出し済み)                                                                |
+| 支払いの失敗                | `invoice.payment_failed`・`customer.subscription.updated`(`past_due`)         | 外部の状態`past_due`、支払いの失敗の時刻、支払いの失敗のメールの依頼が1件(再試行の間に増えない)                                                                                      |
+| 再試行の後の終了            | `customer.subscription.deleted`(`canceled`、`ended_at`)                       | 特典の終了時刻が`ended_at`と同じ値、確定済み、予約なし                                                                                                                               |
+| 解約の予約(Customer Portal) | `customer.subscription.updated`(`cancel_at`)                                  | 予約あり、特典の終了時刻が`cancel_at`の1ミリ秒前を含む業務日付の日の終わり、解約の操作の時刻と出どころ`user`、解約の受付のメールの依頼が1件                                          |
+| 取り消し(Customer Portal)   | `customer.subscription.updated`(`cancel_at`が`null`)                          | 予約なし、特典の終了時刻なし、解約の操作の記録なし                                                                                                                                   |
+| 課金期間の末の終了          | `customer.subscription.deleted`(`ended_at`が`cancel_at`以後)                  | 特典の終了時刻は予約の時に決めた値のまま、確定済み                                                                                                                                   |
+| 退会・停止に伴う解約        | `customer.subscription.updated`・`deleted`                                    | 停止は解約の操作の出どころ`suspension`と操作の時刻を記録し、退会(即時の終了)は予約の出どころ`withdrawal`だけが残り解約の操作の時刻は記録しない。どちらも解約の受付のメールの依頼なし |
 
 - test clockの時刻はアプリの実時刻より先に進む。Stripeから届く`ended_at`と課金期間の終了は実時刻より未来になり、アプリは実時刻で加入状態を導くため、終了の後も画面は終了前の状態に見える。終了は画面ではなく、記録の特典の終了時刻・外部の状態・確定済みの印で確かめる。
 - 支払いの失敗は、成功するカードで加入した後にCustomer Portalで支払い方法をテストカード`4000 0000 0000 0341`(Customerへの紐付けは成功し、請求で失敗する)に差し替え、test clockを次の更新日の後へ進めて再現する。
