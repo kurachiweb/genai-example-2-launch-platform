@@ -35,7 +35,7 @@
   - 完了状態: 単体テストとWorkers統合テストが成功し、後続specが`users`・プロフィールのテーブルを読まずに表示用の情報とハンドルの解決を得られる。`core/profile`が`workers`・`apps/db`を読み込まない
   - _Requirements: 12.1, 12.2, 12.3_
 
-- [ ] 2.3 (P) データエクスポートと通知の照会を作る
+- [x] 2.3 (P) データエクスポートと通知の照会を作る
   - 先に、Workers統合テストで、プロフィールの出力の項目(ハンドル・ニックネーム・ヘッドライン・自己紹介・画像のID・外部Webサイト(名前が未入力なら空文字列)・更新日時(行が無ければ登録日時))と退会済みで空・停止中で返すこと、フォロー中の出力が可視の相手だけを新しい順で返しフォロワーを返さないこと、フォロワーの照会が可視のフォロワーだけをIDの順に上限件数ずつ返し続きを示すことを確かめる
   - 2.2で`core/profile/ports.ts`に作った契約のD1の実装(`workers/profile/d1-profile-export.ts`・`d1-follow-directory.ts`)を作る
   - 完了状態: Workers統合テストが成功し、データエクスポートの文書の`profile.json`・`follows.json`の項目に対応する
@@ -256,3 +256,4 @@
 - 1.3: 画面の文言の正は`docs/GUIDES/service/design/003-text-and-copy-rules.md`の「プロフィールとフォローの文言」の段落・エラーメッセージの表・「操作とナビゲーションの名前」の表(「その他の操作」「プロフィールの内容」「フォロー一覧」「Ultras加入中」など読み上げの名前を含む)、配置の正は`002-page-layouts.md`の「区画の登録と登録が無いときの表示」「プロフィール編集(`/settings/profile`)」「フォロー一覧(`/settings/follows`)」。外部WebサイトのURLが空の行は「外部WebサイトのURLを入力してください。」で拒否する前提。ハンドルが使える時の肯定の表示は作らない。`invalid_cursor`は管理画面の「一覧のページの位置の指定の誤り」、`first`の範囲外は「フォロー一覧の表示件数の指定の誤り」の文言。
 - 2.1: ハンドル基盤は`apps/backend-lib/workers/handles/`(`defineHandleNamespace`・`resolveHandle`・`isHandleOccupied`・`handleOccupiedCondition`・`previousHandleUpsert`・`previousHandleRelease`・`previousHandleSoftDelete`・`previousHandleDelete`)。`previous`には`deletedAt`が必須。使用中の`CASE`条件は`EXISTS`で、取り消しは`SET handle = CASE WHEN <cond> THEN NULL ELSE ? END`のNOT NULL違反で一括を巻き戻す。新しい文字列を保存する一括では、現在のハンドルの更新の後に`previousHandleRelease`を、`previousHandleUpsert`より前に置く。`previous`の無い対象では解放・論理削除・削除が無操作の文になりupsertは例外。テストの補助は`workers/handles/testing/handle-fixtures.ts`(`USER_NAMESPACE`など)。実物の`USER_HANDLE_NAMESPACE`は`activeCondition: isNull(users.deletedAt)`を渡す。
 - 2.2: 4つの照会口の契約は`apps/backend-lib/core/profile/ports.ts`、識別子は`core/profile/identifiers.ts`の`PROFILE_PLATFORM_TYPES`。`UserSummaryRecord`は画像を`avatarFileId`だけで返す(`objectKey`は5.1)。`resolveHandle`は旧ハンドルの一致で保有者の現在のハンドルを`user.handle`に返し(302の行き先)、停止中は`suspended: true`で返す(404の判断は呼び出し側)、退会済みは`none`。`USER_HANDLE_NAMESPACE`は`workers/profile/user-handle-namespace.ts`。apiのWorkers統合テストは`cd /workspace/apps/api && bun run test:worker -- lib/workers/profile`の相対指定で走らせる(絶対パスでは見つからない)。テストで`user_profiles`の行は`clearIdentityTables`の前に消す。
+- 2.3: `D1ProfileExport`(`workers/profile/d1-profile-export.ts`)と`D1FollowDirectory`(`d1-follow-directory.ts`、`FollowExport`と`FollowerDirectory`の両方を実装)。2.4では`D1FollowDirectory`を両方の識別子に束縛する。`listVisibleFollowerIds`の`after`・`next`はフォローのID、戻りの`followerIds`は利用者のIDで、上限件数が1〜500の整数でなければ`invalid_limit`の`bad_request`。テストで`user_follows`・`user_profile_websites`の行は`clearIdentityTables`の前に消す。
