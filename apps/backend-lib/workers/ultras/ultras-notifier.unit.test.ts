@@ -9,6 +9,8 @@ import type {
   UserContact,
   UserContactDirectory,
 } from '../../core/identity/ports.ts';
+import { getAppLogger } from '../../core/logging/app-logger.ts';
+import { REDACTED } from '../../core/logging/redaction.ts';
 import type { Clock } from '../../core/time/clock.ts';
 import type { NoticeStore, UltrasNoticeRow } from '../../core/ultras/ports.ts';
 import { ensureLoggingConfigured } from '../logging/configure-logging.ts';
@@ -522,5 +524,25 @@ describe('noticePayloadOf', () => {
       acceptedAt: '2026-11-05T10:15:30.000Z',
       benefitEndsAt: '2026-12-01T15:00:00.000Z',
     });
+  });
+});
+
+describe('Ultrasのロガーの伏せ字', () => {
+  test('emailという名前の属性は、値がメールアドレスの形でなくても属性名による伏せ字で[REDACTED]に置き換えてから出力する', () => {
+    const logs = recordLogs();
+
+    getAppLogger(['api', 'application', 'ultras']).warn('伏せ字の確認', {
+      email: '宛先',
+      noticeId: 'notice-1',
+    });
+
+    expect(logs).toMatchObject([
+      {
+        level: 'warning',
+        category: 'api.application.ultras',
+        email: REDACTED,
+        noticeId: 'notice-1',
+      },
+    ]);
   });
 });

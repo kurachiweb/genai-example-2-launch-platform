@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 共有の定義・テーブル・文言・開発用sandboxの準備
+- [x] 1. 基盤: 共有の定義・テーブル・文言・開発用sandboxの準備
 - [x] 1.1 加入状態・価格・機能フラグの共有定義と、監査ログの操作種別を作る
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-delivery・content-processing・media-pipeline・identity-auth・admin-foundation・legal-pages・inquiry-chat・paymentsの全タスクが完了していること(購入種別の口・定期課金の受け取り口とその確定後の呼び出し・定期課金の状態の変化の解約の予定時刻・購入確認メールの追加事項(paymentsのU1・U2、ultras-subscriptionの仮3・仮5)・`StripeGateway`・`CheckoutStarter`・`PriceCatalog`・`MoneyText`・設定ページのシェル・利用者の連絡先の照会(`UserContactDirectory`)・管理画面のシェルと監査ログ・E2Eの管理者のログインの補助(`e2e/support/admin-bootstrap.ts`))。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、加入状態の4値と表示名、特典を受けられる状態(有効・支払いの再試行中・解約済み)、価格の`lookup_key`(`ultras_monthly`)、機能フラグの鍵と初期値(オフ)、操作種別`ultras-promotion.update`(監査ログの画面の表示名は「Ultras導線の機能フラグの変更」、対象は設定、理由は任意、詳細は`enabled`だけ、対象は1件)の単体テストを書く。加入状態の値はデータエクスポートの`plan.status`と一致させる
@@ -32,7 +32,7 @@
   - _Boundary: `docs/GUIDES/tech/operations/004-payment-data-operations.md`の定期課金の節、`docs/onboardings/tech-stack.md`_
   - _Requirements: 6.3, 6.4, 8.10, 12.1, 12.2_
 
-- [ ] 2. 純粋な規則と契約
+- [x] 2. 純粋な規則と契約
 - [x] 2.1 特典の継続期間と加入状態の導出の規則、ポートの型を作る
   - 先に、業務日付の日の終わり(0:00ちょうど・0:00の1ミリ秒後・23:59:59.999の境界)、課金期間の終了時刻から特典の終了時刻を求める規則(終了が業務日付の0:00ちょうどなら前日の終わり)、加入状態の4状態と未有効の導出、時点の判定が左端を含み右端を含まないこと、期間の重なりの両端を、設計の境界の例でテストする
   - 先に、`core/ultras/identifiers.unit.test.ts`で、`ULTRAS_TYPES`の各値が`Symbol.for('ultras.<名前>')`であり、オブジェクトが凍結されていることを確かめる
@@ -63,7 +63,7 @@
   - _Depends: 1.3_
   - _Requirements: 8.1, 8.3, 8.6, 8.7_
 
-- [ ] 3. D1の実装と特典の判定
+- [x] 3. D1の実装と特典の判定
 - [x] 3.1 加入のストアを作る
   - 先に、ローカルD1を使うWorkers統合テストで、Stripe側の値の更新が有効化の列を上書きしないこと、有効化が既存の行のStripe側の値を保ったまま開始時刻・利用者・購入IDだけを書くこと(行が無ければ有効の状態で挿入)、別の加入を除いた時点の重なりの検索、90件を超える利用者の期間の重なりの一括の検索、最新の有効化された加入、終了していない加入の一覧、解約の出どころの記録、物理削除の文を確かめる
   - D1の実装は1つのクラスで`core/ultras`のストアの契約(文を返さない操作)と`workers/ultras/statement-contracts.ts`の文の契約の両方を実装する
@@ -82,7 +82,7 @@
   - 完了状態: Workers統合テストが成功し、判定が特典の継続期間の列だけを使う
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 11.2_
 
-- [ ] 4. paymentsの口の実装と送り出し
+- [x] 4. paymentsの口の実装と送り出し
 - [x] 4.1 知らせの送り出しとメールの依頼を作る
   - 先に、模擬のポートの単体テストで、知らせの送り出しの成功で送り出しの記録が残り失敗は`warn`のログだけになること、identity-authの`UserContactDirectory`の模擬で`findContact`が`undefined`を返す利用者(退会済み・物理削除済み)のメールの依頼が対象外になり、停止中の利用者には依頼されること、宛名に`findContact`の`nickname`が使われること、依頼の成功の後にだけ依頼済みになること、既に依頼済みの依頼を再び送らないこと、メールの入力のプラン管理画面のURLが既存の`CLIENT_SITE_ORIGIN`から作られることを確かめる
   - ログに利用者のメールアドレスとニックネームを含めない
@@ -124,7 +124,7 @@
   - 完了状態: Workers統合テスト(`ultras-module.worker.test.ts`の識別子の解決を含む)と3経路のDIの解決の検査が成功する
   - _Requirements: 1.7, 1.8, 1.9, 2.1, 2.10, 4.1, 4.2, 8.1_
 
-- [ ] 5. APIサーバー
+- [x] 5. APIサーバー
 - [x] 5.1 料金とプランの照会、加入の開始のGraphQLを作る
   - 先に、模擬のポートの単体テストで、料金の照会がフラグ・価格・価格の古さを返しログイン不要であること、価格の照会が`payments_unavailable`を投げたときだけ価格を空(古さは偽)にし、それ以外の例外は投げ直すこと、利用者の照会が未ログインで空・ログイン中は現在の加入状態・特典の有無・Portalを開けるかを返すこと、加入の開始が`SessionView`を受け取り購入種別`ultras`で決済の開始を呼ぶことを確かめる
   - ユースケースは`GraphQLContext`を受け取らず、解決関数が`session`を取り出して渡す(application層からpresentation層を読み込めないため)
@@ -159,7 +159,7 @@
   - 完了状態: 単体テストとcron式の一致の検査が成功し、ローカルで4:21のcron式を手動で起動するとジョブが動く
   - _Requirements: 4.5, 8.9, 11.3_
 
-- [ ] 6. イベントサーバー
+- [x] 6. イベントサーバー
 - [x] 6.1 加入が有効になった知らせの処理を作り、ハンドラの登録箇所を用意する
   - 先に、模擬のポートの単体テストで、行が無い・完了済みの知らせで何もしないこと、登録の順にハンドラを呼びすべて成功したら完了を記録すること、1つが例外を投げたら完了を記録せず例外を返すことを確かめる
   - eventのUltrasのモジュール、空のハンドラの登録箇所(後続specが追記する)、メッセージの処理を作り、束縛とメッセージの処理の一覧へ同時に加える
@@ -175,7 +175,7 @@
   - 完了状態: 単体テスト・Workers統合テスト・3経路のDIの解決の検査が成功し、波及処理の登録の検証(同じ種類での`order`の重複)が成功し、静的解析でイベントサーバーのapplication層に`**/lib/workers/**`の読み込みが無い
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 11.1, 12.3_
 
-- [ ] 7. 利用者側の画面
+- [x] 7. 利用者側の画面
 - [x] 7.1 クライアントの操作と、導線の表示の可否の部品を作る
   - `ultrasOffer`・`viewerUltras`・`startUltrasCheckout`・`createUltrasPortalSession`の操作を、clientの`src/graphql/operations/ultras/`に1ファイル1操作の`.graphql`で書き(操作名は`ClientUltrasOffer`・`ClientViewerUltras`・`ClientStartUltrasCheckout`・`ClientCreateUltrasPortalSession`、`graphql()`を呼ばない)、clientで`bun run graphql:generate`を実行して型とpersisted operationsを生成する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない(frontend-platformの「操作の追加手順」)
   - 先に、ブラウザテストで、フラグがオンのときだけ子を描画し、読み込み中とエラーでは描画しないことを確かめる
@@ -204,7 +204,7 @@
   - 完了状態: ブラウザテストが成功し、ローカルでログインして`/settings/plan`を開くとナビゲーションの「プラン」が現在の項目になる
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6.1, 6.2, 6.7_
 
-- [ ] 8. 管理画面
+- [x] 8. 管理画面
 - [x] 8.1 管理者の操作と機能フラグの区画を作る
   - `ultrasPromotionSetting`・`updateUltrasPromotionSetting`の操作を、adminの`src/graphql/operations/ultras/`に1ファイル1操作の`.graphql`で書き(操作名は`AdminUltrasPromotionSetting`・`AdminUpdateUltrasPromotionSetting`、`graphql()`を呼ばない)、adminで`bun run graphql:generate`を実行して型とpersisted operationsを生成する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない
   - 先に、ブラウザテスト(axeの違反0件)で、現在の値・最後に変更した日時と管理者、最上位管理者以外では参照だけで説明が出ること、確認のダイアログ(理由は任意・監査ログに記録される旨)での確定、切り替えの失敗でダイアログが理由の入力を保ったまま`failureMessageOf`の文言(`version_conflict`での読み直しの案内、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)を`role="alert"`で示すこと、取得の失敗の`ErrorState`に問い合わせのボタンが無く、`GraphQLClientError`でない失敗の文言が`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で問い合わせを促す文を含まないことを確かめる
@@ -219,7 +219,7 @@
   - _Depends: 7.3, 8.1_
   - _Requirements: 10.1, 10.9_
 
-- [ ] 9. 文書
+- [x] 9. 文書
 - [x] 9.1 (P) 技術ドキュメントを書く
   - `backend/010-subscription-entitlements.md`(外部の定期課金の状態から特典の継続期間を導く規約、業務日付の日の終わりへの切り上げ、時点・期間・一括の判定、到着順への対応、確定の後の副作用と日次の確認、知らせのハンドラの冪等性)と`external/008-stripe-billing-portal.md`(定期課金の状態の対応と柔軟な請求モードの`cancel_at`、Customer Portalの機能とセッション、再試行の後の扱い、顧客向けメールの停止、test clockによる検証)を、本プロジェクト固有の値を含めずに書き、`backend`・`external`のREADMEの文書一覧に行を加える
   - `docs/onboardings/project-values.md`に、技術ドキュメントのプレースホルダーの本プロジェクトの値(定期課金の価格の`lookup_key`は`ultras_monthly`)と、登録の一覧(「定期実行と非同期メッセージ」のジョブ・メッセージ種別・波及処理、「メール送信」の種別、「利用者側のbot判定と回数制限」の規則`ultras-portal:user`、「管理者のアカウント」の操作種別とメニュー)への本specの行を加える
@@ -256,7 +256,7 @@
   - _Requirements: 2.4, 2.5, 2.6, 2.8, 6.3, 8.1, 8.3, 12.2_
   - _Blocked: 開発者側のStripeの準備(1.4)が未完了。dev用sandboxに価格`ultras_monthly`が無いことを10.1のローカルのE2E(2026-11-08)で確認した(Stripeへの照会は成功し、価格が照会の結果に無い)。test clock付きのCustomerの作成・Customer Portalの設定・再試行の後の解約の設定も開発者の操作のため、準備が済んだ後に`features/005-ultras-subscription.md`の期待値の表に沿って実施する_
 
-- [ ] 10.3 全体の検査とカバレッジを確かめる
+- [x] 10.3 全体の検査とカバレッジを確かめる
   - 整形の検査・静的解析・型検査と、単体テスト・Workers統合テスト・ブラウザテストを一括で実行し、本specが追加・変更したファイルのカバレッジが80%以上であることを確かめる。ログとSentryへの送信に利用者のメールアドレス・ニックネームが含まれないことを検索で確かめる
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たす
   - _Requirements: 12.3, 13.1, 13.2_
@@ -293,3 +293,4 @@
 - 9.1: 技術文書は`backend/010-subscription-entitlements.md`・`external/008-stripe-billing-portal.md`(固有の値はすべて`<…>`のプレースホルダー。業務時刻のオフセットは既存の`BUSINESS_UTC_OFFSET_MINUTES`の行を再利用)。`project-values.md`に新節「定期課金の加入」(見出しにプロジェクトの語を含めずアンカーを安定させる)と、各登録の一覧の行(ジョブ・メッセージ・波及処理・メール種別・回数制限・監査ログ・メニュー8件・設定の区画の登録箇所・購入種別と受け取り口)を加えた。`infra/004`は`fulfillment-missing-subscription`(HTTPのリクエスト・定期実行)と`unexpected-subscription-status`/`scheduled-end-missing`(HTTPのリクエスト)の行、`frontend/009`は部品3件と3つ目のメニューのテストと「設定のページの区画の登録」の節、`frontend/006`は`useSuspenseQuery`を認める1文と`RecoverableSlot`への参照、ルート`CLAUDE.md`は`backend-lib`の`ultras/`。設計のFile Structure Planに無い実装ファイル(`client/src/graphql/ultras.ts`・`ultras-messages.ts`・`pricing-messages.ts`・`plan-messages.ts`・`plan-search.ts`・`portal-return-rules.ts`・`ultras-price-line.tsx`・`common-lib/ultras/portal-texts.ts`・`admin/src/graphql/admin-ultras-promotion.ts`・`promotion-setting-messages.ts`・`settings-messages.ts`・`admin-settings-sections-view.tsx`・`section-fallback.tsx`)と、設計の`SubscriptionTransitionResult`(`anomalies`無し)・メールの入力名(`*Utc`)の食い違いは、設計の変更が境界外のため最終報告に挙げる。
 - 9.2: サービス仕様はコードに合わせて更新した(`002-pricing-and-plans.md`に特典の終了時刻・機能フラグ・停止と退会・メールの表、`007`に`order` 500の行、`legal/004`は章8の追記と退会・決済後の加入の2行の追加のみ、`legal/001`はLR-007の2行、`features/005-ultras-subscription.md`を新設)。文言規則の「設定のページの説明」(437行)はコードの`SETTINGS_DESCRIPTION`に合わせて置き換え、439行に削除済みの管理者の変更の扱いを補足した。`external/008`のtest clockの表の退会の行は、即時の解約では解約の操作の時刻と出どころを記録せず予約の出どころ`withdrawal`だけが残るコードの事実に合わせて9.2のコミットで直した。`requirements.md`のQ2の「FR-PPLAN-008に注記」は改訂前の番号で、文書は改訂後のFR-PPLAN-009を参照する(最終報告に挙げる)。
 - 10.1: 直列の組は`e2e/support/playwright-config.ts`の`createPlaywrightConfig(plans, launchOptions, workers, serialGroups = [])`(`E2ESerialStep`・`E2ESerialGroup`)。手順のプロジェクトは`<組の名前>-<1始まりの順>-<対象名>`、対象のプロジェクトは`testIgnore`で手順のファイルを外し、依存は到達確認と1つ前の有効な手順に加え、並列数の上限のある対象(`admin`)ではその対象のテストのプロジェクトにも依存する(`withSoleActiveSuperAdmin`の窓と重ならないため。`--project 'ultras-*'`でも`admin`の全テストが先に走る)。組はルートの`playwright.config.ts`の`SERIAL_GROUPS`だけに置く。利用者側の手順は`e2e/client/ultras-steps.ts`(フラグはローカルD1の`ultras_settings`を`version + 1`で更新し`RETURNING id`で初期データの有無を検出)。加入の経路は`payments_unavailable`に加えて、価格が無くボタンが無効な`price_unavailable`でも`test.skip`で飛ぶ(設計1160行・タスク本文より広い。最終報告に挙げる)。ローカルの実行は6件成功・加入の経路1件スキップ(Stripeのキーはあるが価格`ultras_monthly`が未作成)。`checkout-steps.ts`(payments所有)が公開しない補助を写しているため、paymentsが公開すれば一本化できる。
+- 10.3: 一括検査(`bun run check`)とカバレッジ付きの3種の一括テストはすべて成功。`apps/api`の単体カバレッジで`lib/workers/logging/configure-logging.ts`は本specの`workers/ultras/*.unit.test.ts`5本(`recordLogs`が`ensureLoggingConfigured`を読む)だけが分母に入れるため、`ultras-notifier.unit.test.ts`の「Ultrasのロガーの伏せ字」で属性名による伏せ字の`action`を呼んで関数100%にした。同ファイルに関数を加えたらこのテストで呼ぶ(または読み込みを避ける)。本specのファイルのカバレッジは単体・Workers統合・ブラウザとも最小で関数90%(`portal-button.tsx`)・行94.12%、他は100%。ログ・Sentryの送信に利用者のメールアドレス・ニックネームを渡す箇所は無い(`captureException`・`captureMessage`の使用なし)。
