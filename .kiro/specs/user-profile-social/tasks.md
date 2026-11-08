@@ -54,7 +54,7 @@
   - 完了状態: 単体テストが成功し、規則がデータベースと時計に依存しない
   - _Requirements: 2.1, 2.2, 2.3, 4.6, 4.7, 5.3, 5.4_
 
-- [ ] 3.2 プロフィールのポートと、編集の読み取り・保存のD1の実装を作る
+- [x] 3.2 プロフィールのポートと、編集の読み取り・保存のD1の実装を作る
   - 先に、ローカルD1のWorkers統合テストで、保存が1つの一括の書き込みでプロフィール・ニックネームとハンドル・旧ハンドル・外部Webサイトを確定すること、同じハンドルの同時の2つの保存の一方だけが成功すること、他人の旧ハンドルと同じ文字列を保存すると同じ一括の書き込みでその旧ハンドルの行が消え以後その文字列が保存した利用者に解決されること(仮2)、停止中の利用者の保存が取り消され`account-unavailable`になること、読み込んだ時点のハンドル(大文字小文字の違いを含む)から変わっていれば`conflict`になること、外部Webサイトの全件の置き換え、取り消しの理由を読み直しで分類すること、使用中の判定(既定は他人の現在のハンドル、`includePrevious`で他人の旧ハンドルも、本人を除く)と、`users`に行がある利用者のIDの照会(退会済みで物理削除前を含む、90件を超えるID)を確かめる
   - プロフィールのポートに、編集の読み取り・保存と、ハンドルの使用中の判定(D1の実装はハンドル基盤の判定の部品を呼ぶ)と、存在する利用者のIDの照会(6.3のジョブが使う)を含める。3.3・3.4のユースケースはこのポートだけを使い、D1の関数を直接呼ばない
   - 完了状態: Workers統合テストが成功し、失敗した保存でどの行も変わらない
@@ -259,3 +259,4 @@
 - 2.3: `D1ProfileExport`(`workers/profile/d1-profile-export.ts`)と`D1FollowDirectory`(`d1-follow-directory.ts`、`FollowExport`と`FollowerDirectory`の両方を実装)。2.4では`D1FollowDirectory`を両方の識別子に束縛する。`listVisibleFollowerIds`の`after`・`next`はフォローのID、戻りの`followerIds`は利用者のIDで、上限件数が1〜500の整数でなければ`invalid_limit`の`bad_request`。テストで`user_follows`・`user_profile_websites`の行は`clearIdentityTables`の前に消す。
 - 2.4: `PROFILE_PLATFORM_MODULE`(名前`profile-platform`、`workers/profile/profile-platform-module.ts`)をapi・eventの`src/composition/modules.ts`の`ADMIN_PLATFORM_MODULE`の直後に置いた。束縛は`inSingletonScope()`(呼び出しのコンテナ単位)。テストの種データは`workers/profile/testing/profile-platform-fixtures.ts`。9.1・9.2で共有の束縛の一覧の文書に`profile-platform`を加える。
 - 3.1: 規則は`apps/api/src/domain/profile/profile-edit-plan.ts`(`planProfileEdit`。完全一致は`none`、`isSameHandle`は`case-only`、それ以外は`changed`で`previous`は現在のハンドル。自分の旧ハンドルへの戻しも`changed`)と`website-list.ts`(`normalizeWebsites`。URLが空の行は落とさず`''`で返すので、空のURLの拒否は5.2のスキーマで行う)。`AvatarChange`の`replaced`(差し替え前)は`eraseNow`、`removed`は`markDeleted`へ渡す。
+- 3.2: ポートは`apps/api/src/application/profile/ports.ts`の`ProfileStore`(`findSnapshot`・`isHandleOccupied`(`exceptUserId`)・`findExistingUserIds`・`save`)と`MyProfileView`・`ProfileSnapshot`。`save`の結果は`'saved' | 'handle-unavailable' | 'conflict' | 'account-unavailable'`で、`websites`には`normalizeWebsites`の結果を渡す。D1実装は`infrastructure/profile/d1-profile-store.ts`(先頭の`user_profiles`のupsertの`user_id`を`CASE WHEN EXISTS(...)`にしたNOT NULL違反のガード、`expectedHandle`は`COLLATE BINARY`で比べる。制約の違反の文言で分類し、他の障害は再送出)。`D1ProfileStore`は`PLATFORM_TYPES.Database`だけを受け取る。識別子と束縛は3.4で作る(`PROFILE_PLATFORM_TYPES`と名前を重ねない)。
