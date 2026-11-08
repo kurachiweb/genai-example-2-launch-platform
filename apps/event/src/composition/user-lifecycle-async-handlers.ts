@@ -2,6 +2,7 @@ import type { UserLifecycleAsyncRegistration } from '../../lib/core/identity/use
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
 import { EVENT_INQUIRY_TYPES } from '../application/inquiry/event-inquiry-types.ts';
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
+import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 
 // 退会・停止・停止解除・物理削除の開始の後にイベントサーバーで自分のデータを変える機能が、登録をここへ追記する。
@@ -37,6 +38,18 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['purge_due'],
       order: 500,
       handler: EVENT_ULTRAS_TYPES.SubscriptionErasureHandler,
+    },
+    {
+      name: 'user-profile-social.profile-erasure',
+      events: ['purge_due'],
+      order: 600,
+      handler: EVENT_PROFILE_TYPES.ProfileErasureHandler,
+    },
+    {
+      name: 'user-profile-social.owned-file-erasure',
+      events: ['purge_due'],
+      order: 610,
+      handler: EVENT_PROFILE_TYPES.OwnedFileErasureHandler,
     },
     {
       name: 'identity-auth.email-suppression-cleanup',

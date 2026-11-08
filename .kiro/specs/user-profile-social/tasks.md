@@ -136,7 +136,7 @@
   - _Requirements: 11.1_
 
 - [ ] 6. 波及処理と日次のジョブ
-- [ ] 6.1 物理削除の波及処理を作る
+- [x] 6.1 物理削除の波及処理を作る
   - 先に、模擬のポートの単体テストで、フォローの削除が上限件数ちょうどなら続きを、未満ならプロフィール・外部Webサイト・旧ハンドルを消して完了を返すこと、ファイルの物理削除の残りの有無を続きに対応付けること、例外をそのまま投げることを確かめる。ローカルD1のWorkers統合テストで、1,001件のフォロー(フォロワー・相手の両方向)が2回の呼び出しで消え、プロフィールの行が消えた後にidentity-authの利用者の物理削除が外部キーで失敗しないことを確かめる
   - `user-profile-social.profile-erasure`(物理削除、`order` 600)と`user-profile-social.owned-file-erasure`(物理削除、`order` 610)をeventの束縛と非同期の波及処理の一覧へ同時に加える
   - 物理削除の文と一括の書き込みはeventのinfrastructure層の削除のストアに置き、波及処理(application層)はそのポートだけを使う
@@ -270,3 +270,4 @@
 - 5.3: `followUser`・`unfollowUser`・`myFollowing`・`myFollowers`は`modules/profile/follow-resolvers.ts`、引数は`follow-inputs.ts`(`FOLLOW_LIST_MAX_PAGE_SIZE`(20)、`followListPositionOf`、`after`は256文字を超えると`after`の欄の`validation_error`、256文字以内の不正は`invalid_cursor`)。`first`の範囲外の文言は「表示する件数は1〜20件の整数で指定してください。」。`FollowEntry.followedAt`は`DateTime`(ISO 8601)。テストで25件以上のフォローを入れるときはD1の束縛の上限のため10件ずつ`insert`する。
 - 5.4: `ProfileInquirerProfiles`(`apps/api/src/infrastructure/profile/profile-inquirer-profiles.ts`、`findSummaries(ids, 'including-withdrawn')`の詰め替え)を`PROFILE_TYPES.ProfileInquirerProfiles`に束縛し、`inquiry-module.ts`の`INQUIRY_TYPES.InquirerProfiles`は`toService`で転送する。`inquiry-module.ts`は`PROFILE_MODULE`と`PROFILE_PLATFORM_MODULE`が`MODULES`に載る前提で、inquiryだけの小さなコンテナのテストには両方を足す。inquiryのGraphQLの統合テストのハーネスは後片付けで`user_profiles`を先に消す。
 - 5.5: `ProfileWithdrawalSyncHandler`(`apps/api/src/infrastructure/profile/profile-withdrawal-sync-handler.ts`、`withdrawn`だけで`previousHandleSoftDelete`と`user_follows`の両方向の論理削除の2文)を`PROFILE_TYPES.ProfileWithdrawalSyncHandler`に束縛し、`user-lifecycle-sync-handlers.ts`の`user-profile-social.withdrawal`に登録した(inquiryの後)。退会の統合テストは`profile-module.worker.test.ts`。`user_profiles`の行を作るテストでは後始末で`user_profiles`を先に消す。
+- 6.1: eventの物理削除の波及処理は`apps/event/src/application/profile/`の`ProfileErasureHandler`(`FOLLOW_ERASURE_BATCH_SIZE` 1000、件数が上限以上なら`continue`)と`OwnedFileErasureHandler`(`MEDIA_TYPES.MediaFiles`の`hasMore`)、ポート`ports.ts`の`ProfilePurgeStore`、`infrastructure/profile/d1-profile-purge-store.ts`。識別子は`EVENT_PROFILE_TYPES`(`profile.event.*`)、モジュールは`composition/profile-module.ts`の`EVENT_PROFILE_MODULE`(名前`event-profile`、`PROFILE_PLATFORM_MODULE`の直後)。6.2は同じモジュールに`OwnedImageQuarantineHandler`を束縛し、`profile-module.worker.test.ts`の3経路の解決の検査に識別子を足し、ultras・paymentsの`suspended`(・`unsuspended`)の完全一致の期待に`user-profile-social.owned-image-quarantine`を足す。`clearProfilePlatformTables`は`user_previous_handles`を消さない。
