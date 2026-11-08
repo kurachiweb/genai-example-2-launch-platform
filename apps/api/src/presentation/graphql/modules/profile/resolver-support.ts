@@ -8,6 +8,7 @@ import { callerForbiddenError } from './errors.ts';
 // 期待する操作名は、利用者側の画面がbot判定の部品に渡す名前と同じにする
 export const PROFILE_BOT_ACTIONS = Object.freeze({
   update: 'profile_update',
+  follow: 'follow',
 });
 
 export type ProfileBotAction =

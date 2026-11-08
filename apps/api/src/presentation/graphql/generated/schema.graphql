@@ -372,6 +372,24 @@ input DiscardLegalDocumentDraftInput {
   kind: LegalDocumentKind!
 }
 
+"""フォロー一覧の1行。followedAtはフォローした日時"""
+type FollowEntry {
+  followedAt: DateTime!
+  user: UserSummary!
+}
+
+type FollowEntryConnection {
+  nodes: [FollowEntry!]!
+  pageInfo: PageInfo!
+}
+
+"""フォローの結果。handleは相手の現在のハンドル、followerCountは停止中を除いた相手のフォロワー数"""
+type FollowState {
+  followerCount: Int!
+  following: Boolean!
+  handle: String!
+}
+
 """未ログインの問い合わせの送信"""
 input GuestInquiryInput {
   body: String!
@@ -669,6 +687,9 @@ type Mutation {
   """多要素認証の有効化"""
   enableTotp(totpCode: String!): RecoveryCodeSet!
 
+  """メールアドレスが確認済みの利用者がフォローする。すでにフォロー済みでも成功する"""
+  followUser(handle: String!): FollowState!
+
   """閲覧のみのロールで招待し、招待のメールを送る"""
   inviteAdmin(email: String!, reason: String): AdminAccount!
 
@@ -768,6 +789,9 @@ type Mutation {
 
   """停止していないログイン中の利用者の問い合わせの送信"""
   submitMemberInquiry(input: MemberInquiryInput!): MemberInquiry!
+
+  """停止中でない利用者がフォローを解除する。フォローしていなくても成功する"""
+  unfollowUser(handle: String!): FollowState!
 
   """プロフィールの更新。avatarFileIdの省略は画像を取り除く"""
   updateAdminProfile(avatarFileId: ID, id: ID!, nickname: String!, title: String): AdminAccount!
@@ -960,6 +984,12 @@ type Query {
 
   """本人の問い合わせのチャット。本人の問い合わせでなければnull"""
   memberInquiry(id: ID!): MemberInquiry
+
+  """ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20"""
+  myFollowers(after: String, first: Int!): FollowEntryConnection!
+
+  """ログイン中の利用者(停止中を含む)がフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20"""
+  myFollowing(after: String, first: Int!): FollowEntryConnection!
 
   """自分のログインの問い合わせの一覧(20件ずつ、送信日時の新しい順)。停止中の利用者も読める"""
   myInquiries(after: String): MemberInquiryPage!

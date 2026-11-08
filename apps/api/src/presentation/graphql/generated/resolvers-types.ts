@@ -380,6 +380,27 @@ export type DiscardLegalDocumentDraftInput = {
   kind: LegalDocumentKind;
 };
 
+/** フォロー一覧の1行。followedAtはフォローした日時 */
+export type FollowEntry = {
+  __typename?: 'FollowEntry';
+  followedAt: Scalars['DateTime']['output'];
+  user: UserSummary;
+};
+
+export type FollowEntryConnection = {
+  __typename?: 'FollowEntryConnection';
+  nodes: Array<FollowEntry>;
+  pageInfo: PageInfo;
+};
+
+/** フォローの結果。handleは相手の現在のハンドル、followerCountは停止中を除いた相手のフォロワー数 */
+export type FollowState = {
+  __typename?: 'FollowState';
+  followerCount: Scalars['Int']['output'];
+  following: Scalars['Boolean']['output'];
+  handle: Scalars['String']['output'];
+};
+
 /** 未ログインの問い合わせの送信 */
 export type GuestInquiryInput = {
   body: Scalars['String']['input'];
@@ -641,6 +662,8 @@ export type Mutation = {
   discardLegalDocumentDraft: AdminLegalDocument;
   /** 多要素認証の有効化 */
   enableTotp: RecoveryCodeSet;
+  /** メールアドレスが確認済みの利用者がフォローする。すでにフォロー済みでも成功する */
+  followUser: FollowState;
   /** 閲覧のみのロールで招待し、招待のメールを送る */
   inviteAdmin: AdminAccount;
   /** メールアドレスとパスワードによるログイン */
@@ -701,6 +724,8 @@ export type Mutation = {
   submitGuestInquiry: Scalars['Boolean']['output'];
   /** 停止していないログイン中の利用者の問い合わせの送信 */
   submitMemberInquiry: MemberInquiry;
+  /** 停止中でない利用者がフォローを解除する。フォローしていなくても成功する */
+  unfollowUser: FollowState;
   /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
   updateAdminProfile: AdminAccount;
   /** メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない */
@@ -812,6 +837,11 @@ export type MutationDiscardLegalDocumentDraftArgs = {
 
 export type MutationEnableTotpArgs = {
   totpCode: Scalars['String']['input'];
+};
+
+
+export type MutationFollowUserArgs = {
+  handle: Scalars['String']['input'];
 };
 
 
@@ -948,6 +978,11 @@ export type MutationSubmitGuestInquiryArgs = {
 
 export type MutationSubmitMemberInquiryArgs = {
   input: MemberInquiryInput;
+};
+
+
+export type MutationUnfollowUserArgs = {
+  handle: Scalars['String']['input'];
 };
 
 
@@ -1137,6 +1172,10 @@ export type Query = {
   legalDocumentVersion?: Maybe<LegalDocumentVersion>;
   /** 本人の問い合わせのチャット。本人の問い合わせでなければnull */
   memberInquiry?: Maybe<MemberInquiry>;
+  /** ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20 */
+  myFollowers: FollowEntryConnection;
+  /** ログイン中の利用者(停止中を含む)がフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20 */
+  myFollowing: FollowEntryConnection;
   /** 自分のログインの問い合わせの一覧(20件ずつ、送信日時の新しい順)。停止中の利用者も読める */
   myInquiries: MemberInquiryPage;
   /** ログイン中の利用者(停止中を含む)のプロフィール編集用の情報 */
@@ -1211,6 +1250,18 @@ export type QueryLegalDocumentVersionArgs = {
 
 export type QueryMemberInquiryArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type QueryMyFollowersArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first: Scalars['Int']['input'];
+};
+
+
+export type QueryMyFollowingArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first: Scalars['Int']['input'];
 };
 
 
@@ -1552,6 +1603,9 @@ export type ResolversTypes = {
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
+  FollowEntry: ResolverTypeWrapper<Omit<FollowEntry, 'user'> & { user: ResolversTypes['UserSummary'] }>;
+  FollowEntryConnection: ResolverTypeWrapper<Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversTypes['FollowEntry']> }>;
+  FollowState: ResolverTypeWrapper<FollowState>;
   GuestInquiryInput: GuestInquiryInput;
   HandleAvailability: HandleAvailability;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
@@ -1660,6 +1714,9 @@ export type ResolversParentTypes = {
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
   DateTime: Scalars['DateTime']['output'];
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
+  FollowEntry: Omit<FollowEntry, 'user'> & { user: ResolversParentTypes['UserSummary'] };
+  FollowEntryConnection: Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['FollowEntry']> };
+  FollowState: FollowState;
   GuestInquiryInput: GuestInquiryInput;
   ID: Scalars['ID']['output'];
   InquiryCategory: InquiryCategory;
@@ -1915,6 +1972,22 @@ export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversT
   name: 'DateTime';
 }
 
+export type FollowEntryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['FollowEntry'] = ResolversParentTypes['FollowEntry']> = {
+  followedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  user?: Resolver<ResolversTypes['UserSummary'], ParentType, ContextType>;
+};
+
+export type FollowEntryConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['FollowEntryConnection'] = ResolversParentTypes['FollowEntryConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['FollowEntry']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type FollowStateResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['FollowState'] = ResolversParentTypes['FollowState']> = {
+  followerCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  following?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type InquiryCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryCategory'] = ResolversParentTypes['InquiryCategory']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -2046,6 +2119,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
   discardLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationDiscardLegalDocumentDraftArgs, 'input'>>;
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
+  followUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationFollowUserArgs, 'handle'>>;
   inviteAdmin?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationInviteAdminArgs, 'email'>>;
   login?: Resolver<ResolversTypes['LoginResult'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'input'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
@@ -2076,6 +2150,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   startUltrasCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
+  unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
   updateMyProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType, RequireFields<MutationUpdateMyProfileArgs, 'input'>>;
   updateUltrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType, RequireFields<MutationUpdateUltrasPromotionSettingArgs, 'input'>>;
@@ -2167,6 +2242,8 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   legalDocument?: Resolver<ResolversTypes['LegalDocument'], ParentType, ContextType, RequireFields<QueryLegalDocumentArgs, 'kind'>>;
   legalDocumentVersion?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   memberInquiry?: Resolver<Maybe<ResolversTypes['MemberInquiry']>, ParentType, ContextType, RequireFields<QueryMemberInquiryArgs, 'id'>>;
+  myFollowers?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowersArgs, 'first'>>;
+  myFollowing?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowingArgs, 'first'>>;
   myInquiries?: Resolver<ResolversTypes['MemberInquiryPage'], ParentType, ContextType, Partial<QueryMyInquiriesArgs>>;
   myProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
@@ -2285,6 +2362,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   CheckoutSummary?: CheckoutSummaryResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
+  FollowEntry?: FollowEntryResolvers<ContextType>;
+  FollowEntryConnection?: FollowEntryConnectionResolvers<ContextType>;
+  FollowState?: FollowStateResolvers<ContextType>;
   InquiryCategory?: InquiryCategoryResolvers<ContextType>;
   InquiryComposer?: InquiryComposerResolvers<ContextType>;
   InquiryMessage?: InquiryMessageResolvers<ContextType>;

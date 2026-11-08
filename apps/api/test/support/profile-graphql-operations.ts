@@ -70,6 +70,29 @@ export interface PublicProfileRedirectFields {
   readonly handle: string;
 }
 
+export interface FollowStateFields {
+  readonly handle: string;
+  readonly following: boolean;
+  readonly followerCount: number;
+}
+
+export interface FollowEntryFields {
+  readonly user: {
+    readonly handle: string;
+    readonly nickname: string;
+    readonly avatar: MediaImageFields | null;
+  };
+  readonly followedAt: string;
+}
+
+export interface FollowEntryConnectionFields {
+  readonly nodes: readonly FollowEntryFields[];
+  readonly pageInfo: {
+    readonly hasNextPage: boolean;
+    readonly endCursor: string | null;
+  };
+}
+
 export type HandleAvailabilityValue = 'AVAILABLE' | 'UNAVAILABLE' | 'INVALID';
 
 const MY_PROFILE_FIELDS = /* GraphQL */ `
@@ -140,12 +163,70 @@ export const UPDATE_MY_PROFILE = /* GraphQL */ `
   }
 `;
 
+export const FOLLOW_USER = /* GraphQL */ `
+  mutation ClientFollowUser($handle: String!) {
+    followUser(handle: $handle) {
+      handle
+      following
+      followerCount
+    }
+  }
+`;
+
+export const UNFOLLOW_USER = /* GraphQL */ `
+  mutation ClientUnfollowUser($handle: String!) {
+    unfollowUser(handle: $handle) {
+      handle
+      following
+      followerCount
+    }
+  }
+`;
+
+const FOLLOW_ENTRY_CONNECTION_FIELDS = /* GraphQL */ `
+  nodes {
+    user {
+      handle
+      nickname
+      avatar {
+        id
+        objectKey
+      }
+    }
+    followedAt
+  }
+  pageInfo {
+    hasNextPage
+    endCursor
+  }
+`;
+
+export const MY_FOLLOWING = /* GraphQL */ `
+  query ClientMyFollowing($first: Int!, $after: String) {
+    myFollowing(first: $first, after: $after) {
+      ${FOLLOW_ENTRY_CONNECTION_FIELDS}
+    }
+  }
+`;
+
+export const MY_FOLLOWERS = /* GraphQL */ `
+  query ClientMyFollowers($first: Int!, $after: String) {
+    myFollowers(first: $first, after: $after) {
+      ${FOLLOW_ENTRY_CONNECTION_FIELDS}
+    }
+  }
+`;
+
 const profileGateway = createGraphQLGateway({
   documents: [
     PUBLIC_PROFILE,
     MY_PROFILE,
     HANDLE_AVAILABILITY,
     UPDATE_MY_PROFILE,
+    FOLLOW_USER,
+    UNFOLLOW_USER,
+    MY_FOLLOWING,
+    MY_FOLLOWERS,
   ],
   schemaModules: [mediaSchemaModule, profileSchemaModule],
 });
@@ -283,4 +364,38 @@ export function updateMyProfile(
     { input },
     options,
   );
+}
+
+export function followUser(handle: string, options?: GatewayCallOptions) {
+  return profileGateway.call<{ followUser: FollowStateFields | null }>(
+    FOLLOW_USER,
+    { handle },
+    options,
+  );
+}
+
+export function unfollowUser(handle: string, options?: GatewayCallOptions) {
+  return profileGateway.call<{ unfollowUser: FollowStateFields | null }>(
+    UNFOLLOW_USER,
+    { handle },
+    options,
+  );
+}
+
+export function fetchMyFollowing(
+  variables: { first: number; after?: string | null },
+  options?: GatewayCallOptions,
+) {
+  return profileGateway.call<{
+    myFollowing: FollowEntryConnectionFields | null;
+  }>(MY_FOLLOWING, variables, options);
+}
+
+export function fetchMyFollowers(
+  variables: { first: number; after?: string | null },
+  options?: GatewayCallOptions,
+) {
+  return profileGateway.call<{
+    myFollowers: FollowEntryConnectionFields | null;
+  }>(MY_FOLLOWERS, variables, options);
 }

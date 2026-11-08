@@ -184,9 +184,13 @@ describe('profileSchemaModule', () => {
       'publicProfile',
       'myProfile',
       'handleAvailability',
+      'myFollowing',
+      'myFollowers',
     ]);
     expect(Object.keys(composed.getMutationType()?.getFields() ?? {})).toEqual([
       'updateMyProfile',
+      'followUser',
+      'unfollowUser',
     ]);
     expect(profileSchemaModule.name).toBe('profile');
   });

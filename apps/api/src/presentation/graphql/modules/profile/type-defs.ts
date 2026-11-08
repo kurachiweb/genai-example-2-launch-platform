@@ -80,6 +80,24 @@ export const PROFILE_TYPE_DEFS = /* GraphQL */ `
     websites: [ProfileWebsiteInput!]!
   }
 
+  "フォローの結果。handleは相手の現在のハンドル、followerCountは停止中を除いた相手のフォロワー数"
+  type FollowState {
+    handle: String!
+    following: Boolean!
+    followerCount: Int!
+  }
+
+  "フォロー一覧の1行。followedAtはフォローした日時"
+  type FollowEntry {
+    user: UserSummary!
+    followedAt: DateTime!
+  }
+
+  type FollowEntryConnection {
+    nodes: [FollowEntry!]!
+    pageInfo: PageInfo!
+  }
+
   type Query {
     "見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す"
     publicProfile(handle: String!): PublicProfileResult
@@ -87,10 +105,18 @@ export const PROFILE_TYPE_DEFS = /* GraphQL */ `
     myProfile: MyProfile!
     "ハンドルの使用可否。自分の現在と保持中の旧ハンドルは使えるものとして扱う"
     handleAvailability(handle: String!): HandleAvailability!
+    "ログイン中の利用者(停止中を含む)がフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20"
+    myFollowing(first: Int!, after: String): FollowEntryConnection!
+    "ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20"
+    myFollowers(first: Int!, after: String): FollowEntryConnection!
   }
 
   type Mutation {
     "メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない"
     updateMyProfile(input: UpdateMyProfileInput!): MyProfile!
+    "メールアドレスが確認済みの利用者がフォローする。すでにフォロー済みでも成功する"
+    followUser(handle: String!): FollowState!
+    "停止中でない利用者がフォローを解除する。フォローしていなくても成功する"
+    unfollowUser(handle: String!): FollowState!
   }
 `;
