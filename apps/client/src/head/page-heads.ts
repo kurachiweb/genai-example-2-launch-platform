@@ -14,7 +14,11 @@ import {
   CHECKOUT_PAGE_TITLE,
   CHECKOUT_RETURN_PAGE_TITLE,
 } from '../components/payments/checkout-messages.ts';
-import { CONTACT_HREF, SITE_NAME } from '../components/layout/site-links.ts';
+import {
+  CONTACT_HREF,
+  profileHref,
+  SITE_NAME,
+} from '../components/layout/site-links.ts';
 import {
   PRICING_PAGE_DESCRIPTION,
   PRICING_PAGE_TITLE,
@@ -24,6 +28,7 @@ import type {
   LegalDocumentLoaderData,
   LegalVersionLoaderData,
 } from '../graphql/legal-documents.ts';
+import type { PublicProfileLoaderData } from '../graphql/public-profile.ts';
 
 export interface RootHeadInput {
   readonly stylesheetHref: string;
@@ -124,3 +129,14 @@ export const buildRootHead = ({
     scripts,
   };
 };
+
+// 誰でも見られる公開のページのため、現在のハンドルの表記のパスを正規のURLにして、表記の違うURLを同じページとして索引へ載せる。取得前や失敗ではタイトルを決められないため、サイト名だけにして正規のURLも付けない
+export const buildPublicProfileHead = (
+  loaderData: PublicProfileLoaderData | undefined,
+) =>
+  loaderData === undefined
+    ? buildSitePageHead({ title: '' })
+    : buildSitePageHead({
+        title: `${loaderData.nickname}(@${loaderData.handle})`,
+        canonicalUrl: profileHref(loaderData.handle),
+      });

@@ -14,6 +14,7 @@ import { ProfileActionsMenu } from './profile-actions-menu.tsx';
 import { ProfileAvatar } from './profile-avatar.tsx';
 import { ProfileBio } from './profile-bio.tsx';
 import { ProfileCompletion } from './profile-completion.tsx';
+import { PROFILE_HEADING_ID } from './profile-heading-id.ts';
 import { PROFILE_EDIT_LABEL } from './profile-messages.ts';
 import { PROFILE_EDIT_HREF } from './profile-paths.ts';
 import { orderPublicProfileSections } from './public-profile-section-order.ts';
@@ -31,8 +32,6 @@ export interface ProfileCardProps {
   // フォロー・フォロー解除の結果。呼び出し側がフォロワー数と関係を更新する
   readonly onFollowChange?: (state: FollowState) => void;
 }
-
-const HEADING_ID = 'profile-name';
 
 const isBlank = (value: string | null): boolean =>
   value === null || value.trim() === '';
@@ -57,15 +56,16 @@ export function ProfileCard({
 
   return (
     <section
-      aria-labelledby={HEADING_ID}
+      aria-labelledby={PROFILE_HEADING_ID}
       className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
     >
       <div className="flex items-start gap-4">
         <ProfileAvatar user={profile} ultras={profile.ultras} />
         <div className="min-w-0 flex-1 pt-1">
           <h1
-            id={HEADING_ID}
-            className="text-2xl leading-tight font-extrabold tracking-tight text-balance wrap-anywhere"
+            id={PROFILE_HEADING_ID}
+            tabIndex={-1}
+            className="rounded-sm text-2xl leading-tight font-extrabold tracking-tight text-balance wrap-anywhere"
           >
             {profile.nickname}
           </h1>

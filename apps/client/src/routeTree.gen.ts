@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AtChar123handleChar125RouteImport } from './routes/@{$handle}'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as PricingRouteImport } from './routes/pricing'
@@ -40,6 +41,11 @@ import { Route as TermsRevisionsVersionNumberRouteImport } from './routes/terms/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AtChar123handleChar125Route = AtChar123handleChar125RouteImport.update({
+  id: '/@{$handle}',
+  path: '/@{$handle}',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -188,6 +194,7 @@ const TermsRevisionsVersionNumberRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/@{$handle}': typeof AtChar123handleChar125Route
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
@@ -216,6 +223,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/@{$handle}': typeof AtChar123handleChar125Route
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
   '/auth/login': typeof AuthLoginRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/@{$handle}': typeof AtChar123handleChar125Route
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
@@ -275,6 +284,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/@{$handle}'
     | '/contact'
     | '/pricing'
     | '/settings'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/@{$handle}'
     | '/contact'
     | '/pricing'
     | '/auth/login'
@@ -331,6 +342,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/@{$handle}'
     | '/contact'
     | '/pricing'
     | '/_authenticated/settings'
@@ -361,6 +373,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AtChar123handleChar125Route: typeof AtChar123handleChar125Route
   ContactRoute: typeof ContactRoute
   PricingRoute: typeof PricingRoute
   AuthLoginRoute: typeof AuthLoginRoute
@@ -386,6 +399,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/@{$handle}': {
+      id: '/@{$handle}'
+      path: '/@{$handle}'
+      fullPath: '/@{$handle}'
+      preLoaderRoute: typeof AtChar123handleChar125RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -615,6 +635,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AtChar123handleChar125Route: AtChar123handleChar125Route,
   ContactRoute: ContactRoute,
   PricingRoute: PricingRoute,
   AuthLoginRoute: AuthLoginRoute,

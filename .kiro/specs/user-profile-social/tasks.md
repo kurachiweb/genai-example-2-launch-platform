@@ -161,7 +161,7 @@
   - _Depends: 3.2, 3.4_
   - _Requirements: 11.6, 11.9_
 
-- [ ] 7. 利用者側の公開プロフィール
+- [x] 7. 利用者側の公開プロフィール
 - [x] 7.1 クライアントの操作と、利用者のアバター・フォローボタンを作る
   - プロフィールとフォローの操作を、clientの`src/graphql/operations/profile/`に1ファイル1操作の`.graphql`(操作名は`ClientPublicProfile`・`ClientMyProfile`・`ClientHandleAvailability`・`ClientUpdateMyProfile`・`ClientMyFollowing`・`ClientMyFollowers`・`ClientFollowUser`・`ClientUnfollowUser`)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して型とpersisted operations(`src/graphql/generated/`)を生成し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する。部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
   - フォローボタンのbot対策のウィジェットは`TurnstileWidget`(非表示)で置き、判定の枠と場所を設けない
@@ -188,7 +188,7 @@
   - _Depends: 7.3_
   - _Requirements: 7.3, 8.1, 8.2, 8.3, 8.4, 8.7, 8.8_
 
-- [ ] 7.5 公開プロフィールのルートを作る
+- [x] 7.5 公開プロフィールのルートを作る
   - 先に、ルートの`loader`の単体テストまたはブラウザテストで、形式違反の照会なしの404、nullの404、転送の302(`statusCode`の明示とクエリの引き継ぎ)、ページのタイトルとcanonical(現在のハンドルの表記)、初回ローディングのスケルトン、取得エラーの再試行と問い合わせへの導線を確かめる
   - `/@{$handle}`のルート(ログイン不要)を作り、フォロー・解除の結果でフォロワー数と関係を更新する。`loader`は`ensureQueryData`(非推奨で静的解析が失敗する)ではなく`queryClient.query`に`staleTime: 'static'`を付けて読む(G6)。`head`はclientの`buildSitePageHead`に`canonicalUrl`をオリジンの無いパス`/@<現在のハンドル>`で渡す(`buildPageHead`は絶対URLをcanonicalにしない、G4)
   - 完了状態: テストが成功し、静的解析が成功し、ページのHTMLに`<link rel="canonical">`が現在のハンドルの表記で出て、ローカルで`/@<初期ハンドル>`を開くと公開プロフィールが表示され、存在しないハンドルでプロダクト詳細と同じ404になり、ヘッダーのユーザーメニューの「プロフィール」から開ける
@@ -277,3 +277,4 @@
 - 7.2: 区画の型は`apps/client/src/components/profile/public-profile-section-types.ts`(`PublicProfileSectionContext`・`PublicProfileTab`・`PublicProfileBadgeSection`・`PublicProfileMenuItem`)、登録箇所は`apps/client/src/composition/public-profile-sections.ts`(`PUBLIC_PROFILE_TABS`・`BADGES`・`MENU_ITEMS`、初版は空)、純関数は`public-profile-section-order.ts`(`orderPublicProfileSections`・`resolveProfileTab`・`profileTabQueryValue`)。7.3・7.4の部品は`tabs`・`badges`・`items`をpropsで受け取れるようにし、ブラウザテストでテスト用の登録を注入する。「…」メニューの表示条件(本人でなく項目が1つ以上)は部品側。9.2で`project-values.md`の画面の登録箇所の一覧に3つを加える。
 - 7.3: カードは`apps/client/src/components/profile/profile-card.tsx`(`profile`(`public-profile-view.ts`の`PublicProfileView`)・`onFollowChange`・`badges`・`menuItems`を受け取り、状態を持たない)。本人は`viewerRelation === 'OWNER'`。Ultrasの輪はlintのため押しても何もしない`button type="button"`(代替は`follow-unverified-button.tsx`のフォーカスしない`span`と`sr-only`)。`profile-paths.ts`の`/settings/profile`・`/settings/follows?tab=followers`は`PathLink`の文字列で、8.2・8.3で経路ができたら確かめ、編集のリンクは型付きの`Link`への置き換えを検討する。自己紹介は003に従い`sr-only`の`h2`(002の「見出しは付けない」は9.xで003に揃える)。メニューを開いた状態のaxeは開いた`menu`要素に対して実行する。テストの種データは`public-profile-fixtures.ts`。
 - 7.4: 枠は`apps/client/src/components/profile/public-profile-page.tsx`の`PublicProfilePage`(`profile`・`tab`・`onTabChange(tab | undefined)`・`onFollowChange`・`tabs`・`badges`・`menuItems`)、タブは`profile-tabs.tsx`(パネルは`profile-tab-panel.tsx`が`RecoverableSlot`の`fallback`で区画の形のスケルトンを渡す。件数は`profile-tab-count.tsx`が包み、失敗は描かず送信)。共通部品`RecoverableSlot`に省略可能な`fallback`を加えた(内側に`Suspense`を置くと再試行後のフォーカスが壊れる)。`TabsList`に`overflow`を付けない(フォーカスの輪郭が切れる)。7.5のルートは`onTabChange`で`navigate({ to: '.', search, resetScroll: false })`を呼ぶ。停止中の帯は`role="note"`。テストの補助は`public-profile-page-testing.tsx`の`renderPublicProfilePage`・`tabOf`・`deferred`。ページ全体のスケルトンと`ErrorState`は7.5。
+- 7.5: ルートは`apps/client/src/routes/@{$handle}.tsx`、取得とloaderは`src/graphql/public-profile.ts`(`publicProfileQueryOptions(viewer, handle)`のキーは`[docId, { handle }, viewerId | 'guest']`、`loadPublicProfile`・`withFollowState`・`toPublicProfileView`)、headは`head/page-heads.ts`の`buildPublicProfileHead`。`onFollowChange`は`setQueryData`で更新する。他specの呼び出し側が公開プロフィールを無効にするときは`[docId]`の接頭辞で`invalidateQueries`する。8.2の保存の成功では公開プロフィールのキャッシュを接頭辞で無効にする(キャッシュ済みの旧ハンドルのページへ戻ったときの誤った404を避けるため)。`routeTree.gen.ts`を手で再生成する時は末尾の`declare module '@tanstack/react-start'`を残す。取得エラーの`sr-only`の`h1`と`ProfileCard`のニックネームの`h1`は同じid(`PROFILE_HEADING_ID`)で再試行後のフォーカスの移り先。

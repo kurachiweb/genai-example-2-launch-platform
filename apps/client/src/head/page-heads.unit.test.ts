@@ -9,6 +9,7 @@ import {
   buildLegalDocumentHead,
   buildLegalVersionHead,
   buildPricingHead,
+  buildPublicProfileHead,
   buildRootHead,
   buildSitePageHead,
 } from './page-heads.ts';
@@ -220,6 +221,24 @@ describe('buildCheckoutReturnHead', () => {
         { title: 'お支払いの結果 | Launch Stadium' },
         { name: 'robots', content: 'noindex, nofollow' },
       ],
+      links: [],
+    });
+  });
+});
+
+describe('buildPublicProfileHead', () => {
+  test('タイトルにニックネームと@付きのハンドルを含め、正規のURLを現在のハンドルの表記のパスにする', () => {
+    expect(
+      buildPublicProfileHead({ handle: 'Maker_AI', nickname: 'AIの作り手' }),
+    ).toStrictEqual({
+      meta: [{ title: 'AIの作り手(@Maker_AI) | Launch Stadium' }],
+      links: [{ rel: 'canonical', href: '/@Maker_AI' }],
+    });
+  });
+
+  test('取得前や失敗でloaderの値が無いときは、サイト名だけのタイトルにして正規のURLを付けない', () => {
+    expect(buildPublicProfileHead(undefined)).toStrictEqual({
+      meta: [{ title: 'Launch Stadium' }],
       links: [],
     });
   });

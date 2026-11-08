@@ -63,3 +63,8 @@ export const SUSPENDED_PROFILE_NOTICE_MESSAGE =
   'このアカウントは停止されています。プロフィールとプロダクトは他のユーザーには表示されません。詳しくはお問い合わせください。';
 
 export const SUSPENDED_PROFILE_CONTACT_LABEL = 'お問い合わせ';
+
+export const PROFILE_PAGE_LABEL = 'プロフィール';
+
+export const PROFILE_ERROR_MESSAGE =
+  'プロフィールを読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。';
