@@ -512,15 +512,8 @@ export declare const ULTRAS_AUDIT_ACTIONS: readonly AuditActionDefinition[];
 **Contracts**: Service [x]
 
 ```typescript
-export type StripeSubscriptionStatus =
-  | 'incomplete'
-  | 'incomplete_expired'
-  | 'trialing'
-  | 'active'
-  | 'past_due'
-  | 'canceled'
-  | 'unpaid'
-  | 'paused';
+// StripeSubscriptionStatus('incomplete' | 'incomplete_expired' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | 'paused')はpaymentsのcore/payments/purchase-kind-contract.tsの型を読み込んで使い、自前には定義しない
+import type { StripeSubscriptionStatus } from '../payments/purchase-kind-contract.ts';
 export type CancellationSource = 'user' | 'suspension' | 'withdrawal';
 
 export interface SubscriptionSnapshot {
@@ -566,6 +559,13 @@ export interface SubscriptionChangeInput {
   readonly occurredAt: Date;
 }
 // UltrasNoticeKind('payment_failed' | 'cancellation_accepted')はports.tsで定義し(2.1)、ここでは読み込んで使う
+// 本サービスの設定では届かないはずの値。純粋な規則はログを出さないため、受け取り口(PlanStateSink)がwarnログとSentryのcaptureEventに写す
+export type SubscriptionTransitionAnomaly =
+  | {
+      readonly kind: 'unexpected_status';
+      readonly status: StripeSubscriptionStatus;
+    } // unpaid・paused
+  | { readonly kind: 'scheduled_end_missing' }; // 解約の予約があるのに予定の終了時刻が無い
 export interface SubscriptionTransitionResult {
   readonly next: SubscriptionSnapshot;
   readonly notices: readonly {
@@ -574,6 +574,7 @@ export interface SubscriptionTransitionResult {
     readonly benefitEndsAt: Date | null;
     readonly acceptedAt: Date;
   }[];
+  readonly anomalies: readonly SubscriptionTransitionAnomaly[];
 }
 export declare function applySubscriptionChange(
   previous: SubscriptionSnapshot,
@@ -628,7 +629,7 @@ export declare const ULTRAS_ACTIVATION_RETRY_POLICY: RetryPolicy; // maxAttempts
 #### UltrasEmailKinds
 
 - 置き場所: 2種を`core/email/kinds/ultras.ts`の1ファイルに`defineEmailKind`で定め(前例`kinds/payments.ts`)、`category`はどちらも`'transactional'`(必須)。テンプレートは`apps/event/src/infrastructure/email/templates/ultras/`に`index.ts`・`*-template.ts`・`*-email-body.tsx`の形で置く。`kinds/index.unit.test.ts`に2種の名前と`category`の確認を加える(前例)。
-- `ultras.payment-failed`(トランザクション、入力`{ nickname: string; planUrl: string }`)、`ultras.cancellation-accepted`(トランザクション、入力`{ nickname: string; acceptedAtUtc: string; benefitEndsAtUtc: string; planUrl: string }`)。日時は`formatUtcDateTime`の文字列(8.6・8.7)。種別とテンプレートは同じタスクで`EMAIL_KINDS`・`EMAIL_TEMPLATES`に加える(email-deliveryの1対1の検査)。
+- `ultras.payment-failed`(トランザクション、入力`{ nickname: string; planUrl: string }`)、`ultras.cancellation-accepted`(トランザクション、入力`{ nickname: string; acceptedAt: string; benefitEndsAt: string; planUrl: string }`)。日時の入力はpaymentsの前例に合わせてISO 8601の瞬時(`z.iso.datetime()`)で受け取り、テンプレートが`formatUtcDateTime`でUTCの表記にする(8.6・8.7)。種別とテンプレートは同じタスクで`EMAIL_KINDS`・`EMAIL_TEMPLATES`に加える(email-deliveryの1対1の検査)。
 
 ### backend-lib/core(契約と識別子)・workers(実装とD1の文を返す契約)
 
@@ -798,7 +799,7 @@ export interface UltrasPlanExport {
 | Intent       | 購入種別`ultras`の購入の可否と内容 |
 | Requirements | 1.2, 1.3, 1.4, 1.5, 1.6, 10.6      |
 
-- `describe({ userId, now })`: (1)`UltrasPromotionFlagReader.isEnabled()`が偽なら`unavailable`(`ultras_unavailable`、1.6)。(2)`UltrasEntitlements.currentPlan`が`canceled`なら`unavailable`(`ultras_resume_in_portal`)、`active`・`past_due`なら`unavailable`(`ultras_already_subscribed`)(1.5)。(3)`PriceCatalog.getPrices([ULTRAS_PRICE_LOOKUP_KEY])`で月額の価格を取り、`available`で`PurchaseOffer`を返す。利用者の状態(未確認・停止中)は`CheckoutStarter`の`requireVerifiedUser`が先に拒否する(1.4)。
+- `describe({ userId, now })`: (1)`UltrasPromotionFlagReader.isEnabled()`が偽なら`unavailable`(`ultras_unavailable`、1.6)。(2)`UltrasEntitlements.currentPlan`が`canceled`なら`unavailable`(`ultras_resume_in_portal`)、`active`・`past_due`なら`unavailable`(`ultras_already_subscribed`)(1.5)。(3)`PriceCatalog.getPrices([ULTRAS_PRICE_LOOKUP_KEY])`で月額の価格を取り、`available`で`PurchaseOffer`を返す。照会の結果に`ultras_monthly`の価格が無いときは`warn`ログを残して`payments_unavailable`の`AppError`を投げる(価格の照会がStripeに届かず保持した値も無いときの失敗と同じ扱い。料金の照会`UltrasPlanReader.offer()`が`price: null`を返すのとは異なり、加入の開始は受け付けない)。利用者の状態(未確認・停止中)は`CheckoutStarter`の`requireVerifiedUser`が先に拒否する(1.4)。
 - `PurchaseOffer`: `priceLookupKey: 'ultras_monthly'`、`quantity: 1`、`relatedId: null`、`exclusivityKey: null`、`deadlineAt`・`acceptUntil`・`fulfillableUntil: null`、`requiresBotVerification: false`、`summary`: `itemName`「Ultrasプラン」、`quantityLabel`「1か月(毎月自動更新)」、`serviceTiming`「決済完了後ただちに」、`additionalNotes`は文言規則の4行(毎月の更新日に自動で請求する旨と毎月の請求額、プラン管理画面からいつでも解約でき課金期間の末日まで特典が続く旨、日割りの返金が無い旨、支払い済みのトーナメント参加費は返金されない旨)(1.3・Q2)。
 
 #### UltrasFulfillment
