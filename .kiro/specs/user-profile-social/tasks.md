@@ -232,7 +232,7 @@
   - _Requirements: 13.5_
 
 - [ ] 10. 検証
-- [ ] 10.1 E2Eテストでプロフィールの編集・公開・転送を確かめる
+- [x] 10.1 E2Eテストでプロフィールの編集・公開・転送を確かめる
   - `e2e/client/profile.e2e.test.ts`: identity-authの`e2e/support/mailpit.ts`で確認済みの利用者(メールアドレスのドメインは`.example`)を登録し、プロフィールの編集(画像のアップロード・ハンドル・ヘッドライン・リンクを含む自己紹介・外部Webサイト)→`/@<新しいハンドル>`の表示と`rel="ugc"`→大文字の表記で200とcanonical→初期ハンドルのURLが302で新しいURLへ移ること(転送を追わない要求で状態と`Location`を確かめる)→予約語`admin`の拒否→別の利用者が最初の利用者の旧ハンドル(初期ハンドル)を設定でき、その後は初期ハンドルのURLが302で転送されず別の利用者の公開プロフィールを表示すること(仮2)を確かめる。Turnstileはローカルの常に成功するキーを使う
   - 完了状態: ローカルでE2Eテストが成功する
   - _Depends: 7.5, 8.2_
@@ -283,3 +283,4 @@
 - 8.3: ルートは`apps/client/src/routes/_authenticated/settings/follows.tsx`(`loaderDeps`は`tab`、開いているタブだけを`staleTime: 0`で読む)、部品は`components/profile/`の`FollowListPage`・`FollowList`(`useInfiniteQuery`、`key={direction}`)・`FollowListItem`・`use-follow-list-focus.ts`、データは`graphql/follow-list.ts`(`followListQueryOptions(viewerId, direction)`・`loadFollowList`・`toFollowListEntries`、2つの操作を`FollowListPageData`に正規化)。初回の失敗は`ErrorState`、続きの失敗は`PartialErrorState`(設計・002・003に従い、006の記述とは異なる)。`profile-paths.ts`は削除し、`follower-count.tsx`は型付きの`Link to="/settings/follows" search={{ tab: 'followers' }}`。9.2で`project-values.md`の設定のナビゲーションに`/settings/follows`(order 50)を加える。
 - 9.1: 技術文書は`docs/GUIDES/tech/backend/011-handle-namespaces.md`(CLAUDE.mdの参照先は`#新しい対象を足す手順`)・`db/006-user-relationship-lists.md`・`backend/007`の「保有者単位で上限件数ずつ処理する操作の対応付け」。011・006は`<予約語の一覧>`・旧ハンドルの保持の期限・関係のテーブル名と呼び名の値の置き場所を`project-values.md`としているので、9.2でそれらの値も加える。`docs/GUIDES/tech/README.md`・`/workspace/README.md`の範囲の写し、`004-logging-and-error-tracking.md`のprofileのロガーの行、002の自己紹介の見出しの記述は9.1・9.2の境界外で、親が別に揃える。
 - 9.2: `project-values.md`の末尾に「公開プロフィールとフォロー」の節(ハンドルの規則・旧ハンドルの保持の期限・関係の呼び名とテーブル名・可視の条件・画面の登録箇所・設定のナビゲーション・共有の束縛)を足し、非同期の波及処理・定期実行・bot判定の行を拡張した。準拠方針の旧ハンドルの行と注5の論理削除・物理削除の区別の曖昧さ、データ保持期間の一覧に4:21の安全網の行が無いことは既存の記述で、本タスクでは変えていない。
+- 10.1: E2Eは`e2e/client/profile.e2e.test.ts`(編集と公開・予約語・仮2の3テスト)、手順は`e2e/client/profile-steps.ts`(`registerVerifiedAccount`・`openProfileEditor`・`readCurrentHandle`・`fillHandle`・`saveProfile`・`fillProfile`・`openPublicProfile`・`profilePath`)、`account-steps.ts`に`openProfileSettings`・`PROFILE_SETTINGS_PATH`を分けた。2人目の利用者は`browser.newContext({ baseURL })`と`assumeDistinctClientIp`。アバターはプレースホルダーも`role="img"`なので実際の`<img>`の`naturalWidth`とプレースホルダー0件で確かめる。自己紹介のリンクは浮くツールバーの表示を待ってから書式のツールバーの「リンク」を`dispatchEvent('click')`する。作業中に、ポータルの中のフォームの送信が外側の`AppForm`へ伝わる共通部品の不具合を見つけ、`6ca5da82`(content-processing)で直した。

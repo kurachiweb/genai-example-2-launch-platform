@@ -45,7 +45,7 @@ export interface TestAccount {
 
 export const VERIFY_EMAIL_PATH = '/auth/verify-email';
 
-const PROFILE_SETTINGS_PATH = '/settings/profile';
+export const PROFILE_SETTINGS_PATH = '/settings/profile';
 
 const ACCOUNT_SETTINGS_PATH = '/settings/account';
 
@@ -176,8 +176,8 @@ const settingsNavLabelOf = (path: string): string => {
   return item.label;
 };
 
-// 設定ページのフォームの多くはbot判定のウィジェットを持たず、ハイドレーションの完了を待つ手掛かりが無いため、ハイドレーション済みの画面からルーターの遷移で開く。ハイドレーションの前に入力した値はフォームの状態に入らず、送信ボタンが無効のまま残る。ユーザーメニューの「設定」は先頭の項目のプロフィールの設定ページへ移るため、ナビゲーションのリンクでアカウントの設定ページへ移る
-export async function openAccountSettings(
+// ユーザーメニューの「設定」は先頭の項目のプロフィールの設定ページへ移る
+export async function openProfileSettings(
   page: Page,
   account: TestAccount,
 ): Promise<void> {
@@ -187,6 +187,14 @@ export async function openAccountSettings(
     page.getByRole('menuitem', { name: SETTINGS_LINK.label }),
   );
   await expect(page).toHaveURL(PROFILE_SETTINGS_PATH);
+}
+
+// 設定ページのフォームの多くはbot判定のウィジェットを持たず、ハイドレーションの完了を待つ手掛かりが無いため、ハイドレーション済みの画面からルーターの遷移で開く。ハイドレーションの前に入力した値はフォームの状態に入らず、送信ボタンが無効のまま残る。プロフィールの設定ページを経て、ナビゲーションのリンクでアカウントの設定ページへ移る
+export async function openAccountSettings(
+  page: Page,
+  account: TestAccount,
+): Promise<void> {
+  await openProfileSettings(page, account);
   await page
     .getByRole('navigation', { name: SETTINGS_NAVIGATION_LABEL })
     .getByRole('link', { name: settingsNavLabelOf(ACCOUNT_SETTINGS_PATH) })
