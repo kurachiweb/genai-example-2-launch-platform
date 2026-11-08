@@ -49,7 +49,7 @@
   - _Requirements: 12.8_
 
 - [ ] 3. APIサーバーのプロフィール
-- [ ] 3.1 保存の決定と外部Webサイトの正規化の規則を作る
+- [x] 3.1 保存の決定と外部Webサイトの正規化の規則を作る
   - 先に、ハンドルの変更の種類(変更なし・大文字小文字だけ・別の文字列で変更前を旧ハンドルにする)、自分の旧ハンドルへの戻し、画像の維持・新規の設定・差し替え・削除の決定、外部Webサイトの名前とURLの前後の空白の除去と空の名前を未入力にすることの単体テストを書く
   - 完了状態: 単体テストが成功し、規則がデータベースと時計に依存しない
   - _Requirements: 2.1, 2.2, 2.3, 4.6, 4.7, 5.3, 5.4_
@@ -258,3 +258,4 @@
 - 2.2: 4つの照会口の契約は`apps/backend-lib/core/profile/ports.ts`、識別子は`core/profile/identifiers.ts`の`PROFILE_PLATFORM_TYPES`。`UserSummaryRecord`は画像を`avatarFileId`だけで返す(`objectKey`は5.1)。`resolveHandle`は旧ハンドルの一致で保有者の現在のハンドルを`user.handle`に返し(302の行き先)、停止中は`suspended: true`で返す(404の判断は呼び出し側)、退会済みは`none`。`USER_HANDLE_NAMESPACE`は`workers/profile/user-handle-namespace.ts`。apiのWorkers統合テストは`cd /workspace/apps/api && bun run test:worker -- lib/workers/profile`の相対指定で走らせる(絶対パスでは見つからない)。テストで`user_profiles`の行は`clearIdentityTables`の前に消す。
 - 2.3: `D1ProfileExport`(`workers/profile/d1-profile-export.ts`)と`D1FollowDirectory`(`d1-follow-directory.ts`、`FollowExport`と`FollowerDirectory`の両方を実装)。2.4では`D1FollowDirectory`を両方の識別子に束縛する。`listVisibleFollowerIds`の`after`・`next`はフォローのID、戻りの`followerIds`は利用者のIDで、上限件数が1〜500の整数でなければ`invalid_limit`の`bad_request`。テストで`user_follows`・`user_profile_websites`の行は`clearIdentityTables`の前に消す。
 - 2.4: `PROFILE_PLATFORM_MODULE`(名前`profile-platform`、`workers/profile/profile-platform-module.ts`)をapi・eventの`src/composition/modules.ts`の`ADMIN_PLATFORM_MODULE`の直後に置いた。束縛は`inSingletonScope()`(呼び出しのコンテナ単位)。テストの種データは`workers/profile/testing/profile-platform-fixtures.ts`。9.1・9.2で共有の束縛の一覧の文書に`profile-platform`を加える。
+- 3.1: 規則は`apps/api/src/domain/profile/profile-edit-plan.ts`(`planProfileEdit`。完全一致は`none`、`isSameHandle`は`case-only`、それ以外は`changed`で`previous`は現在のハンドル。自分の旧ハンドルへの戻しも`changed`)と`website-list.ts`(`normalizeWebsites`。URLが空の行は落とさず`''`で返すので、空のURLの拒否は5.2のスキーマで行う)。`AvatarChange`の`replaced`(差し替え前)は`eraseNow`、`removed`は`markDeleted`へ渡す。
