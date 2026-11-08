@@ -195,7 +195,7 @@
   - _Depends: 5.2, 7.4_
   - _Requirements: 2.5, 2.6, 6.1, 6.11, 6.12, 7.1, 7.2, 7.4, 7.5_
 
-- [ ] 8. 利用者側の設定ページ
+- [x] 8. 利用者側の設定ページ
 - [x] 8.1 プロフィール編集フォームの部品を作る
   - フォームのスキーマはZodの値を`lib/utilities/validation/zod.ts`の`z`から読んで作り、フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(全欄の既定値)と`AppForm`(`serverFieldPrefix="input"`・`onSubmitError`)で作る。bot対策のウィジェットは`TurnstileWidget`(非表示)で置き、判定の枠と場所を設けない。プロフィール画像の`ImageUploadField`には必須の`contactAvailable`として`CLIENT_PROFILE.contactAvailable`を渡す
   - 先に、ブラウザテスト(axeの違反0件)で、フォーカスアウトでの各欄の検証(ニックネーム・ハンドルの文字種と文字数・ヘッドライン・外部WebサイトのURLと名前)、ハンドルの使用可否の確認と使用中の文言、旧ハンドルの案内、画像の選択(500kBの超過・形式の違反の事前の表示、正方形の切り取りの編集、`ImageUploadField`に`contactAvailable`として`CLIENT_PROFILE.contactAvailable`が渡ること)と削除、自己紹介のマークダウンの入力欄とプレビュー、外部Webサイトの追加・削除と10件での追加の無効、停止中の全欄の`FormField`の`disabled`による無効と保存の送信ボタンの`SubmitButton`の`disabled`による無効と案内を確かめる
@@ -210,7 +210,7 @@
   - _Depends: 7.5, 8.1_
   - _Requirements: 4.1, 4.2, 4.9, 4.13, 4.15, 5.3, 5.4_
 
-- [ ] 8.3 フォロー一覧の画面を作り、設定ページのナビゲーションに加える
+- [x] 8.3 フォロー一覧の画面を作り、設定ページのナビゲーションに加える
   - 先に、ブラウザテスト(axeの違反0件)で、「フォロー中」「フォロワー」のタブとクエリの保持、20件ずつの「さらに読み込む」、各行のアバター・ニックネーム・ハンドル・日時(`<time datetime>`)と公開プロフィールへのリンク、0件・取得エラー・続きの取得エラーの表示を確かめる
   - `/settings/follows`を作り、設定ページのナビゲーションに「フォロー」(order 50)を加える(8.2の後に行い、ナビゲーションの登録箇所の変更が並行しないようにする)。`apps/client/src/components/settings/settings-nav-order.unit.test.ts`の期待値に`follows`の行を足す
   - 完了状態: ブラウザテストと既存の`settings-nav-order.unit.test.ts`が成功し、ローカルでログインして`/settings/follows`を開くとナビゲーションの「フォロー」が現在の項目になる
@@ -280,3 +280,4 @@
 - 7.5: ルートは`apps/client/src/routes/@{$handle}.tsx`、取得とloaderは`src/graphql/public-profile.ts`(`publicProfileQueryOptions(viewer, handle)`のキーは`[docId, { handle }, viewerId | 'guest']`、`loadPublicProfile`・`withFollowState`・`toPublicProfileView`)、headは`head/page-heads.ts`の`buildPublicProfileHead`。`onFollowChange`は`setQueryData`で更新する。他specの呼び出し側が公開プロフィールを無効にするときは`[docId]`の接頭辞で`invalidateQueries`する。8.2の保存の成功では公開プロフィールのキャッシュを接頭辞で無効にする(キャッシュ済みの旧ハンドルのページへ戻ったときの誤った404を避けるため)。`routeTree.gen.ts`を手で再生成する時は末尾の`declare module '@tanstack/react-start'`を残す。取得エラーの`sr-only`の`h1`と`ProfileCard`のニックネームの`h1`は同じid(`PROFILE_HEADING_ID`)で再試行後のフォーカスの移り先。
 - 8.1: `ProfileEditForm`(`apps/client/src/components/profile/profile-edit-form.tsx`、`profile`は`MyProfileView`(`ClientMyProfileQuery['myProfile']`)、`onSave(values, turnstile)`)。8.2は`sendWithTurnstile(turnstile, ...)`で`updateMyProfile`に`expectedHandle`を足して送り、成功の`notify`・「公開プロフィールを見る」・取得の無効化を行い、取得し直した値はフォームを`key`で作り直して反映する。欄に対応しない失敗はフォーム内の`role="alert"`、`handle_unavailable`の詳細は`AppForm`がハンドルの欄へ移す。ハンドルの確認は`graphql/handle-availability.ts`。文言は`profile-form-messages.ts`で、apiの`INPUT_MESSAGES`との一致は`config/contract-copies.unit.test.ts`(子プロセスのbunで評価するため共有ディレクトリの配置が前提)。`ImageUploadField`は編集対象の画像の500kBの超過を切り取り後に判定する。テストの補助は`profile-edit-form-testing.tsx`(`renderProfileEditForm`・`myProfileOf`)。
 - 8.2: ルートは`apps/client/src/routes/_authenticated/settings/profile.tsx`、画面は`ProfileEditPage`・`ProfileEditContent`(`key={savedCount}`でフォームを作り直す)、取得は`graphql/my-profile.ts`(`myProfileQueryOptions(viewerId)`・`loadMyProfile`、`staleTime: 0`)、保存は`use-profile-save.ts`の`useProfileSave`。保存の成功では公開プロフィールのキャッシュを`PUBLIC_PROFILE_QUERY_PREFIX`で`removeQueries`する(`staleTime: 'static'`の取得は`invalidateQueries`では取り直されない)。編集のリンクは型付きの`Link to="/settings/profile"`、`FOLLOWERS_LIST_HREF`は8.3で経路ができるまで`PathLink`。E2Eの`openAccountSettings`は「設定」→`/settings/profile`→ナビの「アカウント」で`/settings/account`。`settings-routes.browser.test.tsx`の経路の組み立てには各設定ページのloaderを足す。ローカルの`checkout.e2e.test.ts`とUltrasの加入の経路のE2Eは、dev用sandboxに`payments_smoke`の価格が無いこと等(payments 1.4の開発者の準備)で失敗し、本specとは無関係。
+- 8.3: ルートは`apps/client/src/routes/_authenticated/settings/follows.tsx`(`loaderDeps`は`tab`、開いているタブだけを`staleTime: 0`で読む)、部品は`components/profile/`の`FollowListPage`・`FollowList`(`useInfiniteQuery`、`key={direction}`)・`FollowListItem`・`use-follow-list-focus.ts`、データは`graphql/follow-list.ts`(`followListQueryOptions(viewerId, direction)`・`loadFollowList`・`toFollowListEntries`、2つの操作を`FollowListPageData`に正規化)。初回の失敗は`ErrorState`、続きの失敗は`PartialErrorState`(設計・002・003に従い、006の記述とは異なる)。`profile-paths.ts`は削除し、`follower-count.tsx`は型付きの`Link to="/settings/follows" search={{ tab: 'followers' }}`。9.2で`project-values.md`の設定のナビゲーションに`/settings/follows`(order 50)を加える。

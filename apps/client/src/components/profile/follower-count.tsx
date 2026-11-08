@@ -1,5 +1,5 @@
-import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
-import { FOLLOWERS_LIST_HREF } from './profile-paths.ts';
+import { Link } from '@tanstack/react-router';
+
 import {
   FOLLOWER_LABEL,
   FOLLOWER_LINK_TITLE,
@@ -30,12 +30,13 @@ export function FollowerCount({ count, linked }: FollowerCountProps) {
     return <p className={ROW_CLASS_NAME}>{content}</p>;
   }
   return (
-    <PathLink
-      href={FOLLOWERS_LIST_HREF}
+    <Link
+      to="/settings/follows"
+      search={{ tab: 'followers' }}
       title={FOLLOWER_LINK_TITLE}
       className={`${ROW_CLASS_NAME} rounded-md text-foreground no-underline hover:underline`}
     >
       {content}
-    </PathLink>
+    </Link>
   );
 }

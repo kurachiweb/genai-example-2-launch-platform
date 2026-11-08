@@ -28,6 +28,7 @@ import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_a
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_authenticated/settings/billing'
+import { Route as AuthenticatedSettingsFollowsRouteImport } from './routes/_authenticated/settings/follows'
 import { Route as AuthenticatedSettingsPlanRouteImport } from './routes/_authenticated/settings/plan'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings/profile'
 import { Route as AuthenticatedSettingsSecurityRouteImport } from './routes/_authenticated/settings/security'
@@ -140,6 +141,12 @@ const AuthenticatedSettingsBillingRoute =
     path: '/billing',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedSettingsFollowsRoute =
+  AuthenticatedSettingsFollowsRouteImport.update({
+    id: '/follows',
+    path: '/follows',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
 const AuthenticatedSettingsPlanRoute =
   AuthenticatedSettingsPlanRouteImport.update({
     id: '/plan',
@@ -217,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
+  '/settings/follows': typeof AuthenticatedSettingsFollowsRoute
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -246,6 +254,7 @@ export interface FileRoutesByTo {
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
+  '/settings/follows': typeof AuthenticatedSettingsFollowsRoute
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -278,6 +287,7 @@ export interface FileRoutesById {
   '/_authenticated/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/billing': typeof AuthenticatedSettingsBillingRoute
+  '/_authenticated/settings/follows': typeof AuthenticatedSettingsFollowsRoute
   '/_authenticated/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/_authenticated/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -310,6 +320,7 @@ export interface FileRouteTypes {
     | '/inquiries/$inquiryId'
     | '/settings/account'
     | '/settings/billing'
+    | '/settings/follows'
     | '/settings/plan'
     | '/settings/profile'
     | '/settings/security'
@@ -339,6 +350,7 @@ export interface FileRouteTypes {
     | '/inquiries/$inquiryId'
     | '/settings/account'
     | '/settings/billing'
+    | '/settings/follows'
     | '/settings/plan'
     | '/settings/profile'
     | '/settings/security'
@@ -370,6 +382,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inquiries/$inquiryId'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/billing'
+    | '/_authenticated/settings/follows'
     | '/_authenticated/settings/plan'
     | '/_authenticated/settings/profile'
     | '/_authenticated/settings/security'
@@ -540,6 +553,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsBillingRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/settings/follows': {
+      id: '/_authenticated/settings/follows'
+      path: '/follows'
+      fullPath: '/settings/follows'
+      preLoaderRoute: typeof AuthenticatedSettingsFollowsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
     '/_authenticated/settings/plan': {
       id: '/_authenticated/settings/plan'
       path: '/plan'
@@ -616,6 +636,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedSettingsRouteRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
   AuthenticatedSettingsBillingRoute: typeof AuthenticatedSettingsBillingRoute
+  AuthenticatedSettingsFollowsRoute: typeof AuthenticatedSettingsFollowsRoute
   AuthenticatedSettingsPlanRoute: typeof AuthenticatedSettingsPlanRoute
   AuthenticatedSettingsProfileRoute: typeof AuthenticatedSettingsProfileRoute
   AuthenticatedSettingsSecurityRoute: typeof AuthenticatedSettingsSecurityRoute
@@ -626,6 +647,7 @@ const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteCh
   {
     AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
     AuthenticatedSettingsBillingRoute: AuthenticatedSettingsBillingRoute,
+    AuthenticatedSettingsFollowsRoute: AuthenticatedSettingsFollowsRoute,
     AuthenticatedSettingsPlanRoute: AuthenticatedSettingsPlanRoute,
     AuthenticatedSettingsProfileRoute: AuthenticatedSettingsProfileRoute,
     AuthenticatedSettingsSecurityRoute: AuthenticatedSettingsSecurityRoute,

@@ -10,6 +10,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = Object.freeze([
   { to: '/settings/profile', label: 'プロフィール', order: 10 },
   { to: '/settings/account', label: 'アカウント', order: 20 },
   { to: '/settings/security', label: 'セキュリティ', order: 30 },
+  { to: '/settings/follows', label: 'フォロー', order: 50 },
   { to: '/settings/plan', label: 'プラン', order: 60 },
   { to: '/settings/billing', label: '決済履歴', order: 70 },
 ]);
