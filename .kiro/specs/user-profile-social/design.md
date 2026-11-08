@@ -49,13 +49,13 @@
 ### Allowed Dependencies
 
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`ScheduledJobDefinition`と`scheduled-jobs.ts`の登録箇所・`AppError`・`getAppLogger`・`ulidPrimaryKey`・`timestamps`・`softDelete`・`notDeleted`・`textNoCase`。形を変えない。
-- api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`assertHuman`・`loaders`)・`withValidatedArgs`・`defineLoader`・`encodeCursor`・`decodeCursor`・`toConnection`・`DateTime`・`PageInfo`、`SessionView`。形を変えない。
-- identity-auth: `AccountGuard`(`currentUser`・`requireUser`・`requireWritableUser`・`requireVerifiedUser`)・`IDENTITY_TYPES`・`visibleUsers`・`users`(`id`・`nickname`・`handle`・`status`・`deleted_at`・`created_at`の読み取りと、`nickname`・`handle`・`updated_at`の更新)・`HandleAvailability`・`HANDLE_AVAILABILITY`・`GENERATED_HANDLE_LENGTH`・`GENERATED_HANDLE_ALPHABET`(テストだけ)・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`checkNickname`・`NICKNAME_MAX_GRAPHEMES`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・`_authenticated`のレイアウト・`RootAuthContext`・`viewerQueryOptions`・`LoginRequiredDialog`・E2Eの`e2e/support/mailpit.ts`。
-- media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`IMAGE_MEDIA_TYPES`・`MediaFiles`(`claim`・`eraseNow`・`markDeleted`・`eraseOwnedBy`、仮1で追加を依頼する`listOwnerIds`)・`MediaQuarantine`(`addReasonForOwner`・`removeReasonForOwner`)・`MEDIA_TYPES`・`toMediaImage`・`mediaFileLoader`・GraphQLの`MediaImage`・`ImageUploadField`(必須の`contactAvailable`)・`MediaPicture`・`MediaPlaceholder`。`listOwnerIds`の追加のほかは形を変えない。
+- api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`assertHuman`・`loaders`)・`withValidatedArgs`・`defineLoader`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor(schema, cursor)`・`toConnection`・`DateTime`・`PageInfo`、`SessionView`。形を変えない。カーソルの部品はpresentation層にあり、application層からは読み込めないため、リゾルバだけが使う。
+- identity-auth: `AccountGuard`(`currentUser`・`requireUser`・`requireWritableUser`・`requireVerifiedUser`。戻り値の`CurrentUser.user`は`UserAccountView`)と識別子`IDENTITY_PLATFORM_TYPES.AccountGuard`(`backend-lib/core/identity`)・`IDENTITY_TYPES`(`HandleAvailability`の識別子。apiの`application/identity`)・`canViewOwnProfile`(apiの`domain/identity/user-account.ts`)・`visibleUsers`・`users`(`id`・`nickname`・`handle`・`status`・`deleted_at`・`created_at`の読み取りと、`nickname`・`handle`・`updated_at`の更新)・`HandleAvailability`・`HANDLE_AVAILABILITY`・`GENERATED_HANDLE_LENGTH`・`GENERATED_HANDLE_ALPHABET`(テストだけ)・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`checkNickname`・`NICKNAME_MAX_GRAPHEMES`・`SETTINGS_NAV_ITEMS`・`SettingsShell`・`_authenticated`のレイアウト・`RootAuthContext`・`viewerQueryOptions`・`LoginRequiredDialog`・E2Eの`e2e/support/mailpit.ts`。
+- media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`IMAGE_MEDIA_TYPES`・`MediaFiles`(`claim`・`eraseNow`・`markDeleted`・`eraseOwnedBy`、仮1の依頼で加わった`listOwnerIds`)・`MediaQuarantine`(`addReasonForOwner`・`removeReasonForOwner`)・`MEDIA_TYPES`・`toMediaImage`・`mediaFileLoader`・GraphQLの`MediaImage`・`ImageUploadField`(必須の`contactAvailable`)・`MediaPicture`・`MediaPlaceholder`。形を変えない。
 - content-processing: `countGraphemes`・`hasForbiddenCharacters`・`markdownTextSchema`・`MarkdownEditor`・`useMarkdownOptions`・`useRenderedMarkdown`・`CollapsibleMarkdownContent`。
 - ultras-subscription: `ULTRAS_TYPES.UltrasEntitlements`の`isEntitledAt`。
 - inquiry-chat: `InquirerProfiles`・`InquirerProfile`・`INQUIRY_TYPES.InquirerProfiles`(束縛の差し替えだけ)。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`useAppForm<TInput, TOutput>(schema, { defaultValues })`・`AppForm`(必須の`onSubmitError`・任意の`serverFieldPrefix`)・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`useTurnstileToken`・`TurnstileWidget`(非表示)・Zodの値の読み込み元(`utilities/validation/zod.ts`の`z`)・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`buildPageHead`・`PublicRuntimeConfig.clientSiteOrigin`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品(タブ・ドロップダウンメニュー・ツールチップ・ボタン)・`runAxe`。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`useAppForm<TInput, TOutput>(schema, { defaultValues })`・`AppForm`(必須の`onSubmitError`・任意の`serverFieldPrefix`)・`FormField`・`SubmitButton`・`applyServerFieldErrors`・`useTurnstileToken`・`TurnstileWidget`(非表示)・Zodの値の読み込み元(`utilities/validation/zod.ts`の`z`)・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`buildPageHead`(clientでは`buildSitePageHead`越し)・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・shadcn/uiの部品(タブ・ドロップダウンメニュー・ツールチップ・ボタン)・`runAxe`。
 - npmパッケージ: 新規は無い。
 - 後続specは、`common-lib/handles`・`previousHandleColumns`・`workers/handles`の公開の関数(infrastructure層と`workers`だけが使う)、`core/profile`の契約(`UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`)と識別子`PROFILE_PLATFORM_TYPES`、apiの`MyProfileReader`・`ProfileEditor`・GraphQLの`UserSummary`・`userSummaryLoader`、clientの`FollowButton`・`UserAvatar`と3つの登録箇所だけに依存し、本specのテーブルを直接読み書きしない。
 
@@ -69,24 +69,26 @@
 - `UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`の形と、可視の利用者の扱い(product-launch・notifications・data-export)。データエクスポートの文書の`profile.json`・`follows.json`の項目が変わったら確かめ直す。
 - `core/profile`の契約(`UserProfileDirectory`・`ProfileExport`・`FollowExport`・`FollowerDirectory`)と`PROFILE_PLATFORM_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(後続specのapplication層が読み込むため)。
 - 波及処理の`order`(`purge_due`の600・610、`suspended`・`unsuspended`の600)と、4:21のジョブ`user-profile-social.orphaned-file-sweep`の`order` 600。本specは600番台を使い、identity-auth(100番台・10000以上)・admin-foundation(200番台)・inquiry-chat(300番台)・payments(400番台)・ultras-subscription(500番台)・media-pipeline(800番台)・email-delivery(900〜949)・content-processing(950〜999・2300番台)・後続spec(1000番台以降)の帯と重ねない。後続specのテーブルが`media_files`へ外部キーを張ると、`purge_due`の610のファイルの物理削除が失敗するため、ファイルのIDは外部キー無しで持つ。
-- identity-authの`users`の列・`visibleUsers`・`AccountGuard`・ライフサイクルの登録口の形・`HandleAvailability`の形、media-pipelineの`MediaFiles`(`listOwnerIds`を含む)・`MediaQuarantine`・`OWNER_OPERATION_BATCH_LIMIT`・`hasMore`の意味、inquiry-chatの`InquirerProfiles`の形、ultras-subscriptionの`UltrasEntitlements`の形を変えたら、本specを確かめ直す。
+- identity-authの`users`の列・`visibleUsers`・`AccountGuard`・ライフサイクルの登録口の形・`HandleAvailability`の形、media-pipelineの`MediaFiles`(`listOwnerIds`を含む)・`MediaQuarantine`・`OWNER_OPERATION_BATCH_LIMIT`・`hasMore`の意味、inquiry-chatの`InquirerProfiles`の形と「退会済み・停止中の利用者も返す」規則、ultras-subscriptionの`UltrasEntitlements`の形を変えたら、本specを確かめ直す。
 
 ### 上流への影響
 
-| 上流spec       | 変更                                                                                                                                                                                      | 影響と再検証                                                                                                                                                                                                                                                        |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| identity-auth  | `apps/api/src/composition/identity-registrations.ts`の`HANDLE_AVAILABILITY`を`PROFILE_TYPES.UserHandleAvailability`へ差し替える。`SETTINGS_NAV_ITEMS`に`profile`(10)・`follows`(50)を足す | 差し替えはidentity-authの契約どおり。登録時の初期ハンドルの判定に旧ハンドルと予約語が加わる。`/settings`の移動先が最小の`order`の`/settings/profile`に変わるため、identity-authのテストが移動先を`/settings/account`と確かめていれば本specのタスク8.2で期待値を直す |
-| inquiry-chat   | `apps/api/src/composition/inquiry-module.ts`の`INQUIRY_TYPES.InquirerProfiles`の束縛を`ProfileInquirerProfiles`へ差し替える                                                               | inquiry-chatの契約どおり(形を変えない)。既定の`D1InquirerProfiles`とそのテストは残す。問い合わせフォームと管理画面の詳細にプロフィール画像が出る                                                                                                                    |
-| media-pipeline | `apps/api/src/composition/upload-purposes.ts`の`UPLOAD_PURPOSES`に`user-avatar`を足す                                                                                                     | 契約どおり                                                                                                                                                                                                                                                          |
-| media-pipeline | `MediaFiles`に`listOwnerIds({ kind, after, limit })`を加える(仮1。本specは依頼するだけで、media-pipelineのコードと文書は変えない)                                                         | 契約への追加。media-pipelineのspecとタスクに反映して実装されるまで、本specのタスク6.3を保留する                                                                                                                                                                     |
+| 上流spec                 | 変更                                                                                                                                                                                      | 影響と再検証                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| identity-auth            | `apps/api/src/composition/identity-registrations.ts`の`HANDLE_AVAILABILITY`を`PROFILE_TYPES.UserHandleAvailability`へ差し替える。`SETTINGS_NAV_ITEMS`に`profile`(10)・`follows`(50)を足す | 差し替えはidentity-authの契約どおり。登録時の初期ハンドルの判定に旧ハンドルと予約語が加わる。`HANDLE_AVAILABILITY`が`D1HandleAvailability`であることを確かめる`apps/api/src/composition/identity-module.worker.test.ts`をタスク3.4で直す。`/settings`の移動先が最小の`order`の`/settings/profile`に変わる。そのため、`SETTINGS_NAV_ITEMS`を完全一致で確かめる`apps/client/src/components/settings/settings-nav-order.unit.test.ts`(タスク8.2・8.3)と、移動先を`/settings/account`と確かめるE2Eの`openAccountSettings`(`e2e/client/auth/account-steps.ts`。`e2e/client/ultras-steps.ts`の設定のナビゲーションの手順を含む、タスク8.2)の期待値を直す |
+| inquiry-chat             | `apps/api/src/composition/inquiry-module.ts`の`INQUIRY_TYPES.InquirerProfiles`の束縛を`ProfileInquirerProfiles`へ差し替える                                                               | inquiry-chatの契約どおり(形を変えず、退会済み・停止中の利用者も返す)。既定の`D1InquirerProfiles`とそのテストは残す。問い合わせフォームと管理画面の詳細にプロフィール画像が出る。束縛を`D1InquirerProfiles`と確かめる`apps/api/src/composition/inquiry-module.worker.test.ts`をタスク5.4で直す                                                                                                                                                                                                                                                                                                                                                      |
+| media-pipeline           | `apps/api/src/composition/upload-purposes.ts`の`UPLOAD_PURPOSES`に`user-avatar`を足す                                                                                                     | 契約どおり。`UPLOAD_PURPOSES`を2件で完全一致にする`apps/api/test/config/media-registrations.unit.test.ts`をタスク3.4で直す                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| media-pipeline           | `MediaFiles`の`listOwnerIds({ kind, after, limit })`を使う(仮1の依頼。media-pipelineの改訂1で実装済み)                                                                                    | 本specはmedia-pipelineのコードと文書を変えない。`limit`の範囲は1〜500で、範囲外は`AppError(bad_request, invalid_limit)`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| backend-platform・各spec | 4:21のジョブ(600)と、eventの非同期の波及処理(`purge_due`の600・610、`suspended`・`unsuspended`の600)を登録する                                                                            | 登録の並びを完全一致で確かめる既存のテストの期待値を直す。4:21のジョブは`apps/api/test/config/payments-scheduled-jobs.unit.test.ts`(500の直後のジョブ)と`apps/api/src/composition/search-module.worker.test.ts`(全ジョブ名)をタスク6.3で、波及処理は`apps/event/src/composition/payments-module.worker.test.ts`と`apps/event/src/composition/ultras-module.worker.test.ts`をタスク6.1・6.2で直す                                                                                                                                                                                                                                                   |
+| db                       | `apps/db/schema/index.ts`に4テーブルを足す                                                                                                                                                | テーブル名の一覧を完全一致で確かめる`apps/db/schema/index.unit.test.ts`をタスク1.2で直す                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
-- 上流specの文書の変更は本specでは行わない。media-pipelineへの`listOwnerIds`の追加は依頼として報告する。roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は600、波及処理は600・610」になる(本specはroadmapを編集しないため、コントローラーへ報告する)。
+- 上流specの文書の変更は本specでは行わない(G2で開発者が指示したidentity-authの`AccountGuard`の記述の修正を除く)。roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は600、波及処理は600・610」になる(本specはroadmapを編集しないため、コントローラーへ報告する)。
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- 上流の14specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする(roadmapの順でultras-subscriptionまでが先に実装される)。実装済みはdev-toolingだけである。
+- 上流の14specは設計・タスクとも承認済みで、実装も完了している(roadmapの順でultras-subscriptionまで)。本specが使う上流の契約は、実装済みのコードと突き合わせて確かめた(research.mdの「実装前のギャップ分析」)。
 - `users.handle`は`text collate nocase`で全行一意。旧ハンドルは本specのテーブルに置くため、現在のハンドルの衝突は保存の一括の書き込みの先頭の文の`CASE`式で、他人の旧ハンドルとの重なりは同じ一括の書き込みに含めるその旧ハンドルの削除の文(`previousHandleRelease`、仮2)で防ぐ(identity-authの`UserLifecycleCommitter`と同じ方式)。D1の`db.batch()`は1つのトランザクションで直列に確定する。
 - ライフサイクルの同期の波及処理はapi(退会の確定と同じ一括の書き込み)、非同期の波及処理はevent(`identity.run-user-lifecycle`の実行器)で動く。`purge_due`の全波及処理の完了後にidentity-authが`users`の行を消す。
 - ドメインのテーブルはファイルのIDを`media_files`への外部キー無しで持つ(inquiry-chat・admin-foundation)。保有者単位の操作は1回1,000件で`hasMore`を返す。
@@ -322,6 +324,14 @@ docs/GUIDES/tech/
 - `docs/GUIDES/service/features/001-user-data-export.md` — `websites[].name`が未入力なら空文字列であること。
 - `docs/onboardings/project-values.md` — 波及処理とジョブの名前と`order`、用途`user-avatar`。
 - `CLAUDE.md` — 「技術規則の参照先」に「ハンドル(URLの識別子)を持つテーブルを定義する前に: `backend/011`」を加える。
+- 登録の並び・束縛を完全一致で確かめる既存のテスト(期待値に本specの登録を足す。担当のタスクは「上流への影響」の表):
+  - `apps/db/schema/index.unit.test.ts`(テーブル名の一覧、1.2)
+  - `apps/api/src/composition/identity-module.worker.test.ts`(`HANDLE_AVAILABILITY`、3.4)・`apps/api/test/config/media-registrations.unit.test.ts`(`UPLOAD_PURPOSES`、3.4)
+  - `apps/api/src/composition/inquiry-module.worker.test.ts`(`InquirerProfiles`の束縛、5.4)
+  - `apps/event/src/composition/payments-module.worker.test.ts`・`apps/event/src/composition/ultras-module.worker.test.ts`(非同期の波及処理の並び、6.1・6.2)
+  - `apps/api/test/config/payments-scheduled-jobs.unit.test.ts`・`apps/api/src/composition/search-module.worker.test.ts`(4:21のジョブの並び、6.3)
+  - `apps/client/src/components/settings/settings-nav-order.unit.test.ts`(`SETTINGS_NAV_ITEMS`、8.2・8.3)
+  - `e2e/client/auth/account-steps.ts`の`openAccountSettings`・`e2e/client/ultras-steps.ts`の設定のナビゲーションの手順(`/settings`の移動先、8.2)
 
 ## System Flows
 
@@ -372,7 +382,7 @@ flowchart TB
 ```
 
 - 解決は大文字小文字を区別しない。現在のハンドルを優先し、旧ハンドルは論理削除されていないもの(退会者の分を除く)だけを返す。退会済みの利用者の現在のハンドルは解決しない(`users.deleted_at IS NULL`)。
-- 「表示できる」は、保持者が可視、または停止中で閲覧者が本人であること(`UserAccountRules.canViewOwnProfile`と同じ規則)。
+- 「表示できる」は、保持者が可視、または停止中で閲覧者が本人であること(identity-authの`canViewOwnProfile`と同じ規則。apiの`domain/identity/user-account.ts`の単独の関数)。
 - 他の利用者が旧ハンドルと同じ文字列を設定すると、その保存の一括の書き込みで旧ハンドルの行が消えるため、以後は`current`(新しい設定者)として解決される(仮2)。
 
 ### 退会・停止・物理削除の波及処理
@@ -423,11 +433,11 @@ sequenceDiagram
             M-->>J: processed と hasMore
         end
     end
-    J->>J: 1回の上限1000件で打ち切り 件数を記録
+    J->>J: 消した件数が1000件に達したら次の呼び出しをしない 件数を記録
 ```
 
 - 存在の判定は`users`の行の有無(退会済みで物理削除前の利用者は存在する)で行う。利用者の行は`purge_due`の全波及処理(本specの610の`eraseOwnedBy`を含む)の後に消えるため、通常の退会では対象が残らない。対象になるのは、本specの導入より前にstagingで物理削除された利用者のファイルと、波及処理の不具合で取り残されたファイルである。
-- 1回の実行で物理削除するファイルを合計1,000件(`ORPHANED_FILE_SWEEP_LIMIT`)までとし、残りは翌日の実行で続ける。保有者ごとの`eraseOwnedBy`の失敗は`warn`のログに記録して次の保有者へ進み、ジョブ全体を失敗させない。
+- 消したファイルの合計が1,000件(`ORPHANED_FILE_SWEEP_LIMIT`)に達したら、次の`eraseOwnedBy`を呼ばずに打ち切り、残りは翌日の実行で続ける。`eraseOwnedBy`は件数を受け取らず、1回で最大1,000件(`OWNER_OPERATION_BATCH_LIMIT`)を消す。そのため1回の実行で消す件数は、上限を最大で1回の呼び出し分(1,000件)超えうる(最大1,999件)。保有者ごとの`eraseOwnedBy`の失敗は`warn`のログに記録して次の保有者へ進み、ジョブ全体を失敗させない。
 
 ## Requirements Traceability
 
@@ -450,7 +460,7 @@ sequenceDiagram
 | 5.1, 5.2                           | 画像の選択と上限                             | AvatarField、ProfileInputRules                                                                  | `ImageUploadField`・`user-avatar`                                                          | —                                  |
 | 5.3, 5.4, 5.5                      | 差し替え・削除・不正な画像                   | ProfileEditor、ProfileEditPlan                                                                  | `MediaFiles.claim`・`eraseNow`・`markDeleted`                                              | プロフィールの保存                 |
 | 5.6                                | プレースホルダー                             | UserAvatar、ProfileAvatar                                                                       | `MediaPicture`・`toMediaImage`                                                             | —                                  |
-| 6.1, 6.12                          | URLとタイトル                                | PublicProfileRoute                                                                              | `buildPageHead`                                                                            | 公開プロフィールの解決             |
+| 6.1, 6.12                          | URLとタイトル                                | PublicProfileRoute                                                                              | `buildSitePageHead`                                                                        | 公開プロフィールの解決             |
 | 6.2, 6.3, 6.4, 6.5                 | 人物情報とリンク                             | ProfileCard、ExternalWebsiteList、PublicProfileReader                                           | `PublicProfile`                                                                            | —                                  |
 | 6.6                                | フォロワー数                                 | FollowerCount、D1PublicProfileStore                                                             | `PublicProfile.followerCount`                                                              | —                                  |
 | 6.7, 6.8                           | Ultrasの表示                                 | ProfileAvatar、PublicProfileReader                                                              | `UltrasEntitlements.isEntitledAt`                                                          | —                                  |
@@ -566,12 +576,13 @@ export declare function checkWebsiteName(value: string): OptionalTextCheck; // �
 export declare const EXTERNAL_URL_MAX_LENGTH: 2048;
 export type ExternalUrlCheck =
   'ok' | 'empty' | 'too-long' | 'not-absolute' | 'disallowed-scheme';
-export declare function checkExternalUrl(value: string): ExternalUrlCheck; // URLとして解析でき、protocolがhttps:・http:、2,048文字以内(NFR-SECUR-046)
+export declare function checkExternalUrl(value: string): ExternalUrlCheck; // スキームの直後に//が続き(/^https?:\/\//i)、URLとして解析でき、protocolがhttps:・http:、2,048文字以内(NFR-SECUR-046)
 export declare function externalUrlHost(value: string): string; // 表示用のホスト名。解析できなければ空文字列
 ```
 
 - 書記素は`countGraphemes`、禁止文字は`hasForbiddenCharacters`(content-processing)で数える。zodは使わず、各アプリの検証規則(apiの`inputs.ts`、clientの`profile-form-schema.ts`)がこれらの定数と判定から組み立てる(identity-authの`AccountInputRules`と同じ方針)。
-- `checkExternalUrl`は前後の空白を除いた値を判定する。保存する値も前後の空白を除いた値とする。
+- `checkExternalUrl`は前後の空白を除いた値を判定する。保存する値も前後の空白を除いた値とし、それ以上は正規化しない(利用者の入力した表記を編集画面・表示・エクスポートでそのまま使う)。
+- `https:a.example`のようにスキームの直後に`//`の無い値は、`https`・`http`のスキームでも`not-absolute`とする。ブラウザは同じスキームのページでこの値を相対URLとして解釈し、表示するホスト名とリンク先が食い違うため。content-processingのマークダウンのリンクの判定(`common-lib/markdown/plugins/link-policy.ts`)と同じ規則である。
 
 ### db
 
@@ -712,7 +723,8 @@ export interface UserSummaryRecord {
   readonly avatarFileId: string | null;
   readonly suspended: boolean;
 }
-export type UserLookupScope = 'visible' | 'not-withdrawn'; // 可視の利用者だけ / 停止中を含む
+export type UserLookupScope =
+  'visible' | 'not-withdrawn' | 'including-withdrawn'; // 可視の利用者だけ / 停止中を含む / 停止中と退会済み(物理削除前)を含む
 export type UserHandleResolution =
   | { readonly kind: 'current'; readonly user: UserSummaryRecord }
   | { readonly kind: 'previous'; readonly user: UserSummaryRecord } // user.handleは現在のハンドル
@@ -721,7 +733,7 @@ export interface UserProfileDirectory {
   findSummaries(
     userIds: readonly string[],
     scope: UserLookupScope,
-  ): Promise<ReadonlyMap<string, UserSummaryRecord>>; // 重複を除き90件ずつ。退会済みは返さない
+  ): Promise<ReadonlyMap<string, UserSummaryRecord>>; // 重複を除き90件ずつ。退会済みは'including-withdrawn'のときだけ返す
   resolveHandle(handle: string): Promise<UserHandleResolution>; // 退会済みの利用者は解決しない。停止中は返す
 }
 // core/profile/identifiers.ts
@@ -734,7 +746,7 @@ export declare const PROFILE_PLATFORM_TYPES: {
 ```
 
 - 置き場所: api・eventのapplication層と後続specの`backend-lib/workers/<ドメイン>`の両方から読み込めるよう、4つの照会口の契約は`apps/backend-lib/core/profile/ports.ts`、識別子は`core/profile/identifiers.ts`に置き、D1の実装(`d1-user-profile-directory.ts`・`d1-profile-export.ts`・`d1-follow-directory.ts`)と束縛だけを`apps/backend-lib/workers/profile`に置く(application層は`**/lib/workers/**`を型も含めて読み込めないため)。`core/profile`は`workers`・`apps/db`を読み込まない。
-- `findSummaries`は`users`と`user_profiles`の左外部結合を1回の問い合わせ(IDのバインド変数は90個以内)で読む。`suspended`は`users.status = 'suspended'`。
+- `findSummaries`は`users`と`user_profiles`の左外部結合を1回の問い合わせ(IDのバインド変数は90個以内)で読む。`suspended`は`users.status = 'suspended'`。`scope`の条件は、`visible`が`visibleUsers()`、`not-withdrawn`が`users.deleted_at IS NULL`で、`including-withdrawn`は退会の条件を付けない(物理削除された利用者は行が無いため返らない)。`including-withdrawn`は、退会済みの利用者の問い合わせを管理画面で表示する`ProfileInquirerProfiles`だけが使う。
 - `resolveHandle`は`resolveHandle(db, USER_HANDLE_NAMESPACE, handle)`の結果の保有者を`findSummaries([id], 'not-withdrawn')`で引く。旧ハンドルの保有者が退会済みなら`none`(論理削除済みのため`resolveHandle`の時点で出ない)。
 - 後続specは`users`・`user_profiles`を直接読まず、これを使う。可視かどうかの使い分けは呼び出し元が`scope`で決める。
 
@@ -954,18 +966,18 @@ export interface FollowListReader {
     readonly userId: string;
     readonly direction: 'following' | 'followers';
     readonly first: number; // 1〜20
-    readonly after: string | undefined;
-  }): Promise<{
-    readonly nodes: readonly FollowEntryView[];
-    readonly hasNextPage: boolean;
-    readonly endCursor: string | null;
-  }>;
+    readonly after: FollowListPosition | undefined;
+  }): Promise<readonly FollowEntryView[]>; // 最大first+1件。first+1件目は続きの有無の判定だけに使う
+}
+export interface FollowListPosition {
+  readonly t: number; // フォローの作成日時のミリ秒
+  readonly id: string; // フォローのID
 }
 ```
 
 - `follow`(利用者はリゾルバが`requireVerifiedUser`で確かめた後、9.5・9.6): `resolveHandle`で現在または旧のハンドルの相手を引き、無い・停止中なら`follow_target_unavailable`(9.4)、本人なら`cannot_follow_self`(9.3)。`FollowStore.insertIfAbsent`(相手が可視であることを条件にした挿入と`ON CONFLICT DO NOTHING`、9.7・9.11)。挿入が0件で既存の行も無ければ(同時の停止・退会)`follow_target_unavailable`。
 - `unfollow`(リゾルバが`requireWritableUser`): 相手を`not-withdrawn`で解決し、無ければ`follow_target_unavailable`。`FollowStore.delete`(物理削除、9.2)。行が無くても成功(9.7)。
-- `list`: カーソルは`encodeCursor({ t: <フォローの作成日時のミリ秒>, id: <フォローのID> })`。21件を読み先頭20件と続きの有無(10.2)。可視でない相手(フォロワー)は結合の条件で除く(10.4)。`userId`はセッションの利用者だけで、引数で受け取らない(10.7)。
+- `list`: 位置`FollowListPosition`の後から、`first`+1件までを読んで返す(10.2)。カーソルの文字列は扱わない。カーソルの符号化と復号はapi-gatewayの部品がpresentation層に持ち、application層からは読み込めないため、リゾルバが行う(`FollowResolvers`)。可視でない相手(フォロワー)は結合の条件で除く(10.4)。`userId`はセッションの利用者だけで、引数で受け取らない(10.7)。
 
 #### D1ProfileStore・D1PublicProfileStore・D1FollowStore
 
@@ -1040,7 +1052,7 @@ export interface FollowStore {
 
 #### ProfileInquirerProfiles
 
-- `findMany(userIds)`: `UserProfileDirectory.findSummaries(userIds, 'not-withdrawn')`の結果を`InquirerProfile`(`userId`・`nickname`・`handle`・`avatarFileId`)へ写す(12.1)。退会済みの利用者は返さない(既定の実装の規則)。隔離中の画像は`toMediaImage`で`objectKey`が`null`になり、既定のアイコンが出る。
+- `findMany(userIds)`: `UserProfileDirectory.findSummaries(userIds, 'including-withdrawn')`の結果を`InquirerProfile`(`userId`・`nickname`・`handle`・`avatarFileId`)へ写す(12.1)。退会済み(物理削除前)・停止中の利用者も返す(inquiry-chatの契約で、差し替える実装も守る規則。管理画面の退会済みの問い合わせの詳細に送った利用者を出すため)。停止中の利用者を空にするのはinquiry-chatのリゾルバである。退会済みの利用者の画像は、`purge_due`の610でファイルが物理削除されるまで出る。隔離中・削除待ちの画像は`toMediaImage`で`objectKey`が`null`になり、既定のアイコンが出る。
 - 束縛: `inquiry-module.ts`の`INQUIRY_TYPES.InquirerProfiles`を`toService(PROFILE_TYPES.ProfileInquirerProfiles)`にする。`D1InquirerProfiles`のファイルは残す。
 
 #### ProfileWithdrawalSyncHandler
@@ -1153,6 +1165,7 @@ type Mutation {
 | `myFollowing`・`myFollowers` | client               | `requireUser`         | なし              | `unauthenticated`・`validation_error`(`first`は1〜20)・`invalid_cursor`                                                                                                                    |
 
 - 呼び出し元が`client`でなければ`forbidden`。bot対策は、ログインと状態の確認の後に`context.assertHuman(action)`で行う。
+- `FollowResolvers`の`myFollowing`・`myFollowers`の引数は、`CURSOR_PAGE_ARGS`の`first`を1〜20に絞った独自のスキーマを`withValidatedArgs`で検証する(`CURSOR_PAGE_ARGS`の上限は100のため)。`after`は`decodeCursor(FollowListPositionSchema, after)`で`FollowListPosition`(`t`は0以上の整数、`id`はULID)に戻し、失敗は`invalid_cursor`。`FollowListReader.list`の結果は`toConnection(rows, first, (row) => encodeCursor({ t: row.followedAt.getTime(), id: row.followId }))`でConnectionにする(`toConnection`が先頭`first`件と`hasNextPage`・`endCursor`を決める)。
 - `ProfileInputs`(`inputs.ts`、`withValidatedArgs`): ニックネームは`checkNickname`、ハンドルは`checkHandleFormat(USER_HANDLE_RULE)`、ヘッドラインは`checkHeadline`、自己紹介は`markdownTextSchema({ label: '自己紹介', maxGraphemes: 5000, required: false })`、外部Webサイトは0〜10件(仮3)で名前は`checkWebsiteName`・URLは`checkExternalUrl`。空文字列のヘッドライン・自己紹介は`null`として保存する。違反は`validation_error`と欄ごとの詳細(`websites.2.url`など)。
 - `UserSummaryModule`(`user-summary.ts`): `userSummaryLoader = defineLoader<string, UserSummaryRecord | null>`(`UserProfileDirectory.findSummaries(ids, 'visible')`、可視でなければnull)と、`UserSummary.avatar`・`PublicProfile.avatar`・`MyProfile.avatar`の項目のリゾルバ(`mediaFileLoader`→`toMediaImage`)。後続specは自分の型の項目で`UserSummary`を返す。
 
@@ -1172,7 +1185,7 @@ type Mutation {
 - `EVENT_PROFILE_TYPES`で束縛し、`USER_LIFECYCLE_ASYNC_HANDLERS`に3件を加える。`createAsyncLifecycleRegistry`の検証(同じ種類での`order`の重複)を通る。
 - 保有者の居ないファイルの日次の削除は、apiの4:21のジョブ(「OrphanedFileSweepJob」)が行う(11.9、仮1)。
 
-### api/application/jobs
+### api/application/profile/jobs
 
 #### OrphanedFileSweepJob
 
@@ -1184,7 +1197,7 @@ type Mutation {
 **Contracts**: Batch [x]
 
 ```typescript
-export declare const ORPHANED_FILE_SWEEP_LIMIT: 1000; // 1回の実行で物理削除するファイルの上限
+export declare const ORPHANED_FILE_SWEEP_LIMIT: 1000; // 消した件数がこれに達したら次のeraseOwnedByを呼ばない(1回の呼び出しで最大1,000件消えるため、実行あたり最大1,999件)
 export declare const ORPHANED_FILE_SWEEP_PAGE: 90; // 保有者のIDを読む件数(バインド変数100個以内)
 export interface OrphanedFileSweepResult {
   readonly ownersScanned: number;
@@ -1194,12 +1207,13 @@ export interface OrphanedFileSweepResult {
 }
 ```
 
-| ジョブの名前                              | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                     |
-| ----------------------------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `user-profile-social.orphaned-file-sweep` | 4:21     | 600     | `MediaFiles.listOwnerIds({ kind: 'user', after, limit: 90 })`で保有者のIDを順に読み、`ProfileStore.findExistingUserIds`に無いIDごとに`MediaFiles.eraseOwnedBy({ kind: 'user', id })`を`hasMore`が偽になるまで呼ぶ。合計1,000件で打ち切る |
+| ジョブの名前                              | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user-profile-social.orphaned-file-sweep` | 4:21     | 600     | `MediaFiles.listOwnerIds({ kind: 'user', after, limit: 90 })`で保有者のIDを順に読み、`ProfileStore.findExistingUserIds`に無いIDごとに`MediaFiles.eraseOwnedBy({ kind: 'user', id })`を`hasMore`が偽になるまで呼ぶ。消した件数(`processed`の合計)が1,000件に達したら、次の`eraseOwnedBy`を呼ばずに打ち切る |
 
 - Trigger: apiのCron Triggers(`21 12 * * *`、既存)。`order` 600は本specの600番台で、上流の4:21のジョブ(100〜120・200・210・300・400・410・500・810〜830・900・2300)と重ならない。日次タイムラインの表に載せる。
-- 依頼する上流の契約(media-pipeline、`MediaFiles`への追加): `listOwnerIds(input: { readonly kind: UploaderKind; readonly after: string | undefined; readonly limit: number }): Promise<{ readonly ownerIds: readonly string[]; readonly next: string | undefined }>`。`owner_kind`が`kind`の`media_files`の`owner_id`を重複を除いて昇順に最大`limit`(1〜500)件返し、続きがあれば最後のIDを`next`に入れる(索引`(owner_kind, owner_id)`)。
+- 定義: `ORPHANED_FILE_SWEEP_JOB_DEFINITION`(`{ name, at: { hour: 4, minute: 21 }, order: 600, handler }`を`Object.freeze`したもの)を`apps/api/src/application/profile/jobs/orphaned-file-sweep-job.ts`から公開し、`scheduled-jobs.ts`の`SCHEDULED_JOBS`に並べる(inquiry-chat・payments・ultras-subscriptionと同じ形)。4:21の合計の予算は300秒である。
+- 使う上流の契約(media-pipelineの改訂1で実装済み): `listOwnerIds(input: { readonly kind: UploaderKind; readonly after: string | undefined; readonly limit: number }): Promise<{ readonly ownerIds: readonly string[]; readonly next: string | undefined }>`。`owner_kind`が`kind`の`media_files`の`owner_id`を重複を除いて昇順に最大`limit`(1〜500、範囲外は`AppError(bad_request, invalid_limit)`)件返し、続きがあれば最後のIDを`next`に入れる(索引`(owner_kind, owner_id)`)。
 - 冪等: 対象を毎回D1から求め直すため、途中の失敗や重複の実行でも結果が変わらない。保有者ごとの失敗は`warn`のログ(保有者のIDだけ)で次へ進む。結果を`info`のログ(件数だけ)に残す。
 
 ### client
@@ -1237,7 +1251,7 @@ export declare const PUBLIC_PROFILE_BADGES: readonly PublicProfileBadgeSection[]
 export declare const PUBLIC_PROFILE_MENU_ITEMS: readonly PublicProfileMenuItem[]; // 初版は空。content-reporting report(10)が追記
 ```
 
-- ルート`/@{$handle}`(`routes/@{$handle}.tsx`): `validateSearch`で`tab`(文字列、省略可)。`loader`は`checkHandleFormat`の違反で`notFound()`(7.5)、`publicProfile`を`ensureQueryData`で読み、`null`なら`notFound()`(7.1・7.2・7.4)、`PublicProfileRedirect`なら`redirect({ to: '/@{$handle}', params: { handle }, search: 現在の検索パラメーター, statusCode: 302 })`(2.5)。`head`は`buildPageHead({ title: '<ニックネーム>(@<ハンドル>)', canonicalUrl: clientSiteOrigin + '/@' + <現在のハンドル> })`(6.1・6.12)。`pendingComponent`は`ProfileSkeleton`、`errorComponent`は`ErrorState`(文言規則「プロフィールを読み込めませんでした。…」・再試行・問い合わせへの導線、6.11)。404はfrontend-platformの`NotFoundView`(プロダクト詳細と同一)。
+- ルート`/@{$handle}`(`routes/@{$handle}.tsx`): `validateSearch`で`tab`(文字列、省略可)。`loader`は`checkHandleFormat`の違反で`notFound()`(7.5)、`publicProfile`を`context.queryClient.query({ ...graphqlQueryOptions(ClientPublicProfileDocument, { handle }), staleTime: 'static' })`で読み(`ensureQueryData`は導入済みの版で非推奨のため使わない。frontend/006の「取得の補助とloader」)、`null`なら`notFound()`(7.1・7.2・7.4)、`PublicProfileRedirect`なら`redirect({ to: '/@{$handle}', params: { handle }, search: 現在の検索パラメーター, statusCode: 302 })`(2.5)。`head`はclientの`buildSitePageHead({ title: '<ニックネーム>(@<ハンドル>)', canonicalUrl: '/@' + <現在のハンドル> })`(6.1・6.12)。`buildPageHead`は外部のオリジンを指し得る値を避けるため`/`で始まるパスだけをcanonicalにするので、オリジンを付けずにパスで渡す。サイト名は`buildSitePageHead`が補う。タブの区画は、登録口に登録された区画の規約(frontend/006)どおり部品自身が`useQuery`で取得する。`pendingComponent`は`ProfileSkeleton`、`errorComponent`は`ErrorState`(文言規則「プロフィールを読み込めませんでした。…」・再試行・問い合わせへの導線、6.11)。404はfrontend-platformの`NotFoundView`(プロダクト詳細と同一)。
 - `PublicProfilePage`: PC(1024px以上)は左に幅320〜352pxのカード、右にタブの2カラム、それ未満は1カラム。停止中の本人には`SuspendedProfileBanner`(7.3)。タブが1つも無ければ右カラムを出さない(8.7)。
 - `ProfileCard`: `ProfileAvatar`・ニックネーム(`h1`)・`@ハンドル`・ヘッドライン・`FollowerCount`・`PUBLIC_PROFILE_BADGES`の区画(8.5)・本人以外に`FollowButton`と`ProfileActionsMenu`、本人(停止中でない)に「プロフィールを編集」(`/settings/profile`、6.9)・`ProfileCompletion`(6.10)、自己紹介(`CollapsibleMarkdownContent`、240px、`useMarkdownOptions({ externalLinkRel: ['noopener', 'ugc'], sameOriginLinkRel: ['ugc'], idScope: 'bio' })`、6.3・6.5)、`ExternalWebsiteList`(6.4)。任意項目の区画は値が無ければ描画しない(6.2)。
 - `ProfileAvatar`: `UserAvatar`(表示128、CSSで96px・640px未満80px)。`ultras`なら`ring-primary`の輪・ツールチップ・読み上げ用の文言(6.7)。
@@ -1344,20 +1358,20 @@ export interface UserAvatarProps {
 
 - Unit Tests(Bun、`*.unit.test.ts`):
   - `handle-rules`: 形式(`a`・`A1`・`a-b_c`・25文字・26文字・先頭のハイフン・空白・全角・`é`)、`toHandleKey`がASCIIだけを小文字にすること、予約語の14語と`Admin`・`ADMIN`の一致・`admin1`の不一致(1.1・1.2・1.5・3.2・3.5)。
-  - `profile-input-rules`・`external-url`: 50・5,000・25書記素の境界、絵文字の書記素、`https://a.example`・`http://`・`javascript:`・`data:`・相対URL・2,048と2,049文字(4.4・4.6)。
+  - `profile-input-rules`・`external-url`: 50・5,000・25書記素の境界、絵文字の書記素、`https://a.example`・`HTTPS://a.example`・`http://`・`https:a.example`(`//`の無い値は`not-absolute`)・`javascript:`・`data:`・相対URL・2,048と2,049文字(4.4・4.6)。
   - `profile-edit-plan`・`website-list`: `none`・`case-only`・`changed`、自分の旧ハンドルへの戻し、画像の`keep`・`set`(差し替え・新規)・`remove`、名前の空白の正規化(2.1〜2.3・5.3・5.4)。
   - `core/profile/identifiers`: `PROFILE_PLATFORM_TYPES`の4つの識別子が`Symbol.for('profile.<名前>')`の値を持ち、オブジェクトが凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形、12.8)。
   - 層の規則: 静的解析で、api・eventのapplication層に`**/lib/workers/**`の読み込み(型だけの読み込みを含む)が無く、`core/profile`が`workers`・`apps/db`を読み込まないこと。
   - `user-handle-availability`: identity-authの`GENERATED_HANDLE_LENGTH`・`GENERATED_HANDLE_ALPHABET`で作った初期ハンドルの形式が`USER_HANDLE_RULE`で`ok`になること(1.9)。
-  - ユースケース(模擬のポート): `ProfileEditor`の判定の順序(競合→予約語→使用中→画像の`claim`→保存→削除)と、`case-only`で予約語・使用中を判定しないこと、他人の旧ハンドルを拒否しないこと、`HandleAvailabilityChecker`の本人の現在・旧と他人の旧ハンドルの扱い、`OrphanedFileSweepJob`の存在しない保有者だけの削除・`hasMore`の繰り返し・1,000件の打ち切り・保有者ごとの失敗で止まらないこと、`PublicProfileReader`の404・302・停止中の本人・Ultrasの失敗の縮退、`FollowService`の本人・停止中・存在しない・冪等、3つの非同期の波及処理の`continue`・`done`(1.3〜1.7・2.5・2.6・4.14・5.5・6.7・7.1〜7.5・9.3〜9.7・11.2〜11.6)。
+  - ユースケース(模擬のポート): `ProfileEditor`の判定の順序(競合→予約語→使用中→画像の`claim`→保存→削除)と、`case-only`で予約語・使用中を判定しないこと、他人の旧ハンドルを拒否しないこと、`HandleAvailabilityChecker`の本人の現在・旧と他人の旧ハンドルの扱い、`OrphanedFileSweepJob`の存在しない保有者だけの削除・`hasMore`の繰り返し・消した件数が1,000件に達した後に`eraseOwnedBy`を呼ばないこと(達する前の呼び出しで超えた分は消えること)・保有者ごとの失敗で止まらないこと、`FollowListReader`が`first`+1件までの行を返し、位置`FollowListPosition`の後から読むこと、`PublicProfileReader`の404・302・停止中の本人・Ultrasの失敗の縮退、`FollowService`の本人・停止中・存在しない・冪等、3つの非同期の波及処理の`continue`・`done`(1.3〜1.7・2.5・2.6・4.14・5.5・6.7・7.1〜7.5・9.3〜9.7・11.2〜11.6)。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts`、ローカルD1):
   - ハンドル基盤: 大文字小文字の違いの解決、旧ハンドルの論理削除済みが解決に出ないこと、既定の使用中の判定が他の対象の旧ハンドルを数えず`includePrevious`で数えること、`exceptOwnerId`、`previousHandleUpsert`の置き換え、`previousHandleRelease`が他の対象の旧ハンドル(論理削除済みを含む)だけを消すこと(1.3・1.4・3.3・3.4・3.8)。
   - プロフィールの保存: 同じハンドルの同時の2つの保存で1つだけ成功、他人の旧ハンドルを設定すると同じ一括の書き込みでその行が消え以後その文字列が新しい設定者に解決されること、停止中の利用者の保存の取り消し、表記の違いの`expectedHandle`の競合、外部Webサイトの置き換え(1.4・1.6・2.1・4.10・4.14)。
-  - スキーマモジュール: `updateMyProfile`の各エラーコード、`client`以外の拒否、`publicProfile`の`PublicProfileRedirect`とnull、`followUser`・`unfollowUser`の拒否と冪等、`myFollowers`から停止中のフォロワーが消え停止の解除で戻ること・21件目でのカーソル、`UserSummary.avatar`の隔離中の`objectKey`のnull(4.3・6.6・9.\*・10.2・10.4・5.6)。
+  - スキーマモジュール: `updateMyProfile`の各エラーコード、`client`以外の拒否、`publicProfile`の`PublicProfileRedirect`とnull、`followUser`・`unfollowUser`の拒否と冪等、`myFollowers`から停止中のフォロワーが消え停止の解除で戻ること・21件目でのカーソル(`encodeCursor`で作った`endCursor`を`after`に渡すと続きが読め、壊れたカーソルと`first`の21が拒否されること)、`UserSummary.avatar`の隔離中の`objectKey`のnull(4.3・6.6・9.\*・10.2・10.4・5.6)。
   - 退会の同期の波及処理: identity-authの退会の確定で旧ハンドルとフォローが論理削除され、旧ハンドルの転送が止まり、その旧ハンドルを他の利用者が設定すると行が物理削除されること(11.1・仮2)。
   - 非同期の波及処理: `purge_due`で1,001件のフォローが2回の呼び出しで消え、プロフィール・外部Webサイト・旧ハンドルが消え、identity-authの`users`の物理削除が外部キーで失敗しないこと。模擬の`MediaFiles`・`MediaQuarantine`で`hasMore`が`continue`になること(11.2〜11.6)。
   - 4:21のジョブ: ローカルD1と模擬の`MediaFiles`(`listOwnerIds`・`eraseOwnedBy`)で、`users`に行の無い保有者だけが削除され、退会済みで物理削除前の利用者のファイルが残ること(11.9)。
-  - `UserHandleAvailability`の予約語・他人の旧ハンドルの拒否(初期ハンドル)、`ProfileInquirerProfiles`の画像のIDと退会済みの除外、`ProfileExport`・`FollowExport`・`FollowerDirectory`の項目と可視性(1.8・12.1〜12.6)。
+  - `UserHandleAvailability`の予約語・他人の旧ハンドルの拒否(初期ハンドル)、`ProfileInquirerProfiles`の画像のIDと退会済み(物理削除前)・停止中の利用者も返すこと、`findSummaries`の3つの`scope`の違い、`ProfileExport`・`FollowExport`・`FollowerDirectory`の項目と可視性(1.8・12.1〜12.6)。
 - E2E/UI Tests:
   - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `ProfileCard`の本人・他人・未入力の案内・Ultrasの輪と読み上げ・任意項目の非表示、`ExternalWebsiteList`の`rel`・名前が無いときのホスト名、`ProfileTabs`の登録の順・`tab`のクエリ・タブが無いとき、`ProfileActionsMenu`の表示条件、`FollowButton`の未ログイン・未確認・本人・押下・失敗の戻し、`ProfileEditForm`のフォーカスアウトの検証・使用中の表示・旧ハンドルの案内・停止中の無効・10件での追加の無効、`FollowList`の続き・0件・エラー(1.7・2.7・4.\*・6.\*・8.\*・9.\*・10.\*)。
   - E2E(`e2e/client/profile.e2e.test.ts`): identity-authの`e2e/support/mailpit.ts`で確認済みの利用者を登録し、プロフィールを編集(画像のアップロード・ハンドル・ヘッドライン・リンクを含む自己紹介・外部Webサイト)→`/@<新しいハンドル>`で表示と`rel="ugc"`→大文字の表記で200とcanonical→初期ハンドルのURLが302で新しいURLへ(`maxRedirects: 0`の要求で状態と`Location`)→予約語`admin`の拒否→別の利用者が最初の利用者の初期ハンドル(旧ハンドル)を設定でき、その後は初期ハンドルのURLが転送されず別の利用者の公開プロフィールを表示すること(2.5・6.1・6.5・1.4・1.5)。
@@ -1366,7 +1380,7 @@ export interface UserAvatarProps {
 ## Security Considerations
 
 - 認可: 編集・一覧は本人だけ(利用者IDはセッションから取り、引数で受け取らない)。フォロー一覧を他人に返す手段を持たない(10.7)。
-- XSS: 外部WebサイトのURLは保存前に`https`・`http`の絶対URLに限り(NFR-SECUR-046)、表示でも`checkExternalUrl`で確かめてから`href`にする。自己紹介はcontent-processingのサニタイズを経て描画する。ニックネーム・ヘッドラインはReactのテキストとして描く。
+- XSS: 外部WebサイトのURLは保存前に、スキームの直後に`//`が続く`https`・`http`の絶対URLに限り(NFR-SECUR-046)、表示でも`checkExternalUrl`で確かめてから`href`にする。自己紹介はcontent-processingのサニタイズを経て描画する。ニックネーム・ヘッドラインはReactのテキストとして描く。
 - bot対策: 保存(`profile_update`)・フォローと解除(`follow`)でTurnstileを検証する。
 - 情報の推測の防止: 存在しない・退会済み・停止中・形式違反のハンドルは同一の404。停止中の利用者の旧ハンドルも転送せずに404。公開の識別子はハンドルだけとし、利用者のIDをブラウザへ出さない。
 - データ最小化: 新しい個人データは本人が入力したプロフィールだけで、ログに含めない。
@@ -1381,7 +1395,7 @@ export interface UserAvatarProps {
 
 - 新しいテーブルを足すだけのExpandの変更で、既存のデータの移行は無い。既存の利用者(初期ハンドルだけを持つ)は、プロフィールの行が無い状態として扱う。
 - `HANDLE_AVAILABILITY`・`InquirerProfiles`の束縛の差し替えは、登録時の判定と問い合わせの表示の結果を広げるだけで、既存の契約の形を変えない。
-- 新しいシークレット・変数は無い。4:21のジョブ`user-profile-social.orphaned-file-sweep`(600)を足す。media-pipelineの`listOwnerIds`が実装されるまでジョブの登録を保留する。初回の実行で、本specの導入より前にstagingで物理削除された利用者のファイルが消える(仮1)。
+- 新しいシークレット・変数は無い。4:21のジョブ`user-profile-social.orphaned-file-sweep`(600)を足す(使うmedia-pipelineの`listOwnerIds`は実装済み)。初回の実行で、本specの導入より前にstagingで物理削除された利用者のファイルが消える(仮1)。
 
 ## Supporting References
 
@@ -1390,7 +1404,7 @@ export interface UserAvatarProps {
 | 項目                   | 値                                                                                                                                                                                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 用途                   | `user-avatar`(images・利用者・画像5形式・512,000バイト)。編集は正方形・長辺512px・丸い切り取り                                                                                                                                                          |
-| 4:21のジョブ           | `user-profile-social.orphaned-file-sweep`(600、1回1,000件)                                                                                                                                                                                              |
+| 4:21のジョブ           | `user-profile-social.orphaned-file-sweep`(600、消した件数が1,000件に達したら打ち切り、最大1,999件)                                                                                                                                                      |
 | 波及処理               | `user-profile-social.withdrawal`(同期、`withdrawn`)、`user-profile-social.profile-erasure`(`purge_due`、600)、`user-profile-social.owned-file-erasure`(`purge_due`、610)、`user-profile-social.owned-image-quarantine`(`suspended`・`unsuspended`、600) |
 | bot対策の`action`      | `profile_update`・`follow`                                                                                                                                                                                                                              |
 | 設定ページの`order`    | `profile` 10・`follows` 50                                                                                                                                                                                                                              |
