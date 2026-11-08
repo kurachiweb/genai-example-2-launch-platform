@@ -8,6 +8,7 @@ const EXPECTED_NAMES = [
   'ProfileEditor',
   'MyProfileReader',
   'HandleAvailabilityChecker',
+  'UserHandleAvailability',
 ] as const;
 
 describe('PROFILE_TYPES', () => {

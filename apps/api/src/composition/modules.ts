@@ -39,6 +39,7 @@ import {
   API_PAYMENTS_MODULE,
   API_PAYMENTS_PLATFORM_MODULE,
 } from './payments-module.ts';
+import { PROFILE_MODULE } from './profile-module.ts';
 import {
   API_SEARCH_MODULE,
   API_SEARCH_PLATFORM_MODULE,
@@ -122,4 +123,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_PAYMENTS_MODULE,
   API_ULTRAS_PLATFORM_MODULE,
   API_ULTRAS_MODULE,
+  PROFILE_MODULE,
 ];

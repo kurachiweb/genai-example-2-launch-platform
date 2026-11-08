@@ -11,6 +11,10 @@ import {
   IMAGE_MEDIA_TYPES,
 } from '../../common-lib/media/media-types.ts';
 import {
+  USER_AVATAR_MAX_BYTES,
+  USER_AVATAR_PURPOSE,
+} from '../../common-lib/profile/profile-input-rules.ts';
+import {
   defineUploadPurpose,
   type UploadPurpose,
 } from '../../lib/core/media/upload-purpose.ts';
@@ -29,5 +33,12 @@ export const UPLOAD_PURPOSES: readonly UploadPurpose[] = [
     uploaderKinds: ['user'],
     allowedTypes: ATTACHMENT_MEDIA_TYPES,
     maxBytes: INQUIRY_ATTACHMENT_LIMITS.maxFileBytes,
+  }),
+  defineUploadPurpose({
+    name: USER_AVATAR_PURPOSE,
+    storage: 'images',
+    uploaderKinds: ['user'],
+    allowedTypes: IMAGE_MEDIA_TYPES,
+    maxBytes: USER_AVATAR_MAX_BYTES,
   }),
 ];

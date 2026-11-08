@@ -58,6 +58,8 @@ import { StoreTotpManagement } from '../application/identity/totp-management.ts'
 import { UserSessionVerifier } from '../application/identity/user-session-verifier.ts';
 import { StoreUserSuspension } from '../application/identity/user-suspension.ts';
 import { StoreWithdrawal } from '../application/identity/withdrawal.ts';
+import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
+import { UserHandleAvailability } from '../application/profile/user-handle-availability.ts';
 import { SESSION_TYPES } from '../application/session/session-verifier.ts';
 import { CryptoSecretGenerator } from '../infrastructure/auth/crypto-secret-generator.ts';
 import { HibpPwnedPasswordChecker } from '../infrastructure/auth/hibp-pwned-password-checker.ts';
@@ -68,7 +70,6 @@ import { SentryAuthIncidentReporter } from '../infrastructure/auth/sentry-auth-i
 import { BowserDeviceDescriber } from '../infrastructure/identity/bowser-device-describer.ts';
 import { CounterMailSendLimits } from '../infrastructure/identity/counter-mail-send-limits.ts';
 import { D1AuthTokenStore } from '../infrastructure/identity/d1-auth-token-store.ts';
-import { D1HandleAvailability } from '../infrastructure/identity/d1-handle-availability.ts';
 import { D1LoginChallengeStore } from '../infrastructure/identity/d1-login-challenge-store.ts';
 import { D1RecoveryCodeStore } from '../infrastructure/identity/d1-recovery-code-store.ts';
 import { D1TotpCredentialStore } from '../infrastructure/identity/d1-totp-credential-store.ts';
@@ -150,7 +151,7 @@ const CLASS_BINDINGS: readonly (readonly [
   [
     'HandleAvailability',
     IDENTITY_TYPES.HandleAvailability,
-    D1HandleAvailability,
+    UserHandleAvailability,
   ],
   ['DeviceDescriber', IDENTITY_TYPES.DeviceDescriber, BowserDeviceDescriber],
   ['IdentityMailer', IDENTITY_TYPES.IdentityMailer, EmailIdentityMailer],
@@ -246,11 +247,11 @@ describe('APIサーバーの認証部品と利用者のモジュールの束縛'
     },
   );
 
-  test('ハンドルの重複判定は、既定の登録箇所の識別子を経由してD1HandleAvailabilityに解決する', () => {
-    expect(HANDLE_AVAILABILITY).toBe(D1HandleAvailability);
+  test('ハンドルの重複判定は、登録箇所の識別子を経由してプロフィールのUserHandleAvailabilityに解決する', () => {
+    expect(HANDLE_AVAILABILITY).toBe(PROFILE_TYPES.UserHandleAvailability);
     expect(
       createContainer().get(IDENTITY_TYPES.HandleAvailability),
-    ).toBeInstanceOf(D1HandleAvailability);
+    ).toBeInstanceOf(UserHandleAvailability);
   });
 
   test('ハンドルの重複判定は、登録箇所の識別子に束縛した実装へ転送する', async () => {

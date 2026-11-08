@@ -351,7 +351,7 @@ describe('メディアの内部REST', () => {
   test('アップロードの経路を内部経路に登録し、未登録の用途は404と用途のエラーコードになる', async () => {
     const response = await callInternal(
       'client',
-      internalRequest('/internal/media/uploads/user-avatar', {
+      internalRequest('/internal/media/uploads/product-image', {
         method: 'POST',
         headers: { 'Content-Type': 'image/png', 'Content-Length': '1' },
         body: new Uint8Array([0]),
