@@ -388,6 +388,7 @@ describe('退会・停止の解約と物理削除の波及処理の登録', () =
     expect(namesFor('suspended')).toStrictEqual([
       'payments.open-checkout-expiry',
       'ultras-subscription.subscription-cancellation',
+      'user-profile-social.owned-image-quarantine',
     ]);
     expect(namesFor('purge_due')).toStrictEqual([
       'inquiry-chat.member-inquiry-purge',

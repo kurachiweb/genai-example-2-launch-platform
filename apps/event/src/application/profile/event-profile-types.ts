@@ -8,9 +8,13 @@ const ProfileErasureHandler: unique symbol = Symbol.for(
 const OwnedFileErasureHandler: unique symbol = Symbol.for(
   'profile.event.OwnedFileErasureHandler',
 );
+const OwnedImageQuarantineHandler: unique symbol = Symbol.for(
+  'profile.event.OwnedImageQuarantineHandler',
+);
 
 export const EVENT_PROFILE_TYPES = Object.freeze({
   ProfilePurgeStore,
   ProfileErasureHandler,
   OwnedFileErasureHandler,
+  OwnedImageQuarantineHandler,
 });

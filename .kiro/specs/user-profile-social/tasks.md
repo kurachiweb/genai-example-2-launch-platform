@@ -145,7 +145,7 @@
   - _Depends: 1.2, 2.4_
   - _Requirements: 2.4, 11.2, 11.3, 11.6, 11.7, 11.8_
 
-- [ ] 6.2 停止・停止解除の隔離理由の波及処理を作る
+- [x] 6.2 停止・停止解除の隔離理由の波及処理を作る
   - 先に、模擬のポートの単体テストで、停止でユーザー停止の隔離理由の追加、停止解除で取り除きを呼び、残りがあれば続きを返すこと、例外をそのまま投げることを確かめる。ローカルD1のWorkers統合テストで、media-pipelineの実装を使い、`suspended`のイベントで利用者の画像に隔離理由が付き、`unsuspended`で外れ、他の理由を持つ画像は隔離の理由が残ることを確かめる
   - `user-profile-social.owned-image-quarantine`(停止・停止解除、`order` 600)を束縛と非同期の波及処理の一覧へ同時に加える。6.1と同じ2つの既存のテストの`suspended`の並びの期待値に600を足す
   - 完了状態: 単体テスト・Workers統合テスト(期待値を直した既存のテストを含む)・登録の検証が成功する
@@ -271,3 +271,4 @@
 - 5.4: `ProfileInquirerProfiles`(`apps/api/src/infrastructure/profile/profile-inquirer-profiles.ts`、`findSummaries(ids, 'including-withdrawn')`の詰め替え)を`PROFILE_TYPES.ProfileInquirerProfiles`に束縛し、`inquiry-module.ts`の`INQUIRY_TYPES.InquirerProfiles`は`toService`で転送する。`inquiry-module.ts`は`PROFILE_MODULE`と`PROFILE_PLATFORM_MODULE`が`MODULES`に載る前提で、inquiryだけの小さなコンテナのテストには両方を足す。inquiryのGraphQLの統合テストのハーネスは後片付けで`user_profiles`を先に消す。
 - 5.5: `ProfileWithdrawalSyncHandler`(`apps/api/src/infrastructure/profile/profile-withdrawal-sync-handler.ts`、`withdrawn`だけで`previousHandleSoftDelete`と`user_follows`の両方向の論理削除の2文)を`PROFILE_TYPES.ProfileWithdrawalSyncHandler`に束縛し、`user-lifecycle-sync-handlers.ts`の`user-profile-social.withdrawal`に登録した(inquiryの後)。退会の統合テストは`profile-module.worker.test.ts`。`user_profiles`の行を作るテストでは後始末で`user_profiles`を先に消す。
 - 6.1: eventの物理削除の波及処理は`apps/event/src/application/profile/`の`ProfileErasureHandler`(`FOLLOW_ERASURE_BATCH_SIZE` 1000、件数が上限以上なら`continue`)と`OwnedFileErasureHandler`(`MEDIA_TYPES.MediaFiles`の`hasMore`)、ポート`ports.ts`の`ProfilePurgeStore`、`infrastructure/profile/d1-profile-purge-store.ts`。識別子は`EVENT_PROFILE_TYPES`(`profile.event.*`)、モジュールは`composition/profile-module.ts`の`EVENT_PROFILE_MODULE`(名前`event-profile`、`PROFILE_PLATFORM_MODULE`の直後)。6.2は同じモジュールに`OwnedImageQuarantineHandler`を束縛し、`profile-module.worker.test.ts`の3経路の解決の検査に識別子を足し、ultras・paymentsの`suspended`(・`unsuspended`)の完全一致の期待に`user-profile-social.owned-image-quarantine`を足す。`clearProfilePlatformTables`は`user_previous_handles`を消さない。
+- 6.2: `OwnedImageQuarantineHandler`(`apps/event/src/application/profile/owned-image-quarantine-handler.ts`、`MEDIA_TYPES.MediaQuarantine`の`addReasonForOwner`・`removeReasonForOwner`を`user_suspended`で呼び`hasMore`なら`continue`)を`EVENT_PROFILE_MODULE`に束縛し、`user-profile-social.owned-image-quarantine`(`suspended`・`unsuspended`、600)を登録した。eventの統合テストの`dispatch`補助は、画像の移動の依頼も同じキューへ送られるため`RUN_USER_LIFECYCLE_MESSAGE`の封筒だけを再送として数える。9.2で`project-values.md`の非同期の波及処理の登録に`profile-erasure`・`owned-file-erasure`・`owned-image-quarantine`を加える。

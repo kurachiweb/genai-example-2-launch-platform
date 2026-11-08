@@ -52,6 +52,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       handler: EVENT_PROFILE_TYPES.OwnedFileErasureHandler,
     },
     {
+      name: 'user-profile-social.owned-image-quarantine',
+      events: ['suspended', 'unsuspended'],
+      order: 600,
+      handler: EVENT_PROFILE_TYPES.OwnedImageQuarantineHandler,
+    },
+    {
       name: 'identity-auth.email-suppression-cleanup',
       events: ['withdrawn'],
       order: 10000,

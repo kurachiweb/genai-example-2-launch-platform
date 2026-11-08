@@ -313,6 +313,7 @@ describe('メッセージの処理と波及処理の登録', () => {
     expect(namesFor('suspended')).toStrictEqual([
       'payments.open-checkout-expiry',
       'ultras-subscription.subscription-cancellation',
+      'user-profile-social.owned-image-quarantine',
     ]);
   });
 

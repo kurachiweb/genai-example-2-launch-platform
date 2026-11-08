@@ -31,10 +31,19 @@ import {
 } from '../../lib/workers/identity/testing/identity-store-fixtures.ts';
 import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
 import { OwnedFileErasureHandler } from '../application/profile/owned-file-erasure-handler.ts';
+import { OwnedImageQuarantineHandler } from '../application/profile/owned-image-quarantine-handler.ts';
 import type { ProfilePurgeStore } from '../application/profile/ports.ts';
 import { ProfileErasureHandler } from '../application/profile/profile-erasure-handler.ts';
 import worker from '../index.ts';
 import { D1ProfilePurgeStore } from '../infrastructure/profile/d1-profile-purge-store.ts';
+import {
+  clearMediaTables,
+  FILE_PURPOSE,
+  insertFile,
+  insertReason,
+  readFile,
+  readReasons,
+} from '../../lib/workers/media/testing/media-file-store-fixtures.ts';
 import {
   insertFollows,
   insertProfileRows,
@@ -68,6 +77,13 @@ const testEnv = env as Env & { readonly TEST_MIGRATIONS: D1Migration[] };
 const PROFILE_ERASURE_NAME = 'user-profile-social.profile-erasure';
 
 const OWNED_FILE_ERASURE_NAME = 'user-profile-social.owned-file-erasure';
+
+const OWNED_IMAGE_QUARANTINE_NAME =
+  'user-profile-social.owned-image-quarantine';
+
+const SUSPENDED_EVENT = 20;
+
+const UNSUSPENDED_EVENT = 21;
 
 const PURGED = 1;
 
@@ -110,7 +126,16 @@ function envelopeOf(body: unknown): QueueEnvelope {
   };
 }
 
-// 続きのある波及処理はメッセージをackし、同じ封筒を遅延つきで送り直すため、送り直しの遅延秒数をsendの呼び出しの引数で確かめる
+function isLifecycleEnvelope(sent: unknown): boolean {
+  return (
+    typeof sent === 'object' &&
+    sent !== null &&
+    'type' in sent &&
+    sent.type === RUN_USER_LIFECYCLE_MESSAGE.type
+  );
+}
+
+// 続きのある波及処理はメッセージをackし、同じ封筒を遅延つきで送り直すため、送り直しの遅延秒数をsendの呼び出しの引数で確かめる。画像の移動の依頼も同じキューへ送られるので、ライフサイクルの封筒だけを送り直しとして数える
 async function dispatch(envelope: QueueEnvelope): Promise<MessageOutcome> {
   const batch = createMessageBatch(env.JOBS_QUEUE_NAME, [
     { id: envelope.id, timestamp: T0, attempts: 1, body: envelope },
@@ -134,7 +159,9 @@ async function dispatch(envelope: QueueEnvelope): Promise<MessageOutcome> {
     const { explicitAcks, retryMessages } = await getQueueResult(batch, ctx);
     // 封筒や本文の不正でデッドレターへ移ったメッセージもackされるため、処理まで届いたことを確かめる
     expect(deadLetterSpy).not.toHaveBeenCalled();
-    const resend = resendSpy.mock.calls.at(-1);
+    const resend = resendSpy.mock.calls
+      .filter(([sent]) => isLifecycleEnvelope(sent))
+      .at(-1);
     return {
       acked: explicitAcks.includes(message.id),
       retried: retryMessages.some(({ msgId }) => msgId === message.id),
@@ -186,11 +213,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await clearMediaTables();
   await resetProfilePurgeRows();
 });
 
 describe('プロフィールの物理削除の波及処理の登録', () => {
-  test('物理削除の開始に、フォロー・プロフィールの行の削除を順序600、ファイルの削除を順序610で登録する', () => {
+  test('物理削除の開始に、フォロー・プロフィールの行の削除を順序600、ファイルの削除を順序610で、停止・停止解除に画像の隔離を順序600で登録する', () => {
     expect(
       USER_LIFECYCLE_ASYNC_HANDLERS.filter(({ name }) =>
         name.startsWith('user-profile-social.'),
@@ -207,6 +235,12 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
         events: ['purge_due'],
         order: 610,
         handler: EVENT_PROFILE_TYPES.OwnedFileErasureHandler,
+      },
+      {
+        name: OWNED_IMAGE_QUARANTINE_NAME,
+        events: ['suspended', 'unsuspended'],
+        order: 600,
+        handler: EVENT_PROFILE_TYPES.OwnedImageQuarantineHandler,
       },
     ]);
   });
@@ -225,10 +259,20 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
       PROFILE_ERASURE_NAME,
       OWNED_FILE_ERASURE_NAME,
     ]);
+    expect(
+      registry.handlersFor('suspended').map(({ name }) => name),
+    ).toStrictEqual([
+      'payments.open-checkout-expiry',
+      'ultras-subscription.subscription-cancellation',
+      OWNED_IMAGE_QUARANTINE_NAME,
+    ]);
+    expect(
+      registry.handlersFor('unsuspended').map(({ name }) => name),
+    ).toStrictEqual([OWNED_IMAGE_QUARANTINE_NAME]);
   });
 
   test.each(INVOCATION_KINDS)(
-    '%s経路の処理単位のコンテナから、ストアと2つの波及処理を実装のクラスに解決する',
+    '%s経路の処理単位のコンテナから、ストアと3つの波及処理を実装のクラスに解決する',
     (kind) => {
       const container = createContainer(kind);
 
@@ -245,6 +289,11 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
           EVENT_PROFILE_TYPES.OwnedFileErasureHandler,
         ),
       ).toBeInstanceOf(OwnedFileErasureHandler);
+      expect(
+        container.get<UserLifecycleAsyncHandler>(
+          EVENT_PROFILE_TYPES.OwnedImageQuarantineHandler,
+        ),
+      ).toBeInstanceOf(OwnedImageQuarantineHandler);
     },
   );
 });
@@ -309,5 +358,100 @@ describe('退会者のプロフィールの物理削除', () => {
     await expect(userRowExists(PURGED)).resolves.toBe(false);
     await expect(readFollowIdsOf(2)).resolves.toStrictEqual([]);
     await expect(userRowExists(2)).resolves.toBe(true);
+  });
+});
+
+async function reasonsByFile(): Promise<
+  readonly (readonly [number, string])[]
+> {
+  const rows = await readReasons();
+  return rows.map((row) => [Number(row.fileId.slice(-2)), row.reason]);
+}
+
+describe('停止・停止解除での利用者の画像の隔離', () => {
+  test('停止のイベントで、利用者の画像にユーザー停止の隔離理由が付き、画像用でないファイルと他の利用者の画像には付かない', async () => {
+    await insertUser(1, { status: 'suspended' });
+    await insertUser(2);
+    await insertFile(1);
+    await insertFile(2, { location: 'quarantine' });
+    await insertReason(2, 'auto');
+    await insertFile(3, {
+      purpose: FILE_PURPOSE,
+      storage: 'files',
+      location: 'files',
+      contentType: 'application/pdf',
+      width: null,
+      height: null,
+    });
+    await insertFile(4, { ownerId: userIdOf(2) });
+    await insertEvent(SUSPENDED_EVENT, {
+      userId: userIdOf(1),
+      type: 'suspended',
+    });
+
+    const outcome = await dispatch(
+      envelopeOf({ eventId: eventIdOf(SUSPENDED_EVENT) }),
+    );
+
+    expect(outcome).toStrictEqual({ acked: true, retried: false });
+    await expect(reasonsByFile()).resolves.toStrictEqual([
+      [1, 'user_suspended'],
+      [2, 'auto'],
+      [2, 'user_suspended'],
+    ]);
+    await expect(readEvent(SUSPENDED_EVENT)).resolves.toMatchObject({
+      status: 'completed',
+    });
+  });
+
+  test('停止解除のイベントで、ユーザー停止の隔離理由だけが外れ、他の理由を持つ画像は隔離の理由が残る', async () => {
+    await insertUser(1);
+    await insertFile(1, { location: 'quarantine' });
+    await insertReason(1, 'user_suspended');
+    await insertFile(2, { location: 'quarantine' });
+    await insertReason(2, 'user_suspended');
+    await insertReason(2, 'admin_action');
+    await insertFile(3, { location: 'quarantine' });
+    await insertReason(3, 'auto');
+    await insertEvent(UNSUSPENDED_EVENT, {
+      userId: userIdOf(1),
+      type: 'unsuspended',
+    });
+
+    const outcome = await dispatch(
+      envelopeOf({ eventId: eventIdOf(UNSUSPENDED_EVENT) }),
+    );
+
+    expect(outcome).toStrictEqual({ acked: true, retried: false });
+    await expect(reasonsByFile()).resolves.toStrictEqual([
+      [2, 'admin_action'],
+      [3, 'auto'],
+    ]);
+    await expect(readFile(2)).resolves.toBeDefined();
+    await expect(readEvent(UNSUSPENDED_EVENT)).resolves.toMatchObject({
+      status: 'completed',
+    });
+  });
+
+  test('同じ停止のイベントを2回処理しても隔離理由は重複せず、停止解除で元に戻る', async () => {
+    await insertUser(1);
+    await insertFile(1);
+    await insertEvent(SUSPENDED_EVENT, {
+      userId: userIdOf(1),
+      type: 'suspended',
+    });
+    await dispatch(envelopeOf({ eventId: eventIdOf(SUSPENDED_EVENT) }));
+    await dispatch(envelopeOf({ eventId: eventIdOf(SUSPENDED_EVENT) }));
+    await expect(reasonsByFile()).resolves.toStrictEqual([
+      [1, 'user_suspended'],
+    ]);
+    await insertEvent(UNSUSPENDED_EVENT, {
+      userId: userIdOf(1),
+      type: 'unsuspended',
+    });
+
+    await dispatch(envelopeOf({ eventId: eventIdOf(UNSUSPENDED_EVENT) }));
+
+    await expect(reasonsByFile()).resolves.toStrictEqual([]);
   });
 });

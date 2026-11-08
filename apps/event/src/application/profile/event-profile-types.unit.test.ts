@@ -8,6 +8,7 @@ describe('EVENT_PROFILE_TYPES', () => {
       'ProfilePurgeStore',
       'ProfileErasureHandler',
       'OwnedFileErasureHandler',
+      'OwnedImageQuarantineHandler',
     ]);
     for (const [name, identifier] of Object.entries(EVENT_PROFILE_TYPES)) {
       expect<symbol>(identifier).toBe(Symbol.for(`profile.event.${name}`));
