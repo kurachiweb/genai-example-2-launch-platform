@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共有の規則・テーブル・文言
-- [ ] 1.1 ハンドル・プロフィールの入力・外部URLの規則を共有定義として作る
+- [x] 1.1 ハンドル・プロフィールの入力・外部URLの規則を共有定義として作る
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-delivery・content-processing・media-pipeline・identity-auth・admin-foundation・legal-pages・inquiry-chat・payments・ultras-subscriptionの全タスクが完了していること(`users`の列・ライフサイクルの登録口・`HANDLE_AVAILABILITY`・`AccountGuard`・設定ページのシェル・画像のアップロードと保有者単位の操作・マークダウンの部品・`UltrasEntitlements`・`InquirerProfiles`・E2Eの`e2e/support/mailpit.ts`)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、ハンドルの形式(1文字・25文字・26文字・先頭のハイフン・空白・全角・アクセント付きの文字)、ASCIIの英字だけを小文字にする同一視、予約語の14語の大文字小文字を区別しない完全一致(`admin1`は一致しない)、ヘッドライン50・外部Webサイトの名前25書記素の境界、外部URLの`https`・`http`の絶対URL(スキームの大文字小文字は問わない)と2,048・2,049文字・`javascript:`・`data:`・相対URL・スキームの直後に`//`の無い値(`https:a.example`、G5)の拒否、件数の上限10(仮3)、用途`user-avatar`と512,000バイトの単体テストを書く
   - 4アプリが読み込める共有ディレクトリにハンドルの規則・プロフィールの入力規則・外部URLの規則を置く。zodを使わず、書記素の数え方と禁止文字の判定はcontent-processingの部品を使う
@@ -248,3 +248,7 @@
   - 整形の検査・静的解析・型検査と、単体テスト・Workers統合テスト・ブラウザテストを一括で実行し、本specが追加・変更したファイルのカバレッジが80%以上であることを確かめる。ログとSentryへの送信にメールアドレス・自己紹介・外部WebサイトのURLが含まれないことを検索で確かめる
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たす
   - _Requirements: 12.9, 13.1, 13.2_
+
+## Implementation Notes
+
+- 1.1: 規則は`apps/common-lib/handles/handle-rules.ts`(`checkHandleFormat`・`toHandleKey`(A〜Zだけ小文字化しNOCASEと同じ)・`isReservedHandle`・`IMPERSONATION_RESERVED_HANDLES`)・`profile/profile-input-rules.ts`(`USER_HANDLE_RULE`・`checkHeadline`・`checkWebsiteName`・`PROFILE_WEBSITES_MAX`・`BIO_MAX_GRAPHEMES`・`USER_AVATAR_PURPOSE`・`USER_AVATAR_MAX_BYTES`)・`url/external-url.ts`(`checkExternalUrl`・`externalUrlHost`)。`checkExternalUrl`は前後の空白を除いて判定するので、保存する値も呼び出し側で`trimWhiteSpace`する。`//`付きの値の途中の空白・制御文字は`not-absolute`。`checkHeadline`等の違反は`forbidden-characters`と`too-long`の2種で、画面の文言は出し分ける。`externalUrlHost`はIDNをpunycodeのまま返す。
