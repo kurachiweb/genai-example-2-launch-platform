@@ -14,7 +14,7 @@
   - 完了状態: 単体テスト(既存の`apps/db/schema/index.unit.test.ts`を含む)が成功し、マイグレーションをローカルに適用でき、大文字小文字だけが違う旧ハンドルを2行作れず、自分自身へのフォローの行を作れない
   - _Requirements: 2.1, 3.1, 9.3, 9.11, 11.1_
 
-- [ ] 1.3 (P) ページ配置と文言規則に、公開プロフィール・編集画面・フォロー一覧の配置と文言を先に書く
+- [x] 1.3 (P) ページ配置と文言規則に、公開プロフィール・編集画面・フォロー一覧の配置と文言を先に書く
   - ページ配置: 公開プロフィールの区画の登録(タブ・受賞バッジ・「…」メニュー)と登録が無いときの表示、旧ハンドルの扱い(他の利用者が保持する旧ハンドルも設定でき、その時点で元の保持者の旧ハンドルを削除して転送を止める(仮2)、大文字小文字だけの変更では保持しない、停止中の保持者の旧ハンドルは404)、`/settings/profile`の欄の並びと停止中の表示、`/settings/follows`のタブと一覧の項目を記載する
   - 文言規則: 外部Webサイトの件数(10件、仮3)の行、エラーの文言(設計のError Handlingの表)、保存・フォロー解除のトースト、フォロー一覧の0件、停止中の編集画面、旧ハンドルの案内の文言を加える
   - 完了状態: 2つの文書が整形の検査を通り、5・7・8のタスクが参照する文言がすべて文言規則にある
@@ -253,3 +253,4 @@
 
 - 1.1: 規則は`apps/common-lib/handles/handle-rules.ts`(`checkHandleFormat`・`toHandleKey`(A〜Zだけ小文字化しNOCASEと同じ)・`isReservedHandle`・`IMPERSONATION_RESERVED_HANDLES`)・`profile/profile-input-rules.ts`(`USER_HANDLE_RULE`・`checkHeadline`・`checkWebsiteName`・`PROFILE_WEBSITES_MAX`・`BIO_MAX_GRAPHEMES`・`USER_AVATAR_PURPOSE`・`USER_AVATAR_MAX_BYTES`)・`url/external-url.ts`(`checkExternalUrl`・`externalUrlHost`)。`checkExternalUrl`は前後の空白を除いて判定するので、保存する値も呼び出し側で`trimWhiteSpace`する。`//`付きの値の途中の空白・制御文字は`not-absolute`。`checkHeadline`等の違反は`forbidden-characters`と`too-long`の2種で、画面の文言は出し分ける。`externalUrlHost`はIDNをpunycodeのまま返す。
 - 1.2: テーブルは`apps/db/schema/profile/`(`user_profiles`・`user_profile_websites`・`user_previous_handles`)と`apps/db/schema/follow/user_follows`、旧ハンドルの共通の列は`apps/db/schema/handles/previous-handle-columns.ts`(キーは`ownerId`、列名は`ownerColumnName`で`user_id`)。`deleted_at`は旧ハンドルとフォローだけが持つ。`apps/db`は`common-lib`を読めないため位置のCHECKは`between 0 and 9`のリテラル(`PROFILE_WEBSITES_MAX`と手で同期)。マイグレーションは`20261108165600_user_profile_social`で、`user-profile-social-migration.unit.test.ts`がNOCASE・CHECK・`ON DELETE`無しを確かめる。
+- 1.3: 画面の文言の正は`docs/GUIDES/service/design/003-text-and-copy-rules.md`の「プロフィールとフォローの文言」の段落・エラーメッセージの表・「操作とナビゲーションの名前」の表(「その他の操作」「プロフィールの内容」「フォロー一覧」「Ultras加入中」など読み上げの名前を含む)、配置の正は`002-page-layouts.md`の「区画の登録と登録が無いときの表示」「プロフィール編集(`/settings/profile`)」「フォロー一覧(`/settings/follows`)」。外部WebサイトのURLが空の行は「外部WebサイトのURLを入力してください。」で拒否する前提。ハンドルが使える時の肯定の表示は作らない。`invalid_cursor`は管理画面の「一覧のページの位置の指定の誤り」、`first`の範囲外は「フォロー一覧の表示件数の指定の誤り」の文言。
