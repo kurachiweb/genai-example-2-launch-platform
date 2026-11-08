@@ -154,7 +154,7 @@ Stripe側の`canceled`と本サービスの加入状態の`canceled`は、同じ
 | `purge_due`(物理削除)     | `ultras-subscription.subscription-erasure`      | `ultras_notices`→`ultras_activations`→`ultras_subscriptions`の順に、利用者の行を1回の一括の書き込みで消す(DR-002、FR-USER-022)                                                   |
 
 - 出どころの記録(`pending_cancellation_source`)をStripeの呼び出しより先に書くため、Stripeの失敗の再試行でも記録が残る。受け取り口は解約の予約の変化を受け取ったときにこの出どころを解約の操作の出どころ(`cancellation_source`)に写し、解約の受付のメールの依頼を作らない。退会の即時の解約は予約を経ないため、`cancellation_source`は空のまま`pending_cancellation_source`だけが残る
-- Stripeの例外(一時的な失敗・恒久的な拒否・対象なし)は捕まえずに投げ、残りの行を処理せずに波及処理の再試行に任せる。上限に達したら運営者が通知を受け、Stripeのダッシュボードで解約する。Stripe上で既に終了している加入は解約済み(`already_canceled`)として成功に扱う
+- Stripeの例外(一時的な失敗・恒久的な拒否・対象なし)は捕まえずに投げ、残りの行を処理せずに波及処理の再試行に任せる。上限に達したら運用者が通知を受け、Stripeのダッシュボードで解約する。Stripe上で既に終了している加入は解約済み(`already_canceled`)として成功に扱う
 - 解約の結果はWebhookで届く定期課金の状態の変化としてだけ加入状態に反映し、波及処理は加入の行の状態を直接変えない。退会した利用者の依頼待ちのメールは宛先が無く対象外になり、物理削除の後に届いた定期課金の変化は利用者に結び付かないため加入の行を作らない
 - 4:21の日次の確認は、処理を終えてから30日以上経った知らせと、依頼を終えてから30日以上経ったメールの依頼の記録を、表ごとに500件ずつ最大20回まで消す
 
