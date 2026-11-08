@@ -35,8 +35,9 @@ describe('設定の項目の順序', () => {
     expect(() => firstSettingsPath([])).toThrow(TypeError);
   });
 
-  test('登録はアカウント(20)・セキュリティ(30)・プラン(60)・決済履歴(70)', () => {
+  test('登録はプロフィール(10)・アカウント(20)・セキュリティ(30)・プラン(60)・決済履歴(70)', () => {
     expect(SETTINGS_NAV_ITEMS).toStrictEqual([
+      { to: '/settings/profile', label: 'プロフィール', order: 10 },
       { to: '/settings/account', label: 'アカウント', order: 20 },
       { to: '/settings/security', label: 'セキュリティ', order: 30 },
       { to: '/settings/plan', label: 'プラン', order: 60 },

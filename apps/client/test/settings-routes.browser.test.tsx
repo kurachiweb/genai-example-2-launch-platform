@@ -7,14 +7,17 @@ import { resetTurnstileScriptFailure } from '../lib/components/bot-protection/tu
 import { runAxe } from '../lib/test/a11y.ts';
 import { applyColorScheme, COLOR_SCHEMES } from '../lib/test/computed-style.ts';
 import { resetFakeTurnstile } from '../lib/test/fake-turnstile.tsx';
+import { loadMyProfile } from '../src/graphql/my-profile.ts';
 import { redirectToFirstSettings } from '../src/components/settings/redirect-to-first-settings.ts';
 import {
+  ClientMyProfileDocument,
   ClientMySessionsDocument,
   type ClientViewerQuery,
 } from '../src/graphql/generated/graphql.ts';
 import type { buildSitePageHead } from '../src/head/page-heads.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
 import { Route as AccountSettingsRoute } from '../src/routes/_authenticated/settings/account.tsx';
+import { Route as ProfileSettingsRoute } from '../src/routes/_authenticated/settings/profile.tsx';
 import { Route as SettingsRoute } from '../src/routes/_authenticated/settings/route.tsx';
 import { Route as SecuritySettingsRoute } from '../src/routes/_authenticated/settings/security.tsx';
 import {
@@ -78,6 +81,12 @@ const createRoutes = (rootRoute: PageRootRoute) => {
         }),
         createRoute({
           getParentRoute: () => settingsRoute,
+          path: 'profile',
+          loader: loadMyProfile,
+          component: ProfileSettingsRoute.options.component,
+        }),
+        createRoute({
+          getParentRoute: () => settingsRoute,
           path: 'account',
           component: AccountSettingsRoute.options.component,
         }),
@@ -105,9 +114,27 @@ type PageHead = ReturnType<typeof buildSitePageHead>;
 
 const WIDE_VIEWPORT = { width: 1280, height: 800 } as const;
 
+const MY_PROFILE_QUERY = {
+  myProfile: {
+    nickname: VIEWER_NICKNAME,
+    handle: 'pitch_maker',
+    previousHandle: null,
+    headline: null,
+    bio: null,
+    avatar: null,
+    websites: [],
+    suspended: false,
+  },
+};
+
 beforeEach(async () => {
   await page.viewport(WIDE_VIEWPORT.width, WIDE_VIEWPORT.height);
   executeGraphQL.mockReset();
+  executeGraphQL.mockImplementation((document: unknown) =>
+    document === ClientMyProfileDocument
+      ? Promise.resolve({ ok: true, data: MY_PROFILE_QUERY })
+      : Promise.reject(new Error('想定していない操作が実行されました。')),
+  );
   resetFakeTurnstile();
   resetTurnstileScriptFailure();
 });
@@ -117,11 +144,11 @@ afterEach(() => {
 });
 
 describe('設定ページの経路', () => {
-  test('設定の入口は、最初の項目のアカウントの設定ページへ移す', async () => {
+  test('設定の入口は、最初の項目のプロフィールの設定ページへ移す', async () => {
     const router = await renderAt('/settings', signedInViewerQuery());
 
-    await expect.element(pageTitle()).toHaveTextContent('アカウント');
-    expect(router.state.location.pathname).toBe('/settings/account');
+    await expect.element(pageTitle()).toHaveTextContent('プロフィール');
+    expect(router.state.location.pathname).toBe('/settings/profile');
   });
 
   test('アカウントの設定ページを、設定のナビゲーションの中に描き、現在の項目を示す', async () => {
@@ -157,7 +184,7 @@ describe('設定ページの経路', () => {
     },
   );
 
-  test('ユーザーメニューの「設定」から、アカウントの設定ページへ移る', async () => {
+  test('ユーザーメニューの「設定」から、プロフィールの設定ページへ移る', async () => {
     const router = await renderAt('/', signedInViewerQuery());
 
     await userEvent.click(
@@ -167,8 +194,8 @@ describe('設定ページの経路', () => {
     );
     await userEvent.click(page.getByRole('menuitem', { name: '設定' }));
 
-    await expect.element(pageTitle()).toHaveTextContent('アカウント');
-    expect(router.state.location.pathname).toBe('/settings/account');
+    await expect.element(pageTitle()).toHaveTextContent('プロフィール');
+    expect(router.state.location.pathname).toBe('/settings/profile');
   });
 
   test('同じタブに前の利用者のログイン中の端末の取得結果が残っていても、ログイン中の利用者の取得結果だけを示す', async () => {

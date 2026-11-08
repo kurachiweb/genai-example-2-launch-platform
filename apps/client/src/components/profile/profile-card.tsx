@@ -1,6 +1,6 @@
 import { PencilIcon } from 'lucide-react';
 
-import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
+import { Link } from '@tanstack/react-router';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import {
   PUBLIC_PROFILE_BADGES,
@@ -16,7 +16,6 @@ import { ProfileBio } from './profile-bio.tsx';
 import { ProfileCompletion } from './profile-completion.tsx';
 import { PROFILE_HEADING_ID } from './profile-heading-id.ts';
 import { PROFILE_EDIT_LABEL } from './profile-messages.ts';
-import { PROFILE_EDIT_HREF } from './profile-paths.ts';
 import { orderPublicProfileSections } from './public-profile-section-order.ts';
 import { publicProfileSectionContextOf } from './public-profile-section-context.ts';
 import type {
@@ -102,10 +101,10 @@ export function ProfileCard({
         canEdit && (
           <div className="mt-4">
             <Button variant="outline" size="sm" className="w-full" asChild>
-              <PathLink href={PROFILE_EDIT_HREF}>
+              <Link to="/settings/profile">
                 <PencilIcon aria-hidden="true" />
                 {PROFILE_EDIT_LABEL}
-              </PathLink>
+              </Link>
             </Button>
           </div>
         )

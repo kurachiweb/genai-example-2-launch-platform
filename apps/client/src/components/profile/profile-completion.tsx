@@ -1,8 +1,7 @@
 import { CircleDashedIcon, SettingsIcon } from 'lucide-react';
 
-import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
+import { Link } from '@tanstack/react-router';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
-import { PROFILE_EDIT_HREF } from './profile-paths.ts';
 import {
   PROFILE_COMPLETION_DESCRIPTION,
   PROFILE_COMPLETION_FIELDS,
@@ -36,10 +35,10 @@ export function ProfileCompletion() {
         ))}
       </ul>
       <Button size="sm" className="mt-4 w-full" asChild>
-        <PathLink href={PROFILE_EDIT_HREF}>
+        <Link to="/settings/profile">
           <SettingsIcon aria-hidden="true" />
           {PROFILE_SETUP_LABEL}
-        </PathLink>
+        </Link>
       </Button>
     </section>
   );

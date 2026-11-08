@@ -7,6 +7,7 @@ export interface SettingsNavItem {
 
 // 設定ページのナビゲーションに並べる項目の登録箇所。各specが`/settings/<名前>`の項目を追記する
 export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = Object.freeze([
+  { to: '/settings/profile', label: 'プロフィール', order: 10 },
   { to: '/settings/account', label: 'アカウント', order: 20 },
   { to: '/settings/security', label: 'セキュリティ', order: 30 },
   { to: '/settings/plan', label: 'プラン', order: 60 },

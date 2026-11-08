@@ -3,7 +3,10 @@ import { notFound, redirect } from '@tanstack/react-router';
 
 import { executeGraphQL } from '../../lib/start/graphql/execute-graphql.ts';
 import { requireData } from '../../lib/utilities/graphql/graphql-result.ts';
-import { graphqlQueryKey } from '../../lib/utilities/graphql/persisted-document.ts';
+import {
+  documentIdOf,
+  graphqlQueryKey,
+} from '../../lib/utilities/graphql/persisted-document.ts';
 import { checkHandleFormat } from '../../common-lib/handles/handle-rules.ts';
 import { USER_HANDLE_RULE } from '../../common-lib/profile/profile-input-rules.ts';
 import type { FollowState } from '../components/profile/follow-button-types.ts';
@@ -109,3 +112,8 @@ export async function loadPublicProfile({
   }
   return { handle: publicProfile.handle, nickname: publicProfile.nickname };
 }
+
+// 閲覧者とハンドルを問わず、取得済みの公開プロフィールのすべてに当たるキーの接頭辞
+export const PUBLIC_PROFILE_QUERY_PREFIX = Object.freeze([
+  documentIdOf(ClientPublicProfileDocument),
+] as const);

@@ -75,3 +75,9 @@ export const previousHandleGuidanceOf = (previousHandle: string): string =>
 
 export const SUSPENDED_EDIT_NOTICE =
   'このアカウントは停止されているため、プロフィールは変更できません。';
+
+export const PROFILE_EDIT_PAGE_TITLE = 'プロフィール';
+
+export const PROFILE_SAVED_MESSAGE = 'プロフィールを保存しました。';
+
+export const VIEW_PUBLIC_PROFILE_LABEL = '公開プロフィールを見る';
