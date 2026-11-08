@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 共有の規則・テーブル・文言
+- [x] 1. 基盤: 共有の規則・テーブル・文言
 - [x] 1.1 ハンドル・プロフィールの入力・外部URLの規則を共有定義として作る
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-delivery・content-processing・media-pipeline・identity-auth・admin-foundation・legal-pages・inquiry-chat・payments・ultras-subscriptionの全タスクが完了していること(`users`の列・ライフサイクルの登録口・`HANDLE_AVAILABILITY`・`AccountGuard`・設定ページのシェル・画像のアップロードと保有者単位の操作・マークダウンの部品・`UltrasEntitlements`・`InquirerProfiles`・E2Eの`e2e/support/mailpit.ts`)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、ハンドルの形式(1文字・25文字・26文字・先頭のハイフン・空白・全角・アクセント付きの文字)、ASCIIの英字だけを小文字にする同一視、予約語の14語の大文字小文字を区別しない完全一致(`admin1`は一致しない)、ヘッドライン50・外部Webサイトの名前25書記素の境界、外部URLの`https`・`http`の絶対URL(スキームの大文字小文字は問わない)と2,048・2,049文字・`javascript:`・`data:`・相対URL・スキームの直後に`//`の無い値(`https:a.example`、G5)の拒否、件数の上限10(仮3)、用途`user-avatar`と512,000バイトの単体テストを書く
@@ -21,7 +21,7 @@
   - _Boundary: `docs/GUIDES/service/design/002-page-layouts.md`・`003-text-and-copy-rules.md`_
   - _Requirements: 13.5_
 
-- [ ] 2. ハンドル基盤とプロフィールの共有部品
+- [x] 2. ハンドル基盤とプロフィールの共有部品
 - [x] 2.1 ハンドル基盤のD1の部品を作る
   - 先に、ローカルD1を使うWorkers統合テストで、大文字小文字の違いでの解決、現在のハンドルの優先、論理削除済みの旧ハンドルが解決に出ないこと、既定の使用中の判定が他の対象の現在のハンドルだけを数え、`includePrevious`のときだけ他の対象の旧ハンドル(論理削除済みを含む)も数えること(仮2)、本人の除外、他の対象の旧ハンドルの解放の文がその行(論理削除済みを含む)だけを物理削除し本人の行を消さないこと、旧ハンドルを持たない対象での判定、使用中の条件を埋め込んだ文が使用中のときに一括の書き込みを取り消すこと、旧ハンドルの置き換えで1行のまま値が変わり論理削除が解けることを確かめる
   - 対象の記述(現在・旧のテーブルと列、規則、解決の条件)の型と検証、解決・使用中の判定・`CASE`式に埋め込む条件・旧ハンドルの置き換え・他の対象の旧ハンドルの解放・論理削除・削除の文を、利用者に閉じない部品として作る
@@ -43,7 +43,7 @@
   - _Depends: 1.2_
   - _Requirements: 12.4, 12.5, 12.6_
 
-- [ ] 2.4 プロフィールの共有の束縛を作り、apiとeventに組み込む
+- [x] 2.4 プロフィールの共有の束縛を作り、apiとeventに組み込む
   - 2.2・2.3の照会のD1の実装を`core/profile`の識別子に処理単位で束縛するモジュール(`workers/profile`)を作り、apiとeventの束縛の一覧へ同時に加える
   - 完了状態: 3経路(api・eventの`fetch`・eventの`queue`)のDIの解決の検査が成功し、両アプリで照会を解決できる
   - _Requirements: 12.8_
@@ -257,3 +257,4 @@
 - 2.1: ハンドル基盤は`apps/backend-lib/workers/handles/`(`defineHandleNamespace`・`resolveHandle`・`isHandleOccupied`・`handleOccupiedCondition`・`previousHandleUpsert`・`previousHandleRelease`・`previousHandleSoftDelete`・`previousHandleDelete`)。`previous`には`deletedAt`が必須。使用中の`CASE`条件は`EXISTS`で、取り消しは`SET handle = CASE WHEN <cond> THEN NULL ELSE ? END`のNOT NULL違反で一括を巻き戻す。新しい文字列を保存する一括では、現在のハンドルの更新の後に`previousHandleRelease`を、`previousHandleUpsert`より前に置く。`previous`の無い対象では解放・論理削除・削除が無操作の文になりupsertは例外。テストの補助は`workers/handles/testing/handle-fixtures.ts`(`USER_NAMESPACE`など)。実物の`USER_HANDLE_NAMESPACE`は`activeCondition: isNull(users.deletedAt)`を渡す。
 - 2.2: 4つの照会口の契約は`apps/backend-lib/core/profile/ports.ts`、識別子は`core/profile/identifiers.ts`の`PROFILE_PLATFORM_TYPES`。`UserSummaryRecord`は画像を`avatarFileId`だけで返す(`objectKey`は5.1)。`resolveHandle`は旧ハンドルの一致で保有者の現在のハンドルを`user.handle`に返し(302の行き先)、停止中は`suspended: true`で返す(404の判断は呼び出し側)、退会済みは`none`。`USER_HANDLE_NAMESPACE`は`workers/profile/user-handle-namespace.ts`。apiのWorkers統合テストは`cd /workspace/apps/api && bun run test:worker -- lib/workers/profile`の相対指定で走らせる(絶対パスでは見つからない)。テストで`user_profiles`の行は`clearIdentityTables`の前に消す。
 - 2.3: `D1ProfileExport`(`workers/profile/d1-profile-export.ts`)と`D1FollowDirectory`(`d1-follow-directory.ts`、`FollowExport`と`FollowerDirectory`の両方を実装)。2.4では`D1FollowDirectory`を両方の識別子に束縛する。`listVisibleFollowerIds`の`after`・`next`はフォローのID、戻りの`followerIds`は利用者のIDで、上限件数が1〜500の整数でなければ`invalid_limit`の`bad_request`。テストで`user_follows`・`user_profile_websites`の行は`clearIdentityTables`の前に消す。
+- 2.4: `PROFILE_PLATFORM_MODULE`(名前`profile-platform`、`workers/profile/profile-platform-module.ts`)をapi・eventの`src/composition/modules.ts`の`ADMIN_PLATFORM_MODULE`の直後に置いた。束縛は`inSingletonScope()`(呼び出しのコンテナ単位)。テストの種データは`workers/profile/testing/profile-platform-fixtures.ts`。9.1・9.2で共有の束縛の一覧の文書に`profile-platform`を加える。

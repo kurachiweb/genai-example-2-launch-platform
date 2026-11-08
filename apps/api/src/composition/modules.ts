@@ -11,6 +11,7 @@ import {
 import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-platform-module.ts';
+import { PROFILE_PLATFORM_MODULE } from '../../lib/workers/profile/profile-platform-module.ts';
 import {
   createRateLimitCounterClient,
   type RateLimitCounterClient,
@@ -107,6 +108,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   IDENTITY_PLATFORM_MODULE,
   IDENTITY_MODULE,
   ADMIN_PLATFORM_MODULE,
+  PROFILE_PLATFORM_MODULE,
   ADMIN_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,
