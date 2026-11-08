@@ -49,6 +49,10 @@ describe('スキーマの集約点', () => {
     'ultras_activations',
     'ultras_notices',
     'ultras_settings',
+    'user_profiles',
+    'user_profile_websites',
+    'user_previous_handles',
+    'user_follows',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

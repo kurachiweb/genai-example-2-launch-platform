@@ -8,7 +8,7 @@
   - 完了状態: 単体テストが成功し、client・admin・api・eventの型検査で配置先から読み込める
   - _Requirements: 1.1, 1.2, 1.5, 3.2, 3.5, 3.6, 4.4, 4.6_
 
-- [ ] 1.2 旧ハンドルの共通の列と、プロフィール・外部Webサイト・旧ハンドル・フォローの4テーブルを定義し、マイグレーションを作る
+- [x] 1.2 旧ハンドルの共通の列と、プロフィール・外部Webサイト・旧ハンドル・フォローの4テーブルを定義し、マイグレーションを作る
   - 先に、旧ハンドルの共通の列(保有者のIDの一意と外部キー、大文字小文字を区別しないハンドルの一意、論理削除の列)、プロフィールの利用者の一意と画像のIDに外部キーが無いこと、外部Webサイトの位置のCHECK(0〜9)と`(user_id, position)`の一意、フォローの組の一意・自分自身を拒むCHECK・2つの索引、すべての外部キーが`ON DELETE`を指定しないことを確かめる単体テストを書く
   - スキーマの集約点へ加え、mainの最新を取り込んでからマイグレーションを生成し、旧ハンドルの列の`COLLATE NOCASE`とCHECKが含まれることを確かめる。テーブル名の一覧を完全一致で確かめる既存の`apps/db/schema/index.unit.test.ts`の期待値に4テーブルを足す
   - 完了状態: 単体テスト(既存の`apps/db/schema/index.unit.test.ts`を含む)が成功し、マイグレーションをローカルに適用でき、大文字小文字だけが違う旧ハンドルを2行作れず、自分自身へのフォローの行を作れない
@@ -252,3 +252,4 @@
 ## Implementation Notes
 
 - 1.1: 規則は`apps/common-lib/handles/handle-rules.ts`(`checkHandleFormat`・`toHandleKey`(A〜Zだけ小文字化しNOCASEと同じ)・`isReservedHandle`・`IMPERSONATION_RESERVED_HANDLES`)・`profile/profile-input-rules.ts`(`USER_HANDLE_RULE`・`checkHeadline`・`checkWebsiteName`・`PROFILE_WEBSITES_MAX`・`BIO_MAX_GRAPHEMES`・`USER_AVATAR_PURPOSE`・`USER_AVATAR_MAX_BYTES`)・`url/external-url.ts`(`checkExternalUrl`・`externalUrlHost`)。`checkExternalUrl`は前後の空白を除いて判定するので、保存する値も呼び出し側で`trimWhiteSpace`する。`//`付きの値の途中の空白・制御文字は`not-absolute`。`checkHeadline`等の違反は`forbidden-characters`と`too-long`の2種で、画面の文言は出し分ける。`externalUrlHost`はIDNをpunycodeのまま返す。
+- 1.2: テーブルは`apps/db/schema/profile/`(`user_profiles`・`user_profile_websites`・`user_previous_handles`)と`apps/db/schema/follow/user_follows`、旧ハンドルの共通の列は`apps/db/schema/handles/previous-handle-columns.ts`(キーは`ownerId`、列名は`ownerColumnName`で`user_id`)。`deleted_at`は旧ハンドルとフォローだけが持つ。`apps/db`は`common-lib`を読めないため位置のCHECKは`between 0 and 9`のリテラル(`PROFILE_WEBSITES_MAX`と手で同期)。マイグレーションは`20261108165600_user_profile_social`で、`user-profile-social-migration.unit.test.ts`がNOCASE・CHECK・`ON DELETE`無しを確かめる。
