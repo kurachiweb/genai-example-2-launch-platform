@@ -79,7 +79,7 @@
 - `INQUIRY_ATTACHMENT_LIMITS`(仮3、20,971,520バイト)とmedia-pipelineの`MAX_UPLOAD_BYTES`(20,971,520バイト)が等しいこと。どちらかを変えたら他方を確かめ直す。
 - 上流の`AccountGuard`・`UserContactDirectory`・`AdminDirectory`(置き場所とeventでの束縛を含む)・`FileReadPolicy`・`MediaFiles.findMany`・`AuditLogRecorder`・`DASHBOARD_CARDS`・`CategoryMasterEditor`・admin-foundationのE2Eの補助の形を変えたら、本specを確かめ直す。
 - 本specが上流に加える拡張と移動(`AuditGuard`の`condition`、`CategoryMasterEditor`の`deleteDescriptionOf`・`deleteAudited`、`backend-lib/core`へ移した`SessionView`・`AccountGuard`・`AuditLogRecorder`・`CurrentAdmin`、`frontend-lib`へ移した`cursor-trail.ts`)の形を変えたら、本specと後続の管理操作を持つspec(ugc-moderation・content-reporting・product-launch・help-center)を確かめ直す。
-- 本specが実装で上流の部品から切り出した共通部品(adminの`components/layout/recoverable-slot.tsx`の`RecoverableSlot`、frontend-libの`components/navigation/page-navigation.tsx`の`PageNavigation`と`utilities/messages/pagination-messages.ts`)の形と振る舞い(再試行の後のフォーカスの移り先、押せない間の`aria-disabled`)を変えたら、利用する側(`RecoverableSlot`はadmin-foundationのダッシュボードのカードと本specのカテゴリの区画・詳細の操作、`PageNavigation`はadmin-foundationの`AdminDataTable`と本specの`MyInquiryList`)のブラウザテストを確かめ直す。
+- 本specが実装で上流の部品から切り出した共通部品(frontend-libの`components/state/recoverable-slot.tsx`の`RecoverableSlot`(本specがadminに作り、ultras-subscriptionが問い合わせの扱いをpropsで受ける形にしてfrontend-libへ移した)、frontend-libの`components/navigation/page-navigation.tsx`の`PageNavigation`と`utilities/messages/pagination-messages.ts`)の形と振る舞い(再試行の後のフォーカスの移り先、押せない間の`aria-disabled`)を変えたら、利用する側(`RecoverableSlot`はadmin-foundationのダッシュボードのカードと本specのカテゴリの区画・詳細の操作、`PageNavigation`はadmin-foundationの`AdminDataTable`と本specの`MyInquiryList`)のブラウザテストを確かめ直す。
 
 ### 上流への影響
 
@@ -310,7 +310,7 @@ apps/
     │   ├── inquiry-category-section.tsx                # カテゴリのページの区画
     │   └── admin-inquiries-messages.ts · inquiry-operations-messages.ts · inquiry-category-messages.ts # 画面の文言
     ├── components/categories/category-sections-view.tsx · categories-messages.ts # 区画の並びとエラーの分離、カテゴリのページの文言
-    ├── components/layout/recoverable-slot.tsx          # RecoverableSlot(ダッシュボードのカード・カテゴリの区画・詳細の操作に共通のエラーの境界と再試行の後のフォーカス)
+    ├── (apps/frontend-lib/components/state/recoverable-slot.tsxへ移動) # RecoverableSlot(ultras-subscriptionが移した。ダッシュボードのカード・カテゴリの区画・詳細の操作に共通のエラーの境界と再試行の後のフォーカス)
     ├── composition/category-sections.ts                # CATEGORY_SECTIONS(後続specが追記)
     ├── composition/inquiry-detail-actions.ts           # INQUIRY_DETAIL_ACTIONS(初版は空、後続specが追記)
     └── graphql/operations/admin/inquiry/               # 1ファイル1操作の*.graphql(操作名はAdminで始める)
@@ -342,7 +342,7 @@ docs/GUIDES/tech/
 - `apps/frontend-lib/components/admin/category-master-editor.tsx` — 任意のprops`deleteDescriptionOf?: (category: CategoryMasterItem) => string`(削除の確認の文。既定は今の文)と`deleteAudited?: boolean`(既定は`false`)を足す(G2)。
 - `apps/frontend-lib/utilities/pagination/cursor-trail.ts`(`apps/admin/src/components/audit/cursor-trail.ts`と単体テストを移す)・`apps/admin/src/components/pages/audit-logs-page.tsx` — 前後のページの補助を両アプリが使える場所へ移す(G4)。
 - `apps/frontend-lib/components/admin/admin-data-table.tsx`・`apps/frontend-lib/utilities/messages/admin-console-messages.ts` — 前へ・次へを`apps/frontend-lib/components/navigation/page-navigation.tsx`の`PageNavigation`(新設)へ移し、文言`PREVIOUS_PAGE_LABEL`・`NEXT_PAGE_LABEL`を`utilities/messages/pagination-messages.ts`(新設)へ移す(9.2。振る舞いは変えない)。
-- `apps/admin/src/components/dashboard/dashboard-grid.tsx`・`dashboard-card-frame.tsx` — カードのエラーの境界を`apps/admin/src/components/layout/recoverable-slot.tsx`の`RecoverableSlot`(新設。カテゴリの区画・詳細の操作と共通)へまとめ、再試行の後のフォーカスを`<body>`へ落とさない(10.4。表示・報告・問い合わせの導線を出さない振る舞いは変えない)。`e2e/admin/admin-sign-in.e2e.test.ts`のダッシュボードが空である前提をカードの表示の確認に改める。
+- `apps/admin/src/components/dashboard/dashboard-grid.tsx`・`dashboard-card-frame.tsx` — カードのエラーの境界を`apps/frontend-lib/components/state/recoverable-slot.tsx`の`RecoverableSlot`(本specがadminに新設し、ultras-subscriptionがfrontend-libへ移した。カテゴリの区画・詳細の操作と共通)へまとめ、再試行の後のフォーカスを`<body>`へ落とさない(10.4。表示・報告・問い合わせの導線を出さない振る舞いは変えない)。`e2e/admin/admin-sign-in.e2e.test.ts`のダッシュボードが空である前提をカードの表示の確認に改める。
 - `config/contract-copies.unit.test.ts` — bot判定の操作名(APIの`BOT_ACTIONS`・`ADMIN_BOT_ACTIONS`・`INQUIRY_BOT_ACTIONS`と各アプリの写し)の一致を検査する(G7)。
 - `apps/backend-lib/core/email/kinds/index.ts`・`apps/event/src/infrastructure/email/templates/index.ts` — 種別とテンプレートを1行ずつ加える。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`upload-purposes.ts`・`file-read-policies.ts`・`user-lifecycle-sync-handlers.ts` — `INQUIRY_MODULE`、`inquirySchemaModule`、ジョブ、`inquiry-attachment`、閲覧の方針、同期の波及処理を加える。
