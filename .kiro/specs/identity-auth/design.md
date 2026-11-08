@@ -249,7 +249,8 @@ apps/
 │   │   ├── user-lifecycle.ts                           # イベントの型・非同期の波及処理の契約と登録・名前の検証・再試行の方針
 │   │   ├── disposable-email.ts                         # ダミーのローカル部への置き換え・判定結果の分類・DisposableEmailChecker
 │   │   ├── ports.ts                                    # UserLifecycleStore・UserContactDirectory・AccountExport・AdminUserDirectoryの契約と型
-│   │   └── identifiers.ts                              # IDENTITY_PLATFORM_TYPES(api・event共通の識別子)
+│   │   ├── account-guard.ts                            # AccountGuard・CurrentUser・UserAccountViewの契約(後続specのapplication層が読み込む)
+│   │   └── identifiers.ts                              # IDENTITY_PLATFORM_TYPES(api・event共通の識別子。AccountGuardを含む)
 │   ├── core/messaging/contracts/identity.ts            # identity.run-user-lifecycle・identity.recheck-disposable-email
 │   ├── core/email/kinds/identity.ts                    # 認証系の7つのメール種別
 │   └── workers/identity/                               # D1と外部サービスの実装と束縛(apiのWorkers統合テスト、各ファイルに同名の*.worker.test.ts)
@@ -293,7 +294,7 @@ apps/
 │   │   ├── password-rejection.ts                       # passwordRejectedError(createPasswordRejectedErrorに利用者の識別子との一致の文言を渡す)
 │   │   ├── session-issuer.ts                           # セッションの発行と、重要な操作の後の再発行
 │   │   ├── user-session-verifier.ts                    # 利用者のセッションの検証
-│   │   ├── account-guard.ts                            # ログイン・状態・確認の判定(他specも使う)
+│   │   ├── account-guard.ts                            # StoreAccountGuard(AccountGuardの実装。契約はbackend-lib/core/identity/account-guard.ts)
 │   │   ├── account-uploader-eligibility.ts             # media-pipelineのUploaderEligibilityの実装(停止中・退会済みを拒否)
 │   │   ├── registration.ts                             # 登録
 │   │   ├── email-verification.ts                       # 確認と再送
@@ -760,7 +761,7 @@ sequenceDiagram
 | CryptoSecretGenerator・SentryAuthIncidentReporter                                                                 | api/infrastructure/auth                                             | 乱数の秘密・運用者への通知                                     | 1.6, 8.1, 13.3, 14.1, 5.4                                          | Web Crypto・Sentry (P0)                                           | Service        |
 | IdentityPorts・RequestMeta                                                                                        | api/application/identity                                            | ストア・メール・設定値のポート                                 | 全般                                                               | —                                                                 | Service        |
 | SessionIssuer・UserSessionVerifier                                                                                | api/application/identity                                            | セッションの発行・再発行・検証                                 | 6.1, 8.1, 8.2, 8.3, 10.7, 11.4, 13.7                               | UserSessionStore (P0)                                             | Service        |
-| AccountGuard                                                                                                      | api/application/identity                                            | ログイン・状態・確認の判定                                     | 4.1, 4.3, 4.4                                                      | UserAccountStore (P0)                                             | Service        |
+| AccountGuard                                                                                                      | backend-lib/core/identity(契約)・api/application/identity(実装)     | ログイン・状態・確認の判定                                     | 4.1, 4.3, 4.4                                                      | UserAccountStore (P0)                                             | Service        |
 | AccountUploaderEligibility                                                                                        | api/application/identity                                            | media-pipelineの`UploaderEligibility`の実装                    | 4.7                                                                | UserAccountStore (P0)・media-pipelineの`UploaderEligibility` (P0) | Service        |
 | Registration                                                                                                      | api/application/identity                                            | 登録                                                           | 1.1〜1.8, 2.1, 2.7                                                 | PasswordPolicy・MailSendLimits・HandleAvailability (P0)           | Service        |
 | EmailVerification・DisposableEmailCheck                                                                           | api/application/identity                                            | 確認・再送・使い捨て判定                                       | 2.2〜2.4, 2.9, 3.1〜3.4                                            | AuthTokenStore・DisposableEmailChecker (P0)                       | Service        |
@@ -1059,6 +1060,7 @@ export declare const IDENTITY_PLATFORM_TYPES: {
   readonly UserContactDirectory: symbol;
   readonly AccountExport: symbol;
   readonly AdminUserDirectory: symbol; // 仮7
+  readonly AccountGuard: symbol; // 束縛はapiの処理単位のコンテナだけ(「AccountGuard」)
 }; // Symbol.for('identity.<名前>')(email-deliveryのEMAIL_TYPESと同じ形)
 // workers/identity/d1-user-contact-directory.ts
 export declare class D1UserContactDirectory implements UserContactDirectory {
@@ -1916,7 +1918,6 @@ export declare const IDENTITY_TYPES: {
   readonly IdentityMailer: unique symbol;
   readonly IdentitySettings: unique symbol;
   readonly SessionIssuer: unique symbol;
-  readonly AccountGuard: unique symbol;
   readonly MailSendLimits: unique symbol;
   readonly Registration: unique symbol;
   readonly EmailVerification: unique symbol;
@@ -1987,14 +1988,29 @@ export declare class UserSessionVerifier implements SubjectSessionVerifierPort {
 ##### Service Interface
 
 ```typescript
+// backend-lib/core/identity/account-guard.ts(後続specのapplication層が読み込む契約)
+import type {
+  AuthenticatedPrincipal,
+  SessionView,
+} from '../session/session-view.ts';
+
+export interface UserAccountView {
+  // 別の機能のユースケースへも渡すため、パスワードのハッシュ・版などの秘密情報を持たない
+  readonly id: string;
+  readonly pseudonymousId: string;
+  readonly status: 'active' | 'suspended';
+  readonly emailVerifiedAt: Date | null;
+  readonly deletedAt: Date | null;
+  readonly email: string;
+  readonly nickname: string;
+  readonly handle: string;
+}
 export interface CurrentUser {
   readonly principal: AuthenticatedPrincipal;
-  readonly user: UserRecord;
+  readonly user: UserAccountView;
 }
-import type { SessionView } from '../session/session-view.ts';
-
 export interface AccountGuard {
-  currentUser(session: SessionView): Promise<CurrentUser | undefined>; // 未ログインならundefined。処理単位で1回だけ読む
+  currentUser(session: SessionView): Promise<CurrentUser | undefined>; // 未ログイン・利用者以外の主体・退会済みならundefined。処理単位で1回だけ読む
   requireUser(session: SessionView): Promise<CurrentUser>; // 未ログインはunauthenticated
   requireWritableUser(session: SessionView): Promise<CurrentUser>; // 停止中はaccount_unavailable(403)
   requireVerifiedUser(session: SessionView): Promise<CurrentUser>; // 上に加えて未確認はemail_not_verified(403)
@@ -2003,7 +2019,8 @@ export interface AccountGuard {
 
 - セッションは`SessionView`(「SessionViewContract」)で受け取る。リゾルバ・内部RESTは`GraphQLContext.session`などの`SessionAccess`をそのまま渡せる(構造的部分型)。`requireUser`は`principal()`が未ログインなら`AppError({ kind: 'unauthenticated', code: 'unauthenticated' })`を投げる。
 
-- 処理単位のコンテナで単一の束縛にし、同じ要求の中では利用者を1回だけ読む。後続specのリゾルバは`context.resolve<AccountGuard>(IDENTITY_TYPES.AccountGuard)`で使う(4.1・4.3)。
+- 置き場所: 契約(`AccountGuard`・`CurrentUser`・`UserAccountView`)は`apps/backend-lib/core/identity/account-guard.ts`、識別子は`IDENTITY_PLATFORM_TYPES.AccountGuard`(`core/identity/identifiers.ts`)に置き、後続specのapplication層とリゾルバが読み込めるようにする。実装`StoreAccountGuard`は`apps/api/src/application/identity/account-guard.ts`に置き、`UserAccountStore`の`UserRecord`から`UserAccountView`の項目だけを詰め直して返す。
+- 処理単位のコンテナで単一の束縛にし(apiの`IDENTITY_MODULE`だけ。eventには束縛しない)、同じ要求の中では利用者を1回だけ読む。後続specのリゾルバは`context.resolve<AccountGuard>(IDENTITY_PLATFORM_TYPES.AccountGuard)`で使う(4.1・4.3)。同じ要求の中で利用者を書き換えた後の値は、`AccountGuard`から読み直さない(最初の読み取りを使い回すため)。
 - 停止中でも`requireUser`は通す(閲覧・ログアウト・セッションの失効・退会を許すため、4.4)。
 
 #### AccountUploaderEligibility
@@ -2029,7 +2046,7 @@ export interface AccountGuard {
 // UploaderEligibilityDecision = { allowed: true } | { allowed: false; code: UploaderDenialCode }
 // UploaderDenialCode = 'account_unavailable' | 'email_not_verified'
 export declare class AccountUploaderEligibility implements UploaderEligibility {
-  constructor(guard: AccountGuard); // @inject(IDENTITY_TYPES.AccountGuard)
+  constructor(guard: AccountGuard); // @inject(IDENTITY_PLATFORM_TYPES.AccountGuard)
   check(input: {
     readonly session: SessionView;
     readonly principal: AuthenticatedPrincipal;
