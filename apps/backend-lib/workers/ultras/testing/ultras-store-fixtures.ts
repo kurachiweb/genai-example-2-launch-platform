@@ -47,8 +47,9 @@ export const ULTRAS_PROMOTION_SEED_ROW: SettingsTableRow = {
   updatedAt: SEED_TIMESTAMP,
 };
 
+// IDはCrockfordのBase32(I・L・O・Uを含まない)の26文字にし、z.ulid()の検証を通す。番号は0で埋めて辞書順と番号順をそろえる
 export function subscriptionIdOf(index: number): string {
-  return `01JC0SUBSCRIPTION${String(index).padStart(9, '0')}`;
+  return `01JC0SBSCRPTN${String(index).padStart(13, '0')}`;
 }
 
 export function stripeSubscriptionIdOf(index: number): string {
@@ -56,11 +57,11 @@ export function stripeSubscriptionIdOf(index: number): string {
 }
 
 export function activationIdOf(index: number): string {
-  return `01JC0ACTIVATION${String(index).padStart(11, '0')}`;
+  return `01JC0ACTVTN${String(index).padStart(15, '0')}`;
 }
 
 export function noticeIdOf(index: number): string {
-  return `01JC0NOTICE${String(index).padStart(15, '0')}`;
+  return `01JC0NTC${String(index).padStart(18, '0')}`;
 }
 
 // 初回の支払いを反映する前にsinkが作る、有効化されていない加入の行

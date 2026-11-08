@@ -57,7 +57,7 @@ function userIdOf(index: number): string {
 }
 
 function noticeIdOf(index: number): string {
-  return `01JC0NOTICE${String(index).padStart(15, '0')}`;
+  return `01JC0NTC${String(index).padStart(18, '0')}`;
 }
 
 function contactOf(

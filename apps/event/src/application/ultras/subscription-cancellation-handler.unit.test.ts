@@ -38,7 +38,7 @@ function rowOf(
 ): SubscriptionRow {
   return {
     ...EMPTY_SUBSCRIPTION_SNAPSHOT,
-    id: `01JC0SUBSCRIPTION${String(index).padStart(9, '0')}`,
+    id: `01JC0SBSCRPTN${String(index).padStart(13, '0')}`,
     stripeSubscriptionId: `sub_test_cancel_${String(index)}`,
     userId: USER_ID,
     purchaseId: null,
