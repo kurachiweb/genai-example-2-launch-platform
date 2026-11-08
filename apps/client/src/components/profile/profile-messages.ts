@@ -52,3 +52,14 @@ export const ACTIONS_MENU_LABEL = 'その他の操作';
 export const ULTRAS_AVATAR_LABEL = '加入中';
 
 export const ULTRAS_AVATAR_TOOLTIP = 'プランでLaunch Stadiumを応援しています。';
+
+export const PROFILE_TABS_LABEL = 'プロフィールの内容';
+
+export const PROFILE_TAB_COUNT_UNIT = '件';
+
+export const SUSPENDED_PROFILE_NOTICE_LABEL = '停止中のアカウント';
+
+export const SUSPENDED_PROFILE_NOTICE_MESSAGE =
+  'このアカウントは停止されています。プロフィールとプロダクトは他のユーザーには表示されません。詳しくはお問い合わせください。';
+
+export const SUSPENDED_PROFILE_CONTACT_LABEL = 'お問い合わせ';

@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 import { type ReactNode, use, useId } from 'react';
 
+import { Skeleton } from '../ui/skeleton/skeleton.tsx';
+import { LoadingSkeleton } from './loading-skeleton.tsx';
 import { RecoverableSlot } from './recoverable-slot.tsx';
 
 const SECTION_TITLE = '問い合わせカテゴリ';
@@ -69,6 +71,20 @@ export const Loading: Story = {
 
 export const LoadingWithFrame: Story = {
   args: { children: <SuspendingSection />, frame: withSectionFallback },
+};
+
+export const LoadingWithFallback: Story = {
+  args: {
+    children: <SuspendingSection />,
+    fallback: (
+      <LoadingSkeleton>
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      </LoadingSkeleton>
+    ),
+  },
 };
 
 export const Failed: Story = {

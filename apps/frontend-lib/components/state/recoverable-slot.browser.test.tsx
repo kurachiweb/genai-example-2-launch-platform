@@ -107,6 +107,7 @@ interface RenderOptions {
   readonly contactAvailable?: boolean;
   readonly contactHref?: string;
   readonly withFrame?: boolean;
+  readonly fallback?: ReactNode;
 }
 
 const renderSlot = (
@@ -115,6 +116,7 @@ const renderSlot = (
     contactAvailable = true,
     contactHref,
     withFrame = false,
+    fallback,
   }: RenderOptions = {},
 ) => {
   const queryClient = new QueryClient({
@@ -128,6 +130,7 @@ const renderSlot = (
           contactAvailable={contactAvailable}
           contactHref={contactHref}
           frame={withFrame ? frameOf : undefined}
+          fallback={fallback}
           className="rounded-sm"
         >
           {children}
@@ -310,6 +313,86 @@ describe('RecoverableSlot', () => {
 
       await expect.element(alert()).toBeVisible();
       expect(page.getByRole('heading').elements()).toHaveLength(0);
+    });
+  });
+
+  describe('読み込み中の表示の差し替え', () => {
+    const CUSTOM_FALLBACK = (
+      <div role="status" data-testid="custom-fallback">
+        一覧を読み込み中
+      </div>
+    );
+
+    test('fallbackを渡すと、既定のスケルトンの代わりにそれを読み込み中の位置に示し、解決すると内容に替わる', async () => {
+      loading = new Promise<void>((resolve) => {
+        finishLoading = resolve;
+      });
+      await renderSlot(<SuspendingSection />, { fallback: CUSTOM_FALLBACK });
+
+      await expect
+        .element(page.getByTestId('custom-fallback'))
+        .toHaveTextContent('一覧を読み込み中');
+      expect(page.getByText('読み込み中', { exact: true }).query()).toBeNull();
+
+      finishLoading();
+
+      await expect.element(page.getByText(RENDERED_TEXT)).toBeVisible();
+      expect(page.getByTestId('custom-fallback').query()).toBeNull();
+    });
+
+    test('fallbackは補った見出しの枠の中に示す', async () => {
+      loading = new Promise<void>((resolve) => {
+        finishLoading = resolve;
+      });
+      await renderSlot(<SuspendingSection />, {
+        withFrame: true,
+        fallback: CUSTOM_FALLBACK,
+      });
+
+      await expect
+        .element(
+          page
+            .getByRole('region', { name: SECTION_TITLE })
+            .getByTestId('custom-fallback'),
+        )
+        .toBeVisible();
+      finishLoading();
+      await expect.element(page.getByText(RENDERED_TEXT)).toBeVisible();
+    });
+
+    test('fallbackを渡しても、再試行の後に保留する部品が解決するまでフォーカスが文書の先頭へ落ちず、描き終えた見出しへ移る', async () => {
+      sectionFailing = true;
+      loading = new Promise<void>((resolve) => {
+        finishLoading = resolve;
+      });
+      function SlowlyRecoveringSection() {
+        if (sectionFailing) {
+          throw new Error('区画の描画の失敗');
+        }
+        return <SuspendingSection />;
+      }
+      await renderSlot(<SlowlyRecoveringSection />, {
+        fallback: CUSTOM_FALLBACK,
+      });
+      await expect.element(alert()).toBeVisible();
+      sectionFailing = false;
+
+      await userEvent.click(retryButton());
+      await expect.element(page.getByTestId('custom-fallback')).toBeVisible();
+      expect(document.activeElement).not.toBe(document.body);
+
+      finishLoading();
+
+      await expect.element(page.getByText(RENDERED_TEXT)).toBeVisible();
+      await expect.element(sectionHeading()).toHaveFocus();
+    });
+
+    test('fallbackを渡した読み込み中の表示でも、アクセシビリティの検査の違反が0件', async () => {
+      loading = new Promise<void>(() => undefined);
+      await renderSlot(<SuspendingSection />, { fallback: CUSTOM_FALLBACK });
+      await expect.element(page.getByTestId('custom-fallback')).toBeVisible();
+
+      expect(await runAxe(document.body)).toStrictEqual([]);
     });
   });
 

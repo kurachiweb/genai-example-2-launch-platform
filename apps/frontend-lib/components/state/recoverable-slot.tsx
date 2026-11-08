@@ -23,6 +23,8 @@ export interface RecoverableSlotProps {
   // 読み込み中と失敗の表示を包む。部品が自分で描く見出しを、部品が描けない間だけ補うために使う
   readonly frame?: (content: ReactNode) => ReactNode;
   readonly className?: string;
+  // 読み込み中に`frame`の中へ出す表示(既定は`LoadingSkeleton`)。内側に別の`Suspense`を置くと再試行の後のフォーカスの保持が働かないため、区画の形のスケルトンはこれで渡す
+  readonly fallback?: ReactNode;
   // 問い合わせの導線を持つアプリだけが真にし、contactHrefを渡す
   readonly contactAvailable: boolean;
   readonly contactHref?: string;
@@ -106,14 +108,15 @@ function RetryFocus({
 }
 
 interface SlotLoadingProps {
+  readonly fallback: ReactNode;
   readonly frame: (content: ReactNode) => ReactNode;
   readonly focus: SlotFocus;
 }
 
-function SlotLoading({ frame, focus }: SlotLoadingProps) {
+function SlotLoading({ fallback, frame, focus }: SlotLoadingProps) {
   return (
     <>
-      {frame(<LoadingSkeleton />)}
+      {frame(fallback)}
       <RetryFocus focus={focus} outcome="loading" />
     </>
   );
@@ -159,6 +162,7 @@ function SlotFailure({
 // 1つの部品の描画や取得の失敗をその位置に留め、他の部品の表示を続ける
 export function RecoverableSlot({
   frame = withoutFrame,
+  fallback = <LoadingSkeleton />,
   className,
   contactAvailable,
   contactHref,
@@ -186,7 +190,11 @@ export function RecoverableSlot({
               />
             )}
           >
-            <Suspense fallback={<SlotLoading frame={frame} focus={focus} />}>
+            <Suspense
+              fallback={
+                <SlotLoading fallback={fallback} frame={frame} focus={focus} />
+              }
+            >
               {children}
               <RetryFocus focus={focus} outcome="rendered" />
             </Suspense>

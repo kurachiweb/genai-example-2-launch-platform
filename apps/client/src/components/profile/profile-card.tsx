@@ -17,10 +17,10 @@ import { ProfileCompletion } from './profile-completion.tsx';
 import { PROFILE_EDIT_LABEL } from './profile-messages.ts';
 import { PROFILE_EDIT_HREF } from './profile-paths.ts';
 import { orderPublicProfileSections } from './public-profile-section-order.ts';
+import { publicProfileSectionContextOf } from './public-profile-section-context.ts';
 import type {
   PublicProfileBadgeSection,
   PublicProfileMenuItem,
-  PublicProfileSectionContext,
 } from './public-profile-section-types.ts';
 import type { PublicProfileView } from './public-profile-view.ts';
 
@@ -50,13 +50,8 @@ export function ProfileCard({
   menuItems = PUBLIC_PROFILE_MENU_ITEMS,
   onFollowChange,
 }: ProfileCardProps) {
-  const isOwner = profile.viewerRelation === 'OWNER';
-  const context: PublicProfileSectionContext = {
-    handle: profile.handle,
-    nickname: profile.nickname,
-    isOwner,
-    suspended: profile.suspended,
-  };
+  const context = publicProfileSectionContextOf(profile);
+  const { isOwner } = context;
   const canEdit = isOwner && !profile.suspended;
   const { headline, bio } = profile;
 
