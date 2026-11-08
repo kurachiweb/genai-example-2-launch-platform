@@ -3,6 +3,7 @@ import type { ViewerSource } from '../modules/identity/resolver-support.ts';
 import type { AdminViewerSource, AdminAccountSource } from '../modules/admin/resolver-support.ts';
 import type { InquiryMessageModel, InquiryReplyAuthorModel, InquiryComposerModel, MemberInquiryModel, MemberInquirySummaryModel, AdminInquirySummaryModel, AdminInquiryMemberModel, AdminInquiryModel } from '../modules/inquiry/mappers.ts';
 import type { UserSummarySource } from '../modules/profile/user-summary.ts';
+import type { PublicProfileModel, PublicProfileRedirectModel, MyProfileModel } from '../modules/profile/mappers.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -387,6 +388,12 @@ export type GuestInquiryInput = {
   nickname: Scalars['String']['input'];
 };
 
+/** ハンドルの使用可否。INVALIDは形式の違反 */
+export type HandleAvailability =
+  | 'AVAILABLE'
+  | 'INVALID'
+  | 'UNAVAILABLE';
+
 /** 問い合わせのカテゴリ */
 export type InquiryCategory = {
   __typename?: 'InquiryCategory';
@@ -696,6 +703,8 @@ export type Mutation = {
   submitMemberInquiry: MemberInquiry;
   /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
   updateAdminProfile: AdminAccount;
+  /** メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない */
+  updateMyProfile: MyProfile;
   /** 機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者 */
   updateUltrasPromotionSetting: UltrasPromotionSetting;
   /** メールアドレスの確認の確定 */
@@ -950,6 +959,11 @@ export type MutationUpdateAdminProfileArgs = {
 };
 
 
+export type MutationUpdateMyProfileArgs = {
+  input: UpdateMyProfileInput;
+};
+
+
 export type MutationUpdateUltrasPromotionSettingArgs = {
   input: UpdateUltrasPromotionSettingInput;
 };
@@ -962,6 +976,19 @@ export type MutationVerifyEmailArgs = {
 
 export type MutationWithdrawArgs = {
   input: ReAuthenticationInput;
+};
+
+export type MyProfile = {
+  __typename?: 'MyProfile';
+  avatar?: Maybe<MediaImage>;
+  bio?: Maybe<Scalars['String']['output']>;
+  handle: Scalars['String']['output'];
+  headline?: Maybe<Scalars['String']['output']>;
+  nickname: Scalars['String']['output'];
+  /** 保持中の旧ハンドル。無ければnull */
+  previousHandle?: Maybe<Scalars['String']['output']>;
+  suspended: Scalars['Boolean']['output'];
+  websites: Array<ProfileWebsite>;
 };
 
 export type OffsetPageInfo = {
@@ -1015,6 +1042,50 @@ export type PaymentRecordStatus =
   | 'PENDING'
   | 'SUCCEEDED';
 
+/** 公開プロフィールの閲覧者と表示される利用者の関係 */
+export type ProfileViewerRelation =
+  | 'FOLLOWING'
+  | 'GUEST'
+  | 'NOT_FOLLOWING'
+  | 'OWNER';
+
+export type ProfileWebsite = {
+  __typename?: 'ProfileWebsite';
+  /** 未入力ならnull。画面はホスト名を表示する */
+  name?: Maybe<Scalars['String']['output']>;
+  url: Scalars['String']['output'];
+};
+
+export type ProfileWebsiteInput = {
+  name?: InputMaybe<Scalars['String']['input']>;
+  url: Scalars['String']['input'];
+};
+
+export type PublicProfile = {
+  __typename?: 'PublicProfile';
+  avatar?: Maybe<MediaImage>;
+  /** マークダウンの自己紹介。未設定ならnull */
+  bio?: Maybe<Scalars['String']['output']>;
+  /** 停止中の利用者を除いたフォロワー数 */
+  followerCount: Scalars['Int']['output'];
+  handle: Scalars['String']['output'];
+  headline?: Maybe<Scalars['String']['output']>;
+  nickname: Scalars['String']['output'];
+  /** 本人が停止中のときだけtrue。他の閲覧者には停止中の利用者のプロフィールを返さない */
+  suspended: Scalars['Boolean']['output'];
+  ultras: Scalars['Boolean']['output'];
+  viewerRelation: ProfileViewerRelation;
+  websites: Array<ProfileWebsite>;
+};
+
+/** 旧ハンドルでの閲覧。handleは転送先の現在のハンドル */
+export type PublicProfileRedirect = {
+  __typename?: 'PublicProfileRedirect';
+  handle: Scalars['String']['output'];
+};
+
+export type PublicProfileResult = PublicProfile | PublicProfileRedirect;
+
 /** 下書きの公開 */
 export type PublishLegalDocumentInput = {
   changeSummary: Scalars['String']['input'];
@@ -1054,6 +1125,8 @@ export type Query = {
   auditLogs: AuditLogPage;
   /** 本人の購入の決済画面の表示事項。他人・存在しない購入はcheckout_not_found */
   checkout: Checkout;
+  /** ハンドルの使用可否。自分の現在と保持中の旧ハンドルは使えるものとして扱う */
+  handleAvailability: HandleAvailability;
   /** 問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く */
   inquiryCategories: Array<InquiryCategory>;
   /** 問い合わせフォームに表示する送信者。停止していないログイン中の利用者だけ値を返す */
@@ -1066,10 +1139,14 @@ export type Query = {
   memberInquiry?: Maybe<MemberInquiry>;
   /** 自分のログインの問い合わせの一覧(20件ずつ、送信日時の新しい順)。停止中の利用者も読める */
   myInquiries: MemberInquiryPage;
+  /** ログイン中の利用者(停止中を含む)のプロフィール編集用の情報 */
+  myProfile: MyProfile;
   /** ログイン中の端末の一覧 */
   mySessions: Array<UserSessionSummary>;
   /** ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順) */
   paymentHistory: PaymentRecordConnection;
+  /** 見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す */
+  publicProfile?: Maybe<PublicProfileResult>;
   /** APIサーバーの時刻とデータベースへの到達可否 */
   systemStatus: SystemStatus;
   /** Ultrasの月額の価格と新規の加入の受付の状態。ログイン不要 */
@@ -1116,6 +1193,11 @@ export type QueryCheckoutArgs = {
 };
 
 
+export type QueryHandleAvailabilityArgs = {
+  handle: Scalars['String']['input'];
+};
+
+
 export type QueryLegalDocumentArgs = {
   kind: LegalDocumentKind;
 };
@@ -1140,6 +1222,11 @@ export type QueryMyInquiriesArgs = {
 export type QueryPaymentHistoryArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryPublicProfileArgs = {
+  handle: Scalars['String']['input'];
 };
 
 /** 重要な操作の本人確認 */
@@ -1275,6 +1362,18 @@ export type UltrasPromotionSetting = {
   version: Scalars['Int']['output'];
 };
 
+export type UpdateMyProfileInput = {
+  /** 保存後の画像。現在の画像のIDなら維持し、nullなら削除する */
+  avatarFileId?: InputMaybe<Scalars['ID']['input']>;
+  bio?: InputMaybe<Scalars['String']['input']>;
+  /** 画面を開いた時点のハンドル。保存の間に変更されていれば保存しない */
+  expectedHandle: Scalars['String']['input'];
+  handle: Scalars['String']['input'];
+  headline?: InputMaybe<Scalars['String']['input']>;
+  nickname: Scalars['String']['input'];
+  websites: Array<ProfileWebsiteInput>;
+};
+
 /** 機能フラグの変更の入力 */
 export type UpdateUltrasPromotionSettingInput = {
   enabled: Scalars['Boolean']['input'];
@@ -1405,6 +1504,10 @@ export type ResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | ( Omit<LoginSucceeded, 'viewer'> & { viewer: _RefType['Viewer'] } )
     | ( SecondFactorRequired )
   ;
+  PublicProfileResult:
+    | ( PublicProfileModel )
+    | ( PublicProfileRedirectModel )
+  ;
 };
 
 
@@ -1450,6 +1553,7 @@ export type ResolversTypes = {
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
   GuestInquiryInput: GuestInquiryInput;
+  HandleAvailability: HandleAvailability;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   InquiryCategory: ResolverTypeWrapper<InquiryCategory>;
   InquiryComposer: ResolverTypeWrapper<InquiryComposerModel>;
@@ -1478,12 +1582,19 @@ export type ResolversTypes = {
   MemberInquirySummary: ResolverTypeWrapper<MemberInquirySummaryModel>;
   Money: ResolverTypeWrapper<Money>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
+  MyProfile: ResolverTypeWrapper<MyProfileModel>;
   OffsetPageInfo: ResolverTypeWrapper<OffsetPageInfo>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
   PaymentRecord: ResolverTypeWrapper<PaymentRecord>;
   PaymentRecordConnection: ResolverTypeWrapper<PaymentRecordConnection>;
   PaymentRecordKind: PaymentRecordKind;
   PaymentRecordStatus: PaymentRecordStatus;
+  ProfileViewerRelation: ProfileViewerRelation;
+  ProfileWebsite: ResolverTypeWrapper<ProfileWebsite>;
+  ProfileWebsiteInput: ProfileWebsiteInput;
+  PublicProfile: ResolverTypeWrapper<PublicProfileModel>;
+  PublicProfileRedirect: ResolverTypeWrapper<PublicProfileRedirectModel>;
+  PublicProfileResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['PublicProfileResult']>;
   PublishLegalDocumentInput: PublishLegalDocumentInput;
   PurchaseKind: PurchaseKind;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
@@ -1505,6 +1616,7 @@ export type ResolversTypes = {
   UltrasPlanStatus: UltrasPlanStatus;
   UltrasPortalSession: ResolverTypeWrapper<UltrasPortalSession>;
   UltrasPromotionSetting: ResolverTypeWrapper<UltrasPromotionSetting>;
+  UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UserSessionSummary: ResolverTypeWrapper<UserSessionSummary>;
   UserSummary: ResolverTypeWrapper<UserSummarySource>;
@@ -1572,10 +1684,16 @@ export type ResolversParentTypes = {
   MemberInquirySummary: MemberInquirySummaryModel;
   Money: Money;
   Mutation: Record<PropertyKey, never>;
+  MyProfile: MyProfileModel;
   OffsetPageInfo: OffsetPageInfo;
   PageInfo: PageInfo;
   PaymentRecord: PaymentRecord;
   PaymentRecordConnection: PaymentRecordConnection;
+  ProfileWebsite: ProfileWebsite;
+  ProfileWebsiteInput: ProfileWebsiteInput;
+  PublicProfile: PublicProfileModel;
+  PublicProfileRedirect: PublicProfileRedirectModel;
+  PublicProfileResult: ResolversUnionTypes<ResolversParentTypes>['PublicProfileResult'];
   PublishLegalDocumentInput: PublishLegalDocumentInput;
   Query: Record<PropertyKey, never>;
   ReAuthenticationInput: ReAuthenticationInput;
@@ -1594,6 +1712,7 @@ export type ResolversParentTypes = {
   UltrasPlan: UltrasPlan;
   UltrasPortalSession: UltrasPortalSession;
   UltrasPromotionSetting: UltrasPromotionSetting;
+  UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UserSessionSummary: UserSessionSummary;
   UserSummary: UserSummarySource;
@@ -1958,9 +2077,21 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
+  updateMyProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType, RequireFields<MutationUpdateMyProfileArgs, 'input'>>;
   updateUltrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType, RequireFields<MutationUpdateUltrasPromotionSettingArgs, 'input'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
+};
+
+export type MyProfileResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MyProfile'] = ResolversParentTypes['MyProfile']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  bio?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  headline?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  previousHandle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  suspended?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  websites?: Resolver<Array<ResolversTypes['ProfileWebsite']>, ParentType, ContextType>;
 };
 
 export type OffsetPageInfoResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['OffsetPageInfo'] = ResolversParentTypes['OffsetPageInfo']> = {
@@ -1990,6 +2121,34 @@ export type PaymentRecordConnectionResolvers<ContextType = GraphQLContext, Paren
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
 };
 
+export type ProfileWebsiteResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProfileWebsite'] = ResolversParentTypes['ProfileWebsite']> = {
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type PublicProfileResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['PublicProfile'] = ResolversParentTypes['PublicProfile']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  bio?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  followerCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  headline?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  suspended?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  ultras?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  viewerRelation?: Resolver<ResolversTypes['ProfileViewerRelation'], ParentType, ContextType>;
+  websites?: Resolver<Array<ResolversTypes['ProfileWebsite']>, ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PublicProfileRedirectResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['PublicProfileRedirect'] = ResolversParentTypes['PublicProfileRedirect']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type PublicProfileResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['PublicProfileResult'] = ResolversParentTypes['PublicProfileResult']> = {
+  __resolveType: TypeResolveFn<'PublicProfile' | 'PublicProfileRedirect', ParentType, ContextType>;
+};
+
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
   adminInquiries?: Resolver<ResolversTypes['AdminInquiryPage'], ParentType, ContextType, Partial<QueryAdminInquiriesArgs>>;
@@ -2002,14 +2161,17 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
   checkout?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<QueryCheckoutArgs, 'purchaseId'>>;
+  handleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryHandleAvailabilityArgs, 'handle'>>;
   inquiryCategories?: Resolver<Array<ResolversTypes['InquiryCategory']>, ParentType, ContextType>;
   inquiryComposer?: Resolver<Maybe<ResolversTypes['InquiryComposer']>, ParentType, ContextType>;
   legalDocument?: Resolver<ResolversTypes['LegalDocument'], ParentType, ContextType, RequireFields<QueryLegalDocumentArgs, 'kind'>>;
   legalDocumentVersion?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   memberInquiry?: Resolver<Maybe<ResolversTypes['MemberInquiry']>, ParentType, ContextType, RequireFields<QueryMemberInquiryArgs, 'id'>>;
   myInquiries?: Resolver<ResolversTypes['MemberInquiryPage'], ParentType, ContextType, Partial<QueryMyInquiriesArgs>>;
+  myProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
   paymentHistory?: Resolver<ResolversTypes['PaymentRecordConnection'], ParentType, ContextType, Partial<QueryPaymentHistoryArgs>>;
+  publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   ultrasOffer?: Resolver<ResolversTypes['UltrasOffer'], ParentType, ContextType>;
   ultrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType>;
@@ -2141,10 +2303,15 @@ export type Resolvers<ContextType = GraphQLContext> = {
   MemberInquirySummary?: MemberInquirySummaryResolvers<ContextType>;
   Money?: MoneyResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
+  MyProfile?: MyProfileResolvers<ContextType>;
   OffsetPageInfo?: OffsetPageInfoResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;
   PaymentRecord?: PaymentRecordResolvers<ContextType>;
   PaymentRecordConnection?: PaymentRecordConnectionResolvers<ContextType>;
+  ProfileWebsite?: ProfileWebsiteResolvers<ContextType>;
+  PublicProfile?: PublicProfileResolvers<ContextType>;
+  PublicProfileRedirect?: PublicProfileRedirectResolvers<ContextType>;
+  PublicProfileResult?: PublicProfileResultResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   RecoveryCodeSet?: RecoveryCodeSetResolvers<ContextType>;
   SecondFactorRequired?: SecondFactorRequiredResolvers<ContextType>;

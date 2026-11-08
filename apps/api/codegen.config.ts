@@ -32,6 +32,10 @@ const config: CodegenConfig = {
             '../modules/inquiry/mappers.ts#AdminInquiryMemberModel',
           AdminInquiry: '../modules/inquiry/mappers.ts#AdminInquiryModel',
           UserSummary: '../modules/profile/user-summary.ts#UserSummarySource',
+          PublicProfile: '../modules/profile/mappers.ts#PublicProfileModel',
+          PublicProfileRedirect:
+            '../modules/profile/mappers.ts#PublicProfileRedirectModel',
+          MyProfile: '../modules/profile/mappers.ts#MyProfileModel',
         },
       },
     },

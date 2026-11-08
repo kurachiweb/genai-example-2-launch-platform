@@ -171,7 +171,7 @@ beforeEach(async () => {
 });
 
 describe('profileSchemaModule', () => {
-  test('クエリ・ミューテーションを持たず、利用者の表示の型だけを定義する', () => {
+  test('利用者の表示の型と、プロフィールの操作を定義する', () => {
     const composed = composeGatewaySchema([
       mediaSchemaModule,
       profileSchemaModule,
@@ -180,8 +180,14 @@ describe('profileSchemaModule', () => {
     const summary = composed.getType('UserSummary');
 
     expect(String(summary)).toBe('UserSummary');
-    expect(composed.getQueryType()).toBe(undefined);
-    expect(composed.getMutationType()).toBe(undefined);
+    expect(Object.keys(composed.getQueryType()?.getFields() ?? {})).toEqual([
+      'publicProfile',
+      'myProfile',
+      'handleAvailability',
+    ]);
+    expect(Object.keys(composed.getMutationType()?.getFields() ?? {})).toEqual([
+      'updateMyProfile',
+    ]);
     expect(profileSchemaModule.name).toBe('profile');
   });
 });
