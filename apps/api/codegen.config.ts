@@ -31,6 +31,7 @@ const config: CodegenConfig = {
           AdminInquiryMember:
             '../modules/inquiry/mappers.ts#AdminInquiryMemberModel',
           AdminInquiry: '../modules/inquiry/mappers.ts#AdminInquiryModel',
+          UserSummary: '../modules/profile/user-summary.ts#UserSummarySource',
         },
       },
     },

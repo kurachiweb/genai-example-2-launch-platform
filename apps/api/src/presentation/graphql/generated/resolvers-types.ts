@@ -2,6 +2,7 @@ import type { GraphQLResolveInfo, GraphQLScalarType, GraphQLScalarTypeConfig } f
 import type { ViewerSource } from '../modules/identity/resolver-support.ts';
 import type { AdminViewerSource, AdminAccountSource } from '../modules/admin/resolver-support.ts';
 import type { InquiryMessageModel, InquiryReplyAuthorModel, InquiryComposerModel, MemberInquiryModel, MemberInquirySummaryModel, AdminInquirySummaryModel, AdminInquiryMemberModel, AdminInquiryModel } from '../modules/inquiry/mappers.ts';
+import type { UserSummarySource } from '../modules/profile/user-summary.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -1295,6 +1296,15 @@ export type UserSessionSummary = {
   osName?: Maybe<Scalars['String']['output']>;
 };
 
+/** 他の利用者の表示に使う最小限の情報。他の機能の型が利用者を指す項目の戻り値に使う */
+export type UserSummary = {
+  __typename?: 'UserSummary';
+  /** プロフィール画像。未設定ならnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
+  avatar?: Maybe<MediaImage>;
+  handle: Scalars['String']['output'];
+  nickname: Scalars['String']['output'];
+};
+
 /** ログイン中の利用者 */
 export type Viewer = {
   __typename?: 'Viewer';
@@ -1497,6 +1507,7 @@ export type ResolversTypes = {
   UltrasPromotionSetting: ResolverTypeWrapper<UltrasPromotionSetting>;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UserSessionSummary: ResolverTypeWrapper<UserSessionSummary>;
+  UserSummary: ResolverTypeWrapper<UserSummarySource>;
   Viewer: ResolverTypeWrapper<ViewerSource>;
   ViewerUltras: ResolverTypeWrapper<ViewerUltras>;
 };
@@ -1585,6 +1596,7 @@ export type ResolversParentTypes = {
   UltrasPromotionSetting: UltrasPromotionSetting;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UserSessionSummary: UserSessionSummary;
+  UserSummary: UserSummarySource;
   Viewer: ViewerSource;
   ViewerUltras: ViewerUltras;
 };
@@ -2060,6 +2072,12 @@ export type UserSessionSummaryResolvers<ContextType = GraphQLContext, ParentType
   osName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
+export type UserSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UserSummary'] = ResolversParentTypes['UserSummary']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type ViewerResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Viewer'] = ResolversParentTypes['Viewer']> = {
   email?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   emailVerified?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
@@ -2137,6 +2155,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   UltrasPortalSession?: UltrasPortalSessionResolvers<ContextType>;
   UltrasPromotionSetting?: UltrasPromotionSettingResolvers<ContextType>;
   UserSessionSummary?: UserSessionSummaryResolvers<ContextType>;
+  UserSummary?: UserSummaryResolvers<ContextType>;
   Viewer?: ViewerResolvers<ContextType>;
   ViewerUltras?: ViewerUltrasResolvers<ContextType>;
 };

@@ -102,3 +102,22 @@ describe('GRAPHQL_SCHEMA_MODULES(Ultras)', () => {
     expect(String(schema.getType('UltrasPlanStatus'))).toBe('UltrasPlanStatus');
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(プロフィール)', () => {
+  test('後続specが項目に使う利用者の表示の型が、画像をメディアの型で返す形でスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const summary = schema.getType('UserSummary');
+
+    expect(String(summary)).toBe('UserSummary');
+    expect(
+      String(
+        (
+          summary as unknown as {
+            getFields(): Record<string, { type: unknown }>;
+          }
+        ).getFields()['avatar']?.type,
+      ),
+    ).toBe('MediaImage');
+  });
+});
