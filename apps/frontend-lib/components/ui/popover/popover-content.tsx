@@ -7,6 +7,7 @@ export function PopoverContent({
   className,
   align = 'center',
   sideOffset = 4,
+  onSubmit,
   ...props
 }: ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
@@ -20,6 +21,11 @@ export function PopoverContent({
           className,
         )}
         {...props}
+        // ポータルの中のフォームの送信はReactの木に沿って外側のフォームへも伝わるため、ここで止める
+        onSubmit={(event) => {
+          onSubmit?.(event);
+          event.stopPropagation();
+        }}
       />
     </PopoverPrimitive.Portal>
   );

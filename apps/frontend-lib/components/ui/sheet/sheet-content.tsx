@@ -22,6 +22,7 @@ export function SheetContent({
   children,
   side = 'right',
   showCloseButton = true,
+  onSubmit,
   ...props
 }: SheetContentProps) {
   return (
@@ -31,6 +32,11 @@ export function SheetContent({
         data-slot="sheet-content"
         className={cn(sheetContentVariants({ side, className }))}
         {...props}
+        // ポータルの中のフォームの送信はReactの木に沿って外側のフォームへも伝わるため、ここで止める
+        onSubmit={(event) => {
+          onSubmit?.(event);
+          event.stopPropagation();
+        }}
       >
         {children}
         {showCloseButton && (

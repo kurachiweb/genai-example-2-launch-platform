@@ -154,6 +154,7 @@ return <MarkdownContent rendered={rendered} size="sm" />;
 | `placeholder`                         | 空の時の案内の文                                                                                      |
 | `preview`                             | プレビューの描画の指定。表示場所と同じ`rel`を渡し、本文の識別子は`'preview'`にする                    |
 
+- リンクのダイアログは文書の末尾へ描画されるが、Reactの木では`MarkdownEditor`の子のため、`AppForm`の中に置くと、ダイアログの`submit`が`AppForm`へ伝わってフォーム全体が送信され、リンクを設定する前に値が保存されてしまう。`DialogContent`が`submit`の伝播を止めるため、入力欄を置く側は何もしなくてよい(「[基本部品](005-shared-components.md#基本部品)」)。
 - 編集領域は`contenteditable`の要素で`<label for>`で名前を付けられないため、`labelId`を`aria-labelledby`に使う。`labelId`は子の関数の値に列挙されないプロパティとして入るため、`{...control}`では渡らない。`control.labelId`で明示して渡す。
 - `MarkdownEditor`の`disabled`だけを指定すると、React Hook Formが欄を無効と扱わず、送信の値と検証から外れない。欄を無効にする時は`FormField`の`disabled`を使う。
 - `ref`の`focus`は「書く」へ切り替えてから編集領域へフォーカスを移し、読み込みの前と失敗の間は要求を保留して、読み込めた時に移す。

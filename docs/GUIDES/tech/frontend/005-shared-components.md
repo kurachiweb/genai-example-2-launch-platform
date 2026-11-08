@@ -73,6 +73,7 @@
 | `Skeleton`         | —                                                                                                                                                                     | `aria`を持たない。読み込み中の表示は`LoadingSkeleton`で包む                                                                                                                                                                                                                                          |
 
 - アイコンは`lucide-react`から読み込み、`aria-hidden="true"`を付ける。
+- `DialogContent`・`SheetContent`・`PopoverContent`は文書の末尾へ描画するが、Reactの木では呼び出した場所の子のままである。このため、外側の`<form>`や`AppForm`の中に置いても、中の`<form>`の`submit`が外側へ伝わって外側が送信されないよう、各部品が`submit`の伝播を止める。中に`<form>`を置く側は伝播を止める処理を足さない。
 - 見た目の調整は`className`で渡す。部品は`cn`で結合するため、衝突するクラスは渡した側が勝つ。フォーカスの輪郭を消すクラスは渡さない(「[フォーカスの輪郭](004-accessibility-rules.md#フォーカスの輪郭)」)。
 
 ### フォーム

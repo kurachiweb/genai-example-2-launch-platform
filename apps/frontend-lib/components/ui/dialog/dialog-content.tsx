@@ -18,6 +18,7 @@ export function DialogContent({
   children,
   showCloseButton = true,
   closeButtonDisabled = false,
+  onSubmit,
   ...props
 }: DialogContentProps) {
   return (
@@ -30,6 +31,11 @@ export function DialogContent({
           className,
         )}
         {...props}
+        // ポータルの中のフォームの送信はReactの木に沿って外側のフォームへも伝わるため、ここで止める
+        onSubmit={(event) => {
+          onSubmit?.(event);
+          event.stopPropagation();
+        }}
       >
         {children}
         {showCloseButton && (
