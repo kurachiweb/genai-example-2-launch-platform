@@ -1,6 +1,7 @@
 import { createExecutionContext } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import type { Container } from 'inversify';
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { IMAGE_MEDIA_TYPES } from '../../common-lib/media/media-types.ts';
@@ -9,9 +10,12 @@ import {
   USER_AVATAR_MAX_BYTES,
   USER_AVATAR_PURPOSE,
 } from '../../common-lib/profile/profile-input-rules.ts';
+import { userFollows } from '../../db/schema/follow/user-follows.ts';
+import { users } from '../../db/schema/identity/users.ts';
 import { userPreviousHandles } from '../../db/schema/profile/user-previous-handles.ts';
 import { MEDIA_TYPES } from '../../lib/core/media/identifiers.ts';
 import type { UploadPurposeRegistry } from '../../lib/core/media/upload-purpose.ts';
+import type { SessionView } from '../../lib/core/session/session-view.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
   db,
@@ -24,6 +28,11 @@ import {
   countRecords,
   pngBytes,
 } from '../../lib/workers/media/testing/upload-receiver-fixtures.ts';
+import {
+  activatedSubscriptionRow,
+  clearUltrasTables,
+  insertSubscriptionRow,
+} from '../../lib/workers/ultras/testing/ultras-store-fixtures.ts';
 import { clearProfilePlatformTables } from '../../lib/workers/profile/testing/profile-platform-fixtures.ts';
 import { callInternal } from '../../test/support/gateway-test-harness.ts';
 import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
@@ -37,14 +46,22 @@ import {
   type MyProfileReader,
   StoreMyProfileReader,
 } from '../application/profile/my-profile-reader.ts';
-import type { ProfileStore } from '../application/profile/ports.ts';
+import type {
+  ProfileStore,
+  PublicProfileStore,
+} from '../application/profile/ports.ts';
 import {
   type ProfileEditor,
   StoreProfileEditor,
 } from '../application/profile/profile-editor.ts';
 import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
+import {
+  DefaultPublicProfileReader,
+  type PublicProfileReader,
+} from '../application/profile/public-profile-reader.ts';
 import { UserHandleAvailability } from '../application/profile/user-handle-availability.ts';
 import { D1ProfileStore } from '../infrastructure/profile/d1-profile-store.ts';
+import { D1PublicProfileStore } from '../infrastructure/profile/d1-public-profile-store.ts';
 import { GATEWAY_HEADERS } from '../presentation/gateway/gateway-headers.ts';
 import { HANDLE_AVAILABILITY } from './identity-registrations.ts';
 import { MODULES } from './modules.ts';
@@ -104,6 +121,8 @@ async function issueUserSession(userIndex: number): Promise<string> {
 
 beforeEach(async () => {
   await db.delete(userPreviousHandles);
+  await db.delete(userFollows);
+  await clearUltrasTables();
   await clearProfilePlatformTables();
 });
 
@@ -125,6 +144,17 @@ describe('APIサーバーのプロフィールのモジュールの束縛', () =
         PROFILE_TYPES.HandleAvailabilityChecker,
       ),
     ).toBeInstanceOf(StoreHandleAvailabilityChecker);
+  });
+
+  test('公開プロフィールの照会のストアとユースケースをそれぞれの実装に解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<PublicProfileStore>(PROFILE_TYPES.PublicProfileStore),
+    ).toBeInstanceOf(D1PublicProfileStore);
+    expect(
+      container.get<PublicProfileReader>(PROFILE_TYPES.PublicProfileReader),
+    ).toBeInstanceOf(DefaultPublicProfileReader);
   });
 
   test('初期ハンドルの判定は、プロフィールの識別子と登録箇所の識別子とidentity-authの識別子の3経路でUserHandleAvailabilityに解決する', () => {
@@ -248,5 +278,124 @@ describe('プロフィール画像のアップロードの用途', () => {
 
     expect(response.status).toBe(201);
     expect(await countRecords()).toBe(1);
+  });
+});
+
+describe('公開プロフィールの照会(実物の束縛)', () => {
+  const TARGET = 3;
+
+  beforeEach(async () => {
+    await insertUser(OWNER, { handle: 'Owner0Handle1', nickname: 'オーナー' });
+    await insertUser(OTHER, { handle: 'other0handle', nickname: '他人' });
+    await insertUser(TARGET, { handle: 'Target', nickname: 'ターゲット' });
+  });
+
+  const guestSession: SessionView = {
+    principal: () => Promise.resolve({ kind: 'anonymous' }),
+  };
+
+  const sessionOf = (userIndex: number): SessionView => ({
+    principal: () =>
+      Promise.resolve({
+        kind: 'authenticated',
+        subjectKind: 'user',
+        subjectId: userIdOf(userIndex),
+        sessionId: '01JC0SESSION000000000000001',
+      }),
+  });
+
+  const reader = () =>
+    createContainer().get<PublicProfileReader>(
+      PROFILE_TYPES.PublicProfileReader,
+    );
+
+  const suspend = (userIndex: number) =>
+    db
+      .update(users)
+      .set({ status: 'suspended', suspendedAt: T0 })
+      .where(eq(users.id, userIdOf(userIndex)));
+
+  test('現在のハンドルを大文字小文字を区別せずに解決し、閲覧者のフォローの有無とフォロワー数を返す', async () => {
+    await db.insert(userFollows).values({
+      id: '01JC0FLW000000000000000301',
+      followerId: userIdOf(OTHER),
+      followeeId: userIdOf(TARGET),
+      createdAt: T0,
+      updatedAt: T0,
+    });
+
+    const result = await reader().find(sessionOf(OTHER), 'TARGET');
+
+    expect(result).toMatchObject({
+      kind: 'profile',
+      profile: {
+        handle: 'Target',
+        nickname: 'ターゲット',
+        followerCount: 1,
+        ultras: false,
+        viewerRelation: 'following',
+      },
+    });
+  });
+
+  test('Ultrasの有効な加入があれば、判定サービスの結果を反映する', async () => {
+    await insertSubscriptionRow(
+      activatedSubscriptionRow(1, { userId: userIdOf(TARGET) }),
+    );
+
+    const result = await reader().find(guestSession, 'target');
+
+    expect(result).toMatchObject({
+      kind: 'profile',
+      profile: { ultras: true, viewerRelation: 'guest' },
+    });
+  });
+
+  test('旧ハンドルは保有者の現在のハンドルへ転送し、保有者が停止中なら本人以外にはnot-foundにする', async () => {
+    await insertPreviousHandle(TARGET, 'Target-Old');
+
+    expect(await reader().find(guestSession, 'target-old')).toEqual({
+      kind: 'redirect',
+      handle: 'Target',
+    });
+
+    await suspend(TARGET);
+
+    expect(await reader().find(guestSession, 'target-old')).toEqual({
+      kind: 'not-found',
+    });
+    expect(await reader().find(sessionOf(TARGET), 'target-old')).toEqual({
+      kind: 'redirect',
+      handle: 'Target',
+    });
+  });
+
+  test('停止中の利用者は本人にだけ停止中の印を付けて表示し、他人にはnot-foundにする', async () => {
+    await suspend(TARGET);
+
+    expect(await reader().find(sessionOf(OTHER), 'target')).toEqual({
+      kind: 'not-found',
+    });
+    expect(await reader().find(sessionOf(TARGET), 'target')).toMatchObject({
+      kind: 'profile',
+      profile: { suspended: true, viewerRelation: 'owner' },
+    });
+  });
+
+  test('退会済みと存在しないハンドルと形式違反はnot-foundにする', async () => {
+    await db
+      .update(users)
+      .set({ deletedAt: T0 })
+      .where(eq(users.id, userIdOf(TARGET)));
+
+    expect(await reader().find(guestSession, 'target')).toEqual({
+      kind: 'not-found',
+    });
+    expect(await reader().find(guestSession, 'nobody')).toEqual({
+      kind: 'not-found',
+    });
+    expect(await reader().find(guestSession, 'bad handle')).toEqual({
+      kind: 'not-found',
+    });
   });
 });

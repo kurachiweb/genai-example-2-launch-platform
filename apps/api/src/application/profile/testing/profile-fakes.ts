@@ -1,5 +1,6 @@
 import { toHandleKey } from '../../../../common-lib/handles/handle-rules.ts';
 import type {
+  AccountGuard,
   CurrentUser,
   UserAccountView,
 } from '../../../../lib/core/identity/account-guard.ts';
@@ -8,9 +9,17 @@ import type {
   ClaimResult,
   MediaFiles,
 } from '../../../../lib/core/media/ports.ts';
+import type {
+  UserHandleResolution,
+  UserProfileDirectory,
+} from '../../../../lib/core/profile/ports.ts';
+import type { SessionView } from '../../../../lib/core/session/session-view.ts';
 import type { Clock } from '../../../../lib/core/time/clock.ts';
+import type { UltrasEntitlements } from '../../../../lib/core/ultras/ports.ts';
 import type {
   ProfileHandleOccupiedOptions,
+  PublicProfileRecord,
+  PublicProfileStore,
   ProfileSaveInput,
   ProfileSaveResult,
   ProfileSnapshot,
@@ -182,4 +191,125 @@ export function createFakeMediaFiles(
     },
   }) as MediaFiles;
   return { media, claims, erased, markedDeleted };
+}
+
+export const SESSION: SessionView = Object.freeze({
+  principal: () => Promise.reject(new Error('この偽物では使わない: principal')),
+});
+
+export function createFakeAccountGuard(
+  calls: string[],
+  currentUser: CurrentUser | undefined,
+): AccountGuard {
+  const unexpected = () => {
+    throw new Error('この偽物では使わない');
+  };
+  return {
+    currentUser() {
+      calls.push('guard.currentUser');
+      return Promise.resolve(currentUser);
+    },
+    requireUser: unexpected,
+    requireWritableUser: unexpected,
+    requireVerifiedUser: unexpected,
+  };
+}
+
+export interface FakeUserProfileDirectory extends UserProfileDirectory {
+  readonly resolved: string[];
+}
+
+export function createFakeUserProfileDirectory(
+  calls: string[],
+  resolution: UserHandleResolution,
+): FakeUserProfileDirectory {
+  const resolved: string[] = [];
+  return {
+    resolved,
+    findSummaries() {
+      throw new Error('この偽物では使わない: findSummaries');
+    },
+    resolveHandle(handle) {
+      calls.push('directory.resolveHandle');
+      resolved.push(handle);
+      return Promise.resolve(resolution);
+    },
+  };
+}
+
+export const publicProfileRecordOf = (
+  overrides: Partial<PublicProfileRecord> = {},
+): PublicProfileRecord => ({
+  handle: 'alice',
+  nickname: 'アリス',
+  headline: null,
+  bioMarkdown: null,
+  avatarFileId: null,
+  websites: [],
+  followerCount: 0,
+  suspended: false,
+  viewerFollows: false,
+  ...overrides,
+});
+
+export interface PublicProfileLoad {
+  readonly userId: string;
+  readonly viewerUserId: string | undefined;
+}
+
+export interface FakePublicProfileStore extends PublicProfileStore {
+  readonly loads: PublicProfileLoad[];
+}
+
+export function createFakePublicProfileStore(
+  calls: string[],
+  record: PublicProfileRecord | undefined,
+): FakePublicProfileStore {
+  const loads: PublicProfileLoad[] = [];
+  return {
+    loads,
+    load(userId, viewerUserId) {
+      calls.push('publicStore.load');
+      loads.push({ userId, viewerUserId });
+      return Promise.resolve(record);
+    },
+  };
+}
+
+export interface EntitlementQuery {
+  readonly userId: string;
+  readonly at: Date;
+}
+
+export interface FakeUltrasEntitlements {
+  readonly entitlements: UltrasEntitlements;
+  readonly queries: EntitlementQuery[];
+}
+
+// isEntitledAt以外(Ultrasのテーブルを読む操作)を呼んだら失敗させ、判定サービスの判定だけを使うことを確かめる
+export function createFakeUltrasEntitlements(
+  calls: string[],
+  outcome: boolean | Error,
+): FakeUltrasEntitlements {
+  const queries: EntitlementQuery[] = [];
+  const implemented: Partial<UltrasEntitlements> = {
+    isEntitledAt(userId, at) {
+      calls.push('ultras.isEntitledAt');
+      queries.push({ userId, at });
+      return outcome instanceof Error
+        ? Promise.reject(outcome)
+        : Promise.resolve(outcome);
+    },
+  };
+  const entitlements = new Proxy(implemented, {
+    get(target, property, receiver) {
+      if (Reflect.has(target, property)) {
+        return Reflect.get(target, property, receiver) as unknown;
+      }
+      return () => {
+        throw new Error(`この偽物では使わない: ${String(property)}`);
+      };
+    },
+  }) as UltrasEntitlements;
+  return { entitlements, queries };
 }

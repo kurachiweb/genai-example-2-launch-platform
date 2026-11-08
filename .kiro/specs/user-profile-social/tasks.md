@@ -48,7 +48,7 @@
   - 完了状態: 3経路(api・eventの`fetch`・eventの`queue`)のDIの解決の検査が成功し、両アプリで照会を解決できる
   - _Requirements: 12.8_
 
-- [ ] 3. APIサーバーのプロフィール
+- [x] 3. APIサーバーのプロフィール
 - [x] 3.1 保存の決定と外部Webサイトの正規化の規則を作る
   - 先に、ハンドルの変更の種類(変更なし・大文字小文字だけ・別の文字列で変更前を旧ハンドルにする)、自分の旧ハンドルへの戻し、画像の維持・新規の設定・差し替え・削除の決定、外部Webサイトの名前とURLの前後の空白の除去と空の名前を未入力にすることの単体テストを書く
   - 完了状態: 単体テストが成功し、規則がデータベースと時計に依存しない
@@ -75,7 +75,7 @@
   - _Depends: 2.4, 3.3_
   - _Requirements: 1.8, 1.9, 5.1, 5.2_
 
-- [ ] 3.5 公開プロフィールの読み取りと、公開範囲・転送のユースケースを作る
+- [x] 3.5 公開プロフィールの読み取りと、公開範囲・転送のユースケースを作る
   - 先に、ローカルD1のWorkers統合テストで、1回の読み取りで人物情報・外部Webサイト・可視のフォロワー数(停止中のフォロワーを除き、停止の解除で戻る)・閲覧者のフォローの有無を得ることを確かめる。模擬のポートの単体テストで、形式違反・存在しない・退会済みの404、停止中で本人以外の404と本人の表示、旧ハンドルの転送と停止中の保持者の旧ハンドルの404、本人の閲覧者の関係、Ultrasの判定の結果の反映と判定の失敗で表示を止めないことを確かめる
   - 照会のストアとユースケースの束縛を3.4のapiのプロフィールのモジュールへ加える
   - ユースケースは利用者の表示の照会とハンドルの解決を`core/profile`の契約の型と`PROFILE_PLATFORM_TYPES`の識別子で受け取る
@@ -262,3 +262,4 @@
 - 3.2: ポートは`apps/api/src/application/profile/ports.ts`の`ProfileStore`(`findSnapshot`・`isHandleOccupied`(`exceptUserId`)・`findExistingUserIds`・`save`)と`MyProfileView`・`ProfileSnapshot`。`save`の結果は`'saved' | 'handle-unavailable' | 'conflict' | 'account-unavailable'`で、`websites`には`normalizeWebsites`の結果を渡す。D1実装は`infrastructure/profile/d1-profile-store.ts`(先頭の`user_profiles`のupsertの`user_id`を`CASE WHEN EXISTS(...)`にしたNOT NULL違反のガード、`expectedHandle`は`COLLATE BINARY`で比べる。制約の違反の文言で分類し、他の障害は再送出)。`D1ProfileStore`は`PLATFORM_TYPES.Database`だけを受け取る。識別子と束縛は3.4で作る(`PROFILE_PLATFORM_TYPES`と名前を重ねない)。
 - 3.3: ユースケースは`apps/api/src/application/profile/`の`StoreProfileEditor`(`MEDIA_TYPES.MediaFiles`・`PLATFORM_TYPES.Clock`を注入)・`StoreMyProfileReader`・`StoreHandleAvailabilityChecker`。識別子は`profile-types.ts`の`PROFILE_TYPES`(`Symbol.for('profile.<名前>')`、`PROFILE_PLATFORM_TYPES`と重ならないことをテストで確認)、エラーは`profile-errors.ts`の`profileError(code)`(`handle_unavailable`・`profile_update_conflict`・`invalid_upload`)。利用者の行が無ければ`account_unavailable`。入力の形式の検証はしない(5.2・公開APIの境界の責務)。画像の削除の失敗は`warning`に例外と`fileId`だけを添える(9.xで`004-logging-and-error-tracking.md`に「例外とファイルのIDだけ」と書く)。模擬のポートは`application/profile/testing/profile-fakes.ts`。
 - 3.4: `PROFILE_MODULE`(名前`profile`、`apps/api/src/composition/profile-module.ts`、`modules.ts`の末尾)に`PROFILE_TYPES`の5識別子(`ProfileStore`・`ProfileEditor`・`MyProfileReader`・`HandleAvailabilityChecker`・`UserHandleAvailability`)を既定のスコープで束縛した。後続のストア・ユースケースの束縛もここへ足す。`HANDLE_AVAILABILITY`は`PROFILE_TYPES.UserHandleAvailability`に差し替え(`isHandleOccupied(includePrevious: true)`と予約語。identity-authの`D1HandleAvailability`は既定の実装として残る)。`user-avatar`の用途は`upload-purposes.ts`。`media-module.worker.test.ts`の未登録の用途の例は`product-image`に変えた。
+- 3.5: `DefaultPublicProfileReader`(`application/profile/public-profile-reader.ts`、`find(session, handle)`が`profile`・`redirect`・`not-found`)と`D1PublicProfileStore`(1つの`db.batch`、`load`は退会・不在で`undefined`)を`PROFILE_TYPES.PublicProfileReader`・`PublicProfileStore`に束縛した。ストアの型はポート側の`PublicProfileRecord`。`PublicProfileView.avatarFileId`はIDのままで、画像のURL変換は5.1のプレゼンテーション層。Ultrasの判定の失敗は`false`にして`warning`(`userId`・`error`)。Ultrasの加入行を使うテストは`clearUltrasTables`の前に`user_follows`を消す。
