@@ -22,7 +22,7 @@
   - _Requirements: 13.5_
 
 - [ ] 2. ハンドル基盤とプロフィールの共有部品
-- [ ] 2.1 ハンドル基盤のD1の部品を作る
+- [x] 2.1 ハンドル基盤のD1の部品を作る
   - 先に、ローカルD1を使うWorkers統合テストで、大文字小文字の違いでの解決、現在のハンドルの優先、論理削除済みの旧ハンドルが解決に出ないこと、既定の使用中の判定が他の対象の現在のハンドルだけを数え、`includePrevious`のときだけ他の対象の旧ハンドル(論理削除済みを含む)も数えること(仮2)、本人の除外、他の対象の旧ハンドルの解放の文がその行(論理削除済みを含む)だけを物理削除し本人の行を消さないこと、旧ハンドルを持たない対象での判定、使用中の条件を埋め込んだ文が使用中のときに一括の書き込みを取り消すこと、旧ハンドルの置き換えで1行のまま値が変わり論理削除が解けることを確かめる
   - 対象の記述(現在・旧のテーブルと列、規則、解決の条件)の型と検証、解決・使用中の判定・`CASE`式に埋め込む条件・旧ハンドルの置き換え・他の対象の旧ハンドルの解放・論理削除・削除の文を、利用者に閉じない部品として作る
   - 完了状態: Workers統合テストが成功し、部品が利用者のテーブルを直接参照しない(対象の記述だけを受け取る)
@@ -254,3 +254,4 @@
 - 1.1: 規則は`apps/common-lib/handles/handle-rules.ts`(`checkHandleFormat`・`toHandleKey`(A〜Zだけ小文字化しNOCASEと同じ)・`isReservedHandle`・`IMPERSONATION_RESERVED_HANDLES`)・`profile/profile-input-rules.ts`(`USER_HANDLE_RULE`・`checkHeadline`・`checkWebsiteName`・`PROFILE_WEBSITES_MAX`・`BIO_MAX_GRAPHEMES`・`USER_AVATAR_PURPOSE`・`USER_AVATAR_MAX_BYTES`)・`url/external-url.ts`(`checkExternalUrl`・`externalUrlHost`)。`checkExternalUrl`は前後の空白を除いて判定するので、保存する値も呼び出し側で`trimWhiteSpace`する。`//`付きの値の途中の空白・制御文字は`not-absolute`。`checkHeadline`等の違反は`forbidden-characters`と`too-long`の2種で、画面の文言は出し分ける。`externalUrlHost`はIDNをpunycodeのまま返す。
 - 1.2: テーブルは`apps/db/schema/profile/`(`user_profiles`・`user_profile_websites`・`user_previous_handles`)と`apps/db/schema/follow/user_follows`、旧ハンドルの共通の列は`apps/db/schema/handles/previous-handle-columns.ts`(キーは`ownerId`、列名は`ownerColumnName`で`user_id`)。`deleted_at`は旧ハンドルとフォローだけが持つ。`apps/db`は`common-lib`を読めないため位置のCHECKは`between 0 and 9`のリテラル(`PROFILE_WEBSITES_MAX`と手で同期)。マイグレーションは`20261108165600_user_profile_social`で、`user-profile-social-migration.unit.test.ts`がNOCASE・CHECK・`ON DELETE`無しを確かめる。
 - 1.3: 画面の文言の正は`docs/GUIDES/service/design/003-text-and-copy-rules.md`の「プロフィールとフォローの文言」の段落・エラーメッセージの表・「操作とナビゲーションの名前」の表(「その他の操作」「プロフィールの内容」「フォロー一覧」「Ultras加入中」など読み上げの名前を含む)、配置の正は`002-page-layouts.md`の「区画の登録と登録が無いときの表示」「プロフィール編集(`/settings/profile`)」「フォロー一覧(`/settings/follows`)」。外部WebサイトのURLが空の行は「外部WebサイトのURLを入力してください。」で拒否する前提。ハンドルが使える時の肯定の表示は作らない。`invalid_cursor`は管理画面の「一覧のページの位置の指定の誤り」、`first`の範囲外は「フォロー一覧の表示件数の指定の誤り」の文言。
+- 2.1: ハンドル基盤は`apps/backend-lib/workers/handles/`(`defineHandleNamespace`・`resolveHandle`・`isHandleOccupied`・`handleOccupiedCondition`・`previousHandleUpsert`・`previousHandleRelease`・`previousHandleSoftDelete`・`previousHandleDelete`)。`previous`には`deletedAt`が必須。使用中の`CASE`条件は`EXISTS`で、取り消しは`SET handle = CASE WHEN <cond> THEN NULL ELSE ? END`のNOT NULL違反で一括を巻き戻す。新しい文字列を保存する一括では、現在のハンドルの更新の後に`previousHandleRelease`を、`previousHandleUpsert`より前に置く。`previous`の無い対象では解放・論理削除・削除が無操作の文になりupsertは例外。テストの補助は`workers/handles/testing/handle-fixtures.ts`(`USER_NAMESPACE`など)。実物の`USER_HANDLE_NAMESPACE`は`activeCondition: isNull(users.deletedAt)`を渡す。
